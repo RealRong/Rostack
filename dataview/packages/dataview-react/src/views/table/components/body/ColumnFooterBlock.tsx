@@ -6,7 +6,9 @@ import {
 } from 'react'
 import { meta } from '@dataview/meta'
 import { useTranslation } from '@shared/i18n/react'
-import { useStoreValue } from '@shared/react'
+import {
+  useKeyedStoreValue
+} from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import {
   TABLE_CELL_BLOCK_PADDING,
@@ -29,12 +31,8 @@ const View = (props: ColumnFooterBlockProps) => {
     formatPercent
   } = useTranslation()
   const table = useTableContext()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
-    throw new Error('Table footer requires an active current view.')
-  }
-
-  const calculations = currentView.summaries.get(props.scopeId)
+  const footer = useKeyedStoreValue(table.footer, props.scopeId)
+  const calculations = footer?.summaryByFieldId
   
   return (
     <div

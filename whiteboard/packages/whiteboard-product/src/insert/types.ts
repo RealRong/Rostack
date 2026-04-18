@@ -1,3 +1,4 @@
+import type { Token } from '@shared/i18n'
 import type {
   MindmapTemplate,
   NodeTemplate
@@ -32,7 +33,9 @@ type WhiteboardInsertPresetBase = {
   key: string
   group: WhiteboardInsertGroup
   label: string
+  labelToken?: Token
   description?: string
+  descriptionToken?: Token
 }
 
 export type WhiteboardNodeInsertPreset = WhiteboardInsertPresetBase & {

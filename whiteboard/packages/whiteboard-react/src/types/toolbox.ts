@@ -5,7 +5,7 @@ import type {
   DrawMode,
   DrawSlot,
   DrawStyle
-} from '@whiteboard/editor/draw'
+} from '@whiteboard/editor'
 import type {
   StickyFormat,
   StickyTone

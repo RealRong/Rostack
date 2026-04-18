@@ -8,4 +8,4 @@ export {
   getAvailableSorterFields,
   getAvailableSorterFieldsForIndex,
   getSorterFieldId
-} from '@dataview/react/page/features/query/fields'
+} from '@dataview/runtime'

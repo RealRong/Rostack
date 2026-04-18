@@ -6,7 +6,7 @@ import {
   hasDrawBrush,
   type DrawMode,
   type DrawState,
-} from '@whiteboard/editor/draw'
+} from '@whiteboard/editor'
 import { type Tool } from '@whiteboard/editor'
 import {
   readStickyInsertFormat,

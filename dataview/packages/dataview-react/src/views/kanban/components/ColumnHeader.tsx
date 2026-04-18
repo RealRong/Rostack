@@ -1,25 +1,31 @@
-import type { Section } from '@dataview/engine'
+import type { SectionKey } from '@dataview/engine'
 import { FieldValueContent } from '@dataview/react/field/value'
 import { useTranslation } from '@shared/i18n/react'
 import { cn } from '@shared/ui/utils'
-import { useKanbanContext } from '@dataview/react/views/kanban/context'
+import { useKanbanRuntimeContext } from '@dataview/react/views/kanban/KanbanView'
+import {
+  useKeyedStoreValue,
+  useStoreValue
+} from '@shared/react'
 
 export const ColumnHeader = (props: {
-  section: Section
+  sectionKey: SectionKey
 }) => {
   const { t } = useTranslation()
-  const {
-    active,
-    extra
-  } = useKanbanContext()
-  const groupField = active.query.group.field
-  const bucket = props.section.bucket
+  const runtime = useKanbanRuntimeContext()
+  const board = useStoreValue(runtime.board)
+  const section = useKeyedStoreValue(runtime.section, props.sectionKey)
+  if (!section) {
+    return null
+  }
+  const groupField = board.groupField
+  const bucket = section.bucket
   const canRenderBucketValue = Boolean(
-    extra.groupUsesOptionColors
+    board.groupUsesOptionColors
     && groupField
     && bucket
   )
-  const count = props.section.items.count
+  const count = section.count
 
   return (
     <div className="flex items-center gap-3">
@@ -30,19 +36,19 @@ export const ColumnHeader = (props: {
           value={bucket?.value}
           emptyPlaceholder={bucket
             ? t(bucket.label)
-            : t(props.section.label)}
+            : t(section.label)}
           className={cn(
             'max-w-full',
-            !extra.groupUsesOptionColors && 'text-sm font-semibold text-foreground'
+            !board.groupUsesOptionColors && 'text-sm font-semibold text-foreground'
           )}
         />
       ) : (
         <h3 className="truncate text-sm font-semibold text-foreground">
-          {t(props.section.label)}
+          {t(section.label)}
         </h3>
       )}
 
-      {props.section.collapsed ? (
+      {section.collapsed ? (
         <div className="rounded-full bg-surface-subtle px-2 py-1 text-sm font-medium text-fg">
           {count}
         </div>

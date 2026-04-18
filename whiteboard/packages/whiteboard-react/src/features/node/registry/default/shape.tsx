@@ -1,8 +1,11 @@
 import {
-  readShapeKind,
-  readShapeMeta,
-  readShapeSpec
+  readShapeDescriptor,
+  readShapeKind
 } from '@whiteboard/core/node'
+import {
+  getWhiteboardShapeSpec,
+  readWhiteboardShapeMeta
+} from '@whiteboard/product'
 import {
   readNodeTextSourceId
 } from '@whiteboard/editor'
@@ -43,7 +46,7 @@ const readShapeColors = (
   props: NodeRenderProps
 ) => {
   const kind = readShapeKind(props.node)
-  const spec = readShapeSpec(kind)
+  const spec = getWhiteboardShapeSpec(kind)
 
   return {
     kind,
@@ -105,7 +108,7 @@ const ShapeLabel = ({
   }, [sourceId, textSources])
 
   const shellStyle: CSSProperties = {
-    ...readShapeSpec(kind).labelInset,
+    ...readShapeDescriptor(kind).labelInset,
     justifyContent:
       textAlign === 'left'
         ? 'flex-start'
@@ -205,7 +208,7 @@ export const ShapeNodeDefinition: NodeDefinition = {
     icon: 'shape',
     controls: ['fill', 'stroke', 'text']
   },
-  describe: (node) => readShapeMeta(node),
+  describe: (node) => readWhiteboardShapeMeta(node),
   defaultData: {
     kind: 'rect',
     text: 'Rectangle'

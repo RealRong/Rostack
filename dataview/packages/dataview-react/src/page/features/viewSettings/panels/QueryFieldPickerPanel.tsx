@@ -1,46 +1,35 @@
-import { getDocumentFields } from '@dataview/core/document'
 import { FieldPicker } from '@dataview/react/field/picker'
 import {
-  getAvailableFilterFields,
-  getAvailableSorterFields
-} from '@dataview/react/page/features/query/fields'
-import {
   useDataView,
-  useDataViewValue
+  usePageRuntime
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
+import {
+  useStoreValue
+} from '@shared/react'
 
 export const QueryFieldPickerPanel = (props: {
   kind: 'filter' | 'sort'
 }) => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const page = dataView.page
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-  const filterProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.filters
-  )
-  const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.sort
-  )
+  const page = dataView.session.page
+  const pageRuntime = usePageRuntime()
+  const settings = useStoreValue(pageRuntime.settings)
+  const queryBar = useStoreValue(pageRuntime.queryBar)
+  const currentView = settings.currentView
   const currentViewDomain = currentView
     ? engine.active
     : undefined
-  const fields = getDocumentFields(document)
   const router = useViewSettings()
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden">
       <FieldPicker
         fields={props.kind === 'filter'
-          ? getAvailableFilterFields(fields, filterProjection?.rules.map(entry => entry.rule) ?? [])
-          : getAvailableSorterFields(fields, sortProjection?.rules.map(entry => entry.sorter) ?? [])}
+          ? queryBar.availableFilterFields
+          : queryBar.availableSortFields}
         emptyMessage={props.kind === 'filter'
           ? meta.ui.fieldPicker.allFiltered
           : meta.ui.fieldPicker.allSorted}
@@ -49,7 +38,7 @@ export const QueryFieldPickerPanel = (props: {
             currentViewDomain?.filters.add(fieldId)
             page.query.open({
               kind: 'filter',
-              index: filterProjection?.rules.length ?? 0
+              index: queryBar.filters.length
             })
             router.close()
             return

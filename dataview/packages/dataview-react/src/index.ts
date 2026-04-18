@@ -1,24 +1,28 @@
 export type { QueryBarEntry } from '@dataview/runtime'
 export {
   GalleryView,
-  useGalleryContext,
+  useGalleryRuntimeContext,
   useGalleryRuntime
 } from '@dataview/react/views/gallery'
 export type {
-  Gallery,
   ActiveGalleryViewState,
+  GalleryBody,
+  GalleryCardData,
+  GallerySectionData,
   GalleryViewProps,
   GalleryViewRuntime
 } from '@dataview/react/views/gallery'
 export {
   KanbanView,
   KanbanProvider,
-  useKanbanContext,
+  useKanbanRuntimeContext,
   useKanbanRuntime
 } from '@dataview/react/views/kanban'
 export type {
-  Kanban,
   ActiveKanbanViewState,
+  KanbanBoard,
+  KanbanCardData,
+  KanbanSectionData,
   KanbanSectionVisibility,
   KanbanViewProps,
   KanbanViewRuntime
@@ -37,8 +41,10 @@ export type { TableViewProps } from '@dataview/react/views/table'
 export {
   EngineProvider,
   useDataView,
+  useDataViewRuntime,
   useDataViewIntent,
   useDataViewKeyedValue,
+  usePageRuntime,
   useDataViewRead,
   useDataViewSession,
   useDataViewSessionSelector,
@@ -50,16 +56,27 @@ export type {
   CreateRecordApi,
   CreateRecordOpenResult,
   CreateRecordRequest,
+  DataViewModel,
+  DataViewPageBody,
+  DataViewPageHeader,
+  DataViewPageQueryBar,
+  DataViewPageRuntime,
+  DataViewPageSettings,
+  DataViewPageToolbar,
   DataViewReactContextValue,
   DataViewIntentApi,
   DataViewReadApi,
   DataViewReactSession,
   DataViewSessionApi,
-  DataViewSessionSelectors,
   DataViewSessionState,
   DataViewWriteApi,
+  DataViewGalleryModel,
+  DataViewInlineRuntime,
+  DataViewKanbanModel,
+  DataViewTableModel,
   EditorSubmitTrigger,
   EngineProviderProps,
+  GalleryBodyBase,
   InlineSessionApi,
   InlineSessionExitEffect,
   InlineSessionExitEvent,
@@ -67,6 +84,8 @@ export type {
   InlineSessionTarget,
   ItemSelectionController,
   ItemSelectionSnapshot,
+  KanbanBoardBase,
+  KanbanSectionBase,
   MarqueeBridgeApi,
   MarqueeIntentApi,
   MarqueeMode,
@@ -82,5 +101,9 @@ export type {
   SelectionScope,
   SelectionSnapshot,
   SelectionSummary,
-  SettingsRoute
+  SettingsRoute,
+  TableBase,
+  TableFooterData,
+  TableHeaderData,
+  TableSectionData
 } from '@dataview/react/dataview'

@@ -1,6 +1,8 @@
 import type { Guide } from '@whiteboard/core/node'
 import type { NodeId } from '@whiteboard/core/types'
-import type { DrawPreview } from '@whiteboard/editor/session/draw'
+import type {
+  DrawPreview
+} from '@whiteboard/editor/session/draw/state'
 import type {
   EdgeFeedbackEntry,
   EdgeGuide,

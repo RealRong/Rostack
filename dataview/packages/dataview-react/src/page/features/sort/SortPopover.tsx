@@ -7,7 +7,6 @@ import {
   Plus,
   Trash2
 } from 'lucide-react'
-import { getDocumentFields } from '@dataview/core/document'
 import {
   Menu,
   type MenuActionItem,
@@ -18,7 +17,7 @@ import { Popover } from '@shared/ui/popover'
 import { VerticalReorderList } from '@shared/ui/vertical-reorder-list'
 import {
   useDataView,
-  useDataViewValue
+  usePageRuntime
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { meta } from '@dataview/meta'
@@ -26,12 +25,15 @@ import { SortRuleRow } from '@dataview/react/page/features/sort/SortRuleRow'
 import { useTranslation } from '@shared/i18n/react'
 import {
   getAvailableSorterFields
-} from '@dataview/react/page/features/query/fields'
+} from '@dataview/runtime'
 import {
   getSorterItemId,
   readSortSummary
 } from '@dataview/react/page/features/sort/sortUi'
 import { QueryChip } from '@dataview/react/page/features/query'
+import {
+  useStoreValue
+} from '@shared/react'
 
 export interface SortPopoverProps {
   open: boolean
@@ -42,20 +44,16 @@ export const SortPopover = (props: SortPopoverProps) => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
-  const fields = getDocumentFields(document)
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-  const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.sort
-  )
+  const pageRuntime = usePageRuntime()
+  const settings = useStoreValue(pageRuntime.settings)
+  const queryBar = useStoreValue(pageRuntime.queryBar)
+  const fields = settings.fields
+  const currentView = settings.currentView
   const currentViewDomain = currentView
     ? engine.active
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
-  const sortRules = sortProjection?.rules ?? []
+  const sortRules = queryBar.sorts
   const sorters = sortRules.map(entry => entry.sorter)
   const singleSortDirection = sortRules.length === 1
     ? sortRules[0]?.sorter.direction

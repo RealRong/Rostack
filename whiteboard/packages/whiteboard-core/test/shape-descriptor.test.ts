@@ -3,12 +3,10 @@ import { test } from 'vitest'
 import {
   SHAPE_DESCRIPTORS,
   containsPointInNodeOutline,
-  createShapeNodeInput,
   getNodeBounds,
   getNodeOutline,
   isShapeKind,
-  readShapeDescriptor,
-  readShapeSpec
+  readShapeDescriptor
 } from '@whiteboard/core/node'
 
 test('shape descriptor registry exposes the new shape kinds through one source of truth', () => {
@@ -24,30 +22,6 @@ test('shape descriptor registry exposes the new shape kinds through one source o
     assert.ok(readShapeDescriptor(kind).visual.outer.d.length > 0)
     assert.ok(readShapeDescriptor(kind).outline.top.length > 0)
   }
-})
-
-test('createShapeNodeInput reads defaults from the descriptor registry', () => {
-  const star = createShapeNodeInput('star')
-  const speechBubble = createShapeNodeInput('roundrect-bubble')
-  const delay = createShapeNodeInput('delay')
-
-  assert.deepEqual(star.size, {
-    width: 190,
-    height: 180
-  })
-  assert.equal(star.data?.text, 'Star')
-
-  assert.deepEqual(speechBubble.size, {
-    width: 240,
-    height: 150
-  })
-  assert.equal(speechBubble.data?.text, 'Speech Bubble')
-
-  assert.deepEqual(delay.size, {
-    width: 190,
-    height: 110
-  })
-  assert.equal(delay.style?.fill, readShapeSpec('delay').defaults.fill)
 })
 
 test('new shape outlines keep hit testing aligned with the descriptor geometry', () => {
@@ -134,9 +108,30 @@ test('basic and flowchart shapes fill the canonical rect with their outline boun
     width: 260,
     height: 180
   }
+  const rectBoundKinds = new Set([
+    'rect',
+    'rounded-rect',
+    'pill',
+    'ellipse',
+    'diamond',
+    'triangle',
+    'hexagon',
+    'parallelogram',
+    'star',
+    'pentagon',
+    'trapezoid',
+    'semicircle',
+    'cylinder',
+    'document',
+    'predefined-process',
+    'bevel-rect',
+    'delay',
+    'manual-input',
+    'manual-operation'
+  ])
 
   SHAPE_DESCRIPTORS
-    .filter((descriptor) => descriptor.group !== 'annotation')
+    .filter((descriptor) => rectBoundKinds.has(descriptor.kind))
     .forEach((descriptor) => {
       const bounds = getNodeBounds(
         {

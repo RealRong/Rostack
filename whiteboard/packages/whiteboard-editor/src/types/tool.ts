@@ -3,7 +3,9 @@ import type {
   MindmapTemplate,
   NodeTemplate
 } from '@whiteboard/core/types'
-import type { DrawMode } from '@whiteboard/editor/session/draw/model'
+import type {
+  DrawMode
+} from '@whiteboard/editor/session/draw/model'
 import type { EditField } from '@whiteboard/editor/session/edit'
 
 export type SelectTool = {

@@ -36,9 +36,7 @@ import {
 import { cn } from '@shared/ui/utils'
 import { isCustomField } from '@dataview/core/field'
 import { getFieldCalculationMetrics } from '@dataview/core/calculation'
-import { getSorterFieldId } from '@dataview/react/page/features/query/fields'
 import { useDataView } from '@dataview/react/dataview'
-import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { token, type Token, type TokenTranslator } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
 import { useTableContext } from '@dataview/react/views/table/context'
@@ -48,6 +46,9 @@ import {
   TABLE_CELL_INLINE_PADDING,
   TABLE_HEADER_BLOCK_PADDING
 } from '@dataview/react/views/table/layout'
+import {
+  useKeyedStoreValue
+} from '@shared/react'
 
 export interface ColumnHeaderProps {
   field: Field
@@ -195,26 +196,11 @@ const ResizeHandle = (props: ResizeHandleProps) => (
 
 const EMPTY_MENU_ITEMS = [] as readonly MenuItem[]
 
-const sameHeaderState = (
-  left: {
-    grouped: boolean
-    sortDirection?: 'asc' | 'desc'
-    calculationMetric?: CalculationMetric
-  },
-  right: {
-    grouped: boolean
-    sortDirection?: 'asc' | 'desc'
-    calculationMetric?: CalculationMetric
-  }
-) => left.grouped === right.grouped
-  && left.sortDirection === right.sortDirection
-  && left.calculationMetric === right.calculationMetric
-
 const View = (props: ColumnHeaderProps) => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const editor = dataView.engine
-  const page = dataView.page
+  const page = dataView.session.page
   const [menuOpen, setMenuOpen] = useState(false)
   const pointerStartRef = useRef<{
     x: number
@@ -222,25 +208,9 @@ const View = (props: ColumnHeaderProps) => {
   } | null>(null)
   const suppressClickRef = useRef(false)
   const table = useTableContext()
-  const headerState = useStoreSelector(
-    table.currentView,
-    currentView => {
-      if (!currentView) {
-        throw new Error('Table column header requires an active current view.')
-      }
-
-      return {
-        grouped: (
-          currentView.query.group.active === true
-          && currentView.query.group.fieldId === props.field.id
-        ),
-        sortDirection: currentView.query.sort.rules.find(
-          entry => getSorterFieldId(entry.sorter) === props.field.id
-        )?.sorter.direction,
-        calculationMetric: currentView.view.calc[props.field.id] as CalculationMetric | undefined
-      }
-    },
-    sameHeaderState
+  const headerState = useKeyedStoreValue(
+    table.header,
+    props.field.id
   )
   const sortable = useSortable({
     id: props.sortId,

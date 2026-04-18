@@ -13,7 +13,7 @@ import type { DrawSlot } from '@whiteboard/editor/session/draw/model'
 import {
   DEFAULT_DRAW_BRUSH,
   hasDrawBrush
-} from '@whiteboard/editor/session/draw'
+} from '@whiteboard/editor/session/draw/model'
 import {
   createDrawStateStore
 } from '@whiteboard/editor/session/draw/runtime'

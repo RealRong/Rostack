@@ -1,6 +1,9 @@
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
-import { useKanbanContext } from '@dataview/react/views/kanban/context'
+import { useKanbanRuntimeContext } from '@dataview/react/views/kanban/KanbanView'
 import { Column } from '@dataview/react/views/kanban/components/Column'
+import {
+  useStoreValue
+} from '@shared/react'
 
 const PAGE_PADDING_BOTTOM = 180
 
@@ -14,10 +17,8 @@ const contentInsetStyle = {
 } as const
 
 export const KanbanCanvas = () => {
-  const {
-    active,
-    runtime
-  } = useKanbanContext()
+  const runtime = useKanbanRuntimeContext()
+  const board = useStoreValue(runtime.board)
 
   return (
     <div className="flex flex-col gap-6">
@@ -35,10 +36,10 @@ export const KanbanCanvas = () => {
               overflowAnchor: 'none'
             }}
           >
-            {active.sections.all.map(section => (
+            {board.sectionKeys.map(sectionKey => (
               <Column
-                key={section.key}
-                section={section}
+                key={sectionKey}
+                sectionKey={sectionKey}
               />
             ))}
           </div>

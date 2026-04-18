@@ -86,11 +86,20 @@ export const createWhiteboardStickyTemplate = ({
   }
 })
 
-export const createWhiteboardFrameTemplate = (): NodeTemplate => ({
+export const createWhiteboardFrameTemplate = ({
+  size = WHITEBOARD_FRAME_START_SIZE,
+  title = WHITEBOARD_FRAME_DEFAULT_TITLE
+}: {
+  size?: {
+    width: number
+    height: number
+  }
+  title?: string
+} = {}): NodeTemplate => ({
   type: 'frame',
-  size: { ...WHITEBOARD_FRAME_START_SIZE },
+  size: { ...size },
   data: {
-    title: WHITEBOARD_FRAME_DEFAULT_TITLE
+    title
   },
   style: {
     fill: WHITEBOARD_FRAME_DEFAULT_FILL,

@@ -8,7 +8,6 @@ export type {
   DataViewReadApi,
   DataViewRuntime,
   DataViewSessionApi,
-  DataViewSessionSelectors,
   DataViewSessionState,
   DataViewWriteApi
 } from '@dataview/runtime/dataview/types'
@@ -122,3 +121,41 @@ export type {
   MarqueeSessionApi,
   MarqueeSessionState
 } from '@dataview/runtime/marquee'
+
+export {
+  createGalleryModel,
+  createKanbanModel,
+  createPageModel,
+  createTableModel,
+  findSorterField,
+  getAvailableFilterFields,
+  getAvailableSorterFields,
+  getAvailableSorterFieldsForIndex,
+  getFilterFieldId,
+  getSorterFieldId,
+  readActiveTypedViewState
+} from '@dataview/runtime/model'
+export type {
+  ActiveTypedViewState,
+  DataViewGalleryModel,
+  DataViewInlineRuntime,
+  DataViewKanbanModel,
+  DataViewModel,
+  DataViewPageBody,
+  DataViewPageHeader,
+  DataViewPageQueryBar,
+  DataViewPageRuntime,
+  DataViewPageSettings,
+  DataViewPageToolbar,
+  DataViewTableModel,
+  GalleryBodyBase,
+  GalleryCardData,
+  GallerySectionData,
+  KanbanBoardBase,
+  KanbanCardData,
+  KanbanSectionBase,
+  TableBase,
+  TableFooterData,
+  TableHeaderData,
+  TableSectionData
+} from '@dataview/runtime/model'

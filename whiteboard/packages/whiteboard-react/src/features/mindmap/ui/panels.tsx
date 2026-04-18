@@ -12,6 +12,7 @@ import type {
   MindmapBranchLineKind,
   MindmapStrokeStyle
 } from '@whiteboard/core/mindmap'
+import { WHITEBOARD_MINDMAP_UI } from '@whiteboard/product'
 import {
   WHITEBOARD_FILL_COLOR_OPTIONS,
   WHITEBOARD_LINE_COLOR_OPTIONS,
@@ -97,60 +98,6 @@ const BorderGlyph = ({
   </svg>
 )
 
-const BRANCH_LINE_OPTIONS = [
-  {
-    value: 'curve',
-    label: 'Curve'
-  },
-  {
-    value: 'elbow',
-    label: 'Elbow'
-  },
-  {
-    value: 'rail',
-    label: 'Rail'
-  }
-] as const satisfies readonly {
-  value: MindmapBranchLineKind
-  label: string
-}[]
-
-const BRANCH_STROKE_OPTIONS = [
-  {
-    value: 'solid',
-    label: 'Solid'
-  },
-  {
-    value: 'dashed',
-    label: 'Dashed'
-  },
-  {
-    value: 'dotted',
-    label: 'Dotted'
-  }
-] as const satisfies readonly {
-  value: MindmapStrokeStyle
-  label: string
-}[]
-
-const BORDER_KIND_OPTIONS = [
-  {
-    value: 'ellipse',
-    label: 'Ellipse'
-  },
-  {
-    value: 'rect',
-    label: 'Rectangle'
-  },
-  {
-    value: 'underline',
-    label: 'Underline'
-  }
-] as const satisfies readonly {
-  value: MindmapNodeFrameKind
-  label: string
-}[]
-
 export const MindmapBranchPanel = ({
   color,
   line,
@@ -173,7 +120,7 @@ export const MindmapBranchPanel = ({
   <Panel className="min-w-[260px]">
     <PanelSection title="Branch">
       <div className="flex items-center gap-2">
-        {BRANCH_LINE_OPTIONS.map((option) => (
+        {WHITEBOARD_MINDMAP_UI.branchLines.map((option) => (
           <SegmentedButton
             key={option.value}
             active={(line ?? 'curve') === option.value}
@@ -190,7 +137,7 @@ export const MindmapBranchPanel = ({
     </PanelSection>
     <PanelSection title="Style">
       <div className="flex items-center gap-2">
-        {BRANCH_STROKE_OPTIONS.map((option) => (
+        {WHITEBOARD_MINDMAP_UI.branchStrokes.map((option) => (
           <SegmentedButton
             key={option.value}
             active={(stroke ?? 'solid') === option.value}
@@ -247,7 +194,7 @@ export const MindmapBorderPanel = ({
   <Panel className="min-w-[260px]">
     <PanelSection title="Border">
       <div className="flex items-center gap-2">
-        {BORDER_KIND_OPTIONS.map((option) => (
+        {WHITEBOARD_MINDMAP_UI.borderKinds.map((option) => (
           <SegmentedButton
             key={option.value}
             active={(kind ?? 'rect') === option.value}

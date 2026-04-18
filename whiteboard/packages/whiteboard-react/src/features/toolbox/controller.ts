@@ -3,7 +3,7 @@ import type {
   BrushStylePatch,
   DrawMode,
   DrawSlot
-} from '@whiteboard/editor/draw'
+} from '@whiteboard/editor'
 import {
   WHITEBOARD_TEXT_INSERT_PRESET,
   getWhiteboardInsertPreset,

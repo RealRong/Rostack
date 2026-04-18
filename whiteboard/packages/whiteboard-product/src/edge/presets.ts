@@ -1,10 +1,15 @@
+import type { Token } from '@shared/i18n'
 import type { EdgeTemplate } from '@whiteboard/core/types'
+import {
+  whiteboardEdgePresetLabelToken
+} from '@whiteboard/product/i18n/tokens'
 
 export type WhiteboardEdgePresetKey = string
 
 export type WhiteboardEdgePreset = {
   key: WhiteboardEdgePresetKey
   label: string
+  labelToken: Token
   template: EdgeTemplate
 }
 
@@ -88,6 +93,10 @@ export const getWhiteboardEdgePreset = (
   return {
     key: preset,
     label: WHITEBOARD_EDGE_PRESET_LABELS[preset] ?? preset,
+    labelToken: whiteboardEdgePresetLabelToken(
+      preset,
+      WHITEBOARD_EDGE_PRESET_LABELS[preset] ?? preset
+    ),
     template
   }
 }

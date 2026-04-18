@@ -8,6 +8,12 @@ import type {
   WhiteboardInsertTemplate
 } from '@whiteboard/product/insert/types'
 import {
+  whiteboardInsertPresetDescriptionToken,
+  whiteboardInsertPresetLabelToken,
+  whiteboardMindmapPresetDescriptionToken,
+  whiteboardMindmapPresetLabelToken
+} from '@whiteboard/product/i18n/tokens'
+import {
   buildWhiteboardMindmapTemplate,
   listWhiteboardMindmapPresets
 } from '@whiteboard/product/mindmap/template'
@@ -52,7 +58,11 @@ const createNodePreset = ({
   key,
   group,
   label,
+  labelToken: whiteboardInsertPresetLabelToken(key, label),
   description,
+  descriptionToken: description
+    ? whiteboardInsertPresetDescriptionToken(key, description)
+    : undefined,
   template
 })
 
@@ -62,7 +72,11 @@ export const WHITEBOARD_MINDMAP_INSERT_PRESETS: readonly WhiteboardMindmapInsert
     key: preset.key,
     group: 'mindmap',
     label: preset.label,
+    labelToken: preset.labelToken ?? whiteboardMindmapPresetLabelToken(preset.key, preset.label),
     description: preset.description,
+    descriptionToken: preset.description
+      ? (preset.descriptionToken ?? whiteboardMindmapPresetDescriptionToken(preset.key, preset.description))
+      : undefined,
     template: {
       kind: 'mindmap',
       template: buildWhiteboardMindmapTemplate({
@@ -153,7 +167,7 @@ export const DEFAULT_WHITEBOARD_STICKY_PRESET = firstPresetKey(
 
 export const DEFAULT_WHITEBOARD_SHAPE_PRESET = firstPresetKey(
   WHITEBOARD_SHAPE_INSERT_PRESETS,
-  'shape.rectangle'
+  'shape.rect'
 )
 
 export const DEFAULT_WHITEBOARD_MINDMAP_PRESET = firstPresetKey(

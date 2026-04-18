@@ -10,13 +10,19 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import {
-  hasDrawBrush,
-  readDrawStyle,
-  type DrawBrush,
-  type DrawPreview,
   type DrawState,
   type DrawStyle
-} from '@whiteboard/editor/session/draw'
+} from '@whiteboard/editor/session/draw/state'
+import type {
+  DrawPreview
+} from '@whiteboard/editor/session/draw/state'
+import {
+  readDrawStyle
+} from '@whiteboard/editor/session/draw/state'
+import {
+  type DrawBrush,
+  hasDrawBrush
+} from '@whiteboard/editor/session/draw/model'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'

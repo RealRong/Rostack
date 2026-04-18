@@ -11,11 +11,20 @@ import type {
   KanbanCardsPerColumn
 } from '@dataview/core/contracts'
 import type {
+  ItemId as ItemIdType,
+  SectionKey as SectionKeyType,
   ViewState
 } from '@dataview/engine'
 import {
   useDataView
 } from '@dataview/react/dataview'
+import {
+  createDerivedStore,
+  createKeyedDerivedStore,
+  createValueStore,
+  read,
+  sameOrder
+} from '@shared/core'
 import {
   elementRectIn,
   observeElementSize,
@@ -34,7 +43,9 @@ import {
   useDrag
 } from '@dataview/react/views/kanban/drag'
 import type {
+  KanbanBoard,
   KanbanRuntimeInput,
+  KanbanSectionData,
   KanbanSectionVisibility,
   KanbanViewRuntime
 } from '@dataview/react/views/kanban/types'
@@ -46,6 +57,36 @@ import type { MarqueeScene } from '@dataview/react/page/marqueeBridge'
 import {
   useMeasuredHeights
 } from '@dataview/react/virtual'
+
+const sameBoard = (
+  left: KanbanBoard,
+  right: KanbanBoard
+) => left.viewId === right.viewId
+  && left.grouped === right.grouped
+  && sameOrder(left.sectionKeys, right.sectionKeys)
+  && left.groupField === right.groupField
+  && left.columnWidth === right.columnWidth
+  && left.columnMinHeight === right.columnMinHeight
+  && left.fillColumnColor === right.fillColumnColor
+  && left.groupUsesOptionColors === right.groupUsesOptionColors
+
+const sameSection = (
+  left: KanbanSectionData | undefined,
+  right: KanbanSectionData | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.key === right.key
+  && left.label === right.label
+  && left.bucket === right.bucket
+  && left.collapsed === right.collapsed
+  && left.count === right.count
+  && sameOrder(left.visibleIds, right.visibleIds)
+  && left.visibleCount === right.visibleCount
+  && left.hiddenCount === right.hiddenCount
+  && left.showMoreCount === right.showMoreCount
+  && left.color === right.color
+)
 
 const resolveInitialVisibleCount = (
   limit: KanbanCardsPerColumn,
@@ -329,6 +370,13 @@ const useKanbanGeometry = (input: {
 export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime => {
   const dataView = useDataView()
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const configStore = useMemo(() => createValueStore({
+    columnWidth: input.columnWidth,
+    columnMinHeight: input.columnMinHeight
+  }, {
+    isEqual: (left, right) => left.columnWidth === right.columnWidth
+      && left.columnMinHeight === right.columnMinHeight
+  }), [])
   const itemIds = input.active.items.ids
   const interaction = useItemDragRuntime({
     itemIds
@@ -338,11 +386,70 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     sections: input.active.sections.all,
     cardsPerColumn: input.extra.cardsPerColumn
   })
+  const visibilityStore = useMemo(() => createValueStore(visibility.bySection, {
+    isEqual: Object.is
+  }), [])
   const geometry = useKanbanGeometry({
     containerRef: scrollRef,
     sections: input.active.sections.all,
     visibilityBySection: visibility.bySection
   })
+  const board = useMemo(() => createDerivedStore<KanbanBoard>({
+    get: () => {
+      const base = read(dataView.model.kanban.boardBase)
+      if (!base) {
+        throw new Error('Kanban board base is unavailable.')
+      }
+
+      const config = read(configStore)
+      return {
+        ...base,
+        columnWidth: config.columnWidth,
+        columnMinHeight: config.columnMinHeight
+      }
+    },
+    isEqual: sameBoard
+  }), [
+    configStore,
+    dataView.model.kanban.boardBase
+  ])
+  const section = useMemo(() => createKeyedDerivedStore<SectionKey, KanbanSectionData | undefined>({
+    keyOf: key => key,
+    get: key => {
+      const current = read(dataView.model.kanban.sectionBase, key)
+      if (!current) {
+        return undefined
+      }
+
+      const currentVisibility = read(visibilityStore).get(key)
+      return {
+        ...current,
+        visibleIds: currentVisibility?.visibleIds ?? [],
+        visibleCount: currentVisibility?.visibleCount ?? 0,
+        hiddenCount: currentVisibility?.hiddenCount ?? 0,
+        showMoreCount: currentVisibility?.showMoreCount ?? 0
+      }
+    },
+    isEqual: sameSection
+  }), [
+    dataView.model.kanban.sectionBase,
+    visibilityStore
+  ])
+  const card = dataView.model.kanban.card
+
+  useEffect(() => {
+    configStore.set({
+      columnWidth: input.columnWidth,
+      columnMinHeight: input.columnMinHeight
+    })
+  }, [
+    configStore,
+    input.columnMinHeight,
+    input.columnWidth
+  ])
+  useEffect(() => {
+    visibilityStore.set(visibility.bySection)
+  }, [visibility.bySection, visibilityStore])
   const marqueeScene = useMemo<MarqueeScene>(() => ({
     hitTest: rect => {
       const container = scrollRef.current
@@ -411,6 +518,9 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
   ])
 
   return useMemo(() => ({
+    board,
+    section,
+    card,
     layout: {
       columnWidth: input.columnWidth,
       columnMinHeight: input.columnMinHeight
@@ -424,12 +534,15 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     drag,
     visibility
   }), [
+    board,
+    card,
     drag,
     geometry.measureBody,
     geometry.measureCard,
     input.columnMinHeight,
     input.columnWidth,
     interaction,
+    section,
     visibility,
     scrollRef
   ])

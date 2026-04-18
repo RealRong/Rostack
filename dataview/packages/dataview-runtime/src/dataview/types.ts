@@ -19,7 +19,6 @@ import type {
   InlineSessionTarget
 } from '@dataview/runtime/inlineSession'
 import type {
-  PageLock,
   PageState,
   PageSessionApi,
   PageSessionInput
@@ -36,6 +35,9 @@ import type {
   ValueEditorController,
   ValueEditorSession
 } from '@dataview/runtime/valueEditor'
+import type {
+  DataViewModel
+} from '@dataview/runtime/model'
 
 export interface DataViewReadApi {
   engine: Engine
@@ -62,13 +64,6 @@ export interface DataViewSessionState {
   selection: ItemSelectionSnapshot
 }
 
-export interface DataViewSessionSelectors {
-  isValueEditorOpen(): boolean
-  pageLock(): PageLock
-  activeInlineTarget(): InlineSessionTarget | null
-  canStartMarquee(): boolean
-}
-
 export interface DataViewSessionApi {
   store: ReadStore<DataViewSessionState>
   page: PageSessionApi & {
@@ -81,7 +76,6 @@ export interface DataViewSessionApi {
   }
   creation: CreateRecordApi
   marquee: MarqueeSessionApi
-  select: DataViewSessionSelectors
 }
 
 export interface DataViewIntentApi {
@@ -106,6 +100,7 @@ export interface DataViewRuntime {
   write: DataViewWriteApi
   session: DataViewSessionApi
   intent: DataViewIntentApi
+  model: DataViewModel
   page: DataViewSessionApi['page']
   selection: ItemSelectionController
   inlineSession: InlineSessionApi

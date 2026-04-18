@@ -2,10 +2,13 @@ import { read as readValue, type ReadStore } from '@shared/core'
 import type { EngineRead } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
-  DrawMode,
   DrawState
-} from '@whiteboard/editor/session/draw'
+} from '@whiteboard/editor/session/draw/state'
+import type {
+  DrawMode
+} from '@whiteboard/editor/session/draw/model'
 import type {
   Tool
 } from '@whiteboard/editor/types/tool'
@@ -114,13 +117,15 @@ export const createEditorQuery = ({
   registry,
   history,
   session,
-  layout
+  layout,
+  defaults
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'preview'>
   layout: EditorLayout
+  defaults: EditorDefaults['selection']
 }): EditorQuery => {
   const {
     draw,
@@ -169,7 +174,8 @@ export const createEditorQuery = ({
     mindmap: mindmapRead,
     tool,
     edit,
-    interaction: session.interaction.read
+    interaction: session.interaction.read,
+    defaults
   })
   const toolRead = createToolRead(tool)
 

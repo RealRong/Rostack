@@ -5,9 +5,12 @@ import {
 import { resolveOptionDotStyle } from '@shared/ui/color'
 import { token } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
-import { useGalleryContext } from '@dataview/react/views/gallery/context'
+import { useGalleryRuntimeContext } from '@dataview/react/views/gallery/GalleryView'
 import { GALLERY_CARD_GAP } from '@dataview/react/views/gallery/virtual'
 import { Card } from '@dataview/react/views/gallery/components/Card'
+import {
+  useStoreValue
+} from '@shared/react'
 
 const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS
@@ -15,27 +18,20 @@ const contentInsetStyle = {
 
 export const Grid = () => {
   const { t } = useTranslation()
-  const {
-    active,
-    extra,
-    runtime
-  } = useGalleryContext()
+  const runtime = useGalleryRuntimeContext()
+  const body = useStoreValue(runtime.body)
   const engine = useDataView().engine
   const {
     blocks,
     layout
   } = runtime.virtual
   const indicator = runtime.indicator
-  const empty = active.items.ids.length === 0
-  const sectionSizeByKey = new Map(
-    active.sections.all.map(section => [section.key, section.items.count] as const)
-  )
+  const empty = body.empty
+  const sectionSizeByKey = body.sectionCountByKey
   const lastBlock = blocks[blocks.length - 1]
   const bottomSpacerHeight = lastBlock
     ? Math.max(0, layout.totalHeight - lastBlock.top - lastBlock.height)
     : 0
-  const groupField = active.query.group.field
-
   return (
     <div className="flex flex-col gap-6">
       <div
@@ -81,7 +77,7 @@ export const Grid = () => {
                         marginTop
                       }}
                     >
-                      {extra.groupUsesOptionColors ? (
+                      {body.groupUsesOptionColors ? (
                         <span
                           className="inline-flex h-2.5 w-2.5 rounded-full"
                           style={resolveOptionDotStyle(

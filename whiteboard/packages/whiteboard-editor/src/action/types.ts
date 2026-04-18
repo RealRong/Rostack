@@ -34,7 +34,10 @@ import type {
   BrushStylePatch,
   DrawState
 } from '@whiteboard/editor/session/draw/state'
-import type { DrawMode, DrawSlot } from '@whiteboard/editor/session/draw/model'
+import type {
+  DrawMode,
+  DrawSlot
+} from '@whiteboard/editor/session/draw/model'
 import type {
   EditCaret,
   EditField,

@@ -18,12 +18,14 @@ import type {
   DrawBrush,
   DrawMode,
   DrawSlot
-} from '@whiteboard/editor/draw'
+} from '@whiteboard/editor'
 import {
   DRAW_MODES,
   DRAW_SLOTS
-} from '@whiteboard/editor/draw'
-import { hasDrawBrush } from '@whiteboard/editor/draw'
+} from '@whiteboard/editor'
+import {
+  hasDrawBrush
+} from '@whiteboard/editor'
 import {
   WHITEBOARD_DRAW_COLOR_OPTIONS,
   WHITEBOARD_PALETTE_SWATCH_SHAPE,

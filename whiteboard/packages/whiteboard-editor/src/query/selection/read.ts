@@ -1,7 +1,6 @@
 import {
   TEXT_DEFAULT_FONT_SIZE,
-  readShapeKind,
-  readShapeSpec
+  readShapeKind
 } from '@whiteboard/core/node'
 import {
   createDerivedStore,
@@ -34,23 +33,16 @@ import type {
   NodeMeta,
   NodeRegistry
 } from '@whiteboard/editor/types/node'
+import type {
+  EditorDefaults,
+  EditorNodePaintDefaults
+} from '@whiteboard/editor/types/defaults'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import { readUniformValue } from '@whiteboard/editor/query/utils'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
-
-const FRAME_DEFAULT_FILL = 'transparent'
-const FRAME_DEFAULT_STROKE = 'var(--wb-palette-border-4)'
-const FRAME_DEFAULT_STROKE_WIDTH = 1
-const FRAME_DEFAULT_TEXT_COLOR = 'var(--wb-palette-text-4)'
-const WHITEBOARD_LINE_DEFAULT_COLOR = 'var(--wb-palette-line-0)'
-const STICKY_DEFAULT_FILL = 'var(--wb-palette-sticky-13)'
-const STICKY_DEFAULT_STROKE = 'var(--wb-palette-border-4)'
-const STICKY_DEFAULT_STROKE_WIDTH = 1
-const STICKY_DEFAULT_TEXT_COLOR = 'var(--wb-palette-text-0)'
-const WHITEBOARD_TEXT_DEFAULT_COLOR = 'var(--wb-palette-text-0)'
 
 export type SelectionRead = {
   box: ReadStore<Rect | undefined>
@@ -75,7 +67,6 @@ type SelectionEdgeStats = {
   types: readonly SelectionEdgeTypeInfo[]
 }
 
-const UI_TEXT_PRIMARY = WHITEBOARD_TEXT_DEFAULT_COLOR
 const EMPTY_CONTROLS: readonly ControlId[] = []
 
 const readNodeCountLabel = (
@@ -135,12 +126,6 @@ const readNumberArray = (
 const normalizeDash = (
   value: readonly number[] | undefined
 ) => value?.length ? value : undefined
-
-const readShapeDefaults = (
-  node: Node
-) => node.type === 'shape'
-  ? readShapeSpec(readShapeKind(node)).defaults
-  : undefined
 
 const hasStyleField = (
   schema: NodeSchema | undefined,
@@ -344,17 +329,13 @@ const hasControl = (
 ) => nodes.every((node) => readNodeMeta(registry, node).controls.includes(control))
 
 const readDefaultFill = (
-  node: Node
-) => readShapeDefaults(node)?.fill
-  ?? (node.type === 'sticky'
-    ? STICKY_DEFAULT_FILL
-    : node.type === 'frame'
-      ? FRAME_DEFAULT_FILL
-      : undefined)
+  defaults: EditorNodePaintDefaults | undefined
+) => defaults?.fill
 
 const readFill = (
-  node: Node
-) => readString(node, 'fill') ?? readDefaultFill(node)
+  node: Node,
+  defaults: EditorNodePaintDefaults | undefined
+) => readString(node, 'fill') ?? readDefaultFill(defaults)
 
 const readFillOpacity = (
   node: Node
@@ -362,35 +343,22 @@ const readFillOpacity = (
   ?? (node.type === 'shape' ? 1 : undefined)
 
 const readDefaultStroke = (
-  node: Node
-) => readShapeDefaults(node)?.stroke
-  ?? (node.type === 'sticky'
-    ? STICKY_DEFAULT_STROKE
-    : node.type === 'frame'
-      ? FRAME_DEFAULT_STROKE
-      : node.type === 'draw'
-        ? UI_TEXT_PRIMARY
-        : undefined)
+  defaults: EditorNodePaintDefaults | undefined
+) => defaults?.stroke
 
 const readStroke = (
-  node: Node
-) => readString(node, 'stroke') ?? readDefaultStroke(node)
+  node: Node,
+  defaults: EditorNodePaintDefaults | undefined
+) => readString(node, 'stroke') ?? readDefaultStroke(defaults)
 
 const readDefaultStrokeWidth = (
-  node: Node
-) => node.type === 'shape'
-  ? 1
-  : node.type === 'sticky'
-    ? STICKY_DEFAULT_STROKE_WIDTH
-    : node.type === 'frame'
-      ? FRAME_DEFAULT_STROKE_WIDTH
-      : node.type === 'draw'
-        ? 2
-        : undefined
+  defaults: EditorNodePaintDefaults | undefined
+) => defaults?.strokeWidth
 
 const readStrokeWidth = (
-  node: Node
-) => readNumber(node, 'strokeWidth') ?? readDefaultStrokeWidth(node)
+  node: Node,
+  defaults: EditorNodePaintDefaults | undefined
+) => readNumber(node, 'strokeWidth') ?? readDefaultStrokeWidth(defaults)
 
 const readStrokeOpacity = (
   node: Node
@@ -406,19 +374,13 @@ const readStrokeDash = (
 ) => readNumberArray(node, 'strokeDash')
 
 const readDefaultTextColor = (
-  node: Node
-) => readShapeDefaults(node)?.color
-  ?? (node.type === 'sticky'
-    ? STICKY_DEFAULT_TEXT_COLOR
-    : node.type === 'frame'
-      ? FRAME_DEFAULT_TEXT_COLOR
-      : node.type === 'text'
-        ? UI_TEXT_PRIMARY
-        : undefined)
+  defaults: EditorNodePaintDefaults | undefined
+) => defaults?.color
 
 const readTextColor = (
-  node: Node
-) => readString(node, 'color') ?? readDefaultTextColor(node)
+  node: Node,
+  defaults: EditorNodePaintDefaults | undefined
+) => readString(node, 'color') ?? readDefaultTextColor(defaults)
 
 const readFontSize = (
   node: Node
@@ -460,7 +422,8 @@ const readNodeScope = ({
   primaryNode,
   registry,
   nodeStats,
-  mindmap
+  mindmap,
+  defaults
 }: {
   nodes: readonly Node[]
   nodeIds: readonly string[]
@@ -468,7 +431,9 @@ const readNodeScope = ({
   registry: Pick<NodeRegistry, 'get'>
   nodeStats: SelectionNodeStats
   mindmap: Pick<MindmapPresentationRead, 'tree'>
+  defaults: EditorDefaults['selection']
 }): SelectionToolbarNodeScope => {
+  const readPaintDefaults = defaults.node.readPaint
   const nodeKind = resolveToolbarNodeKind(nodes, {
     ...nodeStats,
     ids: nodeIds,
@@ -555,11 +520,19 @@ const readNodeScope = ({
     fontWeight: readToolbarValue(styleSupport.fontWeight, nodes, readFontWeight),
     fontStyle: readToolbarValue(styleSupport.fontStyle, nodes, readFontStyle),
     textAlign: readToolbarValue(styleSupport.textAlign, nodes, readTextAlign),
-    textColor: readToolbarValue(canEditTextColor, nodes, readTextColor),
-    fill: readToolbarValue(canEditFill, nodes, readFill),
+    textColor: readToolbarValue(
+      canEditTextColor,
+      nodes,
+      (node) => readTextColor(node, readPaintDefaults(node))
+    ),
+    fill: readToolbarValue(
+      canEditFill,
+      nodes,
+      (node) => readFill(node, readPaintDefaults(node))
+    ),
     fillOpacity: readToolbarValue(canEditFillOpacity, nodes, readFillOpacity),
-    stroke: readUniformValue(nodes, readStroke),
-    strokeWidth: readUniformValue(nodes, readStrokeWidth),
+    stroke: readUniformValue(nodes, (node) => readStroke(node, readPaintDefaults(node))),
+    strokeWidth: readUniformValue(nodes, (node) => readStrokeWidth(node, readPaintDefaults(node))),
     strokeOpacity: readToolbarValue(canEditStrokeOpacity, nodes, readStrokeOpacity),
     strokeDash: readToolbarValue(
       canEditStrokeDash,
@@ -596,11 +569,13 @@ const readNodeScope = ({
 const readEdgeScope = ({
   edges,
   edgeIds,
-  primaryEdge
+  primaryEdge,
+  defaults
 }: {
   edges: readonly Edge[]
   edgeIds: readonly string[]
   primaryEdge?: Edge
+  defaults: EditorDefaults['selection']
 }): SelectionToolbarEdgeScope => ({
     edgeIds,
     edges,
@@ -615,13 +590,13 @@ const readEdgeScope = ({
             ? 'mixed'
             : 'none',
     type: readUniformValue(edges, (entry) => entry.type),
-    color: readUniformValue(edges, (entry) => entry.style?.color ?? WHITEBOARD_LINE_DEFAULT_COLOR),
+    color: readUniformValue(edges, (entry) => entry.style?.color ?? defaults.edge.color),
     opacity: readUniformValue(edges, (entry) => entry.style?.opacity ?? 1),
-    width: readUniformValue(edges, (entry) => entry.style?.width ?? 2),
-    dash: readUniformValue(edges, (entry) => entry.style?.dash ?? 'solid'),
+    width: readUniformValue(edges, (entry) => entry.style?.width ?? defaults.edge.width),
+    dash: readUniformValue(edges, (entry) => entry.style?.dash ?? defaults.edge.dash),
     start: readUniformValue(edges, (entry) => entry.style?.start),
     end: readUniformValue(edges, (entry) => entry.style?.end),
-    textMode: readUniformValue(edges, (entry) => entry.textMode ?? 'horizontal'),
+    textMode: readUniformValue(edges, (entry) => entry.textMode ?? defaults.edge.textMode),
     labelCount: primaryEdge?.labels?.length ?? 0
   })
 
@@ -786,7 +761,8 @@ const resolveSelectionToolbar = ({
   tool,
   edit,
   interactionChrome,
-  interactionMode
+  interactionMode,
+  defaults
 }: {
   summary: SelectionSummary
   affordance: SelectionAffordance
@@ -796,6 +772,7 @@ const resolveSelectionToolbar = ({
   edit: EditSession
   interactionChrome: boolean
   interactionMode: ReturnType<EditorInputState['mode']['get']>
+  defaults: EditorDefaults['selection']
 }): SelectionToolbarContext | undefined => {
   const box = affordance.displayBox
   if (!box) {
@@ -838,7 +815,8 @@ const resolveSelectionToolbar = ({
         primaryNode: summary.items.primaryNode,
         registry,
         nodeStats,
-        mindmap
+        mindmap,
+        defaults
       })
     })
 
@@ -874,7 +852,8 @@ const resolveSelectionToolbar = ({
                       : 'none',
               types: [type]
             },
-            mindmap
+            mindmap,
+            defaults
           })
         })
       })
@@ -893,7 +872,8 @@ const resolveSelectionToolbar = ({
       edge: readEdgeScope({
         edges: summary.items.edges,
         edgeIds: edgeStats.ids,
-        primaryEdge: summary.items.primaryEdge
+        primaryEdge: summary.items.primaryEdge,
+        defaults
       })
     })
 
@@ -913,7 +893,8 @@ const resolveSelectionToolbar = ({
           edge: readEdgeScope({
             edges: scopedEdges,
             edgeIds: type.edgeIds,
-            primaryEdge: scopedEdges[0]
+            primaryEdge: scopedEdges[0],
+            defaults
           })
         })
       })
@@ -949,7 +930,8 @@ export const createSelectionRead = ({
   mindmap,
   tool,
   edit,
-  interaction
+  interaction,
+  defaults
 }: {
   model: SelectionModelRead
   registry: Pick<NodeRegistry, 'get'>
@@ -957,6 +939,7 @@ export const createSelectionRead = ({
   tool: ReadStore<Tool>
   edit: ReadStore<EditSession>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>
+  defaults: EditorDefaults['selection']
 }): SelectionRead => {
   const box = createDerivedStore<Rect | undefined>({
     get: () => read(model).summary.box,
@@ -998,7 +981,8 @@ export const createSelectionRead = ({
         tool: read(tool),
         edit: read(edit),
         interactionChrome: read(interaction.chrome),
-        interactionMode: read(interaction.mode)
+        interactionMode: read(interaction.mode),
+        defaults
       })
     }
   })

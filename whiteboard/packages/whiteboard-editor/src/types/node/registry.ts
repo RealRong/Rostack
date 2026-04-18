@@ -4,7 +4,6 @@ import type {
   NodeType,
   NodeRole
 } from '@whiteboard/core/types'
-import type { ShapeControlId } from '@whiteboard/core/node'
 import type {
   EditCapability,
   EditField
@@ -13,7 +12,7 @@ import type { NodeLayoutSpec } from '@whiteboard/editor/types/layout'
 
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'
-export type ControlId = ShapeControlId | 'group'
+export type ControlId = 'fill' | 'stroke' | 'text' | 'group'
 
 export type NodeMeta = {
   key?: string

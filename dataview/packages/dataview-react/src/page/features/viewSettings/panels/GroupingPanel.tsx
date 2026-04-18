@@ -3,7 +3,7 @@ import type { BucketSort, Field } from '@dataview/core/contracts'
 import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine'
 import {
   useDataView,
-  useDataViewValue
+  usePageRuntime
 } from '@dataview/react/dataview'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
@@ -15,6 +15,9 @@ import {
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 import type { TokenTranslator } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
+import {
+  useStoreValue
+} from '@shared/react'
 
 const readGroupModeLabel = (
   field: Field | undefined,
@@ -86,13 +89,10 @@ export const GroupingPanel = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const router = useViewSettings()
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-  const group = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.group
-  ) ?? EMPTY_VIEW_GROUP_PROJECTION
+  const pageRuntime = usePageRuntime()
+  const settings = useStoreValue(pageRuntime.settings)
+  const currentView = settings.currentView
+  const group = settings.group ?? EMPTY_VIEW_GROUP_PROJECTION
   const currentViewDomain = currentView
     ? engine.active
     : undefined

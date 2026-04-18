@@ -1,6 +1,39 @@
 export {
   createEditor
 } from '@whiteboard/editor/editor/createEditor'
+export type {
+  DrawMode,
+  DrawBrush,
+  DrawSlot
+} from '@whiteboard/editor/session/draw/model'
+export {
+  DRAW_MODES,
+  DRAW_BRUSHES,
+  DRAW_SLOTS,
+  DEFAULT_DRAW_MODE,
+  DEFAULT_DRAW_BRUSH,
+  isDrawMode,
+  isDrawBrush,
+  hasDrawBrush
+} from '@whiteboard/editor/session/draw/model'
+export type {
+  BrushStyle,
+  BrushStylePatch,
+  DrawBrushState,
+  DrawState,
+  DrawStyle,
+  DrawPreview
+} from '@whiteboard/editor/session/draw/state'
+export {
+  DEFAULT_DRAW_STATE,
+  normalizeDrawState,
+  isDrawStateEqual,
+  readDrawSlot,
+  readDrawBrushStyle,
+  readDrawStyle,
+  setDrawSlot,
+  patchDrawStyle
+} from '@whiteboard/editor/session/draw/state'
 export {
   createClipboardPacket,
   parseClipboardPacket,
@@ -88,6 +121,14 @@ export type {
   NodeMeta,
   NodeFamily
 } from '@whiteboard/editor/types/node'
+export type {
+  EditorDefaults,
+  EditorEdgeDefaults,
+  EditorNodePaintDefaults
+} from '@whiteboard/editor/types/defaults'
+export {
+  DEFAULT_EDITOR_DEFAULTS
+} from '@whiteboard/editor/types/defaults'
 export type {
   LayoutBackend,
   LayoutKind,

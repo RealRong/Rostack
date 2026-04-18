@@ -3,14 +3,16 @@ import type {
   ReactNode
 } from 'react'
 import type { EdgeMarker } from '@whiteboard/core/types'
+import {
+  WHITEBOARD_EDGE_MARKER_CHOICES,
+  type WhiteboardEdgeMarkerChoice,
+  type WhiteboardEdgeMarkerSide as EdgeMarkerSide
+} from '@whiteboard/product'
 
 type EdgeGlyphProps = ComponentProps<'svg'>
-export type EdgeMarkerSide = 'start' | 'end'
 type MarkerPaint = 'currentColor' | 'context-stroke'
 
 type EdgeMarkerSpec = {
-  label: string
-  sides: readonly EdgeMarkerSide[]
   renderEndShape: (paint: MarkerPaint) => ReactNode
 }
 
@@ -23,8 +25,6 @@ const MARKER_REF_X: Record<EdgeMarkerSide, number> = {
 
 const EDGE_MARKER_REGISTRY = {
   arrow: {
-    label: 'Arrow',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <path
         d="M3 2 L10 6 L3 10"
@@ -37,8 +37,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   'arrow-fill': {
-    label: 'Arrow fill',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <path
         d="M2.5 2 L10 6 L2.5 10 Z"
@@ -47,8 +45,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   circle: {
-    label: 'Circle',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <circle
         cx={6.5}
@@ -61,8 +57,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   'circle-fill': {
-    label: 'Circle fill',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <circle
         cx={6.5}
@@ -73,8 +67,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   diamond: {
-    label: 'Diamond',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <path
         d="M3 6 L6.5 2.5 L10 6 L6.5 9.5 Z"
@@ -86,8 +78,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   'diamond-fill': {
-    label: 'Diamond fill',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <path
         d="M3 6 L6.5 2.5 L10 6 L6.5 9.5 Z"
@@ -96,8 +86,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   bar: {
-    label: 'Bar',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <path
         d="M10 2 L10 10"
@@ -108,8 +96,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   'double-bar': {
-    label: 'Double bar',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <>
         <path
@@ -128,8 +114,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   'circle-arrow': {
-    label: 'Circle arrow',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <>
         <circle
@@ -152,8 +136,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   },
   'circle-bar': {
-    label: 'Circle bar',
-    sides: ['start', 'end'],
     renderEndShape: (paint) => (
       <>
         <circle
@@ -174,12 +156,6 @@ const EDGE_MARKER_REGISTRY = {
     )
   }
 } as const satisfies Record<EdgeMarker, EdgeMarkerSpec>
-
-type EdgeMarkerChoice = {
-  key: EdgeMarker | 'none'
-  label: string
-  value?: EdgeMarker
-}
 
 const EDGE_MARKERS = Object.keys(EDGE_MARKER_REGISTRY) as EdgeMarker[]
 
@@ -205,38 +181,8 @@ const renderEdgeMarkerShape = ({
 
 export const readEdgeMarkerChoices = (
   side: EdgeMarkerSide
-): readonly EdgeMarkerChoice[] => EDGE_MARKER_CHOICES[side]
-
-const EDGE_MARKER_CHOICES: Record<EdgeMarkerSide, readonly EdgeMarkerChoice[]> = {
-  start: [
-    {
-      key: 'none',
-      label: 'None',
-      value: undefined
-    },
-    ...EDGE_MARKERS
-      .filter((marker) => readEdgeMarkerSpec(marker).sides.includes('start'))
-      .map((marker) => ({
-        key: marker,
-        label: readEdgeMarkerSpec(marker).label,
-        value: marker
-      }))
-  ],
-  end: [
-    {
-      key: 'none',
-      label: 'None',
-      value: undefined
-    },
-    ...EDGE_MARKERS
-      .filter((marker) => readEdgeMarkerSpec(marker).sides.includes('end'))
-      .map((marker) => ({
-        key: marker,
-        label: readEdgeMarkerSpec(marker).label,
-        value: marker
-      }))
-  ]
-}
+): readonly WhiteboardEdgeMarkerChoice[] =>
+  WHITEBOARD_EDGE_MARKER_CHOICES[side]
 
 export const readEdgeMarkerId = (
   marker: EdgeMarker,

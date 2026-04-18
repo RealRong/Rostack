@@ -43,29 +43,20 @@ const View = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const table = useTableContext()
+  const body = useStoreValue(table.body)
   const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
+  if (!body || !currentView) {
     throw new Error('Table body requires an active current view.')
   }
 
   const locked = useStoreValue(table.locked)
-  const columns = currentView.fields.all
-  const showVerticalLinesStore = useMemo(() => engine.active.select(
-    state => state?.view.options.table.showVerticalLines ?? false
-  ), [engine])
-  const showVerticalLines = useStoreValue(showVerticalLinesStore)
-  const wrapStore = useMemo(() => engine.active.select(
-    state => state?.view.options.table.wrap ?? false
-  ), [engine])
-  const wrap = useStoreValue(wrapStore)
   const capabilities = useStoreValue(table.capabilities)
-  const virtualInteraction = useStoreValue(table.virtual.interaction)
-  const marqueeActive = virtualInteraction.marqueeActive
+  const marqueeActive = body.marqueeActive
   const previousMarqueeActiveRef = useRef(false)
   const columnResize = useColumnResize()
   const template = useMemo(
-    () => gridTemplate(columns, columnResize.widths),
-    [columnResize.widths, columns]
+    () => gridTemplate(body.columns, columnResize.widths),
+    [body.columns, columnResize.widths]
   )
   const columnReorder = useColumnReorder()
   const rowReorder = useRowReorder()
@@ -221,8 +212,8 @@ const View = () => {
         collisionDetection={closestCenter}
       >
         <Surface
-          rowCount={currentView.items.ids.length}
-          colCount={columns.length}
+          rowCount={body.items.ids.length}
+          colCount={body.columns.length}
           onPointerDown={pointer.onPointerDown}
           onPointerMove={pointer.onPointerMove}
           onPointerLeave={pointer.onPointerLeave}
@@ -237,15 +228,8 @@ const View = () => {
             />
           ) : null}
           <BlockContent
-            columns={columns}
-            viewId={currentView.view.id}
-            items={currentView.items}
-            sections={currentView.sections}
-            grouped={Boolean(currentView.view.group)}
-            showVerticalLines={showVerticalLines}
-            wrap={wrap}
+            body={body}
             template={template}
-            marqueeActive={marqueeActive}
             dragActive={rowReorder.active}
             dragIdSet={rowReorder.dragIdSet}
             onDragStart={rowReorder.startDrag}

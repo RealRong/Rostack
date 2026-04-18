@@ -1,7 +1,6 @@
 import type {
   Node,
-  Point,
-  SpatialNodeInput
+  Point
 } from '@whiteboard/core/types'
 
 export type ShapeKind =
@@ -31,47 +30,11 @@ export type ShapeKind =
   | 'arrow-sticker'
   | 'highlight'
 
-export type ShapeGroup = 'basic' | 'flowchart' | 'annotation'
-
 export type ShapeLabelInset = {
   top: number | string
   right: number | string
   bottom: number | string
   left: number | string
-}
-
-export type ShapeSpec = {
-  kind: ShapeKind
-  label: string
-  group: ShapeGroup
-  defaultSize: {
-    width: number
-    height: number
-  }
-  defaultText: string
-  defaults: {
-    fill: string
-    stroke: string
-    color: string
-  }
-  previewFill?: string
-  labelInset: ShapeLabelInset
-}
-
-export type ShapeControlId = 'fill' | 'stroke' | 'text'
-
-export type ShapeMeta = {
-  key: string
-  name: string
-  family: 'shape'
-  icon: ShapeKind
-  controls: readonly ShapeControlId[]
-}
-
-export type ShapeMenuSection = {
-  key: ShapeGroup
-  title: string
-  items: readonly ShapeSpec[]
 }
 
 export type ShapeOutlineSide = 'top' | 'right' | 'bottom' | 'left'
@@ -94,29 +57,14 @@ export type ShapeVisualSpec = {
   decorations?: readonly ShapePathSpec[]
 }
 
-export type ShapeDescriptor = ShapeSpec & {
+export type ShapeDescriptor = {
+  kind: ShapeKind
+  labelInset: ShapeLabelInset
   outline: ShapeOutlineSpec
   visual: ShapeVisualSpec
 }
 
 const DEFAULT_SHAPE_KIND: ShapeKind = 'rect'
-const DEFAULT_FILL = 'var(--wb-palette-bg-7)'
-const DEFAULT_STROKE = 'var(--wb-palette-border-0)'
-const DEFAULT_TEXT = 'var(--wb-palette-text-0)'
-const DEFAULT_PREVIEW_FILL = 'var(--wb-color-bg-7)'
-const ARROW_STICKER_PAINT = {
-  fill: 'var(--wb-palette-bg-25)',
-  stroke: 'var(--wb-palette-border-26)',
-  color: 'var(--wb-palette-border-26)',
-  previewFill: 'var(--wb-color-bg-25)'
-} as const
-const HIGHLIGHT_PAINT = {
-  fill: 'var(--wb-palette-bg-22)',
-  stroke: 'var(--wb-palette-border-23)',
-  color: 'var(--wb-palette-text-0)',
-  previewFill: 'var(--wb-color-bg-12)'
-} as const
-const SHAPE_META_CONTROLS = ['fill', 'stroke', 'text'] as const
 const OUTLINE_VIEWBOX = 100
 const CURVE_SEGMENTS = 12
 
@@ -636,19 +584,8 @@ const createDecorationPath = (
 })
 
 const createShapeDescriptor = (
-  input: Omit<ShapeDescriptor, 'defaults' | 'previewFill'> & {
-    defaults?: ShapeSpec['defaults']
-    previewFill?: string
-  }
-): ShapeDescriptor => ({
-  ...input,
-  defaults: input.defaults ?? {
-    fill: DEFAULT_FILL,
-    stroke: DEFAULT_STROKE,
-    color: DEFAULT_TEXT
-  },
-  previewFill: input.previewFill ?? DEFAULT_PREVIEW_FILL
-})
+  input: ShapeDescriptor
+): ShapeDescriptor => input
 
 const LEGACY_INSET_BOUNDS: LegacyShapeBounds = {
   left: 3,
@@ -1088,10 +1025,6 @@ const HIGHLIGHT_OUTLINE = createRoundedRectOutline({
 const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   createShapeDescriptor({
     kind: 'rect',
-    label: 'Rectangle',
-    group: 'basic',
-    defaultSize: { width: 180, height: 100 },
-    defaultText: 'Rectangle',
     labelInset: {
       top: 16,
       right: 16,
@@ -1114,10 +1047,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'rounded-rect',
-    label: 'Rounded',
-    group: 'basic',
-    defaultSize: { width: 180, height: 100 },
-    defaultText: 'Rounded',
     labelInset: {
       top: 16,
       right: 18,
@@ -1140,10 +1069,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'pill',
-    label: 'Terminator',
-    group: 'flowchart',
-    defaultSize: { width: 200, height: 100 },
-    defaultText: 'Start',
     labelInset: {
       top: 20,
       right: 28,
@@ -1166,10 +1091,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'ellipse',
-    label: 'Ellipse',
-    group: 'basic',
-    defaultSize: { width: 180, height: 110 },
-    defaultText: 'Ellipse',
     labelInset: {
       top: '20%',
       right: '18%',
@@ -1190,10 +1111,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'diamond',
-    label: 'Diamond',
-    group: 'basic',
-    defaultSize: { width: 180, height: 120 },
-    defaultText: 'Decision',
     labelInset: {
       top: '22%',
       right: '24%',
@@ -1214,10 +1131,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'triangle',
-    label: 'Triangle',
-    group: 'basic',
-    defaultSize: { width: 180, height: 130 },
-    defaultText: 'Triangle',
     labelInset: {
       top: '34%',
       right: '20%',
@@ -1237,10 +1150,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'hexagon',
-    label: 'Hexagon',
-    group: 'basic',
-    defaultSize: { width: 190, height: 110 },
-    defaultText: 'Hexagon',
     labelInset: {
       top: 16,
       right: '18%',
@@ -1263,10 +1172,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'parallelogram',
-    label: 'Data',
-    group: 'flowchart',
-    defaultSize: { width: 200, height: 110 },
-    defaultText: 'Input / Output',
     labelInset: {
       top: '14%',
       right: '21%',
@@ -1287,10 +1192,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'star',
-    label: 'Star',
-    group: 'basic',
-    defaultSize: { width: 190, height: 180 },
-    defaultText: 'Star',
     labelInset: {
       top: '24%',
       right: '18%',
@@ -1317,10 +1218,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'pentagon',
-    label: 'Pentagon',
-    group: 'basic',
-    defaultSize: { width: 180, height: 140 },
-    defaultText: 'Pentagon',
     labelInset: {
       top: '24%',
       right: '18%',
@@ -1342,10 +1239,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'trapezoid',
-    label: 'Trapezoid',
-    group: 'basic',
-    defaultSize: { width: 190, height: 130 },
-    defaultText: 'Trapezoid',
     labelInset: {
       top: '16%',
       right: '17%',
@@ -1366,10 +1259,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'semicircle',
-    label: 'Semicircle',
-    group: 'basic',
-    defaultSize: { width: 190, height: 120 },
-    defaultText: 'Semicircle',
     labelInset: {
       top: '34%',
       right: '16%',
@@ -1385,10 +1274,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'cylinder',
-    label: 'Database',
-    group: 'flowchart',
-    defaultSize: { width: 180, height: 130 },
-    defaultText: 'Database',
     labelInset: {
       top: '20%',
       right: '16%',
@@ -1423,10 +1308,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'document',
-    label: 'Document',
-    group: 'flowchart',
-    defaultSize: { width: 190, height: 130 },
-    defaultText: 'Document',
     labelInset: {
       top: '12%',
       right: '12%',
@@ -1442,10 +1323,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'predefined-process',
-    label: 'Subprocess',
-    group: 'flowchart',
-    defaultSize: { width: 210, height: 110 },
-    defaultText: 'Subprocess',
     labelInset: {
       top: '14%',
       right: '22%',
@@ -1480,10 +1357,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'bevel-rect',
-    label: 'Bevel',
-    group: 'flowchart',
-    defaultSize: { width: 190, height: 110 },
-    defaultText: 'Process',
     labelInset: {
       top: 16,
       right: 18,
@@ -1508,10 +1381,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'delay',
-    label: 'Delay',
-    group: 'flowchart',
-    defaultSize: { width: 190, height: 110 },
-    defaultText: 'Delay',
     labelInset: {
       top: '16%',
       right: '24%',
@@ -1527,10 +1396,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'manual-input',
-    label: 'Manual Input',
-    group: 'flowchart',
-    defaultSize: { width: 200, height: 120 },
-    defaultText: 'Manual Input',
     labelInset: {
       top: '20%',
       right: '12%',
@@ -1551,10 +1416,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'manual-operation',
-    label: 'Manual Operation',
-    group: 'flowchart',
-    defaultSize: { width: 200, height: 120 },
-    defaultText: 'Manual Operation',
     labelInset: {
       top: '14%',
       right: '18%',
@@ -1575,10 +1436,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'callout',
-    label: 'Callout',
-    group: 'annotation',
-    defaultSize: { width: 240, height: 140 },
-    defaultText: 'Callout',
     labelInset: {
       top: '12%',
       right: '12%',
@@ -1594,10 +1451,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'roundrect-bubble',
-    label: 'Speech Bubble',
-    group: 'annotation',
-    defaultSize: { width: 240, height: 150 },
-    defaultText: 'Speech Bubble',
     labelInset: {
       top: '12%',
       right: '12%',
@@ -1613,10 +1466,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'ellipse-bubble',
-    label: 'Ellipse Bubble',
-    group: 'annotation',
-    defaultSize: { width: 240, height: 160 },
-    defaultText: 'Ellipse Bubble',
     labelInset: {
       top: '18%',
       right: '16%',
@@ -1632,10 +1481,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'cloud',
-    label: 'Cloud',
-    group: 'annotation',
-    defaultSize: { width: 220, height: 140 },
-    defaultText: 'Cloud',
     labelInset: {
       top: '22%',
       right: '16%',
@@ -1654,16 +1499,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'arrow-sticker',
-    label: 'Arrow',
-    group: 'annotation',
-    defaultSize: { width: 220, height: 110 },
-    defaultText: 'Arrow',
-    defaults: {
-      fill: ARROW_STICKER_PAINT.fill,
-      stroke: ARROW_STICKER_PAINT.stroke,
-      color: ARROW_STICKER_PAINT.color
-    },
-    previewFill: ARROW_STICKER_PAINT.previewFill,
     labelInset: {
       top: '14%',
       right: '40%',
@@ -1687,16 +1522,6 @@ const SHAPE_DESCRIPTORS_LIST: readonly ShapeDescriptor[] = [
   }),
   createShapeDescriptor({
     kind: 'highlight',
-    label: 'Highlight',
-    group: 'annotation',
-    defaultSize: { width: 220, height: 90 },
-    defaultText: 'Highlight',
-    defaults: {
-      fill: HIGHLIGHT_PAINT.fill,
-      stroke: HIGHLIGHT_PAINT.stroke,
-      color: HIGHLIGHT_PAINT.color
-    },
-    previewFill: HIGHLIGHT_PAINT.previewFill,
     labelInset: {
       top: '18%',
       right: '10%',
@@ -1761,66 +1586,3 @@ export const readShapeKind = (
 export const readShapeDescriptor = (
   kind: ShapeKind | undefined
 ): ShapeDescriptor => SHAPE_DESCRIPTOR_BY_KIND.get(kind ?? DEFAULT_SHAPE_KIND) ?? SHAPE_DESCRIPTOR_BY_KIND.get(DEFAULT_SHAPE_KIND)!
-
-export const SHAPE_SPECS: readonly ShapeSpec[] = SHAPE_DESCRIPTORS
-
-export const readShapeSpec = (
-  kind: ShapeKind | undefined
-): ShapeSpec => readShapeDescriptor(kind)
-
-export const readShapeMeta = (
-  node: Pick<Node, 'data'>
-): ShapeMeta => {
-  const spec = readShapeDescriptor(readShapeKind(node))
-
-  return {
-    key: `shape:${spec.kind}`,
-    name: spec.label,
-    family: 'shape',
-    icon: spec.kind,
-    controls: SHAPE_META_CONTROLS
-  }
-}
-
-export const createShapeNodeInput = (
-  kind: ShapeKind
-): Omit<SpatialNodeInput, 'position'> => {
-  const spec = readShapeDescriptor(kind)
-
-  return {
-    type: 'shape',
-    size: { ...spec.defaultSize },
-    data: {
-      kind,
-      text: spec.defaultText
-    },
-    style: {
-      fill: spec.defaults.fill,
-      stroke: spec.defaults.stroke,
-      strokeWidth: 1,
-      color: spec.defaults.color
-    }
-  }
-}
-
-export const SHAPE_MENU_SECTIONS: readonly ShapeMenuSection[] = [
-  {
-    key: 'basic',
-    title: 'Basic',
-    items: SHAPE_DESCRIPTORS.filter((spec) => spec.group === 'basic')
-  },
-  {
-    key: 'flowchart',
-    title: 'Flowchart',
-    items: SHAPE_DESCRIPTORS.filter((spec) => spec.group === 'flowchart')
-  },
-  {
-    key: 'annotation',
-    title: 'Annotation',
-    items: SHAPE_DESCRIPTORS.filter((spec) => spec.group === 'annotation')
-  }
-] as const
-
-export const readShapePreviewFill = (
-  kind: ShapeKind
-): string => readShapeDescriptor(kind).previewFill ?? DEFAULT_PREVIEW_FILL

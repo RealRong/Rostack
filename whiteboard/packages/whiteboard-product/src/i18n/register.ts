@@ -6,20 +6,9 @@ import {
   getWhiteboardInsertPreset
 } from '@whiteboard/product/insert/catalog'
 import {
-  getWhiteboardMindmapPreset
-} from '@whiteboard/product/mindmap/presets'
-import {
+  getWhiteboardMindmapPreset,
   getWhiteboardMindmapSeed
-} from '@whiteboard/product/mindmap/seeds'
-import {
-  whiteboardEdgePresetLabelToken,
-  whiteboardInsertPresetDescriptionToken,
-  whiteboardInsertPresetLabelToken,
-  whiteboardMindmapPresetDescriptionToken,
-  whiteboardMindmapPresetLabelToken,
-  whiteboardMindmapSeedDescriptionToken,
-  whiteboardMindmapSeedLabelToken
-} from '@whiteboard/product/i18n/tokens'
+} from '@whiteboard/product/mindmap/template'
 
 let registered = false
 
@@ -32,50 +21,36 @@ export const registerWhiteboardProductI18n = () => {
 
   registerTokenResolver('whiteboard.edgePreset.label', (value) => {
     const preset = value.id ? getWhiteboardEdgePreset(value.id) : undefined
-    return preset
-      ? whiteboardEdgePresetLabelToken(preset.key, preset.label)
-      : undefined
+    return preset?.labelToken
   })
 
   registerTokenResolver('whiteboard.insertPreset.label', (value) => {
     const preset = value.id ? getWhiteboardInsertPreset(value.id) : undefined
-    return preset
-      ? whiteboardInsertPresetLabelToken(preset.key, preset.label)
-      : undefined
+    return preset?.labelToken
   })
 
   registerTokenResolver('whiteboard.insertPreset.description', (value) => {
     const preset = value.id ? getWhiteboardInsertPreset(value.id) : undefined
-    return preset?.description
-      ? whiteboardInsertPresetDescriptionToken(preset.key, preset.description)
-      : undefined
+    return preset?.descriptionToken
   })
 
   registerTokenResolver('whiteboard.mindmap.seed.label', (value) => {
     const seed = value.id ? getWhiteboardMindmapSeed(value.id) : undefined
-    return seed
-      ? whiteboardMindmapSeedLabelToken(seed.key, seed.label)
-      : undefined
+    return seed?.labelToken
   })
 
   registerTokenResolver('whiteboard.mindmap.seed.description', (value) => {
     const seed = value.id ? getWhiteboardMindmapSeed(value.id) : undefined
-    return seed?.description
-      ? whiteboardMindmapSeedDescriptionToken(seed.key, seed.description)
-      : undefined
+    return seed?.descriptionToken
   })
 
   registerTokenResolver('whiteboard.mindmap.preset.label', (value) => {
     const preset = value.id ? getWhiteboardMindmapPreset(value.id) : undefined
-    return preset
-      ? whiteboardMindmapPresetLabelToken(preset.key, preset.label)
-      : undefined
+    return preset?.labelToken
   })
 
   registerTokenResolver('whiteboard.mindmap.preset.description', (value) => {
     const preset = value.id ? getWhiteboardMindmapPreset(value.id) : undefined
-    return preset?.description
-      ? whiteboardMindmapPresetDescriptionToken(preset.key, preset.description)
-      : undefined
+    return preset?.descriptionToken
   })
 }

@@ -2,11 +2,13 @@ import type { ComponentProps, ComponentType } from 'react'
 import type {
   EdgeDash,
   EdgeTemplate,
-  EdgeStyle,
   EdgeTextMode,
   EdgeType
 } from '@whiteboard/core/types'
-import { WHITEBOARD_EDGE_PRESETS } from '@whiteboard/product'
+import {
+  WHITEBOARD_EDGE_PRESETS,
+  WHITEBOARD_EDGE_UI
+} from '@whiteboard/product'
 import { Horizontal } from '@whiteboard/react/icons/Horizontal'
 import { Tangent } from '@whiteboard/react/icons/Tangent'
 import {
@@ -97,93 +99,50 @@ const DottedGlyph: EdgeIcon = (props) => (
   />
 )
 
+const EDGE_TYPE_GLYPHS = {
+  straight: StraightGlyph,
+  elbow: ElbowGlyph,
+  fillet: FilletGlyph,
+  curve: CurveGlyph
+} as const satisfies Partial<Record<EdgeType, EdgeIcon>>
+
+const EDGE_DASH_GLYPHS = {
+  solid: SolidGlyph,
+  dashed: DashedGlyph,
+  dotted: DottedGlyph
+} as const satisfies Record<EdgeDash, EdgeIcon>
+
+const EDGE_TEXT_MODE_GLYPHS = {
+  horizontal: Horizontal,
+  tangent: Tangent
+} as const satisfies Record<EdgeTextMode, EdgeIcon>
+
+const EDGE_PRESET_GLYPHS = {
+  'edge.line': ArrowLine,
+  'edge.arrow': Arrow,
+  'edge.elbow-arrow': ArrowPolyline,
+  'edge.fillet-arrow': ArrowFillet,
+  'edge.curve-arrow': ArrowCurve
+} as Record<string, EdgeIcon>
+
 export const EDGE_UI = {
-  palette: {
-    group: 'line',
-    columns: 10
-  },
-  types: [
-    {
-      value: 'straight',
-      label: 'Straight',
-      glyph: StraightGlyph
-    },
-    {
-      value: 'elbow',
-      label: 'Elbow',
-      glyph: ElbowGlyph
-    },
-    {
-      value: 'fillet',
-      label: 'Fillet',
-      glyph: FilletGlyph
-    },
-    {
-      value: 'curve',
-      label: 'Curve',
-      glyph: CurveGlyph
-    }
-  ] as const satisfies readonly EdgeTypeOption[],
-  dashes: [
-    {
-      value: 'solid',
-      label: 'Solid',
-      glyph: SolidGlyph
-    },
-    {
-      value: 'dashed',
-      label: 'Dashed',
-      glyph: DashedGlyph
-    },
-    {
-      value: 'dotted',
-      label: 'Dotted',
-      glyph: DottedGlyph
-    }
-  ] as const satisfies readonly EdgeDashOption[],
-  widths: [1, 2, 3, 4, 6, 8, 12, 16] as const,
-  textModes: [
-    {
-      value: 'horizontal',
-      label: 'Horizontal',
-      glyph: Horizontal
-    },
-    {
-      value: 'tangent',
-      label: 'Tangent',
-      glyph: Tangent
-    }
-  ] as const satisfies readonly EdgeTextModeOption[],
-  presets: [
-    {
-      key: 'edge.line',
-      label: 'Line',
-      glyph: ArrowLine,
-      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.line')!.template
-    },
-    {
-      key: 'edge.arrow',
-      label: 'Arrow',
-      glyph: Arrow,
-      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.arrow')!.template
-    },
-    {
-      key: 'edge.elbow-arrow',
-      label: 'Elbow',
-      glyph: ArrowPolyline,
-      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.elbow-arrow')!.template
-    },
-    {
-      key: 'edge.fillet-arrow',
-      label: 'Fillet',
-      glyph: ArrowFillet,
-      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.fillet-arrow')!.template
-    },
-    {
-      key: 'edge.curve-arrow',
-      label: 'Curve',
-      glyph: ArrowCurve,
-      template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === 'edge.curve-arrow')!.template
-    }
-  ] as const satisfies readonly EdgePresetOption[]
+  palette: WHITEBOARD_EDGE_UI.palette,
+  types: WHITEBOARD_EDGE_UI.types.map((option) => ({
+    ...option,
+    glyph: EDGE_TYPE_GLYPHS[option.value]
+  })) as readonly EdgeTypeOption[],
+  dashes: WHITEBOARD_EDGE_UI.dashes.map((option) => ({
+    ...option,
+    glyph: EDGE_DASH_GLYPHS[option.value]
+  })) as readonly EdgeDashOption[],
+  widths: WHITEBOARD_EDGE_UI.widths,
+  textModes: WHITEBOARD_EDGE_UI.textModes.map((option) => ({
+    ...option,
+    glyph: EDGE_TEXT_MODE_GLYPHS[option.value]
+  })) as readonly EdgeTextModeOption[],
+  presets: WHITEBOARD_EDGE_UI.presets.map((option) => ({
+    ...option,
+    glyph: EDGE_PRESET_GLYPHS[option.key],
+    template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === option.key)!.template
+  })) as readonly EdgePresetOption[]
 } as const

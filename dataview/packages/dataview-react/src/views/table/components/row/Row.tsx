@@ -28,13 +28,11 @@ import { useTableContext } from '@dataview/react/views/table/context'
 import { cn } from '@shared/ui/utils'
 import { Cell } from '@dataview/react/views/table/components/cell/Cell'
 import { RowRail } from '@dataview/react/views/table/components/row/RowRail'
-import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
 import { cellChrome } from '@dataview/react/views/table/model/chrome'
 import {
   useKeyedStoreValue,
-  useOptionalKeyedStoreValue,
-  useStoreValue
+  useOptionalKeyedStoreValue
 } from '@shared/react'
 
 export interface RowProps {
@@ -107,24 +105,8 @@ const View = (props: RowProps) => {
       table.nodes.registerRow(props.itemId, null)
     }
   }, [props.itemId, table.nodes])
-  const canRowDrag = useStoreSelector(
-    table.capabilities,
-    capabilities => capabilities.canRowDrag
-  )
-  const exposed = useStoreSelector(
-    table.rowRail,
-    rowId => rowId === props.itemId
-  )
-  const previewSelected = useKeyedStoreValue(
-    dataView.session.marquee.preview.membership,
-    props.itemId
-  )
-  const committedSelected = useKeyedStoreValue(
-    dataView.selection.store.membership,
-    props.itemId
-  )
-  const rowRender = useKeyedStoreValue(
-    table.rowRender,
+  const row = useKeyedStoreValue(
+    table.row,
     props.itemId
   )
   const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
@@ -132,12 +114,12 @@ const View = (props: RowProps) => {
     props.recordId,
     undefined
   )
-  const selected = previewSelected ?? committedSelected
+  const selected = row.selected
   const rail = rowRailState({
     dragActive: props.dragActive,
-    dragDisabled: !canRowDrag,
+    dragDisabled: !row.canDrag,
     marqueeActive: props.marqueeActive,
-    exposed,
+    exposed: row.exposed,
     selected
   })
   const rowTone = cn(
@@ -225,23 +207,23 @@ const View = (props: RowProps) => {
                 : undefined}
               exists={Boolean(record)}
               selected={(
-                rowRender.selectionVisible
-                && rowRender.selectedFieldStart !== undefined
-                && rowRender.selectedFieldEnd !== undefined
-                && index >= rowRender.selectedFieldStart
-                && index <= rowRender.selectedFieldEnd
+                row.selectionVisible
+                && row.selectedFieldStart !== undefined
+                && row.selectedFieldEnd !== undefined
+                && index >= row.selectedFieldStart
+                && index <= row.selectedFieldEnd
               )}
               chrome={cellChrome({
                 selected: (
-                  rowRender.selectedFieldStart !== undefined
-                  && rowRender.selectedFieldEnd !== undefined
-                  && index >= rowRender.selectedFieldStart
-                  && index <= rowRender.selectedFieldEnd
+                  row.selectedFieldStart !== undefined
+                  && row.selectedFieldEnd !== undefined
+                  && index >= row.selectedFieldStart
+                  && index <= row.selectedFieldEnd
                 ),
-                frameActive: rowRender.focusFieldId === field.id,
-                hovered: rowRender.hoverFieldId === field.id,
-                fillHandleActive: rowRender.fillFieldId === field.id,
-                selectionVisible: rowRender.selectionVisible
+                frameActive: row.focusFieldId === field.id,
+                hovered: row.hoverFieldId === field.id,
+                fillHandleActive: row.fillFieldId === field.id,
+                selectionVisible: row.selectionVisible
               })}
             />
           ))}

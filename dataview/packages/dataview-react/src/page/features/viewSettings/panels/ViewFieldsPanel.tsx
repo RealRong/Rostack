@@ -4,13 +4,12 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { Field } from '@dataview/core/contracts'
-import { getDocumentFields } from '@dataview/core/document'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem, type MenuReorderItem } from '@shared/ui/menu'
 import {
   useDataView,
-  useDataViewValue
+  usePageRuntime
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import {
@@ -18,19 +17,21 @@ import {
   buildFieldReorderItem
 } from '@dataview/react/menu-builders'
 import { useTranslation } from '@shared/i18n/react'
+import {
+  useStoreValue
+} from '@shared/react'
 
 export const ViewFieldsPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
+  const pageRuntime = usePageRuntime()
+  const settings = useStoreValue(pageRuntime.settings)
+  const currentView = settings.currentView
   const currentViewDomain = currentView
     ? engine.active
     : undefined
-  const fields = getDocumentFields(document)
+  const fields = settings.fields
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
   const displayFieldIds = currentView?.display.fields ?? []

@@ -1,7 +1,8 @@
 import type { RefObject } from 'react'
 import type {
   GalleryState,
-  ItemId
+  ItemId,
+  SectionKey
 } from '@dataview/engine'
 import type { GalleryDropTarget } from '@dataview/react/views/gallery/reorder'
 import type {
@@ -13,10 +14,29 @@ import type {
   ItemInteractionRuntime,
   TypedRuntimeInput
 } from '@dataview/react/views/shared/types'
+import type {
+  DataViewGalleryModel,
+  GalleryBodyBase
+} from '@dataview/runtime'
+import type { ReadStore } from '@shared/core'
+
+export type {
+  GalleryCardData,
+  GallerySectionData
+} from '@dataview/runtime'
 
 export type ActiveGalleryViewState = ActiveTypedViewState<'gallery'>
 
+export interface GalleryBody extends GalleryBodyBase {
+  blocks: readonly GalleryBlock[]
+  totalHeight: number
+  columnCount: number
+}
+
 export interface GalleryViewRuntime extends ItemInteractionRuntime {
+  body: ReadStore<GalleryBody>
+  section: DataViewGalleryModel['section']
+  card: DataViewGalleryModel['card']
   containerRef: RefObject<HTMLDivElement | null>
   virtual: {
     layout: GalleryLayoutCache

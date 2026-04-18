@@ -5,7 +5,12 @@ import {
 } from 'lucide-react'
 import { type ComponentType } from 'react'
 import type { ViewType } from '@dataview/core/contracts'
-import { useDataViewValue } from '@dataview/react/dataview'
+import {
+  usePageRuntime
+} from '@dataview/react/dataview'
+import {
+  useStoreValue
+} from '@shared/react'
 
 interface IconProps {
   className?: string
@@ -32,10 +37,9 @@ export interface PageHeaderProps {
 }
 
 export const PageHeader = (_props: PageHeaderProps) => {
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-  const CurrentIcon = viewIcon(currentView?.type)
+  const pageRuntime = usePageRuntime()
+  const header = useStoreValue(pageRuntime.header)
+  const CurrentIcon = viewIcon(header.viewType)
 
   return (
     <section className="text-card-foreground">
@@ -43,15 +47,15 @@ export const PageHeader = (_props: PageHeaderProps) => {
         <div className="text-sm font-medium text-muted-foreground">
           Current View
         </div>
-        {currentView ? (
+        {header.viewId ? (
           <div className="mt-2 flex min-w-0 items-center gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border bg-surface-muted">
               <CurrentIcon className="size-5" size={18} strokeWidth={2} />
             </div>
             <div className="min-w-0">
-              <div className="truncate text-lg font-semibold">{currentView.name}</div>
+              <div className="truncate text-lg font-semibold">{header.viewName}</div>
               <div className="text-sm text-muted-foreground">
-                {viewTypeLabel(currentView.type)}
+                {viewTypeLabel(header.viewType)}
               </div>
             </div>
           </div>

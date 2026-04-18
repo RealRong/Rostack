@@ -1,3 +1,4 @@
+import type { Token } from '@shared/i18n'
 import {
   buildMindmapTextNodeStyle,
   instantiateMindmapTemplate,
@@ -10,6 +11,12 @@ import {
   type MindmapTreeNodeStyle
 } from '@whiteboard/core/mindmap'
 import type { NodeTemplate } from '@whiteboard/core/types'
+import {
+  whiteboardMindmapPresetDescriptionToken,
+  whiteboardMindmapPresetLabelToken,
+  whiteboardMindmapSeedDescriptionToken,
+  whiteboardMindmapSeedLabelToken
+} from '@whiteboard/product/i18n/tokens'
 
 export type WhiteboardMindmapSeedKey = string
 export type WhiteboardMindmapPresetKey = string
@@ -17,7 +24,9 @@ export type WhiteboardMindmapPresetKey = string
 export type WhiteboardMindmapSeed = {
   key: WhiteboardMindmapSeedKey
   label: string
+  labelToken: Token
   description?: string
+  descriptionToken?: Token
   root: string
   children?: readonly {
     text: string
@@ -28,7 +37,9 @@ export type WhiteboardMindmapSeed = {
 export type WhiteboardMindmapPreset = {
   key: WhiteboardMindmapPresetKey
   label: string
+  labelToken: Token
   description?: string
+  descriptionToken?: Token
   seed: WhiteboardMindmapSeedKey
   layout: MindmapLayoutSpec
   root: MindmapTreeNodeStyle
@@ -111,13 +122,17 @@ const WHITEBOARD_MINDMAP_SEEDS: readonly WhiteboardMindmapSeed[] = [
   {
     key: 'blank',
     label: 'Blank',
+    labelToken: whiteboardMindmapSeedLabelToken('blank', 'Blank'),
     description: 'Central topic only',
+    descriptionToken: whiteboardMindmapSeedDescriptionToken('blank', 'Central topic only'),
     root: 'Central topic'
   },
   {
     key: 'project',
     label: 'Project',
+    labelToken: whiteboardMindmapSeedLabelToken('project', 'Project'),
     description: 'Goals, timeline, tasks, notes',
+    descriptionToken: whiteboardMindmapSeedDescriptionToken('project', 'Goals, timeline, tasks, notes'),
     root: 'Project',
     children: [
       { text: 'Goals', side: 'left' },
@@ -129,7 +144,9 @@ const WHITEBOARD_MINDMAP_SEEDS: readonly WhiteboardMindmapSeed[] = [
   {
     key: 'research',
     label: 'Research',
+    labelToken: whiteboardMindmapSeedLabelToken('research', 'Research'),
     description: 'Question, sources, findings, next steps',
+    descriptionToken: whiteboardMindmapSeedDescriptionToken('research', 'Question, sources, findings, next steps'),
     root: 'Research',
     children: [
       { text: 'Question', side: 'left' },
@@ -141,7 +158,9 @@ const WHITEBOARD_MINDMAP_SEEDS: readonly WhiteboardMindmapSeed[] = [
   {
     key: 'meeting',
     label: 'Meeting',
+    labelToken: whiteboardMindmapSeedLabelToken('meeting', 'Meeting'),
     description: 'Agenda, discussion, decisions, action items',
+    descriptionToken: whiteboardMindmapSeedDescriptionToken('meeting', 'Agenda, discussion, decisions, action items'),
     root: 'Meeting',
     children: [
       { text: 'Agenda', side: 'left' },
@@ -156,7 +175,9 @@ const WHITEBOARD_MINDMAP_PRESETS: readonly WhiteboardMindmapPreset[] = [
   {
     key: 'mindmap.capsule-outline',
     label: 'Capsule Outline',
+    labelToken: whiteboardMindmapPresetLabelToken('mindmap.capsule-outline', 'Capsule Outline'),
     description: 'Outline root and pill branches',
+    descriptionToken: whiteboardMindmapPresetDescriptionToken('mindmap.capsule-outline', 'Outline root and pill branches'),
     seed: 'blank',
     layout: DEFAULT_LAYOUT,
     root: {
@@ -190,7 +211,9 @@ const WHITEBOARD_MINDMAP_PRESETS: readonly WhiteboardMindmapPreset[] = [
   {
     key: 'mindmap.capsule-solid',
     label: 'Capsule Solid',
+    labelToken: whiteboardMindmapPresetLabelToken('mindmap.capsule-solid', 'Capsule Solid'),
     description: 'Solid root with soft branch nodes',
+    descriptionToken: whiteboardMindmapPresetDescriptionToken('mindmap.capsule-solid', 'Solid root with soft branch nodes'),
     seed: 'blank',
     layout: DEFAULT_LAYOUT,
     root: {
@@ -229,7 +252,9 @@ const WHITEBOARD_MINDMAP_PRESETS: readonly WhiteboardMindmapPreset[] = [
   {
     key: 'mindmap.underline-split',
     label: 'Underline Split',
+    labelToken: whiteboardMindmapPresetLabelToken('mindmap.underline-split', 'Underline Split'),
     description: 'Underline nodes with split branches',
+    descriptionToken: whiteboardMindmapPresetDescriptionToken('mindmap.underline-split', 'Underline nodes with split branches'),
     seed: 'blank',
     layout: {
       ...DEFAULT_LAYOUT,
@@ -272,7 +297,9 @@ const WHITEBOARD_MINDMAP_PRESETS: readonly WhiteboardMindmapPreset[] = [
   {
     key: 'mindmap.tree-balanced',
     label: 'Tree Balanced',
+    labelToken: whiteboardMindmapPresetLabelToken('mindmap.tree-balanced', 'Tree Balanced'),
     description: 'Balanced tree with rectangular topics',
+    descriptionToken: whiteboardMindmapPresetDescriptionToken('mindmap.tree-balanced', 'Balanced tree with rectangular topics'),
     seed: 'blank',
     layout: {
       ...DEFAULT_LAYOUT,

@@ -1,31 +1,29 @@
-import { getDocumentFields } from '@dataview/core/document'
 import {
   useDataView,
-  useDataViewValue
+  usePageRuntime
 } from '@dataview/react/dataview'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta } from '@dataview/meta'
 import { buildFieldToggleItem } from '@dataview/react/menu-builders'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 import { useTranslation } from '@shared/i18n/react'
+import {
+  useStoreValue
+} from '@shared/react'
 
 export const GroupFieldPickerPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-  const groupProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.group
-  )
+  const pageRuntime = usePageRuntime()
+  const settings = useStoreValue(pageRuntime.settings)
+  const currentView = settings.currentView
+  const groupProjection = settings.group
   const currentViewDomain = currentView
     ? engine.active
     : undefined
   const router = useViewSettings()
-  const fields = getDocumentFields(document)
+  const fields = settings.fields
   const items: MenuItem[] = [
     {
       kind: 'toggle',

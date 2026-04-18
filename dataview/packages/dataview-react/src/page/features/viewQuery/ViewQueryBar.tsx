@@ -1,14 +1,9 @@
 import { ChevronDown } from 'lucide-react'
-import { getDocumentFields } from '@dataview/core/document'
 import { FilterRulePopover } from '@dataview/react/page/features/filter'
-import {
-  getAvailableFilterFields,
-  getAvailableSorterFields
-} from '@dataview/react/page/features/query/fields'
 import { SortPopover } from '@dataview/react/page/features/sort'
 import {
   useDataView,
-  useDataViewValue,
+  usePageRuntime,
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { Popover } from '@shared/ui/popover'
@@ -16,6 +11,9 @@ import { meta } from '@dataview/meta'
 import { useTranslation } from '@shared/i18n/react'
 import type { QueryBarEntry } from '@dataview/runtime/page/session/types'
 import { QueryChip } from '@dataview/react/page/features/query'
+import {
+  useStoreValue
+} from '@shared/react'
 
 export type ViewQueryOpenEntry = QueryBarEntry
 
@@ -23,39 +21,18 @@ export const ViewQueryBar = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const page = dataView.page
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
-  const fields = getDocumentFields(document)
-  const queryBar = useDataViewValue(
-    dataView => dataView.page.store,
-    state => state.query
-  )
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-
-  const filterProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.filters
-  )
-  const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.sort
-  )
+  const page = dataView.session.page
+  const pageRuntime = usePageRuntime()
+  const queryBar = useStoreValue(pageRuntime.queryBar)
+  const currentView = queryBar.currentView
 
   const currentViewDomain = currentView
     ? engine.active
     : undefined
-  const filters = filterProjection?.rules ?? []
-  const sorts = sortProjection?.rules ?? []
-  const availableFilterFields = getAvailableFilterFields(
-    fields,
-    filters.map(entry => entry.rule)
-  )
-  const availableSorterFields = getAvailableSorterFields(
-    fields,
-    sorts.map(entry => entry.sorter)
-  )
+  const filters = queryBar.filters
+  const sorts = queryBar.sorts
+  const availableFilterFields = queryBar.availableFilterFields
+  const availableSorterFields = queryBar.availableSortFields
 
   if (!currentView || !queryBar.visible || (!filters.length && !sorts.length)) {
     return null

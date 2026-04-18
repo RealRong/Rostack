@@ -6,13 +6,14 @@ import {
   resolveOptionCardStyle
 } from '@shared/ui/color'
 import {
-  useDataView
-} from '@dataview/react/dataview'
-import {
   RecordCard
 } from '@dataview/react/views/shared'
 import type { ItemId } from '@dataview/engine'
-import { useKanbanContext } from '@dataview/react/views/kanban/context'
+import { useKanbanRuntimeContext } from '@dataview/react/views/kanban/KanbanView'
+import {
+  useKeyedStoreValue,
+  useStoreValue
+} from '@shared/react'
 
 export const Card = (props: {
   itemId: ItemId
@@ -20,28 +21,22 @@ export const Card = (props: {
   className?: string
   style?: CSSProperties
 }) => {
-  const {
-    active,
-    extra,
-    runtime
-  } = useKanbanContext()
-  const dataView = useDataView()
-  const engine = dataView.engine
-  const sectionColorId = extra.groupUsesOptionColors
-    ? engine.active.read.section(
-        engine.active.read.item(props.itemId)?.sectionKey ?? ''
-      )?.color
-    : undefined
+  const runtime = useKanbanRuntimeContext()
+  const board = useStoreValue(runtime.board)
+  const card = useKeyedStoreValue(runtime.card, props.itemId)
+  if (!card) {
+    return null
+  }
 
   return (
     <RecordCard
-      viewId={active.view.id}
+      viewId={card.viewId}
       itemId={props.itemId}
-      fields={active.fields.custom}
-      size={extra.card.size}
-      layout={extra.card.layout}
-      wrap={extra.card.wrap}
-      canDrag={extra.canReorder}
+      fields={card.fields}
+      size={card.size}
+      layout={card.layout}
+      wrap={card.wrap}
+      canDrag={card.canDrag}
       drag={runtime.drag}
       selection={runtime.selection}
       titlePlaceholder={record => record.id}
@@ -54,8 +49,8 @@ export const Card = (props: {
       }}
       resolveSurfaceStyle={({ hovered, editing }) => {
         const surfaceState = hovered && !editing ? 'hover' : 'default'
-        return extra.fillColumnColor
-          ? resolveOptionCardStyle(sectionColorId, surfaceState)
+        return board.fillColumnColor
+          ? resolveOptionCardStyle(card.color, surfaceState)
           : resolveNeutralCardStyle(surfaceState, 'preview')
       }}
     />

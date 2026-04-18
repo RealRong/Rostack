@@ -69,6 +69,69 @@ table.view: ReadStore<WholeTable>
 - 事件处理优先调用 runtime command / intent
 - 局部 UI 草稿态留在 React
 
+## 性能预期
+
+这套方案的收益主要来自两点：
+
+- 把 React render 中的业务派生移到 runtime
+- 把 `N 个叶子订阅同一个宽 store` 改成 `root 粗订阅 + leaf keyed read`
+
+对不同区域，收益预期不同：
+
+- `table` 热路径收益会很明显，尤其是 row hover、selection、inline editing、sort/group/filter 变化时
+- `gallery/kanban` 的主要收益是减少宽 context 带来的整树被动 render
+- `page/query/settings` 更多是复杂度下降，性能收益次之
+
+这类改造通常不是线性提升一个固定百分比，而是**直接消掉一类热点**：
+
+- 原来是 `1 次 store 更新 -> N 个叶子 selector 重跑`
+- 改完后接近 `1 次 store 更新 -> 少量 root 更新 + 命中的 keyed 项更新`
+
+所以更合理的预期不是“整体快 20%”，而是：
+
+- 某些热点链路会明显消失
+- 大数据量场景的交互抖动会明显下降
+- profiling 上会从一堆分散的 React selector/render 热点，收敛到少量 runtime projection 热点
+
+## 引用稳定策略
+
+runtime 视图数据化以后，核心不是靠大量重型深比较保性能，而是靠**小 store、keyed store、窄 equality**。
+
+### 不应该做什么
+
+不应该做这种结构：
+
+```ts
+table.body = {
+  rows: ...,
+  headers: ...,
+  footers: ...,
+  sections: ...
+}
+```
+
+然后每次变更都重建整棵对象，再做大范围引用比较。
+
+这会把 React 里的问题搬到 runtime。
+
+### 正确方向
+
+- root 只暴露 root 真正需要的 `body`
+- 重复子项都走 keyed store
+- 每个小 store 只比较必要字段
+- 避免在 projection 中频繁 `new Map()` / `new Array()` / `map().filter().find()` 现场组装大对象
+
+例如：
+
+- `row(itemId)` 只比较这个 row 的几个布尔位和 field id
+- `header(fieldId)` 只比较 `grouped / sortDirection / calculationMetric`
+- `footer(scopeId)` 只比较这个 scope 的 summary
+- `card(itemId)` 只比较这个卡片的展示配置和交互态
+
+可以把 runtime 的稳定性原则定成：
+
+**优先减少失效面，而不是事后对大对象做昂贵比较。**
+
 ## 命名规则
 
 命名尽量短，不引入重复后缀。
@@ -115,24 +178,37 @@ rowStateView
 
 ### hook 命名规则
 
-React hook 也直接对应语义：
+React 层不应该再铺很多一层薄包装的业务 hook。
+
+推荐只保留少量 runtime access hook：
+
+```ts
+useDataViewRuntime()
+usePageRuntime()
+useTableRuntime()
+useGalleryRuntime()
+useKanbanRuntime()
+```
+
+真正读取数据统一走 shared 通用 hook：
+
+```ts
+useStoreValue(store)
+useKeyedStoreValue(store, key)
+useOptionalKeyedStoreValue(store, key, emptyValue)
+```
+
+不要铺成这种形态：
 
 ```ts
 useTableBody()
 useTableRow(itemId)
 useTableHeader(fieldId)
-useTableFooter(scopeId)
 useGalleryCard(itemId)
 useKanbanSection(sectionKey)
 ```
 
-不要写成：
-
-```ts
-useTableRowVm()
-useResolvedHeaderProjection()
-useRowRenderStateView()
-```
+这些如果只是 `useStoreValue/useKeyedStoreValue` 的薄包装，只会让 API 表面继续膨胀。
 
 ## 分层
 
@@ -623,34 +699,38 @@ React 侧的理想调用方式应当像这样：
 ### table
 
 ```ts
-const body = useTableBody()
-const row = useTableRow(itemId)
-const header = useTableHeader(fieldId)
-const footer = useTableFooter(scopeId)
+const table = useTableRuntime()
+const body = useStoreValue(table.body)
+const row = useKeyedStoreValue(table.row, itemId)
+const header = useKeyedStoreValue(table.header, fieldId)
+const footer = useKeyedStoreValue(table.footer, scopeId)
 ```
 
 ### gallery
 
 ```ts
-const body = useGalleryBody()
-const card = useGalleryCard(itemId)
-const section = useGallerySection(sectionKey)
+const gallery = useGalleryRuntime()
+const body = useStoreValue(gallery.body)
+const card = useKeyedStoreValue(gallery.card, itemId)
+const section = useKeyedStoreValue(gallery.section, sectionKey)
 ```
 
 ### kanban
 
 ```ts
-const board = useKanbanBoard()
-const section = useKanbanSection(sectionKey)
-const card = useKanbanCard(itemId)
+const kanban = useKanbanRuntime()
+const board = useStoreValue(kanban.board)
+const section = useKeyedStoreValue(kanban.section, sectionKey)
+const card = useKeyedStoreValue(kanban.card, itemId)
 ```
 
 ### page
 
 ```ts
-const toolbar = usePageToolbar()
-const queryBar = usePageQueryBar()
-const settings = usePageSettings()
+const page = usePageRuntime()
+const toolbar = useStoreValue(page.toolbar)
+const queryBar = useStoreValue(page.queryBar)
+const settings = useStoreValue(page.settings)
 ```
 
 React 组件里不应再出现这类代码：
@@ -663,6 +743,17 @@ const exposed = useStoreSelector(table.rowRail, rowId => rowId === itemId)
 ```
 
 这类组装应全部提前收进 runtime。
+
+这里的重点不是“再发明很多 `useXxx`”，而是：
+
+- runtime 结构更好
+- React 读取路径统一
+- hook 暴露面尽量小
+
+最终推荐组合是：
+
+- feature 入口：`usePageRuntime/useTableRuntime/useGalleryRuntime/useKanbanRuntime`
+- 通用读取：`useStoreValue/useKeyedStoreValue/useOptionalKeyedStoreValue`
 
 ## 哪些状态必须留在 React
 

@@ -1,17 +1,31 @@
+import {
+  createContext,
+  createElement,
+  useContext,
+  type ReactNode
+} from 'react'
 import { Empty, KanbanCanvas } from '@dataview/react/views/kanban/components'
-import { KanbanProvider } from '@dataview/react/views/kanban/context'
 import type { CardSize } from '@dataview/core/contracts'
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
 import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
+  readActiveTypedViewState
+} from '@dataview/runtime'
+import {
   type ActiveKanbanViewState
 } from '@dataview/react/views/kanban/types'
-import type { ViewState } from '@dataview/engine'
+import type {
+  KanbanState,
+  ViewState
+} from '@dataview/engine'
 import {
-  readActiveTypedViewState
-} from '@dataview/react/views/shared/types'
+  useKanbanRuntime
+} from '@dataview/react/views/kanban/runtime'
+import type {
+  KanbanViewRuntime
+} from '@dataview/react/views/kanban/types'
 
 const DEFAULT_COLUMN_WIDTH = 320
 const DEFAULT_COLUMN_MIN_HEIGHT = 260
@@ -23,8 +37,11 @@ const KANBAN_COLUMN_WIDTH_DELTA: Record<CardSize, number> = {
 const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS
 } as const
+const KanbanContext = createContext<KanbanViewRuntime | null>(null)
 
-const readKanbanActiveState = readActiveTypedViewState('kanban')
+const readKanbanActiveState = (
+  state: ViewState | undefined
+): ActiveKanbanViewState | undefined => readActiveTypedViewState(state, 'kanban')
 
 const resolveColumnWidth = (
   baseWidth: number,
@@ -34,6 +51,23 @@ const resolveColumnWidth = (
 export interface KanbanViewProps {
   columnWidth?: number
   columnMinHeight?: number
+}
+
+export const KanbanProvider = (props: {
+  active: ActiveKanbanViewState
+  extra: KanbanState
+  columnWidth: number
+  columnMinHeight: number
+  children?: ReactNode
+}) => {
+  const runtime = useKanbanRuntime({
+    active: props.active,
+    extra: props.extra,
+    columnWidth: props.columnWidth,
+    columnMinHeight: props.columnMinHeight
+  })
+
+  return createElement(KanbanContext.Provider, { value: runtime }, props.children)
 }
 
 export const KanbanView = (props: KanbanViewProps) => {
@@ -70,4 +104,13 @@ export const KanbanView = (props: KanbanViewProps) => {
       <KanbanCanvas />
     </KanbanProvider>
   )
+}
+
+export const useKanbanRuntimeContext = (): KanbanViewRuntime => {
+  const value = useContext(KanbanContext)
+  if (!value) {
+    throw new Error('Missing KanbanView.')
+  }
+
+  return value
 }

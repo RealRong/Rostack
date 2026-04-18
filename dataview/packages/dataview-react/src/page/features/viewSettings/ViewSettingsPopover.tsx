@@ -4,7 +4,7 @@ import { PanelHeader } from '@shared/ui/panel-header'
 import { Popover } from '@shared/ui/popover'
 import {
   useDataView,
-  useDataViewValue
+  usePageRuntime
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { FieldSchemaEditor } from '@dataview/react/field/schema'
@@ -20,18 +20,17 @@ import { FieldListPanel } from '@dataview/react/page/features/viewSettings/panel
 import { QueryFieldPickerPanel } from '@dataview/react/page/features/viewSettings/panels/QueryFieldPickerPanel'
 import { RootPanel } from '@dataview/react/page/features/viewSettings/panels/RootPanel'
 import { ViewFieldsPanel } from '@dataview/react/page/features/viewSettings/panels/ViewFieldsPanel'
+import {
+  useStoreValue
+} from '@shared/react'
 
 export const ViewSettingsPopover = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
-  const page = dataView.page
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-  const viewSettings = useDataViewValue(
-    dataView => dataView.page.store,
-    state => state.settings
-  )
+  const page = dataView.session.page
+  const pageRuntime = usePageRuntime()
+  const currentView = useStoreValue(pageRuntime.settings).currentView
+  const viewSettings = useStoreValue(dataView.session.page.store).settings
   const open = viewSettings.visible
   const resolvedRoute = viewSettings.route
 

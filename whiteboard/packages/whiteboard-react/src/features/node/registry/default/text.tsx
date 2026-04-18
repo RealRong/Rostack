@@ -8,7 +8,10 @@ import {
   resolveTextContentBox,
   resolveTextFrameMetrics
 } from '@whiteboard/core/node'
-import { WHITEBOARD_TEXT_DEFAULT_COLOR } from '@whiteboard/product/palette'
+import {
+  WHITEBOARD_STICKY_FONT_MODE_OPTIONS,
+  WHITEBOARD_TEXT_DEFAULT_COLOR
+} from '@whiteboard/product'
 import {
   readNodeTextSourceId
 } from '@whiteboard/editor'
@@ -49,16 +52,7 @@ const textSchema = createSchema('text', 'Text', [
 const stickySchema = createSchema('sticky', 'Sticky', [
   createTextField('text'),
   dataField('fontMode', 'Font mode', 'enum', {
-    options: [
-      {
-        label: 'Auto',
-        value: 'auto'
-      },
-      {
-        label: 'Fixed',
-        value: 'fixed'
-      }
-    ]
+    options: [...WHITEBOARD_STICKY_FONT_MODE_OPTIONS]
   }),
   styleField('fill', 'Fill', 'color'),
   styleField('color', 'Text color', 'color'),

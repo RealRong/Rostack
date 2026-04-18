@@ -17,16 +17,6 @@ export type WhiteboardStickyTonePreset = {
   strokeKey: WhiteboardPaletteKey
 }
 
-type WhiteboardDrawSlotPreset = {
-  color: WhiteboardPaletteKey
-  width: number
-}
-
-type WhiteboardDrawBrushPreset = {
-  slot: '1' | '2' | '3'
-  slots: Readonly<Record<'1' | '2' | '3', WhiteboardDrawSlotPreset>>
-}
-
 export const WHITEBOARD_TEXT_DEFAULT_COLOR = createWhiteboardPaletteKey('text', 0)
 export const WHITEBOARD_STROKE_DEFAULT_COLOR = createWhiteboardPaletteKey('border', 0)
 export const WHITEBOARD_LINE_DEFAULT_COLOR = createWhiteboardPaletteKey('line', 0)
@@ -73,43 +63,6 @@ export const WHITEBOARD_SHAPE_PRESET_PAINTS = {
     previewFill: resolveWhiteboardPaletteVariable('bg', 12)
   }
 } as const
-
-export const WHITEBOARD_DRAW_DEFAULTS: Readonly<Record<'pen' | 'highlighter', WhiteboardDrawBrushPreset>> = {
-  pen: {
-    slot: '1',
-    slots: {
-      '1': {
-        color: createWhiteboardPaletteKey('border', 0),
-        width: 2
-      },
-      '2': {
-        color: createWhiteboardPaletteKey('border', 26),
-        width: 4
-      },
-      '3': {
-        color: createWhiteboardPaletteKey('border', 29),
-        width: 8
-      }
-    }
-  },
-  highlighter: {
-    slot: '1',
-    slots: {
-      '1': {
-        color: createWhiteboardPaletteKey('border', 23),
-        width: 12
-      },
-      '2': {
-        color: createWhiteboardPaletteKey('border', 24),
-        width: 12
-      },
-      '3': {
-        color: createWhiteboardPaletteKey('border', 29),
-        width: 12
-      }
-    }
-  }
-}
 
 export const WHITEBOARD_STICKY_TONE_PRESETS: readonly WhiteboardStickyTonePreset[] = [
   {

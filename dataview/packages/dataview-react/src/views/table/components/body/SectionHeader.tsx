@@ -10,7 +10,9 @@ import {
 import type {
   Section
 } from '@dataview/engine'
-import { useStoreValue } from '@shared/react'
+import {
+  useKeyedStoreValue
+} from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
 import { Button } from '@shared/ui/button'
@@ -26,11 +28,10 @@ const View = (props: SectionHeaderProps) => {
   const { t } = useTranslation()
   const { engine } = useDataView()
   const table = useTableContext()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
+  const section = useKeyedStoreValue(table.section, props.section.key)
+  if (!section) {
     throw new Error('Table section header requires an active current view.')
   }
-  const groupField = currentView.query.group.field
 
   return (
     <div
@@ -50,22 +51,22 @@ const View = (props: SectionHeaderProps) => {
             <ChevronRight
               className={cn(
                 'size-4 transition-transform',
-                !props.section.collapsed && 'rotate-90'
+                !section.collapsed && 'rotate-90'
               )}
               size={16}
               strokeWidth={1.8}
             />
           )}
-          aria-expanded={!props.section.collapsed}
+          aria-expanded={!section.collapsed}
           onPointerDown={event => {
             event.stopPropagation()
           }}
           onClick={() => {
-            engine.active.sections.toggleCollapse(props.section.key)
+            engine.active.sections.toggleCollapse(section.key)
             table.focus()
           }}
         >
-          {t(props.section.label)}
+          {t(section.label)}
         </Button>
       </div>
       <div

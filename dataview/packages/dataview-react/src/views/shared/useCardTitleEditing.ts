@@ -13,9 +13,11 @@ import {
 } from '@dataview/core/contracts'
 import {
   useDataView,
-  useDataViewValue
 } from '@dataview/react/dataview'
 import type { ItemId } from '@dataview/engine'
+import {
+  useKeyedStoreValue
+} from '@shared/react'
 import {
   resolveInlineSessionExitEffect
 } from '@dataview/runtime/inlineSession'
@@ -26,13 +28,16 @@ import {
 export const useCardEditingState = (input: {
   viewId: ViewId
   itemId: ItemId
-}) => useDataViewValue(
-  dataView => dataView.inlineSession.store,
-  target => (
-    target?.viewId === input.viewId
-      && target.itemId === input.itemId
+}) => {
+  const dataView = useDataView()
+  return useKeyedStoreValue(
+    dataView.model.inline.editing,
+    dataView.model.inline.key({
+      viewId: input.viewId,
+      itemId: input.itemId
+    })
   )
-)
+}
 
 export const useCardTitleEditing = (input: {
   viewId: ViewId

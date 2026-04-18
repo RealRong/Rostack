@@ -1,9 +1,14 @@
 import { GalleryView } from '@dataview/react/views/gallery'
-import { useDataViewValue } from '@dataview/react/dataview'
+import {
+  usePageRuntime
+} from '@dataview/react/dataview'
 import type { KanbanViewProps } from '@dataview/react/views/kanban'
 import { KanbanView } from '@dataview/react/views/kanban'
 import type { TableViewProps } from '@dataview/react/views/table'
 import { TableView } from '@dataview/react/views/table'
+import {
+  useStoreValue
+} from '@shared/react'
 
 export interface PageBodyProps {
   table?: Pick<TableViewProps, 'rowHeight'>
@@ -11,9 +16,11 @@ export interface PageBodyProps {
 }
 
 export const PageBody = (props: PageBodyProps) => {
-  const view = useDataViewValue(dataView => dataView.engine.active.config)
+  const pageRuntime = usePageRuntime()
+  const body = useStoreValue(pageRuntime.body)
+  const viewType = body.viewType
 
-  if (!view) {
+  if (!viewType) {
     return (
       <div className="rounded-xl border border-dashed bg-surface-muted/55 px-6 py-10 text-sm text-fg-muted">
         No view selected.
@@ -21,7 +28,7 @@ export const PageBody = (props: PageBodyProps) => {
     )
   }
 
-  switch (view.type) {
+  switch (viewType) {
     case 'table':
       return (
         <TableView
@@ -42,7 +49,7 @@ export const PageBody = (props: PageBodyProps) => {
     default:
       return (
         <div className="rounded-xl border border-dashed bg-surface-muted/55 px-6 py-10 text-sm text-fg-muted">
-          Unsupported view type: {view.type}
+          Unsupported view type: {viewType}
         </div>
       )
   }

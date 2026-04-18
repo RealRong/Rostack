@@ -5,14 +5,16 @@ import {
   type KanbanCardsPerColumn,
   type ViewType
 } from '@dataview/core/contracts'
-import { getDocumentFields } from '@dataview/core/document'
-import { useDataView, useDataViewValue } from '@dataview/react/dataview'
+import { useDataView, usePageRuntime } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
 import { useTranslation } from '@shared/i18n/react'
+import {
+  useStoreValue
+} from '@shared/react'
 
 const SUPPORTED_LAYOUT_TYPES = ['table', 'kanban', 'gallery'] as const satisfies readonly ViewType[]
 
@@ -67,12 +69,13 @@ export const LayoutPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
-  const view = useDataViewValue(dataView => dataView.engine.active.config)
+  const pageRuntime = usePageRuntime()
+  const settings = useStoreValue(pageRuntime.settings)
+  const view = settings.currentView
   const viewApi = view
     ? engine.active
     : undefined
-  const fieldMap = new Map(getDocumentFields(document).map(field => [field.id, field] as const))
+  const fieldMap = new Map(settings.fields.map(field => [field.id, field] as const))
   const groupField = view?.group?.field
     ? fieldMap.get(view.group.field)
     : undefined

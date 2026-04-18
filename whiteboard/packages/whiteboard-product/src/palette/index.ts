@@ -18,7 +18,6 @@ export {
   type WhiteboardPaletteRegistry
 } from '@whiteboard/product/palette/registry'
 export {
-  WHITEBOARD_DRAW_DEFAULTS,
   WHITEBOARD_FRAME_DEFAULTS,
   WHITEBOARD_LINE_DEFAULT_COLOR,
   WHITEBOARD_SHAPE_DEFAULTS,

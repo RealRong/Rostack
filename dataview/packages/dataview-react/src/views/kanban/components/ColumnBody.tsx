@@ -1,11 +1,14 @@
 import { useRef } from 'react'
 import { DATAVIEW_APPEARANCE_ID_ATTR } from '@dataview/react/dom/appearance'
 import { Button } from '@shared/ui/button'
-import { cn } from '@shared/ui/utils'
-import type { ItemId, Section } from '@dataview/engine'
-import { useKanbanContext } from '@dataview/react/views/kanban/context'
+import type { ItemId, SectionKey } from '@dataview/engine'
+import { useKanbanRuntimeContext } from '@dataview/react/views/kanban/KanbanView'
 import { Card } from '@dataview/react/views/kanban/components/Card'
 import { ColumnDropIndicator } from '@dataview/react/views/kanban/components/ColumnDropIndicator'
+import {
+  useKeyedStoreValue,
+  useStoreValue
+} from '@shared/react'
 
 const CARD_GAP = 8
 
@@ -17,19 +20,21 @@ const findCardNode = (
 ).find(node => node.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR) === String(itemId))
 
 export const ColumnBody = (props: {
-  section: Section
+  sectionKey: SectionKey
 }) => {
-  const {
-    runtime
-  } = useKanbanContext()
+  const runtime = useKanbanRuntimeContext()
+  const board = useStoreValue(runtime.board)
+  const section = useKeyedStoreValue(runtime.section, props.sectionKey)
+  if (!section) {
+    return null
+  }
   const bodyRef = useRef<HTMLDivElement | null>(null)
-  const visibility = runtime.visibility.bySection.get(props.section.key)
-  const visibleIds = visibility?.visibleIds ?? props.section.items.ids
-  const visibleCount = visibility?.visibleCount ?? props.section.items.count
-  const hiddenCount = visibility?.hiddenCount ?? 0
-  const showMoreCount = visibility?.showMoreCount ?? 0
+  const visibleIds = section.visibleIds
+  const visibleCount = section.visibleCount
+  const hiddenCount = section.hiddenCount
+  const showMoreCount = section.showMoreCount
   const overTarget = runtime.drag.overTarget
-  const sectionOverTarget = overTarget?.sectionKey === props.section.key
+  const sectionOverTarget = overTarget?.sectionKey === section.key
     ? overTarget
     : undefined
   const indicatorTop = (() => {
@@ -61,16 +66,16 @@ export const ColumnBody = (props: {
     <div
       ref={node => {
         bodyRef.current = node
-        runtime.geometry.measureBody(props.section.key)(node)
+        runtime.geometry.measureBody(section.key)(node)
       }}
       data-kanban-column-body
       className="relative"
       style={{
         overflowAnchor: 'none',
-        minHeight: Math.max(runtime.layout.columnMinHeight, props.section.items.count ? 0 : 120)
+        minHeight: Math.max(board.columnMinHeight, section.count ? 0 : 120)
       }}
     >
-      {props.section.items.count ? (
+      {section.count ? (
         <div
           className="flex flex-col"
           style={{
@@ -94,7 +99,7 @@ export const ColumnBody = (props: {
             <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed px-3 py-2.5">
               <div className="min-w-0">
                 <div className="text-xs font-medium text-foreground">
-                  {`Showing ${visibleCount} / ${props.section.items.count}`}
+                  {`Showing ${visibleCount} / ${section.count}`}
                 </div>
                 <div className="text-xs text-fg-muted">
                   {`${hiddenCount} more card${hiddenCount === 1 ? '' : 's'} hidden`}
@@ -105,7 +110,7 @@ export const ColumnBody = (props: {
                 size="sm"
                 className="shrink-0"
                 onClick={() => {
-                  runtime.visibility.showMore(props.section.key)
+                  runtime.visibility.showMore(section.key)
                 }}
               >
                 {`Show ${showMoreCount} more`}
@@ -115,7 +120,7 @@ export const ColumnBody = (props: {
         </div>
       ) : (
         <div
-          style={{ minHeight: Math.max(runtime.layout.columnMinHeight, props.section.items.count ? 0 : 120) }}
+          style={{ minHeight: Math.max(board.columnMinHeight, section.count ? 0 : 120) }}
           className={'flex h-full flex-1 min-h-full items-center justify-center px-4 py-8 text-center text-sm text-fg-muted'}
         >
           Drop a card here or add the first one.

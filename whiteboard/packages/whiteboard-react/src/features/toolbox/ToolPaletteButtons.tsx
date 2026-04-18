@@ -17,7 +17,9 @@ import {
 import {
   type Tool
 } from '@whiteboard/editor'
-import type { DrawMode } from '@whiteboard/editor/draw'
+import type {
+  DrawMode
+} from '@whiteboard/editor'
 import {
   WHITEBOARD_TEXT_INSERT_PRESET,
   readWhiteboardShapePreviewFill

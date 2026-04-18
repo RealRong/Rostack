@@ -5,8 +5,18 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
-import { createEditor } from '@whiteboard/editor'
-import { WHITEBOARD_INSERT_CATALOG } from '@whiteboard/product'
+import {
+  createEditor,
+  type DrawState
+} from '@whiteboard/editor'
+import {
+  WHITEBOARD_DRAW_DEFAULTS,
+  WHITEBOARD_INSERT_CATALOG,
+  WHITEBOARD_LINE_DEFAULT_COLOR,
+  WHITEBOARD_FRAME_DEFAULT_TITLE,
+  createWhiteboardFrameTemplate,
+  readWhiteboardNodePaintDefaults
+} from '@whiteboard/product'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 import { createClipboardHostAdapter } from '@whiteboard/react/dom/host/clipboard'
 import { createClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboard'
@@ -64,6 +74,7 @@ export const createWhiteboardServices = ({
   resolvedConfig: ResolvedConfig
   boardConfig: EngineBoardConfig
 }): WhiteboardServicesContextValue => {
+  const initialDrawState: DrawState = WHITEBOARD_DRAW_DEFAULTS
   const engine = createEngine({
     registries: coreRegistries,
     document,
@@ -74,12 +85,38 @@ export const createWhiteboardServices = ({
   const editor = createEditor({
     engine,
     initialTool: resolvedConfig.initialTool,
+    initialDrawState,
     initialViewport: resolvedConfig.viewport.initial,
     registry,
     services: {
       layout: createLayoutBackend({
         textSources
-      })
+      }),
+      defaults: {
+        selection: {
+          node: {
+            readPaint: readWhiteboardNodePaintDefaults
+          },
+          edge: {
+            color: WHITEBOARD_LINE_DEFAULT_COLOR,
+            width: 2,
+            dash: 'solid',
+            textMode: 'horizontal'
+          }
+        },
+        templates: {
+          frame: ({
+            bounds,
+            padding
+          }) => createWhiteboardFrameTemplate({
+            title: WHITEBOARD_FRAME_DEFAULT_TITLE,
+            size: {
+              width: bounds.width + padding * 2,
+              height: bounds.height + padding * 2
+            }
+          })
+        }
+      }
     }
   })
   const insert = createInsertBridge({

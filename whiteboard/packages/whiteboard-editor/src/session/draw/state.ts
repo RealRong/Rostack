@@ -7,20 +7,20 @@ import {
   type DrawSlot
 } from '@whiteboard/editor/session/draw/model'
 
-const WHITEBOARD_DRAW_DEFAULTS = {
+export const DEFAULT_DRAW_STATE: DrawState = {
   pen: {
     slot: '1',
     slots: {
       '1': {
-        color: 'var(--wb-palette-border-0)',
+        color: 'currentColor',
         width: 2
       },
       '2': {
-        color: 'var(--wb-palette-border-26)',
+        color: 'currentColor',
         width: 4
       },
       '3': {
-        color: 'var(--wb-palette-border-29)',
+        color: 'currentColor',
         width: 8
       }
     }
@@ -29,20 +29,20 @@ const WHITEBOARD_DRAW_DEFAULTS = {
     slot: '1',
     slots: {
       '1': {
-        color: 'var(--wb-palette-border-23)',
+        color: 'currentColor',
         width: 12
       },
       '2': {
-        color: 'var(--wb-palette-border-24)',
+        color: 'currentColor',
         width: 12
       },
       '3': {
-        color: 'var(--wb-palette-border-29)',
+        color: 'currentColor',
         width: 12
       }
     }
   }
-} as const satisfies DrawState
+}
 
 export type BrushStyle = Readonly<{
   color: string
@@ -117,8 +117,6 @@ const isDrawBrushStateEqual = (
     && DRAW_SLOTS.every((slot) => isSameStyle(left.slots[slot], right.slots[slot]))
   )
 )
-
-export const DEFAULT_DRAW_STATE: DrawState = WHITEBOARD_DRAW_DEFAULTS
 
 export const normalizeDrawState = (
   value: DrawState

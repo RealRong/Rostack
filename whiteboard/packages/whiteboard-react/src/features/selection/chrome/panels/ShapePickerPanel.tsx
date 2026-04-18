@@ -1,9 +1,9 @@
 import { Button, Panel, PanelSection, cn } from '@shared/ui'
+import type { ShapeKind } from '@whiteboard/core/node'
 import {
-  SHAPE_MENU_SECTIONS,
-  readShapePreviewFill,
-  type ShapeKind
-} from '@whiteboard/core/node'
+  WHITEBOARD_SHAPE_MENU_SECTIONS,
+  readWhiteboardShapePreviewFill
+} from '@whiteboard/product'
 import { ShapeGlyph } from '@whiteboard/react/features/node'
 
 export const ShapePickerPanel = ({
@@ -14,7 +14,7 @@ export const ShapePickerPanel = ({
   onChange: (value: ShapeKind) => void
 }) => (
   <Panel className="min-w-[280px]">
-    {SHAPE_MENU_SECTIONS.map((section) => (
+    {WHITEBOARD_SHAPE_MENU_SECTIONS.map((section) => (
       <PanelSection key={section.key} title={section.title}>
         <div className="grid grid-cols-5 gap-2">
           {section.items.map((item) => {
@@ -39,7 +39,7 @@ export const ShapePickerPanel = ({
                     width={32}
                     height={24}
                     className="block h-6 w-8 overflow-visible"
-                    fill={readShapePreviewFill(item.kind)}
+                    fill={readWhiteboardShapePreviewFill(item.kind)}
                     stroke="currentColor"
                     strokeWidth={4}
                   />

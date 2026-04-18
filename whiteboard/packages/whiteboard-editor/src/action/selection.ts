@@ -7,6 +7,7 @@ import type {
   GroupId
 } from '@whiteboard/core/types'
 import type { EditorQuery } from '@whiteboard/editor/query'
+import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   OrderMode,
   DocumentWrite,
@@ -27,6 +28,7 @@ type SelectionActionHelpersHost = {
   document: Pick<DocumentWrite, 'delete' | 'duplicate' | 'order' | 'group'>
   node: Pick<NodeWrite, 'create'>
   session: SelectionSessionDeps
+  defaults: EditorDefaults['templates']
 }
 
 const orderRefs = (
@@ -75,6 +77,7 @@ const readGroupTarget = (
 const createFrame = (
   node: Pick<NodeWrite, 'create'>,
   session: SelectionSessionDeps,
+  defaults: EditorDefaults['templates'],
   bounds: {
     x: number
     y: number
@@ -88,22 +91,10 @@ const createFrame = (
       x: bounds.x - padding,
       y: bounds.y - padding
     },
-    template: {
-      type: 'frame',
-      size: {
-        width: bounds.width + padding * 2,
-        height: bounds.height + padding * 2
-      },
-      data: {
-        title: 'Frame'
-      },
-      style: {
-        fill: 'transparent',
-        stroke: 'var(--wb-palette-border-4)',
-        strokeWidth: 1,
-        color: 'var(--wb-palette-text-4)'
-      }
-    }
+    template: defaults.frame({
+      bounds,
+      padding
+    })
   })
   if (!result.ok) {
     return false
@@ -119,7 +110,8 @@ export const createSelectionActions = ({
   read,
   document,
   node,
-  session
+  session,
+  defaults
 }: SelectionActionHelpersHost): SelectionActionHelpers => ({
   duplicate: (input, options) => {
     const target = normalizeSelectionTarget(input)
@@ -221,6 +213,7 @@ export const createSelectionActions = ({
   frame: (bounds, options) => createFrame(
     node,
     session,
+    defaults,
     bounds,
     options?.padding ?? DEFAULT_FRAME_PADDING
   )

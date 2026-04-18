@@ -10,12 +10,20 @@ import {
   intersects,
   rectIn
 } from '@shared/dom'
+import {
+  createDerivedStore,
+  createValueStore,
+  read,
+  sameMap
+} from '@shared/core'
 import { useCardReorder } from '@dataview/react/views/gallery/reorder'
 import {
   GALLERY_CARD_MIN_WIDTH,
+  type GalleryBlock,
   useGalleryBlocks
 } from '@dataview/react/views/gallery/virtual'
 import type {
+  GalleryBody,
   GalleryRuntimeInput,
   GalleryViewRuntime
 } from '@dataview/react/views/gallery/types'
@@ -24,10 +32,36 @@ import {
   useRegisterMarqueeScene
 } from '@dataview/react/views/shared/interactionRuntime'
 import type { MarqueeScene } from '@dataview/react/page/marqueeBridge'
+import {
+  type ValueStore
+} from '@shared/core'
+
+const EMPTY_GALLERY_BLOCKS: readonly GalleryBlock[] = []
+
+const sameBody = (
+  left: GalleryViewRuntime['body']['get'] extends () => infer T ? T : never,
+  right: GalleryViewRuntime['body']['get'] extends () => infer T ? T : never
+) => left.viewId === right.viewId
+  && left.empty === right.empty
+  && left.grouped === right.grouped
+  && left.blocks === right.blocks
+  && left.totalHeight === right.totalHeight
+  && left.columnCount === right.columnCount
+  && left.groupUsesOptionColors === right.groupUsesOptionColors
+  && sameMap(left.sectionCountByKey, right.sectionCountByKey)
 
 export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntime => {
   const dataView = useDataView()
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const layoutStore = useMemo<ValueStore<Pick<GalleryBody, 'blocks' | 'totalHeight' | 'columnCount'>>>(() => createValueStore({
+    blocks: EMPTY_GALLERY_BLOCKS,
+    totalHeight: 0,
+    columnCount: 1
+  }, {
+    isEqual: (left, right) => left.blocks === right.blocks
+      && left.totalHeight === right.totalHeight
+      && left.columnCount === right.columnCount
+  }), [])
   const itemIds = input.active.items.ids
   const interaction = useItemDragRuntime({
     itemIds
@@ -42,6 +76,41 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
   const cardRectById = useMemo(() => new Map(
     virtual.layout.cards.map(card => [card.id, card.rect] as const)
   ), [virtual.layout.cards])
+  const bodyStore = useMemo(() => createDerivedStore<GalleryBody>({
+    get: () => {
+      const base = read(dataView.model.gallery.bodyBase)
+      if (!base) {
+        throw new Error('Gallery body base is unavailable.')
+      }
+
+      const layout = read(layoutStore)
+      return {
+        ...base,
+        blocks: layout.blocks,
+        totalHeight: layout.totalHeight,
+        columnCount: layout.columnCount
+      }
+    },
+    isEqual: sameBody
+  }), [
+    dataView.model.gallery.bodyBase,
+    layoutStore
+  ])
+  const section = dataView.model.gallery.section
+  const card = dataView.model.gallery.card
+
+  useEffect(() => {
+    layoutStore.set({
+      blocks: virtual.blocks,
+      totalHeight: virtual.layout.totalHeight,
+      columnCount: virtual.layout.columnCount
+    })
+  }, [
+    layoutStore,
+    virtual.blocks,
+    virtual.layout.columnCount,
+    virtual.layout.totalHeight
+  ])
   const marqueeScene = useMemo<MarqueeScene>(() => ({
     hitTest: rect => {
       const container = containerRef.current
@@ -148,6 +217,9 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
   }, [dataView.engine.active, drag.dragIds, drag.overTarget, input.active.items])
 
   return useMemo(() => ({
+    body: bodyStore,
+    section,
+    card,
     containerRef,
     virtual: {
       layout: virtual.layout,
@@ -158,10 +230,13 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
     drag,
     indicator
   }), [
+    bodyStore,
+    card,
     containerRef,
     drag,
     indicator,
     interaction,
+    section,
     virtual.blocks,
     virtual.layout,
     virtual.measure

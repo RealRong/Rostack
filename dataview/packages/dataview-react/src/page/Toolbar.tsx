@@ -12,28 +12,23 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  getDocumentFields,
-  getDocumentViews
-} from '@dataview/core/document'
 import { Button } from '@shared/ui/button'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { Popover } from '@shared/ui/popover'
 import { cn } from '@shared/ui/utils'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'
-import {
-  getAvailableFilterFields,
-  getAvailableSorterFields
-} from '@dataview/react/page/features/query/fields'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
   useDataView,
-  useDataViewValue,
+  usePageRuntime
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { token } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
+import {
+  useStoreValue
+} from '@shared/react'
 
 interface ViewTabProps {
   view: View
@@ -142,46 +137,21 @@ export const PageToolbar = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const page = dataView.page
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
-  const queryBar = useDataViewValue(
-    dataView => dataView.page.store,
-    state => state.query
-  )
-  const fields = getDocumentFields(document)
-  const views = getDocumentViews(document)
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-  const searchProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.search
-  )
-  const filterProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.filters
-  )
-  const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.sort
-  )
+  const page = dataView.session.page
+  const pageRuntime = usePageRuntime()
+  const toolbar = useStoreValue(pageRuntime.toolbar)
+  const currentView = toolbar.currentView
   const currentViewDomain = currentView
     ? engine.active
     : undefined
   const searchInputRef = useRef<HTMLInputElement | null>(null)
-  const searchQuery = searchProjection?.query ?? ''
-  const filterRules = filterProjection?.rules ?? []
-  const sorters = sortProjection?.rules ?? []
-  const availableFilterFields = getAvailableFilterFields(
-    fields,
-    filterRules.map(entry => entry.rule)
-  )
-  const availableSorterFields = getAvailableSorterFields(
-    fields,
-    sorters.map(entry => entry.sorter)
-  )
-  const filterCount = filterRules.length
-  const sortCount = sorters.length
+  const searchQuery = toolbar.search
+  const availableFilterFields = toolbar.availableFilterFields
+  const availableSorterFields = toolbar.availableSortFields
+  const filterCount = toolbar.filterCount
+  const sortCount = toolbar.sortCount
+  const views = toolbar.views
+  const queryBar = toolbar.queryBar
   const [searchExpanded, setSearchExpanded] = useState(() => Boolean(searchQuery.trim()))
   const [toolbarRoute, setToolbarRoute] = useState<null | 'addFilter' | 'addSort'>(null)
   const [tabMenuViewId, setTabMenuViewId] = useState<ViewId | null>(null)
@@ -358,7 +328,7 @@ export const PageToolbar = () => {
                       setToolbarRoute(null)
                       page.query.open({
                         kind: 'filter',
-                        index: filterRules.length
+                        index: filterCount
                       })
                     }}
                   />

@@ -24,6 +24,7 @@ import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type { EditCapability, EditField } from '@whiteboard/editor/session/edit'
 import type { EditorWrite } from '@whiteboard/editor/write'
+import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapEnterPreview, MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
 import {
@@ -525,7 +526,8 @@ export const createEditorActions = ({
   query,
   layout,
   write,
-  registry
+  registry,
+  defaults
 }: {
   engine: Engine
   session: EditorSession
@@ -533,6 +535,7 @@ export const createEditorActions = ({
   layout: EditorLayout
   write: EditorWrite
   registry: NodeRegistry
+  defaults: EditorDefaults['templates']
 }): EditorActions => {
   const selectionSession = createSelectionSession(session)
   const selectionSessionDeps = {
@@ -543,7 +546,8 @@ export const createEditorActions = ({
     read: query,
     document: write.document,
     node: write.node,
-    session: selectionSessionDeps
+    session: selectionSessionDeps,
+    defaults
   })
   const clipboard: ClipboardActions = createClipboardActions({
     editor: {

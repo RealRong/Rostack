@@ -1,4 +1,5 @@
 import '@shared/ui/css/core.css'
+import '@whiteboard/product/theme/whiteboard.css'
 import './styles/whiteboard-react.css'
 
 export { Whiteboard } from '@whiteboard/react/Whiteboard'

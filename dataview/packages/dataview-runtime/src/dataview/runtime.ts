@@ -24,6 +24,12 @@ import {
   createPageStateStore
 } from '@dataview/runtime/page/state'
 import {
+  createGalleryModel,
+  createKanbanModel,
+  createPageModel,
+  createTableModel
+} from '@dataview/runtime/model'
+import {
   createMarqueeController
 } from '@dataview/runtime/marquee'
 import {
@@ -165,6 +171,37 @@ export const createDataViewRuntime = (
       selection: read(selection.state.store)
     })
   })
+  const inline = {
+    editing: inlineSession.editing,
+    key: inlineSession.key
+  }
+  const model = {
+    page: createPageModel({
+      document: input.engine.select.document,
+      activeViewIdStore: input.engine.active.id,
+      currentViewStore: input.engine.active.config,
+      activeStateStore: input.engine.active.state,
+      pageStateStore
+    }),
+    inline,
+    table: createTableModel({
+      activeStateStore: input.engine.active.state
+    }),
+    gallery: createGalleryModel({
+      activeStateStore: input.engine.active.state,
+      extraStateStore: input.engine.active.gallery.state,
+      selectionMembershipStore: selection.store.membership,
+      previewSelectionMembershipStore: marquee.preview.membership,
+      inline
+    }),
+    kanban: createKanbanModel({
+      activeStateStore: input.engine.active.state,
+      extraStateStore: input.engine.active.kanban.state,
+      selectionMembershipStore: selection.store.membership,
+      previewSelectionMembershipStore: marquee.preview.membership,
+      inline
+    })
+  }
 
   const disposeBindings = joinUnsubscribes([
     bindInlineSessionToSelection({
@@ -210,17 +247,7 @@ export const createDataViewRuntime = (
         valueEditor
       },
       creation: createRecord,
-      marquee,
-      select: {
-        isValueEditorOpen: () => pageStateStore.get().valueEditorOpen,
-        pageLock: () => pageStateStore.get().lock,
-        activeInlineTarget: () => inlineSession.store.get(),
-        canStartMarquee: () => (
-          !pageStateStore.get().valueEditorOpen
-          && inlineSession.store.get() === null
-          && marquee.get() === null
-        )
-      }
+      marquee
     },
     intent: {
       page,
@@ -232,6 +259,7 @@ export const createDataViewRuntime = (
       createRecord,
       marquee
     },
+    model,
     page: {
       ...page,
       store: pageStateStore

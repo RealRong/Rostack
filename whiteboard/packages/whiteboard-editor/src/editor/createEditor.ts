@@ -13,6 +13,10 @@ import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
 import { createEditorQuery } from '@whiteboard/editor/query'
 import { createEditorSession } from '@whiteboard/editor/session/runtime'
 import type { Editor } from '@whiteboard/editor/types/editor'
+import {
+  DEFAULT_EDITOR_DEFAULTS,
+  type EditorDefaults
+} from '@whiteboard/editor/types/defaults'
 import type { LayoutBackend } from '@whiteboard/editor/types/layout'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
@@ -33,6 +37,7 @@ export const createEditor = ({
   registry: NodeRegistry
   services?: {
     layout?: LayoutBackend
+    defaults?: EditorDefaults
   }
 }): Editor => {
   const session = createEditorSession({
@@ -49,12 +54,14 @@ export const createEditor = ({
     registry,
     backend: services?.layout
   })
+  const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const query = createEditorQuery({
     engineRead: engine.read,
     registry,
     history: engine.history,
     layout,
-    session
+    session,
+    defaults: defaults.selection
   })
   const write = createEditorWrite({
     engine,
@@ -67,7 +74,8 @@ export const createEditor = ({
     query,
     layout,
     write,
-    registry
+    registry,
+    defaults: defaults.templates
   })
   const host = createEditorHost({
     engine,

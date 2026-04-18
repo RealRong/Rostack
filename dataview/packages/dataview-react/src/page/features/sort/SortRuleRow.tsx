@@ -18,7 +18,7 @@ import { buildChoiceToggleItems } from '@dataview/react/menu-builders'
 import {
   findSorterField,
   getAvailableSorterFieldsForIndex
-} from '@dataview/react/page/features/query/fields'
+} from '@dataview/runtime'
 import {
   SORT_DIRECTIONS,
 } from '@dataview/react/page/features/sort/sortUi'

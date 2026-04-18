@@ -6,10 +6,13 @@ import {
 } from '@dataview/react/views/shared'
 import { resolveNeutralCardStyle } from '@shared/ui/color'
 import type { ItemId } from '@dataview/engine'
-import { useGalleryContext } from '@dataview/react/views/gallery/context'
+import { useGalleryRuntimeContext } from '@dataview/react/views/gallery/GalleryView'
 import {
   CARD_TITLE_PLACEHOLDER
 } from '@dataview/react/views/shared/cardTitleValue'
+import {
+  useKeyedStoreValue
+} from '@shared/react'
 
 export const Card = (props: {
   itemId: ItemId
@@ -17,21 +20,21 @@ export const Card = (props: {
   className?: string
   style?: CSSProperties
 }) => {
-  const {
-    active,
-    extra,
-    runtime
-  } = useGalleryContext()
+  const runtime = useGalleryRuntimeContext()
+  const card = useKeyedStoreValue(runtime.card, props.itemId)
+  if (!card) {
+    return null
+  }
 
   return (
     <RecordCard
-      viewId={active.view.id}
+      viewId={card.viewId}
       itemId={props.itemId}
-      fields={active.fields.custom}
-      size={extra.card.size}
-      layout={extra.card.layout}
-      wrap={extra.card.wrap}
-      canDrag={extra.canReorder}
+      fields={card.fields}
+      size={card.size}
+      layout={card.layout}
+      wrap={card.wrap}
+      canDrag={card.canDrag}
       drag={runtime.drag}
       selection={runtime.selection}
       titlePlaceholder={CARD_TITLE_PLACEHOLDER}

@@ -245,7 +245,8 @@ export const PageMarqueeHost = () => {
         || overlay.topLayerId !== null
         || dataView.react.drag.get()
         || dataView.session.marquee.get()
-        || !dataView.session.select.canStartMarquee()
+        || dataView.page.store.get().valueEditorOpen
+        || dataView.inlineSession.store.get() !== null
       ) {
         return
       }
@@ -300,8 +301,9 @@ export const PageMarqueeHost = () => {
     dataView.react.drag,
     dataView.react.marquee,
     dataView.selection.state,
-    dataView.session.select,
     dataView.session.marquee,
+    dataView.inlineSession.store,
+    dataView.page.store,
     overlay.topLayerId
   ])
 

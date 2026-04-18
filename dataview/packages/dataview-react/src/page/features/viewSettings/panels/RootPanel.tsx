@@ -12,12 +12,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BucketSort, Field, View } from '@dataview/core/contracts'
 import {
-  getDocumentFields,
-  getDocumentViews
-} from '@dataview/core/document'
-import {
   useDataView,
-  useDataViewValue
+  usePageRuntime
 } from '@dataview/react/dataview'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
@@ -27,6 +23,9 @@ import { useViewSettings } from '@dataview/react/page/features/viewSettings/cont
 import { supportsGroupSettings } from '@dataview/runtime'
 import type { TokenTranslator } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
+import {
+  useStoreValue
+} from '@shared/react'
 
 type RootRouteKind = 'layout' | 'viewProperties' | 'fieldList' | 'filter' | 'sort' | 'group'
 
@@ -226,25 +225,15 @@ export const RootPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
+  const pageRuntime = usePageRuntime()
+  const settings = useStoreValue(pageRuntime.settings)
   const router = useViewSettings()
-  const currentView = useDataViewValue(
-    dataView => dataView.engine.active.config
-  )
-  const fields = getDocumentFields(document)
-  const filterProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.filters
-  )
-  const sortProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.sort
-  )
-  const groupProjection = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    state => state?.query.group
-  )
-  const viewsCount = getDocumentViews(document).length
+  const currentView = settings.currentView
+  const fields = settings.fields
+  const filterProjection = settings.filter
+  const sortProjection = settings.sort
+  const groupProjection = settings.group
+  const viewsCount = settings.viewsCount
   const propertyCount = currentView?.display.fields.length ?? 0
   const menuItems: RootMenuItemConfig[] = [
     {

@@ -1,8 +1,9 @@
 import { useOverlayKey } from '@shared/ui/overlay'
 import { keyDown } from '@dataview/react/interaction'
-import { useDataView, useDataViewValue } from '@dataview/react/dataview'
+import { useDataView, usePageRuntime, useDataViewValue } from '@dataview/react/dataview'
 import { closestTarget } from '@shared/dom'
 import { pageShortcutAction } from '@dataview/react/page/keyboard'
+import { useStoreValue } from '@shared/react'
 
 const editingTargetSelector = [
   'input',
@@ -14,7 +15,8 @@ const editingTargetSelector = [
 export const PageKeyboardHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const currentView = useDataViewValue(dataView => dataView.engine.active.config)
+  const page = usePageRuntime()
+  const pageBody = useStoreValue(page.body)
   const valueEditorOpen = useDataViewValue(
     dataView => dataView.page.store,
     state => state.valueEditorOpen
@@ -62,7 +64,7 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return true
         case 'select-all':
-          if (currentView?.type === 'table') {
+          if (pageBody.viewType === 'table') {
             return
           }
 
@@ -70,7 +72,7 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return true
         case 'clear-selection':
-          if (currentView?.type === 'table') {
+          if (pageBody.viewType === 'table') {
             return
           }
 
@@ -78,11 +80,11 @@ export const PageKeyboardHost = () => {
           event.preventDefault()
           return true
         case 'remove-selection':
-          if (currentView?.type === 'table') {
+          if (pageBody.viewType === 'table') {
             return
           }
 
-          if (currentView) {
+          if (pageBody.viewType) {
             engine.active.items.remove(
               dataView.selection.enumerate.materialize()
             )

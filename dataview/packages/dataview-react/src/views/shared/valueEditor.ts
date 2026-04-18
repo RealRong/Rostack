@@ -8,7 +8,7 @@ import type {
   ValueEditorCloseAction,
   ValueEditorSessionPolicy,
   ViewFieldRef
-} from '@dataview/react/runtime/valueEditor'
+} from '@dataview/runtime/valueEditor'
 
 export const createFocusOwnerSessionPolicy = (input: {
   focusOwner: () => void

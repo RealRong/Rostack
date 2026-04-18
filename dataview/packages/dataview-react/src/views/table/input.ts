@@ -10,7 +10,7 @@ import type {
 import {
   createItemListSelectionDomain,
   selectionSnapshot
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import {
   gridKeyAction,
   isSelectAll,

@@ -18,11 +18,11 @@ import {
 import type { ItemId } from '@dataview/engine'
 import type {
   SelectionCommandApi
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import {
   createItemListSelectionDomain,
   selectionSnapshot
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView

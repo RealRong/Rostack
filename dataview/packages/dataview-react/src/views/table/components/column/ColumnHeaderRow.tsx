@@ -12,7 +12,7 @@ import type {
 } from '@dataview/engine'
 import type {
   SelectionScope
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import type {
   Field,
   FieldId

@@ -6,7 +6,7 @@ import type {
 } from '@dataview/engine'
 import type {
   ValueEditorApi,
-} from '@dataview/react/runtime/valueEditor'
+} from '@dataview/runtime/valueEditor'
 import {
   createFocusOwnerSessionPolicy,
   openFieldValueEditor

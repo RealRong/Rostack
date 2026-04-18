@@ -942,7 +942,7 @@ const resolveSelectionToolbar = ({
   }
 }
 
-export const createSelectionPresentationRead = ({
+export const createSelectionRead = ({
   model,
   registry,
   mindmap,

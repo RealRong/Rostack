@@ -6,7 +6,7 @@ import type {
 import type {
   ValueEditorAnchor,
   ValueEditorApi,
-} from '@dataview/react/runtime/valueEditor'
+} from '@dataview/runtime/valueEditor'
 import type { GridSelectionStore } from '@dataview/react/views/table/gridSelection'
 import type { Dom } from '@dataview/react/views/table/dom'
 import {

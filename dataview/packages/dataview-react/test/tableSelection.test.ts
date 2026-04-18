@@ -7,7 +7,7 @@ import {
   createItemArraySelectionDomain,
   createSelectionController,
   selectionSnapshot
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import {
   gridSelection
 } from '@dataview/table'

@@ -10,7 +10,7 @@ import type { AutoPanTargets } from '@dataview/react/interaction/autoPan'
 import type {
   ItemSelectionSnapshot,
   OrderedSelectionDomain
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 
 export type MarqueeMode = 'replace' | 'add' | 'toggle'
 

@@ -9,7 +9,7 @@ import type {
 } from '@dataview/react/runtime/marquee/types'
 import {
   createNullableControllerStore
-} from '@dataview/react/runtime/store'
+} from '@dataview/runtime/store'
 
 const sameSession = (
   left: MarqueeSessionState | null,

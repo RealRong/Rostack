@@ -8,7 +8,7 @@ import {
   PageKeyboardHost,
   PageMarqueeHost
 } from '@dataview/react/page/hosts'
-import { FieldValueEditorHost } from '@dataview/react/runtime/valueEditor'
+import { FieldValueEditorHost } from '@dataview/react/page/hosts/FieldValueEditorHost'
 import { PageBody, type PageBodyProps } from '@dataview/react/page/Body'
 import { PageToolbar } from '@dataview/react/page/Toolbar'
 import { PAGE_INLINE_INSET_CSS, PAGE_INLINE_INSET_VALUE } from '@dataview/react/page/layout'

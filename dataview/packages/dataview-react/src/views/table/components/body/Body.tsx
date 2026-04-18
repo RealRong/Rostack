@@ -39,7 +39,7 @@ import { BlockContent } from '@dataview/react/views/table/components/body/BlockC
 import { Surface } from '@dataview/react/views/table/components/body/Surface'
 import { useRegisterMarqueeAdapter } from '@dataview/react/views/shared/interactionRuntime'
 import type { MarqueeAdapter } from '@dataview/react/runtime/marquee'
-import { createItemListSelectionDomain } from '@dataview/react/runtime/selection'
+import { createItemListSelectionDomain } from '@dataview/runtime/selection'
 
 const View = () => {
   const dataView = useDataView()

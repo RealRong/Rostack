@@ -40,6 +40,7 @@ export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'item'> & {
   item: KeyedReadStore<NodeId, MindmapItem | undefined>
   tree: KeyedReadStore<NodeId, MindmapItem['tree'] | undefined>
   render: KeyedReadStore<NodeId, MindmapRenderView | undefined>
+  preview: ReadStore<MindmapPreviewState | undefined>
 }
 
 const interpolateRect = (
@@ -454,6 +455,7 @@ export const createMindmapRead = ({
     ...read,
     item,
     tree,
-    render
+    render,
+    preview
   }
 }

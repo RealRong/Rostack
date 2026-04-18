@@ -14,12 +14,12 @@ import type { ItemId } from '@dataview/engine'
 import type {
   ItemSelectionController,
   ItemSelectionSnapshot
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import type { MarqueeSessionState } from '@dataview/react/runtime/marquee'
 import {
   createItemListSelectionDomain,
   selectionSnapshot
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import {
   createDerivedStore,
   createValueStore,
@@ -29,8 +29,8 @@ import {
 import type {
   ValueStore
 } from '@shared/core'
-import type { PageState } from '@dataview/react/page/session/types'
-import type { ValueEditorApi } from '@dataview/react/runtime/valueEditor'
+import type { PageState } from '@dataview/runtime/page/session/types'
+import type { ValueEditorApi } from '@dataview/runtime/valueEditor'
 import {
   createCapabilities,
   type Capabilities

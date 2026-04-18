@@ -13,7 +13,7 @@ import type {
 } from '@dataview/engine'
 import type {
   SelectionScope
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { ColumnHeaderRow } from '@dataview/react/views/table/components/column/ColumnHeaderRow'
 

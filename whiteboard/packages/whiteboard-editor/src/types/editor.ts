@@ -85,15 +85,15 @@ export type EditorStore = {
 }
 
 export type EditorChromePresentation = {
-  marquee: ReturnType<EditorQuery['preview']['marquee']['get']>
-  draw: ReturnType<EditorQuery['preview']['draw']['get']>
-  edgeGuide: ReturnType<EditorQuery['preview']['edgeGuide']['get']>
-  snap: ReturnType<EditorQuery['preview']['snap']['get']>
-  selection: ReturnType<EditorQuery['selection']['presentation']['overlay']['get']>
+  marquee: ReturnType<EditorQuery['chrome']['marquee']['get']>
+  draw: ReturnType<EditorQuery['chrome']['draw']['get']>
+  edgeGuide: ReturnType<EditorQuery['chrome']['edgeGuide']['get']>
+  snap: ReturnType<EditorQuery['chrome']['snap']['get']>
+  selection: ReturnType<EditorQuery['selection']['overlay']['get']>
 }
 
 export type EditorPanelPresentation = {
-  selectionToolbar: ReturnType<EditorQuery['selection']['presentation']['toolbar']['get']>
+  selectionToolbar: ReturnType<EditorQuery['selection']['toolbar']['get']>
   history: HistoryState
   draw: DrawState
 }
@@ -106,7 +106,7 @@ export type EditorRead = {
   node: Pick<EditorQuery['node'], 'render'>
   edge: Pick<EditorQuery['edge'], 'render' | 'selectedChrome'>
   scene: Pick<EditorQuery['scene'], 'list'>
-  selection: Pick<EditorQuery['selection']['presentation'], 'node' | 'box'>
+  selection: Pick<EditorQuery['selection'], 'node' | 'box'>
   tool: EditorQuery['tool']
   viewport: EditorQuery['viewport']
   chrome: ReadStore<EditorChromePresentation>

@@ -11,7 +11,7 @@ import {
 import type {
   ItemSelectionController,
   ItemSelectionSnapshot
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 
 export type TableSelectionMode =
   | 'none'

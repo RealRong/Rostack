@@ -25,7 +25,7 @@ import {
   type VisualTargetRegistry
 } from '@dataview/react/runtime/marquee'
 import { useStoreValue } from '@shared/react'
-import { createItemArraySelectionDomain } from '@dataview/react/runtime/selection'
+import { createItemArraySelectionDomain } from '@dataview/runtime/selection'
 import type {
   ItemInteractionRuntime
 } from '@dataview/react/views/shared/types'

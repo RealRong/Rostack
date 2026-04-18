@@ -25,7 +25,7 @@ import type { EditInput } from '@dataview/react/interaction'
 import type {
   ValueEditorResult,
   ValueEditorSession
-} from '@dataview/react/runtime/valueEditor/types'
+} from '@dataview/runtime/valueEditor'
 import {
   OverlayProvider,
   OVERLAY_BLOCKING_ATTR,

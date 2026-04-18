@@ -14,7 +14,7 @@ import { FieldPicker } from '@dataview/react/field/picker'
 import { Popover } from '@shared/ui/popover'
 import { meta } from '@dataview/meta'
 import { useTranslation } from '@shared/i18n/react'
-import type { QueryBarEntry } from '@dataview/react/page/session/types'
+import type { QueryBarEntry } from '@dataview/runtime/page/session/types'
 import { QueryChip } from '@dataview/react/page/features/query'
 
 export type ViewQueryOpenEntry = QueryBarEntry

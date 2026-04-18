@@ -1,4 +1,4 @@
-import { createNullableControllerStore } from '@dataview/react/runtime/store'
+import { createNullableControllerStore } from '@dataview/runtime/store'
 import type {
   DragApi,
   DragSpec

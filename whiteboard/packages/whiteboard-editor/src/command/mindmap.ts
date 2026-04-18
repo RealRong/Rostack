@@ -425,7 +425,7 @@ const updateMindmapPreview = ({
     current: MindmapPreviewState | undefined
   ) => MindmapPreviewState | undefined
 }) => {
-  const next = project(read.preview.mindmapPreview.get())
+  const next = project(read.mindmap.preview.get())
   if (!next || (
     !next.rootMove
     && !next.subtreeMove

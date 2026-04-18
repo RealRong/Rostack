@@ -14,11 +14,11 @@ export const projectEditorRead = (
 ): EditorRead => {
   const chrome = createDerivedStore<EditorChromePresentation>({
     get: () => ({
-      marquee: readValue(query.preview.marquee),
-      draw: readValue(query.preview.draw),
-      edgeGuide: readValue(query.preview.edgeGuide),
-      snap: readValue(query.preview.snap),
-      selection: readValue(query.selection.presentation.overlay)
+      marquee: readValue(query.chrome.marquee),
+      draw: readValue(query.chrome.draw),
+      edgeGuide: readValue(query.chrome.edgeGuide),
+      snap: readValue(query.chrome.snap),
+      selection: readValue(query.selection.overlay)
     }),
     isEqual: (left, right) => (
       left.marquee === right.marquee
@@ -30,7 +30,7 @@ export const projectEditorRead = (
   })
   const panel = createDerivedStore<EditorPanelPresentation>({
     get: () => ({
-      selectionToolbar: readValue(query.selection.presentation.toolbar),
+      selectionToolbar: readValue(query.selection.toolbar),
       history: readValue(query.history),
       draw: readValue(query.draw)
     }),
@@ -64,8 +64,8 @@ export const projectEditorRead = (
       list: query.scene.list
     },
     selection: {
-      node: query.selection.presentation.node,
-      box: query.selection.presentation.box
+      node: query.selection.node,
+      box: query.selection.box
     },
     tool: query.tool,
     viewport: query.viewport,

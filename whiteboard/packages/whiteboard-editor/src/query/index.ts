@@ -29,9 +29,9 @@ import {
   type SelectionModelRead
 } from '@whiteboard/editor/query/selection/model'
 import {
-  createSelectionPresentationRead,
+  createSelectionRead,
   type SelectionRead
-} from '@whiteboard/editor/query/selection/presentation'
+} from '@whiteboard/editor/query/selection/read'
 import {
   createTargetRead,
   type RuntimeTargetRead
@@ -100,8 +100,7 @@ export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   mindmap: MindmapPresentationRead
   selection: {
     model: SelectionModelRead
-    presentation: SelectionRead
-  }
+  } & SelectionRead
   tool: ToolRead
   draw: ReadStore<DrawState>
   space: ReadStore<boolean>
@@ -113,11 +112,9 @@ export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
     screenPoint: ViewportRuntime['input']['screenPoint']
     size: ViewportRuntime['input']['size']
   }
-  preview: {
-    node: EditorInputPreview['selectors']['node']
+  chrome: {
     draw: EditorInputPreview['selectors']['draw']
     marquee: EditorInputPreview['selectors']['marquee']
-    mindmapPreview: EditorInputPreview['selectors']['mindmapPreview']
     edgeGuide: EditorInputPreview['selectors']['edgeGuide']
     snap: EditorInputPreview['selectors']['snap']
   }
@@ -179,7 +176,7 @@ export const createEditorQuery = ({
     node: nodeRead,
     edge: edgeRead
   })
-  const selectionPresentation = createSelectionPresentationRead({
+  const selectionRead = createSelectionRead({
     model: selectionModel,
     registry,
     mindmap: mindmapRead,
@@ -200,7 +197,7 @@ export const createEditorQuery = ({
     mindmap: mindmapRead,
     selection: {
       model: selectionModel,
-      presentation: selectionPresentation
+      ...selectionRead
     },
     scene: engineRead.scene,
     slice: engineRead.slice,
@@ -215,11 +212,9 @@ export const createEditorQuery = ({
       screenPoint: local.viewport.input.screenPoint,
       size: local.viewport.input.size
     },
-    preview: {
-      node: input.preview.selectors.node,
+    chrome: {
       draw: input.preview.selectors.draw,
       marquee: input.preview.selectors.marquee,
-      mindmapPreview: input.preview.selectors.mindmapPreview,
       edgeGuide: input.preview.selectors.edgeGuide,
       snap: input.preview.selectors.snap
     }

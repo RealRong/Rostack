@@ -8,7 +8,7 @@ import type {
 } from '@dataview/react/virtual'
 import type {
   SelectionScope
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 
 export interface TableColumnHeaderBlock extends VirtualBlock {
   kind: 'column-header'

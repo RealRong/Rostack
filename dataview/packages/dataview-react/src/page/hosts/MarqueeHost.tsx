@@ -26,7 +26,7 @@ import { useOverlay } from '@shared/ui/overlay'
 import {
   selectionSnapshot,
   type ItemSelectionSnapshot
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import { useStoreValue } from '@shared/react'
 import type {
   MarqueeAdapter,

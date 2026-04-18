@@ -18,7 +18,7 @@ import {
 import type { ItemId } from '@dataview/engine'
 import {
   resolveInlineSessionExitEffect
-} from '@dataview/react/runtime/inlineSession'
+} from '@dataview/runtime/inlineSession'
 import {
   readCardTitleText
 } from '@dataview/react/views/shared/cardTitleValue'

@@ -2,7 +2,7 @@ import type { ViewState as CurrentView, ItemId } from '@dataview/engine'
 import {
   createItemListSelectionScope,
   type SelectionScope
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import type {
   TableBlock,
   TableColumnFooterBlock,

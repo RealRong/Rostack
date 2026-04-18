@@ -7,7 +7,7 @@ import {
   createItemListSelectionDomain,
   selectionSnapshot,
   type SelectionScope
-} from '@dataview/react/runtime/selection'
+} from '@dataview/runtime/selection'
 import type {
   ItemId
 } from '@dataview/engine'

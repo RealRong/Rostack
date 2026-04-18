@@ -24,7 +24,7 @@ import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta } from '@dataview/meta'
 import { buildNavigationItem } from '@dataview/react/menu-builders'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
-import { supportsGroupSettings } from '@dataview/react/page/session/settings'
+import { supportsGroupSettings } from '@dataview/runtime'
 import type { TokenTranslator } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
 

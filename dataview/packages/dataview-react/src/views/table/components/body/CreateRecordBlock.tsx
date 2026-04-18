@@ -23,7 +23,7 @@ import {
 import { cn } from '@shared/ui/utils'
 import { Button } from '@shared/ui/button'
 import { PlusIcon } from 'lucide-react'
-import type { CreateRecordOpenResult } from '@dataview/react/runtime/createRecord'
+import type { CreateRecordOpenResult } from '@dataview/runtime/createRecord'
 
 const MAX_OPEN_ATTEMPTS = 8
 

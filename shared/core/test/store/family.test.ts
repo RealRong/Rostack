@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
+  createReadStore,
   createKeyedDerivedStore,
   createValueStore,
   read
@@ -46,5 +47,61 @@ describe('createKeyedDerivedStore', () => {
     expect(family.get({
       id: 'left'
     })).toBe(4)
+  })
+
+  test('schedules idle cleanup asynchronously and keeps a key alive when it is read again before cleanup', () => {
+    const queuedTasks: Array<() => void> = []
+    const queueMicrotaskSpy = vi
+      .spyOn(globalThis, 'queueMicrotask')
+      .mockImplementation(task => {
+        queuedTasks.push(task)
+      })
+    try {
+      let dependencySubscribers = 0
+      const source = createReadStore({
+        get: () => 7,
+        subscribe: () => {
+          dependencySubscribers += 1
+          return () => {
+            dependencySubscribers -= 1
+          }
+        }
+      })
+
+      let getCalls = 0
+      const family = createKeyedDerivedStore({
+        keyOf: key => key.id,
+        get: (key: { id: string }) => {
+          getCalls += 1
+          return read(source) + key.id.length
+        }
+      })
+
+      const left = {
+        id: 'left'
+      }
+
+      const unsubscribe = family.subscribe(left, () => {})
+      expect(getCalls).toBe(1)
+      expect(dependencySubscribers).toBe(1)
+
+      unsubscribe()
+
+      expect(dependencySubscribers).toBe(0)
+      expect(queueMicrotaskSpy).toHaveBeenCalledTimes(1)
+      expect(queuedTasks).toHaveLength(1)
+
+      expect(family.get(left)).toBe(11)
+      expect(getCalls).toBe(2)
+      expect(dependencySubscribers).toBe(1)
+
+      queuedTasks[0]()
+
+      expect(dependencySubscribers).toBe(1)
+      expect(family.get(left)).toBe(11)
+      expect(getCalls).toBe(2)
+    } finally {
+      queueMicrotaskSpy.mockRestore()
+    }
   })
 })

@@ -15,12 +15,9 @@ import type {
 
 interface FamilyEntry<K, T> {
   key: K
-  cacheKey: unknown
   node: DerivedNode<T>
-  idleRevision: number | null
+  idle: boolean
 }
-
-const EVICT_AFTER_IDLE_REVISIONS = 1
 
 export const createKeyedDerivedStore = <K, T>(
   options: {
@@ -30,15 +27,17 @@ export const createKeyedDerivedStore = <K, T>(
   }
 ): KeyedReadStore<K, T> => {
   const cache = new Map<unknown, FamilyEntry<K, T>>()
-  let familyRevision = 0
+  const pendingIdleCacheKeys = new Set<unknown>()
+  let idleCleanupScheduled = false
 
-  const sweep = () => {
-    cache.forEach((entry, cacheKey) => {
-      if (
-        entry.node.subscriberCount() > 0
-        || entry.idleRevision === null
-        || familyRevision - entry.idleRevision <= EVICT_AFTER_IDLE_REVISIONS
-      ) {
+  const flushIdleEntries = () => {
+    idleCleanupScheduled = false
+    const cacheKeys = Array.from(pendingIdleCacheKeys)
+    pendingIdleCacheKeys.clear()
+
+    cacheKeys.forEach(cacheKey => {
+      const entry = cache.get(cacheKey)
+      if (!entry || !entry.idle || entry.node.subscriberCount() > 0) {
         return
       }
 
@@ -47,24 +46,29 @@ export const createKeyedDerivedStore = <K, T>(
     })
   }
 
+  const scheduleIdleCleanup = () => {
+    if (idleCleanupScheduled) {
+      return
+    }
+
+    idleCleanupScheduled = true
+    queueMicrotask(flushIdleEntries)
+  }
+
   const resolveStore = (
     key: K
   ): DerivedNode<T> => {
-    familyRevision += 1
-    sweep()
-
     const cacheKey = options.keyOf ? options.keyOf(key) : key
     const cached = cache.get(cacheKey)
     if (cached) {
       cached.key = key
-      cached.idleRevision = null
+      cached.idle = false
       return cached.node
     }
 
     const entry: FamilyEntry<K, T> = {
       key,
-      cacheKey,
-      idleRevision: null,
+      idle: false,
       node: undefined as unknown as DerivedNode<T>
     }
 
@@ -72,8 +76,9 @@ export const createKeyedDerivedStore = <K, T>(
       get: () => options.get(entry.key),
       ...(options.isEqual ? { isEqual: options.isEqual } : {}),
       onIdle: () => {
-        familyRevision += 1
-        entry.idleRevision = familyRevision
+        entry.idle = true
+        pendingIdleCacheKeys.add(cacheKey)
+        scheduleIdleCleanup()
       }
     })
 

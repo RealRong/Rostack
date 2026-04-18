@@ -151,7 +151,7 @@
 长期结论：
 
 - 必须引入 keyed runtime selector：
-  - `selection.nodeSelected(nodeId)`
+  - `selection.node.selected(nodeId)`
   - `edit.node(nodeId)`
   - `edit.nodeField(nodeId, field)`
 - `node.render(nodeId)` 只能读取本 node 对应的 runtime key，不应再读全局 selection/edit。
@@ -239,7 +239,7 @@
 长期结论：
 
 - 必须提供 keyed read：
-  - `selection.edgeSelected(edgeId)`
+  - `selection.edge.selected(edgeId)`
   - `edit.edgeLabel(edgeId)`
 
 #### 风险点 C：`idsInRect()` 全量扫描所有 edge
@@ -262,7 +262,7 @@
 长期结论：
 
 - `edge.idsInRect()` 不应该存在于 query 的“遍历实现”里。
-- 应该由 engine 或专门的 spatial index 服务提供基于 bounds/path 的命中候选。
+- 它必须是 engine 层的索引能力，query 最多只做转发，不允许自己遍历 `read.edge.list`。
 
 #### 风险点 D：`selectedChrome` 仍读取多个全局态
 
@@ -393,10 +393,10 @@
 
 - selection toolbar 必须分层：
   - `selection.members`
-  - `selection.nodeStats`
-  - `selection.edgeStats`
-  - `selection.nodeScope`
-  - `selection.edgeScope`
+  - `selection.node.stats`
+  - `selection.edge.stats`
+  - `selection.node.scope`
+  - `selection.edge.scope`
   - `selection.toolbar`
 - 每一层都用稳定 key 做 memo，而不是每次 toolbar 读取时再把上面所有工作重做一遍。
 
@@ -474,8 +474,8 @@
 | Edge label 文字度量 | 现在在 `edge.render` 里同步测 DOM | `typography + text + placeholder + widthMode + wrapWidth + fontSize + fontWeight + fontStyle + frame` | `layout` / `text metrics service` | 这是最必须缓存的一项，且 query 不应直接触发测量 |
 | Node type meta / capability | selection/model 与 selection/read 多次重复查 registry/schema | `node.type` | `query.node.meta(type)` 或 registry 自身 | 这是稳定纯函数缓存，非常值 |
 | Edge path / bounds | label 改动、selection 改动不应重新解析 path | `edge geometry revision + endpoint geometry revision` | engine 或 `query.edge.geometry` | 几何与 label 内容必须分层 |
-| Selection node stats | 当前 toolbar 每次从头算 | `selection key + selected node revisions summary` | `query.selection.stats` | 包括 type grouping、lock、hasGroup |
-| Selection edge stats | 当前 toolbar 每次从头算 | `selection key + selected edge revisions summary` | `query.selection.stats` | 包括 type grouping |
+| Selection node stats | 当前 toolbar 每次从头算 | `selection key + selected node revisions summary` | `query.selection.node` | 包括 type grouping、lock、hasGroup |
+| Selection edge stats | 当前 toolbar 每次从头算 | `selection key + selected edge revisions summary` | `query.selection.edge` | 包括 type grouping |
 | Mindmap transient layout | 当前 live edit 在 query 内整树 relayout | `treeId + tree revision + transient size overrides` | editor session/layout runtime | query 只读 materialized layout |
 | Edge spatial hit candidates | 当前 marquee 全量扫描 edges | `viewport-independent spatial index revision` | engine index / hit service | 这不是普通 memo，而是索引 |
 
@@ -561,7 +561,7 @@ edge.idsInRect(rect, options): EdgeId[]
 - `labelMetrics` 只返回缓存好的内容尺寸，不能同步测 DOM。
 - `labelPlacement` 只用 path + metrics 算摆放。
 - `render` 只组合 geometry、runtime、placement。
-- `idsInRect` 必须走索引，不得再用 list filter。
+- `idsInRect` 必须是 engine 索引读，query 不得实现自己的扫描版。
 
 ### 9.3 Selection
 
@@ -571,20 +571,20 @@ edge.idsInRect(rect, options): EdgeId[]
 selection.members(): SelectionMembers
 selection.summary(): SelectionSummary
 selection.affordance(): SelectionAffordance
-selection.nodeStats(): SelectionNodeStats
-selection.edgeStats(): SelectionEdgeStats
-selection.nodeScope(): SelectionToolbarNodeScope | undefined
-selection.edgeScope(): SelectionToolbarEdgeScope | undefined
+selection.node.stats(): SelectionNodeStats
+selection.node.scope(): SelectionToolbarNodeScope | undefined
+selection.node.selected(nodeId): boolean
+selection.edge.stats(): SelectionEdgeStats
+selection.edge.scope(): SelectionToolbarEdgeScope | undefined
+selection.edge.selected(edgeId): boolean
 selection.overlay(): SelectionOverlay | undefined
 selection.toolbar(): SelectionToolbarContext | undefined
-selection.nodeSelected(nodeId): boolean
-selection.edgeSelected(edgeId): boolean
 ```
 
 约束：
 
 - `toolbar()` 不能再是唯一的“大总装 getter”。
-- `nodeSelected(nodeId)`、`edgeSelected(edgeId)` 是必须补出的 keyed runtime 读。
+- `selection.node.selected(nodeId)`、`selection.edge.selected(edgeId)` 是必须补出的 keyed runtime 读。
 
 ### 9.4 Mindmap
 
@@ -616,7 +616,8 @@ hit.edgeCandidates(rect): EdgeId[]
 
 约束：
 
-- 命中是空间索引问题，不应该挂在 query edge 里用 list filter 实现。
+- 命中是空间索引问题。
+- `edge.idsInRect()` / `hit.edgesInRect()` 的真实 owner 必须是 engine index，query 只允许消费或转发。
 
 ## 10. 最终缓存与失效策略
 
@@ -627,8 +628,8 @@ hit.edgeCandidates(rect): EdgeId[]
 ```ts
 edit.node(nodeId): NodeEditSession | undefined
 edit.edgeLabel(edgeId): EdgeLabelEditSession | undefined
-selection.nodeSelected(nodeId): boolean
-selection.edgeSelected(edgeId): boolean
+selection.node.selected(nodeId): boolean
+selection.edge.selected(edgeId): boolean
 ```
 
 这样：
@@ -659,8 +660,8 @@ layout.ensureTextMetrics(key: TextMetricsKey): void
 
 ```ts
 selection.members()
-selection.stats()
-selection.scopes()
+selection.node.stats()
+selection.edge.stats()
 selection.toolbar()
 ```
 

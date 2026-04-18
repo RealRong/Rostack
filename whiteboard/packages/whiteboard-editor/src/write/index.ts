@@ -1,36 +1,24 @@
 import type { Engine } from '@whiteboard/engine'
-import type {
-  HistoryCommands,
-  MindmapCommands
-} from '@whiteboard/editor/types/commands'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import {
-  createDocumentCommands
+  createDocumentWrite
 } from '@whiteboard/editor/write/document'
-import type { DocumentCommands } from '@whiteboard/editor/write/document'
 import {
-  createHistoryCommands
+  createHistoryWrite
 } from '@whiteboard/editor/write/history'
 import {
-  createEdgeCommands,
-  type EdgeCommands
+  createEdgeWrite
 } from '@whiteboard/editor/write/edge'
 import {
   createMindmapWrite
 } from '@whiteboard/editor/write/mindmap'
 import {
-  createNodeCommands
+  createNodeWrite
 } from '@whiteboard/editor/write/node'
-import type { NodeCommands } from '@whiteboard/editor/write/node/types'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type { EditorWrite } from '@whiteboard/editor/write/types'
 
-export type EditorWrite = {
-  document: DocumentCommands
-  node: NodeCommands
-  edge: EdgeCommands
-  mindmap: MindmapCommands
-  history: HistoryCommands
-}
+export type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export const createEditorWrite = ({
   engine,
@@ -41,14 +29,14 @@ export const createEditorWrite = ({
   query: EditorQuery
   layout: EditorLayout
 }): EditorWrite => {
-  const history = createHistoryCommands(engine)
-  const document = createDocumentCommands(engine)
-  const node = createNodeCommands({
+  const history = createHistoryWrite(engine)
+  const document = createDocumentWrite(engine)
+  const node = createNodeWrite({
     engine,
     read: query,
     layout
   })
-  const edge = createEdgeCommands({
+  const edge = createEdgeWrite({
     engine,
     read: query
   })

@@ -23,7 +23,7 @@ export const readSelectionCan = ({
   editor: WhiteboardRuntime
   target: SelectionTarget
 }): SelectionCan => {
-  const document = editor.actions.app.export()
+  const document = editor.read.document.get()
   const pureNodeSelection =
     target.nodeIds.length > 0
     && target.edgeIds.length === 0

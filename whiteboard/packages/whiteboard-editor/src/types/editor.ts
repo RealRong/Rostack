@@ -1,10 +1,11 @@
 import type { HistoryState } from '@whiteboard/core/kernel'
-import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
+import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { ReadStore } from '@shared/core'
 import type {
   Document,
   Viewport
 } from '@whiteboard/core/types'
+import type { EditorActions } from '@whiteboard/editor/action/types'
 import type { DrawState } from '@whiteboard/editor/local/draw/state'
 import type {
   ContextMenuInput,
@@ -18,27 +19,7 @@ import type {
 import type {
   Tool
 } from '@whiteboard/editor/types/tool'
-import type {
-  AppActions,
-  ClipboardCommands,
-  DrawCommands,
-  HistoryCommands,
-  MindmapCommands,
-  SelectionApi,
-  ToolActions,
-  ViewportActions
-} from '@whiteboard/editor/types/commands'
-import type { NodeCommands as RuntimeNodeCommands } from '@whiteboard/editor/write/node/types'
-import type { EdgeCommands as RuntimeEdgeCommands } from '@whiteboard/editor/write/edge'
-import type {
-  ViewportRead
-} from '@whiteboard/editor/local/viewport/runtime'
-import type {
-  EditCaret,
-  EditField,
-  EditLayout,
-  EditSession
-} from '@whiteboard/editor/local/session/edit'
+import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { Unsubscribe } from '@shared/core'
 import type { Commit } from '@whiteboard/engine/types/commit'
@@ -99,10 +80,12 @@ export type EditorPanelPresentation = {
 }
 
 export type EditorRead = {
-  document: Pick<EditorQuery['document'], 'background' | 'bounds'>
+  document: Pick<EditorQuery['document'], 'background' | 'bounds'> & {
+    get: () => Document
+  }
   group: Pick<EditorQuery['group'], 'exactIds'>
   history: EditorQuery['history']
-  mindmap: Pick<EditorQuery['mindmap'], 'render'>
+  mindmap: Pick<EditorQuery['mindmap'], 'render' | 'navigate'>
   node: Pick<EditorQuery['node'], 'render'>
   edge: Pick<EditorQuery['edge'], 'render' | 'selectedChrome'>
   scene: Pick<EditorQuery['scene'], 'list'>
@@ -111,70 +94,6 @@ export type EditorRead = {
   viewport: EditorQuery['viewport']
   chrome: ReadStore<EditorChromePresentation>
   panel: ReadStore<EditorPanelPresentation>
-}
-
-export type EditorSelectionActions = {
-  replace: (input: SelectionInput) => void
-  add: (input: SelectionInput) => void
-  remove: (input: SelectionInput) => void
-  toggle: (input: SelectionInput) => void
-  selectAll: () => void
-  clear: () => void
-  frame: SelectionApi['frame']
-  order: SelectionApi['order']
-  group: SelectionApi['group']
-  ungroup: SelectionApi['ungroup']
-  delete: SelectionApi['delete']
-  duplicate: SelectionApi['duplicate']
-}
-
-export type EditorEditActions = {
-  startNode: (
-    nodeId: string,
-    field: EditField,
-    options?: {
-      caret?: EditCaret
-    }
-  ) => void
-  startEdgeLabel: (
-    edgeId: string,
-    labelId: string,
-    options?: {
-      caret?: EditCaret
-    }
-  ) => void
-  input: (text: string) => void
-  layout: (patch: Partial<EditLayout>) => void
-  caret: (caret: EditCaret) => void
-  cancel: () => void
-  commit: () => void
-}
-
-export type EditorNodeActions = Omit<
-  RuntimeNodeCommands,
-  'update' | 'updateMany'
->
-
-export type EditorEdgeActions = Pick<
-  RuntimeEdgeCommands,
-  'create' | 'patch' | 'move' | 'reconnect' | 'delete' | 'route' | 'label' | 'style' | 'type' | 'lock' | 'textMode'
->
-
-export type EditorActions = {
-  app: AppActions
-  tool: ToolActions
-  viewport: Pick<
-    ViewportActions,
-    'set' | 'panBy' | 'zoomTo' | 'fit' | 'reset' | 'setRect' | 'setLimits'
-  >
-  draw: DrawCommands
-  selection: EditorSelectionActions
-  edit: EditorEditActions
-  node: EditorNodeActions
-  edge: EditorEdgeActions
-  mindmap: MindmapCommands
-  clipboard: ClipboardCommands
-  history: HistoryCommands
 }
 
 export type EditorEvents = {

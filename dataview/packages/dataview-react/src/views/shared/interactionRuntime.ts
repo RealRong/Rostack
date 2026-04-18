@@ -2,43 +2,33 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState
 } from 'react'
-import type {
-  ViewId
-} from '@dataview/core/contracts'
-import type {
-  ItemId
-} from '@dataview/engine'
+import type { ItemId } from '@dataview/engine'
 import {
   useDataView
 } from '@dataview/react/dataview'
 import type {
-  AutoPanTargets
-} from '@dataview/react/interaction/autoPan'
-import {
-  createVisualTargetRegistry,
-  type MarqueeAdapter,
-  type MarqueeMode,
-  type SelectionTarget,
-  type VisualTargetRegistry
+  MarqueeMode,
+  MarqueeScene
 } from '@dataview/react/runtime/marquee'
 import { useStoreValue } from '@shared/react'
-import { createItemArraySelectionDomain } from '@dataview/runtime/selection'
 import type {
   ItemInteractionRuntime
 } from '@dataview/react/views/shared/types'
 
-export const useRegisterMarqueeAdapter = (
-  adapter: MarqueeAdapter
+export const useRegisterMarqueeScene = (
+  scene: MarqueeScene | undefined
 ) => {
   const dataView = useDataView()
 
-  useEffect(
-    () => dataView.marquee.registerAdapter(adapter),
-    [adapter, dataView.marquee]
-  )
+  useEffect(() => {
+    if (!scene) {
+      return
+    }
+
+    return dataView.marquee.registerScene(scene)
+  }, [dataView.marquee, scene])
 }
 
 export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] => {
@@ -75,68 +65,15 @@ export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] =
   }), [getSelectedIds, isSelected, select])
 }
 
-export const useItemInteractionRuntime = (input: {
-  viewId: ViewId
-  itemIds: readonly ItemId[]
-  disabled?: boolean
-  canStart: (event: PointerEvent) => boolean
-  resolveAutoPanTargets: () => AutoPanTargets | null
-  getTargets?: () => readonly SelectionTarget[]
-  onStart?: MarqueeAdapter['onStart']
-  onEnd?: MarqueeAdapter['onEnd']
-  onCancel?: MarqueeAdapter['onCancel']
-}): ItemInteractionRuntime => {
+export const useItemInteractionRuntime = (): ItemInteractionRuntime => {
   const dataView = useDataView()
   const selection = useItemSelectionRuntime()
-  const visualTargets = useRef<VisualTargetRegistry>(createVisualTargetRegistry({
-    resolveScrollTargets: input.resolveAutoPanTargets
-  })).current
-  const marqueeSession = useStoreValue(dataView.marquee.store)
-  const marqueeActive = marqueeSession?.ownerViewId === input.viewId
-
-  const adapter = useMemo<MarqueeAdapter>(() => ({
-    viewId: input.viewId,
-    disabled: input.disabled,
-    canStart: input.canStart,
-    getTargets: input.getTargets ?? (() => visualTargets.getTargets(input.itemIds)),
-    domain: () => createItemArraySelectionDomain(input.itemIds),
-    resolveAutoPanTargets: input.resolveAutoPanTargets,
-    onStart: session => {
-      visualTargets.clearFrozen()
-      input.onStart?.(session)
-    },
-    onEnd: (session, currentSelection) => {
-      visualTargets.clearFrozen()
-      input.onEnd?.(session, currentSelection)
-    },
-    onCancel: (session, currentSelection) => {
-      visualTargets.clearFrozen()
-      input.onCancel?.(session, currentSelection)
-    }
-  }), [
-    input.canStart,
-    input.disabled,
-    input.getTargets,
-    input.itemIds,
-    input.onCancel,
-    input.onEnd,
-    input.onStart,
-    input.resolveAutoPanTargets,
-    input.viewId,
-    visualTargets
-  ])
-
-  useRegisterMarqueeAdapter(adapter)
+  const marqueeActive = useStoreValue(dataView.marquee.store) !== null
 
   return useMemo(() => ({
     selection,
-    marqueeActive,
-    visualTargets
-  }), [
-    marqueeActive,
-    selection,
-    visualTargets
-  ])
+    marqueeActive
+  }), [marqueeActive, selection])
 }
 
 export interface ItemDragRuntime extends ItemInteractionRuntime {
@@ -147,16 +84,10 @@ export interface ItemDragRuntime extends ItemInteractionRuntime {
 }
 
 export const useItemDragRuntime = (input: {
-  viewId: ViewId
   itemIds: readonly ItemId[]
-  canStart: (event: PointerEvent) => boolean
-  resolveAutoPanTargets: () => AutoPanTargets | null
 }): ItemDragRuntime => {
   const [dragging, setDragging] = useState(false)
-  const interaction = useItemInteractionRuntime({
-    ...input,
-    disabled: dragging
-  })
+  const interaction = useItemInteractionRuntime()
   const itemIdSet = useMemo(
     () => new Set(input.itemIds),
     [input.itemIds]

@@ -8,9 +8,16 @@ import type {
   EditorRead
 } from '@whiteboard/editor/types/editor'
 import type { EditorQuery } from '@whiteboard/editor/query'
+import type { Engine } from '@whiteboard/engine'
 
 export const createEditorRead = (
-  query: EditorQuery
+  {
+    engine,
+    query
+  }: {
+    engine: Pick<Engine, 'document'>
+    query: EditorQuery
+  }
 ): EditorRead => {
   const chrome = createDerivedStore<EditorChromePresentation>({
     get: () => ({
@@ -43,6 +50,7 @@ export const createEditorRead = (
 
   return {
     document: {
+      get: engine.document.get,
       background: query.document.background,
       bounds: query.document.bounds
     },
@@ -51,7 +59,8 @@ export const createEditorRead = (
     },
     history: query.history,
     mindmap: {
-      render: query.mindmap.render
+      render: query.mindmap.render,
+      navigate: query.mindmap.navigate
     },
     node: {
       render: query.node.render

@@ -10,44 +10,11 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type { EdgeApi } from '@whiteboard/editor/types/commands'
 import type { EditorQuery } from '@whiteboard/editor/query'
-
-export type EdgeCommands = {
-  create: EdgeApi['create']
-  patch: EdgeApi['patch']
-  move: EdgeApi['move']
-  reconnect: EdgeApi['reconnect']
-  update: (id: EdgeId, patch: EdgePatch) => CommandResult
-  updateMany: (
-    updates: readonly {
-      id: EdgeId
-      patch: EdgePatch
-    }[]
-  ) => CommandResult
-  delete: (ids: EdgeId[]) => CommandResult
-  route: EdgeApi['route']
-  label: EdgeApi['labels']
-  style: {
-    color: (edgeIds: readonly EdgeId[], value?: string) => CommandResult | undefined
-    opacity: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
-    width: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
-    dash: (edgeIds: readonly EdgeId[], value?: EdgeDash) => CommandResult | undefined
-    start: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
-    end: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
-    swapMarkers: (edgeIds: readonly EdgeId[]) => CommandResult | undefined
-  }
-  type: {
-    set: (edgeIds: readonly EdgeId[], value: EdgeType) => CommandResult | undefined
-  }
-  lock: {
-    set: (edgeIds: readonly EdgeId[], locked: boolean) => CommandResult | undefined
-    toggle: (edgeIds: readonly EdgeId[]) => CommandResult | undefined
-  }
-  textMode: {
-    set: (edgeIds: readonly EdgeId[], value?: EdgeTextMode) => CommandResult | undefined
-  }
-}
+import type {
+  EdgeLabelPatch,
+  EdgeWrite
+} from '@whiteboard/editor/write/types'
 
 const DEFAULT_EDGE_LABEL = {
   t: 0.5,
@@ -160,7 +127,7 @@ const patchEdgeType = (
 const mergeEdgeLabelPatch = (
   edge: Edge,
   labelId: string,
-  patch: Parameters<EdgeApi['labels']['patch']>[2]
+  patch: EdgeLabelPatch
 ) => {
   const labels = edge.labels ?? []
   let changed = false
@@ -193,13 +160,13 @@ const mergeEdgeLabelPatch = (
     : undefined
 }
 
-export const createEdgeCommands = ({
+export const createEdgeWrite = ({
   engine,
   read
 }: {
   engine: Engine
   read: EditorQuery
-}): EdgeCommands => ({
+}): EdgeWrite => ({
   create: (payload) => engine.execute({
     type: 'edge.create',
     payload

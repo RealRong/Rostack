@@ -1,43 +1,24 @@
 import type { ItemId } from '@dataview/engine'
 import type {
   Box,
-  Point,
-  RectItem
+  Point
 } from '@shared/dom'
 import type { ValueStore } from '@shared/core'
-import type { ViewId } from '@dataview/core/contracts'
-import type { AutoPanTargets } from '@dataview/react/interaction/autoPan'
-import type {
-  ItemSelectionSnapshot,
-  OrderedSelectionDomain
-} from '@dataview/runtime/selection'
+import type { ItemSelectionSnapshot } from '@dataview/runtime/selection'
 
 export type MarqueeMode = 'replace' | 'add' | 'toggle'
 
 export interface MarqueeSessionState {
-  ownerViewId: ViewId
   mode: MarqueeMode
   start: Point
   current: Point
-  box: Box
+  rect: Box
+  hitIds: readonly ItemId[]
   baseSelection: ItemSelectionSnapshot
 }
 
-export type SelectionTarget = RectItem<ItemId>
-
-export interface MarqueeAdapter {
-  viewId: ViewId
-  canStart: (event: PointerEvent) => boolean
-  getTargets?: () => readonly SelectionTarget[]
-  getHitIds?: (session: MarqueeSessionState) => readonly ItemId[]
-  domain: () => OrderedSelectionDomain<ItemId>
-  resolveAutoPanTargets?: () => AutoPanTargets | null
-  previewSelection?: (selection: ItemSelectionSnapshot) => void
-  clearPreviewSelection?: () => void
-  onStart?: (session: MarqueeSessionState) => void
-  onEnd?: (session: MarqueeSessionState, selection: ItemSelectionSnapshot) => void
-  onCancel?: (session: MarqueeSessionState, selection: ItemSelectionSnapshot) => void
-  disabled?: boolean
+export interface MarqueeScene {
+  hitTest(rect: Box): readonly ItemId[]
 }
 
 export interface MarqueeApi {
@@ -46,6 +27,6 @@ export interface MarqueeApi {
   start(session: MarqueeSessionState): void
   update(session: MarqueeSessionState): void
   clear(): void
-  registerAdapter(adapter: MarqueeAdapter): () => void
-  getAdapter(viewId: ViewId): MarqueeAdapter | undefined
+  registerScene(scene: MarqueeScene): () => void
+  getScene(): MarqueeScene | undefined
 }

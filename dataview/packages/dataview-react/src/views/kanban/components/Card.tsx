@@ -43,8 +43,6 @@ export const Card = (props: {
       canDrag={extra.canReorder}
       drag={runtime.drag}
       selection={runtime.selection}
-      visualTargets={runtime.visualTargets}
-      marqueeActive={runtime.marqueeActive}
       titlePlaceholder={record => record.id}
       showEditAction
       className={props.className}

@@ -1,14 +1,14 @@
 import type { NodeId } from '@whiteboard/core/types'
 import type { EditorQuery } from '@whiteboard/editor/query'
-import type { NodePatchWriter } from '@whiteboard/editor/write/node/types'
+import type { NodePatchWrite } from '@whiteboard/editor/write/types'
 
 export type NodeContext = {
   read: {
     committed: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
     live: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
   }
-  write: NodePatchWriter & {
-    deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWriter['update']> | undefined
+  write: NodePatchWrite & {
+    deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWrite['update']> | undefined
   }
 }
 
@@ -18,8 +18,8 @@ export const createNodeContext = ({
   deleteCascade
 }: {
   read: EditorQuery
-  patch: NodePatchWriter
-  deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWriter['update']> | undefined
+  patch: NodePatchWrite
+  deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWrite['update']> | undefined
 }): NodeContext => ({
   read: {
     committed: (id) => read.node.committed.get(id),

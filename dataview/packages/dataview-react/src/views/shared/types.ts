@@ -4,9 +4,6 @@ import type {
   ItemId,
   ViewState
 } from '@dataview/engine'
-import type {
-  VisualTargetRegistry
-} from '@dataview/react/runtime/marquee'
 
 export type ActiveTypedViewState<TType extends View['type']> = ViewState & {
   view: View & {
@@ -22,13 +19,12 @@ export interface TypedRuntimeInput<TType extends View['type'], TExtra> {
 export interface SelectableItemRuntime {
   getSelectedIds: () => readonly ItemId[]
   isSelected: (id: ItemId) => boolean
-  select: (id: ItemId, mode?: 'replace' | 'toggle') => void
+  select: (id: ItemId, mode?: 'replace' | 'add' | 'toggle') => void
 }
 
 export interface ItemInteractionRuntime {
   selection: SelectableItemRuntime
   marqueeActive: boolean
-  visualTargets: VisualTargetRegistry
 }
 
 export interface ScrollContainerRuntime {

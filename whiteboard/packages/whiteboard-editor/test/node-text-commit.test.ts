@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createNodeTextCommands } from '../src/write/node/text'
+import { createNodeTextWrite } from '../src/write/node/text'
 
-describe('createNodeTextCommands.commit', () => {
+describe('createNodeTextWrite.commit', () => {
   it('persists measured size and wrap width even when text content is unchanged', () => {
     const update = vi.fn()
 
-    const commands = createNodeTextCommands({
+    const write = createNodeTextWrite({
       read: {
         committed: () => ({
           node: {
@@ -33,7 +33,7 @@ describe('createNodeTextCommands.commit', () => {
       }
     })
 
-    commands.commit({
+    write.commit({
       nodeId: 'node-1',
       field: 'text',
       value: 'Central topic',

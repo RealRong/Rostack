@@ -67,9 +67,9 @@ export type {
   InlineSessionTarget,
   ItemSelectionController,
   ItemSelectionSnapshot,
-  MarqueeAdapter,
   MarqueeApi,
   MarqueeMode,
+  MarqueeScene,
   MarqueeSessionState,
   PageLock,
   PageSessionApi,
@@ -80,6 +80,5 @@ export type {
   SelectionScope,
   SelectionSnapshot,
   SelectionSummary,
-  SelectionTarget,
   SettingsRoute
 } from '@dataview/react/dataview'

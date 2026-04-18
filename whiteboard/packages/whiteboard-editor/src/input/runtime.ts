@@ -1,5 +1,6 @@
 import type { Engine } from '@whiteboard/engine'
-import type { EditorActions, EditorInputHost } from '@whiteboard/editor/types/editor'
+import type { EditorActions } from '@whiteboard/editor/action/types'
+import type { EditorInputHost } from '@whiteboard/editor/types/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import {
@@ -14,7 +15,7 @@ import { createEditorInputHost } from '@whiteboard/editor/input/host'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
-import type { EditorWrite } from '@whiteboard/editor/write'
+import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type EditorHostDeps = {
   engine: Engine

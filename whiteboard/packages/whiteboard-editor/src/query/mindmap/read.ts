@@ -40,6 +40,11 @@ export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'item'> & {
   item: KeyedReadStore<NodeId, MindmapItem | undefined>
   tree: KeyedReadStore<NodeId, MindmapItem['tree'] | undefined>
   render: KeyedReadStore<NodeId, MindmapRenderView | undefined>
+  navigate: (input: {
+    id: NodeId
+    fromNodeId: NodeId
+    direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+  }) => NodeId | undefined
   preview: ReadStore<MindmapPreviewState | undefined>
 }
 
@@ -243,6 +248,43 @@ const readCommittedMindmapNodeSize = (
         height: item.rect.height
       }
     : undefined
+}
+
+const readMindmapNavigateTarget = ({
+  tree,
+  fromNodeId,
+  direction
+}: {
+  tree: MindmapItem['tree']
+  fromNodeId: NodeId
+  direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+}) => {
+  switch (direction) {
+    case 'parent':
+      return tree.nodes[fromNodeId]?.parentId
+    case 'first-child':
+      return tree.children[fromNodeId]?.[0]
+    case 'prev-sibling': {
+      const parentId = tree.nodes[fromNodeId]?.parentId
+      if (!parentId) {
+        return undefined
+      }
+
+      const siblings = tree.children[parentId] ?? []
+      const index = siblings.indexOf(fromNodeId)
+      return index > 0 ? siblings[index - 1] : undefined
+    }
+    case 'next-sibling': {
+      const parentId = tree.nodes[fromNodeId]?.parentId
+      if (!parentId) {
+        return undefined
+      }
+
+      const siblings = tree.children[parentId] ?? []
+      const index = siblings.indexOf(fromNodeId)
+      return index >= 0 ? siblings[index + 1] : undefined
+    }
+  }
 }
 
 const readProjectedMindmapItem = ({
@@ -456,6 +498,18 @@ export const createMindmapRead = ({
     item,
     tree,
     render,
+    navigate: (input) => {
+      const currentTree = readValue(tree, input.id)
+      if (!currentTree) {
+        return undefined
+      }
+
+      return readMindmapNavigateTarget({
+        tree: currentTree,
+        fromNodeId: input.fromNodeId,
+        direction: input.direction
+      })
+    },
     preview
   }
 }

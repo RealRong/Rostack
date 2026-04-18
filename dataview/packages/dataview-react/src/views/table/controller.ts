@@ -64,7 +64,6 @@ export interface TableController {
   locked: ReadStore<boolean>
   valueEditorOpen: ReadStore<boolean>
   selection: TableSelectionRuntime
-  marqueeSelection: ValueStore<ItemSelectionSnapshot | null>
   rowRail: ValueStore<ItemId | null>
   layout: TableLayout
   virtual: TableVirtualRuntime
@@ -131,20 +130,6 @@ export const createTableController = (options: {
   const selection = createTableSelectionRuntime({
     currentViewStore: currentView,
     rowSelection: options.selection
-  })
-  const marqueeSelection = createValueStore<ItemSelectionSnapshot | null>({
-    initial: null,
-    isEqual: (left, right) => {
-      if (left === right) {
-        return true
-      }
-
-      if (!left || !right) {
-        return false
-      }
-
-      return selectionSnapshot.equal(left, right)
-    }
   })
   const rowRail = createValueStore<ItemId | null>({
     initial: null,
@@ -261,7 +246,6 @@ export const createTableController = (options: {
     locked: lockedStore,
     valueEditorOpen: valueEditorOpenStore,
     selection,
-    marqueeSelection,
     rowRail,
     layout: options.layout,
     virtual,
@@ -279,7 +263,6 @@ export const createTableController = (options: {
     dispose: () => {
       interaction.api.cancel()
       selection.dispose()
-      marqueeSelection.set(null)
       rowRail.set(null)
       virtual.dispose()
     }

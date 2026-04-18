@@ -19,10 +19,6 @@ import type { ItemId } from '@dataview/engine'
 import type {
   SelectionCommandApi
 } from '@dataview/runtime/selection'
-import {
-  createItemListSelectionDomain,
-  selectionSnapshot
-} from '@dataview/runtime/selection'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView
@@ -92,13 +88,7 @@ export const applyRowCheckboxSelection = (input: {
 const View = (props: RowProps) => {
   const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useStoreValue(table.currentView)
   const rowNodeRef = useRef<HTMLDivElement | null>(null)
-  const selectionDomain = useMemo(() => (
-    currentView
-      ? createItemListSelectionDomain(currentView.items)
-      : undefined
-  ), [currentView])
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
     rowNodeRef.current = node
@@ -125,10 +115,10 @@ const View = (props: RowProps) => {
     table.rowRail,
     rowId => rowId === props.itemId
   )
-  const previewSelected = useStoreSelector(
-    table.marqueeSelection,
-    selection => selection
-      ? selectionSnapshot.contains(selectionDomain, selection, props.itemId)
+  const hitSelected = useStoreSelector(
+    dataView.marquee.store,
+    session => session
+      ? session.hitIds.includes(props.itemId)
       : null
   )
   const committedSelected = useKeyedStoreValue(
@@ -144,7 +134,7 @@ const View = (props: RowProps) => {
     props.recordId,
     undefined
   )
-  const selected = previewSelected ?? committedSelected
+  const selected = hitSelected ?? committedSelected
   const rail = rowRailState({
     dragActive: props.dragActive,
     dragDisabled: !canRowDrag,

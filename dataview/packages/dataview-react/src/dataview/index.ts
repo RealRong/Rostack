@@ -19,11 +19,10 @@ export type {
 } from '@dataview/react/dataview/types'
 
 export type {
-  MarqueeAdapter,
   MarqueeApi,
   MarqueeMode,
+  MarqueeScene,
   MarqueeSessionState,
-  SelectionTarget
 } from '@dataview/react/runtime/marquee'
 export type {
   CloseValueEditorOptions,

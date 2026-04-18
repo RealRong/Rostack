@@ -207,7 +207,7 @@ describe('text wrap runtime', () => {
       compileNodeDataUpdate('wrapWidth', 180)
     ))
 
-    expect(editor.actions.app.export().nodes['text-1']?.data).toMatchObject({
+    expect(editor.read.document.get().nodes['text-1']?.data).toMatchObject({
       widthMode: 'wrap',
       wrapWidth: 180
     })
@@ -252,7 +252,7 @@ describe('text wrap runtime', () => {
       value: 20
     })
 
-    expect(editor.actions.app.export().nodes['text-1']?.style).toMatchObject({
+    expect(editor.read.document.get().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
     expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
@@ -282,7 +282,7 @@ describe('text wrap runtime', () => {
       compileNodeStyleUpdate('fontSize', 20)
     )
 
-    expect(editor.actions.app.export().nodes['text-1']?.style).toMatchObject({
+    expect(editor.read.document.get().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
     expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
@@ -305,8 +305,8 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.actions.app.export().nodes['sticky-1']?.rotation).toBe(45)
-    expect(editor.actions.app.export().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.read.document.get().nodes['sticky-1']?.rotation).toBe(45)
+    expect(editor.read.document.get().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 28
     })
   })
@@ -326,7 +326,7 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.actions.app.export().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.read.document.get().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 18
     })
     expect(editor.read.node.render.get('sticky-1')?.rect).toMatchObject({
@@ -343,10 +343,10 @@ describe('sticky fit runtime', () => {
       compileNodeStyleUpdate('fontSize', 32)
     )
 
-    expect(editor.actions.app.export().nodes['sticky-1']?.data).toMatchObject({
+    expect(editor.read.document.get().nodes['sticky-1']?.data).toMatchObject({
       fontMode: 'fixed'
     })
-    expect(editor.actions.app.export().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.read.document.get().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 32
     })
   })

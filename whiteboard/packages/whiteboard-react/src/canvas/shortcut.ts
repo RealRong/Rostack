@@ -197,7 +197,7 @@ export const runShortcut = (
         return false
       }
 
-      const target = editor.actions.mindmap.navigate({
+      const target = editor.read.mindmap.navigate({
         id: activeMindmap.treeId,
         fromNodeId: activeMindmap.nodeId,
         direction: action === 'mindmap.navigate.parent'

@@ -34,8 +34,6 @@ export const Card = (props: {
       canDrag={extra.canReorder}
       drag={runtime.drag}
       selection={runtime.selection}
-      visualTargets={runtime.visualTargets}
-      marqueeActive={runtime.marqueeActive}
       titlePlaceholder={CARD_TITLE_PLACEHOLDER}
       showEditAction
       presentationSelected

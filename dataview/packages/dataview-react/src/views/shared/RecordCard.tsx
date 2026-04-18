@@ -1,8 +1,6 @@
 import {
   useCallback,
-  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent
@@ -23,11 +21,11 @@ import {
   useDataView,
   useDataViewKeyedValue
 } from '@dataview/react/dataview'
+import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import { shouldCapturePointer } from '@shared/dom'
 import { useKeyedStoreValue } from '@shared/react'
 import { cn } from '@shared/ui/utils'
 import type { ItemId } from '@dataview/engine'
-import type { VisualTargetRegistry } from '@dataview/react/runtime/marquee'
 import { CardContent } from '@dataview/react/views/shared/CardContent'
 import { resolveCardPresentation } from '@dataview/react/views/shared/cardPresentation'
 import { useCardEditingState } from '@dataview/react/views/shared/useCardTitleEditing'
@@ -53,8 +51,6 @@ export interface RecordCardProps {
   canDrag: boolean
   drag: RecordCardDragRuntime
   selection: RecordCardSelectionRuntime
-  visualTargets: VisualTargetRegistry
-  marqueeActive: boolean
   titlePlaceholder: string | ((record: DataRecord) => string)
   showEditAction?: boolean
   presentationSelected?: boolean
@@ -87,9 +83,15 @@ export const RecordCard = (props: RecordCardProps) => {
     current => current.engine.select.records.byId,
     recordId
   )
-  const selected = useKeyedStoreValue(
+  const committedSelected = useKeyedStoreValue(
     dataView.selection.store.membership,
     props.itemId
+  )
+  const marqueeSelected = useStoreSelector(
+    dataView.marquee.store,
+    session => session
+      ? session.hitIds.includes(props.itemId)
+      : null
   )
   const draggingActive = props.drag.activeId === props.itemId
   const draggingSelected = props.drag.activeId !== undefined
@@ -99,11 +101,7 @@ export const RecordCard = (props: RecordCardProps) => {
     viewId: props.viewId,
     itemId: props.itemId
   })
-  const cardNodeRef = useRef<HTMLElement | null>(null)
-  const measureRefRef = useRef(props.measureRef)
-  measureRefRef.current = props.measureRef
-  const marqueeActiveRef = useRef(props.marqueeActive)
-  marqueeActiveRef.current = props.marqueeActive
+  const selected = marqueeSelected ?? committedSelected
 
   const hasVisibleFields = useMemo(() => props.fields.some(field => (
     editing
@@ -125,26 +123,6 @@ export const RecordCard = (props: RecordCardProps) => {
         record
       })
     : undefined
-  const contentRef = useCallback((node: HTMLElement | null) => {
-    cardNodeRef.current = node
-    measureRefRef.current?.(node)
-  }, [])
-
-  useLayoutEffect(() => {
-    const node = cardNodeRef.current
-    if (!node) {
-      return
-    }
-
-    props.visualTargets.register(props.itemId, node)
-
-    return () => {
-      if (marqueeActiveRef.current) {
-        props.visualTargets.freeze(props.itemId, node)
-      }
-      props.visualTargets.register(props.itemId, null)
-    }
-  }, [props.itemId, props.visualTargets])
 
   if (!record) {
     return null
@@ -152,7 +130,7 @@ export const RecordCard = (props: RecordCardProps) => {
 
   return (
     <CardContent
-      ref={contentRef}
+      ref={props.measureRef}
       {...{
         [DATAVIEW_APPEARANCE_ID_ATTR]: props.itemId
       }}

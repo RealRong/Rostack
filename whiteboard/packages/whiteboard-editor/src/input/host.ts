@@ -1,6 +1,8 @@
 import type {
+  EditorActions
+} from '@whiteboard/editor/action/types'
+import type {
   EditorInputHost,
-  EditorActions,
   EditorStore
 } from '@whiteboard/editor/types/editor'
 import type { EditorQuery } from '@whiteboard/editor/query'

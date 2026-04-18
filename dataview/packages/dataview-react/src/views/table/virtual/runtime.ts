@@ -79,6 +79,10 @@ export interface TableVirtualRuntime {
     top: number
     bottom: number
   } | null
+  hitRows: (input: {
+    top: number
+    bottom: number
+  }) => readonly ItemId[]
   measurement: {
     sync: (input: {
       bucketKey: string | number
@@ -269,7 +273,6 @@ const resolveMarqueeActive = (input: {
 }) => Boolean(
   input.currentView
   && input.session
-  && input.session.ownerViewId === input.currentView.view.id
 )
 
 export const createTableVirtualRuntime = (options: {
@@ -737,6 +740,16 @@ export const createTableVirtualRuntime = (options: {
     interaction,
     window: windowStore,
     locateRow: rowId => layoutModel?.locateRow(rowId) ?? null,
+    hitRows: input => (
+      layoutModel?.materializeWindow({
+        start: input.top,
+        end: input.bottom
+      }).items.flatMap(block => (
+        block.kind === 'row'
+          ? [block.rowId]
+          : []
+      )) ?? []
+    ),
     measurement: {
       sync: syncMeasurements
     },

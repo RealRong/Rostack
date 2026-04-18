@@ -7,7 +7,7 @@ import {
 } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { NodeContext } from '@whiteboard/editor/write/node/context'
-import type { NodeTextCommands } from '@whiteboard/editor/write/node/types'
+import type { NodeTextWrite } from '@whiteboard/editor/write/types'
 
 const toNodeStyleBatchUpdates = (
   nodeIds: readonly NodeId[],
@@ -18,9 +18,9 @@ const toNodeStyleBatchUpdates = (
   update: compileNodeStyleUpdate(path, value)
 }))
 
-export const createNodeTextCommands = (
+export const createNodeTextWrite = (
   ctx: NodeContext
-): NodeTextCommands => ({
+): NodeTextWrite => ({
   commit: ({
     nodeId,
     field,

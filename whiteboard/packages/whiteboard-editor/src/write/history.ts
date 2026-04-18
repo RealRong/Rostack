@@ -1,10 +1,9 @@
 import type { Engine } from '@whiteboard/engine'
-import type { HistoryCommands } from '@whiteboard/editor/types/commands'
+import type { HistoryWrite } from '@whiteboard/editor/write/types'
 
-export const createHistoryCommands = (
+export const createHistoryWrite = (
   engine: Engine
-): HistoryCommands => ({
-  get: engine.history.get,
+): HistoryWrite => ({
   undo: engine.history.undo,
   redo: engine.history.redo,
   clear: engine.history.clear

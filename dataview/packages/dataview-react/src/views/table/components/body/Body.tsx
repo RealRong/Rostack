@@ -1,7 +1,9 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   type ClipboardEventHandler,
   type KeyboardEventHandler
 } from 'react'
@@ -11,16 +13,12 @@ import {
 } from '@dnd-kit/core'
 import { modifiers } from '@dataview/react/interaction'
 import {
-  closestTarget,
   hasInteractiveTarget,
-  interactiveSelector
+  rectIn
 } from '@shared/dom'
 import {
   useDataView
 } from '@dataview/react/dataview'
-import {
-  resolveDefaultAutoPanTargets
-} from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
 import { type CellRef } from '@dataview/engine'
 import { applyPaste, handleTableKey } from '@dataview/react/views/table/input'
@@ -33,13 +31,13 @@ import { useColumnResize } from '@dataview/react/views/table/hooks/useColumnResi
 import { useColumnReorder } from '@dataview/react/views/table/hooks/useColumnReorder'
 import { useRowReorder } from '@dataview/react/views/table/hooks/useRowReorder'
 import { usePointer } from '@dataview/react/views/table/hooks/usePointer'
-import { hasTableTarget } from '@dataview/react/views/table/dom/targets'
 import { RowDropIndicator } from '@dataview/react/views/table/components/overlay/RowDropIndicator'
 import { BlockContent } from '@dataview/react/views/table/components/body/BlockContent'
 import { Surface } from '@dataview/react/views/table/components/body/Surface'
-import { useRegisterMarqueeAdapter } from '@dataview/react/views/shared/interactionRuntime'
-import type { MarqueeAdapter } from '@dataview/react/runtime/marquee'
-import { createItemListSelectionDomain } from '@dataview/runtime/selection'
+import {
+  useRegisterMarqueeScene
+} from '@dataview/react/views/shared/interactionRuntime'
+import type { MarqueeScene } from '@dataview/react/runtime/marquee'
 
 const View = () => {
   const dataView = useDataView()
@@ -63,6 +61,7 @@ const View = () => {
   const capabilities = useStoreValue(table.capabilities)
   const virtualInteraction = useStoreValue(table.virtual.interaction)
   const marqueeActive = virtualInteraction.marqueeActive
+  const previousMarqueeActiveRef = useRef(false)
   const columnResize = useColumnResize()
   const template = useMemo(
     () => gridTemplate(columns, columnResize.widths),
@@ -75,51 +74,63 @@ const View = () => {
     table.rowRail.set(null)
   }, [table.rowRail])
 
-  const marqueeAdapter = useMemo<MarqueeAdapter>(() => ({
-    viewId: currentView.view.id,
-    disabled: marqueeDisabled,
-    canStart: event => {
-      const container = table.layout.containerRef.current
-      return Boolean(
-        container
-        && event.target instanceof Node
-        && container.contains(event.target)
-        && !hasTableTarget(event.target)
-        && !closestTarget(event.target, interactiveSelector)
-      )
-    },
-    getHitIds: session => table.nodes.hitRows(currentView.items.ids, session.box),
-    domain: () => createItemListSelectionDomain(currentView.items),
-    previewSelection: nextSelection => {
-      table.marqueeSelection.set(nextSelection)
-    },
-    clearPreviewSelection: () => {
-      table.marqueeSelection.set(null)
-    },
-    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(table.layout.containerRef.current),
-    onStart: () => {
-      table.nodes.startRowMarquee(currentView.items.ids)
-      table.marqueeSelection.set(null)
+  const marqueeScene = useMemo<MarqueeScene | undefined>(() => (
+    marqueeDisabled
+      ? undefined
+      : {
+          hitTest: rect => {
+            const container = table.layout.containerRef.current
+            if (!container) {
+              return []
+            }
+
+            const localRect = rectIn(container, rect)
+            const bounds = gridContentBounds({
+              container,
+              canvas: table.layout.canvasRef.current
+            })
+
+            if (
+              !localRect
+              || !bounds
+              || localRect.right <= bounds.left
+              || localRect.left >= bounds.right
+            ) {
+              return []
+            }
+
+            return table.virtual.hitRows({
+              top: localRect.top,
+              bottom: localRect.bottom
+            })
+          }
+        }
+  ), [
+    marqueeDisabled,
+    table.layout.canvasRef,
+    table.layout.containerRef,
+    table.virtual
+  ])
+
+  useRegisterMarqueeScene(marqueeScene)
+
+  useEffect(() => {
+    if (marqueeActive) {
       table.selection.cells.clear()
       table.rowRail.set(null)
       table.hover.clear()
-    },
-    onEnd: () => {
-      table.nodes.endRowMarquee()
+    } else if (previousMarqueeActiveRef.current) {
       table.focus()
-    },
-    onCancel: () => {
-      table.nodes.endRowMarquee()
     }
-  }), [
-    currentView.items,
-    currentView.items.ids,
-    currentView.view.id,
-    marqueeDisabled,
-    table.layout.containerRef,
-    table
+
+    previousMarqueeActiveRef.current = marqueeActive
+  }, [
+    marqueeActive,
+    table.focus,
+    table.hover,
+    table.rowRail,
+    table.selection.cells
   ])
-  useRegisterMarqueeAdapter(marqueeAdapter)
 
   const pointer = usePointer({
     enabled: (
@@ -169,7 +180,6 @@ const View = () => {
 
     event.preventDefault()
   }, [
-    columns,
     currentView,
     engine,
     locked,
@@ -194,7 +204,7 @@ const View = () => {
 
     table.revealCursor()
     event.preventDefault()
-  }, [columns, currentView, engine, locked, table])
+  }, [currentView, engine, locked, table])
   const gridBounds = gridContentBounds({
     container: table.layout.containerRef.current,
     canvas: table.layout.canvasRef.current

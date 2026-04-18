@@ -11,34 +11,34 @@ import type {
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type {
   OrderMode,
-  SessionActions,
-  SelectionApi
-} from '@whiteboard/editor/types/commands'
-import type { DocumentCommands } from '@whiteboard/editor/write/document'
-import type { NodeCommands } from '@whiteboard/editor/write/node/types'
+  DocumentWrite,
+  NodeWrite
+} from '@whiteboard/editor/write/types'
+import type { SelectionActions } from '@whiteboard/editor/action/types'
+import type { SelectionSessionDeps } from '@whiteboard/editor/session/types'
 
 const DEFAULT_FRAME_PADDING = 32
 
-export type SelectionCommands = Pick<
-  SelectionApi,
+export type SelectionActionHelpers = Pick<
+  SelectionActions,
   'duplicate' | 'delete' | 'order' | 'group' | 'ungroup' | 'frame'
 >
 
-type SelectionCommandsHost = {
+type SelectionActionHelpersHost = {
   read: Pick<EditorQuery, 'group'>
-  document: Pick<DocumentCommands, 'delete' | 'duplicate' | 'order' | 'group'>
-  node: Pick<NodeCommands, 'create'>
-  session: Pick<SessionActions, 'selection'>
+  document: Pick<DocumentWrite, 'delete' | 'duplicate' | 'order' | 'group'>
+  node: Pick<NodeWrite, 'create'>
+  session: SelectionSessionDeps
 }
 
 const orderRefs = (
-  document: Pick<DocumentCommands, 'order'>,
+  document: Pick<DocumentWrite, 'order'>,
   refs: CanvasItemRef[],
   mode: OrderMode
 ) => document.order(refs, mode)
 
 const orderGroups = (
-  order: DocumentCommands['group']['order'],
+  order: DocumentWrite['group']['order'],
   groupIds: readonly string[],
   mode: OrderMode
 ) => {
@@ -75,8 +75,8 @@ const readGroupTarget = (
 ): SelectionTarget | undefined => read.group.target(groupId)
 
 const createFrame = (
-  node: Pick<NodeCommands, 'create'>,
-  session: Pick<SessionActions, 'selection'>,
+  node: Pick<NodeWrite, 'create'>,
+  session: SelectionSessionDeps,
   bounds: {
     x: number
     y: number
@@ -101,18 +101,18 @@ const createFrame = (
     return false
   }
 
-  session.selection.replace({
+  session.replaceSelection({
     nodeIds: [result.data.nodeId]
   })
   return true
 }
 
-export const createSelectionCommands = ({
+export const createSelectionActions = ({
   read,
   document,
   node,
   session
-}: SelectionCommandsHost): SelectionCommands => ({
+}: SelectionActionHelpersHost): SelectionActionHelpers => ({
   duplicate: (input, options) => {
     const target = normalizeSelectionTarget(input)
     const refs = toCanvasRefs(target)
@@ -126,7 +126,7 @@ export const createSelectionCommands = ({
     }
 
     if (options?.selectInserted !== false) {
-      session.selection.replace({
+      session.replaceSelection({
         nodeIds: result.data.roots.nodeIds.length > 0
           ? result.data.roots.nodeIds
           : result.data.allNodeIds,
@@ -151,7 +151,7 @@ export const createSelectionCommands = ({
     }
 
     if (options?.clearSelection !== false) {
-      session.selection.clear()
+      session.clearSelection()
     }
 
     return true
@@ -182,7 +182,7 @@ export const createSelectionCommands = ({
     }
 
     const selection = readGroupTarget(read, result.data.groupId)
-    session.selection.replace(selection ?? target)
+    session.replaceSelection(selection ?? target)
     return true
   },
   ungroup: (input, options) => {
@@ -200,11 +200,11 @@ export const createSelectionCommands = ({
     }
 
     if (options?.fallbackSelection === 'none') {
-      session.selection.clear()
+      session.clearSelection()
       return true
     }
 
-    session.selection.replace({
+    session.replaceSelection({
       nodeIds: result.data.nodeIds,
       edgeIds: result.data.edgeIds
     })

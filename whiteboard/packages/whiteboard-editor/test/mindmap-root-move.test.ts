@@ -81,8 +81,8 @@ describe('mindmap root move', () => {
     }
 
     const { mindmapId, rootId } = created.data
-    const beforeTree = editor.actions.app.export().nodes[mindmapId]?.position
-    const beforeRoot = editor.actions.app.export().nodes[rootId]?.position
+    const beforeTree = editor.read.document.get().nodes[mindmapId]?.position
+    const beforeRoot = editor.read.document.get().nodes[rootId]?.position
 
     expect(beforeTree).toBeDefined()
     expect(beforeRoot).toBeDefined()
@@ -97,8 +97,8 @@ describe('mindmap root move', () => {
       threshold: 0
     })
 
-    const afterTree = editor.actions.app.export().nodes[mindmapId]?.position
-    const afterRoot = editor.actions.app.export().nodes[rootId]?.position
+    const afterTree = editor.read.document.get().nodes[mindmapId]?.position
+    const afterRoot = editor.read.document.get().nodes[rootId]?.position
 
     expect(afterTree).toEqual({
       x: beforeTree!.x + 120,

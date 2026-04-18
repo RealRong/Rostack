@@ -22,35 +22,41 @@ export type {
 } from '@whiteboard/editor/local/session/edit'
 export type {
   Editor,
-  EditorActions,
   EditorChromePresentation,
-  EditorEdgeActions,
   EditorEvents,
   EditorInputHost,
   EditorPanelPresentation,
   EditorRead,
-  EditorSelectionActions,
-  EditorNodeActions,
-  EditorEditActions,
   EditorStore
 } from '@whiteboard/editor/types/editor'
 export type {
   AppActions,
   AppConfig,
-  ClipboardCommands,
+  ClipboardActions,
   ClipboardOptions,
   ClipboardTarget,
-  DrawCommands,
-  EdgeApi,
-  EdgeLabelPatch,
-  HistoryCommands,
-  MindmapCommands,
-  NodeApi,
-  OrderMode,
-  SelectionApi,
+  DrawActions,
+  EdgeActions,
+  EditorActions,
+  EditorEdgeActions,
+  EditorEditActions,
+  EditorNodeActions,
+  EditorSelectionActions,
+  HistoryActions,
+  MindmapActions,
+  MindmapInsertBehavior,
+  MindmapInsertEnter,
+  MindmapInsertFocus,
+  NodeActions,
   ToolActions,
   ViewportActions
-} from '@whiteboard/editor/types/commands'
+} from '@whiteboard/editor/action/types'
+export type {
+  EdgeLabelPatch,
+  MindmapBorderPatch,
+  MindmapBranchPatch,
+  OrderMode
+} from '@whiteboard/editor/write/types'
 export type {
   EditorQuery
 } from '@whiteboard/editor/query'

@@ -29,16 +29,15 @@ const bindMarqueeToView = (input: {
   activeView: ReadStore<View | undefined>
   marquee: MarqueeApi
 }) => {
-  const sync = () => {
-    const session = input.marquee.get()
-    if (!session) {
-      return
-    }
+  let previousViewId = input.activeView.get()?.id
 
-    const view = input.activeView.get()
-    if (!view || view.id !== session.ownerViewId) {
+  const sync = () => {
+    const nextViewId = input.activeView.get()?.id
+    if (previousViewId !== nextViewId && input.marquee.get()) {
       input.marquee.clear()
     }
+
+    previousViewId = nextViewId
   }
 
   sync()

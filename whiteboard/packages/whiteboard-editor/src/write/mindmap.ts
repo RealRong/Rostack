@@ -36,9 +36,9 @@ import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
   MindmapBorderPatch,
-  MindmapCommands
-} from '@whiteboard/editor/types/commands'
-import type { NodeCommands } from '@whiteboard/editor/write/node/types'
+  MindmapWrite,
+  NodeWrite
+} from '@whiteboard/editor/write/types'
 
 const invalid = <T = void>(
   message: string
@@ -293,10 +293,10 @@ const withData = <T>(
     }
   : result
 
-const createMindmapCoreCommands = (
+const createMindmapCoreWrite = (
   execute: Engine['execute']
 ): Pick<
-  MindmapCommands,
+  MindmapWrite,
   'delete' | 'patch' | 'moveSubtree' | 'removeSubtree' | 'cloneSubtree'
 > => ({
   delete: (ids) => execute({
@@ -324,43 +324,6 @@ const createMindmapCoreCommands = (
     input
   })
   })
-
-const readMindmapNavigateTarget = ({
-  tree,
-  fromNodeId,
-  direction
-}: {
-  tree: MindmapTree
-  fromNodeId: MindmapNodeId
-  direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
-}) => {
-  switch (direction) {
-    case 'parent':
-      return tree.nodes[fromNodeId]?.parentId
-    case 'first-child':
-      return tree.children[fromNodeId]?.[0]
-    case 'prev-sibling': {
-      const parentId = tree.nodes[fromNodeId]?.parentId
-      if (!parentId) {
-        return undefined
-      }
-
-      const siblings = tree.children[parentId] ?? []
-      const index = siblings.indexOf(fromNodeId)
-      return index > 0 ? siblings[index - 1] : undefined
-    }
-    case 'next-sibling': {
-      const parentId = tree.nodes[fromNodeId]?.parentId
-      if (!parentId) {
-        return undefined
-      }
-
-      const siblings = tree.children[parentId] ?? []
-      const index = siblings.indexOf(fromNodeId)
-      return index >= 0 ? siblings[index + 1] : undefined
-    }
-  }
-}
 
 const cloneBranch = (
   branch: MindmapTree['nodes'][MindmapNodeId]['branch']
@@ -433,12 +396,12 @@ export const createMindmapWrite = ({
 }: {
   engine: Engine
   read: EditorQuery
-  node: Pick<NodeCommands, 'update' | 'updateMany'>
+  node: Pick<NodeWrite, 'update' | 'updateMany'>
   layout: Pick<EditorLayout, 'patchNodeCreatePayload'>
-}): MindmapCommands => {
-  const commands = createMindmapCoreCommands(engine.execute)
+}): MindmapWrite => {
+  const write = createMindmapCoreWrite(engine.execute)
 
-  const create: MindmapCommands['create'] = (payload, options) => {
+  const create: MindmapWrite['create'] = (payload) => {
     const doc = engine.document.get()
     const mindmapId = payload?.id ?? createIdFactory(doc, 'mindmap')()
     if (doc.nodes[mindmapId]) {
@@ -483,7 +446,7 @@ export const createMindmapWrite = ({
     })
   }
 
-  const insert: MindmapCommands['insert'] = (id, input, options) => {
+  const insert: MindmapWrite['insert'] = (id, input) => {
     const doc = engine.document.get()
     const tree = getMindmapTreeFromDocument(doc, id)
     if (!tree) {
@@ -545,20 +508,7 @@ export const createMindmapWrite = ({
     })
   }
 
-  const navigate: MindmapCommands['navigate'] = (input) => {
-    const tree = getMindmapTreeFromDocument(engine.document.get(), input.id)
-    if (!tree) {
-      return undefined
-    }
-
-    return readMindmapNavigateTarget({
-      tree,
-      fromNodeId: input.fromNodeId,
-      direction: input.direction
-    })
-  }
-
-  const style: MindmapCommands['style'] = {
+  const style: MindmapWrite['style'] = {
     branch: (input) => {
       if (Object.keys(input.patch).length === 0) {
         return undefined
@@ -620,10 +570,9 @@ export const createMindmapWrite = ({
   }
 
   return {
-    ...commands,
+    ...write,
     create,
     insert,
-    navigate,
     insertByPlacement: (input) => insert(
       input.id,
       planMindmapInsertByPlacement(input)
@@ -632,7 +581,7 @@ export const createMindmapWrite = ({
       const command = planMindmapSubtreeMove(input)
 
       return command
-        ? commands.moveSubtree(input.id, command)
+        ? write.moveSubtree(input.id, command)
         : undefined
     },
     moveRoot: (input) => {
@@ -649,7 +598,6 @@ export const createMindmapWrite = ({
         ? node.update(input.nodeId, update)
         : undefined
     },
-    cloneSubtree: commands.cloneSubtree,
     style
   }
 }

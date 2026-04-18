@@ -15,20 +15,14 @@ import {
   useDataView
 } from '@dataview/react/dataview'
 import {
-  dataviewAppearanceSelector
-} from '@dataview/react/dom/appearance'
-import {
-  closestTarget,
-  interactiveSelector
+  intersects,
+  rectIn
 } from '@shared/dom'
 import {
   ItemId,
   Section,
   SectionKey
 } from '@dataview/engine'
-import {
-  resolveDefaultAutoPanTargets
-} from '@dataview/react/interaction/autoPan'
 import {
   readBoardLayout
 } from '@dataview/react/views/kanban/drag'
@@ -41,8 +35,10 @@ import type {
   KanbanViewRuntime
 } from '@dataview/react/views/kanban/types'
 import {
-  useItemDragRuntime
+  useItemDragRuntime,
+  useRegisterMarqueeScene
 } from '@dataview/react/views/shared/interactionRuntime'
+import type { MarqueeScene } from '@dataview/react/runtime/marquee'
 
 const resolveInitialVisibleCount = (
   limit: KanbanCardsPerColumn,
@@ -215,19 +211,37 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const itemIds = input.active.items.ids
   const interaction = useItemDragRuntime({
-    viewId: input.active.view.id,
-    itemIds,
-    canStart: (event: PointerEvent) => !closestTarget(event.target, [
-      dataviewAppearanceSelector,
-      interactiveSelector
-    ].join(',')),
-    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(scrollRef.current)
+    itemIds
   })
   const visibility = useSectionVisibility({
     viewId: input.active.view.id,
     sections: input.active.sections.all,
     cardsPerColumn: input.extra.cardsPerColumn
   })
+  const marqueeScene = useMemo<MarqueeScene>(() => ({
+    hitTest: rect => {
+      const container = scrollRef.current
+      if (!container) {
+        return []
+      }
+
+      const localRect = rectIn(container, rect)
+      if (!localRect) {
+        return []
+      }
+
+      const layout = readBoardLayout(container)
+      if (!layout) {
+        return []
+      }
+
+      return layout.columns.flatMap(column => column.cards.filter(card => (
+        intersects(localRect, card.rect)
+      )).map(card => card.id))
+    }
+  }), [visibility.bySection])
+
+  useRegisterMarqueeScene(marqueeScene)
 
   const drag = useDrag({
     containerRef: scrollRef,

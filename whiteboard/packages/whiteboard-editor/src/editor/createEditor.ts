@@ -86,7 +86,10 @@ export const createEditor = ({
 
   return {
     store: createEditorStore(session),
-    read: createEditorRead(query),
+    read: createEditorRead({
+      engine,
+      query
+    }),
     actions,
     input: host,
     events: events.events,

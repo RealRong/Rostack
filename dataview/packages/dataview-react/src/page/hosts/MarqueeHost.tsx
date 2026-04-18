@@ -6,11 +6,9 @@ import {
 import { createPortal } from 'react-dom'
 import type { Point } from '@shared/dom'
 import {
-  idsInRect,
-  rectFromPoints
-} from '@shared/dom'
-import { disableUserSelect } from '@shared/dom'
-import {
+  disableUserSelect,
+  pageScrollNode,
+  rectFromPoints,
   scrollMetrics,
   type ScrollNode
 } from '@shared/dom'
@@ -24,15 +22,19 @@ import {
 } from '@dataview/react/dataview'
 import { useOverlay } from '@shared/ui/overlay'
 import {
+  createItemListSelectionDomain,
   selectionSnapshot,
   type ItemSelectionSnapshot
 } from '@dataview/runtime/selection'
 import { useStoreValue } from '@shared/react'
 import type {
-  MarqueeAdapter,
   MarqueeMode,
   MarqueeSessionState
 } from '@dataview/react/runtime/marquee'
+import {
+  resolvePageMarqueeScrollRoot,
+  shouldStartMarquee
+} from '@dataview/react/runtime/marquee/policy'
 
 const resolveMarqueeMode = (input: {
   shiftKey: boolean
@@ -49,52 +51,52 @@ const resolveMarqueeMode = (input: {
 }
 
 interface ScrollAnchorState {
-  x?: {
-    node: ScrollNode
-    start: number
-  }
-  y?: {
-    node: ScrollNode
-    start: number
-  }
+  node: ScrollNode
+  start: number
 }
 
 const readScrollAnchorState = (
-  targets: AutoPanTargets | null | undefined
-): ScrollAnchorState => ({
-  x: targets?.x?.node
+  root: HTMLElement | null
+): ScrollAnchorState | null => {
+  const node = root
+    ? pageScrollNode(root) ?? root
+    : null
+  return node
     ? {
-        node: targets.x.node,
-        start: scrollMetrics(targets.x.node).left
+        node,
+        start: scrollMetrics(node).top
       }
-    : undefined,
-  y: targets?.y?.node
-    ? {
-        node: targets.y.node,
-        start: scrollMetrics(targets.y.node).top
-      }
-    : undefined
-})
+    : null
+}
 
 const resolveScrolledAnchor = (
   anchor: Point,
-  scrollState: ScrollAnchorState
+  scrollState: ScrollAnchorState | null
 ): Point => ({
-  x: anchor.x - (
-    scrollState.x
-      ? scrollMetrics(scrollState.x.node).left - scrollState.x.start
-      : 0
-  ),
+  x: anchor.x,
   y: anchor.y - (
-    scrollState.y
-      ? scrollMetrics(scrollState.y.node).top - scrollState.y.start
+    scrollState
+      ? scrollMetrics(scrollState.node).top - scrollState.start
       : 0
   )
 })
 
+const resolveAutoPanTargets = (): AutoPanTargets | null => {
+  const root = resolvePageMarqueeScrollRoot()
+  const node = root
+    ? pageScrollNode(root) ?? root
+    : null
+  return node
+    ? {
+        y: {
+          node
+        }
+      }
+    : null
+}
+
 export const PageMarqueeHost = () => {
   const dataView = useDataView()
-  const currentView = useDataViewValue(dataView => dataView.engine.active.config)
   const overlay = useOverlay()
   const valueEditorOpen = useDataViewValue(
     dataView => dataView.page.store,
@@ -103,70 +105,47 @@ export const PageMarqueeHost = () => {
   const session = useStoreValue(dataView.marquee.store)
   const pointerRef = useRef<Point | null>(null)
   const anchorRef = useRef<Point | null>(null)
-  const scrollAnchorRef = useRef<ScrollAnchorState>({})
+  const scrollAnchorRef = useRef<ScrollAnchorState | null>(null)
   const frameRef = useRef<number | null>(null)
-  const selectionRef = useRef<ItemSelectionSnapshot | null>(null)
 
-  const resolveAdapter = useCallback((viewId?: string): MarqueeAdapter | undefined => (
-    viewId
-      ? dataView.marquee.getAdapter(viewId)
-      : undefined
-  ), [dataView.marquee])
-
-  const commitSelection = useCallback((nextSelection: ItemSelectionSnapshot) => {
-    dataView.selection.command.restore(nextSelection)
-  }, [dataView.selection])
-
-  const applySelection = useCallback((nextSession: MarqueeSessionState, adapter: MarqueeAdapter) => {
-    const domain = adapter.domain()
-    const hitIds = adapter.getHitIds?.(nextSession)
-      ?? idsInRect(
-        [...domain.iterate()],
-        adapter.getTargets?.() ?? [],
-        nextSession.box
-      )
-    const nextSelection = selectionSnapshot.applyIds(
-      domain,
-      nextSession.baseSelection,
-      hitIds,
-      nextSession.mode,
-      dataView.selection.state.getSnapshot().domainRevision
-    )
-    selectionRef.current = nextSelection
-
-    if (adapter.previewSelection) {
-      adapter.previewSelection(nextSelection)
-      return nextSelection
+  const resolveNextSelection = useCallback((currentSession: MarqueeSessionState): ItemSelectionSnapshot => {
+    const activeItems = dataView.read.activeItems.get()
+    if (!activeItems) {
+      return currentSession.baseSelection
     }
 
-    commitSelection(nextSelection)
-    return nextSelection
-  }, [commitSelection, dataView.selection.state])
+    return selectionSnapshot.applyIds(
+      createItemListSelectionDomain(activeItems),
+      currentSession.baseSelection,
+      currentSession.hitIds,
+      currentSession.mode,
+      dataView.selection.state.getSnapshot().domainRevision
+    )
+  }, [dataView.read.activeItems, dataView.selection.state])
+  const commitSelection = useCallback((currentSession: MarqueeSessionState) => {
+    dataView.selection.command.restore(resolveNextSelection(currentSession))
+  }, [dataView.selection, resolveNextSelection])
 
   const update = useCallback(() => {
     const currentSession = dataView.marquee.get()
+    const scene = dataView.marquee.getScene()
     const anchor = anchorRef.current
     const pointer = pointerRef.current
-    if (!currentSession || !anchor || !pointer) {
+    if (!currentSession || !scene || !anchor || !pointer) {
       return
     }
 
-    const adapter = resolveAdapter(currentSession.ownerViewId)
-    if (!adapter) {
-      return
-    }
-
-    const nextSession: MarqueeSessionState = {
+    const rect = rectFromPoints(
+      resolveScrolledAnchor(anchor, scrollAnchorRef.current),
+      pointer
+    )
+    dataView.marquee.update({
       ...currentSession,
       current: pointer,
-      box: rectFromPoints(
-        resolveScrolledAnchor(anchor, scrollAnchorRef.current),
-        pointer
-      )
-    }
-    dataView.marquee.update(nextSession)
-    applySelection(nextSession, adapter)
-  }, [applySelection, dataView.marquee, resolveAdapter])
+      rect,
+      hitIds: scene.hitTest(rect)
+    })
+  }, [dataView.marquee])
   const scheduleUpdate = useCallback(() => {
     if (typeof window === 'undefined') {
       update()
@@ -182,6 +161,17 @@ export const PageMarqueeHost = () => {
       update()
     })
   }, [update])
+  const reset = useCallback(() => {
+    if (typeof window !== 'undefined' && frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current)
+      frameRef.current = null
+    }
+
+    pointerRef.current = null
+    anchorRef.current = null
+    scrollAnchorRef.current = null
+    dataView.marquee.clear()
+  }, [dataView.marquee])
 
   useEffect(() => () => {
     if (typeof window !== 'undefined' && frameRef.current !== null) {
@@ -198,17 +188,10 @@ export const PageMarqueeHost = () => {
     return disableUserSelect(document)
   }, [session])
 
-  const resolveTargets = useCallback(
-    () => {
-      const adapter = resolveAdapter(dataView.marquee.get()?.ownerViewId)
-      return adapter?.resolveAutoPanTargets?.() ?? null
-    },
-    [dataView.marquee, resolveAdapter]
-  )
   const autoPanState = useAutoPan({
     active: session !== null,
     pointerRef,
-    resolveTargets,
+    resolveTargets: resolveAutoPanTargets,
     onPan: scheduleUpdate
   })
 
@@ -250,10 +233,10 @@ export const PageMarqueeHost = () => {
     }
 
     const end = (event: PointerEvent) => {
-      if (typeof window !== 'undefined' && frameRef.current !== null) {
-        window.cancelAnimationFrame(frameRef.current)
-        frameRef.current = null
+      if (!dataView.marquee.get()) {
+        return
       }
+
       pointerRef.current = {
         x: event.clientX,
         y: event.clientY
@@ -265,31 +248,11 @@ export const PageMarqueeHost = () => {
         return
       }
 
-      const adapter = resolveAdapter(currentSession.ownerViewId)
-      const nextSelection = selectionRef.current
-        ?? currentSession.baseSelection
-
-      if (event.type === 'pointercancel') {
-        adapter?.onCancel?.(currentSession, nextSelection)
-        if (adapter?.previewSelection) {
-          commitSelection(currentSession.baseSelection)
-          adapter.clearPreviewSelection?.()
-        } else {
-          dataView.selection.command.restore(currentSession.baseSelection)
-        }
-      } else {
-        if (adapter?.previewSelection) {
-          commitSelection(nextSelection)
-          adapter.clearPreviewSelection?.()
-        }
-        adapter?.onEnd?.(currentSession, nextSelection)
+      if (event.type !== 'pointercancel') {
+        commitSelection(currentSession)
       }
 
-      pointerRef.current = null
-      anchorRef.current = null
-      scrollAnchorRef.current = {}
-      selectionRef.current = null
-      dataView.marquee.clear()
+      reset()
     }
 
     window.addEventListener('pointermove', onPointerMove, { passive: true, capture: true })
@@ -300,7 +263,7 @@ export const PageMarqueeHost = () => {
       window.removeEventListener('pointerup', end, true)
       window.removeEventListener('pointercancel', end, true)
     }
-  }, [commitSelection, dataView.marquee, dataView.selection, resolveAdapter, scheduleUpdate, update])
+  }, [commitSelection, dataView.marquee, reset, scheduleUpdate, update])
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -313,18 +276,15 @@ export const PageMarqueeHost = () => {
         || overlay.topLayerId !== null
         || valueEditorOpen
         || dataView.valueEditor.openStore.get()
+        || dataView.page.drag.get()
         || dataView.marquee.get()
-        || !currentView
+        || !dataView.session.select.canStartMarquee()
       ) {
         return
       }
 
-      const adapter = resolveAdapter(currentView.id)
-      if (
-        !adapter
-        || adapter.disabled
-        || !adapter.canStart(event)
-      ) {
+      const scene = dataView.marquee.getScene()
+      if (!scene || !shouldStartMarquee(event)) {
         return
       }
 
@@ -340,14 +300,14 @@ export const PageMarqueeHost = () => {
         x: event.clientX,
         y: event.clientY
       }
+      const rect = rectFromPoints(start, start)
       anchorRef.current = start
       pointerRef.current = start
       scrollAnchorRef.current = readScrollAnchorState(
-        adapter.resolveAutoPanTargets?.()
+        resolvePageMarqueeScrollRoot()
       )
 
-      const nextSession: MarqueeSessionState = {
-        ownerViewId: currentView.id,
+      dataView.marquee.start({
         mode: resolveMarqueeMode({
           shiftKey: event.shiftKey,
           metaKey: event.metaKey,
@@ -355,13 +315,10 @@ export const PageMarqueeHost = () => {
         }),
         start,
         current: start,
-        box: rectFromPoints(start, start),
+        rect,
+        hitIds: scene.hitTest(rect),
         baseSelection: dataView.selection.state.getSnapshot()
-      }
-
-      dataView.marquee.start(nextSession)
-      adapter.onStart?.(nextSession)
-      applySelection(nextSession, adapter)
+      })
     }
 
     document.addEventListener('pointerdown', onPointerDown, true)
@@ -369,14 +326,13 @@ export const PageMarqueeHost = () => {
       document.removeEventListener('pointerdown', onPointerDown, true)
     }
   }, [
-    applySelection,
-    currentView,
     dataView.inlineSession,
     dataView.marquee,
-      dataView.selection,
-      dataView.valueEditor,
-      overlay.topLayerId,
-      resolveAdapter,
+    dataView.page.drag,
+    dataView.selection.state,
+    dataView.session.select,
+    dataView.valueEditor,
+    overlay.topLayerId,
     valueEditorOpen
   ])
 
@@ -386,35 +342,20 @@ export const PageMarqueeHost = () => {
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      const currentSession = dataView.marquee.get()
-      if (!currentSession || event.key !== 'Escape') {
+      if (!dataView.marquee.get() || event.key !== 'Escape') {
         return
       }
 
       event.preventDefault()
       event.stopPropagation()
-      const adapter = resolveAdapter(currentSession.ownerViewId)
-      const nextSelection = selectionRef.current
-        ?? currentSession.baseSelection
-      adapter?.onCancel?.(currentSession, nextSelection)
-      if (adapter?.previewSelection) {
-        commitSelection(currentSession.baseSelection)
-        adapter.clearPreviewSelection?.()
-      } else {
-        dataView.selection.command.restore(currentSession.baseSelection)
-      }
-      pointerRef.current = null
-      anchorRef.current = null
-      scrollAnchorRef.current = {}
-      selectionRef.current = null
-      dataView.marquee.clear()
+      reset()
     }
 
     document.addEventListener('keydown', onKeyDown, true)
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
     }
-  }, [commitSelection, dataView.marquee, dataView.selection, resolveAdapter])
+  }, [dataView.marquee, reset])
 
   if (!session || typeof document === 'undefined') {
     return null
@@ -424,10 +365,10 @@ export const PageMarqueeHost = () => {
     <div
       className="pointer-events-none fixed z-[80] rounded-md border border-primary/60 bg-primary/10"
       style={{
-        left: session.box.left,
-        top: session.box.top,
-        width: session.box.width,
-        height: session.box.height
+        left: session.rect.left,
+        top: session.rect.top,
+        width: session.rect.width,
+        height: session.rect.height
       }}
     />,
     document.body

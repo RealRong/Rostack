@@ -1,20 +1,23 @@
 import type { Engine } from '@whiteboard/engine'
 import type { SelectionInput } from '@whiteboard/core/selection'
-import type { MindmapId, MindmapNodeId, Rect } from '@whiteboard/core/types'
+import type {
+  MindmapId,
+  MindmapInsertInput,
+  MindmapNodeId,
+  Rect
+} from '@whiteboard/core/types'
 import type {
   AppActions,
   AppConfig,
-  ClipboardCommands,
-  HistoryCommands,
-  MindmapCommands,
-  MindmapInsertBehavior,
-  ToolActions
-} from '@whiteboard/editor/types/commands'
-import type {
+  ClipboardActions,
   EditorActions,
   EditorEditActions,
-  EditorSelectionActions
-} from '@whiteboard/editor/types/editor'
+  EditorSelectionActions,
+  HistoryActions,
+  MindmapActions,
+  MindmapInsertBehavior,
+  ToolActions
+} from '@whiteboard/editor/action/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
@@ -24,10 +27,10 @@ import type { EditorWrite } from '@whiteboard/editor/write'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapEnterPreview, MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
 import {
-  createSelectionCommands
+  createSelectionActions
 } from '@whiteboard/editor/action/selection'
 import {
-  createClipboardCommands
+  createClipboardActions
 } from '@whiteboard/editor/action/clipboard'
 
 const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
@@ -381,7 +384,7 @@ const toRectCenter = (
 })
 
 const readInsertAnchorId = (
-  input: Parameters<MindmapCommands['insert']>[1]
+  input: MindmapInsertInput
 ) => {
   const anchorId = input.options?.layout?.anchorId
   if (anchorId) {
@@ -516,21 +519,21 @@ export const createEditorActions = ({
   registry: NodeRegistry
 }): EditorActions => {
   const selectionSession = createSelectionSession(session)
-  const selectionActionsCore = createSelectionCommands({
+  const selectionSessionDeps = {
+    replaceSelection: selectionSession.replace,
+    clearSelection: selectionSession.clear
+  }
+  const selectionActionsCore = createSelectionActions({
     read: query,
     document: write.document,
     node: write.node,
-    session: {
-      selection: selectionSession
-    }
+    session: selectionSessionDeps
   })
-  const clipboard: ClipboardCommands = createClipboardCommands({
+  const clipboard: ClipboardActions = createClipboardActions({
     editor: {
       read: query,
       document: write.document,
-      session: {
-        selection: selectionSession
-      },
+      session: selectionSessionDeps,
       selection: {
         delete: selectionActionsCore.delete
       },
@@ -601,10 +604,10 @@ export const createEditorActions = ({
     }
   }
 
-  const mindmap: MindmapCommands = {
+  const mindmap: MindmapActions = {
     ...write.mindmap,
     create: (payload, options) => {
-      const result = write.mindmap.create(payload, options)
+      const result = write.mindmap.create(payload)
       if (result.ok) {
         focusMindmapRoot({
           nodeId: result.data.rootId,
@@ -616,7 +619,7 @@ export const createEditorActions = ({
       return result
     },
     insert: (id, input, options) => {
-      const result = write.mindmap.insert(id, input, options)
+      const result = write.mindmap.insert(id, input)
       if (!result.ok) {
         return result
       }
@@ -677,11 +680,7 @@ export const createEditorActions = ({
 
   return {
     app: {
-      reset: () => {
-        session.reset()
-      },
       replace: write.document.replace,
-      export: () => engine.document.get(),
       configure: (config: AppConfig) => {
         engine.configure({
           history: config.history
@@ -748,6 +747,6 @@ export const createEditorActions = ({
     },
     mindmap,
     clipboard,
-    history: write.history as HistoryCommands
+    history: write.history satisfies HistoryActions
   }
 }

@@ -4,21 +4,13 @@ import {
   useRef
 } from 'react'
 import {
-  DATAVIEW_APPEARANCE_ID_ATTR
-} from '@dataview/react/dom/appearance'
-import {
   useDataView
 } from '@dataview/react/dataview'
 import {
-  closestTarget,
-  interactiveSelector
+  intersects,
+  rectIn
 } from '@shared/dom'
-import {
-  resolveDefaultAutoPanTargets
-} from '@dataview/react/interaction/autoPan'
-import {
-  useCardReorder
-} from '@dataview/react/views/gallery/reorder'
+import { useCardReorder } from '@dataview/react/views/gallery/reorder'
 import {
   GALLERY_CARD_MIN_WIDTH,
   useGalleryBlocks
@@ -28,21 +20,17 @@ import type {
   GalleryViewRuntime
 } from '@dataview/react/views/gallery/types'
 import {
-  useItemDragRuntime
+  useItemDragRuntime,
+  useRegisterMarqueeScene
 } from '@dataview/react/views/shared/interactionRuntime'
+import type { MarqueeScene } from '@dataview/react/runtime/marquee'
 
 export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntime => {
   const dataView = useDataView()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const itemIds = input.active.items.ids
   const interaction = useItemDragRuntime({
-    viewId: input.active.view.id,
-    itemIds,
-    canStart: event => !closestTarget(
-      event.target,
-      `[${DATAVIEW_APPEARANCE_ID_ATTR}],${interactiveSelector}`
-    ),
-    resolveAutoPanTargets: () => resolveDefaultAutoPanTargets(containerRef.current)
+    itemIds
   })
   const virtual = useGalleryBlocks({
     grouped: input.active.query.group.active,
@@ -51,6 +39,25 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
     containerRef,
     overscan: interaction.dragging ? 1200 : 640
   })
+  const marqueeScene = useMemo<MarqueeScene>(() => ({
+    hitTest: rect => {
+      const container = containerRef.current
+      if (!container) {
+        return []
+      }
+
+      const localRect = rectIn(container, rect)
+      if (!localRect) {
+        return []
+      }
+
+      return virtual.layout.cards
+        .filter(card => intersects(localRect, card.rect))
+        .map(card => card.id)
+    }
+  }), [virtual.layout])
+
+  useRegisterMarqueeScene(marqueeScene)
 
   const drag = useCardReorder({
     containerRef,

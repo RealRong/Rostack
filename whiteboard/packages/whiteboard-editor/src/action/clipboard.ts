@@ -5,27 +5,27 @@ import type { Point } from '@whiteboard/core/types'
 import type { EditorStore } from '@whiteboard/editor/types/editor'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type {
-  ClipboardCommands,
-  SessionActions,
+  ClipboardActions,
   ClipboardTarget
-} from '@whiteboard/editor/types/commands'
+} from '@whiteboard/editor/action/types'
 import {
   createClipboardPacket,
   type ClipboardPacket
 } from '@whiteboard/editor/clipboard/packet'
-import type { DocumentCommands } from '@whiteboard/editor/write/document'
-import type { SelectionCommands } from '@whiteboard/editor/action/selection'
+import type { SelectionActionHelpers } from '@whiteboard/editor/action/selection'
+import type { SelectionSessionDeps } from '@whiteboard/editor/session/types'
+import type { DocumentWrite } from '@whiteboard/editor/write/types'
 
-type ClipboardCommandsHost = {
+type ClipboardActionHelpersHost = {
   read: EditorQuery
-  document: Pick<DocumentCommands, 'insert'>
-  session: Pick<SessionActions, 'selection'>
-  selection: Pick<SelectionCommands, 'delete'>
+  document: Pick<DocumentWrite, 'insert'>
+  session: SelectionSessionDeps
+  selection: Pick<SelectionActionHelpers, 'delete'>
   state: Pick<EditorStore, 'viewport' | 'selection'>
 }
 
 const applyInsertedRoots = (input: {
-  editor: ClipboardCommandsHost
+  editor: ClipboardActionHelpersHost
   inserted: {
     roots: SliceRoots
     allNodeIds: readonly string[]
@@ -40,18 +40,18 @@ const applyInsertedRoots = (input: {
     : input.inserted.allEdgeIds
 
   if (nodeIds.length > 0 || edgeIds.length > 0) {
-    input.editor.session.selection.replace({
+    input.editor.session.replaceSelection({
       nodeIds,
       edgeIds
     })
     return
   }
 
-  input.editor.session.selection.clear()
+  input.editor.session.clearSelection()
 }
 
 const readSelectionTarget = (
-  editor: ClipboardCommandsHost
+  editor: ClipboardActionHelpersHost
 ): Exclude<ClipboardTarget, 'selection'> | undefined => {
   const target = editor.state.selection.get()
 
@@ -66,7 +66,7 @@ const readSelectionTarget = (
 }
 
 const resolveClipboardTarget = (input: {
-  editor: ClipboardCommandsHost
+  editor: ClipboardActionHelpersHost
   target: ClipboardTarget
 }): Exclude<ClipboardTarget, 'selection'> | undefined => (
   input.target === 'selection'
@@ -75,7 +75,7 @@ const resolveClipboardTarget = (input: {
 )
 
 const readClipboardPacket = (input: {
-  editor: ClipboardCommandsHost
+  editor: ClipboardActionHelpersHost
   target: ClipboardTarget
 }): ClipboardPacket | undefined => {
   const resolved = resolveClipboardTarget(input)
@@ -89,11 +89,11 @@ const readClipboardPacket = (input: {
     : undefined
 }
 
-export const createClipboardCommands = ({
+export const createClipboardActions = ({
   editor
 }: {
-  editor: ClipboardCommandsHost
-}): ClipboardCommands => ({
+  editor: ClipboardActionHelpersHost
+}): ClipboardActions => ({
   copy: (target: ClipboardTarget = 'selection') =>
     readClipboardPacket({
       editor,

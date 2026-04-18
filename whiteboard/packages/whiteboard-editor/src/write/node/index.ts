@@ -8,26 +8,26 @@ import type { Engine } from '@whiteboard/engine'
 import { createNodeContext } from '@whiteboard/editor/write/node/context'
 import type { NodeContext } from '@whiteboard/editor/write/node/context'
 import {
-  createNodeTextCommands
+  createNodeTextWrite
 } from '@whiteboard/editor/write/node/text'
 import type {
-  NodeCommands,
-  NodeLockCommands,
-  NodeShapeCommands,
-  NodeStyleCommands,
-  NodePatchWriter
-} from '@whiteboard/editor/write/node/types'
+  NodeLockWrite,
+  NodePatchWrite,
+  NodeShapeWrite,
+  NodeStyleWrite,
+  NodeWrite
+} from '@whiteboard/editor/write/types'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorQuery } from '@whiteboard/editor/query'
 
-const createNodePatchWriter = (
+const createNodePatchWrite = (
   engine: Engine,
   {
     layout
   }: {
     layout: EditorLayout
   }
-): NodePatchWriter => ({
+): NodePatchWrite => ({
   update: (id, update) => engine.execute({
     type: 'node.patch',
     updates: [{
@@ -56,10 +56,10 @@ const toNodeStyleBatchUpdates = (
   update: compileNodeStyleUpdate(path, value)
 }))
 
-const createNodeLockCommands = (
+const createNodeLockWrite = (
   ctx: NodeContext
-): NodeLockCommands => {
-  const set: NodeLockCommands['set'] = (nodeIds, locked) => ctx.write.updateMany(
+): NodeLockWrite => {
+  const set: NodeLockWrite['set'] = (nodeIds, locked) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
       update: {
@@ -79,9 +79,9 @@ const createNodeLockCommands = (
   }
 }
 
-const createNodeShapeCommands = (
+const createNodeShapeWrite = (
   ctx: NodeContext
-): NodeShapeCommands => ({
+): NodeShapeWrite => ({
   set: (nodeIds, kind) => ctx.write.updateMany(
     nodeIds.flatMap((id) => {
       const node = ctx.read.committed(id)?.node
@@ -97,9 +97,9 @@ const createNodeShapeCommands = (
   )
 })
 
-const createNodeStyleCommands = (
+const createNodeStyleWrite = (
   ctx: NodeContext
-): NodeStyleCommands => ({
+): NodeStyleWrite => ({
   fill: (nodeIds, value) => ctx.write.updateMany(
     toNodeStyleBatchUpdates(nodeIds, 'fill', value)
   ),
@@ -126,7 +126,7 @@ const createNodeStyleCommands = (
   )
 })
 
-export const createNodeCommands = ({
+export const createNodeWrite = ({
   engine,
   read,
   layout
@@ -134,8 +134,8 @@ export const createNodeCommands = ({
   engine: Engine
   read: EditorQuery
   layout: EditorLayout
-}): NodeCommands => {
-  const patch = createNodePatchWriter(engine, {
+}): NodeWrite => {
+  const patch = createNodePatchWrite(engine, {
     layout
   })
   const ctx = createNodeContext({
@@ -204,9 +204,9 @@ export const createNodeCommands = ({
     }),
     update: ctx.write.update,
     updateMany: ctx.write.updateMany,
-    lock: createNodeLockCommands(ctx),
-    shape: createNodeShapeCommands(ctx),
-    style: createNodeStyleCommands(ctx),
-    text: createNodeTextCommands(ctx)
+    lock: createNodeLockWrite(ctx),
+    shape: createNodeShapeWrite(ctx),
+    style: createNodeStyleWrite(ctx),
+    text: createNodeTextWrite(ctx)
   }
 }

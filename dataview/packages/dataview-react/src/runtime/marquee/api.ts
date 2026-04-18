@@ -2,14 +2,21 @@ import {
   sameBox,
   samePoint
 } from '@shared/core'
+import type { ItemId } from '@dataview/engine'
 import type {
-  MarqueeAdapter,
   MarqueeApi,
+  MarqueeScene,
   MarqueeSessionState
 } from '@dataview/react/runtime/marquee/types'
 import {
   createNullableControllerStore
 } from '@dataview/runtime/store'
+
+const sameHitIds = (
+  left: readonly ItemId[],
+  right: readonly ItemId[]
+) => left.length === right.length
+  && left.every((id, index) => id === right[index])
 
 const sameSession = (
   left: MarqueeSessionState | null,
@@ -23,12 +30,12 @@ const sameSession = (
     return false
   }
 
-  return left.ownerViewId === right.ownerViewId
-    && left.mode === right.mode
+  return left.mode === right.mode
     && samePoint(left.start, right.start)
     && samePoint(left.current, right.current)
-    && sameBox(left.box, right.box)
+    && sameBox(left.rect, right.rect)
     && left.baseSelection === right.baseSelection
+    && sameHitIds(left.hitIds, right.hitIds)
 }
 
 export const createMarqueeApi = (): MarqueeApi => {
@@ -39,7 +46,7 @@ export const createMarqueeApi = (): MarqueeApi => {
   } = createNullableControllerStore<MarqueeSessionState>({
     isEqual: sameSession
   })
-  const adapters = new Map<string, MarqueeAdapter>()
+  let activeScene: MarqueeScene | undefined
 
   return {
     store,
@@ -51,15 +58,15 @@ export const createMarqueeApi = (): MarqueeApi => {
       store.set(session)
     },
     clear,
-    registerAdapter: adapter => {
-      adapters.set(adapter.viewId, adapter)
+    registerScene: scene => {
+      activeScene = scene
       return () => {
-        const current = adapters.get(adapter.viewId)
-        if (current === adapter) {
-          adapters.delete(adapter.viewId)
+        if (activeScene === scene) {
+          activeScene = undefined
+          clear()
         }
       }
     },
-    getAdapter: viewId => adapters.get(viewId)
+    getScene: () => activeScene
   }
 }

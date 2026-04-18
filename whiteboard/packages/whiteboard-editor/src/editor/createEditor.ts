@@ -3,7 +3,7 @@ import type { Engine } from '@whiteboard/engine'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
-} from '@whiteboard/editor/local/draw/state'
+} from '@whiteboard/editor/session/draw/state'
 import { createEditorActions } from '@whiteboard/editor/action'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorRead } from '@whiteboard/editor/editor/read'

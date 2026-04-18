@@ -6,7 +6,7 @@ import {
   type ReadStore
 } from '@shared/core'
 import type { Guide } from '@whiteboard/core/node'
-import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
+import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import {
   EMPTY_EDGE_GUIDE,
   EMPTY_EDGE_FEEDBACK_PROJECTION,

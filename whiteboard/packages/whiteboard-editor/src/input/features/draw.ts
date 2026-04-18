@@ -16,7 +16,7 @@ import {
   type DrawPreview,
   type DrawState,
   type DrawStyle
-} from '@whiteboard/editor/local/draw'
+} from '@whiteboard/editor/session/draw'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'

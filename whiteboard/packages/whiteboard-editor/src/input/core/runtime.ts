@@ -1,7 +1,7 @@
 import {
   read
 } from '@shared/core'
-import type { ViewportInputRuntime } from '@whiteboard/editor/local/viewport/runtime'
+import type { ViewportInputRuntime } from '@whiteboard/editor/session/viewport'
 import { createAutoPan } from '@whiteboard/editor/input/session/autoPan'
 import type {
   InteractionBinding,

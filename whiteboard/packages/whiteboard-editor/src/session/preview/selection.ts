@@ -1,7 +1,7 @@
 import { rectFromPoints } from '@whiteboard/core/geometry'
 import type { Guide } from '@whiteboard/core/node'
 import type { Rect } from '@whiteboard/core/types'
-import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
+import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
 } from '@whiteboard/editor/session/preview/edge'

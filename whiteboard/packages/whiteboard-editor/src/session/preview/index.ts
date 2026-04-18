@@ -1,5 +1,5 @@
 import type { ReadStore } from '@shared/core'
-import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
+import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import { type ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type { HoverStore } from '@whiteboard/editor/input/hover/store'
 import { createInputPreviewSelectors } from '@whiteboard/editor/session/preview/selectors'

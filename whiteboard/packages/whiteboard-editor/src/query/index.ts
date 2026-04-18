@@ -5,7 +5,7 @@ import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type {
   DrawMode,
   DrawState
-} from '@whiteboard/editor/local/draw'
+} from '@whiteboard/editor/session/draw'
 import type {
   EdgePresetKey,
   InsertPresetKey,
@@ -36,7 +36,7 @@ import {
   createTargetRead,
   type RuntimeTargetRead
 } from '@whiteboard/editor/query/target'
-import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
+import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorInputPreview } from '@whiteboard/editor/session/preview'
 

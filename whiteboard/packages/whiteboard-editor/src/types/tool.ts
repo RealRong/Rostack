@@ -1,4 +1,4 @@
-import type { DrawMode } from '@whiteboard/editor/local/draw/model'
+import type { DrawMode } from '@whiteboard/editor/session/draw/model'
 
 export type EdgePresetKey =
   | 'edge.line'

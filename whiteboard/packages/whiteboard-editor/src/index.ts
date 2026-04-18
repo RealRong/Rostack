@@ -19,7 +19,7 @@ export type {
   EditSession,
   EditField,
   EditEmptyBehavior
-} from '@whiteboard/editor/local/session/edit'
+} from '@whiteboard/editor/session/edit'
 export type {
   Editor,
   EditorChromePresentation,

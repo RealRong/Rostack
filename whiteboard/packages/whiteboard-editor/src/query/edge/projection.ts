@@ -15,7 +15,7 @@ import type {
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type {
   EditSession
-} from '@whiteboard/editor/local/session/edit'
+} from '@whiteboard/editor/session/edit'
 
 const applyEdgeEditSession = (
   edge: EdgeItem['edge'],

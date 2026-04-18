@@ -45,7 +45,7 @@ import type {
   NodeRegistry
 } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { EditSession } from '@whiteboard/editor/local/session/edit'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 import { readUniformValue } from '@whiteboard/editor/query/utils'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { EditorInputState } from '@whiteboard/editor/session/interaction'

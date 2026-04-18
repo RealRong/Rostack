@@ -30,7 +30,7 @@ import type {
   Origin
 } from '@whiteboard/core/types'
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
-import type { EditField, EditLayout } from '@whiteboard/editor/local/session/edit'
+import type { EditField, EditLayout } from '@whiteboard/editor/session/edit'
 import type {
   LayoutBackend,
   LayoutKind,

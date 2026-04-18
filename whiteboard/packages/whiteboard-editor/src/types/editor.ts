@@ -6,7 +6,7 @@ import type {
   Viewport
 } from '@whiteboard/core/types'
 import type { EditorActions } from '@whiteboard/editor/action/types'
-import type { DrawState } from '@whiteboard/editor/local/draw/state'
+import type { DrawState } from '@whiteboard/editor/session/draw/state'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -19,7 +19,7 @@ import type {
 import type {
   Tool
 } from '@whiteboard/editor/types/tool'
-import type { EditSession } from '@whiteboard/editor/local/session/edit'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { Unsubscribe } from '@shared/core'
 import type { Commit } from '@whiteboard/engine/types/commit'

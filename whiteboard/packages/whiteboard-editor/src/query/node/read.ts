@@ -32,7 +32,7 @@ import type {
   MindmapPreviewState,
   NodePreviewProjection,
 } from '@whiteboard/editor/session/preview/types'
-import type { EditSession } from '@whiteboard/editor/local/session/edit'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 import {
   projectNodeItem,
   readNodeProjectionRotation,

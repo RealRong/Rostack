@@ -4,7 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./draw": "./src/local/draw/index.ts"
+    "./draw": "./src/session/draw/index.ts"
   },
   "files": [
     "src",

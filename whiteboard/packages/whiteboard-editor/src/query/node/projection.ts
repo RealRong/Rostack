@@ -11,7 +11,7 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type { NodeItem } from '@whiteboard/engine'
-import type { EditSession } from '@whiteboard/editor/local/session/edit'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 import type {
   NodePreviewProjection
 } from '@whiteboard/editor/session/preview/types'

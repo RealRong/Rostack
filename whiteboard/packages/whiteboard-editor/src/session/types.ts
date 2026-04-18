@@ -6,7 +6,7 @@ import type {
 import type {
   EditCaret,
   EditField
-} from '@whiteboard/editor/local/session/edit'
+} from '@whiteboard/editor/session/edit'
 
 export type SelectionSessionDeps = {
   replaceSelection: (input: SelectionInput) => void

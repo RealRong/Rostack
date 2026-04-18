@@ -33,14 +33,14 @@ import type { ClipboardPacket } from '@whiteboard/editor/clipboard/packet'
 import type {
   BrushStylePatch,
   DrawState
-} from '@whiteboard/editor/local/draw/state'
-import type { DrawMode, DrawSlot } from '@whiteboard/editor/local/draw/model'
+} from '@whiteboard/editor/session/draw/state'
+import type { DrawMode, DrawSlot } from '@whiteboard/editor/session/draw/model'
 import type {
   EditCaret,
   EditField,
   EditLayout
-} from '@whiteboard/editor/local/session/edit'
-import type { ViewportCommands } from '@whiteboard/editor/local/viewport/runtime'
+} from '@whiteboard/editor/session/edit'
+import type { ViewportCommands } from '@whiteboard/editor/session/viewport'
 import type {
   EdgePresetKey,
   InsertPresetKey,

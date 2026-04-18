@@ -8,27 +8,27 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type {
   BrushStylePatch,
   DrawState
-} from '@whiteboard/editor/local/draw/state'
-import type { DrawSlot } from '@whiteboard/editor/local/draw/model'
+} from '@whiteboard/editor/session/draw/state'
+import type { DrawSlot } from '@whiteboard/editor/session/draw/model'
 import {
   DEFAULT_DRAW_BRUSH,
   hasDrawBrush
-} from '@whiteboard/editor/local/draw'
+} from '@whiteboard/editor/session/draw'
 import {
   createDrawStateStore
-} from '@whiteboard/editor/local/draw/runtime'
+} from '@whiteboard/editor/session/draw/runtime'
 import {
   createEditState,
   type EditMutate,
   type EditSession
-} from '@whiteboard/editor/local/session/edit'
+} from '@whiteboard/editor/session/edit'
 import {
   createSelectionState
-} from '@whiteboard/editor/local/session/selection'
+} from '@whiteboard/editor/session/selection'
 import {
   createViewport,
   type ViewportRuntime
-} from '@whiteboard/editor/local/viewport/runtime'
+} from '@whiteboard/editor/session/viewport'
 import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type { InteractionMode } from '@whiteboard/editor/input/core/types'
 import type { HoverStore } from '@whiteboard/editor/input/hover/store'

@@ -12,7 +12,7 @@ import {
 } from '@shared/core'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import { sameOrder as isOrderedArrayEqual } from '@shared/core'
-import { createCommandState } from '@whiteboard/editor/local/session/store'
+import { createCommandState } from '@whiteboard/editor/session/store'
 
 type SelectionReadSource = Pick<EditorQuery, 'node' | 'edge'>
 

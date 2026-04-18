@@ -17,7 +17,7 @@ import {
   type MindmapRenderConnector
 } from '@whiteboard/core/mindmap'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
-import type { EditSession } from '@whiteboard/editor/local/session/edit'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 
 export type MindmapRenderView = {
   treeId: NodeId

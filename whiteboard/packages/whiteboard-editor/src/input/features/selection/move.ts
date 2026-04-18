@@ -12,7 +12,7 @@ import {
 import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import { createMindmapDragSession, tryStartMindmapDragForNode } from '@whiteboard/editor/input/features/mindmap/drag'
 import type {
@@ -41,12 +41,12 @@ const toMoveEdgePatches = (
 }))
 
 const findParentFrameId = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   nodeId: string
 ) => ctx.query.frame.of(nodeId)
 
 const resolveFrameHoverId = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   state: Parameters<typeof finishMoveState>[0],
   pointerWorld: {
     x: number
@@ -70,7 +70,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (

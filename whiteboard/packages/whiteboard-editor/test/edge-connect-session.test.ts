@@ -5,17 +5,17 @@ import {
 import type {
   EdgePatch
 } from '@whiteboard/core/types'
-import type { InteractionContext } from '../src/input/core/context'
+import type { InteractionDeps } from '../src/input/core/context'
 import { createEdgeConnectSession } from '../src/input/features/edge/connect'
 
-const createInteractionContext = () => {
+const createInteractionDeps = () => {
   const patch = vi.fn(() => ({ ok: true }))
 
   return {
     patch,
     ctx: {
       query: {
-        node: {} as InteractionContext['query']['node'],
+        node: {} as InteractionDeps['query']['node'],
         edge: {
           resolved: {
             get: () => ({
@@ -87,12 +87,12 @@ const createInteractionContext = () => {
           panScreenBy: vi.fn()
         }
       }
-    } as unknown as InteractionContext
+    } as unknown as InteractionDeps
   }
 }
 
 const createReconnectSession = () => {
-  const runtime = createInteractionContext()
+  const runtime = createInteractionDeps()
   const session = createEdgeConnectSession(
     runtime.ctx,
     startEdgeReconnect({

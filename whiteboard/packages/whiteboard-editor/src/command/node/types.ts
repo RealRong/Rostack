@@ -1,8 +1,6 @@
 import type {
   NodeAlignMode,
-  NodeDistributeMode,
-  ResizeDirection,
-  TextWidthMode
+  NodeDistributeMode
 } from '@whiteboard/core/node'
 import type {
   NodeId,
@@ -28,19 +26,6 @@ export type NodePatchWriter = {
 }
 
 export type NodeTextCommands = {
-  preview: (input: {
-    nodeId: NodeId
-    position?: Point
-    size?: Size
-    fontSize?: number
-    mode?: TextWidthMode
-    wrapWidth?: number
-    handle?: ResizeDirection
-  }) => void
-  clearPreview: (nodeId: NodeId) => void
-  cancel: (input: {
-    nodeId: NodeId
-  }) => void
   commit: (input: {
     nodeId: NodeId
     field: 'text' | 'title'

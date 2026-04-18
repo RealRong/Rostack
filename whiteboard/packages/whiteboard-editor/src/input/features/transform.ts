@@ -14,7 +14,7 @@ import type { Node, NodeId } from '@whiteboard/core/types'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 
@@ -37,7 +37,7 @@ const toTransformNodePatches = (
 }))
 
 const readNodeTransformSpec = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   nodeId: NodeId,
   handle: TransformPickHandle,
   input: PointerDownInput
@@ -110,7 +110,7 @@ const readNodeTransformSpec = (
 }
 
 const resolveTransformSpec = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
   const tool = ctx.query.tool.get()
@@ -147,7 +147,7 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -233,7 +233,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: InteractionContext
+  ctx: InteractionDeps
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

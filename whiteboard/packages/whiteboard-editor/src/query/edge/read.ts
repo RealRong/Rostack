@@ -46,7 +46,7 @@ import {
   projectEdgeItem,
   readProjectedEdgeView
 } from '@whiteboard/editor/query/edge/projection'
-import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 
 export type EdgeRuntimeState = {
   patched: boolean
@@ -518,7 +518,7 @@ const readEdgeLabelRender = ({
   textMode: NonNullable<Edge['textMode']>
   label: NonNullable<Edge['labels']>[number]
   edit: EditSession
-  layout: Pick<LayoutRuntime, 'measureText'>
+  layout: Pick<EditorLayout, 'measureText'>
 }): EdgeLabelRender | undefined => {
   const text = readLabelText(label.text)
   const editing = (
@@ -609,7 +609,7 @@ export const createEdgeRead = ({
   selection: ReadStore<SelectionTarget>
   tool: ReadStore<Tool>
   interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
-  layout: Pick<LayoutRuntime, 'measureText'>
+  layout: Pick<EditorLayout, 'measureText'>
   capability: (node: Pick<Node, 'type'> | NodeType) => {
     connect: boolean
   }

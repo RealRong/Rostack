@@ -1,4 +1,4 @@
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { InteractionBinding } from '@whiteboard/editor/input/core/types'
 import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
 import { createEdgeBinding } from '@whiteboard/editor/input/features/edge'
@@ -7,7 +7,7 @@ import { createTransformBinding } from '@whiteboard/editor/input/features/transf
 import { createViewportBinding } from '@whiteboard/editor/input/features/viewport'
 
 export const createEditorInteractions = (
-  ctx: InteractionContext
+  ctx: InteractionDeps
 ): readonly InteractionBinding[] => ([
   createViewportBinding(ctx),
   createDrawBinding(ctx),

@@ -26,12 +26,13 @@ export type {
   EditorChromePresentation,
   EditorEdgeActions,
   EditorEvents,
+  EditorInputHost,
   EditorPanelPresentation,
-  EditorInput,
-  EditorPublicRead,
+  EditorRead,
   EditorSelectionActions,
   EditorNodeActions,
-  EditorEditActions
+  EditorEditActions,
+  EditorStore
 } from '@whiteboard/editor/types/editor'
 export type {
   AppActions,
@@ -47,16 +48,11 @@ export type {
   NodeApi,
   OrderMode,
   SelectionApi,
-  SessionActions,
-  SessionEditActions,
-  SessionSelectionActions,
-  SessionToolActions,
   ToolActions,
-  ViewActions,
   ViewportActions
 } from '@whiteboard/editor/types/commands'
 export type {
-  EditorQueryRead
+  EditorQuery
 } from '@whiteboard/editor/query'
 export type {
   ClipboardPacket

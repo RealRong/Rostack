@@ -1,11 +1,11 @@
 import type { BoardConfig } from '@whiteboard/core/config'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import type { EdgeId, NodeId, Point } from '@whiteboard/core/types'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
-import type { EditorCommandRuntime } from '@whiteboard/editor/command'
+import type { EditorQuery } from '@whiteboard/editor/query'
+import type { EditorCommands } from '@whiteboard/editor/command'
 import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
-import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EditCaret, EditField } from '@whiteboard/editor/local/session/edit'
 
@@ -38,12 +38,12 @@ export type InputLocal = {
   }
 }
 
-export type InteractionContext = {
-  query: EditorQueryRead
+export type InteractionDeps = {
+  query: EditorQuery
   selection: SelectionModelRead
-  command: EditorCommandRuntime
+  command: EditorCommands
   local: InputLocal
-  layout: LayoutRuntime
+  layout: EditorLayout
   config: Readonly<BoardConfig>
   snap: SnapRuntime
 }

@@ -21,38 +21,6 @@ const toNodeStyleBatchUpdates = (
 export const createNodeTextCommands = (
   ctx: NodeContext
 ): NodeTextCommands => ({
-  preview: ({
-    nodeId,
-    position,
-    size,
-    fontSize,
-    mode,
-    wrapWidth,
-    handle
-  }) => {
-    const item = ctx.read.live(nodeId)
-    if (!item || item.node.type !== 'text') {
-      return
-    }
-
-    ctx.preview.text.set(nodeId, {
-      position,
-      size,
-      fontSize,
-      mode,
-      wrapWidth,
-      handle
-    })
-  },
-  clearPreview: (nodeId) => {
-    ctx.preview.text.clearSize(nodeId)
-  },
-  cancel: ({
-    nodeId
-  }) => {
-    ctx.preview.text.clear(nodeId)
-    ctx.edit.clear()
-  },
   commit: ({
     nodeId,
     field,
@@ -63,8 +31,6 @@ export const createNodeTextCommands = (
   }) => {
     const committed = ctx.read.committed(nodeId)
     if (!committed) {
-      ctx.preview.text.clear(nodeId)
-      ctx.edit.clear()
       return undefined
     }
 
@@ -72,15 +38,11 @@ export const createNodeTextCommands = (
       ? committed.node.data[field] as string
       : ''
 
-    ctx.preview.text.clear(nodeId)
-    ctx.edit.clear()
-
     if (
       committed.node.type === 'text'
       && field === 'text'
       && isTextContentEmpty(value)
     ) {
-      ctx.selection.clear()
       return ctx.write.deleteCascade([nodeId])
     }
 

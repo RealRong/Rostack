@@ -2,8 +2,8 @@ import type {
   SliceRoots
 } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
-import type { EditorState } from '@whiteboard/editor/types/editor'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
+import type { EditorStore } from '@whiteboard/editor/types/editor'
+import type { EditorQuery } from '@whiteboard/editor/query'
 import type {
   ClipboardCommands,
   SessionActions,
@@ -17,11 +17,11 @@ import type { DocumentCommands } from '@whiteboard/editor/command/document'
 import type { SelectionCommands } from '@whiteboard/editor/command/selection'
 
 type ClipboardCommandsHost = {
-  read: EditorQueryRead
+  read: EditorQuery
   document: Pick<DocumentCommands, 'insert'>
   session: Pick<SessionActions, 'selection'>
   selection: Pick<SelectionCommands, 'delete'>
-  state: Pick<EditorState, 'viewport' | 'selection'>
+  state: Pick<EditorStore, 'viewport' | 'selection'>
 }
 
 const applyInsertedRoots = (input: {

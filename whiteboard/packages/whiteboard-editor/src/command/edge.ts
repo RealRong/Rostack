@@ -11,9 +11,7 @@ import type {
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { EdgeApi } from '@whiteboard/editor/types/commands'
-import type { EditorState } from '@whiteboard/editor/types/editor'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
-import type { SessionActions } from '@whiteboard/editor/types/commands'
+import type { EditorQuery } from '@whiteboard/editor/query'
 
 export type EdgeCommands = {
   create: EdgeApi['create']
@@ -61,12 +59,12 @@ const hasEdgePatchContent = (
 ) => Object.keys(patch).length > 0
 
 const readEdge = (
-  read: EditorQueryRead,
+  read: EditorQuery,
   edgeId: EdgeId
 ) => read.edge.item.get(edgeId)?.edge
 
 const readCommittedEdge = (
-  read: Pick<EditorQueryRead, 'edge'>,
+  read: Pick<EditorQuery, 'edge'>,
   edgeId: EdgeId
 ) => read.edge.committed.get(edgeId)?.edge
 
@@ -88,7 +86,7 @@ const patchEdges = (
 }
 
 const patchExistingEdges = (
-  read: Pick<EditorQueryRead, 'edge'>,
+  read: Pick<EditorQuery, 'edge'>,
   engine: Engine,
   edgeIds: readonly EdgeId[],
   patch: EdgePatch
@@ -104,7 +102,7 @@ const patchExistingEdges = (
 
 const patchEdgesBy = (
   edgeIds: readonly EdgeId[],
-  read: EditorQueryRead,
+  read: EditorQuery,
   engine: Engine,
   buildPatch: (edge: Edge) => EdgePatch | undefined
 ) => patchEdges(
@@ -129,7 +127,7 @@ const patchEdgesBy = (
 
 const patchEdgeStyle = <Key extends keyof NonNullable<Edge['style']>>(
   edgeIds: readonly EdgeId[],
-  read: EditorQueryRead,
+  read: EditorQuery,
   engine: Engine,
   key: Key,
   value: NonNullable<Edge['style']>[Key] | undefined
@@ -148,7 +146,7 @@ const patchEdgeStyle = <Key extends keyof NonNullable<Edge['style']>>(
 
 const patchEdgeType = (
   edgeIds: readonly EdgeId[],
-  read: EditorQueryRead,
+  read: EditorQuery,
   engine: Engine,
   value: EdgeType
 ) => patchEdgesBy(edgeIds, read, engine, (edge) => (
@@ -197,14 +195,10 @@ const mergeEdgeLabelPatch = (
 
 export const createEdgeCommands = ({
   engine,
-  read,
-  edit,
-  session
+  read
 }: {
   engine: Engine
-  read: EditorQueryRead
-  edit: EditorState['edit']
-  session: Pick<SessionActions, 'edit' | 'selection'>
+  read: EditorQuery
 }): EdgeCommands => ({
   create: (payload) => engine.execute({
     type: 'edge.create',
@@ -272,15 +266,6 @@ export const createEdgeCommands = ({
         return undefined
       }
 
-      const currentEdit = edit.get()
-      if (
-        currentEdit
-        && currentEdit.kind === 'edge-label'
-        && currentEdit.edgeId === edgeId
-      ) {
-        return undefined
-      }
-
       const labelId = createId('edge_label')
       const nextLabels = [
         ...(currentEdge.labels ?? []),
@@ -290,7 +275,7 @@ export const createEdgeCommands = ({
         }
       ]
 
-      engine.execute({
+      const result = engine.execute({
         type: 'edge.patch',
         updates: [{
           id: edgeId,
@@ -299,11 +284,9 @@ export const createEdgeCommands = ({
           }
         }]
       })
-      session.selection.replace({
-        edgeIds: [edgeId]
-      })
-      session.edit.startEdgeLabel(edgeId, labelId)
-      return labelId
+      return result.ok
+        ? labelId
+        : undefined
     },
     patch: (edgeId, labelId, patch) => {
       const currentEdge = readEdge(read, edgeId)
@@ -333,16 +316,6 @@ export const createEdgeCommands = ({
       }
 
       const nextLabels = currentEdge.labels.filter((label) => label.id !== labelId)
-      const currentEdit = edit.get()
-      if (
-        currentEdit
-        && currentEdit.kind === 'edge-label'
-        && currentEdit.edgeId === edgeId
-        && currentEdit.labelId === labelId
-      ) {
-        session.edit.clear()
-      }
-
       return engine.execute({
         type: 'edge.patch',
         updates: [{

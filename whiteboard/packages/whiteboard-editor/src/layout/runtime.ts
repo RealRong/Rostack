@@ -313,7 +313,7 @@ const toLayoutResultUpdate = ({
   return undefined
 }
 
-export type LayoutRuntime = {
+export type EditorLayout = {
   measureText: (
     input: Omit<Extract<LayoutRequest, { kind: 'size' }>, 'kind' | 'frame'> & {
       frame?: Extract<LayoutRequest, { kind: 'size' }>['frame']
@@ -341,7 +341,7 @@ export type LayoutRuntime = {
   ) => readonly TransformPreviewPatch[]
 }
 
-export const createLayoutRuntime = ({
+export const createEditorLayout = ({
   read,
   registry,
   backend
@@ -358,7 +358,7 @@ export const createLayoutRuntime = ({
   }
   registry: Pick<NodeRegistry, 'get'>
   backend?: LayoutBackend
-}): LayoutRuntime => {
+}): EditorLayout => {
   const resolveNodeRequest = ({
     nodeId,
     node,

@@ -15,7 +15,7 @@ import {
 import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
@@ -74,7 +74,7 @@ const createMarqueeRect = (
 
 const readMatchedSelection = (
   input: {
-    ctx: InteractionContext
+    ctx: InteractionDeps
     rect: Rect
     match: SelectionMarqueeAction['match']
   }
@@ -188,7 +188,7 @@ const reduceMarqueeSelection = (
 }
 
 const syncMarqueeInteraction = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   interaction: InteractionSession,
   previous: MarqueeSelectionState,
   next: MarqueeSelectionState
@@ -209,7 +209,7 @@ const syncMarqueeInteraction = (
 }
 
 export const createMarqueeSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   input: {
     start: PointerDownInput
     action: SelectionMarqueeAction

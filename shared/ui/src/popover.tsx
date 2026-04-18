@@ -50,6 +50,11 @@ import { cn } from '@shared/ui/utils'
 
 const POPOVER_TRANSITION_MS = 200
 
+export type PopoverAnimation = boolean | {
+  open?: boolean
+  close?: boolean
+}
+
 export type PopoverOffset = Parameters<typeof middlewareOffset>[0]
 export type PopoverSurfaceSize = 'sm' | 'md' | 'lg' | 'xl' | 'unset'
 export type PopoverSurfacePadding = 'none' | 'menu' | 'panel'
@@ -91,7 +96,10 @@ interface PopoverContextValue {
   backdrop: OverlayBackdrop
   container: Element | null
   portalRoot?: HTMLElement
-  animated: boolean
+  animation: {
+    open: boolean
+    close: boolean
+  }
   dismissOnBackdropPress: boolean
   overlay: ReturnType<typeof useOptionalOverlay>
 }
@@ -264,6 +272,29 @@ const resolvePopoverMode = (props: {
   return 'floating'
 }
 
+const resolvePopoverAnimation = (
+  animation: PopoverAnimation | undefined
+) => {
+  if (animation === undefined || animation === true) {
+    return {
+      open: true,
+      close: true
+    }
+  }
+
+  if (animation === false) {
+    return {
+      open: false,
+      close: false
+    }
+  }
+
+  return {
+    open: animation.open ?? true,
+    close: animation.close ?? true
+  }
+}
+
 export interface PopoverProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -281,7 +312,7 @@ export interface PopoverProps {
   surface?: 'passive' | 'scoped' | 'blocking'
   backdrop?: OverlayBackdrop
   dismissOnBackdropPress?: boolean
-  animated?: boolean
+  animated?: PopoverAnimation
   container?: Element | null
 }
 
@@ -315,6 +346,7 @@ const Root = (props: PopoverProps) => {
   const overlay = useOptionalOverlay()
   const open = props.open ?? uncontrolledOpen
   const mode = resolvePopoverMode(props)
+  const animation = resolvePopoverAnimation(props.animated)
   const backdrop = props.backdrop ?? (
     mode === 'blocking'
       ? 'transparent'
@@ -445,7 +477,7 @@ const Root = (props: PopoverProps) => {
       backdrop,
       container,
       portalRoot,
-      animated: props.animated !== false,
+      animation,
       dismissOnBackdropPress: props.dismissOnBackdropPress ?? true,
       overlay
     }}>
@@ -492,17 +524,22 @@ const Content = (props: PopoverContentProps) => {
     backdrop,
     container,
     portalRoot,
-    animated,
+    animation,
     dismissOnBackdropPress,
     overlay
   } = context
   const [side, align = 'center'] = floating.placement.split('-') as [string, string?]
   const transition = useTransitionStyles(floating.context, {
-    duration: POPOVER_TRANSITION_MS,
+    duration: {
+      open: animation.open ? POPOVER_TRANSITION_MS : 0,
+      close: animation.close ? POPOVER_TRANSITION_MS : 0
+    },
     initial: ({ placement }) => ({
-      opacity: 0,
-      pointerEvents: 'none',
-      transform: 'scaleX(0.96) scaleY(0.96)',
+      opacity: animation.open ? 0 : 1,
+      pointerEvents: animation.open ? 'none' : 'auto',
+      transform: animation.open
+        ? 'scaleX(0.96) scaleY(0.96)'
+        : 'scaleX(1) scaleY(1)',
       transformOrigin: getPopoverTransformOrigin(placement)
     }),
     open: ({ placement }) => ({
@@ -518,8 +555,10 @@ const Content = (props: PopoverContentProps) => {
       transformOrigin: getPopoverTransformOrigin(placement)
     })
   })
-  const visible = animated ? transition.isMounted : open
-  const transitionStyles = animated ? transition.styles : undefined
+  const visible = open || (animation.close && transition.isMounted)
+  const transitionStyles = (animation.open || animation.close)
+    ? transition.styles
+    : undefined
   const hasExplicitWidthClassName = hasExplicitPopoverWidthClassName(
     cn(props.contentProps?.className, props.contentClassName)
   )

@@ -35,7 +35,7 @@ type PointerInputState = {
 }
 
 type PointerDownHandler = Parameters<
-  WhiteboardRuntime['actions']['interaction']['pointerDown']
+  WhiteboardRuntime['input']['pointerDown']
 >[0]
 
 export type PointerBridge = {
@@ -125,7 +125,7 @@ export const createPointerBridge = ({
         event
       })
       point.set(resolved.world)
-      return editor.actions.interaction.contextMenu({
+      return editor.input.contextMenu({
         ...resolved,
         modifiers: readModifierKeys(event)
       })
@@ -149,7 +149,7 @@ export const createPointerBridge = ({
         return true
       }
 
-      const result = editor.actions.interaction.pointerDown(input)
+      const result = editor.input.pointerDown(input)
       if (result.handled) {
         consumeDomEvent(event)
       }
@@ -163,20 +163,20 @@ export const createPointerBridge = ({
           pointerId: input.pointerId,
           move: (nextEvent) => {
             const moveInput = resolveCanvasPointerInput('move', container, nextEvent)
-            if (editor.actions.interaction.pointerMove(moveInput)) {
+            if (editor.input.pointerMove(moveInput)) {
               consumeDomEvent(nextEvent)
             }
           },
           up: (nextEvent) => {
             const upInput = resolveCanvasPointerInput('up', container, nextEvent)
-            if (editor.actions.interaction.pointerUp(upInput)) {
+            if (editor.input.pointerUp(upInput)) {
               consumeDomEvent(nextEvent)
             }
             clearSession()
           },
           cancel: (nextEvent) => {
             point.clear()
-            if (editor.actions.interaction.pointerCancel({
+            if (editor.input.pointerCancel({
               pointerId: nextEvent.pointerId
             })) {
               consumeDomEvent(nextEvent)
@@ -197,7 +197,7 @@ export const createPointerBridge = ({
       }
 
       const input = resolveCanvasPointerInput('move', container, event)
-      editor.actions.interaction.pointerMove(input)
+      editor.input.pointerMove(input)
     },
     leave: () => {
       if (releaseSession) {
@@ -205,12 +205,12 @@ export const createPointerBridge = ({
       }
 
       point.clear()
-      editor.actions.interaction.pointerLeave()
+      editor.input.pointerLeave()
     },
     cancel: () => {
       clearSession()
       point.clear()
-      editor.actions.interaction.cancel()
+      editor.input.cancel()
     }
   }
 }

@@ -123,6 +123,9 @@ export const ViewQueryBar = () => {
           }}
           mode="blocking"
           backdrop="transparent"
+          animated={{
+            close: false
+          }}
         >
           <Popover.Trigger>
             <QueryChip
@@ -168,6 +171,9 @@ export const ViewQueryBar = () => {
           }}
           mode="blocking"
           backdrop="transparent"
+          animated={{
+            close: false
+          }}
         >
           <Popover.Trigger>
             <QueryChip

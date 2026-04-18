@@ -1,6 +1,6 @@
 import { HANDLED } from '@whiteboard/editor/input/session/result'
 import type { InteractionBinding } from '@whiteboard/editor/input/core/types'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import { createEdgeConnectSession, tryStartEdgeConnect } from '@whiteboard/editor/input/features/edge/connect'
 import {
   createEdgeLabelPressSession,
@@ -13,7 +13,7 @@ import {
 } from '@whiteboard/editor/input/features/edge/route'
 
 const selectEdge = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   edgeId: string
 ) => {
   ctx.local.selection.replace({
@@ -22,7 +22,7 @@ const selectEdge = (
 }
 
 export const createEdgeBinding = (
-  ctx: InteractionContext
+  ctx: InteractionDeps
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {

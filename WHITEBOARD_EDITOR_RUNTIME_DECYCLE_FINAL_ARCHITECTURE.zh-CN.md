@@ -217,31 +217,22 @@ export type EditorLocalMutate = {
   }
   draw: {
     set: (state: DrawState) => void
-    patch: (patch: Partial<DrawState>) => void
-    reset: () => void
+    slot: (slot: DrawSlot) => void
+    patch: (patch: BrushStylePatch) => void
   }
   selection: {
-    replace: (input: SelectionInput) => void
-    add: (input: SelectionInput) => void
-    remove: (input: SelectionInput) => void
-    toggle: (input: SelectionInput) => void
-    clear: () => void
+    replace: (input: SelectionInput) => boolean
+    add: (input: SelectionInput) => boolean
+    remove: (input: SelectionInput) => boolean
+    toggle: (input: SelectionInput) => boolean
+    clear: () => boolean
   }
   edit: {
-    startNode: (
-      nodeId: NodeId,
-      field: EditField,
-      options?: { caret?: EditCaret }
-    ) => void
-    startEdgeLabel: (
-      edgeId: EdgeId,
-      labelId: string,
-      options?: { caret?: EditCaret }
-    ) => void
-    patchDraft: (patch: Partial<EditDraft>) => void
-    patchLayout: (patch: Partial<EditLayout>) => void
-    setCaret: (caret: EditCaret | null) => void
-    setStatus: (status: EditStatus) => void
+    set: (session: EditSession) => void
+    input: (text: string) => void
+    layout: (patch: Partial<EditLayout>) => void
+    caret: (caret: EditCaret) => void
+    status: (status: EditStatus) => void
     clear: () => void
   }
   pointer: {
@@ -415,11 +406,19 @@ export type EditorSelectionActions = {
 
 ```ts
 export type EditorEditActions = {
-  startNode: EditorLocalMutate['edit']['startNode']
-  startEdgeLabel: EditorLocalMutate['edit']['startEdgeLabel']
-  patchDraft: EditorLocalMutate['edit']['patchDraft']
-  patchLayout: EditorLocalMutate['edit']['patchLayout']
-  setCaret: EditorLocalMutate['edit']['setCaret']
+  startNode: (
+    nodeId: NodeId,
+    field: EditField,
+    options?: { caret?: EditCaret }
+  ) => void
+  startEdgeLabel: (
+    edgeId: EdgeId,
+    labelId: string,
+    options?: { caret?: EditCaret }
+  ) => void
+  input: (text: string) => void
+  layout: (patch: Partial<EditLayout>) => void
+  caret: (caret: EditCaret) => void
   cancel: () => void
   commit: () => void
 }

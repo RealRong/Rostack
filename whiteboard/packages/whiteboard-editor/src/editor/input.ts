@@ -1,15 +1,15 @@
 import type {
-  EditorInput,
-  EditorState
+  EditorInputHost,
+  EditorStore
 } from '@whiteboard/editor/types/editor'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
-import type { EditorLocalRuntime } from '@whiteboard/editor/local/runtime'
+import type { EditorQuery } from '@whiteboard/editor/query'
+import type { EditorLocal } from '@whiteboard/editor/local/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 
 const readSelectionIntent = (
-  selection: EditorState['selection'],
+  selection: EditorStore['selection'],
   screen: {
     x: number
     y: number
@@ -25,23 +25,23 @@ const readSelectionIntent = (
     : null
 }
 
-export const createEditorInput = ({
+export const createEditorInputHost = ({
   interaction,
   edgeHover,
-  read,
+  query,
   local
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  read: EditorQueryRead
-  local: Pick<EditorLocalRuntime, 'actions' | 'stores'>
-}): EditorInput => {
+  query: EditorQuery
+  local: Pick<EditorLocal, 'source' | 'mutate' | 'viewport'>
+}): EditorInputHost => {
   const writePointer = (input: {
     client: { x: number, y: number }
     screen: { x: number, y: number }
     world: { x: number, y: number }
   }) => {
-    local.actions.viewport.pointer.set({
+    local.mutate.pointer.set({
       client: input.client,
       screen: input.screen,
       world: input.world
@@ -49,7 +49,7 @@ export const createEditorInput = ({
   }
 
   const clearPointer = () => {
-    local.actions.viewport.pointer.clear()
+    local.mutate.pointer.clear()
   }
 
   const clearTransientState = () => {
@@ -72,26 +72,26 @@ export const createEditorInput = ({
 
       switch (input.pick.kind) {
         case 'selection-box': {
-          return readSelectionIntent(local.stores.selection, input.screen) ?? {
+          return readSelectionIntent(local.source.selection, input.screen) ?? {
             kind: 'canvas',
             screen: input.screen,
             world: input.world
           }
         }
         case 'node': {
-          const current = local.stores.selection.get()
+          const current = local.source.selection.get()
           const reuseCurrentSelection = current.nodeIds.includes(input.pick.id)
           if (reuseCurrentSelection) {
-            return readSelectionIntent(local.stores.selection, input.screen)
+            return readSelectionIntent(local.source.selection, input.screen)
           }
 
-          local.actions.session.selection.replace({
+          local.mutate.selection.replace({
             nodeIds: [input.pick.id]
           })
-          return readSelectionIntent(local.stores.selection, input.screen)
+          return readSelectionIntent(local.source.selection, input.screen)
         }
         case 'group': {
-          const target = read.group.target(input.pick.id)
+          const target = query.group.target(input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',
@@ -100,11 +100,11 @@ export const createEditorInput = ({
             }
           }
 
-          local.actions.session.selection.replace(target)
-          return readSelectionIntent(local.stores.selection, input.screen)
+          local.mutate.selection.replace(target)
+          return readSelectionIntent(local.source.selection, input.screen)
         }
         case 'edge':
-          local.actions.session.selection.replace({
+          local.mutate.selection.replace({
             edgeIds: [input.pick.id]
           })
           return {
@@ -161,7 +161,7 @@ export const createEditorInput = ({
         return true
       }
 
-      local.actions.viewport.viewport.wheel(
+      local.viewport.input.wheel(
         {
           deltaX: input.deltaX,
           deltaY: input.deltaY,

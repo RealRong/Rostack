@@ -16,7 +16,7 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import {
   readEdgeLabelTextSourceId
@@ -51,7 +51,7 @@ const readLabelText = (
   : ''
 
 const isSingleSelectedEdge = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   edgeId: EdgeId
 ) => {
   const target = ctx.selection.get().summary.target
@@ -98,7 +98,7 @@ const readEdgeLabelPatch = (
 }
 
 const createEdgeLabelDragSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   initial: EdgeLabelDragState
 ): InteractionSession => {
   let state = initial
@@ -181,7 +181,7 @@ const createEdgeLabelDragSession = (
 }
 
 const createEdgeLabelDragState = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   input: {
     edgeId: EdgeId
     labelId: string
@@ -232,7 +232,7 @@ const createEdgeLabelDragState = (
 }
 
 export const createEdgeLabelPressSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   start: PointerDownInput,
   input: {
     edgeId: EdgeId
@@ -270,7 +270,7 @@ export const createEdgeLabelPressSession = (
 })
 
 export const startEdgeLabelPress = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   pointer: PointerDownInput
 ): {
   edgeId: EdgeId

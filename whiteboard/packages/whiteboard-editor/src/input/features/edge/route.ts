@@ -15,7 +15,7 @@ import {
   CANCEL,
   FINISH
 } from '@whiteboard/editor/input/session/result'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
 
@@ -345,7 +345,7 @@ const commitEdgeRoute = (
 }
 
 const readViewportWorld = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   pointer: {
     clientX: number
     clientY: number
@@ -371,7 +371,7 @@ const readRouteGesture = (
 )
 
 const createEdgeRouteSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   initial: EdgeRouteHandleState
 ): InteractionSession => {
   let state = initial
@@ -447,7 +447,7 @@ const createEdgeRouteSession = (
 }
 
 const createInsertedRouteSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
   const result = ctx.command.edge.route.insert(
@@ -471,7 +471,7 @@ const createInsertedRouteSession = (
 }
 
 export const createEdgeRoutePressSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   start: PointerDownInput,
   plan: Extract<EdgeRouteStart, { kind: 'session' | 'insert' }>
 ): InteractionSession => createPressDragSession({

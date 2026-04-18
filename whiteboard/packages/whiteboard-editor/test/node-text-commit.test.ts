@@ -4,8 +4,6 @@ import { createNodeTextCommands } from '../src/command/node/text'
 describe('createNodeTextCommands.commit', () => {
   it('persists measured size and wrap width even when text content is unchanged', () => {
     const update = vi.fn()
-    const clearPreview = vi.fn()
-    const clearEdit = vi.fn()
 
     const commands = createNodeTextCommands({
       read: {
@@ -32,26 +30,6 @@ describe('createNodeTextCommands.commit', () => {
         update,
         updateMany: vi.fn(),
         deleteCascade: vi.fn()
-      },
-      preview: {
-        text: {
-          set: vi.fn(),
-          clear: clearPreview,
-          clearSize: vi.fn()
-        }
-      },
-      layout: {
-        patchNodeCreatePayload: (payload) => payload,
-        patchNodeUpdate: (_, next) => next,
-        editNode: () => undefined,
-        measureText: () => undefined,
-        resolvePreviewPatches: (patches) => patches
-      },
-      edit: {
-        clear: clearEdit
-      },
-      selection: {
-        clear: vi.fn()
       }
     })
 
@@ -66,8 +44,6 @@ describe('createNodeTextCommands.commit', () => {
       wrapWidth: 144
     })
 
-    expect(clearPreview).toHaveBeenCalledWith('node-1')
-    expect(clearEdit).toHaveBeenCalled()
     expect(update).toHaveBeenCalledWith('node-1', {
       fields: {
         size: {

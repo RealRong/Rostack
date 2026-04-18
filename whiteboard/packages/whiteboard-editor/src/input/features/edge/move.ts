@@ -13,7 +13,7 @@ import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 
 export type EdgeMoveState = {
@@ -126,7 +126,7 @@ const readMoveGesture = (
   : null
 
 export const createEdgeMoveSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   initial: EdgeMoveState
 ): InteractionSession => {
   let state = initial

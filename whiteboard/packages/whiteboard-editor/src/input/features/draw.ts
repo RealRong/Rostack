@@ -20,7 +20,7 @@ import {
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { PointerDownInput, PointerSample } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 
@@ -195,7 +195,7 @@ const commitDrawStroke = (
 }
 
 const queryDrawNodeIdsInRect = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   rect: Rect
 ): readonly NodeId[] => ctx.query.node.idsInRect(rect, {
   match: 'touch'
@@ -204,7 +204,7 @@ const queryDrawNodeIdsInRect = (
 ))
 
 const collectErasePoint = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   state: EraseState,
   world: Point
 ): EraseState => {
@@ -246,7 +246,7 @@ const collectErasePoint = (
 }
 
 const tryStartErase = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   input: PointerDownInput
 ): EraseState | null => {
   const tool = ctx.query.tool.get()
@@ -268,7 +268,7 @@ const tryStartErase = (
 }
 
 const stepEraseState = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   state: EraseState,
   input: DrawPointer
 ) => {
@@ -282,7 +282,7 @@ const stepEraseState = (
 }
 
 const createDrawStrokeSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   initial: DrawStrokeState
 ): InteractionSession => {
   let state = initial
@@ -330,7 +330,7 @@ const createDrawStrokeSession = (
 }
 
 const createEraseSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   initial: EraseState
 ): InteractionSession => {
   let state = initial
@@ -368,7 +368,7 @@ const createEraseSession = (
 }
 
 export const createDrawBinding = (
-  ctx: InteractionContext
+  ctx: InteractionDeps
 ): InteractionBinding => ({
   key: 'draw',
   start: (input) => {

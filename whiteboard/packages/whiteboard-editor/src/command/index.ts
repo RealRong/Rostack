@@ -1,14 +1,9 @@
 import type { Engine } from '@whiteboard/engine'
 import type {
-  ClipboardCommands,
   HistoryCommands,
   MindmapCommands
 } from '@whiteboard/editor/types/commands'
-import type { EditorLocalRuntime } from '@whiteboard/editor/local/runtime'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
-import {
-  createClipboardCommands
-} from '@whiteboard/editor/command/clipboard'
+import type { EditorQuery } from '@whiteboard/editor/query'
 import {
   createDocumentCommands
 } from '@whiteboard/editor/command/document'
@@ -16,10 +11,6 @@ import type { DocumentCommands } from '@whiteboard/editor/command/document'
 import {
   createHistoryCommands
 } from '@whiteboard/editor/command/history'
-import {
-  createSelectionCommands,
-  type SelectionCommands
-} from '@whiteboard/editor/command/selection'
 import {
   createEdgeCommands,
   type EdgeCommands
@@ -31,85 +22,122 @@ import {
   createNodeCommands
 } from '@whiteboard/editor/command/node/commands'
 import type { NodeCommands } from '@whiteboard/editor/command/node/types'
-import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type { EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback'
+import type { EditCaret, EditField } from '@whiteboard/editor/local/session/edit'
+import type { EdgeId, NodeId } from '@whiteboard/core/types'
 
-export type EditorCommandRuntime = {
+export type EditorCommands = {
   document: DocumentCommands
   node: NodeCommands
   edge: EdgeCommands
   mindmap: MindmapCommands
-  selection: SelectionCommands
-  clipboard: ClipboardCommands
   history: HistoryCommands
 }
 
-export const createCommandRuntime = ({
+export type EditorCommandSession = {
+  selection: {
+    replace: (input: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly string[]
+    }) => void
+    add: (input: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly string[]
+    }) => void
+    remove: (input: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly string[]
+    }) => void
+    toggle: (input: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly string[]
+    }) => void
+    selectAll: () => void
+    clear: () => void
+  }
+  edit: {
+    startNode: (
+      nodeId: NodeId,
+      field: EditField,
+      options?: {
+        caret?: EditCaret
+      }
+    ) => void
+    startEdgeLabel: (
+      edgeId: EdgeId,
+      labelId: string,
+      options?: {
+        caret?: EditCaret
+      }
+    ) => void
+    input: (text: string) => void
+    caret: (caret: EditCaret) => void
+    layout: (patch: Partial<import('@whiteboard/editor/local/session/edit').EditLayout>) => void
+    clear: () => void
+  }
+}
+
+export const createEditorCommands = ({
   engine,
-  read,
-  local,
-  layout
+  query,
+  layout,
+  feedback,
+  session
 }: {
   engine: Engine
-  read: EditorQueryRead
-  local: Pick<EditorLocalRuntime, 'actions' | 'stores' | 'viewport'>
-  layout: LayoutRuntime
-}): EditorCommandRuntime => {
+  query: EditorQuery
+  layout: EditorLayout
+  feedback: Pick<EditorFeedbackRuntime, 'set'>
+  session: EditorCommandSession
+}): EditorCommands => {
   const history = createHistoryCommands(engine)
   const document = createDocumentCommands(engine)
   const node = createNodeCommands({
     engine,
-    read,
-    layout,
-    preview: local.actions.feedback,
-    session: {
-      edit: local.actions.edit,
-      selection: local.actions.session.selection
-    }
+    read: query,
+    layout
   })
   const edge = createEdgeCommands({
     engine,
-    read,
-    edit: local.stores.edit,
-    session: {
-      edit: local.actions.edit,
-      selection: local.actions.session.selection
-    }
+    read: query
   })
   const mindmap = createMindmapCommands({
     engine,
-    read,
+    read: query,
     node: {
       update: node.update,
       updateMany: node.updateMany
     },
     layout,
-    feedback: local.actions.feedback,
-    session: {
-      edit: local.actions.edit,
-      selection: local.actions.session.selection
-    }
-  })
-  const selection = createSelectionCommands({
-    read,
-    document,
-    node,
-    session: {
-      selection: local.actions.session.selection
-    }
-  })
-  const clipboard = createClipboardCommands({
-    editor: {
-      read,
-      document,
-      session: {
-        selection: local.actions.session.selection
-      },
-      selection,
-      state: {
-        viewport: local.viewport.read,
-        selection: local.stores.selection
+    feedback: {
+      mindmap: {
+        setPreview: (preview) => {
+          feedback.set((current) => (
+            current.mindmap.preview === preview
+              ? current
+              : {
+                  ...current,
+                  mindmap: {
+                    ...current.mindmap,
+                    preview
+                  }
+                }
+          ))
+        },
+        clear: () => {
+          feedback.set((current) => (
+            current.mindmap.preview === undefined
+              ? current
+              : {
+                  ...current,
+                  mindmap: {}
+                }
+          ))
+        }
       }
-    }
+    },
+    session
   })
 
   return {
@@ -117,8 +145,6 @@ export const createCommandRuntime = ({
     node,
     edge,
     mindmap,
-    selection,
-    clipboard,
     history
   }
 }

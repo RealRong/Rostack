@@ -1,8 +1,8 @@
-import type { EditorQueryRead } from '@whiteboard/editor/query'
+import type { EditorQuery } from '@whiteboard/editor/query'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import { createMoveInteraction } from '@whiteboard/editor/input/features/selection/move'
 import { createMarqueeSession, type MarqueeMatch } from '@whiteboard/editor/input/features/selection/marquee'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
@@ -164,7 +164,7 @@ const resolveSelectionEditField = (
 
 const createSelectionSession = (
   input: {
-    ctx: InteractionContext
+    ctx: InteractionDeps
     start: PointerDownInput
     decision: SelectionDragAction | SelectionMarqueeAction | undefined
   }
@@ -660,7 +660,7 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
@@ -701,7 +701,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -736,7 +736,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.query.tool.get()
@@ -799,7 +799,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: InteractionContext
+  ctx: InteractionDeps
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

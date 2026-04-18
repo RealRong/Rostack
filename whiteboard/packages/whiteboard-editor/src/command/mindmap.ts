@@ -32,10 +32,9 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type { LocalFeedbackActions } from '@whiteboard/editor/local/actions/feedback'
 import type { MindmapEnterPreview } from '@whiteboard/editor/local/feedback/types'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
-import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
+import type { EditorQuery } from '@whiteboard/editor/query'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
   MindmapBorderPatch,
   MindmapCommands,
@@ -94,7 +93,7 @@ const readNodePosition = ({
   read,
   nodeId
 }: {
-  read: EditorQueryRead
+  read: EditorQuery
   nodeId: NodeId
 }) => read.node.item.get(nodeId)?.node.position
 
@@ -132,7 +131,7 @@ const toNodeSize = (
 }
 
 const measureCreatePayload = (
-  layout: Pick<LayoutRuntime, 'patchNodeCreatePayload'>,
+  layout: Pick<EditorLayout, 'patchNodeCreatePayload'>,
   payload: NodeInput
 ) => layout.patchNodeCreatePayload(payload)
 
@@ -410,8 +409,15 @@ const updateMindmapPreview = ({
   feedback,
   project
 }: {
-  read: EditorQueryRead
-  feedback: Pick<LocalFeedbackActions, 'mindmap'>
+  read: EditorQuery
+  feedback: {
+    mindmap: {
+      setPreview: (
+        preview?: import('@whiteboard/editor/local/feedback/types').MindmapPreviewState
+      ) => void
+      clear: () => void
+    }
+  }
   project: (
     current: import('@whiteboard/editor/local/feedback/types').MindmapPreviewState | undefined
   ) => import('@whiteboard/editor/local/feedback/types').MindmapPreviewState | undefined
@@ -434,8 +440,15 @@ const appendMindmapEnterPreview = ({
   feedback,
   entry
 }: {
-  read: EditorQueryRead
-  feedback: Pick<LocalFeedbackActions, 'mindmap'>
+  read: EditorQuery
+  feedback: {
+    mindmap: {
+      setPreview: (
+        preview?: import('@whiteboard/editor/local/feedback/types').MindmapPreviewState
+      ) => void
+      clear: () => void
+    }
+  }
   entry: MindmapEnterPreview
 }) => {
   updateMindmapPreview({
@@ -634,10 +647,17 @@ export const createMindmapCommands = ({
   session
 }: {
   engine: Engine
-  read: EditorQueryRead
+  read: EditorQuery
   node: Pick<NodeCommands, 'update' | 'updateMany'>
-  layout: Pick<LayoutRuntime, 'patchNodeCreatePayload'>
-  feedback: Pick<LocalFeedbackActions, 'mindmap'>
+  layout: Pick<EditorLayout, 'patchNodeCreatePayload'>
+  feedback: {
+    mindmap: {
+      setPreview: (
+        preview?: import('@whiteboard/editor/local/feedback/types').MindmapPreviewState
+      ) => void
+      clear: () => void
+    }
+  }
   session: Pick<SessionActions, 'selection' | 'edit'>
 }): MindmapCommands => {
   const commands = createMindmapCoreCommands(engine.execute)

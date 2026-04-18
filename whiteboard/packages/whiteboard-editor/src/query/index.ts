@@ -11,7 +11,7 @@ import type {
   InsertPresetKey,
   Tool
 } from '@whiteboard/editor/types/tool'
-import type { EditorLocalRuntime } from '@whiteboard/editor/local/runtime'
+import type { EditorLocal } from '@whiteboard/editor/local/runtime'
 import {
   createNodeRead,
   type NodePresentationRead
@@ -38,7 +38,7 @@ import {
 } from '@whiteboard/editor/query/target'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 import type { EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback'
-import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 
 export type ToolRead = {
   get: () => Tool
@@ -90,14 +90,17 @@ const createToolRead = (
   is: (type, value) => isToolMatch(readValue(source), type, value)
 })
 
-export type EditorQueryRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
+export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   history: ReadStore<HistoryState>
   group: EngineRead['group']
   target: RuntimeTargetRead
   node: NodePresentationRead
   edge: EdgePresentationRead
   mindmap: MindmapPresentationRead
-  selection: SelectionRead
+  selection: {
+    model: SelectionModelRead
+    presentation: SelectionRead
+  }
   tool: ToolRead
   draw: ReadStore<DrawState>
   space: ReadStore<boolean>
@@ -119,12 +122,7 @@ export type EditorQueryRead = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   }
 }
 
-export type QueryRuntime = {
-  read: EditorQueryRead
-  selectionModel: SelectionModelRead
-}
-
-export const createQueryRuntime = ({
+export const createEditorQuery = ({
   engineRead,
   registry,
   history,
@@ -134,37 +132,37 @@ export const createQueryRuntime = ({
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
-  local: Pick<EditorLocalRuntime, 'state' | 'interaction' | 'feedback' | 'viewport'>
-  layout: LayoutRuntime
-}): QueryRuntime => {
+  local: Pick<EditorLocal, 'source' | 'interaction' | 'feedback' | 'viewport'>
+  layout: EditorLayout
+}): EditorQuery => {
   const {
     draw,
     edit,
     selection,
     space,
     tool
-  } = local.state
+  } = local.source
   const mindmapRead = createMindmapRead({
     read: engineRead.mindmap,
     node: engineRead.node.item,
     preview: local.feedback.selectors.mindmapPreview,
-    edit: edit.source,
-    selection: selection.source
+    edit,
+    selection
   })
   const nodeRead: NodePresentationRead = createNodeRead({
     read: engineRead,
     registry,
     feedback: local.feedback.selectors.node,
     mindmap: mindmapRead.item,
-    edit: edit.source,
-    selection: selection.source
+    edit,
+    selection
   })
   const edgeRead = createEdgeRead({
     read: engineRead,
     node: nodeRead,
     feedback: local.feedback.selectors.edge,
-    edit: edit.source,
-    selection: selection.source,
+    edit,
+    selection,
     tool,
     interaction: local.interaction,
     layout,
@@ -175,53 +173,53 @@ export const createQueryRuntime = ({
     edge: edgeRead
   })
   const selectionModel = createSelectionModelRead({
-    source: selection.source,
+    source: selection,
     node: nodeRead,
     edge: edgeRead
   })
-  const selectionRead = createSelectionPresentationRead({
+  const selectionPresentation = createSelectionPresentationRead({
     model: selectionModel,
     registry,
     mindmap: mindmapRead,
     tool,
-    edit: edit.source,
+    edit,
     interaction: local.interaction
   })
   const toolRead = createToolRead(tool)
 
   return {
-    read: {
-      document: engineRead.document,
-      frame: engineRead.frame,
-      group: engineRead.group,
-      target: targetRead,
-      history,
-      node: nodeRead,
-      edge: edgeRead,
-      mindmap: mindmapRead,
-      scene: engineRead.scene,
-      selection: selectionRead,
-      slice: engineRead.slice,
-      tool: toolRead,
-      draw: draw.store,
-      space,
-      viewport: {
-        get: local.viewport.read.get,
-        subscribe: local.viewport.read.subscribe,
-        pointer: local.viewport.read.pointer,
-        worldToScreen: local.viewport.read.worldToScreen,
-        screenPoint: local.viewport.input.screenPoint,
-        size: local.viewport.input.size
-      },
-      feedback: {
-        node: local.feedback.selectors.node,
-        draw: local.feedback.selectors.draw,
-        marquee: local.feedback.selectors.marquee,
-        mindmapPreview: local.feedback.selectors.mindmapPreview,
-        edgeGuide: local.feedback.selectors.edgeGuide,
-        snap: local.feedback.selectors.snap
-      }
+    document: engineRead.document,
+    frame: engineRead.frame,
+    group: engineRead.group,
+    target: targetRead,
+    history,
+    node: nodeRead,
+    edge: edgeRead,
+    mindmap: mindmapRead,
+    selection: {
+      model: selectionModel,
+      presentation: selectionPresentation
     },
-    selectionModel
+    scene: engineRead.scene,
+    slice: engineRead.slice,
+    tool: toolRead,
+    draw,
+    space,
+    viewport: {
+      get: local.viewport.read.get,
+      subscribe: local.viewport.read.subscribe,
+      pointer: local.viewport.read.pointer,
+      worldToScreen: local.viewport.read.worldToScreen,
+      screenPoint: local.viewport.input.screenPoint,
+      size: local.viewport.input.size
+    },
+    feedback: {
+      node: local.feedback.selectors.node,
+      draw: local.feedback.selectors.draw,
+      marquee: local.feedback.selectors.marquee,
+      mindmapPreview: local.feedback.selectors.mindmapPreview,
+      edgeGuide: local.feedback.selectors.edgeGuide,
+      snap: local.feedback.selectors.snap
+    }
   }
 }

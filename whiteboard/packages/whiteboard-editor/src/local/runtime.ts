@@ -3,35 +3,28 @@ import {
   type ValueStore
 } from '@shared/core'
 import type { Viewport } from '@whiteboard/core/types'
-import type { EditorState } from '@whiteboard/editor/types/editor'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
 import type { PointerSample } from '@whiteboard/editor/types/input'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { DrawState } from '@whiteboard/editor/local/draw/state'
-import { createLocalDrawActions, type LocalDrawActions } from '@whiteboard/editor/local/actions/draw'
+import type {
+  BrushStylePatch,
+  DrawState
+} from '@whiteboard/editor/local/draw/state'
+import type { DrawSlot } from '@whiteboard/editor/local/draw/model'
 import {
-  createLocalFeedbackActions,
-  type LocalFeedbackActions
-} from '@whiteboard/editor/local/actions/feedback'
-import { createLocalEditActions, type LocalEditActions } from '@whiteboard/editor/local/actions/edit'
+  DEFAULT_DRAW_BRUSH,
+  hasDrawBrush
+} from '@whiteboard/editor/local/draw'
 import {
-  createLocalSessionActions,
-  type LocalSessionActions
-} from '@whiteboard/editor/local/actions/session'
-import {
-  createLocalViewportActions,
-  type LocalViewportActions
-} from '@whiteboard/editor/local/actions/viewport'
-import {
-  createDrawStateStore,
-  type DrawStateStore
+  createDrawStateStore
 } from '@whiteboard/editor/local/draw/runtime'
 import { createFeedback, type EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback'
-import { createEditState, type EditState } from '@whiteboard/editor/local/session/edit'
 import {
-  createSelectionState,
-  type SelectionState
+  createEditState,
+  type EditMutate,
+  type EditSession
+} from '@whiteboard/editor/local/session/edit'
+import {
+  createSelectionState
 } from '@whiteboard/editor/local/session/selection'
 import {
   createViewport,
@@ -43,56 +36,70 @@ import type {
 } from '@whiteboard/editor/input/core/types'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createHoverStore, type HoverStore } from '@whiteboard/editor/input/hover/store'
-import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
 
-type ReadNodeEdge = Pick<EditorQueryRead, 'node' | 'edge'>
-
-export type EditorLocalState = {
+export type EditorLocalSource = {
   tool: ValueStore<Tool>
-  draw: DrawStateStore
-  selection: SelectionState
-  edit: EditState
+  draw: ReturnType<typeof createDrawStateStore>['store']
+  selection: ReturnType<typeof createSelectionState>['source']
+  edit: ValueStore<EditSession>
   pointer: ValueStore<PointerSample | null>
   space: ValueStore<boolean>
 }
 
-export type EditorLocalActions = {
-  session: LocalSessionActions
-  edit: LocalEditActions
-  viewport: LocalViewportActions
-  draw: LocalDrawActions
-  feedback: LocalFeedbackActions
+export type EditorLocalMutate = {
+  tool: {
+    set: (tool: Tool) => void
+  }
+  draw: {
+    set: (state: DrawState) => void
+    slot: (slot: DrawSlot) => void
+    patch: (patch: BrushStylePatch) => void
+  }
+  selection: {
+    replace: Parameters<ReturnType<typeof createSelectionState>['mutate']['replace']>[0] extends never
+      ? never
+      : (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['replace']>[0]) => boolean
+    add: (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['add']>[0]) => boolean
+    remove: (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['remove']>[0]) => boolean
+    toggle: (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['toggle']>[0]) => boolean
+    clear: () => boolean
+  }
+  edit: Pick<EditMutate, 'set' | 'input' | 'caret' | 'layout' | 'status' | 'clear'>
+  pointer: {
+    set: (sample: PointerSample) => void
+    clear: () => void
+  }
+  space: {
+    set: (value: boolean) => void
+  }
 }
 
-export type EditorLocalRuntime = {
-  state: EditorLocalState
-  stores: Pick<EditorState, 'tool' | 'draw' | 'edit' | 'selection'> & {
-    pointer: ValueStore<PointerSample | null>
-    space: ValueStore<boolean>
-  }
+export type EditorLocal = {
+  source: EditorLocalSource
+  mutate: EditorLocalMutate
   viewport: ViewportRuntime
   interaction: InteractionRuntime
   hover: HoverStore
   feedback: EditorFeedbackRuntime
-  actions: EditorLocalActions
-  bindQuery: (read: EditorQueryRead) => void
-  bindLayout: (layout: LayoutRuntime) => void
   bindInteractions: (bindings: readonly InteractionBinding[]) => void
   reset: () => void
-  reconcileAfterCommit: (read: ReadNodeEdge) => void
 }
 
-export const createLocalRuntime = ({
+const resolveDrawBrush = (
+  tool: Tool
+) => tool.type === 'draw' && hasDrawBrush(tool.mode)
+  ? tool.mode
+  : DEFAULT_DRAW_BRUSH
+
+export const createEditorLocal = ({
   initialTool,
   initialDrawState,
-  initialViewport,
-  registry
+  initialViewport
 }: {
   initialTool: Tool
   initialDrawState: DrawState
   initialViewport: Viewport
-  registry: NodeRegistry
-}): EditorLocalRuntime => {
+}): EditorLocal => {
   const tool = createValueStore<Tool>(initialTool)
   const draw = createDrawStateStore(initialDrawState)
   const selection = createSelectionState()
@@ -103,26 +110,17 @@ export const createLocalRuntime = ({
     initialViewport
   })
 
-  let readRuntime: EditorQueryRead | null = null
-  let layoutRuntime: LayoutRuntime | null = null
   let bindings: readonly InteractionBinding[] = []
 
-  const state: EditorLocalState = {
-    tool,
-    draw,
-    selection,
-    edit,
-    pointer,
-    space
-  }
-  const stores: EditorLocalRuntime['stores'] = {
+  const source: EditorLocalSource = {
     tool,
     draw: draw.store,
-    edit: edit.source,
     selection: selection.source,
+    edit: edit.source,
     pointer,
     space
   }
+
   const interaction = createInteractionRuntime({
     getViewport: () => viewport.input,
     getBindings: () => bindings,
@@ -134,43 +132,63 @@ export const createLocalRuntime = ({
     gesture: interaction.gesture,
     hover
   })
-  const actions: EditorLocalActions = {
-    session: createLocalSessionActions({
-      state,
-      getRead: () => readRuntime
-    }),
-    edit: createLocalEditActions({
-      state,
-      registry,
-      getRead: () => readRuntime,
-      getLayout: () => layoutRuntime
-    }),
-    viewport: createLocalViewportActions({
-      state,
-      viewport
-    }),
-    draw: createLocalDrawActions({
-      state
-    }),
-    feedback: createLocalFeedbackActions({
-      feedback
-    })
+
+  const mutate: EditorLocalMutate = {
+    tool: {
+      set: (nextTool) => {
+        tool.set(nextTool)
+      }
+    },
+    draw: {
+      set: (nextState) => {
+        draw.commands.set(nextState)
+      },
+      slot: (slot) => {
+        draw.commands.slot(resolveDrawBrush(tool.get()), slot)
+      },
+      patch: (patch) => {
+        const brush = resolveDrawBrush(tool.get())
+        const currentSlot = draw.store.get()[brush].slot
+        draw.commands.patch(brush, currentSlot, patch)
+      }
+    },
+    selection: {
+      replace: selection.mutate.replace,
+      add: selection.mutate.add,
+      remove: selection.mutate.remove,
+      toggle: selection.mutate.toggle,
+      clear: selection.mutate.clear
+    },
+    edit: {
+      set: edit.mutate.set,
+      input: edit.mutate.input,
+      caret: edit.mutate.caret,
+      layout: edit.mutate.layout,
+      status: edit.mutate.status,
+      clear: edit.mutate.clear
+    },
+    pointer: {
+      set: (sample) => {
+        pointer.set(sample)
+      },
+      clear: () => {
+        pointer.set(null)
+      }
+    },
+    space: {
+      set: (value) => {
+        space.set(value)
+      }
+    }
   }
 
   return {
-    state,
-    stores,
+    source,
+    mutate,
     viewport,
     interaction,
     hover,
     feedback,
-    actions,
-    bindQuery: (read) => {
-      readRuntime = read
-    },
-    bindLayout: (layout) => {
-      layoutRuntime = layout
-    },
     bindInteractions: (nextBindings) => {
       bindings = nextBindings
     },
@@ -182,20 +200,6 @@ export const createLocalRuntime = ({
       feedback.reset()
       edit.mutate.clear()
       selection.mutate.clear()
-    },
-    reconcileAfterCommit: (read) => {
-      selection.mutate.reconcile(read)
-
-      const currentEdit = edit.source.get()
-      if (
-        currentEdit
-        && (
-          (currentEdit.kind === 'node' && !read.node.item.get(currentEdit.nodeId))
-          || (currentEdit.kind === 'edge-label' && !read.edge.item.get(currentEdit.edgeId))
-        )
-      ) {
-        edit.mutate.clear()
-      }
     }
   }
 }

@@ -2,20 +2,20 @@ import {
   createDerivedStore,
   read
 } from '@shared/core'
-import type { Editor, EditorInteractionState } from '@whiteboard/editor/types/editor'
+import type { EditorInteractionState, EditorStore } from '@whiteboard/editor/types/editor'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
-import type { EditorLocalRuntime } from '@whiteboard/editor/local/runtime'
+import type { EditorLocal } from '@whiteboard/editor/local/runtime'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 
-export const createEditorState = ({
+export const projectEditorStore = ({
   interaction,
-  runtime,
+  local,
   viewport
 }: {
   interaction: InteractionRuntime
-  runtime: EditorLocalRuntime
+  local: Pick<EditorLocal, 'source'>
   viewport: ViewportRuntime['read']
-}): Editor['store'] => {
+}): EditorStore => {
   const interactionState = createDerivedStore<EditorInteractionState>({
     get: () => {
       const mode = read(interaction.mode)
@@ -40,7 +40,7 @@ export const createEditorState = ({
           || mode === 'edge-label'
           || mode === 'edge-connect'
           || mode === 'edge-route',
-        space: read(runtime.state.space)
+        space: read(local.source.space)
       }
     },
     isEqual: (left, right) => (
@@ -56,11 +56,11 @@ export const createEditorState = ({
   })
 
   return {
-    tool: runtime.stores.tool,
-    draw: runtime.stores.draw,
-    edit: runtime.stores.edit,
-    selection: runtime.stores.selection,
+    tool: local.source.tool,
+    draw: local.source.draw,
+    edit: local.source.edit,
+    selection: local.source.selection,
     viewport,
     interaction: interactionState
-  } satisfies Editor['store']
+  }
 }

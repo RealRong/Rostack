@@ -17,17 +17,15 @@ import type {
   NodeStyleCommands,
   NodePatchWriter
 } from '@whiteboard/editor/command/node/types'
-import type { LayoutRuntime } from '@whiteboard/editor/layout/runtime'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
-import type { LocalFeedbackActions } from '@whiteboard/editor/local/actions/feedback'
-import type { SessionActions } from '@whiteboard/editor/types/commands'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type { EditorQuery } from '@whiteboard/editor/query'
 
 const createNodePatchWriter = (
   engine: Engine,
   {
     layout
   }: {
-    layout: LayoutRuntime
+    layout: EditorLayout
   }
 ): NodePatchWriter => ({
   update: (id, update) => engine.execute({
@@ -131,15 +129,11 @@ const createNodeStyleCommands = (
 export const createNodeCommands = ({
   engine,
   read,
-  preview,
-  layout,
-  session
+  layout
 }: {
   engine: Engine
-  read: EditorQueryRead
-  preview: Pick<LocalFeedbackActions, 'node'>
-  layout: LayoutRuntime
-  session: Pick<SessionActions, 'edit' | 'selection'>
+  read: EditorQuery
+  layout: EditorLayout
 }): NodeCommands => {
   const patch = createNodePatchWriter(engine, {
     layout
@@ -147,9 +141,6 @@ export const createNodeCommands = ({
   const ctx = createNodeContext({
     read,
     patch,
-    preview: preview.node,
-    layout,
-    session,
     deleteCascade: (ids) => engine.execute({
       type: 'node.deleteCascade',
       ids

@@ -37,7 +37,7 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 
@@ -508,7 +508,7 @@ const readReconnectPatch = (
   : undefined
 
 const readReconnectFixedPoint = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   state: EdgeConnectState
 ): Point | undefined => {
   if (state.kind !== 'reconnect') {
@@ -569,7 +569,7 @@ const readReconnectWorld = ({
   : world
 
 const commitConnectState = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   state: EdgeConnectState,
   reconnectDraftPatch?: EdgePatch
 ) => {
@@ -602,7 +602,7 @@ const commitConnectState = (
 }
 
 export const createEdgeConnectSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial

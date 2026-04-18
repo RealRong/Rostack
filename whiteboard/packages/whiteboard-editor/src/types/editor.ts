@@ -1,6 +1,6 @@
 import type { HistoryState } from '@whiteboard/core/kernel'
 import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
-import type { ReadStore, Unsubscribe } from '@shared/core'
+import type { ReadStore } from '@shared/core'
 import type {
   Document,
   Viewport
@@ -20,37 +20,35 @@ import type {
 } from '@whiteboard/editor/types/tool'
 import type {
   AppActions,
-  AppConfig,
   ClipboardCommands,
   DrawCommands,
   HistoryCommands,
   MindmapCommands,
   SelectionApi,
-  SessionEditActions,
-  SessionSelectionActions,
   ToolActions,
   ViewportActions
 } from '@whiteboard/editor/types/commands'
 import type { NodeCommands as RuntimeNodeCommands } from '@whiteboard/editor/command/node/types'
 import type { EdgeCommands as RuntimeEdgeCommands } from '@whiteboard/editor/command/edge'
 import type {
-  ViewportInputRuntime,
   ViewportRead
 } from '@whiteboard/editor/local/viewport/runtime'
 import type {
   EditCaret,
   EditField,
+  EditLayout,
   EditSession
 } from '@whiteboard/editor/local/session/edit'
+import type { EditorQuery } from '@whiteboard/editor/query'
+import type { Unsubscribe } from '@shared/core'
 import type { Commit } from '@whiteboard/engine/types/commit'
-import type { EditorQueryRead } from '@whiteboard/editor/query'
 
 export type EditorPointerDispatchResult = {
   handled: boolean
   continuePointer: boolean
 }
 
-export type EditorInput = {
+export type EditorInputHost = {
   contextMenu: (input: ContextMenuInput) => ContextMenuIntent | null
   pointerDown: (input: PointerDownInput) => EditorPointerDispatchResult
   pointerMove: (input: PointerMoveInput) => boolean
@@ -77,7 +75,7 @@ export type EditorInteractionState = Readonly<{
   space: boolean
 }>
 
-export type EditorState = {
+export type EditorStore = {
   tool: ReadStore<Tool>
   draw: ReadStore<DrawState>
   edit: ReadStore<EditSession>
@@ -87,41 +85,41 @@ export type EditorState = {
 }
 
 export type EditorChromePresentation = {
-  marquee: ReturnType<EditorQueryRead['feedback']['marquee']['get']>
-  draw: ReturnType<EditorQueryRead['feedback']['draw']['get']>
-  edgeGuide: ReturnType<EditorQueryRead['feedback']['edgeGuide']['get']>
-  snap: ReturnType<EditorQueryRead['feedback']['snap']['get']>
-  selection: ReturnType<EditorQueryRead['selection']['overlay']['get']>
+  marquee: ReturnType<EditorQuery['feedback']['marquee']['get']>
+  draw: ReturnType<EditorQuery['feedback']['draw']['get']>
+  edgeGuide: ReturnType<EditorQuery['feedback']['edgeGuide']['get']>
+  snap: ReturnType<EditorQuery['feedback']['snap']['get']>
+  selection: ReturnType<EditorQuery['selection']['presentation']['overlay']['get']>
 }
 
 export type EditorPanelPresentation = {
-  selectionToolbar: ReturnType<EditorQueryRead['selection']['toolbar']['get']>
+  selectionToolbar: ReturnType<EditorQuery['selection']['presentation']['toolbar']['get']>
   history: HistoryState
   draw: DrawState
 }
 
-export type EditorPublicRead = {
-  document: Pick<EditorQueryRead['document'], 'background' | 'bounds'>
-  group: Pick<EditorQueryRead['group'], 'exactIds'>
-  history: EditorQueryRead['history']
-  mindmap: Pick<EditorQueryRead['mindmap'], 'render'>
-  node: Pick<EditorQueryRead['node'], 'render'>
-  edge: Pick<EditorQueryRead['edge'], 'render' | 'selectedChrome'>
-  scene: Pick<EditorQueryRead['scene'], 'list'>
-  selection: Pick<EditorQueryRead['selection'], 'node' | 'box'>
-  tool: EditorQueryRead['tool']
-  viewport: EditorQueryRead['viewport']
+export type EditorRead = {
+  document: Pick<EditorQuery['document'], 'background' | 'bounds'>
+  group: Pick<EditorQuery['group'], 'exactIds'>
+  history: EditorQuery['history']
+  mindmap: Pick<EditorQuery['mindmap'], 'render'>
+  node: Pick<EditorQuery['node'], 'render'>
+  edge: Pick<EditorQuery['edge'], 'render' | 'selectedChrome'>
+  scene: Pick<EditorQuery['scene'], 'list'>
+  selection: Pick<EditorQuery['selection']['presentation'], 'node' | 'box'>
+  tool: EditorQuery['tool']
+  viewport: EditorQuery['viewport']
   chrome: ReadStore<EditorChromePresentation>
   panel: ReadStore<EditorPanelPresentation>
 }
 
 export type EditorSelectionActions = {
-  replace: SessionSelectionActions['replace']
-  add: SessionSelectionActions['add']
-  remove: SessionSelectionActions['remove']
-  toggle: SessionSelectionActions['toggle']
-  selectAll: SessionSelectionActions['selectAll']
-  clear: SessionSelectionActions['clear']
+  replace: (input: SelectionInput) => void
+  add: (input: SelectionInput) => void
+  remove: (input: SelectionInput) => void
+  toggle: (input: SelectionInput) => void
+  selectAll: () => void
+  clear: () => void
   frame: SelectionApi['frame']
   order: SelectionApi['order']
   group: SelectionApi['group']
@@ -130,7 +128,24 @@ export type EditorSelectionActions = {
   duplicate: SelectionApi['duplicate']
 }
 
-export type EditorEditActions = SessionEditActions & {
+export type EditorEditActions = {
+  startNode: (
+    nodeId: string,
+    field: EditField,
+    options?: {
+      caret?: EditCaret
+    }
+  ) => void
+  startEdgeLabel: (
+    edgeId: string,
+    labelId: string,
+    options?: {
+      caret?: EditCaret
+    }
+  ) => void
+  input: (text: string) => void
+  layout: (patch: Partial<EditLayout>) => void
+  caret: (caret: EditCaret) => void
   cancel: () => void
   commit: () => void
 }
@@ -155,7 +170,6 @@ export type EditorActions = {
   draw: DrawCommands
   selection: EditorSelectionActions
   edit: EditorEditActions
-  interaction: EditorInput
   node: EditorNodeActions
   edge: EditorEdgeActions
   mindmap: MindmapCommands
@@ -165,14 +179,13 @@ export type EditorActions = {
 
 export type EditorEvents = {
   change: (listener: (document: Document, commit: Commit) => void) => Unsubscribe
-  history: (listener: (state: HistoryState) => void) => Unsubscribe
-  selection: (listener: (selection: SelectionTarget) => void) => Unsubscribe
   dispose: (listener: () => void) => Unsubscribe
 }
 
 export type Editor = {
-  store: EditorState
-  read: EditorPublicRead
+  store: EditorStore
+  read: EditorRead
   actions: EditorActions
+  input: EditorInputHost
   events: EditorEvents
 }

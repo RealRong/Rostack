@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@whiteboard/core/types'
-import { createLayoutRuntime } from '../src/layout/runtime'
+import { createEditorLayout } from '../src/layout/runtime'
 import type { LayoutBackend, NodeRegistry } from '../src'
 
 const createRegistry = (): NodeRegistry => ({
@@ -57,14 +57,14 @@ const createStickyNode = (): Node => ({
   }
 })
 
-describe('createLayoutRuntime', () => {
+describe('createEditorLayout', () => {
   it('does not recompute sticky auto font size during rotate preview', () => {
     const measure = vi.fn<LayoutBackend['measure']>(() => ({
       kind: 'fit',
       fontSize: 18
     }))
     const node = createStickyNode()
-    const runtime = createLayoutRuntime({
+    const runtime = createEditorLayout({
       read: {
         node: {
           committed: {
@@ -102,7 +102,7 @@ describe('createLayoutRuntime', () => {
       fontSize: 18
     }))
     const node = createStickyNode()
-    const runtime = createLayoutRuntime({
+    const runtime = createEditorLayout({
       read: {
         node: {
           committed: {

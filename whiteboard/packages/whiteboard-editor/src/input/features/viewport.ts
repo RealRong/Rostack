@@ -3,7 +3,7 @@ import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 
 type PanState = {
   lastClient: {
@@ -20,7 +20,7 @@ type PanPointer = {
 }
 
 type ViewportInteractionDeps = Pick<
-  InteractionContext,
+  InteractionDeps,
   'query' | 'local'
 >
 

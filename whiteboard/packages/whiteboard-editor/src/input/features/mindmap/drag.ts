@@ -13,7 +13,7 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/local/feedback'
-import type { InteractionContext } from '@whiteboard/editor/input/core/context'
+import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
@@ -220,7 +220,7 @@ const commitMindmapDrag = (
 }
 
 export const createMindmapDragSession = (
-  ctx: InteractionContext,
+  ctx: InteractionDeps,
   initial: MindmapDragState
 ): InteractionSession => {
   let state = initial

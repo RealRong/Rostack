@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { applyEdgePatch } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
-import type { InteractionContext } from '../src/input/core/context'
+import type { InteractionDeps } from '../src/input/core/context'
 import { createEdgeMoveSession, stepEdgeMove, type EdgeMoveState } from '../src/input/features/edge/move'
 import type { PointerMoveInput } from '../src/types/input'
 
@@ -64,7 +64,7 @@ describe('createEdgeMoveSession', () => {
         command: {
           edge: { move }
         }
-      } as unknown as InteractionContext,
+      } as unknown as InteractionDeps,
       createMoveState(edge)
     )
 

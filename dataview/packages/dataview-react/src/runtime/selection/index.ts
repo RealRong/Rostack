@@ -1,18 +1,12 @@
 export {
-  createSelectionController
-} from '@dataview/react/runtime/selection/controller'
-export {
+  createSelectionController,
   createItemArraySelectionDomain,
-  createItemListSelectionDomain,
-  createItemSelectionDomainSource
-} from '@dataview/react/runtime/selection/domain'
-export {
   createItemArraySelectionScope,
-  createItemListSelectionScope
-} from '@dataview/react/runtime/selection/scope'
-export {
+  createItemListSelectionDomain,
+  createItemListSelectionScope,
+  createItemSelectionDomainSource,
   selectionSnapshot
-} from '@dataview/react/runtime/selection/snapshot'
+} from '@dataview/runtime/selection'
 export type {
   ItemSelectionController,
   ItemSelectionSnapshot,
@@ -28,4 +22,4 @@ export type {
   SelectionShape,
   SelectionSnapshot,
   SelectionSummary
-} from '@dataview/react/runtime/selection/types'
+} from '@dataview/runtime/selection'

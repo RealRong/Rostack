@@ -13,8 +13,8 @@ import type {
 import type { NodeItem } from '@whiteboard/engine'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import type {
-  NodeFeedbackProjection
-} from '@whiteboard/editor/local/feedback/types'
+  NodePreviewProjection
+} from '@whiteboard/editor/input/preview/types'
 import type { MindmapItem } from '@whiteboard/engine'
 
 export const readNodeProjectionRotation = (
@@ -84,7 +84,7 @@ const applyMindmapProjectedLayout = (
 
 export const projectNodeItem = (
   item: NodeItem,
-  feedback: NodeFeedbackProjection,
+  feedback: NodePreviewProjection,
   edit: EditSession,
   mindmap?: MindmapItem
 ): NodeItem => applyNodeTextDraft(

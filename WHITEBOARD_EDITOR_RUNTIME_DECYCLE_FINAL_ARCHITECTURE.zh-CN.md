@@ -1,201 +1,246 @@
-# Whiteboard Editor Runtime 最终重构方案
+# Whiteboard Editor 运行时与 Input 中轴最终重构方案
+
+这份文档给出 `whiteboard/packages/whiteboard-editor` 的最终运行时方案。
+
+它直接覆盖此前关于 runtime decycle、input simplification、input centralization 的讨论，作为后续一次性重构的唯一依据。
+
+结论只有一个版本，不保留兼容，不保留候选设计。
 
 ## 1. 最终结论
 
-这份文档直接给出 `whiteboard/packages/whiteboard-editor` 的最终运行时方案，不保留兼容层，不保留候选版本。
+最终结构固定为九个内部中轴：
 
-最终结论只有六条：
+1. `engine`
+2. `local`
+3. `input`
+4. `preview`
+5. `layout`
+6. `query`
+7. `commands`
+8. `actions`
+9. `lifecycle`
 
-1. editor 内部只保留一套真正的依赖图：`EditorServices`。
-2. `createEditor()` 只做两件事：创建 `EditorServices`，再把它投影为公开 `Editor`。
-3. `local` 退回纯本地状态中心，只保留 `source + mutate`，不再依赖 `query/layout`。
-4. `query` 只做只读推导，`commands` 只做持久写，`actions` 成为唯一高层编排层。
-5. `input` 从 `actions` 中独立出来，变成单独的 `EditorInputHost`。
-6. `facade` 作为业务装配概念彻底删除，`events` 只保留 `change` 和 `dispose`。
+公开 `Editor` 只保留五个出口：
+
+1. `store`
+2. `read`
+3. `actions`
+4. `input`
+5. `events`
+
+最终必须同时满足下面九条规则：
+
+1. `local` 只保留编辑器本地语义状态，不再持有 interaction runtime、hover、pointer、space。
+2. `input` 负责全部 host event dispatch、session 生命周期、hover 与 pointer 输入态。
+3. `preview` 从 `local.feedback` 提升为独立服务，统一组合 base preview、active gesture、hover preview。
+4. `query` 只读 `engine + local + input.state + preview + layout`，不再读 `local.interaction`。
+5. `projectEditor()` 只能做投影，不能再创建 `edgeHover`、`input host` 或任何 runtime。
+6. `projectInteractionDeps()` 整体删除，不再为 input 再造一层上下文翻译。
+7. `local.bindInteractions()` 整体删除，interaction binding 不再挂到 `local` 上。
+8. `input/core/context.ts` 删除，feature 直接消费 `EditorServices` 或文件内局部 `Pick<EditorServices, ...>`。
+9. `createEditor()` 的装配顺序固定，不再靠后绑定和 mutable slot 绕循环依赖。
 
 这就是最终抉择。
 
----
-
 ## 2. 当前根问题
 
-现在的复杂度不是来自单个功能，而是同一批依赖被重复切了很多次。
+现在最怪的地方不是某一个函数命名，而是依赖图本身被切错了。
 
-当前代码里最明显的重复切片有：
+当前代码的核心问题有五个。
 
-- `createCommandRuntime(...)`
-- `createEditorInput(...)`
-- `createEditorFacade(...)`
-- `createEditorState(...)`
-- `createEditor.ts` 里手工拼的 `inputLocal` / `interactionContext`
+### 2.1 `local` 被塞进了不属于它的东西
 
-它们围绕的其实始终是同一批东西：
+当前 `EditorLocal` 里有：
 
-- `engine`
-- `local`
-- `layout`
-- `query`
-- `snap`
-- `command`
+- `interaction`
+- `hover`
+- `feedback`
+- `bindInteractions()`
+- `pointer`
+- `space`
 
-当前真正的根问题有四个：
+这里至少混了三类完全不同的职责：
 
-### 2.1 `local` 职责混杂
+- 编辑器本地语义状态
+- 输入运行时状态
+- 输入预览组合状态
 
-`local` 现在既持有本地状态，又提供依赖 `query/layout` 的业务 action，于是不得不出现：
+这会直接导致 `local` 既像 state store，又像 input runtime container，还像 preview service container。
 
-- `bindQuery(...)`
-- `bindLayout(...)`
-- `reconcileAfterCommit(...)`
+这是第一个根错误。
 
-这说明 `local` 已经不是纯状态中心。
+### 2.2 `query` 和 `interaction` 形成了真环
 
-### 2.2 `query` 和 `local` 形成隐式闭环
+当前依赖链实际上是：
 
-当前 `query` 依赖 `local`，而 `local.actions.*` 又依赖 `query/layout`，所以只能靠后绑定把环藏起来。
-
-这不是“写法问题”，而是边界切错了。
-
-### 2.3 public API 混了两种完全不同的东西
-
-现在的 `editor.actions` 同时包含：
-
-- 语义动作
-- host 输入入口
-
-典型例子是：
-
-```ts
-editor.actions.interaction.pointerDown(...)
+```txt
+query -> interaction.mode / interaction.chrome
+interaction bindings -> query
 ```
 
-这本质上不是 action，而是 host event dispatch。
+于是代码只能走下面这种旁路：
 
-### 2.4 facade 实际承载了业务
+```ts
+local.bindInteractions(
+  createEditorInteractions(
+    projectInteractionDeps(servicesRuntime)
+  )
+)
+```
 
-当前 `facade.ts` 不只是投影层，它还承担：
+这不是实现细节问题，而是依赖图本身错误。
 
-- edit commit/cancel 语义
-- engine commit 订阅
-- local reset/reconcile
-- dispose listener
-- public action 拼装
+只要 `query` 读取 interaction，而 interaction 又依赖 query，就不能靠“继续优化 helper”解决。
 
-这意味着 facade 不是 facade，而是隐藏的运行时中轴。
+### 2.3 `projectInteractionDeps()` 没有独立语义
 
-最终必须把这些职责拆回真正该在的位置。
+它当前做的事情本质上只是把：
 
----
+- `services.actions.tool.set`
+- `services.actions.selection.replace`
+- `services.actions.edit.startNode`
+- `services.local.viewport.input.panScreenBy`
 
-## 3. 最终目标
+重新包成一个 `InteractionDeps.local`。
 
-最终目标不是“把代码拆得更细”，而是把 editor 收敛成一条清楚的中轴：
+这只是翻译层，不是边界。
+
+它不消除复杂度，只把复杂度藏起来。
+
+### 2.4 `projectEditor()` 已经不是 projection
+
+当前 `projectEditor()` 里还在创建：
+
+- `interactionDeps`
+- `edgeHover`
+- `createEditorInputHost(...)`
+
+这说明 `project` 层已经不只是 “services -> public editor” 的投影，而是在继续承担运行时装配。
+
+这也是职责泄漏。
+
+### 2.5 `local.feedback` 实际上不是 local state
+
+现在的 `feedback` 同时依赖：
+
+- active gesture
+- hover state
+- viewport
+- command 写入的 mindmap preview
+
+它本质上是 preview composition service，不是 local source/mutate 的一部分。
+
+把它继续塞在 `local` 里，只会让 `local` 的定义越来越不纯。
+
+## 3. 最终依赖图
+
+最终依赖图固定如下：
 
 ```txt
 engine
   -> local
+  -> input.state
+  -> preview
   -> layout
   -> query
+  -> snap
+  -> commands
+  -> actions
+  -> lifecycle
+  -> input.host
+  -> projectEditor()
+```
+
+更精确一点：
+
+```txt
+engine
+local
+input.state
+preview
+layout
+  -> query
+
+query
+  -> snap
+
+engine + query + layout + local + preview
   -> commands
 
-local + query + layout + commands + snap
+engine + query + layout + commands + local + preview
   -> actions
 
-services
-  -> input deps projection
-  -> store projection
-  -> read projection
-  -> events projection
+engine + local + query + input.state + preview
+  -> lifecycle
 
-input deps
-  -> input host
+engine + local + input.state + preview + layout + query + snap + commands + actions
+  -> input.host
+
+all services
+  -> projectEditor()
 ```
 
-严格规则如下：
+这里最关键的断环动作有两个：
 
-- `local` 不能依赖 `query`
-- `local` 不能依赖 `layout`
-- `commands` 不能依赖 `local`
-- `projection` 不能携带业务逻辑
-- `input` 不能挂在 `actions` 里
-- `selection/clipboard` 不能再留在 `commands`
+1. `query` 改为依赖 `input.state`，不再依赖 interaction runtime。
+2. `input.host` 最后创建，并直接消费 `EditorServices`，不再通过 `projectInteractionDeps()` 适配。
 
----
+## 4. 最终职责切分
 
-## 4. 最终内部 API
+## 4.1 `engine`
 
-## 4.1 `CreateEditorInput`
+`engine` 是唯一持久态来源。
 
-```ts
-export type CreateEditorInput = {
-  engine: Engine
-  registry: NodeRegistry
-  initialTool: Tool
-  initialViewport: Viewport
-  initialDrawState?: DrawState
-  services?: {
-    layout?: LayoutBackend
-  }
-}
-```
+它负责：
 
-这里不再继续扩散装配参数，`createEditor()` 的输入只保留真正外部依赖。
+- document
+- committed node/edge/mindmap 数据
+- history
+- scene/index read
+- persistent commit
 
----
+它不负责：
 
-## 4.2 `EditorServices`
+- selection
+- edit session
+- tool
+- viewport
+- input state
+- preview
 
-`EditorServices` 是内部唯一服务图，不对外公开。
+## 4.2 `local`
 
-```ts
-export type EditorServices = {
-  engine: Engine
-  local: EditorLocal
-  layout: EditorLayout
-  query: EditorQuery
-  snap: EditorSnap
-  commands: EditorCommands
-  actions: EditorActions
-  lifecycle: EditorLifecycle
-}
-```
+`local` 最终退回纯编辑器本地语义状态中心。
 
-约束：
+它只保留：
 
-- editor 内部长期存在的服务，只允许挂在这里
-- 不允许再出现第二套平行 runtime 聚合概念
-- `EditorServices` 是内部 graph，不是 public API
+- `tool`
+- `draw`
+- `selection`
+- `edit`
+- `viewport`
 
----
+它不再保留：
 
-## 4.3 `EditorLocal`
+- `interaction`
+- `hover`
+- `feedback`
+- `pointer`
+- `space`
+- `bindInteractions`
 
-`local` 的最终职责只有两类：
-
-1. 持有本地状态源
-2. 提供纯本地 mutate
-
-它不再负责：
-
-- capability/read 判定
-- layout 计算
-- 选择语义编排
-- edit commit/cancel 语义
-- 任何依赖 `query/layout` 的动作
+也就是说，`local` 的定义必须重新变成：
 
 ```ts
 export type EditorLocal = {
   source: EditorLocalSource
   mutate: EditorLocalMutate
   viewport: ViewportRuntime
-  interaction: InteractionRuntime
-  hover: HoverStore
-  feedback: EditorFeedbackRuntime
   reset: () => void
 }
 ```
 
-### `EditorLocalSource`
+其中：
 
 ```ts
 export type EditorLocalSource = {
@@ -203,12 +248,8 @@ export type EditorLocalSource = {
   draw: ReadStore<DrawState>
   selection: ReadStore<SelectionTarget>
   edit: ReadStore<EditSession | null>
-  pointer: ReadStore<PointerSample | null>
-  space: ReadStore<boolean>
 }
 ```
-
-### `EditorLocalMutate`
 
 ```ts
 export type EditorLocalMutate = {
@@ -230,477 +271,362 @@ export type EditorLocalMutate = {
   edit: {
     set: (session: EditSession) => void
     input: (text: string) => void
-    layout: (patch: Partial<EditLayout>) => void
     caret: (caret: EditCaret) => void
+    layout: (patch: Partial<EditLayout>) => void
     status: (status: EditStatus) => void
     clear: () => void
   }
-  pointer: {
-    set: (sample: PointerSample) => void
-    clear: () => void
-  }
-  space: {
-    set: (value: boolean) => void
-  }
 }
 ```
 
-关键点：
+`local.reset()` 只负责清理：
 
-- `local` 不再暴露 `state + stores` 双套接口
-- `local.actions.*` 这个概念整体删除
-- `bindQuery()` / `bindLayout()` 整体删除
-- `reconcileAfterCommit()` 整体删除
+- selection
+- edit
 
-commit 后的 reconcile 放到 `lifecycle` 里显式做，不再藏在 `local`。
+它不再顺手清 `hover`、`interaction`、`preview`。
 
----
+## 4.3 `input`
 
-## 4.4 `EditorQuery`
+`input` 是一个独立服务，不再挂在 `local` 名下。
 
-`query` 是只读推导层，只依赖：
+它内部再固定拆成两部分：
 
-- engine committed state
-- local source
-- layout
+1. `input.state`
+2. `input.host`
+
+### `input.state`
+
+`input.state` 是 query/store/presentation 可以读取的只读输入态。
+
+```ts
+export type EditorInputState = {
+  mode: ReadStore<InputMode>
+  busy: ReadStore<boolean>
+  chrome: ReadStore<boolean>
+  gesture: ReadStore<ActiveGesture | null>
+  pointer: ReadStore<PointerSample | null>
+  space: ReadStore<boolean>
+  hover: Pick<HoverStore, 'get' | 'subscribe'>
+}
+```
+
+它只负责“当前输入生命周期的只读快照”。
 
 它不负责：
 
-- 写入
-- side effect
-- orchestration
+- host event API
+- context menu 语义
+- wheel fallback
+
+这里的 `hover` 指的是只读 hover 状态面，不是 hover 逻辑本身。
+
+hover 计算与写入仍然属于 `input.host` 内部。
+
+### `input.host`
+
+`input.host` 是公开给 React/host 的输入入口。
+
+它继续实现当前的 `EditorInputHost`：
 
 ```ts
-export type EditorQuery = {
-  document: EngineRead['document']
-  frame: EngineRead['frame']
-  group: EngineRead['group']
-  scene: EngineRead['scene']
-  slice: EngineRead['slice']
+export type EditorInput = {
+  state: EditorInputState
+  host: EditorInputHost
+}
+```
+
+`host` 负责：
+
+- pointer down/move/up/cancel/leave
+- key down/up
+- wheel
+- blur
+- contextMenu
+- cancel
+
+但 `host` 本身不再被 `projectEditor()` 创建，它必须在 `createEditorServices()` 内部装配完成。
+
+### `input` 内部还负责两件事
+
+1. active session runtime
+2. hover service
+
+也就是说，当前这些东西都属于 `input` 自己：
+
+- `createInteractionRuntime(...)`
+- `createEdgeHoverService(...)`
+- pointer/space 写入
+- bindings 列表
+
+不再属于 `local` 或 `project`。
+
+## 4.4 `preview`
+
+`preview` 是从当前 `local.feedback` 正式提升出来的独立服务。
+
+最终不再叫 `feedback runtime`，直接统一叫 `preview`。
+
+原因很简单：
+
+- 它不是 local source
+- 它不是 input host
+- 它不是 query
+- 它不是 command
+
+它的职责只有一个：
+
+组合并投影 editor 的临时预览状态。
+
+最终形态：
+
+```ts
+export type EditorPreview = {
+  get: () => EditorPreviewState
+  subscribe: (listener: (state: EditorPreviewState) => void) => Unsubscribe
+  write: {
+    set: (
+      next:
+        | PreviewBaseState
+        | ((current: PreviewBaseState) => PreviewBaseState)
+    ) => void
+    reset: () => void
+  }
+  selectors: EditorPreviewSelectors
+}
+```
+
+其中组合来源固定为三类：
+
+1. `base preview`
+2. `input.state.gesture`
+3. `hover preview`
+
+也就是：
+
+```txt
+final preview = compose(base preview, gesture draft, hover draft)
+```
+
+所以当前的：
+
+- `local.feedback`
+- `local.hover`
+
+都应该退出 `local`。
+
+`commands` 如果需要写入 mindmap insert preview，也只能写 `preview.write.*`，不再写 `local.feedback.set(...)`。
+
+## 4.5 `layout`
+
+`layout` 继续是 editor 对 registry/backend 的布局适配层。
+
+它负责：
+
+- edit layout
+- preview patch resolve
+- feature layout helper
+
+它不负责：
+
+- host input
+- selection state
+- preview 组合
+
+`layout` 不需要知道 interaction runtime，只接纯数据。
+
+## 4.6 `query`
+
+`query` 是唯一只读聚合层。
+
+最终它依赖：
+
+- `engine.read`
+- `registry`
+- `history`
+- `local`
+- `input.state`
+- `preview`
+- `layout`
+
+最终签名应当收敛成：
+
+```ts
+export const createEditorQuery = ({
+  engineRead,
+  registry,
+  history,
+  local,
+  input,
+  preview,
+  layout
+}: {
+  engineRead: EngineRead
+  registry: NodeRegistry
   history: ReadStore<HistoryState>
-  target: RuntimeTargetRead
-  node: NodePresentationRead
-  edge: EdgePresentationRead
-  mindmap: MindmapPresentationRead
-  selection: {
-    model: SelectionModelRead
-    presentation: SelectionRead
-  }
-  tool: ToolRead
-  draw: ReadStore<DrawState>
-  space: ReadStore<boolean>
-  viewport: {
-    get: () => Viewport
-    subscribe: (listener: () => void) => Unsubscribe
-    pointer: ViewportRuntime['read']['pointer']
-    worldToScreen: ViewportRuntime['read']['worldToScreen']
-    screenPoint: ViewportRuntime['input']['screenPoint']
-    size: ViewportRuntime['input']['size']
-  }
-  feedback: {
-    node: EditorFeedbackRuntime['selectors']['node']
-    draw: EditorFeedbackRuntime['selectors']['draw']
-    marquee: EditorFeedbackRuntime['selectors']['marquee']
-    mindmapPreview: EditorFeedbackRuntime['selectors']['mindmapPreview']
-    edgeGuide: EditorFeedbackRuntime['selectors']['edgeGuide']
-    snap: EditorFeedbackRuntime['selectors']['snap']
-  }
-}
+  local: Pick<EditorLocal, 'source' | 'viewport'>
+  input: EditorInputState
+  preview: EditorPreview
+  layout: EditorLayout
+}): EditorQuery
 ```
 
-关键点：
+注意这里的关键点：
 
-- `QueryRuntime = { read, selectionModel }` 这种包一层再拆一层的结构删除
-- `selectionModel` 直接收进 `query.selection.model`
-- public `read` 只是 `query` 的投影，不再有额外业务
+- `query` 不再读取 `local.interaction`
+- `query` 不再读取 `local.feedback`
+- `query.space` 改为读取 `input.state.space`
+- selection/edge presentation 里的 mode/chrome 改为读取 `input.state.mode/chrome`
 
----
+## 4.7 `commands`
 
-## 4.5 `EditorCommands`
+`commands` 继续只做持久写。
 
-`commands` 只负责持久写。
+但它可以读取：
 
-它可以做：
+- `engine`
+- `query`
+- `layout`
+- `preview.write`
+- `commandSession`
 
-- 调 engine 写接口
-- 做 layout-aware patch/create 修正
-- 做 document 级持久写
+`commandSession` 继续保留，负责：
 
-它不可以做：
+- selection 本地切换时顺手清 edit
+- 启动 node/edge label 编辑
+- edit input/layout/caret/clear
 
-- selection side effect
-- edit side effect
-- local 状态更新
-- clipboard 编排
+这是 editor 的局部语义编排，不属于 input。
 
-```ts
-export type EditorCommands = {
-  document: DocumentCommands
-  node: NodeCommands
-  edge: EdgeCommands
-  mindmap: MindmapCommands
-  history: HistoryCommands
-}
-```
+最终：
 
-明确删除：
+- `commands` 不能持有 `input`
+- `commands` 不能持有 host dispatch
+- `commands` 不能直接依赖完整 `preview`，只应拿窄写接口
 
-- `command.selection`
-- `command.clipboard`
+## 4.8 `actions`
 
-因为它们本质上不是“持久写中轴”，而是 editor 语义动作。
+`actions` 继续是唯一高层语义编排层。
 
----
+它负责：
 
-## 4.6 `EditorActions`
+- tool
+- viewport
+- selection
+- edit commit/cancel
+- clipboard
+- app
 
-`actions` 是 editor 唯一的高层编排层。
+它可以依赖：
 
-它依赖：
-
+- `engine`
 - `local`
 - `query`
 - `layout`
 - `commands`
-- `snap`
-- `engine` 的少量只读/配置能力
+- `registry`
+- `lifecycle.dispose`
 
-它负责所有“先读当前 editor 语义，再做本地变化或持久写”的事情。
+但它不再承担 host 输入分发。
+
+换句话说：
+
+- `editor.actions` 是语义动作
+- `editor.input` 是宿主输入
+
+两者保持彻底分离。
+
+## 4.9 `lifecycle`
+
+`lifecycle` 只保留：
+
+- engine commit change event
+- editor dispose event
+- engine commit 后的本地清理策略
+
+它不负责：
+
+- input bindings
+- host event dispatch
+- public projection
+
+## 4.10 `project`
+
+`projectEditor()` 的职责必须收缩成“纯投影”。
+
+最终它只能做：
 
 ```ts
-export type EditorActions = {
-  app: AppActions
-  tool: ToolActions
-  viewport: EditorViewportActions
-  draw: DrawCommands
-  selection: EditorSelectionActions
-  edit: EditorEditActions
-  node: EditorNodeActions
-  edge: EditorEdgeActions
-  mindmap: EditorMindmapActions
-  clipboard: ClipboardActions
-  history: EditorHistoryActions
-}
+export const projectEditor = (
+  services: EditorServices
+): Editor => ({
+  store: projectEditorStore({
+    local: services.local,
+    input: services.input.state
+  }),
+  read: projectEditorRead(services.query),
+  actions: services.actions,
+  input: services.input.host,
+  events: services.lifecycle.events
+})
 ```
 
-### `EditorSelectionActions`
+它不能再做：
+
+- create edge hover
+- create input host
+- create interaction deps
+- 任何 runtime 初始化
+
+## 5. 最终内部 API
+
+## 5.1 `CreateEditorInput`
+
+外部创建参数不需要继续扩散，保留当前这组即可：
 
 ```ts
-export type EditorSelectionActions = {
-  replace: (input: SelectionInput) => void
-  add: (input: SelectionInput) => void
-  remove: (input: SelectionInput) => void
-  toggle: (input: SelectionInput) => void
-  clear: () => void
-  selectAll: () => void
-  frame: () => void
-  order: (input: SelectionOrderInput) => void
-  group: () => void
-  ungroup: () => void
-  delete: () => void
-  duplicate: () => void
-}
-```
-
-### `EditorEditActions`
-
-```ts
-export type EditorEditActions = {
-  startNode: (
-    nodeId: NodeId,
-    field: EditField,
-    options?: { caret?: EditCaret }
-  ) => void
-  startEdgeLabel: (
-    edgeId: EdgeId,
-    labelId: string,
-    options?: { caret?: EditCaret }
-  ) => void
-  input: (text: string) => void
-  layout: (patch: Partial<EditLayout>) => void
-  caret: (caret: EditCaret) => void
-  cancel: () => void
-  commit: () => void
-}
-```
-
-关键点：
-
-- public `editor.actions` 直接来自 `services.actions`
-- 不再在 `facade` 里临时拼装 edit/selection/clipboard 行为
-- `selection`、`clipboard` 从 `commands` 迁到 `actions`
-- `actions.interaction` 整体删除
-
----
-
-## 4.7 `EditorLayout`
-
-`layout` 继续保留为中轴，不散落到 feature。
-
-最终只做三类事：
-
-1. 测量
-2. layout-aware patch
-3. preview patch 修正
-
-```ts
-export type EditorLayout = {
-  text: {
-    measure: (input: TextMeasureInput) => Size | undefined
-  }
-  node: {
-    patchCreate: (input: NodeCreateInput) => NodeCreateInput
-    patchUpdate: (
-      nodeId: NodeId,
-      update: NodeUpdateInput,
-      options?: { origin?: LayoutOrigin }
-    ) => NodeUpdateInput
-    edit: (input: {
-      nodeId: NodeId
-      field: EditField
-      text: string
-    }) => Partial<EditLayout> | undefined
-  }
-  preview: {
-    resolveNodePatches: (
-      patches: readonly TransformPreviewPatch[]
-    ) => readonly TransformPreviewPatch[]
+export type CreateEditorInput = {
+  engine: Engine
+  registry: NodeRegistry
+  initialTool: Tool
+  initialViewport: Viewport
+  initialDrawState?: DrawState
+  services?: {
+    layout?: LayoutBackend
   }
 }
 ```
 
-关键点：
+## 5.2 `EditorServices`
 
-- `layout` 只给语义层提供能力，不自己做语义编排
-- `transform` 不应该手动维护 text preview 语义，只应该提交 node transform patch，再由 layout 统一修正 preview
-
----
-
-## 4.8 `InteractionDeps`
-
-`InteractionDeps` 是 input 域专用的最小依赖投影。
-
-它不是另一套 runtime，只是从 `EditorServices` 投影出来的一份“输入期最小可用依赖”。
+`EditorServices` 是 editor 内部唯一服务图。
 
 ```ts
-export type InteractionDeps = {
-  read: Pick<
-    EditorQuery,
-    'target' | 'node' | 'edge' | 'mindmap' | 'tool' | 'space' | 'viewport' | 'feedback'
-  > & {
-    selection: EditorQuery['selection']['model']
-  }
-  local: Pick<EditorLocal, 'mutate'>
-  commands: Pick<EditorCommands, 'node' | 'edge' | 'mindmap'>
+export type EditorServices = {
+  engine: Engine
+  local: EditorLocal
+  input: EditorInput
+  preview: EditorPreview
   layout: EditorLayout
-  snap: EditorSnap
-  config: Readonly<BoardConfig>
-}
-```
-
-关键点：
-
-- `InteractionContext` 改名为 `InteractionDeps`
-- 它不属于 `EditorServices`
-- 它不在 `createEditor()` 里手写长篇对象字面量
-- 统一改成 `projectInteractionDeps(services)`
-
----
-
-## 4.9 `EditorLifecycle`
-
-生命周期层是内部服务，不再挂在 facade 中。
-
-```ts
-export type EditorLifecycle = {
-  events: EditorEvents
-  dispose: () => void
-}
-```
-
-它负责：
-
-- 订阅 engine commit
-- replace commit 时 reset local
-- normal commit 时做 local reconcile
-- 管理 dispose listeners
-- 暴露最终 public events
-
-commit reconcile 的最终语义放在 lifecycle 中显式实现：
-
-```ts
-const reconcileLocalAfterCommit = (
-  local: EditorLocal,
-  query: Pick<EditorQuery, 'node' | 'edge'>
-) => {
-  const selection = local.source.selection.get()
-
-  const nextNodeIds = selection.nodeIds.filter(id => !!query.node.item.get(id))
-  const nextEdgeIds = selection.edgeIds.filter(id => !!query.edge.item.get(id))
-  const nextSelection = {
-    nodeIds: nextNodeIds,
-    edgeIds: nextEdgeIds
-  }
-
-  const selectionChanged = (
-    nextNodeIds.length !== selection.nodeIds.length
-    || nextEdgeIds.length !== selection.edgeIds.length
-    || nextNodeIds.some((id, index) => id !== selection.nodeIds[index])
-    || nextEdgeIds.some((id, index) => id !== selection.edgeIds[index])
-  )
-
-  if (selectionChanged) {
-    local.mutate.selection.replace(nextSelection)
-  }
-
-  const edit = local.source.edit.get()
-  if (!edit) {
-    return
-  }
-
-  if (edit.kind === 'node' && !query.node.item.get(edit.nodeId)) {
-    local.mutate.edit.clear()
-    return
-  }
-
-  if (edit.kind === 'edge-label' && !query.edge.item.get(edit.edgeId)) {
-    local.mutate.edit.clear()
-  }
-}
-```
-
-核心意思只有一条：
-
-- lifecycle 负责 commit 后的运行时修正
-- local 只负责状态，不再自己做 commit-aware 业务
-
----
-
-## 5. 最终公开 API
-
-公开的 `Editor` 不是服务图原样暴露，而是稳定投影结果。
-
-```ts
-export type Editor = {
-  store: EditorStore
-  read: EditorRead
+  query: EditorQuery
+  snap: SnapRuntime
+  commands: EditorCommands
   actions: EditorActions
-  input: EditorInputHost
-  events: EditorEvents
+  lifecycle: EditorLifecycle
 }
 ```
 
----
+这里不再允许第二套平行 runtime graph。
 
-## 5.1 `EditorStore`
+不再允许：
 
-`store` 只暴露本地状态订阅，不暴露业务。
+- `facade`
+- `interaction deps projection`
+- `local.bindXxx(...)`
 
-```ts
-export type EditorStore = {
-  tool: ReadStore<Tool>
-  draw: ReadStore<DrawState>
-  edit: ReadStore<EditSession | null>
-  selection: ReadStore<SelectionTarget>
-  interaction: ReadStore<EditorInteractionState>
-  viewport: ReadStore<Viewport>
-}
-```
+## 5.3 `createEditorServices()`
 
-它只依赖：
-
-- `services.local.source`
-- `services.local.interaction`
-- `services.local.viewport`
-
-不允许带业务逻辑。
-
----
-
-## 5.2 `EditorRead`
-
-`read` 是 public projection，不是第二套 query runtime。
-
-```ts
-export type EditorRead = {
-  document: Pick<EditorQuery['document'], 'background' | 'bounds'>
-  group: Pick<EditorQuery['group'], 'exactIds'>
-  history: EditorQuery['history']
-  mindmap: Pick<EditorQuery['mindmap'], 'render'>
-  node: Pick<EditorQuery['node'], 'render'>
-  edge: Pick<EditorQuery['edge'], 'render' | 'selectedChrome'>
-  scene: Pick<EditorQuery['scene'], 'list'>
-  selection: Pick<EditorQuery['selection']['presentation'], 'node' | 'box'>
-  tool: EditorQuery['tool']
-  viewport: EditorQuery['viewport']
-  chrome: ReadStore<EditorChromePresentation>
-  panel: ReadStore<EditorPanelPresentation>
-}
-```
-
-它只依赖 `services.query`。
-
----
-
-## 5.3 `EditorInputHost`
-
-`input` 是 host 事件入口，不是 action。
-
-```ts
-export type EditorInputHost = {
-  contextMenu: (input: ContextMenuInput) => ContextMenuIntent | null
-  pointerDown: (input: PointerDownInput) => EditorPointerDispatchResult
-  pointerMove: (input: PointerMoveInput) => boolean
-  pointerUp: (input: PointerUpInput) => boolean
-  pointerCancel: (input: { pointerId: number }) => boolean
-  pointerLeave: () => void
-  wheel: (input: WheelInput) => boolean
-  cancel: () => void
-  keyDown: (input: KeyboardInput) => boolean
-  keyUp: (input: KeyboardInput) => boolean
-  blur: () => void
-}
-```
-
-最终公开调用方式必须是：
-
-```ts
-editor.input.pointerDown(...)
-```
-
-而不是：
-
-```ts
-editor.actions.interaction.pointerDown(...)
-```
-
----
-
-## 5.4 `EditorEvents`
-
-最终只保留：
-
-```ts
-export type EditorEvents = {
-  change: (
-    listener: (document: Document, commit: Commit) => void
-  ) => Unsubscribe
-  dispose: (listener: () => void) => Unsubscribe
-}
-```
-
-明确删除：
-
-- `events.history`
-- `events.selection`
-
-因为这两个只是把现有 store/read 的订阅再转发一遍，没有独立价值。
-
----
-
-## 6. 最终装配方式
-
-## 6.1 `createEditorServices(...)`
+最终装配顺序固定如下：
 
 ```ts
 export const createEditorServices = (
@@ -709,55 +635,85 @@ export const createEditorServices = (
   const local = createEditorLocal({
     initialTool: input.initialTool,
     initialDrawState: input.initialDrawState ?? DEFAULT_DRAW_STATE,
-    initialViewport: input.initialViewport,
-    registry: input.registry
+    initialViewport: input.initialViewport
   })
 
+  const inputState = createEditorInputState()
+
+const preview = createEditorPreview({
+  viewport: local.viewport.read,
+  gesture: inputState.gesture,
+  hover: inputState.hover
+})
+
   const layout = createEditorLayout({
-    committedNodeRead: input.engine.read.node.item,
+    read: {
+      node: {
+        committed: input.engine.read.node.item
+      }
+    },
     registry: input.registry,
     backend: input.services?.layout
   })
 
   const query = createEditorQuery({
     engineRead: input.engine.read,
-    history: input.engine.history,
     registry: input.registry,
+    history: input.engine.history,
     local,
+    input: inputState,
+    preview,
     layout
   })
 
-  const snap = createEditorSnap({
-    engineRead: input.engine.read,
-    query,
-    local
+  const snap = createSnapRuntime({
+    readZoom: () => local.viewport.read.get().zoom,
+    node: {
+      config: input.engine.config.node,
+      query: input.engine.read.index.snap.inRect
+    },
+    edge: {
+      config: input.engine.config.edge,
+      nodeSize: input.engine.config.nodeSize,
+      query: query.edge.connectCandidates
+    }
   })
 
   const commands = createEditorCommands({
     engine: input.engine,
     query,
-    layout
-  })
-
-  const actions = createEditorActions({
-    engine: input.engine,
-    registry: input.registry,
-    local,
-    query,
     layout,
-    snap,
-    commands
+    preview: preview.write,
+    session: createCommandSession({
+      local,
+      query,
+      registry: input.registry,
+      layout
+    })
   })
 
   const lifecycle = createEditorLifecycle({
     engine: input.engine,
     local,
+    input: inputState,
+    preview,
     query
   })
 
-  return {
+  const actions = createEditorActions({
     engine: input.engine,
     local,
+    query,
+    layout,
+    commands,
+    registry: input.registry,
+    dispose: lifecycle.dispose
+  })
+
+  const servicesBase = {
+    engine: input.engine,
+    local,
+    preview,
     layout,
     query,
     snap,
@@ -765,68 +721,147 @@ export const createEditorServices = (
     actions,
     lifecycle
   }
+
+  const editorInput = createEditorInput({
+    ...servicesBase,
+    state: inputState
+  })
+
+  return {
+    ...servicesBase,
+    input: editorInput
+  }
 }
 ```
 
-这段装配里有三条硬约束：
+这里最重要的不是语法，而是顺序：
 
-1. 不再有 `bindQuery(...)`
-2. 不再有 `bindLayout(...)`
-3. 不再在 `createEditor()` 中手写输入期上下文对象
+1. 先建 `local`
+2. 再建 `inputState`
+3. 再建 `preview`
+4. 再建 `layout`
+5. 再建 `query`
+6. 再建 `snap`
+7. 再建 `commands`
+8. 再建 `lifecycle`
+9. 再建 `actions`
+10. 最后建 `input.host`
 
----
+顺序固定后，不再需要任何 `bindInteractions()`。
 
-## 6.2 `projectEditor(...)`
+## 5.4 `createEditorInput()`
 
-projection 必须纯粹，不得混业务。
+`createEditorInput()` 是 `input` 域自己的总装配函数。
+
+它直接消费 `EditorServices` 级别的信息，不再引入 `InteractionDeps`。
 
 ```ts
-export const projectEditor = (
-  services: EditorServices
-): Editor => ({
-  store: projectEditorStore(services),
-  read: projectEditorRead(services),
-  actions: services.actions,
-  input: createEditorInputHost(
-    projectInteractionDeps(services)
-  ),
-  events: services.lifecycle.events
-})
+export const createEditorInput = ({
+  engine,
+  local,
+  state,
+  preview,
+  layout,
+  query,
+  snap,
+  commands,
+  actions
+}: Omit<EditorServices, 'input'> & {
+  state: ReturnType<typeof createEditorInputState>
+}): EditorInput
 ```
 
-这意味着 `projectEditor(...)` 中禁止出现：
+内部负责：
 
-- commit subscribe
-- reset/reconcile
-- edit action 拼装
-- clipboard action 拼装
-- dispose listener 管理
+- create input runtime
+- create edge hover service
+- create host
+- 构建 binding 列表
 
-一律不允许。
+这里不再需要：
 
----
+- `createEditorInteractions(...)`
+- `projectInteractionDeps(...)`
+- `InputLocal`
+- `InteractionDeps`
 
-## 6.3 `createEditor(...)`
+## 5.5 input feature API
+
+input feature 的最终入口统一为：
 
 ```ts
-export const createEditor = (
-  input: CreateEditorInput
-): Editor => {
-  const services = createEditorServices(input)
-  return projectEditor(services)
+export type InputBinding = {
+  key: string
+  start?: (input: PointerDownInput) => InputStartResult
 }
 ```
 
-`createEditor()` 到这里就结束，不再承担任何别的运行时业务。
+但 binding factory 不再吃一层专门的 interaction context，而是直接吃 `EditorServices`，或在文件内就地声明窄依赖：
 
----
+```ts
+type SelectionInputServices = Pick<
+  EditorServices,
+  'engine' | 'local' | 'layout' | 'query' | 'snap' | 'commands' | 'actions'
+>
 
-## 7. 文件结构
+export const createSelectionBinding = (
+  services: SelectionInputServices
+): InputBinding => { ... }
+```
 
-最终建议文件布局如下：
+这样做的原则是：
+
+- 不为 input 再造一套共享上下文类型
+- 如果某个 feature 只需要一部分服务，就在本文件本地 `Pick`
+- 删除 `input/core/context.ts`
+
+## 5.6 `projectEditorStore()`
+
+最终 store projection 改为读：
+
+- `local.source`
+- `input.state`
+- `local.viewport.read`
+
+也就是：
+
+```ts
+export const projectEditorStore = ({
+  local,
+  input,
+  viewport
+}: {
+  local: Pick<EditorLocal, 'source'>
+  input: EditorInputState
+  viewport: ViewportRuntime['read']
+}): EditorStore
+```
+
+`space` 不再从 `local.source.space` 读取，而是从 `input.state.space` 读取。
+
+## 6. 明确删除的概念
+
+下面这些概念在最终方案里必须删除：
+
+- `local.bindInteractions(...)`
+- `projectInteractionDeps(...)`
+- `createEditorInteractions(...)`
+- `InteractionDeps`
+- `InputLocal`
+- `local.interaction`
+- `local.hover`
+- `local.feedback`
+- `local.pointer`
+- `local.space`
+
+如果某处还在使用这些名字，说明还没有真正完成重构。
+
+## 7. 最终文件结构
+
+建议最终结构收敛为：
 
 ```txt
-whiteboard/packages/whiteboard-editor/src/
+whiteboard-editor/src/
   editor/
     createEditor.ts
     services.ts
@@ -837,167 +872,105 @@ whiteboard/packages/whiteboard-editor/src/
 
   local/
     runtime.ts
-    source.ts
-    mutate.ts
-    ...
-
-  query/
-    index.ts
-    ...
-
-  command/
-    index.ts
-    ...
-
-  action/
-    index.ts
-    ...
-
-  lifecycle/
-    index.ts
-
-  layout/
-    runtime.ts
-    policy.ts
-    backend.ts
+    draw/
+    session/
+    viewport/
 
   input/
-    ...
+    state.ts
+    runtime.ts
+    host.ts
+    hover/
+      edge.ts
+      store.ts
+    features/
+      draw.ts
+      transform.ts
+      viewport.ts
+      edge/
+      selection/
+      mindmap/
+
+  preview/
+    runtime.ts
+    selectors.ts
+    state.ts
+    update.ts
+
+  query/
+  command/
+  action/
+  layout/
+  lifecycle/
+  types/
 ```
 
-各文件职责固定为：
+这里的关键不是文件数，而是 ownership：
 
-- `editor/services.ts`
-  - 创建内部 `EditorServices`
-- `editor/project.ts`
-  - `EditorServices -> Editor`
-- `editor/store.ts`
-  - public store projection
-- `editor/read.ts`
-  - public read projection
-- `editor/events.ts`
-  - events projection type / helpers
-- `lifecycle/index.ts`
-  - commit subscribe / reconcile / dispose
+- input runtime 只在 `input/`
+- preview 只在 `preview/`
+- local 不再混入这两者
 
-明确删除：
+## 8. 最终重构顺序
 
-- `editor/facade.ts`
+真正落地时，推荐按下面顺序一次完成。
 
----
+### 阶段 1
 
-## 8. 需要删除的概念
+先抽出 `input.state`，把：
 
-下面这些概念直接判定为多余，最终都应删除：
+- `interaction`
+- `pointer`
+- `space`
 
-- `createEditorFacade(...)`
-- `local.actions.*`
-- `state + stores` 双接口
-- `bindQuery(...)`
-- `bindLayout(...)`
-- `reconcileAfterCommit(...)`
-- `QueryRuntime = { read, selectionModel }`
-- `actions.interaction`
-- `command.selection`
-- `command.clipboard`
-- `events.history`
-- `events.selection`
-- `InteractionContext` 这个命名
+从 `local` 挪走。
 
-统一收敛后，只保留：
+同时把 `query` 和 `store` 改为读取 `input.state`。
 
-- `services`
-- `local`
-- `query`
-- `commands`
-- `actions`
-- `input`
-- `lifecycle`
+### 阶段 2
 
----
+把 `local.feedback` 改名并提升为 `preview` 服务。
 
-## 9. 实施阶段
+同时把：
 
-## 阶段 1：收纯 `local`
+- `hover`
+- `gesture`
+- command 写入 preview
 
-目标：
+统一改到 `preview` 上。
 
-- 改成 `source + mutate`
-- 去掉所有 `local.actions.*`
-- 去掉 `bindQuery/bindLayout`
+### 阶段 3
 
-验收：
+把 `createEdgeHoverService` 和 `createEditorInputHost` 收进 `input` 域。
 
-- `local` 对 `query/layout` 的直接依赖归零
+删掉：
 
----
+- `projectInteractionDeps`
+- `createEditorInteractions`
+- `local.bindInteractions`
 
-## 阶段 2：收纯 `commands`
+让 binding 直接消费 `EditorServices`。
 
-目标：
+### 阶段 4
 
-- `selection` 从 command 移出
-- `clipboard` 从 command 移出
-- node/edge/mindmap command 内的 local/session side effect 移出
+最后把 `projectEditor()` 清成纯投影。
 
-验收：
+同时清理：
 
-- `commands` 成为纯持久写层
+- `input/core/context.ts`
+- 所有 `InteractionDeps` 引用
+- 所有 `local.interaction` / `local.feedback` / `local.hover` 引用
 
----
+## 9. 最终判断标准
 
-## 阶段 3：建立 `actions`
+重构完成后，必须能同时满足下面这些检查。
 
-目标：
+1. `local/runtime.ts` 里不再出现 `bindInteractions`。
+2. `query/index.ts` 里不再出现 `local.interaction`。
+3. `project.ts` 里不再创建任何 runtime 对象。
+4. `input` feature 不再依赖 `InteractionDeps`。
+5. `projectEditorStore()` 的 interaction 来源是 `input.state`，不是 `local`。
+6. `preview` 不再挂在 `local` 名下。
+7. `createEditorServices()` 不再依赖后绑定。
 
-- 新增 `createEditorActions(...)`
-- 所有需要“读当前 editor，再改 local 或写 engine”的语义集中到 actions
-
-验收：
-
-- public `editor.actions` 直接指向 `services.actions`
-
----
-
-## 阶段 4：建立 `lifecycle`
-
-目标：
-
-- 把 commit subscribe / reconcile / dispose listener 全部移出 facade/projection
-
-验收：
-
-- projection 不再携带 side effect
-
----
-
-## 阶段 5：改 public API
-
-目标：
-
-- 删除 `actions.interaction`
-- 新增 `editor.input`
-- 删除 `events.history/events.selection`
-
-验收：
-
-- 公开 API 只剩五块：`store/read/actions/input/events`
-
----
-
-## 10. 最终验收标准
-
-全部完成时，必须同时满足：
-
-1. `createEditor()` 只负责创建 services 并投影 editor。
-2. editor 内部只有一套服务图：`EditorServices`。
-3. `facade` 完全删除。
-4. `local` 只保留 `source + mutate`，不依赖 `query/layout`。
-5. `query` 只做只读推导。
-6. `commands` 只做持久写。
-7. `actions` 成为唯一高层编排层。
-8. `input` 从 `actions` 中独立。
-9. `InteractionDeps` 只是 projection，不是 runtime。
-10. `events` 只保留 `change` 和 `dispose`。
-
-这就是最终长期最优方案，也是后续代码重构的唯一实施依据。
+如果这七条没有全部成立，就说明重构还没真正到位。

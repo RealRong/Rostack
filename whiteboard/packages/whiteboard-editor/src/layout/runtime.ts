@@ -29,7 +29,7 @@ import type {
   Size,
   Origin
 } from '@whiteboard/core/types'
-import type { TextPreviewPatch } from '@whiteboard/editor/local/feedback/types'
+import type { TextPreviewPatch } from '@whiteboard/editor/input/preview/types'
 import type { EditField, EditLayout } from '@whiteboard/editor/local/session/edit'
 import type {
   LayoutBackend,

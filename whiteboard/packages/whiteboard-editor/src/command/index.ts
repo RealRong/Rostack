@@ -23,7 +23,7 @@ import {
 } from '@whiteboard/editor/command/node/commands'
 import type { NodeCommands } from '@whiteboard/editor/command/node/types'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
-import type { EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback'
+import type { EditorInputPreviewWrite } from '@whiteboard/editor/input/preview'
 import type { EditCaret, EditField } from '@whiteboard/editor/local/session/edit'
 import type { EdgeId, NodeId } from '@whiteboard/core/types'
 
@@ -82,13 +82,13 @@ export const createEditorCommands = ({
   engine,
   query,
   layout,
-  feedback,
+  preview: previewWrite,
   session
 }: {
   engine: Engine
   query: EditorQuery
   layout: EditorLayout
-  feedback: Pick<EditorFeedbackRuntime, 'set'>
+  preview: EditorInputPreviewWrite
   session: EditorCommandSession
 }): EditorCommands => {
   const history = createHistoryCommands(engine)
@@ -112,21 +112,21 @@ export const createEditorCommands = ({
     layout,
     feedback: {
       mindmap: {
-        setPreview: (preview) => {
-          feedback.set((current) => (
-            current.mindmap.preview === preview
+        setPreview: (nextPreview) => {
+          previewWrite.set((current) => (
+            current.mindmap.preview === nextPreview
               ? current
               : {
                   ...current,
                   mindmap: {
                     ...current.mindmap,
-                    preview
+                    preview: nextPreview
                   }
                 }
           ))
         },
         clear: () => {
-          feedback.set((current) => (
+          previewWrite.set((current) => (
             current.mindmap.preview === undefined
               ? current
               : {

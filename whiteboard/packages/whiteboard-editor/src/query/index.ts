@@ -37,8 +37,9 @@ import {
   type RuntimeTargetRead
 } from '@whiteboard/editor/query/target'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
-import type { EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback'
+import type { EditorInputRuntime } from '@whiteboard/editor/input/runtime'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type { EditorInputPreview } from '@whiteboard/editor/input/preview'
 
 export type ToolRead = {
   get: () => Tool
@@ -112,13 +113,13 @@ export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
     screenPoint: ViewportRuntime['input']['screenPoint']
     size: ViewportRuntime['input']['size']
   }
-  feedback: {
-    node: EditorFeedbackRuntime['selectors']['node']
-    draw: EditorFeedbackRuntime['selectors']['draw']
-    marquee: EditorFeedbackRuntime['selectors']['marquee']
-    mindmapPreview: EditorFeedbackRuntime['selectors']['mindmapPreview']
-    edgeGuide: EditorFeedbackRuntime['selectors']['edgeGuide']
-    snap: EditorFeedbackRuntime['selectors']['snap']
+  preview: {
+    node: EditorInputPreview['selectors']['node']
+    draw: EditorInputPreview['selectors']['draw']
+    marquee: EditorInputPreview['selectors']['marquee']
+    mindmapPreview: EditorInputPreview['selectors']['mindmapPreview']
+    edgeGuide: EditorInputPreview['selectors']['edgeGuide']
+    snap: EditorInputPreview['selectors']['snap']
   }
 }
 
@@ -127,32 +128,33 @@ export const createEditorQuery = ({
   registry,
   history,
   local,
+  input,
   layout
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
-  local: Pick<EditorLocal, 'source' | 'interaction' | 'feedback' | 'viewport'>
+  local: Pick<EditorLocal, 'source' | 'viewport'>
+  input: Pick<EditorInputRuntime, 'state' | 'preview'>
   layout: EditorLayout
 }): EditorQuery => {
   const {
     draw,
     edit,
     selection,
-    space,
     tool
   } = local.source
   const mindmapRead = createMindmapRead({
     read: engineRead.mindmap,
     node: engineRead.node.item,
-    preview: local.feedback.selectors.mindmapPreview,
+    preview: input.preview.selectors.mindmapPreview,
     edit,
     selection
   })
   const nodeRead: NodePresentationRead = createNodeRead({
     read: engineRead,
     registry,
-    feedback: local.feedback.selectors.node,
+    feedback: input.preview.selectors.node,
     mindmap: mindmapRead.item,
     edit,
     selection
@@ -160,11 +162,11 @@ export const createEditorQuery = ({
   const edgeRead = createEdgeRead({
     read: engineRead,
     node: nodeRead,
-    feedback: local.feedback.selectors.edge,
+    feedback: input.preview.selectors.edge,
     edit,
     selection,
     tool,
-    interaction: local.interaction,
+    interaction: input.state,
     layout,
     capability: nodeRead.capability
   })
@@ -183,7 +185,7 @@ export const createEditorQuery = ({
     mindmap: mindmapRead,
     tool,
     edit,
-    interaction: local.interaction
+    interaction: input.state
   })
   const toolRead = createToolRead(tool)
 
@@ -204,7 +206,7 @@ export const createEditorQuery = ({
     slice: engineRead.slice,
     tool: toolRead,
     draw,
-    space,
+    space: input.state.space,
     viewport: {
       get: local.viewport.read.get,
       subscribe: local.viewport.read.subscribe,
@@ -213,13 +215,13 @@ export const createEditorQuery = ({
       screenPoint: local.viewport.input.screenPoint,
       size: local.viewport.input.size
     },
-    feedback: {
-      node: local.feedback.selectors.node,
-      draw: local.feedback.selectors.draw,
-      marquee: local.feedback.selectors.marquee,
-      mindmapPreview: local.feedback.selectors.mindmapPreview,
-      edgeGuide: local.feedback.selectors.edgeGuide,
-      snap: local.feedback.selectors.snap
+    preview: {
+      node: input.preview.selectors.node,
+      draw: input.preview.selectors.draw,
+      marquee: input.preview.selectors.marquee,
+      mindmapPreview: input.preview.selectors.mindmapPreview,
+      edgeGuide: input.preview.selectors.edgeGuide,
+      snap: input.preview.selectors.snap
     }
   }
 }

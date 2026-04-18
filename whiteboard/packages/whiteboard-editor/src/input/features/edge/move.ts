@@ -13,8 +13,8 @@ import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -126,7 +126,7 @@ const readMoveGesture = (
   : null
 
 export const createEdgeMoveSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'commands'>,
   initial: EdgeMoveState
 ): InteractionSession => {
   let state = initial
@@ -167,7 +167,7 @@ export const createEdgeMoveSession = (
 
       const commit = commitEdgeMove(state)
       if (commit) {
-        ctx.command.edge.move({
+        ctx.commands.edge.move({
           ids: [commit.edgeId],
           delta: commit.delta
         })

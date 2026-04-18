@@ -1,41 +1,41 @@
 import { isPointEqual, isSizeEqual } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
-  EditorFeedbackState,
-  NodeFeedbackProjection,
-  NodeFeedbackState,
+  EditorInputPreviewState,
+  NodePreviewProjection,
+  NodePreviewState,
   NodePatch,
   NodePreviewEntry,
   NodePreviewPatch,
-  NodeSelectionFeedbackState,
-  NodeTextFeedbackState,
+  NodeSelectionPreviewState,
+  NodeTextPreviewState,
   TextPreviewEntry,
   TextPreviewPatch
-} from '@whiteboard/editor/local/feedback/types'
-import { mergeEntryById } from '@whiteboard/editor/local/feedback/merge'
+} from '@whiteboard/editor/input/preview/types'
+import { mergeEntryById } from '@whiteboard/editor/input/preview/merge'
 
 export const EMPTY_NODE_PATCHES: readonly NodePreviewEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
 export const EMPTY_NODE_HIDDEN: readonly NodeId[] = []
 
-export const EMPTY_NODE_SELECTION_FEEDBACK: NodeSelectionFeedbackState = {
+export const EMPTY_NODE_SELECTION_FEEDBACK: NodeSelectionPreviewState = {
   patches: EMPTY_NODE_PATCHES
 }
 
-const EMPTY_NODE_TEXT_FEEDBACK: NodeTextFeedbackState = {
+const EMPTY_NODE_TEXT_FEEDBACK: NodeTextPreviewState = {
   patches: EMPTY_TEXT_PREVIEW_PATCHES
 }
 
-export const EMPTY_NODE_FEEDBACK: NodeFeedbackState = {
+export const EMPTY_NODE_FEEDBACK: NodePreviewState = {
   text: EMPTY_NODE_TEXT_FEEDBACK
 }
 
-export const EMPTY_NODE_FEEDBACK_PROJECTION: NodeFeedbackProjection = {
+export const EMPTY_NODE_FEEDBACK_PROJECTION: NodePreviewProjection = {
   hovered: false,
   hidden: false
 }
 
-const EMPTY_NODE_FEEDBACK_MAP = new Map<NodeId, NodeFeedbackProjection>()
+const EMPTY_NODE_FEEDBACK_MAP = new Map<NodeId, NodePreviewProjection>()
 
 const isNodePatchEqual = (
   left: NodePatch | undefined,
@@ -203,9 +203,9 @@ const hasTextPreviewPatch = (
   || patch?.handle !== undefined
 )
 
-const toNodeTextFeedbackState = (
+const toNodeTextPreviewState = (
   patches: readonly TextPreviewEntry[]
-): NodeTextFeedbackState => patches.length > 0
+): NodeTextPreviewState => patches.length > 0
   ? {
       patches
     }
@@ -234,44 +234,44 @@ const mergeTextPreviewPatch = (
 }
 
 export const updateNodeTextPreview = (
-  state: NodeTextFeedbackState,
+  state: NodeTextPreviewState,
   nodeId: NodeId,
   patch: TextPreviewPatch | undefined
-): NodeTextFeedbackState => {
+): NodeTextPreviewState => {
   const currentPatch = readTextPreviewEntry(state.patches, nodeId)
   const nextPatch = mergeTextPreviewPatch(currentPatch, patch)
   if (isTextPreviewPatchEqual(currentPatch, nextPatch)) {
     return state
   }
 
-  return toNodeTextFeedbackState(
+  return toNodeTextPreviewState(
     replaceTextPreviewEntry(state.patches, nodeId, nextPatch)
   )
 }
 
 export const clearNodeTextPreview = (
-  state: NodeTextFeedbackState,
+  state: NodeTextPreviewState,
   nodeId: NodeId
-): NodeTextFeedbackState => {
+): NodeTextPreviewState => {
   if (!readTextPreviewEntry(state.patches, nodeId)) {
     return state
   }
 
-  return toNodeTextFeedbackState(
+  return toNodeTextPreviewState(
     replaceTextPreviewEntry(state.patches, nodeId, undefined)
   )
 }
 
 export const clearNodeTextPreviewSize = (
-  state: NodeTextFeedbackState,
+  state: NodeTextPreviewState,
   nodeId: NodeId
-): NodeTextFeedbackState => {
+): NodeTextPreviewState => {
   const patch = readTextPreviewEntry(state.patches, nodeId)
   if (!patch?.size && !patch?.position) {
     return state
   }
 
-  return toNodeTextFeedbackState(
+  return toNodeTextPreviewState(
     replaceTextPreviewEntry(
       state.patches,
       nodeId,
@@ -293,13 +293,13 @@ export const clearNodeTextPreviewSize = (
 }
 
 export const isNodeFeedbackStateEqual = (
-  left: NodeFeedbackState,
-  right: NodeFeedbackState
+  left: NodePreviewState,
+  right: NodePreviewState
 ) => left.text.patches === right.text.patches
 
 export const isNodeProjectionEqual = (
-  left: NodeFeedbackProjection,
-  right: NodeFeedbackProjection
+  left: NodePreviewProjection,
+  right: NodePreviewProjection
 ) => (
   isNodePatchEqual(left.patch, right.patch)
   && isTextPreviewPatchEqual(left.text, right.text)
@@ -308,8 +308,8 @@ export const isNodeProjectionEqual = (
 )
 
 export const normalizeNodeFeedbackState = (
-  state: NodeFeedbackState
-): NodeFeedbackState => {
+  state: NodePreviewState
+): NodePreviewState => {
   const textPatches = state.text.patches.length > 0
     ? state.text.patches
     : EMPTY_TEXT_PREVIEW_PATCHES
@@ -329,7 +329,7 @@ export const normalizeNodeFeedbackState = (
 }
 
 export const toNodeFeedbackMap = (
-  state: EditorFeedbackState
+  state: EditorInputPreviewState
 ) => {
   if (
     state.selection.node.patches.length === 0
@@ -340,7 +340,7 @@ export const toNodeFeedbackMap = (
     return EMPTY_NODE_FEEDBACK_MAP
   }
 
-  const next = new Map<NodeId, NodeFeedbackProjection>()
+  const next = new Map<NodeId, NodePreviewProjection>()
   const hiddenSet = new Set(state.draw.hidden)
 
   for (let index = 0; index < state.node.text.patches.length; index += 1) {

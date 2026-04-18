@@ -8,7 +8,7 @@ import type {
   WheelInput
 } from '@whiteboard/editor/types/input'
 
-type InteractionMode =
+export type InteractionMode =
   | 'idle'
   | 'press'
   | 'draw'
@@ -76,10 +76,6 @@ export type InteractionBinding = {
 }
 
 export type InteractionRuntime = {
-  mode: ReadStore<InteractionMode>
-  busy: ReadStore<boolean>
-  chrome: ReadStore<boolean>
-  gesture: ReadStore<ActiveGesture | null>
   handlePointerDown: (input: PointerDownInput) => boolean
   handlePointerMove: (input: PointerMoveInput) => boolean
   handlePointerUp: (input: PointerUpInput) => boolean

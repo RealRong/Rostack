@@ -16,7 +16,7 @@ import {
   translateMindmapLayout,
   type MindmapRenderConnector
 } from '@whiteboard/core/mindmap'
-import type { MindmapPreviewState } from '@whiteboard/editor/local/feedback/types'
+import type { MindmapPreviewState } from '@whiteboard/editor/input/preview/types'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 
 export type MindmapRenderView = {

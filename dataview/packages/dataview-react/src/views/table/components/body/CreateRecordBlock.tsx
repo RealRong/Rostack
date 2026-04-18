@@ -23,6 +23,7 @@ import {
 import { cn } from '@shared/ui/utils'
 import { Button } from '@shared/ui/button'
 import { PlusIcon } from 'lucide-react'
+import type { CreateRecordOpenResult } from '@dataview/react/runtime/createRecord'
 
 const MAX_OPEN_ATTEMPTS = 8
 
@@ -53,27 +54,17 @@ const View = (props: CreateRecordBlockProps) => {
   const table = useTableContext()
   const triggerRef = useRef<HTMLButtonElement | null>(null)
 
-  const focusCreatedRecord = useCallback((recordId: string, attempt = 0) => {
+  const openCreatedRecord = useCallback((
+    recordId: string
+  ): CreateRecordOpenResult => {
     const currentView = table.currentView.get()
     if (!currentView) {
-      table.focus()
-      return
+      return 'failed'
     }
 
     const itemId = findItemIdByRecordId(currentView, recordId)
     if (itemId === undefined) {
-      if (
-        typeof window !== 'undefined'
-        && attempt < MAX_OPEN_ATTEMPTS
-      ) {
-        window.requestAnimationFrame(() => {
-          focusCreatedRecord(recordId, attempt + 1)
-        })
-        return
-      }
-
-      table.focus()
-      return
+      return 'retry'
     }
 
     const selectionFieldId = currentView.fields.has(TITLE_FIELD_ID)
@@ -94,19 +85,22 @@ const View = (props: CreateRecordBlockProps) => {
       retryFrames: MAX_OPEN_ATTEMPTS,
       seedDraft: ''
     })
+    return 'opened'
   }, [table])
 
   const onCreate = useCallback(() => {
-    const recordId = dataView.engine.active.records.create({
-      sectionKey: props.sectionKey
-    })
-    if (!recordId) {
-      table.focus()
-      return
-    }
+    const ownerViewId = table.currentView.get()?.view.id
 
-    focusCreatedRecord(recordId)
-  }, [dataView.engine.active.records, focusCreatedRecord, props.sectionKey, table])
+    dataView.createRecord.create({
+      ownerViewId,
+      create: () => dataView.engine.active.records.create({
+        sectionKey: props.sectionKey
+      }),
+      open: recordId => openCreatedRecord(recordId),
+      retryFrames: MAX_OPEN_ATTEMPTS,
+      onFailure: table.focus
+    })
+  }, [dataView.createRecord, dataView.engine.active.records, openCreatedRecord, props.sectionKey, table])
 
   const cellClassName = cn(
     'min-w-0 box-border flex items-center',

@@ -1,0 +1,25 @@
+{
+  "name": "@dataview/runtime",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@dataview/core": "workspace:*",
+    "@dataview/engine": "workspace:*",
+    "@shared/core": "workspace:*",
+    "@shared/i18n": "workspace:*"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

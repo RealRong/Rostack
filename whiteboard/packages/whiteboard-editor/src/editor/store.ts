@@ -3,24 +3,24 @@ import {
   read
 } from '@shared/core'
 import type { EditorInteractionState, EditorStore } from '@whiteboard/editor/types/editor'
-import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EditorLocal } from '@whiteboard/editor/local/runtime'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
+import type { EditorInputState } from '@whiteboard/editor/input/state'
 
 export const projectEditorStore = ({
-  interaction,
   local,
+  input,
   viewport
 }: {
-  interaction: InteractionRuntime
   local: Pick<EditorLocal, 'source'>
+  input: EditorInputState
   viewport: ViewportRuntime['read']
 }): EditorStore => {
   const interactionState = createDerivedStore<EditorInteractionState>({
     get: () => {
-      const mode = read(interaction.mode)
-      const busy = read(interaction.busy)
-      const chrome = read(interaction.chrome)
+      const mode = read(input.mode)
+      const busy = read(input.busy)
+      const chrome = read(input.chrome)
       const transforming = mode === 'node-transform'
 
       return {
@@ -40,7 +40,7 @@ export const projectEditorStore = ({
           || mode === 'edge-label'
           || mode === 'edge-connect'
           || mode === 'edge-route',
-        space: read(local.source.space)
+        space: read(input.space)
       }
     },
     isEqual: (left, right) => (

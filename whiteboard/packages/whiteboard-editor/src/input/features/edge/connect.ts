@@ -37,7 +37,7 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 
@@ -508,7 +508,7 @@ const readReconnectPatch = (
   : undefined
 
 const readReconnectFixedPoint = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   state: EdgeConnectState
 ): Point | undefined => {
   if (state.kind !== 'reconnect') {
@@ -569,7 +569,7 @@ const readReconnectWorld = ({
   : world
 
 const commitConnectState = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'commands' | 'actions'>,
   state: EdgeConnectState,
   reconnectDraftPatch?: EdgePatch
 ) => {
@@ -584,25 +584,25 @@ const commitConnectState = (
       return
     }
 
-    ctx.command.edge.patch([commit.edgeId], patch)
+    ctx.commands.edge.patch([commit.edgeId], patch)
     return
   }
 
-  const result = ctx.command.edge.create(commit.input)
+  const result = ctx.commands.edge.create(commit.input)
   if (!result.ok) {
     return
   }
 
-  ctx.local.tool.set({
+  ctx.actions.tool.set({
     type: 'select'
   })
-  ctx.local.selection.replace({
+  ctx.actions.selection.replace({
     edgeIds: [result.data.edgeId]
   })
 }
 
 export const createEdgeConnectSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'snap' | 'commands' | 'actions'>,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial

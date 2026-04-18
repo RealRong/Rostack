@@ -48,3 +48,11 @@ export const useDataView = (): DataViewContextValue => {
 
   return value
 }
+
+export const useDataViewRead = () => useDataView().read
+
+export const useDataViewWrite = () => useDataView().write
+
+export const useDataViewSession = () => useDataView().session
+
+export const useDataViewIntent = () => useDataView().intent

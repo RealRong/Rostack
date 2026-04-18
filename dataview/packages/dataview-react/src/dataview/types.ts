@@ -1,27 +1,22 @@
-import type { Engine } from '@dataview/engine'
-import type { ReadStore } from '@shared/core'
-import type { ReactNode } from 'react'
 import type {
-  PageState,
-  PageSessionApi,
+  ReactNode
+} from 'react'
+import type {
+  DataViewRuntime,
   PageSessionInput
-} from '@dataview/react/page/session/types'
-import type { DragApi } from '@dataview/react/page/drag'
-import type { ItemSelectionController } from '@dataview/react/runtime/selection'
-import type { InlineSessionApi } from '@dataview/react/runtime/inlineSession'
-import type { ValueEditorController } from '@dataview/react/runtime/valueEditor'
-import type { MarqueeApi } from '@dataview/react/runtime/marquee'
+} from '@dataview/runtime'
+import type {
+  DragApi
+} from '@dataview/react/page/drag'
+import type {
+  MarqueeApi
+} from '@dataview/react/runtime/marquee'
 
-export interface DataViewContextValue {
-  engine: Engine
-  page: PageSessionApi & {
-    store: ReadStore<PageState>
+export interface DataViewContextValue extends DataViewRuntime {
+  marquee: MarqueeApi
+  page: DataViewRuntime['page'] & {
     drag: DragApi
   }
-  selection: ItemSelectionController
-  marquee: MarqueeApi
-  inlineSession: InlineSessionApi
-  valueEditor: ValueEditorController
 }
 
 export interface DataViewSession extends DataViewContextValue {
@@ -29,7 +24,7 @@ export interface DataViewSession extends DataViewContextValue {
 }
 
 export interface EngineProviderProps {
-  engine: Engine
+  engine: DataViewRuntime['engine']
   initialPage?: PageSessionInput
   children?: ReactNode
 }

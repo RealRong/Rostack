@@ -20,7 +20,7 @@ import {
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 import type { PointerDownInput, PointerSample } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 
@@ -195,7 +195,7 @@ const commitDrawStroke = (
 }
 
 const queryDrawNodeIdsInRect = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   rect: Rect
 ): readonly NodeId[] => ctx.query.node.idsInRect(rect, {
   match: 'touch'
@@ -204,7 +204,7 @@ const queryDrawNodeIdsInRect = (
 ))
 
 const collectErasePoint = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   state: EraseState,
   world: Point
 ): EraseState => {
@@ -246,7 +246,7 @@ const collectErasePoint = (
 }
 
 const tryStartErase = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   input: PointerDownInput
 ): EraseState | null => {
   const tool = ctx.query.tool.get()
@@ -268,7 +268,7 @@ const tryStartErase = (
 }
 
 const stepEraseState = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   state: EraseState,
   input: DrawPointer
 ) => {
@@ -282,7 +282,7 @@ const stepEraseState = (
 }
 
 const createDrawStrokeSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'commands'>,
   initial: DrawStrokeState
 ): InteractionSession => {
   let state = initial
@@ -319,7 +319,7 @@ const createDrawStrokeSession = (
         zoom: ctx.query.viewport.get().zoom
       })
       if (commit) {
-        ctx.command.node.create(commit)
+        ctx.commands.node.create(commit)
       }
       return FINISH
     },
@@ -330,7 +330,7 @@ const createDrawStrokeSession = (
 }
 
 const createEraseSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'commands'>,
   initial: EraseState
 ): InteractionSession => {
   let state = initial
@@ -357,7 +357,7 @@ const createEraseSession = (
     up: (input) => {
       step(input)
       if (state.ids.length > 0) {
-        ctx.command.node.delete([...state.ids])
+        ctx.commands.node.delete([...state.ids])
       }
       return FINISH
     },
@@ -368,7 +368,7 @@ const createEraseSession = (
 }
 
 export const createDrawBinding = (
-  ctx: InteractionDeps
+  ctx: Pick<EditorServices, 'query' | 'commands'>
 ): InteractionBinding => ({
   key: 'draw',
   start: (input) => {

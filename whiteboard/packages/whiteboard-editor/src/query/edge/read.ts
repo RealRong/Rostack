@@ -35,9 +35,9 @@ import {
   type ReadStore
 } from '@shared/core'
 import type {
-  EdgeFeedbackProjection
-} from '@whiteboard/editor/local/feedback/types'
-import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
+  EdgePreviewProjection
+} from '@whiteboard/editor/input/preview/types'
+import type { EditorInputState } from '@whiteboard/editor/input/state'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import type { Tool } from '@whiteboard/editor/types/tool'
@@ -273,7 +273,7 @@ const isEdgeStateEqual = (
 )
 
 const toEdgeRuntimeState = (
-  feedback: EdgeFeedbackProjection
+  feedback: EdgePreviewProjection
 ): EdgeRuntimeState => ({
   patched: Boolean(feedback.patch),
   activeRouteIndex: feedback.activeRouteIndex
@@ -480,7 +480,7 @@ const readSelectedEdgeRoutePoints = (
 }
 
 const isEdgeInteractionBlockingChrome = (
-  mode: ReturnType<InteractionRuntime['mode']['get']>
+  mode: ReturnType<EditorInputState['mode']['get']>
 ) => (
   mode === 'edge-drag'
   || mode === 'edge-label'
@@ -604,11 +604,11 @@ export const createEdgeRead = ({
 }: {
   read: Pick<EngineRead, 'edge'>
   node: Pick<NodePresentationRead, 'canvas' | 'idsInRect'>
-  feedback: KeyedReadStore<EdgeId, EdgeFeedbackProjection>
+  feedback: KeyedReadStore<EdgeId, EdgePreviewProjection>
   edit: ReadStore<EditSession>
   selection: ReadStore<SelectionTarget>
   tool: ReadStore<Tool>
-  interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
+  interaction: Pick<EditorInputState, 'mode' | 'chrome'>
   layout: Pick<EditorLayout, 'measureText'>
   capability: (node: Pick<Node, 'type'> | NodeType) => {
     connect: boolean

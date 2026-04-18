@@ -1,6 +1,7 @@
 import type {
   Field,
   FieldId,
+  SortDirection,
   CustomField,
   DataRecord,
   ViewGroup
@@ -39,6 +40,9 @@ import {
 import {
   compareFieldValues as compareCustomFieldValues
 } from '@dataview/core/field/value/sort'
+import {
+  isEmptyFieldValue
+} from '@dataview/core/field/value'
 export * from '@dataview/core/field/kind'
 export * from '@dataview/core/field/kind/spec'
 export * from '@dataview/core/field/kind/date'
@@ -139,11 +143,43 @@ export const compareFieldValues = (
   field: Field | undefined,
   left: unknown,
   right: unknown
-): number => (
-  isTitleField(field)
+): number => {
+  const leftEmpty = isEmptyFieldValue(left)
+  const rightEmpty = isEmptyFieldValue(right)
+  if (leftEmpty || rightEmpty) {
+    if (leftEmpty === rightEmpty) {
+      return 0
+    }
+
+    return leftEmpty ? 1 : -1
+  }
+
+  return isTitleField(field)
     ? getKind('text').compare(undefined, left, right)
     : compareCustomFieldValues(field, left, right)
-)
+}
+
+export const compareFieldSortValues = (
+  field: Field | undefined,
+  left: unknown,
+  right: unknown,
+  direction: SortDirection
+): number => {
+  const result = compareFieldValues(field, left, right)
+  if (result === 0) {
+    return 0
+  }
+
+  const leftEmpty = isEmptyFieldValue(left)
+  const rightEmpty = isEmptyFieldValue(right)
+  if (leftEmpty || rightEmpty) {
+    return result
+  }
+
+  return direction === 'asc'
+    ? result
+    : -result
+}
 
 export const getFieldSearchTokens = (
   field: Field | undefined,

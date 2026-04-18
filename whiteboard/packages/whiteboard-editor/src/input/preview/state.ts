@@ -13,37 +13,40 @@ import {
   EMPTY_EDGE_FEEDBACK,
   isEdgeGuideEqual,
   normalizeEdgeFeedbackState
-} from '@whiteboard/editor/local/feedback/edge'
+} from '@whiteboard/editor/input/preview/edge'
 import {
   EMPTY_NODE_HIDDEN,
   EMPTY_NODE_FEEDBACK,
   isNodeFeedbackStateEqual,
   normalizeNodeFeedbackState
-} from '@whiteboard/editor/local/feedback/node'
+} from '@whiteboard/editor/input/preview/node'
 import {
   EMPTY_SELECTION_FEEDBACK,
   EMPTY_GUIDES,
   isSelectionFeedbackStateEqual,
   normalizeSelectionFeedbackState,
-} from '@whiteboard/editor/local/feedback/selection'
-import type { EditorFeedbackRuntime, EditorFeedbackState } from '@whiteboard/editor/local/feedback/types'
+} from '@whiteboard/editor/input/preview/selection'
+import type {
+  EditorInputPreviewState,
+  EditorInputPreviewWrite
+} from '@whiteboard/editor/input/preview/types'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
-} from '@whiteboard/editor/local/feedback/edge'
+} from '@whiteboard/editor/input/preview/edge'
 import {
   EMPTY_NODE_PATCHES
-} from '@whiteboard/editor/local/feedback/node'
+} from '@whiteboard/editor/input/preview/node'
 
 const normalizeDrawFeedbackState = (
-  state: EditorFeedbackState['draw']
-): EditorFeedbackState['draw'] => ({
+  state: EditorInputPreviewState['draw']
+): EditorInputPreviewState['draw'] => ({
   preview: state.preview ?? null,
   hidden: state.hidden.length > 0
     ? state.hidden
     : EMPTY_NODE_HIDDEN
 })
 
-const EMPTY_FEEDBACK_STATE: EditorFeedbackState = {
+const EMPTY_PREVIEW_STATE: EditorInputPreviewState = {
   node: EMPTY_NODE_FEEDBACK,
   edge: EMPTY_EDGE_FEEDBACK,
   draw: {
@@ -55,8 +58,8 @@ const EMPTY_FEEDBACK_STATE: EditorFeedbackState = {
 }
 
 const normalizeFeedbackState = (
-  state: EditorFeedbackState
-): EditorFeedbackState => {
+  state: EditorInputPreviewState
+): EditorInputPreviewState => {
   const node = normalizeNodeFeedbackState(state.node)
   const edge = normalizeEdgeFeedbackState(state.edge)
   const selection = normalizeSelectionFeedbackState(state.selection)
@@ -71,7 +74,7 @@ const normalizeFeedbackState = (
     && draw.hidden === EMPTY_NODE_HIDDEN
     && mindmapPreview === undefined
   ) {
-    return EMPTY_FEEDBACK_STATE
+    return EMPTY_PREVIEW_STATE
   }
 
   return {
@@ -86,8 +89,8 @@ const normalizeFeedbackState = (
 }
 
 const isFeedbackStateEqual = (
-  left: EditorFeedbackState,
-  right: EditorFeedbackState
+  left: EditorInputPreviewState,
+  right: EditorInputPreviewState
 ) => (
   isNodeFeedbackStateEqual(left.node, right.node)
   && left.edge.interaction === right.edge.interaction
@@ -99,9 +102,9 @@ const isFeedbackStateEqual = (
 )
 
 const mergeMindmapPreview = (
-  base: EditorFeedbackState['mindmap']['preview'],
+  base: EditorInputPreviewState['mindmap']['preview'],
   draft: ActiveGesture['draft']['mindmap']
-): EditorFeedbackState['mindmap']['preview'] => {
+): EditorInputPreviewState['mindmap']['preview'] => {
   if (!base) {
     return draft
   }
@@ -122,10 +125,10 @@ const composeFeedbackState = ({
   gesture,
   hover
 }: {
-  base: EditorFeedbackState
+  base: EditorInputPreviewState
   gesture: ActiveGesture | null
   hover: HoverState
-}): EditorFeedbackState => {
+}): EditorInputPreviewState => {
   const draft = gesture?.draft
   const nextSelection = normalizeSelectionFeedbackState({
     node: {
@@ -158,17 +161,17 @@ const composeFeedbackState = ({
   })
 }
 
-export const createFeedbackState = ({
+export const createInputPreviewState = ({
   gesture,
   hover
 }: {
   gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
   hover: Pick<ReadStore<HoverState>, 'get' | 'subscribe'>
-}): Pick<EditorFeedbackRuntime, 'get' | 'subscribe' | 'set' | 'reset'> => {
-  const baseState = createValueStore<EditorFeedbackState>(EMPTY_FEEDBACK_STATE, {
+}): Pick<ReadStore<EditorInputPreviewState>, 'get' | 'subscribe'> & EditorInputPreviewWrite => {
+  const baseState = createValueStore<EditorInputPreviewState>(EMPTY_PREVIEW_STATE, {
     isEqual: isFeedbackStateEqual
   })
-  const composedState = createDerivedStore<EditorFeedbackState>({
+  const composedState = createDerivedStore<EditorInputPreviewState>({
     get: () => composeFeedbackState({
       base: read(baseState),
       gesture: read(gesture),
@@ -176,7 +179,7 @@ export const createFeedbackState = ({
     }),
     isEqual: isFeedbackStateEqual
   })
-  let current = EMPTY_FEEDBACK_STATE
+  let current = EMPTY_PREVIEW_STATE
 
   return {
     get: composedState.get,
@@ -189,8 +192,8 @@ export const createFeedbackState = ({
       baseState.set(current)
     },
     reset: () => {
-      current = EMPTY_FEEDBACK_STATE
-      baseState.set(EMPTY_FEEDBACK_STATE)
+      current = EMPTY_PREVIEW_STATE
+      baseState.set(EMPTY_PREVIEW_STATE)
     }
   }
 }

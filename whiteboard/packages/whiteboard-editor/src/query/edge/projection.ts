@@ -10,8 +10,8 @@ import type {
   EdgeItem
 } from '@whiteboard/engine'
 import type {
-  EdgeFeedbackProjection
-} from '@whiteboard/editor/local/feedback/types'
+  EdgePreviewProjection
+} from '@whiteboard/editor/input/preview/types'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type {
   EditSession
@@ -48,7 +48,7 @@ const applyEdgeEditSession = (
 
 export const projectEdgeItem = (
   entry: EdgeItem,
-  feedback: EdgeFeedbackProjection,
+  feedback: EdgePreviewProjection,
   session: EditSession
 ): EdgeItem => {
   const nextEdge = applyEdgeEditSession(

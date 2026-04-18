@@ -7,16 +7,24 @@ import {
   type DrawState
 } from '@whiteboard/editor/local/draw/state'
 import { createSnapRuntime } from '@whiteboard/editor/input/core/snap'
-import { createEditorInteractions } from '@whiteboard/editor/input'
+import {
+  createEditorInput,
+  type EditorInputRuntime
+} from '@whiteboard/editor/input/runtime'
+import {
+  createEditorInputState
+} from '@whiteboard/editor/input/state'
 import { createEditorLocal, type EditorLocal } from '@whiteboard/editor/local/runtime'
 import { createEditorQuery, type EditorQuery } from '@whiteboard/editor/query'
 import { createEditorCommands, type EditorCommands } from '@whiteboard/editor/command'
 import { createEditorLayout, type EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { LayoutBackend } from '@whiteboard/editor/types/layout'
-import type { InputLocal, InteractionDeps } from '@whiteboard/editor/input/core/context'
 import { createEditorActions } from '@whiteboard/editor/action'
 import type { EditorActions } from '@whiteboard/editor/types/editor'
 import { createEditorLifecycle, type EditorLifecycle } from '@whiteboard/editor/lifecycle'
+import {
+  createEditorInputPreview
+} from '@whiteboard/editor/input/preview'
 import type {
   EditCapability,
   EditCaret,
@@ -27,6 +35,7 @@ import type {
 export type EditorServices = {
   engine: Engine
   local: EditorLocal
+  input: EditorInputRuntime
   layout: EditorLayout
   query: EditorQuery
   snap: ReturnType<typeof createSnapRuntime>
@@ -210,37 +219,6 @@ const createCommandSession = ({
   }
 })
 
-export const projectInteractionDeps = (
-  services: EditorServices
-): InteractionDeps => {
-  const local: InputLocal = {
-    tool: {
-      set: services.actions.tool.set
-    },
-    selection: {
-      replace: services.actions.selection.replace,
-      clear: services.actions.selection.clear
-    },
-    edit: {
-      startNode: services.actions.edit.startNode,
-      startEdgeLabel: services.actions.edit.startEdgeLabel
-    },
-    viewport: {
-      panScreenBy: services.local.viewport.input.panScreenBy
-    }
-  }
-
-  return {
-    query: services.query,
-    selection: services.query.selection.model,
-    command: services.commands,
-    local,
-    layout: services.layout,
-    config: services.engine.config,
-    snap: services.snap
-  }
-}
-
 export const createEditorServices = ({
   engine,
   initialTool,
@@ -263,6 +241,12 @@ export const createEditorServices = ({
     initialDrawState,
     initialViewport
   })
+  const inputState = createEditorInputState()
+  const inputPreview = createEditorInputPreview({
+    viewport: local.viewport.read,
+    gesture: inputState.state.gesture,
+    hover: inputState.state.hover
+  })
   const layout = createEditorLayout({
     read: {
       node: {
@@ -277,6 +261,10 @@ export const createEditorServices = ({
     registry,
     history: engine.history,
     local,
+    input: {
+      state: inputState.state,
+      preview: inputPreview
+    },
     layout
   })
   const snap = createSnapRuntime({
@@ -303,13 +291,20 @@ export const createEditorServices = ({
     engine,
     query,
     layout,
-    feedback: local.feedback,
+    preview: inputPreview.write,
     session: commandSession
   })
+
+  let servicesRuntime = null as EditorServices | null
 
   const lifecycle = createEditorLifecycle({
     engine,
     local,
+    input: {
+      reset: () => {
+        servicesRuntime?.input.reset()
+      }
+    },
     query
   })
 
@@ -323,7 +318,7 @@ export const createEditorServices = ({
     dispose: lifecycle.dispose
   })
 
-  const servicesRuntime: EditorServices = {
+  const baseServices = {
     engine,
     local,
     layout,
@@ -334,11 +329,16 @@ export const createEditorServices = ({
     lifecycle
   }
 
-  local.bindInteractions(
-    createEditorInteractions(
-      projectInteractionDeps(servicesRuntime)
-    )
-  )
+  const input = createEditorInput({
+    ...baseServices,
+    state: inputState,
+    preview: inputPreview
+  })
+
+  servicesRuntime = {
+    ...baseServices,
+    input
+  }
 
   return servicesRuntime
 }

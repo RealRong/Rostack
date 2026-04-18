@@ -1,11 +1,11 @@
-export { createInlineSessionApi } from '@dataview/react/runtime/inlineSession/api'
+export { createInlineSessionApi } from '@dataview/runtime/inlineSession'
 export {
   resolveInlineSessionExitEffect,
   type InlineSessionExitEffect
-} from '@dataview/react/runtime/inlineSession/policy'
+} from '@dataview/runtime/inlineSession'
 export type {
   InlineSessionApi,
   InlineSessionExitEvent,
   InlineSessionExitReason,
   InlineSessionTarget
-} from '@dataview/react/runtime/inlineSession/types'
+} from '@dataview/runtime/inlineSession'

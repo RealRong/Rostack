@@ -30,8 +30,8 @@ import type {
 } from '@whiteboard/editor/types/node'
 import type {
   MindmapPreviewState,
-  NodeFeedbackProjection,
-} from '@whiteboard/editor/local/feedback/types'
+  NodePreviewProjection,
+} from '@whiteboard/editor/input/preview/types'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import {
   projectNodeItem,
@@ -301,7 +301,7 @@ const readNodeItemGeometry = (
 ): ReturnType<typeof readProjectedNodeGeometry> => readProjectedNodeGeometry(item)
 
 const toNodeRuntimeState = (
-  feedback: NodeFeedbackProjection
+  feedback: NodePreviewProjection
 ): NodeRuntimeState => ({
   hovered: feedback.hovered,
   hidden: feedback.hidden,
@@ -324,7 +324,7 @@ export const createNodeRead = ({
 }: {
   read: EngineRead
   registry: NodeRegistry
-  feedback: KeyedReadStore<NodeId, NodeFeedbackProjection>
+  feedback: KeyedReadStore<NodeId, NodePreviewProjection>
   mindmap: KeyedReadStore<NodeId, import('@whiteboard/engine').MindmapItem | undefined>
   edit: ReadStore<EditSession>
   selection: ReadStore<SelectionTarget>

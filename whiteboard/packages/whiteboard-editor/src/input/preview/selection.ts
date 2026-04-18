@@ -4,28 +4,28 @@ import type { Rect } from '@whiteboard/core/types'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
-} from '@whiteboard/editor/local/feedback/edge'
+} from '@whiteboard/editor/input/preview/edge'
 import {
   EMPTY_NODE_PATCHES,
   EMPTY_NODE_SELECTION_FEEDBACK
-} from '@whiteboard/editor/local/feedback/node'
+} from '@whiteboard/editor/input/preview/node'
 import type {
-  MarqueeFeedback,
-  MarqueeFeedbackState,
-  SelectionFeedbackState
-} from '@whiteboard/editor/local/feedback/types'
+  MarqueePreview,
+  MarqueePreviewState,
+  SelectionPreviewState
+} from '@whiteboard/editor/input/preview/types'
 
 export const EMPTY_GUIDES: readonly Guide[] = []
 
-export const EMPTY_SELECTION_FEEDBACK: SelectionFeedbackState = {
+export const EMPTY_SELECTION_FEEDBACK: SelectionPreviewState = {
   node: EMPTY_NODE_SELECTION_FEEDBACK,
   edge: EMPTY_EDGE_FEEDBACK_ENTRIES,
   guides: EMPTY_GUIDES
 }
 
 const isMarqueeFeedbackStateEqual = (
-  left: MarqueeFeedbackState | undefined,
-  right: MarqueeFeedbackState | undefined
+  left: MarqueePreviewState | undefined,
+  right: MarqueePreviewState | undefined
 ) => (
   left === right
   || (
@@ -38,8 +38,8 @@ const isMarqueeFeedbackStateEqual = (
 )
 
 export const isMarqueeFeedbackEqual = (
-  left: MarqueeFeedback | undefined,
-  right: MarqueeFeedback | undefined
+  left: MarqueePreview | undefined,
+  right: MarqueePreview | undefined
 ) => (
   left === right
   || (
@@ -52,8 +52,8 @@ export const isMarqueeFeedbackEqual = (
 )
 
 export const isSelectionFeedbackStateEqual = (
-  left: SelectionFeedbackState,
-  right: SelectionFeedbackState
+  left: SelectionPreviewState,
+  right: SelectionPreviewState
 ) => (
   left.node.patches === right.node.patches
   && left.node.frameHoverId === right.node.frameHoverId
@@ -63,8 +63,8 @@ export const isSelectionFeedbackStateEqual = (
 )
 
 export const normalizeSelectionFeedbackState = (
-  state: SelectionFeedbackState
-): SelectionFeedbackState => {
+  state: SelectionPreviewState
+): SelectionPreviewState => {
   const nodePatches = state.node.patches.length > 0
     ? state.node.patches
     : EMPTY_NODE_PATCHES

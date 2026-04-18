@@ -1,11 +1,8 @@
 import {
-  createDerivedStore,
-  createValueStore,
   read
 } from '@shared/core'
 import type { ViewportInputRuntime } from '@whiteboard/editor/local/viewport/runtime'
 import { createAutoPan } from '@whiteboard/editor/input/session/autoPan'
-import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type {
   InteractionBinding,
   InteractionRuntime,
@@ -50,30 +47,15 @@ const readDefaultPointerId = (
 export const createInteractionRuntime = ({
   getViewport,
   getBindings,
-  space
+  state
 }: {
   getViewport: () => Pick<ViewportInputRuntime, 'panScreenBy' | 'screenPoint' | 'size'> | null
   getBindings: () => readonly InteractionBinding[]
-  space: {
-    get: () => boolean
-    set: (value: boolean) => void
-  }
+  state: Pick<
+    import('@whiteboard/editor/input/state').EditorInputStateController,
+    'interaction' | 'space'
+  >
 }): InteractionRuntime => {
-  const active = createValueStore<SessionMeta | null>(null)
-  const gesture = createValueStore<ActiveGesture | null>(null)
-  const busy = createDerivedStore({
-    get: () => read(active) !== null
-  })
-  const mode = createDerivedStore({
-    get: () => read(active)?.mode ?? 'idle'
-  })
-  const chrome = createDerivedStore({
-    get: () => {
-      const current = read(active)
-      return current === null
-        || Boolean(current.chrome)
-    }
-  })
   let nextId = 1
   let current: RunningSession | null = null
   let lastPointer: {
@@ -93,16 +75,13 @@ export const createInteractionRuntime = ({
 
   const syncActive = (running: RunningSession | null) => {
     if (!running) {
-      active.set(null)
+      state.interaction.setActive(null)
       syncGesture(null)
       return
     }
 
-    active.set({
-      id: running.id,
-      key: running.key,
+    state.interaction.setActive({
       mode: running.session.mode,
-      pointerId: running.pointerId,
       chrome: running.session.chrome
     })
     syncGesture(running)
@@ -111,7 +90,7 @@ export const createInteractionRuntime = ({
   const syncGesture = (
     running: RunningSession | null
   ) => {
-    gesture.set(running?.session.gesture ?? null)
+    state.interaction.setGesture(running?.session.gesture ?? null)
   }
 
   const refreshAutoPan = () => {
@@ -224,12 +203,8 @@ export const createInteractionRuntime = ({
   }
 
   return {
-    mode,
-    busy,
-    chrome,
-    gesture,
     handlePointerDown: (input) => {
-      if (active.get()) {
+      if (current) {
         return false
       }
 
@@ -320,8 +295,8 @@ export const createInteractionRuntime = ({
       let handled = false
 
       if (input.code === 'Space') {
-        if (!space.get()) {
-          space.set(true)
+        if (!state.space.get()) {
+          state.space.set(true)
         }
         handled = true
       }
@@ -336,7 +311,7 @@ export const createInteractionRuntime = ({
         syncGesture(running)
       }
 
-      if (active.get() && input.key === 'Escape') {
+      if (current && input.key === 'Escape') {
         cancel()
       }
 
@@ -346,8 +321,8 @@ export const createInteractionRuntime = ({
       let handled = false
 
       if (input.code === 'Space') {
-        if (space.get()) {
-          space.set(false)
+        if (state.space.get()) {
+          state.space.set(false)
         }
         handled = true
       }
@@ -364,8 +339,8 @@ export const createInteractionRuntime = ({
       return true
     },
     handleBlur: () => {
-      if (space.get()) {
-        space.set(false)
+      if (state.space.get()) {
+        state.space.set(false)
       }
 
       const running = current

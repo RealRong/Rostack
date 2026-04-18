@@ -7,7 +7,7 @@ import {
   getDocumentFieldById
 } from '@dataview/core/document'
 import {
-  compareFieldValues,
+  compareFieldSortValues,
   getRecordFieldValue
 } from '@dataview/core/field'
 
@@ -18,16 +18,10 @@ export const compareSortedRecords = (
   document: DataDoc
 ): number => {
   const field = getDocumentFieldById(document, sorter.field)
-  const result = compareFieldValues(
+  return compareFieldSortValues(
     field,
     getRecordFieldValue(left, sorter.field),
-    getRecordFieldValue(right, sorter.field)
+    getRecordFieldValue(right, sorter.field),
+    sorter.direction
   )
-  if (result === 0) {
-    return 0
-  }
-
-  return sorter.direction === 'asc'
-    ? result
-    : -result
 }

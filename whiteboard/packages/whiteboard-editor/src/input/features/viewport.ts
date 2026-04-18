@@ -3,7 +3,7 @@ import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 type PanState = {
   lastClient: {
@@ -19,20 +19,20 @@ type PanPointer = {
   }
 }
 
-type ViewportInteractionDeps = Pick<
-  InteractionDeps,
+type ViewportServices = Pick<
+  EditorServices,
   'query' | 'local'
 >
 
 const allowsLeftDrag = (
-  ctx: ViewportInteractionDeps
+  ctx: ViewportServices
 ) => (
   ctx.query.space.get()
   || ctx.query.tool.is('hand')
 )
 
 const updatePan = (
-  ctx: ViewportInteractionDeps,
+  ctx: ViewportServices,
   state: PanState,
   input: PanPointer
 ) => {
@@ -46,14 +46,14 @@ const updatePan = (
     x: input.client.x,
     y: input.client.y
   }
-  ctx.local.viewport.panScreenBy({
+  ctx.local.viewport.input.panScreenBy({
     x: -deltaX,
     y: -deltaY
   })
 }
 
 export const createViewportBinding = (
-  ctx: ViewportInteractionDeps
+  ctx: ViewportServices
 ): InteractionBinding => ({
   key: 'viewport.pan',
   start: (input) => {

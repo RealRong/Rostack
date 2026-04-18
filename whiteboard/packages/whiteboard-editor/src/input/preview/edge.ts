@@ -5,19 +5,19 @@ import type {
   EdgeConnectFeedback,
   EdgeGuide,
   EdgeFeedbackEntry,
-  EdgeFeedbackProjection,
-  EdgeFeedbackState,
-  EditorFeedbackState
-} from '@whiteboard/editor/local/feedback/types'
-import { mergeEntryById } from '@whiteboard/editor/local/feedback/merge'
+  EdgePreviewProjection,
+  EdgePreviewState,
+  EditorInputPreviewState
+} from '@whiteboard/editor/input/preview/types'
+import { mergeEntryById } from '@whiteboard/editor/input/preview/merge'
 
 export const EMPTY_EDGE_FEEDBACK_ENTRIES: readonly EdgeFeedbackEntry[] = []
 export const EMPTY_EDGE_GUIDE: EdgeGuide = {}
-export const EMPTY_EDGE_FEEDBACK: EdgeFeedbackState = {
+export const EMPTY_EDGE_FEEDBACK: EdgePreviewState = {
   interaction: EMPTY_EDGE_FEEDBACK_ENTRIES
 }
-export const EMPTY_EDGE_FEEDBACK_PROJECTION: EdgeFeedbackProjection = {}
-const EMPTY_EDGE_FEEDBACK_MAP = new Map<EdgeId, EdgeFeedbackProjection>()
+export const EMPTY_EDGE_FEEDBACK_PROJECTION: EdgePreviewProjection = {}
+const EMPTY_EDGE_FEEDBACK_MAP = new Map<EdgeId, EdgePreviewProjection>()
 
 const isEdgeConnectFeedbackEqual = (
   left: EdgeConnectFeedback | undefined,
@@ -83,8 +83,8 @@ export const isEdgeGuideEqual = (
 )
 
 export const isEdgeProjectionEqual = (
-  left: EdgeFeedbackProjection,
-  right: EdgeFeedbackProjection
+  left: EdgePreviewProjection,
+  right: EdgePreviewProjection
 ) => (
   isEdgePatchEqual(left.patch, right.patch)
   && left.activeRouteIndex === right.activeRouteIndex
@@ -98,7 +98,7 @@ const isEdgeGuideEmpty = (
 )
 
 const mergeEdgeFeedbackEntries = (
-  next: Map<EdgeId, EdgeFeedbackProjection>,
+  next: Map<EdgeId, EdgePreviewProjection>,
   entries: readonly EdgeFeedbackEntry[]
 ) => {
   for (let index = 0; index < entries.length; index += 1) {
@@ -123,8 +123,8 @@ const mergeEdgeFeedbackEntries = (
 }
 
 export const normalizeEdgeFeedbackState = (
-  state: EdgeFeedbackState
-): EdgeFeedbackState => {
+  state: EdgePreviewState
+): EdgePreviewState => {
   const interaction = state.interaction.length > 0
     ? state.interaction
     : EMPTY_EDGE_FEEDBACK_ENTRIES
@@ -146,7 +146,7 @@ export const normalizeEdgeFeedbackState = (
 }
 
 export const toEdgeFeedbackMap = (
-  state: EditorFeedbackState
+  state: EditorInputPreviewState
 ) => {
   if (
     state.selection.edge.length === 0
@@ -155,7 +155,7 @@ export const toEdgeFeedbackMap = (
     return EMPTY_EDGE_FEEDBACK_MAP
   }
 
-  const next = new Map<EdgeId, EdgeFeedbackProjection>()
+  const next = new Map<EdgeId, EdgePreviewProjection>()
   mergeEdgeFeedbackEntries(next, state.selection.edge)
   mergeEdgeFeedbackEntries(next, state.edge.interaction)
 

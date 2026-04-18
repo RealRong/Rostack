@@ -2,7 +2,6 @@ import type { EditorQuery } from '@whiteboard/editor/query'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import { createMoveInteraction } from '@whiteboard/editor/input/features/selection/move'
 import { createMarqueeSession, type MarqueeMatch } from '@whiteboard/editor/input/features/selection/marquee'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
@@ -18,6 +17,7 @@ import type {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 export type SelectionPressTarget<TField extends string = string> =
   | { kind: 'background' }
@@ -164,7 +164,7 @@ const resolveSelectionEditField = (
 
 const createSelectionSession = (
   input: {
-    ctx: InteractionDeps
+    ctx: Pick<EditorServices, 'engine' | 'query' | 'layout' | 'snap' | 'commands' | 'actions' | 'local'>
     start: PointerDownInput
     decision: SelectionDragAction | SelectionMarqueeAction | undefined
   }
@@ -660,16 +660,16 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'actions'>,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
   switch (tap.kind) {
     case 'clear':
-      ctx.local.selection.clear()
+      ctx.actions.selection.clear()
       return
     case 'select':
-      ctx.local.selection.replace(tap.target)
+      ctx.actions.selection.replace(tap.target)
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
@@ -679,7 +679,7 @@ const applySelectionTap = (
         return
       }
 
-      ctx.local.edit.startNode(tap.nodeId, field, {
+      ctx.actions.edit.startNode(tap.nodeId, field, {
         caret: {
           kind: 'point',
           client: input.client
@@ -688,10 +688,10 @@ const applySelectionTap = (
       return
     }
     case 'edit-field':
-      if (!isSelectionTargetEqual(ctx.selection.get().summary.target, tap.selection)) {
-        ctx.local.selection.replace(tap.selection)
+      if (!isSelectionTargetEqual(ctx.query.selection.model.get().summary.target, tap.selection)) {
+        ctx.actions.selection.replace(tap.selection)
       }
-      ctx.local.edit.startNode(tap.nodeId, tap.field, {
+      ctx.actions.edit.startNode(tap.nodeId, tap.field, {
         caret: {
           kind: 'point',
           client: input.client
@@ -701,7 +701,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'engine' | 'query' | 'layout' | 'snap' | 'commands' | 'actions' | 'local'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -736,7 +736,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'engine' | 'query' | 'layout' | 'snap' | 'commands' | 'actions' | 'local'>,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.query.tool.get()
@@ -756,7 +756,7 @@ const tryStartSelectionPress = (
     return null
   }
 
-  const selectionModel = ctx.selection.get()
+  const selectionModel = ctx.query.selection.model.get()
   const deps: SelectionPressDeps = {
     node: {
       get: (nodeId) => ctx.query.node.item.get(nodeId)?.node,
@@ -799,7 +799,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: InteractionDeps
+  ctx: Pick<EditorServices, 'engine' | 'query' | 'layout' | 'snap' | 'commands' | 'actions' | 'local'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

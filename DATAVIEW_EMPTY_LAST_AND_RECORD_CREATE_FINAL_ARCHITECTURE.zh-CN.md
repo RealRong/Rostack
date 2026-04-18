@@ -18,16 +18,16 @@
 - 升序 / 降序只影响有值 record 之间的顺序
 - `new record` 不通过伪造字段值来控制显示位置
 - engine `active.records.create(...)` 继续只负责创建真实数据
-- React 侧新增统一的 create runtime，负责“从哪里创建、先显示在哪里、何时释放临时位置”
-- 刚创建的 record 使用短生命周期的 `creation pin`
-- `creation pin` 在编辑结束后释放，之后 record 回到真实 sort 位置
+- React 侧新增统一的 create runtime，但明确不做 `creation pin`
+- 新 record 创建后立即进入真实 group / sort
+- 若真实排序导致新 record 跳位，接受该行为，不额外引入临时展示位置机制
 
 这两件事必须一起看：
 
 - `empty last` 解决“空值排序不要乱跳”
-- `creation pin` 解决“从哪个入口创建，就先在哪里编辑”
+- 简化后的 create runtime 解决“所有入口走同一套创建时序”
 
-两者互补，但职责不同，不能互相替代。
+两者职责不同，但当前阶段只落地前者与最小 create runtime，不做 `creation pin`。
 
 ## 3. Empty Last 统一语义
 
@@ -84,18 +84,13 @@
 - 新建 record 初始 title 为空时，不会因为 `title asc` 跑到顶部
 - 新建 record 初始 sort field 为空时，也更不容易产生违和跳动
 
-但它不是完整解法。
+这已经能显著改善 `new record` 的体验。
 
 原因：
 
-- 当前 sort 不一定是空值字段
-- 新建 record 的目标位置不只存在于 sort 结果里
-- toolbar 头部添加、section 尾部添加、item 上下插入，本质上都是 UI 发起位置语义，不是字段值语义
-
-因此：
-
-- `empty last` 应作为统一排序语义独立落地
-- 不应用它取代 `new record` 的位置设计
+- 当前 dataview 的主要违和感，很多都来自空值在升降序中来回翻转
+- 一旦统一 `empty last`，大部分“新建后瞬间跑到最前面”的问题都会自然消失
+- 剩余少量“创建后立刻按真实排序跳位”的情况，当前明确接受，不再额外做 `creation pin`
 
 ## 4. New Record 最终架构
 
@@ -105,7 +100,7 @@
 
 - record 的真实位置永远由真实数据 + view.group + view.sort 决定
 - 创建入口表达的是“当前从哪里发起创建”，不是“修改业务字段来伪造位置”
-- 创建后的首次编辑位置由前端短生命周期状态托管
+- 创建后的显示位置立即服从真实 group / sort，不引入额外临时位置层
 - engine 不承载 UI 临时展示逻辑
 - table / kanban / gallery / toolbar 使用同一套创建协议
 
@@ -172,8 +167,8 @@ React 侧应新增一个与 `valueEditor` / `inlineSession` 同级的 create run
 create runtime 只负责三件事：
 
 - 接收创建意图
-- 创建成功后登记短生命周期 `creation pin`
-- 在编辑结束时释放 pin
+- 调用 `engine.active.records.create(...)`
+- 创建成功后立即打开 editor 或聚焦对应 cell / card
 
 ### 6.3 创建意图模型
 
@@ -200,56 +195,42 @@ type CreateIntent = {
 这里要注意：
 
 - `sectionKey / set` 是数据约束
-- `presentAt` 是纯展示语义
+- `presentAt` 是发起位置语义，不是临时排序语义
 - `openEditor` 是纯时序语义
 
 这三者必须分离。
 
-## 7. Creation Pin
+## 7. 明确不做 Creation Pin
 
-### 7.1 定义
+### 7.1 当前结论
 
-创建成功后，runtime 记录一条短生命周期 pin：
+本文档明确给出当前结论：
 
-```ts
-type CreationPin = {
-  viewId: ViewId
-  recordId: RecordId
-  target: CreatePresentationTarget
-  releaseOn: 'editor-close'
-}
-```
+- 不做 `creation pin`
+- 不做“从某个入口创建，就先固定显示在那个位置直到编辑结束”的机制
+- 新 record 创建后立即进入真实 group / sort
 
-它的含义是：
+### 7.2 原因
 
-- 这条 record 已经真实存在
-- 但在当前 view 中，先按发起位置展示
-- 暂时不要立刻服从真实 sort 重排
-- 等编辑结束后再回到真实位置
+原因不是做不到，而是没有必要先把复杂度引进来。
 
-### 7.2 为什么 pin 是最优方案
+优先级判断如下：
 
-这是长期最优方案，因为它同时满足：
+- `empty last` 本身已经能解决大部分最突出的创建跳动问题
+- Notion 自身在这类场景里也没有做到绝对稳定的临时固定位置
+- `creation pin` 会引入第二层视图投影时序，增加跨 view 复杂度
+- 当前更合理的策略是先保持真实排序唯一可信
 
-- 不污染 document truth
-- 不污染字段值
-- 不污染 engine create API
-- 不需要每个 view 各写一套插入位置逻辑
-- 可以统一支持 toolbar / table / kanban / gallery
+### 7.3 接受的行为
 
-### 7.3 生命周期
+当前明确接受以下行为：
 
-默认规则应尽量简单：
+- 在 section 底部点击 `new record`
+- 若 group / filter 会给新 record 自动赋值
+- 且这些真实值参与当前 sort
+- 那么新 record 可以在创建后立即跳到真实排序位置
 
-- 创建后立即建立 pin
-- 打开 title editor 或主字段 editor
-- 编辑器关闭后释放 pin
-
-补充清理规则：
-
-- 若 view 切换，清理当前 view 的全部 pin
-- 若 record 被删除，清理对应 pin
-- 若 editor 未能成功打开，pin 不应长时间保留，应快速回收
+这不是 bug，而是当前明确接受的产品语义。
 
 ## 8. 各入口的统一映射
 
@@ -285,18 +266,15 @@ toolbar 只表达“从 view 头部发起创建”，不天然表达 section。
 
 各视图在渲染时都应遵循同一条规则：
 
-- 先拿到 engine 的真实 `records / sections / items`
-- 再读取 create runtime 的 `creation pin`
-- 若某条 record 仍在 pin 生命周期内，则优先按 `presentAt` 投影到临时位置
-- pin 释放后，立即回到真实排序结果
+- 只拿 engine 的真实 `records / sections / items`
+- 不额外叠加 `creation pin` 或临时位置层
+- 新建交互只负责发起创建与打开 editor
+- 最终显示顺序始终等于真实 group / sort 结果
 
 也就是说：
 
-- engine 产出的是真实顺序
-- view 渲染时额外叠加一个极薄的临时展示层
-- 这个展示层只服务“刚创建且正在编辑”的极少量 record
-
-不能把它扩展成第二套常驻排序系统。
+- engine 产出的就是真实顺序
+- view 渲染不应再叠加第二套局部排序系统
 
 ## 10. 推荐时序
 
@@ -306,18 +284,15 @@ toolbar 只表达“从 view 头部发起创建”，不天然表达 section。
 2. React 生成 `CreateIntent`
 3. runtime 调用 `engine.active.records.create(...)`
 4. engine 创建真实 record，并自动写入 group / filter 可唯一确定的默认值
-5. runtime 为新 record 建立 `creation pin`
-6. 当前 view 先按 `presentAt` 展示这条 record
-7. React 立即打开 title editor 或主字段 editor
-8. 用户编辑
-9. editor 关闭
-10. pin 释放，record 回到真实 group / sort 位置
+5. 新 record 立即进入真实 group / sort 结果
+6. React 立即打开 title editor 或主字段 editor
+7. 用户编辑
 
 这套时序和用户预期最一致：
 
-- 先在当前发起位置出现
-- 先完成输入
-- 再按真实排序归位
+- 创建动作先满足真实数据约束
+- 真实排序立即生效
+- 编辑器紧随其后打开
 
 ## 11. 分阶段落地建议
 
@@ -332,7 +307,7 @@ toolbar 只表达“从 view 头部发起创建”，不天然表达 section。
 
 - 新增 React create runtime
 - 先支持 table section 尾部创建
-- 使用 `creation pin + editor-close release`
+- 明确不使用 `creation pin`
 
 ### 第三阶段
 
@@ -342,7 +317,8 @@ toolbar 只表达“从 view 头部发起创建”，不天然表达 section。
 这个顺序最稳，因为：
 
 - `empty last` 是底层纯语义优化，独立且收益明确
-- create runtime 是交互层能力，适合在排序语义稳定后引入
+- create runtime 是统一入口与打开编辑器的能力
+- 不做 `creation pin` 能把 runtime 保持在最低复杂度
 - runtime 一旦定型，后续 view 扩展成本会很低
 
 ## 12. 最终原则
@@ -351,9 +327,9 @@ toolbar 只表达“从 view 头部发起创建”，不天然表达 section。
 
 - 缺失值不是业务值，sort 中统一固定后置
 - 升序 / 降序只翻转非空值
-- 新建 record 的“首次展示位置”是交互态，不是数据态
+- 新建 record 的最终显示位置始终服从真实 group / sort
 - engine 负责真实数据创建
-- React runtime 负责创建时序与临时展示位置
+- React runtime 负责统一创建入口与编辑器打开时序
 - 所有 view 共用一套 create runtime，而不是各自发明 API
 
 这套方案同时满足：
@@ -362,4 +338,3 @@ toolbar 只表达“从 view 头部发起创建”，不天然表达 section。
 - 结构清晰
 - 复杂度低
 - 可跨 table / kanban / gallery / toolbar 复用
-

@@ -1,6 +1,5 @@
 import { HANDLED } from '@whiteboard/editor/input/session/result'
 import type { InteractionBinding } from '@whiteboard/editor/input/core/types'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import { createEdgeConnectSession, tryStartEdgeConnect } from '@whiteboard/editor/input/features/edge/connect'
 import {
   createEdgeLabelPressSession,
@@ -11,18 +10,19 @@ import {
   createEdgeRoutePressSession,
   tryStartEdgeRoute
 } from '@whiteboard/editor/input/features/edge/route'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 const selectEdge = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'actions'>,
   edgeId: string
 ) => {
-  ctx.local.selection.replace({
+  ctx.actions.selection.replace({
     edgeIds: [edgeId]
   })
 }
 
 export const createEdgeBinding = (
-  ctx: InteractionDeps
+  ctx: Pick<EditorServices, 'engine' | 'query' | 'commands' | 'actions' | 'layout' | 'snap' | 'local'>
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {
@@ -33,7 +33,7 @@ export const createEdgeBinding = (
       node: ctx.query.node,
       edge: ctx.query.edge,
       zoom: ctx.query.viewport.get().zoom,
-      config: ctx.config.edge
+      config: ctx.engine.config.edge
     })
     if (connect) {
       if (connect.kind === 'reconnect') {
@@ -78,7 +78,7 @@ export const createEdgeBinding = (
       )
 
       if (route.kind === 'remove') {
-        ctx.command.edge.route.remove(route.edgeId, route.index)
+        ctx.commands.edge.route.remove(route.edgeId, route.index)
         return HANDLED
       }
 

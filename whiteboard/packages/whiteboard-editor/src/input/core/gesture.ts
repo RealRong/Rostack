@@ -4,10 +4,10 @@ import type { DrawPreview } from '@whiteboard/editor/local/draw'
 import type {
   EdgeFeedbackEntry,
   EdgeGuide,
-  MarqueeFeedbackState,
+  MarqueePreviewState,
   MindmapPreviewState,
   NodePreviewEntry
-} from '@whiteboard/editor/local/feedback/types'
+} from '@whiteboard/editor/input/preview/types'
 
 export type GestureKind =
   | 'selection-move'
@@ -24,7 +24,7 @@ export type InteractionDraft = {
   nodePatches?: readonly NodePreviewEntry[]
   edgePatches?: readonly EdgeFeedbackEntry[]
   frameHoverId?: NodeId
-  marquee?: MarqueeFeedbackState
+  marquee?: MarqueePreviewState
   guides?: readonly Guide[]
   edgeGuide?: EdgeGuide
   drawPreview?: DrawPreview | null

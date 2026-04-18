@@ -10,6 +10,7 @@ import {
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import type { DataViewContextValue } from '@dataview/react/dataview/types'
 import { useDataView } from '@dataview/react/dataview/provider'
+import type { DataViewSessionState } from '@dataview/runtime'
 
 export function useDataViewValue<TState>(
   resolveStore: (dataView: DataViewContextValue) => ReadStore<TState>
@@ -40,4 +41,12 @@ export const useDataViewKeyedValue = <K, T>(
 ): T => {
   const dataView = useDataView()
   return useKeyedStoreValue(resolveStore(dataView), key)
+}
+
+export const useDataViewSessionSelector = <TResult>(
+  selector: (state: DataViewSessionState) => TResult,
+  isEqual?: Equality<TResult>
+): TResult => {
+  const dataView = useDataView()
+  return useStoreSelector(dataView.session.store, selector, isEqual)
 }

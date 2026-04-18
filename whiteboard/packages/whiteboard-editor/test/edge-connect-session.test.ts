@@ -5,7 +5,6 @@ import {
 import type {
   EdgePatch
 } from '@whiteboard/core/types'
-import type { InteractionDeps } from '../src/input/core/context'
 import { createEdgeConnectSession } from '../src/input/features/edge/connect'
 
 const createInteractionDeps = () => {
@@ -65,29 +64,32 @@ const createInteractionDeps = () => {
           })
         }
       },
-      command: {
+      commands: {
         edge: {
           patch,
           create: vi.fn()
         }
       },
-      local: {
+      actions: {
         tool: {
           set: vi.fn()
         },
         selection: {
           replace: vi.fn(),
-          clear: vi.fn()
-        },
-        edit: {
-          startNode: vi.fn(),
-          startEdgeLabel: vi.fn()
-        },
-        viewport: {
-          panScreenBy: vi.fn()
+          clear: vi.fn(),
+          add: vi.fn(),
+          remove: vi.fn(),
+          toggle: vi.fn(),
+          selectAll: vi.fn(),
+          frame: vi.fn(),
+          order: vi.fn(),
+          group: vi.fn(),
+          ungroup: vi.fn(),
+          delete: vi.fn(),
+          duplicate: vi.fn()
         }
       }
-    } as unknown as InteractionDeps
+    } as any
   }
 }
 

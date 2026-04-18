@@ -15,12 +15,12 @@ import {
 import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 export type MarqueeMatch = 'touch' | 'contain'
 
@@ -74,7 +74,7 @@ const createMarqueeRect = (
 
 const readMatchedSelection = (
   input: {
-    ctx: InteractionDeps
+    ctx: Pick<EditorServices, 'query'>
     rect: Rect
     match: SelectionMarqueeAction['match']
   }
@@ -188,13 +188,13 @@ const reduceMarqueeSelection = (
 }
 
 const syncMarqueeInteraction = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'actions'>,
   interaction: InteractionSession,
   previous: MarqueeSelectionState,
   next: MarqueeSelectionState
 ) => {
   if (!isSelectionTargetEqual(previous.selection, next.selection)) {
-    ctx.local.selection.replace(next.selection)
+    ctx.actions.selection.replace(next.selection)
   }
 
   interaction.gesture = next.kind === 'active'
@@ -209,7 +209,7 @@ const syncMarqueeInteraction = (
 }
 
 export const createMarqueeSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'actions'>,
   input: {
     start: PointerDownInput
     action: SelectionMarqueeAction
@@ -226,7 +226,7 @@ export const createMarqueeSession = (
   let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    ctx.local.selection.clear()
+    ctx.actions.selection.clear()
   }
 
   const dispatch = (

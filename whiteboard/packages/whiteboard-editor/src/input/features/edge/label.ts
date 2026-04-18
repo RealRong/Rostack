@@ -16,7 +16,6 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import {
   readEdgeLabelTextSourceId
@@ -25,6 +24,7 @@ import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 const EDGE_LABEL_PLACEHOLDER = 'Label'
 
@@ -51,10 +51,10 @@ const readLabelText = (
   : ''
 
 const isSingleSelectedEdge = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   edgeId: EdgeId
 ) => {
-  const target = ctx.selection.get().summary.target
+  const target = ctx.query.selection.model.get().summary.target
 
   return (
     target.nodeIds.length === 0
@@ -98,7 +98,7 @@ const readEdgeLabelPatch = (
 }
 
 const createEdgeLabelDragSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'commands'>,
   initial: EdgeLabelDragState
 ): InteractionSession => {
   let state = initial
@@ -165,7 +165,7 @@ const createEdgeLabelDragSession = (
       step(input.world)
 
       if (state.draft) {
-        ctx.command.edge.label.patch(
+        ctx.commands.edge.label.patch(
           state.edgeId,
           state.labelId,
           state.draft
@@ -181,7 +181,7 @@ const createEdgeLabelDragSession = (
 }
 
 const createEdgeLabelDragState = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'layout'>,
   input: {
     edgeId: EdgeId
     labelId: string
@@ -232,7 +232,7 @@ const createEdgeLabelDragState = (
 }
 
 export const createEdgeLabelPressSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'layout' | 'commands' | 'actions'>,
   start: PointerDownInput,
   input: {
     edgeId: EdgeId
@@ -257,10 +257,10 @@ export const createEdgeLabelPressSession = (
     )
   },
   onTap: (nextInput) => {
-    ctx.local.selection.replace({
+    ctx.actions.selection.replace({
       edgeIds: [input.edgeId]
     })
-    ctx.local.edit.startEdgeLabel(input.edgeId, input.labelId, {
+    ctx.actions.edit.startEdgeLabel(input.edgeId, input.labelId, {
       caret: {
         kind: 'point',
         client: nextInput.client
@@ -270,7 +270,7 @@ export const createEdgeLabelPressSession = (
 })
 
 export const startEdgeLabelPress = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'actions'>,
   pointer: PointerDownInput
 ): {
   edgeId: EdgeId
@@ -287,7 +287,7 @@ export const startEdgeLabelPress = (
   }
 
   if (!isSingleSelectedEdge(ctx, pointer.pick.id)) {
-    ctx.local.selection.replace({
+    ctx.actions.selection.replace({
       edgeIds: [pointer.pick.id]
     })
     return 'handled'

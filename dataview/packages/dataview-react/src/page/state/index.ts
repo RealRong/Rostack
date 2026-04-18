@@ -3,4 +3,4 @@ export {
   pageState,
   queryBarState,
   settingsState
-} from '@dataview/react/page/state/page'
+} from '@dataview/runtime/page/state'

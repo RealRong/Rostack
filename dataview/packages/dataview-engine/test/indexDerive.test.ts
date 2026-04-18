@@ -556,3 +556,84 @@ test('engine.active.query derives descending order from single asc sort index', 
   assert.deepEqual(query.records.ordered, ['rec_3', 'rec_2', 'rec_1'])
   assert.deepEqual(query.records.visible, ['rec_3', 'rec_2', 'rec_1'])
 })
+
+test('engine.active.query keeps empty values at the end for title, status, and number sorts', () => {
+  const document = createDocument()
+  document.records.byId.rec_1 = {
+    ...document.records.byId.rec_1,
+    title: '',
+    values: {
+      [FIELD_STATUS]: undefined,
+      [FIELD_POINTS]: undefined
+    }
+  }
+  document.records.byId.rec_2 = {
+    ...document.records.byId.rec_2,
+    title: 'Alpha',
+    values: {
+      ...document.records.byId.rec_2.values,
+      [FIELD_STATUS]: 'todo',
+      [FIELD_POINTS]: 2
+    }
+  }
+  document.records.byId.rec_3 = {
+    ...document.records.byId.rec_3,
+    title: 'Beta',
+    values: {
+      ...document.records.byId.rec_3.values,
+      [FIELD_STATUS]: 'doing',
+      [FIELD_POINTS]: 1
+    }
+  }
+
+  const index = createIndexState(document, {
+    sortFields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
+  })
+  const reader = createStaticDocumentReadContext(document).reader
+
+  const titleAsc = buildQueryState({
+    reader,
+    index: index.state,
+    view: createTableView({
+      sort: [{
+        field: TITLE_FIELD_ID,
+        direction: 'asc'
+      }]
+    })
+  })
+  const titleDesc = buildQueryState({
+    reader,
+    index: index.state,
+    view: createTableView({
+      sort: [{
+        field: TITLE_FIELD_ID,
+        direction: 'desc'
+      }]
+    })
+  })
+  const statusDesc = buildQueryState({
+    reader,
+    index: index.state,
+    view: createTableView({
+      sort: [{
+        field: FIELD_STATUS,
+        direction: 'desc'
+      }]
+    })
+  })
+  const pointsDesc = buildQueryState({
+    reader,
+    index: index.state,
+    view: createTableView({
+      sort: [{
+        field: FIELD_POINTS,
+        direction: 'desc'
+      }]
+    })
+  })
+
+  assert.deepEqual(titleAsc.records.visible, ['rec_2', 'rec_3', 'rec_1'])
+  assert.deepEqual(titleDesc.records.visible, ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(statusDesc.records.visible, ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(pointsDesc.records.visible, ['rec_2', 'rec_3', 'rec_1'])
+})

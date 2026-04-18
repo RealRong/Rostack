@@ -3,6 +3,7 @@ import type { Engine } from '@whiteboard/engine'
 import type { EditorLocal } from '@whiteboard/editor/local/runtime'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorEvents } from '@whiteboard/editor/types/editor'
+import type { EditorInputRuntime } from '@whiteboard/editor/input/runtime'
 
 export type EditorLifecycle = {
   events: EditorEvents
@@ -43,10 +44,12 @@ const reconcileLocalAfterCommit = (
 export const createEditorLifecycle = ({
   engine,
   local,
+  input,
   query
 }: {
   engine: Engine
   local: EditorLocal
+  input: Pick<EditorInputRuntime, 'reset'>
   query: Pick<EditorQuery, 'node' | 'edge'>
 }): EditorLifecycle => {
   const disposeListeners = new Set<() => void>()
@@ -58,6 +61,7 @@ export const createEditorLifecycle = ({
 
     if (commit.kind === 'replace') {
       local.reset()
+      input.reset()
       return
     }
 
@@ -84,6 +88,7 @@ export const createEditorLifecycle = ({
     dispose: () => {
       unsubscribeCommit()
       local.reset()
+      input.reset()
       Array.from(disposeListeners).forEach((listener) => listener())
       disposeListeners.clear()
       engine.dispose()

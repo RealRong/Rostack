@@ -1,7 +1,7 @@
 import { createRafTask } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { HoverStore } from '@whiteboard/editor/input/hover/store'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 export type EdgeHoverService = {
   move: (world: Point) => void
@@ -9,7 +9,7 @@ export type EdgeHoverService = {
 }
 
 export const createEdgeHoverService = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'snap'>,
   hover: Pick<HoverStore, 'set' | 'reset'>
 ): EdgeHoverService => {
   let hoverPoint: Point | null = null

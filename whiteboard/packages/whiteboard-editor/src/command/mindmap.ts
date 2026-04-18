@@ -32,7 +32,10 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type { MindmapEnterPreview } from '@whiteboard/editor/local/feedback/types'
+import type {
+  MindmapEnterPreview,
+  MindmapPreviewState
+} from '@whiteboard/editor/input/preview/types'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
@@ -413,16 +416,16 @@ const updateMindmapPreview = ({
   feedback: {
     mindmap: {
       setPreview: (
-        preview?: import('@whiteboard/editor/local/feedback/types').MindmapPreviewState
+        preview?: MindmapPreviewState
       ) => void
       clear: () => void
     }
   }
   project: (
-    current: import('@whiteboard/editor/local/feedback/types').MindmapPreviewState | undefined
-  ) => import('@whiteboard/editor/local/feedback/types').MindmapPreviewState | undefined
+    current: MindmapPreviewState | undefined
+  ) => MindmapPreviewState | undefined
 }) => {
-  const next = project(read.feedback.mindmapPreview.get())
+  const next = project(read.preview.mindmapPreview.get())
   if (!next || (
     !next.rootMove
     && !next.subtreeMove
@@ -444,7 +447,7 @@ const appendMindmapEnterPreview = ({
   feedback: {
     mindmap: {
       setPreview: (
-        preview?: import('@whiteboard/editor/local/feedback/types').MindmapPreviewState
+        preview?: MindmapPreviewState
       ) => void
       clear: () => void
     }
@@ -653,7 +656,7 @@ export const createMindmapCommands = ({
   feedback: {
     mindmap: {
       setPreview: (
-        preview?: import('@whiteboard/editor/local/feedback/types').MindmapPreviewState
+        preview?: MindmapPreviewState
       ) => void
       clear: () => void
     }

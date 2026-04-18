@@ -38,20 +38,20 @@ export type TextPreviewEntry = {
   patch: TextPreviewPatch
 }
 
-export type NodeSelectionFeedbackState = {
+export type NodeSelectionPreviewState = {
   patches: readonly NodePreviewEntry[]
   frameHoverId?: NodeId
 }
 
-export type NodeTextFeedbackState = {
+export type NodeTextPreviewState = {
   patches: readonly TextPreviewEntry[]
 }
 
-export type NodeFeedbackState = {
-  text: NodeTextFeedbackState
+export type NodePreviewState = {
+  text: NodeTextPreviewState
 }
 
-export type NodeFeedbackProjection = {
+export type NodePreviewProjection = {
   patch?: NodePatch
   text?: TextPreviewPatch
   hovered: boolean
@@ -64,7 +64,7 @@ export type EdgeFeedbackEntry = {
   activeRouteIndex?: number
 }
 
-export type EdgeFeedbackProjection = {
+export type EdgePreviewProjection = {
   patch?: EdgePatch
   activeRouteIndex?: number
 }
@@ -82,17 +82,17 @@ export type EdgeGuide = {
   connect?: EdgeConnectFeedback
 }
 
-export type EdgeFeedbackState = {
+export type EdgePreviewState = {
   interaction: readonly EdgeFeedbackEntry[]
   guide?: EdgeGuide
 }
 
-export type MarqueeFeedbackState = {
+export type MarqueePreviewState = {
   worldRect: Rect
   match: MarqueeMatch
 }
 
-export type MarqueeFeedback = {
+export type MarqueePreview = {
   rect: Rect
   match: MarqueeMatch
 }
@@ -126,42 +126,46 @@ export type MindmapEnterPreview = {
   durationMs: number
 }
 
-export type SelectionFeedbackState = {
-  node: NodeSelectionFeedbackState
+export type SelectionPreviewState = {
+  node: NodeSelectionPreviewState
   edge: readonly EdgeFeedbackEntry[]
-  marquee?: MarqueeFeedbackState
+  marquee?: MarqueePreviewState
   guides: readonly Guide[]
 }
 
-export type EditorFeedbackState = {
-  node: NodeFeedbackState
-  edge: EdgeFeedbackState
+export type EditorInputPreviewState = {
+  node: NodePreviewState
+  edge: EdgePreviewState
   draw: {
     preview: DrawPreview | null
     hidden: readonly NodeId[]
   }
-  selection: SelectionFeedbackState
+  selection: SelectionPreviewState
   mindmap: {
     preview?: MindmapPreviewState
   }
 }
 
-export type EditorFeedbackSelectors = {
-  node: KeyedReadStore<NodeId, NodeFeedbackProjection>
-  edge: KeyedReadStore<EdgeId, EdgeFeedbackProjection>
+export type EditorInputPreviewSelectors = {
+  node: KeyedReadStore<NodeId, NodePreviewProjection>
+  edge: KeyedReadStore<EdgeId, EdgePreviewProjection>
   draw: ReadStore<DrawPreview | null>
-  marquee: ReadStore<MarqueeFeedback | undefined>
+  marquee: ReadStore<MarqueePreview | undefined>
   mindmapPreview: ReadStore<MindmapPreviewState | undefined>
   edgeGuide: ReadStore<EdgeGuide>
   snap: ReadStore<readonly Guide[]>
 }
 
-export type EditorFeedbackRuntime = Pick<ReadStore<EditorFeedbackState>, 'get' | 'subscribe'> & {
+export type EditorInputPreviewWrite = {
   set: (
     next:
-      | EditorFeedbackState
-      | ((current: EditorFeedbackState) => EditorFeedbackState)
+      | EditorInputPreviewState
+      | ((current: EditorInputPreviewState) => EditorInputPreviewState)
   ) => void
   reset: () => void
-  selectors: EditorFeedbackSelectors
+}
+
+export type EditorInputPreview = {
+  selectors: EditorInputPreviewSelectors
+  write: EditorInputPreviewWrite
 }

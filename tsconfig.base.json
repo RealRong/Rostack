@@ -24,6 +24,8 @@
       "@dataview/engine/*": ["dataview/packages/dataview-engine/src/*"],
       "@dataview/meta": ["dataview/packages/dataview-meta/src/index.ts"],
       "@dataview/meta/*": ["dataview/packages/dataview-meta/src/*"],
+      "@dataview/runtime": ["dataview/packages/dataview-runtime/src/index.ts"],
+      "@dataview/runtime/*": ["dataview/packages/dataview-runtime/src/*"],
       "@dataview/react": ["dataview/packages/dataview-react/src/index.ts"],
       "@dataview/react/*": ["dataview/packages/dataview-react/src/*"],
       "@dataview/table": ["dataview/packages/dataview-table/src/index.ts"],

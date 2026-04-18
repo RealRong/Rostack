@@ -15,9 +15,9 @@ import {
   CANCEL,
   FINISH
 } from '@whiteboard/editor/input/session/result'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 export type EdgeRouteHandleState =
   | {
@@ -345,7 +345,7 @@ const commitEdgeRoute = (
 }
 
 const readViewportWorld = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   pointer: {
     clientX: number
     clientY: number
@@ -371,7 +371,7 @@ const readRouteGesture = (
 )
 
 const createEdgeRouteSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'commands'>,
   initial: EdgeRouteHandleState
 ): InteractionSession => {
   let state = initial
@@ -429,13 +429,13 @@ const createEdgeRouteSession = (
 
       const commit = commitEdgeRoute(state)
       if (commit?.kind === 'update-route') {
-        ctx.command.edge.update(commit.edgeId, {
+        ctx.commands.edge.update(commit.edgeId, {
           route: commit.route
         })
       }
 
       if (commit?.kind === 'move-point') {
-        ctx.command.edge.route.move(commit.edgeId, commit.index, commit.point)
+        ctx.commands.edge.route.move(commit.edgeId, commit.index, commit.point)
       }
 
       return FINISH
@@ -447,10 +447,10 @@ const createEdgeRouteSession = (
 }
 
 const createInsertedRouteSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'commands'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
-  const result = ctx.command.edge.route.insert(
+  const result = ctx.commands.edge.route.insert(
     input.edgeId,
     input.point
   )
@@ -471,7 +471,7 @@ const createInsertedRouteSession = (
 }
 
 export const createEdgeRoutePressSession = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query' | 'commands'>,
   start: PointerDownInput,
   plan: Extract<EdgeRouteStart, { kind: 'session' | 'insert' }>
 ): InteractionSession => createPressDragSession({

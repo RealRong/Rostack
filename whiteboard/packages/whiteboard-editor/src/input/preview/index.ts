@@ -2,19 +2,24 @@ import type { ReadStore } from '@shared/core'
 import type { ViewportRuntime } from '@whiteboard/editor/local/viewport/runtime'
 import { type ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type { HoverStore } from '@whiteboard/editor/input/hover/store'
-import { createFeedbackSelectors } from '@whiteboard/editor/local/feedback/selectors'
-import { createFeedbackState } from '@whiteboard/editor/local/feedback/state'
-import type { EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback/types'
+import { createInputPreviewSelectors } from '@whiteboard/editor/input/preview/selectors'
+import { createInputPreviewState } from '@whiteboard/editor/input/preview/state'
+import type {
+  EditorInputPreview,
+  EditorInputPreviewWrite
+} from '@whiteboard/editor/input/preview/types'
 
 export type {
   EdgeConnectFeedback,
   EdgeGuide,
   EdgeFeedbackEntry,
-  EditorFeedbackRuntime,
+  EditorInputPreview,
+  EditorInputPreviewState,
+  EditorInputPreviewWrite,
   MindmapPreviewState
-} from '@whiteboard/editor/local/feedback/types'
+} from '@whiteboard/editor/input/preview/types'
 
-export const createFeedback = ({
+export const createEditorInputPreview = ({
   viewport,
   gesture,
   hover
@@ -22,21 +27,22 @@ export const createFeedback = ({
   viewport: ViewportRuntime['read']
   gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
   hover: Pick<HoverStore, 'get' | 'subscribe'>
-}): EditorFeedbackRuntime => {
-  const state = createFeedbackState({
+}): EditorInputPreview => {
+  const state = createInputPreviewState({
     gesture,
     hover
   })
-  const selectors = createFeedbackSelectors({
+  const selectors = createInputPreviewSelectors({
     state,
     viewport
   })
+  const write: EditorInputPreviewWrite = {
+    set: state.set,
+    reset: state.reset
+  }
 
   return {
-    get: state.get,
-    subscribe: state.subscribe,
-    set: state.set,
-    reset: state.reset,
-    selectors
+    selectors,
+    write
   }
 }

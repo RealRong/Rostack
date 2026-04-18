@@ -14,10 +14,10 @@ export const projectEditorRead = (
 ): EditorRead => {
   const chrome = createDerivedStore<EditorChromePresentation>({
     get: () => ({
-      marquee: readValue(query.feedback.marquee),
-      draw: readValue(query.feedback.draw),
-      edgeGuide: readValue(query.feedback.edgeGuide),
-      snap: readValue(query.feedback.snap),
+      marquee: readValue(query.preview.marquee),
+      draw: readValue(query.preview.draw),
+      edgeGuide: readValue(query.preview.edgeGuide),
+      snap: readValue(query.preview.snap),
       selection: readValue(query.selection.presentation.overlay)
     }),
     isEqual: (left, right) => (

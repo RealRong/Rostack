@@ -48,7 +48,7 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EditSession } from '@whiteboard/editor/local/session/edit'
 import { readUniformValue } from '@whiteboard/editor/query/utils'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
-import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
+import type { EditorInputState } from '@whiteboard/editor/input/state'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 
 export type SelectionRead = {
@@ -769,7 +769,7 @@ const resolveSelectionOverlay = ({
 }
 
 const isEdgeEditingInteraction = (
-  mode: ReturnType<InteractionRuntime['mode']['get']>
+  mode: ReturnType<EditorInputState['mode']['get']>
 ) => (
   mode === 'edge-drag'
   || mode === 'edge-label'
@@ -794,7 +794,7 @@ const resolveSelectionToolbar = ({
   tool: Tool
   edit: EditSession
   interactionChrome: boolean
-  interactionMode: ReturnType<InteractionRuntime['mode']['get']>
+  interactionMode: ReturnType<EditorInputState['mode']['get']>
 }): SelectionToolbarContext | undefined => {
   const box = affordance.displayBox
   if (!box) {
@@ -955,7 +955,7 @@ export const createSelectionPresentationRead = ({
   mindmap: Pick<MindmapPresentationRead, 'tree'>
   tool: ReadStore<Tool>
   edit: ReadStore<EditSession>
-  interaction: Pick<InteractionRuntime, 'mode' | 'chrome'>
+  interaction: Pick<EditorInputState, 'mode' | 'chrome'>
 }): SelectionRead => {
   const box = createDerivedStore<Rect | undefined>({
     get: () => read(model).summary.box,

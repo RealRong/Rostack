@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   clearNodeTextPreviewSize,
   updateNodeTextPreview
-} from '../src/local/feedback/node'
+} from '../src/input/preview/node'
 
 describe('clearNodeTextPreviewSize', () => {
   it('clears measured preview geometry and preserves transform inputs', () => {

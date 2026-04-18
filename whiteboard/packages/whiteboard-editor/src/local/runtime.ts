@@ -3,7 +3,6 @@ import {
   type ValueStore
 } from '@shared/core'
 import type { Viewport } from '@whiteboard/core/types'
-import type { PointerSample } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type {
   BrushStylePatch,
@@ -17,7 +16,6 @@ import {
 import {
   createDrawStateStore
 } from '@whiteboard/editor/local/draw/runtime'
-import { createFeedback, type EditorFeedbackRuntime } from '@whiteboard/editor/local/feedback'
 import {
   createEditState,
   type EditMutate,
@@ -30,20 +28,12 @@ import {
   createViewport,
   type ViewportRuntime
 } from '@whiteboard/editor/local/viewport/runtime'
-import type {
-  InteractionBinding,
-  InteractionRuntime
-} from '@whiteboard/editor/input/core/types'
-import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
-import { createHoverStore, type HoverStore } from '@whiteboard/editor/input/hover/store'
 
 export type EditorLocalSource = {
   tool: ValueStore<Tool>
   draw: ReturnType<typeof createDrawStateStore>['store']
   selection: ReturnType<typeof createSelectionState>['source']
   edit: ValueStore<EditSession>
-  pointer: ValueStore<PointerSample | null>
-  space: ValueStore<boolean>
 }
 
 export type EditorLocalMutate = {
@@ -65,23 +55,12 @@ export type EditorLocalMutate = {
     clear: () => boolean
   }
   edit: Pick<EditMutate, 'set' | 'input' | 'caret' | 'layout' | 'status' | 'clear'>
-  pointer: {
-    set: (sample: PointerSample) => void
-    clear: () => void
-  }
-  space: {
-    set: (value: boolean) => void
-  }
 }
 
 export type EditorLocal = {
   source: EditorLocalSource
   mutate: EditorLocalMutate
   viewport: ViewportRuntime
-  interaction: InteractionRuntime
-  hover: HoverStore
-  feedback: EditorFeedbackRuntime
-  bindInteractions: (bindings: readonly InteractionBinding[]) => void
   reset: () => void
 }
 
@@ -104,34 +83,16 @@ export const createEditorLocal = ({
   const draw = createDrawStateStore(initialDrawState)
   const selection = createSelectionState()
   const edit = createEditState()
-  const pointer = createValueStore<PointerSample | null>(null)
-  const space = createValueStore(false)
   const viewport = createViewport({
     initialViewport
   })
-
-  let bindings: readonly InteractionBinding[] = []
 
   const source: EditorLocalSource = {
     tool,
     draw: draw.store,
     selection: selection.source,
-    edit: edit.source,
-    pointer,
-    space
+    edit: edit.source
   }
-
-  const interaction = createInteractionRuntime({
-    getViewport: () => viewport.input,
-    getBindings: () => bindings,
-    space
-  })
-  const hover = createHoverStore()
-  const feedback = createFeedback({
-    viewport: viewport.read,
-    gesture: interaction.gesture,
-    hover
-  })
 
   const mutate: EditorLocalMutate = {
     tool: {
@@ -166,19 +127,6 @@ export const createEditorLocal = ({
       layout: edit.mutate.layout,
       status: edit.mutate.status,
       clear: edit.mutate.clear
-    },
-    pointer: {
-      set: (sample) => {
-        pointer.set(sample)
-      },
-      clear: () => {
-        pointer.set(null)
-      }
-    },
-    space: {
-      set: (value) => {
-        space.set(value)
-      }
     }
   }
 
@@ -186,18 +134,7 @@ export const createEditorLocal = ({
     source,
     mutate,
     viewport,
-    interaction,
-    hover,
-    feedback,
-    bindInteractions: (nextBindings) => {
-      bindings = nextBindings
-    },
     reset: () => {
-      pointer.set(null)
-      space.set(false)
-      interaction.cancel()
-      hover.reset()
-      feedback.reset()
       edit.mutate.clear()
       selection.mutate.clear()
     }

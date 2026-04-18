@@ -11,7 +11,9 @@ import {
   trimLowercase
 } from '@shared/core'
 import {
-  compareFieldValues
+  compareFieldSortValues,
+  compareFieldValues,
+  isEmptyFieldValue
 } from '@dataview/core/field'
 import {
   isFilterRuleEffective,
@@ -66,6 +68,7 @@ const EMPTY_SEARCH_SOURCES = [] as readonly SearchFieldIndex[]
 const EMPTY_SEARCH_GRAMS = [] as readonly string[]
 const SEARCH_SOURCE_SEPARATOR = '\u0000'
 const REVERSED_SORT_IDS = new WeakMap<readonly RecordId[], readonly RecordId[]>()
+const EMPTY_LAST_REVERSED_SORT_IDS = new WeakMap<readonly RecordId[], readonly RecordId[]>()
 const ORDER_ORDINALS_BY_IDS = new WeakMap<
   readonly RecordId[],
   WeakMap<ReadonlyMap<RecordId, number>, Int32Array>
@@ -244,14 +247,12 @@ const projectIdsToCurrentOrder = (
   orderedIds: readonly RecordId[],
   currentIds: readonly RecordId[],
   allRecordIds: readonly RecordId[],
-  order: ReadonlyMap<RecordId, number>,
-  reverse = false
+  order: ReadonlyMap<RecordId, number>
 ): readonly RecordId[] => projectIdsByMembership({
   orderedIds,
   candidateIds: currentIds,
   allRecordIds,
-  order,
-  reverse
+  order
 })
 
 const reverseOrderedIds = (
@@ -274,6 +275,102 @@ const reverseOrderedIds = (
   return reversed
 }
 
+const findEmptyTailStart = (input: {
+  ids: readonly RecordId[]
+  values: ReadonlyMap<RecordId, unknown>
+}): number => {
+  let start = input.ids.length
+
+  while (start > 0) {
+    const recordId = input.ids[start - 1]!
+    if (!isEmptyFieldValue(input.values.get(recordId))) {
+      break
+    }
+
+    start -= 1
+  }
+
+  return start
+}
+
+const reverseOrderedIdsKeepingEmptyLast = (input: {
+  ids: readonly RecordId[]
+  values: ReadonlyMap<RecordId, unknown>
+}): readonly RecordId[] => {
+  if (input.ids.length <= 1) {
+    return input.ids
+  }
+
+  const emptyTailStart = findEmptyTailStart(input)
+  if (emptyTailStart === input.ids.length) {
+    return reverseOrderedIds(input.ids)
+  }
+
+  const cached = EMPTY_LAST_REVERSED_SORT_IDS.get(input.ids)
+  if (cached) {
+    return cached
+  }
+
+  const reversed = new Array<RecordId>(input.ids.length)
+  let cursor = 0
+
+  for (let index = emptyTailStart - 1; index >= 0; index -= 1) {
+    reversed[cursor] = input.ids[index]!
+    cursor += 1
+  }
+  for (let index = emptyTailStart; index < input.ids.length; index += 1) {
+    reversed[cursor] = input.ids[index]!
+    cursor += 1
+  }
+
+  EMPTY_LAST_REVERSED_SORT_IDS.set(input.ids, reversed)
+  return reversed
+}
+
+const projectIdsToCurrentOrderKeepingEmptyLast = (input: {
+  orderedIds: readonly RecordId[]
+  currentIds: readonly RecordId[]
+  allRecordIds: readonly RecordId[]
+  order: ReadonlyMap<RecordId, number>
+  values: ReadonlyMap<RecordId, unknown>
+}): readonly RecordId[] => {
+  if (!input.orderedIds.length || !input.currentIds.length) {
+    return EMPTY_RECORD_IDS
+  }
+
+  const scratch = readCandidateScratch(input.allRecordIds)
+  const generation = nextScratchGeneration(scratch)
+  const candidateOrdinals = readOrderOrdinals(input.currentIds, input.order)
+  for (let index = 0; index < input.currentIds.length; index += 1) {
+    const ordinal = candidateOrdinals[index]!
+    if (ordinal >= 0) {
+      scratch.stamp[ordinal] = generation
+    }
+  }
+
+  const emptyTailStart = findEmptyTailStart({
+    ids: input.orderedIds,
+    values: input.values
+  })
+  const ordinals = readOrderOrdinals(input.orderedIds, input.order)
+  const projected: RecordId[] = []
+
+  for (let index = emptyTailStart - 1; index >= 0; index -= 1) {
+    const ordinal = ordinals[index]!
+    if (ordinal >= 0 && scratch.stamp[ordinal] === generation) {
+      projected.push(input.orderedIds[index]!)
+    }
+  }
+  for (let index = emptyTailStart; index < input.orderedIds.length; index += 1) {
+    const ordinal = ordinals[index]!
+    if (ordinal >= 0 && scratch.stamp[ordinal] === generation) {
+      projected.push(input.orderedIds[index]!)
+    }
+  }
+
+  return projected
+}
+
 const sortRecordIds = (input: {
   ids: readonly RecordId[]
   reader: DocumentReader
@@ -288,19 +385,30 @@ const sortRecordIds = (input: {
     const sorter = input.view.sort[0]
     const fieldIndex = input.index.sort.fields.get(sorter.field)
     if (fieldIndex) {
+      const fieldValues = input.index.records.values.get(sorter.field)?.byRecord ?? EMPTY_VALUE_MAP
       if (input.ids === input.index.records.ids) {
         return sorter.direction === 'desc'
-          ? reverseOrderedIds(fieldIndex.asc)
+          ? reverseOrderedIdsKeepingEmptyLast({
+              ids: fieldIndex.asc,
+              values: fieldValues
+            })
           : fieldIndex.asc
       }
 
-      return projectIdsToCurrentOrder(
-        fieldIndex.asc,
-        input.ids,
-        input.index.records.ids,
-        input.index.records.order,
-        sorter.direction === 'desc'
-      )
+      return sorter.direction === 'desc'
+        ? projectIdsToCurrentOrderKeepingEmptyLast({
+            orderedIds: fieldIndex.asc,
+            currentIds: input.ids,
+            allRecordIds: input.index.records.ids,
+            order: input.index.records.order,
+            values: fieldValues
+          })
+        : projectIdsToCurrentOrder(
+            fieldIndex.asc,
+            input.ids,
+            input.index.records.ids,
+            input.index.records.order
+          )
     }
   }
 
@@ -312,16 +420,15 @@ const sortRecordIds = (input: {
 
   return input.ids.slice().sort((leftId, rightId) => {
     for (const sorter of sorters) {
-      const result = compareFieldValues(
+      const result = compareFieldSortValues(
         sorter.field,
         sorter.values?.get(leftId),
-        sorter.values?.get(rightId)
+        sorter.values?.get(rightId),
+        sorter.direction
       )
 
       if (result !== 0) {
-        return sorter.direction === 'asc'
-          ? result
-          : -result
+        return result
       }
     }
 

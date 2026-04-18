@@ -13,30 +13,30 @@ import {
   isEdgeGuideEqual,
   isEdgeProjectionEqual,
   toEdgeFeedbackMap
-} from '@whiteboard/editor/local/feedback/edge'
+} from '@whiteboard/editor/input/preview/edge'
 import {
   EMPTY_NODE_FEEDBACK_PROJECTION,
   isNodeProjectionEqual,
   toNodeFeedbackMap
-} from '@whiteboard/editor/local/feedback/node'
+} from '@whiteboard/editor/input/preview/node'
 import {
   EMPTY_GUIDES,
   isMarqueeFeedbackEqual,
   projectWorldRect
-} from '@whiteboard/editor/local/feedback/selection'
+} from '@whiteboard/editor/input/preview/selection'
 import type {
-  EditorFeedbackRuntime,
-  EditorFeedbackState,
-  MarqueeFeedback
-} from '@whiteboard/editor/local/feedback/types'
+  EditorInputPreview,
+  EditorInputPreviewState,
+  MarqueePreview
+} from '@whiteboard/editor/input/preview/types'
 
-export const createFeedbackSelectors = ({
+export const createInputPreviewSelectors = ({
   state,
   viewport
 }: {
-  state: ReadStore<EditorFeedbackState>
+  state: ReadStore<EditorInputPreviewState>
   viewport: ViewportRuntime['read']
-}): EditorFeedbackRuntime['selectors'] => {
+}): EditorInputPreview['selectors'] => {
   const node = createProjectedKeyedStore({
     source: state,
     select: toNodeFeedbackMap,
@@ -77,7 +77,7 @@ export const createFeedbackSelectors = ({
     isEqual: (left: readonly Guide[], right: readonly Guide[]) => left === right,
     schedule: 'raf'
   })
-  const marquee = createDerivedStore<MarqueeFeedback | undefined>({
+  const marquee = createDerivedStore<MarqueePreview | undefined>({
     get: () => {
       const next = read(state).selection.marquee
       read(viewport)

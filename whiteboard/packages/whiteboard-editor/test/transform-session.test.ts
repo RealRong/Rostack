@@ -123,21 +123,10 @@ const createTransformContext = ({
       })
     }
   },
-  command: {
+  commands: {
     node: {
       updateMany: (nextUpdates: typeof updates) => {
         updates.push(...nextUpdates)
-      }
-    }
-  },
-  local: {
-    feedback: {
-      node: {
-        text: {
-          set: () => {},
-          clear: () => {},
-          clearSize: () => {}
-        }
       }
     }
   },

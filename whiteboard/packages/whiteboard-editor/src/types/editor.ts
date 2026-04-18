@@ -85,10 +85,10 @@ export type EditorStore = {
 }
 
 export type EditorChromePresentation = {
-  marquee: ReturnType<EditorQuery['feedback']['marquee']['get']>
-  draw: ReturnType<EditorQuery['feedback']['draw']['get']>
-  edgeGuide: ReturnType<EditorQuery['feedback']['edgeGuide']['get']>
-  snap: ReturnType<EditorQuery['feedback']['snap']['get']>
+  marquee: ReturnType<EditorQuery['preview']['marquee']['get']>
+  draw: ReturnType<EditorQuery['preview']['draw']['get']>
+  edgeGuide: ReturnType<EditorQuery['preview']['edgeGuide']['get']>
+  snap: ReturnType<EditorQuery['preview']['snap']['get']>
   selection: ReturnType<EditorQuery['selection']['presentation']['overlay']['get']>
 }
 

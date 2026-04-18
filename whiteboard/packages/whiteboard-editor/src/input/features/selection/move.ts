@@ -12,13 +12,13 @@ import {
 import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
-import type { InteractionDeps } from '@whiteboard/editor/input/core/context'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import { createMindmapDragSession, tryStartMindmapDragForNode } from '@whiteboard/editor/input/features/mindmap/drag'
 import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
+import type { EditorServices } from '@whiteboard/editor/editor/services'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -41,12 +41,12 @@ const toMoveEdgePatches = (
 }))
 
 const findParentFrameId = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   nodeId: string
 ) => ctx.query.frame.of(nodeId)
 
 const resolveFrameHoverId = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'query'>,
   state: Parameters<typeof finishMoveState>[0],
   pointerWorld: {
     x: number
@@ -70,7 +70,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: InteractionDeps,
+  ctx: Pick<EditorServices, 'engine' | 'query' | 'snap' | 'commands' | 'actions'>,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (
@@ -93,7 +93,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    ctx.local.selection.replace(input.visibility.selection)
+    ctx.actions.selection.replace(input.visibility.selection)
   }
 
   if (pickedNodeId) {
@@ -114,7 +114,7 @@ export const createMoveInteraction = (
         cleanup: () => {
           cleanup?.()
           if (restoreSelection) {
-            ctx.local.selection.replace(restoreSelection)
+            ctx.actions.selection.replace(restoreSelection)
           }
         }
       }
@@ -126,7 +126,7 @@ export const createMoveInteraction = (
     edges: ctx.query.edge.edges(ctx.query.edge.list.get()),
     target: input.target,
     startWorld: input.start.world,
-    nodeSize: ctx.config.nodeSize
+    nodeSize: ctx.engine.config.nodeSize
   })
   if (!initialState) {
     return null
@@ -195,21 +195,21 @@ export const createMoveInteraction = (
       const commit = finishMoveState(state)
 
       if (commit.delta) {
-        ctx.command.node.move({
+        ctx.commands.node.move({
           ids: state.move.rootIds,
           delta: commit.delta
         })
       }
 
       if (commit.edges.length > 0) {
-        ctx.command.edge.updateMany(commit.edges)
+        ctx.commands.edge.updateMany(commit.edges)
       }
 
       return FINISH
     },
     cleanup: () => {
       if (restoreSelection) {
-        ctx.local.selection.replace(restoreSelection)
+        ctx.actions.selection.replace(restoreSelection)
       }
     }
   }

@@ -239,6 +239,7 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
   let state: EdgeCacheState = emptyState()
   let snapshotRef: ReadSnapshot = initialSnapshot
   let visibleEdgesRef: ReadSnapshot['model']['edges']['visible'] | undefined
+  let changedEdgeIds: EdgeId[] = []
 
   const toEdgeCacheMaterial = (
     edge: EdgeItem['edge']
@@ -482,25 +483,29 @@ const reconcileEdges = (
   const initialVisibleEdges = readModel(snapshotRef).edges.visible
   const initial = reconcileAll(state, initialVisibleEdges)
   commitState(initial.nextState)
+  changedEdgeIds = [...initial.changedEdgeIds]
   visibleEdgesRef = initialVisibleEdges
   projection.setList(state.ids)
 
   const applyChange = (impact: KernelReadImpact, snapshot: ReadSnapshot) => {
     snapshotRef = snapshot
     const rebuild = resolveEdgeRebuild(impact)
-    if (rebuild === 'none') return
+    if (rebuild === 'none') {
+      changedEdgeIds = []
+      return
+    }
 
     const visibleEdges = readModel(snapshotRef).edges.visible
     const visibleEdgesChanged = visibleEdges !== visibleEdgesRef
     let idsChanged = false
-    let changedEdgeIds = new Set<EdgeId>()
+    let nextChangedEdgeIds = new Set<EdgeId>()
 
     if (rebuild === 'full' || visibleEdgesChanged) {
       const next = reconcileAll(state, visibleEdges)
       commitState(next.nextState)
       visibleEdgesRef = visibleEdges
       idsChanged = next.idsChanged
-      changedEdgeIds = next.changedEdgeIds
+      nextChangedEdgeIds = next.changedEdgeIds
     } else {
       const nextRelations = createEdgeRelations(visibleEdges)
       const affectedEdgeIds = new Set<EdgeId>()
@@ -519,14 +524,16 @@ const reconcileEdges = (
       const next = reconcileEdges(state, nextRelations, affectedEdgeIds)
       commitState(next.nextState)
       idsChanged = next.idsChanged
-      changedEdgeIds = next.changedEdgeIds
+      nextChangedEdgeIds = next.changedEdgeIds
     }
+
+    changedEdgeIds = [...nextChangedEdgeIds]
 
     if (idsChanged) {
       projection.setList(state.ids)
     }
 
-    projection.sync(changedEdgeIds)
+    projection.sync(nextChangedEdgeIds)
   }
 
   const related = (nodeIds: Iterable<NodeId>) => {
@@ -538,6 +545,7 @@ const reconcileEdges = (
     list: projection.list,
     related,
     item: projection.item,
+    changedIds: () => changedEdgeIds,
     applyChange
   }
 }

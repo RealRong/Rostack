@@ -3,8 +3,7 @@ import {
   readShapeKind
 } from '@whiteboard/core/node'
 import {
-  getWhiteboardShapeSpec,
-  readWhiteboardShapeMeta
+  getWhiteboardShapeSpec
 } from '@whiteboard/product'
 import { useCallback, useRef, type CSSProperties } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
@@ -209,7 +208,6 @@ export const ShapeNodeDefinition: NodeDefinition = {
     icon: 'shape',
     controls: ['fill', 'stroke', 'text']
   },
-  describe: (node) => readWhiteboardShapeMeta(node),
   defaultData: {
     kind: 'rect',
     text: 'Rectangle'

@@ -73,9 +73,9 @@ import {
 import { createRowRender, type RowRender } from '@dataview/react/views/table/rowRender'
 import {
   type DataViewTableModel,
-  type TableFooterData,
-  type TableHeaderData,
-  type TableSectionData
+  type TableColumn,
+  type TableSection,
+  type TableSummary
 } from '@dataview/runtime'
 export interface TableRowData {
   selected: boolean
@@ -143,6 +143,27 @@ const sameBodyData = (
   && left.marqueeActive === right.marqueeActive
 )
 
+const EMPTY_ITEMS: CurrentView['items'] = {
+  ids: [],
+  count: 0,
+  get: () => undefined,
+  has: () => false,
+  indexOf: () => undefined,
+  at: () => undefined,
+  prev: () => undefined,
+  next: () => undefined,
+  range: () => []
+}
+
+const EMPTY_SECTIONS: CurrentView['sections'] = {
+  ids: [],
+  all: [],
+  get: () => undefined,
+  has: () => false,
+  indexOf: () => undefined,
+  at: () => undefined
+}
+
 export interface TableController {
   currentView: ReadStore<CurrentView | undefined>
   body: ReadStore<TableBodyData | null>
@@ -162,9 +183,9 @@ export interface TableController {
   hover: Hover
   rowRender: RowRender
   row: KeyedReadStore<ItemId, TableRowData>
-  header: KeyedReadStore<FieldId, TableHeaderData>
-  footer: KeyedReadStore<string, TableFooterData | undefined>
-  section: KeyedReadStore<string, TableSectionData | undefined>
+  column: KeyedReadStore<FieldId, TableColumn | undefined>
+  summary: KeyedReadStore<string, TableSummary | undefined>
+  section: KeyedReadStore<string, TableSection | undefined>
   revealCursor: () => void
   revealRow: (rowId: ItemId) => void
   dispose: () => void
@@ -348,20 +369,25 @@ export const createTableController = (options: {
   })
   const body = createDerivedStore<TableBodyData | null>({
     get: () => {
-      const base = read(options.model.base)
-      if (!base) {
+      const bodyModel = read(options.model.body)
+      if (!bodyModel) {
         return null
       }
 
+      const current = read(currentView)
+      const columns = bodyModel.columnIds.flatMap(fieldId => {
+        const field = read(options.model.column, fieldId)?.field
+        return field ? [field] : []
+      })
       const windowState = read(virtual.window)
       return {
-        viewId: base.viewId,
-        columns: base.columns,
-        items: base.items,
-        sections: base.sections,
-        grouped: base.grouped,
-        showVerticalLines: base.showVerticalLines,
-        wrap: base.wrap,
+        viewId: bodyModel.viewId,
+        columns,
+        items: current?.items ?? EMPTY_ITEMS,
+        sections: current?.sections ?? EMPTY_SECTIONS,
+        grouped: bodyModel.grouped,
+        showVerticalLines: bodyModel.showVerticalLines,
+        wrap: bodyModel.wrap,
         blocks: windowState.items,
         totalHeight: windowState.totalHeight,
         startTop: windowState.startTop,
@@ -411,8 +437,8 @@ export const createTableController = (options: {
     hover,
     rowRender,
     row,
-    header: options.model.header,
-    footer: options.model.footer,
+    column: options.model.column,
+    summary: options.model.summary,
     section: options.model.section,
     revealCursor,
     revealRow,

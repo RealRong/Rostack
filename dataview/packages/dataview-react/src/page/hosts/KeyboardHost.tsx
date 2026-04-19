@@ -18,7 +18,7 @@ export const PageKeyboardHost = () => {
   const page = usePageRuntime()
   const pageBody = useStoreValue(page.body)
   const valueEditorOpen = useDataViewValue(
-    dataView => dataView.page.store,
+    dataView => dataView.session.page.store,
     state => state.valueEditorOpen
   )
 
@@ -68,7 +68,7 @@ export const PageKeyboardHost = () => {
             return
           }
 
-          dataView.selection.command.selectAll()
+          dataView.session.selection.command.selectAll()
           event.preventDefault()
           return true
         case 'clear-selection':
@@ -76,7 +76,7 @@ export const PageKeyboardHost = () => {
             return
           }
 
-          dataView.selection.command.clear()
+          dataView.session.selection.command.clear()
           event.preventDefault()
           return true
         case 'remove-selection':
@@ -86,7 +86,7 @@ export const PageKeyboardHost = () => {
 
           if (pageBody.viewType) {
             engine.active.items.remove(
-              dataView.selection.enumerate.materialize()
+              dataView.session.selection.enumerate.materialize()
             )
           }
           event.preventDefault()

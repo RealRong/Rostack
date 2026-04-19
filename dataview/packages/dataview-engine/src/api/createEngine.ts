@@ -10,16 +10,17 @@ import type {
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import { now } from '@dataview/engine/runtime/clock'
 import { createActiveViewApi } from '@dataview/engine/api/active'
-import { createDocumentSelectApi } from '@dataview/engine/api/documentSelect'
 import { createFieldsApi } from '@dataview/engine/api/fields'
 import { createRecordsApi } from '@dataview/engine/api/records'
 import { createViewsApi } from '@dataview/engine/api/views'
+import { createEngineReadApi } from '@dataview/engine/api/read'
 import {
   createRuntimeState,
   createStore
 } from '@dataview/engine/runtime/store'
 import { planActions } from '@dataview/engine/mutate/planner'
 import { createWriteControl } from '@dataview/engine/mutate/commit/runtime'
+import { createEngineSourceRuntime } from '@dataview/engine/source/runtime'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
@@ -31,7 +32,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     historyCap: historyCapacity,
     capturePerf: capturePerformance
   }))
-  const select = createDocumentSelectApi(store)
+  const readApi = createEngineReadApi(store)
+  const sourceRuntime = createEngineSourceRuntime({
+    store
+  })
   const write = createWriteControl({
     store,
     perf: performance,
@@ -60,25 +64,26 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     })
   }
   const fields = createFieldsApi({
-    select,
+    source: sourceRuntime.source.doc,
     dispatch
   })
   const records = createRecordsApi({
-    select,
+    source: sourceRuntime.source.doc,
     dispatch
   })
   const active = createActiveViewApi({
     store,
-    select,
+    source: sourceRuntime.source,
     dispatch
   })
   const views = createViewsApi({
-    select,
+    source: sourceRuntime.source.doc,
     dispatch
   })
 
   return {
-    select,
+    read: readApi,
+    source: sourceRuntime.source,
     active,
     views,
     fields,

@@ -89,7 +89,7 @@ export type EditorRead = {
   node: Pick<EditorQuery['node'], 'render'>
   edge: Pick<EditorQuery['edge'], 'render' | 'selectedChrome'>
   scene: Pick<EditorQuery['scene'], 'list'>
-  selection: Pick<EditorQuery['selection'], 'node' | 'box'>
+  selection: Pick<EditorQuery['selection'], 'node' | 'summary'>
   tool: EditorQuery['tool']
   viewport: EditorQuery['viewport']
   chrome: ReadStore<EditorChromePresentation>

@@ -1,3 +1,4 @@
+import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   Action,
   BucketSort,
@@ -32,6 +33,7 @@ import type { FilterEditorKind } from '@dataview/core/filter'
 import type {
   Equality,
   KeyedReadStore,
+  KeyedStorePatch,
   ReadStore
 } from '@shared/core'
 import type {
@@ -210,6 +212,94 @@ export interface ActiveViewReadApi {
   groupField: () => Field | undefined
 }
 
+export interface EngineReadApi {
+  document: () => DataDoc
+  record: (recordId: RecordId) => DataRecord | undefined
+  field: (fieldId: FieldId) => CustomField | undefined
+  view: (viewId: ViewId) => View | undefined
+  activeViewId: () => ViewId | undefined
+  activeView: () => View | undefined
+  activeState: () => ViewState | undefined
+}
+
+export interface EntitySource<K, T> extends KeyedReadStore<K, T | undefined> {
+  ids: ReadStore<readonly K[]>
+}
+
+export interface SectionSource extends KeyedReadStore<SectionKey, Section | undefined> {
+  keys: ReadStore<readonly SectionKey[]>
+  itemIds: KeyedReadStore<SectionKey, readonly ItemId[] | undefined>
+  summary: KeyedReadStore<SectionKey, CalculationCollection | undefined>
+}
+
+export interface ActiveQuerySource {
+  search: ReadStore<ViewSearchProjection>
+  filters: ReadStore<ViewFilterProjection>
+  sort: ReadStore<ViewSortProjection>
+  group: ReadStore<ViewGroupProjection>
+  grouped: ReadStore<boolean>
+  groupFieldId: ReadStore<FieldId | ''>
+  filterFieldIds: ReadStore<readonly FieldId[]>
+  sortFieldIds: ReadStore<readonly FieldId[]>
+  sortDir: KeyedReadStore<FieldId, SortDirection | undefined>
+}
+
+export interface ActiveTableSource {
+  wrap: ReadStore<boolean>
+  showVerticalLines: ReadStore<boolean>
+  calc: KeyedReadStore<FieldId, CalculationMetric | undefined>
+}
+
+export interface ActiveGallerySource {
+  wrap: ReadStore<boolean>
+  size: ReadStore<CardSize>
+  layout: ReadStore<CardLayout>
+  canReorder: ReadStore<boolean>
+  groupUsesOptionColors: ReadStore<boolean>
+}
+
+export interface ActiveKanbanSource {
+  wrap: ReadStore<boolean>
+  size: ReadStore<CardSize>
+  layout: ReadStore<CardLayout>
+  canReorder: ReadStore<boolean>
+  groupUsesOptionColors: ReadStore<boolean>
+  fillColumnColor: ReadStore<boolean>
+  cardsPerColumn: ReadStore<KanbanCardsPerColumn>
+}
+
+export interface DocumentSource {
+  records: EntitySource<RecordId, DataRecord>
+  fields: EntitySource<FieldId, CustomField>
+  views: EntitySource<ViewId, View>
+}
+
+export interface ActiveSource {
+  view: {
+    ready: ReadStore<boolean>
+    id: ReadStore<ViewId | undefined>
+    type: ReadStore<View['type'] | undefined>
+    current: ReadStore<View | undefined>
+  }
+  items: EntitySource<ItemId, ViewItem> & {
+    index: KeyedReadStore<ItemId, number | undefined>
+  }
+  sections: SectionSource
+  fields: {
+    all: EntitySource<FieldId, Field>
+    custom: EntitySource<FieldId, CustomField>
+  }
+  query: ActiveQuerySource
+  table: ActiveTableSource
+  gallery: ActiveGallerySource
+  kanban: ActiveKanbanSource
+}
+
+export interface EngineSource {
+  doc: DocumentSource
+  active: ActiveSource
+}
+
 export interface GalleryState {
   groupUsesOptionColors: boolean
   canReorder: boolean
@@ -232,22 +322,13 @@ export interface KanbanState {
   canReorder: boolean
 }
 
-export interface ActiveViewSelectApi {
-  <T>(
-    selector: (state: ViewState | undefined) => T,
-    isEqual?: Equality<T>
-  ): ReadStore<T>
-}
-
 export interface GalleryApi {
-  state: ReadStore<GalleryState | undefined>
   setWrap: (value: boolean) => void
   setSize: (value: CardSize) => void
   setLayout: (value: CardLayout) => void
 }
 
 export interface KanbanApi {
-  state: ReadStore<KanbanState | undefined>
   setWrap: (value: boolean) => void
   setSize: (value: CardSize) => void
   setLayout: (value: CardLayout) => void
@@ -284,7 +365,6 @@ export interface ActiveViewApi {
   id: ReadStore<ViewId | undefined>
   config: ReadStore<View | undefined>
   state: ReadStore<ViewState | undefined>
-  select: ActiveViewSelectApi
   read: ActiveViewReadApi
   changeType: (type: ViewType) => void
   search: {
@@ -360,17 +440,86 @@ export interface ActiveViewApi {
   cells: ActiveCellsApi
 }
 
-export interface DocumentEntitySelectApi<TId, T> {
-  ids: ReadStore<readonly TId[]>
-  all: ReadStore<readonly T[]>
-  byId: KeyedReadStore<TId, T | undefined>
+export interface DocumentPatch {
+  records?: {
+    ids?: readonly RecordId[]
+    values?: KeyedStorePatch<RecordId, DataRecord | undefined>
+  }
+  fields?: {
+    ids?: readonly FieldId[]
+    values?: KeyedStorePatch<FieldId, CustomField | undefined>
+  }
+  views?: {
+    ids?: readonly ViewId[]
+    values?: KeyedStorePatch<ViewId, View | undefined>
+  }
 }
 
-export interface DocumentSelectApi {
-  document: ReadStore<DataDoc>
-  records: DocumentEntitySelectApi<RecordId, DataRecord>
-  fields: DocumentEntitySelectApi<CustomFieldId, CustomField>
-  views: DocumentEntitySelectApi<ViewId, View>
+export interface ActivePatch {
+  view?: {
+    ready?: boolean
+    id?: ViewId
+    type?: View['type']
+    value?: View | undefined
+  }
+  items?: {
+    ids?: readonly ItemId[]
+    values?: KeyedStorePatch<ItemId, ViewItem | undefined>
+    index?: KeyedStorePatch<ItemId, number | undefined>
+  }
+  sections?: {
+    keys?: readonly SectionKey[]
+    values?: KeyedStorePatch<SectionKey, Section | undefined>
+    itemIds?: KeyedStorePatch<SectionKey, readonly ItemId[] | undefined>
+    summary?: KeyedStorePatch<SectionKey, CalculationCollection | undefined>
+  }
+  fields?: {
+    all?: {
+      ids?: readonly FieldId[]
+      values?: KeyedStorePatch<FieldId, Field | undefined>
+    }
+    custom?: {
+      ids?: readonly FieldId[]
+      values?: KeyedStorePatch<FieldId, CustomField | undefined>
+    }
+  }
+  query?: {
+    search?: ViewSearchProjection
+    filters?: ViewFilterProjection
+    sort?: ViewSortProjection
+    group?: ViewGroupProjection
+    grouped?: boolean
+    groupFieldId?: FieldId | ''
+    filterFieldIds?: readonly FieldId[]
+    sortFieldIds?: readonly FieldId[]
+    sortDir?: KeyedStorePatch<FieldId, SortDirection | undefined>
+  }
+  table?: {
+    wrap?: boolean
+    showVerticalLines?: boolean
+    calc?: KeyedStorePatch<FieldId, CalculationMetric | undefined>
+  }
+  gallery?: {
+    wrap?: boolean
+    size?: CardSize
+    layout?: CardLayout
+    canReorder?: boolean
+    groupUsesOptionColors?: boolean
+  }
+  kanban?: {
+    wrap?: boolean
+    size?: CardSize
+    layout?: CardLayout
+    canReorder?: boolean
+    groupUsesOptionColors?: boolean
+    fillColumnColor?: boolean
+    cardsPerColumn?: KanbanCardsPerColumn
+  }
+}
+
+export interface EnginePatch {
+  doc?: DocumentPatch
+  active?: ActivePatch
 }
 
 export interface ViewsApi {
@@ -633,7 +782,8 @@ export interface PerformanceApi {
 }
 
 export interface Engine {
-  select: DocumentSelectApi
+  read: EngineReadApi
+  source: EngineSource
   active: ActiveViewApi
   views: ViewsApi
   fields: FieldsApi

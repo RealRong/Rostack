@@ -17,6 +17,5 @@ export const createGalleryApi = (
   })),
   setLayout: value => base.patch(view => ({
     options: setGalleryCardLayout(view.options, value)
-  })),
-  state: base.galleryState
+  }))
 })

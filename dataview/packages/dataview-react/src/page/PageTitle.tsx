@@ -39,7 +39,11 @@ export interface PageTitleProps {}
 
 export const PageTitle = (_props: PageTitleProps) => {
   const dataView = useDataView()
-  const document = useDataViewValue(dataView => dataView.engine.select.document)
+  useDataViewValue(dataView => dataView.engine.source.doc.records.ids)
+  useDataViewValue(dataView => dataView.engine.source.doc.fields.ids)
+  useDataViewValue(dataView => dataView.engine.source.doc.views.ids)
+  useDataViewValue(dataView => dataView.engine.source.active.view.current)
+  const document = dataView.engine.read.document()
   const currentPreset = readPerfPresetMeta(document)
   const [busyPresetId, setBusyPresetId] = useState<PerfPresetId | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)

@@ -134,7 +134,7 @@ describe('data view runtime regressions', () => {
 
     const unsubscribeToolbar = runtime.model.page.toolbar.subscribe(() => {})
     const unsubscribeBody = runtime.model.page.body.subscribe(() => {})
-    const unsubscribeBoardBase = runtime.model.kanban.boardBase.subscribe(() => {})
+    const unsubscribeBoard = runtime.model.kanban.board.subscribe(() => {})
 
     expect(() => {
       engine.views.open(VIEW_BOARD)
@@ -142,12 +142,12 @@ describe('data view runtime regressions', () => {
 
     const itemId = engine.active.state.get()?.items.ids[0]
     expect(runtime.model.page.toolbar.get().currentView?.id).toBe(VIEW_BOARD)
-    expect(runtime.model.kanban.boardBase.get()?.viewId).toBe(VIEW_BOARD)
+    expect(runtime.model.kanban.board.get()?.viewId).toBe(VIEW_BOARD)
     expect(itemId).toBeDefined()
     expect(() => runtime.model.kanban.card.get(itemId!)).not.toThrow()
     expect(() => runtime.model.kanban.content.get(itemId!)).not.toThrow()
 
-    unsubscribeBoardBase()
+    unsubscribeBoard()
     unsubscribeBody()
     unsubscribeToolbar()
     runtime.dispose()

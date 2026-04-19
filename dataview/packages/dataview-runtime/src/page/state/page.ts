@@ -1,15 +1,13 @@
 import type {
-  DataDoc,
+  CustomField,
+  FilterRule,
   View,
-  ViewId,
-  FilterRule
+  ViewId
 } from '@dataview/core/contracts'
-import {
-  getDocumentCustomFields
-} from '@dataview/core/document'
 import {
   createDerivedStore,
   read,
+  sameIdOrder,
   type ReadStore
 } from '@shared/core'
 import {
@@ -25,11 +23,10 @@ import type {
 } from '@dataview/runtime/page/session/types'
 
 const resolveQueryBarEntry = (
-  document: DataDoc,
-  activeViewId: ViewId | undefined,
+  activeView: View | undefined,
   entry: QueryBarEntry | null
 ): QueryBarEntry | null => {
-  if (!entry || !activeViewId) {
+  if (!entry || !activeView) {
     return null
   }
 
@@ -37,20 +34,13 @@ const resolveQueryBarEntry = (
     return entry
   }
 
-  const activeView = document.views.byId[activeViewId]
-  if (!activeView) {
-    return null
-  }
-
-  const view = activeView
-
   if (entry.kind === 'sort') {
-    return view.sort.length
+    return activeView.sort.length
       ? { kind: 'sort' }
       : null
   }
 
-  const rule = view.filter.rules[entry.index] as FilterRule | undefined
+  const rule = activeView.filter.rules[entry.index] as FilterRule | undefined
 
   return rule
     ? {
@@ -61,16 +51,14 @@ const resolveQueryBarEntry = (
 }
 
 export const queryBarState = (
-  document: DataDoc,
-  activeViewId: ViewId | undefined,
+  activeView: View | undefined,
   queryState: QueryBarState
 ): QueryBarState => {
-  const activeView = activeViewId
-    ? document.views.byId[activeViewId]
-    : undefined
-  const view = activeView
-  const hasEntries = Boolean(view && (view.filter.rules.length > 0 || view.sort.length > 0))
-  const route = resolveQueryBarEntry(document, activeViewId, queryState.route)
+  const hasEntries = Boolean(
+    activeView
+    && (activeView.filter.rules.length > 0 || activeView.sort.length > 0)
+  )
+  const route = resolveQueryBarEntry(activeView, queryState.route)
 
   return {
     visible: queryState.visible && hasEntries,
@@ -79,7 +67,7 @@ export const queryBarState = (
 }
 
 export const settingsState = (input: {
-  document: DataDoc
+  fields: readonly CustomField[]
   activeViewId: ViewId | undefined
   activeViewType: View['type'] | undefined
   settings: SettingsState
@@ -88,7 +76,7 @@ export const settingsState = (input: {
   route: input.activeViewId
     ? normalizeSettingsRoute(
         input.settings.route,
-        getDocumentCustomFields(input.document),
+        input.fields,
         true,
         input.activeViewType
       )
@@ -96,9 +84,9 @@ export const settingsState = (input: {
 })
 
 export const pageState = (input: {
-  document: DataDoc
+  fields: readonly CustomField[]
   activeViewId: ViewId | undefined
-  activeViewType: View['type'] | undefined
+  activeView: View | undefined
   page: PageSessionState
   valueEditorOpen: boolean
 }): PageState => {
@@ -107,11 +95,11 @@ export const pageState = (input: {
     : null
 
   return {
-    query: queryBarState(input.document, input.activeViewId, input.page.query),
+    query: queryBarState(input.activeView, input.page.query),
     settings: settingsState({
-      document: input.document,
+      fields: input.fields,
       activeViewId: input.activeViewId,
-      activeViewType: input.activeViewType,
+      activeViewType: input.activeView?.type,
       settings: input.page.settings
     }),
     valueEditorOpen: input.valueEditorOpen,
@@ -120,17 +108,25 @@ export const pageState = (input: {
 }
 
 export const createPageStateStore = (options: {
-  document: ReadStore<DataDoc>
+  fields: ReadStore<readonly CustomField[]>
   activeViewId: ReadStore<ViewId | undefined>
   activeView: ReadStore<View | undefined>
   page: ReadStore<PageSessionState>
   valueEditorOpen: ReadStore<boolean>
 }) => createDerivedStore<PageState>({
   get: () => pageState({
-    document: read(options.document),
+    fields: read(options.fields),
     activeViewId: read(options.activeViewId),
-    activeViewType: read(options.activeView)?.type,
+    activeView: read(options.activeView),
     page: read(options.page),
     valueEditorOpen: read(options.valueEditorOpen)
-  })
+  }),
+  isEqual: (left, right) => (
+    left.lock === right.lock
+    && left.valueEditorOpen === right.valueEditorOpen
+    && left.query.visible === right.query.visible
+    && left.query.route === right.query.route
+    && left.settings.visible === right.settings.visible
+    && left.settings.route === right.settings.route
+  )
 })

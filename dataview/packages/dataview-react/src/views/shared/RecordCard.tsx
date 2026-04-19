@@ -14,8 +14,8 @@ import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
 import {
-  type RecordCardContentData,
-  type RecordCardData
+  type Card,
+  type CardContent as CardContentData
 } from '@dataview/runtime'
 import { shouldCapturePointer } from '@shared/dom'
 import { cn } from '@shared/ui/utils'
@@ -59,17 +59,17 @@ export interface RecordCardMount {
 }
 
 export interface RecordCardProps {
-  card: RecordCardData
-  content: RecordCardContentData
+  card: Card
+  content: CardContentData
   interaction: RecordCardInteraction
   appearance: RecordCardAppearance
   mount?: RecordCardMount
 }
 
 const fieldRef = (input: {
-  viewId: RecordCardData['viewId']
-  itemId: RecordCardData['itemId']
-  recordId: RecordCardData['recordId']
+  viewId: Card['viewId']
+  itemId: Card['itemId']
+  recordId: Card['recordId']
   fieldId: string
 }): ViewFieldRef => ({
   viewId: input.viewId,

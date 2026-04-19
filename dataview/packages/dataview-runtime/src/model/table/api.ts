@@ -1,22 +1,6 @@
 import type {
   FieldId
 } from '@dataview/core/contracts'
-import type {
-  ViewState
-} from '@dataview/engine'
-import type {
-  DataViewTableModel,
-  TableBase,
-  TableFooterData,
-  TableHeaderData,
-  TableSectionData
-} from '@dataview/runtime/model/table/types'
-import {
-  getSorterFieldId
-} from '@dataview/runtime/model/queryFields'
-import {
-  readActiveTypedViewState
-} from '@dataview/runtime/model/shared'
 import {
   createDerivedStore,
   createKeyedDerivedStore,
@@ -24,41 +8,47 @@ import {
   sameMap,
   type ReadStore
 } from '@shared/core'
+import type {
+  DataViewSource
+} from '@dataview/runtime/dataview/types'
+import type {
+  DataViewTableModel,
+  TableBody,
+  TableColumn,
+  TableSection,
+  TableSummary
+} from '@dataview/runtime/model/table/types'
 
-const sameBase = (
-  left: TableBase | null,
-  right: TableBase | null
+const sameBody = (
+  left: TableBody | null,
+  right: TableBody | null
 ) => left === right || (
   !!left
   && !!right
   && left.viewId === right.viewId
-  && left.columns === right.columns
-  && left.items === right.items
-  && left.sections === right.sections
+  && left.empty === right.empty
   && left.grouped === right.grouped
-  && left.showVerticalLines === right.showVerticalLines
   && left.wrap === right.wrap
+  && left.showVerticalLines === right.showVerticalLines
+  && left.columnIds === right.columnIds
+  && left.sectionKeys === right.sectionKeys
 )
 
-const sameHeaderData = (
-  left: TableHeaderData,
-  right: TableHeaderData
-) => left.grouped === right.grouped
-  && left.sortDirection === right.sortDirection
-  && left.calculationMetric === right.calculationMetric
-
-const sameFooterData = (
-  left: TableFooterData | undefined,
-  right: TableFooterData | undefined
+const sameColumn = (
+  left: TableColumn | undefined,
+  right: TableColumn | undefined
 ) => left === right || (
   !!left
   && !!right
-  && sameMap(left.summaryByFieldId, right.summaryByFieldId)
+  && left.field === right.field
+  && left.grouped === right.grouped
+  && left.sortDir === right.sortDir
+  && left.calc === right.calc
 )
 
-const sameSectionData = (
-  left: TableSectionData | undefined,
-  right: TableSectionData | undefined
+const sameSection = (
+  left: TableSection | undefined,
+  right: TableSection | undefined
 ) => left === right || (
   !!left
   && !!right
@@ -68,72 +58,63 @@ const sameSectionData = (
   && left.count === right.count
 )
 
+const sameSummary = (
+  left: TableSummary | undefined,
+  right: TableSummary | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && sameMap(left.byField, right.byField)
+)
+
 export const createTableModel = (input: {
-  activeStateStore: ReadStore<ViewState | undefined>
+  source: DataViewSource
 }): DataViewTableModel => {
-  const base = createDerivedStore<TableBase | null>({
+  const body = createDerivedStore<TableBody | null>({
     get: () => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'table')
-      if (!active) {
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'table') {
         return null
       }
 
       return {
-        viewId: active.view.id,
-        columns: active.fields.all,
-        items: active.items,
-        sections: active.sections,
-        grouped: Boolean(active.view.group),
-        showVerticalLines: active.view.options.table.showVerticalLines,
-        wrap: active.view.options.table.wrap
+        viewId: view.id,
+        empty: read(input.source.active.items.ids).length === 0,
+        grouped: read(input.source.active.query.grouped),
+        wrap: read(input.source.active.table.wrap),
+        showVerticalLines: read(input.source.active.table.showVerticalLines),
+        columnIds: read(input.source.active.fields.all.ids),
+        sectionKeys: read(input.source.active.sections.keys)
       }
     },
-    isEqual: sameBase
+    isEqual: sameBody
   })
 
-  const header = createKeyedDerivedStore<FieldId, TableHeaderData>({
-    keyOf: fieldId => fieldId,
+  const column = createKeyedDerivedStore<FieldId, TableColumn | undefined>({
     get: fieldId => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'table')
-      if (!active) {
-        return {
-          grouped: false
-        }
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'table') {
+        return undefined
       }
 
       return {
-        grouped: (
-          active.query.group.active === true
-          && active.query.group.fieldId === fieldId
-        ),
-        sortDirection: active.query.sort.rules.find(
-          entry => getSorterFieldId(entry.sorter) === fieldId
-        )?.sorter.direction,
-        calculationMetric: active.view.calc[fieldId]
+        field: read(input.source.active.fields.all, fieldId),
+        grouped: read(input.source.active.query.groupFieldId) === fieldId,
+        sortDir: read(input.source.active.query.sortDir, fieldId),
+        calc: read(input.source.active.table.calc, fieldId)
       }
     },
-    isEqual: sameHeaderData
+    isEqual: sameColumn
   })
 
-  const footer = createKeyedDerivedStore<string, TableFooterData | undefined>({
-    keyOf: scopeId => scopeId,
-    get: scopeId => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'table')
-      const summary = active?.summaries.get(scopeId)
-      return summary
-        ? {
-            summaryByFieldId: summary.byField
-          }
-        : undefined
-    },
-    isEqual: sameFooterData
-  })
-
-  const section = createKeyedDerivedStore<string, TableSectionData | undefined>({
-    keyOf: key => key,
+  const section = createKeyedDerivedStore<string, TableSection | undefined>({
     get: key => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'table')
-      const value = active?.sections.get(key)
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'table') {
+        return undefined
+      }
+
+      const value = read(input.source.active.sections, key)
       return value
         ? {
             key: value.key,
@@ -143,13 +124,30 @@ export const createTableModel = (input: {
           }
         : undefined
     },
-    isEqual: sameSectionData
+    isEqual: sameSection
+  })
+
+  const summary = createKeyedDerivedStore<string, TableSummary | undefined>({
+    get: key => {
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'table') {
+        return undefined
+      }
+
+      const value = read(input.source.active.sections.summary, key)
+      return value
+        ? {
+            byField: value.byField
+          }
+        : undefined
+    },
+    isEqual: sameSummary
   })
 
   return {
-    base,
-    header,
-    footer,
-    section
+    body,
+    column,
+    section,
+    summary
   }
 }

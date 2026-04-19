@@ -3,15 +3,13 @@ import type {
   CardSize,
   CustomField,
   RecordId,
-  ViewId,
-  View
+  ViewId
 } from '@dataview/core/contracts'
 import type {
-  ItemId,
-  ViewState
+  ItemId
 } from '@dataview/engine'
 
-export interface RecordCardData {
+export interface Card {
   viewId: ViewId
   itemId: ItemId
   recordId: RecordId
@@ -24,29 +22,14 @@ export interface RecordCardData {
   editing: boolean
 }
 
-export interface RecordCardPropertyData {
+export interface CardProperty {
   field: CustomField
   value: unknown
 }
 
-export interface RecordCardContentData {
+export interface CardContent {
   titleText: string
   placeholderText: string
-  properties: readonly RecordCardPropertyData[]
+  properties: readonly CardProperty[]
   hasProperties: boolean
 }
-
-export type ActiveTypedViewState<TType extends View['type']> = ViewState & {
-  view: View & {
-    type: TType
-  }
-}
-
-export const readActiveTypedViewState = <TType extends View['type']>(
-  state: ViewState | undefined,
-  type: TType
-): ActiveTypedViewState<TType> | undefined => (
-  state?.view.type === type
-    ? state as ActiveTypedViewState<TType>
-    : undefined
-)

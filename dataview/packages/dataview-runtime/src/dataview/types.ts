@@ -1,14 +1,9 @@
 import type {
-  DataDoc,
-  View,
-  ViewId
-} from '@dataview/core/contracts'
-import type {
   Engine,
-  ItemList,
-  ViewState
+  ItemId
 } from '@dataview/engine'
 import type {
+  KeyedReadStore,
   ReadStore
 } from '@shared/core'
 import type {
@@ -19,40 +14,49 @@ import type {
   InlineSessionTarget
 } from '@dataview/runtime/inlineSession'
 import type {
+  DataViewModel
+} from '@dataview/runtime/model'
+import type {
+  MarqueeIntentApi,
+  MarqueeSessionApi
+} from '@dataview/runtime/marquee'
+import type {
   PageState,
   PageSessionApi,
-  PageSessionInput
+  PageSessionInput,
+  QueryBarEntry
 } from '@dataview/runtime/page/session/types'
 import type {
   ItemSelectionController,
   ItemSelectionSnapshot
 } from '@dataview/runtime/selection'
 import type {
-  MarqueeIntentApi,
-  MarqueeSessionApi
-} from '@dataview/runtime/marquee'
-import type {
   ValueEditorController,
   ValueEditorSession
 } from '@dataview/runtime/valueEditor'
-import type {
-  DataViewModel
-} from '@dataview/runtime/model'
 
-export interface DataViewReadApi {
-  engine: Engine
-  document: ReadStore<DataDoc>
-  activeViewId: ReadStore<ViewId | undefined>
-  activeView: ReadStore<View | undefined>
-  activeItems: ReadStore<ItemList | undefined>
-  activeViewState: ReadStore<ViewState | undefined>
+export type InlineKey = string
+
+export interface PageSource {
+  queryVisible: ReadStore<boolean>
+  queryRoute: ReadStore<QueryBarEntry | null>
 }
 
-export interface DataViewWriteApi {
-  engine: Engine
-  active: Engine['active']
-  records: Engine['records']
-  views: Engine['views']
+export interface SelectionSource {
+  member: KeyedReadStore<ItemId, boolean>
+  preview: KeyedReadStore<ItemId, boolean | null>
+}
+
+export interface InlineSource {
+  editing: KeyedReadStore<InlineKey, boolean>
+}
+
+export interface DataViewSource {
+  doc: Engine['source']['doc']
+  active: Engine['source']['active']
+  page: PageSource
+  selection: SelectionSource
+  inline: InlineSource
 }
 
 export interface DataViewSessionState {
@@ -96,15 +100,9 @@ export interface CreateDataViewRuntimeInput {
 
 export interface DataViewRuntime {
   engine: Engine
-  read: DataViewReadApi
-  write: DataViewWriteApi
+  source: DataViewSource
   session: DataViewSessionApi
   intent: DataViewIntentApi
   model: DataViewModel
-  page: DataViewSessionApi['page']
-  selection: ItemSelectionController
-  inlineSession: InlineSessionApi
-  createRecord: CreateRecordApi
-  valueEditor: ValueEditorController
   dispose(): void
 }

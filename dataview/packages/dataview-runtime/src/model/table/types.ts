@@ -1,53 +1,53 @@
 import type {
-  Field,
-  FieldId,
-  CalculationMetric,
-  ViewId
-} from '@dataview/core/contracts'
-import type {
   CalculationResult
 } from '@dataview/core/calculation'
 import type {
-  ItemList,
+  CalculationMetric,
+  Field,
+  FieldId,
+  SortDirection,
+  ViewId
+} from '@dataview/core/contracts'
+import type {
   Section,
-  SectionKey,
-  SectionList
+  SectionKey
 } from '@dataview/engine'
 import type {
   KeyedReadStore,
   ReadStore
 } from '@shared/core'
 
-export interface TableBase {
+export interface TableBody {
   viewId: ViewId
-  columns: readonly Field[]
-  items: ItemList
-  sections: SectionList
+  empty: boolean
   grouped: boolean
-  showVerticalLines: boolean
   wrap: boolean
+  showVerticalLines: boolean
+  columnIds: readonly FieldId[]
+  sectionKeys: readonly SectionKey[]
 }
 
-export interface TableHeaderData {
+export interface TableColumn {
+  field?: Field
   grouped: boolean
-  sortDirection?: 'asc' | 'desc'
-  calculationMetric?: CalculationMetric
+  sortDir?: SortDirection
+  calc?: CalculationMetric
 }
 
-export interface TableFooterData {
-  summaryByFieldId: ReadonlyMap<FieldId, CalculationResult>
-}
-
-export interface TableSectionData {
+export interface TableSection {
   key: SectionKey
   label: Section['label']
   collapsed: boolean
   count: number
 }
 
+export interface TableSummary {
+  byField: ReadonlyMap<FieldId, CalculationResult>
+}
+
 export interface DataViewTableModel {
-  base: ReadStore<TableBase | null>
-  header: KeyedReadStore<FieldId, TableHeaderData>
-  footer: KeyedReadStore<string, TableFooterData | undefined>
-  section: KeyedReadStore<SectionKey, TableSectionData | undefined>
+  body: ReadStore<TableBody | null>
+  column: KeyedReadStore<FieldId, TableColumn | undefined>
+  section: KeyedReadStore<SectionKey, TableSection | undefined>
+  summary: KeyedReadStore<SectionKey, TableSummary | undefined>
 }

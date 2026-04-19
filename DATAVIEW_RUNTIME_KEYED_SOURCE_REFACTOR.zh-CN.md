@@ -78,22 +78,22 @@ engine.source
 
 这次重构统一采用下面的命名规则，避免继续出现 `Base`、`Data`、`ById`、`Vm` 这类重复后缀。
 
-- 单数名词：keyed source
-  - `record`
-  - `field`
-  - `view`
-  - `item`
-  - `section`
+- collection namespace 用复数
+  - `records`
+  - `fields`
+  - `views`
+  - `items`
+  - `sections`
+- collection 内部叶子保持最短
+  - `ids`
+  - `keys`
+  - `get`
+  - `index`
   - `summary`
-- 复数加 `Ids` / `Keys`：有序 id 列表
-  - `recordIds`
-  - `fieldIds`
-  - `viewIds`
-  - `itemIds`
-  - `sectionKeys`
-- 单个标量状态：直接用领域词
-  - `viewId`
-  - `viewType`
+- namespace 内的标量状态直接用领域词
+  - `id`
+  - `type`
+  - `current`
   - `grouped`
   - `groupFieldId`
   - `sortDir`
@@ -110,6 +110,55 @@ engine.source
   - `TableSection`
   - `TableSummary`
   - `PageQuery`
+
+## API 形态规则
+
+这次重构把 API 明确拆成两层：
+
+- 消费侧 read API
+  - 给 `runtime.model`、`react`、少量命令式读取使用。
+  - 目标是短、稳、低心智负担。
+  - 这层保持扁平，不为了“结构对称”强行再套一层 namespace。
+- 装配侧 patch API
+  - 给 `engine` / `runtime` 内部 source 装配使用。
+  - 目标是结构清晰、可批量 patch、能和 source 边界一一对应。
+  - 这层必须 namespace 化，且 patch namespace 必须镜像 read source namespace。
+
+最终规则：
+
+- read API 优先短名：
+  - `records.ids`
+  - `records.get(id)`
+  - `items.ids`
+  - `items.get(id)`
+  - `sections.keys`
+  - `sections.get(key)`
+- patch API 优先结构对齐：
+  - `doc.records`
+  - `active.items`
+  - `active.sections`
+  - `active.query`
+  - `active.table`
+  - `active.gallery`
+  - `active.kanban`
+- keyed patch 字段统一用：
+  - `values`
+  - `index`
+  - `itemIds`
+  - `summary`
+- 有序列表统一用：
+  - `ids`
+  - `keys`
+- patch 类型不再带 `Source` 后缀：
+  - `DocumentPatch`
+  - `ActivePatch`
+  - `DataViewPatch`
+
+这样做的原因是：
+
+- read 面是高频消费面，越短越好。
+- patch 面是内部装配面，越对齐 source 结构越好。
+- 同一个 API 不再同时承担“好写”和“好装配”两种目标。
 
 ## 最终公共 API
 
@@ -149,52 +198,60 @@ interface EngineSource {
 #### 2.1 DocumentSource
 
 ```ts
+interface EntitySource<K, T> extends KeyedReadStore<K, T | undefined> {
+  ids: ReadStore<readonly K[]>
+}
+
 interface DocumentSource {
-  document: ReadStore<DataDoc>
-
-  recordIds: ReadStore<readonly RecordId[]>
-  record: KeyedReadStore<RecordId, DataRecord | undefined>
-
-  fieldIds: ReadStore<readonly FieldId[]>
-  field: KeyedReadStore<FieldId, CustomField | undefined>
-
-  viewIds: ReadStore<readonly ViewId[]>
-  view: KeyedReadStore<ViewId, View | undefined>
+  records: EntitySource<RecordId, DataRecord>
+  fields: EntitySource<FieldId, CustomField>
+  views: EntitySource<ViewId, View>
 }
 ```
 
-命名上不再用 `records.byId` / `fields.byId` / `views.byId`。直接用：
+这里有一个明确取舍：
 
-- `doc.record`
-- `doc.field`
-- `doc.view`
+- `source.doc` 不再暴露 whole `document` 热 store
+- whole `DataDoc` 降到 `engine.read` 这类冷路径
+- `source.doc` 只保留真正热的 entity source：
+  - `records`
+  - `fields`
+  - `views`
 
-这样更短，也更接近“这是 keyed source”这个语义。
+消费方式统一成：
+
+- `source.doc.records.ids`
+- `source.doc.records.get(recordId)`
+- `source.doc.fields.get(fieldId)`
+- `source.doc.views.get(viewId)`
 
 #### 2.2 ActiveSource
 
 ```ts
-interface ActiveSource {
-  ready: ReadStore<boolean>
-  viewId: ReadStore<ViewId | undefined>
-  viewType: ReadStore<View['type'] | undefined>
-  view: ReadStore<View | undefined>
-
-  itemIds: ReadStore<readonly ItemId[]>
-  item: KeyedReadStore<ItemId, ViewItem | undefined>
-  itemIndex: KeyedReadStore<ItemId, number | undefined>
-
-  sectionKeys: ReadStore<readonly SectionKey[]>
-  section: KeyedReadStore<SectionKey, Section | undefined>
-  sectionItemIds: KeyedReadStore<SectionKey, readonly ItemId[] | undefined>
-
-  fieldIds: ReadStore<readonly FieldId[]>
-  field: KeyedReadStore<FieldId, Field | undefined>
-
-  customFieldIds: ReadStore<readonly FieldId[]>
-  customField: KeyedReadStore<FieldId, CustomField | undefined>
-
+interface SectionSource extends KeyedReadStore<SectionKey, Section | undefined> {
+  keys: ReadStore<readonly SectionKey[]>
+  itemIds: KeyedReadStore<SectionKey, readonly ItemId[] | undefined>
   summary: KeyedReadStore<SectionKey, CalculationCollection | undefined>
+}
+
+interface ActiveSource {
+  view: {
+    ready: ReadStore<boolean>
+    id: ReadStore<ViewId | undefined>
+    type: ReadStore<View['type'] | undefined>
+    current: ReadStore<View | undefined>
+  }
+
+  items: EntitySource<ItemId, ViewItem> & {
+    index: KeyedReadStore<ItemId, number | undefined>
+  }
+
+  sections: SectionSource
+
+  fields: {
+    all: EntitySource<FieldId, Field>
+    custom: EntitySource<FieldId, CustomField>
+  }
 
   query: ActiveQuerySource
   table: ActiveTableSource
@@ -202,6 +259,36 @@ interface ActiveSource {
   kanban: ActiveKanbanSource
 }
 ```
+
+`ActiveSource` 不再平铺成：
+
+- `viewId`
+- `itemIds`
+- `sectionKeys`
+- `fieldIds`
+- `summary`
+
+而是按领域收成 8 个 namespace：
+
+- `view`
+- `items`
+- `sections`
+- `fields`
+- `query`
+- `table`
+- `gallery`
+- `kanban`
+
+消费方式统一成：
+
+- `source.active.view.id`
+- `source.active.items.ids`
+- `source.active.items.get(itemId)`
+- `source.active.sections.keys`
+- `source.active.sections.get(sectionKey)`
+- `source.active.sections.summary.get(sectionKey)`
+- `source.active.fields.all.get(fieldId)`
+- `source.active.fields.custom.get(fieldId)`
 
 #### 2.3 ActiveQuerySource
 
@@ -253,7 +340,7 @@ interface ActiveKanbanSource {
 
 这里明确做一个取舍：
 
-- `active.viewType` 仍然存在，用于 coarse-grained 顶层判断。
+- `active.view.type` 仍然存在，用于 coarse-grained 顶层判断。
 - 但 view model 不再在每个 keyed getter 里调用 `readActiveTypedViewState(...)`。
 - typed source 自身负责在 view type 不匹配时返回空值或默认值。
 
@@ -370,6 +457,242 @@ interface KanbanModel {
 }
 ```
 
+### 5. 装配 API
+
+这层不是给 `react` 直接消费的，而是给 source runtime 自己用的内部 API。这里做 namespace 化，且严格镜像 source 结构。
+
+#### 5.1 Source Runtime
+
+```ts
+interface EngineSourceRuntime {
+  source: EngineSource
+  apply(next: EnginePatch): void
+  clear(): void
+}
+
+interface DataViewSourceRuntime {
+  source: DataViewSource
+  apply(next: DataViewPatch): void
+  clear(): void
+}
+```
+
+这里统一用：
+
+- `source`
+  - 暴露稳定 read surface
+- `apply(next)`
+  - 应用 namespaced patch
+- `clear()`
+  - 清空当前 source 内容，通常用于 view 切换、dispose 或 reset
+
+不再引入：
+
+- `commit`
+- `flush`
+- `sync`
+- `mutate`
+
+原因是这些词在 dataview 里已经分别有既有含义，`apply` 最中性，也最不容易和持久化写入混淆。
+
+#### 5.2 EnginePatch
+
+```ts
+interface EnginePatch {
+  doc?: DocumentPatch
+  active?: ActivePatch
+}
+```
+
+#### 5.3 DocumentPatch
+
+```ts
+interface DocumentPatch {
+  records?: {
+    ids?: readonly RecordId[]
+    values?: KeyedStorePatch<RecordId, DataRecord>
+  }
+  fields?: {
+    ids?: readonly FieldId[]
+    values?: KeyedStorePatch<FieldId, CustomField>
+  }
+  views?: {
+    ids?: readonly ViewId[]
+    values?: KeyedStorePatch<ViewId, View>
+  }
+}
+```
+
+这里的设计取舍是：
+
+- read API 仍然是 `records.ids` / `records.get(id)`
+- patch API 改成 `records.ids` / `records.values`
+
+这样用户读的时候短，内部 patch 的时候结构也清楚。
+
+#### 5.4 ActivePatch
+
+```ts
+interface ActivePatch {
+  view?: {
+    ready?: boolean
+    id?: ViewId
+    type?: View['type']
+    value?: View | undefined
+  }
+  items?: {
+    ids?: readonly ItemId[]
+    values?: KeyedStorePatch<ItemId, ViewItem>
+    index?: KeyedStorePatch<ItemId, number>
+  }
+  sections?: {
+    keys?: readonly SectionKey[]
+    values?: KeyedStorePatch<SectionKey, Section>
+    itemIds?: KeyedStorePatch<SectionKey, readonly ItemId[]>
+    summary?: KeyedStorePatch<SectionKey, CalculationCollection>
+  }
+  fields?: {
+    all?: {
+      ids?: readonly FieldId[]
+      values?: KeyedStorePatch<FieldId, Field>
+    }
+    custom?: {
+      ids?: readonly FieldId[]
+      values?: KeyedStorePatch<FieldId, CustomField>
+    }
+  }
+  query?: {
+    search?: ViewSearchProjection
+    filters?: ViewFilterProjection
+    sort?: ViewSortProjection
+    group?: ViewGroupProjection
+    grouped?: boolean
+    groupFieldId?: FieldId | ''
+    filterFieldIds?: readonly FieldId[]
+    sortFieldIds?: readonly FieldId[]
+    sortDir?: KeyedStorePatch<FieldId, SortDirection>
+  }
+  table?: {
+    wrap?: boolean
+    showVerticalLines?: boolean
+    calc?: KeyedStorePatch<FieldId, CalculationMetric>
+  }
+  gallery?: {
+    wrap?: boolean
+    size?: CardSize
+    layout?: CardLayout
+    canReorder?: boolean
+    groupUsesOptionColors?: boolean
+  }
+  kanban?: {
+    wrap?: boolean
+    size?: CardSize
+    layout?: CardLayout
+    canReorder?: boolean
+    groupUsesOptionColors?: boolean
+    fillColumnColor?: boolean
+    cardsPerColumn?: KanbanCardsPerColumn
+  }
+}
+```
+
+这是这次文档里最重要的 API 收敛点：
+
+- 不再使用扁平的 `ActiveSourcePatch`
+- 不再把 `itemIds`、`sectionKeys`、`summary`、`sortDir` 这类不同层级字段平铺到一个接口上
+- 每个 patch namespace 都直接对应一个 source namespace
+
+最终读写对照关系：
+
+- `source.active.view.id`
+  <- `patch.active.view.id`
+- `source.active.items.ids`
+  <- `patch.active.items.ids`
+- `source.active.items.get(itemId)`
+  <- `patch.active.items.values`
+- `source.active.sections.keys`
+  <- `patch.active.sections.keys`
+- `source.active.sections.get(sectionKey)`
+  <- `patch.active.sections.values`
+- `source.active.sections.summary.get(sectionKey)`
+  <- `patch.active.sections.summary`
+- `source.active.fields.all.ids`
+  <- `patch.active.fields.all.ids`
+- `source.active.fields.all.get(fieldId)`
+  <- `patch.active.fields.all.values`
+- `source.active.fields.custom.ids`
+  <- `patch.active.fields.custom.ids`
+- `source.active.fields.custom.get(fieldId)`
+  <- `patch.active.fields.custom.values`
+- `source.active.query.sortDir.get(fieldId)`
+  <- `patch.active.query.sortDir`
+- `source.active.table.calc.get(fieldId)`
+  <- `patch.active.table.calc`
+
+#### 5.5 DataViewPatch
+
+```ts
+interface DataViewPatch {
+  page?: {
+    queryVisible?: boolean
+    queryRoute?: QueryBarEntry | null
+  }
+  selection?: {
+    member?: KeyedStorePatch<ItemId, boolean>
+    preview?: KeyedStorePatch<ItemId, boolean | null>
+  }
+  inline?: {
+    editing?: KeyedStorePatch<InlineKey, boolean>
+  }
+}
+```
+
+这里也采用同样原则：
+
+- `runtime.source.page`
+  <- `patch.page`
+- `runtime.source.selection`
+  <- `patch.selection`
+- `runtime.source.inline`
+  <- `patch.inline`
+
+#### 5.6 Factory
+
+最终对外只保留两个 creator：
+
+```ts
+createEngineSourceRuntime()
+createDataViewSourceRuntime()
+```
+
+模块内部可以继续拆：
+
+```ts
+createDocumentSourceRuntime()
+createActiveSourceRuntime()
+```
+
+但这两个 helper 不进入最终对外 API。
+
+各 creator 都只返回：
+
+```ts
+{
+  source,
+  apply,
+  clear
+}
+```
+
+不再额外返回：
+
+- `stores`
+- `writers`
+- `builders`
+- `internals`
+
+这些都应该留在模块内部，不进入对外 API。
+
 ## 各 model 的最终依赖设计
 
 这一部分是整个方案最关键的约束。每个 model store 必须明确“允许依赖哪些 source，不允许依赖哪些 whole store”。
@@ -380,8 +703,8 @@ interface KanbanModel {
 
 允许依赖：
 
-- `active.viewType`
-- `active.itemIds`
+- `active.view.type`
+- `active.items.ids`
 
 不允许依赖：
 
@@ -401,30 +724,30 @@ interface PageBody {
 
 允许依赖：
 
-- `active.viewId`
-- `active.view`
+- `active.view.id`
+- `active.view.current`
 
 #### `page.toolbar`
 
 允许依赖：
 
-- `doc.viewIds`
-- `doc.view`
-- `active.viewId`
-- `active.view`
+- `doc.views.ids`
+- `doc.views`
+- `active.view.id`
+- `active.view.current`
 - `active.query.filters`
 - `active.query.sort`
-- `doc.fieldIds`
-- `doc.field`
+- `doc.fields.ids`
+- `doc.fields`
 - `page.queryVisible`
 - `page.queryRoute`
 
 额外规则：
 
 - `availableFilterFields`
-  - 只依赖 `doc.fieldIds` + `doc.field` + `active.query.filterFieldIds`
+  - 只依赖 `doc.fields.ids` + `doc.fields` + `active.query.filterFieldIds`
 - `availableSortFields`
-  - 只依赖 `doc.fieldIds` + `doc.field` + `active.query.sortFieldIds`
+  - 只依赖 `doc.fields.ids` + `doc.fields` + `active.query.sortFieldIds`
 - 不再从 whole `DataDoc` 或 whole `ViewState` 整体推导
 
 #### `page.query`
@@ -433,20 +756,20 @@ interface PageBody {
 
 - `page.queryVisible`
 - `page.queryRoute`
-- `active.view`
+- `active.view.current`
 - `active.query.filters`
 - `active.query.sort`
-- `doc.fieldIds`
-- `doc.field`
+- `doc.fields.ids`
+- `doc.fields`
 
 #### `page.settings`
 
 允许依赖：
 
-- `doc.viewIds`
-- `doc.fieldIds`
-- `doc.field`
-- `active.view`
+- `doc.views.ids`
+- `doc.fields.ids`
+- `doc.fields`
+- `active.view.current`
 - `active.query.filters`
 - `active.query.sort`
 - `active.query.group`
@@ -471,11 +794,11 @@ interface TableBody {
 
 允许依赖：
 
-- `active.viewId`
+- `active.view.id`
 - `active.query.grouped`
-- `active.itemIds`
-- `active.fieldIds`
-- `active.sectionKeys`
+- `active.items.ids`
+- `active.fields.all.ids`
+- `active.sections.keys`
 - `active.table.wrap`
 - `active.table.showVerticalLines`
 
@@ -506,10 +829,10 @@ interface TableColumn {
 
 允许依赖：
 
-- `active.field(fieldId)`
+- `active.fields.all.get(fieldId)`
 - `active.query.groupFieldId`
-- `active.query.sortDir(fieldId)`
-- `active.table.calc(fieldId)`
+- `active.query.sortDir.get(fieldId)`
+- `active.table.calc.get(fieldId)`
 
 不允许依赖：
 
@@ -521,7 +844,7 @@ interface TableColumn {
 
 允许依赖：
 
-- `active.section(sectionKey)`
+- `active.sections.get(sectionKey)`
 
 输出只保留 UI 需要的字段：
 
@@ -538,7 +861,7 @@ interface TableSection {
 
 允许依赖：
 
-- `active.summary(sectionKey)`
+- `active.sections.summary.get(sectionKey)`
 
 输出：
 
@@ -571,10 +894,10 @@ interface GalleryBody {
 
 允许依赖：
 
-- `active.viewId`
-- `active.itemIds`
+- `active.view.id`
+- `active.items.ids`
 - `active.query.grouped`
-- `active.sectionKeys`
+- `active.sections.keys`
 - `active.gallery.groupUsesOptionColors`
 
 不再把 `sectionCountByKey` 塞进 root body。
@@ -589,7 +912,7 @@ interface GalleryBody {
 
 允许依赖：
 
-- `active.section(sectionKey)`
+- `active.sections.get(sectionKey)`
 
 输出：
 
@@ -623,8 +946,8 @@ interface GalleryCard {
 
 允许依赖：
 
-- `active.viewId`
-- `active.item(itemId)`
+- `active.view.id`
+- `active.items.get(itemId)`
 - `active.gallery.size`
 - `active.gallery.layout`
 - `active.gallery.wrap`
@@ -659,10 +982,10 @@ interface CardProp {
 
 允许依赖：
 
-- `active.item(itemId)`
-- `doc.record(recordId)`
-- `active.customFieldIds`
-- `active.customField(fieldId)`
+- `active.items.get(itemId)`
+- `doc.records.get(recordId)`
+- `active.fields.custom.ids`
+- `active.fields.custom.get(fieldId)`
 
 这里不再依赖 `active.fields.custom` 整个字段对象数组。
 
@@ -686,11 +1009,11 @@ interface KanbanBoard {
 
 允许依赖：
 
-- `active.viewId`
+- `active.view.id`
 - `active.query.grouped`
 - `active.query.groupFieldId`
-- `active.field(groupFieldId)`
-- `active.sectionKeys`
+- `active.fields.all.get(groupFieldId)`
+- `active.sections.keys`
 - `active.kanban.fillColumnColor`
 - `active.kanban.groupUsesOptionColors`
 - `active.kanban.cardsPerColumn`
@@ -699,7 +1022,7 @@ interface KanbanBoard {
 
 允许依赖：
 
-- `active.section(sectionKey)`
+- `active.sections.get(sectionKey)`
 
 输出：
 
@@ -735,9 +1058,9 @@ interface KanbanCard {
 
 允许依赖：
 
-- `active.viewId`
-- `active.item(itemId)`
-- `active.section(item.sectionKey)`
+- `active.view.id`
+- `active.items.get(itemId)`
+- `active.sections.get(item.sectionKey)`
 - `active.kanban.size`
 - `active.kanban.layout`
 - `active.kanban.wrap`
@@ -751,10 +1074,10 @@ interface KanbanCard {
 
 允许依赖：
 
-- `active.item(itemId)`
-- `doc.record(recordId)`
-- `active.customFieldIds`
-- `active.customField(fieldId)`
+- `active.items.get(itemId)`
+- `doc.records.get(recordId)`
+- `active.fields.custom.ids`
+- `active.fields.custom.get(fieldId)`
 
 与 gallery 一样，content 只负责 record value + field projection，不再依赖 whole active state。
 
@@ -768,9 +1091,12 @@ interface KanbanCard {
 
 正确做法：
 
-- document commit 时直接 patch `record` / `field` / `view` keyed store
-- `recordIds` / `fieldIds` / `viewIds` 单独维护为 ordered id store
-- `document` whole store 保留给低频读取、序列化、调试
+- document commit 时先生成 `DocumentPatch`
+- 再通过 `engineSource.apply({ doc: patch })` 写入 source runtime
+- `records.values` / `fields.values` / `views.values` 直接 patch 到对应 keyed source
+- `records.ids` / `fields.ids` / `views.ids` 单独维护为 ordered id store
+- whole `DataDoc` 不再进入 `DocumentSource`
+- 整份 document 只保留在 `engine.read` 这类冷路径里
 
 也就是：
 
@@ -783,50 +1109,47 @@ interface KanbanCard {
 
 最终做法：
 
-- active snapshot 产出时，同时生成 `ActiveSourcePatch`
-- commit runtime 把 patch 写入各个 active source store
+- active snapshot 产出时，同时生成 `ActivePatch`
+- 再通过 `engineSource.apply({ active: patch })` 写入 active source runtime
 - keyed source 直接按 changed key patch
 
-建议的内部 patch 形态：
-
-```ts
-interface ActiveSourcePatch {
-  ready?: boolean
-  viewId?: ViewId
-  viewType?: View['type']
-  view?: View | undefined
-
-  itemIds?: readonly ItemId[]
-  item?: KeyedStorePatch<ItemId, ViewItem>
-  itemIndex?: KeyedStorePatch<ItemId, number>
-
-  sectionKeys?: readonly SectionKey[]
-  section?: KeyedStorePatch<SectionKey, Section>
-  sectionItemIds?: KeyedStorePatch<SectionKey, readonly ItemId[]>
-
-  fieldIds?: readonly FieldId[]
-  field?: KeyedStorePatch<FieldId, Field>
-
-  customFieldIds?: readonly FieldId[]
-  customField?: KeyedStorePatch<FieldId, CustomField>
-
-  summary?: KeyedStorePatch<SectionKey, CalculationCollection>
-
-  query?: ActiveQueryPatch
-  table?: ActiveTablePatch
-  gallery?: ActiveGalleryPatch
-  kanban?: ActiveKanbanPatch
-}
-```
+最终不再使用扁平 `ActiveSourcePatch`，而是直接产出上文定义的 namespaced `ActivePatch`。
 
 关键点：
 
-- 更新 item A 时，只 patch `item(A)`、`itemIndex(A)`、它所在 section 的 `sectionItemIds` / `section` 计数。
-- 改 sort 时，只 patch `query.sort`、`query.sortFieldIds`、相关 `sortDir(fieldId)`。
-- 改 calc 时，只 patch 受影响的 `table.calc(fieldId)`。
-- 改 summary 时，只 patch 受影响的 `summary(sectionKey)`。
+- 更新 item A 时，只 patch `items.values`、`items.index`、它所在 section 的 `sections.itemIds` / `sections.values`。
+- 改 sort 时，只 patch `query.sort`、`query.sortFieldIds`、相关 `query.sortDir`。
+- 改 calc 时，只 patch 受影响的 `table.calc`。
+- 改 summary 时，只 patch 受影响的 `sections.summary`。
 
-### 3. `ViewState` 的去热路径化
+### 3. DataViewSource 的构建
+
+`DataViewSource` 同样不应继续从 whole session store 派生。
+
+最终做法：
+
+- page session 改动时产出 `DataViewPatch.page`
+- marquee / selection 改动时产出 `DataViewPatch.selection`
+- inline session 改动时产出 `DataViewPatch.inline`
+- 统一通过 `dataViewSource.apply(patch)` 写入 runtime source
+
+关键点：
+
+- `selection.member`
+  - 只按受影响 item patch
+- `selection.preview`
+  - 只按 marquee preview 受影响 item patch
+- `inline.editing`
+  - 只 patch 当前进入/退出编辑的 key
+
+也就是说：
+
+- `runtime.session.store`
+  - 继续保留给 coarse session snapshot
+- `runtime.source`
+  - 变成真正给 model 层消费的热 source
+
+### 4. `ViewState` 的去热路径化
 
 `engine.active.state` 不需要立刻删除，但必须降级为：
 
@@ -857,8 +1180,7 @@ interface CardChromeInput {
 interface CardContentInput {
   item: KeyedReadStore<ItemId, ViewItem | undefined>
   record: KeyedReadStore<RecordId, DataRecord | undefined>
-  customFieldIds: ReadStore<readonly FieldId[]>
-  customField: KeyedReadStore<FieldId, CustomField | undefined>
+  customFields: EntitySource<FieldId, CustomField>
 }
 ```
 
@@ -922,6 +1244,7 @@ dataview/packages/dataview-runtime/src/model/
 - 删除 `dataview/packages/dataview-runtime/src/model/shared.ts` 中的 `readActiveTypedViewState`
 - 删除 `*Base`、`*Data` 命名
 - 删除 `createPageModel/createTableModel/createGalleryModel/createKanbanModel` 的多 store 参数风格
+- 删除扁平 `ActiveSourcePatch` / `DocumentSourcePatch` 一类 patch 命名，统一换成 namespaced `ActivePatch` / `DocumentPatch` / `DataViewPatch`
 
 最终各 model creator 统一成：
 
@@ -940,12 +1263,12 @@ createKanbanModel({ source })
 
 目标：
 
-- `recordIds`
-- `record`
-- `fieldIds`
-- `field`
-- `viewIds`
-- `view`
+- `records.ids`
+- `records.get`
+- `fields.ids`
+- `fields.get`
+- `views.ids`
+- `views.get`
 
 完成后，`runtime.model.page` 和 card content 就可以先摆脱 whole `DataDoc` 依赖。
 
@@ -955,21 +1278,21 @@ createKanbanModel({ source })
 
 目标：
 
-- `ready`
-- `viewId`
-- `viewType`
-- `view`
-- `itemIds`
-- `item`
-- `itemIndex`
-- `sectionKeys`
-- `section`
-- `sectionItemIds`
-- `fieldIds`
-- `field`
-- `customFieldIds`
-- `customField`
-- `summary`
+- `view.ready`
+- `view.id`
+- `view.type`
+- `view.current`
+- `items.ids`
+- `items.get`
+- `items.index`
+- `sections.keys`
+- `sections.get`
+- `sections.itemIds`
+- `sections.summary`
+- `fields.all.ids`
+- `fields.all.get`
+- `fields.custom.ids`
+- `fields.custom.get`
 
 ### Phase 3
 
@@ -977,15 +1300,15 @@ createKanbanModel({ source })
 
 目标：
 
-- `search`
-- `filters`
-- `sort`
-- `group`
-- `grouped`
-- `groupFieldId`
-- `filterFieldIds`
-- `sortFieldIds`
-- `sortDir`
+- `query.search`
+- `query.filters`
+- `query.sort`
+- `query.group`
+- `query.grouped`
+- `query.groupFieldId`
+- `query.filterFieldIds`
+- `query.sortFieldIds`
+- `query.sortDir`
 
 ### Phase 4
 
@@ -1076,11 +1399,11 @@ createKeyedDerivedStore({
 
 ### 3. 引用稳定性标准
 
-- `record(id)` 在该 record 未变化时引用稳定
-- `item(id)` 在该 item 未变化时引用稳定
-- `section(key)` 在该 section 未变化时引用稳定
-- `field(id)` 在该 field 未变化时引用稳定
-- `itemIds` / `sectionKeys` / `fieldIds` 在顺序未变化时引用稳定
+- `records.get(id)` 在该 record 未变化时引用稳定
+- `items.get(id)` 在该 item 未变化时引用稳定
+- `sections.get(key)` 在该 section 未变化时引用稳定
+- `fields.all.get(id)` 在该 field 未变化时引用稳定
+- `records.ids` / `items.ids` / `sections.keys` / `fields.all.ids` 在顺序未变化时引用稳定
 
 ### 4. 性能标准
 
@@ -1102,6 +1425,8 @@ createKeyedDerivedStore({
 3. `runtime.model` 只依赖 `runtime.source`。
 4. 删除 `readActiveTypedViewState(...)` 以及所有 `get: key => read(activeStateStore)` 型 keyed model。
 5. root model 只保留 coarse-grained 状态，per-key 数据一律下放到 keyed source。
-6. 命名统一收敛到 `record / field / view / item / section / summary` 与 `*Ids / *Keys`。
+6. 命名统一收敛到 collection namespace `records / fields / views / items / sections`，以及叶子 `ids / keys / get / index / summary`。
+7. 消费侧 read API 保持扁平简短，内部 patch API 全部 namespace 化，并镜像 source 结构。
+8. 所有对外 source runtime creator 统一只返回 `{ source, apply, clear }`。
 
 如果按这份方案完整落地，`dataview-runtime model` 的 keyed read source 才算真正从“表面 keyed”变成“结构上 keyed”。

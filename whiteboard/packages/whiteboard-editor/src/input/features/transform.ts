@@ -127,7 +127,7 @@ const resolveTransformSpec = (
     return readNodeTransformSpec(ctx, input.pick.id, input.pick.handle, input) ?? null
   }
 
-  const selection = ctx.query.selection.model.get().summary
+  const selection = ctx.query.selection.summary.get()
   if (
     !selection.transformPlan
     || input.pick.handle.kind !== 'resize'

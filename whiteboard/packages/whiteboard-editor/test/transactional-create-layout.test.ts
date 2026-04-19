@@ -17,8 +17,8 @@ const registry: NodeRegistry = {
         },
         role: 'content',
         connect: true,
-        canResize: true,
-        canRotate: true,
+        resize: true,
+        rotate: true,
         layout: {
           kind: 'size'
         },
@@ -45,8 +45,8 @@ const registry: NodeRegistry = {
         },
         role: 'content',
         connect: true,
-        canResize: true,
-        canRotate: true,
+        resize: true,
+        rotate: true,
         layout: {
           kind: 'fit'
         },
@@ -73,8 +73,8 @@ const registry: NodeRegistry = {
         },
         role: 'content',
         connect: false,
-        canResize: false,
-        canRotate: false
+        resize: false,
+        rotate: false
       }
     }
 

@@ -14,6 +14,11 @@ import type {
 } from '@whiteboard/editor/types/tool'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import {
+  createEditRead,
+  type EditorEditRead
+} from '@whiteboard/editor/query/edit/read'
+import {
+  createNodeTypeRead,
   createNodeRead,
   type NodePresentationRead
 } from '@whiteboard/editor/query/node/read'
@@ -27,19 +32,21 @@ import {
 } from '@whiteboard/editor/query/mindmap/read'
 import {
   createSelectionModelRead,
-  type SelectionModelRead
 } from '@whiteboard/editor/query/selection/model'
 import {
   createSelectionRead,
   type SelectionRead
 } from '@whiteboard/editor/query/selection/read'
 import {
+  createSelectionRuntimeRead
+} from '@whiteboard/editor/query/selection/runtime'
+import {
   createTargetRead,
   type RuntimeTargetRead
 } from '@whiteboard/editor/query/target'
 import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import type { EditorInputPreview } from '@whiteboard/editor/session/preview'
-import type { TextMetricsCache } from '@whiteboard/editor/types/layout'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 
 export type ToolRead = {
   get: () => Tool
@@ -87,12 +94,11 @@ export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   history: ReadStore<HistoryState>
   group: EngineRead['group']
   target: RuntimeTargetRead
+  edit: EditorEditRead
   node: NodePresentationRead
   edge: EdgePresentationRead
   mindmap: MindmapPresentationRead
-  selection: {
-    model: SelectionModelRead
-  } & SelectionRead
+  selection: SelectionRead
   tool: ToolRead
   draw: ReadStore<DrawState>
   space: ReadStore<boolean>
@@ -116,15 +122,15 @@ export const createEditorQuery = ({
   engineRead,
   registry,
   history,
+  layout,
   session,
-  textMetrics,
   defaults
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
   history: ReadStore<HistoryState>
+  layout: Pick<EditorLayout, 'text' | 'mindmap'>
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'preview'>
-  textMetrics: Pick<TextMetricsCache, 'read'>
   defaults: EditorDefaults['selection']
 }): EditorQuery => {
   const {
@@ -133,30 +139,39 @@ export const createEditorQuery = ({
     selection,
     tool
   } = session.state
+  const nodeType = createNodeTypeRead(registry)
   const mindmapRead = createMindmapRead({
     read: engineRead.mindmap,
+    layout: layout.mindmap,
     node: engineRead.node.item,
-    preview: session.preview.selectors.mindmapPreview,
     edit,
     selection
   })
+  const editRead = createEditRead(edit)
+  const selectionRuntime = createSelectionRuntimeRead(selection)
   const nodeRead: NodePresentationRead = createNodeRead({
     read: engineRead,
-    registry,
+    type: nodeType,
     feedback: session.preview.selectors.node,
     mindmap: mindmapRead.item,
-    edit,
-    selection
+    edit: editRead,
+    selection: selectionRuntime.node
   })
   const edgeRead = createEdgeRead({
     read: engineRead,
     node: nodeRead,
     feedback: session.preview.selectors.edge,
-    edit,
-    selection,
+    edit: {
+      session: edit,
+      ...editRead
+    },
+    selection: {
+      target: selection,
+      ...selectionRuntime.edge
+    },
     tool,
     interaction: session.interaction.read,
-    textMetrics,
+    textMetrics: layout.text,
     capability: nodeRead.capability
   })
   const targetRead = createTargetRead({
@@ -170,7 +185,8 @@ export const createEditorQuery = ({
   })
   const selectionRead = createSelectionRead({
     model: selectionModel,
-    registry,
+    runtime: selectionRuntime,
+    nodeType,
     mindmap: mindmapRead,
     tool,
     edit,
@@ -185,13 +201,11 @@ export const createEditorQuery = ({
     group: engineRead.group,
     target: targetRead,
     history,
+    edit: editRead,
     node: nodeRead,
     edge: edgeRead,
     mindmap: mindmapRead,
-    selection: {
-      model: selectionModel,
-      ...selectionRead
-    },
+    selection: selectionRead,
     scene: engineRead.scene,
     slice: engineRead.slice,
     tool: toolRead,

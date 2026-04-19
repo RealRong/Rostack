@@ -12,8 +12,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   ItemId as ItemIdType,
-  SectionKey as SectionKeyType,
-  ViewState
+  SectionKey as SectionKeyType
 } from '@dataview/engine'
 import {
   useDataView
@@ -25,6 +24,7 @@ import {
   read,
   sameOrder
 } from '@shared/core'
+import { useStoreValue } from '@shared/react'
 import {
   elementRectIn,
   observeElementSize,
@@ -44,7 +44,6 @@ import {
 } from '@dataview/react/views/kanban/drag'
 import type {
   KanbanBoard,
-  KanbanRuntimeInput,
   KanbanSectionData,
   KanbanSectionVisibility,
   KanbanViewRuntime
@@ -104,7 +103,7 @@ const readSectionLengths = (
 )
 
 const useSectionVisibility = (input: {
-  viewId: ViewState['view']['id']
+  viewId: string
   sections: readonly Section[]
   cardsPerColumn: KanbanCardsPerColumn
 }) => {
@@ -371,7 +370,10 @@ const useKanbanGeometry = (input: {
   ])
 }
 
-export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime => {
+export const useKanbanRuntime = (input: {
+  columnWidth: number
+  columnMinHeight: number
+}): KanbanViewRuntime => {
   const dataView = useDataView()
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const configStore = useMemo(() => createValueStore({
@@ -381,28 +383,40 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     isEqual: (left, right) => left.columnWidth === right.columnWidth
       && left.columnMinHeight === right.columnMinHeight
   }), [])
-  const itemIds = input.active.items.ids
+  const itemIds = useStoreValue(dataView.source.active.items.ids)
   const interaction = useItemDragRuntime({
     itemIds
   })
+  const sectionsStore = useMemo(() => createDerivedStore({
+    get: () => read(dataView.source.active.sections.keys)
+      .flatMap(key => {
+        const section = read(dataView.source.active.sections, key)
+        return section ? [section] : []
+      }),
+    isEqual: sameOrder
+  }), [dataView.source.active.sections])
+  const sections = useStoreValue(sectionsStore)
+  const currentViewId = useStoreValue(dataView.source.active.view.id) ?? ''
+  const cardsPerColumn = useStoreValue(dataView.source.active.kanban.cardsPerColumn)
+  const canDrag = useStoreValue(dataView.source.active.kanban.canReorder)
   const visibility = useSectionVisibility({
-    viewId: input.active.view.id,
-    sections: input.active.sections.all,
-    cardsPerColumn: input.extra.cardsPerColumn
+    viewId: currentViewId,
+    sections,
+    cardsPerColumn
   })
   const visibilityStore = useMemo(() => createValueStore(visibility.bySection, {
     isEqual: Object.is
   }), [])
   const geometry = useKanbanGeometry({
     containerRef: scrollRef,
-    sections: input.active.sections.all,
+    sections,
     visibilityBySection: visibility.bySection
   })
   const board = useMemo(() => createDerivedStore<KanbanBoard>({
     get: () => {
-      const base = read(dataView.model.kanban.boardBase)
+      const base = read(dataView.model.kanban.board)
       if (!base) {
-        throw new Error('Kanban board base is unavailable.')
+        throw new Error('Kanban board is unavailable.')
       }
 
       const config = read(configStore)
@@ -415,12 +429,12 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     isEqual: sameBoard
   }), [
     configStore,
-    dataView.model.kanban.boardBase
+    dataView.model.kanban.board
   ])
   const section = useMemo(() => createKeyedDerivedStore<SectionKey, KanbanSectionData | undefined>({
     keyOf: key => key,
     get: key => {
-      const current = read(dataView.model.kanban.sectionBase, key)
+      const current = read(dataView.model.kanban.section, key)
       if (!current) {
         return undefined
       }
@@ -436,7 +450,7 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
     },
     isEqual: sameSection
   }), [
-    dataView.model.kanban.sectionBase,
+    dataView.model.kanban.section,
     visibilityStore
   ])
   const card = dataView.model.kanban.card
@@ -475,7 +489,7 @@ export const useKanbanRuntime = (input: KanbanRuntimeInput): KanbanViewRuntime =
 
   const drag = useDrag({
     containerRef: scrollRef,
-    canDrag: input.extra.canReorder,
+    canDrag,
     itemMap: interaction.itemMap,
     getLayout: () => geometry.layout,
     getDragIds: interaction.getDragIds,

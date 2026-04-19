@@ -245,8 +245,8 @@ export const PageMarqueeHost = () => {
         || overlay.topLayerId !== null
         || dataView.react.drag.get()
         || dataView.session.marquee.get()
-        || dataView.page.store.get().valueEditorOpen
-        || dataView.inlineSession.store.get() !== null
+        || dataView.session.page.store.get().valueEditorOpen
+        || dataView.session.editing.inline.store.get() !== null
       ) {
         return
       }
@@ -282,7 +282,7 @@ export const PageMarqueeHost = () => {
           ctrlKey: event.ctrlKey
         }),
         start,
-        baseSelection: dataView.selection.state.getSnapshot()
+        baseSelection: dataView.session.selection.state.getSnapshot()
       })
       dataView.intent.marquee.update({
         current: start,
@@ -300,10 +300,10 @@ export const PageMarqueeHost = () => {
     dataView.intent.marquee,
     dataView.react.drag,
     dataView.react.marquee,
-    dataView.selection.state,
+    dataView.session.selection.state,
     dataView.session.marquee,
-    dataView.inlineSession.store,
-    dataView.page.store,
+    dataView.session.editing.inline.store,
+    dataView.session.page.store,
     overlay.topLayerId
   ])
 

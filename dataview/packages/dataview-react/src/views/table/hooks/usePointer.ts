@@ -508,7 +508,7 @@ export const usePointer = (
   const readCell = useCallback((cell: CellRef) => {
     const recordId = currentView.items.get(cell.itemId)?.recordId
     const record = recordId
-      ? editor.select.records.byId.get(recordId)
+      ? editor.source.doc.records.get(recordId)
       : undefined
 
     return {

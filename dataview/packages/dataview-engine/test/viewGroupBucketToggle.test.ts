@@ -319,7 +319,7 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   openView(engine, VIEW_TABLE).sections.toggleCollapse('todo')
 
-  let view = engine.select.views.byId.get(VIEW_TABLE)
+  let view = engine.source.doc.views.get(VIEW_TABLE)
   let sections = readViewState(engine)?.sections.all ?? []
 
   assert.deepEqual(view.group.buckets, {
@@ -334,7 +334,7 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
 
   openView(engine, VIEW_TABLE).sections.toggleCollapse('todo')
 
-  view = engine.select.views.byId.get(VIEW_TABLE)
+  view = engine.source.doc.views.get(VIEW_TABLE)
   sections = readViewState(engine)?.sections.all ?? []
 
   assert.equal(view.group?.buckets, undefined)
@@ -351,15 +351,15 @@ test('view group interval set clears back to the field default when value is und
 
   openView(engine, VIEW_TABLE).group.set(FIELD_POINTS)
 
-  let view = engine.select.views.byId.get(VIEW_TABLE)
+  let view = engine.source.doc.views.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 10)
 
   openView(engine, VIEW_TABLE).group.setInterval(5)
-  view = engine.select.views.byId.get(VIEW_TABLE)
+  view = engine.source.doc.views.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 5)
 
   openView(engine, VIEW_TABLE).group.setInterval(undefined)
-  view = engine.select.views.byId.get(VIEW_TABLE)
+  view = engine.source.doc.views.get(VIEW_TABLE)
   assert.equal(view.group?.bucketInterval, 10)
 })
 
@@ -389,19 +389,19 @@ test('kanban cards per column defaults to all and persists through the view api'
     document
   })
 
-  let board = engine.select.views.byId.get(VIEW_BOARD)
+  let board = engine.source.doc.views.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 25)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(25)
-  board = engine.select.views.byId.get(VIEW_BOARD)
+  board = engine.source.doc.views.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 25)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(100)
-  board = engine.select.views.byId.get(VIEW_BOARD)
+  board = engine.source.doc.views.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 100)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn('all')
-  board = engine.select.views.byId.get(VIEW_BOARD)
+  board = engine.source.doc.views.get(VIEW_BOARD)
   assert.equal(board.options.kanban.cardsPerColumn, 'all')
 })
 
@@ -460,13 +460,13 @@ test('kanban default group prefers option-like fields over earlier scalar fields
   assert.equal(engine.views.get(createdId!)?.group?.field, FIELD_STATUS)
 })
 
-test('engine.active keeps selector boundaries inside one active pipeline', () => {
+test('engine.source keeps active boundaries inside one active pipeline', () => {
   const engine = createEngineForTest({
     document: createMultiViewDocument()
   })
 
-  const groupStore = engine.active.select(current => current?.query.group)
-  const sortStore = engine.active.select(current => current?.query.sort)
+  const groupStore = engine.source.active.query.group
+  const sortStore = engine.source.active.query.sort
   let idEvents = 0
   let sortEvents = 0
   const unsubscribeId = engine.active.id.subscribe(() => {
@@ -499,16 +499,16 @@ test('engine.active keeps selector boundaries inside one active pipeline', () =>
   unsubscribeSort()
 })
 
-test('engine.document.replace publishes coherent select and active view state in one step', () => {
+test('engine.document.replace publishes coherent source and active view state in one step', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
   const nextDocument = createMultiViewDocument()
   let documentEvents = 0
 
-  const unsubscribe = engine.select.document.subscribe(() => {
+  const unsubscribe = engine.active.state.subscribe(() => {
     documentEvents += 1
-    assert.equal(engine.select.document.get().activeViewId, VIEW_TABLE)
+    assert.equal(engine.read.document().activeViewId, VIEW_TABLE)
     assert.equal(engine.active.id.get(), VIEW_TABLE)
     assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1'])
   })
@@ -829,7 +829,7 @@ test('engine.active.records.create rejects ambiguous multi-option status filters
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.select.records.ids.get()]
+  const beforeOrder = [...engine.source.doc.records.ids.get()]
 
   openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
   openView(engine, VIEW_TABLE).filters.update(0, {
@@ -845,7 +845,7 @@ test('engine.active.records.create rejects ambiguous multi-option status filters
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.select.records.ids.get(), beforeOrder)
+  assert.deepEqual(engine.source.doc.records.ids.get(), beforeOrder)
 })
 
 test('engine.active.records.create accepts explicit status values that satisfy multi-option filters', () => {
@@ -876,7 +876,7 @@ test('engine.active.records.create rejects unsupported effective filter rules', 
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.select.records.ids.get()]
+  const beforeOrder = [...engine.source.doc.records.ids.get()]
 
   openView(engine, VIEW_TABLE).filters.add(TITLE_FIELD_ID)
   openView(engine, VIEW_TABLE).filters.update(0, {
@@ -892,14 +892,14 @@ test('engine.active.records.create rejects unsupported effective filter rules', 
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.select.records.ids.get(), beforeOrder)
+  assert.deepEqual(engine.source.doc.records.ids.get(), beforeOrder)
 })
 
 test('engine.active.records.create rejects explicit values that conflict with the target section', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.select.records.ids.get()]
+  const beforeOrder = [...engine.source.doc.records.ids.get()]
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
 
@@ -912,14 +912,14 @@ test('engine.active.records.create rejects explicit values that conflict with th
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.select.records.ids.get(), beforeOrder)
+  assert.deepEqual(engine.source.doc.records.ids.get(), beforeOrder)
 })
 
 test('engine.active.records.create rejects conflicting group and filter defaults', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.select.records.ids.get()]
+  const beforeOrder = [...engine.source.doc.records.ids.get()]
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
@@ -937,7 +937,7 @@ test('engine.active.records.create rejects conflicting group and filter defaults
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.select.records.ids.get(), beforeOrder)
+  assert.deepEqual(engine.source.doc.records.ids.get(), beforeOrder)
 })
 
 test('engine.active.records.create uses before as context only when sort is active', () => {
@@ -1168,7 +1168,7 @@ test('view.create resolves duplicate names in the write planner', () => {
 
   const createdViewId = result.created?.views?.[0]
   assert.ok(createdViewId)
-  assert.equal(engine.select.views.byId.get(createdViewId)?.name, 'Tasks 2')
+  assert.equal(engine.source.doc.views.get(createdViewId)?.name, 'Tasks 2')
 })
 
 test('engine.views.duplicate reuses the shared unique naming rule', () => {
@@ -1196,5 +1196,5 @@ test('engine.views.duplicate reuses the shared unique naming rule', () => {
 
   const createdViewId = engine.views.duplicate(sourceViewId)
   assert.ok(createdViewId)
-  assert.equal(engine.select.views.byId.get(createdViewId)?.name, 'Tasks Copy 2')
+  assert.equal(engine.source.doc.views.get(createdViewId)?.name, 'Tasks Copy 2')
 })

@@ -54,10 +54,17 @@ export type EngineReadIndex = {
     get: (nodeId: NodeId) => CanvasNode | undefined
     idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
   }
+  edge: {
+    idsInRect: (rect: Rect) => EdgeId[]
+  }
   snap: {
     all: () => SnapCandidate[]
     inRect: (rect: Rect) => SnapCandidate[]
   }
+}
+
+export type EdgeRectHitOptions = {
+  match?: 'touch' | 'contain'
 }
 
 export type NodeRead = {
@@ -113,6 +120,7 @@ export type EdgeRead = {
   item: KeyedReadStore<EdgeId, Readonly<EdgeItem> | undefined>
   edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
   related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
+  idsInRect: (rect: Rect, options?: EdgeRectHitOptions) => EdgeId[]
 }
 
 export type MindmapRead = {

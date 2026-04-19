@@ -7,10 +7,6 @@ import {
   useState
 } from 'react'
 import {
-  getDocumentFieldById,
-  getDocumentRecordById
-} from '@dataview/core/document'
-import {
   isTitleFieldId
 } from '@dataview/core/field'
 import {
@@ -32,7 +28,10 @@ import {
   OVERLAY_BLOCKING_BACKDROP_ATTR
 } from '@shared/ui/overlay'
 import { observeElementSize } from '@shared/dom'
-import { useStoreValue } from '@shared/react'
+import {
+  useOptionalKeyedStoreValue,
+  useStoreValue
+} from '@shared/react'
 
 const PANEL_MIN_WIDTH = 180
 const PANEL_WIDTHS = {
@@ -84,16 +83,19 @@ export const resolveFieldValueEditorPosition = (input: {
 export const FieldValueEditorHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const valueEditor = dataView.valueEditor
+  const valueEditor = dataView.session.editing.valueEditor
   const session = useStoreValue(valueEditor.store)
-  const document = useStoreValue(engine.select.document)
   const field = session?.field
-  const valueField = field
-    ? getDocumentFieldById(document, field.fieldId)
-    : undefined
-  const record = field
-    ? getDocumentRecordById(document, field.recordId)
-    : undefined
+  const valueField = useOptionalKeyedStoreValue(
+    engine.source.doc.fields,
+    field?.fieldId,
+    undefined
+  )
+  const record = useOptionalKeyedStoreValue(
+    engine.source.doc.records,
+    field?.recordId,
+    undefined
+  )
   const editorRef = useRef<FieldValueEditorHandle | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [container, setContainer] = useState<HTMLDivElement | null>(null)

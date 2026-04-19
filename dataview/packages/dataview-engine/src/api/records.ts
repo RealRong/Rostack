@@ -8,13 +8,13 @@ import {
 } from '@shared/core'
 import type {
   ActionResult,
-  DocumentSelectApi,
+  DocumentSource,
   RecordFieldWriteManyInput,
   RecordsApi
 } from '@dataview/engine/contracts/public'
 
 export const createRecordsApi = (options: {
-  select: DocumentSelectApi
+  source: DocumentSource
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): RecordsApi => {
   const writeMany = (input: RecordFieldWriteManyInput) => {
@@ -33,7 +33,7 @@ export const createRecordsApi = (options: {
   }
 
   return {
-    get: recordId => read(options.select.records.byId, recordId),
+    get: recordId => read(options.source.records, recordId),
     create: input => {
       const result = options.dispatch({
         type: 'record.create',

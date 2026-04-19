@@ -3,9 +3,8 @@ export type { KanbanViewProps } from '@dataview/react/views/kanban/KanbanView'
 export { KanbanProvider, useKanbanRuntimeContext } from '@dataview/react/views/kanban/KanbanView'
 export { useKanbanRuntime } from '@dataview/react/views/kanban/runtime'
 export type {
-  ActiveKanbanViewState,
   KanbanBoard,
-  KanbanCardData,
+  KanbanCard,
   KanbanSectionData,
   KanbanSectionVisibility,
   KanbanViewRuntime

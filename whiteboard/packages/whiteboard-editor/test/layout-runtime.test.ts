@@ -18,8 +18,8 @@ const createRegistry = (): NodeRegistry => ({
           kind: 'fit'
         },
         role: 'content',
-        canResize: true,
-        canRotate: true,
+        resize: true,
+        rotate: true,
         enter: true,
         edit: {
           fields: {

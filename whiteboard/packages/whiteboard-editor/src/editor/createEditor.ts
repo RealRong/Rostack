@@ -75,7 +75,14 @@ export const createEditor = ({
     read: {
       node: {
         committed: engine.read.node.item
+      },
+      mindmap: {
+        committed: engine.read.mindmap.item
       }
+    },
+    session: {
+      edit: session.state.edit,
+      mindmapPreview: session.preview.selectors.mindmapPreview
     },
     registry,
     backend: services?.layout
@@ -90,7 +97,7 @@ export const createEditor = ({
     engineRead: engine.read,
     registry,
     history: engine.history,
-    textMetrics: layout.text,
+    layout,
     session,
     defaults: defaults.selection
   })

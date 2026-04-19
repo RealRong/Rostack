@@ -16,8 +16,8 @@ const registry: NodeRegistry = {
         },
         role: 'content',
         connect: true,
-        canResize: true,
-        canRotate: true
+        resize: true,
+        rotate: true
       }
     : undefined
 }

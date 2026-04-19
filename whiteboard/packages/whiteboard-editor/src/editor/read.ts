@@ -74,7 +74,7 @@ export const createEditorRead = (
     },
     selection: {
       node: query.selection.node,
-      box: query.selection.box
+      summary: query.selection.summary
     },
     tool: query.tool,
     viewport: query.viewport,

@@ -13,11 +13,11 @@ import type {
   ReadStore
 } from '@shared/core'
 import type {
-  RecordCardContentData,
-  RecordCardData
+  Card,
+  CardContent
 } from '@dataview/runtime/model/shared'
 
-export interface KanbanBoardBase {
+export interface KanbanBoard {
   viewId: ViewId
   grouped: boolean
   sectionKeys: readonly SectionKey[]
@@ -27,7 +27,7 @@ export interface KanbanBoardBase {
   cardsPerColumn: KanbanCardsPerColumn
 }
 
-export interface KanbanSectionBase {
+export interface KanbanSection {
   key: SectionKey
   label: Section['label']
   bucket: Section['bucket'] | undefined
@@ -36,13 +36,13 @@ export interface KanbanSectionBase {
   color?: string
 }
 
-export interface KanbanCardData extends RecordCardData {
+export interface KanbanCard extends Card {
   color?: string
 }
 
 export interface DataViewKanbanModel {
-  boardBase: ReadStore<KanbanBoardBase | null>
-  sectionBase: KeyedReadStore<SectionKey, KanbanSectionBase | undefined>
-  card: KeyedReadStore<ItemId, KanbanCardData | undefined>
-  content: KeyedReadStore<ItemId, RecordCardContentData | undefined>
+  board: ReadStore<KanbanBoard | null>
+  section: KeyedReadStore<SectionKey, KanbanSection | undefined>
+  card: KeyedReadStore<ItemId, KanbanCard | undefined>
+  content: KeyedReadStore<ItemId, CardContent | undefined>
 }

@@ -37,27 +37,27 @@ export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] =
   const dataView = useDataView()
   const select = useCallback((id: ItemId, mode: MarqueeMode | 'replace' = 'replace') => {
     if (mode === 'toggle') {
-      dataView.selection.command.ids.toggle([id])
+      dataView.session.selection.command.ids.toggle([id])
       return
     }
 
     if (mode === 'add') {
-      dataView.selection.command.ids.add([id])
+      dataView.session.selection.command.ids.add([id])
       return
     }
 
-    dataView.selection.command.ids.replace([id], {
+    dataView.session.selection.command.ids.replace([id], {
       anchor: id,
       focus: id
     })
-  }, [dataView.selection])
+  }, [dataView.session.selection])
   const getSelectedIds = useCallback(
-    () => dataView.selection.enumerate.materialize(),
-    [dataView.selection]
+    () => dataView.session.selection.enumerate.materialize(),
+    [dataView.session.selection]
   )
   const isSelected = useCallback(
-    (id: ItemId) => dataView.selection.query.contains(id),
-    [dataView.selection]
+    (id: ItemId) => dataView.session.selection.query.contains(id),
+    [dataView.session.selection]
   )
 
   return useMemo(() => ({

@@ -1,6 +1,5 @@
 import type {
   BaseNodeDefinition,
-  Node,
   NodeType,
   NodeRole
 } from '@whiteboard/core/types'
@@ -24,12 +23,11 @@ export type NodeMeta = {
 
 export type NodeDefinition = BaseNodeDefinition & {
   meta: NodeMeta
-  describe?: (node: Node) => NodeMeta
   role?: NodeRole
   hit?: NodeHit
   connect?: boolean
-  canRotate?: boolean
-  canResize?: boolean
+  rotate?: boolean
+  resize?: boolean
   layout?: NodeLayoutSpec
   enter?: boolean
   edit?: {

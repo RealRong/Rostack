@@ -53,9 +53,7 @@ export const useDataViewRuntime = () => useDataView().model
 
 export const usePageRuntime = () => useDataView().model.page
 
-export const useDataViewRead = () => useDataView().read
-
-export const useDataViewWrite = () => useDataView().write
+export const useDataViewSource = () => useDataView().source
 
 export const useDataViewSession = () => useDataView().session
 

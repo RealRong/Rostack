@@ -11,16 +11,6 @@ import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
-  readActiveTypedViewState
-} from '@dataview/runtime'
-import {
-  type ActiveKanbanViewState
-} from '@dataview/react/views/kanban/types'
-import type {
-  KanbanState,
-  ViewState
-} from '@dataview/engine'
-import {
   useKanbanRuntime
 } from '@dataview/react/views/kanban/runtime'
 import type {
@@ -39,10 +29,6 @@ const contentInsetStyle = {
 } as const
 const KanbanContext = createContext<KanbanViewRuntime | null>(null)
 
-const readKanbanActiveState = (
-  state: ViewState | undefined
-): ActiveKanbanViewState | undefined => readActiveTypedViewState(state, 'kanban')
-
 const resolveColumnWidth = (
   baseWidth: number,
   size: CardSize
@@ -54,15 +40,11 @@ export interface KanbanViewProps {
 }
 
 export const KanbanProvider = (props: {
-  active: ActiveKanbanViewState
-  extra: KanbanState
   columnWidth: number
   columnMinHeight: number
   children?: ReactNode
 }) => {
   const runtime = useKanbanRuntime({
-    active: props.active,
-    extra: props.extra,
     columnWidth: props.columnWidth,
     columnMinHeight: props.columnMinHeight
   })
@@ -71,22 +53,24 @@ export const KanbanProvider = (props: {
 }
 
 export const KanbanView = (props: KanbanViewProps) => {
-  const active = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    readKanbanActiveState
+  const viewType = useDataViewValue(
+    dataView => dataView.source.active.view.type
   )
-  const extra = useDataViewValue(
-    dataView => dataView.engine.active.kanban.state
+  const grouped = useDataViewValue(
+    dataView => dataView.source.active.query.grouped
   )
-  if (!active || !extra) {
+  const size = useDataViewValue(
+    dataView => dataView.source.active.kanban.size
+  )
+  if (viewType !== 'kanban') {
     return null
   }
 
   const baseColumnWidth = props.columnWidth ?? DEFAULT_COLUMN_WIDTH
-  const columnWidth = resolveColumnWidth(baseColumnWidth, extra.card.size)
+  const columnWidth = resolveColumnWidth(baseColumnWidth, size)
   const columnMinHeight = props.columnMinHeight ?? DEFAULT_COLUMN_MIN_HEIGHT
 
-  if (!active.query.group.active) {
+  if (!grouped) {
     return (
       <div style={contentInsetStyle}>
         <Empty />
@@ -96,8 +80,6 @@ export const KanbanView = (props: KanbanViewProps) => {
 
   return (
     <KanbanProvider
-      active={active}
-      extra={extra}
       columnWidth={columnWidth}
       columnMinHeight={columnMinHeight}
     >

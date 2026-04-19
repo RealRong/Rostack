@@ -46,14 +46,14 @@ export const SortPopover = (props: SortPopoverProps) => {
   const engine = dataView.engine
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
-  const queryBar = useStoreValue(pageRuntime.queryBar)
+  const query = useStoreValue(pageRuntime.query)
   const fields = settings.fields
   const currentView = settings.currentView
   const currentViewDomain = currentView
     ? engine.active
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
-  const sortRules = queryBar.sorts
+  const sortRules = query.sorts
   const sorters = sortRules.map(entry => entry.sorter)
   const singleSortDirection = sortRules.length === 1
     ? sortRules[0]?.sorter.direction

@@ -1,49 +1,33 @@
-import type {
-  DataRecord,
-  RecordId
-} from '@dataview/core/contracts'
-import type {
-  ViewState
-} from '@dataview/engine'
-import type {
-  GalleryState,
-  ItemId,
-  SectionKey
-} from '@dataview/engine'
-import type {
-  DataViewInlineRuntime
-} from '@dataview/runtime/model/inline/types'
-import type {
-  DataViewGalleryModel,
-  GalleryBodyBase,
-  GalleryCardData,
-  GallerySectionData
-} from '@dataview/runtime/model/gallery/types'
 import {
-  readActiveTypedViewState,
-  type RecordCardContentData,
-  type RecordCardPropertyData
-} from '@dataview/runtime/model/shared'
+  isEmptyFieldValue
+} from '@dataview/core/field'
 import {
   createDerivedStore,
   createKeyedDerivedStore,
   read,
   sameIdOrder,
-  sameMap,
   sameOrder,
-  sameValue,
-  type KeyedReadStore,
-  type ReadStore
+  sameValue
 } from '@shared/core'
-import {
-  isEmptyFieldValue
-} from '@dataview/core/field'
+import type {
+  DataViewSource
+} from '@dataview/runtime/dataview/types'
+import type {
+  CardContent,
+  CardProperty
+} from '@dataview/runtime/model/shared'
+import type {
+  DataViewGalleryModel,
+  GalleryBody,
+  GalleryCard,
+  GallerySection
+} from '@dataview/runtime/model/gallery/types'
 
 const DEFAULT_GALLERY_TITLE_PLACEHOLDER = '输入名称...'
 
-const sameBodyBase = (
-  left: GalleryBodyBase | null,
-  right: GalleryBodyBase | null
+const sameBody = (
+  left: GalleryBody | null,
+  right: GalleryBody | null
 ) => left === right || (
   !!left
   && !!right
@@ -51,12 +35,12 @@ const sameBodyBase = (
   && left.empty === right.empty
   && left.grouped === right.grouped
   && left.groupUsesOptionColors === right.groupUsesOptionColors
-  && sameMap(left.sectionCountByKey, right.sectionCountByKey)
+  && left.sectionKeys === right.sectionKeys
 )
 
 const sameSection = (
-  left: GallerySectionData | undefined,
-  right: GallerySectionData | undefined
+  left: GallerySection | undefined,
+  right: GallerySection | undefined
 ) => left === right || (
   !!left
   && !!right
@@ -66,8 +50,8 @@ const sameSection = (
 )
 
 const sameCard = (
-  left: GalleryCardData | undefined,
-  right: GalleryCardData | undefined
+  left: GalleryCard | undefined,
+  right: GalleryCard | undefined
 ) => left === right || (
   !!left
   && !!right
@@ -84,14 +68,14 @@ const sameCard = (
 )
 
 const sameProperty = (
-  left: RecordCardPropertyData,
-  right: RecordCardPropertyData
+  left: CardProperty,
+  right: CardProperty
 ) => left.field.id === right.field.id
   && sameValue(left.value, right.value)
 
 const sameContent = (
-  left: RecordCardContentData | undefined,
-  right: RecordCardContentData | undefined
+  left: CardContent | undefined,
+  right: CardContent | undefined
 ) => left === right || (
   !!left
   && !!right
@@ -102,39 +86,38 @@ const sameContent = (
 )
 
 export const createGalleryModel = (input: {
-  activeStateStore: ReadStore<ViewState | undefined>
-  extraStateStore: ReadStore<GalleryState | undefined>
-  recordStore: KeyedReadStore<RecordId, DataRecord | undefined>
-  selectionMembershipStore: KeyedReadStore<ItemId, boolean>
-  previewSelectionMembershipStore: KeyedReadStore<ItemId, boolean | null>
-  inline: DataViewInlineRuntime
+  source: DataViewSource
+  inlineKey: (input: {
+    viewId: string
+    itemId: number
+  }) => string
 }): DataViewGalleryModel => {
-  const bodyBase = createDerivedStore<GalleryBodyBase | null>({
+  const body = createDerivedStore<GalleryBody | null>({
     get: () => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'gallery')
-      const extra = read(input.extraStateStore)
-      if (!active || !extra) {
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'gallery') {
         return null
       }
 
       return {
-        viewId: active.view.id,
-        empty: active.items.count === 0,
-        grouped: active.query.group.active,
-        groupUsesOptionColors: extra.groupUsesOptionColors,
-        sectionCountByKey: new Map(
-          active.sections.all.map(section => [section.key, section.items.count] as const)
-        )
+        viewId: view.id,
+        empty: read(input.source.active.items.ids).length === 0,
+        grouped: read(input.source.active.query.grouped),
+        groupUsesOptionColors: read(input.source.active.gallery.groupUsesOptionColors),
+        sectionKeys: read(input.source.active.sections.keys)
       }
     },
-    isEqual: sameBodyBase
+    isEqual: sameBody
   })
 
-  const section = createKeyedDerivedStore<SectionKey, GallerySectionData | undefined>({
-    keyOf: key => key,
+  const section = createKeyedDerivedStore<string, GallerySection | undefined>({
     get: key => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'gallery')
-      const value = active?.sections.get(key)
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'gallery') {
+        return undefined
+      }
+
+      const value = read(input.source.active.sections, key)
       return value
         ? {
             key: value.key,
@@ -146,33 +129,39 @@ export const createGalleryModel = (input: {
     isEqual: sameSection
   })
 
-  const card = createKeyedDerivedStore<ItemId, GalleryCardData | undefined>({
-    keyOf: itemId => itemId,
+  const card = createKeyedDerivedStore<number, GalleryCard | undefined>({
     get: itemId => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'gallery')
-      const extra = read(input.extraStateStore)
-      const item = active?.items.get(itemId)
-      if (!active || !extra || !item) {
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'gallery') {
+        return undefined
+      }
+
+      const item = read(input.source.active.items, itemId)
+      if (!item) {
         return undefined
       }
 
       return {
-        viewId: active.view.id,
+        viewId: view.id,
         itemId,
         recordId: item.recordId,
-        fields: active.fields.custom,
-        size: extra.card.size,
-        layout: extra.card.layout,
-        wrap: extra.card.wrap,
-        canDrag: extra.canReorder,
+        fields: read(input.source.active.fields.custom.ids)
+          .flatMap(fieldId => {
+            const field = read(input.source.active.fields.custom, fieldId)
+            return field ? [field] : []
+          }),
+        size: read(input.source.active.gallery.size),
+        layout: read(input.source.active.gallery.layout),
+        wrap: read(input.source.active.gallery.wrap),
+        canDrag: read(input.source.active.gallery.canReorder),
         selected: (
-          read(input.previewSelectionMembershipStore, itemId)
-          ?? read(input.selectionMembershipStore, itemId)
+          read(input.source.selection.preview, itemId)
+          ?? read(input.source.selection.member, itemId)
         ),
         editing: read(
-          input.inline.editing,
-          input.inline.key({
-            viewId: active.view.id,
+          input.source.inline.editing,
+          input.inlineKey({
+            viewId: view.id,
             itemId
           })
         )
@@ -181,22 +170,31 @@ export const createGalleryModel = (input: {
     isEqual: sameCard
   })
 
-  const content = createKeyedDerivedStore<ItemId, RecordCardContentData | undefined>({
-    keyOf: itemId => itemId,
+  const content = createKeyedDerivedStore<number, CardContent | undefined>({
     get: itemId => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'gallery')
-      const item = active?.items.get(itemId)
-      const record = item
-        ? read(input.recordStore, item.recordId)
-        : undefined
-      if (!active || !item || !record) {
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'gallery') {
         return undefined
       }
 
-      const properties = active.fields.custom.map(field => ({
-        field,
-        value: record.values[field.id]
-      }))
+      const item = read(input.source.active.items, itemId)
+      const record = item
+        ? read(input.source.doc.records, item.recordId)
+        : undefined
+      if (!item || !record) {
+        return undefined
+      }
+
+      const properties = read(input.source.active.fields.custom.ids)
+        .flatMap(fieldId => {
+          const field = read(input.source.active.fields.custom, fieldId)
+          return field
+            ? [{
+                field,
+                value: record.values[field.id]
+              }]
+            : []
+        })
 
       return {
         titleText: record.title,
@@ -209,7 +207,7 @@ export const createGalleryModel = (input: {
   })
 
   return {
-    bodyBase,
+    body,
     section,
     card,
     content

@@ -11,29 +11,29 @@ import type {
   ReadStore
 } from '@shared/core'
 import type {
-  RecordCardContentData,
-  RecordCardData
+  Card,
+  CardContent
 } from '@dataview/runtime/model/shared'
 
-export interface GalleryBodyBase {
+export interface GalleryBody {
   viewId: ViewId
   empty: boolean
   grouped: boolean
   groupUsesOptionColors: boolean
-  sectionCountByKey: ReadonlyMap<SectionKey, number>
+  sectionKeys: readonly SectionKey[]
 }
 
-export interface GallerySectionData {
+export interface GallerySection {
   key: SectionKey
   label: Section['label']
   count: number
 }
 
-export interface GalleryCardData extends RecordCardData {}
+export interface GalleryCard extends Card {}
 
 export interface DataViewGalleryModel {
-  bodyBase: ReadStore<GalleryBodyBase | null>
-  section: KeyedReadStore<SectionKey, GallerySectionData | undefined>
-  card: KeyedReadStore<ItemId, GalleryCardData | undefined>
-  content: KeyedReadStore<ItemId, RecordCardContentData | undefined>
+  body: ReadStore<GalleryBody | null>
+  section: KeyedReadStore<SectionKey, GallerySection | undefined>
+  card: KeyedReadStore<ItemId, GalleryCard | undefined>
+  content: KeyedReadStore<ItemId, CardContent | undefined>
 }

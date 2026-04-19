@@ -5,11 +5,14 @@ export {
 export type {
   CreateDataViewRuntimeInput,
   DataViewIntentApi,
-  DataViewReadApi,
   DataViewRuntime,
   DataViewSessionApi,
   DataViewSessionState,
-  DataViewWriteApi
+  DataViewSource,
+  InlineKey,
+  InlineSource,
+  PageSource,
+  SelectionSource
 } from '@dataview/runtime/dataview/types'
 
 export {
@@ -132,33 +135,30 @@ export {
   getAvailableSorterFields,
   getAvailableSorterFieldsForIndex,
   getFilterFieldId,
-  getSorterFieldId,
-  readActiveTypedViewState
+  getSorterFieldId
 } from '@dataview/runtime/model'
 export type {
-  ActiveTypedViewState,
+  Card,
+  CardContent,
+  CardProperty,
   DataViewGalleryModel,
-  DataViewInlineRuntime,
   DataViewKanbanModel,
   DataViewModel,
-  DataViewPageBody,
-  DataViewPageHeader,
-  DataViewPageQueryBar,
-  DataViewPageRuntime,
-  DataViewPageSettings,
-  DataViewPageToolbar,
   DataViewTableModel,
-  GalleryBodyBase,
-  GalleryCardData,
-  GallerySectionData,
-  KanbanBoardBase,
-  KanbanCardData,
-  KanbanSectionBase,
-  RecordCardContentData,
-  RecordCardData,
-  RecordCardPropertyData,
-  TableBase,
-  TableFooterData,
-  TableHeaderData,
-  TableSectionData
+  GalleryBody,
+  GalleryCard,
+  GallerySection,
+  KanbanBoard,
+  KanbanCard,
+  KanbanSection,
+  PageBody,
+  PageHeader,
+  PageModel,
+  PageQuery,
+  PageSettings,
+  PageToolbar,
+  TableBody,
+  TableColumn,
+  TableSection,
+  TableSummary
 } from '@dataview/runtime/model'

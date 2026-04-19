@@ -1,18 +1,8 @@
-import {
-  getDocumentFields,
-  getDocumentViews
-} from '@dataview/core/document'
 import type {
-  DataDoc,
-  View,
-  ViewId
+  Field,
+  FieldId,
+  View
 } from '@dataview/core/contracts'
-import type {
-  ViewState
-} from '@dataview/engine'
-import type {
-  PageState
-} from '@dataview/runtime/page/session/types'
 import {
   createDerivedStore,
   read,
@@ -24,17 +14,23 @@ import {
   getAvailableSorterFields
 } from '@dataview/runtime/model/queryFields'
 import type {
-  DataViewPageBody,
-  DataViewPageHeader,
-  DataViewPageQueryBar,
-  DataViewPageRuntime,
-  DataViewPageSettings,
-  DataViewPageToolbar
+  DataViewSource
+} from '@dataview/runtime/dataview/types'
+import type {
+  PageBody,
+  PageHeader,
+  PageModel,
+  PageQuery,
+  PageSettings,
+  PageToolbar
 } from '@dataview/runtime/model/page/types'
+import type {
+  PageState
+} from '@dataview/runtime/page/session/types'
 
 const sameRoute = (
-  left: DataViewPageQueryBar['route'],
-  right: DataViewPageQueryBar['route']
+  left: PageQuery['route'],
+  right: PageQuery['route']
 ) => {
   if (left === right) {
     return true
@@ -48,27 +44,27 @@ const sameRoute = (
 }
 
 const sameQueryBar = (
-  left: DataViewPageToolbar['queryBar'],
-  right: DataViewPageToolbar['queryBar']
+  left: PageToolbar['queryBar'],
+  right: PageToolbar['queryBar']
 ) => left.visible === right.visible
   && sameRoute(left.route, right.route)
 
+const sameBody = (
+  left: PageBody,
+  right: PageBody
+) => left.viewType === right.viewType
+  && left.empty === right.empty
+
 const sameHeader = (
-  left: DataViewPageHeader,
-  right: DataViewPageHeader
+  left: PageHeader,
+  right: PageHeader
 ) => left.viewId === right.viewId
   && left.viewType === right.viewType
   && left.viewName === right.viewName
 
-const sameBody = (
-  left: DataViewPageBody,
-  right: DataViewPageBody
-) => left.viewType === right.viewType
-  && left.empty === right.empty
-
 const sameToolbar = (
-  left: DataViewPageToolbar,
-  right: DataViewPageToolbar
+  left: PageToolbar,
+  right: PageToolbar
 ) => left.currentView === right.currentView
   && left.activeViewId === right.activeViewId
   && sameQueryBar(left.queryBar, right.queryBar)
@@ -79,9 +75,9 @@ const sameToolbar = (
   && sameIdOrder(left.availableFilterFields, right.availableFilterFields)
   && sameIdOrder(left.availableSortFields, right.availableSortFields)
 
-const sameQueryBarView = (
-  left: DataViewPageQueryBar,
-  right: DataViewPageQueryBar
+const sameQuery = (
+  left: PageQuery,
+  right: PageQuery
 ) => left.visible === right.visible
   && sameRoute(left.route, right.route)
   && left.currentView === right.currentView
@@ -91,8 +87,8 @@ const sameQueryBarView = (
   && sameIdOrder(left.availableSortFields, right.availableSortFields)
 
 const sameSettings = (
-  left: DataViewPageSettings,
-  right: DataViewPageSettings
+  left: PageSettings,
+  right: PageSettings
 ) => left.viewsCount === right.viewsCount
   && left.currentView === right.currentView
   && left.filter === right.filter
@@ -100,143 +96,129 @@ const sameSettings = (
   && left.group === right.group
   && sameIdOrder(left.fields, right.fields)
 
-const createDocumentFieldsStore = (
-  document: ReadStore<DataDoc>
-) => createDerivedStore({
-  get: () => getDocumentFields(read(document)),
-  isEqual: (left, right) => sameIdOrder(left, right)
+const createListStore = <TId, T extends { id: unknown }>(input: {
+  ids: ReadStore<readonly TId[]>
+  values: {
+    get: (id: TId) => T | undefined
+  }
+}) => createDerivedStore<readonly T[]>({
+  get: () => read(input.ids)
+    .flatMap(id => {
+      const value = input.values.get(id)
+      return value ? [value] : []
+    }),
+  isEqual: sameIdOrder
 })
 
-const createDocumentViewsStore = (
-  document: ReadStore<DataDoc>
-) => createDerivedStore<readonly View[]>({
-  get: () => getDocumentViews(read(document)),
-  isEqual: (left, right) => sameIdOrder(left, right)
-})
-
-const createPageBodyStore = (input: {
-  currentViewStore: ReadStore<View | undefined>
-  activeStateStore: ReadStore<ViewState | undefined>
-}) => createDerivedStore<DataViewPageBody>({
-  get: () => {
-    const currentView = read(input.currentViewStore)
-    const activeState = read(input.activeStateStore)
-    return {
-      viewType: currentView?.type,
-      empty: !activeState || activeState.items.count === 0
-    }
-  },
-  isEqual: sameBody
-})
-
-const createPageHeaderStore = (input: {
-  activeViewIdStore: ReadStore<ViewId | undefined>
-  currentViewStore: ReadStore<View | undefined>
-}) => createDerivedStore<DataViewPageHeader>({
-  get: () => {
-    const currentView = read(input.currentViewStore)
-    return {
-      viewId: read(input.activeViewIdStore),
-      viewType: currentView?.type,
-      viewName: currentView?.name
-    }
-  },
-  isEqual: sameHeader
+const createAvailableFields = (input: {
+  source: DataViewSource
+  resolveUsedFieldIds: () => readonly FieldId[]
+  resolveAvailable: (fields: readonly Field[], usedFieldIds: readonly FieldId[]) => readonly Field[]
+}) => createDerivedStore<readonly Field[]>({
+  get: () => input.resolveAvailable(
+    read(createListStore({
+      ids: input.source.doc.fields.ids,
+      values: input.source.doc.fields
+    })),
+    input.resolveUsedFieldIds()
+  ),
+  isEqual: sameIdOrder
 })
 
 export const createPageModel = (input: {
-  document: ReadStore<DataDoc>
-  activeViewIdStore: ReadStore<ViewId | undefined>
-  currentViewStore: ReadStore<View | undefined>
-  activeStateStore: ReadStore<ViewState | undefined>
+  source: DataViewSource
   pageStateStore: ReadStore<PageState>
-}): DataViewPageRuntime => {
-  const documentFields = createDocumentFieldsStore(input.document)
-  const documentViews = createDocumentViewsStore(input.document)
-  const body = createPageBodyStore({
-    currentViewStore: input.currentViewStore,
-    activeStateStore: input.activeStateStore
+}): PageModel => {
+  const fields = createListStore({
+    ids: input.source.doc.fields.ids,
+    values: input.source.doc.fields
   })
-  const header = createPageHeaderStore({
-    activeViewIdStore: input.activeViewIdStore,
-    currentViewStore: input.currentViewStore
+  const views = createListStore({
+    ids: input.source.doc.views.ids,
+    values: input.source.doc.views
+  })
+  const availableFilterFields = createDerivedStore<readonly Field[]>({
+    get: () => getAvailableFilterFields(
+      read(fields),
+      read(input.source.active.query.filters).rules.map(entry => entry.rule)
+    ),
+    isEqual: sameIdOrder
+  })
+  const availableSortFields = createDerivedStore<readonly Field[]>({
+    get: () => getAvailableSorterFields(
+      read(fields),
+      read(input.source.active.query.sort).rules.map(entry => entry.sorter)
+    ),
+    isEqual: sameIdOrder
   })
 
-  const toolbar = createDerivedStore<DataViewPageToolbar>({
+  const body = createDerivedStore<PageBody>({
+    get: () => ({
+      viewType: read(input.source.active.view.type),
+      empty: read(input.source.active.items.ids).length === 0
+    }),
+    isEqual: sameBody
+  })
+
+  const header = createDerivedStore<PageHeader>({
     get: () => {
-      const fields = read(documentFields)
-      const views = read(documentViews)
-      const currentView = read(input.currentViewStore)
-      const activeState = read(input.activeStateStore)
-      const queryBar = read(input.pageStateStore).query
-      const filterRules = activeState?.query.filters.rules ?? []
-      const sortRules = activeState?.query.sort.rules ?? []
+      const currentView = read(input.source.active.view.current)
+      return {
+        viewId: read(input.source.active.view.id),
+        viewType: currentView?.type,
+        viewName: currentView?.name
+      }
+    },
+    isEqual: sameHeader
+  })
+
+  const toolbar = createDerivedStore<PageToolbar>({
+    get: () => {
+      const currentView = read(input.source.active.view.current)
+      const pageState = read(input.pageStateStore)
+      const filters = read(input.source.active.query.filters).rules
+      const sorts = read(input.source.active.query.sort).rules
 
       return {
-        views,
+        views: read(views),
         currentView,
-        activeViewId: read(input.activeViewIdStore),
-        queryBar,
-        search: activeState?.query.search.query ?? '',
-        filterCount: filterRules.length,
-        sortCount: sortRules.length,
-        availableFilterFields: getAvailableFilterFields(
-          fields,
-          filterRules.map(entry => entry.rule)
-        ),
-        availableSortFields: getAvailableSorterFields(
-          fields,
-          sortRules.map(entry => entry.sorter)
-        )
+        activeViewId: read(input.source.active.view.id),
+        queryBar: pageState.query,
+        search: read(input.source.active.query.search).query,
+        filterCount: filters.length,
+        sortCount: sorts.length,
+        availableFilterFields: read(availableFilterFields),
+        availableSortFields: read(availableSortFields)
       }
     },
     isEqual: sameToolbar
   })
 
-  const queryBar = createDerivedStore<DataViewPageQueryBar>({
+  const query = createDerivedStore<PageQuery>({
     get: () => {
-      const fields = read(documentFields)
-      const currentView = read(input.currentViewStore)
-      const activeState = read(input.activeStateStore)
-      const query = read(input.pageStateStore).query
-      const filters = activeState?.query.filters.rules ?? []
-      const sorts = activeState?.query.sort.rules ?? []
-
+      const pageState = read(input.pageStateStore)
       return {
-        visible: query.visible,
-        route: query.route,
-        currentView,
-        filters,
-        sorts,
-        availableFilterFields: getAvailableFilterFields(
-          fields,
-          filters.map(entry => entry.rule)
-        ),
-        availableSortFields: getAvailableSorterFields(
-          fields,
-          sorts.map(entry => entry.sorter)
-        )
+        visible: pageState.query.visible,
+        route: pageState.query.route,
+        currentView: read(input.source.active.view.current),
+        filters: read(input.source.active.query.filters).rules,
+        sorts: read(input.source.active.query.sort).rules,
+        availableFilterFields: read(availableFilterFields),
+        availableSortFields: read(availableSortFields)
       }
     },
-    isEqual: sameQueryBarView
+    isEqual: sameQuery
   })
 
-  const settings = createDerivedStore<DataViewPageSettings>({
-    get: () => {
-      const fields = read(documentFields)
-      const views = read(documentViews)
-      const currentView = read(input.currentViewStore)
-      const activeState = read(input.activeStateStore)
-
-      return {
-        viewsCount: views.length,
-        fields,
-        currentView,
-        filter: activeState?.query.filters,
-        sort: activeState?.query.sort,
-        group: activeState?.query.group
-      }
-    },
+  const settings = createDerivedStore<PageSettings>({
+    get: () => ({
+      viewsCount: read(input.source.doc.views.ids).length,
+      fields: read(fields),
+      currentView: read(input.source.active.view.current),
+      filter: read(input.source.active.query.filters),
+      sort: read(input.source.active.query.sort),
+      group: read(input.source.active.query.group)
+    }),
     isEqual: sameSettings
   })
 
@@ -244,7 +226,7 @@ export const createPageModel = (input: {
     body,
     header,
     toolbar,
-    queryBar,
+    query,
     settings
   }
 }

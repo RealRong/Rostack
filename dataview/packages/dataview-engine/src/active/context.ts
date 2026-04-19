@@ -4,34 +4,24 @@ import type {
   ViewPatch
 } from '@dataview/core/contracts'
 import {
-  read,
-  type ReadStore
+  createDerivedStore,
+  read
 } from '@shared/core'
 import type {
   ActionResult,
   ActiveViewApi,
-  DocumentSelectApi,
-  GalleryState,
-  KanbanState,
+  EngineSource,
   ViewState
 } from '@dataview/engine/contracts/public'
-import { selectDocument } from '@dataview/engine/runtime/selectors/document'
 import type { RuntimeStore } from '@dataview/engine/runtime/store'
 import {
-  createActiveSelect,
-  createActiveStateStore,
-  createGalleryStateStore,
-  createKanbanStateStore
-} from '@dataview/engine/active/selectors'
-import {
   createLiveDocumentReader,
-  createStaticDocumentReader,
   type DocumentReader
 } from '@dataview/engine/document/reader'
 
 export interface ActiveContextOptions {
   store: RuntimeStore
-  select: DocumentSelectApi
+  source: EngineSource
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }
 
@@ -39,9 +29,6 @@ export interface ActiveViewContext {
   id: ActiveViewApi['id']
   config: ActiveViewApi['config']
   stateStore: ActiveViewApi['state']
-  select: ActiveViewApi['select']
-  galleryState: ReadStore<GalleryState | undefined>
-  kanbanState: ReadStore<KanbanState | undefined>
   reader: DocumentReader
   dispatch: ActiveContextOptions['dispatch']
   view: () => View | undefined
@@ -54,19 +41,12 @@ export interface ActiveViewContext {
 export const createActiveContext = (
   options: ActiveContextOptions
 ): ActiveViewContext => {
-  const id = selectDocument({
-    store: options.store,
-    read: document => createStaticDocumentReader(document).views.activeId()
+  const id = options.source.active.view.id
+  const config = options.source.active.view.current
+  const stateStore = createDerivedStore<ViewState | undefined>({
+    get: () => read(options.store).currentView.snapshot
   })
-  const config = selectDocument({
-    store: options.store,
-    read: document => createStaticDocumentReader(document).views.active()
-  })
-  const stateStore = createActiveStateStore(options.store)
-  const select = createActiveSelect(stateStore)
-  const galleryState = createGalleryStateStore(stateStore)
-  const kanbanState = createKanbanStateStore(stateStore)
-  const readDocument = () => read(options.select.document)
+  const readDocument = () => options.store.get().doc
   const reader = createLiveDocumentReader(readDocument)
   const view = () => read(config)
   const snapshot = () => read(stateStore)
@@ -93,9 +73,6 @@ export const createActiveContext = (
     id,
     config,
     stateStore,
-    select,
-    galleryState,
-    kanbanState,
     reader,
     dispatch: options.dispatch,
     view,

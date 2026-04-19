@@ -209,7 +209,7 @@ const View = (props: ColumnHeaderProps) => {
   const suppressClickRef = useRef(false)
   const table = useTableContext()
   const headerState = useKeyedStoreValue(
-    table.header,
+    table.column,
     props.field.id
   )
   const sortable = useSortable({
@@ -223,10 +223,10 @@ const View = (props: ColumnHeaderProps) => {
     ? `translate3d(${Math.round(sortable.transform.x)}px, 0, 0)`
     : undefined
   const isDragging = sortable.isDragging
-  const grouped = headerState.grouped
-  const sortDirection = headerState.sortDirection
+  const grouped = headerState?.grouped ?? false
+  const sortDirection = headerState?.sortDir
   const wrap = props.wrap
-  const calculationMetric = headerState.calculationMetric
+  const calculationMetric = headerState?.calc
   const calculationMetrics = getFieldCalculationMetrics(props.field)
   const kind = meta.field.kind.get(props.field.kind)
   const KindIcon = kind.Icon

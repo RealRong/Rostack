@@ -24,8 +24,6 @@ export const useSelectedEdgeChrome = (): SelectedEdgeChrome | undefined => {
 }
 
 export type {
-  EdgeResolved,
-  EdgeState,
   EdgeView,
   SelectedEdgeChrome,
   SelectedEdgeRoutePoint

@@ -23,7 +23,7 @@ export const ColumnAddPropertyAction = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const editor = dataView.engine
-  const page = dataView.page
+  const page = dataView.session.page
   const items = useMemo(() => buildFieldKindMenuItems({
     t,
     kind: undefined,

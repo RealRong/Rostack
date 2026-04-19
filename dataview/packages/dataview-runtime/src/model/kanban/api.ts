@@ -1,59 +1,46 @@
-import type {
-  DataRecord,
-  RecordId
-} from '@dataview/core/contracts'
-import type {
-  ItemId,
-  KanbanState,
-  SectionKey,
-  ViewState
-} from '@dataview/engine'
-import type {
-  DataViewInlineRuntime
-} from '@dataview/runtime/model/inline/types'
-import type {
-  DataViewKanbanModel,
-  KanbanBoardBase,
-  KanbanCardData,
-  KanbanSectionBase
-} from '@dataview/runtime/model/kanban/types'
 import {
-  readActiveTypedViewState,
-  type RecordCardContentData,
-  type RecordCardPropertyData
-} from '@dataview/runtime/model/shared'
+  isEmptyFieldValue
+} from '@dataview/core/field'
 import {
   createDerivedStore,
   createKeyedDerivedStore,
   read,
   sameIdOrder,
   sameOrder,
-  sameValue,
-  type KeyedReadStore,
-  type ReadStore
+  sameValue
 } from '@shared/core'
-import {
-  isEmptyFieldValue
-} from '@dataview/core/field'
+import type {
+  DataViewSource
+} from '@dataview/runtime/dataview/types'
+import type {
+  CardContent,
+  CardProperty
+} from '@dataview/runtime/model/shared'
+import type {
+  DataViewKanbanModel,
+  KanbanBoard,
+  KanbanCard,
+  KanbanSection
+} from '@dataview/runtime/model/kanban/types'
 
-const sameBoardBase = (
-  left: KanbanBoardBase | null,
-  right: KanbanBoardBase | null
+const sameBoard = (
+  left: KanbanBoard | null,
+  right: KanbanBoard | null
 ) => left === right || (
   !!left
   && !!right
   && left.viewId === right.viewId
   && left.grouped === right.grouped
-  && sameOrder(left.sectionKeys, right.sectionKeys)
+  && left.sectionKeys === right.sectionKeys
   && left.groupField === right.groupField
   && left.fillColumnColor === right.fillColumnColor
   && left.groupUsesOptionColors === right.groupUsesOptionColors
   && left.cardsPerColumn === right.cardsPerColumn
 )
 
-const sameSectionBase = (
-  left: KanbanSectionBase | undefined,
-  right: KanbanSectionBase | undefined
+const sameSection = (
+  left: KanbanSection | undefined,
+  right: KanbanSection | undefined
 ) => left === right || (
   !!left
   && !!right
@@ -66,8 +53,8 @@ const sameSectionBase = (
 )
 
 const sameCard = (
-  left: KanbanCardData | undefined,
-  right: KanbanCardData | undefined
+  left: KanbanCard | undefined,
+  right: KanbanCard | undefined
 ) => left === right || (
   !!left
   && !!right
@@ -85,14 +72,14 @@ const sameCard = (
 )
 
 const sameProperty = (
-  left: RecordCardPropertyData,
-  right: RecordCardPropertyData
+  left: CardProperty,
+  right: CardProperty
 ) => left.field.id === right.field.id
   && sameValue(left.value, right.value)
 
 const sameContent = (
-  left: RecordCardContentData | undefined,
-  right: RecordCardContentData | undefined
+  left: CardContent | undefined,
+  right: CardContent | undefined
 ) => left === right || (
   !!left
   && !!right
@@ -103,107 +90,123 @@ const sameContent = (
 )
 
 export const createKanbanModel = (input: {
-  activeStateStore: ReadStore<ViewState | undefined>
-  extraStateStore: ReadStore<KanbanState | undefined>
-  recordStore: KeyedReadStore<RecordId, DataRecord | undefined>
-  selectionMembershipStore: KeyedReadStore<ItemId, boolean>
-  previewSelectionMembershipStore: KeyedReadStore<ItemId, boolean | null>
-  inline: DataViewInlineRuntime
+  source: DataViewSource
+  inlineKey: (input: {
+    viewId: string
+    itemId: number
+  }) => string
 }): DataViewKanbanModel => {
-  const boardBase = createDerivedStore<KanbanBoardBase | null>({
+  const board = createDerivedStore<KanbanBoard | null>({
     get: () => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'kanban')
-      const extra = read(input.extraStateStore)
-      if (!active || !extra) {
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'kanban') {
         return null
       }
 
       return {
-        viewId: active.view.id,
-        grouped: active.query.group.active,
-        sectionKeys: active.sections.ids,
-        groupField: active.query.group.field,
-        fillColumnColor: extra.fillColumnColor,
-        groupUsesOptionColors: extra.groupUsesOptionColors,
-        cardsPerColumn: extra.cardsPerColumn
+        viewId: view.id,
+        grouped: read(input.source.active.query.grouped),
+        sectionKeys: read(input.source.active.sections.keys),
+        groupField: read(input.source.active.query.group).field,
+        fillColumnColor: read(input.source.active.kanban.fillColumnColor),
+        groupUsesOptionColors: read(input.source.active.kanban.groupUsesOptionColors),
+        cardsPerColumn: read(input.source.active.kanban.cardsPerColumn)
       }
     },
-    isEqual: sameBoardBase
+    isEqual: sameBoard
   })
 
-  const sectionBase = createKeyedDerivedStore<SectionKey, KanbanSectionBase | undefined>({
-    keyOf: key => key,
+  const section = createKeyedDerivedStore<string, KanbanSection | undefined>({
     get: key => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'kanban')
-      const current = active?.sections.get(key)
-      return current
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'kanban') {
+        return undefined
+      }
+
+      const value = read(input.source.active.sections, key)
+      return value
         ? {
-            key: current.key,
-            label: current.label,
-            bucket: current.bucket,
-            collapsed: current.collapsed,
-            count: current.items.count,
-            color: current.color
+            key: value.key,
+            label: value.label,
+            bucket: value.bucket,
+            collapsed: value.collapsed,
+            count: value.items.count,
+            color: value.color
           }
         : undefined
     },
-    isEqual: sameSectionBase
+    isEqual: sameSection
   })
 
-  const card = createKeyedDerivedStore<ItemId, KanbanCardData | undefined>({
-    keyOf: itemId => itemId,
+  const card = createKeyedDerivedStore<number, KanbanCard | undefined>({
     get: itemId => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'kanban')
-      const extra = read(input.extraStateStore)
-      const item = active?.items.get(itemId)
-      if (!active || !extra || !item) {
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'kanban') {
+        return undefined
+      }
+
+      const item = read(input.source.active.items, itemId)
+      if (!item) {
         return undefined
       }
 
       return {
-        viewId: active.view.id,
+        viewId: view.id,
         itemId,
         recordId: item.recordId,
-        fields: active.fields.custom,
-        size: extra.card.size,
-        layout: extra.card.layout,
-        wrap: extra.card.wrap,
-        canDrag: extra.canReorder,
+        fields: read(input.source.active.fields.custom.ids)
+          .flatMap(fieldId => {
+            const field = read(input.source.active.fields.custom, fieldId)
+            return field ? [field] : []
+          }),
+        size: read(input.source.active.kanban.size),
+        layout: read(input.source.active.kanban.layout),
+        wrap: read(input.source.active.kanban.wrap),
+        canDrag: read(input.source.active.kanban.canReorder),
         selected: (
-          read(input.previewSelectionMembershipStore, itemId)
-          ?? read(input.selectionMembershipStore, itemId)
+          read(input.source.selection.preview, itemId)
+          ?? read(input.source.selection.member, itemId)
         ),
         editing: read(
-          input.inline.editing,
-          input.inline.key({
-            viewId: active.view.id,
+          input.source.inline.editing,
+          input.inlineKey({
+            viewId: view.id,
             itemId
           })
         ),
-        color: extra.groupUsesOptionColors
-          ? active.sections.get(item.sectionKey)?.color
+        color: read(input.source.active.kanban.groupUsesOptionColors)
+          ? read(input.source.active.sections, item.sectionKey)?.color
           : undefined
       }
     },
     isEqual: sameCard
   })
 
-  const content = createKeyedDerivedStore<ItemId, RecordCardContentData | undefined>({
-    keyOf: itemId => itemId,
+  const content = createKeyedDerivedStore<number, CardContent | undefined>({
     get: itemId => {
-      const active = readActiveTypedViewState(read(input.activeStateStore), 'kanban')
-      const item = active?.items.get(itemId)
-      const record = item
-        ? read(input.recordStore, item.recordId)
-        : undefined
-      if (!active || !item || !record) {
+      const view = read(input.source.active.view.current)
+      if (!view || view.type !== 'kanban') {
         return undefined
       }
 
-      const properties = active.fields.custom.map(field => ({
-        field,
-        value: record.values[field.id]
-      }))
+      const item = read(input.source.active.items, itemId)
+      const record = item
+        ? read(input.source.doc.records, item.recordId)
+        : undefined
+      if (!item || !record) {
+        return undefined
+      }
+
+      const properties = read(input.source.active.fields.custom.ids)
+        .flatMap(fieldId => {
+          const field = read(input.source.active.fields.custom, fieldId)
+          return field
+            ? [{
+                field,
+                value: record.values[field.id]
+              }]
+            : []
+        })
 
       return {
         titleText: record.title,
@@ -216,8 +219,8 @@ export const createKanbanModel = (input: {
   })
 
   return {
-    boardBase,
-    sectionBase,
+    board,
+    section,
     card,
     content
   }

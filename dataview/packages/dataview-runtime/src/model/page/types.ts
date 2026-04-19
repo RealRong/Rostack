@@ -4,7 +4,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
-  ViewState
+  ActiveViewQuery
 } from '@dataview/engine'
 import type {
   QueryBarEntry,
@@ -14,18 +14,18 @@ import type {
   ReadStore
 } from '@shared/core'
 
-export interface DataViewPageBody {
+export interface PageBody {
   viewType?: View['type']
   empty: boolean
 }
 
-export interface DataViewPageHeader {
+export interface PageHeader {
   viewId?: ViewId
   viewType?: View['type']
   viewName?: string
 }
 
-export interface DataViewPageToolbar {
+export interface PageToolbar {
   views: readonly View[]
   currentView?: View
   activeViewId?: ViewId
@@ -37,29 +37,29 @@ export interface DataViewPageToolbar {
   availableSortFields: readonly Field[]
 }
 
-export interface DataViewPageQueryBar {
+export interface PageQuery {
   visible: boolean
   route: QueryBarEntry | null
   currentView?: View
-  filters: ViewState['query']['filters']['rules']
-  sorts: ViewState['query']['sort']['rules']
+  filters: ActiveViewQuery['filters']['rules']
+  sorts: ActiveViewQuery['sort']['rules']
   availableFilterFields: readonly Field[]
   availableSortFields: readonly Field[]
 }
 
-export interface DataViewPageSettings {
+export interface PageSettings {
   viewsCount: number
   fields: readonly Field[]
   currentView?: View
-  filter?: ViewState['query']['filters']
-  sort?: ViewState['query']['sort']
-  group?: ViewState['query']['group']
+  filter?: ActiveViewQuery['filters']
+  sort?: ActiveViewQuery['sort']
+  group?: ActiveViewQuery['group']
 }
 
-export interface DataViewPageRuntime {
-  body: ReadStore<DataViewPageBody>
-  header: ReadStore<DataViewPageHeader>
-  toolbar: ReadStore<DataViewPageToolbar>
-  queryBar: ReadStore<DataViewPageQueryBar>
-  settings: ReadStore<DataViewPageSettings>
+export interface PageModel {
+  body: ReadStore<PageBody>
+  header: ReadStore<PageHeader>
+  toolbar: ReadStore<PageToolbar>
+  query: ReadStore<PageQuery>
+  settings: ReadStore<PageSettings>
 }

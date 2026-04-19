@@ -2,14 +2,12 @@ import {
   createDerivedStore,
   joinUnsubscribes,
   read,
-  type ReadStore
+  sameIdOrder
 } from '@shared/core'
 import type {
+  CustomField,
   View
 } from '@dataview/core/contracts'
-import type {
-  ItemList
-} from '@dataview/engine'
 import {
   createCreateRecordApi
 } from '@dataview/runtime/createRecord'
@@ -33,9 +31,8 @@ import {
   createMarqueeController
 } from '@dataview/runtime/marquee'
 import {
-  createItemSelectionDomainSource,
+  createItemArraySelectionDomain,
   createSelectionController,
-  createItemListSelectionDomain,
   type ItemSelectionController
 } from '@dataview/runtime/selection'
 import type {
@@ -47,9 +44,20 @@ import {
   createValueEditorApi
 } from '@dataview/runtime/valueEditor'
 
+const createFieldsStore = (
+  source: CreateDataViewRuntimeInput['engine']['source']['doc']['fields']
+) => createDerivedStore<readonly CustomField[]>({
+  get: () => read(source.ids)
+    .flatMap(fieldId => {
+      const field = read(source, fieldId)
+      return field ? [field] : []
+    }),
+  isEqual: sameIdOrder
+})
+
 const bindInlineSessionToView = (input: {
-  activeView: ReadStore<View | undefined>
-  items: ReadStore<ItemList | undefined>
+  activeView: ReturnType<typeof createDerivedStore<View | undefined>>
+  items: CreateDataViewRuntimeInput['engine']['source']['active']['items']
   inlineSession: InlineSessionApi
 }) => {
   const sync = () => {
@@ -59,15 +67,8 @@ const bindInlineSessionToView = (input: {
     }
 
     const view = input.activeView.get()
-    const items = input.items.get()
-    if (!view || !items) {
-      input.inlineSession.exit({
-        reason: 'view-change'
-      })
-      return
-    }
-
-    if (view.id !== session.viewId || !items.has(session.itemId)) {
+    const item = input.items.get(session.itemId)
+    if (!view || !item || view.id !== session.viewId) {
       input.inlineSession.exit({
         reason: 'view-change'
       })
@@ -77,7 +78,7 @@ const bindInlineSessionToView = (input: {
   sync()
   return joinUnsubscribes([
     input.activeView.subscribe(sync),
-    input.items.subscribe(sync)
+    input.items.ids.subscribe(sync)
   ])
 }
 
@@ -109,7 +110,7 @@ const bindInlineSessionToSelection = (input: {
 ])
 
 const bindMarqueeToView = (input: {
-  activeView: ReadStore<View | undefined>
+  activeView: ReturnType<typeof createDerivedStore<View | undefined>>
   marquee: Pick<ReturnType<typeof createMarqueeController>, 'get' | 'clear'>
 }) => {
   let previousViewId = input.activeView.get()?.id
@@ -136,31 +137,47 @@ export const createDataViewRuntime = (
     activeView: input.engine.active.config
   })
   const valueEditor = createValueEditorApi()
-  const activeItems = input.engine.active.select(
-    state => state?.items
-  )
+  const activeItemIds = input.engine.source.active.items.ids
+  const activeView = input.engine.source.active.view.current
   const selectionRuntime = createSelectionController({
-    domainSource: createItemSelectionDomainSource({
-      store: activeItems
-    })
+    domainSource: {
+      get: () => createItemArraySelectionDomain(read(activeItemIds)),
+      subscribe: activeItemIds.subscribe
+    }
   })
   const selection = selectionRuntime.controller
   const marquee = createMarqueeController({
     selection,
-    resolveDomain: () => {
-      const items = read(activeItems)
-      return items
-        ? createItemListSelectionDomain(items)
-        : undefined
-    }
+    resolveDomain: () => createItemArraySelectionDomain(read(activeItemIds))
   })
+  const fieldsStore = createFieldsStore(input.engine.source.doc.fields)
   const pageStateStore = createPageStateStore({
-    document: input.engine.select.document,
-    activeViewId: input.engine.active.id,
-    activeView: input.engine.active.config,
+    fields: fieldsStore,
+    activeViewId: input.engine.source.active.view.id,
+    activeView,
     page: page.store,
     valueEditorOpen: valueEditor.openStore
   })
+  const source = {
+    doc: input.engine.source.doc,
+    active: input.engine.source.active,
+    page: {
+      queryVisible: createDerivedStore({
+        get: () => read(pageStateStore).query.visible,
+        isEqual: Object.is
+      }),
+      queryRoute: createDerivedStore({
+        get: () => read(pageStateStore).query.route
+      })
+    },
+    selection: {
+      member: selection.store.membership,
+      preview: marquee.preview.membership
+    },
+    inline: {
+      editing: inlineSession.editing
+    }
+  }
   const sessionStore = createDerivedStore<DataViewSessionState>({
     get: () => ({
       page: read(pageStateStore),
@@ -171,37 +188,21 @@ export const createDataViewRuntime = (
       selection: read(selection.state.store)
     })
   })
-  const inline = {
-    editing: inlineSession.editing,
-    key: inlineSession.key
-  }
   const model = {
     page: createPageModel({
-      document: input.engine.select.document,
-      activeViewIdStore: input.engine.active.id,
-      currentViewStore: input.engine.active.config,
-      activeStateStore: input.engine.active.state,
+      source,
       pageStateStore
     }),
-    inline,
     table: createTableModel({
-      activeStateStore: input.engine.active.state
+      source
     }),
     gallery: createGalleryModel({
-      activeStateStore: input.engine.active.state,
-      extraStateStore: input.engine.active.gallery.state,
-      recordStore: input.engine.select.records.byId,
-      selectionMembershipStore: selection.store.membership,
-      previewSelectionMembershipStore: marquee.preview.membership,
-      inline
+      source,
+      inlineKey: inlineSession.key
     }),
     kanban: createKanbanModel({
-      activeStateStore: input.engine.active.state,
-      extraStateStore: input.engine.active.kanban.state,
-      recordStore: input.engine.select.records.byId,
-      selectionMembershipStore: selection.store.membership,
-      previewSelectionMembershipStore: marquee.preview.membership,
-      inline
+      source,
+      inlineKey: inlineSession.key
     })
   }
 
@@ -211,32 +212,19 @@ export const createDataViewRuntime = (
       inlineSession
     }),
     bindMarqueeToView({
-      activeView: input.engine.active.config,
+      activeView,
       marquee
     }),
     bindInlineSessionToView({
-      activeView: input.engine.active.config,
-      items: activeItems,
+      activeView,
+      items: input.engine.source.active.items,
       inlineSession
     })
   ])
 
   return {
     engine: input.engine,
-    read: {
-      engine: input.engine,
-      document: input.engine.select.document,
-      activeViewId: input.engine.active.id,
-      activeView: input.engine.active.config,
-      activeItems,
-      activeViewState: input.engine.active.state
-    },
-    write: {
-      engine: input.engine,
-      active: input.engine.active,
-      records: input.engine.records,
-      views: input.engine.views
-    },
+    source,
     session: {
       store: sessionStore,
       page: {
@@ -262,20 +250,9 @@ export const createDataViewRuntime = (
       marquee
     },
     model,
-    page: {
-      ...page,
-      store: pageStateStore
-    },
-    selection,
-    inlineSession,
-    createRecord,
-    valueEditor,
     dispose: () => {
-      createRecord.cancel()
-      marquee.clear()
-      disposeBindings()
       selectionRuntime.dispose()
-      page.dispose()
+      disposeBindings()
     }
   }
 }

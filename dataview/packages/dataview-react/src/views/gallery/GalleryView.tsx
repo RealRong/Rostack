@@ -4,13 +4,6 @@ import {
   useContext,
   type ReactNode
 } from 'react'
-import type {
-  GalleryState,
-  ViewState
-} from '@dataview/engine'
-import {
-  readActiveTypedViewState
-} from '@dataview/runtime'
 import {
   useDataViewValue
 } from '@dataview/react/dataview'
@@ -19,52 +12,31 @@ import {
   useGalleryRuntime
 } from '@dataview/react/views/gallery/runtime'
 import type {
-  ActiveGalleryViewState,
   GalleryViewRuntime
 } from '@dataview/react/views/gallery/types'
 
 export interface GalleryViewProps {}
 
-export interface GalleryProviderProps {
-  children?: ReactNode
-}
-
 const Ctx = createContext<GalleryViewRuntime | null>(null)
 
-const readGalleryActiveState = (
-  state: ViewState | undefined
-): ActiveGalleryViewState | undefined => readActiveTypedViewState(state, 'gallery')
-
 const GalleryRuntimeProvider = (props: {
-  active: ActiveGalleryViewState
-  extra: GalleryState
   children?: ReactNode
 }) => {
-  const runtime = useGalleryRuntime({
-    active: props.active,
-    extra: props.extra
-  })
+  const runtime = useGalleryRuntime()
 
   return createElement(Ctx.Provider, { value: runtime }, props.children)
 }
 
 export const GalleryView = (_props: GalleryViewProps) => {
-  const active = useDataViewValue(
-    dataView => dataView.engine.active.state,
-    readGalleryActiveState
+  const viewType = useDataViewValue(
+    dataView => dataView.source.active.view.type
   )
-  const extra = useDataViewValue(
-    dataView => dataView.engine.active.gallery.state
-  )
-  if (!active || !extra) {
+  if (viewType !== 'gallery') {
     return null
   }
 
   return (
-    <GalleryRuntimeProvider
-      active={active}
-      extra={extra}
-    >
+    <GalleryRuntimeProvider>
       <Grid />
     </GalleryRuntimeProvider>
   )

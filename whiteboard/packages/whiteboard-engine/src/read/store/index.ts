@@ -4,7 +4,8 @@ import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { BoardConfig } from '@whiteboard/core/config'
 import {
   getEdgePath,
-  getEdgePathBounds
+  getEdgePathBounds,
+  matchEdgeRect
 } from '@whiteboard/core/edge'
 import {
   getRectsBoundingRect
@@ -43,7 +44,7 @@ import {
 import { createValueStore, presentValues } from '@shared/core'
 import { DEFAULT_TUNING } from '@whiteboard/engine/config'
 import { RESET_READ_IMPACT } from '@whiteboard/engine/read/impacts'
-import { NodeRectIndex, SnapIndex } from '@whiteboard/engine/read/indexes'
+import { EdgeRectIndex, NodeRectIndex, SnapIndex } from '@whiteboard/engine/read/indexes'
 import { createEdgeProjection } from '@whiteboard/engine/read/store/edge'
 import { createReadModel } from '@whiteboard/engine/read/store/model'
 import { createMindmapProjection } from '@whiteboard/engine/read/store/mindmap'
@@ -70,6 +71,12 @@ export const createRead = ({
   const readModel = createReadModel({ readDocument })
 
   const nodeRectIndex = new NodeRectIndex(config)
+  const edgeRectIndex = new EdgeRectIndex(
+    Math.max(
+      config.node.snapGridCellSize,
+      config.node.groupPadding * DEFAULT_TUNING.query.snapGridPaddingFactor
+    )
+  )
   const snapIndex = new SnapIndex(
     Math.max(
       config.node.snapGridCellSize,
@@ -81,6 +88,9 @@ export const createRead = ({
       all: nodeRectIndex.all,
       get: nodeRectIndex.byId,
       idsInRect: nodeRectIndex.nodeIdsInRect
+    },
+    edge: {
+      idsInRect: edgeRectIndex.idsInRect
     },
     snap: {
       all: snapIndex.all,
@@ -359,6 +369,36 @@ export const createRead = ({
     return getRectsBoundingRect(rects)
   }
 
+  edgeRectIndex.reset(edgeProjection.list.get(), readEdgeBounds)
+
+  const readEdgeIdsInRect: EngineRead['edge']['idsInRect'] = (
+    rect,
+    options
+  ) => index.edge.idsInRect(rect).filter((edgeId) => {
+    const item = edgeProjection.item.get(edgeId)
+    if (!item) {
+      return false
+    }
+
+    const path = getEdgePath({
+      edge: item.edge,
+      source: {
+        point: item.ends.source.point,
+        side: item.ends.source.anchor?.side
+      },
+      target: {
+        point: item.ends.target.point,
+        side: item.ends.target.anchor?.side
+      }
+    })
+
+    return matchEdgeRect({
+      path,
+      queryRect: rect,
+      mode: options?.match ?? 'touch'
+    })
+  })
+
   const readDocumentBounds = (): Rect | undefined => {
     const rects: Rect[] = nodeRectIndex.all().map((entry) => entry.geometry.bounds)
 
@@ -392,6 +432,7 @@ export const createRead = ({
     const snapshot = createSnapshot(model)
     nodeProjection.applyChange(impact, snapshot, nodeRectIndex.changedIds())
     edgeProjection.applyChange(impact, snapshot)
+    edgeRectIndex.applyChange(edgeProjection.changedIds(), readEdgeBounds)
     mindmapProjection.applyChange(impact, snapshot)
   }
 
@@ -454,7 +495,8 @@ export const createRead = ({
         list: edgeProjection.list,
         item: edgeProjection.item,
         edges: readEdges,
-        related: edgeProjection.related
+        related: edgeProjection.related,
+        idsInRect: readEdgeIdsInRect
       },
       mindmap: {
         list: mindmapProjection.list,

@@ -6,7 +6,9 @@ import {
   type MindmapLayoutSpec,
   type MindmapNodeId
 } from '@whiteboard/core/mindmap'
+import type { SelectionSummary } from '@whiteboard/core/selection'
 import type { NodeId, Point } from '@whiteboard/core/types'
+import type { ReadStore } from '@shared/core'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
@@ -16,7 +18,6 @@ import type { MindmapPreviewState } from '@whiteboard/editor/session/preview'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
-import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -73,7 +74,7 @@ export const tryStartMindmapDrag = (input: {
   pointer: PointerDownInput
   mindmap: Pick<MindmapPresentationRead, 'item'>
   node: Pick<NodePresentationRead, 'item'>
-  selection: Pick<SelectionModelRead, 'get'>
+  selection: Pick<ReadStore<SelectionSummary>, 'get'>
 }): MindmapDragState | undefined => {
   const pick = input.pointer.pick
   const pickedNode = pick.kind === 'node'
@@ -91,7 +92,7 @@ export const tryStartMindmapDrag = (input: {
     (treeId ? input.node.item.get(treeId)?.node.locked : undefined)
     || pickedNode?.locked
   )
-  const selectedNodeIds = input.selection.get().summary.target.nodeIds
+  const selectedNodeIds = input.selection.get().target.nodeIds
   const selected = Boolean(nodeId && selectedNodeIds.includes(nodeId))
 
   if (

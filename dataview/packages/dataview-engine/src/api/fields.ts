@@ -16,7 +16,7 @@ import {
 import { createFieldId } from '@dataview/engine/mutate/entityId'
 import type {
   ActionResult,
-  DocumentSelectApi,
+  DocumentSource,
   FieldsApi
 } from '@dataview/engine/contracts/public'
 
@@ -35,16 +35,16 @@ const findAddedOption = (
 }
 
 export const createFieldsApi = (options: {
-  select: DocumentSelectApi
+  source: DocumentSource
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): FieldsApi => {
   const dispatch = options.dispatch
-  const listFields = () => read(options.select.fields.ids)
+  const listFields = () => read(options.source.fields.ids)
     .flatMap(fieldId => {
-      const field = read(options.select.fields.byId, fieldId)
+      const field = read(options.source.fields, fieldId)
       return field ? [field] : []
     })
-  const getField = (fieldId: CustomFieldId) => read(options.select.fields.byId, fieldId)
+  const getField = (fieldId: CustomFieldId) => read(options.source.fields, fieldId)
   const getOptionFieldById = (fieldId: CustomFieldId) => getOptionField(getField(fieldId))
 
   return {

@@ -17,7 +17,7 @@ export const QueryFieldPickerPanel = (props: {
   const page = dataView.session.page
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
-  const queryBar = useStoreValue(pageRuntime.queryBar)
+  const query = useStoreValue(pageRuntime.query)
   const currentView = settings.currentView
   const currentViewDomain = currentView
     ? engine.active
@@ -28,8 +28,8 @@ export const QueryFieldPickerPanel = (props: {
     <div className="min-h-0 flex-1 overflow-hidden">
       <FieldPicker
         fields={props.kind === 'filter'
-          ? queryBar.availableFilterFields
-          : queryBar.availableSortFields}
+          ? query.availableFilterFields
+          : query.availableSortFields}
         emptyMessage={props.kind === 'filter'
           ? meta.ui.fieldPicker.allFiltered
           : meta.ui.fieldPicker.allSorted}
@@ -38,7 +38,7 @@ export const QueryFieldPickerPanel = (props: {
             currentViewDomain?.filters.add(fieldId)
             page.query.open({
               kind: 'filter',
-              index: queryBar.filters.length
+              index: query.filters.length
             })
             router.close()
             return

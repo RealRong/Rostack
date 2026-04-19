@@ -6,18 +6,20 @@ import {
   createDerivedStore,
   read,
   sameOptionalNumberArray as isSameOptionalNumberArray,
-  sameOptionalRect as isSameOptionalRectTuple,
-  type ReadStore
+  type ReadStore,
+  type KeyedReadStore
 } from '@shared/core'
 import type {
   SelectionAffordance,
   SelectionSummary,
   SelectionTarget
 } from '@whiteboard/core/selection'
-import type { Edge, MindmapNodeId, Node, NodeSchema, Rect } from '@whiteboard/core/types'
+import type { Edge, EdgeId, MindmapNodeId, Node, NodeId } from '@whiteboard/core/types'
 import type {
+  SelectionEdgeStats,
   SelectionEdgeTypeInfo,
-  SelectionNodeInfo,
+  SelectionMembers,
+  SelectionNodeStats,
   SelectionNodeTypeInfo,
   SelectionOverlay,
   SelectionToolbarContext,
@@ -28,10 +30,7 @@ import type {
   SelectionToolbarScope
 } from '@whiteboard/editor/types/selectionPresentation'
 import type {
-  ControlId,
-  NodeFamily,
-  NodeMeta,
-  NodeRegistry
+  NodeFamily
 } from '@whiteboard/editor/types/node'
 import type {
   EditorDefaults,
@@ -43,31 +42,27 @@ import { readUniformValue } from '@whiteboard/editor/query/utils'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
+import type {
+  NodeTypeSupport
+} from '@whiteboard/editor/query/node/read'
 
 export type SelectionRead = {
-  box: ReadStore<Rect | undefined>
-  node: ReadStore<SelectionNodeInfo | undefined>
+  members: ReadStore<SelectionMembers>
+  summary: ReadStore<SelectionSummary>
+  affordance: ReadStore<SelectionAffordance>
+  node: {
+    selected: KeyedReadStore<NodeId, boolean>
+    stats: ReadStore<SelectionNodeStats>
+    scope: ReadStore<SelectionToolbarNodeScope | undefined>
+  }
+  edge: {
+    selected: KeyedReadStore<EdgeId, boolean>
+    stats: ReadStore<SelectionEdgeStats>
+    scope: ReadStore<SelectionToolbarEdgeScope | undefined>
+  }
   overlay: ReadStore<SelectionOverlay | undefined>
   toolbar: ReadStore<SelectionToolbarContext | undefined>
 }
-
-type StyleFieldKind = 'string' | 'number' | 'numberArray'
-
-type SelectionNodeStats = {
-  ids: readonly string[]
-  count: number
-  hasGroup: boolean
-  lock: SelectionNodeInfo['lock']
-  types: readonly SelectionNodeTypeInfo[]
-}
-
-type SelectionEdgeStats = {
-  ids: readonly string[]
-  count: number
-  types: readonly SelectionEdgeTypeInfo[]
-}
-
-const EMPTY_CONTROLS: readonly ControlId[] = []
 
 const readNodeCountLabel = (
   count: number
@@ -76,26 +71,6 @@ const readNodeCountLabel = (
 const readEdgeCountLabel = (
   count: number
 ) => count === 1 ? '1 edge' : `${count} edges`
-
-const readNodeMeta = (
-  registry: Pick<NodeRegistry, 'get'>,
-  node: Node
-): NodeMeta => {
-  const definition = registry.get(node.type)
-  const meta = definition?.describe?.(node) ?? definition?.meta
-
-  if (meta) {
-    return meta
-  }
-
-  return {
-    key: node.type,
-    name: node.type,
-    family: 'shape',
-    icon: node.type,
-    controls: EMPTY_CONTROLS
-  }
-}
 
 const readString = (
   node: Node,
@@ -127,39 +102,12 @@ const normalizeDash = (
   value: readonly number[] | undefined
 ) => value?.length ? value : undefined
 
-const hasStyleField = (
-  schema: NodeSchema | undefined,
-  path: string
-) => schema?.fields.some((field) => field.scope === 'style' && field.path === path) ?? false
-
-const supportsStyleField = (
-  nodes: readonly Node[],
-  registry: Pick<NodeRegistry, 'get'>,
-  path: string,
-  kind: StyleFieldKind
-) => nodes.every((node) => {
-  const schema = registry.get(node.type)?.schema
-  if (hasStyleField(schema, path)) {
-    return true
-  }
-
-  const value = node.style?.[path]
-  if (kind === 'string') {
-    return typeof value === 'string'
-  }
-  if (kind === 'number') {
-    return typeof value === 'number'
-  }
-
-  return Array.isArray(value) && value.every((entry) => typeof entry === 'number')
-})
-
 const readSelectionNodeStats = ({
   summary,
-  registry
+  nodeType
 }: {
   summary: SelectionSummary
-  registry: Pick<NodeRegistry, 'get'>
+  nodeType: Pick<NodeTypeSupport, 'meta'>
 }): SelectionNodeStats => {
   const nodes = summary.items.nodes
   const ids = summary.target.nodeIds
@@ -175,11 +123,11 @@ const readSelectionNodeStats = ({
     family: NodeFamily
     icon: string
     count: number
-    nodeIds: string[]
+    nodeIds: NodeId[]
   }>()
 
   nodes.forEach((node) => {
-    const meta = readNodeMeta(registry, node)
+    const meta = nodeType.meta(node.type)
     const key = meta.key ?? node.type
     const current = statsByType.get(key)
     if (current) {
@@ -198,7 +146,7 @@ const readSelectionNodeStats = ({
     })
   })
 
-  const types = [...statsByType.values()]
+  const types: SelectionNodeTypeInfo[] = [...statsByType.values()]
     .sort((left, right) => (
       right.count - left.count || left.key.localeCompare(right.key)
     ))
@@ -236,9 +184,9 @@ const readEdgeTypeName = (
       ? 'Elbow'
       : type === 'fillet'
         ? 'Fillet'
-      : type === 'curve'
-        ? 'Curve'
-        : type
+        : type === 'curve'
+          ? 'Curve'
+          : type
 )
 
 const readSelectionEdgeStats = (
@@ -252,7 +200,7 @@ const readSelectionEdgeStats = (
     name: string
     edgeType?: string
     count: number
-    edgeIds: string[]
+    edgeIds: EdgeId[]
   }>()
 
   edges.forEach((edge) => {
@@ -273,7 +221,7 @@ const readSelectionEdgeStats = (
     })
   })
 
-  const types = [...statsByType.values()]
+  const types: SelectionEdgeTypeInfo[] = [...statsByType.values()]
     .sort((left, right) => (
       right.count - left.count || left.key.localeCompare(right.key)
     ))
@@ -324,9 +272,9 @@ const resolveToolbarNodeKind = (
 
 const hasControl = (
   nodes: readonly Node[],
-  registry: Pick<NodeRegistry, 'get'>,
+  nodeType: Pick<NodeTypeSupport, 'hasControl'>,
   control: 'fill' | 'stroke' | 'text'
-) => nodes.every((node) => readNodeMeta(registry, node).controls.includes(control))
+) => nodes.every((node) => nodeType.hasControl(node, control))
 
 const readDefaultFill = (
   defaults: EditorNodePaintDefaults | undefined
@@ -420,17 +368,17 @@ const readNodeScope = ({
   nodes,
   nodeIds,
   primaryNode,
-  registry,
+  nodeType,
   nodeStats,
   mindmap,
   defaults
 }: {
   nodes: readonly Node[]
-  nodeIds: readonly string[]
+  nodeIds: readonly NodeId[]
   primaryNode?: Node
-  registry: Pick<NodeRegistry, 'get'>
+  nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
   nodeStats: SelectionNodeStats
-  mindmap: Pick<MindmapPresentationRead, 'tree'>
+  mindmap: Pick<MindmapPresentationRead, 'item'>
   defaults: EditorDefaults['selection']
 }): SelectionToolbarNodeScope => {
   const readPaintDefaults = defaults.node.readPaint
@@ -449,19 +397,19 @@ const readNodeScope = ({
     hasGroup: nodes.some((node) => Boolean(node.groupId)),
     types: nodeStats.types.filter((entry) => entry.nodeIds.some((id) => nodeIds.includes(id)))
   })
-  const canEditFill = hasControl(nodes, registry, 'fill')
-  const canEditStroke = hasControl(nodes, registry, 'stroke')
-  const canEditTextColor = hasControl(nodes, registry, 'text')
-    && supportsStyleField(nodes, registry, 'color', 'string')
+  const canEditFill = hasControl(nodes, nodeType, 'fill')
+  const canEditStroke = hasControl(nodes, nodeType, 'stroke')
+  const canEditTextColor = hasControl(nodes, nodeType, 'text')
+    && nodes.every((node) => nodeType.supportsStyle(node, 'color', 'string'))
   const styleSupport = {
-    fontSize: supportsStyleField(nodes, registry, 'fontSize', 'number'),
-    fontWeight: supportsStyleField(nodes, registry, 'fontWeight', 'number'),
-    fontStyle: supportsStyleField(nodes, registry, 'fontStyle', 'string'),
-    textAlign: supportsStyleField(nodes, registry, 'textAlign', 'string'),
-    fillOpacity: supportsStyleField(nodes, registry, 'fillOpacity', 'number'),
-    strokeOpacity: supportsStyleField(nodes, registry, 'strokeOpacity', 'number'),
-    strokeDash: supportsStyleField(nodes, registry, 'strokeDash', 'numberArray'),
-    opacity: supportsStyleField(nodes, registry, 'opacity', 'number')
+    fontSize: nodes.every((node) => nodeType.supportsStyle(node, 'fontSize', 'number')),
+    fontWeight: nodes.every((node) => nodeType.supportsStyle(node, 'fontWeight', 'number')),
+    fontStyle: nodes.every((node) => nodeType.supportsStyle(node, 'fontStyle', 'string')),
+    textAlign: nodes.every((node) => nodeType.supportsStyle(node, 'textAlign', 'string')),
+    fillOpacity: nodes.every((node) => nodeType.supportsStyle(node, 'fillOpacity', 'number')),
+    strokeOpacity: nodes.every((node) => nodeType.supportsStyle(node, 'strokeOpacity', 'number')),
+    strokeDash: nodes.every((node) => nodeType.supportsStyle(node, 'strokeDash', 'numberArray')),
+    opacity: nodes.every((node) => nodeType.supportsStyle(node, 'opacity', 'number'))
   }
   const canEditFillOpacity = canEditFill && styleSupport.fillOpacity
   const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity
@@ -475,7 +423,7 @@ const readNodeScope = ({
     ? treeIds[0]
     : undefined
   const mindmapTree = mindmapTreeId
-    ? read(mindmap.tree, mindmapTreeId)
+    ? read(mindmap.item, mindmapTreeId)?.tree
     : undefined
   const readMindmapBranchValue = <TValue,>(
     select: (branch: NonNullable<typeof mindmapTree>['nodes'][MindmapNodeId]['branch']) => TValue
@@ -573,59 +521,43 @@ const readEdgeScope = ({
   defaults
 }: {
   edges: readonly Edge[]
-  edgeIds: readonly string[]
+  edgeIds: readonly EdgeId[]
   primaryEdge?: Edge
   defaults: EditorDefaults['selection']
 }): SelectionToolbarEdgeScope => ({
-    edgeIds,
-    edges,
-    primaryEdgeId: primaryEdge?.id,
-    single: edgeIds.length === 1,
-    lock:
-      edgeIds.length === 0
-        ? 'none'
-        : edges.every((edge) => edge.locked)
-          ? 'all'
-          : edges.some((edge) => edge.locked)
-            ? 'mixed'
-            : 'none',
-    type: readUniformValue(edges, (entry) => entry.type),
-    color: readUniformValue(edges, (entry) => entry.style?.color ?? defaults.edge.color),
-    opacity: readUniformValue(edges, (entry) => entry.style?.opacity ?? 1),
-    width: readUniformValue(edges, (entry) => entry.style?.width ?? defaults.edge.width),
-    dash: readUniformValue(edges, (entry) => entry.style?.dash ?? defaults.edge.dash),
-    start: readUniformValue(edges, (entry) => entry.style?.start),
-    end: readUniformValue(edges, (entry) => entry.style?.end),
-    textMode: readUniformValue(edges, (entry) => entry.textMode ?? defaults.edge.textMode),
-    labelCount: primaryEdge?.labels?.length ?? 0
-  })
-
-const filterNodesByIds = (
-  nodes: readonly Node[],
-  ids: readonly string[]
-) => {
-  const allowed = new Set(ids)
-  return nodes.filter((node) => allowed.has(node.id))
-}
-
-const filterEdgesByIds = (
-  edges: readonly Edge[],
-  ids: readonly string[]
-) => {
-  const allowed = new Set(ids)
-  return edges.filter((edge) => allowed.has(edge.id))
-}
+  edgeIds,
+  edges,
+  primaryEdgeId: primaryEdge?.id,
+  single: edgeIds.length === 1,
+  lock:
+    edgeIds.length === 0
+      ? 'none'
+      : edges.every((edge) => edge.locked)
+        ? 'all'
+        : edges.some((edge) => edge.locked)
+          ? 'mixed'
+          : 'none',
+  type: readUniformValue(edges, (entry) => entry.type),
+  color: readUniformValue(edges, (entry) => entry.style?.color ?? defaults.edge.color),
+  opacity: readUniformValue(edges, (entry) => entry.style?.opacity ?? 1),
+  width: readUniformValue(edges, (entry) => entry.style?.width ?? defaults.edge.width),
+  dash: readUniformValue(edges, (entry) => entry.style?.dash ?? defaults.edge.dash),
+  start: readUniformValue(edges, (entry) => entry.style?.start),
+  end: readUniformValue(edges, (entry) => entry.style?.end),
+  textMode: readUniformValue(edges, (entry) => entry.textMode ?? defaults.edge.textMode),
+  labelCount: primaryEdge?.labels?.length ?? 0
+})
 
 const createSelectionTarget = ({
   nodeIds = [],
   edgeIds = []
 }: {
-  nodeIds?: readonly string[]
-  edgeIds?: readonly string[]
+  nodeIds?: readonly NodeId[]
+  edgeIds?: readonly EdgeId[]
 }): SelectionTarget => ({
-    nodeIds,
-    edgeIds
-  })
+  nodeIds,
+  edgeIds
+})
 
 const readSelectionToolbarLockState = (
   nodeStats: SelectionNodeStats,
@@ -640,53 +572,6 @@ const readSelectionToolbarLockState = (
   }
 
   return nodeStats.lock
-}
-
-const isSelectionNodeInfoEqual = (
-  left: SelectionNodeInfo | undefined,
-  right: SelectionNodeInfo | undefined
-) => {
-  if (!left || !right) {
-    return left === right
-  }
-
-  return (
-    left.lock === right.lock
-    && left.types.length === right.types.length
-    && left.types.every((entry, index) => {
-      const other = right.types[index]
-      return Boolean(other)
-        && entry.key === other.key
-        && entry.name === other.name
-        && entry.family === other.family
-        && entry.icon === other.icon
-        && entry.count === other.count
-        && entry.nodeIds.length === other.nodeIds.length
-        && entry.nodeIds.every((nodeId, nodeIndex) => nodeId === other.nodeIds[nodeIndex])
-    })
-  )
-}
-
-const readSelectionNodeInfo = ({
-  summary,
-  registry
-}: {
-  summary: SelectionSummary
-  registry: Pick<NodeRegistry, 'get'>
-}): SelectionNodeInfo | undefined => {
-  if (summary.items.nodeCount === 0 || summary.items.edgeCount > 0) {
-    return undefined
-  }
-
-  const stats = readSelectionNodeStats({
-    summary,
-    registry
-  })
-
-  return {
-    lock: stats.lock,
-    types: stats.types
-  }
 }
 
 const resolveSelectionOverlay = ({
@@ -753,10 +638,31 @@ const isEdgeEditingInteraction = (
   || mode === 'edge-route'
 )
 
+const collectNodesByIds = (
+  nodeById: ReadonlyMap<NodeId, Node>,
+  ids: readonly NodeId[]
+): Node[] => ids.flatMap((id) => {
+  const node = nodeById.get(id)
+  return node ? [node] : []
+})
+
+const collectEdgesByIds = (
+  edgeById: ReadonlyMap<EdgeId, Edge>,
+  ids: readonly EdgeId[]
+): Edge[] => ids.flatMap((id) => {
+  const edge = edgeById.get(id)
+  return edge ? [edge] : []
+})
+
 const resolveSelectionToolbar = ({
+  members,
   summary,
   affordance,
-  registry,
+  nodeStats,
+  edgeStats,
+  nodeScope,
+  edgeScope,
+  nodeType,
   mindmap,
   tool,
   edit,
@@ -764,10 +670,15 @@ const resolveSelectionToolbar = ({
   interactionMode,
   defaults
 }: {
+  members: SelectionMembers
   summary: SelectionSummary
   affordance: SelectionAffordance
-  registry: Pick<NodeRegistry, 'get'>
-  mindmap: Pick<MindmapPresentationRead, 'tree'>
+  nodeStats: SelectionNodeStats
+  edgeStats: SelectionEdgeStats
+  nodeScope: SelectionToolbarNodeScope | undefined
+  edgeScope: SelectionToolbarEdgeScope | undefined
+  nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
+  mindmap: Pick<MindmapPresentationRead, 'item'>
   tool: Tool
   edit: EditSession
   interactionChrome: boolean
@@ -789,14 +700,11 @@ const resolveSelectionToolbar = ({
     return undefined
   }
 
-  const nodeStats = readSelectionNodeStats({
-    summary,
-    registry
-  })
-  const edgeStats = readSelectionEdgeStats(summary)
   const scopes: SelectionToolbarScope[] = []
+  const nodeById = new Map<NodeId, Node>(members.nodes.map((node) => [node.id, node] as const))
+  const edgeById = new Map<EdgeId, Edge>(members.edges.map((edge) => [edge.id, edge] as const))
 
-  if (nodeStats.count > 0) {
+  if (nodeStats.count > 0 && nodeScope) {
     scopes.push({
       key: 'nodes',
       kind: 'nodes',
@@ -809,20 +717,12 @@ const resolveSelectionToolbar = ({
         nodeStats.types.length === 1
           ? nodeStats.types[0]?.icon
           : 'shape',
-      node: readNodeScope({
-        nodes: summary.items.nodes,
-        nodeIds: nodeStats.ids,
-        primaryNode: summary.items.primaryNode,
-        registry,
-        nodeStats,
-        mindmap,
-        defaults
-      })
+      node: nodeScope
     })
 
     if (nodeStats.types.length > 1) {
       nodeStats.types.forEach((type) => {
-        const scopedNodes = filterNodesByIds(summary.items.nodes, type.nodeIds)
+        const scopedNodes = collectNodesByIds(nodeById, type.nodeIds)
 
         scopes.push({
           key: `node-type:${type.key}`,
@@ -837,7 +737,7 @@ const resolveSelectionToolbar = ({
             nodes: scopedNodes,
             nodeIds: type.nodeIds,
             primaryNode: scopedNodes[0],
-            registry,
+            nodeType,
             nodeStats: {
               ids: type.nodeIds,
               count: type.count,
@@ -860,7 +760,7 @@ const resolveSelectionToolbar = ({
     }
   }
 
-  if (edgeStats.count > 0) {
+  if (edgeStats.count > 0 && edgeScope) {
     scopes.push({
       key: 'edges',
       kind: 'edges',
@@ -869,17 +769,12 @@ const resolveSelectionToolbar = ({
       target: createSelectionTarget({
         edgeIds: edgeStats.ids
       }),
-      edge: readEdgeScope({
-        edges: summary.items.edges,
-        edgeIds: edgeStats.ids,
-        primaryEdge: summary.items.primaryEdge,
-        defaults
-      })
+      edge: edgeScope
     })
 
     if (edgeStats.types.length > 1) {
       edgeStats.types.forEach((type) => {
-        const scopedEdges = filterEdgesByIds(summary.items.edges, type.edgeIds)
+        const scopedEdges = collectEdgesByIds(edgeById, type.edgeIds)
 
         scopes.push({
           key: `edge-type:${type.key}`,
@@ -910,14 +805,11 @@ const resolveSelectionToolbar = ({
 
   return {
     box,
-    key: `${summary.target.nodeIds.join('\0')}\u0001${summary.target.edgeIds.join('\0')}`,
+    key: members.key,
     selectionKind,
-    target: createSelectionTarget({
-      nodeIds: summary.target.nodeIds,
-      edgeIds: summary.target.edgeIds
-    }),
-    nodes: summary.items.nodes,
-    edges: summary.items.edges,
+    target: members.target,
+    nodes: members.nodes,
+    edges: members.edges,
     scopes,
     defaultScopeKey,
     locked: readSelectionToolbarLockState(nodeStats, edgeStats.count)
@@ -926,7 +818,8 @@ const resolveSelectionToolbar = ({
 
 export const createSelectionRead = ({
   model,
-  registry,
+  runtime,
+  nodeType,
   mindmap,
   tool,
   edit,
@@ -934,62 +827,137 @@ export const createSelectionRead = ({
   defaults
 }: {
   model: SelectionModelRead
-  registry: Pick<NodeRegistry, 'get'>
-  mindmap: Pick<MindmapPresentationRead, 'tree'>
+  runtime: {
+    node: {
+      selected: KeyedReadStore<NodeId, boolean>
+    }
+    edge: {
+      selected: KeyedReadStore<EdgeId, boolean>
+    }
+  }
+  nodeType: NodeTypeSupport
+  mindmap: Pick<MindmapPresentationRead, 'item'>
   tool: ReadStore<Tool>
   edit: ReadStore<EditSession>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>
   defaults: EditorDefaults['selection']
 }): SelectionRead => {
-  const box = createDerivedStore<Rect | undefined>({
-    get: () => read(model).summary.box,
-    isEqual: isSameOptionalRectTuple
+  const members = createDerivedStore<SelectionMembers>({
+    get: () => read(model).members,
+    isEqual: (left, right) => left === right || (
+      left.key === right.key
+      && left.target === right.target
+      && left.nodes === right.nodes
+      && left.edges === right.edges
+      && left.primaryNode === right.primaryNode
+      && left.primaryEdge === right.primaryEdge
+    )
   })
 
-  const nodeInfo = createDerivedStore<SelectionNodeInfo | undefined>({
-    get: () => readSelectionNodeInfo({
-      summary: read(model).summary,
-      registry
-    }),
-    isEqual: isSelectionNodeInfoEqual
+  const summary = createDerivedStore<SelectionSummary>({
+    get: () => read(model).summary,
+    isEqual: (left, right) => left === right
   })
 
-  const overlay = createDerivedStore<SelectionOverlay | undefined>({
+  const affordance = createDerivedStore<SelectionAffordance>({
+    get: () => read(model).affordance,
+    isEqual: (left, right) => left === right
+  })
+
+  const nodeStats = createDerivedStore<SelectionNodeStats>({
+    get: () => readSelectionNodeStats({
+      summary: read(summary),
+      nodeType
+    })
+  })
+
+  const edgeStats = createDerivedStore<SelectionEdgeStats>({
+    get: () => readSelectionEdgeStats(
+      read(summary)
+    )
+  })
+
+  const nodeScope = createDerivedStore<SelectionToolbarNodeScope | undefined>({
     get: () => {
-      const resolvedModel = read(model)
+      const currentMembers = read(members)
+      const currentNodeStats = read(nodeStats)
+      if (currentNodeStats.count === 0) {
+        return undefined
+      }
 
-      return resolveSelectionOverlay({
-        summary: resolvedModel.summary,
-        affordance: resolvedModel.affordance,
-        tool: read(tool),
-        edit: read(edit),
-        interactionChrome: read(interaction.chrome),
-        transforming: read(interaction.mode) === 'node-transform'
-      })
-    }
-  })
-
-  const toolbar = createDerivedStore<SelectionToolbarContext | undefined>({
-    get: () => {
-      const resolvedModel = read(model)
-
-      return resolveSelectionToolbar({
-        summary: resolvedModel.summary,
-        affordance: resolvedModel.affordance,
-        registry,
+      return readNodeScope({
+        nodes: currentMembers.nodes,
+        nodeIds: currentNodeStats.ids,
+        primaryNode: currentMembers.primaryNode,
+        nodeType,
+        nodeStats: currentNodeStats,
         mindmap,
-        tool: read(tool),
-        edit: read(edit),
-        interactionChrome: read(interaction.chrome),
-        interactionMode: read(interaction.mode),
         defaults
       })
     }
   })
 
+  const edgeScope = createDerivedStore<SelectionToolbarEdgeScope | undefined>({
+    get: () => {
+      const currentMembers = read(members)
+      const currentEdgeStats = read(edgeStats)
+      if (currentEdgeStats.count === 0) {
+        return undefined
+      }
+
+      return readEdgeScope({
+        edges: currentMembers.edges,
+        edgeIds: currentEdgeStats.ids,
+        primaryEdge: currentMembers.primaryEdge,
+        defaults
+      })
+    }
+  })
+
+  const overlay = createDerivedStore<SelectionOverlay | undefined>({
+    get: () => resolveSelectionOverlay({
+      summary: read(summary),
+      affordance: read(affordance),
+      tool: read(tool),
+      edit: read(edit),
+      interactionChrome: read(interaction.chrome),
+      transforming: read(interaction.mode) === 'node-transform'
+    })
+  })
+
+  const toolbar = createDerivedStore<SelectionToolbarContext | undefined>({
+    get: () => resolveSelectionToolbar({
+      members: read(members),
+      summary: read(summary),
+      affordance: read(affordance),
+      nodeStats: read(nodeStats),
+      edgeStats: read(edgeStats),
+      nodeScope: read(nodeScope),
+      edgeScope: read(edgeScope),
+      nodeType,
+      mindmap,
+      tool: read(tool),
+      edit: read(edit),
+      interactionChrome: read(interaction.chrome),
+      interactionMode: read(interaction.mode),
+      defaults
+    })
+  })
+
   return {
-    box,
-    node: nodeInfo,
+    members,
+    summary,
+    affordance,
+    node: {
+      selected: runtime.node.selected,
+      stats: nodeStats,
+      scope: nodeScope
+    },
+    edge: {
+      selected: runtime.edge.selected,
+      stats: edgeStats,
+      scope: edgeScope
+    },
     overlay,
     toolbar
   }

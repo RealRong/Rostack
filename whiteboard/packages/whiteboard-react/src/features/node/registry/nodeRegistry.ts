@@ -21,5 +21,5 @@ export const resolveNodeMeta = (
     return undefined
   }
 
-  return definition.describe?.(node) ?? definition.meta
+  return definition.meta
 }

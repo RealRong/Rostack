@@ -1,5 +1,4 @@
 import type { EditorQuery } from '@whiteboard/editor/query'
-import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createMoveInteraction } from '@whiteboard/editor/input/features/selection/move'
@@ -688,7 +687,7 @@ const applySelectionTap = (
       return
     }
     case 'edit-field':
-      if (!isSelectionTargetEqual(ctx.query.selection.model.get().summary.target, tap.selection)) {
+      if (!isSelectionTargetEqual(ctx.query.selection.summary.get().target, tap.selection)) {
         ctx.actions.selection.replace(tap.selection)
       }
       ctx.actions.edit.startNode(tap.nodeId, tap.field, {
@@ -756,7 +755,8 @@ const tryStartSelectionPress = (
     return null
   }
 
-  const selectionModel = ctx.query.selection.model.get()
+  const selectionSummary = ctx.query.selection.summary.get()
+  const selectionAffordance = ctx.query.selection.affordance.get()
   const deps: SelectionPressDeps = {
     node: {
       get: (nodeId) => ctx.query.node.item.get(nodeId)?.node,
@@ -776,8 +776,8 @@ const tryStartSelectionPress = (
   const subject = resolveSelectionPressSubject(deps, {
     target,
     mode,
-    selection: selectionModel.summary,
-    affordance: selectionModel.affordance
+    selection: selectionSummary,
+    affordance: selectionAffordance
   })
   if (!subject) {
     return null

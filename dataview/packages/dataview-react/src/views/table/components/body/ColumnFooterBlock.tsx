@@ -31,8 +31,8 @@ const View = (props: ColumnFooterBlockProps) => {
     formatPercent
   } = useTranslation()
   const table = useTableContext()
-  const footer = useKeyedStoreValue(table.footer, props.scopeId)
-  const calculations = footer?.summaryByFieldId
+  const summary = useKeyedStoreValue(table.summary, props.scopeId)
+  const calculations = summary?.byField
   
   return (
     <div

@@ -44,7 +44,7 @@ const isSingleSelectedEdge = (
   ctx: Pick<EditorHostDeps, 'query'>,
   edgeId: EdgeId
 ) => {
-  const target = ctx.query.selection.model.get().summary.target
+  const target = ctx.query.selection.summary.get().target
 
   return (
     target.nodeIds.length === 0
@@ -179,7 +179,7 @@ const createEdgeLabelDragState = (
   }
 ): EdgeLabelDragState | null => {
   const item = ctx.query.edge.item.get(input.edgeId)
-  const view = ctx.query.edge.resolved.get(input.edgeId)
+  const view = ctx.query.edge.geometry.get(input.edgeId)
   const ref = {
     edgeId: input.edgeId,
     labelId: input.labelId

@@ -40,7 +40,7 @@ import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/edito
 
 type EdgeConnectNodeRead = Pick<NodePresentationRead, 'canvas' | 'capability'>
 type EdgeConnectPreviewNodeRead = Pick<NodePresentationRead, 'canvas'>
-type EdgeConnectEdgeRead = Pick<EdgePresentationRead, 'item' | 'resolved' | 'capability'>
+type EdgeConnectEdgeRead = Pick<EdgePresentationRead, 'item' | 'geometry' | 'capability'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
 }) => EdgeConnectEvaluation
@@ -256,7 +256,7 @@ const resolveReconnectStart = (input: {
   pointerId: number
 }): EdgeConnectState | undefined => {
   const item = input.edge.item.get(input.edgeId)
-  const resolved = input.edge.resolved.get(input.edgeId)
+  const resolved = input.edge.geometry.get(input.edgeId)
   if (!item || !resolved) {
     return undefined
   }
@@ -510,7 +510,7 @@ const readReconnectFixedPoint = (
     return undefined
   }
 
-  const resolved = ctx.query.edge.resolved.get(state.edgeId)
+  const resolved = ctx.query.edge.geometry.get(state.edgeId)
   if (!resolved) {
     return undefined
   }

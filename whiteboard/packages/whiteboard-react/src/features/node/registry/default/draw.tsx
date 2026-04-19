@@ -32,8 +32,8 @@ export const DrawNodeDefinition: NodeDefinition = {
   geometry: 'rect',
   hit: 'path',
   connect: false,
-  canResize: false,
-  canRotate: false,
+  resize: false,
+  rotate: false,
   schema: drawSchema,
   layout: {
     kind: 'none'

@@ -1,4 +1,4 @@
-import type { SelectionTarget } from '@whiteboard/core/selection'
+import type { SelectionAffordance, SelectionSummary, SelectionTarget } from '@whiteboard/core/selection'
 import type { SelectionTransformPlan, ShapeKind } from '@whiteboard/core/node'
 import type {
   Edge,
@@ -37,9 +37,33 @@ export type SelectionEdgeTypeInfo = {
   edgeType?: EdgeType
 }
 
-export type SelectionNodeInfo = {
+export type SelectionMembers = {
+  key: string
+  target: SelectionTarget
+  nodes: readonly Node[]
+  edges: readonly Edge[]
+  primaryNode?: Node
+  primaryEdge?: Edge
+}
+
+export type SelectionNodeStats = {
+  ids: readonly NodeId[]
+  count: number
+  hasGroup: boolean
   lock: 'none' | 'mixed' | 'all'
   types: readonly SelectionNodeTypeInfo[]
+}
+
+export type SelectionEdgeStats = {
+  ids: readonly EdgeId[]
+  count: number
+  types: readonly SelectionEdgeTypeInfo[]
+}
+
+export type SelectionModel = {
+  members: SelectionMembers
+  summary: SelectionSummary
+  affordance: SelectionAffordance
 }
 
 export type SelectionToolbarNodeKind =

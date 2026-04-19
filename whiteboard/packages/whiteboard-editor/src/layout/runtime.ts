@@ -30,7 +30,9 @@ import type {
   Origin
 } from '@whiteboard/core/types'
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
-import type { EditField, EditLayout } from '@whiteboard/editor/session/edit'
+import type { EditField, EditLayout, EditSession } from '@whiteboard/editor/session/edit'
+import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
+import type { ReadStore } from '@shared/core'
 import type {
   LayoutBackend,
   LayoutKind,
@@ -41,6 +43,11 @@ import type {
   TextTypographyProfile
 } from '@whiteboard/editor/types/layout'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import {
+  createMindmapLayoutRead,
+  type MindmapLayoutRead
+} from '@whiteboard/editor/layout/mindmap'
+import type { EngineRead, MindmapItem } from '@whiteboard/engine'
 
 const TEXT_PLACEHOLDER = 'Text'
 const TEXT_DEFAULT_LINE_HEIGHT_RATIO = 1.4
@@ -440,6 +447,7 @@ const fallbackMeasureText = (
 
 export type EditorLayout = {
   text: TextMetricsCache
+  mindmap: MindmapLayoutRead
   patchNodeCreatePayload: (
     payload: NodeInput
   ) => NodeInput
@@ -464,18 +472,21 @@ export type EditorLayout = {
 
 export const createEditorLayout = ({
   read,
+  session,
   registry,
   backend
 }: {
   read: {
     node: {
-      committed: {
-        get: (nodeId: NodeId) => {
-          node: Node
-          rect: Rect
-        } | undefined
-      }
+      committed: EngineRead['node']['item']
     }
+    mindmap: {
+      committed: EngineRead['mindmap']['item']
+    }
+  }
+  session: {
+    edit: ReadStore<EditSession>
+    mindmapPreview: ReadStore<MindmapPreviewState | undefined>
   }
   registry: Pick<NodeRegistry, 'get'>
   backend?: LayoutBackend
@@ -525,6 +536,12 @@ export const createEditorLayout = ({
       textMetricsCache.clear()
     }
   }
+  const mindmap = createMindmapLayoutRead({
+    committed: read.mindmap.committed,
+    nodeCommitted: read.node.committed,
+    edit: session.edit,
+    preview: session.mindmapPreview
+  })
 
   const resolveNodeRequest = ({
     nodeId,
@@ -624,6 +641,7 @@ export const createEditorLayout = ({
 
   return {
     text,
+    mindmap,
     patchNodeCreatePayload: patchCreatePayload,
     patchNodeUpdate: (nodeId, update, options) => {
       const committed = read.node.committed.get(nodeId)

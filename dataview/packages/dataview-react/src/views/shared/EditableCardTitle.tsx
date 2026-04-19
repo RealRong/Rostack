@@ -44,9 +44,9 @@ const useEditableCardTitleState = (input: {
   titleText: string
 }): EditableCardTitleState => {
   const dataView = useDataView()
-  const editing = useKeyedStoreValue(
-    dataView.model.inline.editing,
-    dataView.model.inline.key({
+  const editing = useKeyedStoreValue<string, boolean>(
+    dataView.source.inline.editing,
+    dataView.session.editing.inline.key({
       viewId: input.viewId,
       itemId: input.itemId
     })
@@ -75,14 +75,14 @@ const useEditableCardTitleState = (input: {
 
   const enterEdit = useCallback(() => {
     setTitleDraft(input.titleText)
-    dataView.selection.command.clear()
-    dataView.inlineSession.enter({
+    dataView.session.selection.command.clear()
+    dataView.session.editing.inline.enter({
       viewId: input.viewId,
       itemId: input.itemId
     })
   }, [
-    dataView.inlineSession,
-    dataView.selection,
+    dataView.session.editing.inline,
+    dataView.session.selection,
     input.itemId,
     input.titleText,
     input.viewId
@@ -111,17 +111,17 @@ const useEditableCardTitleState = (input: {
 
   const submitTitle = useCallback(() => {
     commitTitle()
-    dataView.inlineSession.exit({
+    dataView.session.editing.inline.exit({
       reason: 'submit'
     })
-  }, [commitTitle, dataView.inlineSession])
+  }, [commitTitle, dataView.session.editing.inline])
 
   useEffect(() => {
     if (!editing) {
       return
     }
 
-    return dataView.inlineSession.onExit(event => {
+    return dataView.session.editing.inline.onExit(event => {
       if (
         event.target.viewId !== input.viewId
         || event.target.itemId !== input.itemId
@@ -140,7 +140,7 @@ const useEditableCardTitleState = (input: {
     })
   }, [
     commitTitle,
-    dataView.inlineSession,
+    dataView.session.editing.inline,
     editing,
     input.itemId,
     input.viewId,

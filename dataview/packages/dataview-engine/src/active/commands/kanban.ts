@@ -25,6 +25,5 @@ export const createKanbanApi = (
   })),
   setCardsPerColumn: value => base.patch(view => ({
     options: setKanbanCardsPerColumn(view.options, value)
-  })),
-  state: base.kanbanState
+  }))
 })

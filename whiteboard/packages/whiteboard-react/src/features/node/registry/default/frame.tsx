@@ -176,5 +176,5 @@ export const FrameNodeDefinition: NodeDefinition = {
     />
   ),
   style: (props) => frameStyle(props.node),
-  canRotate: false
+  rotate: false
 }

@@ -1,7 +1,12 @@
+import { useMemo } from 'react'
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
 import {
   useDataView
 } from '@dataview/react/dataview'
+import {
+  createDerivedStore,
+  read
+} from '@shared/core'
 import { resolveOptionDotStyle } from '@shared/ui/color'
 import { token } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
@@ -27,7 +32,16 @@ export const Grid = () => {
   } = runtime.virtual
   const indicator = runtime.indicator
   const empty = body.empty
-  const sectionSizeByKey = body.sectionCountByKey
+  const sectionCountByKey = useStoreValue(useMemo(() => createDerivedStore({
+    get: () => new Map(
+      body.sectionKeys.flatMap(key => {
+        const section = read(runtime.section, key)
+        return section
+          ? [[key, section.count] as const]
+          : []
+      })
+    )
+  }), [body.sectionKeys, runtime.section]))
   const lastBlock = blocks[blocks.length - 1]
   const bottomSpacerHeight = lastBlock
     ? Math.max(0, layout.totalHeight - lastBlock.top - lastBlock.height)
@@ -88,7 +102,7 @@ export const Grid = () => {
                       <h3 className="text-sm font-semibold text-foreground">
                         {t(block.section.label)}
                         <span className="ml-2 text-xs font-medium text-muted-foreground">
-                          {sectionSizeByKey.get(block.section.key) ?? 0}
+                          {sectionCountByKey.get(block.section.key) ?? 0}
                         </span>
                       </h3>
                     </div>

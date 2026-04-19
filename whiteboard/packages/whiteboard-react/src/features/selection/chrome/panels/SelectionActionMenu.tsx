@@ -50,8 +50,8 @@ export const SelectionActionMenu = ({
   const editor = useEditorRuntime()
   const { clipboard } = useWhiteboardServices()
   const target = useStoreValue(editor.store.selection)
-  const nodeInfo = useStoreValue(editor.read.selection.node)
-  const box = useStoreValue(editor.read.selection.box)
+  const nodeStats = useStoreValue(editor.read.selection.node.stats)
+  const summary = useStoreValue(editor.read.selection.summary)
   const nodeIds = target.nodeIds
   const edgeIds = target.edgeIds
   const count = nodeIds.length + edgeIds.length
@@ -93,9 +93,9 @@ export const SelectionActionMenu = ({
       key: 'edit.paste',
       label: 'Paste',
       onSelect: () => {
-        void clipboard.paste(box
+        void clipboard.paste(summary.box
           ? {
-              origin: readRectCenter(box)
+              origin: readRectCenter(summary.box)
             }
           : undefined)
       }
@@ -158,24 +158,24 @@ export const SelectionActionMenu = ({
           {
             kind: 'action' as const,
             key: 'state.lock',
-            label: readLockLabel(nodeInfo?.lock ?? 'none'),
+            label: readLockLabel(nodeStats.lock),
             onSelect: () => {
               editor.actions.node.lock.set(
                 [...nodeIds],
-                (nodeInfo?.lock ?? 'none') !== 'all'
+                nodeStats.lock !== 'all'
               )
             }
           }
         ]
       : []),
-    ...(pureNodeSelection && box
+    ...(pureNodeSelection && summary.box
       ? [
           {
             kind: 'action' as const,
             key: 'structure.frame',
             label: 'Create frame',
             onSelect: () => {
-              editor.actions.selection.frame(box)
+              editor.actions.selection.frame(summary.box!)
             }
           }
         ]
@@ -184,14 +184,14 @@ export const SelectionActionMenu = ({
       kind: 'divider' as const,
       key: 'divider:secondary'
     },
-    ...(box
+    ...(summary.box
       ? [
           {
             kind: 'action' as const,
             key: 'viewport.zoom-in',
             label: 'Zoom in',
             onSelect: () => {
-              editor.actions.viewport.fit(box)
+              editor.actions.viewport.fit(summary.box!)
             }
           }
         ]

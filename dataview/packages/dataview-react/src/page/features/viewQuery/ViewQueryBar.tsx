@@ -23,18 +23,18 @@ export const ViewQueryBar = () => {
   const engine = dataView.engine
   const page = dataView.session.page
   const pageRuntime = usePageRuntime()
-  const queryBar = useStoreValue(pageRuntime.queryBar)
-  const currentView = queryBar.currentView
+  const query = useStoreValue(pageRuntime.query)
+  const currentView = query.currentView
 
   const currentViewDomain = currentView
     ? engine.active
     : undefined
-  const filters = queryBar.filters
-  const sorts = queryBar.sorts
-  const availableFilterFields = queryBar.availableFilterFields
-  const availableSorterFields = queryBar.availableSortFields
+  const filters = query.filters
+  const sorts = query.sorts
+  const availableFilterFields = query.availableFilterFields
+  const availableSorterFields = query.availableSortFields
 
-  if (!currentView || !queryBar.visible || (!filters.length && !sorts.length)) {
+  if (!currentView || !query.visible || (!filters.length && !sorts.length)) {
     return null
   }
 
@@ -42,7 +42,7 @@ export const ViewQueryBar = () => {
     <section className="flex flex-wrap items-center gap-1.5 pt-1 text-card-foreground">
       {sorts.length ? (
         <SortPopover
-          open={queryBar.route?.kind === 'sort'}
+          open={query.route?.kind === 'sort'}
           onOpenChange={open => {
             if (open) {
               page.query.open({
@@ -60,7 +60,7 @@ export const ViewQueryBar = () => {
         <FilterRulePopover
           key={`filter_${entry.rule.fieldId}_${index}`}
           entry={entry}
-          open={queryBar.route?.kind === 'filter' && queryBar.route.index === index}
+          open={query.route?.kind === 'filter' && query.route.index === index}
           onOpenChange={open => {
             if (open) {
               page.query.open({
@@ -87,7 +87,7 @@ export const ViewQueryBar = () => {
 
       {availableFilterFields.length ? (
         <Popover
-          open={queryBar.route?.kind === 'addFilter'}
+          open={query.route?.kind === 'addFilter'}
           onOpenChange={open => {
             if (open) {
               page.query.open({
@@ -106,7 +106,7 @@ export const ViewQueryBar = () => {
         >
           <Popover.Trigger>
             <QueryChip
-              state={queryBar.route?.kind === 'addFilter' ? 'open' : 'add'}
+              state={query.route?.kind === 'addFilter' ? 'open' : 'add'}
               trailing={<ChevronDown className="shrink-0" size={14} strokeWidth={1.8} />}
             >
               {`+ ${t(meta.ui.filter.label)}`}
@@ -135,7 +135,7 @@ export const ViewQueryBar = () => {
 
       {!sorts.length && availableSorterFields.length ? (
         <Popover
-          open={queryBar.route?.kind === 'addSort'}
+          open={query.route?.kind === 'addSort'}
           onOpenChange={open => {
             if (open) {
               page.query.open({
@@ -154,7 +154,7 @@ export const ViewQueryBar = () => {
         >
           <Popover.Trigger>
             <QueryChip
-              state={queryBar.route?.kind === 'addSort' ? 'open' : 'add'}
+              state={query.route?.kind === 'addSort' ? 'open' : 'add'}
               trailing={<ChevronDown className="shrink-0" size={14} strokeWidth={1.8} />}
             >
               {`+ ${t(meta.ui.sort.label)}`}

@@ -3,35 +3,31 @@ export {
 } from '@dataview/runtime/model/gallery/api'
 export type {
   DataViewGalleryModel,
-  GalleryBodyBase,
-  GalleryCardData,
-  GallerySectionData
+  GalleryBody,
+  GalleryCard,
+  GallerySection
 } from '@dataview/runtime/model/gallery/types'
-
-export type {
-  DataViewInlineRuntime
-} from '@dataview/runtime/model/inline/types'
 
 export {
   createKanbanModel
 } from '@dataview/runtime/model/kanban/api'
 export type {
   DataViewKanbanModel,
-  KanbanBoardBase,
-  KanbanCardData,
-  KanbanSectionBase
+  KanbanBoard,
+  KanbanCard,
+  KanbanSection
 } from '@dataview/runtime/model/kanban/types'
 
 export {
   createPageModel
 } from '@dataview/runtime/model/page/api'
 export type {
-  DataViewPageBody,
-  DataViewPageHeader,
-  DataViewPageQueryBar,
-  DataViewPageRuntime,
-  DataViewPageSettings,
-  DataViewPageToolbar
+  PageBody,
+  PageHeader,
+  PageModel,
+  PageQuery,
+  PageSettings,
+  PageToolbar
 } from '@dataview/runtime/model/page/types'
 
 export {
@@ -39,20 +35,16 @@ export {
 } from '@dataview/runtime/model/table/api'
 export type {
   DataViewTableModel,
-  TableBase,
-  TableFooterData,
-  TableHeaderData,
-  TableSectionData
+  TableBody,
+  TableColumn,
+  TableSection,
+  TableSummary
 } from '@dataview/runtime/model/table/types'
 
 export type {
-  ActiveTypedViewState,
-  RecordCardContentData,
-  RecordCardData,
-  RecordCardPropertyData
-} from '@dataview/runtime/model/shared'
-export {
-  readActiveTypedViewState
+  Card,
+  CardContent,
+  CardProperty
 } from '@dataview/runtime/model/shared'
 
 export type {

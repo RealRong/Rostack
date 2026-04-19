@@ -91,7 +91,7 @@ const View = (props: CreateRecordBlockProps) => {
   const onCreate = useCallback(() => {
     const ownerViewId = table.currentView.get()?.view.id
 
-    dataView.createRecord.create({
+    dataView.intent.createRecord.create({
       ownerViewId,
       create: () => dataView.engine.active.records.create({
         sectionKey: props.sectionKey
@@ -100,7 +100,7 @@ const View = (props: CreateRecordBlockProps) => {
       retryFrames: MAX_OPEN_ATTEMPTS,
       onFailure: table.focus
     })
-  }, [dataView.createRecord, dataView.engine.active.records, openCreatedRecord, props.sectionKey, table])
+  }, [dataView.engine.active.records, dataView.intent.createRecord, openCreatedRecord, props.sectionKey, table])
 
   const cellClassName = cn(
     'min-w-0 box-border flex items-center',

@@ -94,10 +94,10 @@ const isEdgeRoutePick = (
 )
 
 const readEditableRouteView = (
-  edge: Pick<EdgePresentationRead, 'resolved' | 'item' | 'capability'>,
+  edge: Pick<EdgePresentationRead, 'geometry' | 'item' | 'capability'>,
   edgeId: EdgeId
 ): CoreEdgeView | undefined => {
-  const view = edge.resolved.get(edgeId)
+  const view = edge.geometry.get(edgeId)
   const item = edge.item.get(edgeId)
 
   return view && item && edge.capability(item.edge).editRoute
@@ -106,7 +106,7 @@ const readEditableRouteView = (
 }
 
 const resolveEdgeRoutePickTarget = (
-  edge: Pick<EdgePresentationRead, 'resolved' | 'item' | 'capability'>,
+  edge: Pick<EdgePresentationRead, 'geometry' | 'item' | 'capability'>,
   pick: PointerDownInput['pick']
 ): EdgeRouteHandleTarget | undefined => {
   if (!isEdgeRoutePick(pick)) {
@@ -171,7 +171,7 @@ const startEdgeRouteSegment = (input: {
 })
 
 export const tryStartEdgeRoute = (input: {
-  edge: Pick<EdgePresentationRead, 'resolved' | 'item' | 'capability'>
+  edge: Pick<EdgePresentationRead, 'geometry' | 'item' | 'capability'>
   pointer: PointerDownInput
 }): EdgeRouteStart | undefined => {
   const target = resolveEdgeRoutePickTarget(

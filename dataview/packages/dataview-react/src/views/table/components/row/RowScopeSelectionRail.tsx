@@ -29,7 +29,7 @@ const View = (props: RowScopeSelectionRailProps) => {
     props.scope
   )
   const committedSelection = useKeyedStoreValue(
-    dataView.selection.store.scopeSummary,
+    dataView.session.selection.store.scopeSummary,
     props.scope
   )
   const summary = previewSummary ?? committedSelection

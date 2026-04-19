@@ -1,65 +1,53 @@
 import { isPointEqual } from '@whiteboard/core/geometry'
 import {
+  applyEdgePatch,
+  buildEdgeLabelMaskRect,
   getEdgePathBounds,
   isNodeEdgeEnd,
   isPointEdgeEnd,
-  buildEdgeLabelMaskRect,
   readEdgeLabelSideGap,
   resolveEdgeLabelPlacement,
   resolveEdgeLabelPlacementSize,
+  resolveEdgeView,
   sameEdgeAnchor,
   sameResolvedEdgeEnd,
   type EdgeConnectCandidate,
-  matchEdgeRect,
-  type EdgeView as CoreEdgeView,
-  type EdgeLabelMaskRect
+  type EdgeLabelMaskRect,
+  type EdgeView as CoreEdgeView
 } from '@whiteboard/core/edge'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import {
   createDerivedStore,
-  sameRect,
-  sameOptionalRect as isSameOptionalRectTuple,
-  sameOrder as isOrderedArrayEqual,
-  samePointArray as isSamePointArray
-} from '@shared/core'
-import type { Edge, EdgeId, Node, NodeId, NodeType, Point, Rect, Size } from '@whiteboard/core/types'
-import {
-  type EdgeItem,
-  type EngineRead
-} from '@whiteboard/engine'
-import {
   createKeyedDerivedStore,
   presentValues,
   read as readValue,
+  sameOptionalRect as isSameOptionalRectTuple,
+  sameOrder as isOrderedArrayEqual,
+  samePointArray as isSamePointArray,
+  sameRect,
   type KeyedReadStore,
   type ReadStore
 } from '@shared/core'
+import type { Edge, EdgeId, Node, NodeId, Point, Rect, Size } from '@whiteboard/core/types'
+import type {
+  EdgeItem,
+  EngineRead
+} from '@whiteboard/engine'
 import type {
   EdgePreviewProjection
 } from '@whiteboard/editor/session/preview/types'
 import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
-import type { EditSession } from '@whiteboard/editor/session/edit'
+import type { EditCaret, EditSession } from '@whiteboard/editor/session/edit'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import {
-  projectEdgeItem,
-  readProjectedEdgeView
-} from '@whiteboard/editor/query/edge/projection'
-import type {
-  TextMetricsCache,
-  TextMetricsSpec
-} from '@whiteboard/editor/types/layout'
+import type { TextMetricsCache, TextMetricsSpec } from '@whiteboard/editor/types/layout'
 import {
   EDGE_LABEL_MASK_BLEED,
   buildEdgeLabelTextMetricsSpec,
   readEdgeLabelDisplayText,
   readEdgeLabelText
 } from '@whiteboard/editor/edge/label'
-
-export type EdgeRuntimeState = {
-  patched: boolean
-  activeRouteIndex?: number
-}
+import type { EdgeLabelEditView } from '@whiteboard/editor/query/edit/read'
 
 export type EdgeCapability = {
   move: boolean
@@ -96,19 +84,12 @@ export type SelectedEdgeRoutePoint = {
 
 export type SelectedEdgeChrome = {
   edgeId: EdgeId
-  ends: EdgeView['ends']
+  ends: CoreEdgeView['ends']
   canReconnectSource: boolean
   canReconnectTarget: boolean
   canEditRoute: boolean
   showEditHandles: boolean
   routePoints: readonly SelectedEdgeRoutePoint[]
-}
-
-export type EdgeView = CoreEdgeView & {
-  edgeId: EdgeId
-  edge: EdgeItem['edge']
-  patched: boolean
-  activeRouteIndex: number | undefined
 }
 
 export type EdgeLabelRef = {
@@ -122,7 +103,7 @@ export type EdgeLabelContent = {
   displayText: string
   style: NonNullable<Edge['labels']>[number]['style']
   editable: boolean
-  caret?: Extract<NonNullable<EditSession>, { kind: 'edge-label' }>['caret']
+  caret?: EditCaret
   textMode: NonNullable<Edge['textMode']>
   t: number
   offset: number
@@ -142,17 +123,52 @@ export type EdgeLabelRender = {
   displayText: string
   style: NonNullable<Edge['labels']>[number]['style']
   editable: boolean
-  caret?: Extract<NonNullable<EditSession>, { kind: 'edge-label' }>['caret']
+  caret?: EditCaret
   point: Point
   angle: number
   size: Size
   maskRect: EdgeLabelMaskRect
 }
 
-export type EdgeRender = EdgeView & {
+export type EdgeRender = CoreEdgeView & {
+  edgeId: EdgeId
+  edge: EdgeItem['edge']
+  patched: boolean
+  activeRouteIndex: number | undefined
   selected: boolean
   box: EdgeBox
   labels: EdgeLabelRender[]
+}
+
+export type EdgePresentationRead = {
+  list: EngineRead['edge']['list']
+  committed: EngineRead['edge']['item']
+  item: KeyedReadStore<EdgeId, EdgeItem | undefined>
+  geometry: KeyedReadStore<EdgeId, CoreEdgeView | undefined>
+  edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
+  render: KeyedReadStore<EdgeId, EdgeRender | undefined>
+  label: {
+    list: (edgeId: EdgeId) => readonly EdgeLabelRef[]
+    content: (ref: EdgeLabelRef) => EdgeLabelContent | undefined
+    metrics: (ref: EdgeLabelRef) => Size | undefined
+    placement: (ref: EdgeLabelRef) => EdgeLabelPlacement | undefined
+    render: (ref: EdgeLabelRef) => EdgeLabelRender | undefined
+  }
+  bounds: KeyedReadStore<EdgeId, Rect | undefined>
+  box: (edgeId: EdgeId) => EdgeBox | undefined
+  capability: (edge: EdgeItem['edge']) => EdgeCapability
+  selectedChrome: ReadStore<SelectedEdgeChrome | undefined>
+  related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
+  idsInRect: (rect: Rect, options?: {
+    match?: 'touch' | 'contain'
+  }) => EdgeId[]
+  connectCandidates: (rect: Rect) => readonly EdgeConnectCandidate[]
+}
+
+type EdgeRuntime = {
+  patched: boolean
+  activeRouteIndex?: number
+  selected: boolean
 }
 
 const EDGE_CAPABILITY_BASE = {
@@ -172,12 +188,12 @@ const isEdgeItemEqual = (
     && right !== undefined
     && left.id === right.id
     && left.edge === right.edge
-    && left?.ends.source.end.kind === right?.ends.source.end.kind
-    && left?.ends.target.end.kind === right?.ends.target.end.kind
-    && sameEdgeAnchor(left?.ends.source.anchor, right?.ends.source.anchor)
-    && sameEdgeAnchor(left?.ends.target.anchor, right?.ends.target.anchor)
-    && isPointEqual(left?.ends.source.point, right?.ends.source.point)
-    && isPointEqual(left?.ends.target.point, right?.ends.target.point)
+    && left.ends.source.end.kind === right.ends.source.end.kind
+    && left.ends.target.end.kind === right.ends.target.end.kind
+    && sameEdgeAnchor(left.ends.source.anchor, right.ends.source.anchor)
+    && sameEdgeAnchor(left.ends.target.anchor, right.ends.target.anchor)
+    && isPointEqual(left.ends.source.point, right.ends.source.point)
+    && isPointEqual(left.ends.target.point, right.ends.target.point)
   )
 )
 
@@ -230,7 +246,7 @@ const isEdgeHandleEqual = (
   }
 }
 
-const isEdgeViewEqual = (
+const isEdgeGeometryEqual = (
   left: CoreEdgeView | undefined,
   right: CoreEdgeView | undefined
 ) => (
@@ -276,63 +292,17 @@ const resolveEdgeCapability = (
   }
 }
 
-export type EdgePresentationRead = {
-  list: EngineRead['edge']['list']
-  committed: EngineRead['edge']['item']
-  item: KeyedReadStore<EdgeId, EdgeItem | undefined>
-  edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
-  state: KeyedReadStore<EdgeId, EdgeRuntimeState>
-  resolved: KeyedReadStore<EdgeId, CoreEdgeView | undefined>
-  view: KeyedReadStore<EdgeId, EdgeView | undefined>
-  render: KeyedReadStore<EdgeId, EdgeRender | undefined>
-  label: {
-    list: (edgeId: EdgeId) => readonly EdgeLabelRef[]
-    content: (ref: EdgeLabelRef) => EdgeLabelContent | undefined
-    metrics: (ref: EdgeLabelRef) => Size | undefined
-    placement: (ref: EdgeLabelRef) => EdgeLabelPlacement | undefined
-    render: (ref: EdgeLabelRef) => EdgeLabelRender | undefined
-  }
-  bounds: KeyedReadStore<EdgeId, Rect | undefined>
-  box: (edgeId: EdgeId) => EdgeBox | undefined
-  capability: (edge: EdgeItem['edge']) => EdgeCapability
-  selectedChrome: ReadStore<SelectedEdgeChrome | undefined>
-  related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
-  idsInRect: (rect: Rect, options?: {
-    match?: 'touch' | 'contain'
-  }) => EdgeId[]
-  connectCandidates: (rect: Rect) => readonly EdgeConnectCandidate[]
-}
-
-const isEdgeStateEqual = (
-  left: EdgeRuntimeState,
-  right: EdgeRuntimeState
-) => (
-  left.patched === right.patched
-  && left.activeRouteIndex === right.activeRouteIndex
-)
-
-const toEdgeRuntimeState = (
+const readEdgeRuntime = ({
+  feedback,
+  selected
+}: {
   feedback: EdgePreviewProjection
-): EdgeRuntimeState => ({
+  selected: boolean
+}): EdgeRuntime => ({
   patched: Boolean(feedback.patch),
-  activeRouteIndex: feedback.activeRouteIndex
+  activeRouteIndex: feedback.activeRouteIndex,
+  selected
 })
-
-const isEdgeViewStateEqual = (
-  left: EdgeView | undefined,
-  right: EdgeView | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.edgeId === right.edgeId
-    && left.edge === right.edge
-    && left.patched === right.patched
-    && left.activeRouteIndex === right.activeRouteIndex
-    && isEdgeViewEqual(left, right)
-  )
-)
 
 const isEdgeLabelMaskRectEqual = (
   left: EdgeLabelMaskRect,
@@ -422,10 +392,14 @@ const isEdgeRenderEqual = (
   || (
     left !== undefined
     && right !== undefined
-    && isEdgeViewStateEqual(left, right)
+    && left.edgeId === right.edgeId
+    && left.edge === right.edge
+    && left.patched === right.patched
+    && left.activeRouteIndex === right.activeRouteIndex
     && left.selected === right.selected
     && left.box.pad === right.box.pad
     && sameRect(left.box.rect, right.box.rect)
+    && isEdgeGeometryEqual(left, right)
     && isOrderedArrayEqual(left.labels, right.labels, isEdgeLabelRenderEqual)
   )
 )
@@ -507,15 +481,22 @@ const readSelectedEdgeId = (
     : undefined
 )
 
-const readSelectedEdgeRoutePoints = (
-  edgeId: EdgeId,
-  entry: EdgeView
-): readonly SelectedEdgeRoutePoint[] => {
+const readSelectedEdgeRoutePoints = ({
+  edgeId,
+  edge,
+  geometry,
+  activeRouteIndex
+}: {
+  edgeId: EdgeId
+  edge: Edge
+  geometry: CoreEdgeView
+  activeRouteIndex?: number
+}): readonly SelectedEdgeRoutePoint[] => {
   const isStepManual =
-    (entry.edge.type === 'elbow' || entry.edge.type === 'fillet')
-    && entry.edge.route?.kind === 'manual'
+    (edge.type === 'elbow' || edge.type === 'fillet')
+    && edge.route?.kind === 'manual'
 
-  return entry.handles.flatMap<SelectedEdgeRoutePoint>((handle) => {
+  return geometry.handles.flatMap<SelectedEdgeRoutePoint>((handle) => {
     if (handle.kind === 'anchor') {
       if (isStepManual) {
         return []
@@ -526,7 +507,7 @@ const readSelectedEdgeRoutePoints = (
         kind: 'anchor',
         edgeId,
         point: handle.point,
-        active: entry.activeRouteIndex === handle.index,
+        active: activeRouteIndex === handle.index,
         deletable: true,
         pick: {
           kind: 'anchor',
@@ -541,7 +522,7 @@ const readSelectedEdgeRoutePoints = (
         kind: handle.role,
         edgeId,
         point: handle.point,
-        active: entry.activeRouteIndex === handle.insertIndex,
+        active: activeRouteIndex === handle.insertIndex,
         deletable: false,
         pick: {
           kind: 'segment',
@@ -565,10 +546,37 @@ const isEdgeInteractionBlockingChrome = (
   || mode === 'edge-route'
 )
 
-const isEdgeSelected = (
-  selection: SelectionTarget,
-  edgeId: EdgeId
-) => selection.edgeIds.includes(edgeId)
+const readResolvedNodeSnapshot = (
+  readNode: Pick<NodePresentationRead, 'canvas'>,
+  edgeEnd: EdgeItem['edge']['source'] | EdgeItem['edge']['target']
+): NodeCanvasSnapshot | undefined => edgeEnd.kind === 'node'
+  ? readValue(readNode.canvas, edgeEnd.nodeId)
+  : undefined
+
+const readEdgeGeometry = (
+  node: Pick<NodePresentationRead, 'canvas'>,
+  entry: EdgeItem
+): CoreEdgeView | undefined => {
+  const source = readResolvedNodeSnapshot(node, entry.edge.source)
+  const target = readResolvedNodeSnapshot(node, entry.edge.target)
+
+  if (
+    (entry.edge.source.kind === 'node' && !source)
+    || (entry.edge.target.kind === 'node' && !target)
+  ) {
+    return undefined
+  }
+
+  try {
+    return resolveEdgeView({
+      edge: entry.edge,
+      source,
+      target
+    })
+  } catch {
+    return undefined
+  }
+}
 
 export const createEdgeRead = ({
   read,
@@ -584,57 +592,49 @@ export const createEdgeRead = ({
   read: Pick<EngineRead, 'edge'>
   node: Pick<NodePresentationRead, 'canvas' | 'idsInRect'>
   feedback: KeyedReadStore<EdgeId, EdgePreviewProjection>
-  edit: ReadStore<EditSession>
-  selection: ReadStore<SelectionTarget>
+  edit: {
+    session: ReadStore<EditSession>
+    edgeLabel: KeyedReadStore<EdgeId, EdgeLabelEditView | undefined>
+  }
+  selection: {
+    target: ReadStore<SelectionTarget>
+    selected: KeyedReadStore<EdgeId, boolean>
+  }
   tool: ReadStore<Tool>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>
   textMetrics: Pick<TextMetricsCache, 'read'>
-  capability: (node: Pick<Node, 'type'> | NodeType) => {
+  capability: (node: Pick<Node, 'type' | 'mindmapId'>) => {
     connect: boolean
   }
 }): EdgePresentationRead => {
   const item: EdgePresentationRead['item'] = createKeyedDerivedStore({
     get: (edgeId: EdgeId) => {
       const entry = readValue(read.edge.item, edgeId)
-      return entry
-        ? projectEdgeItem(entry, readValue(feedback, edgeId), readValue(edit))
-        : undefined
-    },
-    isEqual: isEdgeItemEqual
-  })
-  const state: EdgePresentationRead['state'] = createKeyedDerivedStore({
-    get: (edgeId: EdgeId) => toEdgeRuntimeState(
-      readValue(feedback, edgeId)
-    ),
-    isEqual: isEdgeStateEqual
-  })
-  const resolved: EdgePresentationRead['resolved'] = createKeyedDerivedStore({
-    isEqual: isEdgeViewEqual,
-    get: (edgeId: EdgeId) => {
-      const entry = readValue(item, edgeId)
-      return entry
-        ? readProjectedEdgeView(node, entry)
-        : undefined
-    }
-  })
-  const view: EdgePresentationRead['view'] = createKeyedDerivedStore({
-    get: (edgeId: EdgeId) => {
-      const resolvedItem = readValue(item, edgeId)
-      const resolvedView = readValue(resolved, edgeId)
-      if (!resolvedItem || !resolvedView) {
+      if (!entry) {
         return undefined
       }
 
-      return {
-        edgeId,
-        edge: resolvedItem.edge,
-        patched: readValue(state, edgeId).patched,
-        activeRouteIndex: readValue(state, edgeId).activeRouteIndex,
-        ...resolvedView
-      }
+      const nextEdge = applyEdgePatch(entry.edge, readValue(feedback, edgeId).patch)
+      return nextEdge === entry.edge
+        ? entry
+        : {
+            ...entry,
+            edge: nextEdge
+          }
     },
-    isEqual: isEdgeViewStateEqual
+    isEqual: isEdgeItemEqual
   })
+
+  const geometry: EdgePresentationRead['geometry'] = createKeyedDerivedStore({
+    get: (edgeId: EdgeId) => {
+      const entry = readValue(item, edgeId)
+      return entry
+        ? readEdgeGeometry(node, entry)
+        : undefined
+    },
+    isEqual: isEdgeGeometryEqual
+  })
+
   const labelContent = createKeyedDerivedStore<EdgeLabelRef, EdgeLabelContent | undefined>({
     keyOf: readEdgeLabelRefKey,
     get: (ref) => {
@@ -644,13 +644,11 @@ export const createEdgeRead = ({
         return undefined
       }
 
-      const currentEdit = readValue(edit)
-      const editing = (
-        currentEdit?.kind === 'edge-label'
-        && currentEdit.edgeId === ref.edgeId
-        && currentEdit.labelId === ref.labelId
-      )
-      const text = readEdgeLabelText(label.text)
+      const currentEdit = readValue(edit.edgeLabel, ref.edgeId)
+      const editing = currentEdit?.labelId === ref.labelId
+      const text = editing
+        ? currentEdit.text
+        : readEdgeLabelText(label.text)
       const displayText = readEdgeLabelDisplayText(text, editing)
       if (!editing && !displayText.trim()) {
         return undefined
@@ -674,15 +672,17 @@ export const createEdgeRead = ({
     },
     isEqual: isEdgeLabelContentEqual
   })
+
   const bounds: EdgePresentationRead['bounds'] = createKeyedDerivedStore({
     get: (edgeId: EdgeId) => {
-      const resolvedEntry = readValue(resolved, edgeId)
-      return resolvedEntry
-        ? getEdgePathBounds(resolvedEntry.path)
+      const currentGeometry = readValue(geometry, edgeId)
+      return currentGeometry
+        ? getEdgePathBounds(currentGeometry.path)
         : undefined
     },
     isEqual: isSameOptionalRectTuple
   })
+
   const readLabelRefs = (
     edgeId: EdgeId
   ): readonly EdgeLabelRef[] => readValue(item, edgeId)?.edge.labels?.map((label) => ({
@@ -710,15 +710,15 @@ export const createEdgeRead = ({
   const readLabelPlacement = (
     ref: EdgeLabelRef
   ): EdgeLabelPlacement | undefined => {
-    const currentView = readValue(view, ref.edgeId)
+    const currentGeometry = readValue(geometry, ref.edgeId)
     const currentContent = readValue(labelContent, ref)
     const currentSize = readLabelMetrics(ref)
-    if (!currentView || !currentContent || !currentSize) {
+    if (!currentGeometry || !currentContent || !currentSize) {
       return undefined
     }
 
     const placement = resolveEdgeLabelPlacement({
-      path: currentView.path,
+      path: currentGeometry.path,
       t: currentContent.t,
       offset: currentContent.offset,
       textMode: currentContent.textMode,
@@ -768,25 +768,36 @@ export const createEdgeRead = ({
       maskRect: currentPlacement.maskRect
     }
   }
+
   const render: EdgePresentationRead['render'] = createKeyedDerivedStore({
     get: (edgeId: EdgeId) => {
-      const currentView = readValue(view, edgeId)
+      const currentItem = readValue(item, edgeId)
+      const currentGeometry = readValue(geometry, edgeId)
       const currentBox = readEdgeBox(
         readValue(bounds, edgeId),
-        currentView?.edge
+        currentItem?.edge
       )
-      if (!currentView || !currentBox) {
+      if (!currentItem || !currentGeometry || !currentBox) {
         return undefined
       }
 
+      const runtime = readEdgeRuntime({
+        feedback: readValue(feedback, edgeId),
+        selected: readValue(selection.selected, edgeId)
+      })
+
       return {
-        ...currentView,
-        selected: isEdgeSelected(readValue(selection), edgeId),
+        edgeId,
+        edge: currentItem.edge,
+        patched: runtime.patched,
+        activeRouteIndex: runtime.activeRouteIndex,
+        selected: runtime.selected,
         box: currentBox,
         labels: readLabelRefs(edgeId).flatMap((ref) => {
           const next = readLabelRender(ref)
           return next ? [next] : []
-        })
+        }),
+        ...currentGeometry
       }
     },
     isEqual: isEdgeRenderEqual
@@ -813,31 +824,38 @@ export const createEdgeRead = ({
 
     return candidates
   }
+
   const readNodeLocked = (
     nodeId: NodeId
   ) => Boolean(readValue(node.canvas, nodeId)?.node.locked)
+
   const selectedChrome: EdgePresentationRead['selectedChrome'] = createDerivedStore({
     get: () => {
-      const selectedEdgeId = readSelectedEdgeId(readValue(selection))
+      const selectedEdgeId = readSelectedEdgeId(readValue(selection.target))
       if (!selectedEdgeId) {
         return undefined
       }
 
-      const currentView = readValue(view, selectedEdgeId)
-      if (!currentView) {
+      const currentItem = readValue(item, selectedEdgeId)
+      const currentGeometry = readValue(geometry, selectedEdgeId)
+      if (!currentItem || !currentGeometry) {
         return undefined
       }
 
-      const currentCapability = resolveEdgeCapability(currentView.edge, readNodeLocked)
-      const currentEdit = readValue(edit)
+      const currentCapability = resolveEdgeCapability(currentItem.edge, readNodeLocked)
+      const currentEdit = readValue(edit.session)
       const interactionMode = readValue(interaction.mode)
+      const currentRuntime = readEdgeRuntime({
+        feedback: readValue(feedback, selectedEdgeId),
+        selected: true
+      })
       const editingThisSelectedEdge =
         currentEdit?.kind === 'edge-label'
         && currentEdit.edgeId === selectedEdgeId
 
       return {
         edgeId: selectedEdgeId,
-        ends: currentView.ends,
+        ends: currentGeometry.ends,
         canReconnectSource: currentCapability.reconnectSource,
         canReconnectTarget: currentCapability.reconnectTarget,
         canEditRoute: currentCapability.editRoute,
@@ -846,7 +864,12 @@ export const createEdgeRead = ({
           && readValue(interaction.chrome)
           && !isEdgeInteractionBlockingChrome(interactionMode)
           && !editingThisSelectedEdge,
-        routePoints: readSelectedEdgeRoutePoints(selectedEdgeId, currentView)
+        routePoints: readSelectedEdgeRoutePoints({
+          edgeId: selectedEdgeId,
+          edge: currentItem.edge,
+          geometry: currentGeometry,
+          activeRouteIndex: currentRuntime.activeRouteIndex
+        })
       }
     },
     isEqual: isSelectedEdgeChromeEqual
@@ -856,10 +879,8 @@ export const createEdgeRead = ({
     list: read.edge.list,
     committed: read.edge.item,
     item,
+    geometry,
     edges: (edgeIds) => presentValues(edgeIds, (edgeId) => readValue(item, edgeId)?.edge),
-    state,
-    resolved,
-    view,
     render,
     label: {
       list: readLabelRefs,
@@ -876,18 +897,7 @@ export const createEdgeRead = ({
     capability: (edge) => resolveEdgeCapability(edge, readNodeLocked),
     selectedChrome,
     related: read.edge.related,
-    idsInRect: (rect, options) => readValue(read.edge.list).filter((edgeId) => {
-      const nextResolved = readValue(resolved, edgeId)
-      if (!nextResolved) {
-        return false
-      }
-
-      return matchEdgeRect({
-        path: nextResolved.path,
-        queryRect: rect,
-        mode: options?.match ?? 'touch'
-      })
-    }),
+    idsInRect: read.edge.idsInRect,
     connectCandidates
   }
 }

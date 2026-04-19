@@ -14,8 +14,9 @@ import {
   createDerivedStore,
   createValueStore,
   read,
-  sameMap
+  sameOrder
 } from '@shared/core'
+import { useStoreValue } from '@shared/react'
 import { useCardReorder } from '@dataview/react/views/gallery/reorder'
 import {
   GALLERY_CARD_MIN_WIDTH,
@@ -24,7 +25,6 @@ import {
 } from '@dataview/react/views/gallery/virtual'
 import type {
   GalleryBody,
-  GalleryRuntimeInput,
   GalleryViewRuntime
 } from '@dataview/react/views/gallery/types'
 import {
@@ -36,7 +36,7 @@ import {
   type ValueStore
 } from '@shared/core'
 
-const EMPTY_GALLERY_BLOCKS: readonly GalleryBlock[] = []
+const EMPTY_GALLERY_BLOCKS = [] as readonly GalleryBlock[]
 
 const sameBody = (
   left: GalleryViewRuntime['body']['get'] extends () => infer T ? T : never,
@@ -48,9 +48,9 @@ const sameBody = (
   && left.totalHeight === right.totalHeight
   && left.columnCount === right.columnCount
   && left.groupUsesOptionColors === right.groupUsesOptionColors
-  && sameMap(left.sectionCountByKey, right.sectionCountByKey)
+  && left.sectionKeys === right.sectionKeys
 
-export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntime => {
+export const useGalleryRuntime = (): GalleryViewRuntime => {
   const dataView = useDataView()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const layoutStore = useMemo<ValueStore<Pick<GalleryBody, 'blocks' | 'totalHeight' | 'columnCount'>>>(() => createValueStore({
@@ -62,14 +62,26 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
       && left.totalHeight === right.totalHeight
       && left.columnCount === right.columnCount
   }), [])
-  const itemIds = input.active.items.ids
+  const itemIds = useStoreValue(dataView.source.active.items.ids)
   const interaction = useItemDragRuntime({
     itemIds
   })
+  const sectionsStore = useMemo(() => createDerivedStore({
+    get: () => read(dataView.source.active.sections.keys)
+      .flatMap(key => {
+        const section = read(dataView.source.active.sections, key)
+        return section ? [section] : []
+      }),
+    isEqual: (left, right) => sameOrder(left, right, (before, after) => before === after)
+  }), [dataView.source.active.sections])
+  const sections = useStoreValue(sectionsStore)
+  const grouped = useStoreValue(dataView.source.active.query.grouped)
+  const size = useStoreValue(dataView.source.active.gallery.size)
+  const canReorder = useStoreValue(dataView.source.active.gallery.canReorder)
   const virtual = useGalleryBlocks({
-    grouped: input.active.query.group.active,
-    sections: input.active.sections.all,
-    minCardWidth: GALLERY_CARD_MIN_WIDTH[input.extra.card.size],
+    grouped,
+    sections,
+    minCardWidth: GALLERY_CARD_MIN_WIDTH[size],
     containerRef,
     overscan: interaction.dragging ? 1200 : 640
   })
@@ -78,9 +90,9 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
   ), [virtual.layout.cards])
   const bodyStore = useMemo(() => createDerivedStore<GalleryBody>({
     get: () => {
-      const base = read(dataView.model.gallery.bodyBase)
+      const base = read(dataView.model.gallery.body)
       if (!base) {
-        throw new Error('Gallery body base is unavailable.')
+        throw new Error('Gallery body is unavailable.')
       }
 
       const layout = read(layoutStore)
@@ -93,7 +105,7 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
     },
     isEqual: sameBody
   }), [
-    dataView.model.gallery.bodyBase,
+    dataView.model.gallery.body,
     layoutStore
   ])
   const section = dataView.model.gallery.section
@@ -146,78 +158,29 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
 
   const drag = useCardReorder({
     containerRef,
-    canDrag: input.extra.canReorder,
+    canDrag: canReorder,
     itemMap: interaction.itemMap,
     getLayout: () => virtual.layout,
     getDragIds: interaction.getDragIds,
     onDraggingChange: interaction.onDraggingChange,
     onDrop: (ids, target) => {
-      const section = target.beforeItemId
+      const sectionKey = target.beforeItemId
         ? dataView.engine.active.read.item(target.beforeItemId)?.sectionKey
         : target.sectionKey
-      if (!section) {
+      if (!sectionKey) {
         return
       }
 
       dataView.engine.active.items.move(ids, {
-        section,
-        ...(target.beforeItemId ? { before: target.beforeItemId } : {})
+        section: sectionKey,
+        before: target.beforeItemId
       })
     }
   })
 
-  useEffect(() => {
-    if (!drag.activeId || !drag.dragIds.length) {
-      dataView.react.drag.clear()
-      return
-    }
-
-    dataView.react.drag.set({
-      active: true,
-      kind: 'card',
-      source: drag.sourceRef.current,
-      pointerRef: drag.pointerRef,
-      offsetRef: drag.overlayOffsetRef,
-      size: drag.overlaySize,
-      extraCount: Math.max(0, drag.dragIds.length - 1)
-    })
-
-    return () => {
-      dataView.react.drag.clear()
-    }
-  }, [
-    dataView.react.drag,
-    drag.activeId,
-    drag.dragIds,
-    drag.overlayOffsetRef,
-    drag.overlaySize,
-    drag.pointerRef,
-    drag.sourceRef
-  ])
-
-  const indicator = useMemo(() => {
-    if (!drag.overTarget || !drag.dragIds.length) {
-      return undefined
-    }
-
-    const section = drag.overTarget.beforeItemId
-      ? dataView.engine.active.read.item(drag.overTarget.beforeItemId)?.sectionKey
-      : drag.overTarget.sectionKey
-    if (!section) {
-      return undefined
-    }
-
-    const plan = dataView.engine.active.items.planMove(drag.dragIds, {
-      section,
-      ...(drag.overTarget.beforeItemId ? { before: drag.overTarget.beforeItemId } : {})
-    })
-
-    return plan.changed
-      ? drag.overTarget.indicator
-      : undefined
-  }, [dataView.engine.active, drag.dragIds, drag.overTarget, input.active.items])
-
-  return useMemo(() => ({
+  return {
+    selection: interaction.selection,
+    marqueeActive: interaction.marqueeActive,
     body: bodyStore,
     section,
     card,
@@ -228,20 +191,7 @@ export const useGalleryRuntime = (input: GalleryRuntimeInput): GalleryViewRuntim
       blocks: virtual.blocks,
       measure: virtual.measure
     },
-    ...interaction,
     drag,
-    indicator
-  }), [
-    bodyStore,
-    card,
-    content,
-    containerRef,
-    drag,
-    indicator,
-    interaction,
-    section,
-    virtual.blocks,
-    virtual.layout,
-    virtual.measure
-  ])
+    indicator: drag.overTarget?.indicator
+  }
 }

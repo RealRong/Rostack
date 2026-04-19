@@ -2,7 +2,7 @@ import type { Action } from '@dataview/core/contracts'
 import type {
   ActionResult,
   ActiveViewApi,
-  DocumentSelectApi
+  EngineSource
 } from '@dataview/engine/contracts/public'
 import { createActiveContext } from '@dataview/engine/active/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/read'
@@ -25,7 +25,7 @@ import { createCellsApi } from '@dataview/engine/active/commands/cells'
 
 export const createActiveViewApi = (options: {
   store: RuntimeStore
-  select: DocumentSelectApi
+  source: EngineSource
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): ActiveViewApi => {
   const base = createActiveContext(options)
@@ -39,7 +39,6 @@ export const createActiveViewApi = (options: {
     id: base.id,
     config: base.config,
     state: base.stateStore,
-    select: base.select,
     read: readApi,
     changeType: type => {
       base.patch(() => ({

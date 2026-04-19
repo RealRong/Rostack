@@ -1,18 +1,16 @@
 import type { RefObject } from 'react'
 import type {
   ItemId,
-  KanbanState,
   SectionKey
 } from '@dataview/engine'
 import type {
-  ActiveTypedViewState,
-  ItemInteractionRuntime,
-  TypedRuntimeInput
+  ItemInteractionRuntime
 } from '@dataview/react/views/shared/types'
 import type {
   DataViewKanbanModel,
-  KanbanBoardBase,
-  KanbanSectionBase
+  KanbanBoard as KanbanBoardModel,
+  KanbanCard,
+  KanbanSection
 } from '@dataview/runtime'
 import type {
   KeyedReadStore,
@@ -20,11 +18,9 @@ import type {
 } from '@shared/core'
 
 export type {
-  KanbanCardData,
-  KanbanSectionBase
+  KanbanCard,
+  KanbanSection
 } from '@dataview/runtime'
-
-export type ActiveKanbanViewState = ActiveTypedViewState<'kanban'>
 
 export interface KanbanSectionVisibility {
   visibleIds: readonly ItemId[]
@@ -33,12 +29,12 @@ export interface KanbanSectionVisibility {
   showMoreCount: number
 }
 
-export interface KanbanBoard extends KanbanBoardBase {
+export interface KanbanBoard extends KanbanBoardModel {
   columnWidth: number
   columnMinHeight: number
 }
 
-export interface KanbanSectionData extends KanbanSectionBase {
+export interface KanbanSectionData extends KanbanSection {
   visibleIds: readonly ItemId[]
   visibleCount: number
   hiddenCount: number
@@ -64,9 +60,4 @@ export interface KanbanViewRuntime extends ItemInteractionRuntime {
     bySection: ReadonlyMap<SectionKey, KanbanSectionVisibility>
     showMore: (sectionKey: SectionKey) => void
   }
-}
-
-export type KanbanRuntimeInput = TypedRuntimeInput<'kanban', KanbanState> & {
-  columnWidth: number
-  columnMinHeight: number
 }

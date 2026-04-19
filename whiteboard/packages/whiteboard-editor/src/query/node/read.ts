@@ -113,7 +113,7 @@ export type NodePresentationRead = {
   canvas: KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
   rect: KeyedReadStore<NodeId, Rect | undefined>
   bounds: KeyedReadStore<NodeId, Rect | undefined>
-  capability: (node: Pick<Node, 'type' | 'mindmapId'>) => NodeCapability
+  capability: (node: Pick<Node, 'id' | 'type' | 'owner'>) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
   ordered: () => readonly Node[]
 }
@@ -128,8 +128,8 @@ type NodeRuntime = {
 const EMPTY_CONTROLS: readonly ControlId[] = []
 
 const isSelectableNode = (
-  node: Pick<Node, 'type'> | undefined
-) => node?.type !== 'mindmap'
+  node: Node | undefined
+) => Boolean(node)
 
 const readFallbackMeta = (
   type: NodeType
@@ -446,12 +446,12 @@ const toNodeRenderEdit = (
 )
 
 const resolveNodeCapability = (
-  node: Pick<Node, 'type' | 'mindmapId'>,
+  node: Pick<Node, 'id' | 'type' | 'owner'>,
   type: NodeTypeRead
 ): NodeCapability => {
   const base = type.capability(node.type)
-  const mindmapOwned = Boolean(node.mindmapId)
-  const mindmapRoot = node.type === 'mindmap'
+  const mindmapOwned = node.owner?.kind === 'mindmap'
+  const mindmapRoot = node.owner?.kind === 'mindmap' && node.owner.id === node.id
 
   return {
     ...base,
@@ -487,9 +487,9 @@ export const createNodeRead = ({
         return undefined
       }
 
-      const treeId = current.node.type === 'mindmap'
-        ? current.node.id
-        : current.node.mindmapId
+      const treeId = current.node.owner?.kind === 'mindmap'
+        ? current.node.owner.id
+        : undefined
       const geometryItem = projectNodeGeometryItem(
         current,
         readValue(feedback, nodeId),

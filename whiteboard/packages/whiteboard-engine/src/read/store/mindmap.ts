@@ -1,11 +1,10 @@
-import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { MindmapItem } from '@whiteboard/engine/types/projection'
-import type { Node, NodeId, SpatialNode } from '@whiteboard/core/types'
+import type { Invalidation, MindmapId, Node, NodeId } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
 import {
   anchorMindmapLayout,
   computeMindmapLayout,
-  getMindmapTree,
+  getMindmapTreeFromDocument,
   getSubtreeIds,
   resolveMindmapRender
 } from '@whiteboard/core/mindmap'
@@ -16,19 +15,19 @@ import type { ReadSnapshot } from '@whiteboard/engine/types/internal/read'
 import { createProjectionRuntime } from '@whiteboard/engine/read/store/projection'
 
 type MindmapProjectionState = {
-  entryById: Map<NodeId, MindmapItem>
-  ids: readonly NodeId[]
-  visibleNodesRef?: readonly Node[]
-  allNodesRef?: readonly Node[]
+  entryById: Map<MindmapId, MindmapItem>
+  ids: readonly MindmapId[]
+  nodesRef?: ReadSnapshot['document']['nodes']
+  mindmapsRef?: ReadSnapshot['document']['mindmaps']
 }
 
 type MindmapProjectionUpdate = {
   nextState: MindmapProjectionState
   idsChanged: boolean
-  changedTreeIds: Set<NodeId>
+  changedTreeIds: Set<MindmapId>
 }
 
-const isSameIds = (left: readonly NodeId[], right: readonly NodeId[]) => {
+const isSameIds = (left: readonly MindmapId[], right: readonly MindmapId[]) => {
   if (left === right) return true
   if (left.length !== right.length) return false
   for (let index = 0; index < left.length; index += 1) {
@@ -44,7 +43,7 @@ export const createMindmapProjection = (
   }
 ) => {
   const config = deps.config
-  const projection = createProjectionRuntime<NodeId, MindmapItem | undefined>({
+  const projection = createProjectionRuntime<MindmapId, MindmapItem | undefined>({
     initialList: [],
     emptyValue: undefined,
     read: (treeId) => {
@@ -54,20 +53,24 @@ export const createMindmapProjection = (
   })
   let snapshotRef: ReadSnapshot = initialSnapshot
   let state: MindmapProjectionState = {
-    entryById: new Map<NodeId, MindmapItem>(),
+    entryById: new Map<MindmapId, MindmapItem>(),
     ids: []
   }
 
   const buildTree = (
-    root: SpatialNode,
-    tree: MindmapItem['tree']
-  ): MindmapItem => {
-    const allNodeById = snapshotRef.model.canvas.nodeById
+    mindmapId: MindmapId
+  ): MindmapItem | undefined => {
+    const tree = getMindmapTreeFromDocument(snapshotRef.document, mindmapId)
+    const root = snapshotRef.document.nodes[snapshotRef.document.mindmaps[mindmapId]?.root ?? '']
+    if (!tree || !root) {
+      return undefined
+    }
+
     const childNodeIds = getSubtreeIds(tree, tree.rootNodeId)
     const computed = computeMindmapLayout(
       tree,
       (nodeId) => {
-        const node = allNodeById.get(nodeId)
+        const node = snapshotRef.document.nodes[nodeId]
         const bootstrap = node
           ? resolveNodeBootstrapSize(node)
           : undefined
@@ -89,12 +92,12 @@ export const createMindmapProjection = (
     })
 
     return {
-      id: root.id,
+      id: mindmapId,
       node: root,
       tree,
       layout: tree.layout,
       computed: anchored,
-      rootLocked: Boolean(allNodeById.get(tree.rootNodeId)?.locked),
+      rootLocked: Boolean(root.locked),
       childNodeIds,
       connectors: render.connectors
     }
@@ -107,37 +110,32 @@ export const createMindmapProjection = (
   const reconcile = (
     current: MindmapProjectionState
   ): MindmapProjectionUpdate => {
-    const visibleNodes = snapshotRef.model.nodes.visible
-    const allNodes = snapshotRef.model.nodes.all
-    if (visibleNodes === current.visibleNodesRef && allNodes === current.allNodesRef) {
+    const nodesRef = snapshotRef.document.nodes
+    const mindmapsRef = snapshotRef.document.mindmaps
+    if (nodesRef === current.nodesRef && mindmapsRef === current.mindmapsRef) {
       return {
         nextState: current,
         idsChanged: false,
-        changedTreeIds: new Set<NodeId>()
+        changedTreeIds: new Set<MindmapId>()
       }
     }
 
-    const roots = visibleNodes.filter(
-      (node): node is SpatialNode & { type: 'mindmap' } => node.type === 'mindmap'
-    )
     const previousIds = current.ids
     const previousById = current.entryById
-    const nextById = new Map<NodeId, MindmapItem>()
-    const nextIds: NodeId[] = []
-    const changedTreeIds = new Set<NodeId>()
+    const nextById = new Map<MindmapId, MindmapItem>()
+    const nextIds: MindmapId[] = []
+    const changedTreeIds = new Set<MindmapId>()
     const previousTreeIds = new Set(previousIds)
 
-    roots.forEach((root) => {
-      const tree = getMindmapTree(root)
-      if (!tree) return
-
-      const nextTree = buildTree(root, tree)
-      nextById.set(root.id, nextTree)
-      nextIds.push(root.id)
-      if (previousById.get(root.id) !== nextTree) {
-        changedTreeIds.add(root.id)
+    Object.keys(mindmapsRef).forEach((mindmapId) => {
+      const nextTree = buildTree(mindmapId)
+      if (!nextTree) return
+      nextById.set(mindmapId, nextTree)
+      nextIds.push(mindmapId)
+      if (previousById.get(mindmapId) !== nextTree) {
+        changedTreeIds.add(mindmapId)
       }
-      previousTreeIds.delete(root.id)
+      previousTreeIds.delete(mindmapId)
     })
 
     previousTreeIds.forEach((treeId) => {
@@ -150,8 +148,8 @@ export const createMindmapProjection = (
       nextState: {
         entryById: nextById,
         ids: idsChanged ? nextIds : previousIds,
-        visibleNodesRef: visibleNodes,
-        allNodesRef: allNodes
+        nodesRef,
+        mindmapsRef
       },
       idsChanged,
       changedTreeIds
@@ -169,12 +167,8 @@ export const createMindmapProjection = (
   commitState(initial.nextState)
   projection.setList(state.ids)
 
-  const applyChange = (impact: KernelReadImpact, snapshot: ReadSnapshot) => {
+  const applyChange = (_invalidation: Invalidation, snapshot: ReadSnapshot) => {
     snapshotRef = snapshot
-    if (!impact.reset && !impact.node.value && !impact.node.list && !impact.node.geometry) {
-      return
-    }
-
     const next = reconcile(state)
     commitState(next.nextState)
 

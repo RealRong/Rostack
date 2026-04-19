@@ -7,9 +7,7 @@ import {
 } from 'react'
 import type {
   DataRecord,
-  RecordId,
-  Field,
-  ViewId
+  RecordId
 } from '@dataview/core/contracts'
 import {
   getRecordFieldValue
@@ -30,20 +28,14 @@ import { RowRail } from '@dataview/react/views/table/components/row/RowRail'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
 import {
   useKeyedStoreValue,
-  useOptionalKeyedStoreValue
+  useOptionalKeyedStoreValue,
+  useStoreValue
 } from '@shared/react'
 
 export interface RowProps {
   itemId: ItemId
-  recordId?: RecordId
-  viewId: ViewId
   measureRef?: (node: HTMLDivElement | null) => void
-  showVerticalLines: boolean
-  wrap: boolean
-  columns: readonly Field[]
   template: string
-  rowHeight: number
-  marqueeActive: boolean
   dragActive: boolean
   isDragging: boolean
   onDragStart: (input: {
@@ -54,15 +46,8 @@ export interface RowProps {
 
 const same = (left: RowProps, right: RowProps) => (
   left.itemId === right.itemId
-  && left.recordId === right.recordId
-  && left.viewId === right.viewId
   && left.measureRef === right.measureRef
-  && left.showVerticalLines === right.showVerticalLines
-  && left.wrap === right.wrap
-  && left.columns === right.columns
   && left.template === right.template
-  && left.rowHeight === right.rowHeight
-  && left.marqueeActive === right.marqueeActive
   && left.dragActive === right.dragActive
   && left.isDragging === right.isDragging
   && left.onDragStart === right.onDragStart
@@ -85,11 +70,17 @@ const View = (props: RowProps) => {
   const table = useTableContext()
   const dataView = useDataView()
   const rowNodeRef = useRef<HTMLDivElement | null>(null)
+  const body = useStoreValue(table.body)
+  const currentView = useStoreValue(table.currentView)
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
     rowNodeRef.current = node
     props.measureRef?.(node)
   }, [props.measureRef])
+
+  if (!body || !currentView) {
+    throw new Error('Table row requires an active body and current view.')
+  }
 
   useLayoutEffect(() => {
     const node = rowNodeRef.current
@@ -107,16 +98,17 @@ const View = (props: RowProps) => {
     table.chrome.row,
     props.itemId
   )
+  const recordId = currentView.items.get(props.itemId)?.recordId
   const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
     dataView.engine.source.doc.records,
-    props.recordId,
+    recordId,
     undefined
   )
   const selected = row.selected
   const rail = rowRailState({
     dragActive: props.dragActive,
     dragDisabled: !row.canDrag,
-    marqueeActive: props.marqueeActive,
+    marqueeActive: body.marqueeActive,
     exposed: row.exposed,
     selected
   })
@@ -161,7 +153,7 @@ const View = (props: RowProps) => {
       onPointerDown={onRowPointerDown}
       className="relative self-stretch min-w-full w-max border-b border-divider text-sm text-foreground transition-colors focus:outline-none"
       style={{
-        minHeight: props.rowHeight,
+        minHeight: table.layout.rowHeight,
         boxSizing: 'border-box'
       }}
     >
@@ -175,7 +167,7 @@ const View = (props: RowProps) => {
           rowId={props.itemId}
           selected={selected}
           state={rail}
-          marqueeActive={props.marqueeActive}
+          marqueeActive={body.marqueeActive}
           onSelectionPointerStart={onSelectionPointerStart}
           onDragPointerStart={event => {
             table.rail.set(null)
@@ -191,14 +183,14 @@ const View = (props: RowProps) => {
             gridTemplateColumns: props.template
           }}
         >
-          {props.columns.map(field => (
+          {body.columns.map(field => (
             <Cell
               key={field.id}
               itemId={props.itemId}
-              recordId={props.recordId}
-              viewId={props.viewId}
-              showVerticalLines={props.showVerticalLines}
-              wrap={props.wrap}
+              recordId={recordId}
+              viewId={body.viewId}
+              showVerticalLines={body.showVerticalLines}
+              wrap={body.wrap}
               field={field}
               value={record
                 ? getRecordFieldValue(record, field.id)

@@ -1,9 +1,8 @@
-import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type {
   CanvasNode,
   EdgeItem
 } from '@whiteboard/engine/types/projection'
-import type { Edge, EdgeId, NodeId, Point } from '@whiteboard/core/types'
+import type { Edge, EdgeId, Invalidation, NodeId, Point } from '@whiteboard/core/types'
 import {
   collectRelatedEdgeIds,
   createEdgeRelations,
@@ -205,21 +204,19 @@ const isSameEdgeStructureTuple = (
   return isSamePointArray(left.routePointsRef, right.routePointsRef)
 }
 
-const resolveEdgeRebuild = (impact: KernelReadImpact): 'none' | 'dirty' | 'full' => {
-  if (impact.reset || impact.node.list || impact.edge.list) {
+const resolveEdgeRebuild = (invalidation: Invalidation): 'none' | 'dirty' | 'full' => {
+  if (invalidation.document || invalidation.canvasOrder) {
     return 'full'
   }
 
   const hasDirtyIds =
-    impact.edge.ids.length > 0
-    || impact.edge.nodeIds.length > 0
+    invalidation.edges.size > 0
+    || invalidation.nodes.size > 0
 
   if (hasDirtyIds) {
-    return 'dirty'
-  }
-
-  if (impact.node.geometry || impact.node.value || impact.edge.geometry || impact.edge.value) {
-    return 'full'
+    return invalidation.nodes.size > 0
+      ? 'full'
+      : 'dirty'
   }
 
   return 'none'
@@ -487,9 +484,9 @@ const reconcileEdges = (
   visibleEdgesRef = initialVisibleEdges
   projection.setList(state.ids)
 
-  const applyChange = (impact: KernelReadImpact, snapshot: ReadSnapshot) => {
+  const applyChange = (invalidation: Invalidation, snapshot: ReadSnapshot) => {
     snapshotRef = snapshot
-    const rebuild = resolveEdgeRebuild(impact)
+    const rebuild = resolveEdgeRebuild(invalidation)
     if (rebuild === 'none') {
       changedEdgeIds = []
       return
@@ -509,16 +506,16 @@ const reconcileEdges = (
     } else {
       const nextRelations = createEdgeRelations(visibleEdges)
       const affectedEdgeIds = new Set<EdgeId>()
-      if (impact.edge.nodeIds.length) {
+      if (invalidation.nodes.size > 0) {
         const fromNodes = collectRelatedEdgeIds(
           nextRelations.nodeToEdgeIds,
-          new Set(impact.edge.nodeIds)
+          new Set(invalidation.nodes)
         )
         fromNodes.forEach((edgeId) => {
           affectedEdgeIds.add(edgeId)
         })
       }
-      impact.edge.ids.forEach((edgeId) => {
+      invalidation.edges.forEach((edgeId) => {
         affectedEdgeIds.add(edgeId)
       })
       const next = reconcileEdges(state, nextRelations, affectedEdgeIds)

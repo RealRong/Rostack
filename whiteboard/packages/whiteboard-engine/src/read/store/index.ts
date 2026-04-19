@@ -1,6 +1,5 @@
 import type { ReadModel } from '@whiteboard/engine/types/read'
 import type { EngineDocument, EngineRead, EngineReadIndex } from '@whiteboard/engine/types/instance'
-import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { BoardConfig } from '@whiteboard/core/config'
 import {
   getEdgePath,
@@ -36,6 +35,7 @@ import {
   type CanvasItemRef,
   type Edge,
   type EdgeId,
+  type Invalidation,
   type Node,
   type NodeId,
   type Point,
@@ -43,7 +43,7 @@ import {
 } from '@whiteboard/core/types'
 import { createValueStore, presentValues } from '@shared/core'
 import { DEFAULT_TUNING } from '@whiteboard/engine/config'
-import { RESET_READ_IMPACT } from '@whiteboard/engine/read/impacts'
+import { RESET_INVALIDATION } from '@whiteboard/engine/read/invalidation'
 import { EdgeRectIndex, NodeRectIndex, SnapIndex } from '@whiteboard/engine/read/indexes'
 import { createEdgeProjection } from '@whiteboard/engine/read/store/edge'
 import { createReadModel } from '@whiteboard/engine/read/store/model'
@@ -65,7 +65,7 @@ export const createRead = ({
   config: BoardConfig
 }): {
   read: EngineRead
-  invalidate: (impact: KernelReadImpact) => void
+  invalidate: (invalidation: Invalidation) => void
 } => {
   const readDocument = document.get
   const readModel = createReadModel({ readDocument })
@@ -99,6 +99,7 @@ export const createRead = ({
   }
 
   const createSnapshot = (model: ReadModel): ReadSnapshot => ({
+    document: readDocument(),
     model,
     index
   })
@@ -107,16 +108,16 @@ export const createRead = ({
     listCanvasItemRefs(readDocument()) as readonly CanvasItemRef[]
   )
 
-  const syncIndexes = (impact: KernelReadImpact, model: ReadModel) => {
-    nodeRectIndex.applyChange(impact, model)
-    snapIndex.applyChange(impact, {
+  const syncIndexes = (invalidation: Invalidation, model: ReadModel) => {
+    nodeRectIndex.applyChange(invalidation, model)
+    snapIndex.applyChange(invalidation, {
       all: nodeRectIndex.all,
       get: nodeRectIndex.byId
     }, nodeRectIndex.changedIds())
   }
 
   const initialModel = readModel()
-  syncIndexes(RESET_READ_IMPACT, initialModel)
+  syncIndexes(RESET_INVALIDATION, initialModel)
   const initialSnapshot = createSnapshot(initialModel)
 
   const nodeProjection = createNodeProjection(initialSnapshot)
@@ -419,21 +420,21 @@ export const createRead = ({
     return getRectsBoundingRect(rects)
   }
 
-  const applyImpact = (impact: KernelReadImpact) => {
-    if (impact.reset || impact.document) {
+  const applyInvalidation = (invalidation: Invalidation) => {
+    if (invalidation.document || invalidation.background) {
       background.set(readDocument().background)
     }
-    if (impact.reset || impact.document || impact.node.list || impact.edge.list) {
+    if (invalidation.document || invalidation.canvasOrder) {
       scene.set(listCanvasItemRefs(readDocument()) as readonly CanvasItemRef[])
     }
 
     const model = readModel()
-    syncIndexes(impact, model)
+    syncIndexes(invalidation, model)
     const snapshot = createSnapshot(model)
-    nodeProjection.applyChange(impact, snapshot, nodeRectIndex.changedIds())
-    edgeProjection.applyChange(impact, snapshot)
+    nodeProjection.applyChange(invalidation, snapshot, nodeRectIndex.changedIds())
+    edgeProjection.applyChange(invalidation, snapshot)
     edgeRectIndex.applyChange(edgeProjection.changedIds(), readEdgeBounds)
-    mindmapProjection.applyChange(impact, snapshot)
+    mindmapProjection.applyChange(invalidation, snapshot)
   }
 
   return {
@@ -534,6 +535,6 @@ export const createRead = ({
       },
       index
     },
-    invalidate: applyImpact
+    invalidate: applyInvalidation
   }
 }

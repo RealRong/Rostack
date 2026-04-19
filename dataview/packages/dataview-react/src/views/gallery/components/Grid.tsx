@@ -1,19 +1,16 @@
-import { useMemo } from 'react'
+import { memo } from 'react'
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
-import {
-  useDataView
-} from '@dataview/react/dataview'
-import {
-  createDerivedStore,
-  read
-} from '@shared/core'
 import { resolveOptionDotStyle } from '@shared/ui/color'
 import { token } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
 import { useGalleryRuntimeContext } from '@dataview/react/views/gallery/GalleryView'
 import { GALLERY_CARD_GAP } from '@dataview/react/views/gallery/virtual'
 import { Card } from '@dataview/react/views/gallery/components/Card'
+import type {
+  GallerySectionHeaderBlock
+} from '@dataview/react/views/gallery/virtual/types'
 import {
+  useKeyedStoreValue,
   useStoreValue
 } from '@shared/react'
 
@@ -21,27 +18,52 @@ const contentInsetStyle = {
   paddingInline: PAGE_INLINE_INSET_CSS
 } as const
 
+const GridSectionHeaderView = (props: {
+  section: GallerySectionHeaderBlock['section']
+  height: number
+  marginTop: number
+  groupUsesOptionColors: boolean
+}) => {
+  const { t } = useTranslation()
+  const runtime = useGalleryRuntimeContext()
+  const section = useKeyedStoreValue(runtime.section, props.section.key)
+
+  return (
+    <div
+      className="flex items-center gap-2"
+      style={{
+        height: props.height,
+        marginTop: props.marginTop
+      }}
+    >
+      {props.groupUsesOptionColors ? (
+        <span
+          className="inline-flex h-2.5 w-2.5 rounded-full"
+          style={resolveOptionDotStyle(props.section.color)}
+        />
+      ) : null}
+      <h3 className="text-sm font-semibold text-foreground">
+        {t(props.section.label)}
+        <span className="ml-2 text-xs font-medium text-muted-foreground">
+          {section?.count ?? 0}
+        </span>
+      </h3>
+    </div>
+  )
+}
+
+const GridSectionHeader = memo(GridSectionHeaderView)
+
 export const Grid = () => {
   const { t } = useTranslation()
   const runtime = useGalleryRuntimeContext()
   const body = useStoreValue(runtime.body)
-  const engine = useDataView().engine
   const {
     blocks,
     layout
   } = runtime.virtual
   const indicator = runtime.indicator
   const empty = body.empty
-  const sectionCountByKey = useStoreValue(useMemo(() => createDerivedStore({
-    get: () => new Map(
-      body.sectionKeys.flatMap(key => {
-        const section = read(runtime.section, key)
-        return section
-          ? [[key, section.count] as const]
-          : []
-      })
-    )
-  }), [body.sectionKeys, runtime.section]))
   const lastBlock = blocks[blocks.length - 1]
   const bottomSpacerHeight = lastBlock
     ? Math.max(0, layout.totalHeight - lastBlock.top - lastBlock.height)
@@ -83,29 +105,13 @@ export const Grid = () => {
               switch (block.kind) {
                 case 'section-header':
                   return (
-                    <div
+                    <GridSectionHeader
                       key={block.key}
-                      className="flex items-center gap-2"
-                      style={{
-                        height: block.height,
-                        marginTop
-                      }}
-                    >
-                      {body.groupUsesOptionColors ? (
-                        <span
-                          className="inline-flex h-2.5 w-2.5 rounded-full"
-                          style={resolveOptionDotStyle(
-                            engine.active.read.section(block.section.key)?.color
-                          )}
-                        />
-                      ) : null}
-                      <h3 className="text-sm font-semibold text-foreground">
-                        {t(block.section.label)}
-                        <span className="ml-2 text-xs font-medium text-muted-foreground">
-                          {sectionCountByKey.get(block.section.key) ?? 0}
-                        </span>
-                      </h3>
-                    </div>
+                      section={block.section}
+                      height={block.height}
+                      marginTop={marginTop}
+                      groupUsesOptionColors={body.groupUsesOptionColors}
+                    />
                   )
                 case 'section-empty':
                   return (

@@ -191,26 +191,32 @@ export const EditableCardTitle = (props: EditableCardTitleProps) => {
   return (
     <>
       {props.showEditAction && !state.editing ? (
-        <Button
-          data-drag-clone-hidden=""
-          size="icon"
-          variant="ghost"
-          className={cn(
-            'absolute right-2 top-2.5 z-10 opacity-0 pointer-events-none transition-opacity',
+        <div className={
+          cn(
+            "absolute right-2 top-2.5 bg-surface-muted border rounded z-10 opacity-0 pointer-events-none transition-opacity",
             'group-hover/record-card:opacity-100 group-hover/record-card:pointer-events-auto',
             'group-focus-within/record-card:opacity-100 group-focus-within/record-card:pointer-events-auto',
-            props.editActionClassName
-          )}
-          aria-label="Edit card"
-          title="Edit card"
-          onClick={event => {
-            event.preventDefault()
-            event.stopPropagation()
-            state.enterEdit()
-          }}
-        >
-          <SquarePen className="size-4" size={15} strokeWidth={1.8} />
-        </Button>
+          )
+        }>
+          <Button
+            data-drag-clone-hidden=""
+            size="icon"
+            variant="ghost"
+            className={cn(
+              props.editActionClassName,
+              'rounded'
+            )}
+            aria-label="Edit card"
+            title="Edit card"
+            onClick={event => {
+              event.preventDefault()
+              event.stopPropagation()
+              state.enterEdit()
+            }}
+          >
+            <SquarePen className="size-4" size={15} strokeWidth={1.8} />
+          </Button>
+        </div>
       ) : null}
       {state.editing ? (
         <input

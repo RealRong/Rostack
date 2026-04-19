@@ -165,7 +165,7 @@ test('engine blocks duplicating a locked node selection', () => {
   })
 
   const result = engine.execute({
-    type: 'document.duplicate',
+    type: 'canvas.duplicate',
     refs: [{
       kind: 'node',
       id: 'node_locked'
@@ -186,7 +186,7 @@ test('engine blocks duplicating an edge attached to a locked node', () => {
   })
 
   const result = engine.execute({
-    type: 'document.duplicate',
+    type: 'canvas.duplicate',
     refs: [{
       kind: 'edge',
       id: 'edge_1'
@@ -206,10 +206,12 @@ test('engine blocks remote edge deletion that would change a locked node relatio
     document: createLockedDocument()
   })
 
-  const result = engine.applyOperations([{
-    type: 'edge.delete',
-    id: 'edge_1'
-  }], {
+  const result = engine.apply({
+    ops: [{
+      type: 'edge.delete',
+      id: 'edge_1'
+    }]
+  }, {
     origin: 'remote'
   })
 
@@ -226,21 +228,21 @@ test('engine allows remote unlock then delete in the same operation batch', () =
     document: createLockedDocument()
   })
 
-  const result = engine.applyOperations([
-    {
-      type: 'node.update',
-      id: 'node_locked',
-      update: {
-        fields: {
+  const result = engine.apply({
+    ops: [
+      {
+        type: 'node.patch',
+        id: 'node_locked',
+        patch: {
           locked: false
         }
+      },
+      {
+        type: 'node.delete',
+        id: 'node_locked'
       }
-    },
-    {
-      type: 'node.delete',
-      id: 'node_locked'
-    }
-  ], {
+    ]
+  }, {
     origin: 'remote'
   })
 
@@ -279,22 +281,24 @@ test('engine allows remote unlock then edge update in the same batch', () => {
     document: createEdgeLockedDocument()
   })
 
-  const result = engine.applyOperations([
-    {
-      type: 'edge.update',
-      id: 'edge_locked',
-      patch: {
-        locked: false
+  const result = engine.apply({
+    ops: [
+      {
+        type: 'edge.patch',
+        id: 'edge_locked',
+        patch: {
+          locked: false
+        }
+      },
+      {
+        type: 'edge.patch',
+        id: 'edge_locked',
+        patch: {
+          textMode: 'tangent'
+        }
       }
-    },
-    {
-      type: 'edge.update',
-      id: 'edge_locked',
-      patch: {
-        textMode: 'tangent'
-      }
-    }
-  ], {
+    ]
+  }, {
     origin: 'remote'
   })
 

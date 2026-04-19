@@ -2,7 +2,9 @@ import type { Result } from '@whiteboard/core/types/result'
 import type { MindmapInsertPayload } from '@whiteboard/core/types/mindmap'
 import type {
   MindmapCommandOptions,
+  Node,
   NodeStyle,
+  NodeType,
   Point,
   Rect,
   Size
@@ -62,6 +64,8 @@ export type MindmapBranchStyle = {
   stroke: MindmapStrokeStyle
 }
 
+export type MindmapBranchPatch = Partial<MindmapBranchStyle>
+
 export type MindmapTreeNodeStyle = {
   node: MindmapNodeStyle
   branch: MindmapBranchStyle
@@ -92,6 +96,25 @@ export type MindmapLayoutSpec = {
   mode: MindmapLayoutMode
   hGap: number
   vGap: number
+}
+
+export type MindmapMemberRecord = {
+  parentId?: MindmapNodeId
+  side?: 'left' | 'right'
+  collapsed?: boolean
+  branchStyle: MindmapBranchStyle
+}
+
+export type MindmapRecord = {
+  id: MindmapId
+  root: MindmapNodeId
+  members: Record<MindmapNodeId, MindmapMemberRecord>
+  children: Record<MindmapNodeId, MindmapNodeId[]>
+  layout: MindmapLayoutSpec
+  meta?: {
+    createdAt?: string
+    updatedAt?: string
+  }
 }
 
 export interface MindmapTree {
@@ -137,6 +160,7 @@ export type MindmapInsertInput =
       kind: 'child'
       parentId: MindmapNodeId
       payload?: MindmapTopicData | MindmapInsertPayload
+      node?: MindmapTopicNodeInput
       options?: MindmapCommandOptions
     }
   | {
@@ -144,12 +168,14 @@ export type MindmapInsertInput =
       nodeId: MindmapNodeId
       position: 'before' | 'after'
       payload?: MindmapTopicData | MindmapInsertPayload
+      node?: MindmapTopicNodeInput
       options?: Pick<MindmapCommandOptions, 'layout'>
     }
   | {
       kind: 'parent'
       nodeId: MindmapNodeId
       payload?: MindmapTopicData | MindmapInsertPayload
+      node?: MindmapTopicNodeInput
       options?: Pick<MindmapCommandOptions, 'side' | 'layout'>
     }
 
@@ -170,6 +196,23 @@ export type MindmapCloneSubtreeInput = {
   parentId?: MindmapNodeId
   index?: number
   side?: 'left' | 'right'
+}
+
+export type MindmapTopicInsertInput = MindmapInsertInput
+export type MindmapTopicMoveInput = MindmapMoveSubtreeInput
+export type MindmapTopicDeleteInput = MindmapRemoveSubtreeInput
+export type MindmapTopicCloneInput = MindmapCloneSubtreeInput
+export type MindmapTopicPatch = Partial<
+  Pick<Node, 'data' | 'style' | 'size' | 'rotation' | 'locked'>
+>
+
+export type MindmapTopicNodeInput = {
+  type?: Exclude<NodeType, 'frame'>
+  data?: Record<string, unknown>
+  style?: NodeStyle
+  size?: Size
+  rotation?: number
+  locked?: boolean
 }
 
 export type MindmapPreviewModel = {

@@ -37,8 +37,8 @@ describe('mindmap field drag', () => {
                 vGap: 18
               },
               node: {
-                id: 'mind-1',
-                type: 'mindmap',
+                id: 'root-1',
+                type: 'text',
                 position: { x: 100, y: 120 },
                 data: {}
               }
@@ -53,7 +53,10 @@ describe('mindmap field drag', () => {
                   node: {
                     id: 'root-1',
                     type: 'text',
-                    mindmapId: 'mind-1',
+                    owner: {
+                      kind: 'mindmap',
+                      id: 'mind-1'
+                    },
                     position: { x: 100, y: 120 },
                     size: { width: 144, height: 44 },
                     data: {
@@ -73,7 +76,11 @@ describe('mindmap field drag', () => {
                 return {
                   node: {
                     id: 'mind-1',
-                    type: 'mindmap',
+                    type: 'text',
+                    owner: {
+                      kind: 'mindmap',
+                      id: 'mind-1'
+                    },
                     position: { x: 100, y: 120 },
                     data: {}
                   },
@@ -92,7 +99,10 @@ describe('mindmap field drag', () => {
           ordered: vi.fn()
         },
         edge: {
-          edges: vi.fn()
+          list: {
+            get: vi.fn(() => [])
+          },
+          edges: vi.fn(() => [])
         },
         frame: {
           at: vi.fn(),
@@ -138,10 +148,12 @@ describe('mindmap field drag', () => {
           move: vi.fn()
         }
       },
-      config: {
-        nodeSize: {
-          width: 120,
-          height: 72
+      engine: {
+        config: {
+          nodeSize: {
+            width: 120,
+            height: 72
+          }
         }
       },
       layout: {} as never

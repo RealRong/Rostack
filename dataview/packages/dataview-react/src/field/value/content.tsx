@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Field } from '@dataview/core/contracts'
+import type { FieldOptionTagAppearance } from '@dataview/react/field/options'
 import { cn } from '@shared/ui/utils'
-import { FieldValueRenderer } from '@dataview/react/field/value/FieldValueRenderer'
 import { getFieldValueSpec } from '@dataview/react/field/value/kinds'
 
 export interface FieldValueContentProps {
@@ -12,6 +12,7 @@ export interface FieldValueContentProps {
   onQuickToggle?: () => void
   density?: 'default' | 'compact'
   wrap?: boolean
+  optionTagAppearance?: FieldOptionTagAppearance
 }
 
 const QuickToggleButton = (props: {
@@ -61,12 +62,12 @@ export const FieldValueContent = (props: FieldValueContentProps) => {
   }
 
   return (
-    <FieldValueRenderer
-      field={props.field}
-      value={props.value}
-      emptyPlaceholder={props.emptyPlaceholder}
-      className={props.className}
-      wrap={props.wrap}
-    />
+    <>{spec.render({
+      value: props.value,
+      emptyPlaceholder: props.emptyPlaceholder,
+      className: props.className,
+      wrap: props.wrap,
+      optionTagAppearance: props.optionTagAppearance
+    })}</>
   )
 }

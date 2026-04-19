@@ -16,7 +16,7 @@ const createInteractionDeps = () => {
       query: {
         node: {} as InteractionDeps['query']['node'],
         edge: {
-          resolved: {
+          geometry: {
             get: () => ({
               ends: {
                 source: {

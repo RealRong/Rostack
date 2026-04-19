@@ -19,6 +19,7 @@ import type {
   GroupId,
   NodeFieldPatch,
   NodeId,
+  NodePatch,
   NodeUpdateInput,
   Operation,
   Origin
@@ -234,18 +235,14 @@ export const resolveLockDecision = ({
   }
 }
 
-const isLockOnlyNodeUpdate = (
-  update: NodeUpdateInput
+const isLockOnlyNodePatch = (
+  patch: NodePatch
 ) => {
-  if (update.records?.length) {
-    return false
-  }
-  const { fields } = update
-  if (!fields || !hasOwn(fields, 'locked')) {
+  if (!hasOwn(patch, 'locked')) {
     return false
   }
 
-  return NODE_NON_LOCK_FIELD_KEYS.every((key) => !hasOwn(fields, key))
+  return NODE_NON_LOCK_FIELD_KEYS.every((key) => !hasOwn(patch, key))
 }
 
 const isLockOnlyEdgeUpdate = (
@@ -277,8 +274,8 @@ const readLockViolationForOperation = ({
     case 'node.create':
       updateNodeLocked(operation.node.id, Boolean(operation.node.locked))
       return undefined
-    case 'node.update': {
-      if (readNodeLocked(operation.id) && !isLockOnlyNodeUpdate(operation.update)) {
+    case 'node.patch': {
+      if (readNodeLocked(operation.id) && !isLockOnlyNodePatch(operation.patch)) {
         return {
           lockedNodeIds: [operation.id],
           lockedEdgeIds: [],
@@ -286,11 +283,8 @@ const readLockViolationForOperation = ({
         }
       }
 
-      if (
-        operation.update.fields
-        && hasOwn(operation.update.fields, 'locked')
-      ) {
-        updateNodeLocked(operation.id, Boolean(operation.update.fields.locked))
+      if (hasOwn(operation.patch, 'locked')) {
+        updateNodeLocked(operation.id, Boolean(operation.patch.locked))
       }
       return undefined
     }
@@ -320,7 +314,7 @@ const readLockViolationForOperation = ({
         }
       })()
     }
-    case 'edge.update': {
+    case 'edge.patch': {
       if (readEdgeLocked(operation.id) && !isLockOnlyEdgeUpdate(operation.patch)) {
         return {
           lockedNodeIds: [],
@@ -396,7 +390,7 @@ const readLockViolationForOperation = ({
         reason: 'locked-relation'
       }
     }
-    case 'canvas.order.set': {
+    case 'canvas.order': {
       const lockedNodeIds = uniqueIds(
         operation.refs.flatMap((ref) => (
           ref.kind === 'node' && readNodeLocked(ref.id)
@@ -502,7 +496,7 @@ export const validateLockOperations = ({
         })
         updateEdgeLocked(operation.edge.id, Boolean(operation.edge.locked))
         break
-      case 'edge.update': {
+      case 'edge.patch': {
         const current = readEdge(operation.id)
         if (!current) {
           break

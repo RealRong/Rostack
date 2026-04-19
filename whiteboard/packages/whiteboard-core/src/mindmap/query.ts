@@ -3,6 +3,7 @@ import {
   type MindmapLayout,
   type MindmapLayoutSpec,
   type MindmapNodeId,
+  type MindmapRecord,
   type MindmapTree,
   type MindmapTreeNode
 } from '@whiteboard/core/mindmap/types'
@@ -11,11 +12,14 @@ import type {
   MindmapInsertPlan
 } from '@whiteboard/core/types/mindmap'
 import { layoutMindmap, layoutMindmapTidy } from '@whiteboard/core/mindmap/layout'
-import { getNode } from '@whiteboard/core/document'
+import { getMindmap, getNode } from '@whiteboard/core/document'
 import type {
   Document,
+  MindmapCreateInput,
+  Node,
+  NodeId,
   Operation,
-  SpatialNode
+  Point
 } from '@whiteboard/core/types'
 import { cloneValue } from '@whiteboard/core/value'
 
@@ -121,44 +125,66 @@ export const resolveInsertPlan = ({
   }
 }
 
-const isMindmapTreeNode = (
-  value: unknown
-): value is MindmapTreeNode => (
-  Boolean(value)
-  && typeof value === 'object'
-  && typeof (value as MindmapTreeNode).branch === 'object'
-)
+export const toMindmapTree = (
+  record: MindmapRecord
+): MindmapTree => {
+  const nodes: Record<MindmapNodeId, MindmapTreeNode> = {}
+  Object.entries(record.members).forEach(([id, member]) => {
+    nodes[id] = {
+      parentId: member.parentId,
+      side: member.side,
+      collapsed: member.collapsed,
+      branch: cloneValue(member.branchStyle)
+    }
+  })
 
-const isMindmapTree = (
-  value: unknown
-): value is MindmapTree => {
-  if (!value || typeof value !== 'object') return false
-  const tree = value as MindmapTree
-  return (
-    typeof tree.rootNodeId === 'string'
-    && typeof tree.nodes === 'object'
-    && typeof tree.children === 'object'
-    && typeof tree.layout === 'object'
-    && Object.values(tree.nodes).every(isMindmapTreeNode)
-  )
+  return {
+    rootNodeId: record.root,
+    nodes,
+    children: cloneValue(record.children),
+    layout: cloneValue(record.layout),
+    meta: cloneValue(record.meta)
+  }
 }
 
-export const getMindmapTreeFromNode = (
-  node: SpatialNode | undefined
-): MindmapTree | undefined => {
-  if (!node || node.type !== 'mindmap') return undefined
-  return isMindmapTree(node.data) ? node.data : undefined
+export const getMindmapIdByNode = (
+  node: Pick<Node, 'owner'> | undefined
+): string | undefined => (
+  node?.owner?.kind === 'mindmap'
+    ? node.owner.id
+    : undefined
+)
+
+export const getMindmapRecordByNodeId = (
+  document: Pick<Document, 'nodes' | 'mindmaps'>,
+  nodeId: NodeId
+): MindmapRecord | undefined => {
+  const node = getNode(document, nodeId)
+  const mindmapId = getMindmapIdByNode(node)
+  if (!mindmapId) return undefined
+  return getMindmap(document, mindmapId)
 }
 
 export const getMindmapTreeFromDocument = (
-  document: Pick<Document, 'nodes'>,
+  document: Pick<Document, 'nodes' | 'mindmaps'>,
   id: string
 ): MindmapTree | undefined => {
-  const node = getNode(document, id)
-  return node?.type === 'mindmap' ? getMindmapTreeFromNode(node) : undefined
+  const direct = getMindmap(document, id)
+  if (direct) {
+    return toMindmapTree(direct)
+  }
+
+  const byNode = getMindmapRecordByNodeId(document, id)
+  return byNode ? toMindmapTree(byNode) : undefined
 }
 
-export const getMindmapTree = getMindmapTreeFromNode
+export const getMindmapTree = (
+  record: MindmapRecord | undefined
+): MindmapTree | undefined => (
+  record
+    ? toMindmapTree(record)
+    : undefined
+)
 
 export const computeMindmapLayout = (
   tree: MindmapTree,
@@ -182,13 +208,36 @@ export const createMindmapCreateOp = ({
 }: {
   id: string
   tree: MindmapTree
-  position?: SpatialNode['position']
+  position?: Point
 }): Operation => ({
-  type: 'node.create',
-  node: {
+  type: 'mindmap.create',
+  mindmap: {
     id,
-    type: 'mindmap',
-    position: cloneValue(position),
-    data: cloneValue(tree) as unknown as SpatialNode['data']
-  }
+    root: tree.rootNodeId,
+    members: Object.fromEntries(
+      Object.entries(tree.nodes).map(([nodeId, node]) => [
+        nodeId,
+        {
+          parentId: node.parentId,
+          side: node.side,
+          collapsed: node.collapsed,
+          branchStyle: cloneValue(node.branch)
+        }
+      ])
+    ),
+    children: cloneValue(tree.children),
+    layout: cloneValue(tree.layout),
+    meta: cloneValue(tree.meta)
+  },
+  nodes: [
+    {
+      id: tree.rootNodeId,
+      type: 'text',
+      owner: {
+        kind: 'mindmap',
+        id
+      },
+      position: cloneValue(position)
+    }
+  ]
 })

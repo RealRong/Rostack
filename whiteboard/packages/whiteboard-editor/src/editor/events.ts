@@ -58,7 +58,7 @@ export const createEditorEvents = ({
       return
     }
 
-    if (commit.kind === 'replace') {
+    if (commit.changes.document && commit.ops.length === 0) {
       session.reset()
       resetHost()
       return

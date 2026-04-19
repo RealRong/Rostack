@@ -11,8 +11,9 @@ export const CanvasNodeSceneItem = memo(({
   nodeId
 }: CanvasNodeSceneItemProps) => {
   const view = useNodeView(nodeId)
+  const isMindmapRoot = view?.node.owner?.kind === 'mindmap' && view.node.owner.id === nodeId
 
-  if (!view || view.hidden || view.node.type === 'mindmap') {
+  if (!view || view.hidden || isMindmapRoot) {
     return null
   }
 

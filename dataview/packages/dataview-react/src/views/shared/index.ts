@@ -9,8 +9,4 @@ export {
   AddCardFieldTrigger,
   type AddCardFieldTriggerProps
 } from '@dataview/react/views/shared/AddCardFieldTrigger'
-export {
-  CardFieldSlot,
-  type CardFieldSlotProps
-} from '@dataview/react/views/shared/CardFieldSlot'
 export { openCardField } from '@dataview/react/views/shared/openCardField'

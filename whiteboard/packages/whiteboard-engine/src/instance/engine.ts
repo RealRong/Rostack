@@ -4,15 +4,14 @@ import type {
   EngineRuntimeOptions
 } from '@whiteboard/engine/types/instance'
 import type {
-  EngineCommand,
+  Command,
   ExecuteOptions,
-  ExecuteResult,
-  TranslateCommand
+  ExecuteResult
 } from '@whiteboard/engine/types/command'
 import { createRegistries } from '@whiteboard/core/kernel'
 import { resolveBoardConfig } from '@whiteboard/engine/config'
 import { createRead } from '@whiteboard/engine/read'
-import { RESET_READ_IMPACT } from '@whiteboard/engine/read/impacts'
+import { RESET_INVALIDATION } from '@whiteboard/engine/read/invalidation'
 import { createWrite } from '@whiteboard/engine/write'
 import { createDocumentSource } from '@whiteboard/engine/instance/document'
 import { normalizeDocument } from '@whiteboard/engine/document/normalize'
@@ -56,43 +55,39 @@ export const createEngine = ({
     documentSource.commit(draft.doc)
     readControl.invalidate(
       draft.kind === 'replace'
-        ? RESET_READ_IMPACT
-        : draft.impact
+        ? RESET_INVALIDATION
+        : draft.invalidation
     )
 
     if (draft.kind === 'replace') {
       writer.history.clear()
     } else if (draft.kind === 'apply' && draft.inverse) {
-      writer.history.capture(draft)
+      writer.history.capture({
+        operations: draft.operations,
+        inverse: draft.inverse,
+        origin: 'user'
+      })
     }
 
-    const nextCommit: Commit = (
-      draft.kind === 'replace'
-        ? {
-            kind: draft.kind,
-            rev: (commitStore.get()?.rev ?? 0) + 1,
-            at: readCommitAt(),
-            doc: draft.doc,
-            changes: draft.changes
-          }
-        : {
-            kind: draft.kind,
-            rev: (commitStore.get()?.rev ?? 0) + 1,
-            at: readCommitAt(),
-            doc: draft.doc,
-            changes: draft.changes,
-            impact: draft.impact
-          }
-    )
+    const nextCommit: Commit = {
+      rev: (commitStore.get()?.rev ?? 0) + 1,
+      at: readCommitAt(),
+      doc: draft.doc,
+      ops: draft.operations,
+      inverse: draft.inverse,
+      changes: draft.changes,
+      invalidation: draft.invalidation,
+      impact: draft.impact
+    }
     commitStore.set(nextCommit)
     onDocumentChange?.(draft.doc)
     return success(nextCommit, draft.value)
   }
 
-  const apply = <C extends TranslateCommand>(
+  const applyCommand = <C extends Command>(
     command: C,
-    origin: Parameters<typeof writer.run>[1]
-  ) => commit(writer.run(command, origin))
+    origin: Parameters<typeof writer.execute>[1]
+  ) => commit(writer.execute(command, origin))
 
   const replace = (nextDocument: Parameters<typeof writer.replace>[0]) =>
     commit(writer.replace(nextDocument))
@@ -110,17 +105,17 @@ export const createEngine = ({
     clear: writer.history.clear
   }
 
-  const applyOperations: Engine['applyOperations'] = (
-    operations,
+  const apply: Engine['apply'] = (
+    batch,
     options
   ) => commit(
-    writer.ops(
-      operations,
+    writer.apply(
+      batch,
       options?.origin ?? 'user'
     )
   )
 
-  const execute = <C extends EngineCommand>(
+  const execute = <C extends Command>(
     command: C,
     options?: ExecuteOptions
   ): ExecuteResult<C> => {
@@ -130,7 +125,7 @@ export const createEngine = ({
       return replace(command.document) as ExecuteResult<C>
     }
 
-    return apply(command, origin) as ExecuteResult<C>
+    return applyCommand(command, origin) as ExecuteResult<C>
   }
 
   const configure = ({
@@ -152,7 +147,7 @@ export const createEngine = ({
     history,
     commit: commitStore,
     execute,
-    applyOperations,
+    apply,
     configure,
     dispose
   } satisfies Engine

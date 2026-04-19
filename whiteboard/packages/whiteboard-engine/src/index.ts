@@ -5,8 +5,10 @@ export {
 } from '@whiteboard/engine/config'
 
 export type {
+  Command,
   EngineCommand,
   OrderMode,
+  BatchApplyOptions,
   ExecuteOptions,
   ExecuteResult
 } from '@whiteboard/engine/types/command'
@@ -20,7 +22,6 @@ export type {
 export type {
   Engine,
   EngineHistory,
-  ApplyOperationsOptions,
   BoardConfig,
   EngineRead
 } from '@whiteboard/engine/types/instance'

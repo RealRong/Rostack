@@ -2,6 +2,9 @@ import type {
   CardLayout,
   CardSize
 } from '@dataview/core/contracts'
+import type {
+  FieldOptionTagAppearance
+} from '@dataview/react/field/options'
 import { cn } from '@shared/ui/utils'
 import type { CardContentSlots } from '@dataview/react/views/shared/CardContent'
 
@@ -12,6 +15,9 @@ export const resolveCardPresentation = (input: {
   hasVisibleFields: boolean
 }): {
   propertyDensity: 'default' | 'compact'
+  fieldAppearance: {
+    optionTag: FieldOptionTagAppearance
+  }
   slots: CardContentSlots
 } => {
   const rootPadding = input.layout === 'stacked'
@@ -21,13 +27,16 @@ export const resolveCardPresentation = (input: {
   if (input.layout === 'stacked') {
     const titleText = 'text-base font-semibold leading-6'
     const valueText = 'text-[12px]'
-    const propertyGap = 'gap-1.5'
+    const propertyGap = 'gap-2'
     const titlePadding = input.hasVisibleFields
       ? 'pb-1.5'
       : ''
 
     return {
       propertyDensity: 'default',
+      fieldAppearance: {
+        optionTag: 'card'
+      },
       slots: {
         root: cn(
           'relative h-full rounded-xl transition-colors',
@@ -54,6 +63,9 @@ export const resolveCardPresentation = (input: {
 
   return {
     propertyDensity: 'compact',
+    fieldAppearance: {
+      optionTag: 'card'
+    },
     slots: {
       root: cn(
         'relative rounded-xl transition-colors',

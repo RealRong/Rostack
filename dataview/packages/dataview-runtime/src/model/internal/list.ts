@@ -7,11 +7,6 @@ import {
   type ReadStore
 } from '@shared/core'
 
-const sameEntityOrder = <T,>(
-  left: readonly T[],
-  right: readonly T[]
-) => sameOrder(left, right)
-
 export const createEntityListStore = <TId, T>(input: {
   ids: ReadStore<readonly TId[]>
   values: KeyedReadStore<TId, T | undefined>
@@ -22,5 +17,5 @@ export const createEntityListStore = <TId, T>(input: {
       const value = read(input.values, id)
       return value ? [value] : []
     }),
-  isEqual: input.isEqual ?? sameEntityOrder
+  isEqual: input.isEqual ?? sameOrder
 })

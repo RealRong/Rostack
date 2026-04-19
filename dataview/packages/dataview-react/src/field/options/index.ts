@@ -6,6 +6,7 @@ export {
   buildStatusIdsAfterCategoryMove
 } from '@dataview/react/field/options/statusOptionMenu'
 export type {
+  FieldOptionTagAppearance,
   FieldOptionTagProps
 } from '@dataview/react/field/options/FieldOptionTag'
 export type { OptionTokenProps } from '@dataview/react/field/options/OptionToken'

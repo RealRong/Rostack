@@ -90,15 +90,8 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
               <Row
                 key={block.key}
                 itemId={block.rowId}
-                recordId={props.body.items.get(block.rowId)?.recordId}
-                viewId={props.body.viewId}
                 measureRef={blockMeasureRef}
-                showVerticalLines={props.body.showVerticalLines}
-                wrap={props.body.wrap}
-                columns={props.body.columns}
                 template={props.template}
-                rowHeight={table.layout.rowHeight}
-                marqueeActive={props.body.marqueeActive}
                 dragActive={props.dragActive}
                 isDragging={props.dragIdSet.has(block.rowId)}
                 onDragStart={props.onDragStart}

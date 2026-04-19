@@ -14,7 +14,7 @@ export type NodeReadSlices = {
 }
 
 export const deriveVisibleEdges = (
-  document: Pick<Document, 'nodes' | 'edges' | 'order'>,
+  document: Pick<Document, 'nodes' | 'edges' | 'canvas' | 'mindmaps'>,
   canvasNodes: readonly Node[]
 ): Edge[] => {
   const orderedEdges = listEdges(document)
@@ -31,7 +31,7 @@ export const deriveVisibleEdges = (
 }
 
 export const deriveNodeReadSlices = (
-  document: Pick<Document, 'nodes' | 'edges' | 'order'>
+  document: Pick<Document, 'nodes' | 'edges' | 'canvas' | 'mindmaps'>
 ): NodeReadSlices => {
   const ordered = listNodes(document)
   if (!ordered.length) {

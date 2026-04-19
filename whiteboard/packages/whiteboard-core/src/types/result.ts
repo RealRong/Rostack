@@ -1,8 +1,13 @@
-export type ResultCode = 'cancelled' | 'invalid' | 'conflict' | 'unknown'
+export type ResultCode = 'cancelled' | 'invalid' | 'conflict' | 'internal'
+
+export type InternalReason =
+  | 'reconcile_cycle'
+  | 'reconcile_budget_exceeded'
 
 export type ErrorInfo<C extends string = string> = {
   code: C
   message: string
+  reason?: InternalReason
   details?: unknown
 }
 

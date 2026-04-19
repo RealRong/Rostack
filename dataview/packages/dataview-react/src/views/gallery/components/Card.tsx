@@ -34,10 +34,6 @@ const CardComponent = (props: {
   const runtime = useGalleryRuntimeContext()
   const card = useKeyedStoreValue(runtime.card, props.itemId)
   const content = useKeyedStoreValue(runtime.content, props.itemId)
-  if (!card || !content) {
-    return null
-  }
-
   const interaction = useMemo(() => ({
     drag: runtime.drag,
     selection: runtime.selection
@@ -47,6 +43,10 @@ const CardComponent = (props: {
     className: props.className,
     style: props.style
   }), [props.className, props.measureRef, props.style])
+
+  if (!card || !content) {
+    return null
+  }
 
   return (
     <RecordCard

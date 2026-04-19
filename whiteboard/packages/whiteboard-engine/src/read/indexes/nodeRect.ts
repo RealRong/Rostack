@@ -7,18 +7,18 @@ import {
 } from '@whiteboard/core/node'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
 import type { ReadModel } from '@whiteboard/engine/types/read'
-import type { KernelReadImpact } from '@whiteboard/core/kernel'
+import type { Invalidation } from '@whiteboard/core/types'
 import { sameOrder as isSameRefOrder } from '@shared/core'
 import { NodeGeometryCache } from '@whiteboard/engine/geometry/nodeGeometry'
 
 type Rebuild = 'none' | 'dirty' | 'full'
 
-const resolveRebuild = (impact: KernelReadImpact): Rebuild => {
-  if (impact.reset || impact.node.list) {
+const resolveRebuild = (invalidation: Invalidation): Rebuild => {
+  if (invalidation.document || invalidation.canvasOrder) {
     return 'full'
   }
-  if (impact.node.geometry || impact.node.value) {
-    return impact.node.ids.length === 0 ? 'full' : 'dirty'
+  if (invalidation.nodes.size > 0) {
+    return 'dirty'
   }
   return 'none'
 }
@@ -37,11 +37,11 @@ export class NodeRectIndex {
   }
 
   applyChange = (
-    impact: KernelReadImpact,
+    invalidation: Invalidation,
     model: ReadModel
   ): boolean => {
     this.dirtyIds = []
-    const rebuild = resolveRebuild(impact)
+    const rebuild = resolveRebuild(invalidation)
     switch (rebuild) {
       case 'none':
         return false
@@ -49,7 +49,7 @@ export class NodeRectIndex {
         return this.syncFull(model.nodes.canvas)
       case 'dirty':
         return this.syncByNodeIds(
-          impact.node.ids,
+          invalidation.nodes,
           model.canvas.nodeById
         )
       default:

@@ -1,4 +1,5 @@
 import type {
+  MindmapBranchPatch,
   CanvasItemRef,
   Document,
   EdgeEnd,
@@ -13,7 +14,7 @@ import type {
   MindmapMoveSubtreeInput,
   MindmapNodeId,
   MindmapRemoveSubtreeInput,
-  MindmapTreePatch,
+  MindmapTopicPatch,
   NodeId,
   NodeInput,
   NodeUpdateInput,
@@ -58,7 +59,7 @@ export type EdgeMoveInput = {
   delta: Point
 }
 
-export type EngineCommand =
+export type Command =
   | {
       type: 'document.replace'
       document: Document
@@ -69,25 +70,25 @@ export type EngineCommand =
       options?: SliceInsertOptions
     }
   | {
-      type: 'document.delete'
+      type: 'canvas.delete'
       refs: CanvasItemRef[]
     }
   | {
-      type: 'document.duplicate'
+      type: 'canvas.duplicate'
       refs: CanvasItemRef[]
     }
   | {
-      type: 'document.background.set'
+      type: 'document.background'
       background?: Document['background']
     }
   | {
-      type: 'document.order'
+      type: 'canvas.order'
       mode: OrderMode
       refs: CanvasItemRef[]
     }
   | {
       type: 'node.create'
-      payload: NodeInput
+      input: NodeInput
     }
   | {
       type: 'node.move'
@@ -143,7 +144,7 @@ export type EngineCommand =
     }
   | {
       type: 'edge.create'
-      payload: EdgeInput
+      input: EdgeInput
     }
   | {
       type: 'edge.move'
@@ -184,53 +185,72 @@ export type EngineCommand =
     }
   | {
       type: 'mindmap.create'
-      payload: MindmapCreateInput
+      input: MindmapCreateInput
     }
   | {
       type: 'mindmap.delete'
       ids: MindmapId[]
     }
   | {
-      type: 'mindmap.insert'
+      type: 'mindmap.topic.insert'
       id: MindmapId
       input: MindmapInsertInput
     }
   | {
-      type: 'mindmap.move'
+      type: 'mindmap.topic.move'
       id: MindmapId
       input: MindmapMoveSubtreeInput
     }
   | {
-      type: 'mindmap.remove'
+      type: 'mindmap.topic.delete'
       id: MindmapId
       input: MindmapRemoveSubtreeInput
     }
   | {
-      type: 'mindmap.clone'
+      type: 'mindmap.topic.clone'
       id: MindmapId
       input: MindmapCloneSubtreeInput
     }
   | {
-      type: 'mindmap.patch'
+      type: 'mindmap.layout'
       id: MindmapId
-      input: MindmapTreePatch
+      patch: Partial<import('@whiteboard/core/types').MindmapLayoutSpec>
+    }
+  | {
+      type: 'mindmap.topic.patch'
+      id: MindmapId
+      topicIds: NodeId[]
+      patch: MindmapTopicPatch
+    }
+  | {
+      type: 'mindmap.branch.patch'
+      id: MindmapId
+      topicIds: NodeId[]
+      patch: MindmapBranchPatch
+    }
+  | {
+      type: 'mindmap.topic.collapse'
+      id: MindmapId
+      topicId: NodeId
+      collapsed?: boolean
     }
 
+export type EngineCommand = Command
+
 export type ReplaceDocumentCommand = Extract<
-  EngineCommand,
+  Command,
   { type: 'document.replace' }
 >
 
-export type TranslateCommand = Exclude<EngineCommand, ReplaceDocumentCommand>
+export type DocumentCommand = Extract<Command, { type: `document.${string}` }>
+export type CanvasCommand = Extract<Command, { type: `canvas.${string}` }>
+export type NodeCommand = Extract<Command, { type: `node.${string}` }>
+export type GroupCommand = Extract<Command, { type: `group.${string}` }>
+export type EdgeCommand = Extract<Command, { type: `edge.${string}` }>
+export type MindmapCommand = Extract<Command, { type: `mindmap.${string}` }>
 
-export type DocumentCommand = Extract<EngineCommand, { type: `document.${string}` }>
-export type NodeCommand = Extract<EngineCommand, { type: `node.${string}` }>
-export type GroupCommand = Extract<EngineCommand, { type: `group.${string}` }>
-export type EdgeCommand = Extract<EngineCommand, { type: `edge.${string}` }>
-export type MindmapCommand = Extract<EngineCommand, { type: `mindmap.${string}` }>
-
-export type CommandOutput<C extends EngineCommand> =
-  C extends { type: 'document.insert' | 'document.duplicate' }
+export type CommandOutput<C extends Command> =
+  C extends { type: 'document.insert' | 'canvas.duplicate' }
     ? Omit<SliceInsertResult, 'operations'>
     : C extends { type: 'node.create' }
       ? { nodeId: NodeId }
@@ -255,9 +275,9 @@ export type CommandOutput<C extends EngineCommand> =
                       mindmapId: MindmapId
                       rootId: MindmapNodeId
                     }
-                  : C extends { type: 'mindmap.insert' }
+                  : C extends { type: 'mindmap.topic.insert' }
                     ? { nodeId: MindmapNodeId }
-                    : C extends { type: 'mindmap.clone' }
+                    : C extends { type: 'mindmap.topic.clone' }
                       ? {
                           nodeId: MindmapNodeId
                           map: Record<MindmapNodeId, MindmapNodeId>
@@ -268,6 +288,8 @@ export type ExecuteOptions = {
   origin?: Origin
 }
 
+export type BatchApplyOptions = ExecuteOptions
+
 export type ExecuteResult<
-  C extends EngineCommand = EngineCommand
+  C extends Command = Command
 > = CommandResult<CommandOutput<C>>

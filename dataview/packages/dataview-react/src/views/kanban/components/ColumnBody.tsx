@@ -30,18 +30,18 @@ export const ColumnBody = (props: {
   const board = useStoreValue(runtime.board)
   const section = useKeyedStoreValue(runtime.section, props.sectionKey)
   const visibility = useKeyedStoreValue(runtime.visibility.section, props.sectionKey)
-  if (!section) {
-    return null
-  }
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const measureBodyRef = useMemo(
-    () => runtime.layout.measure.body(section.key),
-    [runtime.layout.measure, section.key]
+    () => runtime.layout.measure.body(props.sectionKey),
+    [props.sectionKey, runtime.layout.measure]
   )
   const setBodyRef = useCallback((node: HTMLDivElement | null) => {
     bodyRef.current = node
     measureBodyRef(node)
   }, [measureBodyRef])
+  if (!section) {
+    return null
+  }
   const visibleIds = visibility?.ids ?? []
   const visibleCount = visibility?.visible ?? 0
   const hiddenCount = visibility?.hidden ?? 0

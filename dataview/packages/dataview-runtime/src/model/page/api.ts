@@ -27,6 +27,9 @@ import {
   createEntityListStore
 } from '@dataview/runtime/model/internal/list'
 
+const EMPTY_FIELD_IDS: readonly FieldId[] = []
+const EMPTY_FIELDS: readonly Field[] = []
+
 const sameRoute = (
   left: PageQuery['route'],
   right: PageQuery['route']
@@ -93,6 +96,9 @@ const sameSettings = (
   && left.filter === right.filter
   && left.sort === right.sort
   && left.group === right.group
+  && sameOrder(left.displayFieldIds, right.displayFieldIds)
+  && sameOrder(left.visibleFields, right.visibleFields)
+  && sameOrder(left.hiddenFields, right.hiddenFields)
   && sameOrder(left.fields, right.fields)
 
 const createAvailableFieldsStore = (input: {
@@ -152,6 +158,40 @@ export const createPageModel = (input: {
   const sortCount = createDerivedStore<number>({
     get: () => read(input.source.active.query.sort).rules.length,
     isEqual: Object.is
+  })
+  const displayFieldIds = createDerivedStore<readonly FieldId[]>({
+    get: () => read(currentView)?.display.fields ?? EMPTY_FIELD_IDS,
+    isEqual: sameOrder
+  })
+  const visibleFields = createDerivedStore<readonly Field[]>({
+    get: () => {
+      const orderedFieldIds = read(displayFieldIds)
+      if (!orderedFieldIds.length) {
+        return EMPTY_FIELDS
+      }
+
+      const fieldById = new Map(read(fields).map(field => [field.id, field] as const))
+      return orderedFieldIds.flatMap(fieldId => {
+        const field = fieldById.get(fieldId)
+        return field
+          ? [field]
+          : []
+      })
+    },
+    isEqual: sameOrder
+  })
+  const hiddenFields = createDerivedStore<readonly Field[]>({
+    get: () => {
+      const allFields = read(fields)
+      const shownFieldIds = read(displayFieldIds)
+      if (!shownFieldIds.length) {
+        return allFields
+      }
+
+      const shownFieldIdSet = new Set(shownFieldIds)
+      return allFields.filter(field => !shownFieldIdSet.has(field.id))
+    },
+    isEqual: sameOrder
   })
 
   const body = createDerivedStore<PageBody>({
@@ -213,6 +253,9 @@ export const createPageModel = (input: {
     get: () => ({
       viewsCount: read(input.source.doc.views.ids).length,
       fields: read(fields),
+      displayFieldIds: read(displayFieldIds),
+      visibleFields: read(visibleFields),
+      hiddenFields: read(hiddenFields),
       currentView: read(currentView),
       filter: read(input.source.active.query.filters),
       sort: read(input.source.active.query.sort),

@@ -4,8 +4,12 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
+  isEmptyFieldValue,
   resolveCustomFieldPrimaryAction
 } from '@dataview/core/field'
+import type {
+  FieldOptionTagAppearance
+} from '@dataview/react/field/options'
 import {
   useDataView,
 } from '@dataview/react/dataview'
@@ -18,6 +22,7 @@ import {
 import type {
   ViewFieldRef
 } from '@dataview/engine'
+import { AddCardFieldTrigger } from '@dataview/react/views/shared/AddCardFieldTrigger'
 import { cn } from '@shared/ui/utils'
 import { openCardField } from '@dataview/react/views/shared/openCardField'
 
@@ -25,12 +30,14 @@ export interface CardFieldProps {
   field: ViewFieldRef
   customField?: CustomField
   value: unknown
+  mode?: 'view' | 'edit'
   emptyPlaceholder?: ReactNode
   className?: string
   valueClassName?: string
   density?: 'default' | 'compact'
   wrap?: boolean
   openOnClick?: boolean
+  optionTagAppearance?: FieldOptionTagAppearance
 }
 
 const applyRecordValue = (input: {
@@ -52,6 +59,20 @@ export const CardField = (props: CardFieldProps) => {
   const dataView = useDataView()
   const engine = dataView.engine
   const valueEditor = dataView.session.editing.valueEditor
+  const empty = isEmptyFieldValue(props.value)
+
+  if (empty) {
+    return props.mode === 'edit' && props.customField
+      ? (
+        <AddCardFieldTrigger
+          field={props.field}
+          customField={props.customField}
+          className={props.className}
+          openOnClick={props.openOnClick}
+        />
+      )
+      : null
+  }
 
   if (!props.customField) {
     return (
@@ -62,6 +83,7 @@ export const CardField = (props: CardFieldProps) => {
         className={props.valueClassName}
         density={props.density}
         wrap={props.wrap}
+        optionTagAppearance={props.optionTagAppearance}
       />
     )
   }
@@ -114,6 +136,7 @@ export const CardField = (props: CardFieldProps) => {
           className={props.valueClassName}
           density={props.density}
           wrap={props.wrap}
+          optionTagAppearance={props.optionTagAppearance}
           onQuickToggle={onQuickToggle}
         />
       </div>
@@ -156,6 +179,7 @@ export const CardField = (props: CardFieldProps) => {
         className={props.valueClassName}
         density={props.density}
         wrap={props.wrap}
+        optionTagAppearance={props.optionTagAppearance}
       />
     </button>
   )

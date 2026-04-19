@@ -35,7 +35,8 @@ import type {
   ReadStore
 } from '@shared/core'
 import type {
-  EngineCommand,
+  BatchApplyOptions,
+  Command,
   ExecuteOptions,
   ExecuteResult
 } from '@whiteboard/engine/types/command'
@@ -43,10 +44,6 @@ import type { Commit } from '@whiteboard/engine/types/commit'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 export type { BoardConfig } from '@whiteboard/core/config'
-
-export type ApplyOperationsOptions = {
-  origin?: Origin
-}
 
 export type EngineReadIndex = {
   node: {
@@ -175,14 +172,14 @@ export type Engine = {
   read: EngineRead
   history: EngineHistory
   commit: ReadStore<Commit | null>
-  execute: <C extends EngineCommand>(
+  execute: <C extends Command>(
     command: C,
     options?: ExecuteOptions
   ) => ExecuteResult<C>
-  applyOperations: (
-    operations: readonly Operation[],
-    options?: ApplyOperationsOptions
-  ) => CommandResult
+  apply: (
+    batch: { ops: readonly Operation[]; output?: unknown },
+    options?: BatchApplyOptions
+  ) => CommandResult<unknown>
   configure: (config: EngineRuntimeOptions) => void
   dispose: () => void
 }

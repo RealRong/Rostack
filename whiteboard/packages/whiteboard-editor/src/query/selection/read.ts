@@ -415,9 +415,9 @@ const readNodeScope = ({
   const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity
   const canEditStrokeDash = canEditStroke && styleSupport.strokeDash
   const mindmapOwned = nodes.length > 0
-    && nodes.every((entry) => entry.type === 'text' && Boolean(entry.mindmapId))
+    && nodes.every((entry) => entry.type === 'text' && entry.owner?.kind === 'mindmap')
   const treeIds = mindmapOwned
-    ? [...new Set(nodes.map((entry) => entry.mindmapId).filter(Boolean))]
+    ? [...new Set(nodes.map((entry) => entry.owner?.kind === 'mindmap' ? entry.owner.id : undefined).filter(Boolean))]
     : []
   const mindmapTreeId = treeIds.length === 1
     ? treeIds[0]

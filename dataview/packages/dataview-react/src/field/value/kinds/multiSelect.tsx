@@ -50,6 +50,7 @@ export const createMultiSelectPropertySpec = (
             key={String(item.id)}
             label={item.label}
             color={item.color ?? undefined}
+            appearance={props.optionTagAppearance}
             className="max-w-[8rem]"
           />
         ))}

@@ -3,7 +3,12 @@ import type {
   EdgeId,
   NodeId
 } from '@whiteboard/core/types/model'
-import type { ChangeSet, Operation, Origin } from '@whiteboard/core/types/operations'
+import type {
+  ChangeSet,
+  Invalidation,
+  Operation,
+  Origin
+} from '@whiteboard/core/types/operations'
 import type { Result, ResultCode } from '@whiteboard/core/types/result'
 
 export type HistoryState = {
@@ -76,8 +81,9 @@ export type KernelReadImpact = {
 export type KernelReduceData = {
   doc: Document
   changes: ChangeSet
+  invalidation: Invalidation
   inverse: readonly Operation[]
-  read: KernelReadImpact
+  impact: KernelReadImpact
 }
 
 export type KernelReduceResult = Result<KernelReduceData, ResultCode>

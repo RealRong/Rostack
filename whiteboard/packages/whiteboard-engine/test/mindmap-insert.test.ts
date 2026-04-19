@@ -11,7 +11,7 @@ test('engine exposes created mindmap roots through node read projection', () => 
 
   const result = engine.execute({
     type: 'mindmap.create',
-    payload: {
+    input: {
       template: buildWhiteboardMindmapTemplate({
         preset: 'mindmap.capsule-outline'
       })
@@ -25,6 +25,8 @@ test('engine exposes created mindmap roots through node read projection', () => 
 
   const { mindmapId } = result.data
   assert.ok(engine.read.node.list.get().includes(mindmapId))
-  assert.equal(engine.read.node.item.get(mindmapId)?.node.type, 'mindmap')
+  assert.equal(engine.read.node.item.get(mindmapId)?.node.type, 'text')
+  assert.equal(engine.read.node.item.get(mindmapId)?.node.owner?.kind, 'mindmap')
+  assert.equal(engine.read.node.item.get(mindmapId)?.node.owner?.id, mindmapId)
   assert.equal(engine.read.mindmap.item.get(mindmapId)?.id, mindmapId)
 })

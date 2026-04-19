@@ -3,6 +3,7 @@ export { createDocument } from '@whiteboard/core/document/model'
 export {
   getEdge,
   getGroup,
+  getMindmap,
   getNode,
   hasEdge,
   hasGroup,

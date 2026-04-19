@@ -2,7 +2,7 @@ import type { CanvasNode } from '@whiteboard/engine/types/projection'
 import type { NodeId, Rect } from '@whiteboard/core/types'
 import type { SnapCandidate } from '@whiteboard/core/node'
 import type { EngineReadIndex } from '@whiteboard/engine/types/instance'
-import type { KernelReadImpact } from '@whiteboard/core/kernel'
+import type { Invalidation } from '@whiteboard/core/types'
 import {
   sameOrder as isSameRefOrder,
   sameRect as isSameRectTuple,
@@ -11,12 +11,12 @@ import {
 
 type Rebuild = 'none' | 'dirty' | 'full'
 
-const resolveRebuild = (impact: KernelReadImpact): Rebuild => {
-  if (impact.reset || impact.node.list) {
+const resolveRebuild = (invalidation: Invalidation): Rebuild => {
+  if (invalidation.document || invalidation.canvasOrder) {
     return 'full'
   }
-  if (impact.node.geometry || impact.node.value) {
-    return impact.node.ids.length === 0 ? 'full' : 'dirty'
+  if (invalidation.nodes.size > 0) {
+    return 'dirty'
   }
   return 'none'
 }
@@ -153,11 +153,11 @@ export class SnapIndex {
   }
 
   applyChange = (
-    impact: KernelReadImpact,
+    invalidation: Invalidation,
     node: Pick<EngineReadIndex['node'], 'all' | 'get'>,
     extraNodeIds: readonly NodeId[] = []
   ): boolean => {
-    const rebuild = resolveRebuild(impact)
+    const rebuild = resolveRebuild(invalidation)
     switch (rebuild) {
       case 'none':
         return false
@@ -166,7 +166,7 @@ export class SnapIndex {
       case 'dirty':
         return this.syncByNodeIds(
           new Set([
-            ...impact.node.ids,
+            ...invalidation.nodes,
             ...extraNodeIds
           ]),
           node.get

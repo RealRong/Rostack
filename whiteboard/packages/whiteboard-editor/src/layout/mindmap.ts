@@ -2,6 +2,7 @@ import {
   createKeyedDerivedStore,
   createProjectedKeyedStore,
   createValueStore,
+  read as readStore,
   read as readValue,
   type KeyedReadStore,
   type ReadStore
@@ -83,18 +84,20 @@ const cancelFrame = (
 const readMindmapTreeId = (
   node: {
     id: NodeId
-    type: string
-    mindmapId?: NodeId
+    owner?: {
+      kind: 'mindmap'
+      id: NodeId
+    }
   }
-) => node.type === 'mindmap'
-  ? node.id
-  : node.mindmapId
+) => node.owner?.kind === 'mindmap'
+  ? node.owner.id
+  : undefined
 
 const readCommittedMindmapNodeSize = (
-  read: EngineRead['node']['item'],
+  store: EngineRead['node']['item'],
   nodeId: NodeId
 ): Size | undefined => {
-  const item = read.get(nodeId)
+  const item = readStore(store, nodeId)
   return item
     ? {
         width: item.rect.width,
@@ -188,7 +191,7 @@ const readProjectedMindmapItem = ({
     computed
   })
   const rootLocked = Boolean(
-    nodeCommitted.get(base.tree.rootNodeId)?.node.locked
+    readStore(nodeCommitted, base.tree.rootNodeId)?.node.locked
   )
 
   return {
@@ -268,7 +271,7 @@ export const createMindmapLayoutRead = ({
         return EMPTY_LIVE_EDIT_MAP
       }
 
-      const node = nodeCommitted.get(session.nodeId)?.node
+      const node = readStore(nodeCommitted, session.nodeId)?.node
       if (!node) {
         return EMPTY_LIVE_EDIT_MAP
       }

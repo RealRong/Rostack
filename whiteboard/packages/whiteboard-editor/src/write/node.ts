@@ -1,24 +1,32 @@
-import { isNodeUpdateEmpty } from '@whiteboard/core/node'
+import { isSizeEqual } from '@whiteboard/core/geometry'
+import { isTextContentEmpty, isNodeUpdateEmpty } from '@whiteboard/core/node'
 import {
   compileNodeDataUpdate,
-  compileNodeStyleUpdate
+  compileNodeStyleUpdate,
+  mergeNodeUpdates
 } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import { createNodeContext } from '@whiteboard/editor/write/node/context'
-import type { NodeContext } from '@whiteboard/editor/write/node/context'
-import {
-  createNodeTextWrite
-} from '@whiteboard/editor/write/node/text'
 import type {
   NodeLockWrite,
   NodePatchWrite,
   NodeShapeWrite,
   NodeStyleWrite,
+  NodeTextWrite,
   NodeWrite
 } from '@whiteboard/editor/write/types'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorQuery } from '@whiteboard/editor/query'
+
+type NodeContext = {
+  read: {
+    committed: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
+    live: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
+  }
+  write: NodePatchWrite & {
+    deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWrite['update']> | undefined
+  }
+}
 
 const createNodePatchWrite = (
   engine: Engine,
@@ -47,6 +55,26 @@ const createNodePatchWrite = (
   })
 })
 
+const createNodeContext = ({
+  read,
+  patch,
+  deleteCascade
+}: {
+  read: EditorQuery
+  patch: NodePatchWrite
+  deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWrite['update']> | undefined
+}): NodeContext => ({
+  read: {
+    committed: (id) => read.node.committed.get(id),
+    live: (id) => read.node.item.get(id)
+  },
+  write: {
+    update: patch.update,
+    updateMany: patch.updateMany,
+    deleteCascade
+  }
+})
+
 const toNodeStyleBatchUpdates = (
   nodeIds: readonly NodeId[],
   path: string,
@@ -55,6 +83,94 @@ const toNodeStyleBatchUpdates = (
   id,
   update: compileNodeStyleUpdate(path, value)
 }))
+
+export const createNodeTextWrite = (
+  ctx: NodeContext
+): NodeTextWrite => ({
+  commit: ({
+    nodeId,
+    field,
+    value,
+    size,
+    fontSize,
+    wrapWidth
+  }) => {
+    const committed = ctx.read.committed(nodeId)
+    if (!committed) {
+      return undefined
+    }
+
+    const currentValue = typeof committed.node.data?.[field] === 'string'
+      ? committed.node.data[field] as string
+      : ''
+
+    if (
+      committed.node.type === 'text'
+      && field === 'text'
+      && isTextContentEmpty(value)
+    ) {
+      return ctx.write.deleteCascade([nodeId])
+    }
+
+    if (value === currentValue) {
+      if (
+        isSizeEqual(size, committed.rect)
+        && (
+          fontSize === undefined
+          || committed.node.style?.fontSize === fontSize
+        )
+        && (
+          wrapWidth === undefined
+          || committed.node.data?.wrapWidth === wrapWidth
+        )
+      ) {
+        return undefined
+      }
+    }
+
+    const update = mergeNodeUpdates(
+      value === currentValue
+        ? undefined
+        : compileNodeDataUpdate(field, value),
+      size && !isSizeEqual(size, committed.rect)
+        ? {
+            fields: {
+              size
+            }
+          }
+        : undefined,
+      fontSize !== undefined && committed.node.style?.fontSize !== fontSize
+        ? compileNodeStyleUpdate('fontSize', fontSize)
+        : undefined,
+      committed.node.type === 'text' && committed.node.data?.wrapWidth !== wrapWidth
+        ? compileNodeDataUpdate('wrapWidth', wrapWidth)
+        : undefined
+    )
+
+    return ctx.write.update(nodeId, update)
+  },
+  color: (nodeIds, color) => ctx.write.updateMany(
+    toNodeStyleBatchUpdates(nodeIds, 'color', color)
+  ),
+  size: ({
+    nodeIds,
+    value
+  }) => ctx.write.updateMany(
+    nodeIds.map((id) => ({
+      id,
+      update: compileNodeStyleUpdate('fontSize', value)
+    }))
+  ),
+  weight: (nodeIds, weight) => ctx.write.updateMany(
+    toNodeStyleBatchUpdates(nodeIds, 'fontWeight', weight)
+  ),
+  italic: (nodeIds, italic) => ctx.write.updateMany(
+    toNodeStyleBatchUpdates(nodeIds, 'fontStyle', italic ? 'italic' : 'normal')
+  ),
+  align: (nodeIds, align) => ctx.write.updateMany(
+    toNodeStyleBatchUpdates(nodeIds, 'textAlign', align)
+  )
+})
 
 const createNodeLockWrite = (
   ctx: NodeContext
@@ -148,20 +264,16 @@ export const createNodeWrite = ({
   })
 
   return {
-    create: (input) => {
-      const nextPayload = layout.patchNodeCreatePayload({
+    create: (input) => engine.execute({
+      type: 'node.create',
+      input: layout.patchNodeCreatePayload({
         ...input.template,
         position: {
           x: input.position.x,
           y: input.position.y
         }
       })
-      const result = engine.execute({
-        type: 'node.create',
-        payload: nextPayload
-      })
-      return result
-    },
+    }),
     patch: (ids, update, options) => {
       if (isNodeUpdateEmpty(update)) {
         return undefined

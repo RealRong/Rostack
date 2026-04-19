@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { createValueStore } from '@shared/core'
 import type { Node } from '@whiteboard/core/types'
 import { createEditorLayout } from '../src/layout/runtime'
 import type { LayoutBackend, NodeRegistry } from '../src'
@@ -78,8 +79,17 @@ describe('createEditorLayout', () => {
               }
             })
           }
+        },
+        mindmap: {
+          committed: {
+            get: () => undefined
+          }
         }
       } as any,
+      session: {
+        edit: createValueStore(undefined),
+        mindmapPreview: createValueStore(undefined)
+      },
       registry: createRegistry(),
       backend: {
         measure
@@ -116,8 +126,17 @@ describe('createEditorLayout', () => {
               }
             })
           }
+        },
+        mindmap: {
+          committed: {
+            get: () => undefined
+          }
         }
       } as any,
+      session: {
+        edit: createValueStore(undefined),
+        mindmapPreview: createValueStore(undefined)
+      },
       registry: createRegistry(),
       backend: {
         measure

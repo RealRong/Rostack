@@ -31,10 +31,11 @@ export const NodeItem = memo(({
   nodeId
 }: NodeItemProps) => {
   const view = useNodeView(nodeId)
+  const isMindmapRoot = view?.node.owner?.kind === 'mindmap' && view.node.owner.id === nodeId
 
   if (!view) return null
   if (view.hidden) return null
-  if (view.node.type === 'mindmap') {
+  if (isMindmapRoot) {
     return (
       <MindmapSceneItem
         treeId={nodeId}

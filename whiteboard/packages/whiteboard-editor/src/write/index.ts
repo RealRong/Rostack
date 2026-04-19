@@ -44,10 +44,6 @@ export const createEditorWrite = ({
   const mindmap = createMindmapWrite({
     engine,
     read: query,
-    node: {
-      update: node.update,
-      updateMany: node.updateMany
-    },
     layout
   })
 

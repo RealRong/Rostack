@@ -1,6 +1,5 @@
-import type { KernelReadImpact } from '@whiteboard/core/kernel'
 import type { NodeItem } from '@whiteboard/engine/types/projection'
-import type { NodeId } from '@whiteboard/core/types'
+import type { Invalidation, NodeId } from '@whiteboard/core/types'
 import type { ReadSnapshot } from '@whiteboard/engine/types/internal/read'
 import { createProjectionRuntime } from '@whiteboard/engine/read/store/projection'
 
@@ -52,7 +51,7 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
   }
 
   const applyChange = (
-    impact: KernelReadImpact,
+    invalidation: Invalidation,
     snapshot: ReadSnapshot,
     extraChangedNodeIds: readonly NodeId[] = []
   ) => {
@@ -68,9 +67,8 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
     const changedNodeIds = new Set<NodeId>()
 
     if (
-      impact.reset
-      || impact.node.list
-      || ((impact.node.geometry || impact.node.value) && impact.node.ids.length === 0)
+      invalidation.document
+      || invalidation.canvasOrder
     ) {
       cacheById.forEach((_, nodeId) => {
         changedNodeIds.add(nodeId)
@@ -79,7 +77,7 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
         changedNodeIds.add(nodeId)
       }
     } else {
-      impact.node.ids.forEach((nodeId) => {
+      invalidation.nodes.forEach((nodeId) => {
         changedNodeIds.add(nodeId)
       })
     }

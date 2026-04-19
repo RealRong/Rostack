@@ -17,21 +17,21 @@ export const createDocumentWrite = (
     options
   }),
   delete: (refs) => engine.execute({
-    type: 'document.delete',
+    type: 'canvas.delete',
     refs
   }),
   duplicate: (refs) => engine.execute({
-    type: 'document.duplicate',
+    type: 'canvas.duplicate',
     refs
   }),
   order: (refs, mode) => engine.execute({
-    type: 'document.order',
+    type: 'canvas.order',
     refs,
     mode
   }),
   background: {
     set: (background) => engine.execute({
-      type: 'document.background.set',
+      type: 'document.background',
       background
     })
   },

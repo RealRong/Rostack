@@ -1,10 +1,17 @@
-import type { ChangeSet, Document, Operation, Origin } from '@whiteboard/core/types'
+import type {
+  Batch,
+  ChangeSet,
+  Document,
+  Invalidation,
+  Operation,
+  Origin
+} from '@whiteboard/core/types'
 import type {
   HistoryConfig,
   HistoryState
 } from '@whiteboard/core/kernel'
 import type { KernelReadImpact } from '@whiteboard/core/kernel'
-import type { CommandOutput, TranslateCommand } from '@whiteboard/engine/types/command'
+import type { Command, CommandOutput } from '@whiteboard/engine/types/command'
 import type { CommandFailure } from '@whiteboard/engine/types/result'
 
 export type DraftKind = 'apply' | 'replace' | 'undo' | 'redo'
@@ -13,34 +20,34 @@ type SuccessDraftBase<T> = {
   ok: true
   kind: DraftKind
   doc: Document
+  operations: readonly Operation[]
   changes: ChangeSet
+  invalidation: Invalidation
+  impact: KernelReadImpact
   value: T
 }
 
 export type Draft<T = void> =
   | CommandFailure
   | (SuccessDraftBase<T> & {
-      kind: 'replace'
-    })
-  | (SuccessDraftBase<T> & {
-      kind: Exclude<DraftKind, 'replace'>
-      inverse?: readonly Operation[]
-      impact: KernelReadImpact
+      kind: DraftKind
+      inverse: readonly Operation[]
     })
 
 export type Writer = {
-  run: <C extends TranslateCommand>(command: C, origin?: Origin) => Draft<CommandOutput<C>>
-  ops: (
-    operations: readonly Operation[],
+  execute: <C extends Command>(command: C, origin?: Origin) => Draft<CommandOutput<C>>
+  apply: (
+    batch: Batch,
     origin?: Origin
-  ) => Draft
+  ) => Draft<unknown>
   replace: (document: Document) => Draft
   undo: () => Draft
   redo: () => Draft
   history: {
     capture: (input: {
-      changes: ChangeSet
+      operations: readonly Operation[]
       inverse?: readonly Operation[]
+      origin?: Origin
     }) => void
     configure: (config: Partial<HistoryConfig>) => void
     get: () => HistoryState

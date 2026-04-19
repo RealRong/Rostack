@@ -50,6 +50,9 @@ export interface PageQuery {
 export interface PageSettings {
   viewsCount: number
   fields: readonly Field[]
+  displayFieldIds: readonly Field['id'][]
+  visibleFields: readonly Field[]
+  hiddenFields: readonly Field[]
   currentView?: View
   filter?: ActiveViewQuery['filters']
   sort?: ActiveViewQuery['sort']

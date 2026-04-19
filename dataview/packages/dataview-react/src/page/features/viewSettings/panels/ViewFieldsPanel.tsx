@@ -31,24 +31,11 @@ export const ViewFieldsPanel = () => {
   const currentViewDomain = currentView
     ? engine.active
     : undefined
-  const fields = settings.fields
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
-  const displayFieldIds = currentView?.display.fields ?? []
-  const fieldMap = useMemo(
-    () => new Map(fields.map(field => [field.id, field] as const)),
-    [fields]
-  )
-  const visibleFields = useMemo(
-    () => displayFieldIds
-      .map(fieldId => fieldMap.get(fieldId))
-      .filter((field): field is Field => Boolean(field)),
-    [displayFieldIds, fieldMap]
-  )
-  const hiddenFields = useMemo(
-    () => fields.filter(field => !displayFieldIds.includes(field.id)),
-    [displayFieldIds, fields]
-  )
+  const displayFieldIds = settings.displayFieldIds
+  const visibleFields = settings.visibleFields
+  const hiddenFields = settings.hiddenFields
   const filteredVisibleFields = useMemo(
     () => visibleFields.filter(field => {
       if (!normalizedQuery) {

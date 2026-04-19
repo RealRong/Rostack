@@ -27,10 +27,7 @@ const CardComponent = (props: {
   const board = useStoreValue(runtime.board)
   const card = useKeyedStoreValue(runtime.card, props.itemId)
   const content = useKeyedStoreValue(runtime.content, props.itemId)
-  if (!card || !content) {
-    return null
-  }
-
+  const cardColor = card?.color
   const interaction = useMemo(() => ({
     drag: runtime.drag,
     selection: runtime.selection
@@ -45,19 +42,23 @@ const CardComponent = (props: {
       const hoverState = 'hover' as const
       return {
         default: board.fillColumnColor
-          ? resolveOptionCardStyle(card.color, defaultState)
+          ? resolveOptionCardStyle(cardColor, defaultState)
           : resolveNeutralCardStyle(defaultState, 'preview'),
         hover: board.fillColumnColor
-          ? resolveOptionCardStyle(card.color, hoverState)
+          ? resolveOptionCardStyle(cardColor, hoverState)
           : resolveNeutralCardStyle(hoverState, 'preview')
       }
     }
-  }), [board.fillColumnColor, card.color])
+  }), [board.fillColumnColor, cardColor])
   const mount = useMemo(() => ({
     measureRef: props.measureRef,
     className: props.className,
     style: props.style
   }), [props.className, props.measureRef, props.style])
+
+  if (!card || !content) {
+    return null
+  }
 
   return (
     <RecordCard

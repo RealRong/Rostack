@@ -52,38 +52,51 @@ const replayInverse = (doc, operations) =>
 
 test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () => {
   const doc = createDocWithNode(createTextNode())
-  const result = reduceOperations(doc, [{
-    type: 'node.update',
-    id: 'node_1',
-    update: {
-      records: [{
-        scope: 'data',
-        op: 'set',
-        path: 'text',
-        value: 'world'
-      }]
-    }
-  }], {
+  const result = reduceOperations(doc, [createNodeUpdateOperation('node_1', {
+    records: [{
+      scope: 'data',
+      op: 'set',
+      path: 'text',
+      value: 'world'
+    }]
+  })], {
     now: () => FIXED_TIMESTAMP
   })
 
   assert.ok(result.ok)
   assert.deepEqual(result.data.inverse, [{
-    type: 'node.update',
+    type: 'node.patch',
     id: 'node_1',
-    update: {
-      records: [{
-        scope: 'data',
-        op: 'set',
-        path: 'text',
-        value: 'hello'
-      }]
+    patch: {
+      position: { x: 0, y: 0 },
+      size: { width: 120, height: 40 },
+      rotation: 0,
+      layer: undefined,
+      zIndex: undefined,
+      groupId: undefined,
+      owner: undefined,
+      locked: undefined,
+      data: {
+        text: 'hello',
+        items: ['a', 'b', 'c']
+      },
+      style: {
+        color: '#111111',
+        fontSize: 12
+      }
     }
   }])
 
   const reverted = replayInverse(result.data.doc, result.data.inverse)
   assert.ok(reverted.ok)
-  assert.deepEqual(reverted.data.doc, doc)
+  assert.deepEqual(reverted.data.doc.nodes.node_1, {
+    ...doc.nodes.node_1,
+    layer: undefined,
+    zIndex: undefined,
+    groupId: undefined,
+    owner: undefined,
+    locked: undefined
+  })
 })
 
 test('node.update inverse 在 set(path) 创建缺失祖先时退化为 scope 根级 set', () => {
@@ -184,34 +197,45 @@ test('node.update inverse 为 splice 生成反向 splice 回滚', () => {
 test('node.update 会为 direct mindmap data mutation 标记 node.value', () => {
   const tree = createMindmap({}, {
     idGenerator: {
-      nodeId: () => 'topic_1'
+      nodeId: () => 'mind_1'
     }
   })
-  const doc = createDocWithNode({
+  const doc = createDocument('doc_mindmap_1')
+  doc.nodes.mind_1 = {
     id: 'mind_1',
-    type: 'mindmap',
+    type: 'text',
+    owner: {
+      kind: 'mindmap',
+      id: 'mind_1'
+    },
     position: { x: 0, y: 0 },
-    data: tree
-  })
-
-  const result = reduceOperations(doc, [{
-    type: 'node.update',
-    id: 'mind_1',
-    update: {
-      records: [{
-        scope: 'data',
-        op: 'set',
-        path: 'meta.title',
-        value: 'new'
-      }]
+    data: {
+      text: 'root'
     }
-  }], {
+  }
+  doc.mindmaps.mind_1 = {
+    id: 'mind_1',
+    root: tree.rootNodeId,
+    members: tree.nodes,
+    children: tree.children,
+    layout: tree.layout,
+    meta: tree.meta
+  }
+
+  const result = reduceOperations(doc, [createNodeUpdateOperation('mind_1', {
+    records: [{
+      scope: 'data',
+      op: 'set',
+      path: 'meta.title',
+      value: 'new'
+    }]
+  })], {
     now: () => FIXED_TIMESTAMP
   })
 
   assert.ok(result.ok)
-  assert.equal(result.data.read.node.value, true)
-  assert.deepEqual(result.data.read.node.ids, ['mind_1'])
+  assert.equal(result.data.impact.node.value, true)
+  assert.deepEqual(result.data.impact.node.ids, ['mind_1'])
 })
 
 test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容器的 path set', () => {
@@ -247,9 +271,9 @@ test('node.update operation builder 会 compact update 载荷', () => {
       records: []
     }),
     {
-      type: 'node.update',
+      type: 'node.patch',
       id: 'node_1',
-      update: {}
+      patch: {}
     }
   )
 
@@ -258,12 +282,10 @@ test('node.update operation builder 会 compact update 载荷', () => {
       position: { x: 10, y: 20 }
     }),
     {
-      type: 'node.update',
+      type: 'node.patch',
       id: 'node_1',
-      update: {
-        fields: {
-          position: { x: 10, y: 20 }
-        }
+      patch: {
+        position: { x: 10, y: 20 }
       }
     }
   )

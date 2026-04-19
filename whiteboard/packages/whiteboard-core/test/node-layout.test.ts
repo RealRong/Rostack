@@ -100,13 +100,13 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
 
   assert.equal(result.data.operations.length, 1)
   const operation = result.data.operations[0]
-  assert.equal(operation.type, 'node.update')
+  assert.equal(operation.type, 'node.patch')
   assert.equal(operation.id, middle.id)
-  assert.ok(operation.update.fields?.position)
+  assert.ok(operation.patch.position)
 
   const nextMiddle: Node = {
     ...middle,
-    position: operation.update.fields.position
+    position: operation.patch.position!
   }
 
   const firstBounds = getNodeBoundsByNode(first, DEFAULT_SIZE)

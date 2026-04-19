@@ -1,7 +1,8 @@
 import type {
   MindmapId,
   MindmapLayoutSpec,
-  MindmapNodeId
+  MindmapNodeId,
+  MindmapRecord
 } from '@whiteboard/core/mindmap/types'
 import type { MindmapTemplate } from '@whiteboard/core/types/template'
 
@@ -38,7 +39,6 @@ export type NodeType =
   | 'shape'
   | 'draw'
   | 'frame'
-  | 'mindmap'
 
 export type SpatialNodeType = NodeType
 export type NodeRole = 'content' | 'frame'
@@ -50,13 +50,24 @@ export type NodeStyleValue =
   | readonly number[]
 export type NodeStyle = Record<string, NodeStyleValue>
 
+export type Background = {
+  type: 'dot' | 'line' | 'none'
+  color?: string
+}
+
+export type NodeOwner =
+  | {
+      kind: 'mindmap'
+      id: MindmapId
+    }
+
 export type BaseNode = {
   id: NodeId
   type: NodeType
   layer?: NodeLayer
   zIndex?: number
   groupId?: GroupId
-  mindmapId?: MindmapId
+  owner?: NodeOwner
   locked?: boolean
   data?: NodeData
   style?: NodeStyle
@@ -70,6 +81,7 @@ export type SpatialNode = BaseNode & {
 }
 
 export type Node = SpatialNode
+export type NodeRecord = Node
 
 export type EdgeAnchor = {
   side: 'top' | 'right' | 'bottom' | 'left'
@@ -161,6 +173,8 @@ export interface Edge {
   data?: Record<string, unknown>
 }
 
+export type EdgeRecord = Edge
+
 export type CanvasItemRef =
   | {
       kind: 'node'
@@ -177,14 +191,19 @@ export type Group = {
   name?: string
 }
 
+export type GroupRecord = Group
+
 export interface Document {
   id: DocumentId
   name?: string
-  nodes: Record<NodeId, Node>
-  edges: Record<EdgeId, Edge>
-  order: CanvasItemRef[]
-  groups: Record<GroupId, Group>
-  background?: { type: 'dot' | 'line' | 'none'; color?: string }
+  background?: Background
+  canvas: {
+    order: CanvasItemRef[]
+  }
+  nodes: Record<NodeId, NodeRecord>
+  edges: Record<EdgeId, EdgeRecord>
+  groups: Record<GroupId, GroupRecord>
+  mindmaps: Record<MindmapId, MindmapRecord>
   meta?: { createdAt?: string; updatedAt?: string }
 }
 

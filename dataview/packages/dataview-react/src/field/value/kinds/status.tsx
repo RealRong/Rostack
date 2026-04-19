@@ -31,6 +31,7 @@ export const createStatusFieldSpec = (
         label={display}
         color={selected?.color ?? undefined}
         variant="status"
+        appearance={props.optionTagAppearance}
         className={props.className}
       />
     )

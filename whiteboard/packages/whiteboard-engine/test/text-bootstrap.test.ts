@@ -35,20 +35,22 @@ test('engine 会清洗直接下发的 text node.create 缺失尺寸', () => {
     document: createDocument('doc_text_create')
   })
 
-  const result = engine.applyOperations([{
-    type: 'node.create',
-    node: {
-      id: 'node_1',
-      type: 'text',
-      position: {
-        x: 40,
-        y: 24
-      },
-      data: {
-        text: 'hello'
+  const result = engine.apply({
+    ops: [{
+      type: 'node.create',
+      node: {
+        id: 'node_1',
+        type: 'text',
+        position: {
+          x: 40,
+          y: 24
+        },
+        data: {
+          text: 'hello'
+        }
       }
-    }
-  }], {
+    }]
+  }, {
     origin: 'remote'
   })
 

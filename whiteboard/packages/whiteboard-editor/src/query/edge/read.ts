@@ -603,7 +603,7 @@ export const createEdgeRead = ({
   tool: ReadStore<Tool>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>
   textMetrics: Pick<TextMetricsCache, 'read'>
-  capability: (node: Pick<Node, 'type' | 'mindmapId'>) => {
+  capability: (node: Pick<Node, 'id' | 'type' | 'owner'>) => {
     connect: boolean
   }
 }): EdgePresentationRead => {

@@ -35,6 +35,7 @@ export const createSingleSelectPropertySpec = (
       <FieldOptionTag
         label={display}
         color={selected?.color ?? undefined}
+        appearance={props.optionTagAppearance}
         className={props.className}
       />
     )

@@ -18,6 +18,13 @@ export const err = <C extends string>(
   error: {
     code,
     message,
+    reason:
+      details
+      && typeof details === 'object'
+      && 'reason' in details
+      && typeof (details as { reason?: unknown }).reason === 'string'
+        ? (details as { reason: import('@whiteboard/core/types/result').InternalReason }).reason
+        : undefined,
     details
   }
 })

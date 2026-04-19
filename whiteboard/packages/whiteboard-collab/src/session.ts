@@ -53,19 +53,16 @@ export const createYjsSession = ({
     if (suppressLocalMirror) {
       return
     }
-    if (commit.changes.origin === 'remote') {
-      return
-    }
 
     doc.transact(() => {
-      if (commit.kind === 'replace') {
+      if (commit.changes.document && commit.ops.length === 0) {
         replaceYjsDocument(doc, commit.doc)
         return
       }
 
       applyOperationsToYjsDocument({
         doc,
-        operations: commit.changes.operations,
+        operations: commit.ops,
         snapshot: commit.doc
       })
     }, localOrigin)
@@ -96,9 +93,16 @@ export const createYjsSession = ({
       return
     }
 
-    engine.applyOperations(change.operations, {
-      origin: 'remote'
-    })
+    suppressLocalMirror = true
+    try {
+      engine.apply({
+        ops: change.operations
+      }, {
+        origin: 'remote'
+      })
+    } finally {
+      suppressLocalMirror = false
+    }
   }
 
   const commitUnsubscribe = engine.commit.subscribe(() => {

@@ -65,8 +65,11 @@ export const sanitizeOperations = ({
         next.push(operation)
         return
       }
-      case 'node.update': {
-        if (isNodeUpdateEmpty(operation.update)) {
+      case 'node.patch': {
+        if (isNodeUpdateEmpty({
+          fields: operation.patch,
+          records: undefined
+        })) {
           return
         }
         next.push(operation)

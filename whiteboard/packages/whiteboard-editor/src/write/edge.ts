@@ -173,7 +173,7 @@ export const createEdgeWrite = ({
 }): EdgeWrite => ({
   create: (input) => engine.execute({
     type: 'edge.create',
-    payload: {
+    input: {
       ...input.template,
       source: input.from,
       target: input.to

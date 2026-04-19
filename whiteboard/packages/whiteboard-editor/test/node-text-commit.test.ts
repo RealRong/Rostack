@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createNodeTextWrite } from '../src/write/node/text'
+import { createNodeTextWrite } from '../src/write/node'
 
 describe('createNodeTextWrite.commit', () => {
   it('persists measured size and wrap width even when text content is unchanged', () => {

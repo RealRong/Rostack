@@ -1,15 +1,14 @@
 import type { Draft, DraftKind, Writer } from '@whiteboard/engine/types/write'
-import type { CommandOutput, TranslateCommand } from '@whiteboard/engine/types/command'
+import type { Command, CommandOutput } from '@whiteboard/engine/types/command'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
 import { assertDocument } from '@whiteboard/core/document'
 import {
-  type ChangeSet,
+  type Batch,
   type CoreRegistries,
   type Document,
   type EdgeId,
   type GroupId,
   type MindmapId,
-  type MindmapNodeId,
   type NodeId,
   type Operation,
   type Origin
@@ -21,10 +20,10 @@ import {
 } from '@whiteboard/core/kernel'
 import { createId } from '@whiteboard/core/id'
 import { DEFAULT_HISTORY_CONFIG } from '@whiteboard/engine/config'
+import { RESET_INVALIDATION } from '@whiteboard/engine/read/invalidation'
 import { cancelled, failure } from '@whiteboard/engine/result'
 import { normalizeDocument } from '@whiteboard/engine/document/normalize'
-import { createWritePipeline } from '@whiteboard/engine/write/normalize'
-import { translateWrite } from '@whiteboard/engine/write/translate'
+import { planCommand } from '@whiteboard/engine/write/planner'
 
 const now = (): number => {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
@@ -32,6 +31,50 @@ const now = (): number => {
   }
   return Date.now()
 }
+
+const createReplaceChanges = (): import('@whiteboard/core/types').ChangeSet => ({
+  document: true,
+  background: true,
+  canvasOrder: true,
+  nodes: {
+    add: new Set(),
+    update: new Set(),
+    delete: new Set()
+  },
+  edges: {
+    add: new Set(),
+    update: new Set(),
+    delete: new Set()
+  },
+  groups: {
+    add: new Set(),
+    update: new Set(),
+    delete: new Set()
+  },
+  mindmaps: {
+    add: new Set(),
+    update: new Set(),
+    delete: new Set()
+  }
+})
+
+const createResetImpact = (): import('@whiteboard/core/kernel').KernelReadImpact => ({
+  reset: true,
+  document: true,
+  node: {
+    ids: [],
+    geometry: true,
+    list: true,
+    value: true
+  },
+  edge: {
+    ids: [],
+    nodeIds: [],
+    geometry: true,
+    list: true,
+    value: true
+  }
+})
 
 const withKind = <T>(
   draft: Draft<T>,
@@ -64,35 +107,24 @@ export const createWrite = ({
     edge: (): EdgeId => createId('edge'),
     group: (): GroupId => createId('group'),
     mindmap: (): MindmapId => createId('mindmap'),
-    mindmapNode: (): MindmapNodeId => createId('mnode')
+    mindmapNode: (): NodeId => createId('mnode')
   }
-
-  const reduce = (
-    doc: Document,
-    operations: readonly Operation[],
-    origin: Origin
-  ): KernelReduceResult => reduceOperations(doc, operations, {
-    now: readNow,
-    origin
-  })
-
-  const pipeline = createWritePipeline({
-    reduce,
-    nodeSize: config.nodeSize
-  })
 
   const toOperationsDraft = <T>(
     reduced: Extract<KernelReduceResult, { ok: true }>,
+    operations: readonly Operation[],
     kind: Exclude<DraftKind, 'replace'>,
     value: T
   ): Draft<T> => ({
     ok: true,
     kind,
     doc: reduced.data.doc,
+    operations,
     changes: reduced.data.changes,
+    invalidation: reduced.data.invalidation,
     value,
     inverse: reduced.data.inverse,
-    impact: reduced.data.read
+    impact: reduced.data.impact
   })
 
   const toReplaceDraft = (
@@ -101,13 +133,12 @@ export const createWrite = ({
     ok: true,
     kind: 'replace',
     doc,
+    operations: [],
     value: undefined,
-    changes: {
-      id: createId('change'),
-      timestamp: readNow(),
-      operations: [],
-      origin: 'system'
-    }
+    changes: createReplaceChanges(),
+    invalidation: RESET_INVALIDATION,
+    inverse: [],
+    impact: createResetImpact()
   })
 
   const reduceToDraft = <T>(
@@ -117,11 +148,10 @@ export const createWrite = ({
     kind: Exclude<DraftKind, 'replace'>,
     value: T
   ): Draft<T> => {
-    const reduced = pipeline.run(
-      doc,
-      operations,
+    const reduced = reduceOperations(doc, operations, {
+      now: readNow,
       origin
-    )
+    })
     if (!reduced.ok) {
       return failure(
         reduced.error.code,
@@ -129,7 +159,20 @@ export const createWrite = ({
       )
     }
 
-    return toOperationsDraft(reduced, kind, value)
+    const normalized = normalizeDocument(reduced.data.doc, config)
+
+    return toOperationsDraft(
+      {
+        ...reduced,
+        data: {
+          ...reduced.data,
+          doc: normalized
+        }
+      },
+      operations,
+      kind,
+      value
+    )
   }
 
   const replace = (
@@ -153,53 +196,54 @@ export const createWrite = ({
     )
   })
 
-  const run = <C extends TranslateCommand>(
+  const execute = <C extends Command>(
     command: C,
     origin: Origin = 'user'
   ): Draft<CommandOutput<C>> => {
     const doc = document.get()
-    const translated = translateWrite(command, {
+    const planned = planCommand(command, {
       doc,
-      config,
       registries,
-      ids
+      ids,
+      nodeSize: config.nodeSize
     })
-    if (!translated.ok) {
-      return translated as Draft<CommandOutput<C>>
+    if (!planned.ok) {
+      return failure(planned.error.code, planned.error.message)
     }
 
     return reduceToDraft(
       doc,
-      translated.operations,
+      planned.data.operations,
       origin,
       'apply',
-      translated.output
+      planned.data.output
     ) as Draft<CommandOutput<C>>
   }
 
-  const ops = (
-    operations: readonly Operation[],
+  const apply = (
+    batch: Batch,
     origin: Origin = 'user'
-  ): Draft => reduceToDraft(
+  ): Draft<unknown> => reduceToDraft(
     document.get(),
-    operations,
+    batch.ops,
     origin,
     'apply',
-    undefined
+    batch.output
   )
 
   const capture = (input: {
-    changes: ChangeSet
+    operations: readonly Operation[]
     inverse?: readonly Operation[]
+    origin?: Origin
   }) => {
     if (!input.inverse) {
       return
     }
 
     history.capture({
-      forward: input.changes.operations,
+      forward: input.operations,
       inverse: input.inverse,
-      origin: input.changes.origin
+      origin: input.origin
     })
   }
 
@@ -220,8 +264,8 @@ export const createWrite = ({
   }
 
   return {
-    run,
-    ops,
+    execute,
+    apply,
     replace,
     undo,
     redo,

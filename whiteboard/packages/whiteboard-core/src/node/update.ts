@@ -27,7 +27,7 @@ const NODE_FIELD_KEYS: Array<keyof NodeFieldPatch> = [
   'layer',
   'zIndex',
   'groupId',
-  'mindmapId',
+  'owner',
   'locked'
 ]
 
@@ -41,7 +41,7 @@ const NODE_LIST_KEYS = new Set<keyof NodeFieldPatch>([
   'layer',
   'zIndex',
   'groupId',
-  'mindmapId'
+  'owner'
 ])
 
 const NODE_VALUE_KEYS = new Set<keyof NodeFieldPatch>([
@@ -279,16 +279,24 @@ const compactNodeUpdateInput = (
 export const createNodeUpdateOperation = (
   id: NodeId,
   update: NodeUpdateInput
-): Extract<Operation, { type: 'node.update' }> => ({
-  type: 'node.update',
-  id,
-  update: compactNodeUpdateInput(update)
-})
+): Extract<Operation, { type: 'node.patch' }> => {
+  const compact = compactNodeUpdateInput(update)
+  const applied = applyNodeUpdate({
+    id,
+    type: 'text',
+    position: { x: 0, y: 0 }
+  }, compact)
+  return {
+    type: 'node.patch',
+    id,
+    patch: applied.ok ? applied.patch : applyFieldPatch(compact.fields)
+  }
+}
 
 export const createNodeFieldsUpdateOperation = (
   id: NodeId,
   fields: NodeFieldPatch
-): Extract<Operation, { type: 'node.update' }> =>
+): Extract<Operation, { type: 'node.patch' }> =>
   createNodeUpdateOperation(id, { fields })
 
 export const classifyNodeUpdate = (

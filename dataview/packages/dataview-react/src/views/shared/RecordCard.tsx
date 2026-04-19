@@ -20,8 +20,8 @@ import {
 import { shouldCapturePointer } from '@shared/dom'
 import { cn } from '@shared/ui/utils'
 import type { ItemId } from '@dataview/engine'
+import { CardField } from '@dataview/react/views/shared/CardField'
 import { EditableCardTitle } from '@dataview/react/views/shared/EditableCardTitle'
-import { CardFieldSlot } from '@dataview/react/views/shared/CardFieldSlot'
 import { CardContent } from '@dataview/react/views/shared/CardContent'
 import { resolveCardPresentation } from '@dataview/react/views/shared/cardPresentation'
 
@@ -157,7 +157,7 @@ const RecordCardComponent = (props: RecordCardProps) => {
   const properties = useMemo(() => visibleProperties.map(property => ({
     key: property.field.id,
     node: (
-      <CardFieldSlot
+      <CardField
         field={fieldRef({
           viewId: props.card.viewId,
           itemId: props.card.itemId,
@@ -171,10 +171,12 @@ const RecordCardComponent = (props: RecordCardProps) => {
         density={presentation.propertyDensity}
         wrap={props.card.wrap}
         valueClassName={presentation.slots.property?.value}
+        optionTagAppearance={presentation.fieldAppearance.optionTag}
       />
     )
   })), [
     editing,
+    presentation.fieldAppearance.optionTag,
     presentation.propertyDensity,
     presentation.slots.property?.value,
     props.card.itemId,

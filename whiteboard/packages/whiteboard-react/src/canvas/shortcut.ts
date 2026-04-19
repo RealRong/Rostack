@@ -52,12 +52,12 @@ const readActiveMindmapShortcut = (
   }
 
   const node = editor.read.node.render.get(selection.nodeIds[0] ?? '')?.node
-  if (!node?.mindmapId || node.type !== 'text') {
+  if (node?.owner?.kind !== 'mindmap' || node.type !== 'text') {
     return undefined
   }
 
   return {
-    treeId: node.mindmapId,
+    treeId: node.owner.id,
     nodeId: node.id
   }
 }

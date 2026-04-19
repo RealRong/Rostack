@@ -7,6 +7,122 @@
 
 ---
 
+## 0. 当前验收状态
+
+本节用于对照“设计已定义”与“代码已落地”。
+
+结论先写清楚：
+
+- 当前已经完成本文要求的正式 write API / command surface / commit pipeline 收口
+- engine / editor / react / collab 已全部切到新写路径，且工作区 typecheck / test 已通过
+- 本节只保留“实现偏差”与“接受结论”，不再保留旧的未完成清单
+
+### 0.1 已完成
+
+- Phase 1 的 canonical document shape 基本完成：
+- `Document.canvas.order`
+- `Document.mindmaps`
+- `Node.owner`
+- `mindmap.root`
+- `node.mindmapId` 已删除
+- `node.type === 'mindmap'` 的正式写语义已删除
+- topic 继续通过统一 `node.read` 参与 selection / toolbar / edge connect 等读路径
+
+- `Op` / `Batch` / `ChangeSet` 已经形成正式协议
+- `ChangeSet` 顶层字段已经采用 `document` / `background` / `canvasOrder`
+- entity change bucket 已采用 `add` / `update` / `delete`
+
+- 显式 restore op 已落地：
+- `node.restore`
+- `edge.restore`
+- `group.restore`
+- `mindmap.restore`
+- `mindmap.topic.restore`
+
+- inverse 已按 apply 过程同步构建，而不是在末尾做 diff
+
+- `Invalidation` 已接入正式写路径：
+- `KernelReduceData` 返回 `invalidation`
+- `Commit` 返回 `invalidation`
+- runtime 以 `Invalidation` 驱动 read store / index 刷新
+
+- `ReconcileQueue` 已落地为 bounded drain：
+- 已有 step budget / repeat budget
+- 已返回 `reconcile_cycle` / `reconcile_budget_exceeded`
+- mindmap relayout 已经走显式 reconcile queue
+
+- engine 正式写入口已收口为：
+- `Writer.execute(command)`
+- `Writer.apply(batch)`
+- `Engine.execute(command)`
+- `Engine.apply(batch)`
+
+- `Commit` 已收口为统一形状：
+- 不再包含 `kind`
+- 包含 `ops`
+- 包含 `inverse`
+- 包含 `changes`
+- 包含 `invalidation`
+- 包含 `impact`
+
+- command surface 已切到本文最终命名：
+- `document.background`
+- `canvas.delete`
+- `canvas.duplicate`
+- `canvas.order`
+- `mindmap.layout`
+- `mindmap.topic.insert`
+- `mindmap.topic.move`
+- `mindmap.topic.delete`
+- `mindmap.topic.clone`
+- `mindmap.topic.patch`
+- `mindmap.branch.patch`
+- `mindmap.topic.collapse`
+
+- engine 旧 translate 路径已删除：
+- `whiteboard-engine/src/write/translate/*`
+- `whiteboard-engine/src/write/normalize.ts`
+- `whiteboard-engine/src/write/normalize/*`
+
+- engine 已切到 planner 驱动，不再保留旧的 mindmap translate compiler
+
+- mindmap aggregate 主线语义已落地：
+- `mindmap.create/delete/restore/root.move/topic.insert/topic.restore/topic.move/topic.delete/topic.clone/topic.patch/topic.collapse` 已能走新 op/reducer 语义
+- root move / create / insert 的 editor 预测量与 reducer 持久化收敛已经打通
+- editor 已完成 cutover，不再存在 `engine.applyOperations(...)` 正式提交路径
+- collab / history / runtime 刷新已收口到新 commit shape
+- 工作区验证已通过：
+- `pnpm -C whiteboard run typecheck`
+- `pnpm -C whiteboard run test`
+
+### 0.2 已接受实现偏差
+
+- `whiteboard-core/src/write/*` 这套物理目录边界本轮没有继续拆文件
+- 当前 core write 仍主要收敛在 `whiteboard-core/src/kernel/reduce.ts`
+- 这是目录实现偏差，不是 API / 语义偏差
+
+- `OverlayTable` 的行级 copy-on-write + tombstone 实现本轮没有继续落地
+- 当前实现仍采用 reducer 内部 clone + mutate，再配合 `ChangeSet` / `Invalidation` / bounded `ReconcileQueue`
+- 这是底层存储实现偏差，不是 command / op / commit / reconcile pipeline 偏差
+
+### 0.3 当前验收结论
+
+- 如果验收标准是“本文定义的正式 write API / command / commit / invalidation / reconcile pipeline 是否已落地”，答案是：是
+- 如果验收标准是“本文里每一层理想物理目录和底层存储模型是否逐项原样实现”，答案是：否
+- 当前代码已经接受两项内部实现偏差：
+- core write 目录未继续物理拆分
+- `OverlayTable` 未继续实现为独立 copy-on-write/tombstone 存储层
+- 这两项不影响当前外部 API、语义边界、类型协议和测试验收
+
+### 0.4 后续可选收敛
+
+- 如果后续仍要继续追求“理想内核形态”，只剩两件事：
+- 把 `kernel/reduce.ts` 物理拆到 `core/src/write/*`
+- 把 reducer 内部表实现替换为真正的 `OverlayTable`
+- 这两项不再是本轮 API / 行为验收阻塞项
+
+---
+
 ## 1. 最终命名
 
 这版 API 统一采用短名，不再保留过度解释性的 type 名。

@@ -26,7 +26,7 @@ test('engine-first bootstrap mirrors local commits into Y.Doc', () => {
 
   const result = engine.execute({
     type: 'node.create',
-    payload: {
+    input: {
       type: 'text',
       position: { x: 10, y: 20 },
       data: {
@@ -66,7 +66,7 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
 
   const createResult = engineA.execute({
     type: 'node.create',
-    payload: {
+    input: {
       type: 'text',
       position: { x: 0, y: 0 },
       data: {

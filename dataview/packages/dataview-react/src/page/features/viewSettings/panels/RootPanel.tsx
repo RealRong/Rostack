@@ -234,7 +234,7 @@ export const RootPanel = () => {
   const sortProjection = settings.sort
   const groupProjection = settings.group
   const viewsCount = settings.viewsCount
-  const propertyCount = currentView?.display.fields.length ?? 0
+  const propertyCount = settings.displayFieldIds.length
   const menuItems: RootMenuItemConfig[] = [
     {
       icon: Settings2,

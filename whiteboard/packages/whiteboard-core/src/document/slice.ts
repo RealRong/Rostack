@@ -509,7 +509,7 @@ const withCreatedNodes = (
   operation?: Extract<Operation, { type: 'node.create' }>
 ): Document => {
   const nodes = { ...doc.nodes }
-  const order = [...doc.order]
+  const order = [...doc.canvas.order]
 
   operations.forEach(({ node }) => {
     nodes[node.id] = node
@@ -534,7 +534,10 @@ const withCreatedNodes = (
   return {
     ...doc,
     nodes,
-    order
+    canvas: {
+      ...doc.canvas,
+      order
+    }
   }
 }
 
@@ -544,7 +547,7 @@ const withCreatedEdges = (
   operation?: Extract<Operation, { type: 'edge.create' }>
 ): Document => {
   const edges = { ...doc.edges }
-  const order = [...doc.order]
+  const order = [...doc.canvas.order]
 
   operations.forEach(({ edge }) => {
     edges[edge.id] = edge
@@ -569,7 +572,10 @@ const withCreatedEdges = (
   return {
     ...doc,
     edges,
-    order
+    canvas: {
+      ...doc.canvas,
+      order
+    }
   }
 }
 

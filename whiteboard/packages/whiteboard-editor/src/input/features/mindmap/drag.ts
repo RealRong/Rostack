@@ -82,7 +82,9 @@ export const tryStartMindmapDrag = (input: {
     : undefined
   const treeId = pick.kind === 'mindmap'
     ? pick.treeId
-    : pickedNode?.mindmapId
+    : pickedNode?.owner?.kind === 'mindmap'
+      ? pickedNode.owner.id
+      : undefined
   const nodeId = pick.kind === 'mindmap'
     ? pick.nodeId
     : pick.kind === 'node' && pick.part !== 'field'
@@ -140,7 +142,9 @@ export const tryStartMindmapDragForNode = (input: {
   node: Pick<NodePresentationRead, 'item'>
 }): MindmapDragState | undefined => {
   const pickedNode = input.node.item.get(input.nodeId)?.node
-  const treeId = pickedNode?.mindmapId
+  const treeId = pickedNode?.owner?.kind === 'mindmap'
+    ? pickedNode.owner.id
+    : undefined
   const locked = Boolean(
     pickedNode?.locked
     || (treeId ? input.node.item.get(treeId)?.node.locked : undefined)

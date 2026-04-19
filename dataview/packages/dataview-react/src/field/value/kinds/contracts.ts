@@ -3,6 +3,7 @@ import type {
   ReactNode
 } from 'react'
 import type { FieldDraftParseResult } from '@dataview/core/field'
+import type { FieldOptionTagAppearance } from '@dataview/react/field/options'
 import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor'
 
 export interface RenderProps {
@@ -10,6 +11,7 @@ export interface RenderProps {
   emptyPlaceholder?: ReactNode
   className?: string
   wrap?: boolean
+  optionTagAppearance?: FieldOptionTagAppearance
 }
 
 export type FieldValueEditorPanelWidth = 'default' | 'picker' | 'calendar'

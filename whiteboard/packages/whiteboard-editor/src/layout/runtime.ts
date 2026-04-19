@@ -21,6 +21,8 @@ import {
   mergeNodeUpdates
 } from '@whiteboard/core/schema'
 import type {
+  MindmapTemplate,
+  MindmapTemplateNode,
   Node,
   NodeId,
   NodeInput,
@@ -451,6 +453,13 @@ export type EditorLayout = {
   patchNodeCreatePayload: (
     payload: NodeInput
   ) => NodeInput
+  patchMindmapTemplate: (
+    template: MindmapTemplate,
+    position?: {
+      x: number
+      y: number
+    }
+  ) => MindmapTemplate
   patchNodeUpdate: (
     nodeId: NodeId,
     update: NodeUpdateInput,
@@ -639,10 +648,32 @@ export const createEditorLayout = ({
     return payload
   }
 
+  const patchMindmapTemplateNode = (
+    templateNode: MindmapTemplateNode,
+    position: {
+      x: number
+      y: number
+    }
+  ): MindmapTemplateNode => ({
+    ...templateNode,
+    node: patchCreatePayload({
+      ...templateNode.node,
+      position
+    }),
+    children: templateNode.children?.map((child) => patchMindmapTemplateNode(child, {
+      x: 0,
+      y: 0
+    }))
+  })
+
   return {
     text,
     mindmap,
     patchNodeCreatePayload: patchCreatePayload,
+    patchMindmapTemplate: (template, position = { x: 0, y: 0 }) => ({
+      ...template,
+      root: patchMindmapTemplateNode(template.root, position)
+    }),
     patchNodeUpdate: (nodeId, update, options) => {
       const committed = read.node.committed.get(nodeId)
       if (!committed) {

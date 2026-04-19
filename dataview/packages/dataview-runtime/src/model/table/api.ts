@@ -5,8 +5,7 @@ import {
   createDerivedStore,
   createKeyedDerivedStore,
   read,
-  sameMap,
-  type ReadStore
+  sameMap
 } from '@shared/core'
 import type {
   DataViewSource
@@ -72,13 +71,17 @@ export const createTableModel = (input: {
 }): DataViewTableModel => {
   const body = createDerivedStore<TableBody | null>({
     get: () => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'table') {
+      if (read(input.source.active.view.type) !== 'table') {
+        return null
+      }
+
+      const viewId = read(input.source.active.view.id)
+      if (!viewId) {
         return null
       }
 
       return {
-        viewId: view.id,
+        viewId,
         empty: read(input.source.active.items.ids).length === 0,
         grouped: read(input.source.active.query.grouped),
         wrap: read(input.source.active.table.wrap),
@@ -92,8 +95,7 @@ export const createTableModel = (input: {
 
   const column = createKeyedDerivedStore<FieldId, TableColumn | undefined>({
     get: fieldId => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'table') {
+      if (read(input.source.active.view.type) !== 'table') {
         return undefined
       }
 
@@ -109,8 +111,7 @@ export const createTableModel = (input: {
 
   const section = createKeyedDerivedStore<string, TableSection | undefined>({
     get: key => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'table') {
+      if (read(input.source.active.view.type) !== 'table') {
         return undefined
       }
 
@@ -129,8 +130,7 @@ export const createTableModel = (input: {
 
   const summary = createKeyedDerivedStore<string, TableSummary | undefined>({
     get: key => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'table') {
+      if (read(input.source.active.view.type) !== 'table') {
         return undefined
       }
 

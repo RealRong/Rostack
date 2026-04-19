@@ -1,27 +1,23 @@
 import {
-  isEmptyFieldValue
-} from '@dataview/core/field'
-import {
   createDerivedStore,
   createKeyedDerivedStore,
   read,
-  sameIdOrder,
-  sameOrder,
-  sameValue
+  sameOrder
 } from '@shared/core'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
-import type {
-  CardContent,
-  CardProperty
-} from '@dataview/runtime/model/shared'
 import type {
   DataViewGalleryModel,
   GalleryBody,
   GalleryCard,
   GallerySection
 } from '@dataview/runtime/model/gallery/types'
+import {
+  createActiveCustomFieldListStore,
+  createItemCardContentStore,
+  createRecordCardPropertiesStore
+} from '@dataview/runtime/model/internal/card'
 
 const DEFAULT_GALLERY_TITLE_PLACEHOLDER = '输入名称...'
 
@@ -58,31 +54,13 @@ const sameCard = (
   && left.viewId === right.viewId
   && left.itemId === right.itemId
   && left.recordId === right.recordId
-  && sameIdOrder(left.fields, right.fields)
+  && sameOrder(left.fields, right.fields)
   && left.size === right.size
   && left.layout === right.layout
   && left.wrap === right.wrap
   && left.canDrag === right.canDrag
   && left.selected === right.selected
   && left.editing === right.editing
-)
-
-const sameProperty = (
-  left: CardProperty,
-  right: CardProperty
-) => left.field.id === right.field.id
-  && sameValue(left.value, right.value)
-
-const sameContent = (
-  left: CardContent | undefined,
-  right: CardContent | undefined
-) => left === right || (
-  !!left
-  && !!right
-  && left.titleText === right.titleText
-  && left.placeholderText === right.placeholderText
-  && left.hasProperties === right.hasProperties
-  && sameOrder(left.properties, right.properties, sameProperty)
 )
 
 export const createGalleryModel = (input: {
@@ -92,15 +70,24 @@ export const createGalleryModel = (input: {
     itemId: number
   }) => string
 }): DataViewGalleryModel => {
+  const customFields = createActiveCustomFieldListStore(input.source)
+  const properties = createRecordCardPropertiesStore({
+    source: input.source,
+    fields: customFields
+  })
   const body = createDerivedStore<GalleryBody | null>({
     get: () => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'gallery') {
+      if (read(input.source.active.view.type) !== 'gallery') {
+        return null
+      }
+
+      const viewId = read(input.source.active.view.id)
+      if (!viewId) {
         return null
       }
 
       return {
-        viewId: view.id,
+        viewId,
         empty: read(input.source.active.items.ids).length === 0,
         grouped: read(input.source.active.query.grouped),
         groupUsesOptionColors: read(input.source.active.gallery.groupUsesOptionColors),
@@ -112,8 +99,7 @@ export const createGalleryModel = (input: {
 
   const section = createKeyedDerivedStore<string, GallerySection | undefined>({
     get: key => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'gallery') {
+      if (read(input.source.active.view.type) !== 'gallery') {
         return undefined
       }
 
@@ -131,8 +117,12 @@ export const createGalleryModel = (input: {
 
   const card = createKeyedDerivedStore<number, GalleryCard | undefined>({
     get: itemId => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'gallery') {
+      if (read(input.source.active.view.type) !== 'gallery') {
+        return undefined
+      }
+
+      const viewId = read(input.source.active.view.id)
+      if (!viewId) {
         return undefined
       }
 
@@ -142,14 +132,10 @@ export const createGalleryModel = (input: {
       }
 
       return {
-        viewId: view.id,
+        viewId,
         itemId,
         recordId: item.recordId,
-        fields: read(input.source.active.fields.custom.ids)
-          .flatMap(fieldId => {
-            const field = read(input.source.active.fields.custom, fieldId)
-            return field ? [field] : []
-          }),
+        fields: read(customFields),
         size: read(input.source.active.gallery.size),
         layout: read(input.source.active.gallery.layout),
         wrap: read(input.source.active.gallery.wrap),
@@ -161,7 +147,7 @@ export const createGalleryModel = (input: {
         editing: read(
           input.source.inline.editing,
           input.inlineKey({
-            viewId: view.id,
+            viewId,
             itemId
           })
         )
@@ -170,40 +156,11 @@ export const createGalleryModel = (input: {
     isEqual: sameCard
   })
 
-  const content = createKeyedDerivedStore<number, CardContent | undefined>({
-    get: itemId => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'gallery') {
-        return undefined
-      }
-
-      const item = read(input.source.active.items, itemId)
-      const record = item
-        ? read(input.source.doc.records, item.recordId)
-        : undefined
-      if (!item || !record) {
-        return undefined
-      }
-
-      const properties = read(input.source.active.fields.custom.ids)
-        .flatMap(fieldId => {
-          const field = read(input.source.active.fields.custom, fieldId)
-          return field
-            ? [{
-                field,
-                value: record.values[field.id]
-              }]
-            : []
-        })
-
-      return {
-        titleText: record.title,
-        placeholderText: DEFAULT_GALLERY_TITLE_PLACEHOLDER,
-        properties,
-        hasProperties: properties.some(property => !isEmptyFieldValue(property.value))
-      }
-    },
-    isEqual: sameContent
+  const content = createItemCardContentStore({
+    source: input.source,
+    viewType: 'gallery',
+    properties,
+    placeholderText: () => DEFAULT_GALLERY_TITLE_PLACEHOLDER
   })
 
   return {

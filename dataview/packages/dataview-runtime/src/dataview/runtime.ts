@@ -1,11 +1,9 @@
 import {
   createDerivedStore,
   joinUnsubscribes,
-  read,
-  sameIdOrder
+  read
 } from '@shared/core'
 import type {
-  CustomField,
   View
 } from '@dataview/core/contracts'
 import {
@@ -28,6 +26,9 @@ import {
   createTableModel
 } from '@dataview/runtime/model'
 import {
+  createEntityListStore
+} from '@dataview/runtime/model/internal/list'
+import {
   createMarqueeController
 } from '@dataview/runtime/marquee'
 import {
@@ -43,17 +44,6 @@ import type {
 import {
   createValueEditorApi
 } from '@dataview/runtime/valueEditor'
-
-const createFieldsStore = (
-  source: CreateDataViewRuntimeInput['engine']['source']['doc']['fields']
-) => createDerivedStore<readonly CustomField[]>({
-  get: () => read(source.ids)
-    .flatMap(fieldId => {
-      const field = read(source, fieldId)
-      return field ? [field] : []
-    }),
-  isEqual: sameIdOrder
-})
 
 const bindInlineSessionToView = (input: {
   activeView: ReturnType<typeof createDerivedStore<View | undefined>>
@@ -139,18 +129,24 @@ export const createDataViewRuntime = (
   const valueEditor = createValueEditorApi()
   const activeItemIds = input.engine.source.active.items.ids
   const activeView = input.engine.source.active.view.current
+  const activeSelectionDomain = createDerivedStore({
+    get: () => createItemArraySelectionDomain(read(activeItemIds))
+  })
   const selectionRuntime = createSelectionController({
     domainSource: {
-      get: () => createItemArraySelectionDomain(read(activeItemIds)),
-      subscribe: activeItemIds.subscribe
+      get: () => read(activeSelectionDomain),
+      subscribe: activeSelectionDomain.subscribe
     }
   })
   const selection = selectionRuntime.controller
   const marquee = createMarqueeController({
     selection,
-    resolveDomain: () => createItemArraySelectionDomain(read(activeItemIds))
+    resolveDomain: () => read(activeSelectionDomain)
   })
-  const fieldsStore = createFieldsStore(input.engine.source.doc.fields)
+  const fieldsStore = createEntityListStore({
+    ids: input.engine.source.doc.fields.ids,
+    values: input.engine.source.doc.fields
+  })
   const pageStateStore = createPageStateStore({
     fields: fieldsStore,
     activeViewId: input.engine.source.active.view.id,

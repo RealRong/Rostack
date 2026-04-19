@@ -39,6 +39,7 @@ whiteboard/packages/whiteboard-core/src/
     types.ts
     op.ts
     change.ts
+    inverse.ts
     reconcile.ts
     reducer/
       document.ts
@@ -83,11 +84,16 @@ whiteboard/packages/whiteboard-editor/src/write/
 ### 3.1 通用结果
 
 ```ts
-type ErrorCode = 'invalid' | 'cancelled'
+type ErrorCode = 'invalid' | 'cancelled' | 'internal'
+
+type InternalReason =
+  | 'reconcile_cycle'
+  | 'reconcile_budget_exceeded'
 
 type WriteError = {
   code: ErrorCode
   message: string
+  reason?: InternalReason
   details?: unknown
 }
 
@@ -205,7 +211,96 @@ type Commit = {
 - `invalidation` 是 runtime invalidation 元数据
 - internal reconcile task 不进入 `Commit`
 
-### 3.6 ChangeSet 与 Invalidation
+### 3.6 Inverse
+
+长期最优下，`inverse` 不是 reducer 末尾再 diff 出来的补丁，而是在 apply 过程中同步构建的 `Op[]`。
+
+```ts
+type Inverse = Op[]
+
+type CanvasSlot = {
+  prev?: CanvasItemRef
+  next?: CanvasItemRef
+}
+
+type TopicSlot = {
+  parent: NodeId
+  prev?: NodeId
+  next?: NodeId
+}
+
+type MindmapSnapshot = {
+  mindmap: MindmapRecord
+  nodes: NodeRecord[]
+  slot?: CanvasSlot
+}
+
+type MindmapTopicSnapshot = {
+  root: NodeId
+  slot: TopicSlot
+  nodes: NodeRecord[]
+  members: Record<NodeId, MindmapMemberRecord>
+  children: Record<NodeId, NodeId[]>
+}
+```
+
+固定规则：
+
+- `restore` 只存在于 op 层，不存在于 command 层
+- `create` 的 inverse 是 `delete`
+- `delete` 的 inverse 是 `restore`
+- `restore` 的语义是“按删除前快照原样放回”，不是“再来一次 create/insert”
+- `restore` 必须保留原 id
+- `node.restore` 只恢复 standalone node
+- `mindmap.restore` 恢复整个 deleted aggregate，包括 root topic node
+- `mindmap.topic.restore` 只恢复 non-root topic subtree
+- top-level item 的 `restore` 必须恢复原 canvas slot
+- mindmap topic subtree 的 `restore` 必须恢复原 parent 和 sibling slot
+- secondary effects 不能塞进单个 `restore` 里跨域恢复，必须在 inverse batch 里拆开
+
+需要显式 `restore` 的 op：
+
+- `node.delete` -> `node.restore`
+- `edge.delete` -> `edge.restore`
+- `group.delete` -> `group.restore`
+- `mindmap.delete` -> `mindmap.restore`
+- `mindmap.topic.delete` -> `mindmap.topic.restore`
+
+不需要 `restore` 的 op：
+
+- `document.replace`
+- `document.background`
+- `canvas.order`
+- `node.patch`
+- `node.move`
+- `edge.patch`
+- `group.patch`
+- `mindmap.root.move`
+- `mindmap.layout`
+- `mindmap.topic.patch`
+- `mindmap.branch.patch`
+- `mindmap.topic.collapse`
+
+inverse 语义还要再补一条：
+
+- `node.duplicate`、`mindmap.topic.clone` 这类创建型 op 的 inverse 仍然是 delete，不是 restore
+
+典型 inverse batch：
+
+```ts
+[
+  { type: 'mindmap.topic.restore', id: mindmapId, snapshot },
+  { type: 'edge.restore', edge, slot }
+]
+```
+
+这里表示：
+
+- 恢复 mindmap-owned subtree 用 `mindmap.topic.restore`
+- 恢复外部 edge 仍然用独立 `edge.restore`
+- 不允许让 `mindmap.topic.restore` 跨 aggregate 偷偷恢复 edge
+
+### 3.7 ChangeSet 与 Invalidation
 
 ```ts
 type ChangeIds<Id> = {
@@ -245,11 +340,16 @@ type Invalidation = {
 - `Invalidation` 允许保守 over-approximation
 - `ChangeSet` 和 `Invalidation` 都不能承担调度职责
 
-### 3.7 Reconcile
+### 3.8 Reconcile
 
 ```ts
 type ReconcileTask =
   | { type: 'mindmap.layout'; id: MindmapId }
+
+type ReconcileGuard = {
+  maxSteps: number
+  maxRepeat: number
+}
 
 type ReconcileQueue = {
   enqueue(task: ReconcileTask): void
@@ -271,6 +371,10 @@ type Draft = {
 ```
 
 ```ts
+type OverlayCell<T> =
+  | { kind: 'set'; value: T }
+  | { kind: 'delete' }
+
 type Overlay = {
   document?: {
     background?: Background
@@ -296,10 +400,22 @@ type OverlayTable<Id, T> = {
 - `ReconcileTask` 是 internal contract
 - `ReconcileTask` 不进入 history
 - `ReconcileQueue` 只做派生收敛调度
+- `ReconcileQueue.drain(...)` 必须是 bounded drain，而不是无界循环
+- engine internals 必须实现 step budget 和 repeat budget guard
+- repeat budget 必须按 task key 统计，长期最优下默认就是 `task.type + id`
+- 具体阈值属于 engine internals，不写死在公开 API 常量里
+- 如果 queue 不收敛，必须返回 `code: 'internal'`
+- `reason: 'reconcile_cycle'` 用于 task key 重复不收敛
+- `reason: 'reconcile_budget_exceeded'` 用于总 drain steps 超预算
 - `reconcile` 可以更新 aggregate-owned persistent geometry
 - 如果 reconciler 改写了 topic node 的持久化几何，必须同时写入 `changes.nodes.update` 和 `invalidation.nodes`
+- `OverlayTable.get(id)` 必须支持三态 read-through：
+- local 没 entry 时回退到 base
+- local 为 `set` 时返回 overlay 值
+- local 为 `delete` 时返回 `undefined`，不能再回退到 base
+- `OverlayTable` 的长期最优实现是行级 copy-on-write + tombstone，而不是整个 document 的代理式深层 draft
 
-### 3.8 Command
+### 3.9 Command
 
 ```ts
 type Command =
@@ -339,6 +455,8 @@ type MindmapCommand =
   | { type: 'mindmap.topic.collapse'; id: MindmapId; topicId: NodeId; collapsed?: boolean }
 ```
 
+`restore` 不进入 command surface。
+
 `NodePatchInput` 应直接使用：
 
 ```ts
@@ -350,7 +468,7 @@ type NodePatchInput = {
 
 不再额外引入 `NodePatchBatch` 这种名字。
 
-### 3.9 Op 与 Batch
+### 3.10 Op 与 Batch
 
 ```ts
 type Batch = {
@@ -365,21 +483,26 @@ type Op =
   | { type: 'document.background'; background?: Background }
   | { type: 'canvas.order'; refs: CanvasItemRef[] }
   | { type: 'node.create'; node: NodeRecord }
+  | { type: 'node.restore'; node: NodeRecord; slot?: CanvasSlot }
   | { type: 'node.patch'; id: NodeId; patch: NodePatch }
   | { type: 'node.move'; id: NodeId; delta: Point }
   | { type: 'node.delete'; id: NodeId }
   | { type: 'node.duplicate'; id: NodeId }
   | { type: 'edge.create'; edge: EdgeRecord }
+  | { type: 'edge.restore'; edge: EdgeRecord; slot?: CanvasSlot }
   | { type: 'edge.patch'; id: EdgeId; patch: EdgePatch }
   | { type: 'edge.delete'; id: EdgeId }
   | { type: 'group.create'; group: GroupRecord }
+  | { type: 'group.restore'; group: GroupRecord }
   | { type: 'group.patch'; id: GroupId; patch: GroupPatch }
   | { type: 'group.delete'; id: GroupId }
   | { type: 'mindmap.create'; mindmap: MindmapRecord; nodes: NodeRecord[] }
+  | { type: 'mindmap.restore'; snapshot: MindmapSnapshot }
   | { type: 'mindmap.delete'; id: MindmapId }
   | { type: 'mindmap.root.move'; id: MindmapId; position: Point }
   | { type: 'mindmap.layout'; id: MindmapId; patch: Partial<MindmapLayoutSpec> }
   | { type: 'mindmap.topic.insert'; id: MindmapId; input: MindmapTopicInsertInput; node: NodeRecord }
+  | { type: 'mindmap.topic.restore'; id: MindmapId; snapshot: MindmapTopicSnapshot }
   | { type: 'mindmap.topic.move'; id: MindmapId; input: MindmapTopicMoveInput }
   | { type: 'mindmap.topic.delete'; id: MindmapId; input: MindmapTopicDeleteInput }
   | { type: 'mindmap.topic.clone'; id: MindmapId; input: MindmapTopicCloneInput }
@@ -388,7 +511,7 @@ type Op =
   | { type: 'mindmap.topic.collapse'; id: MindmapId; topicId: NodeId; collapsed?: boolean }
 ```
 
-### 3.10 Document 最终写模型
+### 3.11 Document 最终写模型
 
 API 侧最终只依赖下面这几个关键结构：
 
@@ -517,16 +640,19 @@ editor action
 操作：
 
 - 在 `whiteboard-core/src/write/` 下实现 `Op`、`Batch`、`ChangeSet`、`Invalidation`、`ReconcileTask`
+- 在 `whiteboard-core/src/write/inverse.ts` 中实现 inverse builder 和 restore snapshot helpers
 - 实现 `Reducer.apply(...)` 骨架
 - 实现 document/background/canvas/node/edge/group reducers
+- 实现 `node.restore`、`edge.restore`、`group.restore`
 - 实现 `ChangeSet` 归并规则
 - 实现 `Invalidation` 归并规则
-- 实现 `Commit` 和 `ApplyOutput` 使用的基础 builder
+- 实现 `Commit`、`ApplyOutput` 和 `inverse` 使用的基础 builder
 
 完成标准：
 
 - standalone node/edge/group/document 写路径能完全走新 reducer
 - `Reducer.apply(...)` 对外返回 `doc + inverse + changes + invalidation + impact`
+- standalone delete/undo 已经通过显式 `restore` 跑通
 - 不再依赖 low-level patch array 作为正式返回值
 
 ### 5.4 Phase 3: mindmap aggregate 与 reconcile
@@ -539,13 +665,14 @@ editor action
 
 - 在 `whiteboard-core/src/write/reducer/mindmap.ts` 中实现全部 `mindmap.*` op
 - 在 `whiteboard-core/src/write/reconcile.ts` 中实现 `mindmap.layout` task
+- 实现 `mindmap.restore` 和 `mindmap.topic.restore`
 - 让 reconciler 负责 owned topic geometry 收敛
 - 让 reconciler 在 geometry 改写时同步归并 `changes.nodes.update` 和 `invalidation.nodes`
 - 清掉 layout 补偿散落逻辑
 
 完成标准：
 
-- `mindmap.create/delete/root.move/topic.insert/topic.move/topic.delete/topic.clone/topic.patch/topic.collapse` 都能走新 reducer
+- `mindmap.create/delete/restore/root.move/topic.insert/topic.restore/topic.move/topic.delete/topic.clone/topic.patch/topic.collapse` 都能走新 reducer
 - 不再需要 generic handler 手工补 relayout
 - 不再需要 finalizer/dirt-loop 风格的二次调度
 
@@ -603,6 +730,7 @@ editor action
 - 统一 `Commit` shape
 - 让 undo/redo 基于 `inverse`
 - 让 replay/collab 基于 `ops`
+- 让 delete undo 显式基于 `restore` op
 - 把 change notification 切到 `ChangeSet`
 - 把 runtime invalidation 切到 `Invalidation`
 - 清理旧 operation array、旧 helper、旧测试假设

@@ -1,27 +1,23 @@
 import {
-  isEmptyFieldValue
-} from '@dataview/core/field'
-import {
   createDerivedStore,
   createKeyedDerivedStore,
   read,
-  sameIdOrder,
-  sameOrder,
-  sameValue
+  sameOrder
 } from '@shared/core'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
-import type {
-  CardContent,
-  CardProperty
-} from '@dataview/runtime/model/shared'
 import type {
   DataViewKanbanModel,
   KanbanBoard,
   KanbanCard,
   KanbanSection
 } from '@dataview/runtime/model/kanban/types'
+import {
+  createActiveCustomFieldListStore,
+  createItemCardContentStore,
+  createRecordCardPropertiesStore
+} from '@dataview/runtime/model/internal/card'
 
 const sameBoard = (
   left: KanbanBoard | null,
@@ -61,7 +57,7 @@ const sameCard = (
   && left.viewId === right.viewId
   && left.itemId === right.itemId
   && left.recordId === right.recordId
-  && sameIdOrder(left.fields, right.fields)
+  && sameOrder(left.fields, right.fields)
   && left.size === right.size
   && left.layout === right.layout
   && left.wrap === right.wrap
@@ -71,24 +67,6 @@ const sameCard = (
   && left.color === right.color
 )
 
-const sameProperty = (
-  left: CardProperty,
-  right: CardProperty
-) => left.field.id === right.field.id
-  && sameValue(left.value, right.value)
-
-const sameContent = (
-  left: CardContent | undefined,
-  right: CardContent | undefined
-) => left === right || (
-  !!left
-  && !!right
-  && left.titleText === right.titleText
-  && left.placeholderText === right.placeholderText
-  && left.hasProperties === right.hasProperties
-  && sameOrder(left.properties, right.properties, sameProperty)
-)
-
 export const createKanbanModel = (input: {
   source: DataViewSource
   inlineKey: (input: {
@@ -96,15 +74,24 @@ export const createKanbanModel = (input: {
     itemId: number
   }) => string
 }): DataViewKanbanModel => {
+  const customFields = createActiveCustomFieldListStore(input.source)
+  const properties = createRecordCardPropertiesStore({
+    source: input.source,
+    fields: customFields
+  })
   const board = createDerivedStore<KanbanBoard | null>({
     get: () => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'kanban') {
+      if (read(input.source.active.view.type) !== 'kanban') {
+        return null
+      }
+
+      const viewId = read(input.source.active.view.id)
+      if (!viewId) {
         return null
       }
 
       return {
-        viewId: view.id,
+        viewId,
         grouped: read(input.source.active.query.grouped),
         sectionKeys: read(input.source.active.sections.keys),
         groupField: read(input.source.active.query.group).field,
@@ -118,8 +105,7 @@ export const createKanbanModel = (input: {
 
   const section = createKeyedDerivedStore<string, KanbanSection | undefined>({
     get: key => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'kanban') {
+      if (read(input.source.active.view.type) !== 'kanban') {
         return undefined
       }
 
@@ -140,8 +126,12 @@ export const createKanbanModel = (input: {
 
   const card = createKeyedDerivedStore<number, KanbanCard | undefined>({
     get: itemId => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'kanban') {
+      if (read(input.source.active.view.type) !== 'kanban') {
+        return undefined
+      }
+
+      const viewId = read(input.source.active.view.id)
+      if (!viewId) {
         return undefined
       }
 
@@ -151,14 +141,10 @@ export const createKanbanModel = (input: {
       }
 
       return {
-        viewId: view.id,
+        viewId,
         itemId,
         recordId: item.recordId,
-        fields: read(input.source.active.fields.custom.ids)
-          .flatMap(fieldId => {
-            const field = read(input.source.active.fields.custom, fieldId)
-            return field ? [field] : []
-          }),
+        fields: read(customFields),
         size: read(input.source.active.kanban.size),
         layout: read(input.source.active.kanban.layout),
         wrap: read(input.source.active.kanban.wrap),
@@ -170,7 +156,7 @@ export const createKanbanModel = (input: {
         editing: read(
           input.source.inline.editing,
           input.inlineKey({
-            viewId: view.id,
+            viewId,
             itemId
           })
         ),
@@ -182,40 +168,11 @@ export const createKanbanModel = (input: {
     isEqual: sameCard
   })
 
-  const content = createKeyedDerivedStore<number, CardContent | undefined>({
-    get: itemId => {
-      const view = read(input.source.active.view.current)
-      if (!view || view.type !== 'kanban') {
-        return undefined
-      }
-
-      const item = read(input.source.active.items, itemId)
-      const record = item
-        ? read(input.source.doc.records, item.recordId)
-        : undefined
-      if (!item || !record) {
-        return undefined
-      }
-
-      const properties = read(input.source.active.fields.custom.ids)
-        .flatMap(fieldId => {
-          const field = read(input.source.active.fields.custom, fieldId)
-          return field
-            ? [{
-                field,
-                value: record.values[field.id]
-              }]
-            : []
-        })
-
-      return {
-        titleText: record.title,
-        placeholderText: item.recordId,
-        properties,
-        hasProperties: properties.some(property => !isEmptyFieldValue(property.value))
-      }
-    },
-    isEqual: sameContent
+  const content = createItemCardContentStore({
+    source: input.source,
+    viewType: 'kanban',
+    properties,
+    placeholderText: ({ item }) => item.recordId
   })
 
   return {

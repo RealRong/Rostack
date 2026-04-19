@@ -28,6 +28,21 @@ export const createItemArraySelectionDomain = (
   ids: readonly ItemId[]
 ): OrderedSelectionDomain<ItemId> => {
   let idSet: ReadonlySet<ItemId> | null = null
+  let indexById: ReadonlyMap<ItemId, number> | null = null
+
+  const ensureIndexById = () => {
+    if (!indexById) {
+      indexById = new Map(
+        ids.map((id, index) => [id, index] as const)
+      )
+    }
+
+    return indexById
+  }
+
+  const getIndex = (
+    id: ItemId
+  ) => ensureIndexById().get(id)
 
   return {
     count: ids.length,
@@ -39,28 +54,26 @@ export const createItemArraySelectionDomain = (
       return idSet.has(id)
     },
     indexOf: id => {
-      const index = ids.indexOf(id)
-      return index === -1
-        ? undefined
-        : index
+      const index = getIndex(id)
+      return index === undefined ? undefined : index
     },
     at: index => ids[index],
     prev: id => {
-      const index = ids.indexOf(id)
-      return index > 0
+      const index = getIndex(id)
+      return index !== undefined && index > 0
         ? ids[index - 1]
         : undefined
     },
     next: id => {
-      const index = ids.indexOf(id)
-      return index >= 0
+      const index = getIndex(id)
+      return index !== undefined
         ? ids[index + 1]
         : undefined
     },
     range: (anchor, focus) => {
-      const anchorIndex = ids.indexOf(anchor)
-      const focusIndex = ids.indexOf(focus)
-      if (anchorIndex === -1 || focusIndex === -1) {
+      const anchorIndex = getIndex(anchor)
+      const focusIndex = getIndex(focus)
+      if (anchorIndex === undefined || focusIndex === undefined) {
         return []
       }
 

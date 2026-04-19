@@ -24,7 +24,7 @@ const createTextDocument = () => {
       text: 'hello world'
     }
   }
-  document.order = [{
+  document.canvas.order = [{
     kind: 'node',
     id: 'text-1'
   }]

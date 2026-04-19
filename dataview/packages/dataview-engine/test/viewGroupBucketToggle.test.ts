@@ -800,6 +800,119 @@ test('engine.active.records.create derives supported filter defaults', () => {
   assert.deepEqual(readViewState(engine)?.records.visible, ['rec_2', createdId])
 })
 
+test('engine.active.records.create supports multiple concrete select filters', () => {
+  const fieldA = 'select_1'
+  const fieldB = 'select_2'
+  const fieldC = 'select_3'
+  const fields = [
+    {
+      id: fieldA,
+      name: 'Select 1',
+      kind: 'select',
+      options: [
+        {
+          id: 'option_1',
+          name: 'Option 1',
+          color: 'red'
+        }
+      ]
+    },
+    {
+      id: fieldB,
+      name: 'Select 2',
+      kind: 'select',
+      options: [
+        {
+          id: 'option_2',
+          name: 'Option 2',
+          color: 'blue'
+        }
+      ]
+    },
+    {
+      id: fieldC,
+      name: 'Select 3',
+      kind: 'select',
+      options: [
+        {
+          id: 'option_3',
+          name: 'Option 3',
+          color: 'green'
+        }
+      ]
+    }
+  ]
+
+  const engine = createEngineForTest({
+    document: {
+      schemaVersion: 1,
+      fields: createFieldTable(fields),
+      views: {
+        byId: {
+          [VIEW_TABLE]: {
+            id: VIEW_TABLE,
+            type: 'table',
+            name: 'Tasks',
+            filter: {
+              mode: 'and',
+              rules: []
+            },
+            search: {
+              query: ''
+            },
+            sort: [],
+            calc: {},
+            display: {
+              fields: [TITLE_FIELD_ID, fieldA, fieldB, fieldC]
+            },
+            options: {
+              ...createDefaultViewOptions('table', fields)
+            },
+            orders: []
+          }
+        },
+        order: [VIEW_TABLE]
+      },
+      records: {
+        byId: {},
+        order: []
+      },
+      meta: {}
+    }
+  })
+
+  openView(engine, VIEW_TABLE).filters.add(fieldA)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: fieldA,
+    presetId: 'eq',
+    value: createFilterOptionSetValue(['option_1'])
+  })
+  openView(engine, VIEW_TABLE).filters.add(fieldB)
+  openView(engine, VIEW_TABLE).filters.update(1, {
+    fieldId: fieldB,
+    presetId: 'eq',
+    value: createFilterOptionSetValue(['option_2'])
+  })
+  openView(engine, VIEW_TABLE).filters.add(fieldC)
+  openView(engine, VIEW_TABLE).filters.update(2, {
+    fieldId: fieldC,
+    presetId: 'eq',
+    value: createFilterOptionSetValue(['option_3'])
+  })
+
+  const createdId = openView(engine, VIEW_TABLE).records.create({
+    set: {
+      [TITLE_FIELD_ID]: 'Filtered'
+    }
+  })
+
+  assert.ok(createdId)
+  assert.equal(engine.records.get(createdId)?.values[fieldA], 'option_1')
+  assert.equal(engine.records.get(createdId)?.values[fieldB], 'option_2')
+  assert.equal(engine.records.get(createdId)?.values[fieldC], 'option_3')
+  assert.deepEqual(readViewState(engine)?.records.visible, [createdId])
+})
+
 test('engine.active.records.create resolves grouped status against multi-option filters', () => {
   const engine = createEngineForTest({
     document: createDocument()

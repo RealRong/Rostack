@@ -102,7 +102,7 @@ const buildLayoutOperations = (
     }
 
     operations.push(
-      createNodeFieldsUpdateOperation(update.id, {
+      ...createNodeFieldsUpdateOperation(update.id, {
         position: update.position
       })
     )

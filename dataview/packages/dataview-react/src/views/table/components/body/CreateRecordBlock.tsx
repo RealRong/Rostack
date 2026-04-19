@@ -15,11 +15,6 @@ import { fieldAnchor } from '@dataview/react/dom/field'
 import { useDataView } from '@dataview/react/dataview'
 import { useTranslation } from '@shared/i18n/react'
 import { useTableContext } from '@dataview/react/views/table/context'
-import {
-  TABLE_CELL_BLOCK_PADDING,
-  TABLE_CELL_INLINE_PADDING,
-  TABLE_TRAILING_ACTION_WIDTH
-} from '@dataview/react/views/table/layout'
 import { cn } from '@shared/ui/utils'
 import { Button } from '@shared/ui/button'
 import { PlusIcon } from 'lucide-react'
@@ -55,7 +50,8 @@ const View = (props: CreateRecordBlockProps) => {
   const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   const openCreatedRecord = useCallback((
-    recordId: string
+    recordId: string,
+    _attempt: number
   ): CreateRecordOpenResult => {
     const currentView = table.currentView.get()
     if (!currentView) {
@@ -70,7 +66,7 @@ const View = (props: CreateRecordBlockProps) => {
     const selectionFieldId = currentView.fields.has(TITLE_FIELD_ID)
       ? TITLE_FIELD_ID
       : currentView.fields.ids[0] ?? TITLE_FIELD_ID
-    table.openCell({
+    return table.openCell({
       cell: {
         itemId,
         fieldId: TITLE_FIELD_ID
@@ -85,7 +81,8 @@ const View = (props: CreateRecordBlockProps) => {
       retryFrames: MAX_OPEN_ATTEMPTS,
       seedDraft: ''
     })
-    return 'opened'
+      ? 'opened'
+      : 'retry'
   }, [table])
 
   const onCreate = useCallback(() => {
@@ -96,7 +93,7 @@ const View = (props: CreateRecordBlockProps) => {
       create: () => dataView.engine.active.records.create({
         sectionKey: props.sectionKey
       }),
-      open: recordId => openCreatedRecord(recordId),
+      open: (recordId, attempt) => openCreatedRecord(recordId, attempt),
       retryFrames: MAX_OPEN_ATTEMPTS,
       onFailure: table.focus
     })

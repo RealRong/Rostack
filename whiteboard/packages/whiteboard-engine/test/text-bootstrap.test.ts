@@ -16,7 +16,7 @@ test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () =>
       text: 'hello'
     }
   }
-  document.order = [{
+  document.canvas.order = [{
     kind: 'node',
     id: 'node_1'
   }]

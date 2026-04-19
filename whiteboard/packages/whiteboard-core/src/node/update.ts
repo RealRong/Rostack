@@ -1,17 +1,18 @@
 import type {
+  NodeField,
   Node,
   NodeFieldPatch,
   NodeId,
   NodePatch,
   NodeRecordMutation,
+  NodeUnsetField,
   NodeUpdateInput,
   Operation
 } from '@whiteboard/core/types'
 import {
   applyPathMutation,
-  isObjectContainer
+  isRecordLike
 } from '@whiteboard/core/utils/recordMutation'
-import { getValueByPath } from '@whiteboard/core/utils/objectPath'
 import { cloneValue } from '@whiteboard/core/value'
 
 export type NodeUpdateImpact = {
@@ -115,7 +116,7 @@ const inspectRecordPath = (
       parentIsArray: false
     }
   }
-  if (!isObjectContainer(current)) {
+  if (!isRecordLike(current)) {
     return {
       canAddressPath: false,
       exists: false,
@@ -137,7 +138,7 @@ const inspectRecordPath = (
     }
 
     const nextValue = container[part]
-    if (!isObjectContainer(nextValue)) {
+    if (!isRecordLike(nextValue)) {
       return {
         canAddressPath: false,
         exists: false,
@@ -219,36 +220,6 @@ const buildUnsetRecordInverse = (
   }
 }
 
-const buildSpliceRecordInverse = (
-  current: unknown,
-  mutation: Extract<NodeRecordMutation, { op: 'splice' }>
-): { ok: true; record: NodeRecordMutation } | { ok: false; message: string } => {
-  const target = getValueByPath(current, mutation.path)
-  if (!Array.isArray(target)) {
-    return {
-      ok: false,
-      message: `Path "${mutation.path}" is not an array.`
-    }
-  }
-
-  const removed = target.slice(
-    mutation.index,
-    mutation.index + mutation.deleteCount
-  )
-
-  return {
-    ok: true,
-    record: {
-      scope: mutation.scope,
-      op: 'splice',
-      path: mutation.path,
-      index: mutation.index,
-      deleteCount: mutation.values?.length ?? 0,
-      values: cloneValue(removed)
-    }
-  }
-}
-
 const buildRecordInverse = (
   current: unknown,
   mutation: NodeRecordMutation
@@ -262,7 +233,10 @@ const buildRecordInverse = (
   if (mutation.op === 'unset') {
     return buildUnsetRecordInverse(current, mutation)
   }
-  return buildSpliceRecordInverse(current, mutation)
+  return {
+    ok: true,
+    record: buildSetRecordInverse(current, mutation)
+  }
 }
 
 export const isNodeUpdateEmpty = (update: NodeUpdateInput): boolean =>
@@ -279,24 +253,71 @@ const compactNodeUpdateInput = (
 export const createNodeUpdateOperation = (
   id: NodeId,
   update: NodeUpdateInput
-): Extract<Operation, { type: 'node.patch' }> => {
+): Operation[] => {
   const compact = compactNodeUpdateInput(update)
-  const applied = applyNodeUpdate({
-    id,
-    type: 'text',
-    position: { x: 0, y: 0 }
-  }, compact)
-  return {
-    type: 'node.patch',
-    id,
-    patch: applied.ok ? applied.patch : applyFieldPatch(compact.fields)
+  const operations: Operation[] = []
+  const fieldByKey: Record<keyof NodeFieldPatch, NodeField> = {
+    position: 'position',
+    size: 'size',
+    rotation: 'rotation',
+    layer: 'layer',
+    zIndex: 'zIndex',
+    groupId: 'groupId',
+    owner: 'owner',
+    locked: 'locked'
   }
+
+  for (const key of NODE_FIELD_KEYS) {
+    if (!compact.fields || !hasOwn(compact.fields, key)) {
+      continue
+    }
+
+    const field = fieldByKey[key]
+    const value = compact.fields[key]
+    if (value === undefined && field !== 'position') {
+      operations.push({
+        type: 'node.field.unset',
+        id,
+        field: field as NodeUnsetField
+      })
+      continue
+    }
+
+    operations.push({
+      type: 'node.field.set',
+      id,
+      field,
+      value: cloneValue(value)
+    })
+  }
+
+  for (const record of compact.records ?? []) {
+    if (record.op === 'unset') {
+      operations.push({
+        type: 'node.record.unset',
+        id,
+        scope: record.scope,
+        path: record.path
+      })
+      continue
+    }
+
+    operations.push({
+      type: 'node.record.set',
+      id,
+      scope: record.scope,
+      path: record.path ?? '',
+      value: cloneValue(record.value)
+    })
+  }
+
+  return operations
 }
 
 export const createNodeFieldsUpdateOperation = (
   id: NodeId,
   fields: NodeFieldPatch
-): Extract<Operation, { type: 'node.patch' }> =>
+): Operation[] =>
   createNodeUpdateOperation(id, { fields })
 
 export const classifyNodeUpdate = (

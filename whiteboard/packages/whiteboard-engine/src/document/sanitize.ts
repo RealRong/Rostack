@@ -1,6 +1,5 @@
 import { isSizeEqual } from '@whiteboard/core/geometry'
 import {
-  isNodeUpdateEmpty,
   resolveNodeBootstrapSize
 } from '@whiteboard/core/node'
 import type {
@@ -62,16 +61,6 @@ export const sanitizeOperations = ({
           return
         }
 
-        next.push(operation)
-        return
-      }
-      case 'node.patch': {
-        if (isNodeUpdateEmpty({
-          fields: operation.patch,
-          records: undefined
-        })) {
-          return
-        }
         next.push(operation)
         return
       }

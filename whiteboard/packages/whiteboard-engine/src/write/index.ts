@@ -105,6 +105,7 @@ export const createWrite = ({
   const ids = {
     node: (): NodeId => createId('node'),
     edge: (): EdgeId => createId('edge'),
+    edgeRoutePoint: (): string => createId('edge_point'),
     group: (): GroupId => createId('group'),
     mindmap: (): MindmapId => createId('mindmap'),
     mindmapNode: (): NodeId => createId('mnode')

@@ -79,7 +79,7 @@ const createLockedDocument = () => {
   document.nodes[lockedNode.id] = lockedNode
   document.nodes[freeNode.id] = freeNode
   document.edges[edge.id] = edge
-  document.order = [
+  document.canvas.order = [
     {
       kind: 'node',
       id: lockedNode.id
@@ -119,7 +119,7 @@ const createEdgeLockedDocument = () => {
   document.nodes[firstNode.id] = firstNode
   document.nodes[secondNode.id] = secondNode
   document.edges[edge.id] = edge
-  document.order = [
+  document.canvas.order = [
     {
       kind: 'node',
       id: firstNode.id
@@ -231,11 +231,10 @@ test('engine allows remote unlock then delete in the same operation batch', () =
   const result = engine.apply({
     ops: [
       {
-        type: 'node.patch',
+        type: 'node.field.set',
         id: 'node_locked',
-        patch: {
-          locked: false
-        }
+        field: 'locked',
+        value: false
       },
       {
         type: 'node.delete',
@@ -284,18 +283,16 @@ test('engine allows remote unlock then edge update in the same batch', () => {
   const result = engine.apply({
     ops: [
       {
-        type: 'edge.patch',
+        type: 'edge.field.set',
         id: 'edge_locked',
-        patch: {
-          locked: false
-        }
+        field: 'locked',
+        value: false
       },
       {
-        type: 'edge.patch',
+        type: 'edge.field.set',
         id: 'edge_locked',
-        patch: {
-          textMode: 'tangent'
-        }
+        field: 'textMode',
+        value: 'tangent'
       }
     ]
   }, {

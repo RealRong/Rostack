@@ -7,6 +7,7 @@ import type {
   Edge,
   EdgeId,
   EdgeInput,
+  EdgeRoutePoint,
   EdgePatch,
   Point
 } from '@whiteboard/core/types'
@@ -21,6 +22,7 @@ type BuildEdgeCreateOperationInput = {
   doc: Document
   registries: CoreRegistries
   createEdgeId: () => EdgeId
+  createEdgeRoutePointId: () => string
 }
 
 const createRoutePatch = (
@@ -68,7 +70,8 @@ export const buildEdgeCreateOperation = ({
   payload,
   doc,
   registries,
-  createEdgeId
+  createEdgeId,
+  createEdgeRoutePointId
 }: BuildEdgeCreateOperationInput): EdgeCreateOperationResult => {
   if (!payload.source || !payload.target) {
     return err('invalid', 'Missing edge ends.')
@@ -101,6 +104,20 @@ export const buildEdgeCreateOperation = ({
 
   const normalized = applyEdgeDefaults(payload, registries)
   const id = normalized.id ?? createEdgeId()
+  const route = normalized.route?.kind === 'manual'
+    ? {
+        kind: 'manual' as const,
+        points: normalized.route.points.map<EdgeRoutePoint>((point) => ({
+          id: createEdgeRoutePointId(),
+          x: point.x,
+          y: point.y
+        }))
+      }
+    : normalized.route
+      ? {
+          kind: 'auto' as const
+        }
+      : undefined
 
   return ok({
     edgeId: id,
@@ -109,7 +126,8 @@ export const buildEdgeCreateOperation = ({
       edge: {
         ...normalized,
         id,
-        type: normalized.type ?? 'straight'
+        type: normalized.type ?? 'straight',
+        route
       }
     }
   })
@@ -121,7 +139,10 @@ export const insertRoutePoint = (
   pointWorld: Point
 ): InsertRoutePointResult => {
   const basePoints = isManualEdgeRoute(edge.route)
-    ? edge.route.points
+    ? edge.route.points.map((point) => ({
+        x: point.x,
+        y: point.y
+      }))
     : []
   const nextInsertIndex = Math.max(0, Math.min(insertIndex, basePoints.length))
   const nextPoints = [...basePoints]

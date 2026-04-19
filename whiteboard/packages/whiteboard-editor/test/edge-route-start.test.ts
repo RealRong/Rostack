@@ -20,6 +20,7 @@ const createManualRouteEdge = (): Edge => ({
   route: {
     kind: 'manual',
     points: [{
+      id: 'point-1',
       x: 20,
       y: 20
     }]
@@ -52,6 +53,7 @@ describe('stepEdgeRoute', () => {
     expect(applyEdgePatch(edge, second.draft?.patch).route).toEqual({
       kind: 'manual',
       points: [{
+        id: 'point-1',
         x: 30,
         y: 35
       }]

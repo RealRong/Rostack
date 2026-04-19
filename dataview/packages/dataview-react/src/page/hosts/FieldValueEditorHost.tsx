@@ -7,6 +7,9 @@ import {
   useState
 } from 'react'
 import {
+  getDocumentTitleField
+} from '@dataview/core/document'
+import {
   isTitleFieldId
 } from '@dataview/core/field'
 import {
@@ -48,6 +51,13 @@ const clamp = (
   max: number
 ) => Math.max(min, Math.min(value, max))
 
+export const resolveFieldValueEditorField = (input: {
+  fieldId?: string
+  customField?: Parameters<typeof getFieldValueSpec>[0]
+}) => (input.fieldId && isTitleFieldId(input.fieldId))
+  ? getDocumentTitleField()
+  : input.customField
+
 export const resolveFieldValueEditorPosition = (input: {
   anchor: ValueEditorSession['anchor']
   viewportWidth: number
@@ -86,11 +96,18 @@ export const FieldValueEditorHost = () => {
   const valueEditor = dataView.session.editing.valueEditor
   const session = useStoreValue(valueEditor.store)
   const field = session?.field
-  const valueField = useOptionalKeyedStoreValue(
+  const fieldId = field?.fieldId
+  const customField = useOptionalKeyedStoreValue(
     engine.source.doc.fields,
-    field?.fieldId,
+    (fieldId && !isTitleFieldId(fieldId))
+      ? fieldId
+      : undefined,
     undefined
   )
+  const valueField = resolveFieldValueEditorField({
+    fieldId,
+    customField
+  })
   const record = useOptionalKeyedStoreValue(
     engine.source.doc.records,
     field?.recordId,

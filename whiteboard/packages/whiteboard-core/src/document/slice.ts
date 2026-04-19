@@ -355,7 +355,20 @@ const translateEdge = (
         kind: 'point',
         point: offsetPoint(edge.target.point, delta)
       },
-  route: remapEdgeRoute(edge.route, delta)
+  route: edge.route?.kind === 'manual'
+    ? {
+        kind: 'manual',
+        points: edge.route.points.map((point) => ({
+          id: point.id,
+          x: point.x + delta.x,
+          y: point.y + delta.y
+        }))
+      }
+    : edge.route
+      ? {
+          kind: 'auto'
+        }
+      : undefined
 })
 
 export const getSliceBounds = (
@@ -858,7 +871,8 @@ export const buildInsertSliceOperations = ({
       payload,
       doc: withCreatedEdges(withCreatedNodes(doc, duplicatedNodeOperations), duplicatedEdgeOperations),
       registries,
-      createEdgeId: () => nextEdgeId
+      createEdgeId: () => nextEdgeId,
+      createEdgeRoutePointId: () => createId('edge_point')
     })
     if (!planned.ok) {
       return err('invalid', planned.error.message, planned.error.details)

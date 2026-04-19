@@ -81,7 +81,7 @@ const createTextEditor = () => {
       text: 'Hello'
     }
   }
-  document.order = [{
+  document.canvas.order = [{
     kind: 'node',
     id: 'text-1'
   }]
@@ -140,7 +140,7 @@ const createMindmapEditor = () => {
       text: 'Central topic'
     }
   }
-  document.order = [{
+  document.canvas.order = [{
     kind: 'node',
     id: 'mind-1'
   }]
@@ -190,7 +190,7 @@ const createEdgeEditor = () => {
       text: 'Label'
     }]
   }
-  document.order = [
+  document.canvas.order = [
     {
       kind: 'node',
       id: 'node-1'

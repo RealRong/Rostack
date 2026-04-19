@@ -66,13 +66,20 @@ export const applyEdgePatch = (
   }
 
   if (patch.route && patch.route !== next.route) {
+    const currentPoints = next.route?.kind === 'manual'
+      ? next.route.points
+      : []
     next = {
       ...next,
       route:
         patch.route.kind === 'manual'
           ? {
               kind: 'manual',
-              points: [...patch.route.points]
+              points: patch.route.points.map((point, index) => ({
+                id: currentPoints[index]?.id ?? `preview:${index}`,
+                x: point.x,
+                y: point.y
+              }))
             }
           : {
               kind: 'auto'

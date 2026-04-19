@@ -9,12 +9,8 @@ import {
 } from '@whiteboard/core/document'
 import {
   buildEdgeCreateOperation,
-  clearRoute,
-  insertRoutePoint,
   moveEdge,
-  moveEdgeRoute,
-  moveRoutePoint,
-  removeRoutePoint
+  sameEdgeEnd
 } from '@whiteboard/core/edge'
 import {
   instantiateMindmapTemplate
@@ -24,29 +20,38 @@ import {
   buildNodeAlignOperations,
   buildNodeCreateOperation,
   buildNodeDistributeOperations,
-  applyNodeUpdate
+  createNodeUpdateOperation
 } from '@whiteboard/core/node'
 import type {
+  CanvasItemRef,
   CoreRegistries,
   Document,
+  Edge,
+  EdgeLabel,
+  EdgePatch,
   EdgeId,
+  EdgeRoutePoint,
   GroupId,
   MindmapCreateInput,
   MindmapId,
+  MindmapTopicField,
   MindmapInsertPayload,
   Node,
   NodeId,
   NodeInput,
-  NodePatch,
+  NodeRecordScope,
+  Point,
   Operation
 } from '@whiteboard/core/types'
 import { err, ok } from '@whiteboard/core/result'
 import type { Result } from '@whiteboard/core/types/result'
+import { isValueEqual } from '@whiteboard/core/value'
 import type { EngineCommand } from '@whiteboard/engine/types/command'
 
 type IdAllocator = {
   node: () => NodeId
   edge: () => EdgeId
+  edgeRoutePoint: () => string
   group: () => GroupId
   mindmap: () => MindmapId
   mindmapNode: () => NodeId
@@ -207,6 +212,637 @@ const reorderRefs = (
   return items
 }
 
+const hasOwn = <T extends object>(
+  target: T,
+  key: PropertyKey
+) => Object.prototype.hasOwnProperty.call(target, key)
+
+const sameCanvasRef = (
+  left: CanvasItemRef,
+  right: CanvasItemRef
+) => left.kind === right.kind && left.id === right.id
+
+const planCanvasOrderOperations = (
+  current: readonly CanvasItemRef[],
+  target: readonly CanvasItemRef[]
+): Operation[] => {
+  const working = [...current]
+  const operations: Operation[] = []
+
+  for (let index = 0; index < target.length; index += 1) {
+    const ref = target[index]!
+    if (sameCanvasRef(working[index] ?? { kind: ref.kind, id: '' }, ref)) {
+      continue
+    }
+
+    const currentIndex = working.findIndex((entry) => sameCanvasRef(entry, ref))
+    if (currentIndex < 0) {
+      continue
+    }
+
+    working.splice(currentIndex, 1)
+    working.splice(index, 0, ref)
+    operations.push({
+      type: 'canvas.order.move',
+      refs: [ref],
+      to: index === 0
+        ? { kind: 'front' }
+        : {
+            kind: 'after',
+            ref: target[index - 1]!
+          }
+    })
+  }
+
+  return operations
+}
+
+const isRecordTree = (
+  value: unknown
+): value is Record<string, unknown> => (
+  typeof value === 'object'
+  && value !== null
+  && !Array.isArray(value)
+)
+
+const appendRecordSetOperations = (
+  path: string,
+  value: unknown,
+  emitSet: (path: string, value: unknown) => void
+) => {
+  if (isRecordTree(value) && Object.keys(value).length > 0) {
+    Object.entries(value).forEach(([key, entry]) => {
+      appendRecordSetOperations(
+        path ? `${path}.${key}` : key,
+        entry,
+        emitSet
+      )
+    })
+    return
+  }
+
+  if (!path) {
+    return
+  }
+
+  emitSet(path, value)
+}
+
+const appendRecordUnsetOperations = (
+  path: string,
+  value: unknown,
+  emitUnset: (path: string) => void
+) => {
+  if (isRecordTree(value) && Object.keys(value).length > 0) {
+    Object.entries(value).forEach(([key, entry]) => {
+      appendRecordUnsetOperations(
+        path ? `${path}.${key}` : key,
+        entry,
+        emitUnset
+      )
+    })
+    return
+  }
+
+  if (!path) {
+    return
+  }
+
+  emitUnset(path)
+}
+
+const diffRecordTrees = ({
+  current,
+  next,
+  emitSet,
+  emitUnset,
+  path = ''
+}: {
+  current: unknown
+  next: unknown
+  emitSet: (path: string, value: unknown) => void
+  emitUnset: (path: string) => void
+  path?: string
+}) => {
+  if (isValueEqual(current, next)) {
+    return
+  }
+
+  if (isRecordTree(current) && isRecordTree(next)) {
+    const keys = new Set([
+      ...Object.keys(current),
+      ...Object.keys(next)
+    ])
+
+    keys.forEach((key) => {
+      const childPath = path ? `${path}.${key}` : key
+      if (!hasOwn(next, key)) {
+        appendRecordUnsetOperations(childPath, current[key], emitUnset)
+        return
+      }
+      if (!hasOwn(current, key)) {
+        appendRecordSetOperations(childPath, next[key], emitSet)
+        return
+      }
+      diffRecordTrees({
+        current: current[key],
+        next: next[key],
+        emitSet,
+        emitUnset,
+        path: childPath
+      })
+    })
+    return
+  }
+
+  if (next === undefined) {
+    appendRecordUnsetOperations(path, current, emitUnset)
+    return
+  }
+
+  if (!path) {
+    appendRecordSetOperations(path, next, emitSet)
+    return
+  }
+
+  emitSet(path, next)
+}
+
+const diffNodeRecordOperations = (
+  operations: Operation[],
+  nodeId: NodeId,
+  scope: NodeRecordScope,
+  current: unknown,
+  next: unknown
+) => {
+  diffRecordTrees({
+    current,
+    next,
+    emitSet: (path, value) => {
+      operations.push({
+        type: 'node.record.set',
+        id: nodeId,
+        scope,
+        path,
+        value
+      })
+    },
+    emitUnset: (path) => {
+      operations.push({
+        type: 'node.record.unset',
+        id: nodeId,
+        scope,
+        path
+      })
+    }
+  })
+}
+
+const diffEdgeRecordOperations = (
+  operations: Operation[],
+  edgeId: EdgeId,
+  scope: 'data' | 'style',
+  current: unknown,
+  next: unknown
+) => {
+  diffRecordTrees({
+    current,
+    next,
+    emitSet: (path, value) => {
+      operations.push({
+        type: 'edge.record.set',
+        id: edgeId,
+        scope,
+        path,
+        value
+      })
+    },
+    emitUnset: (path) => {
+      operations.push({
+        type: 'edge.record.unset',
+        id: edgeId,
+        scope,
+        path
+      })
+    }
+  })
+}
+
+const diffEdgeLabelRecordOperations = (
+  operations: Operation[],
+  edgeId: EdgeId,
+  labelId: string,
+  scope: 'data' | 'style',
+  current: unknown,
+  next: unknown
+) => {
+  diffRecordTrees({
+    current,
+    next,
+    emitSet: (path, value) => {
+      operations.push({
+        type: 'edge.label.record.set',
+        edgeId,
+        labelId,
+        scope,
+        path,
+        value
+      })
+    },
+    emitUnset: (path) => {
+      operations.push({
+        type: 'edge.label.record.unset',
+        edgeId,
+        labelId,
+        scope,
+        path
+      })
+    }
+  })
+}
+
+const diffMindmapTopicRecordOperations = (
+  operations: Operation[],
+  mindmapId: MindmapId,
+  topicId: NodeId,
+  scope: 'data' | 'style',
+  current: unknown,
+  next: unknown
+) => {
+  diffRecordTrees({
+    current,
+    next,
+    emitSet: (path, value) => {
+      operations.push({
+        type: 'mindmap.topic.record.set',
+        id: mindmapId,
+        topicId,
+        scope,
+        path,
+        value
+      })
+    },
+    emitUnset: (path) => {
+      operations.push({
+        type: 'mindmap.topic.record.unset',
+        id: mindmapId,
+        topicId,
+        scope,
+        path
+      })
+    }
+  })
+}
+
+const planEdgeLabelOperations = (
+  edgeId: EdgeId,
+  currentLabels: readonly EdgeLabel[],
+  nextLabels: readonly EdgeLabel[]
+): Operation[] => {
+  const operations: Operation[] = []
+  const currentMap = new Map(currentLabels.map((label) => [label.id, label] as const))
+  const nextMap = new Map(nextLabels.map((label) => [label.id, label] as const))
+  const working = currentLabels
+    .filter((label) => nextMap.has(label.id))
+    .map((label) => label.id)
+
+  currentLabels.forEach((label) => {
+    if (!nextMap.has(label.id)) {
+      operations.push({
+        type: 'edge.label.delete',
+        edgeId,
+        labelId: label.id
+      })
+    }
+  })
+
+  nextLabels.forEach((label, index) => {
+    const to = index === 0
+      ? { kind: 'start' as const }
+      : {
+          kind: 'after' as const,
+          labelId: nextLabels[index - 1]!.id
+        }
+
+    if (!currentMap.has(label.id)) {
+      operations.push({
+        type: 'edge.label.insert',
+        edgeId,
+        label,
+        to
+      })
+      working.splice(index, 0, label.id)
+      return
+    }
+
+    const currentIndex = working.indexOf(label.id)
+    if (currentIndex >= 0 && currentIndex !== index) {
+      operations.push({
+        type: 'edge.label.move',
+        edgeId,
+        labelId: label.id,
+        to
+      })
+      working.splice(currentIndex, 1)
+      working.splice(index, 0, label.id)
+    }
+  })
+
+  nextLabels.forEach((label) => {
+    const current = currentMap.get(label.id)
+    if (!current) {
+      return
+    }
+
+    ;(['text', 't', 'offset'] as const).forEach((field) => {
+      if (current[field] === label[field]) {
+        return
+      }
+      if (label[field] === undefined) {
+        operations.push({
+          type: 'edge.label.field.unset',
+          edgeId,
+          labelId: label.id,
+          field
+        })
+        return
+      }
+      operations.push({
+        type: 'edge.label.field.set',
+        edgeId,
+        labelId: label.id,
+        field,
+        value: label[field]
+      })
+    })
+
+    diffEdgeLabelRecordOperations(
+      operations,
+      edgeId,
+      label.id,
+      'style',
+      current.style,
+      label.style
+    )
+    diffEdgeLabelRecordOperations(
+      operations,
+      edgeId,
+      label.id,
+      'data',
+      current.data,
+      label.data
+    )
+  })
+
+  return operations
+}
+
+const planEdgeRouteOperations = (
+  edgeId: EdgeId,
+  currentPoints: readonly EdgeRoutePoint[],
+  nextPoints: readonly Point[],
+  ctx: PlannerContext
+): Operation[] => {
+  const operations: Operation[] = []
+  const samePoint = (left: Point | undefined, right: Point | undefined) => (
+    left?.x === right?.x && left?.y === right?.y
+  )
+
+  let prefix = 0
+  while (
+    prefix < currentPoints.length
+    && prefix < nextPoints.length
+    && samePoint(currentPoints[prefix], nextPoints[prefix])
+  ) {
+    prefix += 1
+  }
+
+  let suffix = 0
+  while (
+    suffix + prefix < currentPoints.length
+    && suffix + prefix < nextPoints.length
+    && samePoint(
+      currentPoints[currentPoints.length - 1 - suffix],
+      nextPoints[nextPoints.length - 1 - suffix]
+    )
+  ) {
+    suffix += 1
+  }
+
+  const currentMiddle = currentPoints.slice(prefix, currentPoints.length - suffix)
+  const nextMiddle = nextPoints.slice(prefix, nextPoints.length - suffix)
+
+  if (currentMiddle.length === 0 && nextMiddle.length === 0) {
+    return operations
+  }
+
+  if (currentMiddle.length === 0) {
+    let to: Extract<Operation, { type: 'edge.route.point.insert' }>['to'] = prefix === 0
+      ? { kind: 'start' }
+      : {
+          kind: 'after',
+          pointId: currentPoints[prefix - 1]!.id
+        }
+
+    nextMiddle.forEach((point) => {
+      const routePoint: EdgeRoutePoint = {
+        id: ctx.ids.edgeRoutePoint(),
+        x: point.x,
+        y: point.y
+      }
+      operations.push({
+        type: 'edge.route.point.insert',
+        edgeId,
+        point: routePoint,
+        to
+      })
+      to = {
+        kind: 'after',
+        pointId: routePoint.id
+      }
+    })
+    return operations
+  }
+
+  if (nextMiddle.length === 0) {
+    currentMiddle.forEach((point) => {
+      operations.push({
+        type: 'edge.route.point.delete',
+        edgeId,
+        pointId: point.id
+      })
+    })
+    return operations
+  }
+
+  if (currentMiddle.length === nextMiddle.length) {
+    currentMiddle.forEach((point, index) => {
+      const nextPoint = nextMiddle[index]!
+      if (point.x !== nextPoint.x) {
+        operations.push({
+          type: 'edge.route.point.field.set',
+          edgeId,
+          pointId: point.id,
+          field: 'x',
+          value: nextPoint.x
+        })
+      }
+      if (point.y !== nextPoint.y) {
+        operations.push({
+          type: 'edge.route.point.field.set',
+          edgeId,
+          pointId: point.id,
+          field: 'y',
+          value: nextPoint.y
+        })
+      }
+    })
+    return operations
+  }
+
+  currentPoints.forEach((point) => {
+    operations.push({
+      type: 'edge.route.point.delete',
+      edgeId,
+      pointId: point.id
+    })
+  })
+
+  let to: Extract<Operation, { type: 'edge.route.point.insert' }>['to'] = { kind: 'start' }
+  nextPoints.forEach((point) => {
+    const routePoint: EdgeRoutePoint = {
+      id: ctx.ids.edgeRoutePoint(),
+      x: point.x,
+      y: point.y
+    }
+    operations.push({
+      type: 'edge.route.point.insert',
+      edgeId,
+      point: routePoint,
+      to
+    })
+    to = {
+      kind: 'after',
+      pointId: routePoint.id
+    }
+  })
+
+  return operations
+}
+
+const compileEdgePatchOperations = (
+  edge: Edge,
+  patch: EdgePatch,
+  ctx: PlannerContext
+): Operation[] => {
+  const operations: Operation[] = []
+
+  if (hasOwn(patch, 'source') && patch.source && !sameEdgeEnd(edge.source, patch.source)) {
+    operations.push({
+      type: 'edge.field.set',
+      id: edge.id,
+      field: 'source',
+      value: patch.source
+    })
+  }
+
+  if (hasOwn(patch, 'target') && patch.target && !sameEdgeEnd(edge.target, patch.target)) {
+    operations.push({
+      type: 'edge.field.set',
+      id: edge.id,
+      field: 'target',
+      value: patch.target
+    })
+  }
+
+  if (hasOwn(patch, 'type') && patch.type && edge.type !== patch.type) {
+    operations.push({
+      type: 'edge.field.set',
+      id: edge.id,
+      field: 'type',
+      value: patch.type
+    })
+  }
+
+  if (hasOwn(patch, 'locked') && edge.locked !== patch.locked) {
+    if (patch.locked === undefined) {
+      operations.push({
+        type: 'edge.field.unset',
+        id: edge.id,
+        field: 'locked'
+      })
+    } else {
+      operations.push({
+        type: 'edge.field.set',
+        id: edge.id,
+        field: 'locked',
+        value: patch.locked
+      })
+    }
+  }
+
+  if (hasOwn(patch, 'groupId') && edge.groupId !== patch.groupId) {
+    if (patch.groupId === undefined) {
+      operations.push({
+        type: 'edge.field.unset',
+        id: edge.id,
+        field: 'groupId'
+      })
+    } else {
+      operations.push({
+        type: 'edge.field.set',
+        id: edge.id,
+        field: 'groupId',
+        value: patch.groupId
+      })
+    }
+  }
+
+  if (hasOwn(patch, 'textMode') && edge.textMode !== patch.textMode) {
+    if (patch.textMode === undefined) {
+      operations.push({
+        type: 'edge.field.unset',
+        id: edge.id,
+        field: 'textMode'
+      })
+    } else {
+      operations.push({
+        type: 'edge.field.set',
+        id: edge.id,
+        field: 'textMode',
+        value: patch.textMode
+      })
+    }
+  }
+
+  if (hasOwn(patch, 'data')) {
+    diffEdgeRecordOperations(operations, edge.id, 'data', edge.data, patch.data)
+  }
+
+  if (hasOwn(patch, 'style')) {
+    diffEdgeRecordOperations(operations, edge.id, 'style', edge.style, patch.style)
+  }
+
+  if (hasOwn(patch, 'labels')) {
+    operations.push(
+      ...planEdgeLabelOperations(edge.id, edge.labels ?? [], patch.labels ?? [])
+    )
+  }
+
+  if (hasOwn(patch, 'route')) {
+    operations.push(
+      ...planEdgeRouteOperations(
+        edge.id,
+        edge.route?.kind === 'manual' ? edge.route.points : [],
+        patch.route?.kind === 'manual' ? patch.route.points : [],
+        ctx
+      )
+    )
+  }
+
+  return operations
+}
+
 const planNodePatch = (
   doc: Document,
   nodeId: NodeId,
@@ -218,18 +854,9 @@ const planNodePatch = (
   }
 
   const ops: Operation[] = []
-  const applied = applyNodeUpdate(node, update)
-  if (!applied.ok) {
-    return err('invalid', applied.message)
-  }
-
   const mindmapId = readNodeMindmapId(node)
   if (!mindmapId) {
-    ops.push({
-      type: 'node.patch',
-      id: nodeId,
-      patch: applied.patch
-    })
+    ops.push(...createNodeUpdateOperation(nodeId, update))
     return ok(ops)
   }
 
@@ -247,19 +874,69 @@ const planNodePatch = (
     })
   }
 
-  const topicPatch: NodePatch = {
-    size: fields?.size,
-    rotation: fields?.rotation,
-    locked: fields?.locked,
-    data: applied.patch.data,
-    style: applied.patch.style
+  if (fields && hasOwn(fields, 'layer')) {
+    return err('invalid', 'Mindmap topic layer is not writable.')
   }
-  if (topicPatch.size || topicPatch.rotation !== undefined || topicPatch.locked !== undefined || topicPatch.data || topicPatch.style) {
+  if (fields && hasOwn(fields, 'zIndex')) {
+    return err('invalid', 'Mindmap topic zIndex is not writable.')
+  }
+  if (fields && hasOwn(fields, 'groupId')) {
+    return err('invalid', 'Mindmap topic group is not writable.')
+  }
+  if (fields && hasOwn(fields, 'owner')) {
+    return err('invalid', 'Mindmap topic owner is aggregate-owned.')
+  }
+
+  const topicFieldMap: Record<'size' | 'rotation' | 'locked', MindmapTopicField> = {
+    size: 'size',
+    rotation: 'rotation',
+    locked: 'locked'
+  }
+
+  ;(['size', 'rotation', 'locked'] as const).forEach((key) => {
+    if (!fields || !hasOwn(fields, key)) {
+      return
+    }
+
+    const value = fields[key]
+    if (value === undefined && key !== 'size') {
+      ops.push({
+        type: 'mindmap.topic.field.unset',
+        id: mindmapId,
+        topicId: nodeId,
+        field: topicFieldMap[key] as Extract<Operation, { type: 'mindmap.topic.field.unset' }>['field']
+      })
+      return
+    }
+
     ops.push({
-      type: 'mindmap.topic.patch',
+      type: 'mindmap.topic.field.set',
       id: mindmapId,
-      topicIds: [nodeId],
-      patch: topicPatch
+      topicId: nodeId,
+      field: topicFieldMap[key],
+      value
+    })
+  })
+
+  for (const record of update.records ?? []) {
+    if (record.op === 'unset') {
+      ops.push({
+        type: 'mindmap.topic.record.unset',
+        id: mindmapId,
+        topicId: nodeId,
+        scope: record.scope,
+        path: record.path
+      })
+      continue
+    }
+
+    ops.push({
+      type: 'mindmap.topic.record.set',
+      id: mindmapId,
+      topicId: nodeId,
+      scope: record.scope,
+      path: record.path ?? '',
+      value: record.value
     })
   }
 
@@ -468,10 +1145,10 @@ export const planCommand = (
       })
     case 'canvas.order':
       return ok({
-        operations: [{
-          type: 'canvas.order',
-          refs: reorderRefs(listCanvasItemRefs(doc), command.refs, command.mode)
-        }],
+        operations: planCanvasOrderOperations(
+          listCanvasItemRefs(doc),
+          reorderRefs(listCanvasItemRefs(doc), command.refs, command.mode)
+        ),
         output: undefined
       })
     case 'node.create': {
@@ -512,9 +1189,13 @@ export const planCommand = (
         const mindmapId = readNodeMindmapId(node)
         if (!mindmapId) {
           operations.push({
-            type: 'node.move',
+            type: 'node.field.set',
             id,
-            delta: command.delta
+            field: 'position',
+            value: {
+              x: node.position.x + command.delta.x,
+              y: node.position.y + command.delta.y
+            }
           })
           continue
         }
@@ -603,20 +1284,18 @@ export const planCommand = (
       }]
       command.target.nodeIds?.forEach((nodeId) => {
         operations.push({
-          type: 'node.patch',
+          type: 'node.field.set',
           id: nodeId,
-          patch: {
-            groupId
-          }
+          field: 'groupId',
+          value: groupId
         })
       })
       command.target.edgeIds?.forEach((edgeId) => {
         operations.push({
-          type: 'edge.patch',
+          type: 'edge.field.set',
           id: edgeId,
-          patch: {
-            groupId
-          }
+          field: 'groupId',
+          value: groupId
         })
       })
       return ok({
@@ -629,10 +1308,10 @@ export const planCommand = (
     case 'group.order': {
       const refs = command.ids.flatMap((groupId) => listGroupCanvasItemRefs(doc, groupId))
       return ok({
-        operations: [{
-          type: 'canvas.order',
-          refs: reorderRefs(listCanvasItemRefs(doc), refs, command.mode)
-        }],
+        operations: planCanvasOrderOperations(
+          listCanvasItemRefs(doc),
+          reorderRefs(listCanvasItemRefs(doc), refs, command.mode)
+        ),
         output: undefined
       })
     }
@@ -645,19 +1324,15 @@ export const planCommand = (
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           operations.push({
-            type: 'node.patch',
+            type: 'node.field.unset',
             id: ref.id,
-            patch: {
-              groupId: undefined
-            }
+            field: 'groupId'
           })
         } else {
           operations.push({
-            type: 'edge.patch',
+            type: 'edge.field.unset',
             id: ref.id,
-            patch: {
-              groupId: undefined
-            }
+            field: 'groupId'
           })
         }
       })
@@ -683,20 +1358,16 @@ export const planCommand = (
           if (ref.kind === 'node') {
             nodeIds.push(ref.id)
             operations.push({
-              type: 'node.patch',
+              type: 'node.field.unset',
               id: ref.id,
-              patch: {
-                groupId: undefined
-              }
+              field: 'groupId'
             })
           } else {
             edgeIds.push(ref.id)
             operations.push({
-              type: 'edge.patch',
+              type: 'edge.field.unset',
               id: ref.id,
-              patch: {
-                groupId: undefined
-              }
+              field: 'groupId'
             })
           }
         })
@@ -714,7 +1385,8 @@ export const planCommand = (
         payload: command.input,
         doc,
         registries: ctx.registries,
-        createEdgeId: ctx.ids.edge
+        createEdgeId: ctx.ids.edge,
+        createEdgeRoutePointId: ctx.ids.edgeRoutePoint
       })
       if (!built.ok) {
         return built
@@ -740,13 +1412,9 @@ export const planCommand = (
 
       const operations = command.ids.flatMap((edgeId) => {
         const edge = getEdge(doc, edgeId)
-        const patch = edge ? moveEdge(edge, command.delta) ?? moveEdgeRoute(edge, command.delta) : undefined
-        return patch
-          ? [{
-              type: 'edge.patch' as const,
-              id: edgeId,
-              patch
-            }]
+        const patch = edge ? moveEdge(edge, command.delta) : undefined
+        return edge && patch
+          ? compileEdgePatchOperations(edge, patch, ctx)
           : []
       })
       return ok({ operations, output: undefined })
@@ -765,13 +1433,15 @@ export const planCommand = (
         }
       }
       return ok({
-        operations: [{
-          type: 'edge.patch',
-          id: command.edgeId,
-          patch: command.end === 'source'
+        operations: (() => {
+          const edge = getEdge(doc, command.edgeId)
+          if (!edge) {
+            return []
+          }
+          return compileEdgePatchOperations(edge, command.end === 'source'
             ? { source: command.target }
-            : { target: command.target }
-        }],
+            : { target: command.target }, ctx)
+        })(),
         output: undefined
       })
     case 'edge.patch':
@@ -788,11 +1458,12 @@ export const planCommand = (
         }
       }
       return ok({
-        operations: command.updates.map((entry) => ({
-          type: 'edge.patch' as const,
-          id: entry.id,
-          patch: entry.patch
-        })),
+        operations: command.updates.flatMap((entry) => {
+          const edge = getEdge(doc, entry.id)
+          return edge
+            ? compileEdgePatchOperations(edge, entry.patch, ctx)
+            : []
+        }),
         output: undefined
       })
     case 'edge.delete':
@@ -820,47 +1491,75 @@ export const planCommand = (
       if (!edge) {
         return err('invalid', `Edge ${command.edgeId} not found.`)
       }
-      const inserted = insertRoutePoint(edge, Number.MAX_SAFE_INTEGER, command.point)
-      if (!inserted.ok) {
-        return inserted
-      }
+      const currentPoints = edge.route?.kind === 'manual'
+        ? edge.route.points
+        : []
+      const previous = currentPoints[currentPoints.length - 1]
+      const pointId = ctx.ids.edgeRoutePoint()
       return ok({
         operations: [{
-          type: 'edge.patch',
-          id: command.edgeId,
-          patch: inserted.data.patch
+          type: 'edge.route.point.insert',
+          edgeId: command.edgeId,
+          point: {
+            id: pointId,
+            x: command.point.x,
+            y: command.point.y
+          },
+          to: previous
+            ? {
+                kind: 'after',
+                pointId: previous.id
+              }
+            : {
+                kind: 'start'
+              }
         }],
         output: {
-          index: inserted.data.index
+          index: currentPoints.length
         }
       })
     }
     case 'edge.route.move': {
       const edge = getEdge(doc, command.edgeId)
-      const patch = edge ? moveRoutePoint(edge, command.index, command.point) : undefined
-      if (!patch) {
+      const point = edge?.route?.kind === 'manual'
+        ? edge.route.points[command.index]
+        : undefined
+      if (!point) {
         return err('invalid', `Edge ${command.edgeId} route point not found.`)
       }
       return ok({
-        operations: [{
-          type: 'edge.patch',
-          id: command.edgeId,
-          patch
-        }],
+        operations: [
+          ...(point.x === command.point.x ? [] : [{
+            type: 'edge.route.point.field.set' as const,
+            edgeId: command.edgeId,
+            pointId: point.id,
+            field: 'x' as const,
+            value: command.point.x
+          }]),
+          ...(point.y === command.point.y ? [] : [{
+            type: 'edge.route.point.field.set' as const,
+            edgeId: command.edgeId,
+            pointId: point.id,
+            field: 'y' as const,
+            value: command.point.y
+          }])
+        ],
         output: undefined
       })
     }
     case 'edge.route.remove': {
       const edge = getEdge(doc, command.edgeId)
-      const patch = edge ? removeRoutePoint(edge, command.index) : undefined
-      if (!patch) {
+      const point = edge?.route?.kind === 'manual'
+        ? edge.route.points[command.index]
+        : undefined
+      if (!point) {
         return err('invalid', `Edge ${command.edgeId} route point not found.`)
       }
       return ok({
         operations: [{
-          type: 'edge.patch',
-          id: command.edgeId,
-          patch
+          type: 'edge.route.point.delete',
+          edgeId: command.edgeId,
+          pointId: point.id
         }],
         output: undefined
       })
@@ -871,11 +1570,13 @@ export const planCommand = (
         return err('invalid', `Edge ${command.edgeId} not found.`)
       }
       return ok({
-        operations: [{
-          type: 'edge.patch',
-          id: command.edgeId,
-          patch: clearRoute(edge)
-        }],
+        operations: edge.route?.kind === 'manual'
+          ? edge.route.points.map((point) => ({
+              type: 'edge.route.point.delete' as const,
+              edgeId: command.edgeId,
+              pointId: point.id
+            }))
+          : [],
         output: undefined
       })
     }
@@ -976,10 +1677,29 @@ export const planCommand = (
           }
         })
         operations.push({
-          type: 'mindmap.branch.patch',
+          type: 'mindmap.branch.field.set',
           id: command.id,
-          topicIds: [nextId],
-          patch: source.branchStyle
+          topicId: nextId,
+          field: 'color',
+          value: source.branchStyle.color
+        }, {
+          type: 'mindmap.branch.field.set',
+          id: command.id,
+          topicId: nextId,
+          field: 'line',
+          value: source.branchStyle.line
+        }, {
+          type: 'mindmap.branch.field.set',
+          id: command.id,
+          topicId: nextId,
+          field: 'width',
+          value: source.branchStyle.width
+        }, {
+          type: 'mindmap.branch.field.set',
+          id: command.id,
+          topicId: nextId,
+          field: 'stroke',
+          value: source.branchStyle.stroke
         })
         if (source.collapsed !== undefined) {
           operations.push({
@@ -1012,25 +1732,133 @@ export const planCommand = (
         output: undefined
       })
     case 'mindmap.topic.patch':
-      return ok({
-        operations: [{
-          type: 'mindmap.topic.patch',
-          id: command.id,
-          topicIds: command.topicIds,
-          patch: command.patch
-        }],
-        output: undefined
-      })
+      {
+        const operations: Operation[] = []
+        for (const topicId of command.topicIds) {
+          const node = getNode(doc, topicId)
+          if (!node) {
+            continue
+          }
+
+          if (hasOwn(command.patch, 'size')) {
+            if (command.patch.size !== undefined) {
+              operations.push({
+                type: 'mindmap.topic.field.set',
+                id: command.id,
+                topicId,
+                field: 'size',
+                value: command.patch.size
+              })
+            }
+          }
+          if (hasOwn(command.patch, 'rotation')) {
+            if (command.patch.rotation === undefined) {
+              operations.push({
+                type: 'mindmap.topic.field.unset',
+                id: command.id,
+                topicId,
+                field: 'rotation'
+              })
+            } else {
+              operations.push({
+                type: 'mindmap.topic.field.set',
+                id: command.id,
+                topicId,
+                field: 'rotation',
+                value: command.patch.rotation
+              })
+            }
+          }
+          if (hasOwn(command.patch, 'locked')) {
+            if (command.patch.locked === undefined) {
+              operations.push({
+                type: 'mindmap.topic.field.unset',
+                id: command.id,
+                topicId,
+                field: 'locked'
+              })
+            } else {
+              operations.push({
+                type: 'mindmap.topic.field.set',
+                id: command.id,
+                topicId,
+                field: 'locked',
+                value: command.patch.locked
+              })
+            }
+          }
+          if (hasOwn(command.patch, 'data')) {
+            diffMindmapTopicRecordOperations(
+              operations,
+              command.id,
+              topicId,
+              'data',
+              node.data,
+              command.patch.data
+            )
+          }
+          if (hasOwn(command.patch, 'style')) {
+            diffMindmapTopicRecordOperations(
+              operations,
+              command.id,
+              topicId,
+              'style',
+              node.style,
+              command.patch.style
+            )
+          }
+        }
+        return ok({
+          operations,
+          output: undefined
+        })
+      }
     case 'mindmap.branch.patch':
-      return ok({
-        operations: [{
-          type: 'mindmap.branch.patch',
-          id: command.id,
-          topicIds: command.topicIds,
-          patch: command.patch
-        }],
-        output: undefined
-      })
+      {
+        const mindmap = getMindmap(doc, command.id)
+        if (!mindmap) {
+          return err('invalid', `Mindmap ${command.id} not found.`)
+        }
+
+        const operations: Operation[] = []
+        command.topicIds.forEach((topicId) => {
+          const member = mindmap.members[topicId]
+          if (!member) {
+            return
+          }
+
+          ;(['color', 'line', 'width', 'stroke'] as const).forEach((field) => {
+            if (!hasOwn(command.patch, field)) {
+              return
+            }
+            const value = command.patch[field]
+            if (value === undefined) {
+              operations.push({
+                type: 'mindmap.branch.field.unset',
+                id: command.id,
+                topicId,
+                field
+              })
+              return
+            }
+            if (member.branchStyle[field] === value) {
+              return
+            }
+            operations.push({
+              type: 'mindmap.branch.field.set',
+              id: command.id,
+              topicId,
+              field,
+              value
+            })
+          })
+        })
+
+        return ok({
+          operations,
+          output: undefined
+        })
+      }
     case 'mindmap.topic.collapse':
       return ok({
         operations: [{

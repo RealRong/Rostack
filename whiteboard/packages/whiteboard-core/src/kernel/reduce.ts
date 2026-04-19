@@ -14,6 +14,7 @@ import type {
   Document,
   Edge,
   EdgeAnchor,
+  EdgeLabel,
   EdgeLabelStyle,
   EdgeId,
   Group,
@@ -27,10 +28,10 @@ import type {
   MindmapRecord,
   Node,
   NodeId,
-  NodePatch,
   Operation
 } from '@whiteboard/core/types'
 import { cloneValue } from '@whiteboard/core/value'
+import { applyPathMutation } from '@whiteboard/core/utils/recordMutation'
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []
@@ -593,7 +594,11 @@ const cloneEdgeRoute = (
   route?.kind === 'manual'
     ? {
         kind: 'manual' as const,
-        points: route.points.map((point) => clonePoint(point)!)
+        points: route.points.map((point) => ({
+          id: point.id,
+          x: point.x,
+          y: point.y
+        }))
       }
     : route
       ? {
@@ -638,7 +643,8 @@ const cloneEdgeLabels = (
   text: label.text,
   t: label.t,
   offset: label.offset,
-  style: cloneEdgeLabelStyle(label.style)
+  style: cloneEdgeLabelStyle(label.style),
+  data: cloneValue(label.data)
 }))
 
 const cloneNode = (
@@ -740,60 +746,169 @@ const cloneLayoutPatch = (
     : undefined
 )
 
-const applyEdgePatch = (
+const applyNodeFieldSet = (
+  node: Node,
+  operation: Extract<Operation, { type: 'node.field.set' }>
+): Node => ({
+  ...node,
+  [operation.field]: cloneValue(operation.value) as never
+})
+
+const applyNodeFieldUnset = (
+  node: Node,
+  operation: Extract<Operation, { type: 'node.field.unset' }>
+): Node => {
+  const next = { ...node } as Node & Record<string, unknown>
+  delete next[operation.field]
+  return next
+}
+
+const applyNodeRecordOperation = (
+  node: Node,
+  operation: Extract<Operation, { type: 'node.record.set' | 'node.record.unset' }>
+): { ok: true; node: Node } | { ok: false; message: string } => {
+  const current = operation.scope === 'data'
+    ? node.data
+    : node.style
+  const result = applyPathMutation(current, operation.type === 'node.record.set'
+    ? {
+        op: 'set',
+        path: operation.path,
+        value: operation.value
+      }
+    : {
+        op: 'unset',
+        path: operation.path
+      })
+  if (!result.ok) {
+    return result
+  }
+
+  return {
+    ok: true,
+    node: {
+      ...node,
+      ...(operation.scope === 'data'
+        ? { data: result.value as Node['data'] }
+        : { style: result.value as Node['style'] })
+    }
+  }
+}
+
+const applyEdgeFieldSet = (
   edge: Edge,
-  patch: Partial<Omit<Edge, 'id'>>
+  operation: Extract<Operation, { type: 'edge.field.set' }>
 ): Edge => ({
   ...edge,
-  ...(hasOwn(patch, 'source') ? { source: patch.source } : {}),
-  ...(hasOwn(patch, 'target') ? { target: patch.target } : {}),
-  ...(hasOwn(patch, 'type') ? { type: patch.type } : {}),
-  ...(hasOwn(patch, 'locked') ? { locked: patch.locked } : {}),
-  ...(hasOwn(patch, 'groupId') ? { groupId: patch.groupId } : {}),
-  ...(hasOwn(patch, 'route') ? { route: patch.route } : {}),
-  ...(hasOwn(patch, 'style') ? { style: patch.style } : {}),
-  ...(hasOwn(patch, 'textMode') ? { textMode: patch.textMode } : {}),
-  ...(hasOwn(patch, 'labels') ? { labels: patch.labels } : {}),
-  ...(hasOwn(patch, 'data') ? { data: patch.data } : {})
+  [operation.field]: cloneValue(operation.value) as never
 })
 
-const applyGroupPatch = (
+const applyEdgeFieldUnset = (
+  edge: Edge,
+  operation: Extract<Operation, { type: 'edge.field.unset' }>
+): Edge => {
+  const next = { ...edge } as Edge & Record<string, unknown>
+  delete next[operation.field]
+  return next
+}
+
+const applyEdgeRecordOperation = (
+  edge: Edge,
+  operation: Extract<Operation, { type: 'edge.record.set' | 'edge.record.unset' }>
+): { ok: true; edge: Edge } | { ok: false; message: string } => {
+  const current = operation.scope === 'data'
+    ? edge.data
+    : edge.style
+  const result = applyPathMutation(current, operation.type === 'edge.record.set'
+    ? {
+        op: 'set',
+        path: operation.path,
+        value: operation.value
+      }
+    : {
+        op: 'unset',
+        path: operation.path
+      })
+  if (!result.ok) {
+    return result
+  }
+
+  return {
+    ok: true,
+    edge: {
+      ...edge,
+      ...(operation.scope === 'data'
+        ? { data: result.value as Edge['data'] }
+        : { style: result.value as Edge['style'] })
+    }
+  }
+}
+
+const applyGroupFieldSet = (
   group: Group,
-  patch: Partial<Omit<Group, 'id'>>
+  operation: Extract<Operation, { type: 'group.field.set' }>
 ): Group => ({
   ...group,
-  ...(hasOwn(patch, 'locked') ? { locked: patch.locked } : {}),
-  ...(hasOwn(patch, 'name') ? { name: patch.name } : {})
+  [operation.field]: cloneValue(operation.value) as never
 })
 
-const applyNodePatch = (
+const applyGroupFieldUnset = (
+  group: Group,
+  operation: Extract<Operation, { type: 'group.field.unset' }>
+): Group => {
+  const next = { ...group } as Group & Record<string, unknown>
+  delete next[operation.field]
+  return next
+}
+
+const applyMindmapTopicFieldSet = (
   node: Node,
-  patch: NodePatch
+  operation: Extract<Operation, { type: 'mindmap.topic.field.set' }>
 ): Node => ({
   ...node,
-  ...(hasOwn(patch, 'position') ? { position: patch.position } : {}),
-  ...(hasOwn(patch, 'size') ? { size: patch.size } : {}),
-  ...(hasOwn(patch, 'rotation') ? { rotation: patch.rotation } : {}),
-  ...(hasOwn(patch, 'layer') ? { layer: patch.layer } : {}),
-  ...(hasOwn(patch, 'zIndex') ? { zIndex: patch.zIndex } : {}),
-  ...(hasOwn(patch, 'groupId') ? { groupId: patch.groupId } : {}),
-  ...(hasOwn(patch, 'owner') ? { owner: patch.owner } : {}),
-  ...(hasOwn(patch, 'locked') ? { locked: patch.locked } : {}),
-  ...(hasOwn(patch, 'data') ? { data: patch.data } : {}),
-  ...(hasOwn(patch, 'style') ? { style: patch.style } : {})
+  [operation.field]: cloneValue(operation.value) as never
 })
 
-const applyMindmapTopicPatch = (
+const applyMindmapTopicFieldUnset = (
   node: Node,
-  patch: Operation extends infer _T ? Extract<Operation, { type: 'mindmap.topic.patch' }>['patch'] : never
-): Node => ({
-  ...node,
-  ...(hasOwn(patch, 'size') ? { size: patch.size } : {}),
-  ...(hasOwn(patch, 'rotation') ? { rotation: patch.rotation } : {}),
-  ...(hasOwn(patch, 'locked') ? { locked: patch.locked } : {}),
-  ...(hasOwn(patch, 'data') ? { data: patch.data } : {}),
-  ...(hasOwn(patch, 'style') ? { style: patch.style } : {})
-})
+  operation: Extract<Operation, { type: 'mindmap.topic.field.unset' }>
+): Node => {
+  const next = { ...node } as Node & Record<string, unknown>
+  delete next[operation.field]
+  return next
+}
+
+const applyMindmapTopicRecordOperation = (
+  node: Node,
+  operation: Extract<Operation, { type: 'mindmap.topic.record.set' | 'mindmap.topic.record.unset' }>
+): { ok: true; node: Node } | { ok: false; message: string } => {
+  const current = operation.scope === 'data'
+    ? node.data
+    : node.style
+  const result = applyPathMutation(current, operation.type === 'mindmap.topic.record.set'
+    ? {
+        op: 'set',
+        path: operation.path,
+        value: operation.value
+      }
+    : {
+        op: 'unset',
+        path: operation.path
+      })
+  if (!result.ok) {
+    return result
+  }
+
+  return {
+    ok: true,
+    node: {
+      ...node,
+      ...(operation.scope === 'data'
+        ? { data: result.value as Node['data'] }
+        : { style: result.value as Node['style'] })
+    }
+  }
+}
 
 export const reduceOperations = (
   document: Document,
@@ -859,12 +974,51 @@ export const reduceOperations = (
         changes.document = true
         continue
       }
-      case 'canvas.order': {
+      case 'canvas.order.move': {
+        const currentOrder = [...readCanvasOrder(draft)]
+        const refs = operation.refs.filter((ref) => (
+          currentOrder.some((entry) => sameCanvasRef(entry, ref))
+        ))
+        if (refs.length === 0) {
+          continue
+        }
+
+        const previousIndex = currentOrder.findIndex((entry) => sameCanvasRef(entry, refs[0]!))
+        const previousTo: Extract<Operation, { type: 'canvas.order.move' }>['to'] = previousIndex <= 0
+          ? { kind: 'front' }
+          : {
+              kind: 'after',
+              ref: currentOrder[previousIndex - 1]!
+            }
+
+        const filtered = currentOrder.filter((entry) => !refs.some((ref) => sameCanvasRef(ref, entry)))
+        const insertAt = operation.to.kind === 'front'
+          ? 0
+          : operation.to.kind === 'back'
+            ? filtered.length
+            : (() => {
+                const anchorIndex = filtered.findIndex((entry) => (
+                  operation.to.kind === 'before' || operation.to.kind === 'after'
+                    ? sameCanvasRef(entry, operation.to.ref)
+                    : false
+                ))
+                if (anchorIndex < 0) {
+                  return operation.to.kind === 'before'
+                    ? 0
+                    : filtered.length
+                }
+                return operation.to.kind === 'before'
+                  ? anchorIndex
+                  : anchorIndex + 1
+              })()
+
+        filtered.splice(insertAt, 0, ...refs)
         inverse.unshift({
-          type: 'canvas.order',
-          refs: [...readCanvasOrder(draft)]
+          type: 'canvas.order.move',
+          refs: [...refs],
+          to: previousTo
         })
-        writeCanvasOrder(draft, [...operation.refs])
+        writeCanvasOrder(draft, filtered)
         changes.canvasOrder = true
         continue
       }
@@ -894,56 +1048,106 @@ export const reduceOperations = (
         markChange(changes.nodes, 'add', operation.node.id)
         continue
       }
-      case 'node.patch': {
+      case 'node.field.set': {
         const current = getNode(draft, operation.id)
         if (!current) {
           return err('invalid', `Node ${operation.id} not found.`)
         }
-        const previous = cloneNode(current)
-        draft.nodes.set(operation.id, applyNodePatch(current, operation.patch))
-        inverse.unshift({
-          type: 'node.patch',
-          id: operation.id,
-          patch: {
-            position: previous.position,
-            size: previous.size,
-            rotation: previous.rotation,
-            layer: previous.layer,
-            zIndex: previous.zIndex,
-            groupId: previous.groupId,
-            owner: previous.owner,
-            locked: previous.locked,
-            data: previous.data,
-            style: previous.style
-          }
-        })
+        inverse.unshift(
+          (current as Record<string, unknown>)[operation.field] === undefined && operation.field !== 'position'
+            ? {
+                type: 'node.field.unset',
+                id: operation.id,
+                field: operation.field as Extract<Operation, { type: 'node.field.unset' }>['field']
+              }
+            : {
+                type: 'node.field.set',
+                id: operation.id,
+                field: operation.field,
+                value: cloneValue((current as Record<string, unknown>)[operation.field])
+              }
+        )
+        draft.nodes.set(operation.id, applyNodeFieldSet(current, operation))
         markChange(changes.nodes, 'update', operation.id)
         if (current.owner?.kind === 'mindmap') {
           queueMindmapLayout(current.owner.id)
         }
         continue
       }
-      case 'node.move': {
+      case 'node.field.unset': {
         const current = getNode(draft, operation.id)
         if (!current) {
           return err('invalid', `Node ${operation.id} not found.`)
         }
-        draft.nodes.set(operation.id, {
-          ...current,
-          position: {
-            x: current.position.x + operation.delta.x,
-            y: current.position.y + operation.delta.y
-          }
-        })
         inverse.unshift({
-          type: 'node.move',
+          type: 'node.field.set',
           id: operation.id,
-          delta: {
-            x: -operation.delta.x,
-            y: -operation.delta.y
-          }
+          field: operation.field,
+          value: cloneValue((current as Record<string, unknown>)[operation.field])
         })
+        draft.nodes.set(operation.id, applyNodeFieldUnset(current, operation))
         markChange(changes.nodes, 'update', operation.id)
+        if (current.owner?.kind === 'mindmap') {
+          queueMindmapLayout(current.owner.id)
+        }
+        continue
+      }
+      case 'node.record.set':
+      case 'node.record.unset': {
+        const current = getNode(draft, operation.id)
+        if (!current) {
+          return err('invalid', `Node ${operation.id} not found.`)
+        }
+        const currentRoot = operation.scope === 'data'
+          ? current.data
+          : current.style
+        if (operation.type === 'node.record.set') {
+          const previous = operation.path
+            ? currentRoot && typeof currentRoot === 'object'
+              ? operation.path.split('.').reduce<unknown>((value, key) => (
+                  value && typeof value === 'object'
+                    ? (value as Record<string, unknown>)[key]
+                    : undefined
+                ), currentRoot)
+              : undefined
+            : currentRoot
+          inverse.unshift(previous === undefined
+            ? {
+                type: 'node.record.unset',
+                id: operation.id,
+                scope: operation.scope,
+                path: operation.path
+              }
+            : {
+                type: 'node.record.set',
+                id: operation.id,
+                scope: operation.scope,
+                path: operation.path,
+                value: cloneValue(previous)
+              })
+        } else {
+          const previous = operation.path.split('.').reduce<unknown>((value, key) => (
+            value && typeof value === 'object'
+              ? (value as Record<string, unknown>)[key]
+              : undefined
+          ), currentRoot)
+          inverse.unshift({
+            type: 'node.record.set',
+            id: operation.id,
+            scope: operation.scope,
+            path: operation.path,
+            value: cloneValue(previous)
+          })
+        }
+        const next = applyNodeRecordOperation(current, operation)
+        if (!next.ok) {
+          return err('invalid', next.message)
+        }
+        draft.nodes.set(operation.id, next.node)
+        markChange(changes.nodes, 'update', operation.id)
+        if (current.owner?.kind === 'mindmap') {
+          queueMindmapLayout(current.owner.id)
+        }
         continue
       }
       case 'node.delete': {
@@ -965,13 +1169,6 @@ export const reduceOperations = (
           changes.canvasOrder = true
         }
         continue
-      }
-      case 'node.duplicate': {
-        const current = getNode(draft, operation.id)
-        if (!current) {
-          return err('invalid', `Node ${operation.id} not found.`)
-        }
-        return err('invalid', `Reducer cannot duplicate node ${current.id} without planned ids.`)
       }
       case 'edge.create': {
         setEdge(draft, operation.edge)
@@ -997,29 +1194,478 @@ export const reduceOperations = (
         changes.canvasOrder = true
         continue
       }
-      case 'edge.patch': {
+      case 'edge.field.set': {
+        const current = getEdge(draft, operation.id)
+        if (!current) {
+          return err('invalid', `Edge ${operation.id} not found.`)
+        }
+        inverse.unshift(
+          ((current as unknown as Record<string, unknown>)[operation.field] === undefined) && operation.field !== 'source' && operation.field !== 'target' && operation.field !== 'type'
+            ? {
+                type: 'edge.field.unset',
+                id: operation.id,
+                field: operation.field as Extract<Operation, { type: 'edge.field.unset' }>['field']
+              }
+            : {
+                type: 'edge.field.set',
+                id: operation.id,
+                field: operation.field,
+                value: cloneValue((current as unknown as Record<string, unknown>)[operation.field])
+              }
+        )
+        draft.edges.set(operation.id, applyEdgeFieldSet(current, operation))
+        markChange(changes.edges, 'update', operation.id)
+        continue
+      }
+      case 'edge.field.unset': {
         const current = getEdge(draft, operation.id)
         if (!current) {
           return err('invalid', `Edge ${operation.id} not found.`)
         }
         inverse.unshift({
-          type: 'edge.patch',
+          type: 'edge.field.set',
           id: operation.id,
-          patch: {
-            source: cloneEdgeEnd(current.source),
-            target: cloneEdgeEnd(current.target),
-            type: current.type,
-            locked: current.locked,
-            groupId: current.groupId,
-            route: cloneEdgeRoute(current.route),
-            style: cloneEdgeStyle(current.style),
-            textMode: current.textMode,
-            labels: cloneEdgeLabels(current.labels),
-            data: cloneValue(current.data)
+          field: operation.field,
+          value: cloneValue((current as unknown as Record<string, unknown>)[operation.field])
+        })
+        draft.edges.set(operation.id, applyEdgeFieldUnset(current, operation))
+        markChange(changes.edges, 'update', operation.id)
+        continue
+      }
+      case 'edge.record.set':
+      case 'edge.record.unset': {
+        const current = getEdge(draft, operation.id)
+        if (!current) {
+          return err('invalid', `Edge ${operation.id} not found.`)
+        }
+        const currentRoot = operation.scope === 'data'
+          ? current.data
+          : current.style
+        if (operation.type === 'edge.record.set') {
+          const previous = operation.path
+            ? currentRoot && typeof currentRoot === 'object'
+              ? operation.path.split('.').reduce<unknown>((value, key) => (
+                  value && typeof value === 'object'
+                    ? (value as Record<string, unknown>)[key]
+                    : undefined
+                ), currentRoot)
+              : undefined
+            : currentRoot
+          inverse.unshift(previous === undefined
+            ? {
+                type: 'edge.record.unset',
+                id: operation.id,
+                scope: operation.scope,
+                path: operation.path
+              }
+            : {
+                type: 'edge.record.set',
+                id: operation.id,
+                scope: operation.scope,
+                path: operation.path,
+                value: cloneValue(previous)
+              })
+        } else {
+          const previous = operation.path.split('.').reduce<unknown>((value, key) => (
+            value && typeof value === 'object'
+              ? (value as Record<string, unknown>)[key]
+              : undefined
+          ), currentRoot)
+          inverse.unshift({
+            type: 'edge.record.set',
+            id: operation.id,
+            scope: operation.scope,
+            path: operation.path,
+            value: cloneValue(previous)
+          })
+        }
+        const next = applyEdgeRecordOperation(current, operation)
+        if (!next.ok) {
+          return err('invalid', next.message)
+        }
+        draft.edges.set(operation.id, next.edge)
+        markChange(changes.edges, 'update', operation.id)
+        continue
+      }
+      case 'edge.label.insert': {
+        const current = getEdge(draft, operation.edgeId)
+        if (!current) {
+          return err('invalid', `Edge ${operation.edgeId} not found.`)
+        }
+        const labels = [...(current.labels ?? []).filter((label) => label.id !== operation.label.id)]
+        const insertAt = operation.to.kind === 'start'
+          ? 0
+          : operation.to.kind === 'end'
+            ? labels.length
+            : (() => {
+                const anchorIndex = labels.findIndex((label) => (
+                  operation.to.kind === 'before' || operation.to.kind === 'after'
+                    ? label.id === operation.to.labelId
+                    : false
+                ))
+                if (anchorIndex < 0) {
+                  return operation.to.kind === 'before' ? 0 : labels.length
+                }
+                return operation.to.kind === 'before' ? anchorIndex : anchorIndex + 1
+              })()
+        labels.splice(insertAt, 0, operation.label)
+        inverse.unshift({
+          type: 'edge.label.delete',
+          edgeId: operation.edgeId,
+          labelId: operation.label.id
+        })
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          labels
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.label.delete': {
+        const current = getEdge(draft, operation.edgeId)
+        const labels = current?.labels ?? []
+        const index = labels.findIndex((label) => label.id === operation.labelId)
+        if (!current || index < 0) {
+          continue
+        }
+        const label = labels[index]!
+        inverse.unshift({
+          type: 'edge.label.insert',
+          edgeId: operation.edgeId,
+          label: cloneValue(label),
+          to: index === 0
+            ? { kind: 'start' }
+            : {
+                kind: 'after',
+                labelId: labels[index - 1]!.id
+              }
+        })
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          labels: labels.filter((entry) => entry.id !== operation.labelId)
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.label.move': {
+        const current = getEdge(draft, operation.edgeId)
+        const labels = [...(current?.labels ?? [])]
+        const index = labels.findIndex((label) => label.id === operation.labelId)
+        if (!current || index < 0) {
+          continue
+        }
+        const label = labels[index]!
+        const inverseTo: Extract<Operation, { type: 'edge.label.move' }>['to'] = index === 0
+          ? { kind: 'start' }
+          : {
+              kind: 'after',
+              labelId: labels[index - 1]!.id
+            }
+        labels.splice(index, 1)
+        const insertAt = operation.to.kind === 'start'
+          ? 0
+          : operation.to.kind === 'end'
+            ? labels.length
+            : (() => {
+                const anchorIndex = labels.findIndex((entry) => (
+                  operation.to.kind === 'before' || operation.to.kind === 'after'
+                    ? entry.id === operation.to.labelId
+                    : false
+                ))
+                if (anchorIndex < 0) {
+                  return operation.to.kind === 'before' ? 0 : labels.length
+                }
+                return operation.to.kind === 'before' ? anchorIndex : anchorIndex + 1
+              })()
+        labels.splice(insertAt, 0, label)
+        inverse.unshift({
+          type: 'edge.label.move',
+          edgeId: operation.edgeId,
+          labelId: operation.labelId,
+          to: inverseTo
+        })
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          labels
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.label.field.set': {
+        const current = getEdge(draft, operation.edgeId)
+        const labels = [...(current?.labels ?? [])]
+        const index = labels.findIndex((label) => label.id === operation.labelId)
+        if (!current || index < 0) {
+          return err('invalid', `Edge label ${operation.labelId} not found.`)
+        }
+        const label = labels[index]!
+        const previous = (label as Record<string, unknown>)[operation.field]
+        inverse.unshift(previous === undefined
+          ? {
+              type: 'edge.label.field.unset',
+              edgeId: operation.edgeId,
+              labelId: operation.labelId,
+              field: operation.field
+            }
+          : {
+              type: 'edge.label.field.set',
+              edgeId: operation.edgeId,
+              labelId: operation.labelId,
+              field: operation.field,
+              value: cloneValue(previous)
+            })
+        labels[index] = {
+          ...label,
+          [operation.field]: cloneValue(operation.value) as never
+        }
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          labels
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.label.field.unset': {
+        const current = getEdge(draft, operation.edgeId)
+        const labels = [...(current?.labels ?? [])]
+        const index = labels.findIndex((label) => label.id === operation.labelId)
+        if (!current || index < 0) {
+          return err('invalid', `Edge label ${operation.labelId} not found.`)
+        }
+        const label = labels[index]!
+        inverse.unshift({
+          type: 'edge.label.field.set',
+          edgeId: operation.edgeId,
+          labelId: operation.labelId,
+          field: operation.field,
+          value: cloneValue((label as Record<string, unknown>)[operation.field])
+        })
+        const nextLabel = { ...label } as EdgeLabel & Record<string, unknown>
+        delete nextLabel[operation.field]
+        labels[index] = nextLabel
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          labels
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.label.record.set':
+      case 'edge.label.record.unset': {
+        const current = getEdge(draft, operation.edgeId)
+        const labels = [...(current?.labels ?? [])]
+        const index = labels.findIndex((label) => label.id === operation.labelId)
+        if (!current || index < 0) {
+          return err('invalid', `Edge label ${operation.labelId} not found.`)
+        }
+        const label = labels[index]!
+        const currentRoot = operation.scope === 'data'
+          ? label.data
+          : label.style
+        const previous = operation.path.split('.').reduce<unknown>((value, key) => (
+          value && typeof value === 'object'
+            ? (value as Record<string, unknown>)[key]
+            : undefined
+        ), currentRoot)
+        inverse.unshift(operation.type === 'edge.label.record.set' && previous === undefined
+          ? {
+              type: 'edge.label.record.unset',
+              edgeId: operation.edgeId,
+              labelId: operation.labelId,
+              scope: operation.scope,
+              path: operation.path
+            }
+          : {
+              type: 'edge.label.record.set',
+              edgeId: operation.edgeId,
+              labelId: operation.labelId,
+              scope: operation.scope,
+              path: operation.path,
+              value: cloneValue(previous)
+            })
+        const result = applyPathMutation(currentRoot, operation.type === 'edge.label.record.set'
+          ? {
+              op: 'set',
+              path: operation.path,
+              value: operation.value
+            }
+          : {
+              op: 'unset',
+              path: operation.path
+            })
+        if (!result.ok) {
+          return err('invalid', result.message)
+        }
+        labels[index] = {
+          ...label,
+          ...(operation.scope === 'data'
+            ? { data: result.value as NonNullable<typeof label.data> }
+            : { style: result.value as NonNullable<typeof label.style> })
+        }
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          labels
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.route.point.insert': {
+        const current = getEdge(draft, operation.edgeId)
+        if (!current) {
+          return err('invalid', `Edge ${operation.edgeId} not found.`)
+        }
+        const points = current.route?.kind === 'manual'
+          ? [...current.route.points]
+          : []
+        const insertAt = operation.to.kind === 'start'
+          ? 0
+          : operation.to.kind === 'end'
+            ? points.length
+            : (() => {
+                const anchorIndex = points.findIndex((point) => (
+                  operation.to.kind === 'before' || operation.to.kind === 'after'
+                    ? point.id === operation.to.pointId
+                    : false
+                ))
+                if (anchorIndex < 0) {
+                  return operation.to.kind === 'before' ? 0 : points.length
+                }
+                return operation.to.kind === 'before' ? anchorIndex : anchorIndex + 1
+              })()
+        points.splice(insertAt, 0, operation.point)
+        inverse.unshift({
+          type: 'edge.route.point.delete',
+          edgeId: operation.edgeId,
+          pointId: operation.point.id
+        })
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          route: points.length > 0
+            ? {
+                kind: 'manual',
+                points
+              }
+            : {
+                kind: 'auto'
+              }
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.route.point.delete': {
+        const current = getEdge(draft, operation.edgeId)
+        const points = current?.route?.kind === 'manual'
+          ? [...current.route.points]
+          : []
+        const index = points.findIndex((point) => point.id === operation.pointId)
+        if (!current || index < 0) {
+          continue
+        }
+        const point = points[index]!
+        inverse.unshift({
+          type: 'edge.route.point.insert',
+          edgeId: operation.edgeId,
+          point: cloneValue(point),
+          to: index === 0
+            ? { kind: 'start' }
+            : {
+                kind: 'after',
+                pointId: points[index - 1]!.id
+              }
+        })
+        const nextPoints = points.filter((entry) => entry.id !== operation.pointId)
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          route: nextPoints.length > 0
+            ? {
+                kind: 'manual',
+                points: nextPoints
+              }
+            : {
+                kind: 'auto'
+              }
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.route.point.move': {
+        const current = getEdge(draft, operation.edgeId)
+        const points = current?.route?.kind === 'manual'
+          ? [...current.route.points]
+          : []
+        const index = points.findIndex((point) => point.id === operation.pointId)
+        if (!current || index < 0) {
+          continue
+        }
+        const point = points[index]!
+        const inverseTo: Extract<Operation, { type: 'edge.route.point.move' }>['to'] = index === 0
+          ? { kind: 'start' }
+          : {
+              kind: 'after',
+              pointId: points[index - 1]!.id
+            }
+        points.splice(index, 1)
+        const insertAt = operation.to.kind === 'start'
+          ? 0
+          : operation.to.kind === 'end'
+            ? points.length
+            : (() => {
+                const anchorIndex = points.findIndex((entry) => (
+                  operation.to.kind === 'before' || operation.to.kind === 'after'
+                    ? entry.id === operation.to.pointId
+                    : false
+                ))
+                if (anchorIndex < 0) {
+                  return operation.to.kind === 'before' ? 0 : points.length
+                }
+                return operation.to.kind === 'before' ? anchorIndex : anchorIndex + 1
+              })()
+        points.splice(insertAt, 0, point)
+        inverse.unshift({
+          type: 'edge.route.point.move',
+          edgeId: operation.edgeId,
+          pointId: operation.pointId,
+          to: inverseTo
+        })
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          route: {
+            kind: 'manual',
+            points
           }
         })
-        draft.edges.set(operation.id, applyEdgePatch(current, operation.patch))
-        markChange(changes.edges, 'update', operation.id)
+        markChange(changes.edges, 'update', operation.edgeId)
+        continue
+      }
+      case 'edge.route.point.field.set': {
+        const current = getEdge(draft, operation.edgeId)
+        const points = current?.route?.kind === 'manual'
+          ? [...current.route.points]
+          : []
+        const index = points.findIndex((point) => point.id === operation.pointId)
+        if (!current || index < 0) {
+          return err('invalid', `Edge route point ${operation.pointId} not found.`)
+        }
+        const point = points[index]!
+        inverse.unshift({
+          type: 'edge.route.point.field.set',
+          edgeId: operation.edgeId,
+          pointId: operation.pointId,
+          field: operation.field,
+          value: point[operation.field]
+        })
+        points[index] = {
+          ...point,
+          [operation.field]: operation.value
+        }
+        draft.edges.set(operation.edgeId, {
+          ...current,
+          route: {
+            kind: 'manual',
+            points
+          }
+        })
+        markChange(changes.edges, 'update', operation.edgeId)
         continue
       }
       case 'edge.delete': {
@@ -1056,20 +1702,33 @@ export const reduceOperations = (
         markChange(changes.groups, 'add', operation.group.id)
         continue
       }
-      case 'group.patch': {
+      case 'group.field.set': {
         const current = draft.groups.get(operation.id)
         if (!current) {
           return err('invalid', `Group ${operation.id} not found.`)
         }
         inverse.unshift({
-          type: 'group.patch',
+          type: 'group.field.set',
           id: operation.id,
-          patch: {
-            locked: current.locked,
-            name: current.name
-          }
+          field: operation.field,
+          value: cloneValue((current as Record<string, unknown>)[operation.field])
         })
-        draft.groups.set(operation.id, applyGroupPatch(current, operation.patch))
+        draft.groups.set(operation.id, applyGroupFieldSet(current, operation))
+        markChange(changes.groups, 'update', operation.id)
+        continue
+      }
+      case 'group.field.unset': {
+        const current = draft.groups.get(operation.id)
+        if (!current) {
+          return err('invalid', `Group ${operation.id} not found.`)
+        }
+        inverse.unshift({
+          type: 'group.field.set',
+          id: operation.id,
+          field: operation.field,
+          value: cloneValue((current as Record<string, unknown>)[operation.field])
+        })
+        draft.groups.set(operation.id, applyGroupFieldUnset(current, operation))
         markChange(changes.groups, 'update', operation.id)
         continue
       }
@@ -1498,65 +2157,150 @@ export const reduceOperations = (
         queueMindmapLayout(operation.id)
         continue
       }
-      case 'mindmap.topic.clone':
-        return err('invalid', 'Reducer cannot clone topic subtree without planned ids.')
-      case 'mindmap.topic.patch': {
-        const current = getMindmap(draft, operation.id)
+      case 'mindmap.topic.field.set': {
+        const current = getNode(draft, operation.topicId)
         if (!current) {
-          return err('invalid', `Mindmap ${operation.id} not found.`)
+          return err('invalid', `Topic ${operation.topicId} not found.`)
         }
-        const inversePatches: Operation[] = []
-        operation.topicIds.forEach((topicId) => {
-          const node = getNode(draft, topicId)
-          if (!node) return
-          inversePatches.unshift({
-            type: 'mindmap.topic.patch',
-            id: operation.id,
-            topicIds: [topicId],
-            patch: {
-              data: cloneValue(node.data),
-              style: cloneValue(node.style),
-              size: cloneSize(node.size),
-              rotation: node.rotation,
-              locked: node.locked
-            }
-          })
-          draft.nodes.set(topicId, applyMindmapTopicPatch(node, operation.patch))
-          markChange(changes.nodes, 'update', topicId)
-        })
-        inverse.unshift(...inversePatches)
+        inverse.unshift(
+          (current as Record<string, unknown>)[operation.field] === undefined && operation.field !== 'size'
+            ? {
+                type: 'mindmap.topic.field.unset',
+                id: operation.id,
+                topicId: operation.topicId,
+                field: operation.field as Extract<Operation, { type: 'mindmap.topic.field.unset' }>['field']
+              }
+            : {
+                type: 'mindmap.topic.field.set',
+                id: operation.id,
+                topicId: operation.topicId,
+                field: operation.field,
+                value: cloneValue((current as Record<string, unknown>)[operation.field])
+              }
+        )
+        draft.nodes.set(operation.topicId, applyMindmapTopicFieldSet(current, operation))
+        markChange(changes.nodes, 'update', operation.topicId)
         queueMindmapLayout(operation.id)
         continue
       }
-      case 'mindmap.branch.patch': {
+      case 'mindmap.topic.field.unset': {
+        const current = getNode(draft, operation.topicId)
+        if (!current) {
+          return err('invalid', `Topic ${operation.topicId} not found.`)
+        }
+        inverse.unshift({
+          type: 'mindmap.topic.field.set',
+          id: operation.id,
+          topicId: operation.topicId,
+          field: operation.field,
+          value: cloneValue((current as Record<string, unknown>)[operation.field])
+        })
+        draft.nodes.set(operation.topicId, applyMindmapTopicFieldUnset(current, operation))
+        markChange(changes.nodes, 'update', operation.topicId)
+        queueMindmapLayout(operation.id)
+        continue
+      }
+      case 'mindmap.topic.record.set':
+      case 'mindmap.topic.record.unset': {
+        const current = getNode(draft, operation.topicId)
+        if (!current) {
+          return err('invalid', `Topic ${operation.topicId} not found.`)
+        }
+        const currentRoot = operation.scope === 'data'
+          ? current.data
+          : current.style
+        const previous = operation.path.split('.').reduce<unknown>((value, key) => (
+          value && typeof value === 'object'
+            ? (value as Record<string, unknown>)[key]
+            : undefined
+        ), currentRoot)
+        inverse.unshift(operation.type === 'mindmap.topic.record.set' && previous === undefined
+          ? {
+              type: 'mindmap.topic.record.unset',
+              id: operation.id,
+              topicId: operation.topicId,
+              scope: operation.scope,
+              path: operation.path
+            }
+          : {
+              type: 'mindmap.topic.record.set',
+              id: operation.id,
+              topicId: operation.topicId,
+              scope: operation.scope,
+              path: operation.path,
+              value: cloneValue(previous)
+            })
+        const next = applyMindmapTopicRecordOperation(current, operation)
+        if (!next.ok) {
+          return err('invalid', next.message)
+        }
+        draft.nodes.set(operation.topicId, next.node)
+        markChange(changes.nodes, 'update', operation.topicId)
+        queueMindmapLayout(operation.id)
+        continue
+      }
+      case 'mindmap.branch.field.set': {
         const current = getMindmap(draft, operation.id)
         if (!current) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
-        const nextMembers = { ...current.members }
-        const inverseOps: Operation[] = []
-        operation.topicIds.forEach((topicId) => {
-          const member = current.members[topicId]
-          if (!member) return
-          inverseOps.unshift({
-            type: 'mindmap.branch.patch',
-            id: operation.id,
-            topicIds: [topicId],
-            patch: cloneBranchStyle(member.branchStyle)!
-          })
-          nextMembers[topicId] = {
-            ...member,
-            branchStyle: {
-              ...member.branchStyle,
-              ...operation.patch
-            }
-          }
+        const member = current.members[operation.topicId]
+        if (!member) {
+          return err('invalid', `Topic ${operation.topicId} not found.`)
+        }
+        inverse.unshift({
+          type: 'mindmap.branch.field.set',
+          id: operation.id,
+          topicId: operation.topicId,
+          field: operation.field,
+          value: cloneValue(member.branchStyle[operation.field])
         })
         draft.mindmaps.set(operation.id, {
           ...current,
-          members: nextMembers
+          members: {
+            ...current.members,
+            [operation.topicId]: {
+              ...member,
+              branchStyle: {
+                ...member.branchStyle,
+                [operation.field]: cloneValue(operation.value) as never
+              }
+            }
+          }
         })
-        inverse.unshift(...inverseOps)
+        markChange(changes.mindmaps, 'update', operation.id)
+        queueMindmapLayout(operation.id)
+        continue
+      }
+      case 'mindmap.branch.field.unset': {
+        const current = getMindmap(draft, operation.id)
+        if (!current) {
+          return err('invalid', `Mindmap ${operation.id} not found.`)
+        }
+        const member = current.members[operation.topicId]
+        if (!member) {
+          return err('invalid', `Topic ${operation.topicId} not found.`)
+        }
+        inverse.unshift({
+          type: 'mindmap.branch.field.set',
+          id: operation.id,
+          topicId: operation.topicId,
+          field: operation.field,
+          value: cloneValue(member.branchStyle[operation.field])
+        })
+        draft.mindmaps.set(operation.id, {
+          ...current,
+          members: {
+            ...current.members,
+            [operation.topicId]: {
+              ...member,
+              branchStyle: {
+                ...member.branchStyle,
+                [operation.field]: undefined
+              }
+            }
+          }
+        })
         markChange(changes.mindmaps, 'update', operation.id)
         queueMindmapLayout(operation.id)
         continue

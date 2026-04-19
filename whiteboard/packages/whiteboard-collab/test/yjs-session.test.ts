@@ -112,11 +112,9 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
         records: [
           {
             scope: 'data',
-            op: 'splice',
+            op: 'set',
             path: 'items',
-            index: 1,
-            deleteCount: 0,
-            values: ['b']
+            value: ['a', 'b']
           },
           {
             scope: 'data',

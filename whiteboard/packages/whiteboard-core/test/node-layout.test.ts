@@ -80,7 +80,7 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
   doc.nodes[first.id] = first
   doc.nodes[middle.id] = middle
   doc.nodes[last.id] = last
-  doc.order = [
+  doc.canvas.order = [
     { kind: 'node', id: first.id },
     { kind: 'node', id: middle.id },
     { kind: 'node', id: last.id }
@@ -100,13 +100,13 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
 
   assert.equal(result.data.operations.length, 1)
   const operation = result.data.operations[0]
-  assert.equal(operation.type, 'node.patch')
+  assert.equal(operation.type, 'node.field.set')
   assert.equal(operation.id, middle.id)
-  assert.ok(operation.patch.position)
+  assert.equal(operation.field, 'position')
 
   const nextMiddle: Node = {
     ...middle,
-    position: operation.patch.position!
+    position: operation.value
   }
 
   const firstBounds = getNodeBoundsByNode(first, DEFAULT_SIZE)

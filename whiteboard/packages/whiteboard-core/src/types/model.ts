@@ -15,6 +15,9 @@ export type Point = { x: number; y: number }
 export type Size = { width: number; height: number }
 export type Rect = { x: number; y: number; width: number; height: number }
 export type Viewport = { center: Point; zoom: number }
+export type EdgeRoutePoint = Point & {
+  id: string
+}
 
 export type NodeOutline =
   | {
@@ -131,7 +134,7 @@ export type EdgeRoute =
     }
   | {
       kind: 'manual'
-      points: Point[]
+      points: EdgeRoutePoint[]
     }
 
 export type EdgeStyle = {
@@ -157,6 +160,7 @@ export type EdgeLabel = {
   t?: number
   offset?: number
   style?: EdgeLabelStyle
+  data?: Record<string, unknown>
 }
 
 export interface Edge {

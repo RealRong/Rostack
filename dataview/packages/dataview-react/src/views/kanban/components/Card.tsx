@@ -1,6 +1,6 @@
 import {
   memo,
-  useMemo,
+  useCallback,
   type CSSProperties
 } from 'react'
 import {
@@ -17,6 +17,10 @@ import {
   useStoreValue
 } from '@shared/react'
 
+const KANBAN_SELECTED_STYLE = {
+  boxShadow: 'var(--ui-shadow-sm), 0 0 0 2px var(--ui-accent-frame-border)'
+} as const
+
 const CardComponent = (props: {
   itemId: ItemId
   measureRef?: (node: HTMLElement | null) => void
@@ -28,33 +32,18 @@ const CardComponent = (props: {
   const card = useKeyedStoreValue(runtime.card, props.itemId)
   const content = useKeyedStoreValue(runtime.content, props.itemId)
   const cardColor = card?.color
-  const interaction = useMemo(() => ({
-    drag: runtime.drag,
-    selection: runtime.selection
-  }), [runtime.drag, runtime.selection])
-  const appearance = useMemo(() => ({
-    showEditAction: true,
-    selectedStyle: {
-      boxShadow: 'var(--ui-shadow-sm), 0 0 0 2px var(--ui-accent-frame-border)'
-    } as const,
-    resolveSurface: () => {
-      const defaultState = 'default' as const
-      const hoverState = 'hover' as const
-      return {
-        default: board.fillColumnColor
-          ? resolveOptionCardStyle(cardColor, defaultState)
-          : resolveNeutralCardStyle(defaultState, 'preview'),
-        hover: board.fillColumnColor
-          ? resolveOptionCardStyle(cardColor, hoverState)
-          : resolveNeutralCardStyle(hoverState, 'preview')
-      }
+  const resolveSurface = useCallback(() => {
+    const defaultState = 'default' as const
+    const hoverState = 'hover' as const
+    return {
+      default: board.fillColumnColor
+        ? resolveOptionCardStyle(cardColor, defaultState)
+        : resolveNeutralCardStyle(defaultState, 'preview'),
+      hover: board.fillColumnColor
+        ? resolveOptionCardStyle(cardColor, hoverState)
+        : resolveNeutralCardStyle(hoverState, 'preview')
     }
-  }), [board.fillColumnColor, cardColor])
-  const mount = useMemo(() => ({
-    measureRef: props.measureRef,
-    className: props.className,
-    style: props.style
-  }), [props.className, props.measureRef, props.style])
+  }, [board.fillColumnColor, cardColor])
 
   if (!card || !content) {
     return null
@@ -64,9 +53,14 @@ const CardComponent = (props: {
     <RecordCard
       card={card}
       content={content}
-      interaction={interaction}
-      appearance={appearance}
-      mount={mount}
+      drag={runtime.drag}
+      selection={runtime.selection}
+      showEditAction
+      selectedStyle={KANBAN_SELECTED_STYLE}
+      resolveSurface={resolveSurface}
+      measureRef={props.measureRef}
+      className={props.className}
+      style={props.style}
     />
   )
 }

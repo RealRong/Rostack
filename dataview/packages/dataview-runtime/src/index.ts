@@ -155,6 +155,8 @@ export type {
   PageHeader,
   PageModel,
   PageQuery,
+  PageSortPanel,
+  PageSortRow,
   PageSettings,
   PageToolbar,
   TableBody,

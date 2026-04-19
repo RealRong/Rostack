@@ -5,7 +5,10 @@ import {
   GripVertical,
   X
 } from 'lucide-react'
-import type { Field, Sorter } from '@dataview/core/contracts'
+import type { Sorter } from '@dataview/core/contracts'
+import {
+  usePageRuntime
+} from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { Button } from '@shared/ui/button'
 import { Menu } from '@shared/ui/menu'
@@ -16,18 +19,14 @@ import { meta } from '@dataview/meta'
 import { useTranslation } from '@shared/i18n/react'
 import { buildChoiceToggleItems } from '@dataview/react/menu-builders'
 import {
-  findSorterField,
-  getAvailableSorterFieldsForIndex
-} from '@dataview/runtime'
-import {
   SORT_DIRECTIONS,
 } from '@dataview/react/page/features/sort/sortUi'
+import {
+  useKeyedStoreValue
+} from '@shared/react'
 
 export interface SortRuleRowProps {
-  fields: readonly Field[]
-  sorters: readonly Sorter[]
   index: number
-  sorter: Sorter
   onChange: (sorter: Sorter) => void
   onRemove: () => void
   drag?: VerticalReorderItemState
@@ -35,15 +34,22 @@ export interface SortRuleRowProps {
 
 export const SortRuleRow = (props: SortRuleRowProps) => {
   const { t } = useTranslation()
+  const pageRuntime = usePageRuntime()
+  const row = useKeyedStoreValue(pageRuntime.sortRow, props.index)
   const [fieldOpen, setFieldOpen] = useState(false)
   const [directionOpen, setDirectionOpen] = useState(false)
-  const field = findSorterField(props.fields, props.sorter)
-  const availableFields = getAvailableSorterFieldsForIndex(props.fields, props.sorters, props.index)
+  const sorter = row?.sorter
+  const field = row?.field
+  const availableFields = row?.availableFields ?? []
   const fieldLabel = field?.name ?? t(meta.ui.sort.deletedField)
   const fieldKind = field
     ? meta.field.kind.get(field.kind)
     : undefined
   const FieldIcon = fieldKind?.Icon
+
+  if (!row || !sorter) {
+    return null
+  }
 
   return (
     <div
@@ -100,7 +106,7 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
               onSelect={fieldId => {
                 props.onChange({
                   field: fieldId,
-                  direction: props.sorter.direction
+                  direction: sorter.direction
                 })
                 setFieldOpen(false)
               }}
@@ -120,10 +126,10 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
             id: direction,
             label: t(meta.sort.direction.get(direction).token)
           })),
-          value: props.sorter.direction,
+          value: sorter.direction,
           onSelect: direction => {
             props.onChange({
-              ...props.sorter,
+              ...sorter,
               direction
             })
           }
@@ -134,7 +140,7 @@ export const SortRuleRow = (props: SortRuleRowProps) => {
             pressed={directionOpen}
             trailing={<ChevronDown className="size-4 shrink-0" size={16} strokeWidth={1.8} />}
           >
-            {t(meta.sort.direction.get(props.sorter.direction).token)}
+            {t(meta.sort.direction.get(sorter.direction).token)}
           </Button>
         )}
       />

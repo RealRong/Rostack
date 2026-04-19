@@ -26,6 +26,8 @@ export type {
   PageHeader,
   PageModel,
   PageQuery,
+  PageSortPanel,
+  PageSortRow,
   PageSettings,
   PageToolbar
 } from '@dataview/runtime/model/page/types'

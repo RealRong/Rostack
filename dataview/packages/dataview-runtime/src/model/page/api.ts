@@ -4,6 +4,7 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
+  createKeyedDerivedStore,
   createDerivedStore,
   read,
   sameOrder,
@@ -17,6 +18,8 @@ import type {
   PageHeader,
   PageModel,
   PageQuery,
+  PageSortPanel,
+  PageSortRow,
   PageSettings,
   PageToolbar
 } from '@dataview/runtime/model/page/types'
@@ -26,6 +29,9 @@ import type {
 import {
   createEntityListStore
 } from '@dataview/runtime/model/internal/list'
+import {
+  getAvailableSorterFieldsForIndex
+} from '@dataview/runtime/model/queryFields'
 
 const EMPTY_FIELD_IDS: readonly FieldId[] = []
 const EMPTY_FIELDS: readonly Field[] = []
@@ -101,6 +107,23 @@ const sameSettings = (
   && sameOrder(left.hiddenFields, right.hiddenFields)
   && sameOrder(left.fields, right.fields)
 
+const sameSortPanel = (
+  left: PageSortPanel,
+  right: PageSortPanel
+) => sameOrder(left.rules, right.rules)
+  && sameOrder(left.availableFields, right.availableFields)
+
+const sameSortRow = (
+  left: PageSortRow | undefined,
+  right: PageSortRow | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.sorter === right.sorter
+  && left.field === right.field
+  && sameOrder(left.availableFields, right.availableFields)
+)
+
 const createAvailableFieldsStore = (input: {
   fields: ReadStore<readonly Field[]>
   usedFieldIds: ReadStore<readonly FieldId[]>
@@ -158,6 +181,10 @@ export const createPageModel = (input: {
   const sortCount = createDerivedStore<number>({
     get: () => read(input.source.active.query.sort).rules.length,
     isEqual: Object.is
+  })
+  const sortRules = createDerivedStore<PageSortPanel['rules']>({
+    get: () => read(input.source.active.query.sort).rules,
+    isEqual: sameOrder
   })
   const displayFieldIds = createDerivedStore<readonly FieldId[]>({
     get: () => read(currentView)?.display.fields ?? EMPTY_FIELD_IDS,
@@ -241,12 +268,41 @@ export const createPageModel = (input: {
         route: pageState.query.route,
         currentView: read(currentView),
         filters: read(input.source.active.query.filters).rules,
-        sorts: read(input.source.active.query.sort).rules,
+        sorts: read(sortRules),
         availableFilterFields: read(availableFilterFields),
         availableSortFields: read(availableSortFields)
       }
     },
     isEqual: sameQuery
+  })
+  const sortPanel = createDerivedStore<PageSortPanel>({
+    get: () => ({
+      rules: read(sortRules),
+      availableFields: read(availableSortFields)
+    }),
+    isEqual: sameSortPanel
+  })
+  const sortRow = createKeyedDerivedStore<number, PageSortRow | undefined>({
+    get: index => {
+      const rules = read(sortRules)
+      const rule = rules[index]
+      if (!rule) {
+        return undefined
+      }
+
+      const allFields = read(fields)
+      const sorters = rules.map(entry => entry.sorter)
+      return {
+        sorter: rule.sorter,
+        field: rule.field,
+        availableFields: getAvailableSorterFieldsForIndex(
+          allFields,
+          sorters,
+          index
+        )
+      }
+    },
+    isEqual: sameSortRow
   })
 
   const settings = createDerivedStore<PageSettings>({
@@ -269,6 +325,8 @@ export const createPageModel = (input: {
     header,
     toolbar,
     query,
+    sortPanel,
+    sortRow,
     settings
   }
 }

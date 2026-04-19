@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import type { BucketSort, Field } from '@dataview/core/contracts'
 import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine'
 import {
   useDataView,
@@ -13,76 +12,14 @@ import {
   buildNavigationItem
 } from '@dataview/react/menu-builders'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
-import type { TokenTranslator } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
+import {
+  readBucketSortLabel,
+  readGroupModeLabel
+} from '@dataview/react/page/features/viewSettings/groupUi'
 import {
   useStoreValue
 } from '@shared/react'
-
-const readGroupModeLabel = (
-  field: Field | undefined,
-  mode: string,
-  t: TokenTranslator
-) => {
-  if (!field) {
-    return undefined
-  }
-
-  switch (field.kind) {
-    case 'text':
-    case 'title':
-    case 'url':
-    case 'email':
-    case 'phone':
-      return t(meta.ui.viewSettings.groupByValue)
-    case 'status':
-      return mode === 'category'
-        ? t(meta.ui.viewSettings.groupByCategory)
-        : t(meta.ui.viewSettings.groupByStatus)
-    case 'select':
-    case 'multiSelect':
-      return t(meta.ui.viewSettings.groupByOption)
-    case 'number':
-      return t(meta.ui.viewSettings.groupByRange)
-    case 'date':
-      switch (mode) {
-        case 'day':
-          return t(meta.ui.viewSettings.groupByDay)
-        case 'week':
-          return t(meta.ui.viewSettings.groupByWeek)
-        case 'month':
-          return t(meta.ui.viewSettings.groupByMonth)
-        case 'quarter':
-          return t(meta.ui.viewSettings.groupByQuarter)
-        case 'year':
-          return t(meta.ui.viewSettings.groupByYear)
-        default:
-          return undefined
-      }
-    default:
-      return undefined
-  }
-}
-
-const readBucketSortLabel = (
-  bucketSort: BucketSort | undefined,
-  t: TokenTranslator
-) => {
-  switch (bucketSort) {
-    case 'manual':
-      return t(meta.ui.viewSettings.bucketSortManual)
-    case 'labelAsc':
-      return t(meta.ui.viewSettings.bucketSortLabelAsc)
-    case 'labelDesc':
-      return t(meta.ui.viewSettings.bucketSortLabelDesc)
-    case 'valueAsc':
-      return t(meta.ui.viewSettings.bucketSortValueAsc)
-    case 'valueDesc':
-      return t(meta.ui.viewSettings.bucketSortValueDesc)
-    default:
-      return undefined
-  }
-}
 
 export const GroupingPanel = () => {
   const { t } = useTranslation()

@@ -1,5 +1,6 @@
 import type {
   Field,
+  Sorter,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -11,6 +12,7 @@ import type {
   QueryBarState
 } from '@dataview/runtime/page/session/types'
 import type {
+  KeyedReadStore,
   ReadStore
 } from '@shared/core'
 
@@ -47,6 +49,17 @@ export interface PageQuery {
   availableSortFields: readonly Field[]
 }
 
+export interface PageSortPanel {
+  rules: ActiveViewQuery['sort']['rules']
+  availableFields: readonly Field[]
+}
+
+export interface PageSortRow {
+  sorter: Sorter
+  field?: Field
+  availableFields: readonly Field[]
+}
+
 export interface PageSettings {
   viewsCount: number
   fields: readonly Field[]
@@ -64,5 +77,7 @@ export interface PageModel {
   header: ReadStore<PageHeader>
   toolbar: ReadStore<PageToolbar>
   query: ReadStore<PageQuery>
+  sortPanel: ReadStore<PageSortPanel>
+  sortRow: KeyedReadStore<number, PageSortRow | undefined>
   settings: ReadStore<PageSettings>
 }

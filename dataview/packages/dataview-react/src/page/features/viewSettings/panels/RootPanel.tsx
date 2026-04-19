@@ -10,7 +10,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { BucketSort, Field, View } from '@dataview/core/contracts'
+import type { View } from '@dataview/core/contracts'
 import {
   useDataView,
   usePageRuntime
@@ -19,9 +19,11 @@ import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta } from '@dataview/meta'
 import { buildNavigationItem } from '@dataview/react/menu-builders'
+import {
+  readGroupSummary
+} from '@dataview/react/page/features/viewSettings/groupUi'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
 import { supportsGroupSettings } from '@dataview/runtime'
-import type { TokenTranslator } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
 import {
   useStoreValue
@@ -142,83 +144,6 @@ const ViewSettingsActionsSection = (props: {
       />
     </div>
   )
-}
-
-const readGroupModeLabel = (
-  field: Field | undefined,
-  mode: string,
-  t: TokenTranslator
-) => {
-  if (!field) {
-    return undefined
-  }
-
-  switch (field.kind) {
-    case 'status':
-      return mode === 'category'
-        ? t(meta.ui.viewSettings.groupByCategory)
-        : t(meta.ui.viewSettings.groupByStatus)
-    case 'select':
-    case 'multiSelect':
-      return t(meta.ui.viewSettings.groupByOption)
-    case 'number':
-      return t(meta.ui.viewSettings.groupByRange)
-    default:
-      return undefined
-  }
-}
-
-const readBucketSortLabel = (
-  bucketSort: BucketSort | undefined,
-  t: TokenTranslator
-) => {
-  switch (bucketSort) {
-    case 'manual':
-      return t(meta.ui.viewSettings.bucketSortManual)
-    case 'labelAsc':
-      return t(meta.ui.viewSettings.bucketSortLabelAsc)
-    case 'labelDesc':
-      return t(meta.ui.viewSettings.bucketSortLabelDesc)
-    case 'valueAsc':
-      return t(meta.ui.viewSettings.bucketSortValueAsc)
-    case 'valueDesc':
-      return t(meta.ui.viewSettings.bucketSortValueDesc)
-    default:
-      return undefined
-  }
-}
-
-const readGroupSummary = (
-  group?: {
-    active: boolean
-    field?: Field
-    mode: string
-    bucketSort?: BucketSort
-    bucketInterval?: number
-  },
-  t?: TokenTranslator
-) => {
-  if (!group?.active || !group.field) {
-    return t
-      ? t(meta.ui.viewSettings.none)
-      : ''
-  }
-
-  const parts = [group.field.name]
-  const modeLabel = t ? readGroupModeLabel(group.field, group.mode, t) : undefined
-  const bucketSortLabel = t ? readBucketSortLabel(group.bucketSort, t) : undefined
-
-  if (modeLabel) {
-    parts.push(modeLabel)
-  }
-  if (group.bucketInterval !== undefined) {
-    parts.push(String(group.bucketInterval))
-  }
-  if (bucketSortLabel) {
-    parts.push(bucketSortLabel)
-  }
-
-  return parts.join(' · ')
 }
 
 export const RootPanel = () => {

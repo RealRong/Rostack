@@ -1,11 +1,11 @@
-import { getEdge, getMindmap, getNode } from '@whiteboard/core/document'
 import { validateLockOperations } from '@whiteboard/core/lock'
 import {
   anchorMindmapLayout,
   computeMindmapLayout,
-  getMindmapTreeFromDocument,
+  toMindmapTree,
   getSubtreeIds
 } from '@whiteboard/core/mindmap'
+import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/overlay'
 import { err, ok } from '@whiteboard/core/result'
 import type {
   CanvasItemRef,
@@ -13,12 +13,17 @@ import type {
   ChangeSet,
   Document,
   Edge,
+  EdgeAnchor,
+  EdgeLabelStyle,
   EdgeId,
+  Group,
   GroupId,
   Invalidation,
   KernelContext,
   KernelReadImpact,
   KernelReduceResult,
+  MindmapLayoutSpec,
+  MindmapId,
   MindmapRecord,
   Node,
   NodeId,
@@ -209,6 +214,11 @@ const markChange = <Id extends string>(
   bucket.delete.add(id)
 }
 
+const hasOwn = <T extends object>(
+  target: T,
+  key: PropertyKey
+) => Object.prototype.hasOwnProperty.call(target, key)
+
 const sameCanvasRef = (
   left: CanvasItemRef,
   right: CanvasItemRef
@@ -284,70 +294,153 @@ const insertCanvasSlot = (
   return appendCanvasRef(filtered, ref)
 }
 
+type DraftDocument = {
+  base: Document
+  background: Document['background']
+  canvasOrder: readonly CanvasItemRef[]
+  nodes: OverlayTable<NodeId, Node>
+  edges: OverlayTable<EdgeId, Edge>
+  groups: OverlayTable<GroupId, Group>
+  mindmaps: OverlayTable<MindmapId, MindmapRecord>
+}
+
+const createDraftDocument = (
+  document: Document
+): DraftDocument => ({
+  base: document,
+  background: document.background,
+  canvasOrder: document.canvas.order,
+  nodes: createOverlayTable(document.nodes),
+  edges: createOverlayTable(document.edges),
+  groups: createOverlayTable(document.groups),
+  mindmaps: createOverlayTable(document.mindmaps)
+})
+
+const materializeDraftDocument = (
+  draft: DraftDocument
+): Document => ({
+  ...draft.base,
+  background: draft.background,
+  canvas: {
+    order: [...draft.canvasOrder]
+  },
+  nodes: draft.nodes.materialize(),
+  edges: draft.edges.materialize(),
+  groups: draft.groups.materialize(),
+  mindmaps: draft.mindmaps.materialize()
+})
+
+const getNode = (
+  draft: DraftDocument,
+  id: NodeId
+): Node | undefined => draft.nodes.get(id)
+
+const getEdge = (
+  draft: DraftDocument,
+  id: EdgeId
+): Edge | undefined => draft.edges.get(id)
+
+const getMindmap = (
+  draft: DraftDocument,
+  id: MindmapId
+): MindmapRecord | undefined => draft.mindmaps.get(id)
+
+const getMindmapTreeFromDraft = (
+  draft: DraftDocument,
+  id: string
+) => {
+  const direct = getMindmap(draft, id)
+  if (direct) {
+    return toMindmapTree(direct)
+  }
+
+  const node = getNode(draft, id)
+  const mindmapId = node?.owner?.kind === 'mindmap'
+    ? node.owner.id
+    : undefined
+  const record = mindmapId
+    ? getMindmap(draft, mindmapId)
+    : undefined
+  return record
+    ? toMindmapTree(record)
+    : undefined
+}
+
+const readCanvasOrder = (
+  draft: DraftDocument
+): readonly CanvasItemRef[] => draft.canvasOrder
+
+const writeCanvasOrder = (
+  draft: DraftDocument,
+  order: readonly CanvasItemRef[]
+) => {
+  draft.canvasOrder = order
+}
+
 const isTopLevelNode = (
-  doc: Document,
+  draft: DraftDocument,
   node: Node | undefined
 ) => {
   if (!node) return false
   if (!node.owner) return true
-  return doc.mindmaps[node.owner.id]?.root === node.id
+  return getMindmap(draft, node.owner.id)?.root === node.id
 }
 
-const setNode = (doc: Document, node: Node) => {
-  doc.nodes[node.id] = node
-  if (isTopLevelNode(doc, node)) {
-    doc.canvas.order = appendCanvasRef(doc.canvas.order, {
+const setNode = (draft: DraftDocument, node: Node) => {
+  draft.nodes.set(node.id, node)
+  if (isTopLevelNode(draft, node)) {
+    writeCanvasOrder(draft, appendCanvasRef(readCanvasOrder(draft), {
       kind: 'node',
       id: node.id
-    })
+    }))
   }
 }
 
 const deleteNode = (
-  doc: Document,
+  draft: DraftDocument,
   nodeId: NodeId
 ) => {
-  delete doc.nodes[nodeId]
-  doc.canvas.order = removeCanvasRef(doc.canvas.order, {
+  draft.nodes.delete(nodeId)
+  writeCanvasOrder(draft, removeCanvasRef(readCanvasOrder(draft), {
     kind: 'node',
     id: nodeId
-  })
+  }))
 }
 
-const setEdge = (doc: Document, edge: Edge) => {
-  doc.edges[edge.id] = edge
-  doc.canvas.order = appendCanvasRef(doc.canvas.order, {
+const setEdge = (draft: DraftDocument, edge: Edge) => {
+  draft.edges.set(edge.id, edge)
+  writeCanvasOrder(draft, appendCanvasRef(readCanvasOrder(draft), {
     kind: 'edge',
     id: edge.id
-  })
+  }))
 }
 
 const deleteEdge = (
-  doc: Document,
+  draft: DraftDocument,
   edgeId: EdgeId
 ) => {
-  delete doc.edges[edgeId]
-  doc.canvas.order = removeCanvasRef(doc.canvas.order, {
+  draft.edges.delete(edgeId)
+  writeCanvasOrder(draft, removeCanvasRef(readCanvasOrder(draft), {
     kind: 'edge',
     id: edgeId
-  })
+  }))
 }
 
 const relayoutMindmap = (
-  doc: Document,
+  draft: DraftDocument,
   id: string
 ) => {
-  const record = getMindmap(doc, id)
-  const tree = getMindmapTreeFromDocument(doc, id)
+  const record = getMindmap(draft, id)
+  const tree = getMindmapTreeFromDraft(draft, id)
   if (!record || !tree) return
 
-  const root = getNode(doc, record.root)
+  const root = getNode(draft, record.root)
   if (!root) return
 
   const layout = computeMindmapLayout(
     tree,
     (nodeId) => {
-      const node = doc.nodes[nodeId]
+      const node = getNode(draft, nodeId)
       return {
         width: Math.max(node?.size?.width ?? 1, 1),
         height: Math.max(node?.size?.height ?? 1, 1)
@@ -362,9 +455,9 @@ const relayoutMindmap = (
   })
 
   Object.entries(anchored.node).forEach(([nodeId, rect]) => {
-    const current = doc.nodes[nodeId]
+    const current = getNode(draft, nodeId)
     if (!current) return
-    doc.nodes[nodeId] = {
+    draft.nodes.set(nodeId, {
       ...current,
       position: {
         x: rect.x,
@@ -374,36 +467,303 @@ const relayoutMindmap = (
         width: rect.width,
         height: rect.height
       }
-    }
+    })
   })
 }
 
 const collectConnectedEdges = (
-  doc: Document,
+  draft: DraftDocument,
   nodeIds: ReadonlySet<NodeId>
-) => Object.values(doc.edges).filter((edge) => (
+) => [...draft.edges.values()].filter((edge) => (
   (edge.source.kind === 'node' && nodeIds.has(edge.source.nodeId))
   || (edge.target.kind === 'node' && nodeIds.has(edge.target.nodeId))
 ))
 
-const cloneDoc = (doc: Document): Document => ({
-  ...doc,
-  background: cloneValue(doc.background),
-  canvas: {
-    order: [...doc.canvas.order]
-  },
-  nodes: Object.fromEntries(
-    Object.entries(doc.nodes).map(([id, node]) => [id, cloneValue(node)])
+const clonePoint = (
+  point: { x: number; y: number } | undefined
+) => (
+  point
+    ? {
+        x: point.x,
+        y: point.y
+      }
+    : undefined
+)
+
+const cloneSize = (
+  size: { width: number; height: number } | undefined
+) => (
+  size
+    ? {
+        width: size.width,
+        height: size.height
+      }
+    : undefined
+)
+
+const cloneBackground = (
+  background: Document['background']
+) => (
+  background
+    ? {
+        type: background.type,
+        color: background.color
+      }
+    : undefined
+)
+
+const cloneNodeOwner = (
+  owner: Node['owner']
+) => (
+  owner
+    ? {
+        kind: owner.kind,
+        id: owner.id
+      }
+    : undefined
+)
+
+const cloneBranchStyle = (
+  style: MindmapRecord['members'][string]['branchStyle'] | undefined
+) => (
+  style
+    ? {
+        color: style.color,
+        line: style.line,
+        width: style.width,
+        stroke: style.stroke
+      }
+    : undefined
+)
+
+const cloneCanvasRef = (
+  ref: CanvasItemRef | undefined
+) => (
+  ref
+    ? {
+        kind: ref.kind,
+        id: ref.id
+      }
+    : undefined
+)
+
+const cloneCanvasSlot = (
+  slot: {
+    prev?: CanvasItemRef
+    next?: CanvasItemRef
+  } | undefined
+) => (
+  slot
+    ? {
+        prev: cloneCanvasRef(slot.prev),
+        next: cloneCanvasRef(slot.next)
+      }
+    : undefined
+)
+
+const cloneEdgeAnchor = (
+  anchor: EdgeAnchor | undefined
+) => (
+  anchor
+    ? {
+        side: anchor.side,
+        offset: anchor.offset
+      }
+    : undefined
+)
+
+const cloneEdgeEnd = (
+  end: Edge['source']
+): Edge['source'] => (
+  end.kind === 'node'
+    ? {
+        kind: 'node',
+        nodeId: end.nodeId,
+        anchor: cloneEdgeAnchor(end.anchor)
+      }
+    : {
+        kind: 'point',
+        point: clonePoint(end.point)!
+      }
+)
+
+const cloneEdgeRoute = (
+  route: Edge['route']
+) => (
+  route?.kind === 'manual'
+    ? {
+        kind: 'manual' as const,
+        points: route.points.map((point) => clonePoint(point)!)
+      }
+    : route
+      ? {
+          kind: 'auto' as const
+        }
+      : undefined
+)
+
+const cloneEdgeStyle = (
+  style: Edge['style']
+) => (
+  style
+    ? {
+        color: style.color,
+        opacity: style.opacity,
+        width: style.width,
+        dash: style.dash,
+        start: style.start,
+        end: style.end
+      }
+    : undefined
+)
+
+const cloneEdgeLabelStyle = (
+  style: EdgeLabelStyle | undefined
+) => (
+  style
+    ? {
+        size: style.size,
+        weight: style.weight,
+        italic: style.italic,
+        color: style.color,
+        bg: style.bg
+      }
+    : undefined
+)
+
+const cloneEdgeLabels = (
+  labels: Edge['labels']
+) => labels?.map((label) => ({
+  id: label.id,
+  text: label.text,
+  t: label.t,
+  offset: label.offset,
+  style: cloneEdgeLabelStyle(label.style)
+}))
+
+const cloneNode = (
+  node: Node
+): Node => ({
+  id: node.id,
+  type: node.type,
+  position: clonePoint(node.position)!,
+  size: cloneSize(node.size),
+  rotation: node.rotation,
+  layer: node.layer,
+  zIndex: node.zIndex,
+  groupId: node.groupId,
+  owner: cloneNodeOwner(node.owner),
+  locked: node.locked,
+  data: cloneValue(node.data),
+  style: cloneValue(node.style)
+})
+
+const cloneEdge = (
+  edge: Edge
+): Edge => ({
+  id: edge.id,
+  source: cloneEdgeEnd(edge.source),
+  target: cloneEdgeEnd(edge.target),
+  type: edge.type,
+  locked: edge.locked,
+  groupId: edge.groupId,
+  route: cloneEdgeRoute(edge.route),
+  style: cloneEdgeStyle(edge.style),
+  textMode: edge.textMode,
+  labels: cloneEdgeLabels(edge.labels),
+  data: cloneValue(edge.data)
+})
+
+const cloneGroup = (
+  group: Group
+): Group => ({
+  id: group.id,
+  locked: group.locked,
+  name: group.name
+})
+
+const cloneMindmapMember = (
+  member: MindmapRecord['members'][NodeId] | undefined
+) => (
+  member
+    ? {
+        parentId: member.parentId,
+        side: member.side,
+        collapsed: member.collapsed,
+        branchStyle: cloneBranchStyle(member.branchStyle)!
+      }
+    : undefined
+)
+
+const cloneMindmap = (
+  mindmap: MindmapRecord
+): MindmapRecord => ({
+  id: mindmap.id,
+  root: mindmap.root,
+  members: Object.fromEntries(
+    Object.entries(mindmap.members).map(([nodeId, member]) => [
+      nodeId,
+      cloneMindmapMember(member)!
+    ])
   ),
-  edges: Object.fromEntries(
-    Object.entries(doc.edges).map(([id, edge]) => [id, cloneValue(edge)])
+  children: Object.fromEntries(
+    Object.entries(mindmap.children).map(([nodeId, children]) => [
+      nodeId,
+      [...children]
+    ])
   ),
-  groups: Object.fromEntries(
-    Object.entries(doc.groups).map(([id, group]) => [id, cloneValue(group)])
-  ),
-  mindmaps: Object.fromEntries(
-    Object.entries(doc.mindmaps).map(([id, mindmap]) => [id, cloneValue(mindmap)])
-  )
+  layout: cloneMindmapLayout(mindmap.layout),
+  meta: mindmap.meta
+    ? {
+        createdAt: mindmap.meta.createdAt,
+        updatedAt: mindmap.meta.updatedAt
+      }
+    : undefined
+})
+
+const cloneMindmapLayout = (
+  layout: MindmapLayoutSpec
+): MindmapLayoutSpec => ({
+  side: layout.side,
+  mode: layout.mode,
+  hGap: layout.hGap,
+  vGap: layout.vGap
+})
+
+const cloneLayoutPatch = (
+  layout: Partial<MindmapLayoutSpec> | undefined
+) => (
+  layout
+    ? {
+        ...layout
+      }
+    : undefined
+)
+
+const applyEdgePatch = (
+  edge: Edge,
+  patch: Partial<Omit<Edge, 'id'>>
+): Edge => ({
+  ...edge,
+  ...(hasOwn(patch, 'source') ? { source: patch.source } : {}),
+  ...(hasOwn(patch, 'target') ? { target: patch.target } : {}),
+  ...(hasOwn(patch, 'type') ? { type: patch.type } : {}),
+  ...(hasOwn(patch, 'locked') ? { locked: patch.locked } : {}),
+  ...(hasOwn(patch, 'groupId') ? { groupId: patch.groupId } : {}),
+  ...(hasOwn(patch, 'route') ? { route: patch.route } : {}),
+  ...(hasOwn(patch, 'style') ? { style: patch.style } : {}),
+  ...(hasOwn(patch, 'textMode') ? { textMode: patch.textMode } : {}),
+  ...(hasOwn(patch, 'labels') ? { labels: patch.labels } : {}),
+  ...(hasOwn(patch, 'data') ? { data: patch.data } : {})
+})
+
+const applyGroupPatch = (
+  group: Group,
+  patch: Partial<Omit<Group, 'id'>>
+): Group => ({
+  ...group,
+  ...(hasOwn(patch, 'locked') ? { locked: patch.locked } : {}),
+  ...(hasOwn(patch, 'name') ? { name: patch.name } : {})
 })
 
 const applyNodePatch = (
@@ -411,9 +771,28 @@ const applyNodePatch = (
   patch: NodePatch
 ): Node => ({
   ...node,
-  ...cloneValue(patch),
-  data: patch.data === undefined ? node.data : cloneValue(patch.data),
-  style: patch.style === undefined ? node.style : cloneValue(patch.style)
+  ...(hasOwn(patch, 'position') ? { position: patch.position } : {}),
+  ...(hasOwn(patch, 'size') ? { size: patch.size } : {}),
+  ...(hasOwn(patch, 'rotation') ? { rotation: patch.rotation } : {}),
+  ...(hasOwn(patch, 'layer') ? { layer: patch.layer } : {}),
+  ...(hasOwn(patch, 'zIndex') ? { zIndex: patch.zIndex } : {}),
+  ...(hasOwn(patch, 'groupId') ? { groupId: patch.groupId } : {}),
+  ...(hasOwn(patch, 'owner') ? { owner: patch.owner } : {}),
+  ...(hasOwn(patch, 'locked') ? { locked: patch.locked } : {}),
+  ...(hasOwn(patch, 'data') ? { data: patch.data } : {}),
+  ...(hasOwn(patch, 'style') ? { style: patch.style } : {})
+})
+
+const applyMindmapTopicPatch = (
+  node: Node,
+  patch: Operation extends infer _T ? Extract<Operation, { type: 'mindmap.topic.patch' }>['patch'] : never
+): Node => ({
+  ...node,
+  ...(hasOwn(patch, 'size') ? { size: patch.size } : {}),
+  ...(hasOwn(patch, 'rotation') ? { rotation: patch.rotation } : {}),
+  ...(hasOwn(patch, 'locked') ? { locked: patch.locked } : {}),
+  ...(hasOwn(patch, 'data') ? { data: patch.data } : {}),
+  ...(hasOwn(patch, 'style') ? { style: patch.style } : {})
 })
 
 export const reduceOperations = (
@@ -434,7 +813,7 @@ export const reduceOperations = (
     )
   }
 
-  const doc = cloneDoc(document)
+  const draft = createDraftDocument(document)
   const changes = createChangeSet()
   const inverse: Operation[] = []
   const reconcile = createReconcileQueue()
@@ -450,11 +829,10 @@ export const reduceOperations = (
       case 'document.replace': {
         inverse.unshift({
           type: 'document.replace',
-          document: cloneDoc(doc)
+          document: materializeDraftDocument(draft)
         })
-        const replaced = cloneDoc(operation.document)
         return ok({
-          doc: replaced,
+          doc: operation.document,
           changes: {
             ...createChangeSet(),
             document: true,
@@ -474,9 +852,9 @@ export const reduceOperations = (
       case 'document.background': {
         inverse.unshift({
           type: 'document.background',
-          background: cloneValue(doc.background)
+          background: cloneBackground(draft.background)
         })
-        doc.background = cloneValue(operation.background)
+        draft.background = operation.background
         changes.background = true
         changes.document = true
         continue
@@ -484,29 +862,29 @@ export const reduceOperations = (
       case 'canvas.order': {
         inverse.unshift({
           type: 'canvas.order',
-          refs: [...doc.canvas.order]
+          refs: [...readCanvasOrder(draft)]
         })
-        doc.canvas.order = [...operation.refs]
+        writeCanvasOrder(draft, [...operation.refs])
         changes.canvasOrder = true
         continue
       }
       case 'node.create': {
-        setNode(doc, cloneValue(operation.node))
+        setNode(draft, operation.node)
         inverse.unshift({
           type: 'node.delete',
           id: operation.node.id
         })
         markChange(changes.nodes, 'add', operation.node.id)
-        changes.canvasOrder ||= isTopLevelNode(doc, operation.node)
+        changes.canvasOrder ||= isTopLevelNode(draft, operation.node)
         continue
       }
       case 'node.restore': {
-        doc.nodes[operation.node.id] = cloneValue(operation.node)
-        if (isTopLevelNode(doc, operation.node)) {
-          doc.canvas.order = insertCanvasSlot(doc.canvas.order, {
+        draft.nodes.set(operation.node.id, operation.node)
+        if (isTopLevelNode(draft, operation.node)) {
+          writeCanvasOrder(draft, insertCanvasSlot(readCanvasOrder(draft), {
             kind: 'node',
             id: operation.node.id
-          }, operation.slot)
+          }, operation.slot))
           changes.canvasOrder = true
         }
         inverse.unshift({
@@ -517,12 +895,12 @@ export const reduceOperations = (
         continue
       }
       case 'node.patch': {
-        const current = getNode(doc, operation.id)
+        const current = getNode(draft, operation.id)
         if (!current) {
           return err('invalid', `Node ${operation.id} not found.`)
         }
-        const previous = cloneValue(current)
-        doc.nodes[operation.id] = applyNodePatch(current, operation.patch)
+        const previous = cloneNode(current)
+        draft.nodes.set(operation.id, applyNodePatch(current, operation.patch))
         inverse.unshift({
           type: 'node.patch',
           id: operation.id,
@@ -546,17 +924,17 @@ export const reduceOperations = (
         continue
       }
       case 'node.move': {
-        const current = getNode(doc, operation.id)
+        const current = getNode(draft, operation.id)
         if (!current) {
           return err('invalid', `Node ${operation.id} not found.`)
         }
-        doc.nodes[operation.id] = {
+        draft.nodes.set(operation.id, {
           ...current,
           position: {
             x: current.position.x + operation.delta.x,
             y: current.position.y + operation.delta.y
           }
-        }
+        })
         inverse.unshift({
           type: 'node.move',
           id: operation.id,
@@ -569,19 +947,19 @@ export const reduceOperations = (
         continue
       }
       case 'node.delete': {
-        const current = getNode(doc, operation.id)
+        const current = getNode(draft, operation.id)
         if (!current) {
           continue
         }
-        const slot = isTopLevelNode(doc, current)
-          ? readCanvasSlot(doc.canvas.order, { kind: 'node', id: current.id })
+        const slot = isTopLevelNode(draft, current)
+          ? readCanvasSlot(readCanvasOrder(draft), { kind: 'node', id: current.id })
           : undefined
         inverse.unshift({
           type: 'node.restore',
-          node: cloneValue(current),
-          slot
+          node: cloneNode(current),
+          slot: cloneCanvasSlot(slot)
         })
-        deleteNode(doc, operation.id)
+        deleteNode(draft, operation.id)
         markChange(changes.nodes, 'delete', operation.id)
         if (slot) {
           changes.canvasOrder = true
@@ -589,14 +967,14 @@ export const reduceOperations = (
         continue
       }
       case 'node.duplicate': {
-        const current = getNode(doc, operation.id)
+        const current = getNode(draft, operation.id)
         if (!current) {
           return err('invalid', `Node ${operation.id} not found.`)
         }
         return err('invalid', `Reducer cannot duplicate node ${current.id} without planned ids.`)
       }
       case 'edge.create': {
-        setEdge(doc, cloneValue(operation.edge))
+        setEdge(draft, operation.edge)
         inverse.unshift({
           type: 'edge.delete',
           id: operation.edge.id
@@ -606,11 +984,11 @@ export const reduceOperations = (
         continue
       }
       case 'edge.restore': {
-        doc.edges[operation.edge.id] = cloneValue(operation.edge)
-        doc.canvas.order = insertCanvasSlot(doc.canvas.order, {
+        draft.edges.set(operation.edge.id, operation.edge)
+        writeCanvasOrder(draft, insertCanvasSlot(readCanvasOrder(draft), {
           kind: 'edge',
           id: operation.edge.id
-        }, operation.slot)
+        }, operation.slot))
         inverse.unshift({
           type: 'edge.delete',
           id: operation.edge.id
@@ -620,40 +998,48 @@ export const reduceOperations = (
         continue
       }
       case 'edge.patch': {
-        const current = getEdge(doc, operation.id)
+        const current = getEdge(draft, operation.id)
         if (!current) {
           return err('invalid', `Edge ${operation.id} not found.`)
         }
         inverse.unshift({
           type: 'edge.patch',
           id: operation.id,
-          patch: cloneValue(current)
+          patch: {
+            source: cloneEdgeEnd(current.source),
+            target: cloneEdgeEnd(current.target),
+            type: current.type,
+            locked: current.locked,
+            groupId: current.groupId,
+            route: cloneEdgeRoute(current.route),
+            style: cloneEdgeStyle(current.style),
+            textMode: current.textMode,
+            labels: cloneEdgeLabels(current.labels),
+            data: cloneValue(current.data)
+          }
         })
-        doc.edges[operation.id] = {
-          ...current,
-          ...cloneValue(operation.patch)
-        }
+        draft.edges.set(operation.id, applyEdgePatch(current, operation.patch))
         markChange(changes.edges, 'update', operation.id)
         continue
       }
       case 'edge.delete': {
-        const current = getEdge(doc, operation.id)
+        const current = getEdge(draft, operation.id)
         if (!current) continue
         inverse.unshift({
           type: 'edge.restore',
-          edge: cloneValue(current),
-          slot: readCanvasSlot(doc.canvas.order, {
+          edge: cloneEdge(current),
+          slot: cloneCanvasSlot(readCanvasSlot(readCanvasOrder(draft), {
             kind: 'edge',
             id: current.id
-          })
+          }))
         })
-        deleteEdge(doc, operation.id)
+        deleteEdge(draft, operation.id)
         markChange(changes.edges, 'delete', operation.id)
         changes.canvasOrder = true
         continue
       }
       case 'group.create': {
-        doc.groups[operation.group.id] = cloneValue(operation.group)
+        draft.groups.set(operation.group.id, operation.group)
         inverse.unshift({
           type: 'group.delete',
           id: operation.group.id
@@ -662,7 +1048,7 @@ export const reduceOperations = (
         continue
       }
       case 'group.restore': {
-        doc.groups[operation.group.id] = cloneValue(operation.group)
+        draft.groups.set(operation.group.id, operation.group)
         inverse.unshift({
           type: 'group.delete',
           id: operation.group.id
@@ -671,42 +1057,42 @@ export const reduceOperations = (
         continue
       }
       case 'group.patch': {
-        const current = doc.groups[operation.id]
+        const current = draft.groups.get(operation.id)
         if (!current) {
           return err('invalid', `Group ${operation.id} not found.`)
         }
         inverse.unshift({
           type: 'group.patch',
           id: operation.id,
-          patch: cloneValue(current)
+          patch: {
+            locked: current.locked,
+            name: current.name
+          }
         })
-        doc.groups[operation.id] = {
-          ...current,
-          ...cloneValue(operation.patch)
-        }
+        draft.groups.set(operation.id, applyGroupPatch(current, operation.patch))
         markChange(changes.groups, 'update', operation.id)
         continue
       }
       case 'group.delete': {
-        const current = doc.groups[operation.id]
+        const current = draft.groups.get(operation.id)
         if (!current) continue
         inverse.unshift({
           type: 'group.restore',
-          group: cloneValue(current)
+          group: cloneGroup(current)
         })
-        delete doc.groups[operation.id]
+        draft.groups.delete(operation.id)
         markChange(changes.groups, 'delete', operation.id)
         continue
       }
       case 'mindmap.create': {
-        doc.mindmaps[operation.mindmap.id] = cloneValue(operation.mindmap)
+        draft.mindmaps.set(operation.mindmap.id, operation.mindmap)
         markChange(changes.mindmaps, 'add', operation.mindmap.id)
         inverse.unshift({
           type: 'mindmap.delete',
           id: operation.mindmap.id
         })
         operation.nodes.forEach((node) => {
-          setNode(doc, cloneValue(node))
+          setNode(draft, node)
           markChange(changes.nodes, 'add', node.id)
         })
         changes.canvasOrder = true
@@ -714,15 +1100,15 @@ export const reduceOperations = (
         continue
       }
       case 'mindmap.restore': {
-        doc.mindmaps[operation.snapshot.mindmap.id] = cloneValue(operation.snapshot.mindmap)
+        draft.mindmaps.set(operation.snapshot.mindmap.id, operation.snapshot.mindmap)
         operation.snapshot.nodes.forEach((node) => {
-          doc.nodes[node.id] = cloneValue(node)
+          draft.nodes.set(node.id, node)
         })
         const rootId = operation.snapshot.mindmap.root
-        doc.canvas.order = insertCanvasSlot(doc.canvas.order, {
+        writeCanvasOrder(draft, insertCanvasSlot(readCanvasOrder(draft), {
           kind: 'node',
           id: rootId
-        }, operation.snapshot.slot)
+        }, operation.snapshot.slot))
         inverse.unshift({
           type: 'mindmap.delete',
           id: operation.snapshot.mindmap.id
@@ -734,92 +1120,92 @@ export const reduceOperations = (
         continue
       }
       case 'mindmap.delete': {
-        const mindmap = getMindmap(doc, operation.id)
+        const mindmap = getMindmap(draft, operation.id)
         if (!mindmap) continue
-        const tree = getMindmapTreeFromDocument(doc, operation.id)
+        const tree = getMindmapTreeFromDraft(draft, operation.id)
         if (!tree) continue
         const nodeIds = new Set(getSubtreeIds(tree, tree.rootNodeId))
-        const nodes = [...nodeIds].map((nodeId) => cloneValue(doc.nodes[nodeId]!)).filter(Boolean)
-        const slot = readCanvasSlot(doc.canvas.order, {
+        const nodes = [...nodeIds].map((nodeId) => cloneNode(getNode(draft, nodeId)!)).filter(Boolean)
+        const slot = readCanvasSlot(readCanvasOrder(draft), {
           kind: 'node',
           id: mindmap.root
         })
-        const connectedEdges = collectConnectedEdges(doc, nodeIds)
+        const connectedEdges = collectConnectedEdges(draft, nodeIds)
         connectedEdges.forEach((edge) => {
           inverse.unshift({
             type: 'edge.restore',
-            edge: cloneValue(edge),
-            slot: readCanvasSlot(doc.canvas.order, {
+            edge: cloneEdge(edge),
+            slot: cloneCanvasSlot(readCanvasSlot(readCanvasOrder(draft), {
               kind: 'edge',
               id: edge.id
-            })
+            }))
           })
-          deleteEdge(doc, edge.id)
+          deleteEdge(draft, edge.id)
           markChange(changes.edges, 'delete', edge.id)
         })
         inverse.unshift({
           type: 'mindmap.restore',
           snapshot: {
-            mindmap: cloneValue(mindmap),
+            mindmap: cloneMindmap(mindmap),
             nodes,
-            slot
+            slot: cloneCanvasSlot(slot)
           }
         })
         nodeIds.forEach((nodeId) => {
-          deleteNode(doc, nodeId)
+          deleteNode(draft, nodeId)
           markChange(changes.nodes, 'delete', nodeId)
         })
-        delete doc.mindmaps[operation.id]
+        draft.mindmaps.delete(operation.id)
         markChange(changes.mindmaps, 'delete', operation.id)
         changes.canvasOrder = true
         continue
       }
       case 'mindmap.root.move': {
-        const mindmap = getMindmap(doc, operation.id)
-        const root = mindmap ? getNode(doc, mindmap.root) : undefined
+        const mindmap = getMindmap(draft, operation.id)
+        const root = mindmap ? getNode(draft, mindmap.root) : undefined
         if (!mindmap || !root) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
         inverse.unshift({
           type: 'mindmap.root.move',
           id: operation.id,
-          position: cloneValue(root.position)
+          position: clonePoint(root.position)!
         })
-        doc.nodes[root.id] = {
+        draft.nodes.set(root.id, {
           ...root,
-          position: cloneValue(operation.position)
-        }
+          position: clonePoint(operation.position)!
+        })
         markChange(changes.nodes, 'update', root.id)
         queueMindmapLayout(operation.id)
         continue
       }
       case 'mindmap.layout': {
-        const current = getMindmap(doc, operation.id)
+        const current = getMindmap(draft, operation.id)
         if (!current) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
         inverse.unshift({
           type: 'mindmap.layout',
           id: operation.id,
-          patch: cloneValue(current.layout)
+          patch: cloneLayoutPatch(current.layout)!
         })
-        doc.mindmaps[operation.id] = {
+        draft.mindmaps.set(operation.id, {
           ...current,
           layout: {
             ...current.layout,
-            ...cloneValue(operation.patch)
+            ...operation.patch
           }
-        }
+        })
         markChange(changes.mindmaps, 'update', operation.id)
         queueMindmapLayout(operation.id)
         continue
       }
       case 'mindmap.topic.insert': {
-        const current = getMindmap(doc, operation.id)
+        const current = getMindmap(draft, operation.id)
         if (!current) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
-        const tree = getMindmapTreeFromDocument(doc, operation.id)
+        const tree = getMindmapTreeFromDraft(draft, operation.id)
         if (!tree) {
           return err('invalid', `Mindmap ${operation.id} tree missing.`)
         }
@@ -849,14 +1235,14 @@ export const reduceOperations = (
           const siblings = current.children[parentId] ?? []
           const currentIndex = siblings.indexOf(input.nodeId)
           const nextId = operation.node.id
-          doc.mindmaps[operation.id] = {
+          draft.mindmaps.set(operation.id, {
             ...current,
             members: {
               ...current.members,
               [nextId]: {
                 parentId,
                 side: parentId === current.root ? side : undefined,
-                branchStyle: cloneValue(target?.branchStyle ?? current.members[parentId]?.branchStyle)
+                branchStyle: cloneBranchStyle(target?.branchStyle ?? current.members[parentId]?.branchStyle)!
               },
               [input.nodeId]: {
                 ...current.members[input.nodeId],
@@ -871,8 +1257,8 @@ export const reduceOperations = (
                 : [...siblings.slice(0, currentIndex), nextId, ...siblings.slice(currentIndex + 1)],
               [nextId]: [input.nodeId]
             }
-          }
-          doc.nodes[nextId] = cloneValue(operation.node)
+          })
+          draft.nodes.set(nextId, operation.node)
           inverse.unshift({
             type: 'mindmap.topic.delete',
             id: operation.id,
@@ -891,7 +1277,7 @@ export const reduceOperations = (
           [operation.node.id]: {
             parentId,
             side: parentId === current.root ? side ?? 'right' : undefined,
-            branchStyle: cloneValue(current.members[parentId]?.branchStyle ?? current.members[current.root]?.branchStyle)
+            branchStyle: cloneBranchStyle(current.members[parentId]?.branchStyle ?? current.members[current.root]?.branchStyle)!
           }
         }
         const nextChildren = {
@@ -904,12 +1290,12 @@ export const reduceOperations = (
         } else {
           nextChildren[parentId].splice(index, 0, operation.node.id)
         }
-        doc.mindmaps[operation.id] = {
+        draft.mindmaps.set(operation.id, {
           ...current,
           members: nextMembers,
           children: nextChildren
-        }
-        doc.nodes[operation.node.id] = cloneValue(operation.node)
+        })
+        draft.nodes.set(operation.node.id, operation.node)
         inverse.unshift({
           type: 'mindmap.topic.delete',
           id: operation.id,
@@ -923,11 +1309,24 @@ export const reduceOperations = (
         continue
       }
       case 'mindmap.topic.restore': {
-        const current = getMindmap(doc, operation.id)
+        const current = getMindmap(draft, operation.id)
         if (!current) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
-        const nextMembers = { ...current.members, ...cloneValue(operation.snapshot.members) }
+        const nextMembers = {
+          ...current.members,
+          ...Object.fromEntries(
+            Object.entries(operation.snapshot.members).map(([nodeId, member]) => [
+              nodeId,
+              {
+                parentId: member.parentId,
+                side: member.side,
+                collapsed: member.collapsed,
+                branchStyle: cloneBranchStyle(member.branchStyle)!
+              }
+            ])
+          )
+        }
         const nextChildren = { ...current.children }
         Object.entries(operation.snapshot.children).forEach(([nodeId, children]) => {
           nextChildren[nodeId] = [...children]
@@ -951,13 +1350,13 @@ export const reduceOperations = (
           siblings.push(operation.snapshot.root)
         }
         nextChildren[operation.snapshot.slot.parent] = siblings
-        doc.mindmaps[operation.id] = {
+        draft.mindmaps.set(operation.id, {
           ...current,
           members: nextMembers,
           children: nextChildren
-        }
+        })
         operation.snapshot.nodes.forEach((node) => {
-          doc.nodes[node.id] = cloneValue(node)
+          draft.nodes.set(node.id, node)
           markChange(changes.nodes, 'add', node.id)
         })
         inverse.unshift({
@@ -972,7 +1371,7 @@ export const reduceOperations = (
         continue
       }
       case 'mindmap.topic.move': {
-        const current = getMindmap(doc, operation.id)
+        const current = getMindmap(draft, operation.id)
         if (!current) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
@@ -996,7 +1395,7 @@ export const reduceOperations = (
         } else {
           nextSiblings.splice(operation.input.index, 0, operation.input.nodeId)
         }
-        doc.mindmaps[operation.id] = {
+        draft.mindmaps.set(operation.id, {
           ...current,
           members: {
             ...current.members,
@@ -1013,7 +1412,7 @@ export const reduceOperations = (
             [prevParentId]: prevSiblings.filter((id) => id !== operation.input.nodeId),
             [nextParentId]: nextSiblings
           }
-        }
+        })
         inverse.unshift({
           type: 'mindmap.topic.move',
           id: operation.id,
@@ -1029,8 +1428,8 @@ export const reduceOperations = (
         continue
       }
       case 'mindmap.topic.delete': {
-        const current = getMindmap(doc, operation.id)
-        const tree = getMindmapTreeFromDocument(doc, operation.id)
+        const current = getMindmap(draft, operation.id)
+        const tree = getMindmapTreeFromDraft(draft, operation.id)
         if (!current || !tree) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
@@ -1046,24 +1445,24 @@ export const reduceOperations = (
         const siblings = current.children[parentId] ?? []
         const index = siblings.indexOf(rootId)
         const nodeIds = new Set(getSubtreeIds(tree, rootId))
-        const nodes = [...nodeIds].map((nodeId) => cloneValue(doc.nodes[nodeId]!)).filter(Boolean)
+        const nodes = [...nodeIds].map((nodeId) => cloneNode(getNode(draft, nodeId)!)).filter(Boolean)
         const members = Object.fromEntries(
-          [...nodeIds].map((nodeId) => [nodeId, cloneValue(current.members[nodeId])])
+          [...nodeIds].map((nodeId) => [nodeId, cloneMindmapMember(current.members[nodeId])!])
         )
         const children = Object.fromEntries(
-          [...nodeIds].map((nodeId) => [nodeId, cloneValue(current.children[nodeId] ?? [])])
+          [...nodeIds].map((nodeId) => [nodeId, [...(current.children[nodeId] ?? [])]])
         )
-        const connectedEdges = collectConnectedEdges(doc, nodeIds)
+        const connectedEdges = collectConnectedEdges(draft, nodeIds)
         connectedEdges.forEach((edge) => {
           inverse.unshift({
             type: 'edge.restore',
-            edge: cloneValue(edge),
-            slot: readCanvasSlot(doc.canvas.order, {
+            edge: cloneEdge(edge),
+            slot: cloneCanvasSlot(readCanvasSlot(readCanvasOrder(draft), {
               kind: 'edge',
               id: edge.id
-            })
+            }))
           })
-          deleteEdge(doc, edge.id)
+          deleteEdge(draft, edge.id)
           markChange(changes.edges, 'delete', edge.id)
         })
         inverse.unshift({
@@ -1087,14 +1486,14 @@ export const reduceOperations = (
         nodeIds.forEach((nodeId) => {
           delete nextMembers[nodeId]
           delete nextChildren[nodeId]
-          delete doc.nodes[nodeId]
+          draft.nodes.delete(nodeId)
           markChange(changes.nodes, 'delete', nodeId)
         })
-        doc.mindmaps[operation.id] = {
+        draft.mindmaps.set(operation.id, {
           ...current,
           members: nextMembers,
           children: nextChildren
-        }
+        })
         markChange(changes.mindmaps, 'update', operation.id)
         queueMindmapLayout(operation.id)
         continue
@@ -1102,13 +1501,13 @@ export const reduceOperations = (
       case 'mindmap.topic.clone':
         return err('invalid', 'Reducer cannot clone topic subtree without planned ids.')
       case 'mindmap.topic.patch': {
-        const current = getMindmap(doc, operation.id)
+        const current = getMindmap(draft, operation.id)
         if (!current) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
         const inversePatches: Operation[] = []
         operation.topicIds.forEach((topicId) => {
-          const node = doc.nodes[topicId]
+          const node = getNode(draft, topicId)
           if (!node) return
           inversePatches.unshift({
             type: 'mindmap.topic.patch',
@@ -1117,17 +1516,12 @@ export const reduceOperations = (
             patch: {
               data: cloneValue(node.data),
               style: cloneValue(node.style),
-              size: cloneValue(node.size),
+              size: cloneSize(node.size),
               rotation: node.rotation,
               locked: node.locked
             }
           })
-          doc.nodes[topicId] = {
-            ...node,
-            ...cloneValue(operation.patch),
-            data: operation.patch.data === undefined ? node.data : cloneValue(operation.patch.data),
-            style: operation.patch.style === undefined ? node.style : cloneValue(operation.patch.style)
-          }
+          draft.nodes.set(topicId, applyMindmapTopicPatch(node, operation.patch))
           markChange(changes.nodes, 'update', topicId)
         })
         inverse.unshift(...inversePatches)
@@ -1135,7 +1529,7 @@ export const reduceOperations = (
         continue
       }
       case 'mindmap.branch.patch': {
-        const current = getMindmap(doc, operation.id)
+        const current = getMindmap(draft, operation.id)
         if (!current) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
@@ -1148,27 +1542,27 @@ export const reduceOperations = (
             type: 'mindmap.branch.patch',
             id: operation.id,
             topicIds: [topicId],
-            patch: cloneValue(member.branchStyle)
+            patch: cloneBranchStyle(member.branchStyle)!
           })
           nextMembers[topicId] = {
             ...member,
             branchStyle: {
               ...member.branchStyle,
-              ...cloneValue(operation.patch)
+              ...operation.patch
             }
           }
         })
-        doc.mindmaps[operation.id] = {
+        draft.mindmaps.set(operation.id, {
           ...current,
           members: nextMembers
-        }
+        })
         inverse.unshift(...inverseOps)
         markChange(changes.mindmaps, 'update', operation.id)
         queueMindmapLayout(operation.id)
         continue
       }
       case 'mindmap.topic.collapse': {
-        const current = getMindmap(doc, operation.id)
+        const current = getMindmap(draft, operation.id)
         if (!current) {
           return err('invalid', `Mindmap ${operation.id} not found.`)
         }
@@ -1182,7 +1576,7 @@ export const reduceOperations = (
           topicId: operation.topicId,
           collapsed: member.collapsed
         })
-        doc.mindmaps[operation.id] = {
+        draft.mindmaps.set(operation.id, {
           ...current,
           members: {
             ...current.members,
@@ -1191,7 +1585,7 @@ export const reduceOperations = (
               collapsed: operation.collapsed ?? !member.collapsed
             }
           }
-        }
+        })
         markChange(changes.mindmaps, 'update', operation.id)
         queueMindmapLayout(operation.id)
         continue
@@ -1204,13 +1598,13 @@ export const reduceOperations = (
       return
     }
 
-    relayoutMindmap(doc, task.id)
-    const record = doc.mindmaps[task.id]
+    relayoutMindmap(draft, task.id)
+    const record = draft.mindmaps.get(task.id)
     if (!record) {
       return
     }
 
-    getSubtreeIds(getMindmapTreeFromDocument(doc, task.id)!, record.root).forEach((nodeId) => {
+    getSubtreeIds(getMindmapTreeFromDraft(draft, task.id)!, record.root).forEach((nodeId) => {
       markChange(changes.nodes, 'update', nodeId)
     })
   })
@@ -1245,7 +1639,7 @@ export const reduceOperations = (
   }
 
   return ok({
-    doc,
+    doc: materializeDraftDocument(draft),
     changes,
     invalidation,
     inverse,

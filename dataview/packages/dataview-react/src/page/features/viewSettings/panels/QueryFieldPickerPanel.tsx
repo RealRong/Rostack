@@ -18,6 +18,7 @@ export const QueryFieldPickerPanel = (props: {
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
   const query = useStoreValue(pageRuntime.query)
+  const sortPanel = useStoreValue(pageRuntime.sortPanel)
   const currentView = settings.currentView
   const currentViewDomain = currentView
     ? engine.active
@@ -29,7 +30,7 @@ export const QueryFieldPickerPanel = (props: {
       <FieldPicker
         fields={props.kind === 'filter'
           ? query.availableFilterFields
-          : query.availableSortFields}
+          : sortPanel.availableFields}
         emptyMessage={props.kind === 'filter'
           ? meta.ui.fieldPicker.allFiltered
           : meta.ui.fieldPicker.allSorted}

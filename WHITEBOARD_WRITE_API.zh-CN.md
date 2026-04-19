@@ -51,6 +51,14 @@
 - 已返回 `reconcile_cycle` / `reconcile_budget_exceeded`
 - mindmap relayout 已经走显式 reconcile queue
 
+- reducer 内部表已切到真正的 `OverlayTable`：
+- `nodes / edges / groups / mindmaps` 都已是行级 overlay
+- reducer 不再在入口先 deep clone 整份 document
+- final materialize 才把 overlay 收敛回普通 `Document`
+- reducer 已收口 clone 边界：
+- 默认信任 `Op` payload 不可变，不在 ingress 对 create / restore / patch 输入再做 deep clone
+- clone 只保留在 inverse snapshot、restore snapshot 和少量输出物化场景
+
 - engine 正式写入口已收口为：
 - `Writer.execute(command)`
 - `Writer.apply(batch)`
@@ -101,25 +109,19 @@
 - 当前 core write 仍主要收敛在 `whiteboard-core/src/kernel/reduce.ts`
 - 这是目录实现偏差，不是 API / 语义偏差
 
-- `OverlayTable` 的行级 copy-on-write + tombstone 实现本轮没有继续落地
-- 当前实现仍采用 reducer 内部 clone + mutate，再配合 `ChangeSet` / `Invalidation` / bounded `ReconcileQueue`
-- 这是底层存储实现偏差，不是 command / op / commit / reconcile pipeline 偏差
-
 ### 0.3 当前验收结论
 
 - 如果验收标准是“本文定义的正式 write API / command / commit / invalidation / reconcile pipeline 是否已落地”，答案是：是
 - 如果验收标准是“本文里每一层理想物理目录和底层存储模型是否逐项原样实现”，答案是：否
-- 当前代码已经接受两项内部实现偏差：
+- 当前代码现在只接受一项内部实现偏差：
 - core write 目录未继续物理拆分
-- `OverlayTable` 未继续实现为独立 copy-on-write/tombstone 存储层
-- 这两项不影响当前外部 API、语义边界、类型协议和测试验收
+- 这不影响当前外部 API、语义边界、类型协议和测试验收
 
 ### 0.4 后续可选收敛
 
-- 如果后续仍要继续追求“理想内核形态”，只剩两件事：
+- 如果后续仍要继续追求“理想内核形态”，只剩一件事：
 - 把 `kernel/reduce.ts` 物理拆到 `core/src/write/*`
-- 把 reducer 内部表实现替换为真正的 `OverlayTable`
-- 这两项不再是本轮 API / 行为验收阻塞项
+- 这不再是本轮 API / 行为验收阻塞项
 
 ---
 
@@ -326,6 +328,8 @@ type Commit = {
 - `changes` 是订阅和增量刷新摘要
 - `invalidation` 是 runtime invalidation 元数据
 - internal reconcile task 不进入 `Commit`
+- reducer 默认信任 `Op` payload 不可变
+- reducer 不承担通用输入隔离；如果上游需要防御式拷贝，必须在 planner / builder 边界完成
 
 ### 3.6 Inverse
 

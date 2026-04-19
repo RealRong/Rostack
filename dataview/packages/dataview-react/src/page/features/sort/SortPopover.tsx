@@ -24,9 +24,6 @@ import { meta } from '@dataview/meta'
 import { SortRuleRow } from '@dataview/react/page/features/sort/SortRuleRow'
 import { useTranslation } from '@shared/i18n/react'
 import {
-  getAvailableSorterFields
-} from '@dataview/runtime'
-import {
   getSorterItemId,
   readSortSummary
 } from '@dataview/react/page/features/sort/sortUi'
@@ -46,19 +43,18 @@ export const SortPopover = (props: SortPopoverProps) => {
   const engine = dataView.engine
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
-  const query = useStoreValue(pageRuntime.query)
-  const fields = settings.fields
+  const sortPanel = useStoreValue(pageRuntime.sortPanel)
   const currentView = settings.currentView
   const currentViewDomain = currentView
     ? engine.active
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
-  const sortRules = query.sorts
+  const sortRules = sortPanel.rules
   const sorters = sortRules.map(entry => entry.sorter)
   const singleSortDirection = sortRules.length === 1
     ? sortRules[0]?.sorter.direction
     : undefined
-  const availableFields = getAvailableSorterFields(fields, sorters)
+  const availableFields = sortPanel.availableFields
   const addItem: MenuSubmenuItem | null = availableFields.length
     ? {
       kind: 'submenu',
@@ -141,10 +137,7 @@ export const SortPopover = (props: SortPopoverProps) => {
             }}
             renderItem={(sorter, drag, index) => (
               <SortRuleRow
-                fields={fields}
-                sorters={sorters}
                 index={index}
-                sorter={sorter}
                 drag={drag}
                 onChange={nextSorter => {
                   currentViewDomain?.sort.replace(index, nextSorter)

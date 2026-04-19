@@ -36,11 +36,6 @@ export interface RecordCardSelectionRuntime {
   select: (id: ItemId, mode?: 'replace' | 'toggle') => void
 }
 
-export interface RecordCardInteraction {
-  drag: RecordCardDragRuntime
-  selection: RecordCardSelectionRuntime
-}
-
 export interface RecordCardAppearance {
   showEditAction?: boolean
   selectedStyle?: CSSProperties
@@ -52,18 +47,17 @@ export interface RecordCardAppearance {
   } | undefined
 }
 
-export interface RecordCardMount {
-  measureRef?: (node: HTMLElement | null) => void
-  className?: string
-  style?: CSSProperties
-}
-
 export interface RecordCardProps {
   card: Card
   content: CardContentData
-  interaction: RecordCardInteraction
-  appearance: RecordCardAppearance
-  mount?: RecordCardMount
+  drag: RecordCardDragRuntime
+  selection: RecordCardSelectionRuntime
+  showEditAction?: boolean
+  selectedStyle?: CSSProperties
+  resolveSurface?: RecordCardAppearance['resolveSurface']
+  measureRef?: (node: HTMLElement | null) => void
+  className?: string
+  style?: CSSProperties
 }
 
 const fieldRef = (input: {
@@ -79,9 +73,9 @@ const fieldRef = (input: {
 })
 
 const RecordCardComponent = (props: RecordCardProps) => {
-  const draggingActive = props.interaction.drag.activeId === props.card.itemId
-  const draggingSelected = props.interaction.drag.activeId !== undefined
-    && props.interaction.drag.dragIdSet.has(props.card.itemId)
+  const draggingActive = props.drag.activeId === props.card.itemId
+  const draggingSelected = props.drag.activeId !== undefined
+    && props.drag.dragIdSet.has(props.card.itemId)
   const editing = props.card.editing
   const selected = props.card.selected
 
@@ -91,7 +85,7 @@ const RecordCardComponent = (props: RecordCardProps) => {
     hasVisibleFields: props.content.hasProperties,
     selected
   })
-  const surface = props.appearance.resolveSurface?.({
+  const surface = props.resolveSurface?.({
     selected
   })
   const surfaceDefault = surface?.default
@@ -131,7 +125,7 @@ const RecordCardComponent = (props: RecordCardProps) => {
       titleText={props.content.titleText}
       placeholderText={props.content.placeholderText}
       wrap={props.card.wrap}
-      showEditAction={props.appearance.showEditAction && !draggingActive}
+      showEditAction={props.showEditAction && !draggingActive}
       rootClassName={presentation.slots.title?.content}
       textClassName={presentation.slots.title?.text}
       inputClassName={presentation.slots.title?.input}
@@ -141,13 +135,13 @@ const RecordCardComponent = (props: RecordCardProps) => {
     presentation.slots.title?.content,
     presentation.slots.title?.input,
     presentation.slots.title?.text,
-    props.appearance.showEditAction,
     props.card.itemId,
     props.card.recordId,
     props.card.viewId,
     props.card.wrap,
     props.content.placeholderText,
-    props.content.titleText
+    props.content.titleText,
+    props.showEditAction
   ])
   const visibleProperties = useMemo(() => (
     editing
@@ -188,7 +182,7 @@ const RecordCardComponent = (props: RecordCardProps) => {
 
   return (
     <CardContent
-      ref={props.mount?.measureRef}
+      ref={props.measureRef}
       {...{
         [DATAVIEW_APPEARANCE_ID_ATTR]: props.card.itemId
       }}
@@ -201,14 +195,14 @@ const RecordCardComponent = (props: RecordCardProps) => {
           return
         }
 
-        props.interaction.drag.onPointerDown(props.card.itemId, event)
+        props.drag.onPointerDown(props.card.itemId, event)
       }}
       onClick={event => {
         if (editing) {
           return
         }
 
-        if (props.interaction.drag.shouldIgnoreClick()) {
+        if (props.drag.shouldIgnoreClick()) {
           event.preventDefault()
           event.stopPropagation()
           return
@@ -218,7 +212,7 @@ const RecordCardComponent = (props: RecordCardProps) => {
           return
         }
 
-        props.interaction.selection.select(
+        props.selection.select(
           props.card.itemId,
           event.metaKey || event.ctrlKey ? 'toggle' : 'replace'
         )
@@ -234,14 +228,14 @@ const RecordCardComponent = (props: RecordCardProps) => {
         !editing && surfaceHover?.boxShadow && 'hover:[box-shadow:var(--dv-record-card-shadow-hover)]',
         draggingActive && 'opacity-35',
         draggingSelected && !draggingActive && 'opacity-60',
-        props.mount?.className
+        props.className
       )}
       style={{
         ...surfaceStyle,
         ...(selected
-          ? props.appearance.selectedStyle
+          ? props.selectedStyle
           : undefined),
-        ...props.mount?.style
+        ...props.style
       }}
       slots={presentation.slots}
       titleNode={title}

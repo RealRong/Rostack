@@ -65,6 +65,8 @@ export type {
   PageLock,
   PageModel,
   PageQuery,
+  PageSortPanel,
+  PageSortRow,
   PageSessionApi,
   PageSessionInput,
   PageSessionState,

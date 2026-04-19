@@ -8,7 +8,7 @@ import type {
   SectionKey
 } from '@dataview/engine'
 import type {
-  KanbanSectionVisibility
+  KanbanVisibility
 } from '@dataview/react/views/kanban/types'
 
 export interface CardLayout {
@@ -32,7 +32,7 @@ export const KANBAN_CARD_ESTIMATED_HEIGHT = 132
 
 export const buildBoardLayout = (input: {
   sections: readonly Section[]
-  visibilityBySection: ReadonlyMap<SectionKey, KanbanSectionVisibility>
+  visibilityBySection: ReadonlyMap<SectionKey, KanbanVisibility | undefined>
   bodyRectBySectionKey: ReadonlyMap<SectionKey, Rect>
   heightById: ReadonlyMap<ItemId, number>
   estimatedHeight?: number
@@ -44,7 +44,7 @@ export const buildBoardLayout = (input: {
       return []
     }
 
-    const visibleIds = input.visibilityBySection.get(section.key)?.visibleIds ?? section.items.ids
+    const visibleIds = input.visibilityBySection.get(section.key)?.ids ?? section.items.ids
     let top = bodyRect.top
     const cards = visibleIds.map<CardLayout>(id => {
       const height = input.heightById.get(id) ?? estimatedHeight

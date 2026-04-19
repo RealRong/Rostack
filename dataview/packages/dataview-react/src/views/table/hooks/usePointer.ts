@@ -362,7 +362,7 @@ const useHoverBinding = (input: {
 
     const target = hoverTargetFromPoint(point, rowContext())
     input.table.hover.set(target, point)
-    input.table.rowRail.set(hoveredRowIdOf(target))
+    input.table.rail.set(hoveredRowIdOf(target))
   }, [
     clear,
     input.table,
@@ -395,7 +395,7 @@ const useHoverBinding = (input: {
     pointRef.current = resolvedPoint
     const target = hoverTargetFromPoint(resolvedPoint ?? null, rowContext())
     input.table.hover.set(target, resolvedPoint)
-    input.table.rowRail.set(hoveredRowIdOf(target))
+    input.table.rail.set(hoveredRowIdOf(target))
   }, [clear, input.table, rowContext])
 
   const onPointerMove = useCallback<PointerEventHandler<HTMLDivElement>>(event => {
@@ -425,9 +425,9 @@ const useHoverBinding = (input: {
 
     cancelFrame()
     pointRef.current = null
-    input.table.rowRail.set(null)
+    input.table.rail.set(null)
     clear(null)
-  }, [cancelFrame, clear, input.table.rowRail])
+  }, [cancelFrame, clear, input.table.rail])
 
   useEffect(() => () => {
     cancelFrame()
@@ -744,7 +744,7 @@ export const usePointer = (
     }
 
     dragPointerRef.current = toPoint(event)
-    table.rowRail.set(null)
+    table.rail.set(null)
     table.hover.clear(dragPointerRef.current)
     const session = table.interaction.start({
       mode: 'pointer',
@@ -777,7 +777,7 @@ export const usePointer = (
 
     dragPointerRef.current = toPoint(event)
     setDragActive(true)
-    table.rowRail.set(null)
+    table.rail.set(null)
     table.hover.clear(dragPointerRef.current)
     const session = table.interaction.start({
       mode: 'fill',

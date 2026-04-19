@@ -20,8 +20,8 @@ export {
 export type {
   KanbanBoard,
   KanbanCard,
-  KanbanSectionData,
-  KanbanSectionVisibility,
+  KanbanSection,
+  KanbanVisibility,
   KanbanViewProps,
   KanbanViewRuntime
 } from '@dataview/react/views/kanban'

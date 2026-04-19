@@ -40,7 +40,7 @@ export const useRowReorder = (): RowReorderApi => {
   }
 
   const layout = table.layout
-  const capabilities = useStoreValue(table.capabilities)
+  const canRowDrag = useStoreValue(table.can.rowDrag)
   const rowSelection = useStoreValue(table.selection.rows.state.store)
   const rowIds = currentView.items.ids
   const selectedRowIds = useMemo(
@@ -72,7 +72,7 @@ export const useRowReorder = (): RowReorderApi => {
 
   const drag = usePointerDragSession<ItemId, ItemId, TableRowReorderHint>({
     containerRef: layout.containerRef,
-    canDrag: capabilities.canRowDrag,
+    canDrag: canRowDrag,
     autoPan: true,
     itemMap,
     getDragIds: resolveDragIds,
@@ -137,7 +137,7 @@ export const useRowReorder = (): RowReorderApi => {
     },
     onFinish: input => {
       table.hover.clear()
-      table.rowRail.set(null)
+      table.rail.set(null)
       sourceNodeRef.current = null
       if (!input.cancelled && selectionTargetRef.current) {
         table.selection.rows.command.ids.replace([selectionTargetRef.current], {
@@ -154,7 +154,7 @@ export const useRowReorder = (): RowReorderApi => {
     rowId: ItemId
     event: ReactPointerEvent<HTMLButtonElement>
   }) => {
-    if (!capabilities.canRowDrag) {
+    if (!canRowDrag) {
       return
     }
 
@@ -173,9 +173,9 @@ export const useRowReorder = (): RowReorderApi => {
       x: input.event.clientX,
       y: input.event.clientY
     })
-    table.rowRail.set(null)
+    table.rail.set(null)
     drag.onPointerDown(input.rowId, input.event)
-  }, [capabilities.canRowDrag, drag, resolveDragIds, selectedRowIds, table.dom, table.hover, table.rowRail])
+  }, [canRowDrag, drag, resolveDragIds, selectedRowIds, table.dom, table.hover, table.rail])
 
   useEffect(() => {
     if (!drag.dragIds.length) {

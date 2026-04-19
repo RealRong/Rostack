@@ -29,22 +29,23 @@ export const ColumnBody = (props: {
   const runtime = useKanbanRuntimeContext()
   const board = useStoreValue(runtime.board)
   const section = useKeyedStoreValue(runtime.section, props.sectionKey)
+  const visibility = useKeyedStoreValue(runtime.visibility.section, props.sectionKey)
   if (!section) {
     return null
   }
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const measureBodyRef = useMemo(
-    () => runtime.geometry.measureBody(section.key),
-    [runtime.geometry.measureBody, section.key]
+    () => runtime.layout.measure.body(section.key),
+    [runtime.layout.measure, section.key]
   )
   const setBodyRef = useCallback((node: HTMLDivElement | null) => {
     bodyRef.current = node
     measureBodyRef(node)
   }, [measureBodyRef])
-  const visibleIds = section.visibleIds
-  const visibleCount = section.visibleCount
-  const hiddenCount = section.hiddenCount
-  const showMoreCount = section.showMoreCount
+  const visibleIds = visibility?.ids ?? []
+  const visibleCount = visibility?.visible ?? 0
+  const hiddenCount = visibility?.hidden ?? 0
+  const showMoreCount = visibility?.more ?? 0
   const overTarget = runtime.drag.overTarget
   const sectionOverTarget = overTarget?.sectionKey === section.key
     ? overTarget
@@ -101,7 +102,7 @@ export const ColumnBody = (props: {
             <Card
               key={id}
               itemId={id}
-              measureRef={runtime.geometry.measureCard(id)}
+              measureRef={runtime.layout.measure.card(id)}
             />
           ))}
           {hiddenCount ? (

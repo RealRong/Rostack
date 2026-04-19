@@ -1,6 +1,7 @@
 import type {
   ViewState as CurrentView,
-  Engine
+  Engine,
+  CellRef
 } from '@dataview/engine'
 import {
   revealElement,
@@ -25,13 +26,7 @@ import {
 } from '@dataview/runtime/selection'
 import {
   createDerivedStore,
-  createKeyedDerivedStore,
-  createProjectedStore,
-  createValueStore,
   read
-} from '@shared/core'
-import type {
-  ValueStore
 } from '@shared/core'
 import type {
   Field,
@@ -57,7 +52,31 @@ import {
   createRowHit,
   type RowHit
 } from '@dataview/react/views/table/dom/rowHit'
-import { createHover, type Hover } from '@dataview/react/views/table/hover'
+import {
+  createTableCanRuntime,
+  type TableCanRuntime
+} from '@dataview/react/views/table/runtime/can'
+import {
+  createTableChromeRuntime,
+  type TableCellChrome,
+  type TableRowChrome
+} from '@dataview/react/views/table/runtime/chrome'
+import {
+  createTableFillRuntime,
+  type TableFillRuntime
+} from '@dataview/react/views/table/runtime/fill'
+import {
+  createTableHover,
+  type TableHoverRuntime
+} from '@dataview/react/views/table/runtime/hover'
+import {
+  createTableRailRuntime,
+  type TableRailRuntime
+} from '@dataview/react/views/table/runtime/rail'
+import {
+  createTableSelectRuntime,
+  type TableSelectRuntime
+} from '@dataview/react/views/table/runtime/select'
 import type { TableLayout } from '@dataview/react/views/table/layout'
 import {
   createTableVirtualRuntime,
@@ -70,24 +89,12 @@ import {
   createTableSelectionRuntime,
   type TableSelectionRuntime
 } from '@dataview/react/views/table/selectionRuntime'
-import { createRowRender, type RowRender } from '@dataview/react/views/table/rowRender'
 import {
   type DataViewTableModel,
   type TableColumn,
   type TableSection,
   type TableSummary
 } from '@dataview/runtime'
-export interface TableRowData {
-  selected: boolean
-  exposed: boolean
-  canDrag: boolean
-  selectionVisible: boolean
-  selectedFieldStart?: number
-  selectedFieldEnd?: number
-  focusFieldId?: FieldId
-  hoverFieldId?: FieldId
-  fillFieldId?: FieldId
-}
 
 export interface TableBodyData {
   viewId: ViewId
@@ -103,25 +110,6 @@ export interface TableBodyData {
   containerWidth: number
   marqueeActive: boolean
 }
-
-export interface TableRowRailRuntime {
-  activeId: ReadStore<ItemId | null>
-  exposed: KeyedReadStore<ItemId, boolean>
-  set: (rowId: ItemId | null) => void
-}
-
-const sameRowData = (
-  left: TableRowData,
-  right: TableRowData
-) => left.selected === right.selected
-  && left.exposed === right.exposed
-  && left.canDrag === right.canDrag
-  && left.selectionVisible === right.selectionVisible
-  && left.selectedFieldStart === right.selectedFieldStart
-  && left.selectedFieldEnd === right.selectedFieldEnd
-  && left.focusFieldId === right.focusFieldId
-  && left.hoverFieldId === right.hoverFieldId
-  && left.fillFieldId === right.fillFieldId
 
 const sameBodyData = (
   left: TableBodyData | null,
@@ -170,7 +158,14 @@ export interface TableController {
   locked: ReadStore<boolean>
   valueEditorOpen: ReadStore<boolean>
   selection: TableSelectionRuntime
-  rowRail: TableRowRailRuntime
+  select: TableSelectRuntime
+  fill: TableFillRuntime
+  rail: TableRailRuntime
+  can: TableCanRuntime
+  chrome: {
+    row: KeyedReadStore<ItemId, TableRowChrome>
+    cell: KeyedReadStore<CellRef, TableCellChrome>
+  }
   layout: TableLayout
   virtual: TableVirtualRuntime
   nodes: Nodes
@@ -179,10 +174,7 @@ export interface TableController {
   focus: () => void
   openCell: (input: CellOpenInput) => boolean
   interaction: InteractionApi
-  capabilities: ReadStore<Capabilities>
-  hover: Hover
-  rowRender: RowRender
-  row: KeyedReadStore<ItemId, TableRowData>
+  hover: TableHoverRuntime
   column: KeyedReadStore<FieldId, TableColumn | undefined>
   summary: KeyedReadStore<string, TableSummary | undefined>
   section: KeyedReadStore<string, TableSection | undefined>
@@ -194,7 +186,6 @@ export interface TableController {
 export type {
   Capabilities,
   CellOpenInput,
-  RowRender,
   TableSelectionRuntime
 }
 
@@ -244,32 +235,46 @@ export const createTableController = (options: {
     currentViewStore: currentView,
     rowSelection: options.selection
   })
-  const rowRailActiveId = createValueStore<ItemId | null>({
-    initial: null,
-    isEqual: Object.is
-  })
-  const rowRail: TableRowRailRuntime = {
-    activeId: rowRailActiveId,
-    exposed: createKeyedDerivedStore<ItemId, boolean>({
-      keyOf: rowId => rowId,
-      get: rowId => read(rowRailActiveId) === rowId,
-      isEqual: Object.is
-    }),
-    set: rowRailActiveId.set
-  }
   const lockedStore = createDerivedStore<boolean>({
     get: () => read(options.pageStore).lock !== null
   })
   const valueEditorOpenStore = createDerivedStore<boolean>({
     get: () => read(options.pageStore).valueEditorOpen
   })
+  const selectionVisibleStore = createDerivedStore<boolean>({
+    get: () => !read(valueEditorOpenStore),
+    isEqual: Object.is
+  })
   const interaction = createInteractionCoordinator()
-  const capabilities = createCapabilities({
+  const can = createTableCanRuntime(createCapabilities({
     currentView,
     locked: lockedStore,
     interaction: interaction.store
+  }))
+  const hover = createTableHover()
+  const select = createTableSelectRuntime({
+    rowMembershipStore: options.selectionMembershipStore,
+    previewMembershipStore: options.previewSelectionMembershipStore,
+    gridSelectionStore: selection.cells.store,
+    currentViewStore: currentView,
+    visibleStore: selectionVisibleStore
   })
-  const hover = createHover()
+  const fill = createTableFillRuntime({
+    gridSelectionStore: select.cells.state,
+    currentViewStore: currentView,
+    enabledStore: can.fill
+  })
+  const rail = createTableRailRuntime()
+  const chrome = createTableChromeRuntime({
+    rowSelected: select.rows,
+    rowExposed: rail.row,
+    canRowDrag: can.rowDrag,
+    cellSelected: select.cells.selected,
+    cellFocus: select.cells.focus,
+    cellHover: hover.cell,
+    cellFill: fill.cell,
+    selectionVisible: select.cells.visible
+  })
   const virtual = createTableVirtualRuntime({
     currentViewStore: currentView,
     marqueeActiveStore: options.marqueeActiveStore,
@@ -355,18 +360,6 @@ export const createTableController = (options: {
     revealCursor,
     focus
   })
-  const rowRender = createRowRender({
-    gridSelectionStore: selection.cells.store,
-    valueEditorOpenStore,
-    currentViewStore: currentView,
-    capabilitiesStore: capabilities,
-    hoverTargetStore: hover.target
-  })
-  const canRowDrag = createProjectedStore({
-    source: capabilities,
-    select: current => current.canRowDrag,
-    isEqual: Object.is
-  })
   const body = createDerivedStore<TableBodyData | null>({
     get: () => {
       const bodyModel = read(options.model.body)
@@ -397,34 +390,18 @@ export const createTableController = (options: {
     },
     isEqual: sameBodyData
   })
-  const row = createKeyedDerivedStore<ItemId, TableRowData>({
-    keyOf: rowId => rowId,
-    get: rowId => {
-      const previewSelected = read(options.previewSelectionMembershipStore, rowId)
-      const committedSelected = read(options.selectionMembershipStore, rowId)
-      const rowState = read(rowRender, rowId)
 
-      return {
-        selected: previewSelected ?? committedSelected,
-        exposed: read(rowRail.exposed, rowId),
-        canDrag: read(canRowDrag),
-        selectionVisible: rowState.selectionVisible,
-        selectedFieldStart: rowState.selectedFieldStart,
-        selectedFieldEnd: rowState.selectedFieldEnd,
-        focusFieldId: rowState.focusFieldId,
-        hoverFieldId: rowState.hoverFieldId,
-        fillFieldId: rowState.fillFieldId
-      }
-    },
-    isEqual: sameRowData
-  })
   return {
     currentView,
     body,
     locked: lockedStore,
     valueEditorOpen: valueEditorOpenStore,
     selection,
-    rowRail,
+    select,
+    fill,
+    rail,
+    can,
+    chrome,
     layout: options.layout,
     virtual,
     nodes: options.nodes,
@@ -433,10 +410,7 @@ export const createTableController = (options: {
     focus,
     openCell,
     interaction: interaction.api,
-    capabilities,
     hover,
-    rowRender,
-    row,
     column: options.model.column,
     summary: options.model.summary,
     section: options.model.section,
@@ -445,7 +419,9 @@ export const createTableController = (options: {
     dispose: () => {
       interaction.api.cancel()
       selection.dispose()
-      rowRail.set(null)
+      select.dispose()
+      fill.dispose()
+      rail.set(null)
       virtual.dispose()
     }
   }

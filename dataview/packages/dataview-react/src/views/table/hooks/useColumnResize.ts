@@ -47,7 +47,7 @@ export const useColumnResize = () => {
   }
 
   const columns = currentView.fields.all
-  const canResize = useStoreValue(table.capabilities).canColumnResize
+  const canResize = useStoreValue(table.can.columnResize)
   const persistedWidths = useMemo(
     () => new Map(
       Object.entries(currentView.view.options.table.widths ?? {}) as [FieldId, number][]

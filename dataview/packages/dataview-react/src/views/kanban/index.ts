@@ -5,7 +5,7 @@ export { useKanbanRuntime } from '@dataview/react/views/kanban/runtime'
 export type {
   KanbanBoard,
   KanbanCard,
-  KanbanSectionData,
-  KanbanSectionVisibility,
+  KanbanSection,
+  KanbanVisibility,
   KanbanViewRuntime
 } from '@dataview/react/views/kanban/types'

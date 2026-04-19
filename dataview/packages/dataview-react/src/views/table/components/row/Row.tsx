@@ -2,7 +2,6 @@ import {
   memo,
   useCallback,
   useLayoutEffect,
-  useMemo,
   useRef,
   type PointerEvent as ReactPointerEvent
 } from 'react'
@@ -29,7 +28,6 @@ import { cn } from '@shared/ui/utils'
 import { Cell } from '@dataview/react/views/table/components/cell/Cell'
 import { RowRail } from '@dataview/react/views/table/components/row/RowRail'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
-import { cellChrome } from '@dataview/react/views/table/model/chrome'
 import {
   useKeyedStoreValue,
   useOptionalKeyedStoreValue
@@ -106,7 +104,7 @@ const View = (props: RowProps) => {
     }
   }, [props.itemId, table.nodes])
   const row = useKeyedStoreValue(
-    table.row,
+    table.chrome.row,
     props.itemId
   )
   const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
@@ -147,7 +145,7 @@ const View = (props: RowProps) => {
           rowId: props.itemId,
           shiftKey: event.shiftKey
         })
-        table.rowRail.set(props.itemId)
+        table.rail.set(props.itemId)
         table.focus()
       }
     })
@@ -180,7 +178,7 @@ const View = (props: RowProps) => {
           marqueeActive={props.marqueeActive}
           onSelectionPointerStart={onSelectionPointerStart}
           onDragPointerStart={event => {
-            table.rowRail.set(null)
+            table.rail.set(null)
             props.onDragStart({
               rowId: props.itemId,
               event
@@ -193,7 +191,7 @@ const View = (props: RowProps) => {
             gridTemplateColumns: props.template
           }}
         >
-          {props.columns.map((field, index) => (
+          {props.columns.map(field => (
             <Cell
               key={field.id}
               itemId={props.itemId}
@@ -206,25 +204,6 @@ const View = (props: RowProps) => {
                 ? getRecordFieldValue(record, field.id)
                 : undefined}
               exists={Boolean(record)}
-              selected={(
-                row.selectionVisible
-                && row.selectedFieldStart !== undefined
-                && row.selectedFieldEnd !== undefined
-                && index >= row.selectedFieldStart
-                && index <= row.selectedFieldEnd
-              )}
-              chrome={cellChrome({
-                selected: (
-                  row.selectedFieldStart !== undefined
-                  && row.selectedFieldEnd !== undefined
-                  && index >= row.selectedFieldStart
-                  && index <= row.selectedFieldEnd
-                ),
-                frameActive: row.focusFieldId === field.id,
-                hovered: row.hoverFieldId === field.id,
-                fillHandleActive: row.fillFieldId === field.id,
-                selectionVisible: row.selectionVisible
-              })}
             />
           ))}
         </div>

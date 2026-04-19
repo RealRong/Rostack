@@ -50,7 +50,7 @@ const View = () => {
   }
 
   const locked = useStoreValue(table.locked)
-  const capabilities = useStoreValue(table.capabilities)
+  const canHover = useStoreValue(table.can.hover)
   const marqueeActive = body.marqueeActive
   const previousMarqueeActiveRef = useRef(false)
   const columnResize = useColumnResize()
@@ -62,8 +62,8 @@ const View = () => {
   const rowReorder = useRowReorder()
   const marqueeDisabled = rowReorder.active || columnResize.active
   const onBlankPointerDown = useCallback(() => {
-    table.rowRail.set(null)
-  }, [table.rowRail])
+    table.rail.set(null)
+  }, [table.rail])
 
   const marqueeScene = useMemo<MarqueeScene | undefined>(() => (
     marqueeDisabled
@@ -108,7 +108,7 @@ const View = () => {
   useEffect(() => {
     if (marqueeActive) {
       table.selection.cells.clear()
-      table.rowRail.set(null)
+      table.rail.set(null)
       table.hover.clear()
     } else if (previousMarqueeActiveRef.current) {
       table.focus()
@@ -119,13 +119,13 @@ const View = () => {
     marqueeActive,
     table.focus,
     table.hover,
-    table.rowRail,
+    table.rail,
     table.selection.cells
   ])
 
   const pointer = usePointer({
     enabled: (
-      capabilities.canHover
+      canHover
       && !marqueeActive
       && !rowReorder.active
       && !columnResize.active

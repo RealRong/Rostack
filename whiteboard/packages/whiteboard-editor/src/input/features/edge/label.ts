@@ -2,8 +2,7 @@ import {
   EDGE_LABEL_CENTER_TOLERANCE,
   EDGE_LABEL_RAIL_OFFSET,
   projectPointToEdgeLabelPlacement,
-  readEdgeLabelSideGap,
-  resolveEdgeLabelPlacementSize
+  readEdgeLabelSideGap
 } from '@whiteboard/core/edge'
 import type {
   Edge,
@@ -22,7 +21,6 @@ import type {
 } from '@whiteboard/editor/types/input'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { buildEdgeLabelTextMetricsSpec } from '@whiteboard/editor/edge/label'
 
 type EdgeLabelDragDraft = {
   t: number
@@ -173,7 +171,7 @@ const createEdgeLabelDragSession = (
 }
 
 const createEdgeLabelDragState = (
-  ctx: Pick<EditorHostDeps, 'query' | 'layout'>,
+  ctx: Pick<EditorHostDeps, 'query'>,
   input: {
     edgeId: EdgeId
     labelId: string
@@ -194,23 +192,9 @@ const createEdgeLabelDragState = (
     return null
   }
 
-  let labelSize = ctx.query.edge.label.metrics(ref)
+  const labelSize = ctx.query.edge.label.metrics(ref)
   if (!labelSize) {
-    const label = item.edge.labels?.find((entry) => entry.id === input.labelId)
-    if (!label) {
-      return null
-    }
-
-    const measuredSize = ctx.layout.text.ensure(buildEdgeLabelTextMetricsSpec({
-      text: label.text,
-      style: label.style
-    }))
-    labelSize = resolveEdgeLabelPlacementSize({
-      textMode: item.edge.textMode ?? 'horizontal',
-      measuredSize,
-      text: typeof label.text === 'string' ? label.text : '',
-      fontSize: label.style?.size ?? 14
-    })
+    return null
   }
 
   return {
@@ -225,7 +209,7 @@ const createEdgeLabelDragState = (
 }
 
 export const createEdgeLabelPressSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'layout' | 'write' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'query' | 'write' | 'actions'>,
   start: PointerDownInput,
   input: {
     edgeId: EdgeId

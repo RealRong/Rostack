@@ -42,7 +42,6 @@ import {
 import {
   createClipboardActions
 } from '@whiteboard/editor/action/clipboard'
-import { buildEdgeLabelTextMetricsSpec } from '@whiteboard/editor/edge/label'
 
 const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
 
@@ -230,10 +229,6 @@ const createEditActions = ({
     }
 
     const text = typeof label.text === 'string' ? label.text : ''
-    layout.text.ensure(buildEdgeLabelTextMetricsSpec({
-      text,
-      style: label.style
-    }))
 
     session.mutate.edit.set({
       kind: 'edge-label',
@@ -266,13 +261,6 @@ const createEditActions = ({
       }
 
       if (current.kind === 'edge-label') {
-        const label = query.edge.item.get(current.edgeId)?.edge.labels?.find((entry) => (
-          entry.id === current.labelId
-        ))
-        layout.text.ensure(buildEdgeLabelTextMetricsSpec({
-          text,
-          style: label?.style
-        }))
         return
       }
 

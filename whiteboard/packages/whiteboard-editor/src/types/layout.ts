@@ -35,14 +35,11 @@ export type TextMetricsSpec = {
 
 export type TextMetrics = Size
 
-export type TextMetricsCache = {
-  read: (
-    spec: TextMetricsSpec
-  ) => TextMetrics | undefined
-  ensure: (
+export type TextMetricsResource = {
+  measure: (
     spec: TextMetricsSpec
   ) => TextMetrics
-  ensureMany: (
+  prime: (
     specs: readonly TextMetricsSpec[]
   ) => void
   clear: () => void

@@ -4,7 +4,7 @@
 
 目标只有一个：
 
-> 让一次 view 变更只做一次必要工作，并让 delta 从 `commit` 一路传到 `source` 和 `layout`，中间不再重新扫描整张 snapshot。
+> 让一次 view 变更只做一次必要工作，并让 delta 从 `commit` 一路传到 `source` 和 `layout`，中间不再重新扫描整张业务态。
 
 约束也只有一个：
 
@@ -12,7 +12,7 @@
 
 本文聚焦非渲染链路，范围覆盖：
 
-`commit -> plan -> index -> snapshot -> publish -> source -> layout`
+`commit -> plan -> index -> view -> output`
 
 ---
 
@@ -23,13 +23,13 @@
 1. `plan` 稳定。
    `filter` 的值从空变有效，不得改变 index 需要维护的 bucket/calc/search substrate。
 2. `index` 只维护稳定真源。
-   `record -> bucketKeys`、`bucketKey -> recordIds`、`field -> calcEntries` 只能有一份真源。
-3. `snapshot` 只消费上游 delta。
-   `query`、`section`、`summary` 之间不再靠“读完整状态再推导”衔接。
-4. `publish` 独立成层。
-   `snapshot` 负责业务状态，`publish` 负责 UI 读模型和下游 delta，二者彻底拆开。
-5. `source` 只应用 delta。
-   不再接受“当前整张 view snapshot”，也不再全量生成 active patch。
+   `record -> bucket keys`、`bucket -> records`、`field -> calc entries` 只能有一份真源。
+3. `view` 只消费上游 delta。
+   `query`、`section`、`summary` 作为 `view.sync` 内部子阶段顺序执行，不再靠“读完整状态再推导”衔接。
+4. `output` 独立成层。
+   `view` 负责业务状态，`output` 负责 UI 读模型、source delta、table delta。
+5. `source` 只应用 output delta。
+   不再接受“当前整张 view 业务态”，也不再全量生成 active patch。
 6. `layout` 只做结构增量同步。
    不再以 `CurrentView` 为输入，每次全量 `buildDescriptors`。
 
@@ -41,11 +41,11 @@
 
 最终只允许保留三类 membership 真源。
 
-1. `query.records`
+1. `query.visible` 与 `query.order`
    唯一的 visible/order 真源。
-2. `index.bucket.byField[*].keysByRecord`
+2. `index.bucket.get(fieldId)?.keys`
    唯一的 bucket membership 真源。
-3. `section.keysByRecord`
+3. `section.records`
    唯一的 section membership 真源。
 
 任何下游层都不能再自己反推这些关系。
@@ -69,7 +69,7 @@
 3. filter rule 的 field 或 operator 结构改变
 4. sort field 集合改变
 5. calc field 集合改变
-6. view type 或关键 publish shape 改变
+6. view type 或关键 output shape 改变
 
 不允许触发 index rebuild 的场景：
 
@@ -83,7 +83,7 @@
 
 下游输入必须是“上一层产出的变更”，而不是：
 
-1. 当前整个 `ViewState`
+1. 当前整个 `ViewRuntimeState`
 2. 当前整个 `ActivePatch`
 3. 当前整个 `CurrentView`
 
@@ -91,52 +91,57 @@
 
 ## 3. 最终链路
 
-最终主流程固定为：
+最终顶层主流程固定为：
 
 ```ts
 commit
-  -> plan.compileView
-  -> plan.diffView
+  -> plan.sync
   -> index.sync
-  -> snapshot.query.run
-  -> snapshot.section.run
-  -> snapshot.summary.run
-  -> publish.view.diff
-  -> publish.source.diff
-  -> publish.layout.table.diff
-  -> source.apply
-  -> layout.table.sync
+  -> view.sync
+  -> output.sync
 ```
 
-每层的职责固定如下。
+顶层只有 4 个阶段。
 
 1. `plan`
-   编译 view 结构，给出稳定的 index 需求和当前执行条件。
+   编译 view 结构，并直接产出 `plan state + plan change`。
 2. `index`
    维护 stable substrate，只计算 record 层面的基础索引与 membership。
-3. `snapshot`
-   基于 `query -> section -> summary` 顺序生成业务态及其 delta。
-4. `publish`
-   把 snapshot delta 翻译成 UI 可消费的 view/source/layout delta。
-5. `source`
-   把 source delta 应用到 store，不做推导。
-6. `layout`
-   把 table layout change 应用到 block model，不做全量建模。
+3. `view`
+   内部按 `query -> section -> summary` 顺序生成业务态及其 delta，但这些是内部步骤，不再升格成顶层协议。
+4. `output`
+   内部负责 `viewPublish -> source project/apply -> table project/sync`，但这些也是内部步骤，不再作为顶层阶段展开。
+
+内部依赖关系仍然保留，只是下沉到各自 interface 内：
+
+```ts
+view.sync
+  -> query.run
+  -> section.run
+  -> summary.run
+
+output.sync
+  -> viewPublish.sync
+  -> source.project
+  -> source.apply
+  -> table.project
+  -> table.sync
+```
 
 ---
 
 ## 4. 变更类型矩阵
 
-| 变更类型 | plan | index | snapshot | publish | layout |
-| --- | --- | --- | --- | --- | --- |
-| filter value 改变 | 只改 `query.execution` | 只做 `sync` | `query/section/summary sync` | 增量 diff | 增量 sync |
-| search query 改变 | 只改 `query.execution` | 不改 stable state | `query sync` | 增量 diff | 增量 sync |
-| sort direction 改变 | 只改 `query.execution` | 不 rebuild sort field | `query sync` | 增量 diff | 增量 sync |
-| filter field / operator 改变 | 改 `query.definition` 与 `index.bucket` | 只 rebuild 受影响 field | `query/section/summary` 按需 rebuild | 增量 diff | 结构 sync |
-| group field / mode / interval 改变 | 改 `section` 与 `index.bucket` | rebuild group bucket field | `section/summary rebuild` | 增量 diff | rebuild |
-| sort field 集合改变 | 改 `query.definition` 与 `index.sort` | rebuild 受影响 sort field | `query sync` | 增量 diff | 增量 sync |
-| calc field 集合改变 | 改 `index.calc` | rebuild 受影响 calc field | `summary rebuild/sync` | 增量 diff | 不变 |
-| active view 切换 | 全部重编译 | rebuild | rebuild | rebuild | rebuild |
+| 变更类型 | plan | index | view | output |
+| --- | --- | --- | --- | --- |
+| filter value 改变 | 只改 `query.execution` | 只做 `sync` | `query/section/summary sync` | `viewPublish/source/table` 全部增量 |
+| search query 改变 | 只改 `query.execution` | 不改 stable state | `query sync` | `viewPublish/source/table` 全部增量 |
+| sort direction 改变 | 只改 `query.execution` | 不 rebuild sort field | `query sync` | `viewPublish/source/table` 全部增量 |
+| filter field / operator 改变 | 改 `query.definition` 与 `index.bucket` | 只 rebuild 受影响 field | `query/section/summary` 按需 rebuild | `viewPublish/source/table` 按需结构同步 |
+| group field / mode / interval 改变 | 改 `section` 与 `index.bucket` | rebuild group bucket field | `section/summary rebuild` | `viewPublish/source/table` rebuild |
+| sort field 集合改变 | 改 `query.definition` 与 `index.sort` | rebuild 受影响 sort field | `query sync` | `viewPublish/source/table` 增量 |
+| calc field 集合改变 | 改 `index.calc` | rebuild 受影响 calc field | `summary rebuild/sync` | `viewPublish/source` 增量，`table` 不变 |
+| active view 切换 | 全部重编译 | rebuild | rebuild | rebuild |
 
 这张表是实现边界，不是建议。
 
@@ -156,16 +161,16 @@ export interface DataviewRuntimeApi {
     run(input: RuntimeCommitInput): RuntimeCommitResult
   }
   plan: {
-    compileView(input: PlanCompileInput): ViewPlan | undefined
-    diffView(input: PlanDiffInput): ViewPlanChange
+    sync(input: ViewPlanSyncInput): ViewPlanSyncResult
   }
   index: {
     sync(input: IndexSyncInput): IndexSyncResult
     bucket: {
-      read(input: BucketReadInput): BucketFieldState | undefined
+      read(input: BucketReadInput): BucketFieldIndex | undefined
     }
   }
-  snapshot: {
+  view: {
+    sync(input: ViewSyncInput): ViewSyncResult
     query: {
       run(input: QueryRunInput): QueryRunResult
     }
@@ -176,24 +181,17 @@ export interface DataviewRuntimeApi {
       run(input: SummaryRunInput): SummaryRunResult
     }
   }
-  publish: {
-    view: {
-      diff(input: ViewPublishDiffInput): ViewPublishResult
+  output: {
+    sync(input: OutputSyncInput): OutputSyncResult
+    viewPublish: {
+      sync(input: ViewPublishSyncInput): ViewPublishResult
     }
     source: {
-      diff(input: SourcePublishDiffInput): SourcePublishResult
+      project(input: SourceProjectInput): SourceProjectResult
+      apply(input: SourceApplyInput): SourceApplyResult
     }
-    layout: {
-      table: {
-        diff(input: TableLayoutPublishDiffInput): TableLayoutPublishResult
-      }
-    }
-  }
-  source: {
-    apply(input: SourceApplyInput): SourceApplyResult
-  }
-  layout: {
     table: {
+      project(input: TableProjectInput): TableProjectResult
       sync(input: TableLayoutSyncInput): TableLayoutSyncResult
     }
   }
@@ -218,53 +216,51 @@ export interface RuntimeCommitResult {
 export interface DataviewRuntimeState {
   plan?: ViewPlan
   index: IndexState
-  snapshot?: ViewSnapshotState
-  publish?: ViewPublishState
-  source: SourceRuntimeState
-  layout: {
-    table?: TableLayoutState
-  }
+  view?: ViewRuntimeState
+  output: OutputState
 }
 
 export interface RuntimeCommitDelta {
   plan: ViewPlanChange
   index: IndexDelta
-  snapshot?: ViewSnapshotDelta
-  publish?: ViewPublishDelta
-  source?: SourceDelta
-  layout?: {
-    table?: TableLayoutDelta
-  }
+  view?: ViewRuntimeDelta
+  output?: OutputDelta
 }
 
 export interface DocumentChange {
   records: {
-    changedIds: readonly RecordId[]
-    removedIds: readonly RecordId[]
+    changed: readonly RecordId[]
+    removed: readonly RecordId[]
   }
   fields: {
-    changedIds: readonly FieldId[]
-    removedIds: readonly FieldId[]
+    changed: readonly FieldId[]
+    removed: readonly FieldId[]
   }
   views: {
-    changedIds: readonly ViewId[]
-    removedIds: readonly ViewId[]
+    changed: readonly ViewId[]
+    removed: readonly ViewId[]
   }
   activeViewChanged: boolean
 }
 ```
 
+顶层只保留 `plan/index/view/output` 四段。
+
+`query/section/summary` 和 `viewPublish/source/table` 仍然保留，但只作为各自 interface 内部职责存在，不再被提升成顶层主流程。
+
 ### 5.2 Plan API
 
 ```ts
-export interface PlanCompileInput {
+export interface ViewPlanSyncInput {
   reader: DocumentReader
   activeViewId?: ViewId
+  previous?: ViewPlan
 }
 
-export interface PlanDiffInput {
-  previous?: ViewPlan
-  next?: ViewPlan
+export interface ViewPlanSyncResult {
+  state?: ViewPlan
+  change: ViewPlanChange
+  trace: PlanTrace
 }
 
 export interface ViewPlan {
@@ -275,7 +271,7 @@ export interface ViewPlan {
   }
   query: {
     definition: {
-      searchFieldIds: readonly FieldId[]
+      searchFields: readonly FieldId[]
       filterRules: readonly FilterRulePlan[]
       filterMode: View['filter']['mode']
       sortRules: readonly Sorter[]
@@ -288,21 +284,11 @@ export interface ViewPlan {
     }
   }
   index: {
-    search: {
-      fieldIds: readonly FieldId[]
-    }
-    bucket: {
-      fields: readonly BucketFieldPlan[]
-    }
-    sort: {
-      fieldIds: readonly FieldId[]
-    }
-    calc: {
-      fields: readonly CalcFieldPlan[]
-    }
-    display: {
-      fieldIds: readonly FieldId[]
-    }
+    search: readonly FieldId[]
+    bucket: readonly BucketFieldPlan[]
+    sort: readonly FieldId[]
+    calc: readonly CalcFieldPlan[]
+    display: readonly FieldId[]
   }
   section?: {
     fieldId: FieldId
@@ -311,20 +297,18 @@ export interface ViewPlan {
     bucketInterval?: ViewGroup['bucketInterval']
     showEmpty: boolean
   }
-  publish: {
-    query: {
-      includeFieldMeta: boolean
-    }
+  output: {
+    query: boolean
     table: {
-      includeRowIndex: boolean
-      includeCalc: boolean
+      rowIndex: boolean
+      calc: boolean
     }
     gallery: {
-      includeGroupColor: boolean
+      groupColor: boolean
     }
     kanban: {
-      includeGroupColor: boolean
-      includeCardsPerColumn: boolean
+      groupColor: boolean
+      cardsPerColumn: boolean
     }
   }
 }
@@ -352,28 +336,26 @@ export interface CalcFieldPlan {
   metric: CalculationMetric
 }
 
+export type ViewPlanQueryChange = 'none' | 'execution' | 'definition'
+
 export interface ViewPlanChange {
-  changed: boolean
-  query: {
-    definitionChanged: boolean
-    executionChanged: boolean
-  }
+  query: ViewPlanQueryChange
   index: {
-    rebuildAll: boolean
-    bucketFieldIds: readonly FieldId[]
-    sortFieldIds: readonly FieldId[]
-    calcFieldIds: readonly FieldId[]
-    searchFieldIdsChanged: boolean
+    all: boolean
+    search: boolean
+    bucket: readonly FieldId[]
+    sort: readonly FieldId[]
+    calc: readonly FieldId[]
   }
-  snapshot: {
-    rebuildQuery: boolean
-    rebuildSection: boolean
-    rebuildSummary: boolean
+  view: {
+    query: boolean
+    section: boolean
+    summary: boolean
   }
-  publish: {
-    rebuildView: boolean
-    rebuildSource: boolean
-    rebuildTableLayout: boolean
+  output: {
+    publish: boolean
+    source: boolean
+    table: boolean
   }
 }
 ```
@@ -381,8 +363,8 @@ export interface ViewPlanChange {
 `ViewPlan` 的关键约束：
 
 1. `query.execution` 只表达当前有效条件。
-2. `index.bucket.fields` 由 view shape 决定，不由 filter value 是否有效决定。
-3. `index.calc.fields` 由 view calc shape 决定，不由当前 touched sections 决定。
+2. `index.bucket` 由 view shape 决定，不由 filter value 是否有效决定。
+3. `index.calc` 由 view calc shape 决定，不由当前 touched sections 决定。
 
 ### 5.3 Index API
 
@@ -403,78 +385,67 @@ export interface IndexSyncResult {
 }
 
 export interface IndexState {
-  records: {
-    ids: readonly RecordId[]
-    valuesByField: ReadonlyMap<FieldId, FieldValueState>
-  }
-  search: {
-    fieldIds: readonly FieldId[]
-    entriesByField: ReadonlyMap<FieldId, SearchFieldState>
-  }
-  bucket: {
-    byField: ReadonlyMap<FieldId, BucketFieldState>
-  }
-  sort: {
-    byField: ReadonlyMap<FieldId, SortFieldState>
-  }
-  calc: {
-    byField: ReadonlyMap<FieldId, CalcFieldState>
-  }
+  records: readonly RecordId[]
+  values: ReadonlyMap<FieldId, FieldValueIndex>
+  search: ReadonlyMap<FieldId, SearchFieldIndex>
+  bucket: ReadonlyMap<FieldId, BucketFieldIndex>
+  sort: ReadonlyMap<FieldId, SortFieldIndex>
+  calc: ReadonlyMap<FieldId, CalcFieldIndex>
 }
 
-export interface FieldValueState {
+export interface FieldValueIndex {
   fieldId: FieldId
-  byRecord: ReadonlyMap<RecordId, unknown>
+  values: ReadonlyMap<RecordId, unknown>
 }
 
-export interface SearchFieldState {
+export interface SearchFieldIndex {
   fieldId: FieldId
-  textByRecord: ReadonlyMap<RecordId, string>
+  text: ReadonlyMap<RecordId, string>
 }
 
-export interface BucketFieldState {
+export interface BucketFieldIndex {
   fieldId: FieldId
   mode?: ViewGroup['mode']
   bucketInterval?: ViewGroup['bucketInterval']
-  keysByRecord: ReadonlyMap<RecordId, readonly string[]>
-  recordsByKey: ReadonlyMap<string, readonly RecordId[]>
+  keys: ReadonlyMap<RecordId, readonly string[]>
+  buckets: ReadonlyMap<string, readonly RecordId[]>
 }
 
-export interface SortFieldState {
+export interface SortFieldIndex {
   fieldId: FieldId
-  valuesByRecord: ReadonlyMap<RecordId, unknown>
+  values: ReadonlyMap<RecordId, unknown>
 }
 
-export interface CalcFieldState {
+export interface CalcFieldIndex {
   fieldId: FieldId
   metric: CalculationMetric
-  entriesByRecord: ReadonlyMap<RecordId, CalculationEntry>
+  entries: ReadonlyMap<RecordId, CalculationEntry>
   capabilities: ReducerCapabilitySet
 }
 
 export interface IndexDelta {
   records: {
-    changedRecordIds: readonly RecordId[]
-    removedRecordIds: readonly RecordId[]
+    changed: readonly RecordId[]
+    removed: readonly RecordId[]
   }
   search: {
-    changedFieldIds: readonly FieldId[]
-    rebuildFieldIds: readonly FieldId[]
+    changed: readonly FieldId[]
+    rebuild: readonly FieldId[]
   }
   bucket: {
-    changedFieldIds: readonly FieldId[]
-    rebuildFieldIds: readonly FieldId[]
-    changedRecordIds: readonly RecordId[]
-    keysByRecord: ReadonlyMap<RecordId, BucketMembershipDelta>
+    changed: readonly FieldId[]
+    rebuild: readonly FieldId[]
+    records: readonly RecordId[]
+    keys: ReadonlyMap<RecordId, BucketMembershipDelta>
   }
   sort: {
-    changedFieldIds: readonly FieldId[]
-    rebuildFieldIds: readonly FieldId[]
+    changed: readonly FieldId[]
+    rebuild: readonly FieldId[]
   }
   calc: {
-    changedFieldIds: readonly FieldId[]
-    rebuildFieldIds: readonly FieldId[]
-    changedRecordIdsByField: ReadonlyMap<FieldId, readonly RecordId[]>
+    changed: readonly FieldId[]
+    rebuild: readonly FieldId[]
+    records: ReadonlyMap<FieldId, readonly RecordId[]>
   }
 }
 
@@ -493,18 +464,33 @@ export interface BucketReadInput {
 
 1. 不允许再按“整个 bucket demand 是否相等”决定 `sync` 或 `build`。
 2. 必须改成“按 field 粒度 sync / rebuild”。
-3. `filter value` 改变时，`bucket.rebuildFieldIds` 必须为空。
+3. `filter value` 改变时，`bucket.rebuild` 必须为空。
 
-### 5.4 Snapshot API
+### 5.4 View API
 
 ```ts
-export interface ViewSnapshotState {
+export interface ViewSyncInput {
+  reader: DocumentReader
+  plan?: ViewPlan
+  planChange: ViewPlanChange
+  previous?: ViewRuntimeState
+  index: IndexState
+  indexDelta: IndexDelta
+}
+
+export interface ViewSyncResult {
+  state?: ViewRuntimeState
+  delta?: ViewRuntimeDelta
+  trace: ViewTrace
+}
+
+export interface ViewRuntimeState {
   query: QueryState
   section: SectionState
   summary: SummaryState
 }
 
-export interface ViewSnapshotDelta {
+export interface ViewRuntimeDelta {
   query: QueryDelta
   section: SectionDelta
   summary: SummaryDelta
@@ -526,19 +512,17 @@ export interface QueryRunResult {
 }
 
 export interface QueryState {
-  records: {
-    visibleIds: readonly RecordId[]
-    visibleSet: ReadonlySet<RecordId>
-    orderIndexByRecord: ReadonlyMap<RecordId, number>
-  }
+  visible: readonly RecordId[]
+  set: ReadonlySet<RecordId>
+  order: ReadonlyMap<RecordId, number>
 }
 
 export interface QueryDelta {
   rebuild: boolean
-  visibleAdded: readonly RecordId[]
-  visibleRemoved: readonly RecordId[]
-  movedRecordIds: readonly RecordId[]
-  orderChanged: boolean
+  added: readonly RecordId[]
+  removed: readonly RecordId[]
+  moved: readonly RecordId[]
+  order: boolean
 }
 
 export interface SectionRunInput {
@@ -559,8 +543,8 @@ export interface SectionRunResult {
 
 export interface SectionState {
   order: readonly SectionKey[]
-  byKey: ReadonlyMap<SectionKey, SectionNode>
-  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
+  sections: ReadonlyMap<SectionKey, SectionNode>
+  records: ReadonlyMap<RecordId, readonly SectionKey[]>
 }
 
 export interface SectionNode {
@@ -568,17 +552,17 @@ export interface SectionNode {
   label: string
   visible: boolean
   collapsed: boolean
-  recordIds: readonly RecordId[]
+  records: readonly RecordId[]
 }
 
 export interface SectionDelta {
   rebuild: boolean
-  orderChanged: boolean
-  addedKeys: readonly SectionKey[]
-  removedKeys: readonly SectionKey[]
-  changedKeys: readonly SectionKey[]
-  keysByRecord: ReadonlyMap<RecordId, SectionMembershipDelta>
-  recordIdsByKey: ReadonlyMap<SectionKey, readonly RecordId[]>
+  order: boolean
+  added: readonly SectionKey[]
+  removed: readonly SectionKey[]
+  changed: readonly SectionKey[]
+  records: ReadonlyMap<RecordId, SectionMembershipDelta>
+  sections: ReadonlyMap<SectionKey, readonly RecordId[]>
 }
 
 export interface SectionMembershipDelta {
@@ -603,41 +587,64 @@ export interface SummaryRunResult {
 }
 
 export interface SummaryState {
-  bySection: ReadonlyMap<SectionKey, SummaryFieldState>
-}
-
-export interface SummaryFieldState {
-  byField: ReadonlyMap<FieldId, FieldReducerState>
+  sections: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>
 }
 
 export interface SummaryDelta {
   rebuild: boolean
-  changedSectionKeys: readonly SectionKey[]
-  removedSectionKeys: readonly SectionKey[]
-  changedFieldIdsBySection: ReadonlyMap<SectionKey, readonly FieldId[]>
+  changed: readonly SectionKey[]
+  removed: readonly SectionKey[]
+  fields: ReadonlyMap<SectionKey, readonly FieldId[]>
 }
 ```
 
-`snapshot` 的关键约束：
+`view.sync` 的关键约束：
 
 1. `section` 只能消费 `queryDelta + index.bucket delta`。
 2. `summary` 只能消费 `sectionDelta + index.calc delta`。
 3. 不允许再给 `summary` 一个 `keysOf(recordId)` 回调，让它自己反查 membership。
 
-### 5.5 Publish API
+### 5.5 Output API
 
 ```ts
-export interface ViewPublishDiffInput {
-  plan: ViewPlan
+export interface OutputSyncInput {
+  reader: DocumentReader
+  documentChange: DocumentChange
+  plan?: ViewPlan
+  previous: OutputState
+  view?: ViewRuntimeState
+  viewDelta?: ViewRuntimeDelta
+}
+
+export interface OutputSyncResult {
+  state: OutputState
+  delta: OutputDelta
+  trace: OutputTrace
+}
+
+export interface OutputState {
+  view?: ViewPublishState
+  source: SourceRuntimeState
+  table?: TableLayoutState
+}
+
+export interface OutputDelta {
+  view?: ViewPublishDelta
+  source?: SourceDelta
+  table?: TableLayoutDelta
+}
+
+export interface ViewPublishSyncInput {
+  plan?: ViewPlan
   previous?: ViewPublishState
-  snapshot: ViewSnapshotState
-  snapshotDelta: ViewSnapshotDelta
+  view?: ViewRuntimeState
+  viewDelta?: ViewRuntimeDelta
   reader: DocumentReader
 }
 
 export interface ViewPublishResult {
-  state: ViewPublishState
-  delta: ViewPublishDelta
+  state?: ViewPublishState
+  delta?: ViewPublishDelta
   trace: PublishTrace
 }
 
@@ -649,25 +656,19 @@ export interface ViewPublishState {
     value?: View
   }
   query: ActiveViewQuery
-  items: {
-    ids: readonly ItemId[]
-    byId: ReadonlyMap<ItemId, ViewItem>
-    indexById: ReadonlyMap<ItemId, number>
-  }
-  sections: {
-    keys: readonly SectionKey[]
-    byKey: ReadonlyMap<SectionKey, Section>
-    itemIdsByKey: ReadonlyMap<SectionKey, readonly ItemId[]>
-    summaryByKey: ReadonlyMap<SectionKey, CalculationCollection | undefined>
-  }
-  fields: {
-    all: readonly Field[]
-    custom: readonly CustomField[]
-  }
+  itemOrder: readonly ItemId[]
+  items: ReadonlyMap<ItemId, ViewItem>
+  itemIndex: ReadonlyMap<ItemId, number>
+  sectionOrder: readonly SectionKey[]
+  sections: ReadonlyMap<SectionKey, Section>
+  sectionItems: ReadonlyMap<SectionKey, readonly ItemId[]>
+  sectionSummary: ReadonlyMap<SectionKey, CalculationCollection | undefined>
+  fields: readonly Field[]
+  customFields: readonly CustomField[]
   table: {
     wrap: boolean
     showVerticalLines: boolean
-    calcByField: ReadonlyMap<FieldId, CalculationMetric | undefined>
+    calc: ReadonlyMap<FieldId, CalculationMetric | undefined>
   }
   gallery: {
     wrap: boolean
@@ -692,23 +693,19 @@ export interface ViewPublishDelta {
   view?: ViewPublishState['view']
   query?: Partial<ViewPublishState['query']>
   items?: {
-    idsChanged: boolean
-    ids?: readonly ItemId[]
+    order?: readonly ItemId[]
     set?: ReadonlyMap<ItemId, ViewItem>
     remove?: readonly ItemId[]
-    indexById?: ReadonlyMap<ItemId, number>
+    index?: ReadonlyMap<ItemId, number>
   }
   sections?: {
-    keysChanged: boolean
-    keys?: readonly SectionKey[]
+    order?: readonly SectionKey[]
     set?: ReadonlyMap<SectionKey, Section>
     remove?: readonly SectionKey[]
-    itemIdsByKey?: ReadonlyMap<SectionKey, readonly ItemId[]>
-    summaryByKey?: ReadonlyMap<SectionKey, CalculationCollection | undefined>
+    items?: ReadonlyMap<SectionKey, readonly ItemId[]>
+    summary?: ReadonlyMap<SectionKey, CalculationCollection | undefined>
   }
   fields?: {
-    allChanged: boolean
-    customChanged: boolean
     all?: readonly Field[]
     custom?: readonly CustomField[]
   }
@@ -717,35 +714,33 @@ export interface ViewPublishDelta {
   kanban?: Partial<ViewPublishState['kanban']>
 }
 
-export interface SourcePublishDiffInput {
-  previous?: ViewPublishState
-  next: ViewPublishState
-  delta: ViewPublishDelta
+export interface SourceProjectInput {
   documentChange: DocumentChange
+  view?: ViewPublishState
+  viewDelta?: ViewPublishDelta
 }
 
-export interface SourcePublishResult {
-  delta: SourceDelta
+export interface SourceProjectResult {
+  delta?: SourceDelta
   trace: PublishTrace
 }
 
-export interface TableLayoutPublishDiffInput {
-  previous?: ViewPublishState
-  next: ViewPublishState
-  delta: ViewPublishDelta
+export interface TableProjectInput {
+  view?: ViewPublishState
+  viewDelta?: ViewPublishDelta
 }
 
-export interface TableLayoutPublishResult {
-  delta: TableLayoutChange
+export interface TableProjectResult {
+  change?: TableLayoutChange
   trace: PublishTrace
 }
 ```
 
-`publish` 的关键约束：
+`output.sync` 的关键约束：
 
-1. `snapshot` 不再直接对外发布 `ViewState`。
-2. `publish.view.diff` 负责把业务态翻译成 UI 读模型。
-3. `publish.source.diff` 和 `publish.layout.table.diff` 负责把 UI 读模型继续翻译成下游专用 delta。
+1. `view` 业务态不再直接对外发布成完整 read model。
+2. `viewPublish.sync` 负责把业务态翻译成 UI 读模型。
+3. `source.project` 和 `table.project` 负责把 UI 读模型继续翻译成下游专用 delta。
 
 ### 5.6 Source API
 
@@ -765,21 +760,21 @@ export interface SourceDelta {
     view?: ViewPublishState['view']
     query?: Partial<ViewPublishState['query']>
     items?: {
-      ids?: readonly ItemId[]
+      order?: readonly ItemId[]
       values?: EntityPatch<ItemId, ViewItem>
       index?: EntityPatch<ItemId, number>
     }
     sections?: {
-      keys?: readonly SectionKey[]
+      order?: readonly SectionKey[]
       values?: EntityPatch<SectionKey, Section>
-      itemIds?: EntityPatch<SectionKey, readonly ItemId[]>
+      items?: EntityPatch<SectionKey, readonly ItemId[]>
       summary?: EntityPatch<SectionKey, CalculationCollection | undefined>
     }
     fields?: {
-      all?: EntityPatch<FieldId, Field>
+      values?: EntityPatch<FieldId, Field>
       custom?: EntityPatch<FieldId, CustomField>
-      allIds?: readonly FieldId[]
-      customIds?: readonly FieldId[]
+      order?: readonly FieldId[]
+      customOrder?: readonly FieldId[]
     }
     table?: Partial<ViewPublishState['table']>
     gallery?: Partial<ViewPublishState['gallery']>
@@ -805,8 +800,8 @@ export interface SourceApplyResult {
 
 `source.apply` 的关键约束：
 
-1. 不允许读取 `snapshot`。
-2. 不允许生成完整 `createActivePatch(snapshot)`。
+1. 不允许读取 `ViewRuntimeState`。
+2. 不允许从完整业务态生成整张 `createActivePatch(...)`。
 3. 只允许应用 `SourceDelta`。
 
 ### 5.7 Layout API
@@ -815,10 +810,10 @@ export interface SourceApplyResult {
 export interface TableLayoutChange {
   rebuild: boolean
   grouped: boolean
-  sectionOrder?: readonly SectionKey[]
-  changedSectionKeys: readonly SectionKey[]
-  removedSectionKeys: readonly SectionKey[]
-  rowIdsBySection: ReadonlyMap<SectionKey, readonly ItemId[]>
+  order?: readonly SectionKey[]
+  changed: readonly SectionKey[]
+  removed: readonly SectionKey[]
+  rows: ReadonlyMap<SectionKey, readonly ItemId[]>
 }
 
 export interface TableLayoutSyncInput {
@@ -828,7 +823,7 @@ export interface TableLayoutSyncInput {
     rowHeight: number
     headerHeight: number
   }
-  measuredHeights?: ReadonlyMap<string, number>
+  heights?: ReadonlyMap<string, number>
 }
 
 export interface TableLayoutSyncResult {
@@ -839,11 +834,11 @@ export interface TableLayoutSyncResult {
 
 export interface TableLayoutState {
   grouped: boolean
-  blockIds: readonly string[]
-  blocksById: ReadonlyMap<string, TableLayoutBlock>
-  rowBlockIdByItemId: ReadonlyMap<ItemId, string>
-  sectionBlockIdsByKey: ReadonlyMap<SectionKey, readonly string[]>
-  measuredHeights: ReadonlyMap<string, number>
+  order: readonly string[]
+  blocks: ReadonlyMap<string, TableLayoutBlock>
+  rows: ReadonlyMap<ItemId, string>
+  sections: ReadonlyMap<SectionKey, readonly string[]>
+  heights: ReadonlyMap<string, number>
   totalHeight: number
   revision: number
 }
@@ -859,10 +854,10 @@ export interface TableLayoutBlock {
 
 export interface TableLayoutDelta {
   rebuild: boolean
-  changedBlockIds: readonly string[]
-  removedBlockIds: readonly string[]
-  movedBlockIds: readonly string[]
-  totalHeightChanged: boolean
+  changed: readonly string[]
+  removed: readonly string[]
+  moved: readonly string[]
+  height: boolean
 }
 ```
 
@@ -878,16 +873,10 @@ export interface TableLayoutDelta {
 export interface RuntimeCommitTrace {
   totalMs: number
   stages: {
-    plan: StageTrace
+    plan: PlanTrace
     index: IndexTrace
-    query: QueryTrace
-    section: SectionTrace
-    summary: SummaryTrace
-    publishView: PublishTrace
-    publishSource: PublishTrace
-    publishTableLayout: PublishTrace
-    sourceApply: SourceTrace
-    tableLayout: LayoutTrace
+    view: ViewTrace
+    output: OutputTrace
   }
 }
 
@@ -899,6 +888,8 @@ export interface StageTrace {
   durationMs: number
 }
 
+export type PlanTrace = StageTrace
+
 export interface IndexTrace extends StageTrace {
   records: StageTrace
   search: StageTrace
@@ -907,9 +898,24 @@ export interface IndexTrace extends StageTrace {
   calc: StageTrace
 }
 
+export interface ViewTrace extends StageTrace {
+  query: QueryTrace
+  section: SectionTrace
+  summary: SummaryTrace
+}
+
 export type QueryTrace = StageTrace
 export type SectionTrace = StageTrace
 export type SummaryTrace = StageTrace
+
+export interface OutputTrace extends StageTrace {
+  viewPublish: PublishTrace
+  sourceProject: PublishTrace
+  sourceApply: SourceTrace
+  tableProject: PublishTrace
+  tableSync: LayoutTrace
+}
+
 export type PublishTrace = StageTrace
 export type SourceTrace = StageTrace
 export type LayoutTrace = StageTrace
@@ -930,14 +936,13 @@ export interface TraceCommitFinishInput {
 
 ## 6. 推荐目录落点
 
-建议按职责收敛目录，避免继续把“计划、索引、快照、发布”混在一起。
+建议按职责收敛目录，避免继续把“计划、索引、业务视图、输出”混在一起。
 
 ```txt
 dataview/packages/dataview-engine/src/runtime/
   commit.ts
   plan/
-    compile.ts
-    diff.ts
+    sync.ts
     contracts.ts
   index/
     sync.ts
@@ -946,18 +951,17 @@ dataview/packages/dataview-engine/src/runtime/
     sort.ts
     calc.ts
     contracts.ts
-  snapshot/
+  view/
+    sync.ts
     query/
     section/
     summary/
     contracts.ts
-  publish/
-    view.ts
+  output/
+    sync.ts
+    viewPublish.ts
     source.ts
-    layout.ts
-    contracts.ts
-  source/
-    apply.ts
+    table.ts
     contracts.ts
   trace/
     runtime.ts
@@ -980,8 +984,8 @@ dataview/packages/dataview-react/src/views/table/virtual/
 
 1. `active/plan.ts` 中基于 effective filter 是否有效来决定 `bucket demand` 是否存在的逻辑。
 2. `active/index/runtime.ts` 中按“整个 demand 是否相等”决定 bucket/calc `sync` 或 `build` 的粗粒度路径。
-3. `active/snapshot/runtime.ts` 中“快照生成后直接承担 publish 角色”的耦合。
-4. `source/runtime.ts` 中 `createActivePatch(document, snapshot)` 的整张 snapshot 发布路径。
+3. `active/snapshot/runtime.ts` 中“view 业务态直接承担 output 投影角色”的耦合。
+4. `source/runtime.ts` 中 `createActivePatch(document, snapshot)` 的整张业务态发布路径。
 5. `source/runtime.ts` 中 view 变更时整张 active source patch 重建的实现。
 6. `dataview-react/src/views/table/virtual/runtime.ts` 中以 `CurrentView` 触发 `TableLayoutModel.fromCurrentView(...)` 的主路径。
 7. `dataview-react/src/views/table/virtual/layoutModel.ts` 中 `buildDescriptors(...)` 作为常规增量更新路径的角色。
@@ -999,7 +1003,7 @@ dataview/packages/dataview-react/src/views/table/virtual/
 ## Phase 0：冻结基线与验收口径
 
 - [ ] 固定 benchmark 场景：`50k table + select is option1`。
-- [ ] 固定 trace 输出：至少覆盖 `plan/index/query/section/summary/publish/source/layout`。
+- [ ] 固定 trace 输出：顶层至少覆盖 `plan/index/view/output`，内部再展开 `query/section/summary/viewPublish/source/table`。
 - [ ] 在 benchmark 中区分“非渲染耗时”和“渲染耗时”，本轮只验收非渲染。
 - [ ] 固定回归场景：空值 -> 有效值、有效值 -> 另一值、清空值、切 group field、切 sort direction。
 
@@ -1011,16 +1015,16 @@ dataview/packages/dataview-react/src/views/table/virtual/
 ## Phase 1：重写 Plan，先把需求稳定下来
 
 - [ ] 重写 `compileViewPlan`，拆成 `query.definition` 与 `query.execution`。
-- [ ] `index.bucket.fields` 改为由 view shape 决定。
-- [ ] group field 永远进入 `index.bucket.fields`。
-- [ ] filter 中出现过的 bucket 型 field 永远进入 `index.bucket.fields`，不看当前 value 是否有效。
-- [ ] `index.calc.fields` 只由 `view.calc` shape 决定。
-- [ ] 增加 `diffViewPlan`，输出 `ViewPlanChange`。
+- [ ] `index.bucket` 改为由 view shape 决定。
+- [ ] group field 永远进入 `index.bucket`。
+- [ ] filter 中出现过的 bucket 型 field 永远进入 `index.bucket`，不看当前 value 是否有效。
+- [ ] `index.calc` 只由 `view.calc` shape 决定。
+- [ ] 把 `compile + diff` 合并进 `plan.sync`，直接产出 `ViewPlanChange`。
 - [ ] 删除“filter 有值才申请 bucket demand”的旧逻辑。
 
 验收标准：
 
-- [ ] `select` filter 从空值变成 `option1` 时，`plan.index.bucket.fields` 完全不变。
+- [ ] `select` filter 从空值变成 `option1` 时，`plan.index.bucket` 完全不变。
 - [ ] `search query` 改变时，`plan.index.*` 完全不变。
 
 ## Phase 2：重写 Index，改成按 field 增量同步
@@ -1030,24 +1034,24 @@ dataview/packages/dataview-react/src/views/table/virtual/
 - [ ] sort 改成按 `fieldId` 粒度同步。
 - [ ] calc 改成按 `fieldId` 粒度同步。
 - [ ] 每个 field 产出独立 `rebuild` 或 `sync` 结果。
-- [ ] `bucket delta` 产出 `changedRecordIds + keysByRecord`。
-- [ ] `calc delta` 产出 `changedRecordIdsByField`。
+- [ ] `bucket delta` 产出 `records + keys`。
+- [ ] `calc delta` 产出 `records`。
 - [ ] 删除 filter value 导致 bucket stage 整体 rebuild 的路径。
 
 验收标准：
 
-- [ ] `select` filter 值改变时，`index.bucket.rebuildFieldIds` 为空。
+- [ ] `select` filter 值改变时，`index.bucket.rebuild` 为空。
 - [ ] 只改一个 calc field 时，不允许全量 rebuild 其他 calc field。
 
-## Phase 3：重写 Snapshot，改成纯 delta 链
+## Phase 3：重写 View Internals，改成纯 delta 链
 
 - [ ] `query.run` 只消费 `query.execution + index stable state`。
-- [ ] `query.run` 输出明确的 `visibleAdded/visibleRemoved/movedRecordIds`。
+- [ ] `query.run` 输出明确的 `added/removed/moved`。
 - [ ] `section.run` 只消费 `queryDelta + index.bucket delta + group bucket state`。
-- [ ] `section.run` 输出 `keysByRecord` 变化和 `recordIdsByKey` 变化。
+- [ ] `section.run` 输出 record membership 变化和 section member 变化。
 - [ ] `summary.run` 只消费 `sectionDelta + index.calc delta`。
 - [ ] `summary.run` 不再接受 `keysOf(recordId)` 这类回调。
-- [ ] 删除 `snapshot` 中任何“直接拼 UI state”的逻辑。
+- [ ] 删除 `view.sync` 中任何“直接拼 UI state”的逻辑。
 
 验收标准：
 
@@ -1055,20 +1059,21 @@ dataview/packages/dataview-react/src/views/table/virtual/
 - [ ] summary 不再为了找 touched sections 反查完整 map。
 - [ ] filter value 改变时，summary 只处理受影响 sections。
 
-## Phase 4：新增 Publish 层，切断 snapshot 与 source/layout 的全量耦合
+## Phase 4：新增 Output 层，收敛下游投影与消费
 
-- [ ] 新增 `publish.view.diff`。
-- [ ] 新增 `publish.source.diff`。
-- [ ] 新增 `publish.layout.table.diff`。
-- [ ] `snapshot` 只保留业务态，不再直接发布 UI 读模型。
-- [ ] `publish.view.diff` 负责生成 `ViewPublishState + ViewPublishDelta`。
-- [ ] `publish.source.diff` 负责翻译为 `SourceDelta`。
-- [ ] `publish.layout.table.diff` 负责翻译为 `TableLayoutChange`。
+- [ ] 新增 `output.sync` 顶层入口。
+- [ ] 新增 `output.viewPublish.sync`。
+- [ ] 新增 `output.source.project`。
+- [ ] 新增 `output.table.project`。
+- [ ] `view` 只保留业务态，不再直接发布 UI 读模型。
+- [ ] `output.viewPublish.sync` 负责生成 `ViewPublishState + ViewPublishDelta`。
+- [ ] `output.source.project` 负责翻译为 `SourceDelta`。
+- [ ] `output.table.project` 负责翻译为 `TableLayoutChange`。
 
 验收标准：
 
-- [ ] `source` 和 `layout` 不再依赖完整 `snapshot`。
-- [ ] 只有 `publish` 负责把业务态翻译成 UI 读模型。
+- [ ] `source` 和 `table` 不再依赖完整 `ViewRuntimeState`。
+- [ ] 只有 `output` 负责把业务态翻译成 UI 读模型与下游 delta。
 
 ## Phase 5：重写 Source Runtime，只做 delta apply
 
@@ -1080,8 +1085,8 @@ dataview/packages/dataview-react/src/views/table/virtual/
 
 验收标准：
 
-- [ ] filter value 改变时，`items.values.set` 只包含变动 item。
-- [ ] filter value 改变时，`sections.summary.set` 只包含变动 section。
+- [ ] filter value 改变时，`active.items` 只包含变动 item。
+- [ ] filter value 改变时，`active.sectionSummary` 只包含变动 section。
 - [ ] source apply 本身不再出现“按全量 ids 重新 set 一遍”的路径。
 
 ## Phase 6：重写 Table Layout，只做结构增量同步
@@ -1102,7 +1107,7 @@ dataview/packages/dataview-react/src/views/table/virtual/
 ## Phase 7：收敛 Public / Internal Contracts，删除旧形态
 
 - [ ] 统一 `contracts/public.ts` 与 `contracts/internal.ts` 到新阶段模型。
-- [ ] 删除把 `snapshot` 直接当作 public read model 的旧定义。
+- [ ] 删除把 `view` 业务态直接当作 public read model 的旧定义。
 - [ ] 删除围绕旧 `ActivePatch` 设计的整张 patch 结构。
 - [ ] 删除旧 trace 命名和旧 stage 定义。
 - [ ] 删除所有遗留 adapter、兼容转换、双写路径。
@@ -1137,11 +1142,8 @@ dataview/packages/dataview-react/src/views/table/virtual/
 | --- | --- |
 | `plan` | `<= 1ms` |
 | `index` | `<= 10ms` |
-| `snapshot.query` | `<= 5ms` |
-| `snapshot.section` | `<= 5ms` |
-| `snapshot.summary` | `<= 5ms` |
-| `publish + source` | `<= 6ms` |
-| `layout` | `<= 5ms` |
+| `view` | `<= 15ms` |
+| `output` | `<= 5ms` |
 | 非渲染总计 | `<= 30ms` |
 
 如果最终只能把局部热点压低，但总链路还明显高于这个预算，说明系统仍然保留了全量投影或重复计算。
@@ -1154,9 +1156,9 @@ dataview/packages/dataview-react/src/views/table/virtual/
 
 1. filter value 改变时，`plan.index` 不变。
 2. bucket/calc/search 都按 field 粒度 sync，而不是按整组 demand build。
-3. `query -> section -> summary` 是纯 delta 链。
-4. `source` 不知道 `snapshot` 长什么样。
-5. `layout` 不知道 `CurrentView` 长什么样。
-6. trace 里已经看不到“局部 sync，但下游全量重建”这种反直觉行为。
+3. `view.sync` 内部的 `query -> section -> summary` 是纯 delta 链。
+4. `output.sync` 只做投影和消费，不再拿完整 `previous/next` 做二次大 diff。
+5. `source` 不知道 `ViewRuntimeState` 长什么样，`table layout` 不知道 `CurrentView` 长什么样。
+6. trace 顶层只剩 `plan/index/view/output`，并且已经看不到“局部 sync，但下游全量重建”这种反直觉行为。
 
 只要有一条做不到，就还没有真正完成这次重构。

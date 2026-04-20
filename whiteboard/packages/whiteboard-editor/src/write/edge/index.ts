@@ -6,7 +6,6 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorQuery } from '@whiteboard/editor/query'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EdgeWrite } from '@whiteboard/editor/write/types'
 import {
   createEdgeLabelWrite
@@ -136,12 +135,10 @@ const updateEdgeField = <Field extends keyof NonNullable<EdgeUpdateInput['fields
 
 export const createEdgeWrite = ({
   engine,
-  read,
-  layout
+  read
 }: {
   engine: Engine
   read: EditorQuery
-  layout: Pick<EditorLayout, 'text'>
 }): EdgeWrite => ({
   create: (input: {
     from: import('@whiteboard/core/types').EdgeEnd
@@ -181,11 +178,7 @@ export const createEdgeWrite = ({
     type: 'edge.delete',
     ids
   }),
-  label: createEdgeLabelWrite({
-    engine,
-    read,
-    layout
-  }),
+  label: createEdgeLabelWrite(engine),
   route: createEdgeRouteWrite(engine),
   style: {
     color: (edgeIds, value) => updateEdgeStyle(edgeIds, read, engine, 'color', value),

@@ -34,15 +34,3 @@ export const buildEdgeLabelTextMetricsSpec = ({
     ? 'italic'
     : 'normal'
 })
-
-export const listEdgeLabelTextMetricsSpecs = (
-  edge: Pick<Edge, 'labels'>
-): readonly TextMetricsSpec[] => (edge.labels ?? []).flatMap((label) => {
-  const text = readEdgeLabelText(label.text)
-  return text.trim()
-    ? [buildEdgeLabelTextMetricsSpec({
-        text,
-        style: label.style
-      })]
-    : []
-})

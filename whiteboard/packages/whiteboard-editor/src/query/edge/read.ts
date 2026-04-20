@@ -40,7 +40,7 @@ import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { EditCaret, EditSession } from '@whiteboard/editor/session/edit'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { TextMetricsCache, TextMetricsSpec } from '@whiteboard/editor/types/layout'
+import type { TextMetricsResource, TextMetricsSpec } from '@whiteboard/editor/types/layout'
 import {
   EDGE_LABEL_MASK_BLEED,
   buildEdgeLabelTextMetricsSpec,
@@ -107,7 +107,7 @@ export type EdgeLabelContent = {
   textMode: NonNullable<Edge['textMode']>
   t: number
   offset: number
-  metrics: TextMetricsSpec
+  metricsSpec: TextMetricsSpec
 }
 
 export type EdgeLabelPlacement = {
@@ -366,12 +366,12 @@ const isEdgeLabelContentEqual = (
     && left.textMode === right.textMode
     && left.t === right.t
     && left.offset === right.offset
-    && left.metrics.profile === right.metrics.profile
-    && left.metrics.text === right.metrics.text
-    && left.metrics.placeholder === right.metrics.placeholder
-    && left.metrics.fontSize === right.metrics.fontSize
-    && left.metrics.fontWeight === right.metrics.fontWeight
-    && left.metrics.fontStyle === right.metrics.fontStyle
+    && left.metricsSpec.profile === right.metricsSpec.profile
+    && left.metricsSpec.text === right.metricsSpec.text
+    && left.metricsSpec.placeholder === right.metricsSpec.placeholder
+    && left.metricsSpec.fontSize === right.metricsSpec.fontSize
+    && left.metricsSpec.fontWeight === right.metricsSpec.fontWeight
+    && left.metricsSpec.fontStyle === right.metricsSpec.fontStyle
     && left.caret?.kind === right.caret?.kind
     && (
       left.caret?.kind !== 'point'
@@ -602,7 +602,7 @@ export const createEdgeRead = ({
   }
   tool: ReadStore<Tool>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>
-  textMetrics: Pick<TextMetricsCache, 'read'>
+  textMetrics: Pick<TextMetricsResource, 'measure'>
   capability: (node: Pick<Node, 'id' | 'type' | 'owner'>) => {
     connect: boolean
   }
@@ -664,7 +664,7 @@ export const createEdgeRead = ({
         textMode: currentItem.edge.textMode ?? 'horizontal',
         t: label.t ?? 0.5,
         offset: label.offset ?? 0,
-        metrics: buildEdgeLabelTextMetricsSpec({
+        metricsSpec: buildEdgeLabelTextMetricsSpec({
           text,
           style: label.style
         })
@@ -698,12 +698,12 @@ export const createEdgeRead = ({
       return undefined
     }
 
-    const measuredSize = textMetrics.read(currentContent.metrics)
+    const measuredSize = textMetrics.measure(currentContent.metricsSpec)
     return resolveEdgeLabelPlacementSize({
       textMode: currentContent.textMode,
       measuredSize,
       text: currentContent.displayText,
-      fontSize: currentContent.metrics.fontSize
+      fontSize: currentContent.metricsSpec.fontSize
     })
   }
 

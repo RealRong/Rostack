@@ -46,8 +46,7 @@ export const createEditorWrite = ({
   const group = createGroupWrite(engine)
   const edge = createEdgeWrite({
     engine,
-    read: query,
-    layout
+    read: query
   })
   const mindmap = createMindmapWrite({
     engine,

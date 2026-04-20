@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { createFilterOptionSetValue } from '@dataview/core/filter'
 
 import {
   createIndexState,
@@ -18,6 +19,9 @@ import {
 import {
   resolveViewDemand
 } from '@dataview/engine/active/demand'
+import {
+  compileViewQuery
+} from '@dataview/engine/active/query'
 import {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'
@@ -291,6 +295,153 @@ test('engine.active.resolveViewDemand unions search and numeric filter substrate
   assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
 
+test('engine.active.resolveViewDemand ignores ineffective persisted filters for group and sort demand', () => {
+  const FIELD_DUE = 'due'
+  const fields = [
+    ...createFields(),
+    {
+      id: FIELD_PRIORITY,
+      name: 'Priority',
+      kind: 'select',
+      options: [
+        { id: 'p1', name: 'P1', color: 'red' }
+      ]
+    },
+    {
+      id: FIELD_TAGS,
+      name: 'Tags',
+      kind: 'multiSelect',
+      options: [
+        { id: 'tag-a', name: 'Tag A', color: 'blue' }
+      ]
+    },
+    {
+      id: FIELD_DUE,
+      name: 'Due',
+      kind: 'date',
+      includeTime: false
+    }
+  ]
+  const view = createTableView({
+    sort: [{
+      field: FIELD_DUE,
+      direction: 'desc'
+    }],
+    filter: {
+      mode: 'and',
+      rules: [
+        {
+          fieldId: FIELD_POINTS,
+          presetId: 'gt'
+        },
+        {
+          fieldId: FIELD_DUE,
+          presetId: 'eq'
+        },
+        {
+          fieldId: FIELD_STATUS,
+          presetId: 'eq',
+          value: createFilterOptionSetValue()
+        },
+        {
+          fieldId: FIELD_PRIORITY,
+          presetId: 'eq',
+          value: createFilterOptionSetValue()
+        },
+        {
+          fieldId: FIELD_TAGS,
+          presetId: 'contains',
+          value: createFilterOptionSetValue()
+        }
+      ]
+    }
+  })
+  const document = createDocument({
+    fieldDefs: fields,
+    activeViewId: view.id,
+    views: {
+      byId: {
+        [view.id]: view
+      },
+      order: [view.id]
+    }
+  })
+
+  const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
+
+  assert.deepEqual(demand.sortFields, [FIELD_DUE])
+  assert.equal(demand.groups, undefined)
+})
+
+test('engine.active.index derive adds demanded sort fields without rebuilding existing field indexes', () => {
+  const FIELD_UPDATED_AT = 'updatedAt'
+  const fields = [
+    ...createFields(),
+    {
+      id: FIELD_UPDATED_AT,
+      name: 'Updated At',
+      kind: 'date',
+      includeTime: true
+    }
+  ]
+  const document = createDocument({
+    fieldDefs: fields,
+    records: {
+      byId: {
+        rec_1: {
+          id: 'rec_1',
+          title: 'Task 1',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'todo',
+            [FIELD_POINTS]: 1,
+            [FIELD_UPDATED_AT]: '2024-01-01T00:00:00.000Z'
+          }
+        },
+        rec_2: {
+          id: 'rec_2',
+          title: 'Task 2',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'doing',
+            [FIELD_POINTS]: 2,
+            [FIELD_UPDATED_AT]: '2024-01-02T00:00:00.000Z'
+          }
+        },
+        rec_3: {
+          id: 'rec_3',
+          title: 'Task 3',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'done',
+            [FIELD_POINTS]: 3,
+            [FIELD_UPDATED_AT]: '2024-01-03T00:00:00.000Z'
+          }
+        }
+      },
+      order: ['rec_1', 'rec_2', 'rec_3']
+    }
+  })
+  const previous = createIndexState(document, {
+    sortFields: [FIELD_UPDATED_AT]
+  })
+  const previousUpdatedAt = previous.state.sort.fields.get(FIELD_UPDATED_AT)
+  assert.ok(previousUpdatedAt)
+
+  const next = deriveIndex({
+    previous: previous.state,
+    previousDemand: previous.demand,
+    document,
+    impact: createImpact({}),
+    demand: {
+      sortFields: [FIELD_UPDATED_AT, FIELD_POINTS]
+    }
+  })
+
+  assert.equal(next.state.sort.fields.get(FIELD_UPDATED_AT), previousUpdatedAt)
+  assert.deepEqual(new Set(next.state.sort.fields.keys()), new Set([FIELD_POINTS, FIELD_UPDATED_AT]))
+})
+
 test('engine.active.index sync rebuilds only touched field semantics on schema changes', () => {
   const document = createDocument()
   const index = createIndexHarness(document, {
@@ -549,7 +700,31 @@ test('engine.active.query derives descending order from single asc sort index', 
         kanban: {}
       },
       orders: []
-    }
+    },
+    plan: compileViewQuery(createStaticDocumentReadContext(document).reader, {
+      id: 'view_points_desc',
+      name: 'Points Desc',
+      type: 'table',
+      search: {
+        query: ''
+      },
+      filter: {
+        mode: 'and',
+        rules: []
+      },
+      sort: [{
+        field: FIELD_POINTS,
+        direction: 'desc'
+      }],
+      calc: {},
+      display: {},
+      options: {
+        table: {},
+        gallery: {},
+        kanban: {}
+      },
+      orders: []
+    })
   })
 
   assert.deepEqual(query.records.matched, ['rec_3', 'rec_2', 'rec_1'])
@@ -590,46 +765,54 @@ test('engine.active.query keeps empty values at the end for title, status, and n
     sortFields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
   })
   const reader = createStaticDocumentReadContext(document).reader
+  const titleAscView = createTableView({
+    sort: [{
+      field: TITLE_FIELD_ID,
+      direction: 'asc'
+    }]
+  })
+  const titleDescView = createTableView({
+    sort: [{
+      field: TITLE_FIELD_ID,
+      direction: 'desc'
+    }]
+  })
+  const statusDescView = createTableView({
+    sort: [{
+      field: FIELD_STATUS,
+      direction: 'desc'
+    }]
+  })
+  const pointsDescView = createTableView({
+    sort: [{
+      field: FIELD_POINTS,
+      direction: 'desc'
+    }]
+  })
 
   const titleAsc = buildQueryState({
     reader,
     index: index.state,
-    view: createTableView({
-      sort: [{
-        field: TITLE_FIELD_ID,
-        direction: 'asc'
-      }]
-    })
+    view: titleAscView,
+    plan: compileViewQuery(reader, titleAscView)
   })
   const titleDesc = buildQueryState({
     reader,
     index: index.state,
-    view: createTableView({
-      sort: [{
-        field: TITLE_FIELD_ID,
-        direction: 'desc'
-      }]
-    })
+    view: titleDescView,
+    plan: compileViewQuery(reader, titleDescView)
   })
   const statusDesc = buildQueryState({
     reader,
     index: index.state,
-    view: createTableView({
-      sort: [{
-        field: FIELD_STATUS,
-        direction: 'desc'
-      }]
-    })
+    view: statusDescView,
+    plan: compileViewQuery(reader, statusDescView)
   })
   const pointsDesc = buildQueryState({
     reader,
     index: index.state,
-    view: createTableView({
-      sort: [{
-        field: FIELD_POINTS,
-        direction: 'desc'
-      }]
-    })
+    view: pointsDescView,
+    plan: compileViewQuery(reader, pointsDescView)
   })
 
   assert.deepEqual(titleAsc.records.visible, ['rec_2', 'rec_3', 'rec_1'])

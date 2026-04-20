@@ -10,17 +10,12 @@ import type {
 import {
   hasActiveViewImpact,
   hasFieldSchemaAspect,
-  hasRecordSetChange,
-  hasViewQueryImpact
+  hasRecordSetChange
 } from '@dataview/core/commit/impact'
 import {
-  trimToUndefined
-} from '@shared/core'
-import {
-  viewFilterFields,
-  viewSearchFields,
-  viewSortFields
-} from '@dataview/core/view'
+  compileViewQuery,
+  type ActiveQueryPlan
+} from '@dataview/engine/active/query'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -56,11 +51,11 @@ const hasIntersection = (
 }
 
 const queryUsesChangedFields = (
-  fields: ReadonlySet<FieldId> | 'all',
+  fields: readonly FieldId[] | 'all',
   changedFields: ReadonlySet<FieldId>
 ) => fields === 'all'
   ? changedFields.size > 0
-  : hasIntersection(fields, changedFields)
+  : hasIntersection(new Set(fields), changedFields)
 
 const EMPTY_RECORD_IDS = [] as RecordId[]
 const EMPTY_VISIBLE_DIFF = {
@@ -100,10 +95,9 @@ const resolveQueryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
   impact: ActiveImpact
-  view: View
+  plan: ActiveQueryPlan
   previous?: QueryState
 }): DeriveAction => {
-  const hasSearchQuery = Boolean(trimToUndefined(input.view.search.query))
   const commit = input.impact.commit
 
   if (
@@ -114,24 +108,29 @@ const resolveQueryAction = (input: {
     return 'rebuild'
   }
 
-  if (hasViewQueryImpact(commit, input.activeViewId, ['search', 'filter', 'sort', 'order'])) {
+  if (input.previous.plan.executionKey !== input.plan.executionKey) {
     return 'sync'
   }
 
-  const queryFields = {
-    search: viewSearchFields(input.view),
-    filter: viewFilterFields(input.view),
-    sort: viewSortFields(input.view)
-  }
-
-  for (const fieldId of queryFields.filter) {
+  for (const fieldId of input.plan.watch.filter) {
     if (hasFieldSchemaAspect(commit, fieldId)) {
       return 'sync'
     }
   }
-  for (const fieldId of queryFields.sort) {
+  for (const fieldId of input.plan.watch.sort) {
     if (hasFieldSchemaAspect(commit, fieldId)) {
       return 'sync'
+    }
+  }
+  if (input.plan.watch.search === 'all') {
+    if (input.impact.base.schemaFields.size > 0) {
+      return 'sync'
+    }
+  } else {
+    for (const fieldId of input.plan.watch.search) {
+      if (hasFieldSchemaAspect(commit, fieldId)) {
+        return 'sync'
+      }
     }
   }
 
@@ -140,21 +139,16 @@ const resolveQueryAction = (input: {
     return 'sync'
   }
 
-  if (hasSearchQuery) {
-    for (const fieldId of changedFields) {
-      if (hasFieldSchemaAspect(commit, fieldId)) {
-        return 'sync'
-      }
-    }
-  }
-
   if (
     hasRecordSetChange(commit)
-    || hasIntersection(queryFields.filter, changedFields)
-    || hasIntersection(queryFields.sort, changedFields)
+    || hasIntersection(new Set(input.plan.watch.filter), changedFields)
+    || hasIntersection(new Set(input.plan.watch.sort), changedFields)
     || (
-      hasSearchQuery
-      && queryUsesChangedFields(queryFields.search, changedFields)
+      (
+        input.plan.watch.search === 'all'
+        || input.plan.watch.search.length !== 0
+      )
+      && queryUsesChangedFields(input.plan.watch.search, changedFields)
     )
   ) {
     return 'sync'
@@ -180,7 +174,14 @@ export const runQueryStage = (input: {
   publishMs: number
   metrics: ViewStageMetrics
 } => {
-  const action = resolveQueryAction(input)
+  const plan = compileViewQuery(input.reader, input.view)
+  const action = resolveQueryAction({
+    activeViewId: input.activeViewId,
+    previousViewId: input.previousViewId,
+    impact: input.impact,
+    plan,
+    previous: input.previous
+  })
   const stage = runSnapshotStage({
     action,
     previousState: input.previous,
@@ -191,6 +192,7 @@ export const runQueryStage = (input: {
           reader: input.reader,
           view: input.view,
           index: input.index,
+          plan,
           previous: input.previous
         }),
     canReusePublished: stageInput => (

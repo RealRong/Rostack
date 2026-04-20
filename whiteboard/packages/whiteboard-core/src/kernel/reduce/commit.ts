@@ -1,3 +1,4 @@
+import { err, ok } from '@whiteboard/core/result'
 import type {
   ChangeIds,
   ChangeSet,
@@ -9,6 +10,8 @@ import type {
   MindmapId,
   Operation
 } from '@whiteboard/core/types'
+import { materializeDraftDocument } from '@whiteboard/core/kernel/reduce/runtime'
+import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []
@@ -58,6 +61,46 @@ export const createInvalidation = (): Invalidation => ({
   projections: new Set<string>()
 })
 
+export const markChange = <Id extends string>(
+  bucket: ChangeIds<Id>,
+  kind: 'add' | 'update' | 'delete',
+  id: Id
+) => {
+  if (kind === 'add') {
+    bucket.delete.delete(id)
+    bucket.update.delete(id)
+    bucket.add.add(id)
+    return
+  }
+  if (kind === 'update') {
+    if (!bucket.add.has(id) && !bucket.delete.has(id)) {
+      bucket.update.add(id)
+    }
+    return
+  }
+  if (bucket.add.delete(id)) {
+    bucket.update.delete(id)
+    return
+  }
+  bucket.update.delete(id)
+  bucket.delete.add(id)
+}
+
+export const finalizeDirty = (
+  dirty: Invalidation
+): Invalidation => {
+  if (dirty.nodes.size > 0) {
+    dirty.projections.add('node')
+  }
+  if (dirty.edges.size > 0 || dirty.nodes.size > 0) {
+    dirty.projections.add('edge')
+  }
+  if (dirty.mindmaps.size > 0 || dirty.nodes.size > 0) {
+    dirty.projections.add('mindmap')
+  }
+  return dirty
+}
+
 export const deriveImpact = (
   invalidation: Invalidation
 ): KernelReadImpact => {
@@ -104,65 +147,44 @@ export const readLockViolationMessage = (
   return `Locked node relations cannot be ${action}.`
 }
 
-export const markChange = <Id extends string>(
-  bucket: ChangeIds<Id>,
-  kind: 'add' | 'update' | 'delete',
-  id: Id
-) => {
-  if (kind === 'add') {
-    bucket.delete.delete(id)
-    bucket.update.delete(id)
-    bucket.add.add(id)
-    return
-  }
-  if (kind === 'update') {
-    if (!bucket.add.has(id) && !bucket.delete.has(id)) {
-      bucket.update.add(id)
+export const createCommitApi = (
+  tx: ReducerTx
+) => ({
+  result: () => {
+    if (tx._runtime.shortCircuit) {
+      return tx._runtime.shortCircuit
     }
-    return
+
+    const invalidation = finalizeDirty(tx._runtime.dirty)
+    return ok({
+      doc: materializeDraftDocument(tx._runtime.draft),
+      changes: tx._runtime.changes,
+      invalidation,
+      inverse: tx._runtime.inverse,
+      impact: deriveImpact(invalidation)
+    })
   }
-  if (bucket.add.delete(id)) {
-    bucket.update.delete(id)
-    return
-  }
-  bucket.update.delete(id)
-  bucket.delete.add(id)
-}
+})
 
-export const deriveInvalidation = (
-  changes: ChangeSet
-): Invalidation => {
-  const invalidation = createInvalidation()
-
-  invalidation.document = changes.document
-  invalidation.background = changes.background
-  invalidation.canvasOrder = changes.canvasOrder
-
-  changes.nodes.add.forEach((id) => invalidation.nodes.add(id))
-  changes.nodes.update.forEach((id) => invalidation.nodes.add(id))
-  changes.nodes.delete.forEach((id) => invalidation.nodes.add(id))
-
-  changes.edges.add.forEach((id) => invalidation.edges.add(id))
-  changes.edges.update.forEach((id) => invalidation.edges.add(id))
-  changes.edges.delete.forEach((id) => invalidation.edges.add(id))
-
-  changes.groups.add.forEach((id) => invalidation.groups.add(id))
-  changes.groups.update.forEach((id) => invalidation.groups.add(id))
-  changes.groups.delete.forEach((id) => invalidation.groups.add(id))
-
-  changes.mindmaps.add.forEach((id) => invalidation.mindmaps.add(id))
-  changes.mindmaps.update.forEach((id) => invalidation.mindmaps.add(id))
-  changes.mindmaps.delete.forEach((id) => invalidation.mindmaps.add(id))
-
-  if (invalidation.nodes.size > 0) {
-    invalidation.projections.add('node')
-  }
-  if (invalidation.edges.size > 0 || invalidation.nodes.size > 0) {
-    invalidation.projections.add('edge')
-  }
-  if (invalidation.mindmaps.size > 0 || invalidation.nodes.size > 0) {
-    invalidation.projections.add('mindmap')
-  }
-
-  return invalidation
+export const createDocumentReplaceResult = (
+  tx: ReducerTx,
+  document: import('@whiteboard/core/types').Document
+) => {
+  tx._runtime.shortCircuit = ok({
+    doc: document,
+    changes: {
+      ...createChangeSet(),
+      document: true,
+      background: true,
+      canvasOrder: true
+    },
+    invalidation: finalizeDirty({
+      ...createInvalidation(),
+      document: true,
+      background: true,
+      canvasOrder: true
+    }),
+    inverse: tx._runtime.inverse,
+    impact: RESET_READ_IMPACT
+  })
 }

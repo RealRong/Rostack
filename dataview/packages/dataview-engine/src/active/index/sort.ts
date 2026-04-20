@@ -16,7 +16,6 @@ import type {
   SortIndex
 } from '@dataview/engine/active/index/contracts'
 import {
-  ensureFieldIndexes,
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
@@ -168,7 +167,12 @@ export const buildSortIndex = (
     fields: new Map(),
     rev
   }
-  const built = ensureSortIndex(base, context, records, fieldIds)
+  const built = reconcileSortIndex({
+    previous: base,
+    context,
+    records,
+    fieldIds
+  })
 
   return built === base
     ? base
@@ -178,25 +182,36 @@ export const buildSortIndex = (
       }
 }
 
-export const ensureSortIndex = (
+export const reconcileSortIndex = (input: {
   previous: SortIndex,
-  context: IndexReadContext,
+  context: IndexReadContext | IndexDeriveContext,
   records: RecordIndex,
-  fieldIds: readonly FieldId[] = []
-): SortIndex => {
-  const ensured = ensureFieldIndexes({
-    previous: previous.fields,
-    hasField: fieldId => context.fieldIdSet.has(fieldId),
-    fieldIds,
-    build: fieldId => buildFieldSortIndex(context, records, fieldId)
+  fieldIds: readonly FieldId[]
+}): SortIndex => {
+  const fields = createMapPatchBuilder(input.previous.fields)
+  const demanded = new Set(input.fieldIds)
+
+  input.previous.fields.forEach((_, fieldId) => {
+    if (!demanded.has(fieldId)) {
+      fields.delete(fieldId)
+    }
   })
 
-  return ensured.changed
+  for (let index = 0; index < input.fieldIds.length; index += 1) {
+    const fieldId = input.fieldIds[index]!
+    if (fields.has(fieldId) || !input.context.fieldIdSet.has(fieldId)) {
+      continue
+    }
+
+    fields.set(fieldId, buildFieldSortIndex(input.context, input.records, fieldId))
+  }
+
+  return fields.changed()
     ? {
-        fields: ensured.fields,
-        rev: previous.rev + 1
+        fields: fields.finish(),
+        rev: input.previous.rev + 1
       }
-    : previous
+    : input.previous
 }
 
 export const syncSortIndex = (
@@ -244,3 +259,15 @@ export const syncSortIndex = (
       }
     : previous
 }
+
+export const deriveSortIndex = (input: {
+  previous: SortIndex
+  context: IndexDeriveContext
+  records: RecordIndex
+  fieldIds: readonly FieldId[]
+}): SortIndex => reconcileSortIndex({
+  previous: syncSortIndex(input.previous, input.context, input.records),
+  context: input.context,
+  records: input.records,
+  fieldIds: input.fieldIds
+})

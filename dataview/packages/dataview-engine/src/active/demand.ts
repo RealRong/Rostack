@@ -6,8 +6,8 @@ import {
   createGroupDemand
 } from '@dataview/engine/active/index/group/demand'
 import {
-  resolveDefaultSearchFieldIds
-} from '@dataview/engine/active/index/demand'
+  compileViewQuery
+} from '@dataview/engine/active/query'
 import {
   createCalculationDemand
 } from '@dataview/engine/active/shared/calculation'
@@ -35,46 +35,26 @@ export const resolveViewDemand = (
     return {}
   }
 
-  const filterGroupFields = new Set<FieldId>()
-  const filterSortFields = new Set<FieldId>()
-  view.filter.rules.forEach(rule => {
-    const field = context.reader.fields.get(rule.fieldId)
-    switch (field?.kind) {
-      case 'status':
-      case 'select':
-      case 'multiSelect':
-      case 'boolean':
-        filterGroupFields.add(rule.fieldId)
-        break
-      case 'number':
-      case 'date':
-        filterSortFields.add(rule.fieldId)
-        break
-      default:
-        break
-    }
-  })
+  const plan = compileViewQuery(context.reader, view)
 
   const search = {
-    fieldIds: view.search.fields?.length
-      ? [...view.search.fields]
-      : resolveDefaultSearchFieldIds(context)
+    fieldIds: plan.demand.searchFieldIds
   }
   const groups = view.group
     ? [
         createGroupDemand(view.group, 'section'),
-        ...Array.from(filterGroupFields).map(fieldId => ({
+        ...plan.demand.groupFieldIds.map(fieldId => ({
           fieldId,
           capability: 'filter' as const
         }))
       ]
-    : Array.from(filterGroupFields).map(fieldId => ({
+    : plan.demand.groupFieldIds.map(fieldId => ({
         fieldId,
         capability: 'filter' as const
       }))
   const sortFields = Array.from(new Set([
     ...viewSortFields(view),
-    ...filterSortFields
+    ...plan.demand.sortFieldIds
   ]))
 
   return {

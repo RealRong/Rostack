@@ -1,0 +1,93 @@
+import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
+import { markChange } from '@whiteboard/core/kernel/reduce/commit'
+import { getNode } from '@whiteboard/core/kernel/reduce/runtime'
+import { applyPathMutation } from '@whiteboard/core/utils/recordMutation'
+import { cloneValue } from '@whiteboard/core/value'
+
+const applyTopicRecordMutation = (
+  node: import('@whiteboard/core/types').Node,
+  scope: import('@whiteboard/core/types').MindmapTopicRecordScope,
+  mutation: { op: 'set'; path: string; value: unknown } | { op: 'unset'; path: string }
+) => {
+  const current = scope === 'data'
+    ? node.data
+    : node.style
+  const result = applyPathMutation(current, mutation)
+  if (!result.ok) {
+    return result
+  }
+  return {
+    ok: true as const,
+    node: {
+      ...node,
+      ...(scope === 'data'
+        ? { data: result.value as import('@whiteboard/core/types').Node['data'] }
+        : { style: result.value as import('@whiteboard/core/types').Node['style'] })
+    }
+  }
+}
+
+export const createMindmapTopicRecordApi = (
+  tx: ReducerTx
+) => ({
+  set: (
+    id: import('@whiteboard/core/types').MindmapId,
+    topicId: import('@whiteboard/core/types').NodeId,
+    scope: import('@whiteboard/core/types').MindmapTopicRecordScope,
+    path: string,
+    value: unknown
+  ) => {
+    const current = getNode(tx._runtime.draft, topicId)
+    if (!current) {
+      throw new Error(`Topic ${topicId} not found.`)
+    }
+    const currentRoot = scope === 'data' ? current.data : current.style
+    const previous = tx.read.record.path(currentRoot, path)
+    tx._runtime.inverse.unshift(previous === undefined
+      ? { type: 'mindmap.topic.record.unset', id, topicId, scope, path }
+      : { type: 'mindmap.topic.record.set', id, topicId, scope, path, value: cloneValue(previous) })
+    const next = applyTopicRecordMutation(current, scope, {
+      op: 'set',
+      path,
+      value
+    })
+    if (!next.ok) {
+      throw new Error(next.message)
+    }
+    tx._runtime.draft.nodes.set(topicId, next.node)
+    markChange(tx._runtime.changes.nodes, 'update', topicId)
+    tx.dirty.node.value(topicId)
+    tx.dirty.mindmap.layout(id)
+  },
+  unset: (
+    id: import('@whiteboard/core/types').MindmapId,
+    topicId: import('@whiteboard/core/types').NodeId,
+    scope: import('@whiteboard/core/types').MindmapTopicRecordScope,
+    path: string
+  ) => {
+    const current = getNode(tx._runtime.draft, topicId)
+    if (!current) {
+      throw new Error(`Topic ${topicId} not found.`)
+    }
+    const currentRoot = scope === 'data' ? current.data : current.style
+    tx._runtime.inverse.unshift({
+      type: 'mindmap.topic.record.set',
+      id,
+      topicId,
+      scope,
+      path,
+      value: cloneValue(tx.read.record.path(currentRoot, path))
+    })
+    const next = applyTopicRecordMutation(current, scope, {
+      op: 'unset',
+      path
+    })
+    if (!next.ok) {
+      throw new Error(next.message)
+    }
+    tx._runtime.draft.nodes.set(topicId, next.node)
+    markChange(tx._runtime.changes.nodes, 'update', topicId)
+    tx.dirty.node.value(topicId)
+    tx.dirty.mindmap.layout(id)
+  }
+})

@@ -16,13 +16,16 @@ import {
   isEmptyFieldValue
 } from '@dataview/core/field'
 import {
-  isFilterRuleEffective,
   matchFilterRule,
   readFilterOptionSetValue
 } from '@dataview/core/filter'
 import {
   applyRecordOrder
 } from '@dataview/core/view/order'
+import type {
+  ActiveQueryPlan,
+  EffectiveFilterRule
+} from '@dataview/engine/active/query'
 import {
   readFilterBucketIndex
 } from '@dataview/engine/active/index/group/demand'
@@ -37,12 +40,6 @@ import type {
 import {
   type DocumentReader
 } from '@dataview/engine/document/reader'
-
-type EffectiveFilterRule = {
-  fieldId: string
-  field: Field | undefined
-  rule: View['filter']['rules'][number]
-}
 
 type FilterCandidate = {
   ids: readonly RecordId[]
@@ -488,15 +485,15 @@ const unionCandidates = (
 })
 
 const resolveSearchScope = (
-  search: View['search'],
+  search: NonNullable<ActiveQueryPlan['search']>,
   index: SearchIndex
 ): {
   key: string
   revisionKey: string
   sources: readonly SearchFieldIndex[]
 } => {
-  const fieldIds = search.fields?.length
-    ? search.fields
+  const fieldIds = search.fieldIds.length
+    ? search.fieldIds
     : Array.from(index.fields.keys())
   const sources: SearchFieldIndex[] = []
 
@@ -615,7 +612,7 @@ const filterExactSearchCandidates = (input: {
 }
 
 const resolveSearchMatches = (input: {
-  search: View['search']
+  search: NonNullable<ActiveQueryPlan['search']>
   index: SearchIndex
   allRecordIds: readonly RecordId[]
   recordOrder: ReadonlyMap<RecordId, number>
@@ -701,27 +698,6 @@ const resolveSearchMatches = (input: {
       })
     })()
   }
-}
-
-const resolveEffectiveFilterRules = (
-  reader: DocumentReader,
-  view: View
-): readonly EffectiveFilterRule[] => {
-  const rules: EffectiveFilterRule[] = []
-
-  for (let index = 0; index < view.filter.rules.length; index += 1) {
-    const rule = view.filter.rules[index]!
-    const field = reader.fields.get(rule.fieldId)
-    if (isFilterRuleEffective(field, rule)) {
-      rules.push({
-        fieldId: rule.fieldId,
-        field,
-        rule
-      })
-    }
-  }
-
-  return rules
 }
 
 const matchesFilter = (input: {
@@ -1156,6 +1132,7 @@ const projectCandidatesToOrderedIds = (
 })
 
 const publishQueryState = (input: {
+  plan: Pick<QueryState['plan'], 'executionKey' | 'watch'>
   previous?: QueryState
   matched: readonly RecordId[]
   ordered: readonly RecordId[]
@@ -1184,6 +1161,22 @@ const publishQueryState = (input: {
       }
 
   return {
+    plan: (
+      previous
+      && previous.plan.executionKey === input.plan.executionKey
+      && (
+        previous.plan.watch.search === input.plan.watch.search
+        || (
+          previous.plan.watch.search !== 'all'
+          && input.plan.watch.search !== 'all'
+          && sameOrder(previous.plan.watch.search, input.plan.watch.search)
+        )
+      )
+      && sameOrder(previous.plan.watch.filter, input.plan.watch.filter)
+      && sameOrder(previous.plan.watch.sort, input.plan.watch.sort)
+        ? previous.plan
+        : input.plan
+    ),
     records: nextRecords,
     ...(input.search
         ? {
@@ -1214,11 +1207,12 @@ export const buildQueryState = (input: {
   reader: DocumentReader
   view: View
   index: IndexState
+  plan: ActiveQueryPlan
   previous?: QueryState
 }): QueryState => {
   if (
-    !trimLowercase(input.view.search.query)
-    && input.view.filter.rules.length === 0
+    !input.plan.search
+    && input.plan.filters.length === 0
   ) {
     const matched = sortRecordIds({
       ids: input.index.records.ids,
@@ -1229,6 +1223,10 @@ export const buildQueryState = (input: {
     const ordered = applyViewOrders(matched, input.view, input.reader)
 
     return publishQueryState({
+      plan: {
+        executionKey: input.plan.executionKey,
+        watch: input.plan.watch
+      },
       previous: input.previous,
       matched,
       ordered,
@@ -1236,16 +1234,17 @@ export const buildQueryState = (input: {
     })
   }
 
-  const searchMatches = resolveSearchMatches({
-    search: input.view.search,
-    index: input.index.search,
-    allRecordIds: input.index.records.ids,
-    recordOrder: input.index.records.order,
-    previous: input.previous
-  })
-  const effectiveRules = resolveEffectiveFilterRules(input.reader, input.view)
+  const searchMatches = input.plan.search
+    ? resolveSearchMatches({
+      search: input.plan.search,
+      index: input.index.search,
+      allRecordIds: input.index.records.ids,
+      recordOrder: input.index.records.order,
+      previous: input.previous
+    })
+    : undefined
   const filterPlans = resolveFilterPlans({
-    rules: effectiveRules,
+    rules: input.plan.filters,
     index: input.index
   })
   const filterCandidates = resolveFilterCandidates({
@@ -1257,7 +1256,7 @@ export const buildQueryState = (input: {
     plans: filterPlans,
     mode: input.view.filter.mode
   })
-  const hasFilter = effectiveRules.length > 0
+  const hasFilter = input.plan.filters.length > 0
   const hasSearch = Boolean(searchMatches)
   const needsFilterPredicate = filterPredicateRules.length > 0
 
@@ -1300,6 +1299,10 @@ export const buildQueryState = (input: {
       })
 
   return publishQueryState({
+    plan: {
+      executionKey: input.plan.executionKey,
+      watch: input.plan.watch
+    },
     previous: input.previous,
     matched,
     ordered,

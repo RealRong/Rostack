@@ -5,7 +5,6 @@ import {
   isDefaultSearchField
 } from '@dataview/core/search'
 import {
-  sameOrder,
   uniqueSorted
 } from '@shared/core'
 import type {
@@ -93,11 +92,6 @@ export const normalizeIndexDemand = (
     calculations: normalizeCalculationDemands(demand?.calculations)
   }
 }
-
-export const sameFieldIdList = (
-  left: readonly FieldId[],
-  right: readonly FieldId[]
-) => sameOrder(left, right)
 
 export const sameGroupDemand = (
   left: readonly GroupDemand[],

@@ -3,7 +3,6 @@ import type {
   Document,
   Edge,
   EdgeAnchor,
-  EdgeLabel,
   EdgeLabelStyle,
   Group,
   MindmapLayoutSpec,

@@ -15,7 +15,6 @@ import {
 } from '@dataview/engine/active/index/context'
 import {
   normalizeIndexDemand,
-  sameFieldIdList,
   sameCalculationDemand,
   sameGroupDemand
 } from '@dataview/engine/active/index/demand'
@@ -39,8 +38,7 @@ import {
 } from '@dataview/engine/active/index/search'
 import {
   buildSortIndex,
-  ensureSortIndex,
-  syncSortIndex
+  deriveSortIndex
 } from '@dataview/engine/active/index/sort'
 import {
   createIndexStageTrace,
@@ -186,15 +184,14 @@ export const deriveIndex = (input: {
     ensureGroupChange(input.impact).rebuild = true
   }
 
-  const sortStage = runIndexDemandStage({
+  const sortStart = now()
+  const sort = deriveSortIndex({
     previous: previous.sort,
-    previousDemand: input.previousDemand.sortFields,
-    nextDemand: nextDemand.sortFields,
-    sameDemand: sameFieldIdList,
-    sync: current => syncSortIndex(current, context, records),
-    ensure: current => ensureSortIndex(current, context, records, nextDemand.sortFields),
-    build: current => buildSortIndex(context, records, nextDemand.sortFields, current.rev + 1)
+    context,
+    records,
+    fieldIds: nextDemand.sortFields
   })
+  const sortMs = now() - sortStart
 
   const summariesStage = runIndexDemandStage({
     previous: previous.calculations,
@@ -207,10 +204,8 @@ export const deriveIndex = (input: {
   })
 
   const group = groupStage.state
-  const sort = sortStage.state
   const summaries = summariesStage.state
   const groupMs = groupStage.durationMs
-  const sortMs = sortStage.durationMs
   const summariesMs = summariesStage.durationMs
 
   const state = {

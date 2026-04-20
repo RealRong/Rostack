@@ -8,7 +8,7 @@ import type {
   ItemId,
   ViewCell,
   ViewState
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type { DocumentReader } from '@dataview/engine/document/reader'
 
 export const createActiveViewReadApi = (input: {

@@ -2,7 +2,7 @@ import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type {
   CommitResult,
   HistoryState
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   EngineRuntimeState,
   RuntimeStore

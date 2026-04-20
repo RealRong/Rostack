@@ -1,12 +1,12 @@
-import type { ViewCache } from '@dataview/engine/contracts/internal'
+import type { ViewCache } from '@dataview/engine/contracts/state'
 import type {
   SnapshotTrace,
   ViewState,
   ViewTrace
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   ViewRuntimeDelta as InternalViewRuntimeDelta
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 
 export interface ViewRuntimeResult {
   cache: ViewCache

@@ -17,7 +17,7 @@ import type {
   Section,
   SectionList,
   SectionKey
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import {
   sameList
 } from '@dataview/engine/active/snapshot/reuse'

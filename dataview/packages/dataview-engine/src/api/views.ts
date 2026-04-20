@@ -6,12 +6,12 @@ import {
   read,
   trimToUndefined
 } from '@shared/core'
-import { createDuplicateViewInput } from '@dataview/core/view'
+import { view as viewApi } from '@dataview/core/view'
 import type {
   ActionResult,
   DocumentSource,
   ViewsApi
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 
 export const createViewsApi = (options: {
   source: DocumentSource
@@ -69,7 +69,7 @@ export const createViewsApi = (options: {
 
       const result = options.dispatch({
         type: 'view.create',
-        input: createDuplicateViewInput(sourceView)
+        input: viewApi.duplicate.input(sourceView)
       })
       return result.created?.views?.[0]
     },

@@ -6,7 +6,7 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import { filter } from '@dataview/core/filter'
-import { createDefaultViewOptions } from '@dataview/core/view'
+import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 
 const FIELD_STATUS = 'status'
@@ -92,7 +92,7 @@ const createDocument = () => {
             fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
           },
           options: {
-            ...createDefaultViewOptions('table', fields)
+            ...view.options.defaults('table', fields)
           },
           orders: []
         }
@@ -155,7 +155,7 @@ const createView = (input = {}) => {
       fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
     },
     options: {
-      ...createDefaultViewOptions(input.type ?? 'table', fields)
+      ...view.options.defaults(input.type ?? 'table', fields)
     },
     orders: [],
     ...(input.group ? { group: input.group } : {})
@@ -367,7 +367,7 @@ test('kanban cards per column defaults to all and persists through the view api'
   const fields = createFields()
 
   assert.equal(
-    createDefaultViewOptions('kanban', fields).kanban.cardsPerColumn,
+    view.options.defaults('kanban', fields).kanban.cardsPerColumn,
     25
   )
 
@@ -876,7 +876,7 @@ test('engine.active.records.create supports multiple concrete select filters and
               fields: [TITLE_FIELD_ID, fieldA, fieldB, fieldC]
             },
             options: {
-              ...createDefaultViewOptions('table', fields)
+              ...view.options.defaults('table', fields)
             },
             orders: []
           }

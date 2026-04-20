@@ -22,10 +22,10 @@ import type {
   SectionKey,
   SectionList,
   ViewItem
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   SectionState
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]

@@ -43,19 +43,8 @@ import {
   sameSorters
 } from '@dataview/core/sort'
 import {
-  cloneDisplay,
-  cloneViewCalc,
-  cloneViewOptions,
-  normalizeViewDisplay,
-  resolveUniqueViewName,
-  sameDisplay,
-  sameViewCalc,
-  sameViewOptions
+  view as viewApi
 } from '@dataview/core/view'
-import {
-  createDefaultViewDisplay,
-  createDefaultViewOptions
-} from '@dataview/core/view/options'
 import {
   isNonEmptyString,
   sameJsonValue,
@@ -433,14 +422,14 @@ const applyViewPatch = (
       }
     }
   }
-  if (patch.calc !== undefined && !sameViewCalc(view.calc, patch.calc)) {
-    ensureMutable().calc = cloneViewCalc(patch.calc)
+  if (patch.calc !== undefined && !viewApi.calc.same(view.calc, patch.calc)) {
+    ensureMutable().calc = viewApi.calc.clone(patch.calc)
   }
-  if (patch.display !== undefined && !sameDisplay(view.display, patch.display)) {
-    ensureMutable().display = cloneDisplay(patch.display)
+  if (patch.display !== undefined && !viewApi.display.same(view.display, patch.display)) {
+    ensureMutable().display = viewApi.display.clone(patch.display)
   }
-  if (patch.options !== undefined && !sameViewOptions(view.options, patch.options)) {
-    ensureMutable().options = cloneViewOptions(patch.options)
+  if (patch.options !== undefined && !viewApi.options.same(view.options, patch.options)) {
+    ensureMutable().options = viewApi.options.clone(patch.options)
   }
   if (patch.orders !== undefined && !sameRecordOrder(view.orders, patch.orders)) {
     ensureMutable().orders = [...patch.orders]
@@ -465,8 +454,8 @@ const normalizeView = (
     calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map(field => [field.id, field] as const))
     }),
-    display: normalizeViewDisplay(view.display),
-    options: cloneViewOptions(view.options),
+    display: viewApi.display.normalize(view.display),
+    options: viewApi.options.clone(view.options),
     orders: [...view.orders]
   }
 }
@@ -549,7 +538,7 @@ const lowerViewCreate = (
   const fields = scope.reader.fields.list()
   const view = ensureKanbanGroup(scope.reader, normalizeView(scope.reader, {
     id: explicitViewId || createViewId(),
-    name: resolveUniqueViewName({
+    name: viewApi.name.unique({
       views: scope.reader.views.list(),
       preferredName
     }),
@@ -560,11 +549,11 @@ const lowerViewCreate = (
     ...(action.input.group ? { group: action.input.group } : {}),
     calc: action.input.calc ?? {},
     display: action.input.display
-      ? cloneDisplay(action.input.display)
-      : createDefaultViewDisplay(action.input.type, fields),
+      ? viewApi.display.clone(action.input.display)
+      : viewApi.options.defaultDisplay(action.input.type, fields),
     options: action.input.options
-      ? cloneViewOptions(action.input.options)
-      : createDefaultViewOptions(action.input.type, fields),
+      ? viewApi.options.clone(action.input.options)
+      : viewApi.options.defaults(action.input.type, fields),
     orders: action.input.orders ? [...action.input.orders] : []
   } satisfies View))
 

@@ -33,8 +33,8 @@ import type {
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
-} from '@dataview/engine/contracts/public'
-import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
+import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts'
 import type {
   ItemId,
   Section,

@@ -1,5 +1,5 @@
 import {
-  createDefaultViewOptions,
+  view,
   TITLE_FIELD_ID
 } from '@dataview/engine/bench/runtime'
 
@@ -124,7 +124,7 @@ const createDocument = (recordCount: number) => {
             fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS, FIELD_ESTIMATE]
           },
           options: {
-            ...createDefaultViewOptions('table', fields)
+            ...view.options.defaults('table', fields)
           },
           orders: []
         }

@@ -6,7 +6,7 @@ import {
   type DataDoc,
   type CustomField
 } from '@dataview/core/contracts'
-import { createDefaultViewOptions } from '@dataview/core/view'
+import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
   TITLE_FIELD_ID
@@ -121,7 +121,7 @@ const createDefaultDocument = (): DataDoc => {
             fields: tableFieldIds
           },
           options: {
-            ...createDefaultViewOptions('table', fields)
+            ...view.options.defaults('table', fields)
           },
           orders: []
         },
@@ -147,7 +147,7 @@ const createDefaultDocument = (): DataDoc => {
             fields: [FIELD_POINTS]
           },
           options: {
-            ...createDefaultViewOptions('kanban', fields)
+            ...view.options.defaults('kanban', fields)
           },
           orders: []
         }

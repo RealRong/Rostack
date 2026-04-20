@@ -6,7 +6,7 @@ import { cloneDocument } from '@dataview/core/document'
 import type {
   CreateEngineOptions,
   Engine
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import { now } from '@dataview/engine/runtime/clock'
 import { createActiveViewApi } from '@dataview/engine/api/active'

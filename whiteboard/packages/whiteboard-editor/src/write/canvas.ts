@@ -12,6 +12,12 @@ export const createCanvasWrite = (
     type: 'canvas.duplicate',
     refs
   }),
+  selection: {
+    move: (input) => engine.execute({
+      type: 'canvas.selection.move',
+      ...input
+    })
+  },
   order: {
     move: (refs, mode) => engine.execute({
       type: 'canvas.order.move',

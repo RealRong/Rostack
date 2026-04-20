@@ -25,12 +25,12 @@ import {
 } from '@dataview/engine/active/shared/patch'
 import type {
   SectionKey
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   SectionState,
   SummaryDelta,
   SummaryState
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import {
   buildEmptySummaryState
 } from '@dataview/engine/summary/empty'

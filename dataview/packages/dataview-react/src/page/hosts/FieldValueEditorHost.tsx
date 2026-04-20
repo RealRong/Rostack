@@ -22,8 +22,8 @@ import {
 } from '@dataview/react/dataview'
 import type { EditInput } from '@dataview/react/interaction'
 import type {
+  OpenValueEditorInput,
   ValueEditorResult,
-  ValueEditorSession
 } from '@dataview/runtime/valueEditor'
 import {
   OverlayProvider,
@@ -59,7 +59,7 @@ export const resolveFieldValueEditorField = (input: {
   : input.customField
 
 export const resolveFieldValueEditorPosition = (input: {
-  anchor: ValueEditorSession['anchor']
+  anchor: OpenValueEditorInput['anchor']
   viewportWidth: number
   viewportHeight: number
   desiredWidth: number

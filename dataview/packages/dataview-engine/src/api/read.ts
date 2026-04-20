@@ -3,7 +3,7 @@ import {
 } from '@dataview/core/document'
 import type {
   EngineReadApi
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   RuntimeStore
 } from '@dataview/engine/runtime/store'

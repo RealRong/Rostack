@@ -1,21 +1,19 @@
 import {
-  setGalleryCardSize,
-  setGalleryCardLayout,
-  setGalleryCardWrap
+  view as viewApi
 } from '@dataview/core/view'
-import type { ActiveViewApi } from '@dataview/engine/contracts/public'
+import type { ActiveViewApi } from '@dataview/engine/contracts'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
 
 export const createGalleryApi = (
   base: ActiveViewContext
 ): ActiveViewApi['gallery'] => ({
   setWrap: value => base.patch(view => ({
-    options: setGalleryCardWrap(view.options, value)
+    options: viewApi.layout.gallery.setWrap(view.options, value)
   })),
   setSize: value => base.patch(view => ({
-    options: setGalleryCardSize(view.options, value)
+    options: viewApi.layout.gallery.setSize(view.options, value)
   })),
   setLayout: value => base.patch(view => ({
-    options: setGalleryCardLayout(view.options, value)
+    options: viewApi.layout.gallery.setLayout(view.options, value)
   }))
 })

@@ -26,7 +26,7 @@ import {
 import { sameOrder } from '@shared/core'
 import type {
   ViewRuntimeDelta,
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import type {
   DocumentChange,
   EntityDelta,
@@ -43,8 +43,8 @@ import type {
   ViewSearchProjection,
   ViewSortProjection,
   ViewState
-} from '@dataview/engine/contracts/public'
-import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
+import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts'
 
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]

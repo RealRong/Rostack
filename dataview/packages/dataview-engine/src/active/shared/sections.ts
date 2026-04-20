@@ -6,7 +6,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionKey
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 
 export const ROOT_SECTION_KEY = 'root' as SectionKey
 export const ROOT_SECTION_KEYS = [ROOT_SECTION_KEY] as readonly SectionKey[]

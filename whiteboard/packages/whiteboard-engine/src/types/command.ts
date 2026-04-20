@@ -5,8 +5,10 @@ import type {
   EdgeId,
   EdgeInput,
   EdgeLabelAnchor,
+  EdgeRouteInput,
   EdgeLabelUpdateInput,
   EdgeRoutePointAnchor,
+  EdgeType,
   EdgeUpdateInput,
   GroupId,
   MindmapBranchUpdateInput,
@@ -82,6 +84,12 @@ export type CanvasCommand =
   | {
       type: 'canvas.duplicate'
       refs: readonly CanvasItemRef[]
+    }
+  | {
+      type: 'canvas.selection.move'
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+      delta: Point
     }
   | {
       type: 'canvas.order.move'
@@ -160,10 +168,14 @@ export type EdgeCommand =
       delta: Point
     }
   | {
-      type: 'edge.reconnect'
+      type: 'edge.reconnect.commit'
       edgeId: EdgeId
       end: 'source' | 'target'
       target: EdgeEnd
+      patch?: {
+        type?: EdgeType
+        route?: EdgeRouteInput
+      }
     }
   | {
       type: 'edge.delete'
@@ -219,7 +231,7 @@ export type EdgeCommand =
   | {
       type: 'edge.route.set'
       edgeId: EdgeId
-      route: import('@whiteboard/core/types').EdgeRouteInput
+      route: EdgeRouteInput
     }
   | {
       type: 'edge.route.move'

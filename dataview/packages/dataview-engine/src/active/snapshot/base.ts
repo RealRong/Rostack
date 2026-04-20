@@ -2,6 +2,7 @@ import type {
   CustomField,
   Field,
   FieldId,
+  FilterConditionProjection,
   FilterRule,
   View,
   ViewId
@@ -12,18 +13,17 @@ import {
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine/contracts/public'
+import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine/contracts'
 import type {
   ActiveViewQuery,
   FieldList,
-  FilterConditionProjection,
   FilterRuleProjection,
   SortRuleProjection,
   ViewFilterProjection,
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import { sameFieldList } from '@dataview/engine/active/snapshot/equality'
 import {
   createOrderedKeyedListCollection

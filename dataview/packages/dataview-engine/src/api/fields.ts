@@ -16,7 +16,7 @@ import type {
   ActionResult,
   DocumentSource,
   FieldsApi
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 
 const getOptionField = (
   field?: CustomField

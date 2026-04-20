@@ -2,9 +2,11 @@ import type {
   ReactNode
 } from 'react'
 import type {
-  DataViewRuntime,
+  DataViewRuntime
+} from '@dataview/runtime/dataview/types'
+import type {
   PageSessionInput
-} from '@dataview/runtime'
+} from '@dataview/runtime/page/session/types'
 import type {
   DragApi
 } from '@dataview/react/page/drag'

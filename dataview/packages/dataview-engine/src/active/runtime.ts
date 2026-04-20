@@ -1,17 +1,17 @@
 import { now } from '@dataview/engine/runtime/clock'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
-import type { ViewCache } from '@dataview/engine/contracts/internal'
+import type { ViewCache } from '@dataview/engine/contracts/state'
 import type {
   ViewRuntimeResult
 } from '@dataview/engine/contracts/runtime'
 import type {
   SnapshotTrace,
   ViewState
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import {
   emptyViewCache
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import {
   deriveViewSnapshot
 } from '@dataview/engine/active/snapshot/runtime'

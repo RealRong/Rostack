@@ -32,7 +32,7 @@ import type {
 } from '@dataview/runtime/selection'
 import type {
   ValueEditorController,
-  ValueEditorSession
+  OpenValueEditorInput
 } from '@dataview/runtime/valueEditor'
 
 export type InlineKey = string
@@ -63,7 +63,7 @@ export interface DataViewSessionState {
   page: PageState
   editing: {
     inline: InlineSessionTarget | null
-    valueEditor: ValueEditorSession | null
+    valueEditor: OpenValueEditorInput | null
   }
   selection: ItemSelectionSnapshot
 }

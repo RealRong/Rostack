@@ -20,7 +20,7 @@ import {
   normalizeDocument
 } from '@dataview/core/document'
 import {
-  createDefaultViewOptions
+  view
 } from '@dataview/core/view'
 import type {
   MenuItem
@@ -221,7 +221,7 @@ const patchViewOptions = (
   fields: readonly CustomField[],
   patch: Partial<ViewOptions> = {}
 ): ViewOptions => {
-  const base = createDefaultViewOptions(type, fields)
+  const base = view.options.defaults(type, fields)
 
   return {
     table: {

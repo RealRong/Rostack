@@ -9,6 +9,5 @@ export type {
   ValueEditorController,
   ValueEditorResult,
   ValueEditorSessionPolicy,
-  ValueEditorSession,
   ViewFieldRef
 } from '@dataview/runtime/valueEditor/types'

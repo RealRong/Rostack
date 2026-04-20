@@ -3,13 +3,9 @@ import type {
   CustomFieldKind
 } from '@dataview/core/contracts'
 import {
-  resolveDisplayInsertBeforeFieldId,
-  showDisplayField,
-  setTableColumnWidths,
-  setTableVerticalLines,
-  setTableWrap
+  view as viewApi
 } from '@dataview/core/view'
-import type { ActiveViewApi } from '@dataview/engine/contracts/public'
+import type { ActiveViewApi } from '@dataview/engine/contracts'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
 import { createFieldId } from '@dataview/engine/mutate/entityId'
 
@@ -35,7 +31,7 @@ const insertField = (
   }
 
   const fieldId = createFieldId()
-  const beforeFieldId = resolveDisplayInsertBeforeFieldId(
+  const beforeFieldId = viewApi.display.insertBefore(
     view.display.fields,
     anchorFieldId,
     side
@@ -53,7 +49,7 @@ const insertField = (
       type: 'view.patch',
       viewId: view.id,
       patch: {
-        display: showDisplayField(view.display, fieldId, beforeFieldId)
+        display: viewApi.display.show(view.display, fieldId, beforeFieldId)
       }
     }
   ])
@@ -67,13 +63,13 @@ export const createTableApi = (input: {
   base: ActiveViewContext
 }): ActiveViewApi['table'] => ({
   setColumnWidths: widths => input.base.patch(view => ({
-    options: setTableColumnWidths(view.options, widths)
+    options: viewApi.layout.table.setWidths(view.options, widths)
   })),
   setVerticalLines: value => input.base.patch(view => ({
-    options: setTableVerticalLines(view.options, value)
+    options: viewApi.layout.table.setVerticalLines(view.options, value)
   })),
   setWrap: value => input.base.patch(view => ({
-    options: setTableWrap(view.options, value)
+    options: viewApi.layout.table.setWrap(view.options, value)
   })),
   insertFieldLeft: (anchorFieldId, fieldInput) => {
     return insertField(input.base, anchorFieldId, 'left', fieldInput)

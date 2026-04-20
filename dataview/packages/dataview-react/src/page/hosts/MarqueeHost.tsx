@@ -23,7 +23,7 @@ import { useOverlay } from '@shared/ui/overlay'
 import { useStoreValue } from '@shared/react'
 import type {
   MarqueeMode
-} from '@dataview/runtime'
+} from '@dataview/runtime/marquee'
 
 const resolveMarqueeMode = (input: {
   shiftKey: boolean

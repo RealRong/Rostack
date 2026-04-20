@@ -1,0 +1,282 @@
+import type {
+  BucketSort,
+  CardLayout,
+  CardSize,
+  CalculationMetric,
+  CustomFieldId,
+  CustomFieldKind,
+  DataRecord,
+  Field,
+  FieldId,
+  Filter,
+  FilterConditionProjection,
+  FilterPresetId,
+  FilterRule,
+  FilterValuePreview,
+  KanbanCardsPerColumn,
+  RecordId,
+  SortDirection,
+  Sorter,
+  View,
+  ViewGroup,
+  ViewId,
+  ViewType
+} from '@dataview/core/contracts'
+import type { FilterEditorKind } from '@dataview/core/filter'
+import type { ReadStore } from '@shared/core'
+import type {
+  CellRef,
+  FieldList,
+  ItemId,
+  ItemList,
+  Placement,
+  Section,
+  SectionKey,
+  SectionList,
+  ViewItem,
+  ViewRecords,
+  ViewSummaries
+} from '@dataview/engine/contracts/shared'
+
+export interface FilterRuleProjection {
+  rule: FilterRule
+  field?: Field
+  fieldMissing: boolean
+  activePresetId: FilterPresetId
+  effective: boolean
+  editorKind: FilterEditorKind
+  value: FilterValuePreview
+  bodyLayout: 'none' | 'inset' | 'flush'
+  conditions: readonly FilterConditionProjection[]
+}
+
+export interface ViewFilterProjection {
+  rules: readonly FilterRuleProjection[]
+}
+
+export interface ViewGroupProjection {
+  active: boolean
+  fieldId: FieldId | ''
+  field?: Field
+  mode: string
+  bucketSort?: BucketSort
+  bucketInterval?: number
+  showEmpty: boolean
+  availableModes: readonly string[]
+  availableBucketSorts: readonly BucketSort[]
+  supportsInterval: boolean
+}
+
+export interface ViewSearchProjection {
+  query: string
+  fields?: readonly FieldId[]
+}
+
+export interface SortRuleProjection {
+  sorter: Sorter
+  field?: Field
+}
+
+export interface ViewSortProjection {
+  rules: readonly SortRuleProjection[]
+}
+
+const EMPTY_MODES = [] as readonly string[]
+const EMPTY_BUCKET_SORTS = [] as readonly BucketSort[]
+
+export const EMPTY_VIEW_GROUP_PROJECTION: ViewGroupProjection = {
+  active: false,
+  fieldId: '',
+  field: undefined,
+  mode: '',
+  bucketSort: undefined,
+  bucketInterval: undefined,
+  showEmpty: true,
+  availableModes: EMPTY_MODES,
+  availableBucketSorts: EMPTY_BUCKET_SORTS,
+  supportsInterval: false
+}
+
+export interface ActiveViewQuery {
+  search: ViewSearchProjection
+  filters: ViewFilterProjection
+  group: ViewGroupProjection
+  sort: ViewSortProjection
+}
+
+export interface ViewState {
+  view: View
+  query: ActiveViewQuery
+  records: ViewRecords
+  sections: SectionList
+  items: ItemList
+  fields: FieldList
+  summaries: ViewSummaries
+}
+
+export interface ViewCell {
+  itemId: ItemId
+  recordId: RecordId
+  fieldId: FieldId
+  sectionKey: SectionKey
+  record: DataRecord
+  field: Field | undefined
+  value: unknown
+}
+
+export const sameCellRef = (
+  left: CellRef,
+  right: CellRef
+) => left.itemId === right.itemId && left.fieldId === right.fieldId
+
+export interface MovePlan {
+  itemIds: readonly ItemId[]
+  recordIds: readonly RecordId[]
+  changed: boolean
+  sectionChanged: boolean
+  target: {
+    section: SectionKey
+    beforeItemId?: ItemId
+    beforeRecordId?: RecordId
+  }
+}
+
+export interface ActiveViewReadApi {
+  record: (recordId: RecordId) => DataRecord | undefined
+  field: (fieldId: FieldId) => Field | undefined
+  section: (sectionKey: SectionKey) => Section | undefined
+  item: (itemId: ItemId) => ViewItem | undefined
+  cell: (cell: CellRef) => ViewCell | undefined
+  filterField: (index: number) => Field | undefined
+  groupField: () => Field | undefined
+}
+
+export interface TableLayoutSectionState {
+  key: SectionKey
+  collapsed: boolean
+  itemIds: readonly ItemId[]
+}
+
+export interface TableLayoutState {
+  grouped: boolean
+  rowCount: number
+  sections: readonly TableLayoutSectionState[]
+}
+
+export interface GalleryApi {
+  setWrap: (value: boolean) => void
+  setSize: (value: CardSize) => void
+  setLayout: (value: CardLayout) => void
+}
+
+export interface KanbanApi {
+  setWrap: (value: boolean) => void
+  setSize: (value: CardSize) => void
+  setLayout: (value: CardLayout) => void
+  setFillColor: (value: boolean) => void
+  setCardsPerColumn: (value: KanbanCardsPerColumn) => void
+}
+
+export interface ActiveItemsApi {
+  planMove: (
+    itemIds: readonly ItemId[],
+    target: Placement
+  ) => MovePlan
+  move: (
+    itemIds: readonly ItemId[],
+    target: Placement
+  ) => void
+  remove: (itemIds: readonly ItemId[]) => void
+}
+
+export interface ActiveRecordsApi {
+  create: (input?: {
+    sectionKey?: SectionKey
+    before?: ItemId
+    set?: Partial<Record<FieldId, unknown>>
+  }) => RecordId | undefined
+}
+
+export interface ActiveCellsApi {
+  set: (cell: CellRef, value: unknown) => void
+  clear: (cell: CellRef) => void
+}
+
+export interface ActiveViewApi {
+  id: ReadStore<ViewId | undefined>
+  config: ReadStore<View | undefined>
+  state: ReadStore<ViewState | undefined>
+  read: ActiveViewReadApi
+  changeType: (type: ViewType) => void
+  search: {
+    set: (query: string) => void
+  }
+  filters: {
+    add: (fieldId: FieldId) => void
+    update: (index: number, rule: FilterRule) => void
+    setPreset: (index: number, presetId: string) => void
+    setValue: (index: number, value: FilterRule['value'] | undefined) => void
+    setMode: (mode: Filter['mode']) => void
+    remove: (index: number) => void
+    clear: () => void
+  }
+  sort: {
+    add: (fieldId: FieldId, direction?: SortDirection) => void
+    update: (fieldId: FieldId, direction: SortDirection) => void
+    keepOnly: (fieldId: FieldId, direction: SortDirection) => void
+    move: (from: number, to: number) => void
+    replace: (index: number, sorter: Sorter) => void
+    remove: (index: number) => void
+    clear: () => void
+  }
+  group: {
+    set: (fieldId: FieldId) => void
+    clear: () => void
+    toggle: (fieldId: FieldId) => void
+    setMode: (mode: string) => void
+    setSort: (sort: BucketSort) => void
+    setInterval: (interval: ViewGroup['bucketInterval']) => void
+    setShowEmpty: (value: boolean) => void
+  }
+  sections: {
+    show: (sectionKey: string) => void
+    hide: (sectionKey: string) => void
+    collapse: (sectionKey: string) => void
+    expand: (sectionKey: string) => void
+    toggleCollapse: (sectionKey: string) => void
+  }
+  summary: {
+    set: (fieldId: FieldId, metric: CalculationMetric | null) => void
+  }
+  display: {
+    replace: (fieldIds: readonly FieldId[]) => void
+    move: (fieldIds: readonly FieldId[], beforeFieldId?: FieldId | null) => void
+    show: (fieldId: FieldId, beforeFieldId?: FieldId | null) => void
+    hide: (fieldId: FieldId) => void
+    clear: () => void
+  }
+  table: {
+    setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
+    setVerticalLines: (value: boolean) => void
+    setWrap: (value: boolean) => void
+    insertFieldLeft: (
+      anchorFieldId: FieldId,
+      input?: {
+        name?: string
+        kind?: CustomFieldKind
+      }
+    ) => CustomFieldId | undefined
+    insertFieldRight: (
+      anchorFieldId: FieldId,
+      input?: {
+        name?: string
+        kind?: CustomFieldKind
+      }
+    ) => CustomFieldId | undefined
+  }
+  gallery: GalleryApi
+  kanban: KanbanApi
+  records: ActiveRecordsApi
+  items: ActiveItemsApi
+  cells: ActiveCellsApi
+}

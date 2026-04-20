@@ -94,7 +94,7 @@ import {
   type TableColumn,
   type TableSection,
   type TableSummary
-} from '@dataview/runtime'
+} from '@dataview/runtime/model'
 
 export interface TableBodyData {
   viewId: ViewId

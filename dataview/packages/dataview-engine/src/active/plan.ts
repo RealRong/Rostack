@@ -15,8 +15,7 @@ import {
   filter as filterApi
 } from '@dataview/core/filter'
 import {
-  viewDisplayFields,
-  viewSortFields
+  view as viewApi
 } from '@dataview/core/view'
 import {
   resolveDefaultSearchFieldIds
@@ -256,7 +255,7 @@ export const compileViewPlan = (
   const query = createQueryPlan(reader, view)
   const indexedFilters = resolveIndexedFilterRules(reader, view)
   const displayFields = view.display.fields?.length
-    ? [...viewDisplayFields(view)]
+    ? [...viewApi.demand.display(view)]
     : []
   const filterBucketSpecs = uniqueSorted(
     indexedFilters.flatMap(entry => (
@@ -281,7 +280,7 @@ export const compileViewPlan = (
       ]
     : filterBucketSpecs
   const sortFields = Array.from(new Set([
-    ...viewSortFields(view),
+    ...viewApi.demand.sort(view),
     ...indexedFilters.flatMap(entry => (
       filterApi.rule.planDemand(entry.field, entry.rule).sorted
         ? [entry.fieldId]

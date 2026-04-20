@@ -16,7 +16,7 @@ import {
   group as groupCore
 } from '@dataview/core/group'
 import {
-  reorderViewOrders
+  view as viewApi
 } from '@dataview/core/view'
 import { sameJsonValue } from '@shared/core'
 import {
@@ -25,7 +25,7 @@ import {
 import type {
   ActiveRecordsApi,
   ViewState
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   ActiveViewContext
 } from '@dataview/engine/active/context'
@@ -50,7 +50,7 @@ const createMoveOrderAction = (
     type: 'view.patch',
     viewId,
     patch: {
-      orders: reorderViewOrders({
+      orders: viewApi.order.reorder({
         allRecordIds,
         currentOrder: view.orders,
         movingRecordIds: recordIds,

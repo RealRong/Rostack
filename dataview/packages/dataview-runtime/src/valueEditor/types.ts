@@ -61,14 +61,12 @@ export interface OpenValueEditorInput {
   onResolve?: (result: ValueEditorResult) => void
 }
 
-export type ValueEditorSession = OpenValueEditorInput
-
 export interface ValueEditorApi {
   open(input: OpenValueEditorInput): boolean
   close(options?: CloseValueEditorOptions): void
 }
 
 export interface ValueEditorController extends ValueEditorApi {
-  store: ValueStore<ValueEditorSession | null>
+  store: ValueStore<OpenValueEditorInput | null>
   openStore: ReadStore<boolean>
 }

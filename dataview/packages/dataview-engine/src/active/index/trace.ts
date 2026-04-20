@@ -1,6 +1,6 @@
 import type {
   IndexStageTrace
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'

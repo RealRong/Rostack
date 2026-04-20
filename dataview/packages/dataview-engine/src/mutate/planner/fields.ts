@@ -11,8 +11,7 @@ import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
-  repairViewForConvertedField,
-  repairViewForRemovedField
+  view as viewApi
 } from '@dataview/core/view'
 import {
   sameJsonValue,
@@ -80,7 +79,7 @@ const buildRemovedFieldViewOps = (
 ): DocumentOperation[] => (
   views
     .flatMap(view => {
-      const nextView = repairViewForRemovedField(view, fieldId)
+      const nextView = viewApi.repair.removedField(view, fieldId)
       return nextView === view
         ? []
         : [toViewPut(nextView)]
@@ -93,7 +92,7 @@ const buildConvertedFieldViewOps = (
 ): DocumentOperation[] => (
   views
     .flatMap(view => {
-      const nextView = repairViewForConvertedField(view, field)
+      const nextView = viewApi.repair.convertedField(view, field)
       return nextView === view
         ? []
         : [toViewPut(nextView)]

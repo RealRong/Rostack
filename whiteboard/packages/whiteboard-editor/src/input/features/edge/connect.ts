@@ -575,17 +575,25 @@ const commitConnectState = (
 
   if (commit.kind === 'reconnect') {
     const patch = readReconnectPatch(state, reconnectDraftPatch)
-    if (!patch) {
-      return
-    }
-
-    ctx.write.edge.reconnect(commit.edgeId, commit.end, commit.target)
-    if (patch.type === 'straight') {
-      ctx.write.edge.type.set([commit.edgeId], 'straight')
-    }
-    if (patch.route?.kind === 'auto') {
-      ctx.write.edge.route.clear(commit.edgeId)
-    }
+    ctx.write.edge.reconnectCommit({
+      edgeId: commit.edgeId,
+      end: commit.end,
+      target: commit.target,
+      patch: patch?.type || patch?.route
+        ? {
+            ...(patch?.type
+              ? {
+                  type: patch.type
+                }
+              : {}),
+            ...(patch?.route
+              ? {
+                  route: patch.route
+                }
+              : {})
+          }
+        : undefined
+    })
     return
   }
 

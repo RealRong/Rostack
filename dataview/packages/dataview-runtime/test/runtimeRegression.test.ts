@@ -3,12 +3,14 @@ import {
   TITLE_FIELD_ID,
   type Field
 } from '@dataview/core/contracts'
-import { createDefaultViewOptions } from '@dataview/core/view'
+import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
-  createDataViewRuntime,
+  createDataViewRuntime
+} from '@dataview/runtime/dataview/runtime'
+import {
   createItemArraySelectionScope
-} from '@dataview/runtime'
+} from '@dataview/runtime/selection'
 
 const FIELD_STATUS = 'status'
 const VIEW_TABLE = 'view_table'
@@ -68,7 +70,7 @@ const createView = (input: {
       fields: [TITLE_FIELD_ID, FIELD_STATUS]
     },
     options: {
-      ...createDefaultViewOptions(input.type, fields)
+      ...view.options.defaults(input.type, fields)
     },
     orders: [],
     ...(input.type === 'kanban'

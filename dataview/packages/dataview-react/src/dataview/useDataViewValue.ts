@@ -10,7 +10,7 @@ import {
 import { useStoreSelector } from '@dataview/react/dataview/storeSelector'
 import type { DataViewReactContextValue } from '@dataview/react/dataview/types'
 import { useDataView } from '@dataview/react/dataview/provider'
-import type { DataViewSessionState } from '@dataview/runtime'
+import type { DataViewSessionState } from '@dataview/runtime/dataview/types'
 
 export function useDataViewValue<TState>(
   resolveStore: (dataView: DataViewReactContextValue) => ReadStore<TState>

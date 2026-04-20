@@ -6,7 +6,7 @@ import {
   touchedViewCountOfImpact
 } from '@dataview/core/commit/impact'
 import type { CommitImpact } from '@dataview/core/contracts'
-import type { TraceImpactSummary } from '@dataview/engine/contracts/public'
+import type { TraceImpactSummary } from '@dataview/engine/contracts'
 
 type WriteKind =
   | 'write'

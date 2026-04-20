@@ -16,7 +16,7 @@ import {
 import {
   type Card,
   type CardContent as CardContentData
-} from '@dataview/runtime'
+} from '@dataview/runtime/model'
 import { shouldCapturePointer } from '@shared/dom'
 import { cn } from '@shared/ui/utils'
 import type { ItemId } from '@dataview/engine'

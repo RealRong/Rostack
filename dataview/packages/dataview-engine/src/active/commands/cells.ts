@@ -1,4 +1,4 @@
-import type { ActiveViewApi } from '@dataview/engine/contracts/public'
+import type { ActiveViewApi } from '@dataview/engine/contracts'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
 
 export const createCellsApi = (input: {

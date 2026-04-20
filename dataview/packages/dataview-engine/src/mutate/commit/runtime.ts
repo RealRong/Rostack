@@ -42,7 +42,7 @@ import type {
   ActionResult,
   CommitResult,
   CreatedEntities
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import {
   clearHistory,
   clearRedo,

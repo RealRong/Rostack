@@ -12,7 +12,7 @@ import type {
   ActiveViewApi,
   EngineSource,
   ViewState
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type { RuntimeStore } from '@dataview/engine/runtime/store'
 import {
   createLiveDocumentReader,

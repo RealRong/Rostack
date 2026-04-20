@@ -34,11 +34,11 @@ import {
 } from '@dataview/engine/active/shared/sections'
 import type {
   SectionKey,
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   QueryState,
   SectionState
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import {
   buildSectionNode,
   buildSectionState,
@@ -47,7 +47,7 @@ import {
 import {
   readQueryOrder,
   readQueryVisibleSet
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import {
   tokenRef
 } from '@shared/i18n'

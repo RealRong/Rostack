@@ -168,11 +168,9 @@ export const createEdgeWrite = ({
     ids,
     delta
   }),
-  reconnect: (edgeId, end, target) => engine.execute({
-    type: 'edge.reconnect',
-    edgeId,
-    end,
-    target
+  reconnectCommit: (input) => engine.execute({
+    type: 'edge.reconnect.commit',
+    ...input
   }),
   delete: (ids) => engine.execute({
     type: 'edge.delete',

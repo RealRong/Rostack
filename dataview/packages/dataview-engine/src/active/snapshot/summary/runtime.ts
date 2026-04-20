@@ -9,7 +9,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   ViewStageMetrics
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import {
   getViewChange,
   hasActiveViewImpact,
@@ -24,8 +24,8 @@ import type {
   SectionState,
   SummaryDelta,
   SummaryState
-} from '@dataview/engine/contracts/internal'
-import type { SectionKey } from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts/state'
+import type { SectionKey } from '@dataview/engine/contracts'
 import {
   hasCalculationChanges,
   hasMembershipChanges

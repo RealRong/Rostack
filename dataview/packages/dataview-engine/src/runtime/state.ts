@@ -5,12 +5,12 @@ import type {
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
-import type { ViewCache } from '@dataview/engine/contracts/internal'
+import type { ViewCache } from '@dataview/engine/contracts/state'
 import type {
   SourceDelta,
   TableLayoutState,
   ViewState
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 
 export interface HistoryEntry {
   undo: DocumentOperation[]

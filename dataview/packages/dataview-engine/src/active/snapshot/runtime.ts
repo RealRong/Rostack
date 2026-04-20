@@ -10,13 +10,13 @@ import type {
   DeriveAction,
   ViewRuntimeDelta,
   ViewCache
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import type {
   ViewStageName,
   ViewStageTrace,
   ViewState,
   ViewTrace
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import { now } from '@dataview/engine/runtime/clock'
 import { publishViewBase } from '@dataview/engine/active/snapshot/base'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'

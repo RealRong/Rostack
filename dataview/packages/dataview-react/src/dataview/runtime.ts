@@ -2,9 +2,11 @@ import type {
   Engine
 } from '@dataview/engine'
 import {
-  createDataViewRuntime,
-  type PageSessionInput
-} from '@dataview/runtime'
+  createDataViewRuntime
+} from '@dataview/runtime/dataview/runtime'
+import type {
+  PageSessionInput
+} from '@dataview/runtime/page/session/types'
 import {
   createDragApi
 } from '@dataview/react/page/drag'

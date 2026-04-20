@@ -11,7 +11,7 @@ import type {
   DocumentSource,
   RecordFieldWriteManyInput,
   RecordsApi
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 
 export const createRecordsApi = (options: {
   source: DocumentSource

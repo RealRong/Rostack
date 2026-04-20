@@ -1,12 +1,160 @@
-export * from '@dataview/core/view/card'
-export * from '@dataview/core/view/demand'
-export * from '@dataview/core/view/duplicate'
-export * from '@dataview/core/view/gallery'
-export * from '@dataview/core/view/kanban'
-export * from '@dataview/core/view/naming'
-export * from '@dataview/core/view/normalize'
-export * from '@dataview/core/view/order'
-export * from '@dataview/core/view/options'
-export * from '@dataview/core/view/repair'
-export * from '@dataview/core/view/shared'
-export * from '@dataview/core/view/state'
+import {
+  cloneCardOptions,
+  normalizeCardOptions
+} from '@dataview/core/view/card'
+import {
+  viewCalcFields,
+  viewDisplayFields,
+  viewFilterFields,
+  viewSearchFields,
+  viewSortFields
+} from '@dataview/core/view/demand'
+import {
+  createDuplicateViewInput
+} from '@dataview/core/view/duplicate'
+import {
+  cloneGalleryOptions,
+  normalizeGalleryOptions
+} from '@dataview/core/view/gallery'
+import {
+  cloneKanbanOptions,
+  normalizeKanbanOptions
+} from '@dataview/core/view/kanban'
+import {
+  createDuplicateViewPreferredName,
+  resolveUniqueViewName
+} from '@dataview/core/view/naming'
+import {
+  normalizeViewOptions,
+  type NormalizeViewOptionsContext
+} from '@dataview/core/view/normalize'
+import {
+  applyRecordOrder,
+  normalizeRecordOrderIds,
+  reorderRecordBlockIds,
+  reorderRecordIds
+} from '@dataview/core/view/order'
+import {
+  cloneTableOptions,
+  createDefaultViewDisplay,
+  createDefaultViewOptions,
+  pruneFieldFromViewOptions
+} from '@dataview/core/view/options'
+import {
+  repairViewForConvertedField,
+  repairViewForRemovedField
+} from '@dataview/core/view/repair'
+import {
+  cloneViewOptions,
+  resolveDisplayInsertBeforeFieldId
+} from '@dataview/core/view/shared'
+import {
+  clearDisplayFields,
+  clearViewOrders,
+  cloneDisplay,
+  cloneViewCalc,
+  moveDisplayFields,
+  hideDisplayField,
+  normalizeViewDisplay,
+  replaceDisplayFields,
+  reorderViewOrders,
+  sameDisplay,
+  sameViewCalc,
+  sameViewOptions,
+  setGalleryCardLayout,
+  setGalleryCardSize,
+  setGalleryCardWrap,
+  setKanbanCardsPerColumn,
+  setKanbanCardLayout,
+  setKanbanCardSize,
+  setKanbanCardWrap,
+  setKanbanFillColumnColor,
+  setTableColumnWidths,
+  setTableVerticalLines,
+  setTableWrap,
+  setViewCalcMetric,
+  showDisplayField
+} from '@dataview/core/view/state'
+
+export type { NormalizeViewOptionsContext }
+
+export const view = {
+  card: {
+    clone: cloneCardOptions,
+    normalize: normalizeCardOptions
+  },
+  demand: {
+    search: viewSearchFields,
+    filter: viewFilterFields,
+    sort: viewSortFields,
+    calc: viewCalcFields,
+    display: viewDisplayFields
+  },
+  duplicate: {
+    input: createDuplicateViewInput
+  },
+  display: {
+    clone: cloneDisplay,
+    same: sameDisplay,
+    normalize: normalizeViewDisplay,
+    replace: replaceDisplayFields,
+    move: moveDisplayFields,
+    show: showDisplayField,
+    hide: hideDisplayField,
+    clear: clearDisplayFields,
+    insertBefore: resolveDisplayInsertBeforeFieldId
+  },
+  calc: {
+    clone: cloneViewCalc,
+    same: sameViewCalc,
+    set: setViewCalcMetric
+  },
+  order: {
+    normalize: normalizeRecordOrderIds,
+    apply: applyRecordOrder,
+    move: reorderRecordIds,
+    moveBlock: reorderRecordBlockIds,
+    reorder: reorderViewOrders,
+    clear: clearViewOrders
+  },
+  options: {
+    clone: cloneViewOptions,
+    same: sameViewOptions,
+    normalize: normalizeViewOptions,
+    defaults: createDefaultViewOptions,
+    defaultDisplay: createDefaultViewDisplay,
+    cloneTable: cloneTableOptions,
+    pruneField: pruneFieldFromViewOptions
+  },
+  layout: {
+    table: {
+      setWidths: setTableColumnWidths,
+      setVerticalLines: setTableVerticalLines,
+      setWrap: setTableWrap
+    },
+    gallery: {
+      clone: cloneGalleryOptions,
+      normalize: normalizeGalleryOptions,
+      setWrap: setGalleryCardWrap,
+      setSize: setGalleryCardSize,
+      setLayout: setGalleryCardLayout
+    },
+    kanban: {
+      clone: cloneKanbanOptions,
+      normalize: normalizeKanbanOptions,
+      setWrap: setKanbanCardWrap,
+      setSize: setKanbanCardSize,
+      setLayout: setKanbanCardLayout,
+      setFillColumnColor: setKanbanFillColumnColor,
+      setCardsPerColumn: setKanbanCardsPerColumn
+    }
+  },
+  name: {
+    duplicate: createDuplicateViewPreferredName,
+    unique: resolveUniqueViewName
+  },
+  repair: {
+    removedField: repairViewForRemovedField,
+    convertedField: repairViewForConvertedField
+  }
+} as const

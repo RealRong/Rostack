@@ -3,7 +3,7 @@ import type {
   ActionResult,
   ActiveViewApi,
   EngineSource
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import { createActiveContext } from '@dataview/engine/active/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/read'
 import type { RuntimeStore } from '@dataview/engine/runtime/store'

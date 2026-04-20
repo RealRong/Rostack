@@ -23,7 +23,7 @@ import {
   readGroupSummary
 } from '@dataview/react/page/features/viewSettings/groupUi'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
-import { supportsGroupSettings } from '@dataview/runtime'
+import { supportsGroupSettings } from '@dataview/runtime/page/session/settings'
 import { useTranslation } from '@shared/i18n/react'
 import {
   useStoreValue

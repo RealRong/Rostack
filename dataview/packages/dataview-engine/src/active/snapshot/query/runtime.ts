@@ -8,7 +8,7 @@ import type { DocumentReader } from '@dataview/engine/document/reader'
 import type {
   ViewRecords,
   ViewStageMetrics
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import {
   hasActiveViewImpact,
   hasFieldSchemaAspect,
@@ -31,10 +31,10 @@ import type {
   DeriveAction,
   QueryDelta,
   QueryState
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import {
   readQueryVisibleSet
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 export {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'

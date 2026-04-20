@@ -4,7 +4,6 @@ import type {
   ValueEditorAnchor,
   ValueEditorController,
   ValueEditorResult,
-  ValueEditorSession,
   ViewFieldRef
 } from '@dataview/runtime/valueEditor/types'
 import {
@@ -33,7 +32,7 @@ const normalizeAnchor = (
 
 const createSession = (
   input: OpenValueEditorInput
-): ValueEditorSession => ({
+): OpenValueEditorInput => ({
   field: cloneField(input.field),
   anchor: normalizeAnchor(input.anchor),
   policy: input.policy,
@@ -76,7 +75,7 @@ export const createValueEditorApi = (): ValueEditorController => {
   const {
     store,
     openStore
-  } = createNullableControllerStore<ValueEditorSession>({
+  } = createNullableControllerStore<OpenValueEditorInput>({
   })
 
   return {

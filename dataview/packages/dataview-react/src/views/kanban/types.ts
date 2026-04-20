@@ -11,7 +11,7 @@ import type {
   KanbanBoard as KanbanBoardModel,
   KanbanCard,
   KanbanSection
-} from '@dataview/runtime'
+} from '@dataview/runtime/model'
 import type {
   KeyedReadStore,
   ReadStore
@@ -22,7 +22,7 @@ import type { BoardLayout } from '@dataview/react/views/kanban/drag'
 export type {
   KanbanCard,
   KanbanSection
-} from '@dataview/runtime'
+} from '@dataview/runtime/model'
 
 export interface KanbanVisibility {
   ids: readonly ItemId[]

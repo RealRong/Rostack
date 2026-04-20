@@ -1,9 +1,19 @@
 import {
+  getEdge,
+  getNode,
   buildInsertSliceOperations,
   exportSliceFromSelection,
-  listCanvasItemRefs
+  listEdges,
+  listCanvasItemRefs,
+  listNodes
 } from '@whiteboard/core/document'
 import { resolveLockDecision } from '@whiteboard/core/lock'
+import {
+  buildMoveCommit,
+  buildMoveSet,
+  projectMovePositions,
+  resolveMoveEffect
+} from '@whiteboard/core/node'
 import type {
   CanvasItemRef,
   Document,
@@ -12,6 +22,9 @@ import type {
 } from '@whiteboard/core/types'
 import type { CanvasCommand } from '@whiteboard/engine/types/command'
 import type { CommandCompileContext } from '@whiteboard/engine/write/types'
+import {
+  emitEdgeMovePatchOps
+} from '@whiteboard/engine/write/compile/edge'
 
 const readNodeMindmapId = (
   node: Pick<Node, 'owner'> | undefined
@@ -31,6 +44,17 @@ const isMindmapRoot = (
   }
   return document.mindmaps[mindmapId]?.root === node.id
 }
+
+const failLockedModification = (
+  ctx: CommandCompileContext,
+  reason?: import('@whiteboard/core/lock').LockDecisionReason
+) => ctx.tx.fail.cancelled(
+  reason === 'locked-node'
+    ? 'Locked nodes cannot be modified.'
+    : reason === 'locked-edge'
+      ? 'Locked edges cannot be modified.'
+      : 'Locked node relations cannot be modified.'
+)
 
 const sameCanvasRef = (
   left: CanvasItemRef,
@@ -244,6 +268,141 @@ export const compileCanvasDuplicate = (
   }
 }
 
+const compileCanvasSelectionMove = (
+  command: Extract<CanvasCommand, { type: 'canvas.selection.move' }>,
+  ctx: CommandCompileContext
+) => {
+  const document = ctx.tx.read.document.get()
+
+  for (const nodeId of new Set(command.nodeIds)) {
+    if (!getNode(document, nodeId)) {
+      return ctx.tx.fail.invalid(`Node ${nodeId} not found.`)
+    }
+  }
+  for (const edgeId of new Set(command.edgeIds)) {
+    if (!getEdge(document, edgeId)) {
+      return ctx.tx.fail.invalid(`Edge ${edgeId} not found.`)
+    }
+  }
+
+  const nodes = listNodes(document)
+  const edges = listEdges(document)
+  const move = buildMoveSet({
+    nodes,
+    ids: command.nodeIds,
+    nodeSize: ctx.nodeSize
+  })
+  const movedNodeIds = move.members.map((member) => member.id)
+  const selectedEdgeIdSet = new Set(command.edgeIds)
+  const selectedEdges = edges.filter((edge) => selectedEdgeIdSet.has(edge.id))
+  const followEdges = edges.filter((edge) => !selectedEdgeIdSet.has(edge.id))
+  const followEffect = resolveMoveEffect({
+    nodes,
+    edges: followEdges,
+    move,
+    delta: command.delta,
+    nodeSize: ctx.nodeSize
+  })
+  const selectedEdgeChanges = buildMoveCommit({
+    delta: command.delta,
+    edgePlan: {
+      dragged: selectedEdges,
+      follow: []
+    }
+  }).edges
+
+  const nodeDecision = resolveLockDecision({
+    document,
+    target: {
+      kind: 'nodes',
+      nodeIds: movedNodeIds
+    }
+  })
+  if (!nodeDecision.allowed) {
+    return failLockedModification(ctx, nodeDecision.reason)
+  }
+
+  const touchedEdgeIds = [
+    ...selectedEdges.map((edge) => edge.id),
+    ...followEffect.edges.map((entry) => entry.id)
+  ]
+  const edgeDecision = resolveLockDecision({
+    document,
+    target: {
+      kind: 'edge-ids',
+      edgeIds: touchedEdgeIds
+    }
+  })
+  if (!edgeDecision.allowed) {
+    return failLockedModification(ctx, edgeDecision.reason)
+  }
+
+  const movedMemberIdSet = new Set(movedNodeIds)
+  const movedMindmapIds = new Set<MindmapId>()
+  const positions = projectMovePositions(move.members, command.delta)
+
+  for (const entry of positions) {
+    const node = getNode(document, entry.id)
+    if (!node) {
+      continue
+    }
+
+    const mindmapId = readNodeMindmapId(node)
+    if (!mindmapId) {
+      if (
+        node.position.x !== entry.position.x
+        || node.position.y !== entry.position.y
+      ) {
+        ctx.tx.emit({
+          type: 'node.field.set',
+          id: node.id,
+          field: 'position',
+          value: entry.position
+        })
+      }
+      continue
+    }
+
+    const rootId = document.mindmaps[mindmapId]?.root
+    if (!rootId) {
+      throw new Error(`Mindmap ${mindmapId} root missing.`)
+    }
+
+    if (rootId !== node.id) {
+      if (!movedMemberIdSet.has(rootId)) {
+        return ctx.tx.fail.invalid('Mindmap member move must use mindmap drag.')
+      }
+      continue
+    }
+
+    if (movedMindmapIds.has(mindmapId)) {
+      continue
+    }
+    movedMindmapIds.add(mindmapId)
+    ctx.tx.emit({
+      type: 'mindmap.root.move',
+      id: mindmapId,
+      position: entry.position
+    })
+  }
+
+  selectedEdgeChanges.forEach((entry) => {
+    const edge = getEdge(document, entry.id)
+    if (!edge) {
+      return
+    }
+    emitEdgeMovePatchOps(edge, entry.patch, ctx)
+  })
+
+  followEffect.edges.forEach((entry) => {
+    const edge = getEdge(document, entry.id)
+    if (!edge) {
+      return
+    }
+    emitEdgeMovePatchOps(edge, entry.patch, ctx)
+  })
+}
+
 export const compileCanvasCommand = (
   command: CanvasCommand,
   ctx: CommandCompileContext
@@ -253,6 +412,8 @@ export const compileCanvasCommand = (
       return compileCanvasDelete(command.refs, ctx)
     case 'canvas.duplicate':
       return compileCanvasDuplicate(command.refs, ctx)
+    case 'canvas.selection.move':
+      return compileCanvasSelectionMove(command, ctx)
     case 'canvas.order.move': {
       const current = listCanvasItemRefs(ctx.tx.read.document.get())
       const target = reorderRefs(current, command.refs, command.mode)

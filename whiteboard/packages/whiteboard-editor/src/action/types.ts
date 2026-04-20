@@ -248,11 +248,15 @@ export type EdgeActions = {
     ids: readonly EdgeId[]
     delta: Point
   }) => CommandResult
-  reconnect: (
-    edgeId: EdgeId,
-    end: 'source' | 'target',
+  reconnectCommit: (input: {
+    edgeId: EdgeId
+    end: 'source' | 'target'
     target: EdgeEnd
-  ) => CommandResult
+    patch?: {
+      type?: EdgeType
+      route?: import('@whiteboard/core/types').EdgeRouteInput
+    }
+  }) => CommandResult
   delete: (ids: EdgeId[]) => CommandResult
   route: {
     insert: (edgeId: EdgeId, point: Point) => CommandResult<{ index: number }>

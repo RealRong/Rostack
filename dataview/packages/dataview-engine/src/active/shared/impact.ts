@@ -21,7 +21,7 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   SectionKey
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 
 export interface ActiveImpactBase {
   touchedRecords: ReadonlySet<RecordId> | 'all'

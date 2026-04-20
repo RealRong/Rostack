@@ -363,7 +363,7 @@ const emitEdgeUpdateInputOps = (
   }
 }
 
-const emitEdgeMovePatchOps = (
+export const emitEdgeMovePatchOps = (
   edge: Edge,
   patch: EdgePatch,
   ctx: CommandCompileContext
@@ -550,19 +550,36 @@ export const compileEdgeCommand = (
       })
       return
     }
-    case 'edge.reconnect': {
-      const decision = resolveLockDecision({
+    case 'edge.reconnect.commit': {
+      const currentDecision = resolveLockDecision({
         document,
         target: {
           kind: 'edge-ids',
           edgeIds: [command.edgeId]
         }
       })
-      if (!decision.allowed) {
+      if (!currentDecision.allowed) {
         return ctx.tx.fail.cancelled(
-          decision.reason === 'locked-node'
+          currentDecision.reason === 'locked-node'
             ? 'Locked nodes cannot be modified.'
-            : decision.reason === 'locked-edge'
+            : currentDecision.reason === 'locked-edge'
+              ? 'Locked edges cannot be modified.'
+              : 'Locked node relations cannot be modified.'
+        )
+      }
+
+      const targetDecision = resolveLockDecision({
+        document,
+        target: {
+          kind: 'edge-ends',
+          ends: [command.target]
+        }
+      })
+      if (!targetDecision.allowed) {
+        return ctx.tx.fail.cancelled(
+          targetDecision.reason === 'locked-node'
+            ? 'Locked nodes cannot be modified.'
+            : targetDecision.reason === 'locked-edge'
               ? 'Locked edges cannot be modified.'
               : 'Locked node relations cannot be modified.'
         )
@@ -573,10 +590,20 @@ export const compileEdgeCommand = (
         return
       }
 
-      emitEdgeUpdateInputOps(edge, {
-        fields: command.end === 'source'
+      emitEdgeMovePatchOps(edge, {
+        ...(command.end === 'source'
           ? { source: command.target }
-          : { target: command.target }
+          : { target: command.target }),
+        ...(command.patch?.type
+          ? {
+              type: command.patch.type
+            }
+          : {}),
+        ...(command.patch?.route
+          ? {
+              route: command.patch.route
+            }
+          : {})
       }, ctx)
       return
     }

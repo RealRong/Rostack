@@ -1,7 +1,7 @@
 import {
   group
 } from '@dataview/core/group'
-import type { ActiveViewApi } from '@dataview/engine/contracts/public'
+import type { ActiveViewApi } from '@dataview/engine/contracts'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
 
 export const createSectionsApi = (

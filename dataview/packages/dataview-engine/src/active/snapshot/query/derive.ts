@@ -31,7 +31,7 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   QueryState
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import {
   type DocumentReader
 } from '@dataview/engine/document/reader'

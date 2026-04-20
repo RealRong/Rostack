@@ -12,10 +12,10 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionKey
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   SummaryState
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import {
   sameOrder
 } from '@shared/core'

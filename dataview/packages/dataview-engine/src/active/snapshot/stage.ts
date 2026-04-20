@@ -3,7 +3,7 @@ import {
 } from '@dataview/engine/runtime/clock'
 import type {
   DeriveAction
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 
 export interface SnapshotStageResult<TState, TPublished> {
   action: DeriveAction

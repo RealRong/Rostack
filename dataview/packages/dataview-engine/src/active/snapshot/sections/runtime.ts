@@ -29,13 +29,13 @@ import type {
   SectionDelta,
   SectionRuntimeState,
   SectionState
-} from '@dataview/engine/contracts/internal'
+} from '@dataview/engine/contracts/state'
 import type {
   ItemList,
   SectionKey,
   SectionList,
   ViewStageMetrics
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import {
   publishSections,
   syncSectionProjection

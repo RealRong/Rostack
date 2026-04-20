@@ -14,7 +14,7 @@ import type {
 import type { DocumentReader } from '@dataview/engine/document/reader'
 import type {
   IndexTrace
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'

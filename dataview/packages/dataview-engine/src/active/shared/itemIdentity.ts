@@ -5,7 +5,7 @@ import type {
   ItemId,
   SectionKey,
   ViewItem
-} from '@dataview/engine/contracts/public'
+} from '@dataview/engine/contracts'
 
 export interface ItemProjectionCache {
   nextId: number

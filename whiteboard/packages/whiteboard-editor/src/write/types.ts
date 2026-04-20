@@ -69,6 +69,13 @@ export type CanvasWrite = {
   duplicate: (
     refs: readonly CanvasItemRef[]
   ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+  selection: {
+    move: (input: {
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+      delta: Point
+    }) => CommandResult
+  }
   order: {
     move: (
       refs: readonly CanvasItemRef[],
@@ -276,11 +283,15 @@ export type EdgeWrite = {
     ids: readonly EdgeId[]
     delta: Point
   }) => CommandResult
-  reconnect: (
-    edgeId: EdgeId,
-    end: 'source' | 'target',
+  reconnectCommit: (input: {
+    edgeId: EdgeId
+    end: 'source' | 'target'
     target: EdgeEnd
-  ) => CommandResult
+    patch?: {
+      type?: EdgeType
+      route?: EdgeRouteInput
+    }
+  }) => CommandResult
   delete: (ids: readonly EdgeId[]) => CommandResult
   label: EdgeLabelWrite
   route: EdgeRouteWrite

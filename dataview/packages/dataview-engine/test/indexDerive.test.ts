@@ -302,7 +302,7 @@ test('engine.active.view plan demand unions search and numeric filter substrates
   assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
 
-test('engine.active.view plan demand keeps stable bucket and sort substrate for persisted filters', () => {
+test('engine.active.view plan demand provisions bucket and sort substrate only for effective persisted filters', () => {
   const FIELD_DUE = 'due'
   const fields = [
     ...createFields(),
@@ -376,11 +376,45 @@ test('engine.active.view plan demand keeps stable bucket and sort substrate for 
 
   const demand = resolveDemand(document, view.id)
 
-  assert.deepEqual(demand.sortFields, [FIELD_DUE, FIELD_POINTS])
-  assert.deepEqual(
-    demand.buckets?.map(spec => spec.fieldId),
-    [FIELD_PRIORITY, FIELD_STATUS, FIELD_TAGS]
-  )
+  assert.deepEqual(demand.sortFields, [FIELD_DUE])
+  assert.equal(demand.buckets, undefined)
+})
+
+test('engine.active.view plan demand ignores ineffective date filters when deriving sort substrate', () => {
+  const FIELD_DUE = 'due'
+  const fields = [
+    ...createFields(),
+    {
+      id: FIELD_DUE,
+      name: 'Due',
+      kind: 'date',
+      includeTime: false
+    }
+  ]
+  const baseView = createTableView()
+  const filteredView = createTableView({
+    filter: {
+      mode: 'and',
+      rules: [{
+        fieldId: FIELD_DUE,
+        presetId: 'eq'
+      }]
+    }
+  })
+  const document = createDocument({
+    fieldDefs: fields,
+    activeViewId: filteredView.id,
+    views: {
+      byId: {
+        [baseView.id]: baseView,
+        [filteredView.id]: filteredView
+      },
+      order: [baseView.id, filteredView.id]
+    }
+  })
+
+  assert.equal(resolveDemand(document, baseView.id).sortFields, undefined)
+  assert.equal(resolveDemand(document, filteredView.id).sortFields, undefined)
 })
 
 test('engine.active.index derive adds demanded sort fields without rebuilding existing field indexes', () => {

@@ -32,6 +32,9 @@ import type {
   QueryDelta,
   QueryState
 } from '@dataview/engine/contracts/internal'
+import {
+  readQueryVisibleSet
+} from '@dataview/engine/contracts/internal'
 export {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'
@@ -68,28 +71,87 @@ const EMPTY_VISIBLE_DIFF = {
 const collectVisibleDiff = (input: {
   previous: readonly RecordId[]
   next: readonly RecordId[]
+  previousSet?: ReadonlySet<RecordId>
+  nextSet?: ReadonlySet<RecordId>
 }): {
-  added: RecordId[]
-  removed: RecordId[]
+  added: readonly RecordId[]
+  removed: readonly RecordId[]
 } => {
   if (input.previous === input.next) {
     return EMPTY_VISIBLE_DIFF
   }
 
-  const remainingPrevious = new Set(input.previous)
-  const added: RecordId[] = []
-  input.next.forEach(recordId => {
-    if (!remainingPrevious.delete(recordId)) {
-      added.push(recordId)
+  if (!input.previous.length) {
+    return input.next.length
+      ? {
+          added: input.next,
+          removed: EMPTY_RECORD_IDS
+        }
+      : EMPTY_VISIBLE_DIFF
+  }
+
+  if (!input.next.length) {
+    return {
+      added: EMPTY_RECORD_IDS,
+      removed: input.previous
     }
-  })
-  const removed = remainingPrevious.size
-    ? [...remainingPrevious]
-    : EMPTY_RECORD_IDS
+  }
+
+  const previousIsSmaller = input.previous.length <= input.next.length
+  const added: RecordId[] = []
+  const removed: RecordId[] = []
+
+  if (previousIsSmaller) {
+    const previousSet = input.previousSet ?? new Set(input.previous)
+
+    for (let index = 0; index < input.next.length; index += 1) {
+      const recordId = input.next[index]!
+      if (!previousSet.has(recordId)) {
+        added.push(recordId)
+      }
+    }
+
+    if (!added.length && input.previous.length === input.next.length) {
+      return EMPTY_VISIBLE_DIFF
+    }
+
+    if (input.previous.length + added.length !== input.next.length) {
+      const nextSet = input.nextSet ?? new Set(input.next)
+      for (let index = 0; index < input.previous.length; index += 1) {
+        const recordId = input.previous[index]!
+        if (!nextSet.has(recordId)) {
+          removed.push(recordId)
+        }
+      }
+    }
+  } else {
+    const nextSet = input.nextSet ?? new Set(input.next)
+
+    for (let index = 0; index < input.previous.length; index += 1) {
+      const recordId = input.previous[index]!
+      if (!nextSet.has(recordId)) {
+        removed.push(recordId)
+      }
+    }
+
+    if (input.next.length + removed.length !== input.previous.length) {
+      const previousSet = input.previousSet ?? new Set(input.previous)
+      for (let index = 0; index < input.next.length; index += 1) {
+        const recordId = input.next[index]!
+        if (!previousSet.has(recordId)) {
+          added.push(recordId)
+        }
+      }
+    }
+  }
 
   return {
-    added,
-    removed
+    added: added.length
+      ? added
+      : EMPTY_RECORD_IDS,
+    removed: removed.length
+      ? removed
+      : EMPTY_RECORD_IDS
   }
 }
 
@@ -231,17 +293,16 @@ export const runQueryStage = (input: {
     const previousRecords = input.previous.records
     const nextRecords = stage.state.records
     const orderChanged = previousRecords.ordered !== nextRecords.ordered
-    const diff = (
-      !input.impact.base.recordSetChanged
-      && previousRecords.visible === previousRecords.ordered
-      && nextRecords.visible === nextRecords.ordered
-      && previousRecords.visible.length === nextRecords.visible.length
-    )
-      ? EMPTY_VISIBLE_DIFF
-      : collectVisibleDiff({
-          previous: previousRecords.visible,
-          next: nextRecords.visible
-        })
+    const diff = collectVisibleDiff({
+      previous: previousRecords.visible,
+      next: nextRecords.visible,
+      previousSet: previousRecords.visible.length <= nextRecords.visible.length
+        ? readQueryVisibleSet(input.previous)
+        : input.previous.visibleSet,
+      nextSet: nextRecords.visible.length < previousRecords.visible.length
+        ? readQueryVisibleSet(stage.state)
+        : stage.state.visibleSet
+    })
 
     if (
       diff.added.length

@@ -5,7 +5,6 @@ import {
   sameOrder
 } from '@shared/core'
 import {
-  createOrderedKeyedListAccess,
   createOrderedKeyedListCollection
 } from '@dataview/engine/active/snapshot/list'
 import {
@@ -13,10 +12,8 @@ import {
   type MapPatchBuilder
 } from '@dataview/engine/active/shared/patch'
 import {
-  createItemProjectionTable,
   type GroupedItemProjection,
-  type ItemProjectionCache,
-  type ItemProjectionTable
+  type ItemProjectionCache
 } from '@dataview/engine/active/shared/itemIdentity'
 import type {
   ItemId,
@@ -52,7 +49,7 @@ const shouldRebuildSectionMapping = (
 const createItemList = (input: {
   ids: readonly ItemId[]
   count: number
-  table: ItemProjectionTable
+  byId: ReadonlyMap<ItemId, ViewItem>
   previous?: ItemList
 }): ItemList => {
   if (
@@ -77,14 +74,12 @@ const createItemList = (input: {
     return indexById
   }
 
-  const items = createOrderedKeyedListAccess({
-    ids: input.ids,
-    get: id => input.table.get(id)
-  })
-
   return {
-    ...items,
+    ids: input.ids,
     count: input.count,
+    get: id => input.byId.get(id),
+    has: id => ensureIndexById().has(id),
+    at: index => input.ids[index],
     indexOf: id => ensureIndexById().get(id),
     prev: id => {
       const index = ensureIndexById().get(id)
@@ -116,7 +111,7 @@ const buildSections = (input: {
   sections: SectionState
   previous?: SectionList
   previousSections?: SectionState
-  table: ItemProjectionTable
+  byId: ReadonlyMap<ItemId, ViewItem>
   visibleIdsBySection: ReadonlyMap<SectionKey, readonly ItemId[]>
 }): SectionList => {
   const previous = input.previous
@@ -138,7 +133,7 @@ const buildSections = (input: {
     const items = createItemList({
       ids: publishedItemIds,
       count: node.recordIds.length,
-      table: input.table,
+      byId: input.byId,
       previous: previousSection?.items
     })
     const canReuse = Boolean(
@@ -198,7 +193,7 @@ const buildSections = (input: {
 
 const buildItemList = (input: {
   sections: SectionList
-  table: ItemProjectionTable
+  byId: ReadonlyMap<ItemId, ViewItem>
   previous?: ItemList
   previousSections?: SectionList
 }): ItemList => {
@@ -252,7 +247,7 @@ const buildItemList = (input: {
   return createItemList({
     ids: publishedIds,
     count: totalIdCount,
-    table: input.table,
+    byId: input.byId,
     previous: input.previous
   })
 }
@@ -626,7 +621,6 @@ export const publishSections = (input: {
   items: ItemList
   sections: SectionList
 } => {
-  const table = createItemProjectionTable(input.projection)
   const visibleIdsBySection = new Map<SectionKey, readonly ItemId[]>()
 
   input.sections.order.forEach(sectionKey => {
@@ -648,12 +642,12 @@ export const publishSections = (input: {
     sections: input.sections,
     previous: input.previous?.sections,
     previousSections: input.previousSections,
-    table,
+    byId: input.projection.byId,
     visibleIdsBySection
   })
   const items = buildItemList({
     sections,
-    table,
+    byId: input.projection.byId,
     previous: input.previous?.items,
     previousSections: input.previous?.sections
   })

@@ -232,18 +232,25 @@ export const syncSectionState = (input: {
     })
   }
 
-  const visible = readQueryVisibleSet(input.query)
+  const fullVisible = input.query.records.visible === input.index.records.ids
+  const visible = fullVisible
+    ? undefined
+    : readQueryVisibleSet(input.query)
   let sectionChange = input.impact.sections
-  const keysByRecord = createMapPatchBuilder(previous.keysByRecord)
+  const keysByRecord = fullVisible
+    ? undefined
+    : createMapPatchBuilder(previous.keysByRecord)
   let keysChanged = false
 
   changedRecordIds.forEach(recordId => {
     const before = previous.keysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS
-    const after = buildVisibleKeysForRecord({
-      visible,
-      bucketKeysByRecord: bucketIndex.keysByRecord,
-      recordId
-    })
+    const after = fullVisible
+      ? bucketIndex.keysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+      : buildVisibleKeysForRecord({
+          visible: visible!,
+          bucketKeysByRecord: bucketIndex.keysByRecord,
+          recordId
+        })
     if (sameSectionKeys(before, after)) {
       return
     }
@@ -252,16 +259,22 @@ export const syncSectionState = (input: {
     applyMembershipTransition(sectionChange, recordId, before, after)
     keysChanged = true
 
-    if (after.length) {
-      keysByRecord.set(recordId, after)
+    if (fullVisible) {
       return
     }
 
-    keysByRecord.delete(recordId)
+    if (after.length) {
+      keysByRecord!.set(recordId, after)
+      return
+    }
+
+    keysByRecord!.delete(recordId)
   })
 
-  const nextKeysByRecord = keysChanged
-    ? keysByRecord.finish()
+  const nextKeysByRecord = fullVisible
+    ? bucketIndex.keysByRecord
+    : keysChanged
+      ? keysByRecord!.finish()
     : previous.keysByRecord
   const presentation = buildBucketViewState({
     field: bucketIndex.field,
@@ -275,7 +288,7 @@ export const syncSectionState = (input: {
     : presentation.order
 
   if (input.impact.query?.orderChanged || nextOrder !== previous.order) {
-    const projectedRecordIds = input.query.records.visible === input.index.records.ids
+    const projectedRecordIds = fullVisible
       ? bucketIndex.recordsByKey
       : projectRecordIdsBySection({
         recordIds: input.query.records.visible,

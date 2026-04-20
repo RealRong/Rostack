@@ -133,19 +133,32 @@ const resolveEffectiveFilterRules = (
   return rules
 }
 
-const resolveStableFilterRules = (
+const resolveIndexedFilterRules = (
   reader: DocumentReader,
   view: View
-): readonly EffectiveFilterRule[] => view.filter.rules.flatMap(rule => {
-  const field = reader.fields.get(rule.fieldId)
-  return isKnownFieldId(reader, rule.fieldId)
-    ? [{
-        fieldId: rule.fieldId,
-        field,
-        rule
-      }]
-    : []
-})
+): readonly EffectiveFilterRule[] => {
+  const rules: EffectiveFilterRule[] = []
+
+  for (let index = 0; index < view.filter.rules.length; index += 1) {
+    const rule = view.filter.rules[index]!
+    if (!isKnownFieldId(reader, rule.fieldId)) {
+      continue
+    }
+
+    const field = reader.fields.get(rule.fieldId)
+    if (!isFilterRuleEffective(field, rule)) {
+      continue
+    }
+
+    rules.push({
+      fieldId: rule.fieldId,
+      field,
+      rule
+    })
+  }
+
+  return rules
+}
 
 const createExecutionKey = (input: {
   search?: QueryPlan['search']
@@ -261,12 +274,12 @@ export const compileViewPlan = (
   view: View
 ): ViewPlan => {
   const query = createQueryPlan(reader, view)
-  const stableFilters = resolveStableFilterRules(reader, view)
+  const indexedFilters = resolveIndexedFilterRules(reader, view)
   const displayFields = view.display.fields?.length
     ? [...viewDisplayFields(view)]
     : []
   const filterBucketSpecs = uniqueSorted(
-    stableFilters.flatMap(entry => {
+    indexedFilters.flatMap(entry => {
       switch (entry.field?.kind) {
         case 'status':
         case 'select':
@@ -295,7 +308,7 @@ export const compileViewPlan = (
     : filterBucketSpecs
   const sortFields = Array.from(new Set([
     ...viewSortFields(view),
-    ...stableFilters.flatMap(entry => {
+    ...indexedFilters.flatMap(entry => {
       switch (entry.field?.kind) {
         case 'number':
         case 'date':

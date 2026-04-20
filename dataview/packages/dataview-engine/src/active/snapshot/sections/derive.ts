@@ -17,9 +17,7 @@ import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import {
-  buildSectionKeysByRecord,
-  EMPTY_SECTION_KEYS,
-  projectRecordIdsBySection,
+  buildSectionMembership,
   ROOT_SECTION_KEY,
   ROOT_SECTION_KEYS,
   ROOT_SECTION_ORDER
@@ -33,13 +31,12 @@ import type {
   SectionState
 } from '@dataview/engine/contracts/internal'
 import {
-  readQueryVisibleSet
-} from '@dataview/engine/contracts/internal'
-import {
   tokenRef
 } from '@shared/i18n'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const EMPTY_KEYS_BY_RECORD = new Map<RecordId, readonly SectionKey[]>()
+const EMPTY_RECORD_IDS_BY_SECTION = new Map<SectionKey, readonly RecordId[]>()
 const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
 
 const sameBucket = (
@@ -171,19 +168,19 @@ export const buildSectionState = (input: {
     group: input.view.group,
     index: input.index
   })
-  const visibleSet = readQueryVisibleSet(input.query)
-  const keysByRecord = buildSectionKeysByRecord({
-    recordIds: input.query.records.visible,
-    keysOf: recordId => visibleSet.has(recordId)
-      ? bucketIndex?.keysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS
-      : EMPTY_SECTION_KEYS
-  })
-  const recordIdsBySection = input.query.records.visible === input.index.records.ids
-    ? bucketIndex?.recordsByKey ?? new Map<SectionKey, readonly RecordId[]>()
-    : projectRecordIdsBySection({
-      recordIds: input.query.records.visible,
-      keysByRecord
-    })
+  const fullVisible = input.query.records.visible === input.index.records.ids
+  const sectionMembership = fullVisible
+    ? undefined
+    : buildSectionMembership({
+        recordIds: input.query.records.visible,
+        keysByRecord: bucketIndex?.keysByRecord
+      })
+  const keysByRecord = fullVisible
+    ? bucketIndex?.keysByRecord ?? EMPTY_KEYS_BY_RECORD
+    : sectionMembership?.keysByRecord ?? EMPTY_KEYS_BY_RECORD
+  const recordIdsBySection = fullVisible
+    ? bucketIndex?.recordsByKey ?? EMPTY_RECORD_IDS_BY_SECTION
+    : sectionMembership?.recordIdsBySection ?? EMPTY_RECORD_IDS_BY_SECTION
   const sectionField = input.index.records.values.get(input.view.group.field)?.byRecord
   const presentation = buildBucketViewState({
     field: bucketIndex?.field,

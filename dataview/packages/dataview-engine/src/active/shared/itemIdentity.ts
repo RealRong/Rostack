@@ -19,10 +19,6 @@ export interface GroupedItemProjection {
   byRecord: ReadonlyMap<RecordId, ItemId>
 }
 
-export interface ItemProjectionTable {
-  get(id: ItemId): ViewItem | undefined
-}
-
 const EMPTY_ITEMS_BY_ID = new Map<ItemId, ViewItem>()
 const EMPTY_ROOT_IDENTITIES = new Map<RecordId, ItemId>()
 const EMPTY_GROUPED_IDENTITIES = new Map<SectionKey, GroupedItemProjection>()
@@ -32,10 +28,4 @@ export const emptyItemProjectionCache = (): ItemProjectionCache => ({
   byId: EMPTY_ITEMS_BY_ID,
   rootByRecord: EMPTY_ROOT_IDENTITIES,
   grouped: EMPTY_GROUPED_IDENTITIES
-})
-
-export const createItemProjectionTable = (
-  cache: Pick<ItemProjectionCache, 'byId'>
-): ItemProjectionTable => ({
-  get: id => cache.byId.get(id)
 })

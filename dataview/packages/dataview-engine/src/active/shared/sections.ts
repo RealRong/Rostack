@@ -18,18 +18,40 @@ export const sameSectionKeys = (
   right: readonly SectionKey[]
 ) => sameOrder(left, right)
 
-export const buildSectionKeysByRecord = (input: {
+export const buildSectionMembership = (input: {
   recordIds: readonly RecordId[]
-  keysOf: (recordId: RecordId) => readonly SectionKey[]
-}): ReadonlyMap<RecordId, readonly SectionKey[]> => {
-  const next = new Map<RecordId, readonly SectionKey[]>()
-  input.recordIds.forEach(recordId => {
-    const keys = input.keysOf(recordId)
-    if (keys.length) {
-      next.set(recordId, keys)
+  keysByRecord?: ReadonlyMap<RecordId, readonly SectionKey[]>
+}): {
+  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
+  recordIdsBySection: ReadonlyMap<SectionKey, readonly RecordId[]>
+} => {
+  const nextKeysByRecord = new Map<RecordId, readonly SectionKey[]>()
+  const nextRecordIdsBySection = new Map<SectionKey, RecordId[]>()
+
+  for (let index = 0; index < input.recordIds.length; index += 1) {
+    const recordId = input.recordIds[index]!
+    const keys = input.keysByRecord?.get(recordId)
+    if (!keys?.length) {
+      continue
     }
-  })
-  return next
+
+    nextKeysByRecord.set(recordId, keys)
+    for (let keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
+      const sectionKey = keys[keyIndex]!
+      const ids = nextRecordIdsBySection.get(sectionKey)
+      if (ids) {
+        ids.push(recordId)
+        continue
+      }
+
+      nextRecordIdsBySection.set(sectionKey, [recordId])
+    }
+  }
+
+  return {
+    keysByRecord: nextKeysByRecord,
+    recordIdsBySection: nextRecordIdsBySection
+  }
 }
 
 export const projectRecordIdsBySection = (input: {
@@ -38,17 +60,24 @@ export const projectRecordIdsBySection = (input: {
 }): ReadonlyMap<SectionKey, readonly RecordId[]> => {
   const projected = new Map<SectionKey, RecordId[]>()
 
-  input.recordIds.forEach(recordId => {
-    input.keysByRecord.get(recordId)?.forEach(sectionKey => {
+  for (let index = 0; index < input.recordIds.length; index += 1) {
+    const recordId = input.recordIds[index]!
+    const sectionKeys = input.keysByRecord.get(recordId)
+    if (!sectionKeys?.length) {
+      continue
+    }
+
+    for (let keyIndex = 0; keyIndex < sectionKeys.length; keyIndex += 1) {
+      const sectionKey = sectionKeys[keyIndex]!
       const ids = projected.get(sectionKey)
       if (ids) {
         ids.push(recordId)
-        return
+        continue
       }
 
       projected.set(sectionKey, [recordId])
-    })
-  })
+    }
+  }
 
   return projected
 }

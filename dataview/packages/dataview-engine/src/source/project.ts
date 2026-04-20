@@ -48,18 +48,29 @@ import type {
 } from '@dataview/engine/contracts/public'
 import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/public'
 
-const EMPTY_RECORD_IDS = [] as readonly string[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
-const EMPTY_VIEW_IDS = [] as readonly ViewId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_FILTERS = { rules: [] } satisfies ViewFilterProjection
 const EMPTY_SORT = { rules: [] } satisfies ViewSortProjection
+const EMPTY_SORT_DIR = new Map<FieldId, SortDirection | undefined>()
 const EMPTY_SEARCH = { query: '' } satisfies ViewSearchProjection
+const EMPTY_TABLE_CALC = new Map<FieldId, CalculationMetric | undefined>()
 const DEFAULT_CARD_LAYOUT = 'vertical' as CardLayout
 const DEFAULT_CARD_SIZE = 'medium' as CardSize
 const DEFAULT_KANBAN_CARDS_PER_COLUMN = 0 as KanbanCardsPerColumn
 const EMPTY_LAYOUT_SECTIONS = [] as readonly TableLayoutSectionState[]
+
+interface QueryProjectionMeta {
+  filterFieldIds: readonly FieldId[]
+  sortFieldIds: readonly FieldId[]
+  sortDir: ReadonlyMap<FieldId, SortDirection | undefined>
+}
+
+interface ViewProjectionMeta {
+  query: QueryProjectionMeta
+  tableCalc: ReadonlyMap<FieldId, CalculationMetric | undefined>
+}
 
 const usesOptionGroupingColors = (
   field?: Pick<Field, 'kind'>
@@ -158,12 +169,6 @@ const pushIds = <T,>(
   }
 }
 
-const setMap = <TKey, TValue>(
-  values: readonly (readonly [TKey, TValue | undefined])[]
-): ReadonlyMap<TKey, TValue | undefined> | undefined => values.length
-  ? new Map(values)
-  : undefined
-
 const entityDelta = <TKey, TValue>(input: {
   set?: readonly (readonly [TKey, TValue | undefined])[]
   remove?: readonly TKey[]
@@ -215,30 +220,74 @@ const buildDocumentEntityDelta = <TKey, TValue>(input: {
       : undefined
 }
 
-const buildFilterFieldIds = (
-  query: ViewState['query']
-): readonly FieldId[] => query.filters.rules.flatMap(entry => {
-  const fieldId = getFilterFieldId(entry.rule)
-  return fieldId ? [fieldId] : []
-})
+const sameMapValues = <TKey, TValue>(
+  left: ReadonlyMap<TKey, TValue | undefined>,
+  right: ReadonlyMap<TKey, TValue | undefined>
+) => {
+  if (left === right) {
+    return true
+  }
 
-const buildSortFieldIds = (
-  query: ViewState['query']
-): readonly FieldId[] => query.sort.rules.flatMap(entry => {
-  const fieldId = getSorterFieldId(entry.sorter)
-  return fieldId ? [fieldId] : []
-})
+  if (left.size !== right.size) {
+    return false
+  }
 
-const buildSortDir = (
-  query: ViewState['query']
-): ReadonlyMap<FieldId, SortDirection | undefined> => new Map(
-  query.sort.rules.flatMap(entry => {
-    const fieldId = getSorterFieldId(entry.sorter)
-    return fieldId
-      ? [[fieldId, entry.sorter.direction] as const]
-      : []
-  })
-)
+  for (const [key, value] of left) {
+    if (
+      right.get(key) !== value
+      || (value === undefined && !right.has(key))
+    ) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const buildQueryProjectionMeta = (
+  query?: ViewState['query']
+): QueryProjectionMeta => {
+  if (!query) {
+    return {
+      filterFieldIds: EMPTY_FIELD_IDS,
+      sortFieldIds: EMPTY_FIELD_IDS,
+      sortDir: EMPTY_SORT_DIR
+    }
+  }
+
+  const filterFieldIds: FieldId[] = []
+  for (let index = 0; index < query.filters.rules.length; index += 1) {
+    const fieldId = getFilterFieldId(query.filters.rules[index]!.rule)
+    if (fieldId) {
+      filterFieldIds.push(fieldId)
+    }
+  }
+
+  const sortFieldIds: FieldId[] = []
+  const sortDir = new Map<FieldId, SortDirection | undefined>()
+  for (let index = 0; index < query.sort.rules.length; index += 1) {
+    const sorter = query.sort.rules[index]!.sorter
+    const fieldId = getSorterFieldId(sorter)
+    if (!fieldId) {
+      continue
+    }
+
+    sortFieldIds.push(fieldId)
+    sortDir.set(fieldId, sorter.direction)
+  }
+
+  return {
+    filterFieldIds: filterFieldIds.length
+      ? filterFieldIds
+      : EMPTY_FIELD_IDS,
+    sortFieldIds: sortFieldIds.length
+      ? sortFieldIds
+      : EMPTY_FIELD_IDS,
+    sortDir: sortDir.size
+      ? sortDir
+      : EMPTY_SORT_DIR
+  }
+}
 
 const collectRemovedKeys = <TKey,>(
   previousIds: readonly TKey[],
@@ -454,7 +503,7 @@ const syncTableLayoutState = (input: {
   }
 }
 
-const buildTableCalcValues = (
+const buildTableCalcProjection = (
   view?: ViewState
 ): ReadonlyMap<FieldId, CalculationMetric | undefined> => view?.view.type === 'table'
   ? new Map(
@@ -463,7 +512,14 @@ const buildTableCalcValues = (
         view.view.calc[fieldId] ?? undefined
       ] as const)
     )
-  : new Map()
+  : EMPTY_TABLE_CALC
+
+const buildViewProjectionMeta = (
+  view?: ViewState
+): ViewProjectionMeta => ({
+  query: buildQueryProjectionMeta(view?.query),
+  tableCalc: buildTableCalcProjection(view)
+})
 
 export const projectDocumentChange = (input: {
   impact: CommitImpact
@@ -521,6 +577,8 @@ export const projectViewPublishDelta = (input: {
   previous?: ViewState
   next?: ViewState
   delta?: ViewRuntimeDelta
+  previousProjection: ViewProjectionMeta
+  nextProjection: ViewProjectionMeta
 }): ViewPublishDelta | undefined => {
   const next = input.next
   const previous = input.previous
@@ -544,7 +602,7 @@ export const projectViewPublishDelta = (input: {
             groupFieldId: '',
             filterFieldIds: EMPTY_FIELD_IDS,
             sortFieldIds: EMPTY_FIELD_IDS,
-            sortDir: new Map()
+            sortDir: EMPTY_SORT_DIR
           },
           items: {
             ids: EMPTY_ITEM_IDS,
@@ -568,7 +626,7 @@ export const projectViewPublishDelta = (input: {
           table: {
             wrap: false,
             showVerticalLines: false,
-            calc: new Map()
+            calc: EMPTY_TABLE_CALC
           },
           gallery: {
             wrap: false,
@@ -595,18 +653,12 @@ export const projectViewPublishDelta = (input: {
     || previous.view.id !== next.view.id
     || previous.view.type !== next.view.type
   )
-  const filterFieldIds = buildFilterFieldIds(next.query)
-  const sortFieldIds = buildSortFieldIds(next.query)
-  const sortDir = buildSortDir(next.query)
-  const previousFilterFieldIds = previous
-    ? buildFilterFieldIds(previous.query)
-    : EMPTY_FIELD_IDS
-  const previousSortFieldIds = previous
-    ? buildSortFieldIds(previous.query)
-    : EMPTY_FIELD_IDS
-  const previousSortDir = previous
-    ? buildSortDir(previous.query)
-    : new Map<FieldId, SortDirection | undefined>()
+  const filterFieldIds = input.nextProjection.query.filterFieldIds
+  const sortFieldIds = input.nextProjection.query.sortFieldIds
+  const sortDir = input.nextProjection.query.sortDir
+  const previousFilterFieldIds = input.previousProjection.query.filterFieldIds
+  const previousSortFieldIds = input.previousProjection.query.sortFieldIds
+  const previousSortDir = input.previousProjection.query.sortDir
   const sectionRebuild = Boolean(input.delta?.sections.rebuild)
   const summaryRebuild = Boolean(input.delta?.summary.rebuild)
   const changedSections = input.delta
@@ -667,8 +719,7 @@ export const projectViewPublishDelta = (input: {
     || previous?.query.group !== next.query.group
     || !sameOrder(previousFilterFieldIds, filterFieldIds)
     || !sameOrder(previousSortFieldIds, sortFieldIds)
-    || previousSortDir.size !== sortDir.size
-    || [...sortDir.entries()].some(([fieldId, value]) => previousSortDir.get(fieldId) !== value)
+    || !sameMapValues(previousSortDir, sortDir)
   )
   const tableChanged = (
     rebuild
@@ -766,14 +817,7 @@ export const projectViewPublishDelta = (input: {
       showVerticalLines: next.view.type === 'table'
         ? next.view.options.table.showVerticalLines
         : false,
-      calc: new Map(
-        next.fields.ids.map(fieldId => [
-          fieldId,
-          next.view.type === 'table'
-            ? next.view.calc[fieldId] ?? undefined
-            : undefined
-        ] as const)
-      )
+      calc: input.nextProjection.tableCalc
     }
   }
 
@@ -798,23 +842,19 @@ export const projectEngineOutput = (input: {
   sourceDelta: SourceDelta
   tableLayout: TableLayoutState | null
 } => {
+  const previousProjection = buildViewProjectionMeta(input.previousView)
+  const nextProjection = buildViewProjectionMeta(input.nextView)
   const publishDelta = projectViewPublishDelta({
     previous: input.previousView,
     next: input.nextView,
-    delta: input.viewDelta
+    delta: input.viewDelta,
+    previousProjection,
+    nextProjection
   })
   const tableLayout = syncTableLayoutState({
     previous: input.previousLayout,
     view: input.nextView
   })
-  const previousSortDir = input.previousView
-    ? buildSortDir(input.previousView.query)
-    : undefined
-  const nextSortDir = input.nextView
-    ? buildSortDir(input.nextView.query)
-    : new Map<FieldId, SortDirection | undefined>()
-  const previousTableCalc = buildTableCalcValues(input.previousView)
-  const nextTableCalc = buildTableCalcValues(input.nextView)
   const document = {
     records: buildDocumentEntityDelta<RecordId, DataRecord>({
       ids: getDocumentRecordIds(input.document),
@@ -953,8 +993,8 @@ export const projectEngineOutput = (input: {
                 ...(publishDelta.query.sortDir
                   ? {
                       sortDir: buildMapValueDelta<FieldId, SortDirection>({
-                        previous: previousSortDir,
-                        next: nextSortDir
+                        previous: previousProjection.query.sortDir,
+                        next: nextProjection.query.sortDir
                       })
                     }
                   : {})
@@ -978,8 +1018,8 @@ export const projectEngineOutput = (input: {
                   ...(publishDelta.table?.calc
                     ? {
                         calc: buildMapValueDelta<FieldId, CalculationMetric>({
-                          previous: previousTableCalc,
-                          next: nextTableCalc
+                          previous: previousProjection.tableCalc,
+                          next: nextProjection.tableCalc
                         })
                       }
                     : {}),

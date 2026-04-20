@@ -326,7 +326,7 @@ const projectOptionSetValue = (
     kind: 'multi',
     values: optionIds.map(optionId => (
       field && field.kind !== 'title'
-        ? fieldApi.option.get(field, optionId)?.name ?? optionId
+        ? fieldApi.option.read.get(field, optionId)?.name ?? optionId
         : optionId
     ))
   }

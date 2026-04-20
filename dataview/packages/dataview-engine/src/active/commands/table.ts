@@ -63,13 +63,19 @@ export const createTableApi = (input: {
   base: ActiveViewContext
 }): ActiveViewApi['table'] => ({
   setColumnWidths: widths => input.base.patch(view => ({
-    options: viewApi.layout.table.setWidths(view.options, widths)
+    options: viewApi.layout.table.patch(view.options, {
+      widths
+    })
   })),
   setVerticalLines: value => input.base.patch(view => ({
-    options: viewApi.layout.table.setVerticalLines(view.options, value)
+    options: viewApi.layout.table.patch(view.options, {
+      showVerticalLines: value
+    })
   })),
   setWrap: value => input.base.patch(view => ({
-    options: viewApi.layout.table.setWrap(view.options, value)
+    options: viewApi.layout.table.patch(view.options, {
+      wrap: value
+    })
   })),
   insertFieldLeft: (anchorFieldId, fieldInput) => {
     return insertField(input.base, anchorFieldId, 'left', fieldInput)

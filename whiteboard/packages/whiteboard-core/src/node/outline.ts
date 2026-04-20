@@ -92,7 +92,7 @@ const samplePolyline = (
     return points[0] ?? point(0, 0)
   }
 
-  const clamped = clamp(offset, 0, 1)
+  const clamped = geometryApi.scalar.clamp(offset, 0, 1)
   let total = 0
   const lengths: number[] = []
 
@@ -139,7 +139,7 @@ const projectPointToSegment = (
   const rawT = lengthSq <= 0
     ? 0
     : ((source.x - from.x) * dx + (source.y - from.y) * dy) / lengthSq
-  const t = clamp(rawT, 0, 1)
+  const t = geometryApi.scalar.clamp(rawT, 0, 1)
 
   return {
     t,
@@ -286,7 +286,7 @@ const toWorldPoint = (
   center: Point,
   rotation: number
 ) => rotation
-  ? rotatePoint(pointValue, center, rotation)
+  ? geometryApi.point.rotate(pointValue, center, rotation)
   : pointValue
 
 const resolveAutoSide = (
@@ -311,10 +311,10 @@ const getNodeAnchorPoint = (
   defaultOffset = DEFAULT_ANCHOR_OFFSET
 ): Point => {
   if (!anchor) {
-    return getRectCenter(rect)
+    return geometryApi.rect.center(rect)
   }
 
-  const center = getRectCenter(rect)
+  const center = geometryApi.rect.center(rect)
   const local = samplePolyline(
     toSidePoints(rect, node, anchor.side),
     Number.isFinite(anchor.offset)
@@ -334,14 +334,14 @@ const getNodeShapeBounds = (
     return rect
   }
 
-  const center = getRectCenter(rect)
+  const center = geometryApi.rect.center(rect)
   const points = readOutlinePoints(node, rect).map((point) => (
     rotation
-      ? rotatePoint(point, center, rotation)
+      ? geometryApi.point.rotate(point, center, rotation)
       : point
   ))
 
-  return getAABBFromPoints(points)
+  return geometryApi.rect.aabbFromPoints(points)
 }
 
 export const getNodeBounds = (
@@ -354,7 +354,7 @@ export const getNodeBounds = (
     : (
         rotation === 0
           ? rect
-          : getAABBFromPoints(getRotatedCorners(rect, rotation))
+          : geometryApi.rect.aabbFromPoints(geometryApi.rotation.corners(rect, rotation))
       )
 )
 
@@ -371,13 +371,13 @@ export const getNodeOutline = (
     }
   }
 
-  const center = getRectCenter(rect)
+  const center = geometryApi.rect.center(rect)
 
   return {
     kind: 'polygon',
     points: readOutlinePoints(node, rect).map((point) => (
       rotation
-        ? rotatePoint(point, center, rotation)
+        ? geometryApi.point.rotate(point, center, rotation)
         : point
     ))
   }
@@ -392,7 +392,7 @@ export const containsPointInNodeOutline = (
   const outline = getNodeOutline(node, rect, rotation)
 
   if (outline.kind === 'rect') {
-    return isPointInPolygon(pointValue, getRotatedCorners(outline.rect, outline.rotation))
+    return isPointInPolygon(pointValue, geometryApi.rotation.corners(outline.rect, outline.rotation))
   }
 
   return isPointInPolygon(pointValue, outline.points)
@@ -421,7 +421,7 @@ export const getNodeAnchor = (
 ): Point => (
   node.type === 'shape'
     ? getNodeAnchorPoint(node, rect, anchor, rotation, defaultOffset)
-    : getAnchorPoint(rect, anchor, rotation, defaultOffset)
+    : geometryApi.anchor.point(rect, anchor, rotation, defaultOffset)
 )
 
 export const projectPointToNodeOutline = (
@@ -431,9 +431,9 @@ export const projectPointToNodeOutline = (
   pointValue: Point,
   defaultOffset = DEFAULT_ANCHOR_OFFSET
 ) => {
-  const center = getRectCenter(rect)
+  const center = geometryApi.rect.center(rect)
   const localPoint = rotation
-    ? rotatePoint(pointValue, center, -rotation)
+    ? geometryApi.point.rotate(pointValue, center, -rotation)
     : pointValue
   const projected = projectToOutline(node, rect, localPoint)
   const anchor: EdgeAnchor = {
@@ -463,9 +463,9 @@ export const projectNodeAnchor = (
   pointValue: Point,
   options: NodeOutlineAnchorOptions
 ) => {
-  const center = getRectCenter(rect)
+  const center = geometryApi.rect.center(rect)
   const localPoint = rotation
-    ? rotatePoint(pointValue, center, -rotation)
+    ? geometryApi.point.rotate(pointValue, center, -rotation)
     : pointValue
   const projected = projectToOutline(node, rect, localPoint)
   const threshold = Math.max(
@@ -496,7 +496,7 @@ export const getAutoNodeAnchor = (
     anchorOffset?: number
   }
 ) => {
-  const center = getRectCenter(rect)
+  const center = geometryApi.rect.center(rect)
   if (center.x === otherPoint.x && center.y === otherPoint.y) {
     const anchor: EdgeAnchor = {
       side: resolveAutoSide(center, otherPoint),

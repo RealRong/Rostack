@@ -16,6 +16,9 @@ import {
 import {
   document
 } from '@dataview/core/document'
+import {
+  commitAspects
+} from '@dataview/core/commit/aspects'
 
 const EMPTY_FIELD_IDS = new Set<FieldId>()
 const EMPTY_RECORD_IDS = new Set<RecordId>()
@@ -51,9 +54,9 @@ const cleanupMap = <TKey, TValue>(
   ? value
   : undefined
 
-export const createCommitImpact = (): CommitImpact => ({})
+const createCommitImpact = (): CommitImpact => ({})
 
-export const createResetCommitImpact = (
+const createResetCommitImpact = (
   beforeDocument: DataDoc | undefined,
   afterDocument: DataDoc
 ): CommitImpact => {
@@ -85,7 +88,7 @@ export const createResetCommitImpact = (
   }
 }
 
-export const finalizeCommitImpact = (
+const finalizeCommitImpact = (
   impact: CommitImpact
 ): void => {
   if (impact.records) {
@@ -178,7 +181,7 @@ export const finalizeCommitImpact = (
   }
 }
 
-export const hasIndexImpact = (
+const hasIndexImpact = (
   impact: CommitImpact
 ): boolean => Boolean(
   impact.reset
@@ -190,16 +193,16 @@ export const hasIndexImpact = (
   || impact.fields?.schema?.size
 )
 
-export const hasActiveViewImpact = (
+const hasActiveViewImpact = (
   impact: CommitImpact
 ): boolean => Boolean(impact.reset || impact.activeView)
 
-export const getViewChange = (
+const getViewChange = (
   impact: CommitImpact,
   viewId: ViewId
 ) => impact.views?.changed?.get(viewId)
 
-export const hasViewQueryImpact = (
+const hasViewQueryImpact = (
   impact: CommitImpact,
   viewId: ViewId,
   aspects?: readonly ViewQueryAspect[]
@@ -220,7 +223,7 @@ export const hasViewQueryImpact = (
   return aspects.some(aspect => change.queryAspects?.has(aspect))
 }
 
-export const collectSchemaFieldIds = (
+const collectSchemaFieldIds = (
   impact: CommitImpact
 ): ReadonlySet<FieldId> => impact.reset
   ? EMPTY_FIELD_IDS
@@ -231,7 +234,7 @@ export const collectSchemaFieldIds = (
         : EMPTY_FIELD_IDS
     )
 
-export const collectValueFieldIds = (
+const collectValueFieldIds = (
   impact: CommitImpact,
   options?: {
     includeTitlePatch?: boolean
@@ -251,7 +254,7 @@ export const collectValueFieldIds = (
   return ids
 }
 
-export const collectTouchedFieldIds = (
+const collectTouchedFieldIds = (
   impact: CommitImpact,
   options?: {
     includeTitlePatch?: boolean
@@ -282,7 +285,7 @@ export const collectTouchedFieldIds = (
   ])
 }
 
-export const collectTouchedRecordIds = (
+const collectTouchedRecordIds = (
   impact: CommitImpact
 ): ReadonlySet<RecordId> | 'all' => {
   if (impact.reset || impact.records?.touched === 'all') {
@@ -310,7 +313,7 @@ export const collectTouchedRecordIds = (
   return touched
 }
 
-export const collectTouchedViewIds = (
+const collectTouchedViewIds = (
   impact: CommitImpact
 ): ReadonlySet<ViewId> | 'all' => {
   if (impact.reset) {
@@ -336,14 +339,14 @@ export const collectTouchedViewIds = (
   return touched
 }
 
-export const hasRecordSetChange = (
+const hasRecordSetChange = (
   impact: CommitImpact
 ): boolean => Boolean(
   impact.reset
   || impact.records?.recordSetChanged
 )
 
-export const summarizeCommitImpact = (
+const summarizeCommitImpact = (
   impact: CommitImpact
 ): CommitSummary => ({
   records: Boolean(
@@ -370,7 +373,7 @@ export const summarizeCommitImpact = (
   external: Boolean(impact.external?.versionBumped)
 })
 
-export const touchedRecordCountOfImpact = (
+const touchedRecordCountOfImpact = (
   impact: CommitImpact
 ): number | 'all' | undefined => {
   const touched = collectTouchedRecordIds(impact)
@@ -379,7 +382,7 @@ export const touchedRecordCountOfImpact = (
     : touched.size || undefined
 }
 
-export const touchedFieldCountOfImpact = (
+const touchedFieldCountOfImpact = (
   impact: CommitImpact
 ): number | 'all' | undefined => {
   const touched = collectTouchedFieldIds(impact, {
@@ -390,7 +393,7 @@ export const touchedFieldCountOfImpact = (
     : touched.size || undefined
 }
 
-export const touchedViewCountOfImpact = (
+const touchedViewCountOfImpact = (
   impact: CommitImpact
 ): number | 'all' | undefined => {
   const touched = collectTouchedViewIds(impact)
@@ -399,7 +402,7 @@ export const touchedViewCountOfImpact = (
     : touched.size || undefined
 }
 
-export const hasFieldSchemaAspect = (
+const hasFieldSchemaAspect = (
   impact: CommitImpact,
   fieldId: FieldId,
   aspect?: FieldSchemaAspect
@@ -417,3 +420,37 @@ export const hasFieldSchemaAspect = (
     ? aspects.has('all') || aspects.has(aspect)
     : true
 }
+
+export const impact = {
+  create: createCommitImpact,
+  reset: createResetCommitImpact,
+  finalize: finalizeCommitImpact,
+  summary: summarizeCommitImpact,
+  has: {
+    index: hasIndexImpact,
+    activeView: hasActiveViewImpact,
+    recordSetChange: hasRecordSetChange,
+    viewQuery: hasViewQueryImpact,
+    fieldSchema: hasFieldSchemaAspect
+  },
+  view: {
+    change: getViewChange,
+    queryAspects: commitAspects.view.query,
+    layoutAspects: commitAspects.view.layout,
+    calculationFields: commitAspects.view.calculationFields,
+    touchedIds: collectTouchedViewIds,
+    touchedCount: touchedViewCountOfImpact
+  },
+  field: {
+    schemaAspects: commitAspects.field.schema,
+    schemaIds: collectSchemaFieldIds,
+    valueIds: collectValueFieldIds,
+    touchedIds: collectTouchedFieldIds,
+    touchedCount: touchedFieldCountOfImpact
+  },
+  record: {
+    patchAspects: commitAspects.record.patch,
+    touchedIds: collectTouchedRecordIds,
+    touchedCount: touchedRecordCountOfImpact
+  }
+} as const

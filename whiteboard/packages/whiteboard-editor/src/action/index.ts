@@ -4,6 +4,11 @@ import {
   DEFAULT_ROOT_MOVE_THRESHOLD,
   resolveInsertPlan
 } from '@whiteboard/core/mindmap'
+import {
+  insertRoutePoint,
+  moveRoutePoint,
+  removeRoutePoint
+} from '@whiteboard/core/edge'
 import { isNodeUpdateEmpty } from '@whiteboard/core/node'
 import type {
   EdgePatch,
@@ -586,6 +591,18 @@ const readMindmapIdForNodes = (
     : undefined
 }
 
+const readEdgeOrThrow = (
+  query: Pick<EditorQuery, 'edge'>,
+  edgeId: string
+) => {
+  const edge = query.edge.item.get(edgeId)?.edge
+  if (!edge) {
+    throw new Error(`Edge ${edgeId} not found.`)
+  }
+
+  return edge
+}
+
 export const createEditorActions = ({
   engine,
   session,
@@ -943,45 +960,44 @@ export const createEditorActions = ({
         )
       },
       route: {
-        insert: (edgeId, point) => {
-          const result = write.edge.route.insert(edgeId, point)
-          if (!result.ok) {
-            return result
+        set: write.edge.route.set,
+        insertPoint: (edgeId, index, point) => {
+          const edge = readEdgeOrThrow(query, edgeId)
+          const inserted = insertRoutePoint(edge, index, point)
+          if (!inserted.ok) {
+            throw new Error(inserted.error.message)
           }
 
-          const route = query.edge.item.get(edgeId)?.edge.route
-          const index = route?.kind === 'manual'
-            ? route.points.findIndex((entry) => (
-                entry.id === result.data.pointId
-              ))
-            : -1
+          return write.edge.route.set(edgeId, inserted.data.patch.route ?? {
+            kind: 'auto'
+          })
+        },
+        movePoint: (edgeId, index, point) => {
+          const patch = moveRoutePoint(
+            readEdgeOrThrow(query, edgeId),
+            index,
+            point
+          )
+          if (!patch) {
+            throw new Error(`Edge route point ${edgeId}:${index} not found.`)
+          }
 
-          return {
-            ...result,
-            data: {
-              index
-            }
-          }
+          return write.edge.route.set(edgeId, patch.route ?? {
+            kind: 'auto'
+          })
         },
-        move: (edgeId, index, point) => {
-          const route = query.edge.item.get(edgeId)?.edge.route
-          const pointId = route?.kind === 'manual'
-            ? route.points[index]?.id
-            : undefined
-          if (!pointId) {
+        removePoint: (edgeId, index) => {
+          const patch = removeRoutePoint(
+            readEdgeOrThrow(query, edgeId),
+            index
+          )
+          if (!patch) {
             throw new Error(`Edge route point ${edgeId}:${index} not found.`)
           }
-          return write.edge.route.update(edgeId, pointId, point)
-        },
-        remove: (edgeId, index) => {
-          const route = query.edge.item.get(edgeId)?.edge.route
-          const pointId = route?.kind === 'manual'
-            ? route.points[index]?.id
-            : undefined
-          if (!pointId) {
-            throw new Error(`Edge route point ${edgeId}:${index} not found.`)
-          }
-          return write.edge.route.delete(edgeId, pointId)
+
+          return write.edge.route.set(edgeId, patch.route ?? {
+            kind: 'auto'
+          })
         },
         clear: write.edge.route.clear
       },

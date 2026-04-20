@@ -42,7 +42,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
     dataView => dataView.engine.source.doc.fields,
     props.fieldId
   )
-  const currentOption = fieldApi.option.get(field, props.option.id)
+  const currentOption = fieldApi.option.read.get(field, props.option.id)
   const optionName = currentOption?.name ?? props.option.name
   const optionColor = currentOption?.color ?? props.option.color ?? undefined
   const statusCategory = field?.kind === 'status'

@@ -31,7 +31,7 @@ import { useDraftCommit } from '@dataview/react/field/value/editor/shared/useDra
 import { usePickerKeydown } from '@dataview/react/field/value/editor/shared/usePickerKeydown'
 
 const optionLabel = (
-  option: ReturnType<typeof fieldApi.option.list>[number],
+  option: ReturnType<typeof fieldApi.option.read.list>[number],
   t: ReturnType<typeof useTranslation>['t']
 ) => readOptionLabel(option, t)
 type StatusPickerEntry = MenuItem
@@ -49,9 +49,9 @@ export const StatusValueEditor = (
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const field = props.field
   const fieldId = field?.id ?? ''
-  const normalizedQuery = fieldApi.option.normalizeToken(query)
-  const selectedOption = fieldApi.option.get(field, props.draft)
-  const exactMatch = fieldApi.option.find(field, query)
+  const normalizedQuery = fieldApi.option.token.normalize(query)
+  const selectedOption = fieldApi.option.read.get(field, props.draft)
+  const exactMatch = fieldApi.option.read.find(field, query)
   const sections = useMemo(() => {
     const allSections = fieldApi.status.sections(field)
     if (!normalizedQuery) {
@@ -62,8 +62,8 @@ export const StatusValueEditor = (
       .map(section => ({
         ...section,
         options: section.options.filter(option => (
-          fieldApi.option.normalizeToken(option.name).includes(normalizedQuery)
-          || fieldApi.option.normalizeToken(option.id).includes(normalizedQuery)
+          fieldApi.option.token.normalize(option.name).includes(normalizedQuery)
+          || fieldApi.option.token.normalize(option.id).includes(normalizedQuery)
         ))
       }))
       .filter(section => section.options.length > 0)

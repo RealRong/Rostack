@@ -23,12 +23,8 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts/state'
 import {
-  collectCalculationFields,
-  collectFieldSchemaAspects,
-  collectRecordPatchAspects,
-  collectViewLayoutAspects,
-  collectViewQueryAspects
-} from '@dataview/core/commit/aspects'
+  impact as commitImpact
+} from '@dataview/core/commit/impact'
 import {
   type AppliedDocumentRecordFieldWrite,
   document as documentApi
@@ -432,7 +428,7 @@ const executeRecordPatch = (
   }
 
   const afterRecord = documentApi.records.get(nextDocument, operation.recordId)
-  const aspects = collectRecordPatchAspects(beforeRecord, afterRecord)
+  const aspects = commitImpact.record.patchAspects(beforeRecord, afterRecord)
   markRecordPatch(impact, operation.recordId, aspects)
 
   return {
@@ -535,7 +531,7 @@ const executeFieldPut = (
   const beforeField = documentApi.fields.custom.get(document, operation.field.id)
   const nextDocument = documentApi.fields.custom.put(document, operation.field)
   const afterField = documentApi.fields.custom.get(nextDocument, operation.field.id)
-  const aspects = collectFieldSchemaAspects(beforeField, afterField)
+  const aspects = commitImpact.field.schemaAspects(beforeField, afterField)
 
   if (!beforeField && !afterField) {
     return {
@@ -602,7 +598,7 @@ const executeFieldPatch = (
   markFieldSchema(
     impact,
     operation.fieldId,
-    collectFieldSchemaAspects(beforeField, afterField)
+    commitImpact.field.schemaAspects(beforeField, afterField)
   )
 
   return {
@@ -674,13 +670,13 @@ const executeViewPut = (
   }
 
   const queryAspects = beforeView
-    ? collectViewQueryAspects(beforeView, afterView)
+    ? commitImpact.view.queryAspects(beforeView, afterView)
     : []
   const layoutAspects = beforeView
-    ? collectViewLayoutAspects(beforeView, afterView)
+    ? commitImpact.view.layoutAspects(beforeView, afterView)
     : []
   const calculationFields = beforeView
-    ? collectCalculationFields(beforeView, afterView)
+    ? commitImpact.view.calculationFields(beforeView, afterView)
     : undefined
 
   if (

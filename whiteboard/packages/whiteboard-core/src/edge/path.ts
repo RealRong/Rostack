@@ -572,7 +572,7 @@ const buildAutoStepPath = ({
   pushStepPoint(points, targetEnd)
   pushStepPoint(points, target.point)
 
-  const normalized = normalizePolylinePoints(points)
+  const normalized = geometryApi.polyline.normalize(points)
 
   return {
     points: normalized,
@@ -952,7 +952,7 @@ const linearRouter: EdgeRouter = (input) => {
 
 const stepRouter: EdgeRouter = ({ edge, source, target }) => {
   if (readEdgeRoutePoints(edge.route).length > 0) {
-    const points = normalizePolylinePoints(getPathPoints({
+    const points = geometryApi.polyline.normalize(getPathPoints({
       edge,
       source,
       target

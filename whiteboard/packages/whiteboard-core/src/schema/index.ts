@@ -90,7 +90,7 @@ const applyFieldDefaults = (target: SchemaTarget, fields: SchemaField[]) => {
   })
 }
 
-export const applyNodeDefaults = (input: NodeInput, registries: CoreRegistries): NodeInput => {
+const applyNodeDefaults = (input: NodeInput, registries: CoreRegistries): NodeInput => {
   const type = input.type
   if (!type) return input
   const next = cloneTarget(input)
@@ -112,7 +112,7 @@ export const applyNodeDefaults = (input: NodeInput, registries: CoreRegistries):
   return next
 }
 
-export const applyEdgeDefaults = (input: EdgeInput, registries: CoreRegistries): EdgeInput => {
+const applyEdgeDefaults = (input: EdgeInput, registries: CoreRegistries): EdgeInput => {
   const type = input.type ?? 'straight'
   const next = cloneTarget({
     ...input,
@@ -138,7 +138,7 @@ const isMissingRequired = (container: unknown, field: SchemaField) => {
   return !hasValueByPath(container, field.path)
 }
 
-export const getMissingNodeFields = (input: NodeInput, registries: CoreRegistries): string[] => {
+const getMissingNodeFields = (input: NodeInput, registries: CoreRegistries): string[] => {
   const type = input.type
   if (!type) return ['type']
   const schema = resolveNodeSchema(registries, type)
@@ -159,7 +159,7 @@ export const getMissingNodeFields = (input: NodeInput, registries: CoreRegistrie
   return missing
 }
 
-export const getMissingEdgeFields = (input: EdgeInput, registries: CoreRegistries): string[] => {
+const getMissingEdgeFields = (input: EdgeInput, registries: CoreRegistries): string[] => {
   const type = input.type ?? 'straight'
   const schema = resolveEdgeSchema(registries, type)
   if (!schema?.fields?.length) return []
@@ -196,7 +196,7 @@ const toNodeRecordPath = (
   return normalized ? normalized : undefined
 }
 
-export const compileNodeFieldRecord = (
+const compileNodeFieldRecord = (
   field: NodeSchemaFieldRef,
   value: unknown
 ): NodeRecordMutation | undefined => {
@@ -222,7 +222,7 @@ export const compileNodeFieldRecord = (
   }
 }
 
-export const compileNodeFieldUpdate = (
+const compileNodeFieldUpdate = (
   field: NodeSchemaFieldRef,
   value: unknown
 ): NodeUpdateInput => {
@@ -232,7 +232,7 @@ export const compileNodeFieldUpdate = (
     : {}
 }
 
-export const compileNodeFieldUpdates = (
+const compileNodeFieldUpdates = (
   entries: ReadonlyArray<{
     field: NodeSchemaFieldRef
     value: unknown
@@ -248,7 +248,7 @@ export const compileNodeFieldUpdates = (
     : {}
 }
 
-export const compileNodeDataUpdate = (
+const compileNodeDataUpdate = (
   path: string,
   value: unknown
 ): NodeUpdateInput => compileNodeFieldUpdate(
@@ -259,7 +259,7 @@ export const compileNodeDataUpdate = (
   value
 )
 
-export const compileNodeStyleUpdate = (
+const compileNodeStyleUpdate = (
   path: string,
   value: unknown
 ): NodeUpdateInput => compileNodeFieldUpdate(
@@ -270,7 +270,7 @@ export const compileNodeStyleUpdate = (
   value
 )
 
-export const mergeNodeUpdates = (
+const mergeNodeUpdates = (
   ...updates: Array<NodeUpdateInput | undefined>
 ): NodeUpdateInput => {
   const fields = updates.reduce<NodeUpdateInput['fields']>(
@@ -293,3 +293,20 @@ export const mergeNodeUpdates = (
     ...(records.length ? { records } : {})
   }
 }
+
+export const schema = {
+  node: {
+    applyDefaults: applyNodeDefaults,
+    missingFields: getMissingNodeFields,
+    compileFieldRecord: compileNodeFieldRecord,
+    compileFieldUpdate: compileNodeFieldUpdate,
+    compileFieldUpdates: compileNodeFieldUpdates,
+    compileDataUpdate: compileNodeDataUpdate,
+    compileStyleUpdate: compileNodeStyleUpdate,
+    mergeUpdates: mergeNodeUpdates
+  },
+  edge: {
+    applyDefaults: applyEdgeDefaults,
+    missingFields: getMissingEdgeFields
+  }
+} as const

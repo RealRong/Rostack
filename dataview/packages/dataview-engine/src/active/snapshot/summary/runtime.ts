@@ -10,11 +10,7 @@ import type {
 import type {
   ViewStageMetrics
 } from '@dataview/engine/contracts'
-import {
-  getViewChange,
-  hasActiveViewImpact,
-  hasFieldSchemaAspect
-} from '@dataview/core/commit/impact'
+import { impact as commitImpact } from '@dataview/core/commit/impact'
 import {
   sameOrder
 } from '@shared/core'
@@ -60,7 +56,7 @@ const resolveSummaryAction = (input: {
     !input.previous
     || !input.previousSections
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewImpact(commit)
+    || commitImpact.has.activeView(commit)
   ) {
     return 'rebuild'
   }
@@ -76,7 +72,7 @@ const resolveSummaryAction = (input: {
   }
 
   const groupField = input.view.group?.field
-  const viewChange = getViewChange(commit, input.activeViewId)
+  const viewChange = commitImpact.view.change(commit, input.activeViewId)
 
   if (viewChange?.calculationFields) {
     return 'rebuild'
@@ -87,11 +83,11 @@ const resolveSummaryAction = (input: {
       return 'rebuild'
     }
 
-    if (hasFieldSchemaAspect(commit, fieldId)) {
+    if (commitImpact.has.fieldSchema(commit, fieldId)) {
       return 'rebuild'
     }
   }
-  if (groupField && hasFieldSchemaAspect(commit, groupField)) {
+  if (groupField && commitImpact.has.fieldSchema(commit, groupField)) {
     return 'rebuild'
   }
 

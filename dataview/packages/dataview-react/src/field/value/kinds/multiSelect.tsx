@@ -28,8 +28,8 @@ export const createMultiSelectPropertySpec = (
 
     const values = props.value.map(item => ({
       id: item,
-      label: fieldApi.option.get(field, item)?.name ?? String(item),
-      color: fieldApi.option.get(field, item)?.color
+      label: fieldApi.option.read.get(field, item)?.name ?? String(item),
+      color: fieldApi.option.read.get(field, item)?.color
     }))
     const visible = props.wrap
       ? values

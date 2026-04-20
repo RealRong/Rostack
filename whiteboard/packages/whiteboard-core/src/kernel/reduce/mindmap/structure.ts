@@ -65,7 +65,7 @@ export const createMindmapStructureApi = (
     if (!mindmap || !tree) {
       return
     }
-    const nodeIds = new Set(getSubtreeIds(tree, tree.rootNodeId))
+    const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, tree.rootNodeId))
     const connectedEdges = collectConnectedEdges(tx._runtime.draft, nodeIds)
     connectedEdges.forEach((edge) => {
       tx._runtime.inverse.unshift({

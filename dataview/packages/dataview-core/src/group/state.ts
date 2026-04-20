@@ -14,7 +14,7 @@ const hasOwn = <T extends object>(
   key: PropertyKey
 ) => Boolean(value && Object.prototype.hasOwnProperty.call(value, key))
 
-export const cloneBucketState = (
+const cloneBucketState = (
   state: BucketState
 ): BucketState => ({
   ...(state.hidden === true ? { hidden: true } : {}),
@@ -34,7 +34,7 @@ const normalizeBucketState = (
     : undefined
 }
 
-export const cloneBuckets = (
+const cloneBuckets = (
   buckets: Readonly<Record<string, BucketState>> | undefined
 ): Readonly<Record<string, BucketState>> | undefined => {
   if (!buckets) {
@@ -54,7 +54,7 @@ export const cloneBuckets = (
     : undefined
 }
 
-export const cloneGroup = (
+export const cloneGroupState = (
   group: ViewGroup | undefined
 ): ViewGroup | undefined => (
   group
@@ -78,7 +78,7 @@ export const cloneGroup = (
     : undefined
 )
 
-export const sameGroup = (
+export const sameGroupState = (
   left: ViewGroup | undefined,
   right: ViewGroup | undefined
 ) => (
@@ -90,7 +90,7 @@ export const sameGroup = (
   && sameBuckets(left?.buckets, right?.buckets)
 )
 
-export const normalizeGroup = (
+export const normalizeGroupState = (
   group: unknown
 ): ViewGroup | undefined => {
   const source = typeof group === 'object' && group !== null
@@ -208,7 +208,7 @@ const patchBuckets = (
   return cloneBuckets(next)
 }
 
-const patchGroup = (
+export const patchGroupState = (
   group: ViewGroup | undefined,
   field: Field,
   patch?: Partial<ViewGroupPatch> & Pick<ViewGroup, 'showEmpty' | 'buckets'>
@@ -273,7 +273,7 @@ export const set = (
     field
   })
 
-  return sameGroup(group, nextGroup)
+  return sameGroupState(group, nextGroup)
     ? group
     : nextGroup
 }
@@ -287,99 +287,36 @@ export const toggle = (
     : set(group, field)
 )
 
-export const setMode = (
+export const patch = (
   group: ViewGroup | undefined,
   field: Field,
-  mode: string
+  patch: Partial<ViewGroupPatch>
 ): ViewGroup | undefined => {
-  const nextGroup = patchGroup(group, field, {
-    mode
-  })
-  return sameGroup(group, nextGroup)
+  const nextGroup = patchGroupState(group, field, patch)
+  return sameGroupState(group, nextGroup)
     ? group
     : nextGroup
 }
 
-export const setSort = (
-  group: ViewGroup | undefined,
-  field: Field,
-  bucketSort: ViewGroup['bucketSort']
-): ViewGroup | undefined => {
-  const nextGroup = patchGroup(group, field, {
-    bucketSort
-  })
-  return sameGroup(group, nextGroup)
-    ? group
-    : nextGroup
-}
-
-export const setInterval = (
-  group: ViewGroup | undefined,
-  field: Field,
-  bucketInterval: ViewGroup['bucketInterval']
-): ViewGroup | undefined => {
-  const nextGroup = patchGroup(group, field, {
-    bucketInterval
-  })
-  return sameGroup(group, nextGroup)
-    ? group
-    : nextGroup
-}
-
-export const setShowEmpty = (
-  group: ViewGroup | undefined,
-  field: Field,
-  showEmpty: boolean
-): ViewGroup | undefined => {
-  const nextGroup = patchGroup(group, field, {
-    showEmpty
-  })
-  return sameGroup(group, nextGroup)
-    ? group
-    : nextGroup
-}
-
-export const setBucketHidden = (
+export const patchBucket = (
   group: ViewGroup | undefined,
   field: Field,
   key: string,
-  hidden: boolean
+  patch: BucketState
 ): ViewGroup | undefined => {
   if (group?.field !== field.id) {
     return group
   }
 
-  const nextGroup = patchGroup(group, field, {
-    buckets: patchBuckets(group.buckets, key, {
-      hidden
-    })
+  const nextGroup = patchGroupState(group, field, {
+    buckets: patchBuckets(group.buckets, key, patch)
   })
-  return sameGroup(group, nextGroup)
+  return sameGroupState(group, nextGroup)
     ? group
     : nextGroup
 }
 
-export const setBucketCollapsed = (
-  group: ViewGroup | undefined,
-  field: Field,
-  key: string,
-  collapsed: boolean
-): ViewGroup | undefined => {
-  if (group?.field !== field.id) {
-    return group
-  }
-
-  const nextGroup = patchGroup(group, field, {
-    buckets: patchBuckets(group.buckets, key, {
-      collapsed
-    })
-  })
-  return sameGroup(group, nextGroup)
-    ? group
-    : nextGroup
-}
-
-export const toggleBucketCollapsed = (
+export const toggleGroupBucketCollapsed = (
   group: ViewGroup | undefined,
   field: Field,
   key: string
@@ -388,11 +325,13 @@ export const toggleBucketCollapsed = (
     return group
   }
 
-  return setBucketCollapsed(
+  return patchBucket(
     group,
     field,
     key,
-    group.buckets?.[key]?.collapsed !== true
+    {
+      collapsed: group.buckets?.[key]?.collapsed !== true
+    }
   )
 }
 

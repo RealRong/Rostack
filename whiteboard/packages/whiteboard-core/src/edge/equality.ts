@@ -31,7 +31,7 @@ export const sameEdgeEnd = (
   }
 
   if (left.kind === 'point' && right.kind === 'point') {
-    return isPointEqual(left.point, right.point)
+    return geometryApi.equal.point(left.point, right.point)
   }
 
   if (left.kind === 'node' && right.kind === 'node') {
@@ -49,7 +49,7 @@ export const sameResolvedEdgeEnd = (
   right: ResolvedEdgeEnd
 ) => (
   sameEdgeEnd(left.end, right.end)
-  && isPointEqual(left.point, right.point)
+  && geometryApi.equal.point(left.point, right.point)
   && sameEdgeAnchor(left.anchor, right.anchor)
 )
 
@@ -66,7 +66,7 @@ const sameManualRoutePoints = (
   }
 
   for (let index = 0; index < left.length; index += 1) {
-    if (!isPointEqual(left[index], right[index])) {
+    if (!geometryApi.equal.point(left[index], right[index])) {
       return false
     }
   }

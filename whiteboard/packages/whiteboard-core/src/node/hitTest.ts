@@ -61,8 +61,8 @@ export const getNodeIdsInRect = (
       }
 
       return match === 'contain'
-        ? rectContainsRotatedRect(rect, entry.rect, entry.rotation)
-        : rectIntersectsRotatedRect(rect, entry.rect, entry.rotation)
+        ? geometryApi.collision.rectContainsRotatedRect(rect, entry.rect, entry.rotation)
+        : geometryApi.collision.rectIntersectsRotatedRect(rect, entry.rect, entry.rotation)
     })
     .map((entry) => entry.node.id)
 }
@@ -90,7 +90,7 @@ export const matchCanvasNodeRect = (
       })
     default:
       return effectiveMatch === 'contain'
-        ? rectContainsRotatedRect(rect, entry.rect, entry.rotation)
+        ? geometryApi.collision.rectContainsRotatedRect(rect, entry.rect, entry.rotation)
         : true
   }
 }

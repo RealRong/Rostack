@@ -21,10 +21,10 @@ export const getNearestEdgeInsertIndex = (
           }
           return Math.min(
             minDistance,
-            distancePointToSegment(pointWorld, hitPoints[pointIndex - 1], point)
+            geometryApi.segment.distanceToPoint(pointWorld, hitPoints[pointIndex - 1], point)
           )
         }, Number.POSITIVE_INFINITY)
-      : distancePointToSegment(pointWorld, segment.from, segment.to)
+      : geometryApi.segment.distanceToPoint(pointWorld, segment.from, segment.to)
     if (distance < minDistance) {
       minDistance = distance
       minIndex = index

@@ -41,7 +41,7 @@ export const resolveSnapThresholdWorld = (
 export const expandRectByThreshold = (
   rect: Rect,
   thresholdWorld: number
-): Rect => expandRect(rect, thresholdWorld)
+): Rect => geometryApi.rect.expand(rect, thresholdWorld)
 
 export const rectFromPoint = (
   point: Point,

@@ -17,7 +17,7 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import {
-  normalizeDocument
+  document
 } from '@dataview/core/document'
 import {
   view
@@ -1302,7 +1302,7 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
     }
   })
 
-  return normalizeDocument({
+  return document.normalize({
     schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: tableView.id,
     fields: createEntityTable(fields),
@@ -1530,7 +1530,7 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
     }
   })
 
-  return normalizeDocument({
+  return document.normalize({
     schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: boardView.id,
     fields: createEntityTable(fields),
@@ -1720,7 +1720,7 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
     }
   })
 
-  return normalizeDocument({
+  return document.normalize({
     schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: galleryView.id,
     fields: createEntityTable(fields),
@@ -1982,7 +1982,7 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
     }]
   })
 
-  return normalizeDocument({
+  return document.normalize({
     schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: tableView.id,
     fields: createEntityTable(fields),
@@ -2235,7 +2235,7 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
     ]
   })
 
-  return normalizeDocument({
+  return document.normalize({
     schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: tableView.id,
     fields: createEntityTable(fields),

@@ -13,7 +13,7 @@ const normalizeFieldIds = (
     : []
 )
 
-export const cloneSearch = (
+export const cloneSearchState = (
   search: Search
 ): Search => ({
   query: search.query,
@@ -22,7 +22,7 @@ export const cloneSearch = (
     : {})
 })
 
-export const normalizeSearch = (
+export const normalizeSearchState = (
   search: unknown
 ): Search => {
   const source = typeof search === 'object' && search !== null
@@ -42,7 +42,7 @@ export const normalizeSearch = (
   }
 }
 
-export const sameSearch = (
+export const sameSearchState = (
   left: Search,
   right: Search
 ) => (
@@ -50,7 +50,7 @@ export const sameSearch = (
   && sameFieldIds(left.fields, right.fields)
 )
 
-export const set = (
+export const setSearchQuery = (
   search: Search,
   value: string
 ): Search => {
@@ -59,14 +59,10 @@ export const set = (
   }
 
   return {
-    ...cloneSearch(search),
+    ...cloneSearchState(search),
     query: value
   }
 }
-
-export const search = {
-  set
-} as const
 
 const sameFieldIds = (
   left: readonly string[] | undefined,

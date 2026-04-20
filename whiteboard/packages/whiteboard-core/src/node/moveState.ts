@@ -55,7 +55,7 @@ const getMoveBounds = (
     return [getNodeRect(node, nodeSize)]
   })
 
-  return getRectsBoundingRect(rects)
+  return geometryApi.rect.boundingRect(rects)
 }
 
 export const startMoveState = (input: {

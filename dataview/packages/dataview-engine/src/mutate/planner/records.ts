@@ -11,7 +11,7 @@ import {
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import { field as fieldApi } from '@dataview/core/field'
 import {
-  readFieldSpec
+  fieldSpec
 } from '@dataview/core/field/spec'
 import {
   isNonEmptyString,
@@ -68,7 +68,7 @@ const resolveRecordCreateValues = (
     if (explicitValues && Object.prototype.hasOwnProperty.call(explicitValues, field.id)) {
       return
     }
-    const defaultValue = readFieldSpec(field)?.create.defaultValue?.(field)
+    const defaultValue = fieldSpec.create.defaultValue(field)
     if (defaultValue === undefined) {
       return
     }

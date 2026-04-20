@@ -12,7 +12,7 @@ import type {
   MindmapInsertPlan
 } from '@whiteboard/core/types/mindmap'
 import { layoutMindmap, layoutMindmapTidy } from '@whiteboard/core/mindmap/layout'
-import { getMindmap, getNode } from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import type {
   Document,
   MindmapCreateInput,
@@ -159,17 +159,17 @@ export const getMindmapRecordByNodeId = (
   document: Pick<Document, 'nodes' | 'mindmaps'>,
   nodeId: NodeId
 ): MindmapRecord | undefined => {
-  const node = getNode(document, nodeId)
+  const node = documentApi.read.node(document, nodeId)
   const mindmapId = getMindmapIdByNode(node)
   if (!mindmapId) return undefined
-  return getMindmap(document, mindmapId)
+  return documentApi.read.mindmap(document, mindmapId)
 }
 
 export const getMindmapTreeFromDocument = (
   document: Pick<Document, 'nodes' | 'mindmaps'>,
   id: string
 ): MindmapTree | undefined => {
-  const direct = getMindmap(document, id)
+  const direct = documentApi.read.mindmap(document, id)
   if (direct) {
     return toMindmapTree(direct)
   }

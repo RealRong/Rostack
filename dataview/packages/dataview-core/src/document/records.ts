@@ -16,14 +16,7 @@ import {
   sameJsonValue
 } from '@shared/core'
 import {
-  createEntityOverlay,
-  getEntityTableById,
-  getEntityTableIds,
-  hasEntityTableId,
-  listEntityTable,
-  mergePatchedEntity,
-  normalizeRecordInput,
-  replaceDocumentTable
+  entityTable
 } from '@dataview/core/document/table'
 
 export interface RecordEntry {
@@ -247,7 +240,7 @@ const applyRecordFieldWriteEntries = (
     }
 
     if (!nextById) {
-      nextById = createEntityOverlay(document.records)
+      nextById = entityTable.overlay(document.records)
     }
 
     nextById[entry.recordId] = applied.nextRecord
@@ -271,7 +264,7 @@ const applyRecordFieldWriteEntries = (
   }
 
   return {
-    document: replaceDocumentTable(document, 'records', {
+    document: entityTable.replace(document, 'records', {
       byId: nextById,
       order: document.records.order
     }),
@@ -289,25 +282,25 @@ const enumerate = (
 }
 
 const listRecords = (document: DataDoc): DataRecord[] => {
-  return listEntityTable(document.records)
+  return entityTable.read.list(document.records)
 }
 
 const getRecordIds = (document: DataDoc): RecordId[] => {
-  return getEntityTableIds(document.records)
+  return entityTable.read.ids(document.records)
 }
 
 const getRecord = (document: DataDoc, recordId: RecordId): DataRecord | undefined => {
-  return getEntityTableById(document.records, recordId)
+  return entityTable.read.get(document.records, recordId)
 }
 
-const hasRecord = (document: DataDoc, recordId: RecordId) => hasEntityTableId(document.records, recordId)
+const hasRecord = (document: DataDoc, recordId: RecordId) => entityTable.read.has(document.records, recordId)
 
 const getRecordIndex = (document: DataDoc, recordId: RecordId) => {
   return document.records.order.indexOf(recordId)
 }
 
 const replaceRecords = (document: DataDoc, records: readonly DataRecord[]): DataDoc => {
-  return replaceDocumentTable(document, 'records', normalizeRecordInput(records))
+  return entityTable.replace(document, 'records', entityTable.normalize.records(records))
 }
 
 const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?: number): DataDoc => {
@@ -315,7 +308,7 @@ const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?
     return document
   }
 
-  const nextRecords = normalizeRecordInput(records)
+  const nextRecords = entityTable.normalize.records(records)
   const insertedIds = nextRecords.order
   if (!insertedIds.length) {
     return document
@@ -325,7 +318,7 @@ const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?
   const remainingOrder = document.records.order.filter(recordId => !insertedIdSet.has(recordId))
   const safeIndex = Math.max(0, Math.min(index ?? remainingOrder.length, remainingOrder.length))
   const nextOrder = [...remainingOrder.slice(0, safeIndex), ...insertedIds, ...remainingOrder.slice(safeIndex)]
-  const byId = createEntityOverlay(document.records)
+  const byId = entityTable.overlay(document.records)
   insertedIds.forEach(recordId => {
     const record = nextRecords.byId[recordId]
     if (record) {
@@ -333,7 +326,7 @@ const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?
     }
   })
 
-  return replaceDocumentTable(document, 'records', {
+  return entityTable.replace(document, 'records', {
     byId,
     order: nextOrder
   })
@@ -349,14 +342,14 @@ const patchRecord = (
     return document
   }
 
-  const nextRecord = mergePatchedEntity(current, patch as Partial<DataRecord>) as DataRecord
+  const nextRecord = entityTable.patch.merge(current, patch as Partial<DataRecord>) as DataRecord
   if (nextRecord === current) {
     return document
   }
 
-  return replaceDocumentTable(document, 'records', {
+  return entityTable.replace(document, 'records', {
     byId: (() => {
-      const byId = createEntityOverlay(document.records)
+      const byId = entityTable.overlay(document.records)
       byId[recordId] = nextRecord
       return byId
     })(),
@@ -371,7 +364,7 @@ const removeRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataD
 
   const removed = new Set(recordIds)
   let removedCount = 0
-  const nextById = createEntityOverlay(document.records)
+  const nextById = entityTable.overlay(document.records)
 
   recordIds.forEach(recordId => {
     if (!document.records.byId[recordId]) {
@@ -385,7 +378,7 @@ const removeRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataD
     return document
   }
 
-  return replaceDocumentTable(document, 'records', {
+  return entityTable.replace(document, 'records', {
     byId: nextById,
     order: document.records.order.filter(recordId => !removed.has(recordId))
   })

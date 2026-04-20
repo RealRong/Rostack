@@ -7,7 +7,7 @@ import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
-  readFieldSpec
+  fieldSpec
 } from '@dataview/core/field/spec'
 import {
   sameOrder
@@ -122,13 +122,12 @@ const stableSerialize = (value: unknown): string => {
 const readUniqueKey = (
   field: Field | undefined,
   value: unknown
-): string => readFieldSpec(field)?.calculation.uniqueKeyOf(field, value)
-  ?? stableSerialize(value)
+): string => fieldSpec.calculation.uniqueKey(field, value)
 
 const readOptionIds = (
   field: Field | undefined,
   value: unknown
-): readonly string[] | undefined => readFieldSpec(field)?.calculation.optionIdsOf?.(field, value)
+): readonly string[] | undefined => fieldSpec.calculation.optionIds(field, value)
 
 export const sameReducerCapabilities = (
   left: ReducerCapabilitySet,

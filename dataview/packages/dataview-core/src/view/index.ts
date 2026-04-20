@@ -56,22 +56,14 @@ import {
   moveDisplayFields,
   hideDisplayField,
   normalizeViewDisplay,
+  patchGalleryLayout,
+  patchKanbanLayout,
+  patchTableLayout,
   replaceDisplayFields,
   reorderViewOrders,
   sameDisplay,
   sameViewCalc,
   sameViewOptions,
-  setGalleryCardLayout,
-  setGalleryCardSize,
-  setGalleryCardWrap,
-  setKanbanCardsPerColumn,
-  setKanbanCardLayout,
-  setKanbanCardSize,
-  setKanbanCardWrap,
-  setKanbanFillColumnColor,
-  setTableColumnWidths,
-  setTableVerticalLines,
-  setTableWrap,
   setViewCalcMetric,
   showDisplayField
 } from '@dataview/core/view/state'
@@ -128,25 +120,17 @@ export const view = {
   },
   layout: {
     table: {
-      setWidths: setTableColumnWidths,
-      setVerticalLines: setTableVerticalLines,
-      setWrap: setTableWrap
+      patch: patchTableLayout
     },
     gallery: {
       clone: cloneGalleryOptions,
       normalize: normalizeGalleryOptions,
-      setWrap: setGalleryCardWrap,
-      setSize: setGalleryCardSize,
-      setLayout: setGalleryCardLayout
+      patch: patchGalleryLayout
     },
     kanban: {
       clone: cloneKanbanOptions,
       normalize: normalizeKanbanOptions,
-      setWrap: setKanbanCardWrap,
-      setSize: setKanbanCardSize,
-      setLayout: setKanbanCardLayout,
-      setFillColumnColor: setKanbanFillColumnColor,
-      setCardsPerColumn: setKanbanCardsPerColumn
+      patch: patchKanbanLayout
     }
   },
   name: {
@@ -154,7 +138,9 @@ export const view = {
     unique: resolveUniqueViewName
   },
   repair: {
-    removedField: repairViewForRemovedField,
-    convertedField: repairViewForConvertedField
+    field: {
+      removed: repairViewForRemovedField,
+      converted: repairViewForConvertedField
+    }
   }
 } as const

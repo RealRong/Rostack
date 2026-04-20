@@ -79,7 +79,7 @@ const buildDirectFrameMembership = <TNode extends FrameNodeLike>({
       }
 
       const frameRect = getFrameRect(candidate)
-      if (!frameRect || !rectContains(frameRect, nodeRect)) {
+      if (!frameRect || !geometryApi.rect.contains(frameRect, nodeRect)) {
         return
       }
 
@@ -119,7 +119,7 @@ export const resolveFrameAtPoint = <TNode extends FrameNodeLike>({
     }
 
     const rect = getFrameRect(node)
-    if (!rect || !isPointInRect(point, rect)) {
+    if (!rect || !geometryApi.rect.containsPoint(point, rect)) {
       return
     }
 

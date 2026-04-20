@@ -1,6 +1,6 @@
-export { assertDocument } from '@whiteboard/core/document/assert'
-export { createDocument } from '@whiteboard/core/document/model'
-export {
+import { assertDocument } from '@whiteboard/core/document/assert'
+import { createDocument } from '@whiteboard/core/document/model'
+import {
   getEdge,
   getGroup,
   getMindmap,
@@ -16,7 +16,50 @@ export {
   listGroups,
   listNodes
 } from '@whiteboard/core/document/query'
-export * from '@whiteboard/core/document/slice'
+import {
+  buildInsertSliceOperations,
+  exportSliceFromEdge,
+  exportSliceFromNodes,
+  exportSliceFromSelection,
+  getSliceBounds,
+  translateSlice
+} from '@whiteboard/core/document/slice'
+
+export const document = {
+  create: createDocument,
+  assert: assertDocument,
+  read: {
+    node: getNode,
+    edge: getEdge,
+    group: getGroup,
+    mindmap: getMindmap
+  },
+  has: {
+    node: hasNode,
+    edge: hasEdge,
+    group: hasGroup
+  },
+  list: {
+    nodes: listNodes,
+    edges: listEdges,
+    groups: listGroups,
+    canvasRefs: listCanvasItemRefs,
+    groupCanvasRefs: listGroupCanvasItemRefs,
+    groupNodeIds: listGroupNodeIds,
+    groupEdgeIds: listGroupEdgeIds
+  },
+  slice: {
+    bounds: getSliceBounds,
+    translate: translateSlice,
+    export: {
+      nodes: exportSliceFromNodes,
+      edge: exportSliceFromEdge,
+      selection: exportSliceFromSelection
+    },
+    buildInsertOps: buildInsertSliceOperations
+  }
+} as const
+
 export type {
   Slice,
   SliceExportResult,

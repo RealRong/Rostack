@@ -8,18 +8,34 @@ export const createKanbanApi = (
   base: ActiveViewContext
 ): ActiveViewApi['kanban'] => ({
   setWrap: value => base.patch(view => ({
-    options: viewApi.layout.kanban.setWrap(view.options, value)
+    options: viewApi.layout.kanban.patch(view.options, {
+      card: {
+        wrap: value
+      }
+    })
   })),
   setSize: value => base.patch(view => ({
-    options: viewApi.layout.kanban.setSize(view.options, value)
+    options: viewApi.layout.kanban.patch(view.options, {
+      card: {
+        size: value
+      }
+    })
   })),
   setLayout: value => base.patch(view => ({
-    options: viewApi.layout.kanban.setLayout(view.options, value)
+    options: viewApi.layout.kanban.patch(view.options, {
+      card: {
+        layout: value
+      }
+    })
   })),
   setFillColor: value => base.patch(view => ({
-    options: viewApi.layout.kanban.setFillColumnColor(view.options, value)
+    options: viewApi.layout.kanban.patch(view.options, {
+      fillColumnColor: value
+    })
   })),
   setCardsPerColumn: value => base.patch(view => ({
-    options: viewApi.layout.kanban.setCardsPerColumn(view.options, value)
+    options: viewApi.layout.kanban.patch(view.options, {
+      cardsPerColumn: value
+    })
   }))
 })

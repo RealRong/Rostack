@@ -3,18 +3,18 @@ import type {
   Sorter
 } from '@dataview/core/contracts'
 
-export const cloneSorter = (
+export const cloneSortRule = (
   sorter: Sorter
 ): Sorter => ({
   field: sorter.field,
   direction: sorter.direction
 })
 
-export const cloneSorters = (
+export const cloneSortRules = (
   sorters: readonly Sorter[]
-): Sorter[] => sorters.map(cloneSorter)
+): Sorter[] => sorters.map(cloneSortRule)
 
-export const normalizeSorter = (
+export const normalizeSortRule = (
   sorter: unknown
 ): Sorter | undefined => {
   if (typeof sorter !== 'object' || sorter === null) {
@@ -37,12 +37,12 @@ export const normalizeSorter = (
   }
 }
 
-export const normalizeSorters = (
+export const normalizeSortRules = (
   sorters: unknown
 ): Sorter[] => (
   Array.isArray(sorters)
     ? sorters.flatMap(sorter => {
-        const normalized = normalizeSorter(sorter)
+        const normalized = normalizeSortRule(sorter)
         return normalized
           ? [normalized]
           : []
@@ -50,7 +50,7 @@ export const normalizeSorters = (
     : []
 )
 
-export const sameSorters = (
+export const sameSortRules = (
   left: readonly Sorter[],
   right: readonly Sorter[]
 ) => (
@@ -61,7 +61,7 @@ export const sameSorters = (
   ))
 )
 
-export const findSorterIndex = (
+export const indexOfSortRule = (
   sorters: readonly Sorter[],
   fieldId: string
 ) => sorters.findIndex(sorter => sorter.field === fieldId)
@@ -71,12 +71,12 @@ export const add = (
   fieldId: string,
   direction: SortDirection = 'asc'
 ): Sorter[] => {
-  if (findSorterIndex(sorters, fieldId) !== -1) {
+  if (indexOfSortRule(sorters, fieldId) !== -1) {
     return sorters as Sorter[]
   }
 
   return [
-    ...cloneSorters(sorters),
+    ...cloneSortRules(sorters),
     {
       field: fieldId,
       direction
@@ -84,16 +84,16 @@ export const add = (
   ]
 }
 
-export const set = (
+export const upsert = (
   sorters: readonly Sorter[],
   fieldId: string,
   direction: SortDirection
 ): Sorter[] => {
-  const index = findSorterIndex(sorters, fieldId)
+  const index = indexOfSortRule(sorters, fieldId)
 
   if (index === -1) {
     return [
-      ...cloneSorters(sorters),
+      ...cloneSortRules(sorters),
       {
         field: fieldId,
         direction
@@ -108,7 +108,7 @@ export const set = (
     return sorters as Sorter[]
   }
 
-  const next = cloneSorters(sorters)
+  const next = cloneSortRules(sorters)
   next[index] = {
     field: fieldId,
     direction
@@ -151,8 +151,8 @@ export const replace = (
     return sorters as Sorter[]
   }
 
-  const next = cloneSorters(sorters)
-  next[index] = cloneSorter(sorter)
+  const next = cloneSortRules(sorters)
+  next[index] = cloneSortRule(sorter)
   return next
 }
 
@@ -164,7 +164,7 @@ export const remove = (
     return sorters as Sorter[]
   }
 
-  const next = cloneSorters(sorters)
+  const next = cloneSortRules(sorters)
   next.splice(index, 1)
   return next
 }
@@ -184,7 +184,7 @@ export const move = (
     return sorters as Sorter[]
   }
 
-  const next = cloneSorters(sorters)
+  const next = cloneSortRules(sorters)
   const [sorter] = next.splice(from, 1)
   if (!sorter) {
     return sorters as Sorter[]
@@ -201,13 +201,3 @@ export const clear = (
     ? []
     : sorters as Sorter[]
 )
-
-export const sort = {
-  add,
-  set,
-  keepOnly,
-  replace,
-  remove,
-  move,
-  clear
-} as const

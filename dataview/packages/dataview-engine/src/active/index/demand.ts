@@ -5,7 +5,7 @@ import {
   calculation
 } from '@dataview/core/calculation'
 import {
-  readFieldSpec
+  fieldSpec
 } from '@dataview/core/field/spec'
 import {
   uniqueSorted
@@ -44,7 +44,7 @@ export const resolveDefaultSearchFieldIds = (
   for (let index = 0; index < context.document.fields.order.length; index += 1) {
     const fieldId = context.document.fields.order[index]!
     const field = context.reader.fields.get(fieldId)
-    if (readFieldSpec(field)?.index.searchDefaultEnabled) {
+    if (fieldSpec.index.searchDefaultEnabled(field)) {
       fieldIds.push(fieldId)
     }
   }
@@ -77,7 +77,7 @@ export const normalizeIndexDemand = (
     search: searchFields,
     buckets,
     sortFields,
-    calculations: calculation.reducer.demand.normalize(demand?.calculations)
+    calculations: calculation.demand.normalize(demand?.calculations)
   }
 }
 
@@ -93,4 +93,4 @@ export const sameBucketSpecs = (
       && spec.interval === next.interval
   })
 
-export const sameCalculationDemand = calculation.reducer.demand.same
+export const sameCalculationDemand = calculation.demand.same

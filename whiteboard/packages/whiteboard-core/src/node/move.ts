@@ -1,7 +1,4 @@
-import {
-  moveEdge,
-  moveEdgeRoute
-} from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   Edge,
   EdgeId,
@@ -162,7 +159,7 @@ const collectFollowEdgePatches = (options: {
       return
     }
 
-    const patch = moveEdgeRoute(edge, options.delta)
+    const patch = edgeApi.route.moveAll(edge, options.delta)
     if (!patch) {
       return
     }
@@ -187,7 +184,7 @@ const collectMovedEdgePatches = (options: {
   const changes: MoveEdgeChange[] = []
 
   options.edges.forEach((edge) => {
-    const patch = moveEdge(edge, options.delta)
+    const patch = edgeApi.edit.move(edge, options.delta)
     if (!patch) {
       return
     }

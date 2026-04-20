@@ -48,7 +48,7 @@ const buildFieldEntries = (input: {
   const values = input.records.values.get(input.demand.fieldId)?.byRecord
   const entries = new Map<RecordId, CalculationEntry>()
   input.records.ids.forEach(recordId => {
-    entries.set(recordId, calculation.reducer.entry.create({
+    entries.set(recordId, calculation.entry.create({
       field,
       value: values?.get(recordId),
       capabilities: input.demand.capabilities
@@ -69,7 +69,7 @@ const buildFieldCalcIndex = (input: {
     fieldId: input.demand.fieldId,
     capabilities: input.demand.capabilities,
     entries,
-    global: calculation.reducer.state.build({
+    global: calculation.state.build({
       entries,
       capabilities: input.demand.capabilities
     })
@@ -115,7 +115,7 @@ export const ensureCalculationIndex = (
       return
     }
 
-    if (!calculation.reducer.capabilities.same(previousField.capabilities, demand.capabilities)) {
+    if (!calculation.capability.same(previousField.capabilities, demand.capabilities)) {
       fields.set(fieldId, buildFieldCalcIndex({
         context,
         records,
@@ -185,7 +185,7 @@ export const syncCalculationIndex = (
 
     const values = records.values.get(fieldId)?.byRecord
     const entries = createMapPatchBuilder(previousField.entries)
-    const reducer = calculation.reducer.state.builder({
+    const reducer = calculation.state.builder({
       previous: previousField.global,
       capabilities: previousField.capabilities
     })
@@ -193,14 +193,14 @@ export const syncCalculationIndex = (
     context.touchedRecords.forEach(recordId => {
       const previousEntry = previousField.entries.get(recordId)
       const nextEntry = records.order.has(recordId)
-        ? calculation.reducer.entry.create({
+        ? calculation.entry.create({
             field,
             value: values?.get(recordId),
             capabilities: previousField.capabilities
           })
         : undefined
 
-      if (calculation.reducer.entry.same(previousEntry, nextEntry)) {
+      if (calculation.entry.same(previousEntry, nextEntry)) {
         return
       }
 
@@ -209,7 +209,7 @@ export const syncCalculationIndex = (
         recordId,
         previousEntry,
         nextEntry,
-        calculation.reducer.entry.same
+        calculation.entry.same
       )
       reducer.apply(previousEntry, nextEntry)
 

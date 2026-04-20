@@ -21,7 +21,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
-  readFieldSpec
+  fieldSpec
 } from '@dataview/core/field/spec'
 import { sameOrder } from '@shared/core'
 import type {
@@ -104,7 +104,7 @@ const resolveGalleryState = (
     size: view.options.gallery.card.size,
     layout: view.options.gallery.card.layout,
     canReorder: !query.group.active && query.sort.rules.length === 0,
-    groupUsesOptionColors: readFieldSpec(query.group.field)?.view.groupUsesOptionColors === true
+    groupUsesOptionColors: fieldSpec.view.groupUsesOptionColors(query.group.field)
   }
 }
 
@@ -127,7 +127,7 @@ const resolveKanbanState = (
     }
   }
 
-  const groupUsesOptionColors = readFieldSpec(query.group.field)?.view.groupUsesOptionColors === true
+  const groupUsesOptionColors = fieldSpec.view.groupUsesOptionColors(query.group.field)
 
   return {
     wrap: view.options.kanban.card.wrap,

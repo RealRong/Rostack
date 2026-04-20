@@ -1,5 +1,5 @@
-import { applyNodeDefaults, getMissingNodeFields } from '@whiteboard/core/schema'
-import { getNode, hasNode, listNodes } from '@whiteboard/core/document'
+import { schema as schemaApi } from '@whiteboard/core/schema'
+import { document as documentApi } from '@whiteboard/core/document'
 import { err, ok } from '@whiteboard/core/result'
 import type {
   CoreRegistries,
@@ -56,7 +56,7 @@ const readLayoutEntries = ({
 }: BuildNodeLayoutOperationsInput): Result<{
   entries: NodeLayoutEntry[]
 }, 'invalid'> => {
-  const nodes = listNodes(doc)
+  const nodes = documentApi.list.nodes(doc)
   const rootIds = Array.from(new Set(ids))
   if (!rootIds.length) {
     return err('invalid', 'No node ids provided.')
@@ -91,7 +91,7 @@ const buildLayoutOperations = (
 ): {
   operations: Operation[]
 } => {
-  const nodes = listNodes(doc)
+  const nodes = documentApi.list.nodes(doc)
   const nodeById = new Map(nodes.map((node) => [node.id, node] as const))
   const operations: Operation[] = []
 
@@ -123,7 +123,7 @@ export const buildNodeCreateOperation = ({
   if (!payload.position) {
     return err('invalid', 'Missing node position.')
   }
-  if (payload.id && hasNode(doc, payload.id)) {
+  if (payload.id && documentApi.has.node(doc, payload.id)) {
     return err('invalid', `Node ${payload.id} already exists.`)
   }
 
@@ -132,12 +132,12 @@ export const buildNodeCreateOperation = ({
     return err('invalid', `Node ${payload.type} validation failed.`)
   }
 
-  const missing = getMissingNodeFields(payload, registries)
+  const missing = schemaApi.node.missingFields(payload, registries)
   if (missing.length > 0) {
     return err('invalid', `Missing required fields: ${missing.join(', ')}.`)
   }
 
-  const normalized = applyNodeDefaults(payload, registries)
+  const normalized = schemaApi.node.applyDefaults(payload, registries)
   const nextNode = normalized
   const id = nextNode.id ?? createNodeId()
   const node: Node = {

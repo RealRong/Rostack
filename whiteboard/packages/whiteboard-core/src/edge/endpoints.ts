@@ -24,7 +24,7 @@ const resolveNodeEnd = ({
   node,
   otherPoint
 }: ResolveNodeEndInput): ResolvedEdgeEnd => {
-  const rotation = readNodeRotation(node.node)
+  const rotation = nodeApi.geometry.rotation(node.node)
   const auto = getAutoAnchorFromRect(
     node.node,
     node.geometry.rect,
@@ -57,11 +57,11 @@ export const resolveEdgeEnds = ({
 }: ResolveEdgeEndsInput): ResolvedEdgeEnds | undefined => {
   const sourceRefPoint =
     isNodeEdgeEnd(edge.target)
-      ? (target ? getRectCenter(target.geometry.rect) : undefined)
+      ? (target ? geometryApi.rect.center(target.geometry.rect) : undefined)
       : edge.target.point
   const targetRefPoint =
     isNodeEdgeEnd(edge.source)
-      ? (source ? getRectCenter(source.geometry.rect) : undefined)
+      ? (source ? geometryApi.rect.center(source.geometry.rect) : undefined)
       : edge.source.point
 
   let resolvedSource: ResolvedEdgeEnd | undefined

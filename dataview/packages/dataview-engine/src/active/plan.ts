@@ -239,7 +239,7 @@ const readCalculationDemands = (
 } => {
   const calculations = Object.entries(view.calc)
     .flatMap(([fieldId, metric]) => metric
-      ? [calculation.reducer.demand.create(fieldId as FieldId, metric)]
+      ? [calculation.demand.create(fieldId as FieldId, metric)]
       : [])
 
   return {

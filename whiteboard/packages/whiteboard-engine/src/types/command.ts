@@ -26,7 +26,8 @@ import type {
   NodeUpdateInput,
   OrderMode,
   Origin,
-  Point
+  Point,
+  Size
 } from '@whiteboard/core/types'
 import type {
   Slice,
@@ -111,6 +112,15 @@ export type NodeCommand =
       type: 'node.move'
       ids: readonly NodeId[]
       delta: Point
+    }
+  | {
+      type: 'node.text.commit'
+      nodeId: NodeId
+      field: 'text' | 'title'
+      value: string
+      size?: Size
+      fontSize?: number
+      wrapWidth?: number
     }
   | {
       type: 'node.align'

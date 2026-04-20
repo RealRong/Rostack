@@ -10,7 +10,7 @@ import {
   field as fieldApi
 } from '@dataview/core/field'
 
-export const compareSortedRecords = (
+export const compareSortRecords = (
   left: DataRecord,
   right: DataRecord,
   sorter: Sorter,

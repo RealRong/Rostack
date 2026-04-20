@@ -24,7 +24,7 @@ export const createSingleSelectPropertySpec = (
   parseDraft: draft => fieldApi.draft.parse(field, draft),
   render: props => {
     const display = fieldApi.display.value(field, props.value)
-    const selected = field ? fieldApi.option.get(field, props.value) : undefined
+    const selected = field ? fieldApi.option.read.get(field, props.value) : undefined
     if (!display) {
       return renderEmpty(props)
     }

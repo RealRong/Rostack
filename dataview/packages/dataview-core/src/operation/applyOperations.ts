@@ -2,8 +2,7 @@ import type { CommitImpact } from '@dataview/core/contracts/commit'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
 import {
-  createCommitImpact,
-  finalizeCommitImpact
+  impact
 } from '@dataview/core/commit/impact'
 import {
   executeOperation
@@ -22,21 +21,21 @@ export const applyOperations = (
 ): ApplyOperationsResult => {
   let nextDocument = document
   const undo: DocumentOperation[] = []
-  const impact = createCommitImpact()
+  const nextImpact = impact.create()
 
   for (const operation of operations) {
-    const executed = executeOperation(nextDocument, operation, impact)
+    const executed = executeOperation(nextDocument, operation, nextImpact)
     nextDocument = executed.document
     if (executed.inverse.length) {
       undo.unshift(...executed.inverse)
     }
   }
 
-  finalizeCommitImpact(impact)
+  impact.finalize(nextImpact)
 
   return {
     document: nextDocument,
-    impact,
+    impact: nextImpact,
     undo,
     redo: [...operations]
   }

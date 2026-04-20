@@ -126,7 +126,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        const currentOptions = fieldApi.option.list(field)
+        const currentOptions = fieldApi.option.read.list(field)
         const result = dispatch({
           type: 'field.option.create',
           fieldId
@@ -140,7 +140,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        return findAddedOption(currentOptions, fieldApi.option.list(nextField))
+        return findAddedOption(currentOptions, fieldApi.option.read.list(nextField))
       },
       create: (fieldId, name) => {
         const field = getOptionFieldById(fieldId)
@@ -149,8 +149,8 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        const currentOptions = fieldApi.option.list(field)
-        const existing = fieldApi.option.findByName(currentOptions, nextName)
+        const currentOptions = fieldApi.option.read.list(field)
+        const existing = fieldApi.option.read.findByName(currentOptions, nextName)
         if (existing) {
           return existing
         }
@@ -171,7 +171,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        return findAddedOption(currentOptions, fieldApi.option.list(nextField))
+        return findAddedOption(currentOptions, fieldApi.option.read.list(nextField))
       },
       reorder: (fieldId, optionIds) => {
         dispatch({
@@ -186,7 +186,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        const currentOptions = fieldApi.option.list(field)
+        const currentOptions = fieldApi.option.read.list(field)
         const target = currentOptions.find(option => option.id === optionId)
         if (!target) {
           return undefined
@@ -198,7 +198,7 @@ export const createFieldsApi = (options: {
             return undefined
           }
 
-          const conflicting = fieldApi.option.findByName(currentOptions, nextName)
+          const conflicting = fieldApi.option.read.findByName(currentOptions, nextName)
           if (conflicting && conflicting.id !== optionId) {
             return undefined
           }
@@ -222,7 +222,7 @@ export const createFieldsApi = (options: {
 
         const nextField = getOptionFieldById(fieldId)
         return nextField
-          ? fieldApi.option.list(nextField).find((option: FieldOption) => option.id === optionId)
+          ? fieldApi.option.read.list(nextField).find((option: FieldOption) => option.id === optionId)
           : undefined
       },
       remove: (fieldId, optionId) => {

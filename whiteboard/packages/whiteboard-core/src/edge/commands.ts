@@ -1,5 +1,5 @@
-import { applyEdgeDefaults, getMissingEdgeFields } from '@whiteboard/core/schema'
-import { hasEdge, hasNode } from '@whiteboard/core/document'
+import { schema as schemaApi } from '@whiteboard/core/schema'
+import { document as documentApi } from '@whiteboard/core/document'
 import { err, ok } from '@whiteboard/core/result'
 import type {
   CoreRegistries,
@@ -59,7 +59,7 @@ const validateEdgeEnd = (
     return err('invalid', `Missing ${label.toLowerCase()} edge end.`)
   }
 
-  if (isNodeEdgeEnd(end) && !hasNode(doc, end.nodeId)) {
+  if (isNodeEdgeEnd(end) && !documentApi.has.node(doc, end.nodeId)) {
     return err('invalid', `${label} node ${end.nodeId} not found.`)
   }
 
@@ -79,7 +79,7 @@ export const buildEdgeCreateOperation = ({
   if (!payload.type) {
     return err('invalid', 'Missing edge type.')
   }
-  if (payload.id && hasEdge(doc, payload.id)) {
+  if (payload.id && documentApi.has.edge(doc, payload.id)) {
     return err('invalid', `Edge ${payload.id} already exists.`)
   }
 
@@ -97,12 +97,12 @@ export const buildEdgeCreateOperation = ({
     return err('invalid', `Edge ${payload.type} validation failed.`)
   }
 
-  const missing = getMissingEdgeFields(payload, registries)
+  const missing = schemaApi.edge.missingFields(payload, registries)
   if (missing.length > 0) {
     return err('invalid', `Missing required fields: ${missing.join(', ')}.`)
   }
 
-  const normalized = applyEdgeDefaults(payload, registries)
+  const normalized = schemaApi.edge.applyDefaults(payload, registries)
   const id = normalized.id ?? createEdgeId()
   const route = normalized.route?.kind === 'manual'
     ? {

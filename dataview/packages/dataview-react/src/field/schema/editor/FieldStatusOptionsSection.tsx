@@ -56,7 +56,7 @@ export const FieldStatusOptionsSection = (props: {
   const { t } = useTranslation()
   const editor = useDataView().engine
   const [editingOptionId, setEditingOptionId] = useState<string>()
-  const options = fieldApi.option.list(props.field)
+  const options = fieldApi.option.read.list(props.field)
   const sections = fieldApi.status.sections(props.field)
 
   useEffect(() => {

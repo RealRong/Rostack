@@ -35,7 +35,7 @@ export const runMindmapLayout = (
   if (!tree) {
     return
   }
-  getSubtreeIds(tree, record.root).forEach((nodeId) => {
+  mindmapApi.tree.subtreeIds(tree, record.root).forEach((nodeId) => {
     markChange(tx._runtime.changes.nodes, 'update', nodeId)
     tx._runtime.dirty.nodes.add(nodeId)
   })

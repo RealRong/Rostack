@@ -8,23 +8,14 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import {
-  compileNodeDataUpdate,
-  compileNodeStyleUpdate,
-  mergeNodeUpdates
-} from '@whiteboard/core/schema'
+import { schema as schemaApi } from '@whiteboard/core/schema'
 import {
   TEXT_DEFAULT_FONT_SIZE,
   readTextWrapWidth,
   readTextWidthMode,
   type TextWidthMode
 } from '@whiteboard/core/node/text'
-import {
-  getRectCenter,
-  isPointEqual,
-  isSizeEqual,
-  rotatePoint
-} from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { Guide } from '@whiteboard/core/node/snap'
 import type {
   HorizontalResizeEdge,
@@ -421,7 +412,7 @@ export const isCornerResizeDirection = (
 ) => resizeHandleMap[handle].sx !== 0 && resizeHandleMap[handle].sy !== 0
 
 export const rotateVector = (vector: Point, rotation: number) =>
-  rotatePoint(vector, { x: 0, y: 0 }, rotation)
+  geometryApi.point.rotate(vector, { x: 0, y: 0 }, rotation)
 
 const resolveResizeLocalDelta = (
   input: Pick<ResizeGestureInput, 'drag' | 'currentScreen' | 'zoom' | 'zoomEpsilon'>
@@ -548,10 +539,10 @@ export const toTransformCommitPatch = (
   const size = node.size
   const rotation = node.rotation
 
-  if (preview.position && !isPointEqual(preview.position, position)) {
+  if (preview.position && !geometryApi.equal.point(preview.position, position)) {
     patch.position = preview.position
   }
-  if (preview.size && !isSizeEqual(preview.size, size)) {
+  if (preview.size && !geometryApi.equal.size(preview.size, size)) {
     patch.size = preview.size
   }
   if (
@@ -586,7 +577,7 @@ export const buildTransformHandles = (options: {
     zoom,
     zoomEpsilon = 0.0001
   } = options
-  const center = getRectCenter(rect)
+  const center = geometryApi.rect.center(rect)
   const cx = rect.x + rect.width / 2
   const cy = rect.y + rect.height / 2
   const localPositions: Record<ResizeDirection, Point> = {
@@ -602,7 +593,7 @@ export const buildTransformHandles = (options: {
   const positions = Object.fromEntries(
     (Object.keys(localPositions) as ResizeDirection[]).map((direction) => [
       direction,
-      rotatePoint(localPositions[direction], center, rotation)
+      geometryApi.point.rotate(localPositions[direction], center, rotation)
     ])
   ) as Record<ResizeDirection, Point>
   const resizeHandles = resizeDirections.map((direction) => ({
@@ -818,7 +809,7 @@ const createResizeDrag = (input: {
 }): ResizeGestureSnapshot => ({
   handle: input.handle,
   startScreen: input.startScreen,
-  startCenter: getRectCenter(input.rect),
+  startCenter: geometryApi.rect.center(input.rect),
   startRotation: input.rotation,
   startSize: {
     width: input.rect.width,
@@ -832,7 +823,7 @@ const createRotateDrag = (input: {
   rotation: number
   startWorld: Point
 }): RotateGestureSnapshot => {
-  const center = getRectCenter(input.rect)
+  const center = geometryApi.rect.center(input.rect)
 
   return {
     center,
@@ -1328,28 +1319,28 @@ export const buildTransformCommitUpdates = (options: {
 
     const geometry = toTransformCommitPatch(target.node, preview)
     const textUpdate = target.node.type === 'text'
-      ? mergeNodeUpdates(
+      ? schemaApi.node.mergeUpdates(
           preview.mode !== undefined && preview.mode !== readTextWidthMode(target.node)
-            ? compileNodeDataUpdate('widthMode', preview.mode)
+            ? schemaApi.node.compileDataUpdate('widthMode', preview.mode)
             : undefined,
           (
             (preview.mode ?? readTextWidthMode(target.node)) === 'wrap'
             && preview.wrapWidth !== readTextWrapWidth(target.node)
           )
-            ? compileNodeDataUpdate('wrapWidth', preview.wrapWidth)
+            ? schemaApi.node.compileDataUpdate('wrapWidth', preview.wrapWidth)
             : (
                 (preview.mode ?? readTextWidthMode(target.node)) === 'auto'
                 && readTextWrapWidth(target.node) !== undefined
               )
-                ? compileNodeDataUpdate('wrapWidth', undefined)
+                ? schemaApi.node.compileDataUpdate('wrapWidth', undefined)
                 : undefined,
           preview.fontSize !== undefined
             && Math.round(preview.fontSize) !== readTextFontSize(target.node)
-            ? compileNodeStyleUpdate('fontSize', Math.round(preview.fontSize))
+            ? schemaApi.node.compileStyleUpdate('fontSize', Math.round(preview.fontSize))
             : undefined
         )
       : undefined
-    const update = mergeNodeUpdates(
+    const update = schemaApi.node.mergeUpdates(
       geometry
         ? {
             fields: geometry

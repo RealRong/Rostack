@@ -10,7 +10,7 @@ import {
   compareGroupBuckets
 } from '@dataview/core/field/kind'
 import {
-  readFieldSpec
+  fieldSpec
 } from '@dataview/core/field/spec'
 import {
   compareGroupSortValues,
@@ -114,7 +114,7 @@ const createRecordIdSet = (
 const resolveFastBucketKeys = (
   field: Field | undefined,
   value: unknown
-): readonly BucketKey[] | undefined => readFieldSpec(field)?.index.bucket.fastKeysOf?.(value)
+): readonly BucketKey[] | undefined => fieldSpec.index.bucket.keys(field, value)
 
 const toGroupOptions = (input: {
   spec: BucketSpec

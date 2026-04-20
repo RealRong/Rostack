@@ -1,9 +1,6 @@
 import type {
   CalculationMetric,
-  CardLayout,
-  CardSize,
   FieldId,
-  KanbanCardsPerColumn,
   RecordId,
   ViewCalc,
   ViewDisplay,
@@ -215,165 +212,113 @@ export const sameViewOptions = (
   && left.kanban.cardsPerColumn === right.kanban.cardsPerColumn
 )
 
-export const setTableColumnWidths = (
+export interface TableLayoutPatch {
+  widths?: Partial<Record<FieldId, number>>
+  showVerticalLines?: boolean
+  wrap?: boolean
+}
+
+export interface GalleryLayoutPatch {
+  card?: Partial<ViewOptions['gallery']['card']>
+}
+
+export interface KanbanLayoutPatch {
+  card?: Partial<ViewOptions['kanban']['card']>
+  fillColumnColor?: boolean
+  cardsPerColumn?: ViewOptions['kanban']['cardsPerColumn']
+}
+
+export const patchTableLayout = (
   options: ViewOptions,
-  widths: Partial<Record<FieldId, number>>
+  patch: TableLayoutPatch
 ): ViewOptions => {
+  if (
+    patch.widths === undefined
+    && patch.showVerticalLines === undefined
+    && patch.wrap === undefined
+  ) {
+    return cloneViewOptions(options)
+  }
+
   const nextOptions = cloneViewOptions(options)
   nextOptions.table = {
     ...nextOptions.table,
-    widths: {
-      ...nextOptions.table.widths,
-      ...widths
-    }
+    ...(patch.widths !== undefined
+      ? {
+          widths: {
+            ...nextOptions.table.widths,
+            ...patch.widths
+          }
+        }
+      : {}),
+    ...(patch.showVerticalLines !== undefined
+      ? {
+          showVerticalLines: patch.showVerticalLines
+        }
+      : {}),
+    ...(patch.wrap !== undefined
+      ? {
+          wrap: patch.wrap
+        }
+      : {})
   }
 
   return nextOptions
 }
 
-export const setTableVerticalLines = (
+export const patchGalleryLayout = (
   options: ViewOptions,
-  value: boolean
+  patch: GalleryLayoutPatch
 ): ViewOptions => {
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.table = {
-    ...nextOptions.table,
-    showVerticalLines: value
+  if (patch.card === undefined) {
+    return cloneViewOptions(options)
   }
 
-  return nextOptions
-}
-
-export const setTableWrap = (
-  options: ViewOptions,
-  value: boolean
-): ViewOptions => {
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.table = {
-    ...nextOptions.table,
-    wrap: value
-  }
-
-  return nextOptions
-}
-
-export const setGalleryCardWrap = (
-  options: ViewOptions,
-  value: boolean
-): ViewOptions => {
   const nextOptions = cloneViewOptions(options)
   nextOptions.gallery = {
     ...nextOptions.gallery,
     card: {
       ...nextOptions.gallery.card,
-      wrap: value
+      ...patch.card
     }
   }
 
   return nextOptions
 }
 
-export const setGalleryCardSize = (
+export const patchKanbanLayout = (
   options: ViewOptions,
-  value: CardSize
+  patch: KanbanLayoutPatch
 ): ViewOptions => {
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.gallery = {
-    ...nextOptions.gallery,
-    card: {
-      ...nextOptions.gallery.card,
-      size: value
-    }
+  if (
+    patch.card === undefined
+    && patch.fillColumnColor === undefined
+    && patch.cardsPerColumn === undefined
+  ) {
+    return cloneViewOptions(options)
   }
 
-  return nextOptions
-}
-
-export const setGalleryCardLayout = (
-  options: ViewOptions,
-  value: CardLayout
-): ViewOptions => {
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.gallery = {
-    ...nextOptions.gallery,
-    card: {
-      ...nextOptions.gallery.card,
-      layout: value
-    }
-  }
-
-  return nextOptions
-}
-
-export const setKanbanCardWrap = (
-  options: ViewOptions,
-  value: boolean
-): ViewOptions => {
   const nextOptions = cloneViewOptions(options)
   nextOptions.kanban = {
     ...nextOptions.kanban,
-    card: {
-      ...nextOptions.kanban.card,
-      wrap: value
-    }
-  }
-
-  return nextOptions
-}
-
-export const setKanbanCardSize = (
-  options: ViewOptions,
-  value: CardSize
-): ViewOptions => {
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.kanban = {
-    ...nextOptions.kanban,
-    card: {
-      ...nextOptions.kanban.card,
-      size: value
-    }
-  }
-
-  return nextOptions
-}
-
-export const setKanbanCardLayout = (
-  options: ViewOptions,
-  value: CardLayout
-): ViewOptions => {
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.kanban = {
-    ...nextOptions.kanban,
-    card: {
-      ...nextOptions.kanban.card,
-      layout: value
-    }
-  }
-
-  return nextOptions
-}
-
-export const setKanbanFillColumnColor = (
-  options: ViewOptions,
-  value: boolean
-): ViewOptions => {
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.kanban = {
-    ...nextOptions.kanban,
-    fillColumnColor: value
-  }
-
-  return nextOptions
-}
-
-export const setKanbanCardsPerColumn = (
-  options: ViewOptions,
-  value: KanbanCardsPerColumn
-): ViewOptions => {
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.kanban = {
-    ...nextOptions.kanban,
-    cardsPerColumn: value
+    ...(patch.card !== undefined
+      ? {
+          card: {
+            ...nextOptions.kanban.card,
+            ...patch.card
+          }
+        }
+      : {}),
+    ...(patch.fillColumnColor !== undefined
+      ? {
+          fillColumnColor: patch.fillColumnColor
+        }
+      : {}),
+    ...(patch.cardsPerColumn !== undefined
+      ? {
+          cardsPerColumn: patch.cardsPerColumn
+        }
+      : {})
   }
 
   return nextOptions

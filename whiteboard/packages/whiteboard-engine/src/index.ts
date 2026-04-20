@@ -1,8 +1,16 @@
-export { createEngine } from '@whiteboard/engine/instance/engine'
-export { normalizeDocument } from '@whiteboard/engine/document/normalize'
-export {
-  DEFAULT_BOARD_CONFIG
-} from '@whiteboard/engine/config'
+import { DEFAULT_BOARD_CONFIG } from '@whiteboard/engine/config'
+import { normalizeDocument } from '@whiteboard/engine/document/normalize'
+import { createEngine } from '@whiteboard/engine/instance/engine'
+
+export const engine = {
+  create: createEngine,
+  document: {
+    normalize: normalizeDocument
+  },
+  config: {
+    default: DEFAULT_BOARD_CONFIG
+  }
+} as const
 
 export type {
   Command,

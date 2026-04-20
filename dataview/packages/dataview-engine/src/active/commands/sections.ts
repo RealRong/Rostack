@@ -14,7 +14,9 @@ export const createSectionsApi = (
       : undefined
     return field
       ? {
-          group: group.setBucketHidden(view.group, field, key, false) ?? null
+          group: group.bucket.patch(view.group, field, key, {
+            hidden: false
+          }) ?? null
         }
       : undefined
   }),
@@ -25,7 +27,9 @@ export const createSectionsApi = (
       : undefined
     return field
       ? {
-          group: group.setBucketHidden(view.group, field, key, true) ?? null
+          group: group.bucket.patch(view.group, field, key, {
+            hidden: true
+          }) ?? null
         }
       : undefined
   }),
@@ -36,7 +40,9 @@ export const createSectionsApi = (
       : undefined
     return field
       ? {
-          group: group.setBucketCollapsed(view.group, field, key, true) ?? null
+          group: group.bucket.patch(view.group, field, key, {
+            collapsed: true
+          }) ?? null
         }
       : undefined
   }),
@@ -47,7 +53,9 @@ export const createSectionsApi = (
       : undefined
     return field
       ? {
-          group: group.setBucketCollapsed(view.group, field, key, false) ?? null
+          group: group.bucket.patch(view.group, field, key, {
+            collapsed: false
+          }) ?? null
         }
       : undefined
   }),
@@ -58,7 +66,7 @@ export const createSectionsApi = (
       : undefined
     return field
       ? {
-          group: group.toggleBucketCollapsed(view.group, field, key) ?? null
+          group: group.bucket.toggleCollapsed(view.group, field, key) ?? null
         }
       : undefined
   })

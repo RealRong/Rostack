@@ -217,7 +217,7 @@ export const deriveSelectionSummary = ({
   const edgeCount = edgeItems.length
   const count = nodeCount + edgeCount
   const canMove = count > 0 && nodeItems.every((node) => !node.locked)
-  const box = getRectsBoundingRect([
+  const box = geometryApi.rect.boundingRect([
     ...nodeItems.flatMap((node) => {
       const rect = readNodeRect(node)
       return rect ? [rect] : []
@@ -478,7 +478,7 @@ export const getTargetBounds = ({
     }
   })
 
-  return getRectsBoundingRect(rects)
+  return geometryApi.rect.boundingRect(rects)
 }
 
 export const resolveSelectionBoxTarget = (

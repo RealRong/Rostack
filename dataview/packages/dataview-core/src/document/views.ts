@@ -8,16 +8,12 @@ import type {
 import { calculation } from '@dataview/core/calculation'
 import { documentFields } from '@dataview/core/document/fields'
 import {
-  cloneEntityInput,
-  normalizeEntityTable,
-  putEntityTableEntity,
-  removeEntityTableEntity,
-  replaceDocumentTable
+  entityTable
 } from '@dataview/core/document/table'
 import { filter } from '@dataview/core/filter'
-import { normalizeGroup } from '@dataview/core/group'
-import { normalizeSearch } from '@dataview/core/search'
-import { normalizeSorters } from '@dataview/core/sort'
+import { group } from '@dataview/core/group'
+import { search } from '@dataview/core/search'
+import { sort } from '@dataview/core/sort'
 import { normalizeRecordOrderIds } from '@dataview/core/view/order'
 import { normalizeViewOptions } from '@dataview/core/view/normalize'
 import { normalizeViewDisplay } from '@dataview/core/view/state'
@@ -38,15 +34,15 @@ const normalizeView = (
     type: view.type,
     fields
   })
-  const group = normalizeGroup(view.group)
+  const normalizedGroup = group.state.normalize(view.group)
 
   return {
-    ...cloneEntityInput(view),
-    search: normalizeSearch(view.search),
-    filter: filter.normalize(view.filter),
-    sort: normalizeSorters(view.sort),
-    ...(group
-      ? { group }
+    ...entityTable.clone.entity(view),
+    search: search.state.normalize(view.search),
+    filter: filter.state.normalize(view.filter),
+    sort: sort.rules.normalize(view.sort),
+    ...(normalizedGroup
+      ? { group: normalizedGroup }
       : {}),
     calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map(fieldEntry => [fieldEntry.id, fieldEntry] as const))
@@ -58,7 +54,7 @@ const normalizeView = (
 }
 
 const normalizeViews = (document: DataDoc): EntityTable<ViewId, View> => {
-  const views = normalizeEntityTable(document.views)
+  const views = entityTable.normalize.table(document.views)
   const byId = {} as Record<ViewId, View>
 
   views.order.forEach(viewId => {
@@ -127,10 +123,10 @@ const setActiveViewId = (
 }
 
 const putView = (document: DataDoc, view: View): DataDoc => {
-  const nextDocument = replaceDocumentTable(
+  const nextDocument = entityTable.replace(
     document,
     'views',
-    putEntityTableEntity(document.views, view)
+    entityTable.write.put(document.views, view)
   )
 
   return setActiveViewId(
@@ -144,10 +140,10 @@ const removeView = (document: DataDoc, viewId: ViewId): DataDoc => {
     return document
   }
 
-  const nextDocument = replaceDocumentTable(
+  const nextDocument = entityTable.replace(
     document,
     'views',
-    removeEntityTableEntity(document.views, viewId)
+    entityTable.write.remove(document.views, viewId)
   )
 
   return setActiveViewId(

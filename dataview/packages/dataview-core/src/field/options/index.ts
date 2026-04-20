@@ -13,10 +13,13 @@ import {
 import {
   createFieldKey
 } from '@dataview/core/field/schema'
+import {
+  getFieldOptionSpec
+} from '@dataview/core/field/options/spec'
 
-export const normalizeOptionToken = (value: string) => value.trim().toLowerCase()
+const normalizeOptionToken = (value: string) => value.trim().toLowerCase()
 
-export const findFieldOptionByName = (
+const findFieldOptionByName = (
   options: readonly FieldOption[],
   name: string
 ) => {
@@ -28,7 +31,7 @@ export const findFieldOptionByName = (
   return options.find(option => normalizeOptionToken(option.name) === normalizedName)
 }
 
-export const getFieldOptions = (
+const getFieldOptions = (
   field?: CustomField
 ): FieldOption[] => {
   if (!field || !hasFieldOptions(field)) {
@@ -38,7 +41,7 @@ export const getFieldOptions = (
   return field.options
 }
 
-export const findFieldOption = (
+const findFieldOption = (
   field: CustomField | undefined,
   value: unknown
 ) => {
@@ -57,7 +60,7 @@ export const findFieldOption = (
   ))
 }
 
-export const getFieldOption = (
+const getFieldOption = (
   field: CustomField | undefined,
   optionId: unknown
 ) => {
@@ -73,7 +76,7 @@ export const getFieldOption = (
   return getFieldOptions(field).find(option => option.id === normalizedId)
 }
 
-export const getFieldOptionTokens = (
+const getFieldOptionTokens = (
   field: CustomField | undefined,
   optionId: unknown
 ) => {
@@ -87,7 +90,7 @@ export const getFieldOptionTokens = (
     : [option.name, option.id]
 }
 
-export const getFieldOptionOrder = (
+const getFieldOptionOrder = (
   field: CustomField | undefined,
   optionId: unknown
 ) => {
@@ -99,7 +102,7 @@ export const getFieldOptionOrder = (
   return index >= 0 ? index : undefined
 }
 
-export const matchesFieldOptionValue = (
+const matchesFieldOptionValue = (
   field: CustomField | undefined,
   actual: unknown,
   expected: unknown
@@ -113,7 +116,7 @@ export const matchesFieldOptionValue = (
   ))
 }
 
-export const containsFieldOptionToken = (
+const containsFieldOptionToken = (
   field: CustomField | undefined,
   value: unknown,
   expected: unknown
@@ -124,7 +127,7 @@ export const containsFieldOptionToken = (
     ))
 )
 
-export const createUniqueFieldOptionToken = (
+const createUniqueFieldOptionToken = (
   options: readonly FieldOption[],
   name: string
 ) => {
@@ -141,7 +144,7 @@ export const createUniqueFieldOptionToken = (
   return nextToken
 }
 
-export const replaceFieldOptions = (
+const replaceFieldOptions = (
   field: CustomField,
   options: FieldOption[]
 ): Pick<SelectField, 'options'> | Pick<MultiSelectField, 'options'> | Pick<StatusField, 'options'> | {} => {
@@ -179,5 +182,33 @@ export const replaceFieldOptions = (
       return {}
   }
 }
+export type {
+  FieldOptionSpec,
+  FieldOptionWrite,
+  OptionField
+} from '@dataview/core/field/options/spec'
 
-export * from '@dataview/core/field/options/spec'
+export const fieldOption = {
+  spec: {
+    get: getFieldOptionSpec
+  },
+  token: {
+    normalize: normalizeOptionToken,
+    create: createUniqueFieldOptionToken
+  },
+  read: {
+    list: getFieldOptions,
+    get: getFieldOption,
+    find: findFieldOption,
+    findByName: findFieldOptionByName,
+    tokens: getFieldOptionTokens,
+    order: getFieldOptionOrder
+  },
+  match: {
+    equals: matchesFieldOptionValue,
+    contains: containsFieldOptionToken
+  },
+  write: {
+    replace: replaceFieldOptions
+  }
+} as const

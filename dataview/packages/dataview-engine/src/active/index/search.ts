@@ -1,5 +1,5 @@
 import {
-  buildFieldSearchText
+  search
 } from '@dataview/core/search'
 import type {
   Field,
@@ -305,7 +305,7 @@ const buildFieldIndex = (
   return buildTextIndex({
     fieldId,
     ids: column.ids,
-    readText: recordId => buildFieldSearchText(
+    readText: recordId => search.text.field(
       field,
       column.byRecord.get(recordId)
     ),
@@ -388,7 +388,7 @@ export const syncSearchIndex = (
       previous: previousField,
       touchedRecords: context.touchedRecords,
       records,
-      readText: recordId => buildFieldSearchText(
+      readText: recordId => search.text.field(
         field,
         column?.byRecord.get(recordId)
       )

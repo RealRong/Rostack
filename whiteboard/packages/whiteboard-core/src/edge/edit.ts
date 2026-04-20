@@ -75,7 +75,7 @@ export const createRoutePatchFromPathPoints = (
   edge: Edge,
   pathPoints: readonly Point[]
 ): EdgePatch => {
-  const routePoints = normalizePolylinePoints(pathPoints).slice(1, -1)
+  const routePoints = geometryApi.polyline.normalize(pathPoints).slice(1, -1)
 
   return routePoints.length > 0
     ? setRoutePoints(edge, routePoints)
@@ -109,7 +109,7 @@ export const moveElbowRouteSegmentPoints = (input: {
   }
 
   if (input.pathPoints.length === 2) {
-    return normalizePolylinePoints([
+    return geometryApi.polyline.normalize([
       input.pathPoints[0]!,
       movePointAlongAxis(start, input.axis, input.delta),
       movePointAlongAxis(end, input.axis, input.delta),
@@ -123,16 +123,16 @@ export const moveElbowRouteSegmentPoints = (input: {
 
   if (input.segmentIndex === 0) {
     next.splice(0, 2, next[0]!, shiftedStart, shiftedEnd)
-    return normalizePolylinePoints(next)
+    return geometryApi.polyline.normalize(next)
   }
 
   if (input.segmentIndex === input.pathPoints.length - 2) {
     next.splice(input.segmentIndex, 2, shiftedStart, shiftedEnd, input.pathPoints[input.pathPoints.length - 1]!)
-    return normalizePolylinePoints(next)
+    return geometryApi.polyline.normalize(next)
   }
 
   next.splice(input.segmentIndex, 2, shiftedStart, shiftedEnd)
-  return normalizePolylinePoints(next)
+  return geometryApi.polyline.normalize(next)
 }
 
 export const moveElbowRouteSegment = (input: {

@@ -16,29 +16,69 @@ export const sameFilterRule = (
 ) => (
   left.fieldId === right.fieldId
   && left.presetId === right.presetId
-  && JSON.stringify(left.value) === JSON.stringify(right.value)
+    && JSON.stringify(left.value) === JSON.stringify(right.value)
 )
 
-export const cloneFilter = (
-  filter: Filter
-): Filter => ({
-  mode: filter.mode,
-  rules: filter.rules.map(cloneFilterRule)
-})
+export const cloneFilterRules = (
+  rules: readonly FilterRule[]
+): FilterRule[] => rules.map(cloneFilterRule)
 
-export const sameFilter = (
-  left: Filter,
-  right: Filter
+export const sameFilterRules = (
+  left: readonly FilterRule[],
+  right: readonly FilterRule[]
 ) => (
-  left.mode === right.mode
-  && left.rules.length === right.rules.length
-  && left.rules.every((rule, index) => {
-    const nextRule = right.rules[index]
+  left.length === right.length
+  && left.every((rule, index) => {
+    const nextRule = right[index]
     return Boolean(nextRule && sameFilterRule(rule, nextRule))
   })
 )
 
-export const normalizeFilter = (
+export const normalizeFilterRules = (
+  rules: unknown
+): FilterRule[] => (
+  Array.isArray(rules)
+    ? rules
+        .filter((rule): rule is {
+          fieldId?: unknown
+          presetId?: unknown
+          value?: unknown
+        } => typeof rule === 'object' && rule !== null)
+        .map(rule => ({
+          fieldId: typeof rule.fieldId === 'string'
+            ? rule.fieldId
+            : '',
+          presetId: typeof rule.presetId === 'string'
+            ? rule.presetId
+            : '',
+          ...(Object.prototype.hasOwnProperty.call(rule, 'value')
+            ? { value: structuredClone(rule.value) as FilterRule['value'] }
+            : {})
+        }))
+    : []
+)
+
+export const indexOfFilterRule = (
+  rules: readonly FilterRule[],
+  fieldId: string
+) => rules.findIndex(rule => rule.fieldId === fieldId)
+
+export const cloneFilterState = (
+  left: Filter,
+) : Filter => ({
+  mode: left.mode,
+  rules: cloneFilterRules(left.rules)
+})
+
+export const sameFilterState = (
+  left: Filter,
+  right: Filter
+) => (
+  left.mode === right.mode
+  && sameFilterRules(left.rules, right.rules)
+)
+
+export const normalizeFilterState = (
   filter: unknown
 ): Filter => {
   const source = typeof filter === 'object' && filter !== null
@@ -50,47 +90,24 @@ export const normalizeFilter = (
 
   return {
     mode: source?.mode === 'or' ? 'or' : 'and',
-    rules: Array.isArray(source?.rules)
-      ? source.rules
-          .filter((rule): rule is {
-            fieldId?: unknown
-            presetId?: unknown
-            value?: unknown
-          } => typeof rule === 'object' && rule !== null)
-          .map(rule => ({
-            fieldId: typeof rule.fieldId === 'string'
-              ? rule.fieldId
-              : '',
-            presetId: typeof rule.presetId === 'string'
-              ? rule.presetId
-              : '',
-            ...(Object.prototype.hasOwnProperty.call(rule, 'value')
-              ? { value: structuredClone(rule.value) as FilterRule['value'] }
-              : {})
-          }))
-      : []
+    rules: normalizeFilterRules(source?.rules)
   }
 }
 
-export const findFilterIndex = (
-  filter: Filter,
-  fieldId: string
-) => filter.rules.findIndex(rule => rule.fieldId === fieldId)
-
-export const add = (
+export const writeFilterAdd = (
   filter: Filter,
   field: Field
 ): Filter => {
-  if (findFilterIndex(filter, field.id) !== -1) {
+  if (indexOfFilterRule(filter.rules, field.id) !== -1) {
     return filter
   }
 
-  const next = cloneFilter(filter)
+  const next = cloneFilterState(filter)
   next.rules.push(createDefaultFilterRule(field))
   return next
 }
 
-export const replace = (
+export const writeFilterReplace = (
   filter: Filter,
   index: number,
   rule: FilterRule
@@ -99,12 +116,12 @@ export const replace = (
     return filter
   }
 
-  const next = cloneFilter(filter)
+  const next = cloneFilterState(filter)
   next.rules[index] = cloneFilterRule(rule)
   return next
 }
 
-export const setPreset = (
+export const writeFilterPreset = (
   filter: Filter,
   index: number,
   field: Field | undefined,
@@ -120,12 +137,12 @@ export const setPreset = (
     return filter
   }
 
-  const next = cloneFilter(filter)
+  const next = cloneFilterState(filter)
   next.rules[index] = nextRule
   return next
 }
 
-export const setValue = (
+export const writeFilterValue = (
   filter: Filter,
   index: number,
   field: Field | undefined,
@@ -141,12 +158,12 @@ export const setValue = (
     return filter
   }
 
-  const next = cloneFilter(filter)
+  const next = cloneFilterState(filter)
   next.rules[index] = nextRule
   return next
 }
 
-export const setMode = (
+export const writeFilterMode = (
   filter: Filter,
   mode: Filter['mode']
 ): Filter => {
@@ -155,12 +172,12 @@ export const setMode = (
   }
 
   return {
-    ...cloneFilter(filter),
+    ...cloneFilterState(filter),
     mode
   }
 }
 
-export const remove = (
+export const writeFilterRemove = (
   filter: Filter,
   index: number
 ): Filter => {
@@ -168,28 +185,18 @@ export const remove = (
     return filter
   }
 
-  const next = cloneFilter(filter)
+  const next = cloneFilterState(filter)
   next.rules.splice(index, 1)
   return next
 }
 
-export const clear = (
+export const writeFilterClear = (
   filter: Filter
 ): Filter => (
   filter.rules.length
     ? {
-        ...cloneFilter(filter),
+        ...cloneFilterState(filter),
         rules: []
       }
     : filter
 )
-
-export const filter = {
-  add,
-  replace,
-  setPreset,
-  setValue,
-  setMode,
-  remove,
-  clear
-} as const

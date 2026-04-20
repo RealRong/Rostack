@@ -1,9 +1,5 @@
 import {
-  hasIndexImpact,
-  summarizeCommitImpact,
-  touchedFieldCountOfImpact,
-  touchedRecordCountOfImpact,
-  touchedViewCountOfImpact
+  impact as commitImpact
 } from '@dataview/core/commit/impact'
 import type { CommitImpact } from '@dataview/core/contracts'
 import type { TraceImpactSummary } from '@dataview/engine/contracts'
@@ -29,7 +25,7 @@ const addFact = (
 export const summarizeImpact = (
   impact: CommitImpact
 ): TraceImpactSummary => {
-  const summary = summarizeCommitImpact(impact)
+  const summary = commitImpact.summary(impact)
   const facts = new Map<string, number>()
 
   addFact(facts, 'record.insert', impact.records?.inserted?.size)
@@ -49,16 +45,16 @@ export const summarizeImpact = (
   return {
     summary: {
       ...summary,
-      indexes: hasIndexImpact(impact)
+      indexes: commitImpact.has.index(impact)
     },
     facts: Array.from(facts.entries()).map(([kind, count]) => ({
       kind,
       ...(count > 1 ? { count } : {})
     })),
     entities: {
-      touchedRecordCount: touchedRecordCountOfImpact(impact),
-      touchedFieldCount: touchedFieldCountOfImpact(impact),
-      touchedViewCount: touchedViewCountOfImpact(impact)
+      touchedRecordCount: commitImpact.record.touchedCount(impact),
+      touchedFieldCount: commitImpact.field.touchedCount(impact),
+      touchedViewCount: commitImpact.view.touchedCount(impact)
     }
   }
 }

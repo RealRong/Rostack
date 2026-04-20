@@ -2,7 +2,7 @@ import type {
   Action,
   DataDoc
 } from '@dataview/core/contracts'
-import { cloneDocument } from '@dataview/core/document'
+import { document } from '@dataview/core/document'
 import type {
   CreateEngineOptions,
   Engine
@@ -24,7 +24,7 @@ import { createEngineSourceRuntime } from '@dataview/engine/source/runtime'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
-  const initialDocument = cloneDocument(options.document)
+  const initialDocument = document.clone(options.document)
   const performance = createPerformanceRuntime(options.performance)
   const capturePerformance = Boolean(options.performance?.traces || options.performance?.stats)
   const store = createStore(createRuntimeState({
@@ -89,10 +89,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     fields,
     records,
     document: {
-      export: () => cloneDocument(store.get().doc),
-      replace: (document: DataDoc) => {
-        write.load(cloneDocument(document))
-        return cloneDocument(store.get().doc)
+      export: () => document.clone(store.get().doc),
+      replace: (nextDocument: DataDoc) => {
+        write.load(document.clone(nextDocument))
+        return document.clone(store.get().doc)
       }
     },
     history: {

@@ -79,7 +79,7 @@ const buildRemovedFieldViewOps = (
 ): DocumentOperation[] => (
   views
     .flatMap(view => {
-      const nextView = viewApi.repair.removedField(view, fieldId)
+      const nextView = viewApi.repair.field.removed(view, fieldId)
       return nextView === view
         ? []
         : [toViewPut(nextView)]
@@ -92,7 +92,7 @@ const buildConvertedFieldViewOps = (
 ): DocumentOperation[] => (
   views
     .flatMap(view => {
-      const nextView = viewApi.repair.convertedField(view, field)
+      const nextView = viewApi.repair.field.converted(view, field)
       return nextView === view
         ? []
         : [toViewPut(nextView)]
@@ -115,7 +115,7 @@ const createOptionName = (
 ) => {
   let nextName = DEFAULT_OPTION_NAME
   let index = 1
-  while (fieldApi.option.findByName(options, nextName)) {
+  while (fieldApi.option.read.findByName(options, nextName)) {
     index += 1
     nextName = `${DEFAULT_OPTION_NAME} ${index}`
   }
@@ -159,7 +159,7 @@ const requireOptionField = (
 
   return {
     field,
-    options: fieldApi.option.list(field)
+    options: fieldApi.option.read.list(field)
   }
 }
 
@@ -368,7 +368,7 @@ const lowerFieldOptionCreate = (
     )
     return scope.finish()
   }
-  if (explicitName && fieldApi.option.findByName(context.options, explicitName)) {
+  if (explicitName && fieldApi.option.read.findByName(context.options, explicitName)) {
     return scope.finish()
   }
 
@@ -377,7 +377,7 @@ const lowerFieldOptionCreate = (
     options: context.options,
     name: explicitName ?? createOptionName(context.options)
   })
-  const patch = fieldApi.option.replace(
+  const patch = fieldApi.option.write.replace(
     context.field,
     [...context.options, nextOption]
   ) as Partial<Omit<CustomField, 'id'>>
@@ -417,7 +417,7 @@ const lowerFieldOptionReorder = (
   return scope.finish(
     toFieldPatch(
       action.fieldId,
-      fieldApi.option.replace(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>
+      fieldApi.option.write.replace(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>
     )
   )
 }
@@ -462,7 +462,7 @@ const lowerFieldOptionUpdate = (
       return scope.finish()
     }
 
-    const conflicting = fieldApi.option.findByName(context.options, nextName)
+    const conflicting = fieldApi.option.read.findByName(context.options, nextName)
     if (conflicting && conflicting.id !== optionId) {
       scope.issue(
         'field.invalid',
@@ -496,7 +496,7 @@ const lowerFieldOptionUpdate = (
     return scope.finish()
   }
 
-  const patch = fieldApi.option.replace(
+  const patch = fieldApi.option.write.replace(
     context.field,
     context.options.map(option => option.id === optionId ? nextOption : option)
   ) as Partial<Omit<CustomField, 'id'>>

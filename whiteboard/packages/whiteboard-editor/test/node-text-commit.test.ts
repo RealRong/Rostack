@@ -2,34 +2,17 @@ import { describe, expect, it, vi } from 'vitest'
 import { createNodeTextWrite } from '../src/write/node'
 
 describe('createNodeTextWrite.commit', () => {
-  it('persists measured size and wrap width even when text content is unchanged', () => {
-    const update = vi.fn()
+  it('dispatches a single node.text.commit payload', () => {
+    const textCommit = vi.fn()
 
     const write = createNodeTextWrite({
       read: {
-        committed: () => ({
-          node: {
-            id: 'node-1',
-            type: 'text',
-            position: { x: 0, y: 0 },
-            size: { width: 240, height: 20 },
-            data: {
-              text: 'Central topic'
-            }
-          },
-          rect: {
-            x: 0,
-            y: 0,
-            width: 240,
-            height: 20
-          }
-        }),
-        live: () => undefined
+        committed: () => undefined
       },
       write: {
-        update,
+        textCommit,
+        update: vi.fn(),
         updateMany: vi.fn(),
-        deleteCascade: vi.fn()
       }
     })
 
@@ -44,19 +27,15 @@ describe('createNodeTextWrite.commit', () => {
       wrapWidth: 144
     })
 
-    expect(update).toHaveBeenCalledWith('node-1', {
-      fields: {
-        size: {
-          width: 144,
-          height: 44
-        }
+    expect(textCommit).toHaveBeenCalledWith({
+      nodeId: 'node-1',
+      field: 'text',
+      value: 'Central topic',
+      size: {
+        width: 144,
+        height: 44
       },
-      records: [{
-        op: 'set',
-        scope: 'data',
-        path: 'wrapWidth',
-        value: 144
-      }]
+      wrapWidth: 144
     })
   })
 })

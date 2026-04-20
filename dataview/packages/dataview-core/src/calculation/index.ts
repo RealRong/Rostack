@@ -80,31 +80,29 @@ export const calculation = {
       state
     })
   },
-  reducer: {
-    capabilities: {
-      merge: mergeReducerCapabilities,
-      key: reducerCapabilityKey,
-      same: sameReducerCapabilities
-    },
-    demand: {
-      create: createCalculationDemand,
-      normalize: normalizeCalculationDemands,
-      same: sameCalculationDemand
-    },
+  capability: {
+    merge: mergeReducerCapabilities,
+    key: reducerCapabilityKey,
+    same: sameReducerCapabilities
+  },
+  demand: {
+    create: createCalculationDemand,
+    normalize: normalizeCalculationDemands,
+    same: sameCalculationDemand
+  },
+  entry: {
+    create: createCalculationEntry,
+    same: sameCalculationEntry
+  },
+  state: {
     empty: getEmptyFieldReducerState,
-    entry: {
-      create: createCalculationEntry,
-      same: sameCalculationEntry
-    },
-    state: {
-      build: buildFieldReducerState,
-      builder: createFieldReducerBuilder
-    },
-    initial: {
-      count: EMPTY_COUNT_REDUCER_STATE,
-      unique: EMPTY_UNIQUE_REDUCER_STATE,
-      numeric: EMPTY_NUMERIC_REDUCER_STATE,
-      option: EMPTY_OPTION_REDUCER_STATE
-    }
+    build: buildFieldReducerState,
+    builder: createFieldReducerBuilder
+  },
+  initial: {
+    count: EMPTY_COUNT_REDUCER_STATE,
+    unique: EMPTY_UNIQUE_REDUCER_STATE,
+    numeric: EMPTY_NUMERIC_REDUCER_STATE,
+    option: EMPTY_OPTION_REDUCER_STATE
   }
 } as const

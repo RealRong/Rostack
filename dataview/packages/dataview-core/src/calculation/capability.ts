@@ -18,7 +18,7 @@ import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
-  readFieldSpec
+  fieldSpec
 } from '@dataview/core/field/spec'
 import {
   isJsonObject
@@ -191,7 +191,7 @@ const computeOptionDistribution = (input: {
     return emptyResult(input.metric)
   }
 
-  const options = fieldApi.option.list(input.field)
+  const options = fieldApi.option.read.list(input.field)
   const optionIds = new Set(options.map((option: FieldOption) => option.id))
   const orderedOptionIds: string[] = options.map((option: FieldOption) => option.id)
   counts.forEach((_count, optionId) => {
@@ -241,7 +241,7 @@ const supportsNumericMetric = (
 
 const supportsOptionMetric = (
   field: Field | undefined
-): boolean => readFieldSpec(field)?.calculation.optionIdsOf !== undefined
+): boolean => fieldSpec.calculation.supportsOptionIds(field)
 
 const createCountMetric = (
   metric: CalculationMetric,

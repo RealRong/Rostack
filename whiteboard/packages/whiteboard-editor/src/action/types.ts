@@ -11,6 +11,7 @@ import type {
   EdgeId,
   EdgeMarker,
   EdgePatch,
+  EdgeRouteInput,
   EdgeTextMode,
   EdgeType,
   MindmapCreateInput,
@@ -259,9 +260,10 @@ export type EdgeActions = {
   }) => CommandResult
   delete: (ids: EdgeId[]) => CommandResult
   route: {
-    insert: (edgeId: EdgeId, point: Point) => CommandResult<{ index: number }>
-    move: (edgeId: EdgeId, index: number, point: Point) => CommandResult
-    remove: (edgeId: EdgeId, index: number) => CommandResult
+    set: (edgeId: EdgeId, route: EdgeRouteInput) => CommandResult
+    insertPoint: (edgeId: EdgeId, index: number, point: Point) => CommandResult
+    movePoint: (edgeId: EdgeId, index: number, point: Point) => CommandResult
+    removePoint: (edgeId: EdgeId, index: number) => CommandResult
     clear: (edgeId: EdgeId) => CommandResult
   }
   label: {

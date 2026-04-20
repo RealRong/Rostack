@@ -228,7 +228,7 @@ const applyGroupDefault = (input: {
   }
 
   const currentValue = readDraftValue(input.draft, group.field)
-  const next = groupCore.write.next({
+  const next = groupCore.write.value({
     field,
     group,
     currentValue,

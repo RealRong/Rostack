@@ -82,7 +82,7 @@ const readMindmapSubtreeNodeIds = (
 ): readonly string[] => {
   const tree = ctx.read.mindmap.tree(mindmapId)
   return tree
-    ? getSubtreeIds(tree, rootId)
+    ? mindmapApi.tree.subtreeIds(tree, rootId)
     : []
 }
 

@@ -41,7 +41,7 @@ const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
 }
 
 const filterOptionsByQuery = (
-  options: ReturnType<typeof fieldApi.option.list>,
+  options: ReturnType<typeof fieldApi.option.read.list>,
   query: string
 ) => {
   const normalized = normalizeQuery(query)
@@ -72,7 +72,7 @@ export const useOptionPickerController = (
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const field = input.field
   const fieldId = field?.id ?? ''
-  const options = fieldApi.option.list(field)
+  const options = fieldApi.option.read.list(field)
   const filteredOptions = useMemo(
     () => filterOptionsByQuery(options, query),
     [options, query]
@@ -246,7 +246,7 @@ export const useOptionPickerController = (
   ])
 
   const buildOptionItem = useCallback((
-    option: ReturnType<typeof fieldApi.option.list>[number]
+    option: ReturnType<typeof fieldApi.option.read.list>[number]
   ) => buildEditableOptionItem({
     fieldId,
     option,

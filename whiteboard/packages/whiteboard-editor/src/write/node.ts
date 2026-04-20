@@ -1,9 +1,6 @@
-import { isSizeEqual } from '@whiteboard/core/geometry'
-import { isTextContentEmpty } from '@whiteboard/core/node'
 import {
   compileNodeDataUpdate,
   compileNodeStyleUpdate,
-  mergeNodeUpdates
 } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
@@ -18,13 +15,14 @@ import type {
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorQuery } from '@whiteboard/editor/query'
 
+type NodeTextCommitInput = Parameters<NodeTextWrite['commit']>[0]
+
 type NodeContext = {
   read: {
     committed: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
-    live: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
   }
   write: NodeUpdateWrite & {
-    deleteCascade: (ids: readonly NodeId[]) => ReturnType<NodeUpdateWrite['update']> | undefined
+    textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
   }
 }
 
@@ -58,20 +56,19 @@ const createNodeUpdateWrite = (
 const createNodeContext = ({
   read,
   update,
-  deleteCascade
+  textCommit
 }: {
   read: EditorQuery
   update: NodeUpdateWrite
-  deleteCascade: (ids: readonly NodeId[]) => ReturnType<NodeUpdateWrite['update']> | undefined
+  textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
 }): NodeContext => ({
   read: {
-    committed: (id) => read.node.committed.get(id),
-    live: (id) => read.node.item.get(id)
+    committed: (id) => read.node.committed.get(id)
   },
   write: {
     update: update.update,
     updateMany: update.updateMany,
-    deleteCascade
+    textCommit
   }
 })
 
@@ -94,61 +91,14 @@ export const createNodeTextWrite = (
     size,
     fontSize,
     wrapWidth
-  }) => {
-    const committed = ctx.read.committed(nodeId)
-    if (!committed) {
-      return undefined
-    }
-
-    const currentValue = typeof committed.node.data?.[field] === 'string'
-      ? committed.node.data[field] as string
-      : ''
-
-    if (
-      committed.node.type === 'text'
-      && field === 'text'
-      && isTextContentEmpty(value)
-    ) {
-      return ctx.write.deleteCascade([nodeId])
-    }
-
-    if (value === currentValue) {
-      if (
-        isSizeEqual(size, committed.rect)
-        && (
-          fontSize === undefined
-          || committed.node.style?.fontSize === fontSize
-        )
-        && (
-          wrapWidth === undefined
-          || committed.node.data?.wrapWidth === wrapWidth
-        )
-      ) {
-        return undefined
-      }
-    }
-
-    const input = mergeNodeUpdates(
-      value === currentValue
-        ? undefined
-        : compileNodeDataUpdate(field, value),
-      size && !isSizeEqual(size, committed.rect)
-        ? {
-            fields: {
-              size
-            }
-          }
-        : undefined,
-      fontSize !== undefined && committed.node.style?.fontSize !== fontSize
-        ? compileNodeStyleUpdate('fontSize', fontSize)
-        : undefined,
-      committed.node.type === 'text' && committed.node.data?.wrapWidth !== wrapWidth
-        ? compileNodeDataUpdate('wrapWidth', wrapWidth)
-        : undefined
-    )
-
-    return ctx.write.update(nodeId, input)
-  },
+  }) => ctx.write.textCommit({
+    nodeId,
+    field,
+    value,
+    size,
+    fontSize,
+    wrapWidth
+  }),
   color: (nodeIds, color) => ctx.write.updateMany(
     toNodeStyleBatchUpdates(nodeIds, 'color', color)
   ),
@@ -257,9 +207,9 @@ export const createNodeWrite = ({
   const ctx = createNodeContext({
     read,
     update,
-    deleteCascade: (ids) => engine.execute({
-      type: 'node.deleteCascade',
-      ids
+    textCommit: (input) => engine.execute({
+      type: 'node.text.commit',
+      ...input
     })
   })
 

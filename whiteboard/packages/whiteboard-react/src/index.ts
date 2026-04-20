@@ -2,10 +2,19 @@ import '@shared/ui/css/core.css'
 import '@whiteboard/product/theme/whiteboard.css'
 import './styles/whiteboard-react.css'
 
+import {
+  createDefaultNodeRegistry,
+  createNodeRegistry
+} from '@whiteboard/react/features/node'
+
 export { Whiteboard } from '@whiteboard/react/Whiteboard'
 export { useEditor } from '@whiteboard/react/runtime/hooks'
 export { useWhiteboard } from '@whiteboard/react/runtime/hooks'
-export { createNodeRegistry, createDefaultNodeRegistry } from '@whiteboard/react/features/node'
+
+export const nodeRegistry = {
+  create: createNodeRegistry,
+  createDefault: createDefaultNodeRegistry
+} as const
 
 export type {
   WhiteboardOptions,

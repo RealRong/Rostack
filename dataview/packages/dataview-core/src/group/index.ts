@@ -1,45 +1,38 @@
 import {
   clear,
-  cloneBucketState,
-  cloneBuckets,
-  cloneGroup,
-  normalizeGroup,
-  sameGroup,
+  cloneGroupState,
+  normalizeGroupState,
+  patch,
+  patchBucket,
+  sameGroupState,
   set,
-  setBucketCollapsed,
-  setBucketHidden,
-  setInterval,
-  setMode,
-  setShowEmpty,
-  setSort,
   toggle,
-  toggleBucketCollapsed,
+  toggleGroupBucketCollapsed,
   type ViewGroupPatch
 } from '@dataview/core/group/state'
 import { group as groupWrite } from '@dataview/core/group/write'
 
 export const group = {
+  state: {
+    clone: cloneGroupState,
+    normalize: normalizeGroupState,
+    same: sameGroupState
+  },
   clear,
   set,
   toggle,
-  setMode,
-  setSort,
-  setInterval,
-  setShowEmpty,
-  setBucketHidden,
-  setBucketCollapsed,
-  toggleBucketCollapsed,
-  write: groupWrite.write
+  patch,
+  bucket: {
+    patch: patchBucket,
+    toggleCollapsed: toggleGroupBucketCollapsed
+  },
+  write: {
+    value: groupWrite.write.value
+  }
 } as const
-
-export {
-  cloneBucketState,
-  cloneBuckets,
-  cloneGroup,
-  normalizeGroup,
-  sameGroup,
-  type ViewGroupPatch
-}
 export type {
   GroupWriteResult
 } from '@dataview/core/group/write'
+export type {
+  ViewGroupPatch
+} from '@dataview/core/group/state'

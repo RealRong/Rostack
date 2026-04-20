@@ -2,12 +2,7 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  hasActiveViewImpact,
-  hasFieldSchemaAspect,
-  hasRecordSetChange,
-  hasViewQueryImpact
-} from '@dataview/core/commit/impact'
+import { impact as commitImpact } from '@dataview/core/commit/impact'
 import {
   sameOrder
 } from '@shared/core'
@@ -65,7 +60,7 @@ const resolveSectionsAction = (input: {
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewImpact(commit)
+    || commitImpact.has.activeView(commit)
   ) {
     return 'rebuild'
   }
@@ -82,9 +77,9 @@ const resolveSectionsAction = (input: {
   }
 
   if (
-    hasViewQueryImpact(commit, input.activeViewId, ['group'])
-    || hasFieldSchemaAspect(commit, groupField)
-    || hasRecordSetChange(commit)
+    commitImpact.has.viewQuery(commit, input.activeViewId, ['group'])
+    || commitImpact.has.fieldSchema(commit, groupField)
+    || commitImpact.has.recordSetChange(commit)
   ) {
     return 'rebuild'
   }

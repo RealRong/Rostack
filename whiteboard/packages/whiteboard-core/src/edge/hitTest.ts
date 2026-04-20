@@ -78,7 +78,7 @@ const segmentIntersectsRect = (
   to: Point,
   rect: Rect
 ) => {
-  if (isPointInRect(from, rect) || isPointInRect(to, rect)) {
+  if (geometryApi.rect.containsPoint(from, rect) || geometryApi.rect.containsPoint(to, rect)) {
     return true
   }
 
@@ -120,7 +120,7 @@ export const getEdgePathBounds = (
     return undefined
   }
 
-  return getAABBFromPoints(points)
+  return geometryApi.rect.aabbFromPoints(points)
 }
 
 export const matchEdgeRect = ({
@@ -138,15 +138,15 @@ export const matchEdgeRect = ({
   }
 
   if (mode === 'contain') {
-    return rectContains(queryRect, bounds)
+    return geometryApi.rect.contains(queryRect, bounds)
   }
 
-  if (!rectIntersects(queryRect, bounds)) {
+  if (!geometryApi.rect.intersects(queryRect, bounds)) {
     return false
   }
 
   if (path.segments.length === 0) {
-    return path.points.some((point) => isPointInRect(point, queryRect))
+    return path.points.some((point) => geometryApi.rect.containsPoint(point, queryRect))
   }
 
   return path.segments.some((segment) => {

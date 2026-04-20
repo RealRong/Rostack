@@ -16,7 +16,7 @@ export const createSearchApi = (
 ): ActiveViewApi['search'] => ({
   set: value => {
     base.patch(view => ({
-      search: search.set(view.search, value)
+      search: search.state.setQuery(view.search, value)
     }))
   }
 })
@@ -29,21 +29,21 @@ export const createFiltersApi = (
       const field = reader.fields.get(fieldId)
       return field
         ? {
-            filter: filter.add(view.filter, field)
+            filter: filter.write.add(view.filter, field)
           }
         : undefined
     })
   },
   update: (index, rule) => {
     base.patch(view => ({
-      filter: filter.replace(view.filter, index, rule)
+      filter: filter.write.replace(view.filter, index, rule)
     }))
   },
   setPreset: (index, presetId) => {
     base.patch((view, reader) => {
       const fieldId = view.filter.rules[index]?.fieldId
       return {
-        filter: filter.setPreset(
+        filter: filter.write.preset(
           view.filter,
           index,
           fieldId
@@ -58,7 +58,7 @@ export const createFiltersApi = (
     base.patch((view, reader) => {
       const fieldId = view.filter.rules[index]?.fieldId
       return {
-        filter: filter.setValue(
+        filter: filter.write.value(
           view.filter,
           index,
           fieldId
@@ -71,20 +71,17 @@ export const createFiltersApi = (
   },
   setMode: value => {
     base.patch(view => ({
-      filter: filter.setMode(view.filter, value)
+      filter: filter.write.mode(view.filter, value)
     }))
   },
   remove: index => {
     base.patch(view => ({
-      filter: filter.remove(view.filter, index)
+      filter: filter.write.remove(view.filter, index)
     }))
   },
   clear: () => {
     base.patch(view => ({
-      filter: filter.clone({
-        ...view.filter,
-        rules: []
-      })
+      filter: filter.write.clear(view.filter)
     }))
   }
 })
@@ -94,37 +91,37 @@ export const createSortApi = (
 ): ActiveViewApi['sort'] => ({
   add: (fieldId, direction) => {
     base.patch(view => ({
-      sort: sort.add(view.sort, fieldId, direction)
+      sort: sort.write.add(view.sort, fieldId, direction)
     }))
   },
   update: (fieldId, direction) => {
     base.patch(view => ({
-      sort: sort.set(view.sort, fieldId, direction)
+      sort: sort.write.upsert(view.sort, fieldId, direction)
     }))
   },
   keepOnly: (fieldId, direction) => {
     base.patch(view => ({
-      sort: sort.keepOnly(view.sort, fieldId, direction)
+      sort: sort.write.keepOnly(view.sort, fieldId, direction)
     }))
   },
   replace: (index, sorter) => {
     base.patch(view => ({
-      sort: sort.replace(view.sort, index, sorter)
+      sort: sort.write.replace(view.sort, index, sorter)
     }))
   },
   remove: index => {
     base.patch(view => ({
-      sort: sort.remove(view.sort, index)
+      sort: sort.write.remove(view.sort, index)
     }))
   },
   move: (from, to) => {
     base.patch(view => ({
-      sort: sort.move(view.sort, from, to)
+      sort: sort.write.move(view.sort, from, to)
     }))
   },
   clear: () => {
     base.patch(view => ({
-      sort: sort.clear(view.sort)
+      sort: sort.write.clear(view.sort)
     }))
   }
 })
@@ -165,7 +162,9 @@ export const createGroupApi = (
         : undefined
       return field
         ? {
-            group: group.setMode(view.group, field, value) ?? null
+            group: group.patch(view.group, field, {
+              mode: value
+            }) ?? null
           }
         : undefined
     })
@@ -178,7 +177,9 @@ export const createGroupApi = (
         : undefined
       return field
         ? {
-            group: group.setSort(view.group, field, value) ?? null
+            group: group.patch(view.group, field, {
+              bucketSort: value
+            }) ?? null
           }
         : undefined
     })
@@ -191,7 +192,9 @@ export const createGroupApi = (
         : undefined
       return field
         ? {
-            group: group.setInterval(view.group, field, value) ?? null
+            group: group.patch(view.group, field, {
+              bucketInterval: value
+            }) ?? null
           }
         : undefined
     })
@@ -204,7 +207,9 @@ export const createGroupApi = (
         : undefined
       return field
         ? {
-            group: group.setShowEmpty(view.group, field, value) ?? null
+            group: group.patch(view.group, field, {
+              showEmpty: value
+            }) ?? null
           }
         : undefined
     })

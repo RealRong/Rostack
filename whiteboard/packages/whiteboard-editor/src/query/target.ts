@@ -18,7 +18,7 @@ const resolveTargetBounds = ({
   target: SelectionTarget
   readNodeBounds: (nodeId: NodeId) => Rect | undefined
   readEdgeBounds: (edgeId: EdgeId) => Rect | undefined
-}): Rect | undefined => getTargetBounds({
+}): Rect | undefined => selection.bounds.get({
   target,
   readNodeBounds,
   readEdgeBounds

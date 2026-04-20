@@ -1,9 +1,19 @@
 import {
+  isSizeEqual
+} from '@whiteboard/core/geometry'
+import {
   buildNodeAlignOperations,
   buildNodeCreateOperation,
   buildNodeDistributeOperations,
-  createNodeUpdateOperation
+  createNodeUpdateOperation,
+  isNodeUpdateEmpty,
+  isTextContentEmpty
 } from '@whiteboard/core/node'
+import {
+  compileNodeDataUpdate,
+  compileNodeStyleUpdate,
+  mergeNodeUpdates
+} from '@whiteboard/core/schema'
 import { resolveLockDecision } from '@whiteboard/core/lock'
 import { ok } from '@whiteboard/core/result'
 import type {
@@ -167,6 +177,83 @@ const compileMindmapTopicUpdate = (
   return ok(ops)
 }
 
+const compileNodeTextCommit = (
+  command: Extract<NodeCommand, { type: 'node.text.commit' }>,
+  ctx: CommandCompileContext
+) => {
+  const document = ctx.tx.read.document.get()
+  const node = document.nodes[command.nodeId]
+  if (!node) {
+    return
+  }
+
+  if (
+    node.type === 'text'
+    && command.field === 'text'
+    && isTextContentEmpty(command.value)
+  ) {
+    return compileCanvasDelete(
+      [{
+        kind: 'node',
+        id: command.nodeId
+      }],
+      ctx
+    )
+  }
+
+  const decision = resolveLockDecision({
+    document,
+    target: {
+      kind: 'nodes',
+      nodeIds: [command.nodeId]
+    }
+  })
+  if (!decision.allowed) {
+    return ctx.tx.fail.cancelled(
+      decision.reason === 'locked-node'
+        ? 'Locked nodes cannot be modified.'
+        : decision.reason === 'locked-edge'
+          ? 'Locked edges cannot be modified.'
+          : 'Locked node relations cannot be modified.'
+    )
+  }
+
+  const currentValue = typeof node.data?.[command.field] === 'string'
+    ? node.data[command.field] as string
+    : ''
+  const currentFontSize = typeof node.style?.fontSize === 'number'
+    ? node.style.fontSize
+    : undefined
+  const input = mergeNodeUpdates(
+    command.value === currentValue
+      ? undefined
+      : compileNodeDataUpdate(command.field, command.value),
+    command.size && !isSizeEqual(command.size, node.size)
+      ? {
+          fields: {
+            size: command.size
+          }
+        }
+      : undefined,
+    command.fontSize !== undefined && currentFontSize !== command.fontSize
+      ? compileNodeStyleUpdate('fontSize', command.fontSize)
+      : undefined,
+    node.type === 'text' && node.data?.wrapWidth !== command.wrapWidth
+      ? compileNodeDataUpdate('wrapWidth', command.wrapWidth)
+      : undefined
+  )
+
+  if (isNodeUpdateEmpty(input)) {
+    return
+  }
+
+  const planned = compileMindmapTopicUpdate(document, command.nodeId, input)
+  if (!planned.ok) {
+    return ctx.tx.fail.invalid(planned.error.message, readErrorDetails(planned.error))
+  }
+  planned.data.forEach((op) => ctx.tx.emit(op))
+}
+
 export const compileNodeCommand = (
   command: NodeCommand,
   ctx: CommandCompileContext
@@ -270,6 +357,8 @@ export const compileNodeCommand = (
       }
       return
     }
+    case 'node.text.commit':
+      return compileNodeTextCommit(command, ctx)
     case 'node.align': {
       const built = buildNodeAlignOperations({
         ids: command.ids,

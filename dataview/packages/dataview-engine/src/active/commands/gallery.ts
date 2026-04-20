@@ -8,12 +8,24 @@ export const createGalleryApi = (
   base: ActiveViewContext
 ): ActiveViewApi['gallery'] => ({
   setWrap: value => base.patch(view => ({
-    options: viewApi.layout.gallery.setWrap(view.options, value)
+    options: viewApi.layout.gallery.patch(view.options, {
+      card: {
+        wrap: value
+      }
+    })
   })),
   setSize: value => base.patch(view => ({
-    options: viewApi.layout.gallery.setSize(view.options, value)
+    options: viewApi.layout.gallery.patch(view.options, {
+      card: {
+        size: value
+      }
+    })
   })),
   setLayout: value => base.patch(view => ({
-    options: viewApi.layout.gallery.setLayout(view.options, value)
+    options: viewApi.layout.gallery.patch(view.options, {
+      card: {
+        layout: value
+      }
+    })
   }))
 })

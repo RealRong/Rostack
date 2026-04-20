@@ -109,7 +109,7 @@ const readFilterSummaryOptionValue = (
   }
 
   return t(optionIds.map(optionId => (
-    fieldApi.option.get(field, optionId)?.name ?? optionId
+    fieldApi.option.read.get(field, optionId)?.name ?? optionId
   )))
 }
 

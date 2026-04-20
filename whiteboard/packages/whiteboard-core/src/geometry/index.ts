@@ -1,49 +1,42 @@
-export { clamp, degToRad } from '@whiteboard/core/geometry/scalar'
-
-export {
-  getRectCenter,
-  isPointInRect,
-  rectFromPoints,
-  rectContains,
-  rectIntersects,
-  expandRect,
-  getRectCorners,
-  getAABBFromPoints,
-  getRectsBoundingRect
-} from '@whiteboard/core/geometry/rect'
-
-export {
+import { getAnchorPoint } from '@whiteboard/core/geometry/anchor'
+import {
+  rectContainsRotatedRect,
+  rectIntersectsRotatedRect
+} from '@whiteboard/core/geometry/collision'
+import {
+  isPointEqual,
+  isSizeEqual
+} from '@whiteboard/core/geometry/equality'
+import {
   rotatePoint,
   quantizePointToAngleStep,
   quantizePointToOctilinear
 } from '@whiteboard/core/geometry/point'
-export { getAnchorPoint } from '@whiteboard/core/geometry/anchor'
-export {
-  normalizePolylinePoints,
-  arePointListsEqual
+import {
+  arePointListsEqual,
+  normalizePolylinePoints
 } from '@whiteboard/core/geometry/polyline'
-
-export {
+import {
+  expandRect,
+  getAABBFromPoints,
+  getRectCenter,
+  getRectCorners,
+  getRectsBoundingRect,
+  isPointInRect,
+  rectContains,
+  rectFromPoints,
+  rectIntersects
+} from '@whiteboard/core/geometry/rect'
+import {
   getRotatedCorners,
   isPointInRotatedRect
 } from '@whiteboard/core/geometry/rotation'
-
-export {
-  rectIntersectsRotatedRect,
-  rectContainsRotatedRect
-} from '@whiteboard/core/geometry/collision'
-
-export {
+import { clamp, degToRad } from '@whiteboard/core/geometry/scalar'
+import {
   distancePointToSegment,
   getSegmentBounds
 } from '@whiteboard/core/geometry/segment'
-
-export {
-  isPointEqual,
-  isSizeEqual
-} from '@whiteboard/core/geometry/equality'
-
-export {
+import {
   DEFAULT_VIEWPORT_FIT_PADDING,
   DEFAULT_VIEWPORT_LIMITS,
   EMPTY_CONTAINER_RECT,
@@ -52,16 +45,82 @@ export {
   clientToScreenPoint,
   copyViewport,
   fitViewportToRect,
-  viewportScreenToWorld,
-  viewportWorldToScreen,
+  isSameViewport,
   normalizeViewport,
   normalizeViewportLimits,
   panViewport,
   screenToWorldPoint,
-  zoomViewport,
+  viewportScreenToWorld,
+  viewportWorldToScreen,
   worldToScreenPoint,
-  isSameViewport
+  zoomViewport
 } from '@whiteboard/core/geometry/viewport'
+
+export const geometry = {
+  scalar: {
+    clamp,
+    degToRad
+  },
+  rect: {
+    center: getRectCenter,
+    containsPoint: isPointInRect,
+    fromPoints: rectFromPoints,
+    contains: rectContains,
+    intersects: rectIntersects,
+    expand: expandRect,
+    corners: getRectCorners,
+    aabbFromPoints: getAABBFromPoints,
+    boundingRect: getRectsBoundingRect
+  },
+  point: {
+    rotate: rotatePoint,
+    quantizeAngleStep: quantizePointToAngleStep,
+    quantizeOctilinear: quantizePointToOctilinear
+  },
+  anchor: {
+    point: getAnchorPoint
+  },
+  polyline: {
+    normalize: normalizePolylinePoints,
+    equal: arePointListsEqual
+  },
+  rotation: {
+    corners: getRotatedCorners,
+    containsPoint: isPointInRotatedRect
+  },
+  collision: {
+    rectIntersectsRotatedRect,
+    rectContainsRotatedRect
+  },
+  segment: {
+    distanceToPoint: distancePointToSegment,
+    bounds: getSegmentBounds
+  },
+  equal: {
+    point: isPointEqual,
+    size: isSizeEqual
+  },
+  viewport: {
+    fitPadding: DEFAULT_VIEWPORT_FIT_PADDING,
+    defaultLimits: DEFAULT_VIEWPORT_LIMITS,
+    emptyContainerRect: EMPTY_CONTAINER_RECT,
+    applyScreenPan,
+    applyWheelInput,
+    clientToScreenPoint,
+    copy: copyViewport,
+    fitToRect: fitViewportToRect,
+    normalize: normalizeViewport,
+    normalizeLimits: normalizeViewportLimits,
+    pan: panViewport,
+    screenToWorld: screenToWorldPoint,
+    zoom: zoomViewport,
+    worldToScreen: worldToScreenPoint,
+    viewportScreenToWorld,
+    viewportWorldToScreen,
+    isSame: isSameViewport
+  }
+} as const
+
 export type {
   ContainerRect,
   ViewportLimits,

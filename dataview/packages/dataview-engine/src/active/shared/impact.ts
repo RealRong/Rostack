@@ -1,9 +1,5 @@
 import {
-  collectSchemaFieldIds,
-  collectTouchedFieldIds,
-  collectTouchedRecordIds,
-  collectValueFieldIds,
-  hasRecordSetChange
+  impact as commitImpact
 } from '@dataview/core/commit/impact'
 import type {
   CommitImpact,
@@ -98,15 +94,15 @@ export const createActiveImpact = (
 ): ActiveImpact => ({
   commit,
   base: {
-    touchedRecords: collectTouchedRecordIds(commit),
-    touchedFields: collectTouchedFieldIds(commit, {
+    touchedRecords: commitImpact.record.touchedIds(commit),
+    touchedFields: commitImpact.field.touchedIds(commit, {
       includeTitlePatch: true
     }),
-    valueFields: collectValueFieldIds(commit, {
+    valueFields: commitImpact.field.valueIds(commit, {
       includeTitlePatch: true
     }),
-    schemaFields: collectSchemaFieldIds(commit),
-    recordSetChanged: hasRecordSetChange(commit)
+    schemaFields: commitImpact.field.schemaIds(commit),
+    recordSetChanged: commitImpact.has.recordSetChange(commit)
   }
 })
 

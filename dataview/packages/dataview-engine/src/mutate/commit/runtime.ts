@@ -1,6 +1,5 @@
 import {
-  createResetCommitImpact,
-  summarizeCommitImpact
+  impact
 } from '@dataview/core/commit/impact'
 import type {
   CommitImpact,
@@ -10,7 +9,7 @@ import type {
   DocumentOperation
 } from '@dataview/core/contracts/operations'
 import {
-  applyOperations
+  operation
 } from '@dataview/core/operation'
 import {
   deriveIndex
@@ -111,7 +110,7 @@ const replayResult = (
   history: EngineRuntimeState['history']
 ): Draft<CommitResult> => {
   const startedAt = now()
-  const applied = applyOperations(base.doc, operations)
+  const applied = operation.apply(base.doc, operations)
 
   return {
     ok: true,
@@ -122,7 +121,7 @@ const replayResult = (
     result: {
       issues: [],
       applied: true,
-      summary: summarizeCommitImpact(applied.impact)
+      summary: impact.summary(applied.impact)
     },
     ms: now() - startedAt
   }
@@ -142,7 +141,7 @@ const writePlan = (
   }
 
   const startedAt = now()
-  const applied = applyOperations(base.doc, batch.operations)
+  const applied = operation.apply(base.doc, batch.operations)
   const history = clearRedo(base.history)
   const nextHistory = base.history.cap > 0
     ? pushUndo(history, {
@@ -160,7 +159,7 @@ const writePlan = (
     result: {
       issues: batch.issues,
       applied: true,
-      summary: summarizeCommitImpact(applied.impact),
+      summary: impact.summary(applied.impact),
       created: createdFromImpact(applied.impact)
     },
     planMs: batch.planMs,
@@ -177,18 +176,18 @@ const replayPlan = (
 const loadPlan = (
   doc: DataDoc
 ): Plan<CommitResult> => base => {
-  const impact = createResetCommitImpact(base.doc, doc)
+  const nextImpact = impact.reset(base.doc, doc)
 
   return {
     ok: true,
     kind: 'load',
     doc,
     history: clearHistory(base.history),
-    impact,
+    impact: nextImpact,
     result: {
       issues: [],
       applied: true,
-      summary: summarizeCommitImpact(impact)
+      summary: impact.summary(nextImpact)
     },
     ms: 0
   }

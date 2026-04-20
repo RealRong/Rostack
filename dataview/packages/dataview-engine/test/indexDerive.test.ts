@@ -187,8 +187,8 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
     }],
     sortFields: [FIELD_POINTS],
     calculations: [
-      calculation.reducer.demand.create(FIELD_STATUS, 'countByOption'),
-      calculation.reducer.demand.create(FIELD_POINTS, 'sum')
+      calculation.demand.create(FIELD_STATUS, 'countByOption'),
+      calculation.demand.create(FIELD_POINTS, 'sum')
     ]
   })
 
@@ -487,7 +487,7 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
     },
     sortFields: [FIELD_STATUS, FIELD_POINTS],
     calculations: [
-      calculation.reducer.demand.create(FIELD_STATUS, 'countByOption')
+      calculation.demand.create(FIELD_STATUS, 'countByOption')
     ]
   })
   const before = index.state()
@@ -623,8 +623,8 @@ test('engine.active calculations support select and multiSelect option distribut
 
   const index = createIndexHarness(document, {
     calculations: [
-      calculation.reducer.demand.create(FIELD_PRIORITY, 'countByOption'),
-      calculation.reducer.demand.create(FIELD_TAGS, 'countByOption')
+      calculation.demand.create(FIELD_PRIORITY, 'countByOption'),
+      calculation.demand.create(FIELD_TAGS, 'countByOption')
     ]
   })
   const state = index.state()
@@ -689,13 +689,13 @@ test('engine.active field reducer builder reuses previous state when net deltas 
     numeric: true,
     option: true
   } as const
-  const previous = calculation.reducer.state.build({
+  const previous = calculation.state.build({
     entries: new Map([
       ['rec_1', entry]
     ]),
     capabilities
   })
-  const reducer = calculation.reducer.state.builder({
+  const reducer = calculation.state.builder({
     previous,
     capabilities
   })

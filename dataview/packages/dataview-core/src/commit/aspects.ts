@@ -17,15 +17,9 @@ import {
 import {
   filter as filterApi
 } from '@dataview/core/filter'
-import {
-  sameGroup
-} from '@dataview/core/group'
-import {
-  sameSearch
-} from '@dataview/core/search'
-import {
-  sameSorters
-} from '@dataview/core/sort'
+import { group } from '@dataview/core/group'
+import { search } from '@dataview/core/search'
+import { sort } from '@dataview/core/sort'
 
 const sameIdList = <T extends string>(
   left: readonly T[] | undefined,
@@ -35,22 +29,22 @@ const sameIdList = <T extends string>(
   right?.length ? right : undefined
 )
 
-export const collectViewQueryAspects = (
+const collectViewQueryAspects = (
   previousView: View,
   nextView: View
 ): readonly ViewQueryAspect[] => {
   const aspects = new Set<ViewQueryAspect>()
 
-  if (!sameSearch(previousView.search, nextView.search)) {
+  if (!search.state.same(previousView.search, nextView.search)) {
     aspects.add('search')
   }
-  if (!filterApi.same(previousView.filter, nextView.filter)) {
+  if (!filterApi.state.same(previousView.filter, nextView.filter)) {
     aspects.add('filter')
   }
-  if (!sameSorters(previousView.sort, nextView.sort)) {
+  if (!sort.rules.same(previousView.sort, nextView.sort)) {
     aspects.add('sort')
   }
-  if (!sameGroup(previousView.group, nextView.group)) {
+  if (!group.state.same(previousView.group, nextView.group)) {
     aspects.add('group')
   }
   if (!sameIdList(previousView.orders, nextView.orders)) {
@@ -60,7 +54,7 @@ export const collectViewQueryAspects = (
   return Array.from(aspects)
 }
 
-export const collectViewLayoutAspects = (
+const collectViewLayoutAspects = (
   previousView: View,
   nextView: View
 ): readonly ViewLayoutAspect[] => {
@@ -82,7 +76,7 @@ export const collectViewLayoutAspects = (
   return Array.from(aspects)
 }
 
-export const collectCalculationFields = (
+const collectCalculationFields = (
   previousView: View,
   nextView: View
 ): readonly FieldId[] | undefined => {
@@ -100,7 +94,7 @@ export const collectCalculationFields = (
     : undefined
 }
 
-export const collectFieldSchemaAspects = (
+const collectFieldSchemaAspects = (
   previousField: CustomField | undefined,
   nextField: CustomField | undefined
 ): readonly FieldSchemaAspect[] => {
@@ -154,7 +148,7 @@ export const collectFieldSchemaAspects = (
   return Array.from(aspects)
 }
 
-export const collectRecordPatchAspects = (
+const collectRecordPatchAspects = (
   previousRecord: DataRecord | undefined,
   nextRecord: DataRecord | undefined
 ): readonly RecordPatchAspect[] => {
@@ -176,3 +170,17 @@ export const collectRecordPatchAspects = (
 
   return Array.from(aspects)
 }
+
+export const commitAspects = {
+  view: {
+    query: collectViewQueryAspects,
+    layout: collectViewLayoutAspects,
+    calculationFields: collectCalculationFields
+  },
+  field: {
+    schema: collectFieldSchemaAspects
+  },
+  record: {
+    patch: collectRecordPatchAspects
+  }
+} as const

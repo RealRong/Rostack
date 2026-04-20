@@ -254,7 +254,7 @@ export const createMindmapTopicStructureApi = (
     }
     const siblings = current.children[parentId] ?? []
     const index = siblings.indexOf(input.nodeId)
-    const nodeIds = new Set(getSubtreeIds(tree, input.nodeId))
+    const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, input.nodeId))
     const connectedEdges = collectConnectedEdges(tx._runtime.draft, nodeIds)
     connectedEdges.forEach((edge) => {
       tx._runtime.inverse.unshift({

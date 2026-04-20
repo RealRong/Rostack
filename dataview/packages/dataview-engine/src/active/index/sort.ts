@@ -7,7 +7,7 @@ import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
-  readFieldSpec
+  fieldSpec
 } from '@dataview/core/field/spec'
 import { sameOrder } from '@shared/core'
 import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
@@ -125,7 +125,7 @@ const buildFieldSortIndex = (
 ): SortFieldIndex => {
   const field = context.reader.fields.get(fieldId)
   const values = records.values.get(fieldId)?.byRecord ?? EMPTY_VALUE_MAP
-  const scalarOf = readFieldSpec(field)?.index.sort.scalarOf
+  const scalarOf = fieldSpec.index.sort.of(field)
   const sortScalars = scalarOf
     ? buildSortScalars(values, scalarOf)
     : undefined
@@ -187,7 +187,7 @@ const syncFieldSortIndex = (input: {
 
   const field = input.context.reader.fields.get(input.fieldId)
   const values = input.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
-  const scalarOf = readFieldSpec(field)?.index.sort.scalarOf
+  const scalarOf = fieldSpec.index.sort.of(field)
   const sortScalars = scalarOf
     ? buildSortScalars(values, scalarOf)
     : undefined

@@ -157,7 +157,7 @@ export const applyNodeTextDraft = <
     ...(item.node.data ?? {}),
     [draft.field]: draft.value
   }
-  const nextRect = draft.size && !isSizeEqual(draft.size, item.rect)
+  const nextRect = draft.size && !geometryApi.equal.size(draft.size, item.rect)
     ? {
         ...item.rect,
         width: draft.size.width,
@@ -190,7 +190,7 @@ export const isNodeProjectionPatchEqual = (
   left: Pick<NodeFieldPatch, 'position' | 'size' | 'rotation'> | undefined,
   right: Pick<NodeFieldPatch, 'position' | 'size' | 'rotation'> | undefined
 ) => (
-  isPointEqual(left?.position, right?.position)
-  && isSizeEqual(left?.size, right?.size)
+  geometryApi.equal.point(left?.position, right?.position)
+  && geometryApi.equal.size(left?.size, right?.size)
   && left?.rotation === right?.rotation
 )

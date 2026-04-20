@@ -25,7 +25,7 @@ export const createMindmapSnapshotApi = (
     if (!mindmap || !tree) {
       throw new Error(`Mindmap ${id} not found.`)
     }
-    const nodeIds = new Set(getSubtreeIds(tree, tree.rootNodeId))
+    const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, tree.rootNodeId))
     const nodes = [...nodeIds].map((nodeId) => cloneNode(getNode(tx._runtime.draft, nodeId)!))
     return {
       mindmap: cloneMindmap(mindmap),
@@ -52,7 +52,7 @@ export const createMindmapSnapshotApi = (
     }
     const siblings = current.children[parentId] ?? []
     const index = siblings.indexOf(rootId)
-    const nodeIds = new Set(getSubtreeIds(tree, rootId))
+    const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, rootId))
     const nodes = [...nodeIds].map((nodeId) => cloneNode(getNode(tx._runtime.draft, nodeId)!))
     const members = Object.fromEntries(
       [...nodeIds].map((nodeId) => [nodeId, cloneMindmapMember(current.members[nodeId])!])

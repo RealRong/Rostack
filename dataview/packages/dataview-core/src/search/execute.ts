@@ -3,7 +3,7 @@ import type {
   DataRecord,
   Search
 } from '@dataview/core/contracts'
-import { buildRecordSearchTexts } from '@dataview/core/search/tokens'
+import { buildRecordTexts } from '@dataview/core/search/tokens'
 
 export const matchSearchRecord = (
   record: DataRecord,
@@ -15,7 +15,9 @@ export const matchSearchRecord = (
     return true
   }
 
-  const candidates = buildRecordSearchTexts(record, search, document)
+  const candidates = buildRecordTexts(record, search, {
+    document
+  })
 
   return candidates.some(candidate => candidate.includes(query))
 }

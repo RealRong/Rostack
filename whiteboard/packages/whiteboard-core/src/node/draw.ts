@@ -101,7 +101,7 @@ const segmentIntersectsRect = (
   right: Point,
   rect: Rect
 ) => {
-  if (isPointInRect(left, rect) || isPointInRect(right, rect)) {
+  if (geometryApi.rect.containsPoint(left, rect) || geometryApi.rect.containsPoint(right, rect)) {
     return true
   }
 
@@ -140,7 +140,7 @@ const createDrawWorldProjector = (
   const safeBaseHeight = Math.max(1, baseSize.height)
   const scaleX = rect.width / safeBaseWidth
   const scaleY = rect.height / safeBaseHeight
-  const center = getRectCenter(rect)
+  const center = geometryApi.rect.center(rect)
   const rotation = node.rotation ?? 0
 
   const project = (point: Point): Point => {
@@ -149,7 +149,7 @@ const createDrawWorldProjector = (
       y: rect.y + point.y * scaleY
     }
     return rotation
-      ? rotatePoint(world, center, rotation)
+      ? geometryApi.point.rotate(world, center, rotation)
       : world
   }
 
@@ -183,7 +183,7 @@ const sampleDrawPathPoints = (
 
   const last = points[points.length - 1]
   const previous = sampled[sampled.length - 1]
-  if (!isPointEqual(previous, last)) {
+  if (!geometryApi.equal.point(previous, last)) {
     sampled.push(last)
   }
 
@@ -211,7 +211,7 @@ const simplifyDrawPointsRadial = (
 
   const last = points[points.length - 1]
   const previous = next[next.length - 1]
-  if (!isPointEqual(previous, last)) {
+  if (!geometryApi.equal.point(previous, last)) {
     next.push(last)
   }
 
@@ -232,7 +232,7 @@ const simplifyDrawPointsBySegment = (
     const point = points[index]
     const previous = next[next.length - 1]
     const after = points[index + 1]
-    const distance = distancePointToSegment(point, previous, after)
+    const distance = geometryApi.segment.distanceToPoint(point, previous, after)
 
     if (distance > tolerance) {
       next.push(point)
@@ -241,7 +241,7 @@ const simplifyDrawPointsBySegment = (
 
   const last = points[points.length - 1]
   const previous = next[next.length - 1]
-  if (!isPointEqual(previous, last)) {
+  if (!geometryApi.equal.point(previous, last)) {
     next.push(last)
   }
 
@@ -259,7 +259,7 @@ const resolveDrawPaintedRect = (
 
   const { project, strokeRadius } = createDrawWorldProjector(node, rect)
   const worldPoints = points.map(project)
-  return expandRect(getAABBFromPoints(worldPoints), strokeRadius)
+  return geometryApi.rect.expand(geometryApi.rect.aabbFromPoints(worldPoints), strokeRadius)
 }
 
 export const readDrawPoints = (
@@ -282,7 +282,7 @@ export const normalizeDrawPoints = (
     if (!isFinitePoint(point)) {
       continue
     }
-    if (isPointEqual(normalized[normalized.length - 1], point)) {
+    if (geometryApi.equal.point(normalized[normalized.length - 1], point)) {
       continue
     }
     normalized.push(point)
@@ -409,7 +409,7 @@ export const resolveDrawStroke = ({
     return undefined
   }
 
-  const bounds = getAABBFromPoints([...normalized])
+  const bounds = geometryApi.rect.aabbFromPoints([...normalized])
   const padding = Math.max(4, width)
   const position = {
     x: bounds.x - padding,
@@ -447,24 +447,24 @@ export const matchDrawRect = ({
   }
 
   if (mode === 'contain') {
-    return rectContains(queryRect, paintedRect)
+    return geometryApi.rect.contains(queryRect, paintedRect)
   }
 
-  if (!rectIntersects(queryRect, paintedRect)) {
+  if (!geometryApi.rect.intersects(queryRect, paintedRect)) {
     return false
   }
 
   const localPoints = readDrawPoints(node)
   const { project, strokeRadius } = createDrawWorldProjector(node, rect)
-  const expandedQueryRect = expandRect(queryRect, strokeRadius)
+  const expandedQueryRect = geometryApi.rect.expand(queryRect, strokeRadius)
   const worldPoints = sampleDrawPathPoints(localPoints).map(project)
 
   if (worldPoints.length === 1) {
-    return isPointInRect(worldPoints[0], expandedQueryRect)
+    return geometryApi.rect.containsPoint(worldPoints[0], expandedQueryRect)
   }
 
   for (let index = 0; index < worldPoints.length; index += 1) {
-    if (isPointInRect(worldPoints[index], expandedQueryRect)) {
+    if (geometryApi.rect.containsPoint(worldPoints[index], expandedQueryRect)) {
       return true
     }
     if (index === 0) {

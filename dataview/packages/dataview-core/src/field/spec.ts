@@ -15,7 +15,7 @@ import {
   readNumberValue
 } from '@dataview/core/field/value'
 import {
-  getFieldOption
+  fieldOption
 } from '@dataview/core/field/options'
 import {
   trimToUndefined
@@ -177,7 +177,7 @@ const normalizeOptionId = (
     return undefined
   }
 
-  return getFieldOption(optionField, value)?.id ?? trimToUndefined(value)
+  return fieldOption.read.get(optionField, value)?.id ?? trimToUndefined(value)
 }
 
 const readSingleOptionIds = (
@@ -346,14 +346,88 @@ const fieldSpecsByKind = {
   asset: createFieldSpec({})
 } as const satisfies Record<Field['kind'], FieldSpec>
 
-export const getFieldSpec = (
+const getFieldSpec = (
   field: Pick<Field, 'kind'>
 ): FieldSpec => fieldSpecsByKind[field.kind]
 
-export const readFieldSpec = (
+const readFieldSpec = (
   field?: Pick<Field, 'kind'>
 ): FieldSpec | undefined => (
   field
     ? getFieldSpec(field)
     : undefined
 )
+
+const readIndexSearchDefaultEnabled = (
+  field?: Pick<Field, 'kind'>
+): boolean => readFieldSpec(field)?.index.searchDefaultEnabled === true
+
+const readIndexBucketKeys = (
+  field: Field | undefined,
+  value: unknown
+): readonly string[] | undefined => readFieldSpec(field)?.index.bucket.fastKeysOf?.(value)
+
+const readIndexSortScalar = (
+  field: Field | undefined,
+  value: unknown
+): string | number | boolean | undefined => readFieldSpec(field)?.index.sort.scalarOf?.(value)
+
+const readIndexSortScalarOf = (
+  field?: Pick<Field, 'kind'>
+): ((value: unknown) => string | number | boolean | undefined) | undefined => (
+  readFieldSpec(field)?.index.sort.scalarOf
+)
+
+const readCalculationUniqueKey = (
+  field: Field | undefined,
+  value: unknown
+): string => readFieldSpec(field)?.calculation.uniqueKeyOf(field, value)
+  ?? stableSerialize(value)
+
+const readCalculationOptionIds = (
+  field: Field | undefined,
+  value: unknown
+): readonly string[] | undefined => readFieldSpec(field)?.calculation.optionIdsOf?.(field, value)
+
+const supportsCalculationOptionIds = (
+  field?: Pick<Field, 'kind'>
+): boolean => readFieldSpec(field)?.calculation.optionIdsOf !== undefined
+
+const readDefaultValue = (
+  field: Field
+): unknown | undefined => readFieldSpec(field)?.create.defaultValue?.(field)
+
+const usesGroupOptionColors = (
+  field?: Pick<Field, 'kind'>
+): boolean => readFieldSpec(field)?.view.groupUsesOptionColors === true
+
+const readKanbanGroupPriority = (
+  field?: Pick<Field, 'kind'>
+): number => readFieldSpec(field)?.view.kanbanGroupPriority ?? 0
+
+export const fieldSpec = {
+  get: getFieldSpec,
+  read: readFieldSpec,
+  index: {
+    searchDefaultEnabled: readIndexSearchDefaultEnabled,
+    bucket: {
+      keys: readIndexBucketKeys
+    },
+    sort: {
+      of: readIndexSortScalarOf,
+      scalar: readIndexSortScalar
+    }
+  },
+  calculation: {
+    uniqueKey: readCalculationUniqueKey,
+    optionIds: readCalculationOptionIds,
+    supportsOptionIds: supportsCalculationOptionIds
+  },
+  create: {
+    defaultValue: readDefaultValue
+  },
+  view: {
+    groupUsesOptionColors: usesGroupOptionColors,
+    kanbanGroupPriority: readKanbanGroupPriority
+  }
+} as const

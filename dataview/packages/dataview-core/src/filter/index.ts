@@ -19,12 +19,23 @@ import {
   setFilterRuleValue
 } from '@dataview/core/filter/spec'
 import {
-  cloneFilter,
-  filter as filterState,
-  findFilterIndex,
-  normalizeFilter,
-  sameFilter,
+  cloneFilterRules,
+  cloneFilterState,
+  indexOfFilterRule,
+  normalizeFilterRules,
+  normalizeFilterState,
+  sameFilterRules,
+  sameFilterState,
   sameFilterRule
+} from '@dataview/core/filter/state'
+import {
+  writeFilterAdd,
+  writeFilterClear,
+  writeFilterMode,
+  writeFilterPreset,
+  writeFilterRemove,
+  writeFilterReplace,
+  writeFilterValue
 } from '@dataview/core/filter/state'
 
 export type {
@@ -40,11 +51,11 @@ export type {
 } from '@dataview/core/filter/types'
 
 export const filter = {
-  ...filterState,
-  clone: cloneFilter,
-  normalize: normalizeFilter,
-  same: sameFilter,
-  indexOf: findFilterIndex,
+  state: {
+    clone: cloneFilterState,
+    normalize: normalizeFilterState,
+    same: sameFilterState
+  },
   rule: {
     clone: cloneFilterRule,
     same: sameFilterRule,
@@ -63,6 +74,21 @@ export const filter = {
     defaultValue: deriveFilterRuleDefaultValue,
     setValue: setFilterRuleValue,
     normalize: normalizeFilterRule
+  },
+  rules: {
+    clone: cloneFilterRules,
+    normalize: normalizeFilterRules,
+    same: sameFilterRules,
+    indexOf: indexOfFilterRule
+  },
+  write: {
+    add: writeFilterAdd,
+    replace: writeFilterReplace,
+    preset: writeFilterPreset,
+    value: writeFilterValue,
+    mode: writeFilterMode,
+    remove: writeFilterRemove,
+    clear: writeFilterClear
   },
   value: {
     optionSet: {

@@ -1,4 +1,4 @@
-import { createResetCommitImpact } from '@dataview/core/commit/impact'
+import { impact } from '@dataview/core/commit/impact'
 import type { DataDoc } from '@dataview/core/contracts'
 import {
   createValueStore,
@@ -35,11 +35,11 @@ export const createRuntimeState = (input: {
     documentContext,
     viewPlan: plan,
     index: index.state,
-    impact: createActiveImpact(createResetCommitImpact(undefined, input.doc)),
+    impact: createActiveImpact(impact.reset(undefined, input.doc)),
     capturePerf: input.capturePerf
   })
   const documentChange = projectDocumentChange({
-    impact: createResetCommitImpact(undefined, input.doc),
+    impact: impact.reset(undefined, input.doc),
     document: input.doc
   })
   const output = projectEngineOutput({

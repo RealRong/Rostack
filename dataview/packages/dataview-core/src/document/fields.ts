@@ -11,26 +11,19 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts/state'
 import {
-  getEntityTableById,
-  getEntityTableIds,
-  hasEntityTableId,
-  listEntityTable,
-  patchEntityTableEntity,
-  putEntityTableEntity,
-  replaceDocumentTable,
-  removeEntityTableEntity
+  entityTable
 } from '@dataview/core/document/table'
 
 const listCustomFields = (document: DataDoc): CustomField[] => {
-  return listEntityTable(document.fields)
+  return entityTable.read.list(document.fields)
 }
 
-const getCustomFieldIds = (document: DataDoc): CustomFieldId[] => getEntityTableIds(document.fields)
-const getCustomField = (document: DataDoc, fieldId: CustomFieldId) => getEntityTableById(document.fields, fieldId)
-const hasCustomField = (document: DataDoc, fieldId: CustomFieldId) => hasEntityTableId(document.fields, fieldId)
+const getCustomFieldIds = (document: DataDoc): CustomFieldId[] => entityTable.read.ids(document.fields)
+const getCustomField = (document: DataDoc, fieldId: CustomFieldId) => entityTable.read.get(document.fields, fieldId)
+const hasCustomField = (document: DataDoc, fieldId: CustomFieldId) => entityTable.read.has(document.fields, fieldId)
 
 const putCustomField = (document: DataDoc, field: CustomField): DataDoc => {
-  return replaceDocumentTable(document, 'fields', putEntityTableEntity(document.fields, field))
+  return entityTable.replace(document, 'fields', entityTable.write.put(document.fields, field))
 }
 
 const patchCustomField = (
@@ -38,21 +31,21 @@ const patchCustomField = (
   fieldId: CustomFieldId,
   patch: Partial<Omit<CustomField, 'id'>>
 ): DataDoc => {
-  const nextFields = patchEntityTableEntity(document.fields, fieldId, patch)
+  const nextFields = entityTable.write.patch(document.fields, fieldId, patch)
   if (nextFields === document.fields) {
     return document
   }
 
-  return replaceDocumentTable(document, 'fields', nextFields)
+  return entityTable.replace(document, 'fields', nextFields)
 }
 
 const removeCustomField = (document: DataDoc, fieldId: CustomFieldId): DataDoc => {
-  const nextFields = removeEntityTableEntity(document.fields, fieldId)
+  const nextFields = entityTable.write.remove(document.fields, fieldId)
   if (nextFields === document.fields) {
     return document
   }
 
-  return replaceDocumentTable(document, 'fields', nextFields)
+  return entityTable.replace(document, 'fields', nextFields)
 }
 
 const TITLE_FIELD: TitleField = {

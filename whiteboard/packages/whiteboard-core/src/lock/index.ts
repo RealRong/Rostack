@@ -1,14 +1,5 @@
-import {
-  getEdge,
-  getNode,
-  listEdges,
-  listGroupNodeIds,
-  listNodes
-} from '@whiteboard/core/document'
-import {
-  isNodeEdgeEnd,
-  sameEdgeEnd
-} from '@whiteboard/core/edge'
+import { document as documentApi } from '@whiteboard/core/document'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   CanvasItemRef,
   Document,
@@ -76,7 +67,7 @@ const collectLockedNodeIds = (
   document: Document,
   nodeIds: readonly NodeId[]
 ): readonly NodeId[] => uniqueIds(
-  nodeIds.filter((nodeId) => Boolean(getNode(document, nodeId)?.locked))
+  nodeIds.filter((nodeId) => Boolean(documentApi.read.node(document, nodeId)?.locked))
 )
 
 const collectLockedNodeIdsFromEnds = (
@@ -84,7 +75,7 @@ const collectLockedNodeIdsFromEnds = (
   ends: readonly (EdgeEnd | undefined)[]
 ): readonly NodeId[] => uniqueIds(
   ends.flatMap((end) => (
-    end && isNodeEdgeEnd(end) && readNodeLocked(end.nodeId)
+    end && edgeApi.guard.isNodeEnd(end) && readNodeLocked(end.nodeId)
       ? [end.nodeId]
       : []
   ))
@@ -94,7 +85,7 @@ const collectLockedEdgeIds = (
   document: Document,
   edgeIds: readonly EdgeId[]
 ): readonly EdgeId[] => uniqueIds(
-  edgeIds.filter((edgeId) => Boolean(getEdge(document, edgeId)?.locked))
+  edgeIds.filter((edgeId) => Boolean(documentApi.read.edge(document, edgeId)?.locked))
 )
 
 const collectLockedNodeIdsForEdgeIds = (
@@ -102,13 +93,13 @@ const collectLockedNodeIdsForEdgeIds = (
   edgeIds: readonly EdgeId[]
 ): readonly NodeId[] => uniqueIds(
   edgeIds.flatMap((edgeId) => {
-    const edge = getEdge(document, edgeId)
+    const edge = documentApi.read.edge(document, edgeId)
     if (!edge) {
       return []
     }
 
     return collectLockedNodeIdsFromEnds(
-      (nodeId) => Boolean(getNode(document, nodeId)?.locked),
+      (nodeId) => Boolean(documentApi.read.node(document, nodeId)?.locked),
       [edge.source, edge.target]
     )
   })
@@ -134,7 +125,7 @@ export const resolveLockDecision = ({
     case 'groups': {
       const lockedNodeIds = uniqueIds(
         target.groupIds.flatMap((groupId) =>
-          collectLockedNodeIds(document, listGroupNodeIds(document, groupId))
+          collectLockedNodeIds(document, documentApi.list.groupNodeIds(document, groupId))
         )
       )
       return {
@@ -197,7 +188,7 @@ export const resolveLockDecision = ({
     }
     case 'edge-ends': {
       const lockedNodeIds = collectLockedNodeIdsFromEnds(
-        (nodeId) => Boolean(getNode(document, nodeId)?.locked),
+        (nodeId) => Boolean(documentApi.read.node(document, nodeId)?.locked),
         target.ends
       )
       return {
@@ -330,12 +321,12 @@ const readLockViolationForOperation = ({
       const sourceChanged = (
         operation.type === 'edge.field.set'
         && operation.field === 'source'
-        && !sameEdgeEnd(current.source, operation.value as Edge['source'])
+        && !edgeApi.equal.sameEnd(current.source, operation.value as Edge['source'])
       )
       const targetChanged = (
         operation.type === 'edge.field.set'
         && operation.field === 'target'
-        && !sameEdgeEnd(current.target, operation.value as Edge['target'])
+        && !edgeApi.equal.sameEnd(current.target, operation.value as Edge['target'])
       )
       if (!sourceChanged && !targetChanged) {
         return undefined
@@ -439,13 +430,13 @@ export const validateLockOperations = ({
   }
 
   const nodeLocked = new Map<NodeId, boolean>(
-    listNodes(document).map((node) => [node.id, Boolean(node.locked)] as const)
+    documentApi.list.nodes(document).map((node) => [node.id, Boolean(node.locked)] as const)
   )
   const edgeLocked = new Map<EdgeId, boolean>(
-    listEdges(document).map((edge) => [edge.id, Boolean(edge.locked)] as const)
+    documentApi.list.edges(document).map((edge) => [edge.id, Boolean(edge.locked)] as const)
   )
   const edgeById = new Map<EdgeId, Pick<Edge, 'source' | 'target'>>(
-    listEdges(document).map((edge) => [
+    documentApi.list.edges(document).map((edge) => [
       edge.id,
       {
         source: edge.source,

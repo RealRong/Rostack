@@ -33,8 +33,8 @@ export const getNodeAABB = (
   const rect = getNodeRect(node, fallback)
   const rotation = readNodeRotation(node)
   if (!rotation) return rect
-  const corners = getRotatedCorners(rect, rotation)
-  return getAABBFromPoints(corners)
+  const corners = geometryApi.rotation.corners(rect, rotation)
+  return geometryApi.rect.aabbFromPoints(corners)
 }
 
 export const getNodeBoundsByNode = (
@@ -56,5 +56,5 @@ export const getNodesBounds = (
     return rect ? [rect] : []
   })
 
-  return getRectsBoundingRect(rects)
+  return geometryApi.rect.boundingRect(rects)
 }

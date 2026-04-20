@@ -69,8 +69,8 @@ const getOptionGroups = (
   if (field.kind !== 'status') {
     return [{
       key: 'options',
-      optionIds: fieldApi.option.list(field).map(option => option.id),
-      options: fieldApi.option.list(field)
+      optionIds: fieldApi.option.read.list(field).map(option => option.id),
+      options: fieldApi.option.read.list(field)
     }]
   }
 

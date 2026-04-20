@@ -1,34 +1,35 @@
 import type { DataDoc } from '@dataview/core/contracts/state'
 import { field } from '@dataview/core/field'
 import {
-  cloneEntityTable,
-  normalizeEntityTable
+  entityTable
 } from '@dataview/core/document/table'
 import {
   documentViews
 } from '@dataview/core/document/views'
 
-export const normalizeDocument = (document: DataDoc): DataDoc => {
-  const records = normalizeEntityTable(document.records)
-
-  return {
+const normalizeDocument = (document: DataDoc): DataDoc => {
+  const records = entityTable.normalize.table(document.records)
+  const nextDocument: DataDoc = {
     schemaVersion: document.schemaVersion,
     records,
-    fields: field.schema.normalize(normalizeEntityTable(document.fields)),
+    fields: field.schema.normalize(entityTable.normalize.table(document.fields)),
     views: documentViews.normalize({
       ...document,
       records
     }),
-    activeViewId: documentViews.activeId.resolve(document),
+    activeViewId: undefined,
     meta: document.meta ? structuredClone(document.meta) : undefined
   }
+
+  nextDocument.activeViewId = documentViews.activeId.resolve(nextDocument)
+  return nextDocument
 }
 
-export const cloneDocument = (document: DataDoc): DataDoc => ({
+const cloneDocument = (document: DataDoc): DataDoc => ({
   schemaVersion: document.schemaVersion,
-  records: cloneEntityTable(document.records),
-  fields: cloneEntityTable(document.fields),
-  views: cloneEntityTable(document.views),
+  records: entityTable.clone.table(document.records),
+  fields: entityTable.clone.table(document.fields),
+  views: entityTable.clone.table(document.views),
   activeViewId: documentViews.activeId.resolve(document),
   ...(Object.prototype.hasOwnProperty.call(document, 'meta')
     ? {
@@ -36,3 +37,8 @@ export const cloneDocument = (document: DataDoc): DataDoc => ({
       }
     : {})
 })
+
+export const documentDocument = {
+  normalize: normalizeDocument,
+  clone: cloneDocument
+} as const

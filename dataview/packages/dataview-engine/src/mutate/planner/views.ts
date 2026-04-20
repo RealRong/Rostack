@@ -21,26 +21,19 @@ import {
 } from '@dataview/core/calculation'
 import { field as fieldApi } from '@dataview/core/field'
 import {
-  readFieldSpec
+  fieldSpec
 } from '@dataview/core/field/spec'
 import {
   filter as filterApi
 } from '@dataview/core/filter'
 import {
-  cloneGroup,
   group,
-  normalizeGroup,
-  sameGroup
 } from '@dataview/core/group'
 import {
-  cloneSearch,
-  normalizeSearch,
-  sameSearch
+  search as searchApi
 } from '@dataview/core/search'
 import {
-  cloneSorters,
-  normalizeSorters,
-  sameSorters
+  sort as sortApi
 } from '@dataview/core/sort'
 import {
   view as viewApi
@@ -402,21 +395,21 @@ const applyViewPatch = (
   if (patch.type !== undefined && patch.type !== view.type) {
     ensureMutable().type = patch.type
   }
-  if (patch.search !== undefined && !sameSearch(view.search, patch.search)) {
-    ensureMutable().search = cloneSearch(patch.search)
+  if (patch.search !== undefined && !searchApi.state.same(view.search, patch.search)) {
+    ensureMutable().search = searchApi.state.clone(patch.search)
   }
-  if (patch.filter !== undefined && !filterApi.same(view.filter, patch.filter)) {
-    ensureMutable().filter = filterApi.clone(patch.filter)
+  if (patch.filter !== undefined && !filterApi.state.same(view.filter, patch.filter)) {
+    ensureMutable().filter = filterApi.state.clone(patch.filter)
   }
-  if (patch.sort !== undefined && !sameSorters(view.sort, patch.sort)) {
-    ensureMutable().sort = cloneSorters(patch.sort)
+  if (patch.sort !== undefined && !sortApi.rules.same(view.sort, patch.sort)) {
+    ensureMutable().sort = sortApi.rules.clone(patch.sort)
   }
   if (patch.group !== undefined) {
     const nextGroup = patch.group === null ? undefined : patch.group
-    if (!sameGroup(view.group, nextGroup)) {
+    if (!group.state.same(view.group, nextGroup)) {
       const nextView = ensureMutable()
       if (nextGroup) {
-        nextView.group = cloneGroup(nextGroup)
+        nextView.group = group.state.clone(nextGroup)
       } else {
         delete (nextView as View & { group?: ViewGroup }).group
       }
@@ -442,20 +435,23 @@ const normalizeView = (
   view: View
 ): View => {
   const fields = reader.fields.list()
-  const group = normalizeGroup(view.group)
+  const nextGroup = group.state.normalize(view.group)
 
   return {
     ...view,
-    search: normalizeSearch(view.search),
-    filter: filterApi.normalize(view.filter),
-    sort: normalizeSorters(view.sort),
-    ...(group ? { group } : {}),
-    ...(!group ? { group: undefined } : {}),
+    search: searchApi.state.normalize(view.search),
+    filter: filterApi.state.normalize(view.filter),
+    sort: sortApi.rules.normalize(view.sort),
+    ...(nextGroup ? { group: nextGroup } : {}),
+    ...(!nextGroup ? { group: undefined } : {}),
     calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map(field => [field.id, field] as const))
     }),
     display: viewApi.display.normalize(view.display),
-    options: viewApi.options.clone(view.options),
+    options: viewApi.options.normalize(view.options, {
+      type: view.type,
+      fields
+    }),
     orders: [...view.orders]
   }
 }
@@ -474,8 +470,8 @@ const resolveDefaultKanbanGroup = (
       return candidate
     }
 
-    const bestPriority = readFieldSpec(best)?.view.kanbanGroupPriority ?? 0
-    const candidatePriority = readFieldSpec(candidate)?.view.kanbanGroupPriority ?? 0
+    const bestPriority = fieldSpec.view.kanbanGroupPriority(best)
+    const candidatePriority = fieldSpec.view.kanbanGroupPriority(candidate)
     return candidatePriority > bestPriority
       ? candidate
       : best

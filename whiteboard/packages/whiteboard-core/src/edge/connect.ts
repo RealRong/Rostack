@@ -149,7 +149,7 @@ const resolveHandleConnectTarget = ({
   zoom: number
   config: EdgeConnectConfig
 }): HandleConnectTarget | undefined => {
-  const rotation = readNodeRotation(candidate.node)
+  const rotation = nodeApi.geometry.rotation(candidate.node)
   const threshold = resolveEdgeHandleSnapWorld(config, zoom)
   let best: HandleConnectTarget | undefined
 
@@ -159,7 +159,7 @@ const resolveHandleConnectTarget = ({
       side,
       offset: DEFAULT_EDGE_ANCHOR_OFFSET
     }
-    const point = getNodeAnchor(
+    const point = nodeApi.outline.anchor(
       candidate.node,
       candidate.geometry.rect,
       anchor,
@@ -200,8 +200,8 @@ const resolveOutlineConnectTarget = ({
   zoom: number
   config: EdgeConnectConfig
 }): OutlineConnectTarget | undefined => {
-  const rotation = readNodeRotation(candidate.node)
-  const projected = projectPointToNodeOutline(
+  const rotation = nodeApi.geometry.rotation(candidate.node)
+  const projected = nodeApi.outline.projectPoint(
     candidate.node,
     candidate.geometry.rect,
     rotation,
@@ -295,7 +295,7 @@ export const resolveEdgeConnectTarget = ({
     const resolved = resolveAnchorFromPoint({
       node: candidate.node,
       rect: candidate.geometry.rect,
-      rotation: readNodeRotation(candidate.node),
+      rotation: nodeApi.geometry.rotation(candidate.node),
       pointWorld,
       zoom,
       config,

@@ -72,7 +72,7 @@ const toUpdate = (
     y: entry.position.y + delta.y
   }
 
-  if (isPointEqual(entry.position, nextPosition)) {
+  if (geometryApi.equal.point(entry.position, nextPosition)) {
     return undefined
   }
 

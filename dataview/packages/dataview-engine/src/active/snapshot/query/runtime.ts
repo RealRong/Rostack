@@ -9,11 +9,7 @@ import type {
   ViewRecords,
   ViewStageMetrics
 } from '@dataview/engine/contracts'
-import {
-  hasActiveViewImpact,
-  hasFieldSchemaAspect,
-  hasRecordSetChange
-} from '@dataview/core/commit/impact'
+import { impact as commitImpact } from '@dataview/core/commit/impact'
 import {
   type QueryPlan
 } from '@dataview/engine/active/plan'
@@ -167,7 +163,7 @@ const resolveQueryAction = (input: {
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewImpact(commit)
+    || commitImpact.has.activeView(commit)
   ) {
     return 'rebuild'
   }
@@ -177,12 +173,12 @@ const resolveQueryAction = (input: {
   }
 
   for (const fieldId of input.plan.watch.filter) {
-    if (hasFieldSchemaAspect(commit, fieldId)) {
+    if (commitImpact.has.fieldSchema(commit, fieldId)) {
       return 'sync'
     }
   }
   for (const fieldId of input.plan.watch.sort) {
-    if (hasFieldSchemaAspect(commit, fieldId)) {
+    if (commitImpact.has.fieldSchema(commit, fieldId)) {
       return 'sync'
     }
   }
@@ -192,7 +188,7 @@ const resolveQueryAction = (input: {
     }
   } else {
     for (const fieldId of input.plan.watch.search) {
-      if (hasFieldSchemaAspect(commit, fieldId)) {
+      if (commitImpact.has.fieldSchema(commit, fieldId)) {
         return 'sync'
       }
     }
@@ -204,7 +200,7 @@ const resolveQueryAction = (input: {
   }
 
   if (
-    hasRecordSetChange(commit)
+    commitImpact.has.recordSetChange(commit)
     || hasIntersection(new Set(input.plan.watch.filter), changedFields)
     || hasIntersection(new Set(input.plan.watch.sort), changedFields)
     || (

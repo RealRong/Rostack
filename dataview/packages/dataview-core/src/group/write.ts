@@ -107,7 +107,7 @@ const nextSelectValue = (
     return { kind: 'clear' }
   }
 
-  return fieldApi.option.get(field, bucketKey)
+  return fieldApi.option.read.get(field, bucketKey)
     ? { kind: 'set', value: bucketKey }
     : { kind: 'invalid' }
 }
@@ -133,7 +133,7 @@ const nextStatusValue = (
       : { kind: 'invalid' }
   }
 
-  return fieldApi.option.get(field, bucketKey)
+  return fieldApi.option.read.get(field, bucketKey)
     ? { kind: 'set', value: bucketKey }
     : { kind: 'invalid' }
 }
@@ -209,7 +209,7 @@ const nextPresenceValue = (
     : { kind: 'invalid' }
 )
 
-export const nextGroupWriteValue = (input: {
+export const groupWriteValue = (input: {
   field: Field | undefined
   group: Pick<ViewGroup, 'mode'> | undefined
   currentValue: unknown
@@ -256,6 +256,6 @@ export const nextGroupWriteValue = (input: {
 
 export const group = {
   write: {
-    next: nextGroupWriteValue
+    value: groupWriteValue
   }
 } as const

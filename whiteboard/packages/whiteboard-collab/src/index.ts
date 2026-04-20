@@ -1,6 +1,20 @@
-export { createYjsSession } from '@whiteboard/collab/session'
-export { createYjsSyncCodec } from '@whiteboard/collab/yjs/codec'
-export { createYjsSyncStore } from '@whiteboard/collab/yjs/store'
+import { createYjsSession } from '@whiteboard/collab/session'
+import { createYjsSyncCodec } from '@whiteboard/collab/yjs/codec'
+import { createYjsSyncStore } from '@whiteboard/collab/yjs/store'
+
+export const collab = {
+  yjs: {
+    session: {
+      create: createYjsSession
+    },
+    codec: {
+      create: createYjsSyncCodec
+    },
+    store: {
+      create: createYjsSyncStore
+    }
+  }
+} as const
 
 export type {
   CollabDiagnostics,

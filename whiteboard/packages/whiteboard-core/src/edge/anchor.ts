@@ -16,7 +16,7 @@ export const isSameConnectTarget = (
     left.nodeId === right.nodeId &&
     left.anchor?.side === right.anchor?.side &&
     left.anchor?.offset === right.anchor?.offset &&
-    isPointEqual(left.pointWorld, right.pointWorld)
+    geometryApi.equal.point(left.pointWorld, right.pointWorld)
   )
 }
 

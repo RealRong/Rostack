@@ -78,7 +78,7 @@ export const createEdgeBinding = (
       )
 
       if (route.kind === 'remove') {
-        ctx.actions.edge.route.remove(route.edgeId, route.index)
+        ctx.actions.edge.route.removePoint(route.edgeId, route.index)
         return HANDLED
       }
 

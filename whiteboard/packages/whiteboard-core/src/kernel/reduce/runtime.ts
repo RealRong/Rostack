@@ -1,8 +1,4 @@
-import {
-  anchorMindmapLayout,
-  computeMindmapLayout,
-  toMindmapTree
-} from '@whiteboard/core/mindmap'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/overlay'
 import type { HistoryKey } from '@whiteboard/core/spec/history'
 import type {
@@ -204,7 +200,7 @@ export const getMindmapTreeFromDraft = (
 ) => {
   const direct = getMindmap(draft, id)
   if (direct) {
-    return toMindmapTree(direct)
+    return mindmapApi.tree.fromRecord(direct)
   }
 
   const node = getNode(draft, id)
@@ -215,7 +211,7 @@ export const getMindmapTreeFromDraft = (
     ? getMindmap(draft, mindmapId)
     : undefined
   return record
-    ? toMindmapTree(record)
+    ? mindmapApi.tree.fromRecord(record)
     : undefined
 }
 
@@ -296,7 +292,7 @@ export const relayoutMindmap = (
   const root = getNode(draft, record.root)
   if (!root) return
 
-  const layout = computeMindmapLayout(
+  const layout = mindmapApi.layout.compute(
     tree,
     (nodeId) => {
       const node = getNode(draft, nodeId)
@@ -307,7 +303,7 @@ export const relayoutMindmap = (
     },
     tree.layout
   )
-  const anchored = anchorMindmapLayout({
+  const anchored = mindmapApi.layout.anchor({
     tree,
     computed: layout,
     position: root.position

@@ -24,10 +24,7 @@ import {
   STATUS_CATEGORIES
 } from '@dataview/core/field/kind/status'
 import {
-  getFieldOption,
-  getFieldOptions,
-  getFieldOptionOrder,
-  getFieldOptionTokens
+  fieldOption
 } from '@dataview/core/field/options'
 import {
   formatUrlDisplayValue
@@ -126,7 +123,7 @@ const getOptionDisplay = (
   field: FieldInput,
   optionId: unknown
 ) => {
-  const option = getFieldOption(field, optionId)
+  const option = fieldOption.read.get(field, optionId)
   return option?.name ?? (typeof optionId === 'string' ? optionId : undefined)
 }
 
@@ -162,13 +159,13 @@ const displayBooleanValue = (value: unknown) => {
 const searchOptionValue = (
   field: FieldInput,
   value: unknown
-) => getFieldOptionTokens(field, value)
+) => fieldOption.read.tokens(field, value)
 
 const searchMultiOptionValue = (
   field: FieldInput,
   value: unknown
 ) => Array.isArray(value)
-  ? value.flatMap(item => getFieldOptionTokens(field, item))
+  ? value.flatMap(item => fieldOption.read.tokens(field, item))
   : []
 
 const parseTextDraft = (
@@ -311,8 +308,8 @@ const compareOptionValues = (
   left: unknown,
   right: unknown
 ) => {
-  const leftOrder = getFieldOptionOrder(field, left)
-  const rightOrder = getFieldOptionOrder(field, right)
+  const leftOrder = fieldOption.read.order(field, left)
+  const rightOrder = fieldOption.read.order(field, right)
   if (leftOrder !== undefined && rightOrder !== undefined) {
     return comparePrimitive(leftOrder, rightOrder)
   }
@@ -651,7 +648,7 @@ const dateGroupEntries = (
 const selectGroupDomain = (
   field: FieldInput
 ): readonly Bucket[] => {
-  const options = getFieldOptions(field)
+  const options = fieldOption.read.list(field)
 
   return [
     ...options.map((option, index) => createOptionBucket(option, index)),
@@ -663,7 +660,7 @@ const selectGroupEntries = (
   field: FieldInput,
   value: unknown
 ): readonly Bucket[] => {
-  const options = getFieldOptions(field)
+  const options = fieldOption.read.list(field)
   const option = typeof value === 'string'
     ? options.find(item => item.id === value)
     : undefined
@@ -676,7 +673,7 @@ const selectGroupEntries = (
 const multiSelectGroupDomain = (
   field: FieldInput
 ): readonly Bucket[] => {
-  const options = getFieldOptions(field)
+  const options = fieldOption.read.list(field)
 
   return [
     ...options.map((option, index) => createOptionBucket(option, index, [option.id])),
@@ -692,7 +689,7 @@ const multiSelectGroupEntries = (
     return [createObservedScalarBucket(field, undefined)]
   }
 
-  const options = getFieldOptions(field)
+  const options = fieldOption.read.list(field)
   return value.map((item, index) => {
     const option = typeof item === 'string'
       ? options.find(candidate => candidate.id === item)
@@ -716,7 +713,7 @@ const statusGroupDomain = (
     ]
   }
 
-  const options = getFieldOptions(field)
+  const options = fieldOption.read.list(field)
 
   return [
     ...options.map((option, index) => createOptionBucket(option, index)),
@@ -729,7 +726,7 @@ const statusGroupEntries = (
   value: unknown,
   mode: string
 ): readonly Bucket[] => {
-  const options = getFieldOptions(field)
+  const options = fieldOption.read.list(field)
   const option = typeof value === 'string'
     ? options.find(item => item.id === value)
     : undefined

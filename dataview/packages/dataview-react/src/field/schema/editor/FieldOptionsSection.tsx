@@ -20,7 +20,7 @@ const PlainFieldOptionsSection = (props: {
   const { t } = useTranslation()
   const editor = useDataView().engine
   const [openOptionId, setOpenOptionId] = useState<string | null>(null)
-  const options = fieldApi.option.list(props.field)
+  const options = fieldApi.option.read.list(props.field)
 
   useEffect(() => {
     if (openOptionId && !options.some(option => option.id === openOptionId)) {

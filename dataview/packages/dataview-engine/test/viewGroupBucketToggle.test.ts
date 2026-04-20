@@ -800,10 +800,10 @@ test('engine.active.records.create derives supported filter defaults', () => {
   assert.deepEqual(readViewState(engine)?.records.visible, ['rec_2', createdId])
 })
 
-test('engine.active.records.create supports multiple concrete select filters', () => {
+test('engine.active.records.create supports multiple concrete select filters and multiSelect contains defaults', () => {
   const fieldA = 'select_1'
   const fieldB = 'select_2'
-  const fieldC = 'select_3'
+  const fieldC = 'tags'
   const fields = [
     {
       id: fieldA,
@@ -826,18 +826,28 @@ test('engine.active.records.create supports multiple concrete select filters', (
           id: 'option_2',
           name: 'Option 2',
           color: 'blue'
+        },
+        {
+          id: 'option_3',
+          name: 'Option 3',
+          color: 'green'
         }
       ]
     },
     {
       id: fieldC,
-      name: 'Select 3',
-      kind: 'select',
+      name: 'Tags',
+      kind: 'multiSelect',
       options: [
         {
           id: 'option_3',
           name: 'Option 3',
           color: 'green'
+        },
+        {
+          id: 'option_4',
+          name: 'Option 4',
+          color: 'orange'
         }
       ]
     }
@@ -891,13 +901,13 @@ test('engine.active.records.create supports multiple concrete select filters', (
   openView(engine, VIEW_TABLE).filters.update(1, {
     fieldId: fieldB,
     presetId: 'eq',
-    value: createFilterOptionSetValue(['option_2'])
+    value: createFilterOptionSetValue(['option_2', 'option_3'])
   })
   openView(engine, VIEW_TABLE).filters.add(fieldC)
   openView(engine, VIEW_TABLE).filters.update(2, {
     fieldId: fieldC,
-    presetId: 'eq',
-    value: createFilterOptionSetValue(['option_3'])
+    presetId: 'contains',
+    value: createFilterOptionSetValue(['option_4'])
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
@@ -909,7 +919,7 @@ test('engine.active.records.create supports multiple concrete select filters', (
   assert.ok(createdId)
   assert.equal(engine.records.get(createdId)?.values[fieldA], 'option_1')
   assert.equal(engine.records.get(createdId)?.values[fieldB], 'option_2')
-  assert.equal(engine.records.get(createdId)?.values[fieldC], 'option_3')
+  assert.deepEqual(engine.records.get(createdId)?.values[fieldC], ['option_4'])
   assert.deepEqual(readViewState(engine)?.records.visible, [createdId])
 })
 
@@ -938,11 +948,10 @@ test('engine.active.records.create resolves grouped status against multi-option 
   assert.deepEqual(viewSectionRecordIds(engine, 'doing'), ['rec_2', createdId])
 })
 
-test('engine.active.records.create rejects ambiguous multi-option status filters without a concrete value', () => {
+test('engine.active.records.create chooses the first option from multi-option status filters', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.source.doc.records.ids.get()]
 
   openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
   openView(engine, VIEW_TABLE).filters.update(0, {
@@ -957,8 +966,9 @@ test('engine.active.records.create rejects ambiguous multi-option status filters
     }
   })
 
-  assert.equal(createdId, undefined)
-  assert.deepEqual(engine.source.doc.records.ids.get(), beforeOrder)
+  assert.ok(createdId)
+  assert.equal(engine.records.get(createdId)?.values[FIELD_STATUS], 'todo')
+  assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1', 'rec_2', createdId])
 })
 
 test('engine.active.records.create accepts explicit status values that satisfy multi-option filters', () => {

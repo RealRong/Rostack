@@ -19,6 +19,12 @@ import {
   useDataView,
   usePageRuntime
 } from '@dataview/react/dataview'
+import type {
+  Field
+} from '@dataview/core/contracts'
+import type {
+  SortRuleProjection
+} from '@dataview/engine'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { meta } from '@dataview/meta'
 import { SortRuleRow } from '@dataview/react/page/features/sort/SortRuleRow'
@@ -33,6 +39,8 @@ import {
 } from '@shared/react'
 
 export interface SortPopoverProps {
+  rules: readonly SortRuleProjection[]
+  availableFields: readonly Field[]
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -43,18 +51,17 @@ export const SortPopover = (props: SortPopoverProps) => {
   const engine = dataView.engine
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
-  const sortPanel = useStoreValue(pageRuntime.sortPanel)
   const currentView = settings.currentView
   const currentViewDomain = currentView
     ? engine.active
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
-  const sortRules = sortPanel.rules
+  const sortRules = props.rules
   const sorters = sortRules.map(entry => entry.sorter)
   const singleSortDirection = sortRules.length === 1
     ? sortRules[0]?.sorter.direction
     : undefined
-  const availableFields = sortPanel.availableFields
+  const availableFields = props.availableFields
   const addItem: MenuSubmenuItem | null = availableFields.length
     ? {
       kind: 'submenu',

@@ -209,7 +209,7 @@ const resolveFilterRuleDefault = (input: {
       }
 
       const optionIds = readFilterOptionSetValue(input.rule.value).optionIds
-      return optionIds.length === 1
+      return optionIds.length
         ? {
             fieldId: input.field.id,
             value: optionIds[0]

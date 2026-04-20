@@ -113,7 +113,7 @@ const ViewTab = (props: ViewTabProps) => {
           props.onOpenMenu()
         }}
         className={cn(
-          'inline-flex h-9 shrink-0 select-none items-center gap-2 rounded-3xl bg-transparent px-4 font-semibold text-fg-muted transition-[background-color,color] hover:bg-hover hover:text-fg',
+          'inline-flex h-8 shrink-0 select-none text-sm items-center gap-2 rounded-3xl bg-transparent px-3 font-semibold text-fg-muted transition-[background-color,color] hover:bg-hover hover:text-fg',
           props.active && 'bg-pressed text-fg hover:bg-pressed'
         )}
       >

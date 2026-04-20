@@ -42,6 +42,8 @@ export const ViewQueryBar = () => {
     <section className="flex flex-wrap items-center gap-1.5 pt-1 text-card-foreground">
       {sorts.length ? (
         <SortPopover
+          rules={sorts}
+          availableFields={availableSorterFields}
           open={query.route?.kind === 'sort'}
           onOpenChange={open => {
             if (open) {

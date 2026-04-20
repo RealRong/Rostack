@@ -1,9 +1,17 @@
 export type {
-  CollabBootstrapMode,
   CollabProvider,
   CollabStatus
 } from '@whiteboard/collab/types/provider'
 export type {
+  CollabDiagnostics,
   CollabSession,
   CreateYjsSessionOptions
 } from '@whiteboard/collab/types/session'
+export type {
+  SharedChange,
+  SharedCheckpoint,
+  SharedMeta,
+  SharedOperation,
+  YjsSyncCodec,
+  YjsSyncStore
+} from '@whiteboard/collab/types/shared'

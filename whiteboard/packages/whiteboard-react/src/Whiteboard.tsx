@@ -135,8 +135,8 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     const session = createYjsSession({
       engine,
       doc: collab.doc,
-      provider: collab.provider,
-      bootstrap: collab.bootstrap
+      actorId: collab.actorId,
+      provider: collab.provider
     })
     collabSessionRef.current = session
     onCollabSessionRef.current?.(session)
@@ -158,7 +158,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     }
   }, [
     collab?.autoConnect,
-    collab?.bootstrap,
+    collab?.actorId,
     collab?.doc,
     collab?.provider,
     engine

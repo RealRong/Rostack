@@ -1,11 +1,23 @@
-import type { Document, Operation } from '@whiteboard/core/types'
+import type { SharedChange, SharedCheckpoint } from '@whiteboard/collab/types/shared'
 
-export type RemoteDocumentChange =
+export type SyncCursor = {
+  checkpointId: string | null
+  changeIds: readonly string[]
+}
+
+export type YjsSyncSnapshot = {
+  checkpoint: SharedCheckpoint | null
+  changes: readonly SharedChange[]
+  duplicateChangeIds: readonly string[]
+}
+
+export type ReplayPlan =
   | {
-      kind: 'operations'
-      operations: readonly Operation[]
+      kind: 'append'
+      changes: readonly SharedChange[]
     }
   | {
-      kind: 'replace'
-      document: Document
+      kind: 'reset'
+      checkpoint: SharedCheckpoint | null
+      changes: readonly SharedChange[]
     }

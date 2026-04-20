@@ -6,6 +6,9 @@ import type {
   FieldReducerState
 } from '@dataview/engine/active/shared/calculation'
 import type {
+  CalculationEntry
+} from '@dataview/engine/active/shared/calculation'
+import type {
   Token
 } from '@shared/i18n'
 import type {
@@ -75,6 +78,23 @@ export interface SectionState {
 
 export interface SummaryState {
   bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>
+}
+
+export interface SummaryRecordDelta {
+  recordId: RecordId
+  previous?: CalculationEntry
+  next?: CalculationEntry
+}
+
+export interface SummaryFieldDelta {
+  changes: readonly SummaryRecordDelta[]
+}
+
+export interface SummaryDelta {
+  rebuild: boolean
+  changed: readonly SectionKey[]
+  removed: readonly SectionKey[]
+  fields: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, SummaryFieldDelta>>
 }
 
 export interface ViewCache {

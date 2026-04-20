@@ -229,8 +229,19 @@ export interface EntitySource<K, T> extends KeyedReadStore<K, T | undefined> {
 
 export interface SectionSource extends KeyedReadStore<SectionKey, Section | undefined> {
   keys: ReadStore<readonly SectionKey[]>
-  itemIds: KeyedReadStore<SectionKey, readonly ItemId[] | undefined>
   summary: KeyedReadStore<SectionKey, CalculationCollection | undefined>
+}
+
+export interface TableLayoutSectionState {
+  key: SectionKey
+  collapsed: boolean
+  itemIds: readonly ItemId[]
+}
+
+export interface TableLayoutState {
+  grouped: boolean
+  rowCount: number
+  sections: readonly TableLayoutSectionState[]
 }
 
 export interface ActiveQuerySource {
@@ -249,6 +260,7 @@ export interface ActiveTableSource {
   wrap: ReadStore<boolean>
   showVerticalLines: ReadStore<boolean>
   calc: KeyedReadStore<FieldId, CalculationMetric | undefined>
+  layout: ReadStore<TableLayoutState | null>
 }
 
 export interface ActiveGallerySource {
@@ -282,9 +294,7 @@ export interface ActiveSource {
     type: ReadStore<View['type'] | undefined>
     current: ReadStore<View | undefined>
   }
-  items: EntitySource<ItemId, ViewItem> & {
-    index: KeyedReadStore<ItemId, number | undefined>
-  }
+  items: EntitySource<ItemId, ViewItem>
   sections: SectionSource
   fields: {
     all: EntitySource<FieldId, Field>
@@ -441,48 +451,34 @@ export interface ActiveViewApi {
   cells: ActiveCellsApi
 }
 
-export interface DocumentPatch {
-  records?: {
-    ids?: readonly RecordId[]
-    values?: KeyedStorePatch<RecordId, DataRecord | undefined>
+export interface DocumentChange {
+  records: {
+    changed: readonly RecordId[]
+    removed: readonly RecordId[]
   }
-  fields?: {
-    ids?: readonly FieldId[]
-    values?: KeyedStorePatch<FieldId, CustomField | undefined>
+  fields: {
+    changed: readonly FieldId[]
+    removed: readonly FieldId[]
   }
-  views?: {
-    ids?: readonly ViewId[]
-    values?: KeyedStorePatch<ViewId, View | undefined>
+  views: {
+    changed: readonly ViewId[]
+    removed: readonly ViewId[]
   }
+  activeViewChanged: boolean
 }
 
-export interface ActivePatch {
+export interface EntityDelta<TKey, TValue> {
+  set?: ReadonlyMap<TKey, TValue | undefined>
+  remove?: readonly TKey[]
+}
+
+export interface ViewPublishDelta {
+  rebuild: boolean
   view?: {
-    ready?: boolean
+    ready: boolean
     id?: ViewId
     type?: View['type']
     value?: View | undefined
-  }
-  items?: {
-    ids?: readonly ItemId[]
-    values?: KeyedStorePatch<ItemId, ViewItem | undefined>
-    index?: KeyedStorePatch<ItemId, number | undefined>
-  }
-  sections?: {
-    keys?: readonly SectionKey[]
-    values?: KeyedStorePatch<SectionKey, Section | undefined>
-    itemIds?: KeyedStorePatch<SectionKey, readonly ItemId[] | undefined>
-    summary?: KeyedStorePatch<SectionKey, CalculationCollection | undefined>
-  }
-  fields?: {
-    all?: {
-      ids?: readonly FieldId[]
-      values?: KeyedStorePatch<FieldId, Field | undefined>
-    }
-    custom?: {
-      ids?: readonly FieldId[]
-      values?: KeyedStorePatch<FieldId, CustomField | undefined>
-    }
   }
   query?: {
     search?: ViewSearchProjection
@@ -493,12 +489,25 @@ export interface ActivePatch {
     groupFieldId?: FieldId | ''
     filterFieldIds?: readonly FieldId[]
     sortFieldIds?: readonly FieldId[]
-    sortDir?: KeyedStorePatch<FieldId, SortDirection | undefined>
+    sortDir?: ReadonlyMap<FieldId, SortDirection | undefined>
+  }
+  items?: {
+    ids?: readonly ItemId[]
+    values?: EntityDelta<ItemId, ViewItem>
+  }
+  sections?: {
+    keys?: readonly SectionKey[]
+    values?: EntityDelta<SectionKey, Section>
+    summary?: EntityDelta<SectionKey, CalculationCollection | undefined>
+  }
+  fields?: {
+    all?: readonly Field[]
+    custom?: readonly CustomField[]
   }
   table?: {
     wrap?: boolean
     showVerticalLines?: boolean
-    calc?: KeyedStorePatch<FieldId, CalculationMetric | undefined>
+    calc?: ReadonlyMap<FieldId, CalculationMetric | undefined>
   }
   gallery?: {
     wrap?: boolean
@@ -518,9 +527,81 @@ export interface ActivePatch {
   }
 }
 
-export interface EnginePatch {
-  doc?: DocumentPatch
-  active?: ActivePatch
+export interface SourceDelta {
+  document?: {
+    records?: {
+      ids?: readonly RecordId[]
+      values?: EntityDelta<RecordId, DataRecord>
+    }
+    fields?: {
+      ids?: readonly FieldId[]
+      values?: EntityDelta<FieldId, CustomField>
+    }
+    views?: {
+      ids?: readonly ViewId[]
+      values?: EntityDelta<ViewId, View>
+    }
+  }
+  active?: {
+    view?: {
+      ready?: boolean
+      id?: ViewId
+      type?: View['type']
+      value?: View | undefined
+    }
+    items?: {
+      ids?: readonly ItemId[]
+      values?: EntityDelta<ItemId, ViewItem>
+    }
+    sections?: {
+      keys?: readonly SectionKey[]
+      values?: EntityDelta<SectionKey, Section>
+      summary?: EntityDelta<SectionKey, CalculationCollection | undefined>
+    }
+    fields?: {
+      all?: {
+        ids?: readonly FieldId[]
+        values?: EntityDelta<FieldId, Field>
+      }
+      custom?: {
+        ids?: readonly FieldId[]
+        values?: EntityDelta<FieldId, CustomField>
+      }
+    }
+    query?: {
+      search?: ViewSearchProjection
+      filters?: ViewFilterProjection
+      sort?: ViewSortProjection
+      group?: ViewGroupProjection
+      grouped?: boolean
+      groupFieldId?: FieldId | ''
+      filterFieldIds?: readonly FieldId[]
+      sortFieldIds?: readonly FieldId[]
+      sortDir?: EntityDelta<FieldId, SortDirection>
+    }
+    table?: {
+      wrap?: boolean
+      showVerticalLines?: boolean
+      calc?: EntityDelta<FieldId, CalculationMetric>
+      layout?: TableLayoutState | null
+    }
+    gallery?: {
+      wrap?: boolean
+      size?: CardSize
+      layout?: CardLayout
+      canReorder?: boolean
+      groupUsesOptionColors?: boolean
+    }
+    kanban?: {
+      wrap?: boolean
+      size?: CardSize
+      layout?: CardLayout
+      canReorder?: boolean
+      groupUsesOptionColors?: boolean
+      fillColumnColor?: boolean
+      cardsPerColumn?: KanbanCardsPerColumn
+    }
+  }
 }
 
 export interface ViewsApi {

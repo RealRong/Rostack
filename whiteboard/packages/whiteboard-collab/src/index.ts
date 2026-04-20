@@ -1,14 +1,17 @@
 export { createYjsSession } from '@whiteboard/collab/session'
-export {
-  hasYjsDocumentSnapshot,
-  materializeYjsDocument,
-  replaceYjsDocument
-} from '@whiteboard/collab/yjs/materialize'
+export { createYjsSyncCodec } from '@whiteboard/collab/yjs/codec'
+export { createYjsSyncStore } from '@whiteboard/collab/yjs/store'
 
 export type {
-  CollabBootstrapMode,
+  CollabDiagnostics,
   CollabProvider,
   CollabSession,
   CollabStatus,
-  CreateYjsSessionOptions
+  CreateYjsSessionOptions,
+  SharedChange,
+  SharedCheckpoint,
+  SharedMeta,
+  SharedOperation,
+  YjsSyncCodec,
+  YjsSyncStore
 } from '@whiteboard/collab/types'

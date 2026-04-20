@@ -10,7 +10,10 @@ import { createViewRuntime } from '@dataview/engine/active/runtime'
 import { createActiveImpact } from '@dataview/engine/active/shared/impact'
 import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 import type { EngineRuntimeState } from '@dataview/engine/runtime/state'
-import { projectEnginePatch } from '@dataview/engine/source/project'
+import {
+  projectDocumentChange,
+  projectEngineOutput
+} from '@dataview/engine/source/project'
 
 export type RuntimeStore = ValueStore<EngineRuntimeState>
 export type { EngineRuntimeState } from '@dataview/engine/runtime/state'
@@ -35,9 +38,15 @@ export const createRuntimeState = (input: {
     impact: createActiveImpact(createResetCommitImpact(undefined, input.doc)),
     capturePerf: input.capturePerf
   })
-  const patch = projectEnginePatch({
-    nextDoc: input.doc,
-    nextSnapshot: currentView.snapshot
+  const documentChange = projectDocumentChange({
+    impact: createResetCommitImpact(undefined, input.doc),
+    document: input.doc
+  })
+  const output = projectEngineOutput({
+    document: input.doc,
+    documentChange,
+    nextView: currentView.snapshot,
+    previousLayout: null
   })
 
   return {
@@ -55,7 +64,11 @@ export const createRuntimeState = (input: {
       demand: index.demand,
       index: index.state,
       cache: currentView.cache,
-      patch,
+      ...(output.publishDelta
+        ? { publishDelta: output.publishDelta }
+        : {}),
+      sourceDelta: output.sourceDelta,
+      tableLayout: output.tableLayout,
       ...(currentView.snapshot
         ? { snapshot: currentView.snapshot }
         : {})

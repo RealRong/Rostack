@@ -2,23 +2,31 @@ import type { ReadStore } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type * as Y from 'yjs'
 import type {
-  CollabBootstrapMode,
   CollabProvider,
   CollabStatus
 } from '@whiteboard/collab/types/provider'
+import type { YjsSyncCodec } from '@whiteboard/collab/types/shared'
 
 export type CreateYjsSessionOptions = {
   engine: Engine
   doc: Y.Doc
+  actorId: string
   provider?: CollabProvider
-  bootstrap?: CollabBootstrapMode
+  codec?: YjsSyncCodec
+  checkpointThreshold?: number
+}
+
+export type CollabDiagnostics = {
+  duplicateChangeIds: readonly string[]
+  rejectedChangeIds: readonly string[]
 }
 
 export type CollabSession = {
   awareness?: unknown
   status: ReadStore<CollabStatus>
+  diagnostics: ReadStore<CollabDiagnostics>
   connect: () => void
   disconnect: () => void
-  resync: (mode?: CollabBootstrapMode) => void
+  resync: () => void
   destroy: () => void
 }

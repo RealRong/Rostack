@@ -11,52 +11,51 @@ import type {
   CardLayout,
   CardSize,
   CalculationMetric,
+  CommitImpact,
   CustomField,
   DataDoc,
   DataRecord,
   Field,
   FieldId,
   FilterRule,
+  ItemId,
   KanbanCardsPerColumn,
-  RecordId,
+  Section,
+  SectionKey,
   SortDirection,
   Sorter,
   View,
-  ViewId
-} from '@dataview/core/contracts'
-import { sameOrder, type KeyedStorePatch } from '@shared/core'
-import type {
-  ActivePatch,
-  DocumentPatch,
-  EnginePatch,
-  FilterRuleProjection,
-  GalleryState,
-  KanbanState,
+  ViewItem,
   ViewState,
+  ViewId
+} from '@dataview/engine/contracts/public'
+import { sameOrder } from '@shared/core'
+import type {
+  DocumentChange,
+  EntityDelta,
+  SourceDelta,
+  TableLayoutSectionState,
+  TableLayoutState,
+  ViewPublishDelta,
   ViewFilterProjection,
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
 } from '@dataview/engine/contracts/public'
 import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/public'
-import type {
-  ItemId,
-  Section,
-  SectionKey,
-  ViewItem,
-} from '@dataview/engine/contracts/shared'
 
-const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const EMPTY_RECORD_IDS = [] as readonly string[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_VIEW_IDS = [] as readonly ViewId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
-const EMPTY_FILTERS = { rules: [] as readonly FilterRuleProjection[] } satisfies ViewFilterProjection
+const EMPTY_FILTERS = { rules: [] } satisfies ViewFilterProjection
 const EMPTY_SORT = { rules: [] } satisfies ViewSortProjection
 const EMPTY_SEARCH = { query: '' } satisfies ViewSearchProjection
 const DEFAULT_CARD_LAYOUT = 'vertical' as CardLayout
 const DEFAULT_CARD_SIZE = 'medium' as CardSize
 const DEFAULT_KANBAN_CARDS_PER_COLUMN = 0 as KanbanCardsPerColumn
+const EMPTY_LAYOUT_SECTIONS = [] as readonly TableLayoutSectionState[]
 
 const usesOptionGroupingColors = (
   field?: Pick<Field, 'kind'>
@@ -90,27 +89,23 @@ const resolveGalleryState = (
     group: ViewGroupProjection
     sort: ViewSortProjection
   } | undefined
-): GalleryState => {
+) => {
   if (!view || view.type !== 'gallery' || !query) {
     return {
-      groupUsesOptionColors: false,
+      wrap: false,
+      size: DEFAULT_CARD_SIZE,
+      layout: DEFAULT_CARD_LAYOUT,
       canReorder: false,
-      card: {
-        wrap: false,
-        size: DEFAULT_CARD_SIZE,
-        layout: DEFAULT_CARD_LAYOUT
-      }
+      groupUsesOptionColors: false
     }
   }
 
   return {
-    groupUsesOptionColors: usesOptionGroupingColors(query.group.field),
+    wrap: view.options.gallery.card.wrap,
+    size: view.options.gallery.card.size,
+    layout: view.options.gallery.card.layout,
     canReorder: !query.group.active && query.sort.rules.length === 0,
-    card: {
-      wrap: view.options.gallery.card.wrap,
-      size: view.options.gallery.card.size,
-      layout: view.options.gallery.card.layout
-    }
+    groupUsesOptionColors: usesOptionGroupingColors(query.group.field)
   }
 }
 
@@ -120,362 +115,9 @@ const resolveKanbanState = (
     group: ViewGroupProjection
     sort: ViewSortProjection
   } | undefined
-): KanbanState => {
+) => {
   if (!view || view.type !== 'kanban' || !query) {
     return {
-      groupUsesOptionColors: false,
-      card: {
-        wrap: false,
-        size: DEFAULT_CARD_SIZE,
-        layout: DEFAULT_CARD_LAYOUT
-      },
-      cardsPerColumn: DEFAULT_KANBAN_CARDS_PER_COLUMN,
-      fillColumnColor: false,
-      canReorder: false
-    }
-  }
-
-  const groupUsesOptionColors = usesOptionGroupingColors(query.group.field)
-
-  return {
-    groupUsesOptionColors,
-    card: {
-      wrap: view.options.kanban.card.wrap,
-      size: view.options.kanban.card.size,
-      layout: view.options.kanban.card.layout
-    },
-    cardsPerColumn: view.options.kanban.cardsPerColumn,
-    fillColumnColor: groupUsesOptionColors && view.options.kanban.fillColumnColor,
-    canReorder: query.group.active && query.sort.rules.length === 0
-  }
-}
-
-const collectRemovedKeys = <TKey,>(
-  previousIds: readonly TKey[],
-  nextIds: readonly TKey[]
-) => {
-  if (!previousIds.length) {
-    return undefined
-  }
-
-  const nextIdSet = new Set(nextIds)
-  const removed = previousIds.filter(key => !nextIdSet.has(key))
-  return removed.length
-    ? removed
-    : undefined
-}
-
-const createEntityPatch = <TKey, TValue>(input: {
-  previousIds?: readonly TKey[]
-  nextIds: readonly TKey[]
-  previousValue: (key: TKey) => TValue | undefined
-  nextValue: (key: TKey) => TValue | undefined
-}): KeyedStorePatch<TKey, TValue | undefined> | undefined => {
-  const previousIds = input.previousIds ?? []
-  const nextIdSet = new Set(input.nextIds)
-  const previousIdSet = new Set(previousIds)
-  const set: [TKey, TValue | undefined][] = []
-
-  for (let index = 0; index < input.nextIds.length; index += 1) {
-    const key = input.nextIds[index]!
-    const previousValue = input.previousValue(key)
-    const nextValue = input.nextValue(key)
-    if (!previousIdSet.has(key) || !Object.is(previousValue, nextValue)) {
-      set.push([key, nextValue])
-    }
-  }
-
-  const remove = previousIds.filter(key => !nextIdSet.has(key))
-  if (!set.length && !remove.length) {
-    return undefined
-  }
-
-  return {
-    ...(set.length ? { set } : {}),
-    ...(remove.length ? { delete: remove } : {})
-  }
-}
-
-const createSortDirectionPatch = (input: {
-  previous?: ViewState
-  next?: ViewState
-}): KeyedStorePatch<FieldId, SortDirection | undefined> | undefined => {
-  const previousFieldIds = input.previous?.query.sort.rules.flatMap(entry => {
-    const fieldId = getSorterFieldId(entry.sorter)
-    return fieldId ? [fieldId] : []
-  }) ?? EMPTY_FIELD_IDS
-  const nextFieldIds = input.next?.query.sort.rules.flatMap(entry => {
-    const fieldId = getSorterFieldId(entry.sorter)
-    return fieldId ? [fieldId] : []
-  }) ?? EMPTY_FIELD_IDS
-  const previousDirections = new Map<FieldId, SortDirection>(
-    input.previous?.query.sort.rules.flatMap(entry => {
-      const fieldId = getSorterFieldId(entry.sorter)
-      return fieldId
-        ? [[fieldId, entry.sorter.direction] as const]
-        : []
-    }) ?? []
-  )
-  const nextDirections = new Map<FieldId, SortDirection>(
-    input.next?.query.sort.rules.flatMap(entry => {
-      const fieldId = getSorterFieldId(entry.sorter)
-      return fieldId
-        ? [[fieldId, entry.sorter.direction] as const]
-        : []
-    }) ?? []
-  )
-
-  return createEntityPatch({
-    previousIds: previousFieldIds,
-    nextIds: nextFieldIds,
-    previousValue: fieldId => previousDirections.get(fieldId),
-    nextValue: fieldId => nextDirections.get(fieldId)
-  })
-}
-
-const createSectionItemIdsPatch = (input: {
-  previous?: ViewState
-  next?: ViewState
-}): KeyedStorePatch<SectionKey, readonly ItemId[] | undefined> | undefined => {
-  const previousIds = input.previous?.sections.ids ?? EMPTY_SECTION_KEYS
-  const nextIds = input.next?.sections.ids ?? EMPTY_SECTION_KEYS
-
-  return createEntityPatch({
-    previousIds,
-    nextIds,
-    previousValue: key => input.previous?.sections.get(key)?.items.ids,
-    nextValue: key => input.next?.sections.get(key)?.items.ids
-  })
-}
-
-const createSectionSummaryPatch = (input: {
-  previous?: ViewState
-  next?: ViewState
-}): KeyedStorePatch<SectionKey, CalculationCollection | undefined> | undefined => {
-  const previousIds = input.previous?.sections.ids ?? EMPTY_SECTION_KEYS
-  const nextIds = input.next?.sections.ids ?? EMPTY_SECTION_KEYS
-
-  return createEntityPatch({
-    previousIds,
-    nextIds,
-    previousValue: key => input.previous?.summaries.get(key),
-    nextValue: key => input.next?.summaries.get(key)
-  })
-}
-
-const createItemIndexPatch = (input: {
-  previous?: ViewState
-  next?: ViewState
-}): KeyedStorePatch<ItemId, number | undefined> | undefined => {
-  const previousIds = input.previous?.items.ids ?? EMPTY_ITEM_IDS
-  const nextIds = input.next?.items.ids ?? EMPTY_ITEM_IDS
-  const nextIndex = new Map<ItemId, number>()
-  nextIds.forEach((itemId, index) => {
-    nextIndex.set(itemId, index)
-  })
-
-  return createEntityPatch({
-    previousIds,
-    nextIds,
-    previousValue: itemId => input.previous?.items.indexOf(itemId),
-    nextValue: itemId => nextIndex.get(itemId)
-  })
-}
-
-const createTableCalcPatch = (input: {
-  previous?: ViewState
-  next?: ViewState
-}): KeyedStorePatch<FieldId, CalculationMetric | undefined> | undefined => {
-  const previousIds = input.previous?.fields.ids ?? EMPTY_FIELD_IDS
-  const nextIds = input.next?.fields.ids ?? EMPTY_FIELD_IDS
-
-  return createEntityPatch({
-    previousIds,
-    nextIds,
-    previousValue: fieldId => input.previous?.view.type === 'table'
-      ? input.previous.view.calc[fieldId] ?? undefined
-      : undefined,
-    nextValue: fieldId => input.next?.view.type === 'table'
-      ? input.next.view.calc[fieldId] ?? undefined
-      : undefined
-  })
-}
-
-const createDocumentPatch = (input: {
-  previous?: DataDoc
-  next: DataDoc
-}): DocumentPatch | undefined => {
-  const nextRecordIds = getDocumentRecordIds(input.next)
-  const nextFieldIds = getDocumentCustomFieldIds(input.next)
-  const nextViewIds = getDocumentViewIds(input.next)
-  const previousRecordIds = input.previous
-    ? getDocumentRecordIds(input.previous)
-    : undefined
-  const previousFieldIds = input.previous
-    ? getDocumentCustomFieldIds(input.previous)
-    : undefined
-  const previousViewIds = input.previous
-    ? getDocumentViewIds(input.previous)
-    : undefined
-
-  const records = {
-    ...(!sameOrder(previousRecordIds ?? EMPTY_RECORD_IDS, nextRecordIds)
-      ? { ids: nextRecordIds }
-      : {}),
-    values: createEntityPatch<RecordId, DataRecord>({
-      previousIds: previousRecordIds,
-      nextIds: nextRecordIds,
-      previousValue: id => input.previous
-        ? getDocumentRecordById(input.previous, id)
-        : undefined,
-      nextValue: id => getDocumentRecordById(input.next, id)
-    })
-  }
-  const fields = {
-    ...(!sameOrder(previousFieldIds ?? EMPTY_FIELD_IDS, nextFieldIds)
-      ? { ids: nextFieldIds }
-      : {}),
-    values: createEntityPatch<FieldId, CustomField>({
-      previousIds: previousFieldIds,
-      nextIds: nextFieldIds,
-      previousValue: id => input.previous
-        ? getDocumentCustomFieldById(input.previous, id)
-        : undefined,
-      nextValue: id => getDocumentCustomFieldById(input.next, id)
-    })
-  }
-  const views = {
-    ...(!sameOrder(previousViewIds ?? EMPTY_VIEW_IDS, nextViewIds)
-      ? { ids: nextViewIds }
-      : {}),
-    values: createEntityPatch<ViewId, View>({
-      previousIds: previousViewIds,
-      nextIds: nextViewIds,
-      previousValue: id => input.previous
-        ? getDocumentViewById(input.previous, id)
-        : undefined,
-      nextValue: id => getDocumentViewById(input.next, id)
-    })
-  }
-
-  if (!records.ids && !records.values && !fields.ids && !fields.values && !views.ids && !views.values) {
-    return undefined
-  }
-
-  return {
-    ...(records.ids || records.values
-      ? { records }
-      : {}),
-    ...(fields.ids || fields.values
-      ? { fields }
-      : {}),
-    ...(views.ids || views.values
-      ? { views }
-      : {})
-  }
-}
-
-const createEmptyActivePatch = (input: {
-  previous?: ViewState
-  document: DataDoc
-}): ActivePatch => {
-  const activeViewId = input.document.activeViewId
-  const activeView = activeViewId
-    ? getDocumentViewById(input.document, activeViewId)
-    : undefined
-  const previousFieldIds = input.previous?.fields.ids ?? EMPTY_FIELD_IDS
-  const previousItemIds = input.previous?.items.ids ?? EMPTY_ITEM_IDS
-  const previousSectionKeys = input.previous?.sections.ids ?? EMPTY_SECTION_KEYS
-
-  return {
-    view: {
-      ready: false,
-      id: activeViewId,
-      type: activeView?.type,
-      value: activeView
-    },
-    items: {
-      ids: EMPTY_ITEM_IDS,
-      values: createEntityPatch<ItemId, ViewItem>({
-        previousIds: previousItemIds,
-        nextIds: EMPTY_ITEM_IDS,
-        previousValue: id => input.previous?.items.get(id),
-        nextValue: () => undefined
-      }),
-      index: createEntityPatch<ItemId, number>({
-        previousIds: previousItemIds,
-        nextIds: EMPTY_ITEM_IDS,
-        previousValue: id => input.previous?.items.indexOf(id),
-        nextValue: () => undefined
-      })
-    },
-    sections: {
-      keys: EMPTY_SECTION_KEYS,
-      values: createEntityPatch<SectionKey, Section>({
-        previousIds: previousSectionKeys,
-        nextIds: EMPTY_SECTION_KEYS,
-        previousValue: key => input.previous?.sections.get(key),
-        nextValue: () => undefined
-      }),
-      itemIds: createSectionItemIdsPatch({
-        previous: input.previous,
-        next: undefined
-      }),
-      summary: createSectionSummaryPatch({
-        previous: input.previous,
-        next: undefined
-      })
-    },
-    fields: {
-      all: {
-        ids: EMPTY_FIELD_IDS,
-        values: createEntityPatch<FieldId, Field>({
-          previousIds: previousFieldIds,
-          nextIds: EMPTY_FIELD_IDS,
-          previousValue: id => input.previous?.fields.get(id),
-          nextValue: () => undefined
-        })
-      },
-      custom: {
-        ids: EMPTY_FIELD_IDS,
-        values: createEntityPatch<FieldId, CustomField>({
-          previousIds: input.previous?.fields.custom.map(field => field.id) ?? EMPTY_FIELD_IDS,
-          nextIds: EMPTY_FIELD_IDS,
-          previousValue: id => input.previous?.fields.custom.find(field => field.id === id),
-          nextValue: () => undefined
-        })
-      }
-    },
-    query: {
-      search: EMPTY_SEARCH,
-      filters: EMPTY_FILTERS,
-      sort: EMPTY_SORT,
-      group: EMPTY_GROUP,
-      grouped: false,
-      groupFieldId: '',
-      filterFieldIds: EMPTY_FIELD_IDS,
-      sortFieldIds: EMPTY_FIELD_IDS,
-      sortDir: createSortDirectionPatch({
-        previous: input.previous,
-        next: undefined
-      })
-    },
-    table: {
-      wrap: false,
-      showVerticalLines: false,
-      calc: createTableCalcPatch({
-        previous: input.previous,
-        next: undefined
-      })
-    },
-    gallery: {
-      wrap: false,
-      size: DEFAULT_CARD_SIZE,
-      layout: DEFAULT_CARD_LAYOUT,
-      canReorder: false,
-      groupUsesOptionColors: false
-    },
-    kanban: {
       wrap: false,
       size: DEFAULT_CARD_SIZE,
       layout: DEFAULT_CARD_LAYOUT,
@@ -485,272 +127,840 @@ const createEmptyActivePatch = (input: {
       cardsPerColumn: DEFAULT_KANBAN_CARDS_PER_COLUMN
     }
   }
+
+  const groupUsesOptionColors = usesOptionGroupingColors(query.group.field)
+
+  return {
+    wrap: view.options.kanban.card.wrap,
+    size: view.options.kanban.card.size,
+    layout: view.options.kanban.card.layout,
+    canReorder: query.group.active && query.sort.rules.length === 0,
+    groupUsesOptionColors,
+    fillColumnColor: groupUsesOptionColors && view.options.kanban.fillColumnColor,
+    cardsPerColumn: view.options.kanban.cardsPerColumn
+  }
 }
 
-const createActivePatch = (input: {
-  previous?: ViewState
-  next?: ViewState
-  document: DataDoc
-}): ActivePatch | undefined => {
-  const next = input.next
-  const previous = input.previous
-  const activeViewId = input.document.activeViewId
-  const activeView = activeViewId
-    ? getDocumentViewById(input.document, activeViewId)
-    : undefined
+const pushIds = <T,>(
+  target: Set<T>,
+  values?: Iterable<T>
+) => {
+  if (!values) {
+    return
+  }
 
-  if (!next || !activeView) {
-    return createEmptyActivePatch({
-      previous,
-      document: input.document
+  for (const value of values) {
+    target.add(value)
+  }
+}
+
+const setMap = <TKey, TValue>(
+  values: readonly (readonly [TKey, TValue | undefined])[]
+): ReadonlyMap<TKey, TValue | undefined> | undefined => values.length
+  ? new Map(values)
+  : undefined
+
+const entityDelta = <TKey, TValue>(input: {
+  set?: readonly (readonly [TKey, TValue | undefined])[]
+  remove?: readonly TKey[]
+}): EntityDelta<TKey, TValue> | undefined => (
+  input.set?.length || input.remove?.length
+    ? {
+        ...(input.set?.length
+          ? {
+              set: new Map(input.set)
+            }
+          : {}),
+        ...(input.remove?.length
+          ? {
+              remove: input.remove
+            }
+          : {})
+      }
+    : undefined
+)
+
+const buildDocumentEntityDelta = <TKey, TValue>(input: {
+  ids: readonly TKey[]
+  changed: readonly TKey[]
+  removed: readonly TKey[]
+  value: (key: TKey) => TValue | undefined
+}): {
+  ids?: readonly TKey[]
+  values?: EntityDelta<TKey, TValue>
+} | undefined => {
+  const set = input.changed.flatMap(key => (
+    [[key, input.value(key)] as const]
+  ))
+  const values = entityDelta<TKey, TValue>({
+    set,
+    remove: input.removed
+  })
+
+  return input.changed.length || input.removed.length
+    ? {
+        ids: input.ids,
+        ...(values
+          ? { values }
+          : {})
+      }
+    : values
+      ? {
+          values
+        }
+      : undefined
+}
+
+const buildFilterFieldIds = (
+  query: ViewState['query']
+): readonly FieldId[] => query.filters.rules.flatMap(entry => {
+  const fieldId = getFilterFieldId(entry.rule)
+  return fieldId ? [fieldId] : []
+})
+
+const buildSortFieldIds = (
+  query: ViewState['query']
+): readonly FieldId[] => query.sort.rules.flatMap(entry => {
+  const fieldId = getSorterFieldId(entry.sorter)
+  return fieldId ? [fieldId] : []
+})
+
+const buildSortDir = (
+  query: ViewState['query']
+): ReadonlyMap<FieldId, SortDirection | undefined> => new Map(
+  query.sort.rules.flatMap(entry => {
+    const fieldId = getSorterFieldId(entry.sorter)
+    return fieldId
+      ? [[fieldId, entry.sorter.direction] as const]
+      : []
+  })
+)
+
+const collectRemovedKeys = <TKey,>(
+  previousIds: readonly TKey[],
+  nextIds: readonly TKey[]
+) => {
+  if (!previousIds.length) {
+    return [] as TKey[]
+  }
+
+  const nextIdSet = new Set(nextIds)
+  return previousIds.filter(key => !nextIdSet.has(key))
+}
+
+const collectChangedSectionKeys = (input: {
+  previous?: ViewState
+  next: ViewState
+}) => {
+  if (!input.previous) {
+    return input.next.sections.ids
+  }
+
+  const changed = new Set<SectionKey>()
+  input.next.sections.ids.forEach(sectionKey => {
+    const previousSection = input.previous?.sections.get(sectionKey)
+    const nextSection = input.next.sections.get(sectionKey)
+    const previousSummary = input.previous?.summaries.get(sectionKey)
+    const nextSummary = input.next.summaries.get(sectionKey)
+
+    if (
+      previousSection !== nextSection
+      || previousSummary !== nextSummary
+    ) {
+      changed.add(sectionKey)
+    }
+  })
+
+  if (!sameOrder(input.previous.sections.ids, input.next.sections.ids)) {
+    input.next.sections.ids.forEach(sectionKey => changed.add(sectionKey))
+  }
+
+  return [...changed]
+}
+
+const buildItemValueDelta = (input: {
+  previous?: ViewState
+  next: ViewState
+  changedSections: readonly SectionKey[]
+  removedSections: readonly SectionKey[]
+  rebuild: boolean
+}) => {
+  if (input.rebuild || !input.previous) {
+    return entityDelta<ItemId, ViewItem>({
+      set: input.next.items.ids.map(itemId => [itemId, input.next.items.get(itemId)] as const)
     })
   }
 
-  const itemIds = next.items.ids
-  const sectionKeys = next.sections.ids
-  const fieldIds = next.fields.ids
-  const customFieldIds = next.fields.custom.map(field => field.id)
-  const filterFieldIds = next.query.filters.rules.flatMap(entry => {
-    const fieldId = getFilterFieldId(entry.rule)
-    return fieldId ? [fieldId] : []
+  const set = new Map<ItemId, ViewItem | undefined>()
+  const remove = new Set<ItemId>()
+
+  input.removedSections.forEach(sectionKey => {
+    input.previous?.sections.get(sectionKey)?.items.ids.forEach(itemId => {
+      remove.add(itemId)
+    })
   })
-  const sortFieldIds = next.query.sort.rules.flatMap(entry => {
-    const fieldId = getSorterFieldId(entry.sorter)
-    return fieldId ? [fieldId] : []
+
+  input.changedSections.forEach(sectionKey => {
+    const previousItemIds = input.previous?.sections.get(sectionKey)?.items.ids ?? EMPTY_ITEM_IDS
+    const nextItemIds = input.next.sections.get(sectionKey)?.items.ids ?? EMPTY_ITEM_IDS
+    const nextItemIdSet = new Set(nextItemIds)
+
+    previousItemIds.forEach(itemId => {
+      if (!nextItemIdSet.has(itemId)) {
+        remove.add(itemId)
+      }
+    })
+
+    nextItemIds.forEach(itemId => {
+      const nextItem = input.next.items.get(itemId)
+      if (!nextItem) {
+        return
+      }
+
+      if (input.previous?.items.get(itemId) === nextItem) {
+        return
+      }
+
+      set.set(itemId, nextItem)
+    })
+  })
+
+  return entityDelta<ItemId, ViewItem>({
+    set: [...set.entries()],
+    remove: [...remove]
+  })
+}
+
+const buildSectionValueDelta = (input: {
+  previous?: ViewState
+  next: ViewState
+  changedSections: readonly SectionKey[]
+  removedSections: readonly SectionKey[]
+  rebuild: boolean
+}) => {
+  if (input.rebuild || !input.previous) {
+    return entityDelta<SectionKey, Section>({
+      set: input.next.sections.ids.map(sectionKey => [sectionKey, input.next.sections.get(sectionKey)] as const)
+    })
+  }
+
+  return entityDelta<SectionKey, Section>({
+    set: input.changedSections
+      .map(sectionKey => [sectionKey, input.next.sections.get(sectionKey)] as const)
+      .filter(([, value]) => value !== undefined),
+    remove: input.removedSections
+  })
+}
+
+const buildSectionSummaryDelta = (input: {
+  previous?: ViewState
+  next: ViewState
+  changedSections: readonly SectionKey[]
+  removedSections: readonly SectionKey[]
+  rebuild: boolean
+}) => {
+  if (input.rebuild || !input.previous) {
+    return entityDelta<SectionKey, CalculationCollection | undefined>({
+      set: input.next.sections.ids.map(sectionKey => [sectionKey, input.next.summaries.get(sectionKey)] as const)
+    })
+  }
+
+  return entityDelta<SectionKey, CalculationCollection | undefined>({
+    set: input.changedSections.map(sectionKey => [sectionKey, input.next.summaries.get(sectionKey)] as const),
+    remove: input.removedSections
+  })
+}
+
+const buildFieldValueDelta = <TField extends Field | CustomField>(input: {
+  values: readonly TField[]
+}): EntityDelta<FieldId, TField> | undefined => entityDelta({
+  set: input.values.map(field => [field.id, field] as const)
+})
+
+const createTableLayoutSection = (input: {
+  key: SectionKey
+  collapsed: boolean
+  itemIds: readonly ItemId[]
+}): TableLayoutSectionState => ({
+  key: input.key,
+  collapsed: input.collapsed,
+  itemIds: input.itemIds
+})
+
+const syncTableLayoutState = (input: {
+  previous: TableLayoutState | null
+  view?: ViewState
+}): TableLayoutState | null => {
+  const view = input.view
+  if (!view || view.view.type !== 'table') {
+    return null
+  }
+
+  const grouped = view.query.group.active
+  const rowCount = view.items.ids.length
+  const previousSectionsByKey = new Map(
+    input.previous?.sections.map(section => [section.key, section] as const) ?? []
+  )
+  const nextSections = grouped
+    ? view.sections.ids.flatMap(sectionKey => {
+        const section = view.sections.get(sectionKey)
+        if (!section) {
+          return []
+        }
+
+        const previousSection = previousSectionsByKey.get(sectionKey)
+        if (
+          previousSection
+          && previousSection.collapsed === section.collapsed
+          && previousSection.itemIds === section.items.ids
+        ) {
+          return [previousSection]
+        }
+
+        return [createTableLayoutSection({
+          key: sectionKey,
+          collapsed: section.collapsed,
+          itemIds: section.items.ids
+        })]
+      })
+    : [
+        (() => {
+          const rootKey = view.sections.ids[0] ?? ('root' as SectionKey)
+          const previousSection = input.previous?.sections[0]
+          if (
+            previousSection
+            && previousSection.key === rootKey
+            && !previousSection.collapsed
+            && previousSection.itemIds === view.items.ids
+          ) {
+            return previousSection
+          }
+
+          return createTableLayoutSection({
+            key: rootKey,
+            collapsed: false,
+            itemIds: view.items.ids
+          })
+        })()
+      ]
+
+  if (
+    input.previous
+    && input.previous.grouped === grouped
+    && input.previous.rowCount === rowCount
+    && input.previous.sections.length === nextSections.length
+    && input.previous.sections.every((section, index) => section === nextSections[index])
+  ) {
+    return input.previous
+  }
+
+  return {
+    grouped,
+    rowCount,
+    sections: nextSections.length
+      ? nextSections
+      : EMPTY_LAYOUT_SECTIONS
+  }
+}
+
+export const projectDocumentChange = (input: {
+  impact: CommitImpact
+  document: DataDoc
+}): DocumentChange => {
+  if (input.impact.reset) {
+    return {
+      records: {
+        changed: getDocumentRecordIds(input.document),
+        removed: []
+      },
+      fields: {
+        changed: getDocumentCustomFieldIds(input.document),
+        removed: []
+      },
+      views: {
+        changed: getDocumentViewIds(input.document),
+        removed: []
+      },
+      activeViewChanged: true
+    }
+  }
+
+  const recordIds = new Set<string>()
+  pushIds(recordIds, input.impact.records?.inserted)
+  pushIds(recordIds, input.impact.records?.patched?.keys())
+  pushIds(recordIds, input.impact.records?.titleChanged)
+
+  const fieldIds = new Set<FieldId>()
+  pushIds(fieldIds, input.impact.fields?.inserted)
+  pushIds(fieldIds, input.impact.fields?.schema?.keys())
+
+  const viewIds = new Set<ViewId>()
+  pushIds(viewIds, input.impact.views?.inserted)
+  pushIds(viewIds, input.impact.views?.changed?.keys())
+
+  return {
+    records: {
+      changed: [...recordIds],
+      removed: [...(input.impact.records?.removed ?? [])]
+    },
+    fields: {
+      changed: [...fieldIds],
+      removed: [...(input.impact.fields?.removed ?? [])]
+    },
+    views: {
+      changed: [...viewIds],
+      removed: [...(input.impact.views?.removed ?? [])]
+    },
+    activeViewChanged: Boolean(input.impact.activeView)
+  }
+}
+
+export const projectViewPublishDelta = (input: {
+  previous?: ViewState
+  next?: ViewState
+}): ViewPublishDelta | undefined => {
+  const next = input.next
+  const previous = input.previous
+
+  if (!next) {
+    return previous
+      ? {
+          rebuild: true,
+          view: {
+            ready: false,
+            id: undefined,
+            type: undefined,
+            value: undefined
+          },
+          query: {
+            search: EMPTY_SEARCH,
+            filters: EMPTY_FILTERS,
+            sort: EMPTY_SORT,
+            group: EMPTY_GROUP,
+            grouped: false,
+            groupFieldId: '',
+            filterFieldIds: EMPTY_FIELD_IDS,
+            sortFieldIds: EMPTY_FIELD_IDS,
+            sortDir: new Map()
+          },
+          items: {
+            ids: EMPTY_ITEM_IDS,
+            values: entityDelta({
+              remove: previous.items.ids
+            })
+          },
+          sections: {
+            keys: EMPTY_SECTION_KEYS,
+            values: entityDelta({
+              remove: previous.sections.ids
+            }),
+            summary: entityDelta({
+              remove: previous.sections.ids
+            })
+          },
+          fields: {
+            all: [],
+            custom: []
+          },
+          table: {
+            wrap: false,
+            showVerticalLines: false,
+            calc: new Map()
+          },
+          gallery: {
+            wrap: false,
+            size: DEFAULT_CARD_SIZE,
+            layout: DEFAULT_CARD_LAYOUT,
+            canReorder: false,
+            groupUsesOptionColors: false
+          },
+          kanban: {
+            wrap: false,
+            size: DEFAULT_CARD_SIZE,
+            layout: DEFAULT_CARD_LAYOUT,
+            canReorder: false,
+            groupUsesOptionColors: false,
+            fillColumnColor: false,
+            cardsPerColumn: DEFAULT_KANBAN_CARDS_PER_COLUMN
+          }
+        }
+      : undefined
+  }
+
+  const rebuild = (
+    !previous
+    || previous.view.id !== next.view.id
+    || previous.view.type !== next.view.type
+  )
+  const filterFieldIds = buildFilterFieldIds(next.query)
+  const sortFieldIds = buildSortFieldIds(next.query)
+  const sortDir = buildSortDir(next.query)
+  const previousFilterFieldIds = previous
+    ? buildFilterFieldIds(previous.query)
+    : EMPTY_FIELD_IDS
+  const previousSortFieldIds = previous
+    ? buildSortFieldIds(previous.query)
+    : EMPTY_FIELD_IDS
+  const previousSortDir = previous
+    ? buildSortDir(previous.query)
+    : new Map<FieldId, SortDirection | undefined>()
+  const changedSections = collectChangedSectionKeys({
+    previous,
+    next
+  })
+  const removedSections = previous
+    ? collectRemovedKeys(previous.sections.ids, next.sections.ids)
+    : []
+  const itemValues = buildItemValueDelta({
+    previous,
+    next,
+    changedSections,
+    removedSections,
+    rebuild
+  })
+  const sectionValues = buildSectionValueDelta({
+    previous,
+    next,
+    changedSections,
+    removedSections,
+    rebuild
+  })
+  const summaryValues = buildSectionSummaryDelta({
+    previous,
+    next,
+    changedSections,
+    removedSections,
+    rebuild
   })
   const gallery = resolveGalleryState(next.view, next.query)
   const kanban = resolveKanbanState(next.view, next.query)
-  const itemsIdsChanged = !sameOrder(previous?.items.ids ?? EMPTY_ITEM_IDS, itemIds)
-  const sectionKeysChanged = !sameOrder(previous?.sections.ids ?? EMPTY_SECTION_KEYS, sectionKeys)
-  const fieldIdsChanged = !sameOrder(previous?.fields.ids ?? EMPTY_FIELD_IDS, fieldIds)
-  const customFieldIdsChanged = !sameOrder(previous?.fields.custom.map(field => field.id) ?? EMPTY_FIELD_IDS, customFieldIds)
-  const filterFieldIdsChanged = !sameOrder(
-    previous?.query.filters.rules.flatMap(entry => {
-      const fieldId = getFilterFieldId(entry.rule)
-      return fieldId ? [fieldId] : []
-    }) ?? EMPTY_FIELD_IDS,
-    filterFieldIds
-  )
-  const sortFieldIdsChanged = !sameOrder(
-    previous?.query.sort.rules.flatMap(entry => {
-      const fieldId = getSorterFieldId(entry.sorter)
-      return fieldId ? [fieldId] : []
-    }) ?? EMPTY_FIELD_IDS,
-    sortFieldIds
-  )
-
-  const itemsPatch = createEntityPatch<ItemId, ViewItem>({
-    previousIds: previous?.items.ids,
-    nextIds: itemIds,
-    previousValue: id => previous?.items.get(id),
-    nextValue: id => next.items.get(id)
-  })
-  const itemIndexPatch = createItemIndexPatch({
-    previous,
-    next
-  })
-  const sectionsPatch = createEntityPatch<SectionKey, Section>({
-    previousIds: previous?.sections.ids,
-    nextIds: sectionKeys,
-    previousValue: key => previous?.sections.get(key),
-    nextValue: key => next.sections.get(key)
-  })
-  const sectionItemsPatch = createSectionItemIdsPatch({
-    previous,
-    next
-  })
-  const sectionSummaryPatch = createSectionSummaryPatch({
-    previous,
-    next
-  })
-  const allFieldsPatch = createEntityPatch<FieldId, Field>({
-    previousIds: previous?.fields.ids,
-    nextIds: fieldIds,
-    previousValue: id => previous?.fields.get(id),
-    nextValue: id => next.fields.get(id)
-  })
-  const customFieldsPatch = createEntityPatch<FieldId, CustomField>({
-    previousIds: previous?.fields.custom.map(field => field.id),
-    nextIds: customFieldIds,
-    previousValue: id => previous?.fields.custom.find(field => field.id === id),
-    nextValue: id => next.fields.custom.find(field => field.id === id)
-  })
-  const sortDirPatch = createSortDirectionPatch({
-    previous,
-    next
-  })
-  const tableCalcPatch = createTableCalcPatch({
-    previous,
-    next
-  })
-
-  const viewPatch = (
-    previous?.view !== next.view
-    || previous?.view.id !== next.view.id
-    || previous?.view.type !== next.view.type
-  )
-    ? {
-        ready: true,
-        id: next.view.id,
-        type: next.view.type,
-        value: next.view
-      }
-    : undefined
-
-  const queryPatch = (
-    previous?.query.search !== next.query.search
+  const queryChanged = (
+    rebuild
+    || previous?.query.search !== next.query.search
     || previous?.query.filters !== next.query.filters
     || previous?.query.sort !== next.query.sort
     || previous?.query.group !== next.query.group
-    || filterFieldIdsChanged
-    || sortFieldIdsChanged
-    || sortDirPatch
+    || !sameOrder(previousFilterFieldIds, filterFieldIds)
+    || !sameOrder(previousSortFieldIds, sortFieldIds)
+    || previousSortDir.size !== sortDir.size
+    || [...sortDir.entries()].some(([fieldId, value]) => previousSortDir.get(fieldId) !== value)
   )
-    ? {
-        ...(previous?.query.search !== next.query.search
-          ? { search: next.query.search }
-          : {}),
-        ...(previous?.query.filters !== next.query.filters
-          ? { filters: next.query.filters }
-          : {}),
-        ...(previous?.query.sort !== next.query.sort
-          ? { sort: next.query.sort }
-          : {}),
-        ...(previous?.query.group !== next.query.group
-          ? { group: next.query.group } : {}),
-        grouped: next.query.group.active,
-        groupFieldId: next.query.group.fieldId,
-        filterFieldIds,
-        sortFieldIds,
-        ...(sortDirPatch
-          ? { sortDir: sortDirPatch }
-          : {})
-      }
-    : undefined
-
-  const tablePatch = (
-    previous?.view.type !== next.view.type
+  const tableChanged = (
+    rebuild
+    || previous?.view.type !== next.view.type
     || previous?.view.options.table.wrap !== next.view.options.table.wrap
     || previous?.view.options.table.showVerticalLines !== next.view.options.table.showVerticalLines
-    || tableCalcPatch
+    || previous?.view.calc !== next.view.calc
   )
-    ? {
-        wrap: next.view.type === 'table'
-          ? next.view.options.table.wrap
-          : false,
-        showVerticalLines: next.view.type === 'table'
-          ? next.view.options.table.showVerticalLines
-          : false,
-        ...(tableCalcPatch
-          ? { calc: tableCalcPatch }
-          : {})
-      }
-    : undefined
+  const fieldsChanged = rebuild || previous?.fields !== next.fields
 
-  const galleryPatch = (
-    previous?.view !== next.view
-    || previous?.query.group !== next.query.group
-    || previous?.query.sort !== next.query.sort
-  )
-    ? {
-        wrap: gallery.card.wrap,
-        size: gallery.card.size,
-        layout: gallery.card.layout,
-        canReorder: gallery.canReorder,
-        groupUsesOptionColors: gallery.groupUsesOptionColors
-      }
-    : undefined
-
-  const kanbanPatch = (
-    previous?.view !== next.view
-    || previous?.query.group !== next.query.group
-    || previous?.query.sort !== next.query.sort
-  )
-    ? {
-        wrap: kanban.card.wrap,
-        size: kanban.card.size,
-        layout: kanban.card.layout,
-        canReorder: kanban.canReorder,
-        groupUsesOptionColors: kanban.groupUsesOptionColors,
-        fillColumnColor: kanban.fillColumnColor,
-        cardsPerColumn: kanban.cardsPerColumn
-      }
-    : undefined
-
-  const patch: ActivePatch = {
-    ...(viewPatch ? { view: viewPatch } : {}),
-    ...(
-      itemsIdsChanged || itemsPatch || itemIndexPatch
-        ? {
-            items: {
-              ...(itemsIdsChanged ? { ids: itemIds } : {}),
-              ...(itemsPatch ? { values: itemsPatch } : {}),
-              ...(itemIndexPatch ? { index: itemIndexPatch } : {})
-            }
-          }
-        : {}
-    ),
-    ...(
-      sectionKeysChanged || sectionsPatch || sectionItemsPatch || sectionSummaryPatch
-        ? {
-            sections: {
-              ...(sectionKeysChanged ? { keys: sectionKeys } : {}),
-              ...(sectionsPatch ? { values: sectionsPatch } : {}),
-              ...(sectionItemsPatch ? { itemIds: sectionItemsPatch } : {}),
-              ...(sectionSummaryPatch ? { summary: sectionSummaryPatch } : {})
-            }
-          }
-        : {}
-    ),
-    ...(
-      fieldIdsChanged || allFieldsPatch || customFieldIdsChanged || customFieldsPatch
-        ? {
-            fields: {
-              all: {
-                ...(fieldIdsChanged ? { ids: fieldIds } : {}),
-                ...(allFieldsPatch ? { values: allFieldsPatch } : {})
-              },
-              custom: {
-                ...(customFieldIdsChanged ? { ids: customFieldIds } : {}),
-                ...(customFieldsPatch ? { values: customFieldsPatch } : {})
-              }
-            }
-          }
-        : {}
-    ),
-    ...(queryPatch ? { query: queryPatch } : {}),
-    ...(tablePatch ? { table: tablePatch } : {}),
-    ...(galleryPatch ? { gallery: galleryPatch } : {}),
-    ...(kanbanPatch ? { kanban: kanbanPatch } : {})
+  const delta: ViewPublishDelta = {
+    rebuild
   }
 
-  return Object.keys(patch).length
-    ? patch
+  if (
+    rebuild
+    || previous?.view !== next.view
+    || previous?.view.id !== next.view.id
+    || previous?.view.type !== next.view.type
+  ) {
+    delta.view = {
+      ready: true,
+      id: next.view.id,
+      type: next.view.type,
+      value: next.view
+    }
+  }
+
+  if (queryChanged) {
+    delta.query = {
+      search: next.query.search,
+      filters: next.query.filters,
+      sort: next.query.sort,
+      group: next.query.group,
+      grouped: next.query.group.active,
+      groupFieldId: next.query.group.fieldId,
+      filterFieldIds,
+      sortFieldIds,
+      sortDir
+    }
+  }
+
+  if (rebuild || previous?.items.ids !== next.items.ids || itemValues) {
+    delta.items = {
+      ...(rebuild || previous?.items.ids !== next.items.ids
+        ? {
+            ids: next.items.ids
+          }
+        : {}),
+      ...(itemValues
+        ? {
+            values: itemValues
+          }
+        : {})
+    }
+  }
+
+  if (
+    rebuild
+    || previous?.sections.ids !== next.sections.ids
+    || sectionValues
+    || summaryValues
+  ) {
+    delta.sections = {
+      ...(rebuild || previous?.sections.ids !== next.sections.ids
+        ? {
+            keys: next.sections.ids
+          }
+        : {}),
+      ...(sectionValues
+        ? {
+            values: sectionValues
+          }
+        : {}),
+      ...(summaryValues
+        ? {
+            summary: summaryValues
+          }
+        : {})
+    }
+  }
+
+  if (fieldsChanged) {
+    delta.fields = {
+      all: next.fields.all,
+      custom: next.fields.custom
+    }
+  }
+
+  if (tableChanged) {
+    delta.table = {
+      wrap: next.view.type === 'table'
+        ? next.view.options.table.wrap
+        : false,
+      showVerticalLines: next.view.type === 'table'
+        ? next.view.options.table.showVerticalLines
+        : false,
+      calc: new Map(
+        next.fields.ids.map(fieldId => [
+          fieldId,
+          next.view.type === 'table'
+            ? next.view.calc[fieldId] ?? undefined
+            : undefined
+        ] as const)
+      )
+    }
+  }
+
+  if (rebuild || previous?.view !== next.view || previous?.query !== next.query) {
+    delta.gallery = gallery
+    delta.kanban = kanban
+  }
+
+  return Object.keys(delta).length > 1
+    ? delta
     : undefined
 }
 
-export const projectEnginePatch = (input: {
-  previousDoc?: DataDoc
-  previousSnapshot?: ViewState
-  nextDoc: DataDoc
-  nextSnapshot?: ViewState
-}): EnginePatch => {
-  const doc = createDocumentPatch({
-    previous: input.previousDoc,
-    next: input.nextDoc
+export const projectEngineOutput = (input: {
+  document: DataDoc
+  documentChange: DocumentChange
+  previousView?: ViewState
+  nextView?: ViewState
+  previousLayout: TableLayoutState | null
+}): {
+  publishDelta?: ViewPublishDelta
+  sourceDelta: SourceDelta
+  tableLayout: TableLayoutState | null
+} => {
+  const publishDelta = projectViewPublishDelta({
+    previous: input.previousView,
+    next: input.nextView
   })
-  const active = createActivePatch({
-    previous: input.previousSnapshot,
-    next: input.nextSnapshot,
-    document: input.nextDoc
+  const tableLayout = syncTableLayoutState({
+    previous: input.previousLayout,
+    view: input.nextView
   })
+  const document = {
+    records: buildDocumentEntityDelta<RecordId, DataRecord>({
+      ids: getDocumentRecordIds(input.document),
+      changed: input.documentChange.records.changed as readonly RecordId[],
+      removed: input.documentChange.records.removed as readonly RecordId[],
+      value: recordId => getDocumentRecordById(input.document, recordId)
+    }),
+    fields: buildDocumentEntityDelta<FieldId, CustomField>({
+      ids: getDocumentCustomFieldIds(input.document),
+      changed: input.documentChange.fields.changed,
+      removed: input.documentChange.fields.removed,
+      value: fieldId => getDocumentCustomFieldById(input.document, fieldId)
+    }),
+    views: buildDocumentEntityDelta<ViewId, View>({
+      ids: getDocumentViewIds(input.document),
+      changed: input.documentChange.views.changed,
+      removed: input.documentChange.views.removed,
+      value: viewId => getDocumentViewById(input.document, viewId)
+    })
+  }
+  const active = publishDelta
+    ? {
+        ...(publishDelta.view
+          ? {
+              view: publishDelta.view
+            }
+          : {}),
+        ...(publishDelta.items
+          ? {
+              items: {
+                ...(publishDelta.items.ids
+                  ? {
+                      ids: publishDelta.items.ids
+                    }
+                  : {}),
+                ...(publishDelta.items.values
+                  ? {
+                      values: publishDelta.items.values
+                    }
+                  : {})
+              }
+            }
+          : {}),
+        ...(publishDelta.sections
+          ? {
+              sections: {
+                ...(publishDelta.sections.keys
+                  ? {
+                      keys: publishDelta.sections.keys
+                    }
+                  : {}),
+                ...(publishDelta.sections.values
+                  ? {
+                      values: publishDelta.sections.values
+                    }
+                  : {}),
+                ...(publishDelta.sections.summary
+                  ? {
+                      summary: publishDelta.sections.summary
+                    }
+                  : {})
+              }
+            }
+          : {}),
+        ...(publishDelta.fields
+          ? {
+              fields: {
+                ...(publishDelta.fields.all
+                  ? {
+                      all: {
+                        ids: publishDelta.fields.all.map(field => field.id),
+                        values: buildFieldValueDelta({
+                          values: publishDelta.fields.all
+                        })
+                      }
+                    }
+                  : {}),
+                ...(publishDelta.fields.custom
+                  ? {
+                      custom: {
+                        ids: publishDelta.fields.custom.map(field => field.id),
+                        values: buildFieldValueDelta({
+                          values: publishDelta.fields.custom
+                        })
+                      }
+                    }
+                  : {})
+              }
+            }
+          : {}),
+        ...(publishDelta.query
+          ? {
+              query: {
+                ...publishDelta.query,
+                ...(publishDelta.query.sortDir
+                  ? {
+                      sortDir: entityDelta<FieldId, SortDirection>({
+                        set: [...publishDelta.query.sortDir.entries()]
+                      })
+                    }
+                  : {})
+              }
+            }
+          : {}),
+        ...(
+          publishDelta.table || input.previousLayout !== tableLayout
+            ? {
+                table: {
+                  ...(publishDelta.table
+                    ? {
+                        ...publishDelta.table,
+                        ...(publishDelta.table.calc
+                          ? {
+                              calc: entityDelta<FieldId, CalculationMetric>({
+                                set: [...publishDelta.table.calc.entries()]
+                              })
+                            }
+                          : {})
+                      }
+                    : {}),
+                  ...(input.previousLayout !== tableLayout
+                    ? {
+                        layout: tableLayout
+                      }
+                    : {})
+                }
+              }
+            : {}
+        ),
+        ...(publishDelta.gallery
+          ? {
+              gallery: publishDelta.gallery
+            }
+          : {}),
+        ...(publishDelta.kanban
+          ? {
+              kanban: publishDelta.kanban
+            }
+          : {})
+      }
+    : (
+      input.previousLayout !== tableLayout
+        ? {
+            table: {
+              layout: tableLayout
+            }
+          }
+        : undefined
+    )
 
   return {
-    ...(doc
-      ? { doc }
+    ...(publishDelta
+      ? { publishDelta }
       : {}),
-    ...(active
-      ? { active }
-      : {})
+    sourceDelta: {
+      ...(document.records || document.fields || document.views
+        ? {
+            document: {
+              ...(document.records
+                ? {
+                    records: document.records
+                  }
+                : {}),
+              ...(document.fields
+                ? {
+                    fields: document.fields
+                  }
+                : {}),
+              ...(document.views
+                ? {
+                    views: document.views
+                  }
+                : {})
+            }
+          }
+        : {}),
+      ...(active
+        ? { active }
+        : {})
+    },
+    tableLayout
   }
 }

@@ -6,11 +6,6 @@ export type CollabStatus =
   | 'disconnected'
   | 'error'
 
-export type CollabBootstrapMode =
-  | 'auto'
-  | 'engine-first'
-  | 'yjs-first'
-
 export type CollabProvider = {
   connect?: () => void
   disconnect?: () => void

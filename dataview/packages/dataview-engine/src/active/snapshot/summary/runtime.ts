@@ -23,6 +23,7 @@ import type {
   DeriveAction,
   QueryState,
   SectionState,
+  SummaryDelta,
   SummaryState
 } from '@dataview/engine/contracts/internal'
 import type { SectionKey } from '@dataview/engine/contracts/public'
@@ -36,6 +37,7 @@ import type {
 } from '@dataview/engine/active/shared/impact'
 import { publishSummaries } from '@dataview/engine/active/snapshot/summary/publish'
 import {
+  buildSummaryDelta,
   syncSummaryState
 } from '@dataview/engine/active/snapshot/summary/sync'
 
@@ -125,6 +127,7 @@ export const runSummaryStage = (input: {
 }): {
   action: DeriveAction
   state: SummaryState
+  delta: SummaryDelta
   summaries: ReadonlyMap<SectionKey, CalculationCollection>
   deriveMs: number
   publishMs: number
@@ -141,6 +144,15 @@ export const runSummaryStage = (input: {
     sections: input.sections,
     sectionsAction: input.sectionsAction
   })
+  const delta = buildSummaryDelta({
+    previous: input.previous,
+    previousSections: input.previousSections,
+    sections: input.sections,
+    index: input.index,
+    calcFields: input.calcFields,
+    impact: input.impact,
+    action
+  })
   const stage = runSnapshotStage({
     action,
     previousState: input.previous,
@@ -152,8 +164,8 @@ export const runSummaryStage = (input: {
           sections: input.sections,
           view: input.view,
           index: input.index,
-          impact: input.impact,
           action,
+          delta
         }),
     canReusePublished: stageInput => (
       stageInput.state === input.previous
@@ -183,6 +195,7 @@ export const runSummaryStage = (input: {
   return {
     action: stage.action,
     state: stage.state,
+    delta,
     summaries: stage.published,
     deriveMs: stage.deriveMs,
     publishMs: stage.publishMs,

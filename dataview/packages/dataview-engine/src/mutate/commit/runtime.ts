@@ -53,7 +53,10 @@ import {
   summarizeImpact,
   toTraceKind
 } from '@dataview/engine/mutate/commit/trace'
-import { projectEnginePatch } from '@dataview/engine/source/project'
+import {
+  projectDocumentChange,
+  projectEngineOutput
+} from '@dataview/engine/source/project'
 
 type Kind =
   | 'write'
@@ -227,11 +230,16 @@ const commit = <TResult extends CommitResult>(input: {
     impact: activeImpact,
     capturePerf: input.capturePerf
   })
-  const patch = projectEnginePatch({
-    previousDoc: base.doc,
-    previousSnapshot: base.currentView.snapshot,
-    nextDoc: draft.doc,
-    nextSnapshot: nextView.snapshot
+  const documentChange = projectDocumentChange({
+    impact: draft.impact,
+    document: draft.doc
+  })
+  const output = projectEngineOutput({
+    document: draft.doc,
+    documentChange,
+    previousView: base.currentView.snapshot,
+    nextView: nextView.snapshot,
+    previousLayout: base.currentView.tableLayout
   })
 
   const next = {
@@ -245,7 +253,11 @@ const commit = <TResult extends CommitResult>(input: {
       demand: nextIndex.demand,
       index: nextIndex.state,
       cache: nextView.cache,
-      patch,
+      ...(output.publishDelta
+        ? { publishDelta: output.publishDelta }
+        : {}),
+      sourceDelta: output.sourceDelta,
+      tableLayout: output.tableLayout,
       ...(nextView.snapshot
         ? { snapshot: nextView.snapshot }
         : {})

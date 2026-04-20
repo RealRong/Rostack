@@ -1,106 +1,293 @@
 import { createValueStore } from '@shared/core'
+import { createDocument } from '@whiteboard/core/document'
+import { createId } from '@whiteboard/core/id'
 import type { Commit } from '@whiteboard/engine'
 import * as Y from 'yjs'
-import type {
-  CollabBootstrapMode,
-  CollabStatus,
-  CollabSession,
-  CreateYjsSessionOptions
-} from '@whiteboard/collab/types'
-import { applyOperationsToYjsDocument } from '@whiteboard/collab/yjs/apply'
 import {
-  hasYjsDocumentSnapshot,
-  materializeYjsDocument,
-  replaceYjsDocument
-} from '@whiteboard/collab/yjs/materialize'
-import { compileRemoteDocumentChange } from '@whiteboard/collab/yjs/diff'
+  createSyncCursor,
+  planReplay
+} from '@whiteboard/collab/replay'
+import type {
+  CollabDiagnostics,
+  CollabSession,
+  CollabStatus,
+  CreateYjsSessionOptions,
+  SharedChange,
+  SharedCheckpoint
+} from '@whiteboard/collab/types'
+import type {
+  SyncCursor,
+  YjsSyncSnapshot
+} from '@whiteboard/collab/types/internal'
+import { createYjsSyncCodec } from '@whiteboard/collab/yjs/codec'
+import { createYjsSyncStore } from '@whiteboard/collab/yjs/store'
+import { createCollabLocalOrigin } from '@whiteboard/collab/yjs/shared'
 
-const resolveBootstrapMode = (
-  mode: CollabBootstrapMode,
-  doc: Y.Doc
-): Exclude<CollabBootstrapMode, 'auto'> => {
-  if (mode === 'engine-first' || mode === 'yjs-first') {
-    return mode
-  }
+const DEFAULT_CHECKPOINT_THRESHOLD = 100
 
-  return hasYjsDocumentSnapshot(doc)
-    ? 'yjs-first'
-    : 'engine-first'
-}
+const isSharedOperation = (
+  op: Commit['ops'][number]
+): op is SharedChange['ops'][number] => op.type !== 'document.replace'
+
+const createCheckpoint = (
+  doc: import('@whiteboard/core/types').Document
+): SharedCheckpoint => ({
+  id: createId('checkpoint'),
+  doc
+})
+
+const createSharedChange = (
+  actorId: string,
+  commit: Commit
+): SharedChange => ({
+  id: createId('change'),
+  actorId,
+  ops: commit.ops.filter(isSharedOperation)
+})
+
+const isReplaceCommit = (
+  commit: Commit
+): boolean => commit.ops.some((op) => op.type === 'document.replace')
+
+const createEmptyReplayDocument = (
+  engine: CreateYjsSessionOptions['engine']
+) => createDocument(engine.document.get().id)
 
 export const createYjsSession = ({
   engine,
   doc,
+  actorId,
   provider,
-  bootstrap = 'auto'
+  codec = createYjsSyncCodec(),
+  checkpointThreshold = DEFAULT_CHECKPOINT_THRESHOLD
 }: CreateYjsSessionOptions): CollabSession => {
+  if (actorId.length === 0) {
+    throw new Error('createYjsSession requires a non-empty actorId.')
+  }
+
   const status = createValueStore<CollabStatus>('idle')
-  const localOrigin = {
-    source: '@whiteboard/collab'
-  } as const
+  const diagnostics = createValueStore<CollabDiagnostics>({
+    duplicateChangeIds: [],
+    rejectedChangeIds: []
+  })
+  const store = createYjsSyncStore({
+    doc,
+    codec
+  })
+  const localOrigin = createCollabLocalOrigin()
+
   let destroyed = false
   let bootstrapped = false
   let waitingForProviderSync = false
-  let suppressLocalMirror = false
+  let suppressLocalPublish = false
+  let rotatingCheckpoint = false
   let lastCommit: Commit | null = null
+  let cursor: SyncCursor = {
+    checkpointId: null,
+    changeIds: []
+  }
   let unsubscribeProviderSync: (() => void) | undefined
+
+  const duplicateChangeIds = new Set<string>()
+  const rejectedChangeIds = new Set<string>()
+
+  const publishDiagnostics = () => {
+    diagnostics.set({
+      duplicateChangeIds: [...duplicateChangeIds],
+      rejectedChangeIds: [...rejectedChangeIds]
+    })
+  }
+
+  const trackDuplicates = (
+    ids: readonly string[]
+  ) => {
+    let changed = false
+    ids.forEach((id) => {
+      if (!duplicateChangeIds.has(id)) {
+        duplicateChangeIds.add(id)
+        changed = true
+      }
+    })
+    if (changed) {
+      publishDiagnostics()
+    }
+  }
+
+  const trackRejected = (
+    id: string
+  ) => {
+    if (rejectedChangeIds.has(id)) {
+      return
+    }
+    rejectedChangeIds.add(id)
+    publishDiagnostics()
+  }
+
+  const syncCursor = (
+    snapshot: YjsSyncSnapshot
+  ) => {
+    cursor = createSyncCursor(snapshot)
+  }
+
+  const readSnapshot = (): YjsSyncSnapshot => {
+    store.readMeta()
+    const snapshot = store.readSnapshot()
+    trackDuplicates(snapshot.duplicateChangeIds)
+    return snapshot
+  }
 
   const reportError = () => {
     status.set('error')
   }
 
-  const syncCommitToYDoc = (commit: Commit) => {
-    if (suppressLocalMirror) {
+  const clearLocalHistory = () => {
+    engine.history.clear()
+  }
+
+  const replayChanges = (
+    changes: readonly SharedChange[]
+  ) => {
+    changes.forEach((change) => {
+      try {
+        const result = engine.apply(change.ops, {
+          origin: 'remote'
+        })
+        if (result.ok) {
+          return
+        }
+      } catch {
+        trackRejected(change.id)
+        return
+      }
+      trackRejected(change.id)
+    })
+  }
+
+  const consumeSnapshot = ({
+    forceReset = false,
+    allowRotate = false
+  }: {
+    forceReset?: boolean
+    allowRotate?: boolean
+  } = {}) => {
+    const snapshot = readSnapshot()
+    const plan = planReplay({
+      cursor,
+      snapshot,
+      forceReset
+    })
+
+    if (plan.kind === 'append') {
+      if (plan.changes.length > 0) {
+        clearLocalHistory()
+        suppressLocalPublish = true
+        try {
+          replayChanges(plan.changes)
+        } finally {
+          suppressLocalPublish = false
+        }
+      }
+      syncCursor(snapshot)
+    } else {
+      clearLocalHistory()
+      suppressLocalPublish = true
+      try {
+        const baseDocument = plan.checkpoint?.doc ?? createEmptyReplayDocument(engine)
+        const replaceResult = engine.execute({
+          type: 'document.replace',
+          document: baseDocument
+        }, {
+          origin: 'remote'
+        })
+        if (!replaceResult.ok) {
+          throw new Error(replaceResult.error.message)
+        }
+        replayChanges(plan.changes)
+      } finally {
+        suppressLocalPublish = false
+      }
+      syncCursor(snapshot)
+    }
+
+    if (allowRotate) {
+      maybeRotateCheckpoint()
+    }
+  }
+
+  const publishCheckpoint = (
+    nextDocument: import('@whiteboard/core/types').Document
+  ) => {
+    doc.transact(() => {
+      store.replaceCheckpoint(createCheckpoint(nextDocument))
+      store.clearChanges()
+    }, localOrigin)
+
+    const snapshot = readSnapshot()
+    if (snapshot.changes.length === 0) {
+      syncCursor(snapshot)
+      return
+    }
+
+    consumeSnapshot({
+      forceReset: true,
+      allowRotate: false
+    })
+  }
+
+  const maybeRotateCheckpoint = () => {
+    if (rotatingCheckpoint || checkpointThreshold <= 0) {
+      return
+    }
+
+    const snapshot = readSnapshot()
+    if (snapshot.changes.length < checkpointThreshold) {
+      return
+    }
+
+    rotatingCheckpoint = true
+    try {
+      doc.transact(() => {
+        store.replaceCheckpoint(createCheckpoint(engine.document.get()))
+        store.clearChanges()
+      }, localOrigin)
+
+      const snapshot = readSnapshot()
+      if (snapshot.changes.length === 0) {
+        syncCursor(snapshot)
+        return
+      }
+
+      consumeSnapshot({
+        forceReset: true,
+        allowRotate: false
+      })
+    } finally {
+      rotatingCheckpoint = false
+    }
+  }
+
+  const publishCommit = (
+    commit: Commit
+  ) => {
+    if (commit.origin === 'remote' || suppressLocalPublish) {
+      return
+    }
+
+    if (isReplaceCommit(commit)) {
+      publishCheckpoint(commit.doc)
+      return
+    }
+
+    if (commit.ops.length === 0) {
       return
     }
 
     doc.transact(() => {
-      if (commit.changes.document && commit.ops.length === 0) {
-        replaceYjsDocument(doc, commit.doc)
-        return
-      }
-
-      applyOperationsToYjsDocument({
-        doc,
-        operations: commit.ops,
-        snapshot: commit.doc
-      })
+      store.appendChange(createSharedChange(actorId, commit))
     }, localOrigin)
-  }
 
-  const applyRemoteYDocChange = () => {
-    const nextDocument = materializeYjsDocument(doc)
-    if (!nextDocument) {
-      return
-    }
-
-    const current = engine.document.get()
-    const change = compileRemoteDocumentChange(current, nextDocument)
-    if (change.kind === 'replace') {
-      suppressLocalMirror = true
-      try {
-        engine.execute({
-          type: 'document.replace',
-          document: change.document
-        })
-      } finally {
-        suppressLocalMirror = false
-      }
-      return
-    }
-
-    if (change.operations.length === 0) {
-      return
-    }
-
-    suppressLocalMirror = true
-    try {
-      engine.apply(change.operations, {
-        origin: 'remote'
-      })
-    } finally {
-      suppressLocalMirror = false
-    }
+    syncCursor(readSnapshot())
+    maybeRotateCheckpoint()
   }
 
   const commitUnsubscribe = engine.commit.subscribe(() => {
@@ -115,7 +302,7 @@ export const createYjsSession = ({
     }
 
     try {
-      syncCommitToYDoc(nextCommit)
+      publishCommit(nextCommit)
     } catch {
       reportError()
     }
@@ -130,7 +317,9 @@ export const createYjsSession = ({
     }
 
     try {
-      applyRemoteYDocChange()
+      consumeSnapshot({
+        allowRotate: false
+      })
     } catch {
       reportError()
     }
@@ -138,74 +327,46 @@ export const createYjsSession = ({
 
   doc.on('afterTransaction', handleAfterTransaction)
 
-  const finalizeBootstrap = (
-    mode: Exclude<CollabBootstrapMode, 'auto'>
-  ) => {
-    if (mode === 'engine-first') {
-      doc.transact(() => {
-        replaceYjsDocument(doc, engine.document.get())
-      }, localOrigin)
-      bootstrapped = true
-      status.set('connected')
-      return
-    }
-
-    const snapshot = materializeYjsDocument(doc)
-    if (!snapshot) {
-      throw new Error('Cannot bootstrap from an empty Yjs document.')
-    }
-
-    suppressLocalMirror = true
-    try {
-      engine.execute({
-        type: 'document.replace',
-        document: snapshot
-      })
-    } finally {
-      suppressLocalMirror = false
-    }
-    bootstrapped = true
-    status.set('connected')
-  }
-
-  const runBootstrap = (
-    mode: CollabBootstrapMode = bootstrap
-  ) => {
+  const bootstrapSession = () => {
     if (destroyed) {
       return
     }
 
     status.set('bootstrapping')
-    const resolved = resolveBootstrapMode(mode, doc)
-    finalizeBootstrap(resolved)
+
+    const hasSharedData = store.hasData()
+    if (hasSharedData) {
+      consumeSnapshot({
+        forceReset: true,
+        allowRotate: false
+      })
+    } else {
+      publishCheckpoint(engine.document.get())
+    }
+
+    bootstrapped = true
+    status.set('connected')
   }
 
-  const safeBootstrap = (
-    mode: CollabBootstrapMode = bootstrap
-  ) => {
+  const safeBootstrap = () => {
     try {
-      runBootstrap(mode)
+      bootstrapSession()
     } catch {
       reportError()
     }
   }
 
   const maybeWaitForProviderSync = (
-    mode: CollabBootstrapMode
+    onReady: () => void
   ) => {
-    if (mode === 'engine-first') {
-      safeBootstrap(mode)
-      return
-    }
-
     const synced = provider?.isSynced?.()
     if (synced === true) {
-      safeBootstrap(mode)
+      onReady()
       return
     }
 
     if (!provider?.subscribeSync) {
-      safeBootstrap(mode)
+      onReady()
       return
     }
 
@@ -219,7 +380,7 @@ export const createYjsSession = ({
       waitingForProviderSync = false
       unsubscribeProviderSync?.()
       unsubscribeProviderSync = undefined
-      safeBootstrap(mode)
+      onReady()
     })
   }
 
@@ -235,7 +396,7 @@ export const createYjsSession = ({
       return
     }
 
-    maybeWaitForProviderSync(bootstrap)
+    maybeWaitForProviderSync(safeBootstrap)
   }
 
   const disconnect = () => {
@@ -252,9 +413,7 @@ export const createYjsSession = ({
     status.set('disconnected')
   }
 
-  const resync = (
-    mode: CollabBootstrapMode = bootstrap
-  ) => {
+  const resync = () => {
     if (destroyed) {
       return
     }
@@ -265,7 +424,21 @@ export const createYjsSession = ({
       waitingForProviderSync = false
     }
 
-    safeBootstrap(mode)
+    const runResync = () => {
+      try {
+        status.set('bootstrapping')
+        consumeSnapshot({
+          forceReset: true,
+          allowRotate: false
+        })
+        bootstrapped = true
+        status.set('connected')
+      } catch {
+        reportError()
+      }
+    }
+
+    maybeWaitForProviderSync(runResync)
   }
 
   const destroy = () => {
@@ -285,6 +458,7 @@ export const createYjsSession = ({
   return {
     awareness: provider?.awareness,
     status,
+    diagnostics,
     connect,
     disconnect,
     resync,

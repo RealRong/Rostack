@@ -64,6 +64,13 @@ const EMPTY_VISIBLE_DIFF = {
   removed: EMPTY_RECORD_IDS
 } as const
 
+export interface QueryStageDelta {
+  rebuild: boolean
+  added: readonly RecordId[]
+  removed: readonly RecordId[]
+  orderChanged: boolean
+}
+
 const collectVisibleDiff = (input: {
   previous: readonly RecordId[]
   next: readonly RecordId[]
@@ -171,6 +178,7 @@ export const runQueryStage = (input: {
 }): {
   action: DeriveAction
   state: QueryState
+  delta: QueryStageDelta
   records: ViewRecords
   deriveMs: number
   publishMs: number
@@ -211,8 +219,20 @@ export const runQueryStage = (input: {
   })
 
   let changedRecordCount = 0
+  let delta: QueryStageDelta = {
+    rebuild: stage.action === 'rebuild',
+    added: EMPTY_RECORD_IDS,
+    removed: EMPTY_RECORD_IDS,
+    orderChanged: false
+  }
   if (stage.action === 'rebuild') {
     ensureQueryImpact(input.impact).rebuild = true
+    delta = {
+      rebuild: true,
+      added: stage.state.records.visible,
+      removed: EMPTY_RECORD_IDS,
+      orderChanged: false
+    }
   } else if (stage.action === 'sync' && input.previous) {
     const previousRecords = input.previous.records
     const nextRecords = stage.state.records
@@ -246,11 +266,18 @@ export const runQueryStage = (input: {
         queryImpact.orderChanged = true
       }
     }
+    delta = {
+      rebuild: false,
+      added: diff.added,
+      removed: diff.removed,
+      orderChanged
+    }
   }
 
   return {
     action: stage.action,
     state: stage.state,
+    delta,
     records: stage.published,
     deriveMs: stage.deriveMs,
     publishMs: stage.publishMs,

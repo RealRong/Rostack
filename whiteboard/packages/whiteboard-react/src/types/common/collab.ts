@@ -1,5 +1,4 @@
 import type {
-  CollabBootstrapMode,
   CollabProvider,
   CollabSession,
   CollabStatus
@@ -13,8 +12,8 @@ export type WhiteboardCollabPresenceOptions = {
 
 export type WhiteboardCollabOptions = {
   doc: Y.Doc
+  actorId: string
   provider?: CollabProvider
-  bootstrap?: CollabBootstrapMode
   autoConnect?: boolean
   presence?: WhiteboardCollabPresenceOptions
   onSession?: (session: CollabSession | null) => void

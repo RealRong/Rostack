@@ -4,6 +4,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   ItemList,
+  SectionKey,
   SectionList,
   ViewStageMetrics
 } from '@dataview/engine/contracts/public'
@@ -43,6 +44,12 @@ export {
 import {
   syncSectionState
 } from '@dataview/engine/active/snapshot/sections/sync'
+
+export interface SectionStageDelta {
+  rebuild: boolean
+  changed: readonly SectionKey[]
+  removed: readonly SectionKey[]
+}
 
 const resolveSectionsAction = (input: {
   activeViewId: ViewId
@@ -107,6 +114,7 @@ export const runSectionsStage = (input: {
 }): {
   action: DeriveAction
   state: SectionState
+  delta: SectionStageDelta
   projection: ItemProjectionCache
   sections: SectionList
   items: ItemList
@@ -167,6 +175,19 @@ export const runSectionsStage = (input: {
   })
 
   const outputCount = stage.published.sections.all.length
+  const nextSectionKeys = stage.state.order.filter(sectionKey => stage.state.byKey.has(sectionKey))
+  const previousSectionKeys = input.previous
+    ? [...input.previous.byKey.keys()]
+    : []
+  const removed = previousSectionKeys.filter(sectionKey => !stage.state.byKey.has(sectionKey))
+  const changed = stage.action === 'rebuild'
+    ? nextSectionKeys
+    : [...new Set([
+        ...(input.impact.sections?.touchedKeys ?? []),
+        ...(!sameOrder(input.previous?.order ?? [], stage.state.order)
+          ? nextSectionKeys
+          : [])
+      ])]
   const changedSectionCount = stage.action === 'reuse'
     ? 0
     : stage.action === 'rebuild'
@@ -181,6 +202,11 @@ export const runSectionsStage = (input: {
   return {
     action: stage.action,
     state: stage.state,
+    delta: {
+      rebuild: stage.action === 'rebuild',
+      changed,
+      removed
+    },
     projection: stage.published.projection,
     sections: stage.published.sections,
     items: stage.published.items,

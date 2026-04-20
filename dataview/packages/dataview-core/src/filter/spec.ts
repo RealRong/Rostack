@@ -1,10 +1,14 @@
 import type {
   DateValue,
   Field,
+  FieldId,
   FilterValuePreview,
   FilterOptionSetValue,
   FilterPresetId,
   FilterRule
+} from '@dataview/core/contracts'
+import {
+  KANBAN_EMPTY_BUCKET_KEY
 } from '@dataview/core/contracts'
 import {
   compareFieldValues,
@@ -14,8 +18,14 @@ import {
   readDateComparableTimestamp
 } from '@dataview/core/field'
 import type {
+  FilterBucketLookup,
+  FilterCandidateSpec,
+  FilterCreateSpec,
   FilterEditorKind,
+  FilterPlanDemand,
+  FilterPlanSpec,
   FilterPreset,
+  FilterSortLookup,
   FilterSpec
 } from '@dataview/core/filter/types'
 import type {
@@ -218,10 +228,6 @@ const hasOptionSetValue = (
   value: unknown
 ): boolean => readFilterOptionSetValue(value).optionIds.length > 0
 
-const isTextLikeField = (
-  field: Field | undefined
-) => !field || field.kind === 'title' || field.kind === 'text' || field.kind === 'url' || field.kind === 'email' || field.kind === 'phone'
-
 const isOptionField = (
   field: Field | undefined
 ) => field?.kind === 'select' || field?.kind === 'status'
@@ -330,6 +336,134 @@ const projectOptionSetValue = (
   }
 }
 
+const EMPTY_PLAN_DEMAND: FilterPlanDemand = Object.freeze({})
+
+const optionBucketLookup = (
+  mode: FilterBucketLookup['mode'],
+  keys: readonly string[]
+): FilterBucketLookup => ({
+  mode,
+  keys
+})
+
+const sortLookup = (
+  mode: FilterSortLookup['mode'],
+  value?: FilterRule['value']
+): FilterSortLookup => ({
+  mode,
+  ...(value === undefined
+    ? {}
+    : { value })
+})
+
+const deriveTextDefaultValue = (
+  field: Field,
+  rule: FilterRule
+): {
+  fieldId: FieldId
+  value: unknown
+} | undefined => (
+  rule.presetId === 'eq' && typeof rule.value === 'string'
+    ? {
+        fieldId: field.id,
+        value: rule.value
+      }
+    : undefined
+)
+
+const deriveNumberDefaultValue = (
+  field: Field,
+  rule: FilterRule
+): {
+  fieldId: FieldId
+  value: unknown
+} | undefined => (
+  rule.presetId === 'eq'
+  && typeof rule.value === 'number'
+  && Number.isFinite(rule.value)
+    ? {
+        fieldId: field.id,
+        value: rule.value
+      }
+    : undefined
+)
+
+const deriveDateDefaultValue = (
+  field: Field,
+  rule: FilterRule
+): {
+  fieldId: FieldId
+  value: unknown
+} | undefined => (
+  rule.presetId === 'eq'
+  && readDateComparableTimestamp(rule.value) !== undefined
+    ? {
+        fieldId: field.id,
+        value: structuredClone(rule.value)
+      }
+    : undefined
+)
+
+const deriveSingleOptionDefaultValue = (
+  field: Field,
+  rule: FilterRule
+): {
+  fieldId: FieldId
+  value: unknown
+} | undefined => {
+  if (rule.presetId !== 'eq') {
+    return undefined
+  }
+
+  const optionIds = readFilterOptionSetValue(rule.value).optionIds
+  return optionIds.length
+    ? {
+        fieldId: field.id,
+        value: optionIds[0]
+      }
+    : undefined
+}
+
+const deriveMultiOptionDefaultValue = (
+  field: Field,
+  rule: FilterRule
+): {
+  fieldId: FieldId
+  value: unknown
+} | undefined => {
+  if (rule.presetId !== 'contains') {
+    return undefined
+  }
+
+  const optionIds = readFilterOptionSetValue(rule.value).optionIds
+  return optionIds.length
+    ? {
+        fieldId: field.id,
+        value: [...optionIds]
+      }
+    : undefined
+}
+
+const deriveBooleanDefaultValue = (
+  field: Field,
+  rule: FilterRule
+): {
+  fieldId: FieldId
+  value: unknown
+} | undefined => (
+  rule.presetId === 'checked'
+    ? {
+        fieldId: field.id,
+        value: true
+      }
+    : rule.presetId === 'unchecked'
+      ? {
+          fieldId: field.id,
+          value: false
+        }
+      : undefined
+)
+
 const createFilterSpec = (input: {
   presets: readonly FilterPreset[]
   defaultPresetId: FilterPresetId
@@ -337,6 +471,9 @@ const createFilterSpec = (input: {
   isEffective: (field: Field | undefined, rule: FilterRule) => boolean
   match: (field: Field | undefined, recordValue: unknown, rule: FilterRule) => boolean
   projectValue: (field: Field | undefined, rule: FilterRule) => FilterValuePreview
+  plan?: FilterPlanSpec
+  candidate?: FilterCandidateSpec
+  create?: FilterCreateSpec
 }): FilterSpec => {
   const presetById = new Map(input.presets.map(preset => [preset.id, preset] as const))
 
@@ -393,7 +530,20 @@ const createFilterSpec = (input: {
     getEditorKind: input.getEditorKind,
     isEffective: input.isEffective,
     match: input.match,
-    projectValue: input.projectValue
+    projectValue: input.projectValue,
+    plan: input.plan ?? {
+      demandOf: () => EMPTY_PLAN_DEMAND
+    },
+    ...(input.candidate
+      ? {
+          candidate: input.candidate
+        }
+      : {}),
+    ...(input.create
+      ? {
+          create: input.create
+        }
+      : {})
   }
 }
 
@@ -433,7 +583,10 @@ const textFilterSpec = createFilterSpec({
       : {
           kind: 'none'
         }
-  )
+  ),
+  create: {
+    deriveDefaultValue: ({ field, rule }) => deriveTextDefaultValue(field, rule)
+  }
 })
 
 const numberFilterSpec = createFilterSpec({
@@ -481,7 +634,43 @@ const numberFilterSpec = createFilterSpec({
       : {
           kind: 'none'
         }
-  )
+  ),
+  plan: {
+    demandOf: ({ rule }) => {
+      switch (rule.presetId) {
+        case 'eq':
+        case 'gt':
+        case 'gte':
+        case 'lt':
+        case 'lte':
+        case 'exists_true':
+          return {
+            sorted: true
+          }
+        default:
+          return EMPTY_PLAN_DEMAND
+      }
+    }
+  },
+  candidate: {
+    sortLookupOf: ({ rule }) => {
+      switch (rule.presetId) {
+        case 'eq':
+        case 'gt':
+        case 'gte':
+        case 'lt':
+        case 'lte':
+          return sortLookup(rule.presetId, rule.value)
+        case 'exists_true':
+          return sortLookup('exists')
+        default:
+          return undefined
+      }
+    }
+  },
+  create: {
+    deriveDefaultValue: ({ field, rule }) => deriveNumberDefaultValue(field, rule)
+  }
 })
 
 const dateFilterSpec = createFilterSpec({
@@ -529,7 +718,43 @@ const dateFilterSpec = createFilterSpec({
       : {
           kind: 'none'
         }
-  )
+  ),
+  plan: {
+    demandOf: ({ rule }) => {
+      switch (rule.presetId) {
+        case 'eq':
+        case 'gt':
+        case 'gte':
+        case 'lt':
+        case 'lte':
+        case 'exists_true':
+          return {
+            sorted: true
+          }
+        default:
+          return EMPTY_PLAN_DEMAND
+      }
+    }
+  },
+  candidate: {
+    sortLookupOf: ({ rule }) => {
+      switch (rule.presetId) {
+        case 'eq':
+        case 'gt':
+        case 'gte':
+        case 'lt':
+        case 'lte':
+          return sortLookup(rule.presetId, rule.value)
+        case 'exists_true':
+          return sortLookup('exists')
+        default:
+          return undefined
+      }
+    }
+  },
+  create: {
+    deriveDefaultValue: ({ field, rule }) => deriveDateDefaultValue(field, rule)
+  }
 })
 
 const optionFilterSpec = createFilterSpec({
@@ -557,7 +782,42 @@ const optionFilterSpec = createFilterSpec({
     const match = matchOptionSet(field, recordValue, expected)
     return preset.operator === 'neq' ? !match : match
   },
-  projectValue: projectOptionSetValue
+  projectValue: projectOptionSetValue,
+  plan: {
+    demandOf: ({ rule }) => {
+      switch (rule.presetId) {
+        case 'eq':
+        case 'neq':
+        case 'exists_true':
+        case 'exists_false':
+          return {
+            bucket: true
+          }
+        default:
+          return EMPTY_PLAN_DEMAND
+      }
+    }
+  },
+  candidate: {
+    bucketLookupOf: ({ rule }) => {
+      const optionIds = readFilterOptionSetValue(rule.value).optionIds
+      switch (rule.presetId) {
+        case 'eq':
+          return optionBucketLookup('include', optionIds)
+        case 'neq':
+          return optionBucketLookup('exclude', optionIds)
+        case 'exists_true':
+          return optionBucketLookup('exclude', [KANBAN_EMPTY_BUCKET_KEY])
+        case 'exists_false':
+          return optionBucketLookup('include', [KANBAN_EMPTY_BUCKET_KEY])
+        default:
+          return undefined
+      }
+    }
+  },
+  create: {
+    deriveDefaultValue: ({ field, rule }) => deriveSingleOptionDefaultValue(field, rule)
+  }
 })
 
 const optionSetFilterSpec = createFilterSpec({
@@ -584,7 +844,39 @@ const optionSetFilterSpec = createFilterSpec({
 
     return matchOptionSet(field, recordValue, expected)
   },
-  projectValue: projectOptionSetValue
+  projectValue: projectOptionSetValue,
+  plan: {
+    demandOf: ({ rule }) => {
+      switch (rule.presetId) {
+        case 'contains':
+        case 'exists_true':
+        case 'exists_false':
+          return {
+            bucket: true
+          }
+        default:
+          return EMPTY_PLAN_DEMAND
+      }
+    }
+  },
+  candidate: {
+    bucketLookupOf: ({ rule }) => {
+      const optionIds = readFilterOptionSetValue(rule.value).optionIds
+      switch (rule.presetId) {
+        case 'contains':
+          return optionBucketLookup('include', optionIds)
+        case 'exists_true':
+          return optionBucketLookup('exclude', [KANBAN_EMPTY_BUCKET_KEY])
+        case 'exists_false':
+          return optionBucketLookup('include', [KANBAN_EMPTY_BUCKET_KEY])
+        default:
+          return undefined
+      }
+    }
+  },
+  create: {
+    deriveDefaultValue: ({ field, rule }) => deriveMultiOptionDefaultValue(field, rule)
+  }
 })
 
 const booleanFilterSpec = createFilterSpec({
@@ -603,7 +895,7 @@ const booleanFilterSpec = createFilterSpec({
 
     return recordValue === expected
   },
-  projectValue: (field, rule) => {
+  projectValue: (_field, rule) => {
     if (rule.presetId === 'checked') {
       return projectSingleValue(tokenRef('dataview.systemValue', 'value.checked'))
     }
@@ -615,6 +907,40 @@ const booleanFilterSpec = createFilterSpec({
     return {
       kind: 'none'
     }
+  },
+  plan: {
+    demandOf: ({ rule }) => {
+      switch (rule.presetId) {
+        case 'checked':
+        case 'unchecked':
+        case 'exists_true':
+        case 'exists_false':
+          return {
+            bucket: true
+          }
+        default:
+          return EMPTY_PLAN_DEMAND
+      }
+    }
+  },
+  candidate: {
+    bucketLookupOf: ({ rule }) => {
+      switch (rule.presetId) {
+        case 'checked':
+          return optionBucketLookup('include', ['true'])
+        case 'unchecked':
+          return optionBucketLookup('include', ['false'])
+        case 'exists_true':
+          return optionBucketLookup('exclude', [KANBAN_EMPTY_BUCKET_KEY])
+        case 'exists_false':
+          return optionBucketLookup('include', [KANBAN_EMPTY_BUCKET_KEY])
+        default:
+          return undefined
+      }
+    }
+  },
+  create: {
+    deriveDefaultValue: ({ field, rule }) => deriveBooleanDefaultValue(field, rule)
   }
 })
 
@@ -699,6 +1025,41 @@ export const projectFilterRuleValue = (
   field: Field | undefined,
   rule: FilterRule
 ): FilterValuePreview => getFilterSpec(field).projectValue(field, rule)
+
+export const getFilterPlanDemand = (
+  field: Field | undefined,
+  rule: FilterRule
+): FilterPlanDemand => getFilterSpec(field).plan.demandOf({
+  field,
+  rule
+})
+
+export const getFilterBucketLookup = (
+  field: Field | undefined,
+  rule: FilterRule
+): FilterBucketLookup | undefined => getFilterSpec(field).candidate?.bucketLookupOf?.({
+  field,
+  rule
+})
+
+export const getFilterSortLookup = (
+  field: Field | undefined,
+  rule: FilterRule
+): FilterSortLookup | undefined => getFilterSpec(field).candidate?.sortLookupOf?.({
+  field,
+  rule
+})
+
+export const deriveFilterRuleDefaultValue = (
+  field: Field,
+  rule: FilterRule
+): {
+  fieldId: FieldId
+  value: unknown
+} | undefined => getFilterSpec(field).create?.deriveDefaultValue?.({
+  field,
+  rule
+})
 
 export const setFilterRuleValue = (
   field: Field | undefined,

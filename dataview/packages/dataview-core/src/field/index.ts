@@ -54,6 +54,7 @@ export * from '@dataview/core/field/value/search'
 export * from '@dataview/core/field/value/sort'
 export * from '@dataview/core/field/schema'
 export * from '@dataview/core/field/options'
+export * from '@dataview/core/field/spec'
 export {
   STATUS_CATEGORIES,
   compareStatusFieldValues,

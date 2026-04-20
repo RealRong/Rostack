@@ -1,4 +1,10 @@
 import type {
+  CalculationDemand,
+  CalculationEntry,
+  FieldReducerState,
+  ReducerCapabilitySet
+} from '@dataview/core/calculation'
+import type {
   DataDoc,
   Field,
   FieldId,
@@ -12,12 +18,6 @@ import type {
 import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'
-import type {
-  CalculationDemand,
-  CalculationEntry,
-  FieldReducerState,
-  ReducerCapabilitySet
-} from '@dataview/engine/active/shared/calculation'
 
 export type SortedIdSet<T extends string> = readonly T[]
 export type BucketKey = string

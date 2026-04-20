@@ -229,8 +229,8 @@ interface FieldIndexSpec {
 }
 
 interface FieldCalculationSpec {
-  uniqueKeyOf: (value: unknown) => string
-  optionIdsOf?: (value: unknown) => readonly string[] | undefined
+  uniqueKeyOf: (field: Field | undefined, value: unknown) => string
+  optionIdsOf?: (field: Field | undefined, value: unknown) => readonly string[] | undefined
 }
 
 interface FieldCreateSpec {
@@ -284,8 +284,20 @@ interface FilterPlanSpec {
 }
 
 interface FilterCandidateSpec {
-  fromBucketIndex?(input): FilterCandidate | undefined
-  fromSortIndex?(input): FilterCandidate | undefined
+  bucketLookupOf?(input: {
+    field: Field | undefined
+    rule: FilterRule
+  }): {
+    mode: 'include' | 'exclude'
+    keys: readonly string[]
+  } | undefined
+  sortLookupOf?(input: {
+    field: Field | undefined
+    rule: FilterRule
+  }): {
+    mode: 'exists' | 'eq' | 'gt' | 'gte' | 'lt' | 'lte'
+    value?: unknown
+  } | undefined
 }
 
 interface FilterCreateSpec {
@@ -295,6 +307,12 @@ interface FilterCreateSpec {
   } | undefined
 }
 ```
+
+当前实现里，`FilterCandidateSpec` 最终落成的是 lookup descriptor，而不是直接持有 index reader callback。原因是它更符合本文前面强调的原则:
+
+- declarative first
+- spec 只描述“这个 rule 需要哪些 bucket key / sort lookup”
+- engine 仍然自己决定如何读取 index、如何 merge candidate、如何 fallback
 
 为什么这些应该属于 `FilterSpec`，而不是 `FieldSpec`:
 
@@ -482,9 +500,13 @@ interface CalculationMetricSpec {
 
 结论:
 
-- 适合做成 `FieldOptionSpec`
-- 但建议放到第二阶段
-- 第一阶段不要为了统一而统一
+- 最终还是应该做成 `FieldOptionSpec`
+- 实现时可以继续保持纯语义接口，只暴露:
+  - `createOption`
+  - `updateOption`
+  - `patchForRemove`
+  - `projectValueWithoutOption`
+- engine 负责把这些纯结果翻译成 document patch / record write
 
 #### C2. record create default value
 
@@ -648,8 +670,8 @@ interface ViewTypeSpecRegistry {
 替换位置:
 
 - `active/snapshot/query/derive.ts`
-- `active/shared/calculation.ts`
-- `active/snapshot/summary/compute.ts`
+- `dataview-core/src/calculation/reducer.ts`
+- `dataview-core/src/calculation/capability.ts`
 
 ### Phase 3
 
@@ -660,9 +682,10 @@ interface ViewTypeSpecRegistry {
 内容:
 
 1. `FieldOptionSpec.createOption`
-2. `FieldOptionSpec.patchOption`
-3. `FieldOptionSpec.removeOptionEffects`
-4. `FieldSpec.create.defaultValue`
+2. `FieldOptionSpec.updateOption`
+3. `FieldOptionSpec.patchForRemove`
+4. `FieldOptionSpec.projectValueWithoutOption`
+5. `FieldSpec.create.defaultValue`
 
 替换位置:
 

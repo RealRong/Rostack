@@ -161,27 +161,36 @@ type OperationMetaTable = {
 ### 4.4 最终 API
 
 ```ts
-export const OPERATION_META: OperationMetaTable
+export const META: OperationMetaTable
 
-export const readOperationMeta: <K extends OperationType>(
-  type: K
-) => OperationMeta<K>
+export const meta: {
+  get: <K extends OperationType>(
+    type: K
+  ) => OperationMeta<K>
+}
 
-export const readOperationNamespace: (
-  type: OperationType
-) => OperationNamespace
+export const sync: {
+  mode: (
+    type: OperationType
+  ) => OperationSyncMode
+  isLive: (
+    input: OperationType | Pick<Operation, 'type'>
+  ) => boolean
+  isCheckpointOnly: (
+    input: OperationType | Pick<Operation, 'type'>
+  ) => boolean
+}
+```
 
-export const readOperationReducerFamily: (
-  type: OperationType
-) => OperationReducerFamily
+调用固定为：
 
-export const isLiveSharedOperation: (
-  op: Operation
-) => boolean
+```ts
+import { meta, sync } from '@whiteboard/core/spec/operation'
 
-export const isCheckpointOnlyOperation: (
-  op: Operation
-) => boolean
+const operationMeta = meta.get(op.type)
+const namespace = operationMeta.namespace
+const reducer = operationMeta.reducer
+const live = sync.isLive(op)
 ```
 
 ### 4.5 使用规则
@@ -205,13 +214,26 @@ export const isCheckpointOnlyOperation: (
 - route meta 进 spec
 - execute logic 留在 handler
 
+额外约束：
+
+- `meta.get(type)` 是唯一主读取入口
+- `namespace` / `reducer` 不再单独导出平铺 helper
+- `sync.*` 只承载 shared/checkpoint concern
+- 不再公开 `readOperationMeta` / `readOperationNamespace` / `readOperationReducerFamily`
+- 不再公开 `isLiveSharedOperation` / `isCheckpointOnlyOperation`
+
 ### 4.6 命名原则
 
-这里用 `Meta`，不用 `Spec` 大对象，原因很简单：
+这里用模块导出的 `meta` / `sync`，不用一个巨型 `operationMeta` root object，也不用 TS `namespace`。
 
-- 它只是静态分类表
-- 不是执行 DSL
-- 不承载行为组合
+原因很简单：
+
+- 模块路径本身已经提供 namespace
+- `meta` / `sync` 比平铺 helper 更聚合
+- 不会和 `Operation` type 本身冲突
+- 不额外引入一层没有必要的大对象
+
+`META` 只适合作为内部静态穷尽表，不适合作为主 API。
 
 长期最优下不要出现这种设计：
 
@@ -374,6 +396,8 @@ export const readCommandNamespace: (
 ) => CommandNamespace
 ```
 
+这个 helper 只应该存在于 `engine` compiler 内部，不进入最终 public API。
+
 不要再加：
 
 - `CommandSpec`
@@ -482,8 +506,8 @@ type OperationEffectSpec = {
 
 `collab` 只消费：
 
-- `isLiveSharedOperation(...)`
-- `isCheckpointOnlyOperation(...)`
+- `sync.isLive(...)`
+- `sync.isCheckpointOnly(...)`
 - `HistoryFootprint`
 
 也就是说：
@@ -563,4 +587,3 @@ type OperationEffectSpec = {
 - 只有跨层重复的静态元语义，才值得 spec 化
 - spec 必须按 concern 拆开，不能做 mega registry
 - 所有依赖 live state 的执行逻辑，继续留在 handwritten runtime
-

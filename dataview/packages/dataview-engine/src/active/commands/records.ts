@@ -1,20 +1,17 @@
 import type {
   Action,
-  Field,
   FieldId,
-  FilterRule,
   RecordId
 } from '@dataview/core/contracts'
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import {
-  isTitleFieldId,
-  readDateComparableTimestamp
+  isTitleFieldId
 } from '@dataview/core/field'
 import {
+  deriveFilterRuleDefaultValue,
   matchFilterRule,
-  readFilterOptionSetValue
 } from '@dataview/core/filter'
 import {
   group as groupCore
@@ -163,89 +160,6 @@ const resolveCreateContext = (input: {
   }
 }
 
-const resolveFilterRuleDefault = (input: {
-  field: Field
-  rule: FilterRule
-}): {
-  fieldId: FieldId
-  value: unknown
-} | undefined => {
-  switch (input.field.kind) {
-    case 'title':
-      return input.rule.presetId === 'eq' && typeof input.rule.value === 'string'
-        ? {
-            fieldId: TITLE_FIELD_ID,
-            value: input.rule.value
-          }
-        : undefined
-    case 'text':
-      return input.rule.presetId === 'eq' && typeof input.rule.value === 'string'
-        ? {
-            fieldId: input.field.id,
-            value: input.rule.value
-          }
-        : undefined
-    case 'number':
-      return input.rule.presetId === 'eq'
-        && typeof input.rule.value === 'number'
-        && Number.isFinite(input.rule.value)
-        ? {
-            fieldId: input.field.id,
-            value: input.rule.value
-          }
-        : undefined
-    case 'date':
-      return input.rule.presetId === 'eq'
-        && readDateComparableTimestamp(input.rule.value) !== undefined
-        ? {
-            fieldId: input.field.id,
-            value: structuredClone(input.rule.value)
-          }
-        : undefined
-    case 'select':
-    case 'status': {
-      if (input.rule.presetId !== 'eq') {
-        return undefined
-      }
-
-      const optionIds = readFilterOptionSetValue(input.rule.value).optionIds
-      return optionIds.length
-        ? {
-            fieldId: input.field.id,
-            value: optionIds[0]
-          }
-        : undefined
-    }
-    case 'boolean':
-      return input.rule.presetId === 'checked'
-        ? {
-            fieldId: input.field.id,
-            value: true
-          }
-        : input.rule.presetId === 'unchecked'
-          ? {
-              fieldId: input.field.id,
-              value: false
-            }
-          : undefined
-    case 'multiSelect': {
-      if (input.rule.presetId !== 'contains') {
-        return undefined
-      }
-
-      const optionIds = readFilterOptionSetValue(input.rule.value).optionIds
-      return optionIds.length
-        ? {
-            fieldId: input.field.id,
-            value: [...optionIds]
-          }
-        : undefined
-    }
-    default:
-      return undefined
-  }
-}
-
 const applyFilterDefaults = (input: {
   state: ViewState
   draft: CreateDraftState
@@ -278,10 +192,10 @@ const applyFilterDefaults = (input: {
       return false
     }
 
-    const next = resolveFilterRuleDefault({
+    const next = deriveFilterRuleDefaultValue(
       field,
-      rule: projection.rule
-    })
+      projection.rule
+    )
     if (!next) {
       return false
     }

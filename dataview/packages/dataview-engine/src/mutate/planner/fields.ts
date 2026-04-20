@@ -9,9 +9,9 @@ import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import {
   createDefaultCustomField,
   createUniqueFieldName,
-  createUniqueFieldOptionToken,
   convertFieldKind,
   findFieldOptionByName,
+  getFieldOptionSpec,
   getFieldOptions,
   hasFieldOptions,
   isCustomField,
@@ -128,20 +128,6 @@ const createOptionName = (
     nextName = `${DEFAULT_OPTION_NAME} ${index}`
   }
   return nextName
-}
-
-const createNextFieldOption = (
-  field: Extract<CustomField, { kind: 'select' | 'multiSelect' | 'status' }>,
-  options: typeof field.options,
-  name: string
-) => {
-  const token = createUniqueFieldOptionToken(options, name)
-  return {
-    id: token,
-    name,
-    color: null,
-    ...(field.kind === 'status' ? { category: 'todo' as const } : {})
-  }
 }
 
 const requireCustomField = (
@@ -394,11 +380,11 @@ const lowerFieldOptionCreate = (
     return scope.finish()
   }
 
-  const nextOption = createNextFieldOption(
-    context.field,
-    context.options,
-    explicitName ?? createOptionName(context.options)
-  )
+  const nextOption = getFieldOptionSpec(context.field).createOption({
+    field: context.field,
+    options: context.options,
+    name: explicitName ?? createOptionName(context.options)
+  })
   const patch = replaceFieldOptions(
     context.field,
     [...context.options, nextOption]
@@ -498,16 +484,21 @@ const lowerFieldOptionUpdate = (
   const nextColor = action.patch.color === undefined
     ? undefined
     : trimToUndefined(action.patch.color) ?? null
-  const nextOption = {
-    ...target,
-    ...(nextName ? { name: nextName } : {}),
-    ...(nextColor !== undefined
-      ? { color: nextColor }
-      : {}),
-    ...(context.field.kind === 'status' && action.patch.category !== undefined
-      ? { category: action.patch.category }
-      : {})
-  }
+  const nextOption = getFieldOptionSpec(context.field).updateOption({
+    field: context.field,
+    option: target,
+    patch: {
+      ...(nextName !== undefined
+        ? { name: nextName }
+        : {}),
+      ...(nextColor !== undefined
+        ? { color: nextColor }
+        : {}),
+      ...(action.patch.category !== undefined
+        ? { category: action.patch.category }
+        : {})
+    }
+  })
 
   if (sameJsonValue(nextOption, target)) {
     return scope.finish()
@@ -549,53 +540,42 @@ const lowerFieldOptionRemove = (
     return scope.finish()
   }
 
-  const patch = {
-    ...replaceFieldOptions(
-      context.field,
-      context.options.filter(option => option.id !== optionId)
-    ),
-    ...(context.field.kind === 'status' && context.field.defaultOptionId === optionId
-      ? { defaultOptionId: null }
-      : {})
-  } as Partial<Omit<CustomField, 'id'>>
+  const optionSpec = getFieldOptionSpec(context.field)
+  const patch = optionSpec.patchForRemove({
+    field: context.field,
+    options: context.options,
+    optionId
+  })
 
   const valueOps: DocumentOperation[] = []
+  const clearedRecordIds: RecordId[] = []
 
-  if (context.field.kind === 'select' || context.field.kind === 'status') {
-    const clearedRecordIds: RecordId[] = []
-
-    records.forEach(record => {
-      if (record.values[context.field.id] === optionId) {
-        clearedRecordIds.push(record.id)
-      }
+  records.forEach(record => {
+    const nextValue = optionSpec.projectValueWithoutOption({
+      field: context.field,
+      value: record.values[context.field.id],
+      optionId
     })
-
-    if (clearedRecordIds.length) {
-      valueOps.push(toRecordFieldWriteMany({
-        recordIds: clearedRecordIds,
-        clear: [context.field.id]
-      }))
+    if (nextValue.kind === 'keep') {
+      return
     }
-  } else {
-    records.forEach(record => {
-      const currentValue = record.values[context.field.id]
-      if (!Array.isArray(currentValue)) {
-        return
-      }
+    if (nextValue.kind === 'clear') {
+      clearedRecordIds.push(record.id)
+      return
+    }
 
-      const nextValue = currentValue.filter(value => value !== optionId)
-      if (nextValue.length === currentValue.length) {
-        return
-      }
+    valueOps.push(toSingleRecordFieldWrite(
+      record.id,
+      context.field.id,
+      nextValue.value
+    ))
+  })
 
-      valueOps.push(toSingleRecordFieldWrite(
-        record.id,
-        context.field.id,
-        nextValue.length
-          ? nextValue
-          : undefined
-      ))
-    })
+  if (clearedRecordIds.length) {
+    valueOps.push(toRecordFieldWriteMany({
+      recordIds: clearedRecordIds,
+      clear: [context.field.id]
+    }))
   }
 
   return scope.finish(

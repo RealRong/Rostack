@@ -1,4 +1,9 @@
 import type {
+  CalculationEntry,
+  FieldReducerState,
+  ReducerCapabilitySet
+} from '@dataview/core/calculation'
+import {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
@@ -6,11 +11,8 @@ import {
   buildFieldReducerState,
   createFieldReducerBuilder,
   getEmptyFieldReducerState,
-  sameCalculationEntry,
-  type CalculationEntry,
-  type FieldReducerState,
-  type ReducerCapabilitySet
-} from '@dataview/engine/active/shared/calculation'
+  sameCalculationEntry
+} from '@dataview/core/calculation'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'

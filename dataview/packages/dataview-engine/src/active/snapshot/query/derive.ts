@@ -4,9 +4,6 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
-  KANBAN_EMPTY_BUCKET_KEY
-} from '@dataview/core/contracts'
-import {
   sameOrder,
   trimLowercase
 } from '@shared/core'
@@ -16,8 +13,9 @@ import {
   isEmptyFieldValue
 } from '@dataview/core/field'
 import {
+  getFilterBucketLookup,
+  getFilterSortLookup,
   matchFilterRule,
-  readFilterOptionSetValue
 } from '@dataview/core/filter'
 import {
   applyRecordOrder
@@ -739,12 +737,17 @@ const matchesFilter = (input: {
   ))
 }
 
-const resolveGroupFilterCandidates = (input: {
+const resolveBucketFilterCandidates = (input: {
   field: Field | undefined
   fieldId: string
   rule: View['filter']['rules'][number]
   index: IndexState
 }): FilterCandidate | undefined => {
+  const lookup = getFilterBucketLookup(input.field, input.rule)
+  if (!lookup) {
+    return undefined
+  }
+
   const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec({
     field: input.fieldId
   }))
@@ -781,84 +784,11 @@ const resolveGroupFilterCandidates = (input: {
     )
   )
 
-  switch (input.field?.kind) {
-    case 'status':
-    case 'select': {
-      const optionIds = readFilterOptionSetValue(input.rule.value).optionIds
-      switch (input.rule.presetId) {
-        case 'eq':
-          return {
-            ids: optionIds.length ? readBucketIds(optionIds) : [],
-            exact: true
-          }
-        case 'neq':
-          return {
-            ids: readRemainingBucketIds(new Set(optionIds)),
-            exact: true
-          }
-        case 'exists_true':
-          return {
-            ids: readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY])),
-            exact: true
-          }
-        case 'exists_false':
-          return {
-            ids: readBucketIds([KANBAN_EMPTY_BUCKET_KEY]),
-            exact: true
-          }
-        default:
-          return undefined
-      }
-    }
-    case 'multiSelect': {
-      const optionIds = readFilterOptionSetValue(input.rule.value).optionIds
-      switch (input.rule.presetId) {
-        case 'contains':
-          return {
-            ids: optionIds.length ? readBucketIds(optionIds) : [],
-            exact: true
-          }
-        case 'exists_true':
-          return {
-            ids: readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY])),
-            exact: true
-          }
-        case 'exists_false':
-          return {
-            ids: readBucketIds([KANBAN_EMPTY_BUCKET_KEY]),
-            exact: true
-          }
-        default:
-          return undefined
-      }
-    }
-    case 'boolean':
-      switch (input.rule.presetId) {
-        case 'checked':
-          return {
-            ids: readBucketIds(['true']),
-            exact: true
-          }
-        case 'unchecked':
-          return {
-            ids: readBucketIds(['false']),
-            exact: true
-          }
-        case 'exists_true':
-          return {
-            ids: readRemainingBucketIds(new Set([KANBAN_EMPTY_BUCKET_KEY])),
-            exact: true
-          }
-        case 'exists_false':
-          return {
-            ids: readBucketIds([KANBAN_EMPTY_BUCKET_KEY]),
-            exact: true
-          }
-        default:
-          return undefined
-      }
-    default:
-      return undefined
+  return {
+    ids: lookup.mode === 'include'
+      ? readBucketIds(lookup.keys)
+      : readRemainingBucketIds(new Set(lookup.keys)),
+    exact: true
   }
 }
 
@@ -890,16 +820,17 @@ const resolveSortedFilterCandidates = (input: {
   rule: View['filter']['rules'][number]
   index: IndexState
 }): FilterCandidate | undefined => {
-  if (input.field?.kind !== 'number' && input.field?.kind !== 'date') {
-    return undefined
-  }
-
   const sortIndex = input.index.sort.fields.get(input.fieldId)
   if (!sortIndex) {
     return undefined
   }
 
-  if (input.rule.presetId === 'exists_true') {
+  const lookup = getFilterSortLookup(input.field, input.rule)
+  if (!lookup) {
+    return undefined
+  }
+
+  if (lookup.mode === 'exists') {
     return {
       ids: sortIdsByRecordOrder(
         input.index.records.values.get(input.fieldId)?.ids ?? [],
@@ -910,7 +841,7 @@ const resolveSortedFilterCandidates = (input: {
     }
   }
 
-  const expected = input.rule.value
+  const expected = lookup.value
   const values = input.index.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
   const compare = (recordId: RecordId) => compareFieldValues(
     input.field,
@@ -918,7 +849,7 @@ const resolveSortedFilterCandidates = (input: {
     expected
   )
 
-  switch (input.rule.presetId) {
+  switch (lookup.mode) {
     case 'eq': {
       const start = lowerBoundByFilter({
         ids: sortIndex.asc,
@@ -1008,7 +939,7 @@ const resolveFilterCandidatesForRule = (input: {
   rule: EffectiveFilterRule
   index: IndexState
 }): FilterCandidate | undefined => (
-  resolveGroupFilterCandidates({
+  resolveBucketFilterCandidates({
     field: input.rule.field,
     fieldId: input.rule.fieldId,
     rule: input.rule.rule,

@@ -2,6 +2,9 @@ import type {
   CalculationCollection,
   CalculationResult
 } from '@dataview/core/calculation'
+import {
+  computeCalculationFromState
+} from '@dataview/core/calculation'
 import type {
   Field,
   FieldId,
@@ -17,13 +20,14 @@ import {
   sameOrder
 } from '@shared/core'
 import {
-  computeCalculationFromState,
-  readCalcFields
-} from '@dataview/engine/active/snapshot/summary/compute'
-import {
   buildEmptyPublishedSummaries,
   createSummaryCollection
 } from '@dataview/engine/summary/empty'
+
+const readCalcFields = (
+  view: View
+): readonly FieldId[] => Object.entries(view.calc)
+  .flatMap(([fieldId, metric]) => metric ? [fieldId as FieldId] : [])
 
 export const publishSummaries = (input: {
   summary: SummaryState

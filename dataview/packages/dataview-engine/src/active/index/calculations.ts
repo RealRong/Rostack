@@ -1,4 +1,8 @@
 import type {
+  CalculationDemand,
+  CalculationEntry
+} from '@dataview/core/calculation'
+import {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
@@ -10,10 +14,8 @@ import {
   createCalculationEntry,
   createFieldReducerBuilder,
   sameCalculationEntry,
-  sameReducerCapabilities,
-  type CalculationDemand,
-  type CalculationEntry
-} from '@dataview/engine/active/shared/calculation'
+  sameReducerCapabilities
+} from '@dataview/core/calculation'
 import type {
   CalculationIndex,
   FieldCalcIndex,

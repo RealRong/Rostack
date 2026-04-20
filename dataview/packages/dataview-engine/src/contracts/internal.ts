@@ -1,10 +1,10 @@
 import type {
+  FieldReducerState
+} from '@dataview/core/calculation'
+import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import type {
-  FieldReducerState
-} from '@dataview/engine/active/shared/calculation'
 import type {
   Token
 } from '@shared/i18n'

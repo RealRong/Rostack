@@ -4,14 +4,14 @@ import type {
   ViewGroup
 } from '@dataview/core/contracts'
 import {
-  KANBAN_EMPTY_BUCKET_KEY
-} from '@dataview/core/contracts'
-import {
   compareGroupBuckets,
   getFieldGroupMeta,
   resolveFieldGroupBucketDomain,
   resolveFieldGroupBucketEntries
 } from '@dataview/core/field'
+import {
+  readFieldSpec
+} from '@dataview/core/field/spec'
 import {
   compareGroupSortValues,
   compareLabels,
@@ -48,13 +48,8 @@ import type {
   IndexReadContext,
   RecordIndex
 } from '@dataview/engine/active/index/contracts'
-import {
-  trimToUndefined
-} from '@shared/core'
-
 const EMPTY_BUCKET_KEYS: readonly BucketKey[] = []
 const EMPTY_RECORD_IDS: readonly RecordId[] = []
-const SINGLE_BUCKET_KEYS = new Map<BucketKey, readonly BucketKey[]>()
 
 export const createBucketSpec = (
   input: Pick<ViewGroup, 'field'>
@@ -96,19 +91,6 @@ const sameBucketKeys = (
 ) => left.length === right.length
   && left.every((value, index) => value === right[index])
 
-const readSingleBucketKeys = (
-  key: BucketKey
-): readonly BucketKey[] => {
-  const cached = SINGLE_BUCKET_KEYS.get(key)
-  if (cached) {
-    return cached
-  }
-
-  const created = [key] as readonly BucketKey[]
-  SINGLE_BUCKET_KEYS.set(key, created)
-  return created
-}
-
 const addBucketRecord = (
   target: Map<BucketKey, RecordId[]>,
   key: BucketKey,
@@ -129,61 +111,10 @@ const createRecordIdSet = (
   ? new Set(ids)
   : undefined
 
-const toScalarBucketKey = (
-  value: unknown
-): BucketKey => {
-  if (value === undefined || value === null) {
-    return KANBAN_EMPTY_BUCKET_KEY
-  }
-
-  if (typeof value === 'string') {
-    const normalized = trimToUndefined(value)
-    return normalized
-      ? normalized
-      : KANBAN_EMPTY_BUCKET_KEY
-  }
-
-  if (typeof value === 'number') {
-    return Number.isFinite(value)
-      ? String(value)
-      : KANBAN_EMPTY_BUCKET_KEY
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'true' : 'false'
-  }
-
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return String(value)
-  }
-}
-
 const resolveFastBucketKeys = (
   field: Field | undefined,
   value: unknown
-): readonly BucketKey[] | undefined => {
-  switch (field?.kind) {
-    case 'status':
-    case 'select':
-      return readSingleBucketKeys(toScalarBucketKey(value))
-    case 'multiSelect':
-      return Array.isArray(value) && value.length
-        ? value.length === 1
-          ? readSingleBucketKeys(toScalarBucketKey(value[0]))
-          : value.map(item => toScalarBucketKey(item))
-        : readSingleBucketKeys(KANBAN_EMPTY_BUCKET_KEY)
-    case 'boolean':
-      return value === true
-        ? readSingleBucketKeys('true')
-        : value === false
-          ? readSingleBucketKeys('false')
-          : readSingleBucketKeys(KANBAN_EMPTY_BUCKET_KEY)
-    default:
-      return undefined
-  }
-}
+): readonly BucketKey[] | undefined => readFieldSpec(field)?.index.bucket.fastKeysOf?.(value)
 
 const toGroupOptions = (input: {
   spec: BucketSpec

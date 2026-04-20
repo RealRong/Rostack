@@ -14,6 +14,9 @@ import {
   getFieldSearchTokens
 } from '@dataview/core/field'
 import {
+  readFieldSpec
+} from '@dataview/core/field/spec'
+import {
   trimLowercase
 } from '@shared/core'
 
@@ -23,20 +26,7 @@ export const SEARCH_TOKEN_SEPARATOR = '\u0000'
 
 export const isDefaultSearchField = (
   field: CustomField | undefined
-): boolean => {
-  switch (field?.kind) {
-    case 'text':
-    case 'url':
-    case 'email':
-    case 'phone':
-    case 'select':
-    case 'multiSelect':
-    case 'status':
-      return true
-    default:
-      return false
-  }
-}
+): boolean => readFieldSpec(field)?.index.searchDefaultEnabled === true
 
 const appendNormalizedSearchTokens = (
   target: Set<string>,

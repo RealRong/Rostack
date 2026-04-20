@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import {
+  buildFieldReducerState,
+  computeCalculationFromState,
+  createCalculationDemand,
+  createFieldReducerBuilder
+} from '@dataview/core/calculation'
 import { createFilterOptionSetValue } from '@dataview/core/filter'
 
 import {
@@ -17,18 +23,8 @@ import {
   createActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import {
-  buildFieldReducerState,
-  createCalculationDemand
-} from '@dataview/engine/active/shared/calculation'
-import {
-  createFieldReducerBuilder
-} from '@dataview/engine/active/shared/calculation'
-import {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'
-import {
-  computeCalculationFromState
-} from '@dataview/engine/active/snapshot/summary/compute'
 import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 
 const TITLE_FIELD_ID = 'title'

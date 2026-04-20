@@ -25,6 +25,9 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
+import {
+  readFieldSpec
+} from '@dataview/core/field/spec'
 import { sameOrder } from '@shared/core'
 import type {
   ViewRuntimeDelta,
@@ -72,20 +75,6 @@ interface ViewProjectionMeta {
   tableCalc: ReadonlyMap<FieldId, CalculationMetric | undefined>
 }
 
-const usesOptionGroupingColors = (
-  field?: Pick<Field, 'kind'>
-) => {
-  if (!field || field.kind === 'title') {
-    return false
-  }
-
-  return (
-    field.kind === 'select'
-    || field.kind === 'multiSelect'
-    || field.kind === 'status'
-  )
-}
-
 const getFilterFieldId = (
   rule: Pick<FilterRule, 'fieldId'>
 ): FieldId | undefined => typeof rule.fieldId === 'string'
@@ -120,7 +109,7 @@ const resolveGalleryState = (
     size: view.options.gallery.card.size,
     layout: view.options.gallery.card.layout,
     canReorder: !query.group.active && query.sort.rules.length === 0,
-    groupUsesOptionColors: usesOptionGroupingColors(query.group.field)
+    groupUsesOptionColors: readFieldSpec(query.group.field)?.view.groupUsesOptionColors === true
   }
 }
 
@@ -143,7 +132,7 @@ const resolveKanbanState = (
     }
   }
 
-  const groupUsesOptionColors = usesOptionGroupingColors(query.group.field)
+  const groupUsesOptionColors = readFieldSpec(query.group.field)?.view.groupUsesOptionColors === true
 
   return {
     wrap: view.options.kanban.card.wrap,

@@ -5,19 +5,20 @@ import type {
   ViewGroup,
   ViewId
 } from '@dataview/core/contracts'
+import type {
+  CalculationDemand
+} from '@dataview/core/calculation'
 import {
+  createCalculationDemand
+} from '@dataview/core/calculation'
+import {
+  getFilterPlanDemand,
   isFilterRuleEffective
 } from '@dataview/core/filter'
 import {
   viewDisplayFields,
   viewSortFields
 } from '@dataview/core/view'
-import type {
-  CalculationDemand,
-} from '@dataview/engine/active/shared/calculation'
-import {
-  createCalculationDemand
-} from '@dataview/engine/active/shared/calculation'
 import {
   resolveDefaultSearchFieldIds
 } from '@dataview/engine/active/index/demand'
@@ -202,26 +203,6 @@ const createQueryPlan = (
   const searchFieldIds = resolveSearchFieldIds(reader, view)
   const searchQuery = trimLowercase(view.search.query)
   const filters = resolveEffectiveFilterRules(reader, view)
-  const bucketFieldIds = new Set<FieldId>()
-  const sortFieldIds = new Set<FieldId>()
-
-  for (let index = 0; index < filters.length; index += 1) {
-    const entry = filters[index]!
-    switch (entry.field?.kind) {
-      case 'status':
-      case 'select':
-      case 'multiSelect':
-      case 'boolean':
-        bucketFieldIds.add(entry.fieldId)
-        break
-      case 'number':
-      case 'date':
-        sortFieldIds.add(entry.fieldId)
-        break
-      default:
-        break
-    }
-  }
 
   const search = searchQuery
     ? {
@@ -279,17 +260,11 @@ export const compileViewPlan = (
     ? [...viewDisplayFields(view)]
     : []
   const filterBucketSpecs = uniqueSorted(
-    indexedFilters.flatMap(entry => {
-      switch (entry.field?.kind) {
-        case 'status':
-        case 'select':
-        case 'multiSelect':
-        case 'boolean':
-          return [entry.fieldId]
-        default:
-          return []
-      }
-    })
+    indexedFilters.flatMap(entry => (
+      getFilterPlanDemand(entry.field, entry.rule).bucket
+        ? [entry.fieldId]
+        : []
+    ))
   ).map(fieldId => createBucketSpec(fieldId))
   const section = view.group
     ? {
@@ -308,15 +283,11 @@ export const compileViewPlan = (
     : filterBucketSpecs
   const sortFields = Array.from(new Set([
     ...viewSortFields(view),
-    ...indexedFilters.flatMap(entry => {
-      switch (entry.field?.kind) {
-        case 'number':
-        case 'date':
-          return [entry.fieldId]
-        default:
-          return []
-      }
-    })
+    ...indexedFilters.flatMap(entry => (
+      getFilterPlanDemand(entry.field, entry.rule).sorted
+        ? [entry.fieldId]
+        : []
+    ))
   ]))
   const { calcFields, calculations } = readCalculationDemands(view)
 

@@ -14,11 +14,11 @@ import {
   sameOrder
 } from '@shared/core'
 import type {
+  CalculationEntry
+} from '@dataview/core/calculation'
+import type {
   BucketKey
 } from '@dataview/engine/active/index/contracts'
-import type {
-  CalculationEntry
-} from '@dataview/engine/active/shared/calculation'
 import type {
   SectionKey
 } from '@dataview/engine/contracts/public'

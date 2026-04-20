@@ -5,9 +5,11 @@ import type {
 } from '@dataview/core/contracts'
 import {
   compareFieldValues,
-  isEmptyFieldValue,
-  readDateComparableTimestamp
+  isEmptyFieldValue
 } from '@dataview/core/field'
+import {
+  readFieldSpec
+} from '@dataview/core/field/spec'
 import { sameOrder } from '@shared/core'
 import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
 import type {
@@ -25,41 +27,51 @@ import {
 
 const MAX_INCREMENTAL_TOUCH_RATIO = 0.25
 const EMPTY_VALUE_MAP = new Map<RecordId, unknown>()
+type SortScalar = string | number | boolean
 
-const compareSortValues = (
-  field: Field | undefined,
-  left: unknown,
-  right: unknown
+const compareSortScalars = (
+  left: SortScalar,
+  right: SortScalar
 ): number => {
-  if (field?.kind === 'number' && typeof left === 'number' && typeof right === 'number') {
+  if (typeof left === 'number' && typeof right === 'number') {
     return left - right
   }
+  if (typeof left === 'string' && typeof right === 'string') {
+    return left.localeCompare(right)
+  }
+  if (typeof left === 'boolean' && typeof right === 'boolean') {
+    return left === right
+      ? 0
+      : left
+        ? 1
+        : -1
+  }
 
-  return compareFieldValues(field, left, right)
+  return 0
 }
 
-const buildDateSortValues = (
-  values: ReadonlyMap<RecordId, unknown>
-): ReadonlyMap<RecordId, number> => {
-  const sortValues = new Map<RecordId, number>()
-
+const buildSortScalars = (
+  values: ReadonlyMap<RecordId, unknown>,
+  scalarOf: (value: unknown) => SortScalar | undefined
+): ReadonlyMap<RecordId, SortScalar> => {
+  const sortScalars = new Map<RecordId, SortScalar>()
   values.forEach((value, recordId) => {
-    const timestamp = readDateComparableTimestamp(value)
-    if (timestamp !== undefined) {
-      sortValues.set(recordId, timestamp)
+    const scalar = scalarOf(value)
+    if (scalar !== undefined) {
+      sortScalars.set(recordId, scalar)
     }
   })
 
-  return sortValues
+  return sortScalars
 }
 
-const compareDateSortValues = (input: {
+const compareSortValues = (input: {
   field: Field | undefined
   left: unknown
   right: unknown
-  leftTimestamp: number | undefined
-  rightTimestamp: number | undefined
-}) => {
+  leftScalar: SortScalar | undefined
+  rightScalar: SortScalar | undefined
+}): number => {
   const leftEmpty = isEmptyFieldValue(input.left)
   const rightEmpty = isEmptyFieldValue(input.right)
   if (leftEmpty || rightEmpty) {
@@ -71,10 +83,10 @@ const compareDateSortValues = (input: {
   }
 
   if (
-    input.leftTimestamp !== undefined
-    && input.rightTimestamp !== undefined
+    input.leftScalar !== undefined
+    && input.rightScalar !== undefined
   ) {
-    return input.leftTimestamp - input.rightTimestamp
+    return compareSortScalars(input.leftScalar, input.rightScalar)
   }
 
   return compareFieldValues(input.field, input.left, input.right)
@@ -84,26 +96,20 @@ const createRecordComparator = (input: {
   field: Field | undefined
   values: ReadonlyMap<RecordId, unknown>
   order: ReadonlyMap<RecordId, number>
-  dateSortValues?: ReadonlyMap<RecordId, number>
+  sortScalars?: ReadonlyMap<RecordId, SortScalar>
 }) => (
   leftId: RecordId,
   rightId: RecordId
 ) => {
   const left = input.values.get(leftId)
   const right = input.values.get(rightId)
-  const result = input.dateSortValues
-    ? compareDateSortValues({
-        field: input.field,
-        left,
-        right,
-        leftTimestamp: input.dateSortValues.get(leftId),
-        rightTimestamp: input.dateSortValues.get(rightId)
-      })
-    : compareSortValues(
-        input.field,
-        left,
-        right
-      )
+  const result = compareSortValues({
+    field: input.field,
+    left,
+    right,
+    leftScalar: input.sortScalars?.get(leftId),
+    rightScalar: input.sortScalars?.get(rightId)
+  })
 
   if (result !== 0) {
     return result
@@ -120,14 +126,15 @@ const buildFieldSortIndex = (
 ): SortFieldIndex => {
   const field = context.reader.fields.get(fieldId)
   const values = records.values.get(fieldId)?.byRecord ?? EMPTY_VALUE_MAP
-  const dateSortValues = field?.kind === 'date'
-    ? buildDateSortValues(values)
+  const scalarOf = readFieldSpec(field)?.index.sort.scalarOf
+  const sortScalars = scalarOf
+    ? buildSortScalars(values, scalarOf)
     : undefined
   const compare = createRecordComparator({
     field,
     values,
     order: records.order,
-    dateSortValues
+    sortScalars
   })
   const asc = records.ids.slice().sort(compare)
 
@@ -181,14 +188,15 @@ const syncFieldSortIndex = (input: {
 
   const field = input.context.reader.fields.get(input.fieldId)
   const values = input.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
-  const dateSortValues = field?.kind === 'date'
-    ? buildDateSortValues(values)
+  const scalarOf = readFieldSpec(field)?.index.sort.scalarOf
+  const sortScalars = scalarOf
+    ? buildSortScalars(values, scalarOf)
     : undefined
   const compare = createRecordComparator({
     field,
     values,
     order: input.records.order,
-    dateSortValues
+    sortScalars
   })
   const remaining = input.previous.asc.filter(recordId => (
     !input.touchedRecords.has(recordId)

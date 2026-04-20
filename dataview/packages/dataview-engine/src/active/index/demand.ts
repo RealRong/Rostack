@@ -2,8 +2,12 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import {
-  isDefaultSearchField
-} from '@dataview/core/search'
+  normalizeCalculationDemands,
+  sameCalculationDemand
+} from '@dataview/core/calculation'
+import {
+  readFieldSpec
+} from '@dataview/core/field/spec'
 import {
   uniqueSorted
 } from '@shared/core'
@@ -13,10 +17,6 @@ import type {
   IndexReadContext,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
-import {
-  normalizeCalculationDemands,
-  sameCalculationDemand
-} from '@dataview/engine/active/shared/calculation'
 
 export const createBucketSpecKey = (
   spec: BucketSpec
@@ -45,7 +45,7 @@ export const resolveDefaultSearchFieldIds = (
   for (let index = 0; index < context.document.fields.order.length; index += 1) {
     const fieldId = context.document.fields.order[index]!
     const field = context.reader.fields.get(fieldId)
-    if (field && field.kind !== 'title' && isDefaultSearchField(field)) {
+    if (readFieldSpec(field)?.index.searchDefaultEnabled) {
       fieldIds.push(fieldId)
     }
   }

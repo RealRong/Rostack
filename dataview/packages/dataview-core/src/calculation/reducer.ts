@@ -1,19 +1,17 @@
-import {
-  getFieldOption,
-  hasFieldOptions,
-  isEmptyFieldValue,
-  readBooleanValue,
-  readNumberValue
-} from '@dataview/core/field'
 import type {
-  CalculationMetric,
   Field,
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
 import {
-  sameOrder,
-  trimToUndefined
+  isEmptyFieldValue,
+  readNumberValue
+} from '@dataview/core/field'
+import {
+  readFieldSpec
+} from '@dataview/core/field/spec'
+import {
+  sameOrder
 } from '@shared/core'
 
 export interface ReducerCapabilitySet {
@@ -60,6 +58,11 @@ export interface FieldReducerState {
   option?: OptionReducerState
 }
 
+export interface FieldReducerBuilder {
+  apply: (previous?: CalculationEntry, next?: CalculationEntry) => boolean
+  finish: () => FieldReducerState
+}
+
 const EMPTY_STRING_COUNTS = new Map<string, number>()
 const EMPTY_NUMBER_COUNTS = new Map<number, number>()
 const EMPTY_OPTION_IDS = [] as readonly string[]
@@ -91,10 +94,6 @@ export const EMPTY_OPTION_REDUCER_STATE: OptionReducerState = Object.freeze({
 
 const EMPTY_FIELD_STATE_CACHE = new Map<string, FieldReducerState>()
 
-const asPlainString = (value: unknown) => (
-  trimToUndefined(value) ?? ''
-)
-
 const stableSerialize = (value: unknown): string => {
   if (value === undefined) {
     return 'undefined'
@@ -121,82 +120,16 @@ const stableSerialize = (value: unknown): string => {
   return String(value)
 }
 
-const uniqueValueKey = (
+const readUniqueKey = (
   field: Field | undefined,
   value: unknown
-): string => {
-  switch (field?.kind) {
-    case 'title':
-    case 'text':
-    case 'url':
-    case 'email':
-    case 'phone':
-      return `text:${asPlainString(value)}`
-    case 'number': {
-      const numeric = readNumberValue(value)
-      return numeric === undefined ? stableSerialize(value) : `number:${numeric}`
-    }
-    case 'boolean': {
-      const booleanValue = readBooleanValue(value)
-      return booleanValue === undefined ? stableSerialize(value) : `boolean:${booleanValue}`
-    }
-    case 'select':
-    case 'status':
-      return `option:${asPlainString(value)}`
-    case 'multiSelect': {
-      if (!Array.isArray(value)) {
-        return stableSerialize(value)
-      }
-
-      const normalized = value
-        .filter(item => typeof item === 'string')
-        .flatMap(item => {
-          const normalizedItem = trimToUndefined(item)
-          return normalizedItem ? [normalizedItem] : []
-        })
-        .sort((left, right) => left.localeCompare(right))
-      return `multi:${JSON.stringify(normalized)}`
-    }
-    default:
-      return stableSerialize(value)
-  }
-}
-
-const normalizeOptionId = (
-  field: Field | undefined,
-  value: unknown
-): string | undefined => {
-  if (!hasFieldOptions(field) || typeof value !== 'string') {
-    return undefined
-  }
-
-  return getFieldOption(field, value)?.id ?? trimToUndefined(value)
-}
+): string => readFieldSpec(field)?.calculation.uniqueKeyOf(field, value)
+  ?? stableSerialize(value)
 
 const readOptionIds = (
   field: Field | undefined,
   value: unknown
-): readonly string[] | undefined => {
-  if (!hasFieldOptions(field)) {
-    return undefined
-  }
-
-  if (field.kind === 'multiSelect') {
-    if (!Array.isArray(value)) {
-      return undefined
-    }
-
-    const ids = Array.from(new Set(value.flatMap(item => {
-      const optionId = normalizeOptionId(field, item)
-      return optionId ? [optionId] : []
-    }))).sort((left, right) => left.localeCompare(right))
-
-    return ids.length ? ids : undefined
-  }
-
-  const optionId = normalizeOptionId(field, value)
-  return optionId ? [optionId] : undefined
-}
+): readonly string[] | undefined => readFieldSpec(field)?.calculation.optionIdsOf?.(field, value)
 
 export const sameReducerCapabilities = (
   left: ReducerCapabilitySet,
@@ -272,50 +205,6 @@ export const sameCalculationDemand = (
       && sameReducerCapabilities(demand.capabilities, next.capabilities)
   })
 
-export const capabilitiesForMetric = (
-  metric: CalculationMetric
-): ReducerCapabilitySet => {
-  switch (metric) {
-    case 'countAll':
-    case 'countValues':
-    case 'countNonEmpty':
-    case 'countEmpty':
-    case 'percentEmpty':
-    case 'percentNonEmpty':
-      return {
-        count: true
-      }
-    case 'countUniqueValues':
-      return {
-        unique: true
-      }
-    case 'sum':
-    case 'average':
-    case 'median':
-    case 'min':
-    case 'max':
-    case 'range':
-      return {
-        numeric: true
-      }
-    case 'countByOption':
-    case 'percentByOption':
-      return {
-        option: true
-      }
-    default:
-      return {}
-  }
-}
-
-export const createCalculationDemand = (
-  fieldId: FieldId,
-  metric: CalculationMetric
-): CalculationDemand => ({
-  fieldId,
-  capabilities: capabilitiesForMetric(metric)
-})
-
 export const getEmptyFieldReducerState = (
   capabilities: ReducerCapabilitySet
 ): FieldReducerState => {
@@ -353,7 +242,7 @@ export const createCalculationEntry = (input: {
   }
 
   const uniqueKey = needsUnique
-    ? uniqueValueKey(input.field, input.value)
+    ? readUniqueKey(input.field, input.value)
     : undefined
   const number = needsNumeric
     ? readNumberValue(input.value)
@@ -670,7 +559,7 @@ export const buildFieldReducerState = (input: {
 export const createFieldReducerBuilder = (input: {
   previous: FieldReducerState
   capabilities: ReducerCapabilitySet
-}) => {
+}): FieldReducerBuilder => {
   const countState = input.capabilities.count
     ? {
         count: input.previous.count?.count ?? 0,
@@ -692,7 +581,7 @@ export const createFieldReducerBuilder = (input: {
   let changed = false
 
   return {
-    apply(previousEntry?: CalculationEntry, nextEntry?: CalculationEntry): boolean {
+    apply(previousEntry, nextEntry) {
       if (sameCalculationEntry(previousEntry, nextEntry)) {
         return false
       }
@@ -741,7 +630,7 @@ export const createFieldReducerBuilder = (input: {
 
       return true
     },
-    finish(): FieldReducerState {
+    finish() {
       if (!changed) {
         return input.previous
       }
@@ -769,10 +658,12 @@ export const createFieldReducerBuilder = (input: {
           : {})
       }
 
-      return input.previous.count === next.count
-        && input.previous.unique === next.unique
-        && input.previous.numeric === next.numeric
-        && input.previous.option === next.option
+      return (
+        next.count === input.previous.count
+        && next.unique === input.previous.unique
+        && next.numeric === input.previous.numeric
+        && next.option === input.previous.option
+      )
         ? input.previous
         : next
     }

@@ -9,7 +9,10 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import { getStatusFieldDefaultOption, isCustomField } from '@dataview/core/field'
+import { isCustomField } from '@dataview/core/field'
+import {
+  readFieldSpec
+} from '@dataview/core/field/spec'
 import {
   isNonEmptyString,
   trimToUndefined
@@ -62,17 +65,14 @@ const resolveRecordCreateValues = (
     if (!isCustomField(field)) {
       return
     }
-    if (field.kind !== 'status') {
-      return
-    }
     if (explicitValues && Object.prototype.hasOwnProperty.call(explicitValues, field.id)) {
       return
     }
-    const defaultOption = getStatusFieldDefaultOption(field)
-    if (!defaultOption) {
+    const defaultValue = readFieldSpec(field)?.create.defaultValue?.(field)
+    if (defaultValue === undefined) {
       return
     }
-    nextValues[field.id] = defaultOption.id
+    nextValues[field.id] = defaultValue
   })
 
   return nextValues

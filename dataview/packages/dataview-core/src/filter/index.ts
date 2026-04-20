@@ -1,6 +1,12 @@
 export type {
+  FilterBucketLookup,
+  FilterCandidateSpec,
+  FilterCreateSpec,
   FilterEditorKind,
+  FilterPlanDemand,
+  FilterPlanSpec,
   FilterPreset,
+  FilterSortLookup,
   FilterSpec
 } from '@dataview/core/filter/types'
 export {
@@ -8,9 +14,13 @@ export {
   cloneFilterRule,
   createDefaultFilterRule,
   createFilterOptionSetValue,
+  deriveFilterRuleDefaultValue,
   getFilterEditorKind,
+  getFilterBucketLookup,
+  getFilterPlanDemand,
   getFilterPresetIds,
   getFilterSpec,
+  getFilterSortLookup,
   hasFilterPreset,
   isFilterRuleEffective,
   matchFilterRule,

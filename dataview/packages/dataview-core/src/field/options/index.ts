@@ -179,3 +179,5 @@ export const replaceFieldOptions = (
       return {}
   }
 }
+
+export * from '@dataview/core/field/options/spec'

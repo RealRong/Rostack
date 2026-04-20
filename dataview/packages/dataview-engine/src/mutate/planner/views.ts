@@ -23,6 +23,9 @@ import {
 } from '@dataview/core/calculation'
 import { getFieldGroupMeta, isGroupBucketSort } from '@dataview/core/field'
 import {
+  readFieldSpec
+} from '@dataview/core/field/spec'
+import {
   cloneFilter,
   hasFilterPreset,
   normalizeFilter,
@@ -481,17 +484,18 @@ const resolveDefaultKanbanGroup = (
     field.kind !== 'title'
     && getFieldGroupMeta(field).modes.length > 0
   )
-  const field = (
-    fields.find(candidate => (
-      isGroupable(candidate)
-      && (
-        candidate.kind === 'status'
-        || candidate.kind === 'select'
-        || candidate.kind === 'multiSelect'
-      )
-    ))
-    ?? fields.find(isGroupable)
-  )
+  const groupableFields = fields.filter(isGroupable)
+  const field = groupableFields.reduce<(typeof groupableFields)[number] | undefined>((best, candidate) => {
+    if (!best) {
+      return candidate
+    }
+
+    const bestPriority = readFieldSpec(best)?.view.kanbanGroupPriority ?? 0
+    const candidatePriority = readFieldSpec(candidate)?.view.kanbanGroupPriority ?? 0
+    return candidatePriority > bestPriority
+      ? candidate
+      : best
+  }, undefined)
 
   return field
     ? group.set(undefined, field)

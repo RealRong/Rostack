@@ -40,9 +40,6 @@ import {
 import { now } from '@dataview/engine/runtime/clock'
 
 export {
-  computeCalculationFromState
-} from '@dataview/engine/active/snapshot/summary/compute'
-export {
   deriveSummaryState
 } from '@dataview/engine/active/snapshot/summary/sync'
 

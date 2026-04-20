@@ -4,8 +4,5 @@ export {
   getSorterItemId
 } from '@dataview/react/page/features/sort/sortUi'
 export {
-  findSorterField,
-  getAvailableSorterFields,
-  getAvailableSorterFieldsForIndex,
-  getSorterFieldId
+  query
 } from '@dataview/runtime'

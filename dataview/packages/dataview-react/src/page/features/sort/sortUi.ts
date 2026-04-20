@@ -5,7 +5,7 @@ import type { SortRuleProjection } from '@dataview/engine'
 import { meta } from '@dataview/meta'
 import type { TokenTranslator } from '@shared/i18n'
 import {
-  getSorterFieldId
+  query
 } from '@dataview/runtime'
 
 export const SORT_DIRECTIONS = [
@@ -16,7 +16,7 @@ export const SORT_DIRECTIONS = [
 export const getSorterItemId = (
   sorter: Pick<Sorter, 'field'>,
   index: number
-) => getSorterFieldId(sorter) ?? `sorter_${index}`
+) => query.fields.sorterId(sorter) ?? `sorter_${index}`
 
 export const readSortSummary = (
   rules: readonly SortRuleProjection[],

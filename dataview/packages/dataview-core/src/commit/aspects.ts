@@ -15,7 +15,7 @@ import {
   sameOptionalOrder
 } from '@shared/core'
 import {
-  sameFilter
+  filter as filterApi
 } from '@dataview/core/filter'
 import {
   sameGroup
@@ -44,7 +44,7 @@ export const collectViewQueryAspects = (
   if (!sameSearch(previousView.search, nextView.search)) {
     aspects.add('search')
   }
-  if (!sameFilter(previousView.filter, nextView.filter)) {
+  if (!filterApi.same(previousView.filter, nextView.filter)) {
     aspects.add('filter')
   }
   if (!sameSorters(previousView.sort, nextView.sort)) {

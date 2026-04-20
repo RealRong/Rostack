@@ -11,11 +11,7 @@ import {
   KANBAN_EMPTY_BUCKET_KEY
 } from '@dataview/core/contracts'
 import {
-  compareFieldValues,
-  getFieldOption,
-  isEmptyFieldValue,
-  normalizeSearchableValue,
-  readDateComparableTimestamp
+  field as fieldApi
 } from '@dataview/core/field'
 import type {
   FilterBucketLookup,
@@ -213,7 +209,7 @@ const comparePrimitive = (
   field: Field | undefined,
   left: unknown,
   right: unknown
-) => compareFieldValues(field, left, right)
+) => fieldApi.compare.value(field, left, right)
 
 const readExpectedValue = (
   preset: FilterPreset,
@@ -284,7 +280,7 @@ const matchTextContains = (
     return false
   }
 
-  return normalizeSearchableValue(value).some(token => (
+  return fieldApi.value.searchable(value).some(token => (
     token.toLowerCase().includes(query)
   ))
 }
@@ -330,7 +326,7 @@ const projectOptionSetValue = (
     kind: 'multi',
     values: optionIds.map(optionId => (
       field && field.kind !== 'title'
-        ? getFieldOption(field, optionId)?.name ?? optionId
+        ? fieldApi.option.get(field, optionId)?.name ?? optionId
         : optionId
     ))
   }
@@ -396,7 +392,7 @@ const deriveDateDefaultValue = (
   value: unknown
 } | undefined => (
   rule.presetId === 'eq'
-  && readDateComparableTimestamp(rule.value) !== undefined
+  && fieldApi.date.value.comparableTimestamp(rule.value) !== undefined
     ? {
         fieldId: field.id,
         value: structuredClone(rule.value)
@@ -565,8 +561,8 @@ const textFilterSpec = createFilterSpec({
     const expected = readExpectedValue(preset, rule)
     if (preset.operator === 'exists') {
       return expected === false
-        ? isEmptyFieldValue(recordValue)
-        : !isEmptyFieldValue(recordValue)
+        ? fieldApi.value.empty(recordValue)
+        : !fieldApi.value.empty(recordValue)
     }
     if (preset.operator === 'contains') {
       return matchTextContains(recordValue, expected)
@@ -607,8 +603,8 @@ const numberFilterSpec = createFilterSpec({
     const expected = readExpectedValue(preset, rule)
     if (preset.operator === 'exists') {
       return expected === false
-        ? isEmptyFieldValue(recordValue)
-        : !isEmptyFieldValue(recordValue)
+        ? fieldApi.value.empty(recordValue)
+        : !fieldApi.value.empty(recordValue)
     }
 
     const comparison = comparePrimitive(field, recordValue, expected)
@@ -683,7 +679,7 @@ const dateFilterSpec = createFilterSpec({
   isEffective: (_field, rule) => {
     const preset = NUMBER_PRESETS.find(item => item.id === rule.presetId) ?? NUMBER_PRESETS[0]
     return preset.valueMode === 'editable'
-      ? readDateComparableTimestamp(rule.value) !== undefined
+      ? fieldApi.date.value.comparableTimestamp(rule.value) !== undefined
       : true
   },
   match: (field, recordValue, rule) => {
@@ -691,8 +687,8 @@ const dateFilterSpec = createFilterSpec({
     const expected = readExpectedValue(preset, rule)
     if (preset.operator === 'exists') {
       return expected === false
-        ? isEmptyFieldValue(recordValue)
-        : !isEmptyFieldValue(recordValue)
+        ? fieldApi.value.empty(recordValue)
+        : !fieldApi.value.empty(recordValue)
     }
 
     const comparison = comparePrimitive(field, recordValue, expected)
@@ -775,8 +771,8 @@ const optionFilterSpec = createFilterSpec({
     const expected = readExpectedValue(preset, rule)
     if (preset.operator === 'exists') {
       return expected === false
-        ? isEmptyFieldValue(recordValue)
-        : !isEmptyFieldValue(recordValue)
+        ? fieldApi.value.empty(recordValue)
+        : !fieldApi.value.empty(recordValue)
     }
 
     const match = matchOptionSet(field, recordValue, expected)
@@ -838,8 +834,8 @@ const optionSetFilterSpec = createFilterSpec({
     const expected = readExpectedValue(preset, rule)
     if (preset.operator === 'exists') {
       return expected === false
-        ? isEmptyFieldValue(recordValue)
-        : !isEmptyFieldValue(recordValue)
+        ? fieldApi.value.empty(recordValue)
+        : !fieldApi.value.empty(recordValue)
     }
 
     return matchOptionSet(field, recordValue, expected)
@@ -889,8 +885,8 @@ const booleanFilterSpec = createFilterSpec({
     const expected = readExpectedValue(preset, rule)
     if (preset.operator === 'exists') {
       return expected === false
-        ? isEmptyFieldValue(recordValue)
-        : !isEmptyFieldValue(recordValue)
+        ? fieldApi.value.empty(recordValue)
+        : !fieldApi.value.empty(recordValue)
     }
 
     return recordValue === expected
@@ -953,8 +949,8 @@ const presenceFilterSpec = createFilterSpec({
     const preset = PRESENCE_PRESETS.find(item => item.id === rule.presetId) ?? PRESENCE_PRESETS[0]
     const expected = readExpectedValue(preset, rule)
     return expected === false
-      ? isEmptyFieldValue(recordValue)
-      : !isEmptyFieldValue(recordValue)
+      ? fieldApi.value.empty(recordValue)
+      : !fieldApi.value.empty(recordValue)
   },
   projectValue: (_field, rule) => (
     rule.presetId === 'exists_true'

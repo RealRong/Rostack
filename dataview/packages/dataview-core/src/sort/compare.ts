@@ -4,11 +4,10 @@ import type {
   Sorter
 } from '@dataview/core/contracts'
 import {
-  getDocumentFieldById
+  document as documentApi
 } from '@dataview/core/document'
 import {
-  compareFieldSortValues,
-  getRecordFieldValue
+  field as fieldApi
 } from '@dataview/core/field'
 
 export const compareSortedRecords = (
@@ -17,11 +16,11 @@ export const compareSortedRecords = (
   sorter: Sorter,
   document: DataDoc
 ): number => {
-  const field = getDocumentFieldById(document, sorter.field)
-  return compareFieldSortValues(
-    field,
-    getRecordFieldValue(left, sorter.field),
-    getRecordFieldValue(right, sorter.field),
+  const currentField = documentApi.fields.get(document, sorter.field)
+  return fieldApi.compare.sort(
+    currentField,
+    fieldApi.value.read(left, sorter.field),
+    fieldApi.value.read(right, sorter.field),
     sorter.direction
   )
 }

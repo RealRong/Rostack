@@ -5,7 +5,7 @@ import {
   KANBAN_EMPTY_BUCKET_KEY,
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
-import { createFilterOptionSetValue } from '@dataview/core/filter'
+import { filter } from '@dataview/core/filter'
 import { createDefaultViewOptions } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 
@@ -786,7 +786,7 @@ test('engine.active.records.create derives supported filter defaults', () => {
   openView(engine, VIEW_TABLE).filters.update(0, {
     fieldId: FIELD_STATUS,
     presetId: 'eq',
-    value: createFilterOptionSetValue(['doing'])
+    value: filter.value.optionSet.create(['doing'])
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
@@ -895,19 +895,19 @@ test('engine.active.records.create supports multiple concrete select filters and
   openView(engine, VIEW_TABLE).filters.update(0, {
     fieldId: fieldA,
     presetId: 'eq',
-    value: createFilterOptionSetValue(['option_1'])
+    value: filter.value.optionSet.create(['option_1'])
   })
   openView(engine, VIEW_TABLE).filters.add(fieldB)
   openView(engine, VIEW_TABLE).filters.update(1, {
     fieldId: fieldB,
     presetId: 'eq',
-    value: createFilterOptionSetValue(['option_2', 'option_3'])
+    value: filter.value.optionSet.create(['option_2', 'option_3'])
   })
   openView(engine, VIEW_TABLE).filters.add(fieldC)
   openView(engine, VIEW_TABLE).filters.update(2, {
     fieldId: fieldC,
     presetId: 'contains',
-    value: createFilterOptionSetValue(['option_4'])
+    value: filter.value.optionSet.create(['option_4'])
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
@@ -933,7 +933,7 @@ test('engine.active.records.create resolves grouped status against multi-option 
   openView(engine, VIEW_TABLE).filters.update(0, {
     fieldId: FIELD_STATUS,
     presetId: 'eq',
-    value: createFilterOptionSetValue(['todo', 'doing'])
+    value: filter.value.optionSet.create(['todo', 'doing'])
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
@@ -957,7 +957,7 @@ test('engine.active.records.create chooses the first option from multi-option st
   openView(engine, VIEW_TABLE).filters.update(0, {
     fieldId: FIELD_STATUS,
     presetId: 'eq',
-    value: createFilterOptionSetValue(['todo', 'doing'])
+    value: filter.value.optionSet.create(['todo', 'doing'])
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
@@ -980,7 +980,7 @@ test('engine.active.records.create accepts explicit status values that satisfy m
   openView(engine, VIEW_TABLE).filters.update(0, {
     fieldId: FIELD_STATUS,
     presetId: 'eq',
-    value: createFilterOptionSetValue(['todo', 'doing'])
+    value: filter.value.optionSet.create(['todo', 'doing'])
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
@@ -1049,7 +1049,7 @@ test('engine.active.records.create rejects conflicting group and filter defaults
   openView(engine, VIEW_TABLE).filters.update(0, {
     fieldId: FIELD_STATUS,
     presetId: 'eq',
-    value: createFilterOptionSetValue(['doing'])
+    value: filter.value.optionSet.create(['doing'])
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({

@@ -10,11 +10,7 @@ import type {
   StatusField
 } from '@dataview/core/contracts'
 import {
-  getFieldOption,
-  getStatusCategoryLabel,
-  getStatusFieldDefaultOption,
-  getStatusOptionCategory,
-  getStatusSections
+  field as fieldApi
 } from '@dataview/core/field'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
@@ -46,14 +42,14 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
     dataView => dataView.engine.source.doc.fields,
     props.fieldId
   )
-  const currentOption = getFieldOption(field, props.option.id)
+  const currentOption = fieldApi.option.get(field, props.option.id)
   const optionName = currentOption?.name ?? props.option.name
   const optionColor = currentOption?.color ?? props.option.color ?? undefined
   const statusCategory = field?.kind === 'status'
-    ? getStatusOptionCategory(field, props.option.id)
+    ? fieldApi.status.category.get(field, props.option.id)
     : undefined
   const defaultStatusOptionId = field?.kind === 'status'
-    ? getStatusFieldDefaultOption(field)?.id
+    ? fieldApi.status.defaultOption.forField(field)?.id
     : undefined
   const isDefaultStatusOption = defaultStatusOptionId === props.option.id
   const [draftName, setDraftName] = useState(optionName)
@@ -97,7 +93,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
     editor.fields.options.reorder(
       props.fieldId,
       buildStatusIdsAfterCategoryMove(
-        getStatusSections(field),
+        fieldApi.status.sections(field),
         props.option.id,
         statusCategory,
         category
@@ -147,11 +143,11 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
           key: 'status-group',
           label: t(meta.ui.field.status.group),
           leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
-          suffix: getStatusCategoryLabel(statusCategory),
+          suffix: fieldApi.status.category.label(statusCategory),
           value: statusCategory,
           options: (['todo', 'in_progress', 'complete'] as const).map(category => ({
             id: category,
-            label: getStatusCategoryLabel(category)
+            label: fieldApi.status.category.label(category)
           })),
           onSelect: category => {
             moveStatusOption(category)

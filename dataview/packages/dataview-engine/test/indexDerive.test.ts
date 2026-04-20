@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
-  buildFieldReducerState,
-  computeCalculationFromState,
-  createCalculationDemand,
-  createFieldReducerBuilder
+  calculation
 } from '@dataview/core/calculation'
-import { createFilterOptionSetValue } from '@dataview/core/filter'
+import { filter } from '@dataview/core/filter'
 
 import {
   createIndexState,
@@ -190,8 +187,8 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
     }],
     sortFields: [FIELD_POINTS],
     calculations: [
-      createCalculationDemand(FIELD_STATUS, 'countByOption'),
-      createCalculationDemand(FIELD_POINTS, 'sum')
+      calculation.reducer.demand.create(FIELD_STATUS, 'countByOption'),
+      calculation.reducer.demand.create(FIELD_POINTS, 'sum')
     ]
   })
 
@@ -344,17 +341,17 @@ test('engine.active.view plan demand provisions bucket and sort substrate only f
         {
           fieldId: FIELD_STATUS,
           presetId: 'eq',
-          value: createFilterOptionSetValue()
+          value: filter.value.optionSet.create()
         },
         {
           fieldId: FIELD_PRIORITY,
           presetId: 'eq',
-          value: createFilterOptionSetValue()
+          value: filter.value.optionSet.create()
         },
         {
           fieldId: FIELD_TAGS,
           presetId: 'contains',
-          value: createFilterOptionSetValue()
+          value: filter.value.optionSet.create()
         }
       ]
     }
@@ -490,7 +487,7 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
     },
     sortFields: [FIELD_STATUS, FIELD_POINTS],
     calculations: [
-      createCalculationDemand(FIELD_STATUS, 'countByOption')
+      calculation.reducer.demand.create(FIELD_STATUS, 'countByOption')
     ]
   })
   const before = index.state()
@@ -523,11 +520,11 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
   assert.ok(statusSearch.texts.get('rec_3')?.includes('finished'))
 
   const statusCalc = state.calculations.fields.get(FIELD_STATUS)
-  const statusCalcResult = computeCalculationFromState({
-    field: updatedDocument.fields.byId[FIELD_STATUS],
-    metric: 'countByOption',
-    state: statusCalc!.global
-  })
+  const statusCalcResult = calculation.metric.compute(
+    updatedDocument.fields.byId[FIELD_STATUS],
+    'countByOption',
+    statusCalc!.global
+  )
   assert.equal(statusCalc?.global.option?.counts.get('done'), 1)
   assert.equal(statusCalcResult.kind, 'distribution')
   if (statusCalcResult.kind !== 'distribution') {
@@ -626,8 +623,8 @@ test('engine.active calculations support select and multiSelect option distribut
 
   const index = createIndexHarness(document, {
     calculations: [
-      createCalculationDemand(FIELD_PRIORITY, 'countByOption'),
-      createCalculationDemand(FIELD_TAGS, 'countByOption')
+      calculation.reducer.demand.create(FIELD_PRIORITY, 'countByOption'),
+      calculation.reducer.demand.create(FIELD_TAGS, 'countByOption')
     ]
   })
   const state = index.state()
@@ -642,16 +639,16 @@ test('engine.active calculations support select and multiSelect option distribut
   assert.equal(tagCalc?.global.option?.counts.get('backend'), 2)
   assert.equal(tagCalc?.global.option?.counts.get('frontend'), 1)
 
-  const priorityResult = computeCalculationFromState({
-    field: priorityField,
-    metric: 'percentByOption',
-    state: priorityCalc!.global
-  })
-  const tagResult = computeCalculationFromState({
-    field: tagField,
-    metric: 'countByOption',
-    state: tagCalc!.global
-  })
+  const priorityResult = calculation.metric.compute(
+    priorityField,
+    'countByOption',
+    priorityCalc!.global
+  )
+  const tagResult = calculation.metric.compute(
+    tagField,
+    'countByOption',
+    tagCalc!.global
+  )
 
   assert.equal(priorityResult.kind, 'distribution')
   if (priorityResult.kind !== 'distribution') {
@@ -692,13 +689,13 @@ test('engine.active field reducer builder reuses previous state when net deltas 
     numeric: true,
     option: true
   } as const
-  const previous = buildFieldReducerState({
+  const previous = calculation.reducer.state.build({
     entries: new Map([
       ['rec_1', entry]
     ]),
     capabilities
   })
-  const reducer = createFieldReducerBuilder({
+  const reducer = calculation.reducer.state.builder({
     previous,
     capabilities
   })

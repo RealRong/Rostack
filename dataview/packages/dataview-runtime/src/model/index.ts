@@ -54,10 +54,5 @@ export type {
 } from '@dataview/runtime/model/types'
 
 export {
-  findSorterField,
-  getAvailableFilterFields,
-  getAvailableSorterFields,
-  getAvailableSorterFieldsForIndex,
-  getFilterFieldId,
-  getSorterFieldId
+  query
 } from '@dataview/runtime/model/queryFields'

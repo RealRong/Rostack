@@ -10,7 +10,7 @@ import {
   commit,
   type EditorSubmitTrigger
 } from '@dataview/react/interaction'
-import { isCustomField } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { getFieldValueSpec } from '@dataview/react/field/value/kinds'
 import type {
   FieldValueEditorHandle,
@@ -22,7 +22,7 @@ export const FieldValueEditor = forwardRef<
   FieldValueEditorProps
 >((props, ref) => {
   const spec = getFieldValueSpec(props.field)
-  const editorProperty = isCustomField(props.field)
+  const editorProperty = fieldApi.kind.isCustom(props.field)
     ? props.field
     : undefined
   const [draft, setDraftState] = useState(() => (

@@ -21,19 +21,23 @@ import {
   removeEntityTableEntity
 } from '@dataview/core/document/table'
 
-export const getDocumentCustomFields = (document: DataDoc): CustomField[] => {
+const listCustomFields = (document: DataDoc): CustomField[] => {
   return listEntityTable(document.fields)
 }
 
-export const getDocumentCustomFieldIds = (document: DataDoc): CustomFieldId[] => getEntityTableIds(document.fields)
-export const getDocumentCustomFieldById = (document: DataDoc, fieldId: CustomFieldId) => getEntityTableById(document.fields, fieldId)
-export const hasDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId) => hasEntityTableId(document.fields, fieldId)
+const getCustomFieldIds = (document: DataDoc): CustomFieldId[] => getEntityTableIds(document.fields)
+const getCustomField = (document: DataDoc, fieldId: CustomFieldId) => getEntityTableById(document.fields, fieldId)
+const hasCustomField = (document: DataDoc, fieldId: CustomFieldId) => hasEntityTableId(document.fields, fieldId)
 
-export const putDocumentCustomField = (document: DataDoc, field: CustomField): DataDoc => {
+const putCustomField = (document: DataDoc, field: CustomField): DataDoc => {
   return replaceDocumentTable(document, 'fields', putEntityTableEntity(document.fields, field))
 }
 
-export const patchDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId, patch: Partial<Omit<CustomField, 'id'>>): DataDoc => {
+const patchCustomField = (
+  document: DataDoc,
+  fieldId: CustomFieldId,
+  patch: Partial<Omit<CustomField, 'id'>>
+): DataDoc => {
   const nextFields = patchEntityTableEntity(document.fields, fieldId, patch)
   if (nextFields === document.fields) {
     return document
@@ -42,7 +46,7 @@ export const patchDocumentCustomField = (document: DataDoc, fieldId: CustomField
   return replaceDocumentTable(document, 'fields', nextFields)
 }
 
-export const removeDocumentCustomField = (document: DataDoc, fieldId: CustomFieldId): DataDoc => {
+const removeCustomField = (document: DataDoc, fieldId: CustomFieldId): DataDoc => {
   const nextFields = removeEntityTableEntity(document.fields, fieldId)
   if (nextFields === document.fields) {
     return document
@@ -58,37 +62,60 @@ const TITLE_FIELD: TitleField = {
   system: true
 }
 
-export const getDocumentTitleField = (): TitleField => TITLE_FIELD
+const getTitleField = (): TitleField => TITLE_FIELD
 
-export const isDocumentTitleFieldId = (
+const isTitleFieldId = (
   fieldId: FieldId
 ): fieldId is TitleFieldId => fieldId === TITLE_FIELD_ID
 
-export const getDocumentFieldIds = (
+const getFieldIds = (
   document: DataDoc
 ): FieldId[] => [
   TITLE_FIELD_ID,
   ...document.fields.order
 ]
 
-export const getDocumentFieldById = (
+const getField = (
   document: DataDoc,
   fieldId: FieldId
 ): Field | undefined => (
-  isDocumentTitleFieldId(fieldId)
+  isTitleFieldId(fieldId)
     ? TITLE_FIELD
-    : getDocumentCustomFieldById(document, fieldId)
+    : getCustomField(document, fieldId)
 )
 
-export const hasDocumentField = (
+const hasField = (
   document: DataDoc,
   fieldId: FieldId
-) => isDocumentTitleFieldId(fieldId)
-  || hasDocumentCustomField(document, fieldId)
+) => isTitleFieldId(fieldId)
+  || hasCustomField(document, fieldId)
 
-export const getDocumentFields = (
+const listFields = (
   document: DataDoc
 ): Field[] => [
   TITLE_FIELD,
-  ...getDocumentCustomFields(document)
+  ...listCustomFields(document)
 ]
+
+export const documentFields = {
+  title: {
+    get: getTitleField,
+    isId: isTitleFieldId
+  },
+  custom: {
+    list: listCustomFields,
+    ids: getCustomFieldIds,
+    get: getCustomField,
+    has: hasCustomField,
+    put: putCustomField,
+    patch: patchCustomField,
+    remove: removeCustomField
+  },
+  list: listFields,
+  ids: getFieldIds,
+  get: getField,
+  has: hasField,
+  put: putCustomField,
+  patch: patchCustomField,
+  remove: removeCustomField
+} as const

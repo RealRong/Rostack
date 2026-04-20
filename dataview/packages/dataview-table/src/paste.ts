@@ -1,5 +1,5 @@
 import type { Field } from '@dataview/core/contracts'
-import { parseFieldDraft } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import type {
   ItemList,
   FieldList
@@ -37,7 +37,7 @@ const parseCellDraft = (
   field: Field,
   draft: string
 ): { ok: boolean; value?: unknown } => {
-  const parsed = parseFieldDraft(field, draft)
+  const parsed = fieldApi.draft.parse(field, draft)
   switch (parsed.type) {
     case 'set':
       return {

@@ -10,7 +10,7 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  getRecordFieldValue
+  field as fieldApi
 } from '@dataview/core/field'
 import type { ItemId } from '@dataview/engine'
 import type {
@@ -193,7 +193,7 @@ const View = (props: RowProps) => {
               wrap={body.wrap}
               field={field}
               value={record
-                ? getRecordFieldValue(record, field.id)
+                ? fieldApi.value.read(record, field.id)
                 : undefined}
               exists={Boolean(record)}
             />

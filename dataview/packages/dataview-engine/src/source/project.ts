@@ -1,11 +1,6 @@
 import type { CalculationCollection } from '@dataview/core/calculation'
 import {
-  getDocumentCustomFieldById,
-  getDocumentCustomFieldIds,
-  getDocumentRecordById,
-  getDocumentRecordIds,
-  getDocumentViewById,
-  getDocumentViewIds
+  document as documentApi
 } from '@dataview/core/document'
 import type {
   CardLayout,
@@ -517,15 +512,15 @@ export const projectDocumentChange = (input: {
   if (input.impact.reset) {
     return {
       records: {
-        changed: getDocumentRecordIds(input.document),
+        changed: documentApi.records.ids(input.document),
         removed: []
       },
       fields: {
-        changed: getDocumentCustomFieldIds(input.document),
+        changed: documentApi.fields.custom.ids(input.document),
         removed: []
       },
       views: {
-        changed: getDocumentViewIds(input.document),
+        changed: documentApi.views.ids(input.document),
         removed: []
       },
       activeViewChanged: true
@@ -846,22 +841,22 @@ export const projectEngineOutput = (input: {
   })
   const document = {
     records: buildDocumentEntityDelta<RecordId, DataRecord>({
-      ids: getDocumentRecordIds(input.document),
+      ids: documentApi.records.ids(input.document),
       changed: input.documentChange.records.changed as readonly RecordId[],
       removed: input.documentChange.records.removed as readonly RecordId[],
-      value: recordId => getDocumentRecordById(input.document, recordId)
+      value: recordId => documentApi.records.get(input.document, recordId)
     }),
     fields: buildDocumentEntityDelta<FieldId, CustomField>({
-      ids: getDocumentCustomFieldIds(input.document),
+      ids: documentApi.fields.custom.ids(input.document),
       changed: input.documentChange.fields.changed,
       removed: input.documentChange.fields.removed,
-      value: fieldId => getDocumentCustomFieldById(input.document, fieldId)
+      value: fieldId => documentApi.fields.custom.get(input.document, fieldId)
     }),
     views: buildDocumentEntityDelta<ViewId, View>({
-      ids: getDocumentViewIds(input.document),
+      ids: documentApi.views.ids(input.document),
       changed: input.documentChange.views.changed,
       removed: input.documentChange.views.removed,
-      value: viewId => getDocumentViewById(input.document, viewId)
+      value: viewId => documentApi.views.get(input.document, viewId)
     })
   }
   const active = publishDelta

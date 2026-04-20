@@ -5,7 +5,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import {
-  isEmptyFieldValue
+  field as fieldApi
 } from '@dataview/core/field'
 import type {
   ViewFieldRef
@@ -146,7 +146,7 @@ const RecordCardComponent = (props: RecordCardProps) => {
   const visibleProperties = useMemo(() => (
     editing
       ? props.content.properties
-      : props.content.properties.filter(property => !isEmptyFieldValue(property.value))
+      : props.content.properties.filter(property => !fieldApi.value.empty(property.value))
   ), [editing, props.content.properties])
   const properties = useMemo(() => visibleProperties.map(property => ({
     key: property.field.id,

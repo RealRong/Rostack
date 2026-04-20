@@ -4,15 +4,12 @@ import type {
   ReducerCapabilitySet
 } from '@dataview/core/calculation'
 import {
+  calculation
+} from '@dataview/core/calculation'
+import {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import {
-  buildFieldReducerState,
-  createFieldReducerBuilder,
-  getEmptyFieldReducerState,
-  sameCalculationEntry
-} from '@dataview/core/calculation'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -61,12 +58,12 @@ const buildSectionFieldState = (input: {
   capabilities: ReducerCapabilitySet
 }): FieldReducerState => (
   input.sectionIds.length
-    ? buildFieldReducerState({
+    ? calculation.reducer.state.build({
         entries: input.entries,
         capabilities: input.capabilities,
         recordIds: input.sectionIds
       })
-    : getEmptyFieldReducerState(input.capabilities)
+    : calculation.reducer.empty(input.capabilities)
 )
 
 const collectSectionKeys = (
@@ -252,11 +249,11 @@ const collectSectionTransitions = (input: {
 
 const createSectionFieldBuilders = () => new Map<
   SectionKey,
-  Map<FieldId, ReturnType<typeof createFieldReducerBuilder>>
+  Map<FieldId, ReturnType<typeof calculation.reducer.state.builder>>
 >()
 
 const ensureSectionFieldBuilder = (input: {
-  builders: Map<SectionKey, Map<FieldId, ReturnType<typeof createFieldReducerBuilder>>>
+  builders: Map<SectionKey, Map<FieldId, ReturnType<typeof calculation.reducer.state.builder>>>
   previous: SummaryState
   sectionKey: SectionKey
   fieldId: FieldId
@@ -274,8 +271,8 @@ const ensureSectionFieldBuilder = (input: {
   }
 
   const previousFieldState = input.previous.bySection.get(input.sectionKey)?.get(input.fieldId)
-    ?? getEmptyFieldReducerState(input.capabilities)
-  const created = createFieldReducerBuilder({
+    ?? calculation.reducer.empty(input.capabilities)
+  const created = calculation.reducer.state.builder({
     previous: previousFieldState,
     capabilities: input.capabilities
   })
@@ -285,7 +282,7 @@ const ensureSectionFieldBuilder = (input: {
 }
 
 const applySectionFieldChange = (input: {
-  builders: Map<SectionKey, Map<FieldId, ReturnType<typeof createFieldReducerBuilder>>>
+  builders: Map<SectionKey, Map<FieldId, ReturnType<typeof calculation.reducer.state.builder>>>
   previous: SummaryState
   sections: SectionState
   sectionKey: SectionKey
@@ -296,7 +293,7 @@ const applySectionFieldChange = (input: {
 }) => {
   if (
     !input.sections.byKey.has(input.sectionKey)
-    || sameCalculationEntry(input.previousEntry, input.nextEntry)
+    || calculation.reducer.entry.same(input.previousEntry, input.nextEntry)
   ) {
     return
   }
@@ -311,7 +308,7 @@ const applySectionFieldChange = (input: {
 }
 
 const applyFieldRecordChange = (input: {
-  builders: Map<SectionKey, Map<FieldId, ReturnType<typeof createFieldReducerBuilder>>>
+  builders: Map<SectionKey, Map<FieldId, ReturnType<typeof calculation.reducer.state.builder>>>
   previous: SummaryState
   sections: SectionState
   fieldId: FieldId
@@ -328,7 +325,7 @@ const applyFieldRecordChange = (input: {
     return
   }
 
-  if (!sameCalculationEntry(input.previousEntry, input.nextEntry)) {
+  if (!calculation.reducer.entry.same(input.previousEntry, input.nextEntry)) {
     if (!beforeCount && afterCount === 1) {
       applySectionFieldChange({
         builders: input.builders,

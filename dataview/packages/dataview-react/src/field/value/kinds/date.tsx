@@ -1,5 +1,5 @@
 import type { CustomField } from '@dataview/core/contracts'
-import { formatDateValue } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { cn } from '@shared/ui/utils'
 import { DateValueEditor } from '@dataview/react/field/value/editor/pickers/date/DateValueEditor'
 import {
@@ -19,7 +19,7 @@ export const createDatePropertySpec = (
   createDraft: (value, seedDraft) => createDateValueDraft(field, value, seedDraft),
   parseDraft: parseDateValueDraft,
   render: props => {
-    const display = formatDateValue(field, props.value)
+    const display = fieldApi.date.display.value(field, props.value)
     if (!display) {
       return renderEmpty(props)
     }

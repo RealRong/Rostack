@@ -7,15 +7,10 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getFilterEditorKind,
-  getFilterPresetIds,
-  isFilterRuleEffective,
-  projectFilterRuleValue,
-  sameFilterRule
+  filter as filterApi
 } from '@dataview/core/filter'
 import {
-  getFieldGroupMeta,
-  isCustomField
+  field as fieldApi
 } from '@dataview/core/field'
 import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine/contracts/public'
 import type {
@@ -64,7 +59,7 @@ const createFields = (input: {
     all.push(field)
     ids.push(field.id)
     visibleById.set(field.id, field)
-    if (isCustomField(field)) {
+    if (fieldApi.kind.isCustom(field)) {
       custom.push(field)
     }
   })
@@ -93,22 +88,22 @@ const createFilterRuleProjection = (
   field: Field | undefined,
   rule: FilterRule
 ): FilterRuleProjection => {
-  const editorKind = getFilterEditorKind(field, rule)
+  const editorKind = filterApi.rule.editorKind(field, rule)
 
   return {
     rule,
     field,
     fieldMissing: !field,
     activePresetId: rule.presetId,
-    effective: isFilterRuleEffective(field, rule),
+    effective: filterApi.rule.effective(field, rule),
     editorKind,
-    value: projectFilterRuleValue(field, rule),
+    value: filterApi.rule.project(field, rule),
     bodyLayout: editorKind === 'none'
       ? 'none'
       : editorKind === 'option-set'
         ? 'flush'
         : 'inset',
-    conditions: getFilterPresetIds(field).map(id => ({
+    conditions: filterApi.rule.presetIds(field).map((id: string) => ({
       id,
       selected: id === rule.presetId
     }))
@@ -176,7 +171,7 @@ const createGroupProjection = (input: {
     }
   }
 
-  const meta = getFieldGroupMeta(field, {
+  const meta = fieldApi.group.meta(field, {
     mode: group.mode,
     bucketSort: group.bucketSort,
     ...(group.bucketInterval !== undefined
@@ -207,7 +202,7 @@ const equalFilterRuleProjection = (
   left: FilterRuleProjection,
   right: FilterRuleProjection
 ) => (
-  sameFilterRule(left.rule, right.rule)
+  filterApi.rule.same(left.rule, right.rule)
   && left.fieldMissing === right.fieldMissing
   && left.activePresetId === right.activePresetId
   && left.effective === right.effective

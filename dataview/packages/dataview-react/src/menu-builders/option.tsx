@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { StatusCategory } from '@dataview/core/contracts'
-import { getStatusCategoryLabel } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { meta } from '@dataview/meta'
 import type { TokenTranslator } from '@shared/i18n'
 import { resolveOptionDotStyle, resolveOptionColorToken } from '@shared/ui/color'
@@ -150,7 +150,7 @@ export const buildStatusCategoryToggleItems = (input: {
 ).map<MenuItem>(category => ({
   kind: 'toggle',
   key: `${input.keyPrefix ?? 'status-group'}-${category}`,
-  label: getStatusCategoryLabel(category),
+  label: fieldApi.status.category.label(category),
   checked: input.currentCategory === category,
   onSelect: () => input.onSelect(category)
 }))

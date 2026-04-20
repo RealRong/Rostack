@@ -1,5 +1,5 @@
 import type { CustomField } from '@dataview/core/contracts'
-import { getFieldOption, parseFieldDraft } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { FieldOptionTag } from '@dataview/react/field/options'
 import { cn } from '@shared/ui/utils'
 import { OptionPickerEditor } from '@dataview/react/field/value/editor/pickers/option/OptionPickerEditor'
@@ -20,7 +20,7 @@ export const createMultiSelectPropertySpec = (
   panelWidth: 'picker',
   Editor: MultiSelectEditor,
   createDraft: (value, seedDraft) => seedDraft ?? (Array.isArray(value) ? value.join(', ') : ''),
-  parseDraft: draft => parseFieldDraft(field, draft),
+  parseDraft: draft => fieldApi.draft.parse(field, draft),
   render: props => {
     if (!Array.isArray(props.value) || !props.value.length) {
       return renderEmpty(props)
@@ -28,8 +28,8 @@ export const createMultiSelectPropertySpec = (
 
     const values = props.value.map(item => ({
       id: item,
-      label: getFieldOption(field, item)?.name ?? String(item),
-      color: getFieldOption(field, item)?.color
+      label: fieldApi.option.get(field, item)?.name ?? String(item),
+      color: fieldApi.option.get(field, item)?.color
     }))
     const visible = props.wrap
       ? values

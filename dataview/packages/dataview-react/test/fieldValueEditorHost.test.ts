@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
-  getDocumentTitleField
+  document as documentApi
 } from '@dataview/core/document'
 import {
   resolveFieldValueEditorField
@@ -11,7 +11,7 @@ describe('resolveFieldValueEditorField', () => {
     expect(resolveFieldValueEditorField({
       fieldId: 'title',
       customField: undefined
-    })).toEqual(getDocumentTitleField())
+    })).toEqual(documentApi.fields.title.get())
   })
 
   test('keeps using document-backed custom fields for non-title editors', () => {

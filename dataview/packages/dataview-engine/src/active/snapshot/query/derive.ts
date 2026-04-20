@@ -8,14 +8,10 @@ import {
   trimLowercase
 } from '@shared/core'
 import {
-  compareFieldSortValues,
-  compareFieldValues,
-  isEmptyFieldValue
+  field as fieldApi
 } from '@dataview/core/field'
 import {
-  getFilterBucketLookup,
-  getFilterSortLookup,
-  matchFilterRule,
+  filter as filterApi
 } from '@dataview/core/filter'
 import {
   applyRecordOrder
@@ -279,7 +275,7 @@ const findEmptyTailStart = (input: {
 
   while (start > 0) {
     const recordId = input.ids[start - 1]!
-    if (!isEmptyFieldValue(input.values.get(recordId))) {
+    if (!fieldApi.value.empty(input.values.get(recordId))) {
       break
     }
 
@@ -416,7 +412,7 @@ const sortRecordIds = (input: {
 
   return input.ids.slice().sort((leftId, rightId) => {
     for (const sorter of sorters) {
-      const result = compareFieldSortValues(
+      const result = fieldApi.compare.sort(
         sorter.field,
         sorter.values?.get(leftId),
         sorter.values?.get(rightId),
@@ -716,7 +712,7 @@ const matchesFilter = (input: {
 
   if (input.mode === 'or') {
     return input.rules.some(({ fieldId, field, rule }) => (
-      matchFilterRule(
+      filterApi.rule.match(
         field,
         fieldId === 'title'
           ? row.title
@@ -727,7 +723,7 @@ const matchesFilter = (input: {
   }
 
   return input.rules.every(({ fieldId, field, rule }) => (
-    matchFilterRule(
+    filterApi.rule.match(
       field,
       fieldId === 'title'
         ? row.title
@@ -743,7 +739,7 @@ const resolveBucketFilterCandidates = (input: {
   rule: View['filter']['rules'][number]
   index: IndexState
 }): FilterCandidate | undefined => {
-  const lookup = getFilterBucketLookup(input.field, input.rule)
+  const lookup = filterApi.rule.bucketLookup(input.field, input.rule)
   if (!lookup) {
     return undefined
   }
@@ -825,7 +821,7 @@ const resolveSortedFilterCandidates = (input: {
     return undefined
   }
 
-  const lookup = getFilterSortLookup(input.field, input.rule)
+  const lookup = filterApi.rule.sortLookup(input.field, input.rule)
   if (!lookup) {
     return undefined
   }
@@ -843,7 +839,7 @@ const resolveSortedFilterCandidates = (input: {
 
   const expected = lookup.value
   const values = input.index.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
-  const compare = (recordId: RecordId) => compareFieldValues(
+  const compare = (recordId: RecordId) => fieldApi.compare.value(
     input.field,
     values.get(recordId),
     expected

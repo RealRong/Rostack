@@ -1,5 +1,5 @@
 import type { Field } from '@dataview/core/contracts'
-import { isCustomField } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
 import { createCheckboxPropertySpec } from '@dataview/react/field/value/kinds/checkbox'
 import { createDatePropertySpec } from '@dataview/react/field/value/kinds/date'
@@ -13,15 +13,15 @@ export const getFieldValueSpec = (field?: Field): FieldValueSpec<any> => {
     case 'title':
       return createTextPropertySpec(field)
     case 'select':
-      return createSingleSelectPropertySpec(isCustomField(field) ? field : undefined)
+      return createSingleSelectPropertySpec(fieldApi.kind.isCustom(field) ? field : undefined)
     case 'status':
-      return createStatusFieldSpec(isCustomField(field) ? field : undefined)
+      return createStatusFieldSpec(fieldApi.kind.isCustom(field) ? field : undefined)
     case 'multiSelect':
-      return createMultiSelectPropertySpec(isCustomField(field) ? field : undefined)
+      return createMultiSelectPropertySpec(fieldApi.kind.isCustom(field) ? field : undefined)
     case 'boolean':
-      return createCheckboxPropertySpec(isCustomField(field) ? field : undefined)
+      return createCheckboxPropertySpec(fieldApi.kind.isCustom(field) ? field : undefined)
     case 'date':
-      return createDatePropertySpec(isCustomField(field) ? field : undefined)
+      return createDatePropertySpec(fieldApi.kind.isCustom(field) ? field : undefined)
     case 'asset':
       return createTextPropertySpec(field)
     default:

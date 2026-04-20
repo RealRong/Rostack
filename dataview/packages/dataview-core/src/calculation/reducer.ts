@@ -4,8 +4,7 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  isEmptyFieldValue,
-  readNumberValue
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   readFieldSpec
@@ -233,7 +232,7 @@ export const createCalculationEntry = (input: {
   const needsUnique = input.capabilities.unique === true
   const needsNumeric = input.capabilities.numeric === true
   const needsOption = input.capabilities.option === true
-  const empty = isEmptyFieldValue(input.value)
+  const empty = fieldApi.value.empty(input.value)
 
   if (empty) {
     return needsCount
@@ -245,7 +244,7 @@ export const createCalculationEntry = (input: {
     ? readUniqueKey(input.field, input.value)
     : undefined
   const number = needsNumeric
-    ? readNumberValue(input.value)
+    ? fieldApi.value.number(input.value)
     : undefined
   const optionIds = needsOption
     ? readOptionIds(input.field, input.value)

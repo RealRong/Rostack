@@ -4,11 +4,11 @@ import type {
   ViewGroup
 } from '@dataview/core/contracts'
 import {
-  compareGroupBuckets,
-  getFieldGroupMeta,
-  resolveFieldGroupBucketDomain,
-  resolveFieldGroupBucketEntries
+  field as fieldApi
 } from '@dataview/core/field'
+import {
+  compareGroupBuckets
+} from '@dataview/core/field/kind'
 import {
   readFieldSpec
 } from '@dataview/core/field/spec'
@@ -131,7 +131,7 @@ export const resolveBucketKeys = (
   spec: BucketSpec
 ): readonly BucketKey[] => (
   resolveFastBucketKeys(field, value)
-    ?? resolveFieldGroupBucketEntries(
+    ?? fieldApi.group.entries(
       field,
       value,
       toGroupOptions({ spec })
@@ -418,7 +418,7 @@ const compareResolvedBuckets = (
   group?: Partial<Pick<ViewGroup, 'bucketSort' | 'mode' | 'bucketInterval'>>
 ) => {
   if (field?.kind === 'title') {
-    const bucketSort = getFieldGroupMeta(field, group).sort || 'manual'
+    const bucketSort = fieldApi.group.meta(field, group).sort || 'manual'
     switch (bucketSort) {
       case 'labelAsc':
         return compareLabels(readBucketSortLabel(left), readBucketSortLabel(right)) || readBucketOrder(left) - readBucketOrder(right)
@@ -468,8 +468,8 @@ export const buildBucketViewState = (input: {
     sort: input.sort
   })
   const nextBuckets = new Map<BucketKey, Bucket>(
-    resolveFieldGroupBucketDomain(field, groupOptions)
-      .map(bucket => [bucket.key as BucketKey, cloneBucket(bucket)] as const)
+    fieldApi.group.domain(field, groupOptions)
+      .map((bucket: Bucket) => [bucket.key as BucketKey, cloneBucket(bucket)] as const)
   )
 
   input.recordsByKey.forEach((ids, key) => {
@@ -479,11 +479,11 @@ export const buildBucketViewState = (input: {
 
     const recordId = ids[0]
     const descriptor = recordId
-      ? resolveFieldGroupBucketEntries(
+      ? fieldApi.group.entries(
         field,
         input.values?.get(recordId),
         groupOptions
-      ).find(bucket => String(bucket.key) === key)
+      ).find((bucket: Bucket) => String(bucket.key) === key)
       : undefined
 
     nextBuckets.set(key, descriptor

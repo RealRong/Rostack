@@ -1,21 +1,14 @@
 import type {
   Action,
   CustomField,
+  FieldOption,
   FieldId,
   RecordId,
   View
 } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import {
-  createDefaultCustomField,
-  createUniqueFieldName,
-  convertFieldKind,
-  findFieldOptionByName,
-  getFieldOptionSpec,
-  getFieldOptions,
-  hasFieldOptions,
-  isCustomField,
-  replaceFieldOptions
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   repairViewForConvertedField,
@@ -113,7 +106,7 @@ const createFieldConvertPatch = (
     kind: CustomField['kind']
   }
 ): Partial<Omit<CustomField, 'id'>> => {
-  const next = convertFieldKind(field, input.kind)
+  const next = fieldApi.kind.convert(field, input.kind)
   const { id: _id, ...patch } = next
   return patch
 }
@@ -123,7 +116,7 @@ const createOptionName = (
 ) => {
   let nextName = DEFAULT_OPTION_NAME
   let index = 1
-  while (findFieldOptionByName(options, nextName)) {
+  while (fieldApi.option.findByName(options, nextName)) {
     index += 1
     nextName = `${DEFAULT_OPTION_NAME} ${index}`
   }
@@ -136,7 +129,7 @@ const requireCustomField = (
   path = 'fieldId'
 ): CustomField | undefined => {
   const field = scope.reader.fields.get(fieldId)
-  if (!isCustomField(field)) {
+  if (!fieldApi.kind.isCustom(field)) {
     scope.issue(
       'field.notFound',
       `Unknown field: ${fieldId}`,
@@ -156,7 +149,7 @@ const requireOptionField = (
   if (!field) {
     return undefined
   }
-  if (!hasFieldOptions(field)) {
+  if (!fieldApi.kind.hasOptions(field)) {
     scope.issue(
       'field.invalid',
       'Field does not support options',
@@ -167,7 +160,7 @@ const requireOptionField = (
 
   return {
     field,
-    options: getFieldOptions(field)
+    options: fieldApi.option.list(field)
   }
 }
 
@@ -196,7 +189,7 @@ const lowerFieldCreate = (
     return scope.finish()
   }
 
-  const field = createDefaultCustomField({
+  const field = fieldApi.create.default({
     id: explicitFieldId || createFieldId(),
     name: action.input.name,
     kind: action.input.kind ?? 'text',
@@ -300,9 +293,9 @@ const lowerFieldDuplicate = (
   const nextField: CustomField = {
     ...structuredClone(sourceField),
     id: nextFieldId,
-    name: createUniqueFieldName(
+    name: fieldApi.schema.name.unique(
       `${sourceField.name} Copy`,
-      scope.reader.fields.list().filter(isCustomField)
+      scope.reader.fields.list().filter(fieldApi.kind.isCustom)
     )
   }
   scope.report(...validateField(document, scope.source, nextField, 'field'))
@@ -376,16 +369,16 @@ const lowerFieldOptionCreate = (
     )
     return scope.finish()
   }
-  if (explicitName && findFieldOptionByName(context.options, explicitName)) {
+  if (explicitName && fieldApi.option.findByName(context.options, explicitName)) {
     return scope.finish()
   }
 
-  const nextOption = getFieldOptionSpec(context.field).createOption({
+  const nextOption = fieldApi.option.spec.get(context.field).createOption({
     field: context.field,
     options: context.options,
     name: explicitName ?? createOptionName(context.options)
   })
-  const patch = replaceFieldOptions(
+  const patch = fieldApi.option.replace(
     context.field,
     [...context.options, nextOption]
   ) as Partial<Omit<CustomField, 'id'>>
@@ -402,7 +395,7 @@ const lowerFieldOptionReorder = (
     return scope.finish()
   }
 
-  const optionMap = new Map(context.options.map(option => [option.id, option] as const))
+  const optionMap = new Map(context.options.map((option: FieldOption) => [option.id, option] as const))
   const seen = new Set<string>()
   const ordered = action.optionIds
     .map(optionId => {
@@ -425,7 +418,7 @@ const lowerFieldOptionReorder = (
   return scope.finish(
     toFieldPatch(
       action.fieldId,
-      replaceFieldOptions(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>
+      fieldApi.option.replace(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>
     )
   )
 }
@@ -470,7 +463,7 @@ const lowerFieldOptionUpdate = (
       return scope.finish()
     }
 
-    const conflicting = findFieldOptionByName(context.options, nextName)
+    const conflicting = fieldApi.option.findByName(context.options, nextName)
     if (conflicting && conflicting.id !== optionId) {
       scope.issue(
         'field.invalid',
@@ -484,7 +477,7 @@ const lowerFieldOptionUpdate = (
   const nextColor = action.patch.color === undefined
     ? undefined
     : trimToUndefined(action.patch.color) ?? null
-  const nextOption = getFieldOptionSpec(context.field).updateOption({
+  const nextOption = fieldApi.option.spec.get(context.field).updateOption({
     field: context.field,
     option: target,
     patch: {
@@ -504,7 +497,7 @@ const lowerFieldOptionUpdate = (
     return scope.finish()
   }
 
-  const patch = replaceFieldOptions(
+  const patch = fieldApi.option.replace(
     context.field,
     context.options.map(option => option.id === optionId ? nextOption : option)
   ) as Partial<Omit<CustomField, 'id'>>
@@ -540,7 +533,7 @@ const lowerFieldOptionRemove = (
     return scope.finish()
   }
 
-  const optionSpec = getFieldOptionSpec(context.field)
+  const optionSpec = fieldApi.option.spec.get(context.field)
   const patch = optionSpec.patchForRemove({
     field: context.field,
     options: context.options,

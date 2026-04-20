@@ -14,7 +14,7 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts/state'
 import {
-  getDocumentActiveViewId
+  document
 } from '@dataview/core/document'
 
 const EMPTY_FIELD_IDS = new Set<FieldId>()
@@ -58,9 +58,9 @@ export const createResetCommitImpact = (
   afterDocument: DataDoc
 ): CommitImpact => {
   const beforeActiveViewId = beforeDocument
-    ? getDocumentActiveViewId(beforeDocument)
+    ? document.views.activeId.get(beforeDocument)
     : undefined
-  const afterActiveViewId = getDocumentActiveViewId(afterDocument)
+  const afterActiveViewId = document.views.activeId.get(afterDocument)
 
   return {
     reset: true,

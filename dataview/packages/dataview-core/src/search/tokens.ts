@@ -7,11 +7,10 @@ import type {
   Search
 } from '@dataview/core/contracts'
 import {
-  getDocumentCustomFieldById,
-  getDocumentFieldById
+  document as documentApi
 } from '@dataview/core/document'
 import {
-  getFieldSearchTokens
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   readFieldSpec
@@ -82,7 +81,7 @@ export const buildFieldSearchText = (
   field: Field | undefined,
   value: unknown
 ): string | undefined => {
-  const tokens = getFieldSearchTokens(field, value)
+  const tokens = fieldApi.search.tokens(field, value)
   if (!tokens.length) {
     return undefined
   }
@@ -114,8 +113,8 @@ export const buildRecordFieldSearchText = (
   fieldId: FieldId,
   document: DataDoc
 ): string | undefined => {
-  const field = getDocumentFieldById(document, fieldId)
-  return buildRecordFieldSearchTextFromField(record, fieldId, field)
+  const currentField = documentApi.fields.get(document, fieldId)
+  return buildRecordFieldSearchTextFromField(record, fieldId, currentField)
 }
 
 const appendRecordDefaultSearchTokens = (
@@ -123,14 +122,14 @@ const appendRecordDefaultSearchTokens = (
   record: DataRecord,
   fields: readonly CustomField[]
 ) => {
-  const titleTokens = getFieldSearchTokens(undefined, record.title)
+  const titleTokens = fieldApi.search.tokens(undefined, record.title)
   if (titleTokens.length) {
     appendNormalizedSearchTokens(target, titleTokens)
   }
 
   for (let index = 0; index < fields.length; index += 1) {
     const field = fields[index]!
-    const tokens = getFieldSearchTokens(field, record.values[field.id])
+    const tokens = fieldApi.search.tokens(field, record.values[field.id])
     if (tokens.length) {
       appendNormalizedSearchTokens(target, tokens)
     }
@@ -154,7 +153,7 @@ export const buildRecordDefaultSearchText = (
 
   for (let index = 0; index < document.fields.order.length; index += 1) {
     const fieldId = document.fields.order[index]!
-    const field = getDocumentCustomFieldById(document, fieldId)
+    const field = documentApi.fields.custom.get(document, fieldId)
     if (field && isDefaultSearchField(field)) {
       fields.push(field)
     }

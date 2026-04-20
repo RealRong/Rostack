@@ -6,12 +6,7 @@ import {
   useState
 } from 'react'
 import {
-  findFieldOption,
-  getFieldOption,
-  getFieldOptions,
-  getStatusCategoryLabel,
-  getStatusSections,
-  normalizeOptionToken
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   Menu,
@@ -36,7 +31,7 @@ import { useDraftCommit } from '@dataview/react/field/value/editor/shared/useDra
 import { usePickerKeydown } from '@dataview/react/field/value/editor/shared/usePickerKeydown'
 
 const optionLabel = (
-  option: ReturnType<typeof getFieldOptions>[number],
+  option: ReturnType<typeof fieldApi.option.list>[number],
   t: ReturnType<typeof useTranslation>['t']
 ) => readOptionLabel(option, t)
 type StatusPickerEntry = MenuItem
@@ -54,11 +49,11 @@ export const StatusValueEditor = (
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const field = props.field
   const fieldId = field?.id ?? ''
-  const normalizedQuery = normalizeOptionToken(query)
-  const selectedOption = getFieldOption(field, props.draft)
-  const exactMatch = findFieldOption(field, query)
+  const normalizedQuery = fieldApi.option.normalizeToken(query)
+  const selectedOption = fieldApi.option.get(field, props.draft)
+  const exactMatch = fieldApi.option.find(field, query)
   const sections = useMemo(() => {
-    const allSections = getStatusSections(field)
+    const allSections = fieldApi.status.sections(field)
     if (!normalizedQuery) {
       return allSections
     }
@@ -67,8 +62,8 @@ export const StatusValueEditor = (
       .map(section => ({
         ...section,
         options: section.options.filter(option => (
-          normalizeOptionToken(option.name).includes(normalizedQuery)
-          || normalizeOptionToken(option.id).includes(normalizedQuery)
+          fieldApi.option.normalizeToken(option.name).includes(normalizedQuery)
+          || fieldApi.option.normalizeToken(option.id).includes(normalizedQuery)
         ))
       }))
       .filter(section => section.options.length > 0)
@@ -120,7 +115,7 @@ export const StatusValueEditor = (
       {
         kind: 'label',
         key: `${section.category}-label`,
-        label: getStatusCategoryLabel(section.category)
+        label: fieldApi.status.category.label(section.category)
       },
       ...section.options.map(option => buildEditableOptionItem({
         fieldId,

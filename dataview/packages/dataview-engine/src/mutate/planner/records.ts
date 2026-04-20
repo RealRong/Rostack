@@ -9,7 +9,7 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import { isCustomField } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import {
   readFieldSpec
 } from '@dataview/core/field/spec'
@@ -62,7 +62,7 @@ const resolveRecordCreateValues = (
   }
 
   reader.fields.list().forEach(field => {
-    if (!isCustomField(field)) {
+    if (!fieldApi.kind.isCustom(field)) {
       return
     }
     if (explicitValues && Object.prototype.hasOwnProperty.call(explicitValues, field.id)) {

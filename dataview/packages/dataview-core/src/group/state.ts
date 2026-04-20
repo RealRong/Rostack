@@ -4,7 +4,7 @@ import type {
   ViewGroup
 } from '@dataview/core/contracts'
 import {
-  getFieldGroupMeta
+  field as fieldApi
 } from '@dataview/core/field'
 
 export type ViewGroupPatch = Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval' | 'showEmpty'>
@@ -166,7 +166,7 @@ const buildGroup = (input: {
   field: Field
   patch?: Partial<ViewGroupPatch> & Pick<ViewGroup, 'showEmpty' | 'buckets'>
 }): ViewGroup => {
-  const meta = getFieldGroupMeta(input.field, input.patch)
+  const meta = fieldApi.group.meta(input.field, input.patch)
   const buckets = cloneBuckets(input.patch?.buckets)
 
   return {
@@ -213,7 +213,7 @@ const patchGroup = (
   field: Field,
   patch?: Partial<ViewGroupPatch> & Pick<ViewGroup, 'showEmpty' | 'buckets'>
 ): ViewGroup | undefined => {
-  const meta = getFieldGroupMeta(field)
+  const meta = fieldApi.group.meta(field)
   if (!meta.modes.length || !meta.sorts.length) {
     return group
   }
@@ -264,7 +264,7 @@ export const set = (
   group: ViewGroup | undefined,
   field: Field
 ): ViewGroup | undefined => {
-  const meta = getFieldGroupMeta(field)
+  const meta = fieldApi.group.meta(field)
   if (!meta.modes.length || !meta.sorts.length) {
     return group
   }

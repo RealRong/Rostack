@@ -8,17 +8,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import {
-  getDocumentActiveView,
-  getDocumentActiveViewId,
-  getDocumentFieldById,
-  getDocumentFieldIds,
-  getDocumentFields,
-  getDocumentRecordById,
-  getDocumentRecordIds,
-  getDocumentRecords,
-  getDocumentViewById,
-  getDocumentViewIds,
-  getDocumentViews
+  document
 } from '@dataview/core/document'
 import { normalizeRecordOrderIds } from '@dataview/core/view/order'
 
@@ -86,9 +76,9 @@ export const createLiveDocumentReader = (
 ): DocumentReader => {
   const records = createEntityReader({
     readDocument,
-    ids: getDocumentRecordIds,
-    list: getDocumentRecords,
-    get: getDocumentRecordById
+    ids: document.records.ids,
+    list: document.records.list,
+    get: document.records.get
   })
 
   return {
@@ -102,19 +92,19 @@ export const createLiveDocumentReader = (
     },
     fields: createEntityReader({
       readDocument,
-      ids: getDocumentFieldIds,
-      list: getDocumentFields,
-      get: getDocumentFieldById
+      ids: document.fields.ids,
+      list: document.fields.list,
+      get: document.fields.get
     }),
     views: {
       ...createEntityReader({
         readDocument,
-        ids: getDocumentViewIds,
-        list: getDocumentViews,
-        get: getDocumentViewById
+        ids: document.views.ids,
+        list: document.views.list,
+        get: document.views.get
       }),
-      activeId: () => getDocumentActiveViewId(readDocument()),
-      active: () => getDocumentActiveView(readDocument())
+      activeId: () => document.views.activeId.get(readDocument()),
+      active: () => document.views.active.get(readDocument())
     }
   }
 }

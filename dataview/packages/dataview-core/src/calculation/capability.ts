@@ -11,10 +11,11 @@ import type {
   CalculationMetric,
   Field,
   FieldId,
+  FieldOption,
   ViewCalc
 } from '@dataview/core/contracts/state'
 import {
-  getFieldOptions
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   readFieldSpec
@@ -190,9 +191,9 @@ const computeOptionDistribution = (input: {
     return emptyResult(input.metric)
   }
 
-  const options = getFieldOptions(input.field)
-  const optionIds = new Set(options.map(option => option.id))
-  const orderedOptionIds: string[] = options.map(option => option.id)
+  const options = fieldApi.option.list(input.field)
+  const optionIds = new Set(options.map((option: FieldOption) => option.id))
+  const orderedOptionIds: string[] = options.map((option: FieldOption) => option.id)
   counts.forEach((_count, optionId) => {
     if (!optionIds.has(optionId)) {
       orderedOptionIds.push(optionId)
@@ -201,7 +202,7 @@ const computeOptionDistribution = (input: {
 
   const toValueToken = (
     optionId: string
-  ): Token => options.find(option => option.id === optionId)?.name ?? optionId
+  ): Token => options.find((option: FieldOption) => option.id === optionId)?.name ?? optionId
 
   let denominator = 0
   const items = orderedOptionIds
@@ -212,7 +213,7 @@ const computeOptionDistribution = (input: {
       }
 
       denominator += count
-      const option = options.find(entry => entry.id === optionId)
+      const option = options.find((entry: FieldOption) => entry.id === optionId)
       return {
         key: optionId,
         value: toValueToken(optionId),

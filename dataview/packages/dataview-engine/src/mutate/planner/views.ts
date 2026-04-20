@@ -17,19 +17,14 @@ import {
 } from '@dataview/core/contracts/kanban'
 import type { TableOptions } from '@dataview/core/contracts/viewOptions'
 import {
-  isCalculationMetric,
-  normalizeViewCalculations,
-  supportsFieldCalculationMetric
+  calculation
 } from '@dataview/core/calculation'
-import { getFieldGroupMeta, isGroupBucketSort } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import {
   readFieldSpec
 } from '@dataview/core/field/spec'
 import {
-  cloneFilter,
-  hasFilterPreset,
-  normalizeFilter,
-  sameFilter
+  filter as filterApi
 } from '@dataview/core/filter'
 import {
   cloneGroup,
@@ -153,7 +148,7 @@ const validateFilter = (
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${rule.fieldId}`, `${path}.rules.${index}.fieldId`))
       return
     }
-    if (!hasFilterPreset(field, rule.presetId)) {
+    if (!filterApi.rule.hasPreset(field, rule.presetId)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields`, `${path}.rules.${index}.presetId`))
     }
   })
@@ -203,8 +198,8 @@ const validateGroup = (
   const field = isNonEmptyString(group.field)
     ? reader.fields.get(group.field)
     : undefined
-  const fieldGroupMeta = field ? getFieldGroupMeta(field) : undefined
-  const fieldGroupMetaForMode = field ? getFieldGroupMeta(field, { mode: group.mode }) : undefined
+  const fieldGroupMeta = field ? fieldApi.group.meta(field) : undefined
+  const fieldGroupMetaForMode = field ? fieldApi.group.meta(field, { mode: group.mode }) : undefined
 
   if (!field) {
     issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${group.field}`, `${path}.field`))
@@ -214,7 +209,7 @@ const validateGroup = (
   } else if (field && (!fieldGroupMeta?.modes.length || !fieldGroupMeta.modes.includes(group.mode))) {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group mode is invalid for this field', `${path}.mode`))
   }
-  if (!isGroupBucketSort(group.bucketSort)) {
+  if (!fieldApi.group.sort.isBucket(group.bucketSort)) {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group bucketSort is invalid', `${path}.bucketSort`))
   } else if (field && !fieldGroupMetaForMode?.sorts.includes(group.bucketSort)) {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group bucketSort is invalid for this field', `${path}.bucketSort`))
@@ -359,11 +354,11 @@ const validateCalc = (
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${fieldId}`))
       return
     }
-    if (!isCalculationMetric(metric)) {
+    if (!calculation.metric.is(metric)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Calculation metric is invalid', `${path}.${fieldId}`))
       return
     }
-    if (!supportsFieldCalculationMetric(field, metric)) {
+    if (!calculation.metric.supports(field, metric)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', `Calculation metric ${metric} is invalid for ${field.kind} fields`, `${path}.${fieldId}`))
     }
   })
@@ -421,8 +416,8 @@ const applyViewPatch = (
   if (patch.search !== undefined && !sameSearch(view.search, patch.search)) {
     ensureMutable().search = cloneSearch(patch.search)
   }
-  if (patch.filter !== undefined && !sameFilter(view.filter, patch.filter)) {
-    ensureMutable().filter = cloneFilter(patch.filter)
+  if (patch.filter !== undefined && !filterApi.same(view.filter, patch.filter)) {
+    ensureMutable().filter = filterApi.clone(patch.filter)
   }
   if (patch.sort !== undefined && !sameSorters(view.sort, patch.sort)) {
     ensureMutable().sort = cloneSorters(patch.sort)
@@ -463,11 +458,11 @@ const normalizeView = (
   return {
     ...view,
     search: normalizeSearch(view.search),
-    filter: normalizeFilter(view.filter),
+    filter: filterApi.normalize(view.filter),
     sort: normalizeSorters(view.sort),
     ...(group ? { group } : {}),
     ...(!group ? { group: undefined } : {}),
-    calc: normalizeViewCalculations(view.calc, {
+    calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map(field => [field.id, field] as const))
     }),
     display: normalizeViewDisplay(view.display),
@@ -482,7 +477,7 @@ const resolveDefaultKanbanGroup = (
   const fields = reader.fields.list()
   const isGroupable = (field: (typeof fields)[number]) => (
     field.kind !== 'title'
-    && getFieldGroupMeta(field).modes.length > 0
+    && fieldApi.group.meta(field).modes.length > 0
   )
   const groupableFields = fields.filter(isGroupable)
   const field = groupableFields.reduce<(typeof groupableFields)[number] | undefined>((best, candidate) => {

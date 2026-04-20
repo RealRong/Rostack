@@ -1,5 +1,4 @@
 import {
-  cloneFilter,
   filter
 } from '@dataview/core/filter'
 import {
@@ -82,7 +81,7 @@ export const createFiltersApi = (
   },
   clear: () => {
     base.patch(view => ({
-      filter: cloneFilter({
+      filter: filter.clone({
         ...view.filter,
         rules: []
       })

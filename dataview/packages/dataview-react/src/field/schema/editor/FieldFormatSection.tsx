@@ -1,7 +1,6 @@
 import type { CustomField } from '@dataview/core/contracts'
 import {
-  formatTimeZoneLabel,
-  getAvailableTimezones
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   meta,
@@ -40,7 +39,7 @@ export const buildFieldFormatMenuItems = (props: {
   const defaultValueKind = dateConfig
     ? meta.field.date.defaultValueKind.get(dateConfig.defaultValueKind)
     : undefined
-  const timezoneOptions = getAvailableTimezones()
+  const timezoneOptions = fieldApi.date.timezone.list()
 
   const setNumberFormat = (value: FieldNumberFormatId) => {
     if (props.field.kind !== 'number') {
@@ -165,17 +164,17 @@ export const buildFieldFormatMenuItems = (props: {
       ? [buildChoiceSubmenuItem({
           key: 'default-timezone',
           label: props.t(meta.ui.field.editor.defaultTimezone),
-          suffix: formatTimeZoneLabel(dateConfig.defaultTimezone ?? null),
+          suffix: fieldApi.date.timezone.label(dateConfig.defaultTimezone ?? null),
           size: 'lg',
           value: (dateConfig.defaultTimezone ?? FLOATING_TIMEZONE_ID) as string,
           options: [
             {
               id: FLOATING_TIMEZONE_ID,
-              label: formatTimeZoneLabel(null)
+              label: fieldApi.date.timezone.label(null)
             },
             ...timezoneOptions.map(timeZone => ({
               id: timeZone,
-              label: formatTimeZoneLabel(timeZone)
+              label: fieldApi.date.timezone.label(timeZone)
             }))
           ],
           ...FIELD_DROPDOWN_MENU_PROPS,

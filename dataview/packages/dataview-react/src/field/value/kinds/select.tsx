@@ -1,8 +1,6 @@
 import type { CustomField } from '@dataview/core/contracts'
 import {
-  getFieldOption,
-  getFieldDisplayValue,
-  parseFieldDraft
+  field as fieldApi
 } from '@dataview/core/field'
 import { FieldOptionTag } from '@dataview/react/field/options'
 import { OptionPickerEditor } from '@dataview/react/field/value/editor/pickers/option/OptionPickerEditor'
@@ -23,10 +21,10 @@ export const createSingleSelectPropertySpec = (
   panelWidth: 'picker',
   Editor: SingleSelectEditor,
   createDraft: (value, seedDraft) => seedDraft ?? (value === undefined || value === null ? '' : String(value)),
-  parseDraft: draft => parseFieldDraft(field, draft),
+  parseDraft: draft => fieldApi.draft.parse(field, draft),
   render: props => {
-    const display = getFieldDisplayValue(field, props.value)
-    const selected = field ? getFieldOption(field, props.value) : undefined
+    const display = fieldApi.display.value(field, props.value)
+    const selected = field ? fieldApi.option.get(field, props.value) : undefined
     if (!display) {
       return renderEmpty(props)
     }

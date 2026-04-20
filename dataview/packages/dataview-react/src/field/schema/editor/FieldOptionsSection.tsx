@@ -1,7 +1,7 @@
 import { Plus, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { CustomField } from '@dataview/core/contracts'
-import { getFieldOptions } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import {
@@ -20,7 +20,7 @@ const PlainFieldOptionsSection = (props: {
   const { t } = useTranslation()
   const editor = useDataView().engine
   const [openOptionId, setOpenOptionId] = useState<string | null>(null)
-  const options = getFieldOptions(props.field)
+  const options = fieldApi.option.list(props.field)
 
   useEffect(() => {
     if (openOptionId && !options.some(option => option.id === openOptionId)) {

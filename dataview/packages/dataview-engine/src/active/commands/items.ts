@@ -5,7 +5,7 @@ import type {
   RecordId,
   ViewGroup
 } from '@dataview/core/contracts'
-import { isTitleFieldId } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/group'
 import { reorderViewOrders } from '@dataview/core/view'
 import { sameJsonValue, unique } from '@shared/core'
@@ -75,7 +75,7 @@ const createGroupValueActions = (input: {
 
   for (const [recordId, itemIds] of itemIdsByRecordId) {
     const record = input.readRecord(recordId)
-    const initialValue = isTitleFieldId(fieldId)
+    const initialValue = fieldApi.id.isTitle(fieldId)
       ? record?.title
       : record?.values[fieldId]
     let currentValue = initialValue

@@ -130,12 +130,7 @@ export {
   createKanbanModel,
   createPageModel,
   createTableModel,
-  findSorterField,
-  getAvailableFilterFields,
-  getAvailableSorterFields,
-  getAvailableSorterFieldsForIndex,
-  getFilterFieldId,
-  getSorterFieldId
+  query
 } from '@dataview/runtime/model'
 export type {
   Card,

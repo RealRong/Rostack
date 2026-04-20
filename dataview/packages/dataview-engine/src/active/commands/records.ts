@@ -7,11 +7,10 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import {
-  isTitleFieldId
+  field as fieldApi
 } from '@dataview/core/field'
 import {
-  deriveFilterRuleDefaultValue,
-  matchFilterRule,
+  filter as filterApi
 } from '@dataview/core/filter'
 import {
   group as groupCore
@@ -82,7 +81,7 @@ const createDraftState = (
       continue
     }
 
-    if (isTitleFieldId(fieldId)) {
+    if (fieldApi.id.isTitle(fieldId)) {
       title = String(value ?? '')
       continue
     }
@@ -101,7 +100,7 @@ const readDraftValue = (
   draft: CreateDraftState,
   fieldId: FieldId
 ) => (
-  isTitleFieldId(fieldId)
+  fieldApi.id.isTitle(fieldId)
     ? draft.title
     : draft.values[fieldId]
 )
@@ -112,7 +111,7 @@ const writeDraftValue = (
   value: unknown
 ) => {
   draft.clearFieldIds.delete(fieldId)
-  if (isTitleFieldId(fieldId)) {
+  if (fieldApi.id.isTitle(fieldId)) {
     draft.title = String(value ?? '')
     return
   }
@@ -185,14 +184,14 @@ const applyFilterDefaults = (input: {
 
     const fieldId = field.id
     const currentValue = readDraftValue(input.draft, fieldId)
-    if (matchFilterRule(field, currentValue, projection.rule)) {
+    if (filterApi.rule.match(field, currentValue, projection.rule)) {
       continue
     }
     if (currentValue !== undefined) {
       return false
     }
 
-    const next = deriveFilterRuleDefaultValue(
+    const next = filterApi.rule.defaultValue(
       field,
       projection.rule
     )
@@ -242,7 +241,7 @@ const applyGroupDefault = (input: {
   if (next.kind === 'clear') {
     if (currentValue !== undefined) {
       if (
-        isTitleFieldId(group.field)
+        fieldApi.id.isTitle(group.field)
         && typeof currentValue === 'string'
         && currentValue.length === 0
       ) {
@@ -253,7 +252,7 @@ const applyGroupDefault = (input: {
       return false
     }
 
-    if (isTitleFieldId(group.field)) {
+    if (fieldApi.id.isTitle(group.field)) {
       input.draft.title = ''
       return true
     }
@@ -278,7 +277,7 @@ const toRecordCreateInput = (input: {
   const values: Partial<Record<FieldId, unknown>> = {}
 
   for (const [fieldId, value] of Object.entries(input.draft.values) as [FieldId, unknown][]) {
-    if (value === undefined || isTitleFieldId(fieldId)) {
+    if (value === undefined || fieldApi.id.isTitle(fieldId)) {
       continue
     }
     values[fieldId] = value
@@ -346,7 +345,7 @@ export const createActiveRecordsApi = (input: {
     }]
 
     const clearFieldIds = Array.from(draft.clearFieldIds)
-      .filter(fieldId => !isTitleFieldId(fieldId))
+      .filter(fieldId => !fieldApi.id.isTitle(fieldId))
     if (clearFieldIds.length) {
       actions.push({
         type: 'record.fields.writeMany',

@@ -4,8 +4,7 @@ import {
 } from 'react'
 import type { Field, RecordId, ViewId } from '@dataview/core/contracts'
 import {
-  canQuickToggleFieldValue,
-  resolveFieldPrimaryAction
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   type ItemId
@@ -60,7 +59,7 @@ const View = (props: CellProps) => {
     fillHandleActive: chrome.fill,
     selectionVisible: true
   })
-  const canQuickToggle = canQuickToggleFieldValue(props.field)
+  const canQuickToggle = fieldApi.behavior.canQuickToggle(props.field)
   const cellRef = useCallback((node: HTMLDivElement | null) => {
     table.nodes.registerCell({
       itemId: props.itemId,
@@ -73,7 +72,7 @@ const View = (props: CellProps) => {
   ])
 
   const onQuickToggle = () => {
-    const action = resolveFieldPrimaryAction({
+    const action = fieldApi.behavior.primaryAction({
       exists: props.exists,
       field: props.field,
       value: props.value

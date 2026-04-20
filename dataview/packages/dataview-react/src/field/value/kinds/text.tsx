@@ -1,8 +1,7 @@
 import type { ComponentType } from 'react'
 import type { Field } from '@dataview/core/contracts'
 import {
-  getFieldDisplayValue,
-  parseFieldDraft
+  field as fieldApi
 } from '@dataview/core/field'
 import { cn } from '@shared/ui/utils'
 import {
@@ -58,9 +57,9 @@ export const createTextPropertySpec = (
     panelWidth: 'default',
     Editor: inputEditors[type],
     createDraft: (value, seedDraft) => seedDraft ?? toInputDraft(type, value),
-    parseDraft: draft => parseFieldDraft(field, draft),
+    parseDraft: draft => fieldApi.draft.parse(field, draft),
     render: props => {
-      const display = getFieldDisplayValue(field, props.value)
+      const display = fieldApi.display.value(field, props.value)
       if (!display) {
         return renderEmpty(props)
       }

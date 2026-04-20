@@ -4,13 +4,10 @@ import type {
   FilterRule
 } from '@dataview/core/contracts'
 import {
-  createFilterOptionSetValue,
-  readFilterOptionSetValue
+  filter as filterApi
 } from '@dataview/core/filter'
 import {
-  getFieldOptions,
-  getStatusCategoryLabel,
-  isCustomField
+  field as fieldApi
 } from '@dataview/core/field'
 import { buildOptionTagLabel } from '@dataview/react/menu-builders'
 import { Checkbox } from '@shared/ui/checkbox'
@@ -37,7 +34,7 @@ const optionRowClassName = 'flex w-full items-center gap-2 rounded-md px-2 py-1.
 const toggleOptionId = (
   selectedIds: readonly string[],
   optionId: string
-) => createFilterOptionSetValue(
+) => filterApi.value.optionSet.create(
   selectedIds.includes(optionId)
     ? selectedIds.filter(candidate => candidate !== optionId)
     : [...selectedIds, optionId]
@@ -51,12 +48,12 @@ const toggleOptionGroup = (
   const allSelected = optionIds.length > 0 && optionIds.every(optionId => selectedSet.has(optionId))
 
   if (allSelected) {
-    return createFilterOptionSetValue(
+    return filterApi.value.optionSet.create(
       selectedIds.filter(optionId => !optionIds.includes(optionId))
     )
   }
 
-  return createFilterOptionSetValue([
+  return filterApi.value.optionSet.create([
     ...selectedIds,
     ...optionIds.filter(optionId => !selectedSet.has(optionId))
   ])
@@ -65,15 +62,15 @@ const toggleOptionGroup = (
 const getOptionGroups = (
   field: Field
 ): OptionGroup[] => {
-  if (!isCustomField(field)) {
+  if (!fieldApi.kind.isCustom(field)) {
     return []
   }
 
   if (field.kind !== 'status') {
     return [{
       key: 'options',
-      optionIds: getFieldOptions(field).map(option => option.id),
-      options: getFieldOptions(field)
+      optionIds: fieldApi.option.list(field).map(option => option.id),
+      options: fieldApi.option.list(field)
     }]
   }
 
@@ -82,7 +79,7 @@ const getOptionGroups = (
       const options = field.options.filter(option => option.category === category)
       return {
         key: category,
-        label: getStatusCategoryLabel(category),
+        label: fieldApi.status.category.label(category),
         optionIds: options.map(option => option.id),
         options
       }
@@ -118,7 +115,7 @@ export const FilterOptionSetEditor = (
   props: FilterOptionSetEditorProps
 ) => {
   const { t } = useTranslation()
-  if (!props.field || !isCustomField(props.field)) {
+  if (!props.field || !fieldApi.kind.isCustom(props.field)) {
     return (
       <div className="px-1.5 py-2 text-[12px] text-muted-foreground">
         {t(meta.ui.filter.noOptions)}
@@ -135,7 +132,7 @@ export const FilterOptionSetEditor = (
     )
   }
 
-  const selectedIds = readFilterOptionSetValue(props.value).optionIds
+  const selectedIds = filterApi.value.optionSet.read(props.value).optionIds
   const selectedSet = new Set(selectedIds)
 
   return <div>

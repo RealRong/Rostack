@@ -6,14 +6,8 @@ import {
   KANBAN_EMPTY_BUCKET_KEY
 } from '@dataview/core/contracts'
 import {
-  STATUS_CATEGORIES,
-  createDateGroupValue,
-  getFieldOption,
-  getStatusDefaultOption
+  field as fieldApi
 } from '@dataview/core/field'
-import {
-  parseDateGroupKey
-} from '@dataview/core/field/kind/date'
 
 export type GroupWriteResult =
   | { kind: 'set'; value: unknown }
@@ -113,7 +107,7 @@ const nextSelectValue = (
     return { kind: 'clear' }
   }
 
-  return getFieldOption(field, bucketKey)
+  return fieldApi.option.get(field, bucketKey)
     ? { kind: 'set', value: bucketKey }
     : { kind: 'invalid' }
 }
@@ -128,18 +122,18 @@ const nextStatusValue = (
   }
 
   if (mode === 'category') {
-    const category = bucketKey as typeof STATUS_CATEGORIES[number]
-    if (!STATUS_CATEGORIES.includes(category)) {
+    const category = bucketKey as typeof fieldApi.status.categories[number]
+    if (!fieldApi.status.categories.includes(category)) {
       return { kind: 'invalid' }
     }
 
-    const option = getStatusDefaultOption(field, category)
+    const option = fieldApi.status.defaultOption.get(field, category)
     return option
       ? { kind: 'set', value: option.id }
       : { kind: 'invalid' }
   }
 
-  return getFieldOption(field, bucketKey)
+  return fieldApi.option.get(field, bucketKey)
     ? { kind: 'set', value: bucketKey }
     : { kind: 'invalid' }
 }
@@ -171,12 +165,12 @@ const nextDateValue = (input: {
     return { kind: 'clear' }
   }
 
-  const parsed = parseDateGroupKey(input.bucketKey)
+  const parsed = fieldApi.date.group.parseKey(input.bucketKey)
   if (!parsed) {
     return { kind: 'invalid' }
   }
 
-  const next = createDateGroupValue(
+  const next = fieldApi.date.group.createValue(
     input.field,
     parsed.start,
     input.currentValue

@@ -1,5 +1,5 @@
 import {
-  isEmptyFieldValue
+  field as fieldApi
 } from '@dataview/core/field'
 import type {
   CustomField,
@@ -118,7 +118,7 @@ export const createItemCardContentStore = (input: {
         record
       }),
       properties,
-      hasProperties: properties.some(property => !isEmptyFieldValue(property.value))
+      hasProperties: properties.some(property => !fieldApi.value.empty(property.value))
     }
   },
   isEqual: sameContent

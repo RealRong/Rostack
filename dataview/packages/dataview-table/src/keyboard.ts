@@ -1,5 +1,5 @@
 import type { Field, FieldId } from '@dataview/core/contracts'
-import { resolveFieldValueBehavior } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import type {
   ItemId,
   ItemList,
@@ -67,7 +67,7 @@ export const gridKeyAction = (input: {
   fields: Pick<FieldList, 'indexOf' | 'ids'>
   read: TableKeyboardRead
 }): TableGridKeyAction | null => {
-  const behavior = resolveFieldValueBehavior({
+  const behavior = fieldApi.behavior.value({
     exists: input.read.cell(input.selection.focus).exists,
     field: input.read.field(input.selection.focus.fieldId)
   })

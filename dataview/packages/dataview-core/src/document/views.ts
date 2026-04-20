@@ -1,39 +1,39 @@
 import type {
   DataDoc,
   EntityTable,
-  View,
   RecordId,
+  View,
   ViewId
 } from '@dataview/core/contracts/state'
-import { normalizeViewCalculations } from '@dataview/core/calculation'
-import { normalizeFilter } from '@dataview/core/filter'
-import { normalizeGroup } from '@dataview/core/group'
-import { normalizeSearch } from '@dataview/core/search'
-import { normalizeSorters } from '@dataview/core/sort'
-import { getDocumentFields } from '@dataview/core/document/fields'
-import { normalizeRecordOrderIds } from '@dataview/core/view/order'
-import { normalizeViewOptions } from '@dataview/core/view/normalize'
-import { normalizeViewDisplay } from '@dataview/core/view/state'
+import { calculation } from '@dataview/core/calculation'
+import { documentFields } from '@dataview/core/document/fields'
 import {
   cloneEntityInput,
   normalizeEntityTable,
   putEntityTableEntity,
-  replaceDocumentTable,
-  removeEntityTableEntity
+  removeEntityTableEntity,
+  replaceDocumentTable
 } from '@dataview/core/document/table'
+import { filter } from '@dataview/core/filter'
+import { normalizeGroup } from '@dataview/core/group'
+import { normalizeSearch } from '@dataview/core/search'
+import { normalizeSorters } from '@dataview/core/sort'
+import { normalizeRecordOrderIds } from '@dataview/core/view/order'
+import { normalizeViewOptions } from '@dataview/core/view/normalize'
+import { normalizeViewDisplay } from '@dataview/core/view/state'
 
 const createValidRecordIdSet = (document: DataDoc) => new Set<RecordId>(document.records.order)
 
-export const normalizeViewOrders = (
+const normalizeOrders = (
   document: DataDoc,
   orders: readonly RecordId[] | undefined
 ) => normalizeRecordOrderIds(orders, createValidRecordIdSet(document))
 
-const normalizeDocumentView = (
+const normalizeView = (
   document: DataDoc,
   view: View
 ): View => {
-  const fields = getDocumentFields(document)
+  const fields = documentFields.list(document)
   const normalizedOptions = normalizeViewOptions(view.options, {
     type: view.type,
     fields
@@ -43,21 +43,21 @@ const normalizeDocumentView = (
   return {
     ...cloneEntityInput(view),
     search: normalizeSearch(view.search),
-    filter: normalizeFilter(view.filter),
+    filter: filter.normalize(view.filter),
     sort: normalizeSorters(view.sort),
     ...(group
       ? { group }
       : {}),
-    calc: normalizeViewCalculations(view.calc, {
-      fields: new Map(fields.map(field => [field.id, field] as const))
+    calc: calculation.view.normalize(view.calc, {
+      fields: new Map(fields.map(fieldEntry => [fieldEntry.id, fieldEntry] as const))
     }),
     display: normalizeViewDisplay(view.display),
     options: normalizedOptions,
-    orders: normalizeViewOrders(document, view.orders)
+    orders: normalizeOrders(document, view.orders)
   }
 }
 
-export const normalizeDocumentViews = (document: DataDoc): EntityTable<ViewId, View> => {
+const normalizeViews = (document: DataDoc): EntityTable<ViewId, View> => {
   const views = normalizeEntityTable(document.views)
   const byId = {} as Record<ViewId, View>
 
@@ -67,7 +67,7 @@ export const normalizeDocumentViews = (document: DataDoc): EntityTable<ViewId, V
       return
     }
 
-    byId[viewId] = normalizeDocumentView(document, view)
+    byId[viewId] = normalizeView(document, view)
   })
 
   return {
@@ -76,46 +76,46 @@ export const normalizeDocumentViews = (document: DataDoc): EntityTable<ViewId, V
   }
 }
 
-export const getDocumentViews = (document: DataDoc): View[] => {
+const listViews = (document: DataDoc): View[] => {
   return document.views.order
     .map(viewId => document.views.byId[viewId])
     .filter((view): view is View => Boolean(view))
 }
 
-export const getDocumentViewIds = (document: DataDoc): ViewId[] => document.views.order.slice()
-export const getDocumentViewById = (document: DataDoc, viewId: ViewId) => document.views.byId[viewId]
-export const hasDocumentView = (document: DataDoc, viewId: ViewId) => Boolean(document.views.byId[viewId])
+const getViewIds = (document: DataDoc): ViewId[] => document.views.order.slice()
+const getView = (document: DataDoc, viewId: ViewId) => document.views.byId[viewId]
+const hasView = (document: DataDoc, viewId: ViewId) => Boolean(document.views.byId[viewId])
 
-export const resolveDocumentActiveViewId = (
+const resolveActiveViewId = (
   document: DataDoc,
   preferredViewId?: ViewId
 ): ViewId | undefined => {
   const candidate = preferredViewId ?? document.activeViewId
-  if (candidate && hasDocumentView(document, candidate)) {
+  if (candidate && hasView(document, candidate)) {
     return candidate
   }
 
   return document.views.order[0]
 }
 
-export const getDocumentActiveViewId = (
+const getActiveViewId = (
   document: DataDoc
-): ViewId | undefined => resolveDocumentActiveViewId(document)
+): ViewId | undefined => resolveActiveViewId(document)
 
-export const getDocumentActiveView = (
+const getActiveView = (
   document: DataDoc
 ): View | undefined => {
-  const viewId = getDocumentActiveViewId(document)
+  const viewId = getActiveViewId(document)
   return viewId
-    ? getDocumentViewById(document, viewId)
+    ? getView(document, viewId)
     : undefined
 }
 
-export const setDocumentActiveViewId = (
+const setActiveViewId = (
   document: DataDoc,
   viewId?: ViewId
 ): DataDoc => {
-  const nextViewId = resolveDocumentActiveViewId(document, viewId)
+  const nextViewId = resolveActiveViewId(document, viewId)
   if (document.activeViewId === nextViewId) {
     return document
   }
@@ -126,20 +126,20 @@ export const setDocumentActiveViewId = (
   }
 }
 
-export const putDocumentView = (document: DataDoc, view: View): DataDoc => {
+const putView = (document: DataDoc, view: View): DataDoc => {
   const nextDocument = replaceDocumentTable(
     document,
     'views',
     putEntityTableEntity(document.views, view)
   )
 
-  return setDocumentActiveViewId(
+  return setActiveViewId(
     nextDocument,
     nextDocument.activeViewId ?? view.id
   )
 }
 
-export const removeDocumentView = (document: DataDoc, viewId: ViewId): DataDoc => {
+const removeView = (document: DataDoc, viewId: ViewId): DataDoc => {
   if (!document.views.byId[viewId]) {
     return document
   }
@@ -150,10 +150,31 @@ export const removeDocumentView = (document: DataDoc, viewId: ViewId): DataDoc =
     removeEntityTableEntity(document.views, viewId)
   )
 
-  return setDocumentActiveViewId(
+  return setActiveViewId(
     nextDocument,
     document.activeViewId === viewId
       ? undefined
       : document.activeViewId
   )
 }
+
+export const documentViews = {
+  list: listViews,
+  ids: getViewIds,
+  get: getView,
+  has: hasView,
+  put: putView,
+  remove: removeView,
+  normalize: normalizeViews,
+  order: {
+    normalize: normalizeOrders
+  },
+  activeId: {
+    resolve: resolveActiveViewId,
+    get: getActiveViewId,
+    set: setActiveViewId
+  },
+  active: {
+    get: getActiveView
+  }
+} as const

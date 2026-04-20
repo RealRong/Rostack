@@ -2,8 +2,7 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import {
-  normalizeCalculationDemands,
-  sameCalculationDemand
+  calculation
 } from '@dataview/core/calculation'
 import {
   readFieldSpec
@@ -78,7 +77,7 @@ export const normalizeIndexDemand = (
     search: searchFields,
     buckets,
     sortFields,
-    calculations: normalizeCalculationDemands(demand?.calculations)
+    calculations: calculation.reducer.demand.normalize(demand?.calculations)
   }
 }
 
@@ -94,6 +93,4 @@ export const sameBucketSpecs = (
       && spec.interval === next.interval
   })
 
-export {
-  sameCalculationDemand
-}
+export const sameCalculationDemand = calculation.reducer.demand.same

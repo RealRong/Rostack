@@ -11,8 +11,7 @@ import {
   type TimeDisplayFormat,
 } from '@dataview/core/contracts'
 import {
-  formatTimeZoneLabel,
-  getAvailableTimezones,
+  field as fieldApi
 } from '@dataview/core/field'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
@@ -102,7 +101,7 @@ export const DateValueEditor = (
   const displayDateFormat = meta.field.date.displayDateFormat.get(dateConfig.displayDateFormat)
   const displayTimeFormat = meta.field.date.displayTimeFormat.get(dateConfig.displayTimeFormat)
   const timezones = useMemo(
-    () => getAvailableTimezones(),
+    () => fieldApi.date.timezone.list(),
     []
   )
   const defaultTimezone = field?.defaultTimezone ?? null
@@ -229,17 +228,17 @@ export const DateValueEditor = (
         buildChoiceSubmenuItem({
           key: 'timezone',
           label: '时区',
-          suffix: formatTimeZoneLabel(props.draft.timezone),
+          suffix: fieldApi.date.timezone.label(props.draft.timezone),
           size: 'lg',
           value: (props.draft.timezone ?? FLOATING_TIMEZONE_ID) as string,
           options: [
             {
               id: FLOATING_TIMEZONE_ID,
-              label: formatTimeZoneLabel(null)
+              label: fieldApi.date.timezone.label(null)
             },
             ...timezones.map(timeZone => ({
               id: timeZone,
-              label: formatTimeZoneLabel(timeZone)
+              label: fieldApi.date.timezone.label(timeZone)
             }))
           ],
           onSelect: value => setDraft(

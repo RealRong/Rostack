@@ -35,6 +35,8 @@
       "@whiteboard/product/*": ["whiteboard/packages/whiteboard-product/src/*"],
       "@whiteboard/engine": ["whiteboard/packages/whiteboard-engine/src/index.ts"],
       "@whiteboard/engine/*": ["whiteboard/packages/whiteboard-engine/src/*"],
+      "@whiteboard/history": ["whiteboard/packages/whiteboard-history/src/index.ts"],
+      "@whiteboard/history/*": ["whiteboard/packages/whiteboard-history/src/*"],
       "@whiteboard/editor": ["whiteboard/packages/whiteboard-editor/src/index.ts"],
       "@whiteboard/editor/*": ["whiteboard/packages/whiteboard-editor/src/*"],
       "@whiteboard/editor/draw": ["whiteboard/packages/whiteboard-editor/src/session/draw/index.ts"],

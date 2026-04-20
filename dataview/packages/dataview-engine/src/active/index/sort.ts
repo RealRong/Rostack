@@ -4,8 +4,7 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  compareFieldValues,
-  isEmptyFieldValue
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   readFieldSpec
@@ -72,8 +71,8 @@ const compareSortValues = (input: {
   leftScalar: SortScalar | undefined
   rightScalar: SortScalar | undefined
 }): number => {
-  const leftEmpty = isEmptyFieldValue(input.left)
-  const rightEmpty = isEmptyFieldValue(input.right)
+  const leftEmpty = fieldApi.value.empty(input.left)
+  const rightEmpty = fieldApi.value.empty(input.right)
   if (leftEmpty || rightEmpty) {
     if (leftEmpty === rightEmpty) {
       return 0
@@ -89,7 +88,7 @@ const compareSortValues = (input: {
     return compareSortScalars(input.leftScalar, input.rightScalar)
   }
 
-  return compareFieldValues(input.field, input.left, input.right)
+  return fieldApi.compare.value(input.field, input.left, input.right)
 }
 
 const createRecordComparator = (input: {

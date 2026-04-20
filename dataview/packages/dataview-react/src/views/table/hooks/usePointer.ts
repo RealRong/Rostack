@@ -27,9 +27,7 @@ import {
   sameCellRef
 } from '@dataview/engine'
 import {
-  isTitleFieldId,
-  getRecordFieldValue,
-  resolveFieldPrimaryAction
+  field as fieldApi
 } from '@dataview/core/field'
 import { isOverlayBlockingElement } from '@shared/ui/overlay'
 import {
@@ -156,7 +154,7 @@ export const resolveFillWriteManyInput = (input: {
       return
     }
 
-    set[fieldId] = isTitleFieldId(fieldId)
+    set[fieldId] = fieldApi.id.isTitle(fieldId)
       ? String(value ?? '')
       : value
   })
@@ -514,7 +512,7 @@ export const usePointer = (
     return {
       exists: Boolean(record),
       value: record
-        ? getRecordFieldValue(record, cell.fieldId)
+        ? fieldApi.value.read(record, cell.fieldId)
         : undefined
     }
   }, [currentView.items, editor])
@@ -603,7 +601,7 @@ export const usePointer = (
       return
     }
 
-    const action = resolveFieldPrimaryAction({
+    const action = fieldApi.behavior.primaryAction({
       exists: data.exists,
       field: field,
       value: data.value

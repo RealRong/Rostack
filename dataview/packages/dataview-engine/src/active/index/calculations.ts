@@ -3,19 +3,15 @@ import type {
   CalculationEntry
 } from '@dataview/core/calculation'
 import {
+  calculation
+} from '@dataview/core/calculation'
+import {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
 import {
   createMapPatchBuilder
 } from '@dataview/engine/active/shared/patch'
-import {
-  buildFieldReducerState,
-  createCalculationEntry,
-  createFieldReducerBuilder,
-  sameCalculationEntry,
-  sameReducerCapabilities
-} from '@dataview/core/calculation'
 import type {
   CalculationIndex,
   FieldCalcIndex,
@@ -52,7 +48,7 @@ const buildFieldEntries = (input: {
   const values = input.records.values.get(input.demand.fieldId)?.byRecord
   const entries = new Map<RecordId, CalculationEntry>()
   input.records.ids.forEach(recordId => {
-    entries.set(recordId, createCalculationEntry({
+    entries.set(recordId, calculation.reducer.entry.create({
       field,
       value: values?.get(recordId),
       capabilities: input.demand.capabilities
@@ -73,7 +69,7 @@ const buildFieldCalcIndex = (input: {
     fieldId: input.demand.fieldId,
     capabilities: input.demand.capabilities,
     entries,
-    global: buildFieldReducerState({
+    global: calculation.reducer.state.build({
       entries,
       capabilities: input.demand.capabilities
     })
@@ -119,7 +115,7 @@ export const ensureCalculationIndex = (
       return
     }
 
-    if (!sameReducerCapabilities(previousField.capabilities, demand.capabilities)) {
+    if (!calculation.reducer.capabilities.same(previousField.capabilities, demand.capabilities)) {
       fields.set(fieldId, buildFieldCalcIndex({
         context,
         records,
@@ -189,7 +185,7 @@ export const syncCalculationIndex = (
 
     const values = records.values.get(fieldId)?.byRecord
     const entries = createMapPatchBuilder(previousField.entries)
-    const reducer = createFieldReducerBuilder({
+    const reducer = calculation.reducer.state.builder({
       previous: previousField.global,
       capabilities: previousField.capabilities
     })
@@ -197,14 +193,14 @@ export const syncCalculationIndex = (
     context.touchedRecords.forEach(recordId => {
       const previousEntry = previousField.entries.get(recordId)
       const nextEntry = records.order.has(recordId)
-        ? createCalculationEntry({
+        ? calculation.reducer.entry.create({
             field,
             value: values?.get(recordId),
             capabilities: previousField.capabilities
           })
         : undefined
 
-      if (sameCalculationEntry(previousEntry, nextEntry)) {
+      if (calculation.reducer.entry.same(previousEntry, nextEntry)) {
         return
       }
 
@@ -213,7 +209,7 @@ export const syncCalculationIndex = (
         recordId,
         previousEntry,
         nextEntry,
-        sameCalculationEntry
+        calculation.reducer.entry.same
       )
       reducer.apply(previousEntry, nextEntry)
 

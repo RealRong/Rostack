@@ -31,23 +31,7 @@ import {
 } from '@dataview/core/commit/aspects'
 import {
   type AppliedDocumentRecordFieldWrite,
-  enumerateRecords,
-  getDocumentActiveViewId,
-  getDocumentCustomFieldById,
-  getDocumentRecordById,
-  getDocumentRecordIndex,
-  getDocumentViewById,
-  insertDocumentRecords,
-  patchDocumentCustomField,
-  patchDocumentRecord,
-  putDocumentCustomField,
-  putDocumentView,
-  removeDocumentCustomField,
-  removeDocumentRecords,
-  removeDocumentView,
-  restoreDocumentRecordFieldsManyWithChanges,
-  setDocumentActiveViewId,
-  writeDocumentRecordFieldsManyWithChanges
+  document as documentApi
 } from '@dataview/core/document'
 import {
   sameJsonValue
@@ -288,15 +272,15 @@ const trackActiveViewChange = (
   afterDocument: DataDoc
 ) => mergeActiveViewImpact(
   impact,
-  getDocumentActiveViewId(beforeDocument),
-  getDocumentActiveViewId(afterDocument)
+  documentApi.views.activeId.get(beforeDocument),
+  documentApi.views.activeId.get(afterDocument)
 )
 
 const collectInsertedRecordIds = (
   records: readonly DataRecord[]
 ): readonly RecordId[] => {
   const ids: RecordId[] = []
-  enumerateRecords(records, entry => {
+  documentApi.records.enumerate(records, entry => {
     ids.push(entry.record.id)
   })
   return ids
@@ -307,8 +291,8 @@ const captureRecordEntries = (
   recordIds: readonly RecordId[]
 ) => recordIds
   .map(recordId => {
-    const record = getDocumentRecordById(document, recordId)
-    const index = getDocumentRecordIndex(document, recordId)
+    const record = documentApi.records.get(document, recordId)
+    const index = documentApi.records.indexOf(document, recordId)
     if (!record || index < 0) {
       return undefined
     }
@@ -390,7 +374,7 @@ const executeRecordInsert = (
   operation: Extract<DocumentOperation, { type: 'document.record.insert' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const nextDocument = insertDocumentRecords(document, operation.records, operation.target?.index)
+  const nextDocument = documentApi.records.insert(document, operation.records, operation.target?.index)
   if (nextDocument === document) {
     return {
       document,
@@ -431,7 +415,7 @@ const executeRecordPatch = (
   operation: Extract<DocumentOperation, { type: 'document.record.patch' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeRecord = getDocumentRecordById(document, operation.recordId)
+  const beforeRecord = documentApi.records.get(document, operation.recordId)
   if (!beforeRecord) {
     return {
       document,
@@ -439,7 +423,7 @@ const executeRecordPatch = (
     }
   }
 
-  const nextDocument = patchDocumentRecord(document, operation.recordId, operation.patch)
+  const nextDocument = documentApi.records.patch(document, operation.recordId, operation.patch)
   if (nextDocument === document) {
     return {
       document,
@@ -447,7 +431,7 @@ const executeRecordPatch = (
     }
   }
 
-  const afterRecord = getDocumentRecordById(nextDocument, operation.recordId)
+  const afterRecord = documentApi.records.get(nextDocument, operation.recordId)
   const aspects = collectRecordPatchAspects(beforeRecord, afterRecord)
   markRecordPatch(impact, operation.recordId, aspects)
 
@@ -476,7 +460,7 @@ const executeRecordRemove = (
     }
   }
 
-  const nextDocument = removeDocumentRecords(document, operation.recordIds)
+  const nextDocument = documentApi.records.remove(document, operation.recordIds)
   if (nextDocument === document) {
     return {
       document,
@@ -517,8 +501,8 @@ const executeRecordFieldWrite = (
   impact: CommitImpact
 ): ExecuteOperationResult => {
   const applied = operation.type === 'document.record.fields.writeMany'
-    ? writeDocumentRecordFieldsManyWithChanges(document, operation)
-    : restoreDocumentRecordFieldsManyWithChanges(document, operation.entries)
+    ? documentApi.records.writeFieldsWithChanges(document, operation)
+    : documentApi.records.restoreFieldsWithChanges(document, operation.entries)
 
   if (applied.document === document) {
     return {
@@ -548,9 +532,9 @@ const executeFieldPut = (
   operation: Extract<DocumentOperation, { type: 'document.field.put' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeField = getDocumentCustomFieldById(document, operation.field.id)
-  const nextDocument = putDocumentCustomField(document, operation.field)
-  const afterField = getDocumentCustomFieldById(nextDocument, operation.field.id)
+  const beforeField = documentApi.fields.custom.get(document, operation.field.id)
+  const nextDocument = documentApi.fields.custom.put(document, operation.field)
+  const afterField = documentApi.fields.custom.get(nextDocument, operation.field.id)
   const aspects = collectFieldSchemaAspects(beforeField, afterField)
 
   if (!beforeField && !afterField) {
@@ -598,7 +582,7 @@ const executeFieldPatch = (
   operation: Extract<DocumentOperation, { type: 'document.field.patch' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeField = getDocumentCustomFieldById(document, operation.fieldId)
+  const beforeField = documentApi.fields.custom.get(document, operation.fieldId)
   if (!beforeField) {
     return {
       document,
@@ -606,7 +590,7 @@ const executeFieldPatch = (
     }
   }
 
-  const nextDocument = patchDocumentCustomField(document, operation.fieldId, operation.patch)
+  const nextDocument = documentApi.fields.custom.patch(document, operation.fieldId, operation.patch)
   if (nextDocument === document) {
     return {
       document,
@@ -614,7 +598,7 @@ const executeFieldPatch = (
     }
   }
 
-  const afterField = getDocumentCustomFieldById(nextDocument, operation.fieldId)
+  const afterField = documentApi.fields.custom.get(nextDocument, operation.fieldId)
   markFieldSchema(
     impact,
     operation.fieldId,
@@ -638,7 +622,7 @@ const executeFieldRemove = (
   operation: Extract<DocumentOperation, { type: 'document.field.remove' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeField = getDocumentCustomFieldById(document, operation.fieldId)
+  const beforeField = documentApi.fields.custom.get(document, operation.fieldId)
   if (!beforeField) {
     return {
       document,
@@ -646,7 +630,7 @@ const executeFieldRemove = (
     }
   }
 
-  const nextDocument = removeDocumentCustomField(document, operation.fieldId)
+  const nextDocument = documentApi.fields.custom.remove(document, operation.fieldId)
   if (nextDocument === document) {
     return {
       document,
@@ -676,11 +660,11 @@ const executeViewPut = (
   operation: Extract<DocumentOperation, { type: 'document.view.put' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeView = getDocumentViewById(document, operation.view.id)
-  const nextDocument = putDocumentView(document, operation.view)
-  const afterView = getDocumentViewById(nextDocument, operation.view.id)
-  const beforeActiveViewId = getDocumentActiveViewId(document)
-  const afterActiveViewId = getDocumentActiveViewId(nextDocument)
+  const beforeView = documentApi.views.get(document, operation.view.id)
+  const nextDocument = documentApi.views.put(document, operation.view)
+  const afterView = documentApi.views.get(nextDocument, operation.view.id)
+  const beforeActiveViewId = documentApi.views.activeId.get(document)
+  const afterActiveViewId = documentApi.views.activeId.get(nextDocument)
 
   if (!afterView) {
     return {
@@ -752,9 +736,9 @@ const executeActiveViewSet = (
   operation: Extract<DocumentOperation, { type: 'document.activeView.set' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeViewId = getDocumentActiveViewId(document)
-  const nextDocument = setDocumentActiveViewId(document, operation.viewId)
-  const afterViewId = getDocumentActiveViewId(nextDocument)
+  const beforeViewId = documentApi.views.activeId.get(document)
+  const nextDocument = documentApi.views.activeId.set(document, operation.viewId)
+  const afterViewId = documentApi.views.activeId.get(nextDocument)
   if (beforeViewId === afterViewId) {
     return {
       document,
@@ -777,7 +761,7 @@ const executeViewRemove = (
   operation: Extract<DocumentOperation, { type: 'document.view.remove' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeView = getDocumentViewById(document, operation.viewId)
+  const beforeView = documentApi.views.get(document, operation.viewId)
   if (!beforeView) {
     return {
       document,
@@ -785,9 +769,9 @@ const executeViewRemove = (
     }
   }
 
-  const beforeActiveViewId = getDocumentActiveViewId(document)
-  const nextDocument = removeDocumentView(document, operation.viewId)
-  const afterActiveViewId = getDocumentActiveViewId(nextDocument)
+  const beforeActiveViewId = documentApi.views.activeId.get(document)
+  const nextDocument = documentApi.views.remove(document, operation.viewId)
+  const afterActiveViewId = documentApi.views.activeId.get(nextDocument)
 
   const views = impact.views ?? (impact.views = {})
   if (views.inserted?.delete(operation.viewId)) {

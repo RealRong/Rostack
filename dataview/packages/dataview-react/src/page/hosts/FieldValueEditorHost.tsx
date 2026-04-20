@@ -7,10 +7,10 @@ import {
   useState
 } from 'react'
 import {
-  getDocumentTitleField
+  document as documentApi
 } from '@dataview/core/document'
 import {
-  isTitleFieldId
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   FieldValueEditor,
@@ -54,8 +54,8 @@ const clamp = (
 export const resolveFieldValueEditorField = (input: {
   fieldId?: string
   customField?: Parameters<typeof getFieldValueSpec>[0]
-}) => (input.fieldId && isTitleFieldId(input.fieldId))
-  ? getDocumentTitleField()
+}) => (input.fieldId && fieldApi.id.isTitle(input.fieldId))
+  ? documentApi.fields.title.get()
   : input.customField
 
 export const resolveFieldValueEditorPosition = (input: {
@@ -99,7 +99,7 @@ export const FieldValueEditorHost = () => {
   const fieldId = field?.fieldId
   const customField = useOptionalKeyedStoreValue(
     engine.source.doc.fields,
-    (fieldId && !isTitleFieldId(fieldId))
+    (fieldId && !fieldApi.id.isTitle(fieldId))
       ? fieldId
       : undefined,
     undefined
@@ -302,7 +302,7 @@ export const FieldValueEditorHost = () => {
               key={`${session.field.viewId}\u0000${session.field.itemId}\u0000${session.field.fieldId}\u0000${valueField.kind}`}
               ref={editorRef}
               field={valueField}
-              value={isTitleFieldId(valueField.id)
+              value={fieldApi.id.isTitle(valueField.id)
                 ? record.title
                 : record.values[valueField.id]}
               seedDraft={session.seedDraft}

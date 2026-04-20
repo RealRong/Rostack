@@ -1,49 +1,16 @@
+import { documentFields } from '@dataview/core/document/fields'
+import { documentRecords } from '@dataview/core/document/records'
+import { documentViews } from '@dataview/core/document/views'
+
 export { cloneDocument, normalizeDocument } from '@dataview/core/document/normalize'
 export * from '@dataview/core/document/table'
-export {
-  getDocumentCustomFieldById,
-  getDocumentCustomFieldIds,
-  getDocumentCustomFields,
-  getDocumentFieldById,
-  getDocumentFieldIds,
-  getDocumentFields,
-  getDocumentTitleField,
-  hasDocumentField,
-  hasDocumentCustomField,
-  isDocumentTitleFieldId,
-  patchDocumentCustomField,
-  putDocumentCustomField,
-  removeDocumentCustomField
-} from '@dataview/core/document/fields'
-export {
-  type AppliedDocumentRecordFieldWrite,
-  type DocumentRecordFieldWriteResult,
-  enumerateRecords,
-  getDocumentRecordById,
-  getDocumentRecordIds,
-  getDocumentRecordIndex,
-  getDocumentRecords,
-  hasDocumentRecord,
-  insertDocumentRecords,
-  patchDocumentRecord,
-  removeDocumentRecords,
-  restoreDocumentRecordFieldsMany,
-  restoreDocumentRecordFieldsManyWithChanges,
-  replaceDocumentRecords,
-  writeDocumentRecordFieldsMany,
-  writeDocumentRecordFieldsManyWithChanges
+export type {
+  AppliedDocumentRecordFieldWrite,
+  DocumentRecordFieldWriteResult
 } from '@dataview/core/document/records'
-export {
-  getDocumentActiveView,
-  getDocumentActiveViewId,
-  getDocumentViewById,
-  getDocumentViewIds,
-  getDocumentViews,
-  hasDocumentView,
-  normalizeDocumentViews,
-  normalizeViewOrders,
-  putDocumentView,
-  resolveDocumentActiveViewId,
-  removeDocumentView,
-  setDocumentActiveViewId
-} from '@dataview/core/document/views'
+
+export const document = {
+  fields: documentFields,
+  records: documentRecords,
+  views: documentViews
+} as const

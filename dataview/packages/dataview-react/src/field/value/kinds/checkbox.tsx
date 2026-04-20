@@ -1,5 +1,5 @@
 import type { CustomField } from '@dataview/core/contracts'
-import { parseFieldDraft } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { cn } from '@shared/ui/utils'
 import { CheckboxEditor } from '@dataview/react/field/value/editor/basic/CheckboxEditor'
 import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
@@ -22,7 +22,7 @@ export const createCheckboxPropertySpec = (
           ? ''
           : String(value)
   ),
-  parseDraft: draft => parseFieldDraft(field, draft),
+  parseDraft: draft => fieldApi.draft.parse(field, draft),
   render: props => {
     if (props.value !== true && props.value !== false) {
       return renderEmpty(props)

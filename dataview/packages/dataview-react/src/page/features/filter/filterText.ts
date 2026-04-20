@@ -3,10 +3,9 @@ import type {
   FilterValuePreview
 } from '@dataview/core/contracts'
 import {
-  getFieldOption,
-  hasFieldOptions
+  field as fieldApi
 } from '@dataview/core/field'
-import { readFilterOptionSetValue } from '@dataview/core/filter'
+import { filter as filterApi } from '@dataview/core/filter'
 import type { FilterRuleProjection } from '@dataview/engine'
 import {
   meta
@@ -104,13 +103,13 @@ const readFilterSummaryOptionValue = (
   value: FilterRuleProjection['rule']['value'],
   t: TokenTranslator
 ) => {
-  const optionIds = readFilterOptionSetValue(value).optionIds
+  const optionIds = filterApi.value.optionSet.read(value).optionIds
   if (!optionIds.length) {
     return ''
   }
 
   return t(optionIds.map(optionId => (
-    getFieldOption(field, optionId)?.name ?? optionId
+    fieldApi.option.get(field, optionId)?.name ?? optionId
   )))
 }
 
@@ -124,7 +123,7 @@ export const readFilterSummary = (
     ? t(operator)
     : ''
   let valueText = readFilterSummaryValue(entry.value, t)
-  if (entry.field && hasFieldOptions(entry.field)) {
+  if (entry.field && fieldApi.kind.hasOptions(entry.field)) {
     valueText = readFilterSummaryOptionValue(entry.field, entry.rule.value, t)
   }
 

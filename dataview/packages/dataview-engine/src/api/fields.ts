@@ -5,9 +5,7 @@ import type {
   FieldOption
 } from '@dataview/core/contracts'
 import {
-  findFieldOptionByName,
-  getFieldOptions,
-  hasFieldOptions
+  field as fieldApi
 } from '@dataview/core/field'
 import {
   read,
@@ -22,7 +20,7 @@ import type {
 
 const getOptionField = (
   field?: CustomField
-) => field && hasFieldOptions(field)
+) => field && fieldApi.kind.hasOptions(field)
   ? field
   : undefined
 
@@ -128,7 +126,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        const currentOptions = getFieldOptions(field)
+        const currentOptions = fieldApi.option.list(field)
         const result = dispatch({
           type: 'field.option.create',
           fieldId
@@ -142,7 +140,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        return findAddedOption(currentOptions, getFieldOptions(nextField))
+        return findAddedOption(currentOptions, fieldApi.option.list(nextField))
       },
       create: (fieldId, name) => {
         const field = getOptionFieldById(fieldId)
@@ -151,8 +149,8 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        const currentOptions = getFieldOptions(field)
-        const existing = findFieldOptionByName(currentOptions, nextName)
+        const currentOptions = fieldApi.option.list(field)
+        const existing = fieldApi.option.findByName(currentOptions, nextName)
         if (existing) {
           return existing
         }
@@ -173,7 +171,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        return findAddedOption(currentOptions, getFieldOptions(nextField))
+        return findAddedOption(currentOptions, fieldApi.option.list(nextField))
       },
       reorder: (fieldId, optionIds) => {
         dispatch({
@@ -188,7 +186,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        const currentOptions = getFieldOptions(field)
+        const currentOptions = fieldApi.option.list(field)
         const target = currentOptions.find(option => option.id === optionId)
         if (!target) {
           return undefined
@@ -200,7 +198,7 @@ export const createFieldsApi = (options: {
             return undefined
           }
 
-          const conflicting = findFieldOptionByName(currentOptions, nextName)
+          const conflicting = fieldApi.option.findByName(currentOptions, nextName)
           if (conflicting && conflicting.id !== optionId) {
             return undefined
           }
@@ -224,7 +222,7 @@ export const createFieldsApi = (options: {
 
         const nextField = getOptionFieldById(fieldId)
         return nextField
-          ? getFieldOptions(nextField).find(option => option.id === optionId)
+          ? fieldApi.option.list(nextField).find((option: FieldOption) => option.id === optionId)
           : undefined
       },
       remove: (fieldId, optionId) => {

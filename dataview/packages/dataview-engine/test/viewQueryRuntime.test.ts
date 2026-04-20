@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 
-import { createFilterOptionSetValue } from '@dataview/core/filter'
+import { filter } from '@dataview/core/filter'
 import { compileViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
@@ -95,7 +95,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
       rules: [{
         fieldId: FIELD_STATUS,
         presetId: 'eq',
-        value: createFilterOptionSetValue()
+        value: filter.value.optionSet.create()
       }]
     }
   })

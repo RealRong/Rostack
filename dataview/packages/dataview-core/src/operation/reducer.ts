@@ -1,17 +1,7 @@
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
 import {
-  insertDocumentRecords,
-  patchDocumentCustomField,
-  patchDocumentRecord,
-  putDocumentCustomField,
-  setDocumentActiveViewId,
-  putDocumentView,
-  removeDocumentCustomField,
-  removeDocumentRecords,
-  removeDocumentView,
-  restoreDocumentRecordFieldsMany,
-  writeDocumentRecordFieldsMany
+  document as documentApi
 } from '@dataview/core/document'
 
 export const reduceOperation = (
@@ -20,27 +10,27 @@ export const reduceOperation = (
 ): DataDoc => {
   switch (operation.type) {
     case 'document.record.insert':
-      return insertDocumentRecords(document, operation.records, operation.target?.index)
+      return documentApi.records.insert(document, operation.records, operation.target?.index)
     case 'document.record.patch':
-      return patchDocumentRecord(document, operation.recordId, operation.patch)
+      return documentApi.records.patch(document, operation.recordId, operation.patch)
     case 'document.record.remove':
-      return removeDocumentRecords(document, operation.recordIds)
+      return documentApi.records.remove(document, operation.recordIds)
     case 'document.record.fields.writeMany':
-      return writeDocumentRecordFieldsMany(document, operation)
+      return documentApi.records.writeFields(document, operation)
     case 'document.record.fields.restoreMany':
-      return restoreDocumentRecordFieldsMany(document, operation.entries)
+      return documentApi.records.restoreFields(document, operation.entries)
     case 'document.view.put':
-      return putDocumentView(document, operation.view)
+      return documentApi.views.put(document, operation.view)
     case 'document.activeView.set':
-      return setDocumentActiveViewId(document, operation.viewId)
+      return documentApi.views.activeId.set(document, operation.viewId)
     case 'document.view.remove':
-      return removeDocumentView(document, operation.viewId)
+      return documentApi.views.remove(document, operation.viewId)
     case 'document.field.put':
-      return putDocumentCustomField(document, operation.field)
+      return documentApi.fields.custom.put(document, operation.field)
     case 'document.field.patch':
-      return patchDocumentCustomField(document, operation.fieldId, operation.patch)
+      return documentApi.fields.custom.patch(document, operation.fieldId, operation.patch)
     case 'document.field.remove':
-      return removeDocumentCustomField(document, operation.fieldId)
+      return documentApi.fields.custom.remove(document, operation.fieldId)
     case 'external.version.bump':
       return document
   }

@@ -9,14 +9,13 @@ import {
   type DateValueKind,
 } from '@dataview/core/contracts'
 import {
-  isDateOnlyString,
-  normalizeDateValue,
-  parseDateInputDraft,
+  field as fieldApi,
   type FieldDraftParseResult,
-  readDateValue,
-  resolveDefaultDateTimezone,
-  resolveDefaultDateValueKind
 } from '@dataview/core/field'
+import {
+  isDateOnlyString,
+  normalizeDateValue
+} from '@dataview/core/field/kind/date'
 
 export type DateDraftBoundary = 'start' | 'end'
 
@@ -74,7 +73,7 @@ const createBaseDraft = (
   const now = new Date()
   const today = toLocalDateString(now)
   const roundedTime = toRoundedTimeString(now)
-  const kind = resolveDefaultDateValueKind(field)
+  const kind = fieldApi.date.default.valueKind(field)
 
   return {
     kind,
@@ -85,7 +84,7 @@ const createBaseDraft = (
     endDate: today,
     endTime: roundedTime,
     timezone: kind === 'datetime'
-      ? resolveDefaultDateTimezone(field)
+      ? fieldApi.date.default.timezone(field)
       : null,
     hasValue: false,
     dirty: false
@@ -137,8 +136,8 @@ export const createDateValueDraft = (
   value: unknown,
   seedDraft?: string
 ): DateValueDraft => {
-  const resolved = readDateValue(value)
-    ?? (seedDraft ? parseDateInputDraft(seedDraft) : undefined)
+  const resolved = fieldApi.date.value.read(value)
+    ?? (seedDraft ? fieldApi.date.draft.parse(seedDraft) : undefined)
 
   return resolved
     ? fromResolvedDateValue(field, resolved)

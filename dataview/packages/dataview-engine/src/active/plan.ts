@@ -9,11 +9,10 @@ import type {
   CalculationDemand
 } from '@dataview/core/calculation'
 import {
-  createCalculationDemand
+  calculation
 } from '@dataview/core/calculation'
 import {
-  getFilterPlanDemand,
-  isFilterRuleEffective
+  filter as filterApi
 } from '@dataview/core/filter'
 import {
   viewDisplayFields,
@@ -120,7 +119,7 @@ const resolveEffectiveFilterRules = (
   for (let index = 0; index < view.filter.rules.length; index += 1) {
     const rule = view.filter.rules[index]!
     const field = reader.fields.get(rule.fieldId)
-    if (!isFilterRuleEffective(field, rule)) {
+    if (!filterApi.rule.effective(field, rule)) {
       continue
     }
 
@@ -147,7 +146,7 @@ const resolveIndexedFilterRules = (
     }
 
     const field = reader.fields.get(rule.fieldId)
-    if (!isFilterRuleEffective(field, rule)) {
+    if (!filterApi.rule.effective(field, rule)) {
       continue
     }
 
@@ -241,7 +240,7 @@ const readCalculationDemands = (
 } => {
   const calculations = Object.entries(view.calc)
     .flatMap(([fieldId, metric]) => metric
-      ? [createCalculationDemand(fieldId as FieldId, metric)]
+      ? [calculation.reducer.demand.create(fieldId as FieldId, metric)]
       : [])
 
   return {
@@ -261,7 +260,7 @@ export const compileViewPlan = (
     : []
   const filterBucketSpecs = uniqueSorted(
     indexedFilters.flatMap(entry => (
-      getFilterPlanDemand(entry.field, entry.rule).bucket
+      filterApi.rule.planDemand(entry.field, entry.rule).bucket
         ? [entry.fieldId]
         : []
     ))
@@ -284,7 +283,7 @@ export const compileViewPlan = (
   const sortFields = Array.from(new Set([
     ...viewSortFields(view),
     ...indexedFilters.flatMap(entry => (
-      getFilterPlanDemand(entry.field, entry.rule).sorted
+      filterApi.rule.planDemand(entry.field, entry.rule).sorted
         ? [entry.fieldId]
         : []
     ))

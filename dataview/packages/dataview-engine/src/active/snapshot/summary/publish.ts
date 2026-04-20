@@ -3,7 +3,7 @@ import type {
   CalculationResult
 } from '@dataview/core/calculation'
 import {
-  computeCalculationFromState
+  calculation
 } from '@dataview/core/calculation'
 import type {
   Field,
@@ -75,11 +75,10 @@ export const publishSummaries = (input: {
         return
       }
 
-      byField.set(fieldId, computeCalculationFromState({
-        field: input.fieldsById.get(fieldId),
-        metric,
-        state
-      }))
+      byField.set(
+        fieldId,
+        calculation.metric.compute(input.fieldsById.get(fieldId), metric, state)
+      )
     })
 
     const collection = createSummaryCollection(byField)

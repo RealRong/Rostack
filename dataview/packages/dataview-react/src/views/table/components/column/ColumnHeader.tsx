@@ -34,8 +34,8 @@ import {
   type MenuToggleItem
 } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
-import { isCustomField } from '@dataview/core/field'
-import { getFieldCalculationMetrics } from '@dataview/core/calculation'
+import { calculation } from '@dataview/core/calculation'
+import { field as fieldApi } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { token, type Token, type TokenTranslator } from '@shared/i18n'
 import { useTranslation } from '@shared/i18n/react'
@@ -227,7 +227,7 @@ const View = (props: ColumnHeaderProps) => {
   const sortDirection = headerState?.sortDir
   const wrap = props.wrap
   const calculationMetric = headerState?.calc
-  const calculationMetrics = getFieldCalculationMetrics(props.field)
+  const calculationMetrics = calculation.metric.forField(props.field)
   const kind = meta.field.kind.get(props.field.kind)
   const KindIcon = kind.Icon
   const sortDirectionMeta = sortDirection
@@ -237,7 +237,7 @@ const View = (props: ColumnHeaderProps) => {
     sortable.setNodeRef(node)
     table.nodes.registerColumn(props.field.id, node)
   }, [props.field.id, sortable, table.nodes])
-  const customField = isCustomField(props.field)
+  const customField = fieldApi.kind.isCustom(props.field)
     ? props.field
     : undefined
   const urlConfig = customField?.kind === 'url'

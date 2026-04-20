@@ -279,7 +279,7 @@ const applyRecordFieldWriteEntries = (
   }
 }
 
-export const enumerateRecords = (
+const enumerate = (
   records: readonly DataRecord[],
   visitor: (entry: RecordEntry) => void
 ) => {
@@ -288,29 +288,29 @@ export const enumerateRecords = (
   })
 }
 
-export const getDocumentRecords = (document: DataDoc): DataRecord[] => {
+const listRecords = (document: DataDoc): DataRecord[] => {
   return listEntityTable(document.records)
 }
 
-export const getDocumentRecordIds = (document: DataDoc): RecordId[] => {
+const getRecordIds = (document: DataDoc): RecordId[] => {
   return getEntityTableIds(document.records)
 }
 
-export const getDocumentRecordById = (document: DataDoc, recordId: RecordId): DataRecord | undefined => {
+const getRecord = (document: DataDoc, recordId: RecordId): DataRecord | undefined => {
   return getEntityTableById(document.records, recordId)
 }
 
-export const hasDocumentRecord = (document: DataDoc, recordId: RecordId) => hasEntityTableId(document.records, recordId)
+const hasRecord = (document: DataDoc, recordId: RecordId) => hasEntityTableId(document.records, recordId)
 
-export const getDocumentRecordIndex = (document: DataDoc, recordId: RecordId) => {
+const getRecordIndex = (document: DataDoc, recordId: RecordId) => {
   return document.records.order.indexOf(recordId)
 }
 
-export const replaceDocumentRecords = (document: DataDoc, records: readonly DataRecord[]): DataDoc => {
+const replaceRecords = (document: DataDoc, records: readonly DataRecord[]): DataDoc => {
   return replaceDocumentTable(document, 'records', normalizeRecordInput(records))
 }
 
-export const insertDocumentRecords = (document: DataDoc, records: readonly DataRecord[], index?: number): DataDoc => {
+const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?: number): DataDoc => {
   if (!records.length) {
     return document
   }
@@ -339,7 +339,7 @@ export const insertDocumentRecords = (document: DataDoc, records: readonly DataR
   })
 }
 
-export const patchDocumentRecord = (
+const patchRecord = (
   document: DataDoc,
   recordId: RecordId,
   patch: Partial<Omit<DataRecord, 'id' | 'values'>>
@@ -364,7 +364,7 @@ export const patchDocumentRecord = (
   })
 }
 
-export const removeDocumentRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataDoc => {
+const removeRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataDoc => {
   if (!recordIds.length) {
     return document
   }
@@ -391,7 +391,7 @@ export const removeDocumentRecords = (document: DataDoc, recordIds: readonly Rec
   })
 }
 
-export const writeDocumentRecordFieldsMany = (
+const writeRecordFields = (
   document: DataDoc,
   input: RecordFieldWriteManyOperationInput
 ): DataDoc => {
@@ -409,12 +409,12 @@ export const writeDocumentRecordFieldsMany = (
   ).document
 }
 
-export const restoreDocumentRecordFieldsMany = (
+const restoreRecordFields = (
   document: DataDoc,
   entries: readonly DocumentRecordFieldRestoreEntry[]
-): DataDoc => restoreDocumentRecordFieldsManyWithChanges(document, entries).document
+): DataDoc => restoreRecordFieldsWithChanges(document, entries).document
 
-export const writeDocumentRecordFieldsManyWithChanges = (
+const writeRecordFieldsWithChanges = (
   document: DataDoc,
   input: RecordFieldWriteManyOperationInput
 ): DocumentRecordFieldWriteResult => {
@@ -440,7 +440,7 @@ export const writeDocumentRecordFieldsManyWithChanges = (
   return applyRecordFieldWriteEntries(document, writeEntries)
 }
 
-export const restoreDocumentRecordFieldsManyWithChanges = (
+const restoreRecordFieldsWithChanges = (
   document: DataDoc,
   entries: readonly DocumentRecordFieldRestoreEntry[]
 ): DocumentRecordFieldWriteResult => {
@@ -468,3 +468,20 @@ export const restoreDocumentRecordFieldsManyWithChanges = (
 
   return applyRecordFieldWriteEntries(document, writeEntries)
 }
+
+export const documentRecords = {
+  enumerate,
+  list: listRecords,
+  ids: getRecordIds,
+  get: getRecord,
+  has: hasRecord,
+  indexOf: getRecordIndex,
+  replace: replaceRecords,
+  insert: insertRecords,
+  patch: patchRecord,
+  remove: removeRecords,
+  writeFields: writeRecordFields,
+  writeFieldsWithChanges: writeRecordFieldsWithChanges,
+  restoreFields: restoreRecordFields,
+  restoreFieldsWithChanges: restoreRecordFieldsWithChanges
+} as const

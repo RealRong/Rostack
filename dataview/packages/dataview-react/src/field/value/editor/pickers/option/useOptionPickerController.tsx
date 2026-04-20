@@ -5,7 +5,7 @@ import {
   useState
 } from 'react'
 import { flushSync } from 'react-dom'
-import { getFieldOptions } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { meta } from '@dataview/meta'
 import {
   type MenuItem,
@@ -41,7 +41,7 @@ const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
 }
 
 const filterOptionsByQuery = (
-  options: ReturnType<typeof getFieldOptions>,
+  options: ReturnType<typeof fieldApi.option.list>,
   query: string
 ) => {
   const normalized = normalizeQuery(query)
@@ -72,7 +72,7 @@ export const useOptionPickerController = (
   const [editingOptionId, setEditingOptionId] = useState<string>()
   const field = input.field
   const fieldId = field?.id ?? ''
-  const options = getFieldOptions(field)
+  const options = fieldApi.option.list(field)
   const filteredOptions = useMemo(
     () => filterOptionsByQuery(options, query),
     [options, query]
@@ -246,7 +246,7 @@ export const useOptionPickerController = (
   ])
 
   const buildOptionItem = useCallback((
-    option: ReturnType<typeof getFieldOptions>[number]
+    option: ReturnType<typeof fieldApi.option.list>[number]
   ) => buildEditableOptionItem({
     fieldId,
     option,

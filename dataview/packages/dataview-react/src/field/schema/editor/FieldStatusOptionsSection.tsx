@@ -8,7 +8,7 @@ import type {
   FieldOption,
   StatusCategory
 } from '@dataview/core/contracts'
-import { getFieldOptions, getStatusSections } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { Button } from '@shared/ui/button'
@@ -25,7 +25,6 @@ import {
   buildOptionPanelReorderItem,
   readOptionLabel
 } from '@dataview/react/menu-builders'
-import { getStatusCategoryLabel } from '@dataview/core/field'
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 
 const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
@@ -40,7 +39,7 @@ const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
 }
 
 const buildOrderedIds = (
-  sections: ReturnType<typeof getStatusSections>,
+  sections: ReturnType<typeof fieldApi.status.sections>,
   category: StatusCategory,
   reordered: readonly FieldOption[]
 ) => sections.flatMap(section => (
@@ -57,8 +56,8 @@ export const FieldStatusOptionsSection = (props: {
   const { t } = useTranslation()
   const editor = useDataView().engine
   const [editingOptionId, setEditingOptionId] = useState<string>()
-  const options = getFieldOptions(props.field)
-  const sections = getStatusSections(props.field)
+  const options = fieldApi.option.list(props.field)
+  const sections = fieldApi.status.sections(props.field)
 
   useEffect(() => {
     if (editingOptionId && !options.some(option => option.id === editingOptionId)) {
@@ -87,7 +86,7 @@ export const FieldStatusOptionsSection = (props: {
           >
             <div className="flex items-center justify-between gap-2 pl-3 pr-1.5 pb-1.5">
               <div className="min-w-0 text-sm font-medium text-muted-foreground">
-                {getStatusCategoryLabel(section.category)}
+                {fieldApi.status.category.label(section.category)}
               </div>
               <Button
                 variant="plain"

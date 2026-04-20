@@ -4,8 +4,7 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  isEmptyFieldValue,
-  resolveCustomFieldPrimaryAction
+  field as fieldApi
 } from '@dataview/core/field'
 import type {
   FieldOptionTagAppearance
@@ -59,7 +58,7 @@ export const CardField = (props: CardFieldProps) => {
   const dataView = useDataView()
   const engine = dataView.engine
   const valueEditor = dataView.session.editing.valueEditor
-  const empty = isEmptyFieldValue(props.value)
+  const empty = fieldApi.value.empty(props.value)
 
   if (empty) {
     return props.mode === 'edit' && props.customField
@@ -90,7 +89,7 @@ export const CardField = (props: CardFieldProps) => {
   const customField = props.customField
 
   const onQuickToggle = () => {
-    const action = resolveCustomFieldPrimaryAction({
+    const action = fieldApi.behavior.primaryAction({
       exists: true,
       field: customField,
       value: props.value
@@ -109,7 +108,7 @@ export const CardField = (props: CardFieldProps) => {
     })
   }
 
-  const action = resolveCustomFieldPrimaryAction({
+  const action = fieldApi.behavior.primaryAction({
     exists: true,
     field: customField,
     value: props.value

@@ -4,13 +4,13 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
-  supportsFieldCalculationMetric
+  calculation
 } from '@dataview/core/calculation'
 import {
-  getFieldGroupMeta
+  field as fieldApi
 } from '@dataview/core/field'
 import {
-  getFilterPresetIds
+  filter as filterApi
 } from '@dataview/core/filter'
 import {
   pruneFieldFromViewOptions
@@ -89,18 +89,18 @@ export const repairViewForConvertedField = (
   view: View,
   field: CustomField
 ): View => {
-  const validPresetIds = new Set(getFilterPresetIds(field))
+  const validPresetIds = new Set(filterApi.rule.presetIds(field))
   const nextFilterRules = view.filter.rules.filter(rule => (
     rule.fieldId !== field.id || validPresetIds.has(rule.presetId)
   ))
 
   let nextGroup = view.group
   if (view.group?.field === field.id) {
-    const defaultMeta = getFieldGroupMeta(field)
+    const defaultMeta = fieldApi.group.meta(field)
     if (!defaultMeta.modes.length || !defaultMeta.sorts.length) {
       nextGroup = undefined
     } else {
-      const modeMeta = getFieldGroupMeta(field, { mode: view.group.mode })
+      const modeMeta = fieldApi.group.meta(field, { mode: view.group.mode })
       nextGroup = {
         field: field.id,
         mode: modeMeta.mode,
@@ -116,7 +116,7 @@ export const repairViewForConvertedField = (
     ...view.calc
   }
   const currentMetric = nextCalc[field.id]
-  if (currentMetric && !supportsFieldCalculationMetric(field, currentMetric)) {
+  if (currentMetric && !calculation.metric.supports(field, currentMetric)) {
     delete nextCalc[field.id]
   }
 

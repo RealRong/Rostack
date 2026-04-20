@@ -1,7 +1,7 @@
 import { ChevronDown, Filter, Trash } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { FilterRule } from '@dataview/core/contracts'
-import { parseDateInputDraft, readDatePrimaryString } from '@dataview/core/field'
+import { field as fieldApi } from '@dataview/core/field'
 import type { FilterRuleProjection } from '@dataview/engine'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
@@ -37,7 +37,7 @@ const readFilterDraft = (
         ? String(value)
         : ''
     case 'date':
-      return readDatePrimaryString(value) ?? ''
+      return fieldApi.date.value.primaryString(value) ?? ''
     default:
       return typeof value === 'string' ? value : ''
   }
@@ -65,7 +65,7 @@ const applyFilterDraft = (
         return undefined
       }
 
-      return parseDateInputDraft(trimmed) ?? null
+      return fieldApi.date.draft.parse(trimmed) ?? null
     }
     default:
       return draft

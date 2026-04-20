@@ -116,8 +116,6 @@ const cloneNode = (node: Node): Node => {
     position: cloneValue(node.position),
     size: node.size ? cloneValue(node.size) : undefined,
     rotation: node.rotation,
-    layer: node.layer,
-    zIndex: node.zIndex,
     locked: node.locked,
     data: node.data ? cloneValue(node.data) : undefined,
     style: node.style ? cloneValue(node.style) : undefined

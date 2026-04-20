@@ -1,9 +1,6 @@
 import type { ReadModel } from '@whiteboard/engine/types/read'
 import type { Document, Edge, Node, NodeId } from '@whiteboard/core/types'
 import {
-  toLayerOrderedCanvasNodeIds
-} from '@whiteboard/core/node'
-import {
   sameIdOrder as isSameIdOrder,
   sameMapRefs as isSameMapValueRefs,
   sameOrder as isSameRefOrder
@@ -20,15 +17,13 @@ const isSameModelRefs = (
     canvasNodes,
     allNodes,
     visibleEdges,
-    nodeById,
-    nodeIds
+    nodeById
   }: {
     visibleNodes: Node[]
     canvasNodes: Node[]
     allNodes: Node[]
     visibleEdges: Edge[]
     nodeById: ReadModel['canvas']['nodeById']
-    nodeIds: ReadModel['canvas']['nodeIds']
   }
 ): cache is ReadModel => {
   if (!cache) return false
@@ -37,8 +32,7 @@ const isSameModelRefs = (
     cache.nodes.canvas === canvasNodes &&
     cache.nodes.all === allNodes &&
     cache.edges.visible === visibleEdges &&
-    cache.canvas.nodeById === nodeById &&
-    cache.canvas.nodeIds === nodeIds
+    cache.canvas.nodeById === nodeById
   )
 }
 
@@ -49,7 +43,6 @@ export const createReadModel = ({
 }) => {
   const EMPTY_NODES: Node[] = []
   const EMPTY_EDGES: Edge[] = []
-  const EMPTY_NODE_IDS: NodeId[] = []
   const EMPTY_NODE_MAP = new Map<NodeId, Node>()
 
   let previousDocumentRef: Document | undefined
@@ -58,10 +51,8 @@ export const createReadModel = ({
   let canvasNodesCache: Node[] = EMPTY_NODES
   let allNodesCache: Node[] = EMPTY_NODES
   let canvasNodeByIdCache: Map<NodeId, Node> = EMPTY_NODE_MAP
-  let canvasNodeIdsCache: NodeId[] = EMPTY_NODE_IDS
   let canvasCache: ReadModel['canvas'] = {
-    nodeById: EMPTY_NODE_MAP,
-    nodeIds: EMPTY_NODE_IDS
+    nodeById: EMPTY_NODE_MAP
   }
 
   type EdgeVisibleCache = {
@@ -87,10 +78,8 @@ export const createReadModel = ({
       canvasNodesCache = EMPTY_NODES
       allNodesCache = EMPTY_NODES
       canvasNodeByIdCache = EMPTY_NODE_MAP
-      canvasNodeIdsCache = EMPTY_NODE_IDS
       canvasCache = {
-        nodeById: EMPTY_NODE_MAP,
-        nodeIds: EMPTY_NODE_IDS
+        nodeById: EMPTY_NODE_MAP
       }
     } else if (nodes !== previousNodesRef) {
       const previousCanvasNodesCache = canvasNodesCache
@@ -101,9 +90,6 @@ export const createReadModel = ({
       const normalizedCanvasNodeById = next.canvasNodeById.size
         ? next.canvasNodeById
         : EMPTY_NODE_MAP
-      const normalizedCanvasNodeIds = normalizedCanvas.length
-        ? toLayerOrderedCanvasNodeIds(normalizedCanvas)
-        : EMPTY_NODE_IDS
 
       visibleNodesCache = isSameRefOrder(visibleNodesCache, normalizedVisible)
         ? visibleNodesCache
@@ -118,17 +104,10 @@ export const createReadModel = ({
         isSameMapValueRefs(canvasNodeByIdCache, normalizedCanvasNodeById)
         ? canvasNodeByIdCache
         : normalizedCanvasNodeById
-      canvasNodeIdsCache = isSameRefOrder(canvasNodeIdsCache, normalizedCanvasNodeIds)
-        ? canvasNodeIdsCache
-        : normalizedCanvasNodeIds
-      canvasCache = (
-        canvasCache.nodeById === canvasNodeByIdCache &&
-        canvasCache.nodeIds === canvasNodeIdsCache
-      )
+      canvasCache = canvasCache.nodeById === canvasNodeByIdCache
         ? canvasCache
         : {
-            nodeById: canvasNodeByIdCache,
-            nodeIds: canvasNodeIdsCache
+            nodeById: canvasNodeByIdCache
           }
 
       previousNodesRef = nodes
@@ -167,8 +146,7 @@ export const createReadModel = ({
       canvasNodes: canvasNodesCache,
       allNodes: allNodesCache,
       visibleEdges: visibleEdgesCache,
-      nodeById: canvasCache.nodeById,
-      nodeIds: canvasCache.nodeIds
+      nodeById: canvasCache.nodeById
     })) {
       return cache
     }

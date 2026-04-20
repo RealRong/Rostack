@@ -1,26 +1,15 @@
 import type { CalculationCollection } from '@dataview/core/calculation'
-import {
-  getDocumentCustomFieldById,
-  getDocumentCustomFieldIds,
-  getDocumentRecordById,
-  getDocumentRecordIds,
-  getDocumentViewById,
-  getDocumentViewIds
-} from '@dataview/core/document'
 import type {
   CardLayout,
   CardSize,
   CalculationMetric,
   CustomField,
-  DataDoc,
   DataRecord,
   Field,
   FieldId,
-  FilterRule,
   KanbanCardsPerColumn,
   RecordId,
   SortDirection,
-  Sorter,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -40,29 +29,22 @@ import type {
   EnginePatch,
   EngineSource,
   FilterRuleProjection,
-  GalleryState,
-  KanbanState,
   SectionSource,
-  ViewState,
   ViewFilterProjection,
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
 } from '@dataview/engine/contracts/public'
+import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/public'
 import type {
   ItemId,
   Section,
   SectionKey,
   ViewItem
 } from '@dataview/engine/contracts/shared'
-import type {
-  RuntimeStore
-} from '@dataview/engine/runtime/store'
-import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/public'
+import type { RuntimeStore } from '@dataview/engine/runtime/store'
 
-const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
-const EMPTY_VIEW_IDS = [] as readonly ViewId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_FILTERS = { rules: [] as readonly FilterRuleProjection[] } satisfies ViewFilterProjection
@@ -71,32 +53,6 @@ const EMPTY_SEARCH = { query: '' } satisfies ViewSearchProjection
 const DEFAULT_CARD_LAYOUT = 'vertical' as CardLayout
 const DEFAULT_CARD_SIZE = 'medium' as CardSize
 const DEFAULT_KANBAN_CARDS_PER_COLUMN = 0 as KanbanCardsPerColumn
-
-const usesOptionGroupingColors = (
-  field?: Pick<Field, 'kind'>
-) => {
-  if (!field || field.kind === 'title') {
-    return false
-  }
-
-  return (
-    field.kind === 'select'
-    || field.kind === 'multiSelect'
-    || field.kind === 'status'
-  )
-}
-
-const getFilterFieldId = (
-  rule: Pick<FilterRule, 'fieldId'>
-): FieldId | undefined => typeof rule.fieldId === 'string'
-  ? rule.fieldId
-  : undefined
-
-const getSorterFieldId = (
-  sorter: Pick<Sorter, 'field'>
-): FieldId | undefined => typeof sorter.field === 'string'
-  ? sorter.field
-  : undefined
 
 const createEntitySourceRuntime = <K, T>() => {
   const ids = createValueStore<readonly K[]>({
@@ -215,307 +171,13 @@ const applyScopedKeyedPatch = <K, T>(
   }
 
   store.patch({
-    ...(patch?.set ? { set: patch.set } : {}),
-    ...(deleteKeys?.length ? { delete: deleteKeys } : {})
+    ...(patch?.set
+      ? { set: patch.set }
+      : {}),
+    ...(deleteKeys?.length
+      ? { delete: deleteKeys }
+      : {})
   })
-}
-
-const createSetEntries = <K, T>(
-  ids: readonly K[],
-  getValue: (id: K) => T | undefined
-) => ids.map(id => [id, getValue(id)] as const)
-
-const createDocumentPatch = (
-  document: DataDoc
-): DocumentPatch => {
-  const recordIds = getDocumentRecordIds(document)
-  const fieldIds = getDocumentCustomFieldIds(document)
-  const viewIds = getDocumentViewIds(document)
-
-  return {
-    records: {
-      ids: recordIds,
-      values: {
-        set: createSetEntries(recordIds, id => getDocumentRecordById(document, id))
-      }
-    },
-    fields: {
-      ids: fieldIds,
-      values: {
-        set: createSetEntries(fieldIds, id => getDocumentCustomFieldById(document, id))
-      }
-    },
-    views: {
-      ids: viewIds,
-      values: {
-        set: createSetEntries(viewIds, id => getDocumentViewById(document, id))
-      }
-    }
-  }
-}
-
-const resolveGalleryState = (
-  view: View | undefined,
-  query: {
-    group: ViewGroupProjection
-    sort: ViewSortProjection
-  } | undefined
-): GalleryState => {
-  if (!view || view.type !== 'gallery' || !query) {
-    return {
-      groupUsesOptionColors: false,
-      canReorder: false,
-      card: {
-        wrap: false,
-        size: DEFAULT_CARD_SIZE,
-        layout: DEFAULT_CARD_LAYOUT
-      }
-    }
-  }
-
-  return {
-    groupUsesOptionColors: usesOptionGroupingColors(query.group.field),
-    canReorder: !query.group.active && query.sort.rules.length === 0,
-    card: {
-      wrap: view.options.gallery.card.wrap,
-      size: view.options.gallery.card.size,
-      layout: view.options.gallery.card.layout
-    }
-  }
-}
-
-const resolveKanbanState = (
-  view: View | undefined,
-  query: {
-    group: ViewGroupProjection
-    sort: ViewSortProjection
-  } | undefined
-): KanbanState => {
-  if (!view || view.type !== 'kanban' || !query) {
-    return {
-      groupUsesOptionColors: false,
-      card: {
-        wrap: false,
-        size: DEFAULT_CARD_SIZE,
-        layout: DEFAULT_CARD_LAYOUT
-      },
-      cardsPerColumn: DEFAULT_KANBAN_CARDS_PER_COLUMN,
-      fillColumnColor: false,
-      canReorder: false
-    }
-  }
-
-  const groupUsesOptionColors = usesOptionGroupingColors(query.group.field)
-
-  return {
-    groupUsesOptionColors,
-    card: {
-      wrap: view.options.kanban.card.wrap,
-      size: view.options.kanban.card.size,
-      layout: view.options.kanban.card.layout
-    },
-    cardsPerColumn: view.options.kanban.cardsPerColumn,
-    fillColumnColor: groupUsesOptionColors && view.options.kanban.fillColumnColor,
-    canReorder: query.group.active && query.sort.rules.length === 0
-  }
-}
-
-const createActivePatch = (
-  document: DataDoc,
-  snapshot: ViewState | undefined
-): ActivePatch => {
-  const activeViewId = document.activeViewId
-  const activeView = activeViewId
-    ? getDocumentViewById(document, activeViewId)
-    : undefined
-
-  if (!snapshot || !activeView) {
-    return {
-      view: {
-        ready: false,
-        id: activeViewId,
-        type: activeView?.type,
-        value: activeView
-      },
-      items: {
-        ids: EMPTY_ITEM_IDS,
-        values: {
-          set: []
-        },
-        index: {
-          set: []
-        }
-      },
-      sections: {
-        keys: EMPTY_SECTION_KEYS,
-        values: {
-          set: []
-        },
-        itemIds: {
-          set: []
-        },
-        summary: {
-          set: []
-        }
-      },
-      fields: {
-        all: {
-          ids: EMPTY_FIELD_IDS,
-          values: {
-            set: []
-          }
-        },
-        custom: {
-          ids: EMPTY_FIELD_IDS,
-          values: {
-            set: []
-          }
-        }
-      },
-      query: {
-        search: EMPTY_SEARCH,
-        filters: EMPTY_FILTERS,
-        sort: EMPTY_SORT,
-        group: EMPTY_GROUP,
-        grouped: false,
-        groupFieldId: '',
-        filterFieldIds: EMPTY_FIELD_IDS,
-        sortFieldIds: EMPTY_FIELD_IDS,
-        sortDir: {
-          set: []
-        }
-      },
-      table: {
-        wrap: false,
-        showVerticalLines: false,
-        calc: {
-          set: []
-        }
-      },
-      gallery: {
-        wrap: false,
-        size: DEFAULT_CARD_SIZE,
-        layout: DEFAULT_CARD_LAYOUT,
-        canReorder: false,
-        groupUsesOptionColors: false
-      },
-      kanban: {
-        wrap: false,
-        size: DEFAULT_CARD_SIZE,
-        layout: DEFAULT_CARD_LAYOUT,
-        canReorder: false,
-        groupUsesOptionColors: false,
-        fillColumnColor: false,
-        cardsPerColumn: DEFAULT_KANBAN_CARDS_PER_COLUMN
-      }
-    }
-  }
-
-  const itemIds = snapshot.items.ids
-  const sectionKeys = snapshot.sections.ids
-  const fieldIds = snapshot.fields.ids
-  const customFieldIds = snapshot.fields.custom.map(field => field.id)
-  const filterFieldIds = snapshot.query.filters.rules.flatMap(entry => {
-    const fieldId = getFilterFieldId(entry.rule)
-    return fieldId ? [fieldId] : []
-  })
-  const sortFieldIds = snapshot.query.sort.rules.flatMap(entry => {
-    const fieldId = getSorterFieldId(entry.sorter)
-    return fieldId ? [fieldId] : []
-  })
-  const gallery = resolveGalleryState(snapshot.view, snapshot.query)
-  const kanban = resolveKanbanState(snapshot.view, snapshot.query)
-
-  return {
-    view: {
-      ready: true,
-      id: snapshot.view.id,
-      type: snapshot.view.type,
-      value: snapshot.view
-    },
-    items: {
-      ids: itemIds,
-      values: {
-        set: createSetEntries(itemIds, id => snapshot.items.get(id))
-      },
-      index: {
-        set: itemIds.map((id, index) => [id, index] as const)
-      }
-    },
-    sections: {
-      keys: sectionKeys,
-      values: {
-        set: createSetEntries(sectionKeys, key => snapshot.sections.get(key))
-      },
-      itemIds: {
-        set: sectionKeys.map(key => [key, snapshot.sections.get(key)?.items.ids] as const)
-      },
-      summary: {
-        set: sectionKeys.map(key => [key, snapshot.summaries.get(key)] as const)
-      }
-    },
-    fields: {
-      all: {
-        ids: fieldIds,
-        values: {
-          set: createSetEntries(fieldIds, id => snapshot.fields.get(id))
-        }
-      },
-      custom: {
-        ids: customFieldIds,
-        values: {
-          set: snapshot.fields.custom.map(field => [field.id, field] as const)
-        }
-      }
-    },
-    query: {
-      search: snapshot.query.search,
-      filters: snapshot.query.filters,
-      sort: snapshot.query.sort,
-      group: snapshot.query.group,
-      grouped: snapshot.query.group.active,
-      groupFieldId: snapshot.query.group.fieldId,
-      filterFieldIds,
-      sortFieldIds,
-      sortDir: {
-        set: snapshot.query.sort.rules.flatMap(entry => {
-          const fieldId = getSorterFieldId(entry.sorter)
-          return fieldId
-            ? [[fieldId, entry.sorter.direction] as const]
-            : []
-        })
-      }
-    },
-    table: {
-      wrap: snapshot.view.type === 'table'
-        ? snapshot.view.options.table.wrap
-        : false,
-      showVerticalLines: snapshot.view.type === 'table'
-        ? snapshot.view.options.table.showVerticalLines
-        : false,
-      calc: {
-        set: fieldIds.map(fieldId => [fieldId, snapshot.view.type === 'table'
-          ? snapshot.view.calc[fieldId] ?? undefined
-          : undefined] as const)
-      }
-    },
-    gallery: {
-      wrap: gallery.card.wrap,
-      size: gallery.card.size,
-      layout: gallery.card.layout,
-      canReorder: gallery.canReorder,
-      groupUsesOptionColors: gallery.groupUsesOptionColors
-    },
-    kanban: {
-      wrap: kanban.card.wrap,
-      size: kanban.card.size,
-      layout: kanban.card.layout,
-      canReorder: kanban.canReorder,
-      groupUsesOptionColors: kanban.groupUsesOptionColors,
-      fillColumnColor: kanban.fillColumnColor,
-      cardsPerColumn: kanban.cardsPerColumn
-    }
-  }
 }
 
 export const createEngineSourceRuntime = (input: {
@@ -708,10 +370,10 @@ export const createEngineSourceRuntime = (input: {
       if (patch.sections.keys) {
         activeSections.keys.set(patch.sections.keys)
       }
-      const sectionKeys = patch.sections.keys ?? read(activeSections.keys)
-      applyScopedKeyedPatch(activeSections.values, patch.sections.values, sectionKeys)
-      applyScopedKeyedPatch(activeSections.itemIds, patch.sections.itemIds, sectionKeys)
-      applyScopedKeyedPatch(activeSections.summary, patch.sections.summary, sectionKeys)
+      const keys = patch.sections.keys ?? read(activeSections.keys)
+      applyScopedKeyedPatch(activeSections.values, patch.sections.values, keys)
+      applyScopedKeyedPatch(activeSections.itemIds, patch.sections.itemIds, keys)
+      applyScopedKeyedPatch(activeSections.summary, patch.sections.summary, keys)
     }
 
     if (patch.fields?.all) {
@@ -761,11 +423,7 @@ export const createEngineSourceRuntime = (input: {
       if (patch.query.sortFieldIds) {
         querySortFieldIds.set(patch.query.sortFieldIds)
       }
-      applyScopedKeyedPatch(
-        querySortDir,
-        patch.query.sortDir,
-        read(querySortFieldIds)
-      )
+      applyScopedKeyedPatch(querySortDir, patch.query.sortDir)
     }
 
     if (patch.table) {
@@ -775,11 +433,7 @@ export const createEngineSourceRuntime = (input: {
       if (patch.table.showVerticalLines !== undefined) {
         tableShowVerticalLines.set(patch.table.showVerticalLines)
       }
-      applyScopedKeyedPatch(
-        tableCalc,
-        patch.table.calc,
-        read(activeFieldsAll.ids)
-      )
+      applyScopedKeyedPatch(tableCalc, patch.table.calc)
     }
 
     if (patch.gallery) {
@@ -870,11 +524,7 @@ export const createEngineSourceRuntime = (input: {
   }
 
   const sync = () => {
-    const state = input.store.get()
-    apply({
-      doc: createDocumentPatch(state.doc),
-      active: createActivePatch(state.doc, state.currentView.snapshot)
-    })
+    apply(input.store.get().currentView.patch)
   }
 
   sync()

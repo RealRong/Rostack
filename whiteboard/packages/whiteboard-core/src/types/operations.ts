@@ -15,7 +15,6 @@ import type {
   Node,
   NodeData,
   NodeId,
-  NodeLayer,
   NodeOwner,
   NodeStyle,
   Point,
@@ -56,8 +55,6 @@ export type NodeFieldPatch = {
   position?: Point
   size?: Size
   rotation?: number
-  layer?: NodeLayer
-  zIndex?: number
   groupId?: GroupId
   owner?: NodeOwner
   locked?: boolean
@@ -72,8 +69,6 @@ export type NodeField =
   | 'position'
   | 'size'
   | 'rotation'
-  | 'layer'
-  | 'zIndex'
   | 'groupId'
   | 'owner'
   | 'locked'

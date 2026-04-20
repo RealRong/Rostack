@@ -32,7 +32,7 @@ import {
   now
 } from '@dataview/engine/runtime/clock'
 import {
-  resolveViewPlan
+  syncViewPlan
 } from '@dataview/engine/active/plan'
 import type {
   EngineRuntimeState,
@@ -53,6 +53,7 @@ import {
   summarizeImpact,
   toTraceKind
 } from '@dataview/engine/mutate/commit/trace'
+import { projectEnginePatch } from '@dataview/engine/source/project'
 
 type Kind =
   | 'write'
@@ -204,23 +205,33 @@ const commit = <TResult extends CommitResult>(input: {
   }
 
   const documentContext = createStaticDocumentReadContext(draft.doc)
-  const viewPlan = resolveViewPlan(documentContext, documentContext.activeViewId)
+  const plan = syncViewPlan({
+    context: documentContext,
+    previous: base.currentView.plan,
+    activeViewId: documentContext.activeViewId
+  }).state
   const activeImpact = createActiveImpact(draft.impact)
   const nextIndex = deriveIndex({
     previous: base.currentView.index,
     previousDemand: base.currentView.demand,
     document: draft.doc,
     impact: activeImpact,
-    demand: viewPlan?.demand
+    demand: plan?.demand
   })
   const nextView = deriveViewRuntime({
     previous: base.currentView.snapshot,
     cache: base.currentView.cache,
     documentContext,
-    viewPlan,
+    viewPlan: plan,
     index: nextIndex.state,
     impact: activeImpact,
     capturePerf: input.capturePerf
+  })
+  const patch = projectEnginePatch({
+    previousDoc: base.doc,
+    previousSnapshot: base.currentView.snapshot,
+    nextDoc: draft.doc,
+    nextSnapshot: nextView.snapshot
   })
 
   const next = {
@@ -228,9 +239,13 @@ const commit = <TResult extends CommitResult>(input: {
     doc: draft.doc,
     history: draft.history,
     currentView: {
+      ...(plan
+        ? { plan }
+        : {}),
       demand: nextIndex.demand,
       index: nextIndex.state,
       cache: nextView.cache,
+      patch,
       ...(nextView.snapshot
         ? { snapshot: nextView.snapshot }
         : {})

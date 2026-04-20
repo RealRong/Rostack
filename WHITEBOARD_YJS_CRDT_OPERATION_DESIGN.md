@@ -947,8 +947,6 @@ delete-like 包括：
 - `position`
 - `size`
 - `rotation`
-- `layer`
-- `zIndex`
 - `groupId`
 - `locked`
 - `owner`

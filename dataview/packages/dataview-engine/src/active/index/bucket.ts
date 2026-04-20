@@ -357,7 +357,14 @@ export const ensureBucketIndex = (
   records: RecordIndex,
   specs: readonly BucketSpec[] = []
 ): BucketIndex => {
+  const nextSpecKeys = new Set(specs.map(spec => createBucketSpecKey(spec)))
   const fields = createMapPatchBuilder(previous.fields)
+
+  previous.fields.forEach((_field, key) => {
+    if (!nextSpecKeys.has(key)) {
+      fields.delete(key)
+    }
+  })
 
   specs.forEach(spec => {
     const key = createBucketSpecKey(spec)

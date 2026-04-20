@@ -15,8 +15,6 @@ import {
 } from '@dataview/engine/active/index/context'
 import {
   normalizeIndexDemand,
-  sameBucketSpecs,
-  sameCalculationDemand,
 } from '@dataview/engine/active/index/demand'
 import {
   buildBucketIndex,
@@ -76,32 +74,6 @@ const buildState = (
   }
 }
 
-const runIndexDemandStage = <
-  TState,
-  TDemand
->(input: {
-  previous: TState
-  previousDemand: TDemand
-  nextDemand: TDemand
-  sameDemand: (left: TDemand, right: TDemand) => boolean
-  sync: (previous: TState) => TState
-  ensure: (state: TState) => TState
-  build: (previous: TState) => TState
-}): {
-  state: TState
-  durationMs: number
-} => {
-  const start = now()
-  const state = input.sameDemand(input.previousDemand, input.nextDemand)
-    ? input.ensure(input.sync(input.previous))
-    : input.build(input.previous)
-
-  return {
-    state,
-    durationMs: now() - start
-  }
-}
-
 export const createIndexState = (
   document: DataDoc,
   demand?: IndexDemand
@@ -153,20 +125,20 @@ export const deriveIndex = (input: {
   )
   const searchMs = now() - searchStart
 
-  const bucketStage = runIndexDemandStage({
-    previous: previous.bucket,
-    previousDemand: input.previousDemand.buckets,
-    nextDemand: nextDemand.buckets,
-    sameDemand: sameBucketSpecs,
-    sync: current => syncBucketIndex(
-      current,
-      context,
-      records,
-      input.impact
-    ),
-    ensure: current => ensureBucketIndex(current, context, records, nextDemand.buckets),
-    build: current => buildBucketIndex(context, records, nextDemand.buckets, current.rev + 1)
-  })
+  const bucketStart = now()
+  const syncedBucket = syncBucketIndex(
+    previous.bucket,
+    context,
+    records,
+    input.impact
+  )
+  const bucket = ensureBucketIndex(
+    syncedBucket,
+    context,
+    records,
+    nextDemand.buckets
+  )
+  const bucketMs = now() - bucketStart
 
   const previousSectionBucketKey = input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)
     ? createBucketSpecKey(input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)!)
@@ -190,20 +162,20 @@ export const deriveIndex = (input: {
   })
   const sortMs = now() - sortStart
 
-  const summariesStage = runIndexDemandStage({
-    previous: previous.calculations,
-    previousDemand: input.previousDemand.calculations,
-    nextDemand: nextDemand.calculations,
-    sameDemand: sameCalculationDemand,
-    sync: current => syncCalculationIndex(current, context, records, input.impact),
-    ensure: current => ensureCalculationIndex(current, context, records, nextDemand.calculations),
-    build: current => buildCalculationIndex(context, records, nextDemand.calculations, current.rev + 1)
-  })
-
-  const bucket = bucketStage.state
-  const summaries = summariesStage.state
-  const bucketMs = bucketStage.durationMs
-  const summariesMs = summariesStage.durationMs
+  const summariesStart = now()
+  const syncedSummaries = syncCalculationIndex(
+    previous.calculations,
+    context,
+    records,
+    input.impact
+  )
+  const summaries = ensureCalculationIndex(
+    syncedSummaries,
+    context,
+    records,
+    nextDemand.calculations
+  )
+  const summariesMs = now() - summariesStart
 
   const state = {
     records,

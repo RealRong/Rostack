@@ -434,8 +434,6 @@ export const createEditorLayout = ({
       position,
       size: payload.size ?? bootstrapSize,
       rotation: payload.rotation,
-      layer: payload.layer,
-      zIndex: payload.zIndex,
       locked: payload.locked,
       data: payload.data,
       style: payload.style

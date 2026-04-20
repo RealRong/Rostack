@@ -4,8 +4,12 @@ import type {
   IndexState,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
+import type { ViewPlan } from '@dataview/engine/active/plan'
 import type { ViewCache } from '@dataview/engine/contracts/internal'
-import type { ViewState } from '@dataview/engine/contracts/public'
+import type {
+  EnginePatch,
+  ViewState
+} from '@dataview/engine/contracts/public'
 
 export interface HistoryEntry {
   undo: DocumentOperation[]
@@ -19,10 +23,12 @@ export interface RuntimeHistory {
 }
 
 export interface ActiveRuntimeState {
+  plan?: ViewPlan
   demand: NormalizedIndexDemand
   index: IndexState
   cache: ViewCache
   snapshot?: ViewState
+  patch: EnginePatch
 }
 
 export interface EngineRuntimeState {

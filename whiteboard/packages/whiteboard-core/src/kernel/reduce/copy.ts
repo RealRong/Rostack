@@ -186,8 +186,6 @@ export const cloneNode = (
   position: clonePoint(node.position)!,
   size: cloneSize(node.size),
   rotation: node.rotation,
-  layer: node.layer,
-  zIndex: node.zIndex,
   groupId: node.groupId,
   owner: cloneNodeOwner(node.owner),
   locked: node.locked,

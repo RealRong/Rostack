@@ -1,4 +1,7 @@
-import type { ViewState as CurrentView, ItemId } from '@dataview/engine'
+import type {
+  ActiveSource,
+  ItemId
+} from '@dataview/engine'
 import {
   observeElementSize,
   pageScrollNode,
@@ -12,13 +15,16 @@ import {
   createValueStore,
   joinUnsubscribes,
   read,
+  sameOrder,
   type ReadStore
 } from '@shared/core'
 import type { TableLayout } from '@dataview/react/views/table/layout'
+import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
 import {
-  TableLayoutModel,
-  type TableLayoutSource
-} from '@dataview/react/views/table/virtual/layoutModel'
+  readTableLayoutState,
+  sameTableLayoutState,
+  type TableLayoutState
+} from '@dataview/react/views/table/virtual/layoutState'
 import type { TableBlock } from '@dataview/react/views/table/virtual/types'
 
 const BOOTSTRAP_VIEWPORT_HEIGHT = () => (
@@ -43,6 +49,8 @@ export type TableVerticalDirection =
 export interface TableVirtualLayoutSnapshot {
   totalHeight: number
   revision: number
+  rowCount: number
+  measurementIds: readonly string[]
 }
 
 export interface TableVirtualViewportSnapshot {
@@ -98,7 +106,9 @@ export interface TableVirtualRuntime {
 
 const EMPTY_LAYOUT_SNAPSHOT: TableVirtualLayoutSnapshot = {
   totalHeight: 0,
-  revision: 0
+  revision: 0,
+  rowCount: 0,
+  measurementIds: []
 }
 
 const createBootstrapViewportSnapshot = (): TableVirtualViewportSnapshot => {
@@ -126,6 +136,8 @@ const sameLayoutSnapshot = (
   right: TableVirtualLayoutSnapshot
 ) => left.totalHeight === right.totalHeight
   && left.revision === right.revision
+  && left.rowCount === right.rowCount
+  && sameOrder(left.measurementIds, right.measurementIds)
 
 const sameViewportSnapshot = (
   left: TableVirtualViewportSnapshot,
@@ -176,7 +188,7 @@ const sameWindowBlock = (
         && left.sectionKey === right.sectionKey
     case 'section-header':
       return right.kind === 'section-header'
-        && left.section === right.section
+        && left.sectionKey === right.sectionKey
   }
 }
 
@@ -189,27 +201,6 @@ const sameWindowSnapshot = (
   && left.startTop === right.startTop
   && left.items.length === right.items.length
   && left.items.every((block, index) => sameWindowBlock(block, right.items[index]!))
-
-const toLayoutSource = (
-  currentView: CurrentView | undefined
-): TableLayoutSource | null => currentView
-  ? {
-      grouped: Boolean(currentView.view.group),
-      items: currentView.items,
-      sections: currentView.sections
-    }
-  : null
-
-const sameLayoutSource = (
-  left: TableLayoutSource | null,
-  right: TableLayoutSource | null
-) => left === right || (
-  !!left
-  && !!right
-  && left.grouped === right.grouped
-  && left.items === right.items
-  && left.sections === right.sections
-)
 
 export const resolveTableWindowOverscan = (input: {
   marqueeActive: boolean
@@ -267,18 +258,22 @@ export const resolveTableWindowSnapshot = (input: {
 }
 
 const resolveMarqueeActive = (input: {
-  currentView: CurrentView | undefined
+  layoutState: TableLayoutState | null
   active: boolean
 }) => Boolean(
-  input.currentView
+  input.layoutState
   && input.active
 )
 
 export const createTableVirtualRuntime = (options: {
-  currentViewStore: ReadStore<CurrentView | undefined>
+  activeSource: ActiveSource
   marqueeActiveStore: ReadStore<boolean>
   layout: TableLayout
 }): TableVirtualRuntime => {
+  const layoutStateStore = createDerivedStore<TableLayoutState | null>({
+    get: () => readTableLayoutState(options.activeSource),
+    isEqual: sameTableLayoutState
+  })
   const layoutStore = createValueStore<TableVirtualLayoutSnapshot>({
     initial: EMPTY_LAYOUT_SNAPSHOT,
     isEqual: sameLayoutSnapshot
@@ -290,7 +285,7 @@ export const createTableVirtualRuntime = (options: {
   const interaction = createDerivedStore<TableVirtualInteractionSnapshot>({
     get: () => {
       const marqueeActive = resolveMarqueeActive({
-        currentView: read(options.currentViewStore),
+        layoutState: read(layoutStateStore),
         active: read(options.marqueeActiveStore)
       })
       const overscan = resolveTableWindowOverscan({
@@ -320,11 +315,11 @@ export const createTableVirtualRuntime = (options: {
   let canvasTopInScrollContent: number | null = null
   let lastPageScrollTop = 0
   let currentBucketKey: string | number = '__default__'
-  let currentLayoutSource = toLayoutSource(options.currentViewStore.get())
+  let currentLayoutState = layoutStateStore.get()
   let layoutRevision = 0
-  let layoutModel = currentLayoutSource
-    ? TableLayoutModel.fromCurrentView({
-        source: currentLayoutSource,
+  let layoutModel = currentLayoutState
+    ? TableLayoutModel.fromState({
+        state: currentLayoutState,
         rowHeight: options.layout.rowHeight,
         headerHeight: options.layout.headerHeight,
         measuredHeights: measurementBuckets.get(currentBucketKey)
@@ -335,7 +330,9 @@ export const createTableVirtualRuntime = (options: {
     layoutStore.set(layoutModel
       ? {
           totalHeight: layoutModel.totalHeight,
-          revision: layoutRevision
+          revision: layoutRevision,
+          rowCount: layoutModel.rowCount,
+          measurementIds: layoutModel.measurementIds
         }
       : EMPTY_LAYOUT_SNAPSHOT)
   }
@@ -404,14 +401,27 @@ export const createTableVirtualRuntime = (options: {
     key: string
     top: number
   } | null = null) => {
-    layoutModel = currentLayoutSource
-      ? TableLayoutModel.fromCurrentView({
-          source: currentLayoutSource,
-          rowHeight: options.layout.rowHeight,
-          headerHeight: options.layout.headerHeight,
-          measuredHeights: measurementBuckets.get(currentBucketKey)
-        })
+    const nextLayoutModel = currentLayoutState
+      ? (layoutModel
+        ? layoutModel.sync({
+            state: currentLayoutState,
+            measuredHeights: measurementBuckets.get(currentBucketKey)
+          })
+        : TableLayoutModel.fromState({
+            state: currentLayoutState,
+            rowHeight: options.layout.rowHeight,
+            headerHeight: options.layout.headerHeight,
+            measuredHeights: measurementBuckets.get(currentBucketKey)
+          }))
       : null
+
+    if (nextLayoutModel === layoutModel) {
+      publishLayout()
+      updateWindowSnapshot()
+      return
+    }
+
+    layoutModel = nextLayoutModel
     layoutRevision += 1
     publishLayout()
     compensateLayoutShift(anchor)
@@ -722,13 +732,8 @@ export const createTableVirtualRuntime = (options: {
     )
   }
 
-  const unsubscribeCurrentView = options.currentViewStore.subscribe(() => {
-    const nextLayoutSource = toLayoutSource(options.currentViewStore.get())
-    if (sameLayoutSource(currentLayoutSource, nextLayoutSource)) {
-      return
-    }
-
-    currentLayoutSource = nextLayoutSource
+  const unsubscribeLayoutState = layoutStateStore.subscribe(() => {
+    currentLayoutState = layoutStateStore.get()
     rebuildLayoutModel()
   })
   const unsubscribeViewport = viewportStore.subscribe(() => {
@@ -763,7 +768,7 @@ export const createTableVirtualRuntime = (options: {
     attach,
     detach,
     dispose: () => {
-      unsubscribeCurrentView()
+      unsubscribeLayoutState()
       unsubscribeViewport()
       unsubscribeInteraction()
       detach()

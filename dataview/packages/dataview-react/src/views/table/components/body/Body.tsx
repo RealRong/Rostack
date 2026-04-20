@@ -212,7 +212,7 @@ const View = () => {
         collisionDetection={closestCenter}
       >
         <Surface
-          rowCount={body.items.ids.length}
+          rowCount={body.rowCount}
           colCount={body.columns.length}
           onPointerDown={pointer.onPointerDown}
           onPointerMove={pointer.onPointerMove}

@@ -152,7 +152,6 @@ export {
   type NodeRectQuery,
   type NodeRectHitOptions
 } from '@whiteboard/core/node/hitTest'
-export { toLayerOrderedCanvasNodes, toLayerOrderedCanvasNodeIds } from '@whiteboard/core/node/layer'
 export {
   buildNodeCreateOperation,
   buildNodeAlignOperations,

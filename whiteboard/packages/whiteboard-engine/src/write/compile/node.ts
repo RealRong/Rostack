@@ -92,24 +92,6 @@ const compileMindmapTopicUpdate = (
     })
   }
 
-  if (fields && hasOwn(fields, 'layer')) {
-    return {
-      ok: false as const,
-      error: {
-        code: 'invalid' as const,
-        message: 'Mindmap topic layer is not writable.'
-      }
-    }
-  }
-  if (fields && hasOwn(fields, 'zIndex')) {
-    return {
-      ok: false as const,
-      error: {
-        code: 'invalid' as const,
-        message: 'Mindmap topic zIndex is not writable.'
-      }
-    }
-  }
   if (fields && hasOwn(fields, 'groupId')) {
     return {
       ok: false as const,

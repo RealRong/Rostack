@@ -99,8 +99,8 @@ import {
 export interface TableBodyData {
   viewId: ViewId
   columns: readonly Field[]
-  items: CurrentView['items']
-  sections: CurrentView['sections']
+  rowCount: number
+  measurementIds: readonly string[]
   grouped: boolean
   showVerticalLines: boolean
   wrap: boolean
@@ -119,8 +119,8 @@ const sameBodyData = (
   && !!right
   && left.viewId === right.viewId
   && left.columns === right.columns
-  && left.items === right.items
-  && left.sections === right.sections
+  && left.rowCount === right.rowCount
+  && left.measurementIds === right.measurementIds
   && left.grouped === right.grouped
   && left.showVerticalLines === right.showVerticalLines
   && left.wrap === right.wrap
@@ -130,27 +130,6 @@ const sameBodyData = (
   && left.containerWidth === right.containerWidth
   && left.marqueeActive === right.marqueeActive
 )
-
-const EMPTY_ITEMS: CurrentView['items'] = {
-  ids: [],
-  count: 0,
-  get: () => undefined,
-  has: () => false,
-  indexOf: () => undefined,
-  at: () => undefined,
-  prev: () => undefined,
-  next: () => undefined,
-  range: () => []
-}
-
-const EMPTY_SECTIONS: CurrentView['sections'] = {
-  ids: [],
-  all: [],
-  get: () => undefined,
-  has: () => false,
-  indexOf: () => undefined,
-  at: () => undefined
-}
 
 export interface TableController {
   currentView: ReadStore<CurrentView | undefined>
@@ -276,7 +255,7 @@ export const createTableController = (options: {
     selectionVisible: select.cells.visible
   })
   const virtual = createTableVirtualRuntime({
-    currentViewStore: currentView,
+    activeSource: options.engine.source.active,
     marqueeActiveStore: options.marqueeActiveStore,
     layout: options.layout
   })
@@ -367,17 +346,17 @@ export const createTableController = (options: {
         return null
       }
 
-      const current = read(currentView)
       const columns = bodyModel.columnIds.flatMap(fieldId => {
         const field = read(options.model.column, fieldId)?.field
         return field ? [field] : []
       })
       const windowState = read(virtual.window)
+      const layoutState = read(virtual.layout)
       return {
         viewId: bodyModel.viewId,
         columns,
-        items: current?.items ?? EMPTY_ITEMS,
-        sections: current?.sections ?? EMPTY_SECTIONS,
+        rowCount: layoutState.rowCount,
+        measurementIds: layoutState.measurementIds,
         grouped: bodyModel.grouped,
         showVerticalLines: bodyModel.showVerticalLines,
         wrap: bodyModel.wrap,

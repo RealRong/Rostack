@@ -45,7 +45,6 @@ export type NodeType =
 
 export type SpatialNodeType = NodeType
 export type NodeRole = 'content' | 'frame'
-export type NodeLayer = 'background' | 'default' | 'overlay'
 export type NodeData = Record<string, unknown>
 export type NodeStyleValue =
   | string
@@ -67,8 +66,6 @@ export type NodeOwner =
 export type BaseNode = {
   id: NodeId
   type: NodeType
-  layer?: NodeLayer
-  zIndex?: number
   groupId?: GroupId
   owner?: NodeOwner
   locked?: boolean

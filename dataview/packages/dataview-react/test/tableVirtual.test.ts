@@ -1,67 +1,24 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
-
-const createMockItemList = (ids: readonly string[]) => ({
-  ids,
-  count: ids.length,
-  get: (id: string) => (
-    ids.includes(id)
-      ? {
-          id,
-          recordId: id,
-          sectionKey: 'section'
-        }
-      : undefined
-  ),
-  has: (id: string) => ids.includes(id),
-  indexOf: (id: string) => {
-    const index = ids.indexOf(id)
-    return index === -1
-      ? undefined
-      : index
-  },
-  at: (index: number) => ids[index],
-  prev: (id: string) => {
-    const index = ids.indexOf(id)
-    return index > 0
-      ? ids[index - 1]
-      : undefined
-  },
-  next: (id: string) => {
-    const index = ids.indexOf(id)
-    return index >= 0
-      ? ids[index + 1]
-      : undefined
-  },
-  range: (anchor: string, focus: string) => {
-    const anchorIndex = ids.indexOf(anchor)
-    const focusIndex = ids.indexOf(focus)
-    if (anchorIndex === -1 || focusIndex === -1) {
-      return []
-    }
-
-    const start = Math.min(anchorIndex, focusIndex)
-    const end = Math.max(anchorIndex, focusIndex)
-    return ids.slice(start, end + 1)
-  }
-})
+import { createTableLayoutState } from '@dataview/react/views/table/virtual/layoutState'
 
 test('TableLayoutModel uses measured heights for flat table blocks and recomputes tops', () => {
-  const model = TableLayoutModel.fromCurrentView({
-    source: {
+  const model = TableLayoutModel.fromState({
+    state: createTableLayoutState({
       grouped: false,
-      items: createMockItemList(['row_1', 'row_2']),
-      sections: {
-        all: []
-      }
-    } as any,
+      sections: [{
+        key: 'root',
+        collapsed: false,
+        itemIds: [1, 2]
+      }]
+    }),
     rowHeight: 36,
     headerHeight: 40,
     measuredHeights: new Map([
-      ['column-header:flat', 52],
-      ['row:row_1', 68],
-      ['column-footer:flat', 64]
+      ['column-header:root', 52],
+      ['row:1', 68],
+      ['column-footer:root', 64]
     ])
   })
   const blocks = model.materializeWindow({
@@ -75,27 +32,27 @@ test('TableLayoutModel uses measured heights for flat table blocks and recompute
     height: block.height
   })), [
     {
-      key: 'column-header:flat',
+      key: 'column-header:root',
       top: 0,
       height: 52
     },
     {
-      key: 'row:row_1',
+      key: 'row:1',
       top: 52,
       height: 68
     },
     {
-      key: 'row:row_2',
+      key: 'row:2',
       top: 120,
       height: 36
     },
     {
-      key: 'create-record:flat',
+      key: 'create-record:root',
       top: 156,
       height: 36
     },
     {
-      key: 'column-footer:flat',
+      key: 'column-footer:root',
       top: 192,
       height: 64
     }
@@ -103,33 +60,28 @@ test('TableLayoutModel uses measured heights for flat table blocks and recompute
 })
 
 test('TableLayoutModel uses measured heights for grouped section blocks and keeps collapsed sections compact', () => {
-  const model = TableLayoutModel.fromCurrentView({
-    source: {
+  const model = TableLayoutModel.fromState({
+    state: createTableLayoutState({
       grouped: true,
-      items: createMockItemList(['row_1', 'row_2', 'row_3']),
-      sections: {
-        all: [
-          {
-            key: 'won',
-            label: 'Won',
-            collapsed: false,
-            items: createMockItemList(['row_1', 'row_2'])
-          },
-          {
-            key: 'lost',
-            label: 'Lost',
-            collapsed: true,
-            items: createMockItemList(['row_3'])
-          }
-        ]
-      }
-    } as any,
+      sections: [
+        {
+          key: 'won',
+          collapsed: false,
+          itemIds: [1, 2]
+        },
+        {
+          key: 'lost',
+          collapsed: true,
+          itemIds: [3]
+        }
+      ]
+    }),
     rowHeight: 36,
     headerHeight: 40,
     measuredHeights: new Map([
       ['section-header:won', 48],
       ['column-header:won', 56],
-      ['row:row_2', 72],
+      ['row:2', 72],
       ['column-footer:won', 60],
       ['section-header:lost', 44]
     ])
@@ -155,12 +107,12 @@ test('TableLayoutModel uses measured heights for grouped section blocks and keep
       height: 56
     },
     {
-      key: 'row:row_1',
+      key: 'row:1',
       top: 104,
       height: 36
     },
     {
-      key: 'row:row_2',
+      key: 'row:2',
       top: 140,
       height: 72
     },
@@ -183,28 +135,29 @@ test('TableLayoutModel uses measured heights for grouped section blocks and keep
 })
 
 test('TableLayoutModel applies measured height patches incrementally and locates rows by offset', () => {
-  const model = TableLayoutModel.fromCurrentView({
-    source: {
+  const model = TableLayoutModel.fromState({
+    state: createTableLayoutState({
       grouped: false,
-      items: createMockItemList(['row_1', 'row_2', 'row_3']),
-      sections: {
-        all: []
-      }
-    } as any,
+      sections: [{
+        key: 'root',
+        collapsed: false,
+        itemIds: [1, 2, 3]
+      }]
+    }),
     rowHeight: 36,
     headerHeight: 40
   })
 
-  assert.equal(model.locateRow('row_3')?.top, 112)
+  assert.equal(model.locateRow(3)?.top, 112)
 
   model.applyMeasuredHeightPatches({
     changedHeights: new Map([
-      ['row:row_1', 60],
-      ['row:row_2', 72]
+      ['row:1', 60],
+      ['row:2', 72]
     ])
   })
 
-  assert.equal(model.locateRow('row_3')?.top, 172)
+  assert.equal(model.locateRow(3)?.top, 172)
   assert.deepEqual(
     model.materializeWindow({
       start: 100,
@@ -216,22 +169,22 @@ test('TableLayoutModel applies measured height patches incrementally and locates
     })),
     [
       {
-        key: 'row:row_1',
+        key: 'row:1',
         top: 40,
         height: 60
       },
       {
-        key: 'row:row_2',
+        key: 'row:2',
         top: 100,
         height: 72
       },
       {
-        key: 'row:row_3',
+        key: 'row:3',
         top: 172,
         height: 36
       },
       {
-        key: 'create-record:flat',
+        key: 'create-record:root',
         top: 208,
         height: 36
       }

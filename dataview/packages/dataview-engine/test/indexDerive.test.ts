@@ -302,7 +302,7 @@ test('engine.active.view plan demand unions search and numeric filter substrates
   assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
 
-test('engine.active.view plan demand ignores ineffective persisted filters for bucket and sort demand', () => {
+test('engine.active.view plan demand keeps stable bucket and sort substrate for persisted filters', () => {
   const FIELD_DUE = 'due'
   const fields = [
     ...createFields(),
@@ -376,8 +376,11 @@ test('engine.active.view plan demand ignores ineffective persisted filters for b
 
   const demand = resolveDemand(document, view.id)
 
-  assert.deepEqual(demand.sortFields, [FIELD_DUE])
-  assert.equal(demand.buckets, undefined)
+  assert.deepEqual(demand.sortFields, [FIELD_DUE, FIELD_POINTS])
+  assert.deepEqual(
+    demand.buckets?.map(spec => spec.fieldId),
+    [FIELD_PRIORITY, FIELD_STATUS, FIELD_TAGS]
+  )
 })
 
 test('engine.active.index derive adds demanded sort fields without rebuilding existing field indexes', () => {

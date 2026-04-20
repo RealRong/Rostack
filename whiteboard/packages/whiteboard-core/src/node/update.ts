@@ -25,8 +25,6 @@ const NODE_FIELD_KEYS: Array<keyof NodeFieldPatch> = [
   'position',
   'size',
   'rotation',
-  'layer',
-  'zIndex',
   'groupId',
   'owner',
   'locked'
@@ -39,8 +37,6 @@ const NODE_GEOMETRY_KEYS = new Set<keyof NodeFieldPatch>([
 ])
 
 const NODE_LIST_KEYS = new Set<keyof NodeFieldPatch>([
-  'layer',
-  'zIndex',
   'groupId',
   'owner'
 ])
@@ -260,8 +256,6 @@ export const createNodeUpdateOperation = (
     position: 'position',
     size: 'size',
     rotation: 'rotation',
-    layer: 'layer',
-    zIndex: 'zIndex',
     groupId: 'groupId',
     owner: 'owner',
     locked: 'locked'

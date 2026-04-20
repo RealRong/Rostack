@@ -12,6 +12,5 @@ export type ReadModel = {
   }
   canvas: {
     nodeById: Map<NodeId, Node>
-    nodeIds: NodeId[]
   }
 }

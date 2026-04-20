@@ -1,6 +1,5 @@
 import type {
   ItemId,
-  Section,
   SectionKey
 } from '@dataview/engine'
 import type {
@@ -23,7 +22,7 @@ export interface TableSectionHeaderBlock extends VirtualBlock {
   kind: 'section-header'
   estimatedHeight: number
   measuredHeight?: number
-  section: Section
+  sectionKey: SectionKey
 }
 
 export interface TableColumnFooterBlock extends VirtualBlock {

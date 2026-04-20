@@ -7,9 +7,7 @@ import {
 import {
   useDataView
 } from '@dataview/react/dataview'
-import type {
-  Section
-} from '@dataview/engine'
+import type { SectionKey } from '@dataview/engine'
 import {
   useKeyedStoreValue
 } from '@shared/react'
@@ -20,7 +18,7 @@ import { cn } from '@shared/ui/utils'
 import { useTranslation } from '@shared/i18n/react'
 
 export interface SectionHeaderProps {
-  section: Section
+  sectionKey: SectionKey
   measureRef?: (node: HTMLDivElement | null) => void
 }
 
@@ -28,7 +26,7 @@ const View = (props: SectionHeaderProps) => {
   const { t } = useTranslation()
   const { engine } = useDataView()
   const table = useTableContext()
-  const section = useKeyedStoreValue(table.section, props.section.key)
+  const section = useKeyedStoreValue(table.section, props.sectionKey)
   if (!section) {
     throw new Error('Table section header requires an active current view.')
   }
@@ -37,7 +35,7 @@ const View = (props: SectionHeaderProps) => {
     <div
       ref={props.measureRef}
       data-table-target="group-row"
-      data-group-key={props.section.key}
+      data-group-key={props.sectionKey}
       className="flex self-stretch min-w-full w-max items-center"
       style={{
         minHeight: table.layout.headerHeight
@@ -83,7 +81,7 @@ const View = (props: SectionHeaderProps) => {
 const same = (
   left: SectionHeaderProps,
   right: SectionHeaderProps
-) => left.section === right.section
+) => left.sectionKey === right.sectionKey
   && left.measureRef === right.measureRef
 
 export const SectionHeader = memo(View, same)

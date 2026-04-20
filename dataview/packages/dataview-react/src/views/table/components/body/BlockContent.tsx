@@ -65,7 +65,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
             return (
               <SectionHeader
                 key={block.key}
-                section={block.section}
+                sectionKey={block.sectionKey}
                 measureRef={blockMeasureRef}
               />
             )
@@ -143,28 +143,6 @@ const RenderedBlocks = memo(RenderedBlocksView, sameRenderedBlocks)
 
 export const BlockContent = (props: BlockContentProps) => {
   const table = useTableContext()
-  const measurementIds = useMemo(() => {
-    if (!props.body.grouped) {
-      return [
-        'column-header:flat',
-        ...props.body.items.ids.map(id => `row:${id}`),
-        'create-record:flat',
-        'column-footer:flat'
-      ]
-    }
-
-    return props.body.sections.all.flatMap(section => (
-      section.collapsed
-        ? [`section-header:${section.key}`]
-        : [
-            `section-header:${section.key}`,
-            `column-header:${section.key}`,
-            ...section.items.ids.map(id => `row:${id}`),
-            `create-record:${section.key}`,
-            `column-footer:${section.key}`
-          ]
-    ))
-  }, [props.body.grouped, props.body.items, props.body.sections])
   const measurementBucketKey = useMemo(
     () => `${props.body.containerWidth}:${props.body.wrap ? 'wrap' : 'nowrap'}`,
     [props.body.containerWidth, props.body.wrap]
@@ -185,7 +163,7 @@ export const BlockContent = (props: BlockContentProps) => {
     })
   }, [table.virtual])
   const measured = useMeasuredHeights<string>({
-    ids: measurementIds,
+    ids: props.body.measurementIds,
     bucketKey: measurementBucketKey,
     debugName: 'flushTableBlockMeasurementsMicrotask',
     reactive: false,

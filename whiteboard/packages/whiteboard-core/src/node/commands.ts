@@ -142,10 +142,7 @@ export const buildNodeCreateOperation = ({
   const id = nextNode.id ?? createNodeId()
   const node: Node = {
     ...nextNode,
-    id,
-    layer: nextNode.type === 'frame'
-      ? (nextNode.layer ?? 'background')
-      : nextNode.layer
+    id
   }
 
   return ok({

@@ -108,8 +108,25 @@ export const ensureCalculationIndex = (
     demandByField.set(demand.fieldId, demand)
   })
 
+  const fields = createMapPatchBuilder(previous.fields)
+  previous.fields.forEach((previousField, fieldId) => {
+    const demand = demandByField.get(fieldId)
+    if (!demand) {
+      fields.delete(fieldId)
+      return
+    }
+
+    if (previousField.capabilities !== demand.capabilities) {
+      fields.set(fieldId, buildFieldCalcIndex({
+        context,
+        records,
+        demand
+      }))
+    }
+  })
+
   const ensured = ensureFieldIndexes({
-    previous: previous.fields,
+    previous: fields.finish(),
     hasField: fieldId => context.fieldIdSet.has(fieldId),
     fieldIds: [...demandByField.keys()],
     build: fieldId => buildFieldCalcIndex({
@@ -119,7 +136,7 @@ export const ensureCalculationIndex = (
     })
   })
 
-  return ensured.changed
+  return ensured.changed || fields.changed()
     ? {
         fields: ensured.fields,
         rev: previous.rev + 1

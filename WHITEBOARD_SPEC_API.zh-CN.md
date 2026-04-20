@@ -300,6 +300,7 @@ type HistoryKey =
   | { kind: 'edge.exists'; edgeId: EdgeId }
   | { kind: 'edge.field'; edgeId: EdgeId; field: EdgeField }
   | { kind: 'edge.record'; edgeId: EdgeId; scope: 'data' | 'style'; path: string }
+  | { kind: 'edge.labels'; edgeId: EdgeId }
   | { kind: 'edge.label.exists'; edgeId: EdgeId; labelId: string }
   | { kind: 'edge.label.field'; edgeId: EdgeId; labelId: string; field: EdgeLabelField }
   | { kind: 'edge.label.record'; edgeId: EdgeId; labelId: string; scope: 'data' | 'style'; path: string }

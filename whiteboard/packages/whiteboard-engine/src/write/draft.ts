@@ -21,6 +21,7 @@ export const createWriteDraft = <T>(
   inverse: reduced.data.inverse,
   changes: reduced.data.changes,
   invalidation: reduced.data.invalidation,
+  history: reduced.data.history,
   value: input.value
 })
 
@@ -74,6 +75,9 @@ export const createReplayDraft = <T>(
       'edge',
       'mindmap'
     ])
+  },
+  history: {
+    footprint: []
   },
   value: input.value
 })

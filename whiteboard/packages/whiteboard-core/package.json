@@ -16,7 +16,9 @@
     "./config": "./src/config/index.ts",
     "./document": "./src/document/index.ts",
     "./selection": "./src/selection/index.ts",
-    "./lock": "./src/lock/index.ts"
+    "./lock": "./src/lock/index.ts",
+    "./spec/operation": "./src/spec/operation/index.ts",
+    "./spec/history": "./src/spec/history/index.ts"
   },
   "files": [
     "src",

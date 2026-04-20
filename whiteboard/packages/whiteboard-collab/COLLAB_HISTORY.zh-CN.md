@@ -547,7 +547,7 @@ type PendingTransition =
 
 - 协作态 UI 改读 `session.localHistory`
 - 非协作态继续读 `engine.history`
-- 删除“remote replay -> clear engine.history” 这条临时保守逻辑
+- 保持 `remote replay` 只做 footprint invalidation，不再引入额外的 history 清空逻辑
 
 ---
 

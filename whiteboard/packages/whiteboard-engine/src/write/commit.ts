@@ -2,6 +2,7 @@ import type {
   CommandResult
 } from '@whiteboard/engine/types/result'
 import type { Commit } from '@whiteboard/engine/types/commit'
+import type { WriteRecord } from '@whiteboard/engine/types/writeRecord'
 import type { Draft } from '@whiteboard/engine/types/write'
 import { success } from '@whiteboard/engine/result'
 import type { CommitHistoryEffect } from '@whiteboard/engine/write/types'
@@ -50,3 +51,14 @@ export const createCommit = <T>(
 
   return success(commit, draft.value)
 }
+
+export const createWriteRecord = <T>(
+  draft: Extract<Draft<T>, { ok: true }>,
+  rev: number
+): WriteRecord => ({
+  rev,
+  origin: draft.origin,
+  forward: draft.ops,
+  inverse: draft.inverse,
+  history: draft.history
+})

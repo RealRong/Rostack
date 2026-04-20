@@ -82,6 +82,10 @@ test('shared sessions replay remote operations and keep remote history out of un
     engineB.history.get().undoDepth,
     0
   )
+  assert.equal(
+    sessionB.localHistory.get().undoDepth,
+    0
+  )
 
   const setResult = engineA.execute({
     type: 'node.update',
@@ -130,6 +134,10 @@ test('shared sessions replay remote operations and keep remote history out of un
   assert.equal(syncedNode?.data?.nested?.value, 'synced')
   assert.equal(
     engineB.history.get().undoDepth,
+    0
+  )
+  assert.equal(
+    sessionB.localHistory.get().undoDepth,
     0
   )
 
@@ -200,6 +208,9 @@ test('session records duplicate and rejected shared changes deterministically', 
         type: 'none',
         color: '#000'
       }
+    }],
+    footprint: [{
+      kind: 'document.background'
     }]
   } as const
 
@@ -214,6 +225,11 @@ test('session records duplicate and rejected shared changes deterministically', 
         id: 'node_missing',
         field: 'rotation',
         value: 90
+      }],
+      footprint: [{
+        kind: 'node.field',
+        nodeId: 'node_missing',
+        field: 'rotation'
       }]
     })
   })
@@ -230,6 +246,117 @@ test('session records duplicate and rejected shared changes deterministically', 
     engine.document.get().background?.color,
     '#000'
   )
+
+  session.destroy()
+})
+
+test('remote changes invalidate conflicting local history without clearing engine history', () => {
+  const sharedDoc = new Y.Doc()
+  const engineA = createTestEngine('doc_conflict_history')
+  const engineB = createTestEngine('doc_conflict_history')
+
+  const sessionA = createYjsSession({
+    engine: engineA,
+    doc: sharedDoc,
+    actorId: 'actor_conflict_a'
+  })
+  const sessionB = createYjsSession({
+    engine: engineB,
+    doc: sharedDoc,
+    actorId: 'actor_conflict_b'
+  })
+
+  sessionA.connect()
+  sessionB.connect()
+
+  const createResult = engineB.execute({
+    type: 'node.create',
+    input: {
+      type: 'text',
+      position: { x: 0, y: 0 },
+      data: {
+        text: 'owned by b'
+      }
+    }
+  })
+
+  assert.equal(createResult.ok, true)
+  if (!createResult.ok) {
+    return
+  }
+
+  assert.equal(sessionB.localHistory.get().undoDepth, 1)
+  assert.equal(sessionB.localHistory.get().invalidatedDepth, 0)
+  assert.equal(engineB.history.get().undoDepth, 1)
+
+  const updateResult = engineA.execute({
+    type: 'node.update',
+    updates: [{
+      id: createResult.data.nodeId,
+      input: {
+        records: [{
+          scope: 'data',
+          op: 'set',
+          path: 'text',
+          value: 'remote update'
+        }]
+      }
+    }]
+  })
+
+  assert.equal(updateResult.ok, true)
+  assert.equal(sessionB.localHistory.get().undoDepth, 0)
+  assert.equal(sessionB.localHistory.get().invalidatedDepth, 1)
+  assert.equal(engineB.history.get().undoDepth, 1)
+
+  sessionA.destroy()
+  sessionB.destroy()
+})
+
+test('localHistory undo and redo append new shared changes', () => {
+  const sharedDoc = new Y.Doc()
+  const engine = createTestEngine('doc_local_history')
+  const session = createYjsSession({
+    engine,
+    doc: sharedDoc,
+    actorId: 'actor_local_history'
+  })
+
+  session.connect()
+
+  const createResult = engine.execute({
+    type: 'node.create',
+    input: {
+      type: 'text',
+      position: { x: 24, y: 16 },
+      data: {
+        text: 'undo me'
+      }
+    }
+  })
+
+  assert.equal(createResult.ok, true)
+  if (!createResult.ok) {
+    return
+  }
+
+  const store = createStore(sharedDoc)
+  assert.equal(session.localHistory.get().undoDepth, 1)
+  assert.equal(store.readChanges().length, 1)
+
+  const undoResult = session.localHistory.undo()
+  assert.equal(undoResult.ok, true)
+  assert.equal(engine.document.get().nodes[createResult.data.nodeId], undefined)
+  assert.equal(session.localHistory.get().undoDepth, 0)
+  assert.equal(session.localHistory.get().redoDepth, 1)
+  assert.equal(store.readChanges().length, 2)
+
+  const redoResult = session.localHistory.redo()
+  assert.equal(redoResult.ok, true)
+  assert.ok(engine.document.get().nodes[createResult.data.nodeId])
+  assert.equal(session.localHistory.get().undoDepth, 1)
+  assert.equal(session.localHistory.get().redoDepth, 0)
+  assert.equal(store.readChanges().length, 3)
 
   session.destroy()
 })

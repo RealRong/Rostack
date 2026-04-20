@@ -4,6 +4,8 @@ export type {
 } from '@whiteboard/collab/types/provider'
 export type {
   CollabDiagnostics,
+  CollabLocalHistory,
+  CollabLocalHistoryState,
   CollabSession,
   CreateYjsSessionOptions
 } from '@whiteboard/collab/types/session'

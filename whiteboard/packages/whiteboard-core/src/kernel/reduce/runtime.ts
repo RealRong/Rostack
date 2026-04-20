@@ -4,6 +4,7 @@ import {
   toMindmapTree
 } from '@whiteboard/core/mindmap'
 import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/overlay'
+import type { HistoryKey } from '@whiteboard/core/spec/history'
 import type {
   CanvasItemRef,
   ChangeIds,
@@ -40,6 +41,9 @@ export type ReduceRuntime = {
   changes: ChangeSet
   dirty: Invalidation
   inverse: import('@whiteboard/core/types').Operation[]
+  history: {
+    footprint: Map<string, HistoryKey>
+  }
   shortCircuit?: import('@whiteboard/core/types').KernelReduceResult
   reconcile: {
     tasks: ReconcileTask[]
@@ -341,6 +345,9 @@ export const createReduceRuntime = (
   changes: createChangeSet(),
   dirty: createInvalidation(),
   inverse: [],
+  history: {
+    footprint: new Map()
+  },
   reconcile: {
     tasks: [],
     queued: new Set<string>()

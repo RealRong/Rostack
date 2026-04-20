@@ -19,7 +19,8 @@ import type { Draft } from '@whiteboard/engine/types/write'
 import { createValueStore } from '@shared/core'
 import {
   applyCommitHistoryEffect,
-  createCommit
+  createCommit,
+  createWriteRecord
 } from '@whiteboard/engine/write/commit'
 import type { CommitHistoryEffect } from '@whiteboard/engine/write/types'
 
@@ -33,6 +34,7 @@ export const createEngine = ({
   const resolvedRegistries = registries ?? createRegistries()
   const documentSource = createDocumentSource(normalizeDocument(document, config))
   const commitStore = createValueStore<import('@whiteboard/engine/types/commit').Commit | null>(null)
+  const writeRecordStore = createValueStore<import('@whiteboard/engine/types/writeRecord').WriteRecord | null>(null)
 
   const readControl = createRead({
     document: documentSource,
@@ -53,13 +55,15 @@ export const createEngine = ({
       return draft
     }
 
+    const rev = (commitStore.get()?.rev ?? 0) + 1
     documentSource.commit(draft.doc)
     readControl.invalidate(draft.invalidation)
     applyCommitHistoryEffect(draft, effect, writer.history)
+    writeRecordStore.set(createWriteRecord(draft, rev))
 
     const result = createCommit(
       draft,
-      (commitStore.get()?.rev ?? 0) + 1
+      rev
     )
     if (result.ok) {
       commitStore.set(result.commit)
@@ -84,11 +88,14 @@ export const createEngine = ({
     options?: ExecuteOptions
   ): ExecuteResult<C> => {
     const origin = options?.origin ?? ('origin' in command ? command.origin : undefined) ?? 'user'
-    return commitDraft(
-      writer.execute(command, origin),
-      command.type === 'document.replace'
+    const effect: CommitHistoryEffect = origin === 'remote'
+      ? 'skip'
+      : command.type === 'document.replace'
         ? 'reset'
         : 'record'
+    return commitDraft(
+      writer.execute(command, origin),
+      effect
     ) as ExecuteResult<C>
   }
 
@@ -119,6 +126,7 @@ export const createEngine = ({
       clear: writer.history.clear
     },
     commit: commitStore,
+    writeRecord: writeRecordStore,
     execute,
     apply,
     configure,

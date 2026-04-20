@@ -142,6 +142,7 @@ type SharedChange = {
   id: string
   actorId: string
   ops: readonly SharedOperation[]
+  footprint: HistoryFootprint
 }
 ```
 
@@ -149,8 +150,12 @@ type SharedChange = {
 
 - `id` 全局唯一
 - `actorId` 是逻辑协作者身份，不等于 `Y.Doc.clientID`
-- `ops` 是一次本地 commit 产出的完整语义操作批次
+- `ops` 是一次本地 `writeRecord.forward` 产出的完整 live 语义操作批次
+- `footprint` 来自 `writeRecord.history.footprint`
 - 一个 `SharedChange` 是 replay 原子单位
+
+共享层不允许自己从 raw `ops` 反推完整 `footprint`。
+`footprint` 必须由 `core -> engine` 写入线生成，再由 `collab` 原样发布与消费。
 
 第一阶段不需要：
 
@@ -265,14 +270,15 @@ type SyncDiagnostics = {
 本地 publish pipeline 固定为：
 
 1. `engine` 本地执行 command 或 ops
-2. 取得 `commit.ops`
+2. `session` 从 `engine.writeRecord` 读取本次语义写入结果
 3. 如果 `origin === 'remote'`，跳过 publish
-4. 编码为 `SharedChange`
-5. append 到 Yjs `changes`
+4. 如果 `writeRecord.forward` 含 `document.replace`，则写 checkpoint 并清空 `changes`
+5. 否则组装 `SharedChange { id, actorId, ops, footprint }`
+6. 编码后 append 到 Yjs `changes`
 
 约束：
 
-- 不回写 `commit.doc`
+- 不回写 `engine.document`
 - 不在 publish 阶段 materialize Yjs document
 - 不做 snapshot replace mirror
 - 不同步 `inverse`
@@ -385,7 +391,7 @@ canonical order 更晚的那一个自然覆盖更早的结果。
 
 ---
 
-## 7. Undo / Redo Contract
+## 7. History Contract
 
 ### 7.1 不共享 inverse
 
@@ -396,7 +402,19 @@ canonical order 更晚的那一个自然覆盖更早的结果。
 
 共享层只传输新的 forward change。
 
-### 7.2 Undo 的正式语义
+### 7.2 协作态 history 不是 `engine.history`
+
+长期最优下：
+
+- `engine.history` 继续是单机 history
+- 协作态单独使用 `session.localHistory`
+- `session.localHistory` 只记录本地已发布的 `SharedChange`
+- remote change 不进入本地 undo / redo 栈
+
+因此 remote replay 不再清空本地 `engine.history`。
+协作 UI 只应该读取 `session.localHistory`。
+
+### 7.3 Undo / Redo 的正式语义
 
 undo / redo 仍然是本地 editor / engine 行为，但一旦真的执行：
 
@@ -408,18 +426,19 @@ undo / redo 仍然是本地 editor / engine 行为，但一旦真的执行：
 - 协作层只认 forward change
 - 不认“这是 undo change”的特殊协议
 
-### 7.3 第一阶段最简限制
+### 7.4 远端 change 只做 footprint invalidation
 
-第一阶段的最简正确约束：
+远端 change 到来时，session 只做两件事：
 
-- 只要 session 接收到任何 remote replay，就清空本地 undo / redo 栈
+- 读取 `SharedChange.footprint`
+- 使与之冲突的本地 `session.localHistory` 项失效
 
-原因很简单：
+不会发生：
 
-- 本地 inverse 基于旧状态生成
-- remote change 到来后，直接继续复用旧 inverse 容易产生错误语义
+- 全量清空协作态本地 history
+- 继续重放已经冲突的 stale inverse
 
-等第一阶段模型稳定后，再决定是否需要 collaborative undo。
+冲突判定 contract 由 [`whiteboard/packages/whiteboard-collab/COLLAB_HISTORY.zh-CN.md`](/Users/realrong/Rostack/whiteboard/packages/whiteboard-collab/COLLAB_HISTORY.zh-CN.md) 定义。
 
 ---
 
@@ -469,7 +488,10 @@ type YjsSyncStore = {
 ### 9.3 Session
 
 ```ts
-type YjsSyncSession = {
+type CollabSession = {
+  status: ReadStore<CollabStatus>
+  diagnostics: ReadStore<CollabDiagnostics>
+  localHistory: CollabLocalHistory
   connect(): void
   disconnect(): void
   destroy(): void
@@ -515,18 +537,23 @@ type ReplayExecutor = {
 - 删除 document mirror sync 主路径
 - 引入 `SharedChange` blob log
 - 引入单 checkpoint blob
+- 引入 `engine.writeRecord` 作为本地 publish 上游
+- 给 `SharedChange` 补齐 `footprint`
 - 远端只保留 `append` / `reset` 两条 replay 路
 - remote replay 使用 `engine.apply(ops, { origin: 'remote' })`
 - reset replay 使用 `engine.execute({ type: 'document.replace', document })`
-- collaborative session 收到 remote replay 后清空本地 undo / redo
+- local publish 统一基于 `writeRecord.forward`
 
 ### Phase 2
 
-目标：补上稳定的 compaction。
+目标：补上稳定的 compaction 与协作态本地 history。
 
 - 增加后台 checkpoint rotation
 - 当 `changes` 达到阈值时生成新 checkpoint
 - rotation 固定为“写新 checkpoint + 清空 changes”
+- 新增 `session.localHistory`
+- remote change 按 `footprint` invalidation
+- undo / redo 作为新的 `SharedChange` append
 
 ### Phase 3
 
@@ -535,6 +562,7 @@ type ReplayExecutor = {
 - 追加 duplicate change diagnostics
 - 追加 rejected change diagnostics
 - 只在确实需要时补更细的 replay fast path
+- 协作态 UI 统一读 `session.localHistory`
 
 不进入下一阶段的内容：
 

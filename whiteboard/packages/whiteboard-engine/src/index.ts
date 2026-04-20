@@ -13,6 +13,7 @@ export type {
   ExecuteResult
 } from '@whiteboard/engine/types/command'
 export type { Commit } from '@whiteboard/engine/types/commit'
+export type { WriteRecord } from '@whiteboard/engine/types/writeRecord'
 export type {
   CanvasNode,
   EdgeItem,

@@ -10,6 +10,7 @@ import type {
   Origin
 } from '@whiteboard/core/types/operations'
 import type { Result, ResultCode } from '@whiteboard/core/types/result'
+import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 
 export type HistoryState = {
   canUndo: boolean
@@ -83,6 +84,9 @@ export type KernelReduceData = {
   changes: ChangeSet
   invalidation: Invalidation
   inverse: readonly Operation[]
+  history: {
+    footprint: HistoryFootprint
+  }
   impact: KernelReadImpact
 }
 

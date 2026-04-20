@@ -1,8 +1,10 @@
 import { createValueStore } from '@shared/core'
 import { createDocument } from '@whiteboard/core/document'
 import { createId } from '@whiteboard/core/id'
-import type { Commit } from '@whiteboard/engine'
+import { sync } from '@whiteboard/core/spec/operation'
+import type { WriteRecord } from '@whiteboard/engine'
 import * as Y from 'yjs'
+import { createLocalHistoryController } from '@whiteboard/collab/localHistory'
 import {
   createSyncCursor,
   planReplay
@@ -25,10 +27,6 @@ import { createCollabLocalOrigin } from '@whiteboard/collab/yjs/shared'
 
 const DEFAULT_CHECKPOINT_THRESHOLD = 100
 
-const isSharedOperation = (
-  op: Commit['ops'][number]
-): op is SharedChange['ops'][number] => op.type !== 'document.replace'
-
 const createCheckpoint = (
   doc: import('@whiteboard/core/types').Document
 ): SharedCheckpoint => ({
@@ -36,18 +34,34 @@ const createCheckpoint = (
   doc
 })
 
+const toSharedOperations = (
+  operations: readonly import('@whiteboard/core/types').Operation[]
+): readonly SharedChange['ops'][number][] | null => {
+  const shared = operations.filter((op) => sync.isLive(op))
+  return shared.length === operations.length
+    ? shared as readonly SharedChange['ops'][number][]
+    : null
+}
+
 const createSharedChange = (
   actorId: string,
-  commit: Commit
-): SharedChange => ({
-  id: createId('change'),
-  actorId,
-  ops: commit.ops.filter(isSharedOperation)
-})
+  writeRecord: WriteRecord
+): SharedChange | null => {
+  const ops = toSharedOperations(writeRecord.forward)
+  if (!ops || ops.length === 0) {
+    return null
+  }
+  return {
+    id: createId('change'),
+    actorId,
+    ops,
+    footprint: writeRecord.history.footprint
+  }
+}
 
-const isReplaceCommit = (
-  commit: Commit
-): boolean => commit.ops.some((op) => op.type === 'document.replace')
+const isReplaceWriteRecord = (
+  writeRecord: WriteRecord
+): boolean => writeRecord.forward.some((op) => sync.isCheckpointOnly(op))
 
 const createEmptyReplayDocument = (
   engine: CreateYjsSessionOptions['engine']
@@ -75,13 +89,17 @@ export const createYjsSession = ({
     codec
   })
   const localOrigin = createCollabLocalOrigin()
+  const localHistoryController = createLocalHistoryController({
+    engine,
+    canApply: () => bootstrapped && !destroyed
+  })
 
   let destroyed = false
   let bootstrapped = false
   let waitingForProviderSync = false
   let suppressLocalPublish = false
   let rotatingCheckpoint = false
-  let lastCommit: Commit | null = null
+  let lastWriteRecord: WriteRecord | null = null
   let cursor: SyncCursor = {
     checkpointId: null,
     changeIds: []
@@ -90,6 +108,7 @@ export const createYjsSession = ({
 
   const duplicateChangeIds = new Set<string>()
   const rejectedChangeIds = new Set<string>()
+  const localChangeIds = new Set<string>()
 
   const publishDiagnostics = () => {
     diagnostics.set({
@@ -140,14 +159,13 @@ export const createYjsSession = ({
     status.set('error')
   }
 
-  const clearLocalHistory = () => {
-    engine.history.clear()
-  }
-
   const replayChanges = (
     changes: readonly SharedChange[]
   ) => {
     changes.forEach((change) => {
+      if (!localChangeIds.has(change.id)) {
+        localHistoryController.observeRemoteChange(change)
+      }
       try {
         const result = engine.apply(change.ops, {
           origin: 'remote'
@@ -179,7 +197,6 @@ export const createYjsSession = ({
 
     if (plan.kind === 'append') {
       if (plan.changes.length > 0) {
-        clearLocalHistory()
         suppressLocalPublish = true
         try {
           replayChanges(plan.changes)
@@ -189,7 +206,6 @@ export const createYjsSession = ({
       }
       syncCursor(snapshot)
     } else {
-      clearLocalHistory()
       suppressLocalPublish = true
       try {
         const baseDocument = plan.checkpoint?.doc ?? createEmptyReplayDocument(engine)
@@ -266,44 +282,53 @@ export const createYjsSession = ({
     }
   }
 
-  const publishCommit = (
-    commit: Commit
+  const publishWriteRecord = (
+    writeRecord: WriteRecord
   ) => {
-    if (commit.origin === 'remote' || suppressLocalPublish) {
+    if (writeRecord.origin === 'remote' || suppressLocalPublish) {
       return
     }
 
-    if (isReplaceCommit(commit)) {
-      publishCheckpoint(commit.doc)
+    if (isReplaceWriteRecord(writeRecord)) {
+      publishCheckpoint(engine.document.get())
+      localHistoryController.clear()
       return
     }
 
-    if (commit.ops.length === 0) {
+    if (writeRecord.forward.length === 0) {
       return
+    }
+
+    const change = createSharedChange(actorId, writeRecord)
+    if (!change) {
+      throw new Error('Local shared change must contain only live operations.')
     }
 
     doc.transact(() => {
-      store.appendChange(createSharedChange(actorId, commit))
+      store.appendChange(change)
     }, localOrigin)
 
+    localChangeIds.add(change.id)
     syncCursor(readSnapshot())
+    localHistoryController.capturePublishedChange(change, writeRecord)
     maybeRotateCheckpoint()
   }
 
-  const commitUnsubscribe = engine.commit.subscribe(() => {
-    const nextCommit = engine.commit.get()
-    if (!nextCommit || nextCommit === lastCommit) {
+  const writeRecordUnsubscribe = engine.writeRecord.subscribe(() => {
+    const nextWriteRecord = engine.writeRecord.get()
+    if (!nextWriteRecord || nextWriteRecord === lastWriteRecord) {
       return
     }
-    lastCommit = nextCommit
+    lastWriteRecord = nextWriteRecord
 
     if (!bootstrapped || destroyed) {
       return
     }
 
     try {
-      publishCommit(nextCommit)
+      publishWriteRecord(nextWriteRecord)
     } catch {
+      localHistoryController.failPending()
       reportError()
     }
   })
@@ -450,7 +475,7 @@ export const createYjsSession = ({
     unsubscribeProviderSync = undefined
     provider?.destroy?.()
     doc.off('afterTransaction', handleAfterTransaction)
-    commitUnsubscribe()
+    writeRecordUnsubscribe()
     waitingForProviderSync = false
     status.set('disconnected')
   }
@@ -459,6 +484,7 @@ export const createYjsSession = ({
     awareness: provider?.awareness,
     status,
     diagnostics,
+    localHistory: localHistoryController.localHistory,
     connect,
     disconnect,
     resync,

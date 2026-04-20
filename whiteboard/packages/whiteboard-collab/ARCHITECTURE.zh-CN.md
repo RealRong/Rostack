@@ -16,8 +16,8 @@
 
 它只负责：
 
-- 监听 `engine.commit`
-- 把本地 `commit.ops` 发布成 shared change
+- 监听 `engine.writeRecord`
+- 把本地 `writeRecord.forward` 与 `writeRecord.history.footprint` 发布成 shared change
 - 从 Yjs 读取 checkpoint 与 shared change
 - 以 canonical order 驱动 `engine.apply(...)` / `engine.execute(document.replace, ...)`
 - 管理 bootstrap、resync、checkpoint rotation、diagnostics
@@ -59,7 +59,7 @@
 - semantic validation
 - reducer apply
 - inverse / history
-- 生成 `Commit`
+- 生成 `Commit` / `WriteRecord`
 
 `collab` 永远不复写这部分逻辑。
 
@@ -67,7 +67,7 @@
 
 `collab` 负责：
 
-- 本地 `Commit` 发布
+- 本地 `WriteRecord` 发布
 - 远端 shared log 消费
 - canonical replay
 - checkpoint 读取与轮转
@@ -98,6 +98,7 @@ type SharedChange = {
   id: string
   actorId: string
   ops: readonly SharedOperation[]
+  footprint: HistoryFootprint
 }
 
 type SharedCheckpoint = {
@@ -133,7 +134,7 @@ type SharedCheckpoint = {
 
 当前设计明确反过来：
 
-- 本地 commit 的共享载体是 `commit.ops`
+- 本地语义写入的共享载体是 `writeRecord.forward`
 - 远端消费也只回放 `ops`
 - 本地 document 只是 replay 结果，不是共享协议本身
 
@@ -189,18 +190,20 @@ type SharedCheckpoint = {
 
 本地 publish 流程：
 
-1. 监听 `engine.commit`
+1. 监听 `engine.writeRecord`
 2. 忽略 `origin === 'remote'`
-3. 如果 commit 含 `document.replace`，写 checkpoint 并清空 tail log
-4. 否则把 `commit.ops` 过滤成 `SharedOperation[]`
-5. append 成一条 `SharedChange`
+3. 如果 `writeRecord.forward` 含 `document.replace`，写 checkpoint 并清空 tail log
+4. 否则把 `writeRecord.forward` 过滤成 `SharedOperation[]`
+5. 用 `writeRecord.history.footprint` 组装 `SharedChange`
+6. append 到 Yjs `changes`
 
 约束：
 
-- 不回写 `commit.doc`
+- 不回写 `engine.document`
 - 不做 snapshot materialize
 - 不同步 `inverse`
 - 不同步 `changes` / `invalidation`
+- `document.replace` 不进入 `session.localHistory`
 
 ### 7.3 Remote Consume
 
@@ -282,6 +285,7 @@ type SharedCheckpoint = {
 - 协作态单独使用 `session.localHistory`
 - remote change 只会 invalidated 冲突的本地历史项
 - undo / redo 始终是新的普通 `SharedChange`
+- remote replay 不再清空 `engine.history`
 
 也就是说：
 
@@ -303,7 +307,17 @@ type SharedCheckpoint = {
 - publish
 - consume
 - checkpoint rotation
+- `localHistory` capture / invalidation 协调
 - diagnostics
+
+### `src/localHistory.ts`
+
+负责：
+
+- capture 本地已发布 `SharedChange`
+- 基于 `SharedChange.footprint` 做 remote invalidation
+- 把 undo / redo 转成新的本地 `engine.apply(...)`
+- 保持 `session.localHistory` 为协作态唯一 history 视图
 
 ### `src/replay.ts`
 
@@ -371,9 +385,9 @@ type SharedCheckpoint = {
 
 ### 11.2 为什么 shared change 以 batch 为原子单位
 
-因为 `engine.commit` 本身就是一次语义写入结果。
+因为 `writeRecord.forward` 本身就是一次完整的语义写入结果。
 
-如果把一条 commit 再拆成多个共享原子，协作层就需要额外定义：
+如果把一次本地语义写入再拆成多个共享原子，协作层就需要额外定义：
 
 - 中间态是否可见
 - 半成功如何处理
@@ -383,7 +397,7 @@ type SharedCheckpoint = {
 
 因此，当前与长期都固定为：
 
-- 一条 `SharedChange` 对应一次语义 commit
+- 一条 `SharedChange` 对应一次本地 `writeRecord`
 - replay 失败按整条 change reject
 
 ### 11.3 为什么 reject 只记录，不自动补偿

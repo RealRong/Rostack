@@ -41,6 +41,7 @@ import type {
   ExecuteResult
 } from '@whiteboard/engine/types/command'
 import type { Commit } from '@whiteboard/engine/types/commit'
+import type { WriteRecord } from '@whiteboard/engine/types/writeRecord'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 export type { BoardConfig } from '@whiteboard/core/config'
@@ -172,6 +173,7 @@ export type Engine = {
   read: EngineRead
   history: EngineHistory
   commit: ReadStore<Commit | null>
+  writeRecord: ReadStore<WriteRecord | null>
   execute: <C extends Command>(
     command: C,
     options?: ExecuteOptions

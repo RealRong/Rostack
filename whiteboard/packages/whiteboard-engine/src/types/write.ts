@@ -5,6 +5,7 @@ import type {
   Operation,
   Origin
 } from '@whiteboard/core/types'
+import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
   HistoryConfig,
   HistoryState
@@ -22,6 +23,9 @@ export type Draft<T = void> =
       inverse: readonly Operation[]
       changes: ChangeSet
       invalidation: Invalidation
+      history: {
+        footprint: HistoryFootprint
+      }
       value: T
     }
 

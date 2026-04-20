@@ -1,4 +1,5 @@
 import type { Document, Operation } from '@whiteboard/core/types'
+import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 
 export type SharedOperation = Exclude<Operation, { type: 'document.replace' }>
 
@@ -10,6 +11,7 @@ export type SharedChange = {
   id: string
   actorId: string
   ops: readonly SharedOperation[]
+  footprint: HistoryFootprint
 }
 
 export type SharedCheckpoint = {

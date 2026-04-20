@@ -1,4 +1,6 @@
 import { assertDocument } from '@whiteboard/core/document'
+import { META, sync } from '@whiteboard/core/spec/operation'
+import { assertHistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
   SharedChange,
   SharedCheckpoint,
@@ -36,7 +38,7 @@ const assertSharedOperations = (
     if (!isRecord(entry) || typeof entry.type !== 'string') {
       throw new Error('Shared change operation is invalid.')
     }
-    if (entry.type === 'document.replace') {
+    if (!(entry.type in META) || !sync.isLive(entry.type as SharedOperation['type'])) {
       throw new Error('document.replace cannot appear in shared change log.')
     }
   })
@@ -60,7 +62,8 @@ const assertSharedChange = (
   return {
     id: value.id,
     actorId: value.actorId,
-    ops: assertSharedOperations(value.ops)
+    ops: assertSharedOperations(value.ops),
+    footprint: assertHistoryFootprint(value.footprint)
   }
 }
 

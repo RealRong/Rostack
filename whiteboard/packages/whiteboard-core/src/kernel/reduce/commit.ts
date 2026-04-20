@@ -1,4 +1,5 @@
 import { err, ok } from '@whiteboard/core/result'
+import { materializeHistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
   ChangeIds,
   ChangeSet,
@@ -167,6 +168,9 @@ export const createCommitApi = (
       changes: tx._runtime.changes,
       invalidation,
       inverse: tx._runtime.inverse,
+      history: {
+        footprint: materializeHistoryFootprint(tx._runtime.history.footprint)
+      },
       impact: deriveImpact(invalidation)
     })
   }
@@ -192,6 +196,9 @@ export const createDocumentReplaceResult = (
       projections: new Set(RESET_PROJECTIONS)
     }),
     inverse: tx._runtime.inverse,
+    history: {
+      footprint: []
+    },
     impact: RESET_READ_IMPACT
   })
 }

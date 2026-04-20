@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 
 import { createFilterOptionSetValue } from '@dataview/core/filter'
-import { compileViewQuery } from '@dataview/engine/active/query'
+import { compileViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
 import { createActiveImpact } from '@dataview/engine/active/shared/impact'
@@ -102,12 +102,15 @@ test('engine.active.query stage reuses previous state when persisted filter chan
   const document = createDocument(nextView)
   const context = createStaticDocumentReadContext(document)
   const index = createIndexState(document).state
+  const previousPlan = compileViewPlan(context.reader, previousView).query
+  const nextPlan = compileViewPlan(context.reader, nextView).query
   const previousState = runQueryStage({
     reader: context.reader,
     activeViewId: previousView.id,
     previousViewId: previousView.id,
     impact: createActiveImpact({}),
     view: previousView,
+    plan: previousPlan,
     index
   }).state
 
@@ -125,12 +128,13 @@ test('engine.active.query stage reuses previous state when persisted filter chan
       }
     }),
     view: nextView,
+    plan: nextPlan,
     index,
     previous: previousState,
     previousPublished: previousState.records
   })
 
-  assert.equal(compileViewQuery(context.reader, previousView).executionKey, compileViewQuery(context.reader, nextView).executionKey)
+  assert.equal(previousPlan.executionKey, nextPlan.executionKey)
   assert.equal(result.action, 'reuse')
   assert.equal(result.state, previousState)
   assert.equal(result.records, previousState.records)

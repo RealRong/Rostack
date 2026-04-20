@@ -1,4 +1,8 @@
 import type {
+  CalculationCollection
+} from '@dataview/core/calculation'
+import type {
+  Field,
   FieldId,
   View,
   ViewId
@@ -14,7 +18,6 @@ import {
 import {
   sameOrder
 } from '@shared/core'
-import { viewCalcFields } from '@dataview/core/view'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
@@ -31,12 +34,6 @@ import {
 import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'
-import {
-  readSectionGroupIndex
-} from '@dataview/engine/active/index/group/demand'
-import {
-  createSectionMembershipResolver
-} from '@dataview/engine/active/shared/sections'
 import { publishSummaries } from '@dataview/engine/active/snapshot/summary/publish'
 import {
   syncSummaryState
@@ -54,13 +51,13 @@ const resolveSummaryAction = (input: {
   previousViewId?: ViewId
   impact: ActiveImpact
   view: View
+  calcFields: ReadonlySet<FieldId>
   previous?: SummaryState
   previousSections?: SectionState
   sections: SectionState
   sectionsAction: DeriveAction
 }): DeriveAction => {
   const commit = input.impact.commit
-  const calcFields = viewCalcFields(input.view)
 
   if (
     !input.previous
@@ -71,7 +68,7 @@ const resolveSummaryAction = (input: {
     return 'rebuild'
   }
 
-  if (!calcFields.size) {
+  if (!input.calcFields.size) {
     return sameOrder(input.previousSections.order, input.sections.order)
       ? 'reuse'
       : 'sync'
@@ -88,7 +85,7 @@ const resolveSummaryAction = (input: {
     return 'rebuild'
   }
 
-  for (const fieldId of calcFields) {
+  for (const fieldId of input.calcFields) {
     if (hasFieldSchemaAspect(commit, fieldId)) {
       return 'rebuild'
     }
@@ -104,7 +101,7 @@ const resolveSummaryAction = (input: {
     return 'sync'
   }
 
-  if (hasCalculationChanges(input.impact, calcFields)) {
+  if (hasCalculationChanges(input.impact, input.calcFields)) {
     return 'sync'
   }
 
@@ -117,17 +114,18 @@ export const runSummaryStage = (input: {
   impact: ActiveImpact
   view: View
   query: QueryState
+  calcFields: readonly FieldId[]
   previous?: SummaryState
   previousSections?: SectionState
-  previousPublished?: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
+  previousPublished?: ReadonlyMap<SectionKey, CalculationCollection>
   sections: SectionState
   sectionsAction: DeriveAction
   index: IndexState
-  fieldsById: ReadonlyMap<FieldId, import('@dataview/core/contracts').Field>
+  fieldsById: ReadonlyMap<FieldId, Field>
 }): {
   action: DeriveAction
   state: SummaryState
-  summaries: ReadonlyMap<SectionKey, import('@dataview/core/calculation').CalculationCollection>
+  summaries: ReadonlyMap<SectionKey, CalculationCollection>
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
@@ -137,6 +135,7 @@ export const runSummaryStage = (input: {
     previousViewId: input.previousViewId,
     impact: input.impact,
     view: input.view,
+    calcFields: new Set(input.calcFields),
     previous: input.previous,
     previousSections: input.previousSections,
     sections: input.sections,
@@ -151,13 +150,6 @@ export const runSummaryStage = (input: {
       : syncSummaryState({
           previous: input.previous,
           sections: input.sections,
-          resolver: createSectionMembershipResolver({
-            query: input.query,
-            view: input.view,
-            sectionGroup: input.view.group
-              ? readSectionGroupIndex(input.index.group, input.view.group)
-              : undefined
-          }),
           view: input.view,
           index: input.index,
           impact: input.impact,

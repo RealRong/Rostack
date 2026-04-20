@@ -74,7 +74,7 @@ const createTransformContext = ({
   }
   updates: {
     id: string
-    update: {
+    input: {
       fields?: {
         position?: {
           x: number
@@ -159,7 +159,7 @@ describe('createTransformSession', () => {
     const node = createTextNode()
     const updates: {
       id: string
-      update: {
+      input: {
         fields?: {
           position?: {
             x: number
@@ -239,7 +239,7 @@ describe('createTransformSession', () => {
     expect(updates).toHaveLength(1)
     expect(updates[0]).toMatchObject({
       id: 'text-1',
-      update: {
+      input: {
         fields: {
           size: {
             width: 180,
@@ -272,7 +272,7 @@ describe('createTransformSession', () => {
     })
     const updates: {
       id: string
-      update: {
+      input: {
         fields?: {
           position?: {
             x: number
@@ -340,7 +340,7 @@ describe('createTransformSession', () => {
 
     expect(updates).toHaveLength(1)
     expect(updates[0]?.id).toBe('text-1')
-    expect(updates[0]?.update.records).toMatchObject([
+    expect(updates[0]?.input.records).toMatchObject([
       {
         scope: 'style',
         op: 'set',
@@ -348,11 +348,11 @@ describe('createTransformSession', () => {
         value: 25
       }
     ])
-    expect(updates[0]?.update.fields?.size?.width).not.toBe(projectedRect.width)
-    expect(updates[0]?.update.fields?.size?.height).not.toBe(projectedRect.height)
+    expect(updates[0]?.input.fields?.size?.width).not.toBe(projectedRect.width)
+    expect(updates[0]?.input.fields?.size?.height).not.toBe(projectedRect.height)
     expect(
-      (updates[0]?.update.fields?.size?.width ?? 0)
-      / (updates[0]?.update.fields?.size?.height ?? 1)
+      (updates[0]?.input.fields?.size?.width ?? 0)
+      / (updates[0]?.input.fields?.size?.height ?? 1)
     ).toBeCloseTo(100 / 24)
   })
 })

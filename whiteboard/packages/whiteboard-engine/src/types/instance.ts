@@ -177,9 +177,9 @@ export type Engine = {
     options?: ExecuteOptions
   ) => ExecuteResult<C>
   apply: (
-    batch: { ops: readonly Operation[]; output?: unknown },
+    ops: readonly Operation[],
     options?: BatchApplyOptions
-  ) => CommandResult<unknown>
+  ) => CommandResult
   configure: (config: EngineRuntimeOptions) => void
   dispose: () => void
 }

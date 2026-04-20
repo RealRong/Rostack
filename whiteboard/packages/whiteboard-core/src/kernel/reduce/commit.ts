@@ -34,6 +34,12 @@ export const RESET_READ_IMPACT: KernelReadImpact = {
   }
 }
 
+const RESET_PROJECTIONS = new Set<string>([
+  'node',
+  'edge',
+  'mindmap'
+])
+
 export const createChangeIds = <Id extends string>(): ChangeIds<Id> => ({
   add: new Set<Id>(),
   update: new Set<Id>(),
@@ -182,7 +188,8 @@ export const createDocumentReplaceResult = (
       ...createInvalidation(),
       document: true,
       background: true,
-      canvasOrder: true
+      canvasOrder: true,
+      projections: new Set(RESET_PROJECTIONS)
     }),
     inverse: tx._runtime.inverse,
     impact: RESET_READ_IMPACT

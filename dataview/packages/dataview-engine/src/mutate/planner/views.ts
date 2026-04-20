@@ -9,6 +9,7 @@ import type {
   ViewDisplay,
   ViewGroup
 } from '@dataview/core/contracts'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { GalleryOptions } from '@dataview/core/contracts/gallery'
 import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS,
@@ -80,7 +81,7 @@ const sameRecordOrder = sameOrder<string>
 
 const toViewPut = (
   view: View
-): import('@dataview/core/contracts/operations').DocumentOperation => ({
+): DocumentOperation => ({
   type: 'document.view.put',
   view
 })

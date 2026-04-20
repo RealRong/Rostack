@@ -1,17 +1,15 @@
 import type {
   ChangeSet,
-  Document
+  Document,
+  Origin
 } from '@whiteboard/core/types'
-import type { Invalidation, Operation } from '@whiteboard/core/types'
-import type { KernelReadImpact } from '@whiteboard/core/kernel'
+import type { Operation } from '@whiteboard/core/types'
 
 export type Commit = {
   rev: number
   at: number
+  origin: Origin
   doc: Document
   ops: readonly Operation[]
-  inverse: readonly Operation[]
   changes: ChangeSet
-  invalidation: Invalidation
-  impact: KernelReadImpact
 }

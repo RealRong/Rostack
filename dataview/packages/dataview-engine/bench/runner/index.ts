@@ -113,7 +113,7 @@ const summarizeRuns = (runs, scenario, size) => {
     indexActions: {
       records: last.trace.index.records.action,
       search: last.trace.index.search.action,
-      group: last.trace.index.group.action,
+      bucket: last.trace.index.bucket.action,
       sort: last.trace.index.sort.action,
       summaries: last.trace.index.summaries.action
     },

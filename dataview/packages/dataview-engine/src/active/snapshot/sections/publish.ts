@@ -550,7 +550,7 @@ const publishGroupedSections = (input: {
     items?: ItemList
     sections?: SectionList
   }
-  groupMembership: ReadonlyMap<SectionKey, readonly RecordId[]>
+  sectionMembership: ReadonlyMap<SectionKey, readonly RecordId[]>
 }): {
   projection: ItemProjectionCache
   items: ItemList
@@ -573,7 +573,7 @@ const publishGroupedSections = (input: {
 
     const projection = syncGroupedSectionProjection({
       sectionKey,
-      recordIds: input.groupMembership.get(sectionKey) ?? EMPTY_RECORD_IDS,
+      recordIds: input.sectionMembership.get(sectionKey) ?? EMPTY_RECORD_IDS,
       previous: input.previousProjection.grouped.get(sectionKey),
       byId,
       nextId
@@ -644,7 +644,7 @@ export const publishSections = (input: {
     sections?: SectionList
   }
   allRecordIds: readonly RecordId[]
-  groupMembership?: ReadonlyMap<SectionKey, readonly RecordId[]>
+  sectionMembership?: ReadonlyMap<SectionKey, readonly RecordId[]>
 }): {
   projection: ItemProjectionCache
   items: ItemList
@@ -662,5 +662,5 @@ export const publishSections = (input: {
       previousSections: input.previousSections,
       previousProjection: input.previousProjection,
       previous: input.previous,
-      groupMembership: input.groupMembership ?? new Map()
+      sectionMembership: input.sectionMembership ?? new Map()
     })

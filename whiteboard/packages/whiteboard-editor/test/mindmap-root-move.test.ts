@@ -84,7 +84,7 @@ describe('mindmap root move', () => {
     }
 
     const { mindmapId, rootId } = created.data
-    const beforeTree = editor.read.document.get().nodes[mindmapId]?.position
+    const beforeTree = editor.read.mindmap.render.get(mindmapId)?.bbox
     const beforeRoot = editor.read.document.get().nodes[rootId]?.position
 
     expect(beforeTree).toBeDefined()
@@ -93,20 +93,19 @@ describe('mindmap root move', () => {
     editor.actions.mindmap.moveRoot({
       nodeId: mindmapId,
       position: {
-        x: beforeTree!.x + 120,
-        y: beforeTree!.y + 80
+        x: beforeRoot!.x + 120,
+        y: beforeRoot!.y + 80
       },
-      origin: beforeTree,
+      origin: beforeRoot,
       threshold: 0
     })
 
-    const afterTree = editor.read.document.get().nodes[mindmapId]?.position
+    const afterTree = editor.read.mindmap.render.get(mindmapId)?.bbox
     const afterRoot = editor.read.document.get().nodes[rootId]?.position
 
-    expect(afterTree).toEqual({
-      x: beforeTree!.x + 120,
-      y: beforeTree!.y + 80
-    })
+    expect(afterTree).toBeDefined()
+    expect(afterTree!.x - beforeTree!.x).toBe(120)
+    expect(afterTree!.y - beforeTree!.y).toBe(80)
     expect(afterRoot).toEqual({
       x: beforeRoot!.x + 120,
       y: beforeRoot!.y + 80
@@ -115,12 +114,17 @@ describe('mindmap root move', () => {
 
   it('keeps root move preview on the interaction draft until commit', () => {
     const moveRoot = vi.fn()
+    const moveTopic = vi.fn()
 
     const session = createMindmapDragSession({
       write: {
         mindmap: {
-          moveRoot,
-          moveByDrop: vi.fn()
+          root: {
+            move: moveRoot
+          },
+          topic: {
+            move: moveTopic
+          }
         }
       },
       query: {
@@ -152,10 +156,7 @@ describe('mindmap root move', () => {
 
     session.up?.()
 
-    expect(moveRoot).toHaveBeenCalledWith({
-      nodeId: 'mindmap_1',
-      position: { x: 100, y: 0 },
-      origin: { x: 50, y: 0 }
-    })
+    expect(moveRoot).toHaveBeenCalledWith('mindmap_1', { x: 100, y: 0 })
+    expect(moveTopic).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,5 @@
 import { isSizeEqual } from '@whiteboard/core/geometry'
-import { isTextContentEmpty, isNodeUpdateEmpty } from '@whiteboard/core/node'
+import { isTextContentEmpty } from '@whiteboard/core/node'
 import {
   compileNodeDataUpdate,
   compileNodeStyleUpdate,
@@ -9,10 +9,10 @@ import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type {
   NodeLockWrite,
-  NodePatchWrite,
   NodeShapeWrite,
   NodeStyleWrite,
   NodeTextWrite,
+  NodeUpdateWrite,
   NodeWrite
 } from '@whiteboard/editor/write/types'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
@@ -23,31 +23,31 @@ type NodeContext = {
     committed: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
     live: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
   }
-  write: NodePatchWrite & {
-    deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWrite['update']> | undefined
+  write: NodeUpdateWrite & {
+    deleteCascade: (ids: readonly NodeId[]) => ReturnType<NodeUpdateWrite['update']> | undefined
   }
 }
 
-const createNodePatchWrite = (
+const createNodeUpdateWrite = (
   engine: Engine,
   {
     layout
   }: {
     layout: EditorLayout
   }
-): NodePatchWrite => ({
-  update: (id, update) => engine.execute({
-    type: 'node.patch',
+): NodeUpdateWrite => ({
+  update: (id, input) => engine.execute({
+    type: 'node.update',
     updates: [{
       id,
-      update: layout.patchNodeUpdate(id, update)
+      input: layout.patchNodeUpdate(id, input)
     }]
   }),
   updateMany: (updates, options) => engine.execute({
-    type: 'node.patch',
+    type: 'node.update',
     updates: updates.map((entry) => ({
       id: entry.id,
-      update: layout.patchNodeUpdate(entry.id, entry.update, {
+      input: layout.patchNodeUpdate(entry.id, entry.input, {
         origin: options?.origin
       })
     })),
@@ -57,20 +57,20 @@ const createNodePatchWrite = (
 
 const createNodeContext = ({
   read,
-  patch,
+  update,
   deleteCascade
 }: {
   read: EditorQuery
-  patch: NodePatchWrite
-  deleteCascade: (ids: NodeId[]) => ReturnType<NodePatchWrite['update']> | undefined
+  update: NodeUpdateWrite
+  deleteCascade: (ids: readonly NodeId[]) => ReturnType<NodeUpdateWrite['update']> | undefined
 }): NodeContext => ({
   read: {
     committed: (id) => read.node.committed.get(id),
     live: (id) => read.node.item.get(id)
   },
   write: {
-    update: patch.update,
-    updateMany: patch.updateMany,
+    update: update.update,
+    updateMany: update.updateMany,
     deleteCascade
   }
 })
@@ -81,7 +81,7 @@ const toNodeStyleBatchUpdates = (
   value: unknown
 ) => nodeIds.map((id) => ({
   id,
-  update: compileNodeStyleUpdate(path, value)
+  input: compileNodeStyleUpdate(path, value)
 }))
 
 export const createNodeTextWrite = (
@@ -128,7 +128,7 @@ export const createNodeTextWrite = (
       }
     }
 
-    const update = mergeNodeUpdates(
+    const input = mergeNodeUpdates(
       value === currentValue
         ? undefined
         : compileNodeDataUpdate(field, value),
@@ -147,7 +147,7 @@ export const createNodeTextWrite = (
         : undefined
     )
 
-    return ctx.write.update(nodeId, update)
+    return ctx.write.update(nodeId, input)
   },
   color: (nodeIds, color) => ctx.write.updateMany(
     toNodeStyleBatchUpdates(nodeIds, 'color', color)
@@ -158,7 +158,7 @@ export const createNodeTextWrite = (
   }) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
-      update: compileNodeStyleUpdate('fontSize', value)
+      input: compileNodeStyleUpdate('fontSize', value)
     }))
   ),
   weight: (nodeIds, weight) => ctx.write.updateMany(
@@ -178,7 +178,7 @@ const createNodeLockWrite = (
   const set: NodeLockWrite['set'] = (nodeIds, locked) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
-      update: {
+      input: {
         fields: {
           locked
         }
@@ -207,7 +207,7 @@ const createNodeShapeWrite = (
 
       return [{
         id,
-        update: compileNodeDataUpdate('kind', kind)
+        input: compileNodeDataUpdate('kind', kind)
       }]
     })
   )
@@ -251,12 +251,12 @@ export const createNodeWrite = ({
   read: EditorQuery
   layout: EditorLayout
 }): NodeWrite => {
-  const patch = createNodePatchWrite(engine, {
+  const update = createNodeUpdateWrite(engine, {
     layout
   })
   const ctx = createNodeContext({
     read,
-    patch,
+    update,
     deleteCascade: (ids) => engine.execute({
       type: 'node.deleteCascade',
       ids
@@ -274,25 +274,8 @@ export const createNodeWrite = ({
         }
       })
     }),
-    patch: (ids, update, options) => {
-      if (isNodeUpdateEmpty(update)) {
-        return undefined
-      }
-
-      const updates = ids.flatMap((id) => ctx.read.committed(id)
-        ? [{
-            id,
-            update
-          }]
-        : [])
-      if (!updates.length) {
-        return undefined
-      }
-
-      return ctx.write.updateMany(updates, {
-        origin: options?.origin
-      })
-    },
+    update: ctx.write.update,
+    updateMany: ctx.write.updateMany,
     move: (input) => engine.execute({
       type: 'node.move',
       ids: input.ids,
@@ -320,8 +303,6 @@ export const createNodeWrite = ({
       type: 'node.duplicate',
       ids
     }),
-    update: ctx.write.update,
-    updateMany: ctx.write.updateMany,
     lock: createNodeLockWrite(ctx),
     shape: createNodeShapeWrite(ctx),
     style: createNodeStyleWrite(ctx),

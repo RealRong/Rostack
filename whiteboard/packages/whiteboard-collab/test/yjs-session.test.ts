@@ -87,10 +87,10 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
   )
 
   const setResult = engineA.execute({
-    type: 'node.patch',
+    type: 'node.update',
     updates: [{
       id: nodeId,
-      update: {
+      input: {
         records: [
           {
             scope: 'data',
@@ -105,10 +105,10 @@ test('shared Y.Doc sessions replay remote operations and keep remote history out
   assert.equal(setResult.ok, true)
 
   const spliceResult = engineA.execute({
-    type: 'node.patch',
+    type: 'node.update',
     updates: [{
       id: nodeId,
-      update: {
+      input: {
         records: [
           {
             scope: 'data',

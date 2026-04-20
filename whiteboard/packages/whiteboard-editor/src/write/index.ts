@@ -4,8 +4,14 @@ import {
   createDocumentWrite
 } from '@whiteboard/editor/write/document'
 import {
+  createCanvasWrite
+} from '@whiteboard/editor/write/canvas'
+import {
   createHistoryWrite
 } from '@whiteboard/editor/write/history'
+import {
+  createGroupWrite
+} from '@whiteboard/editor/write/group'
 import {
   createEdgeWrite
 } from '@whiteboard/editor/write/edge'
@@ -31,11 +37,13 @@ export const createEditorWrite = ({
 }): EditorWrite => {
   const history = createHistoryWrite(engine)
   const document = createDocumentWrite(engine)
+  const canvas = createCanvasWrite(engine)
   const node = createNodeWrite({
     engine,
     read: query,
     layout
   })
+  const group = createGroupWrite(engine)
   const edge = createEdgeWrite({
     engine,
     read: query,
@@ -49,7 +57,9 @@ export const createEditorWrite = ({
 
   return {
     document,
+    canvas,
     node,
+    group,
     edge,
     mindmap,
     history

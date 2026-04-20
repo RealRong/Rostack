@@ -3,18 +3,22 @@ import type {
   View,
   ViewGroup
 } from '@dataview/core/contracts'
+import type { Bucket } from '@dataview/core/field'
 import {
   sameJsonValue,
   sameOrder
 } from '@shared/core'
 import {
-  readSectionGroupIndex
-} from '@dataview/engine/active/index/group/demand'
+  buildBucketViewState,
+  createBucketSpec,
+  readBucketIndex
+} from '@dataview/engine/active/index/bucket'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import {
-  createSectionMembershipResolver,
+  buildSectionKeysByRecord,
+  EMPTY_SECTION_KEYS,
   projectRecordIdsBySection,
   ROOT_SECTION_KEY,
   ROOT_SECTION_KEYS,
@@ -25,6 +29,7 @@ import type {
 } from '@dataview/engine/contracts/public'
 import type {
   QueryState,
+  SectionNodeState,
   SectionState
 } from '@dataview/engine/contracts/internal'
 import {
@@ -38,8 +43,8 @@ const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
 
 const sameBucket = (
-  left: import('@dataview/engine/contracts/internal').SectionNodeState['bucket'],
-  right: import('@dataview/engine/contracts/internal').SectionNodeState['bucket']
+  left: SectionNodeState['bucket'],
+  right: SectionNodeState['bucket']
 ) => {
   if (!left || !right) {
     return left === right
@@ -54,8 +59,8 @@ const sameBucket = (
 }
 
 export const sameSectionNode = (
-  left: import('@dataview/engine/contracts/internal').SectionNodeState,
-  right: import('@dataview/engine/contracts/internal').SectionNodeState
+  left: SectionNodeState,
+  right: SectionNodeState
 ) => left.key === right.key
   && sameJsonValue(left.label, right.label)
   && left.color === right.color
@@ -86,15 +91,21 @@ const collapsedOf = (
   sectionKey: SectionKey
 ) => group?.buckets?.[sectionKey]?.collapsed === true
 
+const readSectionBucketState = (input: {
+  group: ViewGroup | undefined
+  index: IndexState
+}) => input.group
+  ? readBucketIndex(input.index.bucket, createBucketSpec(input.group))
+  : undefined
+
 export const buildSectionNode = (input: {
   key: SectionKey
   recordIds: readonly RecordId[]
   group: ViewGroup | undefined
   index: IndexState
-}): import('@dataview/engine/contracts/internal').SectionNodeState => {
-  const bucket = input.group
-    ? readSectionGroupIndex(input.index.group, input.group)?.buckets.get(input.key)
-    : undefined
+  buckets?: ReadonlyMap<SectionKey, Bucket>
+}): SectionNodeState => {
+  const bucket = input.buckets?.get(input.key)
 
   return {
     key: input.key,
@@ -118,22 +129,32 @@ export const buildSectionNode = (input: {
   }
 }
 
-export const resolveSectionKeys = (input: {
-  recordId: RecordId
-  query: QueryState
-  view: View
-  index: IndexState
-}): readonly SectionKey[] => {
-  if (!readQueryVisibleSet(input.query).has(input.recordId)) {
-    return []
+const buildRootSectionState = (
+  query: QueryState,
+  previous?: SectionState
+): SectionState => {
+  const root = {
+    key: ROOT_SECTION_KEY,
+    label: ROOT_SECTION_LABEL,
+    recordIds: query.records.visible,
+    visible: true,
+    collapsed: false
   }
+  const previousRoot = previous?.byKey.get(ROOT_SECTION_KEY)
+  const keysByRecord = new Map<RecordId, readonly SectionKey[]>(
+    query.records.visible.map(recordId => [recordId, ROOT_SECTION_KEYS] as const)
+  )
 
-  const group = input.view.group
-  if (!group) {
-    return ROOT_SECTION_KEYS
+  return {
+    order: ROOT_SECTION_ORDER,
+    byKey: new Map([
+      [ROOT_SECTION_KEY, previousRoot && sameSectionNode(previousRoot, root) ? previousRoot : root] as const
+    ]),
+    keysByRecord: previous && previous.keysByRecord.size === keysByRecord.size
+      && query.records.visible === previous.byKey.get(ROOT_SECTION_KEY)?.recordIds
+      ? previous.keysByRecord
+      : keysByRecord
   }
-
-  return readSectionGroupIndex(input.index.group, group)?.recordSections.get(input.recordId) ?? []
 }
 
 export const buildSectionState = (input: {
@@ -143,55 +164,56 @@ export const buildSectionState = (input: {
   previous?: SectionState
 }): SectionState => {
   if (!input.view.group) {
-    const root = {
-      key: ROOT_SECTION_KEY,
-      label: ROOT_SECTION_LABEL,
-      recordIds: input.query.records.visible,
-      visible: true,
-      collapsed: false
-    }
-    const previousRoot = input.previous?.byKey.get(ROOT_SECTION_KEY)
-
-    return {
-      order: ROOT_SECTION_ORDER,
-      byKey: new Map([
-        [ROOT_SECTION_KEY, previousRoot && sameSectionNode(previousRoot, root) ? previousRoot : root] as const
-      ])
-    }
+    return buildRootSectionState(input.query, input.previous)
   }
 
-  const groupIndex = readSectionGroupIndex(input.index.group, input.view.group)
-  const useGroupProjection = input.query.records.visible === input.index.records.ids
-  const idsByKey = useGroupProjection
-    ? groupIndex?.sectionRecords ?? new Map<SectionKey, readonly RecordId[]>()
+  const bucketIndex = readSectionBucketState({
+    group: input.view.group,
+    index: input.index
+  })
+  const visibleSet = readQueryVisibleSet(input.query)
+  const keysByRecord = buildSectionKeysByRecord({
+    recordIds: input.query.records.visible,
+    keysOf: recordId => visibleSet.has(recordId)
+      ? bucketIndex?.keysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+      : EMPTY_SECTION_KEYS
+  })
+  const recordIdsBySection = input.query.records.visible === input.index.records.ids
+    ? bucketIndex?.recordsByKey ?? new Map<SectionKey, readonly RecordId[]>()
     : projectRecordIdsBySection({
-        recordIds: input.query.records.visible,
-        resolver: createSectionMembershipResolver({
-          query: input.query,
-          view: input.view,
-          sectionGroup: groupIndex
-        })
-      })
-  const order = groupIndex?.order ?? []
+      recordIds: input.query.records.visible,
+      keysByRecord
+    })
+  const sectionField = input.index.records.values.get(input.view.group.field)?.byRecord
+  const presentation = buildBucketViewState({
+    field: bucketIndex?.field,
+    spec: createBucketSpec(input.view.group),
+    sort: input.view.group.bucketSort,
+    values: sectionField,
+    recordsByKey: bucketIndex?.recordsByKey ?? new Map(),
+    previous: undefined
+  })
   const byKey = new Map<SectionKey, ReturnType<typeof buildSectionNode>>()
 
-  order.forEach(key => {
-    const ids = idsByKey.get(key) ?? EMPTY_RECORD_IDS
+  presentation.order.forEach(key => {
+    const ids = recordIdsBySection.get(key) ?? EMPTY_RECORD_IDS
     const nextNode = buildSectionNode({
       key,
       recordIds: ids,
       group: input.view.group,
-      index: input.index
+      index: input.index,
+      buckets: presentation.buckets as ReadonlyMap<SectionKey, Bucket>
     })
     const previousNode = input.previous?.byKey.get(key)
     byKey.set(key, previousNode && sameSectionNode(previousNode, nextNode) ? previousNode : nextNode)
   })
 
   return {
-    order: input.previous && sameOrder(input.previous.order, order)
+    order: input.previous && sameOrder(input.previous.order, presentation.order)
       ? input.previous.order
-      : order,
-    byKey
+      : presentation.order,
+    byKey,
+    keysByRecord
   }
 }
 

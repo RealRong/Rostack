@@ -5,6 +5,7 @@ import type {
   CardLayout,
   CardSize,
   CalculationMetric,
+  CommitSummary,
   CustomField,
   CustomFieldId,
   CustomFieldKind,
@@ -82,7 +83,7 @@ export interface CreateEngineOptions {
 export interface CommitResult {
   issues: readonly ValidationIssue[]
   applied: boolean
-  summary?: import('@dataview/core/contracts').CommitSummary
+  summary?: CommitSummary
 }
 
 export interface CreatedEntities {
@@ -661,13 +662,13 @@ export interface IndexTrace {
     totalMs: number
     recordsMs?: number
     searchMs?: number
-    groupMs?: number
+    bucketMs?: number
     sortMs?: number
     summariesMs?: number
   }
   records: IndexStageTrace
   search: IndexStageTrace
-  group: IndexStageTrace
+  bucket: IndexStageTrace
   sort: IndexStageTrace
   summaries: IndexStageTrace
 }
@@ -765,7 +766,7 @@ export interface PerformanceStats {
     indexMs: RunningStat
     viewMs: RunningStat
   }
-  indexes: Record<'records' | 'search' | 'group' | 'sort' | 'summaries', PerformanceCounter>
+  indexes: Record<'records' | 'search' | 'bucket' | 'sort' | 'summaries', PerformanceCounter>
   stages: Record<ViewStageName, StagePerformanceStats>
 }
 

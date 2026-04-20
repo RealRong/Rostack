@@ -1,5 +1,6 @@
 import { now } from '@dataview/engine/runtime/clock'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
+import type { ViewPlan } from '@dataview/engine/active/plan'
 import type { ViewCache } from '@dataview/engine/contracts/internal'
 import type {
   ViewRuntimeResult
@@ -47,6 +48,7 @@ const createSnapshotTrace = (
 
 export const createViewRuntime = (input: {
   documentContext: DocumentReadContext
+  viewPlan?: ViewPlan
   index: IndexState
   impact: ActiveImpact
   capturePerf: boolean
@@ -54,6 +56,7 @@ export const createViewRuntime = (input: {
   previous: undefined,
   cache: emptyViewCache(),
   documentContext: input.documentContext,
+  viewPlan: input.viewPlan,
   index: input.index,
   impact: input.impact,
   capturePerf: input.capturePerf
@@ -63,12 +66,14 @@ export const deriveViewRuntime = (input: {
   previous?: ViewState
   cache: ViewCache
   documentContext: DocumentReadContext
+  viewPlan?: ViewPlan
   index: IndexState
   impact: ActiveImpact
   capturePerf: boolean
 }): ViewRuntimeResult => {
   const runResult = deriveViewSnapshot({
     documentContext: input.documentContext,
+    viewPlan: input.viewPlan,
     impact: input.impact,
     index: input.index,
     previousCache: input.cache,

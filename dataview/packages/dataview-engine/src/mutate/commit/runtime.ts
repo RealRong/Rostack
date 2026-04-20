@@ -32,8 +32,8 @@ import {
   now
 } from '@dataview/engine/runtime/clock'
 import {
-  resolveViewDemand
-} from '@dataview/engine/active/demand'
+  resolveViewPlan
+} from '@dataview/engine/active/plan'
 import type {
   EngineRuntimeState,
   RuntimeStore
@@ -204,18 +204,20 @@ const commit = <TResult extends CommitResult>(input: {
   }
 
   const documentContext = createStaticDocumentReadContext(draft.doc)
+  const viewPlan = resolveViewPlan(documentContext, documentContext.activeViewId)
   const activeImpact = createActiveImpact(draft.impact)
   const nextIndex = deriveIndex({
     previous: base.currentView.index,
     previousDemand: base.currentView.demand,
     document: draft.doc,
     impact: activeImpact,
-    demand: resolveViewDemand(documentContext, documentContext.activeViewId)
+    demand: viewPlan?.demand
   })
   const nextView = deriveViewRuntime({
     previous: base.currentView.snapshot,
     cache: base.currentView.cache,
     documentContext,
+    viewPlan,
     index: nextIndex.state,
     impact: activeImpact,
     capturePerf: input.capturePerf

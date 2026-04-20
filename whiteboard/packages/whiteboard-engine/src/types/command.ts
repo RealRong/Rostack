@@ -1,20 +1,24 @@
 import type {
-  MindmapBranchPatch,
   CanvasItemRef,
   Document,
   EdgeEnd,
   EdgeId,
   EdgeInput,
-  EdgePatch,
+  EdgeLabelAnchor,
+  EdgeLabelUpdateInput,
+  EdgeRoutePointAnchor,
+  EdgeUpdateInput,
   GroupId,
+  MindmapBranchUpdateInput,
   MindmapCloneSubtreeInput,
   MindmapCreateInput,
   MindmapId,
   MindmapInsertInput,
+  MindmapLayoutSpec,
   MindmapMoveSubtreeInput,
   MindmapNodeId,
   MindmapRemoveSubtreeInput,
-  MindmapTopicPatch,
+  MindmapTopicUpdateInput,
   NodeId,
   NodeInput,
   NodeUpdateInput,
@@ -37,29 +41,25 @@ export type { OrderMode } from '@whiteboard/core/types'
 
 export type NodeBatchUpdate = {
   id: NodeId
-  update: NodeUpdateInput
-}
-
-export type NodeMoveInput = {
-  ids: readonly NodeId[]
-  delta: Point
-}
-
-export type NodeUpdateManyOptions = {
-  origin?: Origin
+  input: NodeUpdateInput
 }
 
 export type EdgeBatchUpdate = {
   id: EdgeId
-  patch: EdgePatch
+  input: EdgeUpdateInput
 }
 
-export type EdgeMoveInput = {
-  ids: readonly EdgeId[]
-  delta: Point
+export type MindmapTopicBatchUpdate = {
+  topicId: NodeId
+  input: MindmapTopicUpdateInput
 }
 
-export type Command =
+export type MindmapBranchBatchUpdate = {
+  topicId: NodeId
+  input: MindmapBranchUpdateInput
+}
+
+export type DocumentCommand =
   | {
       type: 'document.replace'
       document: Document
@@ -70,35 +70,39 @@ export type Command =
       options?: SliceInsertOptions
     }
   | {
+      type: 'document.background.set'
+      background?: Document['background']
+    }
+
+export type CanvasCommand =
+  | {
       type: 'canvas.delete'
-      refs: CanvasItemRef[]
+      refs: readonly CanvasItemRef[]
     }
   | {
       type: 'canvas.duplicate'
-      refs: CanvasItemRef[]
+      refs: readonly CanvasItemRef[]
     }
   | {
-      type: 'document.background'
-      background?: Document['background']
-    }
-  | {
-      type: 'canvas.order'
+      type: 'canvas.order.move'
+      refs: readonly CanvasItemRef[]
       mode: OrderMode
-      refs: CanvasItemRef[]
     }
+
+export type NodeCommand =
   | {
       type: 'node.create'
       input: NodeInput
     }
   | {
+      type: 'node.update'
+      updates: readonly NodeBatchUpdate[]
+      origin?: Origin
+    }
+  | {
       type: 'node.move'
       ids: readonly NodeId[]
       delta: Point
-    }
-  | {
-      type: 'node.patch'
-      updates: readonly NodeBatchUpdate[]
-      origin?: Origin
     }
   | {
       type: 'node.align'
@@ -112,16 +116,18 @@ export type Command =
     }
   | {
       type: 'node.delete'
-      ids: NodeId[]
+      ids: readonly NodeId[]
     }
   | {
       type: 'node.deleteCascade'
-      ids: NodeId[]
+      ids: readonly NodeId[]
     }
   | {
       type: 'node.duplicate'
-      ids: NodeId[]
+      ids: readonly NodeId[]
     }
+
+export type GroupCommand =
   | {
       type: 'group.merge'
       target: {
@@ -130,25 +136,29 @@ export type Command =
       }
     }
   | {
-      type: 'group.order'
+      type: 'group.order.move'
+      ids: readonly GroupId[]
       mode: OrderMode
-      ids: GroupId[]
     }
   | {
       type: 'group.ungroup'
-      id: GroupId
+      ids: readonly GroupId[]
     }
-  | {
-      type: 'group.ungroupMany'
-      ids: GroupId[]
-    }
+
+export type EdgeCommand =
   | {
       type: 'edge.create'
       input: EdgeInput
     }
   | {
+      type: 'edge.update'
+      updates: readonly EdgeBatchUpdate[]
+    }
+  | {
       type: 'edge.move'
-    } & EdgeMoveInput
+      ids: readonly EdgeId[]
+      delta: Point
+    }
   | {
       type: 'edge.reconnect'
       edgeId: EdgeId
@@ -156,40 +166,95 @@ export type Command =
       target: EdgeEnd
     }
   | {
-      type: 'edge.patch'
-      updates: readonly EdgeBatchUpdate[]
+      type: 'edge.delete'
+      ids: readonly EdgeId[]
     }
   | {
-      type: 'edge.delete'
-      ids: EdgeId[]
+      type: 'edge.label.insert'
+      edgeId: EdgeId
+      label: {
+        text?: string
+        t?: number
+        offset?: number
+        style?: Record<string, unknown>
+        data?: Record<string, unknown>
+      }
+      to?: EdgeLabelAnchor
+    }
+  | {
+      type: 'edge.label.update'
+      edgeId: EdgeId
+      labelId: string
+      input: EdgeLabelUpdateInput
+    }
+  | {
+      type: 'edge.label.move'
+      edgeId: EdgeId
+      labelId: string
+      to: EdgeLabelAnchor
+    }
+  | {
+      type: 'edge.label.delete'
+      edgeId: EdgeId
+      labelId: string
     }
   | {
       type: 'edge.route.insert'
       edgeId: EdgeId
-      point: Point
+      point: {
+        x: number
+        y: number
+      }
+      to?: EdgeRoutePointAnchor
+    }
+  | {
+      type: 'edge.route.update'
+      edgeId: EdgeId
+      pointId: string
+      fields: {
+        x?: number
+        y?: number
+      }
+    }
+  | {
+      type: 'edge.route.set'
+      edgeId: EdgeId
+      route: import('@whiteboard/core/types').EdgeRouteInput
     }
   | {
       type: 'edge.route.move'
       edgeId: EdgeId
-      index: number
-      point: Point
+      pointId: string
+      to: EdgeRoutePointAnchor
     }
   | {
-      type: 'edge.route.remove'
+      type: 'edge.route.delete'
       edgeId: EdgeId
-      index: number
+      pointId: string
     }
   | {
       type: 'edge.route.clear'
       edgeId: EdgeId
     }
+
+export type MindmapCommand =
   | {
       type: 'mindmap.create'
       input: MindmapCreateInput
     }
   | {
       type: 'mindmap.delete'
-      ids: MindmapId[]
+      ids: readonly MindmapId[]
+    }
+  | {
+      type: 'mindmap.layout.set'
+      id: MindmapId
+      layout: Partial<MindmapLayoutSpec>
+    }
+  | {
+      type: 'mindmap.root.move'
+      id: MindmapId
+      position: Point
     }
   | {
       type: 'mindmap.topic.insert'
@@ -212,28 +277,29 @@ export type Command =
       input: MindmapCloneSubtreeInput
     }
   | {
-      type: 'mindmap.layout'
+      type: 'mindmap.topic.update'
       id: MindmapId
-      patch: Partial<import('@whiteboard/core/types').MindmapLayoutSpec>
+      updates: readonly MindmapTopicBatchUpdate[]
     }
   | {
-      type: 'mindmap.topic.patch'
-      id: MindmapId
-      topicIds: NodeId[]
-      patch: MindmapTopicPatch
-    }
-  | {
-      type: 'mindmap.branch.patch'
-      id: MindmapId
-      topicIds: NodeId[]
-      patch: MindmapBranchPatch
-    }
-  | {
-      type: 'mindmap.topic.collapse'
+      type: 'mindmap.topic.collapse.set'
       id: MindmapId
       topicId: NodeId
       collapsed?: boolean
     }
+  | {
+      type: 'mindmap.branch.update'
+      id: MindmapId
+      updates: readonly MindmapBranchBatchUpdate[]
+    }
+
+export type Command =
+  | DocumentCommand
+  | CanvasCommand
+  | NodeCommand
+  | GroupCommand
+  | EdgeCommand
+  | MindmapCommand
 
 export type EngineCommand = Command
 
@@ -241,13 +307,6 @@ export type ReplaceDocumentCommand = Extract<
   Command,
   { type: 'document.replace' }
 >
-
-export type DocumentCommand = Extract<Command, { type: `document.${string}` }>
-export type CanvasCommand = Extract<Command, { type: `canvas.${string}` }>
-export type NodeCommand = Extract<Command, { type: `node.${string}` }>
-export type GroupCommand = Extract<Command, { type: `group.${string}` }>
-export type EdgeCommand = Extract<Command, { type: `edge.${string}` }>
-export type MindmapCommand = Extract<Command, { type: `mindmap.${string}` }>
 
 export type CommandOutput<C extends Command> =
   C extends { type: 'document.insert' | 'canvas.duplicate' }
@@ -261,28 +320,30 @@ export type CommandOutput<C extends Command> =
           }
         : C extends { type: 'group.merge' }
           ? { groupId: GroupId }
-          : C extends { type: 'group.ungroup' | 'group.ungroupMany' }
+          : C extends { type: 'group.ungroup' }
             ? {
                 nodeIds: readonly NodeId[]
                 edgeIds: readonly EdgeId[]
               }
             : C extends { type: 'edge.create' }
               ? { edgeId: EdgeId }
-              : C extends { type: 'edge.route.insert' }
-                ? { index: number }
-                : C extends { type: 'mindmap.create' }
-                  ? {
-                      mindmapId: MindmapId
-                      rootId: MindmapNodeId
-                    }
-                  : C extends { type: 'mindmap.topic.insert' }
-                    ? { nodeId: MindmapNodeId }
-                    : C extends { type: 'mindmap.topic.clone' }
-                      ? {
-                          nodeId: MindmapNodeId
-                          map: Record<MindmapNodeId, MindmapNodeId>
-                        }
-                      : void
+              : C extends { type: 'edge.label.insert' }
+                ? { labelId: string }
+                : C extends { type: 'edge.route.insert' }
+                  ? { pointId: string }
+                  : C extends { type: 'mindmap.create' }
+                    ? {
+                        mindmapId: MindmapId
+                        rootId: MindmapNodeId
+                      }
+                    : C extends { type: 'mindmap.topic.insert' }
+                      ? { nodeId: MindmapNodeId }
+                      : C extends { type: 'mindmap.topic.clone' }
+                        ? {
+                            nodeId: MindmapNodeId
+                            map: Record<MindmapNodeId, MindmapNodeId>
+                          }
+                        : void
 
 export type ExecuteOptions = {
   origin?: Origin

@@ -4,7 +4,9 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
+import type { DocumentReader } from '@dataview/engine/document/reader'
 import type {
+  ViewRecords,
   ViewStageMetrics
 } from '@dataview/engine/contracts/public'
 import {
@@ -13,9 +15,8 @@ import {
   hasRecordSetChange
 } from '@dataview/core/commit/impact'
 import {
-  compileViewQuery,
-  type ActiveQueryPlan
-} from '@dataview/engine/active/query'
+  type QueryPlan
+} from '@dataview/engine/active/plan'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -95,7 +96,7 @@ const resolveQueryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
   impact: ActiveImpact
-  plan: ActiveQueryPlan
+  plan: QueryPlan
   previous?: QueryState
 }): DeriveAction => {
   const commit = input.impact.commit
@@ -158,28 +159,28 @@ const resolveQueryAction = (input: {
 }
 
 export const runQueryStage = (input: {
-  reader: import('@dataview/engine/document/reader').DocumentReader
+  reader: DocumentReader
   activeViewId: ViewId
   previousViewId?: ViewId
   impact: ActiveImpact
   view: View
+  plan: QueryPlan
   index: IndexState
   previous?: QueryState
-  previousPublished?: import('@dataview/engine/contracts/public').ViewRecords
+  previousPublished?: ViewRecords
 }): {
   action: DeriveAction
   state: QueryState
-  records: import('@dataview/engine/contracts/public').ViewRecords
+  records: ViewRecords
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
 } => {
-  const plan = compileViewQuery(input.reader, input.view)
   const action = resolveQueryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
     impact: input.impact,
-    plan,
+    plan: input.plan,
     previous: input.previous
   })
   const stage = runSnapshotStage({
@@ -192,7 +193,7 @@ export const runQueryStage = (input: {
           reader: input.reader,
           view: input.view,
           index: input.index,
-          plan,
+          plan: input.plan,
           previous: input.previous
         }),
     canReusePublished: stageInput => (

@@ -22,8 +22,10 @@ import type {
   Size
 } from '@whiteboard/core/types/model'
 import type {
+  MindmapBranchLineKind,
   MindmapLayoutSpec,
   MindmapRecord,
+  MindmapStrokeStyle,
   MindmapTopicCloneInput,
   MindmapTopicDeleteInput,
   MindmapTopicInsertInput,
@@ -101,6 +103,15 @@ export type EdgePatch = Partial<{
   data: Record<string, unknown>
 }>
 
+export type EdgeFieldPatch = {
+  source?: EdgeEnd
+  target?: EdgeEnd
+  type?: EdgeType
+  locked?: boolean
+  groupId?: GroupId
+  textMode?: EdgeTextMode
+}
+
 export type EdgeField =
   | 'source'
   | 'target'
@@ -111,6 +122,14 @@ export type EdgeField =
 
 export type EdgeUnsetField = Exclude<EdgeField, 'source' | 'target' | 'type'>
 export type EdgeRecordScope = 'data' | 'style'
+export type EdgeRecordMutation =
+  | { scope: EdgeRecordScope; op: 'set'; path?: string; value: unknown }
+  | { scope: EdgeRecordScope; op: 'unset'; path: string }
+
+export type EdgeUpdateInput = {
+  fields?: EdgeFieldPatch
+  records?: readonly EdgeRecordMutation[]
+}
 
 export type GroupPatch = Partial<Omit<Group, 'id'>>
 export type GroupField = 'locked' | 'name'
@@ -121,6 +140,20 @@ export type DocumentPatch = {
 
 export type EdgeLabelField = 'text' | 't' | 'offset'
 export type EdgeLabelRecordScope = 'data' | 'style'
+export type EdgeLabelFieldPatch = {
+  text?: string
+  t?: number
+  offset?: number
+}
+
+export type EdgeLabelRecordMutation =
+  | { scope: EdgeLabelRecordScope; op: 'set'; path?: string; value: unknown }
+  | { scope: EdgeLabelRecordScope; op: 'unset'; path: string }
+
+export type EdgeLabelUpdateInput = {
+  fields?: EdgeLabelFieldPatch
+  records?: readonly EdgeLabelRecordMutation[]
+}
 
 export type EdgeRoutePointField = 'x' | 'y'
 
@@ -148,6 +181,11 @@ export type MindmapTopicField =
   | 'locked'
 
 export type MindmapTopicUnsetField = Exclude<MindmapTopicField, 'size'>
+export type MindmapTopicFieldPatch = {
+  size?: Size
+  rotation?: number
+  locked?: boolean
+}
 export type MindmapBranchField =
   | 'color'
   | 'line'
@@ -188,6 +226,25 @@ export type MindmapTopicSnapshot = {
 }
 
 export type MindmapTopicRecordScope = 'data' | 'style'
+export type MindmapTopicRecordMutation =
+  | { scope: MindmapTopicRecordScope; op: 'set'; path?: string; value: unknown }
+  | { scope: MindmapTopicRecordScope; op: 'unset'; path: string }
+
+export type MindmapTopicUpdateInput = {
+  fields?: MindmapTopicFieldPatch
+  records?: readonly MindmapTopicRecordMutation[]
+}
+
+export type MindmapBranchFieldPatch = {
+  color?: string
+  line?: MindmapBranchLineKind
+  width?: number
+  stroke?: MindmapStrokeStyle
+}
+
+export type MindmapBranchUpdateInput = {
+  fields?: MindmapBranchFieldPatch
+}
 
 export type Op =
   | { readonly type: 'document.replace'; readonly document: Document }

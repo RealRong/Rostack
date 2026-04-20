@@ -23,12 +23,13 @@ import {
   applyRecordOrder
 } from '@dataview/core/view/order'
 import type {
-  ActiveQueryPlan,
+  QueryPlan,
   EffectiveFilterRule
-} from '@dataview/engine/active/query'
+} from '@dataview/engine/active/plan'
 import {
-  readFilterBucketIndex
-} from '@dataview/engine/active/index/group/demand'
+  createBucketSpec,
+  readBucketIndex
+} from '@dataview/engine/active/index/bucket'
 import type {
   IndexState,
   SearchFieldIndex,
@@ -485,7 +486,7 @@ const unionCandidates = (
 })
 
 const resolveSearchScope = (
-  search: NonNullable<ActiveQueryPlan['search']>,
+  search: NonNullable<QueryPlan['search']>,
   index: SearchIndex
 ): {
   key: string
@@ -612,7 +613,7 @@ const filterExactSearchCandidates = (input: {
 }
 
 const resolveSearchMatches = (input: {
-  search: NonNullable<ActiveQueryPlan['search']>
+  search: NonNullable<QueryPlan['search']>
   index: SearchIndex
   allRecordIds: readonly RecordId[]
   recordOrder: ReadonlyMap<RecordId, number>
@@ -744,8 +745,10 @@ const resolveGroupFilterCandidates = (input: {
   rule: View['filter']['rules'][number]
   index: IndexState
 }): FilterCandidate | undefined => {
-  const groupIndex = readFilterBucketIndex(input.index.group, input.fieldId)
-  if (!groupIndex) {
+  const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec({
+    field: input.fieldId
+  }))
+  if (!bucketIndex) {
     return undefined
   }
 
@@ -755,11 +758,11 @@ const resolveGroupFilterCandidates = (input: {
     }
 
     if (keys.length === 1) {
-      return groupIndex.bucketRecords.get(keys[0]!) ?? EMPTY_RECORD_IDS
+      return bucketIndex.recordsByKey.get(keys[0]!) ?? EMPTY_RECORD_IDS
     }
 
     return unionCandidates(
-      keys.map(key => groupIndex.bucketRecords.get(key) ?? EMPTY_RECORD_IDS),
+      keys.map(key => bucketIndex.recordsByKey.get(key) ?? EMPTY_RECORD_IDS),
       input.index.records.ids,
       input.index.records.order
     )
@@ -767,11 +770,11 @@ const resolveGroupFilterCandidates = (input: {
   const readRemainingBucketIds = (excludedKeys: ReadonlySet<string>) => (
     excludedKeys.size === 0
       ? input.index.records.ids
-      : excludedKeys.size >= groupIndex.bucketRecords.size
+      : excludedKeys.size >= bucketIndex.recordsByKey.size
         ? EMPTY_RECORD_IDS
         :
     unionCandidates(
-      Array.from(groupIndex.bucketRecords.entries())
+      Array.from(bucketIndex.recordsByKey.entries())
         .flatMap(([key, ids]) => excludedKeys.has(key) ? [] : [ids]),
       input.index.records.ids,
       input.index.records.order
@@ -1207,7 +1210,7 @@ export const buildQueryState = (input: {
   reader: DocumentReader
   view: View
   index: IndexState
-  plan: ActiveQueryPlan
+  plan: QueryPlan
   previous?: QueryState
 }): QueryState => {
   if (

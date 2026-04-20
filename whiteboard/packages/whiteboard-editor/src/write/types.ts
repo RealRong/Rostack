@@ -3,15 +3,23 @@ import type {
   NodeDistributeMode
 } from '@whiteboard/core/node'
 import type {
+  CanvasItemRef,
+  Document,
   Edge,
-  EdgeTemplate,
   EdgeDash,
   EdgeEnd,
   EdgeId,
+  EdgeLabelAnchor,
+  EdgeLabelUpdateInput,
   EdgeMarker,
-  EdgePatch,
+  EdgeRoutePointAnchor,
+  EdgeRouteInput,
+  EdgeTemplate,
   EdgeTextMode,
   EdgeType,
+  EdgeUpdateInput,
+  GroupId,
+  MindmapBranchUpdateInput,
   MindmapCloneSubtreeInput,
   MindmapCreateInput,
   MindmapId,
@@ -22,8 +30,8 @@ import type {
   MindmapNodeId,
   MindmapRemoveSubtreeInput,
   MindmapTopicData,
+  MindmapTopicUpdateInput,
   MindmapTree,
-  MindmapTreePatch,
   NodeTemplate,
   NodeId,
   NodeUpdateInput,
@@ -33,16 +41,11 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type {
-  CanvasItemRef,
-  Document,
-  GroupId
-} from '@whiteboard/core/types'
-import type {
   MindmapBranchLineKind,
   MindmapStrokeStyle
 } from '@whiteboard/core/mindmap'
-import type { Slice } from '@whiteboard/core/document'
 import type {
+  Slice,
   SliceInsertOptions,
   SliceInsertResult
 } from '@whiteboard/core/document'
@@ -50,63 +53,39 @@ import type { CommandResult } from '@whiteboard/engine/types/result'
 
 export type { OrderMode } from '@whiteboard/core/types'
 
-export type EdgeLabelPatch = NonNullable<Edge['labels']>[number] extends infer Label
-  ? Label extends {
-      text?: string
-      t?: number
-      offset?: number
-      style?: infer Style
-    }
-    ? {
-        text?: string
-        t?: number
-        offset?: number
-        style?: Partial<NonNullable<Style>>
-      }
-    : never
-  : never
-
 export type DocumentWrite = {
   replace: (document: Document) => CommandResult
   insert: (
     slice: Slice,
     options?: SliceInsertOptions
   ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
-  delete: (refs: CanvasItemRef[]) => CommandResult
-  duplicate: (refs: CanvasItemRef[]) => CommandResult<Omit<SliceInsertResult, 'operations'>>
-  order: (refs: CanvasItemRef[], mode: OrderMode) => CommandResult
   background: {
     set: (background?: Document['background']) => CommandResult
   }
-  group: {
-    merge: (target: {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly EdgeId[]
-    }) => CommandResult<{ groupId: GroupId }>
-    order: {
-      set: (ids: GroupId[]) => CommandResult
-      bringToFront: (ids: GroupId[]) => CommandResult
-      sendToBack: (ids: GroupId[]) => CommandResult
-      bringForward: (ids: GroupId[]) => CommandResult
-      sendBackward: (ids: GroupId[]) => CommandResult
-    }
-    ungroup: (id: GroupId) => CommandResult<{
-      nodeIds: readonly NodeId[]
-      edgeIds: readonly EdgeId[]
-    }>
-    ungroupMany: (ids: GroupId[]) => CommandResult<{
-      nodeIds: readonly NodeId[]
-      edgeIds: readonly EdgeId[]
-    }>
+}
+
+export type CanvasWrite = {
+  delete: (refs: readonly CanvasItemRef[]) => CommandResult
+  duplicate: (
+    refs: readonly CanvasItemRef[]
+  ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+  order: {
+    move: (
+      refs: readonly CanvasItemRef[],
+      mode: OrderMode
+    ) => CommandResult
   }
 }
 
-export type NodePatchWrite = {
-  update: (id: NodeId, update: NodeUpdateInput) => CommandResult
+export type NodeUpdateWrite = {
+  update: (
+    id: NodeId,
+    input: NodeUpdateInput
+  ) => CommandResult
   updateMany: (
     updates: readonly {
       id: NodeId
-      update: NodeUpdateInput
+      input: NodeUpdateInput
     }[],
     options?: {
       origin?: Origin
@@ -161,48 +140,100 @@ export type NodeWrite = {
     position: Point
     template: NodeTemplate
   }) => CommandResult<{ nodeId: NodeId }>
-  patch: (
-    ids: readonly NodeId[],
-    update: NodeUpdateInput,
-    options?: {
-      origin?: Origin
-    }
-  ) => CommandResult | undefined
+  update: NodeUpdateWrite['update']
+  updateMany: NodeUpdateWrite['updateMany']
   move: (input: {
     ids: readonly NodeId[]
     delta: Point
   }) => CommandResult
   align: (ids: readonly NodeId[], mode: NodeAlignMode) => CommandResult
   distribute: (ids: readonly NodeId[], mode: NodeDistributeMode) => CommandResult
-  delete: (ids: NodeId[]) => CommandResult
-  deleteCascade: (ids: NodeId[]) => CommandResult
-  duplicate: (ids: NodeId[]) => CommandResult<{
+  delete: (ids: readonly NodeId[]) => CommandResult
+  deleteCascade: (ids: readonly NodeId[]) => CommandResult
+  duplicate: (ids: readonly NodeId[]) => CommandResult<{
     nodeIds: readonly NodeId[]
     edgeIds: readonly EdgeId[]
   }>
-  update: NodePatchWrite['update']
-  updateMany: NodePatchWrite['updateMany']
   lock: NodeLockWrite
   shape: NodeShapeWrite
   style: NodeStyleWrite
   text: NodeTextWrite
 }
 
+export type GroupWrite = {
+  merge: (target: {
+    nodeIds?: readonly NodeId[]
+    edgeIds?: readonly EdgeId[]
+  }) => CommandResult<{ groupId: GroupId }>
+  order: {
+    move: (
+      ids: readonly GroupId[],
+      mode: OrderMode
+    ) => CommandResult
+  }
+  ungroup: (
+    ids: readonly GroupId[]
+  ) => CommandResult<{
+    nodeIds: readonly NodeId[]
+    edgeIds: readonly EdgeId[]
+  }>
+}
+
 export type EdgeRouteWrite = {
-  insert: (edgeId: EdgeId, point: Point) => CommandResult<{ index: number }>
-  move: (edgeId: EdgeId, index: number, point: Point) => CommandResult
-  remove: (edgeId: EdgeId, index: number) => CommandResult
+  insert: (
+    edgeId: EdgeId,
+    point: Point,
+    to?: EdgeRoutePointAnchor
+  ) => CommandResult<{ pointId: string }>
+  set: (
+    edgeId: EdgeId,
+    route: EdgeRouteInput
+  ) => CommandResult
+  update: (
+    edgeId: EdgeId,
+    pointId: string,
+    fields: {
+      x?: number
+      y?: number
+    }
+  ) => CommandResult
+  move: (
+    edgeId: EdgeId,
+    pointId: string,
+    to: EdgeRoutePointAnchor
+  ) => CommandResult
+  delete: (edgeId: EdgeId, pointId: string) => CommandResult
   clear: (edgeId: EdgeId) => CommandResult
 }
 
+export type EdgeLabelPatch = Partial<NonNullable<EdgeLabelUpdateInput['fields']>> & {
+  style?: Record<string, unknown>
+  data?: Record<string, unknown>
+}
+
 export type EdgeLabelWrite = {
-  add: (edgeId: EdgeId) => string | undefined
-  patch: (
+  insert: (
+    edgeId: EdgeId,
+    label?: {
+      text?: string
+      t?: number
+      offset?: number
+      style?: Record<string, unknown>
+      data?: Record<string, unknown>
+    },
+    to?: EdgeLabelAnchor
+  ) => CommandResult<{ labelId: string }>
+  update: (
     edgeId: EdgeId,
     labelId: string,
-    patch: EdgeLabelPatch
-  ) => CommandResult | undefined
-  remove: (edgeId: EdgeId, labelId: string) => CommandResult | undefined
+    input: EdgeLabelUpdateInput
+  ) => CommandResult
+  move: (
+    edgeId: EdgeId,
+    labelId: string,
+    to: EdgeLabelAnchor
+  ) => CommandResult
+  delete: (edgeId: EdgeId, labelId: string) => CommandResult
 }
 
 export type EdgeStyleWrite = {
@@ -234,10 +265,13 @@ export type EdgeWrite = {
     to: EdgeEnd
     template: EdgeTemplate
   }) => CommandResult<{ edgeId: EdgeId }>
-  patch: (
-    edgeIds: readonly EdgeId[],
-    patch: EdgePatch
-  ) => CommandResult | undefined
+  update: (id: EdgeId, input: EdgeUpdateInput) => CommandResult
+  updateMany: (
+    updates: readonly {
+      id: EdgeId
+      input: EdgeUpdateInput
+    }[]
+  ) => CommandResult
   move: (input: {
     ids: readonly EdgeId[]
     delta: Point
@@ -247,16 +281,9 @@ export type EdgeWrite = {
     end: 'source' | 'target',
     target: EdgeEnd
   ) => CommandResult
-  update: (id: EdgeId, patch: EdgePatch) => CommandResult
-  updateMany: (
-    updates: readonly {
-      id: EdgeId
-      patch: EdgePatch
-    }[]
-  ) => CommandResult
-  delete: (ids: EdgeId[]) => CommandResult
-  route: EdgeRouteWrite
+  delete: (ids: readonly EdgeId[]) => CommandResult
   label: EdgeLabelWrite
+  route: EdgeRouteWrite
   style: EdgeStyleWrite
   type: EdgeTypeWrite
   lock: EdgeLockWrite
@@ -277,79 +304,64 @@ export type MindmapBorderPatch = Partial<{
   fill: string
 }>
 
-export type MindmapStyleWrite = {
-  branch: (input: {
-    id: MindmapId
-    nodeIds: readonly MindmapNodeId[]
-    patch: MindmapBranchPatch
-    scope?: 'node' | 'subtree'
-  }) => CommandResult | undefined
-  topic: (input: {
-    nodeIds: readonly NodeId[]
-    patch: MindmapBorderPatch
-  }) => CommandResult | undefined
-}
-
 export type MindmapWrite = {
   create: (
-    payload: MindmapCreateInput
+    input: MindmapCreateInput
   ) => CommandResult<{
     mindmapId: MindmapId
     rootId: MindmapNodeId
   }>
-  delete: (ids: MindmapId[]) => CommandResult
-  patch: (
-    id: MindmapId,
-    input: MindmapTreePatch
-  ) => CommandResult
-  insert: (
-    id: MindmapId,
-    input: MindmapInsertInput
-  ) => CommandResult<{ nodeId: MindmapNodeId }>
-  moveSubtree: (
-    id: MindmapId,
-    input: MindmapMoveSubtreeInput
-  ) => CommandResult
-  removeSubtree: (
-    id: MindmapId,
-    input: MindmapRemoveSubtreeInput
-  ) => CommandResult
-  cloneSubtree: (
-    id: MindmapId,
-    input: MindmapCloneSubtreeInput
-  ) => CommandResult<{
-    nodeId: MindmapNodeId
-    map: Record<MindmapNodeId, MindmapNodeId>
-  }>
-  insertByPlacement: (input: {
-    id: NodeId
-    tree: MindmapTree
-    targetNodeId: MindmapNodeId
-    placement: 'left' | 'right' | 'up' | 'down'
-    layout: MindmapLayoutSpec
-    payload?: MindmapTopicData
-  }) => CommandResult<{ nodeId: MindmapNodeId }> | undefined
-  moveByDrop: (input: {
-    id: NodeId
-    nodeId: MindmapNodeId
-    drop: {
-      parentId: MindmapNodeId
-      index: number
-      side?: 'left' | 'right'
+  delete: (ids: readonly MindmapId[]) => CommandResult
+  layout: {
+    set: (id: MindmapId, layout: Partial<MindmapLayoutSpec>) => CommandResult
+  }
+  root: {
+    move: (id: MindmapId, position: Point) => CommandResult
+  }
+  topic: {
+    insert: (
+      id: MindmapId,
+      input: MindmapInsertInput
+    ) => CommandResult<{ nodeId: MindmapNodeId }>
+    move: (
+      id: MindmapId,
+      input: MindmapMoveSubtreeInput
+    ) => CommandResult
+    delete: (
+      id: MindmapId,
+      input: MindmapRemoveSubtreeInput
+    ) => CommandResult
+    clone: (
+      id: MindmapId,
+      input: MindmapCloneSubtreeInput
+    ) => CommandResult<{
+      nodeId: MindmapNodeId
+      map: Record<MindmapNodeId, MindmapNodeId>
+    }>
+    update: (
+      id: MindmapId,
+      updates: readonly {
+        topicId: NodeId
+        input: MindmapTopicUpdateInput
+      }[]
+    ) => CommandResult
+    collapse: {
+      set: (
+        id: MindmapId,
+        topicId: NodeId,
+        collapsed?: boolean
+      ) => CommandResult
     }
-    origin?: {
-      parentId?: MindmapNodeId
-      index?: number
-    }
-    layout: MindmapLayoutSpec
-  }) => CommandResult | undefined
-  moveRoot: (input: {
-    nodeId: NodeId
-    position: Point
-    origin?: Point
-    threshold?: number
-  }) => CommandResult | undefined
-  style: MindmapStyleWrite
+  }
+  branch: {
+    update: (
+      id: MindmapId,
+      updates: readonly {
+        topicId: NodeId
+        input: MindmapBranchUpdateInput
+      }[]
+    ) => CommandResult
+  }
 }
 
 export type HistoryWrite = {
@@ -360,8 +372,19 @@ export type HistoryWrite = {
 
 export type EditorWrite = {
   document: DocumentWrite
+  canvas: CanvasWrite
   node: NodeWrite
+  group: GroupWrite
   edge: EdgeWrite
   mindmap: MindmapWrite
   history: HistoryWrite
+}
+
+export type MindmapInsertByPlacementInput = {
+  id: NodeId
+  tree: MindmapTree
+  targetNodeId: MindmapNodeId
+  placement: 'left' | 'right' | 'up' | 'down'
+  layout: MindmapLayoutSpec
+  payload?: MindmapTopicData
 }

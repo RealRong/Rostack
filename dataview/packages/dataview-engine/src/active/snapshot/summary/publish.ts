@@ -1,5 +1,6 @@
 import type {
-  CalculationCollection
+  CalculationCollection,
+  CalculationResult
 } from '@dataview/core/calculation'
 import type {
   Field,
@@ -13,9 +14,7 @@ import type {
   SummaryState
 } from '@dataview/engine/contracts/internal'
 import {
-  computeCalculationFromState
-} from '@dataview/engine/active/snapshot/summary/compute'
-import {
+  computeCalculationFromState,
   readCalcFields
 } from '@dataview/engine/active/snapshot/summary/compute'
 import {
@@ -56,7 +55,7 @@ export const publishSummaries = (input: {
       return
     }
 
-    const byField = new Map<FieldId, import('@dataview/core/calculation').CalculationResult>()
+    const byField = new Map<FieldId, CalculationResult>()
     calcFields.forEach(fieldId => {
       const metric = input.view.calc[fieldId]
       const state = states.get(fieldId)

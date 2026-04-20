@@ -61,7 +61,7 @@ export interface ActiveImpact {
   commit: CommitImpact
   base: ActiveImpactBase
   query?: ActiveQueryImpact
-  group?: MembershipChange<BucketKey, RecordId>
+  bucket?: MembershipChange<BucketKey, RecordId>
   sections?: MembershipChange<SectionKey, RecordId>
   calculations?: ActiveCalculationImpact
 }
@@ -124,15 +124,15 @@ export const ensureQueryImpact = (
   return impact.query
 }
 
-export const ensureGroupChange = (
+export const ensureBucketChange = (
   impact: ActiveImpact
 ): MembershipChange<BucketKey, RecordId> => {
-  if (impact.group) {
-    return impact.group
+  if (impact.bucket) {
+    return impact.bucket
   }
 
-  impact.group = createMembershipChange<BucketKey, RecordId>()
-  return impact.group
+  impact.bucket = createMembershipChange<BucketKey, RecordId>()
+  return impact.bucket
 }
 
 export const ensureSectionChange = (

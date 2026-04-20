@@ -11,6 +11,7 @@ import {
   type CalculationEntry,
   type FieldReducerState
 } from '@dataview/engine/active/shared/calculation'
+import type { ReducerCapabilitySet } from '@dataview/engine/active/shared/calculation'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -21,9 +22,6 @@ import type {
 import {
   createMapPatchBuilder
 } from '@dataview/engine/active/shared/patch'
-import type {
-  SectionMembershipResolver
-} from '@dataview/engine/active/shared/sections'
 import type { SectionKey } from '@dataview/engine/contracts/public'
 import type {
   SectionState,
@@ -40,7 +38,7 @@ const EMPTY_FIELD_SUMMARIES = new Map<FieldId, FieldReducerState>()
 const buildSectionFieldState = (input: {
   sectionIds: readonly RecordId[]
   entries: ReadonlyMap<RecordId, CalculationEntry>
-  capabilities: import('@dataview/engine/active/shared/calculation').ReducerCapabilitySet
+  capabilities: ReducerCapabilitySet
 }): FieldReducerState => (
   input.sectionIds.length
     ? buildFieldReducerState({
@@ -133,7 +131,7 @@ const readNextEntry = (
 
 const collectTouchedSections = (input: {
   impact: ActiveImpact
-  resolver: SectionMembershipResolver
+  sections: SectionState
   calcFields: readonly FieldId[]
 }): ReadonlySet<SectionKey> => {
   const touched = new Set<SectionKey>()
@@ -146,7 +144,7 @@ const collectTouchedSections = (input: {
     }
 
     fieldChange.changedIds.forEach(recordId => {
-      input.resolver.keysOf(recordId).forEach(key => touched.add(key))
+      input.sections.keysByRecord.get(recordId)?.forEach(key => touched.add(key))
     })
   })
 
@@ -168,7 +166,6 @@ const sameSectionOrder = (
 export const syncSummaryState = (input: {
   previous?: SummaryState
   sections: SectionState
-  resolver: SectionMembershipResolver
   view: View
   index: IndexState
   impact: ActiveImpact
@@ -205,7 +202,7 @@ export const syncSummaryState = (input: {
   const previous = input.previous
   const touchedSections = collectTouchedSections({
     impact: input.impact,
-    resolver: input.resolver,
+    sections: input.sections,
     calcFields
   })
   let changed = !sameSectionOrder(previous, sectionKeys)
@@ -290,7 +287,10 @@ export const syncSummaryState = (input: {
       })
 
       fieldChange?.changedIds.forEach(recordId => {
-        if (processed?.has(recordId) || !input.resolver.has(recordId, sectionKey)) {
+        if (
+          processed?.has(recordId)
+          || !(input.sections.keysByRecord.get(recordId)?.includes(sectionKey))
+        ) {
           return
         }
 

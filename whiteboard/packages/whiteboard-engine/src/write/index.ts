@@ -1,93 +1,32 @@
-import type { Draft, DraftKind, Writer } from '@whiteboard/engine/types/write'
-import type { Command, CommandOutput } from '@whiteboard/engine/types/command'
-import type { BoardConfig } from '@whiteboard/engine/types/instance'
-import { assertDocument } from '@whiteboard/core/document'
-import {
-  type Batch,
-  type CoreRegistries,
-  type Document,
-  type EdgeId,
-  type GroupId,
-  type MindmapId,
-  type NodeId,
-  type Operation,
-  type Origin
+import type {
+  CoreRegistries,
+  Document,
+  EdgeId,
+  GroupId,
+  MindmapId,
+  NodeId,
+  Operation,
+  Origin
 } from '@whiteboard/core/types'
 import {
   createHistory,
-  reduceOperations,
-  type KernelReduceResult
+  reduceOperations
 } from '@whiteboard/core/kernel'
 import { createId } from '@whiteboard/core/id'
+import type { BoardConfig } from '@whiteboard/engine/types/instance'
+import type { Command, CommandOutput } from '@whiteboard/engine/types/command'
+import type { Draft } from '@whiteboard/engine/types/write'
 import { DEFAULT_HISTORY_CONFIG } from '@whiteboard/engine/config'
-import { RESET_INVALIDATION } from '@whiteboard/engine/read/invalidation'
 import { cancelled, failure } from '@whiteboard/engine/result'
-import { normalizeDocument } from '@whiteboard/engine/document/normalize'
-import { planCommand } from '@whiteboard/engine/write/planner'
+import { createWriteDraft } from '@whiteboard/engine/write/draft'
+import { compileCommand } from '@whiteboard/engine/write/compile'
+import type { WriteRuntime } from '@whiteboard/engine/write/types'
 
 const now = (): number => {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
     return performance.now()
   }
   return Date.now()
-}
-
-const createReplaceChanges = (): import('@whiteboard/core/types').ChangeSet => ({
-  document: true,
-  background: true,
-  canvasOrder: true,
-  nodes: {
-    add: new Set(),
-    update: new Set(),
-    delete: new Set()
-  },
-  edges: {
-    add: new Set(),
-    update: new Set(),
-    delete: new Set()
-  },
-  groups: {
-    add: new Set(),
-    update: new Set(),
-    delete: new Set()
-  },
-  mindmaps: {
-    add: new Set(),
-    update: new Set(),
-    delete: new Set()
-  }
-})
-
-const createResetImpact = (): import('@whiteboard/core/kernel').KernelReadImpact => ({
-  reset: true,
-  document: true,
-  node: {
-    ids: [],
-    geometry: true,
-    list: true,
-    value: true
-  },
-  edge: {
-    ids: [],
-    nodeIds: [],
-    geometry: true,
-    list: true,
-    value: true
-  }
-})
-
-const withKind = <T>(
-  draft: Draft<T>,
-  kind: Exclude<DraftKind, 'replace'>
-): Draft<T> => {
-  if (!draft.ok || draft.kind === 'replace') {
-    return draft
-  }
-
-  return {
-    ...draft,
-    kind
-  }
 }
 
 export const createWrite = ({
@@ -100,99 +39,48 @@ export const createWrite = ({
   }
   config: BoardConfig
   registries: CoreRegistries
-}): Writer => {
-  const readNow = now
+}): WriteRuntime => {
   const ids = {
     node: (): NodeId => createId('node'),
     edge: (): EdgeId => createId('edge'),
+    edgeLabel: (): string => createId('edge_label'),
     edgeRoutePoint: (): string => createId('edge_point'),
     group: (): GroupId => createId('group'),
-    mindmap: (): MindmapId => createId('mindmap'),
-    mindmapNode: (): NodeId => createId('mnode')
+    mindmap: (): MindmapId => createId('mindmap')
   }
-
-  const toOperationsDraft = <T>(
-    reduced: Extract<KernelReduceResult, { ok: true }>,
-    operations: readonly Operation[],
-    kind: Exclude<DraftKind, 'replace'>,
-    value: T
-  ): Draft<T> => ({
-    ok: true,
-    kind,
-    doc: reduced.data.doc,
-    operations,
-    changes: reduced.data.changes,
-    invalidation: reduced.data.invalidation,
-    value,
-    inverse: reduced.data.inverse,
-    impact: reduced.data.impact
-  })
-
-  const toReplaceDraft = (
-    doc: Document
-  ): Draft => ({
-    ok: true,
-    kind: 'replace',
-    doc,
-    operations: [],
-    value: undefined,
-    changes: createReplaceChanges(),
-    invalidation: RESET_INVALIDATION,
-    inverse: [],
-    impact: createResetImpact()
-  })
 
   const reduceToDraft = <T>(
     doc: Document,
-    operations: readonly Operation[],
+    ops: readonly Operation[],
     origin: Origin,
-    kind: Exclude<DraftKind, 'replace'>,
     value: T
   ): Draft<T> => {
-    const reduced = reduceOperations(doc, operations, {
-      now: readNow,
+    const reduced = reduceOperations(doc, ops, {
+      now,
       origin
     })
     if (!reduced.ok) {
       return failure(
         reduced.error.code,
-        reduced.error.message
+        reduced.error.message,
+        reduced.error.details
       )
     }
 
-    const normalized = normalizeDocument(reduced.data.doc, config)
-
-    return toOperationsDraft(
-      {
-        ...reduced,
-        data: {
-          ...reduced.data,
-          doc: normalized
-        }
-      },
-      operations,
-      kind,
+    return createWriteDraft(reduced, {
+      origin,
+      ops,
       value
-    )
+    })
   }
 
-  const replace = (
-    doc: Document
-  ): Draft => toReplaceDraft(
-    normalizeDocument(
-      assertDocument(doc),
-      config
-    )
-  )
-
   const history = createHistory<Operation, Origin, Draft>({
-    now: readNow,
+    now,
     config: DEFAULT_HISTORY_CONFIG,
-    replay: (operations) => reduceToDraft(
+    replay: (ops) => reduceToDraft(
       document.get(),
-      operations,
+      ops,
       'system',
-      'apply',
       undefined
     )
   })
@@ -201,77 +89,62 @@ export const createWrite = ({
     command: C,
     origin: Origin = 'user'
   ): Draft<CommandOutput<C>> => {
-    const doc = document.get()
-    const planned = planCommand(command, {
-      doc,
+    const current = document.get()
+    const compiled = compileCommand(command, {
+      document: current,
       registries,
       ids,
       nodeSize: config.nodeSize
     })
-    if (!planned.ok) {
-      return failure(planned.error.code, planned.error.message)
+    if (!compiled.ok) {
+      return failure(
+        compiled.error.code,
+        compiled.error.message,
+        compiled.error.details
+      )
     }
 
     return reduceToDraft(
-      doc,
-      planned.data.operations,
+      current,
+      compiled.ops,
       origin,
-      'apply',
-      planned.data.output
+      compiled.output
     ) as Draft<CommandOutput<C>>
   }
 
   const apply = (
-    batch: Batch,
+    ops: readonly Operation[],
     origin: Origin = 'user'
-  ): Draft<unknown> => reduceToDraft(
+  ): Draft => reduceToDraft(
     document.get(),
-    batch.ops,
+    ops,
     origin,
-    'apply',
-    batch.output
+    undefined
   )
-
-  const capture = (input: {
-    operations: readonly Operation[]
-    inverse?: readonly Operation[]
-    origin?: Origin
-  }) => {
-    if (!input.inverse) {
-      return
-    }
-
-    history.capture({
-      forward: input.operations,
-      inverse: input.inverse,
-      origin: input.origin
-    })
-  }
 
   const undo = (): Draft => {
     const draft = history.undo()
-    if (!draft) {
-      return cancelled('Nothing to undo.')
-    }
-    return withKind(draft, 'undo')
+    return draft || cancelled('Nothing to undo.')
   }
 
   const redo = (): Draft => {
     const draft = history.redo()
-    if (!draft) {
-      return cancelled('Nothing to redo.')
-    }
-    return withKind(draft, 'redo')
+    return draft || cancelled('Nothing to redo.')
   }
 
   return {
     execute,
     apply,
-    replace,
     undo,
     redo,
     history: {
-      capture,
+      capture: (input) => {
+        history.capture({
+          forward: input.ops,
+          inverse: input.inverse,
+          origin: input.origin
+        })
+      },
       configure: history.configure,
       get: history.get,
       subscribe: (listener) => history.subscribe(() => {

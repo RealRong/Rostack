@@ -132,7 +132,7 @@ const summarizeRuns = (runs: ReturnType<typeof runScenarioIteration>[], scenario
   indexActions: {
     records: runs[runs.length - 1]?.trace.index.records.action,
     search: runs[runs.length - 1]?.trace.index.search.action,
-    group: runs[runs.length - 1]?.trace.index.group.action,
+    bucket: runs[runs.length - 1]?.trace.index.bucket.action,
     sort: runs[runs.length - 1]?.trace.index.sort.action,
     summaries: runs[runs.length - 1]?.trace.index.summaries.action
   }

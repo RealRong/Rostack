@@ -7,7 +7,13 @@ import {
   type EdgeRouteHandleTarget
 } from '@whiteboard/core/edge'
 import { isPointEqual } from '@whiteboard/core/geometry'
-import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
+import type {
+  Edge,
+  EdgeId,
+  EdgePatch,
+  EdgeRoutePointAnchor,
+  Point
+} from '@whiteboard/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
@@ -52,6 +58,7 @@ export type EdgeRouteStart =
   | {
       kind: 'insert'
       edgeId: EdgeId
+      to: EdgeRoutePointAnchor
       pointerId: number
       startWorld: Point
       origin: Point
@@ -127,6 +134,39 @@ const resolveEdgeRoutePickTarget = (
       segment: pick.segment
     }
   })
+}
+
+const readRoutePointIdAtIndex = (
+  edge: Edge,
+  index: number
+) => edge.route?.kind === 'manual'
+  ? edge.route.points[index]?.id
+  : undefined
+
+const readRouteInsertAnchor = (
+  edge: Edge,
+  index: number
+): EdgeRoutePointAnchor => {
+  const points = edge.route?.kind === 'manual'
+    ? edge.route.points
+    : []
+
+  if (index <= 0) {
+    return {
+      kind: 'start'
+    }
+  }
+
+  if (index >= points.length) {
+    return {
+      kind: 'end'
+    }
+  }
+
+  return {
+    kind: 'before',
+    pointId: points[index]!.id
+  }
 }
 
 export const startEdgeRoutePoint = (input: {
@@ -229,6 +269,11 @@ export const tryStartEdgeRoute = (input: {
   return {
     kind: 'insert',
     edgeId: target.edgeId,
+    to: item
+      ? readRouteInsertAnchor(item.edge, target.index)
+      : {
+          kind: 'end'
+        },
     pointerId: input.pointer.pointerId,
     startWorld: input.pointer.world,
     origin: target.point,
@@ -429,13 +474,19 @@ const createEdgeRouteSession = (
 
       const commit = commitEdgeRoute(state)
       if (commit?.kind === 'update-route') {
-        ctx.write.edge.update(commit.edgeId, {
-          route: commit.route
+        ctx.write.edge.route.set(commit.edgeId, commit.route ?? {
+          kind: 'auto'
         })
       }
 
       if (commit?.kind === 'move-point') {
-        ctx.write.edge.route.move(commit.edgeId, commit.index, commit.point)
+        const edge = ctx.query.edge.item.get(commit.edgeId)?.edge
+        const pointId = edge
+          ? readRoutePointIdAtIndex(edge, commit.index)
+          : undefined
+        if (pointId) {
+          ctx.write.edge.route.update(commit.edgeId, pointId, commit.point)
+        }
       }
 
       return FINISH
@@ -452,17 +503,23 @@ const createInsertedRouteSession = (
 ) => {
   const result = ctx.write.edge.route.insert(
     input.edgeId,
-    input.point
+    input.point,
+    input.to
   )
   if (!result.ok) {
     return null
   }
 
+  const route = ctx.query.edge.item.get(input.edgeId)?.edge.route
+  const index = route?.kind === 'manual'
+    ? route.points.findIndex((entry) => entry.id === result.data.pointId)
+    : -1
+
   return createEdgeRouteSession(
     ctx,
     startEdgeRoutePoint({
       edgeId: input.edgeId,
-      index: result.data.index,
+      index,
       pointerId: input.pointerId,
       startWorld: input.startWorld,
       origin: input.origin

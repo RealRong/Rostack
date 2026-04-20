@@ -2,6 +2,10 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
+import {
+  compileViewPlan,
+  type ViewPlan
+} from '@dataview/engine/active/plan'
 import type {
   DeriveAction,
   ViewCache
@@ -32,6 +36,7 @@ interface ViewRunResult {
 
 export const deriveViewSnapshot = (input: {
   documentContext: DocumentReadContext
+  viewPlan?: ViewPlan
   impact: ActiveImpact
   index: IndexState
   previousCache: ViewCache
@@ -42,6 +47,9 @@ export const deriveViewSnapshot = (input: {
   const stageTraces: ViewStageTrace[] = []
   const activeViewId = input.documentContext.activeViewId as ViewId | undefined
   const view = input.documentContext.activeView
+  const viewPlan = view
+    ? (input.viewPlan ?? compileViewPlan(input.documentContext.reader, view))
+    : undefined
 
   const timeStage = <T extends { action: DeriveAction },>(
     stage: ViewStageName,
@@ -113,6 +121,7 @@ export const deriveViewSnapshot = (input: {
       previousViewId,
       impact: input.impact,
       view,
+      plan: viewPlan!.query,
       index: input.index,
       previous: input.previousCache.query,
       previousPublished: input.previousSnapshot?.records
@@ -160,6 +169,7 @@ export const deriveViewSnapshot = (input: {
       impact: input.impact,
       view,
       query: query.state,
+      calcFields: viewPlan?.calcFields ?? [],
       previous: input.previousCache.summary,
       previousSections: input.previousCache.sections,
       previousPublished: input.previousSnapshot?.summaries,

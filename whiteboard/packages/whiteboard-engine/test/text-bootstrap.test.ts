@@ -30,13 +30,13 @@ test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () =>
   })
 })
 
-test('engine 会清洗直接下发的 text node.create 缺失尺寸', () => {
+test('engine apply 不再在 reducer 之后隐式清洗 text node.create', () => {
   const engine = createEngine({
     document: createDocument('doc_text_create')
   })
 
-  const result = engine.apply({
-    ops: [{
+  const result = engine.apply([
+    {
       type: 'node.create',
       node: {
         id: 'node_1',
@@ -49,8 +49,8 @@ test('engine 会清洗直接下发的 text node.create 缺失尺寸', () => {
           text: 'hello'
         }
       }
-    }]
-  }, {
+    }
+  ], {
     origin: 'remote'
   })
 
@@ -59,8 +59,5 @@ test('engine 会清洗直接下发的 text node.create 缺失尺寸', () => {
     return
   }
 
-  assert.deepEqual(result.commit.doc.nodes.node_1.size, {
-    width: 144,
-    height: 20
-  })
+  assert.equal(result.commit.doc.nodes.node_1.size, undefined)
 })

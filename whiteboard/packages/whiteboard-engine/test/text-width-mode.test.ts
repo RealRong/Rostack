@@ -37,10 +37,10 @@ test('engine preserves wrap width mode when a text node size changes', () => {
   })
 
   const result = engine.execute({
-    type: 'node.patch',
+    type: 'node.update',
     updates: [{
       id: 'text-1',
-      update: mergeNodeUpdates(
+      input: mergeNodeUpdates(
         {
           fields: {
             size: {

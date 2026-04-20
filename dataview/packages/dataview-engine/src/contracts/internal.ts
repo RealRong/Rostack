@@ -70,6 +70,7 @@ export interface SectionNodeState {
 export interface SectionState {
   order: readonly SectionKey[]
   byKey: ReadonlyMap<SectionKey, SectionNodeState>
+  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
 }
 
 export interface SummaryState {
@@ -104,7 +105,8 @@ export const emptyQueryState = (): QueryState => ({
 
 export const emptySectionState = (): SectionState => ({
   order: [],
-  byKey: new Map()
+  byKey: new Map(),
+  keysByRecord: new Map()
 })
 
 export const emptySummaryState = (): SummaryState => EMPTY_INTERNAL_SUMMARY_STATE

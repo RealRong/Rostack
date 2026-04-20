@@ -8,7 +8,7 @@ import {
   uniqueSorted
 } from '@shared/core'
 import type {
-  GroupDemand,
+  BucketSpec,
   IndexDemand,
   IndexReadContext,
   NormalizedIndexDemand
@@ -18,35 +18,24 @@ import {
   sameCalculationDemand
 } from '@dataview/engine/active/shared/calculation'
 
-const uniqueGroups = (
-  groups: readonly GroupDemand[] = []
-): readonly GroupDemand[] => {
-  const seen = new Map<string, GroupDemand>()
+export const createBucketSpecKey = (
+  spec: BucketSpec
+): string => [
+  spec.fieldId,
+  spec.mode ?? '',
+  spec.interval ?? ''
+].join('\u0000')
 
-  groups.forEach(group => {
-    seen.set([
-      group.capability,
-      group.fieldId,
-      group.mode ?? '',
-      group.bucketSort ?? '',
-      group.bucketInterval ?? ''
-    ].join('\u0000'), group)
+const uniqueBucketSpecs = (
+  specs: readonly BucketSpec[] = []
+): readonly BucketSpec[] => {
+  const seen = new Map<string, BucketSpec>()
+  specs.forEach(spec => {
+    seen.set(createBucketSpecKey(spec), spec)
   })
 
   return [...seen.values()]
-    .sort((left, right) => [
-      left.capability,
-      left.fieldId,
-      left.mode ?? '',
-      left.bucketSort ?? '',
-      left.bucketInterval ?? ''
-    ].join('\u0000').localeCompare([
-      right.capability,
-      right.fieldId,
-      right.mode ?? '',
-      right.bucketSort ?? '',
-      right.bucketInterval ?? ''
-    ].join('\u0000')))
+    .sort((left, right) => createBucketSpecKey(left).localeCompare(createBucketSpecKey(right)))
 }
 
 export const resolveDefaultSearchFieldIds = (
@@ -68,43 +57,41 @@ export const normalizeIndexDemand = (
   context: Pick<IndexReadContext, 'document' | 'reader'>,
   demand?: IndexDemand
 ): NormalizedIndexDemand => {
-  const groups = uniqueGroups(demand?.groups)
+  const buckets = uniqueBucketSpecs(demand?.buckets)
   const sortFields = uniqueSorted(demand?.sortFields ?? [])
   const searchFields = uniqueSorted(demand?.search?.fieldIds ?? [])
   const displayFields = uniqueSorted(demand?.displayFields ?? [])
   const calculationFields = uniqueSorted(
     (demand?.calculations ?? []).map(item => item.fieldId)
   )
-  const groupFields = uniqueSorted(groups.map(item => item.fieldId))
+  const bucketFields = uniqueSorted(buckets.map(item => item.fieldId))
   const recordFields = uniqueSorted([
     ...displayFields,
     ...sortFields,
     ...searchFields,
-    ...groupFields,
+    ...bucketFields,
     ...calculationFields
   ])
 
   return {
     recordFields,
     search: searchFields,
-    groups,
+    buckets,
     sortFields,
     calculations: normalizeCalculationDemands(demand?.calculations)
   }
 }
 
-export const sameGroupDemand = (
-  left: readonly GroupDemand[],
-  right: readonly GroupDemand[]
+export const sameBucketSpecs = (
+  left: readonly BucketSpec[],
+  right: readonly BucketSpec[]
 ) => left.length === right.length
-  && left.every((group, index) => {
+  && left.every((spec, index) => {
     const next = right[index]
     return next !== undefined
-      && group.capability === next.capability
-      && group.fieldId === next.fieldId
-      && group.mode === next.mode
-      && group.bucketSort === next.bucketSort
-      && group.bucketInterval === next.bucketInterval
+      && spec.fieldId === next.fieldId
+      && spec.mode === next.mode
+      && spec.interval === next.interval
   })
 
 export {

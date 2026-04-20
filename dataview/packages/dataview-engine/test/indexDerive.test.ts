@@ -7,6 +7,13 @@ import {
   deriveIndex
 } from '@dataview/engine/active/index/runtime'
 import {
+  readBucketIndex
+} from '@dataview/engine/active/index/bucket'
+import {
+  compileViewPlan,
+  resolveViewPlan
+} from '@dataview/engine/active/plan'
+import {
   createActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import {
@@ -16,12 +23,6 @@ import {
 import {
   createFieldReducerBuilder
 } from '@dataview/engine/active/shared/calculation'
-import {
-  resolveViewDemand
-} from '@dataview/engine/active/demand'
-import {
-  compileViewQuery
-} from '@dataview/engine/active/query'
 import {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'
@@ -137,6 +138,12 @@ const createDocument = (input = {}) => {
 
 const createImpact = (input = {}) => createActiveImpact(input)
 
+const resolveDemand = (document, viewId) => {
+  const plan = resolveViewPlan(createStaticDocumentReadContext(document), viewId)
+  assert.ok(plan)
+  return plan.demand
+}
+
 const createTableView = (input = {}) => ({
   id: 'view_table',
   type: 'table',
@@ -182,9 +189,8 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
     search: {
       fieldIds: [TITLE_FIELD_ID]
     },
-    groups: [{
-      fieldId: FIELD_STATUS,
-      capability: 'section'
+    buckets: [{
+      fieldId: FIELD_STATUS
     }],
     sortFields: [FIELD_POINTS],
     calculations: [
@@ -216,10 +222,11 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
   assert.equal(titleSearch.texts.get('rec_2'), 'renamed 2')
   assert.equal(titleSearch.texts.get('rec_1'), 'task 1')
 
-  const statusGroup = Array.from(state.group.groups.values())
-    .find(group => group.fieldId === FIELD_STATUS && group.capability === 'section')
-  assert.equal(statusGroup?.sectionRecords.get('doing'), undefined)
-  assert.deepEqual(statusGroup?.sectionRecords.get('done'), ['rec_2', 'rec_3'])
+  const statusBucket = readBucketIndex(state.bucket, {
+    fieldId: FIELD_STATUS
+  })
+  assert.equal(statusBucket?.recordsByKey.get('doing'), undefined)
+  assert.deepEqual(statusBucket?.recordsByKey.get('done'), ['rec_2', 'rec_3'])
 
   const pointSort = state.sort.fields.get(FIELD_POINTS)
   assert.deepEqual(pointSort.asc, ['rec_1', 'rec_3', 'rec_2'])
@@ -231,7 +238,7 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
   assert.equal(statusCalc?.global.option?.counts.get('done'), 2)
 })
 
-test('engine.active.resolveViewDemand provisions idle search substrate and shared record values', () => {
+test('engine.active.view plan demand provisions idle search substrate and shared record values', () => {
   const view = createTableView()
   const document = createDocument({
     activeViewId: view.id,
@@ -243,7 +250,7 @@ test('engine.active.resolveViewDemand provisions idle search substrate and share
     }
   })
 
-  const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
+  const demand = resolveDemand(document, view.id)
   const index = createIndexState(document, demand).state
 
   assert.deepEqual(demand.search, {
@@ -257,7 +264,7 @@ test('engine.active.resolveViewDemand provisions idle search substrate and share
   assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
 
-test('engine.active.resolveViewDemand unions search and numeric filter substrates into shared record values', () => {
+test('engine.active.view plan demand unions search and numeric filter substrates into shared record values', () => {
   const view = createTableView({
     search: {
       query: 'task'
@@ -281,7 +288,7 @@ test('engine.active.resolveViewDemand unions search and numeric filter substrate
     }
   })
 
-  const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
+  const demand = resolveDemand(document, view.id)
   const index = createIndexState(document, demand).state
 
   assert.deepEqual(demand.search, {
@@ -295,7 +302,7 @@ test('engine.active.resolveViewDemand unions search and numeric filter substrate
   assert.deepEqual(Array.from(index.records.values.keys()), [FIELD_POINTS, FIELD_STATUS, TITLE_FIELD_ID])
 })
 
-test('engine.active.resolveViewDemand ignores ineffective persisted filters for group and sort demand', () => {
+test('engine.active.view plan demand ignores ineffective persisted filters for bucket and sort demand', () => {
   const FIELD_DUE = 'due'
   const fields = [
     ...createFields(),
@@ -367,10 +374,10 @@ test('engine.active.resolveViewDemand ignores ineffective persisted filters for 
     }
   })
 
-  const demand = resolveViewDemand(createStaticDocumentReadContext(document), view.id)
+  const demand = resolveDemand(document, view.id)
 
   assert.deepEqual(demand.sortFields, [FIELD_DUE])
-  assert.equal(demand.groups, undefined)
+  assert.equal(demand.buckets, undefined)
 })
 
 test('engine.active.index derive adds demanded sort fields without rebuilding existing field indexes', () => {
@@ -701,7 +708,7 @@ test('engine.active.query derives descending order from single asc sort index', 
       },
       orders: []
     },
-    plan: compileViewQuery(createStaticDocumentReadContext(document).reader, {
+    plan: compileViewPlan(createStaticDocumentReadContext(document).reader, {
       id: 'view_points_desc',
       name: 'Points Desc',
       type: 'table',
@@ -724,7 +731,7 @@ test('engine.active.query derives descending order from single asc sort index', 
         kanban: {}
       },
       orders: []
-    })
+    }).query
   })
 
   assert.deepEqual(query.records.matched, ['rec_3', 'rec_2', 'rec_1'])
@@ -794,25 +801,25 @@ test('engine.active.query keeps empty values at the end for title, status, and n
     reader,
     index: index.state,
     view: titleAscView,
-    plan: compileViewQuery(reader, titleAscView)
+    plan: compileViewPlan(reader, titleAscView).query
   })
   const titleDesc = buildQueryState({
     reader,
     index: index.state,
     view: titleDescView,
-    plan: compileViewQuery(reader, titleDescView)
+    plan: compileViewPlan(reader, titleDescView).query
   })
   const statusDesc = buildQueryState({
     reader,
     index: index.state,
     view: statusDescView,
-    plan: compileViewQuery(reader, statusDescView)
+    plan: compileViewPlan(reader, statusDescView).query
   })
   const pointsDesc = buildQueryState({
     reader,
     index: index.state,
     view: pointsDescView,
-    plan: compileViewQuery(reader, pointsDescView)
+    plan: compileViewPlan(reader, pointsDescView).query
   })
 
   assert.deepEqual(titleAsc.records.visible, ['rec_2', 'rec_3', 'rec_1'])

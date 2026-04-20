@@ -9,9 +9,10 @@ import type {
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
-  OrderMode,
-  DocumentWrite,
-  NodeWrite
+  CanvasWrite,
+  GroupWrite,
+  NodeWrite,
+  OrderMode
 } from '@whiteboard/editor/write/types'
 import type { SelectionActions } from '@whiteboard/editor/action/types'
 import type { SelectionSessionDeps } from '@whiteboard/editor/session/types'
@@ -25,36 +26,24 @@ export type SelectionActionHelpers = Pick<
 
 type SelectionActionHelpersHost = {
   read: Pick<EditorQuery, 'group'>
-  document: Pick<DocumentWrite, 'delete' | 'duplicate' | 'order' | 'group'>
+  canvas: CanvasWrite
+  group: GroupWrite
   node: Pick<NodeWrite, 'create'>
   session: SelectionSessionDeps
   defaults: EditorDefaults['templates']
 }
 
 const orderRefs = (
-  document: Pick<DocumentWrite, 'order'>,
+  canvas: Pick<CanvasWrite, 'order'>,
   refs: CanvasItemRef[],
   mode: OrderMode
-) => document.order(refs, mode)
+) => canvas.order.move(refs, mode)
 
 const orderGroups = (
-  order: DocumentWrite['group']['order'],
-  groupIds: readonly string[],
+  group: Pick<GroupWrite, 'order'>,
+  groupIds: readonly GroupId[],
   mode: OrderMode
-) => {
-  const ids = [...groupIds]
-  if (mode === 'front') {
-    return order.bringToFront(ids)
-  }
-  if (mode === 'forward') {
-    return order.bringForward(ids)
-  }
-  if (mode === 'backward') {
-    return order.sendBackward(ids)
-  }
-
-  return order.sendToBack(ids)
-}
+) => group.order.move(groupIds, mode)
 
 const toCanvasRefs = (
   target: SelectionTarget
@@ -108,7 +97,8 @@ const createFrame = (
 
 export const createSelectionActions = ({
   read,
-  document,
+  canvas,
+  group,
   node,
   session,
   defaults
@@ -120,7 +110,7 @@ export const createSelectionActions = ({
       return false
     }
 
-    const result = document.duplicate(refs)
+    const result = canvas.duplicate(refs)
     if (!result.ok) {
       return false
     }
@@ -145,7 +135,7 @@ export const createSelectionActions = ({
       return false
     }
 
-    const result = document.delete(refs)
+    const result = canvas.delete(refs)
     if (!result.ok) {
       return false
     }
@@ -160,7 +150,7 @@ export const createSelectionActions = ({
     const target = normalizeSelectionTarget(input)
     const groupIds = read.group.exactIds(target)
     if (groupIds.length > 0) {
-      return orderGroups(document.group.order, groupIds, mode).ok
+      return orderGroups(group, groupIds, mode).ok
     }
 
     const refs = toCanvasRefs(target)
@@ -168,11 +158,11 @@ export const createSelectionActions = ({
       return false
     }
 
-    return orderRefs(document, refs, mode).ok
+    return orderRefs(canvas, refs, mode).ok
   },
   group: (input, options) => {
     const target = normalizeSelectionTarget(input)
-    const result = document.group.merge(target)
+    const result = group.merge(target)
     if (!result.ok) {
       return false
     }
@@ -192,9 +182,7 @@ export const createSelectionActions = ({
       return false
     }
 
-    const result = groupIds.length === 1
-      ? document.group.ungroup(groupIds[0]!)
-      : document.group.ungroupMany(groupIds)
+    const result = group.ungroup(groupIds)
     if (!result.ok) {
       return false
     }

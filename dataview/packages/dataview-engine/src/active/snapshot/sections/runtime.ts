@@ -3,6 +3,8 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
+  ItemList,
+  SectionList,
   ViewStageMetrics
 } from '@dataview/engine/contracts/public'
 import {
@@ -17,11 +19,13 @@ import type {
 import type {
   DeriveAction,
   ItemProjectionCache,
+  QueryState,
   SectionState
 } from '@dataview/engine/contracts/internal'
 import {
-  readSectionGroupIndex
-} from '@dataview/engine/active/index/group/demand'
+  createBucketSpec,
+  readBucketIndex
+} from '@dataview/engine/active/index/bucket'
 import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
 import {
   hasMembershipChanges,
@@ -46,7 +50,7 @@ const resolveSectionsAction = (input: {
   impact: ActiveImpact
   view: View
   previous?: SectionState
-  query: import('@dataview/engine/contracts/internal').QueryState
+  query: QueryState
 }): DeriveAction => {
   const commit = input.impact.commit
 
@@ -58,7 +62,7 @@ const resolveSectionsAction = (input: {
     return 'rebuild'
   }
 
-  if (input.impact.query?.rebuild || input.impact.group?.rebuild) {
+  if (input.impact.query?.rebuild || input.impact.bucket?.rebuild) {
     return 'rebuild'
   }
 
@@ -82,7 +86,7 @@ const resolveSectionsAction = (input: {
     return 'sync'
   }
 
-  return hasQueryChanges(input.impact) || hasMembershipChanges(input.impact.group)
+  return hasQueryChanges(input.impact) || hasMembershipChanges(input.impact.bucket)
     ? 'sync'
     : 'reuse'
 }
@@ -92,11 +96,11 @@ export const runSectionsStage = (input: {
   previousViewId?: ViewId
   impact: ActiveImpact
   view: View
-  query: import('@dataview/engine/contracts/internal').QueryState
+  query: QueryState
   previous?: SectionState
   previousPublished: {
-    sections?: import('@dataview/engine/contracts/public').SectionList
-    items?: import('@dataview/engine/contracts/public').ItemList
+    sections?: SectionList
+    items?: ItemList
   }
   previousProjection: ItemProjectionCache
   index: IndexState
@@ -104,8 +108,8 @@ export const runSectionsStage = (input: {
   action: DeriveAction
   state: SectionState
   projection: ItemProjectionCache
-  sections: import('@dataview/engine/contracts/public').SectionList
-  items: import('@dataview/engine/contracts/public').ItemList
+  sections: SectionList
+  items: ItemList
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
@@ -148,7 +152,7 @@ export const runSectionsStage = (input: {
       allRecordIds: input.index.records.ids,
       ...(input.view.group
         ? {
-            groupMembership: readSectionGroupIndex(input.index.group, input.view.group)?.sectionRecords
+            sectionMembership: readBucketIndex(input.index.bucket, createBucketSpec(input.view.group))?.recordsByKey
           }
         : {}),
       previous: {

@@ -206,12 +206,10 @@ test('engine blocks remote edge deletion that would change a locked node relatio
     document: createLockedDocument()
   })
 
-  const result = engine.apply({
-    ops: [{
-      type: 'edge.delete',
-      id: 'edge_1'
-    }]
-  }, {
+  const result = engine.apply([{
+    type: 'edge.delete',
+    id: 'edge_1'
+  }], {
     origin: 'remote'
   })
 
@@ -228,20 +226,18 @@ test('engine allows remote unlock then delete in the same operation batch', () =
     document: createLockedDocument()
   })
 
-  const result = engine.apply({
-    ops: [
-      {
-        type: 'node.field.set',
-        id: 'node_locked',
-        field: 'locked',
-        value: false
-      },
-      {
-        type: 'node.delete',
-        id: 'node_locked'
-      }
-    ]
-  }, {
+  const result = engine.apply([
+    {
+      type: 'node.field.set',
+      id: 'node_locked',
+      field: 'locked',
+      value: false
+    },
+    {
+      type: 'node.delete',
+      id: 'node_locked'
+    }
+  ], {
     origin: 'remote'
   })
 
@@ -258,11 +254,13 @@ test('engine blocks modifying a locked edge', () => {
   })
 
   const result = engine.execute({
-    type: 'edge.patch',
+    type: 'edge.update',
     updates: [{
       id: 'edge_locked',
-      patch: {
-        textMode: 'tangent'
+      input: {
+        fields: {
+          textMode: 'tangent'
+        }
       }
     }]
   })
@@ -280,22 +278,20 @@ test('engine allows remote unlock then edge update in the same batch', () => {
     document: createEdgeLockedDocument()
   })
 
-  const result = engine.apply({
-    ops: [
-      {
-        type: 'edge.field.set',
-        id: 'edge_locked',
-        field: 'locked',
-        value: false
-      },
-      {
-        type: 'edge.field.set',
-        id: 'edge_locked',
-        field: 'textMode',
-        value: 'tangent'
-      }
-    ]
-  }, {
+  const result = engine.apply([
+    {
+      type: 'edge.field.set',
+      id: 'edge_locked',
+      field: 'locked',
+      value: false
+    },
+    {
+      type: 'edge.field.set',
+      id: 'edge_locked',
+      field: 'textMode',
+      value: 'tangent'
+    }
+  ], {
     origin: 'remote'
   })
 

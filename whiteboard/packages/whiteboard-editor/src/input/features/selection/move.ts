@@ -6,6 +6,7 @@ import {
   stepMoveState
 } from '@whiteboard/core/node'
 import type { SelectionTarget } from '@whiteboard/core/selection'
+import type { EdgePatch, EdgeUpdateInput } from '@whiteboard/core/types'
 import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
@@ -39,6 +40,15 @@ const toMoveEdgePatches = (
     target: patch.target
   }
 }))
+
+const toEdgeUpdateInput = (
+  patch: EdgePatch
+): EdgeUpdateInput => ({
+  fields: {
+    ...(patch.source ? { source: patch.source } : {}),
+    ...(patch.target ? { target: patch.target } : {})
+  }
+})
 
 const findParentFrameId = (
   ctx: Pick<EditorHostDeps, 'query'>,
@@ -193,16 +203,36 @@ export const createMoveInteraction = (
     },
     up: () => {
       const commit = finishMoveState(state)
+      const selectedEdgeIdSet = new Set(input.target.edgeIds)
 
       if (commit.delta) {
         ctx.write.node.move({
           ids: state.move.rootIds,
           delta: commit.delta
         })
+
+        if (input.target.edgeIds.length > 0) {
+          ctx.write.edge.move({
+            ids: input.target.edgeIds,
+            delta: commit.delta
+          })
+        }
       }
 
       if (commit.edges.length > 0) {
-        ctx.write.edge.updateMany(commit.edges)
+        commit.edges.forEach((entry) => {
+          if (selectedEdgeIdSet.has(entry.id)) {
+            return
+          }
+
+          const input = toEdgeUpdateInput(entry.patch)
+          if (input.fields && Object.keys(input.fields).length > 0) {
+            ctx.write.edge.update(entry.id, input)
+          }
+          if (entry.patch.route) {
+            ctx.write.edge.route.set(entry.id, entry.patch.route)
+          }
+        })
       }
 
       return FINISH

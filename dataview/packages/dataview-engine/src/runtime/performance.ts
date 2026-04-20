@@ -80,7 +80,7 @@ const createPerformanceStats = (): PerformanceStats => ({
   indexes: {
     records: createPerformanceCounter(),
     search: createPerformanceCounter(),
-    group: createPerformanceCounter(),
+    bucket: createPerformanceCounter(),
     sort: createPerformanceCounter(),
     summaries: createPerformanceCounter()
   },
@@ -104,7 +104,7 @@ const clonePerformanceStats = (
   indexes: {
     records: { ...stats.indexes.records },
     search: { ...stats.indexes.search },
-    group: { ...stats.indexes.group },
+    bucket: { ...stats.indexes.bucket },
     sort: { ...stats.indexes.sort },
     summaries: { ...stats.indexes.summaries }
   },
@@ -143,7 +143,7 @@ const cloneTrace = (
     },
     records: { ...trace.index.records },
     search: { ...trace.index.search },
-    group: { ...trace.index.group },
+    bucket: { ...trace.index.bucket },
     sort: { ...trace.index.sort },
     summaries: { ...trace.index.summaries }
   },
@@ -241,7 +241,7 @@ export const createPerformanceRuntime = (
       updateRunningStat(stats.timings.indexMs, nextTrace.timings.indexMs)
       updateRunningStat(stats.timings.viewMs, nextTrace.timings.viewMs)
 
-      ;(['records', 'search', 'group', 'sort', 'summaries'] as const).forEach(indexName => {
+      ;(['records', 'search', 'bucket', 'sort', 'summaries'] as const).forEach(indexName => {
         const counter = stats.indexes[indexName]
         const stage = nextTrace.index[indexName]
         counter.total += 1

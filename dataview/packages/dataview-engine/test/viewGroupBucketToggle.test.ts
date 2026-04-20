@@ -1261,7 +1261,7 @@ test('engine.performance traces active view derive and snapshot behavior for inc
   assert.equal(trace.view.plan.query, 'reuse')
   assert.equal(trace.view.plan.sections, 'sync')
   assert.equal(trace.view.plan.summary, 'sync')
-  assert.equal(trace.index.group.action, 'sync')
+  assert.equal(trace.index.bucket.action, 'sync')
   assert.equal(trace.index.summaries.action, 'reuse')
   assert.ok(trace.snapshot.changedStores.includes('sections'))
   assert.ok(trace.snapshot.changedStores.includes('items'))
@@ -1273,7 +1273,7 @@ test('engine.performance traces active view derive and snapshot behavior for inc
   assert.equal(stats.commits.total, 1)
   assert.equal(stats.commits.dispatch, 1)
   assert.equal(stats.stages.sections.sync, 1)
-  assert.equal(stats.indexes.group.changed, 1)
+  assert.equal(stats.indexes.bucket.changed, 1)
 })
 
 test('view.create resolves duplicate names in the write planner', () => {

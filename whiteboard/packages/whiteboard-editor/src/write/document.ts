@@ -7,7 +7,7 @@ import type { DocumentWrite } from '@whiteboard/editor/write/types'
 export const createDocumentWrite = (
   engine: Engine
 ): DocumentWrite => ({
-  replace: (document) => engine.execute({
+  replace: (document: Document) => engine.execute({
     type: 'document.replace',
     document
   }),
@@ -16,64 +16,10 @@ export const createDocumentWrite = (
     slice,
     options
   }),
-  delete: (refs) => engine.execute({
-    type: 'canvas.delete',
-    refs
-  }),
-  duplicate: (refs) => engine.execute({
-    type: 'canvas.duplicate',
-    refs
-  }),
-  order: (refs, mode) => engine.execute({
-    type: 'canvas.order',
-    refs,
-    mode
-  }),
   background: {
     set: (background) => engine.execute({
-      type: 'document.background',
+      type: 'document.background.set',
       background
-    })
-  },
-  group: {
-    merge: (target) => engine.execute({
-      type: 'group.merge',
-      target
-    }),
-    order: {
-      set: (ids) => engine.execute({
-        type: 'group.order',
-        mode: 'set',
-        ids
-      }),
-      bringToFront: (ids) => engine.execute({
-        type: 'group.order',
-        mode: 'front',
-        ids
-      }),
-      sendToBack: (ids) => engine.execute({
-        type: 'group.order',
-        mode: 'back',
-        ids
-      }),
-      bringForward: (ids) => engine.execute({
-        type: 'group.order',
-        mode: 'forward',
-        ids
-      }),
-      sendBackward: (ids) => engine.execute({
-        type: 'group.order',
-        mode: 'backward',
-        ids
-      })
-    },
-    ungroup: (id) => engine.execute({
-      type: 'group.ungroup',
-      id
-    }),
-    ungroupMany: (ids) => engine.execute({
-      type: 'group.ungroupMany',
-      ids
     })
   }
 })

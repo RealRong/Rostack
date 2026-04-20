@@ -4,7 +4,7 @@ import {
   createValueStore,
   type ValueStore
 } from '@shared/core'
-import { resolveViewDemand } from '@dataview/engine/active/demand'
+import { resolveViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { createViewRuntime } from '@dataview/engine/active/runtime'
 import { createActiveImpact } from '@dataview/engine/active/shared/impact'
@@ -22,10 +22,11 @@ export const createRuntimeState = (input: {
   // The engine maintains exactly one derived runtime for the current active view.
   // Inactive views keep only document config and are rebuilt on demand when opened.
   const documentContext = createStaticDocumentReadContext(input.doc)
-  const demand = resolveViewDemand(documentContext, documentContext.activeViewId)
-  const index = createIndexState(input.doc, demand)
+  const viewPlan = resolveViewPlan(documentContext, documentContext.activeViewId)
+  const index = createIndexState(input.doc, viewPlan?.demand)
   const currentView = createViewRuntime({
     documentContext,
+    viewPlan,
     index: index.state,
     impact: createActiveImpact(createResetCommitImpact(undefined, input.doc)),
     capturePerf: input.capturePerf

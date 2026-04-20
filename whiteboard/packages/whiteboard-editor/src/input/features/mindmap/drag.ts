@@ -268,20 +268,15 @@ export const createMindmapDragSession = (
       const commit = commitMindmapDrag(state)
 
       if (commit?.kind === 'root') {
-        ctx.write.mindmap.moveRoot({
-          nodeId: commit.nodeId,
-          position: commit.position,
-          origin: commit.origin
-        })
+        ctx.write.mindmap.root.move(commit.nodeId, commit.position)
       }
 
       if (commit?.kind === 'subtree') {
-        ctx.write.mindmap.moveByDrop({
-          id: commit.id,
+        ctx.write.mindmap.topic.move(commit.id, {
           nodeId: commit.nodeId,
-          drop: commit.drop,
-          origin: commit.origin,
-          layout: commit.layout
+          parentId: commit.drop.parentId,
+          index: commit.drop.index,
+          side: commit.drop.side
         })
       }
 

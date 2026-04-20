@@ -8,10 +8,14 @@ import type {
 import { createEdgeConnectSession } from '../src/input/features/edge/connect'
 
 const createInteractionDeps = () => {
-  const patch = vi.fn(() => ({ ok: true }))
+  const reconnect = vi.fn(() => ({ ok: true }))
+  const setType = vi.fn(() => ({ ok: true }))
+  const clearRoute = vi.fn(() => ({ ok: true }))
 
   return {
-    patch,
+    reconnect,
+    setType,
+    clearRoute,
     ctx: {
       query: {
         node: {} as InteractionDeps['query']['node'],
@@ -66,8 +70,14 @@ const createInteractionDeps = () => {
       },
       write: {
         edge: {
-          patch,
-          create: vi.fn()
+          reconnect,
+          create: vi.fn(),
+          type: {
+            set: setType
+          },
+          route: {
+            clear: clearRoute
+          }
         }
       },
       actions: {
@@ -143,7 +153,12 @@ describe('createEdgeConnectSession', () => {
   })
 
   it('keeps straight auto-route latched after shift is released', () => {
-    const { session, patch } = createReconnectSession()
+    const {
+      session,
+      reconnect,
+      setType,
+      clearRoute
+    } = createReconnectSession()
 
     session.move?.({
       pointerId: 1,
@@ -194,18 +209,15 @@ describe('createEdgeConnectSession', () => {
 
     session.up?.({} as never)
 
-    expect(patch).toHaveBeenCalledWith(
-      ['edge-1'],
+    expect(reconnect).toHaveBeenCalledWith(
+      'edge-1',
+      'target',
       {
-        target: {
-          kind: 'point',
-          point: { x: 20, y: 10 }
-        },
-        type: 'straight',
-        route: {
-          kind: 'auto'
-        }
+        kind: 'point',
+        point: { x: 20, y: 10 }
       }
     )
+    expect(setType).toHaveBeenCalledWith(['edge-1'], 'straight')
+    expect(clearRoute).toHaveBeenCalledWith('edge-1')
   })
 })

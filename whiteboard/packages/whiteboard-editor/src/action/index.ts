@@ -1,9 +1,18 @@
 import type { Engine } from '@whiteboard/engine'
 import type { SelectionInput } from '@whiteboard/core/selection'
+import {
+  DEFAULT_ROOT_MOVE_THRESHOLD,
+  resolveInsertPlan
+} from '@whiteboard/core/mindmap'
+import { isNodeUpdateEmpty } from '@whiteboard/core/node'
 import type {
+  EdgePatch,
   MindmapId,
   MindmapInsertInput,
   MindmapNodeId,
+  MindmapTreePatch,
+  NodeId,
+  NodeStyle,
   Rect
 } from '@whiteboard/core/types'
 import type {
@@ -294,7 +303,7 @@ const createEditActions = ({
           return undefined
         }
 
-        return write.edge.label.remove(currentEdit.edgeId, currentEdit.labelId)
+        return write.edge.label.delete(currentEdit.edgeId, currentEdit.labelId)
       }
 
       return undefined
@@ -335,14 +344,16 @@ const createEditActions = ({
         currentEdit.capabilities.empty === 'remove'
         && !currentEdit.draft.text.trim()
       ) {
-        return write.edge.label.remove(currentEdit.edgeId, currentEdit.labelId)
+        return write.edge.label.delete(currentEdit.edgeId, currentEdit.labelId)
       }
 
-      return write.edge.label.patch(
+      return write.edge.label.update(
         currentEdit.edgeId,
         currentEdit.labelId,
         {
-          text: currentEdit.draft.text
+          fields: {
+            text: currentEdit.draft.text
+          }
         }
       )
     }
@@ -536,6 +547,58 @@ const focusMindmapRoot = ({
   }
 }
 
+const toEdgeUpdateInput = (
+  patch: EdgePatch
+) => {
+  const fields = {
+    ...(patch.source ? { source: patch.source } : {}),
+    ...(patch.target ? { target: patch.target } : {}),
+    ...(patch.type ? { type: patch.type } : {}),
+    ...(Object.prototype.hasOwnProperty.call(patch, 'locked') ? { locked: patch.locked } : {}),
+    ...(Object.prototype.hasOwnProperty.call(patch, 'groupId') ? { groupId: patch.groupId } : {}),
+    ...(Object.prototype.hasOwnProperty.call(patch, 'textMode') ? { textMode: patch.textMode } : {})
+  }
+  const records = [
+    ...(Object.prototype.hasOwnProperty.call(patch, 'data')
+      ? [{
+          scope: 'data' as const,
+          op: 'set' as const,
+          value: patch.data
+        }]
+      : []),
+    ...(Object.prototype.hasOwnProperty.call(patch, 'style')
+      ? [{
+          scope: 'style' as const,
+          op: 'set' as const,
+          value: patch.style
+        }]
+      : [])
+  ]
+
+  return {
+    ...(Object.keys(fields).length > 0 ? { fields } : {}),
+    ...(records.length > 0 ? { records } : {})
+  }
+}
+
+const readMindmapIdForNodes = (
+  query: Pick<EditorQuery, 'node'>,
+  nodeIds: readonly NodeId[]
+): MindmapId | undefined => {
+  const ids = [...new Set(
+    nodeIds.map((nodeId) => {
+      const node = query.node.item.get(nodeId)?.node
+      return node?.owner?.kind === 'mindmap'
+        ? node.owner.id
+        : undefined
+    }).filter(Boolean)
+  )]
+
+  return ids.length === 1
+    ? ids[0]
+    : undefined
+}
+
 export const createEditorActions = ({
   engine,
   session,
@@ -560,7 +623,8 @@ export const createEditorActions = ({
   }
   const selectionActionsCore = createSelectionActions({
     read: query,
-    document: write.document,
+    canvas: write.canvas,
+    group: write.group,
     node: write.node,
     session: selectionSessionDeps,
     defaults
@@ -641,7 +705,6 @@ export const createEditorActions = ({
   }
 
   const mindmap: MindmapActions = {
-    ...write.mindmap,
     create: (payload, options) => {
       const result = write.mindmap.create(payload)
       if (result.ok) {
@@ -654,8 +717,10 @@ export const createEditorActions = ({
       }
       return result
     },
+    delete: write.mindmap.delete,
+    patch: (id, input: MindmapTreePatch) => write.mindmap.layout.set(id, input.layout ?? {}),
     insert: (id, input, options) => {
-      const result = write.mindmap.insert(id, input)
+      const result = write.mindmap.topic.insert(id, input)
       if (!result.ok) {
         return result
       }
@@ -683,9 +748,40 @@ export const createEditorActions = ({
       })
       return result
     },
+    moveSubtree: (id, input) => write.mindmap.topic.move(id, input),
+    removeSubtree: (id, input) => write.mindmap.topic.delete(id, input),
+    cloneSubtree: (id, input) => write.mindmap.topic.clone(id, input),
     insertByPlacement: (input) => {
-      const result = write.mindmap.insertByPlacement(input)
-      if (!result?.ok) {
+      const plan = resolveInsertPlan({
+        tree: input.tree,
+        targetNodeId: input.targetNodeId,
+        placement: input.placement,
+        layoutSide: input.layout.side
+      })
+      if (plan.mode === 'towardRoot') {
+        return undefined
+      }
+
+      const result = write.mindmap.topic.insert(
+        input.id,
+        plan.mode === 'child'
+          ? {
+              kind: 'child',
+              parentId: plan.parentId,
+              payload: input.payload,
+              options: {
+                index: plan.index,
+                side: plan.side
+              }
+            }
+          : {
+              kind: 'sibling',
+              nodeId: plan.nodeId,
+              position: plan.position,
+              payload: input.payload
+            }
+      )
+      if (!result.ok) {
         return result
       }
 
@@ -711,6 +807,91 @@ export const createEditorActions = ({
         delayMs: focusDelayMs
       })
       return result
+    },
+    moveByDrop: (input) => write.mindmap.topic.move(input.id, {
+      nodeId: input.nodeId,
+      parentId: input.drop.parentId,
+      index: input.drop.index,
+      side: input.drop.side
+    }),
+    moveRoot: (input) => {
+      const directNode = query.node.item.get(input.nodeId)?.node
+      const tree = query.mindmap.item.get(input.nodeId)
+      const node = directNode ?? (
+        tree
+          ? query.node.item.get(tree.tree.rootNodeId)?.node
+          : undefined
+      )
+      const mindmapId = directNode?.owner?.kind === 'mindmap'
+        ? directNode.owner.id
+        : tree?.id
+      if (!node || !mindmapId) {
+        return undefined
+      }
+
+      const threshold = input.threshold ?? DEFAULT_ROOT_MOVE_THRESHOLD
+      const delta = input.origin
+        ? {
+            x: input.position.x - input.origin.x,
+            y: input.position.y - input.origin.y
+          }
+        : {
+            x: input.position.x - node.position.x,
+            y: input.position.y - node.position.y
+          }
+      if (Math.abs(delta.x) < threshold && Math.abs(delta.y) < threshold) {
+        return undefined
+      }
+
+      return write.mindmap.root.move(mindmapId, input.position)
+    },
+    style: {
+      branch: (input) => {
+        const scopeIds = input.scope === 'subtree' && input.id
+          ? query.mindmap.item.get(input.id)?.childNodeIds ?? input.nodeIds
+          : input.nodeIds
+
+        return write.mindmap.branch.update(
+          input.id,
+          [...scopeIds].map((topicId) => ({
+            topicId,
+            input: {
+              fields: {
+                ...input.patch
+              }
+            }
+          }))
+        )
+      },
+      topic: (input) => {
+        const mindmapId = readMindmapIdForNodes(query, input.nodeIds)
+        if (!mindmapId) {
+          return undefined
+        }
+
+        const style = Object.fromEntries(
+          Object.entries({
+            frameKind: input.patch.frameKind,
+            stroke: input.patch.stroke,
+            strokeWidth: input.patch.strokeWidth,
+            fill: input.patch.fill
+          }).filter(([, value]) => value !== undefined)
+        ) as NodeStyle
+
+        return write.mindmap.topic.update(
+          mindmapId,
+          input.nodeIds.map((topicId) => ({
+            topicId,
+            input: {
+              records: [{
+                scope: 'style',
+                op: 'set',
+                value: style
+              }]
+            }
+          }))
+        )
+      }
     }
   }
 
@@ -740,9 +921,88 @@ export const createEditorActions = ({
     },
     selection,
     edit,
-    node: write.node,
+    node: {
+      ...write.node,
+      patch: (ids, update, options) => {
+        if (isNodeUpdateEmpty(update)) {
+          return undefined
+        }
+
+        const updates = ids.flatMap((id) => query.node.committed.get(id)
+          ? [{
+              id,
+              input: update
+            }]
+          : [])
+        if (!updates.length) {
+          return undefined
+        }
+
+        return write.node.updateMany(updates, {
+          origin: options?.origin
+        })
+      }
+    },
     edge: {
       ...write.edge,
+      patch: (edgeIds: readonly string[], patch: EdgePatch) => {
+        const input = toEdgeUpdateInput(patch)
+        if (!input.fields && !input.records?.length) {
+          return undefined
+        }
+
+        return write.edge.updateMany(
+          edgeIds.flatMap((id) => query.edge.committed.get(id)
+            ? [{
+                id,
+                input
+              }]
+            : [])
+        )
+      },
+      route: {
+        insert: (edgeId, point) => {
+          const result = write.edge.route.insert(edgeId, point)
+          if (!result.ok) {
+            return result
+          }
+
+          const route = query.edge.item.get(edgeId)?.edge.route
+          const index = route?.kind === 'manual'
+            ? route.points.findIndex((entry) => (
+                entry.id === result.data.pointId
+              ))
+            : -1
+
+          return {
+            ...result,
+            data: {
+              index
+            }
+          }
+        },
+        move: (edgeId, index, point) => {
+          const route = query.edge.item.get(edgeId)?.edge.route
+          const pointId = route?.kind === 'manual'
+            ? route.points[index]?.id
+            : undefined
+          if (!pointId) {
+            throw new Error(`Edge route point ${edgeId}:${index} not found.`)
+          }
+          return write.edge.route.update(edgeId, pointId, point)
+        },
+        remove: (edgeId, index) => {
+          const route = query.edge.item.get(edgeId)?.edge.route
+          const pointId = route?.kind === 'manual'
+            ? route.points[index]?.id
+            : undefined
+          if (!pointId) {
+            throw new Error(`Edge route point ${edgeId}:${index} not found.`)
+          }
+          return write.edge.route.delete(edgeId, pointId)
+        },
+        clear: write.edge.route.clear
+      },
       label: {
         ...write.edge.label,
         add: (edgeId) => {
@@ -755,10 +1015,11 @@ export const createEditorActions = ({
             return undefined
           }
 
-          const labelId = write.edge.label.add(edgeId)
-          if (!labelId) {
+          const inserted = write.edge.label.insert(edgeId)
+          if (!inserted.ok) {
             return undefined
           }
+          const labelId = inserted.data.labelId
 
           selectionSession.replace({
             edgeIds: [edgeId]
@@ -766,6 +1027,33 @@ export const createEditorActions = ({
           edit.startEdgeLabel(edgeId, labelId)
           return labelId
         },
+        patch: (edgeId, labelId, patch) => write.edge.label.update(
+          edgeId,
+          labelId,
+          {
+            fields: {
+              ...(patch.text !== undefined ? { text: patch.text } : {}),
+              ...(patch.t !== undefined ? { t: patch.t } : {}),
+              ...(patch.offset !== undefined ? { offset: patch.offset } : {})
+            },
+            records: [
+              ...(patch.style
+                ? [{
+                    scope: 'style' as const,
+                    op: 'set' as const,
+                    value: patch.style
+                  }]
+                : []),
+              ...(patch.data
+                ? [{
+                    scope: 'data' as const,
+                    op: 'set' as const,
+                    value: patch.data
+                  }]
+                : [])
+            ]
+          }
+        ),
         remove: (edgeId, labelId) => {
           const currentEdit = session.state.edit.get()
           if (
@@ -777,7 +1065,7 @@ export const createEditorActions = ({
             session.mutate.edit.clear()
           }
 
-          return write.edge.label.remove(edgeId, labelId)
+          return write.edge.label.delete(edgeId, labelId)
         }
       }
     },

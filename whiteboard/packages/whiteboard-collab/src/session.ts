@@ -95,9 +95,7 @@ export const createYjsSession = ({
 
     suppressLocalMirror = true
     try {
-      engine.apply({
-        ops: change.operations
-      }, {
+      engine.apply(change.operations, {
         origin: 'remote'
       })
     } finally {

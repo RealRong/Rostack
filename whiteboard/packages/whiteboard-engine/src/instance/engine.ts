@@ -11,17 +11,17 @@ import type {
 import { createRegistries } from '@whiteboard/core/kernel'
 import { resolveBoardConfig } from '@whiteboard/engine/config'
 import { createRead } from '@whiteboard/engine/read'
-import { RESET_INVALIDATION } from '@whiteboard/engine/read/invalidation'
 import { createWrite } from '@whiteboard/engine/write'
 import { createDocumentSource } from '@whiteboard/engine/instance/document'
 import { normalizeDocument } from '@whiteboard/engine/document/normalize'
-import type { Commit } from '@whiteboard/engine/types/commit'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { Draft } from '@whiteboard/engine/types/write'
-import { success } from '@whiteboard/engine/result'
 import { createValueStore } from '@shared/core'
-
-const readCommitAt = (): number => Date.now()
+import {
+  applyCommitHistoryEffect,
+  createCommit
+} from '@whiteboard/engine/write/commit'
+import type { CommitHistoryEffect } from '@whiteboard/engine/write/types'
 
 export const createEngine = ({
   registries,
@@ -32,7 +32,7 @@ export const createEngine = ({
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
   const documentSource = createDocumentSource(normalizeDocument(document, config))
-  const commitStore = createValueStore<Commit | null>(null)
+  const commitStore = createValueStore<import('@whiteboard/engine/types/commit').Commit | null>(null)
 
   const readControl = createRead({
     document: documentSource,
@@ -45,74 +45,38 @@ export const createEngine = ({
     registries: resolvedRegistries
   })
 
-  const commit = <T,>(
-    draft: Draft<T>
+  const commitDraft = <T,>(
+    draft: Draft<T>,
+    effect: CommitHistoryEffect
   ): CommandResult<T> => {
     if (!draft.ok) {
       return draft
     }
 
     documentSource.commit(draft.doc)
-    readControl.invalidate(
-      draft.kind === 'replace'
-        ? RESET_INVALIDATION
-        : draft.invalidation
+    readControl.invalidate(draft.invalidation)
+    applyCommitHistoryEffect(draft, effect, writer.history)
+
+    const result = createCommit(
+      draft,
+      (commitStore.get()?.rev ?? 0) + 1
     )
-
-    if (draft.kind === 'replace') {
-      writer.history.clear()
-    } else if (draft.kind === 'apply' && draft.inverse) {
-      writer.history.capture({
-        operations: draft.operations,
-        inverse: draft.inverse,
-        origin: 'user'
-      })
+    if (result.ok) {
+      commitStore.set(result.commit)
+      onDocumentChange?.(draft.doc)
     }
-
-    const nextCommit: Commit = {
-      rev: (commitStore.get()?.rev ?? 0) + 1,
-      at: readCommitAt(),
-      doc: draft.doc,
-      ops: draft.operations,
-      inverse: draft.inverse,
-      changes: draft.changes,
-      invalidation: draft.invalidation,
-      impact: draft.impact
-    }
-    commitStore.set(nextCommit)
-    onDocumentChange?.(draft.doc)
-    return success(nextCommit, draft.value)
-  }
-
-  const applyCommand = <C extends Command>(
-    command: C,
-    origin: Parameters<typeof writer.execute>[1]
-  ) => commit(writer.execute(command, origin))
-
-  const replace = (nextDocument: Parameters<typeof writer.replace>[0]) =>
-    commit(writer.replace(nextDocument))
-
-  const undo = () => commit(writer.undo())
-  const redo = () => commit(writer.redo())
-
-  const history = {
-    get: writer.history.get,
-    subscribe: (listener: () => void) => writer.history.subscribe(() => {
-      listener()
-    }),
-    undo,
-    redo,
-    clear: writer.history.clear
+    return result
   }
 
   const apply: Engine['apply'] = (
-    batch,
+    ops,
     options
-  ) => commit(
+  ) => commitDraft(
     writer.apply(
-      batch,
+      ops,
       options?.origin ?? 'user'
-    )
+    ),
+    'skip'
   )
 
   const execute = <C extends Command>(
@@ -120,13 +84,16 @@ export const createEngine = ({
     options?: ExecuteOptions
   ): ExecuteResult<C> => {
     const origin = options?.origin ?? ('origin' in command ? command.origin : undefined) ?? 'user'
-
-    if (command.type === 'document.replace') {
-      return replace(command.document) as ExecuteResult<C>
-    }
-
-    return applyCommand(command, origin) as ExecuteResult<C>
+    return commitDraft(
+      writer.execute(command, origin),
+      command.type === 'document.replace'
+        ? 'reset'
+        : 'record'
+    ) as ExecuteResult<C>
   }
+
+  const undo = () => commitDraft(writer.undo(), 'skip')
+  const redo = () => commitDraft(writer.redo(), 'skip')
 
   const configure = ({
     history
@@ -136,21 +103,25 @@ export const createEngine = ({
     }
   }
 
-  const dispose = () => {}
-
-  const engine = {
+  return {
     config,
     document: {
       get: documentSource.get
     },
     read: readControl.read,
-    history,
+    history: {
+      get: writer.history.get,
+      subscribe: (listener) => writer.history.subscribe(() => {
+        listener()
+      }),
+      undo,
+      redo,
+      clear: writer.history.clear
+    },
     commit: commitStore,
     execute,
     apply,
     configure,
-    dispose
+    dispose: () => {}
   } satisfies Engine
-
-  return engine
 }

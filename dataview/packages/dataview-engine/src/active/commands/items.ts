@@ -15,7 +15,8 @@ import type {
   ItemId,
   ItemList,
   MovePlan,
-  Placement
+  Placement,
+  ViewState
 } from '@dataview/engine/contracts/public'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
 
@@ -122,7 +123,7 @@ const createGroupValueActions = (input: {
 export const planMove = (
   itemIds: readonly ItemId[],
   target: Placement,
-  readState: () => import('@dataview/engine/contracts/public').ViewState | undefined
+  readState: () => ViewState | undefined
 ): MovePlan => {
   const state = readState()
   if (!state) {

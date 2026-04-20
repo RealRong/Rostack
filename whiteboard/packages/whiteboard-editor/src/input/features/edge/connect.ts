@@ -579,7 +579,13 @@ const commitConnectState = (
       return
     }
 
-    ctx.write.edge.patch([commit.edgeId], patch)
+    ctx.write.edge.reconnect(commit.edgeId, commit.end, commit.target)
+    if (patch.type === 'straight') {
+      ctx.write.edge.type.set([commit.edgeId], 'straight')
+    }
+    if (patch.route?.kind === 'auto') {
+      ctx.write.edge.route.clear(commit.edgeId)
+    }
     return
   }
 

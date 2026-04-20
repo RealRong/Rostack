@@ -15,18 +15,15 @@ import {
 } from '@dataview/engine/active/index/context'
 import {
   normalizeIndexDemand,
+  sameBucketSpecs,
   sameCalculationDemand,
-  sameGroupDemand
 } from '@dataview/engine/active/index/demand'
 import {
-  buildGroupIndex,
-  ensureGroupIndex,
-  syncGroupIndex
-} from '@dataview/engine/active/index/group/runtime'
-import {
-  createGroupDemandKey,
-  readSectionGroupDemand
-} from '@dataview/engine/active/index/group/demand'
+  buildBucketIndex,
+  ensureBucketIndex,
+  syncBucketIndex,
+  createBucketSpecKey
+} from '@dataview/engine/active/index/bucket'
 import {
   buildRecordIndex,
   syncRecordIndex
@@ -60,7 +57,7 @@ import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import {
-  ensureGroupChange
+  ensureBucketChange
 } from '@dataview/engine/active/shared/impact'
 
 const buildState = (
@@ -73,7 +70,7 @@ const buildState = (
   return {
     records,
     search: buildSearchIndex(context, records, demand.search),
-    group: buildGroupIndex(context, records, demand.groups),
+    bucket: buildBucketIndex(context, records, demand.buckets),
     sort: buildSortIndex(context, records, demand.sortFields),
     calculations: buildCalculationIndex(context, records, demand.calculations)
   }
@@ -156,32 +153,32 @@ export const deriveIndex = (input: {
   )
   const searchMs = now() - searchStart
 
-  const groupStage = runIndexDemandStage({
-    previous: previous.group,
-    previousDemand: input.previousDemand.groups,
-    nextDemand: nextDemand.groups,
-    sameDemand: sameGroupDemand,
-    sync: current => syncGroupIndex(
+  const bucketStage = runIndexDemandStage({
+    previous: previous.bucket,
+    previousDemand: input.previousDemand.buckets,
+    nextDemand: nextDemand.buckets,
+    sameDemand: sameBucketSpecs,
+    sync: current => syncBucketIndex(
       current,
       context,
       records,
       input.impact
     ),
-    ensure: current => ensureGroupIndex(current, context, records, nextDemand.groups),
-    build: current => buildGroupIndex(context, records, nextDemand.groups, current.rev + 1)
+    ensure: current => ensureBucketIndex(current, context, records, nextDemand.buckets),
+    build: current => buildBucketIndex(context, records, nextDemand.buckets, current.rev + 1)
   })
 
-  const previousSectionGroupKey = readSectionGroupDemand(input.previousDemand.groups)
-    ? createGroupDemandKey(readSectionGroupDemand(input.previousDemand.groups)!)
+  const previousSectionBucketKey = input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)
+    ? createBucketSpecKey(input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)!)
     : undefined
-  const nextSectionGroupKey = readSectionGroupDemand(nextDemand.groups)
-    ? createGroupDemandKey(readSectionGroupDemand(nextDemand.groups)!)
+  const nextSectionBucketKey = nextDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)
+    ? createBucketSpecKey(nextDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)!)
     : undefined
   if (
-    nextSectionGroupKey
-    && previousSectionGroupKey !== nextSectionGroupKey
+    nextSectionBucketKey
+    && previousSectionBucketKey !== nextSectionBucketKey
   ) {
-    ensureGroupChange(input.impact).rebuild = true
+    ensureBucketChange(input.impact).rebuild = true
   }
 
   const sortStart = now()
@@ -203,15 +200,15 @@ export const deriveIndex = (input: {
     build: current => buildCalculationIndex(context, records, nextDemand.calculations, current.rev + 1)
   })
 
-  const group = groupStage.state
+  const bucket = bucketStage.state
   const summaries = summariesStage.state
-  const groupMs = groupStage.durationMs
+  const bucketMs = bucketStage.durationMs
   const summariesMs = summariesStage.durationMs
 
   const state = {
     records,
     search,
-    group,
+    bucket,
     sort,
     calculations: summaries
   } satisfies IndexState
@@ -223,7 +220,7 @@ export const deriveIndex = (input: {
       changed: (
         records !== previous.records
         || search !== previous.search
-        || group !== previous.group
+        || bucket !== previous.bucket
         || sort !== previous.sort
         || summaries !== previous.calculations
       ),
@@ -231,7 +228,7 @@ export const deriveIndex = (input: {
         totalMs: now() - totalStart,
         recordsMs,
         searchMs,
-        groupMs,
+        bucketMs,
         sortMs,
         summariesMs
       },
@@ -255,13 +252,13 @@ export const deriveIndex = (input: {
         touchedRecordCount,
         touchedFieldCount
       }),
-      group: createIndexStageTrace({
-        previous: previous.group,
-        next: group,
+      bucket: createIndexStageTrace({
+        previous: previous.bucket,
+        next: bucket,
         rebuild,
-        durationMs: groupMs,
-        inputSize: previous.group.groups.size,
-        outputSize: group.groups.size,
+        durationMs: bucketMs,
+        inputSize: previous.bucket.fields.size,
+        outputSize: bucket.fields.size,
         touchedRecordCount,
         touchedFieldCount
       }),

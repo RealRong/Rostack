@@ -155,10 +155,12 @@ const createEdgeLabelDragSession = (
       step(input.world)
 
       if (state.draft) {
-        ctx.write.edge.label.patch(
+        ctx.write.edge.label.update(
           state.edgeId,
           state.labelId,
-          state.draft
+          {
+            fields: state.draft
+          }
         )
       }
 

@@ -11,14 +11,18 @@ import type {
   CardLayout,
   CardSize,
   CalculationMetric,
+  CustomField,
   DataDoc,
+  DataRecord,
   Field,
   FieldId,
   FilterRule,
   KanbanCardsPerColumn,
+  RecordId,
   SortDirection,
   Sorter,
-  View
+  View,
+  ViewId
 } from '@dataview/core/contracts'
 import {
   createKeyedStore,
@@ -33,24 +37,18 @@ import type {
   ActiveSource,
   DocumentPatch,
   DocumentSource,
-  EMPTY_VIEW_GROUP_PROJECTION,
   EnginePatch,
   EngineSource,
   FilterRuleProjection,
   GalleryState,
   KanbanState,
   SectionSource,
+  ViewState,
   ViewFilterProjection,
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
 } from '@dataview/engine/contracts/public'
-import type {
-  CustomField,
-  DataRecord,
-  RecordId,
-  ViewId
-} from '@dataview/core/contracts'
 import type {
   ItemId,
   Section,
@@ -324,7 +322,7 @@ const resolveKanbanState = (
 
 const createActivePatch = (
   document: DataDoc,
-  snapshot: import('@dataview/engine/contracts/public').ViewState | undefined
+  snapshot: ViewState | undefined
 ): ActivePatch => {
   const activeViewId = document.activeViewId
   const activeView = activeViewId

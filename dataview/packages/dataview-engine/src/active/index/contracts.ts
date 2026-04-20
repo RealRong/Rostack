@@ -5,9 +5,7 @@ import type {
   RecordId,
   ViewGroup
 } from '@dataview/core/contracts'
-import type {
-  Bucket
-} from '@dataview/core/field'
+import type { DocumentReader } from '@dataview/engine/document/reader'
 import type {
   IndexTrace
 } from '@dataview/engine/contracts/public'
@@ -42,19 +40,15 @@ export interface SearchDemand {
   fieldIds: readonly FieldId[]
 }
 
-export type GroupCapability = 'filter' | 'section'
-
-export interface GroupDemand {
+export interface BucketSpec {
   fieldId: FieldId
-  capability: GroupCapability
   mode?: ViewGroup['mode']
-  bucketSort?: ViewGroup['bucketSort']
-  bucketInterval?: ViewGroup['bucketInterval']
+  interval?: ViewGroup['bucketInterval']
 }
 
 export interface IndexDemand {
   search?: SearchDemand
-  groups?: readonly GroupDemand[]
+  buckets?: readonly BucketSpec[]
   displayFields?: readonly FieldId[]
   sortFields?: readonly FieldId[]
   calculations?: readonly CalculationDemand[]
@@ -63,7 +57,7 @@ export interface IndexDemand {
 export interface NormalizedIndexDemand {
   recordFields: readonly FieldId[]
   search: readonly FieldId[]
-  groups: readonly GroupDemand[]
+  buckets: readonly BucketSpec[]
   sortFields: readonly FieldId[]
   calculations: readonly CalculationDemand[]
 }
@@ -80,31 +74,15 @@ export interface SearchFieldIndex {
   rev: number
 }
 
-export interface FilterBucketIndex {
-  capability: 'filter'
-  fieldId: FieldId
-  recordBuckets: ReadonlyMap<RecordId, readonly BucketKey[]>
-  bucketRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
+export interface BucketFieldIndex {
+  spec: BucketSpec
+  field?: Field
+  keysByRecord: ReadonlyMap<RecordId, readonly BucketKey[]>
+  recordsByKey: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
 }
 
-export interface SectionGroupIndex {
-  capability: 'section'
-  fieldId: FieldId
-  mode?: ViewGroup['mode']
-  bucketSort?: ViewGroup['bucketSort']
-  bucketInterval?: ViewGroup['bucketInterval']
-  recordSections: ReadonlyMap<RecordId, readonly BucketKey[]>
-  sectionRecords: ReadonlyMap<BucketKey, SortedIdSet<RecordId>>
-  buckets: ReadonlyMap<BucketKey, Bucket>
-  order: readonly BucketKey[]
-}
-
-export type GroupFieldIndex =
-  | FilterBucketIndex
-  | SectionGroupIndex
-
-export interface GroupIndex {
-  groups: ReadonlyMap<string, GroupFieldIndex>
+export interface BucketIndex {
+  fields: ReadonlyMap<string, BucketFieldIndex>
   rev: number
 }
 
@@ -132,7 +110,7 @@ export interface CalculationIndex {
 export interface IndexState {
   records: RecordIndex
   search: SearchIndex
-  group: GroupIndex
+  bucket: BucketIndex
   sort: SortIndex
   calculations: CalculationIndex
 }
@@ -151,7 +129,7 @@ export interface FieldSyncContext {
 
 export interface IndexReadContext {
   document: DataDoc
-  reader: import('@dataview/engine/document/reader').DocumentReader
+  reader: DocumentReader
   fieldIds: readonly FieldId[]
   fieldIdSet: ReadonlySet<FieldId>
 }

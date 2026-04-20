@@ -221,7 +221,10 @@ export const createTransformSession = (
         commitTargetIds: state.commitIds
       })
       if (updates.length > 0) {
-        ctx.write.node.updateMany(updates)
+        ctx.write.node.updateMany(updates.map((entry) => ({
+          id: entry.id,
+          input: entry.update
+        })))
       }
 
       return FINISH

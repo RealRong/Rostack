@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { createLocalEngineHistory } from '@whiteboard/history'
 import { createEditor } from '../src'
 import type { NodeRegistry } from '../src'
 
@@ -133,22 +134,27 @@ const createEdgeDocument = () => {
   return document
 }
 
-const createEdgeEditor = () => createEditor({
-  engine: createEngine({
+const createEdgeEditor = () => {
+  const engine = createEngine({
     document: createEdgeDocument()
-  }),
-  initialTool: {
-    type: 'select'
-  },
-  initialViewport: {
-    center: {
-      x: 0,
-      y: 0
+  })
+
+  return createEditor({
+    engine,
+    history: createLocalEngineHistory(engine),
+    initialTool: {
+      type: 'select'
     },
-    zoom: 1
-  },
-  registry
-})
+    initialViewport: {
+      center: {
+        x: 0,
+        y: 0
+      },
+      zoom: 1
+    },
+    registry
+  })
+}
 
 describe('edge.selectedChrome', () => {
   it('shows edit handles for a selected edge outside label editing', () => {

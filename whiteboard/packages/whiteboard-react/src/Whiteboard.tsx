@@ -52,7 +52,6 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   const {
     resolvedConfig,
     boardConfig,
-    editorConfig,
     viewportLimits
   } = useMemo(
     () => resolveConfig(options),
@@ -102,10 +101,6 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   }, [editor])
 
   useEffect(() => {
-    editor.actions.app.configure(editorConfig)
-  }, [editor, editorConfig])
-
-  useEffect(() => {
     editor.actions.viewport.setLimits(viewportLimits)
   }, [editor, viewportLimits])
 
@@ -138,6 +133,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       actorId: collab.actorId,
       provider: collab.provider
     })
+    services.history.set(session.localHistory)
     collabSessionRef.current = session
     onCollabSessionRef.current?.(session)
     onCollabStatusChangeRef.current?.(session.status.get())
@@ -152,6 +148,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
 
     return () => {
       unsubscribeStatus()
+      services.history.reset()
       collabSessionRef.current = null
       onCollabSessionRef.current?.(null)
       session.destroy()
@@ -323,8 +320,10 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     }
   }, [collab?.presence?.binding, editor])
 
+  const { history: _history, ...contextServices } = services
+
   return (
-    <WhiteboardServicesProvider value={services}>
+    <WhiteboardServicesProvider value={contextServices}>
       <WhiteboardConfigProvider value={resolvedConfig}>
         <OverlayProvider>
           <Surface

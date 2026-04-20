@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { createLocalEngineHistory } from '@whiteboard/history'
 import { createEditor, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/editor'
 import {
@@ -82,10 +83,12 @@ const layout: LayoutBackend = {
 
 describe('mindmap insert position', () => {
   it('centers the inserted blank mindmap on the requested point', () => {
+    const engine = createEngine({
+      document: createDocument('doc_mindmap_insert_position')
+    })
     const editor = createEditor({
-      engine: createEngine({
-        document: createDocument('doc_mindmap_insert_position')
-      }),
+      engine,
+      history: createLocalEngineHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -121,10 +124,12 @@ describe('mindmap insert position', () => {
   })
 
   it('keeps the root anchor stable when the root width grows', () => {
+    const engine = createEngine({
+      document: createDocument('doc_mindmap_root_anchor')
+    })
     const editor = createEditor({
-      engine: createEngine({
-        document: createDocument('doc_mindmap_root_anchor')
-      }),
+      engine,
+      history: createLocalEngineHistory(engine),
       initialTool: {
         type: 'select'
       },

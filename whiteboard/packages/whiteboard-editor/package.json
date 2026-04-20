@@ -13,7 +13,8 @@
     "@shared/core": "workspace:*",
     "@shared/dom": "workspace:*",
     "@whiteboard/core": "workspace:*",
-    "@whiteboard/engine": "workspace:*"
+    "@whiteboard/engine": "workspace:*",
+    "@whiteboard/history": "workspace:*"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

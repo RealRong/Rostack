@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { createLocalEngineHistory } from '@whiteboard/history'
 import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
 import { createEditor, type LayoutBackend, type NodeRegistry } from '../src'
 
@@ -103,22 +104,27 @@ const layout: LayoutBackend = {
   }
 }
 
-const createTestEditor = () => createEditor({
-  engine: createEngine({
+const createTestEditor = () => {
+  const engine = createEngine({
     document: createDocument('doc_transactional_create_layout')
-  }),
-  initialTool: {
-    type: 'select'
-  },
-  initialViewport: {
-    center: { x: 0, y: 0 },
-    zoom: 1
-  },
-  registry,
-  services: {
-    layout
-  }
-})
+  })
+
+  return createEditor({
+    engine,
+    history: createLocalEngineHistory(engine),
+    initialTool: {
+      type: 'select'
+    },
+    initialViewport: {
+      center: { x: 0, y: 0 },
+      zoom: 1
+    },
+    registry,
+    services: {
+      layout
+    }
+  })
+}
 
 describe('transactional create layout', () => {
   it('measures text nodes before node.create commits', () => {

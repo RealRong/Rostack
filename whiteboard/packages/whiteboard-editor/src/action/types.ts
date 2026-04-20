@@ -4,9 +4,6 @@ import type {
 } from '@whiteboard/core/geometry'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import type {
-  HistoryConfig as KernelHistoryConfig
-} from '@whiteboard/core/kernel'
-import type {
   Document,
   EdgeTemplate,
   EdgeDash,
@@ -65,10 +62,6 @@ export type ClipboardOptions = {
   origin?: Point
 }
 
-export type AppConfig = {
-  history?: KernelHistoryConfig
-}
-
 export type MindmapInsertFocus =
   | 'edit-new'
   | 'select-new'
@@ -85,7 +78,6 @@ export type MindmapInsertBehavior = {
 
 export type AppActions = {
   replace: (document: Document) => CommandResult
-  configure: (config: AppConfig) => void
 }
 
 export type ToolActions = {

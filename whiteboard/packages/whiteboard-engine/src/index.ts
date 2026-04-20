@@ -12,8 +12,7 @@ export type {
   ExecuteOptions,
   ExecuteResult
 } from '@whiteboard/engine/types/command'
-export type { Commit } from '@whiteboard/engine/types/commit'
-export type { WriteRecord } from '@whiteboard/engine/types/writeRecord'
+export type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 export type {
   CanvasNode,
   EdgeItem,
@@ -22,7 +21,7 @@ export type {
 } from '@whiteboard/engine/types/projection'
 export type {
   Engine,
-  EngineHistory,
+  EngineRuntimeOptions,
   BoardConfig,
   EngineRead
 } from '@whiteboard/engine/types/instance'

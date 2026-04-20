@@ -1,10 +1,10 @@
-import type { Engine } from '@whiteboard/engine'
+import type { HistoryApi } from '@whiteboard/history'
 import type { HistoryWrite } from '@whiteboard/editor/write/types'
 
 export const createHistoryWrite = (
-  engine: Engine
+  history: Pick<HistoryApi, 'undo' | 'redo' | 'clear'>
 ): HistoryWrite => ({
-  undo: engine.history.undo,
-  redo: engine.history.redo,
-  clear: engine.history.clear
+  undo: history.undo,
+  redo: history.redo,
+  clear: history.clear
 })

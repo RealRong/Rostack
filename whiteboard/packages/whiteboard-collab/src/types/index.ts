@@ -5,7 +5,6 @@ export type {
 export type {
   CollabDiagnostics,
   CollabLocalHistory,
-  CollabLocalHistoryState,
   CollabSession,
   CreateYjsSessionOptions
 } from '@whiteboard/collab/types/session'

@@ -1,4 +1,5 @@
 import type { Engine } from '@whiteboard/engine'
+import type { HistoryApi } from '@whiteboard/history'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import {
   createDocumentWrite
@@ -28,14 +29,16 @@ export type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export const createEditorWrite = ({
   engine,
+  history,
   query,
   layout
 }: {
   engine: Engine
+  history: HistoryApi
   query: EditorQuery
   layout: EditorLayout
 }): EditorWrite => {
-  const history = createHistoryWrite(engine)
+  const historyWrite = createHistoryWrite(history)
   const document = createDocumentWrite(engine)
   const canvas = createCanvasWrite(engine)
   const node = createNodeWrite({
@@ -61,6 +64,6 @@ export const createEditorWrite = ({
     group,
     edge,
     mindmap,
-    history
+    history: historyWrite
   }
 }

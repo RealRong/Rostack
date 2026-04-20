@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { createLocalEngineHistory } from '@whiteboard/history'
 import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
 import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { createEditor } from '../src'
@@ -58,10 +59,12 @@ const registry: NodeRegistry = {
 
 describe('mindmap root move', () => {
   it('moves the root topic together with the tree container', () => {
+    const engine = createEngine({
+      document: createDocument('doc_mindmap_root_move')
+    })
     const editor = createEditor({
-      engine: createEngine({
-        document: createDocument('doc_mindmap_root_move')
-      }),
+      engine,
+      history: createLocalEngineHistory(engine),
       initialTool: {
         type: 'select'
       },

@@ -1,5 +1,6 @@
 import type { Viewport } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
+import type { HistoryApi } from '@whiteboard/history'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
@@ -26,6 +27,7 @@ import { createEditorWrite } from '@whiteboard/editor/write'
 
 export const createEditor = ({
   engine,
+  history,
   initialTool,
   initialDrawState = DEFAULT_DRAW_STATE,
   initialViewport,
@@ -33,6 +35,7 @@ export const createEditor = ({
   services,
 }: {
   engine: Engine
+  history: HistoryApi
   initialTool: Tool
   initialDrawState?: DrawState
   initialViewport: Viewport
@@ -67,13 +70,14 @@ export const createEditor = ({
   const query = createEditorQuery({
     engineRead: engine.read,
     registry,
-    history: engine.history,
+    history,
     layout,
     session,
     defaults: defaults.selection
   })
   const write = createEditorWrite({
     engine,
+    history,
     query,
     layout
   })

@@ -8,16 +8,12 @@ import type {
   Operation,
   Origin
 } from '@whiteboard/core/types'
-import {
-  createHistory,
-  reduceOperations
-} from '@whiteboard/core/kernel'
+import { reduceOperations } from '@whiteboard/core/kernel'
 import { createId } from '@whiteboard/core/id'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
 import type { Command, CommandOutput } from '@whiteboard/engine/types/command'
-import type { Draft } from '@whiteboard/engine/types/write'
-import { DEFAULT_HISTORY_CONFIG } from '@whiteboard/engine/config'
-import { cancelled, failure } from '@whiteboard/engine/result'
+import type { Draft } from '@whiteboard/engine/types/internal/draft'
+import { failure } from '@whiteboard/engine/result'
 import { createWriteDraft } from '@whiteboard/engine/write/draft'
 import { compileCommand } from '@whiteboard/engine/write/compile'
 import type { WriteRuntime } from '@whiteboard/engine/write/types'
@@ -74,17 +70,6 @@ export const createWrite = ({
     })
   }
 
-  const history = createHistory<Operation, Origin, Draft>({
-    now,
-    config: DEFAULT_HISTORY_CONFIG,
-    replay: (ops) => reduceToDraft(
-      document.get(),
-      ops,
-      'system',
-      undefined
-    )
-  })
-
   const execute = <C extends Command>(
     command: C,
     origin: Origin = 'user'
@@ -122,35 +107,8 @@ export const createWrite = ({
     undefined
   )
 
-  const undo = (): Draft => {
-    const draft = history.undo()
-    return draft || cancelled('Nothing to undo.')
-  }
-
-  const redo = (): Draft => {
-    const draft = history.redo()
-    return draft || cancelled('Nothing to redo.')
-  }
-
   return {
     execute,
-    apply,
-    undo,
-    redo,
-    history: {
-      capture: (input) => {
-        history.capture({
-          forward: input.ops,
-          inverse: input.inverse,
-          origin: input.origin
-        })
-      },
-      configure: history.configure,
-      get: history.get,
-      subscribe: (listener) => history.subscribe(() => {
-        listener()
-      }),
-      clear: history.clear
-    }
+    apply
   }
 }

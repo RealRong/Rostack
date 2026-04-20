@@ -10,6 +10,11 @@ import {
   type DrawState
 } from '@whiteboard/editor'
 import {
+  createHistoryBinding,
+  createLocalEngineHistory,
+  type HistoryBinding
+} from '@whiteboard/history'
+import {
   WHITEBOARD_DRAW_DEFAULTS,
   WHITEBOARD_INSERT_CATALOG,
   WHITEBOARD_LINE_DEFAULT_COLOR,
@@ -59,6 +64,10 @@ export const isMirroredDocumentFromEngine = (
   && outbound.meta === inbound.meta
 )
 
+export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {
+  history: HistoryBinding
+}
+
 export const createWhiteboardServices = ({
   document,
   onDocumentChange,
@@ -73,7 +82,7 @@ export const createWhiteboardServices = ({
   registry: WhiteboardServicesContextValue['registry']
   resolvedConfig: ResolvedConfig
   boardConfig: EngineBoardConfig
-}): WhiteboardServicesContextValue => {
+}): WhiteboardRuntimeServices => {
   const initialDrawState: DrawState = WHITEBOARD_DRAW_DEFAULTS
   const engine = createEngine({
     registries: coreRegistries,
@@ -81,9 +90,12 @@ export const createWhiteboardServices = ({
     onDocumentChange,
     config: boardConfig
   })
+  const baseHistory = createLocalEngineHistory(engine, resolvedConfig.history)
+  const history = createHistoryBinding(baseHistory)
   const textSources = createTextSourceStore()
   const editor = createEditor({
     engine,
+    history,
     initialTool: resolvedConfig.initialTool,
     initialDrawState,
     initialViewport: resolvedConfig.viewport.initial,
@@ -162,6 +174,7 @@ export const createWhiteboardServices = ({
   return {
     editor,
     engine,
+    history,
     registry,
     textSources,
     pointer,

@@ -15,14 +15,10 @@ import { createWrite } from '@whiteboard/engine/write'
 import { createDocumentSource } from '@whiteboard/engine/instance/document'
 import { normalizeDocument } from '@whiteboard/engine/document/normalize'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type { Draft } from '@whiteboard/engine/types/write'
+import type { Draft } from '@whiteboard/engine/types/internal/draft'
 import { createValueStore } from '@shared/core'
-import {
-  applyCommitHistoryEffect,
-  createCommit,
-  createWriteRecord
-} from '@whiteboard/engine/write/commit'
-import type { CommitHistoryEffect } from '@whiteboard/engine/write/types'
+import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
+import { success } from '@whiteboard/engine/result'
 
 export const createEngine = ({
   registries,
@@ -33,8 +29,7 @@ export const createEngine = ({
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
   const documentSource = createDocumentSource(normalizeDocument(document, config))
-  const commitStore = createValueStore<import('@whiteboard/engine/types/commit').Commit | null>(null)
-  const writeRecordStore = createValueStore<import('@whiteboard/engine/types/writeRecord').WriteRecord | null>(null)
+  const writeStore = createValueStore<EngineWrite | null>(null)
 
   const readControl = createRead({
     document: documentSource,
@@ -47,29 +42,28 @@ export const createEngine = ({
     registries: resolvedRegistries
   })
 
-  const commitDraft = <T,>(
-    draft: Draft<T>,
-    effect: CommitHistoryEffect
-  ): CommandResult<T> => {
+  const commitDraft = <T,>(draft: Draft<T>): CommandResult<T> => {
     if (!draft.ok) {
       return draft
     }
 
-    const rev = (commitStore.get()?.rev ?? 0) + 1
+    const rev = (writeStore.get()?.rev ?? 0) + 1
+    const write: EngineWrite = {
+      rev,
+      at: Date.now(),
+      origin: draft.origin,
+      doc: draft.doc,
+      changes: draft.changes,
+      forward: draft.ops,
+      inverse: draft.inverse,
+      footprint: draft.history.footprint
+    }
+
     documentSource.commit(draft.doc)
     readControl.invalidate(draft.invalidation)
-    applyCommitHistoryEffect(draft, effect, writer.history)
-    writeRecordStore.set(createWriteRecord(draft, rev))
-
-    const result = createCommit(
-      draft,
-      rev
-    )
-    if (result.ok) {
-      commitStore.set(result.commit)
-      onDocumentChange?.(draft.doc)
-    }
-    return result
+    writeStore.set(write)
+    onDocumentChange?.(draft.doc)
+    return success(write, draft.value)
   }
 
   const apply: Engine['apply'] = (
@@ -79,8 +73,7 @@ export const createEngine = ({
     writer.apply(
       ops,
       options?.origin ?? 'user'
-    ),
-    'skip'
+    )
   )
 
   const execute = <C extends Command>(
@@ -88,26 +81,9 @@ export const createEngine = ({
     options?: ExecuteOptions
   ): ExecuteResult<C> => {
     const origin = options?.origin ?? ('origin' in command ? command.origin : undefined) ?? 'user'
-    const effect: CommitHistoryEffect = origin === 'remote'
-      ? 'skip'
-      : command.type === 'document.replace'
-        ? 'reset'
-        : 'record'
     return commitDraft(
-      writer.execute(command, origin),
-      effect
+      writer.execute(command, origin)
     ) as ExecuteResult<C>
-  }
-
-  const undo = () => commitDraft(writer.undo(), 'skip')
-  const redo = () => commitDraft(writer.redo(), 'skip')
-
-  const configure = ({
-    history
-  }: EngineRuntimeOptions) => {
-    if (history) {
-      writer.history.configure(history)
-    }
   }
 
   return {
@@ -116,20 +92,10 @@ export const createEngine = ({
       get: documentSource.get
     },
     read: readControl.read,
-    history: {
-      get: writer.history.get,
-      subscribe: (listener) => writer.history.subscribe(() => {
-        listener()
-      }),
-      undo,
-      redo,
-      clear: writer.history.clear
-    },
-    commit: commitStore,
-    writeRecord: writeRecordStore,
+    write: writeStore,
     execute,
     apply,
-    configure,
+    configure: (_config: EngineRuntimeOptions) => {},
     dispose: () => {}
   } satisfies Engine
 }

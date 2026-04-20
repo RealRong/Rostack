@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { createLocalEngineHistory } from '@whiteboard/history'
 import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
 import { createEditor } from '../src'
 import type { NodeRegistry } from '../src'
@@ -57,10 +58,12 @@ const registry: NodeRegistry = {
 
 describe('mindmap edit relayout preview', () => {
   it('relayouts child nodes while the root text edit size changes', () => {
+    const engine = createEngine({
+      document: createDocument('doc_mindmap_edit_relayout_preview')
+    })
     const editor = createEditor({
-      engine: createEngine({
-        document: createDocument('doc_mindmap_edit_relayout_preview')
-      }),
+      engine,
+      history: createLocalEngineHistory(engine),
       initialTool: {
         type: 'select'
       },

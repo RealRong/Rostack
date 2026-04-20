@@ -17,7 +17,6 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   AppActions,
-  AppConfig,
   ClipboardActions,
   EditorActions,
   EditorEditActions,
@@ -885,12 +884,7 @@ export const createEditorActions = ({
 
   return {
     app: {
-      replace: write.document.replace,
-      configure: (config: AppConfig) => {
-        engine.configure({
-          history: config.history
-        })
-      }
+      replace: write.document.replace
     } satisfies AppActions,
     tool,
     viewport: {

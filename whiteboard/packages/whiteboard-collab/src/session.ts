@@ -2,7 +2,7 @@ import { createValueStore } from '@shared/core'
 import { createDocument } from '@whiteboard/core/document'
 import { createId } from '@whiteboard/core/id'
 import { sync } from '@whiteboard/core/spec/operation'
-import type { WriteRecord } from '@whiteboard/engine'
+import type { EngineWrite } from '@whiteboard/engine'
 import * as Y from 'yjs'
 import { createLocalHistoryController } from '@whiteboard/collab/localHistory'
 import {
@@ -45,9 +45,9 @@ const toSharedOperations = (
 
 const createSharedChange = (
   actorId: string,
-  writeRecord: WriteRecord
+  write: EngineWrite
 ): SharedChange | null => {
-  const ops = toSharedOperations(writeRecord.forward)
+  const ops = toSharedOperations(write.forward)
   if (!ops || ops.length === 0) {
     return null
   }
@@ -55,13 +55,13 @@ const createSharedChange = (
     id: createId('change'),
     actorId,
     ops,
-    footprint: writeRecord.history.footprint
+    footprint: write.footprint
   }
 }
 
-const isReplaceWriteRecord = (
-  writeRecord: WriteRecord
-): boolean => writeRecord.forward.some((op) => sync.isCheckpointOnly(op))
+const isCheckpointWrite = (
+  write: EngineWrite
+): boolean => write.forward.some((op) => sync.isCheckpointOnly(op))
 
 const createEmptyReplayDocument = (
   engine: CreateYjsSessionOptions['engine']
@@ -99,7 +99,7 @@ export const createYjsSession = ({
   let waitingForProviderSync = false
   let suppressLocalPublish = false
   let rotatingCheckpoint = false
-  let lastWriteRecord: WriteRecord | null = null
+  let lastWrite: EngineWrite | null = null
   let cursor: SyncCursor = {
     checkpointId: null,
     changeIds: []
@@ -282,24 +282,24 @@ export const createYjsSession = ({
     }
   }
 
-  const publishWriteRecord = (
-    writeRecord: WriteRecord
+  const publishWrite = (
+    write: EngineWrite
   ) => {
-    if (writeRecord.origin === 'remote' || suppressLocalPublish) {
+    if (write.origin === 'remote' || suppressLocalPublish) {
       return
     }
 
-    if (isReplaceWriteRecord(writeRecord)) {
+    if (isCheckpointWrite(write)) {
       publishCheckpoint(engine.document.get())
       localHistoryController.clear()
       return
     }
 
-    if (writeRecord.forward.length === 0) {
+    if (write.forward.length === 0) {
       return
     }
 
-    const change = createSharedChange(actorId, writeRecord)
+    const change = createSharedChange(actorId, write)
     if (!change) {
       throw new Error('Local shared change must contain only live operations.')
     }
@@ -310,23 +310,23 @@ export const createYjsSession = ({
 
     localChangeIds.add(change.id)
     syncCursor(readSnapshot())
-    localHistoryController.capturePublishedChange(change, writeRecord)
+    localHistoryController.capturePublishedChange(change, write)
     maybeRotateCheckpoint()
   }
 
-  const writeRecordUnsubscribe = engine.writeRecord.subscribe(() => {
-    const nextWriteRecord = engine.writeRecord.get()
-    if (!nextWriteRecord || nextWriteRecord === lastWriteRecord) {
+  const writeUnsubscribe = engine.write.subscribe(() => {
+    const nextWrite = engine.write.get()
+    if (!nextWrite || nextWrite === lastWrite) {
       return
     }
-    lastWriteRecord = nextWriteRecord
+    lastWrite = nextWrite
 
     if (!bootstrapped || destroyed) {
       return
     }
 
     try {
-      publishWriteRecord(nextWriteRecord)
+      publishWrite(nextWrite)
     } catch {
       localHistoryController.failPending()
       reportError()
@@ -475,7 +475,7 @@ export const createYjsSession = ({
     unsubscribeProviderSync = undefined
     provider?.destroy?.()
     doc.off('afterTransaction', handleAfterTransaction)
-    writeRecordUnsubscribe()
+    writeUnsubscribe()
     waitingForProviderSync = false
     status.set('disconnected')
   }

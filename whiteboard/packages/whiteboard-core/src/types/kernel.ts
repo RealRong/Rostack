@@ -6,59 +6,14 @@ import type {
 import type {
   ChangeSet,
   Invalidation,
-  Operation,
-  Origin
+  Operation
 } from '@whiteboard/core/types/operations'
 import type { Result, ResultCode } from '@whiteboard/core/types/result'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 
-export type HistoryState = {
-  canUndo: boolean
-  canRedo: boolean
-  undoDepth: number
-  redoDepth: number
-  isApplying: boolean
-  lastUpdatedAt?: number
-}
-
-export type HistoryConfig = {
-  enabled: boolean
-  capacity: number
-  captureSystem: boolean
-  captureRemote: boolean
-}
-
-export type HistoryCapture<
-  TOperation = Operation,
-  TOrigin extends string = Origin
-> = {
-  forward: readonly TOperation[]
-  inverse: readonly TOperation[]
-  origin?: TOrigin
-}
-
-export type HistoryReplay<
-  TOperation = Operation,
-  TReplayResult = boolean
-> = (operations: readonly TOperation[]) => TReplayResult | false
-
-export type HistoryApi<
-  TOperation = Operation,
-  TOrigin extends string = Origin,
-  TReplayResult = boolean
-> = {
-  get: () => HistoryState
-  subscribe: (listener: (state: HistoryState) => void) => () => void
-  configure: (config: Partial<HistoryConfig>) => void
-  clear: () => void
-  capture: (entry: HistoryCapture<TOperation, TOrigin>) => void
-  undo: () => TReplayResult | false
-  redo: () => TReplayResult | false
-}
-
 export type KernelContext = {
   now?: () => number
-  origin?: Origin
+  origin?: import('@whiteboard/core/types').Origin
 }
 
 export type KernelReadImpact = {

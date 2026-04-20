@@ -3,7 +3,6 @@ import {
   DEFAULT_MINDMAP_NODE_SIZE,
   DEFAULT_NODE_SIZE
 } from '@whiteboard/core/config'
-import type { HistoryConfig } from '@whiteboard/core/kernel'
 import type { MindmapLayoutMode } from '@whiteboard/core/mindmap'
 import type { Size } from '@whiteboard/core/types'
 export {
@@ -11,13 +10,6 @@ export {
   DEFAULT_MINDMAP_NODE_SIZE,
   DEFAULT_NODE_SIZE
 } from '@whiteboard/core/config'
-
-export const DEFAULT_HISTORY_CONFIG: HistoryConfig = {
-  enabled: true,
-  capacity: 100,
-  captureSystem: false,
-  captureRemote: false
-}
 
 export const DEFAULT_TUNING = {
   nodeTransform: {

@@ -6,10 +6,6 @@ import type {
   MindmapItem,
   NodeItem
 } from '@whiteboard/engine/types/projection'
-import type {
-  HistoryConfig,
-  HistoryState
-} from '@whiteboard/core/kernel'
 import type { SnapCandidate } from '@whiteboard/core/node'
 import type {
   NodeRectHitOptions
@@ -40,8 +36,7 @@ import type {
   ExecuteOptions,
   ExecuteResult
 } from '@whiteboard/engine/types/command'
-import type { Commit } from '@whiteboard/engine/types/commit'
-import type { WriteRecord } from '@whiteboard/engine/types/writeRecord'
+import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 export type { BoardConfig } from '@whiteboard/core/config'
@@ -155,15 +150,7 @@ export type EngineRead = {
   index: EngineReadIndex
 }
 
-export type EngineRuntimeOptions = {
-  history?: Partial<HistoryConfig>
-}
-
-export type EngineHistory = ReadStore<HistoryState> & {
-  undo: () => CommandResult
-  redo: () => CommandResult
-  clear: () => void
-}
+export type EngineRuntimeOptions = {}
 
 export type Engine = {
   config: Readonly<BoardConfig>
@@ -171,9 +158,7 @@ export type Engine = {
     get: () => Document
   }
   read: EngineRead
-  history: EngineHistory
-  commit: ReadStore<Commit | null>
-  writeRecord: ReadStore<WriteRecord | null>
+  write: ReadStore<EngineWrite | null>
   execute: <C extends Command>(
     command: C,
     options?: ExecuteOptions

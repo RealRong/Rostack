@@ -1,5 +1,5 @@
 import type { ErrorInfo } from '@whiteboard/core/types'
-import type { Commit } from '@whiteboard/engine/types/commit'
+import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 import type { CommandFailure, CommandResult } from '@whiteboard/engine/types/result'
 
 export const failure = <C extends string>(
@@ -25,10 +25,10 @@ export const cancelled = (
   failure('cancelled', message, details)
 
 export const success = <T>(
-  commit: Commit,
+  write: EngineWrite,
   data: T
 ): CommandResult<T> => ({
   ok: true,
   data,
-  commit
+  write
 })

@@ -1,4 +1,5 @@
 import { sameOrder } from '@shared/core'
+import { sync } from '@whiteboard/core/spec/operation'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -9,7 +10,7 @@ export type EditorEventRuntime = {
   dispose: () => void
 }
 
-const reconcileSessionAfterCommit = (
+const reconcileSessionAfterWrite = (
   session: Pick<EditorSession, 'state' | 'mutate'>,
   query: Pick<EditorQuery, 'node' | 'edge'>
 ) => {
@@ -52,30 +53,30 @@ export const createEditorEvents = ({
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()
-  const unsubscribeCommit = engine.commit.subscribe(() => {
-    const commit = engine.commit.get()
-    if (!commit) {
+  const unsubscribeWrite = engine.write.subscribe(() => {
+    const write = engine.write.get()
+    if (!write) {
       return
     }
 
-    if (commit.changes.document && commit.ops.length === 0) {
+    if (write.forward.some((op) => sync.isCheckpointOnly(op))) {
       session.reset()
       resetHost()
       return
     }
 
-    reconcileSessionAfterCommit(session, query)
+    reconcileSessionAfterWrite(session, query)
   })
 
   return {
     events: {
-      change: (listener) => engine.commit.subscribe(() => {
-        const commit = engine.commit.get()
-        if (!commit) {
+      change: (listener) => engine.write.subscribe(() => {
+        const write = engine.write.get()
+        if (!write) {
           return
         }
 
-        listener(commit.doc, commit)
+        listener(write.doc, write)
       }),
       dispose: (listener) => {
         disposeListeners.add(listener)
@@ -85,7 +86,7 @@ export const createEditorEvents = ({
       }
     },
     dispose: () => {
-      unsubscribeCommit()
+      unsubscribeWrite()
       Array.from(disposeListeners).forEach((listener) => listener())
       disposeListeners.clear()
     }

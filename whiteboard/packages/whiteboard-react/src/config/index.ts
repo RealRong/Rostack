@@ -4,6 +4,7 @@ import {
   type BoardConfig as EngineBoardConfig
 } from '@whiteboard/core/config'
 import type { Viewport } from '@whiteboard/core/types'
+import { DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG } from '@whiteboard/history'
 import type { WhiteboardOptions } from '@whiteboard/react/types/common/board'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 
@@ -29,12 +30,7 @@ const DEFAULT_CONFIG: ResolvedConfig = {
   },
   node: DEFAULT_BOARD_CONFIG.node,
   edge: DEFAULT_BOARD_CONFIG.edge,
-  history: {
-    enabled: true,
-    capacity: 100,
-    captureSystem: false,
-    captureRemote: false
-  },
+  history: DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG,
   initialTool: { type: 'select' },
   shortcuts: undefined
 }
@@ -42,9 +38,6 @@ const DEFAULT_CONFIG: ResolvedConfig = {
 type ConfigBundle = {
   resolvedConfig: ResolvedConfig
   boardConfig: EngineBoardConfig
-  editorConfig: {
-    history: ResolvedConfig['history']
-  }
   viewportLimits: {
     minZoom: number
     maxZoom: number
@@ -102,9 +95,6 @@ export const resolveConfig = (
   return {
     resolvedConfig,
     boardConfig: toBoardConfig(resolvedConfig),
-    editorConfig: {
-      history: resolvedConfig.history
-    },
     viewportLimits: {
       minZoom: resolvedConfig.viewport.minZoom,
       maxZoom: resolvedConfig.viewport.maxZoom

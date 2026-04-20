@@ -5,7 +5,6 @@ export { createYjsSyncStore } from '@whiteboard/collab/yjs/store'
 export type {
   CollabDiagnostics,
   CollabLocalHistory,
-  CollabLocalHistoryState,
   CollabProvider,
   CollabSession,
   CollabStatus,

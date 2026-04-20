@@ -6,11 +6,6 @@ import type {
   Origin
 } from '@whiteboard/core/types'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
-import type {
-  HistoryConfig,
-  HistoryState
-} from '@whiteboard/core/kernel'
-import type { Command, CommandOutput } from '@whiteboard/engine/types/command'
 import type { CommandFailure } from '@whiteboard/engine/types/result'
 
 export type Draft<T = void> =
@@ -28,19 +23,3 @@ export type Draft<T = void> =
       }
       value: T
     }
-
-export type Writer = {
-  execute: <C extends Command>(command: C, origin?: Origin) => Draft<CommandOutput<C>>
-  apply: (
-    ops: readonly Operation[],
-    origin?: Origin
-  ) => Draft
-  undo: () => Draft
-  redo: () => Draft
-  history: {
-    configure: (config: Partial<HistoryConfig>) => void
-    get: () => HistoryState
-    subscribe: (listener: () => void) => () => void
-    clear: () => void
-  }
-}

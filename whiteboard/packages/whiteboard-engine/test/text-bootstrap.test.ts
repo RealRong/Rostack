@@ -59,5 +59,5 @@ test('engine apply 不再在 reducer 之后隐式清洗 text node.create', () =>
     return
   }
 
-  assert.equal(result.commit.doc.nodes.node_1.size, undefined)
+  assert.equal(result.write.doc.nodes.node_1.size, undefined)
 })

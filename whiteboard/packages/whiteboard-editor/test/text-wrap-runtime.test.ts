@@ -6,6 +6,7 @@ import {
   mergeNodeUpdates
 } from '@whiteboard/core/schema'
 import { createEngine } from '@whiteboard/engine'
+import { createLocalEngineHistory } from '@whiteboard/history'
 import { createEditor } from '../src'
 import type {
   LayoutBackend,
@@ -150,45 +151,55 @@ const createStickyDocument = () => {
   return document
 }
 
-const createTextEditor = () => createEditor({
-  engine: createEngine({
+const createTextEditor = () => {
+  const engine = createEngine({
     document: createTextDocument()
-  }),
-  initialTool: {
-    type: 'select'
-  },
-  initialViewport: {
-    center: {
-      x: 0,
-      y: 0
-    },
-    zoom: 1
-  },
-  registry: createRegistry(),
-  services: {
-    layout: createLayoutBackend()
-  }
-})
+  })
 
-const createStickyEditor = () => createEditor({
-  engine: createEngine({
-    document: createStickyDocument()
-  }),
-  initialTool: {
-    type: 'select'
-  },
-  initialViewport: {
-    center: {
-      x: 0,
-      y: 0
+  return createEditor({
+    engine,
+    history: createLocalEngineHistory(engine),
+    initialTool: {
+      type: 'select'
     },
-    zoom: 1
-  },
-  registry: createRegistry(),
-  services: {
-    layout: createLayoutBackend()
-  }
-})
+    initialViewport: {
+      center: {
+        x: 0,
+        y: 0
+      },
+      zoom: 1
+    },
+    registry: createRegistry(),
+    services: {
+      layout: createLayoutBackend()
+    }
+  })
+}
+
+const createStickyEditor = () => {
+  const engine = createEngine({
+    document: createStickyDocument()
+  })
+
+  return createEditor({
+    engine,
+    history: createLocalEngineHistory(engine),
+    initialTool: {
+      type: 'select'
+    },
+    initialViewport: {
+      center: {
+        x: 0,
+        y: 0
+      },
+      zoom: 1
+    },
+    registry: createRegistry(),
+    services: {
+      layout: createLayoutBackend()
+    }
+  })
+}
 
 describe('text wrap runtime', () => {
   it('preserves wrap width when entering edit after a text patch commit', () => {

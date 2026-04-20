@@ -2,11 +2,11 @@ import { createValueStore } from '@shared/core'
 import { historyFootprintConflicts } from '@whiteboard/core/spec/history'
 import { sync } from '@whiteboard/core/spec/operation'
 import type { Engine } from '@whiteboard/engine'
+import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 import type { CommandResult } from '@whiteboard/engine/types/result'
-import type { WriteRecord } from '@whiteboard/engine/types/writeRecord'
+import type { HistoryState } from '@whiteboard/history'
 import type {
-  CollabLocalHistory,
-  CollabLocalHistoryState
+  CollabLocalHistory
 } from '@whiteboard/collab/types/session'
 import type {
   SharedChange,
@@ -45,7 +45,7 @@ type LocalHistoryController = {
   localHistory: CollabLocalHistory
   capturePublishedChange: (
     change: SharedChange,
-    writeRecord: WriteRecord
+    write: EngineWrite
   ) => void
   observeRemoteChange: (
     change: SharedChange
@@ -54,7 +54,7 @@ type LocalHistoryController = {
   clear: () => void
 }
 
-const EMPTY_STATE: CollabLocalHistoryState = {
+const EMPTY_STATE: HistoryState = {
   canUndo: false,
   canRedo: false,
   undoDepth: 0,
@@ -124,7 +124,7 @@ const findEntry = (
 ): LocalHistoryEntry | undefined => entries.find((entry) => entry.id === entryId)
 
 const publishState = (
-  store: ReturnType<typeof createValueStore<CollabLocalHistoryState>>,
+  store: ReturnType<typeof createValueStore<HistoryState>>,
   runtime: LocalHistoryRuntime
 ) => {
   store.set({
@@ -161,7 +161,7 @@ export const createLocalHistoryController = ({
   canApply: () => boolean
 }): LocalHistoryController => {
   const runtime = createRuntime()
-  const state = createValueStore<CollabLocalHistoryState>(EMPTY_STATE)
+  const state = createValueStore<HistoryState>(EMPTY_STATE)
 
   const failPending = () => {
     if (!runtime.pending) {
@@ -182,7 +182,7 @@ export const createLocalHistoryController = ({
 
   const capturePublishedChange = (
     change: SharedChange,
-    writeRecord: WriteRecord
+    write: EngineWrite
   ) => {
     const baseSeq = readObservedSeqMax(runtime.clock)
     observeChange(runtime.clock, change.id)
@@ -224,18 +224,18 @@ export const createLocalHistoryController = ({
       return
     }
 
-    if (writeRecord.origin !== 'user') {
+    if (write.origin !== 'user') {
       return
     }
 
-    const forward = toSharedOperations(writeRecord.forward)
-    const inverse = toSharedOperations(writeRecord.inverse)
+    const forward = toSharedOperations(write.forward)
+    const inverse = toSharedOperations(write.inverse)
     if (
       !forward
       || !inverse
       || forward.length === 0
       || inverse.length === 0
-      || writeRecord.forward.some((op) => sync.isCheckpointOnly(op))
+      || write.forward.some((op) => sync.isCheckpointOnly(op))
     ) {
       return
     }

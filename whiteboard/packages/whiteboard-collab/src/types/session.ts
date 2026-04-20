@@ -1,6 +1,6 @@
 import type { ReadStore } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
-import type { CommandResult } from '@whiteboard/engine/types/result'
+import type { HistoryApi } from '@whiteboard/history'
 import type * as Y from 'yjs'
 import type {
   CollabProvider,
@@ -22,21 +22,7 @@ export type CollabDiagnostics = {
   rejectedChangeIds: readonly string[]
 }
 
-export type CollabLocalHistoryState = {
-  canUndo: boolean
-  canRedo: boolean
-  undoDepth: number
-  redoDepth: number
-  invalidatedDepth: number
-  isApplying: boolean
-  lastUpdatedAt?: number
-}
-
-export type CollabLocalHistory = ReadStore<CollabLocalHistoryState> & {
-  undo: () => CommandResult
-  redo: () => CommandResult
-  clear: () => void
-}
+export type CollabLocalHistory = HistoryApi
 
 export type CollabSession = {
   awareness?: unknown

@@ -42,7 +42,7 @@ test('empty bootstrap writes initial checkpoint and leaves change log empty', ()
   session.destroy()
 })
 
-test('shared sessions replay remote operations and keep remote history out of undo', () => {
+test('shared sessions replay remote operations and keep remote changes out of local undo', () => {
   const sharedDoc = new Y.Doc()
   const engineA = createTestEngine('doc_shared')
   const engineB = createTestEngine('doc_shared')
@@ -78,10 +78,6 @@ test('shared sessions replay remote operations and keep remote history out of un
 
   const snapshotAfterCreate = engineB.document.get()
   assert.ok(snapshotAfterCreate.nodes[nodeId])
-  assert.equal(
-    engineB.history.get().undoDepth,
-    0
-  )
   assert.equal(
     sessionB.localHistory.get().undoDepth,
     0
@@ -132,10 +128,6 @@ test('shared sessions replay remote operations and keep remote history out of un
   const syncedNode = engineB.document.get().nodes[nodeId]
   assert.deepEqual(syncedNode?.data?.items, ['a', 'b'])
   assert.equal(syncedNode?.data?.nested?.value, 'synced')
-  assert.equal(
-    engineB.history.get().undoDepth,
-    0
-  )
   assert.equal(
     sessionB.localHistory.get().undoDepth,
     0
@@ -250,7 +242,7 @@ test('session records duplicate and rejected shared changes deterministically', 
   session.destroy()
 })
 
-test('remote changes invalidate conflicting local history without clearing engine history', () => {
+test('remote changes invalidate conflicting local history', () => {
   const sharedDoc = new Y.Doc()
   const engineA = createTestEngine('doc_conflict_history')
   const engineB = createTestEngine('doc_conflict_history')
@@ -287,7 +279,6 @@ test('remote changes invalidate conflicting local history without clearing engin
 
   assert.equal(sessionB.localHistory.get().undoDepth, 1)
   assert.equal(sessionB.localHistory.get().invalidatedDepth, 0)
-  assert.equal(engineB.history.get().undoDepth, 1)
 
   const updateResult = engineA.execute({
     type: 'node.update',
@@ -307,7 +298,6 @@ test('remote changes invalidate conflicting local history without clearing engin
   assert.equal(updateResult.ok, true)
   assert.equal(sessionB.localHistory.get().undoDepth, 0)
   assert.equal(sessionB.localHistory.get().invalidatedDepth, 1)
-  assert.equal(engineB.history.get().undoDepth, 1)
 
   sessionA.destroy()
   sessionB.destroy()

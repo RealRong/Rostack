@@ -4,7 +4,7 @@ import type {
   Origin
 } from '@whiteboard/core/types'
 import type { KernelReduceResult } from '@whiteboard/core/kernel'
-import type { Draft } from '@whiteboard/engine/types/write'
+import type { Draft } from '@whiteboard/engine/types/internal/draft'
 
 export const createWriteDraft = <T>(
   reduced: Extract<KernelReduceResult, { ok: true }>,

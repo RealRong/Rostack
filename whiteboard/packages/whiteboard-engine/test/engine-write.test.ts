@@ -8,12 +8,12 @@ import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
 const readSerializedFootprint = (
   engine: ReturnType<typeof createEngine>
 ) => new Set(
-  (engine.writeRecord.get()?.history.footprint ?? []).map(serializeHistoryKey)
+  (engine.write.get()?.footprint ?? []).map(serializeHistoryKey)
 )
 
-test('engine exposes node create footprint through writeRecord', () => {
+test('engine exposes node create footprint through engine.write', () => {
   const engine = createEngine({
-    document: createDocument('doc_write_record_create')
+    document: createDocument('doc_engine_write_create')
   })
 
   const result = engine.execute({
@@ -46,7 +46,7 @@ test('engine exposes node create footprint through writeRecord', () => {
 
 test('engine maps mindmap topic updates to node + mindmap history keys', () => {
   const engine = createEngine({
-    document: createDocument('doc_write_record_mindmap')
+    document: createDocument('doc_engine_write_mindmap')
   })
 
   const createResult = engine.execute({

@@ -30,7 +30,7 @@ import {
   createEntityListStore
 } from '@dataview/runtime/model/internal/list'
 import {
-  query
+  query as queryApi
 } from '@dataview/runtime/model/queryFields'
 
 const EMPTY_FIELD_IDS: readonly FieldId[] = []
@@ -295,7 +295,7 @@ export const createPageModel = (input: {
       return {
         sorter: rule.sorter,
         field: rule.field,
-        availableFields: query.fields.available.sortAt(
+        availableFields: queryApi.fields.available.sortAt(
           allFields,
           sorters,
           index

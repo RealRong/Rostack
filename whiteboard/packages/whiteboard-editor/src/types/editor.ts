@@ -1,4 +1,4 @@
-import type { HistoryState } from '@whiteboard/core/kernel'
+import type { HistoryApi, HistoryState } from '@whiteboard/history'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { ReadStore } from '@shared/core'
 import type {
@@ -22,7 +22,7 @@ import type {
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { Unsubscribe } from '@shared/core'
-import type { Commit } from '@whiteboard/engine/types/commit'
+import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 
 export type EditorPointerDispatchResult = {
   handled: boolean
@@ -84,7 +84,7 @@ export type EditorRead = {
     get: () => Document
   }
   group: Pick<EditorQuery['group'], 'exactIds'>
-  history: EditorQuery['history']
+  history: HistoryApi
   mindmap: Pick<EditorQuery['mindmap'], 'render' | 'navigate'>
   node: Pick<EditorQuery['node'], 'render'>
   edge: Pick<EditorQuery['edge'], 'render' | 'selectedChrome'>
@@ -97,7 +97,7 @@ export type EditorRead = {
 }
 
 export type EditorEvents = {
-  change: (listener: (document: Document, commit: Commit) => void) => Unsubscribe
+  change: (listener: (document: Document, write: EngineWrite) => void) => Unsubscribe
   dispose: (listener: () => void) => Unsubscribe
 }
 

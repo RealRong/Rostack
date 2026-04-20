@@ -1,6 +1,6 @@
 import { read as readValue, type ReadStore } from '@shared/core'
 import type { EngineRead } from '@whiteboard/engine'
-import type { HistoryState } from '@whiteboard/core/kernel'
+import type { HistoryApi } from '@whiteboard/history'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
@@ -91,7 +91,7 @@ const createToolRead = (
 })
 
 export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
-  history: ReadStore<HistoryState>
+  history: HistoryApi
   group: EngineRead['group']
   target: RuntimeTargetRead
   edit: EditorEditRead
@@ -128,7 +128,7 @@ export const createEditorQuery = ({
 }: {
   engineRead: EngineRead
   registry: NodeRegistry
-  history: ReadStore<HistoryState>
+  history: HistoryApi
   layout: Pick<EditorLayout, 'text' | 'mindmap'>
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'preview'>
   defaults: EditorDefaults['selection']

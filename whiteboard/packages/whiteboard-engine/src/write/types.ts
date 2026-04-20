@@ -16,15 +16,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { Command, CommandOutput } from '@whiteboard/engine/types/command'
 import type { CommandFailure } from '@whiteboard/engine/types/result'
-import type {
-  Draft,
-  Writer
-} from '@whiteboard/engine/types/write'
-
-export type CommitHistoryEffect =
-  | 'record'
-  | 'skip'
-  | 'reset'
+import type { Draft } from '@whiteboard/engine/types/internal/draft'
 
 export type CompileResult<T = unknown> =
   | {
@@ -87,19 +79,10 @@ export type CompileHandler<C extends Command = Command> = (
   ctx: CommandCompileContext
 ) => CommandOutput<C> | void
 
-export type WriterHistoryCapture = {
-  ops: readonly Operation[]
-  inverse: readonly Operation[]
-  origin: Origin
-}
-
-export type WriteRuntime = Omit<Writer, 'history'> & {
-  history: Writer['history'] & {
-    capture: (input: WriterHistoryCapture) => void
-  }
-}
-
-export type ReduceDraftInput<T> = {
-  draft: Extract<Draft<T>, { ok: true }>
-  effect: CommitHistoryEffect
+export type WriteRuntime = {
+  execute: <C extends Command>(command: C, origin?: Origin) => Draft<CommandOutput<C>>
+  apply: (
+    ops: readonly Operation[],
+    origin?: Origin
+  ) => Draft
 }

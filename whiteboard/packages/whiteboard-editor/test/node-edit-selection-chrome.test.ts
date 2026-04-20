@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDocument } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { createLocalEngineHistory } from '@whiteboard/history'
 import { createEditor } from '../src'
 import type { NodeRegistry } from '../src'
 
@@ -86,10 +87,13 @@ const createTextEditor = () => {
     id: 'text-1'
   }]
 
+  const engine = createEngine({
+    document
+  })
+
   return createEditor({
-    engine: createEngine({
-      document
-    }),
+    engine,
+    history: createLocalEngineHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -145,10 +149,13 @@ const createMindmapEditor = () => {
     id: 'mind-1'
   }]
 
+  const engine = createEngine({
+    document
+  })
+
   return createEditor({
-    engine: createEngine({
-      document
-    }),
+    engine,
+    history: createLocalEngineHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -205,10 +212,13 @@ const createEdgeEditor = () => {
     }
   ]
 
+  const engine = createEngine({
+    document
+  })
+
   return createEditor({
-    engine: createEngine({
-      document
-    }),
+    engine,
+    history: createLocalEngineHistory(engine),
     initialTool: {
       type: 'select'
     },

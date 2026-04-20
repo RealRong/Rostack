@@ -1,7 +1,5 @@
-import { isSizeEqual } from '@whiteboard/core/geometry'
-import {
-  resolveNodeBootstrapSize
-} from '@whiteboard/core/node'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   Document,
   Node,
@@ -51,9 +49,9 @@ export const sanitizeDocument = (
 
   Object.entries(document.nodes).forEach(([id, node]) => {
     const stripped = stripLegacyNodeFields(node)
-    const bootstrapSize = resolveNodeBootstrapSize(stripped.node)
+    const bootstrapSize = nodeApi.bootstrap.resolve(stripped.node)
 
-    if (bootstrapSize && !isSizeEqual(node.size, bootstrapSize)) {
+    if (bootstrapSize && !geometryApi.equal.size(node.size, bootstrapSize)) {
       entities[id] = {
         ...stripped.node,
         size: bootstrapSize
@@ -92,8 +90,8 @@ export const sanitizeOperations = ({
     switch (operation.type) {
       case 'node.create': {
         const stripped = stripLegacyNodeFields(operation.node)
-        const bootstrapSize = resolveNodeBootstrapSize(stripped.node)
-        if (bootstrapSize && !isSizeEqual(stripped.node.size, bootstrapSize)) {
+        const bootstrapSize = nodeApi.bootstrap.resolve(stripped.node)
+        if (bootstrapSize && !geometryApi.equal.size(stripped.node.size, bootstrapSize)) {
           next.push({
             ...operation,
             node: {

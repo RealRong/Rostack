@@ -24,6 +24,9 @@ import type {
   FilterSortLookup,
   FilterSpec
 } from '@dataview/core/filter/types'
+import {
+  normalizeOptionIdList
+} from '@dataview/core/shared/option'
 import type {
   Token
 } from '@shared/i18n'
@@ -143,34 +146,11 @@ const isFilterOptionSetValue = (
   && Array.isArray((value as { optionIds?: unknown }).optionIds)
 )
 
-const normalizeOptionIds = (
-  optionIds: readonly unknown[]
-): string[] => {
-  const seen = new Set<string>()
-  const next: string[] = []
-
-  optionIds.forEach(optionId => {
-    if (typeof optionId !== 'string') {
-      return
-    }
-
-    const normalized = optionId.trim()
-    if (!normalized || seen.has(normalized)) {
-      return
-    }
-
-    seen.add(normalized)
-    next.push(normalized)
-  })
-
-  return next
-}
-
 export const createFilterOptionSetValue = (
   optionIds: readonly string[] = []
 ): FilterOptionSetValue => ({
   kind: 'option-set',
-  optionIds: normalizeOptionIds(optionIds)
+  optionIds: normalizeOptionIdList(optionIds)
 })
 
 export const readFilterOptionSetValue = (
@@ -204,12 +184,6 @@ const cloneRule = (rule: FilterRule): FilterRule => ({
     ? { value: cloneFilterValue(rule.value) }
     : {})
 })
-
-const comparePrimitive = (
-  field: Field | undefined,
-  left: unknown,
-  right: unknown
-) => fieldApi.compare.value(field, left, right)
 
 const readExpectedValue = (
   preset: FilterPreset,
@@ -568,10 +542,10 @@ const textFilterSpec = createFilterSpec({
       return matchTextContains(recordValue, expected)
     }
     if (preset.operator === 'eq') {
-      return comparePrimitive(field, recordValue, expected) === 0
+      return fieldApi.compare.value(field, recordValue, expected) === 0
     }
 
-    return comparePrimitive(field, recordValue, expected) !== 0
+    return fieldApi.compare.value(field, recordValue, expected) !== 0
   },
   projectValue: (_field, rule) => (
     typeof rule.value === 'string' && rule.value.length
@@ -607,7 +581,7 @@ const numberFilterSpec = createFilterSpec({
         : !fieldApi.value.empty(recordValue)
     }
 
-    const comparison = comparePrimitive(field, recordValue, expected)
+    const comparison = fieldApi.compare.value(field, recordValue, expected)
     switch (preset.operator) {
       case 'eq':
         return comparison === 0
@@ -691,7 +665,7 @@ const dateFilterSpec = createFilterSpec({
         : !fieldApi.value.empty(recordValue)
     }
 
-    const comparison = comparePrimitive(field, recordValue, expected)
+    const comparison = fieldApi.compare.value(field, recordValue, expected)
     switch (preset.operator) {
       case 'eq':
         return comparison === 0

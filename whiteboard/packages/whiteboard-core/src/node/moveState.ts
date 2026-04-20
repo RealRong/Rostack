@@ -1,4 +1,4 @@
-import { getRectsBoundingRect } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type {
   Edge,

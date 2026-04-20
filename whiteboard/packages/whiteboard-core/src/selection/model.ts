@@ -4,7 +4,7 @@ import {
   type NodeTransformBehavior,
   type SelectionTransformPlan
 } from '@whiteboard/core/node/transform'
-import { getRectsBoundingRect } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   Edge,
   EdgeId,

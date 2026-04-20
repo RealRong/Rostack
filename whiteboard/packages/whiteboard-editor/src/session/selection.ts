@@ -1,11 +1,4 @@
-import {
-  EMPTY_SELECTION_TARGET,
-  applySelectionTarget,
-  isSelectionTargetEqual,
-  normalizeSelectionTarget,
-  type SelectionInput,
-  type SelectionTarget
-} from '@whiteboard/core/selection'
+import { selection as selectionApi, type SelectionInput, type SelectionTarget } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import {
   type ValueStore
@@ -22,13 +15,13 @@ const readNextSelectionTarget = (
   mode: SelectionMode
 ) => (
   mode === 'replace'
-    ? normalizeSelectionTarget(input)
-    : applySelectionTarget(current, input, mode)
+    ? selectionApi.target.normalize(input)
+    : selectionApi.target.apply(current, input, mode)
 )
 
 const readSelectionTargetByStore = (
   read: SelectionReadSource
-): SelectionTarget => normalizeSelectionTarget({
+): SelectionTarget => selectionApi.target.normalize({
   nodeIds: read.node.list.get(),
   edgeIds: read.edge.list.get()
 })
@@ -36,7 +29,7 @@ const readSelectionTargetByStore = (
 const reconcileSelectionTarget = (
   read: SelectionReadSource,
   target: SelectionTarget
-): SelectionTarget => normalizeSelectionTarget({
+): SelectionTarget => selectionApi.target.normalize({
   nodeIds: target.nodeIds.filter((nodeId) => Boolean(read.node.item.get(nodeId))),
   edgeIds: target.edgeIds.filter((edgeId) => Boolean(read.edge.item.get(edgeId)))
 })
@@ -59,14 +52,14 @@ export type SelectionState = {
 
 export const createSelectionState = (): SelectionState => {
   const state = createCommandState<SelectionTarget>({
-    initial: EMPTY_SELECTION_TARGET,
-    isEqual: isSelectionTargetEqual
+    initial: selectionApi.target.empty,
+    isEqual: selectionApi.target.equal
   })
   const source = state.store
   const setTarget = (
     next: SelectionTarget
   ) => {
-    if (isSelectionTargetEqual(state.read(), next)) {
+    if (selectionApi.target.equal(state.read(), next)) {
       return false
     }
 
@@ -85,7 +78,7 @@ export const createSelectionState = (): SelectionState => {
     mutate: {
       replace: (input: SelectionInput) => {
         return setTarget(
-          normalizeSelectionTarget(input)
+          selectionApi.target.normalize(input)
         )
       },
       apply: (mode, input) => {
@@ -114,7 +107,7 @@ export const createSelectionState = (): SelectionState => {
         return true
       },
       clear: () => {
-        return setTarget(EMPTY_SELECTION_TARGET)
+        return setTarget(selectionApi.target.empty)
       }
     }
   }

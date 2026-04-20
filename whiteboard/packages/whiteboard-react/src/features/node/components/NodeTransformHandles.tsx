@@ -2,10 +2,7 @@ import type {
   CSSProperties
 } from 'react'
 import { RotateCw } from 'lucide-react'
-import {
-  buildTransformHandles,
-  isCornerResizeDirection,
-  resizeHandleMap,
+import { node as nodeApi,
   type SelectionTransformPlan,
   type ResizeDirection,
   type TransformHandle
@@ -78,7 +75,7 @@ export const resolveSelectionVisibleResizeDirections = (
   .filter((handle) => (
     handle.visible
     && handle.enabled
-    && isCornerResizeDirection(handle.id)
+    && nodeApi.transform.isCornerResizeDirection(handle.id)
   ))
   .map((handle) => handle.id)
 
@@ -88,7 +85,7 @@ export const resolveSelectionEdgeResizeDirections = (
   .filter((handle) => (
     handle.visible
     && handle.enabled
-    && !isCornerResizeDirection(handle.id)
+    && !nodeApi.transform.isCornerResizeDirection(handle.id)
   ))
   .map((handle) => handle.id)
 
@@ -334,7 +331,7 @@ const TransformEdgeHitAreaItem = ({
           rect,
           zoom
         }),
-        cursor: resizeHandleMap[direction].cursor
+        cursor: nodeApi.transform.resizeHandleMap[direction].cursor
       }}
     />
   )
@@ -389,7 +386,7 @@ const TransformChrome = ({
   const editor = useEditor()
   const zoom = useStoreValue(editor.store.viewport).zoom
 
-  const handles = buildTransformHandles({
+  const handles = nodeApi.transform.buildHandles({
     rect,
     rotation,
     resizeDirections: visibleResizeDirections,

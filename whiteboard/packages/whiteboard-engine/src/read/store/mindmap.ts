@@ -1,16 +1,8 @@
 import type { MindmapItem } from '@whiteboard/engine/types/projection'
 import type { Invalidation, MindmapId, Node, NodeId } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
-import {
-  anchorMindmapLayout,
-  computeMindmapLayout,
-  getMindmapTreeFromDocument,
-  getSubtreeIds,
-  resolveMindmapRender
-} from '@whiteboard/core/mindmap'
-import {
-  resolveNodeBootstrapSize
-} from '@whiteboard/core/node'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type { ReadSnapshot } from '@whiteboard/engine/types/internal/read'
 import { createProjectionRuntime } from '@whiteboard/engine/read/store/projection'
 
@@ -60,19 +52,19 @@ export const createMindmapProjection = (
   const buildTree = (
     mindmapId: MindmapId
   ): MindmapItem | undefined => {
-    const tree = getMindmapTreeFromDocument(snapshotRef.document, mindmapId)
+    const tree = mindmapApi.tree.fromDocument(snapshotRef.document, mindmapId)
     const root = snapshotRef.document.nodes[snapshotRef.document.mindmaps[mindmapId]?.root ?? '']
     if (!tree || !root) {
       return undefined
     }
 
-    const childNodeIds = getSubtreeIds(tree, tree.rootNodeId)
-    const computed = computeMindmapLayout(
+    const childNodeIds = mindmapApi.tree.subtreeIds(tree, tree.rootNodeId)
+    const computed = mindmapApi.layout.compute(
       tree,
       (nodeId) => {
         const node = snapshotRef.document.nodes[nodeId]
         const bootstrap = node
-          ? resolveNodeBootstrapSize(node)
+          ? nodeApi.bootstrap.resolve(node)
           : undefined
         return {
           width: Math.max(node?.size?.width ?? bootstrap?.width ?? config.mindmapNodeSize.width, 1),
@@ -81,12 +73,12 @@ export const createMindmapProjection = (
       },
       tree.layout
     )
-    const anchored = anchorMindmapLayout({
+    const anchored = mindmapApi.layout.anchor({
       tree,
       computed,
       position: root.position
     })
-    const render = resolveMindmapRender({
+    const render = mindmapApi.render.resolve({
       tree,
       computed: anchored
     })

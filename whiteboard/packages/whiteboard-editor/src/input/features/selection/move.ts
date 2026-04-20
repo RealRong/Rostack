@@ -1,10 +1,4 @@
-import {
-  type Guide,
-  type MoveStepResult,
-  finishMoveState,
-  startMoveState,
-  stepMoveState
-} from '@whiteboard/core/node'
+import { node as nodeApi, type Guide, type MoveStepResult } from '@whiteboard/core/node'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import {
   FINISH
@@ -47,7 +41,7 @@ const findParentFrameId = (
 
 const resolveFrameHoverId = (
   ctx: Pick<EditorHostDeps, 'query'>,
-  state: Parameters<typeof finishMoveState>[0],
+  state: Parameters<typeof nodeApi.move.state.finish>[0],
   pointerWorld: {
     x: number
     y: number
@@ -121,7 +115,7 @@ export const createMoveInteraction = (
     }
   }
 
-  const initialState = startMoveState({
+  const initialState = nodeApi.move.state.start({
     nodes: ctx.query.node.ordered(),
     edges: ctx.query.edge.edges(ctx.query.edge.list.get()),
     target: input.target,
@@ -144,7 +138,7 @@ export const createMoveInteraction = (
   }) => {
     modifiers = nextInput.modifiers
     let guides: readonly Guide[] = []
-    const result = stepMoveState({
+    const result = nodeApi.move.state.step({
       state,
       pointerWorld: nextInput.world,
       snap: ctx.query.tool.is('select')
@@ -192,7 +186,7 @@ export const createMoveInteraction = (
       })
     },
     up: () => {
-      const commit = finishMoveState(state)
+      const commit = nodeApi.move.state.finish(state)
       if (commit.delta) {
         ctx.write.canvas.selection.move({
           nodeIds: input.target.nodeIds,

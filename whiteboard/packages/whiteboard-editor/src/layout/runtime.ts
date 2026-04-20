@@ -1,24 +1,7 @@
-import { isSizeEqual } from '@whiteboard/core/geometry'
-import {
-  applyNodeUpdate,
-  readTextLayoutInput,
-  readStickyFontMode,
-  TEXT_LAYOUT_MIN_WIDTH,
-  readTextWrapWidth,
-  readTextWidthMode,
-  resolveAnchoredRect,
-  resolveTextBox,
-  resolveTextHandle,
-  resolveNodeBootstrapSize,
-  shouldPatchTextLayout,
-  TEXT_DEFAULT_FONT_SIZE
-} from '@whiteboard/core/node'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type { TransformPreviewPatch } from '@whiteboard/core/node'
-import {
-  compileNodeDataUpdate,
-  compileNodeStyleUpdate,
-  mergeNodeUpdates
-} from '@whiteboard/core/schema'
+import { schema as schemaApi } from '@whiteboard/core/schema'
 import type {
   MindmapTemplate,
   MindmapTemplateNode,
@@ -88,7 +71,7 @@ const readFontSize = (
   node: Pick<Node, 'style'>
 ) => typeof node.style?.fontSize === 'number'
   ? node.style.fontSize
-  : TEXT_DEFAULT_FONT_SIZE
+  : nodeApi.text.defaultFontSize
 
 const readFontWeight = (
   node: Pick<Node, 'style'>
@@ -141,10 +124,10 @@ const applyPreviewNode = (
   const nextData = {
     ...(node.data ?? {})
   }
-  const nextWidthMode = preview.mode ?? readTextWidthMode(node)
+  const nextWidthMode = preview.mode ?? nodeApi.text.widthMode(node)
   nextData.widthMode = nextWidthMode
   if (nextWidthMode === 'wrap') {
-    nextData.wrapWidth = preview.wrapWidth ?? readTextWrapWidth(node)
+    nextData.wrapWidth = preview.wrapWidth ?? nodeApi.text.wrapWidth(node)
   } else {
     delete nextData.wrapWidth
   }
@@ -179,7 +162,7 @@ const buildLayoutRequest = ({
   kind: LayoutKind
 }): LayoutRequest | undefined => {
   if (kind === 'size' && node.type === 'text') {
-    const input = readTextLayoutInput(node, {
+    const input = nodeApi.text.layoutInput(node, {
       width: rect.width,
       height: rect.height
     })
@@ -212,7 +195,7 @@ const buildLayoutRequest = ({
   if (
       kind === 'fit'
     && node.type === 'sticky'
-    && readStickyFontMode(node) === 'auto'
+    && nodeApi.text.stickyFontMode(node) === 'auto'
   ) {
     return {
       kind: 'fit',
@@ -226,7 +209,7 @@ const buildLayoutRequest = ({
       text: typeof node.data?.text === 'string'
         ? node.data.text
         : '',
-      box: resolveTextBox('sticky', rect),
+      box: nodeApi.text.box('sticky', rect),
       fontWeight: readFontWeight(node),
       fontStyle: readFontStyle(node),
       textAlign: 'center'
@@ -287,9 +270,9 @@ const normalizeStickyFontModeUpdate = ({
     return update
   }
 
-  return mergeNodeUpdates(
+  return schemaApi.node.mergeUpdates(
     update,
-    compileNodeDataUpdate('fontMode', 'fixed')
+    schemaApi.node.compileDataUpdate('fontMode', 'fixed')
   )
 }
 
@@ -310,7 +293,7 @@ const toLayoutResultUpdate = ({
   size?: Size
 }) => {
   if (kind === 'size' && request.kind === 'size' && size) {
-    return shouldPatchTextLayout(committed.node, size)
+    return nodeApi.text.shouldPatchLayout(committed.node, size)
       ? {
           fields: {
             size
@@ -326,7 +309,7 @@ const toLayoutResultUpdate = ({
 
     return currentFontSize === fontSize
       ? undefined
-      : compileNodeStyleUpdate('fontSize', fontSize)
+      : schemaApi.node.compileStyleUpdate('fontSize', fontSize)
   }
 
   return undefined
@@ -420,7 +403,7 @@ export const createEditorLayout = ({
       return payload
     }
 
-    const bootstrapSize = resolveNodeBootstrapSize(payload) ?? {
+    const bootstrapSize = nodeApi.bootstrap.resolve(payload) ?? {
       width: 1,
       height: 1
     }
@@ -459,7 +442,7 @@ export const createEditorLayout = ({
     }
 
     if (request.kind === 'size' && result.kind === 'size') {
-      return isSizeEqual(payload.size, result.size)
+      return geometryApi.equal.size(payload.size, result.size)
         ? payload
         : {
             ...payload,
@@ -529,7 +512,7 @@ export const createEditorLayout = ({
         return normalized
       }
 
-      const applied = applyNodeUpdate(committed.node, normalized)
+      const applied = nodeApi.update.apply(committed.node, normalized)
       if (!applied.ok) {
         return normalized
       }
@@ -548,7 +531,7 @@ export const createEditorLayout = ({
         return normalized
       }
 
-      return mergeNodeUpdates(
+      return schemaApi.node.mergeUpdates(
         normalized,
         toLayoutResultUpdate({
           kind,
@@ -622,7 +605,7 @@ export const createEditorLayout = ({
         if (
           committed.node.type !== 'text'
           || patch.handle === undefined
-          || resolveTextHandle(patch.handle) !== 'reflow'
+          || nodeApi.text.handle(patch.handle) !== 'reflow'
         ) {
           return patch
         }
@@ -643,7 +626,7 @@ export const createEditorLayout = ({
           return patch
         }
 
-        const rect = resolveAnchoredRect({
+        const rect = nodeApi.transform.anchoredRect({
           rect: nextRect,
           handle: patch.handle,
           width: result.size.width,
@@ -666,9 +649,9 @@ export const createEditorLayout = ({
       if (
         kind !== 'fit'
         || committed.node.type !== 'sticky'
-        || readStickyFontMode(committed.node) === 'fixed'
+        || nodeApi.text.stickyFontMode(committed.node) === 'fixed'
         || !patch.size
-        || isSizeEqual(patch.size, committed.rect)
+        || geometryApi.equal.size(patch.size, committed.rect)
       ) {
         return patch
       }

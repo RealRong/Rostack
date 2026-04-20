@@ -93,32 +93,6 @@ export const EMPTY_OPTION_REDUCER_STATE: OptionReducerState = Object.freeze({
 
 const EMPTY_FIELD_STATE_CACHE = new Map<string, FieldReducerState>()
 
-const stableSerialize = (value: unknown): string => {
-  if (value === undefined) {
-    return 'undefined'
-  }
-  if (value === null) {
-    return 'null'
-  }
-  if (typeof value === 'string') {
-    return JSON.stringify(value)
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(item => stableSerialize(item)).join(',')}]`
-  }
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableSerialize(nestedValue)}`)
-    return `{${entries.join(',')}}`
-  }
-
-  return String(value)
-}
-
 const readUniqueKey = (
   field: Field | undefined,
   value: unknown

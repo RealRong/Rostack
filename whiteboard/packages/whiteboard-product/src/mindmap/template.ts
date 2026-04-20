@@ -1,7 +1,6 @@
 import type { Token } from '@shared/i18n'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
-  buildMindmapTextNodeStyle,
-  instantiateMindmapTemplate,
   type MindmapBranchStyle,
   type MindmapLayoutSpec,
   type MindmapNodeStyle,
@@ -103,7 +102,7 @@ const toTextTemplate = (
   data: {
     text
   },
-  style: buildMindmapTextNodeStyle(style)
+  style: mindmapApi.template.textNodeStyle(style)
 })
 
 const createTemplateNode = (input: {
@@ -423,7 +422,7 @@ export const createWhiteboardMindmapPreview = (input: {
   seed?: string
 } = {}): MindmapPreviewModel => {
   const template = buildWhiteboardMindmapTemplate(input)
-  const created = instantiateMindmapTemplate({
+  const created = mindmapApi.template.instantiate({
     template,
     rootId: 'root',
     createNodeId: (() => {

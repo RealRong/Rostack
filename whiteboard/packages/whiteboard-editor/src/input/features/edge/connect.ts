@@ -1,24 +1,12 @@
 import {
-  DEFAULT_EDGE_ANCHOR_OFFSET,
+  edge as edgeApi,
   type EdgeConnectEvaluation,
   type EdgeConnectPreview,
-  resolveAnchorFromPoint,
-  resolveEdgeConnectPreview,
-  resolveEdgeView,
-  resolveReconnectDraftEnd,
-  setEdgeConnectTarget,
-  startEdgeCreate,
-  startEdgeReconnect,
-  toEdgeConnectCommit,
-  toEdgeDraftEnd,
-  toEdgeConnectPatch,
   type EdgeConnectState
 } from '@whiteboard/core/edge'
 import type { BoardConfig } from '@whiteboard/core/config'
-import { getNodeAnchor, readNodeRotation } from '@whiteboard/core/node'
-import {
-  quantizePointToOctilinear
-} from '@whiteboard/core/geometry'
+import { node as nodeApi } from '@whiteboard/core/node'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   Edge,
   EdgeTemplate,
@@ -135,12 +123,12 @@ const shouldBlockFreeCreateStart = (
 const startFreeEdgeCreate = (
   pointer: PointerDownInput,
   template: EdgeTemplate
-): EdgeConnectState => startEdgeCreate({
+): EdgeConnectState => edgeApi.connect.startCreate({
   pointerId: pointer.pointerId,
   edgeType: template.type,
   style: template.style,
-  from: toEdgeDraftEnd(pointer.world),
-  to: toEdgeDraftEnd(pointer.world)
+  from: edgeApi.connect.toDraftEnd(pointer.world),
+  to: edgeApi.connect.toDraftEnd(pointer.world)
 })
 
 const startNodeEdgeCreate = (input: {
@@ -149,7 +137,7 @@ const startNodeEdgeCreate = (input: {
   nodeId: NodeId
   anchor: EdgeAnchor
   point: PointerDownInput['world']
-}): EdgeConnectState => startEdgeCreate({
+}): EdgeConnectState => edgeApi.connect.startCreate({
   pointerId: input.pointer.pointerId,
   edgeType: input.template.type,
   style: input.template.style,
@@ -159,7 +147,7 @@ const startNodeEdgeCreate = (input: {
     anchor: input.anchor,
     point: input.point
   },
-  to: toEdgeDraftEnd(input.pointer.world)
+  to: edgeApi.connect.toDraftEnd(input.pointer.world)
 })
 
 const resolveNodeHandleStart = (input: {
@@ -183,7 +171,7 @@ const resolveNodeHandleStart = (input: {
 
   const anchor: EdgeAnchor = {
     side: pick.side,
-    offset: DEFAULT_EDGE_ANCHOR_OFFSET
+    offset: edgeApi.connect.defaultAnchorOffset
   }
 
   return startNodeEdgeCreate({
@@ -191,11 +179,11 @@ const resolveNodeHandleStart = (input: {
     template: input.template,
     nodeId: pick.id,
     anchor,
-    point: getNodeAnchor(
+    point: nodeApi.outline.anchor(
       entry.node,
       entry.geometry.rect,
       anchor,
-      readNodeRotation(entry.node)
+      nodeApi.geometry.rotation(entry.node)
     )
   })
 }
@@ -220,10 +208,10 @@ const resolveNodeBodyStart = (input: {
     return undefined
   }
 
-  const resolved = resolveAnchorFromPoint({
+  const resolved = edgeApi.anchor.resolveFromPoint({
     node: entry.node,
     rect: entry.geometry.rect,
-    rotation: readNodeRotation(entry.node),
+    rotation: nodeApi.geometry.rotation(entry.node),
     pointWorld: input.pointer.world,
     zoom: input.zoom,
     config: input.config
@@ -269,15 +257,15 @@ const resolveReconnectStart = (input: {
     return undefined
   }
 
-  return startEdgeReconnect({
+  return edgeApi.connect.startReconnect({
     pointerId: input.pointerId,
     edgeId: input.edgeId,
     end: input.end,
-    from: resolveReconnectDraftEnd({
+    from: edgeApi.connect.resolveReconnectDraftEnd({
       end: item.edge[input.end],
       point: resolved.ends[input.end].point,
       anchor: resolved.ends[input.end].anchor,
-      anchorOffset: DEFAULT_EDGE_ANCHOR_OFFSET
+      anchorOffset: edgeApi.connect.defaultAnchorOffset
     })
   })
 }
@@ -384,7 +372,7 @@ const resolveCreatePreviewPath = (
     return undefined
   }
 
-  const view = resolveEdgeView({
+  const view = edgeApi.view.resolve({
     edge,
     source,
     target
@@ -421,7 +409,7 @@ const readReconnectPreviewPatches = (
 const readEdgeConnectGesture = (
   input: EdgeConnectGestureInput
 ): Parameters<typeof createGesture>[1] => {
-  const preview = resolveEdgeConnectPreview(
+  const preview = edgeApi.connect.preview(
     input.state,
     input.showPreviewPath
       ? resolveCreatePreviewPath(input.node, input.state)
@@ -444,7 +432,7 @@ const readEdgeConnectGesture = (
 
 const toDraftEndFromEvaluation = (
   evaluation: EdgeConnectEvaluation
-) => toEdgeDraftEnd(
+) => edgeApi.connect.toDraftEnd(
   evaluation.resolution.pointWorld,
   evaluation.resolution.mode === 'free'
     ? undefined
@@ -458,7 +446,7 @@ const toDraftEndFromEvaluation = (
 const applyEdgeConnectEvaluation = (input: {
   state: EdgeConnectState
   evaluation: EdgeConnectEvaluation
-}): EdgeConnectState => setEdgeConnectTarget(
+}): EdgeConnectState => edgeApi.connect.setTarget(
   input.state,
   toDraftEndFromEvaluation(input.evaluation)
 )
@@ -490,14 +478,14 @@ const stepEdgeConnect = (
 
 const commitEdgeConnect = (
   state: EdgeConnectState
-) => toEdgeConnectCommit(state)
+) => edgeApi.connect.toCommit(state)
 
 const readReconnectPatch = (
   state: EdgeConnectState,
   draftPatch?: EdgePatch
 ): EdgePatch | undefined => state.kind === 'reconnect'
   ? mergeEdgePatch(
-      toEdgeConnectPatch(state),
+      edgeApi.connect.toPatch(state),
       draftPatch
     )
   : undefined
@@ -557,7 +545,7 @@ const readReconnectWorld = ({
   && draftPatch.route?.kind === 'auto'
   && fixedPoint
 )
-  ? quantizePointToOctilinear({
+  ? geometryApi.point.quantizeOctilinear({
       point: world,
       origin: fixedPoint
     })

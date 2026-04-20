@@ -11,10 +11,10 @@ import * as edgePresets from '@whiteboard/product/edge/presets'
 import { WHITEBOARD_EDGE_UI } from '@whiteboard/product/edge/ui'
 import * as i18nKeys from '@whiteboard/product/i18n/keys'
 import {
-  en as i18nEn
+  whiteboardProductEnResources as i18nEn
 } from '@whiteboard/product/i18n/resources/en'
 import {
-  zhCN as i18nZhCN
+  whiteboardProductZhCNResources as i18nZhCN
 } from '@whiteboard/product/i18n/resources/zh-CN'
 import { registerWhiteboardProductI18n } from '@whiteboard/product/i18n/register'
 import * as i18nTokens from '@whiteboard/product/i18n/tokens'

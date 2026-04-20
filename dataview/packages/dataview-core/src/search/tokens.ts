@@ -16,13 +16,21 @@ import {
   fieldSpec
 } from '@dataview/core/field/spec'
 import {
-  trimLowercase
-} from '@shared/core'
+  appendTokens,
+  joinTokens,
+  normalizeTokens,
+  SEARCH_TOKEN_SEPARATOR,
+  splitJoinedTokens
+} from '@dataview/core/shared/searchTokens'
+
+export {
+  joinTokens,
+  normalizeTokens,
+  SEARCH_TOKEN_SEPARATOR
+} from '@dataview/core/shared/searchTokens'
 
 const EMPTY_TEXTS = [] as readonly string[]
 const EMPTY_FIELDS = [] as readonly CustomField[]
-
-export const SEARCH_TOKEN_SEPARATOR = '\u0000'
 
 export interface SearchTextContext {
   document?: DataDoc
@@ -33,55 +41,13 @@ export const isDefaultSearchField = (
   field: CustomField | undefined
 ): boolean => fieldSpec.index.searchDefaultEnabled(field)
 
-const appendNormalizedSearchTokens = (
-  target: Set<string>,
-  values: readonly string[]
-) => {
-  for (let index = 0; index < values.length; index += 1) {
-    const token = trimLowercase(values[index]!)
-    if (token) {
-      target.add(token)
-    }
-  }
-}
-
 const joinSearchTokenSet = (
   tokens: ReadonlySet<string>
 ): string | undefined => tokens.size
   ? Array.from(tokens).join(SEARCH_TOKEN_SEPARATOR)
   : undefined
 
-export const normalizeTokens = (
-  values: readonly string[]
-): readonly string[] => {
-  if (!values.length) {
-    return EMPTY_TEXTS
-  }
-
-  const tokens = new Set<string>()
-  appendNormalizedSearchTokens(tokens, values)
-  return tokens.size
-    ? Array.from(tokens)
-    : EMPTY_TEXTS
-}
-
-export const joinTokens = (
-  values: readonly string[]
-): string | undefined => {
-  if (!values.length) {
-    return undefined
-  }
-
-  const tokens = new Set<string>()
-  appendNormalizedSearchTokens(tokens, values)
-  return joinSearchTokenSet(tokens)
-}
-
-export const splitText = (
-  value: string | undefined
-): readonly string[] => value
-  ? value.split(SEARCH_TOKEN_SEPARATOR).filter(Boolean)
-  : EMPTY_TEXTS
+export const splitText = splitJoinedTokens
 
 export const buildFieldText = (
   field: Field | undefined,
@@ -93,7 +59,7 @@ export const buildFieldText = (
   }
 
   const normalized = new Set<string>()
-  appendNormalizedSearchTokens(normalized, tokens)
+  appendTokens(normalized, tokens)
   return joinSearchTokenSet(normalized)
 }
 
@@ -172,14 +138,14 @@ const appendRecordDefaultSearchTokens = (
 ) => {
   const titleTokens = fieldApi.search.tokens(undefined, record.title)
   if (titleTokens.length) {
-    appendNormalizedSearchTokens(target, titleTokens)
+    appendTokens(target, titleTokens)
   }
 
   for (let index = 0; index < fields.length; index += 1) {
     const field = fields[index]!
     const tokens = fieldApi.search.tokens(field, record.values[field.id])
     if (tokens.length) {
-      appendNormalizedSearchTokens(target, tokens)
+      appendTokens(target, tokens)
     }
   }
 }

@@ -1,6 +1,4 @@
-import {
-  listGroupCanvasItemRefs
-} from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import type { GroupCommand } from '@whiteboard/engine/types/command'
 import type { CommandCompileContext } from '@whiteboard/engine/write/types'
 import { createCanvasOrderMoveOps } from '@whiteboard/engine/write/compile/canvas'
@@ -43,7 +41,7 @@ export const compileGroupCommand = (
       }
     }
     case 'group.order.move': {
-      const refs = command.ids.flatMap((groupId) => listGroupCanvasItemRefs(document, groupId))
+      const refs = command.ids.flatMap((groupId) => documentApi.list.groupCanvasRefs(document, groupId))
       const current = document.canvas.order
       const target = (() => {
         const selected = refs.filter((ref) => current.some((entry) => entry.kind === ref.kind && entry.id === ref.id))
@@ -95,7 +93,7 @@ export const compileGroupCommand = (
       const edgeIds: string[] = []
 
       command.ids.forEach((groupId) => {
-        const refs = listGroupCanvasItemRefs(document, groupId)
+        const refs = documentApi.list.groupCanvasRefs(document, groupId)
         ctx.tx.emit({
           type: 'group.delete',
           id: groupId

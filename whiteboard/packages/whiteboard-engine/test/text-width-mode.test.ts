@@ -1,14 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import {
-  compileNodeDataUpdate,
-  mergeNodeUpdates
-} from '@whiteboard/core/schema'
-import { createEngine } from '@whiteboard/engine'
+import { document as documentApi } from '@whiteboard/core/document'
+import { schema } from '@whiteboard/core/schema'
+import { engine as engineApi } from '@whiteboard/engine'
 
 const createTextDocument = () => {
-  const document = createDocument('doc_text_width_mode')
+  const document = documentApi.create('doc_text_width_mode')
   document.nodes['text-1'] = {
     id: 'text-1',
     type: 'text',
@@ -32,7 +29,7 @@ const createTextDocument = () => {
 }
 
 test('engine preserves wrap width mode when a text node size changes', () => {
-  const engine = createEngine({
+  const engine = engineApi.create({
     document: createTextDocument()
   })
 
@@ -40,7 +37,7 @@ test('engine preserves wrap width mode when a text node size changes', () => {
     type: 'node.update',
     updates: [{
       id: 'text-1',
-      input: mergeNodeUpdates(
+      input: schema.node.mergeUpdates(
         {
           fields: {
             size: {
@@ -49,8 +46,8 @@ test('engine preserves wrap width mode when a text node size changes', () => {
             }
           }
         },
-        compileNodeDataUpdate('widthMode', 'wrap'),
-        compileNodeDataUpdate('wrapWidth', 180)
+        schema.node.compileDataUpdate('widthMode', 'wrap'),
+        schema.node.compileDataUpdate('wrapWidth', 180)
       )
     }]
   })

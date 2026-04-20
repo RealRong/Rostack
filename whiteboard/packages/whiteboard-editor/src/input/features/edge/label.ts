@@ -1,9 +1,4 @@
-import {
-  EDGE_LABEL_CENTER_TOLERANCE,
-  EDGE_LABEL_RAIL_OFFSET,
-  projectPointToEdgeLabelPlacement,
-  readEdgeLabelSideGap
-} from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   Edge,
   EdgeId,
@@ -95,14 +90,14 @@ const createEdgeLabelDragSession = (
   const step = (
     pointerWorld: Point
   ) => {
-    const projected = projectPointToEdgeLabelPlacement({
+    const projected = edgeApi.label.projectPoint({
       path: state.path,
       point: pointerWorld,
-      maxOffset: EDGE_LABEL_RAIL_OFFSET,
-      centerTolerance: EDGE_LABEL_CENTER_TOLERANCE,
+      maxOffset: edgeApi.label.railOffset,
+      centerTolerance: edgeApi.label.centerTolerance,
       textMode: state.textMode,
       labelSize: state.labelSize,
-      sideGap: readEdgeLabelSideGap(state.textMode ?? 'horizontal')
+      sideGap: edgeApi.label.sideGap(state.textMode ?? 'horizontal')
     })
     if (!projected) {
       return

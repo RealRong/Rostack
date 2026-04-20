@@ -1,16 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import {
-  SHAPE_DESCRIPTORS,
-  containsPointInNodeOutline,
-  getNodeBounds,
-  getNodeOutline,
-  isShapeKind,
-  readShapeDescriptor
-} from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 
 test('shape descriptor registry exposes the new shape kinds through one source of truth', () => {
-  const kinds = SHAPE_DESCRIPTORS.map((descriptor) => descriptor.kind)
+  const kinds = nodeApi.shape.descriptors.map((descriptor) => descriptor.kind)
 
   assert.ok(kinds.includes('star'))
   assert.ok(kinds.includes('roundrect-bubble'))
@@ -18,9 +11,9 @@ test('shape descriptor registry exposes the new shape kinds through one source o
   assert.ok(kinds.includes('delay'))
 
   for (const kind of kinds) {
-    assert.equal(isShapeKind(kind), true)
-    assert.ok(readShapeDescriptor(kind).visual.outer.d.length > 0)
-    assert.ok(readShapeDescriptor(kind).outline.top.length > 0)
+    assert.equal(nodeApi.shape.isKind(kind), true)
+    assert.ok(nodeApi.shape.descriptor(kind).visual.outer.d.length > 0)
+    assert.ok(nodeApi.shape.descriptor(kind).outline.top.length > 0)
   }
 })
 
@@ -33,7 +26,7 @@ test('new shape outlines keep hit testing aligned with the descriptor geometry',
   }
 
   assert.equal(
-    containsPointInNodeOutline(
+    nodeApi.outline.containsPoint(
       {
         type: 'shape',
         data: {
@@ -51,7 +44,7 @@ test('new shape outlines keep hit testing aligned with the descriptor geometry',
   )
 
   assert.equal(
-    containsPointInNodeOutline(
+    nodeApi.outline.containsPoint(
       {
         type: 'shape',
         data: {
@@ -69,7 +62,7 @@ test('new shape outlines keep hit testing aligned with the descriptor geometry',
   )
 
   assert.equal(
-    containsPointInNodeOutline(
+    nodeApi.outline.containsPoint(
       {
         type: 'shape',
         data: {
@@ -86,7 +79,7 @@ test('new shape outlines keep hit testing aligned with the descriptor geometry',
     true
   )
 
-  const starOutline = getNodeOutline(
+  const starOutline = nodeApi.outline.outline(
     {
       type: 'shape',
       data: {
@@ -130,10 +123,10 @@ test('basic and flowchart shapes fill the canonical rect with their outline boun
     'manual-operation'
   ])
 
-  SHAPE_DESCRIPTORS
+  nodeApi.shape.descriptors
     .filter((descriptor) => rectBoundKinds.has(descriptor.kind))
     .forEach((descriptor) => {
-      const bounds = getNodeBounds(
+      const bounds = nodeApi.outline.bounds(
         {
           type: 'shape',
           data: {

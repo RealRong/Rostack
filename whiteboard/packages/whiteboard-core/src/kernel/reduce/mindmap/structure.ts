@@ -1,4 +1,4 @@
-import { getSubtreeIds } from '@whiteboard/core/mindmap'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import {

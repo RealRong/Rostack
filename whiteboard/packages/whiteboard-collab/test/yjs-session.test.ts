@@ -1,30 +1,26 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import * as Y from 'yjs'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import {
-  createYjsSyncCodec,
-  createYjsSyncStore,
-  createYjsSession
-} from '@whiteboard/collab'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { collab as collabApi } from '@whiteboard/collab'
 
 const createTestEngine = (id = 'doc_test') =>
-  createEngine({
-    document: createDocument(id)
+  engineApi.create({
+    document: documentApi.create(id)
   })
 
 const createStore = (
   doc: Y.Doc
-) => createYjsSyncStore({
+) => collabApi.yjs.store.create({
   doc,
-  codec: createYjsSyncCodec()
+  codec: collabApi.yjs.codec.create()
 })
 
 test('empty bootstrap writes initial checkpoint and leaves change log empty', () => {
   const doc = new Y.Doc()
   const engine = createTestEngine('doc_engine_first')
-  const session = createYjsSession({
+  const session = collabApi.yjs.session.create({
     engine,
     doc,
     actorId: 'actor_engine_first'
@@ -47,14 +43,14 @@ test('shared sessions replay remote operations and keep remote changes out of lo
   const engineA = createTestEngine('doc_shared')
   const engineB = createTestEngine('doc_shared')
 
-  const sessionA = createYjsSession({
+  const sessionA = collabApi.yjs.session.create({
     engine: engineA,
     doc: sharedDoc,
     actorId: 'actor_a'
   })
   sessionA.connect()
 
-  const sessionB = createYjsSession({
+  const sessionB = collabApi.yjs.session.create({
     engine: engineB,
     doc: sharedDoc,
     actorId: 'actor_b'
@@ -144,7 +140,7 @@ test('shared sessions replay remote operations and keep remote changes out of lo
 test('local document.replace rewrites checkpoint and clears tail changes', () => {
   const sharedDoc = new Y.Doc()
   const engine = createTestEngine('doc_replace')
-  const session = createYjsSession({
+  const session = collabApi.yjs.session.create({
     engine,
     doc: sharedDoc,
     actorId: 'actor_replace'
@@ -166,7 +162,7 @@ test('local document.replace rewrites checkpoint and clears tail changes', () =>
 
   const replaceResult = engine.execute({
     type: 'document.replace',
-    document: createDocument('doc_replace')
+    document: documentApi.create('doc_replace')
   })
   assert.equal(replaceResult.ok, true)
 
@@ -182,7 +178,7 @@ test('local document.replace rewrites checkpoint and clears tail changes', () =>
 test('session records duplicate and rejected shared changes deterministically', () => {
   const sharedDoc = new Y.Doc()
   const engine = createTestEngine('doc_diagnostics')
-  const session = createYjsSession({
+  const session = collabApi.yjs.session.create({
     engine,
     doc: sharedDoc,
     actorId: 'actor_diag'
@@ -247,12 +243,12 @@ test('remote changes invalidate conflicting local history', () => {
   const engineA = createTestEngine('doc_conflict_history')
   const engineB = createTestEngine('doc_conflict_history')
 
-  const sessionA = createYjsSession({
+  const sessionA = collabApi.yjs.session.create({
     engine: engineA,
     doc: sharedDoc,
     actorId: 'actor_conflict_a'
   })
-  const sessionB = createYjsSession({
+  const sessionB = collabApi.yjs.session.create({
     engine: engineB,
     doc: sharedDoc,
     actorId: 'actor_conflict_b'
@@ -306,7 +302,7 @@ test('remote changes invalidate conflicting local history', () => {
 test('localHistory undo and redo append new shared changes', () => {
   const sharedDoc = new Y.Doc()
   const engine = createTestEngine('doc_local_history')
-  const session = createYjsSession({
+  const session = collabApi.yjs.session.create({
     engine,
     doc: sharedDoc,
     actorId: 'actor_local_history'

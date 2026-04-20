@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { product } from '@whiteboard/product'
 
 const createTextNode = ({
   id,
@@ -31,7 +31,7 @@ const createTextNode = ({
 })
 
 test('node.text.commit deletes empty text nodes through engine semantics', () => {
-  const document = createDocument('doc_write_closure_text_delete')
+  const document = documentApi.create('doc_write_closure_text_delete')
   document.nodes.text_1 = createTextNode({
     id: 'text_1',
     x: 0,
@@ -65,7 +65,7 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
     { kind: 'edge', id: 'edge_1' }
   ]
 
-  const engine = createEngine({
+  const engine = engineApi.create({
     document
   })
 
@@ -91,7 +91,7 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
 })
 
 test('node.text.commit merges text, size, fontSize, and wrapWidth for generic text nodes', () => {
-  const document = createDocument('doc_write_closure_text_merge')
+  const document = documentApi.create('doc_write_closure_text_merge')
   document.nodes.text_1 = {
     ...createTextNode({
       id: 'text_1',
@@ -111,7 +111,7 @@ test('node.text.commit merges text, size, fontSize, and wrapWidth for generic te
     { kind: 'node', id: 'text_1' }
   ]
 
-  const engine = createEngine({
+  const engine = engineApi.create({
     document
   })
 
@@ -147,14 +147,14 @@ test('node.text.commit merges text, size, fontSize, and wrapWidth for generic te
 })
 
 test('node.text.commit routes mindmap topic text and size through mindmap operations', () => {
-  const engine = createEngine({
-    document: createDocument('doc_write_closure_mindmap_text_commit')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_write_closure_mindmap_text_commit')
   })
 
   const createResult = engine.execute({
     type: 'mindmap.create',
     input: {
-      template: buildWhiteboardMindmapTemplate({
+      template: product.mindmap.template.build({
         preset: 'mindmap.capsule-outline'
       })
     }

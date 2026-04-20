@@ -4,24 +4,10 @@ import type {
   Document,
   Point
 } from '@whiteboard/core/types'
-import { createEngine } from '@whiteboard/engine'
-import {
-  createEditor,
-  type DrawState
-} from '@whiteboard/editor'
-import {
-  createHistoryBinding,
-  createLocalEngineHistory,
-  type HistoryBinding
-} from '@whiteboard/history'
-import {
-  WHITEBOARD_DRAW_DEFAULTS,
-  WHITEBOARD_INSERT_CATALOG,
-  WHITEBOARD_LINE_DEFAULT_COLOR,
-  WHITEBOARD_FRAME_DEFAULT_TITLE,
-  createWhiteboardFrameTemplate,
-  readWhiteboardNodePaintDefaults
-} from '@whiteboard/product'
+import { engine as engineApi } from '@whiteboard/engine'
+import { editor as editorApi, type DrawState } from '@whiteboard/editor'
+import { history as historyApi, type HistoryBinding } from '@whiteboard/history'
+import { product } from '@whiteboard/product'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 import { createClipboardHostAdapter } from '@whiteboard/react/dom/host/clipboard'
 import { createClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboard'
@@ -83,17 +69,17 @@ export const createWhiteboardServices = ({
   resolvedConfig: ResolvedConfig
   boardConfig: EngineBoardConfig
 }): WhiteboardRuntimeServices => {
-  const initialDrawState: DrawState = WHITEBOARD_DRAW_DEFAULTS
-  const engine = createEngine({
+  const initialDrawState: DrawState = product.draw.defaults
+  const engine = engineApi.create({
     registries: coreRegistries,
     document,
     onDocumentChange,
     config: boardConfig
   })
-  const baseHistory = createLocalEngineHistory(engine, resolvedConfig.history)
-  const history = createHistoryBinding(baseHistory)
+  const baseHistory = historyApi.local.create(engine, resolvedConfig.history)
+  const history = historyApi.binding.create(baseHistory)
   const textSources = createTextSourceStore()
-  const editor = createEditor({
+  const editor = editorApi.create({
     engine,
     history,
     initialTool: resolvedConfig.initialTool,
@@ -107,10 +93,10 @@ export const createWhiteboardServices = ({
       defaults: {
         selection: {
           node: {
-            readPaint: readWhiteboardNodePaintDefaults
+            readPaint: product.node.defaults.readWhiteboardNodePaintDefaults
           },
           edge: {
-            color: WHITEBOARD_LINE_DEFAULT_COLOR,
+            color: product.palette.defaults.lineColor,
             width: 2,
             dash: 'solid',
             textMode: 'horizontal'
@@ -120,8 +106,8 @@ export const createWhiteboardServices = ({
           frame: ({
             bounds,
             padding
-          }) => createWhiteboardFrameTemplate({
-            title: WHITEBOARD_FRAME_DEFAULT_TITLE,
+          }) => product.node.templates.createWhiteboardFrameTemplate({
+            title: product.node.templates.WHITEBOARD_FRAME_DEFAULT_TITLE,
             size: {
               width: bounds.width + padding * 2,
               height: bounds.height + padding * 2
@@ -133,7 +119,7 @@ export const createWhiteboardServices = ({
   })
   const insert = createInsertBridge({
     editor,
-    catalog: WHITEBOARD_INSERT_CATALOG
+    catalog: product.insert.catalog.WHITEBOARD_INSERT_CATALOG
   })
   const point = createPointState()
   const pointer = createPointerBridge({

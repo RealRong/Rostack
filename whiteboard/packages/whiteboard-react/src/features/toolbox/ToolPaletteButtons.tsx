@@ -20,10 +20,7 @@ import {
 import type {
   DrawMode
 } from '@whiteboard/editor'
-import {
-  WHITEBOARD_TEXT_INSERT_PRESET,
-  readWhiteboardShapePreviewFill
-} from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 import type {
   ToolPaletteView
 } from '@whiteboard/react/types/toolbox'
@@ -114,7 +111,7 @@ export const ToolPaletteButtons = ({
         type="button"
         pressed={
           tool.type === 'insert'
-          && tool.template.kind === WHITEBOARD_TEXT_INSERT_PRESET.template.kind
+          && tool.template.kind === product.insert.catalog.WHITEBOARD_TEXT_INSERT_PRESET.template.kind
           && tool.template.kind === 'node'
           && tool.template.template.type === 'text'
         }
@@ -141,7 +138,7 @@ export const ToolPaletteButtons = ({
               width={22}
               height={22}
               strokeWidth={4}
-              fill={readWhiteboardShapePreviewFill(palette.shapeKind)}
+              fill={product.node.shapes.readWhiteboardShapePreviewFill(palette.shapeKind)}
               stroke="currentColor"
             />
           </span>

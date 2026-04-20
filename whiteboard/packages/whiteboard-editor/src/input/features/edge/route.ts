@@ -1,13 +1,9 @@
 import {
-  resolveEdgeRouteHandleTarget,
-  moveElbowRouteSegment,
-  insertRoutePoint,
-  moveRoutePoint,
-  areRoutePointsEqual,
+  edge as edgeApi,
   type EdgeView as CoreEdgeView,
   type EdgeRouteHandleTarget
 } from '@whiteboard/core/edge'
-import { isPointEqual } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   Edge,
   EdgeId,
@@ -135,7 +131,7 @@ const resolveEdgeRoutePickTarget = (
     return undefined
   }
 
-  return resolveEdgeRouteHandleTarget({
+  return edgeApi.edit.routeHandleTarget({
     edgeId: pick.id,
     handles: view.handles,
     pick: {
@@ -291,7 +287,7 @@ const readInsertedRouteDraft = (
   index: number,
   point: Point
 ): EdgeRouteHandleDraft | undefined => {
-  const inserted = insertRoutePoint(edge, index, point)
+  const inserted = edgeApi.route.insert(edge, index, point)
   if (!inserted.ok) {
     return undefined
   }
@@ -321,7 +317,7 @@ export const stepEdgeRoute = (input: {
       }
     }
 
-    const patch = moveElbowRouteSegment({
+    const patch = edgeApi.edit.moveElbowRouteSegment({
       edge: input.edge,
       pathPoints: input.state.pathPoints,
       segmentIndex: input.state.segmentIndex,
@@ -352,7 +348,7 @@ export const stepEdgeRoute = (input: {
   const point = readProjectedRoutePoint(input.state, input.pointerWorld)
 
   if (input.state.kind === 'insert') {
-    if (isPointEqual(point, input.state.point)) {
+    if (geometryApi.equal.point(point, input.state.point)) {
       return {
         state: input.state,
         draft: readInsertedRouteDraft(
@@ -376,13 +372,13 @@ export const stepEdgeRoute = (input: {
     }
   }
 
-  if (isPointEqual(point, input.state.point)) {
+  if (geometryApi.equal.point(point, input.state.point)) {
     return {
       state: input.state,
-      draft: isPointEqual(input.state.point, input.state.origin)
+      draft: geometryApi.equal.point(input.state.point, input.state.origin)
         ? undefined
         : {
-            patch: moveRoutePoint(input.edge, input.state.index, input.state.point),
+            patch: edgeApi.route.move(input.edge, input.state.index, input.state.point),
             activeRouteIndex: input.state.index
           }
     }
@@ -394,7 +390,7 @@ export const stepEdgeRoute = (input: {
       point
     },
     draft: {
-      patch: moveRoutePoint(input.edge, input.state.index, point),
+      patch: edgeApi.route.move(input.edge, input.state.index, point),
       activeRouteIndex: input.state.index
     }
   }
@@ -405,7 +401,7 @@ const commitEdgeRoute = (
   edge: Edge
 ): EdgeRouteCommit | undefined => {
   if (state.kind === 'insert') {
-    const inserted = insertRoutePoint(edge, state.index, state.point)
+    const inserted = edgeApi.route.insert(edge, state.index, state.point)
     if (!inserted.ok) {
       return undefined
     }
@@ -418,7 +414,7 @@ const commitEdgeRoute = (
   }
 
   if (state.kind === 'anchor') {
-    return isPointEqual(state.point, state.origin)
+    return geometryApi.equal.point(state.point, state.origin)
       ? undefined
       : {
           kind: 'move-point',
@@ -428,7 +424,7 @@ const commitEdgeRoute = (
         }
   }
 
-  if (areRoutePointsEqual(state.routePoints, state.baseRoutePoints)) {
+  if (edgeApi.edit.areRoutePointsEqual(state.routePoints, state.baseRoutePoints)) {
     return undefined
   }
 

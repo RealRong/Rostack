@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine, normalizeDocument } from '@whiteboard/engine'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
 
 test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () => {
-  const document = createDocument('doc_text_bootstrap')
-  document.nodes.node_1 = {
+  const doc = documentApi.create('doc_text_bootstrap')
+  doc.nodes.node_1 = {
     id: 'node_1',
     type: 'text',
     position: {
@@ -16,14 +16,14 @@ test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () =>
       text: 'hello'
     }
   }
-  document.canvas.order = [{
+  doc.canvas.order = [{
     kind: 'node',
     id: 'node_1'
   }]
 
-  const normalized = normalizeDocument(document)
+  const normalized = engineApi.document.normalize(doc)
 
-  assert.notEqual(normalized, document)
+  assert.notEqual(normalized, doc)
   assert.deepEqual(normalized.nodes.node_1.size, {
     width: 144,
     height: 20
@@ -31,8 +31,8 @@ test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () =>
 })
 
 test('engine apply 不再在 reducer 之后隐式清洗 text node.create', () => {
-  const engine = createEngine({
-    document: createDocument('doc_text_create')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_text_create')
   })
 
   const result = engine.apply([

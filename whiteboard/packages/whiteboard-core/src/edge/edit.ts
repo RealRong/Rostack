@@ -1,4 +1,4 @@
-import { arePointListsEqual, normalizePolylinePoints } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
 import type { EdgeHandle } from '@whiteboard/core/types/edge'
 import { clearRoute, setRoutePoints } from '@whiteboard/core/edge/commands'
@@ -157,4 +157,4 @@ export const moveElbowRouteSegment = (input: {
   )
 }
 
-export const areRoutePointsEqual = arePointListsEqual
+export const areRoutePointsEqual = geometryApi.polyline.equal

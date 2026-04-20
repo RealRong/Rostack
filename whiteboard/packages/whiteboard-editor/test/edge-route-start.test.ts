@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdgePatch } from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
 import {
   startEdgeRoutePoint,
@@ -50,7 +50,7 @@ describe('stepEdgeRoute', () => {
 
     expect(first.draft?.patch).toBeDefined()
     expect(second.draft?.patch).toBeDefined()
-    expect(applyEdgePatch(edge, second.draft?.patch).route).toEqual({
+    expect(edgeApi.patch.apply(edge, second.draft?.patch).route).toEqual({
       kind: 'manual',
       points: [{
         id: 'point-1',

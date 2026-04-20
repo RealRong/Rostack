@@ -1,30 +1,14 @@
-export type FieldDraftParseResult =
-  | { type: 'set'; value: unknown }
-  | { type: 'clear' }
-  | { type: 'invalid' }
+import {
+  trimLowercase,
+  trimToUndefined
+} from './string'
 
 const BOOLEAN_TRUE = new Set(['true', '1', 'yes', 'y', 'checked', 'on'])
 const BOOLEAN_FALSE = new Set(['false', '0', 'no', 'n', 'unchecked', 'off'])
 
-export const normalizeSearchableValue = (value: unknown): string[] => {
-  if (value === undefined || value === null) {
-    return []
-  }
-
-  if (Array.isArray(value)) {
-    return value.flatMap(item => normalizeSearchableValue(item))
-  }
-
-  if (typeof value === 'object') {
-    return Object.values(value as Record<string, unknown>).flatMap(item => normalizeSearchableValue(item))
-  }
-
-  return [String(value)]
-}
-
-export const normalizeFieldToken = (value: unknown) => String(value).trim().toLowerCase()
-
-const normalizeNumericDraftChar = (value: string) => {
+const normalizeNumericDraftChar = (
+  value: string
+) => {
   if (value >= '0' && value <= '9') {
     return value
   }
@@ -69,7 +53,27 @@ const normalizeNumericDraftChar = (value: string) => {
   }
 }
 
-export const readLooseNumberDraft = (value: string): number | undefined => {
+export const readFiniteNumber = (
+  value: unknown
+): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  const normalized = trimToUndefined(value)
+  if (!normalized) {
+    return undefined
+  }
+
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed)
+    ? parsed
+    : undefined
+}
+
+export const readLooseNumber = (
+  value: string
+): number | undefined => {
   const draft = value.trim()
   if (!draft) {
     return undefined
@@ -120,53 +124,29 @@ export const readLooseNumberDraft = (value: string): number | undefined => {
 
   const normalized = `${sign}${integerDigits || (hasDecimal ? '0' : '')}${hasDecimal ? `.${fractionDigits}` : ''}`
   const parsed = Number(normalized)
-  return Number.isFinite(parsed) ? parsed : undefined
+  return Number.isFinite(parsed)
+    ? parsed
+    : undefined
 }
 
-export const readBooleanValue = (value: unknown): boolean | undefined => {
+export const readBooleanLike = (
+  value: unknown
+): boolean | undefined => {
   if (typeof value === 'boolean') {
     return value
   }
 
-  if (typeof value !== 'string') {
+  const normalized = trimLowercase(value)
+  if (!normalized) {
     return undefined
   }
 
-  const normalized = normalizeFieldToken(value)
   if (BOOLEAN_TRUE.has(normalized)) {
     return true
   }
   if (BOOLEAN_FALSE.has(normalized)) {
     return false
   }
-  return undefined
-}
-
-export const readNumberValue = (value: unknown): number | undefined => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : undefined
-  }
 
   return undefined
-}
-
-export const isEmptyFieldValue = (value: unknown): boolean => {
-  if (value === undefined || value === null) {
-    return true
-  }
-
-  if (typeof value === 'string') {
-    return !value.trim()
-  }
-
-  if (Array.isArray(value)) {
-    return value.length === 0
-  }
-
-  return false
 }

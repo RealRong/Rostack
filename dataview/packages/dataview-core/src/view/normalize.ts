@@ -4,10 +4,13 @@ import type {
   ViewOptions,
   ViewType
 } from '@dataview/core/contracts'
+import {
+  isJsonObject,
+  trimToUndefined
+} from '@shared/core'
 import { normalizeGalleryOptions } from '@dataview/core/view/gallery'
 import { normalizeKanbanOptions } from '@dataview/core/view/kanban'
 import { createDefaultViewOptions } from '@dataview/core/view/options'
-import { isJsonObject, toTrimmedString } from '@dataview/core/view/shared'
 
 export interface NormalizeViewOptionsContext {
   type?: ViewType
@@ -24,7 +27,7 @@ const normalizeWidths = (
 
   const next: Partial<Record<FieldId, number>> = {}
   Object.entries(value).forEach(([key, width]) => {
-    const fieldId = toTrimmedString(key) as FieldId | undefined
+    const fieldId = trimToUndefined(key) as FieldId | undefined
     if (!fieldId) {
       return
     }

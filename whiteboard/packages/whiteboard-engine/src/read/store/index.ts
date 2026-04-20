@@ -1,36 +1,11 @@
 import type { ReadModel } from '@whiteboard/engine/types/read'
 import type { EngineDocument, EngineRead, EngineReadIndex } from '@whiteboard/engine/types/instance'
 import type { BoardConfig } from '@whiteboard/core/config'
-import {
-  getEdgePath,
-  getEdgePathBounds,
-  matchEdgeRect
-} from '@whiteboard/core/edge'
-import {
-  getRectsBoundingRect
-} from '@whiteboard/core/geometry'
-import {
-  exportSliceFromSelection,
-  exportSliceFromEdge,
-  exportSliceFromNodes,
-  listCanvasItemRefs,
-  listGroupCanvasItemRefs,
-  listGroupEdgeIds,
-  listGroupNodeIds,
-  listGroups
-} from '@whiteboard/core/document'
-import {
-  collectFrameMembers,
-  filterNodeIdsInRect,
-  readNodeRotation,
-  resolveFrameAtPoint,
-  resolveNodeFrame,
-  matchCanvasNodeRect
-} from '@whiteboard/core/node'
-import {
-  getTargetBounds,
-  type SelectionTarget
-} from '@whiteboard/core/selection'
+import { edge as edgeApi } from '@whiteboard/core/edge'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { document as documentApi } from '@whiteboard/core/document'
+import { node as nodeApi } from '@whiteboard/core/node'
+import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import {
   type CanvasItemRef,
   type Edge,
@@ -105,7 +80,7 @@ export const createRead = ({
   })
   const background = createValueStore(readDocument().background)
   const scene = createValueStore(
-    listCanvasItemRefs(readDocument()) as readonly CanvasItemRef[]
+    documentApi.list.canvasRefs(readDocument()) as readonly CanvasItemRef[]
   )
 
   const syncIndexes = (invalidation: Invalidation, model: ReadModel) => {
@@ -160,7 +135,7 @@ export const createRead = ({
 
   const readFrameNodeAtPoint = (
     point: Point
-  ): NodeId | undefined => resolveFrameAtPoint({
+  ): NodeId | undefined => nodeApi.frame.atPoint({
     nodes: readOrderedNodes(),
     point,
     getFrameRect: (node) => readFrameRect(node.id)
@@ -168,7 +143,7 @@ export const createRead = ({
 
   const readNodeFrameId = (
     nodeId: NodeId
-  ): NodeId | undefined => resolveNodeFrame({
+  ): NodeId | undefined => nodeApi.frame.of({
     nodes: readOrderedNodes(),
     nodeId,
     getNodeRect: (node) => readProjectedNodeBounds(node.id),
@@ -180,7 +155,7 @@ export const createRead = ({
     options?: {
       deep?: boolean
     }
-  ): readonly NodeId[] => collectFrameMembers({
+  ): readonly NodeId[] => nodeApi.frame.collectMembers({
     nodes: readOrderedNodes(),
     frameId,
     deep: options?.deep,
@@ -198,7 +173,7 @@ export const createRead = ({
       ...options,
       match: match === 'contain' ? 'touch' : match
     })
-    return filterNodeIdsInRect({
+    return nodeApi.hit.filterIdsInRect({
       rect,
       candidateIds,
       match,
@@ -209,15 +184,15 @@ export const createRead = ({
           ? {
               node: entry.node,
               rect: entry.geometry.rect,
-              rotation: readNodeRotation(entry.node)
+              rotation: nodeApi.geometry.rotation(entry.node)
             }
           : undefined
       },
-      matchEntry: matchCanvasNodeRect
+      matchEntry: nodeApi.hit.matchRect
     })
   }
 
-  const readGroupList = () => listGroups(readDocument())
+  const readGroupList = () => documentApi.list.groups(readDocument())
     .map((group) => group.id)
 
   const readGroupItem = (
@@ -234,15 +209,15 @@ export const createRead = ({
 
   const readGroupMembers = (
     groupId: string
-  ) => listGroupCanvasItemRefs(readDocument(), groupId)
+  ) => documentApi.list.groupCanvasRefs(readDocument(), groupId)
 
   const readGroupNodeIds = (
     groupId: string
-  ) => listGroupNodeIds(readDocument(), groupId)
+  ) => documentApi.list.groupNodeIds(readDocument(), groupId)
 
   const readGroupEdgeIds = (
     groupId: string
-  ) => listGroupEdgeIds(readDocument(), groupId)
+  ) => documentApi.list.groupEdgeIds(readDocument(), groupId)
 
   const readCommittedTargetNodes: EngineRead['target']['nodes'] = (
     target
@@ -341,7 +316,7 @@ export const createRead = ({
       return undefined
     }
 
-    const path = getEdgePath({
+    const path = edgeApi.path.get({
       edge: item.edge,
       source: {
         point: item.ends.source.point,
@@ -352,7 +327,7 @@ export const createRead = ({
         side: item.ends.target.anchor?.side
       }
     })
-    return getEdgePathBounds(path)
+    return edgeApi.path.bounds(path)
   }
 
   const readMindmapBounds = (treeId: NodeId): Rect | undefined => {
@@ -367,7 +342,7 @@ export const createRead = ({
     if (!rects.length) {
       return undefined
     }
-    return getRectsBoundingRect(rects)
+    return geometryApi.rect.boundingRect(rects)
   }
 
   edgeRectIndex.reset(edgeProjection.list.get(), readEdgeBounds)
@@ -381,7 +356,7 @@ export const createRead = ({
       return false
     }
 
-    const path = getEdgePath({
+    const path = edgeApi.path.get({
       edge: item.edge,
       source: {
         point: item.ends.source.point,
@@ -393,7 +368,7 @@ export const createRead = ({
       }
     })
 
-    return matchEdgeRect({
+    return edgeApi.hit.test({
       path,
       queryRect: rect,
       mode: options?.match ?? 'touch'
@@ -417,7 +392,7 @@ export const createRead = ({
       }
     })
 
-    return getRectsBoundingRect(rects)
+    return geometryApi.rect.boundingRect(rects)
   }
 
   const applyInvalidation = (invalidation: Invalidation) => {
@@ -425,7 +400,7 @@ export const createRead = ({
       background.set(readDocument().background)
     }
     if (invalidation.document || invalidation.canvasOrder) {
-      scene.set(listCanvasItemRefs(readDocument()) as readonly CanvasItemRef[])
+      scene.set(documentApi.list.canvasRefs(readDocument()) as readonly CanvasItemRef[])
     }
 
     const model = readModel()
@@ -508,7 +483,7 @@ export const createRead = ({
       },
       slice: {
         fromNodes: (nodeIds) => {
-          const exported = exportSliceFromNodes({
+          const exported = documentApi.slice.export.nodes({
             doc: readDocument(),
             ids: nodeIds,
             nodeSize: config.nodeSize
@@ -516,7 +491,7 @@ export const createRead = ({
           return exported.ok ? exported.data : undefined
         },
         fromEdge: (edgeId) => {
-          const exported = exportSliceFromEdge({
+          const exported = documentApi.slice.export.edge({
             doc: readDocument(),
             edgeId,
             nodeSize: config.nodeSize
@@ -524,7 +499,7 @@ export const createRead = ({
           return exported.ok ? exported.data : undefined
         },
         fromSelection: (selection) => {
-          const exported = exportSliceFromSelection({
+          const exported = documentApi.slice.export.selection({
             doc: readDocument(),
             nodeIds: selection.nodeIds,
             edgeIds: selection.edgeIds,

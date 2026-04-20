@@ -1,19 +1,6 @@
-import {
-  isSizeEqual
-} from '@whiteboard/core/geometry'
-import {
-  buildNodeAlignOperations,
-  buildNodeCreateOperation,
-  buildNodeDistributeOperations,
-  createNodeUpdateOperation,
-  isNodeUpdateEmpty,
-  isTextContentEmpty
-} from '@whiteboard/core/node'
-import {
-  compileNodeDataUpdate,
-  compileNodeStyleUpdate,
-  mergeNodeUpdates
-} from '@whiteboard/core/schema'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { node as nodeApi } from '@whiteboard/core/node'
+import { schema as schemaApi } from '@whiteboard/core/schema'
 import { resolveLockDecision } from '@whiteboard/core/lock'
 import { ok } from '@whiteboard/core/result'
 import type {
@@ -78,7 +65,7 @@ const compileMindmapTopicUpdate = (
 
   const mindmapId = readNodeMindmapId(node)
   if (!mindmapId) {
-    return ok(createNodeUpdateOperation(nodeId, update))
+    return ok(nodeApi.update.createOperation(nodeId, update))
   }
 
   const ops: Operation[] = []
@@ -190,7 +177,7 @@ const compileNodeTextCommit = (
   if (
     node.type === 'text'
     && command.field === 'text'
-    && isTextContentEmpty(command.value)
+    && nodeApi.text.isContentEmpty(command.value)
   ) {
     return compileCanvasDelete(
       [{
@@ -224,11 +211,11 @@ const compileNodeTextCommit = (
   const currentFontSize = typeof node.style?.fontSize === 'number'
     ? node.style.fontSize
     : undefined
-  const input = mergeNodeUpdates(
+  const input = schemaApi.node.mergeUpdates(
     command.value === currentValue
       ? undefined
-      : compileNodeDataUpdate(command.field, command.value),
-    command.size && !isSizeEqual(command.size, node.size)
+      : schemaApi.node.compileDataUpdate(command.field, command.value),
+    command.size && !geometryApi.equal.size(command.size, node.size)
       ? {
           fields: {
             size: command.size
@@ -236,14 +223,14 @@ const compileNodeTextCommit = (
         }
       : undefined,
     command.fontSize !== undefined && currentFontSize !== command.fontSize
-      ? compileNodeStyleUpdate('fontSize', command.fontSize)
+      ? schemaApi.node.compileStyleUpdate('fontSize', command.fontSize)
       : undefined,
     node.type === 'text' && node.data?.wrapWidth !== command.wrapWidth
-      ? compileNodeDataUpdate('wrapWidth', command.wrapWidth)
+      ? schemaApi.node.compileDataUpdate('wrapWidth', command.wrapWidth)
       : undefined
   )
 
-  if (isNodeUpdateEmpty(input)) {
+  if (nodeApi.update.isEmpty(input)) {
     return
   }
 
@@ -262,7 +249,7 @@ export const compileNodeCommand = (
 
   switch (command.type) {
     case 'node.create': {
-      const built = buildNodeCreateOperation({
+      const built = nodeApi.command.buildCreate({
         payload: command.input,
         doc: document,
         registries: ctx.registries,
@@ -360,7 +347,7 @@ export const compileNodeCommand = (
     case 'node.text.commit':
       return compileNodeTextCommit(command, ctx)
     case 'node.align': {
-      const built = buildNodeAlignOperations({
+      const built = nodeApi.command.buildAlign({
         ids: command.ids,
         doc: document,
         nodeSize: ctx.nodeSize,
@@ -373,7 +360,7 @@ export const compileNodeCommand = (
       return
     }
     case 'node.distribute': {
-      const built = buildNodeDistributeOperations({
+      const built = nodeApi.command.buildDistribute({
         ids: command.ids,
         doc: document,
         nodeSize: ctx.nodeSize,

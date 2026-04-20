@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveTextContentBox, resolveTextFrameMetrics } from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import { resolveTextLayoutStyle } from '../src/features/node/registry/default/text'
 import { createTextSourceStore } from '../src/features/node/dom/textSourceStore'
 
@@ -77,7 +77,7 @@ describe('createTextSourceStore', () => {
 
 describe('text frame metrics', () => {
   it('derives content-box size from framed text border-box metrics', () => {
-    const frame = resolveTextFrameMetrics({
+    const frame = nodeApi.text.frameMetrics({
       node: {
         type: 'text',
         style: {
@@ -91,7 +91,7 @@ describe('text frame metrics', () => {
       height: 44
     })
 
-    expect(resolveTextContentBox(frame)).toEqual({
+    expect(nodeApi.text.contentBox(frame)).toEqual({
       width: 104,
       height: 18
     })

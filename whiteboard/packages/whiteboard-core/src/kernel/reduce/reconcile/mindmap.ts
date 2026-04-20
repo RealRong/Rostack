@@ -4,7 +4,7 @@ import {
   relayoutMindmap
 } from '@whiteboard/core/kernel/reduce/runtime'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { getSubtreeIds } from '@whiteboard/core/mindmap'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 
 export const enqueueMindmapLayout = (

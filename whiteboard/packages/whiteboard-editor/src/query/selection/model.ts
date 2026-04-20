@@ -1,14 +1,11 @@
 import {
-  deriveSelectionAffordance,
-  deriveSelectionSummary,
-  isSelectionAffordanceEqual,
-  isSelectionSummaryEqual,
+  selection as selectionApi,
   type SelectionAffordance,
   type SelectionSummary,
   type SelectionTarget
 } from '@whiteboard/core/selection'
 import type { Node } from '@whiteboard/core/types'
-import { resolveNodeTransformBehavior } from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import {
   createDerivedStore,
   read,
@@ -37,8 +34,8 @@ const isSelectionModelEqual = (
   right: SelectionModel
 ) => (
   isSelectionMembersEqual(left.members, right.members)
-  && isSelectionSummaryEqual(left.summary, right.summary)
-  && isSelectionAffordanceEqual(left.affordance, right.affordance)
+  && selectionApi.derive.isSummaryEqual(left.summary, right.summary)
+  && selectionApi.derive.isAffordanceEqual(left.affordance, right.affordance)
 )
 
 const readSelectionMembersKey = (
@@ -88,28 +85,28 @@ export const createSelectionModelRead = ({
     get: () => {
       const current = read(members)
 
-      return deriveSelectionSummary({
+      return selectionApi.derive.summary({
         target: current.target,
         nodes: current.nodes,
         edges: current.edges,
         readNodeRect: (entry) => read(node.rect, entry.id),
         readEdgeBounds: (entry) => read(edge.bounds, entry.id),
-        resolveNodeTransformBehavior: (entry) => resolveNodeTransformBehavior(entry, {
+        resolveNodeTransformBehavior: (entry) => nodeApi.transform.resolveBehavior(entry, {
           role: node.capability(entry).role,
           resize: node.capability(entry).resize
         })
       })
     },
-    isEqual: isSelectionSummaryEqual
+    isEqual: selectionApi.derive.isSummaryEqual
   })
 
   const affordance = createDerivedStore<SelectionAffordance>({
-    get: () => deriveSelectionAffordance({
+    get: () => selectionApi.derive.affordance({
       selection: read(summary),
       resolveNodeRole: (entry) => node.capability(entry).role,
       resolveNodeTransformCapability: (entry) => readNodeTransformCapability(node, entry)
     }),
-    isEqual: isSelectionAffordanceEqual
+    isEqual: selectionApi.derive.isAffordanceEqual
   })
 
   return createDerivedStore<SelectionModel>({

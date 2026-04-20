@@ -1,16 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { createRegistries } from '@whiteboard/core/kernel'
-import {
-  applyNodeDefaults,
-  compileNodeFieldRecord,
-  compileNodeFieldUpdate,
-  compileNodeFieldUpdates
-} from '@whiteboard/core/schema'
+import { schema } from '@whiteboard/core/schema'
 
 test('compileNodeFieldRecord 将 schema field 编译为 canonical node record', () => {
   assert.deepEqual(
-    compileNodeFieldRecord(
+    schema.node.compileFieldRecord(
       { scope: 'style', path: 'fontSize' },
       14
     ),
@@ -23,7 +18,7 @@ test('compileNodeFieldRecord 将 schema field 编译为 canonical node record', 
   )
 
   assert.deepEqual(
-    compileNodeFieldRecord(
+    schema.node.compileFieldRecord(
       { path: 'title' },
       'Board'
     ),
@@ -36,7 +31,7 @@ test('compileNodeFieldRecord 将 schema field 编译为 canonical node record', 
   )
 
   assert.deepEqual(
-    compileNodeFieldRecord(
+    schema.node.compileFieldRecord(
       { scope: 'style', path: 'fontSize' },
       undefined
     ),
@@ -50,7 +45,7 @@ test('compileNodeFieldRecord 将 schema field 编译为 canonical node record', 
 
 test('compileNodeFieldUpdate 与 compileNodeFieldUpdates 只输出 canonical records', () => {
   assert.deepEqual(
-    compileNodeFieldUpdate(
+    schema.node.compileFieldUpdate(
       { scope: 'data', path: 'text' },
       'hello'
     ),
@@ -65,7 +60,7 @@ test('compileNodeFieldUpdate 与 compileNodeFieldUpdates 只输出 canonical rec
   )
 
   assert.deepEqual(
-    compileNodeFieldUpdates([
+    schema.node.compileFieldUpdates([
       {
         field: { scope: 'style', path: 'color' },
         value: '#111111'
@@ -97,7 +92,7 @@ test('applyNodeDefaults 不再为 auto text 节点写入 bootstrap size', () => 
   const registries = createRegistries()
 
   assert.equal(
-    applyNodeDefaults({
+    schema.node.applyDefaults({
       type: 'text',
       position: {
         x: 0,
@@ -115,7 +110,7 @@ test('applyNodeDefaults 不再为 wrap text 节点写入 bootstrap size', () => 
   const registries = createRegistries()
 
   assert.equal(
-    applyNodeDefaults({
+    schema.node.applyDefaults({
       type: 'text',
       position: {
         x: 0,

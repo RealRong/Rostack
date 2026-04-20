@@ -1,7 +1,4 @@
-import {
-  normalizeSelectionTarget,
-  type SelectionTarget
-} from '@whiteboard/core/selection'
+import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   CanvasItemRef,
   GroupId
@@ -104,7 +101,7 @@ export const createSelectionActions = ({
   defaults
 }: SelectionActionHelpersHost): SelectionActionHelpers => ({
   duplicate: (input, options) => {
-    const target = normalizeSelectionTarget(input)
+    const target = selectionApi.target.normalize(input)
     const refs = toCanvasRefs(target)
     if (!refs.length) {
       return false
@@ -129,7 +126,7 @@ export const createSelectionActions = ({
     return true
   },
   delete: (input, options) => {
-    const target = normalizeSelectionTarget(input)
+    const target = selectionApi.target.normalize(input)
     const refs = toCanvasRefs(target)
     if (!refs.length) {
       return false
@@ -147,7 +144,7 @@ export const createSelectionActions = ({
     return true
   },
   order: (input, mode) => {
-    const target = normalizeSelectionTarget(input)
+    const target = selectionApi.target.normalize(input)
     const groupIds = read.group.exactIds(target)
     if (groupIds.length > 0) {
       return orderGroups(group, groupIds, mode).ok
@@ -161,7 +158,7 @@ export const createSelectionActions = ({
     return orderRefs(canvas, refs, mode).ok
   },
   group: (input, options) => {
-    const target = normalizeSelectionTarget(input)
+    const target = selectionApi.target.normalize(input)
     const result = group.merge(target)
     if (!result.ok) {
       return false
@@ -176,7 +173,7 @@ export const createSelectionActions = ({
     return true
   },
   ungroup: (input, options) => {
-    const target = normalizeSelectionTarget(input)
+    const target = selectionApi.target.normalize(input)
     const groupIds = [...read.group.exactIds(target)]
     if (!groupIds.length) {
       return false

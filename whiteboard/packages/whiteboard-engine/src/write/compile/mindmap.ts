@@ -1,6 +1,4 @@
-import {
-  instantiateMindmapTemplate
-} from '@whiteboard/core/mindmap'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   MindmapBranchField,
   MindmapId,
@@ -179,7 +177,7 @@ const compileMindmapCreate = (
 ) => {
   const mindmapId = input.id ?? ctx.tx.ids.mindmap()
   const rootId = ctx.tx.ids.node()
-  const instantiated = instantiateMindmapTemplate({
+  const instantiated = mindmapApi.template.instantiate({
     template: input.template,
     rootId,
     createNodeId: ctx.tx.ids.node

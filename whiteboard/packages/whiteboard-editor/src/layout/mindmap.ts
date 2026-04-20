@@ -9,12 +9,7 @@ import {
 } from '@shared/core'
 import type { NodeId, Rect, Size } from '@whiteboard/core/types'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
-import {
-  anchorMindmapLayout,
-  computeMindmapLayout,
-  resolveMindmapRender,
-  translateMindmapLayout
-} from '@whiteboard/core/mindmap'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type {
   MindmapEnterPreview,
@@ -135,7 +130,7 @@ const readProjectedMindmapItem = ({
   let computed = base.computed
 
   if (liveEdit) {
-    const nextComputed = computeMindmapLayout(
+    const nextComputed = mindmapApi.layout.compute(
       base.tree,
       (nodeId) => {
         if (nodeId === liveEdit.nodeId) {
@@ -157,7 +152,7 @@ const readProjectedMindmapItem = ({
       base.tree.layout
     )
 
-    computed = anchorMindmapLayout({
+    computed = mindmapApi.layout.anchor({
       tree: base.tree,
       computed: nextComputed,
       position: base.node.position
@@ -165,7 +160,7 @@ const readProjectedMindmapItem = ({
   }
 
   if (rootMove) {
-    computed = translateMindmapLayout(computed, rootMove.delta)
+    computed = mindmapApi.layout.translate(computed, rootMove.delta)
   }
 
   if (enter.length > 0) {
@@ -186,7 +181,7 @@ const readProjectedMindmapItem = ({
     })
   }
 
-  const render = resolveMindmapRender({
+  const render = mindmapApi.render.resolve({
     tree: base.tree,
     computed
   })

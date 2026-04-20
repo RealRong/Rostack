@@ -1,10 +1,7 @@
 import {
   WHITEBOARD_TEXT_DEFAULT_COLOR
 } from '@whiteboard/product/palette'
-import {
-  readDrawBaseSize,
-  readDrawPoints
-} from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeDefinition } from '@whiteboard/react/types/node'
 import {
   DrawStrokeHitShape,
@@ -39,8 +36,8 @@ export const DrawNodeDefinition: NodeDefinition = {
     kind: 'none'
   },
   render: ({ node, selected }) => {
-    const points = readDrawPoints(node)
-    const baseSize = readDrawBaseSize(node)
+    const points = nodeApi.draw.points(node)
+    const baseSize = nodeApi.draw.baseSize(node)
     const stroke = resolvePaletteColorOr(
       getStyleString(node, 'stroke'),
       WHITEBOARD_TEXT_DEFAULT_COLOR

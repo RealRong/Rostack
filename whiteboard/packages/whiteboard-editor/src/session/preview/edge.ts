@@ -1,5 +1,5 @@
-import { isPointEqual } from '@whiteboard/core/geometry'
-import { isEdgePatchEqual } from '@whiteboard/core/edge'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { EdgeId } from '@whiteboard/core/types'
 import type {
   EdgeConnectFeedback,
@@ -29,7 +29,7 @@ const isEdgeConnectFeedbackEqual = (
   if (
     left?.focusedNodeId !== right?.focusedNodeId
     || leftResolution?.mode !== rightResolution?.mode
-    || !isPointEqual(leftResolution?.pointWorld, rightResolution?.pointWorld)
+    || !geometryApi.equal.point(leftResolution?.pointWorld, rightResolution?.pointWorld)
   ) {
     return false
   }
@@ -86,7 +86,7 @@ export const isEdgeProjectionEqual = (
   left: EdgePreviewProjection,
   right: EdgePreviewProjection
 ) => (
-  isEdgePatchEqual(left.patch, right.patch)
+  edgeApi.patch.equal(left.patch, right.patch)
   && left.activeRouteIndex === right.activeRouteIndex
 )
 

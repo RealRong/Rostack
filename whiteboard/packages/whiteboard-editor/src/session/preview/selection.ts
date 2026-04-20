@@ -1,4 +1,4 @@
-import { rectFromPoints } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { Guide } from '@whiteboard/core/node'
 import type { Rect } from '@whiteboard/core/types'
 import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
@@ -113,5 +113,5 @@ export const projectWorldRect = (
     y: worldRect.y + worldRect.height
   })
 
-  return rectFromPoints(topLeft, bottomRight)
+  return geometryApi.rect.fromPoints(topLeft, bottomRight)
 }

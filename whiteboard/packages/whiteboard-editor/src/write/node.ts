@@ -1,7 +1,4 @@
-import {
-  compileNodeDataUpdate,
-  compileNodeStyleUpdate,
-} from '@whiteboard/core/schema'
+import { schema as schemaApi } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type {
@@ -78,7 +75,7 @@ const toNodeStyleBatchUpdates = (
   value: unknown
 ) => nodeIds.map((id) => ({
   id,
-  input: compileNodeStyleUpdate(path, value)
+  input: schemaApi.node.compileStyleUpdate(path, value)
 }))
 
 export const createNodeTextWrite = (
@@ -108,7 +105,7 @@ export const createNodeTextWrite = (
   }) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
-      input: compileNodeStyleUpdate('fontSize', value)
+      input: schemaApi.node.compileStyleUpdate('fontSize', value)
     }))
   ),
   weight: (nodeIds, weight) => ctx.write.updateMany(
@@ -157,7 +154,7 @@ const createNodeShapeWrite = (
 
       return [{
         id,
-        input: compileNodeDataUpdate('kind', kind)
+        input: schemaApi.node.compileDataUpdate('kind', kind)
       }]
     })
   )

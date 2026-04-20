@@ -1,33 +1,37 @@
+import { node as nodeApi, type TextVariant, type TextWidthMode } from '@whiteboard/core/node'
+import { product } from '@whiteboard/product'
+import { focusEditableEnd, readEditableText } from '@shared/dom'
+import { measureTextOuterSize } from '@whiteboard/react/features/node/dom/textMeasure'
+
+export const TEXT_DEFAULT_FONT_SIZE = nodeApi.text.defaultFontSize
+export const TEXT_AUTO_MIN_WIDTH = nodeApi.text.autoMinWidth
+export const TEXT_LAYOUT_MIN_WIDTH = nodeApi.text.layoutMinWidth
+
+export const isTextContentEmpty = nodeApi.text.isContentEmpty
+export const isTextNode = nodeApi.text.isTextNode
+export const readTextWrapWidth = nodeApi.text.wrapWidth
+export const readTextWidthMode = nodeApi.text.widthMode
+export const setTextWrapWidth = nodeApi.text.setWrapWidth
+export const setTextWidthMode = nodeApi.text.setWidthMode
+
+export const STICKY_DEFAULT_FILL = product.node.templates.WHITEBOARD_STICKY_DEFAULT_FILL
+export const STICKY_DEFAULT_STROKE = product.node.templates.WHITEBOARD_STICKY_DEFAULT_STROKE
+export const STICKY_DEFAULT_STROKE_WIDTH = product.node.templates.WHITEBOARD_STICKY_DEFAULT_STROKE_WIDTH
+export const STICKY_DEFAULT_TEXT_COLOR = product.node.templates.WHITEBOARD_STICKY_DEFAULT_TEXT_COLOR
+export const STICKY_PLACEHOLDER = product.node.templates.WHITEBOARD_STICKY_PLACEHOLDER
+export const TEXT_PLACEHOLDER = product.node.templates.WHITEBOARD_TEXT_PLACEHOLDER
+export const TEXT_START_SIZE = product.node.templates.WHITEBOARD_TEXT_START_SIZE
+
+export const createStickyNodeInput = product.node.templates.createWhiteboardStickyTemplate
+export const createTextNodeInput = product.node.templates.createWhiteboardTextTemplate
+
 export {
-  TEXT_DEFAULT_FONT_SIZE,
-  TEXT_AUTO_MIN_WIDTH,
-  TEXT_LAYOUT_MIN_WIDTH,
-  isTextContentEmpty,
-  isTextNode,
-  readTextWrapWidth,
-  readTextWidthMode,
-  setTextWrapWidth,
-  setTextWidthMode
-} from '@whiteboard/core/node'
-export {
-  WHITEBOARD_STICKY_DEFAULT_FILL as STICKY_DEFAULT_FILL,
-  WHITEBOARD_STICKY_DEFAULT_STROKE as STICKY_DEFAULT_STROKE,
-  WHITEBOARD_STICKY_DEFAULT_STROKE_WIDTH as STICKY_DEFAULT_STROKE_WIDTH,
-  WHITEBOARD_STICKY_DEFAULT_TEXT_COLOR as STICKY_DEFAULT_TEXT_COLOR,
-  WHITEBOARD_STICKY_PLACEHOLDER as STICKY_PLACEHOLDER,
-  WHITEBOARD_TEXT_PLACEHOLDER as TEXT_PLACEHOLDER,
-  WHITEBOARD_TEXT_START_SIZE as TEXT_START_SIZE,
-  createWhiteboardStickyTemplate as createStickyNodeInput,
-  createWhiteboardTextTemplate as createTextNodeInput
-} from '@whiteboard/product/node/templates'
+  focusEditableEnd,
+  measureTextOuterSize,
+  readEditableText
+}
+
 export type {
   TextVariant,
   TextWidthMode
-} from '@whiteboard/core/node'
-export {
-  focusEditableEnd,
-  readEditableText
-} from '@shared/dom'
-export {
-  measureTextOuterSize
-} from '@whiteboard/react/features/node/dom/textMeasure'
+}

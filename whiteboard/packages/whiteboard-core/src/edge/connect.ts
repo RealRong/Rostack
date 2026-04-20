@@ -29,7 +29,7 @@ import {
   getNodeAnchor,
   projectPointToNodeOutline
 } from '@whiteboard/core/node/outline'
-import { readNodeRotation } from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 
 type ScoredConnectTarget = EdgeConnectResult & {
   distance: number

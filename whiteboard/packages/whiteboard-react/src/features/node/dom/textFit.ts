@@ -1,7 +1,4 @@
-import {
-  resolveTextAutoFont,
-  TEXT_DEFAULT_FONT_SIZE
-} from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type { Size } from '@whiteboard/core/types'
 import {
   readLineHeightPx,
@@ -117,7 +114,7 @@ export const measureFitFontSize = ({
   textAlign?: 'left' | 'center' | 'right'
 }) => {
   const resolvedText = text.trim()
-  const range = resolveTextAutoFont('sticky', box)
+  const range = nodeApi.text.resolveAutoFont('sticky', box)
   const fallback = Math.max(
     range.min,
     Math.min(range.max, range.initial)
@@ -135,7 +132,7 @@ export const measureFitFontSize = ({
   if (!sourceStyle) {
     return fallback
   }
-  const sourceFontSize = readPx(sourceStyle.fontSize, TEXT_DEFAULT_FONT_SIZE)
+  const sourceFontSize = readPx(sourceStyle.fontSize, nodeApi.text.defaultFontSize)
   const resolvedMinFontSize = Math.max(1, Math.floor(minFontSize ?? range.min))
   const resolvedMaxFontSize = Math.max(
     resolvedMinFontSize,

@@ -1,16 +1,5 @@
-import { isPointEqual } from '@whiteboard/core/geometry'
-import {
-  applyEdgePatch,
-  buildEdgeLabelMaskRect,
-  getEdgePathBounds,
-  isNodeEdgeEnd,
-  isPointEdgeEnd,
-  readEdgeLabelSideGap,
-  resolveEdgeLabelPlacement,
-  resolveEdgeLabelPlacementSize,
-  resolveEdgeView,
-  sameEdgeAnchor,
-  sameResolvedEdgeEnd,
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { edge as edgeApi,
   type EdgeConnectCandidate,
   type EdgeLabelMaskRect,
   type EdgeView as CoreEdgeView
@@ -190,10 +179,10 @@ const isEdgeItemEqual = (
     && left.edge === right.edge
     && left.ends.source.end.kind === right.ends.source.end.kind
     && left.ends.target.end.kind === right.ends.target.end.kind
-    && sameEdgeAnchor(left.ends.source.anchor, right.ends.source.anchor)
-    && sameEdgeAnchor(left.ends.target.anchor, right.ends.target.anchor)
-    && isPointEqual(left.ends.source.point, right.ends.source.point)
-    && isPointEqual(left.ends.target.point, right.ends.target.point)
+    && edgeApi.equal.anchor(left.ends.source.anchor, right.ends.source.anchor)
+    && edgeApi.equal.anchor(left.ends.target.anchor, right.ends.target.anchor)
+    && geometryApi.equal.point(left.ends.source.point, right.ends.source.point)
+    && geometryApi.equal.point(left.ends.target.point, right.ends.target.point)
   )
 )
 
@@ -205,9 +194,9 @@ const isEdgePathSegmentEqual = (
   || (
     left.role === right.role
     && left.insertIndex === right.insertIndex
-    && isPointEqual(left.from, right.from)
-    && isPointEqual(left.to, right.to)
-    && isPointEqual(left.insertPoint, right.insertPoint)
+    && geometryApi.equal.point(left.from, right.from)
+    && geometryApi.equal.point(left.to, right.to)
+    && geometryApi.equal.point(left.insertPoint, right.insertPoint)
     && isSamePointArray(left.hitPoints, right.hitPoints)
   )
 )
@@ -222,7 +211,7 @@ const isEdgeHandleEqual = (
   if (left.kind !== right.kind) {
     return false
   }
-  if (!isPointEqual(left.point, right.point)) {
+  if (!geometryApi.equal.point(left.point, right.point)) {
     return false
   }
 
@@ -254,11 +243,11 @@ const isEdgeGeometryEqual = (
   || (
     left !== undefined
     && right !== undefined
-    && sameResolvedEdgeEnd(left.ends.source, right.ends.source)
-    && sameResolvedEdgeEnd(left.ends.target, right.ends.target)
+    && edgeApi.equal.resolvedEnd(left.ends.source, right.ends.source)
+    && edgeApi.equal.resolvedEnd(left.ends.target, right.ends.target)
     && left.path.svgPath === right.path.svgPath
     && isSamePointArray(left.path.points, right.path.points)
-    && isPointEqual(left.path.label, right.path.label)
+    && geometryApi.equal.point(left.path.label, right.path.label)
     && isOrderedArrayEqual(
       left.path.segments,
       right.path.segments,
@@ -278,7 +267,7 @@ const resolveEdgeCapability = (
 ): EdgeCapability => {
   const locked = Boolean(edge.locked)
   const relationLocked = [edge.source, edge.target].some((end) => (
-    isNodeEdgeEnd(end) && readNodeLocked(end.nodeId)
+    edgeApi.guard.isNodeEnd(end) && readNodeLocked(end.nodeId)
   ))
   const canEdit = !locked
 
@@ -288,7 +277,7 @@ const resolveEdgeCapability = (
     reconnectTarget: canEdit && !relationLocked,
     editRoute: canEdit,
     editLabel: canEdit,
-    move: canEdit && isPointEdgeEnd(edge.source) && isPointEdgeEnd(edge.target)
+    move: canEdit && edgeApi.guard.isPointEnd(edge.source) && edgeApi.guard.isPointEnd(edge.target)
   }
 }
 
@@ -314,7 +303,7 @@ const isEdgeLabelMaskRectEqual = (
   && left.height === right.height
   && left.radius === right.radius
   && left.angle === right.angle
-  && isPointEqual(left.center, right.center)
+  && geometryApi.equal.point(left.center, right.center)
 )
 
 const isEdgeLabelRenderEqual = (
@@ -329,7 +318,7 @@ const isEdgeLabelRenderEqual = (
     && left.style === right.style
     && left.editable === right.editable
     && left.angle === right.angle
-    && isPointEqual(left.point, right.point)
+    && geometryApi.equal.point(left.point, right.point)
     && left.size.width === right.size.width
     && left.size.height === right.size.height
     && isEdgeLabelMaskRectEqual(left.maskRect, right.maskRect)
@@ -418,7 +407,7 @@ const isSelectedEdgeRoutePointEqual = (
     || left.edgeId !== right.edgeId
     || left.active !== right.active
     || left.deletable !== right.deletable
-    || !isPointEqual(left.point, right.point)
+    || !geometryApi.equal.point(left.point, right.point)
     || left.pick.kind !== right.pick.kind
   ) {
     return false
@@ -448,8 +437,8 @@ const isSelectedEdgeChromeEqual = (
     && left.canReconnectTarget === right.canReconnectTarget
     && left.canEditRoute === right.canEditRoute
     && left.showEditHandles === right.showEditHandles
-    && sameResolvedEdgeEnd(left.ends.source, right.ends.source)
-    && sameResolvedEdgeEnd(left.ends.target, right.ends.target)
+    && edgeApi.equal.resolvedEnd(left.ends.source, right.ends.source)
+    && edgeApi.equal.resolvedEnd(left.ends.target, right.ends.target)
     && isOrderedArrayEqual(
       left.routePoints,
       right.routePoints,
@@ -568,7 +557,7 @@ const readEdgeGeometry = (
   }
 
   try {
-    return resolveEdgeView({
+    return edgeApi.view.resolve({
       edge: entry.edge,
       source,
       target
@@ -614,7 +603,7 @@ export const createEdgeRead = ({
         return undefined
       }
 
-      const nextEdge = applyEdgePatch(entry.edge, readValue(feedback, edgeId).patch)
+      const nextEdge = edgeApi.patch.apply(entry.edge, readValue(feedback, edgeId).patch)
       return nextEdge === entry.edge
         ? entry
         : {
@@ -677,7 +666,7 @@ export const createEdgeRead = ({
     get: (edgeId: EdgeId) => {
       const currentGeometry = readValue(geometry, edgeId)
       return currentGeometry
-        ? getEdgePathBounds(currentGeometry.path)
+        ? edgeApi.path.bounds(currentGeometry.path)
         : undefined
     },
     isEqual: isSameOptionalRectTuple
@@ -699,7 +688,7 @@ export const createEdgeRead = ({
     }
 
     const measuredSize = textMetrics.measure(currentContent.metricsSpec)
-    return resolveEdgeLabelPlacementSize({
+    return edgeApi.label.placementSize({
       textMode: currentContent.textMode,
       measuredSize,
       text: currentContent.displayText,
@@ -717,13 +706,13 @@ export const createEdgeRead = ({
       return undefined
     }
 
-    const placement = resolveEdgeLabelPlacement({
+    const placement = edgeApi.label.placement({
       path: currentGeometry.path,
       t: currentContent.t,
       offset: currentContent.offset,
       textMode: currentContent.textMode,
       labelSize: currentSize,
-      sideGap: readEdgeLabelSideGap(currentContent.textMode)
+      sideGap: edgeApi.label.sideGap(currentContent.textMode)
     })
     if (!placement) {
       return undefined
@@ -737,7 +726,7 @@ export const createEdgeRead = ({
       point: placement.point,
       angle,
       size: currentSize,
-      maskRect: buildEdgeLabelMaskRect({
+      maskRect: edgeApi.label.mask({
         center: placement.point,
         size: currentSize,
         angle,

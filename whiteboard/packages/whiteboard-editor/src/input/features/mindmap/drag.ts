@@ -1,7 +1,4 @@
-import {
-  createRootDrag,
-  createSubtreeDrag,
-  projectMindmapDrag,
+import { mindmap as mindmapApi,
   type MindmapDragState as CoreMindmapDragState,
   type MindmapLayoutSpec,
   type MindmapNodeId
@@ -116,7 +113,7 @@ export const tryStartMindmapDrag = (input: {
   }
 
   return nodeId === treeView.tree.rootNodeId
-    ? createRootDrag({
+    ? mindmapApi.drop.createRootDrag({
         treeId,
         pointerId: input.pointer.pointerId,
         start: input.pointer.world,
@@ -125,7 +122,7 @@ export const tryStartMindmapDrag = (input: {
           y: treeView.node.position.y
         }
       })
-    : createSubtreeDrag({
+    : mindmapApi.drop.createSubtreeDrag({
         treeId,
         treeView,
         nodeId,
@@ -160,7 +157,7 @@ export const tryStartMindmapDragForNode = (input: {
   }
 
   return input.nodeId === treeView.tree.rootNodeId
-    ? createRootDrag({
+    ? mindmapApi.drop.createRootDrag({
         treeId,
         pointerId: input.pointerId,
         start: input.world,
@@ -169,7 +166,7 @@ export const tryStartMindmapDragForNode = (input: {
           y: treeView.node.position.y
         }
       })
-    : createSubtreeDrag({
+    : mindmapApi.drop.createSubtreeDrag({
         treeId,
         treeView,
         nodeId: input.nodeId,
@@ -182,7 +179,7 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: Pick<MindmapPresentationRead, 'item'>
-}): MindmapDragState => projectMindmapDrag({
+}): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
   world: input.world,
   treeView:

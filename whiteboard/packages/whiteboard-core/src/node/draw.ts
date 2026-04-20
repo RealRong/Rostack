@@ -1,14 +1,4 @@
-import {
-  distancePointToSegment,
-  expandRect,
-  getAABBFromPoints,
-  getRectCenter,
-  isPointEqual,
-  isPointInRect,
-  rectContains,
-  rectIntersects,
-  rotatePoint
-} from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { Point, Rect, Size, SpatialNode } from '@whiteboard/core/types'
 
 export type ResolvedDrawStroke = Readonly<{

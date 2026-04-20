@@ -2,11 +2,7 @@ import { type Tool } from '@whiteboard/editor'
 import type {
   DrawMode
 } from '@whiteboard/editor'
-import {
-  WHITEBOARD_TEXT_INSERT_PRESET,
-  getWhiteboardInsertPreset,
-  resolveWhiteboardEdgeTemplate
-} from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 import type { Dispatch, SetStateAction } from 'react'
 import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtime'
 import type {
@@ -71,7 +67,7 @@ export const createToolPaletteController = ({
   },
   toggleEdgeMenu: () => {
     if (tool.type !== 'edge') {
-      const template = resolveWhiteboardEdgeTemplate(palette.edgePreset)
+      const template = product.edge.presets.resolveWhiteboardEdgeTemplate(palette.edgePreset)
       if (!template) {
         return
       }
@@ -87,7 +83,7 @@ export const createToolPaletteController = ({
   },
   activateTextTool: () => {
     closeMenu()
-    editor.actions.tool.insert(WHITEBOARD_TEXT_INSERT_PRESET.template)
+    editor.actions.tool.insert(product.insert.catalog.WHITEBOARD_TEXT_INSERT_PRESET.template)
   },
   toggleDrawMenu: () => {
     if (tool.type !== 'draw') {
@@ -122,7 +118,7 @@ export const createToolPaletteController = ({
     editor.actions.draw.patch(patch)
   },
   selectEdgePreset: (value) => {
-    const template = resolveWhiteboardEdgeTemplate(value)
+    const template = product.edge.presets.resolveWhiteboardEdgeTemplate(value)
     if (!template) {
       return
     }
@@ -130,7 +126,7 @@ export const createToolPaletteController = ({
     editor.actions.tool.edge(template)
   },
   selectInsertPreset: (value) => {
-    const preset = getWhiteboardInsertPreset(value)
+    const preset = product.insert.catalog.getWhiteboardInsertPreset(value)
     if (!preset) {
       return
     }

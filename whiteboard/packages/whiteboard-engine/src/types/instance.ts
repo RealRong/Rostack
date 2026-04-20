@@ -7,9 +7,7 @@ import type {
   NodeItem
 } from '@whiteboard/engine/types/projection'
 import type { SnapCandidate } from '@whiteboard/core/node'
-import type {
-  NodeRectHitOptions
-} from '@whiteboard/core/node'
+import type { NodeRectHitOptions } from '@whiteboard/core/node/hitTest'
 import type {
   CanvasItemRef,
   CoreRegistries,

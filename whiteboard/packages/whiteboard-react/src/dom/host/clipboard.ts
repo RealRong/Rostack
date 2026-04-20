@@ -1,7 +1,4 @@
-import {
-  parseClipboardPacket,
-  serializeClipboardPacket
-} from '@whiteboard/editor'
+import { editor } from '@whiteboard/editor'
 import type { ClipboardPacket } from '@whiteboard/editor'
 
 const CLIPBOARD_MIME = 'application/x-whiteboard-slice'
@@ -17,7 +14,7 @@ const writeClipboardPacketToEvent = (
   packet: ClipboardPacket,
   event: ClipboardEvent
 ) => {
-  const serialized = serializeClipboardPacket(packet)
+  const serialized = editor.clipboard.serialize(packet)
   event.clipboardData?.setData(CLIPBOARD_MIME, serialized)
   event.clipboardData?.setData('text/plain', serialized)
 }
@@ -27,7 +24,7 @@ const readClipboardPacketFromEvent = (
 ): ClipboardPacket | undefined => {
   const custom = event.clipboardData?.getData(CLIPBOARD_MIME)
   if (custom) {
-    const parsed = parseClipboardPacket(custom)
+    const parsed = editor.clipboard.parse(custom)
     if (parsed) {
       return parsed
     }
@@ -35,7 +32,7 @@ const readClipboardPacketFromEvent = (
 
   const text = event.clipboardData?.getData('text/plain')
   return text
-    ? parseClipboardPacket(text)
+    ? editor.clipboard.parse(text)
     : undefined
 }
 
@@ -44,7 +41,7 @@ export const createClipboardHostAdapter = (): ClipboardHostAdapter => {
 
   return {
     write: async (packet, event) => {
-      const serialized = serializeClipboardPacket(packet)
+      const serialized = editor.clipboard.serialize(packet)
       memoryText = serialized
 
       if (event?.clipboardData) {
@@ -67,14 +64,14 @@ export const createClipboardHostAdapter = (): ClipboardHostAdapter => {
     read: async (event) => {
       const fromEvent = event ? readClipboardPacketFromEvent(event) : undefined
       if (fromEvent) {
-        memoryText = serializeClipboardPacket(fromEvent)
+        memoryText = editor.clipboard.serialize(fromEvent)
         return fromEvent
       }
 
       if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
         try {
           const text = await navigator.clipboard.readText()
-          const parsed = parseClipboardPacket(text)
+          const parsed = editor.clipboard.parse(text)
           if (parsed) {
             memoryText = text
             return parsed
@@ -85,7 +82,7 @@ export const createClipboardHostAdapter = (): ClipboardHostAdapter => {
       }
 
       return memoryText
-        ? parseClipboardPacket(memoryText)
+        ? editor.clipboard.parse(memoryText)
         : undefined
     }
   }

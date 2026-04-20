@@ -3,13 +3,8 @@ import type {
   EdgeItem
 } from '@whiteboard/engine/types/projection'
 import type { Edge, EdgeId, Invalidation, NodeId, Point } from '@whiteboard/core/types'
-import {
-  collectRelatedEdgeIds,
-  createEdgeRelations,
-  resolveEdgeEnds,
-  type EdgeRelations
-} from '@whiteboard/core/edge'
-import { readNodeRotation } from '@whiteboard/core/node'
+import { edge as edgeApi, type EdgeRelations } from '@whiteboard/core/edge'
+import { node as nodeApi } from '@whiteboard/core/node'
 import {
   samePointArray as isSamePointArray,
   sameRectWithRotation as isSameRectWithRotationTuple
@@ -157,7 +152,7 @@ const toNodeGeometryTuple = (entry: CanvasNode): NodeGeometryTuple => ({
   y: entry.geometry.rect.y,
   width: entry.geometry.rect.width,
   height: entry.geometry.rect.height,
-  rotation: readNodeRotation(entry.node)
+  rotation: nodeApi.geometry.rotation(entry.node)
 })
 
 const toEdgeStructureTuple = (edge: EdgeItem['edge']): EdgeStructureTuple => ({
@@ -320,7 +315,7 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
   ): EdgeCacheEntry | undefined => {
     const sourceNodeRef = material.sourceNodeRef
     const targetNodeRef = material.targetNodeRef
-    const ends = resolveEdgeEnds({
+    const ends = edgeApi.end.resolve({
       edge,
       source: sourceNodeRef,
       target: targetNodeRef
@@ -413,7 +408,7 @@ const reconcileEdges = (
     current: EdgeCacheState,
     edges: readonly Edge[]
   ): EdgeProjectionUpdate => {
-    const relations = createEdgeRelations(edges)
+    const relations = edgeApi.relation.create(edges)
     const changedEdgeIds = new Set<EdgeId>()
 
     const nextCacheById = new Map<EdgeId, EdgeCacheEntry>()
@@ -504,10 +499,10 @@ const reconcileEdges = (
       idsChanged = next.idsChanged
       nextChangedEdgeIds = next.changedEdgeIds
     } else {
-      const nextRelations = createEdgeRelations(visibleEdges)
+      const nextRelations = edgeApi.relation.create(visibleEdges)
       const affectedEdgeIds = new Set<EdgeId>()
       if (invalidation.nodes.size > 0) {
-        const fromNodes = collectRelatedEdgeIds(
+        const fromNodes = edgeApi.relation.collect(
           nextRelations.nodeToEdgeIds,
           new Set(invalidation.nodes)
         )
@@ -535,7 +530,7 @@ const reconcileEdges = (
 
   const related = (nodeIds: Iterable<NodeId>) => {
     ensureSynced()
-    return Array.from(collectRelatedEdgeIds(state.relations.nodeToEdgeIds, nodeIds))
+    return Array.from(edgeApi.relation.collect(state.relations.nodeToEdgeIds, nodeIds))
   }
 
   return {

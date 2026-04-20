@@ -1,4 +1,4 @@
-import { resolveNodeBootstrapSize } from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeId, Point } from '@whiteboard/core/types'
 import type {
   WhiteboardInsertCatalog,
@@ -60,7 +60,7 @@ const placeNode = ({
   template: WhiteboardNodeInsertPreset['template']['template']
   placement?: WhiteboardInsertPlacement
 }) => {
-  const bootstrapSize = resolveNodeBootstrapSize(template)
+  const bootstrapSize = nodeApi.bootstrap.resolve(template)
   const width = bootstrapSize?.width ?? 160
   const height = bootstrapSize?.height ?? 80
 

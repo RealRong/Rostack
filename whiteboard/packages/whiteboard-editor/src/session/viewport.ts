@@ -1,21 +1,8 @@
 import {
-  DEFAULT_VIEWPORT_FIT_PADDING,
-  DEFAULT_VIEWPORT_LIMITS,
-  EMPTY_CONTAINER_RECT,
-  applyScreenPan,
-  applyWheelInput,
-  clientToScreenPoint,
-  fitViewportToRect,
-  isSameViewport,
-  normalizeViewport,
-  normalizeViewportLimits,
-  panViewport,
-  screenToWorldPoint,
+  geometry as geometryApi,
   type ContainerRect,
   type ViewportLimits,
-  type WheelInput,
-  worldToScreenPoint,
-  zoomViewport
+  type WheelInput
 } from '@whiteboard/core/geometry'
 import type { Point, Rect, Viewport } from '@whiteboard/core/types'
 import {
@@ -83,23 +70,23 @@ const copyRect = (
 
 export const createViewport = ({
   initialViewport,
-  limits: nextLimits = DEFAULT_VIEWPORT_LIMITS
+  limits: nextLimits = geometryApi.viewport.defaultLimits
 }: {
   initialViewport: Viewport
   limits?: ViewportLimits
 }): ViewportRuntime => {
-  const initialLimits = normalizeViewportLimits(nextLimits)
+  const initialLimits = geometryApi.viewport.normalizeLimits(nextLimits)
   const state = createValueStore(
-    normalizeViewport(initialViewport, initialLimits)
+    geometryApi.viewport.normalize(initialViewport, initialLimits)
   )
-  let rect = EMPTY_CONTAINER_RECT
+  let rect = geometryApi.viewport.emptyContainerRect
   let limits = initialLimits
-  const initial = normalizeViewport(initialViewport, initialLimits)
+  const initial = geometryApi.viewport.normalize(initialViewport, initialLimits)
 
   const setViewport = (next: Viewport) => {
-    const normalized = normalizeViewport(next, limits)
+    const normalized = geometryApi.viewport.normalize(next, limits)
     const current = state.get()
-    if (isSameViewport(current, normalized)) {
+    if (geometryApi.viewport.isSame(current, normalized)) {
       return
     }
     state.set(normalized)
@@ -110,7 +97,7 @@ export const createViewport = ({
       get: () => read(state),
       subscribe: (listener) => state.subscribe(listener),
       pointer: (input) => {
-        const screen = clientToScreenPoint(
+        const screen = geometryApi.viewport.clientToScreenPoint(
           input.clientX,
           input.clientY,
           rect
@@ -118,11 +105,11 @@ export const createViewport = ({
 
         return {
           screen,
-          world: screenToWorldPoint(screen, read(state), rect)
+          world: geometryApi.viewport.screenToWorld(screen, read(state), rect)
         }
       },
       worldToScreen: (point) =>
-        worldToScreenPoint(point, read(state), rect)
+        geometryApi.viewport.worldToScreen(point, read(state), rect)
     },
     commands: {
       set: (viewport) => {
@@ -133,7 +120,7 @@ export const createViewport = ({
           return
         }
 
-        setViewport(panViewport(state.get(), delta))
+        setViewport(geometryApi.viewport.pan(state.get(), delta))
       },
       zoomTo: (zoom, anchor) => {
         if (!Number.isFinite(zoom) || zoom <= 0) {
@@ -146,10 +133,10 @@ export const createViewport = ({
           return
         }
 
-        setViewport(zoomViewport(current, factor, anchor))
+        setViewport(geometryApi.viewport.zoom(current, factor, anchor))
       },
-      fit: (bounds, padding = DEFAULT_VIEWPORT_FIT_PADDING) => {
-        setViewport(fitViewportToRect({
+      fit: (bounds, padding = geometryApi.viewport.fitPadding) => {
+        setViewport(geometryApi.viewport.fitToRect({
           viewport: state.get(),
           rect,
           bounds,
@@ -163,7 +150,7 @@ export const createViewport = ({
     },
     input: {
       screenPoint: (clientX, clientY) =>
-        clientToScreenPoint(clientX, clientY, rect),
+        geometryApi.viewport.clientToScreenPoint(clientX, clientY, rect),
       size: () => ({
         width: rect.width,
         height: rect.height
@@ -173,11 +160,11 @@ export const createViewport = ({
           return
         }
 
-        setViewport(applyScreenPan(state.get(), deltaScreen))
+        setViewport(geometryApi.viewport.applyScreenPan(state.get(), deltaScreen))
       },
       wheel: (input, wheelSensitivity) => {
         setViewport(
-          applyWheelInput({
+          geometryApi.viewport.applyWheelInput({
             viewport: state.get(),
             input,
             rect,
@@ -194,7 +181,7 @@ export const createViewport = ({
       rect = copyRect(next)
     },
     setLimits: (next) => {
-      const normalized = normalizeViewportLimits(next)
+      const normalized = geometryApi.viewport.normalizeLimits(next)
       if (
         limits.minZoom === normalized.minZoom
         && limits.maxZoom === normalized.maxZoom

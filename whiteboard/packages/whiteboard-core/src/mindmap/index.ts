@@ -8,8 +8,9 @@ import {
   addChild,
   cloneSubtree,
   createMindmap,
+  insertNode,
   moveSubtree,
-  patchMindmapTree,
+  patchMindmap,
   removeSubtree
 } from '@whiteboard/core/mindmap/commands'
 import {
@@ -47,6 +48,7 @@ import {
   instantiateBlankMindmap,
   instantiateMindmapTemplate
 } from '@whiteboard/core/mindmap/template'
+import { buildMindmapTextNodeStyle } from '@whiteboard/core/mindmap/types'
 
 export const mindmap = {
   tree: {
@@ -54,6 +56,7 @@ export const mindmap = {
     fromRecord: toMindmapTree,
     fromDocument: getMindmapTreeFromDocument,
     get: getMindmapTree,
+    byNode: getMindmapIdByNode,
     idByNode: getMindmapIdByNode,
     recordByNodeId: getMindmapRecordByNodeId,
     subtreeIds: getSubtreeIds,
@@ -76,10 +79,11 @@ export const mindmap = {
   command: {
     buildCreate: createMindmapCreateOp,
     addChild,
+    insertNode,
     moveSubtree,
     removeSubtree,
     cloneSubtree,
-    patchTree: patchMindmapTree
+    patchTree: patchMindmap
   },
   template: {
     defaultBranchStyle: DEFAULT_MINDMAP_BRANCH_STYLE,
@@ -87,7 +91,8 @@ export const mindmap = {
     createBlank: createBlankMindmapTemplate,
     createTree: createMindmapTree,
     instantiate: instantiateMindmapTemplate,
-    instantiateBlank: instantiateBlankMindmap
+    instantiateBlank: instantiateBlankMindmap,
+    textNodeStyle: buildMindmapTextNodeStyle
   },
   render: {
     resolve: resolveMindmapRender,
@@ -103,6 +108,7 @@ export const mindmap = {
 } as const
 
 export type * from '@whiteboard/core/mindmap/types'
+export type { MindmapRenderConnector } from '@whiteboard/core/mindmap/render'
 export type {
   MindmapConnectionLine,
   MindmapDragState,

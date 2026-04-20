@@ -7,18 +7,7 @@ import {
   readStickyInsertFormat,
   readStickyInsertTone
 } from '@whiteboard/react/features/palette'
-import {
-  WHITEBOARD_DRAW_DEFAULT_MODE,
-  DEFAULT_WHITEBOARD_EDGE_PRESET_KEY,
-  DEFAULT_WHITEBOARD_MINDMAP_PRESET,
-  DEFAULT_WHITEBOARD_SHAPE_PRESET,
-  DEFAULT_WHITEBOARD_STICKY_PRESET,
-  WHITEBOARD_EDGE_PRESETS,
-  WHITEBOARD_INSERT_PRESETS,
-  getWhiteboardInsertPreset,
-  readWhiteboardDrawView,
-  readWhiteboardShapePresetKind
-} from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 import type {
   ToolPaletteMemory,
   ToolPaletteView
@@ -31,22 +20,22 @@ const isSameTemplate = (
 
 const readInsertPresetKey = (
   tool: Extract<Tool, { type: 'insert' }>
-) => WHITEBOARD_INSERT_PRESETS.find((preset) => (
+) => product.insert.catalog.WHITEBOARD_INSERT_PRESETS.find((preset) => (
   isSameTemplate(preset.template, tool.template)
 ))?.key
 
 const readEdgePresetKey = (
   tool: Extract<Tool, { type: 'edge' }>
-) => WHITEBOARD_EDGE_PRESETS.find((preset) => (
+) => product.edge.presets.WHITEBOARD_EDGE_PRESETS.find((preset) => (
   isSameTemplate(preset.template, tool.template)
 ))?.key
 
 export const DEFAULT_TOOL_PALETTE_MEMORY: ToolPaletteMemory = {
-  drawMode: WHITEBOARD_DRAW_DEFAULT_MODE,
-  edgePreset: DEFAULT_WHITEBOARD_EDGE_PRESET_KEY,
-  stickyPreset: DEFAULT_WHITEBOARD_STICKY_PRESET,
-  shapePreset: DEFAULT_WHITEBOARD_SHAPE_PRESET,
-  mindmapPreset: DEFAULT_WHITEBOARD_MINDMAP_PRESET
+  drawMode: product.draw.defaultMode,
+  edgePreset: product.edge.presets.DEFAULT_WHITEBOARD_EDGE_PRESET_KEY,
+  stickyPreset: product.insert.catalog.DEFAULT_WHITEBOARD_STICKY_PRESET,
+  shapePreset: product.insert.catalog.DEFAULT_WHITEBOARD_SHAPE_PRESET,
+  mindmapPreset: product.insert.catalog.DEFAULT_WHITEBOARD_MINDMAP_PRESET
 }
 
 export const rememberToolPaletteTool = (
@@ -78,7 +67,7 @@ export const rememberToolPaletteTool = (
 
   const insertPreset = readInsertPresetKey(tool)
   const group = insertPreset
-    ? getWhiteboardInsertPreset(insertPreset)?.group
+    ? product.insert.catalog.getWhiteboardInsertPreset(insertPreset)?.group
     : undefined
   if (group === 'sticky') {
     return {
@@ -115,7 +104,7 @@ export const readToolPaletteView = ({
     ? readInsertPresetKey(tool)
     : undefined
   const insertGroup = activeInsertPreset
-    ? getWhiteboardInsertPreset(activeInsertPreset)?.group
+    ? product.insert.catalog.getWhiteboardInsertPreset(activeInsertPreset)?.group
     : undefined
   const stickyPreset = tool.type === 'insert' && insertGroup === 'sticky'
     ? (activeInsertPreset ?? memory.stickyPreset)
@@ -132,7 +121,7 @@ export const readToolPaletteView = ({
   const drawMode = tool.type === 'draw'
     ? tool.mode
     : memory.drawMode
-  const draw = readWhiteboardDrawView({
+  const draw = product.draw.view({
     state: drawState,
     mode: drawMode
   })
@@ -143,7 +132,7 @@ export const readToolPaletteView = ({
     stickyTone: readStickyInsertTone(stickyPreset),
     stickyFormat: readStickyInsertFormat(stickyPreset),
     shapePreset,
-    shapeKind: readWhiteboardShapePresetKind(shapePreset),
+    shapeKind: product.insert.catalog.readWhiteboardShapePresetKind(shapePreset),
     mindmapPreset,
     edgePreset,
     drawMode,

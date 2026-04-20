@@ -1,8 +1,5 @@
 import type { Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
-import {
-  rectContainsRotatedRect,
-  rectIntersectsRotatedRect
-} from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { matchDrawRect } from '@whiteboard/core/node/draw'
 
 export type NodeRectHitEntry = {

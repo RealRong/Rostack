@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import {
-  compileNodeDataUpdate,
-  compileNodeStyleUpdate,
-  mergeNodeUpdates
-} from '@whiteboard/core/schema'
-import { createEngine } from '@whiteboard/engine'
-import { createLocalEngineHistory } from '@whiteboard/history'
-import { createEditor } from '../src'
+import { document as documentApi } from '@whiteboard/core/document'
+import { schema } from '@whiteboard/core/schema'
+import { engine as engineApi } from '@whiteboard/engine'
+import { history as historyApi } from '@whiteboard/history'
+import { editor as editorApi } from '../src'
 import type {
   LayoutBackend,
   NodeRegistry
@@ -100,7 +96,7 @@ const createLayoutBackend = (): LayoutBackend => ({
 })
 
 const createTextDocument = () => {
-  const document = createDocument('doc_text_wrap_runtime')
+  const document = documentApi.create('doc_text_wrap_runtime')
   document.nodes['text-1'] = {
     id: 'text-1',
     type: 'text',
@@ -124,7 +120,7 @@ const createTextDocument = () => {
 }
 
 const createStickyDocument = () => {
-  const document = createDocument('doc_sticky_layout_runtime')
+  const document = documentApi.create('doc_sticky_layout_runtime')
   document.nodes['sticky-1'] = {
     id: 'sticky-1',
     type: 'sticky',
@@ -152,13 +148,13 @@ const createStickyDocument = () => {
 }
 
 const createTextEditor = () => {
-  const engine = createEngine({
+  const engine = engineApi.create({
     document: createTextDocument()
   })
 
-  return createEditor({
+  return editorApi.create({
     engine,
-    history: createLocalEngineHistory(engine),
+    history: historyApi.local.create(engine),
     initialTool: {
       type: 'select'
     },
@@ -177,13 +173,13 @@ const createTextEditor = () => {
 }
 
 const createStickyEditor = () => {
-  const engine = createEngine({
+  const engine = engineApi.create({
     document: createStickyDocument()
   })
 
-  return createEditor({
+  return editorApi.create({
     engine,
-    history: createLocalEngineHistory(engine),
+    history: historyApi.local.create(engine),
     initialTool: {
       type: 'select'
     },
@@ -205,7 +201,7 @@ describe('text wrap runtime', () => {
   it('preserves wrap width when entering edit after a text patch commit', () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], mergeNodeUpdates(
+    editor.actions.node.patch(['text-1'], schema.node.mergeUpdates(
       {
         fields: {
           size: {
@@ -214,8 +210,8 @@ describe('text wrap runtime', () => {
           }
         }
       },
-      compileNodeDataUpdate('widthMode', 'wrap'),
-      compileNodeDataUpdate('wrapWidth', 180)
+      schema.node.compileDataUpdate('widthMode', 'wrap'),
+      schema.node.compileDataUpdate('wrapWidth', 180)
     ))
 
     expect(editor.read.document.get().nodes['text-1']?.data).toMatchObject({
@@ -245,7 +241,7 @@ describe('text wrap runtime', () => {
   it('recomputes wrap text size when font size changes via text command', () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], mergeNodeUpdates(
+    editor.actions.node.patch(['text-1'], schema.node.mergeUpdates(
       {
         fields: {
           size: {
@@ -254,8 +250,8 @@ describe('text wrap runtime', () => {
           }
         }
       },
-      compileNodeDataUpdate('widthMode', 'wrap'),
-      compileNodeDataUpdate('wrapWidth', 180)
+      schema.node.compileDataUpdate('widthMode', 'wrap'),
+      schema.node.compileDataUpdate('wrapWidth', 180)
     ))
 
     editor.actions.node.text.size({
@@ -275,7 +271,7 @@ describe('text wrap runtime', () => {
   it('recomputes wrap text size when font size changes via generic node patch', () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], mergeNodeUpdates(
+    editor.actions.node.patch(['text-1'], schema.node.mergeUpdates(
       {
         fields: {
           size: {
@@ -284,13 +280,13 @@ describe('text wrap runtime', () => {
           }
         }
       },
-      compileNodeDataUpdate('widthMode', 'wrap'),
-      compileNodeDataUpdate('wrapWidth', 180)
+      schema.node.compileDataUpdate('widthMode', 'wrap'),
+      schema.node.compileDataUpdate('wrapWidth', 180)
     ))
 
     editor.actions.node.patch(
       ['text-1'],
-      compileNodeStyleUpdate('fontSize', 20)
+      schema.node.compileStyleUpdate('fontSize', 20)
     )
 
     expect(editor.read.document.get().nodes['text-1']?.style).toMatchObject({
@@ -351,7 +347,7 @@ describe('sticky fit runtime', () => {
 
     editor.actions.node.patch(
       ['sticky-1'],
-      compileNodeStyleUpdate('fontSize', 32)
+      schema.node.compileStyleUpdate('fontSize', 32)
     )
 
     expect(editor.read.document.get().nodes['sticky-1']?.data).toMatchObject({

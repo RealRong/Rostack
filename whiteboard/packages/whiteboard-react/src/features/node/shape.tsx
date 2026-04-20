@@ -1,9 +1,5 @@
 import { useId, type ReactNode } from 'react'
-import {
-  readShapeDescriptor,
-  type ShapeKind,
-  type ShapePathSpec
-} from '@whiteboard/core/node'
+import { node as nodeApi, type ShapeKind, type ShapePathSpec } from '@whiteboard/core/node'
 
 type ShapeColors = {
   fill: string
@@ -92,7 +88,7 @@ export const ShapeGlyph = ({
   strokeDash?: readonly number[]
   className?: string
 }) => {
-  const descriptor = readShapeDescriptor(kind)
+  const descriptor = nodeApi.shape.descriptor(kind)
   const clipId = useId().replace(/:/g, '_')
   const visibleStrokeWidth = Math.max(0, strokeWidth)
   const strokePaintWidth = visibleStrokeWidth * 2

@@ -1,7 +1,4 @@
-import {
-  buildInsertSliceOperations
-} from '@whiteboard/core/document'
-import { assertDocument } from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import type { DocumentCommand } from '@whiteboard/engine/types/command'
 import { normalizeDocument } from '@whiteboard/engine/document/normalize'
 import type { CommandCompileContext } from '@whiteboard/engine/write/types'
@@ -21,11 +18,11 @@ export const compileDocumentCommand = (
     case 'document.replace':
       ctx.tx.emit({
         type: 'document.replace',
-        document: normalizeDocument(assertDocument(command.document))
+        document: normalizeDocument(documentApi.assert(command.document))
       })
       return
     case 'document.insert': {
-      const built = buildInsertSliceOperations({
+      const built = documentApi.slice.buildInsertOps({
         doc: ctx.tx.read.document.get(),
         slice: command.slice,
         nodeSize: ctx.nodeSize,

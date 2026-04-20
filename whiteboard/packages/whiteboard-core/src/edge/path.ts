@@ -1,4 +1,4 @@
-import { normalizePolylinePoints } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { EdgeAnchor, Point } from '@whiteboard/core/types'
 import type {
   EdgePathInput,

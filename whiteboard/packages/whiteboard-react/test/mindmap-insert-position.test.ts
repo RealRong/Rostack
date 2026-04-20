@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import { createLocalEngineHistory } from '@whiteboard/history'
-import { createEditor, type LayoutBackend } from '@whiteboard/editor'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { history as historyApi } from '@whiteboard/history'
+import { editor as editorApi, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/editor'
-import {
-  WHITEBOARD_INSERT_CATALOG,
-  buildWhiteboardMindmapTemplate
-} from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 import { createInsertBridge } from '../src/runtime/bridge/insert'
 
 const registry: NodeRegistry = {
@@ -83,12 +80,12 @@ const layout: LayoutBackend = {
 
 describe('mindmap insert position', () => {
   it('centers the inserted blank mindmap on the requested point', () => {
-    const engine = createEngine({
-      document: createDocument('doc_mindmap_insert_position')
+    const engine = engineApi.create({
+      document: documentApi.create('doc_mindmap_insert_position')
     })
-    const editor = createEditor({
+    const editor = editorApi.create({
       engine,
-      history: createLocalEngineHistory(engine),
+      history: historyApi.local.create(engine),
       initialTool: {
         type: 'select'
       },
@@ -103,7 +100,7 @@ describe('mindmap insert position', () => {
     })
     const insert = createInsertBridge({
       editor,
-      catalog: WHITEBOARD_INSERT_CATALOG
+      catalog: product.insert.catalog.WHITEBOARD_INSERT_CATALOG
     })
 
     const at = {
@@ -124,12 +121,12 @@ describe('mindmap insert position', () => {
   })
 
   it('keeps the root anchor stable when the root width grows', () => {
-    const engine = createEngine({
-      document: createDocument('doc_mindmap_root_anchor')
+    const engine = engineApi.create({
+      document: documentApi.create('doc_mindmap_root_anchor')
     })
-    const editor = createEditor({
+    const editor = editorApi.create({
       engine,
-      history: createLocalEngineHistory(engine),
+      history: historyApi.local.create(engine),
       initialTool: {
         type: 'select'
       },
@@ -144,7 +141,7 @@ describe('mindmap insert position', () => {
     })
 
     const created = editor.actions.mindmap.create({
-      template: buildWhiteboardMindmapTemplate({
+      template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
     })

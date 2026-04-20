@@ -12,10 +12,6 @@ import {
   field as fieldApi,
   type FieldDraftParseResult,
 } from '@dataview/core/field'
-import {
-  isDateOnlyString,
-  normalizeDateValue
-} from '@dataview/core/field/kind/date'
 
 export type DateDraftBoundary = 'start' | 'end'
 
@@ -49,7 +45,7 @@ const toRoundedTimeString = (value: Date) => {
 
 const splitDateTime = (value: string) => {
   const [date, time] = value.split('T')
-  return isDateOnlyString(date) && TIME_RE.test(time ?? '')
+  return fieldApi.date.value.isDateOnly(date) && TIME_RE.test(time ?? '')
     ? {
         date,
         time: time.slice(0, 5)
@@ -73,7 +69,8 @@ const createBaseDraft = (
   const now = new Date()
   const today = toLocalDateString(now)
   const roundedTime = toRoundedTimeString(now)
-  const kind = fieldApi.date.default.valueKind(field)
+  const config = fieldApi.date.config.read(field)
+  const kind = config.defaultValueKind
 
   return {
     kind,
@@ -84,7 +81,7 @@ const createBaseDraft = (
     endDate: today,
     endTime: roundedTime,
     timezone: kind === 'datetime'
-      ? fieldApi.date.default.timezone(field)
+      ? config.defaultTimezone
       : null,
     hasValue: false,
     dirty: false
@@ -300,17 +297,17 @@ export const parseDateValueDraft = (
     return { type: 'clear' }
   }
 
-  if (!isDateOnlyString(draft.startDate)) {
+  if (!fieldApi.date.value.isDateOnly(draft.startDate)) {
     return { type: 'invalid' }
   }
 
   if (draft.kind === 'date') {
-    const value = normalizeDateValue({
+    const value = fieldApi.date.value.normalize({
       kind: 'date',
       start: draft.startDate,
       ...(draft.endEnabled
         ? {
-            end: isDateOnlyString(draft.endDate)
+            end: fieldApi.date.value.isDateOnly(draft.endDate)
               ? draft.endDate
               : draft.startDate
           }
@@ -324,12 +321,12 @@ export const parseDateValueDraft = (
 
   const startTime = normalizeTimeInput(draft.startTime) ?? '00:00'
   const endDate = draft.endEnabled
-    ? (isDateOnlyString(draft.endDate) ? draft.endDate : draft.startDate)
+    ? (fieldApi.date.value.isDateOnly(draft.endDate) ? draft.endDate : draft.startDate)
     : undefined
   const endTime = draft.endEnabled
     ? normalizeTimeInput(draft.endTime) ?? startTime
     : undefined
-  const value = normalizeDateValue({
+  const value = fieldApi.date.value.normalize({
     kind: 'datetime',
     start: `${draft.startDate}T${startTime}`,
     ...(draft.endEnabled && endDate

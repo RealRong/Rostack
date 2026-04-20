@@ -1,5 +1,5 @@
-import { getRectCenter } from '@whiteboard/core/geometry'
-import { readNodeRotation } from '@whiteboard/core/node'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { node as nodeApi } from '@whiteboard/core/node'
 import { getNodeAnchor } from '@whiteboard/core/node/outline'
 import type { EdgeAnchor, EdgeEnd, Node, NodeGeometry, Point } from '@whiteboard/core/types'
 import type {

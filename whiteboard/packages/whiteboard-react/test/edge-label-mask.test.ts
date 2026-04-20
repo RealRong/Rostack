@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildEdgeLabelMaskRect,
-  readEdgeLabelMaskTransform
-} from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 
 describe('buildEdgeLabelMaskRect', () => {
   it('expands the measured label box into a centered mask rect', () => {
-    expect(buildEdgeLabelMaskRect({
+    expect(edgeApi.label.mask({
       center: {
         x: 100,
         y: 50
@@ -30,7 +27,7 @@ describe('buildEdgeLabelMaskRect', () => {
   })
 
   it('returns a rotate transform when the label follows the edge tangent', () => {
-    expect(readEdgeLabelMaskTransform({
+    expect(edgeApi.label.maskTransform({
       angle: 32,
       center: {
         x: 140,

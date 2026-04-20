@@ -8,6 +8,9 @@ import {
 import {
   field as fieldApi
 } from '@dataview/core/field'
+import {
+  normalizeOptionIds
+} from '@dataview/core/shared/option'
 
 export type GroupWriteResult =
   | { kind: 'set'; value: unknown }
@@ -37,33 +40,6 @@ const parseNumberRangeKey = (
         interval
       }
     : undefined
-}
-
-const normalizeOptionIds = (
-  value: unknown
-): string[] => {
-  if (!Array.isArray(value)) {
-    return []
-  }
-
-  const seen = new Set<string>()
-  const next: string[] = []
-
-  value.forEach(item => {
-    if (typeof item !== 'string') {
-      return
-    }
-
-    const normalized = item.trim()
-    if (!normalized || seen.has(normalized)) {
-      return
-    }
-
-    seen.add(normalized)
-    next.push(normalized)
-  })
-
-  return next
 }
 
 const removeOptionId = (

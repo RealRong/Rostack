@@ -4,12 +4,7 @@ import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/
 import { createMoveInteraction } from '@whiteboard/editor/input/features/selection/move'
 import { createMarqueeSession, type MarqueeMatch } from '@whiteboard/editor/input/features/selection/marquee'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
-import {
-  EMPTY_SELECTION_TARGET,
-  applySelectionTarget,
-  type SelectionTarget,
-  isSelectionTargetEqual
-} from '@whiteboard/core/selection'
+import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   SelectionAffordance,
   SelectionSummary
@@ -378,7 +373,7 @@ const HOLD_TO_CONTAIN_MARQUEE: SelectionMarqueeAction = {
   kind: 'marquee',
   match: 'contain',
   mode: 'replace',
-  base: EMPTY_SELECTION_TARGET,
+  base: selectionApi.target.empty,
   clearOnStart: true
 }
 
@@ -457,7 +452,7 @@ const createGroupBehavior = <TField extends string>(
 ): SelectionPressBehavior<TField> => {
   const nextSelection = subject.mode === 'replace'
     ? subject.groupSelection
-    : applySelectionTarget(
+    : selectionApi.target.apply(
         subject.currentSelection,
         subject.groupSelection,
         subject.mode
@@ -502,7 +497,7 @@ const resolveNodeNextSelection = <TField extends string>(
     }
   }
 
-  return applySelectionTarget(
+  return selectionApi.target.apply(
     subject.currentSelection,
     {
       nodeIds: [subject.node.id]
@@ -687,7 +682,7 @@ const applySelectionTap = (
       return
     }
     case 'edit-field':
-      if (!isSelectionTargetEqual(ctx.query.selection.summary.get().target, tap.selection)) {
+      if (!selectionApi.target.equal(ctx.query.selection.summary.get().target, tap.selection)) {
         ctx.actions.selection.replace(tap.selection)
       }
       ctx.actions.edit.startNode(tap.nodeId, tap.field, {

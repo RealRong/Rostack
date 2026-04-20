@@ -341,13 +341,13 @@ const translateEdge = (
   delta: Point
 ): Edge => ({
   ...cloneEdge(edge),
-  source: edge.guard.isNodeEnd(edge.source)
+  source: edgeApi.guard.isNodeEnd(edge.source)
     ? cloneEdgeEnd(edge.source)
     : {
         kind: 'point',
         point: offsetPoint(edge.source.point, delta)
       },
-  target: edge.guard.isNodeEnd(edge.target)
+  target: edgeApi.guard.isNodeEnd(edge.target)
     ? cloneEdgeEnd(edge.target)
     : {
         kind: 'point',

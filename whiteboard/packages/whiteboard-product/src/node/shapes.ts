@@ -1,9 +1,6 @@
 import type { NodeTemplate, Node } from '@whiteboard/core/types'
-import {
-  isShapeKind,
-  readShapeKind,
-  type ShapeKind
-} from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
+import type { ShapeKind } from '@whiteboard/core/node'
 import {
   WHITEBOARD_SHAPE_DEFAULTS,
   WHITEBOARD_SHAPE_PRESET_PAINTS
@@ -119,7 +116,7 @@ export const getWhiteboardShapeSpec = (
 export const readWhiteboardShapeMeta = (
   node: Pick<Node, 'data'>
 ): WhiteboardShapeMeta => {
-  const spec = getWhiteboardShapeSpec(readShapeKind(node))
+  const spec = getWhiteboardShapeSpec(nodeApi.shape.kind(node))
 
   return {
     key: `shape:${spec.kind}`,
@@ -173,6 +170,4 @@ export const readWhiteboardShapePreviewFill = (
   kind: ShapeKind
 ): string => getWhiteboardShapeSpec(kind).previewFill
 
-export {
-  isShapeKind
-}
+export const isShapeKind = nodeApi.shape.isKind

@@ -1,23 +1,14 @@
 import type {
   FieldId,
-  View,
   ViewOptions
 } from '@dataview/core/contracts'
+import {
+  isJsonObject
+} from '@shared/core'
 
-export type JsonObject = Record<string, unknown>
-
-export const isJsonObject = (value: unknown): value is JsonObject => (
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-)
-
-export const toTrimmedString = (value: unknown) => {
-  if (typeof value !== 'string') {
-    return undefined
-  }
-
-  const normalized = value.trim()
-  return normalized.length ? normalized : undefined
-}
+export {
+  isJsonObject
+} from '@shared/core'
 
 export const cloneViewOptions = (
   options: ViewOptions

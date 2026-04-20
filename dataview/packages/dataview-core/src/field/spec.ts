@@ -1,433 +1,313 @@
 import type {
-  Field
+  Field,
+  SortDirection,
+  ViewGroup
 } from '@dataview/core/contracts'
+import type {
+  BucketSort
+} from '@dataview/core/contracts/state'
+import type {
+  Bucket
+} from '@dataview/core/field/kind'
 import {
-  KANBAN_EMPTY_BUCKET_KEY
-} from '@dataview/core/contracts'
+  type DraftParseResult as FieldDraftParseResult,
+  isEmptyValue
+} from '@dataview/core/shared/value'
 import {
-  readDateComparableTimestamp
-} from '@dataview/core/field/kind/date'
-import {
-  getStatusFieldDefaultOption
-} from '@dataview/core/field/kind/status'
-import {
-  readBooleanValue,
-  readNumberValue
-} from '@dataview/core/field/value'
-import {
-  fieldOption
-} from '@dataview/core/field/options'
-import {
-  trimToUndefined
-} from '@shared/core'
+  getKindSpec,
+  type KindSpec
+} from '@dataview/core/field/kind/spec'
 
-export interface FieldIndexSpec {
-  searchDefaultEnabled: boolean
-  bucket: {
-    fastKeysOf?: (value: unknown) => readonly string[] | undefined
-  }
-  sort: {
-    scalarOf?: (value: unknown) => string | number | boolean | undefined
-  }
+export interface FieldValueBehavior {
+  canEdit: boolean
+  canQuickToggle: boolean
+  toggle?: (value: unknown) => unknown | undefined
 }
 
-export interface FieldCalculationSpec {
-  uniqueKeyOf: (field: Field | undefined, value: unknown) => string
-  optionIdsOf?: (field: Field | undefined, value: unknown) => readonly string[] | undefined
-}
-
-export interface FieldCreateSpec {
-  defaultValue?: (field: Field) => unknown | undefined
-}
-
-export interface FieldViewSpec {
-  groupUsesOptionColors: boolean
-  kanbanGroupPriority: number
-}
-
-export interface FieldSpec {
-  index: FieldIndexSpec
-  calculation: FieldCalculationSpec
-  create: FieldCreateSpec
-  view: FieldViewSpec
-}
-
-const EMPTY_BUCKET_KEYS = Object.freeze([KANBAN_EMPTY_BUCKET_KEY]) as readonly string[]
-const TRUE_BUCKET_KEYS = Object.freeze(['true']) as readonly string[]
-const FALSE_BUCKET_KEYS = Object.freeze(['false']) as readonly string[]
-const SINGLE_BUCKET_KEYS = new Map<string, readonly string[]>()
-
-const readSingleBucketKeys = (
-  key: string
-): readonly string[] => {
-  const cached = SINGLE_BUCKET_KEYS.get(key)
-  if (cached) {
-    return cached
-  }
-
-  const created = Object.freeze([key]) as readonly string[]
-  SINGLE_BUCKET_KEYS.set(key, created)
-  return created
-}
-
-const toScalarBucketKey = (
-  value: unknown
-): string => {
-  if (value === undefined || value === null) {
-    return KANBAN_EMPTY_BUCKET_KEY
-  }
-
-  if (typeof value === 'string') {
-    return trimToUndefined(value) ?? KANBAN_EMPTY_BUCKET_KEY
-  }
-
-  if (typeof value === 'number') {
-    return Number.isFinite(value)
-      ? String(value)
-      : KANBAN_EMPTY_BUCKET_KEY
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'true' : 'false'
-  }
-
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return String(value)
-  }
-}
-
-const fastSingleOptionBucketKeys = (
-  value: unknown
-): readonly string[] => readSingleBucketKeys(toScalarBucketKey(value))
-
-const fastMultiOptionBucketKeys = (
-  value: unknown
-): readonly string[] => {
-  if (!Array.isArray(value) || value.length === 0) {
-    return EMPTY_BUCKET_KEYS
-  }
-
-  if (value.length === 1) {
-    return readSingleBucketKeys(toScalarBucketKey(value[0]))
-  }
-
-  return value.map(item => toScalarBucketKey(item))
-}
-
-const fastBooleanBucketKeys = (
-  value: unknown
-): readonly string[] => {
-  if (value === true) {
-    return TRUE_BUCKET_KEYS
-  }
-
-  if (value === false) {
-    return FALSE_BUCKET_KEYS
-  }
-
-  return EMPTY_BUCKET_KEYS
-}
-
-const stableSerialize = (value: unknown): string => {
-  if (value === undefined) {
-    return 'undefined'
-  }
-  if (value === null) {
-    return 'null'
-  }
-  if (typeof value === 'string') {
-    return JSON.stringify(value)
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(item => stableSerialize(item)).join(',')}]`
-  }
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableSerialize(nestedValue)}`)
-    return `{${entries.join(',')}}`
-  }
-
-  return String(value)
-}
-
-const asPlainString = (
-  value: unknown
-): string => trimToUndefined(value) ?? ''
-
-const readOptionField = (
-  field: Field | undefined
-): Extract<Field, { kind: 'select' | 'multiSelect' | 'status' }> | undefined => (
-  field?.kind === 'select' || field?.kind === 'multiSelect' || field?.kind === 'status'
-    ? field
-    : undefined
-)
-
-const normalizeOptionId = (
-  field: Field | undefined,
-  value: unknown
-): string | undefined => {
-  const optionField = readOptionField(field)
-  if (!optionField || typeof value !== 'string') {
-    return undefined
-  }
-
-  return fieldOption.read.get(optionField, value)?.id ?? trimToUndefined(value)
-}
-
-const readSingleOptionIds = (
-  field: Field | undefined,
-  value: unknown
-): readonly string[] | undefined => {
-  const optionId = normalizeOptionId(field, value)
-  return optionId
-    ? readSingleBucketKeys(optionId)
-    : undefined
-}
-
-const readMultiOptionIds = (
-  field: Field | undefined,
-  value: unknown
-): readonly string[] | undefined => {
-  if (!Array.isArray(value)) {
-    return undefined
-  }
-
-  const seen = new Set<string>()
-  const optionIds: string[] = []
-
-  for (let index = 0; index < value.length; index += 1) {
-    const optionId = normalizeOptionId(field, value[index])
-    if (!optionId || seen.has(optionId)) {
-      continue
-    }
-
-    seen.add(optionId)
-    optionIds.push(optionId)
-  }
-
-  if (!optionIds.length) {
-    return undefined
-  }
-
-  optionIds.sort((left, right) => left.localeCompare(right))
-  return optionIds
-}
-
-const createFieldSpec = (input: {
-  searchDefaultEnabled?: boolean
-  fastBucketKeysOf?: (value: unknown) => readonly string[] | undefined
-  sortScalarOf?: (value: unknown) => string | number | boolean | undefined
-  uniqueKeyOf?: (field: Field | undefined, value: unknown) => string
-  optionIdsOf?: (field: Field | undefined, value: unknown) => readonly string[] | undefined
-  defaultValue?: (field: Field) => unknown | undefined
-  groupUsesOptionColors?: boolean
-  kanbanGroupPriority?: number
-}): FieldSpec => ({
-  index: {
-    searchDefaultEnabled: input.searchDefaultEnabled === true,
-    bucket: {
-      ...(input.fastBucketKeysOf
-        ? {
-            fastKeysOf: input.fastBucketKeysOf
-          }
-        : {})
-    },
-    sort: {
-      ...(input.sortScalarOf
-        ? {
-            scalarOf: input.sortScalarOf
-          }
-        : {})
-    }
-  },
-  calculation: {
-    uniqueKeyOf: input.uniqueKeyOf ?? ((_field, value) => stableSerialize(value)),
-    ...(input.optionIdsOf
-      ? {
-          optionIdsOf: input.optionIdsOf
-        }
-      : {})
-  },
+interface ResolvedFieldSpec {
+  value: KindSpec['value']
+  group: KindSpec['group']
+  index: KindSpec['index']
+  calculation: KindSpec['calculation']
   create: {
-    ...(input.defaultValue
+    defaultValue?: (field: Field) => unknown | undefined
+  }
+  view: KindSpec['view']
+  behavior: KindSpec['behavior']
+}
+
+const compareValueWithEmpty = (
+  field: Field | undefined,
+  left: unknown,
+  right: unknown
+): number => {
+  const leftEmpty = isEmptyValue(left)
+  const rightEmpty = isEmptyValue(right)
+  if (leftEmpty || rightEmpty) {
+    if (leftEmpty === rightEmpty) {
+      return 0
+    }
+
+    return leftEmpty ? 1 : -1
+  }
+
+  return readFieldSpec(field).value.compare(
+    field?.kind === 'title' ? undefined : field,
+    left,
+    right
+  )
+}
+
+const compareSortValue = (
+  field: Field | undefined,
+  left: unknown,
+  right: unknown,
+  direction: SortDirection
+): number => {
+  const result = compareValueWithEmpty(field, left, right)
+  if (result === 0) {
+    return 0
+  }
+
+  const leftEmpty = isEmptyValue(left)
+  const rightEmpty = isEmptyValue(right)
+  if (leftEmpty || rightEmpty) {
+    return result
+  }
+
+  return direction === 'asc'
+    ? result
+    : -result
+}
+
+const createResolvedFieldSpec = (
+  spec: KindSpec
+): ResolvedFieldSpec => ({
+  value: spec.value,
+  group: spec.group,
+  index: spec.index,
+  calculation: spec.calculation,
+  create: {
+    ...(spec.create.defaultValue
       ? {
-          defaultValue: input.defaultValue
+          defaultValue: field => spec.create.defaultValue?.(field.kind === 'title'
+            ? undefined as never
+            : field)
         }
       : {})
   },
-  view: {
-    groupUsesOptionColors: input.groupUsesOptionColors === true,
-    kanbanGroupPriority: input.kanbanGroupPriority ?? 0
-  }
+  view: spec.view,
+  behavior: spec.behavior
 })
 
-const fieldSpecsByKind = {
-  title: createFieldSpec({
-    searchDefaultEnabled: true,
-    uniqueKeyOf: (_field, value) => `text:${asPlainString(value)}`
-  }),
-  text: createFieldSpec({
-    searchDefaultEnabled: true,
-    uniqueKeyOf: (_field, value) => `text:${asPlainString(value)}`
-  }),
-  url: createFieldSpec({
-    searchDefaultEnabled: true,
-    uniqueKeyOf: (_field, value) => `text:${asPlainString(value)}`
-  }),
-  email: createFieldSpec({
-    searchDefaultEnabled: true,
-    uniqueKeyOf: (_field, value) => `text:${asPlainString(value)}`
-  }),
-  phone: createFieldSpec({
-    searchDefaultEnabled: true,
-    uniqueKeyOf: (_field, value) => `text:${asPlainString(value)}`
-  }),
-  number: createFieldSpec({
-    sortScalarOf: readNumberValue,
-    uniqueKeyOf: (_field, value) => {
-      const number = readNumberValue(value)
-      return number === undefined
-        ? stableSerialize(value)
-        : `number:${number}`
-    }
-  }),
-  date: createFieldSpec({
-    sortScalarOf: readDateComparableTimestamp
-  }),
-  select: createFieldSpec({
-    searchDefaultEnabled: true,
-    fastBucketKeysOf: fastSingleOptionBucketKeys,
-    uniqueKeyOf: (_field, value) => `option:${asPlainString(value)}`,
-    optionIdsOf: readSingleOptionIds,
-    groupUsesOptionColors: true,
-    kanbanGroupPriority: 2
-  }),
-  multiSelect: createFieldSpec({
-    searchDefaultEnabled: true,
-    fastBucketKeysOf: fastMultiOptionBucketKeys,
-    uniqueKeyOf: (field, value) => {
-      const optionIds = readMultiOptionIds(field, value)
-      return optionIds
-        ? `multi:${JSON.stringify(optionIds)}`
-        : stableSerialize(value)
-    },
-    optionIdsOf: readMultiOptionIds,
-    groupUsesOptionColors: true,
-    kanbanGroupPriority: 1
-  }),
-  status: createFieldSpec({
-    searchDefaultEnabled: true,
-    fastBucketKeysOf: fastSingleOptionBucketKeys,
-    uniqueKeyOf: (_field, value) => `option:${asPlainString(value)}`,
-    optionIdsOf: readSingleOptionIds,
-    defaultValue: field => (
-      field.kind === 'status'
-        ? getStatusFieldDefaultOption(field)?.id
-        : undefined
-    ),
-    groupUsesOptionColors: true,
-    kanbanGroupPriority: 3
-  }),
-  boolean: createFieldSpec({
-    fastBucketKeysOf: fastBooleanBucketKeys,
-    uniqueKeyOf: (_field, value) => {
-      const booleanValue = readBooleanValue(value)
-      return booleanValue === undefined
-        ? stableSerialize(value)
-        : `boolean:${booleanValue}`
-    }
-  }),
-  asset: createFieldSpec({})
-} as const satisfies Record<Field['kind'], FieldSpec>
+const textSpec = getKindSpec('text')
+
+const titleFieldSpec: ResolvedFieldSpec = {
+  value: textSpec.value,
+  group: textSpec.group,
+  index: {
+    searchDefaultEnabled: true
+  },
+  calculation: {
+    uniqueKey: (_field, value) => `text:${String(value ?? '').trim()}`
+  },
+  create: {},
+  view: {
+    groupUsesOptionColors: false,
+    kanbanGroupPriority: 0
+  },
+  behavior: {
+    canQuickToggle: false
+  }
+}
 
 const getFieldSpec = (
-  field: Pick<Field, 'kind'>
-): FieldSpec => fieldSpecsByKind[field.kind]
+  kind: Field['kind'] | 'title'
+): ResolvedFieldSpec => (
+  kind === 'title'
+    ? titleFieldSpec
+    : createResolvedFieldSpec(getKindSpec(kind))
+)
 
 const readFieldSpec = (
   field?: Pick<Field, 'kind'>
-): FieldSpec | undefined => (
-  field
-    ? getFieldSpec(field)
+): ResolvedFieldSpec => (
+  !field || field.kind === 'title'
+    ? titleFieldSpec
+    : createResolvedFieldSpec(getKindSpec(field.kind))
+)
+
+const readGroupMeta = (
+  field?: Pick<Field, 'kind'>,
+  group?: Partial<Pick<ViewGroup, 'mode' | 'bucketSort' | 'bucketInterval'>>
+): {
+  modes: readonly string[]
+  mode: string
+  sorts: readonly BucketSort[]
+  sort: BucketSort | ''
+  supportsInterval: boolean
+  bucketInterval?: number
+  showEmpty: boolean
+} => {
+  const spec = readFieldSpec(field)
+  const modes = spec.group.modes
+  const mode = group?.mode && modes.includes(group.mode)
+    ? group.mode
+    : spec.group.defaultMode
+  const sorts = spec.group.sorts
+  const sort = group?.bucketSort && sorts.includes(group.bucketSort)
+    ? group.bucketSort
+    : spec.group.defaultSort
+  const supportsInterval = spec.group.intervalModes?.includes(mode) ?? false
+  const bucketInterval = supportsInterval
+    ? group?.bucketInterval ?? spec.group.defaultInterval
     : undefined
+
+  return {
+    modes,
+    mode,
+    sorts,
+    sort,
+    supportsInterval,
+    ...(bucketInterval !== undefined ? { bucketInterval } : {}),
+    showEmpty: spec.group.showEmpty
+  }
+}
+
+const readDisplayValue = (
+  field: Field | undefined,
+  value: unknown
+): string | undefined => readFieldSpec(field).value.display(
+  field?.kind === 'title' ? undefined : field,
+  value
 )
 
-const readIndexSearchDefaultEnabled = (
-  field?: Pick<Field, 'kind'>
-): boolean => readFieldSpec(field)?.index.searchDefaultEnabled === true
-
-const readIndexBucketKeys = (
+const parseDraft = (
   field: Field | undefined,
-  value: unknown
-): readonly string[] | undefined => readFieldSpec(field)?.index.bucket.fastKeysOf?.(value)
-
-const readIndexSortScalar = (
-  field: Field | undefined,
-  value: unknown
-): string | number | boolean | undefined => readFieldSpec(field)?.index.sort.scalarOf?.(value)
-
-const readIndexSortScalarOf = (
-  field?: Pick<Field, 'kind'>
-): ((value: unknown) => string | number | boolean | undefined) | undefined => (
-  readFieldSpec(field)?.index.sort.scalarOf
+  draft: string
+): FieldDraftParseResult => readFieldSpec(field).value.parse(
+  field?.kind === 'title' ? undefined : field,
+  draft
 )
 
-const readCalculationUniqueKey = (
+const readSearchTokens = (
   field: Field | undefined,
   value: unknown
-): string => readFieldSpec(field)?.calculation.uniqueKeyOf(field, value)
-  ?? stableSerialize(value)
+): string[] => readFieldSpec(field).value.search(
+  field?.kind === 'title' ? undefined : field,
+  value
+)
 
-const readCalculationOptionIds = (
+const readGroupDomain = (
   field: Field | undefined,
+  group?: Partial<Pick<ViewGroup, 'mode'>>
+): readonly Bucket[] => {
+  const meta = readGroupMeta(field, group)
+  return readFieldSpec(field).group.domain(
+    field?.kind === 'title' ? undefined : field,
+    meta.mode
+  )
+}
+
+const readGroupEntries = (
+  field: Field | undefined,
+  value: unknown,
+  group?: Partial<Pick<ViewGroup, 'mode' | 'bucketInterval'>>
+): readonly Bucket[] => {
+  const meta = readGroupMeta(field, group)
+  return readFieldSpec(field).group.entries(
+    field?.kind === 'title' ? undefined : field,
+    value,
+    meta.mode,
+    meta.bucketInterval
+  )
+}
+
+const readCanQuickToggle = (
+  field?: Field
+): boolean => readFieldSpec(field).behavior.canQuickToggle
+
+const readBehavior = (input: {
+  exists: boolean
+  field?: Field
+}): FieldValueBehavior => {
+  const spec = readFieldSpec(input.field)
+  return {
+    canEdit: Boolean(input.field?.kind === 'title' ? input.exists : input.exists && input.field),
+    canQuickToggle: input.field?.kind === 'title'
+      ? false
+      : input.exists && spec.behavior.canQuickToggle,
+    ...(spec.behavior.toggle
+      ? {
+          toggle: spec.behavior.toggle
+        }
+      : {})
+  }
+}
+
+const readPrimaryAction = (input: {
+  exists: boolean
+  field?: Field
   value: unknown
-): readonly string[] | undefined => readFieldSpec(field)?.calculation.optionIdsOf?.(field, value)
+}) => {
+  if (!input.exists) {
+    return {
+      kind: 'select' as const
+    }
+  }
 
-const supportsCalculationOptionIds = (
-  field?: Pick<Field, 'kind'>
-): boolean => readFieldSpec(field)?.calculation.optionIdsOf !== undefined
+  if (readCanQuickToggle(input.field)) {
+    return {
+      kind: 'quickToggle' as const,
+      value: readFieldSpec(input.field).behavior.toggle?.(input.value)
+    }
+  }
 
-const readDefaultValue = (
-  field: Field
-): unknown | undefined => readFieldSpec(field)?.create.defaultValue?.(field)
-
-const usesGroupOptionColors = (
-  field?: Pick<Field, 'kind'>
-): boolean => readFieldSpec(field)?.view.groupUsesOptionColors === true
-
-const readKanbanGroupPriority = (
-  field?: Pick<Field, 'kind'>
-): number => readFieldSpec(field)?.view.kanbanGroupPriority ?? 0
+  return {
+    kind: 'edit' as const
+  }
+}
 
 export const fieldSpec = {
   get: getFieldSpec,
   read: readFieldSpec,
+  value: {
+    display: readDisplayValue,
+    parse: parseDraft,
+    search: readSearchTokens,
+    compare: compareValueWithEmpty,
+    sort: compareSortValue
+  },
+  group: {
+    meta: readGroupMeta,
+    domain: readGroupDomain,
+    entries: readGroupEntries
+  },
   index: {
-    searchDefaultEnabled: readIndexSearchDefaultEnabled,
+    searchDefaultEnabled: (field?: Pick<Field, 'kind'>): boolean => readFieldSpec(field).index.searchDefaultEnabled === true,
     bucket: {
-      keys: readIndexBucketKeys
+      keys: (field: Field | undefined, value: unknown): readonly string[] | undefined => readFieldSpec(field).index.bucketKeys?.(value)
     },
     sort: {
-      of: readIndexSortScalarOf,
-      scalar: readIndexSortScalar
+      of: (field?: Pick<Field, 'kind'>) => readFieldSpec(field).index.sortScalar,
+      scalar: (field: Field | undefined, value: unknown): string | number | boolean | undefined => readFieldSpec(field).index.sortScalar?.(value)
     }
   },
   calculation: {
-    uniqueKey: readCalculationUniqueKey,
-    optionIds: readCalculationOptionIds,
-    supportsOptionIds: supportsCalculationOptionIds
+    uniqueKey: (field: Field | undefined, value: unknown): string => readFieldSpec(field).calculation.uniqueKey(field?.kind === 'title' ? undefined : field, value),
+    optionIds: (field: Field | undefined, value: unknown): readonly string[] | undefined => readFieldSpec(field).calculation.optionIds?.(field?.kind === 'title' ? undefined : field, value),
+    supportsOptionIds: (field?: Pick<Field, 'kind'>): boolean => readFieldSpec(field).calculation.optionIds !== undefined
   },
   create: {
-    defaultValue: readDefaultValue
+    defaultValue: (field: Field): unknown | undefined => readFieldSpec(field).create.defaultValue?.(field)
   },
   view: {
-    groupUsesOptionColors: usesGroupOptionColors,
-    kanbanGroupPriority: readKanbanGroupPriority
+    groupUsesOptionColors: (field?: Pick<Field, 'kind'>): boolean => readFieldSpec(field).view.groupUsesOptionColors === true,
+    kanbanGroupPriority: (field?: Pick<Field, 'kind'>): number => readFieldSpec(field).view.kanbanGroupPriority
+  },
+  behavior: {
+    quickToggle: readCanQuickToggle,
+    value: readBehavior,
+    primary: readPrimaryAction
   }
 } as const

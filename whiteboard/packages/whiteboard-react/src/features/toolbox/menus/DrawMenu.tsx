@@ -15,11 +15,7 @@ import {
 import type {
   DrawMode,
 } from '@whiteboard/editor'
-import {
-  WHITEBOARD_DRAW_MODES,
-  WHITEBOARD_DRAW_SLOTS,
-  WHITEBOARD_DRAW_WIDTH_RANGE
-} from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 import {
   WHITEBOARD_DRAW_COLOR_OPTIONS,
   WHITEBOARD_PALETTE_SWATCH_SHAPE,
@@ -77,7 +73,7 @@ export const DrawMenu = ({
           role="toolbar"
           aria-label="Draw mode"
         >
-          {WHITEBOARD_DRAW_MODES.map((value) => {
+          {product.draw.modes.map((value) => {
             const Icon = DRAW_MODE_ICONS[value]
             return (
               <PickerIconButton
@@ -101,7 +97,7 @@ export const DrawMenu = ({
               role="toolbar"
               aria-label="Draw slot"
             >
-              {WHITEBOARD_DRAW_SLOTS.map((slot) => {
+              {product.draw.slots.map((slot) => {
                 const slotStyle = slots[slot]
                 return (
                   <PickerIconButton
@@ -133,8 +129,8 @@ export const DrawMenu = ({
             <PickerSection title="Width">
               <div className="flex flex-col gap-2.5">
                 <Slider
-                  min={WHITEBOARD_DRAW_WIDTH_RANGE[brush].min}
-                  max={WHITEBOARD_DRAW_WIDTH_RANGE[brush].max}
+                  min={product.draw.widthRange[brush].min}
+                  max={product.draw.widthRange[brush].max}
                   step={1}
                   value={style.width}
                   onValueChange={(value) => {

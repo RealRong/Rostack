@@ -1,5 +1,5 @@
 import type { Node, NodeGeometry, NodeId, Rect, Size } from '@whiteboard/core/types'
-import { getNodeGeometry, getNodeRect, readNodeRotation } from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import {
   sameRectWithRotation as isSameRectWithRotationTuple,
   toFiniteOrUndefined
@@ -29,7 +29,7 @@ export class NodeGeometryCache {
   constructor(private nodeSize: Size) {}
 
   private toStateTuple = (node: Node): NodeGeometryStateTuple => {
-    const rect = getNodeRect(node, this.nodeSize)
+    const rect = nodeApi.geometry.rect(node, this.nodeSize)
     return {
       x: toFiniteOrUndefined(rect.x),
       y: toFiniteOrUndefined(rect.y),
@@ -41,10 +41,10 @@ export class NodeGeometryCache {
 
   private toEntry = (node: Node): NodeGeometryEntry => ({
     node,
-    geometry: getNodeGeometry(
+    geometry: nodeApi.outline.geometry(
       node,
-      getNodeRect(node, this.nodeSize),
-      readNodeRotation(node)
+      nodeApi.geometry.rect(node, this.nodeSize),
+      nodeApi.geometry.rotation(node)
     )
   })
 

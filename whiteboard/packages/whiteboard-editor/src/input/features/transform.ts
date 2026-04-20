@@ -1,11 +1,4 @@
-import {
-  buildSelectionTransformPlan,
-  buildTransformCommitUpdates,
-  getResizeUpdateRect,
-  readNodeRotation,
-  resolveNodeTransformBehavior,
-  startTransform,
-  stepTransform,
+import { node as nodeApi,
   type TransformPreviewPatch,
   type TransformSelectionMember,
   type TransformSpec
@@ -53,19 +46,19 @@ const readNodeTransformSpec = (
     node: entry.node,
     rect: entry.geometry.rect
   }
-  const rotation = readNodeRotation(entry.node)
+  const rotation = nodeApi.geometry.rotation(entry.node)
 
   if (handle.kind === 'resize') {
     if (!handle.direction || !capability.resize) {
       return undefined
     }
 
-    const behavior = resolveNodeTransformBehavior(entry.node, {
+    const behavior = nodeApi.transform.resolveBehavior(entry.node, {
       role: capability.role,
       resize: capability.resize
     })
     if (entry.node.type === 'text' && behavior) {
-      const plan = buildSelectionTransformPlan({
+      const plan = nodeApi.transform.buildPlan({
         box: target.rect,
         members: [{
           ...target,
@@ -151,7 +144,7 @@ export const createTransformSession = (
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
-  let state = startTransform(spec)
+  let state = nodeApi.transform.start(spec)
   let modifiers = start.modifiers
   let interaction = null as InteractionSession | null
 
@@ -159,7 +152,7 @@ export const createTransformSession = (
     input: Pick<PointerDownInput, 'screen' | 'world' | 'modifiers'>
   ) => {
     modifiers = input.modifiers
-    const result = stepTransform({
+    const result = nodeApi.transform.step({
       state,
       screen: input.screen,
       world: input.world,
@@ -172,7 +165,7 @@ export const createTransformSession = (
       snap: (resize) => {
         const snapped = ctx.snap.node.resize(resize)
         return {
-          rect: getResizeUpdateRect(snapped.update),
+          rect: nodeApi.transform.resizeUpdateRect(snapped.update),
           guides: snapped.guides
         }
       }
@@ -215,7 +208,7 @@ export const createTransformSession = (
     up: (input) => {
       project(input)
 
-      const updates = buildTransformCommitUpdates({
+      const updates = nodeApi.transform.buildCommitUpdates({
         targets: state.commitTargets,
         patches: state.patches,
         commitTargetIds: state.commitIds

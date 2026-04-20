@@ -1,17 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import {
-  createHistoryBinding,
-  createLocalEngineHistory
-} from '@whiteboard/history'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { history as historyApi } from '@whiteboard/history'
 
 test('local engine history captures user writes and replays undo/redo', () => {
-  const engine = createEngine({
-    document: createDocument('doc_history_local')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_history_local')
   })
-  const history = createLocalEngineHistory(engine)
+  const history = historyApi.local.create(engine)
 
   const createResult = engine.execute({
     type: 'node.create',
@@ -48,10 +45,10 @@ test('local engine history captures user writes and replays undo/redo', () => {
 })
 
 test('local engine history clears on local document.replace', () => {
-  const engine = createEngine({
-    document: createDocument('doc_history_reset')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_history_reset')
   })
-  const history = createLocalEngineHistory(engine)
+  const history = historyApi.local.create(engine)
 
   const createResult = engine.execute({
     type: 'node.create',
@@ -72,7 +69,7 @@ test('local engine history clears on local document.replace', () => {
 
   const replaceResult = engine.execute({
     type: 'document.replace',
-    document: createDocument('doc_history_reset_next')
+    document: documentApi.create('doc_history_reset_next')
   })
 
   assert.equal(replaceResult.ok, true)
@@ -81,16 +78,16 @@ test('local engine history clears on local document.replace', () => {
 })
 
 test('history binding switches to the active source', () => {
-  const engine = createEngine({
-    document: createDocument('doc_history_binding')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_history_binding')
   })
-  const baseHistory = createLocalEngineHistory(engine)
-  const binding = createHistoryBinding(baseHistory)
+  const baseHistory = historyApi.local.create(engine)
+  const binding = historyApi.binding.create(baseHistory)
 
-  const otherEngine = createEngine({
-    document: createDocument('doc_history_binding_other')
+  const otherEngine = engineApi.create({
+    document: documentApi.create('doc_history_binding_other')
   })
-  const otherHistory = createLocalEngineHistory(otherEngine)
+  const otherHistory = historyApi.local.create(otherEngine)
 
   binding.set(otherHistory)
   otherEngine.execute({

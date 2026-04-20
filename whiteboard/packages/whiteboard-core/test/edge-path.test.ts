@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getEdgePath } from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
 
 const createEdge = (
@@ -28,7 +28,7 @@ const createEdge = (
 
 describe('getEdgePath', () => {
   it('builds rounded svg commands for fillet edges', () => {
-    const result = getEdgePath({
+    const result = edgeApi.path.get({
       edge: createEdge('fillet'),
       source: {
         point: {

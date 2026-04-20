@@ -1,5 +1,5 @@
-import { isPointEqual } from '@whiteboard/core/geometry'
-import { moveEdge } from '@whiteboard/core/edge'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   Edge,
   EdgeId,
@@ -31,8 +31,8 @@ const ZERO_POINT: Point = {
 
 const readEdgeMovePatch = (
   state: EdgeMoveState
-) => state.edge && !isPointEqual(state.delta, ZERO_POINT)
-  ? moveEdge(state.edge, state.delta)
+) => state.edge && !geometryApi.equal.point(state.delta, ZERO_POINT)
+  ? edgeApi.edit.move(state.edge, state.delta)
   : undefined
 
 const readMovableEdge = (
@@ -64,7 +64,7 @@ export const stepEdgeMove = (
   world: Point
 ): {
   state: EdgeMoveState
-  patch?: ReturnType<typeof moveEdge>
+  patch?: ReturnType<typeof edgeApi.edit.move>
   cancel?: true
 } => {
   if (!state.edge) {
@@ -78,7 +78,7 @@ export const stepEdgeMove = (
     x: world.x - state.start.x,
     y: world.y - state.start.y
   }
-  if (isPointEqual(delta, state.delta)) {
+  if (geometryApi.equal.point(delta, state.delta)) {
     return {
       state,
       patch: readEdgeMovePatch(state)
@@ -102,7 +102,7 @@ const commitEdgeMove = (
   edgeId: EdgeId
   delta: Point
 } | undefined => (
-  !isPointEqual(state.delta, ZERO_POINT)
+  !geometryApi.equal.point(state.delta, ZERO_POINT)
     ? {
         edgeId: state.edgeId,
         delta: state.delta

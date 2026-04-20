@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import { createLocalEngineHistory } from '@whiteboard/history'
-import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
-import { createEditor, type LayoutBackend, type NodeRegistry } from '../src'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { history as historyApi } from '@whiteboard/history'
+import { product } from '@whiteboard/product'
+import { editor as editorApi, type LayoutBackend, type NodeRegistry } from '../src'
 
 const registry: NodeRegistry = {
   get: (type) => {
@@ -105,13 +105,13 @@ const layout: LayoutBackend = {
 }
 
 const createTestEditor = () => {
-  const engine = createEngine({
-    document: createDocument('doc_transactional_create_layout')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_transactional_create_layout')
   })
 
-  return createEditor({
+  return editorApi.create({
     engine,
-    history: createLocalEngineHistory(engine),
+    history: historyApi.local.create(engine),
     initialTool: {
       type: 'select'
     },
@@ -186,7 +186,7 @@ describe('transactional create layout', () => {
     const editor = createTestEditor()
 
     const created = editor.actions.mindmap.create({
-      template: buildWhiteboardMindmapTemplate({
+      template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
     })

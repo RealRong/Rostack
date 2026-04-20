@@ -3,15 +3,8 @@ import {
   useRef,
   type CSSProperties
 } from 'react'
-import {
-  estimateTextAutoFont,
-  resolveTextContentBox,
-  resolveTextFrameMetrics
-} from '@whiteboard/core/node'
-import {
-  WHITEBOARD_STICKY_FONT_MODE_OPTIONS,
-  WHITEBOARD_TEXT_DEFAULT_COLOR
-} from '@whiteboard/product'
+import { node as nodeApi } from '@whiteboard/core/node'
+import { product } from '@whiteboard/product'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import {
   usePickRef,
@@ -49,7 +42,7 @@ const textSchema = createSchema('text', 'Text', [
 const stickySchema = createSchema('sticky', 'Sticky', [
   createTextField('text'),
   dataField('fontMode', 'Font mode', 'enum', {
-    options: [...WHITEBOARD_STICKY_FONT_MODE_OPTIONS]
+    options: [...product.node.text.WHITEBOARD_STICKY_FONT_MODE_OPTIONS]
   }),
   styleField('fill', 'Fill', 'color'),
   styleField('color', 'Text color', 'color'),
@@ -131,8 +124,8 @@ export const resolveTextLayoutStyle = ({
     return {}
   }
 
-  const contentWidth = resolveTextContentBox(
-    resolveTextFrameMetrics({
+  const contentWidth = nodeApi.text.contentBox(
+    nodeApi.text.frameMetrics({
       node,
       width: wrapWidth,
       height: 1
@@ -160,7 +153,7 @@ const TextNodeRenderer = ({
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
   const color = resolvePaletteColorOr(
     getStyleString(node, 'color'),
-    WHITEBOARD_TEXT_DEFAULT_COLOR
+    product.palette.defaults.textColor
   ) ?? 'var(--ui-text-primary)'
   const pickTextRef = usePickRef({
     kind: 'node',
@@ -216,7 +209,7 @@ const StickyNodeRenderer = ({
   } = useNodeTextSourceBinding(node.id)
   const editing = edit?.field === 'text'
   const fontSize = getStyleNumber(node, 'fontSize')
-    ?? estimateTextAutoFont('sticky', rect)
+    ?? nodeApi.text.estimateAutoFont('sticky', rect)
   const fontWeight = getStyleNumber(node, 'fontWeight') ?? 400
   const fontStyle = getStyleString(node, 'fontStyle') ?? 'normal'
   const color = resolvePaletteColorOr(

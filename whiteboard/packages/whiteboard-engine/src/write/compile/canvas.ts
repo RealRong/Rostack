@@ -1,19 +1,6 @@
-import {
-  getEdge,
-  getNode,
-  buildInsertSliceOperations,
-  exportSliceFromSelection,
-  listEdges,
-  listCanvasItemRefs,
-  listNodes
-} from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import { resolveLockDecision } from '@whiteboard/core/lock'
-import {
-  buildMoveCommit,
-  buildMoveSet,
-  projectMovePositions,
-  resolveMoveEffect
-} from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   CanvasItemRef,
   Document,
@@ -233,7 +220,7 @@ export const compileCanvasDuplicate = (
   }
 
   const edgeIds = refs.filter((ref) => ref.kind === 'edge').map((ref) => ref.id)
-  const exported = exportSliceFromSelection({
+  const exported = documentApi.slice.export.selection({
     doc: document,
     nodeIds,
     edgeIds,
@@ -243,7 +230,7 @@ export const compileCanvasDuplicate = (
     return ctx.tx.fail.invalid(exported.error.message, exported.error.details)
   }
 
-  const built = buildInsertSliceOperations({
+  const built = documentApi.slice.buildInsertOps({
     doc: document,
     slice: exported.data.slice,
     nodeSize: ctx.nodeSize,
@@ -275,19 +262,19 @@ const compileCanvasSelectionMove = (
   const document = ctx.tx.read.document.get()
 
   for (const nodeId of new Set(command.nodeIds)) {
-    if (!getNode(document, nodeId)) {
+    if (!documentApi.read.node(document, nodeId)) {
       return ctx.tx.fail.invalid(`Node ${nodeId} not found.`)
     }
   }
   for (const edgeId of new Set(command.edgeIds)) {
-    if (!getEdge(document, edgeId)) {
+    if (!documentApi.read.edge(document, edgeId)) {
       return ctx.tx.fail.invalid(`Edge ${edgeId} not found.`)
     }
   }
 
-  const nodes = listNodes(document)
-  const edges = listEdges(document)
-  const move = buildMoveSet({
+  const nodes = documentApi.list.nodes(document)
+  const edges = documentApi.list.edges(document)
+  const move = nodeApi.move.buildSet({
     nodes,
     ids: command.nodeIds,
     nodeSize: ctx.nodeSize
@@ -296,14 +283,14 @@ const compileCanvasSelectionMove = (
   const selectedEdgeIdSet = new Set(command.edgeIds)
   const selectedEdges = edges.filter((edge) => selectedEdgeIdSet.has(edge.id))
   const followEdges = edges.filter((edge) => !selectedEdgeIdSet.has(edge.id))
-  const followEffect = resolveMoveEffect({
+  const followEffect = nodeApi.move.resolveEffect({
     nodes,
     edges: followEdges,
     move,
     delta: command.delta,
     nodeSize: ctx.nodeSize
   })
-  const selectedEdgeChanges = buildMoveCommit({
+  const selectedEdgeChanges = nodeApi.move.buildCommit({
     delta: command.delta,
     edgePlan: {
       dragged: selectedEdges,
@@ -339,10 +326,10 @@ const compileCanvasSelectionMove = (
 
   const movedMemberIdSet = new Set(movedNodeIds)
   const movedMindmapIds = new Set<MindmapId>()
-  const positions = projectMovePositions(move.members, command.delta)
+  const positions = nodeApi.move.projectPositions(move.members, command.delta)
 
   for (const entry of positions) {
-    const node = getNode(document, entry.id)
+    const node = documentApi.read.node(document, entry.id)
     if (!node) {
       continue
     }
@@ -387,7 +374,7 @@ const compileCanvasSelectionMove = (
   }
 
   selectedEdgeChanges.forEach((entry) => {
-    const edge = getEdge(document, entry.id)
+    const edge = documentApi.read.edge(document, entry.id)
     if (!edge) {
       return
     }
@@ -395,7 +382,7 @@ const compileCanvasSelectionMove = (
   })
 
   followEffect.edges.forEach((entry) => {
-    const edge = getEdge(document, entry.id)
+    const edge = documentApi.read.edge(document, entry.id)
     if (!edge) {
       return
     }
@@ -415,7 +402,7 @@ export const compileCanvasCommand = (
     case 'canvas.selection.move':
       return compileCanvasSelectionMove(command, ctx)
     case 'canvas.order.move': {
-      const current = listCanvasItemRefs(ctx.tx.read.document.get())
+      const current = documentApi.list.canvasRefs(ctx.tx.read.document.get())
       const target = reorderRefs(current, command.refs, command.mode)
       createCanvasOrderMoveOps(current, target).forEach((op) => ctx.tx.emit(op))
       return

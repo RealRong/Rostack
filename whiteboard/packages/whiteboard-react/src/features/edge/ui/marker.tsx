@@ -3,11 +3,11 @@ import type {
   ReactNode
 } from 'react'
 import type { EdgeMarker } from '@whiteboard/core/types'
-import {
-  WHITEBOARD_EDGE_MARKER_CHOICES,
-  type WhiteboardEdgeMarkerChoice,
-  type WhiteboardEdgeMarkerSide as EdgeMarkerSide
-} from '@whiteboard/product'
+import { product } from '@whiteboard/product'
+import type {
+  WhiteboardEdgeMarkerChoice,
+  WhiteboardEdgeMarkerSide as EdgeMarkerSide
+} from '@whiteboard/product/edge/markers'
 
 type EdgeGlyphProps = ComponentProps<'svg'>
 type MarkerPaint = 'currentColor' | 'context-stroke'
@@ -182,7 +182,7 @@ const renderEdgeMarkerShape = ({
 export const readEdgeMarkerChoices = (
   side: EdgeMarkerSide
 ): readonly WhiteboardEdgeMarkerChoice[] =>
-  WHITEBOARD_EDGE_MARKER_CHOICES[side]
+  product.edge.markers.WHITEBOARD_EDGE_MARKER_CHOICES[side]
 
 export const readEdgeMarkerId = (
   marker: EdgeMarker,

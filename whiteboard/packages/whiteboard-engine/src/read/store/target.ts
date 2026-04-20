@@ -1,4 +1,4 @@
-import { getTargetBounds, type SelectionTarget } from '@whiteboard/core/selection'
+import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { EdgeId, NodeId, Rect } from '@whiteboard/core/types'
 
 export const resolveGroupTarget = ({
@@ -29,7 +29,7 @@ export const resolveTargetBounds = ({
   target: SelectionTarget
   readNodeBounds: (nodeId: NodeId) => Rect | undefined
   readEdgeBounds: (edgeId: EdgeId) => Rect | undefined
-}): Rect | undefined => selection.bounds.get({
+}): Rect | undefined => selectionApi.bounds.get({
   target,
   readNodeBounds,
   readEdgeBounds

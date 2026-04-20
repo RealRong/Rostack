@@ -1,5 +1,5 @@
 import type { EngineDocument } from '@whiteboard/engine/types/instance'
-import { assertDocument } from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import type { Document } from '@whiteboard/core/types'
 
 const assertImmutableDocumentInput = (
@@ -13,12 +13,12 @@ const assertImmutableDocumentInput = (
 }
 
 export const createDocumentSource = (document: Document): EngineDocument => {
-  let committedDocument = assertDocument(document)
+  let committedDocument = documentApi.assert(document)
 
   const get = () => committedDocument
 
   const commit = (nextDocument: Document) => {
-    const committedNextDocument = assertDocument(nextDocument)
+    const committedNextDocument = documentApi.assert(nextDocument)
     assertImmutableDocumentInput(committedDocument, committedNextDocument)
     committedDocument = committedNextDocument
   }

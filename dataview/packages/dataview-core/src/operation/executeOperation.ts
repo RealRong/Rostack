@@ -30,6 +30,7 @@ import {
   document as documentApi
 } from '@dataview/core/document'
 import {
+  readObjectKey,
   sameJsonValue
 } from '@shared/core'
 
@@ -37,16 +38,6 @@ export interface ExecuteOperationResult {
   document: DataDoc
   inverse: readonly DocumentOperation[]
 }
-
-const hasOwn = (
-  value: Record<string, unknown>,
-  key: string
-): boolean => Object.prototype.hasOwnProperty.call(value, key)
-
-const readObjectValue = (
-  value: unknown,
-  key: string
-): unknown => (value as Record<string, unknown>)[key]
 
 const addSetValue = <T>(
   current: Set<T> | undefined,
@@ -437,7 +428,7 @@ const executeRecordPatch = (
       type: 'document.record.patch',
       recordId: operation.recordId,
       patch: Object.fromEntries(
-        Object.keys(operation.patch).map(key => [key, readObjectValue(beforeRecord, key)])
+        Object.keys(operation.patch).map(key => [key, readObjectKey(beforeRecord, key)])
       ) as Partial<Omit<DataRecord, 'id' | 'values'>>
     }]
   }
@@ -607,7 +598,7 @@ const executeFieldPatch = (
       type: 'document.field.patch',
       fieldId: operation.fieldId,
       patch: Object.fromEntries(
-        Object.keys(operation.patch).map(key => [key, readObjectValue(beforeField, key)])
+        Object.keys(operation.patch).map(key => [key, readObjectKey(beforeField, key)])
       ) as Partial<Omit<CustomField, 'id'>>
     }]
   }

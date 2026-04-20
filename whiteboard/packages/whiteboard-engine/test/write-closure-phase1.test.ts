@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
 
 const createTextNode = ({
   id,
@@ -53,7 +53,7 @@ const createManualEdge = ({
 })
 
 test('canvas.selection.move compiles node, selected edge, and follow edge movement in one command', () => {
-  const document = createDocument('doc_write_closure_selection_move')
+  const document = documentApi.create('doc_write_closure_selection_move')
   document.nodes.node_1 = createTextNode({
     id: 'node_1',
     x: 0,
@@ -103,7 +103,7 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
     { kind: 'edge', id: 'edge_selected' }
   ]
 
-  const engine = createEngine({
+  const engine = engineApi.create({
     document
   })
 
@@ -151,7 +151,7 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
 })
 
 test('edge.reconnect.commit applies endpoint, type, and route in one command', () => {
-  const document = createDocument('doc_write_closure_reconnect_commit')
+  const document = documentApi.create('doc_write_closure_reconnect_commit')
   document.nodes.node_1 = createTextNode({
     id: 'node_1',
     x: 0,
@@ -185,7 +185,7 @@ test('edge.reconnect.commit applies endpoint, type, and route in one command', (
     { kind: 'edge', id: 'edge_1' }
   ]
 
-  const engine = createEngine({
+  const engine = engineApi.create({
     document
   })
 

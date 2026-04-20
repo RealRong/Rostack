@@ -1,11 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { OverlayProvider } from '@shared/ui'
 import type { Document } from '@whiteboard/core/types'
-import {
-  createYjsSession,
-  type CollabSession
-} from '@whiteboard/collab'
-import { normalizeDocument } from '@whiteboard/engine'
+import { collab as collabApi, type CollabSession } from '@whiteboard/collab'
+import { engine as engineApi } from '@whiteboard/engine'
 import type { WhiteboardProps } from '@whiteboard/react/types/common/board'
 import { resolveConfig } from '@whiteboard/react/config'
 import { createDefaultNodeRegistry } from '@whiteboard/react/features/node'
@@ -58,7 +55,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     [options]
   )
   const inputDocument = useMemo(
-    () => normalizeDocument(document, boardConfig),
+    () => engineApi.document.normalize(document, boardConfig),
     [document, boardConfig]
   )
   const onDocumentChangeRef = useRef(onDocumentChange)
@@ -127,7 +124,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       return
     }
 
-    const session = createYjsSession({
+    const session = collabApi.yjs.session.create({
       engine,
       doc: collab.doc,
       actorId: collab.actorId,

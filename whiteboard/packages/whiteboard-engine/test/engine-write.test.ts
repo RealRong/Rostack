@@ -1,19 +1,19 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import { serializeHistoryKey } from '@whiteboard/core/spec/history'
-import { createEngine } from '@whiteboard/engine'
-import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
+import { engine as engineApi } from '@whiteboard/engine'
+import { product } from '@whiteboard/product'
 
 const readSerializedFootprint = (
-  engine: ReturnType<typeof createEngine>
+  engine: ReturnType<typeof engineApi.create>
 ) => new Set(
   (engine.write.get()?.footprint ?? []).map(serializeHistoryKey)
 )
 
 test('engine exposes node create footprint through engine.write', () => {
-  const engine = createEngine({
-    document: createDocument('doc_engine_write_create')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_engine_write_create')
   })
 
   const result = engine.execute({
@@ -45,14 +45,14 @@ test('engine exposes node create footprint through engine.write', () => {
 })
 
 test('engine maps mindmap topic updates to node + mindmap history keys', () => {
-  const engine = createEngine({
-    document: createDocument('doc_engine_write_mindmap')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_engine_write_mindmap')
   })
 
   const createResult = engine.execute({
     type: 'mindmap.create',
     input: {
-      template: buildWhiteboardMindmapTemplate({
+      template: product.mindmap.template.build({
         preset: 'mindmap.capsule-outline'
       })
     }

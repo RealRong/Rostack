@@ -7,8 +7,8 @@ import {
   Type,
   type LucideIcon
 } from 'lucide-react'
-import { isShapeKind } from '@whiteboard/core/node'
-import { readWhiteboardShapePreviewFill } from '@whiteboard/product'
+import { node as nodeApi } from '@whiteboard/core/node'
+import { product } from '@whiteboard/product'
 import {
   ShapeGlyph
 } from '@whiteboard/react/features/node/shape'
@@ -32,13 +32,13 @@ export const NodeTypeIcon = ({
   strokeWidth?: number
   className?: string
 }) => {
-  if (isShapeKind(icon)) {
+  if (nodeApi.shape.isKind(icon)) {
     return (
       <ShapeGlyph
         kind={icon}
         size={size}
         strokeWidth={strokeWidth}
-        fill={readWhiteboardShapePreviewFill(icon)}
+        fill={product.node.shapes.readWhiteboardShapePreviewFill(icon)}
         className={className}
       />
     )

@@ -1,8 +1,4 @@
-import {
-  getAABBFromPoints,
-  getRectsBoundingRect,
-  getRotatedCorners
-} from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { Node, Rect, Size, SpatialNode } from '@whiteboard/core/types'
 import { getNodeBounds } from '@whiteboard/core/node/outline'
 

@@ -20,10 +20,10 @@ import type {
 export type DateFieldConfig = Pick<DateField, 'displayDateFormat' | 'displayTimeFormat' | 'defaultValueKind' | 'defaultTimezone'>
 export type DateGroupMode = 'day' | 'week' | 'month' | 'quarter' | 'year'
 
-export const DATE_VALUE_KINDS = ['date', 'datetime'] as const satisfies readonly DateValueKind[]
-export const DATE_DISPLAY_FORMATS = ['full', 'short', 'mdy', 'dmy', 'ymd', 'relative'] as const satisfies readonly DateDisplayFormat[]
-export const DATE_TIME_FORMATS = ['12h', '24h'] as const satisfies readonly TimeDisplayFormat[]
-export const DATE_GROUP_MODES = ['day', 'week', 'month', 'quarter', 'year'] as const satisfies readonly DateGroupMode[]
+const DATE_VALUE_KINDS = ['date', 'datetime'] as const satisfies readonly DateValueKind[]
+const DATE_DISPLAY_FORMATS = ['full', 'short', 'mdy', 'dmy', 'ymd', 'relative'] as const satisfies readonly DateDisplayFormat[]
+const DATE_TIME_FORMATS = ['12h', '24h'] as const satisfies readonly TimeDisplayFormat[]
+const DATE_GROUP_MODES = ['day', 'week', 'month', 'quarter', 'year'] as const satisfies readonly DateGroupMode[]
 
 const DATE_ONLY_FORMAT = 'yyyy-MM-dd'
 const DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm"
@@ -270,7 +270,7 @@ const isValidTimeZone = (value: string) => {
   }
 }
 
-export const isValidDateTimeZone = (value: string) => {
+const isValidDateTimeZone = (value: string) => {
   const normalized = value.trim()
   return normalized.length > 0 && isValidTimeZone(normalized)
 }
@@ -427,14 +427,14 @@ const toComparableTimestamp = (value: DateValue): number | undefined => {
     : undefined
 }
 
-export const createDefaultDateFieldConfig = (): DateFieldConfig => ({
+const createDefaultDateFieldConfig = (): DateFieldConfig => ({
   displayDateFormat: 'short',
   displayTimeFormat: '12h',
   defaultValueKind: 'date',
   defaultTimezone: null
 })
 
-export const getDateFieldConfig = (
+const getDateFieldConfig = (
   field?: CustomField
 ): DateFieldConfig => {
   const defaults = createDefaultDateFieldConfig()
@@ -463,11 +463,9 @@ export const getDateFieldConfig = (
   }
 }
 
-export const isDateOnlyString = (value: string) => Boolean(parseDateOnly(value))
+const isDateOnlyString = (value: string) => Boolean(parseDateOnly(value))
 
-export const isDateTimeString = (value: string) => Boolean(parseDateTime(value))
-
-export const isGroupDateValue = (value: unknown): value is DateValue => {
+const isGroupDateValue = (value: unknown): value is DateValue => {
   if (!value || typeof value !== 'object') {
     return false
   }
@@ -483,7 +481,7 @@ export const isGroupDateValue = (value: unknown): value is DateValue => {
     && (input.timezone === null || typeof input.timezone === 'string')
 }
 
-export const normalizeDateValue = (
+const normalizeDateValue = (
   value: DateValue
 ): DateValue | undefined => {
   if (value.kind === 'date') {
@@ -546,7 +544,7 @@ export const normalizeDateValue = (
   }
 }
 
-export const parseDateInputDraft = (
+const parseDateInputDraft = (
   value: string
 ): DateValue | undefined => {
   const trimmed = value.trim()
@@ -574,7 +572,7 @@ export const parseDateInputDraft = (
   return undefined
 }
 
-export const readDateComparableTimestamp = (
+const readDateComparableTimestamp = (
   value: unknown
 ): number | undefined => {
   const resolved = resolveDateInput(value)
@@ -583,7 +581,7 @@ export const readDateComparableTimestamp = (
     : undefined
 }
 
-export const getDateSortKey = (
+const getDateSortKey = (
   value: unknown
 ): string | undefined => {
   const resolved = resolveDateInput(value)
@@ -603,16 +601,12 @@ export const getDateSortKey = (
     : `datetime:${resolved.start}@${scope}`
 }
 
-export const getDateGroupKey = (
-  value: unknown
-): string | undefined => getDateSortKey(value)
-
-export const createDateGroupKey = (
+const createDateGroupKey = (
   mode: DateGroupMode,
   start: string
 ) => `${mode}:${start}`
 
-export const parseDateGroupKey = (
+const parseDateGroupKey = (
   key: string
 ): {
   mode: DateGroupMode
@@ -639,7 +633,7 @@ const readDateStartParts = (
   ? parseDateOnly(value.start)
   : parseDateOnly(value.start.slice(0, 10))
 
-export const readDateGroupStart = (
+const readDateGroupStart = (
   value: unknown,
   mode: DateGroupMode
 ): string | undefined => {
@@ -674,7 +668,7 @@ export const readDateGroupStart = (
   return toDateOnlyString(readDateOnlyParts(grouped))
 }
 
-export const formatDateGroupTitle = (
+const formatDateGroupTitle = (
   start: string,
   mode: DateGroupMode
 ): string => {
@@ -701,7 +695,7 @@ export const formatDateGroupTitle = (
   }
 }
 
-export const createDateGroupValue = (
+const createDateGroupValue = (
   field: CustomField | undefined,
   start: string,
   currentValue: unknown
@@ -711,7 +705,8 @@ export const createDateGroupValue = (
   }
 
   const current = resolveDateInput(currentValue)
-  const kind = current?.kind ?? resolveDefaultDateValueKind(field)
+  const config = getDateFieldConfig(field)
+  const kind = current?.kind ?? config.defaultValueKind
 
   if (kind === 'date') {
     return {
@@ -725,11 +720,11 @@ export const createDateGroupValue = (
     start: `${start}T00:00`,
     timezone: current?.kind === 'datetime'
       ? current.timezone
-      : resolveDefaultDateTimezone(field)
+      : config.defaultTimezone
   }
 }
 
-export const formatDateValue = (
+const formatDateValue = (
   field: CustomField | undefined,
   value: unknown
 ): string | undefined => {
@@ -774,7 +769,7 @@ export const formatDateValue = (
     : startText
 }
 
-export const getDateSearchTokens = (
+const getDateSearchTokens = (
   field: CustomField | undefined,
   value: unknown
 ): string[] => {
@@ -797,15 +792,7 @@ export const getDateSearchTokens = (
   return Array.from(new Set(values.filter((item): item is string => Boolean(item))))
 }
 
-export const resolveDefaultDateValueKind = (
-  field?: CustomField
-): DateValueKind => getDateFieldConfig(field).defaultValueKind ?? 'date'
-
-export const resolveDefaultDateTimezone = (
-  field?: CustomField
-) => getDateFieldConfig(field).defaultTimezone ?? null
-
-export const getAvailableTimezones = () => {
+const getAvailableTimezones = () => {
   const local = Intl.DateTimeFormat().resolvedOptions().timeZone
   return Array.from(new Set([
     local,
@@ -813,7 +800,7 @@ export const getAvailableTimezones = () => {
   ].filter((value): value is string => Boolean(value) && isValidTimeZone(value))))
 }
 
-export const formatTimeZoneLabel = (timeZone: string | null) => {
+const formatTimeZoneLabel = (timeZone: string | null) => {
   if (timeZone === null) {
     return 'Floating'
   }
@@ -821,24 +808,55 @@ export const formatTimeZoneLabel = (timeZone: string | null) => {
   return timeZone
 }
 
-export const readDateValueKind = (
-  value: unknown
-): DateValueKind | undefined => {
-  const resolved = resolveDateInput(value)
-  return resolved?.kind
-}
-
-export const readDateValue = (
+const readDateValue = (
   value: unknown
 ): DateValue | undefined => resolveDateInput(value)
 
-export const readDatePrimaryString = (
-  value: unknown
-): string | undefined => resolveDateInput(value)?.start
-
-export const readDatePrimaryParts = (
+const readDateParts = (
   value: unknown
 ): DateOnlyParts | DateTimeParts | undefined => {
   const resolved = resolveDateInput(value)
   return resolved ? getDateTimeParts(resolved) : undefined
 }
+
+export const fieldDate = {
+  config: {
+    create: createDefaultDateFieldConfig,
+    read: getDateFieldConfig
+  },
+  formats: {
+    date: DATE_DISPLAY_FORMATS,
+    time: DATE_TIME_FORMATS,
+    value: DATE_VALUE_KINDS,
+    group: DATE_GROUP_MODES
+  },
+  value: {
+    read: readDateValue,
+    normalize: normalizeDateValue,
+    isDateOnly: isDateOnlyString,
+    parts: readDateParts,
+    comparableTimestamp: readDateComparableTimestamp
+  },
+  group: {
+    sortKey: getDateSortKey,
+    createKey: createDateGroupKey,
+    parseKey: parseDateGroupKey,
+    start: readDateGroupStart,
+    title: formatDateGroupTitle,
+    createValue: createDateGroupValue
+  },
+  draft: {
+    parse: parseDateInputDraft
+  },
+  display: {
+    value: formatDateValue
+  },
+  search: {
+    tokens: getDateSearchTokens
+  },
+  timezone: {
+    isValid: isValidDateTimeZone,
+    list: getAvailableTimezones,
+    label: formatTimeZoneLabel
+  }
+} as const

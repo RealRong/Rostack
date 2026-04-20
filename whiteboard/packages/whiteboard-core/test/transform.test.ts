@@ -1,14 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import {
-  buildSelectionTransformPlan,
-  buildTransformCommitUpdates,
-  finishTransform,
-  type Guide,
-  resolveNodeTransformBehavior,
-  startTransform,
-  stepTransform
-} from '@whiteboard/core/node'
+import { node as nodeApi, type Guide } from '@whiteboard/core/node'
 import type { Node } from '@whiteboard/core/types'
 
 const createNode = (
@@ -52,7 +44,7 @@ test('selection scale-xy keeps member aspect ratios after snap adjusts one axis'
     }
   })
 
-  const plan = buildSelectionTransformPlan({
+  const plan = nodeApi.transform.buildPlan({
     box: {
       x: 0,
       y: 0,
@@ -69,7 +61,7 @@ test('selection scale-xy keeps member aspect ratios after snap adjusts one axis'
           width: 100,
           height: 40
         },
-        behavior: resolveNodeTransformBehavior(first, {
+        behavior: nodeApi.transform.resolveBehavior(first, {
           role: 'content',
           resize: true
         })!
@@ -83,7 +75,7 @@ test('selection scale-xy keeps member aspect ratios after snap adjusts one axis'
           width: 60,
           height: 60
         },
-        behavior: resolveNodeTransformBehavior(second, {
+        behavior: nodeApi.transform.resolveBehavior(second, {
           role: 'content',
           resize: true
         })!
@@ -93,7 +85,7 @@ test('selection scale-xy keeps member aspect ratios after snap adjusts one axis'
 
   assert.ok(plan)
 
-  const state = startTransform({
+  const state = nodeApi.transform.start({
     kind: 'selection-resize',
     pointerId: 1,
     plan,
@@ -104,7 +96,7 @@ test('selection scale-xy keeps member aspect ratios after snap adjusts one axis'
       y: 0
     }
   })
-  const result = stepTransform({
+  const result = nodeApi.transform.step({
     state,
     screen: {
       x: 60,
@@ -158,7 +150,7 @@ test('pure text multi-selection resize-x projects wrap width without vertical sc
     }
   })
 
-  const plan = buildSelectionTransformPlan({
+  const plan = nodeApi.transform.buildPlan({
     box: {
       x: 0,
       y: 0,
@@ -175,7 +167,7 @@ test('pure text multi-selection resize-x projects wrap width without vertical sc
           width: 100,
           height: 40
         },
-        behavior: resolveNodeTransformBehavior(first, {
+        behavior: nodeApi.transform.resolveBehavior(first, {
           role: 'content',
           resize: true
         })!
@@ -189,7 +181,7 @@ test('pure text multi-selection resize-x projects wrap width without vertical sc
           width: 60,
           height: 60
         },
-        behavior: resolveNodeTransformBehavior(second, {
+        behavior: nodeApi.transform.resolveBehavior(second, {
           role: 'content',
           resize: true
         })!
@@ -199,7 +191,7 @@ test('pure text multi-selection resize-x projects wrap width without vertical sc
 
   assert.ok(plan)
 
-  const state = startTransform({
+  const state = nodeApi.transform.start({
     kind: 'selection-resize',
     pointerId: 1,
     plan,
@@ -210,7 +202,7 @@ test('pure text multi-selection resize-x projects wrap width without vertical sc
       y: 0
     }
   })
-  const result = stepTransform({
+  const result = nodeApi.transform.step({
     state,
     screen: {
       x: 60,
@@ -287,7 +279,7 @@ test('text resize-x commit writes wrap mode and wrap width', () => {
     }
   })
 
-  const updates = buildTransformCommitUpdates({
+  const updates = nodeApi.transform.buildCommitUpdates({
     targets: [{
       id: node.id,
       node
@@ -345,13 +337,13 @@ test('single text resize-x gesture produces wrap mode and wrap width updates', (
       width: 100,
       height: 24
     },
-    behavior: resolveNodeTransformBehavior(node, {
+    behavior: nodeApi.transform.resolveBehavior(node, {
       role: 'content',
       resize: true
     })!
   }
 
-  const state = startTransform({
+  const state = nodeApi.transform.start({
     kind: 'single-resize',
     pointerId: 1,
     target,
@@ -363,7 +355,7 @@ test('single text resize-x gesture produces wrap mode and wrap width updates', (
     }
   })
 
-  const result = stepTransform({
+  const result = nodeApi.transform.step({
     state,
     screen: {
       x: 80,
@@ -399,7 +391,7 @@ test('single text resize-x gesture produces wrap mode and wrap width updates', (
     wrapWidth: 180
   }])
 
-  const updates = finishTransform(result.state)
+  const updates = nodeApi.transform.finish(result.state)
   assert.equal(updates.length, 1)
   assert.deepEqual(updates[0]?.update.records, [
     {
@@ -439,13 +431,13 @@ test('single text scale gesture keeps uniform geometry during preview', () => {
       width: 100,
       height: 24
     },
-    behavior: resolveNodeTransformBehavior(node, {
+    behavior: nodeApi.transform.resolveBehavior(node, {
       role: 'content',
       resize: true
     })!
   }
 
-  const state = startTransform({
+  const state = nodeApi.transform.start({
     kind: 'single-resize',
     pointerId: 1,
     target,
@@ -457,7 +449,7 @@ test('single text scale gesture keeps uniform geometry during preview', () => {
     }
   })
 
-  const result = stepTransform({
+  const result = nodeApi.transform.step({
     state,
     screen: {
       x: 80,

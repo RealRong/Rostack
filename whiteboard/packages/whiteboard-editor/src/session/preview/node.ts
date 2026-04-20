@@ -1,4 +1,4 @@
-import { isPointEqual, isSizeEqual } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
   EditorInputPreviewState,
@@ -41,8 +41,8 @@ const isNodePatchEqual = (
   left: NodePatch | undefined,
   right: NodePatch | undefined
 ) => (
-  isPointEqual(left?.position, right?.position)
-  && isSizeEqual(left?.size, right?.size)
+  geometryApi.equal.point(left?.position, right?.position)
+  && geometryApi.equal.size(left?.size, right?.size)
   && left?.rotation === right?.rotation
 )
 
@@ -50,8 +50,8 @@ const isTextPreviewPatchEqual = (
   left: TextPreviewPatch | undefined,
   right: TextPreviewPatch | undefined
 ) => (
-  isPointEqual(left?.position, right?.position)
-  && isSizeEqual(left?.size, right?.size)
+  geometryApi.equal.point(left?.position, right?.position)
+  && geometryApi.equal.size(left?.size, right?.size)
   && left?.fontSize === right?.fontSize
   && left?.mode === right?.mode
   && left?.wrapWidth === right?.wrapWidth

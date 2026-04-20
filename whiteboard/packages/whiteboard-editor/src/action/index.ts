@@ -1,15 +1,8 @@
 import type { Engine } from '@whiteboard/engine'
 import type { SelectionInput } from '@whiteboard/core/selection'
-import {
-  DEFAULT_ROOT_MOVE_THRESHOLD,
-  resolveInsertPlan
-} from '@whiteboard/core/mindmap'
-import {
-  insertRoutePoint,
-  moveRoutePoint,
-  removeRoutePoint
-} from '@whiteboard/core/edge'
-import { isNodeUpdateEmpty } from '@whiteboard/core/node'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import { edge as edgeApi } from '@whiteboard/core/edge'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   EdgePatch,
   MindmapId,
@@ -756,7 +749,7 @@ export const createEditorActions = ({
     removeSubtree: (id, input) => write.mindmap.topic.delete(id, input),
     cloneSubtree: (id, input) => write.mindmap.topic.clone(id, input),
     insertByPlacement: (input) => {
-      const plan = resolveInsertPlan({
+      const plan = mindmapApi.plan.insertTarget({
         tree: input.tree,
         targetNodeId: input.targetNodeId,
         placement: input.placement,
@@ -833,7 +826,7 @@ export const createEditorActions = ({
         return undefined
       }
 
-      const threshold = input.threshold ?? DEFAULT_ROOT_MOVE_THRESHOLD
+      const threshold = input.threshold ?? mindmapApi.plan.defaultRootMoveThreshold
       const delta = input.origin
         ? {
             x: input.position.x - input.origin.x,
@@ -923,7 +916,7 @@ export const createEditorActions = ({
     node: {
       ...write.node,
       patch: (ids, update, options) => {
-        if (isNodeUpdateEmpty(update)) {
+        if (nodeApi.update.isEmpty(update)) {
           return undefined
         }
 
@@ -963,7 +956,7 @@ export const createEditorActions = ({
         set: write.edge.route.set,
         insertPoint: (edgeId, index, point) => {
           const edge = readEdgeOrThrow(query, edgeId)
-          const inserted = insertRoutePoint(edge, index, point)
+          const inserted = edgeApi.route.insert(edge, index, point)
           if (!inserted.ok) {
             throw new Error(inserted.error.message)
           }
@@ -973,7 +966,7 @@ export const createEditorActions = ({
           })
         },
         movePoint: (edgeId, index, point) => {
-          const patch = moveRoutePoint(
+          const patch = edgeApi.route.move(
             readEdgeOrThrow(query, edgeId),
             index,
             point
@@ -987,7 +980,7 @@ export const createEditorActions = ({
           })
         },
         removePoint: (edgeId, index) => {
-          const patch = removeRoutePoint(
+          const patch = edgeApi.route.remove(
             readEdgeOrThrow(query, edgeId),
             index
           )

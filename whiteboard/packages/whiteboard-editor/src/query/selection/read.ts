@@ -1,7 +1,4 @@
-import {
-  TEXT_DEFAULT_FONT_SIZE,
-  readShapeKind
-} from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import {
   createDerivedStore,
   read,
@@ -332,7 +329,7 @@ const readTextColor = (
 
 const readFontSize = (
   node: Node
-) => readNumber(node, 'fontSize') ?? TEXT_DEFAULT_FONT_SIZE
+) => readNumber(node, 'fontSize') ?? nodeApi.text.defaultFontSize
 
 const readFontWeight = (
   node: Node
@@ -458,11 +455,11 @@ const readNodeScope = ({
     canEditNodeOpacity: styleSupport.opacity,
     shapeKind:
       nodeKind === 'shape' && primaryNode
-        ? readShapeKind(primaryNode)
+        ? nodeApi.shape.kind(primaryNode)
         : undefined,
     shapeKindValue:
       nodeKind === 'shape'
-        ? readUniformValue(nodes, readShapeKind)
+        ? readUniformValue(nodes, nodeApi.shape.kind)
         : undefined,
     fontSize: readToolbarValue(styleSupport.fontSize, nodes, readFontSize),
     fontWeight: readToolbarValue(styleSupport.fontWeight, nodes, readFontWeight),

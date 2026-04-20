@@ -1,18 +1,18 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { product } from '@whiteboard/product'
 
 test('engine exposes created mindmap roots through node read projection', () => {
-  const engine = createEngine({
-    document: createDocument('doc_mindmap_insert')
+  const engine = engineApi.create({
+    document: documentApi.create('doc_mindmap_insert')
   })
 
   const result = engine.execute({
     type: 'mindmap.create',
     input: {
-      template: buildWhiteboardMindmapTemplate({
+      template: product.mindmap.template.build({
         preset: 'mindmap.capsule-outline'
       })
     }

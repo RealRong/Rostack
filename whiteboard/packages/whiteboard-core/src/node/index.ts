@@ -308,6 +308,7 @@ export const node = {
 
 export type { NodeOutlineAnchorOptions } from '@whiteboard/core/node/outline'
 export type { ResolvedDrawStroke } from '@whiteboard/core/node/draw'
+export type { NodeRectHitOptions } from '@whiteboard/core/node/hitTest'
 export type {
   MoveCommit,
   MoveEdgePlan,

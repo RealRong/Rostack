@@ -5,10 +5,7 @@ import type {
   EdgeTextMode,
   EdgeType
 } from '@whiteboard/core/types'
-import {
-  WHITEBOARD_EDGE_PRESETS,
-  WHITEBOARD_EDGE_UI
-} from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 import { Horizontal } from '@whiteboard/react/icons/Horizontal'
 import { Tangent } from '@whiteboard/react/icons/Tangent'
 import {
@@ -126,23 +123,23 @@ const EDGE_PRESET_GLYPHS = {
 } as Record<string, EdgeIcon>
 
 export const EDGE_UI = {
-  palette: WHITEBOARD_EDGE_UI.palette,
-  types: WHITEBOARD_EDGE_UI.types.map((option) => ({
+  palette: product.edge.ui.palette,
+  types: product.edge.ui.types.map((option) => ({
     ...option,
     glyph: EDGE_TYPE_GLYPHS[option.value]
   })) as readonly EdgeTypeOption[],
-  dashes: WHITEBOARD_EDGE_UI.dashes.map((option) => ({
+  dashes: product.edge.ui.dashes.map((option) => ({
     ...option,
     glyph: EDGE_DASH_GLYPHS[option.value]
   })) as readonly EdgeDashOption[],
-  widths: WHITEBOARD_EDGE_UI.widths,
-  textModes: WHITEBOARD_EDGE_UI.textModes.map((option) => ({
+  widths: product.edge.ui.widths,
+  textModes: product.edge.ui.textModes.map((option) => ({
     ...option,
     glyph: EDGE_TEXT_MODE_GLYPHS[option.value]
   })) as readonly EdgeTextModeOption[],
-  presets: WHITEBOARD_EDGE_UI.presets.map((option) => ({
+  presets: product.edge.ui.presets.map((option) => ({
     ...option,
     glyph: EDGE_PRESET_GLYPHS[option.key],
-    template: WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === option.key)!.template
+    template: product.edge.presets.WHITEBOARD_EDGE_PRESETS.find((entry) => entry.key === option.key)!.template
   })) as readonly EdgePresetOption[]
 } as const

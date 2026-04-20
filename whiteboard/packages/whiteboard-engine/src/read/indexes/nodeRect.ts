@@ -1,10 +1,7 @@
 import type { CanvasNode } from '@whiteboard/engine/types/projection'
 import type { Node, NodeId, Rect } from '@whiteboard/core/types'
-import {
-  getNodeIdsInRect as getNodeIdsInRectRaw,
-  readNodeRotation,
-  type NodeRectHitOptions
-} from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
+import type { NodeRectHitOptions } from '@whiteboard/core/node/hitTest'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
 import type { ReadModel } from '@whiteboard/engine/types/read'
 import type { Invalidation } from '@whiteboard/core/types'
@@ -236,12 +233,12 @@ export class NodeRectIndex {
   nodeIdsInRect = (
     rect: Rect,
     options?: NodeRectHitOptions
-  ): NodeId[] => getNodeIdsInRectRaw(
+  ): NodeId[] => nodeApi.hit.idsInRect(
     rect,
     this.all().map((entry) => ({
       node: entry.node,
       rect: entry.geometry.rect,
-      rotation: readNodeRotation(entry.node)
+      rotation: nodeApi.geometry.rotation(entry.node)
     })),
     options
   )

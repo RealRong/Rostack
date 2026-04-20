@@ -1,7 +1,4 @@
-import {
-  isPointInRect,
-  rectContains
-} from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   Node,
   NodeId,
@@ -245,4 +242,3 @@ export const expandFrameSelection = <TNode extends FrameNodeLike>({
 
   return next
 }
-

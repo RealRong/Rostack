@@ -1,5 +1,5 @@
 import type { Node } from '@whiteboard/core/types'
-import { readShapeKind } from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import {
   WHITEBOARD_FRAME_DEFAULTS,
   WHITEBOARD_TEXT_DEFAULT_COLOR
@@ -24,7 +24,7 @@ export const readWhiteboardNodePaintDefaults = (
   node: Pick<Node, 'type' | 'data'>
 ) => {
   if (node.type === 'shape') {
-    return getWhiteboardShapeSpec(readShapeKind(node)).defaults
+    return getWhiteboardShapeSpec(nodeApi.shape.kind(node)).defaults
   }
 
   if (node.type === 'sticky') {

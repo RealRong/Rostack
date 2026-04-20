@@ -1,5 +1,5 @@
 import { createValueStore } from '@shared/core'
-import { createDocument } from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import { createId } from '@whiteboard/core/id'
 import { sync } from '@whiteboard/core/spec/operation'
 import type { EngineWrite } from '@whiteboard/engine'
@@ -65,7 +65,7 @@ const isCheckpointWrite = (
 
 const createEmptyReplayDocument = (
   engine: CreateYjsSessionOptions['engine']
-) => createDocument(engine.document.get().id)
+) => documentApi.create(engine.document.get().id)
 
 export const createYjsSession = ({
   engine,

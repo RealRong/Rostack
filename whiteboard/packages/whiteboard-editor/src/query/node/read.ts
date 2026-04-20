@@ -1,12 +1,4 @@
-import {
-  applyNodeGeometryPatch,
-  applyNodeTextDraft,
-  applyNodeTextPreview,
-  getNodeBounds,
-  getNodeGeometry,
-  readNodeRotation,
-  type NodeRectHitOptions
-} from '@whiteboard/core/node'
+import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import type {
   EngineRead,
   MindmapItem,
@@ -371,7 +363,7 @@ const applyMindmapGeometry = (
     return item
   }
 
-  return applyNodeGeometryPatch(item, {
+  return nodeApi.projection.applyGeometryPatch(item, {
     position: {
       x: rect.x,
       y: rect.y
@@ -387,9 +379,9 @@ const projectNodeGeometryItem = (
   item: NodeItem,
   feedback: NodePreviewProjection,
   mindmap: MindmapItem | undefined
-): NodeItem => applyNodeGeometryPatch(
+): NodeItem => nodeApi.projection.applyGeometryPatch(
   applyMindmapGeometry(
-    applyNodeGeometryPatch(item, feedback.patch),
+    nodeApi.projection.applyGeometryPatch(item, feedback.patch),
     mindmap
   ),
   readTextGeometryPatch(feedback)
@@ -399,8 +391,8 @@ const projectNodeContent = (
   item: NodeItem,
   feedback: NodePreviewProjection,
   edit: NodeEditView | undefined
-): Node => applyNodeTextDraft(
-  applyNodeTextPreview(item, feedback.text),
+): Node => nodeApi.projection.applyTextDraft(
+  nodeApi.projection.applyTextPreview(item, feedback.text),
   readNodeTextDraft(item, edit)
 ).node
 
@@ -421,8 +413,8 @@ const readNodeRuntime = (
 const readGeometryView = (
   item: NodeItem
 ): NodeGeometryView => {
-  const rotation = readNodeRotation(item.node)
-  const geometry = getNodeGeometry(
+  const rotation = nodeApi.geometry.rotation(item.node)
+  const geometry = nodeApi.outline.geometry(
     item.node,
     item.rect,
     rotation

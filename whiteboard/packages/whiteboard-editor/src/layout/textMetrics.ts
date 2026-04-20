@@ -1,4 +1,4 @@
-import { EDGE_LABEL_LINE_HEIGHT } from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   TextMetrics,
   TextMetricsResource,
@@ -37,7 +37,7 @@ const readTextMetricsContent = (
 const readTextMetricsLineHeight = (
   profile: TextTypographyProfile
 ) => profile === 'edge-label'
-  ? EDGE_LABEL_LINE_HEIGHT
+  ? edgeApi.label.lineHeight
   : TEXT_DEFAULT_LINE_HEIGHT_RATIO
 
 const createMeasureCanvasContext = () => {

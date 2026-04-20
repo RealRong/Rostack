@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import { createLocalEngineHistory } from '@whiteboard/history'
-import { buildWhiteboardMindmapTemplate } from '@whiteboard/product'
-import { createEditor } from '../src'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { history as historyApi } from '@whiteboard/history'
+import { product } from '@whiteboard/product'
+import { editor as editorApi } from '../src'
 import type { NodeRegistry } from '../src'
 
 const registry: NodeRegistry = {
@@ -58,12 +58,12 @@ const registry: NodeRegistry = {
 
 describe('mindmap edit relayout preview', () => {
   it('relayouts child nodes while the root text edit size changes', () => {
-    const engine = createEngine({
-      document: createDocument('doc_mindmap_edit_relayout_preview')
+    const engine = engineApi.create({
+      document: documentApi.create('doc_mindmap_edit_relayout_preview')
     })
-    const editor = createEditor({
+    const editor = editorApi.create({
       engine,
-      history: createLocalEngineHistory(engine),
+      history: historyApi.local.create(engine),
       initialTool: {
         type: 'select'
       },
@@ -75,7 +75,7 @@ describe('mindmap edit relayout preview', () => {
     })
 
     const created = editor.actions.mindmap.create({
-      template: buildWhiteboardMindmapTemplate({
+      template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
     })

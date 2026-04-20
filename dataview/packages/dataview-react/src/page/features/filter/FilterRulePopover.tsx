@@ -37,7 +37,7 @@ const readFilterDraft = (
         ? String(value)
         : ''
     case 'date':
-      return fieldApi.date.value.primaryString(value) ?? ''
+      return fieldApi.date.value.read(value)?.start ?? ''
     default:
       return typeof value === 'string' ? value : ''
   }

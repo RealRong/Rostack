@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  startEdgeReconnect
-} from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   EdgePatch
 } from '@whiteboard/core/types'
@@ -99,7 +97,7 @@ const createReconnectSession = () => {
   const runtime = createInteractionDeps()
   const session = createEdgeConnectSession(
     runtime.ctx,
-    startEdgeReconnect({
+    edgeApi.connect.startReconnect({
       pointerId: 1,
       edgeId: 'edge-1',
       end: 'target',

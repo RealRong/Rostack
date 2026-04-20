@@ -4,7 +4,10 @@ import type {
   EntityTable,
   RecordId
 } from '@dataview/core/contracts/state'
-import { createOrderedKeyedCollection } from '@shared/core'
+import {
+  createOrderedKeyedCollection,
+  hasPatchChanges
+} from '@shared/core'
 
 const cloneRecord = (
   record: DataRecord
@@ -57,22 +60,6 @@ const has = <TId extends string, TEntity extends { id: TId }>(
 const hasOwnKeys = (
   value: object
 ) => Object.keys(value).length > 0
-
-const hasPatchChanges = <TValue extends object>(
-  current: TValue,
-  patch: Partial<TValue>
-) => {
-  const currentRecord = current as Record<string, unknown>
-  const patchRecord = patch as Record<string, unknown>
-
-  for (const key of Object.keys(patchRecord)) {
-    if (!Object.is(currentRecord[key], patchRecord[key])) {
-      return true
-    }
-  }
-
-  return false
-}
 
 const mergePatch = <TEntity extends object>(
   current: TEntity,

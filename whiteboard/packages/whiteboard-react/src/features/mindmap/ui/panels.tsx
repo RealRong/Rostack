@@ -12,7 +12,7 @@ import type {
   MindmapBranchLineKind,
   MindmapStrokeStyle
 } from '@whiteboard/core/mindmap'
-import { WHITEBOARD_MINDMAP_UI } from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 import {
   WHITEBOARD_FILL_COLOR_OPTIONS,
   WHITEBOARD_LINE_COLOR_OPTIONS,
@@ -120,7 +120,7 @@ export const MindmapBranchPanel = ({
   <Panel className="min-w-[260px]">
     <PanelSection title="Branch">
       <div className="flex items-center gap-2">
-        {WHITEBOARD_MINDMAP_UI.branchLines.map((option) => (
+        {product.mindmap.ui.branchLines.map((option) => (
           <SegmentedButton
             key={option.value}
             active={(line ?? 'curve') === option.value}
@@ -137,7 +137,7 @@ export const MindmapBranchPanel = ({
     </PanelSection>
     <PanelSection title="Style">
       <div className="flex items-center gap-2">
-        {WHITEBOARD_MINDMAP_UI.branchStrokes.map((option) => (
+        {product.mindmap.ui.branchStrokes.map((option) => (
           <SegmentedButton
             key={option.value}
             active={(stroke ?? 'solid') === option.value}
@@ -194,7 +194,7 @@ export const MindmapBorderPanel = ({
   <Panel className="min-w-[260px]">
     <PanelSection title="Border">
       <div className="flex items-center gap-2">
-        {WHITEBOARD_MINDMAP_UI.borderKinds.map((option) => (
+        {product.mindmap.ui.borderKinds.map((option) => (
           <SegmentedButton
             key={option.value}
             active={(kind ?? 'rect') === option.value}

@@ -1,9 +1,5 @@
 import {
-  TEXT_AUTO_MAX_WIDTH,
-  TEXT_AUTO_MIN_WIDTH,
-  TEXT_DEFAULT_FONT_SIZE,
-  TEXT_LAYOUT_MIN_WIDTH,
-  resolveTextContentBox,
+  node as nodeApi,
   type TextFrameMetrics,
   type TextWidthMode
 } from '@whiteboard/core/node'
@@ -112,7 +108,7 @@ const measureTextContent = ({
   if (!sourceStyle) {
     return undefined
   }
-  const sourceFontSize = readPx(sourceStyle.fontSize, TEXT_DEFAULT_FONT_SIZE)
+  const sourceFontSize = readPx(sourceStyle.fontSize, nodeApi.text.defaultFontSize)
   const resolvedFontSize = fontSize ?? sourceFontSize
   const resolvedLineHeight = readLineHeightPx(
     sourceStyle.lineHeight,
@@ -192,8 +188,8 @@ export const measureTextOuterSize = ({
 
   if (widthMode === 'wrap') {
     const resolvedOuterMinWidth = Math.max(
-      TEXT_LAYOUT_MIN_WIDTH,
-      Math.ceil(minWidth ?? TEXT_LAYOUT_MIN_WIDTH)
+      nodeApi.text.layoutMinWidth,
+      Math.ceil(minWidth ?? nodeApi.text.layoutMinWidth)
     )
     const resolvedOuterMaxWidth = Math.max(
       resolvedOuterMinWidth,
@@ -207,7 +203,7 @@ export const measureTextOuterSize = ({
       )
     )
     const resolvedWrapWidth = frame
-      ? resolveTextContentBox({
+      ? nodeApi.text.contentBox({
           ...frame,
           width: resolvedOuterWrapWidth,
           height: verticalInset + 1
@@ -235,12 +231,12 @@ export const measureTextOuterSize = ({
   }
 
   const resolvedOuterMinWidth = Math.max(
-    TEXT_AUTO_MIN_WIDTH,
-    Math.ceil(minWidth ?? TEXT_AUTO_MIN_WIDTH)
+    nodeApi.text.autoMinWidth,
+    Math.ceil(minWidth ?? nodeApi.text.autoMinWidth)
   )
   const resolvedOuterMaxWidth = Math.max(
     resolvedOuterMinWidth,
-    Math.ceil(maxWidth ?? TEXT_AUTO_MAX_WIDTH)
+    Math.ceil(maxWidth ?? nodeApi.text.autoMaxWidth)
   )
   const resolvedMinWidth = Math.max(resolvedOuterMinWidth - horizontalInset, 1)
   const resolvedMaxWidth = Math.max(resolvedOuterMaxWidth - horizontalInset, resolvedMinWidth)

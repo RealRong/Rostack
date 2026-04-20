@@ -1,17 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import {
-  addChild,
-  createMindmap,
-  createBlankMindmapTemplate,
-  instantiateMindmapTemplate,
-  insertNode,
-  layoutMindmap,
-  layoutMindmapTidy,
-  moveSubtree,
-  patchMindmap,
-  removeSubtree
-} from '@whiteboard/core/mindmap'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 
 test('mindmap commands mutate the authored tree directly', () => {
   let nodeSeq = 1
@@ -19,11 +8,11 @@ test('mindmap commands mutate the authored tree directly', () => {
     nodeId: () => `node_${nodeSeq++}`
   }
 
-  const tree = createMindmap({}, { idGenerator })
+  const tree = mindmapApi.tree.create({}, { idGenerator })
   assert.equal(tree.rootNodeId, 'node_1')
   assert.deepEqual(tree.children[tree.rootNodeId], [])
 
-  const addRight = addChild(
+  const addRight = mindmapApi.command.addChild(
     tree,
     tree.rootNodeId,
     { kind: 'text', text: 'child-1' },
@@ -31,7 +20,7 @@ test('mindmap commands mutate the authored tree directly', () => {
   )
   assert.ok(addRight.ok)
 
-  const addLeft = addChild(
+  const addLeft = mindmapApi.command.addChild(
     addRight.data.tree,
     tree.rootNodeId,
     { kind: 'text', text: 'child-2' },
@@ -44,7 +33,7 @@ test('mindmap commands mutate the authored tree directly', () => {
   assert.equal(tree2.nodes[rightChildId]?.side, 'right')
   assert.equal(tree2.nodes[leftChildId]?.side, 'left')
 
-  const move = moveSubtree(tree2, {
+  const move = mindmapApi.command.moveSubtree(tree2, {
     nodeId: leftChildId,
     parentId: rightChildId
   })
@@ -52,7 +41,7 @@ test('mindmap commands mutate the authored tree directly', () => {
   assert.equal(move.data.tree.nodes[leftChildId]?.parentId, rightChildId)
   assert.equal(move.data.tree.nodes[leftChildId]?.side, undefined)
 
-  const removed = removeSubtree(move.data.tree, {
+  const removed = mindmapApi.command.removeSubtree(move.data.tree, {
     nodeId: rightChildId
   })
   assert.ok(removed.ok)
@@ -65,8 +54,8 @@ test('mindmap layout outputs coordinates for authored nodes', () => {
   const idGenerator = {
     nodeId: () => `node_${nodeSeq++}`
   }
-  const tree = createMindmap({}, { idGenerator })
-  const add = addChild(
+  const tree = mindmapApi.tree.create({}, { idGenerator })
+  const add = mindmapApi.command.addChild(
     tree,
     tree.rootNodeId,
     { kind: 'text', text: 'child' },
@@ -76,8 +65,8 @@ test('mindmap layout outputs coordinates for authored nodes', () => {
   const tree1 = add.data.tree
 
   const getNodeSize = () => ({ width: 120, height: 30 })
-  const layout = layoutMindmap(tree1, getNodeSize)
-  const tidy = layoutMindmapTidy(tree1, getNodeSize)
+  const layout = mindmapApi.layout.classic(tree1, getNodeSize)
+  const tidy = mindmapApi.layout.tidy(tree1, getNodeSize)
 
   assert.ok(layout.node[tree1.rootNodeId])
   assert.ok(tidy.node[tree1.rootNodeId])
@@ -86,8 +75,8 @@ test('mindmap layout outputs coordinates for authored nodes', () => {
 })
 
 test('mindmap patch only updates layout authored data', () => {
-  const tree = createMindmap()
-  const result = patchMindmap(tree, {
+  const tree = mindmapApi.tree.create()
+  const result = mindmapApi.command.patchTree(tree, {
     layout: {
       mode: 'tidy',
       hGap: 180
@@ -108,8 +97,8 @@ test('mindmap insertNode inserts a new parent in the authored tree', () => {
     nodeId: () => `node_${nodeSeq++}`
   }
 
-  const tree = createMindmap({}, { idGenerator })
-  const childResult = addChild(
+  const tree = mindmapApi.tree.create({}, { idGenerator })
+  const childResult = mindmapApi.command.addChild(
     tree,
     tree.rootNodeId,
     { kind: 'text', text: 'child' },
@@ -117,7 +106,7 @@ test('mindmap insertNode inserts a new parent in the authored tree', () => {
   )
   assert.ok(childResult.ok)
 
-  const wrapResult = insertNode(
+  const wrapResult = mindmapApi.command.insertNode(
     childResult.data.tree,
     {
       kind: 'parent',
@@ -141,8 +130,8 @@ test('mindmap insertNode inserts a new parent in the authored tree', () => {
 
 test('instantiateMindmapTemplate produces root and child node templates for owned nodes', () => {
   let nodeSeq = 1
-  const result = instantiateMindmapTemplate({
-    template: createBlankMindmapTemplate(),
+  const result = mindmapApi.template.instantiate({
+    template: mindmapApi.template.createBlank(),
     rootId: 'node_root',
     createNodeId: () => `node_${++nodeSeq}`
   })

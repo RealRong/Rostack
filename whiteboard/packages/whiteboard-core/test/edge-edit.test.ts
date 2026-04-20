@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import {
-  createRoutePatchFromPathPoints,
-  moveElbowRouteSegment,
-  moveElbowRouteSegmentPoints,
-  resolveEdgeRouteHandleTarget
-} from '@whiteboard/core/edge'
-import { normalizePolylinePoints } from '@whiteboard/core/geometry'
+import { edge as edgeApi } from '@whiteboard/core/edge'
+import { geometry } from '@whiteboard/core/geometry'
 
 const createEdge = (overrides = {}) => ({
   id: 'edge_1',
@@ -27,7 +22,7 @@ const createEdge = (overrides = {}) => ({
 
 test('normalizePolylinePoints 会去重并移除正交共线中点', () => {
   assert.deepEqual(
-    normalizePolylinePoints([
+    geometry.polyline.normalize([
       { x: 0, y: 0 },
       { x: 0, y: 0 },
       { x: 0, y: 40 },
@@ -61,7 +56,7 @@ test('resolveEdgeRouteHandleTarget 解析 anchor 与 segment handle', () => {
   ]
 
   assert.deepEqual(
-    resolveEdgeRouteHandleTarget({
+    edgeApi.edit.routeHandleTarget({
       edgeId: 'edge_1',
       handles,
       pick: {
@@ -77,7 +72,7 @@ test('resolveEdgeRouteHandleTarget 解析 anchor 与 segment handle', () => {
   )
 
   assert.deepEqual(
-    resolveEdgeRouteHandleTarget({
+    edgeApi.edit.routeHandleTarget({
       edgeId: 'edge_1',
       handles,
       pick: {
@@ -98,7 +93,7 @@ test('resolveEdgeRouteHandleTarget 解析 anchor 与 segment handle', () => {
 
 test('createRoutePatchFromPathPoints 会把无中间 route 的 path 归一成 auto route', () => {
   assert.deepEqual(
-    createRoutePatchFromPathPoints(
+    edgeApi.edit.routePatchFromPathPoints(
       createEdge(),
       [
         { x: 0, y: 0 },
@@ -116,7 +111,7 @@ test('createRoutePatchFromPathPoints 会把无中间 route 的 path 归一成 au
 
 test('moveElbowRouteSegmentPoints 会把两点 path 扩展为可编辑折线', () => {
   assert.deepEqual(
-    moveElbowRouteSegmentPoints({
+    edgeApi.edit.moveElbowRouteSegmentPoints({
       pathPoints: [
         { x: 0, y: 0 },
         { x: 100, y: 0 }
@@ -136,7 +131,7 @@ test('moveElbowRouteSegmentPoints 会把两点 path 扩展为可编辑折线', (
 
 test('moveElbowRouteSegment 会把拖拽后的 elbow segment 转成 manual route patch', () => {
   assert.deepEqual(
-    moveElbowRouteSegment({
+    edgeApi.edit.moveElbowRouteSegment({
       edge: createEdge({
         route: {
           kind: 'manual',

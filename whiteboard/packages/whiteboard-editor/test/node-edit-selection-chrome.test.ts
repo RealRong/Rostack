@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import { createLocalEngineHistory } from '@whiteboard/history'
-import { createEditor } from '../src'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { history as historyApi } from '@whiteboard/history'
+import { editor as editorApi } from '../src'
 import type { NodeRegistry } from '../src'
 
 const registry: NodeRegistry = {
@@ -72,7 +72,7 @@ const registry: NodeRegistry = {
 }
 
 const createTextEditor = () => {
-  const document = createDocument('doc_node_edit_selection_chrome')
+  const document = documentApi.create('doc_node_edit_selection_chrome')
   document.nodes['text-1'] = {
     id: 'text-1',
     type: 'text',
@@ -87,13 +87,13 @@ const createTextEditor = () => {
     id: 'text-1'
   }]
 
-  const engine = createEngine({
+  const engine = engineApi.create({
     document
   })
 
-  return createEditor({
+  return editorApi.create({
     engine,
-    history: createLocalEngineHistory(engine),
+    history: historyApi.local.create(engine),
     initialTool: {
       type: 'select'
     },
@@ -106,7 +106,7 @@ const createTextEditor = () => {
 }
 
 const createMindmapEditor = () => {
-  const document = createDocument('doc_mindmap_root_edit_selection_chrome')
+  const document = documentApi.create('doc_mindmap_root_edit_selection_chrome')
   document.nodes['mind-1'] = {
     id: 'mind-1',
     type: 'mindmap',
@@ -149,13 +149,13 @@ const createMindmapEditor = () => {
     id: 'mind-1'
   }]
 
-  const engine = createEngine({
+  const engine = engineApi.create({
     document
   })
 
-  return createEditor({
+  return editorApi.create({
     engine,
-    history: createLocalEngineHistory(engine),
+    history: historyApi.local.create(engine),
     initialTool: {
       type: 'select'
     },
@@ -168,7 +168,7 @@ const createMindmapEditor = () => {
 }
 
 const createEdgeEditor = () => {
-  const document = createDocument('doc_edge_label_toolbar_hidden')
+  const document = documentApi.create('doc_edge_label_toolbar_hidden')
   document.nodes['node-1'] = {
     id: 'node-1',
     type: 'shape',
@@ -212,13 +212,13 @@ const createEdgeEditor = () => {
     }
   ]
 
-  const engine = createEngine({
+  const engine = engineApi.create({
     document
   })
 
-  return createEditor({
+  return editorApi.create({
     engine,
-    history: createLocalEngineHistory(engine),
+    history: historyApi.local.create(engine),
     initialTool: {
       type: 'select'
     },

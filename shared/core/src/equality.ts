@@ -1,3 +1,7 @@
+import {
+  isPlainObject
+} from './json'
+
 export type Equality<T> = (left: T, right: T) => boolean
 
 type XYPointLike = {
@@ -24,14 +28,6 @@ type BoxTupleLike = {
   width?: number
   height?: number
 }
-
-const isPlainObject = (
-  value: unknown
-): value is Record<string, unknown> => (
-  typeof value === 'object'
-  && value !== null
-  && !Array.isArray(value)
-)
 
 export const sameValue = Object.is
 

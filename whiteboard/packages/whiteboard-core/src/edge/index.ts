@@ -1,6 +1,4 @@
-import {
-  getAnchorFromPoint
-} from '@whiteboard/core/edge/anchor'
+import { getAnchorFromPoint } from '@whiteboard/core/edge/anchor'
 import {
   buildEdgeCreateOperation,
   clearRoute,
@@ -12,30 +10,48 @@ import {
   setRoutePoints
 } from '@whiteboard/core/edge/commands'
 import {
+  DEFAULT_EDGE_ANCHOR_OFFSET,
   resolveAnchorFromPoint,
   resolveEdgeActivationPaddingWorld,
+  resolveEdgeConnectEvaluation,
+  resolveEdgeConnectPreview,
   resolveEdgeConnectQueryRect,
   resolveEdgeConnectTarget,
   resolveEdgeConnectThresholdWorld,
-  resolveEdgeHandleSnapWorld
+  resolveEdgeHandleSnapWorld,
+  resolveReconnectDraftEnd,
+  setEdgeConnectTarget,
+  startEdgeCreate,
+  startEdgeReconnect,
+  toEdgeConnectCommit,
+  toEdgeConnectPatch,
+  toEdgeDraftEnd
 } from '@whiteboard/core/edge/connect'
+import { createEdgeDuplicateInput } from '@whiteboard/core/edge/duplicate'
 import {
-  duplicateEdgeWithMap
-} from '@whiteboard/core/edge/duplicate'
+  areRoutePointsEqual,
+  createRoutePatchFromPathPoints,
+  moveElbowRouteSegment,
+  moveElbowRouteSegmentPoints,
+  resolveEdgeRouteHandleTarget
+} from '@whiteboard/core/edge/edit'
 import {
-  resolveEdgeEnds
-} from '@whiteboard/core/edge/endpoints'
-import {
-  isEdgePatchEqual,
-  applyEdgePatch
-} from '@whiteboard/core/edge/patch'
+  sameEdgeAnchor,
+  sameEdgeEnd,
+  sameEdgeLabel,
+  sameEdgeLabels,
+  sameEdgeRoute,
+  sameResolvedEdgeEnd
+} from '@whiteboard/core/edge/equality'
+import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 import {
   isManualEdgeRoute,
   isNodeEdgeEnd,
   isPointEdgeEnd
 } from '@whiteboard/core/edge/guards'
 import {
-  getEdgePathBounds
+  getEdgePathBounds,
+  matchEdgeRect
 } from '@whiteboard/core/edge/hitTest'
 import {
   EDGE_LABEL_CENTER_TOLERANCE,
@@ -44,16 +60,27 @@ import {
   EDGE_LABEL_LINE_HEIGHT,
   EDGE_LABEL_RAIL_OFFSET,
   EDGE_LABEL_TANGENT_SIDE_GAP,
+  projectPointToEdgeLabelPlacement,
   readEdgeLabelSideGap,
   resolveEdgeLabelPlacement,
   resolveEdgeLabelPlacementSize
 } from '@whiteboard/core/edge/label'
-import { buildEdgeLabelMaskPath } from '@whiteboard/core/edge/labelMask'
+import {
+  buildEdgeLabelMaskRect,
+  readEdgeLabelMaskTransform
+} from '@whiteboard/core/edge/labelMask'
 import { getEdgePath } from '@whiteboard/core/edge/path'
-import { collectConnectedEdges } from '@whiteboard/core/edge/relations'
+import {
+  applyEdgePatch,
+  isEdgePatchEqual
+} from '@whiteboard/core/edge/patch'
+import {
+  collectRelatedEdgeIds,
+  createEdgeRelations
+} from '@whiteboard/core/edge/relations'
 import { resolveEdgePathFromRects } from '@whiteboard/core/edge/resolvedPath'
 import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
-import { getSegmentBounds } from '@whiteboard/core/edge/segment'
+import { getNearestEdgeInsertIndex } from '@whiteboard/core/edge/segment'
 import { resolveEdgeView } from '@whiteboard/core/edge/view'
 
 export const edge = {
@@ -77,6 +104,7 @@ export const edge = {
     fromRects: resolveEdgePathFromRects
   },
   anchor: {
+    snap: getAnchorFromPoint,
     fromPoint: getAnchorFromPoint,
     resolveFromPoint: resolveAnchorFromPoint
   },
@@ -87,34 +115,58 @@ export const edge = {
     resolve: resolveEdgeView
   },
   hit: {
+    test: matchEdgeRect,
     pathBounds: getEdgePathBounds
   },
   relation: {
-    collectConnected: collectConnectedEdges
+    collect: collectRelatedEdgeIds,
+    create: createEdgeRelations
   },
   segment: {
-    bounds: getSegmentBounds
+    insertIndex: getNearestEdgeInsertIndex
   },
   duplicate: {
-    withMap: duplicateEdgeWithMap
+    duplicate: createEdgeDuplicateInput
   },
   command: {
     buildCreate: buildEdgeCreateOperation
   },
   edit: {
     move: moveEdge,
-    moveRoute: moveEdgeRoute
+    moveRoute: moveEdgeRoute,
+    routeHandleTarget: resolveEdgeRouteHandleTarget,
+    routePatchFromPathPoints: createRoutePatchFromPathPoints,
+    moveElbowRouteSegmentPoints,
+    moveElbowRouteSegment,
+    areRoutePointsEqual
   },
   connect: {
+    defaultAnchorOffset: DEFAULT_EDGE_ANCHOR_OFFSET,
+    resolve: resolveEdgeConnectTarget,
+    evaluate: resolveEdgeConnectEvaluation,
+    preview: resolveEdgeConnectPreview,
     target: resolveEdgeConnectTarget,
     thresholdWorld: resolveEdgeConnectThresholdWorld,
     handleSnapWorld: resolveEdgeHandleSnapWorld,
     activationPaddingWorld: resolveEdgeActivationPaddingWorld,
-    queryRect: resolveEdgeConnectQueryRect
+    queryRect: resolveEdgeConnectQueryRect,
+    resolveReconnectDraftEnd,
+    setTarget: setEdgeConnectTarget,
+    startCreate: startEdgeCreate,
+    startReconnect: startEdgeReconnect,
+    toCommit: toEdgeConnectCommit,
+    toDraftEnd: toEdgeDraftEnd,
+    toPatch: toEdgeConnectPatch
   },
   patch: {
     apply: applyEdgePatch,
     equal: isEdgePatchEqual
+  },
+  equal: {
+    anchor: sameEdgeAnchor,
+    sameEnd: sameEdgeEnd,
+    resolvedEnd: sameResolvedEdgeEnd,
+    route: sameEdgeRoute
   },
   label: {
     railOffset: EDGE_LABEL_RAIL_OFFSET,
@@ -126,7 +178,11 @@ export const edge = {
     sideGap: readEdgeLabelSideGap,
     placementSize: resolveEdgeLabelPlacementSize,
     placement: resolveEdgeLabelPlacement,
-    maskPath: buildEdgeLabelMaskPath
+    projectPoint: projectPointToEdgeLabelPlacement,
+    mask: buildEdgeLabelMaskRect,
+    maskTransform: readEdgeLabelMaskTransform,
+    equal: sameEdgeLabel,
+    equalMany: sameEdgeLabels
   }
 } as const
 
@@ -157,3 +213,11 @@ export type {
   ResolvedEdgeEnds,
   ResolvedEdgePathFromRects
 } from '@whiteboard/core/types/edge'
+export type {
+  EdgeConnectCommit,
+  EdgeConnectPreview,
+  EdgeConnectState,
+  EdgeDraftEnd
+} from '@whiteboard/core/edge/connect'
+export type { EdgeRouteHandleTarget } from '@whiteboard/core/edge/edit'
+export type { EdgeLabelMaskRect } from '@whiteboard/core/edge/labelMask'

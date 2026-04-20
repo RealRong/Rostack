@@ -1,10 +1,5 @@
-import {
-  readShapeDescriptor,
-  readShapeKind
-} from '@whiteboard/core/node'
-import {
-  getWhiteboardShapeSpec
-} from '@whiteboard/product'
+import { node as nodeApi } from '@whiteboard/core/node'
+import { product } from '@whiteboard/product'
 import { useCallback, useRef, type CSSProperties } from 'react'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
@@ -41,8 +36,8 @@ const shapeSchema = createSchema('shape', 'Shape', [
 const readShapeColors = (
   props: NodeRenderProps
 ) => {
-  const kind = readShapeKind(props.node)
-  const spec = getWhiteboardShapeSpec(kind)
+  const kind = nodeApi.shape.kind(props.node)
+  const spec = product.node.shapes.getWhiteboardShapeSpec(kind)
 
   return {
     kind,
@@ -79,7 +74,7 @@ const ShapeLabel = ({
   textAlign,
   kind
 }: NodeRenderProps & {
-  kind: ReturnType<typeof readShapeKind>
+  kind: ReturnType<typeof nodeApi.shape.kind>
   color: string
   fontSize: number
   fontWeight: number
@@ -108,7 +103,7 @@ const ShapeLabel = ({
   }, [source, textSources])
 
   const shellStyle: CSSProperties = {
-    ...readShapeDescriptor(kind).labelInset,
+    ...nodeApi.shape.descriptor(kind).labelInset,
     justifyContent:
       textAlign === 'left'
         ? 'flex-start'

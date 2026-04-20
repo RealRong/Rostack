@@ -1,8 +1,5 @@
-import { getSegmentBounds } from '@whiteboard/core/geometry'
-import {
-  resolveDrawPoints,
-  resolveDrawStroke
-} from '@whiteboard/core/node'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   NodeId,
   NodeInput,
@@ -102,7 +99,7 @@ const appendStrokeSample = (
 const resolveStrokePoints = (
   points: readonly Point[],
   zoom: number
-) => resolveDrawPoints({
+) => nodeApi.draw.resolvePoints({
   points,
   zoom
 })
@@ -176,7 +173,7 @@ const commitDrawStroke = (
     return undefined
   }
 
-  const stroke = resolveDrawStroke({
+  const stroke = nodeApi.draw.resolveStroke({
     points: resolveStrokePoints(state.points, input.zoom),
     width: state.style.width
   })
@@ -219,7 +216,7 @@ const collectErasePoint = (
     / Math.max(ctx.query.viewport.get().zoom, ZOOM_EPSILON)
   const nodeIds = queryDrawNodeIdsInRect(
     ctx,
-    getSegmentBounds(state.lastWorld, world, halfWorld)
+    geometryApi.segment.bounds(state.lastWorld, world, halfWorld)
   )
   const knownIds = new Set(state.ids)
   const nextIds = [...state.ids]

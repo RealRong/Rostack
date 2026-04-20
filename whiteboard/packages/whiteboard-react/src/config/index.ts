@@ -4,7 +4,7 @@ import {
   type BoardConfig as EngineBoardConfig
 } from '@whiteboard/core/config'
 import type { Viewport } from '@whiteboard/core/types'
-import { DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG } from '@whiteboard/history'
+import { history } from '@whiteboard/history'
 import type { WhiteboardOptions } from '@whiteboard/react/types/common/board'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 
@@ -30,7 +30,7 @@ const DEFAULT_CONFIG: ResolvedConfig = {
   },
   node: DEFAULT_BOARD_CONFIG.node,
   edge: DEFAULT_BOARD_CONFIG.edge,
-  history: DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG,
+  history: history.local.config.default,
   initialTool: { type: 'select' },
   shortcuts: undefined
 }

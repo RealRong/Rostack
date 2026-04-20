@@ -1,13 +1,9 @@
-import { rectFromPoints } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import {
-  applySelectionTarget,
-  isSelectionTargetEqual,
-  type SelectionTarget
-} from '@whiteboard/core/selection'
+import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import {
   createGesture
@@ -70,7 +66,7 @@ type MarqueeSelectionEvent =
 const createMarqueeRect = (
   start: Point,
   current: Point
-): Rect => rectFromPoints(start, current)
+): Rect => geometryApi.rect.fromPoints(start, current)
 
 const readMatchedSelection = (
   input: {
@@ -132,7 +128,7 @@ const toMarqueeSelectionState = (
     input.previous.startWorld,
     input.event.currentWorld
   )
-  const selection = applySelectionTarget(
+  const selection = selectionApi.target.apply(
     input.previous.base,
     input.event.matched,
     input.previous.mode
@@ -193,7 +189,7 @@ const syncMarqueeInteraction = (
   previous: MarqueeSelectionState,
   next: MarqueeSelectionState
 ) => {
-  if (!isSelectionTargetEqual(previous.selection, next.selection)) {
+  if (!selectionApi.target.equal(previous.selection, next.selection)) {
     ctx.actions.selection.replace(next.selection)
   }
 

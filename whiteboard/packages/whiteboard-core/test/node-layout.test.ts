@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import {
-  buildNodeDistributeOperations,
-  distributeNodes,
-  getNodeBoundsByNode,
-  type NodeLayoutEntry
-} from '@whiteboard/core/node'
+import { document as documentApi } from '@whiteboard/core/document'
+import { node as nodeApi, type NodeLayoutEntry } from '@whiteboard/core/node'
 import type { Node, Size } from '@whiteboard/core/types'
 
 const DEFAULT_SIZE: Size = {
@@ -57,7 +52,7 @@ test('distributeNodes orders ties by geometry instead of selection order', () =>
     }
   ]
 
-  const updates = distributeNodes(entries, 'horizontal')
+  const updates = nodeApi.layout.distribute(entries, 'horizontal')
   const updateById = new Map(updates.map((update) => [update.id, update] as const))
 
   assert.equal(updateById.get('upper')?.position.x, 100)
@@ -76,7 +71,7 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
     position: { x: 400, y: 0 }
   })
 
-  const doc = createDocument('doc_1')
+  const doc = documentApi.create('doc_1')
   doc.nodes[first.id] = first
   doc.nodes[middle.id] = middle
   doc.nodes[last.id] = last
@@ -86,7 +81,7 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
     { kind: 'node', id: last.id }
   ]
 
-  const result = buildNodeDistributeOperations({
+  const result = nodeApi.command.buildDistribute({
     ids: [first.id, middle.id, last.id],
     doc,
     nodeSize: DEFAULT_SIZE,
@@ -109,9 +104,9 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
     position: operation.value
   }
 
-  const firstBounds = getNodeBoundsByNode(first, DEFAULT_SIZE)
-  const middleBounds = getNodeBoundsByNode(nextMiddle, DEFAULT_SIZE)
-  const lastBounds = getNodeBoundsByNode(last, DEFAULT_SIZE)
+  const firstBounds = nodeApi.geometry.boundsByNode(first, DEFAULT_SIZE)
+  const middleBounds = nodeApi.geometry.boundsByNode(nextMiddle, DEFAULT_SIZE)
+  const lastBounds = nodeApi.geometry.boundsByNode(last, DEFAULT_SIZE)
 
   assert.ok(firstBounds)
   assert.ok(middleBounds)

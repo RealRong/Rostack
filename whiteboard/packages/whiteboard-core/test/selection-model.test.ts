@@ -1,13 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import {
-  deriveSelectionAffordance,
-  deriveSelectionSummary
-} from '@whiteboard/core/selection'
-import {
-  isCornerResizeDirection,
-  resolveNodeTransformBehavior
-} from '@whiteboard/core/node'
+import { selection } from '@whiteboard/core/selection'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   Edge,
   Node,
@@ -60,7 +54,7 @@ test('selection summary aggregates node canonical rects for node selections', ()
     ['second', { x: 200, y: 90, width: 100, height: 50 }]
   ])
 
-  const summary = deriveSelectionSummary({
+  const summary = selection.derive.summary({
     target: {
       nodeIds: ['first', 'second'],
       edgeIds: []
@@ -69,7 +63,7 @@ test('selection summary aggregates node canonical rects for node selections', ()
     edges: [],
     readNodeRect: (node) => rectById.get(node.id),
     readEdgeBounds: () => undefined,
-    resolveNodeTransformBehavior: (node) => resolveNodeTransformBehavior(node, {
+    resolveNodeTransformBehavior: (node) => nodeApi.transform.resolveBehavior(node, {
       role: 'content',
       resize: true
     })
@@ -90,7 +84,7 @@ test('mixed selections keep a single display box but disable resize handles', ()
   const node = createNode('node')
   const edge = createEdge('edge')
 
-  const summary = deriveSelectionSummary({
+  const summary = selection.derive.summary({
     target: {
       nodeIds: ['node'],
       edgeIds: ['edge']
@@ -109,13 +103,13 @@ test('mixed selections keep a single display box but disable resize handles', ()
       width: 190,
       height: 140
     }),
-    resolveNodeTransformBehavior: (node) => resolveNodeTransformBehavior(node, {
+    resolveNodeTransformBehavior: (node) => nodeApi.transform.resolveBehavior(node, {
       role: 'content',
       resize: true
     })
   })
 
-  const affordance = deriveSelectionAffordance({
+  const affordance = selection.derive.affordance({
     selection: summary,
     resolveNodeRole: () => 'content',
     resolveNodeTransformCapability: () => ({
@@ -142,7 +136,7 @@ test('mixed text and shape multi-selection keeps corner scale handles only', () 
   })
   const shapeNode = createNode('shape')
 
-  const summary = deriveSelectionSummary({
+  const summary = selection.derive.summary({
     target: {
       nodeIds: ['text', 'shape'],
       edgeIds: []
@@ -153,7 +147,7 @@ test('mixed text and shape multi-selection keeps corner scale handles only', () 
       ? { x: 0, y: 0, width: 100, height: 40 }
       : { x: 180, y: 20, width: 120, height: 80 },
     readEdgeBounds: () => undefined,
-    resolveNodeTransformBehavior: (node) => resolveNodeTransformBehavior(node, {
+    resolveNodeTransformBehavior: (node) => nodeApi.transform.resolveBehavior(node, {
       role: 'content',
       resize: true
     })
@@ -174,7 +168,7 @@ test('pure text multi-selection keeps corner scale and horizontal edge resize on
     type: 'text'
   })
 
-  const summary = deriveSelectionSummary({
+  const summary = selection.derive.summary({
     target: {
       nodeIds: ['text-1', 'text-2'],
       edgeIds: []
@@ -185,7 +179,7 @@ test('pure text multi-selection keeps corner scale and horizontal edge resize on
       ? { x: 0, y: 0, width: 120, height: 48 }
       : { x: 180, y: 20, width: 140, height: 56 },
     readEdgeBounds: () => undefined,
-    resolveNodeTransformBehavior: (node) => resolveNodeTransformBehavior(node, {
+    resolveNodeTransformBehavior: (node) => nodeApi.transform.resolveBehavior(node, {
       role: 'content',
       resize: true
     })
@@ -195,10 +189,10 @@ test('pure text multi-selection keeps corner scale and horizontal edge resize on
     .filter((handle) => handle.visible)
 
   const visibleCornerHandles = visibleHandles
-    ?.filter((handle) => isCornerResizeDirection(handle.id))
+    ?.filter((handle) => nodeApi.transform.isCornerResizeDirection(handle.id))
     .map((handle) => handle.id)
   const visibleEdgeHandles = visibleHandles
-    ?.filter((handle) => !isCornerResizeDirection(handle.id))
+    ?.filter((handle) => !nodeApi.transform.isCornerResizeDirection(handle.id))
     .map((handle) => handle.id)
 
   assert.deepEqual(visibleCornerHandles, ['nw', 'ne', 'se', 'sw'])

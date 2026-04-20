@@ -1,4 +1,4 @@
-import { getNodeAnchor } from '@whiteboard/core/node'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeItem } from '@whiteboard/engine'
 import type { EdgeAnchor } from '@whiteboard/core/types'
 import { usePickRef } from '@whiteboard/react/runtime/hooks'
@@ -88,7 +88,7 @@ export const NodeConnectHandles = ({
       }}
     >
       {NODE_CONNECT_SIDES.map((side) => {
-        const point = getNodeAnchor(
+        const point = nodeApi.outline.anchor(
           node,
           localRect,
           {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { createDocument } from '@whiteboard/core/document'
-import { createEngine } from '@whiteboard/engine'
-import { createLocalEngineHistory } from '@whiteboard/history'
-import { createEditor } from '../src'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { history as historyApi } from '@whiteboard/history'
+import { editor as editorApi } from '../src'
 import type { NodeRegistry } from '../src'
 
 const registry: NodeRegistry = {
@@ -24,7 +24,7 @@ const registry: NodeRegistry = {
 }
 
 const createEdgeDocument = () => {
-  const document = createDocument('doc_edge_selected_chrome')
+  const document = documentApi.create('doc_edge_selected_chrome')
   document.nodes['node-1'] = {
     id: 'node-1',
     type: 'shape',
@@ -135,13 +135,13 @@ const createEdgeDocument = () => {
 }
 
 const createEdgeEditor = () => {
-  const engine = createEngine({
+  const engine = engineApi.create({
     document: createEdgeDocument()
   })
 
-  return createEditor({
+  return editorApi.create({
     engine,
-    history: createLocalEngineHistory(engine),
+    history: historyApi.local.create(engine),
     initialTool: {
       type: 'select'
     },

@@ -1,23 +1,24 @@
 import type {
-  FlatOption,
-  MultiSelectField,
   CustomField,
   FieldOption,
+  MultiSelectField,
   SelectField,
-  StatusField,
-  StatusOption
+  StatusField
 } from '@dataview/core/contracts'
 import {
-  hasFieldOptions
+  hasFieldOptions,
+  getKindSpec,
+  type FieldOptionSpec,
+  type FieldOptionWrite,
+  type OptionField
 } from '@dataview/core/field/kind/spec'
 import {
   createFieldKey
 } from '@dataview/core/field/schema'
-import {
-  getFieldOptionSpec
-} from '@dataview/core/field/options/spec'
 
-const normalizeOptionToken = (value: string) => value.trim().toLowerCase()
+const normalizeOptionToken = (
+  value: string
+) => value.trim().toLowerCase()
 
 const findFieldOptionByName = (
   options: readonly FieldOption[],
@@ -155,7 +156,7 @@ const replaceFieldOptions = (
           id: option.id,
           name: option.name,
           color: option.color ?? null
-        })) as FlatOption[]
+        }))
       }
     case 'multiSelect':
       return {
@@ -163,7 +164,7 @@ const replaceFieldOptions = (
           id: option.id,
           name: option.name,
           color: option.color ?? null
-        })) as FlatOption[]
+        }))
       }
     case 'status':
       return {
@@ -174,7 +175,7 @@ const replaceFieldOptions = (
                 name: option.name,
                 color: option.color ?? null,
                 category: option.category
-              } satisfies StatusOption]
+              }]
             : []
         ))
       }
@@ -182,11 +183,16 @@ const replaceFieldOptions = (
       return {}
   }
 }
+
+const getFieldOptionSpec = (
+  field: OptionField
+): FieldOptionSpec => getKindSpec(field.kind).option!
+
 export type {
   FieldOptionSpec,
   FieldOptionWrite,
   OptionField
-} from '@dataview/core/field/options/spec'
+} from '@dataview/core/field/kind/spec'
 
 export const fieldOption = {
   spec: {

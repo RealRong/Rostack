@@ -1,12 +1,8 @@
 import { PickerGridButton, PickerSection } from '@shared/ui'
-import {
-  WHITEBOARD_SHAPE_MENU_SECTIONS,
-  readWhiteboardShapePreviewFill
-} from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 import {
   ShapeGlyph
 } from '@whiteboard/react/features/node'
-import { readWhiteboardShapePresetKind } from '@whiteboard/product/insert/catalog'
 
 export const ShapeMenu = ({
   value,
@@ -15,11 +11,11 @@ export const ShapeMenu = ({
   value?: string
   onChange: (value: string) => void
 }) => {
-  const activeKind = readWhiteboardShapePresetKind(value)
+  const activeKind = product.insert.catalog.readWhiteboardShapePresetKind(value)
 
   return (
     <>
-      {WHITEBOARD_SHAPE_MENU_SECTIONS.map((section) => (
+      {product.node.shapes.WHITEBOARD_SHAPE_MENU_SECTIONS.map((section) => (
         <PickerSection key={section.key} title={section.title}>
           <div className="grid grid-cols-5 gap-2">
             {section.items.map((item) => {
@@ -42,7 +38,7 @@ export const ShapeMenu = ({
                       width={32}
                       height={24}
                       className="block h-6 w-8 overflow-visible"
-                      fill={readWhiteboardShapePreviewFill(item.kind)}
+                      fill={product.node.shapes.readWhiteboardShapePreviewFill(item.kind)}
                       stroke="currentColor"
                       strokeWidth={4}
                     />

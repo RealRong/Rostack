@@ -1,5 +1,5 @@
 import type { EdgeAnchor, Node, Point, Rect } from '@whiteboard/core/types'
-import { isPointEqual } from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import {
   getAutoNodeAnchor,
   projectNodeAnchor

@@ -12,7 +12,7 @@ import {
   WHITEBOARD_PALETTE_SWATCH_SHAPE,
   WHITEBOARD_STROKE_COLOR_OPTIONS
 } from '@whiteboard/react/features/palette'
-import { WHITEBOARD_STROKE_STYLE_OPTIONS } from '@whiteboard/product'
+import { product } from '@whiteboard/product'
 
 const normalizeDash = (
   value: readonly number[] | undefined
@@ -45,7 +45,7 @@ export const BorderPanel = ({
     {showStyle ? (
       <PanelSection title="Style">
         <div className="flex items-center gap-2">
-          {WHITEBOARD_STROKE_STYLE_OPTIONS.map((option) => (
+          {product.stroke.options.map((option) => (
             <SegmentedButton
               key={option.key}
               active={isSameOptionalNumberArray(

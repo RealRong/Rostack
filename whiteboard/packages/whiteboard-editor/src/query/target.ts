@@ -1,4 +1,4 @@
-import { getTargetBounds, type SelectionTarget } from '@whiteboard/core/selection'
+import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Edge, EdgeId, Node, NodeId, Rect } from '@whiteboard/core/types'
 import { read } from '@shared/core'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
@@ -18,7 +18,7 @@ const resolveTargetBounds = ({
   target: SelectionTarget
   readNodeBounds: (nodeId: NodeId) => Rect | undefined
   readEdgeBounds: (edgeId: EdgeId) => Rect | undefined
-}): Rect | undefined => selection.bounds.get({
+}): Rect | undefined => selectionApi.bounds.get({
   target,
   readNodeBounds,
   readEdgeBounds

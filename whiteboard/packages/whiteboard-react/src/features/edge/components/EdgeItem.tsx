@@ -8,12 +8,9 @@ import {
   useMemo,
   useState
 } from 'react'
-import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/product/palette'
+import { product } from '@whiteboard/product'
 import type { EdgeId } from '@whiteboard/core/types'
-import {
-  readEdgeLabelMaskTransform,
-  type EdgeLabelMaskRect
-} from '@whiteboard/core/edge'
+import { edge as edgeApi, type EdgeLabelMaskRect } from '@whiteboard/core/edge'
 import {
   usePickRef,
   useResolvedConfig
@@ -142,7 +139,7 @@ const EdgeLabelMaskHole = ({
     rx={label.maskRect.radius}
     ry={label.maskRect.radius}
     fill="black"
-    transform={readEdgeLabelMaskTransform(label.maskRect as Pick<EdgeLabelMaskRect, 'angle' | 'center'>)}
+    transform={edgeApi.label.maskTransform(label.maskRect as Pick<EdgeLabelMaskRect, 'angle' | 'center'>)}
   />
 )
 
@@ -175,7 +172,7 @@ const EdgeItemBase = ({
     const edge = entry?.edge
     const baseStroke = resolvePaletteColorOr(
       edge?.style?.color,
-      WHITEBOARD_LINE_DEFAULT_COLOR
+      product.palette.defaults.lineColor
     ) ?? 'currentColor'
     const stroke = baseStroke
     const baseWidth = edge?.style?.width ?? 2

@@ -6,14 +6,7 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import {
-  clamp,
-  getAnchorPoint,
-  getAABBFromPoints,
-  getRectCenter,
-  getRotatedCorners,
-  rotatePoint
-} from '@whiteboard/core/geometry'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import {
   readShapeDescriptor,
   readShapeKind,

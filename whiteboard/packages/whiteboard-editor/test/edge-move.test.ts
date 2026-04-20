@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { applyEdgePatch } from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
 import type { InteractionDeps } from '../src/input/core/context'
 import { createEdgeMoveSession, stepEdgeMove, type EdgeMoveState } from '../src/input/features/edge/move'
@@ -42,7 +42,7 @@ describe('stepEdgeMove', () => {
 
     expect(first.patch).toBeDefined()
     expect(second.patch).toBeDefined()
-    expect(applyEdgePatch(edge, second.patch)).toMatchObject({
+    expect(edgeApi.patch.apply(edge, second.patch)).toMatchObject({
       source: {
         kind: 'point',
         point: { x: 25, y: 45 }

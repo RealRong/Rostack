@@ -1,4 +1,4 @@
-import { assertDocument } from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import { META, sync } from '@whiteboard/core/spec/operation'
 import { assertHistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
@@ -79,7 +79,7 @@ const assertSharedCheckpoint = (
 
   return {
     id: value.id,
-    doc: assertDocument(value.doc as import('@whiteboard/core/types').Document)
+    doc: documentApi.assert(value.doc as import('@whiteboard/core/types').Document)
   }
 }
 

@@ -1,15 +1,5 @@
-import {
-  resolveEdgeConnectEvaluation,
-  resolveEdgeConnectQueryRect,
-  type EdgeConnectCandidate,
-  type EdgeConnectConfig,
-  type EdgeConnectEvaluation
-} from '@whiteboard/core/edge'
-import {
-  computeResizeSnap,
-  computeSnap,
-  expandRectByThreshold,
-  resolveSnapThresholdWorld,
+import { edge as edgeApi, type EdgeConnectCandidate, type EdgeConnectConfig, type EdgeConnectEvaluation } from '@whiteboard/core/edge'
+import { node as nodeApi,
   type Guide,
   type HorizontalResizeEdge,
   type ResizeUpdate,
@@ -106,7 +96,7 @@ const createNodeSnapRuntime = ({
   readZoom: () => number
   query: (rect: Rect) => readonly SnapCandidate[]
 }): NodeSnapRuntime => {
-  const readThreshold = () => resolveSnapThresholdWorld(
+  const readThreshold = () => nodeApi.snap.thresholdWorld(
     config,
     readZoom()
   )
@@ -127,10 +117,10 @@ const createNodeSnapRuntime = ({
 
       const threshold = readThreshold()
       const allowCrossSnap = modifiers?.alt ?? false
-      const result = computeSnap(
+      const result = nodeApi.snap.compute(
         rect,
         filterCandidates(
-          query(expandRectByThreshold(rect, threshold)),
+          query(nodeApi.snap.expandRectByThreshold(rect, threshold)),
           excludeIds
         ),
         threshold,
@@ -165,10 +155,10 @@ const createNodeSnapRuntime = ({
       }
 
       const threshold = readThreshold()
-      const result = computeResizeSnap({
+      const result = nodeApi.snap.computeResize({
         movingRect: rect,
         candidates: filterCandidates(
-          query(expandRectByThreshold(rect, threshold)),
+          query(nodeApi.snap.expandRectByThreshold(rect, threshold)),
           excludeIds
         ),
         threshold,
@@ -204,10 +194,10 @@ const createEdgeSnapRuntime = ({
     pointerWorld
   }) => {
     const zoom = readZoom()
-    return resolveEdgeConnectEvaluation({
+    return edgeApi.connect.evaluate({
       pointWorld: pointerWorld,
       candidates: query(
-        resolveEdgeConnectQueryRect(pointerWorld, zoom, config, nodeSize)
+        edgeApi.connect.queryRect(pointerWorld, zoom, config, nodeSize)
       ),
       zoom,
       config

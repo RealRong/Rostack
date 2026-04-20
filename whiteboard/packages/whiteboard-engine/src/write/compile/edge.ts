@@ -1,8 +1,4 @@
-import {
-  buildEdgeCreateOperation,
-  moveEdge,
-  sameEdgeEnd
-} from '@whiteboard/core/edge'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import { resolveLockDecision } from '@whiteboard/core/lock'
 import { isValueEqual } from '@whiteboard/core/value'
 import type {
@@ -269,7 +265,7 @@ const emitEdgeUpdateInputOps = (
 ) => {
   const fields = input.fields
 
-  if (fields?.source && !sameEdgeEnd(edge.source, fields.source)) {
+  if (fields?.source && !edgeApi.equal.sameEnd(edge.source, fields.source)) {
     ctx.tx.emit({
       type: 'edge.field.set',
       id: edge.id,
@@ -277,7 +273,7 @@ const emitEdgeUpdateInputOps = (
       value: fields.source
     })
   }
-  if (fields?.target && !sameEdgeEnd(edge.target, fields.target)) {
+  if (fields?.target && !edgeApi.equal.sameEnd(edge.target, fields.target)) {
     ctx.tx.emit({
       type: 'edge.field.set',
       id: edge.id,
@@ -479,7 +475,7 @@ export const compileEdgeCommand = (
 
   switch (command.type) {
     case 'edge.create': {
-      const built = buildEdgeCreateOperation({
+      const built = edgeApi.command.buildCreate({
         payload: command.input,
         doc: document,
         registries: ctx.registries,
@@ -542,7 +538,7 @@ export const compileEdgeCommand = (
 
       command.ids.forEach((edgeId) => {
         const edge = ctx.tx.read.edge.get(edgeId)
-        const patch = edge ? moveEdge(edge, command.delta) : undefined
+        const patch = edge ? edgeApi.edit.move(edge, command.delta) : undefined
         if (!edge || !patch) {
           return
         }

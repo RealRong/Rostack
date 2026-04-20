@@ -21,8 +21,6 @@ import {
 import type { TableLayout } from '@dataview/react/views/table/layout'
 import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
 import {
-  readTableLayoutState,
-  sameTableLayoutState,
   type TableLayoutState
 } from '@dataview/react/views/table/virtual/layoutState'
 import type { TableBlock } from '@dataview/react/views/table/virtual/types'
@@ -270,10 +268,7 @@ export const createTableVirtualRuntime = (options: {
   marqueeActiveStore: ReadStore<boolean>
   layout: TableLayout
 }): TableVirtualRuntime => {
-  const layoutStateStore = createDerivedStore<TableLayoutState | null>({
-    get: () => readTableLayoutState(options.activeSource),
-    isEqual: sameTableLayoutState
-  })
+  const layoutStateStore = options.activeSource.table.layout
   const layoutStore = createValueStore<TableVirtualLayoutSnapshot>({
     initial: EMPTY_LAYOUT_SNAPSHOT,
     isEqual: sameLayoutSnapshot

@@ -84,7 +84,12 @@ export const deriveViewRuntime = (input: {
   if (!input.capturePerf || !runResult.trace) {
     return {
       cache: runResult.cache,
-      snapshot: runResult.snapshot
+      snapshot: runResult.snapshot,
+      ...(runResult.delta
+        ? {
+            delta: runResult.delta
+          }
+        : {})
     }
   }
 
@@ -94,6 +99,11 @@ export const deriveViewRuntime = (input: {
   return {
     cache: runResult.cache,
     snapshot: runResult.snapshot,
+    ...(runResult.delta
+      ? {
+          delta: runResult.delta
+        }
+      : {}),
     trace: {
       view: runResult.trace,
       snapshot,

@@ -14,6 +14,9 @@ import type {
   SummaryState
 } from '@dataview/engine/contracts/internal'
 import {
+  sameOrder
+} from '@shared/core'
+import {
   computeCalculationFromState,
   readCalcFields
 } from '@dataview/engine/active/snapshot/summary/compute'
@@ -31,6 +34,9 @@ export const publishSummaries = (input: {
 }): ReadonlyMap<SectionKey, CalculationCollection> => {
   const calcFields = readCalcFields(input.view)
   const sectionKeys = [...input.summary.bySection.keys()]
+  const previousKeys = input.previous
+    ? [...input.previous.keys()]
+    : undefined
 
   if (!calcFields.length) {
     return buildEmptyPublishedSummaries(
@@ -43,6 +49,8 @@ export const publishSummaries = (input: {
   let sameAsPrevious = Boolean(
     input.previous
     && input.previous.size === input.summary.bySection.size
+    && previousKeys
+    && sameOrder(previousKeys, sectionKeys)
   )
 
   input.summary.bySection.forEach((states, sectionKey) => {

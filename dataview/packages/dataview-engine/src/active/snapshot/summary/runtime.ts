@@ -21,13 +21,11 @@ import {
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
-  QueryState,
   SectionState,
   SummaryDelta,
   SummaryState
 } from '@dataview/engine/contracts/internal'
 import type { SectionKey } from '@dataview/engine/contracts/public'
-import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
 import {
   hasCalculationChanges,
   hasMembershipChanges
@@ -37,15 +35,15 @@ import type {
 } from '@dataview/engine/active/shared/impact'
 import { publishSummaries } from '@dataview/engine/active/snapshot/summary/publish'
 import {
-  buildSummaryDelta,
-  syncSummaryState
+  deriveSummaryState
 } from '@dataview/engine/active/snapshot/summary/sync'
+import { now } from '@dataview/engine/runtime/clock'
 
 export {
   computeCalculationFromState
 } from '@dataview/engine/active/snapshot/summary/compute'
 export {
-  syncSummaryState
+  deriveSummaryState
 } from '@dataview/engine/active/snapshot/summary/sync'
 
 const resolveSummaryAction = (input: {
@@ -53,7 +51,7 @@ const resolveSummaryAction = (input: {
   previousViewId?: ViewId
   impact: ActiveImpact
   view: View
-  calcFields: ReadonlySet<FieldId>
+  calcFields: readonly FieldId[]
   previous?: SummaryState
   previousSections?: SectionState
   sections: SectionState
@@ -70,7 +68,7 @@ const resolveSummaryAction = (input: {
     return 'rebuild'
   }
 
-  if (!input.calcFields.size) {
+  if (!input.calcFields.length) {
     return sameOrder(input.previousSections.order, input.sections.order)
       ? 'reuse'
       : 'sync'
@@ -88,6 +86,10 @@ const resolveSummaryAction = (input: {
   }
 
   for (const fieldId of input.calcFields) {
+    if (input.impact.calculations?.byField.get(fieldId)?.rebuild) {
+      return 'rebuild'
+    }
+
     if (hasFieldSchemaAspect(commit, fieldId)) {
       return 'rebuild'
     }
@@ -115,7 +117,6 @@ export const runSummaryStage = (input: {
   previousViewId?: ViewId
   impact: ActiveImpact
   view: View
-  query: QueryState
   calcFields: readonly FieldId[]
   previous?: SummaryState
   previousSections?: SectionState
@@ -138,67 +139,61 @@ export const runSummaryStage = (input: {
     previousViewId: input.previousViewId,
     impact: input.impact,
     view: input.view,
-    calcFields: new Set(input.calcFields),
+    calcFields: input.calcFields,
     previous: input.previous,
     previousSections: input.previousSections,
     sections: input.sections,
     sectionsAction: input.sectionsAction
   })
-  const delta = buildSummaryDelta({
+  const deriveStart = now()
+  const derived = deriveSummaryState({
     previous: input.previous,
     previousSections: input.previousSections,
     sections: input.sections,
-    index: input.index,
     calcFields: input.calcFields,
+    index: input.index,
     impact: input.impact,
     action
   })
-  const stage = runSnapshotStage({
-    action,
-    previousState: input.previous,
-    previousPublished: input.previousPublished,
-    derive: () => action === 'reuse' && input.previous
-      ? input.previous
-      : syncSummaryState({
-          previous: input.previous,
-          sections: input.sections,
-          view: input.view,
-          index: input.index,
-          action,
-          delta
-        }),
-    canReusePublished: stageInput => (
-      stageInput.state === input.previous
-      && stageInput.previousPublished !== undefined
-    ),
-    publish: state => publishSummaries({
-      summary: state,
-      previousSummary: input.previous,
-      previous: input.previousPublished,
-      fieldsById: input.fieldsById,
-      view: input.view
-    })
-  })
-
-  const outputCount = stage.published.size
-  const changedSectionCount = stage.action === 'reuse'
+  const deriveMs = now() - deriveStart
+  const canReusePublished = (
+    derived.state === input.previous
+    && input.previousPublished !== undefined
+  )
+  const publishStart = canReusePublished
     ? 0
-    : stage.action === 'rebuild'
+    : now()
+  const summaries = canReusePublished
+    ? input.previousPublished!
+    : publishSummaries({
+        summary: derived.state,
+        previousSummary: input.previous,
+        previous: input.previousPublished,
+        fieldsById: input.fieldsById,
+        view: input.view
+      })
+  const publishMs = canReusePublished
+    ? 0
+    : now() - publishStart
+
+  const outputCount = summaries.size
+  const changedSectionCount = action === 'reuse'
+    ? 0
+    : derived.delta.rebuild
       ? outputCount
       : Math.min(
           outputCount,
-          input.impact.sections?.touchedKeys.size
-            ?? (input.previousPublished === stage.published ? 0 : outputCount)
+          derived.delta.changed.length + derived.delta.removed.length
         )
   const reusedNodeCount = Math.max(0, outputCount - changedSectionCount)
 
   return {
-    action: stage.action,
-    state: stage.state,
-    delta,
-    summaries: stage.published,
-    deriveMs: stage.deriveMs,
-    publishMs: stage.publishMs,
+    action,
+    state: derived.state,
+    delta: derived.delta,
+    summaries,
+    deriveMs,
+    publishMs,
     metrics: {
       inputCount: input.previousPublished?.size,
       outputCount,

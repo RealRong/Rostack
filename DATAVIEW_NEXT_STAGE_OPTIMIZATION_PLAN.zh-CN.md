@@ -2,641 +2,428 @@
 
 ## 1. 结论摘要
 
-基于当前这份 `140ms` 的 click 火焰图，可以先下一个明确结论：
+基于最新这组阶段火焰图，以及当前代码实现，下一阶段的主要矛盾已经比较明确：
 
-> 当前瓶颈已经从早期的 `bucket/group/query` 转移到了 `calc/summary -> patch/source -> layout` 这条后半链路。
+1. `plan` 基本稳定了，`filter value` 不再是最主要的 demand 抖动源。
+2. 真正最重的热点已经收敛到 `calc index -> sections -> summary -> source apply`。
+3. 当前问题不是“顶层阶段太多”，而是几个内部 stage 之间仍然在重复投影同一批变更。
 
-按火焰图宽度做相对判断，当前热点顺序大致是：
+所以，下一阶段不该再做一轮“大而全”的总线式重构，也不该继续盯着单个 `Map.get()`。
 
-1. `runSummaryStage -> syncSummaryState`
-2. `ensureCalculationIndex -> buildFieldCalcIndex -> buildFieldEntries`
-3. `projectEnginePatch -> createActivePatch`
-4. `applyActivePatch -> applyScopedKeyedPatch -> notifyListeners`
-5. `readTableLayoutState -> rebuildLayoutModel -> TableLayoutSectionModel.sync`
+正确方向是：
 
-这说明上一阶段把 `plan` 稳定、`bucket/sort/search` 收敛后，真正暴露出来的问题是：
+> 让一批 record change 只在 `calc -> section -> summary -> publish -> source.apply` 这条链上被解释一次，并且每一层都直接消费上游 delta，而不是重新从完整 state 反推。
 
-1. `summary` 仍然缺少真正的 section-level 增量 substrate。
-2. `output/source` 仍然在做“先算完整 state，再做一次 previous/next diff”的二次投影。
-3. `layout` 仍然在消费 source store 读模型，而不是消费显式 layout delta。
+这轮的优先级也很明确：
 
-因此，下一阶段不应该继续盯着局部函数微调，而应该继续把“增量真源”向下传到底。
+1. 先修 `calc index` 的误重建。
+2. 再收 `sections` 的双遍投影。
+3. 再把 `summary` 改成直接消费 section/calc substrate。
+4. 最后压 `output/source apply` 的全图扫描和 store fan-out。
 
 ---
 
-## 2. 当前热点判断
+## 2. 当前热点定位
 
-这里的判断来自火焰图相对宽度，不是精确 self time 统计。
+这里的“热点”是按最新火焰图和当前代码一一对应，不再引用旧版本结论。
 
-### 2.1 Summary 是当前最大的纯计算热点
+| 优先级 | 热点 | 代码位置 | 当前问题 |
+| --- | --- | --- | --- |
+| 1 | `ensureCalculationIndex -> buildFieldCalcIndex -> buildFieldEntries` | `dataview/packages/dataview-engine/src/active/index/calculations.ts` | `capabilities` 仍按引用比较，容易把本该 `reuse/sync` 的 field 误判为重建 |
+| 2 | `runSectionsStage -> syncSectionState -> publishGroupedSections` | `dataview/packages/dataview-engine/src/active/snapshot/sections/{sync,publish,runtime}.ts` | section membership 已经算过一遍，grouped projection 在 publish 阶段又按 section 再投影一遍 |
+| 3 | `runSummaryStage -> buildSummaryDelta` | `dataview/packages/dataview-engine/src/active/snapshot/summary/{runtime,sync}.ts` | summary 热点已经从 reducer apply 转移到 delta 组装，说明 substrate 仍不对 |
+| 4 | `projectEngineOutput -> source.apply -> patch -> notifyListeners` | `dataview/packages/dataview-engine/src/source/{project,runtime}.ts` 与 `shared/core/src/store/keyed.ts` | output 仍有 previous/next 投影，apply 阶段还会按 scope 扫整图，store patch 还会整图 clone |
 
-火焰图主栈：
+两个次级观察：
+
+1. `query.collectVisibleDiff` 还在，但目前不是主矛盾，量级明显小于上面四段。
+2. `table layout` 已经从 source 派生模型切到 `active.table.layout`，这一轮不是首要目标，除非压完 source fan-out 后它重新浮上来。
+
+---
+
+## 3. 关键判断
+
+### 3.1 这不是顶层阶段过多的问题
+
+当前顶层已经收敛成：
 
 ```ts
 commit
-  -> deriveViewRuntime
-  -> deriveViewSnapshot
-  -> runSummaryStage
-  -> syncSummaryState
+  -> plan.sync
+  -> index.sync
+  -> view.sync
+  -> output.sync
 ```
 
-对应代码：
+这四段本身没有明显问题。
 
-- [summary/runtime.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/summary/runtime.ts)
-- [summary/sync.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/summary/sync.ts)
+真正复杂的是：
 
-最重的是这段：
+1. `index` 内部的 `calc` 还会误 rebuild。
+2. `view.section` 和 `view.summary` 之间还没有共享足够直接的 membership substrate。
+3. `output/source` 还没有完全变成“纯 delta 翻译层”。
 
-- [summary/sync.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/summary/sync.ts#L232)
+所以这不是“再压平顶层协议”能解决的问题。
 
-当前 `summary.sync` 的主要问题不是“全量 rebuild”，而是“sync 仍然太贵”：
+### 3.2 需要的是 3 个内部 contract，而不是一个更大的全局 context
 
-1. 它先按 `touchedSections` 外层循环。
-2. 再按 `calcFields` 内层循环。
-3. 每个 field 内又要处理：
-   - `removedBySection`
-   - `addedBySection`
-   - `fieldChange.changedIds`
-4. 其中 `fieldChange.changedIds` 这段还会反复做：
-   - `keysByRecord.get(recordId)?.includes(sectionKey)`
+用户之前提到“底层缺少一个 reader 或 context”。这个方向是对的，但不应该落成一个更大的万能 context。
 
-这意味着当前复杂度更接近：
+真正缺的是下面 3 个具体 contract：
 
-`changedSections * calcFields * changedRecordsOfField`
+1. `calc field change`
+   需要稳定、可复用、不会误重建的 field-level calc substrate。
+2. `section membership change`
+   需要一份能同时服务 `section publish` 和 `summary` 的 section delta。
+3. `publish/source entity change`
+   需要显式 `set/remove/ids`，不能到 apply 阶段再从 scope 反推 remove。
 
-而不是理想的：
+也就是说，问题不在“上下文不够大”，而在“跨层共享的变更语义还不够直接”。
 
-`changedSectionMembership + changedCalcEntries`
+### 3.3 下一阶段不需要先碰渲染
 
-### 2.2 Calc Index 仍然存在整 field 扫描建 entry 的成本
+用户已经明确这轮先不看渲染。按当前热点看，这个判断是对的。
 
-火焰图主栈：
+在 source apply 之前，业务侧已经还有明显可收的重复工作：
 
-```ts
-deriveIndex
-  -> ensureCalculationIndex
-  -> buildFieldCalcIndex
-  -> buildFieldEntries
-```
+1. 误 rebuild
+2. section 双投影
+3. summary fan-out
+4. source apply 全图扫描
 
-对应代码：
-
-- [calculations.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/index/calculations.ts#L39)
-- [calculations.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/index/calculations.ts#L100)
-
-当前问题：
-
-1. 只要 `ensureCalculationIndex()` 认为某个 calc field 需要重建，就会重新扫描 `records.ids` 生成整张 `entries`。
-2. `buildFieldEntries()` 是标准的“field × visible records”线性成本。
-3. 这部分成本又会在后面的 `summary.sync` 里再次被消费。
-
-也就是说，现在 `calc` 链路里仍然存在两段重型工作：
-
-1. `record -> CalculationEntry`
-2. `section -> reducer state`
-
-但它们之间缺少一个真正的中间增量层。
-
-### 2.3 Output/Source 还有一轮 previous/next 二次 diff
-
-火焰图主栈：
-
-```ts
-commit
-  -> projectEnginePatch
-  -> createDocumentPatch
-  -> createActivePatch
-```
-
-对应代码：
-
-- [source/project.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/source/project.ts#L304)
-- [source/project.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/source/project.ts#L490)
-- [source/project.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/source/project.ts#L732)
-
-当前虽然已经不是“直接整张 active patch rebuild”，但本质上仍然是：
-
-1. 上游先算出 `nextSnapshot`
-2. output 再拿 `previousSnapshot/nextSnapshot` 做一轮结构 diff
-
-这一步仍然会重新扫描：
-
-1. `items.ids`
-2. `sections.ids`
-3. `fields.ids`
-4. `query filters/sort/group`
-5. `table calc`
-
-所以它只是比原来少了一层全量发布，但还不是最终形态。
-
-### 2.4 Source Apply 的热点是 store fan-out，不是业务计算
-
-火焰图主栈：
-
-```ts
-set
-  -> publish
-  -> batch
-  -> flush
-  -> notifyListeners
-  -> refresh
-  -> ensureFresh
-```
-
-对应代码：
-
-- [source/runtime.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/source/runtime.ts#L333)
-- [source/runtime.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/source/runtime.ts#L482)
-
-说明当前后半段的成本已经部分转移到“patch apply 触发多少 store/derived store 刷新”。
-
-也就是说，这里的重点不是继续压 `applyScopedKeyedPatch()` 的实现细节，而是：
-
-1. patch 是否还能更窄
-2. 下游是否必须通过 source store 派生出 layout state
-
-### 2.5 Table Layout 仍然不是显式 delta 消费者
-
-火焰图主栈：
-
-```ts
-refresh
-  -> ensureFresh
-  -> readTableLayoutState
-  -> rebuildLayoutModel
-  -> sync
-  -> TableLayoutSectionModel.sync
-```
-
-对应代码：
-
-- [layoutState.ts](/Users/realrong/Rostack/dataview/packages/dataview-react/src/views/table/virtual/layoutState.ts#L52)
-- [virtual/runtime.ts](/Users/realrong/Rostack/dataview/packages/dataview-react/src/views/table/virtual/runtime.ts#L273)
-- [virtual/runtime.ts](/Users/realrong/Rostack/dataview/packages/dataview-react/src/views/table/virtual/runtime.ts#L400)
-- [layoutModel.ts](/Users/realrong/Rostack/dataview/packages/dataview-react/src/views/table/virtual/layoutModel.ts#L666)
-
-当前虽然已经不是旧的 `CurrentView -> fromCurrentView()` 全量 rebuild，但仍然存在两个问题：
-
-1. `layoutState` 还是从 source store 读出来的派生态，而不是 commit 直接产出的结构 delta。
-2. `measurementIds`、`sections`、`rowCount` 仍然是在 derived store 中按当前态重构。
-
-所以这部分已经比上一阶段好，但还没到最终形态。
+这些不收掉，继续看 render 只会把注意力带偏。
 
 ---
 
-## 3. 根因总结
+## 4. 下一阶段的总目标
 
-综合当前热点，核心问题可以压缩成 3 句话：
+下一阶段结束后，系统应该满足下面 4 条硬约束。
 
-### 3.1 Summary 缺一个真正的 section-level 增量 substrate
+### 4.1 calc field 不得因 capability 引用变化而误 rebuild
 
-现在有：
+相同语义的 capability，不允许因为对象引用不同就重建整张 `entries`。
 
-1. `field -> calc entries`
-2. `section -> recordIds`
+### 4.2 section membership 只能算一次
 
-但是没有：
+`record -> sectionKeys` 和 `sectionKey -> recordIds` 一旦在 section stage 里算出，后面的 publish 和 summary 只能消费，不允许再各自补一份投影。
 
-3. `field change -> touched sections -> per-section reducer delta`
+### 4.3 summary 只消费真实变更，不再自己笛卡尔展开
 
-于是 `summary.sync` 只能在 runtime 里临时把这两类信息重新拼起来。
+summary 的复杂度要从：
 
-### 3.2 Output 层还没有完全脱离 previous/next state diff
+`calcFields * touchedSections * changedRecords`
 
-现在的 `source.project` 本质上还是：
+压回：
 
-1. 上游输出完整 published state
-2. output 再做一次 previous/next diff
+`changedCalcRecords + changedSectionMembership`
 
-这说明 output 还不是“增量传递层”，而仍然带有“二次比较层”的性质。
+### 4.4 source apply 不再根据 scope 反推 remove
 
-### 3.3 Layout 还没有拿到自己的结构真源
+`apply` 必须只执行 delta，不再做：
 
-现在 layout 读的是：
-
-1. source stores
-2. derived `layoutState`
-
-而不是：
-
-1. `TableLayoutChange`
-2. `LayoutSyncResult`
-
-这会让 layout 继续承担“从业务读模型推结构”的工作。
+1. `collectMissingKeys(store.all(), scopeIds)`
+2. 小 patch 也 `new Map(current)`
 
 ---
 
-## 4. 下一阶段的优化目标
+## 5. 分阶段实施方案
 
-下一阶段的目标不是继续微调函数，而是完成下面 3 个结构性收口：
+### Phase 0：先修 calc index 的误重建
 
-1. `summary` 从“按 section 临时拼 delta”改成“直接消费 calc delta + section delta”
-2. `output/source` 从“previous/next diff 投影”改成“直接翻译上游 delta”
-3. `layout` 从“读 source 派生结构”改成“直接同步 layout change”
+这是当前最像“明确 bug”的部分，优先级最高，而且不需要等架构改造。
 
-只有这三件事完成，当前火焰图里后半条链路才会真正塌下去。
+#### 涉及文件
+
+- [calculations.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/index/calculations.ts)
+- [calculation.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/shared/calculation.ts)
+- [demand.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/index/demand.ts)
+
+#### 当前问题
+
+`ensureCalculationIndex()` 里仍然有基于 capability 引用的判断：
+
+1. `previousField.capabilities !== demand.capabilities`
+
+而 `normalizeCalculationDemands()` / `createCalculationDemand()` 会持续产出新对象。
+
+这会导致：
+
+1. calc 配置语义没变
+2. 但 field index 被误判为 changed
+3. 进而整 field 重建 `entries`
+
+#### 要做的事
+
+1. 把 capability 比较切到结构比较，复用 `sameReducerCapabilities()`。
+2. 如果仍然需要更强稳定性，就把 capability 做 canonicalization，例如生成稳定 key。
+3. 把 calc rebuild trace 单独打出来，确保能区分：
+   - 真 rebuild
+   - sync
+   - 误 rebuild
+
+#### 完成标志
+
+在 filter value 改变但 calc 配置未变时：
+
+1. `ensureCalculationIndex()` 不再重建无关 field。
+2. `buildFieldEntries()` 宽度明显下降。
 
 ---
 
-## 5. Phase 1：重写 Calc/Summary 增量链
+### Phase 1：把 sections 从“双遍投影”改成“单遍 membership substrate”
 
-### 5.1 目标
+当前 `sections` 的问题不是 membership 没有增量，而是它已经有了，但 publish 没直接复用。
 
-把 `summary.sync` 的复杂度从：
+#### 涉及文件
 
-`changedSections * calcFields * changedIds`
+- [runtime.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/sections/runtime.ts)
+- [sync.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/sections/sync.ts)
+- [publish.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/sections/publish.ts)
 
-降到：
+#### 当前问题
 
-`sectionDelta + calcDeltaBySection`
+当前 grouped 路径基本是两遍：
 
-### 5.2 当前问题
+1. `syncSectionState()` 先维护 `keysByRecord`、`addedByKey`、`removedByKey`
+2. `publishGroupedSections()` 再对所有 section 跑 `syncGroupedSectionProjection()`
 
-当前 `summary.sync` 的输入过于原始：
+这意味着：
 
-1. `impact.sections`
-2. `impact.calculations.byField`
-3. `sections.keysByRecord`
-4. `index.calculations.fields`
+1. membership 变更已经知道了
+2. 但 item projection 没有变成 section runtime 的持久状态
+3. publish 阶段只好再按 section 重做一轮
 
-这些原始输入在 `summary.sync` 内部才被重新组合，所以 runtime 里出现了大量：
+#### 目标结构
 
-1. `recordId -> sectionKey`
-2. `field -> changedIds`
-3. `section -> field reducer apply`
-
-### 5.3 下一步设计
-
-建议新增一层显式 summary substrate。
-
-候选设计：
+section stage 需要自己持有 grouped projection substrate，而不是 publish 临时重建：
 
 ```ts
-interface SummaryFieldDelta {
-  fieldId: FieldId
-  bySection: ReadonlyMap<SectionKey, {
-    added?: readonly RecordId[]
-    removed?: readonly RecordId[]
-    updated?: readonly RecordId[]
-  }>
+interface SectionRuntimeState {
+  structure: SectionState
+  grouped?: {
+    bySection: ReadonlyMap<SectionKey, GroupedSectionProjection>
+  }
+}
+
+interface SectionDelta {
+  rebuild: boolean
+  orderChanged: boolean
+  removed: readonly SectionKey[]
+  membership: ReadonlyMap<SectionKey, SectionMembershipChange>
+  grouped?: ReadonlyMap<SectionKey, GroupedSectionProjectionChange>
+}
+
+interface SectionMembershipChange {
+  add: readonly RecordId[]
+  remove: readonly RecordId[]
+}
+```
+
+#### 要做的事
+
+1. 把 grouped item projection 从 `publish.ts` 挪到 section runtime cache/state。
+2. `syncSectionState()` 直接产出按 section 的 membership change。
+3. grouped projection 只更新 touched section，不再对所有 section 跑一遍同步。
+4. `publishSections()` 退化成纯 materialize，不再承担增量推导责任。
+
+#### 完成标志
+
+小范围 visible change 时：
+
+1. `publishGroupedSections()` 不再是宽热点。
+2. touched section 数量与实际 membership 变化成正比。
+
+---
+
+### Phase 2：让 summary 直接消费 section/calc substrate
+
+当前 `syncSummaryState()` 已经不是主热点，热点在 `buildSummaryDelta()`，这说明 reducer 应用逻辑基本没错，错的是 delta 组装方式。
+
+#### 涉及文件
+
+- [runtime.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/summary/runtime.ts)
+- [sync.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/summary/sync.ts)
+
+#### 当前问题
+
+现在的 `buildSummaryDelta()` 仍然需要临时拼：
+
+1. `sections.addedByKey / removedByKey`
+2. `calculations.byField.changedIds`
+3. `previousSections.keysByRecord`
+4. `sections.keysByRecord`
+
+然后在 runtime 里把这些信息再次交叉。
+
+这说明 summary 还在做“解释型 delta 组装”，而不是“消费型 delta 应用”。
+
+#### 目标结构
+
+summary 输入应该更直接：
+
+```ts
+interface SummarySyncInput {
+  section: {
+    state: SectionState
+    delta: SectionDelta
+  }
+  calc: {
+    byField: ReadonlyMap<FieldId, EntryChange<RecordId, CalculationEntry>>
+  }
 }
 
 interface SummaryDelta {
   rebuild: boolean
-  sections: ReadonlySet<SectionKey>
-  fields: ReadonlyMap<FieldId, SummaryFieldDelta>
+  removed: readonly SectionKey[]
+  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, SummaryFieldDelta>>
 }
 ```
 
-关键点：
+重点不是再建一个更大的 summary state，而是让 summary 直接拿到：
 
-1. `fieldChange.changedIds` 只允许在一处被投影成 `bySection`。
-2. `summary.sync` 不再对每个 touched section 重扫所有 changed ids。
-3. `summary.sync` 只按 `SummaryDelta.bySection` 直接 apply reducer。
+1. 哪些 section membership 变了
+2. 哪些 field entry 变了
+3. 这些变更该投到哪些 section
 
-### 5.4 实施建议
+#### 要做的事
 
-第一步：
+1. section stage 输出稳定的 `membership delta by section`。
+2. calc stage 继续输出 `EntryChange<RecordId, CalculationEntry>`，但不再让 summary 自己回头查 membership。
+3. `buildSummaryDelta()` 改成按“已知受影响 section”直接建 field delta。
+4. 如果 section membership 与 calc record change 都为空，summary 直接 `reuse`。
 
-1. 在 `runSummaryStage()` 前新增 `buildSummaryDelta(...)`
-2. 只做一件事：把 `calc field change` 投影成 `field -> section -> record ids`
+#### 完成标志
 
-第二步：
-
-1. 把 [summary/sync.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/snapshot/summary/sync.ts) 改成只消费 `SummaryDelta`
-2. 删掉内部对 `fieldChange.changedIds` 的 section membership 反查
-
-第三步：
-
-1. 对 `added/removed/updated` 三类 record change 分开 apply
-2. 避免所有变化都走统一 `previousEntry/nextEntry` 判断
-
-### 5.5 进一步上限
-
-如果 Phase 1 做完仍不够，再继续前推：
-
-1. 在 calc index 层直接维护 `field -> section reducers`
-2. view.summary 只负责 publish，不再维护 reducer state
-
-这个方案更重，但会把 summary 几乎压成纯 publish。
+1. `buildSummaryDelta()` 的热点宽度明显低于当前版本。
+2. summary 成本与 `changed memberships + changed calc records` 线性相关。
 
 ---
 
-## 6. Phase 2：去掉 Output 层的 previous/next 二次 diff
+### Phase 3：让 output/source 变成纯 delta 翻译与应用
 
-### 6.1 目标
+这一阶段的目标不是再改业务算法，而是把前面收敛出来的 delta 直接传到底。
 
-让 `source.project` 不再扫描完整 `previousSnapshot/nextSnapshot`。
+#### 涉及文件
 
-### 6.2 当前问题
+- [project.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/source/project.ts)
+- [runtime.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/source/runtime.ts)
+- [keyed.ts](/Users/realrong/Rostack/shared/core/src/store/keyed.ts)
 
-当前 `projectEnginePatch()` 做的仍然是：
+#### 当前问题 A：`projectViewPublishDelta()` 仍然主要靠 previous/next diff
 
-1. `doc previous/next diff`
-2. `active previous/next diff`
+虽然现在已经不是旧的整张 active patch，但 `projectViewPublishDelta()` 仍然在做：
 
-这会让 output 层重复扫描：
+1. `collectChangedSectionKeys()`
+2. `buildItemValueDelta()`
+3. `buildSectionValueDelta()`
+4. `buildSectionSummaryDelta()`
 
-1. item ids
-2. section keys
-3. fields
-4. query projection
-5. table calc
+这意味着 output 还在重复解释 `section/summary` 的变化。
 
-### 6.3 下一步设计
+#### 当前问题 B：`source.apply` 仍然会按 scope 扫整图
 
-`view.sync` 完成后应直接产出 publish delta，而不是只产出 published state。
+`applyEntityDelta()` 里仍然存在：
 
-建议新增：
+1. `collectMissingKeys(store.all(), scopeIds)`
+
+这会把窄 delta 重新放大成全图扫描。
+
+#### 当前问题 C：`KeyedStore.patch()` 仍然整图 clone
+
+当前 `patch()` 每次都：
+
+1. `const next = new Map(current)`
+
+如果 patch 高频且 key 多，这会把 apply 成本继续放大。
+
+#### 目标结构
+
+output/project 和 source/apply 的接口要更直接：
 
 ```ts
-interface ViewPublishDelta {
-  view?: {
-    changed: boolean
-  }
-  query?: {
-    changed: boolean
-    filterFieldIdsChanged: boolean
-    sortFieldIdsChanged: boolean
-    sortDirChanged: readonly FieldId[]
-  }
-  items?: {
-    idsChanged: boolean
-    changed: readonly ItemId[]
-    removed: readonly ItemId[]
-    orderChanged: boolean
-  }
-  sections?: {
-    keysChanged: boolean
-    changed: readonly SectionKey[]
-    removed: readonly SectionKey[]
-  }
-  fields?: {
-    idsChanged: boolean
-    changed: readonly FieldId[]
-    removed: readonly FieldId[]
-  }
-  summaries?: {
-    changed: readonly SectionKey[]
-    removed: readonly SectionKey[]
-  }
-  table?: {
-    changedCalc: readonly FieldId[]
-    wrapChanged: boolean
-    verticalLinesChanged: boolean
-  }
+interface SourceEntityChange<TKey, TValue> {
+  ids?: readonly TKey[]
+  set?: ReadonlyMap<TKey, TValue | undefined>
+  remove?: readonly TKey[]
+}
+
+interface SourceApplyInput {
+  delta: SourceDelta
 }
 ```
 
-然后：
+关键点只有两个：
 
-1. `view.publish.sync` 负责把 stage delta 翻译成 publish delta
-2. `output.source.project` 只把 publish delta 翻译成 source patch
-3. `output.source.project` 禁止再读 `previousSnapshot/nextSnapshot`
+1. `remove` 必须在 project 阶段明确给出。
+2. apply 阶段只执行 patch，不再根据 scope 推断缺失 key。
 
-### 6.4 文档 source 的特殊处理
+#### 要做的事
 
-`DocumentPatch` 也应收敛到 `DocumentChange`，不再 diff 整个 `doc`：
+1. 让 `projectViewPublishDelta()` 直接消费 `query/section/summary` delta，而不是继续从完整 `ViewState` 反推。
+2. `SourceDelta` 内所有 keyed 实体都显式带 `remove`。
+3. 删除 `collectMissingKeys()` 路径。
+4. 如果 source apply 仍明显，继续下探 `createKeyedStore().patch()`，把“小 patch 也整图 clone”的实现换掉。
 
-1. records changed/removed
-2. fields changed/removed
-3. views changed/removed
-4. active view changed
+#### 完成标志
 
-也就是此前 checklist 里写的方向，要在代码层真正落地。
-
----
-
-## 7. Phase 3：把 Source Runtime 从“store fan-out 中枢”变成“窄 apply 层”
-
-### 7.1 目标
-
-让 `source.apply` 的成本随真实 changed stores 线性增长，而不是随 source 拓扑复杂度增长。
-
-### 7.2 当前问题
-
-现在 `applyActivePatch()` 虽然已经比过去窄很多，但仍然存在两个问题：
-
-1. patch 仍然是 state diff 投影出来的，不够窄。
-2. source 的 derived consumer 仍然会因为多个 patch 点触发 refresh。
-
-### 7.3 下一步设计
-
-source 层下一阶段不要再承担“推导 layout input”的职责。
-
-source 只保留给通用 UI 读模型使用的 stores：
-
-1. doc
-2. active query
-3. active items
-4. active sections
-5. active fields
-6. active summaries
-
-但是：
-
-1. table layout 所需结构不要再从这些 store 二次读取
-2. table layout 应改为直接消费 `TableLayoutChange`
-
-### 7.4 实施建议
-
-1. `source.apply` 保持现在的 patch 模式，不在这一阶段重写 store 基础设施。
-2. 真正要做的是把最重的 layout consumer 从 source derived chain 上摘下来。
-
-也就是说：
-
-> 当前 source 的主要优化点不是“继续改 patch store 实现”，而是“减少最重 consumer 对 source 的依赖”。
+1. `projectEngineOutput()` 左半边的 diff 组装显著变窄。
+2. `source.apply` 不再出现按 scope 扫全图的热点。
+3. `notifyListeners` 的 fan-out 只和 changed keys 成正比。
 
 ---
 
-## 8. Phase 4：把 Table Layout 改成显式结构同步
+## 6. 建议实施顺序
 
-### 8.1 目标
+严格按下面顺序推进，不建议并行乱改。
 
-让 layout 不再从 source store 读出 `layoutState`，而是直接消费 `TableLayoutChange`。
-
-### 8.2 当前问题
-
-当前 layout 已经比旧版好，但还是：
-
-1. `readTableLayoutState(source)`
-2. `layoutStateStore`
-3. `layoutModel.sync(state)`
-
-这依然是“读模型 -> 结构模型”的一层转换。
-
-### 8.3 下一步设计
-
-建议新增：
-
-```ts
-interface TableLayoutChange {
-  structure: {
-    rebuild: boolean
-    groupedChanged: boolean
-    sectionOrderChanged: boolean
-  }
-  sections: ReadonlyMap<SectionKey, {
-    changed: boolean
-    collapsedChanged: boolean
-    rowOrderChanged: boolean
-    addedRows?: readonly ItemId[]
-    removedRows?: readonly ItemId[]
-  }>
-  removedSections?: readonly SectionKey[]
-}
-```
-
-然后把流程改成：
-
-```ts
-output.table.project(viewPublishDelta) -> TableLayoutChange
-layout.table.sync(change) -> TableLayoutState
-virtual window materialize(state, viewport)
-```
-
-### 8.4 实施建议
-
-第一步：
-
-1. 把 [layoutState.ts](/Users/realrong/Rostack/dataview/packages/dataview-react/src/views/table/virtual/layoutState.ts) 的职责迁走
-2. 改为 `table.project.ts` 直接输出 `TableLayoutChange`
-
-第二步：
-
-1. [layoutModel.ts](/Users/realrong/Rostack/dataview/packages/dataview-react/src/views/table/virtual/layoutModel.ts) 改成按 `TableLayoutChange` patch section model
-2. 禁止再从 `measurementIds` 反推结构
-
-第三步：
-
-1. `measurementIds` 改为 layout state 的派生结果，但只在 changed sections 上更新
-2. 不再每次按全部 section/item 重新拼接一遍
-
-### 8.5 最终状态
-
-最终 layout 应该做到：
-
-1. flat table row value 变化且顺序不变时，layout 完全不动
-2. grouped table 中某 section 内 item 顺序不变时，不重建其他 section model
-3. section collapse 切换时，只更新该 section block 链
+1. `calc index` 误 rebuild
+   这是低风险、高确定性的收益点。
+2. `sections` substrate
+   不先做它，summary 不可能真正收窄。
+3. `summary` substrate
+   不先拿到 section delta，summary 只能继续在 runtime 拼装。
+4. `output/source`
+   前面三段不收敛，output 做得再漂亮也只是搬热点。
+5. `KeyedStore` 内核
+   只有在明确 source apply 仍显著时再做，不要过早下沉到底层。
 
 ---
 
-## 9. 推荐实施顺序
+## 7. 不建议做的事
 
-正确顺序不是从 source 开始，而是从最上游的大头开始。
+### 7.1 不建议先做新一轮顶层大重构
 
-### 9.1 第一步
+当前问题不是 `commit -> plan -> index -> view -> output` 这 4 段太多。
 
-先做 `summary delta`。
+继续重写顶层协议，短期只会把已经收敛的边界打散。
 
-原因：
+### 7.2 不建议继续抠局部 util 常数项
 
-1. 它是当前最大的纯计算热点。
-2. 它会直接压掉 `runSummaryStage` 的主峰。
-3. 做完后才能看清 output/source/layout 的真实占比。
+例如：
 
-### 9.2 第二步
+1. `trimToUndefined`
+2. `toScalarBucketKey`
+3. `target.get(key) ?? 0`
 
-再做 `output publish delta -> source project`。
+这些当然可以优化，但已经不是当前最值得先动的层级。
 
-原因：
+### 7.3 不建议这轮优先碰 table render
 
-1. 这是当前后半段最明显的重复比较成本。
-2. 它和 source/layout 解耦关系最强。
-
-### 9.3 第三步
-
-最后做 `table layout change`。
-
-原因：
-
-1. layout 现在已经不是最大热点。
-2. 但它是 source fan-out 里最重的 consumer。
-3. 应该在 output delta 稳定后再切。
-
-推荐顺序固定为：
-
-```ts
-1. summary delta
-2. view publish delta
-3. source project/apply 收窄
-4. table layout change
-5. trace/bench 回扫
-```
+现在更大的成本还在业务侧与 source apply 侧，先动 render 只会掩盖真实问题。
 
 ---
 
-## 10. 验收预算
+## 8. 验收方式
 
-这部分是建议目标，不是当前结果。
+下一阶段完成后，至少要重新验证下面 4 件事。
 
-以当前 `50k table + filter value change` 为基线，下一阶段建议把非渲染链路压到：
+1. `calc index`
+   在 filter value 改变但 calc 配置不变时，不再触发无关 field rebuild。
+2. `sections`
+   grouped publish 不再对所有 section 重新投影。
+3. `summary`
+   热点从 `buildSummaryDelta()` 明显收窄，且不再随 `calcFields * touchedSections` 放大。
+4. `source`
+   apply 阶段不再扫描整张 keyed store，也不再因小 patch 产生明显整图 clone。
 
-| 阶段 | 当前判断 | 下一阶段目标 |
-| --- | --- | --- |
-| calc index | 仍偏重 | `<= 8ms` |
-| summary sync | 当前最大热点 | `<= 12ms` |
-| output/source project | 明显可见 | `<= 6ms` |
-| source apply + notify | 明显可见 | `<= 8ms` |
-| table layout sync | 后半段热点 | `<= 6ms` |
-| 总非渲染链路 | 当前约 `140ms` 全链路中的主要部分 | `<= 50~70ms` |
-
-注意：
-
-1. 这里的预算是下一阶段目标，不是承诺值。
-2. 真正验收必须补 `output` 维度 trace，而不是只看 `index/view/snapshot`。
-
----
-
-## 11. 必须补的 Trace
-
-如果不补 trace，下一阶段优化很容易再次“只看火焰图猜测”。
-
-建议新增：
-
-```ts
-commit
-  -> plan
-  -> index
-  -> view
-    -> query
-    -> section
-    -> summary
-  -> output
-    -> viewPublish
-    -> sourceProject
-    -> sourceApply
-    -> tableProject
-    -> tableSync
-```
-
-至少要补 5 个时间段：
-
-1. `summaryDeltaMs`
-2. `viewPublishMs`
-3. `sourceProjectMs`
-4. `sourceApplyMs`
-5. `tableSyncMs`
-
-否则下一轮仍然只能看到：
-
-1. `viewMs`
-2. `snapshotMs`
-
-而看不到真正的后半段分布。
-
----
-
-## 12. 最终判断标准
-
-下一阶段完成后，系统应该满足以下 6 条：
-
-1. `summary.sync` 不再遍历 `changedSections * calcFields * changedIds`
-2. `source.project` 不再读取 `previousSnapshot/nextSnapshot` 做二次 diff
-3. `DocumentPatch` 来自 `DocumentChange`，而不是整 doc diff
-4. `table layout` 不再通过 `readTableLayoutState(source)` 建结构
-5. `output` 有自己的 trace，不再藏在 `snapshot/source/layout` 之外
-6. `50k filter value change` 下，热点中心从 `summary + patch + layout` 明显下降
-
-这 6 条如果缺任何一条，都说明下一阶段还没真正完成。
+如果这 4 条都成立，下一轮热点才有资格继续往 render 或更底层 store 机制迁移。

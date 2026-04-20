@@ -228,6 +228,30 @@ const columnHeaderKeyOf = (sectionKey: SectionKey) => `column-header:${sectionKe
 const createRecordKeyOf = (sectionKey: SectionKey) => `create-record:${sectionKey}`
 const columnFooterKeyOf = (sectionKey: SectionKey) => `column-footer:${sectionKey}`
 
+const buildSectionMeasurementIds = (input: {
+  grouped: boolean
+  sectionKey: SectionKey
+  collapsed: boolean
+  itemIds: readonly ItemId[]
+}) => input.grouped
+  ? (
+      input.collapsed
+        ? [sectionHeaderKeyOf(input.sectionKey)]
+        : [
+            sectionHeaderKeyOf(input.sectionKey),
+            columnHeaderKeyOf(input.sectionKey),
+            ...input.itemIds.map(rowId => rowKeyOf(rowId)),
+            createRecordKeyOf(input.sectionKey),
+            columnFooterKeyOf(input.sectionKey)
+          ]
+    )
+  : [
+      columnHeaderKeyOf(input.sectionKey),
+      ...input.itemIds.map(rowId => rowKeyOf(rowId)),
+      createRecordKeyOf(input.sectionKey),
+      columnFooterKeyOf(input.sectionKey)
+    ]
+
 const sameSectionState = (
   left: TableLayoutSectionState,
   right: TableLayoutSectionState
@@ -322,6 +346,15 @@ class TableLayoutSectionModel {
       + this.rowHeights.total()
       + this.createRecordHeight
       + this.columnFooterHeight
+  }
+
+  get measurementIds() {
+    return buildSectionMeasurementIds({
+      grouped: this.grouped,
+      sectionKey: this.key,
+      collapsed: this.collapsed,
+      itemIds: this.itemIds
+    })
   }
 
   locateRow(rowId: ItemId, sectionTop: number) {
@@ -634,7 +667,7 @@ export class TableLayoutModel {
     sections: readonly TableLayoutSectionModel[]
   }) {
     this.grouped = input.state.grouped
-    this.measurementIds = input.state.measurementIds
+    this.measurementIds = input.sections.flatMap(section => section.measurementIds)
     this.rowCount = input.state.rowCount
     this.rowHeight = input.rowHeight
     this.headerHeight = input.headerHeight
@@ -686,8 +719,7 @@ export class TableLayoutModel {
       measuredHeights: input.measuredHeights
     }))
     const changed = (
-      this.measurementIds !== input.state.measurementIds
-      || this.rowCount !== input.state.rowCount
+      this.rowCount !== input.state.rowCount
       || nextSections.some((section, index) => section !== this.sections[index])
     )
 

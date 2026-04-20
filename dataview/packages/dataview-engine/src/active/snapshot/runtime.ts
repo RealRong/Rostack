@@ -8,6 +8,7 @@ import {
 } from '@dataview/engine/active/plan'
 import type {
   DeriveAction,
+  ViewRuntimeDelta,
   ViewCache
 } from '@dataview/engine/contracts/internal'
 import type {
@@ -31,6 +32,7 @@ import type {
 interface ViewRunResult {
   cache: ViewCache
   snapshot?: ViewState
+  delta?: ViewRuntimeDelta
   trace?: ViewTrace
 }
 
@@ -89,8 +91,7 @@ export const deriveViewSnapshot = (input: {
       cache: {
         query: input.previousCache.query,
         sections: input.previousCache.sections,
-        summary: input.previousCache.summary,
-        items: input.previousCache.items
+        summary: input.previousCache.summary
       },
       snapshot: undefined,
       ...(input.capturePerf
@@ -148,7 +149,6 @@ export const deriveViewSnapshot = (input: {
         sections: input.previousSnapshot?.sections,
         items: input.previousSnapshot?.items
       },
-      previousProjection: input.previousCache.items,
       index: input.index
     }),
     input.previousSnapshot,
@@ -168,12 +168,11 @@ export const deriveViewSnapshot = (input: {
       previousViewId,
       impact: input.impact,
       view,
-      query: query.state,
       calcFields: viewPlan?.calcFields ?? [],
       previous: input.previousCache.summary,
-      previousSections: input.previousCache.sections,
+      previousSections: input.previousCache.sections.structure,
       previousPublished: input.previousSnapshot?.summaries,
-      sections: sections.state,
+      sections: sections.state.structure,
       sectionsAction: sections.action,
       index: input.index,
       fieldsById: input.documentContext.fieldsById
@@ -226,10 +225,18 @@ export const deriveViewSnapshot = (input: {
     cache: {
       query: query.state,
       sections: sections.state,
-      summary: summary.state,
-      items: sections.projection
+      summary: summary.state
     },
     snapshot: publishedSnapshot,
+    ...(publishedSnapshot
+      ? {
+          delta: {
+            query: query.delta,
+            sections: sections.delta,
+            summary: summary.delta
+          }
+        }
+      : {}),
     ...(input.capturePerf
       ? {
           trace: {

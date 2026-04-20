@@ -1262,7 +1262,7 @@ test('engine.performance traces active view derive and snapshot behavior for inc
   assert.equal(trace.view.plan.sections, 'sync')
   assert.equal(trace.view.plan.summary, 'sync')
   assert.equal(trace.index.bucket.action, 'sync')
-  assert.equal(trace.index.summaries.action, 'sync')
+  assert.equal(trace.index.summaries.action, 'reuse')
   assert.ok(trace.snapshot.changedStores.includes('sections'))
   assert.ok(trace.snapshot.changedStores.includes('items'))
   assert.ok(trace.snapshot.changedStores.includes('summaries'))

@@ -802,6 +802,7 @@ export interface CommitTrace {
     commitMs?: number
     indexMs?: number
     viewMs?: number
+    outputMs?: number
     snapshotMs?: number
   }
   impact: TraceImpactSummary
@@ -846,6 +847,7 @@ export interface PerformanceStats {
     planMs: RunningStat
     indexMs: RunningStat
     viewMs: RunningStat
+    outputMs: RunningStat
   }
   indexes: Record<'records' | 'search' | 'bucket' | 'sort' | 'summaries', PerformanceCounter>
   stages: Record<ViewStageName, StagePerformanceStats>

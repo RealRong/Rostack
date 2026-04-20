@@ -41,7 +41,10 @@ const sameEmptySectionMap = <T,>(
 ) => Boolean(
   previous
   && previous.size === sectionKeys.length
-  && sectionKeys.every(sectionKey => previous.get(sectionKey) === emptyValue)
+  && [...previous.keys()].every((sectionKey, index) => (
+    sectionKey === sectionKeys[index]
+    && previous.get(sectionKey) === emptyValue
+  ))
 )
 
 const createEmptySectionMap = <T,>(

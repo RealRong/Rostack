@@ -126,23 +126,38 @@ export const createKeyedStore = <Key, T,>(
   const patch = (
     nextPatch: KeyedStorePatch<Key, T>
   ) => {
-    const next = new Map(current)
+    let next: Map<Key, T> | undefined
     const changedKeys = new Set<Key>()
+    const ensureNext = () => {
+      if (!next) {
+        next = new Map(current)
+      }
+      return next
+    }
 
     if (nextPatch.set) {
       for (const [key, value] of nextPatch.set) {
-        next.set(key, value)
+        if (current.has(key)) {
+          const currentValue = current.get(key) as T
+          if (isEqual(currentValue, value)) {
+            continue
+          }
+        } else if (isEqual(emptyValue, value)) {
+          continue
+        }
+
+        ensureNext().set(key, value)
         changedKeys.add(key)
       }
     }
 
     if (nextPatch.delete) {
       for (const key of nextPatch.delete) {
-        if (!next.has(key)) {
+        if (!(next ?? current).has(key)) {
           continue
         }
 
-        next.delete(key)
+        ensureNext().delete(key)
         changedKeys.add(key)
       }
     }
@@ -151,7 +166,7 @@ export const createKeyedStore = <Key, T,>(
       return
     }
 
-    commit(next, changedKeys)
+    commit(next ?? current, changedKeys)
   }
 
   const subscribeKey = (

@@ -1,15 +1,17 @@
 import type { ViewCache } from '@dataview/engine/contracts/internal'
 import type {
   SnapshotTrace,
-  ViewPublishDelta,
   ViewState,
   ViewTrace
 } from '@dataview/engine/contracts/public'
+import type {
+  ViewRuntimeDelta as InternalViewRuntimeDelta
+} from '@dataview/engine/contracts/internal'
 
 export interface ViewRuntimeResult {
   cache: ViewCache
   snapshot?: ViewState
-  publishDelta?: ViewPublishDelta
+  delta?: InternalViewRuntimeDelta
   trace?: {
     view: ViewTrace
     snapshot: SnapshotTrace

@@ -18,29 +18,33 @@ import type {
   Field,
   FieldId,
   FilterRule,
-  ItemId,
   KanbanCardsPerColumn,
-  Section,
-  SectionKey,
+  RecordId,
   SortDirection,
   Sorter,
   View,
-  ViewItem,
-  ViewState,
   ViewId
-} from '@dataview/engine/contracts/public'
+} from '@dataview/core/contracts'
 import { sameOrder } from '@shared/core'
+import type {
+  ViewRuntimeDelta,
+} from '@dataview/engine/contracts/internal'
 import type {
   DocumentChange,
   EntityDelta,
+  ItemId,
+  Section,
+  SectionKey,
   SourceDelta,
   TableLayoutSectionState,
   TableLayoutState,
+  ViewItem,
   ViewPublishDelta,
   ViewFilterProjection,
   ViewGroupProjection,
   ViewSearchProjection,
-  ViewSortProjection
+  ViewSortProjection,
+  ViewState
 } from '@dataview/engine/contracts/public'
 import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/public'
 
@@ -248,36 +252,6 @@ const collectRemovedKeys = <TKey,>(
   return previousIds.filter(key => !nextIdSet.has(key))
 }
 
-const collectChangedSectionKeys = (input: {
-  previous?: ViewState
-  next: ViewState
-}) => {
-  if (!input.previous) {
-    return input.next.sections.ids
-  }
-
-  const changed = new Set<SectionKey>()
-  input.next.sections.ids.forEach(sectionKey => {
-    const previousSection = input.previous?.sections.get(sectionKey)
-    const nextSection = input.next.sections.get(sectionKey)
-    const previousSummary = input.previous?.summaries.get(sectionKey)
-    const nextSummary = input.next.summaries.get(sectionKey)
-
-    if (
-      previousSection !== nextSection
-      || previousSummary !== nextSummary
-    ) {
-      changed.add(sectionKey)
-    }
-  })
-
-  if (!sameOrder(input.previous.sections.ids, input.next.sections.ids)) {
-    input.next.sections.ids.forEach(sectionKey => changed.add(sectionKey))
-  }
-
-  return [...changed]
-}
-
 const buildItemValueDelta = (input: {
   previous?: ViewState
   next: ViewState
@@ -371,10 +345,27 @@ const buildSectionSummaryDelta = (input: {
   })
 }
 
-const buildFieldValueDelta = <TField extends Field | CustomField>(input: {
-  values: readonly TField[]
+const buildFieldCollectionDelta = <TField extends Field | CustomField>(input: {
+  previous?: readonly TField[]
+  next: readonly TField[]
 }): EntityDelta<FieldId, TField> | undefined => entityDelta({
-  set: input.values.map(field => [field.id, field] as const)
+  set: input.next.map(field => [field.id, field] as const),
+  remove: input.previous
+    ? collectRemovedKeys(
+        input.previous.map(field => field.id),
+        input.next.map(field => field.id)
+      )
+    : []
+})
+
+const buildMapValueDelta = <TKey, TValue>(input: {
+  previous?: ReadonlyMap<TKey, TValue | undefined>
+  next: ReadonlyMap<TKey, TValue | undefined>
+}): EntityDelta<TKey, TValue> | undefined => entityDelta({
+  set: [...input.next.entries()],
+  remove: input.previous
+    ? [...input.previous.keys()].filter(key => !input.next.has(key))
+    : []
 })
 
 const createTableLayoutSection = (input: {
@@ -463,6 +454,17 @@ const syncTableLayoutState = (input: {
   }
 }
 
+const buildTableCalcValues = (
+  view?: ViewState
+): ReadonlyMap<FieldId, CalculationMetric | undefined> => view?.view.type === 'table'
+  ? new Map(
+      view.fields.ids.map(fieldId => [
+        fieldId,
+        view.view.calc[fieldId] ?? undefined
+      ] as const)
+    )
+  : new Map()
+
 export const projectDocumentChange = (input: {
   impact: CommitImpact
   document: DataDoc
@@ -518,6 +520,7 @@ export const projectDocumentChange = (input: {
 export const projectViewPublishDelta = (input: {
   previous?: ViewState
   next?: ViewState
+  delta?: ViewRuntimeDelta
 }): ViewPublishDelta | undefined => {
   const next = input.next
   const previous = input.previous
@@ -604,33 +607,55 @@ export const projectViewPublishDelta = (input: {
   const previousSortDir = previous
     ? buildSortDir(previous.query)
     : new Map<FieldId, SortDirection | undefined>()
-  const changedSections = collectChangedSectionKeys({
-    previous,
-    next
-  })
-  const removedSections = previous
-    ? collectRemovedKeys(previous.sections.ids, next.sections.ids)
-    : []
+  const sectionRebuild = Boolean(input.delta?.sections.rebuild)
+  const summaryRebuild = Boolean(input.delta?.summary.rebuild)
+  const changedSections = input.delta
+    ? (
+        sectionRebuild
+          ? next.sections.ids
+          : input.delta.sections.changed
+      )
+    : previous
+      ? collectRemovedKeys(previous.sections.ids, next.sections.ids).length
+          || !sameOrder(previous.sections.ids, next.sections.ids)
+          ? next.sections.ids
+          : next.sections.ids.filter(sectionKey => previous.sections.get(sectionKey) !== next.sections.get(sectionKey))
+      : next.sections.ids
+  const removedSections = input.delta
+    ? input.delta.sections.removed
+    : previous
+      ? collectRemovedKeys(previous.sections.ids, next.sections.ids)
+      : []
+  const changedSummarySections = input.delta
+    ? (
+        summaryRebuild
+          ? next.sections.ids
+          : input.delta.summary.changed
+      )
+    : changedSections
+  const removedSummarySections = input.delta
+    ? input.delta.summary.removed
+    : removedSections
   const itemValues = buildItemValueDelta({
     previous,
     next,
     changedSections,
     removedSections,
-    rebuild
+    rebuild: rebuild || sectionRebuild
   })
   const sectionValues = buildSectionValueDelta({
     previous,
     next,
     changedSections,
     removedSections,
-    rebuild
+    rebuild: rebuild || sectionRebuild
   })
   const summaryValues = buildSectionSummaryDelta({
     previous,
     next,
-    changedSections,
-    removedSections,
-    rebuild
+    changedSections: changedSummarySections,
+    removedSections: removedSummarySections,
+    rebuild: rebuild || summaryRebuild
   })
   const gallery = resolveGalleryState(next.view, next.query)
   const kanban = resolveKanbanState(next.view, next.query)
@@ -767,20 +792,29 @@ export const projectEngineOutput = (input: {
   documentChange: DocumentChange
   previousView?: ViewState
   nextView?: ViewState
+  viewDelta?: ViewRuntimeDelta
   previousLayout: TableLayoutState | null
 }): {
-  publishDelta?: ViewPublishDelta
   sourceDelta: SourceDelta
   tableLayout: TableLayoutState | null
 } => {
   const publishDelta = projectViewPublishDelta({
     previous: input.previousView,
-    next: input.nextView
+    next: input.nextView,
+    delta: input.viewDelta
   })
   const tableLayout = syncTableLayoutState({
     previous: input.previousLayout,
     view: input.nextView
   })
+  const previousSortDir = input.previousView
+    ? buildSortDir(input.previousView.query)
+    : undefined
+  const nextSortDir = input.nextView
+    ? buildSortDir(input.nextView.query)
+    : new Map<FieldId, SortDirection | undefined>()
+  const previousTableCalc = buildTableCalcValues(input.previousView)
+  const nextTableCalc = buildTableCalcValues(input.nextView)
   const document = {
     records: buildDocumentEntityDelta<RecordId, DataRecord>({
       ids: getDocumentRecordIds(input.document),
@@ -852,8 +886,9 @@ export const projectEngineOutput = (input: {
                   ? {
                       all: {
                         ids: publishDelta.fields.all.map(field => field.id),
-                        values: buildFieldValueDelta({
-                          values: publishDelta.fields.all
+                        values: buildFieldCollectionDelta({
+                          previous: input.previousView?.fields.all,
+                          next: publishDelta.fields.all
                         })
                       }
                     }
@@ -862,8 +897,9 @@ export const projectEngineOutput = (input: {
                   ? {
                       custom: {
                         ids: publishDelta.fields.custom.map(field => field.id),
-                        values: buildFieldValueDelta({
-                          values: publishDelta.fields.custom
+                        values: buildFieldCollectionDelta({
+                          previous: input.previousView?.fields.custom,
+                          next: publishDelta.fields.custom
                         })
                       }
                     }
@@ -874,11 +910,51 @@ export const projectEngineOutput = (input: {
         ...(publishDelta.query
           ? {
               query: {
-                ...publishDelta.query,
+                ...(publishDelta.query.search
+                  ? {
+                      search: publishDelta.query.search
+                    }
+                  : {}),
+                ...(publishDelta.query.filters
+                  ? {
+                      filters: publishDelta.query.filters
+                    }
+                  : {}),
+                ...(publishDelta.query.sort
+                  ? {
+                      sort: publishDelta.query.sort
+                    }
+                  : {}),
+                ...(publishDelta.query.group
+                  ? {
+                      group: publishDelta.query.group
+                    }
+                  : {}),
+                ...(publishDelta.query.grouped !== undefined
+                  ? {
+                      grouped: publishDelta.query.grouped
+                    }
+                  : {}),
+                ...(publishDelta.query.groupFieldId !== undefined
+                  ? {
+                      groupFieldId: publishDelta.query.groupFieldId
+                    }
+                  : {}),
+                ...(publishDelta.query.filterFieldIds
+                  ? {
+                      filterFieldIds: publishDelta.query.filterFieldIds
+                    }
+                  : {}),
+                ...(publishDelta.query.sortFieldIds
+                  ? {
+                      sortFieldIds: publishDelta.query.sortFieldIds
+                    }
+                  : {}),
                 ...(publishDelta.query.sortDir
                   ? {
-                      sortDir: entityDelta<FieldId, SortDirection>({
-                        set: [...publishDelta.query.sortDir.entries()]
+                      sortDir: buildMapValueDelta<FieldId, SortDirection>({
+                        previous: previousSortDir,
+                        next: nextSortDir
                       })
                     }
                   : {})
@@ -889,16 +965,22 @@ export const projectEngineOutput = (input: {
           publishDelta.table || input.previousLayout !== tableLayout
             ? {
                 table: {
-                  ...(publishDelta.table
+                  ...(publishDelta.table?.wrap !== undefined
                     ? {
-                        ...publishDelta.table,
-                        ...(publishDelta.table.calc
-                          ? {
-                              calc: entityDelta<FieldId, CalculationMetric>({
-                                set: [...publishDelta.table.calc.entries()]
-                              })
-                            }
-                          : {})
+                        wrap: publishDelta.table.wrap
+                      }
+                    : {}),
+                  ...(publishDelta.table?.showVerticalLines !== undefined
+                    ? {
+                        showVerticalLines: publishDelta.table.showVerticalLines
+                      }
+                    : {}),
+                  ...(publishDelta.table?.calc
+                    ? {
+                        calc: buildMapValueDelta<FieldId, CalculationMetric>({
+                          previous: previousTableCalc,
+                          next: nextTableCalc
+                        })
                       }
                     : {}),
                   ...(input.previousLayout !== tableLayout
@@ -932,9 +1014,6 @@ export const projectEngineOutput = (input: {
     )
 
   return {
-    ...(publishDelta
-      ? { publishDelta }
-      : {}),
     sourceDelta: {
       ...(document.records || document.fields || document.views
         ? {

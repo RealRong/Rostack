@@ -6,9 +6,6 @@ import type {
   FieldReducerState
 } from '@dataview/engine/active/shared/calculation'
 import type {
-  CalculationEntry
-} from '@dataview/engine/active/shared/calculation'
-import type {
   Token
 } from '@shared/i18n'
 import type {
@@ -55,6 +52,13 @@ export interface QueryState {
   order?: ReadonlyMap<RecordId, number>
 }
 
+export interface QueryDelta {
+  rebuild: boolean
+  added: readonly RecordId[]
+  removed: readonly RecordId[]
+  orderChanged: boolean
+}
+
 export type DeriveAction =
   | 'reuse'
   | 'sync'
@@ -76,32 +80,38 @@ export interface SectionState {
   keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
 }
 
+export interface SectionDelta {
+  rebuild: boolean
+  orderChanged: boolean
+  removed: readonly SectionKey[]
+  changed: readonly SectionKey[]
+}
+
+export interface SectionRuntimeState {
+  structure: SectionState
+  projection: ItemProjectionCache
+}
+
 export interface SummaryState {
   bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>
-}
-
-export interface SummaryRecordDelta {
-  recordId: RecordId
-  previous?: CalculationEntry
-  next?: CalculationEntry
-}
-
-export interface SummaryFieldDelta {
-  changes: readonly SummaryRecordDelta[]
 }
 
 export interface SummaryDelta {
   rebuild: boolean
   changed: readonly SectionKey[]
   removed: readonly SectionKey[]
-  fields: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, SummaryFieldDelta>>
+}
+
+export interface ViewRuntimeDelta {
+  query: QueryDelta
+  sections: SectionDelta
+  summary: SummaryDelta
 }
 
 export interface ViewCache {
   query: QueryState
-  sections: SectionState
+  sections: SectionRuntimeState
   summary: SummaryState
-  items: ItemProjectionCache
 }
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
@@ -129,13 +139,17 @@ export const emptySectionState = (): SectionState => ({
   keysByRecord: new Map()
 })
 
+export const emptySectionRuntimeState = (): SectionRuntimeState => ({
+  structure: emptySectionState(),
+  projection: emptyItemProjectionCache()
+})
+
 export const emptySummaryState = (): SummaryState => EMPTY_INTERNAL_SUMMARY_STATE
 
 export const emptyViewCache = (): ViewCache => ({
   query: emptyQueryState(),
-  sections: emptySectionState(),
-  summary: emptySummaryState(),
-  items: emptyItemProjectionCache()
+  sections: emptySectionRuntimeState(),
+  summary: emptySummaryState()
 })
 
 export const emptyViewRecords = (): ViewRecords => EMPTY_VIEW_RECORDS

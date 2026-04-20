@@ -46,6 +46,7 @@ export const createRuntimeState = (input: {
     document: input.doc,
     documentChange,
     nextView: currentView.snapshot,
+    viewDelta: currentView.delta,
     previousLayout: null
   })
 
@@ -64,9 +65,6 @@ export const createRuntimeState = (input: {
       demand: index.demand,
       index: index.state,
       cache: currentView.cache,
-      ...(output.publishDelta
-        ? { publishDelta: output.publishDelta }
-        : {}),
       sourceDelta: output.sourceDelta,
       tableLayout: output.tableLayout,
       ...(currentView.snapshot

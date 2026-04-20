@@ -10,6 +10,7 @@ import {
   createCalculationEntry,
   createFieldReducerBuilder,
   sameCalculationEntry,
+  sameReducerCapabilities,
   type CalculationDemand,
   type CalculationEntry
 } from '@dataview/engine/active/shared/calculation'
@@ -116,7 +117,7 @@ export const ensureCalculationIndex = (
       return
     }
 
-    if (previousField.capabilities !== demand.capabilities) {
+    if (!sameReducerCapabilities(previousField.capabilities, demand.capabilities)) {
       fields.set(fieldId, buildFieldCalcIndex({
         context,
         records,

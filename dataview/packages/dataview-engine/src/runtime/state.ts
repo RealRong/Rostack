@@ -9,7 +9,6 @@ import type { ViewCache } from '@dataview/engine/contracts/internal'
 import type {
   SourceDelta,
   TableLayoutState,
-  ViewPublishDelta,
   ViewState
 } from '@dataview/engine/contracts/public'
 
@@ -30,7 +29,6 @@ export interface ActiveRuntimeState {
   index: IndexState
   cache: ViewCache
   snapshot?: ViewState
-  publishDelta?: ViewPublishDelta
   sourceDelta: SourceDelta
   tableLayout: TableLayoutState | null
 }

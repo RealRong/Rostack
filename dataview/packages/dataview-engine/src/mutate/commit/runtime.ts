@@ -234,13 +234,16 @@ const commit = <TResult extends CommitResult>(input: {
     impact: draft.impact,
     document: draft.doc
   })
+  const outputStart = now()
   const output = projectEngineOutput({
     document: draft.doc,
     documentChange,
     previousView: base.currentView.snapshot,
     nextView: nextView.snapshot,
+    viewDelta: nextView.delta,
     previousLayout: base.currentView.tableLayout
   })
+  const outputMs = now() - outputStart
 
   const next = {
     rev: base.rev + 1,
@@ -253,9 +256,6 @@ const commit = <TResult extends CommitResult>(input: {
       demand: nextIndex.demand,
       index: nextIndex.state,
       cache: nextView.cache,
-      ...(output.publishDelta
-        ? { publishDelta: output.publishDelta }
-        : {}),
       sourceDelta: output.sourceDelta,
       tableLayout: output.tableLayout,
       ...(nextView.snapshot
@@ -277,6 +277,7 @@ const commit = <TResult extends CommitResult>(input: {
         commitMs: draft.ms,
         indexMs: nextIndex.trace.timings.totalMs,
         viewMs: nextView.trace.view.timings.totalMs,
+        outputMs,
         snapshotMs: nextView.trace.snapshotMs
       },
       impact: summarizeImpact(draft.impact),

@@ -75,7 +75,8 @@ const createPerformanceStats = (): PerformanceStats => ({
     totalMs: createRunningStat(),
     planMs: createRunningStat(),
     indexMs: createRunningStat(),
-    viewMs: createRunningStat()
+    viewMs: createRunningStat(),
+    outputMs: createRunningStat()
   },
   indexes: {
     records: createPerformanceCounter(),
@@ -99,7 +100,8 @@ const clonePerformanceStats = (
     totalMs: cloneRunningStat(stats.timings.totalMs),
     planMs: cloneRunningStat(stats.timings.planMs),
     indexMs: cloneRunningStat(stats.timings.indexMs),
-    viewMs: cloneRunningStat(stats.timings.viewMs)
+    viewMs: cloneRunningStat(stats.timings.viewMs),
+    outputMs: cloneRunningStat(stats.timings.outputMs)
   },
   indexes: {
     records: { ...stats.indexes.records },
@@ -240,6 +242,7 @@ export const createPerformanceRuntime = (
       updateRunningStat(stats.timings.planMs, nextTrace.timings.planMs)
       updateRunningStat(stats.timings.indexMs, nextTrace.timings.indexMs)
       updateRunningStat(stats.timings.viewMs, nextTrace.timings.viewMs)
+      updateRunningStat(stats.timings.outputMs, nextTrace.timings.outputMs)
 
       ;(['records', 'search', 'bucket', 'sort', 'summaries'] as const).forEach(indexName => {
         const counter = stats.indexes[indexName]

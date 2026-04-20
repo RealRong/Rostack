@@ -26,7 +26,9 @@ import type {
   SectionList,
   ViewItem
 } from '@dataview/engine/contracts/public'
-import type { SectionState } from '@dataview/engine/contracts/internal'
+import type {
+  SectionState
+} from '@dataview/engine/contracts/internal'
 
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
@@ -450,31 +452,22 @@ const removeRootItemsFromById = (
   })
 }
 
-const publishRootSections = (input: {
-  sections: SectionState
-  previousSections?: SectionState
-  previousProjection: ItemProjectionCache
-  previous?: {
-    items?: ItemList
-    sections?: SectionList
-  }
+const syncRootProjection = (input: {
+  previous?: ItemProjectionCache
   allRecordIds: readonly RecordId[]
-}): {
-  projection: ItemProjectionCache
-  items: ItemList
-  sections: SectionList
-} => {
-  const byId = createMapPatchBuilder(input.previousProjection.byId)
-  if (input.previousProjection.grouped.size) {
-    removeGroupedItemsFromById(byId, input.previousProjection.grouped)
+}): ItemProjectionCache => {
+  const previous = input.previous
+  const byId = createMapPatchBuilder(previous?.byId ?? new Map<ItemId, ViewItem>())
+  if (previous?.grouped.size) {
+    removeGroupedItemsFromById(byId, previous.grouped)
   }
 
-  const previousRoot = input.previousProjection.rootByRecord
+  const previousRoot = previous?.rootByRecord ?? EMPTY_ROOT_PROJECTION
   const rootByRecord = createMapPatchBuilder(previousRoot)
-  let nextId = input.previousProjection.nextId
+  let nextId = previous?.nextId ?? 1
   let rootChanged = false
-
   const currentIds = new Set(input.allRecordIds)
+
   previousRoot.forEach((itemId, recordId) => {
     if (currentIds.has(recordId)) {
       return
@@ -501,71 +494,71 @@ const publishRootSections = (input: {
     })
   }
 
-  const nextRootByRecord = rootChanged
-    ? rootByRecord.finish()
-    : previousRoot
-  const visibleIdsBySection = new Map<SectionKey, readonly ItemId[]>()
-  input.sections.order.forEach(sectionKey => {
-    const section = input.sections.byKey.get(sectionKey)
-    if (!section) {
-      return
-    }
-
-    visibleIdsBySection.set(sectionKey, projectVisibleIds(section.recordIds, nextRootByRecord))
-  })
-
-  const projection: ItemProjectionCache = {
+  return {
     nextId,
     byId: byId.finish(),
-    rootByRecord: nextRootByRecord,
+    rootByRecord: rootChanged
+      ? rootByRecord.finish()
+      : previousRoot,
     grouped: EMPTY_GROUPED_PROJECTION
-  }
-  const table = createItemProjectionTable(projection)
-  const sections = buildSections({
-    sections: input.sections,
-    previous: input.previous?.sections,
-    previousSections: input.previousSections,
-    table,
-    visibleIdsBySection
-  })
-  const items = buildItemList({
-    sections,
-    table,
-    previous: input.previous?.items,
-    previousSections: input.previous?.sections
-  })
-
-  return {
-    projection,
-    items,
-    sections
   }
 }
 
-const publishGroupedSections = (input: {
+const syncGroupedProjection = (input: {
   sections: SectionState
-  previousSections?: SectionState
-  previousProjection: ItemProjectionCache
-  previous?: {
-    items?: ItemList
-    sections?: SectionList
-  }
+  previous?: ItemProjectionCache
   sectionMembership: ReadonlyMap<SectionKey, readonly RecordId[]>
-}): {
-  projection: ItemProjectionCache
-  items: ItemList
-  sections: SectionList
-} => {
-  const byId = createMapPatchBuilder(input.previousProjection.byId)
-  if (input.previousProjection.rootByRecord.size) {
-    removeRootItemsFromById(byId, input.previousProjection.rootByRecord)
+  changedSectionKeys: readonly SectionKey[]
+  removedSectionKeys: readonly SectionKey[]
+  rebuild: boolean
+}): ItemProjectionCache => {
+  const previous = input.previous
+  const mustRebuildAll = (
+    input.rebuild
+    || !previous
+    || previous.rootByRecord.size > 0
+  )
+  const byId = createMapPatchBuilder(previous?.byId ?? new Map<ItemId, ViewItem>())
+  if (previous?.rootByRecord.size) {
+    removeRootItemsFromById(byId, previous.rootByRecord)
   }
 
-  const grouped = createMapPatchBuilder(input.previousProjection.grouped)
-  const visibleIdsBySection = new Map<SectionKey, readonly ItemId[]>()
-  let nextId = input.previousProjection.nextId
+  const grouped = createMapPatchBuilder(previous?.grouped ?? EMPTY_GROUPED_PROJECTION)
+  let nextId = previous?.nextId ?? 1
 
-  input.sections.order.forEach(sectionKey => {
+  const syncKeys = mustRebuildAll
+    ? input.sections.order.filter(sectionKey => input.sections.byKey.has(sectionKey))
+    : [...new Set([
+        ...input.changedSectionKeys,
+        ...input.removedSectionKeys
+      ])]
+
+  if (mustRebuildAll) {
+    previous?.grouped.forEach((projection, sectionKey) => {
+      if (input.sections.byKey.has(sectionKey)) {
+        return
+      }
+
+      projection.byRecord.forEach(itemId => {
+        byId.delete(itemId)
+      })
+      grouped.delete(sectionKey)
+    })
+  }
+
+  input.removedSectionKeys.forEach(sectionKey => {
+    if (mustRebuildAll) {
+      return
+    }
+
+    const previousProjection = previous?.grouped.get(sectionKey)
+    previousProjection?.byRecord.forEach(itemId => {
+      byId.delete(itemId)
+    })
+    grouped.delete(sectionKey)
+  })
+
+  syncKeys.forEach(sectionKey => {
     const section = input.sections.byKey.get(sectionKey)
     if (!section) {
       return
@@ -574,13 +567,13 @@ const publishGroupedSections = (input: {
     const projection = syncGroupedSectionProjection({
       sectionKey,
       recordIds: input.sectionMembership.get(sectionKey) ?? EMPTY_RECORD_IDS,
-      previous: input.previousProjection.grouped.get(sectionKey),
+      previous: previous?.grouped.get(sectionKey),
       byId,
       nextId
     })
     nextId = projection.nextId
 
-    const previousProjection = input.previousProjection.grouped.get(sectionKey)
+    const previousProjection = previous?.grouped.get(sectionKey)
     if (
       !previousProjection
       || projection.projection.ids !== previousProjection.ids
@@ -588,31 +581,69 @@ const publishGroupedSections = (input: {
     ) {
       grouped.set(sectionKey, projection.projection)
     }
-
-    visibleIdsBySection.set(
-      sectionKey,
-      projectVisibleIds(section.recordIds, projection.projection.byRecord)
-    )
   })
 
-  input.previousProjection.grouped.forEach((previousSection, sectionKey) => {
-    if (input.sections.byKey.has(sectionKey)) {
-      return
-    }
-
-    previousSection.byRecord.forEach(itemId => {
-      byId.delete(itemId)
-    })
-    grouped.delete(sectionKey)
-  })
-
-  const projection: ItemProjectionCache = {
+  return {
     nextId,
     byId: byId.finish(),
     rootByRecord: EMPTY_ROOT_PROJECTION,
     grouped: grouped.finish()
   }
-  const table = createItemProjectionTable(projection)
+}
+
+export const syncSectionProjection = (input: {
+  mode: 'root' | 'grouped'
+  sections: SectionState
+  previous?: ItemProjectionCache
+  allRecordIds: readonly RecordId[]
+  sectionMembership?: ReadonlyMap<SectionKey, readonly RecordId[]>
+  changedSectionKeys?: readonly SectionKey[]
+  removedSectionKeys?: readonly SectionKey[]
+  rebuild: boolean
+}): ItemProjectionCache => input.mode === 'root'
+  ? syncRootProjection({
+      previous: input.previous,
+      allRecordIds: input.allRecordIds
+    })
+  : syncGroupedProjection({
+      sections: input.sections,
+      previous: input.previous,
+      sectionMembership: input.sectionMembership ?? new Map(),
+      changedSectionKeys: input.changedSectionKeys ?? [],
+      removedSectionKeys: input.removedSectionKeys ?? [],
+      rebuild: input.rebuild
+    })
+
+export const publishSections = (input: {
+  sections: SectionState
+  projection: ItemProjectionCache
+  previousSections?: SectionState
+  previous?: {
+    items?: ItemList
+    sections?: SectionList
+  }
+}): {
+  items: ItemList
+  sections: SectionList
+} => {
+  const table = createItemProjectionTable(input.projection)
+  const visibleIdsBySection = new Map<SectionKey, readonly ItemId[]>()
+
+  input.sections.order.forEach(sectionKey => {
+    const section = input.sections.byKey.get(sectionKey)
+    if (!section) {
+      return
+    }
+
+    const byRecord = input.projection.rootByRecord.size
+      ? input.projection.rootByRecord
+      : input.projection.grouped.get(sectionKey)?.byRecord ?? EMPTY_RECORD_ITEM_IDS
+    visibleIdsBySection.set(
+      sectionKey,
+      projectVisibleIds(section.recordIds, byRecord)
+    )
+  })
+
   const sections = buildSections({
     sections: input.sections,
     previous: input.previous?.sections,
@@ -628,39 +659,7 @@ const publishGroupedSections = (input: {
   })
 
   return {
-    projection,
     items,
     sections
   }
 }
-
-export const publishSections = (input: {
-  mode: 'root' | 'grouped'
-  sections: SectionState
-  previousSections?: SectionState
-  previousProjection: ItemProjectionCache
-  previous?: {
-    items?: ItemList
-    sections?: SectionList
-  }
-  allRecordIds: readonly RecordId[]
-  sectionMembership?: ReadonlyMap<SectionKey, readonly RecordId[]>
-}): {
-  projection: ItemProjectionCache
-  items: ItemList
-  sections: SectionList
-} => input.mode === 'root'
-  ? publishRootSections({
-      sections: input.sections,
-      previousSections: input.previousSections,
-      previousProjection: input.previousProjection,
-      previous: input.previous,
-      allRecordIds: input.allRecordIds
-    })
-  : publishGroupedSections({
-      sections: input.sections,
-      previousSections: input.previousSections,
-      previousProjection: input.previousProjection,
-      previous: input.previous,
-      sectionMembership: input.sectionMembership ?? new Map()
-    })

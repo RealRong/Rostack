@@ -58,6 +58,8 @@ import {
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_TOUCHED_SECTIONS = new Set<string>()
 const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
+const MAX_INCREMENTAL_SECTION_TOUCH_RATIO = 0.25
+const MIN_LARGE_SECTION_TOUCH_COUNT = 1024
 
 const addChangedRecordIds = (
   target: Set<RecordId>,
@@ -155,6 +157,24 @@ const buildVisibleKeysForRecord = (input: {
   ? input.bucketKeysByRecord?.get(input.recordId) ?? EMPTY_SECTION_KEYS
   : EMPTY_SECTION_KEYS
 
+const shouldRebuildGroupedSections = (input: {
+  previous: SectionState
+  query: QueryState
+  changedRecordIds: ReadonlySet<RecordId>
+}): boolean => {
+  const touchedCount = input.changedRecordIds.size
+  if (touchedCount < MIN_LARGE_SECTION_TOUCH_COUNT) {
+    return false
+  }
+
+  const baseline = Math.max(
+    input.previous.keysByRecord.size,
+    input.query.records.visible.length
+  )
+
+  return touchedCount > baseline * MAX_INCREMENTAL_SECTION_TOUCH_RATIO
+}
+
 export const syncSectionState = (input: {
   previous?: SectionState
   view: View
@@ -191,6 +211,19 @@ export const syncSectionState = (input: {
   const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec(input.view.group))
   const changedRecordIds = resolveChangedRecordIds(input.impact)
   if (!bucketIndex || changedRecordIds === 'all') {
+    return buildSectionState({
+      view: input.view,
+      query: input.query,
+      index: input.index,
+      previous
+    })
+  }
+
+  if (shouldRebuildGroupedSections({
+    previous,
+    query: input.query,
+    changedRecordIds
+  })) {
     return buildSectionState({
       view: input.view,
       query: input.query,

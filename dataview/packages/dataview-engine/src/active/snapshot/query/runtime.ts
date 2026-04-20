@@ -29,6 +29,7 @@ import type {
 } from '@dataview/engine/active/shared/impact'
 import type {
   DeriveAction,
+  QueryDelta,
   QueryState
 } from '@dataview/engine/contracts/internal'
 export {
@@ -63,13 +64,6 @@ const EMPTY_VISIBLE_DIFF = {
   added: EMPTY_RECORD_IDS,
   removed: EMPTY_RECORD_IDS
 } as const
-
-export interface QueryStageDelta {
-  rebuild: boolean
-  added: readonly RecordId[]
-  removed: readonly RecordId[]
-  orderChanged: boolean
-}
 
 const collectVisibleDiff = (input: {
   previous: readonly RecordId[]
@@ -178,7 +172,7 @@ export const runQueryStage = (input: {
 }): {
   action: DeriveAction
   state: QueryState
-  delta: QueryStageDelta
+  delta: QueryDelta
   records: ViewRecords
   deriveMs: number
   publishMs: number
@@ -219,7 +213,7 @@ export const runQueryStage = (input: {
   })
 
   let changedRecordCount = 0
-  let delta: QueryStageDelta = {
+  let delta: QueryDelta = {
     rebuild: stage.action === 'rebuild',
     added: EMPTY_RECORD_IDS,
     removed: EMPTY_RECORD_IDS,

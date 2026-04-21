@@ -1,35 +1,35 @@
 import { describe, expect, test } from 'vitest'
-import { store } from '@shared/core'
+import { store as coreStore } from '@shared/core'
 
 
 
 describe('staged stores', () => {
   test('value store keeps pending writes invisible until flush and clear resets immediately', () => {
     let scheduled = 0
-    const store = store.createStagedValueStore({
+    const stagedStore = coreStore.createStagedValueStore({
       initial: 0,
       schedule: () => {
         scheduled += 1
       }
     })
 
-    store.write(2)
+    stagedStore.write(2)
 
     expect(scheduled).toBe(1)
-    expect(store.get()).toBe(0)
+    expect(stagedStore.get()).toBe(0)
 
-    store.flush()
+    stagedStore.flush()
 
-    expect(store.get()).toBe(2)
+    expect(stagedStore.get()).toBe(2)
 
-    store.clear()
+    stagedStore.clear()
 
-    expect(store.get()).toBe(0)
+    expect(stagedStore.get()).toBe(0)
   })
 
   test('keyed store flushes built maps and clear restores empty state', () => {
     let scheduled = 0
-    const store = store.createStagedKeyedStore<string, number, Array<readonly [string, number]>>({
+    const stagedStore = coreStore.createStagedKeyedStore<string, number, Array<readonly [string, number]>>({
       schedule: () => {
         scheduled += 1
       },
@@ -38,17 +38,17 @@ describe('staged stores', () => {
       build: input => new Map(input)
     })
 
-    store.write([['left', 5]])
+    stagedStore.write([['left', 5]])
 
     expect(scheduled).toBe(1)
-    expect(store.get('left')).toBe(0)
+    expect(stagedStore.get('left')).toBe(0)
 
-    store.flush()
+    stagedStore.flush()
 
-    expect(store.get('left')).toBe(5)
+    expect(stagedStore.get('left')).toBe(5)
 
-    store.clear()
+    stagedStore.clear()
 
-    expect(store.get('left')).toBe(0)
+    expect(stagedStore.get('left')).toBe(0)
   })
 })

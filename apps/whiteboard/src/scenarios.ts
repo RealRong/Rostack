@@ -1,11 +1,11 @@
 import type {
   Document,
   Edge,
-  MindmapTree,
   Node,
   SpatialNode
 } from '@whiteboard/core/types'
-import { createDocument } from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 
 type Scenario = {
   id: string
@@ -48,13 +48,15 @@ const createShapeNode = (
 }
 
 const createBaseDocument = (id: string, nodes: Node[], edges: Edge[]): Document => ({
-  ...createDocument(id),
+  ...documentApi.create(id),
   nodes: toRecord(nodes),
   edges: toRecord(edges),
-  order: [
+  canvas: {
+    order: [
     ...nodes.map((node) => ({ kind: 'node' as const, id: node.id })),
     ...edges.map((edge) => ({ kind: 'edge' as const, id: edge.id }))
-  ]
+    ]
+  }
 })
 
 const createBasicDocument = (): Document => {
@@ -166,40 +168,93 @@ const createDenseDocument = (): Document => {
 }
 
 const createMindmapDocument = (): Document => {
-  const tree: MindmapTree = {
-    id: 'mindmap-root',
-    rootId: 'mm-1',
-    nodes: {
-      'mm-1': { id: 'mm-1', data: { kind: 'text', text: '核心议题' } },
-      'mm-2': { id: 'mm-2', parentId: 'mm-1', side: 'left', data: { kind: 'text', text: '左分支' } },
-      'mm-3': { id: 'mm-3', parentId: 'mm-1', side: 'right', data: { kind: 'text', text: '右分支' } },
-      'mm-4': { id: 'mm-4', parentId: 'mm-2', data: { kind: 'text', text: '子节点 A' } },
-      'mm-5': { id: 'mm-5', parentId: 'mm-2', data: { kind: 'text', text: '子节点 B' } },
-      'mm-6': { id: 'mm-6', parentId: 'mm-3', data: { kind: 'text', text: '子节点 C' } },
-      'mm-7': { id: 'mm-7', parentId: 'mm-3', data: { kind: 'text', text: '子节点 D' } }
-    },
-    children: {
-      'mm-1': ['mm-2', 'mm-3'],
-      'mm-2': ['mm-4', 'mm-5'],
-      'mm-3': ['mm-6', 'mm-7'],
-      'mm-4': [],
-      'mm-5': [],
-      'mm-6': [],
-      'mm-7': []
-    },
-    meta: {
-      position: { x: 0, y: 0 }
+  const mindmapId = 'mindmap-root'
+  const rootId = 'mm-1'
+  const createNodeId = (() => {
+    const ids = ['mm-2', 'mm-3', 'mm-4', 'mm-5', 'mm-6', 'mm-7']
+    let index = 0
+    return () => ids[index++]!
+  })()
+  const instantiated = mindmapApi.template.instantiate({
+    rootId,
+    createNodeId,
+    template: {
+      layout: {
+        side: 'both',
+        mode: 'tidy',
+        hGap: 28,
+        vGap: 18
+      },
+      root: {
+        node: {
+          type: 'text',
+          data: { text: '核心议题' }
+        },
+        children: [
+          {
+            side: 'left',
+            node: {
+              type: 'text',
+              data: { text: '左分支' }
+            },
+            children: [
+              {
+                node: {
+                  type: 'text',
+                  data: { text: '子节点 A' }
+                }
+              },
+              {
+                node: {
+                  type: 'text',
+                  data: { text: '子节点 B' }
+                }
+              }
+            ]
+          },
+          {
+            side: 'right',
+            node: {
+              type: 'text',
+              data: { text: '右分支' }
+            },
+            children: [
+              {
+                node: {
+                  type: 'text',
+                  data: { text: '子节点 C' }
+                }
+              },
+              {
+                node: {
+                  type: 'text',
+                  data: { text: '子节点 D' }
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
-  }
+  })
 
   const nodes: Node[] = [
-    {
-      id: 'mindmap-root',
-      type: 'mindmap',
-      position: { x: -80, y: -60 },
-      size: { width: 200, height: 140 },
-      data: { mindmap: tree }
-    },
+    ...Object.entries(instantiated.nodes).map(([nodeId, templateNode]) => ({
+      id: nodeId,
+      type: templateNode.type ?? 'text',
+      owner: {
+        kind: 'mindmap' as const,
+        id: mindmapId
+      },
+      position: nodeId === rootId
+        ? { x: -80, y: -60 }
+        : { x: 0, y: 0 },
+      size: templateNode.size,
+      rotation: templateNode.rotation,
+      locked: templateNode.locked,
+      data: templateNode.data,
+      style: templateNode.style
+    })),
     {
       id: 'note-1',
       type: 'sticky',
@@ -209,7 +264,28 @@ const createMindmapDocument = (): Document => {
     }
   ]
 
-  return createBaseDocument('demo-mindmap', nodes, [])
+  return {
+    ...createBaseDocument('demo-mindmap', nodes, []),
+    mindmaps: {
+      [mindmapId]: {
+        id: mindmapId,
+        root: rootId,
+        members: Object.fromEntries(
+          Object.entries(instantiated.tree.nodes).map(([nodeId, member]) => [
+            nodeId,
+            {
+              parentId: member.parentId,
+              side: member.side,
+              collapsed: member.collapsed,
+              branchStyle: member.branch
+            }
+          ])
+        ),
+        children: instantiated.tree.children,
+        layout: instantiated.tree.layout
+      }
+    }
+  }
 }
 
 const createShapesDocument = (): Document => {

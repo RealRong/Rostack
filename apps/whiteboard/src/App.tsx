@@ -33,8 +33,8 @@ export const App = () => {
 
   const collab = useMemo(() => ({
     doc: collabBinding.doc,
+    actorId: user.id,
     provider: collabBinding.provider,
-    bootstrap: 'auto' as const,
     autoConnect: true,
     presence: {
       binding: collabBinding.awareness

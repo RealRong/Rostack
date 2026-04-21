@@ -49,19 +49,21 @@ const readEnterProgress = (
   return Math.max(0, Math.min(1, (now - startedAt) / durationMs))
 }
 
+type FrameHandle = number | ReturnType<typeof globalThis.setTimeout>
+
 const scheduleFrame = (
   callback: () => void
-) => (
+): FrameHandle => (
   typeof requestAnimationFrame === 'function'
     ? requestAnimationFrame(callback)
     : globalThis.setTimeout(callback, 16)
 )
 
 const cancelFrame = (
-  handle: number
+  handle: FrameHandle
 ) => {
   if (typeof requestAnimationFrame === 'function') {
-    cancelAnimationFrame(handle)
+    cancelAnimationFrame(handle as number)
     return
   }
 
@@ -210,15 +212,15 @@ export const createMindmapLayoutRead = ({
   preview: store.ReadStore<MindmapPreviewState | undefined>
 }): MindmapLayoutRead => {
   const clock = store.createValueStore(0)
-  let frame = 0
+  let frame: FrameHandle | null = null
 
   const stopClock = () => {
-    if (!frame) {
+    if (frame === null) {
       return
     }
 
     cancelFrame(frame)
-    frame = 0
+    frame = null
   }
 
   const tickClock = () => {
@@ -232,7 +234,7 @@ export const createMindmapLayoutRead = ({
       return
     }
 
-    frame = 0
+    frame = null
   }
 
   preview.subscribe(() => {
@@ -241,7 +243,7 @@ export const createMindmapLayoutRead = ({
       return
     }
 
-    if (!frame) {
+    if (frame === null) {
       tickClock()
     }
   })

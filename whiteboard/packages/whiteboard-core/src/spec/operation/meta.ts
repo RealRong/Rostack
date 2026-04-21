@@ -259,8 +259,8 @@ export const META: OperationMetaTable = {
     reducer: 'mindmap',
     sync: 'live'
   },
-  'mindmap.root.move': {
-    type: 'mindmap.root.move',
+  'mindmap.move': {
+    type: 'mindmap.move',
     namespace: 'mindmap',
     reducer: 'mindmap',
     sync: 'live'
@@ -356,4 +356,3 @@ export const sync = {
     input: OperationLike
   ): boolean => sync.mode(readType(input)) === 'checkpoint-only'
 }
-

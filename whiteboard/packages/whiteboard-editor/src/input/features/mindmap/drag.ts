@@ -69,7 +69,7 @@ const previewMindmapDrag = (
 export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
-  mindmap: Pick<MindmapPresentationRead, 'item'>
+  mindmap: Pick<MindmapPresentationRead, 'structure' | 'layout'>
   node: Pick<NodePresentationRead, 'item'>
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
 }): MindmapDragState | undefined => {
@@ -107,8 +107,23 @@ export const tryStartMindmapDrag = (input: {
     return undefined
   }
 
-  const treeView = input.mindmap.item.get(treeId)
+  const structure = input.mindmap.structure.get(treeId)
+  const layout = input.mindmap.layout.get(treeId)
+  const treeView = (
+    structure && layout
+      ? {
+          id: structure.id,
+          tree: structure.tree,
+          layout: structure.layout,
+          computed: layout.computed
+        }
+      : undefined
+  )
   if (!treeView) {
+    return undefined
+  }
+  const rootRect = treeView.computed.node[treeView.tree.rootNodeId]
+  if (!rootRect) {
     return undefined
   }
 
@@ -118,8 +133,8 @@ export const tryStartMindmapDrag = (input: {
         pointerId: input.pointer.pointerId,
         start: input.pointer.world,
         origin: {
-          x: treeView.node.position.x,
-          y: treeView.node.position.y
+          x: rootRect.x,
+          y: rootRect.y
         }
       })
     : mindmapApi.drop.createSubtreeDrag({
@@ -135,7 +150,7 @@ export const tryStartMindmapDragForNode = (input: {
   nodeId: NodeId
   pointerId: number
   world: Point
-  mindmap: Pick<MindmapPresentationRead, 'item'>
+  mindmap: Pick<MindmapPresentationRead, 'structure' | 'layout'>
   node: Pick<NodePresentationRead, 'item'>
 }): MindmapDragState | undefined => {
   const pickedNode = input.node.item.get(input.nodeId)?.node
@@ -151,8 +166,23 @@ export const tryStartMindmapDragForNode = (input: {
     return undefined
   }
 
-  const treeView = input.mindmap.item.get(treeId)
+  const structure = input.mindmap.structure.get(treeId)
+  const layout = input.mindmap.layout.get(treeId)
+  const treeView = (
+    structure && layout
+      ? {
+          id: structure.id,
+          tree: structure.tree,
+          layout: structure.layout,
+          computed: layout.computed
+        }
+      : undefined
+  )
   if (!treeView) {
+    return undefined
+  }
+  const rootRect = treeView.computed.node[treeView.tree.rootNodeId]
+  if (!rootRect) {
     return undefined
   }
 
@@ -162,8 +192,8 @@ export const tryStartMindmapDragForNode = (input: {
         pointerId: input.pointerId,
         start: input.world,
         origin: {
-          x: treeView.node.position.x,
-          y: treeView.node.position.y
+          x: rootRect.x,
+          y: rootRect.y
         }
       })
     : mindmapApi.drop.createSubtreeDrag({
@@ -178,13 +208,24 @@ export const tryStartMindmapDragForNode = (input: {
 const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
-  mindmap: Pick<MindmapPresentationRead, 'item'>
+  mindmap: Pick<MindmapPresentationRead, 'structure' | 'layout'>
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
   world: input.world,
   treeView:
     input.state.kind === 'subtree'
-      ? input.mindmap.item.get(input.state.treeId)
+      ? (() => {
+          const structure = input.mindmap.structure.get(input.state.treeId)
+          const layout = input.mindmap.layout.get(input.state.treeId)
+          return structure && layout
+            ? {
+                id: structure.id,
+                tree: structure.tree,
+                layout: structure.layout,
+                computed: layout.computed
+              }
+            : undefined
+        })()
       : undefined
 })
 
@@ -265,7 +306,7 @@ export const createMindmapDragSession = (
       const commit = commitMindmapDrag(state)
 
       if (commit?.kind === 'root') {
-        ctx.write.mindmap.root.move(commit.nodeId, commit.position)
+        ctx.write.mindmap.move(commit.nodeId, commit.position)
       }
 
       if (commit?.kind === 'subtree') {

@@ -31,7 +31,7 @@ import type {
 } from '@dataview/engine/contracts'
 import {
   publishSections,
-  syncSectionProjection
+  syncItemProjection
 } from '@dataview/engine/active/snapshot/sections/publish'
 import {
   syncSectionState
@@ -172,24 +172,20 @@ const deriveSectionsState = (input: {
   return {
     state: {
       structure,
-      projection: syncSectionProjection({
+      projection: syncItemProjection({
         mode: input.view.group
           ? 'grouped'
           : 'root',
-        sections: structure,
         previous: input.previous?.projection,
         allRecordIds: input.index.records.ids,
         ...(input.view.group
           ? {
-              sectionMembership: readBucketIndex(
+              sectionKeysByRecord: readBucketIndex(
                 input.index.bucket,
                 createBucketSpec(input.view.group)
-              )?.recordsByKey
+              )?.keysByRecord
             }
-          : {}),
-        changedSectionKeys: delta.changed,
-        removedSectionKeys: delta.removed,
-        rebuild: delta.rebuild
+          : {})
       })
     },
     delta

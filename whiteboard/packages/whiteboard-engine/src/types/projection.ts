@@ -1,6 +1,7 @@
 import type {
   MindmapLayout,
   MindmapLayoutSpec,
+  MindmapMemberRecord,
   MindmapNodeId,
   MindmapTree
 } from '@whiteboard/core/mindmap'
@@ -12,8 +13,7 @@ import type {
   NodeGeometry,
   Node,
   NodeId,
-  Rect,
-  SpatialNode
+  Rect
 } from '@whiteboard/core/types'
 
 export type CanvasNode = {
@@ -27,14 +27,28 @@ export type EdgeItem = {
   ends: ResolvedEdgeEnds
 }
 
-export type MindmapItem = {
+export type MindmapStructureItem = {
   id: NodeId
-  node: SpatialNode
+  rootId: MindmapNodeId
+  nodeIds: readonly MindmapNodeId[]
   tree: MindmapTree
+  topics: Readonly<Record<MindmapNodeId, MindmapMemberRecord>>
   layout: MindmapLayoutSpec
+}
+
+export type MindmapLayoutItem = {
+  id: NodeId
+  rootId: MindmapNodeId
+  nodeIds: readonly MindmapNodeId[]
   computed: MindmapLayout
-  rootLocked?: boolean
-  childNodeIds: readonly MindmapNodeId[]
+  connectors: readonly MindmapRenderConnector[]
+}
+
+export type MindmapSceneItem = {
+  id: NodeId
+  rootId: MindmapNodeId
+  nodeIds: readonly MindmapNodeId[]
+  bbox: Rect
   connectors: readonly MindmapRenderConnector[]
 }
 

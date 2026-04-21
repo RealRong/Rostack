@@ -2,8 +2,9 @@ import {
   useStoreValue
 } from '@shared/react'
 import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
-import { NodeItem } from '@whiteboard/react/features/node/components/NodeItem'
+import { NodeBodyItem } from '@whiteboard/react/features/node/components/NodeBodyItem'
 import { EdgeItem } from '@whiteboard/react/features/edge/components/EdgeItem'
+import { MindmapSceneItem } from '@whiteboard/react/features/mindmap/components/MindmapSceneItem'
 import { EdgeCanvasMarkerDefs } from '@whiteboard/react/features/edge/ui/marker'
 
 export const CanvasScene = () => {
@@ -25,8 +26,15 @@ export const CanvasScene = () => {
                 edgeId={ref.id}
               />
             )
+          : ref.kind === 'mindmap'
+            ? (
+                <MindmapSceneItem
+                  key={`mindmap:${ref.id}`}
+                  mindmapId={ref.id}
+                />
+              )
           : (
-              <NodeItem
+              <NodeBodyItem
                 key={`node:${ref.id}`}
                 nodeId={ref.id}
               />

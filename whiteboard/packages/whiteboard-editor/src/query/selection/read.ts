@@ -368,7 +368,7 @@ const readNodeScope = ({
   primaryNode?: Node
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
   nodeStats: SelectionNodeStats
-  mindmap: Pick<MindmapPresentationRead, 'item'>
+  mindmap: Pick<MindmapPresentationRead, 'structure'>
   defaults: EditorDefaults['selection']
 }): SelectionToolbarNodeScope => {
   const readPaintDefaults = defaults.node.readPaint
@@ -413,7 +413,7 @@ const readNodeScope = ({
     ? treeIds[0]
     : undefined
   const mindmapTree = mindmapTreeId
-    ? store.read(mindmap.item, mindmapTreeId)?.tree
+    ? store.read(mindmap.structure, mindmapTreeId)?.tree
     : undefined
   const readMindmapBranchValue = <TValue,>(
     select: (branch: NonNullable<typeof mindmapTree>['nodes'][MindmapNodeId]['branch']) => TValue
@@ -668,7 +668,7 @@ const resolveSelectionToolbar = ({
   nodeScope: SelectionToolbarNodeScope | undefined
   edgeScope: SelectionToolbarEdgeScope | undefined
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
-  mindmap: Pick<MindmapPresentationRead, 'item'>
+  mindmap: Pick<MindmapPresentationRead, 'structure'>
   tool: Tool
   edit: EditSession
   interactionChrome: boolean
@@ -826,7 +826,7 @@ export const createSelectionRead = ({
     }
   }
   nodeType: NodeTypeSupport
-  mindmap: Pick<MindmapPresentationRead, 'item'>
+  mindmap: Pick<MindmapPresentationRead, 'structure'>
   tool: store.ReadStore<Tool>
   edit: store.ReadStore<EditSession>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>

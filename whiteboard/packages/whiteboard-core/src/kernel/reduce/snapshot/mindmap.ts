@@ -31,8 +31,8 @@ export const createMindmapSnapshotApi = (
       mindmap: cloneMindmap(mindmap),
       nodes,
       slot: cloneCanvasSlot(readCanvasSlot(readCanvasOrder(tx._runtime.draft), {
-        kind: 'node',
-        id: mindmap.root
+        kind: 'mindmap',
+        id
       }))
     }
   },

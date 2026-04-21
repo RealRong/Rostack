@@ -278,7 +278,7 @@ export type Op =
   | { readonly type: 'mindmap.create'; readonly mindmap: MindmapRecord; readonly nodes: Node[] }
   | { readonly type: 'mindmap.restore'; readonly snapshot: MindmapSnapshot }
   | { readonly type: 'mindmap.delete'; readonly id: string }
-  | { readonly type: 'mindmap.root.move'; readonly id: string; readonly position: Point }
+  | { readonly type: 'mindmap.move'; readonly id: string; readonly position: Point }
   | { readonly type: 'mindmap.layout'; readonly id: string; readonly patch: Partial<MindmapLayoutSpec> }
   | { readonly type: 'mindmap.topic.insert'; readonly id: string; readonly input: MindmapTopicInsertInput; readonly node: Node }
   | { readonly type: 'mindmap.topic.restore'; readonly id: string; readonly snapshot: MindmapTopicSnapshot }

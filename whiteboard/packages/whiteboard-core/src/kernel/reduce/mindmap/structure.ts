@@ -3,10 +3,12 @@ import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import {
   collectConnectedEdges,
+  deleteMindmap,
   deleteEdge,
   deleteNode,
   getMindmap,
   getMindmapTreeFromDraft,
+  setMindmap,
   setNode
 } from '@whiteboard/core/kernel/reduce/runtime'
 
@@ -17,7 +19,7 @@ export const createMindmapStructureApi = (
     mindmap: import('@whiteboard/core/types').MindmapRecord
     nodes: readonly import('@whiteboard/core/types').Node[]
   }) => {
-    tx._runtime.draft.mindmaps.set(input.mindmap.id, input.mindmap)
+    setMindmap(tx._runtime.draft, input.mindmap)
     markChange(tx._runtime.changes.mindmaps, 'add', input.mindmap.id)
     tx._runtime.inverse.unshift({
       type: 'mindmap.delete',
@@ -43,12 +45,11 @@ export const createMindmapStructureApi = (
       markChange(tx._runtime.changes.nodes, 'add', node.id)
       tx.dirty.node.value(node.id)
     })
-    const rootId = snapshot.mindmap.root
     tx.collection.canvas.order().structure.insert({
-      kind: 'node',
-      id: rootId
+      kind: 'mindmap',
+      id: snapshot.mindmap.id
     }, snapshot.slot?.prev
-      ? { kind: 'after', itemId: `node:${snapshot.slot.prev.id}` }
+      ? { kind: 'after', itemId: `${snapshot.slot.prev.kind}:${snapshot.slot.prev.id}` }
       : snapshot.slot?.next
         ? { kind: 'before', itemId: `${snapshot.slot.next.kind}:${snapshot.slot.next.id}` }
         : { kind: 'end' })
@@ -89,7 +90,7 @@ export const createMindmapStructureApi = (
       markChange(tx._runtime.changes.nodes, 'delete', nodeId)
       tx.dirty.node.value(nodeId)
     })
-    tx._runtime.draft.mindmaps.delete(id)
+    deleteMindmap(tx._runtime.draft, id)
     markChange(tx._runtime.changes.mindmaps, 'delete', id)
     tx._runtime.changes.canvasOrder = true
     tx.dirty.canvas.order()

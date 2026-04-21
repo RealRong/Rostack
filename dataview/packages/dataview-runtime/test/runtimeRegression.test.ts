@@ -28,6 +28,12 @@ const STATUS_OPTIONS = [
     name: 'Doing',
     color: 'blue',
     category: 'in_progress'
+  },
+  {
+    id: 'done',
+    name: 'Done',
+    color: 'green',
+    category: 'complete'
   }
 ] as const
 
@@ -117,9 +123,25 @@ const createDocument = () => {
           values: {
             [FIELD_STATUS]: 'todo'
           }
+        },
+        rec_2: {
+          id: 'rec_2',
+          title: 'Task 2',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'doing'
+          }
+        },
+        rec_3: {
+          id: 'rec_3',
+          title: 'Task 3',
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: 'done'
+          }
         }
       },
-      order: ['rec_1']
+      order: ['rec_1', 'rec_2', 'rec_3']
     },
     meta: {}
   }
@@ -184,6 +206,47 @@ describe('data view runtime regressions', () => {
     }).not.toThrow()
 
     unsubscribePreview()
+    runtime.dispose()
+  })
+
+  test('kanban cards stay readable after grouped filters are added and removed', () => {
+    const engine = createEngine({
+      document: createDocument()
+    })
+    const runtime = createDataViewRuntime({
+      engine
+    })
+
+    engine.views.open(VIEW_BOARD)
+
+    const readVisibleItemIds = () => engine.source.active.sections.keys.get().flatMap(sectionKey => (
+      engine.source.active.sections.get(sectionKey)?.items.ids ?? []
+    ))
+    const assertReadableCards = (expectedRecordIds: readonly string[]) => {
+      const visibleItemIds = readVisibleItemIds()
+
+      expect(visibleItemIds.map(itemId => runtime.model.kanban.card.get(itemId)?.recordId)).toEqual(expectedRecordIds)
+      visibleItemIds.forEach(itemId => {
+        expect(runtime.model.kanban.card.get(itemId)).toBeDefined()
+        expect(runtime.model.kanban.content.get(itemId)).toBeDefined()
+      })
+    }
+
+    assertReadableCards(['rec_1', 'rec_2', 'rec_3'])
+
+    engine.active.filters.add(FIELD_STATUS)
+    engine.active.filters.update(0, {
+      fieldId: FIELD_STATUS,
+      presetId: 'eq',
+      value: 'done'
+    })
+
+    assertReadableCards(['rec_3'])
+
+    engine.active.filters.remove(0)
+
+    assertReadableCards(['rec_1', 'rec_2', 'rec_3'])
+
     runtime.dispose()
   })
 })

@@ -231,8 +231,34 @@ export const isTopLevelNode = (
   node: Node | undefined
 ) => {
   if (!node) return false
-  if (!node.owner) return true
-  return getMindmap(draft, node.owner.id)?.root === node.id
+  return !node.owner
+}
+
+export const isTopLevelMindmap = (
+  draft: DraftDocument,
+  id: MindmapId
+) => Boolean(getMindmap(draft, id))
+
+export const setMindmap = (
+  draft: DraftDocument,
+  mindmap: MindmapRecord
+) => {
+  draft.mindmaps.set(mindmap.id, mindmap)
+  writeCanvasOrder(draft, appendCanvasRef(readCanvasOrder(draft), {
+    kind: 'mindmap',
+    id: mindmap.id
+  }))
+}
+
+export const deleteMindmap = (
+  draft: DraftDocument,
+  mindmapId: MindmapId
+) => {
+  draft.mindmaps.delete(mindmapId)
+  writeCanvasOrder(draft, removeCanvasRef(readCanvasOrder(draft), {
+    kind: 'mindmap',
+    id: mindmapId
+  }))
 }
 
 export const setNode = (
@@ -253,10 +279,13 @@ export const deleteNode = (
   nodeId: NodeId
 ) => {
   draft.nodes.delete(nodeId)
-  writeCanvasOrder(draft, removeCanvasRef(readCanvasOrder(draft), {
-    kind: 'node',
-    id: nodeId
-  }))
+  const currentOrder = readCanvasOrder(draft)
+  if (currentOrder.some((ref) => ref.kind === 'node' && ref.id === nodeId)) {
+    writeCanvasOrder(draft, removeCanvasRef(currentOrder, {
+      kind: 'node',
+      id: nodeId
+    }))
+  }
 }
 
 export const setEdge = (

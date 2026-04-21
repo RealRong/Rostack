@@ -24,7 +24,9 @@ export type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 export type {
   CanvasNode,
   EdgeItem,
-  MindmapItem,
+  MindmapLayoutItem,
+  MindmapSceneItem,
+  MindmapStructureItem,
   NodeItem
 } from '@whiteboard/engine/types/projection'
 export type {

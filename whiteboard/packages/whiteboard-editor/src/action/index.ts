@@ -441,14 +441,15 @@ const buildMindmapEnterPreview = ({
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterPreview | undefined => {
-  const item = query.mindmap.item.get(treeId)
-  if (!item) {
+  const structure = query.mindmap.structure.get(treeId)
+  const layout = query.mindmap.layout.get(treeId)
+  if (!structure || !layout) {
     return undefined
   }
 
-  const parentId = item.tree.nodes[nodeId]?.parentId
-  const toRect = item.computed.node[nodeId]
-  const anchorRect = item.computed.node[anchorId ?? parentId ?? '']
+  const parentId = structure.tree.nodes[nodeId]?.parentId
+  const toRect = layout.computed.node[nodeId]
+  const anchorRect = layout.computed.node[anchorId ?? parentId ?? '']
   if (!toRect || !parentId || !anchorRect) {
     return undefined
   }
@@ -814,15 +815,15 @@ export const createEditorActions = ({
     }),
     moveRoot: (input) => {
       const directNode = query.node.item.get(input.nodeId)?.node
-      const tree = query.mindmap.item.get(input.nodeId)
+      const structure = query.mindmap.structure.get(input.nodeId)
       const node = directNode ?? (
-        tree
-          ? query.node.item.get(tree.tree.rootNodeId)?.node
+        structure
+          ? query.node.item.get(structure.rootId)?.node
           : undefined
       )
       const mindmapId = directNode?.owner?.kind === 'mindmap'
         ? directNode.owner.id
-        : tree?.id
+        : structure?.id
       if (!node || !mindmapId) {
         return undefined
       }
@@ -841,12 +842,12 @@ export const createEditorActions = ({
         return undefined
       }
 
-      return write.mindmap.root.move(mindmapId, input.position)
+      return write.mindmap.move(mindmapId, input.position)
     },
     style: {
       branch: (input) => {
         const scopeIds = input.scope === 'subtree' && input.id
-          ? query.mindmap.item.get(input.id)?.childNodeIds ?? input.nodeIds
+          ? query.mindmap.structure.get(input.id)?.nodeIds ?? input.nodeIds
           : input.nodeIds
 
         return write.mindmap.branch.update(

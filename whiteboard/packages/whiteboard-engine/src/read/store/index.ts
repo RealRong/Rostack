@@ -331,11 +331,11 @@ export const createRead = ({
   }
 
   const readMindmapBounds = (treeId: NodeId): Rect | undefined => {
-    const item = mindmapProjection.item.get(treeId)
+    const item = mindmapProjection.layout.get(treeId)
     if (!item) {
       return undefined
     }
-    const rects = item.childNodeIds.flatMap((nodeId) => {
+    const rects = item.nodeIds.flatMap((nodeId) => {
       const bounds = readProjectedNodeBounds(nodeId)
       return bounds ? [bounds] : []
     })
@@ -476,7 +476,9 @@ export const createRead = ({
       },
       mindmap: {
         list: mindmapProjection.list,
-        item: mindmapProjection.item
+        structure: mindmapProjection.structure,
+        layout: mindmapProjection.layout,
+        scene: mindmapProjection.scene
       },
       scene: {
         list: scene

@@ -68,7 +68,7 @@ const readMindmapInsertPlacement = ({
   nodeId
 }: {
   action: 'mindmap.insert.child' | 'mindmap.insert.sibling' | 'mindmap.insert.parent'
-  tree: NonNullable<ReturnType<Editor['read']['mindmap']['render']['get']>>['tree']
+  tree: NonNullable<ReturnType<Editor['read']['mindmap']['structure']['get']>>['tree']
   nodeId: string
 }) => {
   const isRoot = nodeId === tree.rootNodeId
@@ -224,7 +224,7 @@ export const runShortcut = (
         return false
       }
 
-      const tree = editor.read.mindmap.render.get(activeMindmap.treeId)?.tree
+      const tree = editor.read.mindmap.structure.get(activeMindmap.treeId)?.tree
       if (!tree) {
         return false
       }

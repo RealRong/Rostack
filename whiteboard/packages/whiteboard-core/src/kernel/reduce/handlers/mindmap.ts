@@ -10,7 +10,7 @@ type MindmapOperation = Extract<
       | 'mindmap.create'
       | 'mindmap.restore'
       | 'mindmap.delete'
-      | 'mindmap.root.move'
+      | 'mindmap.move'
       | 'mindmap.layout'
       | 'mindmap.topic.insert'
       | 'mindmap.topic.restore'
@@ -43,7 +43,7 @@ export const handleMindmapOperation = (
     case 'mindmap.delete':
       tx.mindmap.structure.delete(operation.id)
       return
-    case 'mindmap.root.move':
+    case 'mindmap.move':
       tx.mindmap.root.move(operation.id, operation.position)
       return
     case 'mindmap.layout':

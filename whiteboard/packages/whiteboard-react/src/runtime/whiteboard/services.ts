@@ -144,7 +144,6 @@ export const createWhiteboardServices = ({
         return false
       }
 
-      editor.actions.tool.select()
       return true
     }
   })

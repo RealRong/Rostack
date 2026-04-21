@@ -3,7 +3,7 @@ import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { MindmapWrite } from '@whiteboard/editor/write/types'
 import {
-  createMindmapRootWrite
+  createMindmapMoveWrite
 } from '@whiteboard/editor/write/mindmap/root'
 import {
   createMindmapTopicWrite
@@ -41,7 +41,7 @@ export const createMindmapWrite = ({
       layout: nextLayout
     })
   },
-  root: createMindmapRootWrite(engine),
+  move: createMindmapMoveWrite(engine),
   topic: createMindmapTopicWrite({
     engine,
     layout

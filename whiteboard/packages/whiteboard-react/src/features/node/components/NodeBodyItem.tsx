@@ -3,17 +3,16 @@ import type { NodeId } from '@whiteboard/core/types'
 import { usePickRef } from '@whiteboard/react/runtime/hooks'
 import { useNodeView } from '@whiteboard/react/features/node/hooks/useNodeView'
 
-type CanvasNodeSceneItemProps = {
+type NodeBodyItemProps = {
   nodeId: NodeId
 }
 
-export const CanvasNodeSceneItem = memo(({
+export const NodeBodyItem = memo(({
   nodeId
-}: CanvasNodeSceneItemProps) => {
+}: NodeBodyItemProps) => {
   const view = useNodeView(nodeId)
-  const isMindmapRoot = view?.node.owner?.kind === 'mindmap' && view.node.owner.id === nodeId
 
-  if (!view || view.hidden || isMindmapRoot) {
+  if (!view || view.hidden) {
     return null
   }
 
@@ -68,4 +67,4 @@ export const CanvasNodeSceneItem = memo(({
   )
 })
 
-CanvasNodeSceneItem.displayName = 'CanvasNodeSceneItem'
+NodeBodyItem.displayName = 'NodeBodyItem'

@@ -1,6 +1,10 @@
 import { store } from '@shared/core'
 import type { NodeId, Rect, Size } from '@whiteboard/core/types'
-import type { EngineRead, MindmapItem } from '@whiteboard/engine'
+import type {
+  EngineRead,
+  MindmapLayoutItem,
+  MindmapStructureItem
+} from '@whiteboard/engine'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type {
@@ -9,7 +13,7 @@ import type {
 } from '@whiteboard/editor/session/preview/types'
 
 export type MindmapLayoutRead = {
-  item: store.KeyedReadStore<NodeId, MindmapItem | undefined>
+  item: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
 }
 
 type MindmapLiveEdit = {
@@ -96,16 +100,16 @@ const readCommittedMindmapNodeSize = (
 }
 
 const readProjectedMindmapItem = ({
-  treeId,
   base,
+  structure,
   nodeCommitted,
   liveEdit,
   rootMove,
   enter,
   now
 }: {
-  treeId: NodeId
-  base: MindmapItem
+  base: MindmapLayoutItem
+  structure: MindmapStructureItem
   nodeCommitted: EngineRead['node']['item']
   liveEdit: MindmapLiveEdit | undefined
   rootMove: {
@@ -116,16 +120,21 @@ const readProjectedMindmapItem = ({
   } | undefined
   enter: readonly MindmapEnterPreview[]
   now: number
-}): MindmapItem => {
+}): MindmapLayoutItem => {
   if (!liveEdit && !rootMove && enter.length === 0) {
     return base
   }
 
   let computed = base.computed
+  const rootPosition = store.read(nodeCommitted, structure.rootId)?.node.position
+    ?? {
+      x: computed.node[structure.rootId]?.x ?? 0,
+      y: computed.node[structure.rootId]?.y ?? 0
+    }
 
   if (liveEdit) {
     const nextComputed = mindmapApi.layout.compute(
-      base.tree,
+      structure.tree,
       (nodeId) => {
         if (nodeId === liveEdit.nodeId) {
           return liveEdit.size
@@ -143,13 +152,13 @@ const readProjectedMindmapItem = ({
               }
         )
       },
-      base.tree.layout
+      structure.layout
     )
 
     computed = mindmapApi.layout.anchor({
-      tree: base.tree,
+      tree: structure.tree,
       computed: nextComputed,
-      position: base.node.position
+      position: rootPosition
     })
   }
 
@@ -176,25 +185,12 @@ const readProjectedMindmapItem = ({
   }
 
   const render = mindmapApi.render.resolve({
-    tree: base.tree,
+    tree: structure.tree,
     computed
   })
-  const rootLocked = Boolean(
-    store.read(nodeCommitted, base.tree.rootNodeId)?.node.locked
-  )
 
   return {
     ...base,
-    node: rootMove
-      ? {
-          ...base.node,
-          position: {
-            x: base.node.position.x + rootMove.delta.x,
-            y: base.node.position.y + rootMove.delta.y
-          }
-        }
-      : base.node,
-    rootLocked,
     computed,
     connectors: render.connectors
   }
@@ -202,11 +198,13 @@ const readProjectedMindmapItem = ({
 
 export const createMindmapLayoutRead = ({
   committed,
+  structure,
   nodeCommitted,
   edit,
   preview
 }: {
-  committed: EngineRead['mindmap']['item']
+  committed: EngineRead['mindmap']['layout']
+  structure: EngineRead['mindmap']['structure']
   nodeCommitted: EngineRead['node']['item']
   edit: store.ReadStore<EditSession>
   preview: store.ReadStore<MindmapPreviewState | undefined>
@@ -317,17 +315,18 @@ export const createMindmapLayoutRead = ({
     emptyValue: []
   })
 
-  const item = store.createKeyedDerivedStore<NodeId, MindmapItem | undefined>({
+  const item = store.createKeyedDerivedStore<NodeId, MindmapLayoutItem | undefined>({
     get: (treeId) => {
       const base = store.read(committed, treeId)
-      if (!base) {
+      const currentStructure = store.read(structure, treeId)
+      if (!base || !currentStructure) {
         return undefined
       }
 
       const currentEnter = store.read(enter, treeId)
       return readProjectedMindmapItem({
-        treeId,
         base,
+        structure: currentStructure,
         nodeCommitted,
         liveEdit: store.read(liveEdit, treeId),
         rootMove: store.read(rootMove, treeId),
@@ -340,12 +339,10 @@ export const createMindmapLayoutRead = ({
     isEqual: (left, right) => left === right || (
       left !== undefined
       && right !== undefined
-      && left.node === right.node
-      && left.tree === right.tree
+      && left.rootId === right.rootId
       && left.computed === right.computed
-      && left.childNodeIds === right.childNodeIds
+      && left.nodeIds === right.nodeIds
       && left.connectors === right.connectors
-      && left.rootLocked === right.rootLocked
     )
   })
 

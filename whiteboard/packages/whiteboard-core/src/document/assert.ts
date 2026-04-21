@@ -53,6 +53,12 @@ export const assertDocument = (document: Document): Document => {
       }
       return
     }
+    if (ref.kind === 'mindmap') {
+      if (!hasOwn(document.mindmaps, ref.id)) {
+        throw new Error(`Document canvas.order.${index} contains missing mindmap ${ref.id}.`)
+      }
+      return
+    }
     if (ref.kind === 'edge') {
       if (!hasOwn(document.edges, ref.id)) {
         throw new Error(`Document canvas.order.${index} contains missing edge ${ref.id}.`)

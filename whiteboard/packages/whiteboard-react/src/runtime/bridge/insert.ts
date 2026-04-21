@@ -18,6 +18,23 @@ type InsertResult = {
   }
 }
 
+const applyInsertEffect = ({
+  editor,
+  result
+}: {
+  editor: WhiteboardRuntime
+  result: InsertResult
+}) => {
+  editor.actions.tool.select()
+  editor.actions.selection.replace({
+    nodeIds: [result.nodeId]
+  })
+
+  if (result.edit) {
+    editor.actions.edit.startNode(result.edit.nodeId, result.edit.field)
+  }
+}
+
 export type InsertBridge = {
   template: (
     template: WhiteboardInsertPreset['template'],
@@ -175,13 +192,13 @@ const insertMindmapPreset = ({
     },
     template: preset.template.template
   }, {
-    focus: preset.template.focus ?? 'edit-root'
+    focus: 'none'
   })
   if (!result.ok) {
     return undefined
   }
 
-  const bbox = editor.read.mindmap.render.get(result.data.mindmapId)?.bbox
+  const bbox = editor.read.mindmap.scene.get(result.data.mindmapId)?.bbox
   const anchorX = bbox
     ? bbox.x + bbox.width / 2
     : 0
@@ -199,7 +216,13 @@ const insertMindmapPreset = ({
   })
 
   return {
-    nodeId: result.data.rootId
+    nodeId: result.data.rootId,
+    edit: preset.template.focus === 'edit-root' || preset.template.focus === undefined
+      ? {
+          nodeId: result.data.rootId,
+          field: 'text'
+        }
+      : undefined
   }
 }
 
@@ -228,13 +251,10 @@ const runInsertPreset = ({
     return undefined
   }
 
-  editor.actions.selection.replace({
-    nodeIds: [result.nodeId]
+  applyInsertEffect({
+    editor,
+    result
   })
-  const edit = result.edit
-  if (edit) {
-    editor.actions.edit.startNode(edit.nodeId, edit.field)
-  }
 
   return result
 }

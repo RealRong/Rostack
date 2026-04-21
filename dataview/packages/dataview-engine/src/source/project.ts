@@ -305,6 +305,7 @@ const buildItemValueDelta = (input: {
   input.changedSections.forEach(sectionKey => {
     const previousItemIds = input.previous?.sections.get(sectionKey)?.items.ids ?? EMPTY_ITEM_IDS
     const nextItemIds = input.next.sections.get(sectionKey)?.items.ids ?? EMPTY_ITEM_IDS
+    const previousItemIdSet = new Set(previousItemIds)
     const nextItemIdSet = new Set(nextItemIds)
 
     previousItemIds.forEach(itemId => {
@@ -319,7 +320,10 @@ const buildItemValueDelta = (input: {
         return
       }
 
-      if (input.previous?.items.get(itemId) === nextItem) {
+      if (
+        previousItemIdSet.has(itemId)
+        && input.previous?.items.get(itemId) === nextItem
+      ) {
         return
       }
 

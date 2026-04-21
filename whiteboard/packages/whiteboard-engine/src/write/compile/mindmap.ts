@@ -253,9 +253,9 @@ export const compileMindmapCommand = (
         patch: command.layout
       })
       return
-    case 'mindmap.root.move':
+    case 'mindmap.move':
       ctx.tx.emit({
-        type: 'mindmap.root.move',
+        type: 'mindmap.move',
         id: command.id,
         position: command.position
       })

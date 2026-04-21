@@ -3,7 +3,9 @@ import type { SliceExportResult } from '@whiteboard/core/document'
 import type {
   CanvasNode,
   EdgeItem,
-  MindmapItem,
+  MindmapLayoutItem,
+  MindmapSceneItem,
+  MindmapStructureItem,
   NodeItem
 } from '@whiteboard/engine/types/projection'
 import type { SnapCandidate } from '@whiteboard/core/node'
@@ -113,7 +115,9 @@ export type EdgeRead = {
 
 export type MindmapRead = {
   list: store.ReadStore<readonly NodeId[]>
-  item: store.KeyedReadStore<NodeId, Readonly<MindmapItem> | undefined>
+  structure: store.KeyedReadStore<NodeId, Readonly<MindmapStructureItem> | undefined>
+  layout: store.KeyedReadStore<NodeId, Readonly<MindmapLayoutItem> | undefined>
+  scene: store.KeyedReadStore<NodeId, Readonly<MindmapSceneItem> | undefined>
 }
 
 export type SceneRead = {

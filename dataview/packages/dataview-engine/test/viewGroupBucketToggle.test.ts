@@ -286,6 +286,30 @@ const viewSectionRecordIds = (engine, sectionKey) => {
   return [...(state?.sections.get(sectionKey)?.recordIds ?? [])]
 }
 
+const assertPublishedItemsMatchSections = engine => {
+  const state = readViewState(engine)
+  const visibleSectionItems = (state?.sections.all ?? []).flatMap(section => (
+    section.collapsed
+      ? []
+      : section.items.ids
+  ))
+
+  state?.sections.all.forEach(section => {
+    assert.equal(
+      section.items.count,
+      section.items.ids.length,
+      `section ${section.key} should publish one item per record`
+    )
+    assert.equal(
+      section.recordIds.length,
+      section.items.ids.length,
+      `section ${section.key} should keep record and item counts aligned`
+    )
+  })
+  assert.deepEqual(state?.items.ids, visibleSectionItems)
+  assert.equal(state?.items.count, visibleSectionItems.length)
+}
+
 const viewSnapshot = engine => {
   const state = readViewState(engine)
 
@@ -592,6 +616,41 @@ test('engine.active.state records honor search filter sort and manual order', ()
     readViewState(engine)?.records.visible,
     ['rec_3', 'rec_1', 'rec_2']
   )
+})
+
+test('engine.active.state keeps grouped section items aligned when filters are added and removed', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+
+  const todoItemBefore = itemIdByRecordId(engine, 'rec_1')
+  const doingItemBefore = itemIdByRecordId(engine, 'rec_2')
+  const doneItemBefore = itemIdByRecordId(engine, 'rec_3')
+
+  assertPublishedItemsMatchSections(engine)
+
+  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_STATUS,
+    presetId: 'eq',
+    value: 'done'
+  })
+
+  assert.deepEqual(readViewState(engine)?.records.visible, ['rec_3'])
+  assertPublishedItemsMatchSections(engine)
+
+  openView(engine, VIEW_TABLE).filters.remove(0)
+
+  assert.deepEqual(
+    readViewState(engine)?.records.visible,
+    ['rec_1', 'rec_2', 'rec_3']
+  )
+  assertPublishedItemsMatchSections(engine)
+  assert.equal(itemIdByRecordId(engine, 'rec_1'), todoItemBefore)
+  assert.equal(itemIdByRecordId(engine, 'rec_2'), doingItemBefore)
+  assert.equal(itemIdByRecordId(engine, 'rec_3'), doneItemBefore)
 })
 
 test('engine.active.state removes deleted records from sorted query results and item lists', () => {

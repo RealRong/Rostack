@@ -326,9 +326,7 @@ export type MindmapWrite = {
   layout: {
     set: (id: MindmapId, layout: Partial<MindmapLayoutSpec>) => CommandResult
   }
-  root: {
-    move: (id: MindmapId, position: Point) => CommandResult
-  }
+  move: (id: MindmapId, position: Point) => CommandResult
   topic: {
     insert: (
       id: MindmapId,

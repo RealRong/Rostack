@@ -56,7 +56,8 @@ export const createEditor = ({
         committed: engine.read.node.item
       },
       mindmap: {
-        committed: engine.read.mindmap.item
+        committed: engine.read.mindmap.layout,
+        structure: engine.read.mindmap.structure
       }
     },
     session: {

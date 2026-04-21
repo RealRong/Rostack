@@ -378,7 +378,7 @@ const COLLECTORS: OperationHistoryRegistry = {
     nodeIds.forEach((nodeId) => addNodeExists(ctx, nodeId))
     collectNodeSubtreeEdgeKeys(ctx, nodeIds)
   },
-  'mindmap.root.move': (ctx, op) => {
+  'mindmap.move': (ctx, op) => {
     ctx.add({
       kind: 'mindmap.layout',
       mindmapId: op.id

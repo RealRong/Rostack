@@ -10,9 +10,6 @@ export type {
   SelectedEdgeRoutePoint
 } from '@whiteboard/react/types/edge'
 export type {
-  MindmapTreeViewData
-} from '@whiteboard/react/types/mindmap'
-export type {
   ContextMenuPlacement,
   ToolbarPlacement
 } from '@whiteboard/react/types/selection'

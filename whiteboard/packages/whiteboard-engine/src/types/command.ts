@@ -274,7 +274,7 @@ export type MindmapCommand =
       layout: Partial<MindmapLayoutSpec>
     }
   | {
-      type: 'mindmap.root.move'
+      type: 'mindmap.move'
       id: MindmapId
       position: Point
     }

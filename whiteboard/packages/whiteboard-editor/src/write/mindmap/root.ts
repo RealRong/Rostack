@@ -1,12 +1,12 @@
 import type { Engine } from '@whiteboard/engine'
 import type { MindmapWrite } from '@whiteboard/editor/write/types'
 
-export const createMindmapRootWrite = (
+export const createMindmapMoveWrite = (
   engine: Engine
-): MindmapWrite['root'] => ({
-  move: (id, position) => engine.execute({
-    type: 'mindmap.root.move',
+): MindmapWrite['move'] => (
+  (id, position) => engine.execute({
+    type: 'mindmap.move',
     id,
     position
   })
-})
+)

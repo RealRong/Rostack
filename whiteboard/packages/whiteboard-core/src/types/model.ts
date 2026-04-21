@@ -182,6 +182,10 @@ export type CanvasItemRef =
       id: NodeId
     }
   | {
+      kind: 'mindmap'
+      id: MindmapId
+    }
+  | {
       kind: 'edge'
       id: EdgeId
     }

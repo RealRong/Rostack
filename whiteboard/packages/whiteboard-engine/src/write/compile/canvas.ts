@@ -367,7 +367,7 @@ const compileCanvasSelectionMove = (
     }
     movedMindmapIds.add(mindmapId)
     ctx.tx.emit({
-      type: 'mindmap.root.move',
+      type: 'mindmap.move',
       id: mindmapId,
       position: entry.position
     })

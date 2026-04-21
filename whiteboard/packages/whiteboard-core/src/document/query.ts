@@ -12,14 +12,90 @@ import type {
 
 const EMPTY_ORDER: CanvasItemRef[] = []
 
-const isTopLevelNode = (
-  document: Pick<Document, 'mindmaps'>,
+const isCanvasNode = (
+  _document: Pick<Document, 'mindmaps'>,
   node: Node | undefined
 ) => {
   if (!node) return false
-  if (!node.owner) return true
-  if (node.owner.kind !== 'mindmap') return false
-  return document.mindmaps[node.owner.id]?.root === node.id
+  return !node.owner
+}
+
+const isCanvasMindmap = (
+  document: Pick<Document, 'mindmaps'>,
+  mindmapId: MindmapId
+) => Boolean(document.mindmaps[mindmapId])
+
+const appendMissingSceneRefs = (
+  ordered: CanvasItemRef[],
+  visited: readonly CanvasItemRef[],
+  document: Pick<Document, 'nodes' | 'edges' | 'mindmaps'>
+) => {
+  appendMissingCanvasRefs(
+    ordered,
+    visited,
+    Object.values(document.nodes)
+      .filter((node) => isCanvasNode(document, node))
+      .map((node) => ({ kind: 'node', id: node.id }) as const)
+  )
+  appendMissingCanvasRefs(
+    ordered,
+    visited,
+    Object.keys(document.mindmaps).map((id) => ({ kind: 'mindmap', id }) as const)
+  )
+  appendMissingCanvasRefs(
+    ordered,
+    visited,
+    Object.keys(document.edges).map((id) => ({ kind: 'edge', id }) as const)
+  )
+}
+
+const listMindmapNodeIds = (
+  document: Pick<Document, 'mindmaps'>,
+  mindmapId: MindmapId
+) => {
+  const record = document.mindmaps[mindmapId]
+  if (!record) {
+    return []
+  }
+
+  const result: NodeId[] = []
+  const stack: NodeId[] = [record.root]
+  const visited = new Set<NodeId>()
+
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    if (visited.has(current)) {
+      continue
+    }
+
+    visited.add(current)
+    result.push(current)
+
+    const children = record.children[current] ?? []
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      stack.push(children[index]!)
+    }
+  }
+
+  return result
+}
+
+const listVisibleNodesFromCanvasRef = (
+  document: Pick<Document, 'nodes' | 'mindmaps'>,
+  ref: CanvasItemRef
+): Node[] => {
+  if (ref.kind === 'node') {
+    const node = document.nodes[ref.id]
+    return node ? [node] : []
+  }
+
+  if (ref.kind === 'mindmap') {
+    return listMindmapNodeIds(document, ref.id)
+      .map((nodeId) => document.nodes[nodeId])
+      .filter((node): node is Node => Boolean(node))
+  }
+
+  return []
 }
 
 const isCanvasItemRefEqual = (
@@ -45,12 +121,9 @@ export const listCanvasItemRefs = (
 ): CanvasItemRef[] => {
   const order = document.canvas.order ?? EMPTY_ORDER
   if (!order.length) {
-    return [
-      ...Object.values(document.nodes)
-        .filter((node) => isTopLevelNode(document, node))
-        .map((node) => ({ kind: 'node', id: node.id }) as const),
-      ...Object.keys(document.edges).map((id) => ({ kind: 'edge', id }) as const)
-    ]
+    const ordered: CanvasItemRef[] = []
+    appendMissingSceneRefs(ordered, EMPTY_ORDER, document)
+    return ordered
   }
 
   const ordered: CanvasItemRef[] = []
@@ -58,7 +131,11 @@ export const listCanvasItemRefs = (
 
   order.forEach((ref) => {
     if (ref.kind === 'node') {
-      if (!isTopLevelNode(document, document.nodes[ref.id])) {
+      if (!isCanvasNode(document, document.nodes[ref.id])) {
+        return
+      }
+    } else if (ref.kind === 'mindmap') {
+      if (!isCanvasMindmap(document, ref.id)) {
         return
       }
     } else if (!document.edges[ref.id]) {
@@ -69,18 +146,7 @@ export const listCanvasItemRefs = (
     visited.push(ref)
   })
 
-  appendMissingCanvasRefs(
-    ordered,
-    visited,
-    Object.values(document.nodes)
-      .filter((node) => isTopLevelNode(document, node))
-      .map((node) => ({ kind: 'node', id: node.id }) as const)
-  )
-  appendMissingCanvasRefs(
-    ordered,
-    visited,
-    Object.keys(document.edges).map((id) => ({ kind: 'edge', id }) as const)
-  )
+  appendMissingSceneRefs(ordered, visited, document)
 
   return ordered
 }
@@ -118,9 +184,7 @@ export const hasGroup = (
 export const listNodes = (
   document: Pick<Document, 'nodes' | 'edges' | 'canvas' | 'mindmaps'>
 ): Node[] => listCanvasItemRefs(document)
-  .filter((ref): ref is Extract<CanvasItemRef, { kind: 'node' }> => ref.kind === 'node')
-  .map((ref) => document.nodes[ref.id])
-  .filter((node): node is Node => Boolean(node))
+  .flatMap((ref) => listVisibleNodesFromCanvasRef(document, ref))
 
 export const listEdges = (
   document: Pick<Document, 'nodes' | 'edges' | 'canvas' | 'mindmaps'>
@@ -139,7 +203,9 @@ const readCanvasItemGroupId = (
 ): GroupId | undefined => (
   ref.kind === 'node'
     ? document.nodes[ref.id]?.groupId
-    : document.edges[ref.id]?.groupId
+    : ref.kind === 'edge'
+      ? document.edges[ref.id]?.groupId
+      : undefined
 )
 
 export const listGroupCanvasItemRefs = (

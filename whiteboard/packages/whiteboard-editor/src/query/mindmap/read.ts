@@ -1,21 +1,18 @@
 import { equal, store } from '@shared/core'
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { NodeId, Rect } from '@whiteboard/core/types'
-import type { EngineRead, MindmapItem } from '@whiteboard/engine'
 import type { MindmapRenderConnector } from '@whiteboard/core/mindmap'
-import type { EditSession } from '@whiteboard/editor/session/edit'
+import type { NodeId, Rect } from '@whiteboard/core/types'
+import type {
+  EngineRead,
+  MindmapLayoutItem,
+  MindmapSceneItem,
+  MindmapStructureItem
+} from '@whiteboard/engine'
 import type { MindmapLayoutRead } from '@whiteboard/editor/layout/mindmap'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 
-export type MindmapRenderView = {
-  treeId: NodeId
-  rootId: NodeId
-  tree: MindmapItem['tree']
-  bbox: Rect
-  rootRect: Rect
-  rootLocked: boolean
-  childNodeIds: readonly NodeId[]
-  connectors: readonly MindmapRenderConnector[]
-  addChildren: readonly {
+export type MindmapChrome = {
+  addChildTargets: readonly {
     targetNodeId: NodeId
     x: number
     y: number
@@ -23,15 +20,18 @@ export type MindmapRenderView = {
   }[]
 }
 
-export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'item'> & {
-  item: store.KeyedReadStore<NodeId, MindmapItem | undefined>
-  render: store.KeyedReadStore<NodeId, MindmapRenderView | undefined>
+export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'layout' | 'scene'> & {
+  layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+  scene: store.KeyedReadStore<NodeId, MindmapSceneItem | undefined>
+  chrome: store.KeyedReadStore<NodeId, MindmapChrome | undefined>
   navigate: (input: {
     id: NodeId
     fromNodeId: NodeId
     direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
   }) => NodeId | undefined
 }
+
+const MINDMAP_ADD_BUTTON_OFFSET = 12
 
 const isConnectorEqual = (
   left: MindmapRenderConnector,
@@ -47,49 +47,55 @@ const isConnectorEqual = (
   && left.style.stroke === right.style.stroke
 )
 
-const isMindmapRenderViewEqual = (
-  left: MindmapRenderView | undefined,
-  right: MindmapRenderView | undefined
+const isMindmapSceneEqual = (
+  left: MindmapSceneItem | undefined,
+  right: MindmapSceneItem | undefined
 ) => (
   left === right
   || (
     left !== undefined
     && right !== undefined
-    && left.treeId === right.treeId
+    && left.id === right.id
     && left.rootId === right.rootId
-    && left.tree === right.tree
+    && left.nodeIds.length === right.nodeIds.length
+    && left.nodeIds.every((nodeId, index) => nodeId === right.nodeIds[index])
     && equal.sameRect(left.bbox, right.bbox)
-    && equal.sameRect(left.rootRect, right.rootRect)
-    && left.rootLocked === right.rootLocked
-    && left.childNodeIds.length === right.childNodeIds.length
-    && left.childNodeIds.every((nodeId, index) => nodeId === right.childNodeIds[index])
     && left.connectors.length === right.connectors.length
     && left.connectors.every((connector, index) => isConnectorEqual(connector, right.connectors[index]!))
-    && left.addChildren.length === right.addChildren.length
-    && left.addChildren.every((entry, index) => (
-      entry.targetNodeId === right.addChildren[index]?.targetNodeId
-      && entry.x === right.addChildren[index]?.x
-      && entry.y === right.addChildren[index]?.y
-      && entry.placement === right.addChildren[index]?.placement
-    ))
   )
 )
 
-const MINDMAP_ADD_BUTTON_OFFSET = 12
+const isMindmapChromeEqual = (
+  left: MindmapChrome | undefined,
+  right: MindmapChrome | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && left.addChildTargets.length === right.addChildTargets.length
+    && left.addChildTargets.every((entry, index) => (
+      entry.targetNodeId === right.addChildTargets[index]?.targetNodeId
+      && entry.x === right.addChildTargets[index]?.x
+      && entry.y === right.addChildTargets[index]?.y
+      && entry.placement === right.addChildTargets[index]?.placement
+    ))
+  )
+)
 
 const readAddButtonY = (
   rect: Rect
 ) => rect.y + Math.max(rect.height / 2 - 14, 0)
 
-const readAddChildren = ({
-  tree,
-  computed,
+const readAddChildTargets = ({
+  structure,
+  layout,
   selection,
   edit,
   node
 }: {
-  tree: MindmapItem['tree']
-  computed: MindmapItem['computed']
+  structure: MindmapStructureItem
+  layout: MindmapLayoutItem
   selection: SelectionTarget
   edit: EditSession
   node: EngineRead['node']['item']
@@ -97,7 +103,7 @@ const readAddChildren = ({
   const selectedNodeId = selection.nodeIds.length === 1
     ? selection.nodeIds[0]
     : undefined
-  if (!selectedNodeId || tree.nodes[selectedNodeId] === undefined) {
+  if (!selectedNodeId || structure.tree.nodes[selectedNodeId] === undefined) {
     return []
   }
 
@@ -109,12 +115,12 @@ const readAddChildren = ({
     return []
   }
 
-  const rect = computed.node[selectedNodeId]
+  const rect = layout.computed.node[selectedNodeId]
   if (!rect) {
     return []
   }
 
-  if (selectedNodeId === tree.rootNodeId) {
+  if (selectedNodeId === structure.rootId) {
     return [
       {
         targetNodeId: selectedNodeId,
@@ -131,7 +137,7 @@ const readAddChildren = ({
     ]
   }
 
-  const side = tree.nodes[selectedNodeId]?.side ?? 'right'
+  const side = structure.tree.nodes[selectedNodeId]?.side ?? 'right'
   return [{
     targetNodeId: selectedNodeId,
     x: side === 'left'
@@ -144,48 +150,17 @@ const readAddChildren = ({
   }]
 }
 
-const toMindmapRenderView = (
-  treeId: NodeId,
-  treeView: MindmapItem,
-  selection: SelectionTarget,
-  edit: EditSession,
-  node: EngineRead['node']['item']
-): MindmapRenderView => {
-  const rootRect = treeView.computed.node[treeView.tree.rootNodeId] ?? {
-    x: treeView.node.position.x,
-    y: treeView.node.position.y,
-    width: 0,
-    height: 0
-  }
-
-  return {
-    treeId,
-    rootId: treeView.tree.rootNodeId,
-    tree: treeView.tree,
-    bbox: treeView.computed.bbox,
-    rootRect,
-    rootLocked: Boolean(treeView.rootLocked),
-    childNodeIds: treeView.childNodeIds,
-    connectors: treeView.connectors,
-    addChildren: readAddChildren({
-      tree: treeView.tree,
-      computed: treeView.computed,
-      selection,
-      edit,
-      node
-    })
-  }
-}
-
 const readMindmapNavigateTarget = ({
-  tree,
+  structure,
   fromNodeId,
   direction
 }: {
-  tree: MindmapItem['tree']
+  structure: MindmapStructureItem
   fromNodeId: NodeId
   direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
 }) => {
+  const tree = structure.tree
+
   switch (direction) {
     case 'parent':
       return tree.nodes[fromNodeId]?.parentId
@@ -214,6 +189,17 @@ const readMindmapNavigateTarget = ({
   }
 }
 
+const toMindmapScene = (
+  structure: MindmapStructureItem,
+  layout: MindmapLayoutItem
+): MindmapSceneItem => ({
+  id: structure.id,
+  rootId: structure.rootId,
+  nodeIds: structure.nodeIds,
+  bbox: layout.computed.bbox,
+  connectors: layout.connectors
+})
+
 export const createMindmapRead = ({
   read,
   layout,
@@ -227,34 +213,54 @@ export const createMindmapRead = ({
   edit: store.ReadStore<EditSession>
   selection: store.ReadStore<SelectionTarget>
 }): MindmapPresentationRead => {
-  const render: MindmapPresentationRead['render'] = store.createKeyedDerivedStore({
-    get: (treeId: NodeId) => {
-      const treeView = store.read(layout.item, treeId)
-      return treeView
-        ? toMindmapRenderView(
-            treeId,
-            treeView,
-            store.read(selection),
-            store.read(edit),
-            node
-          )
-        : undefined
+  const scene = store.createKeyedDerivedStore<NodeId, MindmapSceneItem | undefined>({
+    get: (mindmapId) => {
+      const structure = store.read(read.structure, mindmapId)
+      const currentLayout = store.read(layout.item, mindmapId)
+      if (!structure || !currentLayout) {
+        return undefined
+      }
+
+      return toMindmapScene(structure, currentLayout)
     },
-    isEqual: isMindmapRenderViewEqual
+    isEqual: isMindmapSceneEqual
+  })
+
+  const chrome = store.createKeyedDerivedStore<NodeId, MindmapChrome | undefined>({
+    get: (mindmapId) => {
+      const structure = store.read(read.structure, mindmapId)
+      const currentLayout = store.read(layout.item, mindmapId)
+      if (!structure || !currentLayout) {
+        return undefined
+      }
+
+      return {
+        addChildTargets: readAddChildTargets({
+          structure,
+          layout: currentLayout,
+          selection: store.read(selection),
+          edit: store.read(edit),
+          node
+        })
+      }
+    },
+    isEqual: isMindmapChromeEqual
   })
 
   return {
-    ...read,
-    item: layout.item,
-    render,
+    list: read.list,
+    structure: read.structure,
+    layout: layout.item,
+    scene,
+    chrome,
     navigate: (input) => {
-      const currentTree = store.read(layout.item, input.id)?.tree
-      if (!currentTree) {
+      const currentStructure = store.read(read.structure, input.id)
+      if (!currentStructure) {
         return undefined
       }
 
       return readMindmapNavigateTarget({
-        tree: currentTree,
+        structure: currentStructure,
         fromNodeId: input.fromNodeId,
         direction: input.direction
       })

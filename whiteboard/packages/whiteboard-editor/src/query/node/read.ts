@@ -1,7 +1,7 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import type {
   EngineRead,
-  MindmapItem,
+  MindmapLayoutItem,
   NodeItem
 } from '@whiteboard/engine'
 import { collection, equal, store } from '@shared/core'
@@ -344,7 +344,7 @@ const readTextGeometryPatch = (
 
 const applyMindmapGeometry = (
   item: NodeItem,
-  mindmap: MindmapItem | undefined
+  mindmap: MindmapLayoutItem | undefined
 ) => {
   if (!mindmap) {
     return item
@@ -370,7 +370,7 @@ const applyMindmapGeometry = (
 const projectNodeGeometryItem = (
   item: NodeItem,
   feedback: NodePreviewProjection,
-  mindmap: MindmapItem | undefined,
+  mindmap: MindmapLayoutItem | undefined,
   edit: NodeEditView | undefined
 ): NodeItem => nodeApi.projection.applyGeometryPatch(
   applyMindmapGeometry(
@@ -438,17 +438,17 @@ const toNodeRenderEdit = (
 
 const resolveNodeCapability = (
   node: Pick<Node, 'id' | 'type' | 'owner'>,
-  type: NodeTypeRead
+  type: NodeTypeRead,
+  _mindmap: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
 ): NodeCapability => {
   const base = type.capability(node.type)
   const mindmapOwned = node.owner?.kind === 'mindmap'
-  const mindmapRoot = node.owner?.kind === 'mindmap' && node.owner.id === node.id
 
   return {
     ...base,
-    connect: !mindmapRoot && base.connect,
-    resize: !mindmapOwned && !mindmapRoot && base.resize,
-    rotate: !mindmapOwned && !mindmapRoot && base.rotate
+    connect: base.connect,
+    resize: !mindmapOwned && base.resize,
+    rotate: !mindmapOwned && base.rotate
   }
 }
 
@@ -463,7 +463,7 @@ export const createNodeRead = ({
   read: EngineRead
   type: NodeTypeRead
   feedback: store.KeyedReadStore<NodeId, NodePreviewProjection>
-  mindmap: store.KeyedReadStore<NodeId, MindmapItem | undefined>
+  mindmap: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
   edit: {
     node: store.KeyedReadStore<NodeId, NodeEditView | undefined>
   }
@@ -550,7 +550,7 @@ export const createNodeRead = ({
       const runtime = readNodeRuntime(
         store.read(feedback, nodeId)
       )
-      const currentCapability = resolveNodeCapability(currentNode, type)
+      const currentCapability = resolveNodeCapability(currentNode, type, mindmap)
 
       return {
         nodeId,
@@ -605,7 +605,7 @@ export const createNodeRead = ({
     canvas,
     rect,
     bounds,
-    capability: (node) => resolveNodeCapability(node, type),
+    capability: (node) => resolveNodeCapability(node, type, mindmap),
     idsInRect: (rect, options) => read.node.idsInRect(rect, options)
       .filter((nodeId) => isSelectableNode(read.node.item.get(nodeId)?.node)),
     ordered: () => collection.presentValues(store.read(read.node.list), (nodeId) => {

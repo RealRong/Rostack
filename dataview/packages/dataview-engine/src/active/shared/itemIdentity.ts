@@ -7,25 +7,26 @@ import type {
   ViewItem
 } from '@dataview/engine/contracts'
 
+export type SectionRecordKey = string
+
 export interface ItemProjectionCache {
+  mode: 'root' | 'grouped'
   nextId: number
   byId: ReadonlyMap<ItemId, ViewItem>
-  rootByRecord: ReadonlyMap<RecordId, ItemId>
-  grouped: ReadonlyMap<SectionKey, GroupedItemProjection>
-}
-
-export interface GroupedItemProjection {
-  ids: readonly ItemId[]
-  byRecord: ReadonlyMap<RecordId, ItemId>
+  bySectionRecord: ReadonlyMap<SectionRecordKey, ItemId>
 }
 
 const EMPTY_ITEMS_BY_ID = new Map<ItemId, ViewItem>()
-const EMPTY_ROOT_IDENTITIES = new Map<RecordId, ItemId>()
-const EMPTY_GROUPED_IDENTITIES = new Map<SectionKey, GroupedItemProjection>()
+const EMPTY_SECTION_RECORD_IDENTITIES = new Map<SectionRecordKey, ItemId>()
+
+export const createSectionRecordKey = (
+  sectionKey: SectionKey,
+  recordId: RecordId
+): SectionRecordKey => `${sectionKey}\u0000${recordId}`
 
 export const emptyItemProjectionCache = (): ItemProjectionCache => ({
+  mode: 'root',
   nextId: 1,
   byId: EMPTY_ITEMS_BY_ID,
-  rootByRecord: EMPTY_ROOT_IDENTITIES,
-  grouped: EMPTY_GROUPED_IDENTITIES
+  bySectionRecord: EMPTY_SECTION_RECORD_IDENTITIES
 })

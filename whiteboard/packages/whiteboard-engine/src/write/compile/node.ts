@@ -83,7 +83,7 @@ const compileMindmapTopicUpdate = (
       }
     }
     ops.push({
-      type: 'mindmap.root.move',
+      type: 'mindmap.move',
       id: mindmapId,
       position: fields.position
     })
@@ -334,7 +334,7 @@ export const compileNodeCommand = (
         }
 
         ctx.tx.emit({
-          type: 'mindmap.root.move',
+          type: 'mindmap.move',
           id: mindmapId,
           position: {
             x: node.position.x + command.delta.x,

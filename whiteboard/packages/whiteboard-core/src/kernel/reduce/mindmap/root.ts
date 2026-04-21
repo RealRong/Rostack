@@ -16,7 +16,7 @@ export const createMindmapRootApi = (
       throw new Error(`Mindmap ${id} not found.`)
     }
     tx._runtime.inverse.unshift({
-      type: 'mindmap.root.move',
+      type: 'mindmap.move',
       id,
       position: clonePoint(root.position)!
     })

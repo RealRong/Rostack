@@ -200,27 +200,25 @@ describe('mindmap edit relayout preview', () => {
     }
 
     const beforeChild = editor.read.node.render.get(insert.data.nodeId)?.rect
-    const beforeMindmapNode = editor.read.mindmap.node.get(insert.data.nodeId)?.rect
+    const beforeScene = editor.read.mindmap.scene.get(created.data.mindmapId)?.bbox
 
     expect(beforeChild).toBeDefined()
-    expect(beforeMindmapNode).toBeDefined()
-    expect(beforeChild).toEqual(beforeMindmapNode)
+    expect(beforeScene).toBeDefined()
 
     editor.actions.edit.startNode(insert.data.nodeId, 'text')
     editor.actions.edit.input('Child topic with much longer text')
 
     const liveChild = editor.read.node.render.get(insert.data.nodeId)?.rect
-    const liveMindmapNode = editor.read.mindmap.node.get(insert.data.nodeId)?.rect
+    const liveScene = editor.read.mindmap.scene.get(created.data.mindmapId)?.bbox
     const session = editor.store.edit.get()
 
     expect(liveChild).toBeDefined()
-    expect(liveMindmapNode).toBeDefined()
+    expect(liveScene).toBeDefined()
     expect(session).toMatchObject({
       kind: 'node',
       nodeId: insert.data.nodeId
     })
-    expect(liveChild).toEqual(liveMindmapNode)
     expect(liveChild!.width).toBeGreaterThan(beforeChild!.width)
-    expect(liveMindmapNode!.width).toBeGreaterThan(beforeMindmapNode!.width)
+    expect(liveScene!.width).toBeGreaterThanOrEqual(beforeScene!.width)
   })
 })

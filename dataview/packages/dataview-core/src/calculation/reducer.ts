@@ -62,6 +62,8 @@ export interface FieldReducerBuilder {
   finish: () => FieldReducerState
 }
 
+type StringCounterTable = Record<string, number>
+
 const EMPTY_STRING_COUNTS = new Map<string, number>()
 const EMPTY_NUMBER_COUNTS = new Map<number, number>()
 const EMPTY_OPTION_IDS = [] as readonly string[]
@@ -439,69 +441,117 @@ const buildReducerState = (input: {
     : getEmptyFieldReducerState(input.capabilities)
 }
 
+const createStringCounterTable = (): StringCounterTable => Object.create(null) as StringCounterTable
+
+const finalizeStringCounterTable = (
+  table: StringCounterTable | undefined
+): ReadonlyMap<string, number> | undefined => {
+  if (!table) {
+    return undefined
+  }
+
+  const counts = new Map<string, number>()
+  for (const key in table) {
+    counts.set(key, table[key]!)
+  }
+
+  return counts.size
+    ? counts
+    : EMPTY_STRING_COUNTS
+}
+
 export const buildFieldReducerState = (input: {
   entries: ReadonlyMap<RecordId, CalculationEntry>
   capabilities: ReducerCapabilitySet
   recordIds?: readonly RecordId[]
 }): FieldReducerState => {
-  if (input.recordIds && !input.recordIds.length) {
+  const {
+    entries,
+    capabilities,
+    recordIds
+  } = input
+  if (recordIds && !recordIds.length) {
     return getEmptyFieldReducerState(input.capabilities)
   }
 
-  if (!input.recordIds && !input.entries.size) {
+  if (!recordIds && !entries.size) {
     return getEmptyFieldReducerState(input.capabilities)
   }
 
-  let count = 0
+  const needsCount = capabilities.count === true
+  const needsUnique = capabilities.unique === true
+  const needsNumeric = capabilities.numeric === true
+  const needsOption = capabilities.option === true
+  let count = needsCount
+    ? (recordIds?.length ?? entries.size)
+    : 0
   let nonEmpty = 0
   let numericSum = 0
-  const uniqueCounts = input.capabilities.unique
+  const uniqueCounts = needsUnique
     ? new Map<string, number>()
     : undefined
-  const numericCounts = input.capabilities.numeric
+  const numericCounts = needsNumeric
     ? new Map<number, number>()
     : undefined
-  const optionCounts = input.capabilities.option
-    ? new Map<string, number>()
+  const optionCounts = needsOption
+    ? createStringCounterTable()
     : undefined
 
   const applyEntry = (entry: CalculationEntry | undefined) => {
-    if (input.capabilities.count) {
-      count += 1
-      if (!entry?.empty) {
+    if (!entry) {
+      if (needsCount) {
         nonEmpty += 1
       }
+      return
     }
 
-    if (uniqueCounts && entry?.uniqueKey) {
-      uniqueCounts.set(entry.uniqueKey, (uniqueCounts.get(entry.uniqueKey) ?? 0) + 1)
+    if (needsCount && entry.empty !== true) {
+      nonEmpty += 1
     }
 
-    if (numericCounts && entry?.number !== undefined) {
-      numericSum += entry.number
-      numericCounts.set(entry.number, (numericCounts.get(entry.number) ?? 0) + 1)
+    const uniqueKey = entry.uniqueKey
+    if (uniqueCounts && uniqueKey !== undefined) {
+      const current = uniqueCounts.get(uniqueKey)
+      uniqueCounts.set(uniqueKey, current === undefined ? 1 : current + 1)
     }
 
-    if (optionCounts && entry?.optionIds?.length) {
-      entry.optionIds.forEach(optionId => {
-        optionCounts.set(optionId, (optionCounts.get(optionId) ?? 0) + 1)
-      })
+    const number = entry.number
+    if (numericCounts && number !== undefined) {
+      numericSum += number
+      const current = numericCounts.get(number)
+      numericCounts.set(number, current === undefined ? 1 : current + 1)
+    }
+
+    const optionIds = entry.optionIds
+    if (optionCounts && optionIds?.length) {
+      const firstOptionId = optionIds[0]
+      if (firstOptionId !== undefined) {
+        optionCounts[firstOptionId] = (optionCounts[firstOptionId] ?? 0) + 1
+      }
+      for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
+        const optionId = optionIds[optionIndex]!
+        optionCounts[optionId] = (optionCounts[optionId] ?? 0) + 1
+      }
     }
   }
 
-  if (input.recordIds) {
-    input.recordIds.forEach(recordId => {
-      applyEntry(input.entries.get(recordId))
-    })
-  } else {
-    input.entries.forEach(entry => {
+  if (recordIds && recordIds.length === entries.size) {
+    for (const entry of entries.values()) {
       applyEntry(entry)
-    })
+    }
+  } else if (recordIds) {
+    for (let index = 0; index < recordIds.length; index += 1) {
+      applyEntry(entries.get(recordIds[index]!))
+    }
+  } else {
+    for (const entry of entries.values()) {
+      applyEntry(entry)
+    }
   }
 
   return buildReducerState({
-    capabilities: input.capabilities,
-    ...(input.capabilities.count
+    capabilities,
+    ...(needsCount
       ? {
           countState: {
             count,
@@ -522,7 +572,7 @@ export const buildFieldReducerState = (input: {
       : {}),
     ...(optionCounts
       ? {
-          optionCounts
+          optionCounts: finalizeStringCounterTable(optionCounts)
         }
       : {})
   })

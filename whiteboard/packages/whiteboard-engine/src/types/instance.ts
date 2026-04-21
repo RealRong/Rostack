@@ -59,7 +59,7 @@ export type EdgeRectHitOptions = {
 
 export type NodeRead = {
   list: store.ReadStore<readonly NodeId[]>
-  item: store.KeyedReadStore<NodeId, Readonly<NodeItem> | undefined>
+  committed: store.KeyedReadStore<NodeId, Readonly<NodeItem> | undefined>
   nodes: (nodeIds: readonly NodeId[]) => readonly Node[]
   geometry: (nodeId: NodeId) => NodeGeometry | undefined
   rect: (nodeId: NodeId) => Rect | undefined

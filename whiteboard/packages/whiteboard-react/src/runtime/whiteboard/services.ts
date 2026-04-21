@@ -16,6 +16,7 @@ import { createPointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import { createTextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
 import type { WhiteboardServicesContextValue } from '@whiteboard/react/runtime/hooks/useWhiteboard'
 import { createLayoutBackend } from '@whiteboard/react/runtime/whiteboard/layout'
+import { dismissBackgroundEditSelection } from '@whiteboard/react/runtime/whiteboard/pointerDown'
 
 const clonePoint = (
   point: Point
@@ -126,6 +127,11 @@ export const createWhiteboardServices = ({
     editor,
     point,
     onPointerDown: input => {
+      dismissBackgroundEditSelection({
+        editor,
+        input
+      })
+
       const tool = editor.store.tool.get()
       if (
         tool.type !== 'insert'

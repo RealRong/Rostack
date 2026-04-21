@@ -44,8 +44,13 @@ export const createRead = ({
 } => {
   const readDocument = document.get
   const readModel = createReadModel({ readDocument })
+  let mindmapProjection!: ReturnType<typeof createMindmapProjection>
 
-  const nodeRectIndex = new NodeRectIndex(config)
+  const nodeRectIndex = new NodeRectIndex(config, {
+    readMindmapNodeIds: (mindmapId) => mindmapProjection.layout.get(mindmapId)?.nodeIds
+      ?? mindmapProjection.structure.get(mindmapId)?.nodeIds,
+    readMindmapRect: (mindmapId, nodeId) => mindmapProjection.layout.get(mindmapId)?.computed.node[nodeId]
+  })
   const edgeRectIndex = new EdgeRectIndex(
     Math.max(
       config.node.snapGridCellSize,
@@ -92,14 +97,13 @@ export const createRead = ({
   }
 
   const initialModel = readModel()
-  syncIndexes(RESET_INVALIDATION, initialModel)
   const initialSnapshot = createSnapshot(initialModel)
-
-  const nodeProjection = createNodeProjection(initialSnapshot)
-  const edgeProjection = createEdgeProjection(initialSnapshot)
-  const mindmapProjection = createMindmapProjection(initialSnapshot, {
+  mindmapProjection = createMindmapProjection(initialSnapshot, {
     config,
   })
+  syncIndexes(RESET_INVALIDATION, initialModel)
+  const nodeProjection = createNodeProjection(initialSnapshot)
+  const edgeProjection = createEdgeProjection(initialSnapshot)
 
   const readCanvasNode = (
     nodeId: NodeId
@@ -116,7 +120,7 @@ export const createRead = ({
 
   const readNodes: EngineRead['node']['nodes'] = (
     nodeIds
-  ) => collection.presentValues(nodeIds, (nodeId) => nodeProjection.item.get(nodeId)?.node)
+  ) => collection.presentValues(nodeIds, (nodeId) => nodeProjection.committed.get(nodeId)?.node)
 
   const readEdges: EngineRead['edge']['edges'] = (
     edgeIds
@@ -332,17 +336,26 @@ export const createRead = ({
 
   const readMindmapBounds = (treeId: NodeId): Rect | undefined => {
     const item = mindmapProjection.layout.get(treeId)
-    if (!item) {
-      return undefined
+    return item?.computed.bbox
+  }
+
+  const withChangedNodeInvalidation = (
+    invalidation: Invalidation,
+    nodeIds: readonly NodeId[]
+  ): Invalidation => {
+    if (!nodeIds.length) {
+      return invalidation
     }
-    const rects = item.nodeIds.flatMap((nodeId) => {
-      const bounds = readProjectedNodeBounds(nodeId)
-      return bounds ? [bounds] : []
+
+    const nextNodes = new Set(invalidation.nodes)
+    nodeIds.forEach((nodeId) => {
+      nextNodes.add(nodeId)
     })
-    if (!rects.length) {
-      return undefined
+
+    return {
+      ...invalidation,
+      nodes: nextNodes
     }
-    return geometryApi.rect.boundingRect(rects)
   }
 
   edgeRectIndex.reset(edgeProjection.list.get(), readEdgeBounds)
@@ -404,12 +417,14 @@ export const createRead = ({
     }
 
     const model = readModel()
-    syncIndexes(invalidation, model)
     const snapshot = createSnapshot(model)
-    nodeProjection.applyChange(invalidation, snapshot, nodeRectIndex.changedIds())
-    edgeProjection.applyChange(invalidation, snapshot)
-    edgeRectIndex.applyChange(edgeProjection.changedIds(), readEdgeBounds)
     mindmapProjection.applyChange(invalidation, snapshot)
+    syncIndexes(invalidation, model)
+    const changedNodeIds = nodeRectIndex.changedIds()
+    const nextInvalidation = withChangedNodeInvalidation(invalidation, changedNodeIds)
+    nodeProjection.applyChange(nextInvalidation, snapshot, changedNodeIds)
+    edgeProjection.applyChange(nextInvalidation, snapshot)
+    edgeRectIndex.applyChange(edgeProjection.changedIds(), readEdgeBounds)
   }
 
   return {
@@ -460,7 +475,7 @@ export const createRead = ({
       },
       node: {
         list: nodeProjection.list,
-        item: nodeProjection.item,
+        committed: nodeProjection.committed,
         nodes: readNodes,
         geometry: readProjectedNodeGeometry,
         rect: readProjectedNodeRect,

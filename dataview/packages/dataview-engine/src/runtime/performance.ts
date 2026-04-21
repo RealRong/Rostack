@@ -13,7 +13,7 @@ type PendingCommitTrace = Omit<CommitTrace, 'id'>
 
 const VIEW_STAGE_NAMES: readonly ViewStageName[] = [
   'query',
-  'sections',
+  'membership',
   'summary',
   'publish'
 ]

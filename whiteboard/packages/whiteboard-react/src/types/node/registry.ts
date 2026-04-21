@@ -1,5 +1,5 @@
 import type {
-  Node,
+  NodeModel,
   NodeRole,
   NodeUpdateInput,
   NodeType,
@@ -28,8 +28,9 @@ export type NodeWrite = {
 }
 
 export type NodeRenderProps = {
-  node: Node
+  node: NodeModel
   rect: Rect
+  rotation: number
   selected: boolean
   hovered: boolean
   edit?: {

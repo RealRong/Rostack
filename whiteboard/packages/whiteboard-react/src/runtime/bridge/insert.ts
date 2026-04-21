@@ -126,11 +126,11 @@ const recenterNode = ({
     x: center.x - rect.width / 2,
     y: center.y - rect.height / 2
   }
-  const current = editor.read.node.render.get(nodeId)?.node.position
+  const currentRect = editor.read.node.render.get(nodeId)?.rect
   if (
-    current
-    && current.x === nextPosition.x
-    && current.y === nextPosition.y
+    currentRect
+    && currentRect.x === nextPosition.x
+    && currentRect.y === nextPosition.y
   ) {
     return
   }

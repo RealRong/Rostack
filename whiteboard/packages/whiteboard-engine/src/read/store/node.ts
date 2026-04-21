@@ -99,7 +99,7 @@ export const createNodeProjection = (initialSnapshot: ReadSnapshot) => {
 
   return {
     list: projection.list,
-    item: projection.item,
+    committed: projection.item,
     applyChange
   }
 }

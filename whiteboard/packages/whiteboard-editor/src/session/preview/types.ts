@@ -33,7 +33,16 @@ export type NodePreviewEntry = {
   patch: NodePreviewPatch
 }
 
-export type TextPreviewPatch = Omit<NodePreviewPatch, 'rotation'>
+export type NodeGeometryPreview = NodePatch
+
+export type TextLayoutPreview = {
+  fontSize?: number
+  mode?: NodePreviewPatch['mode']
+  wrapWidth?: number
+  handle?: NodePreviewPatch['handle']
+}
+
+export type TextPreviewPatch = TextLayoutPreview & Pick<NodePreviewPatch, 'position' | 'size'>
 
 export type TextPreviewEntry = {
   id: NodeId
@@ -54,8 +63,8 @@ export type NodePreviewState = {
 }
 
 export type NodePreviewProjection = {
-  patch?: NodePatch
-  text?: TextPreviewPatch
+  geometry?: NodeGeometryPreview
+  text?: TextLayoutPreview
   hovered: boolean
   hidden: boolean
 }

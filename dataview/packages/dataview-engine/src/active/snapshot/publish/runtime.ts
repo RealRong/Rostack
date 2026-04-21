@@ -14,8 +14,8 @@ import type {
   ViewSummaries
 } from '@dataview/engine/contracts'
 import type {
-  SectionRuntimeState,
-  SectionState,
+  MembershipRuntimeState,
+  MembershipState,
   SnapshotChange,
   SummaryState
 } from '@dataview/engine/contracts/state'
@@ -27,7 +27,7 @@ import {
 } from '@dataview/engine/active/snapshot/publish/patch'
 import {
   publishSections
-} from '@dataview/engine/active/snapshot/sections/publish'
+} from '@dataview/engine/active/snapshot/membership/publish'
 import {
   publishSummaries
 } from '@dataview/engine/active/snapshot/summary/publish'
@@ -86,8 +86,8 @@ export const runPublishStage = (input: {
   previous?: ViewState
   view: View
   records: ViewRecords
-  sectionState: SectionRuntimeState
-  previousSectionState?: SectionState
+  membershipState: MembershipRuntimeState
+  previousMembershipState?: MembershipState
   previousSections?: SectionList
   previousItems?: ItemList
   summaryState: SummaryState
@@ -105,9 +105,9 @@ export const runPublishStage = (input: {
   const publishStart = now()
   const sections = publishSections({
     view: input.view,
-    sections: input.sectionState.structure,
-    projection: input.sectionState.projection,
-    previousSections: input.previousSectionState,
+    sections: input.membershipState.structure,
+    projection: input.membershipState.projection,
+    previousSections: input.previousMembershipState,
     previous: input.previousSections && input.previousItems
       ? {
           sections: input.previousSections,

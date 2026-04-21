@@ -1,7 +1,7 @@
 import type {
   EdgeDash,
   EdgeTextMode,
-  Node,
+  NodeModel,
   NodeTemplate,
   Rect
 } from '@whiteboard/core/types'
@@ -23,7 +23,7 @@ export type EditorEdgeDefaults = {
 export type EditorDefaults = {
   selection: {
     node: {
-      readPaint: (node: Node) => EditorNodePaintDefaults | undefined
+      readPaint: (node: NodeModel) => EditorNodePaintDefaults | undefined
     }
     edge: EditorEdgeDefaults
   }

@@ -51,6 +51,12 @@ export const Surface = ({
   useClipboard({
     containerRef
   })
+  // Pointer capture must run before keyboard focus capture so background clicks
+  // can dismiss edit state and selection before contenteditable blur exposes stale chrome.
+  usePointer({
+    containerRef,
+    panEnabled: resolvedConfig.viewport.enablePan
+  })
   useKeyboard({
     containerRef,
     shortcuts: resolvedConfig.shortcuts
@@ -59,10 +65,6 @@ export const Surface = ({
     editor,
     containerRef,
     options: viewportInput
-  })
-  usePointer({
-    containerRef,
-    panEnabled: resolvedConfig.viewport.enablePan
   })
 
   return (

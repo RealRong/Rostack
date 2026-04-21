@@ -1,13 +1,15 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import type {
   EngineRead,
+  MindmapLayoutItem,
   NodeItem
 } from '@whiteboard/engine'
 import { collection, equal, store } from '@shared/core'
 import type {
-  NodeGeometry,
   Node,
+  NodeGeometry,
   NodeId,
+  NodeModel,
   NodeRole,
   NodeType,
   Rect
@@ -23,11 +25,11 @@ import type {
   EditField
 } from '@whiteboard/editor/session/edit'
 import type {
+  NodeGeometryPreview,
   NodePreviewProjection
 } from '@whiteboard/editor/session/preview/types'
 import type { NodeEditView } from '@whiteboard/editor/query/edit/read'
-import type { MindmapNodeLayoutItem } from '@whiteboard/editor/layout/mindmap'
-import type { DraftNodeLayout } from '@whiteboard/editor/layout/runtime'
+import type { DraftMeasure } from '@whiteboard/editor/layout/runtime'
 
 export type NodeStyleFieldKind = 'string' | 'number' | 'numberArray'
 
@@ -45,9 +47,9 @@ export type NodeTypeRead = {
 }
 
 export type NodeTypeSupport = NodeTypeRead & {
-  hasControl: (node: Node, control: ControlId) => boolean
+  hasControl: (node: NodeModel, control: ControlId) => boolean
   supportsStyle: (
-    node: Node,
+    node: NodeModel,
     path: string,
     kind: NodeStyleFieldKind
   ) => boolean
@@ -55,7 +57,20 @@ export type NodeTypeSupport = NodeTypeRead & {
 
 export type NodeCapability = NodeTypeCapability
 
-export type NodeGeometryView = NodeGeometry & {
+export type ProjectedOwnerGeometry = {
+  rect: Rect
+  rotation: number
+}
+
+export type ProjectedNode = {
+  nodeId: NodeId
+  node: NodeModel
+  rect: Rect
+  bounds: Rect
+  rotation: number
+}
+
+export type ProjectedNodeGeometry = NodeGeometry & {
   rotation: number
 }
 
@@ -66,7 +81,7 @@ export type NodeRenderEdit = {
 
 export type NodeRender = {
   nodeId: NodeId
-  node: Node
+  node: NodeModel
   rect: Rect
   bounds: Rect
   rotation: number
@@ -81,26 +96,16 @@ export type NodeRender = {
   canRotate: boolean
 }
 
-export type NodeCanvasSnapshot = {
-  node: Node
-  geometry: NodeGeometryView
-}
-
 export type NodePresentationRead = {
   list: EngineRead['node']['list']
-  committed: EngineRead['node']['item']
+  committed: EngineRead['node']['committed']
   type: NodeTypeRead
-  geometry: store.KeyedReadStore<NodeId, NodeGeometryView | undefined>
-  content: store.KeyedReadStore<NodeId, Node | undefined>
-  item: store.KeyedReadStore<NodeId, NodeItem | undefined>
-  nodes: (nodeIds: readonly NodeId[]) => readonly Node[]
+  projected: store.KeyedReadStore<NodeId, ProjectedNode | undefined>
+  nodes: (nodeIds: readonly NodeId[]) => readonly NodeModel[]
   render: store.KeyedReadStore<NodeId, NodeRender | undefined>
-  canvas: store.KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
-  rect: store.KeyedReadStore<NodeId, Rect | undefined>
-  bounds: store.KeyedReadStore<NodeId, Rect | undefined>
-  capability: (node: Pick<Node, 'id' | 'type' | 'owner'>) => NodeCapability
+  capability: (node: Pick<NodeModel, 'id' | 'type' | 'owner'>) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
-  ordered: () => readonly Node[]
+  ordered: () => readonly NodeModel[]
 }
 
 type NodeRuntime = {
@@ -111,10 +116,7 @@ type NodeRuntime = {
 }
 
 const EMPTY_CONTROLS: readonly ControlId[] = []
-
-const isSelectableNode = (
-  node: Node | undefined
-) => Boolean(node)
+const nodeModelCache = new WeakMap<Node, NodeModel>()
 
 const readFallbackMeta = (
   type: NodeType
@@ -154,6 +156,304 @@ const readDefinitionCapability = (
       typeof definition?.rotate === 'boolean'
         ? definition.rotate
         : role === 'content'
+  }
+}
+
+const toNodeModel = (
+  node: Node
+): NodeModel => {
+  const cached = nodeModelCache.get(node)
+  if (cached) {
+    return cached
+  }
+
+  const {
+    position: _position,
+    size: _size,
+    rotation: _rotation,
+    ...model
+  } = node
+  nodeModelCache.set(node, model)
+  return model
+}
+
+export const toSpatialNode = ({
+  node,
+  rect,
+  rotation
+}: Pick<ProjectedNode, 'node' | 'rect' | 'rotation'>): Node => ({
+  ...node,
+  position: {
+    x: rect.x,
+    y: rect.y
+  },
+  size: {
+    width: rect.width,
+    height: rect.height
+  },
+  rotation
+})
+
+export const toProjectedNodeGeometry = (
+  item: Pick<ProjectedNode, 'node' | 'rect' | 'rotation'>
+): ProjectedNodeGeometry => {
+  const spatial = toSpatialNode(item)
+  const geometry = nodeApi.outline.geometry(
+    spatial,
+    item.rect,
+    item.rotation
+  )
+
+  return {
+    ...geometry,
+    rotation: item.rotation
+  }
+}
+
+const isProjectedNodeEqual = (
+  left: ProjectedNode | undefined,
+  right: ProjectedNode | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && left.nodeId === right.nodeId
+    && left.node === right.node
+    && equal.sameRect(left.rect, right.rect)
+    && equal.sameRect(left.bounds, right.bounds)
+    && left.rotation === right.rotation
+  )
+)
+
+const isNodeRenderEditEqual = (
+  left: NodeRenderEdit | undefined,
+  right: NodeRenderEdit | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && left.field === right.field
+    && left.caret.kind === right.caret.kind
+    && (
+      left.caret.kind !== 'point'
+      || (
+        right.caret.kind === 'point'
+        && left.caret.client.x === right.caret.client.x
+        && left.caret.client.y === right.caret.client.y
+      )
+    )
+  )
+)
+
+const isNodeRenderEqual = (
+  left: NodeRender | undefined,
+  right: NodeRender | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && left.nodeId === right.nodeId
+    && left.node === right.node
+    && equal.sameRect(left.rect, right.rect)
+    && equal.sameRect(left.bounds, right.bounds)
+    && left.rotation === right.rotation
+    && left.hovered === right.hovered
+    && left.hidden === right.hidden
+    && left.resizing === right.resizing
+    && left.patched === right.patched
+    && left.selected === right.selected
+    && left.canConnect === right.canConnect
+    && left.canResize === right.canResize
+    && left.canRotate === right.canRotate
+    && isNodeRenderEditEqual(left.edit, right.edit)
+  )
+)
+
+const readProjectedOwnerGeometry = (
+  item: NodeItem,
+  mindmap: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+): ProjectedOwnerGeometry | undefined => {
+  const mindmapId = item.node.owner?.kind === 'mindmap'
+    ? item.node.owner.id
+    : undefined
+  if (!mindmapId) {
+    return undefined
+  }
+
+  const rect = store.read(mindmap, mindmapId)?.computed.node[item.node.id]
+  return rect
+    ? {
+        rect,
+        rotation: nodeApi.geometry.rotation(item.node)
+      }
+    : undefined
+}
+
+const applyGeometryPreview = (
+  rect: Rect,
+  rotation: number,
+  preview?: NodeGeometryPreview
+) => ({
+  rect: preview
+    ? {
+        x: preview.position?.x ?? rect.x,
+        y: preview.position?.y ?? rect.y,
+        width: preview.size?.width ?? rect.width,
+        height: preview.size?.height ?? rect.height
+      }
+    : rect,
+  rotation: preview?.rotation ?? rotation
+})
+
+const readNodeTextDraft = (
+  committed: NodeItem,
+  edit: NodeEditView | undefined,
+  draft: DraftMeasure
+) => {
+  if (!edit) {
+    return undefined
+  }
+
+  return {
+    field: edit.field,
+    value: edit.text,
+    fontSize:
+      edit.field === 'text'
+      && committed.node.type === 'sticky'
+      && draft?.kind === 'fit'
+        ? draft.fontSize
+        : undefined
+  }
+}
+
+const resolveProjectedNodeCapability = (
+  node: Pick<NodeModel, 'id' | 'type' | 'owner'>,
+  type: NodeTypeRead
+): NodeCapability => {
+  const base = type.capability(node.type)
+  const mindmapOwned = node.owner?.kind === 'mindmap'
+
+  return {
+    ...base,
+    connect: base.connect,
+    resize: !mindmapOwned && base.resize,
+    rotate: !mindmapOwned && base.rotate
+  }
+}
+
+const readNodeRuntime = (
+  feedback: NodePreviewProjection
+): NodeRuntime => ({
+  hovered: feedback.hovered,
+  hidden: feedback.hidden,
+  patched: Boolean(feedback.geometry || feedback.text),
+  resizing: Boolean(
+    feedback.geometry?.size
+    || feedback.text?.handle
+  )
+})
+
+const projectNode = ({
+  committed,
+  ownerGeometry,
+  feedback,
+  edit,
+  draft
+}: {
+  committed: NodeItem
+  ownerGeometry?: ProjectedOwnerGeometry
+  feedback: NodePreviewProjection
+  edit: NodeEditView | undefined
+  draft: DraftMeasure
+}): ProjectedNode => {
+  const mindmapOwned = committed.node.owner?.kind === 'mindmap'
+  const baseRotation = ownerGeometry?.rotation ?? nodeApi.geometry.rotation(committed.node)
+  let rect = ownerGeometry?.rect ?? committed.rect
+
+  if (!mindmapOwned && committed.node.type === 'text' && draft?.kind === 'size') {
+    rect = {
+      ...rect,
+      width: draft.size.width,
+      height: draft.size.height
+    }
+  }
+
+  const geometry = !mindmapOwned
+    ? applyGeometryPreview(rect, baseRotation, feedback.geometry)
+    : {
+        rect,
+        rotation: baseRotation
+      }
+
+  const previewItem = nodeApi.projection.applyTextPreview({
+    node: committed.node,
+    rect: geometry.rect
+  }, feedback.text)
+  const contentItem = nodeApi.projection.applyTextDraft(
+    previewItem,
+    readNodeTextDraft(committed, edit, draft)
+  )
+  const node = toNodeModel(contentItem.node)
+  const projectedGeometry = toProjectedNodeGeometry({
+    node,
+    rect: geometry.rect,
+    rotation: geometry.rotation
+  })
+
+  return {
+    nodeId: committed.node.id,
+    node,
+    rect: projectedGeometry.rect,
+    bounds: projectedGeometry.bounds,
+    rotation: projectedGeometry.rotation
+  }
+}
+
+const toNodeRenderEdit = (
+  edit: NodeEditView | undefined
+): NodeRenderEdit | undefined => (
+  edit
+    ? {
+        field: edit.field,
+        caret: edit.caret
+      }
+    : undefined
+)
+
+const buildNodeRender = ({
+  projected,
+  feedback,
+  selected,
+  edit,
+  type
+}: {
+  projected: ProjectedNode
+  feedback: NodePreviewProjection
+  selected: boolean
+  edit: NodeEditView | undefined
+  type: NodeTypeRead
+}): NodeRender => {
+  const runtime = readNodeRuntime(feedback)
+  const capability = resolveProjectedNodeCapability(projected.node, type)
+
+  return {
+    nodeId: projected.nodeId,
+    node: projected.node,
+    rect: projected.rect,
+    bounds: projected.bounds,
+    rotation: projected.rotation,
+    hovered: runtime.hovered,
+    hidden: runtime.hidden,
+    resizing: runtime.resizing,
+    patched: runtime.patched,
+    selected,
+    edit: toNodeRenderEdit(edit),
+    canConnect: capability.connect,
+    canResize: capability.resize,
+    canRotate: capability.rotate
   }
 }
 
@@ -214,256 +514,6 @@ export const createNodeTypeRead = (
   }
 }
 
-const isNodeItemEqual = (
-  left: NodeItem | undefined,
-  right: NodeItem | undefined
-) => (
-  left === right
-  || (
-    left?.node === right?.node
-    && left?.rect.x === right?.rect.x
-    && left?.rect.y === right?.rect.y
-    && left?.rect.width === right?.rect.width
-    && left?.rect.height === right?.rect.height
-  )
-)
-
-const isNodeGeometryEqual = (
-  left: NodeGeometryView | undefined,
-  right: NodeGeometryView | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.rotation === right.rotation
-    && equal.sameRect(left.rect, right.rect)
-    && equal.sameRect(left.bounds, right.bounds)
-    && left.outline.kind === right.outline.kind
-    && (
-      left.outline.kind === 'rect' && right.outline.kind === 'rect'
-        ? (
-            equal.sameRect(left.outline.rect, right.outline.rect)
-            && left.outline.rotation === right.outline.rotation
-          )
-        : left.outline.kind === 'polygon' && right.outline.kind === 'polygon'
-          ? equal.samePointArray(left.outline.points, right.outline.points)
-          : false
-    )
-  )
-)
-
-const isNodeRenderEditEqual = (
-  left: NodeRenderEdit | undefined,
-  right: NodeRenderEdit | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.field === right.field
-    && left.caret.kind === right.caret.kind
-    && (
-      left.caret.kind !== 'point'
-      || (
-        right.caret.kind === 'point'
-        && left.caret.client.x === right.caret.client.x
-        && left.caret.client.y === right.caret.client.y
-      )
-    )
-  )
-)
-
-const isNodeRenderEqual = (
-  left: NodeRender | undefined,
-  right: NodeRender | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.nodeId === right.nodeId
-    && left.node === right.node
-    && equal.sameRect(left.rect, right.rect)
-    && equal.sameRect(left.bounds, right.bounds)
-    && left.rotation === right.rotation
-    && left.hovered === right.hovered
-    && left.hidden === right.hidden
-    && left.resizing === right.resizing
-    && left.patched === right.patched
-    && left.selected === right.selected
-    && left.canConnect === right.canConnect
-    && left.canResize === right.canResize
-    && left.canRotate === right.canRotate
-    && isNodeRenderEditEqual(left.edit, right.edit)
-  )
-)
-
-const isNodeCanvasSnapshotEqual = (
-  left: NodeCanvasSnapshot | undefined,
-  right: NodeCanvasSnapshot | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.node === right.node
-    && isNodeGeometryEqual(left.geometry, right.geometry)
-  )
-)
-
-const readNodeContentDraft = (
-  item: NodeItem,
-  edit: NodeEditView | undefined,
-  draft: DraftNodeLayout | undefined
-) => {
-  if (!edit) {
-    return undefined
-  }
-
-  return {
-    field: edit.field,
-    value: edit.text,
-    fontSize: edit.field === 'text' && item.node.type === 'sticky'
-      ? draft?.fontSize
-      : undefined
-  }
-}
-
-const readTextGeometryPatch = (
-  feedback: NodePreviewProjection
-) => (
-  feedback.text?.position || feedback.text?.size
-    ? {
-        position: feedback.text.position,
-        size: feedback.text.size
-      }
-    : undefined
-)
-
-const readMindmapGeometryPatch = (
-  mindmap: MindmapNodeLayoutItem | undefined
-) => {
-  if (!mindmap) {
-    return undefined
-  }
-
-  return {
-    position: {
-      x: mindmap.rect.x,
-      y: mindmap.rect.y
-    },
-    size: {
-      width: mindmap.rect.width,
-      height: mindmap.rect.height
-    }
-  }
-}
-
-const readDraftGeometryPatch = (
-  item: NodeItem,
-  draft: DraftNodeLayout | undefined
-) => {
-  if (
-    item.node.owner?.kind === 'mindmap'
-    || item.node.type !== 'text'
-    || !draft?.size
-  ) {
-    return undefined
-  }
-
-  return {
-    size: {
-      width: draft.size.width,
-      height: draft.size.height
-    }
-  }
-}
-
-const projectNodeGeometryItem = (
-  item: NodeItem,
-  feedback: NodePreviewProjection,
-  mindmap: MindmapNodeLayoutItem | undefined,
-  draft: DraftNodeLayout | undefined
-): NodeItem => nodeApi.projection.applyGeometryPatch(
-  nodeApi.projection.applyGeometryPatch(
-    nodeApi.projection.applyGeometryPatch(
-      item,
-      feedback.patch
-    ),
-    mindmap
-      ? readMindmapGeometryPatch(mindmap)
-      : readDraftGeometryPatch(item, draft)
-  ),
-  readTextGeometryPatch(feedback)
-)
-
-const projectNodeContent = (
-  item: NodeItem,
-  feedback: NodePreviewProjection,
-  edit: NodeEditView | undefined,
-  draft: DraftNodeLayout | undefined
-): Node => nodeApi.projection.applyTextDraft(
-  nodeApi.projection.applyTextPreview(item, feedback.text),
-  readNodeContentDraft(item, edit, draft)
-).node
-
-const readNodeRuntime = (
-  feedback: NodePreviewProjection
-): NodeRuntime => ({
-  hovered: feedback.hovered,
-  hidden: feedback.hidden,
-  patched: Boolean(feedback.patch || feedback.text),
-  resizing: Boolean(
-    feedback.patch?.size
-    || feedback.text?.handle
-    || feedback.text?.size
-    || feedback.text?.position
-  )
-})
-
-const readGeometryView = (
-  item: NodeItem
-): NodeGeometryView => {
-  const rotation = nodeApi.geometry.rotation(item.node)
-  const geometry = nodeApi.outline.geometry(
-    item.node,
-    item.rect,
-    rotation
-  )
-
-  return {
-    ...geometry,
-    rotation
-  }
-}
-
-const toNodeRenderEdit = (
-  edit: NodeEditView | undefined
-): NodeRenderEdit | undefined => (
-  edit
-    ? {
-        field: edit.field,
-        caret: edit.caret
-      }
-    : undefined
-)
-
-const resolveNodeCapability = (
-  node: Pick<Node, 'id' | 'type' | 'owner'>,
-  type: NodeTypeRead
-): NodeCapability => {
-  const base = type.capability(node.type)
-  const mindmapOwned = node.owner?.kind === 'mindmap'
-
-  return {
-    ...base,
-    connect: base.connect,
-    resize: !mindmapOwned && base.resize,
-    rotate: !mindmapOwned && base.rotate
-  }
-}
-
 export const createNodeRead = ({
   read,
   type,
@@ -476,157 +526,93 @@ export const createNodeRead = ({
   read: EngineRead
   type: NodeTypeRead
   feedback: store.KeyedReadStore<NodeId, NodePreviewProjection>
-  mindmap: store.KeyedReadStore<NodeId, MindmapNodeLayoutItem | undefined>
+  mindmap: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
   edit: {
     node: store.KeyedReadStore<NodeId, NodeEditView | undefined>
   }
   draft: {
-    node: store.KeyedReadStore<NodeId, DraftNodeLayout | undefined>
+    node: store.KeyedReadStore<NodeId, DraftMeasure>
   }
   selection: {
     selected: store.KeyedReadStore<NodeId, boolean>
   }
 }): NodePresentationRead => {
-  const geometry: NodePresentationRead['geometry'] = store.createKeyedDerivedStore({
+  const projected: NodePresentationRead['projected'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
-      const current = store.read(read.node.item, nodeId)
+      const current = store.read(read.node.committed, nodeId)
       if (!current) {
         return undefined
       }
 
-      const currentDraft = store.read(draft.node, nodeId)
-      const currentMindmap = store.read(mindmap, nodeId)
-      const geometryItem = projectNodeGeometryItem(
-        current,
-        store.read(feedback, nodeId),
-        currentMindmap,
-        currentDraft
-      )
-
-      return readGeometryView(geometryItem)
+      return projectNode({
+        committed: current,
+        ownerGeometry: readProjectedOwnerGeometry(current, mindmap),
+        feedback: store.read(feedback, nodeId),
+        edit: store.read(edit.node, nodeId),
+        draft: store.read(draft.node, nodeId)
+      })
     },
-    isEqual: isNodeGeometryEqual
-  })
-
-  const content: NodePresentationRead['content'] = store.createKeyedDerivedStore({
-    get: (nodeId: NodeId) => {
-      const current = store.read(read.node.item, nodeId)
-      return current
-        ? projectNodeContent(
-            current,
-            store.read(feedback, nodeId),
-            store.read(edit.node, nodeId),
-            store.read(draft.node, nodeId)
-          )
-        : undefined
-    },
-    isEqual: (left, right) => left === right
-  })
-
-  const item: NodePresentationRead['item'] = store.createKeyedDerivedStore({
-    get: (nodeId: NodeId) => {
-      const current = store.read(read.node.item, nodeId)
-      const currentGeometry = store.read(geometry, nodeId)
-      const currentNode = store.read(content, nodeId)
-      if (!current || !currentGeometry || !currentNode) {
-        return undefined
-      }
-
-      return current.node === currentNode
-        && equal.sameRect(current.rect, currentGeometry.rect)
-        ? current
-        : {
-            node: currentNode,
-            rect: currentGeometry.rect
-          }
-    },
-    isEqual: isNodeItemEqual
-  })
-
-  const rect: NodePresentationRead['rect'] = store.createKeyedDerivedStore({
-    get: (nodeId: NodeId) => store.read(geometry, nodeId)?.rect,
-    isEqual: equal.sameOptionalRect
-  })
-
-  const bounds: NodePresentationRead['bounds'] = store.createKeyedDerivedStore({
-    get: (nodeId: NodeId) => store.read(geometry, nodeId)?.bounds,
-    isEqual: equal.sameOptionalRect
+    isEqual: isProjectedNodeEqual
   })
 
   const render: NodePresentationRead['render'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
-      const currentNode = store.read(content, nodeId)
-      const currentGeometry = store.read(geometry, nodeId)
-      if (!currentNode || !currentGeometry) {
+      const currentProjected = store.read(projected, nodeId)
+      if (!currentProjected) {
         return undefined
       }
 
-      const runtime = readNodeRuntime(
-        store.read(feedback, nodeId)
-      )
-      const currentCapability = resolveNodeCapability(currentNode, type)
-      const currentEdit = store.read(edit.node, nodeId)
-      return {
-        nodeId,
-        node: currentNode,
-        rect: currentGeometry.rect,
-        bounds: currentGeometry.bounds,
-        rotation: currentGeometry.rotation,
-        hovered: runtime.hovered,
-        hidden: runtime.hidden,
-        resizing: runtime.resizing,
-        patched: runtime.patched,
+      return buildNodeRender({
+        projected: currentProjected,
+        feedback: store.read(feedback, nodeId),
         selected: store.read(selection.selected, nodeId),
-        edit: toNodeRenderEdit(currentEdit),
-        canConnect: currentCapability.connect,
-        canResize: currentCapability.resize,
-        canRotate: currentCapability.rotate
-      }
+        edit: store.read(edit.node, nodeId),
+        type
+      })
     },
     isEqual: isNodeRenderEqual
   })
 
-  const canvas: NodePresentationRead['canvas'] = store.createKeyedDerivedStore({
-    get: (nodeId: NodeId) => {
-      const currentNode = store.read(content, nodeId)
-      const currentGeometry = store.read(geometry, nodeId)
-      if (!currentNode || !currentGeometry) {
-        return undefined
-      }
+  const readProjectedNodes = (
+    nodeIds: readonly NodeId[]
+  ) => collection.presentValues(nodeIds, (nodeId) => store.read(projected, nodeId)?.node)
 
-      return {
-        node: currentNode,
-        geometry: currentGeometry
-      }
-    },
-    isEqual: isNodeCanvasSnapshotEqual
-  })
+  const idsInRect: NodePresentationRead['idsInRect'] = (rect, options) => {
+    const match = options?.match ?? 'touch'
+    const policy = options?.policy ?? 'default'
+    const exclude = options?.exclude?.length
+      ? new Set(options.exclude)
+      : undefined
+    const candidateIds = store.read(read.node.list).filter((nodeId) => !exclude?.has(nodeId))
+
+    return nodeApi.hit.filterIdsInRect({
+      rect,
+      candidateIds,
+      match,
+      policy,
+      getEntry: (nodeId) => {
+        const current = store.read(projected, nodeId)
+        return current
+          ? {
+              node: toSpatialNode(current),
+              rect: current.rect,
+              rotation: current.rotation
+            }
+          : undefined
+      },
+      matchEntry: nodeApi.hit.matchRect
+    })
+  }
 
   return {
     list: read.node.list,
-    committed: read.node.item,
+    committed: read.node.committed,
     type,
-    geometry,
-    content,
-    item,
-    nodes: (nodeIds) => collection.presentValues(nodeIds, (nodeId) => {
-      const node = store.read(content, nodeId)
-      return isSelectableNode(node)
-        ? node
-        : undefined
-    }),
+    projected,
+    nodes: readProjectedNodes,
     render,
-    canvas,
-    rect,
-    bounds,
-    capability: (node) => resolveNodeCapability(node, type),
-    idsInRect: (rect, options) => read.node.idsInRect(rect, options)
-      .filter((nodeId) => isSelectableNode(read.node.item.get(nodeId)?.node)),
-    ordered: () => collection.presentValues(store.read(read.node.list), (nodeId) => {
-      const node = store.read(content, nodeId)
-      return isSelectableNode(node)
-        ? node
-        : undefined
-    })
+    capability: (node) => resolveProjectedNodeCapability(node, type),
+    idsInRect,
+    ordered: () => readProjectedNodes(store.read(read.node.list))
   }
 }

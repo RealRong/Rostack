@@ -5,7 +5,7 @@ import type {
   SelectionSummary,
   SelectionTarget
 } from '@whiteboard/core/selection'
-import type { Edge, EdgeId, MindmapNodeId, Node, NodeId } from '@whiteboard/core/types'
+import type { Edge, EdgeId, MindmapNodeId, NodeId, NodeModel } from '@whiteboard/core/types'
 import type {
   SelectionEdgeStats,
   SelectionEdgeTypeInfo,
@@ -63,7 +63,7 @@ const readEdgeCountLabel = (
 ) => count === 1 ? '1 edge' : `${count} edges`
 
 const readString = (
-  node: Node,
+  node: NodeModel,
   key: string
 ) => {
   const value = node.style?.[key]
@@ -71,7 +71,7 @@ const readString = (
 }
 
 const readNumber = (
-  node: Node,
+  node: NodeModel,
   key: string
 ) => {
   const value = node.style?.[key]
@@ -79,7 +79,7 @@ const readNumber = (
 }
 
 const readNumberArray = (
-  node: Node,
+  node: NodeModel,
   key: string
 ) => {
   const value = node.style?.[key]
@@ -231,7 +231,7 @@ const readSelectionEdgeStats = (
 }
 
 const resolveToolbarNodeKind = (
-  nodes: readonly Node[],
+  nodes: readonly NodeModel[],
   summary: SelectionNodeStats
 ): SelectionToolbarNodeKind => {
   if (nodes.every((node) => node.type === 'shape')) {
@@ -261,7 +261,7 @@ const resolveToolbarNodeKind = (
 }
 
 const hasControl = (
-  nodes: readonly Node[],
+  nodes: readonly NodeModel[],
   nodeType: Pick<NodeTypeSupport, 'hasControl'>,
   control: 'fill' | 'stroke' | 'text'
 ) => nodes.every((node) => nodeType.hasControl(node, control))
@@ -271,12 +271,12 @@ const readDefaultFill = (
 ) => defaults?.fill
 
 const readFill = (
-  node: Node,
+  node: NodeModel,
   defaults: EditorNodePaintDefaults | undefined
 ) => readString(node, 'fill') ?? readDefaultFill(defaults)
 
 const readFillOpacity = (
-  node: Node
+  node: NodeModel
 ) => readNumber(node, 'fillOpacity')
   ?? (node.type === 'shape' ? 1 : undefined)
 
@@ -285,7 +285,7 @@ const readDefaultStroke = (
 ) => defaults?.stroke
 
 const readStroke = (
-  node: Node,
+  node: NodeModel,
   defaults: EditorNodePaintDefaults | undefined
 ) => readString(node, 'stroke') ?? readDefaultStroke(defaults)
 
@@ -294,21 +294,21 @@ const readDefaultStrokeWidth = (
 ) => defaults?.strokeWidth
 
 const readStrokeWidth = (
-  node: Node,
+  node: NodeModel,
   defaults: EditorNodePaintDefaults | undefined
 ) => readNumber(node, 'strokeWidth') ?? readDefaultStrokeWidth(defaults)
 
 const readStrokeOpacity = (
-  node: Node
+  node: NodeModel
 ) => readNumber(node, 'strokeOpacity')
   ?? (node.type === 'shape' ? 1 : undefined)
 
 const readOpacity = (
-  node: Node
+  node: NodeModel
 ) => readNumber(node, 'opacity') ?? 1
 
 const readStrokeDash = (
-  node: Node
+  node: NodeModel
 ) => readNumberArray(node, 'strokeDash')
 
 const readDefaultTextColor = (
@@ -316,26 +316,26 @@ const readDefaultTextColor = (
 ) => defaults?.color
 
 const readTextColor = (
-  node: Node,
+  node: NodeModel,
   defaults: EditorNodePaintDefaults | undefined
 ) => readString(node, 'color') ?? readDefaultTextColor(defaults)
 
 const readFontSize = (
-  node: Node
+  node: NodeModel
 ) => readNumber(node, 'fontSize') ?? nodeApi.text.defaultFontSize
 
 const readFontWeight = (
-  node: Node
+  node: NodeModel
 ) => readNumber(node, 'fontWeight') ?? 400
 
 const readFontStyle = (
-  node: Node
+  node: NodeModel
 ) => readString(node, 'fontStyle') === 'italic'
   ? 'italic'
   : 'normal'
 
 const readTextAlign = (
-  node: Node
+  node: NodeModel
 ) => {
   const value = readString(node, 'textAlign')
   if (value === 'left' || value === 'right' || value === 'center') {
@@ -347,8 +347,8 @@ const readTextAlign = (
 
 const readToolbarValue = <TValue,>(
   enabled: boolean,
-  nodes: readonly Node[],
-  readValue: (node: Node) => TValue,
+  nodes: readonly NodeModel[],
+  readValue: (node: NodeModel) => TValue,
   equal?: (left: TValue, right: TValue) => boolean
 ) => enabled
   ? collection.uniform(nodes, readValue, equal)
@@ -363,9 +363,9 @@ const readNodeScope = ({
   mindmap,
   defaults
 }: {
-  nodes: readonly Node[]
+  nodes: readonly NodeModel[]
   nodeIds: readonly NodeId[]
-  primaryNode?: Node
+  primaryNode?: NodeModel
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
   nodeStats: SelectionNodeStats
   mindmap: Pick<MindmapPresentationRead, 'structure'>
@@ -629,9 +629,9 @@ const isEdgeEditingInteraction = (
 )
 
 const collectNodesByIds = (
-  nodeById: ReadonlyMap<NodeId, Node>,
+  nodeById: ReadonlyMap<NodeId, NodeModel>,
   ids: readonly NodeId[]
-): Node[] => ids.flatMap((id) => {
+): NodeModel[] => ids.flatMap((id) => {
   const node = nodeById.get(id)
   return node ? [node] : []
 })
@@ -691,7 +691,7 @@ const resolveSelectionToolbar = ({
   }
 
   const scopes: SelectionToolbarScope[] = []
-  const nodeById = new Map<NodeId, Node>(members.nodes.map((node) => [node.id, node] as const))
+  const nodeById = new Map<NodeId, NodeModel>(members.nodes.map((node) => [node.id, node] as const))
   const edgeById = new Map<EdgeId, Edge>(members.edges.map((edge) => [edge.id, edge] as const))
 
   if (nodeStats.count > 0 && nodeScope) {

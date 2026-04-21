@@ -10,6 +10,7 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import { toSpatialNode } from '@whiteboard/editor/query/node/read'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -29,13 +30,29 @@ const toTransformNodePatches = (
   patch
 }))
 
+const toSpatialSelectionPlan = (
+  ctx: Pick<EditorHostDeps, 'query'>,
+  plan: NonNullable<ReturnType<EditorHostDeps['query']['selection']['summary']['get']>['transformPlan']>
+) => ({
+  ...plan,
+  members: plan.members.flatMap((member) => {
+    const projected = ctx.query.node.projected.get(member.id)
+    return projected
+      ? [{
+          ...member,
+          node: toSpatialNode(projected)
+        }]
+      : []
+  })
+})
+
 const readNodeTransformSpec = (
   ctx: Pick<EditorHostDeps, 'query'>,
   nodeId: NodeId,
   handle: TransformPickHandle,
   input: PointerDownInput
 ): RuntimeTransformSpec | undefined => {
-  const entry = ctx.query.node.canvas.get(nodeId)
+  const entry = ctx.query.node.projected.get(nodeId)
   if (!entry || entry.node.locked) {
     return undefined
   }
@@ -43,21 +60,21 @@ const readNodeTransformSpec = (
   const capability = ctx.query.node.capability(entry.node)
   const target: TransformTarget = {
     id: entry.node.id,
-    node: entry.node,
-    rect: entry.geometry.rect
+    node: toSpatialNode(entry),
+    rect: entry.rect
   }
-  const rotation = nodeApi.geometry.rotation(entry.node)
+  const rotation = entry.rotation
 
   if (handle.kind === 'resize') {
     if (!handle.direction || !capability.resize) {
       return undefined
     }
 
-    const behavior = nodeApi.transform.resolveBehavior(entry.node, {
+    const behavior = nodeApi.transform.resolveBehavior(target.node, {
       role: capability.role,
       resize: capability.resize
     })
-    if (entry.node.type === 'text' && behavior) {
+    if (target.node.type === 'text' && behavior) {
       const plan = nodeApi.transform.buildPlan({
         box: target.rect,
         members: [{
@@ -132,7 +149,7 @@ const resolveTransformSpec = (
   return {
     kind: 'selection-resize',
     pointerId: input.pointerId,
-    plan: selection.transformPlan,
+    plan: toSpatialSelectionPlan(ctx, selection.transformPlan),
     rotation: 0,
     handle: input.pick.handle.direction,
     startScreen: input.client

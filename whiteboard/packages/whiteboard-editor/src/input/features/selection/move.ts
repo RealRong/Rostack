@@ -13,6 +13,7 @@ import type {
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import { toSpatialNode } from '@whiteboard/editor/query/node/read'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -114,7 +115,10 @@ export const createMoveInteraction = (
   }
 
   const initialState = nodeApi.move.state.start({
-    nodes: ctx.query.node.ordered(),
+    nodes: ctx.query.node.ordered().flatMap((node) => {
+      const projected = ctx.query.node.projected.get(node.id)
+      return projected ? [toSpatialNode(projected)] : []
+    }),
     edges: ctx.query.edge.edges(ctx.query.edge.list.get()),
     target: input.target,
     startWorld: input.start.world,

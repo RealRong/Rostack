@@ -1,5 +1,5 @@
 import type { CanvasNode } from '@whiteboard/engine/types/projection'
-import type { Node, NodeId, Rect } from '@whiteboard/core/types'
+import type { MindmapId, Node, NodeId, Rect } from '@whiteboard/core/types'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeRectHitOptions } from '@whiteboard/core/node/hitTest'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
@@ -10,11 +10,16 @@ import { NodeGeometryCache } from '@whiteboard/engine/geometry/nodeGeometry'
 
 type Rebuild = 'none' | 'dirty' | 'full'
 
+type OwnerGeometryResolver = {
+  readMindmapNodeIds?: (mindmapId: MindmapId) => readonly NodeId[] | undefined
+  readMindmapRect?: (mindmapId: MindmapId, nodeId: NodeId) => Rect | undefined
+}
+
 const resolveRebuild = (invalidation: Invalidation): Rebuild => {
   if (invalidation.document || invalidation.canvasOrder) {
     return 'full'
   }
-  if (invalidation.nodes.size > 0) {
+  if (invalidation.nodes.size > 0 || invalidation.mindmaps.size > 0) {
     return 'dirty'
   }
   return 'none'
@@ -29,7 +34,10 @@ export class NodeRectIndex {
   private orderDirty = true
   private dirtyIds: readonly NodeId[] = []
 
-  constructor(config: BoardConfig) {
+  constructor(
+    config: BoardConfig,
+    private ownerGeometry?: OwnerGeometryResolver
+  ) {
     this.geometry = new NodeGeometryCache(config.nodeSize)
   }
 
@@ -47,7 +55,8 @@ export class NodeRectIndex {
       case 'dirty':
         return this.syncByNodeIds(
           invalidation.nodes,
-          model.canvas.nodeById
+          model.canvas.nodeById,
+          invalidation.mindmaps
         )
       default:
         return false
@@ -81,7 +90,8 @@ export class NodeRectIndex {
 
   private syncByNodeIds = (
     nodeIds: Iterable<NodeId>,
-    nodeById: ReadonlyMap<NodeId, Node>
+    nodeById: ReadonlyMap<NodeId, Node>,
+    mindmapIds: Iterable<MindmapId>
   ): boolean => {
     const removed = new Set<NodeId>()
     let changed = false
@@ -111,6 +121,12 @@ export class NodeRectIndex {
       }
     }
 
+    for (const mindmapId of mindmapIds) {
+      this.ownerGeometry?.readMindmapNodeIds?.(mindmapId)?.forEach((nodeId) => {
+        affectedIds.add(nodeId)
+      })
+    }
+
     if (removed.size) {
       this.orderedIds = this.orderedIds.filter((nodeId) => !removed.has(nodeId))
       removed.forEach((nodeId) => {
@@ -136,7 +152,36 @@ export class NodeRectIndex {
     _cache: Map<NodeId, CanvasNode>,
     _visited: Set<NodeId>,
     _resolveEntry: (nodeId: NodeId) => CanvasNode | undefined
-  ): CanvasNode => current
+  ): CanvasNode => {
+    const mindmapId = current.node.owner?.kind === 'mindmap'
+      ? current.node.owner.id
+      : undefined
+    if (!mindmapId) {
+      return current
+    }
+
+    const rect = this.ownerGeometry?.readMindmapRect?.(mindmapId, current.node.id)
+    if (!rect) {
+      return current
+    }
+
+    const rotation = nodeApi.geometry.rotation(current.node)
+    const geometry = nodeApi.outline.geometry(
+      current.node,
+      rect,
+      rotation
+    )
+
+    return (
+      equal.sameRect(current.geometry.rect, geometry.rect)
+      && equal.sameRect(current.geometry.bounds, geometry.bounds)
+    )
+      ? current
+      : {
+          node: current.node,
+          geometry
+        }
+  }
 
   private isSameEntry = (
     left: CanvasNode | undefined,

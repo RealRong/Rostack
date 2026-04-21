@@ -19,12 +19,35 @@ describe('createMoveInteraction', () => {
           ordered: () => [{
             id: 'node-1',
             type: 'text',
-            position: { x: 100, y: 120 },
-            size: { width: 120, height: 40 },
             data: {
               text: 'node-1'
             }
-          }]
+          }],
+          projected: {
+            get: () => ({
+              nodeId: 'node-1',
+              node: {
+                id: 'node-1',
+                type: 'text',
+                data: {
+                  text: 'node-1'
+                }
+              },
+              rect: {
+                x: 100,
+                y: 120,
+                width: 120,
+                height: 40
+              },
+              bounds: {
+                x: 100,
+                y: 120,
+                width: 120,
+                height: 40
+              },
+              rotation: 0
+            })
+          }
         },
         edge: {
           list: {

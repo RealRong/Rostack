@@ -81,6 +81,7 @@ export type SpatialNode = BaseNode & {
 }
 
 export type Node = SpatialNode
+export type NodeModel = Omit<Node, 'position' | 'size' | 'rotation'>
 export type NodeRecord = Node
 
 export type EdgeAnchor = {

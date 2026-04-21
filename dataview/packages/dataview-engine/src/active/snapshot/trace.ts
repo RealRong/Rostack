@@ -68,7 +68,7 @@ const countReusedSummaries = (
 }
 
 export const buildStageMetrics = (
-  stage: 'query' | 'sections' | 'summary',
+  stage: 'query' | 'membership' | 'summary',
   previous: ViewState | undefined,
   next: ViewState | undefined
 ): ViewStageMetrics | undefined => {
@@ -95,7 +95,7 @@ export const buildStageMetrics = (
         ...(changedRecordCount === undefined ? {} : { changedRecordCount })
       }
     }
-    case 'sections': {
+    case 'membership': {
       const previousSections = previous?.sections
       const nextSections = next?.sections
       if (!nextSections) {

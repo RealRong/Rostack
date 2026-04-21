@@ -11,8 +11,8 @@ import { equal } from '@shared/core'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
-  SectionDelta,
-  SectionState,
+  MembershipDelta,
+  MembershipState,
   SummaryDelta,
   SummaryState
 } from '@dataview/engine/contracts/state'
@@ -38,22 +38,23 @@ const resolveSummaryAction = (input: {
   view: View
   calcFields: readonly FieldId[]
   previous?: SummaryState
-  previousSections?: SectionState
-  sections: SectionState
-  sectionsAction: DeriveAction
-  sectionDelta: SectionDelta
+  previousMembership?: MembershipState
+  membership: MembershipState
+  membershipAction: DeriveAction
+  membershipDelta: MembershipDelta
 }): DeriveAction => {
   const commit = input.impact.commit
-  const sectionChanged = (
-    input.sectionDelta.rebuild
-    || input.sectionDelta.orderChanged
-    || input.sectionDelta.removed.length > 0
-    || input.sectionDelta.records.size > 0
+  const membershipChanged = (
+    input.membershipDelta.rebuild
+    || input.membershipDelta.orderChanged
+    || input.membershipDelta.changed.length > 0
+    || input.membershipDelta.removed.length > 0
+    || input.membershipDelta.records.size > 0
   )
 
   if (
     !input.previous
-    || !input.previousSections
+    || !input.previousMembership
     || input.previousViewId !== input.activeViewId
     || commitImpact.has.activeView(commit)
   ) {
@@ -61,12 +62,12 @@ const resolveSummaryAction = (input: {
   }
 
   if (!input.calcFields.length) {
-    return equal.sameOrder(input.previousSections.order, input.sections.order)
+    return equal.sameOrder(input.previousMembership.order, input.membership.order)
       ? 'reuse'
       : 'sync'
   }
 
-  if (input.sectionsAction === 'rebuild' || input.sectionDelta.rebuild) {
+  if (input.membershipAction === 'rebuild' || input.membershipDelta.rebuild) {
     return 'rebuild'
   }
 
@@ -91,8 +92,8 @@ const resolveSummaryAction = (input: {
   }
 
   if (
-    !equal.sameOrder(input.previousSections.order, input.sections.order)
-    || sectionChanged
+    !equal.sameOrder(input.previousMembership.order, input.membership.order)
+    || membershipChanged
   ) {
     return 'sync'
   }
@@ -111,10 +112,10 @@ export const runSummaryStage = (input: {
   view: View
   calcFields: readonly FieldId[]
   previous?: SummaryState
-  previousSections?: SectionState
-  sections: SectionState
-  sectionsAction: DeriveAction
-  sectionDelta: SectionDelta
+  previousMembership?: MembershipState
+  membership: MembershipState
+  membershipAction: DeriveAction
+  membershipDelta: MembershipDelta
   index: IndexState
 }): {
   action: DeriveAction
@@ -131,17 +132,17 @@ export const runSummaryStage = (input: {
     view: input.view,
     calcFields: input.calcFields,
     previous: input.previous,
-    previousSections: input.previousSections,
-    sections: input.sections,
-    sectionsAction: input.sectionsAction,
-    sectionDelta: input.sectionDelta
+    previousMembership: input.previousMembership,
+    membership: input.membership,
+    membershipAction: input.membershipAction,
+    membershipDelta: input.membershipDelta
   })
   const deriveStart = now()
   const derived = deriveSummaryState({
     previous: input.previous,
-    previousSections: input.previousSections,
-    sections: input.sections,
-    sectionDelta: input.sectionDelta,
+    previousMembership: input.previousMembership,
+    membership: input.membership,
+    membershipDelta: input.membershipDelta,
     calcFields: input.calcFields,
     index: input.index,
     impact: input.impact,

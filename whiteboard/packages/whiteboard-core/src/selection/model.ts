@@ -9,8 +9,8 @@ import type {
   Edge,
   EdgeId,
   GroupId,
-  Node,
   NodeId,
+  NodeModel,
   NodeRole,
   Rect
 } from '@whiteboard/core/types'
@@ -23,8 +23,9 @@ const EMPTY_NODE_SET: ReadonlySet<NodeId> = new Set<NodeId>()
 const EMPTY_EDGE_SET: ReadonlySet<EdgeId> = new Set<EdgeId>()
 const EMPTY_GROUP_IDS: readonly GroupId[] = []
 const EMPTY_GROUP_SET: ReadonlySet<GroupId> = new Set<GroupId>()
-const EMPTY_NODES: readonly Node[] = []
 const EMPTY_EDGES: readonly Edge[] = []
+
+type SelectionNodeItem = Pick<NodeModel, 'id' | 'type' | 'groupId' | 'locked'>
 
 export type SelectionInput = {
   nodeIds?: readonly NodeId[]
@@ -82,7 +83,9 @@ export const applySelectionTarget = (
   )]
 })
 
-export type SelectionSummary = {
+export type SelectionSummary<
+  TNode extends SelectionNodeItem = NodeModel
+> = {
   kind: 'none' | 'node' | 'nodes' | 'edge' | 'edges' | 'mixed'
   target: {
     nodeIds: readonly NodeId[]
@@ -95,9 +98,9 @@ export type SelectionSummary = {
     groupId?: GroupId
   }
   items: {
-    nodes: readonly Node[]
+    nodes: readonly TNode[]
     edges: readonly Edge[]
-    primaryNode?: Node
+    primaryNode?: TNode
     primaryEdge?: Edge
     count: number
     nodeCount: number
@@ -110,13 +113,15 @@ export type SelectionSummary = {
     primaryId?: GroupId
   }
   canMove: boolean
-  transformPlan?: SelectionTransformPlan<Node>
+  transformPlan?: SelectionTransformPlan<TNode>
   box?: Rect
 }
 
-export const isSelectionSummaryEqual = (
-  left: SelectionSummary,
-  right: SelectionSummary
+export const isSelectionSummaryEqual = <
+  TNode extends SelectionNodeItem
+>(
+  left: SelectionSummary<TNode>,
+  right: SelectionSummary<TNode>
 ) => (
   left.kind === right.kind
   && left.target.edgeId === right.target.edgeId
@@ -146,8 +151,8 @@ const isNodeTransformBehaviorEqual = (
 )
 
 const isSelectionTransformPlanEqual = (
-  left: SelectionTransformPlan<Node> | undefined,
-  right: SelectionTransformPlan<Node> | undefined
+  left: SelectionTransformPlan<SelectionNodeItem> | undefined,
+  right: SelectionTransformPlan<SelectionNodeItem> | undefined
 ) => (
   left === right
   || (
@@ -172,7 +177,9 @@ const isSelectionTransformPlanEqual = (
   )
 )
 
-export const deriveSelectionSummary = ({
+export const deriveSelectionSummary = <
+  TNode extends SelectionNodeItem
+>({
   target,
   nodes,
   edges,
@@ -181,12 +188,12 @@ export const deriveSelectionSummary = ({
   resolveNodeTransformBehavior
 }: {
   target: SelectionTarget
-  nodes: readonly Node[]
+  nodes: readonly TNode[]
   edges: readonly Edge[]
-  readNodeRect: (node: Node) => Rect | undefined
+  readNodeRect: (node: TNode) => Rect | undefined
   readEdgeBounds: (edge: Edge) => Rect | undefined
-  resolveNodeTransformBehavior: (node: Node) => NodeTransformBehavior | undefined
-}): SelectionSummary => {
+  resolveNodeTransformBehavior: (node: TNode) => NodeTransformBehavior | undefined
+}): SelectionSummary<TNode> => {
   const nodeIds = nodes.length > 0
     ? nodes.map((node) => node.id)
     : EMPTY_NODE_IDS
@@ -209,7 +216,7 @@ export const deriveSelectionSummary = ({
   const groupSet = groupIds.length > 0
     ? new Set<GroupId>(groupIds)
     : EMPTY_GROUP_SET
-  const nodeItems = nodes.length > 0 ? nodes : EMPTY_NODES
+  const nodeItems = nodes
   const edgeItems = edges.length > 0 ? edges : EMPTY_EDGES
   const nodeCount = nodeItems.length
   const edgeCount = edgeItems.length
@@ -290,11 +297,11 @@ export const deriveSelectionSummary = ({
     canMove,
     transformPlan,
     box
-  } satisfies SelectionSummary
+  } satisfies SelectionSummary<TNode>
 }
 
 const nodeItemsGroupIds = (
-  nodes: readonly Node[]
+  nodes: readonly Pick<SelectionNodeItem, 'groupId'>[]
 ): GroupId[] => nodes
   .map((node) => node.groupId)
   .filter((groupId): groupId is GroupId => Boolean(groupId))
@@ -312,7 +319,9 @@ export type SelectionAffordanceOwner =
 
 export type SelectionAffordanceMoveHit = 'none' | 'body'
 
-export type SelectionAffordance = {
+export type SelectionAffordance<
+  TNode extends SelectionNodeItem = NodeModel
+> = {
   owner: SelectionAffordanceOwner
   ownerNodeId?: NodeId
   displayBox?: Rect
@@ -320,11 +329,11 @@ export type SelectionAffordance = {
   canMove: boolean
   canResize: boolean
   canRotate: boolean
-  transformPlan?: SelectionTransformPlan<Node>
+  transformPlan?: SelectionTransformPlan<TNode>
   showSingleNodeOverlay: boolean
 }
 
-const EMPTY_AFFORDANCE: SelectionAffordance = {
+const EMPTY_AFFORDANCE: Omit<SelectionAffordance, 'transformPlan'> = {
   owner: 'none',
   moveHit: 'none',
   canMove: false,
@@ -333,18 +342,20 @@ const EMPTY_AFFORDANCE: SelectionAffordance = {
   showSingleNodeOverlay: false
 }
 
-export const deriveSelectionAffordance = ({
+export const deriveSelectionAffordance = <
+  TNode extends SelectionNodeItem
+>({
   selection,
   resolveNodeRole,
   resolveNodeTransformCapability
 }: {
-  selection: SelectionSummary
-  resolveNodeRole: (node: Node) => NodeRole
-  resolveNodeTransformCapability: (node: Node) => {
+  selection: SelectionSummary<TNode>
+  resolveNodeRole: (node: TNode) => NodeRole
+  resolveNodeTransformCapability: (node: TNode) => {
     resize: boolean
     rotate: boolean
   }
-}): SelectionAffordance => {
+}): SelectionAffordance<TNode> => {
   const displayBox = selection.box
   const primaryNode = selection.items.primaryNode
   const nodeCount = selection.items.nodeCount
@@ -415,9 +426,11 @@ export const deriveSelectionAffordance = ({
   }
 }
 
-export const isSelectionAffordanceEqual = (
-  left: SelectionAffordance,
-  right: SelectionAffordance
+export const isSelectionAffordanceEqual = <
+  TNode extends SelectionNodeItem
+>(
+  left: SelectionAffordance<TNode>,
+  right: SelectionAffordance<TNode>
 ) => (
   left.owner === right.owner
   && left.ownerNodeId === right.ownerNodeId

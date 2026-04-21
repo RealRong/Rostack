@@ -9,8 +9,7 @@ import type {
   MindmapStructureItem
 } from '@whiteboard/engine'
 import type {
-  MindmapLayoutRead,
-  MindmapNodeLayoutItem
+  MindmapLayoutRead
 } from '@whiteboard/editor/layout/mindmap'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 
@@ -25,7 +24,6 @@ export type MindmapChrome = {
 
 export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'layout' | 'scene'> & {
   layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
-  node: store.KeyedReadStore<NodeId, MindmapNodeLayoutItem | undefined>
   scene: store.KeyedReadStore<NodeId, MindmapSceneItem | undefined>
   chrome: store.KeyedReadStore<NodeId, MindmapChrome | undefined>
   navigate: (input: {
@@ -102,7 +100,7 @@ const readAddChildTargets = ({
   layout: MindmapLayoutItem
   selection: SelectionTarget
   edit: EditSession
-  node: EngineRead['node']['item']
+  node: EngineRead['node']['committed']
 }) => {
   const selectedNodeId = selection.nodeIds.length === 1
     ? selection.nodeIds[0]
@@ -213,14 +211,14 @@ export const createMindmapRead = ({
 }: {
   read: EngineRead['mindmap']
   layout: MindmapLayoutRead
-  node: EngineRead['node']['item']
+  node: EngineRead['node']['committed']
   edit: store.ReadStore<EditSession>
   selection: store.ReadStore<SelectionTarget>
 }): MindmapPresentationRead => {
   const scene = store.createKeyedDerivedStore<NodeId, MindmapSceneItem | undefined>({
     get: (mindmapId) => {
       const structure = store.read(read.structure, mindmapId)
-      const currentLayout = store.read(layout.item, mindmapId)
+      const currentLayout = store.read(layout.layout, mindmapId)
       if (!structure || !currentLayout) {
         return undefined
       }
@@ -233,7 +231,7 @@ export const createMindmapRead = ({
   const chrome = store.createKeyedDerivedStore<NodeId, MindmapChrome | undefined>({
     get: (mindmapId) => {
       const structure = store.read(read.structure, mindmapId)
-      const currentLayout = store.read(layout.item, mindmapId)
+      const currentLayout = store.read(layout.layout, mindmapId)
       if (!structure || !currentLayout) {
         return undefined
       }
@@ -254,8 +252,7 @@ export const createMindmapRead = ({
   return {
     list: read.list,
     structure: read.structure,
-    layout: layout.item,
-    node: layout.node,
+    layout: layout.layout,
     scene,
     chrome,
     navigate: (input) => {

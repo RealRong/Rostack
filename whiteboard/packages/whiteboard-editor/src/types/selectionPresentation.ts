@@ -10,7 +10,7 @@ import type {
   MindmapId,
   MindmapNodeFrameKind,
   MindmapNodeId,
-  Node,
+  NodeModel,
   NodeId,
   Rect
 } from '@whiteboard/core/types'
@@ -40,9 +40,9 @@ export type SelectionEdgeTypeInfo = {
 export type SelectionMembers = {
   key: string
   target: SelectionTarget
-  nodes: readonly Node[]
+  nodes: readonly NodeModel[]
   edges: readonly Edge[]
-  primaryNode?: Node
+  primaryNode?: NodeModel
   primaryEdge?: Edge
 }
 
@@ -102,8 +102,8 @@ export type SelectionToolbarMindmapScope = {
 export type SelectionToolbarNodeScope = {
   kind: SelectionToolbarNodeKind
   nodeIds: readonly NodeId[]
-  nodes: readonly Node[]
-  primaryNode?: Node
+  nodes: readonly NodeModel[]
+  primaryNode?: NodeModel
   canChangeShapeKind: boolean
   canEditFontSize: boolean
   canEditFontWeight: boolean
@@ -167,7 +167,7 @@ export type SelectionToolbarContext = {
   key: string
   selectionKind: 'nodes' | 'edges' | 'mixed'
   target: SelectionTarget
-  nodes: readonly Node[]
+  nodes: readonly NodeModel[]
   edges: readonly Edge[]
   scopes: readonly SelectionToolbarScope[]
   defaultScopeKey: string
@@ -186,5 +186,5 @@ export type SelectionOverlay =
       interactive: boolean
       frame: boolean
       handles: boolean
-      transformPlan?: SelectionTransformPlan<Node>
+      transformPlan?: SelectionTransformPlan<NodeModel>
     }

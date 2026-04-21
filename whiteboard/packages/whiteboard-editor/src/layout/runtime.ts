@@ -316,11 +316,16 @@ const toLayoutResultUpdate = ({
   return undefined
 }
 
-export type DraftNodeLayout = {
-  size?: Size
-  fontSize?: number
-  wrapWidth?: number
-}
+export type DraftMeasure =
+  | {
+      kind: 'size'
+      size: Size
+    }
+  | {
+      kind: 'fit'
+      fontSize: number
+    }
+  | undefined
 
 const measureDraftNodeLayout = ({
   committed,
@@ -339,7 +344,7 @@ const measureDraftNodeLayout = ({
   text: string
   registry: Pick<NodeRegistry, 'get'>
   backend?: LayoutBackend
-}): DraftNodeLayout | undefined => {
+}): DraftMeasure => {
   if (!committed) {
     return undefined
   }
@@ -369,31 +374,28 @@ const measureDraftNodeLayout = ({
   const result = backend?.measure(request)
   if (request.kind === 'size') {
     return {
+      kind: 'size',
       size: result?.kind === 'size'
         ? result.size
         : {
             width: committed.rect.width,
             height: committed.rect.height
-          },
-      wrapWidth: request.wrapWidth
+          }
     }
   }
 
   return {
+    kind: 'fit',
     fontSize: result?.kind === 'fit'
       ? result.fontSize
-      : (
-          typeof committed.node.style?.fontSize === 'number'
-            ? committed.node.style.fontSize
-            : undefined
-        )
+      : readFontSize(committed.node)
   }
 }
 
 export type EditorLayout = {
   text: TextMetricsResource
   draft: {
-    node: store.KeyedReadStore<NodeId, DraftNodeLayout | undefined>
+    node: store.KeyedReadStore<NodeId, DraftMeasure>
   }
   mindmap: MindmapLayoutRead
   patchNodeCreatePayload: (
@@ -426,7 +428,7 @@ export const createEditorLayout = ({
 }: {
   read: {
     node: {
-      committed: EngineRead['node']['item']
+      committed: EngineRead['node']['committed']
     }
     mindmap: {
       list: EngineRead['mindmap']['list']
@@ -443,34 +445,8 @@ export const createEditorLayout = ({
 }): EditorLayout => {
   const text = createTextMetricsResource()
 
-  const readCommittedLayoutNodeItem = (
-    nodeId: NodeId
-  ) => {
-    const committed = store.read(read.node.committed, nodeId)
-    if (!committed) {
-      return undefined
-    }
-
-    const mindmapId = committed.node.owner?.kind === 'mindmap'
-      ? committed.node.owner.id
-      : undefined
-    if (!mindmapId) {
-      return committed
-    }
-
-    const rect = store.read(read.mindmap.committed, mindmapId)?.computed.node[nodeId]
-    if (!rect || equal.sameRect(committed.rect, rect)) {
-      return committed
-    }
-
-    return {
-      node: committed.node,
-      rect
-    }
-  }
-
   const draft = {
-    node: store.createKeyedDerivedStore<NodeId, DraftNodeLayout | undefined>({
+    node: store.createKeyedDerivedStore<NodeId, DraftMeasure>({
       get: (nodeId) => {
         const current = store.read(session.edit)
         if (
@@ -482,7 +458,7 @@ export const createEditorLayout = ({
         }
 
         return measureDraftNodeLayout({
-          committed: readCommittedLayoutNodeItem(nodeId),
+          committed: store.read(read.node.committed, nodeId),
           nodeId,
           field: current.field,
           text: current.text,
@@ -493,9 +469,14 @@ export const createEditorLayout = ({
       isEqual: (left, right) => left === right || (
         left !== undefined
         && right !== undefined
-        && geometryApi.equal.size(left.size, right.size)
-        && left.fontSize === right.fontSize
-        && left.wrapWidth === right.wrapWidth
+        && left.kind === right.kind
+        && (
+          left.kind === 'size' && right.kind === 'size'
+            ? geometryApi.equal.size(left.size, right.size)
+            : left.kind === 'fit' && right.kind === 'fit'
+              ? left.fontSize === right.fontSize
+              : false
+        )
       )
     })
   }
@@ -520,7 +501,10 @@ export const createEditorLayout = ({
         return undefined
       }
 
-      const size = store.read(draft.node, current.nodeId)?.size
+      const measured = store.read(draft.node, current.nodeId)
+      const size = measured?.kind === 'size'
+        ? measured.size
+        : undefined
 
       return size
         ? {
@@ -668,7 +652,7 @@ export const createEditorLayout = ({
       root: patchMindmapTemplateNode(template.root, position)
     }),
     patchNodeUpdate: (nodeId, update, options) => {
-      const committed = readCommittedLayoutNodeItem(nodeId)
+      const committed = store.read(read.node.committed, nodeId)
       if (!committed) {
         return update
       }
@@ -715,7 +699,7 @@ export const createEditorLayout = ({
     },
 
     resolvePreviewPatches: (patches) => patches.map((patch) => {
-      const committed = readCommittedLayoutNodeItem(patch.id)
+      const committed = store.read(read.node.committed, patch.id)
       if (!backend || !committed) {
         return patch
       }

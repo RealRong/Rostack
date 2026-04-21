@@ -12,7 +12,7 @@ export type ViewStageAction =
 
 export type ViewStageName =
   | 'query'
-  | 'sections'
+  | 'membership'
   | 'summary'
   | 'publish'
 
@@ -85,7 +85,7 @@ export interface ViewStageTrace {
 
 export interface ViewPlanTrace {
   query: ViewStageAction
-  sections: ViewStageAction
+  membership: ViewStageAction
   summary: ViewStageAction
   publish: ViewStageAction
 }

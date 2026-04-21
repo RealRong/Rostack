@@ -1301,7 +1301,7 @@ test('engine.performance reuses summaries when sort only reorders records', () =
   assert.equal(readViewState(engine)?.summaries, summariesBefore)
   assert.ok(trace)
   assert.equal(trace.view.plan.query, 'sync')
-  assert.equal(trace.view.plan.sections, 'sync')
+  assert.equal(trace.view.plan.membership, 'sync')
   assert.equal(trace.view.plan.summary, 'reuse')
   assert.equal(summaryStage?.action, 'reuse')
   assert.equal(trace.snapshot.changedStores.includes('summaries'), false)
@@ -1402,7 +1402,7 @@ test('engine.performance traces active view derive and snapshot behavior for inc
 
   const trace = engine.performance.traces.last()
   const stats = engine.performance.stats.snapshot()
-  const sectionsStage = trace?.view.stages.find(stage => stage.stage === 'sections')
+  const sectionsStage = trace?.view.stages.find(stage => stage.stage === 'membership')
   const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')
 
   assert.ok(trace)
@@ -1410,7 +1410,7 @@ test('engine.performance traces active view derive and snapshot behavior for inc
   assert.equal(trace.impact.summary.records, true)
   assert.equal(trace.impact.summary.indexes, true)
   assert.equal(trace.view.plan.query, 'reuse')
-  assert.equal(trace.view.plan.sections, 'sync')
+  assert.equal(trace.view.plan.membership, 'sync')
   assert.equal(trace.view.plan.summary, 'sync')
   assert.equal(trace.index.bucket.action, 'sync')
   assert.equal(trace.index.summaries.action, 'reuse')
@@ -1423,7 +1423,7 @@ test('engine.performance traces active view derive and snapshot behavior for inc
   assert.ok((summaryStage?.metrics?.reusedNodeCount ?? 0) >= 1)
   assert.equal(stats.commits.total, 1)
   assert.equal(stats.commits.dispatch, 1)
-  assert.equal(stats.stages.sections.sync, 1)
+  assert.equal(stats.stages.membership.sync, 1)
   assert.equal(stats.indexes.bucket.changed, 1)
 })
 

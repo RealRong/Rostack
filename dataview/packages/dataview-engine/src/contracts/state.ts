@@ -1,5 +1,5 @@
 export * from '@dataview/engine/contracts/cache'
 export * from '@dataview/engine/contracts/query'
-export * from '@dataview/engine/contracts/sections'
+export * from '@dataview/engine/contracts/membership'
 export * from '@dataview/engine/contracts/stage'
 export * from '@dataview/engine/contracts/summary'

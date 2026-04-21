@@ -256,13 +256,13 @@ export const buildActivePatch = (input: {
     || previous.view.id !== next.view.id
     || previous.view.type !== next.view.type
   )
-  const sectionChange = input.change?.sections
+  const membershipChange = input.change?.membership
   const summaryChange = input.change?.summary
-  const changedSections = sectionChange
+  const changedSections = membershipChange
     ? (
-        sectionChange.rebuild
+        membershipChange.rebuild
           ? next.sections.ids
-          : sectionChange.changed
+          : membershipChange.changed
       )
     : previous
       ? collectRemovedKeys(previous.sections.ids, next.sections.ids).length
@@ -270,8 +270,8 @@ export const buildActivePatch = (input: {
           ? next.sections.ids
           : next.sections.ids.filter(sectionKey => previous.sections.get(sectionKey) !== next.sections.get(sectionKey))
       : next.sections.ids
-  const removedSections = sectionChange
-    ? sectionChange.removed
+  const removedSections = membershipChange
+    ? membershipChange.removed
     : previous
       ? collectRemovedKeys(previous.sections.ids, next.sections.ids)
       : []
@@ -281,14 +281,14 @@ export const buildActivePatch = (input: {
     next,
     changedSections,
     removedSections,
-    rebuild: rebuild || Boolean(sectionChange?.rebuild)
+    rebuild: rebuild || Boolean(membershipChange?.rebuild)
   })
   const sectionData = buildSectionDataPatch({
     previous,
     next,
     changedSections,
     removedSections,
-    rebuild: rebuild || Boolean(sectionChange?.rebuild)
+    rebuild: rebuild || Boolean(membershipChange?.rebuild)
   })
   const sectionSummary = buildSectionSummaryPatch({
     previous,

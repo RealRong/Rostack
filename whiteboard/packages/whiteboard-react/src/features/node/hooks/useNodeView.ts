@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react'
 import { useMemo } from 'react'
-import type { NodeItem } from '@whiteboard/engine'
-import type { NodeId, NodeUpdateInput } from '@whiteboard/core/types'
+import type { NodeId, NodeUpdateInput, Rect } from '@whiteboard/core/types'
 import { useOptionalKeyedStoreValue } from '@shared/react'
 import {
   useEditorRuntime,
@@ -10,7 +9,7 @@ import {
 import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '@whiteboard/react/types/node'
 
 const buildNodeTransformStyle = (
-  rect: NodeItem['rect'],
+  rect: Rect,
   rotation: number,
   nodeStyle: CSSProperties
 ): CSSProperties => {
@@ -28,7 +27,7 @@ const buildNodeTransformStyle = (
 }
 
 const buildOverlayFrameStyle = (
-  rect: NodeItem['rect'],
+  rect: Rect,
   rotation: number
 ): CSSProperties => ({
   transform: `translate(${rect.x}px, ${rect.y}px)${rotation !== 0 ? ` rotate(${rotation}deg)` : ''}`,
@@ -39,8 +38,8 @@ const buildOverlayFrameStyle = (
 
 export type NodeView = {
   nodeId: NodeId
-  node: NodeItem['node']
-  rect: NodeItem['rect']
+  node: RuntimeNodeView['node']
+  rect: RuntimeNodeView['rect']
   rotation: number
   hidden: boolean
   resizing: boolean
@@ -95,6 +94,7 @@ const resolveNodeViewState = (
   const renderProps: NodeRenderProps = {
     node: baseView.node,
     rect: baseView.rect,
+    rotation: baseView.rotation,
     selected: baseView.selected,
     hovered: baseView.hovered,
     edit: baseView.edit,

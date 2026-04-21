@@ -1,14 +1,11 @@
 import { node as nodeApi } from '@whiteboard/core/node'
-import type { NodeItem } from '@whiteboard/engine'
-import type { EdgeAnchor } from '@whiteboard/core/types'
+import type { EdgeAnchor, NodeModel, Rect } from '@whiteboard/core/types'
+import { toSpatialNode } from '@whiteboard/react/features/node/spatial'
 import { usePickRef } from '@whiteboard/react/runtime/hooks'
 
-type NodeViewNode = NodeItem['node']
-type NodeViewRect = NodeItem['rect']
-
 type NodeConnectHandlesProps = {
-  node: NodeViewNode
-  rect: NodeViewRect
+  node: NodeModel
+  rect: Rect
   rotation: number
   activeSide?: EdgeAnchor['side']
 }
@@ -21,7 +18,7 @@ const NodeConnectHandleItem = ({
   point,
   active
 }: {
-  nodeId: NodeViewNode['id']
+  nodeId: NodeModel['id']
   side: EdgeAnchor['side']
   point: {
     x: number
@@ -60,6 +57,11 @@ export const NodeConnectHandles = ({
   rotation,
   activeSide
 }: NodeConnectHandlesProps) => {
+  const spatial = toSpatialNode({
+    node,
+    rect,
+    rotation
+  })
   const localRect = {
     x: 0,
     y: 0,
@@ -89,7 +91,7 @@ export const NodeConnectHandles = ({
     >
       {NODE_CONNECT_SIDES.map((side) => {
         const point = nodeApi.outline.anchor(
-          node,
+          spatial,
           localRect,
           {
             side: side as EdgeAnchor['side'],

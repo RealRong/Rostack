@@ -26,7 +26,7 @@ const reconcileSelectionTarget = (
   read: SelectionReadSource,
   target: SelectionTarget
 ): SelectionTarget => selectionApi.target.normalize({
-  nodeIds: target.nodeIds.filter((nodeId) => Boolean(read.node.item.get(nodeId))),
+  nodeIds: target.nodeIds.filter((nodeId) => Boolean(read.node.committed.get(nodeId))),
   edgeIds: target.edgeIds.filter((edgeId) => Boolean(read.edge.item.get(edgeId)))
 })
 

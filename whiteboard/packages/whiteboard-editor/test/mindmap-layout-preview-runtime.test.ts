@@ -216,13 +216,13 @@ describe('mindmap layout preview runtime', () => {
       registry
     })
 
-    expect(layout.mindmap.item.get('mind-1')?.computed.node['root-1']).toEqual({
+    expect(layout.mindmap.layout.get('mind-1')?.computed.node['root-1']).toEqual({
       x: 60,
       y: 40,
       width: 120,
       height: 40
     })
-    expect(layout.mindmap.item.get('mind-1')?.computed.node['child-1']).toEqual({
+    expect(layout.mindmap.layout.get('mind-1')?.computed.node['child-1']).toEqual({
       x: 240,
       y: 40,
       width: 120,

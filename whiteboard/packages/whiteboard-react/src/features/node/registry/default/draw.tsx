@@ -8,6 +8,7 @@ import {
   DrawStrokeSelectionShape,
   DrawStrokeShape
 } from '@whiteboard/react/features/draw/stroke'
+import { toSpatialNode } from '@whiteboard/react/features/node/spatial'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import { createSchema, getStyleNumber, getStyleString, styleField } from '@whiteboard/react/features/node/registry/default/shared'
 
@@ -35,9 +36,14 @@ export const DrawNodeDefinition: NodeDefinition = {
   layout: {
     kind: 'none'
   },
-  render: ({ node, selected }) => {
-    const points = nodeApi.draw.points(node)
-    const baseSize = nodeApi.draw.baseSize(node)
+  render: ({ node, rect, rotation, selected }) => {
+    const spatial = toSpatialNode({
+      node,
+      rect,
+      rotation
+    })
+    const points = nodeApi.draw.points(spatial)
+    const baseSize = nodeApi.draw.baseSize(spatial)
     const stroke = resolvePaletteColorOr(
       getStyleString(node, 'stroke'),
       WHITEBOARD_TEXT_DEFAULT_COLOR

@@ -15,7 +15,7 @@ const reconcileSessionAfterWrite = (
   query: Pick<EditorQuery, 'node' | 'edge'>
 ) => {
   const selection = session.state.selection.get()
-  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(query.node.item.get(id)))
+  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(query.node.committed.get(id)))
   const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(query.edge.item.get(id)))
 
   if (
@@ -34,7 +34,7 @@ const reconcileSessionAfterWrite = (
   }
 
   if (
-    (currentEdit.kind === 'node' && !query.node.item.get(currentEdit.nodeId))
+    (currentEdit.kind === 'node' && !query.node.committed.get(currentEdit.nodeId))
     || (currentEdit.kind === 'edge-label' && !query.edge.item.get(currentEdit.edgeId))
   ) {
     session.mutate.edit.clear()

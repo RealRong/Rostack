@@ -6,7 +6,7 @@ import { edge as edgeApi,
 } from '@whiteboard/core/edge'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import { collection, equal, store } from '@shared/core'
-import type { Edge, EdgeId, Node, NodeId, Point, Rect, Size } from '@whiteboard/core/types'
+import type { Edge, EdgeId, NodeId, NodeModel, Point, Rect, Size } from '@whiteboard/core/types'
 import type {
   EdgeItem,
   EngineRead
@@ -15,7 +15,12 @@ import type {
   EdgePreviewProjection
 } from '@whiteboard/editor/session/preview/types'
 import type { EditorInputState } from '@whiteboard/editor/session/interaction'
-import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
+import {
+  toProjectedNodeGeometry,
+  toSpatialNode,
+  type NodePresentationRead,
+  type ProjectedNode
+} from '@whiteboard/editor/query/node/read'
 import type { EditCaret, EditSession } from '@whiteboard/editor/session/edit'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { TextMetricsResource, TextMetricsSpec } from '@whiteboard/editor/types/layout'
@@ -545,14 +550,27 @@ const isEdgeInteractionBlockingChrome = (
 )
 
 const readResolvedNodeSnapshot = (
-  readNode: Pick<NodePresentationRead, 'canvas'>,
+  readNode: Pick<NodePresentationRead, 'projected'>,
   edgeEnd: EdgeItem['edge']['source'] | EdgeItem['edge']['target']
-): NodeCanvasSnapshot | undefined => edgeEnd.kind === 'node'
-  ? store.read(readNode.canvas, edgeEnd.nodeId)
-  : undefined
+): {
+  node: ReturnType<typeof toSpatialNode>
+  geometry: ReturnType<typeof toProjectedNodeGeometry>
+} | undefined => {
+  if (edgeEnd.kind !== 'node') {
+    return undefined
+  }
+
+  const projected = store.read(readNode.projected, edgeEnd.nodeId)
+  return projected
+    ? {
+        node: toSpatialNode(projected),
+        geometry: toProjectedNodeGeometry(projected)
+      }
+    : undefined
+}
 
 const readEdgeGeometry = (
-  node: Pick<NodePresentationRead, 'canvas'>,
+  node: Pick<NodePresentationRead, 'projected'>,
   entry: EdgeItem
 ): CoreEdgeView | undefined => {
   const source = readResolvedNodeSnapshot(node, entry.edge.source)
@@ -588,7 +606,7 @@ export const createEdgeRead = ({
   capability
 }: {
   read: Pick<EngineRead, 'edge'>
-  node: Pick<NodePresentationRead, 'canvas' | 'idsInRect'>
+  node: Pick<NodePresentationRead, 'projected' | 'idsInRect'>
   feedback: store.KeyedReadStore<EdgeId, EdgePreviewProjection>
   edit: {
     session: store.ReadStore<EditSession>
@@ -601,7 +619,7 @@ export const createEdgeRead = ({
   tool: store.ReadStore<Tool>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>
   textMetrics: Pick<TextMetricsResource, 'measure'>
-  capability: (node: Pick<Node, 'id' | 'type' | 'owner'>) => {
+  capability: (node: Pick<NodeModel, 'id' | 'type' | 'owner'>) => {
     connect: boolean
   }
 }): EdgePresentationRead => {
@@ -808,15 +826,15 @@ export const createEdgeRead = ({
     const candidates: EdgeConnectCandidate[] = []
 
     for (let index = 0; index < nodeIds.length; index += 1) {
-      const snapshot = store.read(node.canvas, nodeIds[index])
-      if (!snapshot || !capability(snapshot.node).connect) {
+      const projected = store.read(node.projected, nodeIds[index])
+      if (!projected || !capability(projected.node).connect) {
         continue
       }
 
       candidates.push({
-        nodeId: snapshot.node.id,
-        node: snapshot.node,
-        geometry: snapshot.geometry
+        nodeId: projected.node.id,
+        node: toSpatialNode(projected),
+        geometry: toProjectedNodeGeometry(projected)
       })
     }
 
@@ -825,7 +843,7 @@ export const createEdgeRead = ({
 
   const readNodeLocked = (
     nodeId: NodeId
-  ) => Boolean(store.read(node.canvas, nodeId)?.node.locked)
+  ) => Boolean(store.read(node.projected, nodeId)?.node.locked)
 
   const selectedChrome: EdgePresentationRead['selectedChrome'] = store.createDerivedStore({
     get: () => {

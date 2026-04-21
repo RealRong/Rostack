@@ -18,10 +18,11 @@ import {
 } from '@dataview/engine/active/shared/impact'
 import type {
   DeriveAction,
+  ItemProjectionCache,
+  MembershipDelta,
+  MembershipRuntimeState,
+  MembershipState,
   QueryState,
-  SectionDelta,
-  SectionRuntimeState,
-  SectionState
 } from '@dataview/engine/contracts/state'
 import type {
   SectionKey,
@@ -29,13 +30,13 @@ import type {
 } from '@dataview/engine/contracts'
 import {
   syncItemProjection
-} from '@dataview/engine/active/snapshot/sections/publish'
+} from '@dataview/engine/active/snapshot/membership/publish'
 import {
-  syncSectionState
-} from '@dataview/engine/active/snapshot/sections/sync'
+  syncMembershipState
+} from '@dataview/engine/active/snapshot/membership/sync'
 import { now } from '@dataview/engine/runtime/clock'
 
-const EMPTY_SECTION_DELTA: SectionDelta = {
+const EMPTY_MEMBERSHIP_DELTA: MembershipDelta = {
   rebuild: false,
   orderChanged: false,
   removed: [],
@@ -43,12 +44,12 @@ const EMPTY_SECTION_DELTA: SectionDelta = {
   records: new Map()
 }
 
-const resolveSectionsAction = (input: {
+const resolveMembershipAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
   impact: ActiveImpact
   view: View
-  previous?: SectionState
+  previous?: MembershipState
   query: QueryState
 }): DeriveAction => {
   const commit = input.impact.commit
@@ -90,12 +91,12 @@ const resolveSectionsAction = (input: {
     : 'reuse'
 }
 
-const buildSectionDelta = (input: {
-  previous?: SectionState
-  next: SectionState
-  records: SectionDelta['records']
+const buildMembershipDelta = (input: {
+  previous?: MembershipState
+  next: MembershipState
+  records: MembershipDelta['records']
   action: DeriveAction
-}): SectionDelta => {
+}): MembershipDelta => {
   const nextKeys = input.next.order.filter(sectionKey => input.next.byKey.has(sectionKey))
   const previousKeys = input.previous
     ? [...input.previous.byKey.keys()]
@@ -140,26 +141,60 @@ const buildSectionDelta = (input: {
   }
 }
 
-const deriveSectionsState = (input: {
+const resolveProjection = (input: {
+  activeViewId: ViewId
+  view: View
+  previous?: ItemProjectionCache
+  impact: ActiveImpact
+}): 'reuse' | 'sync' => {
+  const mode = input.view.group
+    ? 'grouped'
+    : 'root'
+  const previous = input.previous
+
+  if (!previous || previous.mode !== mode || input.impact.base.recordSetChanged) {
+    return 'sync'
+  }
+
+  if (mode === 'root') {
+    return 'reuse'
+  }
+
+  const groupField = input.view.group?.field
+  const touchedFields = input.impact.base.touchedFields
+  if (
+    commitImpact.has.viewQuery(input.impact.commit, input.activeViewId, ['group'])
+    || (groupField !== undefined && commitImpact.has.fieldSchema(input.impact.commit, groupField))
+    || touchedFields === 'all'
+    || (groupField !== undefined && touchedFields.has(groupField))
+  ) {
+    return 'sync'
+  }
+
+  return 'reuse'
+}
+
+const deriveMembershipState = (input: {
+  activeViewId: ViewId
   action: DeriveAction
   view: View
   query: QueryState
-  previous?: SectionRuntimeState
-  previousStructure?: SectionState
+  previous?: MembershipRuntimeState
+  previousStructure?: MembershipState
   impact: ActiveImpact
   index: IndexState
 }): {
-  state: SectionRuntimeState
-  delta: SectionDelta
+  state: MembershipRuntimeState
+  delta: MembershipDelta
 } => {
   if (input.action === 'reuse' && input.previous) {
     return {
       state: input.previous,
-      delta: EMPTY_SECTION_DELTA
+      delta: EMPTY_MEMBERSHIP_DELTA
     }
   }
 
-  const synced = syncSectionState({
+  const synced = syncMembershipState({
     previous: input.previousStructure,
     view: input.view,
     query: input.query,
@@ -167,54 +202,62 @@ const deriveSectionsState = (input: {
     impact: input.impact,
     action: input.action
   })
-  const delta = buildSectionDelta({
+  const delta = buildMembershipDelta({
     previous: input.previousStructure,
     next: synced.state,
     records: synced.records,
     action: input.action
   })
+  const projectionAction = resolveProjection({
+    activeViewId: input.activeViewId,
+    view: input.view,
+    previous: input.previous?.projection,
+    impact: input.impact
+  })
 
   return {
     state: {
       structure: synced.state,
-      projection: syncItemProjection({
-        mode: input.view.group
-          ? 'grouped'
-          : 'root',
-        previous: input.previous?.projection,
-        allRecordIds: input.index.records.ids,
-        ...(input.view.group
-          ? {
-              sectionKeysByRecord: readBucketIndex(
-                input.index.bucket,
-                createBucketSpec(input.view.group)
-              )?.keysByRecord
-            }
-          : {})
-      })
+      projection: projectionAction === 'reuse' && input.previous?.projection
+        ? input.previous.projection
+        : syncItemProjection({
+            mode: input.view.group
+              ? 'grouped'
+              : 'root',
+            previous: input.previous?.projection,
+            allRecordIds: input.index.records.ids,
+            ...(input.view.group
+              ? {
+                  sectionKeysByRecord: readBucketIndex(
+                    input.index.bucket,
+                    createBucketSpec(input.view.group)
+                  )?.keysByRecord
+                }
+              : {})
+          })
     },
     delta
   }
 }
 
-export const runSectionsStage = (input: {
+export const runMembershipStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
   impact: ActiveImpact
   view: View
   query: QueryState
-  previous?: SectionRuntimeState
+  previous?: MembershipRuntimeState
   index: IndexState
 }): {
   action: DeriveAction
-  state: SectionRuntimeState
-  delta: SectionDelta
+  state: MembershipRuntimeState
+  delta: MembershipDelta
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
 } => {
   const previousStructure = input.previous?.structure
-  const action = resolveSectionsAction({
+  const action = resolveMembershipAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
     impact: input.impact,
@@ -223,7 +266,8 @@ export const runSectionsStage = (input: {
     query: input.query
   })
   const deriveStart = now()
-  const derived = deriveSectionsState({
+  const derived = deriveMembershipState({
+    activeViewId: input.activeViewId,
     action,
     view: input.view,
     query: input.query,

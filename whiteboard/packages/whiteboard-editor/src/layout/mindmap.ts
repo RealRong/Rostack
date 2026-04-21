@@ -12,14 +12,7 @@ import type {
 } from '@whiteboard/editor/session/preview/types'
 
 export type MindmapLayoutRead = {
-  item: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
-  node: store.KeyedReadStore<NodeId, MindmapNodeLayoutItem | undefined>
-}
-
-export type MindmapNodeLayoutItem = {
-  mindmapId: NodeId
-  nodeId: NodeId
-  rect: Rect
+  layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
 }
 
 export type MindmapLiveSize = {
@@ -86,7 +79,7 @@ const cancelFrame = (
 }
 
 const readCommittedMindmapNodeSize = (
-  nodeItemStore: EngineRead['node']['item'],
+  nodeItemStore: EngineRead['node']['committed'],
   nodeId: NodeId
 ): Size | undefined => {
   const item = store.read(nodeItemStore, nodeId)
@@ -157,7 +150,7 @@ const readProjectedMindmapItem = ({
 }: {
   base: MindmapLayoutItem
   structure: MindmapStructureItem
-  nodeCommitted: EngineRead['node']['item']
+  nodeCommitted: EngineRead['node']['committed']
   liveSize: MindmapLiveSize | undefined
   rootMove: {
     delta: {
@@ -284,7 +277,7 @@ export const createMindmapLayoutRead = ({
   list: EngineRead['mindmap']['list']
   committed: EngineRead['mindmap']['layout']
   structure: EngineRead['mindmap']['structure']
-  nodeCommitted: EngineRead['node']['item']
+  nodeCommitted: EngineRead['node']['committed']
   liveSize: store.KeyedReadStore<NodeId, MindmapLiveSize | undefined>
   preview: store.ReadStore<MindmapPreviewState | undefined>
 }): MindmapLayoutRead => {
@@ -375,7 +368,7 @@ export const createMindmapLayoutRead = ({
     emptyValue: []
   })
 
-  const item = store.createKeyedDerivedStore<NodeId, MindmapLayoutItem | undefined>({
+  const layout = store.createKeyedDerivedStore<NodeId, MindmapLayoutItem | undefined>({
     get: (treeId) => {
       const base = store.read(committed, treeId)
       const currentStructure = store.read(structure, treeId)
@@ -407,58 +400,7 @@ export const createMindmapLayoutRead = ({
     )
   })
 
-  const nodeSource = store.createDerivedStore({
-    get: () => {
-      const next = new Map<NodeId, MindmapNodeLayoutItem>()
-
-      store.read(list).forEach((mindmapId) => {
-        const currentLayout = store.read(item, mindmapId)
-        if (!currentLayout) {
-          return
-        }
-
-        const currentLiveSize = store.read(liveSize, mindmapId)
-        const nodeIds = currentLiveSize && !currentLayout.nodeIds.includes(currentLiveSize.nodeId)
-          ? [...currentLayout.nodeIds, currentLiveSize.nodeId]
-          : currentLayout.nodeIds
-
-        nodeIds.forEach((nodeId) => {
-          const rect = currentLayout.computed.node[nodeId]
-          if (!rect) {
-            return
-          }
-
-          next.set(nodeId, {
-            mindmapId,
-            nodeId,
-            rect
-          })
-        })
-      })
-
-      return next as ReadonlyMap<NodeId, MindmapNodeLayoutItem>
-    }
-  })
-
-  const node = store.createProjectedKeyedStore<
-    ReadonlyMap<NodeId, MindmapNodeLayoutItem>,
-    NodeId,
-    MindmapNodeLayoutItem | undefined
-  >({
-    source: nodeSource,
-    select: (value) => value,
-    emptyValue: undefined,
-    isEqual: (left, right) => left === right || (
-      left !== undefined
-      && right !== undefined
-      && left.mindmapId === right.mindmapId
-      && left.nodeId === right.nodeId
-      && equal.sameRect(left.rect, right.rect)
-    )
-  })
-
   return {
-    item,
-    node
+    layout
   }
 }

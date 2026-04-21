@@ -4,7 +4,6 @@ import {
   type SelectionSummary,
   type SelectionTarget
 } from '@whiteboard/core/selection'
-import type { Node } from '@whiteboard/core/types'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { store } from '@shared/core'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
@@ -40,7 +39,7 @@ const readSelectionMembersKey = (
 
 const readNodeTransformCapability = (
   node: Pick<NodePresentationRead, 'capability'>,
-  entry: Node
+  entry: SelectionMembers['nodes'][number]
 ) => {
   const capability = node.capability(entry)
 
@@ -85,7 +84,7 @@ export const createSelectionModelRead = ({
         target: current.target,
         nodes: current.nodes,
         edges: current.edges,
-        readNodeRect: (entry) => store.read(node.rect, entry.id),
+        readNodeRect: (entry) => store.read(node.projected, entry.id)?.rect,
         readEdgeBounds: (entry) => store.read(edge.bounds, entry.id),
         resolveNodeTransformBehavior: (entry) => nodeApi.transform.resolveBehavior(entry, {
           role: node.capability(entry).role,

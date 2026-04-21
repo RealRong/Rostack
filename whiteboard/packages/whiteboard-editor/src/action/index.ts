@@ -157,7 +157,7 @@ const createEditActions = ({
     field,
     options
   ) => {
-    const item = query.node.item.get(nodeId)
+    const item = query.node.projected.get(nodeId)
     if (!item) {
       return
     }
@@ -268,9 +268,12 @@ const createEditActions = ({
             empty: capability.empty,
             defaultText: capability.defaultText
           }),
-          size: draftLayout?.size,
-          fontSize: draftLayout?.fontSize,
-          wrapWidth: draftLayout?.wrapWidth
+          size: draftLayout?.kind === 'size'
+            ? draftLayout.size
+            : undefined,
+          fontSize: draftLayout?.kind === 'fit'
+            ? draftLayout.fontSize
+            : undefined
         })
       }
 
@@ -521,7 +524,7 @@ const readMindmapIdForNodes = (
 ): MindmapId | undefined => {
   const ids = [...new Set(
     nodeIds.map((nodeId) => {
-      const node = query.node.item.get(nodeId)?.node
+      const node = query.node.committed.get(nodeId)?.node
       return node?.owner?.kind === 'mindmap'
         ? node.owner.id
         : undefined
@@ -761,11 +764,11 @@ export const createEditorActions = ({
       side: input.drop.side
     }),
     moveRoot: (input) => {
-      const directNode = query.node.item.get(input.nodeId)?.node
+      const directNode = query.node.committed.get(input.nodeId)?.node
       const structure = query.mindmap.structure.get(input.nodeId)
       const node = directNode ?? (
         structure
-          ? query.node.item.get(structure.rootId)?.node
+          ? query.node.committed.get(structure.rootId)?.node
           : undefined
       )
       const mindmapId = directNode?.owner?.kind === 'mindmap'

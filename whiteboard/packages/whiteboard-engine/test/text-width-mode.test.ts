@@ -57,7 +57,7 @@ test('engine preserves wrap width mode when a text node size changes', () => {
     return
   }
 
-  const committed = engine.read.node.item.get('text-1')
+  const committed = engine.read.node.committed.get('text-1')
   assert.equal(committed?.node.data?.widthMode, 'wrap')
   assert.equal(committed?.node.data?.wrapWidth, 180)
   assert.equal(committed?.rect.width, 180)

@@ -24,10 +24,15 @@ import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
-import type { NodeCanvasSnapshot, NodePresentationRead } from '@whiteboard/editor/query/node/read'
+import {
+  toProjectedNodeGeometry,
+  toSpatialNode,
+  type NodePresentationRead,
+  type ProjectedNode
+} from '@whiteboard/editor/query/node/read'
 
-type EdgeConnectNodeRead = Pick<NodePresentationRead, 'canvas' | 'capability'>
-type EdgeConnectPreviewNodeRead = Pick<NodePresentationRead, 'canvas'>
+type EdgeConnectNodeRead = Pick<NodePresentationRead, 'projected' | 'capability'>
+type EdgeConnectPreviewNodeRead = Pick<NodePresentationRead, 'projected'>
 type EdgeConnectEdgeRead = Pick<EdgePresentationRead, 'item' | 'geometry' | 'capability'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
@@ -58,7 +63,7 @@ type EdgeConnectGestureInput = {
 }
 
 type ConnectNodeEntry = NonNullable<
-  ReturnType<EdgeConnectNodeRead['canvas']['get']>
+  ReturnType<EdgeConnectNodeRead['projected']['get']>
 >
 
 const EMPTY_MODIFIERS: ModifierKeys = {
@@ -96,7 +101,7 @@ const readConnectNode = (
   node: EdgeConnectNodeRead,
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
-  const entry = node.canvas.get(nodeId)
+  const entry = node.projected.get(nodeId)
   if (!entry || entry.node.locked || !node.capability(entry.node).connect) {
     return undefined
   }
@@ -180,10 +185,10 @@ const resolveNodeHandleStart = (input: {
     nodeId: pick.id,
     anchor,
     point: nodeApi.outline.anchor(
-      entry.node,
-      entry.geometry.rect,
+      toSpatialNode(entry),
+      entry.rect,
       anchor,
-      nodeApi.geometry.rotation(entry.node)
+      entry.rotation
     )
   })
 }
@@ -209,9 +214,9 @@ const resolveNodeBodyStart = (input: {
   }
 
   const resolved = edgeApi.anchor.resolveFromPoint({
-    node: entry.node,
-    rect: entry.geometry.rect,
-    rotation: nodeApi.geometry.rotation(entry.node),
+    node: toSpatialNode(entry),
+    rect: entry.rect,
+    rotation: entry.rotation,
     pointWorld: input.pointer.world,
     zoom: input.zoom,
     config: input.config
@@ -343,7 +348,18 @@ const createPreviewEdge = (
 const readPreviewNodeSnapshot = (
   node: EdgeConnectPreviewNodeRead,
   nodeId: NodeId
-): NodeCanvasSnapshot | undefined => node.canvas.get(nodeId)
+): {
+  node: ReturnType<typeof toSpatialNode>
+  geometry: ReturnType<typeof toProjectedNodeGeometry>
+} | undefined => {
+  const projected = node.projected.get(nodeId)
+  return projected
+    ? {
+        node: toSpatialNode(projected),
+        geometry: toProjectedNodeGeometry(projected)
+      }
+    : undefined
+}
 
 const resolveCreatePreviewPath = (
   node: EdgeConnectPreviewNodeRead,

@@ -8,21 +8,30 @@ import {
   ensureQueryImpact
 } from '@dataview/engine/active/shared/impact'
 import {
+  runSummaryStage
+} from '@dataview/engine/active/snapshot/summary/runtime'
+import {
   deriveSummaryState
 } from '@dataview/engine/active/snapshot/summary/sync'
+import type {
+  View
+} from '@dataview/core/contracts'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import type {
-  SectionState
+  MembershipDelta,
+  MembershipState
 } from '@dataview/engine/contracts/state'
 
 const FIELD_POINTS = 'points'
+const FIELD_STATUS = 'status'
 const ROOT_SECTION = 'root'
+const VIEW_ID = 'view_table'
 
-const createSectionState = (
+const createMembershipState = (
   recordIds: readonly string[]
-): SectionState => ({
+): MembershipState => ({
   order: [ROOT_SECTION],
   byKey: new Map([
     [ROOT_SECTION, {
@@ -35,6 +44,70 @@ const createSectionState = (
   ]),
   keysByRecord: new Map(recordIds.map(recordId => [recordId, [ROOT_SECTION]] as const))
 })
+
+const createGroupedMembershipState = (
+  sections: Readonly<Record<string, readonly string[]>>
+): MembershipState => {
+  const order = Object.keys(sections)
+  const byKey = new Map(order.map(sectionKey => [
+    sectionKey,
+    {
+      key: sectionKey,
+      label: sectionKey as never,
+      recordIds: sections[sectionKey] ?? []
+    }
+  ] as const))
+  const keysByRecord = new Map<string, string[]>()
+
+  order.forEach(sectionKey => {
+    sections[sectionKey]?.forEach(recordId => {
+      const keys = keysByRecord.get(recordId) ?? []
+      if (!keysByRecord.has(recordId)) {
+        keysByRecord.set(recordId, keys)
+      }
+      keys.push(sectionKey)
+    })
+  })
+
+  return {
+    order,
+    byKey,
+    keysByRecord
+  }
+}
+
+const createView = (
+  input: Partial<View> = {}
+): View => ({
+  id: VIEW_ID,
+  type: 'table',
+  name: 'Tasks',
+  search: {
+    query: ''
+  },
+  filter: {
+    mode: 'and',
+    rules: []
+  },
+  sort: [],
+  calc: {
+    [FIELD_POINTS]: 'count'
+  },
+  display: {
+    fields: ['title', FIELD_STATUS, FIELD_POINTS]
+  },
+  options: {},
+  orders: [],
+  ...input
+})
+
+const EMPTY_MEMBERSHIP_DELTA: MembershipDelta = {
+  rebuild: false,
+  orderChanged: false,
+  changed: [],
+  removed: [],
+  records: new Map()
+}
 
 const createIndexState = (): IndexState => ({
   calculations: {
@@ -71,23 +144,23 @@ const createIndexState = (): IndexState => ({
 
 test('summary sync rebuilds section aggregates when section record ids change without section transitions', () => {
   const index = createIndexState()
-  const previousSections = createSectionState(['rec_1', 'rec_2'])
+  const previousMembership = createMembershipState(['rec_1', 'rec_2'])
   const previous = deriveSummaryState({
-    sections: previousSections,
+    membership: previousMembership,
     calcFields: [FIELD_POINTS],
     index,
     impact: createActiveImpact({}),
     action: 'rebuild'
   }).state
 
-  const nextSections = createSectionState([])
+  const nextMembership = createMembershipState([])
   const impact = createActiveImpact({})
   ensureQueryImpact(impact).visibleRemoved.push('rec_1', 'rec_2')
 
   const next = deriveSummaryState({
     previous,
-    previousSections,
-    sections: nextSections,
+    previousMembership,
+    membership: nextMembership,
     calcFields: [FIELD_POINTS],
     index,
     impact,
@@ -98,6 +171,61 @@ test('summary sync rebuilds section aggregates when section record ids change wi
   assert.deepEqual(next.delta.changed, [ROOT_SECTION])
   assert.equal(
     next.state.bySection.get(ROOT_SECTION)?.get(FIELD_POINTS)?.count?.count,
+    0
+  )
+})
+
+test('summary stage syncs when membership changes without record transitions', () => {
+  const index = createIndexState()
+  const previousMembership = createGroupedMembershipState({
+    todo: ['rec_1'],
+    done: ['rec_2']
+  })
+  const previous = deriveSummaryState({
+    membership: previousMembership,
+    calcFields: [FIELD_POINTS],
+    index,
+    impact: createActiveImpact({}),
+    action: 'rebuild'
+  }).state
+
+  const nextMembership = createGroupedMembershipState({
+    todo: [],
+    done: []
+  })
+  const view = createView({
+    group: {
+      field: FIELD_STATUS,
+      mode: 'option',
+      bucketSort: 'manual'
+    }
+  })
+  const result = runSummaryStage({
+    activeViewId: view.id,
+    previousViewId: view.id,
+    impact: createActiveImpact({}),
+    view,
+    calcFields: [FIELD_POINTS],
+    previous,
+    previousMembership,
+    membership: nextMembership,
+    membershipAction: 'sync',
+    membershipDelta: {
+      ...EMPTY_MEMBERSHIP_DELTA,
+      changed: ['todo', 'done']
+    },
+    index
+  })
+
+  assert.equal(result.action, 'sync')
+  assert.notEqual(result.state, previous)
+  assert.deepEqual(result.delta.changed, ['todo', 'done'])
+  assert.equal(
+    result.state.bySection.get('todo')?.get(FIELD_POINTS)?.count?.count,
+    0
+  )
+  assert.equal(
+    result.state.bySection.get('done')?.get(FIELD_POINTS)?.count?.count,
     0
   )
 })

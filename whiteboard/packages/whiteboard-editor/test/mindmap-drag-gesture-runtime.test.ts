@@ -117,7 +117,7 @@ describe('mindmap drag gesture runtime', () => {
     const layout = createEditorLayout({
       read: {
         node: {
-          committed: engine.read.node.item
+          committed: engine.read.node.committed
         },
         mindmap: {
           list: engine.read.mindmap.list,

@@ -16,7 +16,7 @@ type NodeTextCommitInput = Parameters<NodeTextWrite['commit']>[0]
 
 type NodeContext = {
   read: {
-    committed: (id: NodeId) => ReturnType<EditorQuery['node']['item']['get']>
+    committed: (id: NodeId) => ReturnType<EditorQuery['node']['committed']['get']>
   }
   write: NodeUpdateWrite & {
     textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>

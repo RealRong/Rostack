@@ -667,7 +667,7 @@ const applySelectionTap = (
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
-        ctx.query.node.item.get(tap.nodeId)?.node
+        ctx.query.node.committed.get(tap.nodeId)?.node
       )
       if (!field) {
         return
@@ -754,9 +754,9 @@ const tryStartSelectionPress = (
   const selectionAffordance = ctx.query.selection.affordance.get()
   const deps: SelectionPressDeps = {
     node: {
-      get: (nodeId) => ctx.query.node.item.get(nodeId)?.node,
+      get: (nodeId) => ctx.query.node.committed.get(nodeId)?.node,
       canEnter: (nodeId) => {
-        const node = ctx.query.node.item.get(nodeId)?.node
+        const node = ctx.query.node.committed.get(nodeId)?.node
         return node
           ? ctx.query.node.capability(node).enter
           : false

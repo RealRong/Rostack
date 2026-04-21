@@ -262,14 +262,11 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveLayout = editor.read.mindmap.layout.get(created.data.mindmapId)
     const liveRoot = editor.read.node.render.get(created.data.rootId)?.rect
     const liveChild = editor.read.node.render.get(insert.data.nodeId)?.rect
 
     expect(editor.store.interaction.get().busy).toBe(true)
     expect(editor.store.interaction.get().selecting).toBe(true)
-    expect(liveLayout?.computed.node[created.data.rootId]?.x).toBe(beforeRoot!.x + 60)
-    expect(liveLayout?.computed.node[created.data.rootId]?.y).toBe(beforeRoot!.y + 40)
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
     expect(liveRoot!.x).toBe(beforeRoot!.x + 60)
@@ -367,13 +364,11 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveLayout = editor.read.mindmap.layout.get(created.data.mindmapId)
     const liveBranch = editor.read.node.render.get(first.data.nodeId)?.rect
     const liveLeaf = editor.read.node.render.get(second.data.nodeId)?.rect
 
     expect(editor.store.interaction.get().busy).toBe(true)
     expect(editor.store.interaction.get().selecting).toBe(true)
-    expect(liveLayout).toBeDefined()
     expect(liveBranch).toBeDefined()
     expect(liveLeaf).toBeDefined()
     expect(liveBranch!.x).toBe(beforeBranch!.x + 80)

@@ -1,6 +1,6 @@
 import type {
   ItemProjectionCache
-} from '@dataview/engine/contracts/sections'
+} from '@dataview/engine/contracts/membership'
 import type {
   QueryDelta,
   QueryState
@@ -9,12 +9,12 @@ import {
   emptyQueryState
 } from '@dataview/engine/contracts/query'
 import type {
-  SectionDelta,
-  SectionRuntimeState
-} from '@dataview/engine/contracts/sections'
+  MembershipDelta,
+  MembershipRuntimeState
+} from '@dataview/engine/contracts/membership'
 import {
-  emptySectionRuntimeState
-} from '@dataview/engine/contracts/sections'
+  emptyMembershipRuntimeState
+} from '@dataview/engine/contracts/membership'
 import type {
   SummaryDelta,
   SummaryState
@@ -25,7 +25,7 @@ import {
 
 export interface SnapshotChange {
   query: QueryDelta
-  sections: SectionDelta
+  membership: MembershipDelta
   summary: SummaryDelta
 }
 
@@ -33,8 +33,8 @@ export interface QueryRuntime {
   state: QueryState
 }
 
-export interface SectionsRuntime {
-  state: SectionRuntimeState['structure']
+export interface MembershipRuntime {
+  state: MembershipRuntimeState['structure']
   projection: ItemProjectionCache
 }
 
@@ -44,7 +44,7 @@ export interface SummaryRuntime {
 
 export interface ViewCache {
   query: QueryRuntime
-  sections: SectionsRuntime
+  membership: MembershipRuntime
   summary: SummaryRuntime
 }
 
@@ -52,9 +52,9 @@ export const emptyViewCache = (): ViewCache => ({
   query: {
     state: emptyQueryState()
   },
-  sections: {
-    state: emptySectionRuntimeState().structure,
-    projection: emptySectionRuntimeState().projection
+  membership: {
+    state: emptyMembershipRuntimeState().structure,
+    projection: emptyMembershipRuntimeState().projection
   },
   summary: {
     state: emptySummaryState()

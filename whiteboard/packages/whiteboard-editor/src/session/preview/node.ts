@@ -2,6 +2,7 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
   EditorInputPreviewState,
+  NodeGeometryPreview,
   NodePreviewProjection,
   NodePreviewState,
   NodePatch,
@@ -9,6 +10,7 @@ import type {
   NodePreviewPatch,
   NodeSelectionPreviewState,
   NodeTextPreviewState,
+  TextLayoutPreview,
   TextPreviewEntry,
   TextPreviewPatch
 } from '@whiteboard/editor/session/preview/types'
@@ -58,6 +60,16 @@ const isTextPreviewPatchEqual = (
   && left?.handle === right?.handle
 )
 
+const isTextLayoutPreviewEqual = (
+  left: TextLayoutPreview | undefined,
+  right: TextLayoutPreview | undefined
+) => (
+  left?.fontSize === right?.fontSize
+  && left?.mode === right?.mode
+  && left?.wrapWidth === right?.wrapWidth
+  && left?.handle === right?.handle
+)
+
 const toNodeGeometryPatch = (
   patch: NodePreviewPatch
 ): NodePatch | undefined => {
@@ -78,7 +90,7 @@ const toNodeGeometryPatch = (
 
 const toNodeSelectionTextPreview = (
   patch: NodePreviewPatch
-): TextPreviewPatch | undefined => {
+): TextLayoutPreview | undefined => {
   if (
     patch.fontSize === undefined
     && patch.mode === undefined
@@ -94,6 +106,42 @@ const toNodeSelectionTextPreview = (
     wrapWidth: patch.wrapWidth,
     handle: patch.handle
   }
+}
+
+const toTextPreviewGeometryPatch = (
+  patch: TextPreviewPatch | undefined
+): NodeGeometryPreview | undefined => {
+  if (!patch?.position && !patch?.size) {
+    return undefined
+  }
+
+  return {
+    position: patch.position,
+    size: patch.size
+  }
+}
+
+const mergeNodeGeometryPatch = (
+  current: NodeGeometryPreview | undefined,
+  patch: NodeGeometryPreview | undefined
+): NodeGeometryPreview | undefined => {
+  if (!current && !patch) {
+    return undefined
+  }
+
+  const next = {
+    position: patch?.position ?? current?.position,
+    size: patch?.size ?? current?.size,
+    rotation: patch?.rotation ?? current?.rotation
+  }
+
+  return (
+    next.position
+    || next.size
+    || next.rotation !== undefined
+  )
+    ? next
+    : undefined
 }
 
 const readEntryPatch = <TPatch, TEntry extends {
@@ -301,8 +349,8 @@ export const isNodeProjectionEqual = (
   left: NodePreviewProjection,
   right: NodePreviewProjection
 ) => (
-  isNodePatchEqual(left.patch, right.patch)
-  && isTextPreviewPatchEqual(left.text, right.text)
+  isNodePatchEqual(left.geometry, right.geometry)
+  && isTextLayoutPreviewEqual(left.text, right.text)
   && left.hovered === right.hovered
   && left.hidden === right.hidden
 )
@@ -347,7 +395,16 @@ export const toNodeFeedbackMap = (
     const entry = state.node.text.patches[index]!
     mergeEntryById(next, entry.id, (current) => ({
       ...current,
-      text: entry.patch,
+      geometry: mergeNodeGeometryPatch(
+        current?.geometry,
+        toTextPreviewGeometryPatch(entry.patch)
+      ),
+      text: {
+        fontSize: entry.patch.fontSize,
+        mode: entry.patch.mode,
+        wrapWidth: entry.patch.wrapWidth,
+        handle: entry.patch.handle
+      },
       hovered: current?.hovered ?? false,
       hidden: hiddenSet.has(entry.id)
     }))
@@ -359,15 +416,15 @@ export const toNodeFeedbackMap = (
     const textPatch = toNodeSelectionTextPreview(entry.patch)
 
     mergeEntryById(next, entry.id, (current) => ({
-      patch: current?.patch && geometryPatch
+      geometry: current?.geometry && geometryPatch
         ? {
-            ...current.patch,
+            ...current.geometry,
             ...geometryPatch
           }
-        : geometryPatch ?? current?.patch,
+        : geometryPatch ?? current?.geometry,
       text: current?.text && textPatch
         ? {
-            ...current.text,
+          ...current.text,
             ...textPatch
           }
         : textPatch ?? current?.text,
@@ -379,7 +436,7 @@ export const toNodeFeedbackMap = (
   const frameHoverId = state.selection.node.frameHoverId
   if (frameHoverId !== undefined) {
     mergeEntryById(next, frameHoverId, (current) => ({
-      patch: current?.patch,
+      geometry: current?.geometry,
       text: current?.text,
       hovered: true,
       hidden: hiddenSet.has(frameHoverId)

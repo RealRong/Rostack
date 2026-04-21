@@ -27,7 +27,7 @@ import type {
   ViewItem
 } from '@dataview/engine/contracts'
 import type {
-  SectionState
+  MembershipState
 } from '@dataview/engine/contracts/state'
 
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
@@ -147,9 +147,9 @@ const projectSectionItemIds = (input: {
 
 const buildSections = (input: {
   view: View
-  sections: SectionState
+  sections: MembershipState
   previous?: SectionList
-  previousSections?: SectionState
+  previousSections?: MembershipState
   byId: ReadonlyMap<ItemId, ViewItem>
   bySectionRecord: ReadonlyMap<string, ItemId>
 }): SectionList => {
@@ -479,9 +479,9 @@ export const syncItemProjection = (input: {
 
 export const publishSections = (input: {
   view: View
-  sections: SectionState
+  sections: MembershipState
   projection: ItemProjectionCache
-  previousSections?: SectionState
+  previousSections?: MembershipState
   previous?: {
     items?: ItemList
     sections?: SectionList

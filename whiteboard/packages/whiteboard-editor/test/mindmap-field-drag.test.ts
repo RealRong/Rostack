@@ -67,7 +67,7 @@ describe('mindmap field drag', () => {
           }
         },
         node: {
-          item: {
+          committed: {
             get: (id: string) => {
               if (id === 'root-1') {
                 return {

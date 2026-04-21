@@ -1,6 +1,5 @@
 import { useCallback, useRef } from 'react'
 import type { CSSProperties } from 'react'
-import type { Node } from '@whiteboard/core/types'
 import {
   WHITEBOARD_FRAME_DEFAULT_FILL as FRAME_DEFAULT_FILL,
   WHITEBOARD_FRAME_DEFAULT_STROKE as FRAME_DEFAULT_STROKE,
@@ -40,7 +39,7 @@ const frameSchema = createSchema('frame', 'Frame', [
 ])
 
 type FrameNodeChromeProps = {
-  node: Node
+  node: NodeRenderProps['node']
   edit?: NodeRenderProps['edit']
 }
 
@@ -121,7 +120,7 @@ export const FrameNodeChrome = ({
   )
 }
 
-const frameStyle = (node: Node): CSSProperties => {
+const frameStyle = (node: NodeRenderProps['node']): CSSProperties => {
   const stroke = resolvePaletteColorOr(
     getStyleString(node, 'stroke'),
     FRAME_DEFAULT_STROKE

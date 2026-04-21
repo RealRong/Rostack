@@ -17,7 +17,7 @@ import {
 
 export type { ItemProjectionCache } from '@dataview/engine/active/shared/itemIdentity'
 
-export interface SectionNodeState {
+export interface MembershipNodeState {
   key: SectionKey
   label: Token
   color?: string
@@ -25,37 +25,37 @@ export interface SectionNodeState {
   recordIds: readonly RecordId[]
 }
 
-export interface SectionState {
+export interface MembershipState {
   order: readonly SectionKey[]
-  byKey: ReadonlyMap<SectionKey, SectionNodeState>
+  byKey: ReadonlyMap<SectionKey, MembershipNodeState>
   keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
 }
 
-export interface SectionRecordChange {
+export interface MembershipRecordChange {
   before: readonly SectionKey[]
   after: readonly SectionKey[]
 }
 
-export interface SectionDelta {
+export interface MembershipDelta {
   rebuild: boolean
   orderChanged: boolean
   removed: readonly SectionKey[]
   changed: readonly SectionKey[]
-  records: ReadonlyMap<RecordId, SectionRecordChange>
+  records: ReadonlyMap<RecordId, MembershipRecordChange>
 }
 
-export interface SectionRuntimeState {
-  structure: SectionState
+export interface MembershipRuntimeState {
+  structure: MembershipState
   projection: ItemProjectionCache
 }
 
-export const emptySectionState = (): SectionState => ({
+export const emptyMembershipState = (): MembershipState => ({
   order: [],
   byKey: new Map(),
   keysByRecord: new Map()
 })
 
-export const emptySectionRuntimeState = (): SectionRuntimeState => ({
-  structure: emptySectionState(),
+export const emptyMembershipRuntimeState = (): MembershipRuntimeState => ({
+  structure: emptyMembershipState(),
   projection: emptyItemProjectionCache()
 })

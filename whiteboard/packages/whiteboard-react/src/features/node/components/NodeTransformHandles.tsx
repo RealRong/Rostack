@@ -7,17 +7,14 @@ import { node as nodeApi,
   type ResizeDirection,
   type TransformHandle
 } from '@whiteboard/core/node'
-import type { NodeItem } from '@whiteboard/engine'
+import type { NodeModel, Rect } from '@whiteboard/core/types'
 import { useStoreValue } from '@shared/react'
 import { useEditor, usePickRef } from '@whiteboard/react/runtime/hooks'
-
-type NodeViewNode = NodeItem['node']
-type NodeViewRect = NodeItem['rect']
 
 type TransformPickTarget =
   | {
       kind: 'node'
-      nodeId: NodeViewNode['id']
+      nodeId: NodeModel['id']
     }
   | {
       kind: 'selection'
@@ -25,7 +22,7 @@ type TransformPickTarget =
 
 type TransformChromeProps = {
   pickTarget: TransformPickTarget
-  rect: NodeViewRect
+  rect: Rect
   rotation: number
   visibleResizeDirections: readonly ResizeDirection[]
   edgeResizeDirections: readonly ResizeDirection[]
@@ -33,13 +30,13 @@ type TransformChromeProps = {
 }
 
 type SelectionTransformHandlesProps = {
-  plan: SelectionTransformPlan
+  plan: SelectionTransformPlan<NodeModel>
 }
 
 type NodeTransformHandlesProps = {
-  nodeId: NodeViewNode['id']
-  nodeType: NodeViewNode['type']
-  rect: NodeViewRect
+  nodeId: NodeModel['id']
+  nodeType: NodeModel['type']
+  rect: Rect
   rotation: number
   showResizeChrome: boolean
   showRotateHandle: boolean
@@ -62,7 +59,7 @@ export const TEXT_EDGE_RESIZE_DIRECTIONS = ['e', 'w'] as const satisfies readonl
 const EMPTY_RESIZE_DIRECTIONS: readonly ResizeDirection[] = []
 
 export const resolveNodeEdgeResizeDirections = (
-  nodeType: NodeViewNode['type']
+  nodeType: NodeModel['type']
 ): readonly ResizeDirection[] => (
   nodeType === 'text'
     ? TEXT_EDGE_RESIZE_DIRECTIONS
@@ -70,7 +67,7 @@ export const resolveNodeEdgeResizeDirections = (
 )
 
 export const resolveSelectionVisibleResizeDirections = (
-  plan: SelectionTransformPlan
+  plan: SelectionTransformPlan<NodeModel>
 ): readonly ResizeDirection[] => plan.handles
   .filter((handle) => (
     handle.visible
@@ -80,7 +77,7 @@ export const resolveSelectionVisibleResizeDirections = (
   .map((handle) => handle.id)
 
 export const resolveSelectionEdgeResizeDirections = (
-  plan: SelectionTransformPlan
+  plan: SelectionTransformPlan<NodeModel>
 ): readonly ResizeDirection[] => plan.handles
   .filter((handle) => (
     handle.visible
@@ -109,7 +106,7 @@ const buildTransformOverlayStyle = ({
   rect,
   rotation
 }: {
-  rect: NodeViewRect
+  rect: Rect
   rotation: number
 }): CSSProperties => ({
   position: 'absolute',
@@ -193,7 +190,7 @@ export const resolveTransformEdgeHitAreaStyle = ({
   edgeSize = NODE_TRANSFORM_EDGE_HIT_SIZE
 }: {
   direction: ResizeDirection
-  rect: Pick<NodeViewRect, 'width' | 'height'>
+  rect: Pick<Rect, 'width' | 'height'>
   zoom: number
   handleSize?: number
   edgeSize?: number
@@ -303,7 +300,7 @@ const TransformEdgeHitAreaItem = ({
   zoom
 }: {
   pickTarget: TransformPickTarget
-  rect: NodeViewRect
+  rect: Rect
   direction: ResizeDirection
   zoom: number
 }) => {
@@ -345,7 +342,7 @@ const TransformEdgeHitAreas = ({
   zoom
 }: {
   pickTarget: TransformPickTarget
-  rect: NodeViewRect
+  rect: Rect
   rotation: number
   directions: readonly ResizeDirection[]
   zoom: number

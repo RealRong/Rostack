@@ -21,7 +21,7 @@ import type {
 import { now } from '@dataview/engine/runtime/clock'
 import { runPublishStage } from '@dataview/engine/active/snapshot/publish/runtime'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
-import { runSectionsStage } from '@dataview/engine/active/snapshot/sections/runtime'
+import { runMembershipStage } from '@dataview/engine/active/snapshot/membership/runtime'
 import { runSummaryStage } from '@dataview/engine/active/snapshot/summary/runtime'
 import type {
   DocumentReadContext
@@ -91,7 +91,7 @@ export const deriveViewSnapshot = (input: {
     return {
       cache: {
         query: input.previousCache.query,
-        sections: input.previousCache.sections,
+        membership: input.previousCache.membership,
         summary: input.previousCache.summary
       },
       snapshot: undefined,
@@ -100,7 +100,7 @@ export const deriveViewSnapshot = (input: {
             trace: {
               plan: {
                 query: 'reuse',
-                sections: 'reuse',
+                membership: 'reuse',
                 summary: 'reuse',
                 publish: 'reuse'
               },
@@ -133,23 +133,23 @@ export const deriveViewSnapshot = (input: {
     result => input.previousSnapshot?.records !== result.records
   )
 
-  const sections = timeStage(
-    'sections',
-    () => runSectionsStage({
+  const membership = timeStage(
+    'membership',
+    () => runMembershipStage({
       activeViewId,
       previousViewId,
       impact: input.impact,
       view,
       query: query.state,
       previous: {
-        structure: input.previousCache.sections.state,
-        projection: input.previousCache.sections.projection
+        structure: input.previousCache.membership.state,
+        projection: input.previousCache.membership.projection
       },
       index: input.index
     }),
     result => (
-      input.previousCache.sections.state !== result.state.structure
-      || input.previousCache.sections.projection !== result.state.projection
+      input.previousCache.membership.state !== result.state.structure
+      || input.previousCache.membership.projection !== result.state.projection
     )
   )
 
@@ -162,17 +162,17 @@ export const deriveViewSnapshot = (input: {
       view,
       calcFields: viewPlan?.calcFields ?? [],
       previous: input.previousCache.summary.state,
-      previousSections: input.previousCache.sections.state,
-      sections: sections.state.structure,
-      sectionsAction: sections.action,
-      sectionDelta: sections.delta,
+      previousMembership: input.previousCache.membership.state,
+      membership: membership.state.structure,
+      membershipAction: membership.action,
+      membershipDelta: membership.delta,
       index: input.index
     }),
     result => input.previousCache.summary.state !== result.state
   )
   const change = {
     query: query.delta,
-    sections: sections.delta,
+    membership: membership.delta,
     summary: summary.delta
   } satisfies SnapshotChange
   const publish = timeStage(
@@ -184,8 +184,8 @@ export const deriveViewSnapshot = (input: {
       previous: input.previousSnapshot,
       view,
       records: query.records,
-      sectionState: sections.state,
-      previousSectionState: input.previousCache.sections.state,
+      membershipState: membership.state,
+      previousMembershipState: input.previousCache.membership.state,
       previousSections: input.previousSnapshot?.sections,
       previousItems: input.previousSnapshot?.items,
       summaryState: summary.state,
@@ -201,9 +201,9 @@ export const deriveViewSnapshot = (input: {
       query: {
         state: query.state
       },
-      sections: {
-        state: sections.state.structure,
-        projection: sections.state.projection
+      membership: {
+        state: membership.state.structure,
+        projection: membership.state.projection
       },
       summary: {
         state: summary.state
@@ -225,7 +225,7 @@ export const deriveViewSnapshot = (input: {
           trace: {
             plan: {
               query: query.action,
-              sections: sections.action,
+              membership: membership.action,
               summary: summary.action,
               publish: publish.action
             },

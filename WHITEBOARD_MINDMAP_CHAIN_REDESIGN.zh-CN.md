@@ -112,25 +112,17 @@ editor 为了把它们拼起来，又额外引入了一层 `readCommittedLayoutN
 
 这会继续模糊“内容投影”和“几何投影”的边界。
 
-### 2.5 draft 仍然承担了过多形态
+### 2.5 public read 和 internal query 没有分层
 
-当前 `DraftNodeLayout` 是：
+当前 `EditorRead` 直接把 `query` 中的 mindmap/node 结构半公开出来，包括：
 
-```ts
-type DraftNodeLayout = {
-  size?: Size
-  fontSize?: number
-  wrapWidth?: number
-}
-```
+- `editor.read.mindmap.layout`
+- `editor.read.mindmap.node`
+- 未来很容易继续暴露 `editor.read.node.projected`
 
-其中：
+这会让本来只该存在于 runtime 内部的中间语义，逐步变成对外承诺。
 
-- `size` 是真实测量结果
-- `fontSize` 是 fit 结果
-- `wrapWidth` 更像 layout 参数回显，而不是 live draft 结果
-
-这会让 draft 既像 measure result，又像 commit payload cache。
+一旦 public surface 和 internal store 绑死，后续任何清链都会变难。
 
 ---
 
@@ -195,15 +187,26 @@ type DraftNodeLayout = {
 
 也就是说，测量后端是纯 `LayoutRequest -> LayoutResult`，而不是“某种 node 特判器”。
 
-### 3.5 query 只暴露稳定语义，不暴露中间产物
+### 3.5 API 必须分 internal / public 两层
 
-query 层只应该暴露：
+最终必须明确区分两套接口：
 
-- committed
-- projected
-- render
+- `EditorRuntimeQuery`
+- `EditorRead`
 
-不应该把 geometry 分解后的每一个中间 store 都拿出来当公共接口。
+边界规则：
+
+- `EditorRuntimeQuery` 只给 editor 内部 runtime、action、input、内部测试使用
+- `EditorRead` 才是对外稳定接口
+- internal node 可以暴露 `committed -> projected -> render`
+- public node 只能暴露 `render`
+- internal mindmap 可以保留 `layout`
+- public mindmap 不暴露 `layout`，更不暴露 `node`
+
+结论很明确：
+
+- `committed / projected` 是 runtime 语义，不是 public 语义
+- public API 只能暴露最终消费结果，不能把上游几何真相泄漏出去
 
 ---
 
@@ -335,7 +338,7 @@ type MindmapGesturePreview = {
 
 最终 mindmap projector 只保留 tree-level 结果，不再额外维护 `mindmap.node`。
 
-目标接口：
+目标类型：
 
 ```ts
 type ProjectedMindmapLayout = {
@@ -345,6 +348,17 @@ type ProjectedMindmapLayout = {
   computed: MindmapLayout
   connectors: readonly MindmapRenderConnector[]
 }
+```
+
+最小 projector API：
+
+```ts
+const projectMindmap = (input: {
+  structure: MindmapStructureItem
+  committed: MindmapLayoutItem
+  liveSizes: ReadonlyMap<NodeId, Size | undefined>
+  preview?: MindmapGesturePreview
+}) => ProjectedMindmapLayout
 ```
 
 目标读取方式：
@@ -358,22 +372,65 @@ type ProjectedMindmapLayout = {
 - `MindmapLayoutRead.node`
 - `query.mindmap.node`
 
-如果后续确实还需要“按 nodeId 取 mindmap rect”的能力，也应作为轻量 helper 存在，而不是常驻 flatten store。
+另外明确一条：
 
-## 4.6 ProjectedNode
+- `ProjectedMindmapInput` 不作为公共类型单独导出
+- 它只是 `projectMindmap()` 的局部输入对象，不是稳定 API
+
+## 4.6 NodeModel
+
+最终 `Node` 不能再同时承担“语义模型”和“几何模型”。
+
+目标类型：
+
+```ts
+type NodeModel = Omit<Node, 'position' | 'size' | 'rotation'>
+```
+
+规则：
+
+- `NodeModel` 只承载 node 语义本身
+- 运行时几何真相只存在于 `rect / bounds / rotation`
+- 一切 projected/render/renderer 层都改用 `NodeModel`
+
+这条规则的目的非常直接：
+
+- 防止 `node.position/size/rotation` 和 `render.rect` 再次形成双重真相
+- 防止 renderer 从 `node` 上偷读旧几何，绕过 projection 链
+
+## 4.7 ProjectedNode
 
 最终 node query 的核心不是 `geometry/content/item/render` 这条长链，而是一个统一的 node projection。
 
 目标类型：
 
 ```ts
+type ProjectedOwnerGeometry = {
+  rect: Rect
+  rotation: number
+}
+
 type ProjectedNode = {
   nodeId: NodeId
-  node: Node
+  node: NodeModel
   rect: Rect
   bounds: Rect
   rotation: number
 }
+```
+
+最小 projector API：
+
+```ts
+const projectNode = (input: {
+  committed: NodeItem
+  ownerGeometry?: ProjectedOwnerGeometry
+  draft?: DraftMeasure
+  preview?: {
+    geometry?: NodeGeometryPreview
+    text?: TextLayoutPreview
+  }
+}) => ProjectedNode
 ```
 
 构造规则：
@@ -384,12 +441,22 @@ type ProjectedNode = {
   - geometry preview 只影响 free node 自己
 - mindmap owned node:
   - committed 基线来自 engine owner-aware rect
-  - live rect 只来自 `projected mindmap layout`
+  - live rect 只来自 `ownerGeometry`
   - 不再吃 node 级 geometry preview
+
+这里有两个明确删除项：
+
+- `finalRect: Rect` 不再作为输入字段存在
+- `contentDraft?: NodeContentDraft` 不再作为独立公共类型存在
+
+原因：
+
+- `finalRect` 本来就是 projection 的输出，不应该提前伪装成输入
+- 文本编辑态在 projector 边界上只保留 `DraftMeasure`，不再保留半成品内容补丁对象
 
 这意味着 `projectNode()` 是唯一的 node final projection 入口。
 
-## 4.7 NodeRender
+## 4.8 NodeRender 与 NodeRenderProps
 
 render 只在 projected node 上追加 runtime。
 
@@ -398,7 +465,7 @@ render 只在 projected node 上追加 runtime。
 ```ts
 type NodeRender = {
   nodeId: NodeId
-  node: Node
+  node: NodeModel
   rect: Rect
   bounds: Rect
   rotation: number
@@ -415,6 +482,39 @@ type NodeRender = {
   canResize: boolean
   canRotate: boolean
 }
+
+type NodeRenderProps = {
+  node: NodeModel
+  rect: Rect
+  rotation: number
+  selected: boolean
+  hovered: boolean
+  edit?: {
+    field: EditField
+    caret: EditCaret
+  }
+  write: NodeWrite
+}
+```
+
+最小 render API：
+
+```ts
+const buildNodeRender = (input: {
+  projected: ProjectedNode
+  runtime: {
+    hovered: boolean
+    hidden: boolean
+    resizing: boolean
+    patched: boolean
+    selected: boolean
+    edit?: {
+      field: EditField
+      caret: EditCaret
+    }
+  }
+  capability: NodeCapability
+}) => NodeRender
 ```
 
 render 不再知道：
@@ -422,6 +522,11 @@ render 不再知道：
 - draft measure
 - projected mindmap 输入
 - committed rect 修补逻辑
+
+另外明确一条：
+
+- `NodeRenderInput` 不作为公共类型单独导出
+- renderer 契约只有 `NodeRenderProps`
 
 ---
 
@@ -485,18 +590,25 @@ render 不再知道：
 
 负责：
 
-- `committed node + projected mindmap layout + draft measure + preview -> projected node`
+- `committed node + ownerGeometry + draft measure + preview -> projected node`
 
 不负责：
 
 - committed rect 补丁
 - tree flatten index
+- 完整 mindmap tree 语义
+
+也就是说：
+
+- runtime glue 可以依赖 `mindmap.layout`
+- 但纯 `projectNode()` 只认 `ownerGeometry`
 
 ## 5.6 render/query facade
 
 负责：
 
-- 输出稳定查询接口给 action、input、react
+- 输出 internal runtime query
+- 输出 public read facade
 
 不负责：
 
@@ -504,9 +616,17 @@ render 不再知道：
 
 ---
 
-## 6. 最终公开 API
+## 6. 最终 API 收口
 
-## 6.1 Engine
+这里明确区分三层：
+
+1. `EngineRead`
+2. `EditorRuntimeQuery`
+3. `EditorRead`
+
+只有第三层是 public surface。
+
+## 6.1 EngineRead
 
 ```ts
 type EngineRead = {
@@ -522,36 +642,118 @@ type EngineRead = {
 }
 ```
 
-## 6.2 Editor Query
+说明：
+
+- engine 层保留 committed 语义
+- committed rect 在这里已经完成 owner-aware 收口
+
+## 6.2 EditorRuntimeQuery
+
+这是 editor 内部运行时接口，不对外承诺稳定性。
 
 ```ts
-type EditorNodeRead = {
-  committed: KeyedReadStore<NodeId, NodeItem | undefined>
-  projected: KeyedReadStore<NodeId, ProjectedNode | undefined>
-  render: KeyedReadStore<NodeId, NodeRender | undefined>
-  capability: (node: Pick<Node, 'id' | 'type' | 'owner'>) => NodeCapability
-}
-
-type EditorMindmapRead = {
-  structure: KeyedReadStore<NodeId, MindmapStructureItem | undefined>
-  layout: KeyedReadStore<NodeId, ProjectedMindmapLayout | undefined>
-  scene: KeyedReadStore<NodeId, MindmapSceneItem | undefined>
-  chrome: KeyedReadStore<NodeId, MindmapChrome | undefined>
-  navigate: (...)
+type EditorRuntimeQuery = {
+  node: {
+    list: ReadStore<readonly NodeId[]>
+    committed: KeyedReadStore<NodeId, NodeItem | undefined>
+    projected: KeyedReadStore<NodeId, ProjectedNode | undefined>
+    render: KeyedReadStore<NodeId, NodeRender | undefined>
+    capability: (node: Pick<NodeModel, 'id' | 'type' | 'owner'>) => NodeCapability
+    idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
+    ordered: () => readonly NodeModel[]
+  }
+  mindmap: {
+    list: ReadStore<readonly NodeId[]>
+    structure: KeyedReadStore<NodeId, MindmapStructureItem | undefined>
+    layout: KeyedReadStore<NodeId, ProjectedMindmapLayout | undefined>
+    scene: KeyedReadStore<NodeId, MindmapSceneItem | undefined>
+    chrome: KeyedReadStore<NodeId, MindmapChrome | undefined>
+    navigate: (input: {
+      id: NodeId
+      fromNodeId: NodeId
+      direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+    }) => NodeId | undefined
+  }
+  edge: {
+    render: KeyedReadStore<EdgeId, EdgeRender | undefined>
+    selectedChrome: KeyedReadStore<EdgeId, EdgeSelectedChrome | undefined>
+  }
 }
 ```
 
-明确删除的 query 输出：
+说明：
 
-- `query.node.geometry`
-- `query.node.content`
-- `query.node.item`
-- `query.node.rect`
-- `query.node.bounds`
-- `query.node.canvas`
-- `query.mindmap.node`
+- internal node 保留 `committed / projected / render` 三层
+- internal mindmap 保留 `layout`
+- `EditorRuntimeQuery` 可以被 action、input、内部测试消费
+- 它不能通过 `editor.read` 暴露给业务层
 
-如果某些内部调用方确实需要现在 `canvas` 那种数据，直接读 `query.node.projected`。
+## 6.3 EditorRead
+
+这是最终 public surface，也是 package 对外唯一应承诺稳定的读接口。
+
+```ts
+type EditorRead = {
+  node: {
+    render: KeyedReadStore<NodeId, NodeRender | undefined>
+  }
+  edge: {
+    render: KeyedReadStore<EdgeId, EdgeRender | undefined>
+    selectedChrome: KeyedReadStore<EdgeId, EdgeSelectedChrome | undefined>
+  }
+  mindmap: {
+    structure: KeyedReadStore<NodeId, MindmapStructureItem | undefined>
+    scene: KeyedReadStore<NodeId, MindmapSceneItem | undefined>
+    chrome: KeyedReadStore<NodeId, MindmapChrome | undefined>
+    navigate: (input: {
+      id: NodeId
+      fromNodeId: NodeId
+      direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+    }) => NodeId | undefined
+  }
+  document: ...
+  group: ...
+  history: ...
+  scene: ...
+  selection: ...
+  tool: ...
+  viewport: ...
+  chrome: ...
+  panel: ...
+}
+```
+
+public 明确不暴露：
+
+- `editor.read.node.committed`
+- `editor.read.node.projected`
+- `editor.read.mindmap.layout`
+- `editor.read.mindmap.node`
+
+这也是最终答案：
+
+- `EditorNodeRead` 不应该作为 public type 存在
+- public node 最终只暴露 `render`
+- `committed / projected` 只属于 `EditorRuntimeQuery`
+
+## 6.4 对外稳定语义
+
+public 还保留 `mindmap.structure` 的原因不是历史兼容，而是它确实是产品语义：
+
+- 键盘导航需要 tree 结构
+- 插入 child/sibling 需要 tree 结构
+- 某些选择和快捷操作需要 parent/child/sibling 语义
+
+public 还保留 `mindmap.scene` 的原因也很明确：
+
+- bbox 是稳定 UI 语义
+- connectors 是稳定 UI 语义
+
+而 `mindmap.layout` 不保留的原因同样明确：
+
+- 它是 runtime tree geometry 真相
+- 它属于 internal projector 输出
+- public 只应该拿 scene/chrome 这种已经抽象好的消费结果
 
 ---
 
@@ -592,8 +794,13 @@ type EditorMindmapRead = {
 
 改为：
 
-- 一个统一的 `projected`
-- 一个基于 `projected` 的 `render`
+- internal 一个统一的 `committed`
+- internal 一个统一的 `projected`
+- internal 一个基于 `projected` 的 `render`
+
+并且必须同步删除：
+
+- 任何把完整 `Node` 继续带到 `projected/render` 的实现
 
 ### 7.4 editor/query/mindmap/read.ts
 
@@ -601,14 +808,36 @@ type EditorMindmapRead = {
 
 - `node`
 
-只保留：
+internal 只保留：
 
 - `layout`
 - `scene`
 - `chrome`
 - `navigate`
 
-### 7.5 preview types
+public 只保留：
+
+- `structure`
+- `scene`
+- `chrome`
+- `navigate`
+
+### 7.5 editor/read.ts 与 editor/types/editor.ts
+
+删除 public 暴露：
+
+- `mindmap.layout`
+- `mindmap.node`
+
+不再定义这种 public 类型：
+
+- `EditorNodeRead`
+
+最终 public node surface 只有：
+
+- `node.render`
+
+### 7.6 preview types
 
 删除当前这种混合字段设计：
 
@@ -617,7 +846,23 @@ type EditorMindmapRead = {
 
 改为明确拆分的 preview store。
 
-### 7.6 命名
+### 7.7 renderer contract
+
+必须统一：
+
+- `ProjectedNode.node` 使用 `NodeModel`
+- `NodeRender.node` 使用 `NodeModel`
+- `NodeRenderProps.node` 使用 `NodeModel`
+
+不再允许：
+
+- renderer 从 `node.position`
+- renderer 从 `node.size`
+- renderer 从 `node.rotation`
+
+偷读几何真相。
+
+### 7.8 命名
 
 必须统一：
 
@@ -651,7 +896,7 @@ type EditorMindmapRead = {
 
 ## 8.2 第二步：删除 `mindmap.node`
 
-在 editor 中只保留：
+在 editor runtime 中只保留：
 
 - `mindmap.layout`
 
@@ -659,28 +904,47 @@ type EditorMindmapRead = {
 
 - 通过 node owner 找 tree
 - 从 `mindmap.layout.get(treeId)?.computed.node[nodeId]` 取 rect
+- 再归一成 `ownerGeometry` 传给 `projectNode()`
 
-## 8.3 第三步：重写 node projector
+## 8.3 第三步：引入 `NodeModel`
 
-新建统一的 `projectNode(nodeId)`：
+先把 `Node` 的几何字段从 projected/render/renderer 侧彻底剥掉。
+
+目标：
+
+- `ProjectedNode.node` 改为 `NodeModel`
+- `NodeRender.node` 改为 `NodeModel`
+- `NodeRenderProps.node` 改为 `NodeModel`
+
+这一步不做，后面的 API 收口会继续被旧几何绕穿。
+
+## 8.4 第四步：重写 node projector
+
+新建统一的 `projectNode()`：
 
 - 输入 committed node
-- 输入 projected mindmap layout
+- 输入 `ownerGeometry`
 - 输入 draft measure
 - 输入 preview
 - 输出 `ProjectedNode`
 
 然后所有后续层都只围绕 `ProjectedNode` 工作。
 
-## 8.4 第四步：砍掉 query.node 中间层
+## 8.5 第五步：拆 internal/public API
 
-把当前 `geometry/content/item/rect/bounds/canvas/render` 全部收口成：
+把现有“query 直接半公开”的结构拆成两层：
 
-- `committed`
-- `projected`
-- `render`
+- `EditorRuntimeQuery`
+- `EditorRead`
 
-## 8.5 第五步：拆 preview 语义
+然后一次性完成：
+
+- internal 保留 `node.committed/projected/render`
+- internal 保留 `mindmap.layout`
+- public 只保留 `node.render`
+- public 删除 `mindmap.layout/node`
+
+## 8.6 第六步：拆 preview 语义
 
 把现在的混合 `feedback.text` 拆成：
 
@@ -688,7 +952,7 @@ type EditorMindmapRead = {
 - text layout preview
 - mindmap gesture preview
 
-## 8.6 第六步：清理命名和测试
+## 8.7 第七步：清理命名和测试
 
 所有调用方一次性更新到新语义：
 
@@ -697,6 +961,11 @@ type EditorMindmapRead = {
 - `render`
 
 不保留旧 API 别名。
+
+如果测试要断言 internal layout：
+
+- 直接测 `EditorRuntimeQuery`
+- 不再借 public `EditorRead` 走后门
 
 ---
 
@@ -711,21 +980,30 @@ type EditorMindmapRead = {
 - editor 中不存在 `MindmapNodeLayoutItem`
 - `query.node` 不再暴露 `geometry/content/rect/bounds/canvas`
 
-### 9.2 语义判定
+### 9.2 public API 判定
+
+- `EditorRead.node` 只暴露 `render`
+- `EditorRead.mindmap` 不暴露 `layout`
+- `EditorRead.mindmap` 不暴露 `node`
+- public 不存在 `EditorNodeRead`
+
+### 9.3 语义判定
 
 - `mindmap owned node` 的 committed rect 在 engine 层已经正确
-- live edit 下 topic auto width 只通过 `draft measure -> mindmap projector -> node projected` 生效
+- live edit 下 topic auto width 只通过 `draft measure -> mindmap projector -> ownerGeometry -> node projected` 生效
 - free node preview 与 mindmap preview 不再共享同一条 geometry patch 语义
+- projected/render/renderer 侧不再持有几何版 `Node`
 
-### 9.3 调试判定
+### 9.4 调试判定
 
 出现几何问题时，排查路径最多只需要看：
 
 1. committed node
 2. draft measure
 3. projected mindmap layout
-4. projected node
-5. render
+4. ownerGeometry
+5. projected node
+6. render
 
 如果还需要跨更多层排查，说明设计仍然不够短。
 
@@ -735,15 +1013,17 @@ type EditorMindmapRead = {
 
 下一阶段不应该继续围绕“怎么让现有链再稳一点”做局部优化。
 
-真正应该做的是一次性完成下面三件事：
+真正应该做的是一次性完成下面四件事：
 
 1. 把 committed rect 真相前移到 engine
 2. 把 tree-level 几何和 node-level 几何彻底分层
-3. 把 node query 收口成 `committed -> projected -> render`
+3. 把 `Node` 的几何字段从 projected/render/renderer 侧剥掉
+4. 把 API 收口成 internal `EditorRuntimeQuery` / public `EditorRead`
 
-做到这三点之后：
+做到这四点之后：
 
 - mindmap 不会再和 node 自己争夺 rect
 - 派生链会明显变短
 - 上下游边界会真正清楚
+- public surface 会稳定很多
 - 以后再排 bug，不需要在多条平行链之间来回猜

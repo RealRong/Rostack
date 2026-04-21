@@ -11,6 +11,11 @@ import type {
   MindmapEnterPreview,
   MindmapPreviewState
 } from '@whiteboard/editor/session/preview/types'
+import {
+  debugMindmapEdit,
+  debugRect,
+  debugSize
+} from '@whiteboard/editor/debug/mindmapEdit'
 
 export type MindmapLayoutRead = {
   layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
@@ -144,6 +149,25 @@ const computeBBox = (
   }
 }
 
+const readDebugRelatedNodeIds = (
+  structure: MindmapStructureItem,
+  nodeId: NodeId | undefined
+) => {
+  if (!nodeId) {
+    return []
+  }
+
+  const parentId = structure.tree.nodes[nodeId]?.parentId
+  if (!parentId) {
+    return [nodeId]
+  }
+
+  return [
+    parentId,
+    ...(structure.tree.children[parentId] ?? [])
+  ]
+}
+
 const readProjectedMindmapItem = ({
   base,
   structure,
@@ -180,6 +204,7 @@ const readProjectedMindmapItem = ({
     }
 
   if (liveLayout) {
+    const editedNodeId = liveLayout.nodeSizes.keys().next().value as NodeId | undefined
     const nextComputed = mindmapApi.layout.compute(
       structure.tree,
       (nodeId) => {
@@ -207,6 +232,48 @@ const readProjectedMindmapItem = ({
       tree: structure.tree,
       computed: nextComputed,
       position: rootPosition
+    })
+
+    const relatedNodeIds = readDebugRelatedNodeIds(structure, editedNodeId)
+    debugMindmapEdit('live-layout-computed', {
+      treeId: structure.id,
+      rootId: structure.rootId,
+      editedNodeId,
+      liveSize: debugSize(
+        editedNodeId
+          ? liveLayout.nodeSizes.get(editedNodeId)
+          : undefined
+      ),
+      baseEditedRect: debugRect(
+        editedNodeId
+          ? base.computed.node[editedNodeId]
+          : undefined
+      ),
+      computedEditedRect: debugRect(
+        editedNodeId
+          ? nextComputed.node[editedNodeId]
+          : undefined
+      ),
+      anchoredEditedRect: debugRect(
+        editedNodeId
+          ? computed.node[editedNodeId]
+          : undefined
+      ),
+      relatedNodes: relatedNodeIds.map((nodeId) => ({
+        nodeId,
+        base: debugRect(base.computed.node[nodeId]),
+        computed: debugRect(nextComputed.node[nodeId]),
+        anchored: debugRect(computed.node[nodeId])
+      })),
+      rootPosition: {
+        x: rootPosition.x,
+        y: rootPosition.y
+      },
+      bbox: {
+        base: debugRect(base.computed.bbox),
+        computed: debugRect(nextComputed.bbox),
+        anchored: debugRect(computed.bbox)
+      }
     })
   }
 

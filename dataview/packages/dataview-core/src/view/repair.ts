@@ -15,11 +15,9 @@ import {
 import {
   pruneFieldFromViewOptions
 } from '@dataview/core/view/options'
-
-const sameJson = (
-  left: unknown,
-  right: unknown
-) => JSON.stringify(left) === JSON.stringify(right)
+import {
+  equal
+} from '@shared/core'
 
 const cleanupSearchFields = (
   fieldIds: readonly string[] | undefined,
@@ -80,7 +78,7 @@ export const repairViewForRemovedField = (
     delete (nextView as { group?: View['group'] }).group
   }
 
-  return sameJson(nextView, view)
+  return equal.sameJsonValue(nextView, view)
     ? view
     : nextView
 }
@@ -134,7 +132,7 @@ export const repairViewForConvertedField = (
     delete (nextView as { group?: View['group'] }).group
   }
 
-  return sameJson(nextView, view)
+  return equal.sameJsonValue(nextView, view)
     ? view
     : nextView
 }

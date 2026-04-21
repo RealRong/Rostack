@@ -11,7 +11,11 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
-import { equal, store } from '@shared/core'
+import {
+  collection,
+  equal,
+  store
+} from '@shared/core'
 import type {
   ActiveSource,
   ActiveViewGallery,
@@ -165,8 +169,10 @@ const collectRemovedKeys = <TKey,>(
     return [] as TKey[]
   }
 
-  const nextIdSet = new Set(nextIds)
-  return previousIds.filter(key => !nextIdSet.has(key))
+  const nextIdSet = collection.presentSet(nextIds)
+  return nextIdSet
+    ? previousIds.filter(key => !nextIdSet.has(key))
+    : [...previousIds]
 }
 
 const patchEntityValues = <K, T>(input: {

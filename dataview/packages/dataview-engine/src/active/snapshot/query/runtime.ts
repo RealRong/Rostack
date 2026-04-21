@@ -20,6 +20,9 @@ import type {
   BaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
 import {
+  set as setCore
+} from '@shared/core'
+import {
   readSelectionIdSet
 } from '@dataview/engine/active/shared/selection'
 import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
@@ -36,25 +39,12 @@ import {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'
 
-const hasIntersection = (
-  left: ReadonlySet<FieldId>,
-  right: ReadonlySet<FieldId>
-) => {
-  for (const value of left) {
-    if (right.has(value)) {
-      return true
-    }
-  }
-
-  return false
-}
-
 const queryUsesChangedFields = (
   fields: readonly FieldId[] | 'all',
   changedFields: ReadonlySet<FieldId>
 ) => fields === 'all'
   ? changedFields.size > 0
-  : hasIntersection(new Set(fields), changedFields)
+  : setCore.intersectsValues(fields, changedFields)
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_VISIBLE_DIFF = {
@@ -200,8 +190,8 @@ const resolveQueryAction = (input: {
 
   if (
     commitImpact.has.recordSetChange(commit)
-    || hasIntersection(new Set(input.plan.watch.filter), changedFields)
-    || hasIntersection(new Set(input.plan.watch.sort), changedFields)
+    || setCore.intersectsValues(input.plan.watch.filter, changedFields)
+    || setCore.intersectsValues(input.plan.watch.sort, changedFields)
     || (
       (
         input.plan.watch.search === 'all'

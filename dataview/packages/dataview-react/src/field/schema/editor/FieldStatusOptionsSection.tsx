@@ -19,6 +19,9 @@ import {
 import { cn } from '@shared/ui/utils'
 import { useTranslation } from '@shared/i18n/react'
 import {
+  order
+} from '@shared/core'
+import {
   OptionEditorPanel,
 } from '@dataview/react/field/options'
 import {
@@ -26,17 +29,6 @@ import {
   readOptionLabel
 } from '@dataview/react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
-
-const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
-  const next = [...items]
-  const [moved] = next.splice(from, 1)
-  if (moved === undefined) {
-    return next
-  }
-
-  next.splice(to, 0, moved)
-  return next
-}
 
 const buildOrderedIds = (
   sections: ReturnType<typeof fieldApi.status.sections>,
@@ -140,7 +132,7 @@ export const FieldStatusOptionsSection = (props: {
                   setEditingOptionId(key ?? undefined)
                 }}
                 onMove={(from, to) => {
-                  const reordered = moveItem(section.options, from, to)
+                  const reordered = order.moveAt(section.options, from, to)
                   editor.fields.options.reorder(
                     props.field.id,
                     buildOrderedIds(sections, section.category, reordered)

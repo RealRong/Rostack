@@ -8,6 +8,9 @@ import { flushSync } from 'react-dom'
 import { field as fieldApi } from '@dataview/core/field'
 import { meta } from '@dataview/meta'
 import {
+  order
+} from '@shared/core'
+import {
   type MenuItem,
   type MenuReorderItem
 } from '@shared/ui/menu'
@@ -28,17 +31,6 @@ const splitDraftKeys = (draft: string) => draft
 const joinDraftKeys = (keys: readonly string[]) => keys.join(', ')
 
 const normalizeQuery = (value: string) => value.trim().toLowerCase()
-
-const moveItem = <Item,>(items: readonly Item[], from: number, to: number) => {
-  const next = [...items]
-  const [moved] = next.splice(from, 1)
-  if (moved === undefined) {
-    return next
-  }
-
-  next.splice(to, 0, moved)
-  return next
-}
 
 const filterOptionsByQuery = (
   options: ReturnType<typeof fieldApi.option.read.list>,
@@ -408,7 +400,7 @@ export const useOptionPickerController = (
   const reorderOptions = useCallback((from: number, to: number) => {
     editor.fields.options.reorder(
       fieldId,
-      moveItem(options, from, to).map(option => option.id)
+      order.moveAt(options, from, to).map(option => option.id)
     )
   }, [editor.fields.options, fieldId, options])
 

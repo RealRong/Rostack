@@ -6,31 +6,11 @@ import type {
   SelectionSnapshot,
   SelectionSummary
 } from '@dataview/runtime/selection/types'
+import {
+  set as setCore
+} from '@shared/core'
 
-const EMPTY_SET = new Set<never>() as ReadonlySet<never>
-
-const asEmptySet = <TId,>(): ReadonlySet<TId> => EMPTY_SET as ReadonlySet<TId>
-
-const sameSet = <TId,>(
-  left: ReadonlySet<TId>,
-  right: ReadonlySet<TId>
-) => {
-  if (left === right) {
-    return true
-  }
-
-  if (left.size !== right.size) {
-    return false
-  }
-
-  for (const value of left) {
-    if (!right.has(value)) {
-      return false
-    }
-  }
-
-  return true
-}
+const asEmptySet = <TId,>(): ReadonlySet<TId> => setCore.empty<TId>()
 
 const sameShape = <TId,>(
   left: SelectionShape<TId>,
@@ -48,7 +28,7 @@ const sameShape = <TId,>(
     return false
   }
 
-  return sameSet(left.ids, right.ids)
+  return setCore.same(left.ids, right.ids)
 }
 
 const collectValidIds = <TId,>(
@@ -268,6 +248,42 @@ const createFromExcludedIds = <TId,>(
     ...input,
     selectedCount
   })
+}
+
+const readSnapshotContext = <TId,>(
+  current: SelectionSnapshot<TId>,
+  domainRevision: number
+) => ({
+  domainRevision,
+  anchor: current.anchor,
+  focus: current.focus
+})
+
+const updateSnapshotIds = <TId,>(input: {
+  domain: OrderedSelectionDomain<TId>
+  current: SelectionSnapshot<TId>
+  domainRevision: number
+  targetIds: ReadonlySet<TId>
+  whenEmpty: () => SelectionSnapshot<TId>
+  updateInclude: (ids: ReadonlySet<TId>, targetIds: ReadonlySet<TId>) => ReadonlySet<TId>
+  updateExclude: (ids: ReadonlySet<TId>, targetIds: ReadonlySet<TId>) => ReadonlySet<TId>
+}): SelectionSnapshot<TId> => {
+  switch (input.current.shape.kind) {
+    case 'empty':
+      return input.whenEmpty()
+    case 'include':
+      return createFromIncludedIds(
+        input.domain,
+        input.updateInclude(input.current.shape.ids, input.targetIds),
+        readSnapshotContext(input.current, input.domainRevision)
+      )
+    case 'exclude':
+      return createFromExcludedIds(
+        input.domain,
+        input.updateExclude(input.current.shape.ids, input.targetIds),
+        readSnapshotContext(input.current, input.domainRevision)
+      )
+  }
 }
 
 const countInScope = <TId,>(
@@ -510,36 +526,19 @@ export const selectionSnapshot = {
       return selectionSnapshot.rebase(domain, current, domainRevision)
     }
 
-    switch (current.shape.kind) {
-      case 'empty':
-        return createFromIncludedIds(domain, targetIds, {
-          domainRevision,
-          anchor: current.anchor,
-          focus: current.focus
-        })
-      case 'include': {
-        const nextIds = new Set(current.shape.ids)
-        targetIds.forEach(id => {
-          nextIds.add(id)
-        })
-        return createFromIncludedIds(domain, nextIds, {
-          domainRevision,
-          anchor: current.anchor,
-          focus: current.focus
-        })
-      }
-      case 'exclude': {
-        const nextExcluded = new Set(current.shape.ids)
-        targetIds.forEach(id => {
-          nextExcluded.delete(id)
-        })
-        return createFromExcludedIds(domain, nextExcluded, {
-          domainRevision,
-          anchor: current.anchor,
-          focus: current.focus
-        })
-      }
-    }
+    return updateSnapshotIds({
+      domain,
+      current,
+      domainRevision,
+      targetIds,
+      whenEmpty: () => createFromIncludedIds(
+        domain,
+        targetIds,
+        readSnapshotContext(current, domainRevision)
+      ),
+      updateInclude: (ids, nextIds) => setCore.addAll(ids, nextIds),
+      updateExclude: (ids, nextIds) => setCore.removeAll(ids, nextIds)
+    })
   },
   removeIds: <TId,>(
     domain: OrderedSelectionDomain<TId>,
@@ -552,32 +551,15 @@ export const selectionSnapshot = {
       return selectionSnapshot.rebase(domain, current, domainRevision)
     }
 
-    switch (current.shape.kind) {
-      case 'empty':
-        return selectionSnapshot.empty<TId>(domainRevision)
-      case 'include': {
-        const nextIds = new Set(current.shape.ids)
-        targetIds.forEach(id => {
-          nextIds.delete(id)
-        })
-        return createFromIncludedIds(domain, nextIds, {
-          domainRevision,
-          anchor: current.anchor,
-          focus: current.focus
-        })
-      }
-      case 'exclude': {
-        const nextExcluded = new Set(current.shape.ids)
-        targetIds.forEach(id => {
-          nextExcluded.add(id)
-        })
-        return createFromExcludedIds(domain, nextExcluded, {
-          domainRevision,
-          anchor: current.anchor,
-          focus: current.focus
-        })
-      }
-    }
+    return updateSnapshotIds({
+      domain,
+      current,
+      domainRevision,
+      targetIds,
+      whenEmpty: () => selectionSnapshot.empty<TId>(domainRevision),
+      updateInclude: (ids, nextIds) => setCore.removeAll(ids, nextIds),
+      updateExclude: (ids, nextIds) => setCore.addAll(ids, nextIds)
+    })
   },
   toggleIds: <TId,>(
     domain: OrderedSelectionDomain<TId>,
@@ -590,46 +572,19 @@ export const selectionSnapshot = {
       return selectionSnapshot.rebase(domain, current, domainRevision)
     }
 
-    switch (current.shape.kind) {
-      case 'empty':
-        return createFromIncludedIds(domain, targetIds, {
-          domainRevision,
-          anchor: current.anchor,
-          focus: current.focus
-        })
-      case 'include': {
-        const nextIds = new Set(current.shape.ids)
-        targetIds.forEach(id => {
-          if (nextIds.has(id)) {
-            nextIds.delete(id)
-            return
-          }
-
-          nextIds.add(id)
-        })
-        return createFromIncludedIds(domain, nextIds, {
-          domainRevision,
-          anchor: current.anchor,
-          focus: current.focus
-        })
-      }
-      case 'exclude': {
-        const nextExcluded = new Set(current.shape.ids)
-        targetIds.forEach(id => {
-          if (nextExcluded.has(id)) {
-            nextExcluded.delete(id)
-            return
-          }
-
-          nextExcluded.add(id)
-        })
-        return createFromExcludedIds(domain, nextExcluded, {
-          domainRevision,
-          anchor: current.anchor,
-          focus: current.focus
-        })
-      }
-    }
+    return updateSnapshotIds({
+      domain,
+      current,
+      domainRevision,
+      targetIds,
+      whenEmpty: () => createFromIncludedIds(
+        domain,
+        targetIds,
+        readSnapshotContext(current, domainRevision)
+      ),
+      updateInclude: (ids, nextIds) => setCore.toggleAll(ids, nextIds),
+      updateExclude: (ids, nextIds) => setCore.toggleAll(ids, nextIds)
+    })
   },
   replaceScope: <TId,>(
     domain: OrderedSelectionDomain<TId>,

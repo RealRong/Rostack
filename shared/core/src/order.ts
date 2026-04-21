@@ -60,6 +60,34 @@ export const moveItem = <T,>(
   ]
 }
 
+export const moveAt = <T,>(
+  values: readonly T[],
+  from: number,
+  to: number
+): T[] => {
+  if (
+    from < 0
+    || to < 0
+    || from >= values.length
+    || to >= values.length
+  ) {
+    return [...values]
+  }
+
+  if (from === to) {
+    return [...values]
+  }
+
+  const next = [...values]
+  const [moved] = next.splice(from, 1)
+  if (moved === undefined) {
+    return [...values]
+  }
+
+  next.splice(to, 0, moved)
+  return next
+}
+
 export const moveBlock = <T,>(
   ids: readonly T[],
   targets: readonly T[],

@@ -1,4 +1,4 @@
-import { store } from '@shared/core'
+import { equal, store } from '@shared/core'
 import type { NodeId, Rect, Size } from '@whiteboard/core/types'
 import type {
   EngineRead,
@@ -14,6 +14,13 @@ import type {
 
 export type MindmapLayoutRead = {
   item: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+  node: store.KeyedReadStore<NodeId, MindmapNodeLayoutItem | undefined>
+}
+
+export type MindmapNodeLayoutItem = {
+  mindmapId: NodeId
+  nodeId: NodeId
+  rect: Rect
 }
 
 type MindmapLiveEdit = {
@@ -90,7 +97,7 @@ const readCommittedMindmapNodeSize = (
   nodeItemStore: EngineRead['node']['item'],
   nodeId: NodeId
 ): Size | undefined => {
-  const item = nodeItemStore.get(nodeId)
+  const item = store.read(nodeItemStore, nodeId)
   return item
     ? {
         width: item.rect.width,
@@ -197,12 +204,14 @@ const readProjectedMindmapItem = ({
 }
 
 export const createMindmapLayoutRead = ({
+  list,
   committed,
   structure,
   nodeCommitted,
   edit,
   preview
 }: {
+  list: EngineRead['mindmap']['list']
   committed: EngineRead['mindmap']['layout']
   structure: EngineRead['mindmap']['structure']
   nodeCommitted: EngineRead['node']['item']
@@ -346,7 +355,51 @@ export const createMindmapLayoutRead = ({
     )
   })
 
+  const node = store.createProjectedKeyedStore<
+    ReadonlyMap<NodeId, MindmapNodeLayoutItem>,
+    NodeId,
+    MindmapNodeLayoutItem | undefined
+  >({
+    source: store.createDerivedStore({
+      get: () => {
+        const next = new Map<NodeId, MindmapNodeLayoutItem>()
+
+        store.read(list).forEach((mindmapId) => {
+          const currentLayout = store.read(item, mindmapId)
+          if (!currentLayout) {
+            return
+          }
+
+          currentLayout.nodeIds.forEach((nodeId) => {
+            const rect = currentLayout.computed.node[nodeId]
+            if (!rect) {
+              return
+            }
+
+            next.set(nodeId, {
+              mindmapId,
+              nodeId,
+              rect
+            })
+          })
+        })
+
+        return next as ReadonlyMap<NodeId, MindmapNodeLayoutItem>
+      }
+    }),
+    select: (value) => value,
+    emptyValue: undefined,
+    isEqual: (left, right) => left === right || (
+      left !== undefined
+      && right !== undefined
+      && left.mindmapId === right.mindmapId
+      && left.nodeId === right.nodeId
+      && equal.sameRect(left.rect, right.rect)
+    )
+  })
+
   return {
-    item
+    item,
+    node
   }
 }

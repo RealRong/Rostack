@@ -141,7 +141,6 @@ export interface IndexDeriveContext extends IndexReadContext, FieldSyncContext {
 
 export interface IndexDeriveResult {
   state: IndexState
-  demand: NormalizedIndexDemand
   trace?: IndexTrace
 }
 
@@ -150,5 +149,5 @@ export interface IndexDeriveInput {
   previousDemand: NormalizedIndexDemand
   document: DataDoc
   impact: ActiveImpact
-  demand?: IndexDemand
+  demand?: NormalizedIndexDemand
 }

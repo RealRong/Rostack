@@ -8,7 +8,7 @@ import {
 } from '@dataview/engine/active/plan'
 import type {
   DeriveAction,
-  ViewRuntimeDelta,
+  SnapshotChange,
   ViewCache
 } from '@dataview/engine/contracts/state'
 import type {
@@ -32,13 +32,14 @@ import type {
 interface ViewRunResult {
   cache: ViewCache
   snapshot?: ViewState
-  delta?: ViewRuntimeDelta
+  delta?: SnapshotChange
   trace?: ViewTrace
 }
 
 export const deriveViewSnapshot = (input: {
   documentContext: DocumentReadContext
   viewPlan?: ViewPlan
+  previousPlan?: ViewPlan
   impact: ActiveImpact
   index: IndexState
   previousCache: ViewCache
@@ -123,6 +124,7 @@ export const deriveViewSnapshot = (input: {
       impact: input.impact,
       view,
       plan: viewPlan!.query,
+      previousPlan: input.previousPlan?.query,
       index: input.index,
       previous: input.previousCache.query,
       previousPublished: input.previousSnapshot?.records
@@ -194,11 +196,14 @@ export const deriveViewSnapshot = (input: {
       ? {
           view: input.previousSnapshot.view,
           query: input.previousSnapshot.query,
-          fields: input.previousSnapshot.fields
+          fields: input.previousSnapshot.fields,
+          table: input.previousSnapshot.table,
+          gallery: input.previousSnapshot.gallery,
+          kanban: input.previousSnapshot.kanban
         }
       : undefined
   })
-  const snapshot = base.view && base.query && base.fields
+  const snapshot = base.view && base.query && base.fields && base.table && base.gallery && base.kanban
     ? {
         view: base.view,
         query: base.query,
@@ -206,6 +211,9 @@ export const deriveViewSnapshot = (input: {
         sections: sections.sections,
         items: sections.items,
         fields: base.fields,
+        table: base.table,
+        gallery: base.gallery,
+        kanban: base.kanban,
         summaries: summary.summaries
       } satisfies ViewState
     : undefined
@@ -217,6 +225,9 @@ export const deriveViewSnapshot = (input: {
     && input.previousSnapshot.sections === snapshot.sections
     && input.previousSnapshot.items === snapshot.items
     && input.previousSnapshot.fields === snapshot.fields
+    && input.previousSnapshot.table === snapshot.table
+    && input.previousSnapshot.gallery === snapshot.gallery
+    && input.previousSnapshot.kanban === snapshot.kanban
     && input.previousSnapshot.summaries === snapshot.summaries
       ? input.previousSnapshot
       : snapshot

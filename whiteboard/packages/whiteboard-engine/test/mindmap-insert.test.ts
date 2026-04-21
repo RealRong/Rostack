@@ -28,5 +28,5 @@ test('engine exposes created mindmap roots through node read projection', () => 
   assert.equal(engine.read.node.item.get(rootId)?.node.type, 'text')
   assert.equal(engine.read.node.item.get(rootId)?.node.owner?.kind, 'mindmap')
   assert.equal(engine.read.node.item.get(rootId)?.node.owner?.id, mindmapId)
-  assert.equal(engine.read.mindmap.item.get(mindmapId)?.id, mindmapId)
+  assert.equal(engine.read.mindmap.structure.get(mindmapId)?.id, mindmapId)
 })

@@ -14,7 +14,7 @@ import {
   createIndexReadContext
 } from '@dataview/engine/active/index/context'
 import {
-  normalizeIndexDemand,
+  emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'
 import {
   buildBucketIndex,
@@ -43,7 +43,6 @@ import {
   touchedRecordCountOfImpact
 } from '@dataview/engine/active/index/trace'
 import type {
-  IndexDemand,
   IndexDeriveResult,
   IndexState,
   NormalizedIndexDemand
@@ -76,28 +75,19 @@ const buildState = (
 
 export const createIndexState = (
   document: DataDoc,
-  demand?: IndexDemand
-): IndexDeriveResult => {
-  const context = createIndexReadContext(document)
-  const normalized = normalizeIndexDemand(context, demand)
-  return {
-    state: buildState(document, normalized),
-    demand: normalized
-  }
-}
+  demand: NormalizedIndexDemand = emptyNormalizedIndexDemand()
+): IndexState => buildState(document, demand)
 
 export const deriveIndex = (input: {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
   impact: ActiveImpact
-  demand?: IndexDemand
+  demand?: NormalizedIndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
   const context = createIndexDeriveContext(input.document, input.impact)
-  const nextDemand = input.demand
-    ? normalizeIndexDemand(context, input.demand)
-    : input.previousDemand
+  const nextDemand = input.demand ?? input.previousDemand
   const totalStart = now()
   const touchedRecordCount = touchedRecordCountOfImpact(input.impact)
   const touchedFieldCount = touchedFieldCountOfImpact(input.impact)
@@ -187,7 +177,6 @@ export const deriveIndex = (input: {
 
   return {
     state,
-    demand: nextDemand,
     trace: {
       changed: (
         records !== previous.records

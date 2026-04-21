@@ -99,7 +99,7 @@ const createEditor = () => {
 }
 
 describe('mindmap root render', () => {
-  it('marks the selected root as mindmap root and exposes both root add buttons', () => {
+  it('treats the root as a normal node and exposes both root add buttons through chrome', () => {
     const editor = createEditor()
     const created = editor.actions.mindmap.create({
       template: product.mindmap.template.build({
@@ -117,14 +117,14 @@ describe('mindmap root render', () => {
     })
 
     const rootRender = editor.read.node.render.get(created.data.rootId)
-    expect(rootRender?.mindmapRoot).toBe(true)
-    expect(rootRender?.canConnect).toBe(false)
+    expect(rootRender?.canConnect).toBe(true)
     expect(rootRender?.canResize).toBe(false)
     expect(rootRender?.canRotate).toBe(false)
 
-    const mindmapRender = editor.read.mindmap.render.get(created.data.mindmapId)
-    expect(mindmapRender?.rootId).toBe(created.data.rootId)
-    expect(mindmapRender?.addChildren.map((entry) => entry.placement)).toEqual([
+    const structure = editor.read.mindmap.structure.get(created.data.mindmapId)
+    const chrome = editor.read.mindmap.chrome.get(created.data.mindmapId)
+    expect(structure?.rootId).toBe(created.data.rootId)
+    expect(chrome?.addChildTargets.map((entry) => entry.placement)).toEqual([
       'left',
       'right'
     ])

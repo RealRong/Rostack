@@ -8,7 +8,10 @@ import type {
   MindmapSceneItem,
   MindmapStructureItem
 } from '@whiteboard/engine'
-import type { MindmapLayoutRead } from '@whiteboard/editor/layout/mindmap'
+import type {
+  MindmapLayoutRead,
+  MindmapNodeLayoutItem
+} from '@whiteboard/editor/layout/mindmap'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 
 export type MindmapChrome = {
@@ -22,6 +25,7 @@ export type MindmapChrome = {
 
 export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'layout' | 'scene'> & {
   layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+  node: store.KeyedReadStore<NodeId, MindmapNodeLayoutItem | undefined>
   scene: store.KeyedReadStore<NodeId, MindmapSceneItem | undefined>
   chrome: store.KeyedReadStore<NodeId, MindmapChrome | undefined>
   navigate: (input: {
@@ -251,6 +255,7 @@ export const createMindmapRead = ({
     list: read.list,
     structure: read.structure,
     layout: layout.item,
+    node: layout.node,
     scene,
     chrome,
     navigate: (input) => {

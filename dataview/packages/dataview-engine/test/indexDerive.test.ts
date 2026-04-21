@@ -5,6 +5,9 @@ import {
 } from '@dataview/core/calculation'
 import { filter } from '@dataview/core/filter'
 import {
+  normalizeIndexDemand
+} from '@dataview/engine/active/index/demand'
+import {
   createIndexState,
   deriveIndex
 } from '@dataview/engine/active/index/runtime'
@@ -130,10 +133,18 @@ const createDocument = (input = {}) => {
 
 const createImpact = (input = {}) => createActiveImpact(input)
 
+const normalizeDemand = (document, demand = {}) => {
+  const context = createStaticDocumentReadContext(document)
+  return normalizeIndexDemand({
+    document,
+    reader: context.reader
+  }, demand)
+}
+
 const resolveDemand = (document, viewId) => {
   const plan = resolveViewPlan(createStaticDocumentReadContext(document), viewId)
   assert.ok(plan)
-  return plan.demand
+  return plan.index
 }
 
 const createTableView = (input = {}) => ({
@@ -158,19 +169,31 @@ const createTableView = (input = {}) => ({
 })
 
 const createIndexHarness = (document, demand) => {
-  let current = createIndexState(document, demand)
+  let currentDemand = normalizeDemand(document, demand)
+  let current = createIndexState(document, currentDemand)
 
   return {
-    state: () => current.state,
+    state: () => current,
     sync: (nextDocument, impact, nextDemand) => {
-      current = deriveIndex({
-        previous: current.state,
-        previousDemand: current.demand,
+      const demandForNext = nextDemand
+        ? normalizeDemand(nextDocument, nextDemand)
+        : currentDemand
+      const next = deriveIndex({
+        previous: current,
+        previousDemand: currentDemand,
         document: nextDocument,
         impact,
-        ...(nextDemand ? { demand: nextDemand } : {})
+        ...(nextDemand
+          ? { demand: demandForNext }
+          : {})
       })
-      return current
+      current = next.state
+      currentDemand = demandForNext
+      return {
+        state: current,
+        demand: currentDemand,
+        trace: next.trace
+      }
     }
   }
 }

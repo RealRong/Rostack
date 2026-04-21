@@ -102,6 +102,35 @@ export interface ActiveViewQuery {
   filters: ViewFilterProjection
   group: ViewGroupProjection
   sort: ViewSortProjection
+  grouped: boolean
+  groupFieldId: FieldId | ''
+  filterFieldIds: readonly FieldId[]
+  sortFieldIds: readonly FieldId[]
+  sortDir: ReadonlyMap<FieldId, SortDirection | undefined>
+}
+
+export interface ActiveViewTable {
+  wrap: boolean
+  showVerticalLines: boolean
+  calc: ReadonlyMap<FieldId, CalculationMetric | undefined>
+}
+
+export interface ActiveViewGallery {
+  wrap: boolean
+  size: CardSize
+  layout: CardLayout
+  canReorder: boolean
+  groupUsesOptionColors: boolean
+}
+
+export interface ActiveViewKanban {
+  wrap: boolean
+  size: CardSize
+  layout: CardLayout
+  canReorder: boolean
+  groupUsesOptionColors: boolean
+  fillColumnColor: boolean
+  cardsPerColumn: KanbanCardsPerColumn
 }
 
 export interface ViewState {
@@ -111,6 +140,9 @@ export interface ViewState {
   sections: SectionList
   items: ItemList
   fields: FieldList
+  table: ActiveViewTable
+  gallery: ActiveViewGallery
+  kanban: ActiveViewKanban
   summaries: ViewSummaries
 }
 

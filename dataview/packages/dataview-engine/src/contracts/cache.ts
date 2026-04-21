@@ -20,7 +20,7 @@ import {
   emptySummaryState
 } from '@dataview/engine/contracts/summary'
 
-export interface ViewRuntimeDelta {
+export interface SnapshotChange {
   query: QueryDelta
   sections: SectionDelta
   summary: SummaryDelta

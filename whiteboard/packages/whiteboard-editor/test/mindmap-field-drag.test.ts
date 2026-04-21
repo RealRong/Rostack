@@ -6,8 +6,11 @@ describe('mindmap field drag', () => {
     const session = createMoveInteraction({
       query: {
         mindmap: {
-          item: {
+          structure: {
             get: () => ({
+              id: 'mind-1',
+              rootId: 'root-1',
+              nodeIds: ['root-1'],
               tree: {
                 rootNodeId: 'root-1',
                 nodes: {
@@ -35,13 +38,31 @@ describe('mindmap field drag', () => {
                 mode: 'tidy',
                 hGap: 28,
                 vGap: 18
-              },
-              node: {
-                id: 'root-1',
-                type: 'text',
-                position: { x: 100, y: 120 },
-                data: {}
               }
+            })
+          },
+          layout: {
+            get: () => ({
+              id: 'mind-1',
+              rootId: 'root-1',
+              nodeIds: ['root-1'],
+              computed: {
+                node: {
+                  'root-1': {
+                    x: 100,
+                    y: 120,
+                    width: 144,
+                    height: 44
+                  }
+                },
+                bbox: {
+                  x: 100,
+                  y: 120,
+                  width: 144,
+                  height: 44
+                }
+              },
+              connectors: []
             })
           }
         },
@@ -115,29 +136,17 @@ describe('mindmap field drag', () => {
           pointer: vi.fn()
         }
       },
-      local: {
-        session: {
-          selection: {
-            replace: vi.fn()
-          }
-        },
-        feedback: {
-          mindmap: {
-            setPreview: vi.fn(),
-            clear: vi.fn()
-          }
+      actions: {
+        selection: {
+          replace: vi.fn()
         }
       },
-      command: {
+      write: {
         mindmap: {
-          moveRoot: vi.fn(),
-          moveByDrop: vi.fn()
-        },
-        node: {
-          move: vi.fn()
-        },
-        edge: {
-          updateMany: vi.fn()
+          move: vi.fn(),
+          topic: {
+            move: vi.fn()
+          }
         }
       },
       selection: {

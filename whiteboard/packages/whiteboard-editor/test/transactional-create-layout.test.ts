@@ -201,7 +201,7 @@ describe('transactional create layout', () => {
       height: 44
     })
 
-    const tree = editor.read.mindmap.render.get(created.data.mindmapId)?.tree
+    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
     expect(tree).toBeDefined()
 
     const inserted = editor.actions.mindmap.insertByPlacement({

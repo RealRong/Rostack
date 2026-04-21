@@ -1059,7 +1059,6 @@ const projectCandidatesToOrderedIds = (
 })
 
 const publishQueryState = (input: {
-  plan: Pick<QueryState['plan'], 'executionKey' | 'watch'>
   previous?: QueryState
   matched: readonly RecordId[]
   ordered: readonly RecordId[]
@@ -1088,22 +1087,6 @@ const publishQueryState = (input: {
       }
 
   return {
-    plan: (
-      previous
-      && previous.plan.executionKey === input.plan.executionKey
-      && (
-        previous.plan.watch.search === input.plan.watch.search
-        || (
-          previous.plan.watch.search !== 'all'
-          && input.plan.watch.search !== 'all'
-          && equal.sameOrder(previous.plan.watch.search, input.plan.watch.search)
-        )
-      )
-      && equal.sameOrder(previous.plan.watch.filter, input.plan.watch.filter)
-      && equal.sameOrder(previous.plan.watch.sort, input.plan.watch.sort)
-        ? previous.plan
-        : input.plan
-    ),
     records: nextRecords,
     ...(input.search
         ? {
@@ -1150,10 +1133,6 @@ export const buildQueryState = (input: {
     const ordered = applyViewOrders(matched, input.view, input.reader)
 
     return publishQueryState({
-      plan: {
-        executionKey: input.plan.executionKey,
-        watch: input.plan.watch
-      },
       previous: input.previous,
       matched,
       ordered,
@@ -1226,10 +1205,6 @@ export const buildQueryState = (input: {
       })
 
   return publishQueryState({
-    plan: {
-      executionKey: input.plan.executionKey,
-      watch: input.plan.watch
-    },
     previous: input.previous,
     matched,
     ordered,

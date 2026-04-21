@@ -29,6 +29,9 @@ const SNAPSHOT_KEYS = [
   'sections',
   'items',
   'fields',
+  'table',
+  'gallery',
+  'kanban',
   'summaries'
 ] as const satisfies readonly (keyof ViewState)[]
 
@@ -67,6 +70,7 @@ export const deriveViewRuntime = (input: {
   cache: ViewCache
   documentContext: DocumentReadContext
   viewPlan?: ViewPlan
+  previousPlan?: ViewPlan
   index: IndexState
   impact: ActiveImpact
   capturePerf: boolean
@@ -74,6 +78,7 @@ export const deriveViewRuntime = (input: {
   const runResult = deriveViewSnapshot({
     documentContext: input.documentContext,
     viewPlan: input.viewPlan,
+    previousPlan: input.previousPlan,
     impact: input.impact,
     index: input.index,
     previousCache: input.cache,

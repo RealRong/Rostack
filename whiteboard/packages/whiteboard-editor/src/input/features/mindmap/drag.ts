@@ -66,6 +66,24 @@ const previewMindmapDrag = (
   }
 }
 
+const readMindmapTreeView = (
+  mindmap: Pick<MindmapPresentationRead, 'structure' | 'layout'>,
+  treeId: NodeId
+) => {
+  const structure = mindmap.structure.get(treeId)
+  const layout = mindmap.layout.get(treeId)
+  if (!structure || !layout) {
+    return undefined
+  }
+
+  return {
+    id: structure.id,
+    tree: structure.tree,
+    layout: structure.layout,
+    computed: layout.computed
+  }
+}
+
 export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
@@ -88,7 +106,14 @@ export const tryStartMindmapDrag = (input: {
       ? pick.id
       : undefined
   const locked = Boolean(
-    (treeId ? input.node.item.get(treeId)?.node.locked : undefined)
+    (treeId
+      ? (() => {
+          const structure = input.mindmap.structure.get(treeId)
+          return structure
+            ? input.node.item.get(structure.rootId)?.node.locked
+            : undefined
+        })()
+      : undefined)
     || pickedNode?.locked
   )
   const selectedNodeIds = input.selection.get().target.nodeIds
@@ -107,18 +132,7 @@ export const tryStartMindmapDrag = (input: {
     return undefined
   }
 
-  const structure = input.mindmap.structure.get(treeId)
-  const layout = input.mindmap.layout.get(treeId)
-  const treeView = (
-    structure && layout
-      ? {
-          id: structure.id,
-          tree: structure.tree,
-          layout: structure.layout,
-          computed: layout.computed
-        }
-      : undefined
-  )
+  const treeView = readMindmapTreeView(input.mindmap, treeId)
   if (!treeView) {
     return undefined
   }
@@ -159,25 +173,21 @@ export const tryStartMindmapDragForNode = (input: {
     : undefined
   const locked = Boolean(
     pickedNode?.locked
-    || (treeId ? input.node.item.get(treeId)?.node.locked : undefined)
+    || (treeId
+      ? (() => {
+          const structure = input.mindmap.structure.get(treeId)
+          return structure
+            ? input.node.item.get(structure.rootId)?.node.locked
+            : undefined
+        })()
+      : undefined)
   )
 
   if (!pickedNode || !treeId || locked) {
     return undefined
   }
 
-  const structure = input.mindmap.structure.get(treeId)
-  const layout = input.mindmap.layout.get(treeId)
-  const treeView = (
-    structure && layout
-      ? {
-          id: structure.id,
-          tree: structure.tree,
-          layout: structure.layout,
-          computed: layout.computed
-        }
-      : undefined
-  )
+  const treeView = readMindmapTreeView(input.mindmap, treeId)
   if (!treeView) {
     return undefined
   }
@@ -214,18 +224,7 @@ const stepMindmapDrag = (input: {
   world: input.world,
   treeView:
     input.state.kind === 'subtree'
-      ? (() => {
-          const structure = input.mindmap.structure.get(input.state.treeId)
-          const layout = input.mindmap.layout.get(input.state.treeId)
-          return structure && layout
-            ? {
-                id: structure.id,
-                tree: structure.tree,
-                layout: structure.layout,
-                computed: layout.computed
-              }
-            : undefined
-        })()
+      ? readMindmapTreeView(input.mindmap, input.state.treeId)
       : undefined
 })
 

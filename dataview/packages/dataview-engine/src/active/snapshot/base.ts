@@ -1,9 +1,14 @@
 import type {
+  CalculationMetric,
+  CardLayout,
+  CardSize,
   CustomField,
   Field,
   FieldId,
   FilterConditionProjection,
   FilterRule,
+  KanbanCardsPerColumn,
+  SortDirection,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -13,9 +18,15 @@ import {
 import {
   field as fieldApi
 } from '@dataview/core/field'
+import {
+  fieldSpec
+} from '@dataview/core/field/spec'
 import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine/contracts'
 import type {
+  ActiveViewGallery,
+  ActiveViewKanban,
   ActiveViewQuery,
+  ActiveViewTable,
   FieldList,
   FilterRuleProjection,
   SortRuleProjection,
@@ -35,9 +46,15 @@ import {
   sameOptionalProjection
 } from '@dataview/engine/active/snapshot/reuse'
 import { equal } from '@shared/core'
-import {
-  type DocumentReader
+import type {
+  DocumentReader
 } from '@dataview/engine/document/reader'
+
+const EMPTY_SORT_DIR = new Map<FieldId, SortDirection | undefined>()
+const EMPTY_TABLE_CALC = new Map<FieldId, CalculationMetric | undefined>()
+const DEFAULT_CARD_LAYOUT = 'vertical' as CardLayout
+const DEFAULT_CARD_SIZE = 'medium' as CardSize
+const DEFAULT_KANBAN_CARDS_PER_COLUMN = 0 as KanbanCardsPerColumn
 
 const createFields = (input: {
   fieldIds: readonly FieldId[]
@@ -191,6 +208,106 @@ const createGroupProjection = (input: {
   }
 }
 
+const createFilterFieldIds = (
+  view: View
+): readonly FieldId[] => view.filter.rules.flatMap(rule => (
+  typeof rule.fieldId === 'string'
+    ? [rule.fieldId]
+    : []
+))
+
+const createSortFieldIds = (
+  view: View
+): readonly FieldId[] => view.sort.flatMap(sorter => (
+  typeof sorter.field === 'string'
+    ? [sorter.field]
+    : []
+))
+
+const createSortDir = (
+  view: View,
+  fieldIds: readonly FieldId[]
+): ReadonlyMap<FieldId, SortDirection | undefined> => fieldIds.length
+  ? new Map(
+      fieldIds.map(fieldId => [
+        fieldId,
+        view.sort.find(sorter => sorter.field === fieldId)?.direction
+      ] as const)
+    )
+  : EMPTY_SORT_DIR
+
+const createTableProjection = (input: {
+  view: View
+  fields: Pick<FieldList, 'ids'>
+}): ActiveViewTable => ({
+  wrap: input.view.type === 'table'
+    ? input.view.options.table.wrap
+    : false,
+  showVerticalLines: input.view.type === 'table'
+    ? input.view.options.table.showVerticalLines
+    : false,
+  calc: input.view.type === 'table'
+    ? new Map(
+        input.fields.ids.map(fieldId => [
+          fieldId,
+          input.view.calc[fieldId] ?? undefined
+        ] as const)
+      )
+    : EMPTY_TABLE_CALC
+})
+
+const createGalleryProjection = (input: {
+  view: View
+  query: Pick<ActiveViewQuery, 'group' | 'sort'>
+}): ActiveViewGallery => {
+  if (input.view.type !== 'gallery') {
+    return {
+      wrap: false,
+      size: DEFAULT_CARD_SIZE,
+      layout: DEFAULT_CARD_LAYOUT,
+      canReorder: false,
+      groupUsesOptionColors: false
+    }
+  }
+
+  return {
+    wrap: input.view.options.gallery.card.wrap,
+    size: input.view.options.gallery.card.size,
+    layout: input.view.options.gallery.card.layout,
+    canReorder: !input.query.group.active && input.query.sort.rules.length === 0,
+    groupUsesOptionColors: fieldSpec.view.groupUsesOptionColors(input.query.group.field)
+  }
+}
+
+const createKanbanProjection = (input: {
+  view: View
+  query: Pick<ActiveViewQuery, 'group' | 'sort'>
+}): ActiveViewKanban => {
+  if (input.view.type !== 'kanban') {
+    return {
+      wrap: false,
+      size: DEFAULT_CARD_SIZE,
+      layout: DEFAULT_CARD_LAYOUT,
+      canReorder: false,
+      groupUsesOptionColors: false,
+      fillColumnColor: false,
+      cardsPerColumn: DEFAULT_KANBAN_CARDS_PER_COLUMN
+    }
+  }
+
+  const groupUsesOptionColors = fieldSpec.view.groupUsesOptionColors(input.query.group.field)
+
+  return {
+    wrap: input.view.options.kanban.card.wrap,
+    size: input.view.options.kanban.card.size,
+    layout: input.view.options.kanban.card.layout,
+    canReorder: input.query.group.active && input.query.sort.rules.length === 0,
+    groupUsesOptionColors,
+    fillColumnColor: groupUsesOptionColors && input.view.options.kanban.fillColumnColor,
+    cardsPerColumn: input.view.options.kanban.cardsPerColumn
+  }
+}
+
 const equalFilterCondition = (
   left: FilterConditionProjection,
   right: FilterConditionProjection
@@ -257,6 +374,54 @@ const equalGroupProjection = (
   && sameList(current.availableBucketSorts, next.availableBucketSorts, Object.is)
 ))
 
+const equalQueryProjection = (
+  left: ActiveViewQuery | undefined,
+  right: ActiveViewQuery | undefined
+) => sameOptionalProjection(left, right, (current, next) => (
+  equalFilterProjection(current.filters, next.filters)
+  && equalGroupProjection(current.group, next.group)
+  && equalSearchProjection(current.search, next.search)
+  && equalSortProjection(current.sort, next.sort)
+  && current.grouped === next.grouped
+  && current.groupFieldId === next.groupFieldId
+  && sameOptionalList(current.filterFieldIds, next.filterFieldIds, Object.is)
+  && sameOptionalList(current.sortFieldIds, next.sortFieldIds, Object.is)
+  && equal.sameMap(current.sortDir, next.sortDir)
+))
+
+const equalTableProjection = (
+  left: ActiveViewTable | undefined,
+  right: ActiveViewTable | undefined
+) => sameOptionalProjection(left, right, (current, next) => (
+  current.wrap === next.wrap
+  && current.showVerticalLines === next.showVerticalLines
+  && equal.sameMap(current.calc, next.calc)
+))
+
+const equalGalleryProjection = (
+  left: ActiveViewGallery | undefined,
+  right: ActiveViewGallery | undefined
+) => sameOptionalProjection(left, right, (current, next) => (
+  current.wrap === next.wrap
+  && current.size === next.size
+  && current.layout === next.layout
+  && current.canReorder === next.canReorder
+  && current.groupUsesOptionColors === next.groupUsesOptionColors
+))
+
+const equalKanbanProjection = (
+  left: ActiveViewKanban | undefined,
+  right: ActiveViewKanban | undefined
+) => sameOptionalProjection(left, right, (current, next) => (
+  current.wrap === next.wrap
+  && current.size === next.size
+  && current.layout === next.layout
+  && current.canReorder === next.canReorder
+  && current.groupUsesOptionColors === next.groupUsesOptionColors
+  && current.fillColumnColor === next.fillColumnColor
+  && current.cardsPerColumn === next.cardsPerColumn
+))
+
 export const publishViewBase = (input: {
   reader: DocumentReader
   fieldsById: ReadonlyMap<FieldId, Field>
@@ -265,11 +430,17 @@ export const publishViewBase = (input: {
     view?: View
     query?: ActiveViewQuery
     fields?: FieldList
+    table?: ActiveViewTable
+    gallery?: ActiveViewGallery
+    kanban?: ActiveViewKanban
   }
 }): {
   view?: View
   query?: ActiveViewQuery
   fields?: FieldList
+  table?: ActiveViewTable
+  gallery?: ActiveViewGallery
+  kanban?: ActiveViewKanban
 } => {
   const view = input.viewId
     ? input.reader.views.get(input.viewId)
@@ -278,7 +449,10 @@ export const publishViewBase = (input: {
     return {
       view: undefined,
       query: undefined,
-      fields: undefined
+      fields: undefined,
+      table: undefined,
+      gallery: undefined,
+      kanban: undefined
     }
   }
 
@@ -299,26 +473,40 @@ export const publishViewBase = (input: {
     fieldIds: view.display.fields,
     byId: input.fieldsById
   })
+  const nextFilterFieldIds = createFilterFieldIds(view)
+  const nextSortFieldIds = createSortFieldIds(view)
+  const nextQuery = {
+    filters: nextFilter,
+    group: nextGroup,
+    search: nextSearch,
+    sort: nextSort,
+    grouped: nextGroup.active,
+    groupFieldId: nextGroup.fieldId,
+    filterFieldIds: nextFilterFieldIds,
+    sortFieldIds: nextSortFieldIds,
+    sortDir: createSortDir(view, nextSortFieldIds)
+  } satisfies ActiveViewQuery
+  const nextTable = createTableProjection({
+    view,
+    fields: nextFields
+  })
+  const nextGallery = createGalleryProjection({
+    view,
+    query: nextQuery
+  })
+  const nextKanban = createKanbanProjection({
+    view,
+    query: nextQuery
+  })
 
   return {
     view: input.previous?.view === view
       ? input.previous.view
       : view,
-    query: reuseIfEqual(
-      input.previous?.query,
-      {
-        filters: nextFilter,
-        group: nextGroup,
-        search: nextSearch,
-        sort: nextSort
-      },
-      (current, next) => (
-        equalFilterProjection(current.filters, next.filters)
-        && equalGroupProjection(current.group, next.group)
-        && equalSearchProjection(current.search, next.search)
-        && equalSortProjection(current.sort, next.sort)
-      )
-    ),
-    fields: reuseIfEqual(input.previous?.fields, nextFields, sameFieldList)
+    query: reuseIfEqual(input.previous?.query, nextQuery, equalQueryProjection),
+    fields: reuseIfEqual(input.previous?.fields, nextFields, sameFieldList),
+    table: reuseIfEqual(input.previous?.table, nextTable, equalTableProjection),
+    gallery: reuseIfEqual(input.previous?.gallery, nextGallery, equalGalleryProjection),
+    kanban: reuseIfEqual(input.previous?.kanban, nextKanban, equalKanbanProjection)
   }
 }

@@ -85,19 +85,19 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.render.get(created.data.mindmapId)?.tree
+    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
     expect(tree).toBeDefined()
 
     const insert = editor.actions.mindmap.insertByPlacement({
-      id: created.data.mindmapId,
-      tree: tree!,
-      targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: tree!.layout,
-      payload: {
-        kind: 'text',
-        text: 'Child'
-      }
+        id: created.data.mindmapId,
+        tree: tree!,
+        targetNodeId: created.data.rootId,
+        placement: 'right',
+        layout: tree!.layout,
+        payload: {
+          kind: 'text',
+          text: 'Child'
+        }
     })
 
     expect(insert.ok).toBe(true)

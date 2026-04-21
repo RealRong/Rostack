@@ -84,7 +84,7 @@ export type EditorRead = {
   }
   group: Pick<EditorQuery['group'], 'exactIds'>
   history: HistoryApi
-  mindmap: Pick<EditorQuery['mindmap'], 'structure' | 'layout' | 'scene' | 'chrome' | 'navigate'>
+  mindmap: Pick<EditorQuery['mindmap'], 'structure' | 'layout' | 'node' | 'scene' | 'chrome' | 'navigate'>
   node: Pick<EditorQuery['node'], 'render'>
   edge: Pick<EditorQuery['edge'], 'render' | 'selectedChrome'>
   scene: Pick<EditorQuery['scene'], 'list'>

@@ -18,11 +18,12 @@ import {
   view as viewApi
 } from '@dataview/core/view'
 import {
+  normalizeIndexDemand,
   resolveDefaultSearchFieldIds
 } from '@dataview/engine/active/index/demand'
 import type {
   BucketSpec,
-  IndexDemand
+  NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
 import type {
   DocumentReadContext,
@@ -53,7 +54,7 @@ export interface QueryPlan {
 
 export interface ViewPlan {
   query: QueryPlan
-  demand: IndexDemand
+  index: NormalizedIndexDemand
   section?: {
     fieldId: FieldId
     mode?: ViewGroup['mode']
@@ -62,32 +63,6 @@ export interface ViewPlan {
     showEmpty: boolean
   }
   calcFields: readonly FieldId[]
-}
-
-export type ViewPlanQueryChange =
-  | 'none'
-  | 'execution'
-  | 'definition'
-
-export interface ViewPlanChange {
-  query: ViewPlanQueryChange
-  index: {
-    all: boolean
-    search: boolean
-    bucket: readonly FieldId[]
-    sort: readonly FieldId[]
-    calc: readonly FieldId[]
-  }
-  view: {
-    query: boolean
-    section: boolean
-    summary: boolean
-  }
-  output: {
-    publish: boolean
-    source: boolean
-    table: boolean
-  }
 }
 
 const isKnownFieldId = (
@@ -286,188 +261,32 @@ export const compileViewPlan = (
     ))
   ]))
   const { calcFields, calculations } = readCalculationDemands(view)
+  const index = normalizeIndexDemand({
+    document: reader.document(),
+    reader
+  }, {
+    search: {
+      fieldIds: query.search?.fieldIds ?? resolveSearchFieldIds(reader, view)
+    },
+    ...(buckets.length ? { buckets } : {}),
+    ...(displayFields.length
+      ? {
+          displayFields
+        }
+      : {}),
+    ...(sortFields.length
+      ? { sortFields }
+      : {}),
+    ...(calculations.length
+      ? { calculations }
+      : {})
+  })
 
   return {
     query,
-    demand: {
-      search: {
-        fieldIds: query.search?.fieldIds ?? resolveSearchFieldIds(reader, view)
-      },
-      ...(buckets.length ? { buckets } : {}),
-      ...(displayFields.length
-        ? {
-            displayFields
-          }
-        : {}),
-      ...(sortFields.length
-        ? { sortFields }
-        : {}),
-      ...(calculations.length
-        ? { calculations }
-        : {})
-    },
+    index,
     ...(section ? { section } : {}),
     calcFields
-  }
-}
-
-const sameFieldIds = (
-  left: readonly FieldId[] = [],
-  right: readonly FieldId[] = []
-) => left.length === right.length
-  && left.every((fieldId, index) => fieldId === right[index])
-
-const sameBucketSpecs = (
-  left: readonly BucketSpec[] = [],
-  right: readonly BucketSpec[] = []
-) => left.length === right.length
-  && left.every((spec, index) => {
-    const next = right[index]
-    return next !== undefined
-      && spec.fieldId === next.fieldId
-      && spec.mode === next.mode
-      && spec.interval === next.interval
-  })
-
-const sameSectionPlan = (
-  left: ViewPlan['section'],
-  right: ViewPlan['section']
-) => (
-  left?.fieldId === right?.fieldId
-  && left?.mode === right?.mode
-  && left?.sort === right?.sort
-  && left?.interval === right?.interval
-  && left?.showEmpty === right?.showEmpty
-)
-
-const EMPTY_PLAN_CHANGE: ViewPlanChange = {
-  query: 'none',
-  index: {
-    all: false,
-    search: false,
-    bucket: [],
-    sort: [],
-    calc: []
-  },
-  view: {
-    query: false,
-    section: false,
-    summary: false
-  },
-  output: {
-    publish: false,
-    source: false,
-    table: false
-  }
-}
-
-export const diffViewPlan = (
-  previous: ViewPlan | undefined,
-  next: ViewPlan | undefined
-): ViewPlanChange => {
-  if (!previous && !next) {
-    return EMPTY_PLAN_CHANGE
-  }
-
-  if (!previous || !next) {
-    return {
-      query: 'definition',
-      index: {
-        all: true,
-        search: true,
-        bucket: next?.demand.buckets?.map(spec => spec.fieldId) ?? [],
-        sort: next?.demand.sortFields ?? [],
-        calc: next?.calcFields ?? []
-      },
-      view: {
-        query: true,
-        section: true,
-        summary: true
-      },
-      output: {
-        publish: true,
-        source: true,
-        table: true
-      }
-    }
-  }
-
-  const searchChanged = !sameFieldIds(
-    previous.demand.search?.fieldIds,
-    next.demand.search?.fieldIds
-  )
-  const bucketChanged = !sameBucketSpecs(
-    previous.demand.buckets,
-    next.demand.buckets
-  )
-  const sortChanged = !sameFieldIds(
-    previous.demand.sortFields,
-    next.demand.sortFields
-  )
-  const calcChanged = !sameFieldIds(
-    previous.calcFields,
-    next.calcFields
-  )
-  const sectionChanged = !sameSectionPlan(previous.section, next.section)
-  const queryDefinitionChanged = (
-    searchChanged
-    || bucketChanged
-    || sortChanged
-    || calcChanged
-    || sectionChanged
-  )
-  const queryChanged = previous.query.executionKey !== next.query.executionKey
-  const bucketFieldIds = Array.from(new Set([
-    ...(previous.demand.buckets?.map(spec => spec.fieldId) ?? []),
-    ...(next.demand.buckets?.map(spec => spec.fieldId) ?? [])
-  ]))
-  const sortFieldIds = Array.from(new Set([
-    ...(previous.demand.sortFields ?? []),
-    ...(next.demand.sortFields ?? [])
-  ]))
-  const calcFieldIds = Array.from(new Set([
-    ...previous.calcFields,
-    ...next.calcFields
-  ]))
-
-  return {
-    query: queryDefinitionChanged
-      ? 'definition'
-      : queryChanged
-        ? 'execution'
-        : 'none',
-    index: {
-      all: false,
-      search: searchChanged,
-      bucket: bucketChanged ? bucketFieldIds : [],
-      sort: sortChanged ? sortFieldIds : [],
-      calc: calcChanged ? calcFieldIds : []
-    },
-    view: {
-      query: queryDefinitionChanged || queryChanged,
-      section: sectionChanged || bucketChanged || queryDefinitionChanged,
-      summary: sectionChanged || calcChanged || queryDefinitionChanged
-    },
-    output: {
-      publish: sectionChanged || queryDefinitionChanged || queryChanged,
-      source: sectionChanged || queryDefinitionChanged || queryChanged,
-      table: sectionChanged || queryDefinitionChanged || queryChanged
-    }
-  }
-}
-
-export const syncViewPlan = (input: {
-  context: DocumentReadContext
-  previous?: ViewPlan
-  activeViewId?: ViewId
-}): {
-  state?: ViewPlan
-  change: ViewPlanChange
-} => {
-  const state = resolveViewPlan(input.context, input.activeViewId)
-  return {
-    state,
-    change: diffViewPlan(input.previous, state)
   }
 }
 

@@ -87,7 +87,7 @@ describe('mindmap root move', () => {
     }
 
     const { mindmapId, rootId } = created.data
-    const beforeTree = editor.read.mindmap.render.get(mindmapId)?.bbox
+    const beforeTree = editor.read.mindmap.scene.get(mindmapId)?.bbox
     const beforeRoot = editor.read.document.get().nodes[rootId]?.position
 
     expect(beforeTree).toBeDefined()
@@ -103,7 +103,7 @@ describe('mindmap root move', () => {
       threshold: 0
     })
 
-    const afterTree = editor.read.mindmap.render.get(mindmapId)?.bbox
+    const afterTree = editor.read.mindmap.scene.get(mindmapId)?.bbox
     const afterRoot = editor.read.document.get().nodes[rootId]?.position
 
     expect(afterTree).toBeDefined()
@@ -122,9 +122,7 @@ describe('mindmap root move', () => {
     const session = createMindmapDragSession({
       write: {
         mindmap: {
-          root: {
-            move: moveRoot
-          },
+          move: moveRoot,
           topic: {
             move: moveTopic
           }
@@ -132,7 +130,10 @@ describe('mindmap root move', () => {
       },
       query: {
         mindmap: {
-          item: {
+          structure: {
+            get: vi.fn()
+          },
+          layout: {
             get: vi.fn()
           }
         },

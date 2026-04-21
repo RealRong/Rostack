@@ -27,83 +27,9 @@ import type {
   ViewSortProjection
 } from '@dataview/engine/contracts/view'
 
-export interface DocumentChange {
-  records: {
-    changed: readonly RecordId[]
-    removed: readonly RecordId[]
-    idsChanged: boolean
-  }
-  fields: {
-    changed: readonly FieldId[]
-    removed: readonly FieldId[]
-    idsChanged: boolean
-  }
-  views: {
-    changed: readonly ViewId[]
-    removed: readonly ViewId[]
-    idsChanged: boolean
-  }
-  activeViewChanged: boolean
-}
-
 export interface EntityDelta<TKey, TValue> {
   set?: ReadonlyMap<TKey, TValue | undefined>
   remove?: readonly TKey[]
-}
-
-export interface ViewPublishDelta {
-  rebuild: boolean
-  view?: {
-    ready: boolean
-    id?: ViewId
-    type?: View['type']
-    value?: View | undefined
-  }
-  query?: {
-    search?: ViewSearchProjection
-    filters?: ViewFilterProjection
-    sort?: ViewSortProjection
-    group?: ViewGroupProjection
-    grouped?: boolean
-    groupFieldId?: FieldId | ''
-    filterFieldIds?: readonly FieldId[]
-    sortFieldIds?: readonly FieldId[]
-    sortDir?: ReadonlyMap<FieldId, SortDirection | undefined>
-  }
-  items?: {
-    ids?: readonly ItemId[]
-    values?: EntityDelta<ItemId, ViewItem>
-  }
-  sections?: {
-    keys?: readonly SectionKey[]
-    values?: EntityDelta<SectionKey, Section>
-    summary?: EntityDelta<SectionKey, CalculationCollection | undefined>
-  }
-  fields?: {
-    all?: readonly Field[]
-    custom?: readonly CustomField[]
-  }
-  table?: {
-    wrap?: boolean
-    showVerticalLines?: boolean
-    calc?: ReadonlyMap<FieldId, CalculationMetric | undefined>
-  }
-  gallery?: {
-    wrap?: boolean
-    size?: CardSize
-    layout?: CardLayout
-    canReorder?: boolean
-    groupUsesOptionColors?: boolean
-  }
-  kanban?: {
-    wrap?: boolean
-    size?: CardSize
-    layout?: CardLayout
-    canReorder?: boolean
-    groupUsesOptionColors?: boolean
-    fillColumnColor?: boolean
-    cardsPerColumn?: KanbanCardsPerColumn
-  }
 }
 
 export interface SourceDelta {

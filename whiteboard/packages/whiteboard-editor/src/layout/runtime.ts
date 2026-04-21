@@ -16,7 +16,7 @@ import type {
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
 import type { EditField, EditLayout, EditSession } from '@whiteboard/editor/session/edit'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
-import { store } from '@shared/core'
+import { equal, store } from '@shared/core'
 import type {
   LayoutBackend,
   LayoutKind,
@@ -358,6 +358,7 @@ export const createEditorLayout = ({
       committed: EngineRead['node']['item']
     }
     mindmap: {
+      list: EngineRead['mindmap']['list']
       committed: EngineRead['mindmap']['layout']
       structure: EngineRead['mindmap']['structure']
     }
@@ -371,12 +372,35 @@ export const createEditorLayout = ({
 }): EditorLayout => {
   const text = createTextMetricsResource()
   const mindmap = createMindmapLayoutRead({
+    list: read.mindmap.list,
     committed: read.mindmap.committed,
     structure: read.mindmap.structure,
     nodeCommitted: read.node.committed,
     edit: session.edit,
     preview: session.mindmapPreview
   })
+
+  const readLayoutNodeItem = (
+    nodeId: NodeId
+  ) => {
+    const committed = store.read(read.node.committed, nodeId)
+    if (!committed) {
+      return undefined
+    }
+
+    const mindmapNode = store.read(mindmap.node, nodeId)
+    if (
+      !mindmapNode
+      || equal.sameRect(committed.rect, mindmapNode.rect)
+    ) {
+      return committed
+    }
+
+    return {
+      node: committed.node,
+      rect: mindmapNode.rect
+    }
+  }
 
   const resolveNodeRequest = ({
     nodeId,
@@ -499,7 +523,7 @@ export const createEditorLayout = ({
       root: patchMindmapTemplateNode(template.root, position)
     }),
     patchNodeUpdate: (nodeId, update, options) => {
-      const committed = read.node.committed.get(nodeId)
+      const committed = readLayoutNodeItem(nodeId)
       if (!committed) {
         return update
       }
@@ -550,7 +574,7 @@ export const createEditorLayout = ({
       field,
       text
     }) => {
-      const committed = read.node.committed.get(nodeId)
+      const committed = readLayoutNodeItem(nodeId)
       if (!committed) {
         return undefined
       }
@@ -597,7 +621,7 @@ export const createEditorLayout = ({
     },
 
     resolvePreviewPatches: (patches) => patches.map((patch) => {
-      const committed = read.node.committed.get(patch.id)
+      const committed = readLayoutNodeItem(patch.id)
       if (!backend || !committed) {
         return patch
       }

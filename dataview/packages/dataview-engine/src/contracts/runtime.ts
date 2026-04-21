@@ -5,13 +5,13 @@ import type {
   ViewTrace
 } from '@dataview/engine/contracts'
 import type {
-  ViewRuntimeDelta as InternalViewRuntimeDelta
+  SnapshotChange as InternalSnapshotChange
 } from '@dataview/engine/contracts/state'
 
 export interface ViewRuntimeResult {
   cache: ViewCache
   snapshot?: ViewState
-  delta?: InternalViewRuntimeDelta
+  delta?: InternalSnapshotChange
   trace?: {
     view: ViewTrace
     snapshot: SnapshotTrace

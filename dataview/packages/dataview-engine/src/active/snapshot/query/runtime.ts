@@ -155,6 +155,7 @@ const resolveQueryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
   impact: ActiveImpact
+  previousPlan?: QueryPlan
   plan: QueryPlan
   previous?: QueryState
 }): DeriveAction => {
@@ -168,7 +169,7 @@ const resolveQueryAction = (input: {
     return 'rebuild'
   }
 
-  if (input.previous.plan.executionKey !== input.plan.executionKey) {
+  if (input.previousPlan?.executionKey !== input.plan.executionKey) {
     return 'sync'
   }
 
@@ -225,6 +226,7 @@ export const runQueryStage = (input: {
   view: View
   plan: QueryPlan
   index: IndexState
+  previousPlan?: QueryPlan
   previous?: QueryState
   previousPublished?: ViewRecords
 }): {
@@ -240,6 +242,7 @@ export const runQueryStage = (input: {
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
     impact: input.impact,
+    previousPlan: input.previousPlan,
     plan: input.plan,
     previous: input.previous
   })

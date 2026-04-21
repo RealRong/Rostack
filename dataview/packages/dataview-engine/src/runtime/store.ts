@@ -1,15 +1,15 @@
 import { impact } from '@dataview/core/commit/impact'
 import type { DataDoc } from '@dataview/core/contracts'
 import { store } from '@shared/core'
-import { syncViewPlan } from '@dataview/engine/active/plan'
+import { resolveViewPlan } from '@dataview/engine/active/plan'
+import { emptyNormalizedIndexDemand } from '@dataview/engine/active/index/demand'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { createViewRuntime } from '@dataview/engine/active/runtime'
 import { createActiveImpact } from '@dataview/engine/active/shared/impact'
 import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 import type { EngineRuntimeState } from '@dataview/engine/runtime/state'
 import {
-  projectDocumentChange,
-  projectEngineOutput
+  projectSourceOutput
 } from '@dataview/engine/source/project'
 
 export type RuntimeStore = store.ValueStore<EngineRuntimeState>
@@ -23,27 +23,21 @@ export const createRuntimeState = (input: {
   // The engine maintains exactly one derived runtime for the current active view.
   // Inactive views keep only document config and are rebuilt on demand when opened.
   const documentContext = createStaticDocumentReadContext(input.doc)
-  const plan = syncViewPlan({
-    context: documentContext,
-    activeViewId: documentContext.activeViewId
-  }).state
-  const index = createIndexState(input.doc, plan?.demand)
+  const plan = resolveViewPlan(documentContext, documentContext.activeViewId)
+  const index = createIndexState(input.doc, plan?.index ?? emptyNormalizedIndexDemand())
+  const resetImpact = impact.reset(undefined, input.doc)
   const currentView = createViewRuntime({
     documentContext,
     viewPlan: plan,
-    index: index.state,
-    impact: createActiveImpact(impact.reset(undefined, input.doc)),
+    index,
+    impact: createActiveImpact(resetImpact),
     capturePerf: input.capturePerf
   })
-  const documentChange = projectDocumentChange({
-    impact: impact.reset(undefined, input.doc),
-    document: input.doc
-  })
-  const output = projectEngineOutput({
+  const output = projectSourceOutput({
     document: input.doc,
-    documentChange,
+    impact: resetImpact,
     nextView: currentView.snapshot,
-    viewDelta: currentView.delta,
+    snapshotChange: currentView.delta,
     previousLayout: null
   })
 
@@ -59,8 +53,7 @@ export const createRuntimeState = (input: {
       ...(plan
         ? { plan }
         : {}),
-      demand: index.demand,
-      index: index.state,
+      index,
       cache: currentView.cache,
       sourceDelta: output.sourceDelta,
       tableLayout: output.tableLayout,

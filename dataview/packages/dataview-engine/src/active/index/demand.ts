@@ -15,6 +15,16 @@ import type {
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
 
+const EMPTY_NORMALIZED_INDEX_DEMAND: NormalizedIndexDemand = {
+  recordFields: [],
+  search: [],
+  buckets: [],
+  sortFields: [],
+  calculations: []
+}
+
+export const emptyNormalizedIndexDemand = (): NormalizedIndexDemand => EMPTY_NORMALIZED_INDEX_DEMAND
+
 export const createBucketSpecKey = (
   spec: BucketSpec
 ): string => [

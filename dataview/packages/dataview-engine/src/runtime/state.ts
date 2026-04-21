@@ -1,9 +1,6 @@
 import type { DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import type {
-  IndexState,
-  NormalizedIndexDemand
-} from '@dataview/engine/active/index/contracts'
+import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
 import type { ViewCache } from '@dataview/engine/contracts/state'
 import type {
@@ -25,7 +22,6 @@ export interface RuntimeHistory {
 
 export interface ActiveRuntimeState {
   plan?: ViewPlan
-  demand: NormalizedIndexDemand
   index: IndexState
   cache: ViewCache
   snapshot?: ViewState

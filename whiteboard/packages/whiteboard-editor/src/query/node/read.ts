@@ -1,7 +1,6 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import type {
   EngineRead,
-  MindmapLayoutItem,
   NodeItem
 } from '@whiteboard/engine'
 import { collection, equal, store } from '@shared/core'
@@ -27,6 +26,7 @@ import type {
   NodePreviewProjection
 } from '@whiteboard/editor/session/preview/types'
 import type { NodeEditView } from '@whiteboard/editor/query/edit/read'
+import type { MindmapNodeLayoutItem } from '@whiteboard/editor/layout/mindmap'
 
 export type NodeStyleFieldKind = 'string' | 'number' | 'numberArray'
 
@@ -344,25 +344,20 @@ const readTextGeometryPatch = (
 
 const applyMindmapGeometry = (
   item: NodeItem,
-  mindmap: MindmapLayoutItem | undefined
+  mindmap: MindmapNodeLayoutItem | undefined
 ) => {
   if (!mindmap) {
     return item
   }
 
-  const rect = mindmap.computed.node[item.node.id]
-  if (!rect) {
-    return item
-  }
-
   return nodeApi.projection.applyGeometryPatch(item, {
     position: {
-      x: rect.x,
-      y: rect.y
+      x: mindmap.rect.x,
+      y: mindmap.rect.y
     },
     size: {
-      width: rect.width,
-      height: rect.height
+      width: mindmap.rect.width,
+      height: mindmap.rect.height
     }
   })
 }
@@ -370,7 +365,7 @@ const applyMindmapGeometry = (
 const projectNodeGeometryItem = (
   item: NodeItem,
   feedback: NodePreviewProjection,
-  mindmap: MindmapLayoutItem | undefined,
+  mindmap: MindmapNodeLayoutItem | undefined,
   edit: NodeEditView | undefined
 ): NodeItem => nodeApi.projection.applyGeometryPatch(
   applyMindmapGeometry(
@@ -438,8 +433,7 @@ const toNodeRenderEdit = (
 
 const resolveNodeCapability = (
   node: Pick<Node, 'id' | 'type' | 'owner'>,
-  type: NodeTypeRead,
-  _mindmap: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+  type: NodeTypeRead
 ): NodeCapability => {
   const base = type.capability(node.type)
   const mindmapOwned = node.owner?.kind === 'mindmap'
@@ -463,7 +457,7 @@ export const createNodeRead = ({
   read: EngineRead
   type: NodeTypeRead
   feedback: store.KeyedReadStore<NodeId, NodePreviewProjection>
-  mindmap: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+  mindmap: store.KeyedReadStore<NodeId, MindmapNodeLayoutItem | undefined>
   edit: {
     node: store.KeyedReadStore<NodeId, NodeEditView | undefined>
   }
@@ -478,15 +472,10 @@ export const createNodeRead = ({
         return undefined
       }
 
-      const treeId = current.node.owner?.kind === 'mindmap'
-        ? current.node.owner.id
-        : undefined
       const geometryItem = projectNodeGeometryItem(
         current,
         store.read(feedback, nodeId),
-        treeId
-          ? store.read(mindmap, treeId)
-          : undefined,
+        store.read(mindmap, nodeId),
         store.read(edit.node, nodeId)
       )
 
@@ -550,7 +539,7 @@ export const createNodeRead = ({
       const runtime = readNodeRuntime(
         store.read(feedback, nodeId)
       )
-      const currentCapability = resolveNodeCapability(currentNode, type, mindmap)
+      const currentCapability = resolveNodeCapability(currentNode, type)
 
       return {
         nodeId,
@@ -605,7 +594,7 @@ export const createNodeRead = ({
     canvas,
     rect,
     bounds,
-    capability: (node) => resolveNodeCapability(node, type, mindmap),
+    capability: (node) => resolveNodeCapability(node, type),
     idsInRect: (rect, options) => read.node.idsInRect(rect, options)
       .filter((nodeId) => isSelectableNode(read.node.item.get(nodeId)?.node)),
     ordered: () => collection.presentValues(store.read(read.node.list), (nodeId) => {

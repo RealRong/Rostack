@@ -1,20 +1,9 @@
-import type {
-  FieldId,
-  RecordId
-} from '@dataview/core/contracts'
+import type { RecordId } from '@dataview/core/contracts'
 import type {
   ViewRecords
 } from '@dataview/engine/contracts/shared'
 
 export interface QueryState {
-  plan: {
-    executionKey: string
-    watch: {
-      search: readonly FieldId[] | 'all'
-      filter: readonly FieldId[]
-      sort: readonly FieldId[]
-    }
-  }
   records: ViewRecords
   search?: {
     query: string
@@ -41,14 +30,6 @@ const EMPTY_VIEW_RECORDS: ViewRecords = {
 }
 
 export const emptyQueryState = (): QueryState => ({
-  plan: {
-    executionKey: '',
-    watch: {
-      search: [],
-      filter: [],
-      sort: []
-    }
-  },
   records: EMPTY_VIEW_RECORDS
 })
 

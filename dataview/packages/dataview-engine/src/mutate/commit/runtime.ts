@@ -15,6 +15,9 @@ import {
   deriveIndex
 } from '@dataview/engine/active/index/runtime'
 import {
+  emptyNormalizedIndexDemand
+} from '@dataview/engine/active/index/demand'
+import {
   deriveViewRuntime
 } from '@dataview/engine/active/runtime'
 import {
@@ -31,7 +34,7 @@ import {
   now
 } from '@dataview/engine/runtime/clock'
 import {
-  syncViewPlan
+  resolveViewPlan
 } from '@dataview/engine/active/plan'
 import type {
   EngineRuntimeState,
@@ -53,8 +56,7 @@ import {
   toTraceKind
 } from '@dataview/engine/mutate/commit/trace'
 import {
-  projectDocumentChange,
-  projectEngineOutput
+  projectSourceOutput
 } from '@dataview/engine/source/project'
 
 type Kind =
@@ -207,39 +209,33 @@ const commit = <TResult extends CommitResult>(input: {
   }
 
   const documentContext = createStaticDocumentReadContext(draft.doc)
-  const plan = syncViewPlan({
-    context: documentContext,
-    previous: base.currentView.plan,
-    activeViewId: documentContext.activeViewId
-  }).state
+  const previousPlan = base.currentView.plan
+  const plan = resolveViewPlan(documentContext, documentContext.activeViewId)
   const activeImpact = createActiveImpact(draft.impact)
   const nextIndex = deriveIndex({
     previous: base.currentView.index,
-    previousDemand: base.currentView.demand,
+    previousDemand: previousPlan?.index ?? emptyNormalizedIndexDemand(),
     document: draft.doc,
     impact: activeImpact,
-    demand: plan?.demand
+    demand: plan?.index
   })
   const nextView = deriveViewRuntime({
     previous: base.currentView.snapshot,
     cache: base.currentView.cache,
     documentContext,
     viewPlan: plan,
+    previousPlan,
     index: nextIndex.state,
     impact: activeImpact,
     capturePerf: input.capturePerf
   })
-  const documentChange = projectDocumentChange({
-    impact: draft.impact,
-    document: draft.doc
-  })
   const outputStart = now()
-  const output = projectEngineOutput({
+  const output = projectSourceOutput({
     document: draft.doc,
-    documentChange,
+    impact: draft.impact,
     previousView: base.currentView.snapshot,
     nextView: nextView.snapshot,
-    viewDelta: nextView.delta,
+    snapshotChange: nextView.delta,
     previousLayout: base.currentView.tableLayout
   })
   const outputMs = now() - outputStart
@@ -252,7 +248,6 @@ const commit = <TResult extends CommitResult>(input: {
       ...(plan
         ? { plan }
         : {}),
-      demand: nextIndex.demand,
       index: nextIndex.state,
       cache: nextView.cache,
       sourceDelta: output.sourceDelta,

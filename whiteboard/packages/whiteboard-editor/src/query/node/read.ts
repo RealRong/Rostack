@@ -118,6 +118,32 @@ type NodeRuntime = {
 const EMPTY_CONTROLS: readonly ControlId[] = []
 const nodeModelCache = new WeakMap<Node, NodeModel>()
 
+const MINDMAP_EDIT_DEBUG_PREFIX = '[mindmap-edit-debug]'
+
+const debugMindmapEdit = (
+  label: string,
+  payload: unknown
+) => {
+  console.log(MINDMAP_EDIT_DEBUG_PREFIX, label, payload)
+}
+
+const toDebugDraft = (
+  draft: DraftMeasure
+) => draft?.kind === 'size'
+  ? {
+      kind: draft.kind,
+      size: {
+        width: draft.size.width,
+        height: draft.size.height
+      }
+    }
+  : draft?.kind === 'fit'
+    ? {
+        kind: draft.kind,
+        fontSize: draft.fontSize
+      }
+    : undefined
+
 const readFallbackMeta = (
   type: NodeType
 ): NodeMeta => ({
@@ -403,6 +429,20 @@ const projectNode = ({
     rotation: geometry.rotation
   })
 
+  if (mindmapOwned && committed.node.owner?.kind === 'mindmap') {
+    debugMindmapEdit('node.projected', {
+      treeId: committed.node.owner.id,
+      nodeId: committed.node.id,
+      committedRect: committed.rect,
+      ownerRect: ownerGeometry?.rect,
+      ownerRotation: ownerGeometry?.rotation,
+      draft: toDebugDraft(draft),
+      feedbackGeometry: feedback.geometry,
+      finalRect: projectedGeometry.rect,
+      bounds: projectedGeometry.bounds
+    })
+  }
+
   return {
     nodeId: committed.node.id,
     node,
@@ -562,13 +602,31 @@ export const createNodeRead = ({
         return undefined
       }
 
-      return buildNodeRender({
+      const currentRender = buildNodeRender({
         projected: currentProjected,
         feedback: store.read(feedback, nodeId),
         selected: store.read(selection.selected, nodeId),
         edit: store.read(edit.node, nodeId),
         type
       })
+
+      if (currentRender.node.owner?.kind === 'mindmap') {
+        debugMindmapEdit('node.render', {
+          treeId: currentRender.node.owner.id,
+          nodeId,
+          rect: currentRender.rect,
+          bounds: currentRender.bounds,
+          selected: currentRender.selected,
+          edit: currentRender.edit
+            ? {
+                field: currentRender.edit.field,
+                caretKind: currentRender.edit.caret.kind
+              }
+            : undefined
+        })
+      }
+
+      return currentRender
     },
     isEqual: isNodeRenderEqual
   })

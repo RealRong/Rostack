@@ -221,4 +221,114 @@ describe('mindmap edit relayout preview', () => {
     expect(liveChild!.width).toBeGreaterThan(beforeChild!.width)
     expect(liveScene!.width).toBeGreaterThanOrEqual(beforeScene!.width)
   })
+
+  it('relayouts sibling positions when topic live height grows during edit', () => {
+    const heightAwareLayout: LayoutBackend = {
+      measure: (request) => {
+        if (request.kind === 'fit') {
+          return {
+            kind: 'fit',
+            fontSize: 18
+          }
+        }
+
+        return {
+          kind: 'size',
+          size: {
+            width: 120,
+            height: request.text.length > 24 ? 88 : 44
+          }
+        }
+      }
+    }
+
+    const engine = engineApi.create({
+      document: documentApi.create('doc_mindmap_edit_relayout_preview_height')
+    })
+    const editor = editorApi.create({
+      engine,
+      history: historyApi.local.create(engine),
+      initialTool: {
+        type: 'select'
+      },
+      initialViewport: {
+        center: { x: 0, y: 0 },
+        zoom: 1
+      },
+      registry,
+      services: {
+        layout: heightAwareLayout
+      }
+    })
+
+    const created = editor.actions.mindmap.create({
+      template: product.mindmap.template.build({
+        preset: 'mindmap.underline-split'
+      })
+    })
+
+    expect(created.ok).toBe(true)
+    if (!created.ok) {
+      return
+    }
+
+    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
+    expect(tree).toBeDefined()
+
+    const first = editor.actions.mindmap.insertByPlacement({
+      id: created.data.mindmapId,
+      tree: tree!,
+      targetNodeId: created.data.rootId,
+      placement: 'right',
+      layout: tree!.layout,
+      payload: {
+        kind: 'text',
+        text: 'First'
+      }
+    })
+
+    expect(first.ok).toBe(true)
+    if (!first.ok) {
+      return
+    }
+
+    const updatedTree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
+    expect(updatedTree).toBeDefined()
+
+    const second = editor.actions.mindmap.insertByPlacement({
+      id: created.data.mindmapId,
+      tree: updatedTree!,
+      targetNodeId: created.data.rootId,
+      placement: 'right',
+      layout: updatedTree!.layout,
+      payload: {
+        kind: 'text',
+        text: 'Second'
+      }
+    })
+
+    expect(second.ok).toBe(true)
+    if (!second.ok) {
+      return
+    }
+
+    const beforeFirst = editor.read.node.render.get(first.data.nodeId)?.rect
+    const beforeSecond = editor.read.node.render.get(second.data.nodeId)?.rect
+
+    expect(beforeFirst).toBeDefined()
+    expect(beforeSecond).toBeDefined()
+    expect(beforeFirst!.height).toBe(44)
+    expect(beforeSecond!.height).toBe(44)
+
+    editor.actions.edit.startNode(first.data.nodeId, 'text')
+    editor.actions.edit.input('First branch now wraps into multiple visual lines')
+
+    const liveFirst = editor.read.node.render.get(first.data.nodeId)?.rect
+    const liveSecond = editor.read.node.render.get(second.data.nodeId)?.rect
+
+    expect(liveFirst).toBeDefined()
+    expect(liveSecond).toBeDefined()
+    expect(liveFirst!.height).toBe(88)
+    expect(liveSecond!.y).toBeGreaterThan(beforeSecond!.y)
+  })
 })

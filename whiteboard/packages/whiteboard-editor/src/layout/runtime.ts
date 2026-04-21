@@ -27,7 +27,7 @@ import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import {
   createMindmapLayoutRead,
   type MindmapLayoutRead,
-  type MindmapLiveSize
+  type MindmapLiveLayoutInput
 } from '@whiteboard/editor/layout/mindmap'
 import {
   createTextMetricsResource
@@ -57,6 +57,33 @@ const FIT_LAYOUT_DATA_PATHS = new Set([
   'text',
   'fontMode'
 ])
+
+const MINDMAP_EDIT_DEBUG_PREFIX = '[mindmap-edit-debug]'
+
+const debugMindmapEdit = (
+  label: string,
+  payload: unknown
+) => {
+  console.log(MINDMAP_EDIT_DEBUG_PREFIX, label, payload)
+}
+
+const toDebugSize = (
+  size: Size | undefined
+) => size
+  ? {
+      width: size.width,
+      height: size.height
+    }
+  : undefined
+
+const toDebugNodeSizes = (
+  nodeSizes: ReadonlyMap<NodeId, Size>
+) => Object.fromEntries(
+  [...nodeSizes].map(([nodeId, size]) => [
+    nodeId,
+    toDebugSize(size)
+  ])
+)
 
 const hasOwn = <T extends object>(
   value: T,
@@ -372,24 +399,65 @@ const measureDraftNodeLayout = ({
   }
 
   const result = backend?.measure(request)
-  if (request.kind === 'size') {
-    return {
-      kind: 'size',
-      size: result?.kind === 'size'
-        ? result.size
-        : {
-            width: committed.rect.width,
-            height: committed.rect.height
+  const measured: DraftMeasure = request.kind === 'size'
+    ? {
+        kind: 'size',
+        size: result?.kind === 'size'
+          ? result.size
+          : {
+              width: committed.rect.width,
+              height: committed.rect.height
+            }
+      }
+    : {
+        kind: 'fit',
+        fontSize: result?.kind === 'fit'
+          ? result.fontSize
+          : readFontSize(committed.node)
+      }
+
+  if (committed.node.owner?.kind === 'mindmap') {
+    debugMindmapEdit('draft.measure', {
+      treeId: committed.node.owner.id,
+      nodeId,
+      field,
+      text,
+      textLength: text.length,
+      committedRect: committed.rect,
+      request: request.kind === 'size'
+        ? {
+            kind: request.kind,
+            widthMode: request.widthMode,
+            wrapWidth: request.wrapWidth,
+            frame: request.frame,
+            minWidth: request.minWidth,
+            maxWidth: request.maxWidth,
+            fontSize: request.fontSize,
+            fontWeight: request.fontWeight,
+            fontStyle: request.fontStyle
           }
-    }
+        : {
+            kind: request.kind,
+            box: request.box,
+            minFontSize: request.minFontSize,
+            maxFontSize: request.maxFontSize,
+            textAlign: request.textAlign
+          },
+      measured: measured?.kind === 'size'
+        ? {
+            kind: measured.kind,
+            size: toDebugSize(measured.size)
+          }
+        : measured?.kind === 'fit'
+          ? {
+              kind: measured.kind,
+              fontSize: measured.fontSize
+            }
+          : undefined
+    })
   }
 
-  return {
-    kind: 'fit',
-    fontSize: result?.kind === 'fit'
-      ? result.fontSize
-      : readFontSize(committed.node)
-  }
+  return measured
 }
 
 export type EditorLayout = {
@@ -481,7 +549,7 @@ export const createEditorLayout = ({
     })
   }
 
-  const liveMindmapSize = store.createKeyedDerivedStore<NodeId, MindmapLiveSize | undefined>({
+  const liveMindmapLayout = store.createKeyedDerivedStore<NodeId, MindmapLiveLayoutInput | undefined>({
     get: (treeId) => {
       const current = store.read(session.edit)
       if (
@@ -506,18 +574,43 @@ export const createEditorLayout = ({
         ? measured.size
         : undefined
 
-      return size
+      const projected = size
         ? {
-            nodeId: current.nodeId,
-            size
+            nodeSizes: new Map([[current.nodeId, size]])
           }
         : undefined
+
+      debugMindmapEdit('draft.live-layout', {
+        treeId,
+        nodeId: current.nodeId,
+        field: current.field,
+        text: current.text,
+        textLength: current.text.length,
+        measured: measured?.kind === 'size'
+          ? {
+              kind: measured.kind,
+              size: toDebugSize(measured.size)
+            }
+          : measured?.kind === 'fit'
+            ? {
+                kind: measured.kind,
+                fontSize: measured.fontSize
+              }
+            : undefined,
+        liveNodeSizes: projected
+          ? toDebugNodeSizes(projected.nodeSizes)
+          : undefined
+      })
+
+      return projected
     },
     isEqual: (left, right) => left === right || (
       left !== undefined
       && right !== undefined
-      && left.nodeId === right.nodeId
-      && geometryApi.equal.size(left.size, right.size)
+      && left.nodeSizes.size === right.nodeSizes.size
+      && [...left.nodeSizes].every(([nodeId, size]) => (
+        geometryApi.equal.size(size, right.nodeSizes.get(nodeId))
+      ))
     )
   })
 
@@ -526,7 +619,7 @@ export const createEditorLayout = ({
     committed: read.mindmap.committed,
     structure: read.mindmap.structure,
     nodeCommitted: read.node.committed,
-    liveSize: liveMindmapSize,
+    liveLayout: liveMindmapLayout,
     preview: session.mindmapPreview
   })
 

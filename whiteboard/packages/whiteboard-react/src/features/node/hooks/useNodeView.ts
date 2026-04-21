@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import type { NodeId, NodeUpdateInput, Rect } from '@whiteboard/core/types'
 import { useOptionalKeyedStoreValue } from '@shared/react'
 import {
@@ -7,6 +7,15 @@ import {
   useNodeRegistry
 } from '@whiteboard/react/runtime/hooks'
 import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '@whiteboard/react/types/node'
+
+const MINDMAP_EDIT_DEBUG_PREFIX = '[mindmap-edit-debug]'
+
+const debugMindmapEdit = (
+  label: string,
+  payload: unknown
+) => {
+  console.log(MINDMAP_EDIT_DEBUG_PREFIX, label, payload)
+}
 
 const buildNodeTransformStyle = (
   rect: Rect,
@@ -133,7 +142,7 @@ export const useNodeView = (
     undefined
   )
 
-  return useMemo(
+  const resolvedView = useMemo(
     () => {
       if (!nodeId || !view) {
         return undefined
@@ -143,6 +152,39 @@ export const useNodeView = (
     },
     [editor, registry, nodeId, view]
   )
+
+  useEffect(() => {
+    if (resolvedView?.node.owner?.kind !== 'mindmap') {
+      return
+    }
+
+    debugMindmapEdit('react.useNodeView', {
+      treeId: resolvedView.node.owner.id,
+      nodeId: resolvedView.nodeId,
+      rect: resolvedView.rect,
+      hidden: resolvedView.hidden,
+      resizing: resolvedView.resizing,
+      selected: resolvedView.renderProps.selected,
+      edit: resolvedView.renderProps.edit
+        ? {
+            field: resolvedView.renderProps.edit.field,
+            caretKind: resolvedView.renderProps.edit.caret.kind
+          }
+        : undefined,
+      nodeStyle: {
+        width: resolvedView.nodeStyle.width,
+        height: resolvedView.nodeStyle.height,
+        transform: resolvedView.nodeStyle.transform,
+        transformOrigin: resolvedView.nodeStyle.transformOrigin
+      },
+      transformStyle: {
+        transform: resolvedView.transformStyle.transform,
+        transformOrigin: resolvedView.transformStyle.transformOrigin
+      }
+    })
+  }, [resolvedView])
+
+  return resolvedView
 }
 
 export const useNodeOverlayView = (

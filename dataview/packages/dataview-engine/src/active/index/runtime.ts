@@ -155,6 +155,7 @@ export const deriveIndex = (input: {
   const summariesStart = now()
   const syncedSummaries = syncCalculationIndex(
     previous.calculations,
+    previous.records,
     context,
     records,
     input.impact

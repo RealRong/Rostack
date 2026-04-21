@@ -21,7 +21,7 @@ import {
 } from '@dataview/engine/active/shared/impact'
 import {
   EMPTY_SECTION_KEYS,
-  projectRecordIdsBySection,
+  projectSectionMembers,
   ROOT_SECTION_KEY,
   ROOT_SECTION_KEYS,
   ROOT_SECTION_ORDER,
@@ -52,6 +52,7 @@ import {
 } from '@shared/i18n'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const EMPTY_RECORD_INDEXES = [] as readonly number[]
 const EMPTY_RECORD_CHANGES = new Map<RecordId, MembershipRecordChange>()
 const EMPTY_TOUCHED_SECTIONS = new Set<string>()
 const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
@@ -95,9 +96,29 @@ const buildRootKeysByRecord = (
   recordIds.map(recordId => [recordId, ROOT_SECTION_KEYS] as const)
 )
 
+const buildRecordIndexes = (input: {
+  recordIds: readonly RecordId[]
+  order: ReadonlyMap<RecordId, number>
+  fullOrder: boolean
+}): readonly number[] => {
+  if (!input.recordIds.length) {
+    return EMPTY_RECORD_INDEXES
+  }
+
+  const indexes = new Array<number>(input.recordIds.length)
+  for (let index = 0; index < input.recordIds.length; index += 1) {
+    indexes[index] = input.fullOrder
+      ? index
+      : input.order.get(input.recordIds[index]!)!
+  }
+
+  return indexes
+}
+
 const syncRootMembershipState = (input: {
   previous: MembershipState
   query: QueryState
+  index: IndexState
   impact: ActiveImpact
 }): {
   state: MembershipState
@@ -123,10 +144,16 @@ const syncRootMembershipState = (input: {
     })
   })
 
+  const fullVisible = input.query.records.visible === input.index.records.ids
   const nextRoot = {
     key: ROOT_SECTION_KEY,
     label: ROOT_SECTION_LABEL,
-    recordIds: input.query.records.visible
+    recordIds: input.query.records.visible,
+    recordIndexes: buildRecordIndexes({
+      recordIds: input.query.records.visible,
+      order: input.index.records.order,
+      fullOrder: fullVisible
+    })
   }
   const publishedRoot = previousRoot && sameMembershipNode(previousRoot, nextRoot)
     ? previousRoot
@@ -222,6 +249,7 @@ export const syncMembershipState = (input: {
     return syncRootMembershipState({
       previous: input.previous,
       query: input.query,
+      index: input.index,
       impact: input.impact
     })
   }
@@ -315,12 +343,12 @@ export const syncMembershipState = (input: {
     : presentation.order
 
   if (input.impact.query?.orderChanged || nextOrder !== previous.order) {
-    const projectedRecordIds = fullVisible
-      ? bucketIndex.recordsByKey
-      : projectRecordIdsBySection({
-          recordIds: input.query.records.visible,
-          keysByRecord: nextKeysByRecord
-        })
+    const projectedSections = projectSectionMembers({
+      recordIds: input.query.records.visible,
+      keysByRecord: nextKeysByRecord,
+      order: input.index.records.order,
+      fullOrder: fullVisible
+    })
     const byKey = new Map<string, ReturnType<typeof buildMembershipNode>>()
     let changed = nextOrder !== previous.order
       || previous.byKey.size !== presentation.order.length
@@ -329,7 +357,8 @@ export const syncMembershipState = (input: {
     presentation.order.forEach(sectionKey => {
       const nextNode = buildMembershipNode({
         key: sectionKey,
-        recordIds: projectedRecordIds.get(sectionKey) ?? EMPTY_RECORD_IDS,
+        recordIds: projectedSections.recordIdsBySection.get(sectionKey) ?? EMPTY_RECORD_IDS,
+        recordIndexes: projectedSections.recordIndexesBySection.get(sectionKey) ?? EMPTY_RECORD_INDEXES,
         index: input.index,
         buckets: presentation.buckets as ReadonlyMap<string, Bucket>
       })
@@ -400,9 +429,17 @@ export const syncMembershipState = (input: {
           order: queryOrder
         }) ?? EMPTY_RECORD_IDS
       : previousNode?.recordIds ?? bucketIndex.recordsByKey.get(sectionKey) ?? EMPTY_RECORD_IDS
+    const nextRecordIndexes = touchedSections.has(sectionKey) || !previousNode?.recordIndexes
+      ? buildRecordIndexes({
+          recordIds: nextRecordIds,
+          order: input.index.records.order,
+          fullOrder: false
+        })
+      : previousNode.recordIndexes
     const nextNode = buildMembershipNode({
       key: sectionKey,
       recordIds: nextRecordIds,
+      recordIndexes: nextRecordIndexes,
       index: input.index,
       buckets: presentation.buckets as ReadonlyMap<string, Bucket>
     })

@@ -31,8 +31,10 @@ import {
 } from '@shared/i18n'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const EMPTY_RECORD_INDEXES = [] as readonly number[]
 const EMPTY_KEYS_BY_RECORD = new Map<RecordId, readonly SectionKey[]>()
 const EMPTY_RECORD_IDS_BY_SECTION = new Map<SectionKey, readonly RecordId[]>()
+const EMPTY_RECORD_INDEXES_BY_SECTION = new Map<SectionKey, readonly number[]>()
 const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
 
 const sameBucket = (
@@ -58,7 +60,27 @@ export const sameMembershipNode = (
   && equal.sameJsonValue(left.label, right.label)
   && left.color === right.color
   && equal.sameOrder(left.recordIds, right.recordIds)
+  && equal.sameOrder(left.recordIndexes ?? EMPTY_RECORD_INDEXES, right.recordIndexes ?? EMPTY_RECORD_INDEXES)
   && sameBucket(left.bucket, right.bucket)
+
+const buildRecordIndexes = (input: {
+  recordIds: readonly RecordId[]
+  order: ReadonlyMap<RecordId, number>
+  fullOrder: boolean
+}): readonly number[] => {
+  if (!input.recordIds.length) {
+    return EMPTY_RECORD_INDEXES
+  }
+
+  const indexes = new Array<number>(input.recordIds.length)
+  for (let index = 0; index < input.recordIds.length; index += 1) {
+    indexes[index] = input.fullOrder
+      ? index
+      : input.order.get(input.recordIds[index]!)!
+  }
+
+  return indexes
+}
 
 const readSectionBucketState = (input: {
   group: View['group']
@@ -70,6 +92,7 @@ const readSectionBucketState = (input: {
 export const buildMembershipNode = (input: {
   key: SectionKey
   recordIds: readonly RecordId[]
+  recordIndexes?: readonly number[]
   index: IndexState
   buckets?: ReadonlyMap<SectionKey, Bucket>
 }): MembershipNodeState => {
@@ -91,18 +114,30 @@ export const buildMembershipNode = (input: {
           }
         }
       : {}),
-    recordIds: input.recordIds
+    recordIds: input.recordIds,
+    ...(input.recordIndexes?.length
+      ? {
+          recordIndexes: input.recordIndexes
+        }
+      : {})
   }
 }
 
 const buildRootMembershipState = (
+  index: IndexState,
   query: QueryState,
   previous?: MembershipState
 ): MembershipState => {
+  const fullVisible = query.records.visible === index.records.ids
   const root = {
     key: ROOT_SECTION_KEY,
     label: ROOT_SECTION_LABEL,
-    recordIds: query.records.visible
+    recordIds: query.records.visible,
+    recordIndexes: buildRecordIndexes({
+      recordIds: query.records.visible,
+      order: index.records.order,
+      fullOrder: fullVisible
+    })
   }
   const previousRoot = previous?.byKey.get(ROOT_SECTION_KEY)
   const keysByRecord = new Map<RecordId, readonly SectionKey[]>(
@@ -128,7 +163,7 @@ export const buildMembershipState = (input: {
   previous?: MembershipState
 }): MembershipState => {
   if (!input.view.group) {
-    return buildRootMembershipState(input.query, input.previous)
+    return buildRootMembershipState(input.index, input.query, input.previous)
   }
 
   const bucketIndex = readSectionBucketState({
@@ -136,18 +171,21 @@ export const buildMembershipState = (input: {
     index: input.index
   })
   const fullVisible = input.query.records.visible === input.index.records.ids
-  const sectionMembership = fullVisible
-    ? undefined
-    : buildSectionMembership({
-        recordIds: input.query.records.visible,
-        keysByRecord: bucketIndex?.keysByRecord
-      })
+  const sectionMembership = buildSectionMembership({
+    recordIds: input.query.records.visible,
+    keysByRecord: bucketIndex?.keysByRecord,
+    order: input.index.records.order,
+    fullOrder: fullVisible
+  })
   const keysByRecord = fullVisible
     ? bucketIndex?.keysByRecord ?? EMPTY_KEYS_BY_RECORD
-    : sectionMembership?.keysByRecord ?? EMPTY_KEYS_BY_RECORD
-  const recordIdsBySection = fullVisible
-    ? bucketIndex?.recordsByKey ?? EMPTY_RECORD_IDS_BY_SECTION
-    : sectionMembership?.recordIdsBySection ?? EMPTY_RECORD_IDS_BY_SECTION
+    : sectionMembership.keysByRecord
+  const recordIdsBySection = sectionMembership.recordIdsBySection.size
+    ? sectionMembership.recordIdsBySection
+    : (fullVisible ? bucketIndex?.recordsByKey ?? EMPTY_RECORD_IDS_BY_SECTION : EMPTY_RECORD_IDS_BY_SECTION)
+  const recordIndexesBySection = sectionMembership.recordIndexesBySection.size
+    ? sectionMembership.recordIndexesBySection
+    : EMPTY_RECORD_INDEXES_BY_SECTION
   const sectionField = input.index.records.values.get(input.view.group.field)?.byRecord
   const presentation = buildBucketViewState({
     field: bucketIndex?.field,
@@ -161,9 +199,11 @@ export const buildMembershipState = (input: {
 
   presentation.order.forEach(key => {
     const ids = recordIdsBySection.get(key) ?? EMPTY_RECORD_IDS
+    const recordIndexes = recordIndexesBySection.get(key) ?? EMPTY_RECORD_INDEXES
     const nextNode = buildMembershipNode({
       key,
       recordIds: ids,
+      recordIndexes,
       index: input.index,
       buckets: presentation.buckets as ReadonlyMap<SectionKey, Bucket>
     })

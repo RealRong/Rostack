@@ -67,14 +67,27 @@ interface RecordSectionTransition {
 
 const buildSectionFieldState = (input: {
   sectionIds: readonly RecordId[]
-  entries: ReadonlyMap<RecordId, CalculationEntry>
+  sectionIndexes?: readonly number[]
+  entries?: ReadonlyMap<RecordId, CalculationEntry>
+  entriesByIndex?: readonly CalculationEntry[]
   capabilities: ReducerCapabilitySet
 }): FieldReducerState => (
   input.sectionIds.length
     ? calculation.state.build({
-        entries: input.entries,
+        ...(input.sectionIndexes?.length && input.entriesByIndex
+          ? {
+              entriesByIndex: input.entriesByIndex,
+              recordIndexes: input.sectionIndexes
+            }
+          : {
+              entries: input.entries
+            }),
         capabilities: input.capabilities,
-        recordIds: input.sectionIds
+        ...(input.sectionIndexes?.length
+          ? {}
+          : {
+              recordIds: input.sectionIds
+            })
       })
     : calculation.state.empty(input.capabilities)
 )
@@ -87,6 +100,7 @@ const collectSectionKeys = (
 
 const buildSectionSummaryFields = (input: {
   sectionIds: readonly RecordId[]
+  sectionIndexes?: readonly number[]
   calcFields: readonly FieldId[]
   index: IndexState
 }): ReadonlyMap<FieldId, FieldReducerState> => {
@@ -100,7 +114,9 @@ const buildSectionSummaryFields = (input: {
 
     byField.set(fieldId, buildSectionFieldState({
       sectionIds: input.sectionIds,
+      sectionIndexes: input.sectionIndexes,
       entries: fieldIndex.entries,
+      entriesByIndex: fieldIndex.entriesByIndex,
       capabilities: fieldIndex.capabilities
     }))
   })
@@ -129,6 +145,7 @@ const buildSummaryState = (input: {
 
     bySection.set(sectionKey, buildSectionSummaryFields({
       sectionIds: section.recordIds,
+      sectionIndexes: section.recordIndexes,
       calcFields: input.calcFields,
       index: input.index
     }))
@@ -604,6 +621,7 @@ const deriveSyncedSummaryState = (input: {
     if (!previousByField) {
       const nextByField = buildSectionSummaryFields({
         sectionIds: section.recordIds,
+        sectionIndexes: section.recordIndexes,
         calcFields: input.calcFields,
         index: input.index
       })
@@ -616,6 +634,7 @@ const deriveSyncedSummaryState = (input: {
     if (sectionRecordIdChanges.has(sectionKey)) {
       const nextByField = buildSectionSummaryFields({
         sectionIds: section.recordIds,
+        sectionIndexes: section.recordIndexes,
         calcFields: input.calcFields,
         index: input.index
       })

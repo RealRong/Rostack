@@ -39,7 +39,8 @@ const createMembershipState = (
       label: ROOT_SECTION as never,
       collapsed: false,
       visible: true,
-      recordIds
+      recordIds,
+      recordIndexes: recordIds.map((_, index) => index)
     }]
   ]),
   keysByRecord: new Map(recordIds.map(recordId => [recordId, [ROOT_SECTION]] as const))
@@ -49,12 +50,22 @@ const createGroupedMembershipState = (
   sections: Readonly<Record<string, readonly string[]>>
 ): MembershipState => {
   const order = Object.keys(sections)
+  const recordOrder = new Map<string, number>()
+
+  order.forEach(sectionKey => {
+    sections[sectionKey]?.forEach(recordId => {
+      if (!recordOrder.has(recordId)) {
+        recordOrder.set(recordId, recordOrder.size)
+      }
+    })
+  })
   const byKey = new Map(order.map(sectionKey => [
     sectionKey,
     {
       key: sectionKey,
       label: sectionKey as never,
-      recordIds: sections[sectionKey] ?? []
+      recordIds: sections[sectionKey] ?? [],
+      recordIndexes: (sections[sectionKey] ?? []).map(recordId => recordOrder.get(recordId)!)
     }
   ] as const))
   const keysByRecord = new Map<string, string[]>()
@@ -133,6 +144,22 @@ const createIndexState = (): IndexState => ({
             }
           })]
         ]),
+        entriesByIndex: [
+          calculation.entry.create({
+            field: undefined,
+            value: 1,
+            capabilities: {
+              count: true
+            }
+          }),
+          calculation.entry.create({
+            field: undefined,
+            value: 2,
+            capabilities: {
+              count: true
+            }
+          })
+        ],
         global: calculation.state.empty({
           count: true
         })

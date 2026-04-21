@@ -44,13 +44,52 @@ const resolveSummaryAction = (input: {
   membershipDelta: MembershipDelta
 }): DeriveAction => {
   const commit = input.impact.commit
-  const membershipChanged = (
-    input.membershipDelta.rebuild
-    || input.membershipDelta.orderChanged
-    || input.membershipDelta.changed.length > 0
-    || input.membershipDelta.removed.length > 0
-    || input.membershipDelta.records.size > 0
-  )
+  const sameRecordSet = (
+    left: readonly string[],
+    right: readonly string[]
+  ) => {
+    if (left === right || equal.sameOrder(left, right)) {
+      return true
+    }
+
+    if (left.length !== right.length) {
+      return false
+    }
+
+    const leftSet = new Set(left)
+    for (let index = 0; index < right.length; index += 1) {
+      if (!leftSet.has(right[index]!)) {
+        return false
+      }
+    }
+
+    return true
+  }
+  const membershipChanged = (() => {
+    if (
+      input.membershipDelta.rebuild
+      || input.membershipDelta.orderChanged
+      || input.membershipDelta.removed.length > 0
+      || input.membershipDelta.records.size > 0
+    ) {
+      return true
+    }
+
+    for (let index = 0; index < input.membershipDelta.changed.length; index += 1) {
+      const sectionKey = input.membershipDelta.changed[index]!
+      const previousNode = input.previousMembership?.byKey.get(sectionKey)
+      const nextNode = input.membership.byKey.get(sectionKey)
+      if (!previousNode || !nextNode) {
+        return true
+      }
+
+      if (!sameRecordSet(previousNode.recordIds, nextNode.recordIds)) {
+        return true
+      }
+    }
+
+    return false
+  })()
 
   if (
     !input.previous

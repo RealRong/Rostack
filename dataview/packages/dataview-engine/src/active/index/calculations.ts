@@ -34,6 +34,8 @@ import {
 } from '@dataview/engine/active/index/sync'
 
 const EMPTY_ENTRIES = new Map<RecordId, CalculationEntry>()
+const EMPTY_ENTRY_LIST = [] as readonly CalculationEntry[]
+const EMPTY_TOUCHED_RECORDS = new Set<RecordId>()
 
 const buildFieldEntries = (input: {
   context: IndexReadContext
@@ -58,19 +60,73 @@ const buildFieldEntries = (input: {
   return entries
 }
 
+const buildFieldEntryList = (input: {
+  entries: ReadonlyMap<RecordId, CalculationEntry>
+  recordIds: readonly RecordId[]
+}): readonly CalculationEntry[] => {
+  if (!input.recordIds.length) {
+    return EMPTY_ENTRY_LIST
+  }
+
+  const entriesByIndex: CalculationEntry[] = new Array(input.recordIds.length)
+  for (let index = 0; index < input.recordIds.length; index += 1) {
+    entriesByIndex[index] = input.entries.get(input.recordIds[index]!)!
+  }
+
+  return entriesByIndex
+}
+
+const syncFieldEntryList = (input: {
+  previous: readonly CalculationEntry[]
+  nextEntries: ReadonlyMap<RecordId, CalculationEntry>
+  previousRecords: RecordIndex
+  records: RecordIndex
+  touchedRecords: ReadonlySet<RecordId>
+}): readonly CalculationEntry[] => {
+  if (input.previousRecords.ids !== input.records.ids) {
+    return buildFieldEntryList({
+      entries: input.nextEntries,
+      recordIds: input.records.ids
+    })
+  }
+
+  let next = input.previous as CalculationEntry[] | undefined
+  input.touchedRecords.forEach(recordId => {
+    const recordIndex = input.records.order.get(recordId)
+    if (recordIndex === undefined) {
+      return
+    }
+
+    const nextEntry = input.nextEntries.get(recordId)
+    if (!nextEntry || input.previous[recordIndex] === nextEntry) {
+      return
+    }
+
+    next ??= [...input.previous]
+    next[recordIndex] = nextEntry
+  })
+
+  return next ?? input.previous
+}
+
 const buildFieldCalcIndex = (input: {
   context: IndexReadContext
   records: RecordIndex
   demand: CalculationDemand
 }): FieldCalcIndex => {
   const entries = buildFieldEntries(input)
+  const entriesByIndex = buildFieldEntryList({
+    entries,
+    recordIds: input.records.ids
+  })
 
   return {
     fieldId: input.demand.fieldId,
     capabilities: input.demand.capabilities,
     entries,
+    entriesByIndex,
     global: calculation.state.build({
-      entries,
+      entriesByIndex,
       capabilities: input.demand.capabilities
     })
   }
@@ -145,6 +201,7 @@ export const ensureCalculationIndex = (
 
 export const syncCalculationIndex = (
   previous: CalculationIndex,
+  previousRecords: RecordIndex,
   context: IndexDeriveContext,
   records: RecordIndex,
   impact: ActiveImpact
@@ -156,6 +213,7 @@ export const syncCalculationIndex = (
   const fields = createMapPatchBuilder(previous.fields)
 
   previous.fields.forEach((previousField, fieldId) => {
+    const recordIdsChanged = previousRecords.ids !== records.ids
     if (shouldDropFieldIndex(id => context.fieldIdSet.has(id), context, fieldId)) {
       fields.delete(fieldId)
       return
@@ -174,7 +232,8 @@ export const syncCalculationIndex = (
       return
     }
 
-    if (!shouldSyncFieldIndex(context, fieldId)) {
+    const shouldSync = shouldSyncFieldIndex(context, fieldId)
+    if (!shouldSync && !recordIdsChanged) {
       return
     }
 
@@ -183,54 +242,76 @@ export const syncCalculationIndex = (
       return
     }
 
-    const values = records.values.get(fieldId)?.byRecord
-    const entries = createMapPatchBuilder(previousField.entries)
-    const reducer = calculation.state.builder({
-      previous: previousField.global,
-      capabilities: previousField.capabilities
-    })
+    let nextEntries = previousField.entries
+    let nextGlobal = previousField.global
+    if (shouldSync) {
+      const values = records.values.get(fieldId)?.byRecord
+      const entries = createMapPatchBuilder(previousField.entries)
+      const reducer = calculation.state.builder({
+        previous: previousField.global,
+        capabilities: previousField.capabilities
+      })
 
-    context.touchedRecords.forEach(recordId => {
-      const previousEntry = previousField.entries.get(recordId)
-      const nextEntry = records.order.has(recordId)
-        ? calculation.entry.create({
-            field,
-            value: values?.get(recordId),
-            capabilities: previousField.capabilities
-          })
-        : undefined
+      context.touchedRecords.forEach(recordId => {
+        const previousEntry = previousField.entries.get(recordId)
+        const nextEntry = records.order.has(recordId)
+          ? calculation.entry.create({
+              field,
+              value: values?.get(recordId),
+              capabilities: previousField.capabilities
+            })
+          : undefined
 
-      if (calculation.entry.same(previousEntry, nextEntry)) {
-        return
+        if (calculation.entry.same(previousEntry, nextEntry)) {
+          return
+        }
+
+        applyEntryTransition(
+          ensureCalculationFieldTransition(impact, fieldId),
+          recordId,
+          previousEntry,
+          nextEntry,
+          calculation.entry.same
+        )
+        reducer.apply(previousEntry, nextEntry)
+
+        if (nextEntry) {
+          entries.set(recordId, nextEntry)
+          return
+        }
+
+        entries.delete(recordId)
+      })
+
+      if (entries.changed()) {
+        nextEntries = entries.finish()
+        nextGlobal = reducer.finish()
       }
-
-      applyEntryTransition(
-        ensureCalculationFieldTransition(impact, fieldId),
-        recordId,
-        previousEntry,
-        nextEntry,
-        calculation.entry.same
-      )
-      reducer.apply(previousEntry, nextEntry)
-
-      if (nextEntry) {
-        entries.set(recordId, nextEntry)
-        return
-      }
-
-      entries.delete(recordId)
-    })
-
-    if (!entries.changed()) {
-      return
     }
 
-    const nextEntries = entries.finish()
+    const nextEntriesByIndex = syncFieldEntryList({
+      previous: previousField.entriesByIndex,
+      nextEntries,
+      previousRecords,
+      records,
+      touchedRecords: shouldSync
+        ? context.touchedRecords
+        : EMPTY_TOUCHED_RECORDS
+    })
+
+    if (
+      nextEntries === previousField.entries
+      && nextEntriesByIndex === previousField.entriesByIndex
+      && nextGlobal === previousField.global
+    ) {
+      return
+    }
     fields.set(fieldId, {
       fieldId,
       capabilities: previousField.capabilities,
       entries: nextEntries,
-      global: reducer.finish()
+      entriesByIndex: nextEntriesByIndex,
+      global: nextGlobal
     })
   })
 

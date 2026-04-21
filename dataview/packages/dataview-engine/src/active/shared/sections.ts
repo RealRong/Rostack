@@ -19,12 +19,16 @@ export const sameSectionKeys = (
 export const buildSectionMembership = (input: {
   recordIds: readonly RecordId[]
   keysByRecord?: ReadonlyMap<RecordId, readonly SectionKey[]>
+  order?: ReadonlyMap<RecordId, number>
+  fullOrder?: boolean
 }): {
   keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
   recordIdsBySection: ReadonlyMap<SectionKey, readonly RecordId[]>
+  recordIndexesBySection: ReadonlyMap<SectionKey, readonly number[]>
 } => {
   const nextKeysByRecord = new Map<RecordId, readonly SectionKey[]>()
   const nextRecordIdsBySection = new Map<SectionKey, RecordId[]>()
+  const nextRecordIndexesBySection = new Map<SectionKey, number[]>()
 
   for (let index = 0; index < input.recordIds.length; index += 1) {
     const recordId = input.recordIds[index]!
@@ -33,30 +37,51 @@ export const buildSectionMembership = (input: {
       continue
     }
 
+    const recordIndex = input.fullOrder
+      ? index
+      : input.order?.get(recordId)
     nextKeysByRecord.set(recordId, keys)
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
       const sectionKey = keys[keyIndex]!
       const ids = nextRecordIdsBySection.get(sectionKey)
       if (ids) {
         ids.push(recordId)
+      } else {
+        nextRecordIdsBySection.set(sectionKey, [recordId])
+      }
+
+      if (recordIndex === undefined) {
         continue
       }
 
-      nextRecordIdsBySection.set(sectionKey, [recordId])
+      const indexes = nextRecordIndexesBySection.get(sectionKey)
+      if (indexes) {
+        indexes.push(recordIndex)
+        continue
+      }
+
+      nextRecordIndexesBySection.set(sectionKey, [recordIndex])
     }
   }
 
   return {
     keysByRecord: nextKeysByRecord,
-    recordIdsBySection: nextRecordIdsBySection
+    recordIdsBySection: nextRecordIdsBySection,
+    recordIndexesBySection: nextRecordIndexesBySection
   }
 }
 
-export const projectRecordIdsBySection = (input: {
+export const projectSectionMembers = (input: {
   recordIds: readonly RecordId[]
   keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
-}): ReadonlyMap<SectionKey, readonly RecordId[]> => {
-  const projected = new Map<SectionKey, RecordId[]>()
+  order?: ReadonlyMap<RecordId, number>
+  fullOrder?: boolean
+}): {
+  recordIdsBySection: ReadonlyMap<SectionKey, readonly RecordId[]>
+  recordIndexesBySection: ReadonlyMap<SectionKey, readonly number[]>
+} => {
+  const recordIdsBySection = new Map<SectionKey, RecordId[]>()
+  const recordIndexesBySection = new Map<SectionKey, number[]>()
 
   for (let index = 0; index < input.recordIds.length; index += 1) {
     const recordId = input.recordIds[index]!
@@ -65,17 +90,34 @@ export const projectRecordIdsBySection = (input: {
       continue
     }
 
+    const recordIndex = input.fullOrder
+      ? index
+      : input.order?.get(recordId)
     for (let keyIndex = 0; keyIndex < sectionKeys.length; keyIndex += 1) {
       const sectionKey = sectionKeys[keyIndex]!
-      const ids = projected.get(sectionKey)
+      const ids = recordIdsBySection.get(sectionKey)
       if (ids) {
         ids.push(recordId)
+      } else {
+        recordIdsBySection.set(sectionKey, [recordId])
+      }
+
+      if (recordIndex === undefined) {
         continue
       }
 
-      projected.set(sectionKey, [recordId])
+      const indexes = recordIndexesBySection.get(sectionKey)
+      if (indexes) {
+        indexes.push(recordIndex)
+        continue
+      }
+
+      recordIndexesBySection.set(sectionKey, [recordIndex])
     }
   }
 
-  return projected
+  return {
+    recordIdsBySection,
+    recordIndexesBySection
+  }
 }

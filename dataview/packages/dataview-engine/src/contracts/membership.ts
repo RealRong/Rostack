@@ -23,6 +23,7 @@ export interface MembershipNodeState {
   color?: string
   bucket?: SectionBucket
   recordIds: readonly RecordId[]
+  recordIndexes?: readonly number[]
 }
 
 export interface MembershipState {

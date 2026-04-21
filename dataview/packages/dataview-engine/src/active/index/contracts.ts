@@ -99,6 +99,7 @@ export interface FieldCalcIndex {
   fieldId: FieldId
   capabilities: ReducerCapabilitySet
   entries: ReadonlyMap<RecordId, CalculationEntry>
+  entriesByIndex: readonly CalculationEntry[]
   global: FieldReducerState
 }
 

@@ -1,9 +1,7 @@
 import type {
   EdgeId,
   NodeId,
-  Point,
-  Rect,
-  Size
+  Point
 } from '@whiteboard/core/types'
 import { store as sharedStore } from '@shared/core'
 
@@ -32,17 +30,10 @@ export type EditSnapshot = {
   text: string
 }
 
-export type EditLayout = {
-  size?: Size
-  fontSize?: number
-  wrapWidth?: number
-  composing: boolean
-}
-
 type EditSessionBase = {
   initial: EditSnapshot
   draft: EditSnapshot
-  layout: EditLayout
+  composing: boolean
   caret: EditCaret
   status: EditStatus
   capabilities: EditCapability
@@ -71,7 +62,7 @@ export type EditMutate = {
   set: (session: NonNullable<EditSession>) => void
   input: (text: string) => void
   caret: (caret: EditCaret) => void
-  layout: (patch: Partial<EditLayout>) => void
+  composing: (composing: boolean) => void
   status: (status: EditStatus) => void
   clear: () => void
 }
@@ -134,22 +125,17 @@ export const createEditState = (): EditState => {
               }
         })
       },
-      layout: (patch) => {
+      composing: (composing) => {
         state.update((current) => {
           if (!current) {
             return current
           }
 
-          const nextLayout = {
-            ...current.layout,
-            ...patch
-          }
-
-          return isEditLayoutEqual(current.layout, nextLayout)
+          return current.composing === composing
             ? current
             : {
                 ...current,
-                layout: nextLayout
+                composing
               }
         })
       },
@@ -177,31 +163,3 @@ export const createEditState = (): EditState => {
     }
   }
 }
-
-export const isEditRectEqual = (
-  left: Rect | undefined,
-  right: Rect | undefined
-) => (
-  left?.x === right?.x
-  && left?.y === right?.y
-  && left?.width === right?.width
-  && left?.height === right?.height
-)
-
-export const isEditMeasureEqual = (
-  left: Size | undefined,
-  right: Size | undefined
-) => (
-  left?.width === right?.width
-  && left?.height === right?.height
-)
-
-export const isEditLayoutEqual = (
-  left: EditLayout,
-  right: EditLayout
-) => (
-  isEditMeasureEqual(left.size, right.size)
-  && left.fontSize === right.fontSize
-  && left.wrapWidth === right.wrapWidth
-  && left.composing === right.composing
-)

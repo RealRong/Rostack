@@ -38,8 +38,7 @@ import type {
 } from '@whiteboard/editor/session/draw/model'
 import type {
   EditCaret,
-  EditField,
-  EditLayout
+  EditField
 } from '@whiteboard/editor/session/edit'
 import type { ViewportCommands } from '@whiteboard/editor/session/viewport'
 import type {
@@ -160,7 +159,7 @@ export type EditActions = {
     }
   ) => void
   input: (text: string) => void
-  layout: (patch: Partial<EditLayout>) => void
+  composing: (composing: boolean) => void
   caret: (caret: EditCaret) => void
   cancel: () => void
   commit: () => void

@@ -156,7 +156,7 @@ const createEditActions = ({
   query: Pick<EditorQuery, 'node' | 'edge'>
   write: Pick<EditorWrite, 'node' | 'edge'>
   registry: Pick<NodeRegistry, 'get'>
-  layout: Pick<EditorLayout, 'editNode' | 'text'>
+  layout: Pick<EditorLayout, 'edit'>
 }): EditorEditActions => {
   const startNode: EditorEditActions['startNode'] = (
     nodeId,
@@ -180,11 +180,6 @@ const createEditActions = ({
     const text = typeof item.node.data?.[field] === 'string'
       ? item.node.data[field] as string
       : ''
-    const nextLayout = layout.editNode({
-      nodeId,
-      field,
-      text
-    })
 
     session.mutate.edit.set({
       kind: 'node',
@@ -196,19 +191,7 @@ const createEditActions = ({
       draft: {
         text
       },
-      layout: {
-        size: nextLayout?.size ?? {
-          width: item.rect.width,
-          height: item.rect.height
-        },
-        fontSize: nextLayout?.fontSize ?? (
-          typeof item.node.style?.fontSize === 'number'
-            ? item.node.style.fontSize
-            : undefined
-        ),
-        wrapWidth: nextLayout?.wrapWidth,
-        composing: false
-      },
+      composing: false,
       caret: options?.caret ?? { kind: 'end' },
       status: 'active',
       capabilities
@@ -238,9 +221,7 @@ const createEditActions = ({
       draft: {
         text
       },
-      layout: {
-        composing: false
-      },
+      composing: false,
       caret: options?.caret ?? { kind: 'end' },
       status: 'active',
       capabilities: DEFAULT_EDGE_LABEL_CAPABILITY
@@ -250,26 +231,8 @@ const createEditActions = ({
   return {
     startNode,
     startEdgeLabel,
-    input: (text) => {
-      session.mutate.edit.input(text)
-
-      const current = session.state.edit.get()
-      if (!current) {
-        return
-      }
-
-      if (current.kind === 'edge-label') {
-        return
-      }
-
-      const nextLayout = layout.editNode({
-        nodeId: current.nodeId,
-        field: current.field,
-        text
-      })
-      session.mutate.edit.layout(nextLayout ?? {})
-    },
-    layout: session.mutate.edit.layout,
+    input: session.mutate.edit.input,
+    composing: session.mutate.edit.composing,
     caret: session.mutate.edit.caret,
     cancel: () => {
       const currentEdit = session.state.edit.get()
@@ -309,6 +272,7 @@ const createEditActions = ({
           return undefined
         }
 
+        const draftLayout = layout.edit.node.get(currentEdit.nodeId)
         session.mutate.edit.clear()
         return write.node.text.commit({
           nodeId: currentEdit.nodeId,
@@ -318,9 +282,9 @@ const createEditActions = ({
             empty: currentEdit.capabilities.empty,
             defaultText: currentEdit.capabilities.defaultText
           }),
-          size: currentEdit.layout.size,
-          fontSize: currentEdit.layout.fontSize,
-          wrapWidth: currentEdit.layout.wrapWidth
+          size: draftLayout?.size,
+          fontSize: draftLayout?.fontSize,
+          wrapWidth: draftLayout?.wrapWidth
         })
       }
 

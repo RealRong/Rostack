@@ -136,12 +136,7 @@ describe('mindmap edit relayout preview', () => {
     expect(beforeChild).toBeDefined()
 
     editor.actions.edit.startNode(created.data.rootId, 'text')
-    editor.actions.edit.layout({
-      size: {
-        width: beforeRoot!.width + 120,
-        height: beforeRoot!.height
-      }
-    })
+    editor.actions.edit.input('Central topic with much longer live width')
 
     const liveRoot = editor.read.node.render.get(created.data.rootId)?.rect
     const liveChild = editor.read.node.render.get(insert.data.nodeId)?.rect
@@ -149,7 +144,7 @@ describe('mindmap edit relayout preview', () => {
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
     expect(liveRoot!.x).toBe(beforeRoot!.x)
-    expect(liveRoot!.width).toBe(beforeRoot!.width + 120)
+    expect(liveRoot!.width).toBeGreaterThan(beforeRoot!.width)
     expect(liveChild!.x).toBeGreaterThan(beforeChild!.x)
   })
 
@@ -209,6 +204,7 @@ describe('mindmap edit relayout preview', () => {
 
     expect(beforeChild).toBeDefined()
     expect(beforeMindmapNode).toBeDefined()
+    expect(beforeChild).toEqual(beforeMindmapNode)
 
     editor.actions.edit.startNode(insert.data.nodeId, 'text')
     editor.actions.edit.input('Child topic with much longer text')
@@ -221,14 +217,9 @@ describe('mindmap edit relayout preview', () => {
     expect(liveMindmapNode).toBeDefined()
     expect(session).toMatchObject({
       kind: 'node',
-      nodeId: insert.data.nodeId,
-      layout: {
-        size: {
-          width: liveChild!.width,
-          height: liveChild!.height
-        }
-      }
+      nodeId: insert.data.nodeId
     })
+    expect(liveChild).toEqual(liveMindmapNode)
     expect(liveChild!.width).toBeGreaterThan(beforeChild!.width)
     expect(liveMindmapNode!.width).toBeGreaterThan(beforeMindmapNode!.width)
   })

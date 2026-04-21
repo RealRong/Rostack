@@ -132,26 +132,20 @@ export const TextSlot = ({
       onCompositionStart={editable
         ? () => {
             composingRef.current = true
-            editor.actions.edit.layout({
-              composing: true
-            })
+            editor.actions.edit.composing(true)
           }
         : undefined}
       onCompositionUpdate={editable
         ? (event) => {
             editor.actions.edit.input(readEditableText(event.currentTarget))
-            editor.actions.edit.layout({
-              composing: true
-            })
+            editor.actions.edit.composing(true)
           }
         : undefined}
       onCompositionEnd={editable
         ? (event) => {
             composingRef.current = false
             editor.actions.edit.input(readEditableText(event.currentTarget))
-            editor.actions.edit.layout({
-              composing: false
-            })
+            editor.actions.edit.composing(false)
           }
         : undefined}
       onInput={editable

@@ -5,6 +5,7 @@ import type {
   EditField,
   EditSession
 } from '@whiteboard/editor/session/edit'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 
 export type NodeEditView = {
   field: EditField
@@ -25,35 +26,61 @@ export type EditorEditRead = {
   edgeLabel: store.KeyedReadStore<EdgeId, EdgeLabelEditView | undefined>
 }
 
-const EMPTY_NODE_EDIT_MAP = new Map<NodeId, NodeEditView>()
 const EMPTY_EDGE_LABEL_EDIT_MAP = new Map<EdgeId, EdgeLabelEditView>()
 
+const isCaretEqual = (
+  left: EditCaret,
+  right: EditCaret
+) => (
+  left.kind === right.kind
+  && (
+    left.kind !== 'point'
+    || (
+      right.kind === 'point'
+      && left.client.x === right.client.x
+      && left.client.y === right.client.y
+    )
+  )
+)
+
 export const createEditRead = (
-  source: store.ReadStore<EditSession>
+  source: store.ReadStore<EditSession>,
+  layout: Pick<EditorLayout, 'edit'>
 ): EditorEditRead => ({
-  node: store.createProjectedKeyedStore({
-    source,
-    select: (session) => {
-      if (!session || session.kind !== 'node') {
-        return EMPTY_NODE_EDIT_MAP
+  node: store.createKeyedDerivedStore<NodeId, NodeEditView | undefined>({
+    get: (nodeId) => {
+      const session = store.read(source)
+      if (
+        !session
+        || session.kind !== 'node'
+        || session.nodeId !== nodeId
+      ) {
+        return undefined
       }
 
-      return new Map<NodeId, NodeEditView>([[
-        session.nodeId,
-        {
-          field: session.field,
-          text: session.draft.text,
-          caret: session.caret,
-          size: session.field === 'text'
-            ? session.layout.size
-            : undefined,
-          fontSize: session.field === 'text'
-            ? session.layout.fontSize
-            : undefined
-        }
-      ]])
+      const draftLayout = store.read(layout.edit.node, nodeId)
+      return {
+        field: session.field,
+        text: session.draft.text,
+        caret: session.caret,
+        size: session.field === 'text'
+          ? draftLayout?.size
+          : undefined,
+        fontSize: session.field === 'text'
+          ? draftLayout?.fontSize
+          : undefined
+      }
     },
-    emptyValue: undefined
+    isEqual: (left, right) => left === right || (
+      left !== undefined
+      && right !== undefined
+      && left.field === right.field
+      && left.text === right.text
+      && isCaretEqual(left.caret, right.caret)
+      && left.size?.width === right.size?.width
+      && left.size?.height === right.size?.height
+      && left.fontSize === right.fontSize
+    )
   }),
   edgeLabel: store.createProjectedKeyedStore({
     source,

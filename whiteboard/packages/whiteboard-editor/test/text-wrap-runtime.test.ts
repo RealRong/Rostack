@@ -259,13 +259,7 @@ describe('text wrap runtime', () => {
 
     expect(editor.store.edit.get()).toMatchObject({
       kind: 'node',
-      nodeId: 'text-1',
-      layout: {
-        size: {
-          width: 280,
-          height: 24
-        }
-      }
+      nodeId: 'text-1'
     })
     expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
       width: 280,
@@ -303,17 +297,15 @@ describe('text wrap runtime', () => {
     })
 
     editor.actions.edit.startNode('text-1', 'text')
+    editor.actions.edit.input('this stays wrapped at the committed width')
 
     expect(editor.store.edit.get()).toMatchObject({
       kind: 'node',
-      nodeId: 'text-1',
-      layout: {
-        wrapWidth: 180,
-        size: {
-          width: 180,
-          height: 24
-        }
-      }
+      nodeId: 'text-1'
+    })
+    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+      width: 180,
+      height: 24
     })
   })
 

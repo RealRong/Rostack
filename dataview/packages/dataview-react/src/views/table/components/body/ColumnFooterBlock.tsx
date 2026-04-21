@@ -33,7 +33,7 @@ const View = (props: ColumnFooterBlockProps) => {
   const table = useTableContext()
   const summary = useKeyedStoreValue(table.summary, props.scopeId)
   const calculations = summary?.byField
-  
+
   return (
     <div
       ref={props.measureRef}

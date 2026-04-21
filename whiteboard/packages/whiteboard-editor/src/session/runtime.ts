@@ -63,7 +63,7 @@ export type EditorSessionMutate = {
     toggle: (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['toggle']>[0]) => boolean
     clear: () => boolean
   }
-  edit: Pick<EditMutate, 'set' | 'input' | 'caret' | 'layout' | 'status' | 'clear'>
+  edit: Pick<EditMutate, 'set' | 'input' | 'caret' | 'composing' | 'status' | 'clear'>
 }
 
 export type EditorSessionInteractionRead = {
@@ -166,7 +166,7 @@ export const createEditorSession = ({
       set: edit.mutate.set,
       input: edit.mutate.input,
       caret: edit.mutate.caret,
-      layout: edit.mutate.layout,
+      composing: edit.mutate.composing,
       status: edit.mutate.status,
       clear: edit.mutate.clear
     }

@@ -6,7 +6,12 @@ export const useExternalValue = <T,>(
   equal: (left: T, right: T) => boolean
 ): T => {
   const cacheRef = useRef<{ value: T } | undefined>(undefined)
-  const getCachedSnapshot = useCallback(() => {
+  const revisionRef = useRef(0)
+
+  const readValue = useCallback(() => {
+    // Selector-style hooks may compute a fresh but equal result on every read.
+    // We keep a semantic cache here and drive useSyncExternalStore with a revision number
+    // so React does not require referentially stable raw snapshots from every store.
     const next = getSnapshot()
     const cached = cacheRef.current
 
@@ -18,5 +23,25 @@ export const useExternalValue = <T,>(
     return next
   }, [equal, getSnapshot])
 
-  return useSyncExternalStore(subscribe, getCachedSnapshot, getCachedSnapshot)
+  const subscribeRevision = useCallback((listener: () => void) => subscribe(() => {
+    const previous = cacheRef.current?.value
+    const next = getSnapshot()
+
+    if (previous !== undefined && equal(previous, next)) {
+      cacheRef.current = { value: previous }
+      return
+    }
+
+    cacheRef.current = { value: next }
+    revisionRef.current += 1
+    listener()
+  }), [equal, getSnapshot, subscribe])
+
+  useSyncExternalStore(
+    subscribeRevision,
+    () => revisionRef.current,
+    () => revisionRef.current
+  )
+
+  return readValue()
 }

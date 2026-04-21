@@ -33,7 +33,6 @@ type MindmapSubtreeMove = {
   ghost: Rect
 }
 
-const EMPTY_LIVE_EDIT_MAP = new Map<NodeId, MindmapLiveEdit>()
 const EMPTY_ROOT_MOVE_MAP = new Map<NodeId, {
   delta: {
     x: number
@@ -293,6 +292,7 @@ export const createMindmapLayoutRead = ({
   structure,
   nodeCommitted,
   edit,
+  draft,
   preview
 }: {
   list: EngineRead['mindmap']['list']
@@ -300,6 +300,9 @@ export const createMindmapLayoutRead = ({
   structure: EngineRead['mindmap']['structure']
   nodeCommitted: EngineRead['node']['item']
   edit: store.ReadStore<EditSession>
+  draft: store.KeyedReadStore<NodeId, {
+    size?: Size
+  } | undefined>
   preview: store.ReadStore<MindmapPreviewState | undefined>
 }): MindmapLayoutRead => {
   const clock = store.createValueStore(0)
@@ -339,37 +342,42 @@ export const createMindmapLayoutRead = ({
     }
   })
 
-  const liveEdit = store.createProjectedKeyedStore({
-    source: edit,
-    select: (session) => {
+  const liveEdit = store.createKeyedDerivedStore<NodeId, MindmapLiveEdit | undefined>({
+    get: (treeId) => {
+      const session = store.read(edit)
       if (
         !session
         || session.kind !== 'node'
         || session.field !== 'text'
-        || !session.layout.size
       ) {
-        return EMPTY_LIVE_EDIT_MAP
+        return undefined
       }
 
       const node = store.read(nodeCommitted, session.nodeId)?.node
       if (!node) {
-        return EMPTY_LIVE_EDIT_MAP
+        return undefined
       }
 
-      const treeId = readMindmapTreeId(node)
-      if (!treeId) {
-        return EMPTY_LIVE_EDIT_MAP
+      const ownerMindmapId = readMindmapTreeId(node)
+      if (!ownerMindmapId || ownerMindmapId !== treeId) {
+        return undefined
       }
 
-      return new Map<NodeId, MindmapLiveEdit>([[
-        treeId,
-        {
-          nodeId: session.nodeId,
-          size: session.layout.size
-        }
-      ]])
+      const size = store.read(draft, session.nodeId)?.size
+      return size
+        ? {
+            nodeId: session.nodeId,
+            size
+          }
+        : undefined
     },
-    emptyValue: undefined
+    isEqual: (left, right) => left === right || (
+      left !== undefined
+      && right !== undefined
+      && left.nodeId === right.nodeId
+      && left.size.width === right.size.width
+      && left.size.height === right.size.height
+    )
   })
 
   const rootMove = store.createProjectedKeyedStore({

@@ -249,4 +249,28 @@ describe('data view runtime regressions', () => {
 
     runtime.dispose()
   })
+
+  test('table summaries stay empty when grouped filters leave every section empty', () => {
+    const engine = createEngine({
+      document: createDocument()
+    })
+    const runtime = createDataViewRuntime({
+      engine
+    })
+
+    engine.active.summary.set(FIELD_STATUS, 'countByOption')
+    engine.active.group.set(FIELD_STATUS)
+    engine.active.filters.add(FIELD_STATUS)
+    engine.active.filters.update(0, {
+      fieldId: FIELD_STATUS,
+      presetId: 'eq',
+      value: 'blocked'
+    })
+
+    expect(runtime.model.table.summary.get('todo')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+    expect(runtime.model.table.summary.get('doing')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+    expect(runtime.model.table.summary.get('done')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+
+    runtime.dispose()
+  })
 })

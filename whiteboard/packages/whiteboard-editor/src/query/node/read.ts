@@ -313,7 +313,10 @@ const isNodeCanvasSnapshotEqual = (
 
 const readNodeTextDraft = (
   item: NodeItem,
-  edit: NodeEditView | undefined
+  edit: NodeEditView | undefined,
+  options?: {
+    includeSize?: boolean
+  }
 ) => {
   if (!edit) {
     return undefined
@@ -322,7 +325,9 @@ const readNodeTextDraft = (
   return {
     field: edit.field,
     value: edit.text,
-    size: edit.field === 'text' && item.node.type === 'text'
+    size: options?.includeSize !== false
+      && edit.field === 'text'
+      && item.node.type === 'text'
       ? edit.size
       : undefined,
     fontSize: edit.field === 'text' && item.node.type === 'sticky'
@@ -372,7 +377,9 @@ const projectNodeGeometryItem = (
     nodeApi.projection.applyGeometryPatch(
       nodeApi.projection.applyTextDraft(
         nodeApi.projection.applyTextPreview(item, feedback.text),
-        readNodeTextDraft(item, edit)
+        readNodeTextDraft(item, edit, {
+          includeSize: item.node.owner?.kind !== 'mindmap'
+        })
       ),
       feedback.patch
     ),

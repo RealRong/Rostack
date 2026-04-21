@@ -1217,6 +1217,35 @@ test('engine.active.state clears grouped summaries when filters leave every sect
   assert.equal(summaries?.get('done')?.get(FIELD_STATUS)?.kind, 'empty')
 })
 
+test('engine.source clears grouped summaries when filters leave every section empty', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).summary.set(FIELD_STATUS, 'countByOption')
+
+  openView(engine, VIEW_TABLE).filters.add(FIELD_POINTS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_POINTS,
+    presetId: 'gt',
+    value: 100
+  })
+
+  assert.equal(
+    engine.source.active.sections.summary.get('todo')?.get(FIELD_STATUS)?.kind,
+    'empty'
+  )
+  assert.equal(
+    engine.source.active.sections.summary.get('doing')?.get(FIELD_STATUS)?.kind,
+    'empty'
+  )
+  assert.equal(
+    engine.source.active.sections.summary.get('done')?.get(FIELD_STATUS)?.kind,
+    'empty'
+  )
+})
+
 test('engine.performance reuses summaries when sort only reorders records', () => {
   const engine = createEngineForTest({
     document: createDocument(),

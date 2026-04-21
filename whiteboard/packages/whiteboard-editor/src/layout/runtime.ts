@@ -14,7 +14,7 @@ import type {
   Origin
 } from '@whiteboard/core/types'
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
-import type { EditField, EditLayout, EditSession } from '@whiteboard/editor/session/edit'
+import type { EditField, EditSession } from '@whiteboard/editor/session/edit'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
 import { equal, store } from '@shared/core'
 import type {
@@ -315,8 +315,85 @@ const toLayoutResultUpdate = ({
   return undefined
 }
 
+export type EditorDraftNodeLayout = {
+  size?: Size
+  fontSize?: number
+  wrapWidth?: number
+}
+
+const measureDraftNodeLayout = ({
+  committed,
+  nodeId,
+  field,
+  text,
+  registry,
+  backend
+}: {
+  committed: {
+    node: Node
+    rect: Rect
+  } | undefined
+  nodeId: NodeId
+  field: EditField
+  text: string
+  registry: Pick<NodeRegistry, 'get'>
+  backend?: LayoutBackend
+}): EditorDraftNodeLayout | undefined => {
+  if (!committed) {
+    return undefined
+  }
+
+  const kind = readLayoutKind(registry, committed.node)
+  if (kind === 'none' || field !== 'text') {
+    return undefined
+  }
+
+  const nextNode: Node = {
+    ...committed.node,
+    data: {
+      ...(committed.node.data ?? {}),
+      [field]: text
+    }
+  }
+  const request = buildLayoutRequest({
+    nodeId,
+    node: nextNode,
+    rect: committed.rect,
+    kind
+  })
+  if (!request) {
+    return undefined
+  }
+
+  const result = backend?.measure(request)
+  if (request.kind === 'size') {
+    return {
+      size: result?.kind === 'size'
+        ? result.size
+        : {
+            width: committed.rect.width,
+            height: committed.rect.height
+          },
+      wrapWidth: request.wrapWidth
+    }
+  }
+
+  return {
+    fontSize: result?.kind === 'fit'
+      ? result.fontSize
+      : (
+          typeof committed.node.style?.fontSize === 'number'
+            ? committed.node.style.fontSize
+            : undefined
+        )
+  }
+}
+
 export type EditorLayout = {
   text: TextMetricsResource
+  edit: {
+    node: store.KeyedReadStore<NodeId, EditorDraftNodeLayout | undefined>
+  }
   mindmap: MindmapLayoutRead
   patchNodeCreatePayload: (
     payload: NodeInput
@@ -335,13 +412,6 @@ export type EditorLayout = {
       origin?: Origin
     }
   ) => NodeUpdateInput
-  editNode: (
-    input: {
-      nodeId: NodeId
-      field: EditField
-      text: string
-    }
-  ) => Partial<EditLayout> | undefined
   resolvePreviewPatches: (
     patches: readonly TransformPreviewPatch[]
   ) => readonly TransformPreviewPatch[]
@@ -371,36 +441,83 @@ export const createEditorLayout = ({
   backend?: LayoutBackend
 }): EditorLayout => {
   const text = createTextMetricsResource()
-  const mindmap = createMindmapLayoutRead({
-    list: read.mindmap.list,
-    committed: read.mindmap.committed,
-    structure: read.mindmap.structure,
-    nodeCommitted: read.node.committed,
-    edit: session.edit,
-    preview: session.mindmapPreview
-  })
+  let mindmap: MindmapLayoutRead | undefined
 
   const readLayoutNodeItem = (
-    nodeId: NodeId
+    nodeId: NodeId,
+    options?: {
+      mindmapRect?: 'committed' | 'projected'
+    }
   ) => {
     const committed = store.read(read.node.committed, nodeId)
     if (!committed) {
       return undefined
     }
 
-    const mindmapNode = store.read(mindmap.node, nodeId)
-    if (
-      !mindmapNode
-      || equal.sameRect(committed.rect, mindmapNode.rect)
-    ) {
+    const mindmapId = committed.node.owner?.kind === 'mindmap'
+      ? committed.node.owner.id
+      : undefined
+    if (!mindmapId) {
+      return committed
+    }
+
+    const rect = options?.mindmapRect === 'projected'
+      ? mindmap
+        ? store.read(mindmap.node, nodeId)?.rect
+        : undefined
+      : store.read(read.mindmap.committed, mindmapId)?.computed.node[nodeId]
+
+    if (!rect || equal.sameRect(committed.rect, rect)) {
       return committed
     }
 
     return {
       node: committed.node,
-      rect: mindmapNode.rect
+      rect
     }
   }
+
+  const edit = {
+    node: store.createKeyedDerivedStore<NodeId, EditorDraftNodeLayout | undefined>({
+      get: (nodeId) => {
+        const current = store.read(session.edit)
+        if (
+          !current
+          || current.kind !== 'node'
+          || current.nodeId !== nodeId
+        ) {
+          return undefined
+        }
+
+        return measureDraftNodeLayout({
+          committed: readLayoutNodeItem(nodeId, {
+            mindmapRect: 'committed'
+          }),
+          nodeId,
+          field: current.field,
+          text: current.draft.text,
+          registry,
+          backend
+        })
+      },
+      isEqual: (left, right) => left === right || (
+        left !== undefined
+        && right !== undefined
+        && geometryApi.equal.size(left.size, right.size)
+        && left.fontSize === right.fontSize
+        && left.wrapWidth === right.wrapWidth
+      )
+    })
+  }
+  mindmap = createMindmapLayoutRead({
+    list: read.mindmap.list,
+    committed: read.mindmap.committed,
+    structure: read.mindmap.structure,
+    nodeCommitted: read.node.committed,
+    edit: session.edit,
+    draft: edit.node,
+    preview: session.mindmapPreview
+  })
 
   const resolveNodeRequest = ({
     nodeId,
@@ -516,6 +633,7 @@ export const createEditorLayout = ({
 
   return {
     text,
+    edit,
     mindmap,
     patchNodeCreatePayload: patchCreatePayload,
     patchMindmapTemplate: (template, position = { x: 0, y: 0 }) => ({
@@ -523,7 +641,9 @@ export const createEditorLayout = ({
       root: patchMindmapTemplateNode(template.root, position)
     }),
     patchNodeUpdate: (nodeId, update, options) => {
-      const committed = readLayoutNodeItem(nodeId)
+      const committed = readLayoutNodeItem(nodeId, {
+        mindmapRect: 'projected'
+      })
       if (!committed) {
         return update
       }
@@ -569,59 +689,10 @@ export const createEditorLayout = ({
       )
     },
 
-    editNode: ({
-      nodeId,
-      field,
-      text
-    }) => {
-      const committed = readLayoutNodeItem(nodeId)
-      if (!committed) {
-        return undefined
-      }
-
-      const kind = readLayoutKind(registry, committed.node)
-      if (kind === 'none' || field !== 'text') {
-        return undefined
-      }
-
-      const nextNode: Node = {
-        ...committed.node,
-        data: {
-          ...(committed.node.data ?? {}),
-          [field]: text
-        }
-      }
-      const request = resolveNodeRequest({
-        nodeId,
-        node: nextNode,
-        rect: committed.rect
-      })
-      if (!request) {
-        return undefined
-      }
-
-      const result = backend?.measure(request)
-      if (request.kind === 'size') {
-        return {
-          size: result?.kind === 'size'
-            ? result.size
-            : {
-                width: committed.rect.width,
-                height: committed.rect.height
-              },
-          wrapWidth: request.wrapWidth
-        }
-      }
-
-      return result?.kind === 'fit'
-        ? {
-            fontSize: result.fontSize
-          }
-        : undefined
-    },
-
     resolvePreviewPatches: (patches) => patches.map((patch) => {
-      const committed = readLayoutNodeItem(patch.id)
+      const committed = readLayoutNodeItem(patch.id, {
+        mindmapRect: 'projected'
+      })
       if (!backend || !committed) {
         return patch
       }

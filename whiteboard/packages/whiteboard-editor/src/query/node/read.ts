@@ -110,24 +110,6 @@ type NodeRuntime = {
   resizing: boolean
 }
 
-const shouldLogMindmapEditDebug = () => (
-  typeof globalThis === 'undefined'
-    || (globalThis as {
-      __WB_DEBUG_MINDMAP_EDIT__?: boolean
-    }).__WB_DEBUG_MINDMAP_EDIT__ !== false
-)
-
-const logMindmapEditDebug = (
-  stage: string,
-  payload: Record<string, unknown>
-) => {
-  if (!shouldLogMindmapEditDebug()) {
-    return
-  }
-
-  console.log('[mindmap-edit-debug]', stage, payload)
-}
-
 const EMPTY_CONTROLS: readonly ControlId[] = []
 
 const isSelectableNode = (
@@ -521,18 +503,6 @@ export const createNodeRead = ({
         currentDraft
       )
 
-      if (
-        current.node.owner?.kind === 'mindmap'
-        && currentDraft?.size
-      ) {
-        logMindmapEditDebug('node.geometry', {
-          nodeId,
-          draftSize: currentDraft.size,
-          mindmapRect: currentMindmap?.rect,
-          finalRect: geometryItem.rect
-        })
-      }
-
       return readGeometryView(geometryItem)
     },
     isEqual: isNodeGeometryEqual
@@ -596,7 +566,7 @@ export const createNodeRead = ({
       )
       const currentCapability = resolveNodeCapability(currentNode, type)
       const currentEdit = store.read(edit.node, nodeId)
-      const nextRender = {
+      return {
         nodeId,
         node: currentNode,
         rect: currentGeometry.rect,
@@ -612,19 +582,6 @@ export const createNodeRead = ({
         canResize: currentCapability.resize,
         canRotate: currentCapability.rotate
       }
-
-      if (
-        currentNode.owner?.kind === 'mindmap'
-        && currentEdit
-      ) {
-        logMindmapEditDebug('node.render', {
-          nodeId,
-          rect: nextRender.rect,
-          bounds: nextRender.bounds
-        })
-      }
-
-      return nextRender
     },
     isEqual: isNodeRenderEqual
   })

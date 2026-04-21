@@ -41,24 +41,6 @@ const EMPTY_ROOT_MOVE_MAP = new Map<NodeId, {
 const EMPTY_SUBTREE_MOVE_MAP = new Map<NodeId, MindmapSubtreeMove>()
 const EMPTY_ENTER_MAP = new Map<NodeId, readonly MindmapEnterPreview[]>()
 
-const shouldLogMindmapEditDebug = () => (
-  typeof globalThis === 'undefined'
-    || (globalThis as {
-      __WB_DEBUG_MINDMAP_EDIT__?: boolean
-    }).__WB_DEBUG_MINDMAP_EDIT__ !== false
-)
-
-const logMindmapEditDebug = (
-  stage: string,
-  payload: Record<string, unknown>
-) => {
-  if (!shouldLogMindmapEditDebug()) {
-    return
-  }
-
-  console.log('[mindmap-edit-debug]', stage, payload)
-}
-
 const interpolateRect = (
   from: Rect,
   to: Rect,
@@ -199,7 +181,6 @@ const readProjectedMindmapItem = ({
     }
 
   if (liveSize) {
-    const beforeRect = base.computed.node[liveSize.nodeId]
     const nextComputed = mindmapApi.layout.compute(
       structure.tree,
       (nodeId) => {
@@ -226,14 +207,6 @@ const readProjectedMindmapItem = ({
       tree: structure.tree,
       computed: nextComputed,
       position: rootPosition
-    })
-
-    logMindmapEditDebug('mindmap.project', {
-      treeId: base.id,
-      nodeId: liveSize.nodeId,
-      liveSize: liveSize.size,
-      beforeRect,
-      afterRect: computed.node[liveSize.nodeId]
     })
   }
 
@@ -411,7 +384,7 @@ export const createMindmapLayoutRead = ({
       }
 
       const currentEnter = store.read(enter, treeId)
-      const projected = readProjectedMindmapItem({
+      return readProjectedMindmapItem({
         base,
         structure: currentStructure,
         nodeCommitted,
@@ -423,17 +396,6 @@ export const createMindmapLayoutRead = ({
           ? store.read(clock)
           : 0
       })
-
-      const currentLiveSize = store.read(liveSize, treeId)
-      if (currentLiveSize) {
-        logMindmapEditDebug('mindmap.item', {
-          treeId,
-          nodeId: currentLiveSize.nodeId,
-          rect: projected.computed.node[currentLiveSize.nodeId]
-        })
-      }
-
-      return projected
     },
     isEqual: (left, right) => left === right || (
       left !== undefined
@@ -445,38 +407,45 @@ export const createMindmapLayoutRead = ({
     )
   })
 
+  const nodeSource = store.createDerivedStore({
+    get: () => {
+      const next = new Map<NodeId, MindmapNodeLayoutItem>()
+
+      store.read(list).forEach((mindmapId) => {
+        const currentLayout = store.read(item, mindmapId)
+        if (!currentLayout) {
+          return
+        }
+
+        const currentLiveSize = store.read(liveSize, mindmapId)
+        const nodeIds = currentLiveSize && !currentLayout.nodeIds.includes(currentLiveSize.nodeId)
+          ? [...currentLayout.nodeIds, currentLiveSize.nodeId]
+          : currentLayout.nodeIds
+
+        nodeIds.forEach((nodeId) => {
+          const rect = currentLayout.computed.node[nodeId]
+          if (!rect) {
+            return
+          }
+
+          next.set(nodeId, {
+            mindmapId,
+            nodeId,
+            rect
+          })
+        })
+      })
+
+      return next as ReadonlyMap<NodeId, MindmapNodeLayoutItem>
+    }
+  })
+
   const node = store.createProjectedKeyedStore<
     ReadonlyMap<NodeId, MindmapNodeLayoutItem>,
     NodeId,
     MindmapNodeLayoutItem | undefined
   >({
-    source: store.createDerivedStore({
-      get: () => {
-        const next = new Map<NodeId, MindmapNodeLayoutItem>()
-
-        store.read(list).forEach((mindmapId) => {
-          const currentLayout = store.read(item, mindmapId)
-          if (!currentLayout) {
-            return
-          }
-
-          currentLayout.nodeIds.forEach((nodeId) => {
-            const rect = currentLayout.computed.node[nodeId]
-            if (!rect) {
-              return
-            }
-
-            next.set(nodeId, {
-              mindmapId,
-              nodeId,
-              rect
-            })
-          })
-        })
-
-        return next as ReadonlyMap<NodeId, MindmapNodeLayoutItem>
-      }
-    }),
+    source: nodeSource,
     select: (value) => value,
     emptyValue: undefined,
     isEqual: (left, right) => left === right || (

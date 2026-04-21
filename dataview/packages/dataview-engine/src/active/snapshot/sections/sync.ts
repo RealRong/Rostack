@@ -16,12 +16,8 @@ import {
   applyOrderedIdDelta
 } from '@dataview/engine/active/shared/ordered'
 import {
-  applyMembershipTransition,
-  ensureSectionTransition,
-  membershipRead
-} from '@dataview/engine/active/shared/impact'
-import type {
-  ActiveImpact
+  membershipRead,
+  type ActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import {
   EMPTY_SECTION_KEYS,
@@ -31,12 +27,20 @@ import {
   ROOT_SECTION_ORDER,
   sameSectionKeys
 } from '@dataview/engine/active/shared/sections'
+import {
+  createMapPatchBuilder
+} from '@dataview/engine/active/shared/patch'
 import type {
-  SectionKey,
+  SectionKey
 } from '@dataview/engine/contracts'
 import type {
   QueryState,
+  SectionRecordChange,
   SectionState
+} from '@dataview/engine/contracts/state'
+import {
+  readQueryOrder,
+  readQueryVisibleSet
 } from '@dataview/engine/contracts/state'
 import {
   buildSectionNode,
@@ -44,17 +48,11 @@ import {
   sameSectionNode
 } from '@dataview/engine/active/snapshot/sections/derive'
 import {
-  readQueryOrder,
-  readQueryVisibleSet
-} from '@dataview/engine/contracts/state'
-import {
   tokenRef
 } from '@shared/i18n'
-import {
-  createMapPatchBuilder
-} from '@dataview/engine/active/shared/patch'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const EMPTY_RECORD_CHANGES = new Map<RecordId, SectionRecordChange>()
 const EMPTY_TOUCHED_SECTIONS = new Set<string>()
 const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
 const MAX_INCREMENTAL_SECTION_TOUCH_RATIO = 0.25
@@ -101,29 +99,34 @@ const syncRootSectionState = (input: {
   previous: SectionState
   query: QueryState
   impact: ActiveImpact
-}): SectionState => {
+}): {
+  state: SectionState
+  records: ReadonlyMap<RecordId, SectionRecordChange>
+} => {
   const previousRoot = input.previous.byKey.get(ROOT_SECTION_KEY)
-  let transition = input.impact.section
+  const records = new Map<RecordId, SectionRecordChange>()
   const hasVisibleDelta = Boolean(
     input.impact.query?.visibleAdded.length
     || input.impact.query?.visibleRemoved.length
   )
 
   input.impact.query?.visibleRemoved.forEach(recordId => {
-    transition ??= ensureSectionTransition(input.impact)
-    applyMembershipTransition(transition, recordId, ROOT_SECTION_KEYS, [])
+    records.set(recordId, {
+      before: ROOT_SECTION_KEYS,
+      after: EMPTY_SECTION_KEYS
+    })
   })
   input.impact.query?.visibleAdded.forEach(recordId => {
-    transition ??= ensureSectionTransition(input.impact)
-    applyMembershipTransition(transition, recordId, [], ROOT_SECTION_KEYS)
+    records.set(recordId, {
+      before: EMPTY_SECTION_KEYS,
+      after: ROOT_SECTION_KEYS
+    })
   })
 
   const nextRoot = {
     key: ROOT_SECTION_KEY,
     label: ROOT_SECTION_LABEL,
-    recordIds: input.query.records.visible,
-    visible: true,
-    collapsed: false
+    recordIds: input.query.records.visible
   }
   const publishedRoot = previousRoot && sameSectionNode(previousRoot, nextRoot)
     ? previousRoot
@@ -136,15 +139,23 @@ const syncRootSectionState = (input: {
     && !hasVisibleDelta
     && input.previous.keysByRecord.size === keysByRecord.size
   ) {
-    return input.previous
+    return {
+      state: input.previous,
+      records: EMPTY_RECORD_CHANGES
+    }
   }
 
   return {
-    order: ROOT_SECTION_ORDER,
-    byKey: new Map([
-      [ROOT_SECTION_KEY, publishedRoot] as const
-    ]),
-    keysByRecord
+    state: {
+      order: ROOT_SECTION_ORDER,
+      byKey: new Map([
+        [ROOT_SECTION_KEY, publishedRoot] as const
+      ]),
+      keysByRecord
+    },
+    records: records.size
+      ? records
+      : EMPTY_RECORD_CHANGES
   }
 }
 
@@ -181,21 +192,30 @@ export const syncSectionState = (input: {
   index: IndexState
   impact: ActiveImpact
   action: 'reuse' | 'sync' | 'rebuild'
-}): SectionState => {
+}): {
+  state: SectionState
+  records: ReadonlyMap<RecordId, SectionRecordChange>
+} => {
   if (input.action === 'reuse' && input.previous) {
-    return input.previous
+    return {
+      state: input.previous,
+      records: EMPTY_RECORD_CHANGES
+    }
   }
 
   if (
     !input.previous
     || input.action === 'rebuild'
   ) {
-    return buildSectionState({
-      view: input.view,
-      query: input.query,
-      index: input.index,
-      previous: input.previous
-    })
+    return {
+      state: buildSectionState({
+        view: input.view,
+        query: input.query,
+        index: input.index,
+        previous: input.previous
+      }),
+      records: EMPTY_RECORD_CHANGES
+    }
   }
 
   if (!input.view.group) {
@@ -210,12 +230,15 @@ export const syncSectionState = (input: {
   const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec(input.view.group))
   const changedRecordIds = resolveChangedRecordIds(input.impact)
   if (!bucketIndex || changedRecordIds === 'all') {
-    return buildSectionState({
-      view: input.view,
-      query: input.query,
-      index: input.index,
-      previous
-    })
+    return {
+      state: buildSectionState({
+        view: input.view,
+        query: input.query,
+        index: input.index,
+        previous
+      }),
+      records: EMPTY_RECORD_CHANGES
+    }
   }
 
   if (shouldRebuildGroupedSections({
@@ -223,19 +246,22 @@ export const syncSectionState = (input: {
     query: input.query,
     changedRecordIds
   })) {
-    return buildSectionState({
-      view: input.view,
-      query: input.query,
-      index: input.index,
-      previous
-    })
+    return {
+      state: buildSectionState({
+        view: input.view,
+        query: input.query,
+        index: input.index,
+        previous
+      }),
+      records: EMPTY_RECORD_CHANGES
+    }
   }
 
   const fullVisible = input.query.records.visible === input.index.records.ids
   const visible = fullVisible
     ? undefined
     : readQueryVisibleSet(input.query)
-  let sectionTransition = input.impact.section
+  const recordChanges = new Map<RecordId, SectionRecordChange>()
   const keysByRecord = fullVisible
     ? undefined
     : createMapPatchBuilder(previous.keysByRecord)
@@ -254,8 +280,10 @@ export const syncSectionState = (input: {
       return
     }
 
-    sectionTransition ??= ensureSectionTransition(input.impact)
-    applyMembershipTransition(sectionTransition, recordId, before, after)
+    recordChanges.set(recordId, {
+      before,
+      after
+    })
     keysChanged = true
 
     if (fullVisible) {
@@ -290,9 +318,9 @@ export const syncSectionState = (input: {
     const projectedRecordIds = fullVisible
       ? bucketIndex.recordsByKey
       : projectRecordIdsBySection({
-        recordIds: input.query.records.visible,
-        keysByRecord: nextKeysByRecord
-      })
+          recordIds: input.query.records.visible,
+          keysByRecord: nextKeysByRecord
+        })
     const byKey = new Map<string, ReturnType<typeof buildSectionNode>>()
     let changed = nextOrder !== previous.order
       || previous.byKey.size !== presentation.order.length
@@ -302,7 +330,6 @@ export const syncSectionState = (input: {
       const nextNode = buildSectionNode({
         key: sectionKey,
         recordIds: projectedRecordIds.get(sectionKey) ?? EMPTY_RECORD_IDS,
-        group: input.view.group,
         index: input.index,
         buckets: presentation.buckets as ReadonlyMap<string, Bucket>
       })
@@ -316,19 +343,33 @@ export const syncSectionState = (input: {
       byKey.set(sectionKey, published)
     })
 
-    return changed
-      ? {
-          order: nextOrder,
-          byKey,
-          keysByRecord: nextKeysByRecord
-        }
-      : previous
+    return {
+      state: changed
+        ? {
+            order: nextOrder,
+            byKey,
+            keysByRecord: nextKeysByRecord
+          }
+        : previous,
+      records: recordChanges.size
+        ? recordChanges
+        : EMPTY_RECORD_CHANGES
+    }
   }
 
-  const sectionKeyChanges = membershipRead.keyChanges(sectionTransition)
-  const touchedSections = sectionKeyChanges.touched.size
-    ? sectionKeyChanges.touched
+  const touchedSections = recordChanges.size
+    ? new Set<SectionKey>()
     : EMPTY_TOUCHED_SECTIONS
+  if (recordChanges.size) {
+    recordChanges.forEach(({ before, after }) => {
+      before.forEach(sectionKey => {
+        touchedSections.add(sectionKey)
+      })
+      after.forEach(sectionKey => {
+        touchedSections.add(sectionKey)
+      })
+    })
+  }
   const queryOrder = input.query.records.ordered === input.index.records.ids
     ? input.index.records.order
     : readQueryOrder(input.query)
@@ -342,15 +383,26 @@ export const syncSectionState = (input: {
     const nextRecordIds = touchedSections.has(sectionKey)
       ? applyOrderedIdDelta({
           previous: previousNode?.recordIds ?? EMPTY_RECORD_IDS,
-          remove: createRecordIdSet(sectionKeyChanges.removed.get(sectionKey)),
-          add: sectionKeyChanges.added.get(sectionKey),
+          remove: createRecordIdSet(
+            [...recordChanges.entries()]
+              .flatMap(([recordId, change]) => (
+                change.before.includes(sectionKey) && !change.after.includes(sectionKey)
+                  ? [recordId]
+                  : []
+              ))
+          ),
+          add: [...recordChanges.entries()]
+            .flatMap(([recordId, change]) => (
+              change.after.includes(sectionKey) && !change.before.includes(sectionKey)
+                ? [recordId]
+                : []
+            )),
           order: queryOrder
         }) ?? EMPTY_RECORD_IDS
       : previousNode?.recordIds ?? bucketIndex.recordsByKey.get(sectionKey) ?? EMPTY_RECORD_IDS
     const nextNode = buildSectionNode({
       key: sectionKey,
       recordIds: nextRecordIds,
-      group: input.view.group,
       index: input.index,
       buckets: presentation.buckets as ReadonlyMap<string, Bucket>
     })
@@ -363,11 +415,16 @@ export const syncSectionState = (input: {
     byKey.set(sectionKey, published)
   })
 
-  return changed
-    ? {
-        order: nextOrder,
-        byKey,
-        keysByRecord: nextKeysByRecord
-      }
-    : previous
+  return {
+    state: changed
+      ? {
+          order: nextOrder,
+          byKey,
+          keysByRecord: nextKeysByRecord
+        }
+      : previous,
+    records: recordChanges.size
+      ? recordChanges
+      : EMPTY_RECORD_CHANGES
+  }
 }

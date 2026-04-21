@@ -71,17 +71,17 @@ export const useGalleryRuntime = (): GalleryViewRuntime => {
   }), [dataView.source.active.sections])
   const sections = useStoreValue(sectionsStore)
   const groupedStore = useMemo(() => store.createDerivedStore({
-    get: () => queryRead.grouped(store.read(dataView.source.active.query)),
+    get: () => queryRead.grouped(store.read(dataView.source.active.meta.query)),
     isEqual: Object.is
-  }), [dataView.source.active.query])
+  }), [dataView.source.active.meta.query])
   const gallerySizeStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.gallery).size,
+    get: () => store.read(dataView.source.active.meta.gallery).size,
     isEqual: Object.is
-  }), [dataView.source.active.gallery])
+  }), [dataView.source.active.meta.gallery])
   const galleryCanReorderStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.gallery).canReorder,
+    get: () => store.read(dataView.source.active.meta.gallery).canReorder,
     isEqual: Object.is
-  }), [dataView.source.active.gallery])
+  }), [dataView.source.active.meta.gallery])
   const grouped = useStoreValue(groupedStore)
   const size = useStoreValue(gallerySizeStore)
   const canReorder = useStoreValue(galleryCanReorderStore)

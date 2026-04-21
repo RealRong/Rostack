@@ -1,8 +1,4 @@
 import type {
-  CalculationCollection
-} from '@dataview/core/calculation'
-import type {
-  Field,
   FieldId,
   View,
   ViewId
@@ -15,19 +11,17 @@ import { equal } from '@shared/core'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
+  SectionDelta,
   SectionState,
   SummaryDelta,
   SummaryState
 } from '@dataview/engine/contracts/state'
-import type { SectionKey } from '@dataview/engine/contracts'
 import {
-  hasCalculationChanges,
-  hasMembershipChanges
+  hasCalculationChanges
 } from '@dataview/engine/active/shared/impact'
 import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'
-import { publishSummaries } from '@dataview/engine/active/snapshot/summary/publish'
 import {
   deriveSummaryState
 } from '@dataview/engine/active/snapshot/summary/sync'
@@ -47,11 +41,14 @@ const resolveSummaryAction = (input: {
   previousSections?: SectionState
   sections: SectionState
   sectionsAction: DeriveAction
+  sectionDelta: SectionDelta
 }): DeriveAction => {
   const commit = input.impact.commit
-  const visibleChanged = Boolean(
-    input.impact.query?.visibleAdded.length
-    || input.impact.query?.visibleRemoved.length
+  const sectionChanged = (
+    input.sectionDelta.rebuild
+    || input.sectionDelta.orderChanged
+    || input.sectionDelta.removed.length > 0
+    || input.sectionDelta.records.size > 0
   )
 
   if (
@@ -69,7 +66,7 @@ const resolveSummaryAction = (input: {
       : 'sync'
   }
 
-  if (input.sectionsAction === 'rebuild' || input.impact.section?.rebuild) {
+  if (input.sectionsAction === 'rebuild' || input.sectionDelta.rebuild) {
     return 'rebuild'
   }
 
@@ -95,9 +92,7 @@ const resolveSummaryAction = (input: {
 
   if (
     !equal.sameOrder(input.previousSections.order, input.sections.order)
-    || visibleChanged
-    || hasMembershipChanges(input.impact.bucket)
-    || hasMembershipChanges(input.impact.section)
+    || sectionChanged
   ) {
     return 'sync'
   }
@@ -117,31 +112,18 @@ export const runSummaryStage = (input: {
   calcFields: readonly FieldId[]
   previous?: SummaryState
   previousSections?: SectionState
-  previousPublished?: ReadonlyMap<SectionKey, CalculationCollection>
   sections: SectionState
   sectionsAction: DeriveAction
+  sectionDelta: SectionDelta
   index: IndexState
-  fieldsById: ReadonlyMap<FieldId, Field>
 }): {
   action: DeriveAction
   state: SummaryState
   delta: SummaryDelta
-  summaries: ReadonlyMap<SectionKey, CalculationCollection>
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
 } => {
-  const visibleChanged = Boolean(
-    input.impact.query?.visibleAdded.length
-    || input.impact.query?.visibleRemoved.length
-  )
-  const bucketChanged = hasMembershipChanges(input.impact.bucket)
-  const sectionChanged = hasMembershipChanges(input.impact.section)
-  const calculationChanged = hasCalculationChanges(input.impact, input.calcFields)
-  const orderChanged = !equal.sameOrder(
-    input.previousSections?.order ?? [],
-    input.sections.order
-  )
   const action = resolveSummaryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
@@ -151,40 +133,22 @@ export const runSummaryStage = (input: {
     previous: input.previous,
     previousSections: input.previousSections,
     sections: input.sections,
-    sectionsAction: input.sectionsAction
+    sectionsAction: input.sectionsAction,
+    sectionDelta: input.sectionDelta
   })
   const deriveStart = now()
   const derived = deriveSummaryState({
     previous: input.previous,
     previousSections: input.previousSections,
     sections: input.sections,
+    sectionDelta: input.sectionDelta,
     calcFields: input.calcFields,
     index: input.index,
     impact: input.impact,
     action
   })
   const deriveMs = now() - deriveStart
-  const canReusePublished = (
-    derived.state === input.previous
-    && input.previousPublished !== undefined
-  )
-  const publishStart = canReusePublished
-    ? 0
-    : now()
-  const summaries = canReusePublished
-    ? input.previousPublished!
-    : publishSummaries({
-        summary: derived.state,
-        previousSummary: input.previous,
-        previous: input.previousPublished,
-        fieldsById: input.fieldsById,
-        view: input.view
-      })
-  const publishMs = canReusePublished
-    ? 0
-    : now() - publishStart
-
-  const outputCount = summaries.size
+  const outputCount = derived.state.bySection.size
   const changedSectionCount = action === 'reuse'
     ? 0
     : derived.delta.rebuild
@@ -195,61 +159,14 @@ export const runSummaryStage = (input: {
         )
   const reusedNodeCount = Math.max(0, outputCount - changedSectionCount)
 
-  console.log('[dv-summary-debug][summary]', {
-    action,
-    sectionsAction: input.sectionsAction,
-    canReusePublished,
-    guards: {
-      hasPrevious: input.previous !== undefined,
-      hasPreviousSections: input.previousSections !== undefined,
-      sameView: input.previousViewId === input.activeViewId,
-      calcFieldCount: input.calcFields.length
-    },
-    reasons: {
-      orderChanged,
-      visibleChanged,
-      bucketChanged,
-      sectionChanged,
-      calculationChanged,
-      sectionRebuild: input.impact.section?.rebuild === true,
-      activeViewChanged: commitImpact.has.activeView(input.impact.commit)
-    },
-    queryImpact: input.impact.query
-      ? {
-          rebuild: input.impact.query.rebuild === true,
-          visibleAdded: input.impact.query.visibleAdded.length,
-          visibleRemoved: input.impact.query.visibleRemoved.length,
-          orderChanged: input.impact.query.orderChanged === true
-        }
-      : undefined,
-    bucketImpact: input.impact.bucket
-      ? {
-          rebuild: input.impact.bucket.rebuild === true,
-          recordCount: input.impact.bucket.records.size
-        }
-      : undefined,
-    sectionImpact: input.impact.section
-      ? {
-          rebuild: input.impact.section.rebuild === true,
-          recordCount: input.impact.section.records.size
-        }
-      : undefined,
-    delta: {
-      rebuild: derived.delta.rebuild,
-      changed: derived.delta.changed,
-      removed: derived.delta.removed
-    }
-  })
-
   return {
     action,
     state: derived.state,
     delta: derived.delta,
-    summaries,
     deriveMs,
-    publishMs,
+    publishMs: 0,
     metrics: {
-      inputCount: input.previousPublished?.size,
+      inputCount: input.previous?.bySection.size,
       outputCount,
       reusedNodeCount,
       rebuiltNodeCount: outputCount - reusedNodeCount,

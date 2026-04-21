@@ -21,37 +21,47 @@ import type {
   ActiveViewTable
 } from '@dataview/engine/contracts/view'
 
-export interface EntityDelta<TKey, TValue> {
+export interface EntityPatch<TKey, TValue> {
   ids?: readonly TKey[]
   set?: ReadonlyMap<TKey, TValue | undefined>
   remove?: readonly TKey[]
 }
 
-export interface SourceDelta {
-  document?: {
-    records?: EntityDelta<RecordId, DataRecord>
-    fields?: EntityDelta<FieldId, CustomField>
-    views?: EntityDelta<ViewId, View>
+export interface DocumentPatch {
+  records?: EntityPatch<RecordId, DataRecord>
+  fields?: EntityPatch<FieldId, CustomField>
+  views?: EntityPatch<ViewId, View>
+}
+
+export interface ActivePatch {
+  view?: {
+    ready?: boolean
+    id?: ViewId
+    type?: View['type']
+    value?: View | undefined
   }
-  active?: {
-    view?: {
-      ready?: boolean
-      id?: ViewId
-      type?: View['type']
-      value?: View | undefined
-    }
+  meta?: {
     query?: ActiveViewQuery
     table?: ActiveViewTable
     gallery?: ActiveViewGallery
     kanban?: ActiveViewKanban
-    items?: EntityDelta<ItemId, ViewItem>
-    sections?: {
-      records?: EntityDelta<SectionKey, Section>
-      summary?: EntityDelta<SectionKey, CalculationCollection | undefined>
-    }
-    fields?: {
-      all?: EntityDelta<FieldId, Field>
-      custom?: EntityDelta<FieldId, CustomField>
-    }
   }
+  items?: EntityPatch<ItemId, ViewItem>
+  sections?: {
+    data?: EntityPatch<SectionKey, Section>
+    summary?: EntityPatch<SectionKey, CalculationCollection | undefined>
+  }
+  fields?: {
+    all?: EntityPatch<FieldId, Field>
+    custom?: EntityPatch<FieldId, CustomField>
+  }
+}
+
+export interface EnginePatch {
+  document?: {
+    records?: EntityPatch<RecordId, DataRecord>
+    fields?: EntityPatch<FieldId, CustomField>
+    views?: EntityPatch<ViewId, View>
+  }
+  active?: ActivePatch
 }

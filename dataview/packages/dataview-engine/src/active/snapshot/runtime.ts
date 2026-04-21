@@ -12,13 +12,14 @@ import type {
   ViewCache
 } from '@dataview/engine/contracts/state'
 import type {
+  ActivePatch,
   ViewStageName,
   ViewStageTrace,
   ViewState,
   ViewTrace
 } from '@dataview/engine/contracts'
 import { now } from '@dataview/engine/runtime/clock'
-import { publishViewBase } from '@dataview/engine/active/snapshot/base'
+import { runPublishStage } from '@dataview/engine/active/snapshot/publish/runtime'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
 import { runSectionsStage } from '@dataview/engine/active/snapshot/sections/runtime'
 import { runSummaryStage } from '@dataview/engine/active/snapshot/summary/runtime'
@@ -32,7 +33,8 @@ import type {
 interface ViewRunResult {
   cache: ViewCache
   snapshot?: ViewState
-  delta?: SnapshotChange
+  change?: SnapshotChange
+  patch?: ActivePatch
   trace?: ViewTrace
 }
 
@@ -57,12 +59,10 @@ export const deriveViewSnapshot = (input: {
   const timeStage = <T extends { action: DeriveAction },>(
     stage: ViewStageName,
     run: () => T,
-    previousSnapshot: ViewState | undefined,
-    nextSnapshot: (result: T) => ViewState | undefined
+    changed: (result: T) => boolean
   ): T => {
     const result = run()
     if (input.capturePerf) {
-      const next = nextSnapshot(result)
       const deriveMs = 'deriveMs' in result && typeof result.deriveMs === 'number'
         ? result.deriveMs
         : 0
@@ -73,7 +73,7 @@ export const deriveViewSnapshot = (input: {
         stage,
         action: result.action,
         executed: result.action !== 'reuse',
-        changed: !Object.is(previousSnapshot, next),
+        changed: changed(result),
         durationMs: deriveMs + publishMs,
         deriveMs,
         publishMs,
@@ -101,7 +101,8 @@ export const deriveViewSnapshot = (input: {
               plan: {
                 query: 'reuse',
                 sections: 'reuse',
-                summary: 'reuse'
+                summary: 'reuse',
+                publish: 'reuse'
               },
               timings: {
                 totalMs: now() - totalStart
@@ -129,13 +130,7 @@ export const deriveViewSnapshot = (input: {
       previous: input.previousCache.query.state,
       previousPublished: input.previousSnapshot?.records
     }),
-    input.previousSnapshot,
-    result => input.previousSnapshot
-      ? {
-          ...input.previousSnapshot,
-          records: result.records
-        }
-      : undefined
+    result => input.previousSnapshot?.records !== result.records
   )
 
   const sections = timeStage(
@@ -150,20 +145,12 @@ export const deriveViewSnapshot = (input: {
         structure: input.previousCache.sections.state,
         projection: input.previousCache.sections.projection
       },
-      previousPublished: {
-        sections: input.previousSnapshot?.sections,
-        items: input.previousSnapshot?.items
-      },
       index: input.index
     }),
-    input.previousSnapshot,
-    result => input.previousSnapshot
-      ? {
-          ...input.previousSnapshot,
-          sections: result.sections,
-          items: result.items
-        }
-      : undefined
+    result => (
+      input.previousCache.sections.state !== result.state.structure
+      || input.previousCache.sections.projection !== result.state.projection
+    )
   )
 
   const summary = timeStage(
@@ -176,64 +163,38 @@ export const deriveViewSnapshot = (input: {
       calcFields: viewPlan?.calcFields ?? [],
       previous: input.previousCache.summary.state,
       previousSections: input.previousCache.sections.state,
-      previousPublished: input.previousSnapshot?.summaries,
       sections: sections.state.structure,
       sectionsAction: sections.action,
-      index: input.index,
-      fieldsById: input.documentContext.fieldsById
+      sectionDelta: sections.delta,
+      index: input.index
     }),
-    input.previousSnapshot,
-    result => input.previousSnapshot
-      ? {
-          ...input.previousSnapshot,
-          summaries: result.summaries
-        }
-      : undefined
+    result => input.previousCache.summary.state !== result.state
   )
-
-  const base = publishViewBase({
-    reader: input.documentContext.reader,
-    fieldsById: input.documentContext.fieldsById,
-    viewId: activeViewId,
-    previous: input.previousSnapshot
-      ? {
-          view: input.previousSnapshot.view,
-          query: input.previousSnapshot.query,
-          fields: input.previousSnapshot.fields,
-          table: input.previousSnapshot.table,
-          gallery: input.previousSnapshot.gallery,
-          kanban: input.previousSnapshot.kanban
-        }
-      : undefined
-  })
-  const snapshot = base.view && base.query && base.fields && base.table && base.gallery && base.kanban
-    ? {
-        view: base.view,
-        query: base.query,
-        records: query.records,
-        sections: sections.sections,
-        items: sections.items,
-        fields: base.fields,
-        table: base.table,
-        gallery: base.gallery,
-        kanban: base.kanban,
-        summaries: summary.summaries
-      } satisfies ViewState
-    : undefined
-  const publishedSnapshot = snapshot
-    && input.previousSnapshot
-    && input.previousSnapshot.view === snapshot.view
-    && input.previousSnapshot.query === snapshot.query
-    && input.previousSnapshot.records === snapshot.records
-    && input.previousSnapshot.sections === snapshot.sections
-    && input.previousSnapshot.items === snapshot.items
-    && input.previousSnapshot.fields === snapshot.fields
-    && input.previousSnapshot.table === snapshot.table
-    && input.previousSnapshot.gallery === snapshot.gallery
-    && input.previousSnapshot.kanban === snapshot.kanban
-    && input.previousSnapshot.summaries === snapshot.summaries
-      ? input.previousSnapshot
-      : snapshot
+  const change = {
+    query: query.delta,
+    sections: sections.delta,
+    summary: summary.delta
+  } satisfies SnapshotChange
+  const publish = timeStage(
+    'publish',
+    () => runPublishStage({
+      reader: input.documentContext.reader,
+      fieldsById: input.documentContext.fieldsById,
+      activeViewId,
+      previous: input.previousSnapshot,
+      view,
+      records: query.records,
+      sectionState: sections.state,
+      previousSectionState: input.previousCache.sections.state,
+      previousSections: input.previousSnapshot?.sections,
+      previousItems: input.previousSnapshot?.items,
+      summaryState: summary.state,
+      previousSummaryState: input.previousCache.summary.state,
+      previousSummaries: input.previousSnapshot?.summaries,
+      change
+    }),
+    result => input.previousSnapshot !== result.snapshot
+  )
 
   return {
     cache: {
@@ -248,14 +209,15 @@ export const deriveViewSnapshot = (input: {
         state: summary.state
       }
     },
-    snapshot: publishedSnapshot,
-    ...(publishedSnapshot
+    snapshot: publish.snapshot,
+    ...(publish.snapshot
       ? {
-          delta: {
-            query: query.delta,
-            sections: sections.delta,
-            summary: summary.delta
-          }
+          change
+        }
+      : {}),
+    ...(publish.patch
+      ? {
+          patch: publish.patch
         }
       : {}),
     ...(input.capturePerf
@@ -264,7 +226,8 @@ export const deriveViewSnapshot = (input: {
             plan: {
               query: query.action,
               sections: sections.action,
-              summary: summary.action
+              summary: summary.action,
+              publish: publish.action
             },
             timings: {
               totalMs: now() - totalStart

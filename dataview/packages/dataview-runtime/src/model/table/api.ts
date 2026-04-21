@@ -81,9 +81,9 @@ export const createTableModel = (input: {
       return {
         viewId,
         empty: store.read(input.source.active.items.ids).length === 0,
-        grouped: queryRead.grouped(store.read(input.source.active.query)),
-        wrap: store.read(input.source.active.table).wrap,
-        showVerticalLines: store.read(input.source.active.table).showVerticalLines,
+        grouped: queryRead.grouped(store.read(input.source.active.meta.query)),
+        wrap: store.read(input.source.active.meta.table).wrap,
+        showVerticalLines: store.read(input.source.active.meta.table).showVerticalLines,
         columnIds: store.read(input.source.active.fields.all.ids),
         sectionKeys: store.read(input.source.active.sections.keys)
       }
@@ -97,8 +97,8 @@ export const createTableModel = (input: {
         return undefined
       }
 
-      const query = store.read(input.source.active.query)
-      const table = store.read(input.source.active.table)
+      const query = store.read(input.source.active.meta.query)
+      const table = store.read(input.source.active.meta.table)
       return {
         field: store.read(input.source.active.fields.all, fieldId),
         grouped: queryRead.groupFieldId(query) === fieldId,

@@ -60,11 +60,11 @@ export const KanbanView = (props: KanbanViewProps) => {
     dataView => dataView.source.active.view.type
   )
   const grouped = useDataViewValue(
-    dataView => dataView.source.active.query,
+    dataView => dataView.source.active.meta.query,
     query => queryRead.grouped(query)
   )
   const size = useDataViewValue(
-    dataView => dataView.source.active.kanban,
+    dataView => dataView.source.active.meta.kanban,
     kanban => kanban.size
   )
   if (viewType !== 'kanban') {

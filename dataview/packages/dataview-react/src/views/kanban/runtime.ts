@@ -81,17 +81,17 @@ export const useKanbanRuntime = (input: {
   const sections = useStoreValue(sectionsStore)
   const currentViewId = useStoreValue(dataView.source.active.view.id) ?? ''
   const groupedStore = useMemo(() => store.createDerivedStore({
-    get: () => queryRead.grouped(store.read(dataView.source.active.query)),
+    get: () => queryRead.grouped(store.read(dataView.source.active.meta.query)),
     isEqual: Object.is
-  }), [dataView.source.active.query])
+  }), [dataView.source.active.meta.query])
   const cardsPerColumnStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.kanban).cardsPerColumn,
+    get: () => store.read(dataView.source.active.meta.kanban).cardsPerColumn,
     isEqual: Object.is
-  }), [dataView.source.active.kanban])
+  }), [dataView.source.active.meta.kanban])
   const canDragStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.kanban).canReorder,
+    get: () => store.read(dataView.source.active.meta.kanban).canReorder,
     isEqual: Object.is
-  }), [dataView.source.active.kanban])
+  }), [dataView.source.active.meta.kanban])
   const cardsPerColumn = useStoreValue(cardsPerColumnStore)
   const canDrag = useStoreValue(canDragStore)
   const visibility = useKanbanVisibility({

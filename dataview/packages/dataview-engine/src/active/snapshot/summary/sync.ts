@@ -6,6 +6,7 @@ import type {
 import {
   calculation
 } from '@dataview/core/calculation'
+import { equal } from '@shared/core'
 import {
   FieldId,
   RecordId
@@ -18,8 +19,7 @@ import type {
   EntryTransition
 } from '@dataview/engine/active/shared/impact'
 import {
-  entryRead,
-  membershipRead
+  entryRead
 } from '@dataview/engine/active/shared/impact'
 import {
   sameSectionKeys
@@ -31,6 +31,7 @@ import type {
   SectionKey
 } from '@dataview/engine/contracts'
 import type {
+  SectionDelta,
   SectionState,
   SummaryDelta,
   SummaryState
@@ -45,6 +46,13 @@ const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_SECTION_TRANSITIONS = [] as readonly RecordSectionTransition[]
 const EMPTY_SECTION_TRANSITION_MAP = new Map<RecordId, RecordSectionTransition>()
 const EMPTY_SECTION_KEY_SET = new Set<SectionKey>()
+const EMPTY_SECTION_DELTA: SectionDelta = {
+  rebuild: false,
+  orderChanged: false,
+  changed: [],
+  removed: [],
+  records: new Map()
+}
 const EMPTY_SUMMARY_DELTA: SummaryDelta = {
   rebuild: false,
   changed: [],
@@ -222,13 +230,12 @@ const createSummaryDelta = (input: {
 
 const collectSectionTransitions = (input: {
   previousSections: SectionState
-  impact: ActiveImpact
+  sectionDelta: Pick<SectionDelta, 'records'>
 }): {
   all: readonly RecordSectionTransition[]
   byRecord: ReadonlyMap<RecordId, RecordSectionTransition>
 } => {
-  const changed = membershipRead.records(input.impact.section)
-  if (!changed?.size) {
+  if (!input.sectionDelta.records.size) {
     return {
       all: EMPTY_SECTION_TRANSITIONS,
       byRecord: EMPTY_SECTION_TRANSITION_MAP
@@ -238,10 +245,12 @@ const collectSectionTransitions = (input: {
   const all: RecordSectionTransition[] = []
   const byRecord = new Map<RecordId, RecordSectionTransition>()
 
-  changed.forEach(({ after }, recordId) => {
+  input.sectionDelta.records.forEach(({ before, after }, recordId) => {
     const transition: RecordSectionTransition = {
       recordId,
-      beforeKeys: input.previousSections.keysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS,
+      beforeKeys: before.length
+        ? before
+        : input.previousSections.keysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS,
       afterKeys: after
     }
     all.push(transition)
@@ -272,8 +281,25 @@ const collectSectionRecordIdChanges = (input: {
       return
     }
 
-    if (previous.recordIds !== next.recordIds) {
+    if (previous.recordIds === next.recordIds) {
+      return
+    }
+
+    if (previous.recordIds.length !== next.recordIds.length) {
       changed.add(sectionKey)
+      return
+    }
+
+    if (equal.sameOrder(previous.recordIds, next.recordIds)) {
+      return
+    }
+
+    const previousRecordIdSet = new Set(previous.recordIds)
+    for (let index = 0; index < next.recordIds.length; index += 1) {
+      if (!previousRecordIdSet.has(next.recordIds[index]!)) {
+        changed.add(sectionKey)
+        return
+      }
     }
   })
 
@@ -478,6 +504,7 @@ const deriveSyncedSummaryState = (input: {
   previous: SummaryState
   previousSections: SectionState
   sections: SectionState
+  sectionDelta: SectionDelta
   calcFields: readonly FieldId[]
   index: IndexState
   impact: ActiveImpact
@@ -493,7 +520,7 @@ const deriveSyncedSummaryState = (input: {
   const orderChanged = !sameSectionOrder(input.previous, sectionKeys)
   const sectionTransitions = collectSectionTransitions({
     previousSections: input.previousSections,
-    impact: input.impact
+    sectionDelta: input.sectionDelta
   })
   const sectionRecordIdChanges = sectionTransitions.all.length
     ? EMPTY_SECTION_KEY_SET
@@ -640,6 +667,7 @@ export const deriveSummaryState = (input: {
   previous?: SummaryState
   previousSections?: SectionState
   sections: SectionState
+  sectionDelta?: SectionDelta
   calcFields: readonly FieldId[]
   index: IndexState
   impact: ActiveImpact
@@ -649,6 +677,7 @@ export const deriveSummaryState = (input: {
   delta: SummaryDelta
 } => {
   const previousState = input.previous
+  const sectionDelta = input.sectionDelta ?? EMPTY_SECTION_DELTA
   const sectionKeys = collectSectionKeys(input.sections)
 
   if (input.action === 'reuse' && previousState) {
@@ -683,11 +712,13 @@ export const deriveSummaryState = (input: {
 
     return {
       state,
-      delta: createSummaryDelta({
-        rebuild: false,
-        changed,
-        removed
-      })
+        delta: createSummaryDelta({
+          rebuild: false,
+          changed: sectionDelta.orderChanged
+            ? sectionKeys
+            : changed,
+          removed
+        })
     }
   }
 
@@ -714,6 +745,7 @@ export const deriveSummaryState = (input: {
     previous: previousState,
     previousSections: input.previousSections,
     sections: input.sections,
+    sectionDelta,
     calcFields: input.calcFields,
     index: input.index,
     impact: input.impact

@@ -4,7 +4,7 @@ import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
 import type { ViewCache } from '@dataview/engine/contracts/state'
 import type {
-  SourceDelta,
+  EnginePatch,
   ViewState
 } from '@dataview/engine/contracts'
 
@@ -24,7 +24,7 @@ export interface ActiveRuntimeState {
   index: IndexState
   cache: ViewCache
   snapshot?: ViewState
-  sourceDelta: SourceDelta
+  patch: EnginePatch
 }
 
 export interface EngineRuntimeState {

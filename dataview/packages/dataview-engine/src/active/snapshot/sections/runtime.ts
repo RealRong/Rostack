@@ -14,7 +14,6 @@ import {
 import {
   hasMembershipChanges,
   hasQueryChanges,
-  membershipRead,
   type ActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import type {
@@ -25,13 +24,10 @@ import type {
   SectionState
 } from '@dataview/engine/contracts/state'
 import type {
-  ItemList,
   SectionKey,
-  SectionList,
   ViewStageMetrics
 } from '@dataview/engine/contracts'
 import {
-  publishSections,
   syncItemProjection
 } from '@dataview/engine/active/snapshot/sections/publish'
 import {
@@ -43,7 +39,8 @@ const EMPTY_SECTION_DELTA: SectionDelta = {
   rebuild: false,
   orderChanged: false,
   removed: [],
-  changed: []
+  changed: [],
+  records: new Map()
 }
 
 const resolveSectionsAction = (input: {
@@ -96,7 +93,7 @@ const resolveSectionsAction = (input: {
 const buildSectionDelta = (input: {
   previous?: SectionState
   next: SectionState
-  impact: ActiveImpact
+  records: SectionDelta['records']
   action: DeriveAction
 }): SectionDelta => {
   const nextKeys = input.next.order.filter(sectionKey => input.next.byKey.has(sectionKey))
@@ -112,13 +109,19 @@ const buildSectionDelta = (input: {
       rebuild: true,
       orderChanged,
       removed,
-      changed: nextKeys
+      changed: nextKeys,
+      records: input.records
     }
   }
 
   const changed = new Set<SectionKey>()
-  membershipRead.keyChanges(input.impact.section).touched.forEach(sectionKey => {
-    changed.add(sectionKey)
+  input.records.forEach(({ before, after }) => {
+    before.forEach(sectionKey => {
+      changed.add(sectionKey)
+    })
+    after.forEach(sectionKey => {
+      changed.add(sectionKey)
+    })
   })
   nextKeys.forEach(sectionKey => {
     const previousNode = input.previous?.byKey.get(sectionKey)
@@ -132,7 +135,8 @@ const buildSectionDelta = (input: {
     rebuild: false,
     orderChanged,
     removed,
-    changed: [...changed]
+    changed: [...changed],
+    records: input.records
   }
 }
 
@@ -155,7 +159,7 @@ const deriveSectionsState = (input: {
     }
   }
 
-  const structure = syncSectionState({
+  const synced = syncSectionState({
     previous: input.previousStructure,
     view: input.view,
     query: input.query,
@@ -165,14 +169,14 @@ const deriveSectionsState = (input: {
   })
   const delta = buildSectionDelta({
     previous: input.previousStructure,
-    next: structure,
-    impact: input.impact,
+    next: synced.state,
+    records: synced.records,
     action: input.action
   })
 
   return {
     state: {
-      structure,
+      structure: synced.state,
       projection: syncItemProjection({
         mode: input.view.group
           ? 'grouped'
@@ -200,28 +204,15 @@ export const runSectionsStage = (input: {
   view: View
   query: QueryState
   previous?: SectionRuntimeState
-  previousPublished: {
-    sections?: SectionList
-    items?: ItemList
-  }
   index: IndexState
 }): {
   action: DeriveAction
   state: SectionRuntimeState
   delta: SectionDelta
-  sections: SectionList
-  items: ItemList
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
 } => {
-  const previousPublished = input.previousPublished.sections
-    && input.previousPublished.items
-    ? {
-        sections: input.previousPublished.sections,
-        items: input.previousPublished.items
-      }
-    : undefined
   const previousStructure = input.previous?.structure
   const action = resolveSectionsAction({
     activeViewId: input.activeViewId,
@@ -242,26 +233,7 @@ export const runSectionsStage = (input: {
     index: input.index
   })
   const deriveMs = now() - deriveStart
-  const canReusePublished = (
-    derived.state === input.previous
-    && previousPublished !== undefined
-  )
-  const publishStart = canReusePublished
-    ? 0
-    : now()
-  const published = canReusePublished
-    ? previousPublished
-    : publishSections({
-        sections: derived.state.structure,
-        projection: derived.state.projection,
-        previousSections: previousStructure,
-        previous: previousPublished
-      })
-  const publishMs = canReusePublished
-    ? 0
-    : now() - publishStart
-
-  const outputCount = published.sections.all.length
+  const outputCount = derived.state.structure.byKey.size
   const changedSectionCount = action === 'reuse'
     ? 0
     : derived.delta.rebuild
@@ -269,50 +241,14 @@ export const runSectionsStage = (input: {
       : Math.min(outputCount, derived.delta.changed.length + derived.delta.removed.length)
   const reusedNodeCount = Math.max(0, outputCount - changedSectionCount)
 
-  console.log('[dv-summary-debug][sections]', {
-    action,
-    canReusePublished,
-    queryImpact: input.impact.query
-      ? {
-          visibleAdded: input.impact.query.visibleAdded.length,
-          visibleRemoved: input.impact.query.visibleRemoved.length,
-          orderChanged: input.impact.query.orderChanged === true
-        }
-      : undefined,
-    bucketImpact: input.impact.bucket
-      ? {
-          rebuild: input.impact.bucket.rebuild === true,
-          recordCount: input.impact.bucket.records.size
-        }
-      : undefined,
-    sectionImpact: input.impact.section
-      ? {
-          rebuild: input.impact.section.rebuild === true,
-          recordCount: input.impact.section.records.size
-        }
-      : undefined,
-    delta: {
-      rebuild: derived.delta.rebuild,
-      orderChanged: derived.delta.orderChanged,
-      changed: derived.delta.changed,
-      removed: derived.delta.removed
-    },
-    order: {
-      previous: previousStructure?.order,
-      next: derived.state.structure.order
-    }
-  })
-
   return {
     action,
     state: derived.state,
     delta: derived.delta,
-    sections: published.sections,
-    items: published.items,
     deriveMs,
-    publishMs,
+    publishMs: 0,
     metrics: {
-      inputCount: input.previousPublished.sections?.all.length,
+      inputCount: previousStructure?.byKey.size,
       outputCount,
       reusedNodeCount,
       rebuiltNodeCount: outputCount - reusedNodeCount,

@@ -1,11 +1,21 @@
 import type { Point } from '@shared/dom/geometry'
 
+export const normalizeEditableTextValue = (
+  value: string
+) => {
+  const normalized = value.replace(/\r/g, '')
+
+  // `contentEditable="plaintext-only"` reports one synthetic trailing newline
+  // when the last visual line is empty. Strip that sentinel so draft text
+  // matches what the user actually typed.
+  return normalized.endsWith('\n')
+    ? normalized.slice(0, -1)
+    : normalized
+}
+
 export const readEditableText = (
   element: HTMLDivElement
-) => {
-  const value = element.innerText.replace(/\r/g, '')
-  return value === '\n' ? '' : value
-}
+) => normalizeEditableTextValue(element.innerText)
 
 const focusEditableSelection = (
   element: HTMLDivElement,

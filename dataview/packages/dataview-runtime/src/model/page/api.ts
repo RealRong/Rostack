@@ -164,11 +164,11 @@ export const createPageModel = (input: {
     isEqual: Object.is
   })
   const filterFieldIds = store.createDerivedStore<readonly FieldId[]>({
-    get: () => queryRead.filterFieldIds(store.read(input.source.active.query)),
+    get: () => queryRead.filterFieldIds(store.read(input.source.active.meta.query)),
     isEqual: equal.sameOrder
   })
   const sortFieldIds = store.createDerivedStore<readonly FieldId[]>({
-    get: () => queryRead.sortFieldIds(store.read(input.source.active.query)),
+    get: () => queryRead.sortFieldIds(store.read(input.source.active.meta.query)),
     isEqual: equal.sameOrder
   })
   const availableFilterFields = createAvailableFieldsStore({
@@ -180,15 +180,15 @@ export const createPageModel = (input: {
     usedFieldIds: sortFieldIds
   })
   const filterCount = store.createDerivedStore<number>({
-    get: () => store.read(input.source.active.query).filters.rules.length,
+    get: () => store.read(input.source.active.meta.query).filters.rules.length,
     isEqual: Object.is
   })
   const sortCount = store.createDerivedStore<number>({
-    get: () => store.read(input.source.active.query).sort.rules.length,
+    get: () => store.read(input.source.active.meta.query).sort.rules.length,
     isEqual: Object.is
   })
   const sortRules = store.createDerivedStore<PageSortPanel['rules']>({
-    get: () => store.read(input.source.active.query).sort.rules,
+    get: () => store.read(input.source.active.meta.query).sort.rules,
     isEqual: equal.sameOrder
   })
   const displayFieldIds = store.createDerivedStore<readonly FieldId[]>({
@@ -255,7 +255,7 @@ export const createPageModel = (input: {
         currentView: store.read(currentView),
         activeViewId: store.read(input.source.active.view.id),
         queryBar: pageState.query,
-        search: store.read(input.source.active.query).search.query,
+        search: store.read(input.source.active.meta.query).search.query,
         filterCount: store.read(filterCount),
         sortCount: store.read(sortCount),
         availableFilterFields: store.read(availableFilterFields),
@@ -272,7 +272,7 @@ export const createPageModel = (input: {
         visible: pageState.query.visible,
         route: pageState.query.route,
         currentView: store.read(currentView),
-        filters: store.read(input.source.active.query).filters.rules,
+        filters: store.read(input.source.active.meta.query).filters.rules,
         sorts: store.read(sortRules),
         availableFilterFields: store.read(availableFilterFields),
         availableSortFields: store.read(availableSortFields)
@@ -318,9 +318,9 @@ export const createPageModel = (input: {
       visibleFields: store.read(visibleFields),
       hiddenFields: store.read(hiddenFields),
       currentView: store.read(currentView),
-      filter: store.read(input.source.active.query).filters,
-      sort: store.read(input.source.active.query).sort,
-      group: store.read(input.source.active.query).group
+      filter: store.read(input.source.active.meta.query).filters,
+      sort: store.read(input.source.active.meta.query).sort,
+      group: store.read(input.source.active.meta.query).group
     }),
     isEqual: sameSettings
   })

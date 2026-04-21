@@ -14,6 +14,7 @@ export type ViewStageName =
   | 'query'
   | 'sections'
   | 'summary'
+  | 'publish'
 
 export interface TraceImpactSummary {
   summary: {
@@ -86,6 +87,7 @@ export interface ViewPlanTrace {
   query: ViewStageAction
   sections: ViewStageAction
   summary: ViewStageAction
+  publish: ViewStageAction
 }
 
 export interface ViewTrace {

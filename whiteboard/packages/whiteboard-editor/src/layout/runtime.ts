@@ -58,24 +58,6 @@ const FIT_LAYOUT_DATA_PATHS = new Set([
   'fontMode'
 ])
 
-const shouldLogMindmapEditDebug = () => (
-  typeof globalThis === 'undefined'
-    || (globalThis as {
-      __WB_DEBUG_MINDMAP_EDIT__?: boolean
-    }).__WB_DEBUG_MINDMAP_EDIT__ !== false
-)
-
-const logMindmapEditDebug = (
-  stage: string,
-  payload: Record<string, unknown>
-) => {
-  if (!shouldLogMindmapEditDebug()) {
-    return
-  }
-
-  console.log('[mindmap-edit-debug]', stage, payload)
-}
-
 const hasOwn = <T extends object>(
   value: T,
   key: PropertyKey
@@ -386,26 +368,6 @@ const measureDraftNodeLayout = ({
 
   const result = backend?.measure(request)
   if (request.kind === 'size') {
-    if (committed.node.owner?.kind === 'mindmap') {
-      logMindmapEditDebug('draft.measure', {
-        nodeId,
-        ownerId: committed.node.owner.id,
-        field,
-        text,
-        committedRect: committed.rect,
-        request: {
-          widthMode: request.widthMode,
-          wrapWidth: request.wrapWidth,
-          minWidth: request.minWidth,
-          maxWidth: request.maxWidth,
-          fontSize: request.fontSize,
-          fontWeight: request.fontWeight,
-          fontStyle: request.fontStyle
-        },
-        result
-      })
-    }
-
     return {
       size: result?.kind === 'size'
         ? result.size
@@ -559,12 +521,6 @@ export const createEditorLayout = ({
       }
 
       const size = store.read(draft.node, current.nodeId)?.size
-      logMindmapEditDebug('draft.live-size', {
-        treeId,
-        nodeId: current.nodeId,
-        text: current.text,
-        size
-      })
 
       return size
         ? {

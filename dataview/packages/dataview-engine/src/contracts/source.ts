@@ -43,16 +43,18 @@ export interface ActiveSource {
     type: store.ReadStore<View['type'] | undefined>
     current: store.ReadStore<View | undefined>
   }
+  meta: {
+    query: store.ReadStore<ActiveViewQuery>
+    table: store.ReadStore<ActiveViewTable>
+    gallery: store.ReadStore<ActiveViewGallery>
+    kanban: store.ReadStore<ActiveViewKanban>
+  }
   items: EntitySource<ItemId, ViewItem>
   sections: SectionSource
   fields: {
       all: EntitySource<FieldId, Field>
       custom: EntitySource<FieldId, CustomField>
   }
-  query: store.ReadStore<ActiveViewQuery>
-  table: store.ReadStore<ActiveViewTable>
-  gallery: store.ReadStore<ActiveViewGallery>
-  kanban: store.ReadStore<ActiveViewKanban>
 }
 
 export interface EngineSource {

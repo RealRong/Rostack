@@ -19,11 +19,11 @@ import type {
   ActiveViewQuery,
   ActiveViewTable,
   DocumentSource,
+  EnginePatch,
   EngineSource,
-  EntityDelta,
+  EntityPatch,
   FilterRuleProjection,
   SectionSource,
-  SourceDelta,
   ViewFilterProjection,
   ViewSearchProjection,
   ViewSortProjection
@@ -132,7 +132,7 @@ const applyEntityDelta = <K, T>(
     ids?: store.ValueStore<readonly K[]>
     values: store.KeyedStore<K, T | undefined>
   },
-  delta: EntityDelta<K, T> | undefined
+  delta: EntityPatch<K, T> | undefined
 ) => {
   if (!delta) {
     return
@@ -188,78 +188,80 @@ export const createEngineSourceRuntime = (input: {
         type: viewType,
         current: viewCurrent
       },
+      meta: {
+        query,
+        table,
+        gallery,
+        kanban
+      },
       items: activeItems.source,
       sections: activeSections.source,
       fields: {
         all: activeFieldsAll.source,
         custom: activeFieldsCustom.source
-      },
-      query,
-      table,
-      gallery,
-      kanban
+      }
     } satisfies ActiveSource
   }
 
-  const applyDocumentDelta = (delta: SourceDelta['document']) => {
-    if (!delta) {
+  const applyDocumentPatch = (patch: EnginePatch['document']) => {
+    if (!patch) {
       return
     }
 
-    applyEntityDelta(documentRecords, delta.records)
-    applyEntityDelta(documentFields, delta.fields)
-    applyEntityDelta(documentViews, delta.views)
+    applyEntityDelta(documentRecords, patch.records)
+    applyEntityDelta(documentFields, patch.fields)
+    applyEntityDelta(documentViews, patch.views)
   }
 
-  const applyActiveDelta = (delta: SourceDelta['active']) => {
-    if (!delta) {
+  const applyActivePatch = (patch: EnginePatch['active']) => {
+    if (!patch) {
       return
     }
 
-    if (delta.view) {
-      if (delta.view.ready !== undefined) {
-        viewReady.set(delta.view.ready)
+    if (patch.view) {
+      if (patch.view.ready !== undefined) {
+        viewReady.set(patch.view.ready)
       }
-      if ('id' in delta.view) {
-        viewId.set(delta.view.id)
+      if ('id' in patch.view) {
+        viewId.set(patch.view.id)
       }
-      if ('type' in delta.view) {
-        viewType.set(delta.view.type)
+      if ('type' in patch.view) {
+        viewType.set(patch.view.type)
       }
-      if ('value' in delta.view) {
-        viewCurrent.set(delta.view.value)
+      if ('value' in patch.view) {
+        viewCurrent.set(patch.view.value)
       }
     }
 
-    applyEntityDelta(activeItems, delta.items)
+    applyEntityDelta(activeItems, patch.items)
     applyEntityDelta({
       ids: activeSections.keys,
       values: activeSections.values
-    }, delta.sections?.records)
+    }, patch.sections?.data)
     applyEntityDelta({
       values: activeSections.summary
-    }, delta.sections?.summary)
-    applyEntityDelta(activeFieldsAll, delta.fields?.all)
-    applyEntityDelta(activeFieldsCustom, delta.fields?.custom)
+    }, patch.sections?.summary)
+    applyEntityDelta(activeFieldsAll, patch.fields?.all)
+    applyEntityDelta(activeFieldsCustom, patch.fields?.custom)
 
-    if (delta.query) {
-      query.set(delta.query)
+    if (patch.meta?.query) {
+      query.set(patch.meta.query)
     }
-    if (delta.table) {
-      table.set(delta.table)
+    if (patch.meta?.table) {
+      table.set(patch.meta.table)
     }
-    if (delta.gallery) {
-      gallery.set(delta.gallery)
+    if (patch.meta?.gallery) {
+      gallery.set(patch.meta.gallery)
     }
-    if (delta.kanban) {
-      kanban.set(delta.kanban)
+    if (patch.meta?.kanban) {
+      kanban.set(patch.meta.kanban)
     }
   }
 
-  const apply = (delta: SourceDelta) => {
+  const apply = (patch: EnginePatch) => {
     store.batch(() => {
-      applyDocumentDelta(delta.document)
-      applyActiveDelta(delta.active)
+      applyDocumentPatch(patch.document)
+      applyActivePatch(patch.active)
     })
   }
 
@@ -284,7 +286,7 @@ export const createEngineSourceRuntime = (input: {
   }
 
   const sync = () => {
-    apply(input.store.get().currentView.sourceDelta)
+    apply(input.store.get().currentView.patch)
   }
 
   sync()

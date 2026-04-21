@@ -281,7 +281,7 @@ const createTableLayoutStateStore = (
     })
 
     return createTableLayoutState({
-      grouped: queryRead.grouped(store.read(activeSource.query)),
+      grouped: queryRead.grouped(store.read(activeSource.meta.query)),
       sections,
       rowCount: store.read(activeSource.items.ids).length
     })

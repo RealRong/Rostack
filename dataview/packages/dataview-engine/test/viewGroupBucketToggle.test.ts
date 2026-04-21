@@ -488,7 +488,7 @@ test('engine.source keeps active boundaries inside one active pipeline', () => {
     document: createMultiViewDocument()
   })
 
-  const queryStore = engine.source.active.query
+  const queryStore = engine.source.active.meta.query
   let previousSort = queryStore.get().sort
   let idEvents = 0
   let sortEvents = 0

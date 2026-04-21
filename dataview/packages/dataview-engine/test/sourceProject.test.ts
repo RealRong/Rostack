@@ -8,8 +8,11 @@ import {
 } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
-  projectSourceOutput
-} from '@dataview/engine/source/project'
+  buildActivePatch
+} from '@dataview/engine/active/snapshot/publish/patch'
+import {
+  projectDocumentPatch
+} from '@dataview/engine/source/document'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -147,7 +150,7 @@ test('document publish omits record ids on non-structural value writes', () => {
     }
   }
 
-  const output = projectSourceOutput({
+  const output = projectDocumentPatch({
     impact: {
       records: {
         touched: new Set(['rec_1']),
@@ -157,10 +160,10 @@ test('document publish omits record ids on non-structural value writes', () => {
     document: nextDocument
   })
 
-  assert.equal(output.document?.records?.ids, undefined)
+  assert.equal(output?.records?.ids, undefined)
   assert.deepEqual(
-    output.document?.records?.set
-      ? [...output.document.records.set]
+    output?.records?.set
+      ? [...output.records.set]
       : [],
     [['rec_1', nextDocument.records.byId.rec_1]]
   )
@@ -186,17 +189,15 @@ test('active summary delta follows published summaries even when section structu
     ])
   }
 
-  const output = projectSourceOutput({
-    impact: {},
-    document: createDocument(),
-    previousView: previous,
-    nextView: next
+  const output = buildActivePatch({
+    previous,
+    next
   })
 
-  assert.deepEqual(output.active?.sections?.summary?.ids, undefined)
+  assert.deepEqual(output?.sections?.summary?.ids, undefined)
   assert.deepEqual(
-    output.active?.sections?.summary?.set
-      ? [...output.active.sections.summary.set]
+    output?.sections?.summary?.set
+      ? [...output.sections.summary.set]
       : [],
     [[sectionKey, nextCollection]]
   )

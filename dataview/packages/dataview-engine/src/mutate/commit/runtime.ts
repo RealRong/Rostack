@@ -56,8 +56,9 @@ import {
   toTraceKind
 } from '@dataview/engine/mutate/commit/trace'
 import {
-  projectSourceOutput
-} from '@dataview/engine/source/project'
+  createEnginePatch,
+  projectDocumentPatch
+} from '@dataview/engine/source/document'
 
 type Kind =
   | 'write'
@@ -230,12 +231,12 @@ const commit = <TResult extends CommitResult>(input: {
     capturePerf: input.capturePerf
   })
   const outputStart = now()
-  const output = projectSourceOutput({
-    document: draft.doc,
-    impact: draft.impact,
-    previousView: base.currentView.snapshot,
-    nextView: nextView.snapshot,
-    snapshotChange: nextView.delta
+  const patch = createEnginePatch({
+    document: projectDocumentPatch({
+      impact: draft.impact,
+      document: draft.doc
+    }),
+    active: nextView.patch
   })
   const outputMs = now() - outputStart
 
@@ -249,7 +250,7 @@ const commit = <TResult extends CommitResult>(input: {
         : {}),
       index: nextIndex.state,
       cache: nextView.cache,
-      sourceDelta: output,
+      patch,
       ...(nextView.snapshot
         ? { snapshot: nextView.snapshot }
         : {})

@@ -1,7 +1,6 @@
 import type {
   RecordId,
-  View,
-  ViewGroup
+  View
 } from '@dataview/core/contracts'
 import type { Bucket } from '@dataview/core/field'
 import { equal } from '@shared/core'
@@ -58,35 +57,11 @@ export const sameSectionNode = (
 ) => left.key === right.key
   && equal.sameJsonValue(left.label, right.label)
   && left.color === right.color
-  && left.visible === right.visible
-  && left.collapsed === right.collapsed
   && equal.sameOrder(left.recordIds, right.recordIds)
   && sameBucket(left.bucket, right.bucket)
 
-const visibleOf = (
-  recordIds: readonly RecordId[],
-  group: ViewGroup | undefined,
-  sectionKey: SectionKey
-) => {
-  if (!group) {
-    return true
-  }
-
-  const state = group.buckets?.[sectionKey]
-  if (state?.hidden === true) {
-    return false
-  }
-
-  return group.showEmpty !== false || recordIds.length > 0
-}
-
-const collapsedOf = (
-  group: ViewGroup | undefined,
-  sectionKey: SectionKey
-) => group?.buckets?.[sectionKey]?.collapsed === true
-
 const readSectionBucketState = (input: {
-  group: ViewGroup | undefined
+  group: View['group']
   index: IndexState
 }) => input.group
   ? readBucketIndex(input.index.bucket, createBucketSpec(input.group))
@@ -95,7 +70,6 @@ const readSectionBucketState = (input: {
 export const buildSectionNode = (input: {
   key: SectionKey
   recordIds: readonly RecordId[]
-  group: ViewGroup | undefined
   index: IndexState
   buckets?: ReadonlyMap<SectionKey, Bucket>
 }): SectionNodeState => {
@@ -117,9 +91,7 @@ export const buildSectionNode = (input: {
           }
         }
       : {}),
-    recordIds: input.recordIds,
-    visible: visibleOf(input.recordIds, input.group, input.key),
-    collapsed: collapsedOf(input.group, input.key)
+    recordIds: input.recordIds
   }
 }
 
@@ -130,9 +102,7 @@ const buildRootSectionState = (
   const root = {
     key: ROOT_SECTION_KEY,
     label: ROOT_SECTION_LABEL,
-    recordIds: query.records.visible,
-    visible: true,
-    collapsed: false
+    recordIds: query.records.visible
   }
   const previousRoot = previous?.byKey.get(ROOT_SECTION_KEY)
   const keysByRecord = new Map<RecordId, readonly SectionKey[]>(
@@ -194,7 +164,6 @@ export const buildSectionState = (input: {
     const nextNode = buildSectionNode({
       key,
       recordIds: ids,
-      group: input.view.group,
       index: input.index,
       buckets: presentation.buckets as ReadonlyMap<SectionKey, Bucket>
     })

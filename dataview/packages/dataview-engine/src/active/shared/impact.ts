@@ -13,9 +13,6 @@ import { equal } from '@shared/core'
 import type {
   BucketKey
 } from '@dataview/engine/active/index/contracts'
-import type {
-  SectionKey
-} from '@dataview/engine/contracts'
 
 export interface ActiveImpactBase {
   touchedRecords: ReadonlySet<RecordId> | 'all'
@@ -61,7 +58,6 @@ export interface ActiveImpact {
   base: ActiveImpactBase
   query?: ActiveQueryImpact
   bucket?: MembershipTransition<BucketKey, RecordId>
-  section?: MembershipTransition<SectionKey, RecordId>
   calculation?: ActiveCalculationImpact
 }
 
@@ -127,17 +123,6 @@ export const ensureBucketTransition = (
 
   impact.bucket = createMembershipTransition<BucketKey, RecordId>()
   return impact.bucket
-}
-
-export const ensureSectionTransition = (
-  impact: ActiveImpact
-): MembershipTransition<SectionKey, RecordId> => {
-  if (impact.section) {
-    return impact.section
-  }
-
-  impact.section = createMembershipTransition<SectionKey, RecordId>()
-  return impact.section
 }
 
 export const ensureCalculationFieldTransition = (

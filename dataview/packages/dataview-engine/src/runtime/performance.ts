@@ -14,7 +14,8 @@ type PendingCommitTrace = Omit<CommitTrace, 'id'>
 const VIEW_STAGE_NAMES: readonly ViewStageName[] = [
   'query',
   'sections',
-  'summary'
+  'summary',
+  'publish'
 ]
 
 const cloneRunningStat = (

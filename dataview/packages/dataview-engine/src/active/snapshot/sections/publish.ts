@@ -1,5 +1,6 @@
 import type {
-  RecordId
+  RecordId,
+  View
 } from '@dataview/core/contracts'
 import { equal } from '@shared/core'
 import {
@@ -32,6 +33,28 @@ import type {
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_ITEMS_BY_ID = new Map<ItemId, ViewItem>()
 const EMPTY_SECTION_RECORD_ITEMS = new Map<string, ItemId>()
+
+const sectionVisible = (input: {
+  view: View
+  sectionKey: SectionKey
+  recordIds: readonly RecordId[]
+}) => {
+  const group = input.view.group
+  if (!group) {
+    return true
+  }
+
+  if (group.buckets?.[input.sectionKey]?.hidden === true) {
+    return false
+  }
+
+  return group.showEmpty !== false || input.recordIds.length > 0
+}
+
+const sectionCollapsed = (
+  view: View,
+  sectionKey: SectionKey
+) => view.group?.buckets?.[sectionKey]?.collapsed === true
 
 const createItemList = (input: {
   ids: readonly ItemId[]
@@ -123,6 +146,7 @@ const projectSectionItemIds = (input: {
 }
 
 const buildSections = (input: {
+  view: View
   sections: SectionState
   previous?: SectionList
   previousSections?: SectionState
@@ -136,7 +160,11 @@ const buildSections = (input: {
 
   input.sections.order.forEach(key => {
     const node = input.sections.byKey.get(key)
-    if (!node || !node.visible) {
+    if (!node || !sectionVisible({
+      view: input.view,
+      sectionKey: key,
+      recordIds: node.recordIds
+    })) {
       return
     }
 
@@ -154,10 +182,12 @@ const buildSections = (input: {
       byId: input.byId,
       previous: previousSection?.items
     })
+    const collapsed = sectionCollapsed(input.view, node.key)
     const canReuse = Boolean(
       previousSection
       && input.previousSections?.byKey.get(node.key) === node
       && previousSection.items === items
+      && previousSection.collapsed === collapsed
     )
 
     const section: Section = canReuse && previousSection
@@ -169,7 +199,7 @@ const buildSections = (input: {
           bucket: node.bucket,
           recordIds: node.recordIds,
           items,
-          collapsed: node.collapsed
+          collapsed
         }
     sections.push(section)
     ids.push(section.key)
@@ -448,6 +478,7 @@ export const syncItemProjection = (input: {
     })
 
 export const publishSections = (input: {
+  view: View
   sections: SectionState
   projection: ItemProjectionCache
   previousSections?: SectionState
@@ -460,6 +491,7 @@ export const publishSections = (input: {
   sections: SectionList
 } => {
   const sections = buildSections({
+    view: input.view,
     sections: input.sections,
     previous: input.previous?.sections,
     previousSections: input.previousSections,

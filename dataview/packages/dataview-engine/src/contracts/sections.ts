@@ -22,9 +22,7 @@ export interface SectionNodeState {
   label: Token
   color?: string
   bucket?: SectionBucket
-  collapsed: boolean
   recordIds: readonly RecordId[]
-  visible: boolean
 }
 
 export interface SectionState {
@@ -33,11 +31,17 @@ export interface SectionState {
   keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
 }
 
+export interface SectionRecordChange {
+  before: readonly SectionKey[]
+  after: readonly SectionKey[]
+}
+
 export interface SectionDelta {
   rebuild: boolean
   orderChanged: boolean
   removed: readonly SectionKey[]
   changed: readonly SectionKey[]
+  records: ReadonlyMap<RecordId, SectionRecordChange>
 }
 
 export interface SectionRuntimeState {

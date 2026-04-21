@@ -90,12 +90,12 @@ export const createKanbanModel = (input: {
 
       return {
         viewId,
-        grouped: queryRead.grouped(store.read(input.source.active.query)),
+        grouped: queryRead.grouped(store.read(input.source.active.meta.query)),
         sectionKeys: store.read(input.source.active.sections.keys),
-        groupField: store.read(input.source.active.query).group.field,
-        fillColumnColor: store.read(input.source.active.kanban).fillColumnColor,
-        groupUsesOptionColors: store.read(input.source.active.kanban).groupUsesOptionColors,
-        cardsPerColumn: store.read(input.source.active.kanban).cardsPerColumn
+        groupField: store.read(input.source.active.meta.query).group.field,
+        fillColumnColor: store.read(input.source.active.meta.kanban).fillColumnColor,
+        groupUsesOptionColors: store.read(input.source.active.meta.kanban).groupUsesOptionColors,
+        cardsPerColumn: store.read(input.source.active.meta.kanban).cardsPerColumn
       }
     },
     isEqual: sameBoard
@@ -138,7 +138,7 @@ export const createKanbanModel = (input: {
         return undefined
       }
 
-      const kanban = store.read(input.source.active.kanban)
+      const kanban = store.read(input.source.active.meta.kanban)
       return {
         viewId,
         itemId,

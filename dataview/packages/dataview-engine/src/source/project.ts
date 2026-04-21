@@ -1,5 +1,8 @@
 import type { CalculationCollection } from '@dataview/core/calculation'
 import {
+  impact
+} from '@dataview/core/commit/impact'
+import {
   document as documentApi
 } from '@dataview/core/document'
 import type {
@@ -140,19 +143,6 @@ const resolveKanbanState = (
   }
 }
 
-const pushIds = <T,>(
-  target: Set<T>,
-  values?: Iterable<T>
-) => {
-  if (!values) {
-    return
-  }
-
-  for (const value of values) {
-    target.add(value)
-  }
-}
-
 const entityDelta = <TKey, TValue>(input: {
   set?: readonly (readonly [TKey, TValue | undefined])[]
   remove?: readonly TKey[]
@@ -175,6 +165,7 @@ const entityDelta = <TKey, TValue>(input: {
 
 const buildDocumentEntityDelta = <TKey, TValue>(input: {
   ids: readonly TKey[]
+  idsChanged: boolean
   changed: readonly TKey[]
   removed: readonly TKey[]
   value: (key: TKey) => TValue | undefined
@@ -192,7 +183,11 @@ const buildDocumentEntityDelta = <TKey, TValue>(input: {
 
   return input.changed.length || input.removed.length
     ? {
-        ids: input.ids,
+        ...(input.idsChanged
+          ? {
+              ids: input.ids
+            }
+          : {}),
         ...(values
           ? { values }
           : {})
@@ -509,49 +504,61 @@ export const projectDocumentChange = (input: {
   impact: CommitImpact
   document: DataDoc
 }): DocumentChange => {
+  const readTouchedIds = <T,>(
+    touched: ReadonlySet<T> | 'all'
+  ) => touched === 'all'
+    ? undefined
+    : [...touched]
+
   if (input.impact.reset) {
     return {
       records: {
         changed: documentApi.records.ids(input.document),
-        removed: []
+        removed: [],
+        idsChanged: true
       },
       fields: {
         changed: documentApi.fields.custom.ids(input.document),
-        removed: []
+        removed: [],
+        idsChanged: true
       },
       views: {
         changed: documentApi.views.ids(input.document),
-        removed: []
+        removed: [],
+        idsChanged: true
       },
       activeViewChanged: true
     }
   }
 
-  const recordIds = new Set<string>()
-  pushIds(recordIds, input.impact.records?.inserted)
-  pushIds(recordIds, input.impact.records?.patched?.keys())
-  pushIds(recordIds, input.impact.records?.titleChanged)
-
-  const fieldIds = new Set<FieldId>()
-  pushIds(fieldIds, input.impact.fields?.inserted)
-  pushIds(fieldIds, input.impact.fields?.schema?.keys())
-
-  const viewIds = new Set<ViewId>()
-  pushIds(viewIds, input.impact.views?.inserted)
-  pushIds(viewIds, input.impact.views?.changed?.keys())
+  const recordIds = impact.record.touchedIds(input.impact)
+  const fieldIds = impact.field.schemaIds(input.impact)
+  const viewIds = impact.view.touchedIds(input.impact)
 
   return {
     records: {
-      changed: [...recordIds],
-      removed: [...(input.impact.records?.removed ?? [])]
+      changed: readTouchedIds(recordIds) ?? documentApi.records.ids(input.document),
+      removed: [...(input.impact.records?.removed ?? [])],
+      idsChanged: Boolean(
+        input.impact.records?.inserted?.size
+        || input.impact.records?.removed?.size
+      )
     },
     fields: {
       changed: [...fieldIds],
-      removed: [...(input.impact.fields?.removed ?? [])]
+      removed: [...(input.impact.fields?.removed ?? [])],
+      idsChanged: Boolean(
+        input.impact.fields?.inserted?.size
+        || input.impact.fields?.removed?.size
+      )
     },
     views: {
-      changed: [...viewIds],
-      removed: [...(input.impact.views?.removed ?? [])]
+      changed: readTouchedIds(viewIds) ?? documentApi.views.ids(input.document),
+      removed: [...(input.impact.views?.removed ?? [])],
+      idsChanged: Boolean(
+        input.impact.views?.inserted?.size
+        || input.impact.views?.removed?.size
+      )
     },
     activeViewChanged: Boolean(input.impact.activeView)
   }
@@ -842,18 +849,21 @@ export const projectEngineOutput = (input: {
   const document = {
     records: buildDocumentEntityDelta<RecordId, DataRecord>({
       ids: documentApi.records.ids(input.document),
+      idsChanged: input.documentChange.records.idsChanged,
       changed: input.documentChange.records.changed as readonly RecordId[],
       removed: input.documentChange.records.removed as readonly RecordId[],
       value: recordId => documentApi.records.get(input.document, recordId)
     }),
     fields: buildDocumentEntityDelta<FieldId, CustomField>({
       ids: documentApi.fields.custom.ids(input.document),
+      idsChanged: input.documentChange.fields.idsChanged,
       changed: input.documentChange.fields.changed,
       removed: input.documentChange.fields.removed,
       value: fieldId => documentApi.fields.custom.get(input.document, fieldId)
     }),
     views: buildDocumentEntityDelta<ViewId, View>({
       ids: documentApi.views.ids(input.document),
+      idsChanged: input.documentChange.views.idsChanged,
       changed: input.documentChange.views.changed,
       removed: input.documentChange.views.removed,
       value: viewId => documentApi.views.get(input.document, viewId)

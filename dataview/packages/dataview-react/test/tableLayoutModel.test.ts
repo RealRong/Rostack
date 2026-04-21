@@ -71,3 +71,68 @@ test('table layout inserts create-record block before footer for empty grouped s
     ]
   )
 })
+
+test('table layout removes collapsed row height so later sections move up', () => {
+  const model = TableLayoutModel.fromState({
+    state: createTableLayoutState({
+      grouped: true,
+      sections: [
+        {
+          key: 'todo',
+          collapsed: true,
+          itemIds: [1, 2, 3]
+        },
+        {
+          key: 'done',
+          collapsed: false,
+          itemIds: [4]
+        }
+      ]
+    }),
+    rowHeight: 36,
+    headerHeight: 40
+  })
+
+  assert.deepEqual(
+    model.materializeWindow({
+      start: 0,
+      end: 1000
+    }).items.map(block => ({
+      key: block.key,
+      top: block.top,
+      height: block.height
+    })),
+    [
+      {
+        key: 'section-header:todo',
+        top: 0,
+        height: 40
+      },
+      {
+        key: 'section-header:done',
+        top: 40,
+        height: 40
+      },
+      {
+        key: 'column-header:done',
+        top: 80,
+        height: 40
+      },
+      {
+        key: 'row:4',
+        top: 120,
+        height: 36
+      },
+      {
+        key: 'create-record:done',
+        top: 156,
+        height: 36
+      },
+      {
+        key: 'column-footer:done',
+        top: 192,
+        height: 40
+      }
+    ]
+  )
+})

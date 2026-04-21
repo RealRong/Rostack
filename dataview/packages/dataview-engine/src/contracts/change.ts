@@ -31,14 +31,17 @@ export interface DocumentChange {
   records: {
     changed: readonly RecordId[]
     removed: readonly RecordId[]
+    idsChanged: boolean
   }
   fields: {
     changed: readonly FieldId[]
     removed: readonly FieldId[]
+    idsChanged: boolean
   }
   views: {
     changed: readonly ViewId[]
     removed: readonly ViewId[]
+    idsChanged: boolean
   }
   activeViewChanged: boolean
 }

@@ -343,7 +343,7 @@ class TableLayoutSectionModel {
   get totalHeight() {
     return this.sectionHeaderHeight
       + this.columnHeaderHeight
-      + this.rowHeights.total()
+      + this.visibleRowsHeight()
       + this.createRecordHeight
       + this.columnFooterHeight
   }
@@ -545,7 +545,13 @@ class TableLayoutSectionModel {
   }
 
   private rowsBottom() {
-    return this.rowsTop() + this.rowHeights.total()
+    return this.rowsTop() + this.visibleRowsHeight()
+  }
+
+  private visibleRowsHeight() {
+    return this.collapsed
+      ? 0
+      : this.rowHeights.total()
   }
 
   private rowIndexOfKey(key: string) {

@@ -370,10 +370,17 @@ const applyMindmapGeometry = (
 const projectNodeGeometryItem = (
   item: NodeItem,
   feedback: NodePreviewProjection,
-  mindmap: MindmapItem | undefined
+  mindmap: MindmapItem | undefined,
+  edit: NodeEditView | undefined
 ): NodeItem => nodeApi.projection.applyGeometryPatch(
   applyMindmapGeometry(
-    nodeApi.projection.applyGeometryPatch(item, feedback.patch),
+    nodeApi.projection.applyGeometryPatch(
+      nodeApi.projection.applyTextDraft(
+        nodeApi.projection.applyTextPreview(item, feedback.text),
+        readNodeTextDraft(item, edit)
+      ),
+      feedback.patch
+    ),
     mindmap
   ),
   readTextGeometryPatch(feedback)
@@ -479,7 +486,8 @@ export const createNodeRead = ({
         store.read(feedback, nodeId),
         treeId
           ? store.read(mindmap, treeId)
-          : undefined
+          : undefined,
+        store.read(edit.node, nodeId)
       )
 
       return readGeometryView(geometryItem)

@@ -95,6 +95,29 @@ const createLayoutBackend = (): LayoutBackend => ({
   }
 })
 
+const createAutoWidthLayoutBackend = (): LayoutBackend => ({
+  measure: (request) => {
+    if (request.kind === 'size') {
+      return {
+        kind: 'size',
+        size: {
+          width: request.widthMode === 'wrap'
+            ? (request.wrapWidth ?? 100)
+            : Math.max(100, request.text.length * 20),
+          height: 24
+        }
+      }
+    }
+
+    return {
+      kind: 'fit',
+      fontSize: request.box.width <= 120
+        ? 18
+        : 28
+    }
+  }
+})
+
 const createTextDocument = () => {
   const document = documentApi.create('doc_text_wrap_runtime')
   document.nodes['text-1'] = {
@@ -172,6 +195,31 @@ const createTextEditor = () => {
   })
 }
 
+const createAutoWidthTextEditor = () => {
+  const engine = engineApi.create({
+    document: createTextDocument()
+  })
+
+  return editorApi.create({
+    engine,
+    history: historyApi.local.create(engine),
+    initialTool: {
+      type: 'select'
+    },
+    initialViewport: {
+      center: {
+        x: 0,
+        y: 0
+      },
+      zoom: 1
+    },
+    registry: createRegistry(),
+    services: {
+      layout: createAutoWidthLayoutBackend()
+    }
+  })
+}
+
 const createStickyEditor = () => {
   const engine = engineApi.create({
     document: createStickyDocument()
@@ -198,6 +246,37 @@ const createStickyEditor = () => {
 }
 
 describe('text wrap runtime', () => {
+  it('projects auto-width text rect from live edit layout before commit', () => {
+    const editor = createAutoWidthTextEditor()
+
+    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+      width: 100,
+      height: 24
+    })
+
+    editor.actions.edit.startNode('text-1', 'text')
+    editor.actions.edit.input('hello world!!!')
+
+    expect(editor.store.edit.get()).toMatchObject({
+      kind: 'node',
+      nodeId: 'text-1',
+      layout: {
+        size: {
+          width: 280,
+          height: 24
+        }
+      }
+    })
+    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+      width: 280,
+      height: 24
+    })
+    expect(editor.read.document.get().nodes['text-1']?.size).toMatchObject({
+      width: 100,
+      height: 24
+    })
+  })
+
   it('preserves wrap width when entering edit after a text patch commit', () => {
     const editor = createTextEditor()
 

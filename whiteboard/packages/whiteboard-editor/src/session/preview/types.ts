@@ -168,6 +168,7 @@ export type EditorInputPreviewWrite = {
 }
 
 export type EditorInputPreview = {
+  state: store.ReadStore<EditorInputPreviewState>
   selectors: EditorInputPreviewSelectors
   write: EditorInputPreviewWrite
 }

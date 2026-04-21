@@ -4,7 +4,7 @@ import { engine as engineApi } from '@whiteboard/engine'
 import { history as historyApi } from '@whiteboard/history'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
-import type { NodeRegistry } from '../src'
+import type { LayoutBackend, NodeRegistry } from '../src'
 
 const registry: NodeRegistry = {
   get: (type) => {
@@ -56,6 +56,27 @@ const registry: NodeRegistry = {
   }
 }
 
+const layout: LayoutBackend = {
+  measure: (request) => {
+    if (request.kind === 'fit') {
+      return {
+        kind: 'fit',
+        fontSize: 18
+      }
+    }
+
+    return {
+      kind: 'size',
+      size: {
+        width: request.widthMode === 'wrap'
+          ? (request.wrapWidth ?? request.minWidth ?? 120)
+          : Math.max(request.minWidth ?? 80, request.text.length * 16 + 24),
+        height: 44
+      }
+    }
+  }
+}
+
 describe('mindmap edit relayout preview', () => {
   it('relayouts child nodes while the root text edit size changes', () => {
     const engine = engineApi.create({
@@ -71,7 +92,10 @@ describe('mindmap edit relayout preview', () => {
         center: { x: 0, y: 0 },
         zoom: 1
       },
-      registry
+      registry,
+      services: {
+        layout
+      }
     })
 
     const created = editor.actions.mindmap.create({
@@ -127,5 +151,85 @@ describe('mindmap edit relayout preview', () => {
     expect(liveRoot!.x).toBe(beforeRoot!.x)
     expect(liveRoot!.width).toBe(beforeRoot!.width + 120)
     expect(liveChild!.x).toBeGreaterThan(beforeChild!.x)
+  })
+
+  it('updates topic width through actual edit input while editing', () => {
+    const engine = engineApi.create({
+      document: documentApi.create('doc_mindmap_topic_edit_width_preview')
+    })
+    const editor = editorApi.create({
+      engine,
+      history: historyApi.local.create(engine),
+      initialTool: {
+        type: 'select'
+      },
+      initialViewport: {
+        center: { x: 0, y: 0 },
+        zoom: 1
+      },
+      registry,
+      services: {
+        layout
+      }
+    })
+
+    const created = editor.actions.mindmap.create({
+      template: product.mindmap.template.build({
+        preset: 'mindmap.underline-split'
+      })
+    })
+
+    expect(created.ok).toBe(true)
+    if (!created.ok) {
+      return
+    }
+
+    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
+    expect(tree).toBeDefined()
+
+    const insert = editor.actions.mindmap.insertByPlacement({
+      id: created.data.mindmapId,
+      tree: tree!,
+      targetNodeId: created.data.rootId,
+      placement: 'right',
+      layout: tree!.layout,
+      payload: {
+        kind: 'text',
+        text: 'Child'
+      }
+    })
+
+    expect(insert.ok).toBe(true)
+    if (!insert.ok) {
+      return
+    }
+
+    const beforeChild = editor.read.node.render.get(insert.data.nodeId)?.rect
+    const beforeMindmapNode = editor.read.mindmap.node.get(insert.data.nodeId)?.rect
+
+    expect(beforeChild).toBeDefined()
+    expect(beforeMindmapNode).toBeDefined()
+
+    editor.actions.edit.startNode(insert.data.nodeId, 'text')
+    editor.actions.edit.input('Child topic with much longer text')
+
+    const liveChild = editor.read.node.render.get(insert.data.nodeId)?.rect
+    const liveMindmapNode = editor.read.mindmap.node.get(insert.data.nodeId)?.rect
+    const session = editor.store.edit.get()
+
+    expect(liveChild).toBeDefined()
+    expect(liveMindmapNode).toBeDefined()
+    expect(session).toMatchObject({
+      kind: 'node',
+      nodeId: insert.data.nodeId,
+      layout: {
+        size: {
+          width: liveChild!.width,
+          height: liveChild!.height
+        }
+      }
+    })
+    expect(liveChild!.width).toBeGreaterThan(beforeChild!.width)
+    expect(liveMindmapNode!.width).toBeGreaterThan(beforeMindmapNode!.width)
   })
 })

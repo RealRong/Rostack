@@ -1,4 +1,5 @@
 import type { Viewport } from '@whiteboard/core/types'
+import { store } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
 import {
@@ -50,6 +51,10 @@ export const createEditor = ({
     initialDrawState,
     initialViewport
   })
+  const mindmapPreview = store.createDerivedStore({
+    get: () => store.read(session.preview.state).mindmap.preview,
+    isEqual: (left, right) => left === right
+  })
   const layout = createEditorLayout({
     read: {
       node: {
@@ -63,7 +68,7 @@ export const createEditor = ({
     },
     session: {
       edit: session.state.edit,
-      mindmapPreview: session.preview.selectors.mindmapPreview
+      mindmapPreview
     },
     registry,
     backend: services?.layout

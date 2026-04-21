@@ -2,29 +2,29 @@ import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   CardLayout,
   CardSize,
-  CalculationMetric,
   CustomField,
   DataRecord,
   Field,
   FieldId,
   KanbanCardsPerColumn,
   RecordId,
-  SortDirection,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import { equal, store } from '@shared/core'
 import type {
   ActiveSource,
+  ActiveViewGallery,
+  ActiveViewKanban,
+  ActiveViewQuery,
+  ActiveViewTable,
   DocumentSource,
   EngineSource,
   EntityDelta,
   FilterRuleProjection,
   SectionSource,
   SourceDelta,
-  TableLayoutState,
   ViewFilterProjection,
-  ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
 } from '@dataview/engine/contracts'
@@ -43,13 +43,37 @@ const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_FILTERS = { rules: [] as readonly FilterRuleProjection[] } satisfies ViewFilterProjection
 const EMPTY_SORT = { rules: [] } satisfies ViewSortProjection
 const EMPTY_SEARCH = { query: '' } satisfies ViewSearchProjection
-const DEFAULT_CARD_LAYOUT = 'vertical' as CardLayout
-const DEFAULT_CARD_SIZE = 'medium' as CardSize
-const DEFAULT_KANBAN_CARDS_PER_COLUMN = 0 as KanbanCardsPerColumn
+const EMPTY_QUERY: ActiveViewQuery = {
+  search: EMPTY_SEARCH,
+  filters: EMPTY_FILTERS,
+  sort: EMPTY_SORT,
+  group: EMPTY_GROUP
+}
+const EMPTY_TABLE: ActiveViewTable = {
+  wrap: false,
+  showVerticalLines: false,
+  calc: new Map()
+}
+const EMPTY_GALLERY: ActiveViewGallery = {
+  wrap: false,
+  size: 'medium' as CardSize,
+  layout: 'vertical' as CardLayout,
+  canReorder: false,
+  groupUsesOptionColors: false
+}
+const EMPTY_KANBAN: ActiveViewKanban = {
+  wrap: false,
+  size: 'medium' as CardSize,
+  layout: 'vertical' as CardLayout,
+  canReorder: false,
+  groupUsesOptionColors: false,
+  fillColumnColor: false,
+  cardsPerColumn: 0 as KanbanCardsPerColumn
+}
 
-const createEntitySourceRuntime = <K, T>() => {
+const createEntitySourceRuntime = <K, T>(emptyIds: readonly K[] = [] as readonly K[]) => {
   const ids = store.createValueStore<readonly K[]>({
-    initial: [] as readonly K[],
+    initial: emptyIds,
     isEqual: equal.sameOrder
   })
   const values = store.createKeyedStore<K, T | undefined>({
@@ -66,7 +90,7 @@ const createEntitySourceRuntime = <K, T>() => {
     ids,
     values,
     clear: () => {
-      ids.set([] as readonly K[])
+      ids.set(emptyIds)
       values.clear()
     }
   }
@@ -104,18 +128,25 @@ const createSectionSourceRuntime = () => {
 }
 
 const applyEntityDelta = <K, T>(
-  store: store.KeyedStore<K, T | undefined>,
+  runtime: {
+    ids?: store.ValueStore<readonly K[]>
+    values: store.KeyedStore<K, T | undefined>
+  },
   delta: EntityDelta<K, T> | undefined
 ) => {
   if (!delta) {
     return
   }
 
+  if (delta.ids && runtime.ids) {
+    runtime.ids.set(delta.ids)
+  }
+
   if (!delta.set && !delta.remove?.length) {
     return
   }
 
-  store.patch({
+  runtime.values.patch({
     ...(delta.set
       ? { set: delta.set }
       : {}),
@@ -129,53 +160,20 @@ export const createEngineSourceRuntime = (input: {
   store: RuntimeStore
 }) => {
   const documentRecords = createEntitySourceRuntime<RecordId, DataRecord>()
-  const documentFields = createEntitySourceRuntime<FieldId, CustomField>()
+  const documentFields = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
   const documentViews = createEntitySourceRuntime<ViewId, View>()
-  const activeItems = createEntitySourceRuntime<ItemId, ViewItem>()
+  const activeItems = createEntitySourceRuntime<ItemId, ViewItem>(EMPTY_ITEM_IDS)
   const activeSections = createSectionSourceRuntime()
-  const activeFieldsAll = createEntitySourceRuntime<FieldId, Field>()
-  const activeFieldsCustom = createEntitySourceRuntime<FieldId, CustomField>()
+  const activeFieldsAll = createEntitySourceRuntime<FieldId, Field>(EMPTY_FIELD_IDS)
+  const activeFieldsCustom = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
   const viewReady = store.createValueStore(false)
   const viewId = store.createValueStore<ViewId | undefined>(undefined)
   const viewType = store.createValueStore<View['type'] | undefined>(undefined)
   const viewCurrent = store.createValueStore<View | undefined>(undefined)
-  const querySearch = store.createValueStore<ViewSearchProjection>(EMPTY_SEARCH)
-  const queryFilters = store.createValueStore<ViewFilterProjection>(EMPTY_FILTERS)
-  const querySort = store.createValueStore<ViewSortProjection>(EMPTY_SORT)
-  const queryGroup = store.createValueStore<ViewGroupProjection>(EMPTY_GROUP)
-  const queryGrouped = store.createValueStore(false)
-  const queryGroupFieldId = store.createValueStore<FieldId | ''>('')
-  const queryFilterFieldIds = store.createValueStore<readonly FieldId[]>({
-    initial: EMPTY_FIELD_IDS,
-    isEqual: equal.sameOrder
-  })
-  const querySortFieldIds = store.createValueStore<readonly FieldId[]>({
-    initial: EMPTY_FIELD_IDS,
-    isEqual: equal.sameOrder
-  })
-  const querySortDir = store.createKeyedStore<FieldId, SortDirection | undefined>({
-    emptyValue: undefined
-  })
-  const tableWrap = store.createValueStore(false)
-  const tableShowVerticalLines = store.createValueStore(false)
-  const tableCalc = store.createKeyedStore<FieldId, CalculationMetric | undefined>({
-    emptyValue: undefined
-  })
-  const tableLayout = store.createValueStore<TableLayoutState | null>(null)
-  const galleryWrap = store.createValueStore(false)
-  const gallerySize = store.createValueStore<CardSize>(DEFAULT_CARD_SIZE)
-  const galleryLayout = store.createValueStore<CardLayout>(DEFAULT_CARD_LAYOUT)
-  const galleryCanReorder = store.createValueStore(false)
-  const galleryGroupUsesOptionColors = store.createValueStore(false)
-  const kanbanWrap = store.createValueStore(false)
-  const kanbanSize = store.createValueStore<CardSize>(DEFAULT_CARD_SIZE)
-  const kanbanLayout = store.createValueStore<CardLayout>(DEFAULT_CARD_LAYOUT)
-  const kanbanCanReorder = store.createValueStore(false)
-  const kanbanGroupUsesOptionColors = store.createValueStore(false)
-  const kanbanFillColumnColor = store.createValueStore(false)
-  const kanbanCardsPerColumn = store.createValueStore<KanbanCardsPerColumn>(
-    DEFAULT_KANBAN_CARDS_PER_COLUMN
-  )
+  const query = store.createValueStore<ActiveViewQuery>(EMPTY_QUERY)
+  const table = store.createValueStore<ActiveViewTable>(EMPTY_TABLE)
+  const gallery = store.createValueStore<ActiveViewGallery>(EMPTY_GALLERY)
+  const kanban = store.createValueStore<ActiveViewKanban>(EMPTY_KANBAN)
 
   const source: EngineSource = {
     doc: {
@@ -196,39 +194,10 @@ export const createEngineSourceRuntime = (input: {
         all: activeFieldsAll.source,
         custom: activeFieldsCustom.source
       },
-      query: {
-        search: querySearch,
-        filters: queryFilters,
-        sort: querySort,
-        group: queryGroup,
-        grouped: queryGrouped,
-        groupFieldId: queryGroupFieldId,
-        filterFieldIds: queryFilterFieldIds,
-        sortFieldIds: querySortFieldIds,
-        sortDir: querySortDir
-      },
-      table: {
-        wrap: tableWrap,
-        showVerticalLines: tableShowVerticalLines,
-        calc: tableCalc,
-        layout: tableLayout
-      },
-      gallery: {
-        wrap: galleryWrap,
-        size: gallerySize,
-        layout: galleryLayout,
-        canReorder: galleryCanReorder,
-        groupUsesOptionColors: galleryGroupUsesOptionColors
-      },
-      kanban: {
-        wrap: kanbanWrap,
-        size: kanbanSize,
-        layout: kanbanLayout,
-        canReorder: kanbanCanReorder,
-        groupUsesOptionColors: kanbanGroupUsesOptionColors,
-        fillColumnColor: kanbanFillColumnColor,
-        cardsPerColumn: kanbanCardsPerColumn
-      }
+      query,
+      table,
+      gallery,
+      kanban
     } satisfies ActiveSource
   }
 
@@ -237,26 +206,9 @@ export const createEngineSourceRuntime = (input: {
       return
     }
 
-    if (delta.records) {
-      if (delta.records.ids) {
-        documentRecords.ids.set(delta.records.ids)
-      }
-      applyEntityDelta(documentRecords.values, delta.records.values)
-    }
-
-    if (delta.fields) {
-      if (delta.fields.ids) {
-        documentFields.ids.set(delta.fields.ids)
-      }
-      applyEntityDelta(documentFields.values, delta.fields.values)
-    }
-
-    if (delta.views) {
-      if (delta.views.ids) {
-        documentViews.ids.set(delta.views.ids)
-      }
-      applyEntityDelta(documentViews.values, delta.views.values)
-    }
+    applyEntityDelta(documentRecords, delta.records)
+    applyEntityDelta(documentFields, delta.fields)
+    applyEntityDelta(documentViews, delta.views)
   }
 
   const applyActiveDelta = (delta: SourceDelta['active']) => {
@@ -279,116 +231,28 @@ export const createEngineSourceRuntime = (input: {
       }
     }
 
-    if (delta.items) {
-      if (delta.items.ids) {
-        activeItems.ids.set(delta.items.ids)
-      }
-      applyEntityDelta(activeItems.values, delta.items.values)
-    }
-
-    if (delta.sections) {
-      if (delta.sections.keys) {
-        activeSections.keys.set(delta.sections.keys)
-      }
-      applyEntityDelta(activeSections.values, delta.sections.values)
-      applyEntityDelta(activeSections.summary, delta.sections.summary)
-    }
-
-    if (delta.fields?.all) {
-      if (delta.fields.all.ids) {
-        activeFieldsAll.ids.set(delta.fields.all.ids)
-      }
-      applyEntityDelta(activeFieldsAll.values, delta.fields.all.values)
-    }
-
-    if (delta.fields?.custom) {
-      if (delta.fields.custom.ids) {
-        activeFieldsCustom.ids.set(delta.fields.custom.ids)
-      }
-      applyEntityDelta(activeFieldsCustom.values, delta.fields.custom.values)
-    }
+    applyEntityDelta(activeItems, delta.items)
+    applyEntityDelta({
+      ids: activeSections.keys,
+      values: activeSections.values
+    }, delta.sections?.records)
+    applyEntityDelta({
+      values: activeSections.summary
+    }, delta.sections?.summary)
+    applyEntityDelta(activeFieldsAll, delta.fields?.all)
+    applyEntityDelta(activeFieldsCustom, delta.fields?.custom)
 
     if (delta.query) {
-      if (delta.query.search) {
-        querySearch.set(delta.query.search)
-      }
-      if (delta.query.filters) {
-        queryFilters.set(delta.query.filters)
-      }
-      if (delta.query.sort) {
-        querySort.set(delta.query.sort)
-      }
-      if (delta.query.group) {
-        queryGroup.set(delta.query.group)
-      }
-      if (delta.query.grouped !== undefined) {
-        queryGrouped.set(delta.query.grouped)
-      }
-      if (delta.query.groupFieldId !== undefined) {
-        queryGroupFieldId.set(delta.query.groupFieldId)
-      }
-      if (delta.query.filterFieldIds) {
-        queryFilterFieldIds.set(delta.query.filterFieldIds)
-      }
-      if (delta.query.sortFieldIds) {
-        querySortFieldIds.set(delta.query.sortFieldIds)
-      }
-      applyEntityDelta(querySortDir, delta.query.sortDir)
+      query.set(delta.query)
     }
-
     if (delta.table) {
-      if (delta.table.wrap !== undefined) {
-        tableWrap.set(delta.table.wrap)
-      }
-      if (delta.table.showVerticalLines !== undefined) {
-        tableShowVerticalLines.set(delta.table.showVerticalLines)
-      }
-      applyEntityDelta(tableCalc, delta.table.calc)
-      if ('layout' in delta.table) {
-        tableLayout.set(delta.table.layout ?? null)
-      }
+      table.set(delta.table)
     }
-
     if (delta.gallery) {
-      if (delta.gallery.wrap !== undefined) {
-        galleryWrap.set(delta.gallery.wrap)
-      }
-      if (delta.gallery.size !== undefined) {
-        gallerySize.set(delta.gallery.size)
-      }
-      if (delta.gallery.layout !== undefined) {
-        galleryLayout.set(delta.gallery.layout)
-      }
-      if (delta.gallery.canReorder !== undefined) {
-        galleryCanReorder.set(delta.gallery.canReorder)
-      }
-      if (delta.gallery.groupUsesOptionColors !== undefined) {
-        galleryGroupUsesOptionColors.set(delta.gallery.groupUsesOptionColors)
-      }
+      gallery.set(delta.gallery)
     }
-
     if (delta.kanban) {
-      if (delta.kanban.wrap !== undefined) {
-        kanbanWrap.set(delta.kanban.wrap)
-      }
-      if (delta.kanban.size !== undefined) {
-        kanbanSize.set(delta.kanban.size)
-      }
-      if (delta.kanban.layout !== undefined) {
-        kanbanLayout.set(delta.kanban.layout)
-      }
-      if (delta.kanban.canReorder !== undefined) {
-        kanbanCanReorder.set(delta.kanban.canReorder)
-      }
-      if (delta.kanban.groupUsesOptionColors !== undefined) {
-        kanbanGroupUsesOptionColors.set(delta.kanban.groupUsesOptionColors)
-      }
-      if (delta.kanban.fillColumnColor !== undefined) {
-        kanbanFillColumnColor.set(delta.kanban.fillColumnColor)
-      }
-      if (delta.kanban.cardsPerColumn !== undefined) {
-        kanbanCardsPerColumn.set(delta.kanban.cardsPerColumn)
-      }
+      kanban.set(delta.kanban)
     }
   }
 
@@ -412,31 +276,10 @@ export const createEngineSourceRuntime = (input: {
       viewId.set(undefined)
       viewType.set(undefined)
       viewCurrent.set(undefined)
-      querySearch.set(EMPTY_SEARCH)
-      queryFilters.set(EMPTY_FILTERS)
-      querySort.set(EMPTY_SORT)
-      queryGroup.set(EMPTY_GROUP)
-      queryGrouped.set(false)
-      queryGroupFieldId.set('')
-      queryFilterFieldIds.set(EMPTY_FIELD_IDS)
-      querySortFieldIds.set(EMPTY_FIELD_IDS)
-      querySortDir.clear()
-      tableWrap.set(false)
-      tableShowVerticalLines.set(false)
-      tableCalc.clear()
-      tableLayout.set(null)
-      galleryWrap.set(false)
-      gallerySize.set(DEFAULT_CARD_SIZE)
-      galleryLayout.set(DEFAULT_CARD_LAYOUT)
-      galleryCanReorder.set(false)
-      galleryGroupUsesOptionColors.set(false)
-      kanbanWrap.set(false)
-      kanbanSize.set(DEFAULT_CARD_SIZE)
-      kanbanLayout.set(DEFAULT_CARD_LAYOUT)
-      kanbanCanReorder.set(false)
-      kanbanGroupUsesOptionColors.set(false)
-      kanbanFillColumnColor.set(false)
-      kanbanCardsPerColumn.set(DEFAULT_KANBAN_CARDS_PER_COLUMN)
+      query.set(EMPTY_QUERY)
+      table.set(EMPTY_TABLE)
+      gallery.set(EMPTY_GALLERY)
+      kanban.set(EMPTY_KANBAN)
     })
   }
 

@@ -8,7 +8,6 @@ import {
 import type {
   CardLayout,
   CardSize,
-  CalculationMetric,
   CommitImpact,
   CustomField,
   DataDoc,
@@ -17,7 +16,6 @@ import type {
   FieldId,
   KanbanCardsPerColumn,
   RecordId,
-  SortDirection,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -26,14 +24,16 @@ import {
   EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP
 } from '@dataview/engine/contracts'
 import type {
+  ActiveViewGallery,
+  ActiveViewKanban,
+  ActiveViewQuery,
+  ActiveViewTable,
   EntityDelta,
   FilterRuleProjection,
   ItemId,
   Section,
   SectionKey,
   SourceDelta,
-  TableLayoutSectionState,
-  TableLayoutState,
   ViewFilterProjection,
   ViewItem,
   ViewSearchProjection,
@@ -51,20 +51,47 @@ const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_FILTERS = { rules: [] as readonly FilterRuleProjection[] } satisfies ViewFilterProjection
 const EMPTY_SORT = { rules: [] } satisfies ViewSortProjection
-const EMPTY_SORT_DIR = new Map<FieldId, SortDirection | undefined>()
 const EMPTY_SEARCH = { query: '' } satisfies ViewSearchProjection
-const EMPTY_TABLE_CALC = new Map<FieldId, CalculationMetric | undefined>()
-const DEFAULT_CARD_LAYOUT = 'vertical' as CardLayout
-const DEFAULT_CARD_SIZE = 'medium' as CardSize
-const DEFAULT_KANBAN_CARDS_PER_COLUMN = 0 as KanbanCardsPerColumn
-const EMPTY_LAYOUT_SECTIONS = [] as readonly TableLayoutSectionState[]
+const EMPTY_QUERY: ActiveViewQuery = {
+  search: EMPTY_SEARCH,
+  filters: EMPTY_FILTERS,
+  sort: EMPTY_SORT,
+  group: EMPTY_GROUP
+}
+const EMPTY_TABLE: ActiveViewTable = {
+  wrap: false,
+  showVerticalLines: false,
+  calc: new Map()
+}
+const EMPTY_GALLERY: ActiveViewGallery = {
+  wrap: false,
+  size: 'medium' as CardSize,
+  layout: 'vertical' as CardLayout,
+  canReorder: false,
+  groupUsesOptionColors: false
+}
+const EMPTY_KANBAN: ActiveViewKanban = {
+  wrap: false,
+  size: 'medium' as CardSize,
+  layout: 'vertical' as CardLayout,
+  canReorder: false,
+  groupUsesOptionColors: false,
+  fillColumnColor: false,
+  cardsPerColumn: 0 as KanbanCardsPerColumn
+}
 
 const entityDelta = <TKey, TValue>(input: {
+  ids?: readonly TKey[]
   set?: readonly (readonly [TKey, TValue | undefined])[]
   remove?: readonly TKey[]
 }): EntityDelta<TKey, TValue> | undefined => (
-  input.set?.length || input.remove?.length
+  input.ids !== undefined || input.set?.length || input.remove?.length
     ? {
+        ...(input.ids !== undefined
+          ? {
+              ids: input.ids
+            }
+          : {}),
         ...(input.set?.length
           ? {
               set: new Map(input.set)
@@ -97,37 +124,21 @@ const buildDocumentEntityDelta = <TKey, TValue>(input: {
   changed: readonly TKey[]
   removed: readonly TKey[]
   value: (key: TKey) => TValue | undefined
-}): {
-  ids?: readonly TKey[]
-  values?: EntityDelta<TKey, TValue>
-} | undefined => {
-  const values = entityDelta<TKey, TValue>({
-    set: input.changed.map(key => [key, input.value(key)] as const),
-    remove: input.removed
-  })
-
-  if (!input.idsChanged && !values) {
-    return undefined
-  }
-
-  return {
-    ...(input.idsChanged
-      ? {
-          ids: input.ids
-        }
-      : {}),
-    ...(values
-      ? {
-          values
-        }
-      : {})
-  }
-}
+}): EntityDelta<TKey, TValue> | undefined => entityDelta({
+  ...(input.idsChanged
+    ? {
+        ids: input.ids
+      }
+    : {}),
+  set: input.changed.map(key => [key, input.value(key)] as const),
+  remove: input.removed
+})
 
 const buildFieldCollectionDelta = <TField extends Field | CustomField>(input: {
   previous?: readonly TField[]
   next: readonly TField[]
 }): EntityDelta<FieldId, TField> | undefined => entityDelta({
+  ids: input.next.map(field => field.id),
   set: input.next.map(field => [field.id, field] as const),
   remove: input.previous
     ? collectRemovedKeys(
@@ -137,25 +148,16 @@ const buildFieldCollectionDelta = <TField extends Field | CustomField>(input: {
     : []
 })
 
-const buildMapValueDelta = <TKey, TValue>(input: {
-  previous?: ReadonlyMap<TKey, TValue | undefined>
-  next: ReadonlyMap<TKey, TValue | undefined>
-}): EntityDelta<TKey, TValue> | undefined => entityDelta({
-  set: [...input.next.entries()],
-  remove: input.previous
-    ? [...input.previous.keys()].filter(key => !input.next.has(key))
-    : []
-})
-
-const buildItemValueDelta = (input: {
+const buildItemDelta = (input: {
   previous?: ViewState
   next: ViewState
   changedSections: readonly SectionKey[]
   removedSections: readonly SectionKey[]
   rebuild: boolean
-}) => {
+}): EntityDelta<ItemId, ViewItem> | undefined => {
   if (input.rebuild || !input.previous) {
     return entityDelta<ItemId, ViewItem>({
+      ids: input.next.items.ids,
       set: input.next.items.ids.map(itemId => [itemId, input.next.items.get(itemId)] as const)
     })
   }
@@ -199,25 +201,36 @@ const buildItemValueDelta = (input: {
   })
 
   return entityDelta<ItemId, ViewItem>({
+    ...(input.previous?.items.ids !== input.next.items.ids
+      ? {
+          ids: input.next.items.ids
+        }
+      : {}),
     set: [...set.entries()],
     remove: [...remove]
   })
 }
 
-const buildSectionValueDelta = (input: {
+const buildSectionDelta = (input: {
   previous?: ViewState
   next: ViewState
   changedSections: readonly SectionKey[]
   removedSections: readonly SectionKey[]
   rebuild: boolean
-}) => {
+}): EntityDelta<SectionKey, Section> | undefined => {
   if (input.rebuild || !input.previous) {
     return entityDelta<SectionKey, Section>({
+      ids: input.next.sections.ids,
       set: input.next.sections.ids.map(sectionKey => [sectionKey, input.next.sections.get(sectionKey)] as const)
     })
   }
 
   return entityDelta<SectionKey, Section>({
+    ...(input.previous.sections.ids !== input.next.sections.ids
+      ? {
+          ids: input.next.sections.ids
+        }
+      : {}),
     set: input.changedSections
       .map(sectionKey => [sectionKey, input.next.sections.get(sectionKey)] as const)
       .filter(([, value]) => value !== undefined),
@@ -231,103 +244,23 @@ const buildSectionSummaryDelta = (input: {
   changedSections: readonly SectionKey[]
   removedSections: readonly SectionKey[]
   rebuild: boolean
-}) => {
+}): EntityDelta<SectionKey, CalculationCollection | undefined> | undefined => {
   if (input.rebuild || !input.previous) {
     return entityDelta<SectionKey, CalculationCollection | undefined>({
+      ids: input.next.sections.ids,
       set: input.next.sections.ids.map(sectionKey => [sectionKey, input.next.summaries.get(sectionKey)] as const)
     })
   }
 
   return entityDelta<SectionKey, CalculationCollection | undefined>({
+    ...(input.previous.sections.ids !== input.next.sections.ids
+      ? {
+          ids: input.next.sections.ids
+        }
+      : {}),
     set: input.changedSections.map(sectionKey => [sectionKey, input.next.summaries.get(sectionKey)] as const),
     remove: input.removedSections
   })
-}
-
-const createTableLayoutSection = (input: {
-  key: SectionKey
-  collapsed: boolean
-  itemIds: readonly ItemId[]
-}): TableLayoutSectionState => ({
-  key: input.key,
-  collapsed: input.collapsed,
-  itemIds: input.itemIds
-})
-
-const syncTableLayoutState = (input: {
-  previous: TableLayoutState | null
-  view?: ViewState
-}): TableLayoutState | null => {
-  const view = input.view
-  if (!view || view.view.type !== 'table') {
-    return null
-  }
-
-  const grouped = view.query.group.active
-  const rowCount = view.items.ids.length
-  const previousSectionsByKey = new Map(
-    input.previous?.sections.map(section => [section.key, section] as const) ?? []
-  )
-  const nextSections = grouped
-    ? view.sections.ids.flatMap(sectionKey => {
-        const section = view.sections.get(sectionKey)
-        if (!section) {
-          return []
-        }
-
-        const previousSection = previousSectionsByKey.get(sectionKey)
-        if (
-          previousSection
-          && previousSection.collapsed === section.collapsed
-          && previousSection.itemIds === section.items.ids
-        ) {
-          return [previousSection]
-        }
-
-        return [createTableLayoutSection({
-          key: sectionKey,
-          collapsed: section.collapsed,
-          itemIds: section.items.ids
-        })]
-      })
-    : [
-        (() => {
-          const rootKey = view.sections.ids[0] ?? ('root' as SectionKey)
-          const previousSection = input.previous?.sections[0]
-          if (
-            previousSection
-            && previousSection.key === rootKey
-            && !previousSection.collapsed
-            && previousSection.itemIds === view.items.ids
-          ) {
-            return previousSection
-          }
-
-          return createTableLayoutSection({
-            key: rootKey,
-            collapsed: false,
-            itemIds: view.items.ids
-          })
-        })()
-      ]
-
-  if (
-    input.previous
-    && input.previous.grouped === grouped
-    && input.previous.rowCount === rowCount
-    && input.previous.sections.length === nextSections.length
-    && input.previous.sections.every((section, index) => section === nextSections[index])
-  ) {
-    return input.previous
-  }
-
-  return {
-    grouped,
-    rowCount,
-    sections: nextSections.length
-      ? nextSections
-      : EMPTY_LAYOUT_SECTIONS
-  }
 }
 
 const readTouchedIds = <T,>(
@@ -434,26 +367,12 @@ const projectDocumentDelta = (input: {
 
 const projectInactiveActiveDelta = (input: {
   previous?: ViewState
-  previousLayout: TableLayoutState | null
 }): SourceDelta['active'] => {
-  if (!input.previous && input.previousLayout === null) {
+  if (!input.previous) {
     return undefined
   }
 
   const previous = input.previous
-  const querySortDir = previous
-    ? buildMapValueDelta<FieldId, SortDirection>({
-        previous: previous.query.sortDir,
-        next: EMPTY_SORT_DIR
-      })
-    : undefined
-  const tableCalc = previous
-    ? buildMapValueDelta<FieldId, CalculationMetric>({
-        previous: previous.table.calc,
-        next: EMPTY_TABLE_CALC
-      })
-    : undefined
-
   return {
     view: {
       ready: false,
@@ -461,82 +380,34 @@ const projectInactiveActiveDelta = (input: {
       type: undefined,
       value: undefined
     },
-    ...(previous
-      ? {
-          items: {
-            ids: EMPTY_ITEM_IDS,
-            values: entityDelta({
-              remove: previous.items.ids
-            })
-          },
-          sections: {
-            keys: EMPTY_SECTION_KEYS,
-            values: entityDelta({
-              remove: previous.sections.ids
-            }),
-            summary: entityDelta({
-              remove: previous.sections.ids
-            })
-          },
-          fields: {
-            all: {
-              ids: EMPTY_FIELD_IDS,
-              values: buildFieldCollectionDelta({
-                previous: previous.fields.all,
-                next: EMPTY_FIELDS
-              })
-            },
-            custom: {
-              ids: EMPTY_FIELD_IDS,
-              values: buildFieldCollectionDelta({
-                previous: previous.fields.custom,
-                next: EMPTY_CUSTOM_FIELDS
-              })
-            }
-          }
-        }
-      : {}),
-    query: {
-      search: EMPTY_SEARCH,
-      filters: EMPTY_FILTERS,
-      sort: EMPTY_SORT,
-      group: EMPTY_GROUP,
-      grouped: false,
-      groupFieldId: '',
-      filterFieldIds: EMPTY_FIELD_IDS,
-      sortFieldIds: EMPTY_FIELD_IDS,
-      ...(querySortDir
-        ? {
-            sortDir: querySortDir
-          }
-        : {})
+    items: entityDelta({
+      ids: EMPTY_ITEM_IDS,
+      remove: previous.items.ids
+    }),
+    sections: {
+      records: entityDelta({
+        ids: EMPTY_SECTION_KEYS,
+        remove: previous.sections.ids
+      }),
+      summary: entityDelta({
+        ids: EMPTY_SECTION_KEYS,
+        remove: previous.sections.ids
+      })
     },
-    table: {
-      wrap: false,
-      showVerticalLines: false,
-      ...(tableCalc
-        ? {
-            calc: tableCalc
-          }
-        : {}),
-      layout: null
+    fields: {
+      all: buildFieldCollectionDelta({
+        previous: previous.fields.all,
+        next: EMPTY_FIELDS
+      }),
+      custom: buildFieldCollectionDelta({
+        previous: previous.fields.custom,
+        next: EMPTY_CUSTOM_FIELDS
+      })
     },
-    gallery: {
-      wrap: false,
-      size: DEFAULT_CARD_SIZE,
-      layout: DEFAULT_CARD_LAYOUT,
-      canReorder: false,
-      groupUsesOptionColors: false
-    },
-    kanban: {
-      wrap: false,
-      size: DEFAULT_CARD_SIZE,
-      layout: DEFAULT_CARD_LAYOUT,
-      canReorder: false,
-      groupUsesOptionColors: false,
-      fillColumnColor: false,
-      cardsPerColumn: DEFAULT_KANBAN_CARDS_PER_COLUMN
-    }
+    query: EMPTY_QUERY,
+    table: EMPTY_TABLE,
+    gallery: EMPTY_GALLERY,
+    kanban: EMPTY_KANBAN
   }
 }
 
@@ -544,27 +415,15 @@ const projectActiveDelta = (input: {
   previous?: ViewState
   next?: ViewState
   snapshotChange?: SnapshotChange
-  previousLayout: TableLayoutState | null
-}): {
-  active?: SourceDelta['active']
-  tableLayout: TableLayoutState | null
-} => {
+}): SourceDelta['active'] => {
   if (!input.next) {
-    return {
-      active: projectInactiveActiveDelta({
-        previous: input.previous,
-        previousLayout: input.previousLayout
-      }),
-      tableLayout: null
-    }
+    return projectInactiveActiveDelta({
+      previous: input.previous
+    })
   }
 
   const next = input.next
   const previous = input.previous
-  const tableLayout = syncTableLayoutState({
-    previous: input.previousLayout,
-    view: next
-  })
   const rebuild = (
     !previous
     || previous.view.id !== next.view.id
@@ -599,32 +458,15 @@ const projectActiveDelta = (input: {
   const removedSummarySections = summaryChange
     ? summaryChange.removed
     : removedSections
-  const itemValues = buildItemValueDelta({
+
+  const items = buildItemDelta({
     previous,
     next,
     changedSections,
     removedSections,
     rebuild: rebuild || Boolean(sectionChange?.rebuild)
   })
-  const items = (
-    rebuild
-    || previous?.items.ids !== next.items.ids
-    || itemValues
-  )
-    ? {
-        ...(rebuild || previous?.items.ids !== next.items.ids
-          ? {
-              ids: next.items.ids
-            }
-          : {}),
-        ...(itemValues
-          ? {
-              values: itemValues
-            }
-          : {})
-      }
-    : undefined
-  const sectionValues = buildSectionValueDelta({
+  const sectionRecords = buildSectionDelta({
     previous,
     next,
     changedSections,
@@ -638,103 +480,19 @@ const projectActiveDelta = (input: {
     removedSections: removedSummarySections,
     rebuild: rebuild || Boolean(summaryChange?.rebuild)
   })
-  const sections = (
-    rebuild
-    || previous?.sections.ids !== next.sections.ids
-    || sectionValues
-    || sectionSummary
-  )
+  const fields = rebuild || previous?.fields !== next.fields
     ? {
-        ...(rebuild || previous?.sections.ids !== next.sections.ids
-          ? {
-              keys: next.sections.ids
-            }
-          : {}),
-        ...(sectionValues
-          ? {
-              values: sectionValues
-            }
-          : {}),
-        ...(sectionSummary
-          ? {
-              summary: sectionSummary
-            }
-          : {})
+        all: buildFieldCollectionDelta({
+          previous: previous?.fields.all,
+          next: next.fields.all
+        }),
+        custom: buildFieldCollectionDelta({
+          previous: previous?.fields.custom,
+          next: next.fields.custom
+        })
       }
     : undefined
-  const fieldsChanged = rebuild || previous?.fields !== next.fields
-  const fields = fieldsChanged
-    ? {
-        all: {
-          ids: next.fields.ids,
-          values: buildFieldCollectionDelta({
-            previous: previous?.fields.all,
-            next: next.fields.all
-          })
-        },
-        custom: {
-          ids: next.fields.custom.map(field => field.id),
-          values: buildFieldCollectionDelta({
-            previous: previous?.fields.custom,
-            next: next.fields.custom
-          })
-        }
-      }
-    : undefined
-  const queryChanged = rebuild || previous?.query !== next.query
-  const querySortDir = queryChanged
-    ? buildMapValueDelta<FieldId, SortDirection>({
-        previous: previous?.query.sortDir,
-        next: next.query.sortDir
-      })
-    : undefined
-  const query = queryChanged
-    ? {
-        search: next.query.search,
-        filters: next.query.filters,
-        sort: next.query.sort,
-        group: next.query.group,
-        grouped: next.query.grouped,
-        groupFieldId: next.query.groupFieldId,
-        filterFieldIds: next.query.filterFieldIds,
-        sortFieldIds: next.query.sortFieldIds,
-        ...(querySortDir
-          ? {
-              sortDir: querySortDir
-            }
-          : {})
-      }
-    : undefined
-  const tableChanged = rebuild || previous?.table !== next.table
-  const tableCalc = tableChanged
-    ? buildMapValueDelta<FieldId, CalculationMetric>({
-        previous: previous?.table.calc,
-        next: next.table.calc
-      })
-    : undefined
-  const table = (
-    tableChanged
-    || input.previousLayout !== tableLayout
-  )
-    ? {
-        ...(tableChanged
-          ? {
-              wrap: next.table.wrap,
-              showVerticalLines: next.table.showVerticalLines
-            }
-          : {}),
-        ...(tableCalc
-          ? {
-              calc: tableCalc
-            }
-          : {}),
-        ...(input.previousLayout !== tableLayout
-          ? {
-              layout: tableLayout
-            }
-          : {})
-      }
-    : undefined
+
   const active = {
     ...(rebuild || previous?.view !== next.view
       ? {
@@ -746,29 +504,14 @@ const projectActiveDelta = (input: {
           }
         }
       : {}),
-    ...(items
+    ...(rebuild || previous?.query !== next.query
       ? {
-          items
+          query: next.query
         }
       : {}),
-    ...(sections
+    ...(rebuild || previous?.table !== next.table
       ? {
-          sections
-        }
-      : {}),
-    ...(fields
-      ? {
-          fields
-        }
-      : {}),
-    ...(query
-      ? {
-          query
-        }
-      : {}),
-    ...(table
-      ? {
-          table
+          table: next.table
         }
       : {}),
     ...(rebuild || previous?.gallery !== next.gallery
@@ -780,15 +523,49 @@ const projectActiveDelta = (input: {
       ? {
           kanban: next.kanban
         }
+      : {}),
+    ...(items
+      ? {
+          items
+        }
+      : {}),
+    ...(sectionRecords || sectionSummary
+      ? {
+          sections: {
+            ...(sectionRecords
+              ? {
+                  records: sectionRecords
+                }
+              : {}),
+            ...(sectionSummary
+              ? {
+                  summary: sectionSummary
+                }
+              : {})
+          }
+        }
+      : {}),
+    ...(fields?.all || fields?.custom
+      ? {
+          fields: {
+            ...(fields.all
+              ? {
+                  all: fields.all
+                }
+              : {}),
+            ...(fields.custom
+              ? {
+                  custom: fields.custom
+                }
+              : {})
+          }
+        }
       : {})
   } satisfies SourceDelta['active']
 
-  return {
-    active: Object.keys(active).length
-      ? active
-      : undefined,
-    tableLayout
-  }
+  return Object.keys(active).length
+    ? active
+    : undefined
 }
 
 export const projectSourceOutput = (input: {
@@ -797,11 +574,7 @@ export const projectSourceOutput = (input: {
   previousView?: ViewState
   nextView?: ViewState
   snapshotChange?: SnapshotChange
-  previousLayout: TableLayoutState | null
-}): {
-  sourceDelta: SourceDelta
-  tableLayout: TableLayoutState | null
-} => {
+}): SourceDelta => {
   const document = projectDocumentDelta({
     impact: input.impact,
     document: input.document
@@ -809,23 +582,19 @@ export const projectSourceOutput = (input: {
   const active = projectActiveDelta({
     previous: input.previousView,
     next: input.nextView,
-    snapshotChange: input.snapshotChange,
-    previousLayout: input.previousLayout
+    snapshotChange: input.snapshotChange
   })
 
   return {
-    sourceDelta: {
-      ...(document
-        ? {
-            document
-          }
-        : {}),
-      ...(active.active
-        ? {
-            active: active.active
-          }
-        : {})
-    },
-    tableLayout: active.tableLayout
+    ...(document
+      ? {
+          document
+        }
+      : {}),
+    ...(active
+      ? {
+          active
+        }
+      : {})
   }
 }

@@ -2,6 +2,9 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import { equal, store } from '@shared/core'
+import {
+  queryRead
+} from '@dataview/engine'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
@@ -78,9 +81,9 @@ export const createTableModel = (input: {
       return {
         viewId,
         empty: store.read(input.source.active.items.ids).length === 0,
-        grouped: store.read(input.source.active.query.grouped),
-        wrap: store.read(input.source.active.table.wrap),
-        showVerticalLines: store.read(input.source.active.table.showVerticalLines),
+        grouped: queryRead.grouped(store.read(input.source.active.query)),
+        wrap: store.read(input.source.active.table).wrap,
+        showVerticalLines: store.read(input.source.active.table).showVerticalLines,
         columnIds: store.read(input.source.active.fields.all.ids),
         sectionKeys: store.read(input.source.active.sections.keys)
       }
@@ -94,11 +97,13 @@ export const createTableModel = (input: {
         return undefined
       }
 
+      const query = store.read(input.source.active.query)
+      const table = store.read(input.source.active.table)
       return {
         field: store.read(input.source.active.fields.all, fieldId),
-        grouped: store.read(input.source.active.query.groupFieldId) === fieldId,
-        sortDir: store.read(input.source.active.query.sortDir, fieldId),
-        calc: store.read(input.source.active.table.calc, fieldId)
+        grouped: queryRead.groupFieldId(query) === fieldId,
+        sortDir: queryRead.sortDir(query, fieldId),
+        calc: table.calc.get(fieldId)
       }
     },
     isEqual: sameColumn

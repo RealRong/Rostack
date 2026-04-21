@@ -102,16 +102,14 @@ export const createMoveInteraction = (
     if (mindmapState) {
       const session = createMindmapDragSession(ctx, mindmapState)
       const cleanup = session.cleanup
-
-      return {
-        ...session,
-        cleanup: () => {
-          cleanup?.()
-          if (restoreSelection) {
-            ctx.actions.selection.replace(restoreSelection)
-          }
+      session.cleanup = () => {
+        cleanup?.()
+        if (restoreSelection) {
+          ctx.actions.selection.replace(restoreSelection)
         }
       }
+
+      return session
     }
   }
 

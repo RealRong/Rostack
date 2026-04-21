@@ -1,4 +1,7 @@
 import { equal, store } from '@shared/core'
+import {
+  queryRead
+} from '@dataview/engine'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
@@ -87,12 +90,12 @@ export const createKanbanModel = (input: {
 
       return {
         viewId,
-        grouped: store.read(input.source.active.query.grouped),
+        grouped: queryRead.grouped(store.read(input.source.active.query)),
         sectionKeys: store.read(input.source.active.sections.keys),
-        groupField: store.read(input.source.active.query.group).field,
-        fillColumnColor: store.read(input.source.active.kanban.fillColumnColor),
-        groupUsesOptionColors: store.read(input.source.active.kanban.groupUsesOptionColors),
-        cardsPerColumn: store.read(input.source.active.kanban.cardsPerColumn)
+        groupField: store.read(input.source.active.query).group.field,
+        fillColumnColor: store.read(input.source.active.kanban).fillColumnColor,
+        groupUsesOptionColors: store.read(input.source.active.kanban).groupUsesOptionColors,
+        cardsPerColumn: store.read(input.source.active.kanban).cardsPerColumn
       }
     },
     isEqual: sameBoard
@@ -135,15 +138,16 @@ export const createKanbanModel = (input: {
         return undefined
       }
 
+      const kanban = store.read(input.source.active.kanban)
       return {
         viewId,
         itemId,
         recordId: item.recordId,
         fields: store.read(customFields),
-        size: store.read(input.source.active.kanban.size),
-        layout: store.read(input.source.active.kanban.layout),
-        wrap: store.read(input.source.active.kanban.wrap),
-        canDrag: store.read(input.source.active.kanban.canReorder),
+        size: kanban.size,
+        layout: kanban.layout,
+        wrap: kanban.wrap,
+        canDrag: kanban.canReorder,
         selected: (
           store.read(input.source.selection.preview, itemId)
           ?? store.read(input.source.selection.member, itemId)
@@ -155,7 +159,7 @@ export const createKanbanModel = (input: {
             itemId
           })
         ),
-        color: store.read(input.source.active.kanban.groupUsesOptionColors)
+        color: kanban.groupUsesOptionColors
           ? store.read(input.source.active.sections, item.sectionKey)?.color
           : undefined
       }

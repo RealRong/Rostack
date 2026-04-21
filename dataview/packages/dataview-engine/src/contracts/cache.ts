@@ -1,4 +1,7 @@
 import type {
+  ItemProjectionCache
+} from '@dataview/engine/contracts/sections'
+import type {
   QueryDelta,
   QueryState
 } from '@dataview/engine/contracts/query'
@@ -26,14 +29,34 @@ export interface SnapshotChange {
   summary: SummaryDelta
 }
 
+export interface QueryRuntime {
+  state: QueryState
+}
+
+export interface SectionsRuntime {
+  state: SectionRuntimeState['structure']
+  projection: ItemProjectionCache
+}
+
+export interface SummaryRuntime {
+  state: SummaryState
+}
+
 export interface ViewCache {
-  query: QueryState
-  sections: SectionRuntimeState
-  summary: SummaryState
+  query: QueryRuntime
+  sections: SectionsRuntime
+  summary: SummaryRuntime
 }
 
 export const emptyViewCache = (): ViewCache => ({
-  query: emptyQueryState(),
-  sections: emptySectionRuntimeState(),
-  summary: emptySummaryState()
+  query: {
+    state: emptyQueryState()
+  },
+  sections: {
+    state: emptySectionRuntimeState().structure,
+    projection: emptySectionRuntimeState().projection
+  },
+  summary: {
+    state: emptySummaryState()
+  }
 })

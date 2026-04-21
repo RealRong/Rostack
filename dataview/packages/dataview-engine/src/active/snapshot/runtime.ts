@@ -126,7 +126,7 @@ export const deriveViewSnapshot = (input: {
       plan: viewPlan!.query,
       previousPlan: input.previousPlan?.query,
       index: input.index,
-      previous: input.previousCache.query,
+      previous: input.previousCache.query.state,
       previousPublished: input.previousSnapshot?.records
     }),
     input.previousSnapshot,
@@ -146,7 +146,10 @@ export const deriveViewSnapshot = (input: {
       impact: input.impact,
       view,
       query: query.state,
-      previous: input.previousCache.sections,
+      previous: {
+        structure: input.previousCache.sections.state,
+        projection: input.previousCache.sections.projection
+      },
       previousPublished: {
         sections: input.previousSnapshot?.sections,
         items: input.previousSnapshot?.items
@@ -171,8 +174,8 @@ export const deriveViewSnapshot = (input: {
       impact: input.impact,
       view,
       calcFields: viewPlan?.calcFields ?? [],
-      previous: input.previousCache.summary,
-      previousSections: input.previousCache.sections.structure,
+      previous: input.previousCache.summary.state,
+      previousSections: input.previousCache.sections.state,
       previousPublished: input.previousSnapshot?.summaries,
       sections: sections.state.structure,
       sectionsAction: sections.action,
@@ -234,9 +237,16 @@ export const deriveViewSnapshot = (input: {
 
   return {
     cache: {
-      query: query.state,
-      sections: sections.state,
-      summary: summary.state
+      query: {
+        state: query.state
+      },
+      sections: {
+        state: sections.state.structure,
+        projection: sections.state.projection
+      },
+      summary: {
+        state: summary.state
+      }
     },
     snapshot: publishedSnapshot,
     ...(publishedSnapshot

@@ -7,6 +7,9 @@ import type {
   Section
 } from '@dataview/engine'
 import {
+  queryRead
+} from '@dataview/engine'
+import {
   useDataView
 } from '@dataview/react/dataview'
 import { equal, store } from '@shared/core'
@@ -77,8 +80,20 @@ export const useKanbanRuntime = (input: {
   }), [dataView.source.active.sections])
   const sections = useStoreValue(sectionsStore)
   const currentViewId = useStoreValue(dataView.source.active.view.id) ?? ''
-  const cardsPerColumn = useStoreValue(dataView.source.active.kanban.cardsPerColumn)
-  const canDrag = useStoreValue(dataView.source.active.kanban.canReorder)
+  const groupedStore = useMemo(() => store.createDerivedStore({
+    get: () => queryRead.grouped(store.read(dataView.source.active.query)),
+    isEqual: Object.is
+  }), [dataView.source.active.query])
+  const cardsPerColumnStore = useMemo(() => store.createDerivedStore({
+    get: () => store.read(dataView.source.active.kanban).cardsPerColumn,
+    isEqual: Object.is
+  }), [dataView.source.active.kanban])
+  const canDragStore = useMemo(() => store.createDerivedStore({
+    get: () => store.read(dataView.source.active.kanban).canReorder,
+    isEqual: Object.is
+  }), [dataView.source.active.kanban])
+  const cardsPerColumn = useStoreValue(cardsPerColumnStore)
+  const canDrag = useStoreValue(canDragStore)
   const visibility = useKanbanVisibility({
     viewId: currentViewId,
     sections,
@@ -100,6 +115,7 @@ export const useKanbanRuntime = (input: {
       const config = store.read(configStore)
       return {
         ...base,
+        grouped: store.read(groupedStore),
         columnWidth: config.columnWidth,
         columnMinHeight: config.columnMinHeight
       }
@@ -107,7 +123,8 @@ export const useKanbanRuntime = (input: {
     isEqual: sameBoard
   }), [
     configStore,
-    dataView.model.kanban.board
+    dataView.model.kanban.board,
+    groupedStore
   ])
 
   useEffect(() => {

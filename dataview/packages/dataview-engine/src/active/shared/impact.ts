@@ -6,10 +6,10 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import { equal } from '@shared/core'
 import type {
   CalculationEntry
 } from '@dataview/core/calculation'
+import { equal } from '@shared/core'
 import type {
   BucketKey
 } from '@dataview/engine/active/index/contracts'
@@ -32,33 +32,46 @@ export interface ActiveQueryImpact {
   orderChanged?: true
 }
 
-export interface MembershipChange<TKey extends string, TItem extends string> {
-  rebuild?: true
-  touchedKeys: Set<TKey>
-  addedByKey: Map<TKey, TItem[]>
-  removedByKey: Map<TKey, TItem[]>
-  nextKeysByItem: Map<TItem, readonly TKey[]>
+export interface MembershipRecord<TKey extends string> {
+  before: readonly TKey[]
+  after: readonly TKey[]
 }
 
-export interface EntryChange<TId extends string, TEntry> {
+export interface MembershipTransition<TKey extends string, TItem extends string> {
   rebuild?: true
-  changedIds: Set<TId>
-  previousById: Map<TId, TEntry | undefined>
-  nextById: Map<TId, TEntry | undefined>
+  records: Map<TItem, MembershipRecord<TKey>>
+}
+
+export interface EntryRecord<TEntry> {
+  before: TEntry | undefined
+  after: TEntry | undefined
+}
+
+export interface EntryTransition<TId extends string, TEntry> {
+  rebuild?: true
+  records: Map<TId, EntryRecord<TEntry>>
 }
 
 export interface ActiveCalculationImpact {
-  byField: Map<FieldId, EntryChange<RecordId, CalculationEntry>>
+  fields: Map<FieldId, EntryTransition<RecordId, CalculationEntry>>
 }
 
 export interface ActiveImpact {
   commit: CommitImpact
   base: ActiveImpactBase
   query?: ActiveQueryImpact
-  bucket?: MembershipChange<BucketKey, RecordId>
-  sections?: MembershipChange<SectionKey, RecordId>
-  calculations?: ActiveCalculationImpact
+  bucket?: MembershipTransition<BucketKey, RecordId>
+  section?: MembershipTransition<SectionKey, RecordId>
+  calculation?: ActiveCalculationImpact
 }
+
+const createMembershipTransition = <TKey extends string, TItem extends string>(): MembershipTransition<TKey, TItem> => ({
+  records: new Map<TItem, MembershipRecord<TKey>>()
+})
+
+const createEntryTransition = <TId extends string, TEntry>(): EntryTransition<TId, TEntry> => ({
+  records: new Map<TId, EntryRecord<TEntry>>()
+})
 
 const pushToArrayMap = <TKey, TValue>(
   map: Map<TKey, TValue[]>,
@@ -73,19 +86,6 @@ const pushToArrayMap = <TKey, TValue>(
 
   map.set(key, [value])
 }
-
-const createMembershipChange = <TKey extends string, TItem extends string>(): MembershipChange<TKey, TItem> => ({
-  touchedKeys: new Set<TKey>(),
-  addedByKey: new Map<TKey, TItem[]>(),
-  removedByKey: new Map<TKey, TItem[]>(),
-  nextKeysByItem: new Map<TItem, readonly TKey[]>()
-})
-
-const createEntryChange = <TId extends string, TEntry>(): EntryChange<TId, TEntry> => ({
-  changedIds: new Set<TId>(),
-  previousById: new Map<TId, TEntry | undefined>(),
-  nextById: new Map<TId, TEntry | undefined>()
-})
 
 export const createActiveImpact = (
   commit: CommitImpact
@@ -118,50 +118,50 @@ export const ensureQueryImpact = (
   return impact.query
 }
 
-export const ensureBucketChange = (
+export const ensureBucketTransition = (
   impact: ActiveImpact
-): MembershipChange<BucketKey, RecordId> => {
+): MembershipTransition<BucketKey, RecordId> => {
   if (impact.bucket) {
     return impact.bucket
   }
 
-  impact.bucket = createMembershipChange<BucketKey, RecordId>()
+  impact.bucket = createMembershipTransition<BucketKey, RecordId>()
   return impact.bucket
 }
 
-export const ensureSectionChange = (
+export const ensureSectionTransition = (
   impact: ActiveImpact
-): MembershipChange<SectionKey, RecordId> => {
-  if (impact.sections) {
-    return impact.sections
+): MembershipTransition<SectionKey, RecordId> => {
+  if (impact.section) {
+    return impact.section
   }
 
-  impact.sections = createMembershipChange<SectionKey, RecordId>()
-  return impact.sections
+  impact.section = createMembershipTransition<SectionKey, RecordId>()
+  return impact.section
 }
 
-export const ensureCalculationFieldChange = (
+export const ensureCalculationFieldTransition = (
   impact: ActiveImpact,
   fieldId: FieldId
-): EntryChange<RecordId, CalculationEntry> => {
-  if (!impact.calculations) {
-    impact.calculations = {
-      byField: new Map()
+): EntryTransition<RecordId, CalculationEntry> => {
+  if (!impact.calculation) {
+    impact.calculation = {
+      fields: new Map()
     }
   }
 
-  const existing = impact.calculations.byField.get(fieldId)
+  const existing = impact.calculation.fields.get(fieldId)
   if (existing) {
     return existing
   }
 
-  const created = createEntryChange<RecordId, CalculationEntry>()
-  impact.calculations.byField.set(fieldId, created)
+  const created = createEntryTransition<RecordId, CalculationEntry>()
+  impact.calculation.fields.set(fieldId, created)
   return created
 }
 
 export const applyMembershipTransition = <TKey extends string, TItem extends string>(
-  change: MembershipChange<TKey, TItem>,
+  transition: MembershipTransition<TKey, TItem>,
   itemId: TItem,
   before: readonly TKey[],
   after: readonly TKey[]
@@ -170,40 +170,84 @@ export const applyMembershipTransition = <TKey extends string, TItem extends str
     return
   }
 
-  if (after.length) {
-    change.nextKeysByItem.set(itemId, after)
-  } else {
-    change.nextKeysByItem.delete(itemId)
-  }
-
-  before.forEach(key => {
-    change.touchedKeys.add(key)
-    if (!after.includes(key)) {
-      pushToArrayMap(change.removedByKey, key, itemId)
-    }
-  })
-  after.forEach(key => {
-    change.touchedKeys.add(key)
-    if (!before.includes(key)) {
-      pushToArrayMap(change.addedByKey, key, itemId)
-    }
+  transition.records.set(itemId, {
+    before,
+    after
   })
 }
 
-export const applyEntryChange = <TId extends string, TEntry>(
-  change: EntryChange<TId, TEntry>,
+export const applyEntryTransition = <TId extends string, TEntry>(
+  transition: EntryTransition<TId, TEntry>,
   id: TId,
   previous: TEntry | undefined,
   next: TEntry | undefined,
-  equal: (left: TEntry | undefined, right: TEntry | undefined) => boolean
+  isEqual: (left: TEntry | undefined, right: TEntry | undefined) => boolean
 ): void => {
-  if (equal(previous, next)) {
+  if (isEqual(previous, next)) {
     return
   }
 
-  change.changedIds.add(id)
-  change.previousById.set(id, previous)
-  change.nextById.set(id, next)
+  transition.records.set(id, {
+    before: previous,
+    after: next
+  })
+}
+
+export const membershipRead = {
+  records: <TKey extends string, TItem extends string>(
+    transition: MembershipTransition<TKey, TItem> | undefined
+  ) => transition?.records,
+  before: <TKey extends string, TItem extends string>(
+    transition: MembershipTransition<TKey, TItem> | undefined,
+    itemId: TItem
+  ): readonly TKey[] | undefined => transition?.records.get(itemId)?.before,
+  after: <TKey extends string, TItem extends string>(
+    transition: MembershipTransition<TKey, TItem> | undefined,
+    itemId: TItem
+  ): readonly TKey[] | undefined => transition?.records.get(itemId)?.after,
+  keyChanges: <TKey extends string, TItem extends string>(
+    transition: MembershipTransition<TKey, TItem> | undefined
+  ): {
+    touched: ReadonlySet<TKey>
+    added: ReadonlyMap<TKey, readonly TItem[]>
+    removed: ReadonlyMap<TKey, readonly TItem[]>
+  } => {
+    const touched = new Set<TKey>()
+    const added = new Map<TKey, TItem[]>()
+    const removed = new Map<TKey, TItem[]>()
+
+    transition?.records.forEach(({ before, after }, itemId) => {
+      before.forEach(key => {
+        touched.add(key)
+        if (!after.includes(key)) {
+          pushToArrayMap(removed, key, itemId)
+        }
+      })
+      after.forEach(key => {
+        touched.add(key)
+        if (!before.includes(key)) {
+          pushToArrayMap(added, key, itemId)
+        }
+      })
+    })
+
+    return {
+      touched,
+      added,
+      removed
+    }
+  }
+}
+
+export const entryRead = {
+  before: <TId extends string, TEntry>(
+    transition: EntryTransition<TId, TEntry> | undefined,
+    id: TId
+  ): TEntry | undefined => transition?.records.get(id)?.before,
+  after: <TId extends string, TEntry>(
+    transition: EntryTransition<TId, TEntry> | undefined,
+    id: TId
+  ): TEntry | undefined => transition?.records.get(id)?.after
 }
 
 export const hasQueryChanges = (
@@ -216,18 +260,18 @@ export const hasQueryChanges = (
 )
 
 export const hasMembershipChanges = <TKey extends string, TItem extends string>(
-  change: MembershipChange<TKey, TItem> | undefined
+  transition: MembershipTransition<TKey, TItem> | undefined
 ): boolean => Boolean(
-  change?.rebuild
-  || change?.touchedKeys.size
+  transition?.rebuild
+  || transition?.records.size
 )
 
 export const hasCalculationChanges = (
   impact: ActiveImpact,
   fieldIds?: Iterable<FieldId>
 ): boolean => {
-  const calculations = impact.calculations
-  if (!calculations?.byField.size) {
+  const calculation = impact.calculation
+  if (!calculation?.fields.size) {
     return false
   }
 
@@ -236,8 +280,8 @@ export const hasCalculationChanges = (
   }
 
   for (const fieldId of fieldIds) {
-    const change = calculations.byField.get(fieldId)
-    if (change?.rebuild || change?.changedIds.size) {
+    const transition = calculation.fields.get(fieldId)
+    if (transition?.rebuild || transition?.records.size) {
       return true
     }
   }

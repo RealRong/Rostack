@@ -8,7 +8,6 @@ import type {
   FilterConditionProjection,
   FilterRule,
   KanbanCardsPerColumn,
-  SortDirection,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -50,7 +49,6 @@ import type {
   DocumentReader
 } from '@dataview/engine/document/reader'
 
-const EMPTY_SORT_DIR = new Map<FieldId, SortDirection | undefined>()
 const EMPTY_TABLE_CALC = new Map<FieldId, CalculationMetric | undefined>()
 const DEFAULT_CARD_LAYOUT = 'vertical' as CardLayout
 const DEFAULT_CARD_SIZE = 'medium' as CardSize
@@ -208,34 +206,6 @@ const createGroupProjection = (input: {
   }
 }
 
-const createFilterFieldIds = (
-  view: View
-): readonly FieldId[] => view.filter.rules.flatMap(rule => (
-  typeof rule.fieldId === 'string'
-    ? [rule.fieldId]
-    : []
-))
-
-const createSortFieldIds = (
-  view: View
-): readonly FieldId[] => view.sort.flatMap(sorter => (
-  typeof sorter.field === 'string'
-    ? [sorter.field]
-    : []
-))
-
-const createSortDir = (
-  view: View,
-  fieldIds: readonly FieldId[]
-): ReadonlyMap<FieldId, SortDirection | undefined> => fieldIds.length
-  ? new Map(
-      fieldIds.map(fieldId => [
-        fieldId,
-        view.sort.find(sorter => sorter.field === fieldId)?.direction
-      ] as const)
-    )
-  : EMPTY_SORT_DIR
-
 const createTableProjection = (input: {
   view: View
   fields: Pick<FieldList, 'ids'>
@@ -382,11 +352,6 @@ const equalQueryProjection = (
   && equalGroupProjection(current.group, next.group)
   && equalSearchProjection(current.search, next.search)
   && equalSortProjection(current.sort, next.sort)
-  && current.grouped === next.grouped
-  && current.groupFieldId === next.groupFieldId
-  && sameOptionalList(current.filterFieldIds, next.filterFieldIds, Object.is)
-  && sameOptionalList(current.sortFieldIds, next.sortFieldIds, Object.is)
-  && equal.sameMap(current.sortDir, next.sortDir)
 ))
 
 const equalTableProjection = (
@@ -473,18 +438,11 @@ export const publishViewBase = (input: {
     fieldIds: view.display.fields,
     byId: input.fieldsById
   })
-  const nextFilterFieldIds = createFilterFieldIds(view)
-  const nextSortFieldIds = createSortFieldIds(view)
   const nextQuery = {
     filters: nextFilter,
     group: nextGroup,
     search: nextSearch,
-    sort: nextSort,
-    grouped: nextGroup.active,
-    groupFieldId: nextGroup.fieldId,
-    filterFieldIds: nextFilterFieldIds,
-    sortFieldIds: nextSortFieldIds,
-    sortDir: createSortDir(view, nextSortFieldIds)
+    sort: nextSort
   } satisfies ActiveViewQuery
   const nextTable = createTableProjection({
     view,

@@ -5,7 +5,6 @@ import type { ViewPlan } from '@dataview/engine/active/plan'
 import type { ViewCache } from '@dataview/engine/contracts/state'
 import type {
   SourceDelta,
-  TableLayoutState,
   ViewState
 } from '@dataview/engine/contracts'
 
@@ -26,7 +25,6 @@ export interface ActiveRuntimeState {
   cache: ViewCache
   snapshot?: ViewState
   sourceDelta: SourceDelta
-  tableLayout: TableLayoutState | null
 }
 
 export interface EngineRuntimeState {

@@ -17,7 +17,8 @@ import {
 } from '@dataview/engine/active/shared/ordered'
 import {
   applyMembershipTransition,
-  ensureSectionChange
+  ensureSectionTransition,
+  membershipRead
 } from '@dataview/engine/active/shared/impact'
 import type {
   ActiveImpact
@@ -84,7 +85,7 @@ const resolveChangedRecordIds = (
   const changed = new Set<RecordId>()
   addChangedRecordIds(changed, impact.query?.visibleAdded)
   addChangedRecordIds(changed, impact.query?.visibleRemoved)
-  impact.bucket?.nextKeysByItem.forEach((_keys, recordId) => {
+  membershipRead.records(impact.bucket)?.forEach((_record, recordId) => {
     changed.add(recordId)
   })
   return changed
@@ -102,19 +103,19 @@ const syncRootSectionState = (input: {
   impact: ActiveImpact
 }): SectionState => {
   const previousRoot = input.previous.byKey.get(ROOT_SECTION_KEY)
-  let change = input.impact.sections
+  let transition = input.impact.section
   const hasVisibleDelta = Boolean(
     input.impact.query?.visibleAdded.length
     || input.impact.query?.visibleRemoved.length
   )
 
   input.impact.query?.visibleRemoved.forEach(recordId => {
-    change ??= ensureSectionChange(input.impact)
-    applyMembershipTransition(change, recordId, ROOT_SECTION_KEYS, [])
+    transition ??= ensureSectionTransition(input.impact)
+    applyMembershipTransition(transition, recordId, ROOT_SECTION_KEYS, [])
   })
   input.impact.query?.visibleAdded.forEach(recordId => {
-    change ??= ensureSectionChange(input.impact)
-    applyMembershipTransition(change, recordId, [], ROOT_SECTION_KEYS)
+    transition ??= ensureSectionTransition(input.impact)
+    applyMembershipTransition(transition, recordId, [], ROOT_SECTION_KEYS)
   })
 
   const nextRoot = {
@@ -234,7 +235,7 @@ export const syncSectionState = (input: {
   const visible = fullVisible
     ? undefined
     : readQueryVisibleSet(input.query)
-  let sectionChange = input.impact.sections
+  let sectionTransition = input.impact.section
   const keysByRecord = fullVisible
     ? undefined
     : createMapPatchBuilder(previous.keysByRecord)
@@ -253,8 +254,8 @@ export const syncSectionState = (input: {
       return
     }
 
-    sectionChange ??= ensureSectionChange(input.impact)
-    applyMembershipTransition(sectionChange, recordId, before, after)
+    sectionTransition ??= ensureSectionTransition(input.impact)
+    applyMembershipTransition(sectionTransition, recordId, before, after)
     keysChanged = true
 
     if (fullVisible) {
@@ -324,7 +325,10 @@ export const syncSectionState = (input: {
       : previous
   }
 
-  const touchedSections = sectionChange?.touchedKeys ?? EMPTY_TOUCHED_SECTIONS
+  const sectionKeyChanges = membershipRead.keyChanges(sectionTransition)
+  const touchedSections = sectionKeyChanges.touched.size
+    ? sectionKeyChanges.touched
+    : EMPTY_TOUCHED_SECTIONS
   const queryOrder = input.query.records.ordered === input.index.records.ids
     ? input.index.records.order
     : readQueryOrder(input.query)
@@ -338,8 +342,8 @@ export const syncSectionState = (input: {
     const nextRecordIds = touchedSections.has(sectionKey)
       ? applyOrderedIdDelta({
           previous: previousNode?.recordIds ?? EMPTY_RECORD_IDS,
-          remove: createRecordIdSet(sectionChange?.removedByKey.get(sectionKey)),
-          add: sectionChange?.addedByKey.get(sectionKey),
+          remove: createRecordIdSet(sectionKeyChanges.removed.get(sectionKey)),
+          add: sectionKeyChanges.added.get(sectionKey),
           order: queryOrder
         }) ?? EMPTY_RECORD_IDS
       : previousNode?.recordIds ?? bucketIndex.recordsByKey.get(sectionKey) ?? EMPTY_RECORD_IDS

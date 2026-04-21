@@ -14,6 +14,7 @@ import {
 import {
   hasMembershipChanges,
   hasQueryChanges,
+  membershipRead,
   type ActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import type {
@@ -116,7 +117,7 @@ const buildSectionDelta = (input: {
   }
 
   const changed = new Set<SectionKey>()
-  input.impact.sections?.touchedKeys.forEach(sectionKey => {
+  membershipRead.keyChanges(input.impact.section).touched.forEach(sectionKey => {
     changed.add(sectionKey)
   })
   nextKeys.forEach(sectionKey => {

@@ -1,14 +1,9 @@
 import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
-  CalculationMetric,
-  CardLayout,
-  CardSize,
   CustomField,
   DataRecord,
   Field,
   FieldId,
-  KanbanCardsPerColumn,
-  SortDirection,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -20,11 +15,10 @@ import type {
   ViewItem
 } from '@dataview/engine/contracts/shared'
 import type {
-  TableLayoutState,
-  ViewFilterProjection,
-  ViewGroupProjection,
-  ViewSearchProjection,
-  ViewSortProjection
+  ActiveViewGallery,
+  ActiveViewKanban,
+  ActiveViewQuery,
+  ActiveViewTable
 } from '@dataview/engine/contracts/view'
 
 export interface EntitySource<K, T> extends store.KeyedReadStore<K, T | undefined> {
@@ -34,43 +28,6 @@ export interface EntitySource<K, T> extends store.KeyedReadStore<K, T | undefine
 export interface SectionSource extends store.KeyedReadStore<SectionKey, Section | undefined> {
   keys: store.ReadStore<readonly SectionKey[]>
   summary: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
-}
-
-export interface ActiveQuerySource {
-  search: store.ReadStore<ViewSearchProjection>
-  filters: store.ReadStore<ViewFilterProjection>
-  sort: store.ReadStore<ViewSortProjection>
-  group: store.ReadStore<ViewGroupProjection>
-  grouped: store.ReadStore<boolean>
-  groupFieldId: store.ReadStore<FieldId | ''>
-  filterFieldIds: store.ReadStore<readonly FieldId[]>
-  sortFieldIds: store.ReadStore<readonly FieldId[]>
-  sortDir: store.KeyedReadStore<FieldId, SortDirection | undefined>
-}
-
-export interface ActiveTableSource {
-  wrap: store.ReadStore<boolean>
-  showVerticalLines: store.ReadStore<boolean>
-  calc: store.KeyedReadStore<FieldId, CalculationMetric | undefined>
-  layout: store.ReadStore<TableLayoutState | null>
-}
-
-export interface ActiveGallerySource {
-  wrap: store.ReadStore<boolean>
-  size: store.ReadStore<CardSize>
-  layout: store.ReadStore<CardLayout>
-  canReorder: store.ReadStore<boolean>
-  groupUsesOptionColors: store.ReadStore<boolean>
-}
-
-export interface ActiveKanbanSource {
-  wrap: store.ReadStore<boolean>
-  size: store.ReadStore<CardSize>
-  layout: store.ReadStore<CardLayout>
-  canReorder: store.ReadStore<boolean>
-  groupUsesOptionColors: store.ReadStore<boolean>
-  fillColumnColor: store.ReadStore<boolean>
-  cardsPerColumn: store.ReadStore<KanbanCardsPerColumn>
 }
 
 export interface DocumentSource {
@@ -89,13 +46,13 @@ export interface ActiveSource {
   items: EntitySource<ItemId, ViewItem>
   sections: SectionSource
   fields: {
-    all: EntitySource<FieldId, Field>
-    custom: EntitySource<FieldId, CustomField>
+      all: EntitySource<FieldId, Field>
+      custom: EntitySource<FieldId, CustomField>
   }
-  query: ActiveQuerySource
-  table: ActiveTableSource
-  gallery: ActiveGallerySource
-  kanban: ActiveKanbanSource
+  query: store.ReadStore<ActiveViewQuery>
+  table: store.ReadStore<ActiveViewTable>
+  gallery: store.ReadStore<ActiveViewGallery>
+  kanban: store.ReadStore<ActiveViewKanban>
 }
 
 export interface EngineSource {

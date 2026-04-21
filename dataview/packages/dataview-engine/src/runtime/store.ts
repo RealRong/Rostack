@@ -37,8 +37,7 @@ export const createRuntimeState = (input: {
     document: input.doc,
     impact: resetImpact,
     nextView: currentView.snapshot,
-    snapshotChange: currentView.delta,
-    previousLayout: null
+    snapshotChange: currentView.delta
   })
 
   return {
@@ -55,8 +54,7 @@ export const createRuntimeState = (input: {
         : {}),
       index,
       cache: currentView.cache,
-      sourceDelta: output.sourceDelta,
-      tableLayout: output.tableLayout,
+      sourceDelta: output,
       ...(currentView.snapshot
         ? { snapshot: currentView.snapshot }
         : {})

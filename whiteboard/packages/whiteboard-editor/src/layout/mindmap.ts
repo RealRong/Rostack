@@ -28,6 +28,11 @@ type MindmapLiveEdit = {
   size: Size
 }
 
+type MindmapSubtreeMove = {
+  nodeId: NodeId
+  ghost: Rect
+}
+
 const EMPTY_LIVE_EDIT_MAP = new Map<NodeId, MindmapLiveEdit>()
 const EMPTY_ROOT_MOVE_MAP = new Map<NodeId, {
   delta: {
@@ -35,6 +40,7 @@ const EMPTY_ROOT_MOVE_MAP = new Map<NodeId, {
     y: number
   }
 }>()
+const EMPTY_SUBTREE_MOVE_MAP = new Map<NodeId, MindmapSubtreeMove>()
 const EMPTY_ENTER_MAP = new Map<NodeId, readonly MindmapEnterPreview[]>()
 
 const interpolateRect = (
@@ -106,12 +112,60 @@ const readCommittedMindmapNodeSize = (
     : undefined
 }
 
+const translateRect = (
+  rect: Rect,
+  delta: {
+    x: number
+    y: number
+  }
+): Rect => ({
+  x: rect.x + delta.x,
+  y: rect.y + delta.y,
+  width: rect.width,
+  height: rect.height
+})
+
+const computeBBox = (
+  nodes: Record<NodeId, Rect>
+): Rect => {
+  const rects = Object.values(nodes)
+  if (rects.length === 0) {
+    return {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0
+    }
+  }
+
+  let minX = rects[0]!.x
+  let minY = rects[0]!.y
+  let maxX = rects[0]!.x + rects[0]!.width
+  let maxY = rects[0]!.y + rects[0]!.height
+
+  for (let index = 1; index < rects.length; index += 1) {
+    const rect = rects[index]!
+    minX = Math.min(minX, rect.x)
+    minY = Math.min(minY, rect.y)
+    maxX = Math.max(maxX, rect.x + rect.width)
+    maxY = Math.max(maxY, rect.y + rect.height)
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY
+  }
+}
+
 const readProjectedMindmapItem = ({
   base,
   structure,
   nodeCommitted,
   liveEdit,
   rootMove,
+  subtreeMove,
   enter,
   now
 }: {
@@ -125,10 +179,11 @@ const readProjectedMindmapItem = ({
       y: number
     }
   } | undefined
+  subtreeMove: MindmapSubtreeMove | undefined
   enter: readonly MindmapEnterPreview[]
   now: number
 }): MindmapLayoutItem => {
-  if (!liveEdit && !rootMove && enter.length === 0) {
+  if (!liveEdit && !rootMove && !subtreeMove && enter.length === 0) {
     return base
   }
 
@@ -171,6 +226,35 @@ const readProjectedMindmapItem = ({
 
   if (rootMove) {
     computed = mindmapApi.layout.translate(computed, rootMove.delta)
+  }
+
+  if (subtreeMove) {
+    const sourceRect = computed.node[subtreeMove.nodeId]
+    if (sourceRect) {
+      const delta = {
+        x: subtreeMove.ghost.x - sourceRect.x,
+        y: subtreeMove.ghost.y - sourceRect.y
+      }
+
+      if (delta.x !== 0 || delta.y !== 0) {
+        const nextNode = {
+          ...computed.node
+        }
+        mindmapApi.tree.subtreeIds(structure.tree, subtreeMove.nodeId).forEach((nodeId) => {
+          const rect = nextNode[nodeId]
+          if (!rect) {
+            return
+          }
+
+          nextNode[nodeId] = translateRect(rect, delta)
+        })
+
+        computed = {
+          node: nextNode,
+          bbox: computeBBox(nextNode)
+        }
+      }
+    }
   }
 
   if (enter.length > 0) {
@@ -301,6 +385,20 @@ export const createMindmapLayoutRead = ({
     emptyValue: undefined
   })
 
+  const subtreeMove = store.createProjectedKeyedStore({
+    source: preview,
+    select: (currentPreview) => {
+      const currentSubtreeMove = currentPreview?.subtreeMove
+      return currentSubtreeMove
+        ? new Map([[currentSubtreeMove.treeId, {
+            nodeId: currentSubtreeMove.nodeId,
+            ghost: currentSubtreeMove.ghost
+          }]])
+        : EMPTY_SUBTREE_MOVE_MAP
+    },
+    emptyValue: undefined
+  })
+
   const enter = store.createProjectedKeyedStore({
     source: preview,
     select: (currentPreview) => {
@@ -339,6 +437,7 @@ export const createMindmapLayoutRead = ({
         nodeCommitted,
         liveEdit: store.read(liveEdit, treeId),
         rootMove: store.read(rootMove, treeId),
+        subtreeMove: store.read(subtreeMove, treeId),
         enter: currentEnter,
         now: currentEnter.length > 0
           ? store.read(clock)

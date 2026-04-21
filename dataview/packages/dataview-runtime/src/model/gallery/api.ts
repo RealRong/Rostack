@@ -1,4 +1,7 @@
 import { equal, store } from '@shared/core'
+import {
+  queryRead
+} from '@dataview/engine'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
@@ -84,8 +87,8 @@ export const createGalleryModel = (input: {
       return {
         viewId,
         empty: store.read(input.source.active.items.ids).length === 0,
-        grouped: store.read(input.source.active.query.grouped),
-        groupUsesOptionColors: store.read(input.source.active.gallery.groupUsesOptionColors),
+        grouped: queryRead.grouped(store.read(input.source.active.query)),
+        groupUsesOptionColors: store.read(input.source.active.gallery).groupUsesOptionColors,
         sectionKeys: store.read(input.source.active.sections.keys)
       }
     },
@@ -126,15 +129,16 @@ export const createGalleryModel = (input: {
         return undefined
       }
 
+      const gallery = store.read(input.source.active.gallery)
       return {
         viewId,
         itemId,
         recordId: item.recordId,
         fields: store.read(customFields),
-        size: store.read(input.source.active.gallery.size),
-        layout: store.read(input.source.active.gallery.layout),
-        wrap: store.read(input.source.active.gallery.wrap),
-        canDrag: store.read(input.source.active.gallery.canReorder),
+        size: gallery.size,
+        layout: gallery.layout,
+        wrap: gallery.wrap,
+        canDrag: gallery.canReorder,
         selected: (
           store.read(input.source.selection.preview, itemId)
           ?? store.read(input.source.selection.member, itemId)

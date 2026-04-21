@@ -83,6 +83,7 @@ export interface ViewSortProjection {
 
 const EMPTY_MODES = [] as readonly string[]
 const EMPTY_BUCKET_SORTS = [] as readonly BucketSort[]
+const EMPTY_QUERY_FIELD_IDS = [] as readonly FieldId[]
 
 export const EMPTY_VIEW_GROUP_PROJECTION: ViewGroupProjection = {
   active: false,
@@ -102,11 +103,6 @@ export interface ActiveViewQuery {
   filters: ViewFilterProjection
   group: ViewGroupProjection
   sort: ViewSortProjection
-  grouped: boolean
-  groupFieldId: FieldId | ''
-  filterFieldIds: readonly FieldId[]
-  sortFieldIds: readonly FieldId[]
-  sortDir: ReadonlyMap<FieldId, SortDirection | undefined>
 }
 
 export interface ActiveViewTable {
@@ -156,6 +152,45 @@ export interface ViewCell {
   value: unknown
 }
 
+export const queryRead = {
+  grouped: (
+    query: ActiveViewQuery
+  ): boolean => query.group.active,
+  groupFieldId: (
+    query: ActiveViewQuery
+  ): FieldId | '' => query.group.fieldId,
+  filterFieldIds: (
+    query: ActiveViewQuery
+  ): readonly FieldId[] => {
+    const ids = query.filters.rules.flatMap(rule => (
+      typeof rule.rule.fieldId === 'string'
+        ? [rule.rule.fieldId]
+        : []
+    ))
+
+    return ids.length
+      ? ids
+      : EMPTY_QUERY_FIELD_IDS
+  },
+  sortFieldIds: (
+    query: ActiveViewQuery
+  ): readonly FieldId[] => {
+    const ids = query.sort.rules.flatMap(rule => (
+      typeof rule.sorter.field === 'string'
+        ? [rule.sorter.field]
+        : []
+    ))
+
+    return ids.length
+      ? ids
+      : EMPTY_QUERY_FIELD_IDS
+  },
+  sortDir: (
+    query: ActiveViewQuery,
+    fieldId: FieldId
+  ) => query.sort.rules.find(rule => rule.sorter.field === fieldId)?.sorter.direction
+}
+
 export const sameCellRef = (
   left: CellRef,
   right: CellRef
@@ -181,18 +216,6 @@ export interface ActiveViewReadApi {
   cell: (cell: CellRef) => ViewCell | undefined
   filterField: (index: number) => Field | undefined
   groupField: () => Field | undefined
-}
-
-export interface TableLayoutSectionState {
-  key: SectionKey
-  collapsed: boolean
-  itemIds: readonly ItemId[]
-}
-
-export interface TableLayoutState {
-  grouped: boolean
-  rowCount: number
-  sections: readonly TableLayoutSectionState[]
 }
 
 export interface GalleryApi {

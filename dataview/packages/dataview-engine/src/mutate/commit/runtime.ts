@@ -235,8 +235,7 @@ const commit = <TResult extends CommitResult>(input: {
     impact: draft.impact,
     previousView: base.currentView.snapshot,
     nextView: nextView.snapshot,
-    snapshotChange: nextView.delta,
-    previousLayout: base.currentView.tableLayout
+    snapshotChange: nextView.delta
   })
   const outputMs = now() - outputStart
 
@@ -250,8 +249,7 @@ const commit = <TResult extends CommitResult>(input: {
         : {}),
       index: nextIndex.state,
       cache: nextView.cache,
-      sourceDelta: output.sourceDelta,
-      tableLayout: output.tableLayout,
+      sourceDelta: output,
       ...(nextView.snapshot
         ? { snapshot: nextView.snapshot }
         : {})

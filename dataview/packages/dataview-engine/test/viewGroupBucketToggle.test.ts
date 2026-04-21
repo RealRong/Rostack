@@ -488,34 +488,38 @@ test('engine.source keeps active boundaries inside one active pipeline', () => {
     document: createMultiViewDocument()
   })
 
-  const groupStore = engine.source.active.query.group
-  const sortStore = engine.source.active.query.sort
+  const queryStore = engine.source.active.query
+  let previousSort = queryStore.get().sort
   let idEvents = 0
   let sortEvents = 0
   const unsubscribeId = engine.active.id.subscribe(() => {
     idEvents += 1
   })
-  const unsubscribeSort = sortStore.subscribe(() => {
-    sortEvents += 1
+  const unsubscribeSort = queryStore.subscribe(() => {
+    const nextSort = queryStore.get().sort
+    if (nextSort !== previousSort) {
+      previousSort = nextSort
+      sortEvents += 1
+    }
   })
 
   assert.equal(engine.active.id.get(), VIEW_TABLE)
-  assert.equal(groupStore.get()?.active, false)
-  assert.equal(sortStore.get()?.rules.length ?? 0, 0)
+  assert.equal(queryStore.get().group.active, false)
+  assert.equal(queryStore.get().sort.rules.length, 0)
 
   openView(engine, VIEW_TABLE).sort.add(FIELD_POINTS)
 
   assert.equal(engine.active.id.get(), VIEW_TABLE)
-  assert.equal(sortStore.get()?.rules.length, 1)
-  assert.equal(sortStore.get()?.rules[0]?.sorter.field, FIELD_POINTS)
+  assert.equal(queryStore.get().sort.rules.length, 1)
+  assert.equal(queryStore.get().sort.rules[0]?.sorter.field, FIELD_POINTS)
   assert.equal(idEvents, 0)
   assert.equal(sortEvents, 1)
 
   engine.views.open(VIEW_BOARD)
 
   assert.equal(engine.active.id.get(), VIEW_BOARD)
-  assert.equal(groupStore.get()?.active, true)
-  assert.equal(groupStore.get()?.fieldId, FIELD_STATUS)
+  assert.equal(queryStore.get().group.active, true)
+  assert.equal(queryStore.get().group.fieldId, FIELD_STATUS)
   assert.equal(idEvents, 1)
 
   unsubscribeId()
@@ -1184,6 +1188,33 @@ test('engine.active.state summaries are derived from index aggregates', () => {
   assert.equal(todoStatus?.kind, 'distribution')
   assert.equal(todoStatus?.items[0]?.key, 'todo')
   assert.equal(todoStatus?.items[0]?.percent, 1)
+})
+
+test('engine.active.state clears grouped summaries when filters leave every section empty', () => {
+  const engine = createEngineForTest({
+    document: createDocument()
+  })
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).summary.set(FIELD_STATUS, 'countByOption')
+
+  openView(engine, VIEW_TABLE).filters.add(FIELD_POINTS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_POINTS,
+    presetId: 'gt',
+    value: 100
+  })
+
+  const state = readViewState(engine)
+  const summaries = state?.summaries
+
+  assert.deepEqual(state?.records.visible, [])
+  assert.deepEqual(viewSectionRecordIds(engine, 'todo'), [])
+  assert.deepEqual(viewSectionRecordIds(engine, 'doing'), [])
+  assert.deepEqual(viewSectionRecordIds(engine, 'done'), [])
+  assert.equal(summaries?.get('todo')?.get(FIELD_STATUS)?.kind, 'empty')
+  assert.equal(summaries?.get('doing')?.get(FIELD_STATUS)?.kind, 'empty')
+  assert.equal(summaries?.get('done')?.get(FIELD_STATUS)?.kind, 'empty')
 })
 
 test('engine.performance reuses summaries when sort only reorders records', () => {

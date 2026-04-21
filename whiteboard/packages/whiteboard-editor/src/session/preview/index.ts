@@ -42,6 +42,10 @@ export const createEditorInputPreview = ({
   }
 
   return {
+    state: {
+      get: state.get,
+      subscribe: state.subscribe
+    },
     selectors,
     write
   }

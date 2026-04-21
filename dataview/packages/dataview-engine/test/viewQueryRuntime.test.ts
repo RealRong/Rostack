@@ -100,7 +100,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
   })
   const document = createDocument(nextView)
   const context = createStaticDocumentReadContext(document)
-  const index = createIndexState(document).state
+  const index = createIndexState(document)
   const previousPlan = compileViewPlan(context.reader, previousView).query
   const nextPlan = compileViewPlan(context.reader, nextView).query
   const previousState = runQueryStage({
@@ -128,6 +128,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     }),
     view: nextView,
     plan: nextPlan,
+    previousPlan,
     index,
     previous: previousState,
     previousPublished: previousState.records

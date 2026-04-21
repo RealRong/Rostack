@@ -81,6 +81,7 @@ describe('createEditorLayout', () => {
           }
         },
         mindmap: {
+          list: store.createValueStore([]),
           committed: {
             get: () => undefined
           }
@@ -128,6 +129,7 @@ describe('createEditorLayout', () => {
           }
         },
         mindmap: {
+          list: store.createValueStore([]),
           committed: {
             get: () => undefined
           }

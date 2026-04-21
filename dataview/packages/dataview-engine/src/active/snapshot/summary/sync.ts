@@ -15,7 +15,11 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   ActiveImpact,
-  EntryChange
+  EntryTransition
+} from '@dataview/engine/active/shared/impact'
+import {
+  entryRead,
+  membershipRead
 } from '@dataview/engine/active/shared/impact'
 import {
   sameSectionKeys
@@ -127,24 +131,26 @@ const buildSummaryState = (input: {
 }
 
 const readPreviousEntry = (
-  change: EntryChange<RecordId, CalculationEntry> | undefined,
+  transition: EntryTransition<RecordId, CalculationEntry> | undefined,
   currentEntries: ReadonlyMap<RecordId, CalculationEntry>,
   recordId: RecordId
 ): CalculationEntry | undefined => {
-  if (change?.previousById.has(recordId)) {
-    return change.previousById.get(recordId)
+  const previous = entryRead.before(transition, recordId)
+  if (transition?.records.has(recordId)) {
+    return previous
   }
 
   return currentEntries.get(recordId)
 }
 
 const readNextEntry = (
-  change: EntryChange<RecordId, CalculationEntry> | undefined,
+  transition: EntryTransition<RecordId, CalculationEntry> | undefined,
   currentEntries: ReadonlyMap<RecordId, CalculationEntry>,
   recordId: RecordId
 ): CalculationEntry | undefined => {
-  if (change?.nextById.has(recordId)) {
-    return change.nextById.get(recordId)
+  const next = entryRead.after(transition, recordId)
+  if (transition?.records.has(recordId)) {
+    return next
   }
 
   return currentEntries.get(recordId)
@@ -220,7 +226,7 @@ const collectSectionTransitions = (input: {
   all: readonly RecordSectionTransition[]
   byRecord: ReadonlyMap<RecordId, RecordSectionTransition>
 } => {
-  const changed = input.impact.sections?.nextKeysByItem
+  const changed = membershipRead.records(input.impact.section)
   if (!changed?.size) {
     return {
       all: EMPTY_SECTION_TRANSITIONS,
@@ -231,11 +237,11 @@ const collectSectionTransitions = (input: {
   const all: RecordSectionTransition[] = []
   const byRecord = new Map<RecordId, RecordSectionTransition>()
 
-  changed.forEach((afterKeys, recordId) => {
+  changed.forEach(({ after }, recordId) => {
     const transition: RecordSectionTransition = {
       recordId,
       beforeKeys: input.previousSections.keysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS,
-      afterKeys
+      afterKeys: after
     }
     all.push(transition)
     byRecord.set(recordId, transition)
@@ -470,8 +476,8 @@ const deriveSyncedSummaryState = (input: {
   const builders = createSectionFieldBuilders()
 
   input.calcFields.forEach(fieldId => {
-    const fieldChange = input.impact.calculations?.byField.get(fieldId)
-    if (!fieldChange?.changedIds.size && !sectionTransitions.all.length) {
+    const fieldChange = input.impact.calculation?.fields.get(fieldId)
+    if (!fieldChange?.records.size && !sectionTransitions.all.length) {
       return
     }
 
@@ -481,10 +487,10 @@ const deriveSyncedSummaryState = (input: {
     }
 
     const currentEntries = fieldIndex.entries ?? EMPTY_FIELD_ENTRIES
-    const changedIds = fieldChange?.changedIds
+    const changedIds = fieldChange?.records
 
     if (changedIds?.size) {
-      for (const recordId of changedIds) {
+      for (const recordId of changedIds.keys()) {
         const transition = sectionTransitions.byRecord.get(recordId)
         const stableKeys = transition
           ? undefined

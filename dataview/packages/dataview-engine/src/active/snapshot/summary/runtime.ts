@@ -65,7 +65,7 @@ const resolveSummaryAction = (input: {
       : 'sync'
   }
 
-  if (input.sectionsAction === 'rebuild' || input.impact.sections?.rebuild) {
+  if (input.sectionsAction === 'rebuild' || input.impact.section?.rebuild) {
     return 'rebuild'
   }
 
@@ -77,7 +77,7 @@ const resolveSummaryAction = (input: {
   }
 
   for (const fieldId of input.calcFields) {
-    if (input.impact.calculations?.byField.get(fieldId)?.rebuild) {
+    if (input.impact.calculation?.fields.get(fieldId)?.rebuild) {
       return 'rebuild'
     }
 
@@ -91,7 +91,7 @@ const resolveSummaryAction = (input: {
 
   if (
     !equal.sameOrder(input.previousSections.order, input.sections.order)
-    || hasMembershipChanges(input.impact.sections)
+    || hasMembershipChanges(input.impact.section)
   ) {
     return 'sync'
   }

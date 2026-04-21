@@ -23,8 +23,8 @@ import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import {
-  applyEntryChange,
-  ensureCalculationFieldChange
+  applyEntryTransition,
+  ensureCalculationFieldTransition
 } from '@dataview/engine/active/shared/impact'
 import {
   ensureFieldIndexes,
@@ -162,7 +162,7 @@ export const syncCalculationIndex = (
     }
 
     if (shouldRebuildFieldIndex(context, fieldId)) {
-      ensureCalculationFieldChange(impact, fieldId).rebuild = true
+      ensureCalculationFieldTransition(impact, fieldId).rebuild = true
       fields.set(fieldId, buildFieldCalcIndex({
         context,
         records,
@@ -204,8 +204,8 @@ export const syncCalculationIndex = (
         return
       }
 
-      applyEntryChange(
-        ensureCalculationFieldChange(impact, fieldId),
+      applyEntryTransition(
+        ensureCalculationFieldTransition(impact, fieldId),
         recordId,
         previousEntry,
         nextEntry,

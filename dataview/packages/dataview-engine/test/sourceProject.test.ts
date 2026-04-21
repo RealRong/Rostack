@@ -8,8 +8,7 @@ import {
 } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
-  projectDocumentChange,
-  projectEngineOutput
+  projectSourceOutput
 } from '@dataview/engine/source/project'
 
 const VIEW_ID = 'view_table'
@@ -131,7 +130,7 @@ test('document publish omits record ids on non-structural value writes', () => {
     }
   }
 
-  const documentChange = projectDocumentChange({
+  const output = projectSourceOutput({
     impact: {
       records: {
         touched: new Set(['rec_1']),
@@ -141,19 +140,10 @@ test('document publish omits record ids on non-structural value writes', () => {
     document: nextDocument
   })
 
-  assert.deepEqual(documentChange.records.changed, ['rec_1'])
-  assert.equal(documentChange.records.idsChanged, false)
-
-  const output = projectEngineOutput({
-    document: nextDocument,
-    documentChange,
-    previousLayout: null
-  })
-
-  assert.equal(output.sourceDelta.document?.records?.ids, undefined)
+  assert.equal(output.document?.records?.ids, undefined)
   assert.deepEqual(
-    output.sourceDelta.document?.records?.values?.set
-      ? [...output.sourceDelta.document.records.values.set]
+    output.document?.records?.set
+      ? [...output.document.records.set]
       : [],
     [['rec_1', nextDocument.records.byId.rec_1]]
   )

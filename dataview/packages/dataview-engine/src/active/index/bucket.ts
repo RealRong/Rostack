@@ -28,7 +28,7 @@ import {
 } from '@dataview/engine/active/shared/ordered'
 import {
   applyMembershipTransition,
-  ensureBucketChange
+  ensureBucketTransition
 } from '@dataview/engine/active/shared/impact'
 import {
   shouldDropFieldIndex,
@@ -37,7 +37,7 @@ import {
 } from '@dataview/engine/active/index/sync'
 import type {
   ActiveImpact,
-  MembershipChange
+  MembershipTransition
 } from '@dataview/engine/active/shared/impact'
 import type {
   BucketFieldIndex,
@@ -171,7 +171,7 @@ const syncBucketFieldIndex = (input: {
   context: IndexDeriveContext
   records: RecordIndex
   touchedRecords: ReadonlySet<RecordId>
-  change?: MembershipChange<BucketKey, RecordId>
+  transition?: MembershipTransition<BucketKey, RecordId>
 }): BucketFieldIndex => {
   const field = input.context.reader.fields.get(input.previous.spec.fieldId)
   if (!field) {
@@ -184,18 +184,9 @@ const syncBucketFieldIndex = (input: {
 
   const values = input.records.values.get(input.previous.spec.fieldId)?.byRecord
   const keysByRecord = createMapPatchBuilder(input.previous.keysByRecord)
-  const localTouchedKeys = input.change
-    ? undefined
-    : new Set<BucketKey>()
-  const localRemovedByKey = input.change
-    ? undefined
-    : new Map<BucketKey, RecordId[]>()
-  const localAddedByKey = input.change
-    ? undefined
-    : new Map<BucketKey, RecordId[]>()
-  const touchedKeys = input.change?.touchedKeys ?? localTouchedKeys!
-  const removedByKey = input.change?.removedByKey ?? localRemovedByKey!
-  const addedByKey = input.change?.addedByKey ?? localAddedByKey!
+  const touchedKeys = new Set<BucketKey>()
+  const removedByKey = new Map<BucketKey, RecordId[]>()
+  const addedByKey = new Map<BucketKey, RecordId[]>()
   let changed = false
 
   input.touchedRecords.forEach(recordId => {
@@ -209,22 +200,19 @@ const syncBucketFieldIndex = (input: {
     }
 
     changed = true
-    if (input.change) {
-      applyMembershipTransition(input.change, recordId, before, after)
-    } else {
-      before.forEach(bucketKey => {
-        touchedKeys.add(bucketKey)
-        if (!after.includes(bucketKey)) {
-          addBucketRecord(removedByKey, bucketKey, recordId)
-        }
-      })
-      after.forEach(bucketKey => {
-        touchedKeys.add(bucketKey)
-        if (!before.includes(bucketKey)) {
-          addBucketRecord(addedByKey, bucketKey, recordId)
-        }
-      })
-    }
+    input.transition && applyMembershipTransition(input.transition, recordId, before, after)
+    before.forEach(bucketKey => {
+      touchedKeys.add(bucketKey)
+      if (!after.includes(bucketKey)) {
+        addBucketRecord(removedByKey, bucketKey, recordId)
+      }
+    })
+    after.forEach(bucketKey => {
+      touchedKeys.add(bucketKey)
+      if (!before.includes(bucketKey)) {
+        addBucketRecord(addedByKey, bucketKey, recordId)
+      }
+    })
 
     if (after.length) {
       keysByRecord.set(recordId, after)
@@ -338,7 +326,7 @@ export const syncBucketIndex = (
     }
 
     if (shouldRebuildFieldIndex(context, fieldId)) {
-      ensureBucketChange(impact).rebuild = true
+      ensureBucketTransition(impact).rebuild = true
       fields.set(key, buildBucketFieldIndex({
         context,
         records,
@@ -356,7 +344,7 @@ export const syncBucketIndex = (
       context,
       records,
       touchedRecords: context.touchedRecords,
-      change: ensureBucketChange(impact)
+      transition: ensureBucketTransition(impact)
     })
 
     if (nextField !== previousField) {

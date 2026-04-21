@@ -7,6 +7,9 @@ import {
   useDataView
 } from '@dataview/react/dataview'
 import {
+  queryRead
+} from '@dataview/engine'
+import {
   intersects,
   rectIn
 } from '@shared/dom'
@@ -67,9 +70,21 @@ export const useGalleryRuntime = (): GalleryViewRuntime => {
     isEqual: (left, right) => equal.sameOrder(left, right, (before, after) => before === after)
   }), [dataView.source.active.sections])
   const sections = useStoreValue(sectionsStore)
-  const grouped = useStoreValue(dataView.source.active.query.grouped)
-  const size = useStoreValue(dataView.source.active.gallery.size)
-  const canReorder = useStoreValue(dataView.source.active.gallery.canReorder)
+  const groupedStore = useMemo(() => store.createDerivedStore({
+    get: () => queryRead.grouped(store.read(dataView.source.active.query)),
+    isEqual: Object.is
+  }), [dataView.source.active.query])
+  const gallerySizeStore = useMemo(() => store.createDerivedStore({
+    get: () => store.read(dataView.source.active.gallery).size,
+    isEqual: Object.is
+  }), [dataView.source.active.gallery])
+  const galleryCanReorderStore = useMemo(() => store.createDerivedStore({
+    get: () => store.read(dataView.source.active.gallery).canReorder,
+    isEqual: Object.is
+  }), [dataView.source.active.gallery])
+  const grouped = useStoreValue(groupedStore)
+  const size = useStoreValue(gallerySizeStore)
+  const canReorder = useStoreValue(galleryCanReorderStore)
   const virtual = useGalleryBlocks({
     grouped,
     sections,

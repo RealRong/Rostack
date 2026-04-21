@@ -3,6 +3,9 @@ import type {
   ItemId
 } from '@dataview/engine'
 import {
+  queryRead
+} from '@dataview/engine'
+import {
   observeElementSize,
   pageScrollNode,
   scrollByClamped,
@@ -14,6 +17,8 @@ import { equal, store } from '@shared/core'
 import type { TableLayout } from '@dataview/react/views/table/layout'
 import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
 import {
+  createTableLayoutState,
+  sameTableLayoutState,
   type TableLayoutState
 } from '@dataview/react/views/table/virtual/layoutState'
 import type { TableBlock } from '@dataview/react/views/table/virtual/types'
@@ -256,12 +261,40 @@ const resolveMarqueeActive = (input: {
   && input.active
 )
 
+const createTableLayoutStateStore = (
+  activeSource: ActiveSource
+) => store.createDerivedStore<TableLayoutState | null>({
+  get: () => {
+    if (store.read(activeSource.view.type) !== 'table') {
+      return null
+    }
+
+    const sections = store.read(activeSource.sections.keys).flatMap(sectionKey => {
+      const section = store.read(activeSource.sections, sectionKey)
+      return section
+        ? [{
+            key: section.key,
+            collapsed: section.collapsed,
+            itemIds: section.items.ids
+          }] as const
+        : []
+    })
+
+    return createTableLayoutState({
+      grouped: queryRead.grouped(store.read(activeSource.query)),
+      sections,
+      rowCount: store.read(activeSource.items.ids).length
+    })
+  },
+  isEqual: sameTableLayoutState
+})
+
 export const createTableVirtualRuntime = (options: {
   activeSource: ActiveSource
   marqueeActiveStore: store.ReadStore<boolean>
   layout: TableLayout
 }): TableVirtualRuntime => {
-  const layoutStateStore = options.activeSource.table.layout
+  const layoutStateStore = createTableLayoutStateStore(options.activeSource)
   const layoutStore = store.createValueStore<TableVirtualLayoutSnapshot>({
     initial: EMPTY_LAYOUT_SNAPSHOT,
     isEqual: sameLayoutSnapshot

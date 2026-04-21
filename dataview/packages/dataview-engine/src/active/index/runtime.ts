@@ -54,7 +54,7 @@ import type {
   ActiveImpact
 } from '@dataview/engine/active/shared/impact'
 import {
-  ensureBucketChange
+  ensureBucketTransition
 } from '@dataview/engine/active/shared/impact'
 
 const buildState = (
@@ -140,7 +140,7 @@ export const deriveIndex = (input: {
     nextSectionBucketKey
     && previousSectionBucketKey !== nextSectionBucketKey
   ) {
-    ensureBucketChange(input.impact).rebuild = true
+    ensureBucketTransition(input.impact).rebuild = true
   }
 
   const sortStart = now()

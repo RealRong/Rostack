@@ -266,12 +266,10 @@ test('engine.active.view plan demand provisions idle search substrate and shared
   })
 
   const demand = resolveDemand(document, view.id)
-  const index = createIndexState(document, demand).state
+  const index = createIndexState(document, demand)
 
-  assert.deepEqual(demand.search, {
-    fieldIds: [FIELD_STATUS, TITLE_FIELD_ID]
-  })
-  assert.equal(demand.sortFields, undefined)
+  assert.deepEqual(demand.search, [FIELD_STATUS, TITLE_FIELD_ID])
+  assert.deepEqual(demand.sortFields, [])
   assert.equal(index.search.fields.size, 2)
   assert.equal(index.search.fields.get(TITLE_FIELD_ID)?.texts.size, 3)
   assert.equal(index.search.fields.get(FIELD_STATUS)?.texts.size, 3)
@@ -304,11 +302,9 @@ test('engine.active.view plan demand unions search and numeric filter substrates
   })
 
   const demand = resolveDemand(document, view.id)
-  const index = createIndexState(document, demand).state
+  const index = createIndexState(document, demand)
 
-  assert.deepEqual(demand.search, {
-    fieldIds: [FIELD_STATUS, TITLE_FIELD_ID]
-  })
+  assert.deepEqual(demand.search, [FIELD_STATUS, TITLE_FIELD_ID])
   assert.deepEqual(demand.sortFields, [FIELD_POINTS])
   assert.equal(index.search.fields.size, 2)
   assert.equal(index.search.fields.get(TITLE_FIELD_ID)?.texts.size, 3)
@@ -392,7 +388,7 @@ test('engine.active.view plan demand provisions bucket and sort substrate only f
   const demand = resolveDemand(document, view.id)
 
   assert.deepEqual(demand.sortFields, [FIELD_DUE])
-  assert.equal(demand.buckets, undefined)
+  assert.deepEqual(demand.buckets, [])
 })
 
 test('engine.active.view plan demand ignores ineffective date filters when deriving sort substrate', () => {
@@ -428,8 +424,8 @@ test('engine.active.view plan demand ignores ineffective date filters when deriv
     }
   })
 
-  assert.equal(resolveDemand(document, baseView.id).sortFields, undefined)
-  assert.equal(resolveDemand(document, filteredView.id).sortFields, undefined)
+  assert.deepEqual(resolveDemand(document, baseView.id).sortFields, [])
+  assert.deepEqual(resolveDemand(document, filteredView.id).sortFields, [])
 })
 
 test('engine.active.index derive adds demanded sort fields without rebuilding existing field indexes', () => {
@@ -481,20 +477,21 @@ test('engine.active.index derive adds demanded sort fields without rebuilding ex
       order: ['rec_1', 'rec_2', 'rec_3']
     }
   })
-  const previous = createIndexState(document, {
+  const previousDemand = normalizeDemand(document, {
     sortFields: [FIELD_UPDATED_AT]
   })
-  const previousUpdatedAt = previous.state.sort.fields.get(FIELD_UPDATED_AT)
+  const previous = createIndexState(document, previousDemand)
+  const previousUpdatedAt = previous.sort.fields.get(FIELD_UPDATED_AT)
   assert.ok(previousUpdatedAt)
 
   const next = deriveIndex({
-    previous: previous.state,
-    previousDemand: previous.demand,
+    previous,
+    previousDemand,
     document,
     impact: createImpact({}),
-    demand: {
+    demand: normalizeDemand(document, {
       sortFields: [FIELD_UPDATED_AT, FIELD_POINTS]
-    }
+    })
   })
 
   assert.equal(next.state.sort.fields.get(FIELD_UPDATED_AT), previousUpdatedAt)
@@ -729,13 +726,13 @@ test('engine.active field reducer builder reuses previous state when net deltas 
 
 test('engine.active.query derives descending order from single asc sort index', () => {
   const document = createDocument()
-  const index = createIndexState(document, {
+  const index = createIndexState(document, normalizeDemand(document, {
     sortFields: [FIELD_POINTS]
-  })
+  }))
 
   const query = buildQueryState({
     reader: createStaticDocumentReadContext(document).reader,
-    index: index.state,
+    index,
     view: {
       id: 'view_points_desc',
       name: 'Points Desc',
@@ -820,9 +817,9 @@ test('engine.active.query keeps empty values at the end for title, status, and n
     }
   }
 
-  const index = createIndexState(document, {
+  const index = createIndexState(document, normalizeDemand(document, {
     sortFields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
-  })
+  }))
   const reader = createStaticDocumentReadContext(document).reader
   const titleAscView = createTableView({
     sort: [{
@@ -851,25 +848,25 @@ test('engine.active.query keeps empty values at the end for title, status, and n
 
   const titleAsc = buildQueryState({
     reader,
-    index: index.state,
+    index,
     view: titleAscView,
     plan: compileViewPlan(reader, titleAscView).query
   })
   const titleDesc = buildQueryState({
     reader,
-    index: index.state,
+    index,
     view: titleDescView,
     plan: compileViewPlan(reader, titleDescView).query
   })
   const statusDesc = buildQueryState({
     reader,
-    index: index.state,
+    index,
     view: statusDescView,
     plan: compileViewPlan(reader, statusDescView).query
   })
   const pointsDesc = buildQueryState({
     reader,
-    index: index.state,
+    index,
     view: pointsDescView,
     plan: compileViewPlan(reader, pointsDescView).query
   })

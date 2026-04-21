@@ -11,6 +11,9 @@ import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
+  queryRead
+} from '@dataview/engine'
+import {
   useKanbanRuntime
 } from '@dataview/react/views/kanban/runtime'
 import type {
@@ -57,10 +60,12 @@ export const KanbanView = (props: KanbanViewProps) => {
     dataView => dataView.source.active.view.type
   )
   const grouped = useDataViewValue(
-    dataView => dataView.source.active.query.grouped
+    dataView => dataView.source.active.query,
+    query => queryRead.grouped(query)
   )
   const size = useDataViewValue(
-    dataView => dataView.source.active.kanban.size
+    dataView => dataView.source.active.kanban,
+    kanban => kanban.size
   )
   if (viewType !== 'kanban') {
     return null

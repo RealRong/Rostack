@@ -1,14 +1,20 @@
 import type {
-  TableLayoutSectionState,
-  TableLayoutState
+  ItemId,
+  SectionKey
 } from '@dataview/engine'
 import { equal } from '@shared/core'
 
+export interface TableLayoutSectionState {
+  key: SectionKey
+  collapsed: boolean
+  itemIds: readonly ItemId[]
+}
 
-export type {
-  TableLayoutSectionState,
-  TableLayoutState
-} from '@dataview/engine'
+export interface TableLayoutState {
+  grouped: boolean
+  rowCount: number
+  sections: readonly TableLayoutSectionState[]
+}
 
 export const createTableLayoutState = (input: {
   grouped: boolean

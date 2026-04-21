@@ -27,6 +27,7 @@ import type {
 } from '@whiteboard/editor/session/preview/types'
 import type { NodeEditView } from '@whiteboard/editor/query/edit/read'
 import type { MindmapNodeLayoutItem } from '@whiteboard/editor/layout/mindmap'
+import type { DraftNodeLayout } from '@whiteboard/editor/layout/runtime'
 
 export type NodeStyleFieldKind = 'string' | 'number' | 'numberArray'
 
@@ -107,6 +108,24 @@ type NodeRuntime = {
   hidden: boolean
   patched: boolean
   resizing: boolean
+}
+
+const shouldLogMindmapEditDebug = () => (
+  typeof globalThis === 'undefined'
+    || (globalThis as {
+      __WB_DEBUG_MINDMAP_EDIT__?: boolean
+    }).__WB_DEBUG_MINDMAP_EDIT__ !== false
+)
+
+const logMindmapEditDebug = (
+  stage: string,
+  payload: Record<string, unknown>
+) => {
+  if (!shouldLogMindmapEditDebug()) {
+    return
+  }
+
+  console.log('[mindmap-edit-debug]', stage, payload)
 }
 
 const EMPTY_CONTROLS: readonly ControlId[] = []
@@ -311,12 +330,10 @@ const isNodeCanvasSnapshotEqual = (
   )
 )
 
-const readNodeTextDraft = (
+const readNodeContentDraft = (
   item: NodeItem,
   edit: NodeEditView | undefined,
-  options?: {
-    includeSize?: boolean
-  }
+  draft: DraftNodeLayout | undefined
 ) => {
   if (!edit) {
     return undefined
@@ -325,13 +342,8 @@ const readNodeTextDraft = (
   return {
     field: edit.field,
     value: edit.text,
-    size: options?.includeSize !== false
-      && edit.field === 'text'
-      && item.node.type === 'text'
-      ? edit.size
-      : undefined,
     fontSize: edit.field === 'text' && item.node.type === 'sticky'
-      ? edit.fontSize
+      ? draft?.fontSize
       : undefined
   }
 }
@@ -347,15 +359,14 @@ const readTextGeometryPatch = (
     : undefined
 )
 
-const applyMindmapGeometry = (
-  item: NodeItem,
+const readMindmapGeometryPatch = (
   mindmap: MindmapNodeLayoutItem | undefined
 ) => {
   if (!mindmap) {
-    return item
+    return undefined
   }
 
-  return nodeApi.projection.applyGeometryPatch(item, {
+  return {
     position: {
       x: mindmap.rect.x,
       y: mindmap.rect.y
@@ -364,26 +375,43 @@ const applyMindmapGeometry = (
       width: mindmap.rect.width,
       height: mindmap.rect.height
     }
-  })
+  }
+}
+
+const readDraftGeometryPatch = (
+  item: NodeItem,
+  draft: DraftNodeLayout | undefined
+) => {
+  if (
+    item.node.owner?.kind === 'mindmap'
+    || item.node.type !== 'text'
+    || !draft?.size
+  ) {
+    return undefined
+  }
+
+  return {
+    size: {
+      width: draft.size.width,
+      height: draft.size.height
+    }
+  }
 }
 
 const projectNodeGeometryItem = (
   item: NodeItem,
   feedback: NodePreviewProjection,
   mindmap: MindmapNodeLayoutItem | undefined,
-  edit: NodeEditView | undefined
+  draft: DraftNodeLayout | undefined
 ): NodeItem => nodeApi.projection.applyGeometryPatch(
-  applyMindmapGeometry(
+  nodeApi.projection.applyGeometryPatch(
     nodeApi.projection.applyGeometryPatch(
-      nodeApi.projection.applyTextDraft(
-        nodeApi.projection.applyTextPreview(item, feedback.text),
-        readNodeTextDraft(item, edit, {
-          includeSize: item.node.owner?.kind !== 'mindmap'
-        })
-      ),
+      item,
       feedback.patch
     ),
     mindmap
+      ? readMindmapGeometryPatch(mindmap)
+      : readDraftGeometryPatch(item, draft)
   ),
   readTextGeometryPatch(feedback)
 )
@@ -391,10 +419,11 @@ const projectNodeGeometryItem = (
 const projectNodeContent = (
   item: NodeItem,
   feedback: NodePreviewProjection,
-  edit: NodeEditView | undefined
+  edit: NodeEditView | undefined,
+  draft: DraftNodeLayout | undefined
 ): Node => nodeApi.projection.applyTextDraft(
   nodeApi.projection.applyTextPreview(item, feedback.text),
-  readNodeTextDraft(item, edit)
+  readNodeContentDraft(item, edit, draft)
 ).node
 
 const readNodeRuntime = (
@@ -459,6 +488,7 @@ export const createNodeRead = ({
   feedback,
   mindmap,
   edit,
+  draft,
   selection
 }: {
   read: EngineRead
@@ -467,6 +497,9 @@ export const createNodeRead = ({
   mindmap: store.KeyedReadStore<NodeId, MindmapNodeLayoutItem | undefined>
   edit: {
     node: store.KeyedReadStore<NodeId, NodeEditView | undefined>
+  }
+  draft: {
+    node: store.KeyedReadStore<NodeId, DraftNodeLayout | undefined>
   }
   selection: {
     selected: store.KeyedReadStore<NodeId, boolean>
@@ -479,12 +512,26 @@ export const createNodeRead = ({
         return undefined
       }
 
+      const currentDraft = store.read(draft.node, nodeId)
+      const currentMindmap = store.read(mindmap, nodeId)
       const geometryItem = projectNodeGeometryItem(
         current,
         store.read(feedback, nodeId),
-        store.read(mindmap, nodeId),
-        store.read(edit.node, nodeId)
+        currentMindmap,
+        currentDraft
       )
+
+      if (
+        current.node.owner?.kind === 'mindmap'
+        && currentDraft?.size
+      ) {
+        logMindmapEditDebug('node.geometry', {
+          nodeId,
+          draftSize: currentDraft.size,
+          mindmapRect: currentMindmap?.rect,
+          finalRect: geometryItem.rect
+        })
+      }
 
       return readGeometryView(geometryItem)
     },
@@ -498,7 +545,8 @@ export const createNodeRead = ({
         ? projectNodeContent(
             current,
             store.read(feedback, nodeId),
-            store.read(edit.node, nodeId)
+            store.read(edit.node, nodeId),
+            store.read(draft.node, nodeId)
           )
         : undefined
     },
@@ -547,8 +595,8 @@ export const createNodeRead = ({
         store.read(feedback, nodeId)
       )
       const currentCapability = resolveNodeCapability(currentNode, type)
-
-      return {
+      const currentEdit = store.read(edit.node, nodeId)
+      const nextRender = {
         nodeId,
         node: currentNode,
         rect: currentGeometry.rect,
@@ -559,11 +607,24 @@ export const createNodeRead = ({
         resizing: runtime.resizing,
         patched: runtime.patched,
         selected: store.read(selection.selected, nodeId),
-        edit: toNodeRenderEdit(store.read(edit.node, nodeId)),
+        edit: toNodeRenderEdit(currentEdit),
         canConnect: currentCapability.connect,
         canResize: currentCapability.resize,
         canRotate: currentCapability.rotate
       }
+
+      if (
+        currentNode.owner?.kind === 'mindmap'
+        && currentEdit
+      ) {
+        logMindmapEditDebug('node.render', {
+          nodeId,
+          rect: nextRender.rect,
+          bounds: nextRender.bounds
+        })
+      }
+
+      return nextRender
     },
     isEqual: isNodeRenderEqual
   })

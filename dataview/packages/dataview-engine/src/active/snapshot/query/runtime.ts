@@ -328,6 +328,23 @@ export const runQueryStage = (input: {
     }
   }
 
+  console.log('[dv-summary-debug][query]', {
+    action: stage.action,
+    delta,
+    queryImpact: input.impact.query
+      ? {
+          rebuild: input.impact.query.rebuild === true,
+          visibleAdded: input.impact.query.visibleAdded.length,
+          visibleRemoved: input.impact.query.visibleRemoved.length,
+          orderChanged: input.impact.query.orderChanged === true
+        }
+      : undefined,
+    visibleCount: {
+      previous: input.previousPublished?.visible.length,
+      next: stage.published.visible.length
+    }
+  })
+
   return {
     action: stage.action,
     state: stage.state,

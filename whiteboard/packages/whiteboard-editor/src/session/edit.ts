@@ -5,10 +5,8 @@ import type {
 } from '@whiteboard/core/types'
 import { store as sharedStore } from '@shared/core'
 
-
 export type EditField = 'text' | 'title'
 export type EditEmptyBehavior = 'keep' | 'remove' | 'default'
-export type EditStatus = 'active' | 'committing'
 
 export type EditCapability = {
   placeholder?: string
@@ -26,17 +24,10 @@ export type EditCaret =
       client: Point
     }
 
-export type EditSnapshot = {
-  text: string
-}
-
 type EditSessionBase = {
-  initial: EditSnapshot
-  draft: EditSnapshot
+  text: string
   composing: boolean
   caret: EditCaret
-  status: EditStatus
-  capabilities: EditCapability
 }
 
 export type NodeEditSession = EditSessionBase & {
@@ -63,7 +54,6 @@ export type EditMutate = {
   input: (text: string) => void
   caret: (caret: EditCaret) => void
   composing: (composing: boolean) => void
-  status: (status: EditStatus) => void
   clear: () => void
 }
 
@@ -90,14 +80,11 @@ export const createEditState = (): EditState => {
             return current
           }
 
-          return current.draft.text === text
+          return current.text === text
             ? current
             : {
                 ...current,
-                draft: {
-                  ...current.draft,
-                  text
-                }
+                text
               }
         })
       },
@@ -136,20 +123,6 @@ export const createEditState = (): EditState => {
             : {
                 ...current,
                 composing
-              }
-        })
-      },
-      status: (status) => {
-        state.update((current) => {
-          if (!current) {
-            return current
-          }
-
-          return current.status === status
-            ? current
-            : {
-                ...current,
-                status
               }
         })
       },

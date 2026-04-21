@@ -4,6 +4,58 @@ import { store } from '@shared/core'
 
 
 describe('createKeyedDerivedStore', () => {
+  test('keeps keyed snapshots stable when recompute stays equal and still refreshes dependencies', () => {
+    const active = store.createValueStore<'left' | 'right'>('left')
+    const leftSource = store.createValueStore(new Map([
+      ['row', { count: 1 }]
+    ]))
+    const rightSource = store.createValueStore(new Map([
+      ['row', { count: 1 }]
+    ]))
+    const emptyValue = {
+      count: 0
+    }
+    const family = store.createKeyedDerivedStore({
+      keyOf: key => key.id,
+      get: (key: { id: string }) => store.read(active) === 'left'
+        ? store.read(leftSource).get(key.id) ?? emptyValue
+        : store.read(rightSource).get(key.id) ?? emptyValue,
+      isEqual: (previous, next) => previous.count === next.count
+    })
+
+    const row = {
+      id: 'row'
+    }
+    const first = family.get(row)
+    const values: Array<{ count: number }> = []
+    const unsubscribe = family.subscribe(row, () => {
+      values.push(family.get(row))
+    })
+
+    active.set('right')
+
+    expect(family.get(row)).toBe(first)
+    expect(values).toEqual([])
+
+    leftSource.set(new Map([
+      ['row', { count: 2 }]
+    ]))
+
+    expect(family.get(row)).toBe(first)
+    expect(values).toEqual([])
+
+    rightSource.set(new Map([
+      ['row', { count: 2 }]
+    ]))
+
+    expect(values).toHaveLength(1)
+    expect(values[0]).toBe(family.get(row))
+    expect(family.get(row)).not.toBe(first)
+    expect(family.get(row).count).toBe(2)
+
+    unsubscribe()
+  })
+
   test('continues to work after idle eviction when using keyOf', () => {
     const source = store.createValueStore(new Map([
       ['left', 1],

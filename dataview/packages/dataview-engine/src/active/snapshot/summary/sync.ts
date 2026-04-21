@@ -44,6 +44,7 @@ const EMPTY_FIELD_SUMMARIES = new Map<FieldId, FieldReducerState>()
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_SECTION_TRANSITIONS = [] as readonly RecordSectionTransition[]
 const EMPTY_SECTION_TRANSITION_MAP = new Map<RecordId, RecordSectionTransition>()
+const EMPTY_SECTION_KEY_SET = new Set<SectionKey>()
 const EMPTY_SUMMARY_DELTA: SummaryDelta = {
   rebuild: false,
   changed: [],
@@ -257,6 +258,27 @@ const createSectionFieldBuilders = () => new Map<
   SectionKey,
   Map<FieldId, ReturnType<typeof calculation.state.builder>>
 >()
+
+const collectSectionRecordIdChanges = (input: {
+  previousSections: SectionState
+  sections: SectionState
+}): ReadonlySet<SectionKey> => {
+  const changed = new Set<SectionKey>()
+
+  input.sections.order.forEach(sectionKey => {
+    const previous = input.previousSections.byKey.get(sectionKey)
+    const next = input.sections.byKey.get(sectionKey)
+    if (!previous || !next) {
+      return
+    }
+
+    if (previous.recordIds !== next.recordIds) {
+      changed.add(sectionKey)
+    }
+  })
+
+  return changed
+}
 
 const ensureSectionFieldBuilder = (input: {
   builders: Map<SectionKey, Map<FieldId, ReturnType<typeof calculation.state.builder>>>
@@ -473,6 +495,12 @@ const deriveSyncedSummaryState = (input: {
     previousSections: input.previousSections,
     impact: input.impact
   })
+  const sectionRecordIdChanges = sectionTransitions.all.length
+    ? EMPTY_SECTION_KEY_SET
+    : collectSectionRecordIdChanges({
+        previousSections: input.previousSections,
+        sections: input.sections
+      })
   const builders = createSectionFieldBuilders()
 
   input.calcFields.forEach(fieldId => {
@@ -555,6 +583,20 @@ const deriveSyncedSummaryState = (input: {
       bySection.set(sectionKey, nextByField)
       changedSections.add(sectionKey)
       stateChanged = true
+      return
+    }
+
+    if (sectionRecordIdChanges.has(sectionKey)) {
+      const nextByField = buildSectionSummaryFields({
+        sectionIds: section.recordIds,
+        calcFields: input.calcFields,
+        index: input.index
+      })
+      bySection.set(sectionKey, nextByField)
+      if (nextByField !== previousByField) {
+        changedSections.add(sectionKey)
+        stateChanged = true
+      }
       return
     }
 

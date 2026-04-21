@@ -78,7 +78,7 @@ export const createDerivedNode = <T,>(
 
   const ensureFresh = (
     notify: boolean
-  ) => {
+  ): T => {
     if (state === 'clean' && hasCurrent) {
       return current as T
     }
@@ -98,7 +98,8 @@ export const createDerivedNode = <T,>(
           onDependencyChange
         )
       })
-      const changed = !hasCurrent || !isEqual(current as T, computed.value)
+      const previous = current as T
+      const changed = !hasCurrent || !isEqual(previous, computed.value)
 
       dependencies = nextDependencies
       unsubscribeDependencies = () => {
@@ -106,7 +107,9 @@ export const createDerivedNode = <T,>(
           dependency.unsubscribe()
         })
       }
-      current = computed.value
+      if (changed) {
+        current = computed.value
+      }
       hasCurrent = true
       state = 'clean'
 
@@ -117,7 +120,7 @@ export const createDerivedNode = <T,>(
         })
       }
 
-      return current
+      return current as T
     } catch (error) {
       state = 'dirty'
       throw error

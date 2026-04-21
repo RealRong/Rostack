@@ -129,7 +129,7 @@ export const createEditorQuery = ({
   engineRead: EngineRead
   registry: NodeRegistry
   history: HistoryApi
-  layout: Pick<EditorLayout, 'text' | 'mindmap' | 'edit'>
+  layout: Pick<EditorLayout, 'text' | 'mindmap' | 'draft'>
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'preview'>
   defaults: EditorDefaults['selection']
 }): EditorQuery => {
@@ -147,7 +147,7 @@ export const createEditorQuery = ({
     edit,
     selection
   })
-  const editRead = createEditRead(edit, layout)
+  const editRead = createEditRead(edit)
   const selectionRuntime = createSelectionRuntimeRead(selection)
   const nodeRead: NodePresentationRead = createNodeRead({
     read: engineRead,
@@ -155,6 +155,7 @@ export const createEditorQuery = ({
     feedback: session.preview.selectors.node,
     mindmap: mindmapRead.node,
     edit: editRead,
+    draft: layout.draft,
     selection: selectionRuntime.node
   })
   const edgeRead = createEdgeRead({

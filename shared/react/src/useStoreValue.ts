@@ -1,33 +1,39 @@
 import { store } from '@shared/core'
-import { useExternalValue } from '@shared/react/useExternalValue'
+import { useSyncExternalStore } from 'react'
+
+const subscribeNever = (
+  _listener: () => void
+) => () => {}
 
 export const useStoreValue = <T,>(
   store: store.ReadStore<T>
-): T => useExternalValue(
+): T => useSyncExternalStore(
   store.subscribe,
   store.get,
-  store.isEqual ?? Object.is
+  store.get
 )
 
 export const useKeyedStoreValue = <Key, T,>(
   store: store.KeyedReadStore<Key, T>,
   key: Key
-): T => useExternalValue(
+): T => useSyncExternalStore(
   listener => store.subscribe(key, listener),
   () => store.get(key),
-  store.isEqual ?? Object.is
+  () => store.get(key)
 )
 
 export const useOptionalKeyedStoreValue = <Key, T,>(
   store: store.KeyedReadStore<Key, T>,
   key: Key | undefined,
   emptyValue: T
-): T => useExternalValue(
-  listener => key === undefined
-    ? () => {}
-    : store.subscribe(key, listener),
+): T => useSyncExternalStore(
+  key === undefined
+    ? subscribeNever
+    : listener => store.subscribe(key, listener),
   () => key === undefined
     ? emptyValue
     : store.get(key),
-  store.isEqual ?? Object.is
+  () => key === undefined
+    ? emptyValue
+    : store.get(key)
 )

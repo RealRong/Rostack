@@ -1246,6 +1246,39 @@ test('engine.source clears grouped summaries when filters leave every section em
   )
 })
 
+test('engine.performance syncs summaries when grouped filters change visible membership', () => {
+  const engine = createEngineForTest({
+    document: createDocument(),
+    perf: {
+      trace: true,
+      stats: true
+    }
+  })
+
+  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
+  openView(engine, VIEW_TABLE).summary.set(FIELD_STATUS, 'countByOption')
+  engine.performance.traces.clear()
+  engine.performance.stats.clear()
+
+  openView(engine, VIEW_TABLE).filters.add(FIELD_POINTS)
+  openView(engine, VIEW_TABLE).filters.update(0, {
+    fieldId: FIELD_POINTS,
+    presetId: 'gt',
+    value: 100
+  })
+
+  const trace = engine.performance.traces.last()
+  const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')
+
+  assert.equal(readViewState(engine)?.summaries.get('todo')?.get(FIELD_STATUS)?.kind, 'empty')
+  assert.equal(readViewState(engine)?.summaries.get('doing')?.get(FIELD_STATUS)?.kind, 'empty')
+  assert.equal(readViewState(engine)?.summaries.get('done')?.get(FIELD_STATUS)?.kind, 'empty')
+  assert.ok(trace)
+  assert.equal(trace.view.plan.summary, 'sync')
+  assert.equal(summaryStage?.action, 'sync')
+  assert.equal(trace.snapshot.changedStores.includes('summaries'), true)
+})
+
 test('engine.performance reuses summaries when sort only reorders records', () => {
   const engine = createEngineForTest({
     document: createDocument(),

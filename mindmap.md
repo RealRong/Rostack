@@ -1,302 +1,334 @@
-# Mindmap 编辑态宽度不跟随 —— 根因分析
+# Mindmap 编辑态布局边界
 
-## 结论（一句话）
+## 结论
 
-`projectNodeGeometryItem` 里 `applyTextDraft`（改 rect.width）发生在 `applyMindmapGeometry`（用 projected mindmap rect 覆盖一遍）**之前**，导致 draft size 被无条件覆盖掉，mindmap root/topic 的宽度永远回落到 committed mindmap layout 的结果。
+这次重构之后，mindmap 编辑态的核心规则只有一条：
 
----
+- `mindmap owned node` 的最终几何只认 `projected.mindmap`
 
-## 完整调用链
+旧问题的根因，就是同一个 node 在编辑时同时存在两套几何来源：
 
-```
-TextSlot.onInput(text)
-  → actions.edit.input(text)
-  → session.edit = { kind:'node', nodeId, draft.text }   ← EditSession
+- 一套来自 `draft.layout.node.size`
+- 一套来自 `projected.mindmap.nodeRect`
 
-layout/runtime.ts: edit.node (KeyedDerivedStore)
-  get(nodeId) {
-    committed = readLayoutNodeItem(nodeId, { mindmapRect: 'committed' })
-    return measureDraftNodeLayout({ committed, text: session.draft.text })
-  }
-  → measureDraftNodeLayout
-      kind = readLayoutKind(registry, committed.node)   // 'size' (type='text')
-      buildLayoutRequest(...)                           // type==='text' ✓
-      backend.measure(request)
-      → returns { size: { width, height } }
-  → EditorDraftNodeLayout { size, wrapWidth }
-
-query/edit/read.ts: createEditRead
-  NodeEditView { field, text, caret, size: draftLayout?.size }
-                                      ^^^^^^^^^^^^^^^^^^^^^^
-                                      正确地把 draft size 放进 edit view
-
-query/node/read.ts: projectNodeGeometryItem()
-  step 1: applyTextPreview(item, feedback.text)
-  step 2: applyTextDraft(result, readNodeTextDraft(item, edit))
-            ↑ 这里把 draft.size 写进 item.rect.width/height   ✓ 对普通 text 正确
-  step 3: applyGeometryPatch(result, feedback.patch)
-  step 4: applyMindmapGeometry(result, mindmap)
-            ↑ 对 mindmap owned node，把 projected mindmap layout 的 rect 整体覆盖
-              width/height 全被替换为 mindmap layout computed.node[nodeId]
-  step 5: applyGeometryPatch(result, readTextGeometryPatch(feedback))
-```
+当两条派生链更新不同步时，后者会把前者覆盖掉，表现出来就是浏览器里节点自动宽度不跟随输入。现在已经把这两条链拆清了。
 
 ---
 
-## 核心 bug：两步覆盖顺序错误
+## 1. 状态边界
 
-```ts
-// query/node/read.ts L365-382
-const projectNodeGeometryItem = (
-  item, feedback, mindmap, edit
-): NodeItem => nodeApi.projection.applyGeometryPatch(
-  applyMindmapGeometry(                          // step 4: 用 mindmap committed 覆盖
-    nodeApi.projection.applyGeometryPatch(
-      nodeApi.projection.applyTextDraft(         // step 2: 写入 draft size
-        nodeApi.projection.applyTextPreview(item, feedback.text),
-        readNodeTextDraft(item, edit)
-      ),
-      feedback.patch
-    ),
-    mindmap                                      // ← MindmapNodeLayoutItem，来自 projected mindmap
-  ),
-  readTextGeometryPatch(feedback)
-)
-```
+## 1.1 `committed node` / `committed mindmap`
 
-问题出在 step 2 和 step 4 的嵌套关系：
+这是所有派生链的基线。
 
-- Step 2 `applyTextDraft`：把 `edit.size`（= `EditorDraftNodeLayout.size`，即 draft 测量的宽高）写进 `item.rect`
-- Step 4 `applyMindmapGeometry`：无条件用 `mindmap.rect.width/height` **再覆盖一遍** `item.rect`
+它们提供：
 
-`applyMindmapGeometry` 调用的是：
+- committed node 内容
+- committed node intrinsic rect
+- committed mindmap structure
+- committed mindmap layout
 
-```ts
-// query/node/read.ts L345-363
-const applyMindmapGeometry = (item, mindmap) => {
-  if (!mindmap) return item
-  return nodeApi.projection.applyGeometryPatch(item, {
-    position: { x: mindmap.rect.x, y: mindmap.rect.y },
-    size: { width: mindmap.rect.width, height: mindmap.rect.height }  // 整体覆盖 size
-  })
-}
-```
+它们不表达：
 
-`mindmap.rect` 来自 `MindmapLayoutRead.node`，而 `MindmapLayoutRead.node` 来自 `createMindmapLayoutRead`——它的 `liveEdit` 逻辑：
-
-```ts
-// layout/mindmap.ts L345-381
-const liveEdit = store.createKeyedDerivedStore<NodeId, MindmapLiveEdit | undefined>({
-  get: (treeId) => {
-    ...
-    const size = store.read(draft, session.nodeId)?.size   // draft = edit.node
-    return size ? { nodeId: session.nodeId, size } : undefined
-  }
-})
-```
-
-乍看 mindmap layoutRead 也在读 `draft.size`，但 `liveEdit` 是按 `treeId`（mindmapId）读取的，最终由 `readProjectedMindmapItem` 用来重新 `mindmapApi.layout.compute(...)` 并输出整棵树的 `computed.node[nodeId]`。
-
-**这条路链路是正确可以工作的**——但前提是 `draft.size` 非空时，重新 compute 出的 `mindmap.rect` 就是 draft 驱动的新尺寸。
+- 编辑中的文本
+- 编辑中的临时测量
+- 编辑中的临时几何
 
 ---
 
-## 真正的问题所在：`edit.node` 读取时用的是 `mindmapRect: 'committed'`
+## 1.2 `edit.session`
+
+这是纯输入态状态，只表达“用户正在编辑什么”。
+
+当前最小形态：
 
 ```ts
-// layout/runtime.ts L480-511
-const edit = {
-  node: store.createKeyedDerivedStore<NodeId, EditorDraftNodeLayout | undefined>({
-    get: (nodeId) => {
-      return measureDraftNodeLayout({
-        committed: readLayoutNodeItem(nodeId, {
-          mindmapRect: 'committed'    // ← 用 committed mindmap rect 作为测量基准
-        }),
-        ...
-      })
+type EditSession =
+  | {
+      kind: 'node'
+      nodeId: NodeId
+      field: EditField
+      text: string
+      caret: EditCaret
+      composing: boolean
     }
-  })
-}
+  | {
+      kind: 'edge-label'
+      edgeId: EdgeId
+      labelId: string
+      text: string
+      caret: EditCaret
+      composing: boolean
+    }
+  | null
 ```
 
-而 `readLayoutNodeItem` 加了这段逻辑：
+它只负责：
 
-```ts
-// runtime.ts L446-478
-const readLayoutNodeItem = (nodeId, options) => {
-  const committed = store.read(read.node.committed, nodeId)
-  ...
-  const mindmapId = committed.node.owner?.kind === 'mindmap' ? committed.node.owner.id : undefined
-  if (!mindmapId) return committed
+- 输入文本
+- caret
+- composing
+- 当前 edit target
 
-  const rect = options?.mindmapRect === 'projected'
-    ? mindmap ? store.read(mindmap.node, nodeId)?.rect : undefined
-    : store.read(read.mindmap.committed, mindmapId)?.computed.node[nodeId]  // committed
-  ...
-}
-```
+它不再负责：
 
-`edit.node` 使用 `mindmapRect: 'committed'`，这保证了 measure 时不会循环依赖（draft → projected → draft），是故意的设计。
+- `size`
+- `rect`
+- `wrapWidth`
+- `fontSize`
+- `capabilities`
+- `initial`
+- `status`
 
-所以 `measureDraftNodeLayout` 的 `rect`（committed rect）作为基准是对的，但 **measure 结果里自带了正确的 size**，问题不在测量这一侧。
+也就是说，`edit.session` 不再是“半个布局结果”，而只是一份输入源。
 
 ---
 
-## 真正的 bug 定位：node.data 里没有 `widthMode` 时，`buildLayoutRequest` 返回 undefined
+## 1.3 `draft.layout.node[nodeId]`
 
-回到 `buildLayoutRequest`（runtime.ts L153-220）：
+这是唯一的临时测量产物。
 
 ```ts
-if (kind === 'size' && node.type === 'text') {
-  const input = nodeApi.text.layoutInput(node, { width: rect.width, height: rect.height })
-  if (!input) {
-    return undefined   // ← 如果 layoutInput 返回 undefined，整条链断掉
+type DraftNodeLayout = {
+  size?: Size
+  fontSize?: number
+  wrapWidth?: number
+}
+```
+
+它的输入是：
+
+- committed node
+- `edit.session.text`
+- layout backend
+
+它的输出是：
+
+- text node 的 `size`
+- sticky 之类 fit node 的 `fontSize`
+- wrap 模式相关的 `wrapWidth`
+
+它不应该知道：
+
+- mindmap tree 如何排
+- node 最终在画布上的 `rect`
+- selection / chrome / connector
+
+这里的职责很单纯: 把文本变化变成 intrinsic layout override。
+
+---
+
+## 1.4 `liveMindmapSize[treeId]`
+
+这是 edit/draft 到 mindmap projector 之间唯一保留的桥。
+
+最小形态：
+
+```ts
+type MindmapLiveSize = {
+  nodeId: NodeId
+  size: Size
+}
+```
+
+它只在下面这个条件成立时存在：
+
+- 当前 session 正在编辑一个 `mindmap owned node`
+- `draft.layout.node[nodeId].size` 已经算出来
+
+它的作用只是把一句话传给 projector：
+
+- “这个 node 的 intrinsic size 现在临时变成了这个值”
+
+除此之外，projector 不需要知道任何编辑 UI 细节。
+
+---
+
+## 1.5 `projected.mindmap[treeId]`
+
+这是 `mindmap owned node` 的唯一几何真相源。
+
+最小输入：
+
+```ts
+type ProjectedMindmapInput = {
+  base: {
+    structure: MindmapStructureItem
+    layout: MindmapLayoutItem
   }
-  ...
+  liveSize?: MindmapLiveSize
+  preview?: MindmapGesturePreview
 }
 ```
 
-`readTextLayoutInput`（text.ts L293-338）：
+也可以直接理解为：
 
 ```ts
-export const readTextLayoutInput = (node, fallback) => {
-  if (node.type !== 'text') return undefined   // type 守卫
-  
-  const widthMode = readTextWidthMode(node)    // 'auto' | 'wrap'
-  const computedSize = readTextComputedSize(node, fallback)
-  ...
-  return { nodeId, text, widthMode, wrapWidth, fontSize, frame, ... }
-}
+projectMindmap(base, liveSize?, preview?) => ProjectedMindmap
 ```
 
-这里**不会返回 undefined**（只要 type === 'text'），所以 `buildLayoutRequest` 对 mindmap 的 `type='text'` 节点也能生成正确的 request。
+它只负责：
+
+- 把局部 intrinsic size 变化投影成整棵树的几何变化
+- 输出统一的 node rect / tree bbox / connectors
+
+它不应该知道：
+
+- `EditSession`
+- `text`
+- `caret`
+- `composing`
+- `field`
+
+它只知道：
+
+- 哪个 node 的 intrinsic size 临时变了
 
 ---
 
-## 真正的 bug：`readNodeTextDraft` 里的条件判断过滤掉了 mindmap node 的 size
+## 1.6 `node.render`
+
+render 层只吃显示结果，不参与布局推导。
+
+最小输入：
 
 ```ts
-// query/node/read.ts L314-332
-const readNodeTextDraft = (item, edit) => {
-  if (!edit) return undefined
-  return {
-    field: edit.field,
-    value: edit.text,
-    size: edit.field === 'text' && item.node.type === 'text'
-      ? edit.size       // ← 普通 text 节点：带 size
-      : undefined,
-    fontSize: edit.field === 'text' && item.node.type === 'sticky'
-      ? edit.fontSize
-      : undefined
+type NodeRenderInput = {
+  node: Node
+  rect: Rect
+  edit?: {
+    field: EditField
+    caret: EditCaret
   }
 }
 ```
 
-mindmap root/topic 的 `item.node.type` 也是 `'text'`（确认自 `mindmap/query.ts:235` 和 `template.ts:169`），所以这里**会**传入 `edit.size`。
+也就是说：
 
-但是接着看 `applyNodeTextDraft`：
+- 要显示什么内容，看 `node`
+- 要画到哪里，看 `rect`
+- 是否展示 caret/edit chrome，看 `edit`
 
-```ts
-// projection.ts L145-187
-const nextRect = draft.size && !geometryApi.equal.size(draft.size, item.rect)
-  ? { ...item.rect, width: draft.size.width, height: draft.size.height }
-  : item.rect
-```
+render 不再接收：
 
-只要 `draft.size != item.rect.size`，就会修改 `item.rect`。
+- `contentDraft`
+- `draftLayout`
+- `finalRect`
+- `mindmap liveSize`
 
----
-
-## 最终定论：两条路径同时存在，互相覆盖（两套几何真相问题）
-
-`projectNodeGeometryItem` 里有两套给 mindmap node 设置 size 的路径：
-
-| 步骤 | 操作 | size 来源 |
-|------|------|-----------|
-| step 2 | `applyTextDraft` | `EditorDraftNodeLayout.size`（测量出的 draft size） |
-| step 4 | `applyMindmapGeometry` | `mindmap.rect`（projected mindmap layout 给的 rect） |
-
-**`mindmap.rect` 的来源**（layout/mindmap.ts 的 `liveEdit` 路径）：
-- 当 `draft.size` 存在时，`liveEdit = { nodeId, size: draft.size }`
-- `readProjectedMindmapItem` 用 `liveEdit.size` 重新 compute 整棵 mindmap tree
-- computed 结果中 `computed.node[nodeId].width = liveEdit.size.width`
-- 因此 step 4 叠上来的 `mindmap.rect` **理论上就等于 step 2 算的 draft size**
-
-所以理论上两步叠加后 size 应该一致。
-
-**但实际问题出在响应式依赖关系上：**
-
-`edit.node`（draft layout store）和 `mindmap.node`（projected mindmap layout store）是**两个独立的 KeyedDerivedStore**。`projectNodeGeometryItem` 同时读了这两个 store（通过 `edit.node` 和 `mindmap`），但这两个 store 的更新时机可能不同步：
-
-1. 用户输入 → `session.edit` 更新
-2. `edit.node[nodeId]` 重算 → `EditorDraftNodeLayout { size }`     ← 立即生效
-3. `liveEdit[treeId]` 重算 → 依赖 `edit` session + `draft(= edit.node)` ← 需要等 `edit.node` settle
-4. `mindmap.item[treeId]` 重算 → 依赖 `liveEdit` ← 再晚一拍
-5. `mindmap.node` 重算 → 全局 flatmap ← 最晚
-
-在同一个 tick 里，`geometry` store 读取时：
-- `edit.node` 是新的（有 draft size）
-- `mindmap.node` 可能还是旧的（上一次的 committed layout）
-
-Step 4 `applyMindmapGeometry` 用旧的 `mindmap.node` 覆盖了 step 2 写进去的正确 draft size。
-
-**结果：编辑中的宽度一直显示旧的 committed 宽度，直到退出编辑后 mindmap layout commit，两边才再次对齐。**
+这些都应该在 render 之前已经投影完成。
 
 ---
 
-## 为什么普通 text 没问题
+## 2. 上下游关系
 
-普通 `text` 节点（非 mindmap owned）走的路径：
+现在的链路应该按下面理解：
 
-```ts
-projectNodeGeometryItem(item, feedback, mindmap=undefined, edit)
-```
+1. `committed node`
+2. `edit.session`
+3. `draft.layout.node`
+4. `liveMindmapSize`
+5. `projected.mindmap`
+6. `query.node`
+7. `render`
 
-`mindmap` 为 `undefined`，`applyMindmapGeometry` 直接 `return item`，step 4 什么都不做。
+每一层只把更窄的结果往下传，不把整个上游状态整包泄漏下去。
 
-Step 2 的 `applyTextDraft` 写的 draft size 完整保留到最终 `item.rect`。
+具体来说：
 
----
+- `draft.layout.node` 只吃 `edit.session.text`，不把 session 整包传给 projector
+- `liveMindmapSize` 只传 `nodeId + size`
+- `projected.mindmap` 只输出 rect，不把内部 layout 过程暴露给 render
+- `render` 只看 `node + rect + edit chrome`
 
-## 修复方向
-
-根据 `WHITEBOARD_MINDMAP_EDIT_LAYOUT.zh-CN.md` 的设计，正确的做法是：
-
-**方案 A（最小改动，治标）：在 `applyMindmapGeometry` 里，如果当前有 edit（即 draft 存在），则跳过 size 覆盖，只更新 position。**
-
-```ts
-const applyMindmapGeometry = (item, mindmap, hasDraftSize) => {
-  if (!mindmap) return item
-  return nodeApi.projection.applyGeometryPatch(item, {
-    position: { x: mindmap.rect.x, y: mindmap.rect.y },
-    size: hasDraftSize ? undefined : { width: mindmap.rect.width, height: mindmap.rect.height }
-  })
-}
-```
-
-这样 position 还是由 mindmap 控制，但 size 在编辑态保留 draft 的结果。
-
-**方案 B（长期正确，治本）：遵循文档第6条规则，让 `mindmap.node` 的 projected layout 在编辑态就已经携带了 draft size，彻底消除两套几何来源。**
-
-即确保 `mindmap.node`（projected layout）在被 `geometry` store 读取时，已经稳定地把 `liveEdit.size` compute 进去了——这要求 `mindmap.node` 的更新必须在 `geometry` 消费之前 settle。
-
-文档里的管线（5.1）说的正是这个：
-```
-draft.layout.node[nodeId] = measure(...)
-→ projected.mindmap = project(committed tree, draft.layout, gesture preview)
-→ node.render(rect) 读取 projected.mindmap.nodeRect(nodeId)
-```
-只让 `node.render` 读 projected mindmap，不再同时读 `edit.node` 的 size，就能消除两套几何真相的竞争条件。
+这就是“下游不应该知道上游”的实际落地方式。
 
 ---
 
-## 总结
+## 3. `node` 本地状态和 `mindmap` 状态怎么分
 
-| 项目 | 内容 |
-|------|------|
-| **现象** | 编辑时 root/topic 宽度固定，退出编辑才变正确 |
-| **根因** | `projectNodeGeometryItem` 先用 `applyTextDraft` 写入 draft size，又立即被 `applyMindmapGeometry` 用旧的 committed mindmap rect 覆盖 |
-| **时序原因** | `edit.node`（draft layout）和 `mindmap.node`（projected mindmap）是两个独立派生 store，同一个 tick 里后者还没更新到最新 |
-| **普通 text 正确的原因** | 无 mindmap，step 4 是 no-op，draft size 不被覆盖 |
-| **最小修复** | `applyMindmapGeometry` 在有 draft size 时不覆盖 size，只同步 position |
-| **长期修复** | 按文档架构：`node.render` 只读 `projected.mindmap`，彻底消除双来源 |
+这是这次最关键的拆分。
+
+### 非 mindmap 文本节点
+
+几何可以直接消费 `draft.layout.node.size`，因为它本来就没有整棵树投影这一层。
+
+链路是：
+
+- `edit.session.text`
+- `draft.layout.node.size`
+- `node rect`
+
+### mindmap owned node
+
+几何不能直接消费 `draft.layout.node.size` 作为最终 rect。
+
+链路必须是：
+
+- `edit.session.text`
+- `draft.layout.node.size`
+- `liveMindmapSize`
+- `projected.mindmap.nodeRect`
+- `node rect`
+
+也就是说：
+
+- `draft.layout.node.size` 是 mindmap projector 的输入
+- `projected.mindmap.nodeRect` 才是 mindmap node 的最终几何输出
+
+node 自己不能一边吃 `draft.size`，mindmap 又一边给它另一份 `rect`。这正是旧实现里“node 本地状态和 mindmap 在打架”的根源。
+
+---
+
+## 4. 为什么现在不会再打架
+
+现在 `query/node/read.ts` 已经把 content 和 geometry 明确分开了。
+
+content 路径负责：
+
+- 编辑中的文本覆盖 committed text
+- sticky 的临时 `fontSize` 覆盖 committed style
+
+geometry 路径负责：
+
+- mindmap node: 只读 `mindmap.rect`
+- 非 mindmap text node: 可以读 `draft.size`
+- 其他位置/尺寸 patch: 走 preview / feedback patch
+
+这个拆法的关键收益是：
+
+- 文本内容的临时变化，不再等于几何来源
+- mindmap 几何只有一份最终答案
+- render 不需要知道 rect 是怎么推出来的
+
+---
+
+## 5. 文字测量放在哪里
+
+文字测量不是 node 状态，也不是 mindmap 状态。
+
+它是独立的 layout 能力，应该藏在 `LayoutBackend` / `TextMetricsResource` 后面。
+
+实现上可以有不同 backend：
+
+- editor core 里的通用 text metrics 资源
+- 浏览器 runtime 里的 DOM hidden measure 实现
+
+但这些都只是“测量引擎”的实现细节。
+
+对状态边界来说，真正重要的是：
+
+- node 只提供 text / typography / width mode 之类输入
+- 测量结果只落到 `draft.layout.node`
+- `edit.session` 不缓存测量结果
+- `projected.mindmap` 只消费 size override，不关心测量是用 canvas 还是 hidden DOM 算出来的
+
+---
+
+## 6. 当前实现要遵守的三条规则
+
+1. `EditSession` 只表达输入态，不携带布局结果。
+2. `DraftNodeLayout` 是唯一临时测量结果。
+3. `mindmap owned node` 的最终几何只认 `projected.mindmap`。
+
+只要这三条不破，mindmap 编辑态的自动宽度、上下游边界和派生链长度都会保持稳定。

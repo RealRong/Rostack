@@ -241,8 +241,6 @@ const buildSectionDelta = (input: {
 const buildSectionSummaryDelta = (input: {
   previous?: ViewState
   next: ViewState
-  changedSections: readonly SectionKey[]
-  removedSections: readonly SectionKey[]
   rebuild: boolean
 }): EntityDelta<SectionKey, CalculationCollection | undefined> | undefined => {
   if (input.rebuild || !input.previous) {
@@ -252,14 +250,21 @@ const buildSectionSummaryDelta = (input: {
     })
   }
 
+  const changedSections = input.next.sections.ids.filter(sectionKey => (
+    input.previous?.summaries.get(sectionKey) !== input.next.summaries.get(sectionKey)
+  ))
+  const removedSections = collectRemovedKeys(
+    input.previous.sections.ids,
+    input.next.sections.ids
+  )
   return entityDelta<SectionKey, CalculationCollection | undefined>({
     ...(input.previous.sections.ids !== input.next.sections.ids
       ? {
           ids: input.next.sections.ids
         }
       : {}),
-    set: input.changedSections.map(sectionKey => [sectionKey, input.next.summaries.get(sectionKey)] as const),
-    remove: input.removedSections
+    set: changedSections.map(sectionKey => [sectionKey, input.next.summaries.get(sectionKey)] as const),
+    remove: removedSections
   })
 }
 
@@ -448,16 +453,6 @@ const projectActiveDelta = (input: {
     : previous
       ? collectRemovedKeys(previous.sections.ids, next.sections.ids)
       : []
-  const changedSummarySections = summaryChange
-    ? (
-        summaryChange.rebuild
-          ? next.sections.ids
-          : summaryChange.changed
-      )
-    : changedSections
-  const removedSummarySections = summaryChange
-    ? summaryChange.removed
-    : removedSections
 
   const items = buildItemDelta({
     previous,
@@ -476,8 +471,6 @@ const projectActiveDelta = (input: {
   const sectionSummary = buildSectionSummaryDelta({
     previous,
     next,
-    changedSections: changedSummarySections,
-    removedSections: removedSummarySections,
     rebuild: rebuild || Boolean(summaryChange?.rebuild)
   })
   const fields = rebuild || previous?.fields !== next.fields

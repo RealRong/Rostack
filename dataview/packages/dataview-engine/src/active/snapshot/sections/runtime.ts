@@ -269,6 +269,40 @@ export const runSectionsStage = (input: {
       : Math.min(outputCount, derived.delta.changed.length + derived.delta.removed.length)
   const reusedNodeCount = Math.max(0, outputCount - changedSectionCount)
 
+  console.log('[dv-summary-debug][sections]', {
+    action,
+    canReusePublished,
+    queryImpact: input.impact.query
+      ? {
+          visibleAdded: input.impact.query.visibleAdded.length,
+          visibleRemoved: input.impact.query.visibleRemoved.length,
+          orderChanged: input.impact.query.orderChanged === true
+        }
+      : undefined,
+    bucketImpact: input.impact.bucket
+      ? {
+          rebuild: input.impact.bucket.rebuild === true,
+          recordCount: input.impact.bucket.records.size
+        }
+      : undefined,
+    sectionImpact: input.impact.section
+      ? {
+          rebuild: input.impact.section.rebuild === true,
+          recordCount: input.impact.section.records.size
+        }
+      : undefined,
+    delta: {
+      rebuild: derived.delta.rebuild,
+      orderChanged: derived.delta.orderChanged,
+      changed: derived.delta.changed,
+      removed: derived.delta.removed
+    },
+    order: {
+      previous: previousStructure?.order,
+      next: derived.state.structure.order
+    }
+  })
+
   return {
     action,
     state: derived.state,

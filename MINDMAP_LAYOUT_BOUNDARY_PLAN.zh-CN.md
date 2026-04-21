@@ -17,7 +17,7 @@
 
 1. `text` 属于 node 的编辑语义
 2. `intrinsic size` 属于 node draft layout 的测量结果
-3. `final rect` 属于 projected mindmap layout
+3. 最终显示 `rect` 属于 projected mindmap layout
 
 其中最关键的一条是：
 
@@ -63,10 +63,9 @@
 
 - `nodeId`
 - `field`
-- `draft.text`
+- `text`
 - `caret`
 - `composing`
-- `status`
 
 职责：
 
@@ -107,7 +106,7 @@ type DraftNodeLayout = {
 输入：
 
 - `committed node`
-- `edit.session.draft.text`
+- `edit.session.text`
 - layout backend
 
 输出：
@@ -183,7 +182,7 @@ type DraftNodeLayout = {
 
 - caret
 - composing
-- edit status
+- edit session 里的任何 UI 状态
 - 文本编辑 UI 的任何细节
 
 它最多只应该知道：
@@ -213,11 +212,11 @@ type DraftLayoutByNode = KeyedReadStore<NodeId, DraftNodeLayout | undefined>
 
 对于普通 text node：
 
-- `final rect` 可以直接来自 `draft.layout.node`
+- `rect` 可以直接来自 `draft.layout.node`
 
 对于 mindmap owned text node：
 
-- `final rect` 必须来自 `projected.mindmap.nodeRect(nodeId)`
+- `rect` 必须来自 `projected.mindmap.nodeRect(nodeId)`
 
 职责：
 
@@ -227,7 +226,7 @@ type DraftLayoutByNode = KeyedReadStore<NodeId, DraftNodeLayout | undefined>
 不应该再做：
 
 - 第二次布局推导
-- 把 `edit.size` 和 `mindmap.rect` 再拼一遍
+- 把 `draft.layout.node.size` 和 `mindmap.rect` 再拼一遍
 - 对同一个 node 再做两套 geometry merge
 
 ---
@@ -329,7 +328,7 @@ TextSlot input
 
 当一个函数同时读：
 
-- `edit.size`
+- `draft.layout.node.size`
 - `feedback.patch`
 - `mindmap.rect`
 
@@ -339,7 +338,7 @@ TextSlot input
 
 对于 mindmap node，这么做很危险，因为：
 
-- `edit.size` 是局部 intrinsic size
+- `draft.layout.node.size` 是局部 intrinsic size
 - `mindmap.rect` 是全局树投影结果
 
 这两个不是同层语义。
@@ -447,7 +446,7 @@ measure(nodeId)
 
 ---
 
-## 6. 推荐的长期接口边界
+## 6. 最简 API
 
 ## 6.1 编辑层
 
@@ -503,31 +502,97 @@ type DraftNodeLayout = {
 
 ## 6.4 projector 层
 
+最简设计下，projector 不直接读 `EditSession`，也不直接读整份 `draftLayout` store。
+
+它只吃三个东西：
+
+- committed 的 tree + layout 基线
+- 当前正在变化的一个 live size override
+- 可选的 gesture preview
+
 ```ts
+type MindmapLiveSize = {
+  nodeId: NodeId
+  size: Size
+}
+
 type ProjectedMindmapInput = {
-  tree: MindmapTree
-  committedLayout: MindmapLayout
-  committedNodeSize: KeyedReadStore<NodeId, Size | undefined>
-  draftLayout: KeyedReadStore<NodeId, DraftNodeLayout | undefined>
-  gesturePreview: MindmapGesturePreview
+  base: {
+    structure: MindmapStructureItem
+    layout: MindmapLayoutItem
+  }
+  liveSize?: MindmapLiveSize
+  preview?: MindmapGesturePreview
 }
 ```
 
-projector 层不需要知道 edit session。
+等价的最简函数签名可以直接写成：
+
+```ts
+projectMindmap(base, liveSize?, preview?) => ProjectedMindmap
+```
+
+projector 层只关心几何输入，不关心编辑 UI 语义。
 
 ---
 
 ## 6.5 render 层
 
+最简设计下，render 层不再接收 `contentDraft`，也不再区分 `finalRect` 这种说明性命名。
+
+原因很简单：
+
+- draft text 应该在 render 之前就已经投影进 `node`
+- render 阶段只应该看到“要显示的 node”和“要画到哪里”
+
 ```ts
 type NodeRenderInput = {
   node: Node
-  contentDraft?: NodeContentDraft
-  finalRect: Rect
+  rect: Rect
+  edit?: {
+    field: EditField
+    caret: EditCaret
+  }
 }
 ```
 
-render 层只拿最终 rect，不再关心 rect 是怎么来的。
+等价的最简函数签名可以直接写成：
+
+```ts
+renderNode(node, rect, edit?) => View
+```
+
+render 层只消费显示结果，不再关心这些结果是怎么推出来的。
+
+---
+
+## 6.6 两个接口为什么要这么收
+
+`ProjectedMindmapInput` 之所以只保留 `base/liveSize/preview`，是因为 projector 真正需要的只有：
+
+- 这棵树原来长什么样
+- 哪个 node 的 intrinsic size 临时变了
+- 有没有拖拽/过渡动画
+
+它不需要知道：
+
+- `EditSession`
+- `caret`
+- `composing`
+- `field`
+
+`NodeRenderInput` 之所以只保留 `node/rect/edit`，是因为 render 真正需要的只有：
+
+- 当前要显示什么内容
+- 当前几何在哪里
+- 是否需要显示 caret/edit chrome
+
+它不需要知道：
+
+- `contentDraft`
+- `draftLayout`
+- `mindmap liveSize`
+- `finalRect` 是怎么计算出来的
 
 ---
 
@@ -581,7 +646,7 @@ render 层只拿最终 rect，不再关心 rect 是怎么来的。
 
 - `node` 负责文本
 - `draft layout` 负责 intrinsic size
-- `mindmap projector` 负责 final rect
-- `render` 只消费 final rect
+- `mindmap projector` 负责最终 `rect`
+- `render` 只消费 `node + rect + edit`
 
 文字测量本身应该是 node-agnostic 的，隐藏测量元素是正确实现方向；具体 node DOM 最多只能作为可选样式来源，不能成为布局正确性的前提。

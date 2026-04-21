@@ -49,6 +49,10 @@ const resolveSummaryAction = (input: {
   sectionsAction: DeriveAction
 }): DeriveAction => {
   const commit = input.impact.commit
+  const visibleChanged = Boolean(
+    input.impact.query?.visibleAdded.length
+    || input.impact.query?.visibleRemoved.length
+  )
 
   if (
     !input.previous
@@ -91,6 +95,8 @@ const resolveSummaryAction = (input: {
 
   if (
     !equal.sameOrder(input.previousSections.order, input.sections.order)
+    || visibleChanged
+    || hasMembershipChanges(input.impact.bucket)
     || hasMembershipChanges(input.impact.section)
   ) {
     return 'sync'
@@ -125,6 +131,17 @@ export const runSummaryStage = (input: {
   publishMs: number
   metrics: ViewStageMetrics
 } => {
+  const visibleChanged = Boolean(
+    input.impact.query?.visibleAdded.length
+    || input.impact.query?.visibleRemoved.length
+  )
+  const bucketChanged = hasMembershipChanges(input.impact.bucket)
+  const sectionChanged = hasMembershipChanges(input.impact.section)
+  const calculationChanged = hasCalculationChanges(input.impact, input.calcFields)
+  const orderChanged = !equal.sameOrder(
+    input.previousSections?.order ?? [],
+    input.sections.order
+  )
   const action = resolveSummaryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
@@ -177,6 +194,52 @@ export const runSummaryStage = (input: {
           derived.delta.changed.length + derived.delta.removed.length
         )
   const reusedNodeCount = Math.max(0, outputCount - changedSectionCount)
+
+  console.log('[dv-summary-debug][summary]', {
+    action,
+    sectionsAction: input.sectionsAction,
+    canReusePublished,
+    guards: {
+      hasPrevious: input.previous !== undefined,
+      hasPreviousSections: input.previousSections !== undefined,
+      sameView: input.previousViewId === input.activeViewId,
+      calcFieldCount: input.calcFields.length
+    },
+    reasons: {
+      orderChanged,
+      visibleChanged,
+      bucketChanged,
+      sectionChanged,
+      calculationChanged,
+      sectionRebuild: input.impact.section?.rebuild === true,
+      activeViewChanged: commitImpact.has.activeView(input.impact.commit)
+    },
+    queryImpact: input.impact.query
+      ? {
+          rebuild: input.impact.query.rebuild === true,
+          visibleAdded: input.impact.query.visibleAdded.length,
+          visibleRemoved: input.impact.query.visibleRemoved.length,
+          orderChanged: input.impact.query.orderChanged === true
+        }
+      : undefined,
+    bucketImpact: input.impact.bucket
+      ? {
+          rebuild: input.impact.bucket.rebuild === true,
+          recordCount: input.impact.bucket.records.size
+        }
+      : undefined,
+    sectionImpact: input.impact.section
+      ? {
+          rebuild: input.impact.section.rebuild === true,
+          recordCount: input.impact.section.records.size
+        }
+      : undefined,
+    delta: {
+      rebuild: derived.delta.rebuild,
+      changed: derived.delta.changed,
+      removed: derived.delta.removed
+    }
+  })
 
   return {
     action,

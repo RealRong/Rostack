@@ -92,6 +92,23 @@ const createDocument = () => {
   }
 }
 
+const createCalculationCollection = (
+  value: number
+) => {
+  const byField = new Map([
+    [FIELD_STATUS, {
+      kind: 'scalar' as const,
+      metric: 'countAll' as const,
+      value
+    }]
+  ])
+
+  return {
+    byField,
+    get: (fieldId: string) => byField.get(fieldId)
+  }
+}
+
 test('engine source records refresh after writing a value into a newly inserted field', () => {
   const engine = createEngine({
     document: createDocument()
@@ -146,5 +163,41 @@ test('document publish omits record ids on non-structural value writes', () => {
       ? [...output.document.records.set]
       : [],
     [['rec_1', nextDocument.records.byId.rec_1]]
+  )
+})
+
+test('active summary delta follows published summaries even when section structure is unchanged', () => {
+  const engine = createEngine({
+    document: createDocument()
+  })
+  const previous = engine.active.state.get()
+
+  assert.ok(previous)
+
+  const sectionKey = previous.sections.ids[0]
+  assert.equal(sectionKey, 'root')
+
+  const nextCollection = createCalculationCollection(42)
+  const next = {
+    ...previous,
+    summaries: new Map([
+      ...previous.summaries,
+      [sectionKey, nextCollection]
+    ])
+  }
+
+  const output = projectSourceOutput({
+    impact: {},
+    document: createDocument(),
+    previousView: previous,
+    nextView: next
+  })
+
+  assert.deepEqual(output.active?.sections?.summary?.ids, undefined)
+  assert.deepEqual(
+    output.active?.sections?.summary?.set
+      ? [...output.active.sections.summary.set]
+      : [],
+    [[sectionKey, nextCollection]]
   )
 })

@@ -9,9 +9,8 @@ export const useExternalValue = <T,>(
   const revisionRef = useRef(0)
 
   const readValue = useCallback(() => {
-    // Selector-style hooks may compute a fresh but equal result on every read.
-    // We keep a semantic cache here and drive useSyncExternalStore with a revision number
-    // so React does not require referentially stable raw snapshots from every store.
+    // Selector-style hooks may project a fresh but equal value from a stable source snapshot.
+    // We keep a semantic cache here so projection hooks can stay referentially stable.
     const next = getSnapshot()
     const cached = cacheRef.current
 

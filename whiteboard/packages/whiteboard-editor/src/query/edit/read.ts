@@ -1,18 +1,15 @@
 import { store } from '@shared/core'
-import type { EdgeId, NodeId, Size } from '@whiteboard/core/types'
+import type { EdgeId, NodeId } from '@whiteboard/core/types'
 import type {
   EditCaret,
   EditField,
   EditSession
 } from '@whiteboard/editor/session/edit'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 
 export type NodeEditView = {
   field: EditField
   text: string
   caret: EditCaret
-  size?: Size
-  fontSize?: number
 }
 
 export type EdgeLabelEditView = {
@@ -26,6 +23,7 @@ export type EditorEditRead = {
   edgeLabel: store.KeyedReadStore<EdgeId, EdgeLabelEditView | undefined>
 }
 
+const EMPTY_NODE_EDIT_MAP = new Map<NodeId, NodeEditView>()
 const EMPTY_EDGE_LABEL_EDIT_MAP = new Map<EdgeId, EdgeLabelEditView>()
 
 const isCaretEqual = (
@@ -44,42 +42,31 @@ const isCaretEqual = (
 )
 
 export const createEditRead = (
-  source: store.ReadStore<EditSession>,
-  layout: Pick<EditorLayout, 'edit'>
+  source: store.ReadStore<EditSession>
 ): EditorEditRead => ({
-  node: store.createKeyedDerivedStore<NodeId, NodeEditView | undefined>({
-    get: (nodeId) => {
-      const session = store.read(source)
-      if (
-        !session
-        || session.kind !== 'node'
-        || session.nodeId !== nodeId
-      ) {
-        return undefined
+  node: store.createProjectedKeyedStore({
+    source,
+    select: (session) => {
+      if (!session || session.kind !== 'node') {
+        return EMPTY_NODE_EDIT_MAP
       }
 
-      const draftLayout = store.read(layout.edit.node, nodeId)
-      return {
-        field: session.field,
-        text: session.draft.text,
-        caret: session.caret,
-        size: session.field === 'text'
-          ? draftLayout?.size
-          : undefined,
-        fontSize: session.field === 'text'
-          ? draftLayout?.fontSize
-          : undefined
-      }
+      return new Map<NodeId, NodeEditView>([[
+        session.nodeId,
+        {
+          field: session.field,
+          text: session.text,
+          caret: session.caret
+        }
+      ]])
     },
+    emptyValue: undefined,
     isEqual: (left, right) => left === right || (
       left !== undefined
       && right !== undefined
       && left.field === right.field
       && left.text === right.text
       && isCaretEqual(left.caret, right.caret)
-      && left.size?.width === right.size?.width
-      && left.size?.height === right.size?.height
-      && left.fontSize === right.fontSize
     )
   }),
   edgeLabel: store.createProjectedKeyedStore({
@@ -93,7 +80,7 @@ export const createEditRead = (
         session.edgeId,
         {
           labelId: session.labelId,
-          text: session.draft.text,
+          text: session.text,
           caret: session.caret
         }
       ]])

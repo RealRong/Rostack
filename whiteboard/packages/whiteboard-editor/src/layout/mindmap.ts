@@ -6,7 +6,6 @@ import type {
   MindmapStructureItem
 } from '@whiteboard/engine'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
-import type { EditSession } from '@whiteboard/editor/session/edit'
 import type {
   MindmapEnterPreview,
   MindmapPreviewState
@@ -23,7 +22,7 @@ export type MindmapNodeLayoutItem = {
   rect: Rect
 }
 
-type MindmapLiveEdit = {
+export type MindmapLiveSize = {
   nodeId: NodeId
   size: Size
 }
@@ -41,6 +40,24 @@ const EMPTY_ROOT_MOVE_MAP = new Map<NodeId, {
 }>()
 const EMPTY_SUBTREE_MOVE_MAP = new Map<NodeId, MindmapSubtreeMove>()
 const EMPTY_ENTER_MAP = new Map<NodeId, readonly MindmapEnterPreview[]>()
+
+const shouldLogMindmapEditDebug = () => (
+  typeof globalThis === 'undefined'
+    || (globalThis as {
+      __WB_DEBUG_MINDMAP_EDIT__?: boolean
+    }).__WB_DEBUG_MINDMAP_EDIT__ !== false
+)
+
+const logMindmapEditDebug = (
+  stage: string,
+  payload: Record<string, unknown>
+) => {
+  if (!shouldLogMindmapEditDebug()) {
+    return
+  }
+
+  console.log('[mindmap-edit-debug]', stage, payload)
+}
 
 const interpolateRect = (
   from: Rect,
@@ -85,18 +102,6 @@ const cancelFrame = (
 
   globalThis.clearTimeout(handle)
 }
-
-const readMindmapTreeId = (
-  node: {
-    id: NodeId
-    owner?: {
-      kind: 'mindmap'
-      id: NodeId
-    }
-  }
-) => node.owner?.kind === 'mindmap'
-  ? node.owner.id
-  : undefined
 
 const readCommittedMindmapNodeSize = (
   nodeItemStore: EngineRead['node']['item'],
@@ -162,7 +167,7 @@ const readProjectedMindmapItem = ({
   base,
   structure,
   nodeCommitted,
-  liveEdit,
+  liveSize,
   rootMove,
   subtreeMove,
   enter,
@@ -171,7 +176,7 @@ const readProjectedMindmapItem = ({
   base: MindmapLayoutItem
   structure: MindmapStructureItem
   nodeCommitted: EngineRead['node']['item']
-  liveEdit: MindmapLiveEdit | undefined
+  liveSize: MindmapLiveSize | undefined
   rootMove: {
     delta: {
       x: number
@@ -182,7 +187,7 @@ const readProjectedMindmapItem = ({
   enter: readonly MindmapEnterPreview[]
   now: number
 }): MindmapLayoutItem => {
-  if (!liveEdit && !rootMove && !subtreeMove && enter.length === 0) {
+  if (!liveSize && !rootMove && !subtreeMove && enter.length === 0) {
     return base
   }
 
@@ -193,12 +198,13 @@ const readProjectedMindmapItem = ({
       y: computed.node[structure.rootId]?.y ?? 0
     }
 
-  if (liveEdit) {
+  if (liveSize) {
+    const beforeRect = base.computed.node[liveSize.nodeId]
     const nextComputed = mindmapApi.layout.compute(
       structure.tree,
       (nodeId) => {
-        if (nodeId === liveEdit.nodeId) {
-          return liveEdit.size
+        if (nodeId === liveSize.nodeId) {
+          return liveSize.size
         }
 
         return readCommittedMindmapNodeSize(nodeCommitted, nodeId) ?? (
@@ -220,6 +226,14 @@ const readProjectedMindmapItem = ({
       tree: structure.tree,
       computed: nextComputed,
       position: rootPosition
+    })
+
+    logMindmapEditDebug('mindmap.project', {
+      treeId: base.id,
+      nodeId: liveSize.nodeId,
+      liveSize: liveSize.size,
+      beforeRect,
+      afterRect: computed.node[liveSize.nodeId]
     })
   }
 
@@ -291,18 +305,14 @@ export const createMindmapLayoutRead = ({
   committed,
   structure,
   nodeCommitted,
-  edit,
-  draft,
+  liveSize,
   preview
 }: {
   list: EngineRead['mindmap']['list']
   committed: EngineRead['mindmap']['layout']
   structure: EngineRead['mindmap']['structure']
   nodeCommitted: EngineRead['node']['item']
-  edit: store.ReadStore<EditSession>
-  draft: store.KeyedReadStore<NodeId, {
-    size?: Size
-  } | undefined>
+  liveSize: store.KeyedReadStore<NodeId, MindmapLiveSize | undefined>
   preview: store.ReadStore<MindmapPreviewState | undefined>
 }): MindmapLayoutRead => {
   const clock = store.createValueStore(0)
@@ -340,44 +350,6 @@ export const createMindmapLayoutRead = ({
     if (frame === null) {
       tickClock()
     }
-  })
-
-  const liveEdit = store.createKeyedDerivedStore<NodeId, MindmapLiveEdit | undefined>({
-    get: (treeId) => {
-      const session = store.read(edit)
-      if (
-        !session
-        || session.kind !== 'node'
-        || session.field !== 'text'
-      ) {
-        return undefined
-      }
-
-      const node = store.read(nodeCommitted, session.nodeId)?.node
-      if (!node) {
-        return undefined
-      }
-
-      const ownerMindmapId = readMindmapTreeId(node)
-      if (!ownerMindmapId || ownerMindmapId !== treeId) {
-        return undefined
-      }
-
-      const size = store.read(draft, session.nodeId)?.size
-      return size
-        ? {
-            nodeId: session.nodeId,
-            size
-          }
-        : undefined
-    },
-    isEqual: (left, right) => left === right || (
-      left !== undefined
-      && right !== undefined
-      && left.nodeId === right.nodeId
-      && left.size.width === right.size.width
-      && left.size.height === right.size.height
-    )
   })
 
   const rootMove = store.createProjectedKeyedStore({
@@ -439,11 +411,11 @@ export const createMindmapLayoutRead = ({
       }
 
       const currentEnter = store.read(enter, treeId)
-      return readProjectedMindmapItem({
+      const projected = readProjectedMindmapItem({
         base,
         structure: currentStructure,
         nodeCommitted,
-        liveEdit: store.read(liveEdit, treeId),
+        liveSize: store.read(liveSize, treeId),
         rootMove: store.read(rootMove, treeId),
         subtreeMove: store.read(subtreeMove, treeId),
         enter: currentEnter,
@@ -451,6 +423,17 @@ export const createMindmapLayoutRead = ({
           ? store.read(clock)
           : 0
       })
+
+      const currentLiveSize = store.read(liveSize, treeId)
+      if (currentLiveSize) {
+        logMindmapEditDebug('mindmap.item', {
+          treeId,
+          nodeId: currentLiveSize.nodeId,
+          rect: projected.computed.node[currentLiveSize.nodeId]
+        })
+      }
+
+      return projected
     },
     isEqual: (left, right) => left === right || (
       left !== undefined

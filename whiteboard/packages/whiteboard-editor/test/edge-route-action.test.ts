@@ -55,8 +55,7 @@ const createActions = (edge = createEdge()) => {
           set: vi.fn(),
           input: vi.fn(),
           caret: vi.fn(),
-          layout: vi.fn(),
-          status: vi.fn(),
+          composing: vi.fn(),
           clear: vi.fn()
         }
       },

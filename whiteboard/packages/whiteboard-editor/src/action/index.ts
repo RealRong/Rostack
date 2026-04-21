@@ -129,12 +129,6 @@ const createSelectionSession = (
   }
 })
 
-const DEFAULT_EDGE_LABEL_CAPABILITY: EditCapability = {
-  placeholder: 'Label',
-  multiline: true,
-  empty: 'remove'
-}
-
 const resolveNodeCapability = ({
   registry,
   nodeType,
@@ -156,7 +150,7 @@ const createEditActions = ({
   query: Pick<EditorQuery, 'node' | 'edge'>
   write: Pick<EditorWrite, 'node' | 'edge'>
   registry: Pick<NodeRegistry, 'get'>
-  layout: Pick<EditorLayout, 'edit'>
+  layout: Pick<EditorLayout, 'draft'>
 }): EditorEditActions => {
   const startNode: EditorEditActions['startNode'] = (
     nodeId,
@@ -185,16 +179,9 @@ const createEditActions = ({
       kind: 'node',
       nodeId,
       field,
-      initial: {
-        text
-      },
-      draft: {
-        text
-      },
+      text,
       composing: false,
-      caret: options?.caret ?? { kind: 'end' },
-      status: 'active',
-      capabilities
+      caret: options?.caret ?? { kind: 'end' }
     })
   }
 
@@ -215,16 +202,9 @@ const createEditActions = ({
       kind: 'edge-label',
       edgeId,
       labelId,
-      initial: {
-        text
-      },
-      draft: {
-        text
-      },
+      text,
       composing: false,
-      caret: options?.caret ?? { kind: 'end' },
-      status: 'active',
-      capabilities: DEFAULT_EDGE_LABEL_CAPABILITY
+      caret: options?.caret ?? { kind: 'end' }
     })
   }
 
@@ -242,13 +222,11 @@ const createEditActions = ({
 
       session.mutate.edit.clear()
 
-      if (
-        currentEdit.kind === 'edge-label'
-        && currentEdit.capabilities.empty === 'remove'
-        && !currentEdit.initial.text.trim()
-      ) {
-        const committedEdge = query.edge.committed.get(currentEdit.edgeId)?.edge
-        if (!committedEdge?.labels?.some((label) => label.id === currentEdit.labelId)) {
+      if (currentEdit.kind === 'edge-label') {
+        const committedLabel = query.edge.committed.get(currentEdit.edgeId)?.edge.labels?.find(
+          (label) => label.id === currentEdit.labelId
+        )
+        if (!committedLabel || committedLabel.text?.trim()) {
           return undefined
         }
 
@@ -263,8 +241,6 @@ const createEditActions = ({
         return undefined
       }
 
-      session.mutate.edit.status('committing')
-
       if (currentEdit.kind === 'node') {
         const committed = query.node.committed.get(currentEdit.nodeId)
         if (!committed) {
@@ -272,15 +248,25 @@ const createEditActions = ({
           return undefined
         }
 
-        const draftLayout = layout.edit.node.get(currentEdit.nodeId)
+        const capability = resolveNodeCapability({
+          registry,
+          nodeType: committed.node.type,
+          field: currentEdit.field
+        })
+        if (!capability) {
+          session.mutate.edit.clear()
+          return undefined
+        }
+
+        const draftLayout = layout.draft.node.get(currentEdit.nodeId)
         session.mutate.edit.clear()
         return write.node.text.commit({
           nodeId: currentEdit.nodeId,
           field: currentEdit.field,
           value: resolveNodeCommitValue({
-            text: currentEdit.draft.text,
-            empty: currentEdit.capabilities.empty,
-            defaultText: currentEdit.capabilities.defaultText
+            text: currentEdit.text,
+            empty: capability.empty,
+            defaultText: capability.defaultText
           }),
           size: draftLayout?.size,
           fontSize: draftLayout?.fontSize,
@@ -290,10 +276,7 @@ const createEditActions = ({
 
       session.mutate.edit.clear()
 
-      if (
-        currentEdit.capabilities.empty === 'remove'
-        && !currentEdit.draft.text.trim()
-      ) {
+      if (!currentEdit.text.trim()) {
         return write.edge.label.delete(currentEdit.edgeId, currentEdit.labelId)
       }
 
@@ -302,7 +285,7 @@ const createEditActions = ({
         currentEdit.labelId,
         {
           fields: {
-            text: currentEdit.draft.text
+            text: currentEdit.text
           }
         }
       )

@@ -31,10 +31,10 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { EditorInputState } from '@whiteboard/editor/session/interaction'
-import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 import type {
   NodeTypeSupport
 } from '@whiteboard/editor/query/node/read'
+import type { EngineRead } from '@whiteboard/engine'
 
 export type SelectionRead = {
   members: store.ReadStore<SelectionMembers>
@@ -360,7 +360,7 @@ const readNodeScope = ({
   primaryNode,
   nodeType,
   nodeStats,
-  mindmap,
+  mindmapStructure,
   defaults
 }: {
   nodes: readonly NodeModel[]
@@ -368,7 +368,7 @@ const readNodeScope = ({
   primaryNode?: NodeModel
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
   nodeStats: SelectionNodeStats
-  mindmap: Pick<MindmapPresentationRead, 'structure'>
+  mindmapStructure: EngineRead['mindmap']['structure']
   defaults: EditorDefaults['selection']
 }): SelectionToolbarNodeScope => {
   const readPaintDefaults = defaults.node.readPaint
@@ -413,7 +413,7 @@ const readNodeScope = ({
     ? treeIds[0]
     : undefined
   const mindmapTree = mindmapTreeId
-    ? store.read(mindmap.structure, mindmapTreeId)?.tree
+    ? store.read(mindmapStructure, mindmapTreeId)?.tree
     : undefined
   const readMindmapBranchValue = <TValue,>(
     select: (branch: NonNullable<typeof mindmapTree>['nodes'][MindmapNodeId]['branch']) => TValue
@@ -653,7 +653,7 @@ const resolveSelectionToolbar = ({
   nodeScope,
   edgeScope,
   nodeType,
-  mindmap,
+  mindmapStructure,
   tool,
   edit,
   interactionChrome,
@@ -668,7 +668,7 @@ const resolveSelectionToolbar = ({
   nodeScope: SelectionToolbarNodeScope | undefined
   edgeScope: SelectionToolbarEdgeScope | undefined
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
-  mindmap: Pick<MindmapPresentationRead, 'structure'>
+  mindmapStructure: EngineRead['mindmap']['structure']
   tool: Tool
   edit: EditSession
   interactionChrome: boolean
@@ -742,7 +742,7 @@ const resolveSelectionToolbar = ({
                       : 'none',
               types: [type]
             },
-            mindmap,
+            mindmapStructure,
             defaults
           })
         })
@@ -810,7 +810,7 @@ export const createSelectionRead = ({
   model,
   runtime,
   nodeType,
-  mindmap,
+  mindmapStructure,
   tool,
   edit,
   interaction,
@@ -826,7 +826,7 @@ export const createSelectionRead = ({
     }
   }
   nodeType: NodeTypeSupport
-  mindmap: Pick<MindmapPresentationRead, 'structure'>
+  mindmapStructure: EngineRead['mindmap']['structure']
   tool: store.ReadStore<Tool>
   edit: store.ReadStore<EditSession>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>
@@ -881,7 +881,7 @@ export const createSelectionRead = ({
         primaryNode: currentMembers.primaryNode,
         nodeType,
         nodeStats: currentNodeStats,
-        mindmap,
+        mindmapStructure,
         defaults
       })
     }
@@ -925,7 +925,7 @@ export const createSelectionRead = ({
       nodeScope: store.read(nodeScope),
       edgeScope: store.read(edgeScope),
       nodeType,
-      mindmap,
+      mindmapStructure,
       tool: store.read(tool),
       edit: store.read(edit),
       interactionChrome: store.read(interaction.chrome),

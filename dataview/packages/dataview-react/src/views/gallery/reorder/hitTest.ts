@@ -1,4 +1,5 @@
 import type { Rect } from '@shared/dom'
+import { collection } from '@shared/core'
 import type {
   ItemId,
   SectionKey
@@ -70,7 +71,7 @@ export const dropTargetFromPoint = (
     return undefined
   }
 
-  const excludeIdSet = excludeIds.length ? new Set(excludeIds) : undefined
+  const excludeIdSet = collection.presentSet(excludeIds)
   const cards = excludeIdSet
     ? layout.cards.filter(card => !excludeIdSet.has(card.id))
     : layout.cards

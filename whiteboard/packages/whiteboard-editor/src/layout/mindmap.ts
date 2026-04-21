@@ -1,4 +1,5 @@
 import { equal, store } from '@shared/core'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeId, Rect, Size } from '@whiteboard/core/types'
 import type {
   EngineRead,
@@ -13,10 +14,16 @@ import type {
 
 export type MindmapLayoutRead = {
   layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+  nodeGeometry: store.KeyedReadStore<NodeId, MindmapNodeGeometry | undefined>
 }
 
 export type MindmapLiveLayoutInput = {
   nodeSizes: ReadonlyMap<NodeId, Size>
+}
+
+export type MindmapNodeGeometry = {
+  rect: Rect
+  rotation: number
 }
 
 type MindmapSubtreeMove = {
@@ -406,7 +413,47 @@ export const createMindmapLayoutRead = ({
     )
   })
 
+  const nodeGeometry = store.createProjectedKeyedStore({
+    source: store.createDerivedStore<ReadonlyMap<NodeId, MindmapNodeGeometry>>({
+      get: () => {
+        const next = new Map<NodeId, MindmapNodeGeometry>()
+
+        store.read(list).forEach((treeId) => {
+          const currentLayout = store.read(layoutBase, treeId)
+          if (!currentLayout) {
+            return
+          }
+
+          currentLayout.nodeIds.forEach((nodeId) => {
+            const rect = currentLayout.computed.node[nodeId]
+            const node = store.read(nodeCommitted, nodeId)?.node
+            if (!rect || !node) {
+              return
+            }
+
+            next.set(nodeId, {
+              rect,
+              rotation: nodeApi.geometry.rotation(node)
+            })
+          })
+        })
+
+        return next as ReadonlyMap<NodeId, MindmapNodeGeometry>
+      },
+      isEqual: (left, right) => left === right
+    }),
+    select: (value) => value,
+    emptyValue: undefined,
+    isEqual: (left, right) => left === right || (
+      left !== undefined
+      && right !== undefined
+      && equal.sameRect(left.rect, right.rect)
+      && left.rotation === right.rotation
+    )
+  })
+
   return {
-    layout: layoutBase
+    layout: layoutBase,
+    nodeGeometry
   }
 }

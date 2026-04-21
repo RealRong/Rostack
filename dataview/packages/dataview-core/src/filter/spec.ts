@@ -307,6 +307,21 @@ const projectOptionSetValue = (
 }
 
 const EMPTY_PLAN_DEMAND: FilterPlanDemand = Object.freeze({})
+const EMPTY_FILTER_VALUE_PREVIEW: FilterValuePreview = Object.freeze({
+  kind: 'none'
+})
+
+const readPreset = <TPreset extends FilterPreset>(
+  presets: readonly TPreset[],
+  rule: FilterRule
+): TPreset => presets.find(item => item.id === rule.presetId) ?? presets[0]!
+
+const matchExistsValue = (
+  value: unknown,
+  expected: unknown
+) => expected === false
+  ? fieldApi.value.empty(value)
+  : !fieldApi.value.empty(value)
 
 const optionBucketLookup = (
   mode: FilterBucketLookup['mode'],
@@ -324,6 +339,136 @@ const sortLookup = (
   ...(value === undefined
     ? {}
     : { value })
+})
+
+const matchComparableValue = (
+  field: Field | undefined,
+  recordValue: unknown,
+  expected: unknown,
+  operator: FilterPreset['operator']
+) => {
+  const comparison = fieldApi.compare.value(field, recordValue, expected)
+  switch (operator) {
+    case 'eq':
+      return comparison === 0
+    case 'neq':
+      return comparison !== 0
+    case 'gt':
+      return comparison > 0
+    case 'gte':
+      return comparison >= 0
+    case 'lt':
+      return comparison < 0
+    case 'lte':
+    default:
+      return comparison <= 0
+  }
+}
+
+const readSortedFilterLookup = (
+  rule: FilterRule
+): FilterSortLookup | undefined => {
+  switch (rule.presetId) {
+    case 'eq':
+    case 'gt':
+    case 'gte':
+    case 'lt':
+    case 'lte':
+      return sortLookup(rule.presetId, rule.value)
+    case 'exists_true':
+      return sortLookup('exists')
+    default:
+      return undefined
+  }
+}
+
+const createSortedFilterSpec = (input: {
+  editorKind: 'number' | 'date'
+  isEffectiveValue: (value: unknown) => boolean
+  projectValue: (rule: FilterRule) => FilterValuePreview
+  deriveDefaultValue: FilterCreateSpec['deriveDefaultValue']
+}): FilterSpec => createFilterSpec({
+  presets: NUMBER_PRESETS,
+  defaultPresetId: 'eq',
+  getEditorKind: (_field, rule) => (
+    readPreset(NUMBER_PRESETS, rule).valueMode === 'editable'
+      ? input.editorKind
+      : 'none'
+  ),
+  isEffective: (_field, rule) => {
+    const preset = readPreset(NUMBER_PRESETS, rule)
+    return preset.valueMode === 'editable'
+      ? input.isEffectiveValue(rule.value)
+      : true
+  },
+  match: (field, recordValue, rule) => {
+    const preset = readPreset(NUMBER_PRESETS, rule)
+    const expected = readExpectedValue(preset, rule)
+    return preset.operator === 'exists'
+      ? matchExistsValue(recordValue, expected)
+      : matchComparableValue(field, recordValue, expected, preset.operator)
+  },
+  projectValue: (_field, rule) => input.projectValue(rule),
+  plan: {
+    demandOf: ({ rule }) => readSortedFilterLookup(rule)
+      ? {
+          sorted: true
+        }
+      : EMPTY_PLAN_DEMAND
+  },
+  candidate: {
+    sortLookupOf: ({ rule }) => readSortedFilterLookup(rule)
+  },
+  create: {
+    deriveDefaultValue: input.deriveDefaultValue
+  }
+})
+
+const createOptionBucketFilterSpec = (input: {
+  presets: readonly FilterPreset[]
+  defaultPresetId: FilterPresetId
+  matchValue: (field: Field | undefined, recordValue: unknown, expected: unknown, rule: FilterRule) => boolean
+  bucketDemand: readonly FilterPresetId[]
+  bucketLookupOf: (rule: FilterRule, optionIds: readonly string[]) => FilterBucketLookup | undefined
+  deriveDefaultValue: FilterCreateSpec['deriveDefaultValue']
+}): FilterSpec => createFilterSpec({
+  presets: input.presets,
+  defaultPresetId: input.defaultPresetId,
+  getEditorKind: (_field, rule) => (
+    readPreset(input.presets, rule).valueMode === 'editable'
+      ? 'option-set'
+      : 'none'
+  ),
+  isEffective: (_field, rule) => {
+    const preset = readPreset(input.presets, rule)
+    return preset.valueMode === 'editable'
+      ? hasOptionSetValue(rule.value)
+      : true
+  },
+  match: (field, recordValue, rule) => {
+    const preset = readPreset(input.presets, rule)
+    const expected = readExpectedValue(preset, rule)
+    return preset.operator === 'exists'
+      ? matchExistsValue(recordValue, expected)
+      : input.matchValue(field, recordValue, expected, rule)
+  },
+  projectValue: projectOptionSetValue,
+  plan: {
+    demandOf: ({ rule }) => input.bucketDemand.includes(rule.presetId)
+      ? {
+          bucket: true
+        }
+      : EMPTY_PLAN_DEMAND
+  },
+  candidate: {
+    bucketLookupOf: ({ rule }) => input.bucketLookupOf(
+      rule,
+      readFilterOptionSetValue(rule.value).optionIds
+    )
+  },
+  create: {
+    deriveDefaultValue: input.deriveDefaultValue
+  }
 })
 
 const deriveTextDefaultValue = (
@@ -521,22 +666,20 @@ const textFilterSpec = createFilterSpec({
   presets: TEXT_PRESETS,
   defaultPresetId: 'contains',
   getEditorKind: (_field, rule) => {
-    const preset = TEXT_PRESETS.find(item => item.id === rule.presetId) ?? TEXT_PRESETS[0]
+    const preset = readPreset(TEXT_PRESETS, rule)
     return preset.valueMode === 'editable' ? 'text' : 'none'
   },
   isEffective: (_field, rule) => {
-    const preset = TEXT_PRESETS.find(item => item.id === rule.presetId) ?? TEXT_PRESETS[0]
+    const preset = readPreset(TEXT_PRESETS, rule)
     return preset.valueMode === 'editable'
       ? typeof rule.value === 'string' && rule.value.trim().length > 0
       : true
   },
   match: (field, recordValue, rule) => {
-    const preset = TEXT_PRESETS.find(item => item.id === rule.presetId) ?? TEXT_PRESETS[0]
+    const preset = readPreset(TEXT_PRESETS, rule)
     const expected = readExpectedValue(preset, rule)
     if (preset.operator === 'exists') {
-      return expected === false
-        ? fieldApi.value.empty(recordValue)
-        : !fieldApi.value.empty(recordValue)
+      return matchExistsValue(recordValue, expected)
     }
     if (preset.operator === 'contains') {
       return matchTextContains(recordValue, expected)
@@ -550,303 +693,79 @@ const textFilterSpec = createFilterSpec({
   projectValue: (_field, rule) => (
     typeof rule.value === 'string' && rule.value.length
       ? projectSingleValue(rule.value)
-      : {
-          kind: 'none'
-        }
+      : EMPTY_FILTER_VALUE_PREVIEW
   ),
   create: {
     deriveDefaultValue: ({ field, rule }) => deriveTextDefaultValue(field, rule)
   }
 })
 
-const numberFilterSpec = createFilterSpec({
-  presets: NUMBER_PRESETS,
-  defaultPresetId: 'eq',
-  getEditorKind: (_field, rule) => {
-    const preset = NUMBER_PRESETS.find(item => item.id === rule.presetId) ?? NUMBER_PRESETS[0]
-    return preset.valueMode === 'editable' ? 'number' : 'none'
-  },
-  isEffective: (_field, rule) => {
-    const preset = NUMBER_PRESETS.find(item => item.id === rule.presetId) ?? NUMBER_PRESETS[0]
-    return preset.valueMode === 'editable'
-      ? typeof rule.value === 'number' && Number.isFinite(rule.value)
-      : true
-  },
-  match: (field, recordValue, rule) => {
-    const preset = NUMBER_PRESETS.find(item => item.id === rule.presetId) ?? NUMBER_PRESETS[0]
-    const expected = readExpectedValue(preset, rule)
-    if (preset.operator === 'exists') {
-      return expected === false
-        ? fieldApi.value.empty(recordValue)
-        : !fieldApi.value.empty(recordValue)
-    }
-
-    const comparison = fieldApi.compare.value(field, recordValue, expected)
-    switch (preset.operator) {
-      case 'eq':
-        return comparison === 0
-      case 'neq':
-        return comparison !== 0
-      case 'gt':
-        return comparison > 0
-      case 'gte':
-        return comparison >= 0
-      case 'lt':
-        return comparison < 0
-      case 'lte':
-      default:
-        return comparison <= 0
-    }
-  },
-  projectValue: (_field, rule) => (
+const numberFilterSpec = createSortedFilterSpec({
+  editorKind: 'number',
+  isEffectiveValue: value => typeof value === 'number' && Number.isFinite(value),
+  projectValue: rule => (
     typeof rule.value === 'number' && Number.isFinite(rule.value)
       ? projectSingleValue(rule.value)
-      : {
-          kind: 'none'
-        }
+      : EMPTY_FILTER_VALUE_PREVIEW
   ),
-  plan: {
-    demandOf: ({ rule }) => {
-      switch (rule.presetId) {
-        case 'eq':
-        case 'gt':
-        case 'gte':
-        case 'lt':
-        case 'lte':
-        case 'exists_true':
-          return {
-            sorted: true
-          }
-        default:
-          return EMPTY_PLAN_DEMAND
-      }
-    }
-  },
-  candidate: {
-    sortLookupOf: ({ rule }) => {
-      switch (rule.presetId) {
-        case 'eq':
-        case 'gt':
-        case 'gte':
-        case 'lt':
-        case 'lte':
-          return sortLookup(rule.presetId, rule.value)
-        case 'exists_true':
-          return sortLookup('exists')
-        default:
-          return undefined
-      }
-    }
-  },
-  create: {
-    deriveDefaultValue: ({ field, rule }) => deriveNumberDefaultValue(field, rule)
-  }
+  deriveDefaultValue: ({ field, rule }) => deriveNumberDefaultValue(field, rule)
 })
 
-const dateFilterSpec = createFilterSpec({
-  presets: NUMBER_PRESETS,
-  defaultPresetId: 'eq',
-  getEditorKind: (_field, rule) => {
-    const preset = NUMBER_PRESETS.find(item => item.id === rule.presetId) ?? NUMBER_PRESETS[0]
-    return preset.valueMode === 'editable' ? 'date' : 'none'
-  },
-  isEffective: (_field, rule) => {
-    const preset = NUMBER_PRESETS.find(item => item.id === rule.presetId) ?? NUMBER_PRESETS[0]
-    return preset.valueMode === 'editable'
-      ? fieldApi.date.value.comparableTimestamp(rule.value) !== undefined
-      : true
-  },
-  match: (field, recordValue, rule) => {
-    const preset = NUMBER_PRESETS.find(item => item.id === rule.presetId) ?? NUMBER_PRESETS[0]
-    const expected = readExpectedValue(preset, rule)
-    if (preset.operator === 'exists') {
-      return expected === false
-        ? fieldApi.value.empty(recordValue)
-        : !fieldApi.value.empty(recordValue)
-    }
-
-    const comparison = fieldApi.compare.value(field, recordValue, expected)
-    switch (preset.operator) {
-      case 'eq':
-        return comparison === 0
-      case 'neq':
-        return comparison !== 0
-      case 'gt':
-        return comparison > 0
-      case 'gte':
-        return comparison >= 0
-      case 'lt':
-        return comparison < 0
-      case 'lte':
-      default:
-        return comparison <= 0
-    }
-  },
-  projectValue: (_field, rule) => (
+const dateFilterSpec = createSortedFilterSpec({
+  editorKind: 'date',
+  isEffectiveValue: value => fieldApi.date.value.comparableTimestamp(value) !== undefined,
+  projectValue: rule => (
     rule.value && typeof rule.value === 'object' && ('kind' in rule.value)
       ? projectSingleValue(tokenDate(rule.value as DateValue))
-      : {
-          kind: 'none'
-        }
+      : EMPTY_FILTER_VALUE_PREVIEW
   ),
-  plan: {
-    demandOf: ({ rule }) => {
-      switch (rule.presetId) {
-        case 'eq':
-        case 'gt':
-        case 'gte':
-        case 'lt':
-        case 'lte':
-        case 'exists_true':
-          return {
-            sorted: true
-          }
-        default:
-          return EMPTY_PLAN_DEMAND
-      }
-    }
-  },
-  candidate: {
-    sortLookupOf: ({ rule }) => {
-      switch (rule.presetId) {
-        case 'eq':
-        case 'gt':
-        case 'gte':
-        case 'lt':
-        case 'lte':
-          return sortLookup(rule.presetId, rule.value)
-        case 'exists_true':
-          return sortLookup('exists')
-        default:
-          return undefined
-      }
-    }
-  },
-  create: {
-    deriveDefaultValue: ({ field, rule }) => deriveDateDefaultValue(field, rule)
-  }
+  deriveDefaultValue: ({ field, rule }) => deriveDateDefaultValue(field, rule)
 })
 
-const optionFilterSpec = createFilterSpec({
+const optionFilterSpec = createOptionBucketFilterSpec({
   presets: OPTION_PRESETS,
   defaultPresetId: 'eq',
-  getEditorKind: (_field, rule) => {
-    const preset = OPTION_PRESETS.find(item => item.id === rule.presetId) ?? OPTION_PRESETS[0]
-    return preset.valueMode === 'editable' ? 'option-set' : 'none'
-  },
-  isEffective: (_field, rule) => {
-    const preset = OPTION_PRESETS.find(item => item.id === rule.presetId) ?? OPTION_PRESETS[0]
-    return preset.valueMode === 'editable'
-      ? hasOptionSetValue(rule.value)
-      : true
-  },
-  match: (field, recordValue, rule) => {
-    const preset = OPTION_PRESETS.find(item => item.id === rule.presetId) ?? OPTION_PRESETS[0]
-    const expected = readExpectedValue(preset, rule)
-    if (preset.operator === 'exists') {
-      return expected === false
-        ? fieldApi.value.empty(recordValue)
-        : !fieldApi.value.empty(recordValue)
-    }
-
+  matchValue: (field, recordValue, expected, rule) => {
+    const preset = readPreset(OPTION_PRESETS, rule)
     const match = matchOptionSet(field, recordValue, expected)
     return preset.operator === 'neq' ? !match : match
   },
-  projectValue: projectOptionSetValue,
-  plan: {
-    demandOf: ({ rule }) => {
-      switch (rule.presetId) {
-        case 'eq':
-        case 'neq':
-        case 'exists_true':
-        case 'exists_false':
-          return {
-            bucket: true
-          }
-        default:
-          return EMPTY_PLAN_DEMAND
-      }
+  bucketDemand: ['eq', 'neq', 'exists_true', 'exists_false'],
+  bucketLookupOf: (rule, optionIds) => {
+    switch (rule.presetId) {
+      case 'eq':
+        return optionBucketLookup('include', optionIds)
+      case 'neq':
+        return optionBucketLookup('exclude', optionIds)
+      case 'exists_true':
+        return optionBucketLookup('exclude', [KANBAN_EMPTY_BUCKET_KEY])
+      case 'exists_false':
+        return optionBucketLookup('include', [KANBAN_EMPTY_BUCKET_KEY])
+      default:
+        return undefined
     }
   },
-  candidate: {
-    bucketLookupOf: ({ rule }) => {
-      const optionIds = readFilterOptionSetValue(rule.value).optionIds
-      switch (rule.presetId) {
-        case 'eq':
-          return optionBucketLookup('include', optionIds)
-        case 'neq':
-          return optionBucketLookup('exclude', optionIds)
-        case 'exists_true':
-          return optionBucketLookup('exclude', [KANBAN_EMPTY_BUCKET_KEY])
-        case 'exists_false':
-          return optionBucketLookup('include', [KANBAN_EMPTY_BUCKET_KEY])
-        default:
-          return undefined
-      }
-    }
-  },
-  create: {
-    deriveDefaultValue: ({ field, rule }) => deriveSingleOptionDefaultValue(field, rule)
-  }
+  deriveDefaultValue: ({ field, rule }) => deriveSingleOptionDefaultValue(field, rule)
 })
 
-const optionSetFilterSpec = createFilterSpec({
+const optionSetFilterSpec = createOptionBucketFilterSpec({
   presets: MULTI_OPTION_PRESETS,
   defaultPresetId: 'contains',
-  getEditorKind: (_field, rule) => {
-    const preset = MULTI_OPTION_PRESETS.find(item => item.id === rule.presetId) ?? MULTI_OPTION_PRESETS[0]
-    return preset.valueMode === 'editable' ? 'option-set' : 'none'
-  },
-  isEffective: (_field, rule) => {
-    const preset = MULTI_OPTION_PRESETS.find(item => item.id === rule.presetId) ?? MULTI_OPTION_PRESETS[0]
-    return preset.valueMode === 'editable'
-      ? hasOptionSetValue(rule.value)
-      : true
-  },
-  match: (field, recordValue, rule) => {
-    const preset = MULTI_OPTION_PRESETS.find(item => item.id === rule.presetId) ?? MULTI_OPTION_PRESETS[0]
-    const expected = readExpectedValue(preset, rule)
-    if (preset.operator === 'exists') {
-      return expected === false
-        ? fieldApi.value.empty(recordValue)
-        : !fieldApi.value.empty(recordValue)
-    }
-
-    return matchOptionSet(field, recordValue, expected)
-  },
-  projectValue: projectOptionSetValue,
-  plan: {
-    demandOf: ({ rule }) => {
-      switch (rule.presetId) {
-        case 'contains':
-        case 'exists_true':
-        case 'exists_false':
-          return {
-            bucket: true
-          }
-        default:
-          return EMPTY_PLAN_DEMAND
-      }
+  matchValue: (field, recordValue, expected) => matchOptionSet(field, recordValue, expected),
+  bucketDemand: ['contains', 'exists_true', 'exists_false'],
+  bucketLookupOf: (rule, optionIds) => {
+    switch (rule.presetId) {
+      case 'contains':
+        return optionBucketLookup('include', optionIds)
+      case 'exists_true':
+        return optionBucketLookup('exclude', [KANBAN_EMPTY_BUCKET_KEY])
+      case 'exists_false':
+        return optionBucketLookup('include', [KANBAN_EMPTY_BUCKET_KEY])
+      default:
+        return undefined
     }
   },
-  candidate: {
-    bucketLookupOf: ({ rule }) => {
-      const optionIds = readFilterOptionSetValue(rule.value).optionIds
-      switch (rule.presetId) {
-        case 'contains':
-          return optionBucketLookup('include', optionIds)
-        case 'exists_true':
-          return optionBucketLookup('exclude', [KANBAN_EMPTY_BUCKET_KEY])
-        case 'exists_false':
-          return optionBucketLookup('include', [KANBAN_EMPTY_BUCKET_KEY])
-        default:
-          return undefined
-      }
-    }
-  },
-  create: {
-    deriveDefaultValue: ({ field, rule }) => deriveMultiOptionDefaultValue(field, rule)
-  }
+  deriveDefaultValue: ({ field, rule }) => deriveMultiOptionDefaultValue(field, rule)
 })
 
 const booleanFilterSpec = createFilterSpec({
@@ -855,12 +774,10 @@ const booleanFilterSpec = createFilterSpec({
   getEditorKind: () => 'none',
   isEffective: () => true,
   match: (_field, recordValue, rule) => {
-    const preset = BOOLEAN_PRESETS.find(item => item.id === rule.presetId) ?? BOOLEAN_PRESETS[0]
+    const preset = readPreset(BOOLEAN_PRESETS, rule)
     const expected = readExpectedValue(preset, rule)
     if (preset.operator === 'exists') {
-      return expected === false
-        ? fieldApi.value.empty(recordValue)
-        : !fieldApi.value.empty(recordValue)
+      return matchExistsValue(recordValue, expected)
     }
 
     return recordValue === expected
@@ -874,9 +791,7 @@ const booleanFilterSpec = createFilterSpec({
       return projectSingleValue(tokenRef('dataview.systemValue', 'value.unchecked'))
     }
 
-    return {
-      kind: 'none'
-    }
+    return EMPTY_FILTER_VALUE_PREVIEW
   },
   plan: {
     demandOf: ({ rule }) => {
@@ -920,20 +835,16 @@ const presenceFilterSpec = createFilterSpec({
   getEditorKind: () => 'none',
   isEffective: () => true,
   match: (_field, recordValue, rule) => {
-    const preset = PRESENCE_PRESETS.find(item => item.id === rule.presetId) ?? PRESENCE_PRESETS[0]
+    const preset = readPreset(PRESENCE_PRESETS, rule)
     const expected = readExpectedValue(preset, rule)
-    return expected === false
-      ? fieldApi.value.empty(recordValue)
-      : !fieldApi.value.empty(recordValue)
+    return matchExistsValue(recordValue, expected)
   },
   projectValue: (_field, rule) => (
     rule.presetId === 'exists_true'
       ? projectSingleValue(tokenRef('dataview.systemValue', 'value.hasValue'))
       : rule.presetId === 'exists_false'
         ? projectSingleValue(tokenRef('dataview.systemValue', 'value.empty'))
-        : {
-            kind: 'none'
-          }
+        : EMPTY_FILTER_VALUE_PREVIEW
   )
 })
 

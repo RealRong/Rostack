@@ -10,7 +10,7 @@ test('TableLayoutModel uses measured heights for flat table blocks and recompute
       sections: [{
         key: 'root',
         collapsed: false,
-        itemIds: [1, 2]
+        itemIds: ['1', '2']
       }]
     }),
     rowHeight: 36,
@@ -67,12 +67,12 @@ test('TableLayoutModel uses measured heights for grouped section blocks and keep
         {
           key: 'won',
           collapsed: false,
-          itemIds: [1, 2]
+          itemIds: ['1', '2']
         },
         {
           key: 'lost',
           collapsed: true,
-          itemIds: [3]
+          itemIds: ['3']
         }
       ]
     }),
@@ -141,14 +141,14 @@ test('TableLayoutModel applies measured height patches incrementally and locates
       sections: [{
         key: 'root',
         collapsed: false,
-        itemIds: [1, 2, 3]
+        itemIds: ['1', '2', '3']
       }]
     }),
     rowHeight: 36,
     headerHeight: 40
   })
 
-  assert.equal(model.locateRow(3)?.top, 112)
+  assert.equal(model.locateRow('3')?.top, 112)
 
   model.applyMeasuredHeightPatches({
     changedHeights: new Map([
@@ -157,7 +157,7 @@ test('TableLayoutModel applies measured height patches incrementally and locates
     ])
   })
 
-  assert.equal(model.locateRow(3)?.top, 172)
+  assert.equal(model.locateRow('3')?.top, 172)
   assert.deepEqual(
     model.materializeWindow({
       start: 100,

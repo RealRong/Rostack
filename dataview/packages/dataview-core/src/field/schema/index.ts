@@ -4,6 +4,7 @@ import type {
   CustomFieldKind,
   EntityTable
 } from '@dataview/core/contracts/state'
+import { string } from '@shared/core'
 import {
   createDefaultFieldOfKind,
   CUSTOM_FIELD_KINDS,
@@ -24,11 +25,7 @@ export const isCustomFieldKind = (
 
 export const createFieldKey = (
   value: string
-) => value
-  .trim()
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '_')
-  .replace(/^_+|_+$/g, '')
+) => string.createKey(value)
 
 export const createUniqueFieldName = (
   baseName: string,

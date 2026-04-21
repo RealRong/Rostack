@@ -90,7 +90,7 @@ const createToolRead = (
   is: (type, value) => isToolMatch(store.read(source), type, value)
 })
 
-export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index' | 'target'> & {
+export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index' | 'target' | 'mindmap'> & {
   history: HistoryApi
   group: EngineRead['group']
   target: RuntimeTargetRead
@@ -141,7 +141,7 @@ export const createEditorQuery = ({
   } = session.state
   const nodeType = createNodeTypeRead(registry)
   const mindmapRead = createMindmapRead({
-    read: engineRead.mindmap,
+    structure: engineRead.mindmap.structure,
     layout: layout.mindmap,
     node: engineRead.node.committed,
     edit,
@@ -154,7 +154,7 @@ export const createEditorQuery = ({
     type: nodeType,
     feedback: session.preview.selectors.node,
     mindmap: {
-      nodeGeometry: mindmapRead.nodeGeometry
+      nodeGeometry: layout.mindmap.nodeGeometry
     },
     edit: editRead,
     draft: layout.draft,
@@ -190,7 +190,7 @@ export const createEditorQuery = ({
     model: selectionModel,
     runtime: selectionRuntime,
     nodeType,
-    mindmap: mindmapRead,
+    mindmapStructure: engineRead.mindmap.structure,
     tool,
     edit,
     interaction: session.interaction.read,

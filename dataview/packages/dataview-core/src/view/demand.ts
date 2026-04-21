@@ -2,13 +2,13 @@ import type {
   FieldId,
   View
 } from '@dataview/core/contracts'
+import { collection } from '@shared/core'
 
 export const viewSearchFields = (
   view: View
 ): ReadonlySet<FieldId> | 'all' => (
-  view.search.fields?.length
-    ? new Set(view.search.fields)
-    : 'all'
+  collection.presentSet(view.search.fields)
+    ?? 'all'
 )
 
 export const viewFilterFields = (

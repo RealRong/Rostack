@@ -109,19 +109,15 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(tree).toBeDefined()
-
-    const insert = editor.actions.mindmap.insertByPlacement({
-        id: created.data.mindmapId,
-        tree: tree!,
-        targetNodeId: created.data.rootId,
-        placement: 'right',
-        layout: tree!.layout,
-        payload: {
-          kind: 'text',
-          text: 'Child'
-        }
+    const insert = editor.actions.mindmap.insertRelative({
+      id: created.data.mindmapId,
+      targetNodeId: created.data.rootId,
+      relation: 'child',
+      side: 'right',
+      payload: {
+        kind: 'text',
+        text: 'Child'
+      }
     })
 
     expect(insert.ok).toBe(true)
@@ -179,15 +175,11 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(tree).toBeDefined()
-
-    const insert = editor.actions.mindmap.insertByPlacement({
+    const insert = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: tree!,
       targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: tree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'Child'
@@ -272,15 +264,11 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(tree).toBeDefined()
-
-    const first = editor.actions.mindmap.insertByPlacement({
+    const first = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: tree!,
       targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: tree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'First'
@@ -292,15 +280,11 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const updatedTree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(updatedTree).toBeDefined()
-
-    const second = editor.actions.mindmap.insertByPlacement({
+    const second = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: updatedTree!,
       targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: updatedTree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'Second'
@@ -382,15 +366,11 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(tree).toBeDefined()
-
-    const first = editor.actions.mindmap.insertByPlacement({
+    const first = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: tree!,
       targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: tree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'First'
@@ -402,15 +382,11 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const updatedTree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(updatedTree).toBeDefined()
-
-    const second = editor.actions.mindmap.insertByPlacement({
+    const second = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: updatedTree!,
       targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: updatedTree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'Second'

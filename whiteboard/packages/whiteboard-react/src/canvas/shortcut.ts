@@ -62,33 +62,6 @@ const readActiveMindmapShortcut = (
   }
 }
 
-const readMindmapInsertPlacement = ({
-  action,
-  tree,
-  nodeId
-}: {
-  action: 'mindmap.insert.child' | 'mindmap.insert.sibling' | 'mindmap.insert.parent'
-  tree: NonNullable<ReturnType<Editor['read']['mindmap']['structure']['get']>>['tree']
-  nodeId: string
-}) => {
-  const isRoot = nodeId === tree.rootNodeId
-  const side = isRoot
-    ? 'right'
-    : tree.nodes[nodeId]?.side ?? 'right'
-
-  switch (action) {
-    case 'mindmap.insert.child':
-      return side === 'left' ? 'left' : 'right'
-    case 'mindmap.insert.sibling':
-      return isRoot ? 'right' : 'down'
-    case 'mindmap.insert.parent':
-      if (isRoot) {
-        return undefined
-      }
-      return side === 'left' ? 'right' : 'left'
-  }
-}
-
 const readShortcutState = (
   editor: Editor
 ) => {
@@ -224,26 +197,14 @@ export const runShortcut = (
         return false
       }
 
-      const tree = editor.read.mindmap.structure.get(activeMindmap.treeId)?.tree
-      if (!tree) {
-        return false
-      }
-
-      const placement = readMindmapInsertPlacement({
-        action,
-        tree,
-        nodeId: activeMindmap.nodeId
-      })
-      if (!placement) {
-        return false
-      }
-
-      return Boolean(editor.actions.mindmap.insertByPlacement({
+      return Boolean(editor.actions.mindmap.insertRelative({
         id: activeMindmap.treeId,
-        tree,
         targetNodeId: activeMindmap.nodeId,
-        placement,
-        layout: tree.layout,
+        relation: action === 'mindmap.insert.child'
+          ? 'child'
+          : action === 'mindmap.insert.sibling'
+            ? 'sibling'
+            : 'parent',
         payload: {
           kind: 'text',
           text: ''

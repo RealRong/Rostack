@@ -1,27 +1,16 @@
 import type {
   CustomFieldId
 } from '@dataview/core/contracts'
-import { equal } from '@shared/core'
+import {
+  collection,
+  equal,
+  order
+} from '@shared/core'
 import type { ItemId } from '@dataview/engine'
 
 export interface TableRowReorderHint {
   beforeId: ItemId | null
   top: number
-}
-
-const moveItem = <T>(
-  items: readonly T[],
-  from: number,
-  to: number
-): readonly T[] => {
-  const next = items.slice()
-  const [item] = next.splice(from, 1)
-  if (item === undefined) {
-    return items
-  }
-
-  next.splice(to, 0, item)
-  return next
 }
 
 export const columnBeforeId = (input: {
@@ -39,7 +28,9 @@ export const columnBeforeId = (input: {
     return undefined
   }
 
-  const nextOrder = moveItem(input.columnIds, from, to)
+  const nextOrder = order.moveItem(input.columnIds, input.sourceId, {
+    before: input.overId
+  })
   const nextIndex = nextOrder.indexOf(input.sourceId)
   return nextOrder[nextIndex + 1] ?? null
 }
@@ -54,7 +45,7 @@ export const rowDragIds = (input: {
   const dragIds = visibleSelectedIds.includes(input.activeId)
     ? visibleSelectedIds
     : [input.activeId]
-  const uniqueDragIds = Array.from(new Set(dragIds))
+  const uniqueDragIds = collection.unique(dragIds)
   return uniqueDragIds.length
     ? uniqueDragIds
     : [input.activeId]
@@ -85,28 +76,14 @@ export const reorderRows = (
   moving: readonly ItemId[],
   beforeId?: ItemId | null
 ) => {
-  const movingIds = Array.from(new Set(moving))
+  const movingIds = collection.unique(moving)
   if (!movingIds.length) {
     return [...current]
   }
 
-  const movingIdSet = new Set(movingIds)
-  const remaining = current.filter(rowId => !movingIdSet.has(rowId))
-
-  if (!beforeId) {
-    return [...remaining, ...movingIds]
-  }
-
-  const insertIndex = remaining.indexOf(beforeId)
-  if (insertIndex === -1) {
-    return [...remaining, ...movingIds]
-  }
-
-  return [
-    ...remaining.slice(0, insertIndex),
-    ...movingIds,
-    ...remaining.slice(insertIndex)
-  ]
+  return order.moveBlock(current, movingIds, {
+    before: beforeId ?? undefined
+  })
 }
 
 export const rowBeforeId = (

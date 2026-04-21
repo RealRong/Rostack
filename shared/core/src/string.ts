@@ -26,3 +26,11 @@ export const trimmedOr = (
   value: unknown,
   fallback: string
 ): string => trimToUndefined(value) ?? fallback
+
+export const createKey = (
+  value: string
+): string => value
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '_')
+  .replace(/^_+|_+$/g, '')

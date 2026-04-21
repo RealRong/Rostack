@@ -76,6 +76,11 @@ export type MindmapInsertBehavior = {
   enter?: MindmapInsertEnter
 }
 
+export type MindmapInsertRelation =
+  | 'child'
+  | 'sibling'
+  | 'parent'
+
 export type AppActions = {
   replace: (document: Document) => CommandResult
 }
@@ -332,12 +337,11 @@ export type MindmapActions = {
     nodeId: MindmapNodeId
     map: Record<MindmapNodeId, MindmapNodeId>
   }>
-  insertByPlacement: (input: {
-    id: NodeId
-    tree: import('@whiteboard/core/types').MindmapTree
+  insertRelative: (input: {
+    id: MindmapId
     targetNodeId: MindmapNodeId
-    placement: 'left' | 'right' | 'up' | 'down'
-    layout: MindmapLayoutSpec
+    relation: MindmapInsertRelation
+    side?: 'left' | 'right'
     payload?: MindmapTopicData
     behavior?: MindmapInsertBehavior
   }) => CommandResult<{ nodeId: MindmapNodeId }> | undefined

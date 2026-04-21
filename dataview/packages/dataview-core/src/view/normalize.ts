@@ -4,7 +4,7 @@ import type {
   ViewOptions,
   ViewType
 } from '@dataview/core/contracts'
-import { json, string } from '@shared/core'
+import { collection, json, string } from '@shared/core'
 import { normalizeGalleryOptions } from '@dataview/core/view/gallery'
 import { normalizeKanbanOptions } from '@dataview/core/view/kanban'
 import { createDefaultViewOptions } from '@dataview/core/view/options'
@@ -59,9 +59,9 @@ export const normalizeViewOptions = (
 ): ViewOptions => {
   const root = json.isJsonObject(options) ? options : undefined
   const defaultOptions = createDefaultViewOptions(context.type ?? 'table', context.fields ?? [])
-  const validFieldIds = context.fields?.length
-    ? new Set(context.fields.map(field => field.id))
-    : undefined
+  const validFieldIds = collection.presentSet(
+    context.fields?.map(field => field.id)
+  )
   const table = json.isJsonObject(root?.table) ? root.table : undefined
 
   return {

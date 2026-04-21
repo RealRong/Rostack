@@ -1,5 +1,5 @@
 import { json } from '@shared/core'
-import type { Engine } from '@whiteboard/engine'
+import type { Engine, MindmapStructureItem } from '@whiteboard/engine'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { edge as edgeApi } from '@whiteboard/core/edge'
@@ -9,6 +9,7 @@ import type {
   MindmapId,
   MindmapInsertInput,
   MindmapNodeId,
+  MindmapTopicData,
   MindmapTreePatch,
   NodeId,
   NodeStyle,
@@ -23,6 +24,7 @@ import type {
   HistoryActions,
   MindmapActions,
   MindmapInsertBehavior,
+  MindmapInsertRelation,
   ToolActions
 } from '@whiteboard/editor/action/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -381,25 +383,27 @@ const readInsertAnchorId = (
 }
 
 const buildMindmapEnterPreview = ({
-  query,
+  structure,
+  layout,
   treeId,
   nodeId,
   anchorId
 }: {
-  query: Pick<EditorQuery, 'mindmap'>
+  structure: Engine['read']['mindmap']['structure']
+  layout: EditorLayout['mindmap']['layout']
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterPreview | undefined => {
-  const structure = query.mindmap.structure.get(treeId)
-  const layout = query.mindmap.layout.get(treeId)
-  if (!structure || !layout) {
+  const currentStructure = structure.get(treeId)
+  const currentLayout = layout.get(treeId)
+  if (!currentStructure || !currentLayout) {
     return undefined
   }
 
-  const parentId = structure.tree.nodes[nodeId]?.parentId
-  const toRect = layout.computed.node[nodeId]
-  const anchorRect = layout.computed.node[anchorId ?? parentId ?? '']
+  const parentId = currentStructure.tree.nodes[nodeId]?.parentId
+  const toRect = currentLayout.computed.node[nodeId]
+  const anchorRect = currentLayout.computed.node[anchorId ?? parentId ?? '']
   if (!toRect || !parentId || !anchorRect) {
     return undefined
   }
@@ -534,6 +538,110 @@ const readMindmapIdForNodes = (
   return ids.length === 1
     ? ids[0]
     : undefined
+}
+
+const readMindmapInsertSide = ({
+  structure,
+  targetNodeId,
+  side
+}: {
+  structure: MindmapStructureItem
+  targetNodeId: MindmapNodeId
+  side?: 'left' | 'right'
+}): 'left' | 'right' => {
+  if (side) {
+    return side
+  }
+
+  const targetSide = structure.tree.nodes[targetNodeId]?.side
+  if (targetSide === 'left' || targetSide === 'right') {
+    return targetSide
+  }
+
+  return structure.tree.layout.side === 'left'
+    ? 'left'
+    : 'right'
+}
+
+const buildMindmapRelativeInsertInput = ({
+  structure,
+  targetNodeId,
+  relation,
+  side,
+  payload
+}: {
+  structure: MindmapStructureItem
+  targetNodeId: MindmapNodeId
+  relation: MindmapInsertRelation
+  side?: 'left' | 'right'
+  payload?: MindmapTopicData
+}): MindmapInsertInput | undefined => {
+  const anchorLayout = {
+    ...structure.tree.layout,
+    anchorId: targetNodeId
+  }
+  const isRoot = targetNodeId === structure.rootId
+  const target = structure.tree.nodes[targetNodeId]
+
+  if (!isRoot && !target) {
+    return undefined
+  }
+
+  switch (relation) {
+    case 'child':
+      return {
+        kind: 'child',
+        parentId: targetNodeId,
+        payload,
+        options: {
+          side: readMindmapInsertSide({
+            structure,
+            targetNodeId,
+            side
+          }),
+          layout: anchorLayout
+        }
+      }
+    case 'sibling':
+      if (isRoot) {
+        return {
+          kind: 'child',
+          parentId: targetNodeId,
+          payload,
+          options: {
+            side: readMindmapInsertSide({
+              structure,
+              targetNodeId,
+              side
+            }),
+            layout: anchorLayout
+          }
+        }
+      }
+
+      return {
+        kind: 'sibling',
+        nodeId: targetNodeId,
+        position: 'after',
+        payload,
+        options: {
+          layout: anchorLayout
+        }
+      }
+    case 'parent':
+      if (isRoot) {
+        return undefined
+      }
+
+      return {
+        kind: 'parent',
+        nodeId: targetNodeId,
+        payload,
+        options: {
+          layout: anchorLayout
+        }
+      }
+  }
 }
 
 const readEdgeOrThrow = (
@@ -677,7 +785,8 @@ export const createEditorActions = ({
       let focusDelayMs = 0
       if (options?.behavior?.enter === 'from-anchor') {
         const preview = buildMindmapEnterPreview({
-          query,
+          structure: engine.read.mindmap.structure,
+          layout: layout.mindmap.layout,
           treeId: id,
           nodeId: result.data.nodeId,
           anchorId: readInsertAnchorId(input)
@@ -700,36 +809,24 @@ export const createEditorActions = ({
     moveSubtree: (id, input) => write.mindmap.topic.move(id, input),
     removeSubtree: (id, input) => write.mindmap.topic.delete(id, input),
     cloneSubtree: (id, input) => write.mindmap.topic.clone(id, input),
-    insertByPlacement: (input) => {
-      const plan = mindmapApi.plan.insertTarget({
-        tree: input.tree,
-        targetNodeId: input.targetNodeId,
-        placement: input.placement,
-        layoutSide: input.layout.side
-      })
-      if (plan.mode === 'towardRoot') {
+    insertRelative: (input) => {
+      const structure = engine.read.mindmap.structure.get(input.id)
+      if (!structure) {
         return undefined
       }
 
-      const result = write.mindmap.topic.insert(
-        input.id,
-        plan.mode === 'child'
-          ? {
-              kind: 'child',
-              parentId: plan.parentId,
-              payload: input.payload,
-              options: {
-                index: plan.index,
-                side: plan.side
-              }
-            }
-          : {
-              kind: 'sibling',
-              nodeId: plan.nodeId,
-              position: plan.position,
-              payload: input.payload
-            }
-      )
+      const insertInput = buildMindmapRelativeInsertInput({
+        structure,
+        targetNodeId: input.targetNodeId,
+        relation: input.relation,
+        side: input.side,
+        payload: input.payload
+      })
+      if (!insertInput) {
+        return undefined
+      }
+
+      const result = write.mindmap.topic.insert(input.id, insertInput)
       if (!result.ok) {
         return result
       }
@@ -737,7 +834,8 @@ export const createEditorActions = ({
       let focusDelayMs = 0
       if (input.behavior?.enter === 'from-anchor') {
         const preview = buildMindmapEnterPreview({
-          query,
+          structure: engine.read.mindmap.structure,
+          layout: layout.mindmap.layout,
           treeId: input.id,
           nodeId: result.data.nodeId,
           anchorId: input.targetNodeId
@@ -765,7 +863,7 @@ export const createEditorActions = ({
     }),
     moveRoot: (input) => {
       const directNode = query.node.committed.get(input.nodeId)?.node
-      const structure = query.mindmap.structure.get(input.nodeId)
+      const structure = engine.read.mindmap.structure.get(input.nodeId)
       const node = directNode ?? (
         structure
           ? query.node.committed.get(structure.rootId)?.node
@@ -797,7 +895,7 @@ export const createEditorActions = ({
     style: {
       branch: (input) => {
         const scopeIds = input.scope === 'subtree' && input.id
-          ? query.mindmap.structure.get(input.id)?.nodeIds ?? input.nodeIds
+          ? engine.read.mindmap.structure.get(input.id)?.nodeIds ?? input.nodeIds
           : input.nodeIds
 
         return write.mindmap.branch.update(

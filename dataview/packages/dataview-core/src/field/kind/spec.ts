@@ -42,10 +42,18 @@ import {
   createDefaultUrlFieldConfig
 } from '@dataview/core/field/kind/url'
 import {
+  createFieldOptionId,
+  readFieldOption,
+  readFieldOptionId,
+  readFieldOptionOrder,
+  readFieldOptionTokens,
+  readFieldOptions,
+  replaceFieldOptions,
   type DraftParseResult as FieldDraftParseResult,
   expandSearchableValue,
-  isEmptyValue
-} from '@dataview/core/shared/value'
+  isEmptyValue,
+  type OptionField
+} from '@dataview/core/shared'
 import { compare, json, parse, string } from '@shared/core'
 import type {
   Token
@@ -54,10 +62,7 @@ import {
   tokenRef
 } from '@shared/i18n'
 
-export type OptionKind = Extract<CustomFieldKind, 'select' | 'multiSelect' | 'status'>
-export type OptionField = Extract<CustomField, {
-  kind: OptionKind
-}>
+export type OptionKind = OptionField['kind']
 export type FieldInput = CustomField | undefined
 
 export interface FieldOptionWrite {
@@ -175,14 +180,6 @@ const createFieldSchemaIssue = (
   path,
   message
 })
-
-const createFieldKey = (
-  value: string
-) => value
-  .trim()
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '_')
-  .replace(/^_+|_+$/g, '')
 
 const cloneBase = (
   field: CustomField
@@ -408,16 +405,6 @@ const fastBooleanBucketKeys = (
   return EMPTY_BUCKET_KEYS
 }
 
-const readOptionFieldOptions = (
-  field: FieldInput
-): readonly FieldOption[] => (
-  field?.kind === 'select'
-  || field?.kind === 'multiSelect'
-  || field?.kind === 'status'
-)
-  ? field.options
-  : []
-
 const normalizeOptionColor = (
   value: unknown
 ): string | null => {
@@ -537,7 +524,7 @@ const validateBaseOptions = (
 
 const cloneFlatOptions = (
   field: CustomField
-) => readOptionFieldOptions(field).map(option => ({
+) => readFieldOptions(field).map(option => ({
   id: option.id,
   name: option.name,
   color: option.color ?? null
@@ -546,7 +533,7 @@ const cloneFlatOptions = (
 const cloneStatusOptions = (
   field: CustomField
 ) => {
-  const sourceOptions = readOptionFieldOptions(field)
+  const sourceOptions = readFieldOptions(field)
 
   return sourceOptions.length
     ? sourceOptions.map(option => ({
@@ -562,7 +549,7 @@ const getOptionDisplay = (
   field: FieldInput,
   optionId: unknown
 ) => {
-  const option = readOptionFieldOptions(field).find(entry => entry.id === optionId)
+  const option = readFieldOption(field, optionId)
   return option?.name ?? (
     typeof optionId === 'string'
       ? optionId
@@ -573,50 +560,17 @@ const getOptionDisplay = (
 const getOptionTokens = (
   field: FieldInput,
   optionId: unknown
-) => {
-  const option = readOptionFieldOptions(field).find(entry => entry.id === optionId)
-  if (!option) {
-    return typeof optionId === 'string' && optionId.trim()
-      ? [optionId]
-      : []
-  }
-
-  return option.name === option.id
-    ? [option.id]
-    : [option.name, option.id]
-}
+) => readFieldOptionTokens(field, optionId)
 
 const getOptionOrder = (
   field: FieldInput,
   optionId: unknown
-) => {
-  if (typeof optionId !== 'string') {
-    return undefined
-  }
-
-  const options = readOptionFieldOptions(field)
-  const index = options.findIndex(option => option.id === optionId)
-  return index >= 0
-    ? index
-    : undefined
-}
+) => readFieldOptionOrder(field, optionId)
 
 const normalizeOptionId = (
   field: FieldInput,
   value: unknown
-): string | undefined => {
-  if (typeof value !== 'string') {
-    return undefined
-  }
-
-  const options = readOptionFieldOptions(field)
-  const option = options.find(entry => entry.id === value || entry.name === value)
-  return option?.id ?? (
-    value.trim()
-      ? value.trim()
-      : undefined
-  )
-}
+): string | undefined => readFieldOptionId(field, value)
 
 const readSingleOptionIds = (
   field: FieldInput,
@@ -1088,7 +1042,7 @@ const selectGroupDomain = (
   field: FieldInput,
   display: KindSpec['value']['display']
 ): readonly Bucket[] => {
-  const options = readOptionFieldOptions(field)
+  const options = readFieldOptions(field)
 
   return [
     ...options.map((option, index) => createOptionBucket(option, index)),
@@ -1101,7 +1055,7 @@ const selectGroupEntries = (
   value: unknown,
   display: KindSpec['value']['display']
 ): readonly Bucket[] => {
-  const options = readOptionFieldOptions(field)
+  const options = readFieldOptions(field)
   const option = typeof value === 'string'
     ? options.find(item => item.id === value)
     : undefined
@@ -1115,7 +1069,7 @@ const multiSelectGroupDomain = (
   field: FieldInput,
   display: KindSpec['value']['display']
 ): readonly Bucket[] => {
-  const options = readOptionFieldOptions(field)
+  const options = readFieldOptions(field)
 
   return [
     ...options.map((option, index) => createOptionBucket(option, index, [option.id])),
@@ -1132,7 +1086,7 @@ const multiSelectGroupEntries = (
     return [createObservedScalarBucket(field, undefined, display)]
   }
 
-  const options = readOptionFieldOptions(field)
+  const options = readFieldOptions(field)
   return value.map((item, index) => {
     const option = typeof item === 'string'
       ? options.find(candidate => candidate.id === item)
@@ -1165,7 +1119,7 @@ const statusGroupEntries = (
   mode: string,
   display: KindSpec['value']['display']
 ): readonly Bucket[] => {
-  const options = readOptionFieldOptions(field)
+  const options = readFieldOptions(field)
   const option = typeof value === 'string'
     ? options.find(item => item.id === value)
     : undefined
@@ -1296,67 +1250,13 @@ const createPresenceGroup = (
   ...input
 })
 
-const createUniqueOptionToken = (
-  options: readonly FieldOption[],
-  name: string
-) => {
-  const baseToken = createFieldKey(name) || 'option'
-  const usedTokens = new Set(options.map(option => option.id))
-
-  let nextToken = baseToken
-  let suffix = 2
-  while (usedTokens.has(nextToken)) {
-    nextToken = `${baseToken}_${suffix}`
-    suffix += 1
-  }
-
-  return nextToken
-}
-
-const replaceOptions = (
-  field: OptionField,
-  options: FieldOption[]
-): Pick<SelectField, 'options'> | Pick<MultiSelectField, 'options'> | Pick<StatusField, 'options'> => {
-  switch (field.kind) {
-    case 'select':
-      return {
-        options: options.map(option => ({
-          id: option.id,
-          name: option.name,
-          color: option.color ?? null
-        })) as FlatOption[]
-      }
-    case 'multiSelect':
-      return {
-        options: options.map(option => ({
-          id: option.id,
-          name: option.name,
-          color: option.color ?? null
-        })) as FlatOption[]
-      }
-    case 'status':
-      return {
-        options: options.flatMap(option => (
-          'category' in option
-            ? [{
-                id: option.id,
-                name: option.name,
-                color: option.color ?? null,
-                category: option.category
-              } satisfies StatusOption]
-            : []
-        ))
-      }
-  }
-}
-
 const createOptionSpec = (input: {
   updateOption: FieldOptionSpec['updateOption']
   patchForRemove: FieldOptionSpec['patchForRemove']
   projectValueWithoutOption: FieldOptionSpec['projectValueWithoutOption']
 }): FieldOptionSpec => ({
   createOption: ({ field, options, name }) => ({
-    id: createUniqueOptionToken(options, name),
+    id: createFieldOptionId(options, name),
     name,
     color: null,
     ...(field.kind === 'status'
@@ -1380,7 +1280,7 @@ const singleValueOptionSpec = createOptionSpec({
       : {})
   }),
   patchForRemove: ({ field, options, optionId }) => ({
-    ...replaceOptions(
+    ...replaceFieldOptions(
       field,
       options.filter(option => option.id !== optionId)
     ),
@@ -1401,7 +1301,7 @@ const multiValueOptionSpec = createOptionSpec({
     ...(patch.name !== undefined ? { name: patch.name } : {}),
     ...(patch.color !== undefined ? { color: patch.color } : {})
   }),
-  patchForRemove: ({ field, options, optionId }) => replaceOptions(
+  patchForRemove: ({ field, options, optionId }) => replaceFieldOptions(
     field,
     options.filter(option => option.id !== optionId)
   ) as Partial<Omit<CustomField, 'id'>>,

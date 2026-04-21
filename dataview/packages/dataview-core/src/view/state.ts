@@ -6,7 +6,11 @@ import type {
   ViewDisplay,
   ViewOptions
 } from '@dataview/core/contracts'
-import { equal } from '@shared/core'
+import {
+  collection,
+  equal,
+  order
+} from '@shared/core'
 import {
   applyRecordOrder,
   reorderRecordBlockIds
@@ -26,28 +30,10 @@ export const sameDisplay = (
   right: ViewDisplay
 ): boolean => equal.sameOrder(left.fields, right.fields)
 
-const uniqueFieldIds = (
-  fieldIds: readonly FieldId[]
-): FieldId[] => {
-  const seen = new Set<FieldId>()
-  const next: FieldId[] = []
-
-  fieldIds.forEach(fieldId => {
-    if (seen.has(fieldId)) {
-      return
-    }
-
-    seen.add(fieldId)
-    next.push(fieldId)
-  })
-
-  return next
-}
-
 export const replaceDisplayFields = (
   fieldIds: readonly FieldId[]
 ): ViewDisplay => ({
-  fields: uniqueFieldIds(fieldIds)
+  fields: collection.unique(fieldIds)
 })
 
 export const normalizeViewDisplay = (
@@ -71,35 +57,15 @@ export const moveDisplayFields = (
   fieldIds: readonly FieldId[],
   beforeFieldId?: FieldId | null
 ): ViewDisplay => {
-  const nextFieldIds = uniqueFieldIds(fieldIds)
+  const nextFieldIds = collection.unique(fieldIds)
   if (!nextFieldIds.length) {
     return cloneDisplay(display)
   }
 
-  const movingSet = new Set(nextFieldIds)
-  const block = display.fields.filter(fieldId => movingSet.has(fieldId))
-  if (!block.length) {
-    return cloneDisplay(display)
-  }
-
-  if (beforeFieldId && movingSet.has(beforeFieldId)) {
-    return cloneDisplay(display)
-  }
-
-  const remaining = display.fields.filter(fieldId => !movingSet.has(fieldId))
-  const insertIndex = beforeFieldId
-    ? remaining.indexOf(beforeFieldId)
-    : -1
-  const normalizedInsertIndex = insertIndex >= 0
-    ? insertIndex
-    : remaining.length
-
   return {
-    fields: [
-      ...remaining.slice(0, normalizedInsertIndex),
-      ...block,
-      ...remaining.slice(normalizedInsertIndex)
-    ]
+    fields: order.moveBlock(display.fields, nextFieldIds, {
+      before: beforeFieldId ?? undefined
+    })
   }
 }
 
@@ -108,20 +74,10 @@ export const showDisplayField = (
   fieldId: FieldId,
   beforeFieldId?: FieldId | null
 ): ViewDisplay => {
-  const remaining = display.fields.filter(currentFieldId => currentFieldId !== fieldId)
-  const insertIndex = beforeFieldId
-    ? remaining.indexOf(beforeFieldId)
-    : -1
-  const normalizedInsertIndex = insertIndex >= 0
-    ? insertIndex
-    : remaining.length
-
   return {
-    fields: [
-      ...remaining.slice(0, normalizedInsertIndex),
-      fieldId,
-      ...remaining.slice(normalizedInsertIndex)
-    ]
+    fields: order.moveItem(display.fields, fieldId, {
+      before: beforeFieldId ?? undefined
+    })
   }
 }
 
@@ -163,10 +119,7 @@ export const cloneViewCalc = (
 export const sameViewCalc = (
   left: ViewCalc,
   right: ViewCalc
-): boolean => equal.sameJsonValue(
-  Object.entries(left).sort(([leftFieldId], [rightFieldId]) => leftFieldId.localeCompare(rightFieldId)),
-  Object.entries(right).sort(([leftFieldId], [rightFieldId]) => leftFieldId.localeCompare(rightFieldId))
-)
+): boolean => equal.sameShallowRecord(left, right)
 
 export const reorderViewOrders = (input: {
   allRecordIds: readonly RecordId[]
@@ -174,7 +127,7 @@ export const reorderViewOrders = (input: {
   movingRecordIds: readonly RecordId[]
   beforeRecordId?: RecordId
 }): RecordId[] => {
-  const movingRecordIds = Array.from(new Set(input.movingRecordIds))
+  const movingRecordIds = collection.unique(input.movingRecordIds)
   if (!movingRecordIds.length) {
     return [...input.currentOrder]
   }

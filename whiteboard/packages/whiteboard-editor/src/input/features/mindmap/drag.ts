@@ -13,8 +13,9 @@ import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
+import type { EngineRead } from '@whiteboard/engine'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -67,7 +68,10 @@ const previewMindmapDrag = (
 }
 
 const readMindmapTreeView = (
-  mindmap: Pick<MindmapPresentationRead, 'structure' | 'layout'>,
+  mindmap: {
+    structure: EngineRead['mindmap']['structure']
+    layout: EditorLayout['mindmap']['layout']
+  },
   treeId: NodeId
 ) => {
   const structure = mindmap.structure.get(treeId)
@@ -87,7 +91,10 @@ const readMindmapTreeView = (
 export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
-  mindmap: Pick<MindmapPresentationRead, 'structure' | 'layout'>
+  mindmap: {
+    structure: EngineRead['mindmap']['structure']
+    layout: EditorLayout['mindmap']['layout']
+  }
   node: Pick<NodePresentationRead, 'committed'>
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
 }): MindmapDragState | undefined => {
@@ -164,7 +171,10 @@ export const tryStartMindmapDragForNode = (input: {
   nodeId: NodeId
   pointerId: number
   world: Point
-  mindmap: Pick<MindmapPresentationRead, 'structure' | 'layout'>
+  mindmap: {
+    structure: EngineRead['mindmap']['structure']
+    layout: EditorLayout['mindmap']['layout']
+  }
   node: Pick<NodePresentationRead, 'committed'>
 }): MindmapDragState | undefined => {
   const pickedNode = input.node.committed.get(input.nodeId)?.node
@@ -218,7 +228,10 @@ export const tryStartMindmapDragForNode = (input: {
 const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
-  mindmap: Pick<MindmapPresentationRead, 'structure' | 'layout'>
+  mindmap: {
+    structure: EngineRead['mindmap']['structure']
+    layout: EditorLayout['mindmap']['layout']
+  }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
   world: input.world,
@@ -262,7 +275,7 @@ const commitMindmapDrag = (
 }
 
 export const createMindmapDragSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'write'>,
   initial: MindmapDragState
 ): InteractionSession => {
   let state = initial
@@ -277,7 +290,10 @@ export const createMindmapDragSession = (
     state = stepMindmapDrag({
       state,
       world,
-      mindmap: ctx.query.mindmap
+      mindmap: {
+        structure: ctx.engine.read.mindmap.structure,
+        layout: ctx.layout.mindmap.layout
+      }
     })
     interaction!.gesture = createGesture('mindmap-drag', {
       mindmap: previewMindmapDrag(state)

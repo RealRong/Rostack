@@ -39,13 +39,13 @@ const cellAt = (
 }
 
 const edgeCell = (
-  items: Pick<ItemList, 'ids' | 'indexOf' | 'at'>,
-  fields: Pick<FieldList, 'ids' | 'at'>,
+  items: Pick<ItemList, 'indexOf' | 'at'>,
+  fields: Pick<FieldList, 'count' | 'at'>,
   itemId: ItemId,
   side: 'start' | 'end'
 ): CellRef | undefined => {
   const rowIndex = items.indexOf(itemId)
-  if (rowIndex === undefined || !fields.ids.length) {
+  if (rowIndex === undefined || !fields.count) {
     return undefined
   }
 
@@ -55,13 +55,13 @@ const edgeCell = (
     rowIndex,
     side === 'start'
       ? 0
-      : fields.ids.length - 1
+      : fields.count - 1
   )
 }
 
 const firstCell = (
-  items: Pick<ItemList, 'has' | 'ids' | 'at' | 'indexOf'>,
-  fields: Pick<FieldList, 'ids' | 'at'>,
+  items: Pick<ItemList, 'has' | 'at' | 'indexOf'>,
+  fields: Pick<FieldList, 'count' | 'at'>,
   rowId?: ItemId
 ): CellRef | undefined => {
   const nextRowId = rowId && items.has(rowId)
@@ -74,8 +74,8 @@ const firstCell = (
 }
 
 const stepCell = (
-  items: Pick<ItemList, 'ids' | 'indexOf' | 'at'>,
-  fields: Pick<FieldList, 'ids' | 'indexOf' | 'at'>,
+  items: Pick<ItemList, 'count' | 'indexOf' | 'at'>,
+  fields: Pick<FieldList, 'count' | 'indexOf' | 'at'>,
   cell: CellRef,
   options: {
     rowDelta: number
@@ -88,27 +88,27 @@ const stepCell = (
   if (
     currentRowIndex === undefined
     || currentFieldIndex === undefined
-    || !items.ids.length
-    || !fields.ids.length
+    || !items.count
+    || !fields.count
   ) {
     return undefined
   }
 
-  let nextRowIndex = clampIndex(currentRowIndex + options.rowDelta, items.ids.length)
-  let nextFieldIndex = clampIndex(currentFieldIndex + options.columnDelta, fields.ids.length)
+  let nextRowIndex = clampIndex(currentRowIndex + options.rowDelta, items.count)
+  let nextFieldIndex = clampIndex(currentFieldIndex + options.columnDelta, fields.count)
 
   if (options.wrap && options.rowDelta === 0) {
     const rawFieldIndex = currentFieldIndex + options.columnDelta
 
     if (rawFieldIndex < 0) {
-      nextRowIndex = clampIndex(currentRowIndex - 1, items.ids.length)
+      nextRowIndex = clampIndex(currentRowIndex - 1, items.count)
       nextFieldIndex = nextRowIndex === currentRowIndex
         ? 0
-        : fields.ids.length - 1
-    } else if (rawFieldIndex >= fields.ids.length) {
-      nextRowIndex = clampIndex(currentRowIndex + 1, items.ids.length)
+        : fields.count - 1
+    } else if (rawFieldIndex >= fields.count) {
+      nextRowIndex = clampIndex(currentRowIndex + 1, items.count)
       nextFieldIndex = nextRowIndex === currentRowIndex
-        ? fields.ids.length - 1
+        ? fields.count - 1
         : 0
     } else {
       nextFieldIndex = rawFieldIndex

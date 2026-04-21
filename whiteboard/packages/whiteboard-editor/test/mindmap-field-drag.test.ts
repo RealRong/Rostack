@@ -5,67 +5,6 @@ describe('mindmap field drag', () => {
   it('routes selected mindmap root field drags into mindmap drag instead of generic node drag', () => {
     const session = createMoveInteraction({
       query: {
-        mindmap: {
-          structure: {
-            get: () => ({
-              id: 'mind-1',
-              rootId: 'root-1',
-              nodeIds: ['root-1'],
-              tree: {
-                rootNodeId: 'root-1',
-                nodes: {
-                  'root-1': {
-                    branch: {
-                      color: '#111827',
-                      line: 'curve',
-                      width: 2,
-                      stroke: 'solid'
-                    }
-                  }
-                },
-                children: {
-                  'root-1': []
-                },
-                layout: {
-                  side: 'both',
-                  mode: 'tidy',
-                  hGap: 28,
-                  vGap: 18
-                }
-              },
-              layout: {
-                side: 'both',
-                mode: 'tidy',
-                hGap: 28,
-                vGap: 18
-              }
-            })
-          },
-          layout: {
-            get: () => ({
-              id: 'mind-1',
-              rootId: 'root-1',
-              nodeIds: ['root-1'],
-              computed: {
-                node: {
-                  'root-1': {
-                    x: 100,
-                    y: 120,
-                    width: 144,
-                    height: 44
-                  }
-                },
-                bbox: {
-                  x: 100,
-                  y: 120,
-                  width: 144,
-                  height: 44
-                }
-              },
-              connectors: []
-            })
-          }
-        },
         node: {
           committed: {
             get: (id: string) => {
@@ -158,6 +97,45 @@ describe('mindmap field drag', () => {
         }
       },
       engine: {
+        read: {
+          mindmap: {
+            structure: {
+              get: () => ({
+                id: 'mind-1',
+                rootId: 'root-1',
+                nodeIds: ['root-1'],
+                tree: {
+                  rootNodeId: 'root-1',
+                  nodes: {
+                    'root-1': {
+                      branch: {
+                        color: '#111827',
+                        line: 'curve',
+                        width: 2,
+                        stroke: 'solid'
+                      }
+                    }
+                  },
+                  children: {
+                    'root-1': []
+                  },
+                  layout: {
+                    side: 'both',
+                    mode: 'tidy',
+                    hGap: 28,
+                    vGap: 18
+                  }
+                },
+                layout: {
+                  side: 'both',
+                  mode: 'tidy',
+                  hGap: 28,
+                  vGap: 18
+                }
+              })
+            }
+          }
+        },
         config: {
           nodeSize: {
             width: 120,
@@ -165,7 +143,34 @@ describe('mindmap field drag', () => {
           }
         }
       },
-      layout: {} as never
+      layout: {
+        mindmap: {
+          layout: {
+            get: () => ({
+              id: 'mind-1',
+              rootId: 'root-1',
+              nodeIds: ['root-1'],
+              computed: {
+                node: {
+                  'root-1': {
+                    x: 100,
+                    y: 120,
+                    width: 144,
+                    height: 44
+                  }
+                },
+                bbox: {
+                  x: 100,
+                  y: 120,
+                  width: 144,
+                  height: 44
+                }
+              },
+              connectors: []
+            })
+          }
+        }
+      } as never
     } as never, {
       start: {
         phase: 'down',

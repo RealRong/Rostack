@@ -46,54 +46,53 @@ const anchor = (
 
 const edges = (
   current: GridSelection,
-  items: Pick<ItemList, 'ids'>,
-  fields: Pick<FieldList, 'ids'>
+  items: Pick<ItemList, 'indexOf'>,
+  fields: Pick<FieldList, 'indexOf'>
 ): GridSelectionEdges | undefined => {
-  const rowEdges = selection.orderedRangeEdges(
-    items.ids,
-    current.anchor.itemId,
-    current.focus.itemId
-  )
-  const fieldEdges = selection.orderedRangeEdges(
-    fields.ids,
-    current.anchor.fieldId,
-    current.focus.fieldId
-  )
-  if (!rowEdges || !fieldEdges) {
+  const anchorRow = items.indexOf(current.anchor.itemId)
+  const focusRow = items.indexOf(current.focus.itemId)
+  const anchorField = fields.indexOf(current.anchor.fieldId)
+  const focusField = fields.indexOf(current.focus.fieldId)
+  if (
+    anchorRow === undefined
+    || focusRow === undefined
+    || anchorField === undefined
+    || focusField === undefined
+  ) {
     return undefined
   }
 
   return {
-    rowStart: rowEdges.start,
-    rowEnd: rowEdges.end,
-    fieldStart: fieldEdges.start,
-    fieldEnd: fieldEdges.end
+    rowStart: Math.min(anchorRow, focusRow),
+    rowEnd: Math.max(anchorRow, focusRow),
+    fieldStart: Math.min(anchorField, focusField),
+    fieldEnd: Math.max(anchorField, focusField)
   }
 }
 
 const itemIds = (
   current: GridSelection,
-  items: Pick<ItemList, 'ids'>
-) => selection.orderedRange(items.ids, current.anchor.itemId, current.focus.itemId)
+  items: Pick<ItemList, 'range'>
+) => items.range(current.anchor.itemId, current.focus.itemId)
 
 const fieldIds = (
   current: GridSelection,
-  fields: Pick<FieldList, 'ids'>
-) => selection.orderedRange(fields.ids, current.anchor.fieldId, current.focus.fieldId)
+  fields: Pick<FieldList, 'range'>
+) => fields.range(current.anchor.fieldId, current.focus.fieldId)
 
 const containsCell = (
   current: GridSelection,
-  items: Pick<ItemList, 'ids'>,
-  fields: Pick<FieldList, 'ids'>,
+  items: Pick<ItemList, 'indexOf'>,
+  fields: Pick<FieldList, 'indexOf'>,
   cell: CellRef
 ) => {
   const currentEdges = edges(current, items, fields)
-  const rowIndex = items.ids.indexOf(cell.itemId)
-  const fieldIndex = fields.ids.indexOf(cell.fieldId)
+  const rowIndex = items.indexOf(cell.itemId)
+  const fieldIndex = fields.indexOf(cell.fieldId)
 
   return currentEdges !== undefined
-    && rowIndex !== -1
-    && fieldIndex !== -1
+    && rowIndex !== undefined
+    && fieldIndex !== undefined
     && rowIndex >= currentEdges.rowStart
     && rowIndex <= currentEdges.rowEnd
     && fieldIndex >= currentEdges.fieldStart
@@ -102,8 +101,8 @@ const containsCell = (
 
 const isSingle = (
   current: GridSelection,
-  items: Pick<ItemList, 'ids'>,
-  fields: Pick<FieldList, 'ids'>
+  items: Pick<ItemList, 'indexOf'>,
+  fields: Pick<FieldList, 'indexOf'>
 ) => {
   const currentEdges = edges(current, items, fields)
   return Boolean(
@@ -115,8 +114,8 @@ const isSingle = (
 
 const reconcile = (
   current: GridSelection | null,
-  items: Pick<ItemList, 'has' | 'indexOf' | 'ids' | 'at'>,
-  fields: Pick<FieldList, 'has' | 'ids' | 'at'>
+  items: Pick<ItemList, 'has' | 'indexOf' | 'count' | 'at'>,
+  fields: Pick<FieldList, 'has' | 'count' | 'at'>
 ): GridSelection | null => {
   if (!current || !items.has(current.focus.itemId)) {
     return null
@@ -138,8 +137,8 @@ const reconcile = (
 
 const first = (
   current: GridSelection | null,
-  items: Pick<ItemList, 'ids' | 'has' | 'indexOf' | 'at'>,
-  fields: Pick<FieldList, 'ids' | 'at'>,
+  items: Pick<ItemList, 'has' | 'count' | 'at' | 'indexOf'>,
+  fields: Pick<FieldList, 'count' | 'at'>,
   itemId?: ItemId
 ): GridSelection | undefined => {
   const targetCell = cellNavigation.firstCell(
@@ -157,14 +156,14 @@ const move = (
   current: GridSelection | null,
   rowDelta: number,
   columnDelta: number,
-  items: Pick<ItemList, 'ids' | 'indexOf' | 'at'>,
-  fields: Pick<FieldList, 'ids' | 'indexOf' | 'at'>,
+  items: Pick<ItemList, 'count' | 'indexOf' | 'at'>,
+  fields: Pick<FieldList, 'count' | 'indexOf' | 'at'>,
   options?: {
     extend?: boolean
     wrap?: boolean
   }
 ): GridSelection | undefined => {
-  if (!current || !items.ids.length || !fields.ids.length) {
+  if (!current || !items.count || !fields.count) {
     return undefined
   }
 

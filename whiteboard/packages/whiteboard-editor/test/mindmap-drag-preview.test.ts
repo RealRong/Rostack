@@ -119,15 +119,11 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(tree).toBeDefined()
-
-    const insert = editor.actions.mindmap.insertByPlacement({
+    const insert = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: tree!,
       targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: tree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'Child'
@@ -206,15 +202,11 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(tree).toBeDefined()
-
-    const insert = editor.actions.mindmap.insertByPlacement({
+    const insert = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: tree!,
       targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: tree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'Child'
@@ -288,15 +280,11 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const tree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(tree).toBeDefined()
-
-    const first = editor.actions.mindmap.insertByPlacement({
+    const first = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: tree!,
       targetNodeId: created.data.rootId,
-      placement: 'right',
-      layout: tree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'Branch'
@@ -308,15 +296,11 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const refreshedTree = editor.read.mindmap.structure.get(created.data.mindmapId)?.tree
-    expect(refreshedTree).toBeDefined()
-
-    const second = editor.actions.mindmap.insertByPlacement({
+    const second = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
-      tree: refreshedTree!,
       targetNodeId: first.data.nodeId,
-      placement: 'right',
-      layout: refreshedTree!.layout,
+      relation: 'child',
+      side: 'right',
       payload: {
         kind: 'text',
         text: 'Leaf'

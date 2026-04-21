@@ -17,11 +17,6 @@ export const MindmapChrome = memo(({
   mindmapId
 }: MindmapChromeProps) => {
   const editor = useEditorRuntime()
-  const structure = useOptionalKeyedStoreValue(
-    editor.read.mindmap.structure,
-    mindmapId,
-    undefined
-  )
   const chrome = useOptionalKeyedStoreValue(
     editor.read.mindmap.chrome,
     mindmapId,
@@ -30,16 +25,11 @@ export const MindmapChrome = memo(({
 
   const onAddChild = useCallback(
     (nodeId: MindmapNodeId, placement: 'left' | 'right') => {
-      if (!structure) {
-        return
-      }
-
-      editor.actions.mindmap.insertByPlacement({
+      editor.actions.mindmap.insertRelative({
         id: mindmapId,
-        tree: structure.tree,
         targetNodeId: nodeId,
-        placement,
-        layout: structure.layout,
+        relation: 'child',
+        side: placement,
         payload: {
           kind: 'text',
           text: ''
@@ -47,10 +37,10 @@ export const MindmapChrome = memo(({
         behavior: DEFAULT_INSERT_BEHAVIOR
       })
     },
-    [editor, mindmapId, structure]
+    [editor, mindmapId]
   )
 
-  if (!chrome || !structure || chrome.addChildTargets.length === 0) {
+  if (!chrome || chrome.addChildTargets.length === 0) {
     return null
   }
 

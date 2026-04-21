@@ -1,5 +1,4 @@
 import { equal, store } from '@shared/core'
-import { node as nodeApi } from '@whiteboard/core/node'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { MindmapRenderConnector } from '@whiteboard/core/mindmap'
 import type { NodeId, Rect } from '@whiteboard/core/types'
@@ -23,14 +22,7 @@ export type MindmapChrome = {
   }[]
 }
 
-export type MindmapNodeGeometry = {
-  rect: Rect
-  rotation: number
-}
-
-export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'layout' | 'scene'> & {
-  layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
-  nodeGeometry: store.KeyedReadStore<NodeId, MindmapNodeGeometry | undefined>
+export type MindmapPresentationRead = {
   scene: store.KeyedReadStore<NodeId, MindmapSceneItem | undefined>
   chrome: store.KeyedReadStore<NodeId, MindmapChrome | undefined>
   navigate: (input: {
@@ -89,19 +81,6 @@ const isMindmapChromeEqual = (
       && entry.y === right.addChildTargets[index]?.y
       && entry.placement === right.addChildTargets[index]?.placement
     ))
-  )
-)
-
-const isMindmapNodeGeometryEqual = (
-  left: MindmapNodeGeometry | undefined,
-  right: MindmapNodeGeometry | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && equal.sameRect(left.rect, right.rect)
-    && left.rotation === right.rotation
   )
 )
 
@@ -223,62 +202,42 @@ const toMindmapScene = (
 })
 
 export const createMindmapRead = ({
-  read,
+  structure,
   layout,
   node,
   edit,
   selection
 }: {
-  read: EngineRead['mindmap']
+  structure: EngineRead['mindmap']['structure']
   layout: MindmapLayoutRead
   node: EngineRead['node']['committed']
   edit: store.ReadStore<EditSession>
   selection: store.ReadStore<SelectionTarget>
 }): MindmapPresentationRead => {
-  const nodeGeometry = store.createKeyedDerivedStore<NodeId, MindmapNodeGeometry | undefined>({
-    get: (nodeId) => {
-      const item = store.read(node, nodeId)
-      if (!item || item.node.owner?.kind !== 'mindmap') {
-        return undefined
-      }
-
-      const rect = store.read(layout.layout, item.node.owner.id)?.computed.node[nodeId]
-      if (!rect) {
-        return undefined
-      }
-
-      return {
-        rect,
-        rotation: nodeApi.geometry.rotation(item.node)
-      }
-    },
-    isEqual: isMindmapNodeGeometryEqual
-  })
-
   const sceneBase = store.createKeyedDerivedStore<NodeId, MindmapSceneItem | undefined>({
     get: (mindmapId) => {
-      const structure = store.read(read.structure, mindmapId)
+      const currentStructure = store.read(structure, mindmapId)
       const currentLayout = store.read(layout.layout, mindmapId)
-      if (!structure || !currentLayout) {
+      if (!currentStructure || !currentLayout) {
         return undefined
       }
 
-      return toMindmapScene(structure, currentLayout)
+      return toMindmapScene(currentStructure, currentLayout)
     },
     isEqual: isMindmapSceneEqual
   })
 
   const chrome = store.createKeyedDerivedStore<NodeId, MindmapChrome | undefined>({
     get: (mindmapId) => {
-      const structure = store.read(read.structure, mindmapId)
+      const currentStructure = store.read(structure, mindmapId)
       const currentLayout = store.read(layout.layout, mindmapId)
-      if (!structure || !currentLayout) {
+      if (!currentStructure || !currentLayout) {
         return undefined
       }
 
       return {
         addChildTargets: readAddChildTargets({
-          structure,
+          structure: currentStructure,
           layout: currentLayout,
           selection: store.read(selection),
           edit: store.read(edit),
@@ -290,14 +249,10 @@ export const createMindmapRead = ({
   })
 
   return {
-    list: read.list,
-    structure: read.structure,
-    layout: layout.layout,
-    nodeGeometry,
     scene: sceneBase,
     chrome,
     navigate: (input) => {
-      const currentStructure = store.read(read.structure, input.id)
+      const currentStructure = store.read(structure, input.id)
       if (!currentStructure) {
         return undefined
       }

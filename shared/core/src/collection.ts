@@ -5,12 +5,14 @@ export const unique = <T,>(
 const EMPTY_VALUES = [] as const
 
 export interface OrderedAccess<TId> {
+  count: number
   has: (id: TId) => boolean
   indexOf: (id: TId) => number | undefined
   at: (index: number) => TId | undefined
   prev: (id: TId) => TId | undefined
   next: (id: TId) => TId | undefined
   range: (anchor: TId, focus: TId) => readonly TId[]
+  iterate: () => IterableIterator<TId>
 }
 
 export interface OrderedKeyedAccess<TId, TValue> extends OrderedAccess<TId> {
@@ -38,6 +40,7 @@ export const createOrderedAccess = <TId,>(
   }
 
   return {
+    count: ids.length,
     has: id => ensureIndexById().has(id),
     indexOf: id => ensureIndexById().get(id),
     at: index => ids[index],
@@ -64,7 +67,8 @@ export const createOrderedAccess = <TId,>(
       const start = Math.min(anchorIndex, focusIndex)
       const end = Math.max(anchorIndex, focusIndex)
       return ids.slice(start, end + 1)
-    }
+    },
+    iterate: () => ids.values()
   }
 }
 
@@ -115,6 +119,12 @@ export const uniqueSorted = <T,>(
     ? next.sort(compare)
     : next.sort()
 }
+
+export const presentSet = <T,>(
+  values?: readonly T[]
+): ReadonlySet<T> | undefined => values?.length
+  ? new Set(values)
+  : undefined
 
 export const presentValues = <TId, TValue>(
   ids: readonly TId[],

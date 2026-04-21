@@ -1,6 +1,7 @@
 import {
   search
 } from '@dataview/core/search'
+import { collection } from '@shared/core'
 import type {
   Field,
   FieldId,
@@ -40,12 +41,6 @@ const resolveSearchField = (
 ): Field | undefined => fieldId === 'title'
   ? undefined
   : context.reader.fields.get(fieldId)
-
-const createRecordIdSet = (
-  ids?: readonly RecordId[]
-): ReadonlySet<RecordId> | undefined => ids?.length
-  ? new Set(ids)
-  : undefined
 
 const writeGramCache = (
   cache: Map<string, readonly string[]>,
@@ -250,7 +245,7 @@ const updateTextIndex = (input: {
   touchedKeys2.forEach(key => {
     const nextIds = applyOrderedIdDelta({
       previous: input.previous.grams2.get(key) ?? EMPTY_RECORD_IDS,
-      remove: createRecordIdSet(removedByKey2.get(key)),
+      remove: collection.presentSet(removedByKey2.get(key)),
       add: addedByKey2.get(key),
       order: input.records.order
     })
@@ -265,7 +260,7 @@ const updateTextIndex = (input: {
   touchedKeys3.forEach(key => {
     const nextIds = applyOrderedIdDelta({
       previous: input.previous.grams3.get(key) ?? EMPTY_RECORD_IDS,
-      remove: createRecordIdSet(removedByKey3.get(key)),
+      remove: collection.presentSet(removedByKey3.get(key)),
       add: addedByKey3.get(key),
       order: input.records.order
     })

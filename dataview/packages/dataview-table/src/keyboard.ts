@@ -63,8 +63,8 @@ export const isSelectAll = (input: TableKeyInput) => (
 export const gridKeyAction = (input: {
   key: TableKeyInput
   selection: GridSelection
-  items: Pick<ItemList, 'indexOf' | 'ids'>
-  fields: Pick<FieldList, 'indexOf' | 'ids'>
+  items: Pick<ItemList, 'range'>
+  fields: Pick<FieldList, 'range'>
   read: TableKeyboardRead
 }): TableGridKeyAction | null => {
   const behavior = fieldApi.behavior.value({

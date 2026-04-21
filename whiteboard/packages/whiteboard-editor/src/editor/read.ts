@@ -56,7 +56,6 @@ export const createEditorRead = (
     },
     history: query.history,
     mindmap: {
-      structure: query.mindmap.structure,
       scene: query.mindmap.scene,
       chrome: query.mindmap.chrome,
       navigate: query.mindmap.navigate

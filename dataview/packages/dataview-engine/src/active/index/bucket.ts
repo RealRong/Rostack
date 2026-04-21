@@ -3,6 +3,7 @@ import type {
   RecordId,
   ViewGroup
 } from '@dataview/core/contracts'
+import { collection } from '@shared/core'
 import {
   field as fieldApi
 } from '@dataview/core/field'
@@ -101,12 +102,6 @@ const addBucketRecord = (
 
   target.set(key, [recordId])
 }
-
-const createRecordIdSet = (
-  ids?: readonly RecordId[]
-): ReadonlySet<RecordId> | undefined => ids?.length
-  ? new Set(ids)
-  : undefined
 
 const resolveFastBucketKeys = (
   field: Field | undefined,
@@ -227,7 +222,7 @@ const syncBucketFieldIndex = (input: {
   touchedKeys.forEach(bucketKey => {
     const ids = applyOrderedIdDelta({
       previous: input.previous.recordsByKey.get(bucketKey) ?? EMPTY_RECORD_IDS,
-      remove: createRecordIdSet(removedByKey.get(bucketKey)),
+      remove: collection.presentSet(removedByKey.get(bucketKey)),
       add: addedByKey.get(bucketKey),
       order: input.records.order
     })

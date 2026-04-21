@@ -1,3 +1,5 @@
+import { string } from '@shared/core'
+
 export type DraftParseResult =
   | { type: 'set'; value: unknown }
   | { type: 'clear' }
@@ -23,7 +25,7 @@ export const expandSearchableValue = (
 
 export const normalizeValueToken = (
   value: unknown
-): string => String(value).trim().toLowerCase()
+): string => string.trimLowercase(value) ?? ''
 
 export const isEmptyValue = (
   value: unknown

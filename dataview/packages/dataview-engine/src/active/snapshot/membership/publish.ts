@@ -1,11 +1,8 @@
-import { equal } from '@shared/core'
+import { collection, equal } from '@shared/core'
 import type {
   RecordId,
   View
 } from '@dataview/core/contracts'
-import {
-  createOrderedKeyedListCollection
-} from '@dataview/engine/active/snapshot/list'
 import {
   createItemId
 } from '@dataview/engine/active/shared/itemId'
@@ -18,7 +15,6 @@ import type {
   ViewItem
 } from '@dataview/engine/contracts'
 import type {
-  MembershipMetaState,
   MembershipState
 } from '@dataview/engine/contracts/state'
 
@@ -61,51 +57,12 @@ const createItemList = (input: {
     return input.previous
   }
 
-  let indexById: ReadonlyMap<ItemId, number> | undefined
-  const ensureIndexById = () => {
-    if (indexById) {
-      return indexById
-    }
-
-    const next = new Map<ItemId, number>()
-    for (let index = 0; index < input.ids.length; index += 1) {
-      next.set(input.ids[index]!, index)
-    }
-    indexById = next
-    return indexById
-  }
-
-  return {
+  const access = collection.createOrderedKeyedAccess({
     ids: input.ids,
-    count: input.ids.length,
-    get: id => input.byId.get(id),
-    has: id => ensureIndexById().has(id),
-    at: index => input.ids[index],
-    indexOf: id => ensureIndexById().get(id),
-    prev: id => {
-      const index = ensureIndexById().get(id)
-      return index === undefined || index <= 0
-        ? undefined
-        : input.ids[index - 1]
-    },
-    next: id => {
-      const index = ensureIndexById().get(id)
-      return index === undefined || index >= input.ids.length - 1
-        ? undefined
-        : input.ids[index + 1]
-    },
-    range: (anchor, focus) => {
-      const anchorIndex = ensureIndexById().get(anchor)
-      const focusIndex = ensureIndexById().get(focus)
-      if (anchorIndex === undefined || focusIndex === undefined) {
-        return EMPTY_ITEM_IDS
-      }
+    get: id => input.byId.get(id)
+  })
 
-      const start = Math.min(anchorIndex, focusIndex)
-      const end = Math.max(anchorIndex, focusIndex)
-      return input.ids.slice(start, end + 1)
-    }
-  }
+  return access
 }
 
 const projectSectionItemIds = (input: {
@@ -247,20 +204,13 @@ const buildSections = (input: {
     return previous
   }
 
-  const sectionList = createOrderedKeyedListCollection({
+  const sectionList = collection.createOrderedKeyedCollection({
     ids: publishedIds,
     all: publishedSections,
     get: key => byKey.get(key)
   })
 
-  return {
-    ids: sectionList.ids,
-    all: sectionList.all,
-    get: sectionList.get,
-    has: sectionList.has,
-    indexOf: sectionList.indexOf,
-    at: sectionList.at
-  }
+  return sectionList
 }
 
 const buildItemList = (input: {
@@ -281,7 +231,7 @@ const buildItemList = (input: {
       continue
     }
 
-    visibleIdCount += section.items.ids.length
+    visibleIdCount += section.items.count
     singleVisibleSection = singleVisibleSection
       ? undefined
       : section
@@ -289,7 +239,7 @@ const buildItemList = (input: {
 
   if (
     singleVisibleSection
-    && visibleIdCount === singleVisibleSection.items.ids.length
+    && visibleIdCount === singleVisibleSection.items.count
   ) {
     return singleVisibleSection.items
   }

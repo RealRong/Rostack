@@ -252,14 +252,14 @@ export const compileViewPlan = (
         ...filterBucketSpecs
       ]
     : filterBucketSpecs
-  const sortFields = Array.from(new Set([
+  const sortFields = collection.unique([
     ...viewApi.demand.sort(view),
     ...indexedFilters.flatMap(entry => (
       filterApi.rule.planDemand(entry.field, entry.rule).sorted
         ? [entry.fieldId]
         : []
     ))
-  ]))
+  ])
   const { calcFields, calculations } = readCalculationDemands(view)
   const index = normalizeIndexDemand({
     document: reader.document(),

@@ -17,8 +17,8 @@ export interface TableFillEntry {
 
 const handleCell = (
   current: GridSelection | null,
-  items: Pick<ItemList, 'indexOf' | 'ids'>,
-  fields: Pick<FieldList, 'indexOf' | 'ids'>
+  items: Pick<ItemList, 'range'>,
+  fields: Pick<FieldList, 'range'>
 ): CellRef | undefined => {
   if (!current) {
     return undefined
@@ -36,14 +36,14 @@ const handleCell = (
 
 const can = (
   current: GridSelection | null,
-  items: Pick<ItemList, 'indexOf' | 'ids'>,
-  fields: Pick<FieldList, 'indexOf' | 'ids'>
+  items: Pick<ItemList, 'range'>,
+  fields: Pick<FieldList, 'range'>
 ) => Boolean(handleCell(current, items, fields))
 
 const plan = (
   current: GridSelection | null,
-  items: Pick<ItemList, 'indexOf' | 'ids'>,
-  fields: Pick<FieldList, 'indexOf' | 'ids'>,
+  items: Pick<ItemList, 'range'>,
+  fields: Pick<FieldList, 'range'>,
   read: (cell: CellRef) => {
     exists: boolean
     value: unknown

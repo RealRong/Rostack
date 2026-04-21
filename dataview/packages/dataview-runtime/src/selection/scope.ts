@@ -2,6 +2,7 @@ import type {
   ItemId,
   ItemList
 } from '@dataview/engine'
+import { collection } from '@shared/core'
 import type {
   SelectionScope
 } from '@dataview/runtime/selection/types'
@@ -14,26 +15,20 @@ export const createItemListSelectionScope = (input: {
   revision: input.items.ids,
   count: input.items.count,
   has: input.items.has,
-  iterate: () => input.items.ids.values()
+  iterate: input.items.iterate
 })
 
 export const createItemArraySelectionScope = (input: {
   key: string
   ids: readonly ItemId[]
 }): SelectionScope<ItemId> => {
-  let idSet: ReadonlySet<ItemId> | null = null
+  const access = collection.createOrderedAccess(input.ids)
 
   return {
     key: input.key,
     revision: input.ids,
-    count: input.ids.length,
-    has: id => {
-      if (!idSet) {
-        idSet = new Set(input.ids)
-      }
-
-      return idSet.has(id)
-    },
-    iterate: () => input.ids.values()
+    count: access.count,
+    has: access.has,
+    iterate: access.iterate
   }
 }

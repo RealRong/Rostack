@@ -13,7 +13,10 @@ import { field as fieldApi } from '@dataview/core/field'
 import {
   fieldSpec
 } from '@dataview/core/field/spec'
-import { string } from '@shared/core'
+import {
+  collection,
+  string
+} from '@shared/core'
 import { createRecordId } from '@dataview/engine/mutate/entityId'
 import type {
   PlannedActionResult,
@@ -80,7 +83,7 @@ const requireRecordIds = (
   recordIds: readonly string[],
   path: string
 ): readonly RecordId[] | undefined => {
-  const nextRecordIds = [...new Set(recordIds)] as RecordId[]
+  const nextRecordIds = collection.unique(recordIds) as RecordId[]
   if (!nextRecordIds.length) {
     scope.issue(
       'batch.emptyCollection',

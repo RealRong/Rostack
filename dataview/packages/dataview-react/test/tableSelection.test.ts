@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { expect, test, vi } from 'vitest'
-import { store } from '@shared/core'
+import { collection, store } from '@shared/core'
 import {
   createItemArraySelectionDomain,
   createSelectionController,
@@ -18,39 +18,20 @@ import {
 } from '@dataview/react/views/table/selectionRuntime'
 
 const createItemListStub = (ids: readonly string[]) => ({
-  count: ids.length,
   ids,
-  has: (id: string) => ids.includes(id),
-  indexOf: (id: string) => {
-    const index = ids.indexOf(id)
-    return index === -1
-      ? undefined
-      : index
-  },
-  at: (index: number) => ids[index],
-  prev: (id: string) => {
-    const index = ids.indexOf(id)
-    return index > 0
-      ? ids[index - 1]
-      : undefined
-  },
-  next: (id: string) => {
-    const index = ids.indexOf(id)
-    return index >= 0
-      ? ids[index + 1]
-      : undefined
-  },
-  range: (anchor: string, focus: string) => {
-    const anchorIndex = ids.indexOf(anchor)
-    const focusIndex = ids.indexOf(focus)
-    if (anchorIndex === -1 || focusIndex === -1) {
-      return []
-    }
+  ...collection.createOrderedAccess(ids)
+})
 
-    const start = Math.min(anchorIndex, focusIndex)
-    const end = Math.max(anchorIndex, focusIndex)
-    return ids.slice(start, end + 1)
-  }
+const createFieldListStub = (ids: readonly string[]) => ({
+  ids,
+  ...collection.createOrderedAccess(ids),
+  get: (id: string) => id === 'field_1'
+    ? {
+        id: 'field_1',
+        kind: 'text',
+        name: 'Name'
+      }
+    : undefined
 })
 
 const createSelectionRuntimeStub = (input: {
@@ -307,19 +288,8 @@ test('handleTableKey keeps delete-as-clear for active cell selection in cell mod
       }
     } as never,
     currentView: {
-      items: {
-        ids: ['row_1'],
-        indexOf: () => 0
-      },
-      fields: {
-        ids: ['field_1'],
-        indexOf: () => 0,
-        get: () => ({
-          id: 'field_1',
-          kind: 'text',
-          name: 'Name'
-        })
-      }
+      items: createItemListStub(['row_1']),
+      fields: createFieldListStub(['field_1'])
     } as never,
     selection,
     locked: false,

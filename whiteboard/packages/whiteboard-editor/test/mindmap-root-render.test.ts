@@ -121,9 +121,7 @@ describe('mindmap root render', () => {
     expect(rootRender?.canResize).toBe(false)
     expect(rootRender?.canRotate).toBe(false)
 
-    const structure = editor.read.mindmap.structure.get(created.data.mindmapId)
     const chrome = editor.read.mindmap.chrome.get(created.data.mindmapId)
-    expect(structure?.rootId).toBe(created.data.rootId)
     expect(chrome?.addChildTargets.map((entry) => entry.placement)).toEqual([
       'left',
       'right'

@@ -4,6 +4,10 @@ import type {
   StatusOption,
   StatusCategory
 } from '@dataview/core/contracts'
+import {
+  normalizeOptionToken,
+  readFieldOptionOrder
+} from '@dataview/core/shared'
 
 export const STATUS_CATEGORIES = [
   'todo',
@@ -57,10 +61,6 @@ const CATEGORY_ALIASES: Record<StatusCategory, readonly string[]> = {
   complete: ['complete', 'completed', 'done', 'finished', 'closed', '已完成', '完成']
 }
 
-const normalizeToken = (value: unknown) => String(value ?? '')
-  .trim()
-  .toLowerCase()
-
 const getStatusOptions = (
   field?: StatusFieldInput
 ) => (
@@ -91,8 +91,8 @@ const inferCategoryFromText = (
   values: readonly unknown[]
 ): StatusCategory | undefined => {
   const normalized = values
-    .map(normalizeToken)
-    .filter(Boolean)
+    .map(normalizeOptionToken)
+    .filter((value): value is string => Boolean(value))
 
   for (const category of STATUS_CATEGORIES) {
     const aliases = CATEGORY_ALIASES[category]
@@ -203,7 +203,7 @@ export const compareStatusFieldValues = (
     }
 
     const category = getStatusOptionCategory(field, option.id) ?? 'todo'
-    const optionOrder = getStatusOptions(field).findIndex(item => item.id === option.id)
+    const optionOrder = readFieldOptionOrder(field, option.id) ?? Number.MAX_SAFE_INTEGER
     return [0, getStatusCategoryOrder(category), optionOrder, option.name] as const
   }
 

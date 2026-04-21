@@ -3,15 +3,13 @@ import type {
   Field,
   FieldId
 } from '@dataview/core/contracts'
+import { collection } from '@shared/core'
 import {
   field as fieldApi
 } from '@dataview/core/field'
 import type {
   FieldList
 } from '@dataview/engine/contracts'
-import {
-  createOrderedKeyedListCollection
-} from '@dataview/engine/active/snapshot/list'
 
 export const createFieldsProjection = (input: {
   fieldIds: readonly FieldId[]
@@ -36,12 +34,14 @@ export const createFieldsProjection = (input: {
     }
   })
 
+  const fields = collection.createOrderedKeyedCollection({
+    ids,
+    all,
+    get: id => visibleById.get(id)
+  })
+
   return {
-    ...createOrderedKeyedListCollection({
-      ids,
-      all,
-      get: id => visibleById.get(id)
-    }),
+    ...fields,
     custom
   }
 }

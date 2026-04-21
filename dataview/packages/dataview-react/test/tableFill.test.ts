@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { collection } from '@shared/core'
 import { gridSelection } from '@dataview/table'
 import { resolveFillWriteManyInput } from '@dataview/react/views/table/hooks/usePointer'
 
+const createOrderedIdsStub = (ids: readonly string[]) => ({
+  ids,
+  ...collection.createOrderedAccess(ids)
+})
+
 const createCurrentViewStub = () => ({
   items: {
-    ids: ['row_1', 'row_2', 'row_3', 'row_4'],
-    indexOf: (itemId: string) => ['row_1', 'row_2', 'row_3', 'row_4'].indexOf(itemId),
+    ...createOrderedIdsStub(['row_1', 'row_2', 'row_3', 'row_4']),
     get: (itemId: string) => (({
       row_1: {
         id: 'row_1',
@@ -29,10 +34,7 @@ const createCurrentViewStub = () => ({
       recordId: string
     }>)[itemId]
   },
-  fields: {
-    ids: ['title', 'points'],
-    indexOf: (fieldId: string) => ['title', 'points'].indexOf(fieldId)
-  }
+  fields: createOrderedIdsStub(['title', 'points'])
 })
 
 test('resolveFillWriteManyInput batches non-title fill by field across all target rows', () => {

@@ -65,7 +65,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'snap' | 'write' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions'>,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (
@@ -96,7 +96,10 @@ export const createMoveInteraction = (
       nodeId: pickedNodeId,
       pointerId: input.start.pointerId,
       world: input.start.world,
-      mindmap: ctx.query.mindmap,
+      mindmap: {
+        structure: ctx.engine.read.mindmap.structure,
+        layout: ctx.layout.mindmap.layout
+      },
       node: ctx.query.node
     })
 

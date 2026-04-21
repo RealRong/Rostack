@@ -8,6 +8,9 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
+  collection
+} from '@shared/core'
+import type {
   Token
 } from '@shared/i18n'
 
@@ -41,36 +44,12 @@ export interface SectionData {
 
 export type Section = SectionData
 
-export interface SectionList {
-  ids: readonly SectionKey[]
-  all: readonly Section[]
-  get: (key: SectionKey) => Section | undefined
-  has: (key: SectionKey) => boolean
-  indexOf: (key: SectionKey) => number | undefined
-  at: (index: number) => SectionKey | undefined
-}
+export interface SectionList extends collection.OrderedKeyedCollection<SectionKey, Section> {}
 
-export interface ItemList {
-  ids: readonly ItemId[]
-  count: number
-  get: (id: ItemId) => ViewItem | undefined
-  has: (id: ItemId) => boolean
-  indexOf: (id: ItemId) => number | undefined
-  at: (index: number) => ItemId | undefined
-  prev: (id: ItemId) => ItemId | undefined
-  next: (id: ItemId) => ItemId | undefined
-  range: (anchor: ItemId, focus: ItemId) => readonly ItemId[]
-}
+export interface ItemList extends collection.OrderedKeyedAccess<ItemId, ViewItem> {}
 
-export interface FieldList {
-  ids: readonly FieldId[]
-  all: readonly Field[]
+export interface FieldList extends collection.OrderedKeyedCollection<FieldId, Field> {
   custom: readonly CustomField[]
-  get: (id: FieldId) => Field | undefined
-  has: (id: FieldId) => boolean
-  indexOf: (id: FieldId) => number | undefined
-  at: (index: number) => FieldId | undefined
-  range: (anchor: FieldId, focus: FieldId) => readonly FieldId[]
 }
 
 export interface CellRef {

@@ -1,18 +1,15 @@
 import {
   useRef
 } from 'react'
-import type {
-  Equality,
-  ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import {
   useExternalValue
 } from '@shared/react'
 
 export const useStoreSelector = <TState, TResult>(
-  store: ReadStore<TState>,
+  store: store.ReadStore<TState>,
   selector: (state: TState) => TResult,
-  isEqual?: Equality<TResult>
+  isEqual?: equal.Equality<TResult>
 ): TResult => {
   const selectorRef = useRef(selector)
   selectorRef.current = selector

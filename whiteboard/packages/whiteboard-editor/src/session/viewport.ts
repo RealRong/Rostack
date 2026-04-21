@@ -5,12 +5,8 @@ import {
   type WheelInput
 } from '@whiteboard/core/geometry'
 import type { Point, Rect, Viewport } from '@whiteboard/core/types'
-import {
-  createValueStore,
-  read,
-  type ReadStore
-} from '@shared/core'
-import { sameBox as isSameBoxTuple } from '@shared/core'
+import { equal, store } from '@shared/core'
+
 
 export const DEFAULT_VIEWPORT: Viewport = {
   center: { x: 0, y: 0 },
@@ -22,7 +18,7 @@ export type ViewportPointer = {
   world: Point
 }
 
-export type ViewportRead = ReadStore<Viewport> & {
+export type ViewportRead = store.ReadStore<Viewport> & {
   pointer: (input: {
     clientX: number
     clientY: number
@@ -76,7 +72,7 @@ export const createViewport = ({
   limits?: ViewportLimits
 }): ViewportRuntime => {
   const initialLimits = geometryApi.viewport.normalizeLimits(nextLimits)
-  const state = createValueStore(
+  const state = store.createValueStore(
     geometryApi.viewport.normalize(initialViewport, initialLimits)
   )
   let rect = geometryApi.viewport.emptyContainerRect
@@ -94,7 +90,7 @@ export const createViewport = ({
 
   return {
     read: {
-      get: () => read(state),
+      get: () => store.read(state),
       subscribe: (listener) => state.subscribe(listener),
       pointer: (input) => {
         const screen = geometryApi.viewport.clientToScreenPoint(
@@ -105,11 +101,11 @@ export const createViewport = ({
 
         return {
           screen,
-          world: geometryApi.viewport.screenToWorld(screen, read(state), rect)
+          world: geometryApi.viewport.screenToWorld(screen, store.read(state), rect)
         }
       },
       worldToScreen: (point) =>
-        geometryApi.viewport.worldToScreen(point, read(state), rect)
+        geometryApi.viewport.worldToScreen(point, store.read(state), rect)
     },
     commands: {
       set: (viewport) => {
@@ -175,7 +171,7 @@ export const createViewport = ({
       }
     },
     setRect: (next) => {
-      if (isSameBoxTuple(rect, next)) {
+      if (equal.sameBox(rect, next)) {
         return
       }
       rect = copyRect(next)

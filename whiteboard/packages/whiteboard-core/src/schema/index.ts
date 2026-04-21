@@ -1,3 +1,4 @@
+import { json, path } from '@shared/core'
 import type {
   CoreRegistries,
   EdgeInput,
@@ -13,8 +14,6 @@ import type {
   SchemaField
 } from '@whiteboard/core/types'
 import { resolveNodeBootstrapSize } from '@whiteboard/core/node/bootstrap'
-import { cloneValue } from '@whiteboard/core/value'
-import { getValueByPath, hasValueByPath, setValueByPath } from '@whiteboard/core/utils/objectPath'
 
 type SchemaTarget = {
   data?: Record<string, unknown>
@@ -25,13 +24,13 @@ type SchemaTarget = {
 const cloneTarget = <T extends SchemaTarget>(input: T): T => {
   const next = { ...input }
   if (input.data) {
-    next.data = cloneValue(input.data)
+    next.data = json.clone(input.data)
   }
   if (input.style) {
-    next.style = cloneValue(input.style)
+    next.style = json.clone(input.style)
   }
   if ('label' in input && input.label) {
-    next.label = cloneValue(input.label)
+    next.label = json.clone(input.label)
   }
   return next
 }
@@ -40,7 +39,7 @@ const mergeDefaults = (target: Record<string, unknown>, defaults: Record<string,
   Object.entries(defaults).forEach(([key, value]) => {
     const current = target[key]
     if (current === undefined) {
-      target[key] = cloneValue(value)
+      target[key] = json.clone(value)
       return
     }
     if (
@@ -71,21 +70,21 @@ const applyFieldDefaults = (target: SchemaTarget, fields: SchemaField[]) => {
     if (scope === 'label' && !('label' in target)) return
     if (scope === 'data') {
       target.data = target.data ?? {}
-      if (!hasValueByPath(target.data, field.path)) {
-        setValueByPath(target.data, field.path, cloneValue(field.defaultValue))
+      if (!path.has(target.data, field.path)) {
+        path.set(target.data, field.path, json.clone(field.defaultValue))
       }
       return
     }
     if (scope === 'style') {
       target.style = target.style ?? {}
-      if (!hasValueByPath(target.style, field.path)) {
-        setValueByPath(target.style, field.path, cloneValue(field.defaultValue))
+      if (!path.has(target.style, field.path)) {
+        path.set(target.style, field.path, json.clone(field.defaultValue))
       }
       return
     }
     target.label = target.label ?? {}
-    if (!hasValueByPath(target.label, field.path)) {
-      setValueByPath(target.label, field.path, cloneValue(field.defaultValue))
+    if (!path.has(target.label, field.path)) {
+      path.set(target.label, field.path, json.clone(field.defaultValue))
     }
   })
 }
@@ -135,7 +134,7 @@ const isMissingRequired = (container: unknown, field: SchemaField) => {
   if (!field.required) return false
   if (field.defaultValue !== undefined) return false
   if (!container) return true
-  return !hasValueByPath(container, field.path)
+  return !path.has(container, field.path)
 }
 
 const getMissingNodeFields = (input: NodeInput, registries: CoreRegistries): string[] => {
@@ -180,9 +179,9 @@ const getMissingEdgeFields = (input: EdgeInput, registries: CoreRegistries): str
 
 const getSchemaFieldValue = (target: SchemaTarget, field: SchemaField): unknown => {
   const scope = field.scope ?? 'data'
-  if (scope === 'style') return getValueByPath(target.style, field.path)
-  if (scope === 'label') return getValueByPath(target.label, field.path)
-  return getValueByPath(target.data, field.path)
+  if (scope === 'style') return path.get(target.style, field.path)
+  if (scope === 'label') return path.get(target.label, field.path)
+  return path.get(target.data, field.path)
 }
 
 export type NodeSchemaFieldRef = Pick<SchemaField, 'path'> & {
@@ -218,7 +217,7 @@ const compileNodeFieldRecord = (
     scope,
     op: 'set',
     ...(path ? { path } : {}),
-    value: cloneValue(value)
+    value: json.clone(value)
   }
 }
 

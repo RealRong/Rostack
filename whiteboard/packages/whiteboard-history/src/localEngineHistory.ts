@@ -1,4 +1,4 @@
-import { createValueStore } from '@shared/core'
+import { store } from '@shared/core'
 import { sync } from '@whiteboard/core/spec/operation'
 import type { Operation, Origin } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
@@ -62,7 +62,7 @@ export const createLocalEngineHistory = (
     ...DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG,
     ...(config ?? {})
   }
-  const state = createValueStore<HistoryState>(EMPTY_STATE)
+  const state = store.createValueStore<HistoryState>(EMPTY_STATE)
 
   let undoStack: HistoryEntry[] = []
   let redoStack: HistoryEntry[] = []

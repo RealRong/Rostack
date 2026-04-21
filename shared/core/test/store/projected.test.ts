@@ -1,11 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import {
-  createDerivedStore,
-  createProjectedKeyedStore,
-  createProjectedStore,
-  createValueStore,
-  read
-} from '@shared/core'
+import { store } from '@shared/core'
+
+
 
 const flushMicrotasks = async () => {
   await Promise.resolve()
@@ -14,16 +10,16 @@ const flushMicrotasks = async () => {
 
 describe('projected stores', () => {
   test('microtask projected store publishes the latest value to derived dependents', async () => {
-    const source = createValueStore({
+    const source = store.createValueStore({
       count: 0
     })
-    const projected = createProjectedStore({
+    const projected = store.createProjectedStore({
       source,
       select: value => value.count,
       schedule: 'microtask'
     })
-    const doubled = createDerivedStore({
-      get: () => read(projected) * 2
+    const doubled = store.createDerivedStore({
+      get: () => store.read(projected) * 2
     })
 
     const values: number[] = []
@@ -47,11 +43,11 @@ describe('projected stores', () => {
   })
 
   test('microtask projected keyed store notifies only changed keys', async () => {
-    const source = createValueStore(new Map([
+    const source = store.createValueStore(new Map([
       ['left', 1],
       ['right', 2]
     ]))
-    const projected = createProjectedKeyedStore({
+    const projected = store.createProjectedKeyedStore({
       source,
       select: value => value,
       emptyValue: 0,

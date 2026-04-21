@@ -1,4 +1,4 @@
-import { createRafTask } from '@shared/core'
+import { scheduler } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
 import type { EditorQuery } from '@whiteboard/editor/query'
 import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
@@ -21,7 +21,7 @@ export const createEdgeHoverService = (
 ): EdgeHoverService => {
   let hoverPoint: Point | null = null
 
-  const hoverTask = createRafTask(() => {
+  const hoverTask = scheduler.createRafTask(() => {
     if (!hoverPoint || ctx.query.tool.get().type !== 'edge') {
       hover.clearHover()
       return

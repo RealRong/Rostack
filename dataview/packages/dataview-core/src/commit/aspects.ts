@@ -10,10 +10,7 @@ import type {
   FieldId,
   View
 } from '@dataview/core/contracts/state'
-import {
-  sameJsonValue,
-  sameOptionalOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   filter as filterApi
 } from '@dataview/core/filter'
@@ -24,7 +21,7 @@ import { sort } from '@dataview/core/sort'
 const sameIdList = <T extends string>(
   left: readonly T[] | undefined,
   right: readonly T[] | undefined
-) => sameOptionalOrder(
+) => equal.sameOptionalOrder(
   left?.length ? left : undefined,
   right?.length ? right : undefined
 )
@@ -69,7 +66,7 @@ const collectViewLayoutAspects = (
   if (!sameIdList(previousView.display.fields, nextView.display.fields)) {
     aspects.add('display')
   }
-  if (!sameJsonValue(previousView.options, nextView.options)) {
+  if (!equal.sameJsonValue(previousView.options, nextView.options)) {
     aspects.add('options')
   }
 
@@ -80,7 +77,7 @@ const collectCalculationFields = (
   previousView: View,
   nextView: View
 ): readonly FieldId[] | undefined => {
-  if (sameJsonValue(previousView.calc, nextView.calc)) {
+  if (equal.sameJsonValue(previousView.calc, nextView.calc)) {
     return undefined
   }
 
@@ -115,14 +112,14 @@ const collectFieldSchemaAspects = (
     aspects.add('kind')
   }
   if ('options' in previousField || 'options' in nextField) {
-    if (!sameJsonValue(
+    if (!equal.sameJsonValue(
       'options' in previousField ? previousField.options : undefined,
       'options' in nextField ? nextField.options : undefined
     )) {
       aspects.add('options')
     }
   }
-  if (!sameJsonValue(previousField.meta, nextField.meta)) {
+  if (!equal.sameJsonValue(previousField.meta, nextField.meta)) {
     aspects.add('meta')
   }
 
@@ -141,7 +138,7 @@ const collectFieldSchemaAspects = (
     ...('options' in nextField ? { options: undefined } : {})
   }
 
-  if (!sameJsonValue(previousConfig, nextConfig)) {
+  if (!equal.sameJsonValue(previousConfig, nextConfig)) {
     aspects.add('config')
   }
 
@@ -164,7 +161,7 @@ const collectRecordPatchAspects = (
   if (previousRecord.type !== nextRecord.type) {
     aspects.add('type')
   }
-  if (!sameJsonValue(previousRecord.meta, nextRecord.meta)) {
+  if (!equal.sameJsonValue(previousRecord.meta, nextRecord.meta)) {
     aspects.add('meta')
   }
 

@@ -5,7 +5,7 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import { isNonEmptyString, unique } from '@shared/core'
+import { collection, string } from '@shared/core'
 import {
   createLiveDocumentReader,
   type DocumentReader
@@ -115,7 +115,7 @@ export const createPlannerScope = (input: {
         : undefined
     }
 
-    const recordIds = unique(target.recordIds) as RecordId[]
+    const recordIds = collection.unique(target.recordIds) as RecordId[]
     if (!recordIds.length) {
       issue(
         'batch.emptyCollection',
@@ -127,7 +127,7 @@ export const createPlannerScope = (input: {
 
     const resolved: RecordId[] = []
     recordIds.forEach((recordId, index) => {
-      if (!isNonEmptyString(recordId) || !reader.records.has(recordId)) {
+      if (!string.isNonEmptyString(recordId) || !reader.records.has(recordId)) {
         issue(
           'record.notFound',
           `Unknown record: ${recordId}`,

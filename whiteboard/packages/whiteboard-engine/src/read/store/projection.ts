@@ -1,35 +1,29 @@
-import {
-  createKeyedReadStore,
-  createKeyedStore,
-  createValueStore,
-  sameValue as isSameValue,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
+
 
 export const createProjectionRuntime = <Key, Value,>({
   initialList,
   emptyValue,
   read,
-  isEmpty = (value) => isSameValue(value, emptyValue)
+  isEmpty = (value) => equal.sameValue(value, emptyValue)
 }: {
   initialList: readonly Key[]
   emptyValue: Value
   read: (key: Key) => Value
   isEmpty?: (value: Value) => boolean
 }): {
-  list: ReadStore<readonly Key[]>
-  item: KeyedReadStore<Key, Value>
+  list: store.ReadStore<readonly Key[]>
+  item: store.KeyedReadStore<Key, Value>
   trackedKeys: () => IterableIterator<Key>
   setList: (next: readonly Key[]) => void
   sync: (keys: Iterable<Key>) => void
 } => {
-  const list = createValueStore(initialList)
+  const list = store.createValueStore(initialList)
   const counts = new Map<Key, number>()
-  const tracked = createKeyedStore<Key, Value>({
+  const tracked = store.createKeyedStore<Key, Value>({
     emptyValue
   })
-  const item = createKeyedReadStore<Key, Value>({
+  const item = store.createKeyedReadStore<Key, Value>({
     get: (key) => read(key),
     subscribe: (key, listener) => {
       counts.set(key, (counts.get(key) ?? 0) + 1)

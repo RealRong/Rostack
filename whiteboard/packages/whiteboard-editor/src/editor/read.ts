@@ -1,7 +1,4 @@
-import {
-  createDerivedStore,
-  read as readValue
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   EditorChromePresentation,
   EditorPanelPresentation,
@@ -19,13 +16,13 @@ export const createEditorRead = (
     query: EditorQuery
   }
 ): EditorRead => {
-  const chrome = createDerivedStore<EditorChromePresentation>({
+  const chrome = store.createDerivedStore<EditorChromePresentation>({
     get: () => ({
-      marquee: readValue(query.chrome.marquee),
-      draw: readValue(query.chrome.draw),
-      edgeGuide: readValue(query.chrome.edgeGuide),
-      snap: readValue(query.chrome.snap),
-      selection: readValue(query.selection.overlay)
+      marquee: store.read(query.chrome.marquee),
+      draw: store.read(query.chrome.draw),
+      edgeGuide: store.read(query.chrome.edgeGuide),
+      snap: store.read(query.chrome.snap),
+      selection: store.read(query.selection.overlay)
     }),
     isEqual: (left, right) => (
       left.marquee === right.marquee
@@ -35,11 +32,11 @@ export const createEditorRead = (
       && left.selection === right.selection
     )
   })
-  const panel = createDerivedStore<EditorPanelPresentation>({
+  const panel = store.createDerivedStore<EditorPanelPresentation>({
     get: () => ({
-      selectionToolbar: readValue(query.selection.toolbar),
-      history: readValue(query.history),
-      draw: readValue(query.draw)
+      selectionToolbar: store.read(query.selection.toolbar),
+      history: store.read(query.history),
+      draw: store.read(query.draw)
     }),
     isEqual: (left, right) => (
       left.selectionToolbar === right.selectionToolbar

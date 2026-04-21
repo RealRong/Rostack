@@ -1,9 +1,7 @@
 import type { Node, NodeGeometry, NodeId, Rect, Size } from '@whiteboard/core/types'
 import { node as nodeApi } from '@whiteboard/core/node'
-import {
-  sameRectWithRotation as isSameRectWithRotationTuple,
-  toFiniteOrUndefined
-} from '@shared/core'
+import { equal } from '@shared/core'
+
 
 type NodeGeometryStateTuple = {
   x?: number
@@ -31,11 +29,11 @@ export class NodeGeometryCache {
   private toStateTuple = (node: Node): NodeGeometryStateTuple => {
     const rect = nodeApi.geometry.rect(node, this.nodeSize)
     return {
-      x: toFiniteOrUndefined(rect.x),
-      y: toFiniteOrUndefined(rect.y),
-      width: toFiniteOrUndefined(rect.width),
-      height: toFiniteOrUndefined(rect.height),
-      rotation: toFiniteOrUndefined(node.rotation ?? 0)
+      x: equal.toFiniteOrUndefined(rect.x),
+      y: equal.toFiniteOrUndefined(rect.y),
+      width: equal.toFiniteOrUndefined(rect.width),
+      height: equal.toFiniteOrUndefined(rect.height),
+      rotation: equal.toFiniteOrUndefined(node.rotation ?? 0)
     }
   }
 
@@ -54,7 +52,7 @@ export class NodeGeometryCache {
     if (
       current &&
       current.entry.node === node &&
-      isSameRectWithRotationTuple(current.state, state)
+      equal.sameRectWithRotation(current.state, state)
     ) {
       return false
     }

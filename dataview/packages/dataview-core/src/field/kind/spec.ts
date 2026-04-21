@@ -46,16 +46,7 @@ import {
   expandSearchableValue,
   isEmptyValue
 } from '@dataview/core/shared/value'
-import {
-  comparePrimitive,
-  compareText as compareStringText,
-  isNonEmptyString,
-  readBooleanLike,
-  readFiniteNumber,
-  readLooseNumber,
-  stableStringify,
-  trimLowercase
-} from '@shared/core'
+import { compare, json, parse, string } from '@shared/core'
 import type {
   Token
 } from '@shared/i18n'
@@ -227,7 +218,7 @@ const asPlainString = (
 const compareText = (
   left: unknown,
   right: unknown
-) => compareStringText(
+) => compare.compareText(
   expandSearchableValue(left).join(', ').toLowerCase(),
   expandSearchableValue(right).join(', ').toLowerCase()
 )
@@ -264,10 +255,10 @@ const compareNumberValues = (
   left: unknown,
   right: unknown
 ) => {
-  const leftNumber = readFiniteNumber(left)
-  const rightNumber = readFiniteNumber(right)
+  const leftNumber = parse.readFiniteNumber(left)
+  const rightNumber = parse.readFiniteNumber(right)
   if (leftNumber !== undefined && rightNumber !== undefined) {
-    return comparePrimitive(leftNumber, rightNumber)
+    return compare.comparePrimitive(leftNumber, rightNumber)
   }
 
   return compareText(left, right)
@@ -280,7 +271,7 @@ const compareDateValues = (
   const leftTimestamp = fieldDate.value.comparableTimestamp(left)
   const rightTimestamp = fieldDate.value.comparableTimestamp(right)
   if (leftTimestamp !== undefined && rightTimestamp !== undefined) {
-    return comparePrimitive(leftTimestamp, rightTimestamp)
+    return compare.comparePrimitive(leftTimestamp, rightTimestamp)
   }
 
   return compareText(left, right)
@@ -290,10 +281,10 @@ const compareBooleanValues = (
   left: unknown,
   right: unknown
 ) => {
-  const leftBoolean = readBooleanLike(left)
-  const rightBoolean = readBooleanLike(right)
+  const leftBoolean = parse.readBooleanLike(left)
+  const rightBoolean = parse.readBooleanLike(right)
   if (leftBoolean !== undefined && rightBoolean !== undefined) {
-    return comparePrimitive(leftBoolean ? 1 : 0, rightBoolean ? 1 : 0)
+    return compare.comparePrimitive(leftBoolean ? 1 : 0, rightBoolean ? 1 : 0)
   }
 
   return compareText(left, right)
@@ -312,7 +303,7 @@ const compareTextValues = (
     : undefined
 
   if (leftDateKey && rightDateKey) {
-    return comparePrimitive(leftDateKey, rightDateKey)
+    return compare.comparePrimitive(leftDateKey, rightDateKey)
   }
 
   return compareText(left, right)
@@ -497,7 +488,7 @@ const validateBaseOptions = (
   const names = new Set<string>()
 
   options.forEach((option, index) => {
-    if (!isNonEmptyString(option.id)) {
+    if (!string.isNonEmptyString(option.id)) {
       issues.push(createFieldSchemaIssue(
         `${path}.${index}.id`,
         'Field option id must be a non-empty string'
@@ -511,13 +502,13 @@ const validateBaseOptions = (
       ids.add(option.id)
     }
 
-    if (!isNonEmptyString(option.name)) {
+    if (!string.isNonEmptyString(option.name)) {
       issues.push(createFieldSchemaIssue(
         `${path}.${index}.name`,
         'Field option name must be a non-empty string'
       ))
     } else {
-      const normalizedName = trimLowercase(option.name)
+      const normalizedName = string.trimLowercase(option.name)
       if (!normalizedName) {
         issues.push(createFieldSchemaIssue(
           `${path}.${index}.name`,
@@ -533,7 +524,7 @@ const validateBaseOptions = (
       }
     }
 
-    if (option.color !== null && !isNonEmptyString(option.color)) {
+    if (option.color !== null && !string.isNonEmptyString(option.color)) {
       issues.push(createFieldSchemaIssue(
         `${path}.${index}.color`,
         'Field option color must be null or a non-empty string'
@@ -674,7 +665,7 @@ const compareOptionValues = (
   const leftOrder = getOptionOrder(field, left)
   const rightOrder = getOptionOrder(field, right)
   if (leftOrder !== undefined && rightOrder !== undefined) {
-    return comparePrimitive(leftOrder, rightOrder)
+    return compare.comparePrimitive(leftOrder, rightOrder)
   }
 
   return compareText(
@@ -735,7 +726,7 @@ const parseNumberDraft = (
     }
   }
 
-  const numeric = readLooseNumber(draft)
+  const numeric = parse.readLooseNumber(draft)
   return Number.isFinite(numeric)
     ? {
         type: 'set',
@@ -810,7 +801,7 @@ const parseBooleanDraft = (
     }
   }
 
-  const booleanValue = readBooleanLike(draft)
+  const booleanValue = parse.readBooleanLike(draft)
   return booleanValue === undefined
     ? {
         type: 'invalid'
@@ -841,7 +832,7 @@ const displayBooleanValue = (
     return undefined
   }
 
-  const booleanValue = readBooleanLike(value)
+  const booleanValue = parse.readBooleanLike(value)
   return booleanValue === undefined
     ? String(value)
     : booleanValue
@@ -1550,7 +1541,7 @@ export const kindSpecs = {
             'Number field precision must be null or a non-negative integer'
           ))
         }
-        if (current.currency !== null && !isNonEmptyString(current.currency)) {
+        if (current.currency !== null && !string.isNonEmptyString(current.currency)) {
           issues.push(createFieldSchemaIssue(
             `${path}.currency`,
             'Number field currency must be null or a non-empty string'
@@ -1581,13 +1572,13 @@ export const kindSpecs = {
     }),
     index: {
       searchDefaultEnabled: false,
-      sortScalar: readFiniteNumber
+      sortScalar: parse.readFiniteNumber
     },
     calculation: {
       uniqueKey: (_field, value) => {
-        const number = readFiniteNumber(value)
+        const number = parse.readFiniteNumber(value)
         return number === undefined
-          ? stableStringify(value)
+          ? json.stableStringify(value)
           : `number:${number}`
       }
     },
@@ -1700,7 +1691,7 @@ export const kindSpecs = {
         const optionIds = readMultiOptionIds(field, value)
         return optionIds
           ? `multi:${JSON.stringify(optionIds)}`
-          : stableStringify(value)
+          : json.stableStringify(value)
       },
       optionIds: readMultiOptionIds
     },
@@ -1774,7 +1765,7 @@ export const kindSpecs = {
         } else if (
           typeof current.defaultOptionId === 'string'
           && (
-            !isNonEmptyString(current.defaultOptionId)
+            !string.isNonEmptyString(current.defaultOptionId)
             || !current.options.some(option => option.id === current.defaultOptionId)
           )
         ) {
@@ -1906,7 +1897,7 @@ export const kindSpecs = {
       sortScalar: fieldDate.value.comparableTimestamp
     },
     calculation: {
-      uniqueKey: (_field, value) => stableStringify(value)
+      uniqueKey: (_field, value) => json.stableStringify(value)
     },
     view: {
       groupUsesOptionColors: false,
@@ -1950,9 +1941,9 @@ export const kindSpecs = {
     },
     calculation: {
       uniqueKey: (_field, value) => {
-        const booleanValue = readBooleanLike(value)
+        const booleanValue = parse.readBooleanLike(value)
         return booleanValue === undefined
-          ? stableStringify(value)
+          ? json.stableStringify(value)
           : `boolean:${booleanValue}`
       }
     },
@@ -2175,7 +2166,7 @@ export const kindSpecs = {
       searchDefaultEnabled: false
     },
     calculation: {
-      uniqueKey: (_field, value) => stableStringify(value)
+      uniqueKey: (_field, value) => json.stableStringify(value)
     },
     view: {
       groupUsesOptionColors: false,

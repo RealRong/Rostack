@@ -1,8 +1,7 @@
+import { json, record } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getNode } from '@whiteboard/core/kernel/reduce/runtime'
-import { applyPathMutation } from '@whiteboard/core/utils/recordMutation'
-import { cloneValue } from '@whiteboard/core/value'
 
 const applyTopicRecordMutation = (
   node: import('@whiteboard/core/types').Node,
@@ -12,7 +11,7 @@ const applyTopicRecordMutation = (
   const current = scope === 'data'
     ? node.data
     : node.style
-  const result = applyPathMutation(current, mutation)
+  const result = record.apply(current, mutation)
   if (!result.ok) {
     return result
   }
@@ -45,7 +44,7 @@ export const createMindmapTopicRecordApi = (
     const previous = tx.read.record.path(currentRoot, path)
     tx._runtime.inverse.unshift(previous === undefined
       ? { type: 'mindmap.topic.record.unset', id, topicId, scope, path }
-      : { type: 'mindmap.topic.record.set', id, topicId, scope, path, value: cloneValue(previous) })
+      : { type: 'mindmap.topic.record.set', id, topicId, scope, path, value: json.clone(previous) })
     const next = applyTopicRecordMutation(current, scope, {
       op: 'set',
       path,
@@ -76,7 +75,7 @@ export const createMindmapTopicRecordApi = (
       topicId,
       scope,
       path,
-      value: cloneValue(tx.read.record.path(currentRoot, path))
+      value: json.clone(tx.read.record.path(currentRoot, path))
     })
     const next = applyTopicRecordMutation(current, scope, {
       op: 'unset',

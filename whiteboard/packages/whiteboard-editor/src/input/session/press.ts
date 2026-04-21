@@ -1,4 +1,4 @@
-import { createTimeoutTask, type TimeoutTask } from '@shared/core'
+import { scheduler } from '@shared/core'
 import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
 import {
   FINISH,
@@ -33,7 +33,7 @@ export const createPressDragSession = (input: {
   onTap?: (input: PointerUpInput) => InteractionSessionTransition | void
   onHold?: () => HoldResult
 }): InteractionSession => {
-  let holdTask: TimeoutTask | null = null
+  let holdTask: scheduler.TimeoutTask | null = null
   let dispatchTransition:
     | ((transition: InteractionSessionTransition) => void)
     | null = null
@@ -44,7 +44,7 @@ export const createPressDragSession = (input: {
   }
 
   if (input.onHold) {
-    holdTask = createTimeoutTask(() => {
+    holdTask = scheduler.createTimeoutTask(() => {
       holdTask = null
       const next = input.onHold?.()
       if (!next) {

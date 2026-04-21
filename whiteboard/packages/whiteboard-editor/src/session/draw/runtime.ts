@@ -1,4 +1,4 @@
-import type { ValueStore } from '@shared/core'
+import { store as sharedStore } from '@shared/core'
 import type { BrushStylePatch } from '@whiteboard/editor/session/draw/state'
 import type { DrawBrush, DrawSlot } from '@whiteboard/editor/session/draw/model'
 import {
@@ -8,7 +8,6 @@ import {
   setDrawSlot,
   type DrawState as DrawStateValue
 } from '@whiteboard/editor/session/draw/state'
-import { createCommandState } from '@whiteboard/editor/session/store'
 
 type DrawStateStoreCommands = {
   set: (state: DrawStateValue) => void
@@ -17,22 +16,22 @@ type DrawStateStoreCommands = {
 }
 
 export type DrawStateStore = {
-  store: ValueStore<DrawStateValue>
+  store: sharedStore.ValueStore<DrawStateValue>
   commands: DrawStateStoreCommands
 }
 
 export const createDrawStateStore = (
   initialState: DrawStateValue
 ): DrawStateStore => {
-  const state = createCommandState<DrawStateValue>({
+  const state = sharedStore.createNormalizedValue<DrawStateValue>({
     initial: initialState,
     normalize: normalizeDrawState,
     isEqual: isDrawStateEqual
   })
-  const store = state.store
+  const source = state.store
 
   return {
-    store,
+    store: source,
     commands: {
       set: (nextState) => {
         state.set(nextState)

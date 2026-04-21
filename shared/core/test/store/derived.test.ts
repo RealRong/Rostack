@@ -1,17 +1,14 @@
 import { describe, expect, test } from 'vitest'
-import {
-  createDerivedStore,
-  createValueStore,
-  read,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
+
+
 
 describe('createDerivedStore', () => {
   test('allows listener side effects that invalidate dependencies after recompute commits', () => {
-    const left = createValueStore(0)
-    const right = createValueStore(0)
-    const total = createDerivedStore({
-      get: () => read(left) + read(right)
+    const left = store.createValueStore(0)
+    const right = store.createValueStore(0)
+    const total = store.createDerivedStore({
+      get: () => store.read(left) + store.read(right)
     })
 
     const values: number[] = []
@@ -33,12 +30,12 @@ describe('createDerivedStore', () => {
   })
 
   test('still throws on direct circular derived dependencies', () => {
-    let right!: ReadStore<number>
-    const left = createDerivedStore({
-      get: () => read(right) + 1
+    let right!: store.ReadStore<number>
+    const left = store.createDerivedStore({
+      get: () => store.read(right) + 1
     })
-    right = createDerivedStore({
-      get: () => read(left) + 1
+    right = store.createDerivedStore({
+      get: () => store.read(left) + 1
     })
 
     expect(() => {

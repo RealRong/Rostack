@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-
 import {
   KANBAN_EMPTY_BUCKET_KEY,
   TITLE_FIELD_ID

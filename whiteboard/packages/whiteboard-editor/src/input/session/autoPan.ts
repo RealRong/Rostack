@@ -1,5 +1,5 @@
 import { resolveEdgePressureVector } from '@shared/dom'
-import { createRafTask } from '@shared/core'
+import { scheduler } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
 import type { ViewportInputRuntime } from '@whiteboard/editor/session/viewport'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
@@ -86,7 +86,7 @@ export const createAutoPan = ({
     active = null
   }
 
-  const frameTask = createRafTask(() => {
+  const frameTask = scheduler.createRafTask(() => {
     const timestamp = now()
     const session = active
     if (!session || !session.pointer) {

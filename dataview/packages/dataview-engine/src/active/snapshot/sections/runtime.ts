@@ -3,9 +3,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import { impact as commitImpact } from '@dataview/core/commit/impact'
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -106,7 +104,7 @@ const buildSectionDelta = (input: {
     : []
   const removed = previousKeys.filter(sectionKey => !input.next.byKey.has(sectionKey))
   const rebuild = input.action === 'rebuild'
-  const orderChanged = !sameOrder(input.previous?.order ?? [], input.next.order)
+  const orderChanged = !equal.sameOrder(input.previous?.order ?? [], input.next.order)
 
   if (rebuild) {
     return {

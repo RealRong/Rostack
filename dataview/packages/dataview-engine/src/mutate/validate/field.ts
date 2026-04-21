@@ -1,6 +1,4 @@
-import {
-  isNonEmptyString,
-} from '@shared/core'
+import { string } from '@shared/core'
 import type {
   DataDoc,
   CustomField,
@@ -18,10 +16,10 @@ export const validateField = (
 ) => {
   const issues: ValidationIssue[] = []
 
-  if (!isNonEmptyString(field.id)) {
+  if (!string.isNonEmptyString(field.id)) {
     issues.push(createIssue(source, 'error', 'field.invalid', 'Field id must be a non-empty string', `${path}.id`))
   }
-  if (!isNonEmptyString(field.name)) {
+  if (!string.isNonEmptyString(field.name)) {
     issues.push(createIssue(source, 'error', 'field.invalid', 'Field name must be a non-empty string', `${path}.name`))
   }
   if (!fieldApi.schema.kind.isCustom(field.kind)) {

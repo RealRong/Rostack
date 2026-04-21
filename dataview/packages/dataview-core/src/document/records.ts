@@ -12,9 +12,7 @@ import type {
   DocumentRecordFieldRestoreEntry,
   RecordFieldWriteManyOperationInput
 } from '@dataview/core/contracts/operations'
-import {
-  sameJsonValue
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   entityTable
 } from '@dataview/core/document/table'
@@ -167,7 +165,7 @@ const applyCompiledRecordFieldWrite = (
 
     const beforeHas = hasOwn(record.values, fieldId)
     const beforeValue = record.values[fieldId]
-    if (beforeHas && sameJsonValue(beforeValue, value)) {
+    if (beforeHas && equal.sameJsonValue(beforeValue, value)) {
       return
     }
 

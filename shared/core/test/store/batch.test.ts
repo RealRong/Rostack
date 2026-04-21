@@ -1,16 +1,13 @@
 import { describe, expect, test } from 'vitest'
-import {
-  batch,
-  createDerivedStore,
-  createValueStore,
-  read
-} from '@shared/core'
+import { store } from '@shared/core'
+
+
 
 describe('batch', () => {
   test('deduplicates public notifications and flushes derived roots first', () => {
-    const source = createValueStore(0)
-    const total = createDerivedStore({
-      get: () => read(source) * 2
+    const source = store.createValueStore(0)
+    const total = store.createDerivedStore({
+      get: () => store.read(source) * 2
     })
 
     const values: number[] = []
@@ -18,7 +15,7 @@ describe('batch', () => {
       values.push(total.get())
     })
 
-    batch(() => {
+    store.batch(() => {
       source.set(1)
       source.set(2)
     })

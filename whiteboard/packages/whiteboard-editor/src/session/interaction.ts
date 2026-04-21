@@ -1,9 +1,4 @@
-import {
-  createDerivedStore,
-  createValueStore,
-  read,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { PointerSample } from '@whiteboard/editor/types/input'
 import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import {
@@ -18,12 +13,12 @@ type SessionMeta = Readonly<{
 }>
 
 export type EditorInputState = {
-  mode: ReadStore<InteractionMode>
-  busy: ReadStore<boolean>
-  chrome: ReadStore<boolean>
-  gesture: ReadStore<ActiveGesture | null>
-  pointer: ReadStore<PointerSample | null>
-  space: ReadStore<boolean>
+  mode: store.ReadStore<InteractionMode>
+  busy: store.ReadStore<boolean>
+  chrome: store.ReadStore<boolean>
+  gesture: store.ReadStore<ActiveGesture | null>
+  pointer: store.ReadStore<PointerSample | null>
+  space: store.ReadStore<boolean>
   hover: Pick<HoverStore, 'get' | 'subscribe'>
 }
 
@@ -46,23 +41,23 @@ export type EditorInputStateController = {
 }
 
 export const createEditorInputState = (): EditorInputStateController => {
-  const active = createValueStore<SessionMeta | null>(null)
-  const gesture = createValueStore<ActiveGesture | null>(null)
-  const pointer = createValueStore<PointerSample | null>(null)
-  const space = createValueStore(false)
+  const active = store.createValueStore<SessionMeta | null>(null)
+  const gesture = store.createValueStore<ActiveGesture | null>(null)
+  const pointer = store.createValueStore<PointerSample | null>(null)
+  const space = store.createValueStore(false)
   const hover = createHoverStore()
 
   return {
     state: {
-      mode: createDerivedStore({
-        get: () => read(active)?.mode ?? 'idle'
+      mode: store.createDerivedStore({
+        get: () => store.read(active)?.mode ?? 'idle'
       }),
-      busy: createDerivedStore({
-        get: () => read(active) !== null
+      busy: store.createDerivedStore({
+        get: () => store.read(active) !== null
       }),
-      chrome: createDerivedStore({
+      chrome: store.createDerivedStore({
         get: () => {
-          const current = read(active)
+          const current = store.read(active)
           return current === null
             || Boolean(current.chrome)
         }

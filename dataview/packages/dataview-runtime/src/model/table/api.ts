@@ -1,12 +1,7 @@
 import type {
   FieldId
 } from '@dataview/core/contracts'
-import {
-  createDerivedStore,
-  createKeyedDerivedStore,
-  read,
-  sameMap
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
@@ -63,59 +58,59 @@ const sameSummary = (
 ) => left === right || (
   !!left
   && !!right
-  && sameMap(left.byField, right.byField)
+  && equal.sameMap(left.byField, right.byField)
 )
 
 export const createTableModel = (input: {
   source: DataViewSource
 }): DataViewTableModel => {
-  const body = createDerivedStore<TableBody | null>({
+  const body = store.createDerivedStore<TableBody | null>({
     get: () => {
-      if (read(input.source.active.view.type) !== 'table') {
+      if (store.read(input.source.active.view.type) !== 'table') {
         return null
       }
 
-      const viewId = read(input.source.active.view.id)
+      const viewId = store.read(input.source.active.view.id)
       if (!viewId) {
         return null
       }
 
       return {
         viewId,
-        empty: read(input.source.active.items.ids).length === 0,
-        grouped: read(input.source.active.query.grouped),
-        wrap: read(input.source.active.table.wrap),
-        showVerticalLines: read(input.source.active.table.showVerticalLines),
-        columnIds: read(input.source.active.fields.all.ids),
-        sectionKeys: read(input.source.active.sections.keys)
+        empty: store.read(input.source.active.items.ids).length === 0,
+        grouped: store.read(input.source.active.query.grouped),
+        wrap: store.read(input.source.active.table.wrap),
+        showVerticalLines: store.read(input.source.active.table.showVerticalLines),
+        columnIds: store.read(input.source.active.fields.all.ids),
+        sectionKeys: store.read(input.source.active.sections.keys)
       }
     },
     isEqual: sameBody
   })
 
-  const column = createKeyedDerivedStore<FieldId, TableColumn | undefined>({
+  const column = store.createKeyedDerivedStore<FieldId, TableColumn | undefined>({
     get: fieldId => {
-      if (read(input.source.active.view.type) !== 'table') {
+      if (store.read(input.source.active.view.type) !== 'table') {
         return undefined
       }
 
       return {
-        field: read(input.source.active.fields.all, fieldId),
-        grouped: read(input.source.active.query.groupFieldId) === fieldId,
-        sortDir: read(input.source.active.query.sortDir, fieldId),
-        calc: read(input.source.active.table.calc, fieldId)
+        field: store.read(input.source.active.fields.all, fieldId),
+        grouped: store.read(input.source.active.query.groupFieldId) === fieldId,
+        sortDir: store.read(input.source.active.query.sortDir, fieldId),
+        calc: store.read(input.source.active.table.calc, fieldId)
       }
     },
     isEqual: sameColumn
   })
 
-  const section = createKeyedDerivedStore<string, TableSection | undefined>({
+  const section = store.createKeyedDerivedStore<string, TableSection | undefined>({
     get: key => {
-      if (read(input.source.active.view.type) !== 'table') {
+      if (store.read(input.source.active.view.type) !== 'table') {
         return undefined
       }
 
-      const value = read(input.source.active.sections, key)
+      const value = store.read(input.source.active.sections, key)
       return value
         ? {
             key: value.key,
@@ -128,13 +123,13 @@ export const createTableModel = (input: {
     isEqual: sameSection
   })
 
-  const summary = createKeyedDerivedStore<string, TableSummary | undefined>({
+  const summary = store.createKeyedDerivedStore<string, TableSummary | undefined>({
     get: key => {
-      if (read(input.source.active.view.type) !== 'table') {
+      if (store.read(input.source.active.view.type) !== 'table') {
         return undefined
       }
 
-      const value = read(input.source.active.sections.summary, key)
+      const value = store.read(input.source.active.sections.summary, key)
       return value
         ? {
             byField: value.byField

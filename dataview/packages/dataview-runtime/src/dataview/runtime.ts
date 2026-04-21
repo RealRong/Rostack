@@ -1,8 +1,4 @@
-import {
-  createDerivedStore,
-  joinUnsubscribes,
-  read
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   View
 } from '@dataview/core/contracts'
@@ -46,7 +42,7 @@ import {
 } from '@dataview/runtime/valueEditor'
 
 const bindInlineSessionToView = (input: {
-  activeView: ReturnType<typeof createDerivedStore<View | undefined>>
+  activeView: ReturnType<typeof store.createDerivedStore<View | undefined>>
   items: CreateDataViewRuntimeInput['engine']['source']['active']['items']
   inlineSession: InlineSessionApi
 }) => {
@@ -66,7 +62,7 @@ const bindInlineSessionToView = (input: {
   }
 
   sync()
-  return joinUnsubscribes([
+  return store.joinUnsubscribes([
     input.activeView.subscribe(sync),
     input.items.ids.subscribe(sync)
   ])
@@ -75,7 +71,7 @@ const bindInlineSessionToView = (input: {
 const bindInlineSessionToSelection = (input: {
   selection: ItemSelectionController
   inlineSession: InlineSessionApi
-}) => joinUnsubscribes([
+}) => store.joinUnsubscribes([
   input.inlineSession.store.subscribe(() => {
     const session = input.inlineSession.store.get()
     if (!session) {
@@ -100,7 +96,7 @@ const bindInlineSessionToSelection = (input: {
 ])
 
 const bindMarqueeToView = (input: {
-  activeView: ReturnType<typeof createDerivedStore<View | undefined>>
+  activeView: ReturnType<typeof store.createDerivedStore<View | undefined>>
   marquee: Pick<ReturnType<typeof createMarqueeController>, 'get' | 'clear'>
 }) => {
   let previousViewId = input.activeView.get()?.id
@@ -129,19 +125,19 @@ export const createDataViewRuntime = (
   const valueEditor = createValueEditorApi()
   const activeItemIds = input.engine.source.active.items.ids
   const activeView = input.engine.source.active.view.current
-  const activeSelectionDomain = createDerivedStore({
-    get: () => createItemArraySelectionDomain(read(activeItemIds))
+  const activeSelectionDomain = store.createDerivedStore({
+    get: () => createItemArraySelectionDomain(store.read(activeItemIds))
   })
   const selectionRuntime = createSelectionController({
     domainSource: {
-      get: () => read(activeSelectionDomain),
+      get: () => store.read(activeSelectionDomain),
       subscribe: activeSelectionDomain.subscribe
     }
   })
   const selection = selectionRuntime.controller
   const marquee = createMarqueeController({
     selection,
-    resolveDomain: () => read(activeSelectionDomain)
+    resolveDomain: () => store.read(activeSelectionDomain)
   })
   const fieldsStore = createEntityListStore({
     ids: input.engine.source.doc.fields.ids,
@@ -158,12 +154,12 @@ export const createDataViewRuntime = (
     doc: input.engine.source.doc,
     active: input.engine.source.active,
     page: {
-      queryVisible: createDerivedStore({
-        get: () => read(pageStateStore).query.visible,
+      queryVisible: store.createDerivedStore({
+        get: () => store.read(pageStateStore).query.visible,
         isEqual: Object.is
       }),
-      queryRoute: createDerivedStore({
-        get: () => read(pageStateStore).query.route
+      queryRoute: store.createDerivedStore({
+        get: () => store.read(pageStateStore).query.route
       })
     },
     selection: {
@@ -174,14 +170,14 @@ export const createDataViewRuntime = (
       editing: inlineSession.editing
     }
   }
-  const sessionStore = createDerivedStore<DataViewSessionState>({
+  const sessionStore = store.createDerivedStore<DataViewSessionState>({
     get: () => ({
-      page: read(pageStateStore),
+      page: store.read(pageStateStore),
       editing: {
-        inline: read(inlineSession.store),
-        valueEditor: read(valueEditor.store)
+        inline: store.read(inlineSession.store),
+        valueEditor: store.read(valueEditor.store)
       },
-      selection: read(selection.state.store)
+      selection: store.read(selection.state.store)
     })
   })
   const model = {
@@ -202,7 +198,7 @@ export const createDataViewRuntime = (
     })
   }
 
-  const disposeBindings = joinUnsubscribes([
+  const disposeBindings = store.joinUnsubscribes([
     bindInlineSessionToSelection({
       selection,
       inlineSession

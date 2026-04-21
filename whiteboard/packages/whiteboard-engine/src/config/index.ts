@@ -1,5 +1,5 @@
+import { json } from '@shared/core'
 import type { BoardConfig } from '@whiteboard/core/config'
-import { mergeValue } from '@whiteboard/core/value'
 import {
   DEFAULT_BOARD_CONFIG
 } from '@whiteboard/engine/config/defaults'
@@ -11,4 +11,4 @@ export {
 
 export const resolveBoardConfig = (
   configOverrides?: Partial<BoardConfig>
-): BoardConfig => mergeValue(DEFAULT_BOARD_CONFIG, configOverrides)
+): BoardConfig => json.merge(DEFAULT_BOARD_CONFIG, configOverrides)

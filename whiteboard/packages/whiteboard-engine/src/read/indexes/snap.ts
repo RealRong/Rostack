@@ -3,11 +3,8 @@ import type { NodeId, Rect } from '@whiteboard/core/types'
 import type { SnapCandidate } from '@whiteboard/core/node'
 import type { EngineReadIndex } from '@whiteboard/engine/types/instance'
 import type { Invalidation } from '@whiteboard/core/types'
-import {
-  sameOrder as isSameRefOrder,
-  sameRect as isSameRectTuple,
-  toFiniteOrUndefined
-} from '@shared/core'
+import { equal } from '@shared/core'
+
 
 type Rebuild = 'none' | 'dirty' | 'full'
 
@@ -29,10 +26,10 @@ type RectTuple = {
 }
 
 const toRectTuple = (rect: Rect): RectTuple => ({
-  x: toFiniteOrUndefined(rect.x),
-  y: toFiniteOrUndefined(rect.y),
-  width: toFiniteOrUndefined(rect.width),
-  height: toFiniteOrUndefined(rect.height)
+  x: equal.toFiniteOrUndefined(rect.x),
+  y: equal.toFiniteOrUndefined(rect.y),
+  width: equal.toFiniteOrUndefined(rect.width),
+  height: equal.toFiniteOrUndefined(rect.height)
 })
 
 const canIndexSnapCandidate = (
@@ -196,7 +193,7 @@ export class SnapIndex {
 
       const rect = toRectTuple(resolveSnapRect(entry))
       const current = this.byId.get(nodeId)
-      if (current && isSameRectTuple(current.rect, rect)) {
+      if (current && equal.sameRect(current.rect, rect)) {
         return
       }
 
@@ -212,7 +209,7 @@ export class SnapIndex {
       changed = true
     })
 
-    if (!isSameRefOrder(this.orderedIds, nextOrderedIds)) {
+    if (!equal.sameOrder(this.orderedIds, nextOrderedIds)) {
       this.orderedIds = nextOrderedIds
       this.orderedIdSet = new Set(nextOrderedIds)
       this.orderDirty = true
@@ -249,7 +246,7 @@ export class SnapIndex {
       }
 
       const rect = toRectTuple(resolveSnapRect(entry))
-      if (current && isSameRectTuple(current.rect, rect)) continue
+      if (current && equal.sameRect(current.rect, rect)) continue
 
       this.writeEntry(nodeId, resolveSnapRect(entry), current, true)
       changed = true

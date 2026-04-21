@@ -7,9 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type { FieldId } from '@dataview/core/contracts'
-import {
-  sameMap
-} from '@shared/core'
+import { equal } from '@shared/core'
 import { disableUserSelect } from '@shared/dom'
 import { useDataView } from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'
@@ -25,7 +23,7 @@ interface ColumnWidthPreview {
 const sameWidths = (
   left: ReadonlyMap<FieldId, number>,
   right: ReadonlyMap<FieldId, number>
-) => sameMap(left, right)
+) => equal.sameMap(left, right)
 
 const samePreview = (
   left: ColumnWidthPreview | null,

@@ -1,4 +1,4 @@
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 
 export type HistoryState = {
@@ -11,7 +11,7 @@ export type HistoryState = {
   lastUpdatedAt?: number
 }
 
-export type HistoryApi = ReadStore<HistoryState> & {
+export type HistoryApi = store.ReadStore<HistoryState> & {
   undo: () => CommandResult
   redo: () => CommandResult
   clear: () => void

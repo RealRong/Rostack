@@ -11,10 +11,8 @@ import type {
   QueryBarEntry,
   QueryBarState
 } from '@dataview/runtime/page/session/types'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
+
 
 export interface PageBody {
   viewType?: View['type']
@@ -73,11 +71,11 @@ export interface PageSettings {
 }
 
 export interface PageModel {
-  body: ReadStore<PageBody>
-  header: ReadStore<PageHeader>
-  toolbar: ReadStore<PageToolbar>
-  query: ReadStore<PageQuery>
-  sortPanel: ReadStore<PageSortPanel>
-  sortRow: KeyedReadStore<number, PageSortRow | undefined>
-  settings: ReadStore<PageSettings>
+  body: store.ReadStore<PageBody>
+  header: store.ReadStore<PageHeader>
+  toolbar: store.ReadStore<PageToolbar>
+  query: store.ReadStore<PageQuery>
+  sortPanel: store.ReadStore<PageSortPanel>
+  sortRow: store.KeyedReadStore<number, PageSortRow | undefined>
+  settings: store.ReadStore<PageSettings>
 }

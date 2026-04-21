@@ -16,7 +16,8 @@ import type {
   GalleryCard,
   GallerySection
 } from '@dataview/runtime/model'
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
+
 
 export type {
   GalleryCard,
@@ -30,7 +31,7 @@ export interface GalleryBody extends GalleryBodyModel {
 }
 
 export interface GalleryViewRuntime extends ItemInteractionRuntime {
-  body: ReadStore<GalleryBody>
+  body: store.ReadStore<GalleryBody>
   section: DataViewGalleryModel['section']
   card: DataViewGalleryModel['card']
   content: DataViewGalleryModel['content']

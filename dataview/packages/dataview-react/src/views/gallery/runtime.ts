@@ -10,12 +10,7 @@ import {
   intersects,
   rectIn
 } from '@shared/dom'
-import {
-  createDerivedStore,
-  createValueStore,
-  read,
-  sameOrder
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import { useStoreValue } from '@shared/react'
 import { useCardReorder } from '@dataview/react/views/gallery/reorder'
 import {
@@ -32,9 +27,6 @@ import {
   useRegisterMarqueeScene
 } from '@dataview/react/views/shared/interactionRuntime'
 import type { MarqueeScene } from '@dataview/react/page/marqueeBridge'
-import {
-  type ValueStore
-} from '@shared/core'
 
 const EMPTY_GALLERY_BLOCKS = [] as readonly GalleryBlock[]
 
@@ -53,7 +45,7 @@ const sameBody = (
 export const useGalleryRuntime = (): GalleryViewRuntime => {
   const dataView = useDataView()
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const layoutStore = useMemo<ValueStore<Pick<GalleryBody, 'blocks' | 'totalHeight' | 'columnCount'>>>(() => createValueStore({
+  const layoutStore = useMemo<store.ValueStore<Pick<GalleryBody, 'blocks' | 'totalHeight' | 'columnCount'>>>(() => store.createValueStore({
     blocks: EMPTY_GALLERY_BLOCKS,
     totalHeight: 0,
     columnCount: 1
@@ -66,13 +58,13 @@ export const useGalleryRuntime = (): GalleryViewRuntime => {
   const interaction = useItemDragRuntime({
     itemIds
   })
-  const sectionsStore = useMemo(() => createDerivedStore({
-    get: () => read(dataView.source.active.sections.keys)
+  const sectionsStore = useMemo(() => store.createDerivedStore({
+    get: () => store.read(dataView.source.active.sections.keys)
       .flatMap(key => {
-        const section = read(dataView.source.active.sections, key)
+        const section = store.read(dataView.source.active.sections, key)
         return section ? [section] : []
       }),
-    isEqual: (left, right) => sameOrder(left, right, (before, after) => before === after)
+    isEqual: (left, right) => equal.sameOrder(left, right, (before, after) => before === after)
   }), [dataView.source.active.sections])
   const sections = useStoreValue(sectionsStore)
   const grouped = useStoreValue(dataView.source.active.query.grouped)
@@ -88,14 +80,14 @@ export const useGalleryRuntime = (): GalleryViewRuntime => {
   const cardRectById = useMemo(() => new Map(
     virtual.layout.cards.map(card => [card.id, card.rect] as const)
   ), [virtual.layout.cards])
-  const bodyStore = useMemo(() => createDerivedStore<GalleryBody>({
+  const bodyStore = useMemo(() => store.createDerivedStore<GalleryBody>({
     get: () => {
-      const base = read(dataView.model.gallery.body)
+      const base = store.read(dataView.model.gallery.body)
       if (!base) {
         throw new Error('Gallery body is unavailable.')
       }
 
-      const layout = read(layoutStore)
+      const layout = store.read(layoutStore)
       return {
         ...base,
         blocks: layout.blocks,

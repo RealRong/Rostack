@@ -1,9 +1,7 @@
 import type {
   CustomFieldId
 } from '@dataview/core/contracts'
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import type { ItemId } from '@dataview/engine'
 
 export interface TableRowReorderHint {
@@ -130,5 +128,5 @@ export const showRowHint = (
     rowBeforeId(hint)
   )
 
-  return !sameOrder(nextRowIds, rowIds)
+  return !equal.sameOrder(nextRowIds, rowIds)
 }

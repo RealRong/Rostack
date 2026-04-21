@@ -1,9 +1,7 @@
 import type {
   RecordId
 } from '@dataview/core/contracts'
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   createOrderedKeyedListCollection
 } from '@dataview/engine/active/snapshot/list'
@@ -127,7 +125,7 @@ const buildSections = (input: {
 
     const nextItemIds = input.visibleIdsBySection.get(node.key) ?? EMPTY_ITEM_IDS
     const previousSection = previous?.get(node.key)
-    const publishedItemIds = previousSection && sameOrder(previousSection.items.ids, nextItemIds)
+    const publishedItemIds = previousSection && equal.sameOrder(previousSection.items.ids, nextItemIds)
       ? previousSection.items.ids
       : nextItemIds
     const items = createItemList({
@@ -158,7 +156,7 @@ const buildSections = (input: {
     byKey.set(section.key, section)
   })
 
-  const publishedIds = previous && sameOrder(previous.ids, ids)
+  const publishedIds = previous && equal.sameOrder(previous.ids, ids)
     ? previous.ids
     : ids
   const publishedSections = previous
@@ -240,7 +238,7 @@ const buildItemList = (input: {
   }
 
   const previousIds = input.previous?.ids
-  const publishedIds = previousIds && sameOrder(previousIds, ids)
+  const publishedIds = previousIds && equal.sameOrder(previousIds, ids)
     ? previousIds
     : ids
 
@@ -357,7 +355,7 @@ const syncGroupedSectionProjection = (input: {
     const ids = projectVisibleIds(input.recordIds, previous.byRecord)
     return {
       projection: {
-        ids: sameOrder(ids, previous.ids)
+        ids: equal.sameOrder(ids, previous.ids)
           ? previous.ids
           : ids,
         byRecord: previous.byRecord

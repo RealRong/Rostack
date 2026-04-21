@@ -1,23 +1,28 @@
-import { cloneValue } from '@whiteboard/core/value'
-import { setValueByPath } from '@whiteboard/core/utils/objectPath'
+import { clone } from './json'
+import { set } from './path'
 
-type SetPathMutation = {
+export type SetPathMutation = {
   op: 'set'
   path?: string
   value: unknown
 }
 
-type UnsetPathMutation = {
+export type UnsetPathMutation = {
   op: 'unset'
   path: string
 }
 
-type PathMutation =
+export type PathMutation =
   | SetPathMutation
   | UnsetPathMutation
 
-export const isRecordLike = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
+export const isRecordLike = (
+  value: unknown
+): value is Record<string, unknown> => (
+  typeof value === 'object'
+  && value !== null
+  && !Array.isArray(value)
+)
 
 export const applySetPathMutation = (
   current: unknown,
@@ -26,7 +31,7 @@ export const applySetPathMutation = (
   if (!mutation.path) {
     return {
       ok: true,
-      value: cloneValue(mutation.value)
+      value: clone(mutation.value)
     }
   }
 
@@ -38,7 +43,7 @@ export const applySetPathMutation = (
   }
 
   const nextRoot = isRecordLike(current)
-    ? cloneValue(current)
+    ? clone(current)
     : {}
 
   const parts = mutation.path.split('.').filter(Boolean)
@@ -60,7 +65,7 @@ export const applySetPathMutation = (
     container = nextValue
   }
 
-  setValueByPath(nextRoot, mutation.path, cloneValue(mutation.value))
+  set(nextRoot, mutation.path, clone(mutation.value))
   return {
     ok: true,
     value: nextRoot
@@ -78,7 +83,7 @@ export const applyUnsetPathMutation = (
     }
   }
 
-  const nextRoot = cloneValue(current)
+  const nextRoot = clone(current)
   const parts = mutation.path.split('.').filter(Boolean)
   if (!parts.length) {
     return {
@@ -115,7 +120,7 @@ export const applyUnsetPathMutation = (
   }
 }
 
-export const applyPathMutation = (
+export const apply = (
   current: unknown,
   mutation: PathMutation
 ): { ok: true; value: unknown } | { ok: false; message: string } => {

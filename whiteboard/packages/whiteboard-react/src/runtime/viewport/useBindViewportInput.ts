@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 import { observeElementSize } from '@shared/dom'
-import { createRafTask } from '@shared/core'
+import { scheduler } from '@shared/core'
 import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtime'
 import { resolveWheelInput } from '@whiteboard/react/dom/host/input'
 
@@ -102,7 +102,7 @@ export const useBindViewportInput = ({
       refreshContainerRect()
       editor.input.wheel(input)
     }
-    const wheelTask = createRafTask(flushWheel)
+    const wheelTask = scheduler.createRafTask(flushWheel)
 
     const scheduleWheel = (
       input: WheelInput,

@@ -1,12 +1,4 @@
-import {
-  createDerivedStore,
-  createKeyedDerivedStore,
-  createKeyedStore,
-  joinUnsubscribes,
-  read,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { store as coreStore } from '@shared/core'
 import type { CellRef, ItemId, ViewState as CurrentView } from '@dataview/engine'
 import {
   gridSelection,
@@ -16,14 +8,14 @@ import type { GridSelectionEdges } from '@dataview/table/gridSelection'
 import { tableCell, tableCellKey } from '@dataview/react/views/table/runtime/cell'
 
 export interface TableSelectRuntime {
-  rows: KeyedReadStore<ItemId, boolean>
+  rows: coreStore.KeyedReadStore<ItemId, boolean>
   cells: {
-    state: ReadStore<GridSelection | null>
-    range: ReadStore<GridSelectionEdges | undefined>
-    visible: ReadStore<boolean>
-    cursor: ReadStore<CellRef | undefined>
-    selected: KeyedReadStore<CellRef, boolean>
-    focus: KeyedReadStore<CellRef, boolean>
+    state: coreStore.ReadStore<GridSelection | null>
+    range: coreStore.ReadStore<GridSelectionEdges | undefined>
+    visible: coreStore.ReadStore<boolean>
+    cursor: coreStore.ReadStore<CellRef | undefined>
+    selected: coreStore.KeyedReadStore<CellRef, boolean>
+    focus: coreStore.KeyedReadStore<CellRef, boolean>
   }
   dispose: () => void
 }
@@ -56,7 +48,7 @@ const collectCellKeys = (
 }
 
 const patchBooleanKeyedMembership = (
-  store: ReturnType<typeof createKeyedStore<string, boolean>>,
+  membershipStore: ReturnType<typeof coreStore.createKeyedStore<string, boolean>>,
   previous: ReadonlySet<string>,
   next: ReadonlySet<string>
 ) => {
@@ -75,59 +67,59 @@ const patchBooleanKeyedMembership = (
     return
   }
 
-  store.patch({
+  membershipStore.patch({
     set
   })
 }
 
 export const createTableSelectRuntime = (input: {
-  rowMembershipStore: KeyedReadStore<ItemId, boolean>
-  previewMembershipStore: KeyedReadStore<ItemId, boolean | null>
-  gridSelectionStore: ReadStore<GridSelection | null>
-  currentViewStore: ReadStore<CurrentView | undefined>
-  visibleStore: ReadStore<boolean>
+  rowMembershipStore: coreStore.KeyedReadStore<ItemId, boolean>
+  previewMembershipStore: coreStore.KeyedReadStore<ItemId, boolean | null>
+  gridSelectionStore: coreStore.ReadStore<GridSelection | null>
+  currentViewStore: coreStore.ReadStore<CurrentView | undefined>
+  visibleStore: coreStore.ReadStore<boolean>
 }): TableSelectRuntime => {
-  const rows = createKeyedDerivedStore<ItemId, boolean>({
+  const rows = coreStore.createKeyedDerivedStore<ItemId, boolean>({
     keyOf: rowId => rowId,
     get: rowId => {
-      const preview = read(input.previewMembershipStore, rowId)
-      return preview ?? read(input.rowMembershipStore, rowId)
+      const preview = coreStore.read(input.previewMembershipStore, rowId)
+      return preview ?? coreStore.read(input.rowMembershipStore, rowId)
     },
     isEqual: Object.is
   })
-  const range = createDerivedStore<GridSelectionEdges | undefined>({
+  const range = coreStore.createDerivedStore<GridSelectionEdges | undefined>({
     get: () => {
-      const current = read(input.currentViewStore)
-      const selection = read(input.gridSelectionStore)
+      const current = coreStore.read(input.currentViewStore)
+      const selection = coreStore.read(input.gridSelectionStore)
       return current && selection
         ? gridSelection.edges(selection, current.items, current.fields)
         : undefined
     },
     isEqual: sameRange
   })
-  const cursor = createDerivedStore<CellRef | undefined>({
-    get: () => gridSelection.focus(read(input.gridSelectionStore)),
+  const cursor = coreStore.createDerivedStore<CellRef | undefined>({
+    get: () => gridSelection.focus(coreStore.read(input.gridSelectionStore)),
     isEqual: (left, right) => (
       left?.itemId === right?.itemId
       && left?.fieldId === right?.fieldId
     )
   })
-  const selectedState = createKeyedStore<string, boolean>({
+  const selectedState = coreStore.createKeyedStore<string, boolean>({
     emptyValue: false,
     isEqual: Object.is
   })
-  const focusState = createKeyedStore<string, boolean>({
+  const focusState = coreStore.createKeyedStore<string, boolean>({
     emptyValue: false,
     isEqual: Object.is
   })
-  const selected = createKeyedDerivedStore<CellRef, boolean>({
+  const selected = coreStore.createKeyedDerivedStore<CellRef, boolean>({
     keyOf: tableCellKey,
-    get: cell => read(selectedState, tableCellKey(cell)),
+    get: cell => coreStore.read(selectedState, tableCellKey(cell)),
     isEqual: Object.is
   })
-  const focus = createKeyedDerivedStore<CellRef, boolean>({
+  const focus = coreStore.createKeyedDerivedStore<CellRef, boolean>({
     keyOf: tableCellKey,
-    get: cell => read(focusState, tableCellKey(cell)),
+    get: cell => coreStore.read(focusState, tableCellKey(cell)),
     isEqual: Object.is
   })
 
@@ -180,7 +172,7 @@ export const createTableSelectRuntime = (input: {
       selected,
       focus
     },
-    dispose: joinUnsubscribes([
+    dispose: coreStore.joinUnsubscribes([
       input.currentViewStore.subscribe(sync),
       input.gridSelectionStore.subscribe(sync)
     ])

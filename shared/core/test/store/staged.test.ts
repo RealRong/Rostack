@@ -1,13 +1,12 @@
 import { describe, expect, test } from 'vitest'
-import {
-  createStagedKeyedStore,
-  createStagedValueStore
-} from '@shared/core'
+import { store } from '@shared/core'
+
+
 
 describe('staged stores', () => {
   test('value store keeps pending writes invisible until flush and clear resets immediately', () => {
     let scheduled = 0
-    const store = createStagedValueStore({
+    const store = store.createStagedValueStore({
       initial: 0,
       schedule: () => {
         scheduled += 1
@@ -30,7 +29,7 @@ describe('staged stores', () => {
 
   test('keyed store flushes built maps and clear restores empty state', () => {
     let scheduled = 0
-    const store = createStagedKeyedStore<string, number, Array<readonly [string, number]>>({
+    const store = store.createStagedKeyedStore<string, number, Array<readonly [string, number]>>({
       schedule: () => {
         scheduled += 1
       },

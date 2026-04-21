@@ -1,6 +1,4 @@
-import {
-  read
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { ViewportInputRuntime } from '@whiteboard/editor/session/viewport'
 import { createAutoPan } from '@whiteboard/editor/input/session/autoPan'
 import type {

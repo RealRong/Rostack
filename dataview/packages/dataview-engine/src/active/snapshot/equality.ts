@@ -3,11 +3,7 @@ import type {
   CalculationDistributionItem,
   CalculationResult
 } from '@dataview/core/calculation'
-import {
-  sameJsonValue,
-  sameMap,
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import type {
   Field,
 } from '@dataview/core/contracts'
@@ -25,23 +21,23 @@ import {
 const equalIds = <T,>(
   left: readonly T[],
   right: readonly T[]
-) => sameOrder(left, right)
+) => equal.sameOrder(left, right)
 
 const equalField = (
   left: Field,
   right: Field
-) => sameJsonValue(left, right)
+) => equal.sameJsonValue(left, right)
 
 const equalSection = (
   left: Section,
   right: Section
 ) => (
   left.key === right.key
-  && sameJsonValue(left.label, right.label)
+  && equal.sameJsonValue(left.label, right.label)
   && left.color === right.color
   && left.collapsed === right.collapsed
   && equalIds(left.recordIds, right.recordIds)
-  && sameJsonValue(left.bucket, right.bucket)
+  && equal.sameJsonValue(left.bucket, right.bucket)
 )
 
 const equalCalculationDistributionItem = (
@@ -49,7 +45,7 @@ const equalCalculationDistributionItem = (
   right: CalculationDistributionItem
 ) => (
   left.key === right.key
-  && sameJsonValue(left.value, right.value)
+  && equal.sameJsonValue(left.value, right.value)
   && left.count === right.count
   && left.percent === right.percent
   && left.color === right.color
@@ -74,7 +70,7 @@ const equalCalculationResult = (
     case 'distribution':
       return right.kind === 'distribution'
         && left.denominator === right.denominator
-        && sameOrder(left.items, right.items, equalCalculationDistributionItem)
+        && equal.sameOrder(left.items, right.items, equalCalculationDistributionItem)
     case 'empty':
       return right.kind === 'empty'
     default:
@@ -85,7 +81,7 @@ const equalCalculationResult = (
 const equalCalculationCollection = (
   left: CalculationCollection,
   right: CalculationCollection
-) => sameMap(left.byField, right.byField, equalCalculationResult)
+) => equal.sameMap(left.byField, right.byField, equalCalculationResult)
 
 export const sameItemList = (
   left: ItemList,
@@ -114,4 +110,4 @@ export const sameFieldList = (
 export const sameSummariesBySection = (
   left: ReadonlyMap<SectionKey, CalculationCollection>,
   right: ReadonlyMap<SectionKey, CalculationCollection>
-) => sameMap(left, right, equalCalculationCollection)
+) => equal.sameMap(left, right, equalCalculationCollection)

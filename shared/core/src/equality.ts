@@ -1,5 +1,5 @@
 import {
-  isPlainObject
+  equal as sameJson
 } from './json'
 
 export type Equality<T> = (left: T, right: T) => boolean
@@ -221,33 +221,7 @@ export const toFiniteOrUndefined = (
 export const sameJsonValue = (
   left: unknown,
   right: unknown
-): boolean => {
-  if (sameValue(left, right)) {
-    return true
-  }
-
-  if (Array.isArray(left) && Array.isArray(right)) {
-    return sameOrder(left, right, sameJsonValue)
-  }
-
-  if (isPlainObject(left) && isPlainObject(right)) {
-    const leftKeys = Object.keys(left).sort()
-    const rightKeys = Object.keys(right).sort()
-    if (!sameOrder(leftKeys, rightKeys)) {
-      return false
-    }
-
-    for (const key of leftKeys) {
-      if (!sameJsonValue(left[key], right[key])) {
-        return false
-      }
-    }
-
-    return true
-  }
-
-  return false
-}
+): boolean => sameJson(left, right)
 
 export const sameOptionalNumberArray = (
   left?: readonly number[],

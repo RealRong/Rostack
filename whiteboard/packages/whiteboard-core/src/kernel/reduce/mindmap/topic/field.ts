@@ -1,7 +1,7 @@
+import { json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getNode } from '@whiteboard/core/kernel/reduce/runtime'
-import { cloneValue } from '@whiteboard/core/value'
 
 const GEOMETRY_FIELDS = new Set(['size', 'rotation'])
 
@@ -49,7 +49,7 @@ export const createMindmapTopicFieldApi = (
             id,
             topicId,
             field,
-            value: cloneValue((current as Record<string, unknown>)[field])
+            value: json.clone((current as Record<string, unknown>)[field])
           }
     )
     tx._runtime.draft.nodes.set(topicId, setTopicField(current, field, value))
@@ -75,7 +75,7 @@ export const createMindmapTopicFieldApi = (
       id,
       topicId,
       field,
-      value: cloneValue((current as Record<string, unknown>)[field])
+      value: json.clone((current as Record<string, unknown>)[field])
     })
     tx._runtime.draft.nodes.set(topicId, unsetTopicField(current, field))
     markChange(tx._runtime.changes.nodes, 'update', topicId)

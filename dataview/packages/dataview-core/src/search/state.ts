@@ -1,9 +1,8 @@
 import type {
   Search
 } from '@dataview/core/contracts'
-import {
-  sameOptionalOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
+
 
 const normalizeFieldIds = (
   value: unknown
@@ -67,7 +66,7 @@ export const setSearchQuery = (
 const sameFieldIds = (
   left: readonly string[] | undefined,
   right: readonly string[] | undefined
-) => sameOptionalOrder(
+) => equal.sameOptionalOrder(
   left?.length ? left : undefined,
   right?.length ? right : undefined
 )

@@ -8,10 +8,7 @@ import type {
   Section,
   SectionKey
 } from '@dataview/engine'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   Card,
   CardContent
@@ -41,8 +38,8 @@ export interface KanbanCard extends Card {
 }
 
 export interface DataViewKanbanModel {
-  board: ReadStore<KanbanBoard | null>
-  section: KeyedReadStore<SectionKey, KanbanSection | undefined>
-  card: KeyedReadStore<ItemId, KanbanCard | undefined>
-  content: KeyedReadStore<ItemId, CardContent | undefined>
+  board: store.ReadStore<KanbanBoard | null>
+  section: store.KeyedReadStore<SectionKey, KanbanSection | undefined>
+  card: store.KeyedReadStore<ItemId, KanbanCard | undefined>
+  content: store.KeyedReadStore<ItemId, CardContent | undefined>
 }

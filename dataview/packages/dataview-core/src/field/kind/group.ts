@@ -1,11 +1,9 @@
 import type {
   Token
 } from '@shared/i18n'
-import {
-  compareNullableLast,
-  comparePrimitive,
-  compareText
-} from '@shared/core'
+import { compare } from '@shared/core'
+
+
 
 export interface Bucket {
   key: string
@@ -27,7 +25,7 @@ export interface ResolvedBucket extends Bucket {
 export const compareLabels = (
   left: string,
   right: string
-) => compareText(left, right)
+) => compare.compareText(left, right)
 
 export const readBucketSortLabel = (
   bucket: Bucket
@@ -40,17 +38,17 @@ export const readBucketSortLabel = (
 export const compareGroupSortValues = (
   left: BucketSortValue,
   right: BucketSortValue
-): number => compareNullableLast(left, right, (resolvedLeft, resolvedRight) => {
+): number => compare.compareNullableLast(left, right, (resolvedLeft, resolvedRight) => {
   if (typeof resolvedLeft === 'string' && typeof resolvedRight === 'string') {
     return compareLabels(resolvedLeft, resolvedRight)
   }
 
   if (typeof resolvedLeft === 'number' && typeof resolvedRight === 'number') {
-    return comparePrimitive(resolvedLeft, resolvedRight)
+    return compare.comparePrimitive(resolvedLeft, resolvedRight)
   }
 
   if (typeof resolvedLeft === 'boolean' && typeof resolvedRight === 'boolean') {
-    return comparePrimitive(Number(resolvedLeft), Number(resolvedRight))
+    return compare.comparePrimitive(Number(resolvedLeft), Number(resolvedRight))
   }
 
   return compareLabels(String(resolvedLeft), String(resolvedRight))

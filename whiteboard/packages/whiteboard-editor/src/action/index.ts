@@ -1,3 +1,4 @@
+import { json } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
@@ -48,7 +49,7 @@ const stringifyToolPayload = (
   switch (tool.type) {
     case 'edge':
     case 'insert':
-      return JSON.stringify(tool.template)
+      return json.stableStringify(tool.template)
     case 'draw':
       return tool.mode
     default:

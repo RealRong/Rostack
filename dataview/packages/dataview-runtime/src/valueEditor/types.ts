@@ -1,5 +1,6 @@
 import type { ViewFieldRef } from '@dataview/engine'
-import type { ReadStore, ValueStore } from '@shared/core'
+import { store } from '@shared/core'
+
 
 export type { ViewFieldRef } from '@dataview/engine'
 
@@ -67,6 +68,6 @@ export interface ValueEditorApi {
 }
 
 export interface ValueEditorController extends ValueEditorApi {
-  store: ValueStore<OpenValueEditorInput | null>
-  openStore: ReadStore<boolean>
+  store: store.ValueStore<OpenValueEditorInput | null>
+  openStore: store.ReadStore<boolean>
 }

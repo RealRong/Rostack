@@ -23,7 +23,7 @@ import type {
   ViewType
 } from '@dataview/core/contracts'
 import type { FilterEditorKind } from '@dataview/core/filter'
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type {
   CellRef,
   FieldList,
@@ -203,9 +203,9 @@ export interface ActiveCellsApi {
 }
 
 export interface ActiveViewApi {
-  id: ReadStore<ViewId | undefined>
-  config: ReadStore<View | undefined>
-  state: ReadStore<ViewState | undefined>
+  id: store.ReadStore<ViewId | undefined>
+  config: store.ReadStore<View | undefined>
+  state: store.ReadStore<ViewState | undefined>
   read: ActiveViewReadApi
   changeType: (type: ViewType) => void
   search: {

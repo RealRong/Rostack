@@ -11,9 +11,7 @@ import type {
   ViewStageMetrics
 } from '@dataview/engine/contracts'
 import { impact as commitImpact } from '@dataview/core/commit/impact'
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type {
   DeriveAction,
@@ -62,7 +60,7 @@ const resolveSummaryAction = (input: {
   }
 
   if (!input.calcFields.length) {
-    return sameOrder(input.previousSections.order, input.sections.order)
+    return equal.sameOrder(input.previousSections.order, input.sections.order)
       ? 'reuse'
       : 'sync'
   }
@@ -92,7 +90,7 @@ const resolveSummaryAction = (input: {
   }
 
   if (
-    !sameOrder(input.previousSections.order, input.sections.order)
+    !equal.sameOrder(input.previousSections.order, input.sections.order)
     || hasMembershipChanges(input.impact.sections)
   ) {
     return 'sync'

@@ -4,10 +4,9 @@ import type {
   EntityTable,
   RecordId
 } from '@dataview/core/contracts/state'
-import {
-  createOrderedKeyedCollection,
-  hasPatchChanges
-} from '@shared/core'
+import { collection, json } from '@shared/core'
+
+
 
 const cloneRecord = (
   record: DataRecord
@@ -69,7 +68,7 @@ const mergePatch = <TEntity extends object>(
     return current
   }
 
-  if (!hasPatchChanges(current, patch)) {
+  if (!json.hasPatchChanges(current, patch)) {
     return current
   }
 
@@ -215,7 +214,7 @@ const remove = <TId extends string, TEntity extends { id: TId }>(
 
 const access = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>
-) => createOrderedKeyedCollection({
+) => collection.createOrderedKeyedCollection({
   ids: table.order,
   get: entityId => table.byId[entityId]
 })
@@ -244,7 +243,7 @@ export const entityTable = {
     remove
   },
   patch: {
-    same: hasPatchChanges,
+    same: json.hasPatchChanges,
     merge: mergePatch
   },
   overlay: createOverlay

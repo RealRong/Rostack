@@ -3,10 +3,7 @@ import type {
   Box,
   Point
 } from '@shared/dom'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   ItemSelectionSnapshot,
   SelectionScope,
@@ -25,11 +22,11 @@ export interface MarqueeSessionState {
 }
 
 export interface MarqueeSessionApi {
-  store: ReadStore<MarqueeSessionState | null>
-  activeStore: ReadStore<boolean>
+  store: store.ReadStore<MarqueeSessionState | null>
+  activeStore: store.ReadStore<boolean>
   preview: {
-    membership: KeyedReadStore<ItemId, boolean | null>
-    scopeSummary: KeyedReadStore<SelectionScope<ItemId>, SelectionSummary | null>
+    membership: store.KeyedReadStore<ItemId, boolean | null>
+    scopeSummary: store.KeyedReadStore<SelectionScope<ItemId>, SelectionSummary | null>
   }
   get(): MarqueeSessionState | null
 }

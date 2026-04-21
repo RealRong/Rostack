@@ -3,10 +3,7 @@ import type {
   RecordId,
   View
 } from '@dataview/core/contracts'
-import {
-  sameOrder,
-  trimLowercase
-} from '@shared/core'
+import { equal, string } from '@shared/core'
 import {
   field as fieldApi
 } from '@dataview/core/field'
@@ -613,7 +610,7 @@ const resolveSearchMatches = (input: {
   recordOrder: ReadonlyMap<RecordId, number>
   previous?: QueryState
 }): SearchMatches | undefined => {
-  const query = trimLowercase(input.search.query)
+  const query = string.trimLowercase(input.search.query)
   if (!query) {
     return undefined
   }
@@ -1070,13 +1067,13 @@ const publishQueryState = (input: {
   search?: SearchMatches
 }): QueryState => {
   const previous = input.previous
-  const nextMatched = previous && sameOrder(previous.records.matched, input.matched)
+  const nextMatched = previous && equal.sameOrder(previous.records.matched, input.matched)
     ? previous.records.matched
     : input.matched
-  const nextOrdered = previous && sameOrder(previous.records.ordered, input.ordered)
+  const nextOrdered = previous && equal.sameOrder(previous.records.ordered, input.ordered)
     ? previous.records.ordered
     : input.ordered
-  const nextVisible = previous && sameOrder(previous.records.visible, input.visible)
+  const nextVisible = previous && equal.sameOrder(previous.records.visible, input.visible)
     ? previous.records.visible
     : input.visible
   const nextRecords = previous
@@ -1099,11 +1096,11 @@ const publishQueryState = (input: {
         || (
           previous.plan.watch.search !== 'all'
           && input.plan.watch.search !== 'all'
-          && sameOrder(previous.plan.watch.search, input.plan.watch.search)
+          && equal.sameOrder(previous.plan.watch.search, input.plan.watch.search)
         )
       )
-      && sameOrder(previous.plan.watch.filter, input.plan.watch.filter)
-      && sameOrder(previous.plan.watch.sort, input.plan.watch.sort)
+      && equal.sameOrder(previous.plan.watch.filter, input.plan.watch.filter)
+      && equal.sameOrder(previous.plan.watch.sort, input.plan.watch.sort)
         ? previous.plan
         : input.plan
     ),
@@ -1114,7 +1111,7 @@ const publishQueryState = (input: {
             && previous.search.query === input.search.query
             && previous.search.sourceKey === input.search.sourceKey
             && previous.search.sourceRevisionKey === input.search.sourceRevisionKey
-            && sameOrder(previous.search.matched, input.search.matched)
+            && equal.sameOrder(previous.search.matched, input.search.matched)
               ? previous.search
               : {
                   query: input.search.query,

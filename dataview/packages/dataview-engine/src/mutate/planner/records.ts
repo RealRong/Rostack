@@ -13,10 +13,7 @@ import { field as fieldApi } from '@dataview/core/field'
 import {
   fieldSpec
 } from '@dataview/core/field/spec'
-import {
-  isNonEmptyString,
-  trimToUndefined
-} from '@shared/core'
+import { string } from '@shared/core'
 import { createRecordId } from '@dataview/engine/mutate/entityId'
 import type {
   PlannedActionResult,
@@ -117,7 +114,7 @@ const validateWritableField = (
   fieldId: FieldId,
   path: string
 ): boolean => {
-  if (!isNonEmptyString(fieldId)) {
+  if (!string.isNonEmptyString(fieldId)) {
     scope.issue(
       'record.fields.invalidField',
       'record.fields.writeMany requires non-empty field ids',
@@ -142,7 +139,7 @@ const lowerRecordCreate = (
   scope: PlannerScope,
   action: Extract<Action, { type: 'record.create' }>
 ): PlannedActionResult => {
-  const explicitRecordId = trimToUndefined(action.input.id)
+  const explicitRecordId = string.trimToUndefined(action.input.id)
 
   if (action.input.id !== undefined && !explicitRecordId) {
     scope.issue(
@@ -164,7 +161,7 @@ const lowerRecordCreate = (
 
   const record = {
     id: explicitRecordId || createRecordId(),
-    title: trimToUndefined(action.input.title) ?? '',
+    title: string.trimToUndefined(action.input.title) ?? '',
     type: action.input.type ?? resolveDefaultRecordType(scope.reader),
     values: resolveRecordCreateValues(scope.reader, action.input.values),
     meta: action.input.meta

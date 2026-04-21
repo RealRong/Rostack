@@ -3,7 +3,7 @@ import type {
   WhiteboardRuntime
 } from '@whiteboard/react/types/runtime'
 import { useStoreValue } from '@shared/react'
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import { useWhiteboardServices } from '@whiteboard/react/runtime/hooks/useWhiteboard'
 
 type Tool = ReturnType<WhiteboardInstance['store']['tool']['get']>
@@ -16,7 +16,7 @@ export const useEditorRuntime = (): WhiteboardRuntime => {
 export const useEditor = (): WhiteboardRuntime => useEditorRuntime()
 
 export const useEditorStore = <T,>(
-  selector: (editor: WhiteboardRuntime) => ReadStore<T>
+  selector: (editor: WhiteboardRuntime) => store.ReadStore<T>
 ): T => {
   const editor = useEditorRuntime()
   return useStoreValue(selector(editor))

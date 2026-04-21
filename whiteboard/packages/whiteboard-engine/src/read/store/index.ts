@@ -16,7 +16,7 @@ import {
   type Point,
   type Rect
 } from '@whiteboard/core/types'
-import { createValueStore, presentValues } from '@shared/core'
+import { collection, store } from '@shared/core'
 import { DEFAULT_TUNING } from '@whiteboard/engine/config'
 import { RESET_INVALIDATION } from '@whiteboard/engine/read/invalidation'
 import { EdgeRectIndex, NodeRectIndex, SnapIndex } from '@whiteboard/engine/read/indexes'
@@ -78,8 +78,8 @@ export const createRead = ({
     model,
     index
   })
-  const background = createValueStore(readDocument().background)
-  const scene = createValueStore(
+  const background = store.createValueStore(readDocument().background)
+  const scene = store.createValueStore(
     documentApi.list.canvasRefs(readDocument()) as readonly CanvasItemRef[]
   )
 
@@ -116,11 +116,11 @@ export const createRead = ({
 
   const readNodes: EngineRead['node']['nodes'] = (
     nodeIds
-  ) => presentValues(nodeIds, (nodeId) => nodeProjection.item.get(nodeId)?.node)
+  ) => collection.presentValues(nodeIds, (nodeId) => nodeProjection.item.get(nodeId)?.node)
 
   const readEdges: EngineRead['edge']['edges'] = (
     edgeIds
-  ) => presentValues(edgeIds, (edgeId) => edgeProjection.item.get(edgeId)?.edge)
+  ) => collection.presentValues(edgeIds, (edgeId) => edgeProjection.item.get(edgeId)?.edge)
 
   const readOrderedNodes = (): Node[] => [...readNodes(nodeProjection.list.get())]
 

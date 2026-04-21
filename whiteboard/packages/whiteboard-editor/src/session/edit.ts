@@ -5,8 +5,8 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { ValueStore } from '@shared/core'
-import { createCommandState } from '@whiteboard/editor/session/store'
+import { store as sharedStore } from '@shared/core'
+
 
 export type EditField = 'text' | 'title'
 export type EditEmptyBehavior = 'keep' | 'remove' | 'default'
@@ -65,7 +65,7 @@ export type EditSession =
   | EdgeLabelEditSession
   | null
 
-export type EditStore = ValueStore<EditSession>
+export type EditStore = sharedStore.ValueStore<EditSession>
 
 export type EditMutate = {
   set: (session: NonNullable<EditSession>) => void
@@ -82,7 +82,7 @@ export type EditState = {
 }
 
 export const createEditState = (): EditState => {
-  const state = createCommandState<EditSession>({
+  const state = sharedStore.createNormalizedValue<EditSession>({
     initial: null
   })
   const source = state.store

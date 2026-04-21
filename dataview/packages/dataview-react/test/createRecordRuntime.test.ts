@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { afterEach, test, vi } from 'vitest'
-import { createValueStore } from '@shared/core'
+import { store } from '@shared/core'
 import { createCreateRecordApi } from '@dataview/runtime/createRecord'
 
 afterEach(() => {
@@ -10,7 +10,7 @@ afterEach(() => {
 test('createRecord runtime retries opening until the created record becomes available', () => {
   vi.useFakeTimers()
 
-  const activeView = createValueStore({
+  const activeView = store.createValueStore({
     initial: {
       id: 'view_table',
       type: 'table',
@@ -57,7 +57,7 @@ test('createRecord runtime retries opening until the created record becomes avai
 test('createRecord runtime cancels pending retries when the owner view changes', () => {
   vi.useFakeTimers()
 
-  const activeView = createValueStore({
+  const activeView = store.createValueStore({
     initial: {
       id: 'view_table',
       type: 'table',

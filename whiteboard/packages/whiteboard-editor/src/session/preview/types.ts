@@ -15,7 +15,7 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type { Size } from '@whiteboard/core/types'
-import type { KeyedReadStore, ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type {
   DrawPreview
 } from '@whiteboard/editor/session/draw/state'
@@ -149,13 +149,13 @@ export type EditorInputPreviewState = {
 }
 
 export type EditorInputPreviewSelectors = {
-  node: KeyedReadStore<NodeId, NodePreviewProjection>
-  edge: KeyedReadStore<EdgeId, EdgePreviewProjection>
-  draw: ReadStore<DrawPreview | null>
-  marquee: ReadStore<MarqueePreview | undefined>
-  mindmapPreview: ReadStore<MindmapPreviewState | undefined>
-  edgeGuide: ReadStore<EdgeGuide>
-  snap: ReadStore<readonly Guide[]>
+  node: store.KeyedReadStore<NodeId, NodePreviewProjection>
+  edge: store.KeyedReadStore<EdgeId, EdgePreviewProjection>
+  draw: store.ReadStore<DrawPreview | null>
+  marquee: store.ReadStore<MarqueePreview | undefined>
+  mindmapPreview: store.ReadStore<MindmapPreviewState | undefined>
+  edgeGuide: store.ReadStore<EdgeGuide>
+  snap: store.ReadStore<readonly Guide[]>
 }
 
 export type EditorInputPreviewWrite = {

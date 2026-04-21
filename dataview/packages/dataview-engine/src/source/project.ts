@@ -23,7 +23,7 @@ import type {
 import {
   fieldSpec
 } from '@dataview/core/field/spec'
-import { sameOrder } from '@shared/core'
+import { equal } from '@shared/core'
 import type {
   ViewRuntimeDelta,
 } from '@dataview/engine/contracts/state'
@@ -653,7 +653,7 @@ export const projectViewPublishDelta = (input: {
       )
     : previous
       ? collectRemovedKeys(previous.sections.ids, next.sections.ids).length
-          || !sameOrder(previous.sections.ids, next.sections.ids)
+          || !equal.sameOrder(previous.sections.ids, next.sections.ids)
           ? next.sections.ids
           : next.sections.ids.filter(sectionKey => previous.sections.get(sectionKey) !== next.sections.get(sectionKey))
       : next.sections.ids
@@ -701,8 +701,8 @@ export const projectViewPublishDelta = (input: {
     || previous?.query.filters !== next.query.filters
     || previous?.query.sort !== next.query.sort
     || previous?.query.group !== next.query.group
-    || !sameOrder(previousFilterFieldIds, filterFieldIds)
-    || !sameOrder(previousSortFieldIds, sortFieldIds)
+    || !equal.sameOrder(previousFilterFieldIds, filterFieldIds)
+    || !equal.sameOrder(previousSortFieldIds, sortFieldIds)
     || !sameMapValues(previousSortDir, sortDir)
   )
   const tableChanged = (

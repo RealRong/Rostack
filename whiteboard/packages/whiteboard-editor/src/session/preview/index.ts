@@ -1,4 +1,4 @@
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import { type ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type { HoverStore } from '@whiteboard/editor/input/hover/store'
@@ -25,7 +25,7 @@ export const createEditorInputPreview = ({
   hover
 }: {
   viewport: ViewportRuntime['read']
-  gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
+  gesture: Pick<store.ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
   hover: Pick<HoverStore, 'get' | 'subscribe'>
 }): EditorInputPreview => {
   const state = createInputPreviewState({

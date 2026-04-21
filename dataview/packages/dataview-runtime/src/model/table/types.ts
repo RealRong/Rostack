@@ -12,10 +12,8 @@ import type {
   Section,
   SectionKey
 } from '@dataview/engine'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
+
 
 export interface TableBody {
   viewId: ViewId
@@ -46,8 +44,8 @@ export interface TableSummary {
 }
 
 export interface DataViewTableModel {
-  body: ReadStore<TableBody | null>
-  column: KeyedReadStore<FieldId, TableColumn | undefined>
-  section: KeyedReadStore<SectionKey, TableSection | undefined>
-  summary: KeyedReadStore<SectionKey, TableSummary | undefined>
+  body: store.ReadStore<TableBody | null>
+  column: store.KeyedReadStore<FieldId, TableColumn | undefined>
+  section: store.KeyedReadStore<SectionKey, TableSection | undefined>
+  summary: store.KeyedReadStore<SectionKey, TableSummary | undefined>
 }

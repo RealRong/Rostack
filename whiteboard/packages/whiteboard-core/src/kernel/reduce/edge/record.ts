@@ -1,8 +1,7 @@
+import { json, record } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
-import { applyPathMutation } from '@whiteboard/core/utils/recordMutation'
-import { cloneValue } from '@whiteboard/core/value'
 
 const applyEdgeRecordMutation = (
   edge: import('@whiteboard/core/types').Edge,
@@ -12,7 +11,7 @@ const applyEdgeRecordMutation = (
   const current = scope === 'data'
     ? edge.data
     : edge.style
-  const result = applyPathMutation(current, mutation)
+  const result = record.apply(current, mutation)
   if (!result.ok) {
     return result
   }
@@ -51,12 +50,12 @@ export const createEdgeRecordApi = (
           scope,
           path
         }
-      : {
+        : {
           type: 'edge.record.set',
           id,
           scope,
           path,
-          value: cloneValue(previous)
+          value: json.clone(previous)
         })
     const next = applyEdgeRecordMutation(current, scope, {
       op: 'set',
@@ -87,7 +86,7 @@ export const createEdgeRecordApi = (
       id,
       scope,
       path,
-      value: cloneValue(tx.read.record.path(currentRoot, path))
+      value: json.clone(tx.read.record.path(currentRoot, path))
     })
     const next = applyEdgeRecordMutation(current, scope, {
       op: 'unset',

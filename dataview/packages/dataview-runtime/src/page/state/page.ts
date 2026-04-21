@@ -4,12 +4,7 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  createDerivedStore,
-  read,
-  sameIdOrder,
-  type ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import {
   cloneSettingsRoute,
   normalizeSettingsRoute
@@ -108,18 +103,18 @@ export const pageState = (input: {
 }
 
 export const createPageStateStore = (options: {
-  fields: ReadStore<readonly CustomField[]>
-  activeViewId: ReadStore<ViewId | undefined>
-  activeView: ReadStore<View | undefined>
-  page: ReadStore<PageSessionState>
-  valueEditorOpen: ReadStore<boolean>
-}) => createDerivedStore<PageState>({
+  fields: store.ReadStore<readonly CustomField[]>
+  activeViewId: store.ReadStore<ViewId | undefined>
+  activeView: store.ReadStore<View | undefined>
+  page: store.ReadStore<PageSessionState>
+  valueEditorOpen: store.ReadStore<boolean>
+}) => store.createDerivedStore<PageState>({
   get: () => pageState({
-    fields: read(options.fields),
-    activeViewId: read(options.activeViewId),
-    activeView: read(options.activeView),
-    page: read(options.page),
-    valueEditorOpen: read(options.valueEditorOpen)
+    fields: store.read(options.fields),
+    activeViewId: store.read(options.activeViewId),
+    activeView: store.read(options.activeView),
+    page: store.read(options.page),
+    valueEditorOpen: store.read(options.valueEditorOpen)
   }),
   isEqual: (left, right) => (
     left.lock === right.lock

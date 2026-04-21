@@ -24,10 +24,7 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   BatchApplyOptions,
   Command,
@@ -59,8 +56,8 @@ export type EdgeRectHitOptions = {
 }
 
 export type NodeRead = {
-  list: ReadStore<readonly NodeId[]>
-  item: KeyedReadStore<NodeId, Readonly<NodeItem> | undefined>
+  list: store.ReadStore<readonly NodeId[]>
+  item: store.KeyedReadStore<NodeId, Readonly<NodeItem> | undefined>
   nodes: (nodeIds: readonly NodeId[]) => readonly Node[]
   geometry: (nodeId: NodeId) => NodeGeometry | undefined
   rect: (nodeId: NodeId) => Rect | undefined
@@ -107,20 +104,20 @@ export type TargetRead = {
 }
 
 export type EdgeRead = {
-  list: ReadStore<readonly EdgeId[]>
-  item: KeyedReadStore<EdgeId, Readonly<EdgeItem> | undefined>
+  list: store.ReadStore<readonly EdgeId[]>
+  item: store.KeyedReadStore<EdgeId, Readonly<EdgeItem> | undefined>
   edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
   related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
   idsInRect: (rect: Rect, options?: EdgeRectHitOptions) => EdgeId[]
 }
 
 export type MindmapRead = {
-  list: ReadStore<readonly NodeId[]>
-  item: KeyedReadStore<NodeId, Readonly<MindmapItem> | undefined>
+  list: store.ReadStore<readonly NodeId[]>
+  item: store.KeyedReadStore<NodeId, Readonly<MindmapItem> | undefined>
 }
 
 export type SceneRead = {
-  list: ReadStore<readonly CanvasItemRef[]>
+  list: store.ReadStore<readonly CanvasItemRef[]>
 }
 
 export type SliceRead = {
@@ -134,7 +131,7 @@ export type SliceRead = {
 
 export type EngineRead = {
   document: {
-    background: ReadStore<Document['background'] | undefined>
+    background: store.ReadStore<Document['background'] | undefined>
     bounds: () => Rect | undefined
   }
   frame: FrameRead
@@ -156,7 +153,7 @@ export type Engine = {
     get: () => Document
   }
   read: EngineRead
-  write: ReadStore<EngineWrite | null>
+  write: store.ReadStore<EngineWrite | null>
   execute: <C extends Command>(
     command: C,
     options?: ExecuteOptions

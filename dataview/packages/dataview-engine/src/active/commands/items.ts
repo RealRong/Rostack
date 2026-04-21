@@ -8,7 +8,7 @@ import type {
 import { field as fieldApi } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/group'
 import { view as viewApi } from '@dataview/core/view'
-import { sameJsonValue, unique } from '@shared/core'
+import { collection, equal } from '@shared/core'
 import type {
   ActiveItemsApi,
   ActiveViewReadApi,
@@ -97,7 +97,7 @@ const createGroupValueActions = (input: {
         : next.value
     }
 
-    if (sameJsonValue(initialValue, currentValue)) {
+    if (equal.sameJsonValue(initialValue, currentValue)) {
       continue
     }
 
@@ -162,7 +162,7 @@ export const planMove = (
         ...remaining,
         ...validIds
       ]
-  const recordIds = unique(validIds.flatMap(id => {
+  const recordIds = collection.unique(validIds.flatMap(id => {
     const recordId = state.items.get(id)?.recordId
     return recordId ? [recordId] : []
   }))

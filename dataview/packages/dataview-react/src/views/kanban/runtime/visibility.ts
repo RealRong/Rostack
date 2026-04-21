@@ -12,13 +12,7 @@ import type {
   Section,
   SectionKey
 } from '@dataview/engine'
-import {
-  createKeyedStore,
-  createValueStore,
-  sameOrder,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { equal, store as coreStore } from '@shared/core'
 import type { KanbanVisibility } from '@dataview/react/views/kanban/types'
 
 const sameVisibility = (
@@ -27,7 +21,7 @@ const sameVisibility = (
 ) => left === right || (
   !!left
   && !!right
-  && sameOrder(left.ids, right.ids)
+  && equal.sameOrder(left.ids, right.ids)
   && left.visible === right.visible
   && left.hidden === right.hidden
   && left.more === right.more
@@ -77,8 +71,8 @@ const resolveVisibility = (input: {
 }
 
 export interface KanbanVisibilityRuntime {
-  section: KeyedReadStore<SectionKey, KanbanVisibility | undefined>
-  version: ReadStore<number>
+  section: coreStore.KeyedReadStore<SectionKey, KanbanVisibility | undefined>
+  version: coreStore.ReadStore<number>
   showMore: (sectionKey: SectionKey) => void
   reset: () => void
   all: () => ReadonlyMap<SectionKey, KanbanVisibility | undefined>
@@ -101,12 +95,12 @@ export const useKanbanVisibility = (input: {
       ] as const)
     )
   }
-  const store = useMemo(() => createKeyedStore<SectionKey, KanbanVisibility | undefined>({
+  const visibilityStore = useMemo(() => coreStore.createKeyedStore<SectionKey, KanbanVisibility | undefined>({
     emptyValue: undefined,
     initial: initialRef.current ?? undefined,
     isEqual: sameVisibility
   }), [])
-  const version = useMemo(() => createValueStore(0), [])
+  const version = useMemo(() => coreStore.createValueStore(0), [])
   const [expandedCountBySectionKey, setExpandedCountBySectionKey] = useState<Partial<Record<SectionKey, number>>>({})
   const previousSectionLengthsRef = useRef(new Map<SectionKey, number>())
   const sectionIdsByKey = useMemo(() => new Map(
@@ -193,7 +187,7 @@ export const useKanbanVisibility = (input: {
   }, [input.cardsPerColumn, input.sections])
 
   useEffect(() => {
-    const current = store.all()
+    const current = visibilityStore.all()
     const activeSectionKeys = new Set(input.sections.map(section => section.key))
     const set: Array<readonly [SectionKey, KanbanVisibility | undefined]> = []
     const del: SectionKey[] = []
@@ -220,7 +214,7 @@ export const useKanbanVisibility = (input: {
       return
     }
 
-    store.patch({
+    visibilityStore.patch({
       ...(set.length
         ? { set }
         : {}),
@@ -234,7 +228,7 @@ export const useKanbanVisibility = (input: {
     expandedCountBySectionKey,
     input.cardsPerColumn,
     input.sections,
-    store
+    visibilityStore
   ])
 
   const showMore = useCallback((sectionKey: SectionKey) => {
@@ -273,15 +267,15 @@ export const useKanbanVisibility = (input: {
   }, [input.cardsPerColumn, sectionIdsByKey])
 
   return useMemo(() => ({
-    section: store,
+    section: visibilityStore,
     version,
     showMore,
     reset,
-    all: () => store.all()
+    all: () => visibilityStore.all()
   }), [
     reset,
     showMore,
-    store,
+    visibilityStore,
     version
   ])
 }

@@ -2,10 +2,7 @@ import type {
   Action,
   RecordId
 } from '@dataview/core/contracts'
-import {
-  read,
-  unique
-} from '@shared/core'
+import { collection, store } from '@shared/core'
 import type {
   ActionResult,
   DocumentSource,
@@ -18,7 +15,7 @@ export const createRecordsApi = (options: {
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): RecordsApi => {
   const writeMany = (input: RecordFieldWriteManyInput) => {
-    const recordIds = unique(input.recordIds)
+    const recordIds = collection.unique(input.recordIds)
     if (!recordIds.length) {
       return
     }
@@ -33,7 +30,7 @@ export const createRecordsApi = (options: {
   }
 
   return {
-    get: recordId => read(options.source.records, recordId),
+    get: recordId => store.read(options.source.records, recordId),
     create: input => {
       const result = options.dispatch({
         type: 'record.create',
@@ -51,7 +48,7 @@ export const createRecordsApi = (options: {
       })
     },
     removeMany: recordIds => {
-      const nextRecordIds = unique(recordIds)
+      const nextRecordIds = collection.unique(recordIds)
       if (!nextRecordIds.length) {
         return
       }

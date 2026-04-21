@@ -1,3 +1,4 @@
+import { json } from '@shared/core'
 import type { Rect, Size } from '@whiteboard/core/types'
 import type { ResizeDirection } from '@whiteboard/core/node/transform'
 
@@ -338,7 +339,7 @@ export const readTextLayoutInput = (
 
 export const buildTextLayoutKey = (
   input: Omit<TextLayoutInput, 'nodeId'>
-): string => JSON.stringify(input)
+): string => json.stableStringify(input)
 
 export const shouldPatchTextLayout = (
   node: {

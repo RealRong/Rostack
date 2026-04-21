@@ -1,11 +1,11 @@
-import { createValueStore, type ReadStore } from '@shared/core'
+import { store as coreStore } from '@shared/core'
 import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
 
 export type HoverState = {
   edgeGuide?: EdgeGuide
 }
 
-export type HoverStore = Pick<ReadStore<HoverState>, 'get' | 'subscribe'> & {
+export type HoverStore = Pick<coreStore.ReadStore<HoverState>, 'get' | 'subscribe'> & {
   set: (
     next:
       | HoverState
@@ -17,21 +17,21 @@ export type HoverStore = Pick<ReadStore<HoverState>, 'get' | 'subscribe'> & {
 const EMPTY_HOVER_STATE: HoverState = {}
 
 export const createHoverStore = (): HoverStore => {
-  const store = createValueStore<HoverState>(EMPTY_HOVER_STATE)
+  const hoverStore = coreStore.createValueStore<HoverState>(EMPTY_HOVER_STATE)
   let current = EMPTY_HOVER_STATE
 
   return {
-    get: store.get,
-    subscribe: store.subscribe,
+    get: hoverStore.get,
+    subscribe: hoverStore.subscribe,
     set: (next) => {
       current = typeof next === 'function'
         ? next(current)
         : next
-      store.set(current)
+      hoverStore.set(current)
     },
     reset: () => {
       current = EMPTY_HOVER_STATE
-      store.set(EMPTY_HOVER_STATE)
+      hoverStore.set(EMPTY_HOVER_STATE)
     }
   }
 }

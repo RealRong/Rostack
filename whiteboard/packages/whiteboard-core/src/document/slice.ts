@@ -1,3 +1,4 @@
+import { json } from '@shared/core'
 import { buildEdgeCreateOperation } from '@whiteboard/core/edge/commands'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
@@ -33,7 +34,6 @@ import type {
   SliceRoots
 } from '@whiteboard/core/types/document'
 import { document as documentApi } from '@whiteboard/core/document'
-import { cloneValue } from '@whiteboard/core/value'
 
 type ExportNodesInput = {
   doc: Document
@@ -100,12 +100,12 @@ const toEdgeNodeSnapshot = (
 const cloneEdgeEnd = (end: EdgeEnd): EdgeEnd => (
   edgeApi.guard.isNodeEnd(end)
     ? {
-      ...cloneValue(end),
-      anchor: end.anchor ? cloneValue(end.anchor) : undefined
+      ...json.clone(end),
+      anchor: end.anchor ? json.clone(end.anchor) : undefined
     }
     : {
       kind: 'point',
-      point: cloneValue(end.point)
+      point: json.clone(end.point)
     }
 )
 
@@ -113,25 +113,25 @@ const cloneNode = (node: Node): Node => {
   return {
     id: node.id,
     type: node.type,
-    position: cloneValue(node.position),
-    size: node.size ? cloneValue(node.size) : undefined,
+    position: json.clone(node.position),
+    size: node.size ? json.clone(node.size) : undefined,
     rotation: node.rotation,
     locked: node.locked,
-    data: node.data ? cloneValue(node.data) : undefined,
-    style: node.style ? cloneValue(node.style) : undefined
+    data: node.data ? json.clone(node.data) : undefined,
+    style: node.style ? json.clone(node.style) : undefined
   }
 }
 
 const cloneEdge = (edge: Edge): Edge => ({
-  ...cloneValue(edge),
+  ...json.clone(edge),
   locked: edge.locked,
   source: cloneEdgeEnd(edge.source),
   target: cloneEdgeEnd(edge.target),
-  route: edge.route ? cloneValue(edge.route) : undefined,
-  style: edge.style ? cloneValue(edge.style) : undefined,
+  route: edge.route ? json.clone(edge.route) : undefined,
+  style: edge.style ? json.clone(edge.style) : undefined,
   textMode: edge.textMode,
-  labels: edge.labels ? cloneValue(edge.labels) : undefined,
-  data: edge.data ? cloneValue(edge.data) : undefined
+  labels: edge.labels ? json.clone(edge.labels) : undefined,
+  data: edge.data ? json.clone(edge.data) : undefined
 })
 
 const remapSliceNodeInput = ({
@@ -170,7 +170,7 @@ const remapEdgeEnd = ({
         return {
           kind: 'node',
           nodeId,
-          anchor: end.anchor ? cloneValue(end.anchor) : undefined
+          anchor: end.anchor ? json.clone(end.anchor) : undefined
         } as const
       })()
     : {
@@ -189,7 +189,7 @@ const remapEdgeRoute = (
         points: route.points.map((point) => offsetPoint(point, delta))
       }
     : route
-      ? cloneValue(route)
+      ? json.clone(route)
       : undefined
 )
 
@@ -289,7 +289,7 @@ const getEdgeBounds = ({
 
   const points: Point[] = [
     resolved.source.point,
-    ...edgeApi.route.points(edge.route).map((point) => cloneValue(point)),
+    ...edgeApi.route.points(edge.route).map((point) => json.clone(point)),
     resolved.target.point
   ]
 
@@ -442,11 +442,11 @@ const detachEdge = ({
     ...cloneEdge(edge),
     source: {
       kind: 'point',
-      point: cloneValue(resolved.source.point)
+      point: json.clone(resolved.source.point)
     },
     target: {
       kind: 'point',
-      point: cloneValue(resolved.target.point)
+      point: json.clone(resolved.target.point)
     }
   })
 }
@@ -489,14 +489,14 @@ const detachSelectionEdge = ({
         ? cloneEdgeEnd(edge.source)
         : {
           kind: 'point',
-          point: cloneValue(resolved.source.point)
+          point: json.clone(resolved.source.point)
         },
     target:
       edgeApi.guard.isNodeEnd(edge.target) && nodeIds.has(edge.target.nodeId)
         ? cloneEdgeEnd(edge.target)
         : {
           kind: 'point',
-          point: cloneValue(resolved.target.point)
+          point: json.clone(resolved.target.point)
         }
   })
 }
@@ -805,7 +805,7 @@ export const buildInsertSliceOperations = ({
         y: origin.y - bounds.y
       }
     : delta
-      ? cloneValue(delta)
+      ? json.clone(delta)
       : { x: 0, y: 0 }
 
   const normalizedRoots = toRoots(roots ?? readDefaultRoots(slice))

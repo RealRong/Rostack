@@ -12,10 +12,7 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   ItemId,
   Section,
@@ -30,50 +27,50 @@ import type {
   ViewSortProjection
 } from '@dataview/engine/contracts/view'
 
-export interface EntitySource<K, T> extends KeyedReadStore<K, T | undefined> {
-  ids: ReadStore<readonly K[]>
+export interface EntitySource<K, T> extends store.KeyedReadStore<K, T | undefined> {
+  ids: store.ReadStore<readonly K[]>
 }
 
-export interface SectionSource extends KeyedReadStore<SectionKey, Section | undefined> {
-  keys: ReadStore<readonly SectionKey[]>
-  summary: KeyedReadStore<SectionKey, CalculationCollection | undefined>
+export interface SectionSource extends store.KeyedReadStore<SectionKey, Section | undefined> {
+  keys: store.ReadStore<readonly SectionKey[]>
+  summary: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
 }
 
 export interface ActiveQuerySource {
-  search: ReadStore<ViewSearchProjection>
-  filters: ReadStore<ViewFilterProjection>
-  sort: ReadStore<ViewSortProjection>
-  group: ReadStore<ViewGroupProjection>
-  grouped: ReadStore<boolean>
-  groupFieldId: ReadStore<FieldId | ''>
-  filterFieldIds: ReadStore<readonly FieldId[]>
-  sortFieldIds: ReadStore<readonly FieldId[]>
-  sortDir: KeyedReadStore<FieldId, SortDirection | undefined>
+  search: store.ReadStore<ViewSearchProjection>
+  filters: store.ReadStore<ViewFilterProjection>
+  sort: store.ReadStore<ViewSortProjection>
+  group: store.ReadStore<ViewGroupProjection>
+  grouped: store.ReadStore<boolean>
+  groupFieldId: store.ReadStore<FieldId | ''>
+  filterFieldIds: store.ReadStore<readonly FieldId[]>
+  sortFieldIds: store.ReadStore<readonly FieldId[]>
+  sortDir: store.KeyedReadStore<FieldId, SortDirection | undefined>
 }
 
 export interface ActiveTableSource {
-  wrap: ReadStore<boolean>
-  showVerticalLines: ReadStore<boolean>
-  calc: KeyedReadStore<FieldId, CalculationMetric | undefined>
-  layout: ReadStore<TableLayoutState | null>
+  wrap: store.ReadStore<boolean>
+  showVerticalLines: store.ReadStore<boolean>
+  calc: store.KeyedReadStore<FieldId, CalculationMetric | undefined>
+  layout: store.ReadStore<TableLayoutState | null>
 }
 
 export interface ActiveGallerySource {
-  wrap: ReadStore<boolean>
-  size: ReadStore<CardSize>
-  layout: ReadStore<CardLayout>
-  canReorder: ReadStore<boolean>
-  groupUsesOptionColors: ReadStore<boolean>
+  wrap: store.ReadStore<boolean>
+  size: store.ReadStore<CardSize>
+  layout: store.ReadStore<CardLayout>
+  canReorder: store.ReadStore<boolean>
+  groupUsesOptionColors: store.ReadStore<boolean>
 }
 
 export interface ActiveKanbanSource {
-  wrap: ReadStore<boolean>
-  size: ReadStore<CardSize>
-  layout: ReadStore<CardLayout>
-  canReorder: ReadStore<boolean>
-  groupUsesOptionColors: ReadStore<boolean>
-  fillColumnColor: ReadStore<boolean>
-  cardsPerColumn: ReadStore<KanbanCardsPerColumn>
+  wrap: store.ReadStore<boolean>
+  size: store.ReadStore<CardSize>
+  layout: store.ReadStore<CardLayout>
+  canReorder: store.ReadStore<boolean>
+  groupUsesOptionColors: store.ReadStore<boolean>
+  fillColumnColor: store.ReadStore<boolean>
+  cardsPerColumn: store.ReadStore<KanbanCardsPerColumn>
 }
 
 export interface DocumentSource {
@@ -84,10 +81,10 @@ export interface DocumentSource {
 
 export interface ActiveSource {
   view: {
-    ready: ReadStore<boolean>
-    id: ReadStore<ViewId | undefined>
-    type: ReadStore<View['type'] | undefined>
-    current: ReadStore<View | undefined>
+    ready: store.ReadStore<boolean>
+    id: store.ReadStore<ViewId | undefined>
+    type: store.ReadStore<View['type'] | undefined>
+    current: store.ReadStore<View | undefined>
   }
   items: EntitySource<ItemId, ViewItem>
   sections: SectionSource

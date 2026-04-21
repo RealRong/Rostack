@@ -18,7 +18,7 @@ import {
 import {
   view as viewApi
 } from '@dataview/core/view'
-import { sameJsonValue } from '@shared/core'
+import { equal } from '@shared/core'
 import {
   createRecordId
 } from '@dataview/engine/mutate/entityId'
@@ -199,7 +199,7 @@ const applyFilterDefaults = (input: {
       return false
     }
     const current = derived.get(next.fieldId)
-    if (current !== undefined && !sameJsonValue(current, next.value)) {
+    if (current !== undefined && !equal.sameJsonValue(current, next.value)) {
       return false
     }
 
@@ -262,7 +262,7 @@ const applyGroupDefault = (input: {
     return true
   }
 
-  if (currentValue !== undefined && !sameJsonValue(currentValue, next.value)) {
+  if (currentValue !== undefined && !equal.sameJsonValue(currentValue, next.value)) {
     return false
   }
 

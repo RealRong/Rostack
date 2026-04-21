@@ -3,9 +3,7 @@ import type {
   View
 } from '@dataview/core/contracts'
 import type { Bucket } from '@dataview/core/field'
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -283,7 +281,7 @@ export const syncSectionState = (input: {
     values: input.index.records.values.get(input.view.group.field)?.byRecord,
     recordsByKey: bucketIndex.recordsByKey
   })
-  const nextOrder = sameOrder(previous.order, presentation.order)
+  const nextOrder = equal.sameOrder(previous.order, presentation.order)
     ? previous.order
     : presentation.order
 

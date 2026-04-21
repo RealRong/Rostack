@@ -1,5 +1,5 @@
 import type { EdgeId, Point } from '@whiteboard/core/types'
-import type { ValueStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { EditorPick } from '@whiteboard/editor/types/pick'
 
 export type ModifierKeys = {
@@ -15,7 +15,7 @@ export type PointerSample = {
   world: Point
 }
 
-export type PointerStateStore = Pick<ValueStore<PointerSample | null>, 'get' | 'set'>
+export type PointerStateStore = Pick<store.ValueStore<PointerSample | null>, 'get' | 'set'>
 
 export type PointerPhase =
   | 'down'

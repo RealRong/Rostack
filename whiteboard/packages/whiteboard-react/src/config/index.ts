@@ -1,4 +1,4 @@
-import { mergeValue } from '@whiteboard/core/value'
+import { json } from '@shared/core'
 import {
   DEFAULT_BOARD_CONFIG,
   type BoardConfig as EngineBoardConfig
@@ -47,7 +47,7 @@ type ConfigBundle = {
 const normalizeConfig = (
   options?: WhiteboardOptions
 ): ResolvedConfig => {
-  const merged = mergeValue(DEFAULT_CONFIG, options)
+  const merged = json.merge(DEFAULT_CONFIG, options)
   const minZoom = Math.max(ZOOM_EPSILON, merged.viewport.minZoom)
   const maxZoom = Math.max(minZoom, merged.viewport.maxZoom)
 

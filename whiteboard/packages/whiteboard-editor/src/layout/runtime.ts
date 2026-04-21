@@ -16,7 +16,7 @@ import type {
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
 import type { EditField, EditLayout, EditSession } from '@whiteboard/editor/session/edit'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type {
   LayoutBackend,
   LayoutKind,
@@ -362,8 +362,8 @@ export const createEditorLayout = ({
     }
   }
   session: {
-    edit: ReadStore<EditSession>
-    mindmapPreview: ReadStore<MindmapPreviewState | undefined>
+    edit: store.ReadStore<EditSession>
+    mindmapPreview: store.ReadStore<MindmapPreviewState | undefined>
   }
   registry: Pick<NodeRegistry, 'get'>
   backend?: LayoutBackend

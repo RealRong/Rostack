@@ -6,16 +6,12 @@ import {
 } from '@whiteboard/core/selection'
 import type { Node } from '@whiteboard/core/types'
 import { node as nodeApi } from '@whiteboard/core/node'
-import {
-  createDerivedStore,
-  read,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
 import type { SelectionMembers, SelectionModel } from '@whiteboard/editor/types/selectionPresentation'
 
-export type SelectionModelRead = ReadStore<SelectionModel>
+export type SelectionModelRead = store.ReadStore<SelectionModel>
 
 const isSelectionMembersEqual = (
   left: SelectionMembers,
@@ -59,13 +55,13 @@ export const createSelectionModelRead = ({
   node,
   edge
 }: {
-  source: ReadStore<SelectionTarget>
+  source: store.ReadStore<SelectionTarget>
   node: NodePresentationRead
   edge: Pick<EdgePresentationRead, 'edges' | 'bounds'>
 }): SelectionModelRead => {
-  const members = createDerivedStore<SelectionMembers>({
+  const members = store.createDerivedStore<SelectionMembers>({
     get: () => {
-      const target = read(source)
+      const target = store.read(source)
       const nodes = node.nodes(target.nodeIds)
       const edges = edge.edges(target.edgeIds)
 
@@ -81,16 +77,16 @@ export const createSelectionModelRead = ({
     isEqual: isSelectionMembersEqual
   })
 
-  const summary = createDerivedStore<SelectionSummary>({
+  const summary = store.createDerivedStore<SelectionSummary>({
     get: () => {
-      const current = read(members)
+      const current = store.read(members)
 
       return selectionApi.derive.summary({
         target: current.target,
         nodes: current.nodes,
         edges: current.edges,
-        readNodeRect: (entry) => read(node.rect, entry.id),
-        readEdgeBounds: (entry) => read(edge.bounds, entry.id),
+        readNodeRect: (entry) => store.read(node.rect, entry.id),
+        readEdgeBounds: (entry) => store.read(edge.bounds, entry.id),
         resolveNodeTransformBehavior: (entry) => nodeApi.transform.resolveBehavior(entry, {
           role: node.capability(entry).role,
           resize: node.capability(entry).resize
@@ -100,20 +96,20 @@ export const createSelectionModelRead = ({
     isEqual: selectionApi.derive.isSummaryEqual
   })
 
-  const affordance = createDerivedStore<SelectionAffordance>({
+  const affordance = store.createDerivedStore<SelectionAffordance>({
     get: () => selectionApi.derive.affordance({
-      selection: read(summary),
+      selection: store.read(summary),
       resolveNodeRole: (entry) => node.capability(entry).role,
       resolveNodeTransformCapability: (entry) => readNodeTransformCapability(node, entry)
     }),
     isEqual: selectionApi.derive.isAffordanceEqual
   })
 
-  return createDerivedStore<SelectionModel>({
+  return store.createDerivedStore<SelectionModel>({
     get: () => ({
-      members: read(members),
-      summary: read(summary),
-      affordance: read(affordance)
+      members: store.read(members),
+      summary: store.read(summary),
+      affordance: store.read(affordance)
     }),
     isEqual: isSelectionModelEqual
   })

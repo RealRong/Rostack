@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react'
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { PointerPosition } from '@dataview/react/interaction/usePointerDragSession'
 
 export type DragKind = 'row' | 'card'
@@ -19,7 +19,7 @@ export interface DragSpec {
 }
 
 export interface DragApi {
-  store: ReadStore<DragSpec | null>
+  store: store.ReadStore<DragSpec | null>
   get(): DragSpec | null
   set(next: DragSpec | null): void
   clear(): void

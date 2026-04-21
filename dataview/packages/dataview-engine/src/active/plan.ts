@@ -28,10 +28,8 @@ import type {
   DocumentReadContext,
   DocumentReader
 } from '@dataview/engine/document/reader'
-import {
-  trimLowercase,
-  uniqueSorted
-} from '@shared/core'
+import { collection, string } from '@shared/core'
+
 
 export interface EffectiveFilterRule {
   fieldId: FieldId
@@ -102,7 +100,7 @@ const resolveSearchFieldIds = (
   view: View
 ): readonly FieldId[] => (
   view.search.fields?.length
-    ? uniqueSorted(view.search.fields.filter(fieldId => isKnownFieldId(reader, fieldId)))
+    ? collection.uniqueSorted(view.search.fields.filter(fieldId => isKnownFieldId(reader, fieldId)))
     : resolveDefaultSearchFieldIds({
       document: reader.document(),
       reader
@@ -199,7 +197,7 @@ const createQueryPlan = (
   view: View
 ): QueryPlan => {
   const searchFieldIds = resolveSearchFieldIds(reader, view)
-  const searchQuery = trimLowercase(view.search.query)
+  const searchQuery = string.trimLowercase(view.search.query)
   const filters = resolveEffectiveFilterRules(reader, view)
 
   const search = searchQuery
@@ -218,8 +216,8 @@ const createQueryPlan = (
       search: search
         ? (view.search.fields?.length ? search.fieldIds : 'all')
         : [],
-      filter: uniqueSorted(filters.map(entry => entry.fieldId)),
-      sort: uniqueSorted(view.sort.map(sorter => sorter.field))
+      filter: collection.uniqueSorted(filters.map(entry => entry.fieldId)),
+      sort: collection.uniqueSorted(view.sort.map(sorter => sorter.field))
     },
     executionKey: createExecutionKey({
       search,
@@ -257,7 +255,7 @@ export const compileViewPlan = (
   const displayFields = view.display.fields?.length
     ? [...viewApi.demand.display(view)]
     : []
-  const filterBucketSpecs = uniqueSorted(
+  const filterBucketSpecs = collection.uniqueSorted(
     indexedFilters.flatMap(entry => (
       filterApi.rule.planDemand(entry.field, entry.rule).bucket
         ? [entry.fieldId]

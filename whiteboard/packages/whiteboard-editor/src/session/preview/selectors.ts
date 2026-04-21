@@ -1,10 +1,4 @@
-import {
-  createDerivedStore,
-  createProjectedKeyedStore,
-  createProjectedStore,
-  read,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { Guide } from '@whiteboard/core/node'
 import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import {
@@ -34,42 +28,42 @@ export const createInputPreviewSelectors = ({
   state,
   viewport
 }: {
-  state: ReadStore<EditorInputPreviewState>
+  state: store.ReadStore<EditorInputPreviewState>
   viewport: ViewportRuntime['read']
 }): EditorInputPreview['selectors'] => {
-  const node = createProjectedKeyedStore({
+  const node = store.createProjectedKeyedStore({
     source: state,
     select: toNodeFeedbackMap,
     emptyValue: EMPTY_NODE_FEEDBACK_PROJECTION,
     isEqual: isNodeProjectionEqual,
     schedule: 'microtask'
   })
-  const edge = createProjectedKeyedStore({
+  const edge = store.createProjectedKeyedStore({
     source: state,
     select: toEdgeFeedbackMap,
     emptyValue: EMPTY_EDGE_FEEDBACK_PROJECTION,
     isEqual: isEdgeProjectionEqual,
     schedule: 'raf'
   })
-  const draw = createProjectedStore({
+  const draw = store.createProjectedStore({
     source: state,
     select: (next) => next.draw.preview,
     isEqual: (left, right) => left === right,
     schedule: 'raf'
   })
-  const edgeGuide = createProjectedStore({
+  const edgeGuide = store.createProjectedStore({
     source: state,
     select: (next) => next.edge.guide ?? EMPTY_EDGE_GUIDE,
     isEqual: isEdgeGuideEqual,
     schedule: 'raf'
   })
-  const mindmapPreview = createProjectedStore({
+  const mindmapPreview = store.createProjectedStore({
     source: state,
     select: (next) => next.mindmap.preview,
     isEqual: (left, right) => left === right,
     schedule: 'raf'
   })
-  const snap = createProjectedStore({
+  const snap = store.createProjectedStore({
     source: state,
     select: (next) => next.selection.guides.length > 0
       ? next.selection.guides
@@ -77,10 +71,10 @@ export const createInputPreviewSelectors = ({
     isEqual: (left: readonly Guide[], right: readonly Guide[]) => left === right,
     schedule: 'raf'
   })
-  const marquee = createDerivedStore<MarqueePreview | undefined>({
+  const marquee = store.createDerivedStore<MarqueePreview | undefined>({
     get: () => {
-      const next = read(state).selection.marquee
-      read(viewport)
+      const next = store.read(state).selection.marquee
+      store.read(viewport)
       if (!next) {
         return undefined
       }

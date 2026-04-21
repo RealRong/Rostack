@@ -1,7 +1,4 @@
-import {
-  createValueStore,
-  type ValueStore
-} from '@shared/core'
+import { store as coreStore } from '@shared/core'
 import {
   eventCurrentTargetElement,
   eventWindow,
@@ -114,12 +111,12 @@ const samePointer = (
 ) => current.pointerId === undefined || event.pointerId === current.pointerId
 
 export interface InteractionDomain {
-  store: ValueStore<InteractionState>
+  store: coreStore.ValueStore<InteractionState>
   api: InteractionApi
 }
 
 export const createInteractionCoordinator = (): InteractionDomain => {
-  const store = createValueStore<InteractionState>({
+  const stateStore = coreStore.createValueStore<InteractionState>({
     initial: {
       mode: 'idle',
       gesture: 'idle'
@@ -145,7 +142,7 @@ export const createInteractionCoordinator = (): InteractionDomain => {
     releasePointerCaptureSafe(current.capture, current.pointerId)
     active = null
     endCurrent = null
-    store.update(state => (
+    stateStore.update(state => (
       state.mode === current.mode
         ? {
             ...state,
@@ -157,7 +154,7 @@ export const createInteractionCoordinator = (): InteractionDomain => {
   }
 
   const api: InteractionApi = {
-    current: store.get,
+    current: stateStore.get,
     start: input => {
       if (active) {
         return null
@@ -263,7 +260,7 @@ export const createInteractionCoordinator = (): InteractionDomain => {
 
       active = current
       endCurrent = session.cancel
-      store.set({
+      stateStore.set({
         mode: input.mode,
         gesture
       })
@@ -275,11 +272,11 @@ export const createInteractionCoordinator = (): InteractionDomain => {
       endCurrent?.()
     },
     setMode: mode => {
-      if (active || store.get().mode === mode) {
+      if (active || stateStore.get().mode === mode) {
         return
       }
 
-      store.set({
+      stateStore.set({
         mode,
         gesture: defaultGesture(mode)
       })
@@ -289,7 +286,7 @@ export const createInteractionCoordinator = (): InteractionDomain => {
         active.gesture = gesture
       }
 
-      store.update(state => (
+      stateStore.update(state => (
         state.mode === 'idle' || state.mode === 'keyboard'
           ? state
           : {
@@ -301,7 +298,7 @@ export const createInteractionCoordinator = (): InteractionDomain => {
   }
 
   return {
-    store,
+    store: stateStore,
     api
   }
 }

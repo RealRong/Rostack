@@ -1,6 +1,5 @@
-import {
-  trimLowercase
-} from '@shared/core'
+import { string } from '@shared/core'
+
 
 const EMPTY_TOKENS = [] as const
 
@@ -8,7 +7,7 @@ export const SEARCH_TOKEN_SEPARATOR = '\u0000'
 
 export const normalizeToken = (
   value: unknown
-): string | undefined => trimLowercase(value)
+): string | undefined => string.trimLowercase(value)
 
 export const appendTokens = (
   target: Set<string>,

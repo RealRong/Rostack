@@ -38,12 +38,7 @@ import {
 import {
   view as viewApi
 } from '@dataview/core/view'
-import {
-  isNonEmptyString,
-  sameJsonValue,
-  sameOrder,
-  trimToUndefined
-} from '@shared/core'
+import { equal, string } from '@shared/core'
 import { createViewId } from '@dataview/engine/mutate/entityId'
 import {
   createIssue,
@@ -57,7 +52,7 @@ import {
 } from '@dataview/engine/mutate/planner/scope'
 import type { DocumentReader } from '@dataview/engine/document/reader'
 
-const sameRecordOrder = sameOrder<string>
+const sameRecordOrder = equal.sameOrder<string>
 
 const toViewPut = (
   view: View
@@ -76,7 +71,7 @@ const validateFieldIdList = (
   const seen = new Set<string>()
 
   fieldIds.forEach((fieldId, index) => {
-    if (!isNonEmptyString(fieldId)) {
+    if (!string.isNonEmptyString(fieldId)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'field id must be a non-empty string', `${path}.${index}`))
       return
     }
@@ -117,11 +112,11 @@ const validateFilter = (
 ) => {
   const issues: ValidationIssue[] = []
   filter.rules.forEach((rule, index) => {
-    if (!isNonEmptyString(rule.fieldId)) {
+    if (!string.isNonEmptyString(rule.fieldId)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Filter field id must be a non-empty string', `${path}.rules.${index}.fieldId`))
       return
     }
-    if (!isNonEmptyString(rule.presetId)) {
+    if (!string.isNonEmptyString(rule.presetId)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Filter preset id must be a non-empty string', `${path}.rules.${index}.presetId`))
       return
     }
@@ -146,7 +141,7 @@ const validateSorters = (
   const issues: ValidationIssue[] = []
   const seen = new Set<string>()
   sorters.forEach((sorter, index) => {
-    if (!isNonEmptyString(sorter.field)) {
+    if (!string.isNonEmptyString(sorter.field)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Sorter field must be a non-empty string', `${path}.${index}.field`))
     } else if (!reader.fields.has(sorter.field)) {
       issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${sorter.field}`, `${path}.${index}.field`))
@@ -173,11 +168,11 @@ const validateGroup = (
     return []
   }
 
-  const issues = isNonEmptyString(group.field)
+  const issues = string.isNonEmptyString(group.field)
     ? []
     : [createIssue(source, 'error', 'view.invalidProjection', 'group field must be a non-empty string', `${path}.field`)]
 
-  const field = isNonEmptyString(group.field)
+  const field = string.isNonEmptyString(group.field)
     ? reader.fields.get(group.field)
     : undefined
   const fieldGroupMeta = field ? fieldApi.group.meta(field) : undefined
@@ -186,7 +181,7 @@ const validateGroup = (
   if (!field) {
     issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${group.field}`, `${path}.field`))
   }
-  if (!isNonEmptyString(group.mode)) {
+  if (!string.isNonEmptyString(group.mode)) {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group mode must be a non-empty string', `${path}.mode`))
   } else if (field && (!fieldGroupMeta?.modes.length || !fieldGroupMeta.modes.includes(group.mode))) {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group mode is invalid for this field', `${path}.mode`))
@@ -221,7 +216,7 @@ const validateTableOptions = (
 ) => {
   const issues: ValidationIssue[] = []
   Object.entries(table.widths).forEach(([fieldId, width]) => {
-    if (!isNonEmptyString(fieldId)) {
+    if (!string.isNonEmptyString(fieldId)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'width field id must be a non-empty string', `${path}.widths`))
       return
     }
@@ -303,7 +298,7 @@ const validateOrders = (
   const issues: ValidationIssue[] = []
   const seen = new Set<string>()
   orders.forEach((recordId, index) => {
-    if (!isNonEmptyString(recordId)) {
+    if (!string.isNonEmptyString(recordId)) {
       issues.push(createIssue(source, 'error', 'view.invalidOrder', 'orders must only contain non-empty record ids', `${path}.${index}`))
       return
     }
@@ -327,7 +322,7 @@ const validateCalc = (
 ) => {
   const issues: ValidationIssue[] = []
   Object.entries(calc).forEach(([fieldId, metric]) => {
-    if (!isNonEmptyString(fieldId)) {
+    if (!string.isNonEmptyString(fieldId)) {
       issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Calculation field must be a non-empty string', path))
       return
     }
@@ -353,13 +348,13 @@ const validateView = (
   view: View
 ) => {
   const issues: ValidationIssue[] = []
-  if (!isNonEmptyString(view.id)) {
+  if (!string.isNonEmptyString(view.id)) {
     issues.push(createIssue(source, 'error', 'view.invalid', 'View id must be a non-empty string', 'view.id'))
   }
-  if (!isNonEmptyString(view.name)) {
+  if (!string.isNonEmptyString(view.name)) {
     issues.push(createIssue(source, 'error', 'view.invalid', 'View name must be a non-empty string', 'view.name'))
   }
-  if (!isNonEmptyString(view.type)) {
+  if (!string.isNonEmptyString(view.type)) {
     issues.push(createIssue(source, 'error', 'view.invalid', 'View type must be a non-empty string', 'view.type'))
   }
 
@@ -503,8 +498,8 @@ const lowerViewCreate = (
   scope: PlannerScope,
   action: Extract<Action, { type: 'view.create' }>
 ): PlannedActionResult => {
-  const explicitViewId = trimToUndefined(action.input.id)
-  const preferredName = trimToUndefined(action.input.name) ?? ''
+  const explicitViewId = string.trimToUndefined(action.input.id)
+  const preferredName = string.trimToUndefined(action.input.name) ?? ''
 
   if (action.input.id !== undefined && !explicitViewId) {
     scope.issue(
@@ -578,7 +573,7 @@ const lowerViewPatch = (
       ? ensureKanbanGroup(scope.reader, normalizeView(scope.reader, applyViewPatch(view, action.patch)))
       : normalizeView(scope.reader, applyViewPatch(view, action.patch))
   )
-  if (sameJsonValue(nextView, view)) {
+  if (equal.sameJsonValue(nextView, view)) {
     return scope.finish()
   }
 

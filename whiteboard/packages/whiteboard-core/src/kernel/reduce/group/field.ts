@@ -1,6 +1,6 @@
+import { json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
-import { cloneValue } from '@whiteboard/core/value'
 
 const setGroupField = <Field extends import('@whiteboard/core/types').GroupField>(
   group: import('@whiteboard/core/types').Group,
@@ -36,7 +36,7 @@ export const createGroupFieldApi = (
       type: 'group.field.set',
       id,
       field,
-      value: cloneValue((current as Record<string, unknown>)[field])
+      value: json.clone((current as Record<string, unknown>)[field])
     })
     tx._runtime.draft.groups.set(id, setGroupField(current, field, value))
     markChange(tx._runtime.changes.groups, 'update', id)
@@ -54,7 +54,7 @@ export const createGroupFieldApi = (
       type: 'group.field.set',
       id,
       field,
-      value: cloneValue((current as Record<string, unknown>)[field])
+      value: json.clone((current as Record<string, unknown>)[field])
     })
     tx._runtime.draft.groups.set(id, unsetGroupField(current, field))
     markChange(tx._runtime.changes.groups, 'update', id)

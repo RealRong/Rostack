@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import {
-  createRafValueStore
-} from '@shared/core'
+import { store } from '@shared/core'
+
+
 
 const flushMicrotasks = async () => {
   await Promise.resolve()
@@ -10,7 +10,7 @@ const flushMicrotasks = async () => {
 
 describe('raf stores', () => {
   test('microtask fallback flushes staged writes asynchronously', async () => {
-    const store = createRafValueStore({
+    const store = store.createRafValueStore({
       initial: 0,
       fallback: 'microtask'
     })
@@ -33,7 +33,7 @@ describe('raf stores', () => {
   })
 
   test('clear cancels pending raf work and restores the initial value immediately', async () => {
-    const store = createRafValueStore({
+    const store = store.createRafValueStore({
       initial: 0,
       fallback: 'microtask'
     })

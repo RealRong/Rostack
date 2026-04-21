@@ -1,3 +1,4 @@
+import { json } from '@shared/core'
 import {
   type GetNodeSize,
   type MindmapLayout,
@@ -21,7 +22,6 @@ import type {
   Operation,
   Point
 } from '@whiteboard/core/types'
-import { cloneValue } from '@whiteboard/core/value'
 
 const resolveMindmapLayoutSpec = (
   tree: MindmapTree,
@@ -134,16 +134,16 @@ export const toMindmapTree = (
       parentId: member.parentId,
       side: member.side,
       collapsed: member.collapsed,
-      branch: cloneValue(member.branchStyle)
+      branch: json.clone(member.branchStyle)
     }
   })
 
   return {
     rootNodeId: record.root,
     nodes,
-    children: cloneValue(record.children),
-    layout: cloneValue(record.layout),
-    meta: cloneValue(record.meta)
+    children: json.clone(record.children),
+    layout: json.clone(record.layout),
+    meta: json.clone(record.meta)
   }
 }
 
@@ -221,13 +221,13 @@ export const createMindmapCreateOp = ({
           parentId: node.parentId,
           side: node.side,
           collapsed: node.collapsed,
-          branchStyle: cloneValue(node.branch)
+          branchStyle: json.clone(node.branch)
         }
       ])
     ),
-    children: cloneValue(tree.children),
-    layout: cloneValue(tree.layout),
-    meta: cloneValue(tree.meta)
+    children: json.clone(tree.children),
+    layout: json.clone(tree.layout),
+    meta: json.clone(tree.meta)
   },
   nodes: [
     {
@@ -237,7 +237,7 @@ export const createMindmapCreateOp = ({
         kind: 'mindmap',
         id
       },
-      position: cloneValue(position)
+      position: json.clone(position)
     }
   ]
 })

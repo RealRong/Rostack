@@ -1,13 +1,12 @@
 import { describe, expect, test } from 'vitest'
-import {
-  createDerivedStore,
-  createValueStore
-} from '@shared/core'
+import { store } from '@shared/core'
+
+
 
 describe('read guards', () => {
   test('throws when a derived computation calls store.get directly', () => {
-    const source = createValueStore(1)
-    const derived = createDerivedStore({
+    const source = store.createValueStore(1)
+    const derived = store.createDerivedStore({
       get: () => source.get() + 1
     })
 

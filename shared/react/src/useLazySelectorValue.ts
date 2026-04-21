@@ -1,8 +1,5 @@
 import { useMemo, useRef } from 'react'
-import {
-  createDerivedStore,
-  type Equality
-} from '@shared/core'
+import { equal, store as coreStore } from '@shared/core'
 import { useStoreValue } from '@shared/react/useStoreValue'
 
 type LazySelectorLeaf<T> = () => T
@@ -61,17 +58,17 @@ export const useLazySelectorValue = <TSnapshot, TResult>(
   options: {
     source: LazySelectorSource<TSnapshot>
     selector: (snapshot: TSnapshot) => TResult
-    isEqual?: Equality<TResult>
+    isEqual?: equal.Equality<TResult>
   }
 ): TResult => {
   const selectorRef = useRef(options.selector)
   selectorRef.current = options.selector
-  const equal = options.isEqual ?? Object.is
+  const isEqual = options.isEqual ?? Object.is
 
-  const store = useMemo(() => createDerivedStore<TResult>({
+  const valueStore = useMemo(() => coreStore.createDerivedStore<TResult>({
     get: () => selectorRef.current(createLazySelectorSnapshot(options.source)),
-    isEqual: equal
-  }), [equal, options.source])
+    isEqual
+  }), [isEqual, options.source])
 
-  return useStoreValue(store)
+  return useStoreValue(valueStore)
 }

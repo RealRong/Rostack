@@ -1,10 +1,8 @@
 import type {
   ItemId
 } from '@dataview/engine'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
+
 
 export type SelectionSummary =
   | 'none'
@@ -108,7 +106,7 @@ export interface SelectionEnumerateApi<TId> {
 
 export interface SelectionController<TId> {
   state: {
-    store: ReadStore<SelectionSnapshot<TId>>
+    store: store.ReadStore<SelectionSnapshot<TId>>
     getSnapshot(): SelectionSnapshot<TId>
     subscribe(listener: () => void): () => void
   }
@@ -116,8 +114,8 @@ export interface SelectionController<TId> {
   query: SelectionQueryApi<TId>
   enumerate: SelectionEnumerateApi<TId>
   store: {
-    membership: KeyedReadStore<TId, boolean>
-    scopeSummary: KeyedReadStore<SelectionScope<TId>, SelectionSummary>
+    membership: store.KeyedReadStore<TId, boolean>
+    scopeSummary: store.KeyedReadStore<SelectionScope<TId>, SelectionSummary>
   }
 }
 

@@ -1,8 +1,4 @@
-import type {
-  Equality,
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import {
   useKeyedStoreValue,
   useStoreValue
@@ -13,17 +9,17 @@ import { useDataView } from '@dataview/react/dataview/provider'
 import type { DataViewSessionState } from '@dataview/runtime/dataview/types'
 
 export function useDataViewValue<TState>(
-  resolveStore: (dataView: DataViewReactContextValue) => ReadStore<TState>
+  resolveStore: (dataView: DataViewReactContextValue) => store.ReadStore<TState>
 ): TState
 export function useDataViewValue<TState, TResult>(
-  resolveStore: (dataView: DataViewReactContextValue) => ReadStore<TState>,
+  resolveStore: (dataView: DataViewReactContextValue) => store.ReadStore<TState>,
   selector: (state: TState) => TResult,
-  isEqual?: Equality<TResult>
+  isEqual?: equal.Equality<TResult>
 ): TResult
 export function useDataViewValue<TState, TResult>(
-  resolveStore: (dataView: DataViewReactContextValue) => ReadStore<TState>,
+  resolveStore: (dataView: DataViewReactContextValue) => store.ReadStore<TState>,
   selector?: (state: TState) => TResult,
-  isEqual?: Equality<TResult>
+  isEqual?: equal.Equality<TResult>
 ): TState | TResult {
   const dataView = useDataView()
   const store = resolveStore(dataView)
@@ -36,7 +32,7 @@ export function useDataViewValue<TState, TResult>(
 }
 
 export const useDataViewKeyedValue = <K, T>(
-  resolveStore: (dataView: DataViewReactContextValue) => KeyedReadStore<K, T>,
+  resolveStore: (dataView: DataViewReactContextValue) => store.KeyedReadStore<K, T>,
   key: K
 ): T => {
   const dataView = useDataView()
@@ -45,7 +41,7 @@ export const useDataViewKeyedValue = <K, T>(
 
 export const useDataViewSessionSelector = <TResult>(
   selector: (state: DataViewSessionState) => TResult,
-  isEqual?: Equality<TResult>
+  isEqual?: equal.Equality<TResult>
 ): TResult => {
   const dataView = useDataView()
   return useStoreSelector(dataView.session.store, selector, isEqual)

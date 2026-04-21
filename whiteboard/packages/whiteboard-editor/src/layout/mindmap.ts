@@ -1,12 +1,4 @@
-import {
-  createKeyedDerivedStore,
-  createProjectedKeyedStore,
-  createValueStore,
-  read as readStore,
-  read as readValue,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { NodeId, Rect, Size } from '@whiteboard/core/types'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
@@ -17,7 +9,7 @@ import type {
 } from '@whiteboard/editor/session/preview/types'
 
 export type MindmapLayoutRead = {
-  item: KeyedReadStore<NodeId, MindmapItem | undefined>
+  item: store.KeyedReadStore<NodeId, MindmapItem | undefined>
 }
 
 type MindmapLiveEdit = {
@@ -89,10 +81,10 @@ const readMindmapTreeId = (
   : undefined
 
 const readCommittedMindmapNodeSize = (
-  store: EngineRead['node']['item'],
+  nodeItemStore: EngineRead['node']['item'],
   nodeId: NodeId
 ): Size | undefined => {
-  const item = readStore(store, nodeId)
+  const item = nodeItemStore.get(nodeId)
   return item
     ? {
         width: item.rect.width,
@@ -186,7 +178,7 @@ const readProjectedMindmapItem = ({
     computed
   })
   const rootLocked = Boolean(
-    readStore(nodeCommitted, base.tree.rootNodeId)?.node.locked
+    store.read(nodeCommitted, base.tree.rootNodeId)?.node.locked
   )
 
   return {
@@ -214,10 +206,10 @@ export const createMindmapLayoutRead = ({
 }: {
   committed: EngineRead['mindmap']['item']
   nodeCommitted: EngineRead['node']['item']
-  edit: ReadStore<EditSession>
-  preview: ReadStore<MindmapPreviewState | undefined>
+  edit: store.ReadStore<EditSession>
+  preview: store.ReadStore<MindmapPreviewState | undefined>
 }): MindmapLayoutRead => {
-  const clock = createValueStore(0)
+  const clock = store.createValueStore(0)
   let frame = 0
 
   const stopClock = () => {
@@ -235,7 +227,7 @@ export const createMindmapLayoutRead = ({
         ? performance.now()
         : Date.now()
     )
-    if (readValue(preview)?.enter?.length) {
+    if (store.read(preview)?.enter?.length) {
       frame = scheduleFrame(tickClock)
       return
     }
@@ -244,7 +236,7 @@ export const createMindmapLayoutRead = ({
   }
 
   preview.subscribe(() => {
-    if (!readValue(preview)?.enter?.length) {
+    if (!store.read(preview)?.enter?.length) {
       stopClock()
       return
     }
@@ -254,7 +246,7 @@ export const createMindmapLayoutRead = ({
     }
   })
 
-  const liveEdit = createProjectedKeyedStore({
+  const liveEdit = store.createProjectedKeyedStore({
     source: edit,
     select: (session) => {
       if (
@@ -266,7 +258,7 @@ export const createMindmapLayoutRead = ({
         return EMPTY_LIVE_EDIT_MAP
       }
 
-      const node = readStore(nodeCommitted, session.nodeId)?.node
+      const node = store.read(nodeCommitted, session.nodeId)?.node
       if (!node) {
         return EMPTY_LIVE_EDIT_MAP
       }
@@ -287,7 +279,7 @@ export const createMindmapLayoutRead = ({
     emptyValue: undefined
   })
 
-  const rootMove = createProjectedKeyedStore({
+  const rootMove = store.createProjectedKeyedStore({
     source: preview,
     select: (currentPreview) => {
       const currentRootMove = currentPreview?.rootMove
@@ -300,7 +292,7 @@ export const createMindmapLayoutRead = ({
     emptyValue: undefined
   })
 
-  const enter = createProjectedKeyedStore({
+  const enter = store.createProjectedKeyedStore({
     source: preview,
     select: (currentPreview) => {
       const currentEnter = currentPreview?.enter
@@ -323,23 +315,23 @@ export const createMindmapLayoutRead = ({
     emptyValue: []
   })
 
-  const item = createKeyedDerivedStore<NodeId, MindmapItem | undefined>({
+  const item = store.createKeyedDerivedStore<NodeId, MindmapItem | undefined>({
     get: (treeId) => {
-      const base = readValue(committed, treeId)
+      const base = store.read(committed, treeId)
       if (!base) {
         return undefined
       }
 
-      const currentEnter = readValue(enter, treeId)
+      const currentEnter = store.read(enter, treeId)
       return readProjectedMindmapItem({
         treeId,
         base,
         nodeCommitted,
-        liveEdit: readValue(liveEdit, treeId),
-        rootMove: readValue(rootMove, treeId),
+        liveEdit: store.read(liveEdit, treeId),
+        rootMove: store.read(rootMove, treeId),
         enter: currentEnter,
         now: currentEnter.length > 0
-          ? readValue(clock)
+          ? store.read(clock)
           : 0
       })
     },

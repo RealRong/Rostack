@@ -1,6 +1,4 @@
-import {
-  type ValueStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import {
   createControllerStore
 } from '@dataview/runtime/store'
@@ -22,7 +20,7 @@ import type {
 } from '@dataview/runtime/page/session/types'
 
 export interface PageSessionController extends PageSessionApi {
-  store: ValueStore<PageSessionState>
+  store: store.ValueStore<PageSessionState>
   dispose: () => void
 }
 

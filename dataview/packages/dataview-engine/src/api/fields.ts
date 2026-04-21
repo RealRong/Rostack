@@ -7,10 +7,7 @@ import type {
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import {
-  read,
-  trimToUndefined
-} from '@shared/core'
+import { store, string } from '@shared/core'
 import { createFieldId } from '@dataview/engine/mutate/entityId'
 import type {
   ActionResult,
@@ -37,19 +34,19 @@ export const createFieldsApi = (options: {
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): FieldsApi => {
   const dispatch = options.dispatch
-  const listFields = () => read(options.source.fields.ids)
+  const listFields = () => store.read(options.source.fields.ids)
     .flatMap(fieldId => {
-      const field = read(options.source.fields, fieldId)
+      const field = store.read(options.source.fields, fieldId)
       return field ? [field] : []
     })
-  const getField = (fieldId: CustomFieldId) => read(options.source.fields, fieldId)
+  const getField = (fieldId: CustomFieldId) => store.read(options.source.fields, fieldId)
   const getOptionFieldById = (fieldId: CustomFieldId) => getOptionField(getField(fieldId))
 
   return {
     list: listFields,
     get: getField,
     create: input => {
-      const name = trimToUndefined(input.name)
+      const name = string.trimToUndefined(input.name)
       if (!name) {
         return undefined
       }
@@ -69,7 +66,7 @@ export const createFieldsApi = (options: {
         : undefined
     },
     rename: (fieldId, name) => {
-      const nextName = trimToUndefined(name)
+      const nextName = string.trimToUndefined(name)
       if (!nextName) {
         return
       }
@@ -144,7 +141,7 @@ export const createFieldsApi = (options: {
       },
       create: (fieldId, name) => {
         const field = getOptionFieldById(fieldId)
-        const nextName = trimToUndefined(name)
+        const nextName = string.trimToUndefined(name)
         if (!field || !nextName) {
           return undefined
         }
@@ -192,7 +189,7 @@ export const createFieldsApi = (options: {
           return undefined
         }
 
-        const nextName = trimToUndefined(patch.name)
+        const nextName = string.trimToUndefined(patch.name)
         if (patch.name !== undefined) {
           if (!nextName) {
             return undefined

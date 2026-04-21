@@ -3,7 +3,6 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'vitest'
-
 import { compareBenchmarks } from '@dataview/engine/bench/runner/compare'
 
 const writeJson = (directory: string, name: string, value: unknown) => {

@@ -1,7 +1,7 @@
+import { json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getNode } from '@whiteboard/core/kernel/reduce/runtime'
-import { cloneValue } from '@whiteboard/core/value'
 
 const GEOMETRY_FIELDS = new Set(['position', 'size', 'rotation'])
 
@@ -46,7 +46,7 @@ export const createNodeFieldApi = (
             type: 'node.field.set',
             id,
             field,
-            value: cloneValue((current as Record<string, unknown>)[field])
+            value: json.clone((current as Record<string, unknown>)[field])
           }
     )
     tx._runtime.draft.nodes.set(id, setNodeField(current, field, value))
@@ -75,7 +75,7 @@ export const createNodeFieldApi = (
       type: 'node.field.set',
       id,
       field,
-      value: cloneValue((current as Record<string, unknown>)[field])
+      value: json.clone((current as Record<string, unknown>)[field])
     })
     tx._runtime.draft.nodes.set(id, unsetNodeField(current, field))
     markChange(tx._runtime.changes.nodes, 'update', id)

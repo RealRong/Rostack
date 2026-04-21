@@ -29,10 +29,8 @@ import {
   type AppliedDocumentRecordFieldWrite,
   document as documentApi
 } from '@dataview/core/document'
-import {
-  readObjectKey,
-  sameJsonValue
-} from '@shared/core'
+import { equal, json } from '@shared/core'
+
 
 export interface ExecuteOperationResult {
   document: DataDoc
@@ -428,7 +426,7 @@ const executeRecordPatch = (
       type: 'document.record.patch',
       recordId: operation.recordId,
       patch: Object.fromEntries(
-        Object.keys(operation.patch).map(key => [key, readObjectKey(beforeRecord, key)])
+        Object.keys(operation.patch).map(key => [key, json.readObjectKey(beforeRecord, key)])
       ) as Partial<Omit<DataRecord, 'id' | 'values'>>
     }]
   }
@@ -598,7 +596,7 @@ const executeFieldPatch = (
       type: 'document.field.patch',
       fieldId: operation.fieldId,
       patch: Object.fromEntries(
-        Object.keys(operation.patch).map(key => [key, readObjectKey(beforeField, key)])
+        Object.keys(operation.patch).map(key => [key, json.readObjectKey(beforeField, key)])
       ) as Partial<Omit<CustomField, 'id'>>
     }]
   }
@@ -676,7 +674,7 @@ const executeViewPut = (
     && !layoutAspects.length
     && !calculationFields?.length
     && beforeActiveViewId === afterActiveViewId
-    && sameJsonValue(beforeView, afterView)
+    && equal.sameJsonValue(beforeView, afterView)
   ) {
     return {
       document,

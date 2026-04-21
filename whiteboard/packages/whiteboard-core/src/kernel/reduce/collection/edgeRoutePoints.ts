@@ -1,7 +1,7 @@
+import { json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
-import { cloneValue } from '@whiteboard/core/value'
 
 const getPoints = (
   tx: ReducerTx,
@@ -72,7 +72,7 @@ export const createEdgeRoutePointsCollectionApi = (
       tx._runtime.inverse.unshift({
         type: 'edge.route.point.insert',
         edgeId,
-        point: cloneValue(point),
+        point: json.clone(point),
         to: index === 0
           ? { kind: 'start' }
           : { kind: 'after', pointId: points[index - 1]!.id }

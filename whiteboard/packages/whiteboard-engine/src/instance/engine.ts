@@ -16,7 +16,7 @@ import { createDocumentSource } from '@whiteboard/engine/instance/document'
 import { normalizeDocument } from '@whiteboard/engine/document/normalize'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type { Draft } from '@whiteboard/engine/types/internal/draft'
-import { createValueStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 import { success } from '@whiteboard/engine/result'
 
@@ -29,7 +29,7 @@ export const createEngine = ({
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
   const documentSource = createDocumentSource(normalizeDocument(document, config))
-  const writeStore = createValueStore<EngineWrite | null>(null)
+  const writeStore = store.createValueStore<EngineWrite | null>(null)
 
   const readControl = createRead({
     document: documentSource,

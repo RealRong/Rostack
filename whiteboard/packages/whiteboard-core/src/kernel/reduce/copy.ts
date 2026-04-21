@@ -1,3 +1,4 @@
+import { json } from '@shared/core'
 import type {
   CanvasItemRef,
   Document,
@@ -9,7 +10,6 @@ import type {
   MindmapRecord,
   Node
 } from '@whiteboard/core/types'
-import { cloneValue } from '@whiteboard/core/value'
 
 export const clonePoint = (
   point: { x: number; y: number } | undefined
@@ -175,7 +175,7 @@ export const cloneEdgeLabels = (
   t: label.t,
   offset: label.offset,
   style: cloneEdgeLabelStyle(label.style),
-  data: cloneValue(label.data)
+  data: json.clone(label.data)
 }))
 
 export const cloneNode = (
@@ -189,8 +189,8 @@ export const cloneNode = (
   groupId: node.groupId,
   owner: cloneNodeOwner(node.owner),
   locked: node.locked,
-  data: cloneValue(node.data),
-  style: cloneValue(node.style)
+  data: json.clone(node.data),
+  style: json.clone(node.style)
 })
 
 export const cloneEdge = (
@@ -206,7 +206,7 @@ export const cloneEdge = (
   style: cloneEdgeStyle(edge.style),
   textMode: edge.textMode,
   labels: cloneEdgeLabels(edge.labels),
-  data: cloneValue(edge.data)
+  data: json.clone(edge.data)
 })
 
 export const cloneGroup = (

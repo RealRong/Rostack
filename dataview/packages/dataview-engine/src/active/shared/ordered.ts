@@ -1,6 +1,5 @@
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
+
 
 export const createOrderIndex = <T extends string>(
   ids: readonly T[]
@@ -130,7 +129,7 @@ export const applyOrderedIdDelta = <T extends string>(input: {
     : input.previous.filter(id => !input.remove?.has(id))
 
   if (!added?.length) {
-    return sameOrder(filtered, input.previous)
+    return equal.sameOrder(filtered, input.previous)
       ? input.previous
       : filtered
   }
@@ -169,7 +168,7 @@ export const applyOrderedIdDelta = <T extends string>(input: {
     rightIndex += 1
   }
 
-  return sameOrder(merged, input.previous)
+  return equal.sameOrder(merged, input.previous)
     ? input.previous
     : merged
 }

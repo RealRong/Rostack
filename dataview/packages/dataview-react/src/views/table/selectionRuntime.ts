@@ -1,9 +1,5 @@
 import type { ViewState as CurrentView } from '@dataview/engine'
-import {
-  createDerivedStore,
-  read,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import {
   createGridSelection,
   type GridSelectionStore
@@ -21,7 +17,7 @@ export type TableSelectionMode =
 export type TableRowSelectionApi = ItemSelectionController
 
 export interface TableSelectionRuntime {
-  mode: ReadStore<TableSelectionMode>
+  mode: store.ReadStore<TableSelectionMode>
   rows: TableRowSelectionApi
   cells: GridSelectionStore
   clear: () => void
@@ -33,7 +29,7 @@ const hasRows = (
 ) => selection.selectedCount > 0
 
 export const createTableSelectionRuntime = (input: {
-  currentViewStore: ReadStore<CurrentView | undefined>
+  currentViewStore: store.ReadStore<CurrentView | undefined>
   rowSelection: ItemSelectionController
 }): TableSelectionRuntime => {
   const baseCells = createGridSelection(input.currentViewStore)
@@ -132,11 +128,11 @@ export const createTableSelectionRuntime = (input: {
     },
     dispose: baseCells.dispose
   }
-  const mode = createDerivedStore<TableSelectionMode>({
+  const mode = store.createDerivedStore<TableSelectionMode>({
     get: () => (
-      read(cells.store)
+      store.read(cells.store)
         ? 'cells'
-        : hasRows(read(input.rowSelection.state.store))
+        : hasRows(store.read(input.rowSelection.state.store))
           ? 'rows'
           : 'none'
     ),

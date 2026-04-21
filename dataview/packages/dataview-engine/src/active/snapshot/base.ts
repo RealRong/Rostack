@@ -34,9 +34,7 @@ import {
   sameOptionalList,
   sameOptionalProjection
 } from '@dataview/engine/active/snapshot/reuse'
-import {
-  sameJsonValue
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   type DocumentReader
 } from '@dataview/engine/document/reader'
@@ -207,7 +205,7 @@ const equalFilterRuleProjection = (
   && left.activePresetId === right.activePresetId
   && left.effective === right.effective
   && left.editorKind === right.editorKind
-  && sameJsonValue(left.value, right.value)
+  && equal.sameJsonValue(left.value, right.value)
   && left.bodyLayout === right.bodyLayout
   && sameList(left.conditions, right.conditions, equalFilterCondition)
 )

@@ -1,6 +1,6 @@
 import type { HistoryApi, HistoryState } from '@whiteboard/history'
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type {
   Document,
   Viewport
@@ -21,7 +21,6 @@ import type {
 } from '@whiteboard/editor/types/tool'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { EditorQuery } from '@whiteboard/editor/query'
-import type { Unsubscribe } from '@shared/core'
 import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 
 export type EditorPointerDispatchResult = {
@@ -57,12 +56,12 @@ export type EditorInteractionState = Readonly<{
 }>
 
 export type EditorStore = {
-  tool: ReadStore<Tool>
-  draw: ReadStore<DrawState>
-  edit: ReadStore<EditSession>
-  selection: ReadStore<SelectionTarget>
-  interaction: ReadStore<EditorInteractionState>
-  viewport: ReadStore<Viewport>
+  tool: store.ReadStore<Tool>
+  draw: store.ReadStore<DrawState>
+  edit: store.ReadStore<EditSession>
+  selection: store.ReadStore<SelectionTarget>
+  interaction: store.ReadStore<EditorInteractionState>
+  viewport: store.ReadStore<Viewport>
 }
 
 export type EditorChromePresentation = {
@@ -92,13 +91,13 @@ export type EditorRead = {
   selection: Pick<EditorQuery['selection'], 'node' | 'summary'>
   tool: EditorQuery['tool']
   viewport: EditorQuery['viewport']
-  chrome: ReadStore<EditorChromePresentation>
-  panel: ReadStore<EditorPanelPresentation>
+  chrome: store.ReadStore<EditorChromePresentation>
+  panel: store.ReadStore<EditorPanelPresentation>
 }
 
 export type EditorEvents = {
-  change: (listener: (document: Document, write: EngineWrite) => void) => Unsubscribe
-  dispose: (listener: () => void) => Unsubscribe
+  change: (listener: (document: Document, write: EngineWrite) => void) => store.Unsubscribe
+  dispose: (listener: () => void) => store.Unsubscribe
 }
 
 export type Editor = {

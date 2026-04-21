@@ -1,6 +1,6 @@
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Edge, EdgeId, Node, NodeId, Rect } from '@whiteboard/core/types'
-import { read } from '@shared/core'
+import { store } from '@shared/core'
 import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
 import type { NodePresentationRead } from '@whiteboard/editor/query/node/read'
 
@@ -35,7 +35,7 @@ export const createTargetRead = ({
   edges: (target) => edge.edges(target.edgeIds),
   bounds: (target) => resolveTargetBounds({
     target,
-    readNodeBounds: (nodeId) => read(node.bounds, nodeId),
-    readEdgeBounds: (edgeId) => read(edge.bounds, edgeId)
+    readNodeBounds: (nodeId) => store.read(node.bounds, nodeId),
+    readEdgeBounds: (edgeId) => store.read(edge.bounds, edgeId)
   })
 })

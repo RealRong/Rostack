@@ -1,6 +1,4 @@
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import type {
   RecordId
 } from '@dataview/core/contracts'
@@ -16,7 +14,7 @@ export const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 export const sameSectionKeys = (
   left: readonly SectionKey[],
   right: readonly SectionKey[]
-) => sameOrder(left, right)
+) => equal.sameOrder(left, right)
 
 export const buildSectionMembership = (input: {
   recordIds: readonly RecordId[]

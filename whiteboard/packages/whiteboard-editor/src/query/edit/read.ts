@@ -1,8 +1,4 @@
-import {
-  createProjectedKeyedStore,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { EdgeId, NodeId, Size } from '@whiteboard/core/types'
 import type {
   EditCaret,
@@ -25,17 +21,17 @@ export type EdgeLabelEditView = {
 }
 
 export type EditorEditRead = {
-  node: KeyedReadStore<NodeId, NodeEditView | undefined>
-  edgeLabel: KeyedReadStore<EdgeId, EdgeLabelEditView | undefined>
+  node: store.KeyedReadStore<NodeId, NodeEditView | undefined>
+  edgeLabel: store.KeyedReadStore<EdgeId, EdgeLabelEditView | undefined>
 }
 
 const EMPTY_NODE_EDIT_MAP = new Map<NodeId, NodeEditView>()
 const EMPTY_EDGE_LABEL_EDIT_MAP = new Map<EdgeId, EdgeLabelEditView>()
 
 export const createEditRead = (
-  source: ReadStore<EditSession>
+  source: store.ReadStore<EditSession>
 ): EditorEditRead => ({
-  node: createProjectedKeyedStore({
+  node: store.createProjectedKeyedStore({
     source,
     select: (session) => {
       if (!session || session.kind !== 'node') {
@@ -59,7 +55,7 @@ export const createEditRead = (
     },
     emptyValue: undefined
   }),
-  edgeLabel: createProjectedKeyedStore({
+  edgeLabel: store.createProjectedKeyedStore({
     source,
     select: (session) => {
       if (!session || session.kind !== 'edge-label') {

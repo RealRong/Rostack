@@ -7,10 +7,8 @@ import {
   createListenerSet,
   createNullableControllerStore
 } from '@dataview/runtime/store'
-import {
-  createKeyedDerivedStore,
-  read
-} from '@shared/core'
+import { store as coreStore } from '@shared/core'
+
 
 const INLINE_SESSION_SEPARATOR = '\u0000'
 
@@ -38,16 +36,16 @@ export const createInlineSessionApi = (
   initial: InlineSessionTarget | null = null
 ): InlineSessionApi => {
   const {
-    store,
+    store: stateStore,
     get
   } = createNullableControllerStore<InlineSessionTarget>({
     initial,
     isEqual: sameTarget
   })
-  const editing = createKeyedDerivedStore<string, boolean>({
+  const editing = coreStore.createKeyedDerivedStore<string, boolean>({
     keyOf: key => key,
     get: key => {
-      const current = read(store)
+      const current = coreStore.read(stateStore)
       return current
         ? inlineSessionKey(current) === key
         : false
@@ -57,7 +55,7 @@ export const createInlineSessionApi = (
   const listeners = createListenerSet<InlineSessionExitEvent>()
 
   return {
-    store,
+    store: stateStore,
     editing,
     key: inlineSessionKey,
     enter: target => {
@@ -69,7 +67,7 @@ export const createInlineSessionApi = (
         })
       }
 
-      store.set(target)
+      stateStore.set(target)
     },
     exit: options => {
       const current = get()
@@ -77,7 +75,7 @@ export const createInlineSessionApi = (
         return
       }
 
-      store.set(null)
+      stateStore.set(null)
       listeners.emit({
         target: current,
         reason: options?.reason ?? 'programmatic'

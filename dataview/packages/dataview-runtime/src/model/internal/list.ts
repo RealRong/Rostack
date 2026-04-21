@@ -1,21 +1,15 @@
-import {
-  createDerivedStore,
-  read,
-  sameOrder,
-  type Equality,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
+
 
 export const createEntityListStore = <TId, T>(input: {
-  ids: ReadStore<readonly TId[]>
-  values: KeyedReadStore<TId, T | undefined>
-  isEqual?: Equality<readonly T[]>
-}) => createDerivedStore<readonly T[]>({
-  get: () => read(input.ids)
+  ids: store.ReadStore<readonly TId[]>
+  values: store.KeyedReadStore<TId, T | undefined>
+  isEqual?: equal.Equality<readonly T[]>
+}) => store.createDerivedStore<readonly T[]>({
+  get: () => store.read(input.ids)
     .flatMap(id => {
-      const value = read(input.values, id)
+      const value = store.read(input.values, id)
       return value ? [value] : []
     }),
-  isEqual: input.isEqual ?? sameOrder
+  isEqual: input.isEqual ?? equal.sameOrder
 })

@@ -16,18 +16,11 @@ import type {
   ItemSelectionController,
   ItemSelectionSnapshot
 } from '@dataview/runtime/selection'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import {
   createItemListSelectionDomain,
   selectionSnapshot
 } from '@dataview/runtime/selection'
-import {
-  createDerivedStore,
-  read
-} from '@shared/core'
 import type {
   Field,
   FieldId,
@@ -132,18 +125,18 @@ const sameBodyData = (
 )
 
 export interface TableController {
-  currentView: ReadStore<CurrentView | undefined>
-  body: ReadStore<TableBodyData | null>
-  locked: ReadStore<boolean>
-  valueEditorOpen: ReadStore<boolean>
+  currentView: store.ReadStore<CurrentView | undefined>
+  body: store.ReadStore<TableBodyData | null>
+  locked: store.ReadStore<boolean>
+  valueEditorOpen: store.ReadStore<boolean>
   selection: TableSelectionRuntime
   select: TableSelectRuntime
   fill: TableFillRuntime
   rail: TableRailRuntime
   can: TableCanRuntime
   chrome: {
-    row: KeyedReadStore<ItemId, TableRowChrome>
-    cell: KeyedReadStore<CellRef, TableCellChrome>
+    row: store.KeyedReadStore<ItemId, TableRowChrome>
+    cell: store.KeyedReadStore<CellRef, TableCellChrome>
   }
   layout: TableLayout
   virtual: TableVirtualRuntime
@@ -154,9 +147,9 @@ export interface TableController {
   openCell: (input: CellOpenInput) => boolean
   interaction: InteractionApi
   hover: TableHoverRuntime
-  column: KeyedReadStore<FieldId, TableColumn | undefined>
-  summary: KeyedReadStore<string, TableSummary | undefined>
-  section: KeyedReadStore<string, TableSection | undefined>
+  column: store.KeyedReadStore<FieldId, TableColumn | undefined>
+  summary: store.KeyedReadStore<string, TableSummary | undefined>
+  section: store.KeyedReadStore<string, TableSection | undefined>
   revealCursor: () => void
   revealRow: (rowId: ItemId) => void
   dispose: () => void
@@ -198,13 +191,13 @@ const selectionRow = (input: {
 
 export const createTableController = (options: {
   engine: Engine
-  pageStore: ReadStore<PageState>
-  currentViewStore: ReadStore<CurrentView | undefined>
+  pageStore: store.ReadStore<PageState>
+  currentViewStore: store.ReadStore<CurrentView | undefined>
   model: DataViewTableModel
   selection: ItemSelectionController
-  selectionMembershipStore: KeyedReadStore<ItemId, boolean>
-  previewSelectionMembershipStore: KeyedReadStore<ItemId, boolean | null>
-  marqueeActiveStore: ReadStore<boolean>
+  selectionMembershipStore: store.KeyedReadStore<ItemId, boolean>
+  previewSelectionMembershipStore: store.KeyedReadStore<ItemId, boolean | null>
+  marqueeActiveStore: store.ReadStore<boolean>
   valueEditor: ValueEditorApi
   layout: TableLayout
   nodes: Nodes
@@ -214,14 +207,14 @@ export const createTableController = (options: {
     currentViewStore: currentView,
     rowSelection: options.selection
   })
-  const lockedStore = createDerivedStore<boolean>({
-    get: () => read(options.pageStore).lock !== null
+  const lockedStore = store.createDerivedStore<boolean>({
+    get: () => store.read(options.pageStore).lock !== null
   })
-  const valueEditorOpenStore = createDerivedStore<boolean>({
-    get: () => read(options.pageStore).valueEditorOpen
+  const valueEditorOpenStore = store.createDerivedStore<boolean>({
+    get: () => store.read(options.pageStore).valueEditorOpen
   })
-  const selectionVisibleStore = createDerivedStore<boolean>({
-    get: () => !read(valueEditorOpenStore),
+  const selectionVisibleStore = store.createDerivedStore<boolean>({
+    get: () => !store.read(valueEditorOpenStore),
     isEqual: Object.is
   })
   const interaction = createInteractionCoordinator()
@@ -339,19 +332,19 @@ export const createTableController = (options: {
     revealCursor,
     focus
   })
-  const body = createDerivedStore<TableBodyData | null>({
+  const body = store.createDerivedStore<TableBodyData | null>({
     get: () => {
-      const bodyModel = read(options.model.body)
+      const bodyModel = store.read(options.model.body)
       if (!bodyModel) {
         return null
       }
 
       const columns = bodyModel.columnIds.flatMap(fieldId => {
-        const field = read(options.model.column, fieldId)?.field
+        const field = store.read(options.model.column, fieldId)?.field
         return field ? [field] : []
       })
-      const windowState = read(virtual.window)
-      const layoutState = read(virtual.layout)
+      const windowState = store.read(virtual.window)
+      const layoutState = store.read(virtual.layout)
       return {
         viewId: bodyModel.viewId,
         columns,
@@ -363,8 +356,8 @@ export const createTableController = (options: {
         blocks: windowState.items,
         totalHeight: windowState.totalHeight,
         startTop: windowState.startTop,
-        containerWidth: read(virtual.viewport).containerWidth,
-        marqueeActive: read(virtual.interaction).marqueeActive
+        containerWidth: store.read(virtual.viewport).containerWidth,
+        marqueeActive: store.read(virtual.interaction).marqueeActive
       }
     },
     isEqual: sameBodyData

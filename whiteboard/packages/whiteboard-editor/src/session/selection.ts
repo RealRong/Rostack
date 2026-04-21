@@ -1,11 +1,7 @@
 import { selection as selectionApi, type SelectionInput, type SelectionTarget } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
-import {
-  type ValueStore
-} from '@shared/core'
+import { equal, store as sharedStore } from '@shared/core'
 import type { EditorQuery } from '@whiteboard/editor/query'
-import { sameOrder as isOrderedArrayEqual } from '@shared/core'
-import { createCommandState } from '@whiteboard/editor/session/store'
 
 type SelectionReadSource = Pick<EditorQuery, 'node' | 'edge'>
 
@@ -46,12 +42,12 @@ export type SelectionMutate = {
 }
 
 export type SelectionState = {
-  source: ValueStore<SelectionTarget>
+  source: sharedStore.ValueStore<SelectionTarget>
   mutate: SelectionMutate
 }
 
 export const createSelectionState = (): SelectionState => {
-  const state = createCommandState<SelectionTarget>({
+  const state = sharedStore.createNormalizedValue<SelectionTarget>({
     initial: selectionApi.target.empty,
     isEqual: selectionApi.target.equal
   })
@@ -97,8 +93,8 @@ export const createSelectionState = (): SelectionState => {
         const next = reconcileSelectionTarget(read, current)
 
         if (
-          isOrderedArrayEqual(next.nodeIds, current.nodeIds)
-          && isOrderedArrayEqual(next.edgeIds, current.edgeIds)
+          equal.sameOrder(next.nodeIds, current.nodeIds)
+          && equal.sameOrder(next.edgeIds, current.edgeIds)
         ) {
           return false
         }

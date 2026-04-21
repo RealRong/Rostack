@@ -1,6 +1,6 @@
+import { json } from '@shared/core'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { resolveLockDecision } from '@whiteboard/core/lock'
-import { isValueEqual } from '@whiteboard/core/value'
 import type {
   Edge,
   EdgeId,
@@ -84,7 +84,7 @@ const diffRecordTrees = ({
   emitUnset: (path: string) => void
   path?: string
 }) => {
-  if (isValueEqual(current, next)) {
+  if (json.equal(current, next)) {
     return
   }
 

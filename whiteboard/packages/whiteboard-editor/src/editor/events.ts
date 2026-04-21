@@ -1,4 +1,4 @@
-import { sameOrder } from '@shared/core'
+import { equal } from '@shared/core'
 import { sync } from '@whiteboard/core/spec/operation'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorQuery } from '@whiteboard/editor/query'
@@ -19,8 +19,8 @@ const reconcileSessionAfterWrite = (
   const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(query.edge.item.get(id)))
 
   if (
-    !sameOrder(nextNodeIds, selection.nodeIds)
-    || !sameOrder(nextEdgeIds, selection.edgeIds)
+    !equal.sameOrder(nextNodeIds, selection.nodeIds)
+    || !equal.sameOrder(nextEdgeIds, selection.edgeIds)
   ) {
     session.mutate.selection.replace({
       nodeIds: nextNodeIds,

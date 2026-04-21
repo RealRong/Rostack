@@ -1,8 +1,6 @@
 import type { EdgeId, Rect } from '@whiteboard/core/types'
-import {
-  sameRect as isSameRectTuple,
-  toFiniteOrUndefined
-} from '@shared/core'
+import { equal } from '@shared/core'
+
 
 type RectTuple = {
   x?: number
@@ -57,10 +55,10 @@ const toCellKeys = (
 const toRectTuple = (
   rect: Rect
 ): RectTuple => ({
-  x: toFiniteOrUndefined(rect.x),
-  y: toFiniteOrUndefined(rect.y),
-  width: toFiniteOrUndefined(rect.width),
-  height: toFiniteOrUndefined(rect.height)
+  x: equal.toFiniteOrUndefined(rect.x),
+  y: equal.toFiniteOrUndefined(rect.y),
+  width: equal.toFiniteOrUndefined(rect.width),
+  height: equal.toFiniteOrUndefined(rect.height)
 })
 
 const isRectOverlap = (
@@ -181,7 +179,7 @@ export class EdgeRectIndex {
       }
 
       const nextRect = toRectTuple(bounds)
-      if (current && isSameRectTuple(current.rect, nextRect)) {
+      if (current && equal.sameRect(current.rect, nextRect)) {
         return
       }
 

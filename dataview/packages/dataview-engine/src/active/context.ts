@@ -3,10 +3,7 @@ import type {
   View,
   ViewPatch
 } from '@dataview/core/contracts'
-import {
-  createDerivedStore,
-  read
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   ActionResult,
   ActiveViewApi,
@@ -43,13 +40,13 @@ export const createActiveContext = (
 ): ActiveViewContext => {
   const id = options.source.active.view.id
   const config = options.source.active.view.current
-  const stateStore = createDerivedStore<ViewState | undefined>({
-    get: () => read(options.store).currentView.snapshot
+  const stateStore = store.createDerivedStore<ViewState | undefined>({
+    get: () => store.read(options.store).currentView.snapshot
   })
   const readDocument = () => options.store.get().doc
   const reader = createLiveDocumentReader(readDocument)
-  const view = () => read(config)
-  const snapshot = () => read(stateStore)
+  const view = () => store.read(config)
+  const snapshot = () => store.read(stateStore)
   const patch = (
     resolve: (currentView: View, currentReader: DocumentReader) => ViewPatch | undefined
   ): boolean => {

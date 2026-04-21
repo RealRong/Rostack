@@ -9,7 +9,7 @@ import {
 import {
   fieldSpec
 } from '@dataview/core/field/spec'
-import { sameOrder } from '@shared/core'
+import { equal } from '@shared/core'
 import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
 import type {
   IndexDeriveContext,
@@ -205,7 +205,7 @@ const syncFieldSortIndex = (input: {
 
   if (!moving.length) {
     return remaining.length === input.previous.asc.length
-      && sameOrder(remaining, input.previous.asc)
+      && equal.sameOrder(remaining, input.previous.asc)
       ? input.previous
       : {
           asc: remaining
@@ -220,7 +220,7 @@ const syncFieldSortIndex = (input: {
     compare
   })
 
-  return sameOrder(asc, input.previous.asc)
+  return equal.sameOrder(asc, input.previous.asc)
     ? input.previous
     : {
         asc

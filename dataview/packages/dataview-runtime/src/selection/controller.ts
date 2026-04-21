@@ -1,8 +1,4 @@
-import {
-  createKeyedDerivedStore,
-  createValueStore,
-  read
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   OrderedSelectionDomain,
   SelectionController,
@@ -43,7 +39,7 @@ export const createSelectionController = <TId,>(
 ): SelectionControllerInstance<TId> => {
   let currentDomain = input.domainSource.get()
   let domainRevision = 0
-  const stateStore = createValueStore<SelectionSnapshot<TId>>({
+  const stateStore = store.createValueStore<SelectionSnapshot<TId>>({
     initial: selectionSnapshot.empty<TId>(domainRevision),
     isEqual: selectionSnapshot.equal
   })
@@ -61,19 +57,19 @@ export const createSelectionController = <TId,>(
   syncDomain()
   const unsubscribeDomain = input.domainSource.subscribe(syncDomain)
 
-  const membershipStore = createKeyedDerivedStore<TId, boolean>({
+  const membershipStore = store.createKeyedDerivedStore<TId, boolean>({
     get: id => selectionSnapshot.contains(
       currentDomain,
-      read(stateStore),
+      store.read(stateStore),
       id
     ),
     isEqual: Object.is
   })
 
-  const scopeSummaryStore = createKeyedDerivedStore<SelectionScope<TId>, SelectionSummary>({
+  const scopeSummaryStore = store.createKeyedDerivedStore<SelectionScope<TId>, SelectionSummary>({
     get: scope => selectionSnapshot.summary(
       currentDomain,
-      read(stateStore),
+      store.read(stateStore),
       scope
     ),
     isEqual: Object.is

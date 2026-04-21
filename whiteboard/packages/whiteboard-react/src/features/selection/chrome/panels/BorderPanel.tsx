@@ -6,7 +6,7 @@ import {
   SliderSection,
   formatPercent
 } from '@shared/ui'
-import { sameOptionalNumberArray as isSameOptionalNumberArray } from '@shared/core'
+import { equal } from '@shared/core'
 import {
   WHITEBOARD_PALETTE_GRID_COLUMNS,
   WHITEBOARD_PALETTE_SWATCH_SHAPE,
@@ -48,7 +48,7 @@ export const BorderPanel = ({
           {product.stroke.options.map((option) => (
             <SegmentedButton
               key={option.key}
-              active={isSameOptionalNumberArray(
+              active={equal.sameOptionalNumberArray(
                 normalizeDash(strokeDash),
                 normalizeDash(option.dash)
               )}

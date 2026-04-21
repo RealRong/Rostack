@@ -10,14 +10,7 @@ import {
   viewportRect,
   type ScrollNode
 } from '@shared/dom'
-import {
-  createDerivedStore,
-  createValueStore,
-  joinUnsubscribes,
-  read,
-  sameOrder,
-  type ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import type { TableLayout } from '@dataview/react/views/table/layout'
 import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
 import {
@@ -75,10 +68,10 @@ export interface TableVirtualWindowSnapshot {
 }
 
 export interface TableVirtualRuntime {
-  layout: ReadStore<TableVirtualLayoutSnapshot>
-  viewport: ReadStore<TableVirtualViewportSnapshot>
-  interaction: ReadStore<TableVirtualInteractionSnapshot>
-  window: ReadStore<TableVirtualWindowSnapshot>
+  layout: store.ReadStore<TableVirtualLayoutSnapshot>
+  viewport: store.ReadStore<TableVirtualViewportSnapshot>
+  interaction: store.ReadStore<TableVirtualInteractionSnapshot>
+  window: store.ReadStore<TableVirtualWindowSnapshot>
   locateRow: (rowId: ItemId) => {
     rowId: ItemId
     top: number
@@ -135,7 +128,7 @@ const sameLayoutSnapshot = (
 ) => left.totalHeight === right.totalHeight
   && left.revision === right.revision
   && left.rowCount === right.rowCount
-  && sameOrder(left.measurementIds, right.measurementIds)
+  && equal.sameOrder(left.measurementIds, right.measurementIds)
 
 const sameViewportSnapshot = (
   left: TableVirtualViewportSnapshot,
@@ -265,27 +258,27 @@ const resolveMarqueeActive = (input: {
 
 export const createTableVirtualRuntime = (options: {
   activeSource: ActiveSource
-  marqueeActiveStore: ReadStore<boolean>
+  marqueeActiveStore: store.ReadStore<boolean>
   layout: TableLayout
 }): TableVirtualRuntime => {
   const layoutStateStore = options.activeSource.table.layout
-  const layoutStore = createValueStore<TableVirtualLayoutSnapshot>({
+  const layoutStore = store.createValueStore<TableVirtualLayoutSnapshot>({
     initial: EMPTY_LAYOUT_SNAPSHOT,
     isEqual: sameLayoutSnapshot
   })
-  const viewportStore = createValueStore<TableVirtualViewportSnapshot>({
+  const viewportStore = store.createValueStore<TableVirtualViewportSnapshot>({
     initial: createBootstrapViewportSnapshot(),
     isEqual: sameViewportSnapshot
   })
-  const interaction = createDerivedStore<TableVirtualInteractionSnapshot>({
+  const interaction = store.createDerivedStore<TableVirtualInteractionSnapshot>({
     get: () => {
       const marqueeActive = resolveMarqueeActive({
-        layoutState: read(layoutStateStore),
-        active: read(options.marqueeActiveStore)
+        layoutState: store.read(layoutStateStore),
+        active: store.read(options.marqueeActiveStore)
       })
       const overscan = resolveTableWindowOverscan({
         marqueeActive,
-        verticalDirection: read(viewportStore).verticalDirection
+        verticalDirection: store.read(viewportStore).verticalDirection
       })
 
       return {
@@ -295,7 +288,7 @@ export const createTableVirtualRuntime = (options: {
     },
     isEqual: sameInteractionSnapshot
   })
-  const windowStore = createValueStore<TableVirtualWindowSnapshot>({
+  const windowStore = store.createValueStore<TableVirtualWindowSnapshot>({
     initial: EMPTY_WINDOW_SNAPSHOT,
     isEqual: sameWindowSnapshot
   })
@@ -720,7 +713,7 @@ export const createTableVirtualRuntime = (options: {
       }))
     }
 
-    cleanupListeners = joinUnsubscribes(unsubscribes)
+    cleanupListeners = store.joinUnsubscribes(unsubscribes)
     measureViewport(
       MEASURE_LAYOUT
       | (scrollNodeChanged ? MEASURE_RESET_DIRECTION : 0)

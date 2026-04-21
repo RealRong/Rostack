@@ -1,18 +1,15 @@
-import {
-  createDerivedStore,
-  read
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { EditorInteractionState, EditorStore } from '@whiteboard/editor/types/editor'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 
 export const createEditorStore = (
   session: Pick<EditorSession, 'state' | 'interaction' | 'viewport'>
 ): EditorStore => {
-  const interactionState = createDerivedStore<EditorInteractionState>({
+  const interactionState = store.createDerivedStore<EditorInteractionState>({
     get: () => {
-      const mode = read(session.interaction.read.mode)
-      const busy = read(session.interaction.read.busy)
-      const chrome = read(session.interaction.read.chrome)
+      const mode = store.read(session.interaction.read.mode)
+      const busy = store.read(session.interaction.read.busy)
+      const chrome = store.read(session.interaction.read.chrome)
       const transforming = mode === 'node-transform'
 
       return {
@@ -32,7 +29,7 @@ export const createEditorStore = (
           || mode === 'edge-label'
           || mode === 'edge-connect'
           || mode === 'edge-route',
-        space: read(session.interaction.read.space)
+        space: store.read(session.interaction.read.space)
       }
     },
     isEqual: (left, right) => (

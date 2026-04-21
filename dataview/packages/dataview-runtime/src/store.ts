@@ -1,37 +1,31 @@
-import {
-  createDerivedStore,
-  createValueStore,
-  read,
-  type Equality,
-  type ReadStore,
-  type ValueStore
-} from '@shared/core'
+import { equal, store as coreStore } from '@shared/core'
+
 
 export const createControllerStore = <T,>(options: {
   initial: T
-  isEqual?: Equality<T>
+  isEqual?: equal.Equality<T>
 }): {
-  store: ValueStore<T>
+  store: coreStore.ValueStore<T>
   get: () => T
 } => {
-  const store = createValueStore<T>(options)
+  const stateStore = coreStore.createValueStore<T>(options)
 
   return {
-    store,
-    get: store.get
+    store: stateStore,
+    get: stateStore.get
   }
 }
 
 export const createNullableControllerStore = <T,>(options?: {
   initial?: T | null
-  isEqual?: Equality<T | null>
+  isEqual?: equal.Equality<T | null>
 }): {
-  store: ValueStore<T | null>
+  store: coreStore.ValueStore<T | null>
   get: () => T | null
   clear: () => void
-  openStore: ReadStore<boolean>
+  openStore: coreStore.ReadStore<boolean>
 } => {
-  const store = createValueStore<T | null>({
+  const stateStore = coreStore.createValueStore<T | null>({
     initial: options?.initial ?? null,
     ...(options?.isEqual
       ? {
@@ -41,13 +35,13 @@ export const createNullableControllerStore = <T,>(options?: {
   })
 
   return {
-    store,
-    get: store.get,
+    store: stateStore,
+    get: stateStore.get,
     clear: () => {
-      store.set(null)
+      stateStore.set(null)
     },
-    openStore: createDerivedStore<boolean>({
-      get: () => Boolean(read(store))
+    openStore: coreStore.createDerivedStore<boolean>({
+      get: () => Boolean(coreStore.read(stateStore))
     })
   }
 }

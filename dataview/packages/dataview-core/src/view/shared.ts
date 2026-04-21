@@ -2,13 +2,9 @@ import type {
   FieldId,
   ViewOptions
 } from '@dataview/core/contracts'
-import {
-  isJsonObject
-} from '@shared/core'
+import { json } from '@shared/core'
 
-export {
-  isJsonObject
-} from '@shared/core'
+export const isJsonObject = json.isJsonObject
 
 export const cloneViewOptions = (
   options: ViewOptions

@@ -1,9 +1,4 @@
-import {
-  createDerivedStore,
-  createKeyedDerivedStore,
-  read,
-  sameOrder
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
@@ -57,7 +52,7 @@ const sameCard = (
   && left.viewId === right.viewId
   && left.itemId === right.itemId
   && left.recordId === right.recordId
-  && sameOrder(left.fields, right.fields)
+  && equal.sameOrder(left.fields, right.fields)
   && left.size === right.size
   && left.layout === right.layout
   && left.wrap === right.wrap
@@ -79,37 +74,37 @@ export const createKanbanModel = (input: {
     source: input.source,
     fields: customFields
   })
-  const board = createDerivedStore<KanbanBoard | null>({
+  const board = store.createDerivedStore<KanbanBoard | null>({
     get: () => {
-      if (read(input.source.active.view.type) !== 'kanban') {
+      if (store.read(input.source.active.view.type) !== 'kanban') {
         return null
       }
 
-      const viewId = read(input.source.active.view.id)
+      const viewId = store.read(input.source.active.view.id)
       if (!viewId) {
         return null
       }
 
       return {
         viewId,
-        grouped: read(input.source.active.query.grouped),
-        sectionKeys: read(input.source.active.sections.keys),
-        groupField: read(input.source.active.query.group).field,
-        fillColumnColor: read(input.source.active.kanban.fillColumnColor),
-        groupUsesOptionColors: read(input.source.active.kanban.groupUsesOptionColors),
-        cardsPerColumn: read(input.source.active.kanban.cardsPerColumn)
+        grouped: store.read(input.source.active.query.grouped),
+        sectionKeys: store.read(input.source.active.sections.keys),
+        groupField: store.read(input.source.active.query.group).field,
+        fillColumnColor: store.read(input.source.active.kanban.fillColumnColor),
+        groupUsesOptionColors: store.read(input.source.active.kanban.groupUsesOptionColors),
+        cardsPerColumn: store.read(input.source.active.kanban.cardsPerColumn)
       }
     },
     isEqual: sameBoard
   })
 
-  const section = createKeyedDerivedStore<string, KanbanSection | undefined>({
+  const section = store.createKeyedDerivedStore<string, KanbanSection | undefined>({
     get: key => {
-      if (read(input.source.active.view.type) !== 'kanban') {
+      if (store.read(input.source.active.view.type) !== 'kanban') {
         return undefined
       }
 
-      const value = read(input.source.active.sections, key)
+      const value = store.read(input.source.active.sections, key)
       return value
         ? {
             key: value.key,
@@ -124,18 +119,18 @@ export const createKanbanModel = (input: {
     isEqual: sameSection
   })
 
-  const card = createKeyedDerivedStore<number, KanbanCard | undefined>({
+  const card = store.createKeyedDerivedStore<number, KanbanCard | undefined>({
     get: itemId => {
-      if (read(input.source.active.view.type) !== 'kanban') {
+      if (store.read(input.source.active.view.type) !== 'kanban') {
         return undefined
       }
 
-      const viewId = read(input.source.active.view.id)
+      const viewId = store.read(input.source.active.view.id)
       if (!viewId) {
         return undefined
       }
 
-      const item = read(input.source.active.items, itemId)
+      const item = store.read(input.source.active.items, itemId)
       if (!item) {
         return undefined
       }
@@ -144,24 +139,24 @@ export const createKanbanModel = (input: {
         viewId,
         itemId,
         recordId: item.recordId,
-        fields: read(customFields),
-        size: read(input.source.active.kanban.size),
-        layout: read(input.source.active.kanban.layout),
-        wrap: read(input.source.active.kanban.wrap),
-        canDrag: read(input.source.active.kanban.canReorder),
+        fields: store.read(customFields),
+        size: store.read(input.source.active.kanban.size),
+        layout: store.read(input.source.active.kanban.layout),
+        wrap: store.read(input.source.active.kanban.wrap),
+        canDrag: store.read(input.source.active.kanban.canReorder),
         selected: (
-          read(input.source.selection.preview, itemId)
-          ?? read(input.source.selection.member, itemId)
+          store.read(input.source.selection.preview, itemId)
+          ?? store.read(input.source.selection.member, itemId)
         ),
-        editing: read(
+        editing: store.read(
           input.source.inline.editing,
           input.inlineKey({
             viewId,
             itemId
           })
         ),
-        color: read(input.source.active.kanban.groupUsesOptionColors)
-          ? read(input.source.active.sections, item.sectionKey)?.color
+        color: store.read(input.source.active.kanban.groupUsesOptionColors)
+          ? store.read(input.source.active.sections, item.sectionKey)?.color
           : undefined
       }
     },

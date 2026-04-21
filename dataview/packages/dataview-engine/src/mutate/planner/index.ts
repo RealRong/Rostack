@@ -3,7 +3,7 @@ import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import {
   document as documentApi
 } from '@dataview/core/document'
-import { isNonEmptyString } from '@shared/core'
+import { string } from '@shared/core'
 import { planFieldAction } from '@dataview/engine/mutate/planner/fields'
 import {
   createIssue,
@@ -127,7 +127,7 @@ const lowerExternalBump = (
   scope: ReturnType<typeof createPlannerScope>,
   action: Extract<Action, { type: 'external.bumpVersion' }>
 ): PlannedActionResult => {
-  if (!isNonEmptyString(action.source)) {
+  if (!string.isNonEmptyString(action.source)) {
     scope.issue(
       'external.invalidSource',
       'external.bumpVersion requires a non-empty source',

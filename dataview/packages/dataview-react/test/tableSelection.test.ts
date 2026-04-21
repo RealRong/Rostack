@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict'
 import { expect, test, vi } from 'vitest'
-import {
-  createValueStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import {
   createItemArraySelectionDomain,
   createSelectionController,
@@ -153,7 +151,7 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
       subscribe: () => () => {}
     }
   })
-  const currentViewStore = createValueStore({
+  const currentViewStore = store.createValueStore({
     initial: undefined as never
   })
   const runtime = createTableSelectionRuntime({

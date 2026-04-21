@@ -5,7 +5,7 @@ import type { NodeRectHitOptions } from '@whiteboard/core/node/hitTest'
 import type { BoardConfig } from '@whiteboard/engine/types/instance'
 import type { ReadModel } from '@whiteboard/engine/types/read'
 import type { Invalidation } from '@whiteboard/core/types'
-import { sameOrder as isSameRefOrder } from '@shared/core'
+import { equal } from '@shared/core'
 import { NodeGeometryCache } from '@whiteboard/engine/geometry/nodeGeometry'
 
 type Rebuild = 'none' | 'dirty' | 'full'
@@ -64,7 +64,7 @@ export class NodeRectIndex {
       nextOrderedIds.push(node.id)
     })
 
-    if (!isSameRefOrder(this.orderedIds, nextOrderedIds)) {
+    if (!equal.sameOrder(this.orderedIds, nextOrderedIds)) {
       this.orderedIds = nextOrderedIds
       this.orderedIdSet = new Set(nextOrderedIds)
       this.orderDirty = true

@@ -1,17 +1,13 @@
-import {
-  createProjectedKeyedStore,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { EdgeId, NodeId } from '@whiteboard/core/types'
 
 export type SelectionRuntimeRead = {
   node: {
-    selected: KeyedReadStore<NodeId, boolean>
+    selected: store.KeyedReadStore<NodeId, boolean>
   }
   edge: {
-    selected: KeyedReadStore<EdgeId, boolean>
+    selected: store.KeyedReadStore<EdgeId, boolean>
   }
 }
 
@@ -19,10 +15,10 @@ const EMPTY_SELECTED_NODES = new Map<NodeId, boolean>()
 const EMPTY_SELECTED_EDGES = new Map<EdgeId, boolean>()
 
 export const createSelectionRuntimeRead = (
-  source: ReadStore<SelectionTarget>
+  source: store.ReadStore<SelectionTarget>
 ): SelectionRuntimeRead => ({
   node: {
-    selected: createProjectedKeyedStore({
+    selected: store.createProjectedKeyedStore({
       source,
       select: (target) => (
         target.nodeIds.length > 0
@@ -33,7 +29,7 @@ export const createSelectionRuntimeRead = (
     })
   },
   edge: {
-    selected: createProjectedKeyedStore({
+    selected: store.createProjectedKeyedStore({
       source,
       select: (target) => (
         target.edgeIds.length > 0

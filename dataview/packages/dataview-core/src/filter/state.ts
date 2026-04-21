@@ -3,9 +3,7 @@ import type {
   Filter,
   FilterRule
 } from '@dataview/core/contracts'
-import {
-  sameJsonValue
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   applyFilterPreset,
   cloneFilterRule,
@@ -19,7 +17,7 @@ export const sameFilterRule = (
 ) => (
   left.fieldId === right.fieldId
   && left.presetId === right.presetId
-  && sameJsonValue(left.value, right.value)
+  && equal.sameJsonValue(left.value, right.value)
 )
 
 export const cloneFilterRules = (

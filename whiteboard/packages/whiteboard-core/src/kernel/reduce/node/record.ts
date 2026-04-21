@@ -1,8 +1,7 @@
+import { json, record } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getNode } from '@whiteboard/core/kernel/reduce/runtime'
-import { applyPathMutation } from '@whiteboard/core/utils/recordMutation'
-import { cloneValue } from '@whiteboard/core/value'
 
 const applyNodeRecordMutation = (
   node: import('@whiteboard/core/types').Node,
@@ -12,7 +11,7 @@ const applyNodeRecordMutation = (
   const current = scope === 'data'
     ? node.data
     : node.style
-  const result = applyPathMutation(current, mutation)
+  const result = record.apply(current, mutation)
   if (!result.ok) {
     return result
   }
@@ -51,12 +50,12 @@ export const createNodeRecordApi = (
           scope,
           path
         }
-      : {
+        : {
           type: 'node.record.set',
           id,
           scope,
           path,
-          value: cloneValue(previous)
+          value: json.clone(previous)
         })
     const next = applyNodeRecordMutation(current, scope, {
       op: 'set',
@@ -90,7 +89,7 @@ export const createNodeRecordApi = (
       id,
       scope,
       path,
-      value: cloneValue(tx.read.record.path(currentRoot, path))
+      value: json.clone(tx.read.record.path(currentRoot, path))
     })
     const next = applyNodeRecordMutation(current, scope, {
       op: 'unset',

@@ -1,9 +1,4 @@
-import {
-  createAnchorFocusPair,
-  orderedRange,
-  orderedRangeEdges,
-  sameAnchorFocusPair
-} from '@shared/core'
+import { selection } from '@shared/core'
 import type {
   FieldList,
   ItemId,
@@ -34,12 +29,12 @@ export interface GridSelectionEdges {
 const equal = (
   left: GridSelection | null,
   right: GridSelection | null
-) => sameAnchorFocusPair(left, right, sameCellRef)
+) => selection.sameAnchorFocusPair(left, right, sameCellRef)
 
 const set = (
   focus: CellRef,
   anchor: CellRef = focus
-): GridSelection => createAnchorFocusPair(focus, anchor)
+): GridSelection => selection.createAnchorFocusPair(focus, anchor)
 
 const focus = (
   current: GridSelection | null
@@ -54,12 +49,12 @@ const edges = (
   items: Pick<ItemList, 'ids'>,
   fields: Pick<FieldList, 'ids'>
 ): GridSelectionEdges | undefined => {
-  const rowEdges = orderedRangeEdges(
+  const rowEdges = selection.orderedRangeEdges(
     items.ids,
     current.anchor.itemId,
     current.focus.itemId
   )
-  const fieldEdges = orderedRangeEdges(
+  const fieldEdges = selection.orderedRangeEdges(
     fields.ids,
     current.anchor.fieldId,
     current.focus.fieldId
@@ -79,12 +74,12 @@ const edges = (
 const itemIds = (
   current: GridSelection,
   items: Pick<ItemList, 'ids'>
-) => orderedRange(items.ids, current.anchor.itemId, current.focus.itemId)
+) => selection.orderedRange(items.ids, current.anchor.itemId, current.focus.itemId)
 
 const fieldIds = (
   current: GridSelection,
   fields: Pick<FieldList, 'ids'>
-) => orderedRange(fields.ids, current.anchor.fieldId, current.focus.fieldId)
+) => selection.orderedRange(fields.ids, current.anchor.fieldId, current.focus.fieldId)
 
 const containsCell = (
   current: GridSelection,

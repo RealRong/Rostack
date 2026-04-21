@@ -9,9 +9,9 @@ import {
 import {
   fieldSpec
 } from '@dataview/core/field/spec'
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
+
+
 
 export interface ReducerCapabilitySet {
   count?: true
@@ -246,7 +246,7 @@ export const sameCalculationEntry = (
   left?.empty === right?.empty
   && left?.uniqueKey === right?.uniqueKey
   && left?.number === right?.number
-  && sameOrder(left?.optionIds ?? EMPTY_OPTION_IDS, right?.optionIds ?? EMPTY_OPTION_IDS)
+  && equal.sameOrder(left?.optionIds ?? EMPTY_OPTION_IDS, right?.optionIds ?? EMPTY_OPTION_IDS)
 )
 
 const sameCountMap = <K,>(

@@ -1,4 +1,4 @@
-import { createValueStore } from '@shared/core'
+import { store } from '@shared/core'
 import type {
   HistoryApi,
   HistoryBinding
@@ -7,7 +7,7 @@ import type {
 export const createHistoryBinding = (
   initial: HistoryApi
 ): HistoryBinding => {
-  const state = createValueStore(initial.get())
+  const state = store.createValueStore(initial.get())
   let current = initial
   let unsubscribe = current.subscribe(() => {
     state.set(current.get())

@@ -1,4 +1,4 @@
-import type { ReadStore } from '@shared/core'
+import { store as coreStore } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
 import type * as Y from 'yjs'
@@ -26,8 +26,8 @@ export type CollabLocalHistory = HistoryApi
 
 export type CollabSession = {
   awareness?: unknown
-  status: ReadStore<CollabStatus>
-  diagnostics: ReadStore<CollabDiagnostics>
+  status: coreStore.ReadStore<CollabStatus>
+  diagnostics: coreStore.ReadStore<CollabDiagnostics>
   localHistory: CollabLocalHistory
   connect: () => void
   disconnect: () => void

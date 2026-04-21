@@ -5,10 +5,7 @@ import type {
 import type { Edge, EdgeId, Invalidation, NodeId, Point } from '@whiteboard/core/types'
 import { edge as edgeApi, type EdgeRelations } from '@whiteboard/core/edge'
 import { node as nodeApi } from '@whiteboard/core/node'
-import {
-  samePointArray as isSamePointArray,
-  sameRectWithRotation as isSameRectWithRotationTuple
-} from '@shared/core'
+import { equal } from '@shared/core'
 import type { ReadSnapshot } from '@whiteboard/engine/types/internal/read'
 import { createProjectionRuntime } from '@whiteboard/engine/read/store/projection'
 
@@ -196,7 +193,7 @@ const isSameEdgeStructureTuple = (
 
     if (left[key] !== right[key]) return false
   }
-  return isSamePointArray(left.routePointsRef, right.routePointsRef)
+  return equal.samePointArray(left.routePointsRef, right.routePointsRef)
 }
 
 const resolveEdgeRebuild = (invalidation: Invalidation): 'none' | 'dirty' | 'full' => {
@@ -271,13 +268,13 @@ export const createEdgeProjection = (initialSnapshot: ReadSnapshot) => {
           previous.sourceGeometry === undefined
           ? material.sourceGeometry === undefined
           : material.sourceGeometry !== undefined
-            && isSameRectWithRotationTuple(previous.sourceGeometry, material.sourceGeometry)
+            && equal.sameRectWithRotation(previous.sourceGeometry, material.sourceGeometry)
         )
         && (
           previous.targetGeometry === undefined
           ? material.targetGeometry === undefined
           : material.targetGeometry !== undefined
-            && isSameRectWithRotationTuple(previous.targetGeometry, material.targetGeometry)
+            && equal.sameRectWithRotation(previous.targetGeometry, material.targetGeometry)
         )
       )
     if (!isSameGeometry) return undefined

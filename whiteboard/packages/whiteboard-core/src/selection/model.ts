@@ -14,10 +14,8 @@ import type {
   NodeRole,
   Rect
 } from '@whiteboard/core/types'
-import {
-  sameOptionalRect as isSameOptionalRectTuple,
-  sameOrder as isOrderedArrayEqual
-} from '@shared/core'
+import { equal } from '@shared/core'
+
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []
@@ -47,8 +45,8 @@ export const isSelectionTargetEqual = (
   left: SelectionTarget,
   right: SelectionTarget
 ) => (
-  isOrderedArrayEqual(left.nodeIds, right.nodeIds)
-  && isOrderedArrayEqual(left.edgeIds, right.edgeIds)
+  equal.sameOrder(left.nodeIds, right.nodeIds)
+  && equal.sameOrder(left.edgeIds, right.edgeIds)
 )
 
 export const normalizeSelectionTarget = (
@@ -130,13 +128,13 @@ export const isSelectionSummaryEqual = (
   && left.groups.count === right.groups.count
   && left.groups.primaryId === right.groups.primaryId
   && left.canMove === right.canMove
-  && isOrderedArrayEqual(left.target.nodeIds, right.target.nodeIds)
-  && isOrderedArrayEqual(left.target.edgeIds, right.target.edgeIds)
-  && isOrderedArrayEqual(left.target.groupIds, right.target.groupIds)
-  && isOrderedArrayEqual(left.items.nodes, right.items.nodes)
-  && isOrderedArrayEqual(left.items.edges, right.items.edges)
+  && equal.sameOrder(left.target.nodeIds, right.target.nodeIds)
+  && equal.sameOrder(left.target.edgeIds, right.target.edgeIds)
+  && equal.sameOrder(left.target.groupIds, right.target.groupIds)
+  && equal.sameOrder(left.items.nodes, right.items.nodes)
+  && equal.sameOrder(left.items.edges, right.items.edges)
   && isSelectionTransformPlanEqual(left.transformPlan, right.transformPlan)
-  && isSameOptionalRectTuple(left.box, right.box)
+  && equal.sameOptionalRect(left.box, right.box)
 )
 
 const isNodeTransformBehaviorEqual = (
@@ -144,7 +142,7 @@ const isNodeTransformBehaviorEqual = (
   right: NodeTransformBehavior
 ) => (
   left.kind === right.kind
-  && isOrderedArrayEqual(left.supportedFamilies, right.supportedFamilies)
+  && equal.sameOrder(left.supportedFamilies, right.supportedFamilies)
 )
 
 const isSelectionTransformPlanEqual = (
@@ -155,7 +153,7 @@ const isSelectionTransformPlanEqual = (
   || (
     left !== undefined
     && right !== undefined
-    && isSameOptionalRectTuple(left.box, right.box)
+    && equal.sameOptionalRect(left.box, right.box)
     && left.handles.length === right.handles.length
     && left.handles.every((entry, index) => (
       entry.id === right.handles[index]?.id
@@ -168,7 +166,7 @@ const isSelectionTransformPlanEqual = (
     && left.members.every((entry, index) => (
       entry.id === right.members[index]?.id
       && entry.node === right.members[index]?.node
-      && isSameOptionalRectTuple(entry.rect, right.members[index]?.rect)
+      && equal.sameOptionalRect(entry.rect, right.members[index]?.rect)
       && isNodeTransformBehaviorEqual(entry.behavior, right.members[index]!.behavior)
     ))
   )
@@ -429,7 +427,7 @@ export const isSelectionAffordanceEqual = (
   && left.canRotate === right.canRotate
   && isSelectionTransformPlanEqual(left.transformPlan, right.transformPlan)
   && left.showSingleNodeOverlay === right.showSingleNodeOverlay
-  && isSameOptionalRectTuple(left.displayBox, right.displayBox)
+  && equal.sameOptionalRect(left.displayBox, right.displayBox)
 )
 
 export type BoundsTarget = {

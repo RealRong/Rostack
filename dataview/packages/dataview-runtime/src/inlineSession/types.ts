@@ -1,9 +1,7 @@
 import type { ViewId } from '@dataview/core/contracts'
 import type { ItemId } from '@dataview/engine'
-import type {
-  KeyedReadStore,
-  ValueStore
-} from '@shared/core'
+import { store } from '@shared/core'
+
 
 export interface InlineSessionTarget {
   viewId: ViewId
@@ -24,8 +22,8 @@ export interface InlineSessionExitEvent {
 }
 
 export interface InlineSessionApi {
-  store: ValueStore<InlineSessionTarget | null>
-  editing: KeyedReadStore<string, boolean>
+  store: store.ValueStore<InlineSessionTarget | null>
+  editing: store.KeyedReadStore<string, boolean>
   key(target: InlineSessionTarget): string
   enter(target: InlineSessionTarget): void
   exit(options?: {

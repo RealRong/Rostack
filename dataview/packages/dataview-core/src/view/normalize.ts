@@ -4,10 +4,7 @@ import type {
   ViewOptions,
   ViewType
 } from '@dataview/core/contracts'
-import {
-  isJsonObject,
-  trimToUndefined
-} from '@shared/core'
+import { json, string } from '@shared/core'
 import { normalizeGalleryOptions } from '@dataview/core/view/gallery'
 import { normalizeKanbanOptions } from '@dataview/core/view/kanban'
 import { createDefaultViewOptions } from '@dataview/core/view/options'
@@ -21,13 +18,13 @@ const normalizeWidths = (
   value: unknown,
   validFieldIds?: ReadonlySet<FieldId>
 ): ViewOptions['table']['widths'] => {
-  if (!isJsonObject(value)) {
+  if (!json.isJsonObject(value)) {
     return {}
   }
 
   const next: Partial<Record<FieldId, number>> = {}
   Object.entries(value).forEach(([key, width]) => {
-    const fieldId = trimToUndefined(key) as FieldId | undefined
+    const fieldId = string.trimToUndefined(key) as FieldId | undefined
     if (!fieldId) {
       return
     }
@@ -60,12 +57,12 @@ export const normalizeViewOptions = (
   options: unknown,
   context: NormalizeViewOptionsContext = {}
 ): ViewOptions => {
-  const root = isJsonObject(options) ? options : undefined
+  const root = json.isJsonObject(options) ? options : undefined
   const defaultOptions = createDefaultViewOptions(context.type ?? 'table', context.fields ?? [])
   const validFieldIds = context.fields?.length
     ? new Set(context.fields.map(field => field.id))
     : undefined
-  const table = isJsonObject(root?.table) ? root.table : undefined
+  const table = json.isJsonObject(root?.table) ? root.table : undefined
 
   return {
     table: {

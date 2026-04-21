@@ -5,7 +5,7 @@ import { mindmap as mindmapApi,
 } from '@whiteboard/core/mindmap'
 import type { SelectionSummary } from '@whiteboard/core/selection'
 import type { NodeId, Point } from '@whiteboard/core/types'
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
@@ -71,7 +71,7 @@ export const tryStartMindmapDrag = (input: {
   pointer: PointerDownInput
   mindmap: Pick<MindmapPresentationRead, 'item'>
   node: Pick<NodePresentationRead, 'item'>
-  selection: Pick<ReadStore<SelectionSummary>, 'get'>
+  selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
 }): MindmapDragState | undefined => {
   const pick = input.pointer.pick
   const pickedNode = pick.kind === 'node'

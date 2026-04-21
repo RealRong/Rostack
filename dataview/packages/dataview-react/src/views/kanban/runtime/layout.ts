@@ -5,16 +5,7 @@ import {
   useRef,
   type RefObject
 } from 'react'
-import {
-  createDerivedStore,
-  createKeyedStore,
-  createValueStore,
-  read,
-  sameMap,
-  sameOptionalRect,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import {
   elementRectIn,
   observeElementSize,
@@ -40,8 +31,8 @@ import {
 } from '@dataview/react/virtual'
 
 export interface KanbanLayoutRuntime {
-  board: ReadStore<BoardLayout | null>
-  body: KeyedReadStore<SectionKey, Rect | undefined>
+  board: store.ReadStore<BoardLayout | null>
+  body: store.KeyedReadStore<SectionKey, Rect | undefined>
   measure: {
     body: (sectionKey: SectionKey) => (node: HTMLDivElement | null) => void
     card: (id: ItemId) => (node: HTMLElement | null) => void
@@ -51,7 +42,7 @@ export interface KanbanLayoutRuntime {
 export const useKanbanLayout = (input: {
   containerRef: RefObject<HTMLDivElement | null>
   sections: readonly Section[]
-  sectionsStore: ReadStore<readonly Section[]>
+  sectionsStore: store.ReadStore<readonly Section[]>
   visibility: KanbanVisibilityRuntime
 }): KanbanLayoutRuntime => {
   const visibilityVersion = useStoreValue(input.visibility.version)
@@ -64,13 +55,13 @@ export const useKanbanLayout = (input: {
   const measured = useMeasuredHeights({
     ids: visibleIds
   })
-  const bodyStore = useMemo(() => createKeyedStore<SectionKey, Rect | undefined>({
+  const bodyStore = useMemo(() => store.createKeyedStore<SectionKey, Rect | undefined>({
     emptyValue: undefined,
-    isEqual: sameOptionalRect
+    isEqual: equal.sameOptionalRect
   }), [])
-  const bodyVersion = useMemo(() => createValueStore(0), [])
-  const heightStore = useMemo(() => createValueStore<ReadonlyMap<ItemId, number>>(new Map<ItemId, number>(), {
-    isEqual: sameMap
+  const bodyVersion = useMemo(() => store.createValueStore(0), [])
+  const heightStore = useMemo(() => store.createValueStore<ReadonlyMap<ItemId, number>>(new Map<ItemId, number>(), {
+    isEqual: equal.sameMap
   }), [])
   const bodyNodeBySectionKeyRef = useRef(new Map<SectionKey, HTMLDivElement>())
   const cleanupBySectionKeyRef = useRef(new Map<SectionKey, () => void>())
@@ -99,7 +90,7 @@ export const useKanbanLayout = (input: {
 
     const nextRect = elementRectIn(container, node)
     const previousRect = bodyStore.get(sectionKey)
-    if (sameOptionalRect(previousRect, nextRect)) {
+    if (equal.sameOptionalRect(previousRect, nextRect)) {
       return
     }
 
@@ -177,12 +168,12 @@ export const useKanbanLayout = (input: {
     return ref
   }, [syncBodyRect])
 
-  const board = useMemo(() => createDerivedStore<BoardLayout | null>({
+  const board = useMemo(() => store.createDerivedStore<BoardLayout | null>({
     get: () => {
-      read(bodyVersion)
-      read(input.visibility.version)
-      const sections = read(input.sectionsStore)
-      const heightById = read(heightStore)
+      store.read(bodyVersion)
+      store.read(input.visibility.version)
+      const sections = store.read(input.sectionsStore)
+      const heightById = store.read(heightStore)
       const bodyRectBySectionKey = new Map<SectionKey, Rect>()
       bodyStore.all().forEach((rect, sectionKey) => {
         if (rect) {

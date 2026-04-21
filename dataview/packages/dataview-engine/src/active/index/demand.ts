@@ -7,9 +7,7 @@ import {
 import {
   fieldSpec
 } from '@dataview/core/field/spec'
-import {
-  uniqueSorted
-} from '@shared/core'
+import { collection } from '@shared/core'
 import type {
   BucketSpec,
   IndexDemand,
@@ -49,7 +47,7 @@ export const resolveDefaultSearchFieldIds = (
     }
   }
 
-  return uniqueSorted(fieldIds)
+  return collection.uniqueSorted(fieldIds)
 }
 
 export const normalizeIndexDemand = (
@@ -57,14 +55,14 @@ export const normalizeIndexDemand = (
   demand?: IndexDemand
 ): NormalizedIndexDemand => {
   const buckets = uniqueBucketSpecs(demand?.buckets)
-  const sortFields = uniqueSorted(demand?.sortFields ?? [])
-  const searchFields = uniqueSorted(demand?.search?.fieldIds ?? [])
-  const displayFields = uniqueSorted(demand?.displayFields ?? [])
-  const calculationFields = uniqueSorted(
+  const sortFields = collection.uniqueSorted(demand?.sortFields ?? [])
+  const searchFields = collection.uniqueSorted(demand?.search?.fieldIds ?? [])
+  const displayFields = collection.uniqueSorted(demand?.displayFields ?? [])
+  const calculationFields = collection.uniqueSorted(
     (demand?.calculations ?? []).map(item => item.fieldId)
   )
-  const bucketFields = uniqueSorted(buckets.map(item => item.fieldId))
-  const recordFields = uniqueSorted([
+  const bucketFields = collection.uniqueSorted(buckets.map(item => item.fieldId))
+  const recordFields = collection.uniqueSorted([
     ...displayFields,
     ...sortFields,
     ...searchFields,

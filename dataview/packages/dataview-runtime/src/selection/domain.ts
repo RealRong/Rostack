@@ -2,10 +2,7 @@ import type {
   ItemId,
   ItemList
 } from '@dataview/engine'
-import {
-  read,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   OrderedSelectionDomain,
   SelectionDomainSource
@@ -86,10 +83,10 @@ export const createItemArraySelectionDomain = (
 }
 
 export const createItemSelectionDomainSource = (input: {
-  store: ReadStore<ItemList | undefined>
+  store: store.ReadStore<ItemList | undefined>
 }): SelectionDomainSource<ItemId> => ({
   get: () => {
-    const items = read(input.store)
+    const items = store.read(input.store)
     return items
       ? createItemListSelectionDomain(items)
       : undefined

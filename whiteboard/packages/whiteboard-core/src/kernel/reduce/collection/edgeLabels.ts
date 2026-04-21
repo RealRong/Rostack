@@ -1,8 +1,7 @@
+import { json, record } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { applyPathMutation } from '@whiteboard/core/utils/recordMutation'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
-import { cloneValue } from '@whiteboard/core/value'
 
 const getLabels = (
   tx: ReducerTx,
@@ -65,7 +64,7 @@ export const createEdgeLabelsCollectionApi = (
       tx._runtime.inverse.unshift({
         type: 'edge.label.insert',
         edgeId,
-        label: cloneValue(label),
+        label: json.clone(label),
         to: index === 0
           ? { kind: 'start' }
           : { kind: 'after', labelId: labels[index - 1]!.id }
@@ -127,10 +126,10 @@ export const createEdgeLabelsCollectionApi = (
       const previous = (label as Record<string, unknown>)[field]
       tx._runtime.inverse.unshift(previous === undefined
         ? { type: 'edge.label.field.unset', edgeId, labelId, field }
-        : { type: 'edge.label.field.set', edgeId, labelId, field, value: cloneValue(previous) })
+        : { type: 'edge.label.field.set', edgeId, labelId, field, value: json.clone(previous) })
       labels[index] = {
         ...label,
-        [field]: cloneValue(value) as never
+        [field]: json.clone(value) as never
       }
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
       markChange(tx._runtime.changes.edges, 'update', edgeId)
@@ -149,7 +148,7 @@ export const createEdgeLabelsCollectionApi = (
         edgeId,
         labelId,
         field,
-        value: cloneValue((label as Record<string, unknown>)[field])
+        value: json.clone((label as Record<string, unknown>)[field])
       })
       const nextLabel = { ...label } as import('@whiteboard/core/types').EdgeLabel & Record<string, unknown>
       delete nextLabel[field]
@@ -172,8 +171,8 @@ export const createEdgeLabelsCollectionApi = (
       const previous = tx.read.record.path(currentRoot, path)
       tx._runtime.inverse.unshift(previous === undefined
         ? { type: 'edge.label.record.unset', edgeId, labelId, scope, path }
-        : { type: 'edge.label.record.set', edgeId, labelId, scope, path, value: cloneValue(previous) })
-      const result = applyPathMutation(currentRoot, { op: 'set', path, value })
+        : { type: 'edge.label.record.set', edgeId, labelId, scope, path, value: json.clone(previous) })
+      const result = record.apply(currentRoot, { op: 'set', path, value })
       if (!result.ok) {
         throw new Error(result.message)
       }
@@ -202,9 +201,9 @@ export const createEdgeLabelsCollectionApi = (
         labelId,
         scope,
         path,
-        value: cloneValue(tx.read.record.path(currentRoot, path))
+        value: json.clone(tx.read.record.path(currentRoot, path))
       })
-      const result = applyPathMutation(currentRoot, { op: 'unset', path })
+      const result = record.apply(currentRoot, { op: 'unset', path })
       if (!result.ok) {
         throw new Error(result.message)
       }

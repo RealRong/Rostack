@@ -1,5 +1,5 @@
 import type { ViewState as CurrentView } from '@dataview/engine'
-import { createDerivedStore, read, type ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { InteractionState } from '@dataview/react/interaction'
 
 export interface Capabilities {
@@ -20,14 +20,14 @@ const equalCapabilities = (
 )
 
 export const createCapabilities = (options: {
-  currentView: ReadStore<CurrentView | undefined>
-  locked: ReadStore<boolean>
-  interaction: ReadStore<InteractionState>
-}): ReadStore<Capabilities> => createDerivedStore<Capabilities>({
+  currentView: store.ReadStore<CurrentView | undefined>
+  locked: store.ReadStore<boolean>
+  interaction: store.ReadStore<InteractionState>
+}): store.ReadStore<Capabilities> => store.createDerivedStore<Capabilities>({
   get: () => {
-    const locked = read(options.locked)
-    const interaction = read(options.interaction)
-    const currentView = read(options.currentView)
+    const locked = store.read(options.locked)
+    const interaction = store.read(options.interaction)
+    const currentView = store.read(options.currentView)
     const canHover = !locked && (
       interaction.mode === 'idle'
       || interaction.mode === 'keyboard'

@@ -6,9 +6,7 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import type {
   CalculationEntry
 } from '@dataview/core/calculation'
@@ -168,7 +166,7 @@ export const applyMembershipTransition = <TKey extends string, TItem extends str
   before: readonly TKey[],
   after: readonly TKey[]
 ): void => {
-  if (sameOrder(before, after)) {
+  if (equal.sameOrder(before, after)) {
     return
   }
 

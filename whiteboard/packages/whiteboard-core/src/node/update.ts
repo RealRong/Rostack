@@ -1,3 +1,4 @@
+import { json, record } from '@shared/core'
 import type {
   NodeField,
   Node,
@@ -9,11 +10,6 @@ import type {
   NodeUpdateInput,
   Operation
 } from '@whiteboard/core/types'
-import {
-  applyPathMutation,
-  isRecordLike
-} from '@whiteboard/core/utils/recordMutation'
-import { cloneValue } from '@whiteboard/core/value'
 
 export type NodeUpdateImpact = {
   geometry: boolean
@@ -62,7 +58,7 @@ const applyFieldPatch = (
     if (!hasOwn(fields, key)) {
       return
     }
-    ;(patch as any)[key] = cloneValue(fields[key])
+    ;(patch as any)[key] = json.clone(fields[key])
   })
 
   return patch
@@ -81,7 +77,7 @@ const buildFieldInverse = (
     if (!hasOwn(fields, key)) {
       return
     }
-    ;(inverse as any)[key] = cloneValue((node as any)[key])
+    ;(inverse as any)[key] = json.clone((node as any)[key])
   })
 
   return inverse
@@ -91,7 +87,7 @@ const applyRecordMutation = (
   current: unknown,
   mutation: NodeRecordMutation
 ): { ok: true; value: unknown } | { ok: false; message: string } => {
-  return applyPathMutation(current, mutation)
+  return record.apply(current, mutation)
 }
 
 const inspectRecordPath = (
@@ -112,7 +108,7 @@ const inspectRecordPath = (
       parentIsArray: false
     }
   }
-  if (!isRecordLike(current)) {
+  if (!record.isRecordLike(current)) {
     return {
       canAddressPath: false,
       exists: false,
@@ -134,7 +130,7 @@ const inspectRecordPath = (
     }
 
     const nextValue = container[part]
-    if (!isRecordLike(nextValue)) {
+    if (!record.isRecordLike(nextValue)) {
       return {
         canAddressPath: false,
         exists: false,
@@ -164,7 +160,7 @@ const buildSetRecordInverse = (
     return {
       scope: mutation.scope,
       op: 'set',
-      value: cloneValue(current)
+      value: json.clone(current)
     }
   }
 
@@ -173,7 +169,7 @@ const buildSetRecordInverse = (
     return {
       scope: mutation.scope,
       op: 'set',
-      value: cloneValue(current)
+      value: json.clone(current)
     }
   }
 
@@ -182,7 +178,7 @@ const buildSetRecordInverse = (
       scope: mutation.scope,
       op: 'set',
       path: mutation.path,
-      value: cloneValue(inspected.value)
+      value: json.clone(inspected.value)
     }
   }
 
@@ -211,7 +207,7 @@ const buildUnsetRecordInverse = (
       scope: mutation.scope,
       op: 'set',
       path: mutation.path,
-      value: cloneValue(inspected.value)
+      value: json.clone(inspected.value)
     }
   }
 }
@@ -281,7 +277,7 @@ export const createNodeUpdateOperation = (
       type: 'node.field.set',
       id,
       field,
-      value: cloneValue(value)
+      value: json.clone(value)
     })
   }
 
@@ -301,7 +297,7 @@ export const createNodeUpdateOperation = (
       id,
       scope: record.scope,
       path: record.path ?? '',
-      value: cloneValue(record.value)
+      value: json.clone(record.value)
     })
   }
 

@@ -51,9 +51,7 @@ import {
   isEmptyValue,
   normalizeValueToken
 } from '@dataview/core/shared/value'
-import {
-  readFiniteNumber
-} from '@shared/core'
+import { parse } from '@shared/core'
 import {
   fieldSpec,
   type FieldValueBehavior
@@ -116,7 +114,7 @@ export const field = {
   value: {
     read: readFieldValue,
     empty: isEmptyValue,
-    number: readFiniteNumber,
+    number: parse.readFiniteNumber,
     token: normalizeValueToken,
     searchable: expandSearchableValue
   },

@@ -13,13 +13,7 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  batch,
-  createKeyedStore,
-  createValueStore,
-  sameOrder,
-  type KeyedStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import type {
   ActiveSource,
   DocumentSource,
@@ -54,11 +48,11 @@ const DEFAULT_CARD_SIZE = 'medium' as CardSize
 const DEFAULT_KANBAN_CARDS_PER_COLUMN = 0 as KanbanCardsPerColumn
 
 const createEntitySourceRuntime = <K, T>() => {
-  const ids = createValueStore<readonly K[]>({
+  const ids = store.createValueStore<readonly K[]>({
     initial: [] as readonly K[],
-    isEqual: sameOrder
+    isEqual: equal.sameOrder
   })
-  const values = createKeyedStore<K, T | undefined>({
+  const values = store.createKeyedStore<K, T | undefined>({
     emptyValue: undefined
   })
 
@@ -79,14 +73,14 @@ const createEntitySourceRuntime = <K, T>() => {
 }
 
 const createSectionSourceRuntime = () => {
-  const keys = createValueStore<readonly SectionKey[]>({
+  const keys = store.createValueStore<readonly SectionKey[]>({
     initial: EMPTY_SECTION_KEYS,
-    isEqual: sameOrder
+    isEqual: equal.sameOrder
   })
-  const values = createKeyedStore<SectionKey, Section | undefined>({
+  const values = store.createKeyedStore<SectionKey, Section | undefined>({
     emptyValue: undefined
   })
-  const summary = createKeyedStore<SectionKey, CalculationCollection | undefined>({
+  const summary = store.createKeyedStore<SectionKey, CalculationCollection | undefined>({
     emptyValue: undefined
   })
 
@@ -110,7 +104,7 @@ const createSectionSourceRuntime = () => {
 }
 
 const applyEntityDelta = <K, T>(
-  store: KeyedStore<K, T | undefined>,
+  store: store.KeyedStore<K, T | undefined>,
   delta: EntityDelta<K, T> | undefined
 ) => {
   if (!delta) {
@@ -141,45 +135,45 @@ export const createEngineSourceRuntime = (input: {
   const activeSections = createSectionSourceRuntime()
   const activeFieldsAll = createEntitySourceRuntime<FieldId, Field>()
   const activeFieldsCustom = createEntitySourceRuntime<FieldId, CustomField>()
-  const viewReady = createValueStore(false)
-  const viewId = createValueStore<ViewId | undefined>(undefined)
-  const viewType = createValueStore<View['type'] | undefined>(undefined)
-  const viewCurrent = createValueStore<View | undefined>(undefined)
-  const querySearch = createValueStore<ViewSearchProjection>(EMPTY_SEARCH)
-  const queryFilters = createValueStore<ViewFilterProjection>(EMPTY_FILTERS)
-  const querySort = createValueStore<ViewSortProjection>(EMPTY_SORT)
-  const queryGroup = createValueStore<ViewGroupProjection>(EMPTY_GROUP)
-  const queryGrouped = createValueStore(false)
-  const queryGroupFieldId = createValueStore<FieldId | ''>('')
-  const queryFilterFieldIds = createValueStore<readonly FieldId[]>({
+  const viewReady = store.createValueStore(false)
+  const viewId = store.createValueStore<ViewId | undefined>(undefined)
+  const viewType = store.createValueStore<View['type'] | undefined>(undefined)
+  const viewCurrent = store.createValueStore<View | undefined>(undefined)
+  const querySearch = store.createValueStore<ViewSearchProjection>(EMPTY_SEARCH)
+  const queryFilters = store.createValueStore<ViewFilterProjection>(EMPTY_FILTERS)
+  const querySort = store.createValueStore<ViewSortProjection>(EMPTY_SORT)
+  const queryGroup = store.createValueStore<ViewGroupProjection>(EMPTY_GROUP)
+  const queryGrouped = store.createValueStore(false)
+  const queryGroupFieldId = store.createValueStore<FieldId | ''>('')
+  const queryFilterFieldIds = store.createValueStore<readonly FieldId[]>({
     initial: EMPTY_FIELD_IDS,
-    isEqual: sameOrder
+    isEqual: equal.sameOrder
   })
-  const querySortFieldIds = createValueStore<readonly FieldId[]>({
+  const querySortFieldIds = store.createValueStore<readonly FieldId[]>({
     initial: EMPTY_FIELD_IDS,
-    isEqual: sameOrder
+    isEqual: equal.sameOrder
   })
-  const querySortDir = createKeyedStore<FieldId, SortDirection | undefined>({
+  const querySortDir = store.createKeyedStore<FieldId, SortDirection | undefined>({
     emptyValue: undefined
   })
-  const tableWrap = createValueStore(false)
-  const tableShowVerticalLines = createValueStore(false)
-  const tableCalc = createKeyedStore<FieldId, CalculationMetric | undefined>({
+  const tableWrap = store.createValueStore(false)
+  const tableShowVerticalLines = store.createValueStore(false)
+  const tableCalc = store.createKeyedStore<FieldId, CalculationMetric | undefined>({
     emptyValue: undefined
   })
-  const tableLayout = createValueStore<TableLayoutState | null>(null)
-  const galleryWrap = createValueStore(false)
-  const gallerySize = createValueStore<CardSize>(DEFAULT_CARD_SIZE)
-  const galleryLayout = createValueStore<CardLayout>(DEFAULT_CARD_LAYOUT)
-  const galleryCanReorder = createValueStore(false)
-  const galleryGroupUsesOptionColors = createValueStore(false)
-  const kanbanWrap = createValueStore(false)
-  const kanbanSize = createValueStore<CardSize>(DEFAULT_CARD_SIZE)
-  const kanbanLayout = createValueStore<CardLayout>(DEFAULT_CARD_LAYOUT)
-  const kanbanCanReorder = createValueStore(false)
-  const kanbanGroupUsesOptionColors = createValueStore(false)
-  const kanbanFillColumnColor = createValueStore(false)
-  const kanbanCardsPerColumn = createValueStore<KanbanCardsPerColumn>(
+  const tableLayout = store.createValueStore<TableLayoutState | null>(null)
+  const galleryWrap = store.createValueStore(false)
+  const gallerySize = store.createValueStore<CardSize>(DEFAULT_CARD_SIZE)
+  const galleryLayout = store.createValueStore<CardLayout>(DEFAULT_CARD_LAYOUT)
+  const galleryCanReorder = store.createValueStore(false)
+  const galleryGroupUsesOptionColors = store.createValueStore(false)
+  const kanbanWrap = store.createValueStore(false)
+  const kanbanSize = store.createValueStore<CardSize>(DEFAULT_CARD_SIZE)
+  const kanbanLayout = store.createValueStore<CardLayout>(DEFAULT_CARD_LAYOUT)
+  const kanbanCanReorder = store.createValueStore(false)
+  const kanbanGroupUsesOptionColors = store.createValueStore(false)
+  const kanbanFillColumnColor = store.createValueStore(false)
+  const kanbanCardsPerColumn = store.createValueStore<KanbanCardsPerColumn>(
     DEFAULT_KANBAN_CARDS_PER_COLUMN
   )
 
@@ -399,14 +393,14 @@ export const createEngineSourceRuntime = (input: {
   }
 
   const apply = (delta: SourceDelta) => {
-    batch(() => {
+    store.batch(() => {
       applyDocumentDelta(delta.document)
       applyActiveDelta(delta.active)
     })
   }
 
   const clear = () => {
-    batch(() => {
+    store.batch(() => {
       documentRecords.clear()
       documentFields.clear()
       documentViews.clear()

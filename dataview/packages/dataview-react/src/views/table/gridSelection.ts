@@ -9,14 +9,11 @@ import {
   gridSelection,
   type GridSelection
 } from '@dataview/table'
-import {
-  createValueStore,
-  type ReadStore,
-  type ValueStore
-} from '@shared/core'
+import { store as coreStore } from '@shared/core'
+
 
 export interface GridSelectionStore {
-  store: ValueStore<GridSelection | null>
+  store: coreStore.ValueStore<GridSelection | null>
   get: () => GridSelection | null
   clear: () => void
   set: (cell: CellRef, anchor?: CellRef) => void
@@ -33,16 +30,16 @@ export interface GridSelectionStore {
 }
 
 export const createGridSelection = (
-  currentViewStore: ReadStore<CurrentView | undefined>
+  currentViewStore: coreStore.ReadStore<CurrentView | undefined>
 ): GridSelectionStore => {
-  const store = createValueStore<GridSelection | null>({
+  const selectionStore = coreStore.createValueStore<GridSelection | null>({
     initial: null,
     isEqual: gridSelection.equal
   })
   const getCurrentView = currentViewStore.get
   const unsubscribe = currentViewStore.subscribe(() => {
     const currentView = currentViewStore.get()
-    store.update(current => currentView
+    selectionStore.update(current => currentView
       ? gridSelection.reconcile(
           current,
           currentView.items,
@@ -53,13 +50,13 @@ export const createGridSelection = (
   })
 
   return {
-    store,
-    get: store.get,
+    store: selectionStore,
+    get: selectionStore.get,
     clear: () => {
-      store.set(null)
+      selectionStore.set(null)
     },
     set: (cell, anchor) => {
-      store.set(gridSelection.set(cell, anchor))
+      selectionStore.set(gridSelection.set(cell, anchor))
     },
     move: (rowDelta, columnDelta, options) => {
       const currentView = getCurrentView()
@@ -67,7 +64,7 @@ export const createGridSelection = (
         return
       }
 
-      store.update(current => gridSelection.move(
+      selectionStore.update(current => gridSelection.move(
         current,
         rowDelta,
         columnDelta,
@@ -82,7 +79,7 @@ export const createGridSelection = (
         return
       }
 
-      store.update(current => gridSelection.first(
+      selectionStore.update(current => gridSelection.first(
         current,
         currentView.items,
         currentView.fields,

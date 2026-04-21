@@ -1,9 +1,4 @@
-import {
-  createKeyedDerivedStore,
-  read,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { CellRef, ItemId } from '@dataview/engine'
 import { tableCellKey } from '@dataview/react/views/table/runtime/cell'
 
@@ -36,37 +31,37 @@ const sameCellChrome = (
   && left.fill === right.fill
 
 export const createTableChromeRuntime = (input: {
-  rowSelected: KeyedReadStore<ItemId, boolean>
-  rowExposed: KeyedReadStore<ItemId, boolean>
-  canRowDrag: ReadStore<boolean>
-  cellSelected: KeyedReadStore<CellRef, boolean>
-  cellFocus: KeyedReadStore<CellRef, boolean>
-  cellHover: KeyedReadStore<CellRef, boolean>
-  cellFill: KeyedReadStore<CellRef, boolean>
-  selectionVisible: ReadStore<boolean>
+  rowSelected: store.KeyedReadStore<ItemId, boolean>
+  rowExposed: store.KeyedReadStore<ItemId, boolean>
+  canRowDrag: store.ReadStore<boolean>
+  cellSelected: store.KeyedReadStore<CellRef, boolean>
+  cellFocus: store.KeyedReadStore<CellRef, boolean>
+  cellHover: store.KeyedReadStore<CellRef, boolean>
+  cellFill: store.KeyedReadStore<CellRef, boolean>
+  selectionVisible: store.ReadStore<boolean>
 }): {
-  row: KeyedReadStore<ItemId, TableRowChrome>
-  cell: KeyedReadStore<CellRef, TableCellChrome>
+  row: store.KeyedReadStore<ItemId, TableRowChrome>
+  cell: store.KeyedReadStore<CellRef, TableCellChrome>
 } => ({
-  row: createKeyedDerivedStore<ItemId, TableRowChrome>({
+  row: store.createKeyedDerivedStore<ItemId, TableRowChrome>({
     keyOf: rowId => rowId,
     get: rowId => ({
-      selected: read(input.rowSelected, rowId),
-      exposed: read(input.rowExposed, rowId),
-      canDrag: read(input.canRowDrag)
+      selected: store.read(input.rowSelected, rowId),
+      exposed: store.read(input.rowExposed, rowId),
+      canDrag: store.read(input.canRowDrag)
     }),
     isEqual: sameRowChrome
   }),
-  cell: createKeyedDerivedStore<CellRef, TableCellChrome>({
+  cell: store.createKeyedDerivedStore<CellRef, TableCellChrome>({
     keyOf: tableCellKey,
     get: cell => {
-      const rawSelected = read(input.cellSelected, cell)
-      const visible = read(input.selectionVisible)
+      const rawSelected = store.read(input.cellSelected, cell)
+      const visible = store.read(input.selectionVisible)
       return {
         selected: visible && rawSelected,
-        focus: visible && read(input.cellFocus, cell),
-        hover: read(input.cellHover, cell) && !rawSelected,
-        fill: visible && read(input.cellFill, cell)
+        focus: visible && store.read(input.cellFocus, cell),
+        hover: store.read(input.cellHover, cell) && !rawSelected,
+        fill: visible && store.read(input.cellFill, cell)
       }
     },
     isEqual: sameCellChrome

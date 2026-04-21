@@ -16,9 +16,7 @@ import type {
 import type {
   SummaryState
 } from '@dataview/engine/contracts/state'
-import {
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   buildEmptyPublishedSummaries,
   createSummaryCollection
@@ -54,7 +52,7 @@ export const publishSummaries = (input: {
     input.previous
     && input.previous.size === input.summary.bySection.size
     && previousKeys
-    && sameOrder(previousKeys, sectionKeys)
+    && equal.sameOrder(previousKeys, sectionKeys)
   )
 
   input.summary.bySection.forEach((states, sectionKey) => {

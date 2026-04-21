@@ -4,10 +4,7 @@ import type {
   ViewGroup
 } from '@dataview/core/contracts'
 import type { Bucket } from '@dataview/core/field'
-import {
-  sameJsonValue,
-  sameOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   buildBucketViewState,
   createBucketSpec,
@@ -48,7 +45,7 @@ const sameBucket = (
   }
 
   return left.key === right.key
-    && sameJsonValue(left.label, right.label)
+    && equal.sameJsonValue(left.label, right.label)
     && left.value === right.value
     && left.clearValue === right.clearValue
     && left.empty === right.empty
@@ -59,11 +56,11 @@ export const sameSectionNode = (
   left: SectionNodeState,
   right: SectionNodeState
 ) => left.key === right.key
-  && sameJsonValue(left.label, right.label)
+  && equal.sameJsonValue(left.label, right.label)
   && left.color === right.color
   && left.visible === right.visible
   && left.collapsed === right.collapsed
-  && sameOrder(left.recordIds, right.recordIds)
+  && equal.sameOrder(left.recordIds, right.recordIds)
   && sameBucket(left.bucket, right.bucket)
 
 const visibleOf = (
@@ -206,7 +203,7 @@ export const buildSectionState = (input: {
   })
 
   return {
-    order: input.previous && sameOrder(input.previous.order, presentation.order)
+    order: input.previous && equal.sameOrder(input.previous.order, presentation.order)
       ? input.previous.order
       : presentation.order,
     byKey,

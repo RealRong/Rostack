@@ -1,3 +1,4 @@
+import { json } from '@shared/core'
 import {
   type DrawMode,
   type DrawState,
@@ -16,7 +17,7 @@ import type {
 const isSameTemplate = (
   left: unknown,
   right: unknown
-) => JSON.stringify(left) === JSON.stringify(right)
+) => json.equal(left, right)
 
 const readInsertPresetKey = (
   tool: Extract<Tool, { type: 'insert' }>

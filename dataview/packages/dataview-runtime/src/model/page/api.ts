@@ -3,13 +3,7 @@ import type {
   FieldId,
   View
 } from '@dataview/core/contracts'
-import {
-  createKeyedDerivedStore,
-  createDerivedStore,
-  read,
-  sameOrder,
-  type ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
@@ -79,9 +73,9 @@ const sameToolbar = (
   && left.search === right.search
   && left.filterCount === right.filterCount
   && left.sortCount === right.sortCount
-  && sameOrder(left.views, right.views)
-  && sameOrder(left.availableFilterFields, right.availableFilterFields)
-  && sameOrder(left.availableSortFields, right.availableSortFields)
+  && equal.sameOrder(left.views, right.views)
+  && equal.sameOrder(left.availableFilterFields, right.availableFilterFields)
+  && equal.sameOrder(left.availableSortFields, right.availableSortFields)
 
 const sameQuery = (
   left: PageQuery,
@@ -91,8 +85,8 @@ const sameQuery = (
   && left.currentView === right.currentView
   && left.filters === right.filters
   && left.sorts === right.sorts
-  && sameOrder(left.availableFilterFields, right.availableFilterFields)
-  && sameOrder(left.availableSortFields, right.availableSortFields)
+  && equal.sameOrder(left.availableFilterFields, right.availableFilterFields)
+  && equal.sameOrder(left.availableSortFields, right.availableSortFields)
 
 const sameSettings = (
   left: PageSettings,
@@ -102,16 +96,16 @@ const sameSettings = (
   && left.filter === right.filter
   && left.sort === right.sort
   && left.group === right.group
-  && sameOrder(left.displayFieldIds, right.displayFieldIds)
-  && sameOrder(left.visibleFields, right.visibleFields)
-  && sameOrder(left.hiddenFields, right.hiddenFields)
-  && sameOrder(left.fields, right.fields)
+  && equal.sameOrder(left.displayFieldIds, right.displayFieldIds)
+  && equal.sameOrder(left.visibleFields, right.visibleFields)
+  && equal.sameOrder(left.hiddenFields, right.hiddenFields)
+  && equal.sameOrder(left.fields, right.fields)
 
 const sameSortPanel = (
   left: PageSortPanel,
   right: PageSortPanel
-) => sameOrder(left.rules, right.rules)
-  && sameOrder(left.availableFields, right.availableFields)
+) => equal.sameOrder(left.rules, right.rules)
+  && equal.sameOrder(left.availableFields, right.availableFields)
 
 const sameSortRow = (
   left: PageSortRow | undefined,
@@ -121,16 +115,16 @@ const sameSortRow = (
   && !!right
   && left.sorter === right.sorter
   && left.field === right.field
-  && sameOrder(left.availableFields, right.availableFields)
+  && equal.sameOrder(left.availableFields, right.availableFields)
 )
 
 const createAvailableFieldsStore = (input: {
-  fields: ReadStore<readonly Field[]>
-  usedFieldIds: ReadStore<readonly FieldId[]>
-}) => createDerivedStore<readonly Field[]>({
+  fields: store.ReadStore<readonly Field[]>
+  usedFieldIds: store.ReadStore<readonly FieldId[]>
+}) => store.createDerivedStore<readonly Field[]>({
   get: () => {
-    const fields = read(input.fields)
-    const usedFieldIds = read(input.usedFieldIds)
+    const fields = store.read(input.fields)
+    const usedFieldIds = store.read(input.usedFieldIds)
     if (!usedFieldIds.length) {
       return fields
     }
@@ -138,30 +132,30 @@ const createAvailableFieldsStore = (input: {
     const usedFieldIdSet = new Set(usedFieldIds)
     return fields.filter(field => !usedFieldIdSet.has(field.id))
   },
-  isEqual: sameOrder
+  isEqual: equal.sameOrder
 })
 
 export const createPageModel = (input: {
   source: DataViewSource
-  pageStateStore: ReadStore<PageState>
+  pageStateStore: store.ReadStore<PageState>
 }): PageModel => {
-  const fields = createDerivedStore<readonly Field[]>({
-    get: () => read(input.source.doc.fields.ids)
+  const fields = store.createDerivedStore<readonly Field[]>({
+    get: () => store.read(input.source.doc.fields.ids)
       .flatMap(fieldId => {
-        const field = read(input.source.doc.fields, fieldId)
+        const field = store.read(input.source.doc.fields, fieldId)
         return field ? [field] : []
       }),
-    isEqual: sameOrder
+    isEqual: equal.sameOrder
   })
   const views = createEntityListStore({
     ids: input.source.doc.views.ids,
     values: input.source.doc.views
   })
-  const currentView = createDerivedStore<View | undefined>({
+  const currentView = store.createDerivedStore<View | undefined>({
     get: () => {
-      const viewId = read(input.source.active.view.id)
+      const viewId = store.read(input.source.active.view.id)
       return viewId
-        ? read(input.source.doc.views, viewId)
+        ? store.read(input.source.doc.views, viewId)
         : undefined
     },
     isEqual: Object.is
@@ -174,30 +168,30 @@ export const createPageModel = (input: {
     fields,
     usedFieldIds: input.source.active.query.sortFieldIds
   })
-  const filterCount = createDerivedStore<number>({
-    get: () => read(input.source.active.query.filters).rules.length,
+  const filterCount = store.createDerivedStore<number>({
+    get: () => store.read(input.source.active.query.filters).rules.length,
     isEqual: Object.is
   })
-  const sortCount = createDerivedStore<number>({
-    get: () => read(input.source.active.query.sort).rules.length,
+  const sortCount = store.createDerivedStore<number>({
+    get: () => store.read(input.source.active.query.sort).rules.length,
     isEqual: Object.is
   })
-  const sortRules = createDerivedStore<PageSortPanel['rules']>({
-    get: () => read(input.source.active.query.sort).rules,
-    isEqual: sameOrder
+  const sortRules = store.createDerivedStore<PageSortPanel['rules']>({
+    get: () => store.read(input.source.active.query.sort).rules,
+    isEqual: equal.sameOrder
   })
-  const displayFieldIds = createDerivedStore<readonly FieldId[]>({
-    get: () => read(currentView)?.display.fields ?? EMPTY_FIELD_IDS,
-    isEqual: sameOrder
+  const displayFieldIds = store.createDerivedStore<readonly FieldId[]>({
+    get: () => store.read(currentView)?.display.fields ?? EMPTY_FIELD_IDS,
+    isEqual: equal.sameOrder
   })
-  const visibleFields = createDerivedStore<readonly Field[]>({
+  const visibleFields = store.createDerivedStore<readonly Field[]>({
     get: () => {
-      const orderedFieldIds = read(displayFieldIds)
+      const orderedFieldIds = store.read(displayFieldIds)
       if (!orderedFieldIds.length) {
         return EMPTY_FIELDS
       }
 
-      const fieldById = new Map(read(fields).map(field => [field.id, field] as const))
+      const fieldById = new Map(store.read(fields).map(field => [field.id, field] as const))
       return orderedFieldIds.flatMap(fieldId => {
         const field = fieldById.get(fieldId)
         return field
@@ -205,12 +199,12 @@ export const createPageModel = (input: {
           : []
       })
     },
-    isEqual: sameOrder
+    isEqual: equal.sameOrder
   })
-  const hiddenFields = createDerivedStore<readonly Field[]>({
+  const hiddenFields = store.createDerivedStore<readonly Field[]>({
     get: () => {
-      const allFields = read(fields)
-      const shownFieldIds = read(displayFieldIds)
+      const allFields = store.read(fields)
+      const shownFieldIds = store.read(displayFieldIds)
       if (!shownFieldIds.length) {
         return allFields
       }
@@ -218,22 +212,22 @@ export const createPageModel = (input: {
       const shownFieldIdSet = new Set(shownFieldIds)
       return allFields.filter(field => !shownFieldIdSet.has(field.id))
     },
-    isEqual: sameOrder
+    isEqual: equal.sameOrder
   })
 
-  const body = createDerivedStore<PageBody>({
+  const body = store.createDerivedStore<PageBody>({
     get: () => ({
-      viewType: read(input.source.active.view.type),
-      empty: read(input.source.active.items.ids).length === 0
+      viewType: store.read(input.source.active.view.type),
+      empty: store.read(input.source.active.items.ids).length === 0
     }),
     isEqual: sameBody
   })
 
-  const header = createDerivedStore<PageHeader>({
+  const header = store.createDerivedStore<PageHeader>({
     get: () => {
-      const view = read(currentView)
+      const view = store.read(currentView)
       return {
-        viewId: read(input.source.active.view.id),
+        viewId: store.read(input.source.active.view.id),
         viewType: view?.type,
         viewName: view?.name
       }
@@ -241,56 +235,56 @@ export const createPageModel = (input: {
     isEqual: sameHeader
   })
 
-  const toolbar = createDerivedStore<PageToolbar>({
+  const toolbar = store.createDerivedStore<PageToolbar>({
     get: () => {
-      const pageState = read(input.pageStateStore)
+      const pageState = store.read(input.pageStateStore)
 
       return {
-        views: read(views),
-        currentView: read(currentView),
-        activeViewId: read(input.source.active.view.id),
+        views: store.read(views),
+        currentView: store.read(currentView),
+        activeViewId: store.read(input.source.active.view.id),
         queryBar: pageState.query,
-        search: read(input.source.active.query.search).query,
-        filterCount: read(filterCount),
-        sortCount: read(sortCount),
-        availableFilterFields: read(availableFilterFields),
-        availableSortFields: read(availableSortFields)
+        search: store.read(input.source.active.query.search).query,
+        filterCount: store.read(filterCount),
+        sortCount: store.read(sortCount),
+        availableFilterFields: store.read(availableFilterFields),
+        availableSortFields: store.read(availableSortFields)
       }
     },
     isEqual: sameToolbar
   })
 
-  const query = createDerivedStore<PageQuery>({
+  const query = store.createDerivedStore<PageQuery>({
     get: () => {
-      const pageState = read(input.pageStateStore)
+      const pageState = store.read(input.pageStateStore)
       return {
         visible: pageState.query.visible,
         route: pageState.query.route,
-        currentView: read(currentView),
-        filters: read(input.source.active.query.filters).rules,
-        sorts: read(sortRules),
-        availableFilterFields: read(availableFilterFields),
-        availableSortFields: read(availableSortFields)
+        currentView: store.read(currentView),
+        filters: store.read(input.source.active.query.filters).rules,
+        sorts: store.read(sortRules),
+        availableFilterFields: store.read(availableFilterFields),
+        availableSortFields: store.read(availableSortFields)
       }
     },
     isEqual: sameQuery
   })
-  const sortPanel = createDerivedStore<PageSortPanel>({
+  const sortPanel = store.createDerivedStore<PageSortPanel>({
     get: () => ({
-      rules: read(sortRules),
-      availableFields: read(availableSortFields)
+      rules: store.read(sortRules),
+      availableFields: store.read(availableSortFields)
     }),
     isEqual: sameSortPanel
   })
-  const sortRow = createKeyedDerivedStore<number, PageSortRow | undefined>({
+  const sortRow = store.createKeyedDerivedStore<number, PageSortRow | undefined>({
     get: index => {
-      const rules = read(sortRules)
+      const rules = store.read(sortRules)
       const rule = rules[index]
       if (!rule) {
         return undefined
       }
 
-      const allFields = read(fields)
+      const allFields = store.read(fields)
       const sorters = rules.map(entry => entry.sorter)
       return {
         sorter: rule.sorter,
@@ -305,17 +299,17 @@ export const createPageModel = (input: {
     isEqual: sameSortRow
   })
 
-  const settings = createDerivedStore<PageSettings>({
+  const settings = store.createDerivedStore<PageSettings>({
     get: () => ({
-      viewsCount: read(input.source.doc.views.ids).length,
-      fields: read(fields),
-      displayFieldIds: read(displayFieldIds),
-      visibleFields: read(visibleFields),
-      hiddenFields: read(hiddenFields),
-      currentView: read(currentView),
-      filter: read(input.source.active.query.filters),
-      sort: read(input.source.active.query.sort),
-      group: read(input.source.active.query.group)
+      viewsCount: store.read(input.source.doc.views.ids).length,
+      fields: store.read(fields),
+      displayFieldIds: store.read(displayFieldIds),
+      visibleFields: store.read(visibleFields),
+      hiddenFields: store.read(hiddenFields),
+      currentView: store.read(currentView),
+      filter: store.read(input.source.active.query.filters),
+      sort: store.read(input.source.active.query.sort),
+      group: store.read(input.source.active.query.group)
     }),
     isEqual: sameSettings
   })

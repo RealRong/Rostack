@@ -6,11 +6,7 @@ import type {
   ViewDisplay,
   ViewOptions
 } from '@dataview/core/contracts'
-import {
-  sameJsonValue,
-  sameOrder,
-  sameShallowRecord
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   applyRecordOrder,
   reorderRecordBlockIds
@@ -28,7 +24,7 @@ export const cloneDisplay = (
 export const sameDisplay = (
   left: ViewDisplay,
   right: ViewDisplay
-): boolean => sameOrder(left.fields, right.fields)
+): boolean => equal.sameOrder(left.fields, right.fields)
 
 const uniqueFieldIds = (
   fieldIds: readonly FieldId[]
@@ -167,7 +163,7 @@ export const cloneViewCalc = (
 export const sameViewCalc = (
   left: ViewCalc,
   right: ViewCalc
-): boolean => sameJsonValue(
+): boolean => equal.sameJsonValue(
   Object.entries(left).sort(([leftFieldId], [rightFieldId]) => leftFieldId.localeCompare(rightFieldId)),
   Object.entries(right).sort(([leftFieldId], [rightFieldId]) => leftFieldId.localeCompare(rightFieldId))
 )
@@ -199,7 +195,7 @@ export const sameViewOptions = (
   left: ViewOptions,
   right: ViewOptions
 ): boolean => (
-  sameShallowRecord(left.table.widths, right.table.widths)
+  equal.sameShallowRecord(left.table.widths, right.table.widths)
   && left.table.showVerticalLines === right.table.showVerticalLines
   && left.table.wrap === right.table.wrap
   && left.gallery.card.wrap === right.gallery.card.wrap

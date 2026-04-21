@@ -10,49 +10,60 @@ export type {
   Unsubscribe,
   ValueStore
 } from './types'
-
-export {
+import {
   read,
   peek
 } from './read'
-
-export {
+import {
   batch
 } from './batch'
-
-export {
+import {
   joinUnsubscribes
 } from './listeners'
-
-export {
+import {
   createReadStore,
-  createValueStore
+  createValueStore,
+  createNormalizedValue
 } from './value'
-
-export {
+import {
   createKeyedReadStore,
   createKeyedStore
 } from './keyed'
-
-export {
+import {
   createDerivedStore
 } from './derived'
-
-export {
+import {
   createKeyedDerivedStore
 } from './family'
-
-export {
+import {
   createProjectedStore,
   createProjectedKeyedStore
 } from './projected'
-
-export {
+import {
   createStagedValueStore,
   createStagedKeyedStore
 } from './staged'
-
-export {
+import {
   createRafValueStore,
   createRafKeyedStore
 } from './raf'
+
+export {
+  read,
+  peek,
+  batch,
+  joinUnsubscribes,
+  createReadStore,
+  createValueStore,
+  createNormalizedValue,
+  createKeyedReadStore,
+  createKeyedStore,
+  createDerivedStore,
+  createKeyedDerivedStore,
+  createProjectedStore,
+  createProjectedKeyedStore,
+  createStagedValueStore,
+  createStagedKeyedStore,
+  createRafValueStore,
+  createRafKeyedStore
+}

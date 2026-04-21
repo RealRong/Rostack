@@ -6,10 +6,7 @@ import type {
   Section,
   SectionKey
 } from '@dataview/engine'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   Card,
   CardContent
@@ -32,8 +29,8 @@ export interface GallerySection {
 export interface GalleryCard extends Card {}
 
 export interface DataViewGalleryModel {
-  body: ReadStore<GalleryBody | null>
-  section: KeyedReadStore<SectionKey, GallerySection | undefined>
-  card: KeyedReadStore<ItemId, GalleryCard | undefined>
-  content: KeyedReadStore<ItemId, CardContent | undefined>
+  body: store.ReadStore<GalleryBody | null>
+  section: store.KeyedReadStore<SectionKey, GallerySection | undefined>
+  card: store.KeyedReadStore<ItemId, GalleryCard | undefined>
+  content: store.KeyedReadStore<ItemId, CardContent | undefined>
 }

@@ -1,10 +1,6 @@
 import type { ReadModel } from '@whiteboard/engine/types/read'
 import type { Document, Edge, Node, NodeId } from '@whiteboard/core/types'
-import {
-  sameIdOrder as isSameIdOrder,
-  sameMapRefs as isSameMapValueRefs,
-  sameOrder as isSameRefOrder
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   deriveNodeReadSlices,
   deriveVisibleEdges
@@ -91,17 +87,17 @@ export const createReadModel = ({
         ? next.canvasNodeById
         : EMPTY_NODE_MAP
 
-      visibleNodesCache = isSameRefOrder(visibleNodesCache, normalizedVisible)
+      visibleNodesCache = equal.sameOrder(visibleNodesCache, normalizedVisible)
         ? visibleNodesCache
         : normalizedVisible
-      canvasNodesCache = isSameRefOrder(canvasNodesCache, normalizedCanvas)
+      canvasNodesCache = equal.sameOrder(canvasNodesCache, normalizedCanvas)
         ? canvasNodesCache
         : normalizedCanvas
-      allNodesCache = isSameRefOrder(allNodesCache, normalizedAll)
+      allNodesCache = equal.sameOrder(allNodesCache, normalizedAll)
         ? allNodesCache
         : normalizedAll
       canvasNodeByIdCache = canvasNodesCache === previousCanvasNodesCache ||
-        isSameMapValueRefs(canvasNodeByIdCache, normalizedCanvasNodeById)
+        equal.sameMapRefs(canvasNodeByIdCache, normalizedCanvasNodeById)
         ? canvasNodeByIdCache
         : normalizedCanvasNodeById
       canvasCache = canvasCache.nodeById === canvasNodeByIdCache
@@ -124,7 +120,7 @@ export const createReadModel = ({
     } else if (
       edgeVisibleCache &&
       edgeVisibleCache.edgesRef === doc.edges &&
-      isSameIdOrder(edgeVisibleCache.canvasNodes, canvasNodesCache)
+      equal.sameIdOrder(edgeVisibleCache.canvasNodes, canvasNodesCache)
     ) {
       visibleEdgesCache = edgeVisibleCache.visibleEdges
     } else {

@@ -1,9 +1,4 @@
-import {
-  createDerivedStore,
-  createValueStore,
-  read,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import {
   type ActiveGesture
 } from '@whiteboard/editor/input/core/gesture'
@@ -165,17 +160,17 @@ export const createInputPreviewState = ({
   gesture,
   hover
 }: {
-  gesture: Pick<ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
-  hover: Pick<ReadStore<HoverState>, 'get' | 'subscribe'>
-}): Pick<ReadStore<EditorInputPreviewState>, 'get' | 'subscribe'> & EditorInputPreviewWrite => {
-  const baseState = createValueStore<EditorInputPreviewState>(EMPTY_PREVIEW_STATE, {
+  gesture: Pick<store.ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
+  hover: Pick<store.ReadStore<HoverState>, 'get' | 'subscribe'>
+}): Pick<store.ReadStore<EditorInputPreviewState>, 'get' | 'subscribe'> & EditorInputPreviewWrite => {
+  const baseState = store.createValueStore<EditorInputPreviewState>(EMPTY_PREVIEW_STATE, {
     isEqual: isFeedbackStateEqual
   })
-  const composedState = createDerivedStore<EditorInputPreviewState>({
+  const composedState = store.createDerivedStore<EditorInputPreviewState>({
     get: () => composeFeedbackState({
-      base: read(baseState),
-      gesture: read(gesture),
-      hover: read(hover)
+      base: store.read(baseState),
+      gesture: store.read(gesture),
+      hover: store.read(hover)
     }),
     isEqual: isFeedbackStateEqual
   })

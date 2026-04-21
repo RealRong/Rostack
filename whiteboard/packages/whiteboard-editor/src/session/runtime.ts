@@ -1,8 +1,4 @@
-import {
-  createValueStore,
-  type ReadStore,
-  type ValueStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { Viewport } from '@whiteboard/core/types'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type {
@@ -43,10 +39,10 @@ import {
 } from '@whiteboard/editor/session/preview'
 
 export type EditorSessionState = {
-  tool: ValueStore<Tool>
+  tool: store.ValueStore<Tool>
   draw: ReturnType<typeof createDrawStateStore>['store']
   selection: ReturnType<typeof createSelectionState>['source']
-  edit: ValueStore<EditSession>
+  edit: store.ValueStore<EditSession>
 }
 
 export type EditorSessionMutate = {
@@ -71,12 +67,12 @@ export type EditorSessionMutate = {
 }
 
 export type EditorSessionInteractionRead = {
-  mode: ReadStore<InteractionMode>
-  busy: ReadStore<boolean>
-  chrome: ReadStore<boolean>
-  gesture: ReadStore<ActiveGesture | null>
-  pointer: ReadStore<PointerSample | null>
-  space: ReadStore<boolean>
+  mode: store.ReadStore<InteractionMode>
+  busy: store.ReadStore<boolean>
+  chrome: store.ReadStore<boolean>
+  gesture: store.ReadStore<ActiveGesture | null>
+  pointer: store.ReadStore<PointerSample | null>
+  space: store.ReadStore<boolean>
   hover: Pick<HoverStore, 'get' | 'subscribe'>
 }
 
@@ -119,7 +115,7 @@ export const createEditorSession = ({
   initialDrawState: DrawState
   initialViewport: Viewport
 }): EditorSession => {
-  const tool = createValueStore<Tool>(initialTool)
+  const tool = store.createValueStore<Tool>(initialTool)
   const draw = createDrawStateStore(initialDrawState)
   const selection = createSelectionState()
   const edit = createEditState()

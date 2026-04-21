@@ -1,4 +1,4 @@
-import { createValueStore } from '@shared/core'
+import { store as coreStore } from '@shared/core'
 import { document as documentApi } from '@whiteboard/core/document'
 import { createId } from '@whiteboard/core/id'
 import { sync } from '@whiteboard/core/spec/operation'
@@ -79,12 +79,12 @@ export const createYjsSession = ({
     throw new Error('createYjsSession requires a non-empty actorId.')
   }
 
-  const status = createValueStore<CollabStatus>('idle')
-  const diagnostics = createValueStore<CollabDiagnostics>({
+  const status = coreStore.createValueStore<CollabStatus>('idle')
+  const diagnostics = coreStore.createValueStore<CollabDiagnostics>({
     duplicateChangeIds: [],
     rejectedChangeIds: []
   })
-  const store = createYjsSyncStore({
+  const syncStore = createYjsSyncStore({
     doc,
     codec
   })
@@ -149,8 +149,8 @@ export const createYjsSession = ({
   }
 
   const readSnapshot = (): YjsSyncSnapshot => {
-    store.readMeta()
-    const snapshot = store.readSnapshot()
+    syncStore.readMeta()
+    const snapshot = syncStore.readSnapshot()
     trackDuplicates(snapshot.duplicateChangeIds)
     return snapshot
   }
@@ -234,8 +234,8 @@ export const createYjsSession = ({
     nextDocument: import('@whiteboard/core/types').Document
   ) => {
     doc.transact(() => {
-      store.replaceCheckpoint(createCheckpoint(nextDocument))
-      store.clearChanges()
+      syncStore.replaceCheckpoint(createCheckpoint(nextDocument))
+      syncStore.clearChanges()
     }, localOrigin)
 
     const snapshot = readSnapshot()
@@ -263,8 +263,8 @@ export const createYjsSession = ({
     rotatingCheckpoint = true
     try {
       doc.transact(() => {
-        store.replaceCheckpoint(createCheckpoint(engine.document.get()))
-        store.clearChanges()
+        syncStore.replaceCheckpoint(createCheckpoint(engine.document.get()))
+        syncStore.clearChanges()
       }, localOrigin)
 
       const snapshot = readSnapshot()
@@ -305,7 +305,7 @@ export const createYjsSession = ({
     }
 
     doc.transact(() => {
-      store.appendChange(change)
+      syncStore.appendChange(change)
     }, localOrigin)
 
     localChangeIds.add(change.id)
@@ -359,7 +359,7 @@ export const createYjsSession = ({
 
     status.set('bootstrapping')
 
-    const hasSharedData = store.hasData()
+    const hasSharedData = syncStore.hasData()
     if (hasSharedData) {
       consumeSnapshot({
         forceReset: true,

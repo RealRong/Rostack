@@ -4,7 +4,6 @@ import {
   calculation
 } from '@dataview/core/calculation'
 import { filter } from '@dataview/core/filter'
-
 import {
   createIndexState,
   deriveIndex

@@ -1,10 +1,4 @@
-import {
-  createKeyedDerivedStore,
-  read as readValue,
-  sameRect,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { NodeId, Rect } from '@whiteboard/core/types'
 import type { EngineRead, MindmapItem } from '@whiteboard/engine'
@@ -30,8 +24,8 @@ export type MindmapRenderView = {
 }
 
 export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'item'> & {
-  item: KeyedReadStore<NodeId, MindmapItem | undefined>
-  render: KeyedReadStore<NodeId, MindmapRenderView | undefined>
+  item: store.KeyedReadStore<NodeId, MindmapItem | undefined>
+  render: store.KeyedReadStore<NodeId, MindmapRenderView | undefined>
   navigate: (input: {
     id: NodeId
     fromNodeId: NodeId
@@ -64,8 +58,8 @@ const isMindmapRenderViewEqual = (
     && left.treeId === right.treeId
     && left.rootId === right.rootId
     && left.tree === right.tree
-    && sameRect(left.bbox, right.bbox)
-    && sameRect(left.rootRect, right.rootRect)
+    && equal.sameRect(left.bbox, right.bbox)
+    && equal.sameRect(left.rootRect, right.rootRect)
     && left.rootLocked === right.rootLocked
     && left.childNodeIds.length === right.childNodeIds.length
     && left.childNodeIds.every((nodeId, index) => nodeId === right.childNodeIds[index])
@@ -111,7 +105,7 @@ const readAddChildren = ({
     return []
   }
 
-  if (readValue(node, selectedNodeId)?.node.locked) {
+  if (store.read(node, selectedNodeId)?.node.locked) {
     return []
   }
 
@@ -230,18 +224,18 @@ export const createMindmapRead = ({
   read: EngineRead['mindmap']
   layout: MindmapLayoutRead
   node: EngineRead['node']['item']
-  edit: ReadStore<EditSession>
-  selection: ReadStore<SelectionTarget>
+  edit: store.ReadStore<EditSession>
+  selection: store.ReadStore<SelectionTarget>
 }): MindmapPresentationRead => {
-  const render: MindmapPresentationRead['render'] = createKeyedDerivedStore({
+  const render: MindmapPresentationRead['render'] = store.createKeyedDerivedStore({
     get: (treeId: NodeId) => {
-      const treeView = readValue(layout.item, treeId)
+      const treeView = store.read(layout.item, treeId)
       return treeView
         ? toMindmapRenderView(
             treeId,
             treeView,
-            readValue(selection),
-            readValue(edit),
+            store.read(selection),
+            store.read(edit),
             node
           )
         : undefined
@@ -254,7 +248,7 @@ export const createMindmapRead = ({
     item: layout.item,
     render,
     navigate: (input) => {
-      const currentTree = readValue(layout.item, input.id)?.tree
+      const currentTree = store.read(layout.item, input.id)?.tree
       if (!currentTree) {
         return undefined
       }

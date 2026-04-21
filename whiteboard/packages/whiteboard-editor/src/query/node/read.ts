@@ -4,15 +4,7 @@ import type {
   MindmapItem,
   NodeItem
 } from '@whiteboard/engine'
-import {
-  createKeyedDerivedStore,
-  presentValues,
-  read as readValue,
-  sameRect,
-  sameOptionalRect as isSameOptionalRectTuple,
-  samePointArray as isSamePointArray,
-  type KeyedReadStore
-} from '@shared/core'
+import { collection, equal, store } from '@shared/core'
 import type {
   NodeGeometry,
   Node,
@@ -97,14 +89,14 @@ export type NodePresentationRead = {
   list: EngineRead['node']['list']
   committed: EngineRead['node']['item']
   type: NodeTypeRead
-  geometry: KeyedReadStore<NodeId, NodeGeometryView | undefined>
-  content: KeyedReadStore<NodeId, Node | undefined>
-  item: KeyedReadStore<NodeId, NodeItem | undefined>
+  geometry: store.KeyedReadStore<NodeId, NodeGeometryView | undefined>
+  content: store.KeyedReadStore<NodeId, Node | undefined>
+  item: store.KeyedReadStore<NodeId, NodeItem | undefined>
   nodes: (nodeIds: readonly NodeId[]) => readonly Node[]
-  render: KeyedReadStore<NodeId, NodeRender | undefined>
-  canvas: KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
-  rect: KeyedReadStore<NodeId, Rect | undefined>
-  bounds: KeyedReadStore<NodeId, Rect | undefined>
+  render: store.KeyedReadStore<NodeId, NodeRender | undefined>
+  canvas: store.KeyedReadStore<NodeId, NodeCanvasSnapshot | undefined>
+  rect: store.KeyedReadStore<NodeId, Rect | undefined>
+  bounds: store.KeyedReadStore<NodeId, Rect | undefined>
   capability: (node: Pick<Node, 'id' | 'type' | 'owner'>) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
   ordered: () => readonly Node[]
@@ -244,17 +236,17 @@ const isNodeGeometryEqual = (
     left !== undefined
     && right !== undefined
     && left.rotation === right.rotation
-    && sameRect(left.rect, right.rect)
-    && sameRect(left.bounds, right.bounds)
+    && equal.sameRect(left.rect, right.rect)
+    && equal.sameRect(left.bounds, right.bounds)
     && left.outline.kind === right.outline.kind
     && (
       left.outline.kind === 'rect' && right.outline.kind === 'rect'
         ? (
-            sameRect(left.outline.rect, right.outline.rect)
+            equal.sameRect(left.outline.rect, right.outline.rect)
             && left.outline.rotation === right.outline.rotation
           )
         : left.outline.kind === 'polygon' && right.outline.kind === 'polygon'
-          ? isSamePointArray(left.outline.points, right.outline.points)
+          ? equal.samePointArray(left.outline.points, right.outline.points)
           : false
     )
   )
@@ -291,8 +283,8 @@ const isNodeRenderEqual = (
     && right !== undefined
     && left.nodeId === right.nodeId
     && left.node === right.node
-    && sameRect(left.rect, right.rect)
-    && sameRect(left.bounds, right.bounds)
+    && equal.sameRect(left.rect, right.rect)
+    && equal.sameRect(left.bounds, right.bounds)
     && left.rotation === right.rotation
     && left.hovered === right.hovered
     && left.hidden === right.hidden
@@ -463,18 +455,18 @@ export const createNodeRead = ({
 }: {
   read: EngineRead
   type: NodeTypeRead
-  feedback: KeyedReadStore<NodeId, NodePreviewProjection>
-  mindmap: KeyedReadStore<NodeId, MindmapItem | undefined>
+  feedback: store.KeyedReadStore<NodeId, NodePreviewProjection>
+  mindmap: store.KeyedReadStore<NodeId, MindmapItem | undefined>
   edit: {
-    node: KeyedReadStore<NodeId, NodeEditView | undefined>
+    node: store.KeyedReadStore<NodeId, NodeEditView | undefined>
   }
   selection: {
-    selected: KeyedReadStore<NodeId, boolean>
+    selected: store.KeyedReadStore<NodeId, boolean>
   }
 }): NodePresentationRead => {
-  const geometry: NodePresentationRead['geometry'] = createKeyedDerivedStore({
+  const geometry: NodePresentationRead['geometry'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
-      const current = readValue(read.node.item, nodeId)
+      const current = store.read(read.node.item, nodeId)
       if (!current) {
         return undefined
       }
@@ -484,9 +476,9 @@ export const createNodeRead = ({
         : undefined
       const geometryItem = projectNodeGeometryItem(
         current,
-        readValue(feedback, nodeId),
+        store.read(feedback, nodeId),
         treeId
-          ? readValue(mindmap, treeId)
+          ? store.read(mindmap, treeId)
           : undefined
       )
 
@@ -495,31 +487,31 @@ export const createNodeRead = ({
     isEqual: isNodeGeometryEqual
   })
 
-  const content: NodePresentationRead['content'] = createKeyedDerivedStore({
+  const content: NodePresentationRead['content'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
-      const current = readValue(read.node.item, nodeId)
+      const current = store.read(read.node.item, nodeId)
       return current
         ? projectNodeContent(
             current,
-            readValue(feedback, nodeId),
-            readValue(edit.node, nodeId)
+            store.read(feedback, nodeId),
+            store.read(edit.node, nodeId)
           )
         : undefined
     },
     isEqual: (left, right) => left === right
   })
 
-  const item: NodePresentationRead['item'] = createKeyedDerivedStore({
+  const item: NodePresentationRead['item'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
-      const current = readValue(read.node.item, nodeId)
-      const currentGeometry = readValue(geometry, nodeId)
-      const currentNode = readValue(content, nodeId)
+      const current = store.read(read.node.item, nodeId)
+      const currentGeometry = store.read(geometry, nodeId)
+      const currentNode = store.read(content, nodeId)
       if (!current || !currentGeometry || !currentNode) {
         return undefined
       }
 
       return current.node === currentNode
-        && sameRect(current.rect, currentGeometry.rect)
+        && equal.sameRect(current.rect, currentGeometry.rect)
         ? current
         : {
             node: currentNode,
@@ -529,26 +521,26 @@ export const createNodeRead = ({
     isEqual: isNodeItemEqual
   })
 
-  const rect: NodePresentationRead['rect'] = createKeyedDerivedStore({
-    get: (nodeId: NodeId) => readValue(geometry, nodeId)?.rect,
-    isEqual: isSameOptionalRectTuple
+  const rect: NodePresentationRead['rect'] = store.createKeyedDerivedStore({
+    get: (nodeId: NodeId) => store.read(geometry, nodeId)?.rect,
+    isEqual: equal.sameOptionalRect
   })
 
-  const bounds: NodePresentationRead['bounds'] = createKeyedDerivedStore({
-    get: (nodeId: NodeId) => readValue(geometry, nodeId)?.bounds,
-    isEqual: isSameOptionalRectTuple
+  const bounds: NodePresentationRead['bounds'] = store.createKeyedDerivedStore({
+    get: (nodeId: NodeId) => store.read(geometry, nodeId)?.bounds,
+    isEqual: equal.sameOptionalRect
   })
 
-  const render: NodePresentationRead['render'] = createKeyedDerivedStore({
+  const render: NodePresentationRead['render'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
-      const currentNode = readValue(content, nodeId)
-      const currentGeometry = readValue(geometry, nodeId)
+      const currentNode = store.read(content, nodeId)
+      const currentGeometry = store.read(geometry, nodeId)
       if (!currentNode || !currentGeometry) {
         return undefined
       }
 
       const runtime = readNodeRuntime(
-        readValue(feedback, nodeId)
+        store.read(feedback, nodeId)
       )
       const currentCapability = resolveNodeCapability(currentNode, type)
 
@@ -562,8 +554,8 @@ export const createNodeRead = ({
         hidden: runtime.hidden,
         resizing: runtime.resizing,
         patched: runtime.patched,
-        selected: readValue(selection.selected, nodeId),
-        edit: toNodeRenderEdit(readValue(edit.node, nodeId)),
+        selected: store.read(selection.selected, nodeId),
+        edit: toNodeRenderEdit(store.read(edit.node, nodeId)),
         canConnect: currentCapability.connect,
         canResize: currentCapability.resize,
         canRotate: currentCapability.rotate
@@ -572,10 +564,10 @@ export const createNodeRead = ({
     isEqual: isNodeRenderEqual
   })
 
-  const canvas: NodePresentationRead['canvas'] = createKeyedDerivedStore({
+  const canvas: NodePresentationRead['canvas'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
-      const currentNode = readValue(content, nodeId)
-      const currentGeometry = readValue(geometry, nodeId)
+      const currentNode = store.read(content, nodeId)
+      const currentGeometry = store.read(geometry, nodeId)
       if (!currentNode || !currentGeometry) {
         return undefined
       }
@@ -595,8 +587,8 @@ export const createNodeRead = ({
     geometry,
     content,
     item,
-    nodes: (nodeIds) => presentValues(nodeIds, (nodeId) => {
-      const node = readValue(content, nodeId)
+    nodes: (nodeIds) => collection.presentValues(nodeIds, (nodeId) => {
+      const node = store.read(content, nodeId)
       return isSelectableNode(node)
         ? node
         : undefined
@@ -608,8 +600,8 @@ export const createNodeRead = ({
     capability: (node) => resolveNodeCapability(node, type),
     idsInRect: (rect, options) => read.node.idsInRect(rect, options)
       .filter((nodeId) => isSelectableNode(read.node.item.get(nodeId)?.node)),
-    ordered: () => presentValues(readValue(read.node.list), (nodeId) => {
-      const node = readValue(content, nodeId)
+    ordered: () => collection.presentValues(store.read(read.node.list), (nodeId) => {
+      const node = store.read(content, nodeId)
       return isSelectableNode(node)
         ? node
         : undefined

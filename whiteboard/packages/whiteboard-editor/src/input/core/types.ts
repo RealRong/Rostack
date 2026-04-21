@@ -1,4 +1,4 @@
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type {
   KeyboardInput,

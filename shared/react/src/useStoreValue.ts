@@ -1,8 +1,8 @@
-import type { KeyedReadStore, ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import { useExternalValue } from '@shared/react/useExternalValue'
 
 export const useStoreValue = <T,>(
-  store: ReadStore<T>
+  store: store.ReadStore<T>
 ): T => useExternalValue(
   store.subscribe,
   store.get,
@@ -10,7 +10,7 @@ export const useStoreValue = <T,>(
 )
 
 export const useKeyedStoreValue = <Key, T,>(
-  store: KeyedReadStore<Key, T>,
+  store: store.KeyedReadStore<Key, T>,
   key: Key
 ): T => useExternalValue(
   listener => store.subscribe(key, listener),
@@ -19,7 +19,7 @@ export const useKeyedStoreValue = <Key, T,>(
 )
 
 export const useOptionalKeyedStoreValue = <Key, T,>(
-  store: KeyedReadStore<Key, T>,
+  store: store.KeyedReadStore<Key, T>,
   key: Key | undefined,
   emptyValue: T
 ): T => useExternalValue(

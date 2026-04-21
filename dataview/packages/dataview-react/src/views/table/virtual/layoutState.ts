@@ -2,7 +2,8 @@ import type {
   TableLayoutSectionState,
   TableLayoutState
 } from '@dataview/engine'
-import { sameOrder } from '@shared/core'
+import { equal } from '@shared/core'
+
 
 export type {
   TableLayoutSectionState,
@@ -36,6 +37,6 @@ export const sameTableLayoutState = (
     return next !== undefined
       && section.key === next.key
       && section.collapsed === next.collapsed
-      && sameOrder(section.itemIds, next.itemIds)
+      && equal.sameOrder(section.itemIds, next.itemIds)
   })
 )

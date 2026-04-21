@@ -1,5 +1,5 @@
 import type { View } from '@dataview/core/contracts'
-import type { ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type {
   CreateRecordApi,
   CreateRecordRequest
@@ -25,7 +25,7 @@ const scheduleFrame = (
 }
 
 export const createCreateRecordApi = (input: {
-  activeView: ReadStore<View | undefined>
+  activeView: store.ReadStore<View | undefined>
 }): CreateRecordApi => {
   let requestToken = 0
   let cancelScheduled: (() => void) | undefined

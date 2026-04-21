@@ -13,10 +13,7 @@ import {
 import {
   view as viewApi
 } from '@dataview/core/view'
-import {
-  sameJsonValue,
-  trimToUndefined
-} from '@shared/core'
+import { equal, string } from '@shared/core'
 import { createFieldId } from '@dataview/engine/mutate/entityId'
 import { validateField } from '@dataview/engine/mutate/validate/field'
 import type {
@@ -168,7 +165,7 @@ const lowerFieldCreate = (
   action: Extract<Action, { type: 'field.create' }>
 ): PlannedActionResult => {
   const document = scope.reader.document()
-  const explicitFieldId = trimToUndefined(action.input.id)
+  const explicitFieldId = string.trimToUndefined(action.input.id)
 
   if (action.input.id !== undefined && !explicitFieldId) {
     scope.issue(
@@ -359,7 +356,7 @@ const lowerFieldOptionCreate = (
     return scope.finish()
   }
 
-  const explicitName = trimToUndefined(action.input?.name)
+  const explicitName = string.trimToUndefined(action.input?.name)
   if (action.input?.name !== undefined && !explicitName) {
     scope.issue(
       'field.invalid',
@@ -431,7 +428,7 @@ const lowerFieldOptionUpdate = (
     return scope.finish()
   }
 
-  const optionId = trimToUndefined(action.optionId)
+  const optionId = string.trimToUndefined(action.optionId)
   if (!optionId) {
     scope.issue(
       'field.invalid',
@@ -451,7 +448,7 @@ const lowerFieldOptionUpdate = (
     return scope.finish()
   }
 
-  const nextName = trimToUndefined(action.patch.name)
+  const nextName = string.trimToUndefined(action.patch.name)
   if (action.patch.name !== undefined) {
     if (!nextName) {
       scope.issue(
@@ -475,7 +472,7 @@ const lowerFieldOptionUpdate = (
 
   const nextColor = action.patch.color === undefined
     ? undefined
-    : trimToUndefined(action.patch.color) ?? null
+    : string.trimToUndefined(action.patch.color) ?? null
   const nextOption = fieldApi.option.spec.get(context.field).updateOption({
     field: context.field,
     option: target,
@@ -492,7 +489,7 @@ const lowerFieldOptionUpdate = (
     }
   })
 
-  if (sameJsonValue(nextOption, target)) {
+  if (equal.sameJsonValue(nextOption, target)) {
     return scope.finish()
   }
 
@@ -514,7 +511,7 @@ const lowerFieldOptionRemove = (
     return scope.finish()
   }
 
-  const optionId = trimToUndefined(action.optionId)
+  const optionId = string.trimToUndefined(action.optionId)
   if (!optionId) {
     scope.issue(
       'field.invalid',

@@ -1,14 +1,4 @@
-import {
-  createKeyedDerivedStore,
-  createKeyedStore,
-  createProjectedStore,
-  createValueStore,
-  read,
-  sameOptionalPoint,
-  type KeyedReadStore,
-  type ReadStore,
-  type ValueStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import type { Point } from '@shared/dom'
 import type { CellRef, ItemId } from '@dataview/engine'
 import {
@@ -20,9 +10,9 @@ import {
 import { tableCellKey } from '@dataview/react/views/table/runtime/cell'
 
 export interface TableHoverRuntime {
-  target: ReadStore<TableHoverTarget | null>
-  row: KeyedReadStore<ItemId, boolean>
-  cell: KeyedReadStore<CellRef, boolean>
+  target: store.ReadStore<TableHoverTarget | null>
+  row: store.KeyedReadStore<ItemId, boolean>
+  cell: store.KeyedReadStore<CellRef, boolean>
   get: () => TableHoverTarget | null
   point: () => Point | null
   set: (
@@ -38,27 +28,27 @@ interface HoverState {
 }
 
 export const createTableHover = (): TableHoverRuntime => {
-  const state: ValueStore<HoverState> = createValueStore<HoverState>({
+  const state: store.ValueStore<HoverState> = store.createValueStore<HoverState>({
     initial: {
       target: null,
       pointer: null
     },
     isEqual: (left, right) => (
       sameHoverTarget(left.target, right.target)
-      && sameOptionalPoint(left.pointer, right.pointer)
+      && equal.sameOptionalPoint(left.pointer, right.pointer)
     )
   })
-  const row = createKeyedStore<ItemId, boolean>({
+  const row = store.createKeyedStore<ItemId, boolean>({
     emptyValue: false,
     isEqual: Object.is
   })
-  const cellState = createKeyedStore<string, boolean>({
+  const cellState = store.createKeyedStore<string, boolean>({
     emptyValue: false,
     isEqual: Object.is
   })
-  const cell = createKeyedDerivedStore<CellRef, boolean>({
+  const cell = store.createKeyedDerivedStore<CellRef, boolean>({
     keyOf: tableCellKey,
-    get: current => read(cellState, tableCellKey(current)),
+    get: current => store.read(cellState, tableCellKey(current)),
     isEqual: Object.is
   })
 
@@ -121,7 +111,7 @@ export const createTableHover = (): TableHoverRuntime => {
     const previous = state.get().target
     if (
       sameHoverTarget(previous, target)
-      && sameOptionalPoint(state.get().pointer, point)
+      && equal.sameOptionalPoint(state.get().pointer, point)
     ) {
       return
     }
@@ -134,7 +124,7 @@ export const createTableHover = (): TableHoverRuntime => {
   }
 
   return {
-    target: createProjectedStore({
+    target: store.createProjectedStore({
       source: state,
       select: current => current.target,
       isEqual: sameHoverTarget

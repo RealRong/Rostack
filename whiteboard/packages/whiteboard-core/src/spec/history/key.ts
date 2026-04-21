@@ -1,3 +1,4 @@
+import { json } from '@shared/core'
 import type {
   EdgeField,
   EdgeId,
@@ -97,7 +98,7 @@ const isMindmapKey = (
 
 export const serializeHistoryKey = (
   key: HistoryKey
-): string => JSON.stringify(key)
+): string => json.stableStringify(key)
 
 export const isHistoryKey = (
   value: unknown

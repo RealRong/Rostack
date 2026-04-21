@@ -1,21 +1,18 @@
 import { describe, expect, test, vi } from 'vitest'
-import {
-  createReadStore,
-  createKeyedDerivedStore,
-  createValueStore,
-  read
-} from '@shared/core'
+import { store } from '@shared/core'
+
+
 
 describe('createKeyedDerivedStore', () => {
   test('continues to work after idle eviction when using keyOf', () => {
-    const source = createValueStore(new Map([
+    const source = store.createValueStore(new Map([
       ['left', 1],
       ['right', 2],
       ['extra', 3]
     ]))
-    const family = createKeyedDerivedStore({
+    const family = store.createKeyedDerivedStore({
       keyOf: key => key.id,
-      get: (key: { id: string }) => read(source).get(key.id) ?? 0
+      get: (key: { id: string }) => store.read(source).get(key.id) ?? 0
     })
 
     const left = {
@@ -58,7 +55,7 @@ describe('createKeyedDerivedStore', () => {
       })
     try {
       let dependencySubscribers = 0
-      const source = createReadStore({
+      const source = store.createReadStore({
         get: () => 7,
         subscribe: () => {
           dependencySubscribers += 1
@@ -69,11 +66,11 @@ describe('createKeyedDerivedStore', () => {
       })
 
       let getCalls = 0
-      const family = createKeyedDerivedStore({
+      const family = store.createKeyedDerivedStore({
         keyOf: key => key.id,
         get: (key: { id: string }) => {
           getCalls += 1
-          return read(source) + key.id.length
+          return store.read(source) + key.id.length
         }
       })
 

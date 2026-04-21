@@ -2,10 +2,7 @@ import type {
   Action,
   ViewId
 } from '@dataview/core/contracts'
-import {
-  read,
-  trimToUndefined
-} from '@shared/core'
+import { store, string } from '@shared/core'
 import { view as viewApi } from '@dataview/core/view'
 import type {
   ActionResult,
@@ -17,15 +14,15 @@ export const createViewsApi = (options: {
   source: DocumentSource
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): ViewsApi => {
-  const readViews = () => read(options.source.views.ids)
+  const readViews = () => store.read(options.source.views.ids)
     .flatMap(viewId => {
-      const view = read(options.source.views, viewId)
+      const view = store.read(options.source.views, viewId)
       return view ? [view] : []
     })
 
   return {
     list: readViews,
-    get: viewId => read(options.source.views, viewId),
+    get: viewId => store.read(options.source.views, viewId),
     open: viewId => {
       options.dispatch({
         type: 'view.open',
@@ -33,7 +30,7 @@ export const createViewsApi = (options: {
       })
     },
     create: input => {
-      const preferredName = trimToUndefined(input.name)
+      const preferredName = string.trimToUndefined(input.name)
       if (!preferredName) {
         return undefined
       }
@@ -48,7 +45,7 @@ export const createViewsApi = (options: {
       return result.created?.views?.[0]
     },
     rename: (viewId: ViewId, name: string) => {
-      const nextName = trimToUndefined(name)
+      const nextName = string.trimToUndefined(name)
       if (!nextName) {
         return
       }
@@ -62,7 +59,7 @@ export const createViewsApi = (options: {
       })
     },
     duplicate: viewId => {
-      const sourceView = read(options.source.views, viewId)
+      const sourceView = store.read(options.source.views, viewId)
       if (!sourceView) {
         return undefined
       }

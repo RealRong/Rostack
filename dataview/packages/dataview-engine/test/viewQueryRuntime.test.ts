@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-
 import { filter } from '@dataview/core/filter'
 import { compileViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'

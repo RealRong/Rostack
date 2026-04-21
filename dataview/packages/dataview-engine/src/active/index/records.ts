@@ -8,9 +8,7 @@ import type {
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
-import {
-  sameOrder as sameIds
-} from '@shared/core'
+import { equal } from '@shared/core'
 import {
   createArrayPatchBuilder,
   createMapPatchBuilder
@@ -158,7 +156,7 @@ export const syncRecordIndex = (
   context: IndexDeriveContext,
   fieldIds: readonly FieldId[] = previous.fieldIds
 ): RecordIndex => {
-  const nextFieldIds = sameIds(previous.fieldIds, fieldIds)
+  const nextFieldIds = equal.sameOrder(previous.fieldIds, fieldIds)
     ? previous.fieldIds
     : [...fieldIds]
   const fieldIdsChanged = previous.fieldIds !== nextFieldIds
@@ -202,7 +200,7 @@ export const syncRecordIndex = (
     return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
   }
 
-  const orderChanged = !sameIds(previous.ids, context.document.records.order)
+  const orderChanged = !equal.sameOrder(previous.ids, context.document.records.order)
   const nextOrder = orderChanged
     ? createOrderIndex(context.document.records.order)
     : previous.order

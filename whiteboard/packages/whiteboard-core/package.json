@@ -6,7 +6,6 @@
     "./types": "./src/types/index.ts",
     "./result": "./src/result/index.ts",
     "./id": "./src/id/index.ts",
-    "./value": "./src/value/index.ts",
     "./geometry": "./src/geometry/index.ts",
     "./node": "./src/node/index.ts",
     "./mindmap": "./src/mindmap/index.ts",

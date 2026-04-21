@@ -1,4 +1,4 @@
-import { createValueStore } from '@shared/core'
+import { store as coreStore } from '@shared/core'
 import { historyFootprintConflicts } from '@whiteboard/core/spec/history'
 import { sync } from '@whiteboard/core/spec/operation'
 import type { Engine } from '@whiteboard/engine'
@@ -124,10 +124,10 @@ const findEntry = (
 ): LocalHistoryEntry | undefined => entries.find((entry) => entry.id === entryId)
 
 const publishState = (
-  store: ReturnType<typeof createValueStore<HistoryState>>,
+  stateStore: ReturnType<typeof coreStore.createValueStore<HistoryState>>,
   runtime: LocalHistoryRuntime
 ) => {
-  store.set({
+  stateStore.set({
     canUndo: runtime.undo.length > 0,
     canRedo: runtime.redo.length > 0,
     undoDepth: runtime.undo.length,
@@ -161,7 +161,7 @@ export const createLocalHistoryController = ({
   canApply: () => boolean
 }): LocalHistoryController => {
   const runtime = createRuntime()
-  const state = createValueStore<HistoryState>(EMPTY_STATE)
+  const state = coreStore.createValueStore<HistoryState>(EMPTY_STATE)
 
   const failPending = () => {
     if (!runtime.pending) {

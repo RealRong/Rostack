@@ -1,9 +1,6 @@
 import { impact } from '@dataview/core/commit/impact'
 import type { DataDoc } from '@dataview/core/contracts'
-import {
-  createValueStore,
-  type ValueStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import { syncViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { createViewRuntime } from '@dataview/engine/active/runtime'
@@ -15,7 +12,7 @@ import {
   projectEngineOutput
 } from '@dataview/engine/source/project'
 
-export type RuntimeStore = ValueStore<EngineRuntimeState>
+export type RuntimeStore = store.ValueStore<EngineRuntimeState>
 export type { EngineRuntimeState } from '@dataview/engine/runtime/state'
 
 export const createRuntimeState = (input: {
@@ -76,6 +73,6 @@ export const createRuntimeState = (input: {
 
 export const createStore = (
   initial: EngineRuntimeState
-): RuntimeStore => createValueStore<EngineRuntimeState>({
+): RuntimeStore => store.createValueStore<EngineRuntimeState>({
   initial
 })

@@ -1,4 +1,6 @@
-import { createRafTask } from '@shared/core'
+import { scheduler } from '@shared/core'
+
+
 
 export interface ElementSize {
   width: number
@@ -62,7 +64,7 @@ const createScheduleTask = (
   debugName?: string
 ) => {
   if (schedule === 'raf') {
-    return createRafTask(flush, {
+    return scheduler.createRafTask(flush, {
       fallback: 'microtask'
     })
   }

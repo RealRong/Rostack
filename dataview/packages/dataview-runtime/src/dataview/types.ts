@@ -2,10 +2,7 @@ import type {
   Engine,
   ItemId
 } from '@dataview/engine'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type {
   CreateRecordApi
 } from '@dataview/runtime/createRecord'
@@ -38,17 +35,17 @@ import type {
 export type InlineKey = string
 
 export interface PageSource {
-  queryVisible: ReadStore<boolean>
-  queryRoute: ReadStore<QueryBarEntry | null>
+  queryVisible: store.ReadStore<boolean>
+  queryRoute: store.ReadStore<QueryBarEntry | null>
 }
 
 export interface SelectionSource {
-  member: KeyedReadStore<ItemId, boolean>
-  preview: KeyedReadStore<ItemId, boolean | null>
+  member: store.KeyedReadStore<ItemId, boolean>
+  preview: store.KeyedReadStore<ItemId, boolean | null>
 }
 
 export interface InlineSource {
-  editing: KeyedReadStore<InlineKey, boolean>
+  editing: store.KeyedReadStore<InlineKey, boolean>
 }
 
 export interface DataViewSource {
@@ -69,9 +66,9 @@ export interface DataViewSessionState {
 }
 
 export interface DataViewSessionApi {
-  store: ReadStore<DataViewSessionState>
+  store: store.ReadStore<DataViewSessionState>
   page: PageSessionApi & {
-    store: ReadStore<PageState>
+    store: store.ReadStore<PageState>
   }
   selection: ItemSelectionController
   editing: {

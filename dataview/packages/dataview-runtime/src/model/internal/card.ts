@@ -10,14 +10,7 @@ import type {
   ItemId,
   ViewItem
 } from '@dataview/engine'
-import {
-  createKeyedDerivedStore,
-  read,
-  sameOrder,
-  sameValue,
-  type KeyedReadStore,
-  type ReadStore
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import type {
   DataViewSource
 } from '@dataview/runtime/dataview/types'
@@ -33,7 +26,7 @@ const sameProperty = (
   left: CardProperty,
   right: CardProperty
 ) => left.field === right.field
-  && sameValue(left.value, right.value)
+  && equal.sameValue(left.value, right.value)
 
 const sameProperties = (
   left: readonly CardProperty[] | undefined,
@@ -43,7 +36,7 @@ const sameProperties = (
   || (
     left !== undefined
     && right !== undefined
-    && sameOrder(left, right, sameProperty)
+    && equal.sameOrder(left, right, sameProperty)
   )
 )
 
@@ -61,22 +54,22 @@ const sameContent = (
 
 export const createActiveCustomFieldListStore = (
   source: DataViewSource
-): ReadStore<readonly CustomField[]> => createEntityListStore({
+): store.ReadStore<readonly CustomField[]> => createEntityListStore({
   ids: source.active.fields.custom.ids,
   values: source.active.fields.custom
 })
 
 export const createRecordCardPropertiesStore = (input: {
   source: DataViewSource
-  fields: ReadStore<readonly CustomField[]>
-}): KeyedReadStore<RecordId, readonly CardProperty[] | undefined> => createKeyedDerivedStore<RecordId, readonly CardProperty[] | undefined>({
+  fields: store.ReadStore<readonly CustomField[]>
+}): store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined> => store.createKeyedDerivedStore<RecordId, readonly CardProperty[] | undefined>({
   get: recordId => {
-    const record = read(input.source.doc.records, recordId)
+    const record = store.read(input.source.doc.records, recordId)
     if (!record) {
       return undefined
     }
 
-    return read(input.fields).map<CardProperty>(field => ({
+    return store.read(input.fields).map<CardProperty>(field => ({
       field,
       value: record.values[field.id]
     }))
@@ -87,25 +80,25 @@ export const createRecordCardPropertiesStore = (input: {
 export const createItemCardContentStore = (input: {
   source: DataViewSource
   viewType: 'gallery' | 'kanban'
-  properties: KeyedReadStore<RecordId, readonly CardProperty[] | undefined>
+  properties: store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined>
   placeholderText: (input: {
     itemId: ItemId
     item: ViewItem
     record: DataRecord
   }) => string
-}): KeyedReadStore<ItemId, CardContent | undefined> => createKeyedDerivedStore({
+}): store.KeyedReadStore<ItemId, CardContent | undefined> => store.createKeyedDerivedStore({
   get: itemId => {
-    if (read(input.source.active.view.type) !== input.viewType) {
+    if (store.read(input.source.active.view.type) !== input.viewType) {
       return undefined
     }
 
-    const item = read(input.source.active.items, itemId)
+    const item = store.read(input.source.active.items, itemId)
     if (!item) {
       return undefined
     }
 
-    const record = read(input.source.doc.records, item.recordId)
-    const properties = read(input.properties, item.recordId)
+    const record = store.read(input.source.doc.records, item.recordId)
+    const properties = store.read(input.properties, item.recordId)
     if (!record || !properties) {
       return undefined
     }

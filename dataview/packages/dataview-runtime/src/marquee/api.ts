@@ -1,12 +1,4 @@
-import {
-  createKeyedDerivedStore,
-  createKeyedStore,
-  read
-} from '@shared/core'
-import {
-  sameBox,
-  samePoint
-} from '@shared/core'
+import { equal, store as coreStore } from '@shared/core'
 import type { ItemId } from '@dataview/engine'
 import {
   rectFromPoints
@@ -47,9 +39,9 @@ const sameSession = (
   }
 
   return left.mode === right.mode
-    && samePoint(left.start, right.start)
-    && samePoint(left.current, right.current)
-    && sameBox(left.rect, right.rect)
+    && equal.samePoint(left.start, right.start)
+    && equal.samePoint(left.current, right.current)
+    && equal.sameBox(left.rect, right.rect)
     && left.baseSelection === right.baseSelection
     && sameHitIds(left.hitIds, right.hitIds)
 }
@@ -130,20 +122,20 @@ export const createMarqueeController = (input: {
   resolveDomain: () => OrderedSelectionDomain<ItemId> | undefined
 }): MarqueeController => {
   const {
-    store,
+    store: sessionStore,
     get,
     clear,
     openStore
   } = createNullableControllerStore<MarqueeSessionState>({
     isEqual: sameSession
   })
-  const previewMembershipStore = createKeyedStore<ItemId, boolean | null>({
+  const previewMembershipStore = coreStore.createKeyedStore<ItemId, boolean | null>({
     emptyValue: null,
     isEqual: Object.is
   })
-  const previewSummaryStore = createKeyedDerivedStore<SelectionScope<ItemId>, SelectionSummary | null>({
+  const previewSummaryStore = coreStore.createKeyedDerivedStore<SelectionScope<ItemId>, SelectionSummary | null>({
     get: scope => {
-      const session = read(store)
+      const session = coreStore.read(sessionStore)
       if (!session) {
         return null
       }
@@ -153,7 +145,7 @@ export const createMarqueeController = (input: {
         session,
         scope,
         membership: {
-          get: id => read(previewMembershipStore, id)
+          get: id => coreStore.read(previewMembershipStore, id)
         }
       })
     },
@@ -270,7 +262,7 @@ export const createMarqueeController = (input: {
   }
 
   return {
-    store,
+    store: sessionStore,
     activeStore: openStore,
     preview: {
       membership: previewMembershipStore,
@@ -287,7 +279,7 @@ export const createMarqueeController = (input: {
         baseSelection: session.baseSelection
       } satisfies MarqueeSessionState
       clearPreviewMembership()
-      store.set(nextSession)
+      sessionStore.set(nextSession)
       seedPreviewMembership(nextSession)
     },
     update: next => {
@@ -303,7 +295,7 @@ export const createMarqueeController = (input: {
         hitIds: next.hitIds
       } satisfies MarqueeSessionState
 
-      store.set(nextSession)
+      sessionStore.set(nextSession)
       syncPreviewMembership({
         previous: current,
         next: nextSession

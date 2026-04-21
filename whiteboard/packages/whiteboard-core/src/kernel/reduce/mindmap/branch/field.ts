@@ -1,7 +1,7 @@
+import { json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getMindmap } from '@whiteboard/core/kernel/reduce/runtime'
-import { cloneValue } from '@whiteboard/core/value'
 
 export const createMindmapBranchFieldApi = (
   tx: ReducerTx
@@ -25,7 +25,7 @@ export const createMindmapBranchFieldApi = (
       id,
       topicId,
       field,
-      value: cloneValue(member.branchStyle[field])
+      value: json.clone(member.branchStyle[field])
     })
     tx._runtime.draft.mindmaps.set(id, {
       ...current,
@@ -35,7 +35,7 @@ export const createMindmapBranchFieldApi = (
           ...member,
           branchStyle: {
             ...member.branchStyle,
-            [field]: cloneValue(value) as never
+            [field]: json.clone(value) as never
           }
         }
       }
@@ -61,7 +61,7 @@ export const createMindmapBranchFieldApi = (
       id,
       topicId,
       field,
-      value: cloneValue(member.branchStyle[field])
+      value: json.clone(member.branchStyle[field])
     })
     tx._runtime.draft.mindmaps.set(id, {
       ...current,

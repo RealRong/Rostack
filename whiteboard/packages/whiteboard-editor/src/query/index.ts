@@ -1,4 +1,4 @@
-import { read as readValue, type ReadStore } from '@shared/core'
+import { store } from '@shared/core'
 import type { EngineRead } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
@@ -82,12 +82,12 @@ const isToolMatch = (
 }
 
 const createToolRead = (
-  source: ReadStore<Tool>
+  source: store.ReadStore<Tool>
 ): ToolRead => ({
-  get: () => readValue(source),
-  type: () => readValue(source).type,
-  value: () => readToolValue(readValue(source)),
-  is: (type, value) => isToolMatch(readValue(source), type, value)
+  get: () => store.read(source),
+  type: () => store.read(source).type,
+  value: () => readToolValue(store.read(source)),
+  is: (type, value) => isToolMatch(store.read(source), type, value)
 })
 
 export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
@@ -100,8 +100,8 @@ export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index'> & {
   mindmap: MindmapPresentationRead
   selection: SelectionRead
   tool: ToolRead
-  draw: ReadStore<DrawState>
-  space: ReadStore<boolean>
+  draw: store.ReadStore<DrawState>
+  space: store.ReadStore<boolean>
   viewport: {
     get: ViewportRuntime['read']['get']
     subscribe: ViewportRuntime['read']['subscribe']

@@ -1,37 +1,34 @@
-import {
-  createProjectedStore,
-  type ReadStore
-} from '@shared/core'
+import { store } from '@shared/core'
 import type { Capabilities } from '@dataview/react/views/table/capabilities'
 
 export interface TableCanRuntime {
-  state: ReadStore<Capabilities>
-  hover: ReadStore<boolean>
-  rowDrag: ReadStore<boolean>
-  columnResize: ReadStore<boolean>
-  fill: ReadStore<boolean>
+  state: store.ReadStore<Capabilities>
+  hover: store.ReadStore<boolean>
+  rowDrag: store.ReadStore<boolean>
+  columnResize: store.ReadStore<boolean>
+  fill: store.ReadStore<boolean>
 }
 
 export const createTableCanRuntime = (
-  state: ReadStore<Capabilities>
+  state: store.ReadStore<Capabilities>
 ): TableCanRuntime => ({
   state,
-  hover: createProjectedStore({
+  hover: store.createProjectedStore({
     source: state,
     select: current => current.canHover,
     isEqual: Object.is
   }),
-  rowDrag: createProjectedStore({
+  rowDrag: store.createProjectedStore({
     source: state,
     select: current => current.canRowDrag,
     isEqual: Object.is
   }),
-  columnResize: createProjectedStore({
+  columnResize: store.createProjectedStore({
     source: state,
     select: current => current.canColumnResize,
     isEqual: Object.is
   }),
-  fill: createProjectedStore({
+  fill: store.createProjectedStore({
     source: state,
     select: current => current.showFillHandle,
     isEqual: Object.is

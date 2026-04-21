@@ -1,11 +1,5 @@
 import { node as nodeApi } from '@whiteboard/core/node'
-import {
-  createDerivedStore,
-  read,
-  sameOptionalNumberArray as isSameOptionalNumberArray,
-  type ReadStore,
-  type KeyedReadStore
-} from '@shared/core'
+import { collection, equal, store } from '@shared/core'
 import type {
   SelectionAffordance,
   SelectionSummary,
@@ -35,7 +29,6 @@ import type {
 } from '@whiteboard/editor/types/defaults'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EditSession } from '@whiteboard/editor/session/edit'
-import { readUniformValue } from '@whiteboard/editor/query/utils'
 import type { SelectionModelRead } from '@whiteboard/editor/query/selection/model'
 import type { EditorInputState } from '@whiteboard/editor/session/interaction'
 import type { MindmapPresentationRead } from '@whiteboard/editor/query/mindmap/read'
@@ -44,21 +37,21 @@ import type {
 } from '@whiteboard/editor/query/node/read'
 
 export type SelectionRead = {
-  members: ReadStore<SelectionMembers>
-  summary: ReadStore<SelectionSummary>
-  affordance: ReadStore<SelectionAffordance>
+  members: store.ReadStore<SelectionMembers>
+  summary: store.ReadStore<SelectionSummary>
+  affordance: store.ReadStore<SelectionAffordance>
   node: {
-    selected: KeyedReadStore<NodeId, boolean>
-    stats: ReadStore<SelectionNodeStats>
-    scope: ReadStore<SelectionToolbarNodeScope | undefined>
+    selected: store.KeyedReadStore<NodeId, boolean>
+    stats: store.ReadStore<SelectionNodeStats>
+    scope: store.ReadStore<SelectionToolbarNodeScope | undefined>
   }
   edge: {
-    selected: KeyedReadStore<EdgeId, boolean>
-    stats: ReadStore<SelectionEdgeStats>
-    scope: ReadStore<SelectionToolbarEdgeScope | undefined>
+    selected: store.KeyedReadStore<EdgeId, boolean>
+    stats: store.ReadStore<SelectionEdgeStats>
+    scope: store.ReadStore<SelectionToolbarEdgeScope | undefined>
   }
-  overlay: ReadStore<SelectionOverlay | undefined>
-  toolbar: ReadStore<SelectionToolbarContext | undefined>
+  overlay: store.ReadStore<SelectionOverlay | undefined>
+  toolbar: store.ReadStore<SelectionToolbarContext | undefined>
 }
 
 const readNodeCountLabel = (
@@ -358,7 +351,7 @@ const readToolbarValue = <TValue,>(
   readValue: (node: Node) => TValue,
   equal?: (left: TValue, right: TValue) => boolean
 ) => enabled
-  ? readUniformValue(nodes, readValue, equal)
+  ? collection.uniform(nodes, readValue, equal)
   : undefined
 
 const readNodeScope = ({
@@ -420,13 +413,13 @@ const readNodeScope = ({
     ? treeIds[0]
     : undefined
   const mindmapTree = mindmapTreeId
-    ? read(mindmap.item, mindmapTreeId)?.tree
+    ? store.read(mindmap.item, mindmapTreeId)?.tree
     : undefined
   const readMindmapBranchValue = <TValue,>(
     select: (branch: NonNullable<typeof mindmapTree>['nodes'][MindmapNodeId]['branch']) => TValue
   ) => (
     mindmapTreeId && mindmapTree
-      ? readUniformValue(
+      ? collection.uniform(
           nodeIds as readonly MindmapNodeId[],
           (nodeId) => {
             const branch = mindmapTree.nodes[nodeId]?.branch
@@ -459,7 +452,7 @@ const readNodeScope = ({
         : undefined,
     shapeKindValue:
       nodeKind === 'shape'
-        ? readUniformValue(nodes, nodeApi.shape.kind)
+        ? collection.uniform(nodes, nodeApi.shape.kind)
         : undefined,
     fontSize: readToolbarValue(styleSupport.fontSize, nodes, readFontSize),
     fontWeight: readToolbarValue(styleSupport.fontWeight, nodes, readFontWeight),
@@ -476,14 +469,14 @@ const readNodeScope = ({
       (node) => readFill(node, readPaintDefaults(node))
     ),
     fillOpacity: readToolbarValue(canEditFillOpacity, nodes, readFillOpacity),
-    stroke: readUniformValue(nodes, (node) => readStroke(node, readPaintDefaults(node))),
-    strokeWidth: readUniformValue(nodes, (node) => readStrokeWidth(node, readPaintDefaults(node))),
+    stroke: collection.uniform(nodes, (node) => readStroke(node, readPaintDefaults(node))),
+    strokeWidth: collection.uniform(nodes, (node) => readStrokeWidth(node, readPaintDefaults(node))),
     strokeOpacity: readToolbarValue(canEditStrokeOpacity, nodes, readStrokeOpacity),
     strokeDash: readToolbarValue(
       canEditStrokeDash,
       nodes,
       readStrokeDash,
-      (left, right) => isSameOptionalNumberArray(
+      (left, right) => equal.sameOptionalNumberArray(
         normalizeDash(left),
         normalizeDash(right)
       )
@@ -500,7 +493,7 @@ const readNodeScope = ({
           branchWidth: readMindmapBranchValue((branch) => branch.width),
           branchStroke: readMindmapBranchValue((branch) => branch.stroke),
           canEditBorder: true,
-          borderKind: readUniformValue(nodes, (entry) => {
+          borderKind: collection.uniform(nodes, (entry) => {
             const value = readString(entry, 'frameKind')
             return value === 'ellipse' || value === 'rect' || value === 'underline'
               ? value
@@ -534,14 +527,14 @@ const readEdgeScope = ({
         : edges.some((edge) => edge.locked)
           ? 'mixed'
           : 'none',
-  type: readUniformValue(edges, (entry) => entry.type),
-  color: readUniformValue(edges, (entry) => entry.style?.color ?? defaults.edge.color),
-  opacity: readUniformValue(edges, (entry) => entry.style?.opacity ?? 1),
-  width: readUniformValue(edges, (entry) => entry.style?.width ?? defaults.edge.width),
-  dash: readUniformValue(edges, (entry) => entry.style?.dash ?? defaults.edge.dash),
-  start: readUniformValue(edges, (entry) => entry.style?.start),
-  end: readUniformValue(edges, (entry) => entry.style?.end),
-  textMode: readUniformValue(edges, (entry) => entry.textMode ?? defaults.edge.textMode),
+  type: collection.uniform(edges, (entry) => entry.type),
+  color: collection.uniform(edges, (entry) => entry.style?.color ?? defaults.edge.color),
+  opacity: collection.uniform(edges, (entry) => entry.style?.opacity ?? 1),
+  width: collection.uniform(edges, (entry) => entry.style?.width ?? defaults.edge.width),
+  dash: collection.uniform(edges, (entry) => entry.style?.dash ?? defaults.edge.dash),
+  start: collection.uniform(edges, (entry) => entry.style?.start),
+  end: collection.uniform(edges, (entry) => entry.style?.end),
+  textMode: collection.uniform(edges, (entry) => entry.textMode ?? defaults.edge.textMode),
   labelCount: primaryEdge?.labels?.length ?? 0
 })
 
@@ -826,21 +819,21 @@ export const createSelectionRead = ({
   model: SelectionModelRead
   runtime: {
     node: {
-      selected: KeyedReadStore<NodeId, boolean>
+      selected: store.KeyedReadStore<NodeId, boolean>
     }
     edge: {
-      selected: KeyedReadStore<EdgeId, boolean>
+      selected: store.KeyedReadStore<EdgeId, boolean>
     }
   }
   nodeType: NodeTypeSupport
   mindmap: Pick<MindmapPresentationRead, 'item'>
-  tool: ReadStore<Tool>
-  edit: ReadStore<EditSession>
+  tool: store.ReadStore<Tool>
+  edit: store.ReadStore<EditSession>
   interaction: Pick<EditorInputState, 'mode' | 'chrome'>
   defaults: EditorDefaults['selection']
 }): SelectionRead => {
-  const members = createDerivedStore<SelectionMembers>({
-    get: () => read(model).members,
+  const members = store.createDerivedStore<SelectionMembers>({
+    get: () => store.read(model).members,
     isEqual: (left, right) => left === right || (
       left.key === right.key
       && left.target === right.target
@@ -851,33 +844,33 @@ export const createSelectionRead = ({
     )
   })
 
-  const summary = createDerivedStore<SelectionSummary>({
-    get: () => read(model).summary,
+  const summary = store.createDerivedStore<SelectionSummary>({
+    get: () => store.read(model).summary,
     isEqual: (left, right) => left === right
   })
 
-  const affordance = createDerivedStore<SelectionAffordance>({
-    get: () => read(model).affordance,
+  const affordance = store.createDerivedStore<SelectionAffordance>({
+    get: () => store.read(model).affordance,
     isEqual: (left, right) => left === right
   })
 
-  const nodeStats = createDerivedStore<SelectionNodeStats>({
+  const nodeStats = store.createDerivedStore<SelectionNodeStats>({
     get: () => readSelectionNodeStats({
-      summary: read(summary),
+      summary: store.read(summary),
       nodeType
     })
   })
 
-  const edgeStats = createDerivedStore<SelectionEdgeStats>({
+  const edgeStats = store.createDerivedStore<SelectionEdgeStats>({
     get: () => readSelectionEdgeStats(
-      read(summary)
+      store.read(summary)
     )
   })
 
-  const nodeScope = createDerivedStore<SelectionToolbarNodeScope | undefined>({
+  const nodeScope = store.createDerivedStore<SelectionToolbarNodeScope | undefined>({
     get: () => {
-      const currentMembers = read(members)
-      const currentNodeStats = read(nodeStats)
+      const currentMembers = store.read(members)
+      const currentNodeStats = store.read(nodeStats)
       if (currentNodeStats.count === 0) {
         return undefined
       }
@@ -894,10 +887,10 @@ export const createSelectionRead = ({
     }
   })
 
-  const edgeScope = createDerivedStore<SelectionToolbarEdgeScope | undefined>({
+  const edgeScope = store.createDerivedStore<SelectionToolbarEdgeScope | undefined>({
     get: () => {
-      const currentMembers = read(members)
-      const currentEdgeStats = read(edgeStats)
+      const currentMembers = store.read(members)
+      const currentEdgeStats = store.read(edgeStats)
       if (currentEdgeStats.count === 0) {
         return undefined
       }
@@ -911,32 +904,32 @@ export const createSelectionRead = ({
     }
   })
 
-  const overlay = createDerivedStore<SelectionOverlay | undefined>({
+  const overlay = store.createDerivedStore<SelectionOverlay | undefined>({
     get: () => resolveSelectionOverlay({
-      summary: read(summary),
-      affordance: read(affordance),
-      tool: read(tool),
-      edit: read(edit),
-      interactionChrome: read(interaction.chrome),
-      transforming: read(interaction.mode) === 'node-transform'
+      summary: store.read(summary),
+      affordance: store.read(affordance),
+      tool: store.read(tool),
+      edit: store.read(edit),
+      interactionChrome: store.read(interaction.chrome),
+      transforming: store.read(interaction.mode) === 'node-transform'
     })
   })
 
-  const toolbar = createDerivedStore<SelectionToolbarContext | undefined>({
+  const toolbar = store.createDerivedStore<SelectionToolbarContext | undefined>({
     get: () => resolveSelectionToolbar({
-      members: read(members),
-      summary: read(summary),
-      affordance: read(affordance),
-      nodeStats: read(nodeStats),
-      edgeStats: read(edgeStats),
-      nodeScope: read(nodeScope),
-      edgeScope: read(edgeScope),
+      members: store.read(members),
+      summary: store.read(summary),
+      affordance: store.read(affordance),
+      nodeStats: store.read(nodeStats),
+      edgeStats: store.read(edgeStats),
+      nodeScope: store.read(nodeScope),
+      edgeScope: store.read(edgeScope),
       nodeType,
       mindmap,
-      tool: read(tool),
-      edit: read(edit),
-      interactionChrome: read(interaction.chrome),
-      interactionMode: read(interaction.mode),
+      tool: store.read(tool),
+      edit: store.read(edit),
+      interactionChrome: store.read(interaction.chrome),
+      interactionMode: store.read(interaction.mode),
       defaults
     })
   })

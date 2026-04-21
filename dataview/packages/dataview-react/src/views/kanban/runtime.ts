@@ -9,12 +9,7 @@ import type {
 import {
   useDataView
 } from '@dataview/react/dataview'
-import {
-  createDerivedStore,
-  createValueStore,
-  read,
-  sameOrder
-} from '@shared/core'
+import { equal, store } from '@shared/core'
 import {
   useStoreValue
 } from '@shared/react'
@@ -48,7 +43,7 @@ const sameBoard = (
   right: KanbanBoard
 ) => left.viewId === right.viewId
   && left.grouped === right.grouped
-  && sameOrder(left.sectionKeys, right.sectionKeys)
+  && equal.sameOrder(left.sectionKeys, right.sectionKeys)
   && left.groupField === right.groupField
   && left.columnWidth === right.columnWidth
   && left.columnMinHeight === right.columnMinHeight
@@ -61,7 +56,7 @@ export const useKanbanRuntime = (input: {
 }): KanbanViewRuntime => {
   const dataView = useDataView()
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const configStore = useMemo(() => createValueStore({
+  const configStore = useMemo(() => store.createValueStore({
     columnWidth: input.columnWidth,
     columnMinHeight: input.columnMinHeight
   }, {
@@ -72,13 +67,13 @@ export const useKanbanRuntime = (input: {
   const interaction = useItemDragRuntime({
     itemIds
   })
-  const sectionsStore = useMemo(() => createDerivedStore<readonly Section[]>({
-    get: () => read(dataView.source.active.sections.keys)
+  const sectionsStore = useMemo(() => store.createDerivedStore<readonly Section[]>({
+    get: () => store.read(dataView.source.active.sections.keys)
       .flatMap(key => {
-        const section = read(dataView.source.active.sections, key)
+        const section = store.read(dataView.source.active.sections, key)
         return section ? [section] : []
       }),
-    isEqual: sameOrder
+    isEqual: equal.sameOrder
   }), [dataView.source.active.sections])
   const sections = useStoreValue(sectionsStore)
   const currentViewId = useStoreValue(dataView.source.active.view.id) ?? ''
@@ -95,14 +90,14 @@ export const useKanbanRuntime = (input: {
     sectionsStore,
     visibility
   })
-  const board = useMemo(() => createDerivedStore<KanbanBoard>({
+  const board = useMemo(() => store.createDerivedStore<KanbanBoard>({
     get: () => {
-      const base = read(dataView.model.kanban.board)
+      const base = store.read(dataView.model.kanban.board)
       if (!base) {
         throw new Error('Kanban board is unavailable.')
       }
 
-      const config = read(configStore)
+      const config = store.read(configStore)
       return {
         ...base,
         columnWidth: config.columnWidth,

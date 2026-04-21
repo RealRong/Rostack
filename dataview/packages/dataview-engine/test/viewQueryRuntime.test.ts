@@ -4,7 +4,7 @@ import { filter } from '@dataview/core/filter'
 import { compileViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
-import { createActiveImpact } from '@dataview/engine/active/shared/impact'
+import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
 import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 
 const VIEW_ID = 'view_table'
@@ -107,17 +107,22 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     reader: context.reader,
     activeViewId: previousView.id,
     previousViewId: previousView.id,
-    impact: createActiveImpact({}),
+    impact: createBaseImpact({}),
     view: previousView,
     plan: previousPlan,
     index
   }).state
+  const previousPublished = {
+    matched: previousState.matched.read.ids(),
+    ordered: previousState.ordered.read.ids(),
+    visible: previousState.visible.read.ids()
+  }
 
   const result = runQueryStage({
     reader: context.reader,
     activeViewId: nextView.id,
     previousViewId: nextView.id,
-    impact: createActiveImpact({
+    impact: createBaseImpact({
       views: {
         changed: new Map([
           [nextView.id, {
@@ -131,11 +136,11 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     previousPlan,
     index,
     previous: previousState,
-    previousPublished: previousState.records
+    previousPublished
   })
 
   assert.equal(previousPlan.executionKey, nextPlan.executionKey)
   assert.equal(result.action, 'reuse')
   assert.equal(result.state, previousState)
-  assert.equal(result.records, previousState.records)
+  assert.equal(result.records, previousPublished)
 })

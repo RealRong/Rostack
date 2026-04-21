@@ -14,13 +14,20 @@ import {
   createIndexState
 } from '@dataview/engine/active/index/runtime'
 import {
-  createActiveImpact,
-  ensureQueryImpact,
-  ensureBucketTransition
-} from '@dataview/engine/active/shared/impact'
+  createItemId
+} from '@dataview/engine/active/shared/itemId'
 import {
-  createSectionRecordKey
-} from '@dataview/engine/active/shared/itemIdentity'
+  createBaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
+import {
+  createMembershipTransition
+} from '@dataview/engine/active/shared/transition'
+import {
+  createSelectionFromIds
+} from '@dataview/engine/active/shared/selection'
+import {
+  publishSections
+} from '@dataview/engine/active/snapshot/membership/publish'
 import {
   runMembershipStage
 } from '@dataview/engine/active/snapshot/membership/runtime'
@@ -131,117 +138,151 @@ const createDemand = (
 })
 
 const createQueryState = (
+  rows,
   matched: readonly string[],
   ordered: readonly string[],
   visible: readonly string[]
 ): QueryState => ({
-  records: {
-    matched,
-    ordered,
-    visible
-  }
+  matched: createSelectionFromIds({
+    rows,
+    ids: matched
+  }),
+  ordered: createSelectionFromIds({
+    rows,
+    ids: ordered
+  }),
+  visible: createSelectionFromIds({
+    rows,
+    ids: visible
+  })
 })
 
-test('membership stage reuses grouped projection when only query visibility changes', () => {
+const EMPTY_QUERY_DELTA = {
+  rebuild: false,
+  added: [],
+  removed: [],
+  orderChanged: false
+} as const
+
+test('publishSections uses deterministic item ids derived from section and record', () => {
   const view = createView()
   const document = createDocument({
     rec_1: 'todo',
-    rec_2: 'doing',
-    rec_3: 'done'
+    rec_2: 'doing'
   })
   const index = createIndexState(document, createDemand(view))
-  const previous = runMembershipStage({
+  const membership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact: createActiveImpact({}),
+    impact: createBaseImpact({}),
     view,
     query: createQueryState(
+      index.rows,
       index.records.ids,
       index.records.ids,
       index.records.ids
     ),
+    queryDelta: EMPTY_QUERY_DELTA,
     index
   })
-  const impact = createActiveImpact({})
-  ensureQueryImpact(impact).visibleRemoved.push('rec_1', 'rec_2')
 
-  const next = runMembershipStage({
-    activeViewId: view.id,
-    previousViewId: view.id,
-    impact,
+  const published = publishSections({
     view,
-    query: createQueryState(
-      index.records.ids,
-      index.records.ids,
-      ['rec_3']
-    ),
-    previous: previous.state,
-    index
+    sections: membership.state
   })
 
-  assert.equal(next.action, 'sync')
-  assert.equal(next.state.projection, previous.state.projection)
+  const todoItemId = createItemId('todo', 'rec_1')
+  assert.equal(
+    published.sections.get('todo')?.items.ids[0],
+    todoItemId
+  )
+  assert.deepEqual(
+    published.items.get(todoItemId),
+    {
+      id: todoItemId,
+      recordId: 'rec_1',
+      sectionKey: 'todo'
+    }
+  )
 })
 
-test('membership stage syncs grouped projection when bucket membership changes', () => {
+test('publishSections changes item id when a record moves to another group', () => {
   const view = createView()
   const previousDocument = createDocument({
     rec_1: 'todo',
-    rec_2: 'doing',
-    rec_3: 'done'
+    rec_2: 'doing'
   })
   const previousIndex = createIndexState(previousDocument, createDemand(view))
-  const previous = runMembershipStage({
+  const previousMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact: createActiveImpact({}),
+    impact: createBaseImpact({}),
     view,
     query: createQueryState(
+      previousIndex.rows,
       previousIndex.records.ids,
       previousIndex.records.ids,
       previousIndex.records.ids
     ),
+    queryDelta: EMPTY_QUERY_DELTA,
     index: previousIndex
   })
+  const previousPublished = publishSections({
+    view,
+    sections: previousMembership.state
+  })
+
   const nextDocument = createDocument({
     rec_1: 'done',
-    rec_2: 'doing',
-    rec_3: 'done'
+    rec_2: 'doing'
   })
   const nextIndex = createIndexState(nextDocument, createDemand(view))
-  const impact = createActiveImpact({})
-  impact.base.touchedFields = new Set([FIELD_STATUS])
-  ensureBucketTransition(impact).records.set('rec_1', {
+  const impact = createBaseImpact({})
+  impact.touchedFields = new Set([FIELD_STATUS])
+  const bucketDelta = createMembershipTransition<string, string>()
+  bucketDelta.records.set('rec_1', {
     before: ['todo'],
     after: ['done']
   })
 
-  const next = runMembershipStage({
+  const nextMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
     impact,
     view,
     query: createQueryState(
+      nextIndex.rows,
       nextIndex.records.ids,
       nextIndex.records.ids,
       nextIndex.records.ids
     ),
-    previous: previous.state,
-    index: nextIndex
+    queryDelta: EMPTY_QUERY_DELTA,
+    previous: previousMembership.state,
+    index: nextIndex,
+    indexDelta: {
+      bucket: bucketDelta
+    }
+  })
+  const nextPublished = publishSections({
+    view,
+    sections: nextMembership.state,
+    previousSections: previousMembership.state,
+    previous: previousPublished
   })
 
-  assert.equal(next.action, 'sync')
-  assert.notEqual(next.state.projection, previous.state.projection)
+  const previousItemId = createItemId('todo', 'rec_1')
+  const nextItemId = createItemId('done', 'rec_1')
+
   assert.equal(
-    next.state.projection.bySectionRecord.has(
-      createSectionRecordKey('todo', 'rec_1')
-    ),
-    false
+    nextPublished.items.get(previousItemId),
+    undefined
   )
-  assert.equal(
-    next.state.projection.bySectionRecord.has(
-      createSectionRecordKey('done', 'rec_1')
-    ),
-    true
+  assert.deepEqual(
+    nextPublished.items.get(nextItemId),
+    {
+      id: nextItemId,
+      recordId: 'rec_1',
+      sectionKey: 'done'
+    }
   )
 })

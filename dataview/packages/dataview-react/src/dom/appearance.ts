@@ -11,10 +11,7 @@ export const parseItemIdValue = (
     return undefined
   }
 
-  const parsed = Number(value)
-  return Number.isSafeInteger(parsed)
-    ? parsed as ItemId
-    : undefined
+  return value
 }
 
 export const parseDataviewAppearanceId = (

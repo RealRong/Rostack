@@ -1,3 +1,4 @@
+import { impact as commitImpact } from '@dataview/core/commit/impact'
 import type {
   FieldId,
   RecordId,
@@ -9,28 +10,25 @@ import type {
   ViewRecords,
   ViewStageMetrics
 } from '@dataview/engine/contracts'
-import { impact as commitImpact } from '@dataview/core/commit/impact'
 import {
   type QueryPlan
 } from '@dataview/engine/active/plan'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
-import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
-import {
-  ensureQueryImpact
-} from '@dataview/engine/active/shared/impact'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
+import {
+  readSelectionIdSet
+} from '@dataview/engine/active/shared/selection'
+import { runSnapshotStage } from '@dataview/engine/active/snapshot/stage'
 import type {
   DeriveAction,
   QueryDelta,
   QueryState
 } from '@dataview/engine/contracts/state'
-import {
-  readQueryVisibleSet
-} from '@dataview/engine/contracts/state'
+
 export {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'
@@ -58,7 +56,7 @@ const queryUsesChangedFields = (
   ? changedFields.size > 0
   : hasIntersection(new Set(fields), changedFields)
 
-const EMPTY_RECORD_IDS = [] as RecordId[]
+const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_VISIBLE_DIFF = {
   added: EMPTY_RECORD_IDS,
   removed: EMPTY_RECORD_IDS
@@ -154,7 +152,7 @@ const collectVisibleDiff = (input: {
 const resolveQueryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: ActiveImpact
+  impact: BaseImpact
   previousPlan?: QueryPlan
   plan: QueryPlan
   previous?: QueryState
@@ -184,7 +182,7 @@ const resolveQueryAction = (input: {
     }
   }
   if (input.plan.watch.search === 'all') {
-    if (input.impact.base.schemaFields.size > 0) {
+    if (input.impact.schemaFields.size > 0) {
       return 'sync'
     }
   } else {
@@ -195,7 +193,7 @@ const resolveQueryAction = (input: {
     }
   }
 
-  const changedFields = input.impact.base.touchedFields
+  const changedFields = input.impact.touchedFields
   if (changedFields === 'all') {
     return 'sync'
   }
@@ -218,11 +216,35 @@ const resolveQueryAction = (input: {
   return 'reuse'
 }
 
+const publishRecords = (input: {
+  previous?: ViewRecords
+  state: QueryState
+}): ViewRecords => {
+  const matched = input.state.matched.read.ids()
+  const ordered = input.state.ordered.read.ids()
+  const visible = input.state.visible.read.ids()
+
+  if (
+    input.previous
+    && input.previous.matched === matched
+    && input.previous.ordered === ordered
+    && input.previous.visible === visible
+  ) {
+    return input.previous
+  }
+
+  return {
+    matched,
+    ordered,
+    visible
+  }
+}
+
 export const runQueryStage = (input: {
   reader: DocumentReader
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: ActiveImpact
+  impact: BaseImpact
   view: View
   plan: QueryPlan
   index: IndexState
@@ -260,17 +282,15 @@ export const runQueryStage = (input: {
           previous: input.previous
         }),
     canReusePublished: stageInput => (
-      stageInput.state === input.previous
-      && stageInput.previousPublished !== undefined
+      stageInput.previousPublished !== undefined
+      && stageInput.state.matched.read.ids() === stageInput.previousPublished.matched
+      && stageInput.state.ordered.read.ids() === stageInput.previousPublished.ordered
+      && stageInput.state.visible.read.ids() === stageInput.previousPublished.visible
     ),
-    publish: state => (
-      input.previousPublished
-      && input.previousPublished.matched === state.records.matched
-      && input.previousPublished.ordered === state.records.ordered
-      && input.previousPublished.visible === state.records.visible
-        ? input.previousPublished
-        : state.records
-    )
+    publish: state => publishRecords({
+      previous: input.previousPublished,
+      state
+    })
   })
 
   let changedRecordCount = 0
@@ -281,26 +301,27 @@ export const runQueryStage = (input: {
     orderChanged: false
   }
   if (stage.action === 'rebuild') {
-    ensureQueryImpact(input.impact).rebuild = true
     delta = {
       rebuild: true,
-      added: stage.state.records.visible,
+      added: stage.state.visible.read.ids(),
       removed: EMPTY_RECORD_IDS,
       orderChanged: false
     }
   } else if (stage.action === 'sync' && input.previous) {
-    const previousRecords = input.previous.records
-    const nextRecords = stage.state.records
-    const orderChanged = previousRecords.ordered !== nextRecords.ordered
+    const previousVisible = input.previous.visible.read.ids()
+    const nextVisible = stage.state.visible.read.ids()
+    const previousOrdered = input.previous.ordered.read.ids()
+    const nextOrdered = stage.state.ordered.read.ids()
+    const orderChanged = previousOrdered !== nextOrdered
     const diff = collectVisibleDiff({
-      previous: previousRecords.visible,
-      next: nextRecords.visible,
-      previousSet: previousRecords.visible.length <= nextRecords.visible.length
-        ? readQueryVisibleSet(input.previous)
-        : input.previous.visibleSet,
-      nextSet: nextRecords.visible.length < previousRecords.visible.length
-        ? readQueryVisibleSet(stage.state)
-        : stage.state.visibleSet
+      previous: previousVisible,
+      next: nextVisible,
+      previousSet: previousVisible.length <= nextVisible.length
+        ? readSelectionIdSet(input.previous.visible)
+        : undefined,
+      nextSet: nextVisible.length < previousVisible.length
+        ? readSelectionIdSet(stage.state.visible)
+        : undefined
     })
 
     if (
@@ -309,16 +330,6 @@ export const runQueryStage = (input: {
       || orderChanged
     ) {
       changedRecordCount = diff.added.length + diff.removed.length
-      const queryImpact = ensureQueryImpact(input.impact)
-      if (diff.added.length) {
-        queryImpact.visibleAdded.push(...diff.added)
-      }
-      if (diff.removed.length) {
-        queryImpact.visibleRemoved.push(...diff.removed)
-      }
-      if (orderChanged) {
-        queryImpact.orderChanged = true
-      }
     }
     delta = {
       rebuild: false,
@@ -336,8 +347,8 @@ export const runQueryStage = (input: {
     deriveMs: stage.deriveMs,
     publishMs: stage.publishMs,
     metrics: {
-      inputCount: input.previousPublished?.visible.length,
-      outputCount: stage.published.visible.length,
+      inputCount: input.previous?.visible.read.count(),
+      outputCount: stage.state.visible.read.count(),
       reusedNodeCount: (
         (input.previousPublished?.matched === stage.published.matched ? 1 : 0)
         + (input.previousPublished?.ordered === stage.published.ordered ? 1 : 0)

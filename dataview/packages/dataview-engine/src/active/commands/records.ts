@@ -24,6 +24,7 @@ import {
 } from '@dataview/engine/mutate/entityId'
 import type {
   ActiveRecordsApi,
+  ItemId,
   ViewState
 } from '@dataview/engine/contracts'
 import type {
@@ -122,7 +123,7 @@ const writeDraftValue = (
 const resolveCreateContext = (input: {
   state: ViewState
   sectionKey?: string
-  before?: number
+  before?: ItemId
 }) => {
   const beforeItem = input.before === undefined
     ? undefined

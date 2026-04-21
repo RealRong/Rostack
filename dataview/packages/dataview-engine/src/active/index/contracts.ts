@@ -16,8 +16,15 @@ import type {
   IndexTrace
 } from '@dataview/engine/contracts'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
+import type {
+  MembershipTransition,
+  CalculationTransition
+} from '@dataview/engine/active/shared/transition'
+import type {
+  Rows
+} from '@dataview/engine/active/shared/rows'
 
 export type SortedIdSet<T extends string> = readonly T[]
 export type BucketKey = string
@@ -114,6 +121,12 @@ export interface IndexState {
   bucket: BucketIndex
   sort: SortIndex
   calculations: CalculationIndex
+  rows: Rows
+}
+
+export interface IndexDelta {
+  bucket?: MembershipTransition<BucketKey, RecordId>
+  calculation?: CalculationTransition
 }
 
 export interface FieldContext {
@@ -142,6 +155,7 @@ export interface IndexDeriveContext extends IndexReadContext, FieldSyncContext {
 
 export interface IndexDeriveResult {
   state: IndexState
+  delta?: IndexDelta
   trace?: IndexTrace
 }
 
@@ -149,6 +163,6 @@ export interface IndexDeriveInput {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
-  impact: ActiveImpact
+  impact: BaseImpact
   demand?: NormalizedIndexDemand
 }

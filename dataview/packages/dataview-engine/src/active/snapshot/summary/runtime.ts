@@ -1,14 +1,23 @@
+import { impact as commitImpact } from '@dataview/core/commit/impact'
+import { equal } from '@shared/core'
 import type {
   FieldId,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import type {
-  ViewStageMetrics
-} from '@dataview/engine/contracts'
-import { impact as commitImpact } from '@dataview/core/commit/impact'
-import { equal } from '@shared/core'
-import type { IndexState } from '@dataview/engine/active/index/contracts'
+  IndexDelta,
+  IndexState
+} from '@dataview/engine/active/index/contracts'
+import type {
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
+import {
+  hasCalculationChanges
+} from '@dataview/engine/active/shared/transition'
+import {
+  deriveSummaryState
+} from '@dataview/engine/active/snapshot/summary/sync'
 import type {
   DeriveAction,
   MembershipDelta,
@@ -16,16 +25,32 @@ import type {
   SummaryDelta,
   SummaryState
 } from '@dataview/engine/contracts/state'
-import {
-  hasCalculationChanges
-} from '@dataview/engine/active/shared/impact'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
-import {
-  deriveSummaryState
-} from '@dataview/engine/active/snapshot/summary/sync'
+  ViewStageMetrics
+} from '@dataview/engine/contracts'
 import { now } from '@dataview/engine/runtime/clock'
+
+const sameRecordSet = (
+  left: readonly string[],
+  right: readonly string[]
+) => {
+  if (left === right || equal.sameOrder(left, right)) {
+    return true
+  }
+
+  if (left.length !== right.length) {
+    return false
+  }
+
+  const leftSet = new Set(left)
+  for (let index = 0; index < right.length; index += 1) {
+    if (!leftSet.has(right[index]!)) {
+      return false
+    }
+  }
+
+  return true
+}
 
 export {
   deriveSummaryState
@@ -34,7 +59,8 @@ export {
 const resolveSummaryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: ActiveImpact
+  impact: BaseImpact
+  indexDelta?: IndexDelta
   view: View
   calcFields: readonly FieldId[]
   previous?: SummaryState
@@ -44,27 +70,6 @@ const resolveSummaryAction = (input: {
   membershipDelta: MembershipDelta
 }): DeriveAction => {
   const commit = input.impact.commit
-  const sameRecordSet = (
-    left: readonly string[],
-    right: readonly string[]
-  ) => {
-    if (left === right || equal.sameOrder(left, right)) {
-      return true
-    }
-
-    if (left.length !== right.length) {
-      return false
-    }
-
-    const leftSet = new Set(left)
-    for (let index = 0; index < right.length; index += 1) {
-      if (!leftSet.has(right[index]!)) {
-        return false
-      }
-    }
-
-    return true
-  }
   const membershipChanged = (() => {
     if (
       input.membershipDelta.rebuild
@@ -77,13 +82,13 @@ const resolveSummaryAction = (input: {
 
     for (let index = 0; index < input.membershipDelta.changed.length; index += 1) {
       const sectionKey = input.membershipDelta.changed[index]!
-      const previousNode = input.previousMembership?.byKey.get(sectionKey)
-      const nextNode = input.membership.byKey.get(sectionKey)
-      if (!previousNode || !nextNode) {
+      const previousSelection = input.previousMembership?.sections.get(sectionKey)
+      const nextSelection = input.membership.sections.get(sectionKey)
+      if (!previousSelection || !nextSelection) {
         return true
       }
 
-      if (!sameRecordSet(previousNode.recordIds, nextNode.recordIds)) {
+      if (!sameRecordSet(previousSelection.read.ids(), nextSelection.read.ids())) {
         return true
       }
     }
@@ -101,7 +106,7 @@ const resolveSummaryAction = (input: {
   }
 
   if (!input.calcFields.length) {
-    return equal.sameOrder(input.previousMembership.order, input.membership.order)
+    return equal.sameOrder(input.previousMembership.sections.order, input.membership.sections.order)
       ? 'reuse'
       : 'sync'
   }
@@ -118,7 +123,7 @@ const resolveSummaryAction = (input: {
   }
 
   for (const fieldId of input.calcFields) {
-    if (input.impact.calculation?.fields.get(fieldId)?.rebuild) {
+    if (input.indexDelta?.calculation?.fields.get(fieldId)?.rebuild) {
       return 'rebuild'
     }
 
@@ -131,13 +136,13 @@ const resolveSummaryAction = (input: {
   }
 
   if (
-    !equal.sameOrder(input.previousMembership.order, input.membership.order)
+    !equal.sameOrder(input.previousMembership.sections.order, input.membership.sections.order)
     || membershipChanged
   ) {
     return 'sync'
   }
 
-  if (hasCalculationChanges(input.impact, input.calcFields)) {
+  if (hasCalculationChanges(input.indexDelta?.calculation, input.calcFields)) {
     return 'sync'
   }
 
@@ -147,7 +152,8 @@ const resolveSummaryAction = (input: {
 export const runSummaryStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: ActiveImpact
+  impact: BaseImpact
+  indexDelta?: IndexDelta
   view: View
   calcFields: readonly FieldId[]
   previous?: SummaryState
@@ -168,6 +174,7 @@ export const runSummaryStage = (input: {
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
     impact: input.impact,
+    indexDelta: input.indexDelta,
     view: input.view,
     calcFields: input.calcFields,
     previous: input.previous,
@@ -184,7 +191,7 @@ export const runSummaryStage = (input: {
     membershipDelta: input.membershipDelta,
     calcFields: input.calcFields,
     index: input.index,
-    impact: input.impact,
+    calculationDelta: input.indexDelta?.calculation,
     action
   })
   const deriveMs = now() - deriveStart

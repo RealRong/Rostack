@@ -5,11 +5,10 @@ import { resolveViewPlan } from '@dataview/engine/active/plan'
 import { emptyNormalizedIndexDemand } from '@dataview/engine/active/index/demand'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { createViewRuntime } from '@dataview/engine/active/runtime'
-import { createActiveImpact } from '@dataview/engine/active/shared/impact'
+import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
 import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 import type { EngineRuntimeState } from '@dataview/engine/runtime/state'
 import {
-  createEnginePatch,
   projectDocumentPatch
 } from '@dataview/engine/source/document'
 
@@ -31,20 +30,17 @@ export const createRuntimeState = (input: {
     documentContext,
     viewPlan: plan,
     index,
-    impact: createActiveImpact(resetImpact),
+    impact: createBaseImpact(resetImpact),
     capturePerf: input.capturePerf
-  })
-  const patch = createEnginePatch({
-    document: projectDocumentPatch({
-      document: input.doc,
-      impact: resetImpact
-    }),
-    active: currentView.patch
   })
 
   return {
     rev: 0,
     doc: input.doc,
+    documentPatch: projectDocumentPatch({
+      document: input.doc,
+      impact: resetImpact
+    }),
     history: {
       cap: input.historyCap,
       undo: [],
@@ -56,7 +52,6 @@ export const createRuntimeState = (input: {
         : {}),
       index,
       cache: currentView.cache,
-      patch,
       ...(currentView.snapshot
         ? { snapshot: currentView.snapshot }
         : {})

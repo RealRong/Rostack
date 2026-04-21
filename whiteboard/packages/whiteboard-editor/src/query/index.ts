@@ -153,7 +153,9 @@ export const createEditorQuery = ({
     read: engineRead,
     type: nodeType,
     feedback: session.preview.selectors.node,
-    mindmap: mindmapRead.layout,
+    mindmap: {
+      nodeGeometry: mindmapRead.nodeGeometry
+    },
     edit: editRead,
     draft: layout.draft,
     selection: selectionRuntime.node

@@ -11,7 +11,7 @@ import type {
   Token
 } from '@shared/i18n'
 
-export type ItemId = number
+export type ItemId = string
 export type SectionKey = string
 
 export interface SectionBucket {

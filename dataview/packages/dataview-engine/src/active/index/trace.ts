@@ -5,24 +5,24 @@ import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
 
 export const fullRebuildFrom = (
-  impact: ActiveImpact
+  impact: BaseImpact
 ) => impact.commit.reset === true
 
 export const touchedRecordCountOfImpact = (
-  impact: ActiveImpact
-): number | 'all' | undefined => impact.base.touchedRecords === 'all'
+  impact: BaseImpact
+): number | 'all' | undefined => impact.touchedRecords === 'all'
   ? 'all'
-  : impact.base.touchedRecords.size || undefined
+  : impact.touchedRecords.size || undefined
 
 export const touchedFieldCountOfImpact = (
-  impact: ActiveImpact
-): number | 'all' | undefined => impact.base.touchedFields === 'all'
+  impact: BaseImpact
+): number | 'all' | undefined => impact.touchedFields === 'all'
   ? 'all'
-  : impact.base.touchedFields.size || undefined
+  : impact.touchedFields.size || undefined
 
 export const searchEntryCountOf = (
   search: SearchIndex

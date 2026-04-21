@@ -18,15 +18,16 @@ import type {
   ActiveViewKanban,
   ActiveViewQuery,
   ActiveViewTable,
+  DocumentPatch,
   DocumentSource,
-  EnginePatch,
   EngineSource,
   EntityPatch,
   FilterRuleProjection,
   SectionSource,
   ViewFilterProjection,
   ViewSearchProjection,
-  ViewSortProjection
+  ViewSortProjection,
+  ViewState
 } from '@dataview/engine/contracts'
 import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts'
 import type {
@@ -156,6 +157,191 @@ const applyEntityDelta = <K, T>(
   })
 }
 
+const collectRemovedKeys = <TKey,>(
+  previousIds: readonly TKey[],
+  nextIds: readonly TKey[]
+) => {
+  if (!previousIds.length) {
+    return [] as TKey[]
+  }
+
+  const nextIdSet = new Set(nextIds)
+  return previousIds.filter(key => !nextIdSet.has(key))
+}
+
+const patchEntityValues = <K, T>(input: {
+  runtime: store.KeyedStore<K, T | undefined>
+  previousIds: readonly K[]
+  nextIds: readonly K[]
+  previousGet: (key: K) => T | undefined
+  nextGet: (key: K) => T | undefined
+}) => {
+  const set: Array<readonly [K, T | undefined]> = []
+
+  input.nextIds.forEach(key => {
+    const nextValue = input.nextGet(key)
+    if (nextValue === undefined || input.previousGet(key) === nextValue) {
+      return
+    }
+
+    set.push([key, nextValue])
+  })
+
+  const remove = collectRemovedKeys(input.previousIds, input.nextIds)
+  if (!set.length && !remove.length) {
+    return
+  }
+
+  input.runtime.patch({
+    ...(set.length
+      ? { set }
+      : {}),
+    ...(remove.length
+      ? { delete: remove }
+      : {})
+  })
+}
+
+const collectSectionItemIds = (
+  sections: ViewState['sections'] | undefined
+): readonly ItemId[] => {
+  if (!sections?.all.length) {
+    return EMPTY_ITEM_IDS
+  }
+
+  const ids: ItemId[] = []
+  sections.all.forEach(section => {
+    section.items.ids.forEach(itemId => {
+      ids.push(itemId)
+    })
+  })
+  return ids
+}
+
+const collectFieldIds = <T extends { id: FieldId }>(
+  fields: readonly T[] | undefined
+): readonly FieldId[] => fields?.length
+  ? fields.map(field => field.id)
+  : EMPTY_FIELD_IDS
+
+const syncEntityList = <K, T>(input: {
+  runtime: {
+    ids?: store.ValueStore<readonly K[]>
+    values: store.KeyedStore<K, T | undefined>
+  }
+  previousIds: readonly K[]
+  nextIds: readonly K[]
+  previousGet: (key: K) => T | undefined
+  nextGet: (key: K) => T | undefined
+}) => {
+  if (input.runtime.ids) {
+    input.runtime.ids.set(input.nextIds)
+  }
+
+  patchEntityValues({
+    runtime: input.runtime.values,
+    previousIds: input.previousIds,
+    nextIds: input.nextIds,
+    previousGet: input.previousGet,
+    nextGet: input.nextGet
+  })
+}
+
+const syncActiveSnapshot = (input: {
+  previous?: ViewState
+  next?: ViewState
+  viewReady: store.ValueStore<boolean>
+  viewId: store.ValueStore<ViewId | undefined>
+  viewType: store.ValueStore<View['type'] | undefined>
+  viewCurrent: store.ValueStore<View | undefined>
+  query: store.ValueStore<ActiveViewQuery>
+  table: store.ValueStore<ActiveViewTable>
+  gallery: store.ValueStore<ActiveViewGallery>
+  kanban: store.ValueStore<ActiveViewKanban>
+  items: ReturnType<typeof createEntitySourceRuntime<ItemId, ViewItem>>
+  sections: ReturnType<typeof createSectionSourceRuntime>
+  fieldsAll: ReturnType<typeof createEntitySourceRuntime<FieldId, Field>>
+  fieldsCustom: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
+}) => {
+  const previous = input.previous
+  const next = input.next
+
+  if (!next) {
+    input.viewReady.set(false)
+    input.viewId.set(undefined)
+    input.viewType.set(undefined)
+    input.viewCurrent.set(undefined)
+    input.query.set(EMPTY_QUERY)
+    input.table.set(EMPTY_TABLE)
+    input.gallery.set(EMPTY_GALLERY)
+    input.kanban.set(EMPTY_KANBAN)
+    input.items.clear()
+    input.sections.clear()
+    input.fieldsAll.clear()
+    input.fieldsCustom.clear()
+    return
+  }
+
+  input.viewReady.set(true)
+  input.viewId.set(next.view.id)
+  input.viewType.set(next.view.type)
+  input.viewCurrent.set(next.view)
+  input.query.set(next.query)
+  input.table.set(next.table)
+  input.gallery.set(next.gallery)
+  input.kanban.set(next.kanban)
+
+  const previousSectionItemIds = collectSectionItemIds(previous?.sections)
+  const nextSectionItemIds = collectSectionItemIds(next.sections)
+  syncEntityList({
+    runtime: input.items,
+    previousIds: previousSectionItemIds,
+    nextIds: nextSectionItemIds,
+    previousGet: itemId => previous?.items.get(itemId),
+    nextGet: itemId => next.items.get(itemId)
+  })
+  input.items.ids.set(next.items.ids)
+
+  syncEntityList({
+    runtime: {
+      ids: input.sections.keys,
+      values: input.sections.values
+    },
+    previousIds: previous?.sections.ids ?? EMPTY_SECTION_KEYS,
+    nextIds: next.sections.ids,
+    previousGet: sectionKey => previous?.sections.get(sectionKey),
+    nextGet: sectionKey => next.sections.get(sectionKey)
+  })
+
+  patchEntityValues({
+    runtime: input.sections.summary,
+    previousIds: previous?.sections.ids ?? EMPTY_SECTION_KEYS,
+    nextIds: next.sections.ids,
+    previousGet: sectionKey => previous?.summaries.get(sectionKey),
+    nextGet: sectionKey => next.summaries.get(sectionKey)
+  })
+
+  const previousAllFieldIds = collectFieldIds(previous?.fields.all)
+  const nextAllFieldIds = collectFieldIds(next.fields.all)
+  syncEntityList({
+    runtime: input.fieldsAll,
+    previousIds: previousAllFieldIds,
+    nextIds: nextAllFieldIds,
+    previousGet: fieldId => previous?.fields.get(fieldId),
+    nextGet: fieldId => next.fields.get(fieldId)
+  })
+
+  const previousCustomFieldIds = collectFieldIds(previous?.fields.custom)
+  const nextCustomFieldIds = collectFieldIds(next.fields.custom)
+  syncEntityList({
+    runtime: input.fieldsCustom,
+    previousIds: previousCustomFieldIds,
+    nextIds: nextCustomFieldIds,
+    previousGet: fieldId => previous?.fields.get(fieldId) as CustomField | undefined,
+    nextGet: fieldId => next.fields.get(fieldId) as CustomField | undefined
+  })
+}
+
 export const createEngineSourceRuntime = (input: {
   store: RuntimeStore
 }) => {
@@ -203,7 +389,9 @@ export const createEngineSourceRuntime = (input: {
     } satisfies ActiveSource
   }
 
-  const applyDocumentPatch = (patch: EnginePatch['document']) => {
+  let previousSnapshot: ViewState | undefined
+
+  const applyDocumentPatch = (patch: DocumentPatch | undefined) => {
     if (!patch) {
       return
     }
@@ -213,80 +401,30 @@ export const createEngineSourceRuntime = (input: {
     applyEntityDelta(documentViews, patch.views)
   }
 
-  const applyActivePatch = (patch: EnginePatch['active']) => {
-    if (!patch) {
-      return
-    }
-
-    if (patch.view) {
-      if (patch.view.ready !== undefined) {
-        viewReady.set(patch.view.ready)
-      }
-      if ('id' in patch.view) {
-        viewId.set(patch.view.id)
-      }
-      if ('type' in patch.view) {
-        viewType.set(patch.view.type)
-      }
-      if ('value' in patch.view) {
-        viewCurrent.set(patch.view.value)
-      }
-    }
-
-    applyEntityDelta(activeItems, patch.items)
-    applyEntityDelta({
-      ids: activeSections.keys,
-      values: activeSections.values
-    }, patch.sections?.data)
-    applyEntityDelta({
-      values: activeSections.summary
-    }, patch.sections?.summary)
-    applyEntityDelta(activeFieldsAll, patch.fields?.all)
-    applyEntityDelta(activeFieldsCustom, patch.fields?.custom)
-
-    if (patch.meta?.query) {
-      query.set(patch.meta.query)
-    }
-    if (patch.meta?.table) {
-      table.set(patch.meta.table)
-    }
-    if (patch.meta?.gallery) {
-      gallery.set(patch.meta.gallery)
-    }
-    if (patch.meta?.kanban) {
-      kanban.set(patch.meta.kanban)
-    }
-  }
-
-  const apply = (patch: EnginePatch) => {
-    store.batch(() => {
-      applyDocumentPatch(patch.document)
-      applyActivePatch(patch.active)
-    })
-  }
-
-  const clear = () => {
-    store.batch(() => {
-      documentRecords.clear()
-      documentFields.clear()
-      documentViews.clear()
-      activeItems.clear()
-      activeSections.clear()
-      activeFieldsAll.clear()
-      activeFieldsCustom.clear()
-      viewReady.set(false)
-      viewId.set(undefined)
-      viewType.set(undefined)
-      viewCurrent.set(undefined)
-      query.set(EMPTY_QUERY)
-      table.set(EMPTY_TABLE)
-      gallery.set(EMPTY_GALLERY)
-      kanban.set(EMPTY_KANBAN)
-    })
-  }
-
   const sync = () => {
-    apply(input.store.get().currentView.patch)
+    const state = input.store.get()
+
+    store.batch(() => {
+      applyDocumentPatch(state.documentPatch)
+      syncActiveSnapshot({
+        previous: previousSnapshot,
+        next: state.currentView.snapshot,
+        viewReady,
+        viewId,
+        viewType,
+        viewCurrent,
+        query,
+        table,
+        gallery,
+        kanban,
+        items: activeItems,
+        sections: activeSections,
+        fieldsAll: activeFieldsAll,
+        fieldsCustom: activeFieldsCustom
+      })
+    })
+
+    previousSnapshot = state.currentView.snapshot
   }
 
   sync()
@@ -294,7 +432,25 @@ export const createEngineSourceRuntime = (input: {
 
   return {
     source,
-    apply,
-    clear
+    clear: () => {
+      previousSnapshot = undefined
+      store.batch(() => {
+        documentRecords.clear()
+        documentFields.clear()
+        documentViews.clear()
+        activeItems.clear()
+        activeSections.clear()
+        activeFieldsAll.clear()
+        activeFieldsCustom.clear()
+        viewReady.set(false)
+        viewId.set(undefined)
+        viewType.set(undefined)
+        viewCurrent.set(undefined)
+        query.set(EMPTY_QUERY)
+        table.set(EMPTY_TABLE)
+        gallery.set(EMPTY_GALLERY)
+        kanban.set(EMPTY_KANBAN)
+      })
+    }
   }
 }

@@ -20,12 +20,12 @@ import type {
   RecordIndex
 } from '@dataview/engine/active/index/contracts'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  CalculationTransition
+} from '@dataview/engine/active/shared/transition'
 import {
   applyEntryTransition,
   ensureCalculationFieldTransition
-} from '@dataview/engine/active/shared/impact'
+} from '@dataview/engine/active/shared/transition'
 import {
   ensureFieldIndexes,
   shouldDropFieldIndex,
@@ -204,7 +204,7 @@ export const syncCalculationIndex = (
   previousRecords: RecordIndex,
   context: IndexDeriveContext,
   records: RecordIndex,
-  impact: ActiveImpact
+  transition: CalculationTransition
 ): CalculationIndex => {
   if (!context.changed || !previous.fields.size) {
     return previous
@@ -220,7 +220,7 @@ export const syncCalculationIndex = (
     }
 
     if (shouldRebuildFieldIndex(context, fieldId)) {
-      ensureCalculationFieldTransition(impact, fieldId).rebuild = true
+      ensureCalculationFieldTransition(transition, fieldId).rebuild = true
       fields.set(fieldId, buildFieldCalcIndex({
         context,
         records,
@@ -267,7 +267,7 @@ export const syncCalculationIndex = (
         }
 
         applyEntryTransition(
-          ensureCalculationFieldTransition(impact, fieldId),
+          ensureCalculationFieldTransition(transition, fieldId),
           recordId,
           previousEntry,
           nextEntry,

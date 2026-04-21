@@ -28,26 +28,23 @@ import {
 } from '@dataview/engine/active/shared/ordered'
 import {
   applyMembershipTransition,
-  ensureBucketTransition
-} from '@dataview/engine/active/shared/impact'
+  type MembershipTransition
+} from '@dataview/engine/active/shared/transition'
 import {
   shouldDropFieldIndex,
   shouldRebuildFieldIndex,
   shouldSyncFieldIndex
 } from '@dataview/engine/active/index/sync'
 import type {
-  ActiveImpact,
-  MembershipTransition
-} from '@dataview/engine/active/shared/impact'
-import type {
-  BucketFieldIndex,
   BucketIndex,
   BucketKey,
   BucketSpec,
+  BucketFieldIndex,
   IndexDeriveContext,
   IndexReadContext,
   RecordIndex
 } from '@dataview/engine/active/index/contracts'
+
 const EMPTY_BUCKET_KEYS: readonly BucketKey[] = []
 const EMPTY_RECORD_IDS: readonly RecordId[] = []
 
@@ -310,7 +307,7 @@ export const syncBucketIndex = (
   previous: BucketIndex,
   context: IndexDeriveContext,
   records: RecordIndex,
-  impact: ActiveImpact
+  transition: MembershipTransition<BucketKey, RecordId>
 ): BucketIndex => {
   if (!context.changed || !previous.fields.size) {
     return previous
@@ -326,7 +323,7 @@ export const syncBucketIndex = (
     }
 
     if (shouldRebuildFieldIndex(context, fieldId)) {
-      ensureBucketTransition(impact).rebuild = true
+      transition.rebuild = true
       fields.set(key, buildBucketFieldIndex({
         context,
         records,
@@ -344,7 +341,7 @@ export const syncBucketIndex = (
       context,
       records,
       touchedRecords: context.touchedRecords,
-      transition: ensureBucketTransition(impact)
+      transition
     })
 
     if (nextField !== previousField) {

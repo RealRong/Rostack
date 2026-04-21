@@ -4,7 +4,7 @@ import type { IndexState } from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
 import type { ViewCache } from '@dataview/engine/contracts/state'
 import type {
-  EnginePatch,
+  DocumentPatch,
   ViewState
 } from '@dataview/engine/contracts'
 
@@ -24,12 +24,12 @@ export interface ActiveRuntimeState {
   index: IndexState
   cache: ViewCache
   snapshot?: ViewState
-  patch: EnginePatch
 }
 
 export interface EngineRuntimeState {
   rev: number
   doc: DataDoc
   history: RuntimeHistory
+  documentPatch?: DocumentPatch
   currentView: ActiveRuntimeState
 }

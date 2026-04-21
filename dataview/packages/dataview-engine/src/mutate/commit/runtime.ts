@@ -21,8 +21,8 @@ import {
   deriveViewRuntime
 } from '@dataview/engine/active/runtime'
 import {
-  createActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  createBaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
 import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 import type {
   PlannedWriteBatch
@@ -56,7 +56,6 @@ import {
   toTraceKind
 } from '@dataview/engine/mutate/commit/trace'
 import {
-  createEnginePatch,
   projectDocumentPatch
 } from '@dataview/engine/source/document'
 
@@ -212,12 +211,12 @@ const commit = <TResult extends CommitResult>(input: {
   const documentContext = createStaticDocumentReadContext(draft.doc)
   const previousPlan = base.currentView.plan
   const plan = resolveViewPlan(documentContext, documentContext.activeViewId)
-  const activeImpact = createActiveImpact(draft.impact)
+  const baseImpact = createBaseImpact(draft.impact)
   const nextIndex = deriveIndex({
     previous: base.currentView.index,
     previousDemand: previousPlan?.index ?? emptyNormalizedIndexDemand(),
     document: draft.doc,
-    impact: activeImpact,
+    impact: baseImpact,
     demand: plan?.index
   })
   const nextView = deriveViewRuntime({
@@ -227,22 +226,21 @@ const commit = <TResult extends CommitResult>(input: {
     viewPlan: plan,
     previousPlan,
     index: nextIndex.state,
-    impact: activeImpact,
+    indexDelta: nextIndex.delta,
+    impact: baseImpact,
     capturePerf: input.capturePerf
   })
   const outputStart = now()
-  const patch = createEnginePatch({
-    document: projectDocumentPatch({
-      impact: draft.impact,
-      document: draft.doc
-    }),
-    active: nextView.patch
+  const documentPatch = projectDocumentPatch({
+    impact: draft.impact,
+    document: draft.doc
   })
   const outputMs = now() - outputStart
 
   const next = {
     rev: base.rev + 1,
     doc: draft.doc,
+    documentPatch,
     history: draft.history,
     currentView: {
       ...(plan
@@ -250,7 +248,6 @@ const commit = <TResult extends CommitResult>(input: {
         : {}),
       index: nextIndex.state,
       cache: nextView.cache,
-      patch,
       ...(nextView.snapshot
         ? { snapshot: nextView.snapshot }
         : {})

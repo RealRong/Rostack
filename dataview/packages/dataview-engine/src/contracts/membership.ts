@@ -5,31 +5,25 @@ import type {
   Token
 } from '@shared/i18n'
 import type {
+  Partition
+} from '@dataview/engine/active/shared/partition'
+import {
+  EMPTY_PARTITION
+} from '@dataview/engine/active/shared/partition'
+import type {
   SectionBucket,
   SectionKey
 } from '@dataview/engine/contracts/shared'
-import type {
-  ItemProjectionCache
-} from '@dataview/engine/active/shared/itemIdentity'
-import {
-  emptyItemProjectionCache
-} from '@dataview/engine/active/shared/itemIdentity'
 
-export type { ItemProjectionCache } from '@dataview/engine/active/shared/itemIdentity'
-
-export interface MembershipNodeState {
-  key: SectionKey
+export interface MembershipMetaState {
   label: Token
   color?: string
   bucket?: SectionBucket
-  recordIds: readonly RecordId[]
-  recordIndexes?: readonly number[]
 }
 
 export interface MembershipState {
-  order: readonly SectionKey[]
-  byKey: ReadonlyMap<SectionKey, MembershipNodeState>
-  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
+  sections: Partition<SectionKey>
+  meta: ReadonlyMap<SectionKey, MembershipMetaState>
 }
 
 export interface MembershipRecordChange {
@@ -45,18 +39,7 @@ export interface MembershipDelta {
   records: ReadonlyMap<RecordId, MembershipRecordChange>
 }
 
-export interface MembershipRuntimeState {
-  structure: MembershipState
-  projection: ItemProjectionCache
-}
-
 export const emptyMembershipState = (): MembershipState => ({
-  order: [],
-  byKey: new Map(),
-  keysByRecord: new Map()
-})
-
-export const emptyMembershipRuntimeState = (): MembershipRuntimeState => ({
-  structure: emptyMembershipState(),
-  projection: emptyItemProjectionCache()
+  sections: EMPTY_PARTITION,
+  meta: new Map()
 })

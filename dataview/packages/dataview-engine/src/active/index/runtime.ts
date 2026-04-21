@@ -1,5 +1,6 @@
 import type {
-  DataDoc
+  DataDoc,
+  RecordId
 } from '@dataview/core/contracts'
 import type {
   IndexTrace
@@ -43,6 +44,7 @@ import {
   touchedRecordCountOfImpact
 } from '@dataview/engine/active/index/trace'
 import type {
+  BucketKey,
   IndexDeriveResult,
   IndexState,
   NormalizedIndexDemand
@@ -51,11 +53,15 @@ import {
   now
 } from '@dataview/engine/runtime/clock'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
 import {
-  ensureBucketTransition
-} from '@dataview/engine/active/shared/impact'
+  createCalculationTransition,
+  createMembershipTransition
+} from '@dataview/engine/active/shared/transition'
+import {
+  createRows
+} from '@dataview/engine/active/shared/rows'
 
 const buildState = (
   document: DataDoc,
@@ -63,13 +69,23 @@ const buildState = (
 ): IndexState => {
   const context = createIndexReadContext(document)
   const records = buildRecordIndex(context, demand.recordFields)
+  const search = buildSearchIndex(context, records, demand.search)
+  const bucket = buildBucketIndex(context, records, demand.buckets)
+  const sort = buildSortIndex(context, records, demand.sortFields)
+  const calculations = buildCalculationIndex(context, records, demand.calculations)
 
   return {
     records,
-    search: buildSearchIndex(context, records, demand.search),
-    bucket: buildBucketIndex(context, records, demand.buckets),
-    sort: buildSortIndex(context, records, demand.sortFields),
-    calculations: buildCalculationIndex(context, records, demand.calculations)
+    search,
+    bucket,
+    sort,
+    calculations,
+    rows: createRows({
+      records,
+      search,
+      bucket,
+      calculations
+    })
   }
 }
 
@@ -82,7 +98,7 @@ export const deriveIndex = (input: {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
-  impact: ActiveImpact
+  impact: BaseImpact
   demand?: NormalizedIndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
@@ -92,6 +108,8 @@ export const deriveIndex = (input: {
   const touchedRecordCount = touchedRecordCountOfImpact(input.impact)
   const touchedFieldCount = touchedFieldCountOfImpact(input.impact)
   const rebuild = fullRebuildFrom(input.impact)
+  const bucketDelta = createMembershipTransition<BucketKey, RecordId>()
+  const calculationDelta = createCalculationTransition()
 
   const recordsStart = now()
   const records = syncRecordIndex(
@@ -120,7 +138,7 @@ export const deriveIndex = (input: {
     previous.bucket,
     context,
     records,
-    input.impact
+    bucketDelta
   )
   const bucket = ensureBucketIndex(
     syncedBucket,
@@ -140,7 +158,7 @@ export const deriveIndex = (input: {
     nextSectionBucketKey
     && previousSectionBucketKey !== nextSectionBucketKey
   ) {
-    ensureBucketTransition(input.impact).rebuild = true
+    bucketDelta.rebuild = true
   }
 
   const sortStart = now()
@@ -158,7 +176,7 @@ export const deriveIndex = (input: {
     previous.records,
     context,
     records,
-    input.impact
+    calculationDelta
   )
   const summaries = ensureCalculationIndex(
     syncedSummaries,
@@ -173,11 +191,38 @@ export const deriveIndex = (input: {
     search,
     bucket,
     sort,
-    calculations: summaries
+    calculations: summaries,
+    rows: createRows({
+      previous: previous.rows,
+      records,
+      search,
+      bucket,
+      calculations: summaries
+    })
   } satisfies IndexState
+
+  const delta = (
+    bucketDelta.rebuild
+    || bucketDelta.records.size
+    || calculationDelta.fields.size
+  )
+    ? {
+        ...(bucketDelta.rebuild || bucketDelta.records.size
+          ? { bucket: bucketDelta }
+          : {}),
+        ...(calculationDelta.fields.size
+          ? { calculation: calculationDelta }
+          : {})
+      }
+    : undefined
 
   return {
     state,
+    ...(delta
+      ? {
+          delta
+        }
+      : {}),
     trace: {
       changed: (
         records !== previous.records
@@ -185,6 +230,7 @@ export const deriveIndex = (input: {
         || bucket !== previous.bucket
         || sort !== previous.sort
         || summaries !== previous.calculations
+        || state.rows !== previous.rows
       ),
       timings: {
         totalMs: now() - totalStart,

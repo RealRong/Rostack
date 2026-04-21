@@ -30,6 +30,9 @@ import type {
   QueryState
 } from '@dataview/engine/contracts/state'
 import {
+  createSelectionFromIds
+} from '@dataview/engine/active/shared/selection'
+import {
   type DocumentReader
 } from '@dataview/engine/document/reader'
 
@@ -1060,34 +1063,42 @@ const projectCandidatesToOrderedIds = (
 
 const publishQueryState = (input: {
   previous?: QueryState
+  index: IndexState
   matched: readonly RecordId[]
   ordered: readonly RecordId[]
   visible: readonly RecordId[]
   search?: SearchMatches
 }): QueryState => {
   const previous = input.previous
-  const nextMatched = previous && equal.sameOrder(previous.records.matched, input.matched)
-    ? previous.records.matched
+  const previousMatchedIds = previous?.matched.read.ids()
+  const previousOrderedIds = previous?.ordered.read.ids()
+  const previousVisibleIds = previous?.visible.read.ids()
+  const nextMatched = previousMatchedIds && equal.sameOrder(previousMatchedIds, input.matched)
+    ? previousMatchedIds
     : input.matched
-  const nextOrdered = previous && equal.sameOrder(previous.records.ordered, input.ordered)
-    ? previous.records.ordered
+  const nextOrdered = previousOrderedIds && equal.sameOrder(previousOrderedIds, input.ordered)
+    ? previousOrderedIds
     : input.ordered
-  const nextVisible = previous && equal.sameOrder(previous.records.visible, input.visible)
-    ? previous.records.visible
+  const nextVisible = previousVisibleIds && equal.sameOrder(previousVisibleIds, input.visible)
+    ? previousVisibleIds
     : input.visible
-  const nextRecords = previous
-    && nextMatched === previous.records.matched
-    && nextOrdered === previous.records.ordered
-    && nextVisible === previous.records.visible
-    ? previous.records
-    : {
-        matched: nextMatched,
-        ordered: nextOrdered,
-        visible: nextVisible
-      }
 
   return {
-    records: nextRecords,
+    matched: createSelectionFromIds({
+      rows: input.index.rows,
+      ids: nextMatched,
+      previous: previous?.matched
+    }),
+    ordered: createSelectionFromIds({
+      rows: input.index.rows,
+      ids: nextOrdered,
+      previous: previous?.ordered
+    }),
+    visible: createSelectionFromIds({
+      rows: input.index.rows,
+      ids: nextVisible,
+      previous: previous?.visible
+    }),
     ...(input.search
         ? {
             search: previous?.search
@@ -1103,12 +1114,6 @@ const publishQueryState = (input: {
                   matched: input.search.matched
                 }
         }
-      : {}),
-    ...(previous && nextVisible === previous.records.visible && previous.visibleSet
-      ? { visibleSet: previous.visibleSet }
-      : {}),
-    ...(previous && nextOrdered === previous.records.ordered && previous.order
-      ? { order: previous.order }
       : {})
   }
 }
@@ -1134,6 +1139,7 @@ export const buildQueryState = (input: {
 
     return publishQueryState({
       previous: input.previous,
+      index: input.index,
       matched,
       ordered,
       visible: ordered
@@ -1206,6 +1212,7 @@ export const buildQueryState = (input: {
 
   return publishQueryState({
     previous: input.previous,
+    index: input.index,
     matched,
     ordered,
     visible,

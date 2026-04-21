@@ -1,5 +1,8 @@
 import { now } from '@dataview/engine/runtime/clock'
-import type { IndexState } from '@dataview/engine/active/index/contracts'
+import type {
+  IndexDelta,
+  IndexState
+} from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
 import type { ViewCache } from '@dataview/engine/contracts/state'
 import type {
@@ -16,8 +19,8 @@ import {
   deriveViewSnapshot
 } from '@dataview/engine/active/snapshot/runtime'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
 import type {
   DocumentReadContext
 } from '@dataview/engine/document/reader'
@@ -53,7 +56,7 @@ export const createViewRuntime = (input: {
   documentContext: DocumentReadContext
   viewPlan?: ViewPlan
   index: IndexState
-  impact: ActiveImpact
+  impact: BaseImpact
   capturePerf: boolean
 }): ViewRuntimeResult => deriveViewRuntime({
   previous: undefined,
@@ -72,7 +75,8 @@ export const deriveViewRuntime = (input: {
   viewPlan?: ViewPlan
   previousPlan?: ViewPlan
   index: IndexState
-  impact: ActiveImpact
+  indexDelta?: IndexDelta
+  impact: BaseImpact
   capturePerf: boolean
 }): ViewRuntimeResult => {
   const runResult = deriveViewSnapshot({
@@ -81,6 +85,7 @@ export const deriveViewRuntime = (input: {
     previousPlan: input.previousPlan,
     impact: input.impact,
     index: input.index,
+    indexDelta: input.indexDelta,
     previousCache: input.cache,
     previousSnapshot: input.previous,
     capturePerf: input.capturePerf
@@ -93,11 +98,6 @@ export const deriveViewRuntime = (input: {
       ...(runResult.change
         ? {
             change: runResult.change
-          }
-        : {}),
-      ...(runResult.patch
-        ? {
-            patch: runResult.patch
           }
         : {})
     }
@@ -112,11 +112,6 @@ export const deriveViewRuntime = (input: {
     ...(runResult.change
       ? {
           change: runResult.change
-        }
-      : {}),
-    ...(runResult.patch
-      ? {
-          patch: runResult.patch
         }
       : {}),
     trace: {

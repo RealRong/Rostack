@@ -8,9 +8,6 @@ import {
 } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
-  buildActivePatch
-} from '@dataview/engine/active/snapshot/publish/patch'
-import {
   projectDocumentPatch
 } from '@dataview/engine/source/document'
 
@@ -95,23 +92,6 @@ const createDocument = () => {
   }
 }
 
-const createCalculationCollection = (
-  value: number
-) => {
-  const byField = new Map([
-    [FIELD_STATUS, {
-      kind: 'scalar' as const,
-      metric: 'countAll' as const,
-      value
-    }]
-  ])
-
-  return {
-    byField,
-    get: (fieldId: string) => byField.get(fieldId)
-  }
-}
-
 test('engine source records refresh after writing a value into a newly inserted field', () => {
   const engine = createEngine({
     document: createDocument()
@@ -169,36 +149,26 @@ test('document publish omits record ids on non-structural value writes', () => {
   )
 })
 
-test('active summary delta follows published summaries even when section structure is unchanged', () => {
+test('source summary follows snapshot changes without active patch', () => {
   const engine = createEngine({
     document: createDocument()
   })
-  const previous = engine.active.state.get()
 
-  assert.ok(previous)
-
-  const sectionKey = previous.sections.ids[0]
-  assert.equal(sectionKey, 'root')
-
-  const nextCollection = createCalculationCollection(42)
-  const next = {
-    ...previous,
-    summaries: new Map([
-      ...previous.summaries,
-      [sectionKey, nextCollection]
-    ])
-  }
-
-  const output = buildActivePatch({
-    previous,
-    next
-  })
-
-  assert.deepEqual(output?.sections?.summary?.ids, undefined)
   assert.deepEqual(
-    output?.sections?.summary?.set
-      ? [...output.sections.summary.set]
-      : [],
-    [[sectionKey, nextCollection]]
+    engine.source.active.sections.summary.get('root')?.byField.size,
+    0
+  )
+
+  engine.active.summary.set(FIELD_STATUS, 'countAll')
+
+  const summary = engine.source.active.sections.summary.get('root')
+  assert.ok(summary)
+  assert.deepEqual(
+    summary.get(FIELD_STATUS),
+    {
+      kind: 'scalar',
+      metric: 'countAll',
+      value: 1
+    }
   )
 })

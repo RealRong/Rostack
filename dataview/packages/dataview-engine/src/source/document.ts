@@ -16,7 +16,6 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   DocumentPatch,
-  EnginePatch,
   EntityPatch
 } from '@dataview/engine/contracts'
 
@@ -163,19 +162,3 @@ export const projectDocumentPatch = (input: {
       }
     : undefined
 }
-
-export const createEnginePatch = (input: {
-  document?: DocumentPatch
-  active?: EnginePatch['active']
-}): EnginePatch => ({
-  ...(input.document
-    ? {
-        document: input.document
-      }
-    : {}),
-  ...(input.active
-    ? {
-        active: input.active
-      }
-    : {})
-})

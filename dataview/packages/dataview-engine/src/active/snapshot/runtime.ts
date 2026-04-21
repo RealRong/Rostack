@@ -1,7 +1,6 @@
 import type {
   ViewId
 } from '@dataview/core/contracts'
-import type { IndexState } from '@dataview/engine/active/index/contracts'
 import {
   compileViewPlan,
   type ViewPlan
@@ -12,7 +11,6 @@ import type {
   ViewCache
 } from '@dataview/engine/contracts/state'
 import type {
-  ActivePatch,
   ViewStageName,
   ViewStageTrace,
   ViewState,
@@ -27,14 +25,17 @@ import type {
   DocumentReadContext
 } from '@dataview/engine/document/reader'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
+import type {
+  IndexDelta,
+  IndexState
+} from '@dataview/engine/active/index/contracts'
 
 interface ViewRunResult {
   cache: ViewCache
   snapshot?: ViewState
   change?: SnapshotChange
-  patch?: ActivePatch
   trace?: ViewTrace
 }
 
@@ -42,8 +43,9 @@ export const deriveViewSnapshot = (input: {
   documentContext: DocumentReadContext
   viewPlan?: ViewPlan
   previousPlan?: ViewPlan
-  impact: ActiveImpact
+  impact: BaseImpact
   index: IndexState
+  indexDelta?: IndexDelta
   previousCache: ViewCache
   previousSnapshot?: ViewState
   capturePerf: boolean
@@ -141,16 +143,12 @@ export const deriveViewSnapshot = (input: {
       impact: input.impact,
       view,
       query: query.state,
-      previous: {
-        structure: input.previousCache.membership.state,
-        projection: input.previousCache.membership.projection
-      },
-      index: input.index
+      queryDelta: query.delta,
+      previous: input.previousCache.membership.state,
+      index: input.index,
+      indexDelta: input.indexDelta
     }),
-    result => (
-      input.previousCache.membership.state !== result.state.structure
-      || input.previousCache.membership.projection !== result.state.projection
-    )
+    result => input.previousCache.membership.state !== result.state
   )
 
   const summary = timeStage(
@@ -159,11 +157,12 @@ export const deriveViewSnapshot = (input: {
       activeViewId,
       previousViewId,
       impact: input.impact,
+      indexDelta: input.indexDelta,
       view,
       calcFields: viewPlan?.calcFields ?? [],
       previous: input.previousCache.summary.state,
       previousMembership: input.previousCache.membership.state,
-      membership: membership.state.structure,
+      membership: membership.state,
       membershipAction: membership.action,
       membershipDelta: membership.delta,
       index: input.index
@@ -190,8 +189,7 @@ export const deriveViewSnapshot = (input: {
       previousItems: input.previousSnapshot?.items,
       summaryState: summary.state,
       previousSummaryState: input.previousCache.summary.state,
-      previousSummaries: input.previousSnapshot?.summaries,
-      change
+      previousSummaries: input.previousSnapshot?.summaries
     }),
     result => input.previousSnapshot !== result.snapshot
   )
@@ -202,8 +200,7 @@ export const deriveViewSnapshot = (input: {
         state: query.state
       },
       membership: {
-        state: membership.state.structure,
-        projection: membership.state.projection
+        state: membership.state
       },
       summary: {
         state: summary.state
@@ -213,11 +210,6 @@ export const deriveViewSnapshot = (input: {
     ...(publish.snapshot
       ? {
           change
-        }
-      : {}),
-    ...(publish.patch
-      ? {
-          patch: publish.patch
         }
       : {}),
     ...(input.capturePerf

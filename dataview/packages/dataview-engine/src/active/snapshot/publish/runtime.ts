@@ -5,7 +5,6 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
-  ActivePatch,
   ItemList,
   SectionList,
   ViewRecords,
@@ -14,17 +13,12 @@ import type {
   ViewSummaries
 } from '@dataview/engine/contracts'
 import type {
-  MembershipRuntimeState,
   MembershipState,
-  SnapshotChange,
   SummaryState
 } from '@dataview/engine/contracts/state'
 import {
   publishViewBase
 } from '@dataview/engine/active/snapshot/base'
-import {
-  buildActivePatch
-} from '@dataview/engine/active/snapshot/publish/patch'
 import {
   publishSections
 } from '@dataview/engine/active/snapshot/membership/publish'
@@ -86,18 +80,16 @@ export const runPublishStage = (input: {
   previous?: ViewState
   view: View
   records: ViewRecords
-  membershipState: MembershipRuntimeState
+  membershipState: MembershipState
   previousMembershipState?: MembershipState
   previousSections?: SectionList
   previousItems?: ItemList
   summaryState: SummaryState
   previousSummaryState?: SummaryState
   previousSummaries?: ViewSummaries
-  change: SnapshotChange
 }): {
   action: 'reuse' | 'sync' | 'rebuild'
   snapshot?: ViewState
-  patch?: ActivePatch
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
@@ -105,8 +97,7 @@ export const runPublishStage = (input: {
   const publishStart = now()
   const sections = publishSections({
     view: input.view,
-    sections: input.membershipState.structure,
-    projection: input.membershipState.projection,
+    sections: input.membershipState,
     previousSections: input.previousMembershipState,
     previous: input.previousSections && input.previousItems
       ? {
@@ -152,13 +143,6 @@ export const runPublishStage = (input: {
       } satisfies ViewState
     : undefined
   const published = reuseSnapshot(input.previous, snapshot)
-  const patch = buildActivePatch({
-    previous: input.previous,
-    next: published,
-    change: published
-      ? input.change
-      : undefined
-  })
   const publishMs = now() - publishStart
   const reusedStoreCount = countReusedStores(input.previous, published)
   const outputCount = SNAPSHOT_KEYS.length
@@ -173,11 +157,6 @@ export const runPublishStage = (input: {
           ? 'rebuild'
           : 'sync',
     snapshot: published,
-    ...(patch
-      ? {
-          patch
-        }
-      : {}),
     deriveMs: 0,
     publishMs,
     metrics: {

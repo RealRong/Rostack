@@ -1,5 +1,6 @@
 import { equal, store } from '@shared/core'
 import {
+  type ItemId,
   queryRead
 } from '@dataview/engine'
 import type {
@@ -65,7 +66,7 @@ export const createGalleryModel = (input: {
   source: DataViewSource
   inlineKey: (input: {
     viewId: string
-    itemId: number
+    itemId: ItemId
   }) => string
 }): DataViewGalleryModel => {
   const customFields = createActiveCustomFieldListStore(input.source)
@@ -113,7 +114,7 @@ export const createGalleryModel = (input: {
     isEqual: sameSection
   })
 
-  const card = store.createKeyedDerivedStore<number, GalleryCard | undefined>({
+  const card = store.createKeyedDerivedStore<ItemId, GalleryCard | undefined>({
     get: itemId => {
       if (store.read(input.source.active.view.type) !== 'gallery') {
         return undefined

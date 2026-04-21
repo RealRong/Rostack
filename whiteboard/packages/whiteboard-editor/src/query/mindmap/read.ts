@@ -1,4 +1,5 @@
 import { equal, store } from '@shared/core'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { MindmapRenderConnector } from '@whiteboard/core/mindmap'
 import type { NodeId, Rect } from '@whiteboard/core/types'
@@ -22,8 +23,14 @@ export type MindmapChrome = {
   }[]
 }
 
+export type MindmapNodeGeometry = {
+  rect: Rect
+  rotation: number
+}
+
 export type MindmapPresentationRead = Omit<EngineRead['mindmap'], 'layout' | 'scene'> & {
   layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+  nodeGeometry: store.KeyedReadStore<NodeId, MindmapNodeGeometry | undefined>
   scene: store.KeyedReadStore<NodeId, MindmapSceneItem | undefined>
   chrome: store.KeyedReadStore<NodeId, MindmapChrome | undefined>
   navigate: (input: {
@@ -82,6 +89,19 @@ const isMindmapChromeEqual = (
       && entry.y === right.addChildTargets[index]?.y
       && entry.placement === right.addChildTargets[index]?.placement
     ))
+  )
+)
+
+const isMindmapNodeGeometryEqual = (
+  left: MindmapNodeGeometry | undefined,
+  right: MindmapNodeGeometry | undefined
+) => (
+  left === right
+  || (
+    left !== undefined
+    && right !== undefined
+    && equal.sameRect(left.rect, right.rect)
+    && left.rotation === right.rotation
   )
 )
 
@@ -215,7 +235,27 @@ export const createMindmapRead = ({
   edit: store.ReadStore<EditSession>
   selection: store.ReadStore<SelectionTarget>
 }): MindmapPresentationRead => {
-  const scene = store.createKeyedDerivedStore<NodeId, MindmapSceneItem | undefined>({
+  const nodeGeometry = store.createKeyedDerivedStore<NodeId, MindmapNodeGeometry | undefined>({
+    get: (nodeId) => {
+      const item = store.read(node, nodeId)
+      if (!item || item.node.owner?.kind !== 'mindmap') {
+        return undefined
+      }
+
+      const rect = store.read(layout.layout, item.node.owner.id)?.computed.node[nodeId]
+      if (!rect) {
+        return undefined
+      }
+
+      return {
+        rect,
+        rotation: nodeApi.geometry.rotation(item.node)
+      }
+    },
+    isEqual: isMindmapNodeGeometryEqual
+  })
+
+  const sceneBase = store.createKeyedDerivedStore<NodeId, MindmapSceneItem | undefined>({
     get: (mindmapId) => {
       const structure = store.read(read.structure, mindmapId)
       const currentLayout = store.read(layout.layout, mindmapId)
@@ -253,7 +293,8 @@ export const createMindmapRead = ({
     list: read.list,
     structure: read.structure,
     layout: layout.layout,
-    scene,
+    nodeGeometry,
+    scene: sceneBase,
     chrome,
     navigate: (input) => {
       const currentStructure = store.read(read.structure, input.id)

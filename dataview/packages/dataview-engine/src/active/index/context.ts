@@ -9,8 +9,8 @@ import type {
   IndexReadContext
 } from '@dataview/engine/active/index/contracts'
 import type {
-  ActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
 
 export const createIndexReadContext = (
   document: DataDoc
@@ -27,14 +27,14 @@ export const createIndexReadContext = (
 
 export const createIndexDeriveContext = (
   document: DataDoc,
-  impact: ActiveImpact
+  impact: BaseImpact
 ): IndexDeriveContext => ({
   ...createIndexReadContext(document),
-  schemaFields: impact.base.schemaFields,
-  valueFields: impact.base.valueFields,
-  touchedFields: impact.base.touchedFields,
-  touchedRecords: impact.base.touchedRecords,
-  recordSetChanged: impact.base.recordSetChanged,
+  schemaFields: impact.schemaFields,
+  valueFields: impact.valueFields,
+  touchedFields: impact.touchedFields,
+  touchedRecords: impact.touchedRecords,
+  recordSetChanged: impact.recordSetChanged,
   changed: Boolean(
     impact.commit.reset
     || impact.commit.records

@@ -58,33 +58,6 @@ const FIT_LAYOUT_DATA_PATHS = new Set([
   'fontMode'
 ])
 
-const MINDMAP_EDIT_DEBUG_PREFIX = '[mindmap-edit-debug]'
-
-const debugMindmapEdit = (
-  label: string,
-  payload: unknown
-) => {
-  console.log(MINDMAP_EDIT_DEBUG_PREFIX, label, payload)
-}
-
-const toDebugSize = (
-  size: Size | undefined
-) => size
-  ? {
-      width: size.width,
-      height: size.height
-    }
-  : undefined
-
-const toDebugNodeSizes = (
-  nodeSizes: ReadonlyMap<NodeId, Size>
-) => Object.fromEntries(
-  [...nodeSizes].map(([nodeId, size]) => [
-    nodeId,
-    toDebugSize(size)
-  ])
-)
-
 const hasOwn = <T extends object>(
   value: T,
   key: PropertyKey
@@ -399,7 +372,7 @@ const measureDraftNodeLayout = ({
   }
 
   const result = backend?.measure(request)
-  const measured: DraftMeasure = request.kind === 'size'
+  return request.kind === 'size'
     ? {
         kind: 'size',
         size: result?.kind === 'size'
@@ -415,49 +388,6 @@ const measureDraftNodeLayout = ({
           ? result.fontSize
           : readFontSize(committed.node)
       }
-
-  if (committed.node.owner?.kind === 'mindmap') {
-    debugMindmapEdit('draft.measure', {
-      treeId: committed.node.owner.id,
-      nodeId,
-      field,
-      text,
-      textLength: text.length,
-      committedRect: committed.rect,
-      request: request.kind === 'size'
-        ? {
-            kind: request.kind,
-            widthMode: request.widthMode,
-            wrapWidth: request.wrapWidth,
-            frame: request.frame,
-            minWidth: request.minWidth,
-            maxWidth: request.maxWidth,
-            fontSize: request.fontSize,
-            fontWeight: request.fontWeight,
-            fontStyle: request.fontStyle
-          }
-        : {
-            kind: request.kind,
-            box: request.box,
-            minFontSize: request.minFontSize,
-            maxFontSize: request.maxFontSize,
-            textAlign: request.textAlign
-          },
-      measured: measured?.kind === 'size'
-        ? {
-            kind: measured.kind,
-            size: toDebugSize(measured.size)
-          }
-        : measured?.kind === 'fit'
-          ? {
-              kind: measured.kind,
-              fontSize: measured.fontSize
-            }
-          : undefined
-    })
-  }
-
-  return measured
 }
 
 export type EditorLayout = {
@@ -574,35 +504,11 @@ export const createEditorLayout = ({
         ? measured.size
         : undefined
 
-      const projected = size
+      return size
         ? {
             nodeSizes: new Map([[current.nodeId, size]])
           }
         : undefined
-
-      debugMindmapEdit('draft.live-layout', {
-        treeId,
-        nodeId: current.nodeId,
-        field: current.field,
-        text: current.text,
-        textLength: current.text.length,
-        measured: measured?.kind === 'size'
-          ? {
-              kind: measured.kind,
-              size: toDebugSize(measured.size)
-            }
-          : measured?.kind === 'fit'
-            ? {
-                kind: measured.kind,
-                fontSize: measured.fontSize
-              }
-            : undefined,
-        liveNodeSizes: projected
-          ? toDebugNodeSizes(projected.nodeSizes)
-          : undefined
-      })
-
-      return projected
     },
     isEqual: (left, right) => left === right || (
       left !== undefined

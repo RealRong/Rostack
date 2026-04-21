@@ -4,9 +4,17 @@ import {
   calculation
 } from '@dataview/core/calculation'
 import {
-  createActiveImpact,
-  ensureQueryImpact
-} from '@dataview/engine/active/shared/impact'
+  createBaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
+import {
+  createPartition
+} from '@dataview/engine/active/shared/partition'
+import {
+  createSelectionFromIds
+} from '@dataview/engine/active/shared/selection'
+import {
+  createRows
+} from '@dataview/engine/active/shared/rows'
 import {
   runSummaryStage
 } from '@dataview/engine/active/snapshot/summary/runtime'
@@ -30,44 +38,31 @@ const ROOT_SECTION = 'root'
 const VIEW_ID = 'view_table'
 
 const createMembershipState = (
+  rows: IndexState['rows'],
   recordIds: readonly string[]
 ): MembershipState => ({
-  order: [ROOT_SECTION],
-  byKey: new Map([
+  sections: createPartition({
+    order: [ROOT_SECTION],
+    byKey: new Map([
+      [ROOT_SECTION, createSelectionFromIds({
+        rows,
+        ids: recordIds
+      })]
+    ]),
+    keysById: new Map(recordIds.map(recordId => [recordId, [ROOT_SECTION]] as const))
+  }),
+  meta: new Map([
     [ROOT_SECTION, {
-      key: ROOT_SECTION,
-      label: ROOT_SECTION as never,
-      collapsed: false,
-      visible: true,
-      recordIds,
-      recordIndexes: recordIds.map((_, index) => index)
+      label: ROOT_SECTION as never
     }]
-  ]),
-  keysByRecord: new Map(recordIds.map(recordId => [recordId, [ROOT_SECTION]] as const))
+  ])
 })
 
 const createGroupedMembershipState = (
+  rows: IndexState['rows'],
   sections: Readonly<Record<string, readonly string[]>>
 ): MembershipState => {
   const order = Object.keys(sections)
-  const recordOrder = new Map<string, number>()
-
-  order.forEach(sectionKey => {
-    sections[sectionKey]?.forEach(recordId => {
-      if (!recordOrder.has(recordId)) {
-        recordOrder.set(recordId, recordOrder.size)
-      }
-    })
-  })
-  const byKey = new Map(order.map(sectionKey => [
-    sectionKey,
-    {
-      key: sectionKey,
-      label: sectionKey as never,
-      recordIds: sections[sectionKey] ?? [],
-      recordIndexes: (sections[sectionKey] ?? []).map(recordId => recordOrder.get(recordId)!)
-    }
-  ] as const))
   const keysByRecord = new Map<string, string[]>()
 
   order.forEach(sectionKey => {
@@ -81,9 +76,23 @@ const createGroupedMembershipState = (
   })
 
   return {
-    order,
-    byKey,
-    keysByRecord
+    sections: createPartition({
+      order,
+      byKey: new Map(order.map(sectionKey => [
+        sectionKey,
+        createSelectionFromIds({
+          rows,
+          ids: sections[sectionKey] ?? []
+        })
+      ] as const)),
+      keysById: keysByRecord
+    }),
+    meta: new Map(order.map(sectionKey => [
+      sectionKey,
+      {
+        label: sectionKey as never
+      }
+    ] as const))
   }
 }
 
@@ -120,8 +129,17 @@ const EMPTY_MEMBERSHIP_DELTA: MembershipDelta = {
   records: new Map()
 }
 
-const createIndexState = (): IndexState => ({
-  calculations: {
+const createIndexState = (): IndexState => {
+  const recordIds = ['rec_1', 'rec_2']
+  const records = {
+    ids: recordIds,
+    fieldIds: [FIELD_POINTS],
+    order: new Map(recordIds.map((recordId, index) => [recordId, index] as const)),
+    byId: {} as Record<string, never>,
+    values: new Map(),
+    rev: 0
+  }
+  const calculations = {
     fields: new Map([
       [FIELD_POINTS, {
         fieldId: FIELD_POINTS,
@@ -167,30 +185,67 @@ const createIndexState = (): IndexState => ({
     ]),
     rev: 0
   }
-} as unknown as IndexState)
+
+  return {
+    records,
+    search: {
+      fields: new Map()
+    },
+    bucket: {
+      fields: new Map(),
+      rev: 0
+    },
+    sort: {
+      fields: new Map(),
+      rev: 0
+    },
+    calculations,
+    rows: createRows({
+      records,
+      search: {
+        fields: new Map()
+      },
+      bucket: {
+        fields: new Map(),
+        rev: 0
+      },
+      calculations
+    })
+  } as unknown as IndexState
+}
 
 test('summary sync rebuilds section aggregates when section record ids change without section transitions', () => {
   const index = createIndexState()
-  const previousMembership = createMembershipState(['rec_1', 'rec_2'])
+  const previousMembership = createMembershipState(index.rows, ['rec_1', 'rec_2'])
   const previous = deriveSummaryState({
     membership: previousMembership,
     calcFields: [FIELD_POINTS],
     index,
-    impact: createActiveImpact({}),
     action: 'rebuild'
   }).state
 
-  const nextMembership = createMembershipState([])
-  const impact = createActiveImpact({})
-  ensureQueryImpact(impact).visibleRemoved.push('rec_1', 'rec_2')
+  const nextMembership = createMembershipState(index.rows, [])
 
   const next = deriveSummaryState({
     previous,
     previousMembership,
     membership: nextMembership,
+    membershipDelta: {
+      ...EMPTY_MEMBERSHIP_DELTA,
+      changed: [ROOT_SECTION],
+      records: new Map([
+        ['rec_1', {
+          before: [ROOT_SECTION],
+          after: []
+        }],
+        ['rec_2', {
+          before: [ROOT_SECTION],
+          after: []
+        }]
+      ])
+    },
     calcFields: [FIELD_POINTS],
     index,
-    impact,
     action: 'sync'
   })
 
@@ -204,7 +259,7 @@ test('summary sync rebuilds section aggregates when section record ids change wi
 
 test('summary stage syncs when membership changes without record transitions', () => {
   const index = createIndexState()
-  const previousMembership = createGroupedMembershipState({
+  const previousMembership = createGroupedMembershipState(index.rows, {
     todo: ['rec_1'],
     done: ['rec_2']
   })
@@ -212,11 +267,10 @@ test('summary stage syncs when membership changes without record transitions', (
     membership: previousMembership,
     calcFields: [FIELD_POINTS],
     index,
-    impact: createActiveImpact({}),
     action: 'rebuild'
   }).state
 
-  const nextMembership = createGroupedMembershipState({
+  const nextMembership = createGroupedMembershipState(index.rows, {
     todo: [],
     done: []
   })
@@ -230,7 +284,7 @@ test('summary stage syncs when membership changes without record transitions', (
   const result = runSummaryStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact: createActiveImpact({}),
+    impact: createBaseImpact({}),
     view,
     calcFields: [FIELD_POINTS],
     previous,

@@ -1,70 +1,11 @@
-[mindmap-edit-debug] draft.measure 
-{
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "nodeId": "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7",
-    "field": "text",
-    "text": "adsdsadsadasdsadad\n\n\n",
-    "textLength": 21,
-    "committedRect": {
-        "x": -178.87109375,
-        "y": -199.609375,
-        "width": 143,
-        "height": 59
-    },
-    "request": {
-        "kind": "size",
-        "widthMode": "auto",
-        "frame": {
-            "paddingTop": 0,
-            "paddingRight": 0,
-            "paddingBottom": 0,
-            "paddingLeft": 0,
-            "borderTop": 0,
-            "borderRight": 0,
-            "borderBottom": 0,
-            "borderLeft": 0
-        },
-        "fontSize": 14
-    },
-    "measured": {
-        "kind": "size",
-        "size": {
-            "width": 143,
-            "height": 79
-        }
-    }
-}
-
-[mindmap-edit-debug] draft.live-layout 
-{
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "nodeId": "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7",
-    "field": "text",
-    "text": "adsdsadsadasdsadad\n\n\n",
-    "textLength": 21,
-    "measured": {
-        "kind": "size",
-        "size": {
-            "width": 143,
-            "height": 79
-        }
-    },
-    "liveNodeSizes": {
-        "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7": {
-            "width": 143,
-            "height": 79
-        }
-    }
-}
-
 [mindmap-edit-debug] mindmap.project 
 {
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "rootId": "node_b3b67450-d959-4a82-be87-8ae567359d82",
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "rootId": "node_6ae0cf14-236c-44c2-9d9f-5fc55965864f",
     "liveNodeSizes": {
-        "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7": {
-            "width": 143,
-            "height": 79
+        "node_e890eae4-999d-4085-9079-1310bb0acb34": {
+            "width": 56,
+            "height": 59
         }
     },
     "enterCount": 0
@@ -72,104 +13,241 @@
 
 [mindmap-edit-debug] mindmap.item 
 {
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "rootId": "node_b3b67450-d959-4a82-be87-8ae567359d82",
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "rootId": "node_6ae0cf14-236c-44c2-9d9f-5fc55965864f",
     "liveNodeSizes": {
-        "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7": {
-            "width": 143,
-            "height": 79
+        "node_e890eae4-999d-4085-9079-1310bb0acb34": {
+            "width": 56,
+            "height": 59
         }
     },
-    "focusNodeId": "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7",
-    "parentId": "node_b3b67450-d959-4a82-be87-8ae567359d82",
-    "focusRect": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+    "focusNodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
+    "parentId": "node_6ae0cf14-236c-44c2-9d9f-5fc55965864f",
+    "changedNodeIds": [
+        "node_caa7169f-3499-4446-877f-fab3859fecd3",
+        "node_e890eae4-999d-4085-9079-1310bb0acb34"
+    ],
+    "baseFocusRect": {
+        "x": -171.7109375,
+        "y": -244.453125,
+        "width": 56,
+        "height": 40
     },
-    "parentRect": {
-        "x": -346.87109375,
-        "y": -221.859375,
+    "focusRect": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "baseParentRect": {
+        "x": -331.7109375,
+        "y": -270.453125,
         "width": 132,
         "height": 44
     },
-    "siblingRects": {
-        "node_4ba29530-0ab7-45dd-b509-8a3631a88541": {
-            "x": -178.87109375,
-            "y": -244.609375,
-            "width": 86,
+    "parentRect": {
+        "x": -331.7109375,
+        "y": -270.453125,
+        "width": 132,
+        "height": 44
+    },
+    "baseSiblingRects": {
+        "node_caa7169f-3499-4446-877f-fab3859fecd3": {
+            "x": -171.7109375,
+            "y": -282.453125,
+            "width": 56,
             "height": 20
         },
-        "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7": {
-            "x": -178.87109375,
-            "y": -204.609375,
-            "width": 143,
-            "height": 79
+        "node_e890eae4-999d-4085-9079-1310bb0acb34": {
+            "x": -171.7109375,
+            "y": -244.453125,
+            "width": 56,
+            "height": 40
         }
     },
+    "siblingRects": {
+        "node_caa7169f-3499-4446-877f-fab3859fecd3": {
+            "x": -171.7109375,
+            "y": -287.203125,
+            "width": 56,
+            "height": 20
+        },
+        "node_e890eae4-999d-4085-9079-1310bb0acb34": {
+            "x": -171.7109375,
+            "y": -249.203125,
+            "width": 56,
+            "height": 59
+        }
+    },
+    "baseChildRects": {},
     "childRects": {},
+    "baseBbox": {
+        "x": -331.7109375,
+        "y": -282.453125,
+        "width": 216,
+        "height": 78
+    },
     "bbox": {
-        "x": -346.87109375,
-        "y": -244.609375,
-        "width": 311,
-        "height": 119
+        "x": -331.7109375,
+        "y": -287.203125,
+        "width": 216,
+        "height": 97
     }
 }
 
 [mindmap-edit-debug] node.projected 
 {
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "nodeId": "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7",
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
     "committedRect": {
-        "x": -178.87109375,
-        "y": -199.609375,
-        "width": 143,
-        "height": 59
+        "x": -171.7109375,
+        "y": -244.453125,
+        "width": 56,
+        "height": 40
     },
     "ownerRect": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     },
     "ownerRotation": 0,
     "draft": {
         "kind": "size",
         "size": {
-            "width": 143,
-            "height": 79
+            "width": 56,
+            "height": 59
         }
     },
     "finalRect": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     },
     "bounds": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    }
+}
+
+[mindmap-store-debug] node.projected.notify.internal 
+{
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
+    "rect": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "bounds": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    }
+}
+
+[mindmap-store-debug] node.projected.notify.internal 
+{
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
+    "rect": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "bounds": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    }
+}
+
+[mindmap-store-debug] node.projected.notify.internal 
+{
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
+    "rect": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "bounds": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     }
 }
 
 [mindmap-edit-debug] node.render 
 {
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "nodeId": "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7",
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
     "rect": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     },
     "bounds": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "selected": true,
+    "edit": {
+        "field": "text",
+        "caretKind": "point"
+    }
+}
+
+[mindmap-store-debug] node.render.notify.public 
+{
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
+    "rect": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "bounds": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "selected": true,
+    "edit": {
+        "field": "text",
+        "caretKind": "point"
+    }
+}
+
+[mindmap-store-debug] node.render.notify.public 
+{
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
+    "rect": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "bounds": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     },
     "selected": true,
     "edit": {
@@ -180,19 +258,19 @@
 
 [mindmap-edit-debug] node.render 
 {
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "nodeId": "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7",
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
     "rect": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     },
     "bounds": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     },
     "selected": true,
     "edit": {
@@ -201,45 +279,86 @@
     }
 }
 
-[mindmap-edit-debug] react.useNodeView 
+[mindmap-store-debug] node.projected.subscribe.internal 
 {
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "nodeId": "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7",
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
     "rect": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     },
-    "hidden": false,
-    "resizing": false,
+    "bounds": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    }
+}
+
+[mindmap-store-debug] node.render.subscribe.public 
+{
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
+    "rect": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "bounds": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
     "selected": true,
     "edit": {
         "field": "text",
         "caretKind": "point"
-    },
-    "nodeStyle": {},
-    "transformStyle": {
-        "transform": "translate(-178.87109375px, -204.609375px)"
     }
 }
 
 [mindmap-edit-debug] react.NodeBodyItem 
 {
-    "treeId": "mindmap_b8383878-a8d7-47ea-916b-f5d57b5faa0d",
-    "nodeId": "node_4c04d9a2-b1d3-425a-bea8-f5411babe0e7",
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
     "rect": {
-        "x": -178.87109375,
-        "y": -204.609375,
-        "width": 143,
-        "height": 79
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
     },
     "selected": true,
     "domStyle": {
-        "width": "143px",
-        "height": "79px",
-        "transform": "translate(-178.871px, -204.609px)",
+        "width": "56px",
+        "height": "59px",
+        "transform": "translate(-171.711px, -249.203px)",
         "transformOrigin": "",
-        "cssText": "width: 143px; height: 79px; background: transparent; border: 0px solid transparent; border-radius: 0px; box-shadow: none; box-sizing: border-box; display: block; overflow: hidden; padding: 0px; text-align: left; pointer-events: auto; transform: translate(-178.871px, -204.609px);"
+        "cssText": "width: 56px; height: 59px; background: transparent; border: 0px solid transparent; border-radius: 0px; box-shadow: none; box-sizing: border-box; display: block; overflow: hidden; padding: 0px; text-align: left; pointer-events: auto; transform: translate(-171.711px, -249.203px);"
+    }
+}
+
+[mindmap-store-debug] node.render.subscribe.public 
+{
+    "treeId": "mindmap_a98662ca-3f5d-4c7e-b4a6-3e040216695e",
+    "nodeId": "node_e890eae4-999d-4085-9079-1310bb0acb34",
+    "rect": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "bounds": {
+        "x": -171.7109375,
+        "y": -249.203125,
+        "width": 56,
+        "height": 59
+    },
+    "selected": true,
+    "edit": {
+        "field": "text",
+        "caretKind": "point"
     }
 }

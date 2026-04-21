@@ -19,8 +19,8 @@ import {
   resolveViewPlan
 } from '@dataview/engine/active/plan'
 import {
-  createActiveImpact
-} from '@dataview/engine/active/shared/impact'
+  createBaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
 import {
   buildQueryState
 } from '@dataview/engine/active/snapshot/query/derive'
@@ -131,7 +131,7 @@ const createDocument = (input = {}) => {
   }
 }
 
-const createImpact = (input = {}) => createActiveImpact(input)
+const createImpact = (input = {}) => createBaseImpact(input)
 
 const normalizeDemand = (document, demand = {}) => {
   const context = createStaticDocumentReadContext(document)
@@ -783,9 +783,9 @@ test('engine.active.query derives descending order from single asc sort index', 
     }).query
   })
 
-  assert.deepEqual(query.records.matched, ['rec_3', 'rec_2', 'rec_1'])
-  assert.deepEqual(query.records.ordered, ['rec_3', 'rec_2', 'rec_1'])
-  assert.deepEqual(query.records.visible, ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(query.matched.read.ids(), ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(query.ordered.read.ids(), ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(query.visible.read.ids(), ['rec_3', 'rec_2', 'rec_1'])
 })
 
 test('engine.active.query keeps empty values at the end for title, status, and number sorts', () => {
@@ -871,8 +871,8 @@ test('engine.active.query keeps empty values at the end for title, status, and n
     plan: compileViewPlan(reader, pointsDescView).query
   })
 
-  assert.deepEqual(titleAsc.records.visible, ['rec_2', 'rec_3', 'rec_1'])
-  assert.deepEqual(titleDesc.records.visible, ['rec_3', 'rec_2', 'rec_1'])
-  assert.deepEqual(statusDesc.records.visible, ['rec_3', 'rec_2', 'rec_1'])
-  assert.deepEqual(pointsDesc.records.visible, ['rec_2', 'rec_3', 'rec_1'])
+  assert.deepEqual(titleAsc.visible.read.ids(), ['rec_2', 'rec_3', 'rec_1'])
+  assert.deepEqual(titleDesc.visible.read.ids(), ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(statusDesc.visible.read.ids(), ['rec_3', 'rec_2', 'rec_1'])
+  assert.deepEqual(pointsDesc.visible.read.ids(), ['rec_2', 'rec_3', 'rec_1'])
 })

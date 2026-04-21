@@ -1,18 +1,23 @@
-import type { RecordId } from '@dataview/core/contracts'
 import type {
-  ViewRecords
-} from '@dataview/engine/contracts/shared'
+  RecordId
+} from '@dataview/core/contracts'
+import type {
+  Selection
+} from '@dataview/engine/active/shared/selection'
+import {
+  EMPTY_SELECTION
+} from '@dataview/engine/active/shared/selection'
 
 export interface QueryState {
-  records: ViewRecords
+  matched: Selection
+  ordered: Selection
+  visible: Selection
   search?: {
     query: string
     sourceKey: string
     sourceRevisionKey: string
     matched: readonly RecordId[]
   }
-  visibleSet?: ReadonlySet<RecordId>
-  order?: ReadonlyMap<RecordId, number>
 }
 
 export interface QueryDelta {
@@ -23,38 +28,8 @@ export interface QueryDelta {
 }
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
-const EMPTY_VIEW_RECORDS: ViewRecords = {
-  matched: EMPTY_RECORD_IDS,
-  ordered: EMPTY_RECORD_IDS,
-  visible: EMPTY_RECORD_IDS
-}
-
 export const emptyQueryState = (): QueryState => ({
-  records: EMPTY_VIEW_RECORDS
+  matched: EMPTY_SELECTION,
+  ordered: EMPTY_SELECTION,
+  visible: EMPTY_SELECTION
 })
-
-export const emptyViewRecords = (): ViewRecords => EMPTY_VIEW_RECORDS
-
-export const readQueryVisibleSet = (
-  state: QueryState
-): ReadonlySet<RecordId> => {
-  if (!state.visibleSet) {
-    state.visibleSet = new Set(state.records.visible)
-  }
-
-  return state.visibleSet
-}
-
-export const readQueryOrder = (
-  state: QueryState
-): ReadonlyMap<RecordId, number> => {
-  if (!state.order) {
-    const order = new Map<RecordId, number>()
-    for (let index = 0; index < state.records.ordered.length; index += 1) {
-      order.set(state.records.ordered[index]!, index)
-    }
-    state.order = order
-  }
-
-  return state.order
-}

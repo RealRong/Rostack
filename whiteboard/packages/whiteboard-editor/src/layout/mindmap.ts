@@ -33,37 +33,6 @@ const EMPTY_ROOT_MOVE_MAP = new Map<NodeId, {
 const EMPTY_SUBTREE_MOVE_MAP = new Map<NodeId, MindmapSubtreeMove>()
 const EMPTY_ENTER_MAP = new Map<NodeId, readonly MindmapEnterPreview[]>()
 
-const MINDMAP_EDIT_DEBUG_PREFIX = '[mindmap-edit-debug]'
-
-const debugMindmapEdit = (
-  label: string,
-  payload: unknown
-) => {
-  console.log(MINDMAP_EDIT_DEBUG_PREFIX, label, payload)
-}
-
-const toDebugNodeSizes = (
-  nodeSizes: ReadonlyMap<NodeId, Size>
-) => Object.fromEntries(
-  [...nodeSizes].map(([nodeId, size]) => [
-    nodeId,
-    {
-      width: size.width,
-      height: size.height
-    }
-  ])
-)
-
-const readDebugRects = (
-  rects: Record<NodeId, Rect>,
-  nodeIds: readonly NodeId[]
-) => Object.fromEntries(
-  nodeIds.map((nodeId) => [
-    nodeId,
-    rects[nodeId]
-  ])
-)
-
 const interpolateRect = (
   from: Rect,
   to: Rect,
@@ -399,7 +368,7 @@ export const createMindmapLayoutRead = ({
     emptyValue: []
   })
 
-  const layout = store.createKeyedDerivedStore<NodeId, MindmapLayoutItem | undefined>({
+  const layoutBase = store.createKeyedDerivedStore<NodeId, MindmapLayoutItem | undefined>({
     get: (treeId) => {
       const base = store.read(committed, treeId)
       const currentStructure = store.read(structure, treeId)
@@ -411,19 +380,6 @@ export const createMindmapLayoutRead = ({
       const currentLiveLayout = store.read(liveLayout, treeId)
       const currentRootMove = store.read(rootMove, treeId)
       const currentSubtreeMove = store.read(subtreeMove, treeId)
-
-      if (currentLiveLayout || currentRootMove || currentSubtreeMove || currentEnter.length > 0) {
-        debugMindmapEdit('mindmap.project', {
-          treeId,
-          rootId: currentStructure.rootId,
-          liveNodeSizes: currentLiveLayout
-            ? toDebugNodeSizes(currentLiveLayout.nodeSizes)
-            : undefined,
-          rootMove: currentRootMove,
-          subtreeMove: currentSubtreeMove,
-          enterCount: currentEnter.length
-        })
-      }
 
       const item = readProjectedMindmapItem({
         base,
@@ -438,38 +394,6 @@ export const createMindmapLayoutRead = ({
           : 0
       })
 
-      if (currentLiveLayout) {
-        const focusNodeId = currentLiveLayout.nodeSizes.keys().next().value
-        const parentId = focusNodeId
-          ? currentStructure.tree.nodes[focusNodeId]?.parentId
-          : undefined
-        const siblingIds = parentId
-          ? currentStructure.tree.children[parentId] ?? []
-          : focusNodeId
-            ? [focusNodeId]
-            : []
-        const childIds = focusNodeId
-          ? currentStructure.tree.children[focusNodeId] ?? []
-          : []
-
-        debugMindmapEdit('mindmap.item', {
-          treeId,
-          rootId: item.rootId,
-          liveNodeSizes: toDebugNodeSizes(currentLiveLayout.nodeSizes),
-          focusNodeId,
-          parentId,
-          focusRect: focusNodeId
-            ? item.computed.node[focusNodeId]
-            : undefined,
-          parentRect: parentId
-            ? item.computed.node[parentId]
-            : undefined,
-          siblingRects: readDebugRects(item.computed.node, siblingIds),
-          childRects: readDebugRects(item.computed.node, childIds),
-          bbox: item.computed.bbox
-        })
-      }
-
       return item
     },
     isEqual: (left, right) => left === right || (
@@ -483,6 +407,6 @@ export const createMindmapLayoutRead = ({
   })
 
   return {
-    layout
+    layout: layoutBase
   }
 }

@@ -1,7 +1,6 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import type {
   EngineRead,
-  MindmapLayoutItem,
   NodeItem
 } from '@whiteboard/engine'
 import { collection, equal, store } from '@shared/core'
@@ -117,32 +116,6 @@ type NodeRuntime = {
 
 const EMPTY_CONTROLS: readonly ControlId[] = []
 const nodeModelCache = new WeakMap<Node, NodeModel>()
-
-const MINDMAP_EDIT_DEBUG_PREFIX = '[mindmap-edit-debug]'
-
-const debugMindmapEdit = (
-  label: string,
-  payload: unknown
-) => {
-  console.log(MINDMAP_EDIT_DEBUG_PREFIX, label, payload)
-}
-
-const toDebugDraft = (
-  draft: DraftMeasure
-) => draft?.kind === 'size'
-  ? {
-      kind: draft.kind,
-      size: {
-        width: draft.size.width,
-        height: draft.size.height
-      }
-    }
-  : draft?.kind === 'fit'
-    ? {
-        kind: draft.kind,
-        fontSize: draft.fontSize
-      }
-    : undefined
 
 const readFallbackMeta = (
   type: NodeType
@@ -298,26 +271,6 @@ const isNodeRenderEqual = (
   )
 )
 
-const readProjectedOwnerGeometry = (
-  item: NodeItem,
-  mindmap: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
-): ProjectedOwnerGeometry | undefined => {
-  const mindmapId = item.node.owner?.kind === 'mindmap'
-    ? item.node.owner.id
-    : undefined
-  if (!mindmapId) {
-    return undefined
-  }
-
-  const rect = store.read(mindmap, mindmapId)?.computed.node[item.node.id]
-  return rect
-    ? {
-        rect,
-        rotation: nodeApi.geometry.rotation(item.node)
-      }
-    : undefined
-}
-
 const applyGeometryPreview = (
   rect: Rect,
   rotation: number,
@@ -428,20 +381,6 @@ const projectNode = ({
     rect: geometry.rect,
     rotation: geometry.rotation
   })
-
-  if (mindmapOwned && committed.node.owner?.kind === 'mindmap') {
-    debugMindmapEdit('node.projected', {
-      treeId: committed.node.owner.id,
-      nodeId: committed.node.id,
-      committedRect: committed.rect,
-      ownerRect: ownerGeometry?.rect,
-      ownerRotation: ownerGeometry?.rotation,
-      draft: toDebugDraft(draft),
-      feedbackGeometry: feedback.geometry,
-      finalRect: projectedGeometry.rect,
-      bounds: projectedGeometry.bounds
-    })
-  }
 
   return {
     nodeId: committed.node.id,
@@ -566,7 +505,9 @@ export const createNodeRead = ({
   read: EngineRead
   type: NodeTypeRead
   feedback: store.KeyedReadStore<NodeId, NodePreviewProjection>
-  mindmap: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
+  mindmap: {
+    nodeGeometry: store.KeyedReadStore<NodeId, ProjectedOwnerGeometry | undefined>
+  }
   edit: {
     node: store.KeyedReadStore<NodeId, NodeEditView | undefined>
   }
@@ -577,7 +518,7 @@ export const createNodeRead = ({
     selected: store.KeyedReadStore<NodeId, boolean>
   }
 }): NodePresentationRead => {
-  const projected: NodePresentationRead['projected'] = store.createKeyedDerivedStore({
+  const projectedBase: NodePresentationRead['projected'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
       const current = store.read(read.node.committed, nodeId)
       if (!current) {
@@ -586,7 +527,7 @@ export const createNodeRead = ({
 
       return projectNode({
         committed: current,
-        ownerGeometry: readProjectedOwnerGeometry(current, mindmap),
+        ownerGeometry: store.read(mindmap.nodeGeometry, nodeId),
         feedback: store.read(feedback, nodeId),
         edit: store.read(edit.node, nodeId),
         draft: store.read(draft.node, nodeId)
@@ -595,45 +536,27 @@ export const createNodeRead = ({
     isEqual: isProjectedNodeEqual
   })
 
-  const render: NodePresentationRead['render'] = store.createKeyedDerivedStore({
+  const renderBase: NodePresentationRead['render'] = store.createKeyedDerivedStore({
     get: (nodeId: NodeId) => {
-      const currentProjected = store.read(projected, nodeId)
+      const currentProjected = store.read(projectedBase, nodeId)
       if (!currentProjected) {
         return undefined
       }
 
-      const currentRender = buildNodeRender({
+      return buildNodeRender({
         projected: currentProjected,
         feedback: store.read(feedback, nodeId),
         selected: store.read(selection.selected, nodeId),
         edit: store.read(edit.node, nodeId),
         type
       })
-
-      if (currentRender.node.owner?.kind === 'mindmap') {
-        debugMindmapEdit('node.render', {
-          treeId: currentRender.node.owner.id,
-          nodeId,
-          rect: currentRender.rect,
-          bounds: currentRender.bounds,
-          selected: currentRender.selected,
-          edit: currentRender.edit
-            ? {
-                field: currentRender.edit.field,
-                caretKind: currentRender.edit.caret.kind
-              }
-            : undefined
-        })
-      }
-
-      return currentRender
     },
     isEqual: isNodeRenderEqual
   })
 
   const readProjectedNodes = (
     nodeIds: readonly NodeId[]
-  ) => collection.presentValues(nodeIds, (nodeId) => store.read(projected, nodeId)?.node)
+  ) => collection.presentValues(nodeIds, (nodeId) => store.read(projectedBase, nodeId)?.node)
 
   const idsInRect: NodePresentationRead['idsInRect'] = (rect, options) => {
     const match = options?.match ?? 'touch'
@@ -649,7 +572,7 @@ export const createNodeRead = ({
       match,
       policy,
       getEntry: (nodeId) => {
-        const current = store.read(projected, nodeId)
+        const current = store.read(projectedBase, nodeId)
         return current
           ? {
               node: toSpatialNode(current),
@@ -666,9 +589,9 @@ export const createNodeRead = ({
     list: read.node.list,
     committed: read.node.committed,
     type,
-    projected,
+    projected: projectedBase,
     nodes: readProjectedNodes,
-    render,
+    render: renderBase,
     capability: (node) => resolveProjectedNodeCapability(node, type),
     idsInRect,
     ordered: () => readProjectedNodes(store.read(read.node.list))

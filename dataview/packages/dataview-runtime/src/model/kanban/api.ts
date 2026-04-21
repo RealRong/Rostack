@@ -1,5 +1,6 @@
 import { equal, store } from '@shared/core'
 import {
+  type ItemId,
   queryRead
 } from '@dataview/engine'
 import type {
@@ -69,7 +70,7 @@ export const createKanbanModel = (input: {
   source: DataViewSource
   inlineKey: (input: {
     viewId: string
-    itemId: number
+    itemId: ItemId
   }) => string
 }): DataViewKanbanModel => {
   const customFields = createActiveCustomFieldListStore(input.source)
@@ -122,7 +123,7 @@ export const createKanbanModel = (input: {
     isEqual: sameSection
   })
 
-  const card = store.createKeyedDerivedStore<number, KanbanCard | undefined>({
+  const card = store.createKeyedDerivedStore<ItemId, KanbanCard | undefined>({
     get: itemId => {
       if (store.read(input.source.active.view.type) !== 'kanban') {
         return undefined

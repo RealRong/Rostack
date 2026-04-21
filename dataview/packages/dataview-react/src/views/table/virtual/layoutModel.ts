@@ -559,7 +559,7 @@ class TableLayoutSectionModel {
       return undefined
     }
 
-    const rowId = Number(key.slice(4)) as ItemId
+    const rowId = key.slice(4) as ItemId
     return this.rowIndexById.get(rowId)
   }
 
@@ -809,7 +809,7 @@ export class TableLayoutModel {
 
   topOfKey(key: string) {
     const sectionIndex = key.startsWith('row:')
-      ? this.sectionIndexByRowId.get(Number(key.slice(4)) as ItemId)
+      ? this.sectionIndexByRowId.get(key.slice(4) as ItemId)
       : this.sectionIndexByBlockKey.get(key)
     if (sectionIndex === undefined) {
       return null
@@ -852,7 +852,7 @@ export class TableLayoutModel {
 
   private applyMeasuredHeight(key: string, height: number | undefined) {
     const sectionIndex = key.startsWith('row:')
-      ? this.sectionIndexByRowId.get(Number(key.slice(4)) as ItemId)
+      ? this.sectionIndexByRowId.get(key.slice(4) as ItemId)
       : this.sectionIndexByBlockKey.get(key)
     if (sectionIndex === undefined) {
       return false

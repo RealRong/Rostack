@@ -17,18 +17,18 @@ const clampIndex = (
 }
 
 const hasCell = (
-  items: Pick<ItemList, 'has'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'has'>,
   cell: CellRef
-) => items.has(cell.itemId) && fields.has(cell.fieldId)
+) => items.order.has(cell.itemId) && fields.has(cell.fieldId)
 
 const cellAt = (
-  items: Pick<ItemList, 'at'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'at'>,
   rowIndex: number,
   fieldIndex: number
 ): CellRef | undefined => {
-  const itemId = items.at(rowIndex)
+  const itemId = items.order.at(rowIndex)
   const fieldId = fields.at(fieldIndex)
   return itemId && fieldId
     ? {
@@ -39,12 +39,12 @@ const cellAt = (
 }
 
 const edgeCell = (
-  items: Pick<ItemList, 'indexOf' | 'at'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'count' | 'at'>,
   itemId: ItemId,
   side: 'start' | 'end'
 ): CellRef | undefined => {
-  const rowIndex = items.indexOf(itemId)
+  const rowIndex = items.order.indexOf(itemId)
   if (rowIndex === undefined || !fields.count) {
     return undefined
   }
@@ -60,13 +60,13 @@ const edgeCell = (
 }
 
 const firstCell = (
-  items: Pick<ItemList, 'has' | 'at' | 'indexOf'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'count' | 'at'>,
   rowId?: ItemId
 ): CellRef | undefined => {
-  const nextRowId = rowId && items.has(rowId)
+  const nextRowId = rowId && items.order.has(rowId)
     ? rowId
-    : items.at(0)
+    : items.order.at(0)
 
   return nextRowId
     ? edgeCell(items, fields, nextRowId, 'start')
@@ -74,7 +74,7 @@ const firstCell = (
 }
 
 const stepCell = (
-  items: Pick<ItemList, 'count' | 'indexOf' | 'at'>,
+  items: Pick<ItemList, 'count' | 'order'>,
   fields: Pick<FieldList, 'count' | 'indexOf' | 'at'>,
   cell: CellRef,
   options: {
@@ -83,7 +83,7 @@ const stepCell = (
     wrap?: boolean
   }
 ): CellRef | undefined => {
-  const currentRowIndex = items.indexOf(cell.itemId)
+  const currentRowIndex = items.order.indexOf(cell.itemId)
   const currentFieldIndex = fields.indexOf(cell.fieldId)
   if (
     currentRowIndex === undefined

@@ -20,6 +20,9 @@ import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView
 } from '@dataview/react/dataview'
+import {
+  itemDomBridge
+} from '@dataview/react/dom/item'
 import { rowRailState } from '@dataview/react/views/table/model/rowRail'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { cn } from '@shared/ui/utils'
@@ -89,16 +92,18 @@ const View = (props: RowProps) => {
     }
 
     table.nodes.registerRow(props.itemId, node)
+    itemDomBridge.bind.node(node, props.itemId)
 
     return () => {
       table.nodes.registerRow(props.itemId, null)
+      itemDomBridge.clear.node(node)
     }
   }, [props.itemId, table.nodes])
   const row = useKeyedStoreValue(
     table.chrome.row,
     props.itemId
   )
-  const recordId = currentView.items.get(props.itemId)?.recordId
+  const recordId = currentView.items.read.record(props.itemId)
   const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
     dataView.engine.source.doc.records,
     recordId,

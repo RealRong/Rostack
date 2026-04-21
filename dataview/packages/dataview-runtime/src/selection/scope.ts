@@ -14,8 +14,8 @@ export const createItemListSelectionScope = (input: {
   key: input.key,
   revision: input.items.ids,
   count: input.items.count,
-  has: input.items.has,
-  iterate: input.items.iterate
+  has: input.items.order.has,
+  iterate: input.items.order.iterate
 })
 
 export const createItemArraySelectionScope = (input: {

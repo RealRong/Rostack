@@ -133,7 +133,7 @@ const View = () => {
     onBlankPointerDown
   })
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = currentView.items.get(cell.itemId)?.recordId
+    const recordId = currentView.items.read.record(cell.itemId)
     const record = recordId
       ? engine.source.doc.records.get(recordId)
       : undefined

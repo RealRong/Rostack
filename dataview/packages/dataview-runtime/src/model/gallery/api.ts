@@ -107,7 +107,7 @@ export const createGalleryModel = (input: {
         ? {
             key: value.key,
             label: value.label,
-            count: value.items.count
+            count: value.itemIds.length
           }
         : undefined
     },
@@ -125,8 +125,8 @@ export const createGalleryModel = (input: {
         return undefined
       }
 
-      const item = store.read(input.source.active.items, itemId)
-      if (!item) {
+      const recordId = store.read(input.source.active.items.read.record, itemId)
+      if (!recordId) {
         return undefined
       }
 
@@ -134,7 +134,7 @@ export const createGalleryModel = (input: {
       return {
         viewId,
         itemId,
-        recordId: item.recordId,
+        recordId,
         fields: store.read(customFields),
         size: gallery.size,
         layout: gallery.layout,

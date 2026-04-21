@@ -1,6 +1,8 @@
 import {
   memo,
+  useCallback,
   useMemo,
+  useRef,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent
 } from 'react'
@@ -13,6 +15,9 @@ import type {
 import {
   DATAVIEW_APPEARANCE_ID_ATTR
 } from '@dataview/react/dom/appearance'
+import {
+  itemDomBridge
+} from '@dataview/react/dom/item'
 import {
   type Card,
   type CardContent as CardContentData
@@ -73,6 +78,7 @@ const fieldRef = (input: {
 })
 
 const RecordCardComponent = (props: RecordCardProps) => {
+  const cardNodeRef = useRef<HTMLElement | null>(null)
   const draggingActive = props.drag.activeId === props.card.itemId
   const draggingSelected = props.drag.activeId !== undefined
     && props.drag.dragIdSet.has(props.card.itemId)
@@ -179,10 +185,23 @@ const RecordCardComponent = (props: RecordCardProps) => {
     props.card.wrap,
     visibleProperties
   ])
+  const contentRef = useCallback((node: HTMLElement | null) => {
+    if (cardNodeRef.current && cardNodeRef.current !== node) {
+      itemDomBridge.clear.node(cardNodeRef.current)
+    }
+
+    cardNodeRef.current = node
+    props.measureRef?.(node)
+    if (!node) {
+      return
+    }
+
+    itemDomBridge.bind.node(node, props.card.itemId)
+  }, [props.card.itemId, props.measureRef])
 
   return (
     <CardContent
-      ref={props.measureRef}
+      ref={contentRef}
       {...{
         [DATAVIEW_APPEARANCE_ID_ATTR]: props.card.itemId
       }}

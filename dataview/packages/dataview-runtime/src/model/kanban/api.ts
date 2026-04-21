@@ -115,7 +115,7 @@ export const createKanbanModel = (input: {
             label: value.label,
             bucket: value.bucket,
             collapsed: value.collapsed,
-            count: value.items.count,
+            count: value.itemIds.length,
             color: value.color
           }
         : undefined
@@ -134,8 +134,8 @@ export const createKanbanModel = (input: {
         return undefined
       }
 
-      const item = store.read(input.source.active.items, itemId)
-      if (!item) {
+      const placement = store.read(input.source.active.items.read.placement, itemId)
+      if (!placement) {
         return undefined
       }
 
@@ -143,7 +143,7 @@ export const createKanbanModel = (input: {
       return {
         viewId,
         itemId,
-        recordId: item.recordId,
+        recordId: placement.recordId,
         fields: store.read(customFields),
         size: kanban.size,
         layout: kanban.layout,
@@ -161,7 +161,7 @@ export const createKanbanModel = (input: {
           })
         ),
         color: kanban.groupUsesOptionColors
-          ? store.read(input.source.active.sections, item.sectionKey)?.color
+          ? store.read(input.source.active.sections, placement.sectionKey)?.color
           : undefined
       }
     },

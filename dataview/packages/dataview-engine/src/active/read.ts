@@ -18,28 +18,28 @@ export const createActiveViewReadApi = (input: {
   const readState = () => store.read(input.stateStore)
   const readField = (fieldId: FieldId) => input.reader.fields.get(fieldId)
   const readSection = (sectionKey: string) => readState()?.sections.get(sectionKey)
-  const readItem = (itemId: ItemId) => readState()?.items.get(itemId)
+  const readPlacement = (itemId: ItemId) => readState()?.items.read.placement(itemId)
   const readCell = (cell: CellRef): ViewCell | undefined => {
     const state = readState()
     if (!state) {
       return undefined
     }
 
-    const item = state.items.get(cell.itemId)
-    if (!item) {
+    const placement = state.items.read.placement(cell.itemId)
+    if (!placement) {
       return undefined
     }
 
-    const record = input.reader.records.get(item.recordId)
+    const record = input.reader.records.get(placement.recordId)
     if (!record) {
       return undefined
     }
 
     return {
       itemId: cell.itemId,
-      recordId: item.recordId,
+      recordId: placement.recordId,
       fieldId: cell.fieldId,
-      sectionKey: item.sectionKey,
+      sectionKey: placement.sectionKey,
       record,
       field: readField(cell.fieldId),
       value: cell.fieldId === 'title'
@@ -52,7 +52,7 @@ export const createActiveViewReadApi = (input: {
     record: recordId => input.reader.records.get(recordId),
     field: readField,
     section: readSection,
-    item: readItem,
+    placement: readPlacement,
     cell: readCell,
     groupField: () => {
       const state = readState()

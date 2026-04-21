@@ -8,8 +8,12 @@ import type {
 import type {
   SelectionScope
 } from '@dataview/runtime/selection'
+import type {
+  TableBlockId
+} from '@dataview/react/views/table/virtual/blockId'
 
 export interface TableColumnHeaderBlock extends VirtualBlock {
+  id: TableBlockId
   kind: 'column-header'
   estimatedHeight: number
   measuredHeight?: number
@@ -19,6 +23,7 @@ export interface TableColumnHeaderBlock extends VirtualBlock {
 }
 
 export interface TableSectionHeaderBlock extends VirtualBlock {
+  id: TableBlockId
   kind: 'section-header'
   estimatedHeight: number
   measuredHeight?: number
@@ -26,6 +31,7 @@ export interface TableSectionHeaderBlock extends VirtualBlock {
 }
 
 export interface TableColumnFooterBlock extends VirtualBlock {
+  id: TableBlockId
   kind: 'column-footer'
   estimatedHeight: number
   measuredHeight?: number
@@ -33,6 +39,7 @@ export interface TableColumnFooterBlock extends VirtualBlock {
 }
 
 export interface TableCreateRecordBlock extends VirtualBlock {
+  id: TableBlockId
   kind: 'create-record'
   estimatedHeight: number
   measuredHeight?: number
@@ -40,6 +47,7 @@ export interface TableCreateRecordBlock extends VirtualBlock {
 }
 
 export interface TableRowBlock extends VirtualBlock {
+  id: TableBlockId
   kind: 'row'
   estimatedHeight: number
   measuredHeight?: number

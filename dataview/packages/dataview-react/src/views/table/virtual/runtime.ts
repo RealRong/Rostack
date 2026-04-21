@@ -22,6 +22,9 @@ import {
   type TableLayoutState
 } from '@dataview/react/views/table/virtual/layoutState'
 import type { TableBlock } from '@dataview/react/views/table/virtual/types'
+import type {
+  TableBlockId
+} from '@dataview/react/views/table/virtual/blockId'
 
 const BOOTSTRAP_VIEWPORT_HEIGHT = () => (
   typeof window !== 'undefined'
@@ -275,7 +278,7 @@ const createTableLayoutStateStore = (
         ? [{
             key: section.key,
             collapsed: section.collapsed,
-            itemIds: section.items.ids
+            itemIds: section.itemIds
           }] as const
         : []
     })
@@ -376,21 +379,21 @@ export const createTableVirtualRuntime = (options: {
       start: viewport.viewportTopInCanvas,
       end: viewport.viewportTopInCanvas
     })
-    const key = projection.items[0]?.key
-    const top = key
-      ? layoutModel.topOfKey(key)
+    const id = projection.items[0]?.id
+    const top = id
+      ? layoutModel.topOfBlock(id)
       : null
 
-    return key && top !== null
+    return id && top !== null
       ? {
-          key,
+          id,
           top
         }
       : null
   }
 
   const compensateLayoutShift = (anchor: {
-    key: string
+    id: TableBlockId
     top: number
   } | null) => {
     const scrollNode = attachedScrollNode
@@ -399,7 +402,7 @@ export const createTableVirtualRuntime = (options: {
       return
     }
 
-    const nextTop = layoutModel.topOfKey(anchor.key)
+    const nextTop = layoutModel.topOfBlock(anchor.id)
     if (nextTop === null) {
       return
     }
@@ -419,7 +422,7 @@ export const createTableVirtualRuntime = (options: {
   }
 
   const rebuildLayoutModel = (anchor: {
-    key: string
+    id: TableBlockId
     top: number
   } | null = null) => {
     const nextLayoutModel = currentLayoutState

@@ -172,7 +172,7 @@ export const useGalleryRuntime = (): GalleryViewRuntime => {
     onDraggingChange: interaction.onDraggingChange,
     onDrop: (ids, target) => {
       const sectionKey = target.beforeItemId
-        ? dataView.engine.active.read.item(target.beforeItemId)?.sectionKey
+        ? dataView.engine.active.read.placement(target.beforeItemId)?.sectionKey
         : target.sectionKey
       if (!sectionKey) {
         return

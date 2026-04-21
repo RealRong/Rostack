@@ -46,11 +46,11 @@ const anchor = (
 
 const edges = (
   current: GridSelection,
-  items: Pick<ItemList, 'indexOf'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'indexOf'>
 ): GridSelectionEdges | undefined => {
-  const anchorRow = items.indexOf(current.anchor.itemId)
-  const focusRow = items.indexOf(current.focus.itemId)
+  const anchorRow = items.order.indexOf(current.anchor.itemId)
+  const focusRow = items.order.indexOf(current.focus.itemId)
   const anchorField = fields.indexOf(current.anchor.fieldId)
   const focusField = fields.indexOf(current.focus.fieldId)
   if (
@@ -72,8 +72,8 @@ const edges = (
 
 const itemIds = (
   current: GridSelection,
-  items: Pick<ItemList, 'range'>
-) => items.range(current.anchor.itemId, current.focus.itemId)
+  items: Pick<ItemList, 'order'>
+) => items.order.range(current.anchor.itemId, current.focus.itemId)
 
 const fieldIds = (
   current: GridSelection,
@@ -82,12 +82,12 @@ const fieldIds = (
 
 const containsCell = (
   current: GridSelection,
-  items: Pick<ItemList, 'indexOf'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'indexOf'>,
   cell: CellRef
 ) => {
   const currentEdges = edges(current, items, fields)
-  const rowIndex = items.indexOf(cell.itemId)
+  const rowIndex = items.order.indexOf(cell.itemId)
   const fieldIndex = fields.indexOf(cell.fieldId)
 
   return currentEdges !== undefined
@@ -101,7 +101,7 @@ const containsCell = (
 
 const isSingle = (
   current: GridSelection,
-  items: Pick<ItemList, 'indexOf'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'indexOf'>
 ) => {
   const currentEdges = edges(current, items, fields)
@@ -114,10 +114,10 @@ const isSingle = (
 
 const reconcile = (
   current: GridSelection | null,
-  items: Pick<ItemList, 'has' | 'indexOf' | 'count' | 'at'>,
+  items: Pick<ItemList, 'count' | 'order'>,
   fields: Pick<FieldList, 'has' | 'count' | 'at'>
 ): GridSelection | null => {
-  if (!current || !items.has(current.focus.itemId)) {
+  if (!current || !items.order.has(current.focus.itemId)) {
     return null
   }
 
@@ -137,7 +137,7 @@ const reconcile = (
 
 const first = (
   current: GridSelection | null,
-  items: Pick<ItemList, 'has' | 'count' | 'at' | 'indexOf'>,
+  items: Pick<ItemList, 'count' | 'order'>,
   fields: Pick<FieldList, 'count' | 'at'>,
   itemId?: ItemId
 ): GridSelection | undefined => {
@@ -156,7 +156,7 @@ const move = (
   current: GridSelection | null,
   rowDelta: number,
   columnDelta: number,
-  items: Pick<ItemList, 'count' | 'indexOf' | 'at'>,
+  items: Pick<ItemList, 'count' | 'order'>,
   fields: Pick<FieldList, 'count' | 'indexOf' | 'at'>,
   options?: {
     extend?: boolean

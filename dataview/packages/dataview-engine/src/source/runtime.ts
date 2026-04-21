@@ -36,9 +36,9 @@ import type {
 import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts'
 import type {
   ItemId,
+  ItemPlacement,
   Section,
-  SectionKey,
-  ViewItem
+  SectionKey
 } from '@dataview/engine/contracts/shared'
 import type { RuntimeStore } from '@dataview/engine/runtime/store'
 
@@ -132,6 +132,43 @@ const createSectionSourceRuntime = () => {
   }
 }
 
+const createItemSourceRuntime = () => {
+  const ids = store.createValueStore<readonly ItemId[]>({
+    initial: EMPTY_ITEM_IDS,
+    isEqual: equal.sameOrder
+  })
+  const record = store.createKeyedStore<ItemId, RecordId | undefined>({
+    emptyValue: undefined
+  })
+  const section = store.createKeyedStore<ItemId, SectionKey | undefined>({
+    emptyValue: undefined
+  })
+  const placement = store.createKeyedStore<ItemId, ItemPlacement | undefined>({
+    emptyValue: undefined
+  })
+
+  return {
+    source: {
+      ids,
+      read: {
+        record,
+        section,
+        placement
+      }
+    } satisfies ActiveSource['items'],
+    ids,
+    record,
+    section,
+    placement,
+    clear: () => {
+      ids.set(EMPTY_ITEM_IDS)
+      record.clear()
+      section.clear()
+      placement.clear()
+    }
+  }
+}
+
 const applyEntityDelta = <K, T>(
   runtime: {
     ids?: store.ValueStore<readonly K[]>
@@ -217,11 +254,44 @@ const collectSectionItemIds = (
 
   const ids: ItemId[] = []
   sections.all.forEach(section => {
-    section.items.ids.forEach(itemId => {
+    section.itemIds.forEach(itemId => {
       ids.push(itemId)
     })
   })
   return ids
+}
+
+const syncItemSource = (input: {
+  runtime: ReturnType<typeof createItemSourceRuntime>
+  previous?: ViewState
+  next: ViewState
+}) => {
+  const previousSectionItemIds = collectSectionItemIds(input.previous?.sections)
+  const nextSectionItemIds = collectSectionItemIds(input.next.sections)
+
+  patchEntityValues({
+    runtime: input.runtime.record,
+    previousIds: previousSectionItemIds,
+    nextIds: nextSectionItemIds,
+    previousGet: itemId => input.previous?.items.read.record(itemId),
+    nextGet: itemId => input.next.items.read.record(itemId)
+  })
+  patchEntityValues({
+    runtime: input.runtime.section,
+    previousIds: previousSectionItemIds,
+    nextIds: nextSectionItemIds,
+    previousGet: itemId => input.previous?.items.read.section(itemId),
+    nextGet: itemId => input.next.items.read.section(itemId)
+  })
+  patchEntityValues({
+    runtime: input.runtime.placement,
+    previousIds: previousSectionItemIds,
+    nextIds: nextSectionItemIds,
+    previousGet: itemId => input.previous?.items.read.placement(itemId),
+    nextGet: itemId => input.next.items.read.placement(itemId)
+  })
+
+  input.runtime.ids.set(input.next.items.ids)
 }
 
 const collectFieldIds = <T extends { id: FieldId }>(
@@ -264,7 +334,7 @@ const syncActiveSnapshot = (input: {
   table: store.ValueStore<ActiveViewTable>
   gallery: store.ValueStore<ActiveViewGallery>
   kanban: store.ValueStore<ActiveViewKanban>
-  items: ReturnType<typeof createEntitySourceRuntime<ItemId, ViewItem>>
+  items: ReturnType<typeof createItemSourceRuntime>
   sections: ReturnType<typeof createSectionSourceRuntime>
   fieldsAll: ReturnType<typeof createEntitySourceRuntime<FieldId, Field>>
   fieldsCustom: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
@@ -296,17 +366,11 @@ const syncActiveSnapshot = (input: {
   input.table.set(next.table)
   input.gallery.set(next.gallery)
   input.kanban.set(next.kanban)
-
-  const previousSectionItemIds = collectSectionItemIds(previous?.sections)
-  const nextSectionItemIds = collectSectionItemIds(next.sections)
-  syncEntityList({
+  syncItemSource({
     runtime: input.items,
-    previousIds: previousSectionItemIds,
-    nextIds: nextSectionItemIds,
-    previousGet: itemId => previous?.items.get(itemId),
-    nextGet: itemId => next.items.get(itemId)
+    previous,
+    next
   })
-  input.items.ids.set(next.items.ids)
 
   syncEntityList({
     runtime: {
@@ -354,7 +418,7 @@ export const createEngineSourceRuntime = (input: {
   const documentRecords = createEntitySourceRuntime<RecordId, DataRecord>()
   const documentFields = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
   const documentViews = createEntitySourceRuntime<ViewId, View>()
-  const activeItems = createEntitySourceRuntime<ItemId, ViewItem>(EMPTY_ITEM_IDS)
+  const activeItems = createItemSourceRuntime()
   const activeSections = createSectionSourceRuntime()
   const activeFieldsAll = createEntitySourceRuntime<FieldId, Field>(EMPTY_FIELD_IDS)
   const activeFieldsCustom = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)

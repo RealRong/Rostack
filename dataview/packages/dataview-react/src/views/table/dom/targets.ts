@@ -1,6 +1,8 @@
 import type { Point } from '@shared/dom'
 import { targetElement } from '@shared/dom'
-import { parseItemIdValue } from '@dataview/react/dom/appearance'
+import {
+  itemDomBridge
+} from '@dataview/react/dom/item'
 import {
   type ItemList,
   type FieldList
@@ -63,7 +65,7 @@ export const closestTableTargetElement = (
 const cellIdFromElement = (
   element: HTMLElement | null
 ): CellRef | null => {
-  const itemId = parseItemIdValue(element?.dataset.rowId ?? null)
+  const itemId = itemDomBridge.read.closest(element)
   const fieldId = element?.dataset.fieldId
 
   return itemId !== undefined && fieldId
@@ -75,7 +77,7 @@ const cellIdFromElement = (
 }
 
 const resolveCellId = (
-  items: Pick<ItemList, 'has'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'has'>,
   cell: CellRef | null
 ): CellRef | null => {
@@ -95,7 +97,7 @@ export const hasTableTarget = (
 
 const cellFromElement = (
   element: Element | null,
-  items: Pick<ItemList, 'has'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'has'>
 ): CellRef | null => resolveCellId(
   items,
@@ -105,7 +107,7 @@ const cellFromElement = (
 
 export const cellFromTarget = (
   target: EventTarget | null,
-  items: Pick<ItemList, 'has'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'has'>,
   kind?: 'cell' | 'fill-handle'
 ): CellRef | null => cellFromElement(
@@ -116,7 +118,7 @@ export const cellFromTarget = (
 
 export const cellFromPoint = (
   point: Point | null,
-  items: Pick<ItemList, 'has'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'has'>,
   kind?: 'cell' | 'fill-handle'
 ): CellRef | null => {

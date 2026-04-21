@@ -17,10 +17,20 @@ import {
   type TableSelectionRuntime
 } from '@dataview/react/views/table/selectionRuntime'
 
-const createItemListStub = (ids: readonly string[]) => ({
-  ids,
-  ...collection.createOrderedAccess(ids)
-})
+const createItemListStub = (ids: readonly string[]) => {
+  const order = collection.createOrderedAccess(ids)
+  return {
+    ids,
+    count: order.count,
+    order,
+    ...order,
+    read: {
+      record: () => undefined,
+      section: () => undefined,
+      placement: () => undefined
+    }
+  }
+}
 
 const createFieldListStub = (ids: readonly string[]) => ({
   ids,

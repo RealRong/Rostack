@@ -53,8 +53,8 @@ const bindInlineSessionToView = (input: {
     }
 
     const view = input.activeView.get()
-    const item = input.items.get(session.itemId)
-    if (!view || !item || view.id !== session.viewId) {
+    const placement = input.items.read.placement.get(session.itemId)
+    if (!view || !placement || view.id !== session.viewId) {
       input.inlineSession.exit({
         reason: 'view-change'
       })

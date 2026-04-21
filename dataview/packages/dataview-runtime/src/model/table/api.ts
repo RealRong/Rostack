@@ -121,7 +121,7 @@ export const createTableModel = (input: {
             key: value.key,
             label: value.label,
             collapsed: value.collapsed,
-            count: value.items.count
+            count: value.itemIds.length
           }
         : undefined
     },

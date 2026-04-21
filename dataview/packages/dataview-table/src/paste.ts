@@ -59,7 +59,7 @@ const parseCellDraft = (
 
 const planRangeBroadcast = (
   currentSelection: GridSelection | null,
-  items: Pick<ItemList, 'range'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'range' | 'all'>,
   draft: string
 ): TablePasteEntry[] => {
@@ -100,7 +100,7 @@ const planRangeBroadcast = (
 
 export const planPaste = (options: {
   selection: GridSelection | null
-  items: Pick<ItemList, 'indexOf' | 'at' | 'range'>
+  items: Pick<ItemList, 'order'>
   fields: Pick<FieldList, 'indexOf' | 'all' | 'range'>
   matrix: readonly (readonly string[])[]
 }): TablePasteEntry[] => {
@@ -120,14 +120,14 @@ export const planPaste = (options: {
     }
   }
 
-  const rowStart = options.items.indexOf(anchorCell.itemId)
+  const rowStart = options.items.order.indexOf(anchorCell.itemId)
   const fieldStart = options.fields.indexOf(anchorCell.fieldId)
   if (rowStart === undefined || fieldStart === undefined) {
     return []
   }
 
   return options.matrix.flatMap((row, rowOffset) => {
-    const itemId = options.items.at(rowStart + rowOffset)
+    const itemId = options.items.order.at(rowStart + rowOffset)
     if (!itemId) {
       return []
     }

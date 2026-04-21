@@ -35,7 +35,7 @@ const findItemIdByRecordId = (
   recordId: string
 ): ItemId | undefined => {
   for (const itemId of view.items.ids) {
-    if (view.items.get(itemId)?.recordId === recordId) {
+    if (view.items.read.record(itemId) === recordId) {
       return itemId
     }
   }

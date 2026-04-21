@@ -8,7 +8,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   ItemId,
-  ViewItem
+  ItemPlacement
 } from '@dataview/engine'
 import { equal, store } from '@shared/core'
 import type {
@@ -83,7 +83,7 @@ export const createItemCardContentStore = (input: {
   properties: store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined>
   placeholderText: (input: {
     itemId: ItemId
-    item: ViewItem
+    item: ItemPlacement
     record: DataRecord
   }) => string
 }): store.KeyedReadStore<ItemId, CardContent | undefined> => store.createKeyedDerivedStore({
@@ -92,7 +92,7 @@ export const createItemCardContentStore = (input: {
       return undefined
     }
 
-    const item = store.read(input.source.active.items, itemId)
+    const item = store.read(input.source.active.items.read.placement, itemId)
     if (!item) {
       return undefined
     }

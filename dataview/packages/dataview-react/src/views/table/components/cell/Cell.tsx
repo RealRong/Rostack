@@ -1,6 +1,8 @@
 import {
   memo,
-  useCallback
+  useCallback,
+  useLayoutEffect,
+  useRef
 } from 'react'
 import type { Field, RecordId, ViewId } from '@dataview/core/contracts'
 import {
@@ -11,6 +13,9 @@ import {
 } from '@dataview/engine'
 import { useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/react/dom/field'
+import {
+  itemDomBridge
+} from '@dataview/react/dom/item'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { cn } from '@shared/ui/utils'
 import { CellValue } from '@dataview/react/views/table/components/cell/CellValue'
@@ -48,6 +53,7 @@ const same = (left: CellProps, right: CellProps) => (
 const View = (props: CellProps) => {
   const engine = useDataView().engine
   const table = useTableContext()
+  const cellNodeRef = useRef<HTMLDivElement | null>(null)
   const chrome = useKeyedStoreValue(table.chrome.cell, {
     itemId: props.itemId,
     fieldId: props.field.id
@@ -61,6 +67,7 @@ const View = (props: CellProps) => {
   })
   const canQuickToggle = fieldApi.behavior.canQuickToggle(props.field)
   const cellRef = useCallback((node: HTMLDivElement | null) => {
+    cellNodeRef.current = node
     table.nodes.registerCell({
       itemId: props.itemId,
       fieldId: props.field.id
@@ -70,6 +77,19 @@ const View = (props: CellProps) => {
     props.itemId,
     table.nodes
   ])
+
+  useLayoutEffect(() => {
+    const node = cellNodeRef.current
+    if (!node) {
+      return
+    }
+
+    itemDomBridge.bind.node(node, props.itemId)
+
+    return () => {
+      itemDomBridge.clear.node(node)
+    }
+  }, [props.itemId])
 
   const onQuickToggle = () => {
     const action = fieldApi.behavior.primaryAction({

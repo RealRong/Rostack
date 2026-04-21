@@ -48,7 +48,7 @@ export const useKanbanLayout = (input: {
   const visibilityVersion = useStoreValue(input.visibility.version)
   const visibleIds = useMemo(
     () => input.sections.flatMap(section => (
-      input.visibility.all().get(section.key)?.ids ?? section.items.ids
+      input.visibility.all().get(section.key)?.ids ?? section.itemIds
     )),
     [input.sections, input.visibility, visibilityVersion]
   )

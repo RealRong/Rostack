@@ -243,7 +243,7 @@ const itemIdByRecordId = (engine, recordId) => {
     return undefined
   }
 
-  return items.ids.find(itemId => items.get(itemId)?.recordId === recordId)
+  return items.ids.find(itemId => items.read.record(itemId) === recordId)
 }
 
 const moveRecordOrder = (engine, recordIds, beforeRecordId) => {
@@ -264,8 +264,8 @@ const moveRecordOrder = (engine, recordIds, beforeRecordId) => {
     ? itemIdByRecordId(engine, beforeRecordId)
     : undefined
   const section = beforeItemId
-    ? state.items.get(beforeItemId)?.sectionKey
-    : state.items.get(itemIds[0])?.sectionKey ?? state.sections.ids[0]
+    ? state.items.read.section(beforeItemId)
+    : state.items.read.section(itemIds[0]!) ?? state.sections.ids[0]
   if (!section) {
     return
   }
@@ -291,19 +291,14 @@ const assertPublishedItemsMatchSections = engine => {
   const visibleSectionItems = (state?.sections.all ?? []).flatMap(section => (
     section.collapsed
       ? []
-      : section.items.ids
+      : section.itemIds
   ))
 
   state?.sections.all.forEach(section => {
     assert.equal(
-      section.items.count,
-      section.items.ids.length,
-      `section ${section.key} should publish one item per record`
-    )
-    assert.equal(
+      section.itemIds.length,
       section.recordIds.length,
-      section.items.ids.length,
-      `section ${section.key} should keep record and item counts aligned`
+      `section ${section.key} should publish one item per record`
     )
   })
   assert.deepEqual(state?.items.ids, visibleSectionItems)
@@ -671,7 +666,7 @@ test('engine.active.state removes deleted records from sorted query results and 
   assert.deepEqual(state?.records.ordered, ['rec_3', 'rec_1'])
   assert.deepEqual(state?.records.visible, ['rec_3', 'rec_1'])
   assert.deepEqual(
-    state?.items.ids.map(itemId => state.items.get(itemId)?.recordId),
+    state?.items.ids.map(itemId => state.items.read.record(itemId)),
     ['rec_3', 'rec_1']
   )
 })
@@ -771,7 +766,7 @@ test('engine.active.state sort reorders records without reallocating item ids', 
   openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
   const state = readViewState(engine)
   const itemRecordIds = state
-    ? state.items.ids.map(itemId => state.items.get(itemId)?.recordId)
+    ? state.items.ids.map(itemId => state.items.read.record(itemId))
     : undefined
 
   assert.deepEqual(itemRecordIds, ['rec_3', 'rec_2', 'rec_1'])
@@ -1324,8 +1319,8 @@ test('engine.active sync reuses unaffected grouped sections and summaries on dat
   const doneSectionBefore = sectionsBefore?.find(section => section.key === 'done')
   const doingSummaryBefore = summariesBefore?.get('doing')
   const doneSummaryBefore = summariesBefore?.get('done')
-  const doingItemBefore = doingSectionBefore?.items.ids[0]
-    ? itemsBefore?.get(doingSectionBefore.items.ids[0])
+  const doingItemBefore = doingSectionBefore?.itemIds[0]
+    ? itemsBefore?.read.placement(doingSectionBefore.itemIds[0])
     : undefined
 
   engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
@@ -1337,8 +1332,8 @@ test('engine.active sync reuses unaffected grouped sections and summaries on dat
   const summariesAfter = stateAfter?.summaries
   const doingSectionAfter = sectionsAfter?.find(section => section.key === 'doing')
   const doneSectionAfter = sectionsAfter?.find(section => section.key === 'done')
-  const doingItemAfter = doingSectionAfter?.items.ids[0]
-    ? itemsAfter?.get(doingSectionAfter.items.ids[0])
+  const doingItemAfter = doingSectionAfter?.itemIds[0]
+    ? itemsAfter?.read.placement(doingSectionAfter.itemIds[0])
     : undefined
 
   assert.equal(recordsAfter, recordsBefore)

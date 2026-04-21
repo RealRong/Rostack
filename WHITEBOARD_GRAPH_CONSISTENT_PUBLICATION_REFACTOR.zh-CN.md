@@ -1,637 +1,1293 @@
-# Whiteboard 图上一致发布重构方案
+# Whiteboard 一致发布架构重写方案
 
-本文讨论的不是某一个 mindmap bug，而是 whiteboard 整体派生链为什么会反复出现“局部算对、全局不同步、修一处又在别处漏”的问题，以及在不考虑成本、不考虑兼容的前提下，长期最优应该怎么重构。
+本文不再讨论现有 whiteboard 派生链、既有 store 模型、历史兼容包袱应该如何修补。
 
-本文要明确回答四个问题：
+本文只回答一个问题：
 
-1. 现有 `shared/core/store` 和 whiteboard 派生管线的问题到底在哪里。
-2. 要做到“图上一致发布”，是继续修改当前 store，还是单独做新的运行时。
-3. whiteboard 的长期最优架构应该长什么样。
-4. 具体如何重构，才能把复杂度降下来，让 bug 变少、可维护性变高。
+如果完全从长期最优出发，whiteboard 的 authoritative runtime 应该长什么样，哪些底层模式应该抽成高复用基础设施，才能让系统具备下面这些性质：
 
-结论先写在最前面：
+- 发布一致，不出现局部 fresh、局部 stale 同时对外可见。
+- phase 边界清楚，任何 bug 都能定位到具体阶段。
+- mindmap、free node、edge、selection、chrome 都消费同一份最终真相。
+- live edit、preview、measurement、layout、render 可以共存，但不会互相打架。
+- 运行时模式可以复用到 dataview、graph view、diagram、canvas 等其他投影型系统。
 
-- 长期最优不是继续把 `shared/core/store` 改造成图状态发布系统。
-- 长期最优是保留 `shared/core/store` 作为轻量 UI / 局部状态工具，同时为 whiteboard 单独建设一套新的“图上一致发布运行时”。
-- whiteboard 的 authoritative 派生链必须从“到处 `store.read` 的 lazy selector 图”迁移到“显式 phase、显式依赖、单次发布 revision”的快照运行时。
-- 如果一定要把新能力继续叫 store，也应该是一个新的 store family，而不是继续沿用当前 `createDerivedStore / createKeyedDerivedStore / createProjectedKeyedStore(sync)` 的语义。
+本文结论非常明确：
 
----
-
-## 1. 问题定义
-
-whiteboard 当前最难修、最容易回归的问题，不是算法本身，而是“图上没有一个强一致发布边界”。
-
-具体表现为：
-
-- 同一个时刻，不同消费链读到的是不同 freshness 的中间状态。
-- 某一条链通过 `get()` 已经拉到了新值，另一条链仍然在等订阅 fanout。
-- 一个变化本来影响整棵树，却被拆成多个 keyed store、多个 projection、多个 `read()` 调用之后，依赖链很难再被人脑完整还原。
-- 查询层和投影层互相读取彼此的中间结果，导致 bug 出现时很难判断问题是在“没算出来”还是“算出来没传播”。
-
-这类系统问题会不断长出新的局部现象：
-
-- mindmap 编辑时宽度或高度只更新了当前 topic，没有同步 sibling/scene/chrome。
-- scene 已经反映 live layout，但 node render 还是旧 rect。
-- commit 后一切瞬间正确，说明 committed 链路是对的，live edit 链路只是发布不一致。
-- 同一个逻辑，在 `get()` 直接读取时看上去是好的，在订阅驱动的 UI 里又会暴露出 stale。
-
-只要没有单一发布边界，这类问题不会消失。
+- whiteboard 的长期最优形态，不是“更聪明的 selector store”。
+- 长期最优不是只改 editor，而是 `whiteboard-engine` 和 editor 一起重构。
+- 长期最优形态是“显式阶段运行时 + working state + 单次 publish 的 revisioned snapshot + sink-local source sync”。
+- 真正值得复用的，不是当前某个 store API，而是一套 projection runtime contract。
+- 最终方案不保留兼容层、不保留旧 `EngineRead` 投影模型、不允许新旧双轨长期并存。
 
 ---
 
-## 2. 对当前 `shared/core/store` 的判断
+## 1. 总体判断
 
-### 2.1 这套 store 适合做什么
+whiteboard 的长期最优，不是“保留现在的 `whiteboard-engine` read 模型，再在 editor 上面加一层补丁运行时”。
 
-当前 `shared/core/store` 的核心语义是：
+长期最优应该同时重写 `whiteboard-engine` 和 editor 的运行时边界：
 
-- 依赖由 `read()` 动态采集。
-- derived 节点是 lazy 的，依赖变了先标脏，不立刻全图重算。
-- keyed family 可以局部订阅、局部回收。
-- projected store 可以做同步或异步合并。
+- `whiteboard-engine` 收敛成只负责 committed document、canonical graph facts、write transaction、document change set 的 `DocumentEngine`。
+- editor 建设新的 `EditorGraphRuntime`，作为编辑器图状态的唯一 authoritative projection runtime。
+- 当前 `whiteboard-engine` 里承担 projection/read/store 的那一层，要整体删除，而不是继续作为 editor 的底座。
 
-这套设计很适合：
+这套 runtime 的职责不是“提供很多方便的 read 接口”，而是：
 
-- tool / viewport / pointer / hover / panel 之类局部 UI 状态。
-- 一些轻量 query selector。
-- key 之间相对独立的列表、表格、面板类读取。
-- “订阅后按需拉取”的 React 消费模型。
+1. 接收所有会影响图投影的输入。
+2. 通过显式 phase 把输入投影到 working state。
+3. 在一个 revision 内只 publish 一次最终 `EditorSnapshot`。
+4. 让所有外部消费者只读这份已发布 snapshot。
+5. 让所有对外 store、React hook、canvas scene、命中检测、devtools 都只做 sink-local 同步，不再重算语义。
 
-一句话说，它更像“惰性 selector runtime”，而不是“强一致图状态系统”。
+一句话概括：
 
-### 2.2 这套 store 不适合做什么
-
-它不适合承担 whiteboard authoritative 派生链，原因不是实现粗糙，而是语义目标不同。
-
-它天生不擅长：
-
-- 一个输入变化同时影响很多 key 的图传播。
-- 多条 projection 链并行消费同一份中间派生状态。
-- 既依赖订阅 fanout，又大量混用 `get()` 的复杂运行时。
-- 需要“某一 revision 内所有消费者看到的是同一份图快照”的场景。
-
-最核心的问题有三个。
-
-### 2.3 `get()` 会刷新，但不保证发布一致
-
-当前 derived 的关键语义是：
-
-- `get()` 会触发 `ensureFresh(false)`。
-- 它会重算、更新依赖、甚至更新内部缓存。
-- 但 `notify === false` 时不会向下游发通知。
-
-这意味着：
-
-- 某条链可能已经因为 `get()` 看到了新状态。
-- 另一条依赖同一中间节点的链如果没被 refresh / fanout，就仍然是旧状态。
-
-这不是某个 bug，而是当前设计本身允许出现的现象。
-
-换句话说，当前系统没有“同一 revision 的一致快照”契约，只有“谁先 pull 谁先新”的局部语义。
-
-### 2.4 `createProjectedKeyedStore(sync)` 和异步模式不是同一套语义
-
-当前 `createProjectedKeyedStore`：
-
-- `sync` 模式直接退化为 `createKeyedDerivedStore`
-- 异步模式才维护中心 `Map` 并按 changed keys fanout
-
-这导致同一个 API 在不同 schedule 下其实是两种完全不同的系统：
-
-- `sync` 更像每个 key 独立的惰性 selector。
-- `microtask / raf` 更像一次 select + changed-keys fanout 的快照发布。
-
-whiteboard 这种“树级变化影响很多 key”的几何派生，更接近后者需求，而不是前者。
-
-### 2.5 依赖链太隐式，`read()` 到处散落
-
-当前 whiteboard 代码里，很多派生逻辑是这样长出来的：
-
-- 某个 `createDerivedStore` 里 `read()` 另一个 derived
-- 那个 derived 里再 `read()` layout / selection / preview / session
-- 最终同一份最终 render 结果，背后跨了很多文件和很多中间层
-
-这种模式的问题不只是长，而是依赖关系没有显式边界：
-
-- 代码里很难一眼看出“谁是 authoritative 输入，谁只是中间缓存”。
-- 一个 bug 出来后，排查依赖链需要不停展开 `store.read()`。
-- 局部修复很容易把系统推向更长的链，而不是更清晰的边界。
-
-### 2.6 当前 store 设计不是错，只是不该承担这份职责
-
-这里要明确：
-
-- `shared/core/store` 不是失败的设计。
-- 它对轻量 UI 状态和局部 selector 非常合适。
-- 但它不是白板几何真相发布系统。
-
-如果强行继续把它往那个方向改，会把两种目标混在一起：
-
-- 一种是“lazy、局部、轻量、低接入成本”
-- 一种是“显式 phase、全图一致、一次发布、强 revision 语义”
-
-这两种目标不该放在同一套原语上硬兼容。
+> whiteboard 的最终形态应该是一个 projection engine，而不是一张由零散 `read()` 串起来的 selector graph。
 
 ---
 
-## 3. 是否应该改当前 store，还是单独做新的 store
+## 2. 设计目标
 
-### 3.1 选项 A：继续修改当前 `shared/core/store`
+### 2.1 一致性目标
 
-理论上可以，但这条路不是长期最优。
+对外必须满足以下契约：
 
-如果继续改当前 store，要真正满足 whiteboard 需要，至少要加入：
+- 同一时刻所有消费者看到的是同一 revision 的快照。
+- 一个 revision 内不允许分批对外暴露中间结果。
+- `layout`、`node render`、`scene`、`selection`、`chrome` 必须来自同一份最终发布结果。
+- 任何 `get()`、订阅、hook render 都不能偷偷刷新中间状态并绕过 publish。
 
-- 强 revision 概念
-- `get()` / `subscribe()` 同步到同一发布快照的契约
-- derived / projected / keyed / family 的统一快照语义
-- cross-key fanout 的一等能力
-- 显式 dirty set 和 phase 边界
-- “发布前工作区”和“发布后快照”的双态机制
+### 2.2 复杂度目标
 
-问题在于：
+系统要能长期承受：
 
-- 一旦把这些能力真的做进去，它本质上已经不是当前这套 store 了。
-- 原有简单场景的 API 会变复杂。
-- 运行时会同时承担两种不同需求，设计张力会非常大。
-- 最后得到的是一套谁都能用、但谁都不够顺手的折中系统。
+- 文本编辑导致的连续测量变化
+- owner 级树布局变化
+- preview patch
+- 多种 node owner
+- selection / hover / chrome 的二次投影
+- 大图场景下的局部增量更新
 
-### 3.2 选项 B：为 whiteboard 单独做新的图发布运行时
+但复杂度必须集中在 runtime，而不是分散在一堆 store / hook / query 里。
 
-这条路更适合当前目标。
+### 2.3 复用目标
 
-原因很简单：
+最终应沉淀成两层：
 
-- whiteboard 需要的是 authoritative graph projection runtime，不是通用 selector helper。
-- 它最重要的不是“任意地方都能 `read()`”，而是“所有消费者都看到同一份已发布图快照”。
-- 这套运行时完全可以只优化 whiteboard / dataview 这类复杂投影系统，不必照顾轻量 store 的 ergonomics。
+1. domain-specific runtime
+   whiteboard、dataview、其他 graph-like 产品各自定义自己的 phase 和 snapshot schema。
+2. reusable runtime kit
+   提供 staged derivation、dirty planning、publish reuse、source sync、trace、测试夹具等通用底层模式。
 
-### 3.3 最终建议
+也就是说：
 
-最终建议非常明确：
-
-- 不要把 whiteboard 的 authoritative 派生链继续建立在当前 `shared/core/store` 上。
-- 不要尝试把当前 store 渐进式改成强一致图系统。
-- 新建一套 whiteboard 专用的“图上一致发布运行时”。
-
-当前 `shared/core/store` 的保留角色：
-
-- tool
-- viewport
-- pointer
-- hover
-- panel
-- dialog
-- 输入 staging
-- 一些与几何真相无关的轻量本地状态
-
-新的图发布运行时负责：
-
-- committed + live edit + preview 的 authoritative 投影
-- node / edge / mindmap / selection / chrome 的最终快照
-- 一次输入变更后的单次一致发布
-
-如果未来证明这套运行时足够成熟，再考虑抽出新的通用包。不要先以“通用 store”目标约束 whiteboard 重构。
+- 业务语义不强行共用。
+- runtime contract 和基础设施应高复用。
 
 ---
 
-## 4. 长期最优的目标架构
+## 3. 最终总架构
 
-### 4.1 一个输入工作区，一个已发布快照
+### 3.1 系统边界
 
-长期最优模型应分成两层：
+长期最优的 whiteboard 系统，应拆成 3 个明确边界：
 
-1. 工作区 `WorkingState`
-2. 已发布快照 `EditorSnapshot`
+1. `DocumentEngine`
+2. `EditorGraphRuntime`
+3. `Adapter / Host`
 
-工作区特点：
+它们的关系是：
 
-- 可变
-- 允许 phase 内多次更新
-- 允许局部 dirty set
-- 不直接暴露给 UI
+- `DocumentEngine` 只负责 committed domain truth。
+- `EditorGraphRuntime` 只负责 editor projection truth。
+- `Adapter / Host` 只负责输入接线、sink-local 同步、UI 集成。
 
-已发布快照特点：
+必须明确：
 
-- 不可变
-- 有 revision
-- 所有对外读取都只能读它
-- 一次 publish 后对所有消费者一致
+- engine 不再对外暴露 node geometry、mindmap layout、mindmap scene、canvas scene 这类 projection read。
+- editor 不再建立在 engine 已投影过一轮的 read store 之上。
+- adapter 不再兜底一致性，不再偷读中间态。
 
-这意味着：
+因此，whiteboard 最终不是“一个 engine + 一堆 selector read”，而是“两级 runtime”：
 
-- 中间 phase 可以反复算
-- 但 UI 和 query 永远只看到 publish 之后的整体验证结果
+- 一级是 committed 文档引擎
+- 一级是 editor 投影引擎
 
-### 4.2 一个 revision 内只发布一次
+二者都必须重构，不能只动 editor。
 
-每次输入变化后，运行时流程必须是：
+### 3.2 逻辑分层
 
-1. 接收输入变化
-2. 标记 dirty sets
-3. 按 phase 顺序重算 working state
-4. 统一产出 `EditorSnapshot(revision + 1)`
-5. 一次性通知相关订阅者
+长期最优建议固定为 4 层：
 
-中间不允许：
+1. `Input`
+2. `Runtime`
+3. `Snapshot`
+4. `Source`
 
-- 某个 node render 先看到 revision N+1
-- 另一个 mindmap scene 还停留在 revision N
-- 同一个 topic 的 width 已经是 N+1，但 sibling y 还是 N
+它们的职责分别是：
 
-### 4.3 最终消费者只读 snapshot，不读中间 store
+#### 1. Input
 
-最终外部消费只能面向：
+只负责收集原始输入，不做语义派生。
 
-- `snapshot.nodes.render`
-- `snapshot.edges.render`
-- `snapshot.mindmaps.scene`
-- `snapshot.selection`
-- `snapshot.chrome`
+输入包括：
 
-不能再让对外消费绕回去读：
-
-- `layout.draft`
-- `mindmap.nodeGeometry`
-- `query.node.projected`
-- `preview.text`
-- 各种中间 derived store
-
-中间层只属于 runtime 内部。
-
----
-
-## 5. 新运行时应该怎么设计
-
-## 5.1 明确输入层
-
-新的运行时只接受几类显式输入：
-
-- committed engine document
-- session edit state
+- committed whiteboard document
+- edit session state
+- draft text
+- text measurement results
 - preview state
 - interaction state
 - viewport state
-- text measurement backend
+- tool state
+- animation clock
+- resource readiness
 
-不要允许 phase 在内部随意从各种 store `read()`。
+#### 2. Runtime
 
-应该改成：
+唯一 authoritative projection runtime。
 
-- phase 输入是显式字段
-- phase 输出是显式 patch
-- orchestrator 负责组装 phase 图
+它维护：
 
-### 5.2 明确 phase 边界
+- `WorkingState`
+- `DirtyState`
+- phase cache
+- previous published snapshot
+- trace / metrics
 
-建议把 whiteboard authoritative 派生链拆成这些 phase：
+并负责：
 
-1. `CommittedGraphPhase`
-   负责把 engine committed state 归一成统一图输入。
+- impact planning
+- staged derivation
+- publish
 
-2. `EditDraftPhase`
-   负责把 edit session 变成 draft text / draft measure / draft patch。
+#### 3. Snapshot
 
-3. `TreeProjectionPhase`
-   负责所有 owner 级几何投影。
-   mindmap 的 live edit、root move、subtree move、enter 动画都在这里解决。
+对外唯一真相。
 
-4. `NodeProjectionPhase`
-   负责把 node 的 committed data、draft text、owner geometry、preview patch 合成成最终 node render。
+它是：
 
-5. `EdgeProjectionPhase`
-   负责 edge 的最终 render。
+- immutable
+- revisioned
+- fully validated
+- stable-reference aware
 
-6. `ScenePhase`
-   负责 scene list、mindmap scene、selection frame、chrome 等最终消费态。
+最终所有对外读取都只面向它。
 
-这里最重要的原则是：
+#### 4. Source
 
-- 会影响整棵树布局的事情，只能进 `TreeProjectionPhase`
-- node phase 不能再反向修补 owner tree 几何
+只负责把 `previousSnapshot / nextSnapshot` 同步给不同 sink。
 
-### 5.3 引入显式 dirty set
+它不是第二个语义引擎。
 
-新的运行时不能靠“某个 derived 被 read 了所以顺便刷新”。
+它不负责：
 
-应该显式维护 dirty set，例如：
+- 重新计算布局
+- 重新组合 node render
+- 推断哪些 tree 该 relayout
+- 再定义 selection / chrome / scene 语义
 
-- `dirty.nodes`
-- `dirty.edges`
-- `dirty.mindmaps`
-- `dirty.selection`
-- `dirty.chrome`
-- `dirty.scene`
+它只负责：
 
-输入变更后先计算影响范围，再推进 phase。
+- sink-local diff
+- store patch
+- keyed notification
+- renderer sync
 
-例如：
+### 3.3 数据流
 
-- 编辑一个 `owner=mindmap` 的 topic
-  先脏掉该 node、所属 mindmap、该 mindmap 的相关 node 集、scene、chrome。
+每次输入变化后的固定流程：
 
-- 移动一个 free node
-  只脏掉该 node、相关 edges、scene、selection。
+1. input adapter 产生 `InputChange`
+2. runtime 计算 `ImpactPlan`
+3. runtime 标记 dirty set
+4. runtime 按 phase 顺序更新 `WorkingState`
+5. runtime 产出 `nextSnapshot`
+6. runtime publish `revision + 1`
+7. source 以 sink-local 方式同步 `previousSnapshot -> nextSnapshot`
+8. 外部消费者只收到 publish 结果
 
-这一步必须是显式算法，而不是散落在 query 里的隐式副作用。
-
-### 5.4 输出采用快照 + patch
-
-建议每个 phase 的输出不是新的 store，而是：
-
-- 对 working state 的 patch
-- 对 changed entity ids 的声明
-
-例如：
-
-```ts
-type PhaseResult = {
-  changedNodeIds?: ReadonlySet<NodeId>
-  changedEdgeIds?: ReadonlySet<EdgeId>
-  changedMindmapIds?: ReadonlySet<MindmapId>
-}
-```
-
-orchestrator 汇总这些结果后，再决定最后 publish 哪些实体发生变化。
-
-### 5.5 发布层提供稳定引用
-
-最终 `EditorSnapshot` 需要做到：
-
-- revision 增加时，只为真的变化实体创建新对象
-- 没变化的 node render / edge render / scene item 保持旧引用
-- keyed 订阅只根据 publish 阶段算出的 changed ids 通知
-
-这里的 keyed 通知不应该再通过“重新 select 一个 map 然后 diff previous/next”来间接推导，而应该直接来自 runtime 已知的 dirty / changed 集。
-
-也就是说，通知不是 store 自己猜出来的，而是 runtime 在 phase 执行时已经知道的。
+整个过程中不允许任何外部读取接触 `WorkingState`。
 
 ---
 
-## 6. 新的对外读取模型
+## 4. 核心抽象
 
-### 6.1 对外只暴露 Snapshot Read
+### 4.1 `WorkingState`
 
-建议引入新的读接口：
+`WorkingState` 是运行时内部可变工作区。
+
+它应该包含 runtime 各阶段需要的中间结果，但这些结果只允许 phase 之间传递，不允许对外暴露。
+
+建议结构：
 
 ```ts
-type EditorSnapshotRead = {
+interface WorkingState {
+  inputs: InputState
+  graph: GraphWorkingState
+  measure: MeasureWorkingState
+  tree: TreeWorkingState
+  render: RenderWorkingState
+  scene: SceneWorkingState
+  publish: PublishWorkingState
+}
+```
+
+特点：
+
+- 可变
+- 允许 phase 内多次修正
+- 允许缓存
+- 允许局部复用
+- 不可被 UI 直接读
+
+### 4.2 `EditorSnapshot`
+
+`EditorSnapshot` 是对外唯一真相。
+
+建议结构：
+
+```ts
+interface EditorSnapshot {
+  revision: number
+  meta: EditorSnapshotMeta
+  nodes: EntityFamilySnapshot<NodeId, NodeRenderSnapshot>
+  edges: EntityFamilySnapshot<EdgeId, EdgeRenderSnapshot>
+  owners: {
+    mindmaps: EntityFamilySnapshot<MindmapId, MindmapSnapshot>
+    groups: EntityFamilySnapshot<GroupId, GroupSnapshot>
+  }
+  selection: SelectionSnapshot
+  chrome: ChromeSnapshot
+  scene: SceneSnapshot
+  spatial: SpatialSnapshot
+}
+```
+
+核心要求：
+
+- 没变化的实体必须复用旧引用。
+- 变化实体只在 publish 时创建新对象。
+- 所有切片都带有明确边界，不能跨切片偷读中间态。
+
+### 4.3 `ImpactPlan`
+
+`ImpactPlan` 负责把输入变化翻译成 dirty 范围。
+
+建议结构：
+
+```ts
+interface ImpactPlan {
+  causes: readonly ChangeCause[]
+  dirty: DirtyState
+  priority: 'sync' | 'transition' | 'idle'
+}
+```
+
+这是整个增量系统的起点。
+
+关键原则：
+
+- dirty 由显式算法决定，不由 selector 传播“猜”出来。
+- runtime 在进入 phase 前，就应该知道大概会影响哪些实体和哪些阶段。
+
+### 4.4 `Phase`
+
+每个 phase 都是显式节点，而不是隐式 `read()` 网络。
+
+通用 contract 建议固定成：
+
+```ts
+interface RuntimePhase<TContext> {
+  name: string
+  dependsOn: readonly string[]
+  run(context: TContext): PhaseResult
+}
+
+interface PhaseResult {
+  action: 'reuse' | 'sync' | 'rebuild'
+  changed: ChangedSet
+  metrics?: PhaseMetrics
+}
+```
+
+phase 的职责是：
+
+- 读取明确输入
+- 更新 working state 的明确区域
+- 声明 changed set
+- 产出 trace / metrics
+
+phase 不应该做的事：
+
+- 直接通知 UI
+- 直接写外部 store
+- 直接触发另一个 phase 的订阅式刷新
+
+### 4.5 `SourceSync`
+
+source 层建议统一成 `previousSnapshot -> nextSnapshot` 的 sink-local 同步模型。
+
+建议 contract：
+
+```ts
+interface SnapshotSourceSync<TSink> {
+  sync(input: {
+    previous?: EditorSnapshot
+    next?: EditorSnapshot
+    changed: PublishedChangeSet
+    sink: TSink
+  }): void
+}
+```
+
+这里的关键点是：
+
+- runtime 产出 snapshot 和 changed set
+- sink 自己决定如何最小化更新
+- 但 sink 不负责重新定义语义
+
+### 4.6 `DocumentEngineSnapshot`
+
+`whiteboard-engine` 的最终公共真相不应该是 projection read，而应该是 committed document snapshot。
+
+建议结构：
+
+```ts
+interface DocumentEngineSnapshot {
+  revision: number
+  document: Document
+  facts: DocumentFactsSnapshot
+  change?: DocumentChangeSet
+}
+
+interface DocumentFactsSnapshot {
+  nodes: ReadonlyMap<NodeId, Node>
+  edges: ReadonlyMap<EdgeId, Edge>
+  owners: OwnerFactsSnapshot
+  relations: GraphRelationSnapshot
+}
+```
+
+`DocumentEngine` 的职责应该只有：
+
+- 文档 normalize / sanitize
+- command compile / transaction
+- document revision
+- canonical committed graph facts
+- committed change set / impact
+
+它不应该负责：
+
+- live edit
+- preview
+- text measurement
+- layout
+- node render
+- edge render
+- scene
+- selection / chrome
+- hit-test 依赖的 editor projection geometry
+
+### 4.7 `DocumentEngine` 对外 contract
+
+长期最优建议把 engine 收敛成下面这类接口：
+
+```ts
+interface DocumentEngine {
+  getSnapshot(): DocumentEngineSnapshot
+  subscribeCommits(
+    listener: (snapshot: DocumentEngineSnapshot) => void
+  ): () => void
+  execute(command: Command): CommandResult
+  apply(ops: readonly Operation[]): CommandResult
+}
+```
+
+也就是说：
+
+- editor runtime 读取的是 committed snapshot
+- editor runtime 不再读取 engine projection store
+- engine 只提供 committed truth，不提供 editor projection truth
+
+### 4.8 必须删除的旧模型
+
+既然目标是长期最优，下面这些模型最终都不应该保留：
+
+- `EngineRead.node.committed`
+- `EngineRead.node.geometry`
+- `EngineRead.node.rect`
+- `EngineRead.node.bounds`
+- `EngineRead.edge.item`
+- `EngineRead.mindmap.structure`
+- `EngineRead.mindmap.layout`
+- `EngineRead.mindmap.scene`
+- `EngineRead.scene.list`
+- `whiteboard-engine/src/read/store/projection.ts`
+- `whiteboard-engine/src/read/store/*` 这整套 projection store runtime
+- editor 当前基于 `store.read()` 串起来的 query/layout/read 旧链路
+
+原因不是这些实现一定错误，而是它们把 committed truth 和 editor projection truth 混成了一层。
+
+这在长期一定会回到：
+
+- 双 authoritative geometry
+- 双 publish 语义
+- 依赖链隐式
+- live edit / committed / scene 彼此错位
+
+---
+
+## 5. Whiteboard 运行时的最终 phase 设计
+
+whiteboard 不适合只有一个“超级 derive”阶段。
+
+长期最优应该固定成下面这些 phase。
+
+### 5.1 `InputNormalizePhase`
+
+职责：
+
+- 把 committed document、session draft、preview、interaction、viewport、tool、clock 等原始输入归一成统一的 `InputState`
+- 生成稳定的 input revision
+- 对输入做最小必要校验
+
+输出：
+
+- `WorkingState.inputs`
+
+不负责：
+
+- layout
+- render
+- scene
+
+### 5.2 `GraphAssemblePhase`
+
+职责：
+
+- 把 committed graph 和 transient overlay 合成为统一 graph facts
+- 明确 node/edge/owner 的 canonical identity
+- 明确 owner relation、tree relation、attachment relation
+- 把 draft text、draft style、preview patch 变成 graph-level overlay，而不是在 node read 末端临时拼接
+
+输出建议：
+
+- `graph.nodes`
+- `graph.edges`
+- `graph.owners`
+- `graph.overlays`
+- `graph.indices`
+
+关键原则：
+
+- “这个 node 当前语义上是什么”只能在这里定。
+- 后续 phase 不应该再回头猜 committed 与 draft 谁优先。
+
+### 5.3 `MeasurePhase`
+
+职责：
+
+- 基于 graph facts 和文本内容生成测量请求
+- 消费 text measurement backend 的结果
+- 生成 node content box / intrinsic size / line metrics
+
+输出建议：
+
+- `measure.nodeContent`
+- `measure.nodeSize`
+- `measure.labelSize`
+- `measure.pendingRequests`
+
+关键原则：
+
+- 文本测量不应该散落在 node render 或 owner layout 里临时触发。
+- measurement 是独立真源，tree/layout 只能消费它。
+
+### 5.4 `OwnerStructurePhase`
+
+职责：
+
+- 生成 owner 级结构模型
+- 对 mindmap、group、container、table-like owner 等建立统一结构视图
+- 明确 subtree membership、sibling order、anchor rule、layout policy
+
+输出建议：
+
+- `tree.ownerStructure`
+- `tree.ownerMembers`
+- `tree.nodeOwnerIndex`
+
+关键原则：
+
+- owner 结构是真正决定 relayout 范围的地方。
+- node phase 不允许再修改 owner 级结构判断。
+
+### 5.5 `TreeProjectionPhase`
+
+职责：
+
+- 根据 owner structure 和 measured size 计算 owner 级布局结果
+- 产出 subtree bbox、anchored rect、ports、mindmap live layout、group content rect
+- 处理会影响整棵树的几何变化
+
+输出建议：
+
+- `tree.nodeGeometry`
+- `tree.ownerGeometry`
+- `tree.subtreeBounds`
+- `tree.portGeometry`
+
+这一步是 whiteboard 最关键的 authoritative geometry phase。
+
+必须明确规定：
+
+- 凡是会影响 sibling / subtree / owner bbox 的变化，都只能在这里生效。
+- 后续 node render 只能消费 `tree.nodeGeometry`，不能反向修补树布局。
+
+这条规则正是避免“编辑时高度变了，但 topic left/top 不动，commit 后才回到正确位置”的根本手段。
+
+### 5.6 `ElementProjectionPhase`
+
+职责：
+
+- 把 graph facts、measurement、tree geometry 合成为最终 node / edge render
+- 计算 node visual rect、content rect、handle rect、decoration、edge path
+
+输出建议：
+
+- `render.nodes`
+- `render.edges`
+- `render.hitAreas`
+
+关键原则：
+
+- node render 必须完全站在 authoritative tree geometry 之上。
+- 这里不允许再做 owner 级重定位。
+- `contentRect`、`visualRect`、`selectionRect` 的定义要稳定，不允许每条消费链自己理解一套。
+
+### 5.7 `SelectionProjectionPhase`
+
+职责：
+
+- 基于最终 node / edge render 和 interaction 状态生成 selection 结果
+- 计算 marquee、selection frame、handles、multi-select outline
+
+输出建议：
+
+- `scene.selection`
+- `chrome.handles`
+
+### 5.8 `ChromeProjectionPhase`
+
+职责：
+
+- 生成 hover、anchor hint、drop indicator、editing caret overlay、guides、tool chrome
+
+输出建议：
+
+- `chrome.overlays`
+- `chrome.guides`
+- `chrome.editing`
+
+### 5.9 `SceneProjectionPhase`
+
+职责：
+
+- 汇总 nodes / edges / owners / selection / chrome 成最终 scene
+- 生成渲染层所需分层、排序、裁剪、spatial index、pick index
+
+输出建议：
+
+- `scene.layers`
+- `scene.items`
+- `scene.spatial`
+
+### 5.10 `PublishPhase`
+
+职责：
+
+- 基于 `WorkingState` 构建最终 `EditorSnapshot`
+- 复用未变化引用
+- 生成 `PublishedChangeSet`
+- 递增 revision
+
+输出建议：
+
+```ts
+interface PublishResult {
+  snapshot: EditorSnapshot
+  changed: PublishedChangeSet
+}
+```
+
+必须强调：
+
+- publish 是 runtime 唯一对外边界。
+- 一个输入变化内只能 publish 一次。
+- 所有 source / store / React hook 都只订阅 publish 结果。
+
+---
+
+## 6. 依赖与禁止规则
+
+长期最优架构不能只定义阶段，还要定义禁止规则。
+
+### 6.1 允许的依赖方向
+
+只允许：
+
+1. `InputNormalize -> GraphAssemble`
+2. `GraphAssemble -> Measure`
+3. `GraphAssemble + Measure -> OwnerStructure`
+4. `OwnerStructure + Measure -> TreeProjection`
+5. `TreeProjection + GraphAssemble -> ElementProjection`
+6. `ElementProjection + Interaction -> SelectionProjection`
+7. `ElementProjection + SelectionProjection + Interaction -> ChromeProjection`
+8. `ElementProjection + SelectionProjection + ChromeProjection -> SceneProjection`
+9. `SceneProjection -> Publish`
+
+### 6.2 明确禁止
+
+必须禁止下面这些模式：
+
+- node projection 再反向修改 tree geometry
+- scene projection 再回头决定 node layout
+- chrome 再偷偷读 draft store 自己拼编辑态
+- hook 层为了“兜底”再去调用 runtime 内部 `get()` 补刷新
+- source 根据 previous/next 自己再推导一套业务语义
+- 任何 phase 通过全局隐式读写触发另一个 phase 的增量刷新
+
+一句话：
+
+> 允许下游消费上游结果，不允许下游重定义上游语义。
+
+---
+
+## 7. 增量更新模型
+
+### 7.1 DirtyState 不是附属优化，而是主模型的一部分
+
+建议：
+
+```ts
+interface DirtyState {
+  inputs: boolean
+  graph: {
+    nodeIds: ReadonlySet<NodeId>
+    edgeIds: ReadonlySet<EdgeId>
+    ownerIds: ReadonlySet<OwnerId>
+  }
+  measure: {
+    nodeIds: ReadonlySet<NodeId>
+  }
+  tree: {
+    ownerIds: ReadonlySet<OwnerId>
+    nodeIds: ReadonlySet<NodeId>
+  }
+  render: {
+    nodeIds: ReadonlySet<NodeId>
+    edgeIds: ReadonlySet<EdgeId>
+  }
+  scene: boolean
+  selection: boolean
+  chrome: boolean
+}
+```
+
+关键点：
+
+- dirty set 由 `ImpactPlan` 产生。
+- phase 运行后可以扩展下游 dirty。
+- 最终 publish 的 changed set 由 phase 结果汇总得到。
+
+### 7.2 典型例子：编辑 mindmap topic 文本
+
+理想影响链应该是：
+
+1. draft text 变化
+2. `MeasurePhase` 得到新 content size
+3. `TreeProjectionPhase` 重新计算所属 mindmap subtree 布局
+4. `ElementProjectionPhase` 重新生成受影响 node render 和相关 edge path
+5. `SceneProjectionPhase` 更新 scene / spatial / chrome
+6. `PublishPhase` 一次对外发布
+
+这条链路里不允许出现：
+
+- node content size 变了，但 tree geometry 还是旧的
+- tree geometry 新了，但 node render 还拿旧 owner geometry
+- scene 变了，但 selection / chrome 没跟上
+
+### 7.3 典型例子：移动一个 free node
+
+理想影响链应该是：
+
+1. graph overlay 变化
+2. tree 不一定脏
+3. element render 脏该 node 和 incident edges
+4. scene / selection / chrome 脏
+5. publish
+
+这说明 dirty 是领域算法，不是统一粗暴全量重算。
+
+### 7.4 典型例子：viewport 改变
+
+理想影响链应该是：
+
+1. 不改变 authoritative graph geometry
+2. 只影响 scene culling / chrome / overlays
+3. 不触发 tree 或 node render 重算
+
+这正是 phase 边界清晰带来的性能收益。
+
+---
+
+## 8. 发布模型
+
+### 8.1 快照是唯一公共语言
+
+最终对外公共语言应该只有：
+
+- `EditorSnapshot`
+- `PublishedChangeSet`
+
+不建议再设计跨层通用 patch 语言，把整个 runtime 变成“先翻译成 patch，再让下游再翻一遍”。
+
+更优做法是：
+
+1. runtime 产出 snapshot
+2. runtime 声明 changed set
+3. sink-local source sync 决定如何最小化更新
+
+### 8.2 稳定引用复用
+
+publish 需要做到：
+
+- 没变的 node render 直接复用旧对象
+- 没变的 edge render 直接复用旧对象
+- 没变的 scene layer / spatial bucket 尽量复用旧对象
+- selection / chrome 在语义没变时也复用
+
+这不是微优化，而是：
+
+- keyed 订阅的基础
+- React render 稳定性的基础
+- 大图场景性能稳定性的基础
+
+### 8.3 通知模型
+
+建议 publish 阶段直接产出：
+
+```ts
+interface PublishedChangeSet {
+  nodes: ReadonlySet<NodeId>
+  edges: ReadonlySet<EdgeId>
+  owners: ReadonlySet<OwnerId>
+  scene: boolean
+  selection: boolean
+  chrome: boolean
+}
+```
+
+所有 keyed 通知都应该基于这份 changed set。
+
+不要把“哪些 key 变了”的判断留给外部 store 再猜一次。
+
+---
+
+## 9. 对外读取模型
+
+### 9.1 只暴露 snapshot read
+
+建议对外固定成下面这类接口：
+
+```ts
+interface EditorSnapshotRead {
   getSnapshot(): EditorSnapshot
-  subscribe(listener: () => void): Unsubscribe
-  nodes: {
-    get(id: NodeId): NodeRender | undefined
-    subscribe(id: NodeId, listener: () => void): Unsubscribe
-  }
-  edges: {
-    get(id: EdgeId): EdgeRender | undefined
-    subscribe(id: EdgeId, listener: () => void): Unsubscribe
-  }
-  mindmaps: {
-    getScene(id: MindmapId): MindmapScene | undefined
-    subscribeScene(id: MindmapId, listener: () => void): Unsubscribe
-  }
+  subscribeRevision(listener: (revision: number) => void): () => void
+  subscribeChanges(
+    listener: (change: PublishedChangeSet, snapshot: EditorSnapshot) => void
+  ): () => void
 }
 ```
 
-这些 `get()` 只读已发布 snapshot。
+这是一切外部适配层的基础。
 
-这些 `subscribe()` 只听 publish 结果。
+### 9.2 可选暴露 entity-focused read
 
-内部 phase 永远不通过这套接口互相通信。
+为了 ergonomics，可以暴露 entity-focused 读取，但其语义必须建立在已发布 snapshot 之上：
 
-### 6.2 React 绑定极薄
+```ts
+interface EditorEntityRead {
+  getNode(id: NodeId): NodeRenderSnapshot | undefined
+  getEdge(id: EdgeId): EdgeRenderSnapshot | undefined
+  getMindmap(id: MindmapId): MindmapSnapshot | undefined
+  subscribeNodes(ids: readonly NodeId[], listener: () => void): () => void
+}
+```
 
-React 层应该退化成：
+重点在于：
 
-- 订阅 snapshot revision
-- 读取对应 entity
+- 这些接口只是 snapshot 的 index/read facade
+- 不是新的派生层
+- 不允许内部再跑半套 runtime
 
-不再做：
+### 9.3 React / store / renderer 都属于 adapter
 
-- hook 层 semantic cache
-- hook 层额外 equal 语义
-- hook 层替 store 修 snapshot 一致性
+推荐把下面这些全部看成 adapter：
 
-也不再需要“这个组件到底是订阅 query.node.render，还是订阅某个中间 store 再 render 时直接 `get()` 兜底”这种混合玩法。
+- React hook
+- canvas renderer
+- DOM overlay renderer
+- devtools inspector
+- testing harness
 
----
+这些 adapter 的共同原则：
 
-## 7. 为什么这比修改当前 whiteboard 派生链更好
-
-### 7.1 依赖链会变显式
-
-当前问题之一是到处 `store.read()`，依赖链很难靠代码结构看出来。
-
-新的 phase runtime 下，依赖关系不再藏在函数体深处，而是由 orchestrator 和 phase 输入明确声明：
-
-- `TreeProjectionPhase` 依赖 committed graph + draft measure + preview
-- `NodeProjectionPhase` 依赖 committed node + tree geometry + text draft + node preview
-- `ScenePhase` 依赖 final node/edge/mindmap outputs
-
-这会让“读代码就能看出依赖链”重新成立。
-
-### 7.2 不会再有跨链 freshness 不一致
-
-因为所有最终消费者都只读 `EditorSnapshot(revision)`，就不会再出现：
-
-- live layout 已经是新值
-- nodeGeometry 还是旧值
-- node render 半新半旧
-
-同一 revision 内，所有消费者必然来自同一批 phase 产物。
-
-### 7.3 tree 级问题能在 tree 级解决
-
-当前很多问题的根源是：
-
-- owner 几何是 tree 级真相
-- node render 又在 node 级试图局部补丁
-
-这会把问题拆成两层相互竞争的几何来源。
-
-新的架构里：
-
-- tree 级问题先在 tree phase 全部解决
-- node phase 只消费 tree phase 的最终几何结果
-
-几何真相就只有一份。
-
-### 7.4 调试会容易得多
-
-当前要调一个 bug，往往要沿着：
-
-- session.edit
-- layout.draft
-- liveMindmapLayout
-- layoutBase
-- nodeGeometry
-- query.node.projected
-- query.node.render
-
-一路追。
-
-新的架构里，调试只需要看：
-
-- 输入 revision
-- 脏了哪些实体
-- 哪些 phase 产出了哪些 patch
-- 发布后的 snapshot 是什么
-
-调试边界会非常清楚。
+- 只读 published snapshot
+- 不自行定义业务语义
+- 不碰 working state
+- 不保留兼容性旧接口
 
 ---
 
-## 8. Whiteboard 具体该怎么重构
+## 10. 可高复用的底层模式
 
-### 8.1 第一步：冻结“中间 query 公开面”
+whiteboard 真正值得沉淀为通用基础设施的，不是 node / mindmap / scene 这些业务语义，而是下面这些 runtime patterns。
 
-在真正重构前，先明确：
+### 10.1 Revisioned Snapshot Runtime
 
-- 现有 `query.*` 中间结果不再继续外溢
-- `EditorRead` 不再新增任何中间 layer 的对外暴露
+通用能力：
 
-否则重构永远在移动目标。
+- 维护 `previousSnapshot / nextSnapshot`
+- 管理 revision
+- 统一 publish
+- 对外提供 snapshot read
 
-### 8.2 第二步：先建新 snapshot runtime，不要边修边迁
+可抽成通用包，例如：
 
-不建议一边保留旧 query graph，一边在里面塞更多 phase。
+- `@projection-runtime/core`
 
-建议直接新建：
+### 10.2 Phase Orchestrator
 
-- `whiteboard/packages/whiteboard-editor/src/runtime-graph/*`
+通用能力：
 
-里面先搭：
+- phase 注册
+- phase 依赖图
+- run order
+- `reuse / sync / rebuild` 行为
+- trace 聚合
 
-- snapshot schema
-- working state
-- dirty set
+这是 dataview、whiteboard、graph view 都会用到的共性。
+
+### 10.3 Impact Planner / Dirty Planner
+
+通用能力：
+
+- 输入变化分类
+- dirty 集合维护
+- phase 扩散规则
+- changed set 汇总
+
+领域逻辑不同，但 planner 框架本身高度可复用。
+
+### 10.4 Stable Reference Publisher
+
+通用能力：
+
+- entity family publish
+- previous/next 引用复用
+- changed id 维护
+- snapshot 切片复用计数
+
+这也是典型复用点。
+
+### 10.5 Sink-local Source Sync
+
+通用能力：
+
+- `previousSnapshot / nextSnapshot` 同步
+- entity list patch
+- keyed store sync
+- renderer runtime sync
+
+source 的领域内容不同，但“snapshot 同步到 sink”的框架是共性的。
+
+### 10.6 Runtime Trace / Perf Contract
+
+通用能力：
+
+- phase trace
+- action: `reuse | sync | rebuild`
+- changed metrics
+- publish metrics
+- end-to-end timing
+
+这是复杂 projection engine 必备能力，不应每个产品各写一套。
+
+### 10.7 Deterministic Test Harness
+
+通用能力：
+
+- 输入变更驱动 runtime
+- capture snapshot
+- assert changed set
+- assert reference reuse
+- assert phase trace
+
+这是最应该复用的测试基础设施之一。
+
+---
+
+## 11. 哪些东西应该复用，哪些不应该
+
+### 11.1 应该复用的
+
+- runtime shell
+- phase runner
+- dirty planner framework
+- publish/reuse utilities
+- entity family snapshot utilities
+- source sync utilities
+- trace / perf schema
+- testing harness
+
+### 11.2 不应该强行复用的
+
+- whiteboard 的 owner / tree / edge / scene 语义
+- dataview 的 query / membership / summary 语义
+- 具体布局算法
+- 具体 measurement 语义
+- 具体 UI/chrome 规则
+
+判断标准很简单：
+
+- 只要是“投影引擎的共同运行时问题”，应该抽象复用。
+- 只要是“某个产品的业务语义”，就应该留在 domain runtime。
+
+---
+
+## 12. 建议的代码组织
+
+如果完全按长期最优来落地，建议拆成下面这些边界。
+
+### 12.1 通用 runtime 层
+
+```text
+packages/projection-runtime-core/
+  src/contracts/
+  src/runtime/
+  src/phase/
+  src/publish/
+  src/source/
+  src/testing/
+  src/perf/
+```
+
+职责：
+
+- staged runtime primitives
+- publish/reuse primitives
+- source sync primitives
+- trace / perf primitives
+- testing harness
+
+### 12.2 `whiteboard-engine` 文档引擎层
+
+```text
+whiteboard/packages/whiteboard-engine/
+  src/contracts/
+  src/document/
+  src/normalize/
+  src/facts/
+  src/impact/
+  src/write/
+  src/runtime/
+  src/testing/
+```
+
+职责：
+
+- committed document truth
+- canonical graph facts
+- command / transaction / history-facing write result
+- committed change set
+
+必须明确删除：
+
+- `src/read/store/`
+- engine 内部 projection runtime
+- engine 对 editor geometry / scene / mindmap layout 的公开 read
+
+### 12.3 whiteboard projection runtime
+
+```text
+whiteboard/packages/whiteboard-editor-graph/
+  src/contracts/
+  src/input/
+  src/impact/
+  src/phases/
+    inputNormalize/
+    graphAssemble/
+    measure/
+    ownerStructure/
+    treeProjection/
+    elementProjection/
+    selectionProjection/
+    chromeProjection/
+    sceneProjection/
+    publish/
+  src/runtime/
+  src/source/
+  src/testing/
+```
+
+职责：
+
+- whiteboard graph 语义
+- layout / render / scene 语义
+- whiteboard snapshot schema
+
+### 12.4 `whiteboard-editor` 宿主编排层
+
+```text
+whiteboard/packages/whiteboard-editor/
+  src/session/
+  src/input/
+  src/actions/
+  src/runtime/
+  src/testing/
+```
+
+职责：
+
+- 接入 `DocumentEngine`
+- 接入 `EditorGraphRuntime`
+- 编排 session / input / history / actions
+- 不承载 authoritative projection 逻辑
+
+### 12.5 adapter 层
+
+```text
+whiteboard/packages/whiteboard-react/
+whiteboard/packages/whiteboard-renderer/
+whiteboard/packages/whiteboard-devtools/
+```
+
+职责：
+
+- 订阅 published snapshot
+- 做 sink-local sync
+- 提供 React / renderer / inspector 适配
+
+---
+
+## 13. 对 dataview / 其他系统的复用意义
+
+这套方案不是只为 whiteboard 写的。
+
+如果抽象得当，它天然适用于：
+
+- dataview active snapshot runtime
+- graph/database explorer
+- kanban/table/gallery 投影引擎
+- diagram editor
+- timeline / mind map / org chart
+
+共性都在这里：
+
+- 输入不是最终显示
+- 中间需要多阶段投影
+- 必须有一致发布边界
+- 需要增量复用
+- 需要 sink-local 发布
+
+差异只在 domain phase 内容，不在 runtime contract。
+
+可以这样理解：
+
+- dataview 的 `query -> membership -> summary -> publish -> source`
+- whiteboard 的 `graph -> measure -> structure -> tree -> element -> scene -> publish -> source`
+
+它们属于同一个 runtime family，只是 phase 内容不同。
+
+---
+
+## 14. 最终实施顺序
+
+这里说的不是“渐进兼容迁移顺序”，而是长期最优目标下的一次性统一重构顺序。
+
+原则非常明确：
+
+- 不做双轨运行
+- 不保留 compatibility adapter
+- 不让新 runtime 建立在旧 `EngineRead` 之上
+- 不允许旧 editor query/layout 链继续存活
+
+最优顺序建议如下。
+
+### 14.1 第一步：先冻结目标 contract，再开始写代码
+
+先一次性定死下面这些最终 contract：
+
+- `DocumentEngineSnapshot`
+- `DocumentChangeSet`
+- `EditorSnapshot`
+- `PublishedChangeSet`
+- phase contract
+- source sync contract
+
+同时明确列出要删除的旧模型。
+
+这一步的目标不是做兼容层，而是让整个重构从第一天起就只有一个终局。
+
+### 14.2 第二步：重写 `whiteboard-engine`
+
+直接把 `whiteboard-engine` 改造成 committed document engine：
+
+- 保留 write / command / normalize / sanitize / facts / impact
+- 删除 projection read/runtime
+- 删除 mindmap layout/scene projection
+- 删除 node geometry/scene read 对外接口
+
+这一阶段结束时，engine 只提供 committed snapshot 和 commit change。
+
+### 14.3 第三步：建设通用 projection runtime kit
+
+抽出可复用底层：
+
 - phase orchestrator
-- publisher
+- dirty planner
+- stable reference publisher
+- source sync primitives
+- trace / perf contract
+- deterministic test harness
 
-先不追求全部 feature 覆盖，只要能跑最关键链路即可。
+这是后续 `whiteboard-editor-graph` 和 dataview 类系统的共同基础。
 
-### 8.3 第三步：优先迁 mindmap authoritative 几何
+### 14.4 第四步：建设 `whiteboard-editor-graph`
 
-mindmap 是目前最容易暴露一致性问题的区域，应最先迁入新 runtime。
+基于新的 engine snapshot 输入，实现完整 phase：
 
-优先落地：
+- input normalize
+- graph assemble
+- measure
+- owner structure
+- tree projection
+- element projection
+- selection projection
+- chrome projection
+- scene projection
+- publish
 
-- committed graph -> tree projection
-- live edit -> tree projection
-- tree projection -> node render
-- scene / chrome 统一从同一 snapshot 出
+这一阶段产出唯一 authoritative `EditorSnapshot`。
 
-只要这一步完成，当前这类 owner geometry / node render 不同步问题就会从结构上消失。
+### 14.5 第五步：重写 `whiteboard-editor`
 
-### 8.4 第四步：迁 free node / edge / selection
+把 `whiteboard-editor` 收口成宿主编排层：
 
-mindmap 跑通后，再把 free node、edge、selection、chrome 逐步迁过去。
+- session / input / actions / history 接线
+- 订阅 engine committed snapshot
+- 驱动 `EditorGraphRuntime`
 
-最终状态应是：
+同时删除旧的：
 
-- 旧 query graph 不再承担 authoritative 几何职责
-- 新 runtime 统一产出最终 render snapshot
+- `query/*`
+- `layout/*`
+- `editor/read.ts` 中建立在旧 projection 链上的模型
+- 任何依赖旧 `EngineRead` projection 的路径
 
-### 8.5 第五步：删除旧中间层
+### 14.6 第六步：重写 `whiteboard-react` 与其他 adapter
 
-最终应删除或大幅收缩这些层：
+统一改成只消费 `EditorSnapshot`：
 
-- `layout.draft`
-- `layout.mindmap.nodeGeometry`
-- 各种 `query.node.projected`
-- 各种 owner-aware geometry patch merge
-- 大量用于桥接旧链的中间 keyed store
+- React hooks
+- canvas scene
+- overlay renderer
+- devtools
+- testing adapters
 
-删除这些层不是“代码变少那么简单”，而是减少几何真相竞争。
+这一阶段不允许保留任何“为了兼容旧 API 暂时映射一下”的桥接层。
 
----
+### 14.7 第七步：统一删除旧世界
 
-## 9. 是否还需要新的 store
+在同一重构分支里，统一删除：
 
-需要，但这个“新的 store”不应该是当前 `shared/core/store` 的增量别名。
+- 旧 `whiteboard-engine` projection read
+- 旧 `whiteboard-editor` query/layout/store 派生链
+- 旧 mindmap live preview 修补逻辑
+- 旧 compatibility tests
+- 旧 facade / shim / bridge
 
-更准确地说，需要的是：
+这里必须一次删干净。
 
-- 一个新的 whiteboard graph snapshot publisher
-- 它可以对外提供 store-like 接口
-- 但内部语义应基于 revisioned snapshot，而不是 lazy derived selector
+如果旧模型还留下来，系统就会重新回到双 authoritative truth。
 
-推荐命名方向：
+### 14.8 第八步：最后再重建测试与性能基线
 
-- `GraphSnapshotStore`
-- `ConsistentSnapshotStore`
-- `ProjectionRuntime`
-- `EditorGraphRuntime`
+最后才做：
 
-不推荐继续把它塞回：
+- 新 runtime golden tests
+- reference reuse tests
+- changed set fanout tests
+- scene consistency tests
+- live edit relayout tests
+- perf baseline
 
-- `createDerivedStore`
-- `createKeyedDerivedStore`
-- `createProjectedKeyedStore(sync)`
+也就是说，测试体系要围绕新 contract 重建，而不是继续围绕旧 read API 兜底。
 
-因为那会把“快照发布系统”和“惰性 selector helper”继续混在一起。
+## 15. 实现时必须坚持的架构纪律
 
----
+长期最优不仅是“结构对”，还要求长期不退化。
 
-## 10. 这次重构要明确拒绝什么
+必须坚持下面这些纪律：
 
-为了让系统真正变简单，下面这些方向应该明确拒绝。
+### 14.1 不允许中间态外泄
 
-### 10.1 拒绝继续补丁式修复 fanout
+任何组件、hook、query、source 都不能直接读 working state。
 
-不要继续为单个 bug 加：
+### 14.2 不允许 phase 倒流
 
-- 更多的 `ownerGeometry` fallback
-- 更多的 `draft.size` 兜底
-- 更多的 “如果是 mindmap 则特殊处理” 分支
+下游 phase 不能回头修改上游 phase 语义。
 
-这些都只会让中间层越来越多。
+### 14.3 不允许 source 成为第二语义引擎
 
-### 10.2 拒绝继续在 query 内部堆 store
+source 只能发布，不准重算业务。
 
-不要把新逻辑继续做成：
+### 14.4 不允许 adapter 自己补一致性
 
-- `createXxxRead()`
-- `createYyyProjectedStore()`
-- 再套一层 `createKeyedDerivedStore()`
+不允许 hook/store/render 层为了“看起来先能用”而再做一套兜底逻辑。
 
-这会延续当前最根本的问题：依赖链越来越隐式。
+### 14.5 不允许把 dirty 判定分散到各层猜
 
-### 10.3 拒绝让 React hook 兜底一致性
+dirty 由 runtime 明确维护，changed set 由 publish 明确声明。
 
-React hook 只能消费已发布快照，不能承担：
+### 14.6 不允许同时存在多份 authoritative geometry
 
-- cache 修正
-- stale 补偿
-- 订阅顺序差异兜底
+对于 whiteboard：
 
-一致性只能在 runtime/publisher 层解决。
+- node 最终位置只有一份 authoritative geometry
+- owner 最终布局只有一份 authoritative tree projection
+- scene 最终列表只有一份 authoritative scene snapshot
 
----
-
-## 11. 重构完成后的理想结果
-
-完成后，whiteboard 应该满足下面这些不变量：
-
-1. 同一 revision 内，node render、mindmap scene、chrome、selection 永远来自同一份快照。
-2. 任何 tree 级变化都只在 tree phase 解决，不会在 node phase 再局部补丁。
-3. 任意组件都可以安全地直接读 snapshot，不需要“订阅一个 store，再 render 时用另一个 `get()` 兜底”。
-4. 调试任何 bug 时，都能先定位到具体 revision，再定位 phase，再定位 changed ids，而不是一路追散落的 `store.read()`。
-5. 运行时的复杂度主要体现在少数明确模块里，而不是蔓延到每个 query 文件。
-
-这才是长期最优。
-
-不是“再修几个 store 细节”，也不是“继续给当前 query graph 加更多等值判断”，而是把 whiteboard authoritative 派生链从现有 lazy selector 世界里完整拔出来，建立新的、一致发布的图运行时。
+任何“这边一份 rect，那边再拼一份 rect”的做法，长期都会回到脆弱状态。
 
 ---
 
-## 12. 最终建议
+## 16. 最终推荐
 
-最后把建议压缩成一句可执行决策：
+长期最优方案可以压缩成下面几句话：
 
-- 保留 `shared/core/store` 给轻量 UI / 局部状态使用。
-- 新建 whiteboard 专用的 `EditorGraphRuntime`，以 revisioned snapshot 为唯一对外真相。
-- 逐步废弃当前基于大规模 `store.read()` 串联出来的 authoritative query chain。
+1. `whiteboard-engine` 和 editor 必须一起重构，不做单边修补。
+2. `whiteboard-engine` 收敛为 committed document engine，删除现有 projection read 模型。
+3. editor 建立新的 `EditorGraphRuntime`，采用 `working state + staged derivation + single publish snapshot` 模型。
+4. 对外唯一真相是 `EditorSnapshot(revision)`。
+5. source 只做 `previousSnapshot -> nextSnapshot` 的 sink-local sync。
+6. phase 只允许单向依赖，不允许下游重定义上游语义。
+7. dirty / changed set 是一等公民，不是附属优化。
+8. 抽象复用的重点应是 runtime kit，而不是白板具体语义。
+9. 所有旧模型、兼容层、双轨接口都应在统一重构中删除。
 
-如果目标真的是“健壮、bug 少、复杂度低”，这是最值得做、也是最不该妥协的重构方向。
+一句话的最终版本：
+
+> whiteboard 的长期最优不是只在 editor 上修补 selector graph，而是把 engine 改成 committed truth，把 editor 改成 projection truth，并在一次统一重构中删掉旧模型，让整个系统收敛到唯一的一套“一致发布”契约。

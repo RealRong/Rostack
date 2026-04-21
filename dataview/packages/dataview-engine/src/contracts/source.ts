@@ -4,15 +4,16 @@ import type {
   DataRecord,
   Field,
   FieldId,
+  RecordId,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import { store } from '@shared/core'
 import type {
   ItemId,
+  ItemPlacement,
   Section,
-  SectionKey,
-  ViewItem
+  SectionKey
 } from '@dataview/engine/contracts/shared'
 import type {
   ActiveViewGallery,
@@ -28,6 +29,15 @@ export interface EntitySource<K, T> extends store.KeyedReadStore<K, T | undefine
 export interface SectionSource extends store.KeyedReadStore<SectionKey, Section | undefined> {
   keys: store.ReadStore<readonly SectionKey[]>
   summary: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
+}
+
+export interface ItemSource {
+  ids: store.ReadStore<readonly ItemId[]>
+  read: {
+    record: store.KeyedReadStore<ItemId, RecordId | undefined>
+    section: store.KeyedReadStore<ItemId, SectionKey | undefined>
+    placement: store.KeyedReadStore<ItemId, ItemPlacement | undefined>
+  }
 }
 
 export interface DocumentSource {
@@ -49,7 +59,7 @@ export interface ActiveSource {
     gallery: store.ReadStore<ActiveViewGallery>
     kanban: store.ReadStore<ActiveViewKanban>
   }
-  items: EntitySource<ItemId, ViewItem>
+  items: ItemSource
   sections: SectionSource
   fields: {
       all: EntitySource<FieldId, Field>

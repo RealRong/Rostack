@@ -14,7 +14,7 @@ import type {
   Token
 } from '@shared/i18n'
 
-export type ItemId = string
+export type ItemId = number
 export type SectionKey = string
 
 export interface SectionBucket {
@@ -26,10 +26,28 @@ export interface SectionBucket {
   color?: string
 }
 
-export interface ViewItem {
-  id: ItemId
+export interface ItemPlacement {
   recordId: RecordId
   sectionKey: SectionKey
+}
+
+export interface ItemRead {
+  record: (itemId: ItemId) => RecordId | undefined
+  section: (itemId: ItemId) => SectionKey | undefined
+  placement: (itemId: ItemId) => ItemPlacement | undefined
+}
+
+export interface ItemIdPool {
+  allocate: {
+    placement: (sectionKey: SectionKey, recordId: RecordId) => ItemId
+  }
+  read: {
+    placement: (itemId: ItemId) => ItemPlacement | undefined
+  }
+  gc: {
+    keep: (itemIds: ReadonlySet<ItemId>) => void
+    clear: () => void
+  }
 }
 
 export interface SectionData {
@@ -39,14 +57,19 @@ export interface SectionData {
   bucket?: SectionBucket
   collapsed: boolean
   recordIds: readonly RecordId[]
-  items: ItemList
+  itemIds: readonly ItemId[]
 }
 
 export type Section = SectionData
 
 export interface SectionList extends collection.OrderedKeyedCollection<SectionKey, Section> {}
 
-export interface ItemList extends collection.OrderedKeyedAccess<ItemId, ViewItem> {}
+export interface ItemList {
+  ids: readonly ItemId[]
+  count: number
+  order: collection.OrderedAccess<ItemId>
+  read: ItemRead
+}
 
 export interface FieldList extends collection.OrderedKeyedCollection<FieldId, Field> {
   custom: readonly CustomField[]
@@ -62,7 +85,7 @@ export interface ViewFieldRef extends CellRef {
   recordId: RecordId
 }
 
-export interface Placement {
+export interface MoveTarget {
   section: SectionKey
   before?: ItemId
 }

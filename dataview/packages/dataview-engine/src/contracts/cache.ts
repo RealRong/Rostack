@@ -19,6 +19,12 @@ import type {
 import {
   emptySummaryState
 } from '@dataview/engine/contracts/summary'
+import type {
+  ItemIdPool
+} from '@dataview/engine/contracts/shared'
+import {
+  createItemIdPool
+} from '@dataview/engine/active/shared/itemIdPool'
 
 export interface SnapshotChange {
   query: QueryDelta
@@ -38,10 +44,15 @@ export interface SummaryRuntime {
   state: SummaryState
 }
 
+export interface PublishRuntime {
+  itemIds: ItemIdPool
+}
+
 export interface ViewCache {
   query: QueryRuntime
   membership: MembershipRuntime
   summary: SummaryRuntime
+  publish: PublishRuntime
 }
 
 export const emptyViewCache = (): ViewCache => ({
@@ -53,5 +64,8 @@ export const emptyViewCache = (): ViewCache => ({
   },
   summary: {
     state: emptySummaryState()
+  },
+  publish: {
+    itemIds: createItemIdPool()
   }
 })

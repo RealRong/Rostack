@@ -44,7 +44,7 @@ export const buildBoardLayout = (input: {
       return []
     }
 
-    const visibleIds = input.visibilityBySection.get(section.key)?.ids ?? section.items.ids
+    const visibleIds = input.visibilityBySection.get(section.key)?.ids ?? section.itemIds
     let top = bodyRect.top
     const cards = visibleIds.map<CardLayout>(id => {
       const height = input.heightById.get(id) ?? estimatedHeight

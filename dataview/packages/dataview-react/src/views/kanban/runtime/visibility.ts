@@ -39,7 +39,7 @@ const resolveInitialVisibleCount = (
 const readSectionLengths = (
   sections: readonly Section[]
 ) => new Map(
-  sections.map(section => [section.key, section.items.count] as const)
+  sections.map(section => [section.key, section.itemIds.length] as const)
 )
 
 const resolveVisibility = (input: {
@@ -49,21 +49,21 @@ const resolveVisibility = (input: {
 }): KanbanVisibility => {
   const initialVisible = resolveInitialVisibleCount(
     input.cardsPerColumn,
-    input.section.items.count
+    input.section.itemIds.length
   )
   const visible = input.expandedCount === undefined
     ? initialVisible
     : Math.min(
-      input.section.items.count,
+      input.section.itemIds.length,
       Math.max(initialVisible, input.expandedCount)
     )
-  const hidden = Math.max(0, input.section.items.count - visible)
+  const hidden = Math.max(0, input.section.itemIds.length - visible)
   const more = input.cardsPerColumn === 'all'
     ? hidden
     : Math.min(hidden, input.cardsPerColumn)
 
   return {
-    ids: input.section.items.ids.slice(0, visible),
+    ids: input.section.itemIds.slice(0, visible),
     visible,
     hidden,
     more
@@ -104,7 +104,7 @@ export const useKanbanVisibility = (input: {
   const [expandedCountBySectionKey, setExpandedCountBySectionKey] = useState<Partial<Record<SectionKey, number>>>({})
   const previousSectionLengthsRef = useRef(new Map<SectionKey, number>())
   const sectionIdsByKey = useMemo(() => new Map(
-    input.sections.map(section => [section.key, section.items.ids] as const)
+    input.sections.map(section => [section.key, section.itemIds] as const)
   ), [input.sections])
 
   const bumpVersion = useCallback(() => {
@@ -159,21 +159,21 @@ export const useKanbanVisibility = (input: {
             Math.max(previousInitialVisible, previousExpandedCount)
           )
         const currentVisible = next[section.key] === undefined
-          ? resolveInitialVisibleCount(input.cardsPerColumn, section.items.count)
+          ? resolveInitialVisibleCount(input.cardsPerColumn, section.itemIds.length)
           : Math.min(
-            section.items.count,
+            section.itemIds.length,
             Math.max(
-              resolveInitialVisibleCount(input.cardsPerColumn, section.items.count),
+              resolveInitialVisibleCount(input.cardsPerColumn, section.itemIds.length),
               next[section.key]!
             )
           )
 
         if (
-          section.items.count > previousLength
+          section.itemIds.length > previousLength
           && previousVisible >= previousLength
-          && currentVisible < section.items.count
+          && currentVisible < section.itemIds.length
         ) {
-          next[section.key] = section.items.count
+          next[section.key] = section.itemIds.length
           changed = true
         }
       })

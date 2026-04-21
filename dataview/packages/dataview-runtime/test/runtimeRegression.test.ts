@@ -220,7 +220,7 @@ describe('data view runtime regressions', () => {
     engine.views.open(VIEW_BOARD)
 
     const readVisibleItemIds = () => engine.source.active.sections.keys.get().flatMap(sectionKey => (
-      engine.source.active.sections.get(sectionKey)?.items.ids ?? []
+      engine.source.active.sections.get(sectionKey)?.itemIds ?? []
     ))
     const assertReadableCards = (expectedRecordIds: readonly string[]) => {
       const visibleItemIds = readVisibleItemIds()

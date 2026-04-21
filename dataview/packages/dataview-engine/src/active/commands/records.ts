@@ -125,15 +125,15 @@ const resolveCreateContext = (input: {
   sectionKey?: string
   before?: ItemId
 }) => {
-  const beforeItem = input.before === undefined
+  const beforePlacement = input.before === undefined
     ? undefined
-    : input.state.items.get(input.before)
-  if (input.before !== undefined && !beforeItem) {
+    : input.state.items.read.placement(input.before)
+  if (input.before !== undefined && !beforePlacement) {
     return undefined
   }
 
   const nextSectionKey = input.sectionKey
-    ?? beforeItem?.sectionKey
+    ?? beforePlacement?.sectionKey
     ?? (!input.state.view.group
       ? input.state.sections.ids[0]
       : undefined)
@@ -141,7 +141,7 @@ const resolveCreateContext = (input: {
     return undefined
   }
 
-  if (beforeItem && beforeItem.sectionKey !== nextSectionKey) {
+  if (beforePlacement && beforePlacement.sectionKey !== nextSectionKey) {
     return undefined
   }
 
@@ -150,13 +150,13 @@ const resolveCreateContext = (input: {
     return undefined
   }
 
-  if (beforeItem && !section.items.has(beforeItem.id)) {
+  if (beforePlacement && !section.itemIds.includes(input.before!)) {
     return undefined
   }
 
   return {
     sectionKey: nextSectionKey,
-    beforeRecordId: beforeItem?.recordId
+    beforeRecordId: beforePlacement?.recordId
   }
 }
 

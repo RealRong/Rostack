@@ -35,7 +35,9 @@ import {
   shouldCapturePointer
 } from '@shared/dom'
 import { useDataView } from '@dataview/react/dataview'
-import { parseItemIdValue } from '@dataview/react/dom/appearance'
+import {
+  itemDomBridge
+} from '@dataview/react/dom/item'
 import {
   resolveDefaultAutoPanTargets,
   useAutoPan
@@ -127,7 +129,7 @@ export const resolveFillWriteManyInput = (input: {
       return
     }
 
-    const recordId = input.currentView.items.get(itemId)?.recordId
+    const recordId = input.currentView.items.read.record(itemId)
     if (!recordId || targetRecordIdSet.has(recordId)) {
       return
     }
@@ -172,7 +174,7 @@ export const resolveFillWriteManyInput = (input: {
 
 interface RowHoverContext {
   container: HTMLElement | null
-  items: Pick<ItemList, 'has'>
+  items: Pick<ItemList, 'order'>
   fields: Pick<FieldList, 'has'>
   rowIds: readonly ItemId[]
   rowIdAtPoint: (input: {
@@ -216,11 +218,7 @@ const rowHoverTargetFromElement = (
     closestTableTargetElement(target, 'row')
     ?? closestTableTargetElement(target, 'row-rail')
   )
-  const rowId = parseItemIdValue(
-    rowElement?.dataset.rowId
-    ?? rowElement?.dataset.rowRailRowId
-    ?? null
-  )
+  const rowId = itemDomBridge.read.closest(rowElement)
 
   return rowId !== undefined
     ? {
@@ -232,7 +230,7 @@ const rowHoverTargetFromElement = (
 
 const hoverTargetFromElement = (
   target: EventTarget | null,
-  items: Pick<ItemList, 'has'>,
+  items: Pick<ItemList, 'order'>,
   fields: Pick<FieldList, 'has'>
 ): TableHoverTarget | null => {
   const cell = (
@@ -504,7 +502,7 @@ export const usePointer = (
     currentView.fields.all.find((field: { id: string }) => field.id === fieldId)
   ), [currentView.fields.all])
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = currentView.items.get(cell.itemId)?.recordId
+    const recordId = currentView.items.read.record(cell.itemId)
     const record = recordId
       ? editor.source.doc.records.get(recordId)
       : undefined

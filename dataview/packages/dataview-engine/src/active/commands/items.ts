@@ -15,7 +15,7 @@ import type {
   ItemId,
   ItemList,
   MovePlan,
-  Placement,
+  MoveTarget,
   ViewState
 } from '@dataview/engine/contracts'
 import type { ActiveViewContext } from '@dataview/engine/active/context'
@@ -57,7 +57,7 @@ const createGroupValueActions = (input: {
   const itemIdsByRecordId = new Map<RecordId, ItemId[]>()
 
   input.itemIds.forEach(itemId => {
-    const recordId = input.items.get(itemId)?.recordId
+    const recordId = input.items.read.record(itemId)
     if (!recordId) {
       return
     }
@@ -85,7 +85,7 @@ const createGroupValueActions = (input: {
         field: input.field,
         group: input.group,
         currentValue,
-        fromKey: input.items.get(itemId)?.sectionKey,
+        fromKey: input.items.read.section(itemId),
         toKey: input.targetSection
       })
       if (next.kind === 'invalid') {
@@ -122,7 +122,7 @@ const createGroupValueActions = (input: {
 
 export const planMove = (
   itemIds: readonly ItemId[],
-  target: Placement,
+  target: MoveTarget,
   readState: () => ViewState | undefined
 ): MovePlan => {
   const state = readState()
@@ -138,10 +138,10 @@ export const planMove = (
     }
   }
 
-  const validIds = itemIds.filter(id => state.items.has(id))
+  const validIds = itemIds.filter(id => state.items.order.has(id))
   const movingSet = new Set(validIds)
   const section = state.sections.get(target.section)
-  const sectionItemIds = section?.items.ids ?? []
+  const sectionItemIds = section?.itemIds ?? []
   const beforeItemId = target.before && sectionItemIds.includes(target.before)
     ? target.before
     : undefined
@@ -163,13 +163,13 @@ export const planMove = (
         ...validIds
       ]
   const recordIds = collection.unique(validIds.flatMap(id => {
-    const recordId = state.items.get(id)?.recordId
+    const recordId = state.items.read.record(id)
     return recordId ? [recordId] : []
   }))
   const beforeRecordId = nextBeforeItemId
-    ? state.items.get(nextBeforeItemId)?.recordId
+    ? state.items.read.record(nextBeforeItemId)
     : undefined
-  const sectionChanged = validIds.some(id => state.items.get(id)?.sectionKey !== target.section)
+  const sectionChanged = validIds.some(id => state.items.read.section(id) !== target.section)
   const changed = validIds.length > 0 && (
     sectionChanged
     || nextSectionItemIds.length !== sectionItemIds.length
@@ -255,7 +255,7 @@ export const createActiveItemsApi = (input: {
     }
 
     const recordIds = itemIds.flatMap(itemId => {
-      const recordId = state.items.get(itemId)?.recordId
+      const recordId = state.items.read.record(itemId)
       return recordId ? [recordId] : []
     }).filter((recordId, index, source) => source.indexOf(recordId) === index)
     if (!recordIds.length) {

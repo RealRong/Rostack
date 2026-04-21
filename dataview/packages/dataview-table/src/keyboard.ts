@@ -63,7 +63,7 @@ export const isSelectAll = (input: TableKeyInput) => (
 export const gridKeyAction = (input: {
   key: TableKeyInput
   selection: GridSelection
-  items: Pick<ItemList, 'range'>
+  items: Pick<ItemList, 'order'>
   fields: Pick<FieldList, 'range'>
   read: TableKeyboardRead
 }): TableGridKeyAction | null => {

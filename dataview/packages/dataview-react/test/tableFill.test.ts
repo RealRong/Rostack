@@ -4,35 +4,29 @@ import { collection } from '@shared/core'
 import { gridSelection } from '@dataview/table'
 import { resolveFillWriteManyInput } from '@dataview/react/views/table/hooks/usePointer'
 
-const createOrderedIdsStub = (ids: readonly string[]) => ({
-  ids,
-  ...collection.createOrderedAccess(ids)
-})
+const createOrderedIdsStub = (ids: readonly string[]) => {
+  const order = collection.createOrderedAccess(ids)
+  return {
+    ids,
+    count: order.count,
+    order,
+    ...order
+  }
+}
 
 const createCurrentViewStub = () => ({
   items: {
     ...createOrderedIdsStub(['row_1', 'row_2', 'row_3', 'row_4']),
-    get: (itemId: string) => (({
-      row_1: {
-        id: 'row_1',
-        recordId: 'rec_1'
-      },
-      row_2: {
-        id: 'row_2',
-        recordId: 'rec_2'
-      },
-      row_3: {
-        id: 'row_3',
-        recordId: 'rec_3'
-      },
-      row_4: {
-        id: 'row_4',
-        recordId: 'rec_2'
-      }
-    }) as Record<string, {
-      id: string
-      recordId: string
-    }>)[itemId]
+    read: {
+      record: (itemId: string) => (({
+        row_1: 'rec_1',
+        row_2: 'rec_2',
+        row_3: 'rec_3',
+        row_4: 'rec_2'
+      }) as Record<string, string | undefined>)[itemId],
+      section: () => undefined,
+      placement: () => undefined
+    }
   },
   fields: createOrderedIdsStub(['title', 'points'])
 })

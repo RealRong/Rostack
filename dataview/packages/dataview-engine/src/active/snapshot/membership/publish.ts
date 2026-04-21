@@ -3,23 +3,24 @@ import type {
   RecordId,
   View
 } from '@dataview/core/contracts'
-import {
-  createItemId
-} from '@dataview/engine/active/shared/itemId'
 import type {
   ItemId,
+  ItemIdPool,
   ItemList,
+  ItemPlacement,
   Section,
   SectionKey,
-  SectionList,
-  ViewItem
+  SectionList
 } from '@dataview/engine/contracts'
 import type {
   MembershipState
 } from '@dataview/engine/contracts/state'
 
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
-const EMPTY_ITEMS_BY_ID = new Map<ItemId, ViewItem>()
+const EMPTY_RECORD_IDS = [] as readonly RecordId[]
+const EMPTY_ITEM_PLACEMENTS = new Map<ItemId, ItemPlacement>()
+const EMPTY_ITEM_RECORDS = new Map<ItemId, RecordId>()
+const EMPTY_ITEM_SECTIONS = new Map<ItemId, SectionKey>()
 
 const sectionVisible = (input: {
   view: View
@@ -43,53 +44,68 @@ const sectionCollapsed = (
   sectionKey: SectionKey
 ) => view.group?.buckets?.[sectionKey]?.collapsed === true
 
+const sameItemRead = (input: {
+  items: ItemList
+  ids: readonly ItemId[]
+  records: ReadonlyMap<ItemId, RecordId>
+  sections: ReadonlyMap<ItemId, SectionKey>
+}) => input.ids.every(itemId => (
+  input.items.read.record(itemId) === input.records.get(itemId)
+  && input.items.read.section(itemId) === input.sections.get(itemId)
+))
+
 const createItemList = (input: {
   ids: readonly ItemId[]
-  byId: ReadonlyMap<ItemId, ViewItem>
+  records: ReadonlyMap<ItemId, RecordId>
+  sections: ReadonlyMap<ItemId, SectionKey>
+  placements: ReadonlyMap<ItemId, ItemPlacement>
   previous?: ItemList
 }): ItemList => {
   if (
     input.previous
     && input.previous.ids === input.ids
     && input.previous.count === input.ids.length
-    && input.ids.every(id => input.previous!.get(id) === input.byId.get(id))
+    && sameItemRead({
+      items: input.previous,
+      ids: input.ids,
+      records: input.records,
+      sections: input.sections
+    })
   ) {
     return input.previous
   }
 
-  const access = collection.createOrderedKeyedAccess({
+  return {
     ids: input.ids,
-    get: id => input.byId.get(id)
-  })
-
-  return access
+    count: input.ids.length,
+    order: collection.createOrderedAccess(input.ids),
+    read: {
+      record: itemId => input.records.get(itemId),
+      section: itemId => input.sections.get(itemId),
+      placement: itemId => input.placements.get(itemId)
+    }
+  }
 }
 
-const projectSectionItemIds = (input: {
-  sectionKey: SectionKey
-  recordIds: readonly RecordId[]
-}): readonly ItemId[] => {
-  if (!input.recordIds.length) {
-    return EMPTY_ITEM_IDS
-  }
-
-  const ids = new Array<ItemId>(input.recordIds.length)
-  for (let index = 0; index < input.recordIds.length; index += 1) {
-    ids[index] = createItemId(input.sectionKey, input.recordIds[index]!)
-  }
-
-  return ids
-}
-
-const buildItemsById = (input: {
+const buildPublishedState = (input: {
   view: View
   sections: MembershipState
   previous?: {
     items?: ItemList
+    sections?: SectionList
   }
-}): ReadonlyMap<ItemId, ViewItem> => {
-  const previousItems = input.previous?.items
-  const next = new Map<ItemId, ViewItem>()
+  previousSections?: MembershipState
+  itemIds: ItemIdPool
+}) => {
+  const previousSections = input.previous?.sections
+  const visibleItemIds: ItemId[] = []
+  const keepItemIds = new Set<ItemId>()
+  const recordByItemId = new Map<ItemId, RecordId>()
+  const sectionByItemId = new Map<ItemId, SectionKey>()
+  const placementByItemId = new Map<ItemId, ItemPlacement>()
+  const sections: Section[] = []
+  const sectionByKey = new Map<SectionKey, Section>()
+  const sectionKeys: SectionKey[] = []
 
   input.sections.sections.order.forEach(sectionKey => {
     const selection = input.sections.sections.get(sectionKey)
@@ -104,170 +120,103 @@ const buildItemsById = (input: {
       return
     }
 
-    selection.read.ids().forEach(recordId => {
-      const id = createItemId(sectionKey, recordId)
-      const previous = previousItems?.get(id)
-      next.set(id, previous && previous.recordId === recordId && previous.sectionKey === sectionKey
-        ? previous
-        : {
-            id,
-            recordId,
-            sectionKey
-          })
-    })
-  })
+    const meta = input.sections.meta.get(sectionKey)
+    const nextRecordIds = selection.read.ids()
+    const previousSection = previousSections?.get(sectionKey)
+    const publishedRecordIds = previousSection && equal.sameOrder(previousSection.recordIds, nextRecordIds)
+      ? previousSection.recordIds
+      : (nextRecordIds.length ? nextRecordIds : EMPTY_RECORD_IDS)
+    const nextItemIds = new Array<ItemId>(publishedRecordIds.length)
+    const collapsed = sectionCollapsed(input.view, sectionKey)
 
-  return next.size
-    ? next
-    : EMPTY_ITEMS_BY_ID
-}
+    for (let index = 0; index < publishedRecordIds.length; index += 1) {
+      const recordId = publishedRecordIds[index]!
+      const itemId = input.itemIds.allocate.placement(sectionKey, recordId)
+      const placement = input.itemIds.read.placement(itemId)
+      if (!placement) {
+        throw new Error(`Missing item placement for ${itemId}`)
+      }
 
-const buildSections = (input: {
-  view: View
-  sections: MembershipState
-  previous?: SectionList
-  previousSections?: MembershipState
-  byId: ReadonlyMap<ItemId, ViewItem>
-}): SectionList => {
-  const previous = input.previous
-  const sections: Section[] = []
-  const byKey = new Map<SectionKey, Section>()
-  const ids: SectionKey[] = []
-
-  input.sections.sections.order.forEach(key => {
-    const selection = input.sections.sections.get(key)
-    if (
-      !selection
-      || !sectionVisible({
-        view: input.view,
-        sectionKey: key,
-        selectionCount: selection.read.count()
-      })
-    ) {
-      return
+      nextItemIds[index] = itemId
+      keepItemIds.add(itemId)
+      recordByItemId.set(itemId, recordId)
+      sectionByItemId.set(itemId, sectionKey)
+      placementByItemId.set(itemId, placement)
+      if (!collapsed) {
+        visibleItemIds.push(itemId)
+      }
     }
 
-    const meta = input.sections.meta.get(key)
-    const nextRecordIds = selection.read.ids()
-    const nextItemIds = projectSectionItemIds({
-      sectionKey: key,
-      recordIds: nextRecordIds
-    })
-    const previousSection = previous?.get(key)
-    const publishedItemIds = previousSection && equal.sameOrder(previousSection.items.ids, nextItemIds)
-      ? previousSection.items.ids
-      : nextItemIds
-    const items = createItemList({
-      ids: publishedItemIds,
-      byId: input.byId,
-      previous: previousSection?.items
-    })
-    const collapsed = sectionCollapsed(input.view, key)
+    const publishedItemIds = previousSection && equal.sameOrder(previousSection.itemIds, nextItemIds)
+      ? previousSection.itemIds
+      : (nextItemIds.length ? nextItemIds : EMPTY_ITEM_IDS)
     const canReuse = Boolean(
       previousSection
-      && input.previousSections?.sections.get(key) === selection
-      && input.previousSections.meta.get(key) === meta
-      && previousSection.items === items
+      && input.previousSections?.sections.get(sectionKey) === selection
+      && input.previousSections.meta.get(sectionKey) === meta
       && previousSection.collapsed === collapsed
+      && previousSection.recordIds === publishedRecordIds
+      && previousSection.itemIds === publishedItemIds
     )
 
     const section: Section = canReuse && previousSection
       ? previousSection
       : {
-          key,
-          label: meta?.label ?? key,
+          key: sectionKey,
+          label: meta?.label ?? sectionKey,
           color: meta?.color,
           bucket: meta?.bucket,
-          recordIds: nextRecordIds,
-          items,
-          collapsed
+          collapsed,
+          recordIds: publishedRecordIds,
+          itemIds: publishedItemIds
         }
     sections.push(section)
-    ids.push(section.key)
-    byKey.set(section.key, section)
+    sectionKeys.push(sectionKey)
+    sectionByKey.set(sectionKey, section)
   })
 
-  const publishedIds = previous && equal.sameOrder(previous.ids, ids)
-    ? previous.ids
-    : ids
-  const publishedSections = previous
-    && previous.all.length === sections.length
-    && previous.all.every((section, index) => section === sections[index])
-    ? previous.all
+  input.itemIds.gc.keep(keepItemIds)
+
+  const previousVisibleIds = input.previous?.items?.ids
+  const publishedVisibleIds = previousVisibleIds && equal.sameOrder(previousVisibleIds, visibleItemIds)
+    ? previousVisibleIds
+    : (visibleItemIds.length ? visibleItemIds : EMPTY_ITEM_IDS)
+  const items = createItemList({
+    ids: publishedVisibleIds,
+    records: recordByItemId.size
+      ? recordByItemId
+      : EMPTY_ITEM_RECORDS,
+    sections: sectionByItemId.size
+      ? sectionByItemId
+      : EMPTY_ITEM_SECTIONS,
+    placements: placementByItemId.size
+      ? placementByItemId
+      : EMPTY_ITEM_PLACEMENTS,
+    previous: input.previous?.items
+  })
+  const publishedSectionKeys = previousSections && equal.sameOrder(previousSections.ids, sectionKeys)
+    ? previousSections.ids
+    : sectionKeys
+  const publishedSections = previousSections
+    && previousSections.all.length === sections.length
+    && previousSections.all.every((section, index) => section === sections[index])
+    ? previousSections.all
     : sections
 
-  if (
-    previous
-    && previous.ids === publishedIds
-    && previous.all === publishedSections
-  ) {
-    return previous
+  const list = previousSections
+    && previousSections.ids === publishedSectionKeys
+    && previousSections.all === publishedSections
+    ? previousSections
+    : collection.createOrderedKeyedCollection({
+        ids: publishedSectionKeys,
+        all: publishedSections,
+        get: sectionKey => sectionByKey.get(sectionKey)
+      })
+
+  return {
+    items,
+    sections: list
   }
-
-  const sectionList = collection.createOrderedKeyedCollection({
-    ids: publishedIds,
-    all: publishedSections,
-    get: key => byKey.get(key)
-  })
-
-  return sectionList
-}
-
-const buildItemList = (input: {
-  sections: SectionList
-  byId: ReadonlyMap<ItemId, ViewItem>
-  previous?: ItemList
-  previousSections?: SectionList
-}): ItemList => {
-  if (input.previous && input.sections === input.previousSections) {
-    return input.previous
-  }
-
-  let visibleIdCount = 0
-  let singleVisibleSection: Section | undefined
-
-  for (const section of input.sections.all) {
-    if (section.collapsed) {
-      continue
-    }
-
-    visibleIdCount += section.items.count
-    singleVisibleSection = singleVisibleSection
-      ? undefined
-      : section
-  }
-
-  if (
-    singleVisibleSection
-    && visibleIdCount === singleVisibleSection.items.count
-  ) {
-    return singleVisibleSection.items
-  }
-
-  const ids = new Array<ItemId>(visibleIdCount)
-  let writeIndex = 0
-
-  for (const section of input.sections.all) {
-    if (section.collapsed) {
-      continue
-    }
-
-    for (const id of section.items.ids) {
-      ids[writeIndex] = id
-      writeIndex += 1
-    }
-  }
-
-  const previousIds = input.previous?.ids
-  const publishedIds = previousIds && equal.sameOrder(previousIds, ids)
-    ? previousIds
-    : ids
-
-  return createItemList({
-    ids: publishedIds,
-    byId: input.byId,
-    previous: input.previous
-  })
 }
 
 export const publishSections = (input: {
@@ -278,31 +227,8 @@ export const publishSections = (input: {
     items?: ItemList
     sections?: SectionList
   }
+  itemIds: ItemIdPool
 }): {
   items: ItemList
   sections: SectionList
-} => {
-  const byId = buildItemsById({
-    view: input.view,
-    sections: input.sections,
-    previous: input.previous
-  })
-  const sections = buildSections({
-    view: input.view,
-    sections: input.sections,
-    previous: input.previous?.sections,
-    previousSections: input.previousSections,
-    byId
-  })
-  const items = buildItemList({
-    sections,
-    byId,
-    previous: input.previous?.items,
-    previousSections: input.previous?.sections
-  })
-
-  return {
-    items,
-    sections
-  }
-}
+} => buildPublishedState(input)

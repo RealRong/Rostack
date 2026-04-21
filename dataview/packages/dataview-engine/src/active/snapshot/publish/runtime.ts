@@ -5,6 +5,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
+  ItemIdPool,
   ItemList,
   SectionList,
   ViewRecords,
@@ -87,6 +88,7 @@ export const runPublishStage = (input: {
   summaryState: SummaryState
   previousSummaryState?: SummaryState
   previousSummaries?: ViewSummaries
+  itemIds: ItemIdPool
 }): {
   action: 'reuse' | 'sync' | 'rebuild'
   snapshot?: ViewState
@@ -95,10 +97,14 @@ export const runPublishStage = (input: {
   metrics: ViewStageMetrics
 } => {
   const publishStart = now()
+  if (input.previous?.view.id !== input.activeViewId) {
+    input.itemIds.gc.clear()
+  }
   const sections = publishSections({
     view: input.view,
     sections: input.membershipState,
     previousSections: input.previousMembershipState,
+    itemIds: input.itemIds,
     previous: input.previousSections && input.previousItems
       ? {
           sections: input.previousSections,

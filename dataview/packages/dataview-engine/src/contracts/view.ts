@@ -28,12 +28,12 @@ import type {
   CellRef,
   FieldList,
   ItemId,
+  ItemPlacement,
   ItemList,
-  Placement,
+  MoveTarget,
   Section,
   SectionKey,
   SectionList,
-  ViewItem,
   ViewRecords,
   ViewSummaries
 } from '@dataview/engine/contracts/shared'
@@ -212,7 +212,7 @@ export interface ActiveViewReadApi {
   record: (recordId: RecordId) => DataRecord | undefined
   field: (fieldId: FieldId) => Field | undefined
   section: (sectionKey: SectionKey) => Section | undefined
-  item: (itemId: ItemId) => ViewItem | undefined
+  placement: (itemId: ItemId) => ItemPlacement | undefined
   cell: (cell: CellRef) => ViewCell | undefined
   filterField: (index: number) => Field | undefined
   groupField: () => Field | undefined
@@ -235,11 +235,11 @@ export interface KanbanApi {
 export interface ActiveItemsApi {
   planMove: (
     itemIds: readonly ItemId[],
-    target: Placement
+    target: MoveTarget
   ) => MovePlan
   move: (
     itemIds: readonly ItemId[],
-    target: Placement
+    target: MoveTarget
   ) => void
   remove: (itemIds: readonly ItemId[]) => void
 }

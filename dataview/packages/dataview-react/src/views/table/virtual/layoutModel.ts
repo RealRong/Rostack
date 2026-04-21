@@ -18,9 +18,14 @@ import type {
   TableLayoutSectionState,
   TableLayoutState
 } from '@dataview/react/views/table/virtual/layoutState'
+import {
+  parseTableBlockKey,
+  tableBlockKey,
+  type TableBlockId
+} from '@dataview/react/views/table/virtual/blockId'
 
 interface TableBlockDescriptorBase {
-  key: string
+  id: TableBlockId
   kind: TableBlock['kind']
   estimatedHeight: number
 }
@@ -157,7 +162,8 @@ const materializeBlock = (input: {
   switch (input.descriptor.kind) {
     case 'row': {
       const block: TableRowBlock = {
-        key: input.descriptor.key,
+        id: input.descriptor.id,
+        key: tableBlockKey(input.descriptor.id),
         kind: 'row',
         top: input.top,
         height: input.height,
@@ -169,7 +175,8 @@ const materializeBlock = (input: {
     }
     case 'column-header': {
       const block: TableColumnHeaderBlock = {
-        key: input.descriptor.key,
+        id: input.descriptor.id,
+        key: tableBlockKey(input.descriptor.id),
         kind: 'column-header',
         top: input.top,
         height: input.height,
@@ -185,7 +192,8 @@ const materializeBlock = (input: {
     }
     case 'column-footer': {
       const block: TableColumnFooterBlock = {
-        key: input.descriptor.key,
+        id: input.descriptor.id,
+        key: tableBlockKey(input.descriptor.id),
         kind: 'column-footer',
         top: input.top,
         height: input.height,
@@ -197,7 +205,8 @@ const materializeBlock = (input: {
     }
     case 'create-record': {
       const block: TableCreateRecordBlock = {
-        key: input.descriptor.key,
+        id: input.descriptor.id,
+        key: tableBlockKey(input.descriptor.id),
         kind: 'create-record',
         top: input.top,
         height: input.height,
@@ -209,7 +218,8 @@ const materializeBlock = (input: {
     }
     case 'section-header': {
       const block: TableSectionHeaderBlock = {
-        key: input.descriptor.key,
+        id: input.descriptor.id,
+        key: tableBlockKey(input.descriptor.id),
         kind: 'section-header',
         top: input.top,
         height: input.height,
@@ -222,12 +232,6 @@ const materializeBlock = (input: {
   }
 }
 
-const rowKeyOf = (rowId: ItemId) => `row:${rowId}`
-const sectionHeaderKeyOf = (sectionKey: SectionKey) => `section-header:${sectionKey}`
-const columnHeaderKeyOf = (sectionKey: SectionKey) => `column-header:${sectionKey}`
-const createRecordKeyOf = (sectionKey: SectionKey) => `create-record:${sectionKey}`
-const columnFooterKeyOf = (sectionKey: SectionKey) => `column-footer:${sectionKey}`
-
 const buildSectionMeasurementIds = (input: {
   grouped: boolean
   sectionKey: SectionKey
@@ -236,20 +240,50 @@ const buildSectionMeasurementIds = (input: {
 }) => input.grouped
   ? (
       input.collapsed
-        ? [sectionHeaderKeyOf(input.sectionKey)]
+        ? [tableBlockKey({
+            kind: 'section-header',
+            sectionKey: input.sectionKey
+          })]
         : [
-            sectionHeaderKeyOf(input.sectionKey),
-            columnHeaderKeyOf(input.sectionKey),
-            ...input.itemIds.map(rowId => rowKeyOf(rowId)),
-            createRecordKeyOf(input.sectionKey),
-            columnFooterKeyOf(input.sectionKey)
+            tableBlockKey({
+              kind: 'section-header',
+              sectionKey: input.sectionKey
+            }),
+            tableBlockKey({
+              kind: 'column-header',
+              sectionKey: input.sectionKey
+            }),
+            ...input.itemIds.map(rowId => tableBlockKey({
+              kind: 'row',
+              rowId
+            })),
+            tableBlockKey({
+              kind: 'create-record',
+              sectionKey: input.sectionKey
+            }),
+            tableBlockKey({
+              kind: 'column-footer',
+              sectionKey: input.sectionKey
+            })
           ]
     )
   : [
-      columnHeaderKeyOf(input.sectionKey),
-      ...input.itemIds.map(rowId => rowKeyOf(rowId)),
-      createRecordKeyOf(input.sectionKey),
-      columnFooterKeyOf(input.sectionKey)
+      tableBlockKey({
+        kind: 'column-header',
+        sectionKey: input.sectionKey
+      }),
+      ...input.itemIds.map(rowId => tableBlockKey({
+        kind: 'row',
+        rowId
+      })),
+      tableBlockKey({
+        kind: 'create-record',
+        sectionKey: input.sectionKey
+      }),
+      tableBlockKey({
+        kind: 'column-footer',
+        sectionKey: input.sectionKey
+      })
     ]
 
 const sameSectionState = (
@@ -265,6 +299,10 @@ class TableLayoutSectionModel {
   readonly collapsed: boolean
   readonly itemIds: readonly ItemId[]
   readonly rowIndexById: ReadonlyMap<ItemId, number>
+  readonly sectionHeaderId: TableBlockId
+  readonly columnHeaderId: TableBlockId
+  readonly createRecordId: TableBlockId
+  readonly columnFooterId: TableBlockId
   readonly sectionHeaderKey: string
   readonly columnHeaderKey: string
   readonly createRecordKey: string
@@ -291,15 +329,34 @@ class TableLayoutSectionModel {
     this.itemIds = input.state.itemIds
     this.rowHeight = input.rowHeight
     this.headerHeight = input.headerHeight
-    this.sectionHeaderKey = sectionHeaderKeyOf(input.state.key)
-    this.columnHeaderKey = columnHeaderKeyOf(input.state.key)
-    this.createRecordKey = createRecordKeyOf(input.state.key)
-    this.columnFooterKey = columnFooterKeyOf(input.state.key)
+    this.sectionHeaderId = {
+      kind: 'section-header',
+      sectionKey: input.state.key
+    }
+    this.columnHeaderId = {
+      kind: 'column-header',
+      sectionKey: input.state.key
+    }
+    this.createRecordId = {
+      kind: 'create-record',
+      sectionKey: input.state.key
+    }
+    this.columnFooterId = {
+      kind: 'column-footer',
+      sectionKey: input.state.key
+    }
+    this.sectionHeaderKey = tableBlockKey(this.sectionHeaderId)
+    this.columnHeaderKey = tableBlockKey(this.columnHeaderId)
+    this.createRecordKey = tableBlockKey(this.createRecordId)
+    this.columnFooterKey = tableBlockKey(this.columnFooterId)
 
     const rowIndexById = new Map<ItemId, number>()
     const resolvedRowHeights = this.itemIds.map((rowId, index) => {
       rowIndexById.set(rowId, index)
-      return input.measuredHeights?.get(rowKeyOf(rowId))
+      return input.measuredHeights?.get(tableBlockKey({
+        kind: 'row',
+        rowId
+      }))
         ?? this.rowHeight
     })
 
@@ -372,8 +429,8 @@ class TableLayoutSectionModel {
     }
   }
 
-  topOfKey(key: string, sectionTop: number) {
-    if (key === this.sectionHeaderKey && this.grouped) {
+  topOfBlock(id: TableBlockId, sectionTop: number) {
+    if (id.kind === 'section-header' && id.sectionKey === this.key && this.grouped) {
       return sectionTop
     }
 
@@ -381,20 +438,24 @@ class TableLayoutSectionModel {
       return null
     }
 
-    if (key === this.columnHeaderKey) {
+    if (id.kind === 'column-header' && id.sectionKey === this.key) {
       return sectionTop + this.sectionHeaderHeight
     }
 
-    const rowIndex = this.rowIndexOfKey(key)
-    if (rowIndex !== undefined) {
+    if (id.kind === 'row') {
+      const rowIndex = this.rowIndexById.get(id.rowId)
+      if (rowIndex === undefined) {
+        return null
+      }
+
       return sectionTop + this.rowsTop() + this.rowHeights.prefixSum(rowIndex)
     }
 
-    if (key === this.createRecordKey) {
+    if (id.kind === 'create-record' && id.sectionKey === this.key) {
       return sectionTop + this.rowsBottom()
     }
 
-    if (key === this.columnFooterKey) {
+    if (id.kind === 'column-footer' && id.sectionKey === this.key) {
       return sectionTop + this.rowsBottom() + this.createRecordHeight
     }
 
@@ -410,7 +471,10 @@ class TableLayoutSectionModel {
     changed = this.setSimpleHeight('column-footer', heightByKey.get(this.columnFooterKey)) || changed
 
     this.itemIds.forEach(rowId => {
-      changed = this.setRowHeight(rowId, heightByKey.get(rowKeyOf(rowId))) || changed
+      changed = this.setRowHeight(rowId, heightByKey.get(tableBlockKey({
+        kind: 'row',
+        rowId
+      }))) || changed
     })
 
     return changed
@@ -456,7 +520,7 @@ class TableLayoutSectionModel {
 
     if (this.grouped) {
       pushSimple({
-        key: this.sectionHeaderKey,
+        id: this.sectionHeaderId,
         kind: 'section-header',
         estimatedHeight: this.headerHeight,
         sectionKey: this.key
@@ -472,7 +536,7 @@ class TableLayoutSectionModel {
     }
 
     pushSimple({
-      key: this.columnHeaderKey,
+      id: this.columnHeaderId,
       kind: 'column-header',
       estimatedHeight: this.headerHeight,
       scopeId: this.key,
@@ -505,7 +569,10 @@ class TableLayoutSectionModel {
         const height = this.rowHeights.valueAt(index)
         items.push(materializeBlock({
           descriptor: {
-            key: rowKeyOf(rowId),
+            id: {
+              kind: 'row',
+              rowId
+            },
             kind: 'row',
             estimatedHeight: this.rowHeight,
             rowId
@@ -520,7 +587,7 @@ class TableLayoutSectionModel {
     top += this.rowHeights.total()
 
     pushSimple({
-      key: this.createRecordKey,
+      id: this.createRecordId,
       kind: 'create-record',
       estimatedHeight: this.rowHeight,
       sectionKey: this.key
@@ -528,7 +595,7 @@ class TableLayoutSectionModel {
     top += this.createRecordHeight
 
     pushSimple({
-      key: this.columnFooterKey,
+      id: this.columnFooterId,
       kind: 'column-footer',
       estimatedHeight: this.headerHeight,
       scopeId: this.key
@@ -555,12 +622,12 @@ class TableLayoutSectionModel {
   }
 
   private rowIndexOfKey(key: string) {
-    if (!key.startsWith('row:')) {
+    const id = parseTableBlockKey(key)
+    if (!id || id.kind !== 'row') {
       return undefined
     }
 
-    const rowId = key.slice(4) as ItemId
-    return this.rowIndexById.get(rowId)
+    return this.rowIndexById.get(id.rowId)
   }
 
   private setRowHeightByKey(key: string, height: number | undefined) {
@@ -807,16 +874,16 @@ export class TableLayoutModel {
     return section?.locateRow(rowId, this.topOfSection(sectionIndex)) ?? null
   }
 
-  topOfKey(key: string) {
-    const sectionIndex = key.startsWith('row:')
-      ? this.sectionIndexByRowId.get(key.slice(4) as ItemId)
-      : this.sectionIndexByBlockKey.get(key)
+  topOfBlock(id: TableBlockId) {
+    const sectionIndex = id.kind === 'row'
+      ? this.sectionIndexByRowId.get(id.rowId)
+      : this.sectionIndexByBlockKey.get(tableBlockKey(id))
     if (sectionIndex === undefined) {
       return null
     }
 
     const section = this.sections[sectionIndex]
-    return section?.topOfKey(key, this.topOfSection(sectionIndex)) ?? null
+    return section?.topOfBlock(id, this.topOfSection(sectionIndex)) ?? null
   }
 
   replaceMeasuredHeights(heightByKey: ReadonlyMap<string, number>) {
@@ -851,8 +918,9 @@ export class TableLayoutModel {
   }
 
   private applyMeasuredHeight(key: string, height: number | undefined) {
-    const sectionIndex = key.startsWith('row:')
-      ? this.sectionIndexByRowId.get(key.slice(4) as ItemId)
+    const id = parseTableBlockKey(key)
+    const sectionIndex = id?.kind === 'row'
+      ? this.sectionIndexByRowId.get(id.rowId)
       : this.sectionIndexByBlockKey.get(key)
     if (sectionIndex === undefined) {
       return false

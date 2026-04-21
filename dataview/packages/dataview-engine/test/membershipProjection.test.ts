@@ -14,11 +14,11 @@ import {
   createIndexState
 } from '@dataview/engine/active/index/runtime'
 import {
-  createItemId
-} from '@dataview/engine/active/shared/itemId'
-import {
   createBaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
+import {
+  createItemIdPool
+} from '@dataview/engine/active/shared/itemIdPool'
 import {
   createMembershipTransition
 } from '@dataview/engine/active/shared/transition'
@@ -186,24 +186,21 @@ test('publishSections uses deterministic item ids derived from section and recor
     index
   })
 
+  const itemIds = createItemIdPool()
   const published = publishSections({
     view,
-    sections: membership.state
+    sections: membership.state,
+    itemIds
   })
 
-  const todoItemId = createItemId('todo', 'rec_1')
+  const todoItemId = published.sections.get('todo')?.itemIds[0]
   assert.equal(
-    published.sections.get('todo')?.items.ids[0],
+    published.sections.get('todo')?.itemIds[0],
     todoItemId
   )
-  assert.deepEqual(
-    published.items.get(todoItemId),
-    {
-      id: todoItemId,
-      recordId: 'rec_1',
-      sectionKey: 'todo'
-    }
-  )
+  assert.equal(typeof todoItemId, 'number')
+  assert.equal(todoItemId !== undefined ? published.items.read.record(todoItemId) : undefined, 'rec_1')
+  assert.equal(todoItemId !== undefined ? published.items.read.section(todoItemId) : undefined, 'todo')
 })
 
 test('publishSections changes item id when a record moves to another group', () => {
@@ -227,9 +224,11 @@ test('publishSections changes item id when a record moves to another group', () 
     queryDelta: EMPTY_QUERY_DELTA,
     index: previousIndex
   })
+  const itemIds = createItemIdPool()
   const previousPublished = publishSections({
     view,
-    sections: previousMembership.state
+    sections: previousMembership.state,
+    itemIds
   })
 
   const nextDocument = createDocument({
@@ -267,22 +266,22 @@ test('publishSections changes item id when a record moves to another group', () 
     view,
     sections: nextMembership.state,
     previousSections: previousMembership.state,
-    previous: previousPublished
+    previous: previousPublished,
+    itemIds
   })
 
-  const previousItemId = createItemId('todo', 'rec_1')
-  const nextItemId = createItemId('done', 'rec_1')
+  const previousItemId = previousPublished.sections.get('todo')?.itemIds[0]
+  const nextItemId = nextPublished.sections.get('done')?.itemIds.find(
+    itemId => nextPublished.items.read.record(itemId) === 'rec_1'
+  )
 
   assert.equal(
-    nextPublished.items.get(previousItemId),
+    previousItemId !== undefined
+      ? nextPublished.items.read.placement(previousItemId)
+      : undefined,
     undefined
   )
-  assert.deepEqual(
-    nextPublished.items.get(nextItemId),
-    {
-      id: nextItemId,
-      recordId: 'rec_1',
-      sectionKey: 'done'
-    }
-  )
+  assert.equal(nextItemId !== undefined ? nextPublished.items.read.record(nextItemId) : undefined, 'rec_1')
+  assert.equal(nextItemId !== undefined ? nextPublished.items.read.section(nextItemId) : undefined, 'done')
+  assert.notEqual(previousItemId, nextItemId)
 })

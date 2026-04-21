@@ -40,14 +40,15 @@ export type {
   CellRef,
   FieldList,
   ItemId,
+  ItemIdPool,
+  ItemPlacement,
   ItemList,
-  Placement,
+  MoveTarget,
   Section,
   SectionBucket,
   SectionKey,
   SectionList,
   ViewFieldRef,
-  ViewItem,
   ViewRecords,
   ViewSummaries
 } from '@dataview/engine/contracts/shared'

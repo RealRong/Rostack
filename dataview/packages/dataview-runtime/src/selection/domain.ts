@@ -10,7 +10,7 @@ import type {
 
 export const createItemListSelectionDomain = (
   items: ItemList
-): OrderedSelectionDomain<ItemId> => items
+): OrderedSelectionDomain<ItemId> => items.order
 
 export const createItemArraySelectionDomain = (
   ids: readonly ItemId[]

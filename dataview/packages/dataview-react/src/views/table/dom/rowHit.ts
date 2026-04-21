@@ -6,7 +6,9 @@ import {
   type Rect
 } from '@shared/dom'
 import type { ItemId } from '@dataview/engine'
-import { parseItemIdValue } from '@dataview/react/dom/appearance'
+import {
+  itemDomBridge
+} from '@dataview/react/dom/item'
 import {
   rowGapHitAtPoint,
   rowIdAtPoint,
@@ -30,37 +32,44 @@ const collectRowRects = (input: {
     return emptyRowRects
   }
 
-  const rowOrder = new Map(
-    input.rowIds.map((rowId, index) => [rowId, index] as const)
-  )
-  const mountedRows = input.nodes
-    ? input.nodes.rows(input.rowIds)
+  return input.nodes
+    ? input.rowIds.flatMap(rowId => {
+        const node = input.nodes?.row(rowId)
+        if (!node) {
+          return []
+        }
+
+        const rect = elementRectIn(container, node)
+        return [{
+          rowId,
+          left: typeof input.left === 'number'
+            ? Math.min(rect.left, input.left)
+            : rect.left,
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+          height: rect.height
+        }]
+      })
     : Array.from(container.querySelectorAll<HTMLElement>('[data-row-id]'))
+      .flatMap(node => {
+        const rowId = itemDomBridge.read.node(node) ?? Number(node.dataset.rowId)
+        if (!Number.isFinite(rowId)) {
+          return []
+        }
 
-  return mountedRows
-    .flatMap(node => {
-      const rowId = parseItemIdValue(node.dataset.rowId ?? null)
-      if (rowId === undefined || !rowOrder.has(rowId)) {
-        return []
-      }
-
-      const rect = elementRectIn(container, node)
-
-      return [{
-        rowId,
-        left: typeof input.left === 'number'
-          ? Math.min(rect.left, input.left)
-          : rect.left,
-        top: rect.top,
-        right: rect.right,
-        bottom: rect.bottom,
-        height: rect.height
-      }]
-    })
-    .sort((left, right) => (
-      (rowOrder.get(left.rowId) ?? Number.MAX_SAFE_INTEGER)
-      - (rowOrder.get(right.rowId) ?? Number.MAX_SAFE_INTEGER)
-    ))
+        const rect = elementRectIn(container, node)
+        return [{
+          rowId,
+          left: typeof input.left === 'number'
+            ? Math.min(rect.left, input.left)
+            : rect.left,
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+          height: rect.height
+        }]
+      })
 }
 
 export const mountedRowIdAtPoint = (input: {

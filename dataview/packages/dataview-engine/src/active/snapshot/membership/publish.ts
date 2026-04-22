@@ -299,19 +299,27 @@ const buildPublishedState = (input: {
       )
     }
 
-    const section: Section = {
-      key: sectionKey,
-      label: meta?.label ?? sectionKey,
-      color: meta?.color,
-      bucket: meta?.bucket,
-      collapsed,
-      recordIds: publishedRecordIds,
-      itemIds: publishedItemIds
-    }
+    const section: Section = previousSection
+      && input.previousSections?.meta.get(sectionKey) === meta
+      && previousSection.collapsed === collapsed
+      && previousSection.recordIds === publishedRecordIds
+      && previousSection.itemIds === publishedItemIds
+      ? previousSection
+      : {
+          key: sectionKey,
+          label: meta?.label ?? sectionKey,
+          color: meta?.color,
+          bucket: meta?.bucket,
+          collapsed,
+          recordIds: publishedRecordIds,
+          itemIds: publishedItemIds
+        }
     sections.push(section)
     sectionKeys.push(sectionKey)
     sectionByKey.set(sectionKey, section)
-    changedSectionKeys.push(sectionKey)
+    if (section !== previousSection) {
+      changedSectionKeys.push(sectionKey)
+    }
   })
 
   previousPublishedSections?.ids.forEach(sectionKey => {

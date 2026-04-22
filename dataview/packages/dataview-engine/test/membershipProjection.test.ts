@@ -356,11 +356,11 @@ test('publishSections emits section and item deltas from published membership ch
   })
 
   assert.deepEqual(nextPublished.delta?.sections?.update, ['todo', 'done'])
-  assert.deepEqual(nextPublished.delta?.sections?.remove, [])
+  assert.equal(nextPublished.delta?.sections?.remove, undefined)
   assert.equal(nextPublished.delta?.sections?.list, undefined)
   assert.equal(nextPublished.delta?.items?.update?.length, 1)
   assert.equal(nextPublished.delta?.items?.remove?.length, 1)
-  assert.equal(nextPublished.delta?.items?.list, undefined)
+  assert.equal(nextPublished.delta?.items?.list, true)
 })
 
 test('buildMembershipState reuses grouped partition when visible membership is unchanged', () => {

@@ -114,6 +114,17 @@ const buildFieldCalcIndex = (input: {
   records: RecordIndex
   demand: CalculationDemand
 }): FieldCalcIndex => {
+  const field = input.context.reader.fields.get(input.demand.fieldId)
+  if (!field) {
+    return {
+      fieldId: input.demand.fieldId,
+      capabilities: input.demand.capabilities,
+      entries: EMPTY_ENTRIES,
+      entriesByIndex: EMPTY_ENTRY_LIST,
+      global: calculation.state.empty(input.demand.capabilities)
+    }
+  }
+
   const entries = buildFieldEntries(input)
   const entriesByIndex = buildFieldEntryList({
     entries,

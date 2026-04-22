@@ -34,8 +34,11 @@ export const shouldDropFieldIndex = (
   hasField: (fieldId: FieldId) => boolean,
   context: FieldSyncContext,
   fieldId: FieldId
-): boolean => context.schemaFields.has(fieldId)
-  && !hasField(fieldId)
+): boolean => !hasField(fieldId)
+  && (
+    context.schemaFields.has(fieldId)
+    || context.touchedRecords === 'all'
+  )
 
 export const shouldRebuildFieldIndex = (
   context: FieldSyncContext,

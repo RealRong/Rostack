@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import { forwardRef, useEffect, useEffectEvent, useImperativeHandle, useMemo, useRef } from 'react'
 import { OverlayProvider } from '@shared/ui'
 import type { Document } from '@whiteboard/core/types'
 import { collab as collabApi, type CollabSession } from '@whiteboard/collab'
@@ -34,6 +34,10 @@ const readNow = () => (
     : Date.now()
 )
 
+type DisposeHandle = ReturnType<typeof globalThis.setTimeout>
+type WhiteboardServices = ReturnType<typeof createWhiteboardServices>
+type CollabStatus = ReturnType<CollabSession['status']['get']>
+
 const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function WhiteboardInner(
   {
     document,
@@ -61,17 +65,19 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   const onDocumentChangeRef = useRef(onDocumentChange)
   const lastOutboundDocumentRef = useRef<Document>(inputDocument)
   const registryRef = useRef(nodeRegistry ?? createDefaultNodeRegistry())
-  const servicesRef = useRef<ReturnType<typeof createWhiteboardServices> | null>(null)
+  const servicesRef = useRef<WhiteboardServices | null>(null)
   const collabSessionRef = useRef<CollabSession | null>(null)
-  const onCollabSessionRef = useRef(collab?.onSession)
-  const onCollabStatusChangeRef = useRef(collab?.onStatusChange)
-  const lastCollabSessionCallbackRef = useRef(collab?.onSession)
-  const lastCollabStatusCallbackRef = useRef(collab?.onStatusChange)
   const lastPointerPublishAtRef = useRef(0)
+  const pendingDisposeRef = useRef<DisposeHandle | null>(null)
 
   onDocumentChangeRef.current = onDocumentChange
-  onCollabSessionRef.current = collab?.onSession
-  onCollabStatusChangeRef.current = collab?.onStatusChange
+
+  const notifyCollabSession = useEffectEvent((session: CollabSession | null) => {
+    collab?.onSession?.(session)
+  })
+  const notifyCollabStatus = useEffectEvent((status: CollabStatus) => {
+    collab?.onStatusChange?.(status)
+  })
 
   if (!servicesRef.current) {
     servicesRef.current = createWhiteboardServices({
@@ -93,8 +99,35 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
 
   useImperativeHandle(ref, () => editor, [editor])
 
-  useEffect(() => () => {
-    editor.dispose()
+  const cancelPendingDispose = () => {
+    if (pendingDisposeRef.current === null) {
+      return
+    }
+
+    globalThis.clearTimeout(pendingDisposeRef.current)
+    pendingDisposeRef.current = null
+  }
+
+  const scheduleDispose = (
+    currentEditor: Editor
+  ) => {
+    pendingDisposeRef.current = globalThis.setTimeout(() => {
+      if (servicesRef.current?.editor === currentEditor) {
+        servicesRef.current = null
+      }
+      currentEditor.dispose()
+      pendingDisposeRef.current = null
+    }, 0)
+  }
+
+  useEffect(() => {
+    cancelPendingDispose()
+
+    return () => {
+      // Delay disposal so StrictMode effect replay does not tear down
+      // the live editor instance during the initial development-only pass.
+      scheduleDispose(editor)
+    }
   }, [editor])
 
   useEffect(() => {
@@ -132,11 +165,11 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     })
     services.history.set(session.localHistory)
     collabSessionRef.current = session
-    onCollabSessionRef.current?.(session)
-    onCollabStatusChangeRef.current?.(session.status.get())
+    notifyCollabSession(session)
+    notifyCollabStatus(session.status.get())
 
     const unsubscribeStatus = session.status.subscribe(() => {
-      onCollabStatusChangeRef.current?.(session.status.get())
+      notifyCollabStatus(session.status.get())
     })
 
     if (collab.autoConnect ?? true) {
@@ -147,7 +180,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       unsubscribeStatus()
       services.history.reset()
       collabSessionRef.current = null
-      onCollabSessionRef.current?.(null)
+      notifyCollabSession(null)
       session.destroy()
     }
   }, [
@@ -159,25 +192,19 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   ])
 
   useEffect(() => {
-    if (lastCollabSessionCallbackRef.current === collab?.onSession) {
+    const session = collabSessionRef.current
+    if (!session || !collab?.onSession) {
       return
     }
-    lastCollabSessionCallbackRef.current = collab?.onSession
-    if (!collab?.onSession || !collabSessionRef.current) {
-      return
-    }
-    collab.onSession(collabSessionRef.current)
+    collab.onSession(session)
   }, [collab?.onSession])
 
   useEffect(() => {
-    if (lastCollabStatusCallbackRef.current === collab?.onStatusChange) {
+    const session = collabSessionRef.current
+    if (!session || !collab?.onStatusChange) {
       return
     }
-    lastCollabStatusCallbackRef.current = collab?.onStatusChange
-    if (!collab?.onStatusChange || !collabSessionRef.current) {
-      return
-    }
-    collab.onStatusChange(collabSessionRef.current.status.get())
+    collab.onStatusChange(session.status.get())
   }, [collab?.onStatusChange])
 
   useEffect(() => {

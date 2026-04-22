@@ -74,15 +74,14 @@ const View = (props: RowProps) => {
   const table = useTableContext()
   const rowNodeRef = useRef<HTMLDivElement | null>(null)
   const body = useStoreValue(table.body)
-  const grid = useStoreValue(dataView.table.grid)
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
     rowNodeRef.current = node
     props.measureRef?.(node)
   }, [props.measureRef])
 
-  if (!body || !grid) {
-    throw new Error('Table row requires an active body and grid.')
+  if (!body) {
+    throw new Error('Table row requires an active body.')
   }
 
   useLayoutEffect(() => {
@@ -103,7 +102,11 @@ const View = (props: RowProps) => {
     table.chrome.row,
     props.itemId
   )
-  const recordId = grid.items.read.recordId(props.itemId)
+  const recordId = useOptionalKeyedStoreValue<ItemId, RecordId | undefined>(
+    dataView.source.active.items.read.recordId,
+    props.itemId,
+    undefined
+  )
   const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
     dataView.source.doc.records,
     recordId,

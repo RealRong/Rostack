@@ -106,15 +106,18 @@ export const runPublishStage = (input: {
   metrics: ViewStageMetrics
 } => {
   const publishStart = now()
-  if (input.previous?.view.id !== input.activeViewId) {
+  const canReusePublished = input.previous?.view.id === input.activeViewId
+  if (!canReusePublished) {
     input.itemIds.gc.clear()
   }
   const sections = publishSections({
     view: input.view,
     sections: input.membershipState,
-    previousSections: input.previousMembershipState,
+    previousSections: canReusePublished
+      ? input.previousMembershipState
+      : undefined,
     itemIds: input.itemIds,
-    previous: input.previousSections && input.previousItems
+    previous: canReusePublished && input.previousSections && input.previousItems
       ? {
           sections: input.previousSections,
           items: input.previousItems
@@ -123,8 +126,12 @@ export const runPublishStage = (input: {
   })
   const summaries = publishSummaries({
     summary: input.summaryState,
-    previousSummary: input.previousSummaryState,
-    previous: input.previousSummaries,
+    previousSummary: canReusePublished
+      ? input.previousSummaryState
+      : undefined,
+    previous: canReusePublished
+      ? input.previousSummaries
+      : undefined,
     fieldsById: input.fieldsById,
     view: input.view
   })
@@ -132,7 +139,7 @@ export const runPublishStage = (input: {
     reader: input.reader,
     fieldsById: input.fieldsById,
     viewId: input.activeViewId,
-    previous: input.previous
+    previous: canReusePublished && input.previous
       ? {
           view: input.previous.view,
           query: input.previous.query,

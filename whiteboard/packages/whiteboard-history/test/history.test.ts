@@ -4,6 +4,10 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { history as historyApi } from '@whiteboard/history'
 
+const readDocument = (
+  engine: ReturnType<typeof engineApi.create>
+) => engine.snapshot().state.root
+
 test('local engine history captures user writes and replays undo/redo', () => {
   const engine = engineApi.create({
     document: documentApi.create('doc_history_local')
@@ -33,13 +37,13 @@ test('local engine history captures user writes and replays undo/redo', () => {
 
   const undoResult = history.undo()
   assert.equal(undoResult.ok, true)
-  assert.equal(engine.document.get().nodes[createResult.data.nodeId], undefined)
+  assert.equal(readDocument(engine).nodes[createResult.data.nodeId], undefined)
   assert.equal(history.get().undoDepth, 0)
   assert.equal(history.get().redoDepth, 1)
 
   const redoResult = history.redo()
   assert.equal(redoResult.ok, true)
-  assert.notEqual(engine.document.get().nodes[createResult.data.nodeId], undefined)
+  assert.notEqual(readDocument(engine).nodes[createResult.data.nodeId], undefined)
   assert.equal(history.get().undoDepth, 1)
   assert.equal(history.get().redoDepth, 0)
 })

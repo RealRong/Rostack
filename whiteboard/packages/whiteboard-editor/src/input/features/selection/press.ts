@@ -158,7 +158,7 @@ const resolveSelectionEditField = (
 
 const createSelectionSession = (
   input: {
-    ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>
+    ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>
     start: PointerDownInput
     decision: SelectionDragAction | SelectionMarqueeAction | undefined
   }
@@ -695,7 +695,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -730,7 +730,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.query.tool.get()
@@ -794,7 +794,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

@@ -13,10 +13,8 @@ import type {
   BaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
 import {
-  hasCalculationChanges
-} from '@dataview/engine/active/shared/transition'
-import {
-  deriveSummaryState
+  deriveSummaryState,
+  resolveSummaryTouchedSections
 } from '@dataview/engine/active/snapshot/summary/sync'
 import type {
   DeriveAction,
@@ -26,31 +24,10 @@ import type {
   SummaryState
 } from '@dataview/engine/contracts/state'
 import type {
+  SectionKey,
   ViewStageMetrics
 } from '@dataview/engine/contracts'
 import { now } from '@dataview/engine/runtime/clock'
-
-const sameRecordSet = (
-  left: readonly string[],
-  right: readonly string[]
-) => {
-  if (left === right || equal.sameOrder(left, right)) {
-    return true
-  }
-
-  if (left.length !== right.length) {
-    return false
-  }
-
-  const leftSet = new Set(left)
-  for (let index = 0; index < right.length; index += 1) {
-    if (!leftSet.has(right[index]!)) {
-      return false
-    }
-  }
-
-  return true
-}
 
 export {
   deriveSummaryState
@@ -68,33 +45,11 @@ const resolveSummaryAction = (input: {
   membership: MembershipState
   membershipAction: DeriveAction
   membershipDelta: MembershipDelta
-}): DeriveAction => {
+}): {
+  action: DeriveAction
+  touchedSections?: ReadonlySet<SectionKey> | 'all'
+} => {
   const commit = input.impact.commit
-  const membershipChanged = (() => {
-    if (
-      input.membershipDelta.rebuild
-      || input.membershipDelta.orderChanged
-      || input.membershipDelta.removed.length > 0
-      || input.membershipDelta.records.size > 0
-    ) {
-      return true
-    }
-
-    for (let index = 0; index < input.membershipDelta.changed.length; index += 1) {
-      const sectionKey = input.membershipDelta.changed[index]!
-      const previousSelection = input.previousMembership?.sections.get(sectionKey)
-      const nextSelection = input.membership.sections.get(sectionKey)
-      if (!previousSelection || !nextSelection) {
-        return true
-      }
-
-      if (!sameRecordSet(previousSelection.read.ids(), nextSelection.read.ids())) {
-        return true
-      }
-    }
-
-    return false
-  })()
 
   if (
     !input.previous
@@ -102,51 +57,77 @@ const resolveSummaryAction = (input: {
     || input.previousViewId !== input.activeViewId
     || commitImpact.has.activeView(commit)
   ) {
-    return 'rebuild'
+    return {
+      action: 'rebuild'
+    }
   }
 
   if (!input.calcFields.length) {
-    return equal.sameOrder(input.previousMembership.sections.order, input.membership.sections.order)
-      ? 'reuse'
-      : 'sync'
+    return {
+      action: equal.sameOrder(input.previousMembership.sections.order, input.membership.sections.order)
+        ? 'reuse'
+        : 'sync'
+    }
   }
 
   if (input.membershipAction === 'rebuild' || input.membershipDelta.rebuild) {
-    return 'rebuild'
+    return {
+      action: 'rebuild'
+    }
   }
 
   const groupField = input.view.group?.field
   const viewChange = commitImpact.view.change(commit, input.activeViewId)
 
   if (viewChange?.calculationFields) {
-    return 'rebuild'
+    return {
+      action: 'rebuild'
+    }
   }
 
   for (const fieldId of input.calcFields) {
     if (input.indexDelta?.calculation?.fields.get(fieldId)?.rebuild) {
-      return 'rebuild'
+      return {
+        action: 'rebuild'
+      }
     }
 
     if (commitImpact.has.fieldSchema(commit, fieldId)) {
-      return 'rebuild'
+      return {
+        action: 'rebuild'
+      }
     }
   }
   if (groupField && commitImpact.has.fieldSchema(commit, groupField)) {
-    return 'rebuild'
+    return {
+      action: 'rebuild'
+    }
   }
+
+  const touchedSections = resolveSummaryTouchedSections({
+    previousMembership: input.previousMembership,
+    membership: input.membership,
+    membershipDelta: input.membershipDelta,
+    calcFields: input.calcFields,
+    calculationDelta: input.indexDelta?.calculation
+  })
 
   if (
     !equal.sameOrder(input.previousMembership.sections.order, input.membership.sections.order)
-    || membershipChanged
+    || input.membershipDelta.removed.length > 0
+    || touchedSections === 'all'
+    || touchedSections.size > 0
   ) {
-    return 'sync'
+    return {
+      action: 'sync',
+      touchedSections
+    }
   }
 
-  if (hasCalculationChanges(input.indexDelta?.calculation, input.calcFields)) {
-    return 'sync'
+  return {
+    action: 'reuse',
+    touchedSections
   }
-
-  return 'reuse'
 }
 
 export const runSummaryStage = (input: {
@@ -170,7 +151,7 @@ export const runSummaryStage = (input: {
   publishMs: number
   metrics: ViewStageMetrics
 } => {
-  const action = resolveSummaryAction({
+  const resolved = resolveSummaryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
     impact: input.impact,
@@ -192,11 +173,12 @@ export const runSummaryStage = (input: {
     calcFields: input.calcFields,
     index: input.index,
     calculationDelta: input.indexDelta?.calculation,
-    action
+    touchedSections: resolved.touchedSections,
+    action: resolved.action
   })
   const deriveMs = now() - deriveStart
   const outputCount = derived.state.bySection.size
-  const changedSectionCount = action === 'reuse'
+  const changedSectionCount = resolved.action === 'reuse'
     ? 0
     : derived.delta.rebuild
       ? outputCount
@@ -207,7 +189,7 @@ export const runSummaryStage = (input: {
   const reusedNodeCount = Math.max(0, outputCount - changedSectionCount)
 
   return {
-    action,
+    action: resolved.action,
     state: derived.state,
     delta: derived.delta,
     deriveMs,

@@ -1,4 +1,9 @@
-import type { ConnectResolution } from '@whiteboard/core/edge'
+import type {
+  ConnectResolution,
+  EdgeLabelMaskRect,
+  ResolvedEdgeEnds
+} from '@whiteboard/core/edge'
+import type { EdgeHandle } from '@whiteboard/core/types/edge'
 import type { Guide, TransformPreviewPatch } from '@whiteboard/core/node'
 import type { SelectionTransformHandlePlan } from '@whiteboard/core/node'
 import type { MindmapRenderConnector } from '@whiteboard/core/mindmap'
@@ -19,7 +24,7 @@ import type {
   MindmapLayout,
   MindmapRecord,
   MindmapTemplate,
-  Node,
+  NodeModel,
   NodeFieldPatch,
   NodeId,
   NodeTemplate,
@@ -44,6 +49,7 @@ export interface Input {
   interaction: InteractionInput
   viewport: ViewportInput
   clock: ClockInput
+  impact: ImpactInput
 }
 
 export interface DocumentInput {
@@ -140,7 +146,19 @@ export interface EdgePreview {
   activeRouteIndex?: number
 }
 
+export type SelectionMarqueeMatch = 'touch' | 'contain'
+export type DrawBrushKind = 'pen' | 'highlighter'
+
+export interface DrawStyle {
+  kind: DrawBrushKind
+  color: string
+  width: number
+  opacity: number
+}
+
 export interface DrawPreview {
+  kind: DrawBrushKind
+  style: DrawStyle
   points: readonly Point[]
   bounds?: Rect
   hiddenNodeIds: readonly NodeId[]
@@ -149,6 +167,7 @@ export interface DrawPreview {
 export interface SelectionPreview {
   marquee?: {
     worldRect: Rect
+    match: SelectionMarqueeMatch
   }
   guides: readonly Guide[]
 }
@@ -280,6 +299,7 @@ export type DragState =
   | {
       kind: 'selection-marquee'
       worldRect: Rect
+      match: SelectionMarqueeMatch
     }
   | {
       kind: 'selection-transform'
@@ -321,7 +341,7 @@ export interface ClockInput {
   now: number
 }
 
-export interface InputChange {
+export interface ImpactInput {
   document: Flags
   session: Flags
   measure: Flags
@@ -356,7 +376,7 @@ export interface NodeView {
 }
 
 export interface NodeBaseView {
-  node: Node
+  node: NodeModel
   owner?: document.OwnerRef
 }
 
@@ -370,6 +390,16 @@ export interface NodeLayoutView {
 export interface NodeRenderView {
   hidden: boolean
   editing: boolean
+  hovered: boolean
+  selected: boolean
+  patched: boolean
+  resizing: boolean
+  edit?: NodeRenderEdit
+}
+
+export interface NodeRenderEdit {
+  field: EditField
+  caret: EditCaret
 }
 
 export interface EdgeView {
@@ -389,20 +419,34 @@ export interface EdgeRouteView {
   bounds?: Rect
   source?: Point
   target?: Point
+  ends?: ResolvedEdgeEnds
+  handles: readonly EdgeHandle[]
   labels: readonly EdgeLabelView[]
 }
 
 export interface EdgeLabelView {
   labelId: string
   text: string
-  size?: Size
-  point?: Point
-  angle?: number
-  rect?: Rect
+  displayText: string
+  style: NonNullable<Edge['labels']>[number]['style']
+  editable: boolean
+  caret?: EditCaret
+  size: Size
+  point: Point
+  angle: number
+  rect: Rect
+  maskRect: EdgeLabelMaskRect
 }
 
 export interface EdgeRenderView {
   hidden: boolean
+  selected: boolean
+  patched: boolean
+  activeRouteIndex?: number
+  box?: {
+    rect: Rect
+    pad: number
+  }
   editingLabelId?: string
 }
 
@@ -539,6 +583,7 @@ export interface ChromeView {
 export interface ChromePreviewView {
   marquee?: {
     worldRect: Rect
+    match: SelectionMarqueeMatch
   }
   guides: readonly Guide[]
   draw: DrawPreview | null
@@ -574,7 +619,7 @@ export interface UiChange {
 
 export interface Runtime {
   snapshot(): Snapshot
-  update(input: Input, change: InputChange): Result
+  update(input: Input): Result
   subscribe(listener: (snapshot: Snapshot, change: Change) => void): () => void
 }
 

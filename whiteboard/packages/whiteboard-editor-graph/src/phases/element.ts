@@ -21,7 +21,9 @@ export const createElementPhase = (): EditorPhase => ({
         entry,
         measuredSize: context.working.measure.nodes.get(nodeId)?.size,
         treeRect,
-        edit: context.working.input.session.edit
+        edit: context.working.input.session.edit,
+        selection: context.working.input.interaction.selection,
+        hover: context.working.input.interaction.hover
       }))
     })
 
@@ -31,7 +33,8 @@ export const createElementPhase = (): EditorPhase => ({
         entry,
         nodes,
         labelMeasures: context.working.measure.edgeLabels.get(edgeId),
-        edit: context.working.input.session.edit
+        edit: context.working.input.session.edit,
+        selection: context.working.input.interaction.selection
       }))
     })
 

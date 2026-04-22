@@ -29,6 +29,9 @@ import {
   publishSections
 } from '@dataview/engine/active/snapshot/membership/publish'
 import {
+  buildMembershipState
+} from '@dataview/engine/active/snapshot/membership/derive'
+import {
   runMembershipStage
 } from '@dataview/engine/active/snapshot/membership/runtime'
 import type {
@@ -284,4 +287,109 @@ test('publishSections changes item id when a record moves to another group', () 
   assert.equal(nextItemId !== undefined ? nextPublished.items.read.record(nextItemId) : undefined, 'rec_1')
   assert.equal(nextItemId !== undefined ? nextPublished.items.read.section(nextItemId) : undefined, 'done')
   assert.notEqual(previousItemId, nextItemId)
+})
+
+test('publishSections emits section and item deltas from published membership changes', () => {
+  const view = createView()
+  const previousDocument = createDocument({
+    rec_1: 'todo',
+    rec_2: 'doing'
+  })
+  const previousIndex = createIndexState(previousDocument, createDemand(view))
+  const previousMembership = runMembershipStage({
+    activeViewId: view.id,
+    previousViewId: view.id,
+    impact: createBaseImpact({}),
+    view,
+    query: createQueryState(
+      previousIndex.rows,
+      previousIndex.records.ids,
+      previousIndex.records.ids,
+      previousIndex.records.ids
+    ),
+    queryDelta: EMPTY_QUERY_DELTA,
+    index: previousIndex
+  })
+  const itemIds = createItemIdPool()
+  const previousPublished = publishSections({
+    view,
+    sections: previousMembership.state,
+    itemIds
+  })
+
+  const nextDocument = createDocument({
+    rec_1: 'done',
+    rec_2: 'doing'
+  })
+  const nextIndex = createIndexState(nextDocument, createDemand(view))
+  const impact = createBaseImpact({})
+  impact.touchedFields = new Set([FIELD_STATUS])
+  const bucketDelta = createMembershipTransition<string, string>()
+  bucketDelta.records.set('rec_1', {
+    before: ['todo'],
+    after: ['done']
+  })
+  const nextMembership = runMembershipStage({
+    activeViewId: view.id,
+    previousViewId: view.id,
+    impact,
+    view,
+    query: createQueryState(
+      nextIndex.rows,
+      nextIndex.records.ids,
+      nextIndex.records.ids,
+      nextIndex.records.ids
+    ),
+    queryDelta: EMPTY_QUERY_DELTA,
+    previous: previousMembership.state,
+    index: nextIndex,
+    indexDelta: {
+      bucket: bucketDelta
+    }
+  })
+  const nextPublished = publishSections({
+    view,
+    sections: nextMembership.state,
+    previousSections: previousMembership.state,
+    previous: previousPublished,
+    itemIds
+  })
+
+  assert.deepEqual(nextPublished.delta?.sections?.update, ['todo', 'done'])
+  assert.deepEqual(nextPublished.delta?.sections?.remove, [])
+  assert.equal(nextPublished.delta?.sections?.list, undefined)
+  assert.equal(nextPublished.delta?.items?.update?.length, 1)
+  assert.equal(nextPublished.delta?.items?.remove?.length, 1)
+  assert.equal(nextPublished.delta?.items?.list, undefined)
+})
+
+test('buildMembershipState reuses grouped partition when visible membership is unchanged', () => {
+  const view = createView()
+  const document = createDocument({
+    rec_1: 'todo',
+    rec_2: 'doing'
+  })
+  const index = createIndexState(document, createDemand(view))
+  const query = createQueryState(
+    index.rows,
+    index.records.ids,
+    index.records.ids,
+    index.records.ids
+  )
+
+  const first = buildMembershipState({
+    view,
+    query,
+    index
+  })
+  const second = buildMembershipState({
+    view,
+    query,
+    index,
+    previous: first
+  })
+
+  assert.equal(second.sections, first.sections)
+  assert.equal(second.sections.get('todo'), first.sections.get('todo'))
+  assert.equal(second.sections.get('doing'), first.sections.get('doing'))
 })

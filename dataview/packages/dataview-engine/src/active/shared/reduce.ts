@@ -25,7 +25,7 @@ const collectEntries = (input: {
   selection: Selection
   column: ReadColumn<CalculationEntry>
 }): ReadonlyMap<RecordId, CalculationEntry> => {
-  const ids = input.selection.read.ids()
+  const ids = input.selection.ids
   if (!ids.length) {
     return EMPTY_ENTRIES
   }
@@ -65,7 +65,7 @@ export const reduce = {
         selection: input.selection,
         column: input.column
       }),
-      recordIds: input.selection.read.ids(),
+      recordIds: input.selection.ids,
       capabilities: input.capabilities
     })
   }

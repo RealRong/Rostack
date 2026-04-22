@@ -1,7 +1,7 @@
 import { store } from '@shared/core'
 import type { InteractionState } from '@dataview/react/interaction'
 import type {
-  TableViewContext
+  TableViewState
 } from '@dataview/runtime/table'
 
 export interface Capabilities {
@@ -22,7 +22,7 @@ const equalCapabilities = (
 )
 
 export const createCapabilities = (options: {
-  view: store.ReadStore<TableViewContext | undefined>
+  view: store.ReadStore<TableViewState | undefined>
   locked: store.ReadStore<boolean>
   interaction: store.ReadStore<InteractionState>
 }): store.ReadStore<Capabilities> => store.createDerivedStore<Capabilities>({
@@ -44,8 +44,8 @@ export const createCapabilities = (options: {
       canHover,
       canRowDrag: !locked && Boolean(
         view
-        && !view.view.sort.length
-        && !view.view.group
+        && view.query.sort.rules.length === 0
+        && !view.query.group.active
       ),
       canColumnResize: !locked,
       showFillHandle

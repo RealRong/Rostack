@@ -1,5 +1,7 @@
 import type {
+  CalculationEntry,
   FieldReducerState,
+  ReducerCapabilitySet
 } from '@dataview/core/calculation'
 import {
   FieldId
@@ -7,6 +9,12 @@ import {
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
+import type {
+  ReadColumn
+} from '@dataview/engine/active/shared/rows'
+import type {
+  Selection
+} from '@dataview/engine/active/shared/selection'
 import type {
   CalculationTransition
 } from '@dataview/engine/active/shared/transition'
@@ -40,6 +48,12 @@ const EMPTY_SUMMARY_DELTA: SummaryDelta = {
   removed: []
 }
 
+interface SummaryFieldRuntime {
+  fieldId: FieldId
+  column: ReadColumn<CalculationEntry> | undefined
+  capabilities: ReducerCapabilitySet
+}
+
 const sameRecordSet = (
   left: readonly string[],
   right: readonly string[]
@@ -62,37 +76,62 @@ const sameRecordSet = (
   return true
 }
 
+const sameSelectionRecordSet = (
+  previous: Selection | undefined,
+  next: Selection | undefined
+): boolean => Boolean(
+  previous
+  && next
+  && sameRecordSet(previous.ids, next.ids)
+)
+
 const collectSectionKeys = (
   membership: MembershipState
 ): readonly SectionKey[] => membership.sections.order.filter(
   sectionKey => membership.sections.get(sectionKey) !== undefined
 )
 
-const buildSectionSummaryFields = (input: {
-  sectionKey: SectionKey
-  membership: MembershipState
+const prepareSummaryFields = (input: {
   calcFields: readonly FieldId[]
   index: IndexState
+}): readonly SummaryFieldRuntime[] => {
+  const fields: SummaryFieldRuntime[] = []
+
+  for (let index = 0; index < input.calcFields.length; index += 1) {
+    const fieldId = input.calcFields[index]!
+    const fieldIndex = input.index.calculations.fields.get(fieldId)
+    if (!fieldIndex) {
+      continue
+    }
+
+    fields.push({
+      fieldId,
+      column: input.index.rows.column.calc(fieldId),
+      capabilities: fieldIndex.capabilities
+    })
+  }
+
+  return fields
+}
+
+const buildSectionSummaryFields = (input: {
+  selection?: Selection
+  fields: readonly SummaryFieldRuntime[]
 }): ReadonlyMap<FieldId, FieldReducerState> => {
-  const selection = input.membership.sections.get(input.sectionKey)
-  if (!selection) {
+  if (!input.selection) {
     return EMPTY_FIELD_SUMMARIES
   }
 
   const byField = new Map<FieldId, FieldReducerState>()
 
-  input.calcFields.forEach(fieldId => {
-    const fieldIndex = input.index.calculations.fields.get(fieldId)
-    if (!fieldIndex) {
-      return
-    }
-
-    byField.set(fieldId, reduce.summary({
-      selection,
-      column: input.index.rows.column.calc(fieldId),
-      capabilities: fieldIndex.capabilities
+  for (let index = 0; index < input.fields.length; index += 1) {
+    const field = input.fields[index]!
+    byField.set(field.fieldId, reduce.summary({
+      selection: input.selection,
+      column: field.column,
+      capabilities: field.capabilities
     }))
-  })
+  }
 
   return byField.size
     ? byField
@@ -101,21 +140,15 @@ const buildSectionSummaryFields = (input: {
 
 const buildSummaryState = (input: {
   membership: MembershipState
-  calcFields: readonly FieldId[]
-  index: IndexState
+  fields: readonly SummaryFieldRuntime[]
 }): SummaryState => {
   const sectionKeys = collectSectionKeys(input.membership)
-  if (!input.calcFields.length) {
-    return buildEmptySummaryState(sectionKeys) as SummaryState
-  }
-
   const bySection = new Map<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>()
+
   sectionKeys.forEach(sectionKey => {
     bySection.set(sectionKey, buildSectionSummaryFields({
-      sectionKey,
-      membership: input.membership,
-      calcFields: input.calcFields,
-      index: input.index
+      selection: input.membership.sections.get(sectionKey),
+      fields: input.fields
     }))
   })
 
@@ -168,23 +201,21 @@ const createSummaryDelta = (input: {
   }
 }
 
-const collectTouchedSections = (input: {
+export const resolveSummaryTouchedSections = (input: {
   previousMembership: MembershipState
   membership: MembershipState
   membershipDelta: MembershipDelta
   calcFields: readonly FieldId[]
   calculationDelta?: CalculationTransition
 }): ReadonlySet<SectionKey> | 'all' => {
-  const touched = new Set<SectionKey>(input.membershipDelta.changed)
+  const touched = new Set<SectionKey>()
+
   input.membershipDelta.changed.forEach(sectionKey => {
-    const previousSelection = input.previousMembership.sections.get(sectionKey)
-    const nextSelection = input.membership.sections.get(sectionKey)
-    if (
-      previousSelection
-      && nextSelection
-      && sameRecordSet(previousSelection.read.ids(), nextSelection.read.ids())
-    ) {
-      touched.delete(sectionKey)
+    if (!sameSelectionRecordSet(
+      input.previousMembership.sections.get(sectionKey),
+      input.membership.sections.get(sectionKey)
+    )) {
+      touched.add(sectionKey)
     }
   })
 
@@ -231,6 +262,7 @@ export const deriveSummaryState = (input: {
   calcFields: readonly FieldId[]
   index: IndexState
   calculationDelta?: CalculationTransition
+  touchedSections?: ReadonlySet<SectionKey> | 'all'
   action: 'reuse' | 'sync' | 'rebuild'
 }): {
   state: SummaryState
@@ -239,6 +271,10 @@ export const deriveSummaryState = (input: {
   const previousState = input.previous
   const membershipDelta = input.membershipDelta ?? EMPTY_MEMBERSHIP_DELTA
   const sectionKeys = collectSectionKeys(input.membership)
+  const fields = prepareSummaryFields({
+    calcFields: input.calcFields,
+    index: input.index
+  })
 
   if (input.action === 'reuse' && previousState) {
     return {
@@ -290,8 +326,7 @@ export const deriveSummaryState = (input: {
     return {
       state: buildSummaryState({
         membership: input.membership,
-        calcFields: input.calcFields,
-        index: input.index
+        fields
       }),
       delta: createSummaryDelta({
         rebuild: true,
@@ -305,7 +340,7 @@ export const deriveSummaryState = (input: {
     previous: previousState,
     membership: input.membership
   })
-  const touched = collectTouchedSections({
+  const touched = input.touchedSections ?? resolveSummaryTouchedSections({
     previousMembership: input.previousMembership,
     membership: input.membership,
     membershipDelta,
@@ -324,10 +359,8 @@ export const deriveSummaryState = (input: {
       || !previousByField
     )
       ? buildSectionSummaryFields({
-          sectionKey,
-          membership: input.membership,
-          calcFields: input.calcFields,
-          index: input.index
+          selection: input.membership.sections.get(sectionKey),
+          fields
         })
       : previousByField
 

@@ -32,17 +32,6 @@ export type {
   PageToolbar
 } from '@dataview/runtime/model/page/types'
 
-export {
-  createTableModel
-} from '@dataview/runtime/model/table/api'
-export type {
-  DataViewTableModel,
-  TableBody,
-  TableColumn,
-  TableSection,
-  TableSummary
-} from '@dataview/runtime/model/table/types'
-
 export type {
   Card,
   CardContent,

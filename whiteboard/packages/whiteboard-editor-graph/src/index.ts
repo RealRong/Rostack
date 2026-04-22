@@ -9,9 +9,9 @@ export {
   type CreateEditorGraphReadInput
 } from './read/createRead'
 export {
-  createEditorGraphInputChange,
+  createEditorGraphImpact,
   createEditorGraphTextMeasureEntry,
-  type EditorGraphInputChangeFlags
+  type EditorGraphImpactFlags
 } from './testing/builders'
 export {
   createEditorGraphHarness,

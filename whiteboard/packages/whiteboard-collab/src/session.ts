@@ -65,7 +65,7 @@ const isCheckpointWrite = (
 
 const createEmptyReplayDocument = (
   engine: CreateYjsSessionOptions['engine']
-) => documentApi.create(engine.document.get().id)
+) => documentApi.create(engine.snapshot().state.root.id)
 
 export const createYjsSession = ({
   engine,
@@ -99,7 +99,6 @@ export const createYjsSession = ({
   let waitingForProviderSync = false
   let suppressLocalPublish = false
   let rotatingCheckpoint = false
-  let lastWrite: EngineWrite | null = null
   let cursor: SyncCursor = {
     checkpointId: null,
     changeIds: []
@@ -255,7 +254,7 @@ export const createYjsSession = ({
       return
     }
 
-    const snapshot = readSnapshot()
+        const snapshot = readSnapshot()
     if (snapshot.changes.length < checkpointThreshold) {
       return
     }
@@ -263,7 +262,7 @@ export const createYjsSession = ({
     rotatingCheckpoint = true
     try {
       doc.transact(() => {
-        syncStore.replaceCheckpoint(createCheckpoint(engine.document.get()))
+        syncStore.replaceCheckpoint(createCheckpoint(engine.snapshot().state.root))
         syncStore.clearChanges()
       }, localOrigin)
 
@@ -290,7 +289,7 @@ export const createYjsSession = ({
     }
 
     if (isCheckpointWrite(write)) {
-      publishCheckpoint(engine.document.get())
+      publishCheckpoint(engine.snapshot().state.root)
       localHistoryController.clear()
       return
     }
@@ -314,13 +313,7 @@ export const createYjsSession = ({
     maybeRotateCheckpoint()
   }
 
-  const writeUnsubscribe = engine.write.subscribe(() => {
-    const nextWrite = engine.write.get()
-    if (!nextWrite || nextWrite === lastWrite) {
-      return
-    }
-    lastWrite = nextWrite
-
+  const writeUnsubscribe = engine.subscribeWrite((nextWrite) => {
     if (!bootstrapped || destroyed) {
       return
     }
@@ -366,7 +359,7 @@ export const createYjsSession = ({
         allowRotate: false
       })
     } else {
-      publishCheckpoint(engine.document.get())
+      publishCheckpoint(engine.snapshot().state.root)
     }
 
     bootstrapped = true

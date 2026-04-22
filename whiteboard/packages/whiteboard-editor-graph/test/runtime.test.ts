@@ -15,7 +15,7 @@ import type {
 import { createEngine } from '@whiteboard/engine'
 import {
   createEditorGraphHarness,
-  createEditorGraphInputChange,
+  createEditorGraphImpact,
   createEditorGraphPublishSpec,
   createEditorGraphRead,
   createEditorGraphRuntime,
@@ -35,6 +35,7 @@ type RuntimeInputOptions = {
   mindmapPreview?: EditorGraphInput['session']['preview']['mindmap']
   visibleWorld?: Rect
   now?: number
+  impact?: EditorGraphInput['impact']
 }
 
 const createEdgeLabelMeasureEntries = (
@@ -54,7 +55,7 @@ const createEdgeLabelMeasureEntries = (
 const createInput = (
   engine: ReturnType<typeof createEngine>,
   options: RuntimeInputOptions = {}
-) => ({
+): EditorGraphInput => ({
   document: {
     snapshot: engine.snapshot()
   },
@@ -114,21 +115,22 @@ const createInput = (
   },
   clock: {
     now: options.now ?? 0
-  }
+  },
+  impact: options.impact ?? createEditorGraphImpact()
 })
 
-const DOCUMENT_CHANGED = createEditorGraphInputChange({
+const DOCUMENT_IMPACT = createEditorGraphImpact({
   document: true
 })
 
-const SESSION_AND_MEASURE_CHANGED = createEditorGraphInputChange({
+const SESSION_AND_MEASURE_IMPACT = createEditorGraphImpact({
   session: true,
   measure: true
 })
 
-const IDLE = createEditorGraphInputChange()
+const IDLE_IMPACT = createEditorGraphImpact()
 
-const FULL_INPUT_CHANGED = createEditorGraphInputChange({
+const FULL_INPUT_IMPACT = createEditorGraphImpact({
   document: true,
   session: true,
   measure: true,
@@ -287,7 +289,9 @@ describe('editor graph runtime', () => {
       })
     })
 
-    const result = runtime.update(createInput(engine), DOCUMENT_CHANGED)
+    const result = runtime.update(createInput(engine, {
+      impact: DOCUMENT_IMPACT
+    }))
     unsubscribe()
 
     expect(result.snapshot.graph.nodes.ids.length).toBe(1)
@@ -316,8 +320,12 @@ describe('editor graph runtime', () => {
     })
     const runtime = createEditorGraphRuntime()
 
-    runtime.update(createInput(engine), DOCUMENT_CHANGED)
-    const idle = runtime.update(createInput(engine), IDLE)
+    runtime.update(createInput(engine, {
+      impact: DOCUMENT_IMPACT
+    }))
+    const idle = runtime.update(createInput(engine, {
+      impact: IDLE_IMPACT
+    }))
 
     expect(idle.trace).toBeDefined()
     expect(idle.trace!.phases).toHaveLength(0)
@@ -337,7 +345,9 @@ describe('editor graph runtime', () => {
       text: 'Public API'
     })
     const harness = createEditorGraphHarness()
-    const result = harness.update(createInput(engine), DOCUMENT_CHANGED)
+    const result = harness.update(createInput(engine, {
+      impact: DOCUMENT_IMPACT
+    }))
     const read = createEditorGraphRead({
       runtime: harness.runtime
     })
@@ -373,15 +383,16 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
     const baseline = runtime.update(
       createInput(engine, {
+        impact: DOCUMENT_IMPACT,
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [childId, { width: 120, height: 44 }]
         ])
       }),
-      DOCUMENT_CHANGED
     )
     const live = runtime.update(
       createInput(engine, {
+        impact: SESSION_AND_MEASURE_IMPACT,
         edit: {
           kind: 'node',
           nodeId: created.rootId,
@@ -396,22 +407,25 @@ describe('editor graph runtime', () => {
           [created.rootId, { width: 320, height: 44 }],
           [childId, { width: 120, height: 44 }]
         ])
-      }),
-      SESSION_AND_MEASURE_CHANGED
+      })
     )
 
     const beforeRoot = baseline.snapshot.graph.nodes.byId.get(created.rootId)?.layout.rect
     const beforeChild = baseline.snapshot.graph.nodes.byId.get(childId)?.layout.rect
+    const liveRootView = live.snapshot.graph.nodes.byId.get(created.rootId)
     const liveRoot = live.snapshot.graph.nodes.byId.get(created.rootId)?.layout.rect
     const liveChild = live.snapshot.graph.nodes.byId.get(childId)?.layout.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
+    expect(liveRootView).toBeDefined()
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
     expect(liveRoot!.x).toBe(beforeRoot!.x)
     expect(liveRoot!.width).toBeGreaterThan(beforeRoot!.width)
     expect(liveChild!.x).toBeGreaterThan(beforeChild!.x)
+    expect(liveRootView!.render.editing).toBe(true)
+    expect(liveRootView!.render.edit?.field).toBe('text')
     expect(live.change.graph.nodes.all.has(childId)).toBe(true)
     expect(live.change.graph.owners.mindmaps.all.has(created.mindmapId)).toBe(true)
   })
@@ -437,16 +451,17 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
     const baseline = runtime.update(
       createInput(engine, {
+        impact: DOCUMENT_IMPACT,
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
       }),
-      DOCUMENT_CHANGED
     )
     const live = runtime.update(
       createInput(engine, {
+        impact: SESSION_AND_MEASURE_IMPACT,
         edit: {
           kind: 'node',
           nodeId: firstId,
@@ -462,8 +477,7 @@ describe('editor graph runtime', () => {
           [firstId, { width: 120, height: 88 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      }),
-      SESSION_AND_MEASURE_CHANGED
+      })
     )
 
     const beforeFirst = baseline.snapshot.graph.nodes.byId.get(firstId)?.layout.rect
@@ -519,6 +533,7 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
     const result = runtime.update(
       createInput(engine, {
+        impact: FULL_INPUT_IMPACT,
         edit: {
           kind: 'edge-label',
           edgeId,
@@ -561,9 +576,17 @@ describe('editor graph runtime', () => {
             y: 0,
             width: 520,
             height: 220
-          }
+          },
+          match: 'contain'
         },
         draw: {
+          kind: 'pen',
+          style: {
+            kind: 'pen',
+            color: 'currentColor',
+            width: 2,
+            opacity: 1
+          },
           points: [
             { x: 12, y: 12 },
             { x: 24, y: 30 }
@@ -582,8 +605,7 @@ describe('editor graph runtime', () => {
           width: 700,
           height: 320
         }
-      }),
-      FULL_INPUT_CHANGED
+      })
     )
 
     const firstNode = result.snapshot.graph.nodes.byId.get(firstId)
@@ -596,6 +618,8 @@ describe('editor graph runtime', () => {
     expect(firstNode!.layout.rotation).toBe(30)
     expect(firstNode!.layout.bounds.width).toBeGreaterThan(firstNode!.layout.rect.width)
     expect(firstNode!.layout.bounds.height).toBeGreaterThan(firstNode!.layout.rect.height)
+    expect(firstNode!.render.selected).toBe(true)
+    expect(firstNode!.render.hovered).toBe(false)
 
     expect(edgeView).toBeDefined()
     expect(edgeView!.route.svgPath).toBeTruthy()
@@ -639,7 +663,14 @@ describe('editor graph runtime', () => {
       width: 520,
       height: 220
     })
+    expect(chrome.preview.marquee?.match).toBe('contain')
     expect(chrome.preview.guides).toHaveLength(1)
+    expect(chrome.preview.draw?.style).toEqual({
+      kind: 'pen',
+      color: 'currentColor',
+      width: 2,
+      opacity: 1
+    })
     expect(chrome.preview.draw?.hiddenNodeIds).toEqual([firstId])
     expect(chrome.edit?.kind).toBe('edge-label')
     expect(chrome.edit?.labelId).toBe(labelId)
@@ -683,6 +714,7 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
     const result = runtime.update(
       createInput(engine, {
+        impact: FULL_INPUT_IMPACT,
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [childId, { width: 120, height: 44 }]
@@ -706,8 +738,7 @@ describe('editor graph runtime', () => {
           width: 1200,
           height: 1200
         }
-      }),
-      FULL_INPUT_CHANGED
+      })
     )
 
     const mindmapView = result.snapshot.graph.owners.mindmaps.byId.get(created.mindmapId)

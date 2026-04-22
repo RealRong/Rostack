@@ -49,7 +49,7 @@ export const useDataView = (): DataViewReactContextValue => {
   return value
 }
 
-export const useDataViewRuntime = () => useDataView().model
+export const useDataViewModel = () => useDataView().model
 
 export const usePageRuntime = () => useDataView().model.page
 

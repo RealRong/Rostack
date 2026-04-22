@@ -55,7 +55,7 @@ const shouldCaptureOrigin = (
 }
 
 export const createLocalEngineHistory = (
-  engine: Pick<Engine, 'apply' | 'write'>,
+  engine: Pick<Engine, 'apply' | 'subscribeWrite'>,
   config?: Partial<LocalEngineHistoryConfig>
 ): HistoryApi => {
   const resolvedConfig: LocalEngineHistoryConfig = {
@@ -68,7 +68,6 @@ export const createLocalEngineHistory = (
   let redoStack: HistoryEntry[] = []
   let isApplying = false
   let lastUpdatedAt: number | undefined
-  let lastWrite: EngineWrite | null = null
 
   const publish = () => {
     lastUpdatedAt = Date.now()
@@ -134,14 +133,7 @@ export const createLocalEngineHistory = (
     publish()
   }
 
-  engine.write.subscribe(() => {
-    const nextWrite = engine.write.get()
-    if (!nextWrite || nextWrite === lastWrite) {
-      return
-    }
-    lastWrite = nextWrite
-    captureWrite(nextWrite)
-  })
+  engine.subscribeWrite(captureWrite)
 
   return {
     get: state.get,

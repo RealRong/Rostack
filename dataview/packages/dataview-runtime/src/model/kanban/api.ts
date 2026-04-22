@@ -17,6 +17,11 @@ import {
   createItemCardContentStore,
   createRecordCardPropertiesStore
 } from '@dataview/runtime/model/internal/card'
+import {
+  createPresentListStore
+} from '@dataview/runtime/model/internal/list'
+
+const EMPTY_SECTIONS = [] as const
 
 const sameBoard = (
   left: KanbanBoard | null,
@@ -26,11 +31,12 @@ const sameBoard = (
   && !!right
   && left.viewId === right.viewId
   && left.grouped === right.grouped
-  && left.sectionKeys === right.sectionKeys
   && left.groupField === right.groupField
   && left.fillColumnColor === right.fillColumnColor
   && left.groupUsesOptionColors === right.groupUsesOptionColors
   && left.cardsPerColumn === right.cardsPerColumn
+  && left.size === right.size
+  && left.canDrag === right.canDrag
 )
 
 const sameSection = (
@@ -74,6 +80,18 @@ export const createKanbanModel = (input: {
   }) => string
 }): DataViewKanbanModel => {
   const customFields = createActiveCustomFieldListStore(input.source)
+  const sectionList = createPresentListStore({
+    ids: input.source.active.sections.ids,
+    values: input.source.active.sections
+  })
+  const sections = store.createDerivedStore({
+    get: () => (
+      store.read(input.source.active.view.type) === 'kanban'
+        ? store.read(sectionList)
+        : EMPTY_SECTIONS
+    ),
+    isEqual: equal.sameOrder
+  })
   const properties = createRecordCardPropertiesStore({
     source: input.source,
     fields: customFields
@@ -89,14 +107,16 @@ export const createKanbanModel = (input: {
         return null
       }
 
+      const kanban = store.read(input.source.active.meta.kanban)
       return {
         viewId,
         grouped: queryRead.grouped(store.read(input.source.active.meta.query)),
-        sectionKeys: store.read(input.source.active.sections.keys),
         groupField: store.read(input.source.active.meta.query).group.field,
-        fillColumnColor: store.read(input.source.active.meta.kanban).fillColumnColor,
-        groupUsesOptionColors: store.read(input.source.active.meta.kanban).groupUsesOptionColors,
-        cardsPerColumn: store.read(input.source.active.meta.kanban).cardsPerColumn
+        fillColumnColor: kanban.fillColumnColor,
+        groupUsesOptionColors: kanban.groupUsesOptionColors,
+        cardsPerColumn: kanban.cardsPerColumn,
+        size: kanban.size,
+        canDrag: kanban.canReorder
       }
     },
     isEqual: sameBoard
@@ -177,6 +197,7 @@ export const createKanbanModel = (input: {
 
   return {
     board,
+    sections,
     section,
     card,
     content

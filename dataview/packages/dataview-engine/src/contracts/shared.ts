@@ -45,7 +45,6 @@ export interface ItemIdPool {
     placement: (itemId: ItemId) => ItemPlacement | undefined
   }
   gc: {
-    keep: (itemIds: ReadonlySet<ItemId>) => void
     clear: () => void
   }
 }

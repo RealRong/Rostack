@@ -10,8 +10,10 @@ import type {
   EdgeLabelView,
   EdgeView,
   GroupView,
+  HoverState,
   MindmapView,
   NodeView,
+  SelectionState,
   SessionInput
 } from '../contracts/editor'
 import type {
@@ -21,7 +23,7 @@ import type {
 } from '../contracts/working'
 import { collectRects } from './geometry'
 import {
-  buildProjectedNodeGeometry,
+  buildProjectedNodeView,
   readEdgePoints,
   readProjectedEdge,
   readProjectedEdgeNodes
@@ -32,21 +34,42 @@ export const buildNodeView = (input: {
   measuredSize?: Size
   treeRect?: Rect
   edit: SessionInput['edit']
+  selection: SelectionState
+  hover: HoverState
 }): NodeView => {
-  const geometry = buildProjectedNodeGeometry(input)
+  const view = buildProjectedNodeView(input)
+  const edit = input.edit?.kind === 'node'
+    && input.edit.nodeId === input.entry.base.node.id
+    ? {
+        field: input.edit.field,
+        caret: input.edit.caret
+      }
+    : undefined
+  const patch = input.entry.preview?.patch
+  const handle = patch && 'handle' in patch
+    ? patch.handle
+    : undefined
 
   return {
-    base: input.entry.base,
+    base: {
+      node: view.node,
+      owner: input.entry.base.owner
+    },
     layout: {
       measuredSize: input.measuredSize,
-      rotation: geometry.rotation,
-      rect: geometry.rect,
-      bounds: geometry.bounds
+      rotation: view.rotation,
+      rect: view.rect,
+      bounds: view.bounds
     },
     render: {
       hidden: input.entry.preview?.hidden ?? false,
-      editing: input.edit?.kind === 'node'
-        && input.edit.nodeId === input.entry.base.node.id
+      editing: edit !== undefined,
+      hovered: input.hover.kind === 'node'
+        && input.hover.nodeId === input.entry.base.node.id,
+      selected: input.selection.nodeIds.includes(input.entry.base.node.id),
+      patched: Boolean(patch),
+      resizing: Boolean(patch?.size || handle),
+      edit
     }
   }
 }
@@ -55,7 +78,18 @@ const toEdgeNodeSnapshot = (
   nodeView: NodeView | undefined
 ) => nodeView
   ? {
-      node: nodeView.base.node,
+      node: {
+        ...nodeView.base.node,
+        position: {
+          x: nodeView.layout.rect.x,
+          y: nodeView.layout.rect.y
+        },
+        size: {
+          width: nodeView.layout.rect.width,
+          height: nodeView.layout.rect.height
+        },
+        rotation: nodeView.layout.rotation
+      },
       geometry: nodeApi.outline.geometry(
         nodeView.base.node,
         nodeView.layout.rect,
@@ -74,12 +108,31 @@ const buildEdgeLabelRect = (
   height: size.height
 })
 
+const EDGE_LABEL_PLACEHOLDER = 'Label'
+const EDGE_LABEL_MASK_BLEED = 4
+
+const readEdgeLabelDisplayText = (
+  value: string,
+  editing: boolean
+) => value || (editing ? EDGE_LABEL_PLACEHOLDER : '')
+
+const readEdgeBox = (
+  rect: Rect | undefined,
+  edge: GraphEdgeEntry['base']['edge']
+) => rect
+  ? {
+      rect,
+      pad: Math.max(24, (edge.style?.width ?? 2) + 16)
+    }
+  : undefined
+
 export const buildEdgeView = (input: {
   edgeId: EdgeId
   entry: GraphEdgeEntry
   nodes: ReadonlyMap<string, NodeView>
   labelMeasures?: ReadonlyMap<string, { size: Size }>
   edit: SessionInput['edit']
+  selection: SelectionState
 }): EdgeView => {
   const edge = readProjectedEdge(input.entry)
   const geometry = (() => {
@@ -98,15 +151,21 @@ export const buildEdgeView = (input: {
     }
   })()
   const textMode = edge.textMode ?? 'horizontal'
-  const labels = (edge.labels ?? []).map((label) => {
+  const labels = (edge.labels ?? []).flatMap((label) => {
     const editSession = input.edit?.kind === 'edge-label'
       && input.edit.edgeId === input.edgeId
       && input.edit.labelId === label.id
       ? input.edit
       : undefined
+    const editable = Boolean(editSession)
     const text = editSession
       ? editSession.text
       : label.text ?? ''
+    const displayText = readEdgeLabelDisplayText(text, editable)
+    if (!displayText.trim()) {
+      return []
+    }
+
     const measuredSize = input.labelMeasures?.get(label.id)?.size
     const size = edgeApi.label.placementSize({
       textMode,
@@ -114,6 +173,10 @@ export const buildEdgeView = (input: {
       text,
       fontSize: label.style?.size
     })
+    if (!size) {
+      return []
+    }
+
     const placement = geometry
       ? edgeApi.label.placement({
           path: geometry.path,
@@ -125,18 +188,33 @@ export const buildEdgeView = (input: {
         })
       : undefined
 
-    return {
+    if (!placement) {
+      return []
+    }
+
+    const angle = textMode === 'tangent'
+      ? placement.angle
+      : 0
+    const rect = buildEdgeLabelRect(placement.point, size)
+
+    return [{
       labelId: label.id,
       text,
+      displayText,
+      style: label.style,
+      editable,
+      caret: editSession?.caret,
       size,
-      point: placement?.point,
-      angle: textMode === 'tangent'
-        ? placement?.angle
-        : 0,
-      rect: placement?.point && size
-        ? buildEdgeLabelRect(placement.point, size)
-        : undefined
-    } satisfies EdgeLabelView
+      point: placement.point,
+      angle,
+      rect,
+      maskRect: edgeApi.label.mask({
+        center: placement.point,
+        size,
+        angle,
+        margin: EDGE_LABEL_MASK_BLEED
+      })
+    } satisfies EdgeLabelView]
   })
   const pathBounds = geometry
     ? edgeApi.path.bounds(geometry.path)
@@ -152,7 +230,7 @@ export const buildEdgeView = (input: {
 
   return {
     base: {
-      edge: input.entry.base.edge,
+      edge,
       nodes: readProjectedEdgeNodes(edge)
     },
     route: {
@@ -161,10 +239,16 @@ export const buildEdgeView = (input: {
       bounds,
       source: geometry?.ends.source.point,
       target: geometry?.ends.target.point,
+      ends: geometry?.ends,
+      handles: geometry?.handles ?? [],
       labels
     },
     render: {
       hidden: false,
+      selected: input.selection.edgeIds.includes(input.edgeId),
+      patched: Boolean(input.entry.preview?.patch ?? input.entry.draft?.patch),
+      activeRouteIndex: input.entry.preview?.activeRouteIndex ?? input.entry.draft?.activeRouteIndex,
+      box: readEdgeBox(pathBounds, edge),
       editingLabelId: input.edit?.kind === 'edge-label'
         && input.edit.edgeId === input.edgeId
         ? input.edit.labelId

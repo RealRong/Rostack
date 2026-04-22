@@ -11,14 +11,14 @@ export type {
   DataViewSource,
   InlineKey,
   InlineSource,
-  PageSource,
   SelectionSource
 } from '@dataview/runtime/dataview/types'
 
 export type {
-  TableGridDomain,
-  TableRecordAccess,
+  TableColumnState,
+  TableGrid,
+  TableItemList,
+  TableQueryState,
   TableRuntime,
-  TableSectionContext,
-  TableViewContext
+  TableViewState
 } from '@dataview/runtime/table'

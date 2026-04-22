@@ -13,6 +13,7 @@
     "@shared/core": "workspace:*",
     "@shared/dom": "workspace:*",
     "@whiteboard/core": "workspace:*",
+    "@whiteboard/editor-graph": "workspace:*",
     "@whiteboard/engine": "workspace:*",
     "@whiteboard/history": "workspace:*"
   },

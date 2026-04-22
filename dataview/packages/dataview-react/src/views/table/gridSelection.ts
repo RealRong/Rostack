@@ -5,7 +5,7 @@ import type {
   CellRef
 } from '@dataview/engine'
 import type {
-  TableGridDomain
+  TableGrid
 } from '@dataview/runtime/table'
 import {
   gridSelection,
@@ -32,7 +32,7 @@ export interface GridSelectionStore {
 }
 
 export const createGridSelection = (
-  gridStore: coreStore.ReadStore<TableGridDomain | undefined>
+  gridStore: coreStore.ReadStore<TableGrid | undefined>
 ): GridSelectionStore => {
   const selectionStore = coreStore.createValueStore<GridSelection | null>({
     initial: null,

@@ -18,11 +18,10 @@ import {
 import {
   createGalleryModel,
   createKanbanModel,
-  createPageModel,
-  createTableModel
+  createPageModel
 } from '@dataview/runtime/model'
 import {
-  createEntityListStore
+  createPresentListStore
 } from '@dataview/runtime/model/internal/list'
 import {
   createMarqueeController
@@ -157,7 +156,7 @@ export const createDataViewRuntime = (
     selection,
     resolveDomain: () => store.read(activeSelectionDomain)
   })
-  const fieldsStore = createEntityListStore({
+  const fieldsStore = createPresentListStore({
     ids: sourceRuntime.source.doc.fields.ids,
     values: sourceRuntime.source.doc.fields
   })
@@ -171,15 +170,6 @@ export const createDataViewRuntime = (
   const source = {
     doc: sourceRuntime.source.doc,
     active: sourceRuntime.source.active,
-    page: {
-      queryVisible: store.createDerivedStore({
-        get: () => store.read(pageStateStore).query.visible,
-        isEqual: Object.is
-      }),
-      queryRoute: store.createDerivedStore({
-        get: () => store.read(pageStateStore).query.route
-      })
-    },
     selection: {
       member: selection.store.membership,
       preview: marquee.preview.membership
@@ -202,9 +192,6 @@ export const createDataViewRuntime = (
     page: createPageModel({
       source,
       pageStateStore
-    }),
-    table: createTableModel({
-      source
     }),
     gallery: createGalleryModel({
       source,

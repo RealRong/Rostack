@@ -13,10 +13,12 @@ const EMPTY_INDEXES = [] as readonly number[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_RECORD_ID_SET = new Set<RecordId>()
 const EMPTY_RECORD_ORDER = new Map<RecordId, number>()
+const FULL_INDEXES_CACHE = new WeakMap<Rows, readonly number[]>()
 
 export interface Selection {
   rows: Rows
   indexes: readonly number[]
+  ids: readonly RecordId[]
   read: {
     count: () => number
     index: (offset: number) => number | undefined
@@ -34,9 +36,41 @@ const isFullRowsSelection = (
 ) => indexes.length === rows.ids.length
   && indexes.every((value, index) => value === index)
 
+const readFullSelectionIndexes = (
+  rows: Rows
+): readonly number[] => {
+  const cached = FULL_INDEXES_CACHE.get(rows)
+  if (cached) {
+    return cached
+  }
+
+  const created = new Array<number>(rows.ids.length)
+  for (let index = 0; index < rows.ids.length; index += 1) {
+    created[index] = index
+  }
+  FULL_INDEXES_CACHE.set(rows, created)
+  return created
+}
+
+const materializeSelectionIds = (
+  rows: Rows,
+  indexes: readonly number[]
+): readonly RecordId[] => {
+  if (!indexes.length) {
+    return EMPTY_RECORD_IDS
+  }
+
+  const ids = new Array<RecordId>(indexes.length)
+  for (let offset = 0; offset < indexes.length; offset += 1) {
+    ids[offset] = rows.at(indexes[offset]!)!
+  }
+  return ids
+}
+
 export const EMPTY_SELECTION: Selection = {
   rows: EMPTY_ROWS,
   indexes: EMPTY_INDEXES,
+  ids: EMPTY_RECORD_IDS,
   read: {
     count: () => 0,
     index: () => undefined,
@@ -48,45 +82,45 @@ export const EMPTY_SELECTION: Selection = {
 export const createSelection = (input: {
   rows: Rows
   indexes: readonly number[]
+  ids?: readonly RecordId[]
   previous?: Selection
 }): Selection => {
+  const fullIndexes = isFullRowsSelection(input.rows, input.indexes)
+    ? readFullSelectionIndexes(input.rows)
+    : undefined
+  const indexes = fullIndexes ?? input.indexes
+
   if (input.previous && input.previous.rows === input.rows) {
-    if (input.previous.indexes === input.indexes) {
+    if (input.previous.indexes === indexes) {
       return input.previous
     }
 
-    if (equal.sameOrder(input.previous.indexes, input.indexes)) {
+    if (equal.sameOrder(input.previous.indexes, indexes)) {
       return input.previous
     }
   }
 
-  const ids = isFullRowsSelection(input.rows, input.indexes)
-    ? input.rows.ids
-    : undefined
+  const ids = input.ids
+    ?? (
+      fullIndexes
+        ? input.rows.ids
+        : materializeSelectionIds(input.rows, indexes)
+    )
 
   return {
     rows: input.rows,
-    indexes: input.indexes,
+    indexes,
+    ids,
     read: {
-      count: () => input.indexes.length,
-      index: offset => input.indexes[offset],
+      count: () => indexes.length,
+      index: offset => indexes[offset],
       at: offset => {
-        const index = input.indexes[offset]
+        const index = indexes[offset]
         return index === undefined
           ? undefined
           : input.rows.at(index)
       },
-      ids: () => {
-        if (ids) {
-          return ids
-        }
-
-        const next = new Array<RecordId>(input.indexes.length)
-        for (let offset = 0; offset < input.indexes.length; offset += 1) {
-          next[offset] = input.rows.at(input.indexes[offset]!)!
-        }
-        return next
-      }
+      ids: () => ids
     }
   }
 }
@@ -96,10 +130,25 @@ export const createSelectionFromIds = (input: {
   ids: readonly RecordId[]
   previous?: Selection
 }): Selection => {
+  if (input.previous && equal.sameOrder(input.previous.ids, input.ids)) {
+    if (input.previous.rows === input.rows) {
+      return input.previous
+    }
+
+    if (input.previous.rows.ids === input.rows.ids) {
+      return createSelection({
+        rows: input.rows,
+        indexes: input.previous.indexes,
+        ids: input.previous.ids
+      })
+    }
+  }
+
   if (!input.ids.length) {
     return createSelection({
       rows: input.rows,
       indexes: EMPTY_INDEXES,
+      ids: EMPTY_RECORD_IDS,
       previous: input.previous
     })
   }
@@ -107,7 +156,8 @@ export const createSelectionFromIds = (input: {
   if (input.ids === input.rows.ids) {
     return createSelection({
       rows: input.rows,
-      indexes: input.rows.ids.map((_id, index) => index),
+      indexes: readFullSelectionIndexes(input.rows),
+      ids: input.rows.ids,
       previous: input.previous
     })
   }
@@ -120,13 +170,14 @@ export const createSelectionFromIds = (input: {
   return createSelection({
     rows: input.rows,
     indexes,
+    ids: input.ids,
     previous: input.previous
   })
 }
 
 export const readSelectionIds = (
   selection: Selection
-): readonly RecordId[] => selection.read.ids()
+): readonly RecordId[] => selection.ids
 
 export const readSelectionIdSet = (
   selection: Selection
@@ -136,7 +187,7 @@ export const readSelectionIdSet = (
     return existing
   }
 
-  const ids = selection.read.ids()
+  const ids = selection.ids
   if (!ids.length) {
     return EMPTY_RECORD_ID_SET
   }
@@ -154,7 +205,7 @@ export const readSelectionOrder = (
     return existing
   }
 
-  const ids = selection.read.ids()
+  const ids = selection.ids
   if (!ids.length) {
     return EMPTY_RECORD_ORDER
   }

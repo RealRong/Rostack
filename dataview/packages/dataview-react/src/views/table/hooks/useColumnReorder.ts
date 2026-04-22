@@ -42,14 +42,15 @@ export interface ColumnReorderApi {
 }
 
 export const useColumnReorder = (): ColumnReorderApi => {
-  const editor = useDataView().engine
+  const dataView = useDataView()
+  const editor = dataView.engine
   const table = useTableContext()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
-    throw new Error('Table column reorder requires an active current view.')
+  const grid = useStoreValue(dataView.table.grid)
+  if (!grid) {
+    throw new Error('Table column reorder requires an active table grid.')
   }
 
-  const columns = currentView.fields.all
+  const columns = grid.fields.all
   const fieldIds = useMemo(
     () => columns.map(field => field.id),
     [columns]
@@ -104,7 +105,7 @@ export const useColumnReorder = (): ColumnReorderApi => {
       beforeId
     )
     finishDrag()
-  }, [currentView.view.id, editor, finishDrag, fieldIds])
+  }, [editor, finishDrag, fieldIds])
 
   const onDragCancel = useCallback(() => {
     finishDrag()

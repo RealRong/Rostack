@@ -14,21 +14,26 @@ const createOrderedIdsStub = (ids: readonly string[]) => {
   }
 }
 
-const createCurrentViewStub = () => ({
+const createGridStub = () => ({
   items: {
     ...createOrderedIdsStub(['row_1', 'row_2', 'row_3', 'row_4']),
     read: {
-      record: (itemId: string) => (({
+      recordId: (itemId: string) => (({
         row_1: 'rec_1',
         row_2: 'rec_2',
         row_3: 'rec_3',
         row_4: 'rec_2'
       }) as Record<string, string | undefined>)[itemId],
-      section: () => undefined,
+      sectionKey: () => undefined,
       placement: () => undefined
     }
   },
-  fields: createOrderedIdsStub(['title', 'points'])
+  fields: createOrderedIdsStub(['title', 'points']),
+  sections: collection.createOrderedKeyedCollection({
+    ids: [],
+    all: [],
+    get: () => undefined
+  })
 })
 
 test('resolveFillWriteManyInput batches non-title fill by field across all target rows', () => {
@@ -47,7 +52,7 @@ test('resolveFillWriteManyInput batches non-title fill by field across all targe
       itemId: 'row_1',
       fieldId: 'points'
     },
-    currentView: createCurrentViewStub() as never,
+    grid: createGridStub() as never,
     readCell: () => ({
       exists: true,
       value: 42
@@ -78,7 +83,7 @@ test('resolveFillWriteManyInput includes title writes and dedupes repeated recor
       itemId: 'row_1',
       fieldId: 'title'
     },
-    currentView: createCurrentViewStub() as never,
+    grid: createGridStub() as never,
     readCell: () => ({
       exists: true,
       value: 'Seed title'
@@ -109,7 +114,7 @@ test('resolveFillWriteManyInput emits clear when source field is empty', () => {
       itemId: 'row_1',
       fieldId: 'points'
     },
-    currentView: createCurrentViewStub() as never,
+    grid: createGridStub() as never,
     readCell: () => ({
       exists: true,
       value: undefined

@@ -16,9 +16,11 @@ import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
+import type { CommittedRead } from '@whiteboard/editor/committed/read'
 
 export type EditorHostDeps = {
   engine: Engine
+  committed: CommittedRead
   session: EditorSession
   query: EditorQuery
   layout: EditorLayout
@@ -29,15 +31,17 @@ export type EditorHostDeps = {
 
 const createEditorSnapRuntime = ({
   engine,
+  committed,
   query
 }: {
   engine: Engine
+  committed: CommittedRead
   query: EditorQuery
 }) => createSnapRuntime({
   readZoom: () => query.viewport.get().zoom,
   node: {
     config: engine.config.node,
-    query: engine.read.index.snap.inRect
+    query: committed.index.snap.inRect
   },
   edge: {
     config: engine.config.edge,
@@ -48,6 +52,7 @@ const createEditorSnapRuntime = ({
 
 export const createEditorHost = ({
   engine,
+  committed,
   session,
   query,
   layout,
@@ -56,10 +61,12 @@ export const createEditorHost = ({
 }: Omit<EditorHostDeps, 'snap'>): EditorInputHost => {
   const snap = createEditorSnapRuntime({
     engine,
+    committed,
     query
   })
   const deps: EditorHostDeps = {
     engine,
+    committed,
     session,
     query,
     layout,

@@ -1,4 +1,5 @@
 import type {
+  CardSize,
   ViewId
 } from '@dataview/core/contracts'
 import type {
@@ -16,8 +17,9 @@ export interface GalleryBody {
   viewId: ViewId
   empty: boolean
   grouped: boolean
+  size: CardSize
+  canDrag: boolean
   groupUsesOptionColors: boolean
-  sectionKeys: readonly SectionKey[]
 }
 
 export interface GallerySection {
@@ -30,6 +32,7 @@ export interface GalleryCard extends Card {}
 
 export interface DataViewGalleryModel {
   body: store.ReadStore<GalleryBody | null>
+  sections: store.ReadStore<readonly Section[]>
   section: store.KeyedReadStore<SectionKey, GallerySection | undefined>
   card: store.KeyedReadStore<ItemId, GalleryCard | undefined>
   content: store.KeyedReadStore<ItemId, CardContent | undefined>

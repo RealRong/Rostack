@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'rea
 import { OverlayProvider } from '@shared/ui'
 import type { Document } from '@whiteboard/core/types'
 import { collab as collabApi, type CollabSession } from '@whiteboard/collab'
-import { engine as engineApi } from '@whiteboard/engine'
+import { engine as engineApi, normalizeDocument } from '@whiteboard/engine'
 import type { WhiteboardProps } from '@whiteboard/react/types/common/board'
 import { resolveConfig } from '@whiteboard/react/config'
 import { createDefaultNodeRegistry } from '@whiteboard/react/features/node'
@@ -55,7 +55,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     [options]
   )
   const inputDocument = useMemo(
-    () => engineApi.document.normalize(document, boardConfig),
+    () => normalizeDocument(document, boardConfig),
     [document, boardConfig]
   )
   const onDocumentChangeRef = useRef(onDocumentChange)

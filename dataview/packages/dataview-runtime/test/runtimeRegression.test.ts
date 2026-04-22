@@ -219,7 +219,7 @@ describe('data view runtime regressions', () => {
 
     engine.views.open(VIEW_BOARD)
 
-    const readVisibleItemIds = () => runtime.source.active.sections.keys.get().flatMap(sectionKey => (
+    const readVisibleItemIds = () => runtime.source.active.sections.ids.get().flatMap(sectionKey => (
       runtime.source.active.sections.get(sectionKey)?.itemIds ?? []
     ))
     const assertReadableCards = (expectedRecordIds: readonly string[]) => {
@@ -267,9 +267,9 @@ describe('data view runtime regressions', () => {
       value: 'blocked'
     })
 
-    expect(runtime.model.table.summary.get('todo')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
-    expect(runtime.model.table.summary.get('doing')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
-    expect(runtime.model.table.summary.get('done')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+    expect(runtime.table.summary.get('todo')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+    expect(runtime.table.summary.get('doing')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+    expect(runtime.table.summary.get('done')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
 
     runtime.dispose()
   })

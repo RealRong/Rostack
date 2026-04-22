@@ -5,13 +5,13 @@ import {
   memo
 } from 'react'
 import { meta } from '@dataview/meta'
+import { useDataView } from '@dataview/react/dataview'
 import { useTranslation } from '@shared/i18n/react'
 import {
   useKeyedStoreValue
 } from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import {
-  TABLE_CELL_BLOCK_PADDING,
   TABLE_CELL_INLINE_PADDING,
   TABLE_TRAILING_ACTION_WIDTH
 } from '@dataview/react/views/table/layout'
@@ -30,8 +30,9 @@ const View = (props: ColumnFooterBlockProps) => {
     formatNumber,
     formatPercent
   } = useTranslation()
+  const dataView = useDataView()
   const table = useTableContext()
-  const summary = useKeyedStoreValue(table.summary, props.scopeId)
+  const summary = useKeyedStoreValue(dataView.table.summary, props.scopeId)
   const calculations = summary?.byField
 
   return (

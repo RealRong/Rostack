@@ -92,10 +92,28 @@ export const isEdgeLabelViewEqual = (
 ): boolean => (
   left.labelId === right.labelId
   && left.text === right.text
+  && left.displayText === right.displayText
+  && left.style === right.style
+  && left.editable === right.editable
+  && left.caret?.kind === right.caret?.kind
+  && (
+    left.caret?.kind !== 'point'
+    || (
+      right.caret?.kind === 'point'
+      && isPointEqual(left.caret.client, right.caret.client)
+    )
+  )
   && isSizeEqual(left.size, right.size)
   && isPointEqual(left.point, right.point)
   && left.angle === right.angle
   && isRectEqual(left.rect, right.rect)
+  && left.maskRect.x === right.maskRect.x
+  && left.maskRect.y === right.maskRect.y
+  && left.maskRect.width === right.maskRect.width
+  && left.maskRect.height === right.maskRect.height
+  && left.maskRect.radius === right.maskRect.radius
+  && left.maskRect.angle === right.maskRect.angle
+  && isPointEqual(left.maskRect.center, right.maskRect.center)
 )
 
 const collectBoundingRect = (

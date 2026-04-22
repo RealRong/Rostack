@@ -25,8 +25,8 @@ const createItemListStub = (ids: readonly string[]) => {
     order,
     ...order,
     read: {
-      record: () => undefined,
-      section: () => undefined,
+      recordId: () => undefined,
+      sectionKey: () => undefined,
       placement: () => undefined
     }
   }
@@ -42,6 +42,19 @@ const createFieldListStub = (ids: readonly string[]) => ({
         name: 'Name'
       }
     : undefined
+})
+
+const createGridStub = (input: {
+  itemIds: readonly string[]
+  fieldIds?: readonly string[]
+}) => ({
+  items: createItemListStub(input.itemIds),
+  fields: createFieldListStub(input.fieldIds ?? ['field_1']),
+  sections: collection.createOrderedKeyedCollection({
+    ids: [],
+    all: [],
+    get: () => undefined
+  })
 })
 
 const createSelectionRuntimeStub = (input: {
@@ -142,11 +155,13 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
       subscribe: () => () => {}
     }
   })
-  const currentViewStore = store.createValueStore({
-    initial: undefined as never
+  const gridStore = store.createValueStore({
+    initial: createGridStub({
+      itemIds: ['row_1', 'row_2']
+    })
   })
   const runtime = createTableSelectionRuntime({
-    currentViewStore,
+    gridStore,
     rowSelection
   })
 
@@ -205,9 +220,9 @@ test('handleTableKey deletes selected rows in row mode', () => {
         }
       }
     } as never,
-    currentView: {
-      items: createItemListStub(['row_1', 'row_2'])
-    } as never,
+    grid: createGridStub({
+      itemIds: ['row_1', 'row_2']
+    }) as never,
     selection,
     locked: false,
     readCell: () => ({
@@ -247,9 +262,9 @@ test('handleTableKey does not reveal after select all in row mode', () => {
         }
       }
     } as never,
-    currentView: {
-      items: createItemListStub(['row_1', 'row_2'])
-    } as never,
+    grid: createGridStub({
+      itemIds: ['row_1', 'row_2']
+    }) as never,
     selection,
     locked: false,
     readCell: () => ({
@@ -297,10 +312,10 @@ test('handleTableKey keeps delete-as-clear for active cell selection in cell mod
         }
       }
     } as never,
-    currentView: {
-      items: createItemListStub(['row_1']),
-      fields: createFieldListStub(['field_1'])
-    } as never,
+    grid: createGridStub({
+      itemIds: ['row_1'],
+      fieldIds: ['field_1']
+    }) as never,
     selection,
     locked: false,
     readCell: () => ({

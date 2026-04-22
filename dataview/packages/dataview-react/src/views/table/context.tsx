@@ -13,9 +13,9 @@ import {
   type TableLayout
 } from '@dataview/react/views/table/layout'
 import {
-  createTableController,
-  type TableController
-} from '@dataview/react/views/table/controller'
+  createTableUiRuntime,
+  type TableUiRuntime
+} from '@dataview/react/views/table/uiRuntime'
 
 interface TableProviderProps {
   rowHeight: number
@@ -23,9 +23,9 @@ interface TableProviderProps {
   children?: ReactNode
 }
 
-const TableContext = createContext<TableController | null>(null)
+const TableContext = createContext<TableUiRuntime | null>(null)
 
-export const useTableContext = (): TableController => {
+export const useTableContext = (): TableUiRuntime => {
   const value = useContext(TableContext)
   if (!value) {
     throw new Error('Missing table provider.')
@@ -45,11 +45,10 @@ export const TableProvider = (props: TableProviderProps) => {
     containerRef,
     canvasRef
   }), [props.headerHeight, props.rowHeight])
-  const table = useMemo(() => createTableController({
+  const table = useMemo(() => createTableUiRuntime({
     engine,
     tableRuntime: dataView.table,
     pageStore: dataView.session.page.store,
-    model: dataView.model.table,
     selection: dataView.session.selection,
     selectionMembershipStore: dataView.session.selection.store.membership,
     previewSelectionMembershipStore: dataView.session.marquee.preview.membership,
@@ -59,7 +58,6 @@ export const TableProvider = (props: TableProviderProps) => {
     nodes
   }), [
     dataView.session.page.store,
-    dataView.model.table,
     dataView.session.selection.store.membership,
     dataView.session.marquee.preview.membership,
     dataView.session.marquee.activeStore,

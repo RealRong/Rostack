@@ -1061,6 +1061,34 @@ const projectCandidatesToOrderedIds = (
   order
 })
 
+const resolveQueryOrderState = (input: {
+  reader: DocumentReader
+  view: View
+  index: IndexState
+  reuse?: {
+    matched?: readonly RecordId[]
+    ordered?: readonly RecordId[]
+  }
+}): {
+  matched: readonly RecordId[]
+  ordered: readonly RecordId[]
+} => {
+  const matched = input.reuse?.matched
+    ?? sortRecordIds({
+      ids: input.index.records.ids,
+      reader: input.reader,
+      index: input.index,
+      view: input.view
+    })
+  const ordered = input.reuse?.ordered
+    ?? applyViewOrders(matched, input.view, input.reader)
+
+  return {
+    matched,
+    ordered
+  }
+}
+
 const publishQueryState = (input: {
   previous?: QueryState
   index: IndexState
@@ -1124,18 +1152,19 @@ export const buildQueryState = (input: {
   index: IndexState
   plan: QueryPlan
   previous?: QueryState
+  reuse?: {
+    matched?: readonly RecordId[]
+    ordered?: readonly RecordId[]
+  }
 }): QueryState => {
   if (
     !input.plan.search
     && input.plan.filters.length === 0
   ) {
-    const matched = sortRecordIds({
-      ids: input.index.records.ids,
-      reader: input.reader,
-      index: input.index,
-      view: input.view
-    })
-    const ordered = applyViewOrders(matched, input.view, input.reader)
+    const {
+      matched,
+      ordered
+    } = resolveQueryOrderState(input)
 
     return publishQueryState({
       previous: input.previous,
@@ -1172,13 +1201,10 @@ export const buildQueryState = (input: {
   const hasSearch = Boolean(searchMatches)
   const needsFilterPredicate = filterPredicateRules.length > 0
 
-  const matched = sortRecordIds({
-    ids: input.index.records.ids,
-    reader: input.reader,
-    index: input.index,
-    view: input.view
-  })
-  const ordered = applyViewOrders(matched, input.view, input.reader)
+  const {
+    matched,
+    ordered
+  } = resolveQueryOrderState(input)
   const candidatePool = (
     searchMatches?.matched && filterCandidates
       ? intersectCandidates(

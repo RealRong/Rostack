@@ -1,4 +1,3 @@
-export * from '@dataview/engine/contracts/cache'
 export * from '@dataview/engine/contracts/query'
 export * from '@dataview/engine/contracts/membership'
 export * from '@dataview/engine/contracts/stage'

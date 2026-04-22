@@ -7,7 +7,7 @@ import type {
   Engine
 } from '@dataview/engine'
 import type {
-  TableGridDomain
+  TableGrid
 } from '@dataview/runtime/table'
 import {
   createItemListSelectionDomain,
@@ -36,7 +36,7 @@ const currentKey = (
 export const handleTableKey = (input: {
   key: TableKeyInput | KeyInput
   editor: Engine
-  grid: TableGridDomain
+  grid: TableGrid
   selection: TableSelectionRuntime
   locked: boolean
   readCell: (cell: CellRef) => {
@@ -177,7 +177,7 @@ export const handleTableKey = (input: {
 
 export const applyPaste = (input: {
   editor: Engine
-  grid: TableGridDomain | undefined
+  grid: TableGrid | undefined
   gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
   text: string
 }) => {

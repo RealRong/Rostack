@@ -44,9 +44,9 @@ const View = () => {
   const engine = dataView.engine
   const table = useTableContext()
   const body = useStoreValue(table.body)
-  const currentView = useStoreValue(table.currentView)
-  if (!body || !currentView) {
-    throw new Error('Table body requires an active current view.')
+  const grid = useStoreValue(dataView.table.grid)
+  if (!body || !grid) {
+    throw new Error('Table body requires an active table body and grid.')
   }
 
   const locked = useStoreValue(table.locked)
@@ -133,7 +133,7 @@ const View = () => {
     onBlankPointerDown
   })
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = currentView.items.read.record(cell.itemId)
+    const recordId = grid.items.read.recordId(cell.itemId)
     const record = recordId
       ? dataView.source.doc.records.get(recordId)
       : undefined
@@ -141,7 +141,7 @@ const View = () => {
     return {
       exists: Boolean(record)
     }
-  }, [currentView, engine])
+  }, [dataView.source.doc.records, grid.items])
   const onKeyDown = useCallback<KeyboardEventHandler<HTMLDivElement>>(event => {
     if (
       event.defaultPrevented
@@ -156,7 +156,7 @@ const View = () => {
         modifiers: modifiers(event)
       },
       editor: engine,
-      currentView,
+      grid,
       selection: table.selection,
       locked,
       readCell,
@@ -171,8 +171,8 @@ const View = () => {
 
     event.preventDefault()
   }, [
-    currentView,
     engine,
+    grid,
     locked,
     readCell,
     table
@@ -185,7 +185,7 @@ const View = () => {
 
     const didPaste = applyPaste({
       editor: engine,
-      currentView,
+      grid,
       gridSelection: currentGridSelection,
       text: event.clipboardData.getData('text/plain')
     })
@@ -195,7 +195,7 @@ const View = () => {
 
     table.revealCursor()
     event.preventDefault()
-  }, [currentView, engine, locked, table])
+  }, [engine, grid, locked, table])
   const gridBounds = gridContentBounds({
     container: table.layout.containerRef.current,
     canvas: table.layout.canvasRef.current

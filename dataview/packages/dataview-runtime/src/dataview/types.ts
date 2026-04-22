@@ -20,8 +20,7 @@ import type {
 import type {
   PageState,
   PageSessionApi,
-  PageSessionInput,
-  QueryBarEntry
+  PageSessionInput
 } from '@dataview/runtime/page/session/types'
 import type {
   ItemSelectionController,
@@ -41,11 +40,6 @@ import type {
 
 export type InlineKey = string
 
-export interface PageSource {
-  queryVisible: store.ReadStore<boolean>
-  queryRoute: store.ReadStore<QueryBarEntry | null>
-}
-
 export interface SelectionSource {
   member: store.KeyedReadStore<ItemId, boolean>
   preview: store.KeyedReadStore<ItemId, boolean | null>
@@ -58,7 +52,6 @@ export interface InlineSource {
 export interface DataViewSource {
   doc: DocumentSource
   active: ActiveSource
-  page: PageSource
   selection: SelectionSource
   inline: InlineSource
 }

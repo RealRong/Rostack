@@ -18,7 +18,8 @@
     "@dataview/core": "workspace:*",
     "@dataview/meta": "workspace:*",
     "@shared/core": "workspace:*",
-    "@shared/i18n": "workspace:*"
+    "@shared/i18n": "workspace:*",
+    "@shared/projection-runtime": "workspace:*"
   },
   "files": [
     "src",

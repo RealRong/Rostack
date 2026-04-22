@@ -1,5 +1,4 @@
 import { json } from '@shared/core'
-import type { Engine, MindmapStructureItem } from '@whiteboard/engine'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { edge as edgeApi } from '@whiteboard/core/edge'
@@ -36,6 +35,7 @@ import type { EditorWrite } from '@whiteboard/editor/write'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapEnterPreview, MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
+import type { CommittedRead, MindmapStructureItem } from '@whiteboard/editor/committed/read'
 import {
   createSelectionActions
 } from '@whiteboard/editor/action/selection'
@@ -389,7 +389,7 @@ const buildMindmapEnterPreview = ({
   nodeId,
   anchorId
 }: {
-  structure: Engine['read']['mindmap']['structure']
+  structure: CommittedRead['mindmap']['structure']
   layout: EditorLayout['mindmap']['layout']
   treeId: MindmapId
   nodeId: MindmapNodeId
@@ -657,7 +657,7 @@ const readEdgeOrThrow = (
 }
 
 export const createEditorActions = ({
-  engine,
+  committed,
   session,
   query,
   layout,
@@ -665,7 +665,7 @@ export const createEditorActions = ({
   registry,
   defaults
 }: {
-  engine: Engine
+  committed: CommittedRead
   session: EditorSession
   query: EditorQuery
   layout: EditorLayout
@@ -785,7 +785,7 @@ export const createEditorActions = ({
       let focusDelayMs = 0
       if (options?.behavior?.enter === 'from-anchor') {
         const preview = buildMindmapEnterPreview({
-          structure: engine.read.mindmap.structure,
+          structure: committed.mindmap.structure,
           layout: layout.mindmap.layout,
           treeId: id,
           nodeId: result.data.nodeId,
@@ -810,7 +810,7 @@ export const createEditorActions = ({
     removeSubtree: (id, input) => write.mindmap.topic.delete(id, input),
     cloneSubtree: (id, input) => write.mindmap.topic.clone(id, input),
     insertRelative: (input) => {
-      const structure = engine.read.mindmap.structure.get(input.id)
+      const structure = committed.mindmap.structure.get(input.id)
       if (!structure) {
         return undefined
       }
@@ -834,7 +834,7 @@ export const createEditorActions = ({
       let focusDelayMs = 0
       if (input.behavior?.enter === 'from-anchor') {
         const preview = buildMindmapEnterPreview({
-          structure: engine.read.mindmap.structure,
+          structure: committed.mindmap.structure,
           layout: layout.mindmap.layout,
           treeId: input.id,
           nodeId: result.data.nodeId,
@@ -863,7 +863,7 @@ export const createEditorActions = ({
     }),
     moveRoot: (input) => {
       const directNode = query.node.committed.get(input.nodeId)?.node
-      const structure = engine.read.mindmap.structure.get(input.nodeId)
+      const structure = committed.mindmap.structure.get(input.nodeId)
       const node = directNode ?? (
         structure
           ? query.node.committed.get(structure.rootId)?.node
@@ -895,7 +895,7 @@ export const createEditorActions = ({
     style: {
       branch: (input) => {
         const scopeIds = input.scope === 'subtree' && input.id
-          ? engine.read.mindmap.structure.get(input.id)?.nodeIds ?? input.nodeIds
+          ? committed.mindmap.structure.get(input.id)?.nodeIds ?? input.nodeIds
           : input.nodeIds
 
         return write.mindmap.branch.update(

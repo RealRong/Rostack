@@ -10,11 +10,7 @@ import type {
 } from '@dataview/core/contracts'
 import { store } from '@shared/core'
 import type {
-  EngineDelta
-} from '@dataview/engine/contracts/delta'
-import type {
   EngineCore,
-  EngineSnapshot
 } from '@dataview/engine/contracts/core'
 import type {
   ItemId,
@@ -34,21 +30,14 @@ export interface EntitySource<Key, Value> extends store.KeyedReadStore<Key, Valu
 }
 
 export interface SectionSource extends store.KeyedReadStore<SectionKey, Section | undefined> {
-  keys: store.ReadStore<readonly SectionKey[]>
-}
-
-export interface ItemValue {
-  record: RecordId
-  section: SectionKey
-  placement: ItemPlacement
+  ids: store.ReadStore<readonly SectionKey[]>
 }
 
 export interface ItemSource {
   ids: store.ReadStore<readonly ItemId[]>
-  table: store.KeyTableReadStore<ItemId, ItemValue>
   read: {
-    record: store.KeyedReadStore<ItemId, RecordId | undefined>
-    section: store.KeyedReadStore<ItemId, SectionKey | undefined>
+    recordId: store.KeyedReadStore<ItemId, RecordId | undefined>
+    sectionKey: store.KeyedReadStore<ItemId, SectionKey | undefined>
     placement: store.KeyedReadStore<ItemId, ItemPlacement | undefined>
   }
 }
@@ -61,7 +50,6 @@ export interface DocumentSource {
 
 export interface ActiveSource {
   view: {
-    ready: store.ReadStore<boolean>
     id: store.ReadStore<ViewId | undefined>
     type: store.ReadStore<View['type'] | undefined>
     current: store.ReadStore<View | undefined>
@@ -93,14 +81,9 @@ export interface EngineSource {
 
 export interface EngineSourceRuntime {
   source: EngineSource
-  reset: (snapshot: EngineSnapshot) => void
-  apply: (delta: EngineDelta | undefined, snapshot: EngineSnapshot) => void
-  clear: () => void
   dispose: () => void
 }
 
 export interface CreateEngineSourceInput {
   core: EngineCore
 }
-
-export type ItemTableSource = store.KeyTableReadStore<ItemId, ItemValue>

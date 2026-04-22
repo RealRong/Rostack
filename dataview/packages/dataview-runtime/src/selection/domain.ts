@@ -9,7 +9,7 @@ import type {
 } from '@dataview/runtime/selection/types'
 
 export const createItemListSelectionDomain = (
-  items: ItemList
+  items: Pick<ItemList, 'order'>
 ): OrderedSelectionDomain<ItemId> => items.order
 
 export const createItemArraySelectionDomain = (
@@ -17,7 +17,7 @@ export const createItemArraySelectionDomain = (
 ): OrderedSelectionDomain<ItemId> => collection.createOrderedAccess(ids)
 
 export const createItemSelectionDomainSource = (input: {
-  store: store.ReadStore<ItemList | undefined>
+  store: store.ReadStore<Pick<ItemList, 'order'> | undefined>
 }): SelectionDomainSource<ItemId> => ({
   get: () => {
     const items = store.read(input.store)

@@ -1,15 +1,15 @@
 import { createFlags } from '@shared/projection-runtime'
 import type { Size } from '@whiteboard/core/types'
 import type {
-  InputChange,
+  ImpactInput,
   TextMeasureEntry
 } from '../contracts/editor'
 
-export type EditorGraphInputChangeFlags = Partial<Record<keyof InputChange, boolean>>
+export type EditorGraphImpactFlags = Partial<Record<keyof ImpactInput, boolean>>
 
-export const createEditorGraphInputChange = (
-  input: EditorGraphInputChangeFlags = {}
-): InputChange => ({
+export const createEditorGraphImpact = (
+  input: EditorGraphImpactFlags = {}
+): ImpactInput => ({
   document: createFlags(input.document ?? false),
   session: createFlags(input.session ?? false),
   measure: createFlags(input.measure ?? false),

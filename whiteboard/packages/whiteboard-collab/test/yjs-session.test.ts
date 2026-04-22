@@ -10,6 +10,10 @@ const createTestEngine = (id = 'doc_test') =>
     document: documentApi.create(id)
   })
 
+const readDocument = (
+  engine: ReturnType<typeof createTestEngine>
+) => engine.snapshot().state.root
+
 const createStore = (
   doc: Y.Doc
 ) => collabApi.yjs.store.create({
@@ -72,7 +76,7 @@ test('shared sessions replay remote operations and keep remote changes out of lo
   const nodeId = createResult.ok ? createResult.data.nodeId : undefined
   assert.ok(nodeId)
 
-  const snapshotAfterCreate = engineB.document.get()
+  const snapshotAfterCreate = readDocument(engineB)
   assert.ok(snapshotAfterCreate.nodes[nodeId])
   assert.equal(
     sessionB.localHistory.get().undoDepth,
@@ -121,7 +125,7 @@ test('shared sessions replay remote operations and keep remote changes out of lo
   })
   assert.equal(patchResult.ok, true)
 
-  const syncedNode = engineB.document.get().nodes[nodeId]
+  const syncedNode = readDocument(engineB).nodes[nodeId]
   assert.deepEqual(syncedNode?.data?.items, ['a', 'b'])
   assert.equal(syncedNode?.data?.nested?.value, 'synced')
   assert.equal(
@@ -231,7 +235,7 @@ test('session records duplicate and rejected shared changes deterministically', 
     ['change_rejected']
   )
   assert.equal(
-    engine.document.get().background?.color,
+    readDocument(engine).background?.color,
     '#000'
   )
 
@@ -332,14 +336,14 @@ test('localHistory undo and redo append new shared changes', () => {
 
   const undoResult = session.localHistory.undo()
   assert.equal(undoResult.ok, true)
-  assert.equal(engine.document.get().nodes[createResult.data.nodeId], undefined)
+  assert.equal(readDocument(engine).nodes[createResult.data.nodeId], undefined)
   assert.equal(session.localHistory.get().undoDepth, 0)
   assert.equal(session.localHistory.get().redoDepth, 1)
   assert.equal(store.readChanges().length, 2)
 
   const redoResult = session.localHistory.redo()
   assert.equal(redoResult.ok, true)
-  assert.ok(engine.document.get().nodes[createResult.data.nodeId])
+  assert.ok(readDocument(engine).nodes[createResult.data.nodeId])
   assert.equal(session.localHistory.get().undoDepth, 1)
   assert.equal(session.localHistory.get().redoDepth, 0)
   assert.equal(store.readChanges().length, 3)

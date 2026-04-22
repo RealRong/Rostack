@@ -1,38 +1,32 @@
-import type {
-  Engine,
-  CellRef
-} from '@dataview/engine'
+import type { CellRef, Engine, ItemId } from '@dataview/engine'
+import { queryRead } from '@dataview/engine'
+import {
+  createInteractionCoordinator,
+  type InteractionApi
+} from '@dataview/react/interaction'
 import {
   revealElement,
   revealY
 } from '@shared/dom'
 import {
-  createInteractionCoordinator,
-  type InteractionApi
-} from '@dataview/react/interaction'
-import type { ItemId } from '@dataview/engine'
-import type {
-  ItemSelectionController,
-  ItemSelectionSnapshot
-} from '@dataview/runtime/selection'
-import type {
-  TableGridDomain,
-  TableRecordAccess,
-  TableRuntime,
-  TableSectionContext,
-  TableViewContext
-} from '@dataview/runtime/table'
-import { store } from '@shared/core'
-import {
   createItemListSelectionDomain,
   selectionSnapshot
 } from '@dataview/runtime/selection'
+import { store } from '@shared/core'
 import type {
   Field,
   FieldId,
   ViewId
 } from '@dataview/core/contracts'
 import type { PageState } from '@dataview/runtime/page/session/types'
+import type {
+  ItemSelectionController,
+  ItemSelectionSnapshot
+} from '@dataview/runtime/selection'
+import type {
+  TableGrid,
+  TableRuntime
+} from '@dataview/runtime/table'
 import type { ValueEditorApi } from '@dataview/runtime/valueEditor'
 import {
   createCapabilities,
@@ -81,21 +75,13 @@ import {
   createTableVirtualRuntime,
   type TableVirtualRuntime
 } from '@dataview/react/views/table/virtual/runtime'
-import type {
-  TableBlock
-} from '@dataview/react/views/table/virtual'
+import type { TableBlock } from '@dataview/react/views/table/virtual'
 import {
   createTableSelectionRuntime,
   type TableSelectionRuntime
 } from '@dataview/react/views/table/selectionRuntime'
-import {
-  type DataViewTableModel,
-  type TableColumn,
-  type TableSection,
-  type TableSummary
-} from '@dataview/runtime/model'
 
-export interface TableBodyData {
+export interface TableBodyRenderState {
   viewId: ViewId
   columns: readonly Field[]
   rowCount: number
@@ -110,9 +96,9 @@ export interface TableBodyData {
   marqueeActive: boolean
 }
 
-const sameBodyData = (
-  left: TableBodyData | null,
-  right: TableBodyData | null
+const sameBodyRenderState = (
+  left: TableBodyRenderState | null,
+  right: TableBodyRenderState | null
 ) => left === right || (
   !!left
   && !!right
@@ -130,12 +116,8 @@ const sameBodyData = (
   && left.marqueeActive === right.marqueeActive
 )
 
-export interface TableController {
-  grid: store.ReadStore<TableGridDomain | undefined>
-  view: store.ReadStore<TableViewContext | undefined>
-  sections: store.ReadStore<TableSectionContext | undefined>
-  record: TableRecordAccess
-  body: store.ReadStore<TableBodyData | null>
+export interface TableUiRuntime {
+  body: store.ReadStore<TableBodyRenderState | null>
   locked: store.ReadStore<boolean>
   valueEditorOpen: store.ReadStore<boolean>
   selection: TableSelectionRuntime
@@ -156,9 +138,6 @@ export interface TableController {
   openCell: (input: CellOpenInput) => boolean
   interaction: InteractionApi
   hover: TableHoverRuntime
-  column: store.KeyedReadStore<FieldId, TableColumn | undefined>
-  summary: store.KeyedReadStore<string, TableSummary | undefined>
-  section: store.KeyedReadStore<string, TableSection | undefined>
   revealCursor: () => void
   revealRow: (rowId: ItemId) => void
   dispose: () => void
@@ -170,13 +149,35 @@ export type {
   TableSelectionRuntime
 }
 
+const resolveDisplayedColumns = (input: {
+  previous?: readonly Field[]
+  fieldIds: readonly FieldId[]
+  readField: (fieldId: FieldId) => Field | undefined
+}): readonly Field[] => {
+  const canReuse = Boolean(
+    input.previous
+    && input.previous.length === input.fieldIds.length
+    && input.fieldIds.every((fieldId, index) => input.previous![index] === input.readField(fieldId))
+  )
+  if (canReuse) {
+    return input.previous as readonly Field[]
+  }
+
+  return input.fieldIds.flatMap(fieldId => {
+    const field = input.readField(fieldId)
+    return field
+      ? [field]
+      : []
+  })
+}
+
 const selectionRow = (input: {
   locateRow: (rowId: ItemId) => {
     rowId: ItemId
     top: number
     bottom: number
   } | null
-  grid: TableGridDomain | undefined
+  grid: TableGrid | undefined
   selection: ItemSelectionSnapshot
   gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
 }): {
@@ -198,11 +199,10 @@ const selectionRow = (input: {
   return input.locateRow(rowId)
 }
 
-export const createTableController = (options: {
+export const createTableUiRuntime = (options: {
   engine: Engine
   tableRuntime: TableRuntime
   pageStore: store.ReadStore<PageState>
-  model: DataViewTableModel
   selection: ItemSelectionController
   selectionMembershipStore: store.KeyedReadStore<ItemId, boolean>
   previewSelectionMembershipStore: store.KeyedReadStore<ItemId, boolean | null>
@@ -210,11 +210,9 @@ export const createTableController = (options: {
   valueEditor: ValueEditorApi
   layout: TableLayout
   nodes: Nodes
-}): TableController => {
+}): TableUiRuntime => {
   const grid = options.tableRuntime.grid
   const view = options.tableRuntime.view
-  const sections = options.tableRuntime.sections
-  const record = options.tableRuntime.record
   const selection = createTableSelectionRuntime({
     gridStore: grid,
     rowSelection: options.selection
@@ -262,7 +260,6 @@ export const createTableController = (options: {
   const virtual = createTableVirtualRuntime({
     grid,
     view,
-    sections,
     marqueeActiveStore: options.marqueeActiveStore,
     layout: options.layout
   })
@@ -346,27 +343,35 @@ export const createTableController = (options: {
     revealCursor,
     focus
   })
-  const body = store.createDerivedStore<TableBodyData | null>({
+
+  let previousColumns: readonly Field[] | undefined
+
+  const body = store.createDerivedStore<TableBodyRenderState | null>({
     get: () => {
-      const bodyModel = store.read(options.model.body)
-      if (!bodyModel) {
+      const currentGrid = store.read(grid)
+      const currentView = store.read(view)
+      if (!currentGrid || !currentView) {
+        previousColumns = undefined
         return null
       }
 
-      const columns = bodyModel.columnIds.flatMap(fieldId => {
-        const field = store.read(options.model.column, fieldId)?.field
-        return field ? [field] : []
+      previousColumns = resolveDisplayedColumns({
+        previous: previousColumns,
+        fieldIds: currentView.displayFieldIds,
+        readField: fieldId => currentGrid.fields.get(fieldId)
       })
+
       const windowState = store.read(virtual.window)
       const layoutState = store.read(virtual.layout)
+
       return {
-        viewId: bodyModel.viewId,
-        columns,
+        viewId: currentView.id,
+        columns: previousColumns,
         rowCount: layoutState.rowCount,
         measurementIds: layoutState.measurementIds,
-        grouped: bodyModel.grouped,
-        showVerticalLines: bodyModel.showVerticalLines,
-        wrap: bodyModel.wrap,
+        grouped: queryRead.grouped(currentView.query),
+        showVerticalLines: currentView.showVerticalLines,
+        wrap: currentView.wrap,
         blocks: windowState.items,
         totalHeight: windowState.totalHeight,
         startTop: windowState.startTop,
@@ -374,14 +379,10 @@ export const createTableController = (options: {
         marqueeActive: store.read(virtual.interaction).marqueeActive
       }
     },
-    isEqual: sameBodyData
+    isEqual: sameBodyRenderState
   })
 
   return {
-    grid,
-    view,
-    sections,
-    record,
     body,
     locked: lockedStore,
     valueEditorOpen: valueEditorOpenStore,
@@ -400,9 +401,6 @@ export const createTableController = (options: {
     openCell,
     interaction: interaction.api,
     hover,
-    column: options.model.column,
-    summary: options.model.summary,
-    section: options.model.section,
     revealCursor,
     revealRow,
     dispose: () => {

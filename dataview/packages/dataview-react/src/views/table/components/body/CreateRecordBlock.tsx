@@ -4,18 +4,15 @@ import {
   useRef
 } from 'react'
 import {
-  TITLE_FIELD_ID,
-  type Field
+  TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import type {
-  ItemId,
-  ViewState
+  ItemId
 } from '@dataview/engine'
 import { fieldAnchor } from '@dataview/react/dom/field'
 import { useDataView } from '@dataview/react/dataview'
 import { useTranslation } from '@shared/i18n/react'
 import { useTableContext } from '@dataview/react/views/table/context'
-import { cn } from '@shared/ui/utils'
 import { Button } from '@shared/ui/button'
 import { PlusIcon } from 'lucide-react'
 import type { CreateRecordOpenResult } from '@dataview/runtime/createRecord'
@@ -25,17 +22,15 @@ const MAX_OPEN_ATTEMPTS = 8
 export interface CreateRecordBlockProps {
   sectionKey: string
   measureRef?: (node: HTMLDivElement | null) => void
-  columns: readonly Field[]
-  showVerticalLines: boolean
-  template: string
 }
 
 const findItemIdByRecordId = (
-  view: ViewState,
+  itemIds: readonly ItemId[],
+  recordIdOf: (itemId: ItemId) => string | undefined,
   recordId: string
 ): ItemId | undefined => {
-  for (const itemId of view.items.ids) {
-    if (view.items.read.record(itemId) === recordId) {
+  for (const itemId of itemIds) {
+    if (recordIdOf(itemId) === recordId) {
       return itemId
     }
   }
@@ -53,19 +48,23 @@ const View = (props: CreateRecordBlockProps) => {
     recordId: string,
     _attempt: number
   ): CreateRecordOpenResult => {
-    const currentView = table.currentView.get()
-    if (!currentView) {
+    const grid = dataView.table.grid.get()
+    if (!grid) {
       return 'failed'
     }
 
-    const itemId = findItemIdByRecordId(currentView, recordId)
+    const itemId = findItemIdByRecordId(
+      grid.items.ids,
+      grid.items.read.recordId,
+      recordId
+    )
     if (itemId === undefined) {
       return 'retry'
     }
 
-    const selectionFieldId = currentView.fields.has(TITLE_FIELD_ID)
+    const selectionFieldId = grid.fields.has(TITLE_FIELD_ID)
       ? TITLE_FIELD_ID
-      : currentView.fields.ids[0] ?? TITLE_FIELD_ID
+      : grid.fields.ids[0] ?? TITLE_FIELD_ID
     return table.openCell({
       cell: {
         itemId,
@@ -83,10 +82,10 @@ const View = (props: CreateRecordBlockProps) => {
     })
       ? 'opened'
       : 'retry'
-  }, [table])
+  }, [dataView.table.grid, table])
 
   const onCreate = useCallback(() => {
-    const ownerViewId = table.currentView.get()?.view.id
+    const ownerViewId = dataView.table.view.get()?.id
 
     dataView.intent.createRecord.create({
       ownerViewId,
@@ -97,12 +96,7 @@ const View = (props: CreateRecordBlockProps) => {
       retryFrames: MAX_OPEN_ATTEMPTS,
       onFailure: table.focus
     })
-  }, [dataView.engine.active.records, dataView.intent.createRecord, openCreatedRecord, props.sectionKey, table])
-
-  const cellClassName = cn(
-    'min-w-0 box-border flex items-center',
-    props.showVerticalLines && 'border-r border-divider'
-  )
+  }, [dataView.engine.active.records, dataView.intent.createRecord, dataView.table.view, openCreatedRecord, props.sectionKey, table])
 
   return (
     <div
@@ -144,9 +138,6 @@ const same = (
 ) => (
   left.sectionKey === right.sectionKey
   && left.measureRef === right.measureRef
-  && left.columns === right.columns
-  && left.showVerticalLines === right.showVerticalLines
-  && left.template === right.template
 )
 
 export const CreateRecordBlock = memo(View, same)

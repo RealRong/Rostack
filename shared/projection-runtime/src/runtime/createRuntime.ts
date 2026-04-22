@@ -6,7 +6,6 @@ import { runRuntimeUpdate } from './update'
 
 export const createRuntime = <
   TInput,
-  TInputChange,
   TWorking,
   TSnapshot,
   TChange,
@@ -17,7 +16,6 @@ export const createRuntime = <
 >(
   spec: runtime.Spec<
     TInput,
-    TInputChange,
     TWorking,
     TSnapshot,
     TChange,
@@ -28,7 +26,6 @@ export const createRuntime = <
   >
 ): runtime.Instance<
   TInput,
-  TInputChange,
   TSnapshot,
   TChange,
   TPhaseName,
@@ -48,13 +45,12 @@ export const createRuntime = <
 
   return {
     snapshot: () => state.snapshot,
-    update: (input, change) => {
+    update: (input) => {
       const result = runRuntimeUpdate({
         spec,
         graph,
         state,
-        nextInput: input,
-        inputChange: change
+        nextInput: input
       })
 
       publishRuntimeResult(state, result)

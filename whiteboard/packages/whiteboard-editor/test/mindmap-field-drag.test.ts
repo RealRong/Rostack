@@ -88,6 +88,45 @@ describe('mindmap field drag', () => {
           }
         }
       },
+      committed: {
+        mindmap: {
+          structure: {
+            get: () => ({
+              id: 'mind-1',
+              rootId: 'root-1',
+              nodeIds: ['root-1'],
+              tree: {
+                rootNodeId: 'root-1',
+                nodes: {
+                  'root-1': {
+                    branch: {
+                      color: '#111827',
+                      line: 'curve',
+                      width: 2,
+                      stroke: 'solid'
+                    }
+                  }
+                },
+                children: {
+                  'root-1': []
+                },
+                layout: {
+                  side: 'both',
+                  mode: 'tidy',
+                  hGap: 28,
+                  vGap: 18
+                }
+              },
+              layout: {
+                side: 'both',
+                mode: 'tidy',
+                hGap: 28,
+                vGap: 18
+              }
+            })
+          }
+        }
+      },
       selection: {
         get: vi.fn()
       },
@@ -97,45 +136,6 @@ describe('mindmap field drag', () => {
         }
       },
       engine: {
-        read: {
-          mindmap: {
-            structure: {
-              get: () => ({
-                id: 'mind-1',
-                rootId: 'root-1',
-                nodeIds: ['root-1'],
-                tree: {
-                  rootNodeId: 'root-1',
-                  nodes: {
-                    'root-1': {
-                      branch: {
-                        color: '#111827',
-                        line: 'curve',
-                        width: 2,
-                        stroke: 'solid'
-                      }
-                    }
-                  },
-                  children: {
-                    'root-1': []
-                  },
-                  layout: {
-                    side: 'both',
-                    mode: 'tidy',
-                    hGap: 28,
-                    vGap: 18
-                  }
-                },
-                layout: {
-                  side: 'both',
-                  mode: 'tidy',
-                  hGap: 28,
-                  vGap: 18
-                }
-              })
-            }
-          }
-        },
         config: {
           nodeSize: {
             width: 120,

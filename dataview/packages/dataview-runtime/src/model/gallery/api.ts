@@ -17,8 +17,12 @@ import {
   createItemCardContentStore,
   createRecordCardPropertiesStore
 } from '@dataview/runtime/model/internal/card'
+import {
+  createPresentListStore
+} from '@dataview/runtime/model/internal/list'
 
 const DEFAULT_GALLERY_TITLE_PLACEHOLDER = '输入名称...'
+const EMPTY_SECTIONS = [] as const
 
 const sameBody = (
   left: GalleryBody | null,
@@ -29,8 +33,9 @@ const sameBody = (
   && left.viewId === right.viewId
   && left.empty === right.empty
   && left.grouped === right.grouped
+  && left.size === right.size
+  && left.canDrag === right.canDrag
   && left.groupUsesOptionColors === right.groupUsesOptionColors
-  && left.sectionKeys === right.sectionKeys
 )
 
 const sameSection = (
@@ -70,6 +75,18 @@ export const createGalleryModel = (input: {
   }) => string
 }): DataViewGalleryModel => {
   const customFields = createActiveCustomFieldListStore(input.source)
+  const sectionList = createPresentListStore({
+    ids: input.source.active.sections.ids,
+    values: input.source.active.sections
+  })
+  const sections = store.createDerivedStore({
+    get: () => (
+      store.read(input.source.active.view.type) === 'gallery'
+        ? store.read(sectionList)
+        : EMPTY_SECTIONS
+    ),
+    isEqual: equal.sameOrder
+  })
   const properties = createRecordCardPropertiesStore({
     source: input.source,
     fields: customFields
@@ -85,12 +102,14 @@ export const createGalleryModel = (input: {
         return null
       }
 
+      const gallery = store.read(input.source.active.meta.gallery)
       return {
         viewId,
         empty: store.read(input.source.active.items.ids).length === 0,
         grouped: queryRead.grouped(store.read(input.source.active.meta.query)),
-        groupUsesOptionColors: store.read(input.source.active.meta.gallery).groupUsesOptionColors,
-        sectionKeys: store.read(input.source.active.sections.keys)
+        size: gallery.size,
+        canDrag: gallery.canReorder,
+        groupUsesOptionColors: gallery.groupUsesOptionColors
       }
     },
     isEqual: sameBody
@@ -125,7 +144,7 @@ export const createGalleryModel = (input: {
         return undefined
       }
 
-      const recordId = store.read(input.source.active.items.read.record, itemId)
+      const recordId = store.read(input.source.active.items.read.recordId, itemId)
       if (!recordId) {
         return undefined
       }
@@ -165,6 +184,7 @@ export const createGalleryModel = (input: {
 
   return {
     body,
+    sections,
     section,
     card,
     content

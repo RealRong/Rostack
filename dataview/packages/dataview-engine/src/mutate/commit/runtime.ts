@@ -17,9 +17,7 @@ import {
 import {
   emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'
-import {
-  deriveViewRuntime
-} from '@dataview/engine/active/runtime'
+import type { ActiveProjectionRuntime } from '@dataview/engine/active/projection/contracts'
 import {
   createBaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
@@ -202,6 +200,7 @@ const loadPlan = (
 
 const commit = <TResult extends CommitResult>(input: {
   runtime: CoreRuntime
+  activeRuntime: ActiveProjectionRuntime
   perf: PerformanceRuntime
   capturePerf: boolean
   plan: Plan<TResult>
@@ -224,16 +223,25 @@ const commit = <TResult extends CommitResult>(input: {
     impact: baseImpact,
     demand: plan?.index
   })
-  const nextView = deriveViewRuntime({
-    previous: base.active.snapshot,
-    cache: base.active.cache,
-    documentContext,
-    viewPlan: plan,
-    previousPlan,
-    index: nextIndex.state,
-    indexDelta: nextIndex.delta,
-    impact: baseImpact,
-    capturePerf: input.capturePerf
+  const previousActive = input.runtime.result().snapshot.active
+  const nextView = input.activeRuntime.update({
+    read: {
+      reader: documentContext.reader,
+      fieldsById: documentContext.fieldsById
+    },
+    view: {
+      plan,
+      previousPlan
+    },
+    index: {
+      state: nextIndex.state,
+      ...(nextIndex.delta
+        ? {
+            delta: nextIndex.delta
+          }
+        : {})
+    },
+    impact: baseImpact
   })
   const outputStart = now()
   const nextState: EngineState = {
@@ -244,14 +252,13 @@ const commit = <TResult extends CommitResult>(input: {
       ...(plan
         ? { plan }
         : {}),
-      index: nextIndex.state,
-      cache: nextView.cache,
-      ...(nextView.snapshot
-        ? { snapshot: nextView.snapshot }
-        : {})
+      index: nextIndex.state
     }
   }
-  const nextSnapshot = createEngineSnapshot(nextState)
+  const nextSnapshot = createEngineSnapshot({
+    state: nextState,
+    active: nextView.snapshot
+  })
   const nextDocDelta = projectDocumentDelta({
     previous: base.doc,
     next: draft.doc,
@@ -314,6 +321,7 @@ const commit = <TResult extends CommitResult>(input: {
 
 export const createWriteControl = (input: {
   runtime: CoreRuntime
+  activeRuntime: ActiveProjectionRuntime
   perf: PerformanceRuntime
   capturePerf: boolean
 }) => {
@@ -321,6 +329,7 @@ export const createWriteControl = (input: {
     plan: Plan<TResult>
   ) => commit({
     runtime: input.runtime,
+    activeRuntime: input.activeRuntime,
     perf: input.perf,
     capturePerf: input.capturePerf,
     plan

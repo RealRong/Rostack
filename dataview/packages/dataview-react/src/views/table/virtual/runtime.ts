@@ -5,9 +5,8 @@ import {
   queryRead
 } from '@dataview/engine'
 import type {
-  TableGridDomain,
-  TableSectionContext,
-  TableViewContext
+  TableGrid,
+  TableViewState
 } from '@dataview/runtime/table'
 import {
   observeElementSize,
@@ -270,21 +269,19 @@ const resolveMarqueeActive = (input: {
 
 const createTableLayoutStateStore = (
   input: {
-    grid: store.ReadStore<TableGridDomain | undefined>
-    view: store.ReadStore<TableViewContext | undefined>
-    sections: store.ReadStore<TableSectionContext | undefined>
+    grid: store.ReadStore<TableGrid | undefined>
+    view: store.ReadStore<TableViewState | undefined>
   }
 ) => store.createDerivedStore<TableLayoutState | null>({
   get: () => {
     const grid = store.read(input.grid)
     const view = store.read(input.view)
-    const sections = store.read(input.sections)
-    if (!grid || !view || !sections) {
+    if (!grid || !view) {
       return null
     }
 
-    const nextSections = sections.sections.ids.flatMap(sectionKey => {
-      const section = sections.sections.get(sectionKey)
+    const nextSections = grid.sections.ids.flatMap(sectionKey => {
+      const section = grid.sections.get(sectionKey)
       return section
         ? [{
             key: section.key,
@@ -304,16 +301,14 @@ const createTableLayoutStateStore = (
 })
 
 export const createTableVirtualRuntime = (options: {
-  grid: store.ReadStore<TableGridDomain | undefined>
-  view: store.ReadStore<TableViewContext | undefined>
-  sections: store.ReadStore<TableSectionContext | undefined>
+  grid: store.ReadStore<TableGrid | undefined>
+  view: store.ReadStore<TableViewState | undefined>
   marqueeActiveStore: store.ReadStore<boolean>
   layout: TableLayout
 }): TableVirtualRuntime => {
   const layoutStateStore = createTableLayoutStateStore({
     grid: options.grid,
-    view: options.view,
-    sections: options.sections
+    view: options.view
   })
   const layoutStore = store.createValueStore<TableVirtualLayoutSnapshot>({
     initial: EMPTY_LAYOUT_SNAPSHOT,

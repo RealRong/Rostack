@@ -206,6 +206,77 @@ const resolveQueryAction = (input: {
   return 'reuse'
 }
 
+const hasSortInputChanges = (input: {
+  activeViewId: ViewId
+  impact: BaseImpact
+  plan: QueryPlan
+}): boolean => {
+  const commit = input.impact.commit
+  if (
+    input.impact.recordSetChanged
+    || commitImpact.has.viewQuery(commit, input.activeViewId, ['sort'])
+  ) {
+    return true
+  }
+
+  for (const fieldId of input.plan.watch.sort) {
+    if (commitImpact.has.fieldSchema(commit, fieldId)) {
+      return true
+    }
+  }
+
+  const changedFields = input.impact.touchedFields
+  return changedFields === 'all'
+    || setCore.intersectsValues(input.plan.watch.sort, changedFields)
+}
+
+const resolveQueryReuse = (input: {
+  action: DeriveAction
+  activeViewId: ViewId
+  impact: BaseImpact
+  view: View
+  plan: QueryPlan
+  previous?: QueryState
+}): {
+  matched?: readonly RecordId[]
+  ordered?: readonly RecordId[]
+} | undefined => {
+  if (
+    input.action !== 'sync'
+    || !input.previous
+  ) {
+    return undefined
+  }
+
+  const canReuseMatched = !hasSortInputChanges({
+    activeViewId: input.activeViewId,
+    impact: input.impact,
+    plan: input.plan
+  })
+  const canReuseOrdered = canReuseMatched
+    && (
+      input.view.sort.length > 0
+      || !commitImpact.has.viewQuery(input.impact.commit, input.activeViewId, ['order'])
+    )
+
+  if (!canReuseMatched && !canReuseOrdered) {
+    return undefined
+  }
+
+  return {
+    ...(canReuseMatched
+      ? {
+          matched: input.previous.matched.read.ids()
+        }
+      : {}),
+    ...(canReuseOrdered
+      ? {
+          ordered: input.previous.ordered.read.ids()
+        }
+      : {})
+  }
+}
+
 const publishRecords = (input: {
   previous?: ViewRecords
   state: QueryState
@@ -258,6 +329,14 @@ export const runQueryStage = (input: {
     plan: input.plan,
     previous: input.previous
   })
+  const reuse = resolveQueryReuse({
+    action,
+    activeViewId: input.activeViewId,
+    impact: input.impact,
+    view: input.view,
+    plan: input.plan,
+    previous: input.previous
+  })
   const stage = runSnapshotStage({
     action,
     previousState: input.previous,
@@ -269,7 +348,8 @@ export const runQueryStage = (input: {
           view: input.view,
           index: input.index,
           plan: input.plan,
-          previous: input.previous
+          previous: input.previous,
+          reuse
         }),
     canReusePublished: stageInput => (
       stageInput.previousPublished !== undefined

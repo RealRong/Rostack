@@ -2,10 +2,10 @@ import { equal, store } from '@shared/core'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeId, Rect, Size } from '@whiteboard/core/types'
 import type {
-  EngineRead,
+  CommittedRead,
   MindmapLayoutItem,
   MindmapStructureItem
-} from '@whiteboard/engine'
+} from '@whiteboard/editor/committed/read'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   MindmapEnterPreview,
@@ -90,7 +90,7 @@ const cancelFrame = (
 }
 
 const readCommittedMindmapNodeSize = (
-  nodeItemStore: EngineRead['node']['committed'],
+  nodeItemStore: CommittedRead['node']['committed'],
   nodeId: NodeId
 ): Size | undefined => {
   const item = store.read(nodeItemStore, nodeId)
@@ -180,7 +180,7 @@ const readProjectedMindmapItem = ({
 }: {
   base: MindmapLayoutItem
   structure: MindmapStructureItem
-  nodeCommitted: EngineRead['node']['committed']
+  nodeCommitted: CommittedRead['node']['committed']
   liveLayout: MindmapLiveLayoutInput | undefined
   rootMove: {
     delta: {
@@ -348,10 +348,10 @@ export const createMindmapLayoutRead = ({
   liveLayout,
   preview
 }: {
-  list: EngineRead['mindmap']['list']
-  committed: EngineRead['mindmap']['layout']
-  structure: EngineRead['mindmap']['structure']
-  nodeCommitted: EngineRead['node']['committed']
+  list: CommittedRead['mindmap']['list']
+  committed: CommittedRead['mindmap']['layout']
+  structure: CommittedRead['mindmap']['structure']
+  nodeCommitted: CommittedRead['node']['committed']
   liveLayout: store.KeyedReadStore<NodeId, MindmapLiveLayoutInput | undefined>
   preview: store.ReadStore<MindmapPreviewState | undefined>
 }): MindmapLayoutRead => {

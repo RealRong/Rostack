@@ -11,7 +11,16 @@ const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
 
-const createDocument = (view) => ({
+const createDocument = (
+  view,
+  records = {
+    rec_1: {
+      status: 'todo',
+      points: 1,
+      title: 'Task 1'
+    }
+  }
+) => ({
   schemaVersion: 1,
   activeViewId: view.id,
   fields: {
@@ -27,6 +36,12 @@ const createDocument = (view) => ({
             name: 'Todo',
             color: 'gray',
             category: 'todo'
+          },
+          {
+            id: 'doing',
+            name: 'Doing',
+            color: 'blue',
+            category: 'in_progress'
           }
         ]
       },
@@ -49,18 +64,21 @@ const createDocument = (view) => ({
     order: [view.id]
   },
   records: {
-    byId: {
-      rec_1: {
-        id: 'rec_1',
-        title: 'Task 1',
-        type: 'task',
-        values: {
-          [FIELD_STATUS]: 'todo',
-          [FIELD_POINTS]: 1
+    byId: Object.fromEntries(
+      Object.entries(records).map(([recordId, record]) => [
+        recordId,
+        {
+          id: recordId,
+          title: record.title,
+          type: 'task',
+          values: {
+            [FIELD_STATUS]: record.status,
+            [FIELD_POINTS]: record.points
+          }
         }
-      }
-    },
-    order: ['rec_1']
+      ])
+    ),
+    order: Object.keys(records)
   },
   meta: {}
 })
@@ -143,4 +161,93 @@ test('engine.active.query stage reuses previous state when persisted filter chan
   assert.equal(result.action, 'reuse')
   assert.equal(result.state, previousState)
   assert.equal(result.records, previousPublished)
+})
+
+test('engine.active.query reuses matched and ordered ids on filter-only sync', () => {
+  const previousView = createView({
+    sort: [{
+      field: FIELD_POINTS,
+      direction: 'desc'
+    }]
+  })
+  const nextView = createView({
+    sort: [{
+      field: FIELD_POINTS,
+      direction: 'desc'
+    }],
+    filter: {
+      mode: 'and',
+      rules: [{
+        fieldId: FIELD_STATUS,
+        presetId: 'eq',
+        value: filter.value.optionSet.create(['todo'])
+      }]
+    }
+  })
+  const document = createDocument(nextView, {
+    rec_1: {
+      status: 'todo',
+      points: 1,
+      title: 'Task 1'
+    },
+    rec_2: {
+      status: 'doing',
+      points: 3,
+      title: 'Task 2'
+    },
+    rec_3: {
+      status: 'todo',
+      points: 2,
+      title: 'Task 3'
+    }
+  })
+  const context = createStaticDocumentReadContext(document)
+  const index = createIndexState(document)
+  const previousPlan = compileViewPlan(context.reader, previousView).query
+  const nextPlan = compileViewPlan(context.reader, nextView).query
+  const previousStage = runQueryStage({
+    reader: context.reader,
+    activeViewId: previousView.id,
+    previousViewId: previousView.id,
+    impact: createBaseImpact({}),
+    view: previousView,
+    plan: previousPlan,
+    index
+  })
+  const previousPublished = {
+    matched: previousStage.state.matched.read.ids(),
+    ordered: previousStage.state.ordered.read.ids(),
+    visible: previousStage.state.visible.read.ids()
+  }
+
+  const result = runQueryStage({
+    reader: context.reader,
+    activeViewId: nextView.id,
+    previousViewId: nextView.id,
+    impact: createBaseImpact({
+      views: {
+        changed: new Map([
+          [nextView.id, {
+            queryAspects: new Set(['filter'])
+          }]
+        ])
+      }
+    }),
+    view: nextView,
+    plan: nextPlan,
+    previousPlan,
+    index,
+    previous: previousStage.state,
+    previousPublished
+  })
+
+  assert.equal(result.action, 'sync')
+  assert.equal(result.state.matched.read.ids(), previousStage.state.matched.read.ids())
+  assert.equal(result.state.ordered.read.ids(), previousStage.state.ordered.read.ids())
+  assert.equal(result.records.matched, previousPublished.matched)
+  assert.equal(result.records.ordered, previousPublished.ordered)
+  assert.deepEqual([...result.state.visible.read.ids()].sort(), ['rec_1', 'rec_3'])
+  assert.deepEqual(result.delta.added, [])
+  assert.deepEqual(result.delta.removed, ['rec_2'])
+  assert.equal(result.delta.orderChanged, false)
 })

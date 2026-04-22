@@ -24,7 +24,7 @@ import type {
   PageState
 } from '@dataview/runtime/page/session/types'
 import {
-  createEntityListStore
+  createPresentListStore
 } from '@dataview/runtime/model/internal/list'
 import {
   query as queryApi
@@ -150,7 +150,7 @@ export const createPageModel = (input: {
       }),
     isEqual: equal.sameOrder
   })
-  const views = createEntityListStore({
+  const views = createPresentListStore({
     ids: input.source.doc.views.ids,
     values: input.source.doc.views
   })

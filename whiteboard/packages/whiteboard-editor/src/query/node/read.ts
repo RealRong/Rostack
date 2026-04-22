@@ -1,8 +1,8 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import type {
-  EngineRead,
+  CommittedRead,
   NodeItem
-} from '@whiteboard/engine'
+} from '@whiteboard/editor/committed/read'
 import { collection, equal, store } from '@shared/core'
 import type {
   Node,
@@ -101,8 +101,8 @@ export type NodeRender = {
 }
 
 export type NodePresentationRead = {
-  list: EngineRead['node']['list']
-  committed: EngineRead['node']['committed']
+  list: CommittedRead['node']['list']
+  committed: CommittedRead['node']['committed']
   type: NodeTypeRead
   projected: store.KeyedReadStore<NodeId, ProjectedNode | undefined>
   nodes: (nodeIds: readonly NodeId[]) => readonly NodeModel[]
@@ -525,7 +525,7 @@ export const createNodeRead = ({
   draft,
   selection
 }: {
-  read: EngineRead
+  read: CommittedRead
   type: NodeTypeRead
   feedback: store.KeyedReadStore<NodeId, NodePreviewProjection>
   mindmap: {

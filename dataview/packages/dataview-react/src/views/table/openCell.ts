@@ -3,7 +3,7 @@ import type {
   ViewFieldRef
 } from '@dataview/engine'
 import type {
-  TableViewContext
+  TableViewState
 } from '@dataview/runtime/table'
 import type {
   ValueEditorAnchor,
@@ -123,7 +123,7 @@ export const createCellOpener = (options: {
     recordId: string
     fieldId: string
   } | undefined
-  view: () => TableViewContext | undefined
+  view: () => TableViewState | undefined
   gridSelection: GridSelectionStore
   dom: Dom
   revealCursor: () => void
@@ -173,7 +173,7 @@ export const createCellOpener = (options: {
     return openTarget({
       cell: input.cell,
       field: {
-        viewId: view.view.id,
+        viewId: view.id,
         itemId: input.cell.itemId,
         recordId: resolved.recordId,
         fieldId: resolved.fieldId

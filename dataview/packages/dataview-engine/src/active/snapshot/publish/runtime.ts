@@ -18,6 +18,7 @@ import type {
 } from '@dataview/engine/contracts'
 import type {
   MembershipState,
+  SummaryDelta,
   SummaryState
 } from '@dataview/engine/contracts/state'
 import {
@@ -92,6 +93,7 @@ export const runPublishStage = (input: {
   previousSections?: SectionList
   previousItems?: ItemList
   summaryState: SummaryState
+  summaryDelta: SummaryDelta
   previousSummaryState?: SummaryState
   previousSummaries?: ViewSummaries
   itemIds: ItemIdPool
@@ -158,7 +160,10 @@ export const runPublishStage = (input: {
   const published = reuseSnapshot(input.previous, snapshot)
   const delta = projectActiveDelta({
     previous: input.previous,
-    next: published
+    next: published,
+    sections: sections.delta?.sections,
+    items: sections.delta?.items,
+    summaries: input.summaryDelta
   })
   const publishMs = now() - publishStart
   const reusedStoreCount = countReusedStores(input.previous, published)

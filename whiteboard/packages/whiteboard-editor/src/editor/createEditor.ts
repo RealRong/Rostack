@@ -2,6 +2,8 @@ import type { Viewport } from '@whiteboard/core/types'
 import { store } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
+import { createCommittedRead } from '@whiteboard/editor/committed/read'
+import { createEditorGraphDriver } from '@whiteboard/editor/graph/driver'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
@@ -51,6 +53,9 @@ export const createEditor = ({
     initialDrawState,
     initialViewport
   })
+  const committed = createCommittedRead({
+    engine
+  })
   const mindmapPreview = store.createDerivedStore({
     get: () => store.read(session.preview.state).mindmap.preview,
     isEqual: (left, right) => left === right
@@ -58,12 +63,12 @@ export const createEditor = ({
   const layout = createEditorLayout({
     read: {
       node: {
-        committed: engine.read.node.committed
+        committed: committed.node.committed
       },
       mindmap: {
-        list: engine.read.mindmap.list,
-        committed: engine.read.mindmap.layout,
-        structure: engine.read.mindmap.structure
+        list: committed.mindmap.list,
+        committed: committed.mindmap.layout,
+        structure: committed.mindmap.structure
       }
     },
     session: {
@@ -75,12 +80,11 @@ export const createEditor = ({
   })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const query = createEditorQuery({
-    engineRead: engine.read,
+    engineRead: committed,
     registry,
     history,
     layout,
-    session,
-    defaults: defaults.selection
+    session
   })
   const write = createEditorWrite({
     engine,
@@ -89,7 +93,7 @@ export const createEditor = ({
     layout
   })
   const actions = createEditorActions({
-    engine,
+    committed,
     session,
     query,
     layout,
@@ -99,11 +103,17 @@ export const createEditor = ({
   })
   const host = createEditorHost({
     engine,
+    committed,
     session,
     query,
     layout,
     write,
     actions
+  })
+  const graph = createEditorGraphDriver({
+    engine,
+    session,
+    layout
   })
   const events = createEditorEvents({
     engine,
@@ -111,22 +121,27 @@ export const createEditor = ({
     query,
     resetHost: host.cancel
   })
+  const editorStore = createEditorStore(session)
 
   return {
-    store: createEditorStore(session),
+    store: editorStore,
     read: createEditorRead({
-      engine,
-      query
+      committed,
+      query,
+      published: graph.sources,
+      store: editorStore,
+      registry,
+      defaults: defaults.selection
     }),
     actions,
     input: host,
     events: events.events,
     dispose: () => {
       events.dispose()
+      graph.dispose()
       host.cancel()
       session.reset()
       layout.text.clear()
-      engine.dispose()
     }
   }
 }

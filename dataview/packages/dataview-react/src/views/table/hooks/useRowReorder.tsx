@@ -32,17 +32,17 @@ export interface RowReorderApi {
 }
 
 export const useRowReorder = (): RowReorderApi => {
-  const table = useTableContext()
   const dataView = useDataView()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
-    throw new Error('Table row reorder requires an active current view.')
+  const table = useTableContext()
+  const grid = useStoreValue(dataView.table.grid)
+  if (!grid) {
+    throw new Error('Table row reorder requires an active table grid.')
   }
 
   const layout = table.layout
   const canRowDrag = useStoreValue(table.can.rowDrag)
   const rowSelection = useStoreValue(table.selection.rows.state.store)
-  const rowIds = currentView.items.ids
+  const rowIds = grid.items.ids
   const selectedRowIds = useMemo(
     () => table.selection.rows.enumerate.materialize(),
     [rowSelection, table.selection.rows]
@@ -120,9 +120,9 @@ export const useRowReorder = (): RowReorderApi => {
       const beforeId = rowBeforeId(target)
       const sectionKey = (
         beforeId
-          ? currentView.items.read.section(beforeId)
-          : currentView.items.read.section(dragIds[0]!)
-      ) ?? currentView.sections.all[0]?.key
+          ? grid.items.read.sectionKey(beforeId)
+          : grid.items.read.sectionKey(dragIds[0]!)
+      ) ?? grid.sections.all[0]?.key
       if (!sectionKey) {
         return
       }

@@ -1,5 +1,7 @@
 import type {
   Edge,
+  Node,
+  NodeModel,
   Point,
   Rect,
   Size
@@ -7,6 +9,7 @@ import type {
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
+  SessionInput,
   NodeDraft,
   NodePreview
 } from '../contracts/editor'
@@ -15,6 +18,8 @@ import type {
   GraphNodeEntry
 } from '../contracts/working'
 import { EMPTY_SIZE } from './geometry'
+
+const nodeModelCache = new WeakMap<Node, NodeModel>()
 
 const readNodePatch = (
   draft?: NodeDraft,
@@ -34,6 +39,50 @@ const readNodeSize = (
 ): Size => node.size
   ?? nodeApi.bootstrap.resolve(node)
   ?? EMPTY_SIZE
+
+const toNodeModel = (
+  node: Node
+): NodeModel => {
+  const cached = nodeModelCache.get(node)
+  if (cached) {
+    return cached
+  }
+
+  const {
+    position: _position,
+    size: _size,
+    rotation: _rotation,
+    ...model
+  } = node
+  nodeModelCache.set(node, model)
+  return model
+}
+
+const readNodeTextDraft = (input: {
+  entry: GraphNodeEntry
+  edit: SessionInput['edit']
+}) => {
+  const { edit, entry } = input
+  if (!edit || edit.kind !== 'node' || edit.nodeId !== entry.base.node.id) {
+    return undefined
+  }
+
+  return {
+    field: edit.field,
+    value: edit.text,
+    size:
+      edit.field === 'text'
+      && entry.draft?.kind === 'size'
+        ? entry.draft.size
+        : undefined,
+    fontSize:
+      edit.field === 'text'
+      && entry.base.node.type === 'sticky'
+      && entry.draft?.kind === 'fit'
+        ? entry.draft.fontSize
+        : undefined
+  }
+}
 
 export const readProjectedNodeRotation = (
   entry: GraphNodeEntry
@@ -99,6 +148,34 @@ export const buildProjectedNodeGeometry = (input: {
     rect,
     rotation,
     bounds: geometry.bounds
+  }
+}
+
+export const buildProjectedNodeView = (input: {
+  entry: GraphNodeEntry
+  measuredSize?: Size
+  treeRect?: Rect
+  edit: SessionInput['edit']
+}) => {
+  const geometry = buildProjectedNodeGeometry(input)
+  const previewItem = nodeApi.projection.applyTextPreview({
+    node: input.entry.base.node,
+    rect: geometry.rect
+  }, input.entry.preview?.patch)
+  const contentItem = nodeApi.projection.applyTextDraft(
+    previewItem,
+    readNodeTextDraft(input)
+  )
+
+  return {
+    node: toNodeModel(contentItem.node),
+    rect: contentItem.rect,
+    rotation: geometry.rotation,
+    bounds: nodeApi.outline.geometry(
+      contentItem.node,
+      contentItem.rect,
+      geometry.rotation
+    ).bounds
   }
 }
 

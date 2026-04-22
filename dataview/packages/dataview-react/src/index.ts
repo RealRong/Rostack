@@ -38,7 +38,7 @@ export type { TableViewProps } from '@dataview/react/views/table'
 export {
   EngineProvider,
   useDataView,
-  useDataViewRuntime,
+  useDataViewModel,
   useDataViewIntent,
   useDataViewKeyedValue,
   useDataViewSession,

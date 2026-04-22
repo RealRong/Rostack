@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import type {
   ItemId,
+  Section,
   SectionKey
 } from '@dataview/engine'
 import type {
@@ -29,6 +30,7 @@ export interface KanbanVisibility {
 }
 
 export interface KanbanBoard extends KanbanBoardModel {
+  sections: readonly Section[]
   columnWidth: number
   columnMinHeight: number
 }

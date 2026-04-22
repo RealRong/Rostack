@@ -13,6 +13,7 @@ import type {
   Operation
 } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/core/config'
+import type { EngineWrite } from '../types/engineWrite'
 import type {
   BatchApplyOptions,
   Command,
@@ -106,8 +107,11 @@ export interface RelationChange {
 }
 
 export interface Engine {
+  readonly config: BoardConfig
   snapshot(): Snapshot
   subscribe(listener: (snapshot: Snapshot) => void): () => void
+  lastWrite(): EngineWrite | null
+  subscribeWrite(listener: (write: EngineWrite) => void): () => void
   execute<C extends Command>(
     command: C,
     options?: ExecuteOptions

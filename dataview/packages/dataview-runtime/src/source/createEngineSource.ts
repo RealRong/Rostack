@@ -45,9 +45,14 @@ import type {
   EngineSource,
   EngineSourceRuntime,
   ItemSource,
-  ItemValue,
   SectionSource
 } from '@dataview/runtime/source/contracts'
+
+interface ItemValue {
+  recordId: RecordId
+  sectionKey: SectionKey
+  placement: ItemPlacement
+}
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
@@ -120,7 +125,7 @@ const createRecordListStore = () => store.createValueStore<readonly RecordId[]>(
 })
 
 const createSectionSourceRuntime = () => {
-  const keys = store.createValueStore<readonly SectionKey[]>({
+  const ids = store.createValueStore<readonly SectionKey[]>({
     initial: EMPTY_SECTION_KEYS,
     isEqual: equal.sameOrder
   })
@@ -130,15 +135,15 @@ const createSectionSourceRuntime = () => {
 
   return {
     source: {
-      keys,
+      ids,
       get: values.get,
       subscribe: values.subscribe,
       isEqual: values.isEqual
     } satisfies SectionSource,
-    keys,
+    ids,
     values,
     clear: () => {
-      keys.set(EMPTY_SECTION_KEYS)
+      ids.set(EMPTY_SECTION_KEYS)
       values.clear()
     }
   }
@@ -168,17 +173,16 @@ const createItemSourceRuntime = () => {
     isEqual: equal.sameOrder
   })
   const table = store.createKeyTableStore<ItemId, ItemValue>()
-  const record = table.project.field(value => value?.record)
-  const section = table.project.field(value => value?.section)
+  const recordId = table.project.field(value => value?.recordId)
+  const sectionKey = table.project.field(value => value?.sectionKey)
   const placement = table.project.field(value => value?.placement)
 
   return {
     source: {
       ids,
-      table,
       read: {
-        record,
-        section,
+        recordId,
+        sectionKey,
         placement
       }
     } satisfies ItemSource,
@@ -195,16 +199,16 @@ const readItemValue = (
   snapshot: ViewState,
   itemId: ItemId
 ): ItemValue | undefined => {
-  const record = snapshot.items.read.record(itemId)
-  const section = snapshot.items.read.section(itemId)
+  const recordId = snapshot.items.read.record(itemId)
+  const sectionKey = snapshot.items.read.section(itemId)
   const placement = snapshot.items.read.placement(itemId)
-  if (!record || !section || !placement) {
+  if (!recordId || !sectionKey || !placement) {
     return undefined
   }
 
   return {
-    record,
-    section,
+    recordId,
+    sectionKey,
     placement
   }
 }
@@ -302,7 +306,6 @@ const resetActiveFields = (input: {
 
 const resetActiveSource = (input: {
   snapshot?: ViewState
-  viewReady: store.ValueStore<boolean>
   viewId: store.ValueStore<ViewId | undefined>
   viewType: store.ValueStore<View['type'] | undefined>
   viewCurrent: store.ValueStore<View | undefined>
@@ -321,7 +324,6 @@ const resetActiveSource = (input: {
 }) => {
   const snapshot = input.snapshot
   if (!snapshot) {
-    input.viewReady.set(false)
     input.viewId.set(undefined)
     input.viewType.set(undefined)
     input.viewCurrent.set(undefined)
@@ -340,7 +342,6 @@ const resetActiveSource = (input: {
     return
   }
 
-  input.viewReady.set(true)
   input.viewId.set(snapshot.view.id)
   input.viewType.set(snapshot.view.type)
   input.viewCurrent.set(snapshot.view)
@@ -359,7 +360,7 @@ const resetActiveSource = (input: {
       set: itemValues
     })
   }
-  input.sections.keys.set(snapshot.sections.ids)
+  input.sections.ids.set(snapshot.sections.ids)
   input.sections.values.clear()
   if (snapshot.sections.all.length) {
     input.sections.values.patch({
@@ -498,7 +499,6 @@ const applyDocumentDelta = (input: {
 const applyActiveDelta = (input: {
   delta: ActiveDelta | undefined
   snapshot?: ViewState
-  viewReady: store.ValueStore<boolean>
   viewId: store.ValueStore<ViewId | undefined>
   viewType: store.ValueStore<View['type'] | undefined>
   viewCurrent: store.ValueStore<View | undefined>
@@ -530,7 +530,6 @@ const applyActiveDelta = (input: {
   }
 
   if (input.delta.view) {
-    input.viewReady.set(true)
     input.viewId.set(snapshot.view.id)
     input.viewType.set(snapshot.view.type)
     input.viewCurrent.set(snapshot.view)
@@ -598,7 +597,6 @@ const syncRuntime = (input: {
   records: ReturnType<typeof createEntitySourceRuntime<RecordId, DataRecord>>
   fields: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
   views: ReturnType<typeof createEntitySourceRuntime<ViewId, View>>
-  viewReady: store.ValueStore<boolean>
   viewId: store.ValueStore<ViewId | undefined>
   viewType: store.ValueStore<View['type'] | undefined>
   viewCurrent: store.ValueStore<View | undefined>
@@ -626,7 +624,6 @@ const syncRuntime = (input: {
     applyActiveDelta({
       delta: input.delta?.active,
       snapshot: input.snapshot.active,
-      viewReady: input.viewReady,
       viewId: input.viewId,
       viewType: input.viewType,
       viewCurrent: input.viewCurrent,
@@ -658,7 +655,6 @@ export const createEngineSource = (
   const activeSummaries = createSummarySourceRuntime()
   const activeFieldsAll = createEntitySourceRuntime<FieldId, Field>(EMPTY_FIELD_IDS)
   const activeFieldsCustom = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
-  const viewReady = store.createValueStore(false)
   const viewId = store.createValueStore<ViewId | undefined>(undefined)
   const viewType = store.createValueStore<View['type'] | undefined>(undefined)
   const viewCurrent = store.createValueStore<View | undefined>(undefined)
@@ -678,7 +674,6 @@ export const createEngineSource = (
     } satisfies DocumentSource,
     active: {
       view: {
-        ready: viewReady,
         id: viewId,
         type: viewType,
         current: viewCurrent
@@ -714,7 +709,6 @@ export const createEngineSource = (
       })
       resetActiveSource({
         snapshot: nextSnapshot.active,
-        viewReady,
         viewId,
         viewType,
         viewCurrent,
@@ -741,7 +735,6 @@ export const createEngineSource = (
       documentViews.clear()
       resetActiveSource({
         snapshot: undefined,
-        viewReady,
         viewId,
         viewType,
         viewCurrent,
@@ -770,7 +763,6 @@ export const createEngineSource = (
       records: documentRecords,
       fields: documentFields,
       views: documentViews,
-      viewReady,
       viewId,
       viewType,
       viewCurrent,
@@ -791,33 +783,6 @@ export const createEngineSource = (
 
   return {
     source,
-    reset,
-    apply: (delta: EngineDelta | undefined, nextSnapshot: EngineSnapshot) => {
-      syncRuntime({
-        delta,
-        snapshot: nextSnapshot,
-        records: documentRecords,
-        fields: documentFields,
-        views: documentViews,
-        viewReady,
-        viewId,
-        viewType,
-        viewCurrent,
-        query,
-        table,
-        gallery,
-        kanban,
-        recordsMatched,
-        recordsOrdered,
-        recordsVisible,
-        items: activeItems,
-        sections: activeSections,
-        summaries: activeSummaries,
-        fieldsAll: activeFieldsAll,
-        fieldsCustom: activeFieldsCustom
-      })
-    },
-    clear,
     dispose: () => {
       unsubscribe()
       clear()

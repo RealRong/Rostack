@@ -9,7 +9,7 @@ import {
 } from '@dataview/react/dataview'
 import type { SectionKey } from '@dataview/engine'
 import {
-  useKeyedStoreValue
+  useStoreValue
 } from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
@@ -24,11 +24,12 @@ export interface SectionHeaderProps {
 
 const View = (props: SectionHeaderProps) => {
   const { t } = useTranslation()
-  const { engine } = useDataView()
+  const dataView = useDataView()
   const table = useTableContext()
-  const section = useKeyedStoreValue(table.section, props.sectionKey)
+  const grid = useStoreValue(dataView.table.grid)
+  const section = grid?.sections.get(props.sectionKey)
   if (!section) {
-    throw new Error('Table section header requires an active current view.')
+    throw new Error('Table section header requires an active table section.')
   }
 
   return (
@@ -60,7 +61,7 @@ const View = (props: SectionHeaderProps) => {
             event.stopPropagation()
           }}
           onClick={() => {
-            engine.active.sections.toggleCollapse(section.key)
+            dataView.engine.active.sections.toggleCollapse(section.key)
             table.focus()
           }}
         >

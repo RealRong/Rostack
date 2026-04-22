@@ -1,4 +1,3 @@
-import type { ViewState as CurrentView } from '@dataview/engine'
 import type {
   FieldId,
   RecordFieldWriteManyInput,
@@ -22,6 +21,9 @@ import {
   type FieldList,
   type ItemId,
 } from '@dataview/engine'
+import type {
+  TableGrid
+} from '@dataview/runtime/table'
 import {
   type CellRef,
   sameCellRef
@@ -101,7 +103,7 @@ type FillPointerState = Extract<PointerState, {
 export const resolveFillWriteManyInput = (input: {
   selection: ReturnType<typeof gridSelection.set> | null
   anchor: CellRef
-  currentView: Pick<CurrentView, 'items' | 'fields'>
+  grid: TableGrid
   readCell: (cell: CellRef) => {
     exists: boolean
     value: unknown
@@ -113,7 +115,7 @@ export const resolveFillWriteManyInput = (input: {
 
   const fieldIds = gridSelection.fieldIds(
     input.selection,
-    input.currentView.fields
+    input.grid.fields
   )
   if (!fieldIds.length) {
     return undefined
@@ -123,13 +125,13 @@ export const resolveFillWriteManyInput = (input: {
   const targetRecordIdSet = new Set<RecordId>()
   gridSelection.itemIds(
     input.selection,
-    input.currentView.items
+    input.grid.items
   ).forEach(itemId => {
     if (itemId === input.anchor.itemId) {
       return
     }
 
-    const recordId = input.currentView.items.read.record(itemId)
+    const recordId = input.grid.items.read.recordId(itemId)
     if (!recordId || targetRecordIdSet.has(recordId)) {
       return
     }
@@ -312,10 +314,10 @@ const hoverTargetFromPoint = (
 
 const useHoverBinding = (input: {
   table: ReturnType<typeof useTableContext>
-  currentView: CurrentView
+  grid: TableGrid
   enabled: boolean
 }) => {
-  const rowIds = input.currentView.items.ids
+  const rowIds = input.grid.items.ids
   const enabledRef = useRef(input.enabled)
   const rowIdsRef = useRef(rowIds)
   const frameRef = useRef<number | undefined>(undefined)
@@ -325,13 +327,13 @@ const useHoverBinding = (input: {
 
   const rowContext = useCallback((): RowHoverContext => ({
     container: input.table.dom.container(),
-    items: input.currentView.items,
-    fields: input.currentView.fields,
+    items: input.grid.items,
+    fields: input.grid.fields,
     rowIds: rowIdsRef.current,
     rowIdAtPoint: input.table.rowHit.idAtPoint
   }), [
-    input.currentView.items,
-    input.currentView.fields,
+    input.grid.items,
+    input.grid.fields,
     input.table
   ])
 
@@ -481,9 +483,9 @@ export const usePointer = (
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
-    throw new Error('Table pointer interactions require an active current view.')
+  const grid = useStoreValue(dataView.table.grid)
+  if (!grid) {
+    throw new Error('Table pointer interactions require an active table grid.')
   }
 
   const [dragActive, setDragActive] = useState(false)
@@ -493,16 +495,16 @@ export const usePointer = (
   onBlankPointerDownRef.current = options.onBlankPointerDown
   const hover = useHoverBinding({
     table,
-    currentView,
+    grid,
     enabled: options.enabled
   })
 
   const readGridSelection = useCallback(() => table.selection.cells.get(), [table])
   const readColumn = useCallback((fieldId: string) => (
-    currentView.fields.all.find((field: { id: string }) => field.id === fieldId)
-  ), [currentView.fields.all])
+    grid.fields.all.find((field: { id: string }) => field.id === fieldId)
+  ), [grid.fields.all])
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = currentView.items.read.record(cell.itemId)
+    const recordId = grid.items.read.recordId(cell.itemId)
     const record = recordId
       ? dataView.source.doc.records.get(recordId)
       : undefined
@@ -513,7 +515,7 @@ export const usePointer = (
         ? fieldApi.value.read(record, cell.fieldId)
         : undefined
     }
-  }, [currentView.items, dataView.source.doc.records])
+  }, [dataView.source.doc.records, grid.items])
 
   const selectCell = useCallback((
     cell: CellRef,
@@ -550,11 +552,11 @@ export const usePointer = (
     setDragTarget(
       cellFromPoint(
         point,
-        currentView.items,
-        currentView.fields
+        grid.items,
+        grid.fields
       ) ?? undefined
     )
-  }, [currentView.items, currentView.fields, setDragTarget, table.hover])
+  }, [grid.fields, grid.items, setDragTarget, table.hover])
 
   const resolveAutoPanTargets = useCallback(
     () => dragActive
@@ -625,7 +627,7 @@ export const usePointer = (
     const input = resolveFillWriteManyInput({
       selection: table.selection.cells.get(),
       anchor: current.anchor,
-      currentView,
+      grid,
       readCell
     })
     if (!input) {
@@ -636,10 +638,8 @@ export const usePointer = (
     editor.records.fields.writeMany(input)
     table.focus()
   }, [
-    currentView.items,
-    currentView.fields,
-    currentView,
     editor,
+    grid,
     readCell,
     table,
   ])
@@ -655,8 +655,8 @@ export const usePointer = (
     table.hover.clear(point)
     const target = cellFromPoint(
       point,
-      currentView.items,
-      currentView.fields
+      grid.items,
+      grid.fields
     ) ?? undefined
 
     if (current.type === 'press') {
@@ -688,8 +688,8 @@ export const usePointer = (
 
     setDragTarget(target)
   }, [
-    currentView.items,
-    currentView.fields,
+    grid.fields,
+    grid.items,
     readGridSelection,
     setDragTarget,
     table
@@ -834,8 +834,8 @@ export const usePointer = (
 
       const fillCell = cellFromTarget(
         event.target,
-        currentView.items,
-        currentView.fields,
+        grid.items,
+        grid.fields,
         'fill-handle'
       )
       if (fillCell) {
@@ -846,8 +846,8 @@ export const usePointer = (
 
       const cell = cellFromTarget(
         event.target,
-        currentView.items,
-        currentView.fields,
+        grid.items,
+        grid.fields,
         'cell'
       )
       if (cell) {
@@ -864,8 +864,8 @@ export const usePointer = (
       onBlankPointerDownRef.current(event)
     },
     [
-      currentView.items,
-      currentView.fields,
+      grid.fields,
+      grid.items,
       startFill,
       startPress
     ]

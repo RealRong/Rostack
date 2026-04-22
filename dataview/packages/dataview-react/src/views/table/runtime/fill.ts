@@ -1,7 +1,7 @@
 import { store } from '@shared/core'
 import type { CellRef } from '@dataview/engine'
 import type {
-  TableGridDomain
+  TableGrid
 } from '@dataview/runtime/table'
 import { fill, type GridSelection } from '@dataview/table'
 import { sameOptionalCell, tableCellKey } from '@dataview/react/views/table/runtime/cell'
@@ -14,7 +14,7 @@ export interface TableFillRuntime {
 
 export const createTableFillRuntime = (input: {
   gridSelectionStore: store.ReadStore<GridSelection | null>
-  gridStore: store.ReadStore<TableGridDomain | undefined>
+  gridStore: store.ReadStore<TableGrid | undefined>
   enabledStore: store.ReadStore<boolean>
 }): TableFillRuntime => {
   const handle = store.createDerivedStore<CellRef | undefined>({

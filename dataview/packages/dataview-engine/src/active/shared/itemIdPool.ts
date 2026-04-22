@@ -47,7 +47,6 @@ export const createItemIdPool = (): ItemIdPool => {
       placement: itemId => placementById.get(itemId)
     },
     gc: {
-      keep: _itemIds => {},
       clear: () => {
         nextId = 1
         idsBySection.clear()

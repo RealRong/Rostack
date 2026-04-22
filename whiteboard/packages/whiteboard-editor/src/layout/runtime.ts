@@ -37,7 +37,7 @@ import {
 import {
   createTextMetricsResource
 } from '@whiteboard/editor/layout/textMetrics'
-import type { EngineRead } from '@whiteboard/engine'
+import type { CommittedRead } from '@whiteboard/editor/committed/read'
 
 const TEXT_PLACEHOLDER = 'Text'
 
@@ -431,12 +431,12 @@ export const createEditorLayout = ({
 }: {
   read: {
     node: {
-      committed: EngineRead['node']['committed']
+      committed: CommittedRead['node']['committed']
     }
     mindmap: {
-      list: EngineRead['mindmap']['list']
-      committed: EngineRead['mindmap']['layout']
-      structure: EngineRead['mindmap']['structure']
+      list: CommittedRead['mindmap']['list']
+      committed: CommittedRead['mindmap']['layout']
+      structure: CommittedRead['mindmap']['structure']
     }
   }
   session: {

@@ -310,3 +310,56 @@ test('summary stage syncs when membership changes without record transitions', (
     0
   )
 })
+
+test('summary stage reuses previous state when only section meta changes', () => {
+  const index = createIndexState()
+  const previousMembership = createGroupedMembershipState(index.rows, {
+    todo: ['rec_1'],
+    done: ['rec_2']
+  })
+  const previous = deriveSummaryState({
+    membership: previousMembership,
+    calcFields: [FIELD_POINTS],
+    index,
+    action: 'rebuild'
+  }).state
+  const nextMembership: MembershipState = {
+    sections: previousMembership.sections,
+    meta: new Map([
+      ['todo', {
+        label: 'Todo Renamed' as never
+      }],
+      ['done', {
+        label: 'done' as never
+      }]
+    ])
+  }
+  const view = createView({
+    group: {
+      field: FIELD_STATUS,
+      mode: 'option',
+      bucketSort: 'manual'
+    }
+  })
+  const result = runSummaryStage({
+    activeViewId: view.id,
+    previousViewId: view.id,
+    impact: createBaseImpact({}),
+    view,
+    calcFields: [FIELD_POINTS],
+    previous,
+    previousMembership,
+    membership: nextMembership,
+    membershipAction: 'sync',
+    membershipDelta: {
+      ...EMPTY_MEMBERSHIP_DELTA,
+      changed: ['todo']
+    },
+    index
+  })
+
+  assert.equal(result.action, 'reuse')
+  assert.equal(result.state, previous)
+  assert.deepEqual(result.delta.changed, [])
+  assert.deepEqual(result.delta.removed, [])
+})

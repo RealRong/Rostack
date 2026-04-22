@@ -18,6 +18,7 @@ import { createWrite } from '../write'
 import { buildChange } from '../change/build'
 import type { EngineState } from './state'
 import { publishSnapshot } from './publish'
+import type { EngineWrite } from '../types/engineWrite'
 
 const createInitialChange = (
   document: Document
@@ -71,7 +72,9 @@ export const createEngine = ({
       facts: initialFacts,
       change: createInitialChange(initialDocument)
     }),
-    listeners: new Set()
+    listeners: new Set(),
+    lastWrite: null,
+    writeListeners: new Set()
   }
 
   const commit = <T,>(
@@ -90,9 +93,7 @@ export const createEngine = ({
       facts: nextFacts,
       change: buildChange(draft.changes)
     })
-    publishSnapshot(state, nextSnapshot)
-    onDocumentChange?.(nextDocument)
-    return success({
+    const write: EngineWrite = {
       rev: nextSnapshot.revision,
       at: Date.now(),
       origin: draft.origin,
@@ -101,15 +102,30 @@ export const createEngine = ({
       forward: draft.ops,
       inverse: draft.inverse,
       footprint: draft.history.footprint
-    }, draft.value as T)
+    }
+    state.lastWrite = write
+    publishSnapshot(state, nextSnapshot)
+    state.writeListeners.forEach((listener) => {
+      listener(write)
+    })
+    onDocumentChange?.(nextDocument)
+    return success(write, draft.value as T)
   }
 
   return {
+    config,
     snapshot: () => state.snapshot,
     subscribe: (listener) => {
       state.listeners.add(listener)
       return () => {
         state.listeners.delete(listener)
+      }
+    },
+    lastWrite: () => state.lastWrite,
+    subscribeWrite: (listener) => {
+      state.writeListeners.add(listener)
+      return () => {
+        state.writeListeners.delete(listener)
       }
     },
     execute: (command, options) => {

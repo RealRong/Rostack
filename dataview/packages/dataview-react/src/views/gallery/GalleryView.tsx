@@ -28,10 +28,10 @@ const GalleryRuntimeProvider = (props: {
 }
 
 export const GalleryView = (_props: GalleryViewProps) => {
-  const viewType = useDataViewValue(
-    dataView => dataView.source.active.view.type
+  const body = useDataViewValue(
+    dataView => dataView.model.gallery.body
   )
-  if (viewType !== 'gallery') {
+  if (!body) {
     return null
   }
 

@@ -1,7 +1,7 @@
 export {
   EngineProvider,
   useDataView,
-  useDataViewRuntime,
+  useDataViewModel,
   useDataViewIntent,
   useDataViewSession,
   useDataViewSource,

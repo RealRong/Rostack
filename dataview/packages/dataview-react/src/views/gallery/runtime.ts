@@ -6,14 +6,14 @@ import {
 import {
   useDataView
 } from '@dataview/react/dataview'
-import {
-  queryRead
+import type {
+  Section
 } from '@dataview/engine'
 import {
   intersects,
   rectIn
 } from '@shared/dom'
-import { equal, store } from '@shared/core'
+import { store } from '@shared/core'
 import { useStoreValue } from '@shared/react'
 import { useCardReorder } from '@dataview/react/views/gallery/reorder'
 import {
@@ -32,6 +32,7 @@ import {
 import type { MarqueeScene } from '@dataview/react/page/marqueeBridge'
 
 const EMPTY_GALLERY_BLOCKS = [] as readonly GalleryBlock[]
+const EMPTY_SECTIONS = [] as readonly Section[]
 
 const sameBody = (
   left: GalleryViewRuntime['body']['get'] extends () => infer T ? T : never,
@@ -39,11 +40,12 @@ const sameBody = (
 ) => left.viewId === right.viewId
   && left.empty === right.empty
   && left.grouped === right.grouped
+  && left.size === right.size
+  && left.canDrag === right.canDrag
   && left.blocks === right.blocks
   && left.totalHeight === right.totalHeight
   && left.columnCount === right.columnCount
   && left.groupUsesOptionColors === right.groupUsesOptionColors
-  && left.sectionKeys === right.sectionKeys
 
 export const useGalleryRuntime = (): GalleryViewRuntime => {
   const dataView = useDataView()
@@ -61,34 +63,12 @@ export const useGalleryRuntime = (): GalleryViewRuntime => {
   const interaction = useItemDragRuntime({
     itemIds
   })
-  const sectionsStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.sections.keys)
-      .flatMap(key => {
-        const section = store.read(dataView.source.active.sections, key)
-        return section ? [section] : []
-      }),
-    isEqual: (left, right) => equal.sameOrder(left, right, (before, after) => before === after)
-  }), [dataView.source.active.sections])
-  const sections = useStoreValue(sectionsStore)
-  const groupedStore = useMemo(() => store.createDerivedStore({
-    get: () => queryRead.grouped(store.read(dataView.source.active.meta.query)),
-    isEqual: Object.is
-  }), [dataView.source.active.meta.query])
-  const gallerySizeStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.meta.gallery).size,
-    isEqual: Object.is
-  }), [dataView.source.active.meta.gallery])
-  const galleryCanReorderStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.meta.gallery).canReorder,
-    isEqual: Object.is
-  }), [dataView.source.active.meta.gallery])
-  const grouped = useStoreValue(groupedStore)
-  const size = useStoreValue(gallerySizeStore)
-  const canReorder = useStoreValue(galleryCanReorderStore)
+  const bodyModel = useStoreValue(dataView.model.gallery.body)
+  const sections = useStoreValue(dataView.model.gallery.sections)
   const virtual = useGalleryBlocks({
-    grouped,
-    sections,
-    minCardWidth: GALLERY_CARD_MIN_WIDTH[size],
+    grouped: bodyModel?.grouped ?? false,
+    sections: bodyModel ? sections : EMPTY_SECTIONS,
+    minCardWidth: GALLERY_CARD_MIN_WIDTH[bodyModel?.size ?? 'md'],
     containerRef,
     overscan: interaction.dragging ? 1200 : 640
   })
@@ -165,7 +145,7 @@ export const useGalleryRuntime = (): GalleryViewRuntime => {
 
   const drag = useCardReorder({
     containerRef,
-    canDrag: canReorder,
+    canDrag: bodyModel?.canDrag ?? false,
     itemMap: interaction.itemMap,
     getLayout: () => virtual.layout,
     getDragIds: interaction.getDragIds,

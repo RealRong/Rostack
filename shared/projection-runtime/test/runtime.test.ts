@@ -21,11 +21,10 @@ type PhaseName = 'count' | 'label' | 'items'
 type Input = {
   count: number
   labels: readonly string[]
-}
-
-type InputChange = {
-  count: Flags
-  labels: Flags
+  impact: {
+    count: Flags
+    labels: Flags
+  }
 }
 
 type ItemView = {
@@ -78,12 +77,12 @@ const createSpec = () => ({
   }),
   planner: {
     plan: (input: {
-      change: InputChange
+      input: Input
       previous: Snapshot
     }) => createPlan<PhaseName>({
       phases: [
-        ...(input.change.count.changed ? ['count' as const] : []),
-        ...(input.change.labels.changed ? ['items' as const] : [])
+        ...(input.input.impact.count.changed ? ['count' as const] : []),
+        ...(input.input.impact.labels.changed ? ['items' as const] : [])
       ]
     })
   },
@@ -236,10 +235,11 @@ describe('createRuntime', () => {
 
     const result = runtime.update({
       count: 2,
-      labels: ['a', 'b']
-    }, {
-      count: createFlags(true),
-      labels: createFlags(false)
+      labels: ['a', 'b'],
+      impact: {
+        count: createFlags(true),
+        labels: createFlags(false)
+      }
     })
 
     unsubscribe()
@@ -257,18 +257,20 @@ describe('createRuntime', () => {
 
     harness.update({
       count: 2,
-      labels: ['a']
-    }, {
-      count: createFlags(true),
-      labels: createFlags(false)
+      labels: ['a'],
+      impact: {
+        count: createFlags(true),
+        labels: createFlags(false)
+      }
     })
 
     const result = harness.update({
       count: 2,
-      labels: ['alpha', 'beta']
-    }, {
-      count: createFlags(false),
-      labels: createFlags(true)
+      labels: ['alpha', 'beta'],
+      impact: {
+        count: createFlags(false),
+        labels: createFlags(true)
+      }
     })
 
     assertPhaseOrder(result.trace, ['items'])
@@ -283,19 +285,21 @@ describe('createRuntime', () => {
 
     runtime.update({
       count: 3,
-      labels: ['a', 'b']
-    }, {
-      count: createFlags(true),
-      labels: createFlags(false)
+      labels: ['a', 'b'],
+      impact: {
+        count: createFlags(true),
+        labels: createFlags(false)
+      }
     })
 
     const previous = runtime.snapshot()
     const result = runtime.update({
       count: 3,
-      labels: ['a', 'b']
-    }, {
-      count: createFlags(false),
-      labels: createFlags(false)
+      labels: ['a', 'b'],
+      impact: {
+        count: createFlags(false),
+        labels: createFlags(false)
+      }
     })
 
     expect(result.trace.phases).toHaveLength(0)

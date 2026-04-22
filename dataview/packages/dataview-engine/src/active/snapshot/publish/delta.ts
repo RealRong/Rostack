@@ -1,19 +1,19 @@
-import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   CustomField,
   Field,
   FieldId
 } from '@dataview/core/contracts'
-import { equal } from '@shared/core'
 import type {
   ActiveDelta,
   CollectionDelta
 } from '@dataview/engine/contracts/delta'
 import type {
   ItemId,
-  Section,
   SectionKey
 } from '@dataview/engine/contracts/shared'
+import type {
+  SummaryDelta
+} from '@dataview/engine/contracts/state'
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
@@ -72,7 +72,7 @@ const buildKeyedCollectionDelta = <Key, Value>(input: {
   }
 
   return createCollectionDelta({
-    list: !equal.sameOrder(input.previousIds, input.nextIds),
+    list: input.previousIds !== input.nextIds,
     update,
     remove
   })
@@ -84,44 +84,36 @@ const customFieldIds = (
   ? fields.custom.map(field => field.id)
   : []
 
-const collectPublishedItemIds = (
-  snapshot: ViewState | undefined
-): readonly ItemId[] => {
-  if (!snapshot?.sections.all.length) {
-    return []
+const buildSummaryCollectionDelta = (input: {
+  previous: ViewState
+  next: ViewState
+  delta: SummaryDelta
+}): CollectionDelta<SectionKey> | undefined => {
+  if (input.delta.rebuild) {
+    const removed = input.previous.sections.ids.filter(
+      sectionKey => !input.next.summaries.has(sectionKey)
+    )
+
+    return createCollectionDelta({
+      list: input.previous.sections.ids !== input.next.sections.ids,
+      update: input.next.sections.ids,
+      remove: removed
+    })
   }
 
-  const ids: ItemId[] = []
-  snapshot.sections.all.forEach(section => {
-    section.itemIds.forEach(itemId => {
-      ids.push(itemId)
-    })
-  })
-  return ids
-}
-
-const buildItemDelta = (input: {
-  previous?: ViewState
-  next: ViewState
-}): CollectionDelta<ItemId> | undefined => {
-  const previousVisibleIds = input.previous?.items.ids ?? []
-  const previousAllIds = collectPublishedItemIds(input.previous)
-  const nextAllIds = collectPublishedItemIds(input.next)
-  const previousAllIdSet = new Set(previousAllIds)
-  const nextAllIdSet = new Set(nextAllIds)
-  const update = nextAllIds.filter(itemId => !previousAllIdSet.has(itemId))
-  const remove = previousAllIds.filter(itemId => !nextAllIdSet.has(itemId))
-
   return createCollectionDelta({
-    list: !equal.sameOrder(previousVisibleIds, input.next.items.ids),
-    update,
-    remove
+    list: input.previous.sections.ids !== input.next.sections.ids,
+    update: input.delta.changed,
+    remove: input.delta.removed
   })
 }
 
 export const projectActiveDelta = (input: {
   previous?: ViewState
   next?: ViewState
+  sections?: CollectionDelta<SectionKey>
+  items?: CollectionDelta<ItemId>
+  summaries: SummaryDelta
 }): ActiveDelta | undefined => {
   if (!input.previous && !input.next) {
     return undefined
@@ -204,21 +196,10 @@ export const projectActiveDelta = (input: {
     previousGet: fieldId => previous.fields.get(fieldId) as CustomField | undefined,
     nextGet: fieldId => next.fields.get(fieldId) as CustomField | undefined
   })
-  const sections = buildKeyedCollectionDelta<SectionKey, Section>({
-    previousIds: previous.sections.ids,
-    nextIds: next.sections.ids,
-    previousGet: sectionKey => previous.sections.get(sectionKey),
-    nextGet: sectionKey => next.sections.get(sectionKey)
-  })
-  const items = buildItemDelta({
+  const summaries = buildSummaryCollectionDelta({
     previous,
-    next
-  })
-  const summaries = buildKeyedCollectionDelta<SectionKey, CalculationCollection>({
-    previousIds: previous.sections.ids,
-    nextIds: next.sections.ids,
-    previousGet: sectionKey => previous.summaries.get(sectionKey),
-    nextGet: sectionKey => next.summaries.get(sectionKey)
+    next,
+    delta: input.summaries
   })
 
   return previous.view !== next.view
@@ -226,8 +207,8 @@ export const projectActiveDelta = (input: {
     || records
     || all
     || custom
-    || sections
-    || items
+    || input.sections
+    || input.items
     || summaries
     ? {
         ...(previous.view !== next.view
@@ -261,14 +242,14 @@ export const projectActiveDelta = (input: {
               }
             }
           : {}),
-        ...(sections
+        ...(input.sections
           ? {
-              sections
+              sections: input.sections
             }
           : {}),
-        ...(items
+        ...(input.items
           ? {
-              items
+              items: input.items
             }
           : {}),
         ...(summaries

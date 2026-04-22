@@ -1,6 +1,6 @@
 import type {
   EdgeId,
-  Node,
+  NodeModel,
   NodeId
 } from '@whiteboard/core/types'
 import { node as nodeApi } from '@whiteboard/core/node'
@@ -35,13 +35,13 @@ export const readSelectionKind = (
 }
 
 const readSelectionRole = (
-  node: Node
+  node: NodeModel
 ): 'content' | 'frame' => node.type === 'frame'
   ? 'frame'
   : 'content'
 
 const readSelectionTransformCapability = (
-  node: Node
+  node: NodeModel
 ) => node.type === 'frame' || node.type === 'draw'
   ? {
       resize: false,
@@ -53,7 +53,7 @@ const readSelectionTransformCapability = (
     }
 
 const readSelectionNodeTransformBehavior = (
-  node: Node
+  node: NodeModel
 ) => nodeApi.transform.resolveBehavior(node, {
   role: readSelectionRole(node),
   resize: readSelectionTransformCapability(node).resize

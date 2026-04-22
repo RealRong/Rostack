@@ -3,9 +3,10 @@ export {
 } from '@dataview/runtime/table/runtime'
 
 export type {
-  TableGridDomain,
-  TableRecordAccess,
+  TableColumnState,
+  TableGrid,
+  TableItemList,
+  TableQueryState,
   TableRuntime,
-  TableSectionContext,
-  TableViewContext
+  TableViewState
 } from '@dataview/runtime/table/runtime'

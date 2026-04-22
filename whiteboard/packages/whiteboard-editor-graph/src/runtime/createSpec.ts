@@ -2,7 +2,6 @@ import type { RuntimeSpec } from '@shared/projection-runtime'
 import type {
   Change,
   Input,
-  InputChange,
   Snapshot
 } from '../contracts/editor'
 import type { Token } from '../contracts/impact'
@@ -16,7 +15,6 @@ import type { EditorPhaseName } from './phaseNames'
 
 export const createEditorGraphRuntimeSpec = (): RuntimeSpec<
   Input,
-  InputChange,
   WorkingState,
   Snapshot,
   Change,

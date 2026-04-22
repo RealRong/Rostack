@@ -20,11 +20,11 @@ import { ColumnHeaderBlock } from '@dataview/react/views/table/components/body/C
 import { CreateRecordBlock } from '@dataview/react/views/table/components/body/CreateRecordBlock'
 import { SectionHeader } from '@dataview/react/views/table/components/body/SectionHeader'
 import type {
-  TableBodyData
-} from '@dataview/react/views/table/controller'
+  TableBodyRenderState
+} from '@dataview/react/views/table/uiRuntime'
 
 export interface BlockContentProps {
-  body: TableBodyData
+  body: TableBodyRenderState
   template: string
   dragActive: boolean
   dragIdSet: ReadonlySet<ItemId>
@@ -40,7 +40,7 @@ export interface BlockContentProps {
 }
 
 interface RenderedBlocksProps extends Omit<BlockContentProps, 'body'> {
-  body: TableBodyData
+  body: TableBodyRenderState
   measure: (id: string) => (node: HTMLElement | null) => void
 }
 
@@ -114,9 +114,6 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 key={block.key}
                 sectionKey={block.sectionKey}
                 measureRef={blockMeasureRef}
-                columns={props.body.columns}
-                showVerticalLines={props.body.showVerticalLines}
-                template={props.template}
               />
             )
         }

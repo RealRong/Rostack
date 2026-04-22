@@ -5,9 +5,11 @@ import type {
 } from '@whiteboard/core/mindmap'
 import type {
   CanvasItemRef,
+  Edge,
   EdgeId,
   GroupId,
   MindmapId,
+  Node,
   NodeId
 } from '@whiteboard/core/types'
 import type * as document from '@whiteboard/engine/contracts/document'
@@ -73,13 +75,19 @@ export interface GraphWorkingState {
 }
 
 export interface GraphNodeEntry {
-  base: NodeView['base']
+  base: {
+    node: Node
+    owner?: document.OwnerRef
+  }
   draft?: NodeDraft
   preview?: NodePreview
 }
 
 export interface GraphEdgeEntry {
-  base: EdgeView['base']
+  base: {
+    edge: Edge
+    nodes: document.EdgeNodes
+  }
   draft?: EdgeDraft
   preview?: EdgePreview
 }

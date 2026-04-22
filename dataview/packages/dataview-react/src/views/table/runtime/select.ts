@@ -1,7 +1,7 @@
 import { store as coreStore } from '@shared/core'
 import type { CellRef, ItemId } from '@dataview/engine'
 import type {
-  TableGridDomain
+  TableGrid
 } from '@dataview/runtime/table'
 import {
   gridSelection,
@@ -33,7 +33,7 @@ const sameRange = (
 
 const collectCellKeys = (
   selection: GridSelection | null,
-  grid: TableGridDomain | undefined
+  grid: TableGrid | undefined
 ) => {
   if (!selection || !grid) {
     return new Set<string>()
@@ -79,7 +79,7 @@ export const createTableSelectRuntime = (input: {
   rowMembershipStore: coreStore.KeyedReadStore<ItemId, boolean>
   previewMembershipStore: coreStore.KeyedReadStore<ItemId, boolean | null>
   gridSelectionStore: coreStore.ReadStore<GridSelection | null>
-  gridStore: coreStore.ReadStore<TableGridDomain | undefined>
+  gridStore: coreStore.ReadStore<TableGrid | undefined>
   visibleStore: coreStore.ReadStore<boolean>
 }): TableSelectRuntime => {
   const rows = coreStore.createKeyedDerivedStore<ItemId, boolean>({

@@ -1,4 +1,5 @@
 import type {
+  CardSize,
   Field,
   KanbanCardsPerColumn,
   ViewId
@@ -17,11 +18,12 @@ import type {
 export interface KanbanBoard {
   viewId: ViewId
   grouped: boolean
-  sectionKeys: readonly SectionKey[]
   groupField?: Field
   fillColumnColor: boolean
   groupUsesOptionColors: boolean
   cardsPerColumn: KanbanCardsPerColumn
+  size: CardSize
+  canDrag: boolean
 }
 
 export interface KanbanSection {
@@ -39,6 +41,7 @@ export interface KanbanCard extends Card {
 
 export interface DataViewKanbanModel {
   board: store.ReadStore<KanbanBoard | null>
+  sections: store.ReadStore<readonly Section[]>
   section: store.KeyedReadStore<SectionKey, KanbanSection | undefined>
   card: store.KeyedReadStore<ItemId, KanbanCard | undefined>
   content: store.KeyedReadStore<ItemId, CardContent | undefined>

@@ -1,6 +1,6 @@
 import { store } from '@shared/core'
 import type {
-  TableGridDomain
+  TableGrid
 } from '@dataview/runtime/table'
 import {
   createGridSelection,
@@ -31,7 +31,7 @@ const hasRows = (
 ) => selection.selectedCount > 0
 
 export const createTableSelectionRuntime = (input: {
-  gridStore: store.ReadStore<TableGridDomain | undefined>
+  gridStore: store.ReadStore<TableGrid | undefined>
   rowSelection: ItemSelectionController
 }): TableSelectionRuntime => {
   const baseCells = createGridSelection(input.gridStore)

@@ -7,12 +7,9 @@ import type {
   Section
 } from '@dataview/engine'
 import {
-  queryRead
-} from '@dataview/engine'
-import {
   useDataView
 } from '@dataview/react/dataview'
-import { equal, store } from '@shared/core'
+import { store } from '@shared/core'
 import {
   useStoreValue
 } from '@shared/react'
@@ -41,17 +38,22 @@ import {
   useKanbanVisibility
 } from '@dataview/react/views/kanban/runtime/visibility'
 
+const EMPTY_SECTIONS = [] as readonly Section[]
+
 const sameBoard = (
   left: KanbanBoard,
   right: KanbanBoard
 ) => left.viewId === right.viewId
   && left.grouped === right.grouped
-  && equal.sameOrder(left.sectionKeys, right.sectionKeys)
+  && left.sections === right.sections
   && left.groupField === right.groupField
   && left.columnWidth === right.columnWidth
   && left.columnMinHeight === right.columnMinHeight
   && left.fillColumnColor === right.fillColumnColor
   && left.groupUsesOptionColors === right.groupUsesOptionColors
+  && left.cardsPerColumn === right.cardsPerColumn
+  && left.size === right.size
+  && left.canDrag === right.canDrag
 
 export const useKanbanRuntime = (input: {
   columnWidth: number
@@ -70,39 +72,17 @@ export const useKanbanRuntime = (input: {
   const interaction = useItemDragRuntime({
     itemIds
   })
-  const sectionsStore = useMemo(() => store.createDerivedStore<readonly Section[]>({
-    get: () => store.read(dataView.source.active.sections.keys)
-      .flatMap(key => {
-        const section = store.read(dataView.source.active.sections, key)
-        return section ? [section] : []
-      }),
-    isEqual: equal.sameOrder
-  }), [dataView.source.active.sections])
-  const sections = useStoreValue(sectionsStore)
-  const currentViewId = useStoreValue(dataView.source.active.view.id) ?? ''
-  const groupedStore = useMemo(() => store.createDerivedStore({
-    get: () => queryRead.grouped(store.read(dataView.source.active.meta.query)),
-    isEqual: Object.is
-  }), [dataView.source.active.meta.query])
-  const cardsPerColumnStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.meta.kanban).cardsPerColumn,
-    isEqual: Object.is
-  }), [dataView.source.active.meta.kanban])
-  const canDragStore = useMemo(() => store.createDerivedStore({
-    get: () => store.read(dataView.source.active.meta.kanban).canReorder,
-    isEqual: Object.is
-  }), [dataView.source.active.meta.kanban])
-  const cardsPerColumn = useStoreValue(cardsPerColumnStore)
-  const canDrag = useStoreValue(canDragStore)
+  const boardModel = useStoreValue(dataView.model.kanban.board)
+  const sections = useStoreValue(dataView.model.kanban.sections)
   const visibility = useKanbanVisibility({
-    viewId: currentViewId,
-    sections,
-    cardsPerColumn
+    viewId: boardModel?.viewId ?? '',
+    sections: boardModel ? sections : EMPTY_SECTIONS,
+    cardsPerColumn: boardModel?.cardsPerColumn ?? 'all'
   })
   const layout = useKanbanLayout({
     containerRef: scrollRef,
-    sections,
-    sectionsStore,
+    sections: boardModel ? sections : EMPTY_SECTIONS,
+    sectionsStore: dataView.model.kanban.sections,
     visibility
   })
   const board = useMemo(() => store.createDerivedStore<KanbanBoard>({
@@ -115,7 +95,7 @@ export const useKanbanRuntime = (input: {
       const config = store.read(configStore)
       return {
         ...base,
-        grouped: store.read(groupedStore),
+        sections: store.read(dataView.model.kanban.sections),
         columnWidth: config.columnWidth,
         columnMinHeight: config.columnMinHeight
       }
@@ -123,8 +103,7 @@ export const useKanbanRuntime = (input: {
     isEqual: sameBoard
   }), [
     configStore,
-    dataView.model.kanban.board,
-    groupedStore
+    dataView.model.kanban.board
   ])
 
   useEffect(() => {
@@ -159,7 +138,7 @@ export const useKanbanRuntime = (input: {
 
   const drag = useDrag({
     containerRef: scrollRef,
-    canDrag,
+    canDrag: boardModel?.canDrag ?? false,
     itemMap: interaction.itemMap,
     getLayout: () => layout.board.get(),
     getDragIds: interaction.getDragIds,

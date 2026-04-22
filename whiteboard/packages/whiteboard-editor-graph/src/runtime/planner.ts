@@ -3,26 +3,26 @@ import {
   type RuntimePlanner
 } from '@shared/projection-runtime'
 import type {
-  InputChange,
+  Input,
   Snapshot
 } from '../contracts/editor'
 import type { Token } from '../contracts/impact'
 import type { EditorPhaseName } from './phaseNames'
 
 const readImpactTokens = (
-  change: InputChange,
+  impact: Input['impact'],
   bootstrap: boolean
 ): readonly Token[] => {
   const tokens: Token[] = []
 
-  if (bootstrap || change.document.changed) {
+  if (bootstrap || impact.document.changed) {
     tokens.push({
       domain: 'document',
       kind: 'root'
     })
   }
 
-  if (bootstrap || change.session.changed) {
+  if (bootstrap || impact.session.changed) {
     tokens.push(
       {
         domain: 'session',
@@ -43,14 +43,14 @@ const readImpactTokens = (
     )
   }
 
-  if (bootstrap || change.measure.changed) {
+  if (bootstrap || impact.measure.changed) {
     tokens.push({
       domain: 'measure',
       kind: 'text'
     })
   }
 
-  if (bootstrap || change.interaction.changed) {
+  if (bootstrap || impact.interaction.changed) {
     tokens.push(
       {
         domain: 'interaction',
@@ -67,7 +67,7 @@ const readImpactTokens = (
     )
   }
 
-  if (bootstrap || change.viewport.changed) {
+  if (bootstrap || impact.viewport.changed) {
     tokens.push(
       {
         domain: 'viewport',
@@ -80,7 +80,7 @@ const readImpactTokens = (
     )
   }
 
-  if (bootstrap || change.clock.changed) {
+  if (bootstrap || impact.clock.changed) {
     tokens.push({
       domain: 'clock',
       kind: 'tick'
@@ -90,30 +90,30 @@ const readImpactTokens = (
   return tokens
 }
 
-const hasInputChange = (
-  change: InputChange
+const hasImpactChange = (
+  impact: Input['impact']
 ): boolean => (
-  change.document.changed
-  || change.session.changed
-  || change.measure.changed
-  || change.interaction.changed
-  || change.viewport.changed
-  || change.clock.changed
+  impact.document.changed
+  || impact.session.changed
+  || impact.measure.changed
+  || impact.interaction.changed
+  || impact.viewport.changed
+  || impact.clock.changed
 )
 
 export const createEditorGraphPlanner = (): RuntimePlanner<
-  InputChange,
+  Input,
   Snapshot,
   EditorPhaseName,
   Token
 > => ({
-  plan: ({ change, previous }) => {
+  plan: ({ input, previous }) => {
     const bootstrap = previous.revision === 0
-    if (!bootstrap && !hasInputChange(change)) {
+    if (!bootstrap && !hasImpactChange(input.impact)) {
       return createPlan<EditorPhaseName, Token>()
     }
 
-    const tokens = readImpactTokens(change, bootstrap)
+    const tokens = readImpactTokens(input.impact, bootstrap)
     return createPlan<EditorPhaseName, Token>({
       dirty: new Map([
         [

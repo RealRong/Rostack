@@ -107,6 +107,14 @@ export const createEmptyInput = (): Input => ({
   },
   clock: {
     now: 0
+  },
+  impact: {
+    document: createFlags(false),
+    session: createFlags(false),
+    measure: createFlags(false),
+    interaction: createFlags(false),
+    viewport: createFlags(false),
+    clock: createFlags(false)
   }
 })
 

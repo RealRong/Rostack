@@ -70,19 +70,19 @@ export const applyRowCheckboxSelection = (input: {
 }
 
 const View = (props: RowProps) => {
-  const table = useTableContext()
   const dataView = useDataView()
+  const table = useTableContext()
   const rowNodeRef = useRef<HTMLDivElement | null>(null)
   const body = useStoreValue(table.body)
-  const currentView = useStoreValue(table.currentView)
+  const grid = useStoreValue(dataView.table.grid)
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
     rowNodeRef.current = node
     props.measureRef?.(node)
   }, [props.measureRef])
 
-  if (!body || !currentView) {
-    throw new Error('Table row requires an active body and current view.')
+  if (!body || !grid) {
+    throw new Error('Table row requires an active body and grid.')
   }
 
   useLayoutEffect(() => {
@@ -103,7 +103,7 @@ const View = (props: RowProps) => {
     table.chrome.row,
     props.itemId
   )
-  const recordId = currentView.items.read.record(props.itemId)
+  const recordId = grid.items.read.recordId(props.itemId)
   const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
     dataView.source.doc.records,
     recordId,

@@ -19,7 +19,7 @@ import type {
   CardProperty
 } from '@dataview/runtime/model/shared'
 import {
-  createEntityListStore
+  createPresentListStore
 } from '@dataview/runtime/model/internal/list'
 
 const sameProperty = (
@@ -54,7 +54,7 @@ const sameContent = (
 
 export const createActiveCustomFieldListStore = (
   source: DataViewSource
-): store.ReadStore<readonly CustomField[]> => createEntityListStore({
+): store.ReadStore<readonly CustomField[]> => createPresentListStore({
   ids: source.active.fields.custom.ids,
   values: source.active.fields.custom
 })

@@ -97,7 +97,7 @@ const buildRecordChanges = (input: {
   records: ReadonlyMap<RecordId, MembershipRecordChange>
 } => {
   const previousKeysByRecord = readMembershipKeysByRecord(input.previous)
-  const fullVisible = input.query.visible.read.ids() === input.query.visible.rows.ids
+  const fullVisible = input.query.visible.ids === input.query.visible.rows.ids
   const visible = fullVisible
     ? undefined
     : readSelectionIdSet(input.query.visible)

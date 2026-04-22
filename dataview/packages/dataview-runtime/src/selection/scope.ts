@@ -9,7 +9,7 @@ import type {
 
 export const createItemListSelectionScope = (input: {
   key: string
-  items: ItemList
+  items: Pick<ItemList, 'ids' | 'count' | 'order'>
 }): SelectionScope<ItemId> => ({
   key: input.key,
   revision: input.items.ids,

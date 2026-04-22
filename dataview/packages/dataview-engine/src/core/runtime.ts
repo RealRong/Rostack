@@ -1,11 +1,9 @@
-import { impact } from '@dataview/core/commit/impact'
 import type { DataDoc } from '@dataview/core/contracts'
 import { resolveViewPlan } from '@dataview/engine/active/plan'
 import { emptyNormalizedIndexDemand } from '@dataview/engine/active/index/demand'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
-import { createViewRuntime } from '@dataview/engine/active/runtime'
-import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
 import type {
+  ActiveSnapshot,
   EngineResult,
   EngineSnapshot
 } from '@dataview/engine/contracts/core'
@@ -26,12 +24,15 @@ export interface CoreRuntime {
 }
 
 export const createEngineSnapshot = (
-  state: EngineState
+  input: {
+    state: EngineState
+    active?: ActiveSnapshot
+  }
 ): EngineSnapshot => ({
-  doc: state.doc,
-  ...(state.active.snapshot
+  doc: input.state.doc,
+  ...(input.active
     ? {
-        active: state.active.snapshot
+        active: input.active
       }
     : {})
 })
@@ -39,19 +40,10 @@ export const createEngineSnapshot = (
 export const createInitialEngineState = (input: {
   doc: DataDoc
   historyCap: number
-  capturePerf: boolean
 }): EngineState => {
   const documentContext = createStaticDocumentReadContext(input.doc)
   const plan = resolveViewPlan(documentContext, documentContext.activeViewId)
   const index = createIndexState(input.doc, plan?.index ?? emptyNormalizedIndexDemand())
-  const resetImpact = impact.reset(undefined, input.doc)
-  const currentView = createViewRuntime({
-    documentContext,
-    viewPlan: plan,
-    index,
-    impact: createBaseImpact(resetImpact),
-    capturePerf: input.capturePerf
-  })
 
   return {
     rev: 0,
@@ -65,22 +57,23 @@ export const createInitialEngineState = (input: {
       ...(plan
         ? { plan }
         : {}),
-      index,
-      cache: currentView.cache,
-      ...(currentView.snapshot
-        ? { snapshot: currentView.snapshot }
-        : {})
+      index
     }
   }
 }
 
 export const createCoreRuntime = (
-  initial: EngineState
+  initial: {
+    state: EngineState
+    result?: EngineResult
+  }
 ): CoreRuntime => {
-  let state = initial
-  let result: EngineResult = {
-    rev: initial.rev,
-    snapshot: createEngineSnapshot(initial)
+  let state = initial.state
+  let result: EngineResult = initial.result ?? {
+    rev: initial.state.rev,
+    snapshot: createEngineSnapshot({
+      state: initial.state
+    })
   }
   const listeners = new Set<(result: EngineResult) => void>()
 

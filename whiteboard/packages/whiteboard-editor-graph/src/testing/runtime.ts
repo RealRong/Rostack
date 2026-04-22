@@ -1,6 +1,5 @@
 import type {
   Input,
-  InputChange,
   Read,
   Result,
   Runtime,
@@ -12,7 +11,7 @@ import { createEditorGraphRuntime } from '../runtime/createEditorGraphRuntime'
 export interface EditorGraphHarness {
   runtime: Runtime
   read: Read
-  update(input: Input, change: InputChange): Result
+  update(input: Input): Result
   snapshot(): Snapshot
   lastTrace(): Result['trace']
 }
@@ -22,8 +21,8 @@ export const createEditorGraphHarness = (): EditorGraphHarness => {
   let trace: Result['trace']
   const runtime: Runtime = {
     snapshot: () => baseRuntime.snapshot(),
-    update: (input, change) => {
-      const result = baseRuntime.update(input, change)
+    update: (input) => {
+      const result = baseRuntime.update(input)
       trace = result.trace
       return result
     },
@@ -35,7 +34,7 @@ export const createEditorGraphHarness = (): EditorGraphHarness => {
     read: createEditorGraphRead({
       runtime
     }),
-    update: (input, change) => runtime.update(input, change),
+    update: (input) => runtime.update(input),
     snapshot: () => runtime.snapshot(),
     lastTrace: () => trace
   }

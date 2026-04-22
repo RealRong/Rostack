@@ -15,7 +15,6 @@ const didPhaseChange = (
 
 export const runRuntimeUpdate = <
   TInput,
-  TInputChange,
   TWorking,
   TSnapshot,
   TChange,
@@ -27,7 +26,6 @@ export const runRuntimeUpdate = <
   input: {
     spec: runtime.Spec<
       TInput,
-      TInputChange,
       TWorking,
       TSnapshot,
       TChange,
@@ -50,13 +48,12 @@ export const runRuntimeUpdate = <
       TPhaseMetrics
     >
     nextInput: TInput
-    inputChange: TInputChange
   }
 ): runtime.Result<TSnapshot, TChange, TPhaseName, TPhaseMetrics> => {
   const previous = input.state.snapshot
   const revision = input.state.revision + 1
   const plan = input.spec.planner.plan({
-    change: input.inputChange,
+    input: input.nextInput,
     previous
   })
   const pending = new Set<TPhaseName>()

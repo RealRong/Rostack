@@ -3,7 +3,6 @@ import type * as trace from './trace'
 
 export interface Harness<
   TInput,
-  TInputChange,
   TSnapshot,
   TChange,
   TPhaseName extends string = string,
@@ -11,8 +10,7 @@ export interface Harness<
 > {
   snapshot(): TSnapshot
   update(
-    input: TInput,
-    change: TInputChange
+    input: TInput
   ): runtime.Result<TSnapshot, TChange, TPhaseName, TPhaseMetrics>
   lastTrace(): trace.Run<TPhaseName, TPhaseMetrics> | undefined
 }

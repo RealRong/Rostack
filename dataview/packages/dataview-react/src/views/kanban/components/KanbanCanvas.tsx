@@ -36,10 +36,10 @@ export const KanbanCanvas = () => {
               overflowAnchor: 'none'
             }}
           >
-            {board.sectionKeys.map(sectionKey => (
+            {board.sections.map(section => (
               <Column
-                key={sectionKey}
-                sectionKey={sectionKey}
+                key={section.key}
+                sectionKey={section.key}
               />
             ))}
           </div>

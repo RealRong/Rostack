@@ -14,9 +14,13 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import {
   createPartition,
+  readPartitionSelections,
   readPartitionKeysById,
   type Partition
 } from '@dataview/engine/active/shared/partition'
+import {
+  createMapPatchBuilder
+} from '@dataview/engine/active/shared/patch'
 import {
   createSelection,
   type Selection
@@ -69,39 +73,81 @@ const sameMeta = (
   && sameBucket(left.bucket, right.bucket)
 )
 
-const buildVisibleKeysByRecord = (input: {
-  selection: Selection
-  keysByRecord?: ReadonlyMap<RecordId, readonly SectionKey[]>
-}): ReadonlyMap<RecordId, readonly SectionKey[]> => {
-  if (!input.keysByRecord || !input.selection.read.count()) {
-    return EMPTY_KEYS_BY_RECORD
-  }
-
-  if (input.selection.read.ids() === input.selection.rows.ids) {
-    return input.keysByRecord
-  }
-
-  const next = new Map<RecordId, readonly SectionKey[]>()
-  const ids = input.selection.read.ids()
-  for (let index = 0; index < ids.length; index += 1) {
-    const recordId = ids[index]!
-    const keys = input.keysByRecord.get(recordId)
-    if (keys?.length) {
-      next.set(recordId, keys)
-    }
-  }
-
-  return next.size
-    ? next
-    : EMPTY_KEYS_BY_RECORD
-}
-
-const buildSectionSelections = (input: {
-  visible: Selection
+const buildSectionPartition = (input: {
+  rows: Selection['rows']
   order: readonly SectionKey[]
+  indexesByKey: ReadonlyMap<SectionKey, readonly number[]>
   keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
   previous?: Partition<SectionKey>
 }): Partition<SectionKey> => {
+  const order = input.previous && equal.sameOrder(input.previous.order, input.order)
+    ? input.previous.order
+    : input.order
+  const previousSelections = input.previous
+    ? readPartitionSelections(input.previous)
+    : undefined
+  const byKey = previousSelections
+    ? createMapPatchBuilder(previousSelections)
+    : undefined
+  const nextOrder = new Set(order)
+
+  previousSelections?.forEach((_selection, sectionKey) => {
+    if (!nextOrder.has(sectionKey as SectionKey)) {
+      byKey!.delete(sectionKey as SectionKey)
+    }
+  })
+
+  const createdSelections = new Map<SectionKey, Selection>()
+  order.forEach(sectionKey => {
+    const selection = createSelection({
+      rows: input.rows,
+      indexes: input.indexesByKey.get(sectionKey) ?? EMPTY_INDEXES,
+      previous: input.previous?.get(sectionKey)
+    })
+    if (byKey) {
+      byKey.set(sectionKey, selection)
+      return
+    }
+
+    createdSelections.set(sectionKey, selection)
+  })
+
+  return createPartition({
+    order,
+    byKey: byKey
+      ? byKey.finish()
+      : createdSelections,
+    keysById: input.keysByRecord,
+    previous: input.previous
+  })
+}
+
+const buildGroupedSections = (input: {
+  visible: Selection
+  order: readonly SectionKey[]
+  keysByRecord?: ReadonlyMap<RecordId, readonly SectionKey[]>
+  previous?: Partition<SectionKey>
+}): {
+  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
+  sections: Partition<SectionKey>
+} => {
+  if (!input.visible.read.count() || !input.keysByRecord) {
+    return {
+      keysByRecord: EMPTY_KEYS_BY_RECORD,
+      sections: buildSectionPartition({
+        rows: input.visible.rows,
+        order: input.order,
+        indexesByKey: new Map(),
+        keysByRecord: EMPTY_KEYS_BY_RECORD,
+        previous: input.previous
+      })
+    }
+  }
+
+  const fullVisible = input.visible.ids === input.visible.rows.ids
+  const visibleKeysByRecord = fullVisible
+    ? undefined
+    : new Map<RecordId, readonly SectionKey[]>()
   const indexesByKey = new Map<SectionKey, number[]>()
 
   for (let offset = 0; offset < input.visible.indexes.length; offset += 1) {
@@ -116,6 +162,10 @@ const buildSectionSelections = (input: {
       continue
     }
 
+    if (!fullVisible) {
+      visibleKeysByRecord!.set(recordId, keys)
+    }
+
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
       const sectionKey = keys[keyIndex]!
       const existing = indexesByKey.get(sectionKey)
@@ -128,21 +178,22 @@ const buildSectionSelections = (input: {
     }
   }
 
-  const byKey = new Map<SectionKey, Selection>()
-  input.order.forEach(sectionKey => {
-    byKey.set(sectionKey, createSelection({
-      rows: input.visible.rows,
-      indexes: indexesByKey.get(sectionKey) ?? EMPTY_INDEXES,
-      previous: input.previous?.get(sectionKey)
-    }))
-  })
+  const keysByRecord = fullVisible
+    ? input.keysByRecord
+    : visibleKeysByRecord!.size
+      ? visibleKeysByRecord!
+      : EMPTY_KEYS_BY_RECORD
 
-  return createPartition({
-    order: input.order,
-    byKey,
-    keysById: input.keysByRecord,
-    previous: input.previous
-  })
+  return {
+    keysByRecord,
+    sections: buildSectionPartition({
+      rows: input.visible.rows,
+      order: input.order,
+      indexesByKey,
+      keysByRecord,
+      previous: input.previous
+    })
+  }
 }
 
 const buildMetaMap = (input: {
@@ -195,13 +246,21 @@ const buildRootMembershipState = (
   previous?: MembershipState
 ): MembershipState => {
   const keysByRecord = query.visible.read.count()
-    ? new Map<RecordId, readonly SectionKey[]>(
-        query.visible.read.ids().map(recordId => [recordId, ROOT_SECTION_KEYS] as const)
-      )
+    ? (() => {
+        const next = new Map<RecordId, readonly SectionKey[]>()
+        const visibleIds = query.visible.ids
+        for (let index = 0; index < visibleIds.length; index += 1) {
+          next.set(visibleIds[index]!, ROOT_SECTION_KEYS)
+        }
+        return next
+      })()
     : EMPTY_KEYS_BY_RECORD
-  const sections = buildSectionSelections({
-    visible: query.visible,
+  const sections = buildSectionPartition({
+    rows: query.visible.rows,
     order: ROOT_SECTION_ORDER,
+    indexesByKey: new Map([
+      [ROOT_SECTION_KEY, query.visible.indexes]
+    ] as const),
     keysByRecord,
     previous: previous?.sections
   })
@@ -240,19 +299,15 @@ export const buildMembershipState = (input: {
     recordsByKey: bucketIndex?.recordsByKey ?? new Map(),
     previous: undefined
   })
-  const keysByRecord = input.keysByRecord
-    ?? buildVisibleKeysByRecord({
-      selection: input.query.visible,
-      keysByRecord: bucketIndex?.keysByRecord
-    })
+  const grouped = buildGroupedSections({
+    visible: input.query.visible,
+    order: presentation.order,
+    keysByRecord: input.keysByRecord ?? bucketIndex?.keysByRecord,
+    previous: input.previous?.sections
+  })
 
   return {
-    sections: buildSectionSelections({
-      visible: input.query.visible,
-      order: presentation.order,
-      keysByRecord,
-      previous: input.previous?.sections
-    }),
+    sections: grouped.sections,
     meta: buildMetaMap({
       order: presentation.order,
       buckets: presentation.buckets as ReadonlyMap<SectionKey, Bucket>,

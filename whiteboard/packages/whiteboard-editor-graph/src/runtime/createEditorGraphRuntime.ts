@@ -2,7 +2,6 @@ import { createRuntime } from '@shared/projection-runtime'
 import type {
   Change,
   Input,
-  InputChange,
   Runtime,
   Snapshot
 } from '../contracts/editor'
@@ -13,7 +12,7 @@ export const createEditorGraphRuntime = (): Runtime => {
 
   return {
     snapshot: () => runtime.snapshot(),
-    update: (input: Input, change: InputChange) => runtime.update(input, change),
+    update: (input: Input) => runtime.update(input),
     subscribe: (listener) => {
       const unsubscribe = runtime.subscribe((result) => {
         listener(result.snapshot, result.change)

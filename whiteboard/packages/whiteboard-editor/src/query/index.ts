@@ -1,8 +1,6 @@
 import { store } from '@shared/core'
-import type { EngineRead } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
-import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   DrawState
 } from '@whiteboard/editor/session/draw/state'
@@ -27,10 +25,6 @@ import {
   type EdgePresentationRead
 } from '@whiteboard/editor/query/edge/read'
 import {
-  createMindmapRead,
-  type MindmapPresentationRead
-} from '@whiteboard/editor/query/mindmap/read'
-import {
   createSelectionModelRead,
 } from '@whiteboard/editor/query/selection/model'
 import {
@@ -44,6 +38,7 @@ import {
   createTargetRead,
   type RuntimeTargetRead
 } from '@whiteboard/editor/query/target'
+import type { CommittedRead } from '@whiteboard/editor/committed/read'
 import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import type { EditorInputPreview } from '@whiteboard/editor/session/preview'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
@@ -90,14 +85,13 @@ const createToolRead = (
   is: (type, value) => isToolMatch(store.read(source), type, value)
 })
 
-export type EditorQuery = Omit<EngineRead, 'node' | 'edge' | 'index' | 'target' | 'mindmap'> & {
+export type EditorQuery = Omit<CommittedRead, 'node' | 'edge' | 'index' | 'mindmap'> & {
   history: HistoryApi
-  group: EngineRead['group']
+  group: CommittedRead['group']
   target: RuntimeTargetRead
   edit: EditorEditRead
   node: NodePresentationRead
   edge: EdgePresentationRead
-  mindmap: MindmapPresentationRead
   selection: SelectionRead
   tool: ToolRead
   draw: store.ReadStore<DrawState>
@@ -123,15 +117,13 @@ export const createEditorQuery = ({
   registry,
   history,
   layout,
-  session,
-  defaults
+  session
 }: {
-  engineRead: EngineRead
+  engineRead: CommittedRead
   registry: NodeRegistry
   history: HistoryApi
   layout: Pick<EditorLayout, 'text' | 'mindmap' | 'draft'>
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'preview'>
-  defaults: EditorDefaults['selection']
 }): EditorQuery => {
   const {
     draw,
@@ -140,13 +132,6 @@ export const createEditorQuery = ({
     tool
   } = session.state
   const nodeType = createNodeTypeRead(registry)
-  const mindmapRead = createMindmapRead({
-    structure: engineRead.mindmap.structure,
-    layout: layout.mindmap,
-    node: engineRead.node.committed,
-    edit,
-    selection
-  })
   const editRead = createEditRead(edit)
   const selectionRuntime = createSelectionRuntimeRead(selection)
   const nodeRead: NodePresentationRead = createNodeRead({
@@ -165,15 +150,11 @@ export const createEditorQuery = ({
     node: nodeRead,
     feedback: session.preview.selectors.edge,
     edit: {
-      session: edit,
       ...editRead
     },
     selection: {
-      target: selection,
       ...selectionRuntime.edge
     },
-    tool,
-    interaction: session.interaction.read,
     textMetrics: layout.text,
     capability: nodeRead.capability
   })
@@ -188,13 +169,7 @@ export const createEditorQuery = ({
   })
   const selectionRead = createSelectionRead({
     model: selectionModel,
-    runtime: selectionRuntime,
-    nodeType,
-    mindmapStructure: engineRead.mindmap.structure,
-    tool,
-    edit,
-    interaction: session.interaction.read,
-    defaults
+    runtime: selectionRuntime
   })
   const toolRead = createToolRead(tool)
 
@@ -207,7 +182,6 @@ export const createEditorQuery = ({
     edit: editRead,
     node: nodeRead,
     edge: edgeRead,
-    mindmap: mindmapRead,
     selection: selectionRead,
     scene: engineRead.scene,
     slice: engineRead.slice,

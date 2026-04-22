@@ -4,7 +4,6 @@ import { createRuntime } from '../runtime/createRuntime'
 
 export const createHarness = <
   TInput,
-  TInputChange,
   TWorking,
   TSnapshot,
   TChange,
@@ -15,7 +14,6 @@ export const createHarness = <
 >(
   spec: runtime.Spec<
     TInput,
-    TInputChange,
     TWorking,
     TSnapshot,
     TChange,
@@ -26,7 +24,6 @@ export const createHarness = <
   >
 ): testing.Harness<
   TInput,
-  TInputChange,
   TSnapshot,
   TChange,
   TPhaseName,
@@ -39,8 +36,8 @@ export const createHarness = <
 
   return {
     snapshot: runtime.snapshot,
-    update: (input, change) => {
-      const result = runtime.update(input, change)
+    update: (input) => {
+      const result = runtime.update(input)
       lastTrace = result.trace
       return result
     },

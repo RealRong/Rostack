@@ -2,6 +2,7 @@ import type {
   CanvasItemRef,
   MindmapLayout
 } from '@whiteboard/core/types'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import { isListEqual } from '@shared/projection-runtime'
 import type {
   ChromeView,
@@ -36,6 +37,19 @@ export const isNodeViewEqual = (
   && isRectEqual(left.layout.bounds, right.layout.bounds)
   && left.render.hidden === right.render.hidden
   && left.render.editing === right.render.editing
+  && left.render.hovered === right.render.hovered
+  && left.render.selected === right.render.selected
+  && left.render.patched === right.render.patched
+  && left.render.resizing === right.render.resizing
+  && left.render.edit?.field === right.render.edit?.field
+  && left.render.edit?.caret.kind === right.render.edit?.caret.kind
+  && (
+    left.render.edit?.caret.kind !== 'point'
+    || (
+      right.render.edit?.caret.kind === 'point'
+      && isPointEqual(left.render.edit.caret.client, right.render.edit.caret.client)
+    )
+  )
 )
 
 export const isEdgeViewEqual = (
@@ -49,11 +63,60 @@ export const isEdgeViewEqual = (
   && isRectEqual(left.route.bounds, right.route.bounds)
   && isPointEqual(left.route.source, right.route.source)
   && isPointEqual(left.route.target, right.route.target)
+  && isEdgeEndsEqual(left.route.ends, right.route.ends)
   && isListEqual(left.route.points, right.route.points, isPointEqual)
+  && isListEqual(left.route.handles, right.route.handles, isEdgeHandleEqual)
   && isListEqual(left.route.labels, right.route.labels, isEdgeLabelViewEqual)
   && left.render.hidden === right.render.hidden
+  && left.render.selected === right.render.selected
+  && left.render.patched === right.render.patched
+  && left.render.activeRouteIndex === right.render.activeRouteIndex
+  && left.render.box?.pad === right.render.box?.pad
+  && isRectEqual(left.render.box?.rect, right.render.box?.rect)
   && left.render.editingLabelId === right.render.editingLabelId
 )
+
+const isEdgeEndsEqual = (
+  left: EdgeView['route']['ends'],
+  right: EdgeView['route']['ends']
+) => left === right || (
+  left !== undefined
+  && right !== undefined
+  && edgeApi.equal.resolvedEnd(left.source, right.source)
+  && edgeApi.equal.resolvedEnd(left.target, right.target)
+)
+
+const isEdgeHandleEqual = (
+  left: EdgeView['route']['handles'][number],
+  right: EdgeView['route']['handles'][number]
+) => {
+  if (left === right) {
+    return true
+  }
+
+  if (left.kind !== right.kind || !isPointEqual(left.point, right.point)) {
+    return false
+  }
+
+  switch (left.kind) {
+    case 'end':
+      return right.kind === 'end' && left.end === right.end
+    case 'anchor':
+      return (
+        right.kind === 'anchor'
+        && left.index === right.index
+        && left.mode === right.mode
+      )
+    case 'segment':
+      return (
+        right.kind === 'segment'
+        && left.role === right.role
+        && left.insertIndex === right.insertIndex
+        && left.segmentIndex === right.segmentIndex
+        && left.axis === right.axis
+      )
+  }
+}
 
 const isMindmapRenderConnectorEqual = (
   left: MindmapView['render']['connectors'][number],
@@ -185,12 +248,24 @@ const isGuideEqual = (
   && left.sourceEdge === right.sourceEdge
 )
 
+const isDrawStyleEqual = (
+  left: NonNullable<ChromeView['preview']['draw']>['style'],
+  right: NonNullable<ChromeView['preview']['draw']>['style']
+): boolean => (
+  left.kind === right.kind
+  && left.color === right.color
+  && left.width === right.width
+  && left.opacity === right.opacity
+)
+
 const isDrawPreviewEqual = (
   left: ChromeView['preview']['draw'],
   right: ChromeView['preview']['draw']
 ): boolean => left === right || (
   left !== null
   && right !== null
+  && left.kind === right.kind
+  && isDrawStyleEqual(left.style, right.style)
   && isListEqual(left.points, right.points, isPointEqual)
   && isRectEqual(left.bounds, right.bounds)
   && isListEqual(left.hiddenNodeIds, right.hiddenNodeIds)
@@ -270,6 +345,7 @@ export const isChromeViewEqual = (
   isListEqual(left.overlays, right.overlays, isChromeOverlayEqual)
   && isHoverStateEqual(left.hover, right.hover)
   && isRectEqual(left.preview.marquee?.worldRect, right.preview.marquee?.worldRect)
+  && left.preview.marquee?.match === right.preview.marquee?.match
   && isListEqual(left.preview.guides, right.preview.guides, isGuideEqual)
   && isDrawPreviewEqual(left.preview.draw, right.preview.draw)
   && isMindmapPreviewEqual(left.preview.mindmap, right.preview.mindmap)

@@ -5,6 +5,7 @@ import { engine as engineApi } from '@whiteboard/engine'
 import { history as historyApi } from '@whiteboard/history'
 import { product } from '@whiteboard/product'
 import { createEditorActions } from '../src/action'
+import { createCommittedRead } from '../src/committed/read'
 import { createEditorHost } from '../src/input/runtime'
 import { createEditorLayout } from '../src/layout/runtime'
 import { createEditorQuery } from '../src/query'
@@ -100,6 +101,9 @@ describe('mindmap drag gesture runtime', () => {
       document: documentApi.create('doc_mindmap_drag_gesture_runtime')
     })
     const history = historyApi.local.create(engine)
+    const committed = createCommittedRead({
+      engine
+    })
     const session = createEditorSession({
       initialTool: {
         type: 'select'
@@ -117,12 +121,12 @@ describe('mindmap drag gesture runtime', () => {
     const layout = createEditorLayout({
       read: {
         node: {
-          committed: engine.read.node.committed
+          committed: committed.node.committed
         },
         mindmap: {
-          list: engine.read.mindmap.list,
-          committed: engine.read.mindmap.layout,
-          structure: engine.read.mindmap.structure
+          list: committed.mindmap.list,
+          committed: committed.mindmap.layout,
+          structure: committed.mindmap.structure
         }
       },
       session: {
@@ -132,7 +136,7 @@ describe('mindmap drag gesture runtime', () => {
       registry
     })
     const query = createEditorQuery({
-      engineRead: engine.read,
+      engineRead: committed,
       registry,
       history,
       layout,
@@ -146,7 +150,7 @@ describe('mindmap drag gesture runtime', () => {
       layout
     })
     const actions = createEditorActions({
-      engine,
+      committed,
       session,
       query,
       layout,
@@ -156,6 +160,7 @@ describe('mindmap drag gesture runtime', () => {
     })
     const host = createEditorHost({
       engine,
+      committed,
       session,
       query,
       layout,

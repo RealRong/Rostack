@@ -11,9 +11,6 @@ import {
   useDataViewValue
 } from '@dataview/react/dataview'
 import {
-  queryRead
-} from '@dataview/engine'
-import {
   useKanbanRuntime
 } from '@dataview/react/views/kanban/runtime'
 import type {
@@ -56,26 +53,18 @@ export const KanbanProvider = (props: {
 }
 
 export const KanbanView = (props: KanbanViewProps) => {
-  const viewType = useDataViewValue(
-    dataView => dataView.source.active.view.type
+  const board = useDataViewValue(
+    dataView => dataView.model.kanban.board
   )
-  const grouped = useDataViewValue(
-    dataView => dataView.source.active.meta.query,
-    query => queryRead.grouped(query)
-  )
-  const size = useDataViewValue(
-    dataView => dataView.source.active.meta.kanban,
-    kanban => kanban.size
-  )
-  if (viewType !== 'kanban') {
+  if (!board) {
     return null
   }
 
   const baseColumnWidth = props.columnWidth ?? DEFAULT_COLUMN_WIDTH
-  const columnWidth = resolveColumnWidth(baseColumnWidth, size)
+  const columnWidth = resolveColumnWidth(baseColumnWidth, board.size)
   const columnMinHeight = props.columnMinHeight ?? DEFAULT_COLUMN_MIN_HEIGHT
 
-  if (!grouped) {
+  if (!board.grouped) {
     return (
       <div style={contentInsetStyle}>
         <Empty />

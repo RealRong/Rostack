@@ -2,11 +2,14 @@ import type {
   Action,
   DataDoc
 } from '@dataview/core/contracts'
+import { impact } from '@dataview/core/commit/impact'
 import { document } from '@dataview/core/document'
+import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
 import type {
   CreateEngineOptions,
   Engine
 } from '@dataview/engine/contracts'
+import { createActiveProjectionRuntime } from '@dataview/engine/active/projection/runtime'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import { now } from '@dataview/engine/runtime/clock'
 import { createActiveViewApi } from '@dataview/engine/api/active'
@@ -16,8 +19,10 @@ import { createViewsApi } from '@dataview/engine/api/views'
 import { createEngineReadApi } from '@dataview/engine/api/read'
 import {
   createCoreRuntime,
+  createEngineSnapshot,
   createInitialEngineState
 } from '@dataview/engine/core/runtime'
+import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
 import { planActions } from '@dataview/engine/mutate/planner'
 import { createWriteControl } from '@dataview/engine/mutate/commit/runtime'
 
@@ -26,13 +31,38 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const initialDocument = document.clone(options.document)
   const performance = createPerformanceRuntime(options.performance)
   const capturePerformance = Boolean(options.performance?.traces || options.performance?.stats)
-  const runtime = createCoreRuntime(createInitialEngineState({
+  const activeRuntime = createActiveProjectionRuntime()
+  const initialState = createInitialEngineState({
     doc: initialDocument,
-    historyCap: historyCapacity,
-    capturePerf: capturePerformance
-  }))
+    historyCap: historyCapacity
+  })
+  const initialDocumentContext = createStaticDocumentReadContext(initialDocument)
+  const initialActive = activeRuntime.update({
+    read: {
+      reader: initialDocumentContext.reader,
+      fieldsById: initialDocumentContext.fieldsById
+    },
+    view: {
+      plan: initialState.active.plan
+    },
+    index: {
+      state: initialState.active.index
+    },
+    impact: createBaseImpact(impact.reset(undefined, initialDocument))
+  })
+  const runtime = createCoreRuntime({
+    state: initialState,
+    result: {
+      rev: initialState.rev,
+      snapshot: createEngineSnapshot({
+        state: initialState,
+        active: initialActive.snapshot
+      })
+    }
+  })
   const write = createWriteControl({
     runtime,
+    activeRuntime,
     perf: performance,
     capturePerf: capturePerformance
   })
@@ -64,7 +94,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       snapshot: () => runtime.result().snapshot,
       delta: () => runtime.result().delta,
       document: () => runtime.state().doc,
-      active: () => runtime.state().active.snapshot
+      active: () => runtime.result().snapshot.active
     },
     commit: {
       actions: (actions: readonly Action[]) => dispatch(actions),

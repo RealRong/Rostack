@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent
@@ -37,21 +36,18 @@ const samePreview = (
 }
 
 export const useColumnResize = () => {
-  const editor = useDataView().engine
+  const dataView = useDataView()
+  const editor = dataView.engine
   const table = useTableContext()
-  const currentView = useStoreValue(table.currentView)
-  if (!currentView) {
-    throw new Error('Table column resize requires an active current view.')
+  const grid = useStoreValue(dataView.table.grid)
+  const view = useStoreValue(dataView.table.view)
+  if (!grid || !view) {
+    throw new Error('Table column resize requires an active table grid and view.')
   }
 
-  const columns = currentView.fields.all
+  const columns = grid.fields.all
   const canResize = useStoreValue(table.can.columnResize)
-  const persistedWidths = useMemo(
-    () => new Map(
-      Object.entries(currentView.view.options.table.widths ?? {}) as [FieldId, number][]
-    ),
-    [currentView.view.options.table.widths]
-  )
+  const persistedWidths = view.widths
   const [preview, setPreview] = useState<ColumnWidthPreview | null>(null)
   const previewRef = useRef<ColumnWidthPreview | null>(preview)
 
@@ -165,16 +161,7 @@ export const useColumnResize = () => {
       fieldId,
       widths
     })
-  }, [
-    canResize,
-    columns,
-    editor,
-    persistedWidths,
-    setPreviewState,
-    table.focus,
-    table.nodes,
-    table.interaction
-  ])
+  }, [canResize, columns, editor, persistedWidths, setPreviewState, table.focus, table.nodes, table.interaction])
 
   return {
     active: preview !== null,

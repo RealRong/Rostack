@@ -209,7 +209,7 @@ const View = (props: ColumnHeaderProps) => {
   const suppressClickRef = useRef(false)
   const table = useTableContext()
   const headerState = useKeyedStoreValue(
-    table.column,
+    dataView.table.column,
     props.field.id
   )
   const sortable = useSortable({
@@ -366,7 +366,7 @@ const View = (props: ColumnHeaderProps) => {
         leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
         onSelect: () => {
           viewApi.filters.add(props.field.id)
-          const index = table.currentView.get()?.query.filters.rules.length ?? 0
+          const index = dataView.table.view.get()?.query.filters.rules.length ?? 0
           page.query.open({
             kind: 'filter',
             index
@@ -481,7 +481,7 @@ const View = (props: ColumnHeaderProps) => {
     sortDirection,
     sortDirectionMeta,
     t,
-    table.currentView,
+    dataView.table.view,
     urlConfig,
     viewApi,
     wrap

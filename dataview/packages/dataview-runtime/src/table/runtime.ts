@@ -1,55 +1,83 @@
 import { collection, store } from '@shared/core'
+import { queryRead } from '@dataview/engine'
 import type {
   FieldList,
-  ItemList,
   ItemId,
-  RecordId,
+  ItemPlacement,
   Section,
   SectionKey,
   SectionList
 } from '@dataview/engine'
 import type {
-  ActiveViewQuery,
-  ActiveViewTable
+  ViewFilterProjection,
+  ViewGroupProjection,
+  ViewSearchProjection,
+  ViewSortProjection
 } from '@dataview/engine/contracts/view'
+import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
-  View
+  CalculationMetric,
+  Field,
+  FieldId,
+  RecordId,
+  SortDirection,
+  View,
+  ViewId
 } from '@dataview/core/contracts'
-import type {
-  ActiveSource
-} from '@dataview/runtime/source'
+import type { ActiveSource } from '@dataview/runtime/source'
 
-export interface TableGridDomain {
-  items: ItemList
+export interface TableItemList {
+  ids: readonly ItemId[]
+  count: number
+  order: ReturnType<typeof collection.createOrderedAccess<ItemId>>
+  read: {
+    recordId: (itemId: ItemId) => RecordId | undefined
+    sectionKey: (itemId: ItemId) => SectionKey | undefined
+    placement: (itemId: ItemId) => ItemPlacement | undefined
+  }
+}
+
+export interface TableGrid {
+  items: TableItemList
   fields: FieldList
-}
-
-export interface TableViewContext {
-  view: View
-  query: ActiveViewQuery
-  table: ActiveViewTable
-}
-
-export interface TableSectionContext {
   sections: SectionList
 }
 
-export interface TableRecordAccess {
-  recordId: (itemId: ItemId) => RecordId | undefined
-  sectionKey: (itemId: ItemId) => SectionKey | undefined
+export interface TableQueryState {
+  search: ViewSearchProjection
+  filters: ViewFilterProjection
+  group: ViewGroupProjection
+  sort: ViewSortProjection
+}
+
+export interface TableViewState {
+  id: ViewId
+  query: TableQueryState
+  displayFieldIds: readonly FieldId[]
+  widths: ReadonlyMap<FieldId, number>
+  wrap: boolean
+  showVerticalLines: boolean
+  calcByField: ReadonlyMap<FieldId, CalculationMetric | undefined>
+}
+
+export interface TableColumnState {
+  field: Field
+  grouped: boolean
+  sortDir?: SortDirection
+  calc?: CalculationMetric
 }
 
 export interface TableRuntime {
-  grid: store.ReadStore<TableGridDomain | undefined>
-  view: store.ReadStore<TableViewContext | undefined>
-  sections: store.ReadStore<TableSectionContext | undefined>
-  record: TableRecordAccess
+  grid: store.ReadStore<TableGrid | undefined>
+  view: store.ReadStore<TableViewState | undefined>
+  column: store.KeyedReadStore<FieldId, TableColumnState | undefined>
+  summary: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
 }
 
 const buildGridItems = (input: {
-  previous?: ItemList
+  previous?: TableItemList
   source: ActiveSource['items']
-}): ItemList => {
+}): TableItemList => {
   const ids = store.read(input.source.ids)
 
   return input.previous?.ids === ids
@@ -59,8 +87,8 @@ const buildGridItems = (input: {
         count: ids.length,
         order: collection.createOrderedAccess(ids),
         read: {
-          record: itemId => input.source.read.record.get(itemId),
-          section: itemId => input.source.read.section.get(itemId),
+          recordId: itemId => input.source.read.recordId.get(itemId),
+          sectionKey: itemId => input.source.read.sectionKey.get(itemId),
           placement: itemId => input.source.read.placement.get(itemId)
         }
       }
@@ -113,7 +141,7 @@ const buildSections = (input: {
   previous?: SectionList
   source: ActiveSource['sections']
 }): SectionList => {
-  const ids = store.read(input.source.keys)
+  const ids = store.read(input.source.ids)
   const canReuse = Boolean(
     input.previous
     && input.previous.ids === ids
@@ -147,14 +175,32 @@ const readTableView = (
     : undefined
 }
 
+const buildWidths = (
+  widths: View['options']['table']['widths']
+): ReadonlyMap<FieldId, number> => new Map(
+  Object.entries(widths) as [FieldId, number][]
+)
+
+const sameColumn = (
+  left: TableColumnState | undefined,
+  right: TableColumnState | undefined
+) => left === right || (
+  !!left
+  && !!right
+  && left.field === right.field
+  && left.grouped === right.grouped
+  && left.sortDir === right.sortDir
+  && left.calc === right.calc
+)
+
 export const createTableRuntime = (
   active: ActiveSource
 ): TableRuntime => {
-  let previousGrid: TableGridDomain | undefined
-  let previousView: TableViewContext | undefined
-  let previousSections: TableSectionContext | undefined
+  let previousGrid: TableGrid | undefined
+  let previousView: TableViewState | undefined
+  let previousWidthSource: View['options']['table']['widths'] | undefined
 
-  const grid = store.createDerivedStore<TableGridDomain | undefined>({
+  const grid = store.createDerivedStore<TableGrid | undefined>({
     get: () => {
       if (!readTableView(active)) {
         previousGrid = undefined
@@ -169,13 +215,18 @@ export const createTableRuntime = (
         fields: buildFieldList({
           previous: previousGrid?.fields,
           source: active.fields
+        }),
+        sections: buildSections({
+          previous: previousGrid?.sections,
+          source: active.sections
         })
-      } satisfies TableGridDomain
+      } satisfies TableGrid
 
       if (
         previousGrid
         && previousGrid.items === next.items
         && previousGrid.fields === next.fields
+        && previousGrid.sections === next.sections
       ) {
         return previousGrid
       }
@@ -186,69 +237,94 @@ export const createTableRuntime = (
     isEqual: Object.is
   })
 
-  const view = store.createDerivedStore<TableViewContext | undefined>({
+  const view = store.createDerivedStore<TableViewState | undefined>({
     get: () => {
       const tableView = readTableView(active)
       if (!tableView) {
         previousView = undefined
+        previousWidthSource = undefined
         return undefined
       }
 
+      const query = store.read(active.meta.query)
+      const table = store.read(active.meta.table)
+      const widthSource = tableView.options.table.widths
+      const widths = previousWidthSource === widthSource && previousView
+        ? previousView.widths
+        : buildWidths(widthSource)
       const next = {
-        view: tableView,
-        query: store.read(active.meta.query),
-        table: store.read(active.meta.table)
-      } satisfies TableViewContext
+        id: tableView.id,
+        query: {
+          search: query.search,
+          filters: query.filters,
+          group: query.group,
+          sort: query.sort
+        },
+        displayFieldIds: tableView.display.fields,
+        widths,
+        wrap: table.wrap,
+        showVerticalLines: table.showVerticalLines,
+        calcByField: table.calc
+      } satisfies TableViewState
 
       if (
         previousView
-        && previousView.view === next.view
-        && previousView.query === next.query
-        && previousView.table === next.table
+        && previousView.id === next.id
+        && previousView.query.search === next.query.search
+        && previousView.query.filters === next.query.filters
+        && previousView.query.group === next.query.group
+        && previousView.query.sort === next.query.sort
+        && previousView.displayFieldIds === next.displayFieldIds
+        && previousView.widths === next.widths
+        && previousView.wrap === next.wrap
+        && previousView.showVerticalLines === next.showVerticalLines
+        && previousView.calcByField === next.calcByField
       ) {
         return previousView
       }
 
+      previousWidthSource = widthSource
       previousView = next
       return next
     },
     isEqual: Object.is
   })
 
-  const sections = store.createDerivedStore<TableSectionContext | undefined>({
-    get: () => {
+  const column = store.createKeyedDerivedStore<FieldId, TableColumnState | undefined>({
+    get: fieldId => {
       if (!readTableView(active)) {
-        previousSections = undefined
         return undefined
       }
 
-      const next = {
-        sections: buildSections({
-          previous: previousSections?.sections,
-          source: active.sections
-        })
-      } satisfies TableSectionContext
-
-      if (
-        previousSections
-        && previousSections.sections === next.sections
-      ) {
-        return previousSections
+      const field = store.read(active.fields.all, fieldId)
+      if (!field) {
+        return undefined
       }
 
-      previousSections = next
-      return next
+      const query = store.read(active.meta.query)
+      const table = store.read(active.meta.table)
+
+      return {
+        field,
+        grouped: queryRead.groupFieldId(query) === fieldId,
+        sortDir: queryRead.sortDir(query, fieldId),
+        calc: table.calc.get(fieldId)
+      }
     },
+    isEqual: sameColumn
+  })
+
+  const summary = store.createKeyedDerivedStore<SectionKey, CalculationCollection | undefined>({
+    get: sectionKey => readTableView(active)
+      ? store.read(active.summaries, sectionKey)
+      : undefined,
     isEqual: Object.is
   })
 
   return {
     grid,
     view,
-    sections,
-    record: {
-      recordId: itemId => active.items.read.record.get(itemId),
-      sectionKey: itemId => active.items.read.section.get(itemId)
-    }
+    column,
+    summary
   }
 }

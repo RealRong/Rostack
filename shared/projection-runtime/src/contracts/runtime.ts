@@ -20,13 +20,13 @@ export interface Plan<TPhaseName extends string, TDirty = never> {
 }
 
 export interface Planner<
-  TInputChange,
+  TInput,
   TSnapshot,
   TPhaseName extends string,
   TDirty = never
 > {
   plan(input: {
-    change: TInputChange
+    input: TInput
     previous: TSnapshot
   }): Plan<TPhaseName, TDirty>
 }
@@ -57,7 +57,6 @@ export interface Result<
 
 export interface Spec<
   TInput,
-  TInputChange,
   TWorking,
   TSnapshot,
   TChange,
@@ -68,7 +67,7 @@ export interface Spec<
 > {
   createWorking(): TWorking
   createSnapshot(): TSnapshot
-  planner: Planner<TInputChange, TSnapshot, TPhaseName, TDirty>
+  planner: Planner<TInput, TSnapshot, TPhaseName, TDirty>
   publisher: Publisher<TWorking, TSnapshot, TChange>
   phases: readonly phase.Spec<
     TPhaseName,
@@ -80,7 +79,6 @@ export interface Spec<
 
 export interface Instance<
   TInput,
-  TInputChange,
   TSnapshot,
   TChange,
   TPhaseName extends string = string,
@@ -88,8 +86,7 @@ export interface Instance<
 > {
   snapshot(): TSnapshot
   update(
-    input: TInput,
-    change: TInputChange
+    input: TInput
   ): Result<TSnapshot, TChange, TPhaseName, TPhaseMetrics>
   subscribe(
     listener: (result: Result<TSnapshot, TChange, TPhaseName, TPhaseMetrics>) => void

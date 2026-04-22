@@ -45,11 +45,15 @@ import type {
 } from '@dataview/engine/contracts/delta'
 import type {
   SnapshotTrace,
-  ViewRecords,
   ViewStageMetrics,
-  ViewState,
   ViewTrace
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/performance'
+import type {
+  ViewRecords
+} from '@dataview/engine/contracts/shared'
+import type {
+  ViewState
+} from '@dataview/engine/contracts/view'
 import type { DocumentReader } from '@dataview/engine/document/reader'
 
 export type ActivePhaseName =

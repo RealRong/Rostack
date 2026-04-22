@@ -14,7 +14,7 @@ import {
 } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { ProjectionEdgeRead } from '@whiteboard/editor/projection/edge'
+import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -36,18 +36,18 @@ const readEdgeMovePatch = (
   : undefined
 
 const readMovableEdge = (
-  edge: Pick<ProjectionEdgeRead, 'item' | 'capability'>,
+  edge: Pick<GraphEdgeRead, 'view' | 'capability'>,
   edgeId: EdgeId
 ) => {
-  const item = edge.item.get(edgeId)
+  const current = edge.view.get(edgeId)?.base.edge
 
-  return item && edge.capability(item.edge).move
-    ? item.edge
+  return current && edge.capability(current).move
+    ? current
     : undefined
 }
 
 export const startEdgeMove = (input: {
-  edge: Pick<ProjectionEdgeRead, 'item' | 'capability'>
+  edge: Pick<GraphEdgeRead, 'view' | 'capability'>
   edgeId: EdgeId
   pointerId: number
   start: Point

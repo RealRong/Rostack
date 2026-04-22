@@ -4,11 +4,9 @@ import type { HistoryApi } from '@whiteboard/history'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
 import {
   isMindmapChromeEqual,
-  isMindmapSceneEqual,
   readAddChildTargets,
-  readMindmapNavigateTarget,
-  toMindmapScene
-} from '@whiteboard/editor/editor/mindmap'
+  readMindmapNavigateTarget
+} from '@whiteboard/editor/read/mindmap'
 import {
   readEdgeScope,
   readNodeScope,
@@ -16,21 +14,17 @@ import {
   readSelectionNodeStats,
   resolveSelectionOverlay,
   resolveSelectionToolbar
-} from '@whiteboard/editor/editor/selection'
-import type { EditorPublishedSources } from '@whiteboard/editor/publish/sources'
-import type { ProjectionRead } from '@whiteboard/editor/projection/read'
+} from '@whiteboard/editor/read/panel'
+import type { GraphRead } from '@whiteboard/editor/read/graph'
 import {
   isSelectedEdgeChromeEqual,
   readSelectedEdgeId,
-  readSelectedEdgeRoutePoints,
-  resolveEdgeCapability
-} from '@whiteboard/editor/projection/edgeShared'
+  readSelectedEdgeRoutePoints
+} from '@whiteboard/editor/read/edgeShared'
 import type { SessionRead } from '@whiteboard/editor/session/read'
 import type { EditorStore } from '@whiteboard/editor/types/editor'
 import type {
   EditorChromePresentation,
-  EditorEdgeRender,
-  EditorNodeRender,
   EditorPanelPresentation,
   EditorRead
 } from '@whiteboard/editor/types/editor'
@@ -72,105 +66,6 @@ const isChromeDrawEqual = (
   )
 )
 
-const isNodeRenderEqual = (
-  left: EditorNodeRender | undefined,
-  right: EditorNodeRender | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.nodeId === right.nodeId
-    && left.node === right.node
-    && left.rect.x === right.rect.x
-    && left.rect.y === right.rect.y
-    && left.rect.width === right.rect.width
-    && left.rect.height === right.rect.height
-    && left.bounds.x === right.bounds.x
-    && left.bounds.y === right.bounds.y
-    && left.bounds.width === right.bounds.width
-    && left.bounds.height === right.bounds.height
-    && left.rotation === right.rotation
-    && left.hovered === right.hovered
-    && left.hidden === right.hidden
-    && left.resizing === right.resizing
-    && left.patched === right.patched
-    && left.selected === right.selected
-    && left.canConnect === right.canConnect
-    && left.canResize === right.canResize
-    && left.canRotate === right.canRotate
-    && left.edit?.field === right.edit?.field
-    && left.edit?.caret.kind === right.edit?.caret.kind
-    && (
-      left.edit?.caret.kind !== 'point'
-      || (
-        right.edit?.caret.kind === 'point'
-        && left.edit.caret.client.x === right.edit.caret.client.x
-        && left.edit.caret.client.y === right.edit.caret.client.y
-      )
-    )
-  )
-)
-
-const isEdgeRenderEqual = (
-  left: EditorEdgeRender | undefined,
-  right: EditorEdgeRender | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.edgeId === right.edgeId
-    && left.edge === right.edge
-    && left.patched === right.patched
-    && left.activeRouteIndex === right.activeRouteIndex
-    && left.selected === right.selected
-    && left.box.pad === right.box.pad
-    && left.box.rect.x === right.box.rect.x
-    && left.box.rect.y === right.box.rect.y
-    && left.box.rect.width === right.box.rect.width
-    && left.box.rect.height === right.box.rect.height
-    && left.path.svgPath === right.path.svgPath
-    && left.path.points.length === right.path.points.length
-    && left.path.points.every((point, index) => (
-      point.x === right.path.points[index]?.x
-      && point.y === right.path.points[index]?.y
-    ))
-    && left.labels.length === right.labels.length
-    && left.labels.every((label, index) => {
-      const next = right.labels[index]
-      return next !== undefined
-        && label.id === next.id
-        && label.text === next.text
-        && label.displayText === next.displayText
-        && label.style === next.style
-        && label.editable === next.editable
-        && label.caret?.kind === next.caret?.kind
-        && (
-          label.caret?.kind !== 'point'
-          || (
-            next.caret?.kind === 'point'
-            && label.caret.client.x === next.caret.client.x
-            && label.caret.client.y === next.caret.client.y
-          )
-        )
-        && label.point.x === next.point.x
-        && label.point.y === next.point.y
-        && label.angle === next.angle
-        && label.size.width === next.size.width
-        && label.size.height === next.size.height
-        && label.maskRect.x === next.maskRect.x
-        && label.maskRect.y === next.maskRect.y
-        && label.maskRect.width === next.maskRect.width
-        && label.maskRect.height === next.maskRect.height
-        && label.maskRect.radius === next.maskRect.radius
-        && label.maskRect.angle === next.maskRect.angle
-        && label.maskRect.center.x === next.maskRect.center.x
-        && label.maskRect.center.y === next.maskRect.center.y
-    })
-  )
-)
-
 const projectWorldRect = (
   viewport: SessionRead['viewport'],
   worldRect: {
@@ -193,55 +88,53 @@ const projectWorldRect = (
 }
 
 const readNodeLocked = ({
-  projection,
+  graph,
   document,
   nodeId
 }: {
-  projection: Pick<ProjectionRead, 'node'>
+  graph: Pick<GraphRead, 'node'>
   document: Pick<DocumentRead, 'node'>
   nodeId: string
 }) => (
-  store.read(projection.node.projected, nodeId)?.node.locked
+  store.read(graph.node.view, nodeId)?.base.node.locked
   ?? store.read(document.node.committed, nodeId)?.node.locked
   ?? false
 )
 
 const readNodeRect = ({
-  projection,
+  graph,
   document,
   nodeId
 }: {
-  projection: Pick<ProjectionRead, 'node'>
+  graph: Pick<GraphRead, 'node'>
   document: Pick<DocumentRead, 'node'>
   nodeId: string
-}) => store.read(projection.node.projected, nodeId)?.rect
+}) => store.read(graph.node.view, nodeId)?.layout.rect
   ?? store.read(document.node.committed, nodeId)?.rect
 
 export const createEditorRead = (
   {
     document,
-    projection,
+    graph,
     sessionRead,
-    published,
     store: state,
     history,
     nodeType,
     defaults
   }: {
     document: Pick<DocumentRead, 'document' | 'group' | 'mindmap' | 'node'>
-    projection: Pick<ProjectionRead, 'scene' | 'node' | 'edge' | 'selection' | 'mindmap'>
+    graph: Pick<GraphRead, 'scene' | 'node' | 'edge' | 'selection' | 'mindmap' | 'chrome'>
     sessionRead: SessionRead
-    published: Pick<EditorPublishedSources, 'chrome' | 'node' | 'edge'>
     store: EditorStore
     history: HistoryApi
     nodeType: NodeTypeSupport
     defaults: EditorDefaults['selection']
   }
 ): EditorRead => {
-  const selectionSummary = projection.selection.summary
-  const selectionMembers = projection.selection.members
-  const selectionAffordance = projection.selection.affordance
-  const selectionNodeSelected = projection.selection.node.selected
+  const selectionSummary = graph.selection.summary
+  const selectionMembers = graph.selection.members
+  const selectionAffordance = graph.selection.affordance
+  const selectionNodeSelected = graph.selection.node.selected
 
   const selectionNodeStats: EditorRead['selection']['node']['stats'] = store.createDerivedStore({
     get: () => readSelectionNodeStats({
@@ -331,7 +224,7 @@ export const createEditorRead = (
 
   const chrome = store.createDerivedStore<EditorChromePresentation>({
     get: () => {
-      const current = store.read(published.chrome)
+      const current = store.read(graph.chrome)
       const marquee = current.preview.marquee
 
       return {
@@ -369,70 +262,25 @@ export const createEditorRead = (
     )
   })
 
-  const nodeRender: EditorRead['node']['render'] = store.createKeyedDerivedStore({
+  const nodeCapability: EditorRead['node']['capability'] = store.createKeyedDerivedStore({
     get: (nodeId: string) => {
-      const current = store.read(published.node, nodeId)
-      if (!current) {
-        return undefined
-      }
-
-      const capability = projection.node.capability(current.base.node)
-
-      return {
-        nodeId: current.base.node.id,
-        node: current.base.node,
-        rect: current.layout.rect,
-        bounds: current.layout.bounds,
-        rotation: current.layout.rotation,
-        hovered: current.render.hovered,
-        hidden: current.render.hidden,
-        resizing: current.render.resizing,
-        patched: current.render.patched,
-        selected: current.render.selected,
-        edit: current.render.edit,
-        canConnect: capability.connect,
-        canResize: capability.resize,
-        canRotate: capability.rotate
-      }
+      const current = store.read(graph.node.view, nodeId)
+      return current
+        ? graph.node.capability(current.base.node)
+        : undefined
     },
-    isEqual: isNodeRenderEqual
-  })
-
-  const edgeRender: EditorRead['edge']['render'] = store.createKeyedDerivedStore({
-    get: (edgeId: string) => {
-      const current = store.read(published.edge, edgeId)
-      const box = current?.render.box
-      const svgPath = current?.route.svgPath
-      if (!current || !box || !svgPath) {
-        return undefined
-      }
-
-      return {
-        edgeId: current.base.edge.id,
-        edge: current.base.edge,
-        patched: current.render.patched,
-        activeRouteIndex: current.render.activeRouteIndex,
-        selected: current.render.selected,
-        box,
-        path: {
-          svgPath,
-          points: current.route.points
-        },
-        labels: current.route.labels.map((label) => ({
-          id: label.labelId,
-          text: label.text,
-          displayText: label.displayText,
-          style: label.style,
-          editable: label.editable,
-          caret: label.caret,
-          point: label.point,
-          angle: label.angle,
-          size: label.size,
-          maskRect: label.maskRect
-        })) as EditorEdgeRender['labels']
-      }
-    },
-    isEqual: isEdgeRenderEqual
+    isEqual: (left, right) => (
+      left === right
+      || (
+        left !== undefined
+        && right !== undefined
+        && left.role === right.role
+        && left.connect === right.connect
+        && left.enter === right.enter
+        && left.resize === right.resize
+        && left.rotate === right.rotate
+      )
+    )
   })
 
   const selectedEdgeChrome: EditorRead['edge']['selectedChrome'] = store.createDerivedStore({
@@ -442,20 +290,13 @@ export const createEditorRead = (
         return undefined
       }
 
-      const current = store.read(published.edge, selectedEdgeId)
+      const current = store.read(graph.edge.view, selectedEdgeId)
       const currentEnds = current?.route.ends
       if (!current || !currentEnds) {
         return undefined
       }
 
-      const currentCapability = resolveEdgeCapability({
-        edge: current.base.edge,
-        readNodeLocked: (nodeId) => readNodeLocked({
-          projection,
-          document,
-          nodeId
-        })
-      })
+      const currentCapability = graph.edge.capability(current.base.edge)
       const currentEdit = store.read(state.edit)
       const interaction = store.read(state.interaction)
       const editingThisSelectedEdge =
@@ -484,23 +325,6 @@ export const createEditorRead = (
     isEqual: isSelectedEdgeChromeEqual
   })
 
-  const mindmapScene: EditorRead['mindmap']['scene'] = store.createKeyedDerivedStore({
-    get: (mindmapId: string) => {
-      const structure = store.read(document.mindmap.structure, mindmapId)
-      const current = store.read(projection.mindmap.layout, mindmapId)
-      if (!structure || !current) {
-        return undefined
-      }
-
-      return toMindmapScene(
-        structure,
-        current.computed.bbox,
-        current.connectors
-      )
-    },
-    isEqual: isMindmapSceneEqual
-  })
-
   const mindmapChrome: EditorRead['mindmap']['chrome'] = store.createKeyedDerivedStore<string, ReturnType<EditorRead['mindmap']['chrome']['get']>>({
     get: (mindmapId: string) => {
       const structure = store.read(document.mindmap.structure, mindmapId)
@@ -514,12 +338,12 @@ export const createEditorRead = (
           selection: store.read(state.selection),
           edit: store.read(state.edit),
           readNodeLocked: (nodeId) => readNodeLocked({
-            projection,
+            graph,
             document,
             nodeId
           }),
           readNodeRect: (nodeId) => readNodeRect({
-            projection,
+            graph,
             document,
             nodeId
           })
@@ -540,7 +364,7 @@ export const createEditorRead = (
     },
     history,
     mindmap: {
-      scene: mindmapScene,
+      view: graph.mindmap.view,
       chrome: mindmapChrome,
       navigate: (input) => {
         const currentStructure = store.read(document.mindmap.structure, input.id)
@@ -556,22 +380,23 @@ export const createEditorRead = (
       }
     },
     node: {
-      render: nodeRender
+      view: graph.node.view,
+      capability: nodeCapability
     },
     edge: {
-      render: edgeRender,
+      view: graph.edge.view,
       selectedChrome: selectedEdgeChrome
     },
     scene: {
-      list: projection.scene.list
+      view: graph.scene.view
     },
     selection: {
+      view: graph.selection.view,
       node: {
         selected: selectionNodeSelected,
         stats: selectionNodeStats,
         scope: selectionNodeScope
-      },
-      summary: selectionSummary
+      }
     },
     tool: sessionRead.tool,
     viewport: sessionRead.viewport,

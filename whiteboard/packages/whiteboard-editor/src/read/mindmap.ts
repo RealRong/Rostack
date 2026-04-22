@@ -1,9 +1,6 @@
-import { equal } from '@shared/core'
-import type { MindmapRenderConnector } from '@whiteboard/core/mindmap'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { NodeId, Rect } from '@whiteboard/core/types'
 import type {
-  MindmapSceneItem,
   MindmapStructureItem
 } from '@whiteboard/editor/document/read'
 import type { EditSession } from '@whiteboard/editor/session/edit'
@@ -18,38 +15,6 @@ export type MindmapChrome = {
 }
 
 const MINDMAP_ADD_BUTTON_OFFSET = 12
-
-const isConnectorEqual = (
-  left: MindmapRenderConnector,
-  right: MindmapRenderConnector
-) => (
-  left.id === right.id
-  && left.parentId === right.parentId
-  && left.childId === right.childId
-  && left.path === right.path
-  && left.style.color === right.style.color
-  && left.style.line === right.style.line
-  && left.style.width === right.style.width
-  && left.style.stroke === right.style.stroke
-)
-
-export const isMindmapSceneEqual = (
-  left: MindmapSceneItem | undefined,
-  right: MindmapSceneItem | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.id === right.id
-    && left.rootId === right.rootId
-    && left.nodeIds.length === right.nodeIds.length
-    && left.nodeIds.every((nodeId, index) => nodeId === right.nodeIds[index])
-    && equal.sameRect(left.bbox, right.bbox)
-    && left.connectors.length === right.connectors.length
-    && left.connectors.every((connector, index) => isConnectorEqual(connector, right.connectors[index]!))
-  )
-)
 
 export const isMindmapChromeEqual = (
   left: MindmapChrome | undefined,
@@ -174,15 +139,3 @@ export const readMindmapNavigateTarget = ({
     }
   }
 }
-
-export const toMindmapScene = (
-  structure: MindmapStructureItem,
-  bbox: Rect,
-  connectors: readonly MindmapRenderConnector[]
-): MindmapSceneItem => ({
-  id: structure.id,
-  rootId: structure.rootId,
-  nodeIds: structure.nodeIds,
-  bbox,
-  connectors
-})

@@ -6,10 +6,12 @@ import type {
   ViewPatch
 } from '@dataview/core/contracts'
 import type {
-  ActionResult,
+  ActionResult
+} from '@dataview/engine/contracts/result'
+import type {
   ActiveViewApi,
   ViewState
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/view'
 import {
   createLiveDocumentReader,
   type DocumentReader
@@ -27,7 +29,6 @@ export interface ActiveViewContext {
   reader: DocumentReader
   dispatch: ActiveContextOptions['dispatch']
   view: () => View | undefined
-  snapshot: () => ViewState | undefined
   resolveGroupField: (view?: View) => Field | undefined
   patchView: (
     resolve: (view: View, reader: DocumentReader) => ViewPatch | undefined
@@ -39,7 +40,6 @@ export const createActiveContext = (
 ): ActiveViewContext => {
   const reader = createLiveDocumentReader(options.document)
   const view = () => options.active()?.view
-  const snapshot = () => options.active()
   const patchView = (
     resolve: (currentView: View, currentReader: DocumentReader) => ViewPatch | undefined
   ): boolean => {
@@ -68,12 +68,11 @@ export const createActiveContext = (
   }
 
   return {
-    id: () => snapshot()?.view.id,
-    state: snapshot,
+    id: () => options.active()?.view.id,
+    state: options.active,
     reader,
     dispatch: options.dispatch,
     view,
-    snapshot,
     resolveGroupField,
     patchView
   }

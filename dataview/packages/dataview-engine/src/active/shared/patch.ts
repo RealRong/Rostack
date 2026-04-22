@@ -18,6 +18,115 @@ const MAP_OVERLAY_DEPTH = new WeakMap<object, number>()
 const MAX_MAP_OVERLAY_DEPTH = 8
 const MIN_LARGE_MAP_DELTA = 128
 
+class OverlayMap<K, V> implements ReadonlyMap<K, V> {
+  private cachedSize: number | undefined
+
+  constructor(
+    private readonly previous: ReadonlyMap<K, V>,
+    private readonly updated: ReadonlyMap<K, V> | undefined,
+    private readonly removed: ReadonlySet<K> | undefined,
+    depth: number
+  ) {
+    MAP_OVERLAY_DEPTH.set(this, depth)
+  }
+
+  get size(): number {
+    if (this.cachedSize !== undefined) {
+      return this.cachedSize
+    }
+
+    let size = this.previous.size
+    this.removed?.forEach(key => {
+      if (this.previous.has(key) && !this.updated?.has(key)) {
+        size -= 1
+      }
+    })
+    this.updated?.forEach((_value, key) => {
+      if (!this.previous.has(key)) {
+        size += 1
+      }
+    })
+    this.cachedSize = size
+    return size
+  }
+
+  get(key: K): V | undefined {
+    if (this.updated?.has(key)) {
+      return this.updated.get(key)
+    }
+    if (this.removed?.has(key)) {
+      return undefined
+    }
+
+    return this.previous.get(key)
+  }
+
+  has(key: K): boolean {
+    return this.updated?.has(key)
+      ? true
+      : this.removed?.has(key)
+        ? false
+        : this.previous.has(key)
+  }
+
+  forEach(
+    callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void,
+    thisArg?: unknown
+  ): void {
+    for (const [key, value] of this.iterateEntries()) {
+      callbackfn.call(thisArg, value, key, this)
+    }
+  }
+
+  private *iterateEntries(): IterableIterator<[K, V]> {
+    const emitted = new Set<K>()
+
+    for (const [key, value] of this.previous) {
+      if (this.removed?.has(key)) {
+        continue
+      }
+
+      if (this.updated?.has(key)) {
+        emitted.add(key)
+        yield [key, this.updated.get(key)!]
+        continue
+      }
+
+      yield [key, value]
+    }
+
+    if (!this.updated?.size) {
+      return
+    }
+
+    for (const [key, value] of this.updated) {
+      if (emitted.has(key) || this.previous.has(key)) {
+        continue
+      }
+
+      yield [key, value]
+    }
+  }
+
+  entries(): MapIterator<[K, V]> {
+    return new Map(this.iterateEntries()).entries()
+  }
+
+  keys(): MapIterator<K> {
+    return new Map(this.iterateEntries()).keys()
+  }
+
+  values(): MapIterator<V> {
+    return new Map(this.iterateEntries()).values()
+  }
+
+  [Symbol.iterator](): MapIterator<[K, V]> {
+    return this.entries()
+  }
+
+  readonly [Symbol.toStringTag] = 'Map'
+}
+
 const readOverlayDepth = (
   value: unknown
 ): number => (
@@ -39,70 +148,6 @@ export const createMapOverlay = <K, V>(input: {
   }
   const nextDepth = readOverlayDepth(input.previous) + 1
 
-  let cachedSize: number | undefined
-  const readSize = () => {
-    if (cachedSize !== undefined) {
-      return cachedSize
-    }
-
-    let size = input.previous.size
-    removed?.forEach(key => {
-      if (input.previous.has(key) && !updated?.has(key)) {
-        size -= 1
-      }
-    })
-    updated?.forEach((_value, key) => {
-      if (!input.previous.has(key)) {
-        size += 1
-      }
-    })
-    cachedSize = size
-    return size
-  }
-
-  function* entries(): IterableIterator<[K, V]> {
-    const emitted = new Set<K>()
-
-    for (const [key, value] of input.previous) {
-      if (removed?.has(key)) {
-        continue
-      }
-
-      const nextValue = updated?.get(key)
-      if (nextValue !== undefined || updated?.has(key)) {
-        emitted.add(key)
-        yield [key, nextValue as V]
-        continue
-      }
-
-      yield [key, value]
-    }
-
-    if (!updated?.size) {
-      return
-    }
-
-    for (const [key, value] of updated) {
-      if (emitted.has(key) || input.previous.has(key)) {
-        continue
-      }
-
-      yield [key, value]
-    }
-  }
-
-  function* keys(): IterableIterator<K> {
-    for (const [key] of entries()) {
-      yield key
-    }
-  }
-
-  function* values(): IterableIterator<V> {
-    for (const [, value] of entries()) {
-      yield value
-    }
-  }
-
   const deltaSize = (updated?.size ?? 0) + (removed?.size ?? 0)
   if (
     nextDepth >= MAX_MAP_OVERLAY_DEPTH
@@ -111,44 +156,10 @@ export const createMapOverlay = <K, V>(input: {
       && deltaSize * 2 > input.previous.size
     )
   ) {
-    return new Map(entries())
+    return new Map(new OverlayMap(input.previous, updated, removed, nextDepth))
   }
 
-  const overlay = {
-    get size() {
-      return readSize()
-    },
-    get: (key: K) => {
-      if (updated?.has(key)) {
-        return updated.get(key)
-      }
-      if (removed?.has(key)) {
-        return undefined
-      }
-
-      return input.previous.get(key)
-    },
-    has: (key: K) => updated?.has(key)
-      ? true
-      : removed?.has(key)
-        ? false
-        : input.previous.has(key),
-    forEach: (
-      callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void,
-      thisArg?: unknown
-    ) => {
-      for (const [key, value] of entries()) {
-        callbackfn.call(thisArg, value, key, overlay as ReadonlyMap<K, V>)
-      }
-    },
-    entries: entries as unknown as ReadonlyMap<K, V>['entries'],
-    keys: keys as unknown as ReadonlyMap<K, V>['keys'],
-    values: values as unknown as ReadonlyMap<K, V>['values'],
-    [Symbol.iterator]: entries as unknown as ReadonlyMap<K, V>[typeof Symbol.iterator]
-  }
-  MAP_OVERLAY_DEPTH.set(overlay, nextDepth)
-
-  return overlay as ReadonlyMap<K, V>
+  return new OverlayMap(input.previous, updated, removed, nextDepth)
 }
 
 export const createMapPatchBuilder = <K, V>(

@@ -57,18 +57,6 @@ const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
-const EMPTY_GROUP: ActiveViewQuery['group'] = {
-  active: false,
-  fieldId: '',
-  field: undefined,
-  mode: '',
-  bucketSort: undefined,
-  bucketInterval: undefined,
-  showEmpty: true,
-  availableModes: [],
-  availableBucketSorts: [],
-  supportsInterval: false
-}
 const EMPTY_QUERY: ActiveViewQuery = {
   search: {
     query: ''
@@ -78,8 +66,7 @@ const EMPTY_QUERY: ActiveViewQuery = {
   },
   sort: {
     rules: []
-  },
-  group: EMPTY_GROUP
+  }
 }
 const EMPTY_TABLE: ActiveViewTable = {
   wrap: false,
@@ -560,16 +547,16 @@ const applyActiveDelta = (input: {
     input.viewCurrent.set(snapshot.view)
   }
 
-  if (input.delta.meta?.query) {
+  if (input.delta.query) {
     input.query.set(snapshot.query)
   }
-  if (input.delta.meta?.table) {
+  if (input.delta.table) {
     input.table.set(snapshot.table)
   }
-  if (input.delta.meta?.gallery) {
+  if (input.delta.gallery) {
     input.gallery.set(snapshot.gallery)
   }
-  if (input.delta.meta?.kanban) {
+  if (input.delta.kanban) {
     input.kanban.set(snapshot.kanban)
   }
 
@@ -671,7 +658,7 @@ const syncRuntime = (input: {
 export const createEngineSource = (
   input: CreateEngineSourceInput
 ): EngineSourceRuntime => {
-  const snapshot = input.core.read.snapshot()
+  const snapshot = input.core.read.result().snapshot
   const documentRecords = createEntitySourceRuntime<RecordId, DataRecord>()
   const documentFields = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
   const documentViews = createEntitySourceRuntime<ViewId, View>()
@@ -703,12 +690,10 @@ export const createEngineSource = (
         type: viewType,
         current: viewCurrent
       },
-      meta: {
-        query,
-        table,
-        gallery,
-        kanban
-      },
+      query,
+      table,
+      gallery,
+      kanban,
       records: {
         matched: recordsMatched,
         ordered: recordsOrdered,

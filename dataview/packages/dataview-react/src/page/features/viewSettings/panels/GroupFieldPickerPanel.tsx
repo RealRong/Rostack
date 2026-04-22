@@ -29,7 +29,7 @@ export const GroupFieldPickerPanel = () => {
       kind: 'toggle',
       key: 'none',
       label: t(meta.ui.viewSettings.none),
-      checked: !groupProjection?.active,
+      checked: !groupProjection,
       onSelect: () => {
         currentViewDomain?.group.clear()
         router.back()

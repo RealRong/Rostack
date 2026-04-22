@@ -152,11 +152,11 @@ test('active summary follows snapshot changes without source adapter', () => {
     document: createDocument()
   })
 
-  assert.deepEqual(engine.read.activeState()?.summaries.get('root')?.byField.size, 0)
+  assert.deepEqual(engine.active.state()?.summaries.get('root')?.byField.size, 0)
 
   engine.active.summary.set(FIELD_STATUS, 'countAll')
 
-  const summary = engine.read.activeState()?.summaries.get('root')
+  const summary = engine.active.state()?.summaries.get('root')
   assert.ok(summary)
   assert.deepEqual(
     summary.get(FIELD_STATUS),

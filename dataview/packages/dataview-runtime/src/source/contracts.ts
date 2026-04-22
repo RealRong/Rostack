@@ -54,12 +54,10 @@ export interface ActiveSource {
     type: store.ReadStore<View['type'] | undefined>
     current: store.ReadStore<View | undefined>
   }
-  meta: {
-    query: store.ReadStore<ActiveViewQuery>
-    table: store.ReadStore<ActiveViewTable>
-    gallery: store.ReadStore<ActiveViewGallery>
-    kanban: store.ReadStore<ActiveViewKanban>
-  }
+  query: store.ReadStore<ActiveViewQuery>
+  table: store.ReadStore<ActiveViewTable>
+  gallery: store.ReadStore<ActiveViewGallery>
+  kanban: store.ReadStore<ActiveViewKanban>
   records: {
     matched: store.ReadStore<readonly RecordId[]>
     ordered: store.ReadStore<readonly RecordId[]>

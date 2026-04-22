@@ -9,8 +9,10 @@ import type {
   ActiveViewKanban,
   ActiveViewQuery,
   ActiveViewTable,
+} from '@dataview/engine/contracts/view'
+import type {
   FieldList
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
 import {
   sameFieldList
 } from '@dataview/engine/active/publish/equality'

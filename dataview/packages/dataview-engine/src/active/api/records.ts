@@ -23,10 +23,12 @@ import {
   createRecordId
 } from '@dataview/engine/mutate/entityId'
 import type {
+  ItemId
+} from '@dataview/engine/contracts/shared'
+import type {
   ActiveRecordsApi,
-  ItemId,
   ViewState
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/view'
 import type {
   ActiveViewContext
 } from '@dataview/engine/active/api/context'
@@ -220,7 +222,7 @@ const applyGroupDefault = (input: {
   sectionKey: string
 }): boolean => {
   const group = input.state.view.group
-  const field = input.state.query.group.field
+  const field = input.state.query.group?.field
   if (!group) {
     return true
   }
@@ -299,7 +301,7 @@ export const createActiveRecordsApi = (input: {
   base: ActiveViewContext
 }): ActiveRecordsApi => ({
   create: createInput => {
-    const state = input.base.snapshot()
+    const state = input.base.state()
     if (!state) {
       return undefined
     }

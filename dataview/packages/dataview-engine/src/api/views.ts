@@ -9,9 +9,11 @@ import {
 import { string } from '@shared/core'
 import { view as viewApi } from '@dataview/core/view'
 import type {
-  ActionResult,
   ViewsApi
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/api'
+import type {
+  ActionResult
+} from '@dataview/engine/contracts/result'
 
 export const createViewsApi = (options: {
   document: () => DataDoc

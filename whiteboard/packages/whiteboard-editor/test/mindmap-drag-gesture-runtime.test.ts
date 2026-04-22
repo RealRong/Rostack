@@ -120,8 +120,8 @@ describe('mindmap drag gesture runtime', () => {
         nodeIds: [created.data.rootId]
       })
 
-      const beforeRoot = editor.read.node.render.get(created.data.rootId)?.rect
-      const beforeScene = editor.read.mindmap.scene.get(created.data.mindmapId)?.bbox
+      const beforeRoot = editor.read.node.view.get(created.data.rootId)?.layout.rect
+      const beforeScene = editor.read.mindmap.view.get(created.data.mindmapId)?.tree.bbox
 
       expect(beforeRoot).toBeDefined()
       expect(beforeScene).toBeDefined()
@@ -149,8 +149,8 @@ describe('mindmap drag gesture runtime', () => {
         }
       }))
 
-      const liveRoot = editor.read.node.render.get(created.data.rootId)?.rect
-      const liveScene = editor.read.mindmap.scene.get(created.data.mindmapId)?.bbox
+      const liveRoot = editor.read.node.view.get(created.data.rootId)?.layout.rect
+      const liveScene = editor.read.mindmap.view.get(created.data.mindmapId)?.tree.bbox
 
       expect(liveRoot).toEqual({
         ...beforeRoot!,

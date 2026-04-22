@@ -4,12 +4,12 @@ import type { HistoryApi } from '@whiteboard/history'
 import { createEditorActions } from '@whiteboard/editor/action'
 import { createDocumentRead } from '@whiteboard/editor/document/read'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
-import { createEditorRead } from '@whiteboard/editor/editor/read'
 import { createEditorStore } from '@whiteboard/editor/editor/store'
-import { createEditorGraphDriver } from '@whiteboard/editor/graph/driver'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
-import { createProjectionRead } from '@whiteboard/editor/projection/read'
+import { createProjectionDriver } from '@whiteboard/editor/projection/driver'
+import { createGraphRead } from '@whiteboard/editor/read/graph'
+import { createEditorRead } from '@whiteboard/editor/read/public'
 import { createSessionRead } from '@whiteboard/editor/session/read'
 import {
   DEFAULT_DRAW_STATE,
@@ -71,14 +71,14 @@ export const createEditor = ({
   })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(registry)
-  const graph = createEditorGraphDriver({
+  const projection = createProjectionDriver({
     engine,
     session,
     layout
   })
-  const projection = createProjectionRead({
+  const graph = createGraphRead({
     document,
-    published: graph.sources,
+    sources: projection.sources,
     selection: session.state.selection,
     nodeType
   })
@@ -87,13 +87,13 @@ export const createEditor = ({
     engine,
     history,
     document,
-    projection,
+    projection: graph,
     layout
   })
   const actions = createEditorActions({
     document,
     session,
-    projection,
+    projection: graph,
     layout,
     write,
     registry,
@@ -103,7 +103,7 @@ export const createEditor = ({
     engine,
     document,
     session,
-    projection,
+    projection: graph,
     sessionRead,
     layout,
     write,
@@ -121,9 +121,8 @@ export const createEditor = ({
     store: editorStore,
     read: createEditorRead({
       document,
-      projection,
+      graph,
       sessionRead,
-      published: graph.sources,
       store: editorStore,
       history,
       nodeType,
@@ -134,7 +133,7 @@ export const createEditor = ({
     events: events.events,
     dispose: () => {
       events.dispose()
-      graph.dispose()
+      projection.dispose()
       host.cancel()
       session.reset()
       layout.text.clear()

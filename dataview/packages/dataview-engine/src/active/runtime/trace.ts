@@ -4,9 +4,11 @@ import type {
   ViewStageMetrics,
   ViewStageName,
   ViewStageTrace,
-  ViewState,
   ViewTrace
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/performance'
+import type {
+  ViewState
+} from '@dataview/engine/contracts/view'
 import type { TraceRun } from '@shared/projection-runtime'
 import type {
   ActivePhaseMetrics,

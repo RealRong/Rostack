@@ -76,10 +76,10 @@ export const readBucketSortLabel = (
 }
 
 export const readGroupSummary = (
-  group: Pick<ViewGroupProjection, 'active' | 'field' | 'mode' | 'bucketSort' | 'bucketInterval'> | undefined,
+  group: Pick<ViewGroupProjection, 'field' | 'mode' | 'bucketSort' | 'bucketInterval'> | undefined,
   t: TokenTranslator
 ) => {
-  if (!group?.active || !group.field) {
+  if (!group?.field) {
     return t(meta.ui.viewSettings.none)
   }
 
@@ -99,4 +99,3 @@ export const readGroupSummary = (
 
   return parts.join(' · ')
 }
-

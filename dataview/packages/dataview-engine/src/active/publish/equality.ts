@@ -13,7 +13,7 @@ import type {
   Section,
   SectionList,
   SectionKey
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
 import {
   sameList
 } from '@dataview/engine/active/publish/reuse'

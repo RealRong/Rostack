@@ -14,9 +14,11 @@ import type {
   ActiveViewGallery,
   ActiveViewKanban,
   ActiveViewQuery,
-  ActiveViewTable,
+  ActiveViewTable
+} from '@dataview/engine/contracts/view'
+import type {
   FieldList
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
 import {
   sameOptionalProjection
 } from '@dataview/engine/active/publish/reuse'
@@ -65,8 +67,8 @@ export const createGalleryProjection = (input: {
     wrap: input.view.options.gallery.card.wrap,
     size: input.view.options.gallery.card.size,
     layout: input.view.options.gallery.card.layout,
-    canReorder: !input.query.group.active && input.query.sort.rules.length === 0,
-    groupUsesOptionColors: fieldSpec.view.groupUsesOptionColors(input.query.group.field)
+    canReorder: !input.query.group && input.query.sort.rules.length === 0,
+    groupUsesOptionColors: fieldSpec.view.groupUsesOptionColors(input.query.group?.field)
   }
 }
 
@@ -86,13 +88,13 @@ export const createKanbanProjection = (input: {
     }
   }
 
-  const groupUsesOptionColors = fieldSpec.view.groupUsesOptionColors(input.query.group.field)
+  const groupUsesOptionColors = fieldSpec.view.groupUsesOptionColors(input.query.group?.field)
 
   return {
     wrap: input.view.options.kanban.card.wrap,
     size: input.view.options.kanban.card.size,
     layout: input.view.options.kanban.card.layout,
-    canReorder: input.query.group.active && input.query.sort.rules.length === 0,
+    canReorder: Boolean(input.query.group) && input.query.sort.rules.length === 0,
     groupUsesOptionColors,
     fillColumnColor: groupUsesOptionColors && input.view.options.kanban.fillColumnColor,
     cardsPerColumn: input.view.options.kanban.cardsPerColumn

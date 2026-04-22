@@ -6,7 +6,7 @@ import type {
 import {
   view as viewApi
 } from '@dataview/core/view'
-import type { ActiveViewApi } from '@dataview/engine/contracts'
+import type { ActiveViewApi } from '@dataview/engine/contracts/view'
 import type { ActiveViewContext } from '@dataview/engine/active/api/context'
 import { createFieldId } from '@dataview/engine/mutate/entityId'
 

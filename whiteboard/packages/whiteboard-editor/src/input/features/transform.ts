@@ -10,7 +10,7 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { toSpatialNode } from '@whiteboard/editor/projection/node'
+import { toSpatialNode } from '@whiteboard/editor/read/node'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -36,11 +36,15 @@ const toSpatialSelectionPlan = (
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
-    const projected = ctx.projection.node.projected.get(member.id)
-    return projected
+    const view = ctx.projection.node.view.get(member.id)
+    return view
       ? [{
           ...member,
-          node: toSpatialNode(projected)
+          node: toSpatialNode({
+            node: view.base.node,
+            rect: view.layout.rect,
+            rotation: view.layout.rotation
+          })
         }]
       : []
   })
@@ -52,18 +56,22 @@ const readNodeTransformSpec = (
   handle: TransformPickHandle,
   input: PointerDownInput
 ): RuntimeTransformSpec | undefined => {
-  const entry = ctx.projection.node.projected.get(nodeId)
-  if (!entry || entry.node.locked) {
+  const view = ctx.projection.node.view.get(nodeId)
+  if (!view || view.base.node.locked) {
     return undefined
   }
 
-  const capability = ctx.projection.node.capability(entry.node)
+  const capability = ctx.projection.node.capability(view.base.node)
   const target: TransformTarget = {
-    id: entry.node.id,
-    node: toSpatialNode(entry),
-    rect: entry.rect
+    id: view.base.node.id,
+    node: toSpatialNode({
+      node: view.base.node,
+      rect: view.layout.rect,
+      rotation: view.layout.rotation
+    }),
+    rect: view.layout.rect
   }
-  const rotation = entry.rotation
+  const rotation = view.layout.rotation
 
   if (handle.kind === 'resize') {
     if (!handle.direction || !capability.resize) {

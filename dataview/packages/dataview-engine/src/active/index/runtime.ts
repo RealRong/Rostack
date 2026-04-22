@@ -4,7 +4,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   IndexTrace
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/performance'
 import {
   buildCalculationIndex,
   ensureCalculationIndex,

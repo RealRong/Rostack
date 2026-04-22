@@ -1,23 +1,24 @@
 import { store } from '@shared/core'
-import type { EdgeLabelMaskRect } from '@whiteboard/core/edge'
 import type { Guide } from '@whiteboard/core/node'
-import type { SelectionSummary, SelectionTarget } from '@whiteboard/core/selection'
+import type { SelectionTarget } from '@whiteboard/core/selection'
 import type {
   Document,
-  Edge,
   EdgeId,
   MindmapId,
   NodeId,
-  NodeModel,
-  Point,
-  Rect,
-  Size,
   Viewport
 } from '@whiteboard/core/types'
 import type { HistoryApi, HistoryState } from '@whiteboard/history'
+import type {
+  EdgeView,
+  MindmapView,
+  NodeView,
+  SceneSnapshot,
+  SelectionView
+} from '@whiteboard/editor-graph'
 import type { EditorActions } from '@whiteboard/editor/action/types'
-import type { DocumentRead, MindmapSceneItem } from '@whiteboard/editor/document/read'
-import type { MindmapChrome } from '@whiteboard/editor/editor/mindmap'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { MindmapChrome } from '@whiteboard/editor/read/mindmap'
 import type {
   MarqueePreview,
   EdgeGuide
@@ -40,11 +41,11 @@ import type {
 } from '@whiteboard/editor/types/tool'
 import type {
   EditCaret,
-  EditField,
   EditSession
 } from '@whiteboard/editor/session/edit'
 import type { SessionRead } from '@whiteboard/editor/session/read'
-import type { SelectedEdgeChrome } from '@whiteboard/editor/projection/edgeShared'
+import type { SelectedEdgeChrome } from '@whiteboard/editor/read/edgeShared'
+import type { NodeCapability } from '@whiteboard/editor/read/node'
 import type {
   SelectionNodeStats,
   SelectionOverlay,
@@ -94,56 +95,6 @@ export type EditorStore = {
   viewport: store.ReadStore<Viewport>
 }
 
-export type EditorNodeRender = {
-  nodeId: NodeId
-  node: NodeModel
-  rect: Rect
-  bounds: Rect
-  rotation: number
-  hovered: boolean
-  hidden: boolean
-  resizing: boolean
-  patched: boolean
-  selected: boolean
-  edit: {
-    field: EditField
-    caret: EditCaret
-  } | undefined
-  canConnect: boolean
-  canResize: boolean
-  canRotate: boolean
-}
-
-export type EditorEdgeLabelRender = {
-  id: string
-  text: string
-  displayText: string
-  style: NonNullable<Edge['labels']>[number]['style']
-  editable: boolean
-  caret?: EditCaret
-  point: Point
-  angle: number
-  size: Size
-  maskRect: EdgeLabelMaskRect
-}
-
-export type EditorEdgeRender = {
-  edgeId: EdgeId
-  edge: Edge
-  patched: boolean
-  activeRouteIndex: number | undefined
-  selected: boolean
-  box: {
-    rect: Rect
-    pad: number
-  }
-  path: {
-    svgPath: string
-    points: readonly Point[]
-  }
-  labels: readonly EditorEdgeLabelRender[]
-}
-
 export type EditorChromePresentation = {
   marquee: MarqueePreview | undefined
   draw: DrawPreview | null
@@ -165,7 +116,7 @@ export type EditorSelectionNodeRead = {
 }
 
 export type EditorMindmapRead = {
-  scene: store.KeyedReadStore<MindmapId, MindmapSceneItem | undefined>
+  view: store.KeyedReadStore<MindmapId, MindmapView | undefined>
   chrome: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
   navigate: (input: {
     id: MindmapId
@@ -184,21 +135,19 @@ export type EditorRead = {
   history: HistoryApi
   mindmap: EditorMindmapRead
   node: {
-    render: store.KeyedReadStore<NodeId, EditorNodeRender | undefined>
+    view: store.KeyedReadStore<NodeId, NodeView | undefined>
+    capability: store.KeyedReadStore<NodeId, NodeCapability | undefined>
   }
   edge: {
-    render: store.KeyedReadStore<EdgeId, EditorEdgeRender | undefined>
+    view: store.KeyedReadStore<EdgeId, EdgeView | undefined>
     selectedChrome: store.ReadStore<SelectedEdgeChrome | undefined>
   }
   scene: {
-    list: store.ReadStore<readonly {
-      kind: 'mindmap' | 'node' | 'edge'
-      id: string
-    }[]>
+    view: store.ReadStore<SceneSnapshot>
   }
   selection: {
+    view: store.ReadStore<SelectionView>
     node: EditorSelectionNodeRead
-    summary: store.ReadStore<SelectionSummary>
   }
   tool: SessionRead['tool']
   viewport: SessionRead['viewport']

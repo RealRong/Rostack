@@ -6,9 +6,8 @@ import type {
 } from '@dataview/engine/active/shared/selection'
 
 const EMPTY_ORDER = [] as readonly string[]
-const EMPTY_SELECTIONS = new Map<string, Selection>()
-const EMPTY_KEYS_BY_ID = new Map<RecordId, readonly string[]>()
-const EMPTY_KEYS = [] as readonly string[]
+const EMPTY_SELECTIONS = new Map<never, Selection>()
+const EMPTY_KEYS_BY_ID = new Map<RecordId, readonly never[]>()
 
 export interface Partition<K extends string> {
   order: readonly K[]
@@ -16,8 +15,17 @@ export interface Partition<K extends string> {
   keys: (id: RecordId) => readonly K[]
 }
 
-const SELECTIONS_CACHE = new WeakMap<object, ReadonlyMap<string, Selection>>()
-const KEYS_CACHE = new WeakMap<object, ReadonlyMap<RecordId, readonly string[]>>()
+class PartitionState<K extends string> implements Partition<K> {
+  constructor(
+    readonly order: readonly K[],
+    readonly byKey: ReadonlyMap<K, Selection>,
+    readonly keysById: ReadonlyMap<RecordId, readonly K[]>
+  ) {}
+
+  get = (key: K): Selection | undefined => this.byKey.get(key)
+
+  keys = (id: RecordId): readonly K[] => this.keysById.get(id) ?? []
+}
 
 export const createPartition = <K extends string>(input: {
   order: readonly K[]
@@ -34,22 +42,11 @@ export const createPartition = <K extends string>(input: {
     return input.previous
   }
 
-  const partition: Partition<K> = {
-    order: input.order,
-    get: key => input.byKey.get(key),
-    keys: id => input.keysById.get(id) ?? EMPTY_KEYS as readonly K[]
-  }
-
-  SELECTIONS_CACHE.set(
-    partition as unknown as object,
-    input.byKey as unknown as ReadonlyMap<string, Selection>
+  return new PartitionState(
+    input.order,
+    input.byKey,
+    input.keysById
   )
-  KEYS_CACHE.set(
-    partition as unknown as object,
-    input.keysById as unknown as ReadonlyMap<RecordId, readonly string[]>
-  )
-
-  return partition
 }
 
 export const EMPTY_PARTITION = createPartition({
@@ -60,12 +57,12 @@ export const EMPTY_PARTITION = createPartition({
 
 export const readPartitionSelections = <K extends string>(
   partition: Partition<K>
-): ReadonlyMap<K, Selection> => (
-  SELECTIONS_CACHE.get(partition as unknown as object) as ReadonlyMap<K, Selection> | undefined
-) ?? EMPTY_SELECTIONS as unknown as ReadonlyMap<K, Selection>
+): ReadonlyMap<K, Selection> => partition instanceof PartitionState
+  ? partition.byKey
+  : EMPTY_SELECTIONS
 
 export const readPartitionKeysById = <K extends string>(
   partition: Partition<K>
-): ReadonlyMap<RecordId, readonly K[]> => (
-  KEYS_CACHE.get(partition as unknown as object) as ReadonlyMap<RecordId, readonly K[]> | undefined
-) ?? EMPTY_KEYS_BY_ID as unknown as ReadonlyMap<RecordId, readonly K[]>
+): ReadonlyMap<RecordId, readonly K[]> => partition instanceof PartitionState
+  ? partition.keysById
+  : EMPTY_KEYS_BY_ID

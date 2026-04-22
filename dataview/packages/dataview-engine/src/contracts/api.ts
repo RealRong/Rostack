@@ -2,7 +2,6 @@ import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   Action,
   CalculationMetric,
-  CommitSummary,
   CustomField,
   CustomFieldId,
   CustomFieldKind,
@@ -19,9 +18,6 @@ import type {
   ViewType
 } from '@dataview/core/contracts'
 import type {
-  ValidationIssue
-} from '@dataview/engine/mutate/issues'
-import type {
   EngineCore
 } from '@dataview/engine/contracts/core'
 import type {
@@ -36,6 +32,9 @@ import type {
   PerformanceApi,
   PerformanceOptions
 } from '@dataview/engine/contracts/performance'
+import type {
+  ActionResult
+} from '@dataview/engine/contracts/result'
 
 export type { RecordFieldWriteManyInput } from '@dataview/core/contracts'
 export type {
@@ -60,30 +59,11 @@ export interface CreateEngineOptions {
   performance?: PerformanceOptions
 }
 
-export interface CommitResult {
-  issues: readonly ValidationIssue[]
-  applied: boolean
-  summary?: CommitSummary
-}
-
-export interface CreatedEntities {
-  records?: readonly RecordId[]
-  fields?: readonly CustomFieldId[]
-  views?: readonly ViewId[]
-}
-
-export interface ActionResult extends CommitResult {
-  created?: CreatedEntities
-}
-
 export interface EngineReadApi {
   document: () => DataDoc
   record: (recordId: RecordId) => DataRecord | undefined
   field: (fieldId: FieldId) => CustomField | undefined
   view: (viewId: ViewId) => View | undefined
-  activeViewId: () => ViewId | undefined
-  activeView: () => View | undefined
-  activeState: () => ViewState | undefined
 }
 
 export interface ViewsApi {
@@ -149,7 +129,6 @@ export interface RecordsApi {
 }
 
 export interface DocumentApi {
-  export: () => DataDoc
   replace: (document: DataDoc) => DataDoc
 }
 

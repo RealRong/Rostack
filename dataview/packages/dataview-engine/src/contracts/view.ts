@@ -54,8 +54,7 @@ export interface ViewFilterProjection {
 }
 
 export interface ViewGroupProjection {
-  active: boolean
-  fieldId: FieldId | ''
+  fieldId: FieldId
   field?: Field
   mode: string
   bucketSort?: BucketSort
@@ -83,7 +82,7 @@ export interface ViewSortProjection {
 export interface ActiveViewQuery {
   search: ViewSearchProjection
   filters: ViewFilterProjection
-  group: ViewGroupProjection
+  group?: ViewGroupProjection
   sort: ViewSortProjection
 }
 
@@ -152,8 +151,6 @@ export interface ActiveViewReadApi {
   section: (sectionKey: SectionKey) => Section | undefined
   placement: (itemId: ItemId) => ItemPlacement | undefined
   cell: (cell: CellRef) => ViewCell | undefined
-  filterField: (index: number) => Field | undefined
-  groupField: () => Field | undefined
 }
 
 export interface GalleryApi {

@@ -493,13 +493,13 @@ test('engine.core keeps active boundaries inside one active pipeline', () => {
       idEvents += 1
       previousViewId = nextViewId
     }
-    if (delta?.meta?.query) {
+    if (delta?.query) {
       sortEvents += 1
     }
   })
 
   assert.equal(engine.active.id(), VIEW_TABLE)
-  assert.equal(readViewState(engine)?.query.group.active, false)
+  assert.equal(readViewState(engine)?.query.group, undefined)
   assert.equal(readViewState(engine)?.query.sort.rules.length, 0)
 
   openView(engine, VIEW_TABLE).sort.add(FIELD_POINTS)
@@ -513,7 +513,7 @@ test('engine.core keeps active boundaries inside one active pipeline', () => {
   engine.views.open(VIEW_BOARD)
 
   assert.equal(engine.active.id(), VIEW_BOARD)
-  assert.equal(readViewState(engine)?.query.group.active, true)
+  assert.ok(readViewState(engine)?.query.group)
   assert.equal(readViewState(engine)?.query.group.fieldId, FIELD_STATUS)
   assert.equal(idEvents, 1)
 
@@ -1227,15 +1227,15 @@ test('engine.active state clears grouped summaries when filters leave every sect
   })
 
   assert.equal(
-    engine.read.activeState()?.summaries.get('todo')?.get(FIELD_STATUS)?.kind,
+    engine.active.state()?.summaries.get('todo')?.get(FIELD_STATUS)?.kind,
     'empty'
   )
   assert.equal(
-    engine.read.activeState()?.summaries.get('doing')?.get(FIELD_STATUS)?.kind,
+    engine.active.state()?.summaries.get('doing')?.get(FIELD_STATUS)?.kind,
     'empty'
   )
   assert.equal(
-    engine.read.activeState()?.summaries.get('done')?.get(FIELD_STATUS)?.kind,
+    engine.active.state()?.summaries.get('done')?.get(FIELD_STATUS)?.kind,
     'empty'
   )
 })

@@ -173,16 +173,16 @@ const createEdgeLabelDragState = (
     pointerId: number
   }
 ): EdgeLabelDragState | null => {
-  const item = ctx.projection.edge.item.get(input.edgeId)
+  const edge = ctx.projection.edge.view.get(input.edgeId)?.base.edge
   const view = ctx.projection.edge.geometry.get(input.edgeId)
   const ref = {
     edgeId: input.edgeId,
     labelId: input.labelId
   } as const
   if (
-    !item
+    !edge
     || !view
-    || !ctx.projection.edge.capability(item.edge).editLabel
+    || !ctx.projection.edge.capability(edge).editLabel
   ) {
     return null
   }
@@ -193,12 +193,12 @@ const createEdgeLabelDragState = (
   }
 
   return {
-    edge: item.edge,
+    edge,
     edgeId: input.edgeId,
     labelId: input.labelId,
     pointerId: input.pointerId,
     path: view.path,
-    textMode: item.edge.textMode,
+    textMode: edge.textMode,
     labelSize
   }
 }
@@ -265,8 +265,8 @@ export const startEdgeLabelPress = (
     return 'handled'
   }
 
-  const item = ctx.projection.edge.item.get(pointer.pick.id)
-  if (!item || !ctx.projection.edge.capability(item.edge).editLabel) {
+  const edge = ctx.projection.edge.view.get(pointer.pick.id)?.base.edge
+  if (!edge || !ctx.projection.edge.capability(edge).editLabel) {
     return 'handled'
   }
 

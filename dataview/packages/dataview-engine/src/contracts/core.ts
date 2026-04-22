@@ -5,7 +5,7 @@ import type {
 import type {
   ActionResult,
   CommitResult
-} from '@dataview/engine/contracts/api'
+} from '@dataview/engine/contracts/result'
 import type {
   HistoryState
 } from '@dataview/engine/contracts/history'
@@ -29,10 +29,6 @@ export interface EngineResult {
 
 export interface EngineCoreRead {
   result: () => EngineResult
-  snapshot: () => EngineSnapshot
-  delta: () => EngineDelta | undefined
-  document: () => DataDoc
-  active: () => ViewState | undefined
 }
 
 export interface EngineCoreCommit {

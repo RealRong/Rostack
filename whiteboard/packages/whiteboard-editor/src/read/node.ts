@@ -1,5 +1,6 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
-import { collection, equal, store } from '@shared/core'
+import { collection, store } from '@shared/core'
+import type { NodeView } from '@whiteboard/editor-graph'
 import type {
   Node,
   NodeGeometry,
@@ -8,7 +9,7 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
-import type { EditorPublishedSources } from '@whiteboard/editor/publish/sources'
+import type { ProjectionSources } from '@whiteboard/editor/projection/sources'
 import type {
   NodeTypeCapability,
   NodeTypeSupport
@@ -16,22 +17,14 @@ import type {
 
 export type NodeCapability = NodeTypeCapability
 
-export type ProjectedNode = {
-  nodeId: NodeId
-  node: NodeModel
-  rect: Rect
-  bounds: Rect
+export type GraphNodeGeometry = NodeGeometry & {
   rotation: number
 }
 
-export type ProjectedNodeGeometry = NodeGeometry & {
-  rotation: number
-}
-
-export type ProjectionNodeRead = {
+export type GraphNodeRead = {
   list: DocumentRead['node']['list']
   committed: DocumentRead['node']['committed']
-  projected: store.KeyedReadStore<NodeId, ProjectedNode | undefined>
+  view: store.KeyedReadStore<NodeId, NodeView | undefined>
   nodes: (nodeIds: readonly NodeId[]) => readonly NodeModel[]
   capability: (node: Pick<NodeModel, 'id' | 'type' | 'owner'>) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
@@ -42,7 +35,11 @@ export const toSpatialNode = ({
   node,
   rect,
   rotation
-}: Pick<ProjectedNode, 'node' | 'rect' | 'rotation'>): Node => ({
+}: {
+  node: NodeModel
+  rect: Rect
+  rotation: number
+}): Node => ({
   ...node,
   position: {
     x: rect.x,
@@ -55,9 +52,13 @@ export const toSpatialNode = ({
   rotation
 })
 
-export const toProjectedNodeGeometry = (
-  item: Pick<ProjectedNode, 'node' | 'rect' | 'rotation'>
-): ProjectedNodeGeometry => {
+export const toGraphNodeGeometry = (
+  item: {
+    node: NodeModel
+    rect: Rect
+    rotation: number
+  }
+): GraphNodeGeometry => {
   const spatial = toSpatialNode(item)
   const geometry = nodeApi.outline.geometry(
     spatial,
@@ -71,23 +72,7 @@ export const toProjectedNodeGeometry = (
   }
 }
 
-const isProjectedNodeEqual = (
-  left: ProjectedNode | undefined,
-  right: ProjectedNode | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.nodeId === right.nodeId
-    && left.node === right.node
-    && equal.sameRect(left.rect, right.rect)
-    && equal.sameRect(left.bounds, right.bounds)
-    && left.rotation === right.rotation
-  )
-)
-
-export const resolveProjectedNodeCapability = (
+export const resolveNodeCapability = (
   node: Pick<NodeModel, 'id' | 'type' | 'owner'>,
   type: Pick<NodeTypeSupport, 'capability'>
 ): NodeCapability => {
@@ -102,38 +87,20 @@ export const resolveProjectedNodeCapability = (
   }
 }
 
-export const createProjectionNodeRead = ({
+export const createGraphNodeRead = ({
   document,
-  published,
+  sources,
   type
 }: {
   document: Pick<DocumentRead, 'node'>
-  published: Pick<EditorPublishedSources, 'node'>
+  sources: Pick<ProjectionSources, 'node'>
   type: Pick<NodeTypeSupport, 'capability'>
-}): ProjectionNodeRead => {
-  const projected: ProjectionNodeRead['projected'] = store.createKeyedDerivedStore({
-    get: (nodeId: NodeId) => {
-      const current = store.read(published.node, nodeId)
-      if (!current) {
-        return undefined
-      }
-
-      return {
-        nodeId: current.base.node.id,
-        node: current.base.node,
-        rect: current.layout.rect,
-        bounds: current.layout.bounds,
-        rotation: current.layout.rotation
-      }
-    },
-    isEqual: isProjectedNodeEqual
-  })
-
+}): GraphNodeRead => {
   const readProjectedNodes = (
     nodeIds: readonly NodeId[]
-  ) => collection.presentValues(nodeIds, (nodeId) => store.read(projected, nodeId)?.node)
+  ) => collection.presentValues(nodeIds, (nodeId) => store.read(sources.node, nodeId)?.base.node)
 
-  const idsInRect: ProjectionNodeRead['idsInRect'] = (rect, options) => {
+  const idsInRect: GraphNodeRead['idsInRect'] = (rect, options) => {
     const match = options?.match ?? 'touch'
     const policy = options?.policy ?? 'default'
     const exclude = options?.exclude?.length
@@ -147,12 +114,16 @@ export const createProjectionNodeRead = ({
       match,
       policy,
       getEntry: (nodeId) => {
-        const current = store.read(projected, nodeId)
+        const current = store.read(sources.node, nodeId)
         return current
           ? {
-              node: toSpatialNode(current),
-              rect: current.rect,
-              rotation: current.rotation
+              node: toSpatialNode({
+                node: current.base.node,
+                rect: current.layout.rect,
+                rotation: current.layout.rotation
+              }),
+              rect: current.layout.rect,
+              rotation: current.layout.rotation
             }
           : undefined
       },
@@ -163,9 +134,9 @@ export const createProjectionNodeRead = ({
   return {
     list: document.node.list,
     committed: document.node.committed,
-    projected,
+    view: sources.node,
     nodes: readProjectedNodes,
-    capability: (node) => resolveProjectedNodeCapability(node, type),
+    capability: (node) => resolveNodeCapability(node, type),
     idsInRect,
     ordered: () => readProjectedNodes(store.read(document.node.list))
   }

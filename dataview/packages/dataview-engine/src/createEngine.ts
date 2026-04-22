@@ -8,7 +8,7 @@ import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
 import type {
   CreateEngineOptions,
   Engine
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/api'
 import { createActiveRuntime } from '@dataview/engine/active/runtime/runtime'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import { now } from '@dataview/engine/runtime/clock'
@@ -90,11 +90,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   }
   const core = {
     read: {
-      result: () => runtime.result(),
-      snapshot: () => runtime.result().snapshot,
-      delta: () => runtime.result().delta,
-      document: () => runtime.state().doc,
-      active: () => runtime.result().snapshot.active
+      result: () => runtime.result()
     },
     commit: {
       actions: (actions: readonly Action[]) => dispatch(actions),
@@ -110,23 +106,25 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     },
     subscribe: runtime.subscribe
   } satisfies Engine['core']
+  const readDocument = () => core.read.result().snapshot.doc
+  const readActiveState = () => core.read.result().snapshot.active
 
-  const readApi = createEngineReadApi(core)
+  const readApi = createEngineReadApi(readDocument)
   const fields = createFieldsApi({
-    document: core.read.document,
+    document: readDocument,
     dispatch
   })
   const records = createRecordsApi({
-    document: core.read.document,
+    document: readDocument,
     dispatch
   })
   const active = createActiveViewApi({
-    document: core.read.document,
-    core,
+    document: readDocument,
+    active: readActiveState,
     dispatch
   })
   const views = createViewsApi({
-    document: core.read.document,
+    document: readDocument,
     dispatch
   })
 
@@ -138,10 +136,9 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     fields,
     records,
     document: {
-      export: () => document.clone(core.read.document()),
       replace: (nextDocument: DataDoc) => {
         core.commit.replace(document.clone(nextDocument))
-        return document.clone(core.read.document())
+        return document.clone(readDocument())
       }
     },
     history: {

@@ -12,7 +12,7 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { ProjectionEdgeRead } from '@whiteboard/editor/projection/edge'
+import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   CANCEL,
@@ -107,19 +107,19 @@ const isEdgeRoutePick = (
 )
 
 const readEditableRouteView = (
-  edge: Pick<ProjectionEdgeRead, 'geometry' | 'item' | 'capability'>,
+  edge: Pick<GraphEdgeRead, 'geometry' | 'view' | 'capability'>,
   edgeId: EdgeId
 ): CoreEdgeView | undefined => {
   const view = edge.geometry.get(edgeId)
-  const item = edge.item.get(edgeId)
+  const edgeModel = edge.view.get(edgeId)?.base.edge
 
-  return view && item && edge.capability(item.edge).editRoute
+  return view && edgeModel && edge.capability(edgeModel).editRoute
     ? view
     : undefined
 }
 
 const resolveEdgeRoutePickTarget = (
-  edge: Pick<ProjectionEdgeRead, 'geometry' | 'item' | 'capability'>,
+  edge: Pick<GraphEdgeRead, 'geometry' | 'view' | 'capability'>,
   pick: PointerDownInput['pick']
 ): EdgeRouteHandleTarget | undefined => {
   if (!isEdgeRoutePick(pick)) {
@@ -208,7 +208,7 @@ const startEdgeRouteSegment = (input: {
 })
 
 export const tryStartEdgeRoute = (input: {
-  edge: Pick<ProjectionEdgeRead, 'geometry' | 'item' | 'capability'>
+  edge: Pick<GraphEdgeRead, 'geometry' | 'view' | 'capability'>
   pointer: PointerDownInput
 }): EdgeRouteStart | undefined => {
   const target = resolveEdgeRoutePickTarget(
@@ -240,10 +240,10 @@ export const tryStartEdgeRoute = (input: {
     }
   }
 
-  const item = input.edge.item.get(target.edgeId)
+  const edge = input.edge.view.get(target.edgeId)?.base.edge
   const view = readEditableRouteView(input.edge, target.edgeId)
 
-  if ((item?.edge.type === 'elbow' || item?.edge.type === 'fillet') && view) {
+  if ((edge?.type === 'elbow' || edge?.type === 'fillet') && view) {
     return {
       kind: 'session',
       state: startEdgeRouteSegment({
@@ -256,8 +256,8 @@ export const tryStartEdgeRoute = (input: {
         origin: target.point,
         pathPoints: view.path.points,
         baseRoutePoints:
-          item.edge.route?.kind === 'manual'
-            ? item.edge.route.points
+          edge.route?.kind === 'manual'
+            ? edge.route.points
             : []
       })
     }
@@ -484,7 +484,7 @@ const submitEdgeRouteCommit = (
     return
   }
 
-  const edge = ctx.projection.edge.item.get(commit.edgeId)?.edge
+  const edge = ctx.projection.edge.view.get(commit.edgeId)?.base.edge
   const pointId = edge
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
@@ -499,7 +499,7 @@ const createEdgeRouteSession = (
 ): InteractionSession => {
   let state = initial
   let interaction = null as InteractionSession | null
-  const baseEdge = ctx.projection.edge.item.get(initial.edgeId)?.edge
+  const baseEdge = ctx.projection.edge.view.get(initial.edgeId)?.base.edge
 
   const step = (
     pointer: {
@@ -507,8 +507,8 @@ const createEdgeRouteSession = (
       clientY: number
     }
   ) => {
-    const item = ctx.projection.edge.item.get(state.edgeId)
-    if (!item || !baseEdge || !ctx.projection.edge.capability(item.edge).editRoute) {
+    const edge = ctx.projection.edge.view.get(state.edgeId)?.base.edge
+    if (!edge || !baseEdge || !ctx.projection.edge.capability(edge).editRoute) {
       return CANCEL
     }
 
@@ -582,7 +582,7 @@ const commitInsertedRoute = (
   ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
-  const edge = ctx.projection.edge.item.get(input.edgeId)?.edge
+  const edge = ctx.projection.edge.view.get(input.edgeId)?.base.edge
   if (!edge) {
     return null
   }

@@ -368,7 +368,7 @@ export const createTableUiRuntime = (options: {
         columns: previousColumns,
         rowCount: layoutState.rowCount,
         measurementIds: layoutState.measurementIds,
-        grouped: currentView.query.group.active,
+        grouped: Boolean(currentView.query.group),
         showVerticalLines: currentView.showVerticalLines,
         wrap: currentView.wrap,
         blocks: windowState.items,

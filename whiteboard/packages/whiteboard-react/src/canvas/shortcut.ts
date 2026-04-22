@@ -51,7 +51,7 @@ const readActiveMindmapShortcut = (
     return undefined
   }
 
-  const node = editor.read.node.render.get(selection.nodeIds[0] ?? '')?.node
+  const node = editor.read.node.view.get(selection.nodeIds[0] ?? '')?.base.node
   if (node?.owner?.kind !== 'mindmap' || node.type !== 'text') {
     return undefined
   }

@@ -116,10 +116,10 @@ describe('mindmap root render', () => {
       nodeIds: [created.data.rootId]
     })
 
-    const rootRender = editor.read.node.render.get(created.data.rootId)
-    expect(rootRender?.canConnect).toBe(true)
-    expect(rootRender?.canResize).toBe(false)
-    expect(rootRender?.canRotate).toBe(false)
+    const rootCapability = editor.read.node.capability.get(created.data.rootId)
+    expect(rootCapability?.connect).toBe(true)
+    expect(rootCapability?.resize).toBe(false)
+    expect(rootCapability?.rotate).toBe(false)
 
     const chrome = editor.read.mindmap.chrome.get(created.data.mindmapId)
     expect(chrome?.addChildTargets.map((entry) => entry.placement)).toEqual([

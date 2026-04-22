@@ -14,9 +14,11 @@ import {
 import { string } from '@shared/core'
 import { createFieldId } from '@dataview/engine/mutate/entityId'
 import type {
-  ActionResult,
+  ActionResult
+} from '@dataview/engine/contracts/result'
+import type {
   FieldsApi
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/api'
 
 const getOptionField = (
   field?: CustomField

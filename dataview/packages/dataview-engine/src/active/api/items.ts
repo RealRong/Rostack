@@ -10,15 +10,17 @@ import { group as groupCore } from '@dataview/core/group'
 import { view as viewApi } from '@dataview/core/view'
 import { collection, equal } from '@shared/core'
 import type {
+  ItemId,
+  ItemList,
+  MoveTarget
+} from '@dataview/engine/contracts/shared'
+import type {
   ActiveCellsApi,
   ActiveItemsApi,
   ActiveViewReadApi,
-  ItemId,
-  ItemList,
   MovePlan,
-  MoveTarget,
   ViewState
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/view'
 import type { ActiveViewContext } from '@dataview/engine/active/api/context'
 
 const createMoveOrderAction = (
@@ -194,20 +196,20 @@ export const createActiveItemsApi = (input: {
   base: ActiveViewContext
   read: ActiveViewReadApi
 }): ActiveItemsApi => ({
-  planMove: (itemIds, target) => planMove(itemIds, target, input.base.snapshot),
+  planMove: (itemIds, target) => planMove(itemIds, target, input.base.state),
   move: (itemIds, target) => {
-    const state = input.base.snapshot()
+    const state = input.base.state()
     if (!state) {
       return
     }
 
-    const groupWrite = state.view.group && state.query.group.field
+    const groupWrite = state.view.group && state.query.group?.field
       ? {
           group: state.view.group,
           field: state.query.group.field
         }
       : undefined
-    const plan = planMove(itemIds, target, input.base.snapshot)
+    const plan = planMove(itemIds, target, input.base.state)
     if (!plan.changed || !plan.itemIds.length || !plan.recordIds.length) {
       return
     }
@@ -250,7 +252,7 @@ export const createActiveItemsApi = (input: {
     }
   },
   remove: itemIds => {
-    const state = input.base.snapshot()
+    const state = input.base.state()
     if (!state) {
       return
     }

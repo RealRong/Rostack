@@ -15,7 +15,7 @@ export const MindmapSceneItem = memo(({
 }: MindmapSceneItemProps) => {
   const editor = useEditorRuntime()
   const scene = useOptionalKeyedStoreValue(
-    editor.read.mindmap.scene,
+    editor.read.mindmap.view,
     mindmapId,
     undefined
   )
@@ -27,7 +27,7 @@ export const MindmapSceneItem = memo(({
   return (
     <>
       <MindmapConnectors mindmapId={mindmapId} />
-      {scene.nodeIds.map((nodeId) => (
+      {scene.structure.nodeIds.map((nodeId) => (
         <NodeBodyItem
           key={nodeId}
           nodeId={nodeId}

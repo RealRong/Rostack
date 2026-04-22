@@ -13,7 +13,7 @@ import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { ProjectionRead } from '@whiteboard/editor/projection/read'
+import type { GraphRead } from '@whiteboard/editor/read/graph'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
 
 export type MindmapDragState = CoreMindmapDragState
@@ -69,13 +69,14 @@ const previewMindmapDrag = (
 const readMindmapTreeView = (
   mindmap: {
     structure: DocumentRead['mindmap']['structure']
-    layout: ProjectionRead['mindmap']['layout']
+    layout: GraphRead['mindmap']['view']
   },
   treeId: NodeId
 ) => {
   const structure = mindmap.structure.get(treeId)
-  const layout = mindmap.layout.get(treeId)
-  if (!structure || !layout) {
+  const view = mindmap.layout.get(treeId)
+  const computed = view?.tree.layout
+  if (!structure || !computed) {
     return undefined
   }
 
@@ -83,7 +84,7 @@ const readMindmapTreeView = (
     id: structure.id,
     tree: structure.tree,
     layout: structure.layout,
-    computed: layout.computed
+    computed
   }
 }
 
@@ -92,7 +93,7 @@ export const tryStartMindmapDrag = (input: {
   pointer: PointerDownInput
   mindmap: {
     structure: DocumentRead['mindmap']['structure']
-    layout: ProjectionRead['mindmap']['layout']
+    layout: GraphRead['mindmap']['view']
   }
   node: Pick<DocumentRead, 'node'>
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
@@ -172,7 +173,7 @@ export const tryStartMindmapDragForNode = (input: {
   world: Point
   mindmap: {
     structure: DocumentRead['mindmap']['structure']
-    layout: ProjectionRead['mindmap']['layout']
+    layout: GraphRead['mindmap']['view']
   }
   node: Pick<DocumentRead, 'node'>
 }): MindmapDragState | undefined => {
@@ -229,7 +230,7 @@ const stepMindmapDrag = (input: {
   world: Point
   mindmap: {
     structure: DocumentRead['mindmap']['structure']
-    layout: ProjectionRead['mindmap']['layout']
+    layout: GraphRead['mindmap']['view']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
@@ -291,7 +292,7 @@ export const createMindmapDragSession = (
       world,
       mindmap: {
         structure: ctx.document.mindmap.structure,
-        layout: ctx.projection.mindmap.layout
+        layout: ctx.projection.mindmap.view
       }
     })
     interaction!.gesture = createGesture('mindmap-drag', {

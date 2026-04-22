@@ -30,7 +30,7 @@ import type {
   DocumentRead,
   MindmapStructureItem
 } from '@whiteboard/editor/document/read'
-import type { ProjectionRead } from '@whiteboard/editor/projection/read'
+import type { GraphRead } from '@whiteboard/editor/read/graph'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
@@ -148,7 +148,7 @@ const createEditActions = ({
 }: {
   session: Pick<EditorSession, 'state' | 'mutate'>
   document: Pick<DocumentRead, 'node' | 'edge'>
-  projection: Pick<ProjectionRead, 'node' | 'edge'>
+  projection: Pick<GraphRead, 'node' | 'edge'>
   write: Pick<EditorWrite, 'node' | 'edge'>
   registry: Pick<NodeRegistry, 'get'>
   layout: Pick<EditorLayout, 'draft'>
@@ -158,22 +158,22 @@ const createEditActions = ({
     field,
     options
   ) => {
-    const item = projection.node.projected.get(nodeId)
-    if (!item) {
+    const node = projection.node.view.get(nodeId)?.base.node
+    if (!node) {
       return
     }
 
     const capabilities = resolveNodeCapability({
       registry,
-      nodeType: item.node.type,
+      nodeType: node.type,
       field
     })
     if (!capabilities) {
       return
     }
 
-    const text = typeof item.node.data?.[field] === 'string'
-      ? item.node.data[field] as string
+    const text = typeof node.data?.[field] === 'string'
+      ? node.data[field] as string
       : ''
 
     session.mutate.edit.set({
@@ -191,7 +191,7 @@ const createEditActions = ({
     labelId,
     options
   ) => {
-    const edge = projection.edge.item.get(edgeId)?.edge
+    const edge = projection.edge.view.get(edgeId)?.base.edge
     const label = edge?.labels?.find((entry) => entry.id === labelId)
     if (!edge || !label) {
       return
@@ -389,20 +389,21 @@ const buildMindmapEnterPreview = ({
   anchorId
 }: {
   structure: DocumentRead['mindmap']['structure']
-  layout: ProjectionRead['mindmap']['layout']
+  layout: GraphRead['mindmap']['view']
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterPreview | undefined => {
   const currentStructure = structure.get(treeId)
-  const currentLayout = layout.get(treeId)
-  if (!currentStructure || !currentLayout) {
+  const currentView = layout.get(treeId)
+  const computed = currentView?.tree.layout
+  if (!currentStructure || !computed) {
     return undefined
   }
 
   const parentId = currentStructure.tree.nodes[nodeId]?.parentId
-  const toRect = currentLayout.computed.node[nodeId]
-  const anchorRect = currentLayout.computed.node[anchorId ?? parentId ?? '']
+  const toRect = computed.node[nodeId]
+  const anchorRect = computed.node[anchorId ?? parentId ?? '']
   if (!toRect || !parentId || !anchorRect) {
     return undefined
   }
@@ -524,12 +525,12 @@ const toEdgeUpdateInput = (
 const readMindmapIdForNodes = (
   input: {
     document: Pick<DocumentRead, 'mindmap' | 'node'>
-    projection: Pick<ProjectionRead, 'node'>
+    projection: Pick<GraphRead, 'node'>
     nodeIds: readonly NodeId[]
   }
 ): MindmapId | undefined => {
   const resolved = input.nodeIds.map((nodeId) => {
-    const projectedNode = input.projection.node.projected.get(nodeId)?.node
+    const projectedNode = input.projection.node.view.get(nodeId)?.base.node
     const committedNode = input.document.node.committed.get(nodeId)?.node
     const projectedOwner = projectedNode?.owner
     const committedOwner = committedNode?.owner
@@ -669,10 +670,10 @@ const buildMindmapRelativeInsertInput = ({
 }
 
 const readEdgeOrThrow = (
-  projection: Pick<ProjectionRead, 'edge'>,
+  projection: Pick<GraphRead, 'edge'>,
   edgeId: string
 ) => {
-  const edge = projection.edge.item.get(edgeId)?.edge
+  const edge = projection.edge.view.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }
@@ -691,7 +692,7 @@ export const createEditorActions = ({
 }: {
   document: DocumentRead
   session: EditorSession
-  projection: ProjectionRead
+  projection: GraphRead
   layout: EditorLayout
   write: EditorWrite
   registry: NodeRegistry
@@ -811,7 +812,7 @@ export const createEditorActions = ({
       if (options?.behavior?.enter === 'from-anchor') {
         const preview = buildMindmapEnterPreview({
           structure: document.mindmap.structure,
-          layout: projection.mindmap.layout,
+          layout: projection.mindmap.view,
           treeId: id,
           nodeId: result.data.nodeId,
           anchorId: readInsertAnchorId(input)
@@ -860,7 +861,7 @@ export const createEditorActions = ({
       if (input.behavior?.enter === 'from-anchor') {
         const preview = buildMindmapEnterPreview({
           structure: document.mindmap.structure,
-          layout: projection.mindmap.layout,
+          layout: projection.mindmap.view,
           treeId: input.id,
           nodeId: result.data.nodeId,
           anchorId: input.targetNodeId

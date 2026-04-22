@@ -1,8 +1,10 @@
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type {
-  CommitResult,
   HistoryState
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/history'
+import type {
+  CommitResult
+} from '@dataview/engine/contracts/result'
 import type {
   CoreRuntime
 } from '@dataview/engine/core/runtime'

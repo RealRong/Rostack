@@ -8,7 +8,7 @@ import { search } from '@dataview/core/search'
 import {
   sort
 } from '@dataview/core/sort'
-import type { ActiveViewApi } from '@dataview/engine/contracts'
+import type { ActiveViewApi } from '@dataview/engine/contracts/view'
 import type { ActiveViewContext } from '@dataview/engine/active/api/context'
 
 export const createSearchApi = (

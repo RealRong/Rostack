@@ -1,125 +1,83 @@
 import { store } from '@shared/core'
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { NodeId } from '@whiteboard/core/types'
 import type {
-  MindmapLayout,
-  MindmapRenderConnector
-} from '@whiteboard/core/mindmap'
-import type {
-  DocumentRead,
-  MindmapStructureItem
+  DocumentRead
 } from '@whiteboard/editor/document/read'
-import type { EditorPublishedSources } from '@whiteboard/editor/publish/sources'
+import type { ProjectionSources } from '@whiteboard/editor/projection/sources'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import {
-  createProjectionEdgeRead,
-  type ProjectionEdgeRead
+  createGraphEdgeRead,
+  type GraphEdgeRead
 } from './edge'
 import {
-  createProjectionNodeRead,
-  type ProjectionNodeRead
+  createGraphNodeRead,
+  type GraphNodeRead
 } from './node'
 import {
-  createProjectionSelectionRead,
-  type ProjectionSelectionRead
+  createGraphSelectionRead,
+  type GraphSelectionRead
 } from './selection'
 
-export type ProjectionMindmapLayout = {
-  id: string
-  rootId: NodeId
-  nodeIds: readonly NodeId[]
-  tree: MindmapStructureItem['tree']
-  layout: MindmapStructureItem['layout']
-  computed: MindmapLayout
-  connectors: readonly MindmapRenderConnector[]
-}
-
-export type ProjectionRead = {
-  snapshot: EditorPublishedSources['snapshot']
+export type GraphRead = {
+  snapshot: ProjectionSources['snapshot']
   scene: {
-    list: store.ReadStore<readonly {
-      kind: 'mindmap' | 'node' | 'edge'
-      id: string
-    }[]>
+    view: ProjectionSources['scene']
   }
-  node: ProjectionNodeRead
-  edge: ProjectionEdgeRead
-  selection: ProjectionSelectionRead
+  node: GraphNodeRead
+  edge: GraphEdgeRead
+  selection: GraphSelectionRead
   mindmap: {
-    layout: store.KeyedReadStore<NodeId, ProjectionMindmapLayout | undefined>
+    view: ProjectionSources['mindmap']
   }
+  group: {
+    view: ProjectionSources['group']
+  }
+  chrome: ProjectionSources['chrome']
+  graph: ProjectionSources['graph']
 }
 
-export const createProjectionRead = ({
+export const createGraphRead = ({
   document,
-  published,
+  sources,
   selection,
   nodeType
 }: {
-  document: Pick<DocumentRead, 'node' | 'edge' | 'mindmap'>
-  published: Pick<EditorPublishedSources, 'snapshot' | 'scene' | 'node' | 'edge' | 'mindmap'>
+  document: Pick<DocumentRead, 'node' | 'edge'>
+  sources: Pick<ProjectionSources, 'snapshot' | 'graph' | 'scene' | 'selection' | 'chrome' | 'node' | 'edge' | 'mindmap' | 'group'>
   selection: store.ReadStore<SelectionTarget>
   nodeType: NodeTypeSupport
-}): ProjectionRead => {
-  const node = createProjectionNodeRead({
+}): GraphRead => {
+  const node = createGraphNodeRead({
     document,
-    published,
+    sources,
     type: nodeType
   })
-  const edge = createProjectionEdgeRead({
+  const edge = createGraphEdgeRead({
     document,
-    published,
+    sources,
     node
-  })
-  const sceneList: ProjectionRead['scene']['list'] = store.createDerivedStore({
-    get: () => store.read(published.scene).items,
-    isEqual: (left, right) => left === right
-  })
-  const mindmapLayout: ProjectionRead['mindmap']['layout'] = store.createKeyedDerivedStore({
-    get: (mindmapId: NodeId) => {
-      const structure = store.read(document.mindmap.structure, mindmapId)
-      const current = store.read(published.mindmap, mindmapId)
-      const computed = current?.tree.layout
-      if (!structure || !current || !computed) {
-        return undefined
-      }
-
-      return {
-        id: structure.id,
-        rootId: structure.rootId,
-        nodeIds: structure.nodeIds,
-        tree: structure.tree,
-        layout: structure.layout,
-        computed,
-        connectors: current.render.connectors
-      }
-    },
-    isEqual: (left, right) => left === right || (
-      left !== undefined
-      && right !== undefined
-      && left.rootId === right.rootId
-      && left.nodeIds === right.nodeIds
-      && left.tree === right.tree
-      && left.layout === right.layout
-      && left.computed === right.computed
-      && left.connectors === right.connectors
-    )
   })
 
   return {
-    snapshot: published.snapshot,
+    snapshot: sources.snapshot,
     scene: {
-      list: sceneList
+      view: sources.scene
     },
     node,
     edge,
-    selection: createProjectionSelectionRead({
+    selection: createGraphSelectionRead({
       source: selection,
+      view: sources.selection,
       node,
       edge
     }),
     mindmap: {
-      layout: mindmapLayout
-    }
+      view: sources.mindmap
+    },
+    group: {
+      view: sources.group
+    },
+    chrome: sources.chrome,
+    graph: sources.graph
   }
 }

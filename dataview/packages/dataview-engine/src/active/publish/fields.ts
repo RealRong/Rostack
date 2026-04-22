@@ -9,7 +9,7 @@ import {
 } from '@dataview/core/field'
 import type {
   FieldList
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
 
 export const createFieldsProjection = (input: {
   fieldIds: readonly FieldId[]

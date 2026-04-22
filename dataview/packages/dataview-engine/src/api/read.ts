@@ -1,24 +1,16 @@
 import {
   document
 } from '@dataview/core/document'
+import type { DataDoc } from '@dataview/core/contracts'
 import type {
-  EngineCore,
   EngineReadApi
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/api'
 
 export const createEngineReadApi = (
-  core: EngineCore
+  readDocument: () => DataDoc
 ): EngineReadApi => ({
-  document: () => core.read.document(),
-  record: recordId => document.records.get(core.read.document(), recordId),
-  field: fieldId => document.fields.custom.get(core.read.document(), fieldId),
-  view: viewId => document.views.get(core.read.document(), viewId),
-  activeViewId: () => core.read.document().activeViewId,
-  activeView: () => {
-    const current = core.read.document()
-    return current.activeViewId
-      ? document.views.get(current, current.activeViewId)
-      : undefined
-  },
-  activeState: () => core.read.active()
+  document: readDocument,
+  record: recordId => document.records.get(readDocument(), recordId),
+  field: fieldId => document.fields.custom.get(readDocument(), fieldId),
+  view: viewId => document.views.get(readDocument(), viewId)
 })

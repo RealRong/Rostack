@@ -249,7 +249,7 @@ describe('text wrap runtime', () => {
   it('projects auto-width text rect from live edit layout before commit', () => {
     const editor = createAutoWidthTextEditor()
 
-    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+    expect(editor.read.node.view.get('text-1')?.layout.rect).toMatchObject({
       width: 100,
       height: 24
     })
@@ -261,7 +261,7 @@ describe('text wrap runtime', () => {
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+    expect(editor.read.node.view.get('text-1')?.layout.rect).toMatchObject({
       width: 280,
       height: 24
     })
@@ -291,7 +291,7 @@ describe('text wrap runtime', () => {
       widthMode: 'wrap',
       wrapWidth: 180
     })
-    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+    expect(editor.read.node.view.get('text-1')?.layout.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -303,7 +303,7 @@ describe('text wrap runtime', () => {
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+    expect(editor.read.node.view.get('text-1')?.layout.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -333,7 +333,7 @@ describe('text wrap runtime', () => {
     expect(editor.read.document.get().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+    expect(editor.read.node.view.get('text-1')?.layout.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -363,7 +363,7 @@ describe('text wrap runtime', () => {
     expect(editor.read.document.get().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.read.node.render.get('text-1')?.rect).toMatchObject({
+    expect(editor.read.node.view.get('text-1')?.layout.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -407,7 +407,7 @@ describe('sticky fit runtime', () => {
     expect(editor.read.document.get().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 18
     })
-    expect(editor.read.node.render.get('sticky-1')?.rect).toMatchObject({
+    expect(editor.read.node.view.get('sticky-1')?.layout.rect).toMatchObject({
       width: 100,
       height: 140
     })

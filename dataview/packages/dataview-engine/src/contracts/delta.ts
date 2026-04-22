@@ -23,12 +23,10 @@ export interface DocDelta {
 export interface ActiveDelta {
   reset?: true
   view?: true
-  meta?: {
-    query?: true
-    table?: true
-    gallery?: true
-    kanban?: true
-  }
+  query?: true
+  table?: true
+  gallery?: true
+  kanban?: true
   records?: {
     matched?: true
     ordered?: true

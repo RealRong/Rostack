@@ -9,7 +9,7 @@ import { EdgeCanvasMarkerDefs } from '@whiteboard/react/features/edge/ui/marker'
 
 export const CanvasScene = () => {
   const editor = useEditorRuntime()
-  const scene = useStoreValue(editor.read.scene.list)
+  const scene = useStoreValue(editor.read.scene.view).items
 
   return (
     <div className="wb-scene">

@@ -1,8 +1,6 @@
 import { scheduler, store } from '@shared/core'
 import {
   createEditorGraphRuntime,
-  type Change,
-  type Read,
   type Result,
   type Runtime,
   type Snapshot
@@ -11,16 +9,14 @@ import type { Engine } from '@whiteboard/engine'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import { createEditorGraphInput, type EditorGraphInputReason } from './input'
-import { createEditorGraphRead } from './read'
 import {
-  createEditorPublishedSources,
-  type EditorPublishedSources
-} from '../publish/sources'
+  createProjectionSources,
+  type ProjectionSources
+} from './sources'
 
-export interface EditorGraphDriver {
+export interface ProjectionDriver {
   runtime: Runtime
-  read: Read
-  sources: EditorPublishedSources
+  sources: ProjectionSources
   snapshot(): Snapshot
   result(): Result | null
   update(reasons: readonly EditorGraphInputReason[]): Result
@@ -37,7 +33,7 @@ const FULL_REASONS: readonly EditorGraphInputReason[] = [
   'clock'
 ] as const
 
-export const createEditorGraphDriver = ({
+export const createProjectionDriver = ({
   engine,
   session,
   layout
@@ -45,7 +41,7 @@ export const createEditorGraphDriver = ({
   engine: Engine
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
   layout: Pick<EditorLayout, 'draft'>
-}): EditorGraphDriver => {
+}): ProjectionDriver => {
   const runtime = createEditorGraphRuntime()
   const snapshotStore = store.createValueStore(runtime.snapshot())
   let currentResult: Result | null = null
@@ -132,8 +128,7 @@ export const createEditorGraphDriver = ({
 
   return {
     runtime,
-    read: createEditorGraphRead(runtime),
-    sources: createEditorPublishedSources(snapshotStore),
+    sources: createProjectionSources(snapshotStore),
     snapshot: () => snapshotStore.get(),
     result: () => currentResult,
     update,

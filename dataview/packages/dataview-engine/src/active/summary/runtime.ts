@@ -24,9 +24,11 @@ import type {
   SummaryPhaseState as SummaryState
 } from '@dataview/engine/active/state'
 import type {
-  SectionKey,
   ViewStageMetrics
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/performance'
+import type {
+  SectionKey
+} from '@dataview/engine/contracts/shared'
 import { now } from '@dataview/engine/runtime/clock'
 
 export {

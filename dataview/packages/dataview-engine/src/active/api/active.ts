@@ -3,10 +3,12 @@ import type {
   DataDoc
 } from '@dataview/core/contracts'
 import type {
-  ActionResult,
+  ActionResult
+} from '@dataview/engine/contracts/result'
+import type {
   ActiveViewApi,
-  EngineCore
-} from '@dataview/engine/contracts'
+  ViewState
+} from '@dataview/engine/contracts/view'
 import { createActiveContext } from '@dataview/engine/active/api/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/api/read'
 import {
@@ -31,12 +33,12 @@ import {
 
 export const createActiveViewApi = (options: {
   document: () => DataDoc
-  core: EngineCore
+  active: () => ViewState | undefined
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): ActiveViewApi => {
   const base = createActiveContext({
     document: options.document,
-    active: options.core.read.active,
+    active: options.active,
     dispatch: options.dispatch
   })
   const readApi = createActiveViewReadApi({

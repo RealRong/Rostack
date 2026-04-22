@@ -7,9 +7,11 @@ import type {
 } from '@dataview/core/contracts'
 import type { DocumentReader } from '@dataview/engine/document/reader'
 import type {
-  ViewRecords,
+  ViewRecords
+} from '@dataview/engine/contracts/shared'
+import type {
   ViewStageMetrics
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/performance'
 import {
   type QueryPlan
 } from '@dataview/engine/active/plan'

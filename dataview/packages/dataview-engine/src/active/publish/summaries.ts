@@ -12,7 +12,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   SectionKey
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
 import type {
   SummaryPhaseState as SummaryState
 } from '@dataview/engine/active/state'

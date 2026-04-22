@@ -23,16 +23,16 @@ import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { ProjectionEdgeRead } from '@whiteboard/editor/projection/edge'
+import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
 import {
-  toProjectedNodeGeometry,
+  toGraphNodeGeometry,
   toSpatialNode,
-  type ProjectionNodeRead
-} from '@whiteboard/editor/projection/node'
+  type GraphNodeRead
+} from '@whiteboard/editor/read/node'
 
-type EdgeConnectNodeRead = Pick<ProjectionNodeRead, 'projected' | 'capability'>
-type EdgeConnectPreviewNodeRead = Pick<ProjectionNodeRead, 'projected'>
-type EdgeConnectEdgeRead = Pick<ProjectionEdgeRead, 'item' | 'geometry' | 'capability'>
+type EdgeConnectNodeRead = Pick<GraphNodeRead, 'view' | 'capability'>
+type EdgeConnectPreviewNodeRead = Pick<GraphNodeRead, 'view'>
+type EdgeConnectEdgeRead = Pick<GraphEdgeRead, 'view' | 'geometry' | 'capability'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
 }) => EdgeConnectEvaluation
@@ -62,7 +62,7 @@ type EdgeConnectGestureInput = {
 }
 
 type ConnectNodeEntry = NonNullable<
-  ReturnType<EdgeConnectNodeRead['projected']['get']>
+  ReturnType<EdgeConnectNodeRead['view']['get']>
 >
 
 const EMPTY_MODIFIERS: ModifierKeys = {
@@ -100,8 +100,9 @@ const readConnectNode = (
   node: EdgeConnectNodeRead,
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
-  const entry = node.projected.get(nodeId)
-  if (!entry || entry.node.locked || !node.capability(entry.node).connect) {
+  const entry = node.view.get(nodeId)
+  const currentNode = entry?.base.node
+  if (!entry || !currentNode || currentNode.locked || !node.capability(currentNode).connect) {
     return undefined
   }
 
@@ -184,10 +185,14 @@ const resolveNodeHandleStart = (input: {
     nodeId: pick.id,
     anchor,
     point: nodeApi.outline.anchor(
-      toSpatialNode(entry),
-      entry.rect,
+      toSpatialNode({
+        node: entry.base.node,
+        rect: entry.layout.rect,
+        rotation: entry.layout.rotation
+      }),
+      entry.layout.rect,
       anchor,
-      entry.rotation
+      entry.layout.rotation
     )
   })
 }
@@ -213,9 +218,13 @@ const resolveNodeBodyStart = (input: {
   }
 
   const resolved = edgeApi.anchor.resolveFromPoint({
-    node: toSpatialNode(entry),
-    rect: entry.rect,
-    rotation: entry.rotation,
+    node: toSpatialNode({
+      node: entry.base.node,
+      rect: entry.layout.rect,
+      rotation: entry.layout.rotation
+    }),
+    rect: entry.layout.rect,
+    rotation: entry.layout.rotation,
     pointWorld: input.pointer.world,
     zoom: input.zoom,
     config: input.config
@@ -247,13 +256,13 @@ const resolveReconnectStart = (input: {
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const item = input.edge.item.get(input.edgeId)
+  const edge = input.edge.view.get(input.edgeId)?.base.edge
   const resolved = input.edge.geometry.get(input.edgeId)
-  if (!item || !resolved) {
+  if (!edge || !resolved) {
     return undefined
   }
 
-  const capability = input.edge.capability(item.edge)
+  const capability = input.edge.capability(edge)
   if (
     (input.end === 'source' && !capability.reconnectSource)
     || (input.end === 'target' && !capability.reconnectTarget)
@@ -266,7 +275,7 @@ const resolveReconnectStart = (input: {
     edgeId: input.edgeId,
     end: input.end,
     from: edgeApi.connect.resolveReconnectDraftEnd({
-      end: item.edge[input.end],
+      end: edge[input.end],
       point: resolved.ends[input.end].point,
       anchor: resolved.ends[input.end].anchor,
       anchorOffset: edgeApi.connect.defaultAnchorOffset
@@ -349,13 +358,21 @@ const readPreviewNodeSnapshot = (
   nodeId: NodeId
 ): {
   node: ReturnType<typeof toSpatialNode>
-  geometry: ReturnType<typeof toProjectedNodeGeometry>
+  geometry: ReturnType<typeof toGraphNodeGeometry>
 } | undefined => {
-  const projected = node.projected.get(nodeId)
-  return projected
+  const view = node.view.get(nodeId)
+  return view
     ? {
-        node: toSpatialNode(projected),
-        geometry: toProjectedNodeGeometry(projected)
+        node: toSpatialNode({
+          node: view.base.node,
+          rect: view.layout.rect,
+          rotation: view.layout.rotation
+        }),
+        geometry: toGraphNodeGeometry({
+          node: view.base.node,
+          rect: view.layout.rect,
+          rotation: view.layout.rotation
+        })
       }
     : undefined
 }

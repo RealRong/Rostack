@@ -126,15 +126,19 @@ const createActions = (edge = createEdge()) => {
     } as never,
     projection: {
       node: {
-        projected: {
+        view: {
           get: vi.fn(() => undefined)
         }
       },
       edge: {
-        item: {
+        view: {
           get: vi.fn((edgeId: string) => (
             edgeId === edge.id
-              ? { edge }
+              ? {
+                  base: {
+                    edge
+                  }
+                }
               : undefined
           ))
         },
@@ -150,7 +154,7 @@ const createActions = (edge = createEdge()) => {
         }
       },
       mindmap: {
-        layout: {
+        view: {
           get: vi.fn(() => undefined)
         }
       }

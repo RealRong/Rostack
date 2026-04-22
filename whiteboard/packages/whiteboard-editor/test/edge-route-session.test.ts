@@ -36,9 +36,11 @@ const createDeps = () => {
     ctx: {
       projection: {
         edge: {
-          item: {
+          view: {
             get: () => ({
-              edge
+              base: {
+                edge
+              }
             })
           },
           capability: () => ({

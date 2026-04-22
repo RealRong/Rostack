@@ -101,11 +101,11 @@ export const createGalleryModel = (input: {
         return null
       }
 
-      const gallery = store.read(input.source.active.meta.gallery)
+      const gallery = store.read(input.source.active.gallery)
       return {
         viewId,
         empty: store.read(input.source.active.items.ids).length === 0,
-        grouped: store.read(input.source.active.meta.query).group.active,
+        grouped: Boolean(store.read(input.source.active.query).group),
         size: gallery.size,
         canDrag: gallery.canReorder,
         groupUsesOptionColors: gallery.groupUsesOptionColors
@@ -148,7 +148,7 @@ export const createGalleryModel = (input: {
         return undefined
       }
 
-      const gallery = store.read(input.source.active.meta.gallery)
+      const gallery = store.read(input.source.active.gallery)
       return {
         viewId,
         itemId,

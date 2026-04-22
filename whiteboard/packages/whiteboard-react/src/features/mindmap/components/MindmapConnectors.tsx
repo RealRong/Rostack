@@ -24,13 +24,14 @@ export const MindmapConnectors = memo(({
   mindmapId
 }: MindmapConnectorsProps) => {
   const editor = useEditorRuntime()
-  const scene = useOptionalKeyedStoreValue(
-    editor.read.mindmap.scene,
+  const mindmap = useOptionalKeyedStoreValue(
+    editor.read.mindmap.view,
     mindmapId,
     undefined
   )
 
-  if (!scene) {
+  const bbox = mindmap?.tree.bbox
+  if (!mindmap || !bbox) {
     return null
   }
 
@@ -39,19 +40,19 @@ export const MindmapConnectors = memo(({
       className="wb-mindmap-tree"
       data-mindmap-id={mindmapId}
       style={{
-        width: scene.bbox.width,
-        height: scene.bbox.height,
-        transform: `translate(${scene.bbox.x}px, ${scene.bbox.y}px)`,
+        width: bbox.width,
+        height: bbox.height,
+        transform: `translate(${bbox.x}px, ${bbox.y}px)`,
         pointerEvents: 'none'
       }}
     >
       <svg
-        width={scene.bbox.width}
-        height={scene.bbox.height}
-        viewBox={`${scene.bbox.x} ${scene.bbox.y} ${scene.bbox.width} ${scene.bbox.height}`}
+        width={bbox.width}
+        height={bbox.height}
+        viewBox={`${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`}
         className="wb-mindmap-tree-canvas"
       >
-        {scene.connectors.map((connector) => (
+        {mindmap.render.connectors.map((connector) => (
           <path
             key={connector.id}
             d={connector.path}

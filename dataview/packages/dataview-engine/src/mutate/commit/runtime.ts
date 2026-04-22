@@ -47,7 +47,7 @@ import type {
   ActionResult,
   CommitResult,
   CreatedEntities
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/result'
 import {
   clearHistory,
   clearRedo,
@@ -223,7 +223,7 @@ const commit = <TResult extends CommitResult>(input: {
     impact: baseImpact,
     demand: plan?.index
   })
-  const previousActive = input.runtime.result().snapshot.active
+
   const nextView = input.activeRuntime.update({
     read: {
       reader: documentContext.reader,

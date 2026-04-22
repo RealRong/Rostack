@@ -10,7 +10,7 @@ import {
   createPlan,
   type RuntimePlanner
 } from '@shared/projection-runtime'
-import type { ViewState } from '@dataview/engine/contracts'
+import type { ViewState } from '@dataview/engine/contracts/view'
 import type {
   ActivePhaseName,
   ActiveRuntimeRunInput

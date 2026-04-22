@@ -7,14 +7,16 @@ import {
 import { node as nodeApi } from '@whiteboard/core/node'
 import { store } from '@shared/core'
 import type { EdgeId, NodeId } from '@whiteboard/core/types'
+import type { ProjectionSources } from '@whiteboard/editor/projection/sources'
 import type {
   SelectionMembers,
   SelectionModel
 } from '@whiteboard/editor/types/selectionPresentation'
-import type { ProjectionEdgeRead } from './edge'
-import type { ProjectionNodeRead } from './node'
+import type { GraphEdgeRead } from './edge'
+import type { GraphNodeRead } from './node'
 
-export type ProjectionSelectionRead = {
+export type GraphSelectionRead = {
+  view: ProjectionSources['selection']
   members: store.ReadStore<SelectionMembers>
   summary: store.ReadStore<SelectionSummary>
   affordance: store.ReadStore<SelectionAffordance>
@@ -57,7 +59,7 @@ const readSelectionMembersKey = (
 ) => `${target.nodeIds.join('\0')}\u0001${target.edgeIds.join('\0')}`
 
 const readNodeTransformCapability = (
-  node: Pick<ProjectionNodeRead, 'capability'>,
+  node: Pick<GraphNodeRead, 'capability'>,
   entry: SelectionMembers['nodes'][number]
 ) => {
   const capability = node.capability(entry)
@@ -74,8 +76,8 @@ const createSelectionModelRead = ({
   edge
 }: {
   source: store.ReadStore<SelectionTarget>
-  node: ProjectionNodeRead
-  edge: Pick<ProjectionEdgeRead, 'edges' | 'bounds'>
+  node: GraphNodeRead
+  edge: Pick<GraphEdgeRead, 'edges' | 'bounds'>
 }): SelectionModelRead => {
   const members = store.createDerivedStore<SelectionMembers>({
     get: () => {
@@ -103,7 +105,7 @@ const createSelectionModelRead = ({
         target: current.target,
         nodes: current.nodes,
         edges: current.edges,
-        readNodeRect: (entry) => store.read(node.projected, entry.id)?.rect,
+        readNodeRect: (entry) => store.read(node.view, entry.id)?.layout.rect,
         readEdgeBounds: (entry) => store.read(edge.bounds, entry.id),
         resolveNodeTransformBehavior: (entry) => nodeApi.transform.resolveBehavior(entry, {
           role: node.capability(entry).role,
@@ -133,15 +135,17 @@ const createSelectionModelRead = ({
   })
 }
 
-export const createProjectionSelectionRead = ({
+export const createGraphSelectionRead = ({
   source,
+  view,
   node,
   edge
 }: {
   source: store.ReadStore<SelectionTarget>
-  node: ProjectionNodeRead
-  edge: Pick<ProjectionEdgeRead, 'edges' | 'bounds'>
-}): ProjectionSelectionRead => {
+  view: ProjectionSources['selection']
+  node: GraphNodeRead
+  edge: Pick<GraphEdgeRead, 'edges' | 'bounds'>
+}): GraphSelectionRead => {
   const model = createSelectionModelRead({
     source,
     node,
@@ -164,6 +168,7 @@ export const createProjectionSelectionRead = ({
   })
 
   return {
+    view,
     members,
     summary,
     affordance,

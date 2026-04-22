@@ -76,34 +76,17 @@ export const projectActiveDelta = (input: {
 
   const previous = input.previous
   const next = input.next
-  const meta = (
-    previous.query !== next.query
-    || previous.table !== next.table
-    || previous.gallery !== next.gallery
-    || previous.kanban !== next.kanban
-  )
-    ? {
-        ...(previous.query !== next.query
-          ? {
-              query: true as const
-            }
-          : {}),
-        ...(previous.table !== next.table
-          ? {
-              table: true as const
-            }
-          : {}),
-        ...(previous.gallery !== next.gallery
-          ? {
-              gallery: true as const
-            }
-          : {}),
-        ...(previous.kanban !== next.kanban
-          ? {
-              kanban: true as const
-            }
-          : {})
-      }
+  const query = previous.query !== next.query
+    ? true as const
+    : undefined
+  const table = previous.table !== next.table
+    ? true as const
+    : undefined
+  const gallery = previous.gallery !== next.gallery
+    ? true as const
+    : undefined
+  const kanban = previous.kanban !== next.kanban
+    ? true as const
     : undefined
   const records = (
     previous.records.matched !== next.records.matched
@@ -147,7 +130,10 @@ export const projectActiveDelta = (input: {
   })
 
   return previous.view !== next.view
-    || meta
+    || query
+    || table
+    || gallery
+    || kanban
     || records
     || all
     || custom
@@ -160,9 +146,24 @@ export const projectActiveDelta = (input: {
               view: true as const
             }
           : {}),
-        ...(meta
+        ...(query
           ? {
-              meta
+              query
+            }
+          : {}),
+        ...(table
+          ? {
+              table
+            }
+          : {}),
+        ...(gallery
+          ? {
+              gallery
+            }
+          : {}),
+        ...(kanban
+          ? {
+              kanban
             }
           : {}),
         ...(records

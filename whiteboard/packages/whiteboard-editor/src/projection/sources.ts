@@ -12,7 +12,7 @@ import type {
   Snapshot
 } from '@whiteboard/editor-graph'
 
-export interface EditorPublishedSources {
+export interface ProjectionSources {
   snapshot: store.ReadStore<Snapshot>
   graph: store.ReadStore<GraphSnapshot>
   scene: store.ReadStore<SceneSnapshot>
@@ -24,9 +24,9 @@ export interface EditorPublishedSources {
   group: store.KeyedReadStore<string, GroupView | undefined>
 }
 
-export const createEditorPublishedSources = (
+export const createProjectionSources = (
   snapshot: store.ReadStore<Snapshot>
-): EditorPublishedSources => ({
+): ProjectionSources => ({
   snapshot,
   graph: store.createProjectedStore({
     source: snapshot,

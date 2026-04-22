@@ -2,7 +2,7 @@ import {
   impact as commitImpact
 } from '@dataview/core/commit/impact'
 import type { CommitImpact } from '@dataview/core/contracts'
-import type { TraceImpactSummary } from '@dataview/engine/contracts'
+import type { TraceImpactSummary } from '@dataview/engine/contracts/performance'
 
 type WriteKind =
   | 'write'

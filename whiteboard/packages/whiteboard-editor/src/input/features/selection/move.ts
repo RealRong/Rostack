@@ -13,7 +13,7 @@ import type {
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { toSpatialNode } from '@whiteboard/editor/projection/node'
+import { toSpatialNode } from '@whiteboard/editor/read/node'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -98,7 +98,7 @@ export const createMoveInteraction = (
       world: input.start.world,
       mindmap: {
         structure: ctx.document.mindmap.structure,
-        layout: ctx.projection.mindmap.layout
+        layout: ctx.projection.mindmap.view
       },
       node: ctx.document
     })
@@ -119,8 +119,14 @@ export const createMoveInteraction = (
 
   const initialState = nodeApi.move.state.start({
     nodes: ctx.projection.node.ordered().flatMap((node) => {
-      const projected = ctx.projection.node.projected.get(node.id)
-      return projected ? [toSpatialNode(projected)] : []
+      const view = ctx.projection.node.view.get(node.id)
+      return view
+        ? [toSpatialNode({
+            node: view.base.node,
+            rect: view.layout.rect,
+            rotation: view.layout.rotation
+          })]
+        : []
     }),
     edges: ctx.projection.edge.edges(ctx.document.edge.list.get()),
     target: input.target,

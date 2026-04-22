@@ -8,10 +8,12 @@ import {
 } from '@dataview/core/document'
 import { collection } from '@shared/core'
 import type {
-  ActionResult,
   RecordFieldWriteManyInput,
   RecordsApi
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/api'
+import type {
+  ActionResult
+} from '@dataview/engine/contracts/result'
 
 export const createRecordsApi = (options: {
   document: () => DataDoc

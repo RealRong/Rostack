@@ -11,10 +11,14 @@ import type {
   ItemList,
   SectionList,
   ViewRecords,
-  ViewStageMetrics,
-  ViewState,
   ViewSummaries
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
+import type {
+  ViewStageMetrics
+} from '@dataview/engine/contracts/performance'
+import type {
+  ViewState
+} from '@dataview/engine/contracts/view'
 import type {
   MembershipPhaseState as MembershipState,
   SummaryPhaseDelta as SummaryDelta,

@@ -38,7 +38,7 @@ import {
 } from '@dataview/engine/active/shared/sections'
 import type {
   SectionKey
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
 import type {
   MembershipMetaState,
   MembershipRecordChange,

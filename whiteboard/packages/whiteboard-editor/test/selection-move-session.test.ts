@@ -58,29 +58,33 @@ describe('createMoveInteraction', () => {
               text: 'node-1'
             }
           }],
-          projected: {
+          view: {
             get: () => ({
-              nodeId: 'node-1',
-              node: {
-                id: 'node-1',
-                type: 'text',
-                data: {
-                  text: 'node-1'
+              base: {
+                node: {
+                  id: 'node-1',
+                  type: 'text',
+                  data: {
+                    text: 'node-1'
+                  }
                 }
               },
-              rect: {
-                x: 100,
-                y: 120,
-                width: 120,
-                height: 40
+              layout: {
+                rect: {
+                  x: 100,
+                  y: 120,
+                  width: 120,
+                  height: 40
+                },
+                bounds: {
+                  x: 100,
+                  y: 120,
+                  width: 120,
+                  height: 40
+                },
+                rotation: 0
               },
-              bounds: {
-                x: 100,
-                y: 120,
-                width: 120,
-                height: 40
-              },
-              rotation: 0
+              render: {}
             })
           }
         },
@@ -102,7 +106,7 @@ describe('createMoveInteraction', () => {
           }],
         },
         mindmap: {
-          layout: {
+          view: {
             get: vi.fn(() => undefined)
           }
         }

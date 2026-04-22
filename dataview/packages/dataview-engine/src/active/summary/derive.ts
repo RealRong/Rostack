@@ -23,7 +23,7 @@ import {
 } from '@dataview/engine/active/shared/reduce'
 import type {
   SectionKey
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
 import type {
   MembershipPhaseDelta as MembershipDelta,
   MembershipPhaseState as MembershipState,

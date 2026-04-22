@@ -1,5 +1,4 @@
 import type {
-  BucketSort,
   Field,
   FieldId,
   FilterConditionProjection,
@@ -20,28 +19,13 @@ import type {
   ViewGroupProjection,
   ViewSearchProjection,
   ViewSortProjection
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/view'
 import {
   sameList,
   sameOptionalList,
   sameOptionalProjection
 } from '@dataview/engine/active/publish/reuse'
 import { equal } from '@shared/core'
-
-const EMPTY_MODES = [] as readonly string[]
-const EMPTY_BUCKET_SORTS = [] as readonly BucketSort[]
-const EMPTY_VIEW_GROUP_PROJECTION: ViewGroupProjection = {
-  active: false,
-  fieldId: '',
-  field: undefined,
-  mode: '',
-  bucketSort: undefined,
-  bucketInterval: undefined,
-  showEmpty: true,
-  availableModes: EMPTY_MODES,
-  availableBucketSorts: EMPTY_BUCKET_SORTS,
-  supportsInterval: false
-}
 
 const createSearchProjection = (
   search: View['search']
@@ -112,21 +96,18 @@ const createSortProjection = (input: {
   }))
 })
 
-const createInactiveGroupProjection = (): ViewGroupProjection => EMPTY_VIEW_GROUP_PROJECTION
-
 const createGroupProjection = (input: {
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
-}): ViewGroupProjection => {
+}): ViewGroupProjection | undefined => {
   const group = input.view.group
   if (!group) {
-    return createInactiveGroupProjection()
+    return undefined
   }
 
   const field = input.fieldsById.get(group.field)
   if (!field) {
     return {
-      active: true,
       fieldId: group.field,
       field: undefined,
       mode: group.mode,
@@ -148,7 +129,6 @@ const createGroupProjection = (input: {
   })
 
   return {
-    active: true,
     fieldId: field.id,
     field,
     mode: meta.mode,
@@ -215,8 +195,7 @@ const equalGroupProjection = (
   left: ViewGroupProjection | undefined,
   right: ViewGroupProjection | undefined
 ) => sameOptionalProjection(left, right, (current, next) => (
-  current.active === next.active
-  && current.fieldId === next.fieldId
+  current.fieldId === next.fieldId
   && current.field === next.field
   && current.mode === next.mode
   && current.bucketSort === next.bucketSort

@@ -5,44 +5,37 @@ import {
 } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { collection, equal, store } from '@shared/core'
+import type { EdgeView } from '@whiteboard/editor-graph'
 import type {
   Edge,
   EdgeId,
   NodeId,
-  NodeModel,
-  Point,
   Rect,
   Size
 } from '@whiteboard/core/types'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
-import type { EditorPublishedSources } from '@whiteboard/editor/publish/sources'
+import type { ProjectionSources } from '@whiteboard/editor/projection/sources'
 import {
   readEdgeBox,
   resolveEdgeCapability,
   type EdgeBox,
   type EdgeCapability
-} from '@whiteboard/editor/projection/edgeShared'
+} from '@whiteboard/editor/read/edgeShared'
 import {
-  toProjectedNodeGeometry,
+  toGraphNodeGeometry,
   toSpatialNode,
-  type ProjectionNodeRead,
-  type ProjectedNode
-} from '@whiteboard/editor/projection/node'
+  type GraphNodeRead
+} from '@whiteboard/editor/read/node'
 
 export type EdgeLabelRef = {
   edgeId: EdgeId
   labelId: string
 }
 
-export type ProjectionEdgeItem = {
-  id: EdgeId
-  edge: Edge
-}
-
-export type ProjectionEdgeRead = {
+export type GraphEdgeRead = {
   list: DocumentRead['edge']['list']
   committed: DocumentRead['edge']['item']
-  item: store.KeyedReadStore<EdgeId, ProjectionEdgeItem | undefined>
+  view: store.KeyedReadStore<EdgeId, EdgeView | undefined>
   geometry: store.KeyedReadStore<EdgeId, CoreEdgeView | undefined>
   edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
   label: {
@@ -57,19 +50,6 @@ export type ProjectionEdgeRead = {
   }) => EdgeId[]
   connectCandidates: (rect: Rect) => readonly EdgeConnectCandidate[]
 }
-
-const isProjectionEdgeItemEqual = (
-  left: ProjectionEdgeItem | undefined,
-  right: ProjectionEdgeItem | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.id === right.id
-    && left.edge === right.edge
-  )
-)
 
 const isEdgePathSegmentEqual = (
   left: CoreEdgeView['path']['segments'][number],
@@ -147,42 +127,50 @@ const isEdgeGeometryEqual = (
 )
 
 const readResolvedNodeSnapshot = (
-  readNode: Pick<ProjectionNodeRead, 'projected'>,
+  readNode: Pick<GraphNodeRead, 'view'>,
   edgeEnd: Edge['source'] | Edge['target']
 ): {
   node: ReturnType<typeof toSpatialNode>
-  geometry: ReturnType<typeof toProjectedNodeGeometry>
+  geometry: ReturnType<typeof toGraphNodeGeometry>
 } | undefined => {
   if (edgeEnd.kind !== 'node') {
     return undefined
   }
 
-  const projected = store.read(readNode.projected, edgeEnd.nodeId)
-  return projected
+  const view = store.read(readNode.view, edgeEnd.nodeId)
+  return view
     ? {
-        node: toSpatialNode(projected),
-        geometry: toProjectedNodeGeometry(projected)
+        node: toSpatialNode({
+          node: view.base.node,
+          rect: view.layout.rect,
+          rotation: view.layout.rotation
+        }),
+        geometry: toGraphNodeGeometry({
+          node: view.base.node,
+          rect: view.layout.rect,
+          rotation: view.layout.rotation
+        })
       }
     : undefined
 }
 
 const readEdgeGeometry = (
-  node: Pick<ProjectionNodeRead, 'projected'>,
-  entry: ProjectionEdgeItem
+  node: Pick<GraphNodeRead, 'view'>,
+  edge: Edge
 ): CoreEdgeView | undefined => {
-  const source = readResolvedNodeSnapshot(node, entry.edge.source)
-  const target = readResolvedNodeSnapshot(node, entry.edge.target)
+  const source = readResolvedNodeSnapshot(node, edge.source)
+  const target = readResolvedNodeSnapshot(node, edge.target)
 
   if (
-    (entry.edge.source.kind === 'node' && !source)
-    || (entry.edge.target.kind === 'node' && !target)
+    (edge.source.kind === 'node' && !source)
+    || (edge.target.kind === 'node' && !target)
   ) {
     return undefined
   }
 
   try {
     return edgeApi.view.resolve({
-      edge: entry.edge,
+      edge,
       source,
       target
     })
@@ -195,44 +183,29 @@ const readLabelMetrics = ({
   published,
   ref
 }: {
-  published: Pick<EditorPublishedSources, 'edge'>
+  published: Pick<ProjectionSources, 'edge'>
   ref: EdgeLabelRef
 }): Size | undefined => store.read(published.edge, ref.edgeId)?.route.labels
   .find((entry) => entry.labelId === ref.labelId)?.size
 
-export const createProjectionEdgeRead = ({
+export const createGraphEdgeRead = ({
   document,
-  published,
+  sources,
   node
 }: {
   document: Pick<DocumentRead, 'edge' | 'node'>
-  published: Pick<EditorPublishedSources, 'edge'>
-  node: Pick<ProjectionNodeRead, 'projected' | 'idsInRect' | 'capability'>
-}): ProjectionEdgeRead => {
-  const item: ProjectionEdgeRead['item'] = store.createKeyedDerivedStore({
+  sources: Pick<ProjectionSources, 'edge'>
+  node: Pick<GraphNodeRead, 'view' | 'idsInRect' | 'capability'>
+}): GraphEdgeRead => {
+  const geometry: GraphEdgeRead['geometry'] = store.createKeyedDerivedStore({
     get: (edgeId: EdgeId) => {
-      const current = store.read(published.edge, edgeId)
-      return current
-        ? {
-            id: edgeId,
-            edge: current.base.edge
-          }
-        : undefined
-    },
-    isEqual: isProjectionEdgeItemEqual
-  })
-
-  const geometry: ProjectionEdgeRead['geometry'] = store.createKeyedDerivedStore({
-    get: (edgeId: EdgeId) => {
-      const entry = store.read(item, edgeId)
-      return entry
-        ? readEdgeGeometry(node, entry)
-        : undefined
+      const edge = store.read(sources.edge, edgeId)?.base.edge
+      return edge ? readEdgeGeometry(node, edge) : undefined
     },
     isEqual: isEdgeGeometryEqual
   })
 
-  const bounds: ProjectionEdgeRead['bounds'] = store.createKeyedDerivedStore({
+  const bounds: GraphEdgeRead['bounds'] = store.createKeyedDerivedStore({
     get: (edgeId: EdgeId) => {
       const currentGeometry = store.read(geometry, edgeId)
       return currentGeometry
@@ -242,22 +215,30 @@ export const createProjectionEdgeRead = ({
     isEqual: equal.sameOptionalRect
   })
 
-  const connectCandidates: ProjectionEdgeRead['connectCandidates'] = (
+  const connectCandidates: GraphEdgeRead['connectCandidates'] = (
     rect
   ) => {
     const nodeIds = node.idsInRect(rect)
     const candidates: EdgeConnectCandidate[] = []
 
     for (let index = 0; index < nodeIds.length; index += 1) {
-      const projected = store.read(node.projected, nodeIds[index])
-      if (!projected || !node.capability(projected.node).connect) {
+      const view = store.read(node.view, nodeIds[index])
+      if (!view || !node.capability(view.base.node).connect) {
         continue
       }
 
       candidates.push({
-        nodeId: projected.node.id,
-        node: toSpatialNode(projected),
-        geometry: toProjectedNodeGeometry(projected)
+        nodeId: view.base.node.id,
+        node: toSpatialNode({
+          node: view.base.node,
+          rect: view.layout.rect,
+          rotation: view.layout.rotation
+        }),
+        geometry: toGraphNodeGeometry({
+          node: view.base.node,
+          rect: view.layout.rect,
+          rotation: view.layout.rotation
+        })
       })
     }
 
@@ -267,26 +248,26 @@ export const createProjectionEdgeRead = ({
   const readNodeLocked = (
     nodeId: NodeId
   ) => Boolean(
-    store.read(node.projected, nodeId)?.node.locked
+    store.read(node.view, nodeId)?.base.node.locked
     ?? store.read(document.node.committed, nodeId)?.node.locked
   )
 
   return {
     list: document.edge.list,
     committed: document.edge.item,
-    item,
+    view: sources.edge,
     geometry,
-    edges: (edgeIds) => collection.presentValues(edgeIds, (edgeId) => store.read(item, edgeId)?.edge),
+    edges: (edgeIds) => collection.presentValues(edgeIds, (edgeId) => store.read(sources.edge, edgeId)?.base.edge),
     label: {
       metrics: (ref) => readLabelMetrics({
-        published,
+        published: sources,
         ref
       })
     },
     bounds,
     box: (edgeId) => readEdgeBox(
       store.read(bounds, edgeId),
-      store.read(item, edgeId)?.edge
+      store.read(sources.edge, edgeId)?.base.edge
     ),
     capability: (edge) => resolveEdgeCapability({
       edge,

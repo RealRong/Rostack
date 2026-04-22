@@ -222,8 +222,8 @@ describe('mindmap drag preview', () => {
       nodeIds: [created.data.rootId]
     })
 
-    const beforeRoot = editor.read.node.render.get(created.data.rootId)?.rect
-    const beforeChild = editor.read.node.render.get(insert.data.nodeId)?.rect
+    const beforeRoot = editor.read.node.view.get(created.data.rootId)?.layout.rect
+    const beforeChild = editor.read.node.view.get(insert.data.nodeId)?.layout.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -254,8 +254,8 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveRoot = editor.read.node.render.get(created.data.rootId)?.rect
-    const liveChild = editor.read.node.render.get(insert.data.nodeId)?.rect
+    const liveRoot = editor.read.node.view.get(created.data.rootId)?.layout.rect
+    const liveChild = editor.read.node.view.get(insert.data.nodeId)?.layout.rect
 
     expect(editor.store.interaction.get().busy).toBe(true)
     expect(editor.store.interaction.get().selecting).toBe(true)
@@ -316,8 +316,8 @@ describe('mindmap drag preview', () => {
       nodeIds: [first.data.nodeId]
     })
 
-    const beforeBranch = editor.read.node.render.get(first.data.nodeId)?.rect
-    const beforeLeaf = editor.read.node.render.get(second.data.nodeId)?.rect
+    const beforeBranch = editor.read.node.view.get(first.data.nodeId)?.layout.rect
+    const beforeLeaf = editor.read.node.view.get(second.data.nodeId)?.layout.rect
 
     expect(beforeBranch).toBeDefined()
     expect(beforeLeaf).toBeDefined()
@@ -348,8 +348,8 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveBranch = editor.read.node.render.get(first.data.nodeId)?.rect
-    const liveLeaf = editor.read.node.render.get(second.data.nodeId)?.rect
+    const liveBranch = editor.read.node.view.get(first.data.nodeId)?.layout.rect
+    const liveLeaf = editor.read.node.view.get(second.data.nodeId)?.layout.rect
 
     expect(editor.store.interaction.get().busy).toBe(true)
     expect(editor.store.interaction.get().selecting).toBe(true)

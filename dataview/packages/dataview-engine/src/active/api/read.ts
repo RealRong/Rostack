@@ -2,12 +2,14 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import type {
-  ActiveViewReadApi,
   CellRef,
-  ItemId,
+  ItemId
+} from '@dataview/engine/contracts/shared'
+import type {
+  ActiveViewReadApi,
   ViewCell,
   ViewState
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/view'
 import type { DocumentReader } from '@dataview/engine/document/reader'
 
 export const createActiveViewReadApi = (input: {
@@ -52,18 +54,6 @@ export const createActiveViewReadApi = (input: {
     field: readField,
     section: readSection,
     placement: readPlacement,
-    cell: readCell,
-    groupField: () => {
-      const state = readState()
-      if (!state || !state.query.group.active) {
-        return undefined
-      }
-
-      return state.query.group.field
-    },
-    filterField: index => {
-      const rule = readState()?.query.filters.rules[index]
-      return rule?.field
-    }
+    cell: readCell
   }
 }

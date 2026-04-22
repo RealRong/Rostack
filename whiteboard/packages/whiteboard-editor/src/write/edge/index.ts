@@ -6,7 +6,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
-import type { ProjectionEdgeRead } from '@whiteboard/editor/projection/edge'
+import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
 import type { EdgeWrite } from '@whiteboard/editor/write/types'
 import {
   createEdgeLabelWrite
@@ -16,9 +16,9 @@ import {
 } from '@whiteboard/editor/write/edge/route'
 
 const readEdge = (
-  read: Pick<ProjectionEdgeRead, 'item'>,
+  read: Pick<GraphEdgeRead, 'view'>,
   edgeId: EdgeId
-) => read.item.get(edgeId)?.edge
+) => read.view.get(edgeId)?.base.edge
 
 const readCommittedEdge = (
   read: Pick<DocumentRead, 'edge'>,
@@ -75,7 +75,7 @@ const updateExistingEdges = (
 
 const updateEdgesBy = (
   edgeIds: readonly EdgeId[],
-  read: Pick<ProjectionEdgeRead, 'item'>,
+  read: Pick<GraphEdgeRead, 'view'>,
   engine: Engine,
   buildInput: (edge: Edge) => EdgeUpdateInput | undefined
 ) => updateEdges(
@@ -98,7 +98,7 @@ const updateEdgesBy = (
 
 const updateEdgeStyle = (
   edgeIds: readonly EdgeId[],
-  read: Pick<ProjectionEdgeRead, 'item'>,
+  read: Pick<GraphEdgeRead, 'view'>,
   engine: Engine,
   path: string,
   value: unknown
@@ -117,7 +117,7 @@ const updateEdgeStyle = (
 
 const updateEdgeField = <Field extends keyof NonNullable<EdgeUpdateInput['fields']>>(
   edgeIds: readonly EdgeId[],
-  read: Pick<ProjectionEdgeRead, 'item'>,
+  read: Pick<GraphEdgeRead, 'view'>,
   engine: Engine,
   field: Field,
   value: NonNullable<EdgeUpdateInput['fields']>[Field]
@@ -141,7 +141,7 @@ export const createEdgeWrite = ({
   engine: Engine
   read: {
     document: Pick<DocumentRead, 'edge'>
-    projection: Pick<ProjectionEdgeRead, 'item'>
+    projection: Pick<GraphEdgeRead, 'view'>
   }
 }): EdgeWrite => ({
   create: (input: {

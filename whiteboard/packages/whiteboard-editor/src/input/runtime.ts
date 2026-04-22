@@ -13,7 +13,7 @@ import { createEdgeBinding } from '@whiteboard/editor/input/features/edge'
 import { createTransformBinding } from '@whiteboard/editor/input/features/transform'
 import { createSelectionBinding } from '@whiteboard/editor/input/features/selection/press'
 import { createEditorInputHost } from '@whiteboard/editor/input/host'
-import type { ProjectionRead } from '@whiteboard/editor/projection/read'
+import type { GraphRead } from '@whiteboard/editor/read/graph'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { SessionRead } from '@whiteboard/editor/session/read'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
@@ -22,7 +22,7 @@ import type { EditorWrite } from '@whiteboard/editor/write/types'
 export type EditorHostDeps = {
   engine: Engine
   document: DocumentRead
-  projection: ProjectionRead
+  projection: GraphRead
   sessionRead: SessionRead
   session: EditorSession
   layout: EditorLayout
@@ -39,7 +39,7 @@ const createEditorSnapRuntime = ({
 }: {
   engine: Engine
   document: DocumentRead
-  projection: ProjectionRead
+  projection: GraphRead
   sessionRead: SessionRead
 }) => createSnapRuntime({
   readZoom: () => sessionRead.viewport.get().zoom,

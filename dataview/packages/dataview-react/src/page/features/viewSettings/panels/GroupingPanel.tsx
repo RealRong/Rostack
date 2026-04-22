@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import type { ViewGroupProjection } from '@dataview/engine/contracts'
 import {
   useDataView,
   usePageRuntime
@@ -21,19 +20,6 @@ import {
   useStoreValue
 } from '@shared/react'
 
-const EMPTY_GROUP: ViewGroupProjection = {
-  active: false,
-  fieldId: '',
-  field: undefined,
-  mode: '',
-  bucketSort: undefined,
-  bucketInterval: undefined,
-  showEmpty: true,
-  availableModes: [],
-  availableBucketSorts: [],
-  supportsInterval: false
-}
-
 export const GroupingPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
@@ -42,22 +28,22 @@ export const GroupingPanel = () => {
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
   const currentView = settings.currentView
-  const group = settings.group ?? EMPTY_GROUP
+  const group = settings.group
   const currentViewDomain = currentView
     ? engine.active
     : undefined
-  const groupField = group.field
+  const groupField = group?.field
   const [intervalDraft, setIntervalDraft] = useState(
-    group.bucketInterval !== undefined
+    group?.bucketInterval !== undefined
       ? String(group.bucketInterval)
       : ''
   )
-  const availableModes = group.availableModes
-  const availableBucketSorts = group.availableBucketSorts
-  const showBucketInterval = group.supportsInterval
+  const availableModes = group?.availableModes ?? []
+  const availableBucketSorts = group?.availableBucketSorts ?? []
+  const showBucketInterval = group?.supportsInterval ?? false
 
   useEffect(() => {
-    if (!group.active || !groupField) {
+    if (!group || !groupField) {
       router.push({ kind: 'groupField' })
       return
     }
@@ -67,7 +53,7 @@ export const GroupingPanel = () => {
         ? String(group.bucketInterval)
         : ''
     )
-  }, [group.active, group.bucketInterval, group.fieldId, group.mode, groupField, router])
+  }, [group, group?.bucketInterval, group?.fieldId, group?.mode, groupField, router])
 
   const commitInterval = () => {
     if (!groupField) {
@@ -141,7 +127,7 @@ export const GroupingPanel = () => {
       : [])
   ]
 
-  if (!group.active || !groupField) {
+  if (!group || !groupField) {
     return null
   }
 

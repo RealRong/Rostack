@@ -1,4 +1,4 @@
-import type { CommitResult } from '@dataview/engine/contracts/api'
+import type { CommitResult } from '@dataview/engine/contracts/result'
 
 export interface HistoryState {
   capacity: number

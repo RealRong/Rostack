@@ -125,8 +125,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeRoot = editor.read.node.render.get(created.data.rootId)?.rect
-    const beforeChild = editor.read.node.render.get(insert.data.nodeId)?.rect
+    const beforeRoot = editor.read.node.view.get(created.data.rootId)?.layout.rect
+    const beforeChild = editor.read.node.view.get(insert.data.nodeId)?.layout.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -134,8 +134,8 @@ describe('mindmap edit relayout preview', () => {
     editor.actions.edit.startNode(created.data.rootId, 'text')
     editor.actions.edit.input('Central topic with much longer live width')
 
-    const liveRoot = editor.read.node.render.get(created.data.rootId)?.rect
-    const liveChild = editor.read.node.render.get(insert.data.nodeId)?.rect
+    const liveRoot = editor.read.node.view.get(created.data.rootId)?.layout.rect
+    const liveChild = editor.read.node.view.get(insert.data.nodeId)?.layout.rect
 
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
@@ -191,8 +191,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeChild = editor.read.node.render.get(insert.data.nodeId)?.rect
-    const beforeScene = editor.read.mindmap.scene.get(created.data.mindmapId)?.bbox
+    const beforeChild = editor.read.node.view.get(insert.data.nodeId)?.layout.rect
+    const beforeScene = editor.read.mindmap.view.get(created.data.mindmapId)?.tree.bbox
 
     expect(beforeChild).toBeDefined()
     expect(beforeScene).toBeDefined()
@@ -200,8 +200,8 @@ describe('mindmap edit relayout preview', () => {
     editor.actions.edit.startNode(insert.data.nodeId, 'text')
     editor.actions.edit.input('Child topic with much longer text')
 
-    const liveChild = editor.read.node.render.get(insert.data.nodeId)?.rect
-    const liveScene = editor.read.mindmap.scene.get(created.data.mindmapId)?.bbox
+    const liveChild = editor.read.node.view.get(insert.data.nodeId)?.layout.rect
+    const liveScene = editor.read.mindmap.view.get(created.data.mindmapId)?.tree.bbox
     const session = editor.store.edit.get()
 
     expect(liveChild).toBeDefined()
@@ -296,8 +296,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeFirst = editor.read.node.render.get(first.data.nodeId)?.rect
-    const beforeSecond = editor.read.node.render.get(second.data.nodeId)?.rect
+    const beforeFirst = editor.read.node.view.get(first.data.nodeId)?.layout.rect
+    const beforeSecond = editor.read.node.view.get(second.data.nodeId)?.layout.rect
 
     expect(beforeFirst).toBeDefined()
     expect(beforeSecond).toBeDefined()
@@ -307,8 +307,8 @@ describe('mindmap edit relayout preview', () => {
     editor.actions.edit.startNode(first.data.nodeId, 'text')
     editor.actions.edit.input('First branch now wraps into multiple visual lines')
 
-    const liveFirst = editor.read.node.render.get(first.data.nodeId)?.rect
-    const liveSecond = editor.read.node.render.get(second.data.nodeId)?.rect
+    const liveFirst = editor.read.node.view.get(first.data.nodeId)?.layout.rect
+    const liveSecond = editor.read.node.view.get(second.data.nodeId)?.layout.rect
 
     expect(liveFirst).toBeDefined()
     expect(liveSecond).toBeDefined()
@@ -402,8 +402,8 @@ describe('mindmap edit relayout preview', () => {
       y: number
       height: number
     }> = []
-    const unsubscribe = editor.read.node.render.subscribe(second.data.nodeId, () => {
-      const rect = editor.read.node.render.get(second.data.nodeId)?.rect
+    const unsubscribe = editor.read.node.view.subscribe(second.data.nodeId, () => {
+      const rect = editor.read.node.view.get(second.data.nodeId)?.layout.rect
       if (!rect) {
         return
       }
@@ -421,7 +421,7 @@ describe('mindmap edit relayout preview', () => {
 
     expect(notifications.length).toBeGreaterThan(0)
     expect(notifications.at(-1)?.y).toBe(
-      editor.read.node.render.get(second.data.nodeId)?.rect.y
+      editor.read.node.view.get(second.data.nodeId)?.layout.rect.y
     )
   })
 })

@@ -107,7 +107,7 @@ describe('mindmap field drag', () => {
       projection: {
         node: {
           ordered: vi.fn(() => []),
-          projected: {
+          view: {
             get: vi.fn(() => undefined)
           }
         },
@@ -115,37 +115,32 @@ describe('mindmap field drag', () => {
           edges: vi.fn(() => [])
         },
         mindmap: {
-          layout: {
+          view: {
             get: () => ({
-              id: 'mind-1',
-              rootId: 'root-1',
-              nodeIds: ['root-1'],
+              structure: {
+                nodeIds: ['root-1']
+              },
               tree: {
-                rootNodeId: 'root-1'
-              },
-              layout: {
-                side: 'both',
-                mode: 'tidy',
-                hGap: 28,
-                vGap: 18
-              },
-              computed: {
-                node: {
-                  'root-1': {
+                layout: {
+                  node: {
+                    'root-1': {
+                      x: 100,
+                      y: 120,
+                      width: 144,
+                      height: 44
+                    }
+                  },
+                  bbox: {
                     x: 100,
                     y: 120,
                     width: 144,
                     height: 44
                   }
-                },
-                bbox: {
-                  x: 100,
-                  y: 120,
-                  width: 144,
-                  height: 44
                 }
               },
-              connectors: []
+              render: {
+                connectors: []
+              }
             })
           }
         }

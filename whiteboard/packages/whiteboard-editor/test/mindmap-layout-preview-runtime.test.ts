@@ -136,8 +136,8 @@ describe('mindmap layout preview runtime', () => {
         nodeIds: [created.data.rootId]
       })
 
-      const beforeRoot = editor.read.node.render.get(created.data.rootId)?.rect
-      const beforeChild = editor.read.node.render.get(inserted.data.nodeId)?.rect
+      const beforeRoot = editor.read.node.view.get(created.data.rootId)?.layout.rect
+      const beforeChild = editor.read.node.view.get(inserted.data.nodeId)?.layout.rect
 
       expect(beforeRoot).toBeDefined()
       expect(beforeChild).toBeDefined()
@@ -165,12 +165,12 @@ describe('mindmap layout preview runtime', () => {
         }
       }))
 
-      expect(editor.read.node.render.get(created.data.rootId)?.rect).toEqual({
+      expect(editor.read.node.view.get(created.data.rootId)?.layout.rect).toEqual({
         ...beforeRoot!,
         x: beforeRoot!.x + 60,
         y: beforeRoot!.y + 40
       })
-      expect(editor.read.node.render.get(inserted.data.nodeId)?.rect).toEqual({
+      expect(editor.read.node.view.get(inserted.data.nodeId)?.layout.rect).toEqual({
         ...beforeChild!,
         x: beforeChild!.x + 60,
         y: beforeChild!.y + 40

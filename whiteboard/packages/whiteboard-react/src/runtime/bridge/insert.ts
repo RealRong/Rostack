@@ -117,7 +117,7 @@ const recenterNode = ({
   nodeId: NodeId
   center: Point
 }) => {
-  const rect = editor.read.node.render.get(nodeId)?.rect
+  const rect = editor.read.node.view.get(nodeId)?.layout.rect
   if (!rect) {
     return
   }
@@ -126,7 +126,7 @@ const recenterNode = ({
     x: center.x - rect.width / 2,
     y: center.y - rect.height / 2
   }
-  const currentRect = editor.read.node.render.get(nodeId)?.rect
+  const currentRect = editor.read.node.view.get(nodeId)?.layout.rect
   if (
     currentRect
     && currentRect.x === nextPosition.x
@@ -198,7 +198,7 @@ const insertMindmapPreset = ({
     return undefined
   }
 
-  const bbox = editor.read.mindmap.scene.get(result.data.mindmapId)?.bbox
+  const bbox = editor.read.mindmap.view.get(result.data.mindmapId)?.tree.bbox
   const anchorX = bbox
     ? bbox.x + bbox.width / 2
     : 0

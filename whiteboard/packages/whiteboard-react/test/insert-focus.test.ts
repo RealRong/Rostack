@@ -163,7 +163,7 @@ describe('insert focus', () => {
 
     expect(result).toBeDefined()
     expect(editor.store.tool.get().type).toBe('select')
-    expect(editor.read.node.render.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.read.node.view.get(result!.nodeId)?.render.selected).toBe(true)
     expect(editor.store.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
@@ -192,7 +192,7 @@ describe('insert focus', () => {
 
     expect(result).toBeDefined()
     expect(editor.store.tool.get().type).toBe('select')
-    expect(editor.read.node.render.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.read.node.view.get(result!.nodeId)?.render.selected).toBe(true)
     expect(editor.store.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
@@ -221,7 +221,7 @@ describe('insert focus', () => {
 
     expect(result).toBeDefined()
     expect(editor.store.tool.get().type).toBe('select')
-    expect(editor.read.node.render.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.read.node.view.get(result!.nodeId)?.render.selected).toBe(true)
     expect(editor.store.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,

@@ -106,12 +106,12 @@ export const createKanbanModel = (input: {
         return null
       }
 
-      const kanban = store.read(input.source.active.meta.kanban)
-      const query = store.read(input.source.active.meta.query)
+      const kanban = store.read(input.source.active.kanban)
+      const query = store.read(input.source.active.query)
       return {
         viewId,
-        grouped: query.group.active,
-        groupField: query.group.field,
+        grouped: Boolean(query.group),
+        groupField: query.group?.field,
         fillColumnColor: kanban.fillColumnColor,
         groupUsesOptionColors: kanban.groupUsesOptionColors,
         cardsPerColumn: kanban.cardsPerColumn,
@@ -159,7 +159,7 @@ export const createKanbanModel = (input: {
         return undefined
       }
 
-      const kanban = store.read(input.source.active.meta.kanban)
+      const kanban = store.read(input.source.active.kanban)
       return {
         viewId,
         itemId,

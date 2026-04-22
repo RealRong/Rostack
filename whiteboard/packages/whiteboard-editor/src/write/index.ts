@@ -23,7 +23,7 @@ import {
   createNodeWrite
 } from '@whiteboard/editor/write/node'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
-import type { ProjectionRead } from '@whiteboard/editor/projection/read'
+import type { GraphRead } from '@whiteboard/editor/read/graph'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type { EditorWrite } from '@whiteboard/editor/write/types'
@@ -38,7 +38,7 @@ export const createEditorWrite = ({
   engine: Engine
   history: HistoryApi
   document: DocumentRead
-  projection: ProjectionRead
+  projection: GraphRead
   layout: EditorLayout
 }): EditorWrite => {
   const historyWrite = createHistoryWrite(history)

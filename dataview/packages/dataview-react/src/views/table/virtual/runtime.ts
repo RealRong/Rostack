@@ -289,7 +289,7 @@ const createTableLayoutStateStore = (
     })
 
     return createTableLayoutState({
-      grouped: view.query.group.active,
+      grouped: Boolean(view.query.group),
       sections: nextSections,
       rowCount: grid.items.ids.length
     })

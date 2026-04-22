@@ -8,10 +8,7 @@ import type {
   SectionList
 } from '@dataview/engine'
 import type {
-  ViewFilterProjection,
-  ViewGroupProjection,
-  ViewSearchProjection,
-  ViewSortProjection
+  ActiveViewQuery
 } from '@dataview/engine/contracts/view'
 import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
@@ -43,10 +40,10 @@ export interface TableGrid {
 }
 
 export interface TableQueryState {
-  search: ViewSearchProjection
-  filters: ViewFilterProjection
-  group: ViewGroupProjection
-  sort: ViewSortProjection
+  search: ActiveViewQuery['search']
+  filters: ActiveViewQuery['filters']
+  group?: ActiveViewQuery['group']
+  sort: ActiveViewQuery['sort']
 }
 
 export interface TableViewState {
@@ -252,8 +249,8 @@ export const createTableRuntime = (
         return undefined
       }
 
-      const query = store.read(active.meta.query)
-      const table = store.read(active.meta.table)
+      const query = store.read(active.query)
+      const table = store.read(active.table)
       const widthSource = tableView.options.table.widths
       const widths = previousWidthSource === widthSource && previousView
         ? previousView.widths
@@ -307,12 +304,12 @@ export const createTableRuntime = (
         return undefined
       }
 
-      const query = store.read(active.meta.query)
-      const table = store.read(active.meta.table)
+      const query = store.read(active.query)
+      const table = store.read(active.table)
 
       return {
         field,
-        grouped: query.group.fieldId === fieldId,
+        grouped: query.group?.fieldId === fieldId,
         sortDir: readSortDir(query, fieldId),
         calc: table.calc.get(fieldId)
       }

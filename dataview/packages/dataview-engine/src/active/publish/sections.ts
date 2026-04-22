@@ -19,7 +19,7 @@ import type {
   Section,
   SectionKey,
   SectionList
-} from '@dataview/engine/contracts'
+} from '@dataview/engine/contracts/shared'
 import type {
   MembershipPhaseState as MembershipState
 } from '@dataview/engine/active/state'

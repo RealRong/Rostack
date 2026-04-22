@@ -10,9 +10,9 @@ describe('document engine subscribe', () => {
 
     let count = 0
     let revision = -1
-    const unsubscribe = engine.subscribe((snapshot) => {
+    const unsubscribe = engine.subscribe((publish) => {
       count += 1
-      revision = snapshot.revision
+      revision = publish.rev
     })
 
     const result = engine.execute({
@@ -31,7 +31,7 @@ describe('document engine subscribe', () => {
     expect(result.ok).toBe(true)
     expect(count).toBe(1)
     expect(revision).toBe(1)
-    expect(engine.snapshot().state.facts.entities.nodes.size).toBe(1)
+    expect(engine.current().snapshot.state.facts.entities.nodes.size).toBe(1)
   })
 
   it('increments revision monotonically across execute and apply', () => {
@@ -51,7 +51,7 @@ describe('document engine subscribe', () => {
       }
     })
     expect(first.ok).toBe(true)
-    expect(engine.snapshot().revision).toBe(1)
+    expect(engine.current().rev).toBe(1)
 
     const second = engine.apply([{
       type: 'node.field.set',
@@ -63,7 +63,7 @@ describe('document engine subscribe', () => {
     })
 
     expect(second.ok).toBe(true)
-    expect(engine.snapshot().revision).toBe(2)
-    expect(engine.snapshot().change.entities.nodes.all.has('node_1')).toBe(true)
+    expect(engine.current().rev).toBe(2)
+    expect(engine.current().change.entities.nodes.updated.has('node_1')).toBe(true)
   })
 })

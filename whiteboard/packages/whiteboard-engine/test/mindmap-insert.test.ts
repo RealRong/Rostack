@@ -24,11 +24,12 @@ test('engine exposes created mindmap roots through committed facts', () => {
   }
 
   const { mindmapId, rootId } = result.data
-  const snapshot = engine.snapshot()
+  const publish = engine.current()
+  const snapshot = publish.snapshot
   assert.equal(snapshot.state.facts.entities.nodes.get(rootId)?.type, 'text')
   assert.equal(snapshot.state.facts.relations.nodeOwner.get(rootId)?.kind, 'mindmap')
   assert.equal(snapshot.state.facts.relations.nodeOwner.get(rootId)?.id, mindmapId)
   assert.deepEqual(snapshot.state.facts.relations.ownerNodes.mindmaps.get(mindmapId), [rootId])
-  assert.ok(snapshot.change.entities.nodes.all.has(rootId))
-  assert.ok(snapshot.change.entities.owners.mindmaps.all.has(mindmapId))
+  assert.ok(publish.change.entities.nodes.added.has(rootId))
+  assert.ok(publish.change.entities.mindmaps.added.has(mindmapId))
 })

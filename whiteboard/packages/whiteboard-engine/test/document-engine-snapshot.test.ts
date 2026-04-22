@@ -9,14 +9,15 @@ describe('document engine snapshot', () => {
       document: doc
     })
 
-    const snapshot = engine.snapshot()
+    const publish = engine.current()
+    const snapshot = publish.snapshot
 
     expect(snapshot.revision).toBe(0)
     expect(snapshot.state.root).toBe(doc)
     expect(snapshot.state.facts.entities.nodes.size).toBe(0)
     expect(snapshot.state.facts.entities.edges.size).toBe(0)
-    expect(snapshot.change.root.changed).toBe(true)
-    expect(snapshot.change.entities.nodes.all.size).toBe(0)
-    expect(snapshot.change.relations.graph.changed).toBe(true)
+    expect(publish.change.root.doc).toBe(true)
+    expect(publish.change.entities.nodes.added.size).toBe(0)
+    expect(publish.change.relations.graph).toBe(true)
   })
 })

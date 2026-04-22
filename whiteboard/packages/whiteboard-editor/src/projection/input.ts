@@ -1,17 +1,24 @@
-import { createFlags } from '@shared/projection-runtime'
 import { scheduler, store } from '@shared/core'
 import type {
   DrawPreview as GraphDrawPreview,
   DragState,
   EdgePreview,
   HoverState,
-  ImpactInput,
   Input,
+  InputDelta,
   MindmapPreview,
   NodeDraft,
   NodePreview
 } from '@whiteboard/editor-graph'
-import type { Snapshot as DocumentSnapshot } from '@whiteboard/engine'
+import type {
+  EditSession as EditorEditSession
+} from '@whiteboard/editor/session/edit'
+import type {
+  EngineChange,
+  EnginePublish,
+  IdDelta,
+  Snapshot as DocumentSnapshot
+} from '@whiteboard/engine'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type {
@@ -20,8 +27,6 @@ import type {
 } from '@whiteboard/editor/session/preview/types'
 import type { DraftMeasure } from '@whiteboard/editor/types/layout'
 
-export type EditorGraphInputReason = keyof ImpactInput
-
 const EMPTY_DRAG_STATE: DragState = {
   kind: 'idle'
 }
@@ -29,16 +34,247 @@ const EMPTY_DRAG_STATE: DragState = {
 const EMPTY_HOVER_STATE: HoverState = {
   kind: 'none'
 }
+
 const EMPTY_NODE_DRAFTS = new Map<string, NodeDraft>()
 
-const EMPTY_IMPACT = (): ImpactInput => ({
-  document: createFlags(false),
-  session: createFlags(false),
-  measure: createFlags(false),
-  interaction: createFlags(false),
-  viewport: createFlags(false),
-  clock: createFlags(false)
+export const createEmptyIdDelta = <TId extends string>(): IdDelta<TId> => ({
+  added: new Set(),
+  updated: new Set(),
+  removed: new Set()
 })
+
+export const createTouchedIdDelta = <TId extends string>(
+  ids: Iterable<TId>
+): IdDelta<TId> => ({
+  added: new Set(),
+  updated: new Set(ids),
+  removed: new Set()
+})
+
+export const hasIdDelta = <TId extends string>(
+  delta: IdDelta<TId>
+): boolean => (
+  delta.added.size > 0
+  || delta.updated.size > 0
+  || delta.removed.size > 0
+)
+
+const mergeIdDelta = <TId extends string>(
+  target: IdDelta<TId>,
+  source: IdDelta<TId>
+) => {
+  source.added.forEach((id) => {
+    ;(target.added as Set<TId>).add(id)
+  })
+  source.updated.forEach((id) => {
+    ;(target.updated as Set<TId>).add(id)
+  })
+  source.removed.forEach((id) => {
+    ;(target.removed as Set<TId>).add(id)
+  })
+}
+
+export const createEmptyEditorGraphInputDelta = (): InputDelta => ({
+  document: {
+    reset: false,
+    order: false,
+    nodes: createEmptyIdDelta(),
+    edges: createEmptyIdDelta(),
+    mindmaps: createEmptyIdDelta(),
+    groups: createEmptyIdDelta()
+  },
+  graph: {
+    nodes: {
+      draft: createEmptyIdDelta(),
+      preview: createEmptyIdDelta(),
+      edit: createEmptyIdDelta()
+    },
+    edges: {
+      preview: createEmptyIdDelta(),
+      edit: createEmptyIdDelta()
+    },
+    mindmaps: {
+      preview: createEmptyIdDelta(),
+      tick: new Set()
+    },
+    interaction: {
+      selection: false,
+      drag: false
+    }
+  },
+  ui: {
+    tool: false,
+    selection: false,
+    marquee: false,
+    guides: false,
+    draw: false,
+    edit: false
+  },
+  scene: {
+    viewport: false
+  }
+})
+
+export const cloneEditorGraphInputDelta = (
+  delta: InputDelta
+): InputDelta => ({
+  document: {
+    reset: delta.document.reset,
+    order: delta.document.order,
+    nodes: {
+      added: new Set(delta.document.nodes.added),
+      updated: new Set(delta.document.nodes.updated),
+      removed: new Set(delta.document.nodes.removed)
+    },
+    edges: {
+      added: new Set(delta.document.edges.added),
+      updated: new Set(delta.document.edges.updated),
+      removed: new Set(delta.document.edges.removed)
+    },
+    mindmaps: {
+      added: new Set(delta.document.mindmaps.added),
+      updated: new Set(delta.document.mindmaps.updated),
+      removed: new Set(delta.document.mindmaps.removed)
+    },
+    groups: {
+      added: new Set(delta.document.groups.added),
+      updated: new Set(delta.document.groups.updated),
+      removed: new Set(delta.document.groups.removed)
+    }
+  },
+  graph: {
+    nodes: {
+      draft: {
+        added: new Set(delta.graph.nodes.draft.added),
+        updated: new Set(delta.graph.nodes.draft.updated),
+        removed: new Set(delta.graph.nodes.draft.removed)
+      },
+      preview: {
+        added: new Set(delta.graph.nodes.preview.added),
+        updated: new Set(delta.graph.nodes.preview.updated),
+        removed: new Set(delta.graph.nodes.preview.removed)
+      },
+      edit: {
+        added: new Set(delta.graph.nodes.edit.added),
+        updated: new Set(delta.graph.nodes.edit.updated),
+        removed: new Set(delta.graph.nodes.edit.removed)
+      }
+    },
+    edges: {
+      preview: {
+        added: new Set(delta.graph.edges.preview.added),
+        updated: new Set(delta.graph.edges.preview.updated),
+        removed: new Set(delta.graph.edges.preview.removed)
+      },
+      edit: {
+        added: new Set(delta.graph.edges.edit.added),
+        updated: new Set(delta.graph.edges.edit.updated),
+        removed: new Set(delta.graph.edges.edit.removed)
+      }
+    },
+    mindmaps: {
+      preview: {
+        added: new Set(delta.graph.mindmaps.preview.added),
+        updated: new Set(delta.graph.mindmaps.preview.updated),
+        removed: new Set(delta.graph.mindmaps.preview.removed)
+      },
+      tick: new Set(delta.graph.mindmaps.tick)
+    },
+    interaction: {
+      selection: delta.graph.interaction.selection,
+      drag: delta.graph.interaction.drag
+    }
+  },
+  ui: {
+    tool: delta.ui.tool,
+    selection: delta.ui.selection,
+    marquee: delta.ui.marquee,
+    guides: delta.ui.guides,
+    draw: delta.ui.draw,
+    edit: delta.ui.edit
+  },
+  scene: {
+    viewport: delta.scene.viewport
+  }
+})
+
+export const mergeEditorGraphInputDelta = (
+  target: InputDelta,
+  source: InputDelta
+) => {
+  target.document.reset = target.document.reset || source.document.reset
+  target.document.order = target.document.order || source.document.order
+  mergeIdDelta(target.document.nodes, source.document.nodes)
+  mergeIdDelta(target.document.edges, source.document.edges)
+  mergeIdDelta(target.document.mindmaps, source.document.mindmaps)
+  mergeIdDelta(target.document.groups, source.document.groups)
+
+  mergeIdDelta(target.graph.nodes.draft, source.graph.nodes.draft)
+  mergeIdDelta(target.graph.nodes.preview, source.graph.nodes.preview)
+  mergeIdDelta(target.graph.nodes.edit, source.graph.nodes.edit)
+  mergeIdDelta(target.graph.edges.preview, source.graph.edges.preview)
+  mergeIdDelta(target.graph.edges.edit, source.graph.edges.edit)
+  mergeIdDelta(target.graph.mindmaps.preview, source.graph.mindmaps.preview)
+  source.graph.mindmaps.tick.forEach((mindmapId) => {
+    ;(target.graph.mindmaps.tick as Set<string>).add(mindmapId)
+  })
+  target.graph.interaction.selection = (
+    target.graph.interaction.selection
+    || source.graph.interaction.selection
+  )
+  target.graph.interaction.drag = (
+    target.graph.interaction.drag
+    || source.graph.interaction.drag
+  )
+
+  target.ui.tool = target.ui.tool || source.ui.tool
+  target.ui.selection = target.ui.selection || source.ui.selection
+  target.ui.marquee = target.ui.marquee || source.ui.marquee
+  target.ui.guides = target.ui.guides || source.ui.guides
+  target.ui.draw = target.ui.draw || source.ui.draw
+  target.ui.edit = target.ui.edit || source.ui.edit
+
+  target.scene.viewport = target.scene.viewport || source.scene.viewport
+}
+
+export const takeEditorGraphInputDelta = (
+  pending: InputDelta
+): InputDelta => {
+  const current = cloneEditorGraphInputDelta(pending)
+  const empty = createEmptyEditorGraphInputDelta()
+  pending.document = empty.document
+  pending.graph = empty.graph
+  pending.ui = empty.ui
+  pending.scene = empty.scene
+  return current
+}
+
+export const hasEditorGraphInputDelta = (
+  delta: InputDelta
+): boolean => (
+  delta.document.reset
+  || delta.document.order
+  || hasIdDelta(delta.document.nodes)
+  || hasIdDelta(delta.document.edges)
+  || hasIdDelta(delta.document.mindmaps)
+  || hasIdDelta(delta.document.groups)
+  || hasIdDelta(delta.graph.nodes.draft)
+  || hasIdDelta(delta.graph.nodes.preview)
+  || hasIdDelta(delta.graph.nodes.edit)
+  || hasIdDelta(delta.graph.edges.preview)
+  || hasIdDelta(delta.graph.edges.edit)
+  || hasIdDelta(delta.graph.mindmaps.preview)
+  || delta.graph.mindmaps.tick.size > 0
+  || delta.graph.interaction.selection
+  || delta.graph.interaction.drag
+  || delta.ui.tool
+  || delta.ui.selection
+  || delta.ui.marquee
+  || delta.ui.guides
+  || delta.ui.draw
+  || delta.ui.edit
+  || delta.scene.viewport
+)
 
 const readMindmapId = (
   snapshot: DocumentSnapshot,
@@ -289,31 +525,125 @@ const readDragState = (
   }
 }
 
-export const createEditorGraphImpact = (
-  reasons: readonly EditorGraphInputReason[]
-): ImpactInput => {
-  const impact = EMPTY_IMPACT()
+export const createDocumentInputDelta = (
+  change: EngineChange
+): InputDelta['document'] => ({
+  reset: change.root.doc,
+  order: change.root.order,
+  nodes: {
+    added: new Set(change.entities.nodes.added),
+    updated: new Set(change.entities.nodes.updated),
+    removed: new Set(change.entities.nodes.removed)
+  },
+  edges: {
+    added: new Set(change.entities.edges.added),
+    updated: new Set(change.entities.edges.updated),
+    removed: new Set(change.entities.edges.removed)
+  },
+  mindmaps: {
+    added: new Set(change.entities.mindmaps.added),
+    updated: new Set(change.entities.mindmaps.updated),
+    removed: new Set(change.entities.mindmaps.removed)
+  },
+  groups: {
+    added: new Set(change.entities.groups.added),
+    updated: new Set(change.entities.groups.updated),
+    removed: new Set(change.entities.groups.removed)
+  }
+})
 
-  reasons.forEach((reason) => {
-    impact[reason] = createFlags(true)
+export const readEditedNodeIds = (
+  edit: EditorEditSession | null
+): ReadonlySet<string> => edit?.kind === 'node'
+  ? new Set([edit.nodeId])
+  : new Set()
+
+export const readEditedEdgeIds = (
+  edit: EditorEditSession | null
+): ReadonlySet<string> => edit?.kind === 'edge-label'
+  ? new Set([edit.edgeId])
+  : new Set()
+
+export const readPreviewNodeIds = (
+  preview: EditorInputPreviewState
+): ReadonlySet<string> => new Set([
+  ...preview.selection.node.patches.map((entry) => entry.id),
+  ...preview.node.text.patches.map((entry) => entry.id),
+  ...preview.draw.hidden
+])
+
+export const readPreviewEdgeIds = (
+  preview: EditorInputPreviewState
+): ReadonlySet<string> => new Set(
+  preview.edge.interaction.map((entry) => entry.id)
+)
+
+export const readPreviewMindmapIds = (
+  snapshot: DocumentSnapshot,
+  preview: EditorInputPreviewState['mindmap']['preview']
+): ReadonlySet<string> => {
+  const ids = new Set<string>()
+
+  const rootMoveMindmapId = preview?.rootMove
+    ? readMindmapId(snapshot, preview.rootMove.treeId)
+    : undefined
+  if (rootMoveMindmapId) {
+    ids.add(rootMoveMindmapId)
+  }
+
+  const subtreeMoveMindmapId = preview?.subtreeMove
+    ? readMindmapId(snapshot, preview.subtreeMove.treeId)
+    : undefined
+  if (subtreeMoveMindmapId) {
+    ids.add(subtreeMoveMindmapId)
+  }
+
+  preview?.enter?.forEach((entry) => {
+    const mindmapId = readMindmapId(snapshot, entry.treeId)
+    if (mindmapId) {
+      ids.add(mindmapId)
+    }
   })
 
-  return impact
+  return ids
+}
+
+export const readActiveMindmapTickIds = (input: {
+  snapshot: DocumentSnapshot
+  preview: EditorInputPreviewState['mindmap']['preview']
+  now?: number
+}): ReadonlySet<string> => {
+  const ids = new Set<string>()
+  const now = input.now ?? scheduler.readMonotonicNow()
+
+  input.preview?.enter?.forEach((entry) => {
+    if (entry.startedAt + entry.durationMs <= now) {
+      return
+    }
+
+    const mindmapId = readMindmapId(input.snapshot, entry.treeId)
+    if (mindmapId) {
+      ids.add(mindmapId)
+    }
+  })
+
+  return ids
 }
 
 export const createEditorGraphInput = ({
-  snapshot,
+  publish,
   session,
   layout,
-  reasons,
+  delta,
   now = scheduler.readMonotonicNow()
 }: {
-  snapshot: DocumentSnapshot
+  publish: EnginePublish
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
   layout: Pick<EditorLayout, 'draft'>
-  reasons: readonly EditorGraphInputReason[]
+  delta: InputDelta
   now?: number
 }): Input => {
+  const snapshot = publish.snapshot
   const preview = store.read(session.preview.state)
   const selection = store.read(session.state.selection)
 
@@ -365,6 +695,6 @@ export const createEditorGraphInput = ({
     clock: {
       now
     },
-    impact: createEditorGraphImpact(reasons)
+    delta
   }
 }

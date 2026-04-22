@@ -18,7 +18,7 @@ import {
   type Input as EditorGraphInput
 } from '../src'
 import {
-  createEditorGraphImpact,
+  createEditorGraphDelta,
   createEditorGraphTextMeasureEntry
 } from '../src/testing/builders'
 import {
@@ -37,7 +37,7 @@ type RuntimeInputOptions = {
   mindmapPreview?: EditorGraphInput['session']['preview']['mindmap']
   visibleWorld?: Rect
   now?: number
-  impact?: EditorGraphInput['impact']
+  delta?: EditorGraphInput['delta']
 }
 
 const createEditorGraphRead = (
@@ -92,7 +92,7 @@ const createInput = (
   options: RuntimeInputOptions = {}
 ): EditorGraphInput => ({
   document: {
-    snapshot: engine.snapshot()
+    snapshot: engine.current().snapshot
   },
   session: {
     edit: options.edit ?? null,
@@ -151,27 +151,24 @@ const createInput = (
   clock: {
     now: options.now ?? 0
   },
-  impact: options.impact ?? createEditorGraphImpact()
+  delta: options.delta ?? createEditorGraphDelta()
 })
 
-const DOCUMENT_IMPACT = createEditorGraphImpact({
+const DOCUMENT_DELTA = createEditorGraphDelta({
   document: true
 })
 
-const SESSION_AND_MEASURE_IMPACT = createEditorGraphImpact({
-  session: true,
-  measure: true
+const GRAPH_DELTA = createEditorGraphDelta({
+  graph: true
 })
 
-const IDLE_IMPACT = createEditorGraphImpact()
+const IDLE_DELTA = createEditorGraphDelta()
 
-const FULL_INPUT_IMPACT = createEditorGraphImpact({
+const FULL_INPUT_DELTA = createEditorGraphDelta({
   document: true,
-  session: true,
-  measure: true,
-  interaction: true,
-  viewport: true,
-  clock: true
+  graph: true,
+  ui: true,
+  scene: true
 })
 
 const createNode = (input: {
@@ -325,7 +322,7 @@ describe('editor graph runtime', () => {
     })
 
     const result = runtime.update(createInput(engine, {
-      impact: DOCUMENT_IMPACT
+      delta: DOCUMENT_DELTA
     }))
     unsubscribe()
 
@@ -350,10 +347,10 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
 
     runtime.update(createInput(engine, {
-      impact: DOCUMENT_IMPACT
+      delta: DOCUMENT_DELTA
     }))
     const idle = runtime.update(createInput(engine, {
-      impact: IDLE_IMPACT
+      delta: IDLE_DELTA
     }))
 
     expect(idle.trace).toBeDefined()
@@ -375,7 +372,7 @@ describe('editor graph runtime', () => {
     })
     const harness = createEditorGraphHarness()
     const result = harness.update(createInput(engine, {
-      impact: DOCUMENT_IMPACT
+      delta: DOCUMENT_DELTA
     }))
     const read = createEditorGraphRead(harness.runtime)
     const publish = createEditorGraphPublishSpec()
@@ -410,7 +407,7 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
     const baseline = runtime.update(
       createInput(engine, {
-        impact: DOCUMENT_IMPACT,
+        delta: DOCUMENT_DELTA,
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [childId, { width: 120, height: 44 }]
@@ -419,7 +416,7 @@ describe('editor graph runtime', () => {
     )
     const live = runtime.update(
       createInput(engine, {
-        impact: SESSION_AND_MEASURE_IMPACT,
+        delta: GRAPH_DELTA,
         edit: {
           kind: 'node',
           nodeId: created.rootId,
@@ -478,7 +475,7 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
     const baseline = runtime.update(
       createInput(engine, {
-        impact: DOCUMENT_IMPACT,
+        delta: DOCUMENT_DELTA,
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [firstId, { width: 120, height: 44 }],
@@ -488,7 +485,7 @@ describe('editor graph runtime', () => {
     )
     const live = runtime.update(
       createInput(engine, {
-        impact: SESSION_AND_MEASURE_IMPACT,
+        delta: GRAPH_DELTA,
         edit: {
           kind: 'node',
           nodeId: firstId,
@@ -560,7 +557,7 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
     const result = runtime.update(
       createInput(engine, {
-        impact: FULL_INPUT_IMPACT,
+        delta: FULL_INPUT_DELTA,
         edit: {
           kind: 'edge-label',
           edgeId,
@@ -741,7 +738,7 @@ describe('editor graph runtime', () => {
     const runtime = createEditorGraphRuntime()
     const result = runtime.update(
       createInput(engine, {
-        impact: FULL_INPUT_IMPACT,
+        delta: FULL_INPUT_DELTA,
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [childId, { width: 120, height: 44 }]

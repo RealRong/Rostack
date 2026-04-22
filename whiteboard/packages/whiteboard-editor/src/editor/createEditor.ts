@@ -7,6 +7,7 @@ import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorStore } from '@whiteboard/editor/editor/store'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
+import { createProjectionAnimationSource } from '@whiteboard/editor/projection/animation'
 import { createProjectionDriver } from '@whiteboard/editor/projection/driver'
 import { createGraphRead } from '@whiteboard/editor/read/graph'
 import { createEditorRead } from '@whiteboard/editor/read/public'
@@ -76,6 +77,11 @@ export const createEditor = ({
     session,
     layout
   })
+  const projectionAnimation = createProjectionAnimationSource({
+    engine,
+    session,
+    mark: projection.mark
+  })
   const graph = createGraphRead({
     document,
     sources: projection.sources,
@@ -133,6 +139,7 @@ export const createEditor = ({
     events: events.events,
     dispose: () => {
       events.dispose()
+      projectionAnimation.dispose()
       projection.dispose()
       host.cancel()
       session.reset()

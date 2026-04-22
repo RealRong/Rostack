@@ -25,6 +25,7 @@ import type {
   IdDelta,
   Revision
 } from './core'
+export type { IdDelta } from './core'
 
 export interface Snapshot {
   revision: Revision

@@ -1,14 +1,30 @@
-import { scheduler, store } from '@shared/core'
+import { store } from '@shared/core'
 import {
   createEditorGraphRuntime,
+  type InputDelta,
   type Result,
   type Runtime,
   type Snapshot
 } from '@whiteboard/editor-graph'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type { EditSession } from '@whiteboard/editor/session/edit'
+import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
-import { createEditorGraphInput, type EditorGraphInputReason } from './input'
+import {
+  createDocumentInputDelta,
+  createEditorGraphInput,
+  createEmptyEditorGraphInputDelta,
+  createTouchedIdDelta,
+  hasEditorGraphInputDelta,
+  mergeEditorGraphInputDelta,
+  readEditedEdgeIds,
+  readEditedNodeIds,
+  readPreviewEdgeIds,
+  readPreviewMindmapIds,
+  readPreviewNodeIds,
+  takeEditorGraphInputDelta
+} from './input'
 import {
   createProjectionSources,
   type ProjectionSources
@@ -19,19 +35,161 @@ export interface ProjectionDriver {
   sources: ProjectionSources
   snapshot(): Snapshot
   result(): Result | null
-  update(reasons: readonly EditorGraphInputReason[]): Result
+  mark(delta: InputDelta): void
   subscribe(listener: (result: Result) => void): () => void
   dispose(): void
 }
 
-const FULL_REASONS: readonly EditorGraphInputReason[] = [
-  'document',
-  'session',
-  'measure',
-  'interaction',
-  'viewport',
-  'clock'
-] as const
+const NOOP = () => {}
+
+const unionIds = <TId extends string>(
+  ...values: readonly ReadonlySet<TId>[]
+): ReadonlySet<TId> => new Set(
+  values.flatMap((value) => [...value])
+)
+
+const createSelectionDelta = (): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+  delta.graph.interaction.selection = true
+  delta.ui.selection = true
+  return delta
+}
+
+const createToolDelta = (): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+  delta.ui.tool = true
+  return delta
+}
+
+const createViewportDelta = (): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+  delta.scene.viewport = true
+  return delta
+}
+
+const createDragDelta = (): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+  delta.graph.interaction.drag = true
+  return delta
+}
+
+const createEditDelta = (input: {
+  previous: EditSession | null
+  next: EditSession | null
+}): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+  const touchedNodeIds = unionIds(
+    readEditedNodeIds(input.previous),
+    readEditedNodeIds(input.next)
+  )
+  const touchedEdgeIds = unionIds(
+    readEditedEdgeIds(input.previous),
+    readEditedEdgeIds(input.next)
+  )
+
+  if (touchedNodeIds.size > 0) {
+    delta.graph.nodes.edit = createTouchedIdDelta(touchedNodeIds)
+    delta.graph.nodes.draft = createTouchedIdDelta(touchedNodeIds)
+  }
+  if (touchedEdgeIds.size > 0) {
+    delta.graph.edges.edit = createTouchedIdDelta(touchedEdgeIds)
+  }
+  delta.ui.edit = true
+  return delta
+}
+
+const createPreviewDelta = (input: {
+  snapshot: ReturnType<Engine['current']>['snapshot']
+  previous: EditorInputPreviewState
+  next: EditorInputPreviewState
+}): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+  const touchedNodeIds = unionIds(
+    readPreviewNodeIds(input.previous),
+    readPreviewNodeIds(input.next)
+  )
+  const touchedEdgeIds = unionIds(
+    readPreviewEdgeIds(input.previous),
+    readPreviewEdgeIds(input.next)
+  )
+  const touchedMindmapIds = unionIds(
+    readPreviewMindmapIds(input.snapshot, input.previous.mindmap.preview),
+    readPreviewMindmapIds(input.snapshot, input.next.mindmap.preview)
+  )
+
+  if (touchedNodeIds.size > 0) {
+    delta.graph.nodes.preview = createTouchedIdDelta(touchedNodeIds)
+  }
+  if (touchedEdgeIds.size > 0) {
+    delta.graph.edges.preview = createTouchedIdDelta(touchedEdgeIds)
+  }
+  if (touchedMindmapIds.size > 0) {
+    delta.graph.mindmaps.preview = createTouchedIdDelta(touchedMindmapIds)
+  }
+  if (
+    input.previous.selection.marquee !== input.next.selection.marquee
+  ) {
+    delta.ui.marquee = true
+  }
+  if (input.previous.selection.guides !== input.next.selection.guides) {
+    delta.ui.guides = true
+  }
+  if (
+    input.previous.draw.preview !== input.next.draw.preview
+    || input.previous.draw.hidden !== input.next.draw.hidden
+  ) {
+    delta.ui.draw = true
+  }
+
+  return delta
+}
+
+const createBootstrapDelta = (input: {
+  engine: ReturnType<Engine['current']>
+  session: Pick<EditorSession, 'state' | 'preview'>
+}): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+  delta.document = createDocumentInputDelta(input.engine.change)
+  delta.graph.interaction.selection = true
+  delta.graph.interaction.drag = true
+  delta.ui.tool = true
+  delta.ui.selection = true
+  delta.ui.marquee = true
+  delta.ui.guides = true
+  delta.ui.draw = true
+  delta.ui.edit = true
+  delta.scene.viewport = true
+
+  const edit = input.session.state.edit.get()
+  const editedNodeIds = readEditedNodeIds(edit)
+  const editedEdgeIds = readEditedEdgeIds(edit)
+  const preview = input.session.preview.state.get()
+  const previewNodeIds = readPreviewNodeIds(preview)
+  const previewEdgeIds = readPreviewEdgeIds(preview)
+  const previewMindmapIds = readPreviewMindmapIds(
+    input.engine.snapshot,
+    preview.mindmap.preview
+  )
+
+  if (editedNodeIds.size > 0) {
+    delta.graph.nodes.edit = createTouchedIdDelta(editedNodeIds)
+    delta.graph.nodes.draft = createTouchedIdDelta(editedNodeIds)
+  }
+  if (editedEdgeIds.size > 0) {
+    delta.graph.edges.edit = createTouchedIdDelta(editedEdgeIds)
+  }
+  if (previewNodeIds.size > 0) {
+    delta.graph.nodes.preview = createTouchedIdDelta(previewNodeIds)
+  }
+  if (previewEdgeIds.size > 0) {
+    delta.graph.edges.preview = createTouchedIdDelta(previewEdgeIds)
+  }
+  if (previewMindmapIds.size > 0) {
+    delta.graph.mindmaps.preview = createTouchedIdDelta(previewMindmapIds)
+  }
+
+  return delta
+}
 
 export const createProjectionDriver = ({
   engine,
@@ -46,9 +204,17 @@ export const createProjectionDriver = ({
   const snapshotStore = store.createValueStore(runtime.snapshot())
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()
-  const frameTask = scheduler.createFrameTask(() => {
-    update(['clock'])
-  })
+  const state = {
+    engine: engine.current(),
+    pending: createEmptyEditorGraphInputDelta(),
+    flushing: false,
+    scheduled: false
+  }
+  let observedSourceCount = 0
+
+  let currentEdit = store.read(session.state.edit)
+  let currentPreview = store.read(session.preview.state)
+  let unsubscribeDraft = NOOP
 
   const notify = (
     result: Result
@@ -58,80 +224,188 @@ export const createProjectionDriver = ({
     })
   }
 
-  const hasActiveMindmapEnterPreview = () => {
-    const enter = store.read(session.preview.state).mindmap.preview?.enter
-    if (!enter?.length) {
-      return false
+  const ensureFlushed = () => {
+    if (hasEditorGraphInputDelta(state.pending)) {
+      flush()
     }
-
-    const now = scheduler.readMonotonicNow()
-    return enter.some((entry) => entry.startedAt + entry.durationMs > now)
   }
 
-  const stopClock = () => {
-    frameTask.cancel()
-  }
-
-  const syncClock = () => {
-    if (!hasActiveMindmapEnterPreview()) {
-      stopClock()
+  const scheduleFlush = () => {
+    if (state.scheduled) {
       return
     }
 
-    frameTask.schedule()
+    state.scheduled = true
+    queueMicrotask(() => {
+      flush()
+    })
   }
 
-  const update = (
-    reasons: readonly EditorGraphInputReason[]
-  ): Result => {
-    const result = runtime.update(createEditorGraphInput({
-      snapshot: engine.snapshot(),
-      session,
-      layout,
-      reasons
-    }))
-    currentResult = result
-    snapshotStore.set(result.snapshot)
-    notify(result)
-    syncClock()
-    return result
+  const mark = (
+    delta: InputDelta
+  ) => {
+    mergeEditorGraphInputDelta(state.pending, delta)
+    if (observedSourceCount > 0 && !state.flushing) {
+      flush()
+      return
+    }
+    scheduleFlush()
+  }
+
+  const flush = () => {
+    if (state.flushing) {
+      return
+    }
+
+    state.flushing = true
+    state.scheduled = false
+    try {
+      while (hasEditorGraphInputDelta(state.pending)) {
+        const delta = takeEditorGraphInputDelta(state.pending)
+        const result = runtime.update(createEditorGraphInput({
+          publish: state.engine,
+          session,
+          layout,
+          delta
+        }))
+        currentResult = result
+        snapshotStore.set(result.snapshot)
+        notify(result)
+      }
+    } finally {
+      state.flushing = false
+      if (hasEditorGraphInputDelta(state.pending)) {
+        scheduleFlush()
+      }
+    }
+  }
+
+  const syncDraftSubscription = () => {
+    unsubscribeDraft()
+    unsubscribeDraft = NOOP
+
+    const edit = store.read(session.state.edit)
+    if (!edit || edit.kind !== 'node') {
+      return
+    }
+
+    unsubscribeDraft = layout.draft.node.subscribe(edit.nodeId, () => {
+      const delta = createEmptyEditorGraphInputDelta()
+      delta.graph.nodes.draft = createTouchedIdDelta([edit.nodeId])
+      delta.ui.edit = true
+      mark(delta)
+    })
   }
 
   const unsubscribes = [
-    engine.subscribe(() => {
-      update(['document'])
+    engine.subscribe((publish) => {
+      state.engine = publish
+      const delta = createEmptyEditorGraphInputDelta()
+      delta.document = createDocumentInputDelta(publish.change)
+      mark(delta)
     }),
     session.state.tool.subscribe(() => {
-      update(['session'])
-    }),
-    session.state.draw.subscribe(() => {
-      update(['session'])
+      mark(createToolDelta())
     }),
     session.state.edit.subscribe(() => {
-      update(['session'])
+      const previousEdit = currentEdit
+      currentEdit = store.read(session.state.edit)
+      syncDraftSubscription()
+      mark(createEditDelta({
+        previous: previousEdit,
+        next: currentEdit
+      }))
     }),
     session.state.selection.subscribe(() => {
-      update(['interaction'])
+      mark(createSelectionDelta())
     }),
     session.preview.state.subscribe(() => {
-      update(['session'])
+      const previousPreview = currentPreview
+      currentPreview = store.read(session.preview.state)
+      mark(createPreviewDelta({
+        snapshot: state.engine.snapshot,
+        previous: previousPreview,
+        next: currentPreview
+      }))
     }),
     session.interaction.read.mode.subscribe(() => {
-      update(['interaction'])
+      mark(createDragDelta())
     }),
     session.viewport.read.subscribe(() => {
-      update(['viewport'])
+      mark(createViewportDelta())
     })
   ]
 
-  update(FULL_REASONS)
+  syncDraftSubscription()
+  mark(createBootstrapDelta({
+    engine: state.engine,
+    session
+  }))
+  flush()
+
+  const readSnapshotStore: store.ReadStore<Snapshot> = {
+    get: () => {
+      ensureFlushed()
+      return snapshotStore.get()
+    },
+    subscribe: snapshotStore.subscribe
+  }
+
+  const observe = (
+    unsubscribe: () => void
+  ) => {
+    observedSourceCount += 1
+    return () => {
+      observedSourceCount -= 1
+      unsubscribe()
+    }
+  }
+
+  const wrapReadStore = <T,>(
+    value: store.ReadStore<T>
+  ): store.ReadStore<T> => ({
+    get: () => {
+      ensureFlushed()
+      return value.get()
+    },
+    subscribe: (listener) => observe(value.subscribe(listener))
+  })
+
+  const wrapKeyedStore = <K, T>(
+    value: store.KeyedReadStore<K, T>
+  ): store.KeyedReadStore<K, T> => ({
+    get: (key) => {
+      ensureFlushed()
+      return value.get(key)
+    },
+    subscribe: (key, listener) => observe(value.subscribe(key, listener))
+  })
+
+  const baseSources = createProjectionSources(readSnapshotStore)
+  const sources: ProjectionSources = {
+    snapshot: wrapReadStore(baseSources.snapshot),
+    graph: wrapReadStore(baseSources.graph),
+    scene: wrapReadStore(baseSources.scene),
+    selection: wrapReadStore(baseSources.selection),
+    chrome: wrapReadStore(baseSources.chrome),
+    node: wrapKeyedStore(baseSources.node),
+    edge: wrapKeyedStore(baseSources.edge),
+    mindmap: wrapKeyedStore(baseSources.mindmap),
+    group: wrapKeyedStore(baseSources.group)
+  }
 
   return {
     runtime,
-    sources: createProjectionSources(snapshotStore),
-    snapshot: () => snapshotStore.get(),
-    result: () => currentResult,
-    update,
+    sources,
+    snapshot: () => {
+      ensureFlushed()
+      return snapshotStore.get()
+    },
+    result: () => {
+      ensureFlushed()
+      return currentResult
+    },
+    mark,
     subscribe: (listener) => {
       listeners.add(listener)
       return () => {
@@ -139,7 +413,7 @@ export const createProjectionDriver = ({
       }
     },
     dispose: () => {
-      stopClock()
+      unsubscribeDraft()
       unsubscribes.forEach((unsubscribe) => {
         unsubscribe()
       })

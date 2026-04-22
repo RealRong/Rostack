@@ -34,73 +34,80 @@ const filterFields = (
   includeFieldId?: FieldId
 ) => fields.filter(field => field.id === includeFieldId || !usedFieldIds.has(field.id))
 
-const getFilterFieldId = (
+const filterId = (
   rule: Pick<FilterRule, 'fieldId'>
 ): FieldId | undefined => typeof rule.fieldId === 'string'
   ? rule.fieldId
   : undefined
 
-const getSorterFieldId = (
+const sorterId = (
   sorter: Pick<Sorter, 'field'>
 ): FieldId | undefined => typeof sorter.field === 'string'
   ? sorter.field
   : undefined
 
-const getAvailableFilterFields = (
+const usedFilterIds = (
+  rules: readonly FilterRule[]
+): readonly FieldId[] => rules.flatMap(rule => {
+  const fieldId = filterId(rule)
+  return fieldId
+    ? [fieldId]
+    : []
+})
+
+const usedSortIds = (
+  sorters: readonly Sorter[]
+): readonly FieldId[] => sorters.flatMap(sorter => {
+  const fieldId = sorterId(sorter)
+  return fieldId
+    ? [fieldId]
+    : []
+})
+
+const availableFilterFields = (
   fields: readonly Field[],
   rules: readonly FilterRule[]
 ) => filterFields(
   fields,
-  collectUsedFieldIds(rules, getFilterFieldId)
+  collectUsedFieldIds(rules, filterId)
 )
 
-const getAvailableSorterFields = (
+const availableSorterFields = (
   fields: readonly Field[],
   sorters: readonly Sorter[]
 ) => filterFields(
   fields,
-  collectUsedFieldIds(sorters, getSorterFieldId)
+  collectUsedFieldIds(sorters, sorterId)
 )
 
-const getAvailableSorterFieldsAt = (
+const availableSorterFieldsAt = (
   fields: readonly Field[],
   sorters: readonly Sorter[],
   index: number
 ) => {
-  const currentFieldId = getSorterFieldId(sorters[index] ?? {
+  const currentFieldId = sorterId(sorters[index] ?? {
     field: undefined
   })
 
   return filterFields(
     fields,
-    collectUsedFieldIds(sorters, getSorterFieldId, {
+    collectUsedFieldIds(sorters, sorterId, {
       excludeIndex: index
     }),
     currentFieldId
   )
 }
 
-const findSorterField = (
-  fields: readonly Field[],
-  sorter: Pick<Sorter, 'field'>
-) => {
-  const fieldId = getSorterFieldId(sorter)
-  return fieldId
-    ? fields.find(field => field.id === fieldId)
-    : undefined
-}
-
-export const query = {
-  fields: {
-    filterId: getFilterFieldId,
-    sorterId: getSorterFieldId,
-    available: {
-      filter: getAvailableFilterFields,
-      sort: getAvailableSorterFields,
-      sortAt: getAvailableSorterFieldsAt
-    },
-    find: {
-      sorter: findSorterField
-    }
+export const queryFieldOptions = {
+  filterId,
+  sorterId,
+  used: {
+    filterIds: usedFilterIds,
+    sortIds: usedSortIds
+  },
+  available: {
+    filter: availableFilterFields,
+    sort: availableSorterFields,
+    sortAt: availableSorterFieldsAt
   }
 } as const

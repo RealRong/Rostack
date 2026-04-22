@@ -25,8 +25,8 @@ const createItemListStub = (ids: readonly string[]) => {
     order,
     ...order,
     read: {
-      recordId: () => undefined,
-      sectionKey: () => undefined,
+      record: () => undefined,
+      section: () => undefined,
       placement: () => undefined
     }
   }

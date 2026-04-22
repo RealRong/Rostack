@@ -20,6 +20,9 @@ import {
   resetEntityRuntime,
   type EntitySourceRuntime
 } from '@dataview/runtime/source/patch'
+import {
+  createPresentSourceListStore
+} from '@dataview/runtime/source/list'
 
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 
@@ -35,12 +38,26 @@ export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
   const records = createEntitySourceRuntime<RecordId, DataRecord>()
   const fields = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
   const views = createEntitySourceRuntime<ViewId, View>()
+  const fieldList = createPresentSourceListStore({
+    ids: fields.source.ids,
+    values: fields.source
+  })
+  const viewList = createPresentSourceListStore({
+    ids: views.source.ids,
+    values: views.source
+  })
 
   return {
     source: {
       records: records.source,
-      fields: fields.source,
-      views: views.source
+      fields: {
+        ...fields.source,
+        list: fieldList
+      },
+      views: {
+        ...views.source,
+        list: viewList
+      }
     },
     records,
     fields,

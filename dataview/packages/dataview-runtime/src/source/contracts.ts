@@ -15,18 +15,26 @@ import type {
   ActiveViewQuery,
   ActiveViewTable,
   EngineCore,
+  FieldList,
   ItemId,
+  ItemList,
   ItemPlacement,
   Section,
-  SectionKey
+  SectionKey,
+  SectionList
 } from '@dataview/engine'
 
 export interface EntitySource<Key, Value> extends store.KeyedReadStore<Key, Value | undefined> {
   ids: store.ReadStore<readonly Key[]>
 }
 
+export interface ListedEntitySource<Key, Value> extends EntitySource<Key, Value> {
+  list: store.ReadStore<readonly Value[]>
+}
+
 export interface SectionSource extends store.KeyedReadStore<SectionKey, Section | undefined> {
   ids: store.ReadStore<readonly SectionKey[]>
+  list: store.ReadStore<SectionList>
 }
 
 export interface ItemSource {
@@ -36,12 +44,13 @@ export interface ItemSource {
     sectionKey: store.KeyedReadStore<ItemId, SectionKey | undefined>
     placement: store.KeyedReadStore<ItemId, ItemPlacement | undefined>
   }
+  list: store.ReadStore<ItemList>
 }
 
 export interface DocumentSource {
   records: EntitySource<RecordId, DataRecord>
-  fields: EntitySource<FieldId, CustomField>
-  views: EntitySource<ViewId, View>
+  fields: ListedEntitySource<FieldId, CustomField>
+  views: ListedEntitySource<ViewId, View>
 }
 
 export interface ActiveSource {
@@ -65,6 +74,8 @@ export interface ActiveSource {
   fields: {
     all: EntitySource<FieldId, Field>
     custom: EntitySource<FieldId, CustomField>
+    list: store.ReadStore<FieldList>
+    customList: store.ReadStore<readonly CustomField[]>
   }
 }
 

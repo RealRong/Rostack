@@ -16,9 +16,6 @@ import type {
   CardProperty
 } from '@dataview/runtime/model/shared'
 import {
-  createPresentListStore
-} from '@dataview/runtime/model/list'
-import type {
   EngineSource
 } from '@dataview/runtime/source'
 
@@ -51,13 +48,6 @@ const sameContent = (
   && left.hasProperties === right.hasProperties
   && sameProperties(left.properties, right.properties)
 )
-
-export const createActiveCustomFieldListStore = (
-  source: EngineSource
-): store.ReadStore<readonly CustomField[]> => createPresentListStore({
-  ids: source.active.fields.custom.ids,
-  values: source.active.fields.custom
-})
 
 export const createRecordCardPropertiesStore = (input: {
   source: EngineSource

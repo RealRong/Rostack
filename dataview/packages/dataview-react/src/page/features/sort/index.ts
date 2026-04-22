@@ -3,6 +3,3 @@ export type { SortPopoverProps } from '@dataview/react/page/features/sort/SortPo
 export {
   getSorterItemId
 } from '@dataview/react/page/features/sort/sortUi'
-export {
-  query
-} from '@dataview/runtime'

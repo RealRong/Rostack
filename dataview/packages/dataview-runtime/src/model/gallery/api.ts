@@ -9,13 +9,9 @@ import type {
   GallerySection
 } from '@dataview/runtime/model/gallery/types'
 import {
-  createActiveCustomFieldListStore,
   createItemCardContentStore,
   createRecordCardPropertiesStore
 } from '@dataview/runtime/model/card'
-import {
-  createPresentListStore
-} from '@dataview/runtime/model/list'
 import type {
   EngineSource
 } from '@dataview/runtime/source'
@@ -76,15 +72,12 @@ export const createGalleryModel = (input: {
     itemId: ItemId
   }) => string
 }): DataViewGalleryModel => {
-  const customFields = createActiveCustomFieldListStore(input.source)
-  const sectionList = createPresentListStore({
-    ids: input.source.active.sections.ids,
-    values: input.source.active.sections
-  })
+  const customFields = input.source.active.fields.customList
+  const sectionList = input.source.active.sections.list
   const sections = store.createDerivedStore({
     get: () => (
       store.read(input.source.active.view.type) === 'gallery'
-        ? store.read(sectionList)
+        ? store.read(sectionList).all
         : EMPTY_SECTIONS
     ),
     isEqual: equal.sameOrder
@@ -107,7 +100,7 @@ export const createGalleryModel = (input: {
       const gallery = store.read(input.source.active.gallery)
       return {
         viewId,
-        empty: store.read(input.source.active.items.ids).length === 0,
+        empty: store.read(input.source.active.items.list).count === 0,
         grouped: Boolean(store.read(input.source.active.query).group),
         size: gallery.size,
         canDrag: gallery.canReorder,

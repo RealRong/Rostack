@@ -16,14 +16,9 @@ export const createItemArraySelectionDomain = (
   ids: readonly ItemId[]
 ): OrderedSelectionDomain<ItemId> => collection.createOrderedAccess(ids)
 
-export const createItemSelectionDomainSource = (input: {
-  store: store.ReadStore<Pick<ItemList, 'order'> | undefined>
+export const createItemSelectionDomainSource = <TItems extends Pick<ItemList, 'order'>>(input: {
+  store: store.ReadStore<TItems>
 }): SelectionDomainSource<ItemId> => ({
-  get: () => {
-    const items = store.read(input.store)
-    return items
-      ? createItemListSelectionDomain(items)
-      : undefined
-  },
+  get: () => createItemListSelectionDomain(store.read(input.store)),
   subscribe: input.store.subscribe
 })

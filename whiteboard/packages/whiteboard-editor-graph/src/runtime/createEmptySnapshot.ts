@@ -1,9 +1,5 @@
 import { document as documentApi } from '@whiteboard/core/document'
 import type * as document from '@whiteboard/engine/contracts/document'
-import {
-  createFlags,
-  createIds
-} from '@shared/projection-runtime'
 import type {
   Input,
   Snapshot
@@ -35,22 +31,53 @@ export const createEmptyDocumentSnapshot = (): document.Snapshot => ({
         groupItems: new Map()
       }
     }
+  }
+})
+
+const createEmptyIdDelta = <TId extends string>(): document.IdDelta<TId> => ({
+  added: new Set(),
+  updated: new Set(),
+  removed: new Set()
+})
+
+export const createEmptyInputDelta = (): Input['delta'] => ({
+  document: {
+    reset: false,
+    order: false,
+    nodes: createEmptyIdDelta(),
+    edges: createEmptyIdDelta(),
+    mindmaps: createEmptyIdDelta(),
+    groups: createEmptyIdDelta()
   },
-  change: {
-    root: createFlags(false),
-    entities: {
-      nodes: createIds(),
-      edges: createIds(),
-      owners: {
-        mindmaps: createIds(),
-        groups: createIds()
-      }
+  graph: {
+    nodes: {
+      draft: createEmptyIdDelta(),
+      preview: createEmptyIdDelta(),
+      edit: createEmptyIdDelta()
     },
-    relations: {
-      graph: createFlags(false),
-      ownership: createFlags(false),
-      hierarchy: createFlags(false)
+    edges: {
+      preview: createEmptyIdDelta(),
+      edit: createEmptyIdDelta()
+    },
+    mindmaps: {
+      preview: createEmptyIdDelta(),
+      tick: new Set()
+    },
+    interaction: {
+      selection: false,
+      drag: false
     }
+  },
+  ui: {
+    tool: false,
+    selection: false,
+    marquee: false,
+    guides: false,
+    draw: false,
+    edit: false
+  },
+  scene: {
+    viewport: false
   }
 })
 
@@ -108,14 +135,7 @@ export const createEmptyInput = (): Input => ({
   clock: {
     now: 0
   },
-  impact: {
-    document: createFlags(false),
-    session: createFlags(false),
-    measure: createFlags(false),
-    interaction: createFlags(false),
-    viewport: createFlags(false),
-    clock: createFlags(false)
-  }
+  delta: createEmptyInputDelta()
 })
 
 export const createEmptySnapshot = (): Snapshot => ({

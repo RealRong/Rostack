@@ -133,7 +133,7 @@ const View = () => {
     onBlankPointerDown
   })
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = grid.items.read.recordId(cell.itemId)
+    const recordId = grid.items.read.record(cell.itemId)
     const record = recordId
       ? dataView.source.doc.records.get(recordId)
       : undefined

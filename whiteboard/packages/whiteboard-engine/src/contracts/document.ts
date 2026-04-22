@@ -22,15 +22,13 @@ import type {
 } from './command'
 import type { CommandResult } from './result'
 import type {
-  Flags,
-  Ids,
+  IdDelta,
   Revision
 } from './core'
 
 export interface Snapshot {
   revision: Revision
   state: State
-  change: Change
 }
 
 export interface State {
@@ -83,35 +81,46 @@ export interface EdgeNodes {
   target?: NodeId
 }
 
-export interface Change {
-  root: Flags
+export interface EngineChange {
+  root: RootChange
   entities: EntityChange
   relations: RelationChange
 }
 
-export interface EntityChange {
-  nodes: Ids<NodeId>
-  edges: Ids<EdgeId>
-  owners: OwnerChange
+export interface RootChange {
+  doc: boolean
+  background: boolean
+  order: boolean
 }
 
-export interface OwnerChange {
-  mindmaps: Ids<MindmapId>
-  groups: Ids<GroupId>
+export interface EntityChange {
+  nodes: IdDelta<NodeId>
+  edges: IdDelta<EdgeId>
+  mindmaps: IdDelta<MindmapId>
+  groups: IdDelta<GroupId>
 }
 
 export interface RelationChange {
-  graph: Flags
-  ownership: Flags
-  hierarchy: Flags
+  graph: boolean
+  ownership: boolean
+  hierarchy: boolean
+}
+
+export interface EnginePublish {
+  rev: Revision
+  snapshot: Snapshot
+  change: EngineChange
+}
+
+export interface EngineWrites {
+  subscribe(listener: (write: EngineWrite) => void): () => void
 }
 
 export interface Engine {
   readonly config: BoardConfig
-  snapshot(): Snapshot
-  subscribe(listener: (snapshot: Snapshot) => void): () => void
-  lastWrite(): EngineWrite | null
-  subscribeWrite(listener: (write: EngineWrite) => void): () => void
+  readonly writes: EngineWrites
+  current(): EnginePublish
+  subscribe(listener: (publish: EnginePublish) => void): () => void
   execute<C extends Command>(
     command: C,
     options?: ExecuteOptions

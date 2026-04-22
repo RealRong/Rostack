@@ -1,9 +1,8 @@
-import type { Snapshot } from '../contracts/document'
+import type { EnginePublish } from '../contracts/document'
 import type { EngineWrite } from '../types/engineWrite'
 
 export interface EngineState {
-  snapshot: Snapshot
-  listeners: Set<(snapshot: Snapshot) => void>
-  lastWrite: EngineWrite | null
+  publish: EnginePublish
+  listeners: Set<(publish: EnginePublish) => void>
   writeListeners: Set<(write: EngineWrite) => void>
 }

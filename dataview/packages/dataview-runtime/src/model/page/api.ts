@@ -22,11 +22,8 @@ import type {
   EngineSource
 } from '@dataview/runtime/source'
 import {
-  createPresentListStore
-} from '@dataview/runtime/model/list'
-import {
-  query as queryApi
-} from '@dataview/runtime/model/queryFields'
+  queryFieldOptions
+} from '@dataview/runtime/model/page/queryFieldOptions'
 import {
   resolvePageQueryBarState,
   resolvePageSettingsState,
@@ -35,34 +32,6 @@ import {
 
 const EMPTY_FIELD_IDS: readonly FieldId[] = []
 const EMPTY_FIELDS: readonly Field[] = []
-
-const readFilterFieldIds = (
-  query: ActiveViewQuery
-): readonly FieldId[] => {
-  const ids = query.filters.rules.flatMap(rule => (
-    typeof rule.rule.fieldId === 'string'
-      ? [rule.rule.fieldId]
-      : []
-  ))
-
-  return ids.length
-    ? ids
-    : EMPTY_FIELD_IDS
-}
-
-const readSortFieldIds = (
-  query: ActiveViewQuery
-): readonly FieldId[] => {
-  const ids = query.sort.rules.flatMap(rule => (
-    typeof rule.sorter.field === 'string'
-      ? [rule.sorter.field]
-      : []
-  ))
-
-  return ids.length
-    ? ids
-    : EMPTY_FIELD_IDS
-}
 
 const sameRoute = (
   left: PageQuery['route'],
@@ -193,25 +162,29 @@ export const createPageModel = (input: {
   pageSessionStore: store.ReadStore<PageSessionState>
   valueEditorOpenStore: store.ReadStore<boolean>
 }): PageModel => {
-  const customFields = store.createDerivedStore<readonly CustomField[]>({
-    get: () => store.read(input.source.doc.fields.ids)
-      .flatMap(fieldId => {
-        const field = store.read(input.source.doc.fields, fieldId)
-        return field ? [field] : []
-      }),
-    isEqual: equal.sameOrder
-  })
-  const views = createPresentListStore({
-    ids: input.source.doc.views.ids,
-    values: input.source.doc.views
-  })
+  const customFields = input.source.doc.fields.list
+  const views = input.source.doc.views.list
   const activeView = input.source.active.view.current
   const filterFieldIds = store.createDerivedStore<readonly FieldId[]>({
-    get: () => readFilterFieldIds(store.read(input.source.active.query)),
+    get: () => {
+      const ids = queryFieldOptions.used.filterIds(
+        store.read(input.source.active.query).filters.rules.map(rule => rule.rule)
+      )
+      return ids.length
+        ? ids
+        : EMPTY_FIELD_IDS
+    },
     isEqual: equal.sameOrder
   })
   const sortFieldIds = store.createDerivedStore<readonly FieldId[]>({
-    get: () => readSortFieldIds(store.read(input.source.active.query)),
+    get: () => {
+      const ids = queryFieldOptions.used.sortIds(
+        store.read(input.source.active.query).sort.rules.map(rule => rule.sorter)
+      )
+      return ids.length
+        ? ids
+        : EMPTY_FIELD_IDS
+    },
     isEqual: equal.sameOrder
   })
   const availableFilterFields = createAvailableFieldsStore({
@@ -294,7 +267,7 @@ export const createPageModel = (input: {
   const body = store.createDerivedStore<PageBody>({
     get: () => ({
       viewType: store.read(input.source.active.view.type),
-      empty: store.read(input.source.active.items.ids).length === 0,
+      empty: store.read(input.source.active.items.list).count === 0,
       valueEditorOpen: store.read(input.valueEditorOpenStore),
       locked: store.read(input.valueEditorOpenStore)
     }),
@@ -365,7 +338,7 @@ export const createPageModel = (input: {
       return {
         sorter: rule.sorter,
         field: rule.field,
-        availableFields: queryApi.fields.available.sortAt(
+        availableFields: queryFieldOptions.available.sortAt(
           allFields,
           sorters,
           index
@@ -381,7 +354,7 @@ export const createPageModel = (input: {
       return {
         visible: currentSettings.visible,
         route: currentSettings.route,
-        viewsCount: store.read(input.source.doc.views.ids).length,
+        viewsCount: store.read(views).length,
         fields: store.read(customFields),
         displayFieldIds: store.read(displayFieldIds),
         visibleFields: store.read(visibleFields),

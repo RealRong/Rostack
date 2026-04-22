@@ -55,7 +55,7 @@ const View = (props: CreateRecordBlockProps) => {
 
     const itemId = findItemIdByRecordId(
       grid.items.ids,
-      grid.items.read.recordId,
+      grid.items.read.record,
       recordId
     )
     if (itemId === undefined) {

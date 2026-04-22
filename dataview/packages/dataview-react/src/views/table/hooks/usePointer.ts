@@ -135,7 +135,7 @@ export const resolveFillWriteManyInput = (input: {
       return
     }
 
-    const recordId = input.grid.items.read.recordId(itemId)
+    const recordId = input.grid.items.read.record(itemId)
     if (!recordId || targetRecordIdSet.has(recordId)) {
       return
     }
@@ -508,7 +508,7 @@ export const usePointer = (
     grid.fields.all.find((field: { id: string }) => field.id === fieldId)
   ), [grid.fields.all])
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = grid.items.read.recordId(cell.itemId)
+    const recordId = grid.items.read.record(cell.itemId)
     const record = recordId
       ? dataView.source.doc.records.get(recordId)
       : undefined

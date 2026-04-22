@@ -43,14 +43,9 @@ export type {
   PageToolbar,
   TableColumnState,
   TableGrid,
-  TableItemList,
   TableModel,
   TableQueryState,
   TableViewState
-} from '@dataview/runtime/model'
-
-export {
-  query
 } from '@dataview/runtime/model'
 
 export {

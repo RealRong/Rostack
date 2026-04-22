@@ -18,13 +18,13 @@ const createGridStub = () => ({
   items: {
     ...createOrderedIdsStub(['row_1', 'row_2', 'row_3', 'row_4']),
     read: {
-      recordId: (itemId: string) => (({
+      record: (itemId: string) => (({
         row_1: 'rec_1',
         row_2: 'rec_2',
         row_3: 'rec_3',
         row_4: 'rec_2'
       }) as Record<string, string | undefined>)[itemId],
-      sectionKey: () => undefined,
+      section: () => undefined,
       placement: () => undefined
     }
   },

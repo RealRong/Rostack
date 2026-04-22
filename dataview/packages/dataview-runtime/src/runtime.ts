@@ -27,7 +27,8 @@ import {
   createTableModel
 } from '@dataview/runtime/model/table'
 import {
-  createItemArraySelectionDomain,
+  createItemListSelectionDomain,
+  createItemSelectionDomainSource,
   createSelectionController,
   type ItemSelectionController
 } from '@dataview/runtime/selection'
@@ -133,21 +134,18 @@ export const createDataViewRuntime = (
   })
   const table = createTableModel(sourceRuntime.source.active)
   const valueEditor = createValueEditorApi()
-  const activeItemIds = sourceRuntime.source.active.items.ids
+  const activeItems = sourceRuntime.source.active.items.list
   const activeView = sourceRuntime.source.active.view.current
-  const activeSelectionDomain = store.createDerivedStore({
-    get: () => createItemArraySelectionDomain(store.read(activeItemIds))
+  const activeSelectionDomain = createItemSelectionDomainSource({
+    store: activeItems
   })
   const selectionRuntime = createSelectionController({
-    domainSource: {
-      get: () => store.read(activeSelectionDomain),
-      subscribe: activeSelectionDomain.subscribe
-    }
+    domainSource: activeSelectionDomain
   })
   const selection = selectionRuntime.controller
   const marquee = createMarqueeController({
     selection,
-    resolveDomain: () => store.read(activeSelectionDomain)
+    resolveDomain: () => createItemListSelectionDomain(store.read(activeItems))
   })
   const model = {
     page: createPageModel({

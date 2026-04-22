@@ -53,7 +53,7 @@ export const createEditorEvents = ({
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()
-  const unsubscribeWrite = engine.subscribeWrite((write) => {
+  const unsubscribeWrite = engine.writes.subscribe((write) => {
     if (write.forward.some((op) => sync.isCheckpointOnly(op))) {
       session.reset()
       resetHost()
@@ -65,7 +65,7 @@ export const createEditorEvents = ({
 
   return {
     events: {
-      change: (listener) => engine.subscribeWrite((write) => {
+      change: (listener) => engine.writes.subscribe((write) => {
         listener(write.doc, write)
       }),
       dispose: (listener) => {

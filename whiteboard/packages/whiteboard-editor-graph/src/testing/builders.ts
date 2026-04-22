@@ -1,22 +1,37 @@
-import { createFlags } from '@shared/projection-runtime'
 import type { Size } from '@whiteboard/core/types'
 import type {
-  ImpactInput,
+  InputDelta,
   TextMeasureEntry
 } from '../contracts/editor'
+import { createEmptyInputDelta } from '../runtime/createEmptySnapshot'
 
-export type EditorGraphImpactFlags = Partial<Record<keyof ImpactInput, boolean>>
+export type EditorGraphDeltaFlags = Partial<{
+  document: boolean
+  graph: boolean
+  ui: boolean
+  scene: boolean
+}>
 
-export const createEditorGraphImpact = (
-  input: EditorGraphImpactFlags = {}
-): ImpactInput => ({
-  document: createFlags(input.document ?? false),
-  session: createFlags(input.session ?? false),
-  measure: createFlags(input.measure ?? false),
-  interaction: createFlags(input.interaction ?? false),
-  viewport: createFlags(input.viewport ?? false),
-  clock: createFlags(input.clock ?? false)
-})
+export const createEditorGraphDelta = (
+  input: EditorGraphDeltaFlags = {}
+): InputDelta => {
+  const delta = createEmptyInputDelta()
+
+  if (input.document) {
+    delta.document.reset = true
+  }
+  if (input.graph) {
+    delta.graph.interaction.selection = true
+  }
+  if (input.ui) {
+    delta.ui.selection = true
+  }
+  if (input.scene) {
+    delta.scene.viewport = true
+  }
+
+  return delta
+}
 
 export const createEditorGraphTextMeasureEntry = (
   size: Size,

@@ -484,9 +484,9 @@ export const createDocumentRead = ({
 }: {
   engine: Engine
 }): DocumentRead => {
-  const snapshotStore = store.createValueStore(engine.snapshot())
-  engine.subscribe((snapshot) => {
-    snapshotStore.set(snapshot)
+  const snapshotStore = store.createValueStore(engine.current().snapshot)
+  engine.subscribe((publish) => {
+    snapshotStore.set(publish.snapshot)
   })
 
   const documentStore = store.createDerivedStore<Document>({

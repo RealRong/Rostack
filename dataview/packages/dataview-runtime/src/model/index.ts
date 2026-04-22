@@ -38,7 +38,6 @@ export {
 export type {
   TableColumnState,
   TableGrid,
-  TableItemList,
   TableModel,
   TableQueryState,
   TableViewState
@@ -53,7 +52,3 @@ export type {
 export type {
   DataViewModel
 } from '@dataview/runtime/model/types'
-
-export {
-  query
-} from '@dataview/runtime/model/queryFields'

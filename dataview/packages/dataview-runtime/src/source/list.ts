@@ -4,8 +4,7 @@ import {
   store
 } from '@shared/core'
 
-
-export const createPresentListStore = <TId, T>(input: {
+export const createPresentSourceListStore = <TId, T>(input: {
   ids: store.ReadStore<readonly TId[]>
   values: store.KeyedReadStore<TId, T | undefined>
   isEqual?: equal.Equality<readonly T[]>

@@ -28,7 +28,7 @@ const assertResolvedTableRows = (runtime: ReturnType<typeof createDataViewRuntim
   assert.ok(grid.items.ids.length > 0)
 
   grid.items.ids.slice(0, 32).forEach(itemId => {
-    const recordId = grid.items.read.recordId(itemId)
+    const recordId = grid.items.read.record(itemId)
     assert.ok(recordId, `Missing recordId for item ${itemId}`)
     assert.ok(runtime.source.doc.records.get(recordId), `Missing record ${recordId} for item ${itemId}`)
   })

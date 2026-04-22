@@ -9,7 +9,9 @@ import { createDocumentSnapshot } from '../document/create'
 import { normalizeDocument } from '../document/normalize'
 import type {
   CreateEngineOptions,
-  Engine
+  Engine,
+  EngineChange,
+  EnginePublish
 } from '../contracts/document'
 import { buildFacts } from '../facts/build'
 import { createDocumentSource } from './document'
@@ -17,12 +19,12 @@ import { success } from '../result'
 import { createWrite } from '../write'
 import { buildChange } from '../change/build'
 import type { EngineState } from './state'
-import { publishSnapshot } from './publish'
+import { publishEngine } from './publish'
 import type { EngineWrite } from '../types/engineWrite'
 
 const createInitialChange = (
   document: Document
-) => buildChange({
+): EngineChange => buildChange({
   document: true,
   background: true,
   canvasOrder: true,
@@ -48,6 +50,15 @@ const createInitialChange = (
   }
 })
 
+const createPublish = (input: {
+  snapshot: ReturnType<typeof createDocumentSnapshot>
+  change: EngineChange
+}): EnginePublish => ({
+  rev: input.snapshot.revision,
+  snapshot: input.snapshot,
+  change: input.change
+})
+
 export const createEngine = ({
   registries,
   document,
@@ -64,16 +75,19 @@ export const createEngine = ({
     config,
     registries: resolvedRegistries
   })
+  const initialSnapshot = createDocumentSnapshot({
+    revision: 0,
+    document: initialDocument,
+    facts: initialFacts
+  })
+  const initialChange = createInitialChange(initialDocument)
 
   const state: EngineState = {
-    snapshot: createDocumentSnapshot({
-      revision: 0,
-      document: initialDocument,
-      facts: initialFacts,
-      change: createInitialChange(initialDocument)
+    publish: createPublish({
+      snapshot: initialSnapshot,
+      change: initialChange
     }),
     listeners: new Set(),
-    lastWrite: null,
     writeListeners: new Set()
   }
 
@@ -87,11 +101,15 @@ export const createEngine = ({
     const nextDocument = normalizeDocument(draft.doc, config)
     const nextFacts = buildFacts(nextDocument)
     documentSource.commit(nextDocument)
+    const nextChange = buildChange(draft.changes)
     const nextSnapshot = createDocumentSnapshot({
-      revision: state.snapshot.revision + 1,
+      revision: state.publish.rev + 1,
       document: nextDocument,
-      facts: nextFacts,
-      change: buildChange(draft.changes)
+      facts: nextFacts
+    })
+    const nextPublish = createPublish({
+      snapshot: nextSnapshot,
+      change: nextChange
     })
     const write: EngineWrite = {
       rev: nextSnapshot.revision,
@@ -103,8 +121,7 @@ export const createEngine = ({
       inverse: draft.inverse,
       footprint: draft.history.footprint
     }
-    state.lastWrite = write
-    publishSnapshot(state, nextSnapshot)
+    publishEngine(state, nextPublish)
     state.writeListeners.forEach((listener) => {
       listener(write)
     })
@@ -114,18 +131,19 @@ export const createEngine = ({
 
   return {
     config,
-    snapshot: () => state.snapshot,
+    writes: {
+      subscribe: (listener) => {
+        state.writeListeners.add(listener)
+        return () => {
+          state.writeListeners.delete(listener)
+        }
+      }
+    },
+    current: () => state.publish,
     subscribe: (listener) => {
       state.listeners.add(listener)
       return () => {
         state.listeners.delete(listener)
-      }
-    },
-    lastWrite: () => state.lastWrite,
-    subscribeWrite: (listener) => {
-      state.writeListeners.add(listener)
-      return () => {
-        state.writeListeners.delete(listener)
       }
     },
     execute: (command, options) => {

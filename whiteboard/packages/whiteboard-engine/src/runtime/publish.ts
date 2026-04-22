@@ -1,12 +1,12 @@
-import type { Snapshot } from '../contracts/document'
+import type { EnginePublish } from '../contracts/document'
 import type { EngineState } from './state'
 
-export const publishSnapshot = (
+export const publishEngine = (
   state: EngineState,
-  snapshot: Snapshot
+  publish: EnginePublish
 ) => {
-  state.snapshot = snapshot
+  state.publish = publish
   state.listeners.forEach((listener) => {
-    listener(snapshot)
+    listener(publish)
   })
 }

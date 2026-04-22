@@ -1,10 +1,9 @@
-import { collection, store } from '@shared/core'
+import { store } from '@shared/core'
 import type {
   ActiveViewQuery,
   FieldList,
   ItemId,
-  ItemPlacement,
-  Section,
+  ItemList,
   SectionKey,
   SectionList
 } from '@dataview/engine'
@@ -13,26 +12,14 @@ import type {
   CalculationMetric,
   Field,
   FieldId,
-  RecordId,
   SortDirection,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import type { ActiveSource } from '@dataview/runtime/source'
 
-export interface TableItemList {
-  ids: readonly ItemId[]
-  count: number
-  order: ReturnType<typeof collection.createOrderedAccess<ItemId>>
-  read: {
-    recordId: (itemId: ItemId) => RecordId | undefined
-    sectionKey: (itemId: ItemId) => SectionKey | undefined
-    placement: (itemId: ItemId) => ItemPlacement | undefined
-  }
-}
-
 export interface TableGrid {
-  items: TableItemList
+  items: ItemList
   fields: FieldList
   sections: SectionList
 }
@@ -66,98 +53,6 @@ export interface TableModel {
   view: store.ReadStore<TableViewState | undefined>
   column: store.KeyedReadStore<FieldId, TableColumnState | undefined>
   summary: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
-}
-
-const buildGridItems = (input: {
-  previous?: TableItemList
-  source: ActiveSource['items']
-}): TableItemList => {
-  const ids = store.read(input.source.ids)
-
-  return input.previous?.ids === ids
-    ? input.previous
-    : {
-        ids,
-        count: ids.length,
-        order: collection.createOrderedAccess(ids),
-        read: {
-          recordId: itemId => input.source.read.recordId.get(itemId),
-          sectionKey: itemId => input.source.read.sectionKey.get(itemId),
-          placement: itemId => input.source.read.placement.get(itemId)
-        }
-      }
-}
-
-const buildFieldList = (input: {
-  previous?: FieldList
-  source: ActiveSource['fields']
-}): FieldList => {
-  const ids = store.read(input.source.all.ids)
-  const customIds = store.read(input.source.custom.ids)
-  const canReuse = Boolean(
-    input.previous
-    && input.previous.ids === ids
-    && ids.every(fieldId => input.previous!.get(fieldId) === store.read(input.source.all, fieldId))
-    && input.previous.custom.length === customIds.length
-    && customIds.every((fieldId, index) => (
-      input.previous!.custom[index] === store.read(input.source.custom, fieldId)
-    ))
-  )
-  if (canReuse) {
-    return input.previous as FieldList
-  }
-
-  const all = ids.flatMap(fieldId => {
-    const field = store.read(input.source.all, fieldId)
-    return field
-      ? [field]
-      : []
-  })
-  const byId = new Map(all.map(field => [field.id, field] as const))
-  const custom = customIds.flatMap(fieldId => {
-    const field = store.read(input.source.custom, fieldId)
-    return field
-      ? [field]
-      : []
-  })
-
-  return {
-    ...collection.createOrderedKeyedCollection({
-      ids,
-      all,
-      get: fieldId => byId.get(fieldId)
-    }),
-    custom
-  }
-}
-
-const buildSections = (input: {
-  previous?: SectionList
-  source: ActiveSource['sections']
-}): SectionList => {
-  const ids = store.read(input.source.ids)
-  const canReuse = Boolean(
-    input.previous
-    && input.previous.ids === ids
-    && ids.every(sectionKey => input.previous!.get(sectionKey) === store.read(input.source, sectionKey))
-  )
-  if (canReuse) {
-    return input.previous as SectionList
-  }
-
-  const all = ids.flatMap(sectionKey => {
-    const section = store.read(input.source, sectionKey)
-    return section
-      ? [section]
-      : []
-  })
-  const byKey = new Map<SectionKey, Section>(all.map(section => [section.key, section] as const))
-
-  return collection.createOrderedKeyedCollection({
-    ids,
-    all,
-    get: sectionKey => byKey.get(sectionKey)
-  })
 }
 
 const readTableView = (
@@ -209,18 +104,9 @@ export const createTableModel = (
       }
 
       const next = {
-        items: buildGridItems({
-          previous: previousGrid?.items,
-          source: active.items
-        }),
-        fields: buildFieldList({
-          previous: previousGrid?.fields,
-          source: active.fields
-        }),
-        sections: buildSections({
-          previous: previousGrid?.sections,
-          source: active.sections
-        })
+        items: store.read(active.items.list),
+        fields: store.read(active.fields.list),
+        sections: store.read(active.sections.list)
       } satisfies TableGrid
 
       if (

@@ -1,7 +1,7 @@
 import { store } from '@shared/core'
 import { sync } from '@whiteboard/core/spec/operation'
 import type { Operation, Origin } from '@whiteboard/core/types'
-import type { Engine } from '@whiteboard/engine'
+import type { Engine, EngineWrites } from '@whiteboard/engine'
 import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 import type { CommandResult } from '@whiteboard/engine/types/result'
 import type {
@@ -55,7 +55,9 @@ const shouldCaptureOrigin = (
 }
 
 export const createLocalEngineHistory = (
-  engine: Pick<Engine, 'apply' | 'subscribeWrite'>,
+  engine: Pick<Engine, 'apply'> & {
+    writes: EngineWrites
+  },
   config?: Partial<LocalEngineHistoryConfig>
 ): HistoryApi => {
   const resolvedConfig: LocalEngineHistoryConfig = {
@@ -133,7 +135,7 @@ export const createLocalEngineHistory = (
     publish()
   }
 
-  engine.subscribeWrite(captureWrite)
+  engine.writes.subscribe(captureWrite)
 
   return {
     get: state.get,

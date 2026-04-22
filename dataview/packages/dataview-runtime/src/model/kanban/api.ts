@@ -9,13 +9,9 @@ import type {
   KanbanSection
 } from '@dataview/runtime/model/kanban/types'
 import {
-  createActiveCustomFieldListStore,
   createItemCardContentStore,
   createRecordCardPropertiesStore
 } from '@dataview/runtime/model/card'
-import {
-  createPresentListStore
-} from '@dataview/runtime/model/list'
 import type {
   EngineSource
 } from '@dataview/runtime/source'
@@ -81,15 +77,12 @@ export const createKanbanModel = (input: {
     itemId: ItemId
   }) => string
 }): DataViewKanbanModel => {
-  const customFields = createActiveCustomFieldListStore(input.source)
-  const sectionList = createPresentListStore({
-    ids: input.source.active.sections.ids,
-    values: input.source.active.sections
-  })
+  const customFields = input.source.active.fields.customList
+  const sectionList = input.source.active.sections.list
   const sections = store.createDerivedStore({
     get: () => (
       store.read(input.source.active.view.type) === 'kanban'
-        ? store.read(sectionList)
+        ? store.read(sectionList).all
         : EMPTY_SECTIONS
     ),
     isEqual: equal.sameOrder

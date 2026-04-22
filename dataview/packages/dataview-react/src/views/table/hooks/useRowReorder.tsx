@@ -120,8 +120,8 @@ export const useRowReorder = (): RowReorderApi => {
       const beforeId = rowBeforeId(target)
       const sectionKey = (
         beforeId
-          ? grid.items.read.sectionKey(beforeId)
-          : grid.items.read.sectionKey(dragIds[0]!)
+          ? grid.items.read.section(beforeId)
+          : grid.items.read.section(dragIds[0]!)
       ) ?? grid.sections.all[0]?.key
       if (!sectionKey) {
         return

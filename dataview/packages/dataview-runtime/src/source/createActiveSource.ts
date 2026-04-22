@@ -10,7 +10,7 @@ import type {
   View,
   ViewId
 } from '@dataview/core/contracts'
-import { equal, store } from '@shared/core'
+import { collection, equal, store } from '@shared/core'
 import type {
   ActiveDelta,
   ActiveViewGallery,
@@ -19,9 +19,11 @@ import type {
   ActiveViewTable,
   FieldList,
   ItemId,
+  ItemList,
   ItemPlacement,
   Section,
   SectionKey,
+  SectionList,
   ViewState
 } from '@dataview/engine'
 import type {
@@ -35,6 +37,9 @@ import {
   resetEntityRuntime,
   type EntitySourceRuntime
 } from '@dataview/runtime/source/patch'
+import {
+  createPresentSourceListStore
+} from '@dataview/runtime/source/list'
 
 interface ItemValue {
   recordId: RecordId
@@ -80,7 +85,7 @@ const EMPTY_KANBAN: ActiveViewKanban = {
 }
 
 interface SectionSourceRuntime {
-  source: SectionSource
+  source: Pick<SectionSource, 'ids' | 'get' | 'subscribe' | 'isEqual'>
   ids: store.ValueStore<readonly SectionKey[]>
   values: store.KeyedStore<SectionKey, Section | undefined>
   clear(): void
@@ -93,7 +98,7 @@ interface SummarySourceRuntime {
 }
 
 interface ItemSourceRuntime {
-  source: ItemSource
+  source: Pick<ItemSource, 'ids' | 'read'>
   ids: store.ValueStore<readonly ItemId[]>
   table: ReturnType<typeof store.createKeyTableStore<ItemId, ItemValue>>
   clear(): void
@@ -123,6 +128,116 @@ const createRecordListStore = () => store.createValueStore<readonly RecordId[]>(
   initial: EMPTY_RECORD_IDS,
   isEqual: equal.sameOrder
 })
+
+const createItemListStore = (input: {
+  source: Pick<ItemSource, 'ids' | 'read'>
+}): store.ReadStore<ItemList> => {
+  let previous: ItemList | undefined
+
+  return store.createDerivedStore<ItemList>({
+    get: () => {
+      const ids = store.read(input.source.ids)
+      if (previous?.ids === ids) {
+        return previous
+      }
+
+      const next: ItemList = {
+        ids,
+        count: ids.length,
+        order: collection.createOrderedAccess(ids),
+        read: {
+          record: itemId => input.source.read.recordId.get(itemId),
+          section: itemId => input.source.read.sectionKey.get(itemId),
+          placement: itemId => input.source.read.placement.get(itemId)
+        }
+      }
+
+      previous = next
+      return next
+    },
+    isEqual: Object.is
+  })
+}
+
+const createSectionListStore = (input: {
+  source: Pick<SectionSource, 'ids' | 'get' | 'subscribe' | 'isEqual'>
+}): store.ReadStore<SectionList> => {
+  let previous: SectionList | undefined
+
+  return store.createDerivedStore<SectionList>({
+    get: () => {
+      const ids = store.read(input.source.ids)
+      const canReuse = Boolean(
+        previous
+        && previous.ids === ids
+        && previous.all.length === ids.length
+        && ids.every((sectionKey, index) => (
+          previous!.all[index] === store.read(input.source, sectionKey)
+        ))
+      )
+      if (canReuse) {
+        return previous as SectionList
+      }
+
+      const all = collection.presentValues(
+        ids,
+        sectionKey => store.read(input.source, sectionKey)
+      )
+      const next = collection.createOrderedKeyedCollection({
+        ids,
+        all,
+        get: sectionKey => input.source.get(sectionKey)
+      })
+
+      previous = next
+      return next
+    },
+    isEqual: Object.is
+  })
+}
+
+const createFieldListStore = (input: {
+  all: EntitySourceRuntime<FieldId, Field>['source']
+  customList: store.ReadStore<readonly CustomField[]>
+}): store.ReadStore<FieldList> => {
+  let previous: FieldList | undefined
+
+  return store.createDerivedStore<FieldList>({
+    get: () => {
+      const ids = store.read(input.all.ids)
+      const custom = store.read(input.customList)
+      const canReuse = Boolean(
+        previous
+        && previous.ids === ids
+        && previous.custom === custom
+        && previous.all.length === ids.length
+        && ids.every((fieldId, index) => (
+          previous!.all[index] === store.read(input.all, fieldId)
+        ))
+      )
+      if (canReuse) {
+        return previous as FieldList
+      }
+
+      const all = collection.presentValues(
+        ids,
+        fieldId => store.read(input.all, fieldId)
+      )
+      const next: FieldList = {
+        ...collection.createOrderedKeyedCollection({
+          ids,
+          all,
+          get: fieldId => input.all.get(fieldId)
+        }),
+        custom
+      }
+
+      previous = next
+      return next
+    },
+    isEqual: Object.is
+  })
+}
 
 const createSectionSourceRuntime = (): SectionSourceRuntime => {
   const ids = store.createValueStore<readonly SectionKey[]>({
@@ -260,6 +375,20 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
   const summaries = createSummarySourceRuntime()
   const fieldsAll = createEntitySourceRuntime<FieldId, Field>(EMPTY_FIELD_IDS)
   const fieldsCustom = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
+  const itemList = createItemListStore({
+    source: items.source
+  })
+  const sectionList = createSectionListStore({
+    source: sections.source
+  })
+  const customFieldList = createPresentSourceListStore({
+    ids: fieldsCustom.source.ids,
+    values: fieldsCustom.source
+  })
+  const fieldList = createFieldListStore({
+    all: fieldsAll.source,
+    customList: customFieldList
+  })
 
   return {
     source: {
@@ -277,12 +406,20 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
         ordered: recordsOrdered,
         visible: recordsVisible
       },
-      items: items.source,
-      sections: sections.source,
+      items: {
+        ...items.source,
+        list: itemList
+      },
+      sections: {
+        ...sections.source,
+        list: sectionList
+      },
       summaries: summaries.source,
       fields: {
         all: fieldsAll.source,
-        custom: fieldsCustom.source
+        custom: fieldsCustom.source,
+        list: fieldList,
+        customList: customFieldList
       }
     },
     viewId,

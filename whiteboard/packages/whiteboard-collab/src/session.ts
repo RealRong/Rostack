@@ -65,7 +65,7 @@ const isCheckpointWrite = (
 
 const createEmptyReplayDocument = (
   engine: CreateYjsSessionOptions['engine']
-) => documentApi.create(engine.snapshot().state.root.id)
+) => documentApi.create(engine.current().snapshot.state.root.id)
 
 export const createYjsSession = ({
   engine,
@@ -262,7 +262,7 @@ export const createYjsSession = ({
     rotatingCheckpoint = true
     try {
       doc.transact(() => {
-        syncStore.replaceCheckpoint(createCheckpoint(engine.snapshot().state.root))
+        syncStore.replaceCheckpoint(createCheckpoint(engine.current().snapshot.state.root))
         syncStore.clearChanges()
       }, localOrigin)
 
@@ -289,7 +289,7 @@ export const createYjsSession = ({
     }
 
     if (isCheckpointWrite(write)) {
-      publishCheckpoint(engine.snapshot().state.root)
+      publishCheckpoint(engine.current().snapshot.state.root)
       localHistoryController.clear()
       return
     }
@@ -313,7 +313,7 @@ export const createYjsSession = ({
     maybeRotateCheckpoint()
   }
 
-  const writeUnsubscribe = engine.subscribeWrite((nextWrite) => {
+  const writeUnsubscribe = engine.writes.subscribe((nextWrite) => {
     if (!bootstrapped || destroyed) {
       return
     }
@@ -359,7 +359,7 @@ export const createYjsSession = ({
         allowRotate: false
       })
     } else {
-      publishCheckpoint(engine.snapshot().state.root)
+      publishCheckpoint(engine.current().snapshot.state.root)
     }
 
     bootstrapped = true

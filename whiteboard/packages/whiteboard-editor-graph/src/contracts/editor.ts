@@ -49,7 +49,7 @@ export interface Input {
   interaction: InteractionInput
   viewport: ViewportInput
   clock: ClockInput
-  impact: ImpactInput
+  delta: InputDelta
 }
 
 export interface DocumentInput {
@@ -341,13 +341,53 @@ export interface ClockInput {
   now: number
 }
 
-export interface ImpactInput {
-  document: Flags
-  session: Flags
-  measure: Flags
-  interaction: Flags
-  viewport: Flags
-  clock: Flags
+export interface InputDelta {
+  document: DocumentDelta
+  graph: GraphInputDelta
+  ui: UiInputDelta
+  scene: SceneInputDelta
+}
+
+export interface DocumentDelta {
+  reset: boolean
+  order: boolean
+  nodes: document.IdDelta<NodeId>
+  edges: document.IdDelta<EdgeId>
+  mindmaps: document.IdDelta<MindmapId>
+  groups: document.IdDelta<GroupId>
+}
+
+export interface GraphInputDelta {
+  nodes: {
+    draft: document.IdDelta<NodeId>
+    preview: document.IdDelta<NodeId>
+    edit: document.IdDelta<NodeId>
+  }
+  edges: {
+    preview: document.IdDelta<EdgeId>
+    edit: document.IdDelta<EdgeId>
+  }
+  mindmaps: {
+    preview: document.IdDelta<MindmapId>
+    tick: ReadonlySet<MindmapId>
+  }
+  interaction: {
+    selection: boolean
+    drag: boolean
+  }
+}
+
+export interface UiInputDelta {
+  tool: boolean
+  selection: boolean
+  marquee: boolean
+  guides: boolean
+  draw: boolean
+  edit: boolean
+}
+
+export interface SceneInputDelta {
+  viewport: boolean
 }
 
 export interface Snapshot {

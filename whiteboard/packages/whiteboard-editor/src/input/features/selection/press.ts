@@ -1,4 +1,3 @@
-import type { EditorQuery } from '@whiteboard/editor/query'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createMoveInteraction } from '@whiteboard/editor/input/features/selection/move'
@@ -158,7 +157,7 @@ const resolveSelectionEditField = (
 
 const createSelectionSession = (
   input: {
-    ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>
+    ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions' | 'session'>
     start: PointerDownInput
     decision: SelectionDragAction | SelectionMarqueeAction | undefined
   }
@@ -654,7 +653,7 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: Pick<EditorHostDeps, 'query' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'actions'>,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
@@ -667,7 +666,7 @@ const applySelectionTap = (
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
-        ctx.query.node.committed.get(tap.nodeId)?.node
+        ctx.document.node.committed.get(tap.nodeId)?.node
       )
       if (!field) {
         return
@@ -682,7 +681,7 @@ const applySelectionTap = (
       return
     }
     case 'edit-field':
-      if (!selectionApi.target.equal(ctx.query.selection.summary.get().target, tap.selection)) {
+      if (!selectionApi.target.equal(ctx.projection.selection.summary.get().target, tap.selection)) {
         ctx.actions.selection.replace(tap.selection)
       }
       ctx.actions.edit.startNode(tap.nodeId, tap.field, {
@@ -695,7 +694,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions' | 'session'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -730,10 +729,10 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions' | 'session'>,
   input: PointerDownInput
 ): InteractionSession | null => {
-  const tool = ctx.query.tool.get()
+  const tool = ctx.sessionRead.tool.get()
   if (
     tool.type !== 'select'
     || input.pick.kind === 'edge'
@@ -750,21 +749,21 @@ const tryStartSelectionPress = (
     return null
   }
 
-  const selectionSummary = ctx.query.selection.summary.get()
-  const selectionAffordance = ctx.query.selection.affordance.get()
+  const selectionSummary = ctx.projection.selection.summary.get()
+  const selectionAffordance = ctx.projection.selection.affordance.get()
   const deps: SelectionPressDeps = {
     node: {
-      get: (nodeId) => ctx.query.node.committed.get(nodeId)?.node,
+      get: (nodeId) => ctx.document.node.committed.get(nodeId)?.node,
       canEnter: (nodeId) => {
-        const node = ctx.query.node.committed.get(nodeId)?.node
+        const node = ctx.document.node.committed.get(nodeId)?.node
         return node
-          ? ctx.query.node.capability(node).enter
+          ? ctx.projection.node.capability(node).enter
           : false
       },
-      groupId: ctx.query.group.ofNode
+      groupId: ctx.document.group.ofNode
     },
     group: {
-      target: (groupId) => ctx.query.group.target(groupId)
+      target: (groupId) => ctx.document.group.target(groupId)
     }
   }
   const mode = resolveSelectionPressMode(input.modifiers)
@@ -794,7 +793,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions' | 'session'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions' | 'session'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

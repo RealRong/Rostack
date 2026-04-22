@@ -34,10 +34,10 @@ type EdgeLabelDragState = {
 }
 
 const isSingleSelectedEdge = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'projection'>,
   edgeId: EdgeId
 ) => {
-  const target = ctx.query.selection.summary.get().target
+  const target = ctx.projection.selection.summary.get().target
 
   return (
     target.nodeIds.length === 0
@@ -81,7 +81,7 @@ const readEdgeLabelPatch = (
 }
 
 const createEdgeLabelDragSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write'>,
   initial: EdgeLabelDragState
 ): InteractionSession => {
   let state = initial
@@ -138,7 +138,7 @@ const createEdgeLabelDragSession = (
     gesture: null,
     autoPan: {
       frame: (pointer) => {
-        step(ctx.query.viewport.pointer(pointer).world)
+        step(ctx.sessionRead.viewport.pointer(pointer).world)
       }
     },
     move: (input) => {
@@ -166,15 +166,15 @@ const createEdgeLabelDragSession = (
 }
 
 const createEdgeLabelDragState = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'projection'>,
   input: {
     edgeId: EdgeId
     labelId: string
     pointerId: number
   }
 ): EdgeLabelDragState | null => {
-  const item = ctx.query.edge.item.get(input.edgeId)
-  const view = ctx.query.edge.geometry.get(input.edgeId)
+  const item = ctx.projection.edge.item.get(input.edgeId)
+  const view = ctx.projection.edge.geometry.get(input.edgeId)
   const ref = {
     edgeId: input.edgeId,
     labelId: input.labelId
@@ -182,12 +182,12 @@ const createEdgeLabelDragState = (
   if (
     !item
     || !view
-    || !ctx.query.edge.capability(item.edge).editLabel
+    || !ctx.projection.edge.capability(item.edge).editLabel
   ) {
     return null
   }
 
-  const labelSize = ctx.query.edge.label.metrics(ref)
+  const labelSize = ctx.projection.edge.label.metrics(ref)
   if (!labelSize) {
     return null
   }
@@ -204,7 +204,7 @@ const createEdgeLabelDragState = (
 }
 
 export const createEdgeLabelPressSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write' | 'actions'>,
   start: PointerDownInput,
   input: {
     edgeId: EdgeId
@@ -242,7 +242,7 @@ export const createEdgeLabelPressSession = (
 })
 
 export const startEdgeLabelPress = (
-  ctx: Pick<EditorHostDeps, 'query' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'actions'>,
   pointer: PointerDownInput
 ): {
   edgeId: EdgeId
@@ -265,8 +265,8 @@ export const startEdgeLabelPress = (
     return 'handled'
   }
 
-  const item = ctx.query.edge.item.get(pointer.pick.id)
-  if (!item || !ctx.query.edge.capability(item.edge).editLabel) {
+  const item = ctx.projection.edge.item.get(pointer.pick.id)
+  if (!item || !ctx.projection.edge.capability(item.edge).editLabel) {
     return 'handled'
   }
 

@@ -4,8 +4,8 @@ import type {
   View
 } from '@dataview/core/contracts'
 import { equal, store } from '@shared/core'
-import {
-  queryRead
+import type {
+  ActiveViewQuery
 } from '@dataview/engine'
 import type {
   DataViewSource
@@ -32,6 +32,34 @@ import {
 
 const EMPTY_FIELD_IDS: readonly FieldId[] = []
 const EMPTY_FIELDS: readonly Field[] = []
+
+const readFilterFieldIds = (
+  query: ActiveViewQuery
+): readonly FieldId[] => {
+  const ids = query.filters.rules.flatMap(rule => (
+    typeof rule.rule.fieldId === 'string'
+      ? [rule.rule.fieldId]
+      : []
+  ))
+
+  return ids.length
+    ? ids
+    : EMPTY_FIELD_IDS
+}
+
+const readSortFieldIds = (
+  query: ActiveViewQuery
+): readonly FieldId[] => {
+  const ids = query.sort.rules.flatMap(rule => (
+    typeof rule.sorter.field === 'string'
+      ? [rule.sorter.field]
+      : []
+  ))
+
+  return ids.length
+    ? ids
+    : EMPTY_FIELD_IDS
+}
 
 const sameRoute = (
   left: PageQuery['route'],
@@ -164,11 +192,11 @@ export const createPageModel = (input: {
     isEqual: Object.is
   })
   const filterFieldIds = store.createDerivedStore<readonly FieldId[]>({
-    get: () => queryRead.filterFieldIds(store.read(input.source.active.meta.query)),
+    get: () => readFilterFieldIds(store.read(input.source.active.meta.query)),
     isEqual: equal.sameOrder
   })
   const sortFieldIds = store.createDerivedStore<readonly FieldId[]>({
-    get: () => queryRead.sortFieldIds(store.read(input.source.active.meta.query)),
+    get: () => readSortFieldIds(store.read(input.source.active.meta.query)),
     isEqual: equal.sameOrder
   })
   const availableFilterFields = createAvailableFieldsStore({

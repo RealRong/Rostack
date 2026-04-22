@@ -1,8 +1,6 @@
 import type { Action, DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import {
-  document as documentApi
-} from '@dataview/core/document'
+import { operation } from '@dataview/core/operation'
 import { string } from '@shared/core'
 import { planFieldAction } from '@dataview/engine/mutate/planner/fields'
 import {
@@ -22,55 +20,6 @@ export interface PlannedWriteBatch {
   issues: ValidationIssue[]
   canApply: boolean
   planMs?: number
-}
-
-const applyPlannerOperation = (
-  document: DataDoc,
-  operation: DocumentOperation
-): DataDoc => {
-  switch (operation.type) {
-    case 'document.record.insert':
-      return documentApi.records.insert(document, operation.records, operation.target?.index)
-    case 'document.record.patch':
-      return documentApi.records.patch(document, operation.recordId, operation.patch)
-    case 'document.record.remove':
-      return documentApi.records.remove(document, operation.recordIds)
-    case 'document.record.fields.writeMany':
-      return documentApi.records.writeFields(document, operation)
-    case 'document.record.fields.restoreMany':
-      return documentApi.records.restoreFields(document, operation.entries)
-    case 'document.view.put':
-      return documentApi.views.put(document, operation.view)
-    case 'document.activeView.set':
-      return documentApi.views.activeId.set(document, operation.viewId)
-    case 'document.view.remove':
-      return documentApi.views.remove(document, operation.viewId)
-    case 'document.field.put':
-      return documentApi.fields.custom.put(document, operation.field)
-    case 'document.field.patch':
-      return documentApi.fields.custom.patch(document, operation.fieldId, operation.patch)
-    case 'document.field.remove':
-      return documentApi.fields.custom.remove(document, operation.fieldId)
-    case 'external.version.bump':
-      return document
-    default: {
-      const unexpectedOperation: never = operation
-      throw new Error(`Unsupported planner operation: ${unexpectedOperation}`)
-    }
-  }
-}
-
-const applyPlannerOperations = (
-  document: DataDoc,
-  operations: readonly DocumentOperation[]
-): DataDoc => {
-  let nextDocument = document
-
-  for (const operation of operations) {
-    nextDocument = applyPlannerOperation(nextDocument, operation)
-  }
-
-  return nextDocument
 }
 
 export const planActions = (input: {
@@ -107,7 +56,7 @@ export const planActions = (input: {
 
     // Only advance planner state when later actions still depend on the mutated document.
     if (index < input.actions.length - 1) {
-      workingDocument = applyPlannerOperations(workingDocument, planned.operations)
+      workingDocument = operation.reduce.all(workingDocument, planned.operations)
     }
   }
 

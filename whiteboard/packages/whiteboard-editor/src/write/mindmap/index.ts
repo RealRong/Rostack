@@ -1,5 +1,4 @@
 import type { Engine } from '@whiteboard/engine'
-import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { MindmapWrite } from '@whiteboard/editor/write/types'
 import {
@@ -17,7 +16,6 @@ export const createMindmapWrite = ({
   layout
 }: {
   engine: Engine
-  read: EditorQuery
   layout: EditorLayout
 }): MindmapWrite => ({
   create: (input) => engine.execute({

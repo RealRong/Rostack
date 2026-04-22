@@ -24,9 +24,8 @@ import {
 import type {
   TableGrid
 } from '@dataview/runtime/table'
-import {
-  type CellRef,
-  sameCellRef
+import type {
+  CellRef
 } from '@dataview/engine'
 import {
   field as fieldApi
@@ -99,6 +98,11 @@ type FillPointerState = Extract<PointerState, {
   type: 'drag'
   mode: 'fill'
 }>
+
+const sameCellRef = (
+  left: CellRef,
+  right: CellRef
+) => left.itemId === right.itemId && left.fieldId === right.fieldId
 
 export const resolveFillWriteManyInput = (input: {
   selection: ReturnType<typeof gridSelection.set> | null

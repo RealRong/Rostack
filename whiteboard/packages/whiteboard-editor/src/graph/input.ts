@@ -12,12 +12,13 @@ import type {
   NodePreview
 } from '@whiteboard/editor-graph'
 import type { Snapshot as DocumentSnapshot } from '@whiteboard/engine'
-import type { EditorLayout, DraftMeasure } from '@whiteboard/editor/layout/runtime'
+import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type {
   EditorInputPreviewState,
   TextPreviewPatch
 } from '@whiteboard/editor/session/preview/types'
+import type { DraftMeasure } from '@whiteboard/editor/types/layout'
 
 export type EditorGraphInputReason = keyof ImpactInput
 

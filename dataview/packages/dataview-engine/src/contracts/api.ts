@@ -42,7 +42,6 @@ export type {
   CellRef,
   FieldList,
   ItemId,
-  ItemIdPool,
   ItemPlacement,
   ItemList,
   MoveTarget,

@@ -2,16 +2,13 @@ import type {
   CanvasItemRef,
   Rect
 } from '@whiteboard/core/types'
+import type * as document from '@whiteboard/engine/contracts/document'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   SceneItem,
   SceneSnapshot
 } from '../contracts/editor'
-import type {
-  SceneWorkingState,
-  StructureWorkingState,
-  WorkingState
-} from '../contracts/working'
+import type { GraphState } from '../contracts/working'
 import { EMPTY_SCENE_LAYERS } from './geometry'
 
 const toSceneItem = (
@@ -23,17 +20,15 @@ const toSceneItem = (
 
 const readSceneItemBounds = (input: {
   item: SceneItem
-  structure: StructureWorkingState
-  element: WorkingState['element']
-  working: Pick<WorkingState, 'tree'>
+  graph: GraphState
 }): Rect | undefined => {
   switch (input.item.kind) {
     case 'node':
-      return input.element.nodes.get(input.item.id)?.layout.bounds
+      return input.graph.nodes.get(input.item.id)?.layout.bounds
     case 'edge':
-      return input.element.edges.get(input.item.id)?.route.bounds
+      return input.graph.edges.get(input.item.id)?.route.bounds
     case 'mindmap':
-      return input.working.tree.mindmaps.get(input.item.id)?.layout?.bbox
+      return input.graph.owners.mindmaps.get(input.item.id)?.tree.bbox
   }
 }
 
@@ -44,62 +39,53 @@ const isVisibleInWorld = (
   || !rect
   || geometryApi.rect.intersects(rect, visibleWorld)
 
-export const buildSceneWorkingState = (input: {
-  snapshot: WorkingState['input']['document']['snapshot']
-  structure: StructureWorkingState
-  element: WorkingState['element']
-  working: Pick<WorkingState, 'tree'>
+export const buildSceneSnapshot = (input: {
+  snapshot: document.Snapshot
+  graph: GraphState
   visibleWorld?: Rect
-}): SceneWorkingState => {
+}): SceneSnapshot => {
   const items = input.snapshot.state.root.canvas.order.map(toSceneItem)
   const visibleItems = items.filter((item) => isVisibleInWorld(
     readSceneItemBounds({
       item,
-      structure: input.structure,
-      element: input.element,
-      working: input.working
+      graph: input.graph
     }),
     input.visibleWorld
   ))
+  const visibleNodeIds = [...input.graph.nodes.entries()]
+    .filter(([, node]) => (
+      !node.render.hidden
+      && isVisibleInWorld(node.layout.bounds, input.visibleWorld)
+    ))
+    .map(([nodeId]) => nodeId)
+  const visibleEdgeIds = [...input.graph.edges.entries()]
+    .filter(([, edge]) => isVisibleInWorld(edge.route.bounds, input.visibleWorld))
+    .map(([edgeId]) => edgeId)
+  const visibleMindmapIds = [...input.graph.owners.mindmaps.keys()]
+    .filter((mindmapId) => isVisibleInWorld(
+      input.graph.owners.mindmaps.get(mindmapId)?.tree.bbox,
+      input.visibleWorld
+    ))
 
   return {
     layers: EMPTY_SCENE_LAYERS,
     items,
     visible: {
       items: visibleItems,
-      nodeIds: [...input.element.nodes.entries()]
-        .filter(([, node]) => (
-          !node.render.hidden
-          && isVisibleInWorld(node.layout.bounds, input.visibleWorld)
-        ))
-        .map(([nodeId]) => nodeId),
-      edgeIds: [...input.element.edges.entries()]
-        .filter(([, edge]) => isVisibleInWorld(edge.route.bounds, input.visibleWorld))
-        .map(([edgeId]) => edgeId),
-      mindmapIds: [...input.structure.mindmaps.keys()]
-        .filter((mindmapId) => isVisibleInWorld(
-          input.working.tree.mindmaps.get(mindmapId)?.layout?.bbox,
-          input.visibleWorld
-        ))
+      nodeIds: visibleNodeIds,
+      edgeIds: visibleEdgeIds,
+      mindmapIds: visibleMindmapIds
+    },
+    spatial: {
+      nodes: visibleNodeIds,
+      edges: visibleEdgeIds,
+      mindmaps: visibleMindmapIds
+    },
+    pick: {
+      items: visibleItems.map((item) => ({
+        kind: item.kind,
+        id: item.id
+      })) as readonly CanvasItemRef[]
     }
   }
 }
-
-export const buildSceneSnapshot = (
-  working: WorkingState
-): SceneSnapshot => ({
-  layers: working.scene.layers,
-  items: working.scene.items,
-  visible: working.scene.visible,
-  spatial: {
-    nodes: working.scene.visible.nodeIds,
-    edges: working.scene.visible.edgeIds,
-    mindmaps: working.scene.visible.mindmapIds
-  },
-  pick: {
-    items: working.scene.visible.items.map((item) => ({
-      kind: item.kind,
-      id: item.id
-    })) as readonly CanvasItemRef[]
-  }
-})

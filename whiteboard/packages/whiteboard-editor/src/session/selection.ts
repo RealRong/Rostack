@@ -1,9 +1,9 @@
 import { selection as selectionApi, type SelectionInput, type SelectionTarget } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import { equal, store as sharedStore } from '@shared/core'
-import type { EditorQuery } from '@whiteboard/editor/query'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 
-type SelectionReadSource = Pick<EditorQuery, 'node' | 'edge'>
+type SelectionReadSource = Pick<DocumentRead, 'node' | 'edge'>
 
 const readNextSelectionTarget = (
   current: SelectionTarget,

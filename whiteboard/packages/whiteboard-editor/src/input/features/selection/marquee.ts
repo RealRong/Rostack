@@ -70,16 +70,16 @@ const createMarqueeRect = (
 
 const readMatchedSelection = (
   input: {
-    ctx: Pick<EditorHostDeps, 'query'>
+    ctx: Pick<EditorHostDeps, 'projection'>
     rect: Rect
     match: SelectionMarqueeAction['match']
   }
 ): SelectionTarget => ({
-  nodeIds: input.ctx.query.node.idsInRect(input.rect, {
+  nodeIds: input.ctx.projection.node.idsInRect(input.rect, {
     match: input.match,
     policy: 'selection-marquee'
   }),
-  edgeIds: input.ctx.query.edge.idsInRect(input.rect, {
+  edgeIds: input.ctx.projection.edge.idsInRect(input.rect, {
     match: input.match
   })
 })
@@ -205,7 +205,7 @@ const syncMarqueeInteraction = (
 }
 
 export const createMarqueeSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'actions'>,
   input: {
     start: PointerDownInput
     action: SelectionMarqueeAction
@@ -260,7 +260,7 @@ export const createMarqueeSession = (
           return
         }
 
-        const sample = ctx.query.viewport.pointer(pointer)
+        const sample = ctx.sessionRead.viewport.pointer(pointer)
         step({
           screen: sample.screen,
           world: sample.world

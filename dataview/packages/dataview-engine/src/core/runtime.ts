@@ -3,11 +3,13 @@ import { resolveViewPlan } from '@dataview/engine/active/plan'
 import { emptyNormalizedIndexDemand } from '@dataview/engine/active/index/demand'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import type {
-  ActiveSnapshot,
   EngineResult,
   EngineSnapshot
 } from '@dataview/engine/contracts/core'
-import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
+import type {
+  ViewState
+} from '@dataview/engine/contracts/view'
+import { createDocumentReadContext } from '@dataview/engine/document/reader'
 import type {
   EngineState
 } from '@dataview/engine/runtime/state'
@@ -26,7 +28,7 @@ export interface CoreRuntime {
 export const createEngineSnapshot = (
   input: {
     state: EngineState
-    active?: ActiveSnapshot
+    active?: ViewState
   }
 ): EngineSnapshot => ({
   doc: input.state.doc,
@@ -41,7 +43,7 @@ export const createInitialEngineState = (input: {
   doc: DataDoc
   historyCap: number
 }): EngineState => {
-  const documentContext = createStaticDocumentReadContext(input.doc)
+  const documentContext = createDocumentReadContext(input.doc)
   const plan = resolveViewPlan(documentContext, documentContext.activeViewId)
   const index = createIndexState(input.doc, plan?.index ?? emptyNormalizedIndexDemand())
 
@@ -49,7 +51,7 @@ export const createInitialEngineState = (input: {
     rev: 0,
     doc: input.doc,
     history: {
-      cap: input.historyCap,
+      capacity: input.historyCap,
       undo: [],
       redo: []
     },

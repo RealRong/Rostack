@@ -21,14 +21,14 @@ type PanPointer = {
 
 type ViewportServices = Pick<
   EditorHostDeps,
-  'query' | 'session'
+  'sessionRead' | 'session'
 >
 
 const allowsLeftDrag = (
   ctx: ViewportServices
 ) => (
-  ctx.query.space.get()
-  || ctx.query.tool.is('hand')
+  ctx.sessionRead.space.get()
+  || ctx.sessionRead.tool.is('hand')
 )
 
 const updatePan = (

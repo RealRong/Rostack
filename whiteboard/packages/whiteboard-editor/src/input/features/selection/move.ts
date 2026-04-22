@@ -13,7 +13,7 @@ import type {
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { toSpatialNode } from '@whiteboard/editor/query/node/read'
+import { toSpatialNode } from '@whiteboard/editor/projection/node'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -36,12 +36,12 @@ const toMoveEdgePatches = (
 }))
 
 const findParentFrameId = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'document'>,
   nodeId: string
-) => ctx.query.frame.of(nodeId)
+) => ctx.document.frame.of(nodeId)
 
 const resolveFrameHoverId = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'document'>,
   state: Parameters<typeof nodeApi.move.state.finish>[0],
   pointerWorld: {
     x: number
@@ -49,7 +49,7 @@ const resolveFrameHoverId = (
   }
 ) => {
   const movingIds = new Set(state.move.members.map((member) => member.id))
-  let frameId = ctx.query.frame.at(pointerWorld)
+  let frameId = ctx.document.frame.at(pointerWorld)
 
   while (frameId && movingIds.has(frameId)) {
     frameId = findParentFrameId(ctx, frameId)
@@ -65,7 +65,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'committed' | 'query' | 'layout' | 'snap' | 'write' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions'>,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (
@@ -97,10 +97,10 @@ export const createMoveInteraction = (
       pointerId: input.start.pointerId,
       world: input.start.world,
       mindmap: {
-        structure: ctx.committed.mindmap.structure,
-        layout: ctx.layout.mindmap.layout
+        structure: ctx.document.mindmap.structure,
+        layout: ctx.projection.mindmap.layout
       },
-      node: ctx.query.node
+      node: ctx.document
     })
 
     if (mindmapState) {
@@ -118,11 +118,11 @@ export const createMoveInteraction = (
   }
 
   const initialState = nodeApi.move.state.start({
-    nodes: ctx.query.node.ordered().flatMap((node) => {
-      const projected = ctx.query.node.projected.get(node.id)
+    nodes: ctx.projection.node.ordered().flatMap((node) => {
+      const projected = ctx.projection.node.projected.get(node.id)
       return projected ? [toSpatialNode(projected)] : []
     }),
-    edges: ctx.query.edge.edges(ctx.query.edge.list.get()),
+    edges: ctx.projection.edge.edges(ctx.document.edge.list.get()),
     target: input.target,
     startWorld: input.start.world,
     nodeSize: ctx.engine.config.nodeSize
@@ -146,7 +146,7 @@ export const createMoveInteraction = (
     const result = nodeApi.move.state.step({
       state,
       pointerWorld: nextInput.world,
-      snap: ctx.query.tool.is('select')
+      snap: ctx.sessionRead.tool.is('select')
         ? ({ rect, excludeIds }) => {
             const snapped = ctx.snap.node.move({
               rect,
@@ -179,7 +179,7 @@ export const createMoveInteraction = (
     autoPan: {
       frame: (pointer) => {
         project({
-          world: ctx.query.viewport.pointer(pointer).world,
+          world: ctx.sessionRead.viewport.pointer(pointer).world,
           modifiers
         })
       }

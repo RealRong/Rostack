@@ -5,7 +5,7 @@ import type { NodeId, Rect } from '@whiteboard/core/types'
 import type {
   MindmapSceneItem,
   MindmapStructureItem
-} from '@whiteboard/editor/committed/read'
+} from '@whiteboard/editor/document/read'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 
 export type MindmapChrome = {

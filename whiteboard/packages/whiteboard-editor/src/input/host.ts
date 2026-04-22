@@ -5,7 +5,7 @@ import type {
   EditorInputHost,
   EditorStore
 } from '@whiteboard/editor/types/editor'
-import type { EditorQuery } from '@whiteboard/editor/query'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
@@ -31,13 +31,13 @@ const readSelectionIntent = (
 export const createEditorInputHost = ({
   interaction,
   edgeHover,
-  query,
+  document,
   session,
   actions
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  query: EditorQuery
+  document: Pick<DocumentRead, 'group'>
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction'>
   actions: Pick<EditorActions, 'selection'>
 }): EditorInputHost => {
@@ -96,7 +96,7 @@ export const createEditorInputHost = ({
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'group': {
-          const target = query.group.target(input.pick.id)
+          const target = document.group.target(input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',

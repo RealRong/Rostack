@@ -1,28 +1,13 @@
 import type { WorkingState } from '../contracts/working'
-import { EMPTY_SCENE_LAYERS } from './helpers'
-import {
-  createEmptyDocumentSnapshot,
-  createEmptyInput
-} from './createEmptySnapshot'
+import { EMPTY_SCENE_LAYERS } from './geometry'
+import { createEmptyDocumentSnapshot } from './createEmptySnapshot'
 
 export const createWorking = (): WorkingState => {
-  const input = createEmptyInput()
+  const snapshot = createEmptyDocumentSnapshot()
 
   return {
-    input: {
-      revision: {
-        document: 0,
-        input: 0
-      },
-      document: {
-        snapshot: createEmptyDocumentSnapshot()
-      },
-      session: input.session,
-      measure: input.measure,
-      interaction: input.interaction,
-      viewport: input.viewport,
-      clock: input.clock,
-      impact: []
+    revision: {
+      document: snapshot.revision
     },
     graph: {
       nodes: new Map(),
@@ -30,32 +15,7 @@ export const createWorking = (): WorkingState => {
       owners: {
         mindmaps: new Map(),
         groups: new Map()
-      },
-      dirty: {
-        nodeIds: new Set(),
-        edgeIds: new Set(),
-        mindmapIds: new Set(),
-        groupIds: new Set()
       }
-    },
-    measure: {
-      nodes: new Map(),
-      edgeLabels: new Map(),
-      dirty: {
-        nodeIds: new Set(),
-        edgeIds: new Set()
-      }
-    },
-    structure: {
-      mindmaps: new Map(),
-      groups: new Map()
-    },
-    tree: {
-      mindmaps: new Map()
-    },
-    element: {
-      nodes: new Map(),
-      edges: new Map()
     },
     ui: {
       selection: {
@@ -90,9 +50,6 @@ export const createWorking = (): WorkingState => {
           mindmap: null
         },
         edit: null
-      },
-      hover: {
-        kind: 'none'
       }
     },
     scene: {
@@ -103,6 +60,14 @@ export const createWorking = (): WorkingState => {
         nodeIds: [],
         edgeIds: [],
         mindmapIds: []
+      },
+      spatial: {
+        nodes: [],
+        edges: [],
+        mindmaps: []
+      },
+      pick: {
+        items: []
       }
     }
   }

@@ -5,7 +5,8 @@ import type {
   EdgeUpdateInput
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { EditorQuery } from '@whiteboard/editor/query'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { ProjectionEdgeRead } from '@whiteboard/editor/projection/edge'
 import type { EdgeWrite } from '@whiteboard/editor/write/types'
 import {
   createEdgeLabelWrite
@@ -15,14 +16,14 @@ import {
 } from '@whiteboard/editor/write/edge/route'
 
 const readEdge = (
-  read: Pick<EditorQuery, 'edge'>,
+  read: Pick<ProjectionEdgeRead, 'item'>,
   edgeId: EdgeId
-) => read.edge.item.get(edgeId)?.edge
+) => read.item.get(edgeId)?.edge
 
 const readCommittedEdge = (
-  read: Pick<EditorQuery, 'edge'>,
+  read: Pick<DocumentRead, 'edge'>,
   edgeId: EdgeId
-) => read.edge.committed.get(edgeId)?.edge
+) => read.edge.item.get(edgeId)?.edge
 
 const createStyleMutation = (
   path: string,
@@ -58,7 +59,7 @@ const updateEdges = (
 }
 
 const updateExistingEdges = (
-  read: Pick<EditorQuery, 'edge'>,
+  read: Pick<DocumentRead, 'edge'>,
   engine: Engine,
   edgeIds: readonly EdgeId[],
   input: EdgeUpdateInput
@@ -74,7 +75,7 @@ const updateExistingEdges = (
 
 const updateEdgesBy = (
   edgeIds: readonly EdgeId[],
-  read: Pick<EditorQuery, 'edge'>,
+  read: Pick<ProjectionEdgeRead, 'item'>,
   engine: Engine,
   buildInput: (edge: Edge) => EdgeUpdateInput | undefined
 ) => updateEdges(
@@ -97,7 +98,7 @@ const updateEdgesBy = (
 
 const updateEdgeStyle = (
   edgeIds: readonly EdgeId[],
-  read: Pick<EditorQuery, 'edge'>,
+  read: Pick<ProjectionEdgeRead, 'item'>,
   engine: Engine,
   path: string,
   value: unknown
@@ -116,7 +117,7 @@ const updateEdgeStyle = (
 
 const updateEdgeField = <Field extends keyof NonNullable<EdgeUpdateInput['fields']>>(
   edgeIds: readonly EdgeId[],
-  read: Pick<EditorQuery, 'edge'>,
+  read: Pick<ProjectionEdgeRead, 'item'>,
   engine: Engine,
   field: Field,
   value: NonNullable<EdgeUpdateInput['fields']>[Field]
@@ -138,7 +139,10 @@ export const createEdgeWrite = ({
   read
 }: {
   engine: Engine
-  read: EditorQuery
+  read: {
+    document: Pick<DocumentRead, 'edge'>
+    projection: Pick<ProjectionEdgeRead, 'item'>
+  }
 }): EdgeWrite => ({
   create: (input: {
     from: import('@whiteboard/core/types').EdgeEnd
@@ -179,13 +183,13 @@ export const createEdgeWrite = ({
   label: createEdgeLabelWrite(engine),
   route: createEdgeRouteWrite(engine),
   style: {
-    color: (edgeIds, value) => updateEdgeStyle(edgeIds, read, engine, 'color', value),
-    opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read, engine, 'opacity', value),
-    width: (edgeIds, value) => updateEdgeStyle(edgeIds, read, engine, 'width', value),
-    dash: (edgeIds, value) => updateEdgeStyle(edgeIds, read, engine, 'dash', value),
-    start: (edgeIds, value) => updateEdgeStyle(edgeIds, read, engine, 'start', value),
-    end: (edgeIds, value) => updateEdgeStyle(edgeIds, read, engine, 'end', value),
-    swapMarkers: (edgeIds) => updateEdgesBy(edgeIds, read, engine, (edge) => {
+    color: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'color', value),
+    opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'opacity', value),
+    width: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'width', value),
+    dash: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'dash', value),
+    start: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'start', value),
+    end: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'end', value),
+    swapMarkers: (edgeIds) => updateEdgesBy(edgeIds, read.projection, engine, (edge) => {
       const start = edge.style?.start
       const end = edge.style?.end
       if (start === end) {
@@ -201,17 +205,17 @@ export const createEdgeWrite = ({
     })
   },
   type: {
-    set: (edgeIds, value) => updateEdgeField(edgeIds, read, engine, 'type', value)
+    set: (edgeIds, value) => updateEdgeField(edgeIds, read.projection, engine, 'type', value)
   },
   lock: {
-    set: (edgeIds, locked) => updateExistingEdges(read, engine, edgeIds, {
+    set: (edgeIds, locked) => updateExistingEdges(read.document, engine, edgeIds, {
       fields: {
         locked
       }
     }),
     toggle: (edgeIds) => {
-      const shouldLock = edgeIds.some((id) => !readCommittedEdge(read, id)?.locked)
-      return updateExistingEdges(read, engine, edgeIds, {
+      const shouldLock = edgeIds.some((id) => !readCommittedEdge(read.document, id)?.locked)
+      return updateExistingEdges(read.document, engine, edgeIds, {
         fields: {
           locked: shouldLock
         }
@@ -219,7 +223,7 @@ export const createEdgeWrite = ({
     }
   },
   textMode: {
-    set: (edgeIds, value) => updateExistingEdges(read, engine, edgeIds, {
+    set: (edgeIds, value) => updateExistingEdges(read.document, engine, edgeIds, {
       fields: {
         textMode: value
       }

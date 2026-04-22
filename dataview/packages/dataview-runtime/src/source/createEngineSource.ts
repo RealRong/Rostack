@@ -25,7 +25,6 @@ import type {
 import type {
   EngineSnapshot
 } from '@dataview/engine/contracts/core'
-import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/view'
 import type {
   ActiveViewGallery,
   ActiveViewKanban,
@@ -58,6 +57,18 @@ const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
+const EMPTY_GROUP: ActiveViewQuery['group'] = {
+  active: false,
+  fieldId: '',
+  field: undefined,
+  mode: '',
+  bucketSort: undefined,
+  bucketInterval: undefined,
+  showEmpty: true,
+  availableModes: [],
+  availableBucketSorts: [],
+  supportsInterval: false
+}
 const EMPTY_QUERY: ActiveViewQuery = {
   search: {
     query: ''

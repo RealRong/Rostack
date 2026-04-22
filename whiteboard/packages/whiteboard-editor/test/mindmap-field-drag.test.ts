@@ -4,7 +4,7 @@ import { createMoveInteraction } from '../src/input/features/selection/move'
 describe('mindmap field drag', () => {
   it('routes selected mindmap root field drags into mindmap drag instead of generic node drag', () => {
     const session = createMoveInteraction({
-      query: {
+      document: {
         node: {
           committed: {
             get: (id: string) => {
@@ -55,40 +55,17 @@ describe('mindmap field drag', () => {
 
               return undefined
             }
-          },
-          ordered: vi.fn()
+          }
         },
         edge: {
           list: {
             get: vi.fn(() => [])
           },
-          edges: vi.fn(() => [])
         },
         frame: {
           at: vi.fn(),
           of: vi.fn()
         },
-        tool: {
-          is: () => true
-        },
-        viewport: {
-          pointer: vi.fn()
-        }
-      },
-      actions: {
-        selection: {
-          replace: vi.fn()
-        }
-      },
-      write: {
-        mindmap: {
-          move: vi.fn(),
-          topic: {
-            move: vi.fn()
-          }
-        }
-      },
-      committed: {
         mindmap: {
           structure: {
             get: () => ({
@@ -127,29 +104,31 @@ describe('mindmap field drag', () => {
           }
         }
       },
-      selection: {
-        get: vi.fn()
-      },
-      snap: {
+      projection: {
         node: {
-          move: vi.fn()
-        }
-      },
-      engine: {
-        config: {
-          nodeSize: {
-            width: 120,
-            height: 72
+          ordered: vi.fn(() => []),
+          projected: {
+            get: vi.fn(() => undefined)
           }
-        }
-      },
-      layout: {
+        },
+        edge: {
+          edges: vi.fn(() => [])
+        },
         mindmap: {
           layout: {
             get: () => ({
               id: 'mind-1',
               rootId: 'root-1',
               nodeIds: ['root-1'],
+              tree: {
+                rootNodeId: 'root-1'
+              },
+              layout: {
+                side: 'both',
+                mode: 'tidy',
+                hGap: 28,
+                vGap: 18
+              },
               computed: {
                 node: {
                   'root-1': {
@@ -168,6 +147,42 @@ describe('mindmap field drag', () => {
               },
               connectors: []
             })
+          }
+        }
+      },
+      sessionRead: {
+        tool: {
+          is: () => true
+        }
+      },
+      actions: {
+        selection: {
+          replace: vi.fn()
+        }
+      },
+      write: {
+        canvas: {
+          selection: {
+            move: vi.fn()
+          }
+        },
+        mindmap: {
+          move: vi.fn(),
+          topic: {
+            move: vi.fn()
+          }
+        }
+      },
+      snap: {
+        node: {
+          move: vi.fn()
+        }
+      },
+      engine: {
+        config: {
+          nodeSize: {
+            width: 120,
+            height: 72
           }
         }
       } as never

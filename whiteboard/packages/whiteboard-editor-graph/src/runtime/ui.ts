@@ -9,12 +9,12 @@ import type {
   ChromeOverlay,
   ChromeView,
   EdgeView,
+  HoverState,
   NodeView,
   SelectionState,
   SelectionView,
   SessionInput
 } from '../contracts/editor'
-import type { WorkingState } from '../contracts/working'
 
 export const readSelectionKind = (
   selection: SelectionState
@@ -122,7 +122,7 @@ export const buildSelectionView = (input: {
 export const buildChromeView = (input: {
   session: SessionInput
   selection: SelectionState
-  hover: WorkingState['ui']['hover']
+  hover: HoverState
 }): ChromeView => {
   const overlays: ChromeOverlay[] = []
 

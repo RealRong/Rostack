@@ -1,20 +1,20 @@
 import type { Viewport } from '@whiteboard/core/types'
-import { store } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
-import { createCommittedRead } from '@whiteboard/editor/committed/read'
+import { createEditorActions } from '@whiteboard/editor/action'
+import { createDocumentRead } from '@whiteboard/editor/document/read'
+import { createEditorEvents } from '@whiteboard/editor/editor/events'
+import { createEditorRead } from '@whiteboard/editor/editor/read'
+import { createEditorStore } from '@whiteboard/editor/editor/store'
 import { createEditorGraphDriver } from '@whiteboard/editor/graph/driver'
+import { createEditorHost } from '@whiteboard/editor/input/runtime'
+import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
+import { createProjectionRead } from '@whiteboard/editor/projection/read'
+import { createSessionRead } from '@whiteboard/editor/session/read'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
 } from '@whiteboard/editor/session/draw/state'
-import { createEditorActions } from '@whiteboard/editor/action'
-import { createEditorEvents } from '@whiteboard/editor/editor/events'
-import { createEditorRead } from '@whiteboard/editor/editor/read'
-import { createEditorStore } from '@whiteboard/editor/editor/store'
-import { createEditorHost } from '@whiteboard/editor/input/runtime'
-import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
-import { createEditorQuery } from '@whiteboard/editor/query'
 import { createEditorSession } from '@whiteboard/editor/session/runtime'
 import type { Editor } from '@whiteboard/editor/types/editor'
 import {
@@ -25,6 +25,7 @@ import type {
   LayoutBackend
 } from '@whiteboard/editor/types/layout'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import { createNodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
 
@@ -53,49 +54,46 @@ export const createEditor = ({
     initialDrawState,
     initialViewport
   })
-  const committed = createCommittedRead({
+  const document = createDocumentRead({
     engine
-  })
-  const mindmapPreview = store.createDerivedStore({
-    get: () => store.read(session.preview.state).mindmap.preview,
-    isEqual: (left, right) => left === right
   })
   const layout = createEditorLayout({
     read: {
       node: {
-        committed: committed.node.committed
-      },
-      mindmap: {
-        list: committed.mindmap.list,
-        committed: committed.mindmap.layout,
-        structure: committed.mindmap.structure
+        committed: document.node.committed
       }
     },
     session: {
-      edit: session.state.edit,
-      mindmapPreview
+      edit: session.state.edit
     },
     registry,
     backend: services?.layout
   })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
-  const query = createEditorQuery({
-    engineRead: committed,
-    registry,
-    history,
-    layout,
-    session
+  const nodeType = createNodeTypeSupport(registry)
+  const graph = createEditorGraphDriver({
+    engine,
+    session,
+    layout
   })
+  const projection = createProjectionRead({
+    document,
+    published: graph.sources,
+    selection: session.state.selection,
+    nodeType
+  })
+  const sessionRead = createSessionRead(session)
   const write = createEditorWrite({
     engine,
     history,
-    query,
+    document,
+    projection,
     layout
   })
   const actions = createEditorActions({
-    committed,
+    document,
     session,
-    query,
+    projection,
     layout,
     write,
     registry,
@@ -103,22 +101,18 @@ export const createEditor = ({
   })
   const host = createEditorHost({
     engine,
-    committed,
+    document,
     session,
-    query,
+    projection,
+    sessionRead,
     layout,
     write,
     actions
   })
-  const graph = createEditorGraphDriver({
-    engine,
-    session,
-    layout
-  })
   const events = createEditorEvents({
     engine,
     session,
-    query,
+    document,
     resetHost: host.cancel
   })
   const editorStore = createEditorStore(session)
@@ -126,11 +120,13 @@ export const createEditor = ({
   return {
     store: editorStore,
     read: createEditorRead({
-      committed,
-      query,
+      document,
+      projection,
+      sessionRead,
       published: graph.sources,
       store: editorStore,
-      registry,
+      history,
+      nodeType,
       defaults: defaults.selection
     }),
     actions,

@@ -1,6 +1,6 @@
 import type { Engine } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
-import type { EditorQuery } from '@whiteboard/editor/query'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 import {
   createDocumentWrite
 } from '@whiteboard/editor/write/document'
@@ -23,6 +23,7 @@ import {
   createNodeWrite
 } from '@whiteboard/editor/write/node'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type { ProjectionRead } from '@whiteboard/editor/projection/read'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type { EditorWrite } from '@whiteboard/editor/write/types'
@@ -30,35 +31,39 @@ export type { EditorWrite } from '@whiteboard/editor/write/types'
 export const createEditorWrite = ({
   engine,
   history,
-  query,
+  document,
+  projection,
   layout
 }: {
   engine: Engine
   history: HistoryApi
-  query: EditorQuery
+  document: DocumentRead
+  projection: ProjectionRead
   layout: EditorLayout
 }): EditorWrite => {
   const historyWrite = createHistoryWrite(history)
-  const document = createDocumentWrite(engine)
+  const documentWrite = createDocumentWrite(engine)
   const canvas = createCanvasWrite(engine)
   const node = createNodeWrite({
     engine,
-    read: query,
+    read: document,
     layout
   })
   const group = createGroupWrite(engine)
   const edge = createEdgeWrite({
     engine,
-    read: query
+    read: {
+      document,
+      projection: projection.edge
+    }
   })
   const mindmap = createMindmapWrite({
     engine,
-    read: query,
     layout
   })
 
   return {
-    document,
+    document: documentWrite,
     canvas,
     node,
     group,

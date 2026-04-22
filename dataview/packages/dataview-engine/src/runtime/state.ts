@@ -9,7 +9,7 @@ export interface HistoryEntry {
 }
 
 export interface EngineHistoryState {
-  cap: number
+  capacity: number
   undo: HistoryEntry[]
   redo: HistoryEntry[]
 }

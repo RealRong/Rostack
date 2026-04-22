@@ -15,9 +15,6 @@ import type {
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import {
-  buildGroupView,
-  buildMindmapView,
-  buildSceneSnapshot,
   isChromeViewEqual,
   isEdgeViewEqual,
   isGroupViewEqual,
@@ -25,7 +22,7 @@ import {
   isNodeViewEqual,
   isSceneSnapshotEqual,
   isSelectionViewEqual
-} from './helpers'
+} from './equality'
 
 const publishEntry = <TValue>(
   previous: TValue | undefined,
@@ -49,8 +46,8 @@ const publishGraphSnapshot = (
 ) => {
   const nodes = publishFamily<string, NodeView, NodeView>({
     previous: previous.nodes,
-    ids: [...working.element.nodes.keys()],
-    read: (nodeId) => working.element.nodes.get(nodeId)!,
+    ids: [...working.graph.nodes.keys()],
+    read: (nodeId) => working.graph.nodes.get(nodeId)!,
     publish: ({ previous: previousNode, next }) => publishEntry(
       previousNode,
       next,
@@ -59,8 +56,8 @@ const publishGraphSnapshot = (
   })
   const edges = publishFamily<string, EdgeView, EdgeView>({
     previous: previous.edges,
-    ids: [...working.element.edges.keys()],
-    read: (edgeId) => working.element.edges.get(edgeId)!,
+    ids: [...working.graph.edges.keys()],
+    read: (edgeId) => working.graph.edges.get(edgeId)!,
     publish: ({ previous: previousEdge, next }) => publishEntry(
       previousEdge,
       next,
@@ -69,11 +66,8 @@ const publishGraphSnapshot = (
   })
   const mindmaps = publishFamily<string, MindmapView, MindmapView>({
     previous: previous.owners.mindmaps,
-    ids: [...working.structure.mindmaps.keys()],
-    read: (mindmapId) => buildMindmapView({
-      mindmapId,
-      working
-    })!,
+    ids: [...working.graph.owners.mindmaps.keys()],
+    read: (mindmapId) => working.graph.owners.mindmaps.get(mindmapId)!,
     publish: ({ previous: previousMindmap, next }) => publishEntry(
       previousMindmap,
       next,
@@ -82,11 +76,8 @@ const publishGraphSnapshot = (
   })
   const groups = publishFamily<string, GroupView, GroupView>({
     previous: previous.owners.groups,
-    ids: [...working.structure.groups.keys()],
-    read: (groupId) => buildGroupView({
-      groupId,
-      working
-    })!,
+    ids: [...working.graph.owners.groups.keys()],
+    read: (groupId) => working.graph.owners.groups.get(groupId)!,
     publish: ({ previous: previousGroup, next }) => publishEntry(
       previousGroup,
       next,
@@ -134,7 +125,7 @@ export const createEditorGraphPublisher = (): RuntimePublisher<
     const publishedGraph = publishGraphSnapshot(previous.graph, working)
     const scene = publishValue({
       previous: previous.scene,
-      next: buildSceneSnapshot(working),
+      next: working.scene,
       isEqual: isSceneSnapshotEqual
     })
     const selection = publishValue({
@@ -158,10 +149,7 @@ export const createEditorGraphPublisher = (): RuntimePublisher<
     return {
       snapshot: {
         revision,
-        base: {
-          documentRevision: working.input.revision.document,
-          inputRevision: working.input.revision.input
-        },
+        documentRevision: working.revision.document,
         graph: publishedGraph.graph,
         scene: scene.value,
         ui

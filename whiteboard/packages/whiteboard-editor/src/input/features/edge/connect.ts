@@ -23,17 +23,16 @@ import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
+import type { ProjectionEdgeRead } from '@whiteboard/editor/projection/edge'
 import {
   toProjectedNodeGeometry,
   toSpatialNode,
-  type NodePresentationRead,
-  type ProjectedNode
-} from '@whiteboard/editor/query/node/read'
+  type ProjectionNodeRead
+} from '@whiteboard/editor/projection/node'
 
-type EdgeConnectNodeRead = Pick<NodePresentationRead, 'projected' | 'capability'>
-type EdgeConnectPreviewNodeRead = Pick<NodePresentationRead, 'projected'>
-type EdgeConnectEdgeRead = Pick<EdgePresentationRead, 'item' | 'geometry' | 'capability'>
+type EdgeConnectNodeRead = Pick<ProjectionNodeRead, 'projected' | 'capability'>
+type EdgeConnectPreviewNodeRead = Pick<ProjectionNodeRead, 'projected'>
+type EdgeConnectEdgeRead = Pick<ProjectionEdgeRead, 'item' | 'geometry' | 'capability'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
 }) => EdgeConnectEvaluation
@@ -507,14 +506,14 @@ const readReconnectPatch = (
   : undefined
 
 const readReconnectFixedPoint = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'projection'>,
   state: EdgeConnectState
 ): Point | undefined => {
   if (state.kind !== 'reconnect') {
     return undefined
   }
 
-  const resolved = ctx.query.edge.geometry.get(state.edgeId)
+  const resolved = ctx.projection.edge.geometry.get(state.edgeId)
   if (!resolved) {
     return undefined
   }
@@ -623,7 +622,7 @@ const commitConnectState = (
 }
 
 export const createEdgeConnectSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'snap' | 'write' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions'>,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial
@@ -638,7 +637,7 @@ export const createEdgeConnectSession = (
   ) => Math.hypot(
     world.x - originWorld.x,
     world.y - originWorld.y
-  ) > 3 / Math.max(ctx.query.viewport.get().zoom, 0.0001)
+  ) > 3 / Math.max(ctx.sessionRead.viewport.get().zoom, 0.0001)
 
   const project = ({
     world,
@@ -664,7 +663,7 @@ export const createEdgeConnectSession = (
       allowLatch
     })
     const result = stepEdgeConnect({
-      node: ctx.query.node,
+      node: ctx.projection.node,
       state,
       world: readReconnectWorld({
         state,
@@ -711,7 +710,7 @@ export const createEdgeConnectSession = (
     autoPan: {
       frame: (pointer) => {
         interaction.gesture = project({
-          world: ctx.query.viewport.pointer(pointer).world,
+          world: ctx.sessionRead.viewport.pointer(pointer).world,
           modifiers: lastModifiers,
           allowLatch: true,
           pointerId: state.pointerId

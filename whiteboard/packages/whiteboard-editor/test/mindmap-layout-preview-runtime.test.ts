@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { store } from '@shared/core'
-import { createEditorLayout } from '../src/layout/runtime'
-import type { NodeRegistry } from '../src'
+import { document as documentApi } from '@whiteboard/core/document'
+import { engine as engineApi } from '@whiteboard/engine'
+import { history as historyApi } from '@whiteboard/history'
+import { product } from '@whiteboard/product'
+import { editor as editorApi } from '../src'
+import type { NodeRegistry, PointerInput } from '../src'
 
 const registry: NodeRegistry = {
   get: (type) => {
@@ -53,180 +56,127 @@ const registry: NodeRegistry = {
   }
 }
 
+const createPointerInput = (
+  input: {
+    phase: PointerInput['phase']
+    x: number
+    y: number
+    pick: PointerInput['pick']
+  }
+): PointerInput => ({
+  phase: input.phase,
+  pointerId: 1,
+  button: 0,
+  buttons: input.phase === 'up' ? 0 : 1,
+  detail: 1,
+  client: { x: input.x, y: input.y },
+  screen: { x: input.x, y: input.y },
+  world: { x: input.x, y: input.y },
+  samples: [],
+  modifiers: {
+    alt: false,
+    shift: false,
+    ctrl: false,
+    meta: false
+  },
+  pick: input.pick,
+  editable: false,
+  ignoreInput: false,
+  ignoreSelection: false,
+  ignoreContextMenu: false
+})
+
 describe('mindmap layout preview runtime', () => {
-  it('applies root move preview to layout read', () => {
-    const preview = store.createValueStore({
-      rootMove: {
-        treeId: 'mind-1',
-        delta: {
-          x: 60,
-          y: 40
-        }
-      }
+  it('moves the whole live tree during root drag preview', () => {
+    const engine = engineApi.create({
+      document: documentApi.create('doc_mindmap_layout_preview_runtime')
     })
-
-    const layout = createEditorLayout({
-      read: {
-        node: {
-          committed: {
-            get: (id: string) => {
-              if (id === 'root-1') {
-                return {
-                  node: {
-                    id: 'root-1',
-                    type: 'text',
-                    owner: {
-                      kind: 'mindmap',
-                      id: 'mind-1'
-                    },
-                    position: { x: 0, y: 0 },
-                    size: { width: 120, height: 40 },
-                    data: {
-                      text: 'Root'
-                    }
-                  },
-                  rect: {
-                    x: 0,
-                    y: 0,
-                    width: 120,
-                    height: 40
-                  }
-                }
-              }
-
-              if (id === 'child-1') {
-                return {
-                  node: {
-                    id: 'child-1',
-                    type: 'text',
-                    owner: {
-                      kind: 'mindmap',
-                      id: 'mind-1'
-                    },
-                    position: { x: 180, y: 0 },
-                    size: { width: 120, height: 40 },
-                    data: {
-                      text: 'Child'
-                    }
-                  },
-                  rect: {
-                    x: 180,
-                    y: 0,
-                    width: 120,
-                    height: 40
-                  }
-                }
-              }
-
-              return undefined
-            },
-            subscribe: () => () => {}
-          }
-        },
-        mindmap: {
-          list: store.createValueStore(['mind-1']),
-          committed: {
-            get: (id: string) => id === 'mind-1'
-              ? {
-                  id: 'mind-1',
-                  rootId: 'root-1',
-                  nodeIds: ['root-1', 'child-1'],
-                  computed: {
-                    node: {
-                      'root-1': {
-                        x: 0,
-                        y: 0,
-                        width: 120,
-                        height: 40
-                      },
-                      'child-1': {
-                        x: 180,
-                        y: 0,
-                        width: 120,
-                        height: 40
-                      }
-                    },
-                    bbox: {
-                      x: 0,
-                      y: 0,
-                      width: 300,
-                      height: 40
-                    }
-                  },
-                  connectors: []
-                }
-              : undefined,
-            subscribe: () => () => {}
-          },
-          structure: {
-            get: (id: string) => id === 'mind-1'
-              ? {
-                  id: 'mind-1',
-                  rootId: 'root-1',
-                  nodeIds: ['root-1', 'child-1'],
-                  tree: {
-                    rootNodeId: 'root-1',
-                    nodes: {
-                      'root-1': {
-                        branch: {
-                          color: '#111827',
-                          line: 'curve',
-                          width: 2,
-                          stroke: 'solid'
-                        }
-                      },
-                      'child-1': {
-                        parentId: 'root-1',
-                        side: 'right',
-                        branch: {
-                          color: '#111827',
-                          line: 'curve',
-                          width: 2,
-                          stroke: 'solid'
-                        }
-                      }
-                    },
-                    children: {
-                      'root-1': ['child-1'],
-                      'child-1': []
-                    },
-                    layout: {
-                      side: 'both',
-                      mode: 'tidy',
-                      hGap: 28,
-                      vGap: 18
-                    }
-                  },
-                  layout: {
-                    side: 'both',
-                    mode: 'tidy',
-                    hGap: 28,
-                    vGap: 18
-                  }
-                }
-              : undefined,
-            subscribe: () => () => {}
-          }
-        }
-      } as any,
-      session: {
-        edit: store.createValueStore(null),
-        mindmapPreview: preview
+    const editor = editorApi.create({
+      engine,
+      history: historyApi.local.create(engine),
+      initialTool: {
+        type: 'select'
+      },
+      initialViewport: {
+        center: { x: 0, y: 0 },
+        zoom: 1
       },
       registry
     })
 
-    expect(layout.mindmap.layout.get('mind-1')?.computed.node['root-1']).toEqual({
-      x: 60,
-      y: 40,
-      width: 120,
-      height: 40
-    })
-    expect(layout.mindmap.layout.get('mind-1')?.computed.node['child-1']).toEqual({
-      x: 240,
-      y: 40,
-      width: 120,
-      height: 40
-    })
+    try {
+      const created = editor.actions.mindmap.create({
+        template: product.mindmap.template.build({
+          preset: 'mindmap.underline-split'
+        })
+      })
+
+      expect(created.ok).toBe(true)
+      if (!created.ok) {
+        return
+      }
+
+      const inserted = editor.actions.mindmap.insertRelative({
+        id: created.data.mindmapId,
+        targetNodeId: created.data.rootId,
+        relation: 'child',
+        side: 'right',
+        payload: {
+          kind: 'text',
+          text: 'Child'
+        }
+      })
+
+      expect(inserted.ok).toBe(true)
+      if (!inserted.ok) {
+        return
+      }
+
+      editor.actions.selection.replace({
+        nodeIds: [created.data.rootId]
+      })
+
+      const beforeRoot = editor.read.node.render.get(created.data.rootId)?.rect
+      const beforeChild = editor.read.node.render.get(inserted.data.nodeId)?.rect
+
+      expect(beforeRoot).toBeDefined()
+      expect(beforeChild).toBeDefined()
+
+      editor.input.pointerDown(createPointerInput({
+        phase: 'down',
+        x: beforeRoot!.x + 8,
+        y: beforeRoot!.y + 8,
+        pick: {
+          kind: 'node',
+          id: created.data.rootId,
+          part: 'field',
+          field: 'text'
+        }
+      }))
+      editor.input.pointerMove(createPointerInput({
+        phase: 'move',
+        x: beforeRoot!.x + 68,
+        y: beforeRoot!.y + 48,
+        pick: {
+          kind: 'node',
+          id: created.data.rootId,
+          part: 'field',
+          field: 'text'
+        }
+      }))
+
+      expect(editor.read.node.render.get(created.data.rootId)?.rect).toEqual({
+        ...beforeRoot!,
+        x: beforeRoot!.x + 60,
+        y: beforeRoot!.y + 40
+      })
+      expect(editor.read.node.render.get(inserted.data.nodeId)?.rect).toEqual({
+        ...beforeChild!,
+        x: beforeChild!.x + 60,
+        y: beforeChild!.y + 40
+      })
+    } finally {
+      editor.dispose()
+    }
   })
 })

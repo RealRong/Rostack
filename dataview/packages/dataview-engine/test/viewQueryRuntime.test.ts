@@ -3,9 +3,9 @@ import { test } from 'vitest'
 import { filter } from '@dataview/core/filter'
 import { compileViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
-import { runQueryStage } from '@dataview/engine/active/snapshot/query/runtime'
+import { runQueryStage } from '@dataview/engine/active/query/runtime'
 import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
-import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
+import { createDocumentReadContext } from '@dataview/engine/document/reader'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -117,7 +117,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     }
   })
   const document = createDocument(nextView)
-  const context = createStaticDocumentReadContext(document)
+  const context = createDocumentReadContext(document)
   const index = createIndexState(document)
   const previousPlan = compileViewPlan(context.reader, previousView).query
   const nextPlan = compileViewPlan(context.reader, nextView).query
@@ -201,7 +201,7 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
       title: 'Task 3'
     }
   })
-  const context = createStaticDocumentReadContext(document)
+  const context = createDocumentReadContext(document)
   const index = createIndexState(document)
   const previousPlan = compileViewPlan(context.reader, previousView).query
   const nextPlan = compileViewPlan(context.reader, nextView).query

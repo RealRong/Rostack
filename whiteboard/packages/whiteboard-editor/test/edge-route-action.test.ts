@@ -33,7 +33,40 @@ const createActions = (edge = createEdge()) => {
   const clearRoute = vi.fn(() => okResult())
 
   const actions = createEditorActions({
-    engine: {} as never,
+    document: {
+      node: {
+        committed: {
+          get: vi.fn(() => undefined)
+        },
+        list: {
+          get: vi.fn(() => [])
+        }
+      },
+      edge: {
+        item: {
+          get: vi.fn((edgeId: string) => (
+            edgeId === edge.id
+              ? { edge }
+              : undefined
+          ))
+        },
+        list: {
+          get: vi.fn(() => [])
+        }
+      },
+      group: {
+        exactIds: vi.fn(() => []),
+        target: vi.fn(() => undefined)
+      },
+      mindmap: {
+        structure: {
+          get: vi.fn(() => undefined)
+        }
+      },
+      slice: {
+        fromSelection: vi.fn(() => undefined)
+      }
+    } as never,
     session: {
       mutate: {
         tool: {
@@ -91,16 +124,10 @@ const createActions = (edge = createEdge()) => {
         }
       }
     } as never,
-    query: {
+    projection: {
       node: {
-        item: {
+        projected: {
           get: vi.fn(() => undefined)
-        },
-        committed: {
-          get: vi.fn(() => undefined)
-        },
-        list: {
-          get: vi.fn(() => [])
         }
       },
       edge: {
@@ -122,30 +149,18 @@ const createActions = (edge = createEdge()) => {
           get: vi.fn(() => [])
         }
       },
-      group: {
-        exactIds: vi.fn(() => []),
-        target: vi.fn(() => undefined)
-      },
       mindmap: {
-        item: {
+        layout: {
           get: vi.fn(() => undefined)
         }
-      },
-      slice: {
-        fromSelection: vi.fn(() => undefined)
-      },
-      viewport: {
-        get: vi.fn(() => ({
-          center: { x: 0, y: 0 },
-          zoom: 1
-        })),
-        pointer: vi.fn(() => ({
-          world: { x: 0, y: 0 }
-        }))
       }
     } as never,
     layout: {
-      editNode: vi.fn(() => undefined)
+      draft: {
+        node: {
+          get: vi.fn(() => undefined)
+        }
+      }
     } as never,
     write: {
       document: {
@@ -209,16 +224,11 @@ const createActions = (edge = createEdge()) => {
         create: vi.fn(),
         update: vi.fn(),
         updateMany: vi.fn(),
-        reconnect: {
-          commit: vi.fn()
-        },
+        reconnectCommit: vi.fn(),
         delete: vi.fn(),
         route: {
           set: setRoute,
-          insert: insertRoute,
           update: updateRoute,
-          move: vi.fn(),
-          delete: deleteRoute,
           clear: clearRoute
         },
         label: {

@@ -15,9 +15,9 @@ import type {
 } from '@whiteboard/core/types'
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
 import type { EditField, EditSession } from '@whiteboard/editor/session/edit'
-import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
-import { equal, store } from '@shared/core'
+import { store } from '@shared/core'
 import type {
+  DraftMeasure,
   LayoutBackend,
   LayoutKind,
   LayoutRequest,
@@ -25,14 +25,9 @@ import type {
 } from '@whiteboard/editor/types/layout'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import {
-  createMindmapLayoutRead,
-  type MindmapLayoutRead,
-  type MindmapLiveLayoutInput
-} from '@whiteboard/editor/layout/mindmap'
-import {
   createTextMetricsResource
 } from '@whiteboard/editor/layout/textMetrics'
-import type { CommittedRead } from '@whiteboard/editor/committed/read'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 
 const TEXT_PLACEHOLDER = 'Text'
 
@@ -316,17 +311,6 @@ const toLayoutResultUpdate = ({
   return undefined
 }
 
-export type DraftMeasure =
-  | {
-      kind: 'size'
-      size: Size
-    }
-  | {
-      kind: 'fit'
-      fontSize: number
-    }
-  | undefined
-
 const measureDraftNodeLayout = ({
   committed,
   nodeId,
@@ -395,7 +379,6 @@ export type EditorLayout = {
   draft: {
     node: store.KeyedReadStore<NodeId, DraftMeasure>
   }
-  mindmap: MindmapLayoutRead
   patchNodeCreatePayload: (
     payload: NodeInput
   ) => NodeInput
@@ -426,17 +409,11 @@ export const createEditorLayout = ({
 }: {
   read: {
     node: {
-      committed: CommittedRead['node']['committed']
-    }
-    mindmap: {
-      list: CommittedRead['mindmap']['list']
-      committed: CommittedRead['mindmap']['layout']
-      structure: CommittedRead['mindmap']['structure']
+      committed: DocumentRead['node']['committed']
     }
   }
   session: {
     edit: store.ReadStore<EditSession>
-    mindmapPreview: store.ReadStore<MindmapPreviewState | undefined>
   }
   registry: Pick<NodeRegistry, 'get'>
   backend?: LayoutBackend
@@ -478,57 +455,6 @@ export const createEditorLayout = ({
       )
     })
   }
-
-  const liveMindmapLayout = store.createKeyedDerivedStore<NodeId, MindmapLiveLayoutInput | undefined>({
-    get: (treeId) => {
-      const current = store.read(session.edit)
-      if (
-        !current
-        || current.kind !== 'node'
-        || current.field !== 'text'
-      ) {
-        return undefined
-      }
-
-      const node = store.read(read.node.committed, current.nodeId)?.node
-      if (
-        !node
-        || node.owner?.kind !== 'mindmap'
-        || node.owner.id !== treeId
-      ) {
-        return undefined
-      }
-
-      const committed = store.read(read.node.committed, current.nodeId)
-      const measured = store.read(draft.node, current.nodeId)
-      const size = measured?.kind === 'size'
-        ? measured.size
-        : undefined
-
-      return size
-        ? {
-            nodeSizes: new Map([[current.nodeId, size]])
-          }
-        : undefined
-    },
-    isEqual: (left, right) => left === right || (
-      left !== undefined
-      && right !== undefined
-      && left.nodeSizes.size === right.nodeSizes.size
-      && [...left.nodeSizes].every(([nodeId, size]) => (
-        geometryApi.equal.size(size, right.nodeSizes.get(nodeId))
-      ))
-    )
-  })
-
-  const mindmap = createMindmapLayoutRead({
-    list: read.mindmap.list,
-    committed: read.mindmap.committed,
-    structure: read.mindmap.structure,
-    nodeCommitted: read.node.committed,
-    liveLayout: liveMindmapLayout,
-    preview: session.mindmapPreview
-  })
 
   const resolveNodeRequest = ({
     nodeId,
@@ -645,7 +571,6 @@ export const createEditorLayout = ({
   return {
     text,
     draft,
-    mindmap,
     patchNodeCreatePayload: patchCreatePayload,
     patchMindmapTemplate: (template, position = { x: 0, y: 0 }) => ({
       ...template,

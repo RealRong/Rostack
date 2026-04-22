@@ -1,11 +1,16 @@
 import type {
+  EdgeId,
+  GroupId,
+  MindmapId,
+  NodeId
+} from '@whiteboard/core/types'
+import type {
   Input,
   Read,
   Result,
   Runtime,
   Snapshot
 } from '../contracts/editor'
-import { createEditorGraphRead } from '../read/createRead'
 import { createEditorGraphRuntime } from '../runtime/createEditorGraphRuntime'
 
 export interface EditorGraphHarness {
@@ -15,6 +20,18 @@ export interface EditorGraphHarness {
   snapshot(): Snapshot
   lastTrace(): Result['trace']
 }
+
+const createHarnessRead = (
+  runtime: Pick<Runtime, 'snapshot'>
+): Read => ({
+  snapshot: () => runtime.snapshot(),
+  node: (id: NodeId) => runtime.snapshot().graph.nodes.byId.get(id),
+  edge: (id: EdgeId) => runtime.snapshot().graph.edges.byId.get(id),
+  mindmap: (id: MindmapId) => runtime.snapshot().graph.owners.mindmaps.byId.get(id),
+  group: (id: GroupId) => runtime.snapshot().graph.owners.groups.byId.get(id),
+  scene: () => runtime.snapshot().scene,
+  ui: () => runtime.snapshot().ui
+})
 
 export const createEditorGraphHarness = (): EditorGraphHarness => {
   const baseRuntime = createEditorGraphRuntime()
@@ -31,9 +48,7 @@ export const createEditorGraphHarness = (): EditorGraphHarness => {
 
   return {
     runtime,
-    read: createEditorGraphRead({
-      runtime
-    }),
+    read: createHarnessRead(runtime),
     update: (input) => runtime.update(input),
     snapshot: () => runtime.snapshot(),
     lastTrace: () => trace

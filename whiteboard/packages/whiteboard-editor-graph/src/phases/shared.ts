@@ -6,15 +6,13 @@ import type {
   Input,
   Snapshot
 } from '../contracts/editor'
-import type { Token } from '../contracts/impact'
 import type { WorkingState } from '../contracts/working'
 import type { EditorPhaseName } from '../runtime/phaseNames'
 
 export type EditorContext = RuntimeContext<
   Input,
   WorkingState,
-  Snapshot,
-  Token
+  Snapshot
 >
 
 export type EditorPhase = PhaseSpec<

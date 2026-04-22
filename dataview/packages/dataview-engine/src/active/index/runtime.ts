@@ -11,10 +11,6 @@ import {
   syncCalculationIndex
 } from '@dataview/engine/active/index/calculations'
 import {
-  createIndexDeriveContext,
-  createIndexReadContext
-} from '@dataview/engine/active/index/context'
-import {
   emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'
 import {
@@ -45,13 +41,18 @@ import {
 } from '@dataview/engine/active/index/trace'
 import type {
   BucketKey,
+  IndexDeriveContext,
   IndexDeriveResult,
+  IndexReadContext,
   IndexState,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
 import {
   now
 } from '@dataview/engine/runtime/clock'
+import {
+  createDocumentReadContext
+} from '@dataview/engine/document/reader'
 import type {
   BaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
@@ -62,6 +63,36 @@ import {
 import {
   createRows
 } from '@dataview/engine/active/shared/rows'
+
+const createIndexReadContext = (
+  document: DataDoc
+): IndexReadContext => {
+  const context = createDocumentReadContext(document)
+
+  return {
+    document: context.document,
+    reader: context.reader,
+    fieldIds: context.fieldIds,
+    fieldIdSet: context.fieldIdSet
+  }
+}
+
+const createIndexDeriveContext = (
+  document: DataDoc,
+  impact: BaseImpact
+): IndexDeriveContext => ({
+  ...createIndexReadContext(document),
+  schemaFields: impact.schemaFields,
+  valueFields: impact.valueFields,
+  touchedFields: impact.touchedFields,
+  touchedRecords: impact.touchedRecords,
+  recordSetChanged: impact.recordSetChanged,
+  changed: Boolean(
+    impact.commit.reset
+    || impact.commit.records
+    || impact.commit.fields?.schema
+  )
+})
 
 const buildState = (
   document: DataDoc,

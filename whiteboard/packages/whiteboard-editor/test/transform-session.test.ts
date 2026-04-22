@@ -95,15 +95,7 @@ const createTransformContext = ({
   }[]
   resolvePreviewPatches?: (patches: any) => any
 }) => ({
-  query: {
-    node: {
-      item: {
-        get: () => ({
-          node,
-          rect: projectedRect
-        })
-      }
-    },
+  sessionRead: {
     viewport: {
       get: () => ({
         zoom: 1

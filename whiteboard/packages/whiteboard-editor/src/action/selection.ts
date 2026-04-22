@@ -3,7 +3,7 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { EditorQuery } from '@whiteboard/editor/query'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   CanvasWrite,
@@ -22,7 +22,7 @@ export type SelectionActionHelpers = Pick<
 >
 
 type SelectionActionHelpersHost = {
-  read: Pick<EditorQuery, 'group'>
+  read: Pick<DocumentRead, 'group'>
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
@@ -56,7 +56,7 @@ const toCanvasRefs = (
 ]
 
 const readGroupTarget = (
-  read: Pick<EditorQuery, 'group'>,
+  read: Pick<DocumentRead, 'group'>,
   groupId: GroupId
 ): SelectionTarget | undefined => read.group.target(groupId)
 

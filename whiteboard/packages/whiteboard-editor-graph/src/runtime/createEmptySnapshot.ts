@@ -8,7 +8,7 @@ import type {
   Input,
   Snapshot
 } from '../contracts/editor'
-import { EMPTY_SCENE_LAYERS } from './helpers'
+import { EMPTY_SCENE_LAYERS } from './geometry'
 
 export const createEmptyDocumentSnapshot = (): document.Snapshot => ({
   revision: 0,
@@ -120,10 +120,7 @@ export const createEmptyInput = (): Input => ({
 
 export const createEmptySnapshot = (): Snapshot => ({
   revision: 0,
-  base: {
-    documentRevision: 0,
-    inputRevision: 0
-  },
+  documentRevision: 0,
   graph: {
     nodes: {
       ids: [],

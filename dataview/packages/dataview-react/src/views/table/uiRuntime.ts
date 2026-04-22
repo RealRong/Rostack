@@ -1,5 +1,4 @@
 import type { CellRef, Engine, ItemId } from '@dataview/engine'
-import { queryRead } from '@dataview/engine'
 import {
   createInteractionCoordinator,
   type InteractionApi
@@ -369,7 +368,7 @@ export const createTableUiRuntime = (options: {
         columns: previousColumns,
         rowCount: layoutState.rowCount,
         measurementIds: layoutState.measurementIds,
-        grouped: queryRead.grouped(currentView.query),
+        grouped: currentView.query.group.active,
         showVerticalLines: currentView.showVerticalLines,
         wrap: currentView.wrap,
         blocks: windowState.items,

@@ -1,12 +1,6 @@
 export const EDITOR_PHASES = [
-  'input',
   'graph',
-  'measure',
-  'structure',
-  'tree',
-  'element',
-  'selection',
-  'chrome',
+  'ui',
   'scene'
 ] as const
 

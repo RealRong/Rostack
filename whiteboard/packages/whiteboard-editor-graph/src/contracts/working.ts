@@ -1,7 +1,6 @@
 import type {
   MindmapRenderConnector,
   MindmapLayout,
-  MindmapTree
 } from '@whiteboard/core/mindmap'
 import type {
   CanvasItemRef,
@@ -15,62 +14,33 @@ import type {
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection-runtime'
 import type {
-  ChromeView,
   EdgeDraft,
   EdgePreview,
   EdgeView,
-  HoverState,
-  Input,
+  GroupView,
   MindmapView,
   NodeDraft,
   NodePreview,
   NodeView,
-  SceneItem,
-  SceneLayer,
-  SelectionView,
-  TextMeasureEntry
+  SceneSnapshot,
+  UiSnapshot
 } from './editor'
-import type { Token } from './impact'
 
 export interface WorkingState {
-  input: InputWorkingState
-  graph: GraphWorkingState
-  measure: MeasureWorkingState
-  structure: StructureWorkingState
-  tree: TreeWorkingState
-  element: ElementWorkingState
-  ui: UiWorkingState
-  scene: SceneWorkingState
-}
-
-export interface InputWorkingState {
   revision: {
     document: Revision
-    input: Revision
   }
-  document: {
-    snapshot: document.Snapshot
-  }
-  session: Input['session']
-  measure: Input['measure']
-  interaction: Input['interaction']
-  viewport: Input['viewport']
-  clock: Input['clock']
-  impact: readonly Token[]
+  graph: GraphState
+  ui: UiSnapshot
+  scene: SceneSnapshot
 }
 
-export interface GraphWorkingState {
-  nodes: ReadonlyMap<NodeId, GraphNodeEntry>
-  edges: ReadonlyMap<EdgeId, GraphEdgeEntry>
+export interface GraphState {
+  nodes: ReadonlyMap<NodeId, NodeView>
+  edges: ReadonlyMap<EdgeId, EdgeView>
   owners: {
-    mindmaps: ReadonlyMap<MindmapId, GraphMindmapEntry>
-    groups: ReadonlyMap<GroupId, GraphGroupEntry>
-  }
-  dirty: {
-    nodeIds: ReadonlySet<NodeId>
-    edgeIds: ReadonlySet<EdgeId>
-    mindmapIds: ReadonlySet<MindmapId>
-    groupIds: ReadonlySet<GroupId>
+    mindmaps: ReadonlyMap<MindmapId, MindmapView>
+    groups: ReadonlyMap<GroupId, GroupView>
   }
 }
 
@@ -95,6 +65,10 @@ export interface GraphEdgeEntry {
 export interface GraphMindmapEntry {
   base: MindmapView['base']
   nodeIds: readonly NodeId[]
+  tree: {
+    layout?: MindmapLayout
+    connectors: readonly MindmapRenderConnector[]
+  }
 }
 
 export interface GraphGroupEntry {
@@ -102,57 +76,3 @@ export interface GraphGroupEntry {
 }
 
 export type GroupItemRef = CanvasItemRef
-
-export interface MeasureWorkingState {
-  nodes: ReadonlyMap<NodeId, TextMeasureEntry>
-  edgeLabels: ReadonlyMap<EdgeId, ReadonlyMap<string, TextMeasureEntry>>
-  dirty: {
-    nodeIds: ReadonlySet<NodeId>
-    edgeIds: ReadonlySet<EdgeId>
-  }
-}
-
-export interface StructureWorkingState {
-  mindmaps: ReadonlyMap<MindmapId, MindmapStructureState>
-  groups: ReadonlyMap<GroupId, GroupStructureState>
-}
-
-export interface MindmapStructureState {
-  nodeIds: readonly NodeId[]
-  tree: MindmapTree
-}
-
-export interface GroupStructureState {
-  itemIds: readonly GroupItemRef[]
-}
-
-export interface TreeWorkingState {
-  mindmaps: ReadonlyMap<MindmapId, MindmapTreeState>
-}
-
-export interface MindmapTreeState {
-  layout?: MindmapLayout
-  connectors: readonly MindmapRenderConnector[]
-}
-
-export interface ElementWorkingState {
-  nodes: ReadonlyMap<NodeId, NodeView>
-  edges: ReadonlyMap<EdgeId, EdgeView>
-}
-
-export interface UiWorkingState {
-  selection: SelectionView
-  chrome: ChromeView
-  hover: HoverState
-}
-
-export interface SceneWorkingState {
-  layers: readonly SceneLayer[]
-  items: readonly SceneItem[]
-  visible: {
-    items: readonly SceneItem[]
-    nodeIds: readonly NodeId[]
-    edgeIds: readonly EdgeId[]
-    mindmapIds: readonly MindmapId[]
-  }
-}

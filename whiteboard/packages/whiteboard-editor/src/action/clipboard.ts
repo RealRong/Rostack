@@ -2,8 +2,8 @@ import type {
   SliceRoots
 } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorStore } from '@whiteboard/editor/types/editor'
-import type { EditorQuery } from '@whiteboard/editor/query'
 import type {
   ClipboardActions,
   ClipboardTarget
@@ -17,7 +17,7 @@ import type { SelectionSessionDeps } from '@whiteboard/editor/session/types'
 import type { DocumentWrite } from '@whiteboard/editor/write/types'
 
 type ClipboardActionHelpersHost = {
-  read: EditorQuery
+  read: Pick<DocumentRead, 'slice'>
   document: Pick<DocumentWrite, 'insert'>
   session: SelectionSessionDeps
   selection: Pick<SelectionActionHelpers, 'delete'>

@@ -7,7 +7,7 @@ import {
 } from '@whiteboard/core/selection'
 import type { Edge, EdgeId, MindmapId, MindmapNodeId, NodeId, NodeModel } from '@whiteboard/core/types'
 import { collection, equal } from '@shared/core'
-import type { MindmapStructureItem } from '@whiteboard/editor/committed/read'
+import type { MindmapStructureItem } from '@whiteboard/editor/document/read'
 import type { EditorDefaults, EditorNodePaintDefaults } from '@whiteboard/editor/types/defaults'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type {
@@ -25,10 +25,10 @@ import type {
   SelectionToolbarScope
 } from '@whiteboard/editor/types/selectionPresentation'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { NodeFamily } from '@whiteboard/editor/types/node'
 import type {
+  NodeFamily,
   NodeTypeSupport
-} from '@whiteboard/editor/query/node/read'
+} from '@whiteboard/editor/types/node'
 
 const readNodeCountLabel = (
   count: number

@@ -37,16 +37,7 @@ export interface ItemRead {
   placement: (itemId: ItemId) => ItemPlacement | undefined
 }
 
-export interface ItemIdPool {
-  allocate: {
-    placement: (sectionKey: SectionKey, recordId: RecordId) => ItemId
-  }
-  gc: {
-    clear: () => void
-  }
-}
-
-export interface SectionData {
+export interface Section {
   key: SectionKey
   label: Token
   color?: string
@@ -55,8 +46,6 @@ export interface SectionData {
   recordIds: readonly RecordId[]
   itemIds: readonly ItemId[]
 }
-
-export type Section = SectionData
 
 export interface SectionList extends collection.OrderedKeyedCollection<SectionKey, Section> {}
 

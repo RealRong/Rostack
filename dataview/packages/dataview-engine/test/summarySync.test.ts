@@ -17,10 +17,10 @@ import {
 } from '@dataview/engine/active/shared/rows'
 import {
   runSummaryStage
-} from '@dataview/engine/active/snapshot/summary/runtime'
+} from '@dataview/engine/active/summary/runtime'
 import {
   deriveSummaryState
-} from '@dataview/engine/active/snapshot/summary/sync'
+} from '@dataview/engine/active/summary/derive'
 import type {
   View
 } from '@dataview/core/contracts'
@@ -28,9 +28,9 @@ import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import type {
-  MembershipDelta,
-  MembershipState
-} from '@dataview/engine/contracts/state'
+  MembershipPhaseDelta as MembershipDelta,
+  MembershipPhaseState as MembershipState
+} from '@dataview/engine/active/state'
 
 const FIELD_POINTS = 'points'
 const FIELD_STATUS = 'status'

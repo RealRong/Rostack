@@ -8,6 +8,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import { equal } from '@shared/core'
+import { createCollectionDelta } from '@dataview/engine/active/shared/delta'
 import type {
   CollectionDelta,
   DocDelta
@@ -19,32 +20,6 @@ const readTouchedIds = <T,>(
 ): readonly T[] => touched === 'all'
   ? all
   : [...touched]
-
-const createCollectionDelta = <Key,>(input: {
-  list?: boolean
-  update?: readonly Key[]
-  remove?: readonly Key[]
-}): CollectionDelta<Key> | undefined => (
-  input.list || input.update?.length || input.remove?.length
-    ? {
-        ...(input.list
-          ? {
-              list: true as const
-            }
-          : {}),
-        ...(input.update?.length
-          ? {
-              update: input.update
-            }
-          : {}),
-        ...(input.remove?.length
-          ? {
-              remove: input.remove
-            }
-          : {})
-      }
-    : undefined
-)
 
 const buildDocumentCollectionDelta = <Key>(input: {
   previousIds: readonly Key[]

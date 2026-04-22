@@ -1,5 +1,4 @@
 import { collection, store } from '@shared/core'
-import { queryRead } from '@dataview/engine'
 import type {
   FieldList,
   ItemId,
@@ -193,6 +192,13 @@ const sameColumn = (
   && left.calc === right.calc
 )
 
+const readSortDir = (
+  query: TableQueryState,
+  fieldId: FieldId
+): SortDirection | undefined => query.sort.rules.find(
+  rule => rule.sorter.field === fieldId
+)?.sorter.direction
+
 export const createTableRuntime = (
   active: ActiveSource
 ): TableRuntime => {
@@ -306,8 +312,8 @@ export const createTableRuntime = (
 
       return {
         field,
-        grouped: queryRead.groupFieldId(query) === fieldId,
-        sortDir: queryRead.sortDir(query, fieldId),
+        grouped: query.group.fieldId === fieldId,
+        sortDir: readSortDir(query, fieldId),
         calc: table.calc.get(fieldId)
       }
     },

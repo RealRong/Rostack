@@ -1,7 +1,6 @@
 import { equal, store } from '@shared/core'
 import {
-  type ItemId,
-  queryRead
+  type ItemId
 } from '@dataview/engine'
 import type {
   DataViewSource
@@ -106,7 +105,7 @@ export const createGalleryModel = (input: {
       return {
         viewId,
         empty: store.read(input.source.active.items.ids).length === 0,
-        grouped: queryRead.grouped(store.read(input.source.active.meta.query)),
+        grouped: store.read(input.source.active.meta.query).group.active,
         size: gallery.size,
         canDrag: gallery.canReorder,
         groupUsesOptionColors: gallery.groupUsesOptionColors

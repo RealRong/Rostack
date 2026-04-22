@@ -113,7 +113,7 @@ export const createStaticDocumentReader = (
   document: DataDoc
 ): DocumentReader => createLiveDocumentReader(() => document)
 
-export const createStaticDocumentReadContext = (
+export const createDocumentReadContext = (
   document: DataDoc
 ): DocumentReadContext => {
   const reader = createStaticDocumentReader(document)

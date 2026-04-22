@@ -27,16 +27,16 @@ import {
 } from '@dataview/engine/active/shared/selection'
 import {
   publishSections
-} from '@dataview/engine/active/snapshot/membership/publish'
+} from '@dataview/engine/active/publish/sections'
 import {
   buildMembershipState
-} from '@dataview/engine/active/snapshot/membership/derive'
+} from '@dataview/engine/active/membership/derive'
 import {
   runMembershipStage
-} from '@dataview/engine/active/snapshot/membership/runtime'
+} from '@dataview/engine/active/membership/runtime'
 import type {
-  QueryState
-} from '@dataview/engine/contracts/state'
+  QueryPhaseState as QueryState
+} from '@dataview/engine/active/state'
 
 const FIELD_STATUS = 'status'
 const VIEW_ID = 'view_table'

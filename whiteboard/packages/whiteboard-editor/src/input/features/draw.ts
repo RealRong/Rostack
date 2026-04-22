@@ -198,22 +198,22 @@ const commitDrawStroke = (
 }
 
 const queryDrawNodeIdsInRect = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'document'>,
   rect: Rect
-): readonly NodeId[] => ctx.query.node.idsInRect(rect, {
+): readonly NodeId[] => ctx.projection.node.idsInRect(rect, {
   match: 'touch'
 }).filter((nodeId) => (
-  ctx.query.node.committed.get(nodeId)?.node.type === 'draw'
+  ctx.document.node.committed.get(nodeId)?.node.type === 'draw'
 ))
 
 const collectErasePoint = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'document' | 'sessionRead'>,
   state: EraseState,
   world: Point
 ): EraseState => {
   const halfWorld =
     ERASER_HIT_EPSILON_SCREEN
-    / Math.max(ctx.query.viewport.get().zoom, ZOOM_EPSILON)
+    / Math.max(ctx.sessionRead.viewport.get().zoom, ZOOM_EPSILON)
   const nodeIds = queryDrawNodeIdsInRect(
     ctx,
     geometryApi.segment.bounds(state.lastWorld, world, halfWorld)
@@ -249,10 +249,10 @@ const collectErasePoint = (
 }
 
 const tryStartErase = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'sessionRead' | 'projection' | 'document'>,
   input: PointerDownInput
 ): EraseState | null => {
-  const tool = ctx.query.tool.get()
+  const tool = ctx.sessionRead.tool.get()
 
   if (
     tool.type !== 'draw'
@@ -271,7 +271,7 @@ const tryStartErase = (
 }
 
 const stepEraseState = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'sessionRead' | 'projection' | 'document'>,
   state: EraseState,
   input: DrawPointer
 ) => {
@@ -285,7 +285,7 @@ const stepEraseState = (
 }
 
 const createDrawStrokeSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'sessionRead' | 'write'>,
   initial: DrawStrokeState
 ): InteractionSession => {
   let state = initial
@@ -305,7 +305,7 @@ const createDrawStrokeSession = (
     state = nextState
     interaction!.gesture = createGesture('draw', {
       drawPreview: previewDrawStroke(state, {
-        zoom: ctx.query.viewport.get().zoom
+        zoom: ctx.sessionRead.viewport.get().zoom
       })
     })
   }
@@ -319,7 +319,7 @@ const createDrawStrokeSession = (
     up: (input) => {
       step(input, true)
       const commit = commitDrawStroke(state, {
-        zoom: ctx.query.viewport.get().zoom
+        zoom: ctx.sessionRead.viewport.get().zoom
       })
       if (commit) {
         const {
@@ -340,7 +340,7 @@ const createDrawStrokeSession = (
 }
 
 const createEraseSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'sessionRead' | 'projection' | 'document' | 'write'>,
   initial: EraseState
 ): InteractionSession => {
   let state = initial
@@ -378,11 +378,11 @@ const createEraseSession = (
 }
 
 export const createDrawBinding = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>
+  ctx: Pick<EditorHostDeps, 'sessionRead' | 'projection' | 'document' | 'write'>
 ): InteractionBinding => ({
   key: 'draw',
   start: (input) => {
-    const tool = ctx.query.tool.get()
+    const tool = ctx.sessionRead.tool.get()
 
     if (tool.type !== 'draw') {
       return null
@@ -398,7 +398,7 @@ export const createDrawBinding = (
     const state = tryStartDrawStroke({
       tool,
       pointer: input,
-      state: ctx.query.draw.get()
+      state: ctx.sessionRead.draw.get()
     })
     return state
       ? createDrawStrokeSession(ctx, state)

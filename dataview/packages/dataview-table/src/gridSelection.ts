@@ -8,9 +8,6 @@ import type {
   CellRef
 } from '@dataview/engine'
 import {
-  sameCellRef
-} from '@dataview/engine'
-import {
   cellNavigation
 } from '@dataview/table/cellNavigation'
 
@@ -25,6 +22,11 @@ export interface GridSelectionEdges {
   fieldStart: number
   fieldEnd: number
 }
+
+const sameCellRef = (
+  left: CellRef,
+  right: CellRef
+) => left.itemId === right.itemId && left.fieldId === right.fieldId
 
 const equal = (
   left: GridSelection | null,

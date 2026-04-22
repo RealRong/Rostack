@@ -1,7 +1,7 @@
 import { equal } from '@shared/core'
 import { sync } from '@whiteboard/core/spec/operation'
 import type { Engine } from '@whiteboard/engine'
-import type { EditorQuery } from '@whiteboard/editor/query'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorEvents } from '@whiteboard/editor/types/editor'
 
@@ -12,11 +12,11 @@ export type EditorEventRuntime = {
 
 const reconcileSessionAfterWrite = (
   session: Pick<EditorSession, 'state' | 'mutate'>,
-  query: Pick<EditorQuery, 'node' | 'edge'>
+  document: Pick<DocumentRead, 'node' | 'edge'>
 ) => {
   const selection = session.state.selection.get()
-  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(query.node.committed.get(id)))
-  const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(query.edge.item.get(id)))
+  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.node.committed.get(id)))
+  const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(document.edge.item.get(id)))
 
   if (
     !equal.sameOrder(nextNodeIds, selection.nodeIds)
@@ -34,8 +34,8 @@ const reconcileSessionAfterWrite = (
   }
 
   if (
-    (currentEdit.kind === 'node' && !query.node.committed.get(currentEdit.nodeId))
-    || (currentEdit.kind === 'edge-label' && !query.edge.item.get(currentEdit.edgeId))
+    (currentEdit.kind === 'node' && !document.node.committed.get(currentEdit.nodeId))
+    || (currentEdit.kind === 'edge-label' && !document.edge.item.get(currentEdit.edgeId))
   ) {
     session.mutate.edit.clear()
   }
@@ -44,12 +44,12 @@ const reconcileSessionAfterWrite = (
 export const createEditorEvents = ({
   engine,
   session,
-  query,
+  document,
   resetHost
 }: {
   engine: Engine
   session: EditorSession
-  query: Pick<EditorQuery, 'node' | 'edge'>
+  document: Pick<DocumentRead, 'node' | 'edge'>
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()
@@ -60,7 +60,7 @@ export const createEditorEvents = ({
       return
     }
 
-    reconcileSessionAfterWrite(session, query)
+    reconcileSessionAfterWrite(session, document)
   })
 
   return {

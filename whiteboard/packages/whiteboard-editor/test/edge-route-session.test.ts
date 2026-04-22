@@ -34,7 +34,7 @@ const createDeps = () => {
     insertRoute,
     updateRoute,
     ctx: {
-      query: {
+      projection: {
         edge: {
           item: {
             get: () => ({
@@ -45,6 +45,8 @@ const createDeps = () => {
             editRoute: true
           })
         },
+      },
+      sessionRead: {
         viewport: {
           pointer: ({
             clientX,

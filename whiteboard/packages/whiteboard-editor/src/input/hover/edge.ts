@@ -1,8 +1,8 @@
 import { scheduler } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
-import type { EditorQuery } from '@whiteboard/editor/query'
 import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import type { HoverState } from '@whiteboard/editor/input/hover/store'
+import type { SessionRead } from '@whiteboard/editor/session/read'
 
 export type EdgeHoverService = {
   move: (world: Point) => void
@@ -11,7 +11,7 @@ export type EdgeHoverService = {
 
 export const createEdgeHoverService = (
   ctx: {
-    query: EditorQuery
+    sessionRead: SessionRead
     snap: SnapRuntime
   },
   hover: {
@@ -22,7 +22,7 @@ export const createEdgeHoverService = (
   let hoverPoint: Point | null = null
 
   const hoverTask = scheduler.createFrameTask(() => {
-    if (!hoverPoint || ctx.query.tool.get().type !== 'edge') {
+    if (!hoverPoint || ctx.sessionRead.tool.get().type !== 'edge') {
       hover.clearHover()
       return
     }
@@ -51,7 +51,7 @@ export const createEdgeHoverService = (
 
   return {
     move: (world) => {
-      if (ctx.query.tool.get().type !== 'edge') {
+      if (ctx.sessionRead.tool.get().type !== 'edge') {
         clear()
         return
       }

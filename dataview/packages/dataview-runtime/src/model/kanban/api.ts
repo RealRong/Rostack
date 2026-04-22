@@ -1,7 +1,6 @@
 import { equal, store } from '@shared/core'
 import {
-  type ItemId,
-  queryRead
+  type ItemId
 } from '@dataview/engine'
 import type {
   DataViewSource
@@ -108,10 +107,11 @@ export const createKanbanModel = (input: {
       }
 
       const kanban = store.read(input.source.active.meta.kanban)
+      const query = store.read(input.source.active.meta.query)
       return {
         viewId,
-        grouped: queryRead.grouped(store.read(input.source.active.meta.query)),
-        groupField: store.read(input.source.active.meta.query).group.field,
+        grouped: query.group.active,
+        groupField: query.group.field,
         fillColumnColor: kanban.fillColumnColor,
         groupUsesOptionColors: kanban.groupUsesOptionColors,
         cardsPerColumn: kanban.cardsPerColumn,

@@ -129,11 +129,6 @@ export interface IndexDelta {
   calculation?: CalculationTransition
 }
 
-export interface FieldContext {
-  all: readonly Field[]
-  byId: ReadonlyMap<FieldId, Field>
-}
-
 export interface FieldSyncContext {
   schemaFields: ReadonlySet<FieldId>
   valueFields: ReadonlySet<FieldId> | 'all'
@@ -157,12 +152,4 @@ export interface IndexDeriveResult {
   state: IndexState
   delta?: IndexDelta
   trace?: IndexTrace
-}
-
-export interface IndexDeriveInput {
-  previous: IndexState
-  previousDemand: NormalizedIndexDemand
-  document: DataDoc
-  impact: BaseImpact
-  demand?: NormalizedIndexDemand
 }

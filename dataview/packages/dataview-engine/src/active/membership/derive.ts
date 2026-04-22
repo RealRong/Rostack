@@ -1,0 +1,570 @@
+import type {
+  RecordId,
+  View
+} from '@dataview/core/contracts'
+import type { Bucket } from '@dataview/core/field'
+import { equal } from '@shared/core'
+import {
+  buildBucketViewState,
+  createBucketSpec,
+  readBucketIndex
+} from '@dataview/engine/active/index/bucket'
+import type {
+  IndexDelta,
+  IndexState
+} from '@dataview/engine/active/index/contracts'
+import type {
+  BaseImpact
+} from '@dataview/engine/active/shared/baseImpact'
+import {
+  createPartition,
+  readPartitionSelections,
+  readPartitionKeysById,
+  type Partition
+} from '@dataview/engine/active/shared/partition'
+import {
+  createMapPatchBuilder
+} from '@dataview/engine/active/shared/patch'
+import {
+  createSelection,
+  readSelectionIdSet,
+  type Selection
+} from '@dataview/engine/active/shared/selection'
+import {
+  EMPTY_SECTION_KEYS,
+  ROOT_SECTION_KEY,
+  ROOT_SECTION_KEYS,
+  ROOT_SECTION_ORDER
+} from '@dataview/engine/active/shared/sections'
+import type {
+  SectionKey
+} from '@dataview/engine/contracts'
+import type {
+  MembershipMetaState,
+  MembershipRecordChange,
+  MembershipPhaseState as MembershipState,
+  QueryPhaseDelta as QueryDelta,
+  QueryPhaseState as QueryState
+} from '@dataview/engine/active/state'
+import {
+  tokenRef
+} from '@shared/i18n'
+
+const EMPTY_INDEXES = [] as readonly number[]
+const EMPTY_KEYS_BY_RECORD = new Map<RecordId, readonly SectionKey[]>()
+const EMPTY_RECORD_CHANGES = new Map<RecordId, MembershipRecordChange>()
+const MAX_INCREMENTAL_SECTION_TOUCH_RATIO = 0.25
+const MIN_LARGE_SECTION_TOUCH_COUNT = 1024
+const ROOT_SECTION_LABEL = tokenRef('dataview.systemValue', 'section.all')
+
+const sameBucket = (
+  left: MembershipMetaState['bucket'],
+  right: MembershipMetaState['bucket']
+) => {
+  if (!left || !right) {
+    return left === right
+  }
+
+  return left.key === right.key
+    && equal.sameJsonValue(left.label, right.label)
+    && left.value === right.value
+    && left.clearValue === right.clearValue
+    && left.empty === right.empty
+    && left.color === right.color
+}
+
+const sameMeta = (
+  left: MembershipMetaState | undefined,
+  right: MembershipMetaState
+) => Boolean(
+  left
+  && equal.sameJsonValue(left.label, right.label)
+  && left.color === right.color
+  && sameBucket(left.bucket, right.bucket)
+)
+
+const buildSectionPartition = (input: {
+  rows: Selection['rows']
+  order: readonly SectionKey[]
+  indexesByKey: ReadonlyMap<SectionKey, readonly number[]>
+  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
+  previous?: Partition<SectionKey>
+}): Partition<SectionKey> => {
+  const order = input.previous && equal.sameOrder(input.previous.order, input.order)
+    ? input.previous.order
+    : input.order
+  const previousSelections = input.previous
+    ? readPartitionSelections(input.previous)
+    : undefined
+  const byKey = previousSelections
+    ? createMapPatchBuilder(previousSelections)
+    : undefined
+  const nextOrder = new Set(order)
+
+  previousSelections?.forEach((_selection, sectionKey) => {
+    if (!nextOrder.has(sectionKey as SectionKey)) {
+      byKey!.delete(sectionKey as SectionKey)
+    }
+  })
+
+  const createdSelections = new Map<SectionKey, Selection>()
+  order.forEach(sectionKey => {
+    const selection = createSelection({
+      rows: input.rows,
+      indexes: input.indexesByKey.get(sectionKey) ?? EMPTY_INDEXES,
+      previous: input.previous?.get(sectionKey)
+    })
+    if (byKey) {
+      byKey.set(sectionKey, selection)
+      return
+    }
+
+    createdSelections.set(sectionKey, selection)
+  })
+
+  return createPartition({
+    order,
+    byKey: byKey
+      ? byKey.finish()
+      : createdSelections,
+    keysById: input.keysByRecord,
+    previous: input.previous
+  })
+}
+
+const buildGroupedSections = (input: {
+  visible: Selection
+  order: readonly SectionKey[]
+  keysByRecord?: ReadonlyMap<RecordId, readonly SectionKey[]>
+  previous?: Partition<SectionKey>
+}): {
+  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
+  sections: Partition<SectionKey>
+} => {
+  if (!input.visible.read.count() || !input.keysByRecord) {
+    return {
+      keysByRecord: EMPTY_KEYS_BY_RECORD,
+      sections: buildSectionPartition({
+        rows: input.visible.rows,
+        order: input.order,
+        indexesByKey: new Map(),
+        keysByRecord: EMPTY_KEYS_BY_RECORD,
+        previous: input.previous
+      })
+    }
+  }
+
+  const fullVisible = input.visible.ids === input.visible.rows.ids
+  const visibleKeysByRecord = fullVisible
+    ? undefined
+    : new Map<RecordId, readonly SectionKey[]>()
+  const indexesByKey = new Map<SectionKey, number[]>()
+
+  for (let offset = 0; offset < input.visible.indexes.length; offset += 1) {
+    const rowIndex = input.visible.indexes[offset]!
+    const recordId = input.visible.rows.at(rowIndex)
+    if (!recordId) {
+      continue
+    }
+
+    const keys = input.keysByRecord.get(recordId)
+    if (!keys?.length) {
+      continue
+    }
+
+    if (!fullVisible) {
+      visibleKeysByRecord!.set(recordId, keys)
+    }
+
+    for (let keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
+      const sectionKey = keys[keyIndex]!
+      const existing = indexesByKey.get(sectionKey)
+      if (existing) {
+        existing.push(rowIndex)
+        continue
+      }
+
+      indexesByKey.set(sectionKey, [rowIndex])
+    }
+  }
+
+  const keysByRecord = fullVisible
+    ? input.keysByRecord
+    : visibleKeysByRecord!.size
+      ? visibleKeysByRecord!
+      : EMPTY_KEYS_BY_RECORD
+
+  return {
+    keysByRecord,
+    sections: buildSectionPartition({
+      rows: input.visible.rows,
+      order: input.order,
+      indexesByKey,
+      keysByRecord,
+      previous: input.previous
+    })
+  }
+}
+
+const buildMetaMap = (input: {
+  order: readonly SectionKey[]
+  buckets?: ReadonlyMap<SectionKey, Bucket>
+  previous?: ReadonlyMap<SectionKey, MembershipMetaState>
+}): ReadonlyMap<SectionKey, MembershipMetaState> => {
+  const next = new Map<SectionKey, MembershipMetaState>()
+  let changed = !equal.sameOrder(input.previous ? [...input.previous.keys()] : [], input.order)
+
+  input.order.forEach(sectionKey => {
+    const bucket = input.buckets?.get(sectionKey)
+    const created: MembershipMetaState = {
+      label: bucket?.label ?? sectionKey,
+      ...(bucket?.color
+        ? {
+            color: bucket.color
+          }
+        : {}),
+      ...(bucket
+        ? {
+            bucket: {
+              key: bucket.key as SectionKey,
+              label: bucket.label,
+              value: bucket.value,
+              clearValue: bucket.clearValue,
+              empty: bucket.empty,
+              color: bucket.color
+            }
+          }
+        : {})
+    }
+    const previousMeta = input.previous?.get(sectionKey)
+    const published = sameMeta(previousMeta, created)
+      ? previousMeta!
+      : created
+    if (published !== previousMeta) {
+      changed = true
+    }
+    next.set(sectionKey, published)
+  })
+
+  return !changed && input.previous
+    ? input.previous
+    : next
+}
+
+const buildRootMembershipState = (
+  query: QueryState,
+  previous?: MembershipState
+): MembershipState => {
+  const keysByRecord = query.visible.read.count()
+    ? (() => {
+        const next = new Map<RecordId, readonly SectionKey[]>()
+        const visibleIds = query.visible.ids
+        for (let index = 0; index < visibleIds.length; index += 1) {
+          next.set(visibleIds[index]!, ROOT_SECTION_KEYS)
+        }
+        return next
+      })()
+    : EMPTY_KEYS_BY_RECORD
+  const sections = buildSectionPartition({
+    rows: query.visible.rows,
+    order: ROOT_SECTION_ORDER,
+    indexesByKey: new Map([
+      [ROOT_SECTION_KEY, query.visible.indexes]
+    ] as const),
+    keysByRecord,
+    previous: previous?.sections
+  })
+  const rootMeta = previous?.meta.get(ROOT_SECTION_KEY)
+  const meta = rootMeta && rootMeta.label === ROOT_SECTION_LABEL
+    ? previous!.meta
+    : new Map([
+        [ROOT_SECTION_KEY, {
+          label: ROOT_SECTION_LABEL
+        }]
+      ] as const)
+
+  return {
+    sections,
+    meta
+  }
+}
+
+export const buildMembershipState = (input: {
+  view: View
+  query: QueryState
+  index: IndexState
+  keysByRecord?: ReadonlyMap<RecordId, readonly SectionKey[]>
+  previous?: MembershipState
+}): MembershipState => {
+  if (!input.view.group) {
+    return buildRootMembershipState(input.query, input.previous)
+  }
+
+  const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec(input.view.group))
+  const presentation = buildBucketViewState({
+    field: bucketIndex?.field,
+    spec: createBucketSpec(input.view.group),
+    sort: input.view.group.bucketSort,
+    values: input.index.records.values.get(input.view.group.field)?.byRecord,
+    recordsByKey: bucketIndex?.recordsByKey ?? new Map(),
+    previous: undefined
+  })
+  const grouped = buildGroupedSections({
+    visible: input.query.visible,
+    order: presentation.order,
+    keysByRecord: input.keysByRecord ?? bucketIndex?.keysByRecord,
+    previous: input.previous?.sections
+  })
+
+  return {
+    sections: grouped.sections,
+    meta: buildMetaMap({
+      order: presentation.order,
+      buckets: presentation.buckets as ReadonlyMap<SectionKey, Bucket>,
+      previous: input.previous?.meta
+    })
+  }
+}
+
+export const readMembershipKeysByRecord = (
+  membership: MembershipState
+): ReadonlyMap<RecordId, readonly SectionKey[]> => readPartitionKeysById(membership.sections)
+
+const addChangedRecordIds = (
+  target: Set<RecordId>,
+  values?: readonly RecordId[]
+) => {
+  values?.forEach(recordId => {
+    target.add(recordId)
+  })
+}
+
+const sameSectionKeys = (
+  left: readonly string[],
+  right: readonly string[]
+) => equal.sameOrder(left, right)
+
+const resolveChangedRecordIds = (input: {
+  impact: BaseImpact
+  queryDelta: QueryDelta
+  bucketDelta?: IndexDelta['bucket']
+}): ReadonlySet<RecordId> | 'all' => {
+  if (input.impact.touchedRecords === 'all') {
+    return 'all'
+  }
+
+  const changed = new Set<RecordId>()
+  addChangedRecordIds(changed, input.queryDelta.added)
+  addChangedRecordIds(changed, input.queryDelta.removed)
+  input.bucketDelta?.records.forEach((_record, recordId) => {
+    changed.add(recordId)
+  })
+  return changed
+}
+
+const shouldRebuildGroupedSections = (input: {
+  previous: MembershipState
+  query: QueryState
+  changedRecordIds: ReadonlySet<RecordId>
+}): boolean => {
+  const touchedCount = input.changedRecordIds.size
+  if (touchedCount < MIN_LARGE_SECTION_TOUCH_COUNT) {
+    return false
+  }
+
+  const baseline = Math.max(
+    readMembershipKeysByRecord(input.previous).size,
+    input.query.visible.read.count()
+  )
+
+  return touchedCount > baseline * MAX_INCREMENTAL_SECTION_TOUCH_RATIO
+}
+
+const buildRecordChanges = (input: {
+  previous: MembershipState
+  query: QueryState
+  bucketKeysByRecord: ReadonlyMap<RecordId, readonly string[]>
+  changedRecordIds: ReadonlySet<RecordId>
+}): {
+  keysByRecord: ReadonlyMap<RecordId, readonly string[]>
+  records: ReadonlyMap<RecordId, MembershipRecordChange>
+} => {
+  const previousKeysByRecord = readMembershipKeysByRecord(input.previous)
+  const fullVisible = input.query.visible.ids === input.query.visible.rows.ids
+  const visible = fullVisible
+    ? undefined
+    : readSelectionIdSet(input.query.visible)
+  const keysPatch = fullVisible
+    ? undefined
+    : createMapPatchBuilder(previousKeysByRecord)
+  const records = new Map<RecordId, MembershipRecordChange>()
+
+  input.changedRecordIds.forEach(recordId => {
+    const before = previousKeysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+    const after = fullVisible
+      ? input.bucketKeysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+      : visible!.has(recordId)
+        ? input.bucketKeysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS
+        : EMPTY_SECTION_KEYS
+
+    if (sameSectionKeys(before, after)) {
+      return
+    }
+
+    records.set(recordId, {
+      before,
+      after
+    })
+
+    if (fullVisible) {
+      return
+    }
+
+    if (after.length) {
+      keysPatch!.set(recordId, after)
+      return
+    }
+
+    keysPatch!.delete(recordId)
+  })
+
+  return {
+    keysByRecord: fullVisible
+      ? input.bucketKeysByRecord
+      : keysPatch!.changed()
+        ? keysPatch!.finish()
+        : previousKeysByRecord,
+    records: records.size
+      ? records
+      : EMPTY_RECORD_CHANGES
+  }
+}
+
+export const syncMembershipState = (input: {
+  previous?: MembershipState
+  view: View
+  query: QueryState
+  queryDelta: QueryDelta
+  index: IndexState
+  impact: BaseImpact
+  indexDelta?: IndexDelta
+  action: 'reuse' | 'sync' | 'rebuild'
+}): {
+  state: MembershipState
+  records: ReadonlyMap<RecordId, MembershipRecordChange>
+} => {
+  if (input.action === 'reuse' && input.previous) {
+    return {
+      state: input.previous,
+      records: EMPTY_RECORD_CHANGES
+    }
+  }
+
+  if (
+    !input.previous
+    || input.action === 'rebuild'
+  ) {
+    return {
+      state: buildMembershipState({
+        view: input.view,
+        query: input.query,
+        index: input.index,
+        previous: input.previous
+      }),
+      records: EMPTY_RECORD_CHANGES
+    }
+  }
+
+  if (!input.view.group) {
+    const records = new Map<RecordId, MembershipRecordChange>()
+    input.queryDelta.removed.forEach(recordId => {
+      records.set(recordId, {
+        before: ROOT_SECTION_KEYS,
+        after: EMPTY_SECTION_KEYS
+      })
+    })
+    input.queryDelta.added.forEach(recordId => {
+      records.set(recordId, {
+        before: EMPTY_SECTION_KEYS,
+        after: ROOT_SECTION_KEYS
+      })
+    })
+
+    const state = buildMembershipState({
+      view: input.view,
+      query: input.query,
+      index: input.index,
+      previous: input.previous
+    })
+
+    return {
+      state,
+      records: records.size
+        ? records
+        : EMPTY_RECORD_CHANGES
+    }
+  }
+
+  const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec(input.view.group))
+  const changedRecordIds = resolveChangedRecordIds({
+    impact: input.impact,
+    queryDelta: input.queryDelta,
+    bucketDelta: input.indexDelta?.bucket
+  })
+  if (
+    !bucketIndex
+    || input.indexDelta?.bucket?.rebuild
+    || changedRecordIds === 'all'
+  ) {
+    return {
+      state: buildMembershipState({
+        view: input.view,
+        query: input.query,
+        index: input.index,
+        previous: input.previous
+      }),
+      records: EMPTY_RECORD_CHANGES
+    }
+  }
+
+  if (shouldRebuildGroupedSections({
+    previous: input.previous,
+    query: input.query,
+    changedRecordIds
+  })) {
+    return {
+      state: buildMembershipState({
+        view: input.view,
+        query: input.query,
+        index: input.index,
+        previous: input.previous
+      }),
+      records: EMPTY_RECORD_CHANGES
+    }
+  }
+
+  const changed = buildRecordChanges({
+    previous: input.previous,
+    query: input.query,
+    bucketKeysByRecord: bucketIndex.keysByRecord,
+    changedRecordIds
+  })
+
+  return {
+    state: buildMembershipState({
+      view: input.view,
+      query: input.query,
+      index: input.index,
+      keysByRecord: changed.keysByRecord,
+      previous: input.previous
+    }),
+    records: changed.records
+  }
+}
+
+export {
+  EMPTY_SECTION_KEYS,
+  ROOT_SECTION_KEY,
+  ROOT_SECTION_KEYS,
+  ROOT_SECTION_ORDER
+} from '@dataview/engine/active/shared/sections'

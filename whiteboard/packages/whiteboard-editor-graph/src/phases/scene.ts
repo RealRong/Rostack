@@ -1,19 +1,15 @@
-import { buildSceneWorkingState } from '../runtime/helpers'
+import { buildSceneSnapshot } from '../runtime/scene'
 import type { EditorPhase } from './shared'
 import { toMetric } from './shared'
 
 export const createScenePhase = (): EditorPhase => ({
   name: 'scene',
-  deps: ['element', 'chrome'],
+  deps: ['graph'],
   run: (context) => {
-    context.working.scene = buildSceneWorkingState({
-      snapshot: context.working.input.document.snapshot,
-      structure: context.working.structure,
-      element: context.working.element,
-      working: {
-        tree: context.working.tree
-      },
-      visibleWorld: context.working.input.viewport.visibleWorld
+    context.working.scene = buildSceneSnapshot({
+      snapshot: context.input.document.snapshot,
+      graph: context.working.graph,
+      visibleWorld: context.input.viewport.visibleWorld
     })
 
     return {

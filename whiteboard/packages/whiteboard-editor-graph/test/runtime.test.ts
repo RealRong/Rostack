@@ -14,14 +14,16 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import {
-  createEditorGraphHarness,
-  createEditorGraphImpact,
-  createEditorGraphPublishSpec,
-  createEditorGraphRead,
   createEditorGraphRuntime,
-  createEditorGraphTextMeasureEntry,
   type Input as EditorGraphInput
 } from '../src'
+import {
+  createEditorGraphImpact,
+  createEditorGraphTextMeasureEntry
+} from '../src/testing/builders'
+import {
+  createEditorGraphHarness
+} from '../src/testing/runtime'
 
 type RuntimeInputOptions = {
   edit?: EditorGraphInput['session']['edit']
@@ -37,6 +39,39 @@ type RuntimeInputOptions = {
   now?: number
   impact?: EditorGraphInput['impact']
 }
+
+const createEditorGraphRead = (
+  runtime: Pick<ReturnType<typeof createEditorGraphHarness>['runtime'], 'snapshot'>
+) => ({
+  snapshot: () => runtime.snapshot(),
+  node: (id: NodeId) => runtime.snapshot().graph.nodes.byId.get(id),
+  edge: (id: EdgeId) => runtime.snapshot().graph.edges.byId.get(id),
+  mindmap: (id: string) => runtime.snapshot().graph.owners.mindmaps.byId.get(id),
+  group: (id: string) => runtime.snapshot().graph.owners.groups.byId.get(id),
+  scene: () => runtime.snapshot().scene,
+  ui: () => runtime.snapshot().ui
+})
+
+const createEditorGraphPublishSpec = () => ({
+  graph: {
+    read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.graph,
+    change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.graph
+  },
+  scene: {
+    read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.scene,
+    change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.scene
+  },
+  ui: {
+    selection: {
+      read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.ui.selection,
+      change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.ui.selection
+    },
+    chrome: {
+      read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.ui.chrome,
+      change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.ui.chrome
+    }
+  }
+})
 
 const createEdgeLabelMeasureEntries = (
   edgeLabelMeasures?: RuntimeInputOptions['edgeLabelMeasures']
@@ -296,20 +331,14 @@ describe('editor graph runtime', () => {
 
     expect(result.snapshot.graph.nodes.ids.length).toBe(1)
     expect(result.snapshot.scene.items.length).toBe(1)
-    expect(result.snapshot.base.documentRevision).toBe(1)
+    expect(result.snapshot.documentRevision).toBe(1)
     expect(emissions).toHaveLength(1)
 
     assertPublishedOnce([result])
     expect(result.trace).toBeDefined()
     assertPhaseOrder(result.trace!, [
-      'input',
       'graph',
-      'measure',
-      'structure',
-      'tree',
-      'element',
-      'selection',
-      'chrome',
+      'ui',
       'scene'
     ])
   })
@@ -348,9 +377,7 @@ describe('editor graph runtime', () => {
     const result = harness.update(createInput(engine, {
       impact: DOCUMENT_IMPACT
     }))
-    const read = createEditorGraphRead({
-      runtime: harness.runtime
-    })
+    const read = createEditorGraphRead(harness.runtime)
     const publish = createEditorGraphPublishSpec()
 
     expect(harness.snapshot()).toBe(result.snapshot)

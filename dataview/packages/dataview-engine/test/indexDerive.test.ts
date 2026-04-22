@@ -23,8 +23,8 @@ import {
 } from '@dataview/engine/active/shared/baseImpact'
 import {
   buildQueryState
-} from '@dataview/engine/active/snapshot/query/derive'
-import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
+} from '@dataview/engine/active/query/state'
+import { createDocumentReadContext } from '@dataview/engine/document/reader'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -134,7 +134,7 @@ const createDocument = (input = {}) => {
 const createImpact = (input = {}) => createBaseImpact(input)
 
 const normalizeDemand = (document, demand = {}) => {
-  const context = createStaticDocumentReadContext(document)
+  const context = createDocumentReadContext(document)
   return normalizeIndexDemand({
     document,
     reader: context.reader
@@ -142,7 +142,7 @@ const normalizeDemand = (document, demand = {}) => {
 }
 
 const resolveDemand = (document, viewId) => {
-  const plan = resolveViewPlan(createStaticDocumentReadContext(document), viewId)
+  const plan = resolveViewPlan(createDocumentReadContext(document), viewId)
   assert.ok(plan)
   return plan.index
 }
@@ -770,9 +770,10 @@ test('engine.active.query derives descending order from single asc sort index', 
   const index = createIndexState(document, normalizeDemand(document, {
     sortFields: [FIELD_POINTS]
   }))
+  const reader = createDocumentReadContext(document).reader
 
   const query = buildQueryState({
-    reader: createStaticDocumentReadContext(document).reader,
+    reader,
     index,
     view: {
       id: 'view_points_desc',
@@ -798,7 +799,7 @@ test('engine.active.query derives descending order from single asc sort index', 
       },
       orders: []
     },
-    plan: compileViewPlan(createStaticDocumentReadContext(document).reader, {
+    plan: compileViewPlan(reader, {
       id: 'view_points_desc',
       name: 'Points Desc',
       type: 'table',
@@ -861,7 +862,7 @@ test('engine.active.query keeps empty values at the end for title, status, and n
   const index = createIndexState(document, normalizeDemand(document, {
     sortFields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
   }))
-  const reader = createStaticDocumentReadContext(document).reader
+  const reader = createDocumentReadContext(document).reader
   const titleAscView = createTableView({
     sort: [{
       field: TITLE_FIELD_ID,

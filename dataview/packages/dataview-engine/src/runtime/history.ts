@@ -47,7 +47,7 @@ export const pushUndo = (
   entry: EngineHistoryState['undo'][number]
 ): EngineHistoryState => ({
   ...history,
-  undo: trimUndo([...history.undo, entry], history.cap)
+  undo: trimUndo([...history.undo, entry], history.capacity)
 })
 
 export const takeUndo = (history: EngineHistoryState): {
@@ -85,7 +85,7 @@ export const takeRedo = (history: EngineHistoryState): {
   return {
     history: {
       ...history,
-      undo: trimUndo([...history.undo, entry], history.cap),
+      undo: trimUndo([...history.undo, entry], history.capacity),
       redo: history.redo.slice(0, -1)
     },
     operations: entry.redo
@@ -95,7 +95,7 @@ export const takeRedo = (history: EngineHistoryState): {
 export const historyState = (
   history: EngineHistoryState
 ): HistoryState => ({
-  capacity: history.cap,
+  capacity: history.capacity,
   undoDepth: history.undo.length,
   redoDepth: history.redo.length
 })

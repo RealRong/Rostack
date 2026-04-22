@@ -1,6 +1,7 @@
 import type { TextFrameInsets, TextWidthMode } from '@whiteboard/core/node'
 import type {
   NodeId,
+  Rect,
   Size
 } from '@whiteboard/core/types'
 
@@ -34,6 +35,22 @@ export type TextMetricsSpec = {
 }
 
 export type TextMetrics = Size
+
+export type NodeLayoutGeometry = {
+  rect: Rect
+  rotation: number
+}
+
+export type DraftMeasure =
+  | {
+      kind: 'size'
+      size: Size
+    }
+  | {
+      kind: 'fit'
+      fontSize: number
+    }
+  | undefined
 
 export type TextMetricsResource = {
   measure: (

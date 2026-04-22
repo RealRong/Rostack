@@ -12,7 +12,7 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { EdgePresentationRead } from '@whiteboard/editor/query/edge/read'
+import type { ProjectionEdgeRead } from '@whiteboard/editor/projection/edge'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   CANCEL,
@@ -107,7 +107,7 @@ const isEdgeRoutePick = (
 )
 
 const readEditableRouteView = (
-  edge: Pick<EdgePresentationRead, 'geometry' | 'item' | 'capability'>,
+  edge: Pick<ProjectionEdgeRead, 'geometry' | 'item' | 'capability'>,
   edgeId: EdgeId
 ): CoreEdgeView | undefined => {
   const view = edge.geometry.get(edgeId)
@@ -119,7 +119,7 @@ const readEditableRouteView = (
 }
 
 const resolveEdgeRoutePickTarget = (
-  edge: Pick<EdgePresentationRead, 'geometry' | 'item' | 'capability'>,
+  edge: Pick<ProjectionEdgeRead, 'geometry' | 'item' | 'capability'>,
   pick: PointerDownInput['pick']
 ): EdgeRouteHandleTarget | undefined => {
   if (!isEdgeRoutePick(pick)) {
@@ -208,7 +208,7 @@ const startEdgeRouteSegment = (input: {
 })
 
 export const tryStartEdgeRoute = (input: {
-  edge: Pick<EdgePresentationRead, 'geometry' | 'item' | 'capability'>
+  edge: Pick<ProjectionEdgeRead, 'geometry' | 'item' | 'capability'>
   pointer: PointerDownInput
 }): EdgeRouteStart | undefined => {
   const target = resolveEdgeRoutePickTarget(
@@ -444,12 +444,12 @@ const commitEdgeRoute = (
 }
 
 const readViewportWorld = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'sessionRead'>,
   pointer: {
     clientX: number
     clientY: number
   }
-) => ctx.query.viewport.pointer(pointer).world
+) => ctx.sessionRead.viewport.pointer(pointer).world
 
 const readRouteGesture = (
   state: EdgeRouteHandleState,
@@ -470,7 +470,7 @@ const readRouteGesture = (
 )
 
 const submitEdgeRouteCommit = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
   commit: EdgeRouteCommit | undefined
 ) => {
   if (!commit) {
@@ -484,7 +484,7 @@ const submitEdgeRouteCommit = (
     return
   }
 
-  const edge = ctx.query.edge.item.get(commit.edgeId)?.edge
+  const edge = ctx.projection.edge.item.get(commit.edgeId)?.edge
   const pointId = edge
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
@@ -494,12 +494,12 @@ const submitEdgeRouteCommit = (
 }
 
 const createEdgeRouteSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write'>,
   initial: EdgeRouteHandleState
 ): InteractionSession => {
   let state = initial
   let interaction = null as InteractionSession | null
-  const baseEdge = ctx.query.edge.item.get(initial.edgeId)?.edge
+  const baseEdge = ctx.projection.edge.item.get(initial.edgeId)?.edge
 
   const step = (
     pointer: {
@@ -507,8 +507,8 @@ const createEdgeRouteSession = (
       clientY: number
     }
   ) => {
-    const item = ctx.query.edge.item.get(state.edgeId)
-    if (!item || !baseEdge || !ctx.query.edge.capability(item.edge).editRoute) {
+    const item = ctx.projection.edge.item.get(state.edgeId)
+    if (!item || !baseEdge || !ctx.projection.edge.capability(item.edge).editRoute) {
       return CANCEL
     }
 
@@ -564,7 +564,7 @@ const createEdgeRouteSession = (
 }
 
 const createInsertedRouteSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => createEdgeRouteSession(
   ctx,
@@ -579,10 +579,10 @@ const createInsertedRouteSession = (
 )
 
 const commitInsertedRoute = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
-  const edge = ctx.query.edge.item.get(input.edgeId)?.edge
+  const edge = ctx.projection.edge.item.get(input.edgeId)?.edge
   if (!edge) {
     return null
   }
@@ -604,7 +604,7 @@ const commitInsertedRoute = (
 }
 
 export const createEdgeRoutePressSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write'>,
   start: PointerDownInput,
   plan: Extract<EdgeRouteStart, { kind: 'session' | 'insert' }>
 ): InteractionSession => createPressDragSession({

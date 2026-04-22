@@ -10,7 +10,7 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { toSpatialNode } from '@whiteboard/editor/query/node/read'
+import { toSpatialNode } from '@whiteboard/editor/projection/node'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -31,12 +31,12 @@ const toTransformNodePatches = (
 }))
 
 const toSpatialSelectionPlan = (
-  ctx: Pick<EditorHostDeps, 'query'>,
-  plan: NonNullable<ReturnType<EditorHostDeps['query']['selection']['summary']['get']>['transformPlan']>
+  ctx: Pick<EditorHostDeps, 'projection'>,
+  plan: NonNullable<ReturnType<EditorHostDeps['projection']['selection']['summary']['get']>['transformPlan']>
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
-    const projected = ctx.query.node.projected.get(member.id)
+    const projected = ctx.projection.node.projected.get(member.id)
     return projected
       ? [{
           ...member,
@@ -47,17 +47,17 @@ const toSpatialSelectionPlan = (
 })
 
 const readNodeTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'projection'>,
   nodeId: NodeId,
   handle: TransformPickHandle,
   input: PointerDownInput
 ): RuntimeTransformSpec | undefined => {
-  const entry = ctx.query.node.projected.get(nodeId)
+  const entry = ctx.projection.node.projected.get(nodeId)
   if (!entry || entry.node.locked) {
     return undefined
   }
 
-  const capability = ctx.query.node.capability(entry.node)
+  const capability = ctx.projection.node.capability(entry.node)
   const target: TransformTarget = {
     id: entry.node.id,
     node: toSpatialNode(entry),
@@ -120,10 +120,10 @@ const readNodeTransformSpec = (
 }
 
 const resolveTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'query'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead'>,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
-  const tool = ctx.query.tool.get()
+  const tool = ctx.sessionRead.tool.get()
   if (
     tool.type !== 'select'
     || (input.pick.kind !== 'node' && input.pick.kind !== 'selection-box')
@@ -137,7 +137,7 @@ const resolveTransformSpec = (
     return readNodeTransformSpec(ctx, input.pick.id, input.pick.handle, input) ?? null
   }
 
-  const selection = ctx.query.selection.summary.get()
+  const selection = ctx.projection.selection.summary.get()
   if (
     !selection.transformPlan
     || input.pick.handle.kind !== 'resize'
@@ -157,7 +157,7 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: Pick<EditorHostDeps, 'query' | 'layout' | 'snap' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'sessionRead' | 'layout' | 'snap' | 'write'>,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -177,7 +177,7 @@ export const createTransformSession = (
         alt: input.modifiers.alt,
         shift: input.modifiers.shift
       },
-      zoom: ctx.query.viewport.get().zoom,
+      zoom: ctx.sessionRead.viewport.get().zoom,
       minSize: RESIZE_MIN_SIZE,
       snap: (resize) => {
         const snapped = ctx.snap.node.resize(resize)
@@ -213,8 +213,8 @@ export const createTransformSession = (
     autoPan: {
       frame: (pointer) => {
         project({
-          screen: ctx.query.viewport.screenPoint(pointer.clientX, pointer.clientY),
-          world: ctx.query.viewport.pointer(pointer).world,
+          screen: ctx.sessionRead.viewport.screenPoint(pointer.clientX, pointer.clientY),
+          world: ctx.sessionRead.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -246,7 +246,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'query' | 'layout' | 'snap' | 'write'>
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'layout' | 'snap' | 'write'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

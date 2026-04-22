@@ -352,15 +352,10 @@ export interface ImpactInput {
 
 export interface Snapshot {
   revision: Revision
-  base: BaseSnapshot
+  documentRevision: Revision
   graph: GraphSnapshot
   scene: SceneSnapshot
   ui: UiSnapshot
-}
-
-export interface BaseSnapshot {
-  documentRevision: Revision
-  inputRevision: Revision
 }
 
 export interface GraphSnapshot {

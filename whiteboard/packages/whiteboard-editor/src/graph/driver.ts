@@ -1,6 +1,5 @@
 import { scheduler, store } from '@shared/core'
 import {
-  createEditorGraphRead,
   createEditorGraphRuntime,
   type Change,
   type Read,
@@ -12,6 +11,7 @@ import type { Engine } from '@whiteboard/engine'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import { createEditorGraphInput, type EditorGraphInputReason } from './input'
+import { createEditorGraphRead } from './read'
 import {
   createEditorPublishedSources,
   type EditorPublishedSources
@@ -132,9 +132,7 @@ export const createEditorGraphDriver = ({
 
   return {
     runtime,
-    read: createEditorGraphRead({
-      runtime
-    }),
+    read: createEditorGraphRead(runtime),
     sources: createEditorPublishedSources(snapshotStore),
     snapshot: () => snapshotStore.get(),
     result: () => currentResult,

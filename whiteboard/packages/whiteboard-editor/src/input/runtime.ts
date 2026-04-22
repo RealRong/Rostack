@@ -1,5 +1,6 @@
 import type { Engine } from '@whiteboard/engine'
 import type { EditorActions } from '@whiteboard/editor/action/types'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorInputHost } from '@whiteboard/editor/types/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
@@ -12,17 +13,18 @@ import { createEdgeBinding } from '@whiteboard/editor/input/features/edge'
 import { createTransformBinding } from '@whiteboard/editor/input/features/transform'
 import { createSelectionBinding } from '@whiteboard/editor/input/features/selection/press'
 import { createEditorInputHost } from '@whiteboard/editor/input/host'
-import type { EditorQuery } from '@whiteboard/editor/query'
+import type { ProjectionRead } from '@whiteboard/editor/projection/read'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
+import type { SessionRead } from '@whiteboard/editor/session/read'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
-import type { CommittedRead } from '@whiteboard/editor/committed/read'
 
 export type EditorHostDeps = {
   engine: Engine
-  committed: CommittedRead
+  document: DocumentRead
+  projection: ProjectionRead
+  sessionRead: SessionRead
   session: EditorSession
-  query: EditorQuery
   layout: EditorLayout
   write: EditorWrite
   actions: EditorActions
@@ -31,44 +33,49 @@ export type EditorHostDeps = {
 
 const createEditorSnapRuntime = ({
   engine,
-  committed,
-  query
+  document,
+  projection,
+  sessionRead
 }: {
   engine: Engine
-  committed: CommittedRead
-  query: EditorQuery
+  document: DocumentRead
+  projection: ProjectionRead
+  sessionRead: SessionRead
 }) => createSnapRuntime({
-  readZoom: () => query.viewport.get().zoom,
+  readZoom: () => sessionRead.viewport.get().zoom,
   node: {
     config: engine.config.node,
-    query: committed.index.snap.inRect
+    query: document.index.snap.inRect
   },
   edge: {
     config: engine.config.edge,
     nodeSize: engine.config.nodeSize,
-    query: query.edge.connectCandidates
+    query: projection.edge.connectCandidates
   }
 })
 
 export const createEditorHost = ({
   engine,
-  committed,
+  document,
+  projection,
+  sessionRead,
   session,
-  query,
   layout,
   write,
   actions
 }: Omit<EditorHostDeps, 'snap'>): EditorInputHost => {
   const snap = createEditorSnapRuntime({
     engine,
-    committed,
-    query
+    document,
+    projection,
+    sessionRead
   })
   const deps: EditorHostDeps = {
     engine,
-    committed,
+    document,
+    projection,
+    sessionRead,
     session,
-    query,
     layout,
     write,
     actions,
@@ -90,7 +97,7 @@ export const createEditorHost = ({
   })
   const edgeHover = createEdgeHoverService(
     {
-      query,
+      sessionRead,
       snap
     },
     session.interaction.write
@@ -99,7 +106,7 @@ export const createEditorHost = ({
   return createEditorInputHost({
     interaction,
     edgeHover,
-    query,
+    document,
     session,
     actions
   })

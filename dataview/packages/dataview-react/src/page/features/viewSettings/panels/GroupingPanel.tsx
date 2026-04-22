@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { EMPTY_VIEW_GROUP_PROJECTION } from '@dataview/engine'
+import type { ViewGroupProjection } from '@dataview/engine/contracts'
 import {
   useDataView,
   usePageRuntime
@@ -21,6 +21,19 @@ import {
   useStoreValue
 } from '@shared/react'
 
+const EMPTY_GROUP: ViewGroupProjection = {
+  active: false,
+  fieldId: '',
+  field: undefined,
+  mode: '',
+  bucketSort: undefined,
+  bucketInterval: undefined,
+  showEmpty: true,
+  availableModes: [],
+  availableBucketSorts: [],
+  supportsInterval: false
+}
+
 export const GroupingPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
@@ -29,7 +42,7 @@ export const GroupingPanel = () => {
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
   const currentView = settings.currentView
-  const group = settings.group ?? EMPTY_VIEW_GROUP_PROJECTION
+  const group = settings.group ?? EMPTY_GROUP
   const currentViewDomain = currentView
     ? engine.active
     : undefined

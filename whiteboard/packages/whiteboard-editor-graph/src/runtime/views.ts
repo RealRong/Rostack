@@ -19,7 +19,7 @@ import type {
 import type {
   GraphEdgeEntry,
   GraphNodeEntry,
-  WorkingState
+  GroupItemRef
 } from '../contracts/working'
 import { collectRects } from './geometry'
 import {
@@ -258,49 +258,37 @@ export const buildEdgeView = (input: {
 }
 
 export const buildMindmapView = (input: {
-  mindmapId: string
-  working: WorkingState
-}): MindmapView | undefined => {
-  const mindmap = input.working.input.document.snapshot.state.facts.entities.owners.mindmaps.get(input.mindmapId)
-  const structure = input.working.structure.mindmaps.get(input.mindmapId)
-  const tree = input.working.tree.mindmaps.get(input.mindmapId)
-
-  if (!mindmap || !structure) {
-    return undefined
+  mindmap: MindmapView['base']['mindmap']
+  nodeIds: readonly string[]
+  layout?: MindmapView['tree']['layout']
+  connectors: readonly MindmapView['render']['connectors'][number][]
+}): MindmapView => ({
+  base: {
+    mindmap: input.mindmap
+  },
+  structure: {
+    nodeIds: input.nodeIds
+  },
+  tree: {
+    layout: input.layout,
+    bbox: input.layout?.bbox
+  },
+  render: {
+    connectors: input.connectors
   }
-
-  return {
-    base: {
-      mindmap
-    },
-    structure: {
-      nodeIds: structure.nodeIds
-    },
-    tree: {
-      layout: tree?.layout,
-      bbox: tree?.layout?.bbox
-    },
-    render: {
-      connectors: tree?.connectors ?? []
-    }
-  }
-}
+})
 
 export const buildGroupView = (input: {
-  groupId: string
-  working: WorkingState
-}): GroupView | undefined => {
-  const group = input.working.input.document.snapshot.state.facts.entities.owners.groups.get(input.groupId)
-  const structure = input.working.structure.groups.get(input.groupId)
-
-  if (!group || !structure) {
-    return undefined
-  }
-
+  group: GroupView['base']['group']
+  items: readonly GroupItemRef[]
+  nodes: ReadonlyMap<string, NodeView>
+  mindmaps: ReadonlyMap<string, MindmapView>
+}): GroupView => {
   const rects: Rect[] = []
-  structure.itemIds.forEach((item) => {
+
+  input.items.forEach((item) => {
     if (item.kind === 'node') {
-      const rect = input.working.element.nodes.get(item.id)?.layout.bounds
+      const rect = input.nodes.get(item.id)?.layout.bounds
       if (rect) {
         rects.push(rect)
       }
@@ -308,7 +296,7 @@ export const buildGroupView = (input: {
     }
 
     if (item.kind === 'mindmap') {
-      const rect = input.working.tree.mindmaps.get(item.id)?.layout?.bbox
+      const rect = input.mindmaps.get(item.id)?.tree.bbox
       if (rect) {
         rects.push(rect)
       }
@@ -317,10 +305,10 @@ export const buildGroupView = (input: {
 
   return {
     base: {
-      group
+      group: input.group
     },
     structure: {
-      items: structure.itemIds
+      items: input.items
     },
     frame: {
       bounds: collectRects(rects)

@@ -16,11 +16,9 @@ import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 
-export type ActiveSnapshot = ViewState
-
 export interface EngineSnapshot {
   doc: DataDoc
-  active?: ActiveSnapshot
+  active?: ViewState
 }
 
 export interface EngineResult {
@@ -34,7 +32,7 @@ export interface EngineCoreRead {
   snapshot: () => EngineSnapshot
   delta: () => EngineDelta | undefined
   document: () => DataDoc
-  active: () => ActiveSnapshot | undefined
+  active: () => ViewState | undefined
 }
 
 export interface EngineCoreCommit {

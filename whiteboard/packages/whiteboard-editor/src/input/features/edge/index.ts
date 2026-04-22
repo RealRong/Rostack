@@ -22,17 +22,17 @@ const selectEdge = (
 }
 
 export const createEdgeBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'query' | 'write' | 'actions' | 'layout' | 'snap' | 'session'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'projection' | 'sessionRead' | 'write' | 'actions' | 'snap'>
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {
-    const tool = ctx.query.tool.get()
+    const tool = ctx.sessionRead.tool.get()
     const connect = tryStartEdgeConnect({
       tool,
       pointer: input,
-      node: ctx.query.node,
-      edge: ctx.query.edge,
-      zoom: ctx.query.viewport.get().zoom,
+      node: ctx.projection.node,
+      edge: ctx.projection.edge,
+      zoom: ctx.sessionRead.viewport.get().zoom,
       config: ctx.engine.config.edge
     })
     if (connect) {
@@ -63,7 +63,7 @@ export const createEdgeBinding = (
 
     if (input.pick.part === 'path') {
       const route = tryStartEdgeRoute({
-        edge: ctx.query.edge,
+        edge: ctx.projection.edge,
         pointer: input
       })
       if (!route) {
@@ -100,7 +100,7 @@ export const createEdgeBinding = (
 
     selectEdge(ctx, input.pick.id)
     const move = startEdgeMove({
-      edge: ctx.query.edge,
+      edge: ctx.projection.edge,
       edgeId: input.pick.id,
       pointerId: input.pointerId,
       start: input.world

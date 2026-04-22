@@ -1,4 +1,4 @@
-import { json, scheduler } from '@shared/core'
+import { json, scheduler, store } from '@shared/core'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { edge as edgeApi } from '@whiteboard/core/edge'
@@ -26,8 +26,12 @@ import type {
   MindmapInsertRelation,
   ToolActions
 } from '@whiteboard/editor/action/types'
+import type {
+  DocumentRead,
+  MindmapStructureItem
+} from '@whiteboard/editor/document/read'
+import type { ProjectionRead } from '@whiteboard/editor/projection/read'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
-import type { EditorQuery } from '@whiteboard/editor/query'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type { EditCapability, EditField } from '@whiteboard/editor/session/edit'
@@ -35,7 +39,6 @@ import type { EditorWrite } from '@whiteboard/editor/write'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapEnterPreview, MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
-import type { CommittedRead, MindmapStructureItem } from '@whiteboard/editor/committed/read'
 import {
   createSelectionActions
 } from '@whiteboard/editor/action/selection'
@@ -137,13 +140,15 @@ const resolveNodeCapability = ({
 
 const createEditActions = ({
   session,
-  query,
+  document,
+  projection,
   write,
   registry,
   layout
 }: {
   session: Pick<EditorSession, 'state' | 'mutate'>
-  query: Pick<EditorQuery, 'node' | 'edge'>
+  document: Pick<DocumentRead, 'node' | 'edge'>
+  projection: Pick<ProjectionRead, 'node' | 'edge'>
   write: Pick<EditorWrite, 'node' | 'edge'>
   registry: Pick<NodeRegistry, 'get'>
   layout: Pick<EditorLayout, 'draft'>
@@ -153,7 +158,7 @@ const createEditActions = ({
     field,
     options
   ) => {
-    const item = query.node.projected.get(nodeId)
+    const item = projection.node.projected.get(nodeId)
     if (!item) {
       return
     }
@@ -186,7 +191,7 @@ const createEditActions = ({
     labelId,
     options
   ) => {
-    const edge = query.edge.item.get(edgeId)?.edge
+    const edge = projection.edge.item.get(edgeId)?.edge
     const label = edge?.labels?.find((entry) => entry.id === labelId)
     if (!edge || !label) {
       return
@@ -219,7 +224,7 @@ const createEditActions = ({
       session.mutate.edit.clear()
 
       if (currentEdit.kind === 'edge-label') {
-        const committedLabel = query.edge.committed.get(currentEdit.edgeId)?.edge.labels?.find(
+        const committedLabel = document.edge.item.get(currentEdit.edgeId)?.edge.labels?.find(
           (label) => label.id === currentEdit.labelId
         )
         if (!committedLabel || committedLabel.text?.trim()) {
@@ -238,7 +243,7 @@ const createEditActions = ({
       }
 
       if (currentEdit.kind === 'node') {
-        const committed = query.node.committed.get(currentEdit.nodeId)
+        const committed = document.node.committed.get(currentEdit.nodeId)
         if (!committed) {
           session.mutate.edit.clear()
           return undefined
@@ -383,8 +388,8 @@ const buildMindmapEnterPreview = ({
   nodeId,
   anchorId
 }: {
-  structure: CommittedRead['mindmap']['structure']
-  layout: EditorLayout['mindmap']['layout']
+  structure: DocumentRead['mindmap']['structure']
+  layout: ProjectionRead['mindmap']['layout']
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
@@ -517,17 +522,42 @@ const toEdgeUpdateInput = (
 }
 
 const readMindmapIdForNodes = (
-  query: Pick<EditorQuery, 'node'>,
-  nodeIds: readonly NodeId[]
+  input: {
+    document: Pick<DocumentRead, 'mindmap' | 'node'>
+    projection: Pick<ProjectionRead, 'node'>
+    nodeIds: readonly NodeId[]
+  }
 ): MindmapId | undefined => {
-  const ids = [...new Set(
-    nodeIds.map((nodeId) => {
-      const node = query.node.committed.get(nodeId)?.node
-      return node?.owner?.kind === 'mindmap'
-        ? node.owner.id
+  const resolved = input.nodeIds.map((nodeId) => {
+    const projectedNode = input.projection.node.projected.get(nodeId)?.node
+    const committedNode = input.document.node.committed.get(nodeId)?.node
+    const projectedOwner = projectedNode?.owner
+    const committedOwner = committedNode?.owner
+    const legacyMindmapId = (() => {
+      const projectedId = (projectedNode as Record<string, unknown> | undefined)?.mindmapId
+      if (typeof projectedId === 'string') {
+        return projectedId
+      }
+
+      const committedId = (committedNode as Record<string, unknown> | undefined)?.mindmapId
+      return typeof committedId === 'string'
+        ? committedId
         : undefined
-    }).filter(Boolean)
-  )]
+    })()
+    const structureId = input.document.mindmap.structure.get(nodeId)?.id
+      ?? store.read(input.document.mindmap.list).find((mindmapId) => (
+        input.document.mindmap.structure.get(mindmapId)?.nodeIds.includes(nodeId)
+      ))
+
+    return projectedOwner?.kind === 'mindmap'
+      ? projectedOwner.id
+      : committedOwner?.kind === 'mindmap'
+        ? committedOwner.id
+        : legacyMindmapId
+          ?? structureId
+  })
+
+  const ids = [...new Set(resolved.filter(Boolean))]
 
   return ids.length === 1
     ? ids[0]
@@ -639,10 +669,10 @@ const buildMindmapRelativeInsertInput = ({
 }
 
 const readEdgeOrThrow = (
-  query: Pick<EditorQuery, 'edge'>,
+  projection: Pick<ProjectionRead, 'edge'>,
   edgeId: string
 ) => {
-  const edge = query.edge.item.get(edgeId)?.edge
+  const edge = projection.edge.item.get(edgeId)?.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }
@@ -651,17 +681,17 @@ const readEdgeOrThrow = (
 }
 
 export const createEditorActions = ({
-  committed,
+  document,
   session,
-  query,
+  projection,
   layout,
   write,
   registry,
   defaults
 }: {
-  committed: CommittedRead
+  document: DocumentRead
   session: EditorSession
-  query: EditorQuery
+  projection: ProjectionRead
   layout: EditorLayout
   write: EditorWrite
   registry: NodeRegistry
@@ -673,7 +703,7 @@ export const createEditorActions = ({
     clearSelection: selectionSession.clear
   }
   const selectionActionsCore = createSelectionActions({
-    read: query,
+    read: document,
     canvas: write.canvas,
     group: write.group,
     node: write.node,
@@ -682,7 +712,7 @@ export const createEditorActions = ({
   })
   const clipboard: ClipboardActions = createClipboardActions({
     editor: {
-      read: query,
+      read: document,
       document: write.document,
       session: selectionSessionDeps,
       selection: {
@@ -696,7 +726,8 @@ export const createEditorActions = ({
   })
   const edit = createEditActions({
     session,
-    query,
+    document,
+    projection,
     write,
     registry,
     layout
@@ -709,8 +740,8 @@ export const createEditorActions = ({
     toggle: selectionSession.toggle,
     selectAll: () => {
       applySelectionMutation(session, () => session.mutate.selection.replace({
-        nodeIds: query.node.list.get(),
-        edgeIds: query.edge.list.get()
+        nodeIds: document.node.list.get(),
+        edgeIds: document.edge.list.get()
       }))
     },
     clear: selectionSession.clear,
@@ -779,8 +810,8 @@ export const createEditorActions = ({
       let focusDelayMs = 0
       if (options?.behavior?.enter === 'from-anchor') {
         const preview = buildMindmapEnterPreview({
-          structure: committed.mindmap.structure,
-          layout: layout.mindmap.layout,
+          structure: document.mindmap.structure,
+          layout: projection.mindmap.layout,
           treeId: id,
           nodeId: result.data.nodeId,
           anchorId: readInsertAnchorId(input)
@@ -804,7 +835,7 @@ export const createEditorActions = ({
     removeSubtree: (id, input) => write.mindmap.topic.delete(id, input),
     cloneSubtree: (id, input) => write.mindmap.topic.clone(id, input),
     insertRelative: (input) => {
-      const structure = committed.mindmap.structure.get(input.id)
+      const structure = document.mindmap.structure.get(input.id)
       if (!structure) {
         return undefined
       }
@@ -828,8 +859,8 @@ export const createEditorActions = ({
       let focusDelayMs = 0
       if (input.behavior?.enter === 'from-anchor') {
         const preview = buildMindmapEnterPreview({
-          structure: committed.mindmap.structure,
-          layout: layout.mindmap.layout,
+          structure: document.mindmap.structure,
+          layout: projection.mindmap.layout,
           treeId: input.id,
           nodeId: result.data.nodeId,
           anchorId: input.targetNodeId
@@ -856,11 +887,11 @@ export const createEditorActions = ({
       side: input.drop.side
     }),
     moveRoot: (input) => {
-      const directNode = query.node.committed.get(input.nodeId)?.node
-      const structure = committed.mindmap.structure.get(input.nodeId)
+      const directNode = document.node.committed.get(input.nodeId)?.node
+      const structure = document.mindmap.structure.get(input.nodeId)
       const node = directNode ?? (
         structure
-          ? query.node.committed.get(structure.rootId)?.node
+          ? document.node.committed.get(structure.rootId)?.node
           : undefined
       )
       const mindmapId = directNode?.owner?.kind === 'mindmap'
@@ -889,7 +920,7 @@ export const createEditorActions = ({
     style: {
       branch: (input) => {
         const scopeIds = input.scope === 'subtree' && input.id
-          ? committed.mindmap.structure.get(input.id)?.nodeIds ?? input.nodeIds
+          ? document.mindmap.structure.get(input.id)?.nodeIds ?? input.nodeIds
           : input.nodeIds
 
         return write.mindmap.branch.update(
@@ -905,7 +936,11 @@ export const createEditorActions = ({
         )
       },
       topic: (input) => {
-        const mindmapId = readMindmapIdForNodes(query, input.nodeIds)
+        const mindmapId = readMindmapIdForNodes({
+          document,
+          projection,
+          nodeIds: input.nodeIds
+        })
         if (!mindmapId) {
           return undefined
         }
@@ -964,7 +999,7 @@ export const createEditorActions = ({
           return undefined
         }
 
-        const updates = ids.flatMap((id) => query.node.committed.get(id)
+        const updates = ids.flatMap((id) => document.node.committed.get(id)
           ? [{
               id,
               input: update
@@ -988,7 +1023,7 @@ export const createEditorActions = ({
         }
 
         return write.edge.updateMany(
-          edgeIds.flatMap((id) => query.edge.committed.get(id)
+          edgeIds.flatMap((id) => document.edge.item.get(id)
             ? [{
                 id,
                 input
@@ -999,7 +1034,7 @@ export const createEditorActions = ({
       route: {
         set: write.edge.route.set,
         insertPoint: (edgeId, index, point) => {
-          const edge = readEdgeOrThrow(query, edgeId)
+          const edge = readEdgeOrThrow(projection, edgeId)
           const inserted = edgeApi.route.insert(edge, index, point)
           if (!inserted.ok) {
             throw new Error(inserted.error.message)
@@ -1011,7 +1046,7 @@ export const createEditorActions = ({
         },
         movePoint: (edgeId, index, point) => {
           const patch = edgeApi.route.move(
-            readEdgeOrThrow(query, edgeId),
+            readEdgeOrThrow(projection, edgeId),
             index,
             point
           )
@@ -1025,7 +1060,7 @@ export const createEditorActions = ({
         },
         removePoint: (edgeId, index) => {
           const patch = edgeApi.route.remove(
-            readEdgeOrThrow(query, edgeId),
+            readEdgeOrThrow(projection, edgeId),
             index
           )
           if (!patch) {

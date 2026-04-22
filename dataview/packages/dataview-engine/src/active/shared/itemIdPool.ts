@@ -3,9 +3,17 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   ItemId,
-  ItemIdPool,
   SectionKey
 } from '@dataview/engine/contracts/shared'
+
+export interface ItemIdPool {
+  allocate: {
+    placement: (sectionKey: SectionKey, recordId: RecordId) => ItemId
+  }
+  gc: {
+    clear: () => void
+  }
+}
 
 export const createItemIdPool = (): ItemIdPool => {
   let nextId = 1

@@ -1,7 +1,7 @@
-import type { HistoryApi, HistoryState } from '@whiteboard/history'
-import type { EdgeLabelMaskRect } from '@whiteboard/core/edge'
-import type { SelectionSummary, SelectionTarget } from '@whiteboard/core/selection'
 import { store } from '@shared/core'
+import type { EdgeLabelMaskRect } from '@whiteboard/core/edge'
+import type { Guide } from '@whiteboard/core/node'
+import type { SelectionSummary, SelectionTarget } from '@whiteboard/core/selection'
 import type {
   Document,
   Edge,
@@ -14,8 +14,18 @@ import type {
   Size,
   Viewport
 } from '@whiteboard/core/types'
+import type { HistoryApi, HistoryState } from '@whiteboard/history'
 import type { EditorActions } from '@whiteboard/editor/action/types'
-import type { DrawState } from '@whiteboard/editor/session/draw/state'
+import type { DocumentRead, MindmapSceneItem } from '@whiteboard/editor/document/read'
+import type { MindmapChrome } from '@whiteboard/editor/editor/mindmap'
+import type {
+  MarqueePreview,
+  EdgeGuide
+} from '@whiteboard/editor/session/preview/types'
+import type {
+  DrawPreview,
+  DrawState
+} from '@whiteboard/editor/session/draw/state'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -33,10 +43,8 @@ import type {
   EditField,
   EditSession
 } from '@whiteboard/editor/session/edit'
-import type { MindmapSceneItem } from '@whiteboard/editor/committed/read'
-import type { SelectedEdgeChrome } from '@whiteboard/editor/presentation/edge'
-import type { MindmapChrome } from '@whiteboard/editor/presentation/mindmap'
-import type { EditorQuery } from '@whiteboard/editor/query'
+import type { SessionRead } from '@whiteboard/editor/session/read'
+import type { SelectedEdgeChrome } from '@whiteboard/editor/projection/edgeShared'
 import type {
   SelectionNodeStats,
   SelectionOverlay,
@@ -137,10 +145,10 @@ export type EditorEdgeRender = {
 }
 
 export type EditorChromePresentation = {
-  marquee: ReturnType<EditorQuery['chrome']['marquee']['get']>
-  draw: ReturnType<EditorQuery['chrome']['draw']['get']>
-  edgeGuide: ReturnType<EditorQuery['chrome']['edgeGuide']['get']>
-  snap: ReturnType<EditorQuery['chrome']['snap']['get']>
+  marquee: MarqueePreview | undefined
+  draw: DrawPreview | null
+  edgeGuide: EdgeGuide
+  snap: readonly Guide[]
   selection: SelectionOverlay | undefined
 }
 
@@ -167,7 +175,7 @@ export type EditorMindmapRead = {
 }
 
 export type EditorRead = {
-  document: Pick<EditorQuery['document'], 'background' | 'bounds'> & {
+  document: Pick<DocumentRead['document'], 'background' | 'bounds'> & {
     get: () => Document
   }
   group: {
@@ -192,8 +200,8 @@ export type EditorRead = {
     node: EditorSelectionNodeRead
     summary: store.ReadStore<SelectionSummary>
   }
-  tool: EditorQuery['tool']
-  viewport: EditorQuery['viewport']
+  tool: SessionRead['tool']
+  viewport: SessionRead['viewport']
   chrome: store.ReadStore<EditorChromePresentation>
   panel: store.ReadStore<EditorPanelPresentation>
 }

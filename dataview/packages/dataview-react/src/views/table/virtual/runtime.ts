@@ -1,9 +1,6 @@
 import type {
   ItemId
 } from '@dataview/engine'
-import {
-  queryRead
-} from '@dataview/engine'
 import type {
   TableGrid,
   TableViewState
@@ -292,7 +289,7 @@ const createTableLayoutStateStore = (
     })
 
     return createTableLayoutState({
-      grouped: queryRead.grouped(view.query),
+      grouped: view.query.group.active,
       sections: nextSections,
       rowCount: grid.items.ids.length
     })

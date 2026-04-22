@@ -11,8 +11,8 @@ const createInteractionDeps = () => {
   return {
     reconnectCommit,
     ctx: {
-      query: {
-        node: {} as InteractionDeps['query']['node'],
+      projection: {
+        node: {},
         edge: {
           geometry: {
             get: () => ({
@@ -34,7 +34,9 @@ const createInteractionDeps = () => {
               }
             })
           }
-        },
+        }
+      },
+      sessionRead: {
         viewport: {
           get: () => ({
             zoom: 1

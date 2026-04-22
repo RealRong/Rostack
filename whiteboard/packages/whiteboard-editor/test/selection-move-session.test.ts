@@ -14,7 +14,42 @@ describe('createMoveInteraction', () => {
           }
         }
       },
-      query: {
+      document: {
+        node: {
+          committed: {
+            get: () => ({
+              node: {
+                id: 'node-1',
+                type: 'text',
+                data: {
+                  text: 'node-1'
+                }
+              },
+              rect: {
+                x: 100,
+                y: 120,
+                width: 120,
+                height: 40
+              }
+            })
+          }
+        },
+        edge: {
+          list: {
+            get: () => ['edge-1']
+          }
+        },
+        frame: {
+          at: vi.fn(),
+          of: vi.fn()
+        },
+        mindmap: {
+          structure: {
+            get: vi.fn(() => undefined)
+          }
+        }
+      },
+      projection: {
         node: {
           ordered: () => [{
             id: 'node-1',
@@ -50,9 +85,6 @@ describe('createMoveInteraction', () => {
           }
         },
         edge: {
-          list: {
-            get: () => ['edge-1']
-          },
           edges: () => [{
             id: 'edge-1',
             type: 'straight',
@@ -67,12 +99,15 @@ describe('createMoveInteraction', () => {
             route: {
               kind: 'auto'
             }
-          }]
+          }],
         },
-        frame: {
-          at: vi.fn(),
-          of: vi.fn()
-        },
+        mindmap: {
+          layout: {
+            get: vi.fn(() => undefined)
+          }
+        }
+      },
+      sessionRead: {
         tool: {
           is: () => false
         }

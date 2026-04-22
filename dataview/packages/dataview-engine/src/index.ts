@@ -1,5 +1,2 @@
-export * from '@dataview/engine/api/engine'
-export {
-  EMPTY_VIEW_GROUP_PROJECTION,
-  sameCellRef
-} from '@dataview/engine/contracts'
+export { createEngine } from '@dataview/engine/createEngine'
+export type * from '@dataview/engine/contracts'

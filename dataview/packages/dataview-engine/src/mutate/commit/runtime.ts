@@ -17,11 +17,11 @@ import {
 import {
   emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'
-import type { ActiveProjectionRuntime } from '@dataview/engine/active/projection/contracts'
+import type { ActiveRuntime } from '@dataview/engine/active/runtime/runtime'
 import {
   createBaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
-import { createStaticDocumentReadContext } from '@dataview/engine/document/reader'
+import { createDocumentReadContext } from '@dataview/engine/document/reader'
 import type {
   PlannedWriteBatch
 } from '@dataview/engine/mutate/planner'
@@ -148,7 +148,7 @@ const writePlan = (
   const startedAt = now()
   const applied = operation.apply(base.doc, batch.operations)
   const history = clearRedo(base.history)
-  const nextHistory = base.history.cap > 0
+  const nextHistory = base.history.capacity > 0
     ? pushUndo(history, {
         undo: applied.undo,
         redo: applied.redo
@@ -200,7 +200,7 @@ const loadPlan = (
 
 const commit = <TResult extends CommitResult>(input: {
   runtime: CoreRuntime
-  activeRuntime: ActiveProjectionRuntime
+  activeRuntime: ActiveRuntime
   perf: PerformanceRuntime
   capturePerf: boolean
   plan: Plan<TResult>
@@ -212,7 +212,7 @@ const commit = <TResult extends CommitResult>(input: {
     return draft.result
   }
 
-  const documentContext = createStaticDocumentReadContext(draft.doc)
+  const documentContext = createDocumentReadContext(draft.doc)
   const previousPlan = base.active.plan
   const plan = resolveViewPlan(documentContext, documentContext.activeViewId)
   const baseImpact = createBaseImpact(draft.impact)
@@ -321,7 +321,7 @@ const commit = <TResult extends CommitResult>(input: {
 
 export const createWriteControl = (input: {
   runtime: CoreRuntime
-  activeRuntime: ActiveProjectionRuntime
+  activeRuntime: ActiveRuntime
   perf: PerformanceRuntime
   capturePerf: boolean
 }) => {

@@ -1,34 +1,31 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import { selection as selectionApi, type SelectionSummary } from '@whiteboard/core/selection'
 import { store } from '@shared/core'
-import type { CommittedRead } from '@whiteboard/editor/committed/read'
-import type { EditorPublishedSources } from '@whiteboard/editor/publish/sources'
-import {
-  isSelectedEdgeChromeEqual,
-  readSelectedEdgeId,
-  readSelectedEdgeRoutePoints,
-  resolveEdgeCapability,
-} from '@whiteboard/editor/presentation/edge'
+import type { HistoryApi } from '@whiteboard/history'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 import {
   isMindmapChromeEqual,
   isMindmapSceneEqual,
   readAddChildTargets,
   readMindmapNavigateTarget,
   toMindmapScene
-} from '@whiteboard/editor/presentation/mindmap'
+} from '@whiteboard/editor/editor/mindmap'
 import {
   readEdgeScope,
   readNodeScope,
   readSelectionEdgeStats,
   readSelectionNodeStats,
-  readSelectionNodeTransformBehavior,
-  readSelectionRole,
-  readSelectionTransformCapability,
   resolveSelectionOverlay,
   resolveSelectionToolbar
-} from '@whiteboard/editor/presentation/selection'
-import type { EditorQuery } from '@whiteboard/editor/query'
-import { createNodeTypeRead } from '@whiteboard/editor/query/node/read'
+} from '@whiteboard/editor/editor/selection'
+import type { EditorPublishedSources } from '@whiteboard/editor/publish/sources'
+import type { ProjectionRead } from '@whiteboard/editor/projection/read'
+import {
+  isSelectedEdgeChromeEqual,
+  readSelectedEdgeId,
+  readSelectedEdgeRoutePoints,
+  resolveEdgeCapability
+} from '@whiteboard/editor/projection/edgeShared'
+import type { SessionRead } from '@whiteboard/editor/session/read'
 import type { EditorStore } from '@whiteboard/editor/types/editor'
 import type {
   EditorChromePresentation,
@@ -38,8 +35,7 @@ import type {
   EditorRead
 } from '@whiteboard/editor/types/editor'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
-import type { SelectionMembers } from '@whiteboard/editor/types/selectionPresentation'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 
 const isChromeMarqueeEqual = (
   left: EditorChromePresentation['marquee'],
@@ -175,42 +171,8 @@ const isEdgeRenderEqual = (
   )
 )
 
-const isSelectionMembersEqual = (
-  left: SelectionMembers,
-  right: SelectionMembers
-) => (
-  left.key === right.key
-  && left.target === right.target
-  && left.nodes === right.nodes
-  && left.edges === right.edges
-  && left.primaryNode === right.primaryNode
-  && left.primaryEdge === right.primaryEdge
-)
-
-const readSelectionMembersKey = (
-  target: {
-    nodeIds: readonly string[]
-    edgeIds: readonly string[]
-  }
-) => `${target.nodeIds.join('\0')}\u0001${target.edgeIds.join('\0')}`
-
-const resolveNodeCapability = (
-  node: EditorNodeRender['node'],
-  registry: ReturnType<typeof createNodeTypeRead>
-) => {
-  const base = registry.capability(node.type)
-  const mindmapOwned = node.owner?.kind === 'mindmap'
-
-  return {
-    ...base,
-    connect: base.connect,
-    resize: !mindmapOwned && base.resize,
-    rotate: !mindmapOwned && base.rotate
-  }
-}
-
 const projectWorldRect = (
-  query: Pick<EditorQuery, 'viewport'>,
+  viewport: SessionRead['viewport'],
   worldRect: {
     x: number
     y: number
@@ -218,12 +180,11 @@ const projectWorldRect = (
     height: number
   }
 ) => {
-  store.read(query.viewport)
-  const topLeft = query.viewport.worldToScreen({
+  const topLeft = viewport.worldToScreen({
     x: worldRect.x,
     y: worldRect.y
   })
-  const bottomRight = query.viewport.worldToScreen({
+  const bottomRight = viewport.worldToScreen({
     x: worldRect.x + worldRect.width,
     y: worldRect.y + worldRect.height
   })
@@ -232,101 +193,55 @@ const projectWorldRect = (
 }
 
 const readNodeLocked = ({
-  published,
-  committed,
+  projection,
+  document,
   nodeId
 }: {
-  published: Pick<EditorPublishedSources, 'node'>
-  committed: Pick<CommittedRead, 'node'>
+  projection: Pick<ProjectionRead, 'node'>
+  document: Pick<DocumentRead, 'node'>
   nodeId: string
 }) => (
-  store.read(published.node, nodeId)?.base.node.locked
-  ?? store.read(committed.node.committed, nodeId)?.node.locked
+  store.read(projection.node.projected, nodeId)?.node.locked
+  ?? store.read(document.node.committed, nodeId)?.node.locked
   ?? false
 )
 
 const readNodeRect = ({
-  published,
-  committed,
+  projection,
+  document,
   nodeId
 }: {
-  published: Pick<EditorPublishedSources, 'node'>
-  committed: Pick<CommittedRead, 'node'>
+  projection: Pick<ProjectionRead, 'node'>
+  document: Pick<DocumentRead, 'node'>
   nodeId: string
-}) => store.read(published.node, nodeId)?.layout.rect
-  ?? store.read(committed.node.committed, nodeId)?.rect
+}) => store.read(projection.node.projected, nodeId)?.rect
+  ?? store.read(document.node.committed, nodeId)?.rect
 
 export const createEditorRead = (
   {
-    committed,
-    query,
+    document,
+    projection,
+    sessionRead,
     published,
     store: state,
-    registry,
+    history,
+    nodeType,
     defaults
   }: {
-    committed: Pick<CommittedRead, 'document' | 'group' | 'mindmap' | 'node'>
-    query: Pick<EditorQuery, 'history' | 'viewport' | 'chrome' | 'tool'>
-    published: Pick<EditorPublishedSources, 'scene' | 'selection' | 'mindmap' | 'chrome' | 'node' | 'edge'>
+    document: Pick<DocumentRead, 'document' | 'group' | 'mindmap' | 'node'>
+    projection: Pick<ProjectionRead, 'scene' | 'node' | 'edge' | 'selection' | 'mindmap'>
+    sessionRead: SessionRead
+    published: Pick<EditorPublishedSources, 'chrome' | 'node' | 'edge'>
     store: EditorStore
-    registry: NodeRegistry
+    history: HistoryApi
+    nodeType: NodeTypeSupport
     defaults: EditorDefaults['selection']
   }
 ): EditorRead => {
-  const nodeType = createNodeTypeRead(registry)
-  const selectionMembers = store.createDerivedStore<SelectionMembers>({
-    get: () => {
-      const target = store.read(state.selection)
-      const nodes = target.nodeIds.flatMap((nodeId) => {
-        const node = store.read(published.node, nodeId)?.base.node
-        return node ? [node] : []
-      })
-      const edges = target.edgeIds.flatMap((edgeId) => {
-        const edge = store.read(published.edge, edgeId)?.base.edge
-        return edge ? [edge] : []
-      })
-
-      return {
-        key: readSelectionMembersKey(target),
-        target,
-        nodes,
-        edges,
-        primaryNode: nodes[0],
-        primaryEdge: edges[0]
-      }
-    },
-    isEqual: isSelectionMembersEqual
-  })
-
-  const selectionSummary = store.createDerivedStore<SelectionSummary>({
-    get: () => {
-      const current = store.read(selectionMembers)
-
-      return selectionApi.derive.summary({
-        target: current.target,
-        nodes: current.nodes,
-        edges: current.edges,
-        readNodeRect: (node) => store.read(published.node, node.id)?.layout.bounds,
-        readEdgeBounds: (edge) => store.read(published.edge, edge.id)?.route.bounds,
-        resolveNodeTransformBehavior: (node) => readSelectionNodeTransformBehavior(node, nodeType)
-      })
-    },
-    isEqual: selectionApi.derive.isSummaryEqual
-  })
-
-  const selectionAffordance = store.createDerivedStore({
-    get: () => selectionApi.derive.affordance({
-      selection: store.read(selectionSummary),
-      resolveNodeRole: readSelectionRole,
-      resolveNodeTransformCapability: (node) => readSelectionTransformCapability(node, nodeType)
-    }),
-    isEqual: selectionApi.derive.isAffordanceEqual
-  })
-
-  const selectionNodeSelected: EditorRead['selection']['node']['selected'] = store.createKeyedDerivedStore({
-    get: (nodeId: string) => store.read(state.selection).nodeIds.includes(nodeId),
-    isEqual: (left, right) => left === right
-  })
+  const selectionSummary = projection.selection.summary
+  const selectionMembers = projection.selection.members
+  const selectionAffordance = projection.selection.affordance
+  const selectionNodeSelected = projection.selection.node.selected
 
   const selectionNodeStats: EditorRead['selection']['node']['stats'] = store.createDerivedStore({
     get: () => readSelectionNodeStats({
@@ -355,7 +270,7 @@ export const createEditorRead = (
         primaryNode: currentMembers.primaryNode,
         nodeType,
         nodeStats: currentNodeStats,
-        readMindmapStructure: (id) => store.read(committed.mindmap.structure, id),
+        readMindmapStructure: (id) => store.read(document.mindmap.structure, id),
         defaults
       })
     }
@@ -404,7 +319,7 @@ export const createEditorRead = (
         nodeScope: store.read(selectionNodeScope),
         edgeScope: store.read(selectionEdgeScope),
         nodeType,
-        readMindmapStructure: (id) => store.read(committed.mindmap.structure, id),
+        readMindmapStructure: (id) => store.read(document.mindmap.structure, id),
         tool: store.read(state.tool),
         edit: store.read(state.edit),
         interactionChrome: interaction.chrome,
@@ -422,12 +337,12 @@ export const createEditorRead = (
       return {
         marquee: marquee
           ? {
-              rect: projectWorldRect(query, marquee.worldRect),
+              rect: projectWorldRect(sessionRead.viewport, marquee.worldRect),
               match: marquee.match
             }
           : undefined,
         draw: current.preview.draw,
-        edgeGuide: store.read(query.chrome.edgeGuide),
+        edgeGuide: store.read(sessionRead.chrome.edgeGuide),
         snap: current.preview.guides,
         selection: store.read(selectionOverlay)
       }
@@ -444,7 +359,7 @@ export const createEditorRead = (
   const panel = store.createDerivedStore<EditorPanelPresentation>({
     get: () => ({
       selectionToolbar: store.read(selectionToolbar),
-      history: store.read(query.history),
+      history: store.read(history),
       draw: store.read(state.draw)
     }),
     isEqual: (left, right) => (
@@ -454,11 +369,6 @@ export const createEditorRead = (
     )
   })
 
-  const sceneList: EditorRead['scene']['list'] = store.createDerivedStore({
-    get: () => store.read(published.scene).items,
-    isEqual: (left, right) => left === right
-  })
-
   const nodeRender: EditorRead['node']['render'] = store.createKeyedDerivedStore({
     get: (nodeId: string) => {
       const current = store.read(published.node, nodeId)
@@ -466,7 +376,7 @@ export const createEditorRead = (
         return undefined
       }
 
-      const capability = resolveNodeCapability(current.base.node, nodeType)
+      const capability = projection.node.capability(current.base.node)
 
       return {
         nodeId: current.base.node.id,
@@ -541,8 +451,8 @@ export const createEditorRead = (
       const currentCapability = resolveEdgeCapability({
         edge: current.base.edge,
         readNodeLocked: (nodeId) => readNodeLocked({
-          published,
-          committed,
+          projection,
+          document,
           nodeId
         })
       })
@@ -576,25 +486,24 @@ export const createEditorRead = (
 
   const mindmapScene: EditorRead['mindmap']['scene'] = store.createKeyedDerivedStore({
     get: (mindmapId: string) => {
-      const current = store.read(published.mindmap, mindmapId)
-      const structure = store.read(committed.mindmap.structure, mindmapId)
-      const bbox = current?.tree.bbox
-      if (!current || !structure || !bbox) {
+      const structure = store.read(document.mindmap.structure, mindmapId)
+      const current = store.read(projection.mindmap.layout, mindmapId)
+      if (!structure || !current) {
         return undefined
       }
 
       return toMindmapScene(
         structure,
-        bbox,
-        current.render.connectors
+        current.computed.bbox,
+        current.connectors
       )
     },
     isEqual: isMindmapSceneEqual
   })
 
-  const mindmapChrome: EditorRead['mindmap']['chrome'] = store.createKeyedDerivedStore<string, EditorRead['mindmap']['chrome'] extends store.KeyedReadStore<string, infer TValue> ? TValue : never>({
+  const mindmapChrome: EditorRead['mindmap']['chrome'] = store.createKeyedDerivedStore<string, ReturnType<EditorRead['mindmap']['chrome']['get']>>({
     get: (mindmapId: string) => {
-      const structure = store.read(committed.mindmap.structure, mindmapId)
+      const structure = store.read(document.mindmap.structure, mindmapId)
       if (!structure) {
         return undefined
       }
@@ -605,13 +514,13 @@ export const createEditorRead = (
           selection: store.read(state.selection),
           edit: store.read(state.edit),
           readNodeLocked: (nodeId) => readNodeLocked({
-            published,
-            committed,
+            projection,
+            document,
             nodeId
           }),
           readNodeRect: (nodeId) => readNodeRect({
-            published,
-            committed,
+            projection,
+            document,
             nodeId
           })
         })
@@ -622,19 +531,19 @@ export const createEditorRead = (
 
   return {
     document: {
-      get: committed.document.get,
-      background: committed.document.background,
-      bounds: committed.document.bounds
+      get: document.document.get,
+      background: document.document.background,
+      bounds: document.document.bounds
     },
     group: {
-      exactIds: committed.group.exactIds
+      exactIds: document.group.exactIds
     },
-    history: query.history,
+    history,
     mindmap: {
       scene: mindmapScene,
       chrome: mindmapChrome,
       navigate: (input) => {
-        const currentStructure = store.read(committed.mindmap.structure, input.id)
+        const currentStructure = store.read(document.mindmap.structure, input.id)
         if (!currentStructure) {
           return undefined
         }
@@ -654,7 +563,7 @@ export const createEditorRead = (
       selectedChrome: selectedEdgeChrome
     },
     scene: {
-      list: sceneList
+      list: projection.scene.list
     },
     selection: {
       node: {
@@ -664,8 +573,8 @@ export const createEditorRead = (
       },
       summary: selectionSummary
     },
-    tool: query.tool,
-    viewport: query.viewport,
+    tool: sessionRead.tool,
+    viewport: sessionRead.viewport,
     chrome,
     panel
   }

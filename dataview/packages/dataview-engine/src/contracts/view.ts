@@ -80,23 +80,6 @@ export interface ViewSortProjection {
   rules: readonly SortRuleProjection[]
 }
 
-const EMPTY_MODES = [] as readonly string[]
-const EMPTY_BUCKET_SORTS = [] as readonly BucketSort[]
-const EMPTY_QUERY_FIELD_IDS = [] as readonly FieldId[]
-
-export const EMPTY_VIEW_GROUP_PROJECTION: ViewGroupProjection = {
-  active: false,
-  fieldId: '',
-  field: undefined,
-  mode: '',
-  bucketSort: undefined,
-  bucketInterval: undefined,
-  showEmpty: true,
-  availableModes: EMPTY_MODES,
-  availableBucketSorts: EMPTY_BUCKET_SORTS,
-  supportsInterval: false
-}
-
 export interface ActiveViewQuery {
   search: ViewSearchProjection
   filters: ViewFilterProjection
@@ -150,50 +133,6 @@ export interface ViewCell {
   field: Field | undefined
   value: unknown
 }
-
-export const queryRead = {
-  grouped: (
-    query: ActiveViewQuery
-  ): boolean => query.group.active,
-  groupFieldId: (
-    query: ActiveViewQuery
-  ): FieldId | '' => query.group.fieldId,
-  filterFieldIds: (
-    query: ActiveViewQuery
-  ): readonly FieldId[] => {
-    const ids = query.filters.rules.flatMap(rule => (
-      typeof rule.rule.fieldId === 'string'
-        ? [rule.rule.fieldId]
-        : []
-    ))
-
-    return ids.length
-      ? ids
-      : EMPTY_QUERY_FIELD_IDS
-  },
-  sortFieldIds: (
-    query: ActiveViewQuery
-  ): readonly FieldId[] => {
-    const ids = query.sort.rules.flatMap(rule => (
-      typeof rule.sorter.field === 'string'
-        ? [rule.sorter.field]
-        : []
-    ))
-
-    return ids.length
-      ? ids
-      : EMPTY_QUERY_FIELD_IDS
-  },
-  sortDir: (
-    query: ActiveViewQuery,
-    fieldId: FieldId
-  ) => query.sort.rules.find(rule => rule.sorter.field === fieldId)?.sorter.direction
-}
-
-export const sameCellRef = (
-  left: CellRef,
-  right: CellRef
-) => left.itemId === right.itemId && left.fieldId === right.fieldId
 
 export interface MovePlan {
   itemIds: readonly ItemId[]

@@ -5,8 +5,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./contracts/editor": "./src/contracts/editor.ts",
-    "./publish/*": "./src/publish/*.ts",
-    "./read/*": "./src/read/*.ts",
     "./testing/*": "./src/testing/*.ts"
   },
   "files": [

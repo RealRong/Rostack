@@ -16,10 +16,12 @@ import type {
   KanbanCardsPerColumn,
   RecordId,
   SortDirection,
-  Sorter,
+  SortRule,
   View,
   ViewGroup,
+  ViewFilterRuleId,
   ViewId,
+  ViewSortRuleId,
   ViewType
 } from '@dataview/core/contracts'
 import type { FilterEditorKind } from '@dataview/core/filter'
@@ -71,7 +73,7 @@ export interface ViewSearchProjection {
 }
 
 export interface SortRuleProjection {
-  sorter: Sorter
+  rule: SortRule
   field?: Field
 }
 
@@ -202,21 +204,23 @@ export interface ActiveViewApi {
     set: (query: string) => void
   }
   filters: {
-    add: (fieldId: FieldId) => void
-    update: (index: number, rule: FilterRule) => void
-    setPreset: (index: number, presetId: string) => void
-    setValue: (index: number, value: FilterRule['value'] | undefined) => void
+    create: (fieldId: FieldId) => ViewFilterRuleId
+    patch: (
+      id: ViewFilterRuleId,
+      patch: Partial<Pick<FilterRule, 'fieldId' | 'presetId' | 'value'>>
+    ) => void
     setMode: (mode: Filter['mode']) => void
-    remove: (index: number) => void
+    remove: (id: ViewFilterRuleId) => void
     clear: () => void
   }
   sort: {
-    add: (fieldId: FieldId, direction?: SortDirection) => void
-    update: (fieldId: FieldId, direction: SortDirection) => void
-    keepOnly: (fieldId: FieldId, direction: SortDirection) => void
-    move: (from: number, to: number) => void
-    replace: (index: number, sorter: Sorter) => void
-    remove: (index: number) => void
+    create: (fieldId: FieldId, direction?: SortDirection) => ViewSortRuleId
+    patch: (
+      id: ViewSortRuleId,
+      patch: Partial<Pick<SortRule, 'fieldId' | 'direction'>>
+    ) => void
+    move: (id: ViewSortRuleId, beforeId?: ViewSortRuleId | null) => void
+    remove: (id: ViewSortRuleId) => void
     clear: () => void
   }
   group: {

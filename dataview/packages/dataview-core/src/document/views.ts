@@ -40,7 +40,9 @@ const normalizeView = (
     ...entityTable.clone.entity(view),
     search: search.state.normalize(view.search),
     filter: filter.state.normalize(view.filter),
-    sort: sort.rules.normalize(view.sort),
+    sort: {
+      rules: sort.rules.normalize(view.sort.rules)
+    },
     ...(normalizedGroup
       ? { group: normalizedGroup }
       : {}),

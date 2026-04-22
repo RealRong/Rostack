@@ -1,5 +1,6 @@
 import type {
   Field,
+  FilterRule,
   RecordId,
   View
 } from '@dataview/core/contracts'
@@ -76,7 +77,7 @@ const matchesFilter = (input: {
 const resolveBucketFilterCandidates = (input: {
   field: Field | undefined
   fieldId: string
-  rule: View['filter']['rules'][number]
+  rule: FilterRule
   index: IndexState
 }): FilterCandidate | undefined => {
   const lookup = filterApi.rule.bucketLookup(input.field, input.rule)
@@ -152,7 +153,7 @@ const lowerBoundByFilter = (input: {
 const resolveSortedFilterCandidates = (input: {
   field: Field | undefined
   fieldId: string
-  rule: View['filter']['rules'][number]
+  rule: FilterRule
   index: IndexState
 }): FilterCandidate | undefined => {
   const sortIndex = input.index.sort.fields.get(input.fieldId)

@@ -8,7 +8,7 @@ import { createEditorStore } from '@whiteboard/editor/editor/store'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
 import { createProjectionAnimationSource } from '@whiteboard/editor/projection/animation'
-import { createProjectionDriver } from '@whiteboard/editor/projection/driver'
+import { createProjectionController } from '@whiteboard/editor/projection/controller'
 import { createGraphRead } from '@whiteboard/editor/read/graph'
 import { createEditorRead } from '@whiteboard/editor/read/public'
 import { createSessionRead } from '@whiteboard/editor/session/read'
@@ -29,6 +29,35 @@ import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import { createNodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
+
+const isRecord = (
+  value: unknown
+): value is Record<string, unknown> => (
+  typeof value === 'object'
+  && value !== null
+  && !Array.isArray(value)
+)
+
+const wrapBoundary = <T extends Record<string, unknown>>(
+  value: T,
+  run: <TResult>(fn: () => TResult) => TResult
+): T => Object.fromEntries(
+  Object.entries(value).map(([key, entry]) => {
+    if (typeof entry === 'function') {
+      return [
+        key,
+        (...args: unknown[]) => run(() => entry(...args))
+      ]
+    }
+
+    return [
+      key,
+      isRecord(entry)
+        ? wrapBoundary(entry, run)
+        : entry
+    ]
+  })
+) as T
 
 export const createEditor = ({
   engine,
@@ -72,7 +101,7 @@ export const createEditor = ({
   })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(registry)
-  const projection = createProjectionDriver({
+  const projection = createProjectionController({
     engine,
     session,
     layout
@@ -80,7 +109,8 @@ export const createEditor = ({
   const projectionAnimation = createProjectionAnimationSource({
     engine,
     session,
-    mark: projection.mark
+    mark: projection.mark,
+    flush: projection.flush
   })
   const graph = createGraphRead({
     document,
@@ -96,16 +126,22 @@ export const createEditor = ({
     projection: graph,
     layout
   })
-  const actions = createEditorActions({
+  const rawActions = createEditorActions({
     document,
     session,
     projection: graph,
+    publish: {
+      flush: () => {
+        projection.flush()
+      }
+    },
     layout,
     write,
     registry,
     defaults: defaults.templates
   })
-  const host = createEditorHost({
+  const actions = wrapBoundary(rawActions, projection.run)
+  const rawHost = createEditorHost({
     engine,
     document,
     session,
@@ -113,8 +149,9 @@ export const createEditor = ({
     sessionRead,
     layout,
     write,
-    actions
+    actions: rawActions
   })
+  const host = wrapBoundary(rawHost, projection.run)
   const events = createEditorEvents({
     engine,
     session,

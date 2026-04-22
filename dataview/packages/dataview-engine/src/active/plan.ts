@@ -1,6 +1,7 @@
 import type {
   Field,
   FieldId,
+  FilterRule,
   View,
   ViewGroup,
   ViewId
@@ -35,7 +36,7 @@ import { collection, string } from '@shared/core'
 export interface EffectiveFilterRule {
   fieldId: FieldId
   field: Field | undefined
-  rule: View['filter']['rules'][number]
+  rule: FilterRule
 }
 
 export interface QueryPlan {
@@ -87,9 +88,10 @@ const resolveEffectiveFilterRules = (
   view: View
 ): readonly EffectiveFilterRule[] => {
   const rules: EffectiveFilterRule[] = []
+  const filterRules = filterApi.rules.list(view.filter.rules)
 
-  for (let index = 0; index < view.filter.rules.length; index += 1) {
-    const rule = view.filter.rules[index]!
+  for (let index = 0; index < filterRules.length; index += 1) {
+    const rule = filterRules[index]!
     const field = reader.fields.get(rule.fieldId)
     if (!filterApi.rule.effective(field, rule)) {
       continue
@@ -110,9 +112,10 @@ const resolveIndexedFilterRules = (
   view: View
 ): readonly EffectiveFilterRule[] => {
   const rules: EffectiveFilterRule[] = []
+  const filterRules = filterApi.rules.list(view.filter.rules)
 
-  for (let index = 0; index < view.filter.rules.length; index += 1) {
-    const rule = view.filter.rules[index]!
+  for (let index = 0; index < filterRules.length; index += 1) {
+    const rule = filterRules[index]!
     if (!isKnownFieldId(reader, rule.fieldId)) {
       continue
     }
@@ -192,7 +195,12 @@ const createQueryPlan = (
         ? (view.search.fields?.length ? search.fieldIds : 'all')
         : [],
       filter: collection.uniqueSorted(filters.map(entry => entry.fieldId)),
-      sort: collection.uniqueSorted(view.sort.map(sorter => sorter.field))
+      sort: collection.uniqueSorted(
+        view.sort.rules.order.flatMap(ruleId => {
+          const rule = view.sort.rules.byId[ruleId]
+          return rule ? [rule.fieldId] : []
+        })
+      )
     },
     executionKey: createExecutionKey({
       search,

@@ -86,8 +86,8 @@ const readSortDir = (
   query: TableQueryState,
   fieldId: FieldId
 ): SortDirection | undefined => query.sort.rules.find(
-  rule => rule.sorter.field === fieldId
-)?.sorter.direction
+  rule => rule.rule.fieldId === fieldId
+)?.rule.direction
 
 export const createTableModel = (
   active: ActiveSource

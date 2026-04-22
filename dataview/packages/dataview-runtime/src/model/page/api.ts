@@ -2,7 +2,8 @@ import type {
   CustomField,
   Field,
   FieldId,
-  View
+  View,
+  ViewSortRuleId
 } from '@dataview/core/contracts'
 import { equal, store } from '@shared/core'
 import type {
@@ -45,7 +46,8 @@ const sameRoute = (
   }
 
   return left.kind === right.kind
-    && (left.kind !== 'filter' || right.kind !== 'filter' || left.index === right.index)
+    && (left.kind !== 'filter' || right.kind !== 'filter' || left.id === right.id)
+    && (left.kind !== 'sort' || right.kind !== 'sort' || left.id === right.id)
 }
 
 const sameQueryBar = (
@@ -135,7 +137,7 @@ const sameSortRow = (
 ) => left === right || (
   !!left
   && !!right
-  && left.sorter === right.sorter
+  && left.rule === right.rule
   && left.field === right.field
   && equal.sameOrder(left.availableFields, right.availableFields)
 )
@@ -179,7 +181,7 @@ export const createPageModel = (input: {
   const sortFieldIds = store.createDerivedStore<readonly FieldId[]>({
     get: () => {
       const ids = queryFieldOptions.used.sortIds(
-        store.read(input.source.active.query).sort.rules.map(rule => rule.sorter)
+        store.read(input.source.active.query).sort.rules.map(rule => rule.rule)
       )
       return ids.length
         ? ids
@@ -325,23 +327,23 @@ export const createPageModel = (input: {
     }),
     isEqual: sameSortPanel
   })
-  const sortRow = store.createKeyedDerivedStore<number, PageSortRow | undefined>({
-    get: index => {
-      const rules = store.read(sortRules)
-      const rule = rules[index]
-      if (!rule) {
+  const sortRow = store.createKeyedDerivedStore<ViewSortRuleId, PageSortRow | undefined>({
+    get: id => {
+      const currentRules = store.read(sortRules)
+      const currentRow = currentRules.find(entry => entry.rule.id === id)
+      if (!currentRow) {
         return undefined
       }
 
       const allFields = store.read(customFields)
-      const sorters = rules.map(entry => entry.sorter)
+      const currentSortRules = currentRules.map(entry => entry.rule)
       return {
-        sorter: rule.sorter,
-        field: rule.field,
+        rule: currentRow.rule,
+        field: currentRow.field,
         availableFields: queryFieldOptions.available.sortAt(
           allFields,
-          sorters,
-          index
+          currentSortRules,
+          id
         )
       }
     },

@@ -236,7 +236,7 @@ export const createActiveItemsApi = (input: {
       actions.push(...valueActions)
     }
 
-    if (!state.view.sort.length) {
+    if (!state.view.sort.rules.order.length) {
       const moveAction = createMoveOrderAction(
         input.base,
         plan.recordIds,

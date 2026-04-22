@@ -79,7 +79,7 @@
 
 - 底层没有真正可用的 rule identity
 
-### 2.5 “添加后打开刚创建项”现在靠长度猜
+### 2.5 “创建后打开刚创建项”现在靠长度猜
 
 这条链也很脆弱：
 
@@ -90,10 +90,10 @@
 
 它们现在都是：
 
-- 先 `add(fieldId)`
+- 先 `create(fieldId)`
 - 再用 `filters.length` 或当前 index 猜“新 rule 在哪”
 
-这说明 add API 本身没有返回稳定 target。
+这说明 create API 本身没有返回稳定 target。
 
 ## 3. 为什么 React 自己拼 key 不够
 
@@ -148,7 +148,7 @@ export interface FilterRule {
 
 export interface Filter {
   mode: 'and' | 'or'
-  rules: FilterRule[]
+  rules: EntityTable<ViewFilterRuleId, FilterRule>
 }
 ```
 
@@ -189,7 +189,7 @@ export interface SortRule {
 }
 
 export interface Sort {
-  rules: SortRule[]
+  rules: EntityTable<ViewSortRuleId, SortRule>
 }
 ```
 
@@ -218,7 +218,101 @@ export interface View {
 
 要协调得多。
 
-## 4.3 engine projection 应直接带 rule id
+但如果 rule 已经是有稳定 `id` 的 embedded entity，底层继续保留数组并不是最终最优。
+
+长期最优里：
+
+- `filter.rules` 不应该再是 `FilterRule[]`
+- `sort.rules` 不应该再是 `SortRule[]`
+- 它们都应该直接采用 `byId + order` 的 `EntityTable`
+
+原因很直接：
+
+- public API 已经按 `id` 操作 rule
+- 如果底层还是数组，内部就还得反复做 `id -> index`
+- `move/remove/patch` 仍然会残留 index 思维
+- `fieldId` 很容易又被偷偷当回“伪 identity”
+
+而 `EntityTable` 其实不是新模型。  
+当前 document 顶层的：
+
+- `records`
+- `fields`
+- `views`
+
+已经都在用同样的 `byId + order` 形态。
+
+所以长期最优不是“顶层实体用 `EntityTable`，嵌套 rule 继续用数组”，而是：
+
+- 只要它是有稳定 `id`、可 patch、可 remove、可 reorder 的 entity
+- 就统一进入 `EntityTable`
+
+## 4.3 `EntityTable` 应下沉到 `shared/core`
+
+一旦 `EntityTable` 不只服务 document 顶层实体，而是也开始服务 `View.filter.rules` / `View.sort.rules`，它就已经不是 dataview document 专属概念了。
+
+当前放置位置：
+
+- `EntityTable` 类型在 `dataview-core/contracts/state.ts`
+- 通用读写工具在 `dataview-core/document/table.ts`
+
+这个归属已经不太对。
+
+长期最优应该拆成两层：
+
+### shared/core
+
+放真正通用的“有序实体表” primitive，例如：
+
+```ts
+export interface EntityTable<TId extends string, TEntity extends { id: TId }> {
+  byId: Record<TId, TEntity>
+  order: TId[]
+}
+
+export const entityTable = {
+  access,
+  clone,
+  normalize,
+  read,
+  write,
+  overlay,
+  patch
+} as const
+```
+
+这一层只关心：
+
+- `byId + order`
+- ordered access
+- generic clone / normalize / put / patch / remove
+- generic patch merge
+
+它不应该依赖：
+
+- `DataDoc`
+- `DataRecord`
+- `fields / records / views` 这种 dataview 文档语义
+
+### dataview-core
+
+只保留 dataview 自己的 document adapter，例如：
+
+- `replace(document, 'fields' | 'records' | 'views', table)`
+- `document.fields.*`
+- `document.records.*`
+- `document.views.*`
+
+也就是说：
+
+- `document/table.ts` 不应该继续同时承担“generic ordered entity table”和“dataview document adapter”两种职责
+- 应该把 generic 部分下沉到 `shared/core`
+- dataview-core 只保留 document 语义那一薄层
+
+这也和现有 [shared/core/collection.ts](/Users/realrong/Rostack/shared/core/src/collection.ts#L1) 的方向一致。  
+`EntityTable` 本质上就是建立在 ordered collection 之上的更高一层泛型基础设施，放在 `shared/core` 比放在 `dataview-core/document` 更自然。
+
+## 4.4 engine projection 应直接带 rule id
 
 当前 [contracts/view.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/contracts/view.ts) 里的 projection 也要一起收敛。
 
@@ -268,22 +362,25 @@ export interface SortRuleProjection {
 - rule-scope API 参数统一短名 `id`
 - 只有脱离 rule 作用域、进入混合上下文时，才写更长的前缀名
 
+同时行为约束也应该明确：
+
+- `create()` 成功就必须返回新建 rule 的 `id`
+- `create()` 不允许 silent no-op
+- 同一 view 内重复 `fieldId` 创建 filter / sort，直接报错
+- React 可以提前禁用重复选项，但 engine 必须自己维护这个不变量
+
 ### filter
 
 ```ts
 filters: {
-  add: (fieldId: FieldId) => ViewFilterRuleId | undefined
-  update: (
+  create: (fieldId: FieldId) => ViewFilterRuleId
+  patch: (
     id: ViewFilterRuleId,
     patch: Partial<Pick<FilterRule, 'fieldId' | 'presetId' | 'value'>>
   ) => void
-  setPreset: (id: ViewFilterRuleId, presetId: string) => void
-  setValue: (
-    id: ViewFilterRuleId,
-    value: FilterRule['value'] | undefined
-  ) => void
   remove: (id: ViewFilterRuleId) => void
   clear: () => void
+  setMode: (mode: Filter['mode']) => void
 }
 ```
 
@@ -291,18 +388,14 @@ filters: {
 
 ```ts
 sort: {
-  add: (
+  create: (
     fieldId: FieldId,
     direction?: SortDirection
-  ) => ViewSortRuleId | undefined
-  update: (
+  ) => ViewSortRuleId
+  patch: (
     id: ViewSortRuleId,
     patch: Partial<Pick<SortRule, 'field' | 'direction'>>
   ) => void
-  keepOnly: (
-    fieldId: FieldId,
-    direction: SortDirection
-  ) => ViewSortRuleId | undefined
   move: (
     id: ViewSortRuleId,
     beforeId?: ViewSortRuleId | null
@@ -314,10 +407,10 @@ sort: {
 
 这里有两个关键点：
 
-- `add()` 返回新建 rule 的 `id`
+- `create()` 返回新建 rule 的 `id`
 - `move()` 不再用 `from/to index`，而是用 `id + beforeId`
 
-这样上层 UI 在 add 后、reorder 后都不需要再猜 index。
+这样上层 UI 在 create 后、reorder 后都不需要再猜 index。
 
 ## 5.2 runtime session route 也要切到 id
 
@@ -325,22 +418,23 @@ sort: {
 
 ```ts
 export type QueryBarEntry =
-  | { kind: 'addFilter' }
-  | { kind: 'addSort' }
+  | { kind: 'filterCreate' }
+  | { kind: 'sortCreate' }
   | {
       kind: 'filter'
       id: ViewFilterRuleId
     }
   | {
       kind: 'sort'
-      id?: ViewSortRuleId
+      id: ViewSortRuleId
     }
 ```
 
 这里：
 
 - `filter` 必须带 `id`
-- `sort` 当前整个 panel 只需要一个 route；但为了 future row focus，可以允许带可选 `id`
+- `sort` 也直接带 `id`
+- create picker 和 rule editor 不是一个语义节点，应该拆成不同 route kind
 
 然后 route normalize 应该从：
 
@@ -348,7 +442,7 @@ export type QueryBarEntry =
 
 改成：
 
-- `activeView.filter.rules.find(rule => rule.id === route.id)`
+- `activeView.filter.rules.byId[route.id]`
 
 ## 5.3 runtime page model 应提供 id-keyed row access
 
@@ -393,8 +487,8 @@ export interface PageSortRow {
 
 - `key={entry.rule.id}`
 - `open={query.route?.kind === 'filter' && query.route.id === entry.rule.id}`
-- `filters.setPreset(entry.rule.id, ...)`
-- `filters.setValue(entry.rule.id, ...)`
+- `filters.patch(entry.rule.id, { presetId: ... })`
+- `filters.patch(entry.rule.id, { value: ... })`
 - `filters.remove(entry.rule.id)`
 
 ## 6.2 sort list item id 应该来自 rule.id
@@ -411,7 +505,7 @@ export interface PageSortRow {
 
 - `getItemId={(entry) => entry.rule.id}`
 
-## 6.3 添加后打开刚创建项，必须用返回 id
+## 6.3 创建后打开刚创建项，必须用返回 id
 
 现在这一类代码都在猜：
 
@@ -422,29 +516,28 @@ export interface PageSortRow {
 长期最优应该统一收敛成：
 
 ```ts
-const id = engine.active.filters.add(fieldId)
-if (id) {
-  page.query.open({
-    kind: 'filter',
-    id
-  })
-}
+const id = engine.active.filters.create(fieldId)
+page.query.open({
+  kind: 'filter',
+  id
+})
 ```
 
 对于 sort：
 
 ```ts
-const id = engine.active.sort.add(fieldId)
+const id = engine.active.sort.create(fieldId)
 page.query.open({
   kind: 'sort',
-  ...(id ? { id } : {})
+  id
 })
 ```
 
 这样：
 
 - React 不再猜数组位置
-- add 是不是 append、是不是 dedupe，都不会影响 route correctness
+- `create()` 成功后必然拿到目标 `id`
+- 重复 `fieldId` 创建直接报错，不再存在 dedupe/no-op 这种暧昧语义
 
 ## 7. 其他地方还需不需要 stable id
 
@@ -509,7 +602,7 @@ stable id 真落地后，下面这些名字/辅助函数也应该一起收敛。
 - filter 说 rule
 - sort 说 sorter
 
-## 8.2 `indexOfFilterRule` / `indexOfSortRule` 命名不再准确
+## 8.2 `indexOfFilterRule` / `indexOfSortRule` 这套思路本身该消失
 
 当前 core 里：
 
@@ -520,14 +613,24 @@ stable id 真落地后，下面这些名字/辅助函数也应该一起收敛。
 
 - 按 `fieldId` 查找
 
-一旦 rule 真有 `id`，这两个 helper 就必须拆开：
+如果底层最终直接改成 `EntityTable`，那长期最优不是把它们扩成 4 个新 helper，而是：
 
-- `findFilterRuleIndexById`
+- public 语义全面切到 `id`
+- 常规读取直接走 `rules.byId[id]`
+- reorder 如需 `id -> index`，只在局部实现里基于 `order` 做私有查找
+- `fieldId` 维度只保留“重复字段校验”，不再保留“字段就是查找键”的通用 helper
+
+也就是说，真正该保留的不是：
+
 - `findFilterRuleIndexByFieldId`
-- `findSortRuleIndexById`
 - `findSortRuleIndexByFieldId`
 
-否则 API 语义会继续混。
+而是类似：
+
+- `assertFilterFieldAvailable(rules, fieldId, exceptId?)`
+- `assertSortFieldAvailable(rules, fieldId, exceptId?)`
+
+这样语义才是对的，因为这里关心的是“不变量校验”，不是“identity 查找”。
 
 ## 8.3 validate / issue path 也不该继续只报 index
 
@@ -621,35 +724,75 @@ stable id 真落地后，下面这些名字/辅助函数也应该一起收敛。
 提供最底层的无业务语义 primitive：
 
 ```ts
-export const createOpaqueId = (prefix?: string): string
-
-export const createOpaqueIdFactory = <TId extends string>(
-  prefix: string
-): (() => TId)
+export const createId = (prefix?: string): string
 ```
 
 这里不关心 dataview / whiteboard，只做泛用 primitive。
 
+长期最优里，不需要在各业务包里再扩散出一堆：
+
+- `createRecordId()`
+- `createFieldId()`
+- `createViewId()`
+- `createViewFilterRuleId()`
+- `createViewSortRuleId()`
+
+这类并列工厂函数。
+
+shared/core 只保留一个真正的底层实现即可：
+
+- `createId(prefix?)`
+
+`prefix` 是否进入最终字符串，是 shared 层自己的实现细节。  
+调用方不应该直接依赖“具体 prefix 长什么样”。
+
 ### dataview-core
 
-提供 dataview 自己的 typed wrappers：
+提供 dataview 自己唯一的 typed 入口：
 
 ```ts
-export const createRecordId: () => RecordId
-export const createFieldId: () => CustomFieldId
-export const createViewId: () => ViewId
-export const createViewFilterRuleId: () => ViewFilterRuleId
-export const createViewSortRuleId: () => ViewSortRuleId
+export type DataviewIdKind =
+  | 'record'
+  | 'field'
+  | 'view'
+  | 'filterRule'
+  | 'sortRule'
+
+export const createDataviewId = <
+  TKind extends DataviewIdKind
+>(kind: TKind): DataviewIdOf<TKind>
 ```
 
 这样：
 
 - dataview-specific typed id 不会散落在 engine 各处
 - core normalize / duplicate / repair / create 都能直接用
+- public 入口只剩一个，不再有 5 个平铺函数
+- 业务代码表达的是“我要哪类 id”，而不是“我要哪个 prefix 字符串”
+
+如果要再短一点，甚至可以直接导出：
+
+```ts
+export const id = {
+  create: <TKind extends DataviewIdKind>(kind: TKind): DataviewIdOf<TKind>
+} as const
+```
+
+调用侧统一写成：
+
+```ts
+id.create('record')
+id.create('field')
+id.create('view')
+id.create('filterRule')
+id.create('sortRule')
+```
+
+这比 `createRecordId()` 那一排更短，也比到处裸用 `createId(prefix)` 更稳。
 
 ### engine
 
-engine 不再自己维护 id 生成实现，只消费 dataview-core 暴露出来的 typed factory。
+engine 不再自己维护 id 生成实现，只消费 dataview-core 暴露出来的唯一 typed 入口。
 
 也就是说：
 
@@ -678,7 +821,7 @@ engine 不再自己维护 id 生成实现，只消费 dataview-core 暴露出来
 - engine 负责用
 - core 才是 id 语义归属层
 
-## 9.5 duplicate / normalize / patch 的 id 规则
+## 9.5 duplicate / normalize / create / patch 的 id 规则
 
 长期最优下，规则应该明确：
 
@@ -689,11 +832,12 @@ engine 不再自己维护 id 生成实现，只消费 dataview-core 暴露出来
 
 ### create rule
 
-- `add()` 创建新 rule 时生成新 id
+- `create()` 创建新 rule 时生成新 id
+- 如果同一 view 内已存在相同 `fieldId` 的 filter / sort rule，直接报错
 
-### update rule
+### patch rule
 
-- 更新 field / preset / value / direction 时保留原 id
+- `patch()` 更新 field / preset / value / direction 时保留原 id
 
 ### move rule
 
@@ -718,10 +862,11 @@ engine 不再自己维护 id 生成实现，只消费 dataview-core 暴露出来
 
 ## 10. 我对“还有没有其他需要 stable id 的地方”的最终判断
 
-如果只看 dataview engine -> runtime -> react 这一整条链，真正必须补稳定 `id` 的核心缺口就是：
+如果只看 dataview engine -> runtime -> react 这一整条链，真正必须一次性补齐的核心缺口就是：
 
 1. `FilterRule`
 2. `SortRule`
+3. `filter.rules` / `sort.rules` 的 `EntityTable` 容器
 
 其他大多数地方：
 
@@ -748,8 +893,84 @@ engine 不再自己维护 id 生成实现，只消费 dataview-core 暴露出来
 
 - 把 `filter rule` 和 `sort rule` 的稳定 `id` 做进 core state
 - 把 `Sorter` 整体收敛成 `SortRule`
-- 把 `sort` 从裸数组收敛成 `Sort { rules }`
+- 把 `filter.rules` / `sort.rules` 都直接收敛成 `EntityTable`
 - 把 engine command / runtime route / react key 全部切到 rule 的稳定 `id`
-- 把 opaque id generator 下沉成 shared primitive，再由 dataview-core 暴露 typed wrappers
+- 把 `EntityTable` 的泛型定义和通用读写工具下沉到 `shared/core`
+- 把 id generator 收敛成 `shared/core.createId()` + `dataview-core.id.create(kind)`
 
 这才是这条链的一次性最终收敛。
+
+## 12. 最终实施方案
+
+下面这套顺序是按“直接做到最终形态，不留兼容层”设计的。
+
+### 12.1 shared/core
+
+- 新增或统一通用 `createId(prefix?)`
+- 下沉 `EntityTable` 类型与泛型工具
+- 下沉 generic `entityTable.read/write/normalize/access/overlay/patch`
+- 保持这一层完全不依赖 `DataDoc`、`DataRecord`、`View`
+
+### 12.2 dataview-core contracts
+
+- 给 `FilterRule` 增加 `id: ViewFilterRuleId`
+- 把 `Sorter` 改名为 `SortRule`
+- 给 `SortRule` 增加 `id: ViewSortRuleId`
+- 把 `Filter.rules` 改成 `EntityTable<ViewFilterRuleId, FilterRule>`
+- 把 `Sort.rules` 改成 `EntityTable<ViewSortRuleId, SortRule>`
+- 在 dataview-core 暴露唯一 id 入口：`id.create(kind)` 或 `createDataviewId(kind)`
+- 删除 `createRecordId()` / `createFieldId()` / `createViewId()` / `createViewFilterRuleId()` / `createViewSortRuleId()`
+
+### 12.3 dataview-core state / normalize / duplicate / repair
+
+- 全量改写 filter/sort 的 clone / same / normalize / write
+- `normalize()` 负责补缺失 id、清理重复 id、清理脏 order
+- `create()` 负责生成新 rule id
+- `patch()` 保留原 id
+- `move()` 只改 `order`
+- duplicate view 时重生全部 embedded rule id
+- 删除基于数组 index 的 filter/sort helper
+- 删除把 `fieldId` 当 identity 的 helper，改成字段唯一性校验函数
+
+### 12.4 dataview-core document
+
+- 让 document 顶层 `records / fields / views` 改为复用 shared 的 `EntityTable`
+- 把 `document/table.ts` 收缩成 dataview document adapter
+- 删除 document 层里重复的 generic table 能力
+
+### 12.5 dataview-engine
+
+- active query API 全部切到 `create / patch / move / remove / clear`
+- 删除 `add / update / setPreset / setValue / replace / keepOnly / upsert`
+- `create()` 成功必返 id
+- 重复 `fieldId` 创建直接报错
+- query publish / projection 全量改成 `SortRuleProjection.rule`
+- 所有 filter/sort 读取都改成基于 `byId + order`
+- issue / validation payload 至少带目标 rule id
+- 删除 `engine/mutate/entityId.ts` 自有实现，改用 dataview-core typed id 入口
+
+### 12.6 dataview-runtime
+
+- `QueryBarEntry` 改成 `filterCreate | sortCreate | filter{id} | sort{id}`
+- page model / keyed store 全部改成按 rule id 订阅
+- route normalize 改为直接读 `rules.byId[id]`
+- 删除 runtime 内部 filter/sort index route 和 index row lookup
+
+### 12.7 dataview-react
+
+- 所有 filter/sort key 改为 `rule.id`
+- 所有 create 后打开 editor 的逻辑直接使用返回 id
+- 删除 React 自拼 `sorter_${index}` / `fieldId + index` / `filters.length` 这类补丁式逻辑
+- field picker 继续提前禁用重复字段，但不再承担最终一致性职责
+
+### 12.8 清理验收
+
+- 删除所有 index-based filter/sort public API
+- 删除所有旧 `Sorter` 类型与 `sorter` 命名
+- 删除所有 legacy id factory
+- 删除所有“重复字段 create 时 silent no-op”逻辑
+- 最终保证：
+  - public 规则 identity 只有 `id`
+  - 底层容器统一是 `EntityTable`
+  - shared/core 持有 generic table 与 generic id primitive
+  - dataview-core 持有 dataview typed id 与 document adapter

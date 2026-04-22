@@ -1,8 +1,13 @@
-import { ViewOptions } from "@dataview/core/contracts/viewOptions"
+import type { EntityTable } from '@shared/core'
+import { ViewOptions } from '@dataview/core/contracts/viewOptions'
+
+export type { EntityTable } from '@shared/core'
 
 export type RecordId = string
 export type ViewId = string
 export type CustomFieldId = string
+export type ViewFilterRuleId = string
+export type ViewSortRuleId = string
 export const TITLE_FIELD_ID = 'title'
 export type TitleFieldId = typeof TITLE_FIELD_ID
 export type FieldId = CustomFieldId | TitleFieldId
@@ -214,6 +219,7 @@ export type Field =
   | CustomField
 
 export interface FilterRule {
+  id: ViewFilterRuleId
   fieldId: FieldId
   presetId: FilterPresetId
   value?: FilterValue
@@ -221,7 +227,7 @@ export interface FilterRule {
 
 export interface Filter {
   mode: 'and' | 'or'
-  rules: FilterRule[]
+  rules: EntityTable<ViewFilterRuleId, FilterRule>
 }
 
 export interface FilterOptionSetValue {
@@ -241,9 +247,14 @@ export interface Search {
   fields?: FieldId[]
 }
 
-export interface Sorter {
-  field: FieldId
+export interface SortRule {
+  id: ViewSortRuleId
+  fieldId: FieldId
   direction: SortDirection
+}
+
+export interface Sort {
+  rules: EntityTable<ViewSortRuleId, SortRule>
 }
 
 export interface BucketState {
@@ -270,17 +281,12 @@ export interface View {
   name: string
   search: Search
   filter: Filter
-  sort: Sorter[]
+  sort: Sort
   group?: ViewGroup
   calc: ViewCalc
   display: ViewDisplay
   options: ViewOptions
   orders: RecordId[]
-}
-
-export interface EntityTable<TId extends string, TEntity extends { id: TId }> {
-  byId: Record<TId, TEntity>
-  order: TId[]
 }
 
 export interface DataDoc {

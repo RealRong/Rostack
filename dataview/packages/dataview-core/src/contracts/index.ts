@@ -89,7 +89,8 @@ export type {
   ResolvedGroupKey,
   Search,
   SelectField,
-  Sorter,
+  Sort,
+  SortRule,
   SortDirection,
   TimeDisplayFormat,
   TextField,
@@ -108,6 +109,8 @@ export type {
   ViewType,
   IndexPath,
   RecordId,
-  ViewId
+  ViewFilterRuleId,
+  ViewId,
+  ViewSortRuleId
 } from '@dataview/core/contracts/state'
 export { TITLE_FIELD_ID } from '@dataview/core/contracts/state'

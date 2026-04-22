@@ -3,7 +3,8 @@ import type {
   FieldId,
   Filter,
   Search,
-  Sorter,
+  Sort,
+  SortRule,
   View,
   ViewCalc,
   ViewDisplay,
@@ -35,11 +36,11 @@ import {
 import {
   sort as sortApi
 } from '@dataview/core/sort'
+import { id as dataviewId } from '@dataview/core/id'
 import {
   view as viewApi
 } from '@dataview/core/view'
-import { equal, string } from '@shared/core'
-import { createViewId } from '@dataview/engine/mutate/entityId'
+import { entityTable, equal, string } from '@shared/core'
 import {
   createIssue,
   hasValidationErrors,
@@ -111,48 +112,48 @@ const validateFilter = (
   path = 'view.filter'
 ) => {
   const issues: ValidationIssue[] = []
-  filter.rules.forEach((rule, index) => {
+  filterApi.rules.list(filter.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Filter field id must be a non-empty string', `${path}.rules.${index}.fieldId`))
+      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Filter field id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
     }
     if (!string.isNonEmptyString(rule.presetId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Filter preset id must be a non-empty string', `${path}.rules.${index}.presetId`))
+      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Filter preset id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.presetId`))
       return
     }
     const field = reader.fields.get(rule.fieldId)
     if (!field) {
-      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${rule.fieldId}`, `${path}.rules.${index}.fieldId`))
+      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
     }
     if (!filterApi.rule.hasPreset(field, rule.presetId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields`, `${path}.rules.${index}.presetId`))
+      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields (${rule.id})`, `${path}.rules.${index}.presetId`))
     }
   })
   return issues
 }
 
-const validateSorters = (
+const validateSort = (
   reader: DocumentReader,
   source: IssueSource,
-  sorters: readonly Sorter[],
+  sort: Sort,
   path = 'view.sort'
 ) => {
   const issues: ValidationIssue[] = []
   const seen = new Set<string>()
-  sorters.forEach((sorter, index) => {
-    if (!string.isNonEmptyString(sorter.field)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Sorter field must be a non-empty string', `${path}.${index}.field`))
-    } else if (!reader.fields.has(sorter.field)) {
-      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${sorter.field}`, `${path}.${index}.field`))
-    } else if (seen.has(sorter.field)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Duplicate sorter field: ${sorter.field}`, `${path}.${index}.field`))
+  sortApi.rules.list(sort.rules).forEach((rule, index) => {
+    if (!string.isNonEmptyString(rule.fieldId)) {
+      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Sort field must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
+    } else if (!reader.fields.has(rule.fieldId)) {
+      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
+    } else if (seen.has(rule.fieldId)) {
+      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Duplicate sort field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else {
-      seen.add(sorter.field)
+      seen.add(rule.fieldId)
     }
 
-    if (sorter.direction !== 'asc' && sorter.direction !== 'desc') {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Sorter direction must be asc or desc', `${path}.${index}.direction`))
+    if (rule.direction !== 'asc' && rule.direction !== 'desc') {
+      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Sort direction must be asc or desc (${rule.id})`, `${path}.rules.${index}.direction`))
     }
   })
   return issues
@@ -361,7 +362,7 @@ const validateView = (
   issues.push(
     ...validateSearch(reader, source, view.search),
     ...validateFilter(reader, source, view.filter),
-    ...validateSorters(reader, source, view.sort),
+    ...validateSort(reader, source, view.sort),
     ...validateGroup(reader, source, view.group),
     ...validateCalc(reader, source, view.calc),
     ...validateDisplay(reader, source, view.display),
@@ -396,8 +397,10 @@ const applyViewPatch = (
   if (patch.filter !== undefined && !filterApi.state.same(view.filter, patch.filter)) {
     ensureMutable().filter = filterApi.state.clone(patch.filter)
   }
-  if (patch.sort !== undefined && !sortApi.rules.same(view.sort, patch.sort)) {
-    ensureMutable().sort = sortApi.rules.clone(patch.sort)
+  if (patch.sort !== undefined && !sortApi.rules.same(view.sort.rules, patch.sort.rules)) {
+    ensureMutable().sort = {
+      rules: sortApi.rules.clone(patch.sort.rules)
+    }
   }
   if (patch.group !== undefined) {
     const nextGroup = patch.group === null ? undefined : patch.group
@@ -436,7 +439,9 @@ const normalizeView = (
     ...view,
     search: searchApi.state.normalize(view.search),
     filter: filterApi.state.normalize(view.filter),
-    sort: sortApi.rules.normalize(view.sort),
+    sort: {
+      rules: sortApi.rules.normalize(view.sort.rules)
+    },
     ...(nextGroup ? { group: nextGroup } : {}),
     ...(!nextGroup ? { group: undefined } : {}),
     calc: calculation.view.normalize(view.calc, {
@@ -528,15 +533,20 @@ const lowerViewCreate = (
 
   const fields = scope.reader.fields.list()
   const view = ensureKanbanGroup(scope.reader, normalizeView(scope.reader, {
-    id: explicitViewId || createViewId(),
+    id: explicitViewId || dataviewId.create('view'),
     name: viewApi.name.unique({
       views: scope.reader.views.list(),
       preferredName
     }),
     type: action.input.type,
     search: action.input.search ?? { query: '' },
-    filter: action.input.filter ?? { mode: 'and', rules: [] },
-    sort: action.input.sort ?? [],
+    filter: action.input.filter ?? {
+      mode: 'and',
+      rules: entityTable.normalize.list([])
+    },
+    sort: action.input.sort ?? {
+      rules: entityTable.normalize.list([])
+    },
     ...(action.input.group ? { group: action.input.group } : {}),
     calc: action.input.calc ?? {},
     display: action.input.display

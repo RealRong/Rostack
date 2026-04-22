@@ -21,21 +21,17 @@ import {
 import {
   cloneFilterRules,
   cloneFilterState,
-  indexOfFilterRule,
+  filterRuleAccess,
   normalizeFilterRules,
   normalizeFilterState,
   sameFilterRules,
   sameFilterState,
-  sameFilterRule
-} from '@dataview/core/filter/state'
-import {
-  writeFilterAdd,
+  sameFilterRule,
   writeFilterClear,
+  writeFilterCreate,
   writeFilterMode,
-  writeFilterPreset,
-  writeFilterRemove,
-  writeFilterReplace,
-  writeFilterValue
+  writeFilterPatch,
+  writeFilterRemove
 } from '@dataview/core/filter/state'
 
 export type {
@@ -79,13 +75,11 @@ export const filter = {
     clone: cloneFilterRules,
     normalize: normalizeFilterRules,
     same: sameFilterRules,
-    indexOf: indexOfFilterRule
+    ...filterRuleAccess
   },
   write: {
-    add: writeFilterAdd,
-    replace: writeFilterReplace,
-    preset: writeFilterPreset,
-    value: writeFilterValue,
+    create: writeFilterCreate,
+    patch: writeFilterPatch,
     mode: writeFilterMode,
     remove: writeFilterRemove,
     clear: writeFilterClear

@@ -66,7 +66,7 @@ export interface FilterCreateSpec {
 
 export interface FilterSpec {
   presets: readonly FilterPreset[]
-  getDefaultRule: (field: Field) => FilterRule
+  getDefaultRule: (field: Field) => Omit<FilterRule, 'id'>
   getActivePreset: (field: Field | undefined, rule: FilterRule) => FilterPreset
   applyPreset: (field: Field | undefined, rule: FilterRule, presetId: FilterPresetId) => FilterRule
   getEditorKind: (field: Field | undefined, rule: FilterRule) => FilterEditorKind

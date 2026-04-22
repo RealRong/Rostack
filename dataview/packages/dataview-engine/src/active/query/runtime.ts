@@ -257,7 +257,7 @@ const resolveQueryReuse = (input: {
   })
   const canReuseOrdered = canReuseMatched
     && (
-      input.view.sort.length > 0
+      input.view.sort.rules.order.length > 0
       || !commitImpact.has.viewQuery(input.impact.commit, input.activeViewId, ['order'])
     )
 

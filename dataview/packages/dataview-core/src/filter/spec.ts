@@ -5,7 +5,8 @@ import type {
   FilterValuePreview,
   FilterOptionSetValue,
   FilterPresetId,
-  FilterRule
+  FilterRule,
+  ViewFilterRuleId
 } from '@dataview/core/contracts'
 import {
   KANBAN_EMPTY_BUCKET_KEY
@@ -178,6 +179,7 @@ const cloneFilterValue = (value: FilterRule['value']) => (
 )
 
 const cloneRule = (rule: FilterRule): FilterRule => ({
+  id: rule.id,
   fieldId: rule.fieldId,
   presetId: rule.presetId,
   ...(rule.value !== undefined
@@ -601,7 +603,7 @@ const createFilterSpec = (input: {
     presets: input.presets,
     getDefaultRule: field => {
       const preset = presetById.get(input.defaultPresetId) ?? input.presets[0]
-      const nextRule: FilterRule = {
+      const nextRule: Omit<FilterRule, 'id'> = {
         fieldId: field.id,
         presetId: preset.id
       }
@@ -620,6 +622,7 @@ const createFilterSpec = (input: {
       const nextPreset = presetById.get(presetId) ?? input.presets[0]
       const currentPreset = getActivePreset(field, rule)
       const nextRule: FilterRule = {
+        id: rule.id,
         fieldId: rule.fieldId,
         presetId: nextPreset.id
       }
@@ -629,6 +632,7 @@ const createFilterSpec = (input: {
       }
 
       const editorKind = input.getEditorKind(field, {
+        id: rule.id,
         fieldId: rule.fieldId,
         presetId: nextPreset.id
       })
@@ -877,8 +881,12 @@ export const hasFilterPreset = (
 ): boolean => getFilterSpec(field).presets.some(preset => preset.id === presetId)
 
 export const createDefaultFilterRule = (
+  id: ViewFilterRuleId,
   field: Field
-): FilterRule => getFilterSpec(field).getDefaultRule(field)
+): FilterRule => ({
+  id,
+  ...getFilterSpec(field).getDefaultRule(field)
+})
 
 export const applyFilterPreset = (
   field: Field | undefined,
@@ -951,6 +959,7 @@ export const setFilterRuleValue = (
   const preset = spec.getActivePreset(field, rule)
   if (preset.valueMode !== 'editable') {
     return {
+      id: rule.id,
       fieldId: rule.fieldId,
       presetId: rule.presetId
     }
@@ -958,6 +967,7 @@ export const setFilterRuleValue = (
 
   const nextValue = normalizeEditableValue(spec.getEditorKind(field, rule), value)
   return {
+    id: rule.id,
     fieldId: rule.fieldId,
     presetId: rule.presetId,
     ...(nextValue !== undefined
@@ -968,11 +978,12 @@ export const setFilterRuleValue = (
 
 export const normalizeFilterRule = (
   field: Field | undefined,
-  rule: Partial<FilterRule> & Pick<FilterRule, 'fieldId'>
+  rule: Partial<Omit<FilterRule, 'id'>> & Pick<FilterRule, 'id' | 'fieldId'>
 ): FilterRule => {
   const spec = getFilterSpec(field)
   const preset = spec.presets.find(item => item.id === rule.presetId) ?? spec.presets[0]
   const nextRule: FilterRule = {
+    id: rule.id,
     fieldId: rule.fieldId,
     presetId: preset.id
   }

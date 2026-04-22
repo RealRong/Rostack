@@ -13,9 +13,13 @@ import {
   filter as filterApi
 } from '@dataview/core/filter'
 import {
+  sort as sortApi
+} from '@dataview/core/sort'
+import {
   pruneFieldFromViewOptions
 } from '@dataview/core/view/options'
 import {
+  entityTable,
   equal
 } from '@shared/core'
 
@@ -38,8 +42,16 @@ export const repairViewForRemovedField = (
   fieldId: CustomFieldId
 ): View => {
   const nextOptions = pruneFieldFromViewOptions(view.options, fieldId)
-  const nextFilterRules = view.filter.rules.filter(rule => rule.fieldId !== fieldId)
-  const nextSorters = view.sort.filter(sorter => sorter.field !== fieldId)
+  const nextFilterRules = entityTable.normalize.list(
+    filterApi.rules
+      .list(view.filter.rules)
+      .filter(rule => rule.fieldId !== fieldId)
+  )
+  const nextSortRules = entityTable.normalize.list(
+    sortApi.rules
+      .list(view.sort.rules)
+      .filter(rule => rule.fieldId !== fieldId)
+  )
   const nextSearchFields = cleanupSearchFields(view.search.fields, fieldId)
   const nextGroup = view.group?.field === fieldId
     ? undefined
@@ -62,7 +74,9 @@ export const repairViewForRemovedField = (
         ? { fields: nextSearchFields }
         : {})
     },
-    sort: nextSorters,
+    sort: {
+      rules: nextSortRules
+    },
     ...(nextGroup ? { group: nextGroup } : {}),
     calc: nextCalc,
     display: {
@@ -88,9 +102,13 @@ export const repairViewForConvertedField = (
   field: CustomField
 ): View => {
   const validPresetIds = new Set(filterApi.rule.presetIds(field))
-  const nextFilterRules = view.filter.rules.filter(rule => (
-    rule.fieldId !== field.id || validPresetIds.has(rule.presetId)
-  ))
+  const nextFilterRules = entityTable.normalize.list(
+    filterApi.rules
+      .list(view.filter.rules)
+      .filter(rule => (
+        rule.fieldId !== field.id || validPresetIds.has(rule.presetId)
+      ))
+  )
 
   let nextGroup = view.group
   if (view.group?.field === field.id) {

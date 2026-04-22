@@ -359,7 +359,7 @@ export const createActiveRecordsApi = (input: {
       })
     }
 
-    if (!state.view.sort.length && context.beforeRecordId) {
+    if (!state.view.sort.rules.order.length && context.beforeRecordId) {
       const moveAction = createMoveOrderAction(
         input.base,
         [recordId],

@@ -22,11 +22,13 @@ const createMindmapTickDelta = (
 export const createProjectionAnimationSource = ({
   engine,
   session,
-  mark
+  mark,
+  flush
 }: {
   engine: Engine
   session: Pick<EditorSession, 'preview'>
   mark: (delta: InputDelta) => void
+  flush: () => void
 }): ProjectionAnimationSource => {
   const frameTask = scheduler.createFrameTask(() => {
     const activeMindmapIds = readActiveMindmapTickIds({
@@ -38,6 +40,7 @@ export const createProjectionAnimationSource = ({
     }
 
     mark(createMindmapTickDelta(activeMindmapIds))
+    flush()
     frameTask.schedule()
   })
 

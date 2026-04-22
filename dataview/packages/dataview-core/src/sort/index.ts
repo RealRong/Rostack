@@ -1,18 +1,16 @@
 import { compareSortRecords } from '@dataview/core/sort/compare'
 import {
-  add,
-  clear,
   cloneSortRule,
   cloneSortRules,
-  indexOfSortRule,
-  keepOnly,
-  move,
   normalizeSortRule,
   normalizeSortRules,
-  remove,
-  replace,
   sameSortRules,
-  upsert
+  sortRuleAccess,
+  writeSortClear,
+  writeSortCreate,
+  writeSortMove,
+  writeSortPatch,
+  writeSortRemove
 } from '@dataview/core/sort/state'
 
 export const sort = {
@@ -24,16 +22,14 @@ export const sort = {
     clone: cloneSortRules,
     normalize: normalizeSortRules,
     same: sameSortRules,
-    indexOf: indexOfSortRule
+    ...sortRuleAccess
   },
   write: {
-    add,
-    upsert,
-    keepOnly,
-    replace,
-    remove,
-    move,
-    clear
+    create: writeSortCreate,
+    patch: writeSortPatch,
+    move: writeSortMove,
+    remove: writeSortRemove,
+    clear: writeSortClear
   },
   compare: {
     records: compareSortRecords

@@ -24,47 +24,40 @@ export const createSearchApi = (
 export const createFiltersApi = (
   base: ActiveViewContext
 ): ActiveViewApi['filters'] => ({
-  add: fieldId => {
-    base.patchView((view, reader) => {
+  create: fieldId => {
+    let createdId
+    const applied = base.patchView((view, reader) => {
       const field = reader.fields.get(fieldId)
-      return field
-        ? {
-            filter: filter.write.add(view.filter, field)
-          }
-        : undefined
-    })
-  },
-  update: (index, rule) => {
-    base.patchView(view => ({
-      filter: filter.write.replace(view.filter, index, rule)
-    }))
-  },
-  setPreset: (index, presetId) => {
-    base.patchView((view, reader) => {
-      const fieldId = view.filter.rules[index]?.fieldId
+      if (!field) {
+        return undefined
+      }
+
+      const created = filter.write.create(view.filter, field)
+      createdId = created.id
       return {
-        filter: filter.write.preset(
-          view.filter,
-          index,
-          fieldId
-            ? reader.fields.get(fieldId)
-            : undefined,
-          presetId
-        )
+        filter: created.filter
       }
     })
+    if (!applied || !createdId) {
+      throw new Error(`Unable to create filter for field ${fieldId}`)
+    }
+    return createdId
   },
-  setValue: (index, value) => {
+  patch: (id, patch) => {
     base.patchView((view, reader) => {
-      const fieldId = view.filter.rules[index]?.fieldId
+      const nextFieldId = patch.fieldId ?? filter.rules.get(view.filter.rules, id)?.fieldId
+      if (patch.fieldId !== undefined && !reader.fields.has(patch.fieldId)) {
+        return undefined
+      }
+
       return {
-        filter: filter.write.value(
+        filter: filter.write.patch(
           view.filter,
-          index,
-          fieldId
-            ? reader.fields.get(fieldId)
-            : undefined,
-          value
+          id,
+          patch,
+          nextFieldId
+            ? reader.fields.get(nextFieldId)
+            : undefined
         )
       }
     })
@@ -74,9 +67,9 @@ export const createFiltersApi = (
       filter: filter.write.mode(view.filter, value)
     }))
   },
-  remove: index => {
+  remove: id => {
     base.patchView(view => ({
-      filter: filter.write.remove(view.filter, index)
+      filter: filter.write.remove(view.filter, id)
     }))
   },
   clear: () => {
@@ -89,34 +82,33 @@ export const createFiltersApi = (
 export const createSortApi = (
   base: ActiveViewContext
 ): ActiveViewApi['sort'] => ({
-  add: (fieldId, direction) => {
+  create: (fieldId, direction) => {
+    let createdId
+    const applied = base.patchView(view => {
+      const created = sort.write.create(view.sort, fieldId, direction)
+      createdId = created.id
+      return {
+        sort: created.sort
+      }
+    })
+    if (!applied || !createdId) {
+      throw new Error(`Unable to create sort for field ${fieldId}`)
+    }
+    return createdId
+  },
+  patch: (id, patch) => {
     base.patchView(view => ({
-      sort: sort.write.add(view.sort, fieldId, direction)
+      sort: sort.write.patch(view.sort, id, patch)
     }))
   },
-  update: (fieldId, direction) => {
+  move: (id, beforeId) => {
     base.patchView(view => ({
-      sort: sort.write.upsert(view.sort, fieldId, direction)
+      sort: sort.write.move(view.sort, id, beforeId)
     }))
   },
-  keepOnly: (fieldId, direction) => {
+  remove: id => {
     base.patchView(view => ({
-      sort: sort.write.keepOnly(view.sort, fieldId, direction)
-    }))
-  },
-  replace: (index, sorter) => {
-    base.patchView(view => ({
-      sort: sort.write.replace(view.sort, index, sorter)
-    }))
-  },
-  remove: index => {
-    base.patchView(view => ({
-      sort: sort.write.remove(view.sort, index)
-    }))
-  },
-  move: (from, to) => {
-    base.patchView(view => ({
-      sort: sort.write.move(view.sort, from, to)
+      sort: sort.write.remove(view.sort, id)
     }))
   },
   clear: () => {

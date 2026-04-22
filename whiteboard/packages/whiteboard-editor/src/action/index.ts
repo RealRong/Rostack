@@ -685,6 +685,7 @@ export const createEditorActions = ({
   document,
   session,
   projection,
+  publish,
   layout,
   write,
   registry,
@@ -693,6 +694,9 @@ export const createEditorActions = ({
   document: DocumentRead
   session: EditorSession
   projection: GraphRead
+  publish: {
+    flush: () => void
+  }
   layout: EditorLayout
   write: EditorWrite
   registry: NodeRegistry
@@ -810,6 +814,7 @@ export const createEditorActions = ({
 
       let focusDelayMs = 0
       if (options?.behavior?.enter === 'from-anchor') {
+        publish.flush()
         const preview = buildMindmapEnterPreview({
           structure: document.mindmap.structure,
           layout: projection.mindmap.view,
@@ -859,6 +864,7 @@ export const createEditorActions = ({
 
       let focusDelayMs = 0
       if (input.behavior?.enter === 'from-anchor') {
+        publish.flush()
         const preview = buildMindmapEnterPreview({
           structure: document.mindmap.structure,
           layout: projection.mindmap.view,

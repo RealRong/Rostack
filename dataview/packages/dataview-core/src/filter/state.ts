@@ -1,72 +1,155 @@
 import type {
+  EntityTable,
   Field,
+  FieldId,
   Filter,
-  FilterRule
+  FilterRule,
+  ViewFilterRuleId
 } from '@dataview/core/contracts'
-import { equal } from '@shared/core'
+import { entityTable, equal } from '@shared/core'
+import { id as dataviewId } from '@dataview/core/id'
 import {
   applyFilterPreset,
   cloneFilterRule,
   createDefaultFilterRule,
+  normalizeFilterRule,
   setFilterRuleValue
 } from '@dataview/core/filter/spec'
+
+const EMPTY_FILTER_RULES: EntityTable<ViewFilterRuleId, FilterRule> = {
+  byId: {} as Record<ViewFilterRuleId, FilterRule>,
+  order: []
+}
+
+const hasValue = (
+  value: unknown
+) => value !== undefined
+
+const normalizeFilterRuleShape = (
+  value: unknown
+): FilterRule | undefined => {
+  if (typeof value !== 'object' || value === null) {
+    return undefined
+  }
+
+  const source = value as {
+    id?: unknown
+    fieldId?: unknown
+    presetId?: unknown
+    value?: unknown
+  }
+  if (typeof source.id !== 'string' || typeof source.fieldId !== 'string') {
+    return undefined
+  }
+
+  return {
+    id: source.id,
+    fieldId: source.fieldId,
+    presetId: typeof source.presetId === 'string'
+      ? source.presetId
+      : '',
+    ...(Object.prototype.hasOwnProperty.call(source, 'value')
+      ? { value: structuredClone(source.value) as FilterRule['value'] }
+      : {})
+  }
+}
+
+export const cloneFilterRules = (
+  rules: EntityTable<ViewFilterRuleId, FilterRule>
+): EntityTable<ViewFilterRuleId, FilterRule> => entityTable.clone.table(rules)
+
+const listFilterRules = (
+  rules: EntityTable<ViewFilterRuleId, FilterRule>
+): FilterRule[] => entityTable.read.list(rules)
+
+const getFilterRule = (
+  rules: EntityTable<ViewFilterRuleId, FilterRule>,
+  id: ViewFilterRuleId
+): FilterRule | undefined => entityTable.read.get(rules, id)
+
+const findFilterRuleIdByFieldId = (
+  rules: EntityTable<ViewFilterRuleId, FilterRule>,
+  fieldId: FieldId,
+  exceptId?: ViewFilterRuleId
+): ViewFilterRuleId | undefined => rules.order.find(ruleId => {
+  if (ruleId === exceptId) {
+    return false
+  }
+
+  return rules.byId[ruleId]?.fieldId === fieldId
+})
+
+const assertFilterFieldAvailable = (
+  rules: EntityTable<ViewFilterRuleId, FilterRule>,
+  fieldId: FieldId,
+  exceptId?: ViewFilterRuleId
+) => {
+  if (findFilterRuleIdByFieldId(rules, fieldId, exceptId)) {
+    throw new Error(`Filter rule already exists for field ${fieldId}`)
+  }
+}
 
 export const sameFilterRule = (
   left: FilterRule,
   right: FilterRule
 ) => (
-  left.fieldId === right.fieldId
+  left.id === right.id
+  && left.fieldId === right.fieldId
   && left.presetId === right.presetId
   && equal.sameJsonValue(left.value, right.value)
 )
 
-export const cloneFilterRules = (
-  rules: readonly FilterRule[]
-): FilterRule[] => rules.map(cloneFilterRule)
-
 export const sameFilterRules = (
-  left: readonly FilterRule[],
-  right: readonly FilterRule[]
+  left: EntityTable<ViewFilterRuleId, FilterRule>,
+  right: EntityTable<ViewFilterRuleId, FilterRule>
 ) => (
-  left.length === right.length
-  && left.every((rule, index) => {
-    const nextRule = right[index]
-    return Boolean(nextRule && sameFilterRule(rule, nextRule))
+  left.order.length === right.order.length
+  && left.order.every((ruleId, index) => {
+    const rightId = right.order[index]
+    const leftRule = left.byId[ruleId]
+    const rightRule = rightId
+      ? right.byId[rightId]
+      : undefined
+    return Boolean(
+      rightId
+      && leftRule
+      && rightRule
+      && sameFilterRule(leftRule, rightRule)
+    )
   })
 )
 
 export const normalizeFilterRules = (
   rules: unknown
-): FilterRule[] => (
-  Array.isArray(rules)
-    ? rules
-        .filter((rule): rule is {
-          fieldId?: unknown
-          presetId?: unknown
-          value?: unknown
-        } => typeof rule === 'object' && rule !== null)
-        .map(rule => ({
-          fieldId: typeof rule.fieldId === 'string'
-            ? rule.fieldId
-            : '',
-          presetId: typeof rule.presetId === 'string'
-            ? rule.presetId
-            : '',
-          ...(Object.prototype.hasOwnProperty.call(rule, 'value')
-            ? { value: structuredClone(rule.value) as FilterRule['value'] }
-            : {})
-        }))
-    : []
-)
+): EntityTable<ViewFilterRuleId, FilterRule> => {
+  if (typeof rules !== 'object' || rules === null) {
+    return EMPTY_FILTER_RULES
+  }
 
-export const indexOfFilterRule = (
-  rules: readonly FilterRule[],
-  fieldId: string
-) => rules.findIndex(rule => rule.fieldId === fieldId)
+  const source = rules as {
+    byId?: unknown
+    order?: unknown
+  }
+  if (!source.byId || typeof source.byId !== 'object' || !Array.isArray(source.order)) {
+    return EMPTY_FILTER_RULES
+  }
+
+  const byId = source.byId as Record<string, unknown>
+  return entityTable.normalize.list(source.order.flatMap(ruleId => {
+    if (typeof ruleId !== 'string') {
+      return []
+    }
+
+    const rule = normalizeFilterRuleShape(byId[ruleId])
+    return rule
+      ? [rule]
+      : []
+  }))
+}
 
 export const cloneFilterState = (
-  left: Filter,
-) : Filter => ({
+  left: Filter
+): Filter => ({
   mode: left.mode,
   rules: cloneFilterRules(left.rules)
 })
@@ -95,73 +178,67 @@ export const normalizeFilterState = (
   }
 }
 
-export const writeFilterAdd = (
+export const writeFilterCreate = (
   filter: Filter,
   field: Field
-): Filter => {
-  if (indexOfFilterRule(filter.rules, field.id) !== -1) {
-    return filter
-  }
+): {
+  filter: Filter
+  id: ViewFilterRuleId
+} => {
+  assertFilterFieldAvailable(filter.rules, field.id)
 
-  const next = cloneFilterState(filter)
-  next.rules.push(createDefaultFilterRule(field))
-  return next
+  const id = dataviewId.create('filterRule')
+  const rule = createDefaultFilterRule(id, field)
+  return {
+    id,
+    filter: {
+      mode: filter.mode,
+      rules: entityTable.write.put(filter.rules, rule)
+    }
+  }
 }
 
-export const writeFilterReplace = (
+export const writeFilterPatch = (
   filter: Filter,
-  index: number,
-  rule: FilterRule
+  id: ViewFilterRuleId,
+  patch: Partial<Pick<FilterRule, 'fieldId' | 'presetId' | 'value'>>,
+  field?: Field
 ): Filter => {
-  if (!filter.rules[index]) {
-    return filter
-  }
-
-  const next = cloneFilterState(filter)
-  next.rules[index] = cloneFilterRule(rule)
-  return next
-}
-
-export const writeFilterPreset = (
-  filter: Filter,
-  index: number,
-  field: Field | undefined,
-  presetId: string
-): Filter => {
-  const currentRule = filter.rules[index]
+  const currentRule = getFilterRule(filter.rules, id)
   if (!currentRule) {
-    return filter
+    throw new Error(`Unknown filter rule ${id}`)
   }
 
-  const nextRule = applyFilterPreset(field, currentRule, presetId)
+  let nextRule = currentRule
+  if (patch.fieldId !== undefined) {
+    assertFilterFieldAvailable(filter.rules, patch.fieldId, id)
+    nextRule = normalizeFilterRule(field, {
+      id,
+      fieldId: patch.fieldId,
+      presetId: patch.presetId ?? currentRule.presetId,
+      ...(hasValue(patch.value)
+        ? { value: patch.value }
+        : hasValue(currentRule.value)
+          ? { value: currentRule.value }
+          : {})
+    })
+  } else {
+    if (patch.presetId !== undefined) {
+      nextRule = applyFilterPreset(field, nextRule, patch.presetId)
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'value')) {
+      nextRule = setFilterRuleValue(field, nextRule, patch.value)
+    }
+  }
+
   if (sameFilterRule(currentRule, nextRule)) {
     return filter
   }
 
-  const next = cloneFilterState(filter)
-  next.rules[index] = nextRule
-  return next
-}
-
-export const writeFilterValue = (
-  filter: Filter,
-  index: number,
-  field: Field | undefined,
-  value: FilterRule['value']
-): Filter => {
-  const currentRule = filter.rules[index]
-  if (!currentRule) {
-    return filter
+  return {
+    mode: filter.mode,
+    rules: entityTable.write.patch(filter.rules, id, cloneFilterRule(nextRule))
   }
-
-  const nextRule = setFilterRuleValue(field, currentRule, value)
-  if (sameFilterRule(currentRule, nextRule)) {
-    return filter
-  }
-
-  const next = cloneFilterState(filter)
-  next.rules[index] = nextRule
-  return next
 }
 
 export const writeFilterMode = (
@@ -173,31 +250,44 @@ export const writeFilterMode = (
   }
 
   return {
-    ...cloneFilterState(filter),
-    mode
+    mode,
+    rules: cloneFilterRules(filter.rules)
   }
 }
 
 export const writeFilterRemove = (
   filter: Filter,
-  index: number
+  id: ViewFilterRuleId
 ): Filter => {
-  if (index < 0 || index >= filter.rules.length) {
-    return filter
+  const nextRules = entityTable.write.remove(filter.rules, id)
+  if (nextRules === filter.rules) {
+    throw new Error(`Unknown filter rule ${id}`)
   }
 
-  const next = cloneFilterState(filter)
-  next.rules.splice(index, 1)
-  return next
+  return {
+    mode: filter.mode,
+    rules: nextRules
+  }
 }
 
 export const writeFilterClear = (
   filter: Filter
 ): Filter => (
-  filter.rules.length
+  filter.rules.order.length
     ? {
-        ...cloneFilterState(filter),
-        rules: []
+        mode: filter.mode,
+        rules: EMPTY_FILTER_RULES
       }
     : filter
 )
+
+export const filterRuleAccess = {
+  list: listFilterRules,
+  get: getFilterRule,
+  hasField: (
+    rules: EntityTable<ViewFilterRuleId, FilterRule>,
+    fieldId: FieldId,
+    exceptId?: ViewFilterRuleId
+  ) => Boolean(findFilterRuleIdByFieldId(rules, fieldId, exceptId)),
+  assertFieldAvailable: assertFilterFieldAvailable
+} as const

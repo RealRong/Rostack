@@ -322,17 +322,22 @@ const sortRecordIds = (input: {
   index: IndexState
   view: View
 }): readonly RecordId[] => {
-  if (!input.view.sort.length) {
+  const sortRules = input.view.sort.rules.order.flatMap(ruleId => {
+    const rule = input.view.sort.rules.byId[ruleId]
+    return rule ? [rule] : []
+  })
+
+  if (!sortRules.length) {
     return input.ids
   }
 
-  if (input.view.sort.length === 1) {
-    const sorter = input.view.sort[0]
-    const fieldIndex = input.index.sort.fields.get(sorter.field)
+  if (sortRules.length === 1) {
+    const rule = sortRules[0]!
+    const fieldIndex = input.index.sort.fields.get(rule.fieldId)
     if (fieldIndex) {
-      const fieldValues = input.index.records.values.get(sorter.field)?.byRecord ?? EMPTY_VALUE_MAP
+      const fieldValues = input.index.records.values.get(rule.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
       if (input.ids === input.index.records.ids) {
-        return sorter.direction === 'desc'
+        return rule.direction === 'desc'
           ? reverseOrderedIdsKeepingEmptyLast({
               ids: fieldIndex.asc,
               values: fieldValues
@@ -340,7 +345,7 @@ const sortRecordIds = (input: {
           : fieldIndex.asc
       }
 
-      return sorter.direction === 'desc'
+      return rule.direction === 'desc'
         ? projectIdsToCurrentOrderKeepingEmptyLast({
             orderedIds: fieldIndex.asc,
             currentIds: input.ids,
@@ -357,10 +362,10 @@ const sortRecordIds = (input: {
     }
   }
 
-  const sorters = input.view.sort.map(sorter => ({
-    direction: sorter.direction,
-    field: input.reader.fields.get(sorter.field),
-    values: input.index.records.values.get(sorter.field)?.byRecord
+  const sorters = sortRules.map(rule => ({
+    direction: rule.direction,
+    field: input.reader.fields.get(rule.fieldId),
+    values: input.index.records.values.get(rule.fieldId)?.byRecord
   }))
 
   return input.ids.slice().sort((leftId, rightId) => {
@@ -387,7 +392,7 @@ const applyViewOrders = (
   view: View,
   reader: DocumentReader
 ): readonly RecordId[] => {
-  if (view.sort.length > 0 || !view.orders.length) {
+  if (view.sort.rules.order.length > 0 || !view.orders.length) {
     return ids
   }
 

@@ -1,6 +1,6 @@
 import type {
   Field,
-  Sorter,
+  SortRule,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -56,7 +56,7 @@ export interface PageSortPanel {
 }
 
 export interface PageSortRow {
-  sorter: Sorter
+  rule: SortRule
   field?: Field
   availableFields: readonly Field[]
 }
@@ -81,6 +81,6 @@ export interface PageModel {
   toolbar: store.ReadStore<PageToolbar>
   query: store.ReadStore<PageQuery>
   sortPanel: store.ReadStore<PageSortPanel>
-  sortRow: store.KeyedReadStore<number, PageSortRow | undefined>
+  sortRow: store.KeyedReadStore<SortRule['id'], PageSortRow | undefined>
   settings: store.ReadStore<PageSettings>
 }

@@ -66,7 +66,7 @@ const createFilterProjection = (input: {
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
 }): ViewFilterProjection => ({
-  rules: input.view.filter.rules.map(rule => createFilterRuleProjection(
+  rules: filterApi.rules.list(input.view.filter.rules).map(rule => createFilterRuleProjection(
     rule.fieldId === 'title'
       ? input.fieldsById.get('title')
       : input.fieldsById.get(rule.fieldId),
@@ -75,13 +75,13 @@ const createFilterProjection = (input: {
 })
 
 const createSortRuleProjection = (input: {
-  sorter: SortRuleProjection['sorter']
+  rule: SortRuleProjection['rule']
   fieldsById: ReadonlyMap<string, SortRuleProjection['field']>
 }): SortRuleProjection => {
-  const field = input.fieldsById.get(input.sorter.field)
+  const field = input.fieldsById.get(input.rule.fieldId)
 
   return {
-    sorter: input.sorter,
+    rule: input.rule,
     field
   }
 }
@@ -90,10 +90,15 @@ const createSortProjection = (input: {
   view: View
   fieldsById: ReadonlyMap<FieldId, Field>
 }): ViewSortProjection => ({
-  rules: input.view.sort.map(sorter => createSortRuleProjection({
-    sorter,
-    fieldsById: input.fieldsById
-  }))
+  rules: input.view.sort.rules.order.flatMap(ruleId => {
+    const rule = input.view.sort.rules.byId[ruleId]
+    return rule
+      ? [createSortRuleProjection({
+          rule,
+          fieldsById: input.fieldsById
+        })]
+      : []
+  })
 })
 
 const createGroupProjection = (input: {
@@ -180,8 +185,9 @@ const equalSortRuleProjection = (
   right: SortRuleProjection
 ) => (
   left.field === right.field
-  && left.sorter.field === right.sorter.field
-  && left.sorter.direction === right.sorter.direction
+  && left.rule.id === right.rule.id
+  && left.rule.fieldId === right.rule.fieldId
+  && left.rule.direction === right.rule.direction
 )
 
 const equalSortProjection = (

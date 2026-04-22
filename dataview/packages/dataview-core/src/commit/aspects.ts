@@ -38,7 +38,7 @@ const collectViewQueryAspects = (
   if (!filterApi.state.same(previousView.filter, nextView.filter)) {
     aspects.add('filter')
   }
-  if (!sort.rules.same(previousView.sort, nextView.sort)) {
+  if (!sort.rules.same(previousView.sort.rules, nextView.sort.rules)) {
     aspects.add('sort')
   }
   if (!group.state.same(previousView.group, nextView.group)) {

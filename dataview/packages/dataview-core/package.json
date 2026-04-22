@@ -13,6 +13,7 @@
     "./field/kind/*": "./src/field/kind/*.ts",
     "./filter": "./src/filter/index.ts",
     "./group": "./src/group/index.ts",
+    "./id": "./src/id.ts",
     "./operation": "./src/operation/index.ts",
     "./search": "./src/search/index.ts",
     "./sort": "./src/sort/index.ts",

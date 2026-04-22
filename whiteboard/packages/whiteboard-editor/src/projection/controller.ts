@@ -30,17 +30,19 @@ import {
   type ProjectionSources
 } from './sources'
 
-export interface ProjectionDriver {
+export interface ProjectionController {
   runtime: Runtime
   sources: ProjectionSources
-  snapshot(): Snapshot
-  result(): Result | null
+  current(): {
+    snapshot: Snapshot
+    result: Result | null
+  }
   mark(delta: InputDelta): void
+  flush(): Result | null
+  run<T>(fn: () => T): T
   subscribe(listener: (result: Result) => void): () => void
   dispose(): void
 }
-
-const NOOP = () => {}
 
 const unionIds = <TId extends string>(
   ...values: readonly ReadonlySet<TId>[]
@@ -191,7 +193,7 @@ const createBootstrapDelta = (input: {
   return delta
 }
 
-export const createProjectionDriver = ({
+export const createProjectionController = ({
   engine,
   session,
   layout
@@ -199,22 +201,22 @@ export const createProjectionDriver = ({
   engine: Engine
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
   layout: Pick<EditorLayout, 'draft'>
-}): ProjectionDriver => {
+}): ProjectionController => {
   const runtime = createEditorGraphRuntime()
   const snapshotStore = store.createValueStore(runtime.snapshot())
+  const sources = createProjectionSources(snapshotStore)
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()
   const state = {
     engine: engine.current(),
     pending: createEmptyEditorGraphInputDelta(),
     flushing: false,
-    scheduled: false
+    scheduled: false,
+    runDepth: 0
   }
-  let observedSourceCount = 0
 
   let currentEdit = store.read(session.state.edit)
   let currentPreview = store.read(session.preview.state)
-  let unsubscribeDraft = NOOP
 
   const notify = (
     result: Result
@@ -224,14 +226,8 @@ export const createProjectionDriver = ({
     })
   }
 
-  const ensureFlushed = () => {
-    if (hasEditorGraphInputDelta(state.pending)) {
-      flush()
-    }
-  }
-
   const scheduleFlush = () => {
-    if (state.scheduled) {
+    if (state.scheduled || state.runDepth > 0) {
       return
     }
 
@@ -245,16 +241,12 @@ export const createProjectionDriver = ({
     delta: InputDelta
   ) => {
     mergeEditorGraphInputDelta(state.pending, delta)
-    if (observedSourceCount > 0 && !state.flushing) {
-      flush()
-      return
-    }
     scheduleFlush()
   }
 
   const flush = () => {
     if (state.flushing) {
-      return
+      return currentResult
     }
 
     state.flushing = true
@@ -274,27 +266,27 @@ export const createProjectionDriver = ({
       }
     } finally {
       state.flushing = false
-      if (hasEditorGraphInputDelta(state.pending)) {
+      if (hasEditorGraphInputDelta(state.pending) && state.runDepth === 0) {
         scheduleFlush()
       }
     }
+
+    return currentResult
   }
 
-  const syncDraftSubscription = () => {
-    unsubscribeDraft()
-    unsubscribeDraft = NOOP
+  const run = <T,>(
+    fn: () => T
+  ) => {
+    state.runDepth += 1
 
-    const edit = store.read(session.state.edit)
-    if (!edit || edit.kind !== 'node') {
-      return
+    try {
+      return fn()
+    } finally {
+      state.runDepth -= 1
+      if (state.runDepth === 0) {
+        flush()
+      }
     }
-
-    unsubscribeDraft = layout.draft.node.subscribe(edit.nodeId, () => {
-      const delta = createEmptyEditorGraphInputDelta()
-      delta.graph.nodes.draft = createTouchedIdDelta([edit.nodeId])
-      delta.ui.edit = true
-      mark(delta)
-    })
   }
 
   const unsubscribes = [
@@ -310,7 +302,6 @@ export const createProjectionDriver = ({
     session.state.edit.subscribe(() => {
       const previousEdit = currentEdit
       currentEdit = store.read(session.state.edit)
-      syncDraftSubscription()
       mark(createEditDelta({
         previous: previousEdit,
         next: currentEdit
@@ -336,76 +327,22 @@ export const createProjectionDriver = ({
     })
   ]
 
-  syncDraftSubscription()
   mark(createBootstrapDelta({
     engine: state.engine,
     session
   }))
   flush()
 
-  const readSnapshotStore: store.ReadStore<Snapshot> = {
-    get: () => {
-      ensureFlushed()
-      return snapshotStore.get()
-    },
-    subscribe: snapshotStore.subscribe
-  }
-
-  const observe = (
-    unsubscribe: () => void
-  ) => {
-    observedSourceCount += 1
-    return () => {
-      observedSourceCount -= 1
-      unsubscribe()
-    }
-  }
-
-  const wrapReadStore = <T,>(
-    value: store.ReadStore<T>
-  ): store.ReadStore<T> => ({
-    get: () => {
-      ensureFlushed()
-      return value.get()
-    },
-    subscribe: (listener) => observe(value.subscribe(listener))
-  })
-
-  const wrapKeyedStore = <K, T>(
-    value: store.KeyedReadStore<K, T>
-  ): store.KeyedReadStore<K, T> => ({
-    get: (key) => {
-      ensureFlushed()
-      return value.get(key)
-    },
-    subscribe: (key, listener) => observe(value.subscribe(key, listener))
-  })
-
-  const baseSources = createProjectionSources(readSnapshotStore)
-  const sources: ProjectionSources = {
-    snapshot: wrapReadStore(baseSources.snapshot),
-    graph: wrapReadStore(baseSources.graph),
-    scene: wrapReadStore(baseSources.scene),
-    selection: wrapReadStore(baseSources.selection),
-    chrome: wrapReadStore(baseSources.chrome),
-    node: wrapKeyedStore(baseSources.node),
-    edge: wrapKeyedStore(baseSources.edge),
-    mindmap: wrapKeyedStore(baseSources.mindmap),
-    group: wrapKeyedStore(baseSources.group)
-  }
-
   return {
     runtime,
     sources,
-    snapshot: () => {
-      ensureFlushed()
-      return snapshotStore.get()
-    },
-    result: () => {
-      ensureFlushed()
-      return currentResult
-    },
+    current: () => ({
+      snapshot: snapshotStore.get(),
+      result: currentResult
+    }),
     mark,
+    flush,
+    run,
     subscribe: (listener) => {
       listeners.add(listener)
       return () => {
@@ -413,7 +350,6 @@ export const createProjectionDriver = ({
       }
     },
     dispose: () => {
-      unsubscribeDraft()
       unsubscribes.forEach((unsubscribe) => {
         unsubscribe()
       })

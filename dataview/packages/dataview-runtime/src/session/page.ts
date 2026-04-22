@@ -1,9 +1,10 @@
 import type {
   CustomField,
   CustomFieldId,
-  FilterRule,
   View,
+  ViewFilterRuleId,
   ViewId,
+  ViewSortRuleId,
   ViewType
 } from '@dataview/core/contracts'
 import { store } from '@shared/core'
@@ -13,17 +14,18 @@ import {
 
 export type QueryBarEntry =
   | {
-      kind: 'addFilter'
+      kind: 'filterCreate'
     }
   | {
-      kind: 'addSort'
+      kind: 'sortCreate'
     }
   | {
       kind: 'filter'
-      index: number
+      id: ViewFilterRuleId
     }
   | {
       kind: 'sort'
+      id: ViewSortRuleId
     }
 
 export type SettingsRoute =
@@ -196,13 +198,16 @@ const cloneQueryBarEntry = (
   return entry.kind === 'filter'
     ? {
         kind: 'filter',
-        index: entry.index
+        id: entry.id
       }
-    : entry.kind === 'addFilter'
-      ? { kind: 'addFilter' }
-      : entry.kind === 'addSort'
-        ? { kind: 'addSort' }
-        : { kind: 'sort' }
+    : entry.kind === 'sort'
+      ? {
+          kind: 'sort',
+          id: entry.id
+        }
+      : entry.kind === 'filterCreate'
+        ? { kind: 'filterCreate' }
+        : { kind: 'sortCreate' }
 }
 
 const equalQueryBarEntry = (
@@ -217,7 +222,12 @@ const equalQueryBarEntry = (
     && (
       left.kind !== 'filter'
       || right.kind !== 'filter'
-      || left.index === right.index
+      || left.id === right.id
+    )
+    && (
+      left.kind !== 'sort'
+      || right.kind !== 'sort'
+      || left.id === right.id
     )
 }
 
@@ -256,21 +266,21 @@ const resolveQueryRoute = (
     return null
   }
 
-  if (route.kind === 'addFilter' || route.kind === 'addSort') {
+  if (route.kind === 'filterCreate' || route.kind === 'sortCreate') {
     return route
   }
 
   if (route.kind === 'sort') {
-    return activeView.sort.length
-      ? { kind: 'sort' }
+    return activeView.sort.rules.byId[route.id]
+      ? { kind: 'sort', id: route.id }
       : null
   }
 
-  const rule = activeView.filter.rules[route.index] as FilterRule | undefined
+  const rule = activeView.filter.rules.byId[route.id]
   return rule
     ? {
         kind: 'filter',
-        index: route.index
+        id: route.id
       }
     : null
 }
@@ -282,8 +292,8 @@ export const resolvePageQueryBarState = (input: {
   const hasEntries = Boolean(
     input.activeView
     && (
-      input.activeView.filter.rules.length > 0
-      || input.activeView.sort.length > 0
+      input.activeView.filter.rules.order.length > 0
+      || input.activeView.sort.rules.order.length > 0
     )
   )
 

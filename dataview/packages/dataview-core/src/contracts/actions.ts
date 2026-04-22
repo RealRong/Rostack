@@ -7,7 +7,7 @@ import type {
   RecordId,
   DataRecord,
   Search,
-  Sorter,
+  Sort,
   StatusCategory,
   ViewCalc,
   ViewDisplay,
@@ -54,7 +54,7 @@ export interface ViewCreateInput {
   type: ViewType
   search?: Search
   filter?: Filter
-  sort?: Sorter[]
+  sort?: Sort
   group?: ViewGroup
   calc?: ViewCalc
   display?: ViewDisplay
@@ -67,7 +67,7 @@ export interface ViewPatch {
   type?: ViewType
   search?: Search
   filter?: Filter
-  sort?: Sorter[]
+  sort?: Sort
   group?: ViewGroup | null
   calc?: ViewCalc
   display?: ViewDisplay

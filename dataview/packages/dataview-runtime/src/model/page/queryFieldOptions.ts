@@ -2,7 +2,7 @@ import type {
   Field,
   FieldId,
   FilterRule,
-  Sorter
+  SortRule
 } from '@dataview/core/contracts'
 
 const collectUsedFieldIds = <T,>(
@@ -40,10 +40,10 @@ const filterId = (
   ? rule.fieldId
   : undefined
 
-const sorterId = (
-  sorter: Pick<Sorter, 'field'>
-): FieldId | undefined => typeof sorter.field === 'string'
-  ? sorter.field
+const sortRuleFieldId = (
+  rule: Pick<SortRule, 'fieldId'>
+): FieldId | undefined => typeof rule.fieldId === 'string'
+  ? rule.fieldId
   : undefined
 
 const usedFilterIds = (
@@ -56,9 +56,9 @@ const usedFilterIds = (
 })
 
 const usedSortIds = (
-  sorters: readonly Sorter[]
-): readonly FieldId[] => sorters.flatMap(sorter => {
-  const fieldId = sorterId(sorter)
+  rules: readonly SortRule[]
+): readonly FieldId[] => rules.flatMap(rule => {
+  const fieldId = sortRuleFieldId(rule)
   return fieldId
     ? [fieldId]
     : []
@@ -74,25 +74,23 @@ const availableFilterFields = (
 
 const availableSorterFields = (
   fields: readonly Field[],
-  sorters: readonly Sorter[]
+  rules: readonly SortRule[]
 ) => filterFields(
   fields,
-  collectUsedFieldIds(sorters, sorterId)
+  collectUsedFieldIds(rules, sortRuleFieldId)
 )
 
 const availableSorterFieldsAt = (
   fields: readonly Field[],
-  sorters: readonly Sorter[],
-  index: number
+  rules: readonly SortRule[],
+  ruleId: SortRule['id']
 ) => {
-  const currentFieldId = sorterId(sorters[index] ?? {
-    field: undefined
-  })
+  const currentFieldId = rules.find(rule => rule.id === ruleId)?.fieldId
 
   return filterFields(
     fields,
-    collectUsedFieldIds(sorters, sorterId, {
-      excludeIndex: index
+    collectUsedFieldIds(rules, sortRuleFieldId, {
+      excludeIndex: rules.findIndex(rule => rule.id === ruleId)
     }),
     currentFieldId
   )
@@ -100,7 +98,7 @@ const availableSorterFieldsAt = (
 
 export const queryFieldOptions = {
   filterId,
-  sorterId,
+  sortRuleFieldId,
   used: {
     filterIds: usedFilterIds,
     sortIds: usedSortIds

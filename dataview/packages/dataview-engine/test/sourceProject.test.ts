@@ -8,8 +8,8 @@ import {
 } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
-  projectDocumentChange
-} from '@dataview/engine/core/change'
+  projectDocumentDelta
+} from '@dataview/engine/core/delta'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -111,7 +111,8 @@ test('engine source records refresh after writing a value into a newly inserted 
   )
 })
 
-test('document publish omits record ids on non-structural value writes', () => {
+test('document delta omits list refresh on non-structural value writes', () => {
+  const previousDocument = createDocument()
   const document = createDocument()
   const nextDocument = {
     ...document,
@@ -130,21 +131,20 @@ test('document publish omits record ids on non-structural value writes', () => {
     }
   }
 
-  const output = projectDocumentChange({
+  const output = projectDocumentDelta({
+    previous: previousDocument,
+    next: nextDocument,
     impact: {
       records: {
         touched: new Set(['rec_1']),
         valueChangedFields: new Set([FIELD_STATUS])
       }
     },
-    document: nextDocument
   })
 
-  assert.equal(output?.records?.ids, undefined)
-  assert.deepEqual(
-    output?.records?.set ?? [],
-    [['rec_1', nextDocument.records.byId.rec_1]]
-  )
+  assert.equal(output?.records?.list, undefined)
+  assert.deepEqual(output?.records?.update, ['rec_1'])
+  assert.deepEqual(output?.records?.remove ?? [], [])
 })
 
 test('active summary follows snapshot changes without source adapter', () => {

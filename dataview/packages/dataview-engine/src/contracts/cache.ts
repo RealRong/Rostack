@@ -1,19 +1,16 @@
 import type {
-  QueryDelta,
   QueryState
 } from '@dataview/engine/contracts/query'
 import {
   emptyQueryState
 } from '@dataview/engine/contracts/query'
 import type {
-  MembershipDelta,
   MembershipState
 } from '@dataview/engine/contracts/membership'
 import {
   emptyMembershipState
 } from '@dataview/engine/contracts/membership'
 import type {
-  SummaryDelta,
   SummaryState
 } from '@dataview/engine/contracts/summary'
 import {
@@ -25,12 +22,6 @@ import type {
 import {
   createItemIdPool
 } from '@dataview/engine/active/shared/itemIdPool'
-
-export interface SnapshotChange {
-  query: QueryDelta
-  membership: MembershipDelta
-  summary: SummaryDelta
-}
 
 export interface QueryRuntime {
   state: QueryState

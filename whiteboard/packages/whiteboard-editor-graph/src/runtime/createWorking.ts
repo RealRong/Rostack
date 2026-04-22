@@ -63,10 +63,33 @@ export const createWorking = (): WorkingState => {
           nodeIds: [],
           edgeIds: []
         },
-        kind: 'none'
+        kind: 'none',
+        summary: {
+          count: 0,
+          nodeCount: 0,
+          edgeCount: 0,
+          groupIds: []
+        },
+        affordance: {
+          owner: 'none',
+          moveHit: 'none',
+          canMove: false,
+          canResize: false,
+          canRotate: false,
+          handles: []
+        }
       },
       chrome: {
-        overlays: []
+        overlays: [],
+        hover: {
+          kind: 'none'
+        },
+        preview: {
+          guides: [],
+          draw: null,
+          mindmap: null
+        },
+        edit: null
       },
       hover: {
         kind: 'none'
@@ -76,6 +99,7 @@ export const createWorking = (): WorkingState => {
       layers: EMPTY_SCENE_LAYERS,
       items: [],
       visible: {
+        items: [],
         nodeIds: [],
         edgeIds: [],
         mindmapIds: []

@@ -14,3 +14,11 @@ export type {
   PageSource,
   SelectionSource
 } from '@dataview/runtime/dataview/types'
+
+export type {
+  TableGridDomain,
+  TableRecordAccess,
+  TableRuntime,
+  TableSectionContext,
+  TableViewContext
+} from '@dataview/runtime/table'

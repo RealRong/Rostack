@@ -10,12 +10,8 @@ import type {
 } from '@dataview/core/contracts'
 import { store } from '@shared/core'
 import type {
-  ItemChange,
-  ItemValue
-} from '@dataview/engine/contracts/change'
-import type {
-  EngineChange
-} from '@dataview/engine/contracts/change'
+  EngineDelta
+} from '@dataview/engine/contracts/delta'
 import type {
   EngineCore,
   EngineSnapshot
@@ -30,8 +26,7 @@ import type {
   ActiveViewGallery,
   ActiveViewKanban,
   ActiveViewQuery,
-  ActiveViewTable,
-  ViewState
+  ActiveViewTable
 } from '@dataview/engine/contracts/view'
 
 export interface EntitySource<Key, Value> extends store.KeyedReadStore<Key, Value | undefined> {
@@ -40,7 +35,12 @@ export interface EntitySource<Key, Value> extends store.KeyedReadStore<Key, Valu
 
 export interface SectionSource extends store.KeyedReadStore<SectionKey, Section | undefined> {
   keys: store.ReadStore<readonly SectionKey[]>
-  summary: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
+}
+
+export interface ItemValue {
+  record: RecordId
+  section: SectionKey
+  placement: ItemPlacement
 }
 
 export interface ItemSource {
@@ -60,7 +60,6 @@ export interface DocumentSource {
 }
 
 export interface ActiveSource {
-  state: store.ReadStore<ViewState | undefined>
   view: {
     ready: store.ReadStore<boolean>
     id: store.ReadStore<ViewId | undefined>
@@ -73,8 +72,14 @@ export interface ActiveSource {
     gallery: store.ReadStore<ActiveViewGallery>
     kanban: store.ReadStore<ActiveViewKanban>
   }
+  records: {
+    matched: store.ReadStore<readonly RecordId[]>
+    ordered: store.ReadStore<readonly RecordId[]>
+    visible: store.ReadStore<readonly RecordId[]>
+  }
   items: ItemSource
   sections: SectionSource
+  summaries: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
   fields: {
     all: EntitySource<FieldId, Field>
     custom: EntitySource<FieldId, CustomField>
@@ -89,7 +94,7 @@ export interface EngineSource {
 export interface EngineSourceRuntime {
   source: EngineSource
   reset: (snapshot: EngineSnapshot) => void
-  apply: (change: EngineChange | undefined, snapshot: EngineSnapshot) => void
+  apply: (delta: EngineDelta | undefined, snapshot: EngineSnapshot) => void
   clear: () => void
   dispose: () => void
 }
@@ -99,5 +104,3 @@ export interface CreateEngineSourceInput {
 }
 
 export type ItemTableSource = store.KeyTableReadStore<ItemId, ItemValue>
-
-export type ItemTableChange = ItemChange

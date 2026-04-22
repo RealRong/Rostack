@@ -1,7 +1,5 @@
 import type { CalculationCollection } from '@dataview/core/calculation'
-import {
-  document as documentApi
-} from '@dataview/core/document'
+import { document as documentApi } from '@dataview/core/document'
 import type {
   CardLayout,
   CardSize,
@@ -19,36 +17,27 @@ import {
   store
 } from '@shared/core'
 import type {
-  ActiveChange,
-  DocumentChange,
-  EntityChange,
-  ItemChange,
-  ItemValue,
-  SectionChange,
-  SummaryChange
-} from '@dataview/engine/contracts/change'
+  ActiveDelta,
+  CollectionDelta,
+  DocDelta,
+  EngineDelta
+} from '@dataview/engine/contracts/delta'
 import type {
-  EngineChange
-} from '@dataview/engine/contracts/change'
-import type {
-  EngineResult,
   EngineSnapshot
 } from '@dataview/engine/contracts/core'
+import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/view'
 import type {
   ActiveViewGallery,
   ActiveViewKanban,
   ActiveViewQuery,
   ActiveViewTable,
-  ViewState
-} from '@dataview/engine/contracts/view'
-import { EMPTY_VIEW_GROUP_PROJECTION as EMPTY_GROUP } from '@dataview/engine/contracts/view'
-import type {
-  ItemId,
   FieldList,
+  ItemId,
   ItemPlacement,
   Section,
-  SectionKey
-} from '@dataview/engine/contracts/shared'
+  SectionKey,
+  ViewState
+} from '@dataview/engine/contracts'
 import type {
   ActiveSource,
   CreateEngineSourceInput,
@@ -56,9 +45,11 @@ import type {
   EngineSource,
   EngineSourceRuntime,
   ItemSource,
+  ItemValue,
   SectionSource
 } from '@dataview/runtime/source/contracts'
 
+const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
@@ -123,6 +114,11 @@ const createEntitySourceRuntime = <Key, Value>(
   }
 }
 
+const createRecordListStore = () => store.createValueStore<readonly RecordId[]>({
+  initial: EMPTY_RECORD_IDS,
+  isEqual: equal.sameOrder
+})
+
 const createSectionSourceRuntime = () => {
   const keys = store.createValueStore<readonly SectionKey[]>({
     initial: EMPTY_SECTION_KEYS,
@@ -131,25 +127,37 @@ const createSectionSourceRuntime = () => {
   const values = store.createKeyedStore<SectionKey, Section | undefined>({
     emptyValue: undefined
   })
-  const summary = store.createKeyedStore<SectionKey, CalculationCollection | undefined>({
-    emptyValue: undefined
-  })
 
   return {
     source: {
       keys,
-      summary,
       get: values.get,
       subscribe: values.subscribe,
       isEqual: values.isEqual
     } satisfies SectionSource,
     keys,
     values,
-    summary,
     clear: () => {
       keys.set(EMPTY_SECTION_KEYS)
       values.clear()
-      summary.clear()
+    }
+  }
+}
+
+const createSummarySourceRuntime = () => {
+  const values = store.createKeyedStore<SectionKey, CalculationCollection | undefined>({
+    emptyValue: undefined
+  })
+
+  return {
+    source: {
+      get: values.get,
+      subscribe: values.subscribe,
+      isEqual: values.isEqual
+    },
+    values,
+    clear: () => {
+      values.clear()
     }
   }
 }
@@ -183,116 +191,22 @@ const createItemSourceRuntime = () => {
   }
 }
 
-const applyEntityChange = <Key, Value>(runtime: {
-  ids?: store.ValueStore<readonly Key[]>
-  values: store.KeyedStore<Key, Value | undefined>
-}, change: EntityChange<Key, Value> | undefined) => {
-  if (!change) {
-    return
+const readItemValue = (
+  snapshot: ViewState,
+  itemId: ItemId
+): ItemValue | undefined => {
+  const record = snapshot.items.read.record(itemId)
+  const section = snapshot.items.read.section(itemId)
+  const placement = snapshot.items.read.placement(itemId)
+  if (!record || !section || !placement) {
+    return undefined
   }
 
-  if (change.ids && runtime.ids) {
-    runtime.ids.set(change.ids)
+  return {
+    record,
+    section,
+    placement
   }
-
-  if (!change.set && !change.remove?.length) {
-    return
-  }
-
-  runtime.values.patch({
-    ...(change.set
-      ? {
-          set: change.set
-        }
-      : {}),
-    ...(change.remove?.length
-      ? {
-          delete: change.remove
-        }
-      : {})
-  })
-}
-
-const applySectionChange = (
-  runtime: ReturnType<typeof createSectionSourceRuntime>,
-  change: SectionChange | undefined
-) => {
-  if (!change) {
-    return
-  }
-
-  if (change.keys) {
-    runtime.keys.set(change.keys)
-  }
-
-  if (!change.set && !change.remove?.length) {
-    return
-  }
-
-  runtime.values.patch({
-    ...(change.set
-      ? {
-          set: change.set
-        }
-      : {}),
-    ...(change.remove?.length
-      ? {
-          delete: change.remove
-        }
-      : {})
-  })
-}
-
-const applySummaryChange = (
-  runtime: ReturnType<typeof createSectionSourceRuntime>,
-  change: SummaryChange | undefined
-) => {
-  if (!change) {
-    return
-  }
-
-  runtime.summary.patch({
-    ...(change.set
-      ? {
-          set: change.set
-        }
-      : {}),
-    ...(change.remove?.length
-      ? {
-          delete: change.remove
-        }
-      : {})
-  })
-}
-
-const applyItemChange = (
-  runtime: ReturnType<typeof createItemSourceRuntime>,
-  change: ItemChange | undefined
-) => {
-  if (!change) {
-    return
-  }
-
-  if (change.ids) {
-    runtime.ids.set(change.ids)
-  }
-
-  if (!change.set?.length && !change.remove?.length) {
-    return
-  }
-
-  runtime.table.write.apply({
-    ...(change.set?.length
-      ? {
-          set: change.set
-        }
-      : {}),
-    ...(change.remove?.length
-      ? {
-          remove: change.remove
-        }
-      : {})
-  })
 }
 
 const collectSectionItemValues = (
@@ -302,18 +216,12 @@ const collectSectionItemValues = (
 
   snapshot.sections.all.forEach(section => {
     section.itemIds.forEach(itemId => {
-      const record = snapshot.items.read.record(itemId)
-      const sectionKey = snapshot.items.read.section(itemId)
-      const placement = snapshot.items.read.placement(itemId)
-      if (!record || !sectionKey || !placement) {
+      const value = readItemValue(snapshot, itemId)
+      if (!value) {
         return
       }
 
-      pairs.push([itemId, {
-        record,
-        section: sectionKey,
-        placement
-      }] as const)
+      pairs.push([itemId, value] as const)
     })
   })
 
@@ -344,9 +252,13 @@ const resetDocumentSource = (input: {
   fields: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
   views: ReturnType<typeof createEntitySourceRuntime<ViewId, View>>
 }) => {
+  const recordIds = documentApi.records.ids(input.snapshot.doc)
+  const fieldIds = documentApi.fields.custom.ids(input.snapshot.doc)
+  const viewIds = documentApi.views.ids(input.snapshot.doc)
+
   resetEntityRuntime(input.records, {
-    ids: documentApi.records.ids(input.snapshot.doc),
-    values: documentApi.records.ids(input.snapshot.doc).flatMap(recordId => {
+    ids: recordIds,
+    values: recordIds.flatMap(recordId => {
       const value = documentApi.records.get(input.snapshot.doc, recordId)
       return value
         ? [[recordId, value] as const]
@@ -354,8 +266,8 @@ const resetDocumentSource = (input: {
     })
   })
   resetEntityRuntime(input.fields, {
-    ids: documentApi.fields.custom.ids(input.snapshot.doc),
-    values: documentApi.fields.custom.ids(input.snapshot.doc).flatMap(fieldId => {
+    ids: fieldIds,
+    values: fieldIds.flatMap(fieldId => {
       const value = documentApi.fields.custom.get(input.snapshot.doc, fieldId)
       return value
         ? [[fieldId, value] as const]
@@ -363,8 +275,8 @@ const resetDocumentSource = (input: {
     })
   })
   resetEntityRuntime(input.views, {
-    ids: documentApi.views.ids(input.snapshot.doc),
-    values: documentApi.views.ids(input.snapshot.doc).flatMap(viewId => {
+    ids: viewIds,
+    values: viewIds.flatMap(viewId => {
       const value = documentApi.views.get(input.snapshot.doc, viewId)
       return value
         ? [[viewId, value] as const]
@@ -390,7 +302,6 @@ const resetActiveFields = (input: {
 
 const resetActiveSource = (input: {
   snapshot?: ViewState
-  state: store.ValueStore<ViewState | undefined>
   viewReady: store.ValueStore<boolean>
   viewId: store.ValueStore<ViewId | undefined>
   viewType: store.ValueStore<View['type'] | undefined>
@@ -399,13 +310,16 @@ const resetActiveSource = (input: {
   table: store.ValueStore<ActiveViewTable>
   gallery: store.ValueStore<ActiveViewGallery>
   kanban: store.ValueStore<ActiveViewKanban>
+  recordsMatched: store.ValueStore<readonly RecordId[]>
+  recordsOrdered: store.ValueStore<readonly RecordId[]>
+  recordsVisible: store.ValueStore<readonly RecordId[]>
   items: ReturnType<typeof createItemSourceRuntime>
   sections: ReturnType<typeof createSectionSourceRuntime>
+  summaries: ReturnType<typeof createSummarySourceRuntime>
   fieldsAll: ReturnType<typeof createEntitySourceRuntime<FieldId, Field>>
   fieldsCustom: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
 }) => {
   const snapshot = input.snapshot
-  input.state.set(snapshot)
   if (!snapshot) {
     input.viewReady.set(false)
     input.viewId.set(undefined)
@@ -415,8 +329,12 @@ const resetActiveSource = (input: {
     input.table.set(EMPTY_TABLE)
     input.gallery.set(EMPTY_GALLERY)
     input.kanban.set(EMPTY_KANBAN)
+    input.recordsMatched.set(EMPTY_RECORD_IDS)
+    input.recordsOrdered.set(EMPTY_RECORD_IDS)
+    input.recordsVisible.set(EMPTY_RECORD_IDS)
     input.items.clear()
     input.sections.clear()
+    input.summaries.clear()
     input.fieldsAll.clear()
     input.fieldsCustom.clear()
     return
@@ -430,6 +348,9 @@ const resetActiveSource = (input: {
   input.table.set(snapshot.table)
   input.gallery.set(snapshot.gallery)
   input.kanban.set(snapshot.kanban)
+  input.recordsMatched.set(snapshot.records.matched)
+  input.recordsOrdered.set(snapshot.records.ordered)
+  input.recordsVisible.set(snapshot.records.visible)
   input.items.ids.set(snapshot.items.ids)
   input.items.table.write.clear()
   const itemValues = collectSectionItemValues(snapshot)
@@ -445,9 +366,9 @@ const resetActiveSource = (input: {
       set: snapshot.sections.all.map(section => [section.key, section] as const)
     })
   }
-  input.sections.summary.clear()
+  input.summaries.values.clear()
   if (snapshot.sections.ids.length) {
-    input.sections.summary.patch({
+    input.summaries.values.patch({
       set: snapshot.sections.ids.flatMap(sectionKey => {
         const summary = snapshot.summaries.get(sectionKey)
         return summary
@@ -463,25 +384,120 @@ const resetActiveSource = (input: {
   })
 }
 
-const applyDocumentChange = (input: {
-  change: DocumentChange | undefined
+const applyEntityDelta = <Key, Value>(input: {
+  delta: CollectionDelta<Key> | undefined
+  runtime: {
+    ids?: store.ValueStore<readonly Key[]>
+    values: store.KeyedStore<Key, Value | undefined>
+  }
+  readIds: () => readonly Key[]
+  readValue: (key: Key) => Value | undefined
+}) => {
+  if (!input.delta) {
+    return
+  }
+
+  if (input.delta.list && input.runtime.ids) {
+    input.runtime.ids.set(input.readIds())
+  }
+
+  const set = input.delta.update?.flatMap(key => {
+    const value = input.readValue(key)
+    return value === undefined
+      ? []
+      : [[key, value] as const]
+  })
+
+  if (!set?.length && !input.delta.remove?.length) {
+    return
+  }
+
+  input.runtime.values.patch({
+    ...(set?.length
+      ? {
+          set
+        }
+      : {}),
+    ...(input.delta.remove?.length
+      ? {
+          delete: input.delta.remove
+        }
+      : {})
+  })
+}
+
+const applyItemDelta = (input: {
+  delta: CollectionDelta<ItemId> | undefined
+  runtime: ReturnType<typeof createItemSourceRuntime>
+  snapshot: ViewState
+}) => {
+  if (!input.delta) {
+    return
+  }
+
+  if (input.delta.list) {
+    input.runtime.ids.set(input.snapshot.items.ids)
+  }
+
+  const set = input.delta.update?.flatMap(itemId => {
+    const value = readItemValue(input.snapshot, itemId)
+    return value
+      ? [[itemId, value] as const]
+      : []
+  })
+
+  if (!set?.length && !input.delta.remove?.length) {
+    return
+  }
+
+  input.runtime.table.write.apply({
+    ...(set?.length
+      ? {
+          set
+        }
+      : {}),
+    ...(input.delta.remove?.length
+      ? {
+          remove: input.delta.remove
+        }
+      : {})
+  })
+}
+
+const applyDocumentDelta = (input: {
+  delta: DocDelta | undefined
+  snapshot: EngineSnapshot
   records: ReturnType<typeof createEntitySourceRuntime<RecordId, DataRecord>>
   fields: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
   views: ReturnType<typeof createEntitySourceRuntime<ViewId, View>>
 }) => {
-  if (!input.change) {
+  if (!input.delta) {
     return
   }
 
-  applyEntityChange(input.records, input.change.records)
-  applyEntityChange(input.fields, input.change.fields)
-  applyEntityChange(input.views, input.change.views)
+  applyEntityDelta({
+    delta: input.delta.records,
+    runtime: input.records,
+    readIds: () => documentApi.records.ids(input.snapshot.doc),
+    readValue: recordId => documentApi.records.get(input.snapshot.doc, recordId)
+  })
+  applyEntityDelta({
+    delta: input.delta.fields,
+    runtime: input.fields,
+    readIds: () => documentApi.fields.custom.ids(input.snapshot.doc),
+    readValue: fieldId => documentApi.fields.custom.get(input.snapshot.doc, fieldId)
+  })
+  applyEntityDelta({
+    delta: input.delta.views,
+    runtime: input.views,
+    readIds: () => documentApi.views.ids(input.snapshot.doc),
+    readValue: viewId => documentApi.views.get(input.snapshot.doc, viewId)
+  })
 }
 
-const applyActiveChange = (input: {
-  change: ActiveChange | undefined
+const applyActiveDelta = (input: {
+  delta: ActiveDelta | undefined
   snapshot?: ViewState
-  state: store.ValueStore<ViewState | undefined>
   viewReady: store.ValueStore<boolean>
   viewId: store.ValueStore<ViewId | undefined>
   viewType: store.ValueStore<View['type'] | undefined>
@@ -490,54 +506,95 @@ const applyActiveChange = (input: {
   table: store.ValueStore<ActiveViewTable>
   gallery: store.ValueStore<ActiveViewGallery>
   kanban: store.ValueStore<ActiveViewKanban>
+  recordsMatched: store.ValueStore<readonly RecordId[]>
+  recordsOrdered: store.ValueStore<readonly RecordId[]>
+  recordsVisible: store.ValueStore<readonly RecordId[]>
   items: ReturnType<typeof createItemSourceRuntime>
   sections: ReturnType<typeof createSectionSourceRuntime>
+  summaries: ReturnType<typeof createSummarySourceRuntime>
   fieldsAll: ReturnType<typeof createEntitySourceRuntime<FieldId, Field>>
   fieldsCustom: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
 }) => {
-  input.state.set(input.snapshot)
-  if (!input.change) {
+  if (!input.delta) {
     return
   }
 
-  if (input.change.reset) {
+  if (input.delta.reset) {
     resetActiveSource(input)
     return
   }
 
-  input.viewReady.set(Boolean(input.snapshot))
-  if (input.change.view?.id !== undefined) {
-    input.viewId.set(input.change.view.id)
-  }
-  if (input.change.view?.type !== undefined) {
-    input.viewType.set(input.change.view.type)
-  }
-  if (input.change.view?.current !== undefined) {
-    input.viewCurrent.set(input.change.view.current)
-  }
-  if (input.change.view?.query !== undefined) {
-    input.query.set(input.change.view.query)
-  }
-  if (input.change.view?.table !== undefined) {
-    input.table.set(input.change.view.table)
-  }
-  if (input.change.view?.gallery !== undefined) {
-    input.gallery.set(input.change.view.gallery)
-  }
-  if (input.change.view?.kanban !== undefined) {
-    input.kanban.set(input.change.view.kanban)
+  const snapshot = input.snapshot
+  if (!snapshot) {
+    return
   }
 
-  applyItemChange(input.items, input.change.items)
-  applySectionChange(input.sections, input.change.sections)
-  applySummaryChange(input.sections, input.change.summaries)
-  applyEntityChange(input.fieldsAll, input.change.fields?.all)
-  applyEntityChange(input.fieldsCustom, input.change.fields?.custom)
+  if (input.delta.view) {
+    input.viewReady.set(true)
+    input.viewId.set(snapshot.view.id)
+    input.viewType.set(snapshot.view.type)
+    input.viewCurrent.set(snapshot.view)
+  }
+
+  if (input.delta.meta?.query) {
+    input.query.set(snapshot.query)
+  }
+  if (input.delta.meta?.table) {
+    input.table.set(snapshot.table)
+  }
+  if (input.delta.meta?.gallery) {
+    input.gallery.set(snapshot.gallery)
+  }
+  if (input.delta.meta?.kanban) {
+    input.kanban.set(snapshot.kanban)
+  }
+
+  if (input.delta.records?.matched) {
+    input.recordsMatched.set(snapshot.records.matched)
+  }
+  if (input.delta.records?.ordered) {
+    input.recordsOrdered.set(snapshot.records.ordered)
+  }
+  if (input.delta.records?.visible) {
+    input.recordsVisible.set(snapshot.records.visible)
+  }
+
+  applyItemDelta({
+    delta: input.delta.items,
+    runtime: input.items,
+    snapshot
+  })
+  applyEntityDelta({
+    delta: input.delta.sections,
+    runtime: input.sections,
+    readIds: () => snapshot.sections.ids,
+    readValue: sectionKey => snapshot.sections.get(sectionKey)
+  })
+  applyEntityDelta({
+    delta: input.delta.summaries,
+    runtime: {
+      values: input.summaries.values
+    },
+    readIds: () => snapshot.sections.ids,
+    readValue: sectionKey => snapshot.summaries.get(sectionKey)
+  })
+  applyEntityDelta({
+    delta: input.delta.fields?.all,
+    runtime: input.fieldsAll,
+    readIds: () => snapshot.fields.ids,
+    readValue: fieldId => snapshot.fields.get(fieldId)
+  })
+  applyEntityDelta({
+    delta: input.delta.fields?.custom,
+    runtime: input.fieldsCustom,
+    readIds: () => snapshot.fields.custom.map(field => field.id),
+    readValue: fieldId => snapshot.fields.get(fieldId) as CustomField | undefined
+  })
 }
 
 const syncRuntime = (input: {
-  result: EngineResult
-  state: store.ValueStore<ViewState | undefined>
+  delta: EngineDelta | undefined
+  snapshot: EngineSnapshot
   records: ReturnType<typeof createEntitySourceRuntime<RecordId, DataRecord>>
   fields: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
   views: ReturnType<typeof createEntitySourceRuntime<ViewId, View>>
@@ -549,22 +606,26 @@ const syncRuntime = (input: {
   table: store.ValueStore<ActiveViewTable>
   gallery: store.ValueStore<ActiveViewGallery>
   kanban: store.ValueStore<ActiveViewKanban>
+  recordsMatched: store.ValueStore<readonly RecordId[]>
+  recordsOrdered: store.ValueStore<readonly RecordId[]>
+  recordsVisible: store.ValueStore<readonly RecordId[]>
   items: ReturnType<typeof createItemSourceRuntime>
   sections: ReturnType<typeof createSectionSourceRuntime>
+  summaries: ReturnType<typeof createSummarySourceRuntime>
   fieldsAll: ReturnType<typeof createEntitySourceRuntime<FieldId, Field>>
   fieldsCustom: ReturnType<typeof createEntitySourceRuntime<FieldId, CustomField>>
 }) => {
   store.batch(() => {
-    applyDocumentChange({
-      change: input.result.change?.doc,
+    applyDocumentDelta({
+      delta: input.delta?.doc,
+      snapshot: input.snapshot,
       records: input.records,
       fields: input.fields,
       views: input.views
     })
-    applyActiveChange({
-      change: input.result.change?.active,
-      snapshot: input.result.snapshot.active,
-      state: input.state,
+    applyActiveDelta({
+      delta: input.delta?.active,
+      snapshot: input.snapshot.active,
       viewReady: input.viewReady,
       viewId: input.viewId,
       viewType: input.viewType,
@@ -573,8 +634,12 @@ const syncRuntime = (input: {
       table: input.table,
       gallery: input.gallery,
       kanban: input.kanban,
+      recordsMatched: input.recordsMatched,
+      recordsOrdered: input.recordsOrdered,
+      recordsVisible: input.recordsVisible,
       items: input.items,
       sections: input.sections,
+      summaries: input.summaries,
       fieldsAll: input.fieldsAll,
       fieldsCustom: input.fieldsCustom
     })
@@ -590,17 +655,20 @@ export const createEngineSource = (
   const documentViews = createEntitySourceRuntime<ViewId, View>()
   const activeItems = createItemSourceRuntime()
   const activeSections = createSectionSourceRuntime()
+  const activeSummaries = createSummarySourceRuntime()
   const activeFieldsAll = createEntitySourceRuntime<FieldId, Field>(EMPTY_FIELD_IDS)
   const activeFieldsCustom = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
-  const activeState = store.createValueStore<ViewState | undefined>(snapshot.active)
-  const viewReady = store.createValueStore(Boolean(snapshot.active))
-  const viewId = store.createValueStore<ViewId | undefined>(snapshot.active?.view.id)
-  const viewType = store.createValueStore<View['type'] | undefined>(snapshot.active?.view.type)
-  const viewCurrent = store.createValueStore<View | undefined>(snapshot.active?.view)
-  const query = store.createValueStore<ActiveViewQuery>(snapshot.active?.query ?? EMPTY_QUERY)
-  const table = store.createValueStore<ActiveViewTable>(snapshot.active?.table ?? EMPTY_TABLE)
-  const gallery = store.createValueStore<ActiveViewGallery>(snapshot.active?.gallery ?? EMPTY_GALLERY)
-  const kanban = store.createValueStore<ActiveViewKanban>(snapshot.active?.kanban ?? EMPTY_KANBAN)
+  const viewReady = store.createValueStore(false)
+  const viewId = store.createValueStore<ViewId | undefined>(undefined)
+  const viewType = store.createValueStore<View['type'] | undefined>(undefined)
+  const viewCurrent = store.createValueStore<View | undefined>(undefined)
+  const query = store.createValueStore<ActiveViewQuery>(EMPTY_QUERY)
+  const table = store.createValueStore<ActiveViewTable>(EMPTY_TABLE)
+  const gallery = store.createValueStore<ActiveViewGallery>(EMPTY_GALLERY)
+  const kanban = store.createValueStore<ActiveViewKanban>(EMPTY_KANBAN)
+  const recordsMatched = createRecordListStore()
+  const recordsOrdered = createRecordListStore()
+  const recordsVisible = createRecordListStore()
 
   const source: EngineSource = {
     doc: {
@@ -609,7 +677,6 @@ export const createEngineSource = (
       views: documentViews.source
     } satisfies DocumentSource,
     active: {
-      state: activeState,
       view: {
         ready: viewReady,
         id: viewId,
@@ -622,8 +689,14 @@ export const createEngineSource = (
         gallery,
         kanban
       },
+      records: {
+        matched: recordsMatched,
+        ordered: recordsOrdered,
+        visible: recordsVisible
+      },
       items: activeItems.source,
       sections: activeSections.source,
+      summaries: activeSummaries.source,
       fields: {
         all: activeFieldsAll.source,
         custom: activeFieldsCustom.source
@@ -641,7 +714,6 @@ export const createEngineSource = (
       })
       resetActiveSource({
         snapshot: nextSnapshot.active,
-        state: activeState,
         viewReady,
         viewId,
         viewType,
@@ -650,8 +722,12 @@ export const createEngineSource = (
         table,
         gallery,
         kanban,
+        recordsMatched,
+        recordsOrdered,
+        recordsVisible,
         items: activeItems,
         sections: activeSections,
+        summaries: activeSummaries,
         fieldsAll: activeFieldsAll,
         fieldsCustom: activeFieldsCustom
       })
@@ -665,7 +741,6 @@ export const createEngineSource = (
       documentViews.clear()
       resetActiveSource({
         snapshot: undefined,
-        state: activeState,
         viewReady,
         viewId,
         viewType,
@@ -674,8 +749,12 @@ export const createEngineSource = (
         table,
         gallery,
         kanban,
+        recordsMatched,
+        recordsOrdered,
+        recordsVisible,
         items: activeItems,
         sections: activeSections,
+        summaries: activeSummaries,
         fieldsAll: activeFieldsAll,
         fieldsCustom: activeFieldsCustom
       })
@@ -686,8 +765,8 @@ export const createEngineSource = (
 
   const unsubscribe = input.core.subscribe(result => {
     syncRuntime({
-      result,
-      state: activeState,
+      delta: result.delta,
+      snapshot: result.snapshot,
       records: documentRecords,
       fields: documentFields,
       views: documentViews,
@@ -699,8 +778,12 @@ export const createEngineSource = (
       table,
       gallery,
       kanban,
+      recordsMatched,
+      recordsOrdered,
+      recordsVisible,
       items: activeItems,
       sections: activeSections,
+      summaries: activeSummaries,
       fieldsAll: activeFieldsAll,
       fieldsCustom: activeFieldsCustom
     })
@@ -709,18 +792,10 @@ export const createEngineSource = (
   return {
     source,
     reset,
-    apply: (change: EngineChange | undefined, nextSnapshot: EngineSnapshot) => {
+    apply: (delta: EngineDelta | undefined, nextSnapshot: EngineSnapshot) => {
       syncRuntime({
-        result: {
-          rev: input.core.read.result().rev,
-          snapshot: nextSnapshot,
-          ...(change
-            ? {
-                change
-              }
-            : {})
-        },
-        state: activeState,
+        delta,
+        snapshot: nextSnapshot,
         records: documentRecords,
         fields: documentFields,
         views: documentViews,
@@ -732,8 +807,12 @@ export const createEngineSource = (
         table,
         gallery,
         kanban,
+        recordsMatched,
+        recordsOrdered,
+        recordsVisible,
         items: activeItems,
         sections: activeSections,
+        summaries: activeSummaries,
         fieldsAll: activeFieldsAll,
         fieldsCustom: activeFieldsCustom
       })

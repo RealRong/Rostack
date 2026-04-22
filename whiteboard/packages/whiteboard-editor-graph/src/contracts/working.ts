@@ -1,15 +1,20 @@
 import type {
+  MindmapRenderConnector,
+  MindmapLayout,
+  MindmapTree
+} from '@whiteboard/core/mindmap'
+import type {
   CanvasItemRef,
   EdgeId,
   GroupId,
   MindmapId,
-  NodeId,
-  Rect
+  NodeId
 } from '@whiteboard/core/types'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection-runtime'
 import type {
   ChromeView,
+  EdgeDraft,
   EdgePreview,
   EdgeView,
   HoverState,
@@ -75,6 +80,7 @@ export interface GraphNodeEntry {
 
 export interface GraphEdgeEntry {
   base: EdgeView['base']
+  draft?: EdgeDraft
   preview?: EdgePreview
 }
 
@@ -104,9 +110,8 @@ export interface StructureWorkingState {
 }
 
 export interface MindmapStructureState {
-  rootNodeId: NodeId
   nodeIds: readonly NodeId[]
-  collapsedNodeIds: ReadonlySet<NodeId>
+  tree: MindmapTree
 }
 
 export interface GroupStructureState {
@@ -118,8 +123,8 @@ export interface TreeWorkingState {
 }
 
 export interface MindmapTreeState {
-  nodeRects: ReadonlyMap<NodeId, Rect>
-  bbox?: Rect
+  layout?: MindmapLayout
+  connectors: readonly MindmapRenderConnector[]
 }
 
 export interface ElementWorkingState {
@@ -137,6 +142,7 @@ export interface SceneWorkingState {
   layers: readonly SceneLayer[]
   items: readonly SceneItem[]
   visible: {
+    items: readonly SceneItem[]
     nodeIds: readonly NodeId[]
     edgeIds: readonly EdgeId[]
     mindmapIds: readonly MindmapId[]

@@ -1,5 +1,4 @@
 import type {
-  ViewState as CurrentView,
   Engine,
   CellRef
 } from '@dataview/engine'
@@ -17,8 +16,12 @@ import type {
   ItemSelectionSnapshot
 } from '@dataview/runtime/selection'
 import type {
-  ActiveSource
-} from '@dataview/runtime/source'
+  TableGridDomain,
+  TableRecordAccess,
+  TableRuntime,
+  TableSectionContext,
+  TableViewContext
+} from '@dataview/runtime/table'
 import { store } from '@shared/core'
 import {
   createItemListSelectionDomain,
@@ -128,7 +131,10 @@ const sameBodyData = (
 )
 
 export interface TableController {
-  currentView: store.ReadStore<CurrentView | undefined>
+  grid: store.ReadStore<TableGridDomain | undefined>
+  view: store.ReadStore<TableViewContext | undefined>
+  sections: store.ReadStore<TableSectionContext | undefined>
+  record: TableRecordAccess
   body: store.ReadStore<TableBodyData | null>
   locked: store.ReadStore<boolean>
   valueEditorOpen: store.ReadStore<boolean>
@@ -170,7 +176,7 @@ const selectionRow = (input: {
     top: number
     bottom: number
   } | null
-  currentView: CurrentView | undefined
+  grid: TableGridDomain | undefined
   selection: ItemSelectionSnapshot
   gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
 }): {
@@ -180,8 +186,8 @@ const selectionRow = (input: {
 } | null => {
   const rowId = input.gridSelection?.focus.itemId
     ?? selectionSnapshot.primary(
-      input.currentView
-        ? createItemListSelectionDomain(input.currentView.items)
+      input.grid
+        ? createItemListSelectionDomain(input.grid.items)
         : undefined,
       input.selection
     )
@@ -194,9 +200,8 @@ const selectionRow = (input: {
 
 export const createTableController = (options: {
   engine: Engine
-  activeSource: ActiveSource
+  tableRuntime: TableRuntime
   pageStore: store.ReadStore<PageState>
-  currentViewStore: store.ReadStore<CurrentView | undefined>
   model: DataViewTableModel
   selection: ItemSelectionController
   selectionMembershipStore: store.KeyedReadStore<ItemId, boolean>
@@ -206,9 +211,12 @@ export const createTableController = (options: {
   layout: TableLayout
   nodes: Nodes
 }): TableController => {
-  const currentView = options.currentViewStore
+  const grid = options.tableRuntime.grid
+  const view = options.tableRuntime.view
+  const sections = options.tableRuntime.sections
+  const record = options.tableRuntime.record
   const selection = createTableSelectionRuntime({
-    currentViewStore: currentView,
+    gridStore: grid,
     rowSelection: options.selection
   })
   const lockedStore = store.createDerivedStore<boolean>({
@@ -223,7 +231,7 @@ export const createTableController = (options: {
   })
   const interaction = createInteractionCoordinator()
   const can = createTableCanRuntime(createCapabilities({
-    currentView,
+    view,
     locked: lockedStore,
     interaction: interaction.store
   }))
@@ -232,12 +240,12 @@ export const createTableController = (options: {
     rowMembershipStore: options.selectionMembershipStore,
     previewMembershipStore: options.previewSelectionMembershipStore,
     gridSelectionStore: selection.cells.store,
-    currentViewStore: currentView,
+    gridStore: grid,
     visibleStore: selectionVisibleStore
   })
   const fill = createTableFillRuntime({
     gridSelectionStore: select.cells.state,
-    currentViewStore: currentView,
+    gridStore: grid,
     enabledStore: can.fill
   })
   const rail = createTableRailRuntime()
@@ -252,7 +260,9 @@ export const createTableController = (options: {
     selectionVisible: select.cells.visible
   })
   const virtual = createTableVirtualRuntime({
-    activeSource: options.activeSource,
+    grid,
+    view,
+    sections,
     marqueeActiveStore: options.marqueeActiveStore,
     layout: options.layout
   })
@@ -309,7 +319,7 @@ export const createTableController = (options: {
   const revealCursor = () => {
     const target = selectionRow({
       locateRow: virtual.locateRow,
-      currentView: currentView.get(),
+      grid: grid.get(),
       selection: selection.rows.state.getSnapshot(),
       gridSelection: selection.cells.get()
     })
@@ -330,7 +340,7 @@ export const createTableController = (options: {
           }
         : undefined
     },
-    currentView: currentView.get,
+    view: view.get,
     gridSelection: selection.cells,
     dom,
     revealCursor,
@@ -368,7 +378,10 @@ export const createTableController = (options: {
   })
 
   return {
-    currentView,
+    grid,
+    view,
+    sections,
+    record,
     body,
     locked: lockedStore,
     valueEditorOpen: valueEditorOpenStore,

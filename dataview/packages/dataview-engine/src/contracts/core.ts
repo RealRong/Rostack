@@ -7,11 +7,11 @@ import type {
   CommitResult
 } from '@dataview/engine/contracts/api'
 import type {
-  EngineChange
-} from '@dataview/engine/contracts/change'
-import type {
   HistoryState
 } from '@dataview/engine/contracts/history'
+import type {
+  EngineDelta
+} from '@dataview/engine/contracts/delta'
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
@@ -26,13 +26,13 @@ export interface EngineSnapshot {
 export interface EngineResult {
   rev: number
   snapshot: EngineSnapshot
-  change?: EngineChange
+  delta?: EngineDelta
 }
 
 export interface EngineCoreRead {
   result: () => EngineResult
   snapshot: () => EngineSnapshot
-  change: () => EngineChange | undefined
+  delta: () => EngineDelta | undefined
   document: () => DataDoc
   active: () => ActiveSnapshot | undefined
 }

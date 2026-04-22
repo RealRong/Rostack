@@ -31,6 +31,9 @@ import {
   createEngineSource
 } from '@dataview/runtime/source'
 import {
+  createTableRuntime
+} from '@dataview/runtime/table'
+import {
   createItemArraySelectionDomain,
   createSelectionController,
   type ItemSelectionController
@@ -136,6 +139,7 @@ export const createDataViewRuntime = (
   const createRecord = createCreateRecordApi({
     activeView: sourceRuntime.source.active.view.current
   })
+  const table = createTableRuntime(sourceRuntime.source.active)
   const valueEditor = createValueEditorApi()
   const activeItemIds = sourceRuntime.source.active.items.ids
   const activeView = sourceRuntime.source.active.view.current
@@ -231,6 +235,7 @@ export const createDataViewRuntime = (
   return {
     engine: input.engine,
     source,
+    table,
     session: {
       store: sessionStore,
       page: {

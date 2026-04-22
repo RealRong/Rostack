@@ -1,12 +1,14 @@
 import type { KeyInput } from '@dataview/react/interaction'
 import type { FieldId } from '@dataview/core/contracts'
-import type { ViewState as CurrentView } from '@dataview/engine'
 import {
   type CellRef
 } from '@dataview/engine'
 import type {
   Engine
 } from '@dataview/engine'
+import type {
+  TableGridDomain
+} from '@dataview/runtime/table'
 import {
   createItemListSelectionDomain,
   selectionSnapshot
@@ -34,7 +36,7 @@ const currentKey = (
 export const handleTableKey = (input: {
   key: TableKeyInput | KeyInput
   editor: Engine
-  currentView: CurrentView
+  grid: TableGridDomain
   selection: TableSelectionRuntime
   locked: boolean
   readCell: (cell: CellRef) => {
@@ -61,7 +63,7 @@ export const handleTableKey = (input: {
     if (key.key === 'Escape') {
       const rowIds = gridSelection.itemIds(
         currentGridSelection,
-        input.currentView.items
+        input.grid.items
       )
       if (!rowIds.length) {
         return false
@@ -79,11 +81,11 @@ export const handleTableKey = (input: {
     const action = gridKeyAction({
       key,
       selection: currentGridSelection,
-      items: input.currentView.items,
-      fields: input.currentView.fields,
+      items: input.grid.items,
+      fields: input.grid.fields,
       read: {
         cell: input.readCell,
-        field: (fieldId: FieldId) => input.currentView.fields.get(fieldId)
+        field: (fieldId: FieldId) => input.grid.fields.get(fieldId)
       }
     })
     if (!action) {
@@ -126,7 +128,7 @@ export const handleTableKey = (input: {
     return false
   }
 
-  const rowDomain = createItemListSelectionDomain(input.currentView.items)
+  const rowDomain = createItemListSelectionDomain(input.grid.items)
 
   switch (key.key) {
     case 'ArrowUp':
@@ -175,14 +177,14 @@ export const handleTableKey = (input: {
 
 export const applyPaste = (input: {
   editor: Engine
-  currentView: CurrentView | undefined
+  grid: TableGridDomain | undefined
   gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
   text: string
 }) => {
-  if (!input.currentView) {
+  if (!input.grid) {
     return false
   }
-  const currentView = input.currentView
+  const grid = input.grid
 
   const matrix = parseClipboardMatrix(input.text)
   if (!matrix.length) {
@@ -191,8 +193,8 @@ export const applyPaste = (input: {
 
   const entries = planPaste({
     selection: input.gridSelection,
-    items: currentView.items,
-    fields: currentView.fields,
+    items: grid.items,
+    fields: grid.fields,
     matrix
   })
   if (!entries.length) {

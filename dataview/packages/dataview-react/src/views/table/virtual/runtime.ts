@@ -5,8 +5,10 @@ import {
   queryRead
 } from '@dataview/engine'
 import type {
-  ActiveSource
-} from '@dataview/runtime/source'
+  TableGridDomain,
+  TableSectionContext,
+  TableViewContext
+} from '@dataview/runtime/table'
 import {
   observeElementSize,
   pageScrollNode,
@@ -267,15 +269,22 @@ const resolveMarqueeActive = (input: {
 )
 
 const createTableLayoutStateStore = (
-  activeSource: ActiveSource
+  input: {
+    grid: store.ReadStore<TableGridDomain | undefined>
+    view: store.ReadStore<TableViewContext | undefined>
+    sections: store.ReadStore<TableSectionContext | undefined>
+  }
 ) => store.createDerivedStore<TableLayoutState | null>({
   get: () => {
-    if (store.read(activeSource.view.type) !== 'table') {
+    const grid = store.read(input.grid)
+    const view = store.read(input.view)
+    const sections = store.read(input.sections)
+    if (!grid || !view || !sections) {
       return null
     }
 
-    const sections = store.read(activeSource.sections.keys).flatMap(sectionKey => {
-      const section = store.read(activeSource.sections, sectionKey)
+    const nextSections = sections.sections.ids.flatMap(sectionKey => {
+      const section = sections.sections.get(sectionKey)
       return section
         ? [{
             key: section.key,
@@ -286,20 +295,26 @@ const createTableLayoutStateStore = (
     })
 
     return createTableLayoutState({
-      grouped: queryRead.grouped(store.read(activeSource.meta.query)),
-      sections,
-      rowCount: store.read(activeSource.items.ids).length
+      grouped: queryRead.grouped(view.query),
+      sections: nextSections,
+      rowCount: grid.items.ids.length
     })
   },
   isEqual: sameTableLayoutState
 })
 
 export const createTableVirtualRuntime = (options: {
-  activeSource: ActiveSource
+  grid: store.ReadStore<TableGridDomain | undefined>
+  view: store.ReadStore<TableViewContext | undefined>
+  sections: store.ReadStore<TableSectionContext | undefined>
   marqueeActiveStore: store.ReadStore<boolean>
   layout: TableLayout
 }): TableVirtualRuntime => {
-  const layoutStateStore = createTableLayoutStateStore(options.activeSource)
+  const layoutStateStore = createTableLayoutStateStore({
+    grid: options.grid,
+    view: options.view,
+    sections: options.sections
+  })
   const layoutStore = store.createValueStore<TableVirtualLayoutSnapshot>({
     initial: EMPTY_LAYOUT_SNAPSHOT,
     isEqual: sameLayoutSnapshot

@@ -7,9 +7,11 @@ import {
 } from '@dataview/engine/active/plan'
 import type {
   DeriveAction,
-  SnapshotChange,
   ViewCache
 } from '@dataview/engine/contracts/state'
+import type {
+  ActiveDelta
+} from '@dataview/engine/contracts/delta'
 import type {
   ViewStageName,
   ViewStageTrace,
@@ -35,7 +37,7 @@ import type {
 interface ViewRunResult {
   cache: ViewCache
   snapshot?: ViewState
-  change?: SnapshotChange
+  delta?: ActiveDelta
   trace?: ViewTrace
 }
 
@@ -98,6 +100,13 @@ export const deriveViewSnapshot = (input: {
         publish: input.previousCache.publish
       },
       snapshot: undefined,
+      ...(input.previousSnapshot
+        ? {
+            delta: {
+              reset: true
+            } satisfies ActiveDelta
+          }
+        : {}),
       ...(input.capturePerf
         ? {
             trace: {
@@ -170,11 +179,6 @@ export const deriveViewSnapshot = (input: {
     }),
     result => input.previousCache.summary.state !== result.state
   )
-  const change = {
-    query: query.delta,
-    membership: membership.delta,
-    summary: summary.delta
-  } satisfies SnapshotChange
   const publish = timeStage(
     'publish',
     () => runPublishStage({
@@ -212,9 +216,9 @@ export const deriveViewSnapshot = (input: {
       }
     },
     snapshot: publish.snapshot,
-    ...(publish.snapshot
+    ...(publish.delta
       ? {
-          change
+          delta: publish.delta
         }
       : {}),
     ...(input.capturePerf

@@ -1,10 +1,12 @@
-import type { ViewState as CurrentView } from '@dataview/engine'
 import type {
   ItemId
 } from '@dataview/engine'
 import type {
   CellRef
 } from '@dataview/engine'
+import type {
+  TableGridDomain
+} from '@dataview/runtime/table'
 import {
   gridSelection,
   type GridSelection
@@ -30,20 +32,20 @@ export interface GridSelectionStore {
 }
 
 export const createGridSelection = (
-  currentViewStore: coreStore.ReadStore<CurrentView | undefined>
+  gridStore: coreStore.ReadStore<TableGridDomain | undefined>
 ): GridSelectionStore => {
   const selectionStore = coreStore.createValueStore<GridSelection | null>({
     initial: null,
     isEqual: gridSelection.equal
   })
-  const getCurrentView = currentViewStore.get
-  const unsubscribe = currentViewStore.subscribe(() => {
-    const currentView = currentViewStore.get()
-    selectionStore.update(current => currentView
+  const getGrid = gridStore.get
+  const unsubscribe = gridStore.subscribe(() => {
+    const grid = gridStore.get()
+    selectionStore.update(current => grid
       ? gridSelection.reconcile(
           current,
-          currentView.items,
-          currentView.fields
+          grid.items,
+          grid.fields
         )
       : null
     )
@@ -59,8 +61,8 @@ export const createGridSelection = (
       selectionStore.set(gridSelection.set(cell, anchor))
     },
     move: (rowDelta, columnDelta, options) => {
-      const currentView = getCurrentView()
-      if (!currentView) {
+      const grid = getGrid()
+      if (!grid) {
         return
       }
 
@@ -68,21 +70,21 @@ export const createGridSelection = (
         current,
         rowDelta,
         columnDelta,
-        currentView.items,
-        currentView.fields,
+        grid.items,
+        grid.fields,
         options
       ) ?? current)
     },
     first: rowId => {
-      const currentView = getCurrentView()
-      if (!currentView) {
+      const grid = getGrid()
+      if (!grid) {
         return
       }
 
       selectionStore.update(current => gridSelection.first(
         current,
-        currentView.items,
-        currentView.fields,
+        grid.items,
+        grid.fields,
         rowId
       ) ?? null)
     },

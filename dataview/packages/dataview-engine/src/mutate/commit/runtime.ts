@@ -43,8 +43,8 @@ import {
   createEngineSnapshot
 } from '@dataview/engine/core/runtime'
 import {
-  projectEngineChange
-} from '@dataview/engine/core/change'
+  projectDocumentDelta
+} from '@dataview/engine/core/delta'
 import type {
   ActionResult,
   CommitResult,
@@ -252,18 +252,32 @@ const commit = <TResult extends CommitResult>(input: {
     }
   }
   const nextSnapshot = createEngineSnapshot(nextState)
-  const nextChange = projectEngineChange({
-    previous: input.runtime.result().snapshot,
-    next: nextSnapshot,
+  const nextDocDelta = projectDocumentDelta({
+    previous: base.doc,
+    next: draft.doc,
     impact: draft.impact
   })
+  const nextDelta = nextDocDelta || nextView.delta
+    ? {
+        ...(nextDocDelta
+          ? {
+              doc: nextDocDelta
+            }
+          : {}),
+        ...(nextView.delta
+          ? {
+              active: nextView.delta
+            }
+          : {})
+      }
+    : undefined
   const outputMs = now() - outputStart
   const nextResult = {
     rev: nextState.rev,
     snapshot: nextSnapshot,
-    ...(nextChange
+    ...(nextDelta
       ? {
-          change: nextChange
+          delta: nextDelta
         }
       : {})
   }

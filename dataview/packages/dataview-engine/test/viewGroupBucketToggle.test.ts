@@ -487,13 +487,13 @@ test('engine.core keeps active boundaries inside one active pipeline', () => {
   let idEvents = 0
   let sortEvents = 0
   const unsubscribe = engine.core.subscribe(result => {
-    const change = result.change?.active?.view
+    const delta = result.delta?.active
     const nextViewId = result.snapshot.active?.view.id
     if (nextViewId !== previousViewId) {
       idEvents += 1
       previousViewId = nextViewId
     }
-    if (change?.query?.sort !== undefined) {
+    if (delta?.meta?.query) {
       sortEvents += 1
     }
   })

@@ -45,12 +45,10 @@ export const TableProvider = (props: TableProviderProps) => {
     containerRef,
     canvasRef
   }), [props.headerHeight, props.rowHeight])
-  const currentView = dataView.source.active.state
   const table = useMemo(() => createTableController({
     engine,
-    activeSource: dataView.source.active,
+    tableRuntime: dataView.table,
     pageStore: dataView.session.page.store,
-    currentViewStore: currentView,
     model: dataView.model.table,
     selection: dataView.session.selection,
     selectionMembershipStore: dataView.session.selection.store.membership,
@@ -67,8 +65,7 @@ export const TableProvider = (props: TableProviderProps) => {
     dataView.session.marquee.activeStore,
     dataView.session.selection,
     dataView.session.editing.valueEditor,
-    dataView.source.active,
-    currentView,
+    dataView.table,
     engine,
     layout,
     nodes

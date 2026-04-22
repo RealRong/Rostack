@@ -5,6 +5,9 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
+  ActiveDelta
+} from '@dataview/engine/contracts/delta'
+import type {
   ItemIdPool,
   ItemList,
   SectionList,
@@ -20,6 +23,9 @@ import type {
 import {
   publishViewBase
 } from '@dataview/engine/active/snapshot/base'
+import {
+  projectActiveDelta
+} from '@dataview/engine/active/snapshot/publish/delta'
 import {
   publishSections
 } from '@dataview/engine/active/snapshot/membership/publish'
@@ -92,6 +98,7 @@ export const runPublishStage = (input: {
 }): {
   action: 'reuse' | 'sync' | 'rebuild'
   snapshot?: ViewState
+  delta?: ActiveDelta
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
@@ -149,6 +156,10 @@ export const runPublishStage = (input: {
       } satisfies ViewState
     : undefined
   const published = reuseSnapshot(input.previous, snapshot)
+  const delta = projectActiveDelta({
+    previous: input.previous,
+    next: published
+  })
   const publishMs = now() - publishStart
   const reusedStoreCount = countReusedStores(input.previous, published)
   const outputCount = SNAPSHOT_KEYS.length
@@ -163,6 +174,11 @@ export const runPublishStage = (input: {
           ? 'rebuild'
           : 'sync',
     snapshot: published,
+    ...(delta
+      ? {
+          delta
+        }
+      : {}),
     deriveMs: 0,
     publishMs,
     metrics: {

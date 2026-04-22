@@ -1,8 +1,10 @@
-import type { ViewState as CurrentView } from '@dataview/engine'
 import type {
   CellRef,
   ViewFieldRef
 } from '@dataview/engine'
+import type {
+  TableViewContext
+} from '@dataview/runtime/table'
 import type {
   ValueEditorAnchor,
   ValueEditorApi,
@@ -121,7 +123,7 @@ export const createCellOpener = (options: {
     recordId: string
     fieldId: string
   } | undefined
-  currentView: () => CurrentView | undefined
+  view: () => TableViewContext | undefined
   gridSelection: GridSelectionStore
   dom: Dom
   revealCursor: () => void
@@ -158,8 +160,8 @@ export const createCellOpener = (options: {
   }
 
   return (input: CellOpenInput) => {
-    const currentView = options.currentView()
-    if (!currentView) {
+    const view = options.view()
+    if (!view) {
       return false
     }
 
@@ -171,7 +173,7 @@ export const createCellOpener = (options: {
     return openTarget({
       cell: input.cell,
       field: {
-        viewId: currentView.view.id,
+        viewId: view.view.id,
         itemId: input.cell.itemId,
         recordId: resolved.recordId,
         fieldId: resolved.fieldId

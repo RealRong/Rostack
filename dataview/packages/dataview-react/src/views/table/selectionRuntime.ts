@@ -1,5 +1,7 @@
-import type { ViewState as CurrentView } from '@dataview/engine'
 import { store } from '@shared/core'
+import type {
+  TableGridDomain
+} from '@dataview/runtime/table'
 import {
   createGridSelection,
   type GridSelectionStore
@@ -29,10 +31,10 @@ const hasRows = (
 ) => selection.selectedCount > 0
 
 export const createTableSelectionRuntime = (input: {
-  currentViewStore: store.ReadStore<CurrentView | undefined>
+  gridStore: store.ReadStore<TableGridDomain | undefined>
   rowSelection: ItemSelectionController
 }): TableSelectionRuntime => {
-  const baseCells = createGridSelection(input.currentViewStore)
+  const baseCells = createGridSelection(input.gridStore)
   const clearRows = () => {
     if (!hasRows(input.rowSelection.state.getSnapshot())) {
       return

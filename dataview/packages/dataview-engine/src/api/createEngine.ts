@@ -62,7 +62,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     read: {
       result: () => runtime.result(),
       snapshot: () => runtime.result().snapshot,
-      change: () => runtime.result().change,
+      delta: () => runtime.result().delta,
       document: () => runtime.state().doc,
       active: () => runtime.state().active.snapshot
     },

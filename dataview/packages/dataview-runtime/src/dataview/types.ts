@@ -35,6 +35,9 @@ import type {
   ActiveSource,
   DocumentSource
 } from '@dataview/runtime/source'
+import type {
+  TableRuntime
+} from '@dataview/runtime/table'
 
 export type InlineKey = string
 
@@ -102,6 +105,7 @@ export interface CreateDataViewRuntimeInput {
 export interface DataViewRuntime {
   engine: Engine
   source: DataViewSource
+  table: TableRuntime
   session: DataViewSessionApi
   intent: DataViewIntentApi
   model: DataViewModel

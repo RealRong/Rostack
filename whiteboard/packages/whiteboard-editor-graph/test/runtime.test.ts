@@ -4,15 +4,62 @@ import {
 } from '@shared/projection-runtime'
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import type { Guide } from '@whiteboard/core/node'
+import type {
+  EdgeId,
+  NodeId,
+  Rect,
+  Size
+} from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
-import { createEditorGraphRuntime } from '../src'
+import {
+  createEditorGraphHarness,
+  createEditorGraphInputChange,
+  createEditorGraphPublishSpec,
+  createEditorGraphRead,
+  createEditorGraphRuntime,
+  createEditorGraphTextMeasureEntry,
+  type Input as EditorGraphInput
+} from '../src'
 
-const createInput = (engine: ReturnType<typeof createEngine>) => ({
+type RuntimeInputOptions = {
+  edit?: EditorGraphInput['session']['edit']
+  nodeMeasures?: ReadonlyMap<NodeId, Size>
+  edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
+  selection?: EditorGraphInput['interaction']['selection']
+  hover?: EditorGraphInput['interaction']['hover']
+  draw?: EditorGraphInput['session']['preview']['draw']
+  marquee?: EditorGraphInput['session']['preview']['selection']['marquee']
+  guides?: readonly Guide[]
+  mindmapPreview?: EditorGraphInput['session']['preview']['mindmap']
+  visibleWorld?: Rect
+  now?: number
+}
+
+const createEdgeLabelMeasureEntries = (
+  edgeLabelMeasures?: RuntimeInputOptions['edgeLabelMeasures']
+) => new Map(
+      [...(edgeLabelMeasures ?? new Map())].map(([edgeId, labels]) => [
+        edgeId,
+        new Map(
+          [...labels].map(([labelId, size]) => [
+            labelId,
+            createEditorGraphTextMeasureEntry(size)
+          ])
+        )
+      ])
+)
+
+const createInput = (
+  engine: ReturnType<typeof createEngine>,
+  options: RuntimeInputOptions = {}
+) => ({
   document: {
     snapshot: engine.snapshot()
   },
   session: {
-    edit: null,
+    edit: options.edit ?? null,
     draft: {
       nodes: new Map(),
       edges: new Map()
@@ -20,11 +67,12 @@ const createInput = (engine: ReturnType<typeof createEngine>) => ({
     preview: {
       nodes: new Map(),
       edges: new Map(),
-      draw: null,
+      draw: options.draw ?? null,
       selection: {
-        guides: []
+        marquee: options.marquee,
+        guides: options.guides ?? []
       },
-      mindmap: null
+      mindmap: options.mindmapPreview ?? null
     },
     tool: {
       type: 'select' as const
@@ -32,17 +80,25 @@ const createInput = (engine: ReturnType<typeof createEngine>) => ({
   },
   measure: {
     text: {
-      ready: false,
-      nodes: new Map(),
-      edgeLabels: new Map()
+      ready: (
+        (options.nodeMeasures?.size ?? 0)
+        + (options.edgeLabelMeasures?.size ?? 0)
+      ) > 0,
+      nodes: new Map(
+        [...(options.nodeMeasures ?? new Map())].map(([nodeId, size]) => [
+          nodeId,
+          createEditorGraphTextMeasureEntry(size)
+        ])
+      ),
+      edgeLabels: createEdgeLabelMeasureEntries(options.edgeLabelMeasures)
     }
   },
   interaction: {
-    selection: {
+    selection: options.selection ?? {
       nodeIds: [],
       edgeIds: []
     },
-    hover: {
+    hover: options.hover ?? {
       kind: 'none' as const
     },
     drag: {
@@ -53,30 +109,158 @@ const createInput = (engine: ReturnType<typeof createEngine>) => ({
     viewport: {
       center: { x: 0, y: 0 },
       zoom: 1
-    }
+    },
+    visibleWorld: options.visibleWorld
   },
   clock: {
-    now: 0
+    now: options.now ?? 0
   }
 })
 
-const CHANGED = {
-  document: { changed: true },
-  session: { changed: false },
-  measure: { changed: false },
-  interaction: { changed: false },
-  viewport: { changed: false },
-  clock: { changed: false }
-} as const
+const DOCUMENT_CHANGED = createEditorGraphInputChange({
+  document: true
+})
 
-const IDLE = {
-  document: { changed: false },
-  session: { changed: false },
-  measure: { changed: false },
-  interaction: { changed: false },
-  viewport: { changed: false },
-  clock: { changed: false }
-} as const
+const SESSION_AND_MEASURE_CHANGED = createEditorGraphInputChange({
+  session: true,
+  measure: true
+})
+
+const IDLE = createEditorGraphInputChange()
+
+const FULL_INPUT_CHANGED = createEditorGraphInputChange({
+  document: true,
+  session: true,
+  measure: true,
+  interaction: true,
+  viewport: true,
+  clock: true
+})
+
+const createNode = (input: {
+  engine: ReturnType<typeof createEngine>
+  position: { x: number; y: number }
+  text: string
+  size?: Size
+  rotation?: number
+}) => {
+  const result = input.engine.execute({
+    type: 'node.create',
+    input: {
+      type: 'text',
+      position: input.position,
+      size: input.size,
+      rotation: input.rotation,
+      data: {
+        text: input.text
+      }
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to create node')
+  }
+
+  return result.data.nodeId
+}
+
+const createEdge = (input: {
+  engine: ReturnType<typeof createEngine>
+  sourceId: NodeId
+  targetId: NodeId
+}) => {
+  const result = input.engine.execute({
+    type: 'edge.create',
+    input: {
+      type: 'straight',
+      source: {
+        kind: 'node',
+        nodeId: input.sourceId
+      },
+      target: {
+        kind: 'node',
+        nodeId: input.targetId
+      }
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to create edge')
+  }
+
+  return result.data.edgeId
+}
+
+const insertEdgeLabel = (input: {
+  engine: ReturnType<typeof createEngine>
+  edgeId: EdgeId
+  text: string
+}) => {
+  const result = input.engine.execute({
+    type: 'edge.label.insert',
+    edgeId: input.edgeId,
+    label: {
+      text: input.text
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to insert edge label')
+  }
+
+  return result.data.labelId
+}
+
+const createMindmap = (
+  engine: ReturnType<typeof createEngine>
+) => {
+  const result = engine.execute({
+    type: 'mindmap.create',
+    input: {
+      template: mindmapApi.template.createBlank()
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to create mindmap')
+  }
+
+  return result.data
+}
+
+const insertTopic = (input: {
+  engine: ReturnType<typeof createEngine>
+  mindmapId: string
+  parentId: NodeId
+  text: string
+}) => {
+  const result = input.engine.execute({
+    type: 'mindmap.topic.insert',
+    id: input.mindmapId,
+    input: {
+      kind: 'child',
+      parentId: input.parentId,
+      payload: {
+        kind: 'text',
+        text: input.text
+      },
+      options: {
+        side: 'right'
+      }
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to insert mindmap topic')
+  }
+
+  return result.data.nodeId
+}
 
 describe('editor graph runtime', () => {
   it('projects committed document snapshot into editor snapshot families via runtime shell', () => {
@@ -103,7 +287,7 @@ describe('editor graph runtime', () => {
       })
     })
 
-    const result = runtime.update(createInput(engine), CHANGED)
+    const result = runtime.update(createInput(engine), DOCUMENT_CHANGED)
     unsubscribe()
 
     expect(result.snapshot.graph.nodes.ids.length).toBe(1)
@@ -132,7 +316,7 @@ describe('editor graph runtime', () => {
     })
     const runtime = createEditorGraphRuntime()
 
-    runtime.update(createInput(engine), CHANGED)
+    runtime.update(createInput(engine), DOCUMENT_CHANGED)
     const idle = runtime.update(createInput(engine), IDLE)
 
     expect(idle.trace).toBeDefined()
@@ -141,5 +325,415 @@ describe('editor graph runtime', () => {
     expect(idle.change.scene.changed).toBe(false)
     expect(idle.change.ui.selection.changed).toBe(false)
     expect(idle.change.ui.chrome.changed).toBe(false)
+  })
+
+  it('exposes read facade, publish spec, and testing harness for host adapters', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_public_api')
+    })
+    const nodeId = createNode({
+      engine,
+      position: { x: 24, y: 48 },
+      text: 'Public API'
+    })
+    const harness = createEditorGraphHarness()
+    const result = harness.update(createInput(engine), DOCUMENT_CHANGED)
+    const read = createEditorGraphRead({
+      runtime: harness.runtime
+    })
+    const publish = createEditorGraphPublishSpec()
+
+    expect(harness.snapshot()).toBe(result.snapshot)
+    expect(harness.runtime.snapshot()).toBe(result.snapshot)
+    expect(harness.lastTrace()).toEqual(result.trace)
+    expect(read.snapshot()).toBe(result.snapshot)
+    expect(read.node(nodeId)).toBe(result.snapshot.graph.nodes.byId.get(nodeId))
+    expect(read.scene()).toBe(result.snapshot.scene)
+    expect(read.ui()).toBe(result.snapshot.ui)
+    expect(publish.graph.read(result.snapshot)).toBe(result.snapshot.graph)
+    expect(publish.graph.change(result.change)).toBe(result.change.graph)
+    expect(publish.scene.read(result.snapshot)).toBe(result.snapshot.scene)
+    expect(publish.scene.change(result.change)).toBe(result.change.scene)
+    expect(publish.ui.selection.read(result.snapshot)).toBe(result.snapshot.ui.selection)
+    expect(publish.ui.chrome.change(result.change)).toBe(result.change.ui.chrome)
+  })
+
+  it('relayouts mindmap children while root live width grows', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_mindmap_root_width')
+    })
+    const created = createMindmap(engine)
+    const childId = insertTopic({
+      engine,
+      mindmapId: created.mindmapId,
+      parentId: created.rootId,
+      text: 'Child'
+    })
+
+    const runtime = createEditorGraphRuntime()
+    const baseline = runtime.update(
+      createInput(engine, {
+        nodeMeasures: new Map([
+          [created.rootId, { width: 160, height: 44 }],
+          [childId, { width: 120, height: 44 }]
+        ])
+      }),
+      DOCUMENT_CHANGED
+    )
+    const live = runtime.update(
+      createInput(engine, {
+        edit: {
+          kind: 'node',
+          nodeId: created.rootId,
+          field: 'text',
+          text: 'Central topic with much longer live width',
+          composing: false,
+          caret: {
+            kind: 'end'
+          }
+        },
+        nodeMeasures: new Map([
+          [created.rootId, { width: 320, height: 44 }],
+          [childId, { width: 120, height: 44 }]
+        ])
+      }),
+      SESSION_AND_MEASURE_CHANGED
+    )
+
+    const beforeRoot = baseline.snapshot.graph.nodes.byId.get(created.rootId)?.layout.rect
+    const beforeChild = baseline.snapshot.graph.nodes.byId.get(childId)?.layout.rect
+    const liveRoot = live.snapshot.graph.nodes.byId.get(created.rootId)?.layout.rect
+    const liveChild = live.snapshot.graph.nodes.byId.get(childId)?.layout.rect
+
+    expect(beforeRoot).toBeDefined()
+    expect(beforeChild).toBeDefined()
+    expect(liveRoot).toBeDefined()
+    expect(liveChild).toBeDefined()
+    expect(liveRoot!.x).toBe(beforeRoot!.x)
+    expect(liveRoot!.width).toBeGreaterThan(beforeRoot!.width)
+    expect(liveChild!.x).toBeGreaterThan(beforeChild!.x)
+    expect(live.change.graph.nodes.all.has(childId)).toBe(true)
+    expect(live.change.graph.owners.mindmaps.all.has(created.mindmapId)).toBe(true)
+  })
+
+  it('relayouts sibling positions while topic live height grows', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_mindmap_topic_height')
+    })
+    const created = createMindmap(engine)
+    const firstId = insertTopic({
+      engine,
+      mindmapId: created.mindmapId,
+      parentId: created.rootId,
+      text: 'First'
+    })
+    const secondId = insertTopic({
+      engine,
+      mindmapId: created.mindmapId,
+      parentId: created.rootId,
+      text: 'Second'
+    })
+
+    const runtime = createEditorGraphRuntime()
+    const baseline = runtime.update(
+      createInput(engine, {
+        nodeMeasures: new Map([
+          [created.rootId, { width: 160, height: 44 }],
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      }),
+      DOCUMENT_CHANGED
+    )
+    const live = runtime.update(
+      createInput(engine, {
+        edit: {
+          kind: 'node',
+          nodeId: firstId,
+          field: 'text',
+          text: 'First branch now wraps into multiple visual lines',
+          composing: false,
+          caret: {
+            kind: 'end'
+          }
+        },
+        nodeMeasures: new Map([
+          [created.rootId, { width: 160, height: 44 }],
+          [firstId, { width: 120, height: 88 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      }),
+      SESSION_AND_MEASURE_CHANGED
+    )
+
+    const beforeFirst = baseline.snapshot.graph.nodes.byId.get(firstId)?.layout.rect
+    const beforeSecond = baseline.snapshot.graph.nodes.byId.get(secondId)?.layout.rect
+    const liveFirst = live.snapshot.graph.nodes.byId.get(firstId)?.layout.rect
+    const liveSecond = live.snapshot.graph.nodes.byId.get(secondId)?.layout.rect
+
+    expect(beforeFirst).toBeDefined()
+    expect(beforeSecond).toBeDefined()
+    expect(liveFirst).toBeDefined()
+    expect(liveSecond).toBeDefined()
+    expect(liveFirst!.height).toBe(88)
+    expect(liveFirst!.y).toBeLessThan(beforeFirst!.y)
+    expect(liveSecond!.y).toBeGreaterThan(beforeSecond!.y)
+    expect(live.change.graph.nodes.all.has(secondId)).toBe(true)
+    expect(live.change.graph.owners.mindmaps.all.has(created.mindmapId)).toBe(true)
+  })
+
+  it('publishes renderer-ready element, selection, chrome, and scene state', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_element_scene')
+    })
+    const firstId = createNode({
+      engine,
+      position: { x: 40, y: 20 },
+      text: 'First',
+      size: { width: 140, height: 60 },
+      rotation: 30
+    })
+    const secondId = createNode({
+      engine,
+      position: { x: 280, y: 40 },
+      text: 'Second',
+      size: { width: 160, height: 80 }
+    })
+    const offscreenId = createNode({
+      engine,
+      position: { x: 1200, y: 80 },
+      text: 'Offscreen',
+      size: { width: 120, height: 56 }
+    })
+    const edgeId = createEdge({
+      engine,
+      sourceId: firstId,
+      targetId: secondId
+    })
+    const labelId = insertEdgeLabel({
+      engine,
+      edgeId,
+      text: 'Committed label'
+    })
+
+    const runtime = createEditorGraphRuntime()
+    const result = runtime.update(
+      createInput(engine, {
+        edit: {
+          kind: 'edge-label',
+          edgeId,
+          labelId,
+          text: 'Edited label',
+          composing: false,
+          caret: {
+            kind: 'end'
+          }
+        },
+        nodeMeasures: new Map([
+          [firstId, { width: 140, height: 60 }],
+          [secondId, { width: 160, height: 80 }],
+          [offscreenId, { width: 120, height: 56 }]
+        ]),
+        edgeLabelMeasures: new Map([
+          [edgeId, new Map([
+            [labelId, { width: 96, height: 24 }]
+          ])]
+        ]),
+        selection: {
+          nodeIds: [firstId, secondId],
+          edgeIds: []
+        },
+        hover: {
+          kind: 'edge',
+          edgeId
+        },
+        guides: [{
+          axis: 'x',
+          value: 300,
+          from: 10,
+          to: 140,
+          targetEdge: 'centerX',
+          sourceEdge: 'centerX'
+        }],
+        marquee: {
+          worldRect: {
+            x: 0,
+            y: 0,
+            width: 520,
+            height: 220
+          }
+        },
+        draw: {
+          points: [
+            { x: 12, y: 12 },
+            { x: 24, y: 30 }
+          ],
+          bounds: {
+            x: 12,
+            y: 12,
+            width: 12,
+            height: 18
+          },
+          hiddenNodeIds: [firstId]
+        },
+        visibleWorld: {
+          x: 0,
+          y: 0,
+          width: 700,
+          height: 320
+        }
+      }),
+      FULL_INPUT_CHANGED
+    )
+
+    const firstNode = result.snapshot.graph.nodes.byId.get(firstId)
+    const edgeView = result.snapshot.graph.edges.byId.get(edgeId)
+    const selection = result.snapshot.ui.selection
+    const chrome = result.snapshot.ui.chrome
+    const overlayKinds = chrome.overlays.map((overlay) => overlay.kind)
+
+    expect(firstNode).toBeDefined()
+    expect(firstNode!.layout.rotation).toBe(30)
+    expect(firstNode!.layout.bounds.width).toBeGreaterThan(firstNode!.layout.rect.width)
+    expect(firstNode!.layout.bounds.height).toBeGreaterThan(firstNode!.layout.rect.height)
+
+    expect(edgeView).toBeDefined()
+    expect(edgeView!.route.svgPath).toBeTruthy()
+    expect(edgeView!.route.bounds).toBeDefined()
+    expect(edgeView!.route.source).toBeDefined()
+    expect(edgeView!.route.target).toBeDefined()
+    expect(edgeView!.route.labels).toHaveLength(1)
+    expect(edgeView!.route.labels[0]?.text).toBe('Edited label')
+    expect(edgeView!.route.labels[0]?.point).toBeDefined()
+    expect(edgeView!.route.labels[0]?.rect).toBeDefined()
+    expect(edgeView!.render.editingLabelId).toBe(labelId)
+
+    expect(selection.kind).toBe('nodes')
+    expect(selection.summary.count).toBe(2)
+    expect(selection.summary.nodeCount).toBe(2)
+    expect(selection.summary.edgeCount).toBe(0)
+    expect(selection.summary.box).toBeDefined()
+    expect(selection.affordance.owner).toBe('multi-selection')
+    expect(selection.affordance.canMove).toBe(true)
+    expect(selection.affordance.canResize).toBe(true)
+    expect(selection.affordance.canRotate).toBe(false)
+    expect(
+      selection.affordance.handles.some((handle) => handle.id === 'se' && handle.visible)
+    ).toBe(true)
+
+    expect(chrome.hover).toEqual({
+      kind: 'edge',
+      edgeId
+    })
+    expect(overlayKinds).toEqual(expect.arrayContaining([
+      'hover',
+      'selection',
+      'guide',
+      'marquee',
+      'draw',
+      'edit'
+    ]))
+    expect(chrome.preview.marquee?.worldRect).toEqual({
+      x: 0,
+      y: 0,
+      width: 520,
+      height: 220
+    })
+    expect(chrome.preview.guides).toHaveLength(1)
+    expect(chrome.preview.draw?.hiddenNodeIds).toEqual([firstId])
+    expect(chrome.edit?.kind).toBe('edge-label')
+    expect(chrome.edit?.labelId).toBe(labelId)
+
+    expect(result.snapshot.scene.items).toHaveLength(4)
+    expect(result.snapshot.scene.visible.items).toEqual(expect.arrayContaining([
+      { kind: 'node', id: firstId },
+      { kind: 'node', id: secondId },
+      { kind: 'edge', id: edgeId }
+    ]))
+    expect(
+      result.snapshot.scene.visible.items.some((item) => (
+        item.kind === 'node' && item.id === offscreenId
+      ))
+    ).toBe(false)
+    expect(result.snapshot.scene.visible.nodeIds).toEqual(expect.arrayContaining([
+      firstId,
+      secondId
+    ]))
+    expect(result.snapshot.scene.visible.nodeIds).not.toContain(offscreenId)
+    expect(result.snapshot.scene.spatial.nodes).toEqual(result.snapshot.scene.visible.nodeIds)
+    expect(result.snapshot.scene.spatial.edges).toEqual(result.snapshot.scene.visible.edgeIds)
+    expect(result.snapshot.scene.pick.items).toEqual(result.snapshot.scene.visible.items)
+    expect(result.change.scene.changed).toBe(true)
+    expect(result.change.ui.selection.changed).toBe(true)
+    expect(result.change.ui.chrome.changed).toBe(true)
+  })
+
+  it('publishes mindmap connectors and mindmap preview chrome state', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_mindmap_preview')
+    })
+    const created = createMindmap(engine)
+    const childId = insertTopic({
+      engine,
+      mindmapId: created.mindmapId,
+      parentId: created.rootId,
+      text: 'Child'
+    })
+
+    const runtime = createEditorGraphRuntime()
+    const result = runtime.update(
+      createInput(engine, {
+        nodeMeasures: new Map([
+          [created.rootId, { width: 160, height: 44 }],
+          [childId, { width: 120, height: 44 }]
+        ]),
+        hover: {
+          kind: 'mindmap',
+          mindmapId: created.mindmapId
+        },
+        mindmapPreview: {
+          rootMove: {
+            mindmapId: created.mindmapId,
+            delta: {
+              x: 40,
+              y: 24
+            }
+          }
+        },
+        visibleWorld: {
+          x: -200,
+          y: -200,
+          width: 1200,
+          height: 1200
+        }
+      }),
+      FULL_INPUT_CHANGED
+    )
+
+    const mindmapView = result.snapshot.graph.owners.mindmaps.byId.get(created.mindmapId)
+    const overlayKinds = result.snapshot.ui.chrome.overlays.map((overlay) => overlay.kind)
+
+    expect(mindmapView).toBeDefined()
+    expect(mindmapView!.tree.layout).toBeDefined()
+    expect(mindmapView!.tree.bbox).toBeDefined()
+    expect(mindmapView!.render.connectors.length).toBeGreaterThan(0)
+    expect(result.snapshot.ui.chrome.hover).toEqual({
+      kind: 'mindmap',
+      mindmapId: created.mindmapId
+    })
+    expect(overlayKinds).toEqual(expect.arrayContaining([
+      'hover',
+      'mindmap-drop'
+    ]))
+    expect(result.snapshot.ui.chrome.preview.mindmap?.rootMove?.delta).toEqual({
+      x: 40,
+      y: 24
+    })
+    expect(result.snapshot.scene.items).toContainEqual({
+      kind: 'mindmap',
+      id: created.mindmapId
+    })
+    expect(result.snapshot.scene.visible.mindmapIds).toContain(created.mindmapId)
+    expect(result.snapshot.scene.spatial.mindmaps).toContain(created.mindmapId)
   })
 })

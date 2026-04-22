@@ -134,7 +134,7 @@ export const createTableModel = (input: {
         return undefined
       }
 
-      const value = store.read(input.source.active.sections.summary, key)
+      const value = store.read(input.source.active.summaries, key)
       return value
         ? {
             byField: value.byField

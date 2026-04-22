@@ -1,5 +1,11 @@
 import type { ConnectResolution } from '@whiteboard/core/edge'
 import type { Guide, TransformPreviewPatch } from '@whiteboard/core/node'
+import type { SelectionTransformHandlePlan } from '@whiteboard/core/node'
+import type { MindmapRenderConnector } from '@whiteboard/core/mindmap'
+import type {
+  SelectionAffordanceMoveHit,
+  SelectionAffordanceOwner
+} from '@whiteboard/core/selection'
 import type {
   CanvasItemRef,
   Edge,
@@ -356,6 +362,7 @@ export interface NodeBaseView {
 
 export interface NodeLayoutView {
   measuredSize?: Size
+  rotation: number
   rect: Rect
   bounds: Rect
 }
@@ -378,6 +385,10 @@ export interface EdgeBaseView {
 
 export interface EdgeRouteView {
   points: readonly Point[]
+  svgPath?: string
+  bounds?: Rect
+  source?: Point
+  target?: Point
   labels: readonly EdgeLabelView[]
 }
 
@@ -385,6 +396,8 @@ export interface EdgeLabelView {
   labelId: string
   text: string
   size?: Size
+  point?: Point
+  angle?: number
   rect?: Rect
 }
 
@@ -402,6 +415,7 @@ export interface MindmapView {
   base: MindmapBaseView
   structure: MindmapStructureView
   tree: MindmapTreeView
+  render: MindmapRenderView
 }
 
 export interface MindmapBaseView {
@@ -415,6 +429,10 @@ export interface MindmapStructureView {
 export interface MindmapTreeView {
   layout?: MindmapLayout
   bbox?: Rect
+}
+
+export interface MindmapRenderView {
+  connectors: readonly MindmapRenderConnector[]
 }
 
 export interface GroupView {
@@ -458,6 +476,14 @@ export type SceneItem =
 export interface SpatialView {
   nodes: readonly NodeId[]
   edges: readonly EdgeId[]
+  mindmaps: readonly MindmapId[]
+}
+
+export interface VisibleSceneView {
+  items: readonly SceneItem[]
+  nodeIds: readonly NodeId[]
+  edgeIds: readonly EdgeId[]
+  mindmapIds: readonly MindmapId[]
 }
 
 export interface PickView {
@@ -467,6 +493,7 @@ export interface PickView {
 export interface SceneSnapshot {
   layers: readonly SceneLayer[]
   items: readonly SceneItem[]
+  visible: VisibleSceneView
   spatial: SpatialView
   pick: PickView
 }
@@ -479,14 +506,47 @@ export interface UiSnapshot {
 export interface SelectionView {
   target: SelectionState
   kind: 'none' | 'nodes' | 'edges' | 'mixed'
+  summary: SelectionSummaryView
+  affordance: SelectionAffordanceView
+}
+
+export interface SelectionSummaryView {
+  box?: Rect
+  count: number
+  nodeCount: number
+  edgeCount: number
+  groupIds: readonly GroupId[]
+}
+
+export interface SelectionAffordanceView {
+  owner: SelectionAffordanceOwner
+  ownerNodeId?: NodeId
+  displayBox?: Rect
+  moveHit: SelectionAffordanceMoveHit
+  canMove: boolean
+  canResize: boolean
+  canRotate: boolean
+  handles: readonly SelectionTransformHandlePlan[]
 }
 
 export interface ChromeView {
   overlays: readonly ChromeOverlay[]
+  hover: HoverState
+  preview: ChromePreviewView
+  edit: EditSession | null
+}
+
+export interface ChromePreviewView {
+  marquee?: {
+    worldRect: Rect
+  }
+  guides: readonly Guide[]
+  draw: DrawPreview | null
+  mindmap: MindmapPreview | null
 }
 
 export interface ChromeOverlay {
-  kind: 'hover' | 'selection' | 'guide' | 'marquee' | 'edit' | 'mindmap-drop' | 'custom'
+  kind: 'hover' | 'selection' | 'guide' | 'marquee' | 'edit' | 'mindmap-drop' | 'draw' | 'custom'
   id?: string
 }
 

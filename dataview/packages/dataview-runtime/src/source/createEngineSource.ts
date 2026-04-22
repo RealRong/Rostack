@@ -199,16 +199,14 @@ const readItemValue = (
   snapshot: ViewState,
   itemId: ItemId
 ): ItemValue | undefined => {
-  const recordId = snapshot.items.read.record(itemId)
-  const sectionKey = snapshot.items.read.section(itemId)
   const placement = snapshot.items.read.placement(itemId)
-  if (!recordId || !sectionKey || !placement) {
+  if (!placement) {
     return undefined
   }
 
   return {
-    recordId,
-    sectionKey,
+    recordId: placement.recordId,
+    sectionKey: placement.sectionKey,
     placement
   }
 }
@@ -402,12 +400,20 @@ const applyEntityDelta = <Key, Value>(input: {
     input.runtime.ids.set(input.readIds())
   }
 
-  const set = input.delta.update?.flatMap(key => {
-    const value = input.readValue(key)
-    return value === undefined
-      ? []
-      : [[key, value] as const]
-  })
+  let set: Array<readonly [Key, Value]> | undefined
+  const update = input.delta.update
+  if (update?.length) {
+    set = []
+    for (let index = 0; index < update.length; index += 1) {
+      const key = update[index]!
+      const value = input.readValue(key)
+      if (value === undefined) {
+        continue
+      }
+
+      set.push([key, value] as const)
+    }
+  }
 
   if (!set?.length && !input.delta.remove?.length) {
     return
@@ -440,12 +446,20 @@ const applyItemDelta = (input: {
     input.runtime.ids.set(input.snapshot.items.ids)
   }
 
-  const set = input.delta.update?.flatMap(itemId => {
-    const value = readItemValue(input.snapshot, itemId)
-    return value
-      ? [[itemId, value] as const]
-      : []
-  })
+  let set: Array<readonly [ItemId, ItemValue]> | undefined
+  const update = input.delta.update
+  if (update?.length) {
+    set = []
+    for (let index = 0; index < update.length; index += 1) {
+      const itemId = update[index]!
+      const value = readItemValue(input.snapshot, itemId)
+      if (!value) {
+        continue
+      }
+
+      set.push([itemId, value] as const)
+    }
+  }
 
   if (!set?.length && !input.delta.remove?.length) {
     return

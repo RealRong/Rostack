@@ -21,7 +21,7 @@ export const createEdgeHoverService = (
 ): EdgeHoverService => {
   let hoverPoint: Point | null = null
 
-  const hoverTask = scheduler.createRafTask(() => {
+  const hoverTask = scheduler.createFrameTask(() => {
     if (!hoverPoint || ctx.query.tool.get().type !== 'edge') {
       hover.clearHover()
       return

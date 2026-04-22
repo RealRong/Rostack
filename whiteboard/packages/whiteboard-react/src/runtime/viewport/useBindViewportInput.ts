@@ -102,7 +102,7 @@ export const useBindViewportInput = ({
       refreshContainerRect()
       editor.input.wheel(input)
     }
-    const wheelTask = scheduler.createRafTask(flushWheel)
+    const wheelTask = scheduler.createFrameTask(flushWheel)
 
     const scheduleWheel = (
       input: WheelInput,

@@ -1,4 +1,4 @@
-import { equal, store } from '@shared/core'
+import { equal, scheduler, store } from '@shared/core'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeId, Rect, Size } from '@whiteboard/core/types'
 import type {
@@ -11,11 +11,6 @@ import type {
   MindmapEnterPreview,
   MindmapPreviewState
 } from '@whiteboard/editor/session/preview/types'
-import {
-  debugMindmapEdit,
-  debugRect,
-  debugSize
-} from '@whiteboard/editor/debug/mindmapEdit'
 
 export type MindmapLayoutRead = {
   layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
@@ -66,27 +61,6 @@ const readEnterProgress = (
   }
 
   return Math.max(0, Math.min(1, (now - startedAt) / durationMs))
-}
-
-type FrameHandle = number | ReturnType<typeof globalThis.setTimeout>
-
-const scheduleFrame = (
-  callback: () => void
-): FrameHandle => (
-  typeof requestAnimationFrame === 'function'
-    ? requestAnimationFrame(callback)
-    : globalThis.setTimeout(callback, 16)
-)
-
-const cancelFrame = (
-  handle: FrameHandle
-) => {
-  if (typeof requestAnimationFrame === 'function') {
-    cancelAnimationFrame(handle as number)
-    return
-  }
-
-  globalThis.clearTimeout(handle)
 }
 
 const readCommittedMindmapNodeSize = (
@@ -233,48 +207,6 @@ const readProjectedMindmapItem = ({
       computed: nextComputed,
       position: rootPosition
     })
-
-    const relatedNodeIds = readDebugRelatedNodeIds(structure, editedNodeId)
-    debugMindmapEdit('live-layout-computed', {
-      treeId: structure.id,
-      rootId: structure.rootId,
-      editedNodeId,
-      liveSize: debugSize(
-        editedNodeId
-          ? liveLayout.nodeSizes.get(editedNodeId)
-          : undefined
-      ),
-      baseEditedRect: debugRect(
-        editedNodeId
-          ? base.computed.node[editedNodeId]
-          : undefined
-      ),
-      computedEditedRect: debugRect(
-        editedNodeId
-          ? nextComputed.node[editedNodeId]
-          : undefined
-      ),
-      anchoredEditedRect: debugRect(
-        editedNodeId
-          ? computed.node[editedNodeId]
-          : undefined
-      ),
-      relatedNodes: relatedNodeIds.map((nodeId) => ({
-        nodeId,
-        base: debugRect(base.computed.node[nodeId]),
-        computed: debugRect(nextComputed.node[nodeId]),
-        anchored: debugRect(computed.node[nodeId])
-      })),
-      rootPosition: {
-        x: rootPosition.x,
-        y: rootPosition.y
-      },
-      bbox: {
-        base: debugRect(base.computed.bbox),
-        computed: debugRect(nextComputed.bbox),
-        anchored: debugRect(computed.bbox)
-      }
-    })
   }
 
   if (rootMove) {
@@ -356,29 +288,20 @@ export const createMindmapLayoutRead = ({
   preview: store.ReadStore<MindmapPreviewState | undefined>
 }): MindmapLayoutRead => {
   const clock = store.createValueStore(0)
-  let frame: FrameHandle | null = null
+  const frameTask = scheduler.createFrameTask(() => {
+    tickClock()
+  })
 
   const stopClock = () => {
-    if (frame === null) {
-      return
-    }
-
-    cancelFrame(frame)
-    frame = null
+    frameTask.cancel()
   }
 
   const tickClock = () => {
-    clock.set(
-      typeof performance !== 'undefined' && typeof performance.now === 'function'
-        ? performance.now()
-        : Date.now()
-    )
+    clock.set(scheduler.readMonotonicNow())
     if (store.read(preview)?.enter?.length) {
-      frame = scheduleFrame(tickClock)
+      frameTask.schedule()
       return
     }
-
-    frame = null
   }
 
   preview.subscribe(() => {
@@ -387,9 +310,7 @@ export const createMindmapLayoutRead = ({
       return
     }
 
-    if (frame === null) {
-      tickClock()
-    }
+    tickClock()
   })
 
   const rootMove = store.createProjectedKeyedStore({

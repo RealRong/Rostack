@@ -29,11 +29,6 @@ import type {
 } from '@whiteboard/editor/session/preview/types'
 import type { NodeEditView } from '@whiteboard/editor/query/edit/read'
 import type { DraftMeasure } from '@whiteboard/editor/layout/runtime'
-import {
-  debugMindmapEdit,
-  debugRect,
-  debugSize
-} from '@whiteboard/editor/debug/mindmapEdit'
 
 export type NodeStyleFieldKind = 'string' | 'number' | 'numberArray'
 
@@ -385,18 +380,6 @@ const projectNode = ({
     previewItem,
     readNodeTextDraft(committed, edit, draft)
   )
-
-  if (mindmapOwned && edit?.field === 'text') {
-    debugMindmapEdit('node-read-project', {
-      nodeId: committed.node.id,
-      ownerGeometryRect: debugRect(ownerGeometry?.rect),
-      committedRect: debugRect(committed.rect),
-      draftKind: draft?.kind,
-      draftSize: debugSize(draft?.kind === 'size' ? draft.size : undefined),
-      geometryRect: debugRect(geometry.rect),
-      contentRect: debugRect(contentItem.rect)
-    })
-  }
 
   const node = toNodeModel(contentItem.node)
   const projectedGeometry = toProjectedNodeGeometry({

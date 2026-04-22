@@ -73,21 +73,14 @@ export const createAutoPan = ({
   let lastFrameTime = 0
   let active: AutoPanSessionState | null = null
 
-  const now = () => (
-    typeof performance !== 'undefined'
-    && typeof performance.now === 'function'
-  )
-    ? performance.now()
-    : Date.now()
-
   const clear = () => {
     frameTask.cancel()
     lastFrameTime = 0
     active = null
   }
 
-  const frameTask = scheduler.createRafTask(() => {
-    const timestamp = now()
+  const frameTask = scheduler.createFrameTask(() => {
+    const timestamp = scheduler.readMonotonicNow()
     const session = active
     if (!session || !session.pointer) {
       lastFrameTime = 0

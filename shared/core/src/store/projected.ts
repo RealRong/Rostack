@@ -13,8 +13,8 @@ import {
   notifyListeners
 } from './listeners'
 import {
-  createRafTask
-} from '../raf'
+  createFrameTask
+} from '../frame'
 import {
   collectChangedKeys
 } from './keyed'
@@ -45,8 +45,8 @@ const createScheduleTask = (
   flush: () => void,
   schedule: StoreSchedule
 ) => {
-  if (schedule === 'raf') {
-    return createRafTask(flush, {
+  if (schedule === 'frame') {
+    return createFrameTask(flush, {
       fallback: 'microtask'
     })
   }

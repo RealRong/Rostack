@@ -50,9 +50,9 @@ import {
   createStagedKeyedStore
 } from './staged'
 import {
-  createRafValueStore,
-  createRafKeyedStore
-} from './raf'
+  createFrameValueStore,
+  createFrameKeyedStore
+} from './frame'
 
 export {
   read,
@@ -71,6 +71,6 @@ export {
   createProjectedKeyedStore,
   createStagedValueStore,
   createStagedKeyedStore,
-  createRafValueStore,
-  createRafKeyedStore
+  createFrameValueStore,
+  createFrameKeyedStore
 }

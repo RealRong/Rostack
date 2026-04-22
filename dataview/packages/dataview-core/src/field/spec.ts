@@ -101,6 +101,7 @@ const createResolvedFieldSpec = (
 })
 
 const textSpec = getKindSpec('text')
+const RESOLVED_FIELD_SPECS = new Map<Exclude<Field['kind'], 'title'>, ResolvedFieldSpec>()
 
 const titleFieldSpec: ResolvedFieldSpec = {
   value: textSpec.value,
@@ -121,12 +122,25 @@ const titleFieldSpec: ResolvedFieldSpec = {
   }
 }
 
+const readResolvedFieldSpec = (
+  kind: Exclude<Field['kind'], 'title'>
+): ResolvedFieldSpec => {
+  const existing = RESOLVED_FIELD_SPECS.get(kind)
+  if (existing) {
+    return existing
+  }
+
+  const created = createResolvedFieldSpec(getKindSpec(kind))
+  RESOLVED_FIELD_SPECS.set(kind, created)
+  return created
+}
+
 const getFieldSpec = (
   kind: Field['kind'] | 'title'
 ): ResolvedFieldSpec => (
   kind === 'title'
     ? titleFieldSpec
-    : createResolvedFieldSpec(getKindSpec(kind))
+    : readResolvedFieldSpec(kind)
 )
 
 const readFieldSpec = (
@@ -134,7 +148,7 @@ const readFieldSpec = (
 ): ResolvedFieldSpec => (
   !field || field.kind === 'title'
     ? titleFieldSpec
-    : createResolvedFieldSpec(getKindSpec(field.kind))
+    : readResolvedFieldSpec(field.kind)
 )
 
 const readGroupMeta = (
@@ -172,6 +186,46 @@ const readGroupMeta = (
     ...(bucketInterval !== undefined ? { bucketInterval } : {}),
     showEmpty: spec.group.showEmpty
   }
+}
+
+const createBucketKeyResolver = (
+  field: Field | undefined,
+  group?: Partial<Pick<ViewGroup, 'mode' | 'bucketInterval'>>
+): ((value: unknown) => readonly string[] | undefined) | undefined => {
+  const spec = readFieldSpec(field)
+  const defaultResolver = spec.index.bucketKeys
+  if (!field || !defaultResolver) {
+    return defaultResolver
+  }
+
+  const meta = readGroupMeta(field, group)
+  if (
+    meta.mode === spec.group.defaultMode
+    && meta.bucketInterval === spec.group.defaultInterval
+  ) {
+    return defaultResolver
+  }
+
+  if (field.kind === 'status' && meta.mode === 'category') {
+    const keysByOptionId = new Map(
+      field.options.map(option => [
+        option.id,
+        option.category
+      ] as const)
+    )
+
+    return value => {
+      const category = typeof value === 'string'
+        ? keysByOptionId.get(value)
+        : undefined
+
+      return category === undefined
+        ? defaultResolver(value)
+        : defaultResolver(category)
+    }
+  }
+
+  return undefined
 }
 
 const readDisplayValue = (
@@ -286,6 +340,7 @@ export const fieldSpec = {
   index: {
     searchDefaultEnabled: (field?: Pick<Field, 'kind'>): boolean => readFieldSpec(field).index.searchDefaultEnabled === true,
     bucket: {
+      create: createBucketKeyResolver,
       keys: (field: Field | undefined, value: unknown): readonly string[] | undefined => readFieldSpec(field).index.bucketKeys?.(value)
     },
     sort: {

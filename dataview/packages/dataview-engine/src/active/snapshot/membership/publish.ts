@@ -26,11 +26,8 @@ const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
 const EMPTY_ITEM_PLACEMENTS = new Map<ItemId, ItemPlacement>()
-const EMPTY_ITEM_RECORDS = new Map<ItemId, RecordId>()
-const EMPTY_ITEM_SECTIONS = new Map<ItemId, SectionKey>()
-const ITEM_RECORDS_CACHE = new WeakMap<ItemList, ReadonlyMap<ItemId, RecordId>>()
-const ITEM_SECTIONS_CACHE = new WeakMap<ItemList, ReadonlyMap<ItemId, SectionKey>>()
 const ITEM_PLACEMENTS_CACHE = new WeakMap<ItemList, ReadonlyMap<ItemId, ItemPlacement>>()
+const MIN_LARGE_PLACEMENT_TOUCH_COUNT = 256
 
 const createCollectionDelta = <Key,>(input: {
   list?: boolean
@@ -57,18 +54,6 @@ const createCollectionDelta = <Key,>(input: {
       }
     : undefined
 )
-
-const readItemRecords = (
-  items: ItemList | undefined
-): ReadonlyMap<ItemId, RecordId> => items
-  ? ITEM_RECORDS_CACHE.get(items) ?? EMPTY_ITEM_RECORDS
-  : EMPTY_ITEM_RECORDS
-
-const readItemSections = (
-  items: ItemList | undefined
-): ReadonlyMap<ItemId, SectionKey> => items
-  ? ITEM_SECTIONS_CACHE.get(items) ?? EMPTY_ITEM_SECTIONS
-  : EMPTY_ITEM_SECTIONS
 
 const readItemPlacements = (
   items: ItemList | undefined
@@ -100,8 +85,6 @@ const sectionCollapsed = (
 
 const createItemList = (input: {
   ids: readonly ItemId[]
-  records: ReadonlyMap<ItemId, RecordId>
-  sections: ReadonlyMap<ItemId, SectionKey>
   placements: ReadonlyMap<ItemId, ItemPlacement>
   previous?: ItemList
 }): ItemList => {
@@ -109,8 +92,6 @@ const createItemList = (input: {
     input.previous
     && input.previous.ids === input.ids
     && input.previous.count === input.ids.length
-    && readItemRecords(input.previous) === input.records
-    && readItemSections(input.previous) === input.sections
     && readItemPlacements(input.previous) === input.placements
   ) {
     return input.previous
@@ -121,18 +102,50 @@ const createItemList = (input: {
     count: input.ids.length,
     order: collection.createOrderedAccess(input.ids),
     read: {
-      record: itemId => input.records.get(itemId),
-      section: itemId => input.sections.get(itemId),
+      record: itemId => input.placements.get(itemId)?.recordId,
+      section: itemId => input.placements.get(itemId)?.sectionKey,
       placement: itemId => input.placements.get(itemId)
     }
   }
 
-  ITEM_RECORDS_CACHE.set(items, input.records)
-  ITEM_SECTIONS_CACHE.set(items, input.sections)
   ITEM_PLACEMENTS_CACHE.set(items, input.placements)
 
   return items
 }
+
+const collectRemovedItemIdsFromRecordSubsequence = (input: {
+  previousSection: Section
+  nextRecordIds: readonly RecordId[]
+}): readonly ItemId[] | undefined => {
+  const previousRecordIds = input.previousSection.recordIds
+  if (input.nextRecordIds.length > previousRecordIds.length) {
+    return undefined
+  }
+
+  const removedItemIds: ItemId[] = []
+  let nextIndex = 0
+  for (let previousIndex = 0; previousIndex < previousRecordIds.length; previousIndex += 1) {
+    if (
+      nextIndex < input.nextRecordIds.length
+      && previousRecordIds[previousIndex] === input.nextRecordIds[nextIndex]
+    ) {
+      nextIndex += 1
+      continue
+    }
+
+    removedItemIds.push(input.previousSection.itemIds[previousIndex]!)
+  }
+
+  return nextIndex === input.nextRecordIds.length
+    ? removedItemIds
+    : undefined
+}
+
+const shouldRebuildPlacementState = (input: {
+  previousCount: number
+  touchedCount: number
+}) => input.touchedCount >= MIN_LARGE_PLACEMENT_TOUCH_COUNT
+  && input.touchedCount * 2 > input.previousCount
 
 const buildPublishedState = (input: {
   view: View
@@ -146,15 +159,7 @@ const buildPublishedState = (input: {
 }) => {
   const previousPublishedSections = input.previous?.sections
   const previousItems = input.previous?.items
-  const previousItemRecords = readItemRecords(previousItems)
-  const previousItemSections = readItemSections(previousItems)
   const previousItemPlacements = readItemPlacements(previousItems)
-  const nextRecordByItemId = previousItems
-    ? createMapPatchBuilder(previousItemRecords)
-    : undefined
-  const nextSectionByItemId = previousItems
-    ? createMapPatchBuilder(previousItemSections)
-    : undefined
   const nextPlacementByItemId = previousItems
     ? createMapPatchBuilder(previousItemPlacements)
     : undefined
@@ -167,56 +172,144 @@ const buildPublishedState = (input: {
   const changedSectionKeys: SectionKey[] = []
   const removedSectionKeys: SectionKey[] = []
   const nextSectionKeySet = new Set<SectionKey>()
-  const createdRecordByItemId = new Map<ItemId, RecordId>()
-  const createdSectionByItemId = new Map<ItemId, SectionKey>()
   const createdPlacementByItemId = new Map<ItemId, ItemPlacement>()
+  let touchedPlacementCount = 0
+  let rebuiltPlacementByItemId: Map<ItemId, ItemPlacement> | undefined
+
+  const readCurrentPlacement = (
+    itemId: ItemId
+  ): ItemPlacement | undefined => previousItems
+    ? nextPlacementByItemId!.get(itemId)
+    : createdPlacementByItemId.get(itemId)
+
+  const addPublishedItemPlacements = (
+    itemIds: readonly ItemId[]
+  ) => {
+    if (!rebuiltPlacementByItemId) {
+      return
+    }
+
+    for (let index = 0; index < itemIds.length; index += 1) {
+      const itemId = itemIds[index]!
+      const placement = readCurrentPlacement(itemId)
+      if (!placement) {
+        throw new Error(`Missing item placement for ${itemId}`)
+      }
+
+      rebuiltPlacementByItemId.set(itemId, placement)
+    }
+  }
+
+  const startPlacementRebuild = () => {
+    if (!previousItems || rebuiltPlacementByItemId) {
+      return
+    }
+
+    rebuiltPlacementByItemId = new Map<ItemId, ItemPlacement>()
+    for (let index = 0; index < sections.length; index += 1) {
+      addPublishedItemPlacements(sections[index]!.itemIds)
+    }
+  }
+
+  const trackPlacementTouches = (
+    count: number
+  ) => {
+    if (
+      rebuiltPlacementByItemId
+      || !previousItems
+      || count <= 0
+    ) {
+      return
+    }
+
+    touchedPlacementCount += count
+    if (!shouldRebuildPlacementState({
+      previousCount: previousItemPlacements.size,
+      touchedCount: touchedPlacementCount
+    })) {
+      return
+    }
+
+    startPlacementRebuild()
+  }
 
   const setItemState = (
     itemId: ItemId,
-    recordId: RecordId,
-    sectionKey: SectionKey,
     placement: ItemPlacement
   ) => {
+    if (rebuiltPlacementByItemId) {
+      rebuiltPlacementByItemId.set(itemId, placement)
+      return
+    }
+
     if (!previousItems) {
-      createdRecordByItemId.set(itemId, recordId)
-      createdSectionByItemId.set(itemId, sectionKey)
       createdPlacementByItemId.set(itemId, placement)
       return
     }
 
-    nextRecordByItemId!.set(itemId, recordId)
-    nextSectionByItemId!.set(itemId, sectionKey)
     nextPlacementByItemId!.set(itemId, placement)
   }
 
   const deleteItemState = (
     itemId: ItemId
   ) => {
-    if (!previousItems) {
+    if (!previousItems || rebuiltPlacementByItemId) {
       return
     }
 
-    nextRecordByItemId!.delete(itemId)
-    nextSectionByItemId!.delete(itemId)
     nextPlacementByItemId!.delete(itemId)
   }
 
-  const removePublishedSectionItems = (
-    section: Section | undefined,
-    nextItemIds?: ReadonlySet<ItemId>
+  const removePublishedItem = (
+    itemId: ItemId
   ) => {
+    deleteItemState(itemId)
+    removedItemIds.push(itemId)
+  }
+
+  const removePublishedSectionItems = (
+    input: {
+      section?: Section
+      nextRecordIds?: readonly RecordId[]
+      nextItemIds?: readonly ItemId[]
+    }
+  ) => {
+    const section = input.section
     if (!section) {
       return
     }
 
+    if (!input.nextItemIds?.length) {
+      for (let index = 0; index < section.itemIds.length; index += 1) {
+        const itemId = section.itemIds[index]!
+        removePublishedItem(itemId)
+      }
+      return
+    }
+
+    const removedBySubsequence = input.nextRecordIds
+      ? collectRemovedItemIdsFromRecordSubsequence({
+          previousSection: section,
+          nextRecordIds: input.nextRecordIds
+        })
+      : undefined
+    if (removedBySubsequence) {
+      for (let index = 0; index < removedBySubsequence.length; index += 1) {
+        const itemId = removedBySubsequence[index]!
+        removePublishedItem(itemId)
+      }
+      return
+    }
+
+    const nextItemIds = new Set(input.nextItemIds)
+
     for (let index = 0; index < section.itemIds.length; index += 1) {
       const itemId = section.itemIds[index]!
-      if (nextItemIds?.has(itemId)) {
+      if (nextItemIds.has(itemId)) {
         continue
       }
 
-      deleteItemState(itemId)
-      removedItemIds.push(itemId)
+      removePublishedItem(itemId)
     }
   }
 
@@ -245,6 +338,7 @@ const buildPublishedState = (input: {
     )
 
     if (canReuseSection && previousSection) {
+      addPublishedItemPlacements(previousSection.itemIds)
       sections.push(previousSection)
       sectionKeys.push(sectionKey)
       sectionByKey.set(sectionKey, previousSection)
@@ -258,6 +352,12 @@ const buildPublishedState = (input: {
     const publishedRecordIds = previousSection && equal.sameOrder(previousSection.recordIds, nextRecordIds)
       ? previousSection.recordIds
       : (nextRecordIds.length ? nextRecordIds : EMPTY_RECORD_IDS)
+    const reusesPublishedItems = previousSection?.recordIds === publishedRecordIds
+    if (!reusesPublishedItems) {
+      trackPlacementTouches(
+        Math.max(previousSection?.itemIds.length ?? 0, publishedRecordIds.length)
+      )
+    }
     const publishedItemIds = previousSection && previousSection.recordIds === publishedRecordIds
       ? previousSection.itemIds
       : (() => {
@@ -269,22 +369,25 @@ const buildPublishedState = (input: {
           for (let index = 0; index < publishedRecordIds.length; index += 1) {
             const recordId = publishedRecordIds[index]!
             const itemId = input.itemIds.allocate.placement(sectionKey, recordId)
-            const placement = input.itemIds.read.placement(itemId)
-            if (!placement) {
-              throw new Error(`Missing item placement for ${itemId}`)
+            const previousPlacement = previousItemPlacements.get(itemId)
+            const placement = previousPlacement ?? {
+              sectionKey,
+              recordId
             }
-
             nextItemIds[index] = itemId
-            if (!previousItemRecords.has(itemId)) {
+            if (!previousPlacement) {
               addedItemIds.push(itemId)
             }
-            setItemState(itemId, recordId, sectionKey, placement)
+            setItemState(itemId, placement)
           }
 
           return previousSection && equal.sameOrder(previousSection.itemIds, nextItemIds)
             ? previousSection.itemIds
             : nextItemIds
         })()
+    if (rebuiltPlacementByItemId && reusesPublishedItems) {
+      addPublishedItemPlacements(publishedItemIds)
+    }
 
     if (!collapsed) {
       visibleItemIds.push(...publishedItemIds)
@@ -292,10 +395,11 @@ const buildPublishedState = (input: {
 
     if (previousSection && previousSection.itemIds !== publishedItemIds) {
       removePublishedSectionItems(
-        previousSection,
-        publishedItemIds.length
-          ? new Set(publishedItemIds)
-          : undefined
+        {
+          section: previousSection,
+          nextRecordIds: publishedRecordIds,
+          nextItemIds: publishedItemIds
+        }
       )
     }
 
@@ -327,8 +431,12 @@ const buildPublishedState = (input: {
       return
     }
 
+    const removedSection = previousPublishedSections.get(sectionKey)
+    trackPlacementTouches(removedSection?.itemIds.length ?? 0)
     removedSectionKeys.push(sectionKey)
-    removePublishedSectionItems(previousPublishedSections.get(sectionKey))
+    removePublishedSectionItems({
+      section: removedSection
+    })
   })
 
   const previousVisibleIds = previousItems?.ids
@@ -337,15 +445,11 @@ const buildPublishedState = (input: {
     : (visibleItemIds.length ? visibleItemIds : EMPTY_ITEM_IDS)
   const items = createItemList({
     ids: publishedVisibleIds,
-    records: previousItems
-      ? nextRecordByItemId!.finish()
-      : (createdRecordByItemId.size ? createdRecordByItemId : EMPTY_ITEM_RECORDS),
-    sections: previousItems
-      ? nextSectionByItemId!.finish()
-      : (createdSectionByItemId.size ? createdSectionByItemId : EMPTY_ITEM_SECTIONS),
-    placements: previousItems
-      ? nextPlacementByItemId!.finish()
-      : (createdPlacementByItemId.size ? createdPlacementByItemId : EMPTY_ITEM_PLACEMENTS),
+    placements: rebuiltPlacementByItemId
+      ? (rebuiltPlacementByItemId.size ? rebuiltPlacementByItemId : EMPTY_ITEM_PLACEMENTS)
+      : previousItems
+        ? nextPlacementByItemId!.finish()
+        : (createdPlacementByItemId.size ? createdPlacementByItemId : EMPTY_ITEM_PLACEMENTS),
     previous: previousItems
   })
   const publishedSectionKeys = previousPublishedSections && equal.sameOrder(previousPublishedSections.ids, sectionKeys)

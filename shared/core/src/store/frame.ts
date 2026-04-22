@@ -1,7 +1,7 @@
 import type { Equality } from '../equality'
 import {
-  createRafTask
-} from '../raf'
+  createFrameTask
+} from '../frame'
 import {
   createStagedKeyedStore,
   createStagedValueStore
@@ -11,16 +11,16 @@ import type {
   StagedValueStore
 } from './types'
 
-type RafFallback = 'microtask' | 'sync'
+type FrameFallback = 'microtask' | 'sync'
 
-export const createRafValueStore = <T,>({
+export const createFrameValueStore = <T,>({
   initial,
   isEqual,
   fallback = 'microtask'
 }: {
   initial: T
   isEqual?: Equality<T>
-  fallback?: RafFallback
+  fallback?: FrameFallback
 }): StagedValueStore<T> => {
   let schedule = () => {}
 
@@ -32,7 +32,7 @@ export const createRafValueStore = <T,>({
     isEqual
   })
 
-  const task = createRafTask(() => {
+  const task = createFrameTask(() => {
     store.flush()
   }, { fallback })
 
@@ -51,7 +51,7 @@ export const createRafValueStore = <T,>({
   }
 }
 
-export const createRafKeyedStore = <Key, Value, Input>({
+export const createFrameKeyedStore = <Key, Value, Input>({
   emptyState,
   emptyValue,
   build,
@@ -62,7 +62,7 @@ export const createRafKeyedStore = <Key, Value, Input>({
   emptyValue: Value
   build: (input: Input) => ReadonlyMap<Key, Value>
   isEqual?: Equality<Value>
-  fallback?: RafFallback
+  fallback?: FrameFallback
 }): StagedKeyedStore<Key, Value, Input> => {
   let schedule = () => {}
 
@@ -76,7 +76,7 @@ export const createRafKeyedStore = <Key, Value, Input>({
     isEqual
   })
 
-  const task = createRafTask(() => {
+  const task = createFrameTask(() => {
     store.flush()
   }, { fallback })
 

@@ -43,25 +43,25 @@ export const createInputPreviewSelectors = ({
     select: toEdgeFeedbackMap,
     emptyValue: EMPTY_EDGE_FEEDBACK_PROJECTION,
     isEqual: isEdgeProjectionEqual,
-    schedule: 'raf'
+    schedule: 'frame'
   })
   const draw = store.createProjectedStore({
     source: state,
     select: (next) => next.draw.preview,
     isEqual: (left, right) => left === right,
-    schedule: 'raf'
+    schedule: 'frame'
   })
   const edgeGuide = store.createProjectedStore({
     source: state,
     select: (next) => next.edge.guide ?? EMPTY_EDGE_GUIDE,
     isEqual: isEdgeGuideEqual,
-    schedule: 'raf'
+    schedule: 'frame'
   })
   const mindmapPreview = store.createProjectedStore({
     source: state,
     select: (next) => next.mindmap.preview,
     isEqual: (left, right) => left === right,
-    schedule: 'raf'
+    schedule: 'frame'
   })
   const snap = store.createProjectedStore({
     source: state,
@@ -69,7 +69,7 @@ export const createInputPreviewSelectors = ({
       ? next.selection.guides
       : EMPTY_GUIDES,
     isEqual: (left: readonly Guide[], right: readonly Guide[]) => left === right,
-    schedule: 'raf'
+    schedule: 'frame'
   })
   const marquee = store.createDerivedStore<MarqueePreview | undefined>({
     get: () => {

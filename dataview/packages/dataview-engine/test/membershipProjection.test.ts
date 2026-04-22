@@ -363,6 +363,204 @@ test('publishSections emits section and item deltas from published membership ch
   assert.equal(nextPublished.delta?.items?.list, true)
 })
 
+test('publishSections preserves surviving item ids for filter-only section changes', () => {
+  const view = createView()
+  const document = createDocument({
+    rec_1: 'todo',
+    rec_2: 'todo',
+    rec_3: 'todo'
+  })
+  const index = createIndexState(document, createDemand(view))
+  const previousMembership = buildMembershipState({
+    view,
+    query: createQueryState(
+      index.rows,
+      index.records.ids,
+      index.records.ids,
+      index.records.ids
+    ),
+    index
+  })
+  const itemIds = createItemIdPool()
+  const previousPublished = publishSections({
+    view,
+    sections: previousMembership,
+    itemIds
+  })
+  const previousTodoItemIds = previousPublished.sections.get('todo')?.itemIds ?? []
+
+  const nextMembership = buildMembershipState({
+    view,
+    query: createQueryState(
+      index.rows,
+      ['rec_1', 'rec_3'],
+      ['rec_1', 'rec_3'],
+      ['rec_1', 'rec_3']
+    ),
+    index,
+    previous: previousMembership
+  })
+  const nextPublished = publishSections({
+    view,
+    sections: nextMembership,
+    previousSections: previousMembership,
+    previous: previousPublished,
+    itemIds
+  })
+
+  assert.deepEqual(nextPublished.sections.get('todo')?.recordIds, ['rec_1', 'rec_3'])
+  assert.deepEqual(nextPublished.sections.get('todo')?.itemIds, [
+    previousTodoItemIds[0],
+    previousTodoItemIds[2]
+  ])
+  assert.equal(
+    previousTodoItemIds[1] !== undefined
+      ? nextPublished.items.read.placement(previousTodoItemIds[1])
+      : undefined,
+    undefined
+  )
+  assert.deepEqual(nextPublished.delta?.items?.remove, [
+    previousTodoItemIds[1]
+  ])
+  assert.equal(nextPublished.delta?.items?.update, undefined)
+})
+
+test('publishSections rebuilds placement state when filter removes most items in a section', () => {
+  const view = createView()
+  const statuses = Object.fromEntries(
+    Array.from({ length: 300 }, (_, index) => [`rec_${index + 1}`, 'todo'])
+  )
+  const document = createDocument(statuses)
+  const index = createIndexState(document, createDemand(view))
+  const previousMembership = buildMembershipState({
+    view,
+    query: createQueryState(
+      index.rows,
+      index.records.ids,
+      index.records.ids,
+      index.records.ids
+    ),
+    index
+  })
+  const itemIds = createItemIdPool()
+  const previousPublished = publishSections({
+    view,
+    sections: previousMembership,
+    itemIds
+  })
+  const previousTodoItemIds = previousPublished.sections.get('todo')?.itemIds ?? []
+
+  const nextRecordIds = ['rec_1', 'rec_300']
+  const nextMembership = buildMembershipState({
+    view,
+    query: createQueryState(
+      index.rows,
+      nextRecordIds,
+      nextRecordIds,
+      nextRecordIds
+    ),
+    index,
+    previous: previousMembership
+  })
+  const nextPublished = publishSections({
+    view,
+    sections: nextMembership,
+    previousSections: previousMembership,
+    previous: previousPublished,
+    itemIds
+  })
+
+  assert.deepEqual(nextPublished.sections.get('todo')?.recordIds, nextRecordIds)
+  assert.deepEqual(nextPublished.sections.get('todo')?.itemIds, [
+    previousTodoItemIds[0],
+    previousTodoItemIds[299]
+  ])
+  assert.equal(
+    previousTodoItemIds[0] !== undefined
+      ? nextPublished.items.read.record(previousTodoItemIds[0])
+      : undefined,
+    'rec_1'
+  )
+  assert.equal(
+    previousTodoItemIds[299] !== undefined
+      ? nextPublished.items.read.record(previousTodoItemIds[299])
+      : undefined,
+    'rec_300'
+  )
+  assert.equal(
+    previousTodoItemIds[1] !== undefined
+      ? nextPublished.items.read.placement(previousTodoItemIds[1])
+      : undefined,
+    undefined
+  )
+  assert.equal(nextPublished.delta?.items?.remove?.length, 298)
+})
+
+test('publishSections does not remove retained items when section order changes', () => {
+  const view = createView()
+  const document = createDocument({
+    rec_1: 'todo',
+    rec_2: 'todo'
+  })
+  const index = createIndexState(document, createDemand(view))
+  const previousMembership = buildMembershipState({
+    view,
+    query: createQueryState(
+      index.rows,
+      index.records.ids,
+      index.records.ids,
+      index.records.ids
+    ),
+    index
+  })
+  const itemIds = createItemIdPool()
+  const previousPublished = publishSections({
+    view,
+    sections: previousMembership,
+    itemIds
+  })
+  const previousTodoItemIds = previousPublished.sections.get('todo')?.itemIds ?? []
+
+  const nextMembership = buildMembershipState({
+    view,
+    query: createQueryState(
+      index.rows,
+      ['rec_2', 'rec_1'],
+      ['rec_2', 'rec_1'],
+      ['rec_2', 'rec_1']
+    ),
+    index,
+    previous: previousMembership
+  })
+  const nextPublished = publishSections({
+    view,
+    sections: nextMembership,
+    previousSections: previousMembership,
+    previous: previousPublished,
+    itemIds
+  })
+
+  assert.deepEqual(nextPublished.sections.get('todo')?.itemIds, [
+    previousTodoItemIds[1],
+    previousTodoItemIds[0]
+  ])
+  assert.equal(
+    previousTodoItemIds[0] !== undefined
+      ? nextPublished.items.read.record(previousTodoItemIds[0])
+      : undefined,
+    'rec_1'
+  )
+  assert.equal(
+    previousTodoItemIds[1] !== undefined
+      ? nextPublished.items.read.record(previousTodoItemIds[1])
+      : undefined,
+    'rec_2'
+  )
+  assert.equal(nextPublished.delta?.items?.update, undefined)
+  assert.equal(nextPublished.delta?.items?.remove, undefined)
+  assert.equal(nextPublished.delta?.items?.list, true)
+})
+
 test('buildMembershipState reuses grouped partition when visible membership is unchanged', () => {
   const view = createView()
   const document = createDocument({

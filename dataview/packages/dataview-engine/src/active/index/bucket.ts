@@ -105,8 +105,11 @@ const addBucketRecord = (
 
 const resolveFastBucketKeys = (
   field: Field | undefined,
-  value: unknown
-): readonly BucketKey[] | undefined => fieldSpec.index.bucket.keys(field, value)
+  spec: BucketSpec
+): ((value: unknown) => readonly BucketKey[] | undefined) | undefined => fieldSpec.index.bucket.create(
+  field,
+  toGroupOptions({ spec })
+)
 
 const toGroupOptions = (input: {
   spec: BucketSpec
@@ -118,15 +121,18 @@ const toGroupOptions = (input: {
 })
 
 export const resolveBucketKeys = (
-  field: Field | undefined,
-  value: unknown,
-  spec: BucketSpec
+  input: {
+    field: Field | undefined
+    value: unknown
+    spec: BucketSpec
+    fast?: (value: unknown) => readonly BucketKey[] | undefined
+  }
 ): readonly BucketKey[] => (
-  resolveFastBucketKeys(field, value)
+  input.fast?.(input.value)
     ?? fieldApi.group.entries(
-      field,
-      value,
-      toGroupOptions({ spec })
+      input.field,
+      input.value,
+      toGroupOptions({ spec: input.spec })
     ).map(bucket => String(bucket.key))
 )
 
@@ -137,17 +143,25 @@ const buildBucketFieldIndex = (input: {
 }): BucketFieldIndex => {
   const field = input.context.reader.fields.get(input.spec.fieldId)
   const values = input.records.values.get(input.spec.fieldId)?.byRecord
+  const fastBucketKeys = resolveFastBucketKeys(field, input.spec)
   const keysByRecord = new Map<RecordId, readonly BucketKey[]>()
   const recordsByKey = new Map<BucketKey, RecordId[]>()
 
   if (field) {
-    input.records.ids.forEach(recordId => {
-      const keys = resolveBucketKeys(field, values?.get(recordId), input.spec)
-      keysByRecord.set(recordId, keys)
-      keys.forEach(key => {
-        addBucketRecord(recordsByKey, key, recordId)
+    for (let index = 0; index < input.records.ids.length; index += 1) {
+      const recordId = input.records.ids[index]!
+      const keys = resolveBucketKeys({
+        field,
+        value: values?.get(recordId),
+        spec: input.spec,
+        fast: fastBucketKeys
       })
-    })
+      keysByRecord.set(recordId, keys)
+      for (let keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
+        const key = keys[keyIndex]!
+        addBucketRecord(recordsByKey, key, recordId)
+      }
+    }
   }
 
   return {
@@ -175,6 +189,7 @@ const syncBucketFieldIndex = (input: {
   }
 
   const values = input.records.values.get(input.previous.spec.fieldId)?.byRecord
+  const fastBucketKeys = resolveFastBucketKeys(field, input.previous.spec)
   const keysByRecord = createMapPatchBuilder(input.previous.keysByRecord)
   const touchedKeys = new Set<BucketKey>()
   const removedByKey = new Map<BucketKey, RecordId[]>()
@@ -184,7 +199,12 @@ const syncBucketFieldIndex = (input: {
   input.touchedRecords.forEach(recordId => {
     const before = input.previous.keysByRecord.get(recordId) ?? EMPTY_BUCKET_KEYS
     const after = input.records.order.has(recordId)
-      ? resolveBucketKeys(field, values?.get(recordId), input.previous.spec)
+      ? resolveBucketKeys({
+          field,
+          value: values?.get(recordId),
+          spec: input.previous.spec,
+          fast: fastBucketKeys
+        })
       : EMPTY_BUCKET_KEYS
 
     if (sameBucketKeys(before, after)) {

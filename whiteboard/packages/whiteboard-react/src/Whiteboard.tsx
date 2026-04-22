@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useEffectEvent, useImperativeHandle, useMemo, useRef } from 'react'
+import { scheduler } from '@shared/core'
 import { OverlayProvider } from '@shared/ui'
 import type { Document } from '@whiteboard/core/types'
 import { collab as collabApi, type CollabSession } from '@whiteboard/collab'
@@ -27,12 +28,6 @@ import {
 } from '@whiteboard/react/runtime/whiteboard/services'
 
 const POINTER_THROTTLE_MS = 16
-
-const readNow = () => (
-  typeof performance !== 'undefined'
-    ? performance.now()
-    : Date.now()
-)
 
 type DisposeHandle = ReturnType<typeof globalThis.setTimeout>
 type WhiteboardServices = ReturnType<typeof createWhiteboardServices>
@@ -248,7 +243,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
         return
       }
 
-      const now = readNow()
+      const now = scheduler.readMonotonicNow()
       if (now - lastPointerPublishAtRef.current < POINTER_THROTTLE_MS) {
         return
       }

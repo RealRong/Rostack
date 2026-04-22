@@ -12,7 +12,7 @@ export type ElementSizeEquality = (
   right: ElementSize
 ) => boolean
 
-export type ElementMeasureSchedule = 'sync' | 'microtask' | 'raf'
+export type ElementMeasureSchedule = 'sync' | 'microtask' | 'frame'
 
 export type ReadElementSize<ElementType extends Element> = (
   element: ElementType
@@ -63,8 +63,8 @@ const createScheduleTask = (
   schedule: ElementMeasureSchedule,
   debugName?: string
 ) => {
-  if (schedule === 'raf') {
-    return scheduler.createRafTask(flush, {
+  if (schedule === 'frame') {
+    return scheduler.createFrameTask(flush, {
       fallback: 'microtask'
     })
   }

@@ -7,6 +7,7 @@ import {
   focusEditablePoint,
   readEditableText
 } from '@shared/dom'
+import { scheduler } from '@shared/core'
 import type { EditCaret } from '@whiteboard/editor'
 
 export const syncEditableDraft = (
@@ -22,16 +23,19 @@ export const focusEditableDraft = (
   element: HTMLDivElement,
   caret?: EditCaret
 ) => {
-  const frame = requestAnimationFrame(() => {
+  const task = scheduler.createFrameTask(() => {
     if (caret?.kind === 'point' && focusEditablePoint(element, caret.client)) {
       return
     }
 
     focusEditableEnd(element)
+  }, {
+    fallback: 'microtask'
   })
+  task.schedule()
 
   return () => {
-    cancelAnimationFrame(frame)
+    task.cancel()
   }
 }
 

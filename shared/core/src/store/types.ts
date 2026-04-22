@@ -64,7 +64,7 @@ export interface KeyedStore<Key, T> extends KeyedReadStore<Key, T> {
   clear(): void
 }
 
-export type StoreSchedule = 'sync' | 'microtask' | 'raf'
+export type StoreSchedule = 'sync' | 'microtask' | 'frame'
 
 export interface StagedValueStore<T> extends ReadStore<T> {
   write(next: T): void

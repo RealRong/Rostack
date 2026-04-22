@@ -1,4 +1,4 @@
-import { json } from '@shared/core'
+import { json, scheduler } from '@shared/core'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { edge as edgeApi } from '@whiteboard/core/edge'
@@ -58,12 +58,6 @@ const stringifyToolPayload = (
       return tool.type
   }
 }
-
-const readNow = () => (
-  typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now()
-)
 
 const resolveNodeCommitValue = (input: {
   text: string
@@ -425,7 +419,7 @@ const buildMindmapEnterPreview = ({
     toRect: {
       ...toRect
     },
-    startedAt: readNow(),
+    startedAt: scheduler.readMonotonicNow(),
     durationMs: DEFAULT_MINDMAP_ENTER_DURATION_MS
   }
 }

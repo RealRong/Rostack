@@ -1,54 +1,113 @@
-export type RafTask = {
+export type FrameTask = {
   cancel: () => void
   isScheduled: () => boolean
   schedule: () => void
 }
 
-export const createRafTask = (
+export type FrameFallback = 'timeout' | 'microtask' | 'sync'
+
+type FrameHandle =
+  | {
+      kind: 'frame'
+      value: number
+    }
+  | {
+      kind: 'timeout'
+      value: ReturnType<typeof globalThis.setTimeout>
+    }
+  | {
+      kind: 'microtask'
+      value: number
+    }
+
+export const readMonotonicNow = () => (
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now()
+)
+
+export const createFrameTask = (
   flush: () => void,
-  { fallback = 'sync' }: { fallback?: 'microtask' | 'sync' } = {}
-): RafTask => {
-  let frameId: number | null = null
+  {
+    fallback = 'timeout',
+    timeoutMs = 16
+  }: {
+    fallback?: FrameFallback
+    timeoutMs?: number
+  } = {}
+): FrameTask => {
+  let handle: FrameHandle | null = null
   let token = 0
 
   const run = (currentToken: number) => {
-    if (frameId === null || currentToken !== token) return
-    frameId = null
+    if (handle === null || currentToken !== token) {
+      return
+    }
+
+    handle = null
     flush()
   }
 
   return {
     cancel: () => {
-      if (frameId === null) return
-      const currentFrameId = frameId
-      frameId = null
+      if (handle === null) {
+        return
+      }
+
+      const currentHandle = handle
+      handle = null
       token += 1
+
       if (
-        currentFrameId >= 0
-        && typeof window !== 'undefined'
-        && typeof window.cancelAnimationFrame === 'function'
+        currentHandle.kind === 'frame'
+        && typeof globalThis.cancelAnimationFrame === 'function'
       ) {
-        window.cancelAnimationFrame(currentFrameId)
+        globalThis.cancelAnimationFrame(currentHandle.value)
+        return
+      }
+
+      if (currentHandle.kind === 'timeout') {
+        globalThis.clearTimeout(currentHandle.value)
       }
     },
-    isScheduled: () => frameId !== null,
+    isScheduled: () => handle !== null,
     schedule: () => {
-      if (frameId !== null) return
+      if (handle !== null) {
+        return
+      }
 
       const currentToken = token + 1
       token = currentToken
 
-      if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
-        if (fallback === 'microtask') {
-          frameId = -1
-          queueMicrotask(() => run(currentToken))
-          return
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        handle = {
+          kind: 'frame',
+          value: globalThis.requestAnimationFrame(() => run(currentToken))
         }
-        flush()
         return
       }
 
-      frameId = window.requestAnimationFrame(() => run(currentToken))
+      if (fallback === 'timeout') {
+        handle = {
+          kind: 'timeout',
+          value: globalThis.setTimeout(
+            () => run(currentToken),
+            Math.max(0, timeoutMs)
+          )
+        }
+        return
+      }
+
+      if (fallback === 'microtask') {
+        handle = {
+          kind: 'microtask',
+          value: currentToken
+        }
+        queueMicrotask(() => run(currentToken))
+        return
+      }
+
+      flush()
     }
   }
 }

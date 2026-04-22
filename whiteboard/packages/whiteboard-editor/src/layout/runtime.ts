@@ -30,11 +30,6 @@ import {
   type MindmapLiveLayoutInput
 } from '@whiteboard/editor/layout/mindmap'
 import {
-  debugMindmapEdit,
-  debugRect,
-  debugSize
-} from '@whiteboard/editor/debug/mindmapEdit'
-import {
   createTextMetricsResource
 } from '@whiteboard/editor/layout/textMetrics'
 import type { CommittedRead } from '@whiteboard/editor/committed/read'
@@ -509,15 +504,6 @@ export const createEditorLayout = ({
       const size = measured?.kind === 'size'
         ? measured.size
         : undefined
-
-      debugMindmapEdit('live-layout-input', {
-        treeId,
-        nodeId: current.nodeId,
-        textLength: current.text.length,
-        committedRect: debugRect(committed?.rect),
-        measuredKind: measured?.kind,
-        measuredSize: debugSize(size)
-      })
 
       return size
         ? {

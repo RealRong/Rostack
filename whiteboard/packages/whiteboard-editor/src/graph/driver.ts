@@ -1,4 +1,4 @@
-import { store } from '@shared/core'
+import { scheduler, store } from '@shared/core'
 import {
   createEditorGraphRead,
   createEditorGraphRuntime,
@@ -50,6 +50,9 @@ export const createEditorGraphDriver = ({
   const snapshotStore = store.createValueStore(runtime.snapshot())
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()
+  const frameTask = scheduler.createFrameTask(() => {
+    update(['clock'])
+  })
 
   const notify = (
     result: Result
@@ -57,6 +60,29 @@ export const createEditorGraphDriver = ({
     listeners.forEach((listener) => {
       listener(result)
     })
+  }
+
+  const hasActiveMindmapEnterPreview = () => {
+    const enter = store.read(session.preview.state).mindmap.preview?.enter
+    if (!enter?.length) {
+      return false
+    }
+
+    const now = scheduler.readMonotonicNow()
+    return enter.some((entry) => entry.startedAt + entry.durationMs > now)
+  }
+
+  const stopClock = () => {
+    frameTask.cancel()
+  }
+
+  const syncClock = () => {
+    if (!hasActiveMindmapEnterPreview()) {
+      stopClock()
+      return
+    }
+
+    frameTask.schedule()
   }
 
   const update = (
@@ -71,6 +97,7 @@ export const createEditorGraphDriver = ({
     currentResult = result
     snapshotStore.set(result.snapshot)
     notify(result)
+    syncClock()
     return result
   }
 
@@ -119,6 +146,7 @@ export const createEditorGraphDriver = ({
       }
     },
     dispose: () => {
+      stopClock()
       unsubscribes.forEach((unsubscribe) => {
         unsubscribe()
       })

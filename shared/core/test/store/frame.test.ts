@@ -8,41 +8,41 @@ const flushMicrotasks = async () => {
   await Promise.resolve()
 }
 
-describe('raf stores', () => {
+describe('frame stores', () => {
   test('microtask fallback flushes staged writes asynchronously', async () => {
-    const rafStore = coreStore.createRafValueStore({
+    const frameStore = coreStore.createFrameValueStore({
       initial: 0,
       fallback: 'microtask'
     })
 
     const values: number[] = []
-    const unsubscribe = rafStore.subscribe(() => {
-      values.push(rafStore.get())
+    const unsubscribe = frameStore.subscribe(() => {
+      values.push(frameStore.get())
     })
 
-    rafStore.write(1)
+    frameStore.write(1)
 
-    expect(rafStore.get()).toBe(0)
+    expect(frameStore.get()).toBe(0)
 
     await flushMicrotasks()
 
-    expect(rafStore.get()).toBe(1)
+    expect(frameStore.get()).toBe(1)
     expect(values).toEqual([1])
 
     unsubscribe()
   })
 
-  test('clear cancels pending raf work and restores the initial value immediately', async () => {
-    const rafStore = coreStore.createRafValueStore({
+  test('clear cancels pending frame work and restores the initial value immediately', async () => {
+    const frameStore = coreStore.createFrameValueStore({
       initial: 0,
       fallback: 'microtask'
     })
 
-    rafStore.write(2)
-    rafStore.clear()
+    frameStore.write(2)
+    frameStore.clear()
 
     await flushMicrotasks()
 
-    expect(rafStore.get()).toBe(0)
+    expect(frameStore.get()).toBe(0)
   })
 })

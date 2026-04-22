@@ -253,6 +253,47 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
   assert.equal(statusCalc?.global.option?.counts.get('done'), 2)
 })
 
+test('engine.active.index buckets status category mode with fast category keys', () => {
+  const document = createDocument()
+  const index = createIndexHarness(document, {
+    buckets: [{
+      fieldId: FIELD_STATUS,
+      mode: 'category'
+    }]
+  })
+
+  const initialBucket = readBucketIndex(index.state().bucket, {
+    fieldId: FIELD_STATUS,
+    mode: 'category'
+  })
+  assert.deepEqual(initialBucket?.recordsByKey.get('todo'), ['rec_1'])
+  assert.deepEqual(initialBucket?.recordsByKey.get('in_progress'), ['rec_2'])
+  assert.deepEqual(initialBucket?.recordsByKey.get('complete'), ['rec_3'])
+
+  const updatedDocument = createDocument()
+  updatedDocument.records.byId.rec_2 = {
+    ...updatedDocument.records.byId.rec_2,
+    values: {
+      ...updatedDocument.records.byId.rec_2.values,
+      [FIELD_STATUS]: 'done'
+    }
+  }
+
+  const nextBucket = readBucketIndex(index.sync(updatedDocument, createImpact({
+    records: {
+      touched: new Set(['rec_2']),
+      valueChangedFields: new Set([FIELD_STATUS])
+    }
+  })).state.bucket, {
+    fieldId: FIELD_STATUS,
+    mode: 'category'
+  })
+
+  assert.deepEqual(nextBucket?.recordsByKey.get('todo'), ['rec_1'])
+  assert.equal(nextBucket?.recordsByKey.get('in_progress'), undefined)
+  assert.deepEqual(nextBucket?.recordsByKey.get('complete'), ['rec_2', 'rec_3'])
+})
+
 test('engine.active.view plan demand provisions idle search substrate and shared record values', () => {
   const view = createTableView()
   const document = createDocument({

@@ -41,9 +41,6 @@ export interface ItemIdPool {
   allocate: {
     placement: (sectionKey: SectionKey, recordId: RecordId) => ItemId
   }
-  read: {
-    placement: (itemId: ItemId) => ItemPlacement | undefined
-  }
   gc: {
     clear: () => void
   }

@@ -1,5 +1,5 @@
 import { createFlags } from '@shared/projection-runtime'
-import { store } from '@shared/core'
+import { scheduler, store } from '@shared/core'
 import type {
   DrawPreview as GraphDrawPreview,
   DragState,
@@ -305,7 +305,7 @@ export const createEditorGraphInput = ({
   session,
   layout,
   reasons,
-  now = Date.now()
+  now = scheduler.readMonotonicNow()
 }: {
   snapshot: DocumentSnapshot
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>

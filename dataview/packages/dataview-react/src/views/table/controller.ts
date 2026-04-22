@@ -16,6 +16,9 @@ import type {
   ItemSelectionController,
   ItemSelectionSnapshot
 } from '@dataview/runtime/selection'
+import type {
+  ActiveSource
+} from '@dataview/runtime/source'
 import { store } from '@shared/core'
 import {
   createItemListSelectionDomain,
@@ -191,6 +194,7 @@ const selectionRow = (input: {
 
 export const createTableController = (options: {
   engine: Engine
+  activeSource: ActiveSource
   pageStore: store.ReadStore<PageState>
   currentViewStore: store.ReadStore<CurrentView | undefined>
   model: DataViewTableModel
@@ -248,7 +252,7 @@ export const createTableController = (options: {
     selectionVisible: select.cells.visible
   })
   const virtual = createTableVirtualRuntime({
-    activeSource: options.engine.source.active,
+    activeSource: options.activeSource,
     marqueeActiveStore: options.marqueeActiveStore,
     layout: options.layout
   })

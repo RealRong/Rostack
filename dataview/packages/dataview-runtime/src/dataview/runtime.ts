@@ -28,6 +28,9 @@ import {
   createMarqueeController
 } from '@dataview/runtime/marquee'
 import {
+  createEngineSource
+} from '@dataview/runtime/source'
+import {
   createItemArraySelectionDomain,
   createSelectionController,
   type ItemSelectionController
@@ -42,8 +45,16 @@ import {
 } from '@dataview/runtime/valueEditor'
 
 const bindInlineSessionToView = (input: {
-  activeView: ReturnType<typeof store.createDerivedStore<View | undefined>>
-  items: CreateDataViewRuntimeInput['engine']['source']['active']['items']
+  activeView: store.ReadStore<View | undefined>
+  items: {
+    ids: store.ReadStore<readonly number[]>
+    read: {
+      placement: store.KeyedReadStore<number, {
+        recordId: string
+        sectionKey: string
+      } | undefined>
+    }
+  }
   inlineSession: InlineSessionApi
 }) => {
   const sync = () => {
@@ -96,7 +107,7 @@ const bindInlineSessionToSelection = (input: {
 ])
 
 const bindMarqueeToView = (input: {
-  activeView: ReturnType<typeof store.createDerivedStore<View | undefined>>
+  activeView: store.ReadStore<View | undefined>
   marquee: Pick<ReturnType<typeof createMarqueeController>, 'get' | 'clear'>
 }) => {
   let previousViewId = input.activeView.get()?.id
@@ -117,14 +128,17 @@ const bindMarqueeToView = (input: {
 export const createDataViewRuntime = (
   input: CreateDataViewRuntimeInput
 ): DataViewRuntime => {
+  const sourceRuntime = createEngineSource({
+    core: input.engine.core
+  })
   const page = createPageSessionApi(input.initialPage)
   const inlineSession = createInlineSessionApi()
   const createRecord = createCreateRecordApi({
-    activeView: input.engine.active.config
+    activeView: sourceRuntime.source.active.view.current
   })
   const valueEditor = createValueEditorApi()
-  const activeItemIds = input.engine.source.active.items.ids
-  const activeView = input.engine.source.active.view.current
+  const activeItemIds = sourceRuntime.source.active.items.ids
+  const activeView = sourceRuntime.source.active.view.current
   const activeSelectionDomain = store.createDerivedStore({
     get: () => createItemArraySelectionDomain(store.read(activeItemIds))
   })
@@ -140,19 +154,19 @@ export const createDataViewRuntime = (
     resolveDomain: () => store.read(activeSelectionDomain)
   })
   const fieldsStore = createEntityListStore({
-    ids: input.engine.source.doc.fields.ids,
-    values: input.engine.source.doc.fields
+    ids: sourceRuntime.source.doc.fields.ids,
+    values: sourceRuntime.source.doc.fields
   })
   const pageStateStore = createPageStateStore({
     fields: fieldsStore,
-    activeViewId: input.engine.source.active.view.id,
+    activeViewId: sourceRuntime.source.active.view.id,
     activeView,
     page: page.store,
     valueEditorOpen: valueEditor.openStore
   })
   const source = {
-    doc: input.engine.source.doc,
-    active: input.engine.source.active,
+    doc: sourceRuntime.source.doc,
+    active: sourceRuntime.source.active,
     page: {
       queryVisible: store.createDerivedStore({
         get: () => store.read(pageStateStore).query.visible,
@@ -209,7 +223,7 @@ export const createDataViewRuntime = (
     }),
     bindInlineSessionToView({
       activeView,
-      items: input.engine.source.active.items,
+      items: sourceRuntime.source.active.items,
       inlineSession
     })
   ])
@@ -245,6 +259,7 @@ export const createDataViewRuntime = (
     dispose: () => {
       selectionRuntime.dispose()
       disposeBindings()
+      sourceRuntime.dispose()
     }
   }
 }

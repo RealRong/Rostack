@@ -27,7 +27,7 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   const editor = useDataView().engine
   const router = useViewSettings()
   const field = useDataViewKeyedValue(
-    dataView => dataView.engine.source.doc.fields,
+    dataView => dataView.source.doc.fields,
     props.fieldId
   )
   const [nameDraft, setNameDraft] = useState('')

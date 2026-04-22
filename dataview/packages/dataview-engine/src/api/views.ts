@@ -1,28 +1,31 @@
 import type {
   Action,
+  DataDoc,
   ViewId
 } from '@dataview/core/contracts'
-import { store, string } from '@shared/core'
+import {
+  document as documentApi
+} from '@dataview/core/document'
+import { string } from '@shared/core'
 import { view as viewApi } from '@dataview/core/view'
 import type {
   ActionResult,
-  DocumentSource,
   ViewsApi
 } from '@dataview/engine/contracts'
 
 export const createViewsApi = (options: {
-  source: DocumentSource
+  document: () => DataDoc
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): ViewsApi => {
-  const readViews = () => store.read(options.source.views.ids)
+  const readViews = () => documentApi.views.ids(options.document())
     .flatMap(viewId => {
-      const view = store.read(options.source.views, viewId)
+      const view = documentApi.views.get(options.document(), viewId)
       return view ? [view] : []
     })
 
   return {
     list: readViews,
-    get: viewId => store.read(options.source.views, viewId),
+    get: viewId => documentApi.views.get(options.document(), viewId),
     open: viewId => {
       options.dispatch({
         type: 'view.open',
@@ -59,7 +62,7 @@ export const createViewsApi = (options: {
       })
     },
     duplicate: viewId => {
-      const sourceView = store.read(options.source.views, viewId)
+      const sourceView = documentApi.views.get(options.document(), viewId)
       if (!sourceView) {
         return undefined
       }

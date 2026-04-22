@@ -4,11 +4,9 @@ import type {
   View,
   ViewPatch
 } from '@dataview/core/contracts'
-import { store } from '@shared/core'
 import type {
   ActionResult,
   ActiveViewApi,
-  EngineSource,
   ViewState
 } from '@dataview/engine/contracts'
 import {
@@ -18,15 +16,13 @@ import {
 
 export interface ActiveContextOptions {
   document: () => DataDoc
-  source: EngineSource
-  state: ActiveViewApi['state']
+  active: () => ViewState | undefined
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }
 
 export interface ActiveViewContext {
   id: ActiveViewApi['id']
-  config: ActiveViewApi['config']
-  stateStore: ActiveViewApi['state']
+  state: ActiveViewApi['state']
   reader: DocumentReader
   dispatch: ActiveContextOptions['dispatch']
   view: () => View | undefined
@@ -39,12 +35,9 @@ export interface ActiveViewContext {
 export const createActiveContext = (
   options: ActiveContextOptions
 ): ActiveViewContext => {
-  const id = options.source.active.view.id
-  const config = options.source.active.view.current
-  const stateStore = options.state
   const reader = createLiveDocumentReader(options.document)
-  const view = () => store.read(config)
-  const snapshot = () => store.read(stateStore)
+  const view = () => options.active()?.view
+  const snapshot = () => options.active()
   const patch = (
     resolve: (currentView: View, currentReader: DocumentReader) => ViewPatch | undefined
   ): boolean => {
@@ -65,9 +58,8 @@ export const createActiveContext = (
   }
 
   return {
-    id,
-    config,
-    stateStore,
+    id: () => snapshot()?.view.id,
+    state: snapshot,
     reader,
     dispatch: options.dispatch,
     view,

@@ -1,10 +1,12 @@
 import type {
-  ActiveSource,
   ItemId
 } from '@dataview/engine'
 import {
   queryRead
 } from '@dataview/engine'
+import type {
+  ActiveSource
+} from '@dataview/runtime/source'
 import {
   observeElementSize,
   pageScrollNode,

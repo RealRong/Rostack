@@ -39,7 +39,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
   const { t } = useTranslation()
   const editor = useDataView().engine
   const field = useDataViewKeyedValue(
-    dataView => dataView.engine.source.doc.fields,
+    dataView => dataView.source.doc.fields,
     props.fieldId
   )
   const currentOption = fieldApi.option.read.get(field, props.option.id)

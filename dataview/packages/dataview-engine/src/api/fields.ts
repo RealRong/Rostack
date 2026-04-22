@@ -2,16 +2,19 @@ import type {
   Action,
   CustomField,
   CustomFieldId,
+  DataDoc,
   FieldOption
 } from '@dataview/core/contracts'
 import {
+  document as documentApi
+} from '@dataview/core/document'
+import {
   field as fieldApi
 } from '@dataview/core/field'
-import { store, string } from '@shared/core'
+import { string } from '@shared/core'
 import { createFieldId } from '@dataview/engine/mutate/entityId'
 import type {
   ActionResult,
-  DocumentSource,
   FieldsApi
 } from '@dataview/engine/contracts'
 
@@ -30,16 +33,16 @@ const findAddedOption = (
 }
 
 export const createFieldsApi = (options: {
-  source: DocumentSource
+  document: () => DataDoc
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): FieldsApi => {
   const dispatch = options.dispatch
-  const listFields = () => store.read(options.source.fields.ids)
+  const listFields = () => documentApi.fields.custom.ids(options.document())
     .flatMap(fieldId => {
-      const field = store.read(options.source.fields, fieldId)
+      const field = documentApi.fields.custom.get(options.document(), fieldId)
       return field ? [field] : []
     })
-  const getField = (fieldId: CustomFieldId) => store.read(options.source.fields, fieldId)
+  const getField = (fieldId: CustomFieldId) => documentApi.fields.custom.get(options.document(), fieldId)
   const getOptionFieldById = (fieldId: CustomFieldId) => getOptionField(getField(fieldId))
 
   return {

@@ -1,17 +1,20 @@
 import type {
   Action,
+  DataDoc,
   RecordId
 } from '@dataview/core/contracts'
-import { collection, store } from '@shared/core'
+import {
+  document as documentApi
+} from '@dataview/core/document'
+import { collection } from '@shared/core'
 import type {
   ActionResult,
-  DocumentSource,
   RecordFieldWriteManyInput,
   RecordsApi
 } from '@dataview/engine/contracts'
 
 export const createRecordsApi = (options: {
-  source: DocumentSource
+  document: () => DataDoc
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): RecordsApi => {
   const writeMany = (input: RecordFieldWriteManyInput) => {
@@ -30,7 +33,7 @@ export const createRecordsApi = (options: {
   }
 
   return {
-    get: recordId => store.read(options.source.records, recordId),
+    get: recordId => documentApi.records.get(options.document(), recordId),
     create: input => {
       const result = options.dispatch({
         type: 'record.create',

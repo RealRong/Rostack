@@ -15,6 +15,37 @@ export interface KeyedReadStore<K, T> {
   isEqual?: Equality<T>
 }
 
+export interface KeyTablePatch<Key, Value> {
+  set?: readonly (readonly [Key, Value])[]
+  remove?: readonly Key[]
+}
+
+export interface KeyTableReadStore<Key, Value> {
+  read: {
+    get: (key: Key) => Value | undefined
+    has: (key: Key) => boolean
+    all: () => ReadonlyMap<Key, Value>
+    size: () => number
+  }
+  subscribe: {
+    key: (key: Key, listener: Listener) => Unsubscribe
+  }
+}
+
+export interface KeyTableStore<Key, Value> extends KeyTableReadStore<Key, Value> {
+  write: {
+    replace: (next: ReadonlyMap<Key, Value>) => void
+    apply: (patch: KeyTablePatch<Key, Value>) => void
+    clear: () => void
+  }
+  project: {
+    field: <Projected>(
+      select: (value: Value | undefined) => Projected,
+      isEqual?: Equality<Projected>
+    ) => KeyedReadStore<Key, Projected>
+  }
+}
+
 export interface ValueStore<T> extends ReadStore<T> {
   set(next: T): void
   update(recipe: (previous: T) => T): void

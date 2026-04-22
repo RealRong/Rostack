@@ -1,5 +1,8 @@
 export type {
   KeyedReadStore,
+  KeyTablePatch,
+  KeyTableReadStore,
+  KeyTableStore,
   KeyedStore,
   KeyedStorePatch,
   Listener,
@@ -30,6 +33,9 @@ import {
   createKeyedStore
 } from './keyed'
 import {
+  createKeyTableStore
+} from './keyTable'
+import {
   createDerivedStore
 } from './derived'
 import {
@@ -57,6 +63,7 @@ export {
   createValueStore,
   createNormalizedValue,
   createKeyedReadStore,
+  createKeyTableStore,
   createKeyedStore,
   createDerivedStore,
   createKeyedDerivedStore,

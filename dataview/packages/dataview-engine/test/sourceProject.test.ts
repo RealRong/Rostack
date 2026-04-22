@@ -106,7 +106,7 @@ test('engine source records refresh after writing a value into a newly inserted 
   engine.records.fields.set('rec_1', fieldId, 'hello world')
 
   assert.equal(
-    engine.source.doc.records.get('rec_1')?.values[fieldId],
+    engine.read.record('rec_1')?.values[fieldId],
     'hello world'
   )
 })
@@ -147,19 +147,16 @@ test('document publish omits record ids on non-structural value writes', () => {
   )
 })
 
-test('source summary follows snapshot changes without active patch', () => {
+test('active summary follows snapshot changes without source adapter', () => {
   const engine = createEngine({
     document: createDocument()
   })
 
-  assert.deepEqual(
-    engine.source.active.sections.summary.get('root')?.byField.size,
-    0
-  )
+  assert.deepEqual(engine.read.activeState()?.summaries.get('root')?.byField.size, 0)
 
   engine.active.summary.set(FIELD_STATUS, 'countAll')
 
-  const summary = engine.source.active.sections.summary.get('root')
+  const summary = engine.read.activeState()?.summaries.get('root')
   assert.ok(summary)
   assert.deepEqual(
     summary.get(FIELD_STATUS),

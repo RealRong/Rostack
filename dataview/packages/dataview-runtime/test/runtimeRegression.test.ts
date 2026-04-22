@@ -164,7 +164,7 @@ describe('data view runtime regressions', () => {
       engine.views.open(VIEW_BOARD)
     }).not.toThrow()
 
-    const itemId = engine.active.state.get()?.items.ids[0]
+    const itemId = engine.active.state()?.items.ids[0]
     expect(runtime.model.page.toolbar.get().currentView?.id).toBe(VIEW_BOARD)
     expect(runtime.model.kanban.board.get()?.viewId).toBe(VIEW_BOARD)
     expect(itemId).toBeDefined()
@@ -184,7 +184,7 @@ describe('data view runtime regressions', () => {
     const runtime = createDataViewRuntime({
       engine
     })
-    const itemIds = engine.active.state.get()?.items.ids ?? []
+    const itemIds = engine.active.state()?.items.ids ?? []
     const scope = createItemArraySelectionScope({
       key: 'all-items',
       ids: itemIds
@@ -219,8 +219,8 @@ describe('data view runtime regressions', () => {
 
     engine.views.open(VIEW_BOARD)
 
-    const readVisibleItemIds = () => engine.source.active.sections.keys.get().flatMap(sectionKey => (
-      engine.source.active.sections.get(sectionKey)?.itemIds ?? []
+    const readVisibleItemIds = () => runtime.source.active.sections.keys.get().flatMap(sectionKey => (
+      runtime.source.active.sections.get(sectionKey)?.itemIds ?? []
     ))
     const assertReadableCards = (expectedRecordIds: readonly string[]) => {
       const visibleItemIds = readVisibleItemIds()

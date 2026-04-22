@@ -31,6 +31,10 @@ import type {
   ValueEditorController,
   OpenValueEditorInput
 } from '@dataview/runtime/valueEditor'
+import type {
+  ActiveSource,
+  DocumentSource
+} from '@dataview/runtime/source'
 
 export type InlineKey = string
 
@@ -49,8 +53,8 @@ export interface InlineSource {
 }
 
 export interface DataViewSource {
-  doc: Engine['source']['doc']
-  active: Engine['source']['active']
+  doc: DocumentSource
+  active: ActiveSource
   page: PageSource
   selection: SelectionSource
   inline: InlineSource

@@ -105,7 +105,7 @@ const View = (props: RowProps) => {
   )
   const recordId = currentView.items.read.record(props.itemId)
   const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
-    dataView.engine.source.doc.records,
+    dataView.source.doc.records,
     recordId,
     undefined
   )

@@ -20,7 +20,6 @@ import {
 } from '@dataview/engine/core/runtime'
 import { planActions } from '@dataview/engine/mutate/planner'
 import { createWriteControl } from '@dataview/engine/mutate/commit/runtime'
-import { createEngineStoreSourceAdapter } from '@dataview/engine/publish/store/runtime'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
@@ -81,35 +80,29 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     },
     subscribe: runtime.subscribe
   } satisfies Engine['core']
-  const sourceAdapter = createEngineStoreSourceAdapter({
-    snapshot: core.read.snapshot()
-  })
-  core.subscribe(sourceAdapter.sync)
 
   const readApi = createEngineReadApi(core)
   const fields = createFieldsApi({
-    source: sourceAdapter.source.doc,
+    document: core.read.document,
     dispatch
   })
   const records = createRecordsApi({
-    source: sourceAdapter.source.doc,
+    document: core.read.document,
     dispatch
   })
   const active = createActiveViewApi({
     document: core.read.document,
-    source: sourceAdapter.source,
-    state: sourceAdapter.state,
+    core,
     dispatch
   })
   const views = createViewsApi({
-    source: sourceAdapter.source.doc,
+    document: core.read.document,
     dispatch
   })
 
   return {
     core,
     read: readApi,
-    source: sourceAdapter.source,
     active,
     views,
     fields,

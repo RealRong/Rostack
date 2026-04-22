@@ -28,7 +28,6 @@ import type {
   ActiveViewApi,
   ViewState
 } from '@dataview/engine/contracts/view'
-import type { EngineSource } from '@dataview/engine/contracts/source'
 import type {
   HistoryApi,
   HistoryOptions
@@ -158,7 +157,6 @@ export interface DocumentApi {
 export interface Engine {
   core: EngineCore
   read: EngineReadApi
-  source: EngineSource
   active: ActiveViewApi
   views: ViewsApi
   fields: FieldsApi

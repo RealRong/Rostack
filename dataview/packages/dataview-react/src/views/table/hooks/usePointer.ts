@@ -504,7 +504,7 @@ export const usePointer = (
   const readCell = useCallback((cell: CellRef) => {
     const recordId = currentView.items.read.record(cell.itemId)
     const record = recordId
-      ? editor.source.doc.records.get(recordId)
+      ? dataView.source.doc.records.get(recordId)
       : undefined
 
     return {
@@ -513,7 +513,7 @@ export const usePointer = (
         ? fieldApi.value.read(record, cell.fieldId)
         : undefined
     }
-  }, [currentView.items, editor])
+  }, [currentView.items, dataView.source.doc.records])
 
   const selectCell = useCallback((
     cell: CellRef,

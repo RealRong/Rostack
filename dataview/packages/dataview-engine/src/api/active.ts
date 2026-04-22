@@ -5,7 +5,7 @@ import type {
 import type {
   ActionResult,
   ActiveViewApi,
-  EngineSource
+  EngineCore
 } from '@dataview/engine/contracts'
 import { createActiveContext } from '@dataview/engine/active/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/read'
@@ -27,21 +27,24 @@ import { createCellsApi } from '@dataview/engine/active/commands/cells'
 
 export const createActiveViewApi = (options: {
   document: () => DataDoc
-  source: EngineSource
-  state: ActiveViewApi['state']
+  core: EngineCore
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): ActiveViewApi => {
-  const base = createActiveContext(options)
+  const base = createActiveContext({
+    document: options.document,
+    active: options.core.read.active,
+    dispatch: options.dispatch
+  })
   const readApi = createActiveViewReadApi({
     reader: base.reader,
-    stateStore: base.stateStore
+    state: base.state
   })
   const display = createDisplayApi(base)
 
   return {
     id: base.id,
-    config: base.config,
-    state: base.stateStore,
+    view: base.view,
+    state: base.state,
     read: readApi,
     changeType: type => {
       base.patch(() => ({

@@ -7,7 +7,7 @@ import type {
   CommandCompilerTx,
   CompileResult,
   CompilerIds
-} from '@whiteboard/engine/write/types'
+} from '../types'
 
 type CompilerFailure = {
   kind: 'compile-failure'

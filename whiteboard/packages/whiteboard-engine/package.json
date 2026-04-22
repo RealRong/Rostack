@@ -4,9 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./types": "./src/types/index.ts",
-    "./types/*": "./src/types/*.ts",
-    "./types/internal/*": "./src/types/internal/*.ts"
+    "./contracts/*": "./src/contracts/*.ts"
   },
   "files": [
     "src",

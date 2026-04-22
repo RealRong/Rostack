@@ -1,7 +1,7 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import type { DocumentCommand } from '@whiteboard/engine/types/command'
-import { normalizeDocument } from '@whiteboard/engine/document/normalize'
-import type { CommandCompileContext } from '@whiteboard/engine/write/types'
+import type { DocumentCommand } from '../../types/command'
+import { normalizeDocument } from '../../document/normalize'
+import type { CommandCompileContext } from '../types'
 
 const emitOps = (
   ctx: Pick<CommandCompileContext, 'tx'>,

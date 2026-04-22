@@ -2,25 +2,23 @@ import {
   document
 } from '@dataview/core/document'
 import type {
+  EngineCore,
   EngineReadApi
 } from '@dataview/engine/contracts'
-import type {
-  RuntimeStore
-} from '@dataview/engine/runtime/store'
 
 export const createEngineReadApi = (
-  store: RuntimeStore
+  core: EngineCore
 ): EngineReadApi => ({
-  document: () => store.get().doc,
-  record: recordId => document.records.get(store.get().doc, recordId),
-  field: fieldId => document.fields.custom.get(store.get().doc, fieldId),
-  view: viewId => document.views.get(store.get().doc, viewId),
-  activeViewId: () => store.get().doc.activeViewId,
+  document: () => core.read.document(),
+  record: recordId => document.records.get(core.read.document(), recordId),
+  field: fieldId => document.fields.custom.get(core.read.document(), fieldId),
+  view: viewId => document.views.get(core.read.document(), viewId),
+  activeViewId: () => core.read.document().activeViewId,
   activeView: () => {
-    const state = store.get()
-    return state.doc.activeViewId
-      ? document.views.get(state.doc, state.doc.activeViewId)
+    const current = core.read.document()
+    return current.activeViewId
+      ? document.views.get(current, current.activeViewId)
       : undefined
   },
-  activeState: () => store.get().currentView.snapshot
+  activeState: () => core.read.active()
 })

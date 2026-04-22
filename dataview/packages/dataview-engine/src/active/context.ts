@@ -1,5 +1,6 @@
 import type {
   Action,
+  DataDoc,
   View,
   ViewPatch
 } from '@dataview/core/contracts'
@@ -10,15 +11,15 @@ import type {
   EngineSource,
   ViewState
 } from '@dataview/engine/contracts'
-import type { RuntimeStore } from '@dataview/engine/runtime/store'
 import {
   createLiveDocumentReader,
   type DocumentReader
 } from '@dataview/engine/document/reader'
 
 export interface ActiveContextOptions {
-  store: RuntimeStore
+  document: () => DataDoc
   source: EngineSource
+  state: ActiveViewApi['state']
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }
 
@@ -40,11 +41,8 @@ export const createActiveContext = (
 ): ActiveViewContext => {
   const id = options.source.active.view.id
   const config = options.source.active.view.current
-  const stateStore = store.createDerivedStore<ViewState | undefined>({
-    get: () => store.read(options.store).currentView.snapshot
-  })
-  const readDocument = () => options.store.get().doc
-  const reader = createLiveDocumentReader(readDocument)
+  const stateStore = options.state
+  const reader = createLiveDocumentReader(options.document)
   const view = () => store.read(config)
   const snapshot = () => store.read(stateStore)
   const patch = (

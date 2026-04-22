@@ -11,8 +11,8 @@ import type {
   Operation,
   Point
 } from '@whiteboard/core/types'
-import type { EdgeCommand } from '@whiteboard/engine/types/command'
-import type { CommandCompileContext } from '@whiteboard/engine/write/types'
+import type { EdgeCommand } from '../../types/command'
+import type { CommandCompileContext } from '../types'
 
 const hasOwn = <T extends object>(
   target: T,

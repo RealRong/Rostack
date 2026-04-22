@@ -38,7 +38,7 @@ import type {
   NodeAlignMode,
   NodeDistributeMode
 } from '@whiteboard/core/node'
-import type { CommandResult } from '@whiteboard/engine/types/result'
+import type { CommandResult } from './result'
 
 export type { OrderMode } from '@whiteboard/core/types'
 

@@ -2,17 +2,18 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { serializeHistoryKey } from '@whiteboard/core/spec/history'
-import { engine as engineApi } from '@whiteboard/engine'
+import type { CommandResult } from '@whiteboard/engine'
+import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 
 const readSerializedFootprint = (
-  engine: ReturnType<typeof engineApi.create>
+  result: CommandResult
 ) => new Set(
-  (engine.write.get()?.footprint ?? []).map(serializeHistoryKey)
+  (result.ok ? result.write.footprint : []).map(serializeHistoryKey)
 )
 
-test('engine exposes node create footprint through engine.write', () => {
-  const engine = engineApi.create({
+test('engine exposes node create footprint through command results', () => {
+  const engine = createEngine({
     document: documentApi.create('doc_engine_write_create')
   })
 
@@ -32,7 +33,7 @@ test('engine exposes node create footprint through engine.write', () => {
     return
   }
 
-  const footprint = readSerializedFootprint(engine)
+  const footprint = readSerializedFootprint(result)
   assert.deepEqual(
     footprint,
     new Set([
@@ -45,7 +46,7 @@ test('engine exposes node create footprint through engine.write', () => {
 })
 
 test('engine maps mindmap topic updates to node + mindmap history keys', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: documentApi.create('doc_engine_write_mindmap')
   })
 
@@ -79,7 +80,7 @@ test('engine maps mindmap topic updates to node + mindmap history keys', () => {
   })
 
   assert.equal(updateResult.ok, true)
-  const footprint = readSerializedFootprint(engine)
+  const footprint = readSerializedFootprint(updateResult)
   assert.deepEqual(
     footprint,
     new Set([

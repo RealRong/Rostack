@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
-import { engine as engineApi } from '@whiteboard/engine'
+import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 
 const createTextNode = ({
@@ -65,7 +65,7 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
     { kind: 'edge', id: 'edge_1' }
   ]
 
-  const engine = engineApi.create({
+  const engine = createEngine({
     document
   })
 
@@ -111,7 +111,7 @@ test('node.text.commit merges text, size, fontSize, and wrapWidth for generic te
     { kind: 'node', id: 'text_1' }
   ]
 
-  const engine = engineApi.create({
+  const engine = createEngine({
     document
   })
 
@@ -147,7 +147,7 @@ test('node.text.commit merges text, size, fontSize, and wrapWidth for generic te
 })
 
 test('node.text.commit routes mindmap topic text and size through mindmap operations', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: documentApi.create('doc_write_closure_mindmap_text_commit')
   })
 

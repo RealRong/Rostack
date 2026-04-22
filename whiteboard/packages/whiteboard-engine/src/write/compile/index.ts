@@ -1,27 +1,27 @@
 import type {
   Command
-} from '@whiteboard/engine/types/command'
+} from '../../types/command'
 import {
   createCompilerTx
-} from '@whiteboard/engine/write/compile/tx'
+} from './tx'
 import {
   compileDocumentCommand
-} from '@whiteboard/engine/write/compile/document'
+} from './document'
 import {
   compileCanvasCommand
-} from '@whiteboard/engine/write/compile/canvas'
+} from './canvas'
 import {
   compileNodeCommand
-} from '@whiteboard/engine/write/compile/node'
+} from './node'
 import {
   compileGroupCommand
-} from '@whiteboard/engine/write/compile/group'
+} from './group'
 import {
   compileEdgeCommand
-} from '@whiteboard/engine/write/compile/edge'
+} from './edge'
 import {
   compileMindmapCommand
-} from '@whiteboard/engine/write/compile/mindmap'
+} from './mindmap'
 import type {
   CanvasCommand,
   DocumentCommand,
@@ -29,11 +29,11 @@ import type {
   GroupCommand,
   MindmapCommand,
   NodeCommand
-} from '@whiteboard/engine/types/command'
+} from '../../types/command'
 import type {
   CompileResult,
   CompilerIds
-} from '@whiteboard/engine/write/types'
+} from '../types'
 import type {
   CoreRegistries,
   Document,

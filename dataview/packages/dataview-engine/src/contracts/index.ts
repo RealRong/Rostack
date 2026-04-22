@@ -1,5 +1,6 @@
 export * from '@dataview/engine/contracts/api'
 export * from '@dataview/engine/contracts/change'
+export * from '@dataview/engine/contracts/core'
 export * from '@dataview/engine/contracts/history'
 export * from '@dataview/engine/contracts/performance'
 export * from '@dataview/engine/contracts/shared'

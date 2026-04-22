@@ -1,4 +1,7 @@
-import type { Action } from '@dataview/core/contracts'
+import type {
+  Action,
+  DataDoc
+} from '@dataview/core/contracts'
 import type {
   ActionResult,
   ActiveViewApi,
@@ -6,7 +9,6 @@ import type {
 } from '@dataview/engine/contracts'
 import { createActiveContext } from '@dataview/engine/active/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/read'
-import type { RuntimeStore } from '@dataview/engine/runtime/store'
 import {
   createSearchApi,
   createFiltersApi,
@@ -24,8 +26,9 @@ import { createActiveItemsApi } from '@dataview/engine/active/commands/items'
 import { createCellsApi } from '@dataview/engine/active/commands/cells'
 
 export const createActiveViewApi = (options: {
-  store: RuntimeStore
+  document: () => DataDoc
   source: EngineSource
+  state: ActiveViewApi['state']
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): ActiveViewApi => {
   const base = createActiveContext(options)

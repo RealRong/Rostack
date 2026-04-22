@@ -8,8 +8,8 @@ import {
 } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
-  projectDocumentPatch
-} from '@dataview/engine/source/document'
+  projectDocumentChange
+} from '@dataview/engine/core/change'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -130,7 +130,7 @@ test('document publish omits record ids on non-structural value writes', () => {
     }
   }
 
-  const output = projectDocumentPatch({
+  const output = projectDocumentChange({
     impact: {
       records: {
         touched: new Set(['rec_1']),
@@ -142,9 +142,7 @@ test('document publish omits record ids on non-structural value writes', () => {
 
   assert.equal(output?.records?.ids, undefined)
   assert.deepEqual(
-    output?.records?.set
-      ? [...output.records.set]
-      : [],
+    output?.records?.set ?? [],
     [['rec_1', nextDocument.records.byId.rec_1]]
   )
 })

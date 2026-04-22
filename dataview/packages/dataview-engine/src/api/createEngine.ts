@@ -15,29 +15,25 @@ import { createRecordsApi } from '@dataview/engine/api/records'
 import { createViewsApi } from '@dataview/engine/api/views'
 import { createEngineReadApi } from '@dataview/engine/api/read'
 import {
-  createRuntimeState,
-  createStore
-} from '@dataview/engine/runtime/store'
+  createCoreRuntime,
+  createInitialEngineState
+} from '@dataview/engine/core/runtime'
 import { planActions } from '@dataview/engine/mutate/planner'
 import { createWriteControl } from '@dataview/engine/mutate/commit/runtime'
-import { createEngineSourceRuntime } from '@dataview/engine/source/runtime'
+import { createEngineStoreSourceAdapter } from '@dataview/engine/publish/store/runtime'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
   const initialDocument = document.clone(options.document)
   const performance = createPerformanceRuntime(options.performance)
   const capturePerformance = Boolean(options.performance?.traces || options.performance?.stats)
-  const store = createStore(createRuntimeState({
+  const runtime = createCoreRuntime(createInitialEngineState({
     doc: initialDocument,
     historyCap: historyCapacity,
     capturePerf: capturePerformance
   }))
-  const readApi = createEngineReadApi(store)
-  const sourceRuntime = createEngineSourceRuntime({
-    store
-  })
   const write = createWriteControl({
-    store,
+    runtime,
     perf: performance,
     capturePerf: capturePerformance
   })
@@ -47,14 +43,14 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       : [action]
     if (!capturePerformance) {
       return write.run(planActions({
-        document: store.get().doc,
+        document: runtime.state().doc,
         actions
       }))
     }
 
     const planStart = now()
     const batch = planActions({
-      document: store.get().doc,
+      document: runtime.state().doc,
       actions
     })
 
@@ -63,36 +59,66 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       planMs: now() - planStart
     })
   }
+  const core = {
+    read: {
+      result: () => runtime.result(),
+      snapshot: () => runtime.result().snapshot,
+      change: () => runtime.result().change,
+      document: () => runtime.state().doc,
+      active: () => runtime.state().active.snapshot
+    },
+    commit: {
+      actions: (actions: readonly Action[]) => dispatch(actions),
+      replace: (nextDocument: DataDoc) => write.load(document.clone(nextDocument)),
+      undo: write.history.undo,
+      redo: write.history.redo,
+      clearHistory: write.history.clear
+    },
+    history: {
+      state: write.history.state,
+      canUndo: write.history.canUndo,
+      canRedo: write.history.canRedo
+    },
+    subscribe: runtime.subscribe
+  } satisfies Engine['core']
+  const sourceAdapter = createEngineStoreSourceAdapter({
+    snapshot: core.read.snapshot()
+  })
+  core.subscribe(sourceAdapter.sync)
+
+  const readApi = createEngineReadApi(core)
   const fields = createFieldsApi({
-    source: sourceRuntime.source.doc,
+    source: sourceAdapter.source.doc,
     dispatch
   })
   const records = createRecordsApi({
-    source: sourceRuntime.source.doc,
+    source: sourceAdapter.source.doc,
     dispatch
   })
   const active = createActiveViewApi({
-    store,
-    source: sourceRuntime.source,
+    document: core.read.document,
+    source: sourceAdapter.source,
+    state: sourceAdapter.state,
     dispatch
   })
   const views = createViewsApi({
-    source: sourceRuntime.source.doc,
+    source: sourceAdapter.source.doc,
     dispatch
   })
 
   return {
+    core,
     read: readApi,
-    source: sourceRuntime.source,
+    source: sourceAdapter.source,
     active,
     views,
     fields,
     records,
     document: {
-      export: () => document.clone(store.get().doc),
+      export: () => document.clone(core.read.document()),
       replace: (nextDocument: DataDoc) => {
-        write.load(document.clone(nextDocument))
-        return document.clone(store.get().doc)
+        core.commit.replace(document.clone(nextDocument))
+        return document.clone(core.read.document())
       }
     },
     history: {

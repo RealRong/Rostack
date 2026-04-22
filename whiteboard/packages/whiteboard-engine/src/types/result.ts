@@ -1,7 +1,7 @@
 import type {
   ErrorInfo
 } from '@whiteboard/core/types'
-import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
+import type { EngineWrite } from './engineWrite'
 
 export type CommandFailure<C extends string = string> = {
   ok: false

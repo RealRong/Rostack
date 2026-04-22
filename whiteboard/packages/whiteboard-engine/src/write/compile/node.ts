@@ -12,12 +12,12 @@ import type {
   NodeUpdateInput,
   Operation
 } from '@whiteboard/core/types'
-import type { NodeCommand } from '@whiteboard/engine/types/command'
-import type { CommandCompileContext } from '@whiteboard/engine/write/types'
+import type { NodeCommand } from '../../types/command'
+import type { CommandCompileContext } from '../types'
 import {
   compileCanvasDelete,
   compileCanvasDuplicate
-} from '@whiteboard/engine/write/compile/canvas'
+} from './canvas'
 
 const hasOwn = <T extends object>(
   target: T,

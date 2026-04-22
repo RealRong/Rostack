@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { schema } from '@whiteboard/core/schema'
-import { engine as engineApi } from '@whiteboard/engine'
+import { createEngine } from '@whiteboard/engine'
 
 const createTextDocument = () => {
   const document = documentApi.create('doc_text_width_mode')
@@ -29,7 +29,7 @@ const createTextDocument = () => {
 }
 
 test('engine preserves wrap width mode when a text node size changes', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: createTextDocument()
   })
 
@@ -57,8 +57,8 @@ test('engine preserves wrap width mode when a text node size changes', () => {
     return
   }
 
-  const committed = engine.read.node.committed.get('text-1')
-  assert.equal(committed?.node.data?.widthMode, 'wrap')
-  assert.equal(committed?.node.data?.wrapWidth, 180)
-  assert.equal(committed?.rect.width, 180)
+  const committed = engine.snapshot().state.root.nodes['text-1']
+  assert.equal(committed?.data?.widthMode, 'wrap')
+  assert.equal(committed?.data?.wrapWidth, 180)
+  assert.equal(committed?.size?.width, 180)
 })

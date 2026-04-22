@@ -1,7 +1,7 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import type { GroupCommand } from '@whiteboard/engine/types/command'
-import type { CommandCompileContext } from '@whiteboard/engine/write/types'
-import { createCanvasOrderMoveOps } from '@whiteboard/engine/write/compile/canvas'
+import type { GroupCommand } from '../../types/command'
+import type { CommandCompileContext } from '../types'
+import { createCanvasOrderMoveOps } from './canvas'
 
 export const compileGroupCommand = (
   command: GroupCommand,

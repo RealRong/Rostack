@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
-import { engine as engineApi } from '@whiteboard/engine'
+import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 
-test('engine exposes created mindmap roots through node read projection', () => {
-  const engine = engineApi.create({
+test('engine exposes created mindmap roots through committed facts', () => {
+  const engine = createEngine({
     document: documentApi.create('doc_mindmap_insert')
   })
 
@@ -24,9 +24,11 @@ test('engine exposes created mindmap roots through node read projection', () => 
   }
 
   const { mindmapId, rootId } = result.data
-  assert.ok(engine.read.node.list.get().includes(rootId))
-  assert.equal(engine.read.node.committed.get(rootId)?.node.type, 'text')
-  assert.equal(engine.read.node.committed.get(rootId)?.node.owner?.kind, 'mindmap')
-  assert.equal(engine.read.node.committed.get(rootId)?.node.owner?.id, mindmapId)
-  assert.equal(engine.read.mindmap.structure.get(mindmapId)?.id, mindmapId)
+  const snapshot = engine.snapshot()
+  assert.equal(snapshot.state.facts.entities.nodes.get(rootId)?.type, 'text')
+  assert.equal(snapshot.state.facts.relations.nodeOwner.get(rootId)?.kind, 'mindmap')
+  assert.equal(snapshot.state.facts.relations.nodeOwner.get(rootId)?.id, mindmapId)
+  assert.deepEqual(snapshot.state.facts.relations.ownerNodes.mindmaps.get(mindmapId), [rootId])
+  assert.ok(snapshot.change.entities.nodes.all.has(rootId))
+  assert.ok(snapshot.change.entities.owners.mindmaps.all.has(mindmapId))
 })

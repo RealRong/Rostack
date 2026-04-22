@@ -4,12 +4,14 @@ import type {
   HistoryState
 } from '@dataview/engine/contracts'
 import type {
-  EngineRuntimeState,
-  RuntimeStore
-} from '@dataview/engine/runtime/store'
+  CoreRuntime
+} from '@dataview/engine/core/runtime'
+import type {
+  EngineHistoryState
+} from '@dataview/engine/runtime/state'
 
 const trimUndo = (
-  entries: EngineRuntimeState['history']['undo'],
+  entries: EngineHistoryState['undo'],
   cap: number
 ) => {
   if (!cap) {
@@ -22,16 +24,16 @@ const trimUndo = (
 }
 
 export const clearHistory = (
-  history: EngineRuntimeState['history']
-): EngineRuntimeState['history'] => ({
+  history: EngineHistoryState
+): EngineHistoryState => ({
   ...history,
   undo: [],
   redo: []
 })
 
 export const clearRedo = (
-  history: EngineRuntimeState['history']
-): EngineRuntimeState['history'] => (
+  history: EngineHistoryState
+): EngineHistoryState => (
   history.redo.length
     ? {
         ...history,
@@ -41,15 +43,15 @@ export const clearRedo = (
 )
 
 export const pushUndo = (
-  history: EngineRuntimeState['history'],
-  entry: EngineRuntimeState['history']['undo'][number]
-): EngineRuntimeState['history'] => ({
+  history: EngineHistoryState,
+  entry: EngineHistoryState['undo'][number]
+): EngineHistoryState => ({
   ...history,
   undo: trimUndo([...history.undo, entry], history.cap)
 })
 
-export const takeUndo = (history: EngineRuntimeState['history']): {
-  history: EngineRuntimeState['history']
+export const takeUndo = (history: EngineHistoryState): {
+  history: EngineHistoryState
   operations?: DocumentOperation[]
 } => {
   const entry = history.undo.at(-1)
@@ -69,8 +71,8 @@ export const takeUndo = (history: EngineRuntimeState['history']): {
   }
 }
 
-export const takeRedo = (history: EngineRuntimeState['history']): {
-  history: EngineRuntimeState['history']
+export const takeRedo = (history: EngineHistoryState): {
+  history: EngineHistoryState
   operations?: DocumentOperation[]
 } => {
   const entry = history.redo.at(-1)
@@ -91,7 +93,7 @@ export const takeRedo = (history: EngineRuntimeState['history']): {
 }
 
 export const historyState = (
-  history: EngineRuntimeState['history']
+  history: EngineHistoryState
 ): HistoryState => ({
   capacity: history.cap,
   undoDepth: history.undo.length,
@@ -99,26 +101,26 @@ export const historyState = (
 })
 
 export const canUndo = (
-  history: EngineRuntimeState['history']
+  history: EngineHistoryState
 ) => history.undo.length > 0
 
 export const canRedo = (
-  history: EngineRuntimeState['history']
+  history: EngineHistoryState
 ) => history.redo.length > 0
 
 export const createWriteHistory = (input: {
-  store: RuntimeStore
+  runtime: CoreRuntime
   replay: (
     kind: 'undo' | 'redo',
     operations: readonly DocumentOperation[],
-    history: EngineRuntimeState['history']
+    history: EngineHistoryState
   ) => CommitResult
 }) => ({
-  state: () => historyState(input.store.get().history),
-  canUndo: () => canUndo(input.store.get().history),
-  canRedo: () => canRedo(input.store.get().history),
+  state: () => historyState(input.runtime.state().history),
+  canUndo: () => canUndo(input.runtime.state().history),
+  canRedo: () => canRedo(input.runtime.state().history),
   undo: (): CommitResult => {
-    const replay = takeUndo(input.store.get().history)
+    const replay = takeUndo(input.runtime.state().history)
     return replay.operations
       ? input.replay('undo', replay.operations, replay.history)
       : {
@@ -127,7 +129,7 @@ export const createWriteHistory = (input: {
         }
   },
   redo: (): CommitResult => {
-    const replay = takeRedo(input.store.get().history)
+    const replay = takeRedo(input.runtime.state().history)
     return replay.operations
       ? input.replay('redo', replay.operations, replay.history)
       : {
@@ -136,12 +138,12 @@ export const createWriteHistory = (input: {
         }
   },
   clear: () => {
-    const current = input.store.get()
+    const current = input.runtime.state()
     if (!current.history.undo.length && !current.history.redo.length) {
       return
     }
 
-    input.store.set({
+    input.runtime.updateState({
       ...current,
       history: clearHistory(current.history)
     })

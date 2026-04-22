@@ -7,11 +7,11 @@ import type {
   MindmapId,
   Node
 } from '@whiteboard/core/types'
-import type { CanvasCommand } from '@whiteboard/engine/types/command'
-import type { CommandCompileContext } from '@whiteboard/engine/write/types'
+import type { CanvasCommand } from '../../types/command'
+import type { CommandCompileContext } from '../types'
 import {
   emitEdgeMovePatchOps
-} from '@whiteboard/engine/write/compile/edge'
+} from './edge'
 
 const readNodeMindmapId = (
   node: Pick<Node, 'owner'> | undefined

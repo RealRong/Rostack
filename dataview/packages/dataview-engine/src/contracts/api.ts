@@ -22,6 +22,9 @@ import type {
   ValidationIssue
 } from '@dataview/engine/mutate/issues'
 import type {
+  EngineCore
+} from '@dataview/engine/contracts/core'
+import type {
   ActiveViewApi,
   ViewState
 } from '@dataview/engine/contracts/view'
@@ -153,6 +156,7 @@ export interface DocumentApi {
 }
 
 export interface Engine {
+  core: EngineCore
   read: EngineReadApi
   source: EngineSource
   active: ActiveViewApi

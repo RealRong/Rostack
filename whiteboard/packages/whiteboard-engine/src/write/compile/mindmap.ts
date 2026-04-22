@@ -7,8 +7,8 @@ import type {
   NodeId,
   Operation
 } from '@whiteboard/core/types'
-import type { MindmapCommand } from '@whiteboard/engine/types/command'
-import type { CommandCompileContext } from '@whiteboard/engine/write/types'
+import type { MindmapCommand } from '../../types/command'
+import type { CommandCompileContext } from '../types'
 
 const hasOwn = <T extends object>(
   target: T,

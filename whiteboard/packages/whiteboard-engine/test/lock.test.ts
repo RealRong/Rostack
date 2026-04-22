@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
-import { engine as engineApi } from '@whiteboard/engine'
+import { createEngine } from '@whiteboard/engine'
 
 const createTextNode = ({
   id,
@@ -138,7 +138,7 @@ const createEdgeLockedDocument = () => {
 }
 
 test('engine blocks moving a locked node', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: createLockedDocument()
   })
 
@@ -160,7 +160,7 @@ test('engine blocks moving a locked node', () => {
 })
 
 test('engine blocks duplicating a locked node selection', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: createLockedDocument()
   })
 
@@ -181,7 +181,7 @@ test('engine blocks duplicating a locked node selection', () => {
 })
 
 test('engine blocks duplicating an edge attached to a locked node', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: createLockedDocument()
   })
 
@@ -202,7 +202,7 @@ test('engine blocks duplicating an edge attached to a locked node', () => {
 })
 
 test('engine blocks remote edge deletion that would change a locked node relation', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: createLockedDocument()
   })
 
@@ -222,7 +222,7 @@ test('engine blocks remote edge deletion that would change a locked node relatio
 })
 
 test('engine allows remote unlock then delete in the same operation batch', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: createLockedDocument()
   })
 
@@ -249,7 +249,7 @@ test('engine allows remote unlock then delete in the same operation batch', () =
 })
 
 test('engine blocks modifying a locked edge', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: createEdgeLockedDocument()
   })
 
@@ -274,7 +274,7 @@ test('engine blocks modifying a locked edge', () => {
 })
 
 test('engine allows remote unlock then edge update in the same batch', () => {
-  const engine = engineApi.create({
+  const engine = createEngine({
     document: createEdgeLockedDocument()
   })
 

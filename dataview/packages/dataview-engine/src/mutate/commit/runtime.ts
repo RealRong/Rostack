@@ -37,9 +37,14 @@ import {
   resolveViewPlan
 } from '@dataview/engine/active/plan'
 import type {
-  EngineRuntimeState,
-  RuntimeStore
-} from '@dataview/engine/runtime/store'
+  CoreRuntime
+} from '@dataview/engine/core/runtime'
+import {
+  createEngineSnapshot
+} from '@dataview/engine/core/runtime'
+import {
+  projectEngineChange
+} from '@dataview/engine/core/change'
 import type {
   ActionResult,
   CommitResult,
@@ -55,9 +60,9 @@ import {
   summarizeImpact,
   toTraceKind
 } from '@dataview/engine/mutate/commit/trace'
-import {
-  projectDocumentPatch
-} from '@dataview/engine/source/document'
+import type {
+  EngineState
+} from '@dataview/engine/runtime/state'
 
 type Kind =
   | 'write'
@@ -74,7 +79,7 @@ type Draft<TResult extends CommitResult = CommitResult> =
       ok: true
       kind: Kind
       doc: DataDoc
-      history: EngineRuntimeState['history']
+      history: EngineState['history']
       impact: CommitImpact
       result: TResult
       planMs?: number
@@ -82,7 +87,7 @@ type Draft<TResult extends CommitResult = CommitResult> =
     }
 
 type Plan<TResult extends CommitResult = CommitResult> = (
-  base: EngineRuntimeState
+  base: EngineState
 ) => Draft<TResult>
 
 const toCreatedIds = <T extends string>(
@@ -106,10 +111,10 @@ const createdFromImpact = (
 }
 
 const replayResult = (
-  base: EngineRuntimeState,
+  base: EngineState,
   kind: 'undo' | 'redo',
   operations: readonly DocumentOperation[],
-  history: EngineRuntimeState['history']
+  history: EngineState['history']
 ): Draft<CommitResult> => {
   const startedAt = now()
   const applied = operation.apply(base.doc, operations)
@@ -172,7 +177,7 @@ const writePlan = (
 const replayPlan = (
   kind: 'undo' | 'redo',
   operations: readonly DocumentOperation[],
-  history: EngineRuntimeState['history']
+  history: EngineState['history']
 ): Plan<CommitResult> => base => replayResult(base, kind, operations, history)
 
 const loadPlan = (
@@ -196,12 +201,12 @@ const loadPlan = (
 }
 
 const commit = <TResult extends CommitResult>(input: {
-  store: RuntimeStore
+  runtime: CoreRuntime
   perf: PerformanceRuntime
   capturePerf: boolean
   plan: Plan<TResult>
 }): TResult => {
-  const base = input.store.get()
+  const base = input.runtime.state()
   const startedAt = now()
   const draft = input.plan(base)
   if (!draft.ok) {
@@ -209,19 +214,19 @@ const commit = <TResult extends CommitResult>(input: {
   }
 
   const documentContext = createStaticDocumentReadContext(draft.doc)
-  const previousPlan = base.currentView.plan
+  const previousPlan = base.active.plan
   const plan = resolveViewPlan(documentContext, documentContext.activeViewId)
   const baseImpact = createBaseImpact(draft.impact)
   const nextIndex = deriveIndex({
-    previous: base.currentView.index,
+    previous: base.active.index,
     previousDemand: previousPlan?.index ?? emptyNormalizedIndexDemand(),
     document: draft.doc,
     impact: baseImpact,
     demand: plan?.index
   })
   const nextView = deriveViewRuntime({
-    previous: base.currentView.snapshot,
-    cache: base.currentView.cache,
+    previous: base.active.snapshot,
+    cache: base.active.cache,
     documentContext,
     viewPlan: plan,
     previousPlan,
@@ -231,18 +236,11 @@ const commit = <TResult extends CommitResult>(input: {
     capturePerf: input.capturePerf
   })
   const outputStart = now()
-  const documentPatch = projectDocumentPatch({
-    impact: draft.impact,
-    document: draft.doc
-  })
-  const outputMs = now() - outputStart
-
-  const next = {
+  const nextState: EngineState = {
     rev: base.rev + 1,
     doc: draft.doc,
-    documentPatch,
     history: draft.history,
-    currentView: {
+    active: {
       ...(plan
         ? { plan }
         : {}),
@@ -252,6 +250,22 @@ const commit = <TResult extends CommitResult>(input: {
         ? { snapshot: nextView.snapshot }
         : {})
     }
+  }
+  const nextSnapshot = createEngineSnapshot(nextState)
+  const nextChange = projectEngineChange({
+    previous: input.runtime.result().snapshot,
+    next: nextSnapshot,
+    impact: draft.impact
+  })
+  const outputMs = now() - outputStart
+  const nextResult = {
+    rev: nextState.rev,
+    snapshot: nextSnapshot,
+    ...(nextChange
+      ? {
+          change: nextChange
+        }
+      : {})
   }
 
   if (
@@ -277,19 +291,22 @@ const commit = <TResult extends CommitResult>(input: {
     })
   }
 
-  input.store.set(next)
+  input.runtime.commit({
+    state: nextState,
+    result: nextResult
+  })
   return draft.result
 }
 
 export const createWriteControl = (input: {
-  store: RuntimeStore
+  runtime: CoreRuntime
   perf: PerformanceRuntime
   capturePerf: boolean
 }) => {
   const runPlan = <TResult extends CommitResult>(
     plan: Plan<TResult>
   ) => commit({
-    store: input.store,
+    runtime: input.runtime,
     perf: input.perf,
     capturePerf: input.capturePerf,
     plan
@@ -299,11 +316,11 @@ export const createWriteControl = (input: {
     run: (batch: PlannedWriteBatch): ActionResult => runPlan(writePlan(batch)),
     load: (doc: DataDoc): CommitResult => runPlan(loadPlan(doc)),
     history: createWriteHistory({
-      store: input.store,
+      runtime: input.runtime,
       replay: (
         kind: 'undo' | 'redo',
         operations: readonly DocumentOperation[],
-        history: EngineRuntimeState['history']
+        history: EngineState['history']
       ) => runPlan(replayPlan(kind, operations, history))
     })
   }

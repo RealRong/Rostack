@@ -1,6 +1,6 @@
 import type { ErrorInfo } from '@whiteboard/core/types'
-import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
-import type { CommandFailure, CommandResult } from '@whiteboard/engine/types/result'
+import type { EngineWrite } from './types/engineWrite'
+import type { CommandFailure, CommandResult } from './types/result'
 
 export const failure = <C extends string>(
   code: C,

@@ -1,5 +1,6 @@
 import type {
   CanvasItemRef,
+  ChangeSet,
   CoreRegistries,
   Document,
   Edge,
@@ -14,9 +15,9 @@ import type {
   Origin,
   Size
 } from '@whiteboard/core/types'
-import type { Command, CommandOutput } from '@whiteboard/engine/types/command'
-import type { CommandFailure } from '@whiteboard/engine/types/result'
-import type { Draft } from '@whiteboard/engine/types/internal/draft'
+import type { HistoryFootprint } from '@whiteboard/core/spec/history'
+import type { Command, CommandOutput } from '../types/command'
+import type { CommandFailure } from '../types/result'
 
 export type CompileResult<T = unknown> =
   | {
@@ -80,9 +81,24 @@ export type CompileHandler<C extends Command = Command> = (
 ) => CommandOutput<C> | void
 
 export type WriteRuntime = {
-  execute: <C extends Command>(command: C, origin?: Origin) => Draft<CommandOutput<C>>
+  execute: <C extends Command>(command: C, origin?: Origin) => WriteDraft<CommandOutput<C>>
   apply: (
     ops: readonly Operation[],
     origin?: Origin
-  ) => Draft
+  ) => WriteDraft
 }
+
+export type WriteDraft<T = void> =
+  | CommandFailure
+  | {
+      ok: true
+      origin: Origin
+      doc: Document
+      ops: readonly Operation[]
+      inverse: readonly Operation[]
+      changes: ChangeSet
+      history: {
+        footprint: HistoryFootprint
+      }
+      value: T
+    }

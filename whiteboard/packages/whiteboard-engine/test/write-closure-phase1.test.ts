@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
-import { engine as engineApi } from '@whiteboard/engine'
+import { createEngine } from '@whiteboard/engine'
 
 const createTextNode = ({
   id,
@@ -103,7 +103,7 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
     { kind: 'edge', id: 'edge_selected' }
   ]
 
-  const engine = engineApi.create({
+  const engine = createEngine({
     document
   })
 
@@ -185,7 +185,7 @@ test('edge.reconnect.commit applies endpoint, type, and route in one command', (
     { kind: 'edge', id: 'edge_1' }
   ]
 
-  const engine = engineApi.create({
+  const engine = createEngine({
     document
   })
 

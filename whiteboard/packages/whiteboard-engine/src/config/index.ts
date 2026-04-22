@@ -2,12 +2,12 @@ import { json } from '@shared/core'
 import type { BoardConfig } from '@whiteboard/core/config'
 import {
   DEFAULT_BOARD_CONFIG
-} from '@whiteboard/engine/config/defaults'
+} from './defaults'
 
 export {
   DEFAULT_BOARD_CONFIG,
   DEFAULT_TUNING
-} from '@whiteboard/engine/config/defaults'
+} from './defaults'
 
 export const resolveBoardConfig = (
   configOverrides?: Partial<BoardConfig>

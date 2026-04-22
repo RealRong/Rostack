@@ -7,7 +7,7 @@ import type {
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import { collection, string } from '@shared/core'
 import {
-  createLiveDocumentReader,
+  createDocumentReader,
   type DocumentReader
 } from '@dataview/engine/document/reader'
 import {
@@ -60,7 +60,7 @@ export const createPlannerScope = (input: {
     index: input.index,
     type: input.action.type
   }
-  const reader = createLiveDocumentReader(() => input.document)
+  const reader = createDocumentReader(() => input.document)
 
   const issue = (
     code: ValidationCode,

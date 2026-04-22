@@ -71,7 +71,7 @@ const toRecordIdSet = (
   return new Set(validIds ?? fallback())
 }
 
-export const createLiveDocumentReader = (
+export const createDocumentReader = (
   readDocument: () => DataDoc
 ): DocumentReader => {
   const records = createEntityReader({
@@ -109,14 +109,10 @@ export const createLiveDocumentReader = (
   }
 }
 
-export const createStaticDocumentReader = (
-  document: DataDoc
-): DocumentReader => createLiveDocumentReader(() => document)
-
 export const createDocumentReadContext = (
   document: DataDoc
 ): DocumentReadContext => {
-  const reader = createStaticDocumentReader(document)
+  const reader = createDocumentReader(() => document)
   const fields = reader.fields.list()
   const fieldIds: FieldId[] = []
   const fieldsById = new Map<FieldId, Field>()

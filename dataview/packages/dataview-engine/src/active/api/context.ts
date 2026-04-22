@@ -13,7 +13,7 @@ import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import {
-  createLiveDocumentReader,
+  createDocumentReader,
   type DocumentReader
 } from '@dataview/engine/document/reader'
 
@@ -38,7 +38,7 @@ export interface ActiveViewContext {
 export const createActiveContext = (
   options: ActiveContextOptions
 ): ActiveViewContext => {
-  const reader = createLiveDocumentReader(options.document)
+  const reader = createDocumentReader(options.document)
   const view = () => options.active()?.view
   const patchView = (
     resolve: (currentView: View, currentReader: DocumentReader) => ViewPatch | undefined

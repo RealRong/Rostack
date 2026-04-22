@@ -1,10 +1,15 @@
-import { equal, store as coreStore } from '@shared/core'
 import type { ItemId } from '@dataview/engine'
+import type {
+  Box,
+  Point
+} from '@shared/dom'
 import {
   rectFromPoints
 } from '@shared/dom'
+import { equal, store as coreStore } from '@shared/core'
 import type {
   ItemSelectionController,
+  ItemSelectionSnapshot,
   OrderedSelectionDomain,
   SelectionScope,
   SelectionSummary
@@ -12,13 +17,48 @@ import type {
 import {
   selectionSnapshot
 } from '@dataview/runtime/selection'
-import type {
-  MarqueeController,
-  MarqueeSessionState
-} from '@dataview/runtime/marquee/types'
 import {
   createNullableControllerStore
-} from '@dataview/runtime/store'
+} from '@dataview/runtime/session/controller'
+
+export type MarqueeMode = 'replace' | 'add' | 'toggle'
+
+export interface MarqueeSessionState {
+  mode: MarqueeMode
+  start: Point
+  current: Point
+  rect: Box
+  hitIds: readonly ItemId[]
+  baseSelection: ItemSelectionSnapshot
+}
+
+export interface MarqueeSessionApi {
+  store: coreStore.ReadStore<MarqueeSessionState | null>
+  activeStore: coreStore.ReadStore<boolean>
+  preview: {
+    membership: coreStore.KeyedReadStore<ItemId, boolean | null>
+    scopeSummary: coreStore.KeyedReadStore<SelectionScope<ItemId>, SelectionSummary | null>
+  }
+  get(): MarqueeSessionState | null
+}
+
+export interface MarqueeIntentApi {
+  start(input: {
+    mode: MarqueeMode
+    start: Point
+    baseSelection: ItemSelectionSnapshot
+  }): void
+  update(input: {
+    current: Point
+    rect: Box
+    hitIds: readonly ItemId[]
+  }): void
+  commit(): void
+  cancel(): void
+  clear(): void
+}
+
+export interface MarqueeController extends MarqueeSessionApi, MarqueeIntentApi {}
 
 const sameHitIds = (
   left: readonly ItemId[],

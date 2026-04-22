@@ -24,7 +24,7 @@ import type { EditInput } from '@dataview/react/interaction'
 import type {
   OpenValueEditorInput,
   ValueEditorResult,
-} from '@dataview/runtime/valueEditor'
+} from '@dataview/runtime'
 import {
   OverlayProvider,
   OVERLAY_BLOCKING_ATTR,
@@ -93,7 +93,7 @@ export const resolveFieldValueEditorPosition = (input: {
 export const FieldValueEditorHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const valueEditor = dataView.session.editing.valueEditor
+  const valueEditor = dataView.session.valueEditor
   const session = useStoreValue(valueEditor.store)
   const field = session?.field
   const fieldId = field?.fieldId

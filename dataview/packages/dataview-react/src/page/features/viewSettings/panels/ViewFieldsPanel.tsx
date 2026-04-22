@@ -27,7 +27,7 @@ export const ViewFieldsPanel = () => {
   const engine = dataView.engine
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
-  const currentView = settings.currentView
+  const currentView = settings.activeView
   const currentViewDomain = currentView
     ? engine.active
     : undefined

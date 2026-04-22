@@ -41,7 +41,7 @@ export const AddCardFieldTrigger = (props: AddCardFieldTriggerProps) => {
           dataView.session.selection.command.ids.replace([props.field.itemId])
         }
         openCardField({
-          valueEditor: dataView.session.editing.valueEditor,
+          valueEditor: dataView.session.valueEditor,
           field: props.field,
           element: event.currentTarget,
           focusOwner: () => {

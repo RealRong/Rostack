@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { createEngine } from '@dataview/engine'
-import { createDataViewRuntime } from '@dataview/runtime/dataview/runtime'
+import { createDataViewRuntime } from '@dataview/runtime'
 import {
   PERF_PRESETS,
   applyPerfPreset,
@@ -18,8 +18,8 @@ const getPreset = (presetId: PerfPresetId) => {
 }
 
 const assertResolvedTableRows = (runtime: ReturnType<typeof createDataViewRuntime>) => {
-  const grid = runtime.table.grid.get()
-  const view = runtime.table.view.get()
+  const grid = runtime.model.table.grid.get()
+  const view = runtime.model.table.view.get()
 
   assert.ok(view)
   assert.ok(grid)

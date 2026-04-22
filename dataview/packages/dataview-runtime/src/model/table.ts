@@ -1,5 +1,6 @@
 import { collection, store } from '@shared/core'
 import type {
+  ActiveViewQuery,
   FieldList,
   ItemId,
   ItemPlacement,
@@ -7,9 +8,6 @@ import type {
   SectionKey,
   SectionList
 } from '@dataview/engine'
-import type {
-  ActiveViewQuery
-} from '@dataview/engine/contracts/view'
 import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   CalculationMetric,
@@ -63,7 +61,7 @@ export interface TableColumnState {
   calc?: CalculationMetric
 }
 
-export interface TableRuntime {
+export interface TableModel {
   grid: store.ReadStore<TableGrid | undefined>
   view: store.ReadStore<TableViewState | undefined>
   column: store.KeyedReadStore<FieldId, TableColumnState | undefined>
@@ -196,9 +194,9 @@ const readSortDir = (
   rule => rule.sorter.field === fieldId
 )?.sorter.direction
 
-export const createTableRuntime = (
+export const createTableModel = (
   active: ActiveSource
-): TableRuntime => {
+): TableModel => {
   let previousGrid: TableGrid | undefined
   let previousView: TableViewState | undefined
   let previousWidthSource: View['options']['table']['widths'] | undefined

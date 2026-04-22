@@ -34,7 +34,7 @@ export interface RowReorderApi {
 export const useRowReorder = (): RowReorderApi => {
   const dataView = useDataView()
   const table = useTableContext()
-  const grid = useStoreValue(dataView.table.grid)
+  const grid = useStoreValue(dataView.model.table.grid)
   if (!grid) {
     throw new Error('Table row reorder requires an active table grid.')
   }

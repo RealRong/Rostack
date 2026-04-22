@@ -1,14 +1,42 @@
-import type {
-  InlineSessionApi,
-  InlineSessionExitEvent,
-  InlineSessionTarget
-} from '@dataview/runtime/inlineSession/types'
+import type { ViewId } from '@dataview/core/contracts'
+import type { ItemId } from '@dataview/engine'
+import { store as coreStore } from '@shared/core'
 import {
   createListenerSet,
   createNullableControllerStore
-} from '@dataview/runtime/store'
-import { store as coreStore } from '@shared/core'
+} from '@dataview/runtime/session/controller'
 
+export interface InlineSessionTarget {
+  viewId: ViewId
+  itemId: ItemId
+}
+
+export type InlineSessionExitReason =
+  | 'submit'
+  | 'escape'
+  | 'outside'
+  | 'selection'
+  | 'view-change'
+  | 'programmatic'
+
+export interface InlineSessionExitEvent {
+  target: InlineSessionTarget
+  reason: InlineSessionExitReason
+}
+
+export interface InlineSessionApi {
+  store: coreStore.ValueStore<InlineSessionTarget | null>
+  editing: coreStore.KeyedReadStore<string, boolean>
+  key(target: InlineSessionTarget): string
+  enter(target: InlineSessionTarget): void
+  exit(options?: {
+    reason?: InlineSessionExitReason
+  }): void
+  isActive(target: InlineSessionTarget): boolean
+  onExit(listener: (event: InlineSessionExitEvent) => void): () => void
+}
+
+export type InlineSessionExitEffect = 'commit' | 'discard'
 
 const INLINE_SESSION_SEPARATOR = '\u0000'
 
@@ -32,11 +60,27 @@ const sameTarget = (
     && left.itemId === right.itemId
 }
 
+export const resolveInlineSessionExitEffect = (
+  reason: InlineSessionExitReason
+): InlineSessionExitEffect => {
+  switch (reason) {
+    case 'submit':
+    case 'outside':
+    case 'selection':
+      return 'commit'
+    case 'escape':
+    case 'view-change':
+    case 'programmatic':
+    default:
+      return 'discard'
+  }
+}
+
 export const createInlineSessionApi = (
   initial: InlineSessionTarget | null = null
 ): InlineSessionApi => {
   const {
-    store: stateStore,
+    store,
     get
   } = createNullableControllerStore<InlineSessionTarget>({
     initial,
@@ -45,7 +89,7 @@ export const createInlineSessionApi = (
   const editing = coreStore.createKeyedDerivedStore<string, boolean>({
     keyOf: key => key,
     get: key => {
-      const current = coreStore.read(stateStore)
+      const current = coreStore.read(store)
       return current
         ? inlineSessionKey(current) === key
         : false
@@ -55,7 +99,7 @@ export const createInlineSessionApi = (
   const listeners = createListenerSet<InlineSessionExitEvent>()
 
   return {
-    store: stateStore,
+    store,
     editing,
     key: inlineSessionKey,
     enter: target => {
@@ -67,7 +111,7 @@ export const createInlineSessionApi = (
         })
       }
 
-      stateStore.set(target)
+      store.set(target)
     },
     exit: options => {
       const current = get()
@@ -75,7 +119,7 @@ export const createInlineSessionApi = (
         return
       }
 
-      stateStore.set(null)
+      store.set(null)
       listeners.emit({
         target: current,
         reason: options?.reason ?? 'programmatic'

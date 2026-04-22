@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test, vi } from 'vitest'
 import { store } from '@shared/core'
-import { createCreateRecordApi } from '@dataview/runtime/createRecord'
+import { createRecordWorkflow } from '@dataview/runtime'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -31,7 +31,7 @@ test('createRecord runtime retries opening until the created record becomes avai
       orders: []
     } as any
   })
-  const runtime = createCreateRecordApi({
+  const runtime = createRecordWorkflow({
     activeView
   })
   const openAttempts: number[] = []
@@ -78,7 +78,7 @@ test('createRecord runtime cancels pending retries when the owner view changes',
       orders: []
     } as any
   })
-  const runtime = createCreateRecordApi({
+  const runtime = createRecordWorkflow({
     activeView
   })
   const openAttempts: number[] = []
@@ -110,4 +110,3 @@ test('createRecord runtime cancels pending retries when the owner view changes',
   assert.deepEqual(openAttempts, [0])
   assert.equal(failed, 1)
 })
-

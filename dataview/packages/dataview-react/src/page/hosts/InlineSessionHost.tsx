@@ -19,7 +19,7 @@ export const PageInlineSessionHost = () => {
         return
       }
 
-      const session = dataView.session.editing.inline.store.get()
+      const session = dataView.session.inline.store.get()
       if (!session) {
         return
       }
@@ -27,12 +27,12 @@ export const PageInlineSessionHost = () => {
       event.preventDefault()
       event.stopPropagation()
 
-      if (dataView.session.editing.valueEditor.openStore.get()) {
-        dataView.session.editing.valueEditor.close()
+      if (dataView.session.valueEditor.openStore.get()) {
+        dataView.session.valueEditor.close()
         return
       }
 
-      dataView.session.editing.inline.exit({
+      dataView.session.inline.exit({
         reason: 'escape'
       })
       dataView.session.selection.command.ids.replace([session.itemId], {
@@ -42,12 +42,12 @@ export const PageInlineSessionHost = () => {
     }
 
     const onPointerDown = (event: PointerEvent) => {
-      const session = dataView.session.editing.inline.store.get()
+      const session = dataView.session.inline.store.get()
       if (!session) {
         return
       }
 
-      if (dataView.session.editing.valueEditor.openStore.get()) {
+      if (dataView.session.valueEditor.openStore.get()) {
         return
       }
 
@@ -55,7 +55,7 @@ export const PageInlineSessionHost = () => {
         return
       }
 
-      dataView.session.editing.inline.exit({
+      dataView.session.inline.exit({
         reason: 'outside'
       })
     }
@@ -67,9 +67,9 @@ export const PageInlineSessionHost = () => {
       document.removeEventListener('pointerdown', onPointerDown, true)
     }
   }, [
-    dataView.session.editing.inline,
+    dataView.session.inline,
     dataView.session.selection,
-    dataView.session.editing.valueEditor
+    dataView.session.valueEditor
   ])
 
   return null

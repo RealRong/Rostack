@@ -2,7 +2,7 @@ import { store } from '@shared/core'
 import type { InteractionState } from '@dataview/react/interaction'
 import type {
   TableViewState
-} from '@dataview/runtime/table'
+} from '@dataview/runtime'
 
 export interface Capabilities {
   canHover: boolean

@@ -1,22 +1,22 @@
-import { createNullableControllerStore } from '@dataview/runtime/store'
+import { store } from '@shared/core'
 import type {
   DragApi,
   DragSpec
 } from '@dataview/react/page/drag/types'
 
 export const createDragApi = (): DragApi => {
-  const {
-    store,
-    get,
-    clear
-  } = createNullableControllerStore<DragSpec>()
+  const stateStore = store.createValueStore<DragSpec | null>({
+    initial: null
+  })
 
   return {
-    store,
-    get,
-    clear,
+    store: stateStore,
+    get: stateStore.get,
+    clear: () => {
+      stateStore.set(null)
+    },
     set: next => {
-      store.set(next)
+      stateStore.set(next)
     }
   }
 }

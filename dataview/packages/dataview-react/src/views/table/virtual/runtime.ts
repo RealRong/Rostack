@@ -4,7 +4,7 @@ import type {
 import type {
   TableGrid,
   TableViewState
-} from '@dataview/runtime/table'
+} from '@dataview/runtime'
 import {
   observeElementSize,
   pageScrollNode,

@@ -18,7 +18,7 @@ import {
 } from '@dataview/react/dataview'
 import {
   resolveInlineSessionExitEffect
-} from '@dataview/runtime/inlineSession'
+} from '@dataview/runtime'
 import {
   focusInputWithoutScroll
 } from '@shared/dom'
@@ -45,8 +45,8 @@ const useEditableCardTitleState = (input: {
 }): EditableCardTitleState => {
   const dataView = useDataView()
   const editing = useKeyedStoreValue<string, boolean>(
-    dataView.source.inline.editing,
-    dataView.session.editing.inline.key({
+    dataView.session.inline.editing,
+    dataView.session.inline.key({
       viewId: input.viewId,
       itemId: input.itemId
     })
@@ -76,12 +76,12 @@ const useEditableCardTitleState = (input: {
   const enterEdit = useCallback(() => {
     setTitleDraft(input.titleText)
     dataView.session.selection.command.clear()
-    dataView.session.editing.inline.enter({
+    dataView.session.inline.enter({
       viewId: input.viewId,
       itemId: input.itemId
     })
   }, [
-    dataView.session.editing.inline,
+    dataView.session.inline,
     dataView.session.selection,
     input.itemId,
     input.titleText,
@@ -111,17 +111,17 @@ const useEditableCardTitleState = (input: {
 
   const submitTitle = useCallback(() => {
     commitTitle()
-    dataView.session.editing.inline.exit({
+    dataView.session.inline.exit({
       reason: 'submit'
     })
-  }, [commitTitle, dataView.session.editing.inline])
+  }, [commitTitle, dataView.session.inline])
 
   useEffect(() => {
     if (!editing) {
       return
     }
 
-    return dataView.session.editing.inline.onExit(event => {
+    return dataView.session.inline.onExit(event => {
       if (
         event.target.viewId !== input.viewId
         || event.target.itemId !== input.itemId
@@ -140,7 +140,7 @@ const useEditableCardTitleState = (input: {
     })
   }, [
     commitTitle,
-    dataView.session.editing.inline,
+    dataView.session.inline,
     editing,
     input.itemId,
     input.viewId,

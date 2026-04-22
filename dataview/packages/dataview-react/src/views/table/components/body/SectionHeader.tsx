@@ -26,7 +26,7 @@ const View = (props: SectionHeaderProps) => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const table = useTableContext()
-  const grid = useStoreValue(dataView.table.grid)
+  const grid = useStoreValue(dataView.model.table.grid)
   const section = grid?.sections.get(props.sectionKey)
   if (!section) {
     throw new Error('Table section header requires an active table section.')

@@ -8,11 +8,11 @@ import type {
 } from '@dataview/engine'
 import type {
   TableGrid
-} from '@dataview/runtime/table'
+} from '@dataview/runtime'
 import {
   createItemListSelectionDomain,
   selectionSnapshot
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 import {
   gridKeyAction,
   isSelectAll,

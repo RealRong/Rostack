@@ -19,7 +19,7 @@ export const QueryFieldPickerPanel = (props: {
   const settings = useStoreValue(pageRuntime.settings)
   const query = useStoreValue(pageRuntime.query)
   const sortPanel = useStoreValue(pageRuntime.sortPanel)
-  const currentView = settings.currentView
+  const currentView = settings.activeView
   const currentViewDomain = currentView
     ? engine.active
     : undefined

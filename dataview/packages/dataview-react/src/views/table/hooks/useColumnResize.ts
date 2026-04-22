@@ -39,8 +39,8 @@ export const useColumnResize = () => {
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const grid = useStoreValue(dataView.table.grid)
-  const view = useStoreValue(dataView.table.view)
+  const grid = useStoreValue(dataView.model.table.grid)
+  const view = useStoreValue(dataView.model.table.view)
   if (!grid || !view) {
     throw new Error('Table column resize requires an active table grid and view.')
   }

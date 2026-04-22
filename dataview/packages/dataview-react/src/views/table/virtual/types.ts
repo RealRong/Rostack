@@ -7,7 +7,7 @@ import type {
 } from '@dataview/react/virtual'
 import type {
   SelectionScope
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 import type {
   TableBlockId
 } from '@dataview/react/views/table/virtual/blockId'

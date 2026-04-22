@@ -47,23 +47,23 @@ export const TableProvider = (props: TableProviderProps) => {
   }), [props.headerHeight, props.rowHeight])
   const table = useMemo(() => createTableUiRuntime({
     engine,
-    tableRuntime: dataView.table,
-    pageStore: dataView.session.page.store,
+    tableModel: dataView.model.table,
+    pageBodyStore: dataView.model.page.body,
     selection: dataView.session.selection,
     selectionMembershipStore: dataView.session.selection.store.membership,
     previewSelectionMembershipStore: dataView.session.marquee.preview.membership,
     marqueeActiveStore: dataView.session.marquee.activeStore,
-    valueEditor: dataView.session.editing.valueEditor,
+    valueEditor: dataView.session.valueEditor,
     layout,
     nodes
   }), [
-    dataView.session.page.store,
+    dataView.model.page.body,
     dataView.session.selection.store.membership,
     dataView.session.marquee.preview.membership,
     dataView.session.marquee.activeStore,
     dataView.session.selection,
-    dataView.session.editing.valueEditor,
-    dataView.table,
+    dataView.session.valueEditor,
+    dataView.model.table,
     engine,
     layout,
     nodes

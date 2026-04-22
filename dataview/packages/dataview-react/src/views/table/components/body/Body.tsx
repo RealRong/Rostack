@@ -44,7 +44,7 @@ const View = () => {
   const engine = dataView.engine
   const table = useTableContext()
   const body = useStoreValue(table.body)
-  const grid = useStoreValue(dataView.table.grid)
+  const grid = useStoreValue(dataView.model.table.grid)
   if (!body || !grid) {
     throw new Error('Table body requires an active table body and grid.')
   }

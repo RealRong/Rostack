@@ -4,11 +4,11 @@ import type {
 } from '@dataview/engine'
 import type {
   TableViewState
-} from '@dataview/runtime/table'
+} from '@dataview/runtime'
 import type {
   ValueEditorAnchor,
   ValueEditorApi,
-} from '@dataview/runtime/valueEditor'
+} from '@dataview/runtime'
 import type { GridSelectionStore } from '@dataview/react/views/table/gridSelection'
 import type { Dom } from '@dataview/react/views/table/dom'
 import {

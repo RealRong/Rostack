@@ -83,7 +83,7 @@
 
 因为这些变化不属于同一个语义层：
 
-- source 变化
+- input seed
 - graph truth 变化
 - spatial index 变化
 - publish view 变化
@@ -104,7 +104,7 @@ changedIds: Set<string>
 
 ```ts
 interface UpdateDelta {
-  source: ...
+  input: ...
   graph: ...
   spatial: ...
   publish: ...
@@ -199,7 +199,7 @@ delta 不是历史，不是日志，不是 undo record。
 ```ts
 interface UpdateDelta {
   reset: boolean
-  source: SourceDelta
+  input: InputDelta
   graph: GraphDelta
   spatial: SpatialDelta
   publish: PublishDelta
@@ -208,7 +208,7 @@ interface UpdateDelta {
 
 其中：
 
-- `source`
+- `input`
   - 输入种子
 - `graph`
   - graph phase patch 结果
@@ -225,59 +225,198 @@ interface UpdateDelta {
 
 ---
 
-## 6. `SourceDelta`
+## 6. `InputDelta`
 
-`SourceDelta` 是唯一的外部输入种子。
+`InputDelta` 是唯一的外部输入种子。
 
 它必须由 host/input 侧直接构造，不允许 runtime 自己从 `prev/next input` 再推。
+
+这里最重要的不是“输入原先来自哪个容器”，而是：
+
+> 这个输入会唤醒哪一层 patch。
+
+所以长期最优里，不应该再按：
+
+- `session`
+- `measure`
+- `viewport`
+- `interaction`
+- `clock`
+
+这种原始来源分组。
+
+而应该按 projection consumer 分组：
+
+- `document`
+- `graph`
+- `ui`
+- `scene`
+
+这里允许一份外部事件同时 seed 多个 consumer。
+
+例如：
+
+- node 文本编辑
+  - 会 seed `graph.nodes.edit`
+  - 也会 seed `ui.edit`
+
+这不是重复建模，而是在显式表达：
+
+- 哪一部分影响 graph truth
+- 哪一部分只影响 ui truth
 
 建议形态：
 
 ```ts
-interface SourceDelta {
+interface InputDelta {
   document: {
     reset: boolean
-    orderChanged: boolean
+    order: boolean
     nodes: IdDelta<NodeId>
     edges: IdDelta<EdgeId>
     mindmaps: IdDelta<MindmapId>
     groups: IdDelta<GroupId>
   }
-  session: {
-    draftNodes: IdDelta<NodeId>
-    draftEdges: IdDelta<EdgeId>
-    previewNodes: IdDelta<NodeId>
-    previewEdges: IdDelta<EdgeId>
-    previewMindmaps: IdDelta<MindmapId>
+  graph: {
+    nodes: {
+      draft: IdDelta<NodeId>
+      preview: IdDelta<NodeId>
+      text: IdDelta<NodeId>
+      edit: IdDelta<NodeId>
+    }
+    edges: {
+      draft: IdDelta<EdgeId>
+      preview: IdDelta<EdgeId>
+      label: IdDelta<EdgeId>
+      edit: IdDelta<EdgeId>
+    }
+    mindmaps: {
+      preview: IdDelta<MindmapId>
+      tick: ReadonlySet<MindmapId>
+    }
   }
-  measure: {
-    textNodes: IdDelta<NodeId>
-    edgeLabels: IdDelta<EdgeId>
+  ui: {
+    selection: boolean
+    hover: boolean
+    marquee: boolean
+    guides: boolean
+    draw: boolean
+    edit: boolean
   }
-  viewport: {
-    changed: boolean
-  }
-  interaction: {
-    changed: boolean
-  }
-  clock: {
-    changed: boolean
+  scene: {
+    viewport: boolean
   }
 }
 ```
 
-### 为什么 `SourceDelta` 是第一性条件
+字段含义也要明确：
+
+- `document`
+  - 持久态 document delta
+- `graph`
+  - 会直接影响 graph patch 的临时态 seed
+- `ui`
+  - 只唤醒 ui patch，不应触发 graph
+- `scene`
+  - 只唤醒 scene/visibility patch，不应触发 graph
+
+这里有三条边界必须写死：
+
+1. `scene.viewport` 只影响 scene，不影响 graph。
+2. `ui.selection / ui.hover / ui.marquee / ui.guides / ui.draw` 只影响 ui，不影响 graph。
+3. 时间驱动输入不能再是粗 `clock: boolean`，只能是面向 graph entity 的定向 seed，例如 `graph.mindmaps.tick`。
+
+### 6.4 哪些字段允许唤醒 graph
+
+长期最优里，只有下面这些输入种子可以唤醒 graph patch：
+
+- `document.*`
+- `graph.nodes.*`
+- `graph.edges.*`
+- `graph.mindmaps.*`
+
+而下面这些不允许再唤醒 graph：
+
+- `ui.selection`
+- `ui.hover`
+- `ui.marquee`
+- `ui.guides`
+- `ui.draw`
+- `scene.viewport`
+
+如果后续实现里这些字段还能让 graph 脏掉，就说明 graph/ui/scene 边界还没有切干净。
+
+关于你指出的两个具体点，这里直接定结论：
+
+### 6.1 为什么不用 `session / measure / interaction / clock`
+
+因为那是在按“输入来自哪里”建模，而不是按“谁消费这个输入”建模。
+
+对白板运行时来说，真正重要的是：
+
+- 哪些输入会唤醒 graph patch
+- 哪些输入只唤醒 ui
+- 哪些输入只唤醒 scene
+
+如果继续按原始来源分组，planner 和 patcher 会一直被迫跨多个 namespace 做 join，结构会很别扭。
+
+### 6.2 `graph.edges.label` 是否保留
+
+如果 edge label 的：
+
+- size
+- placement
+- rect
+- mask
+- bounds
+
+仍然属于 `EdgeView` 的一部分，那 `graph.edges.label` 就必须保留。
+
+因为这时 label measurement 会直接影响 graph 结果，而不是只影响 ui。
+
+但它不应表现为“measure 整体触发 projection”，而应表现为：
+
+- 只触发 `touched edgeIds` 的 graph patch
+
+如果未来 edge label 几何被整体移出 `EdgeView`，那就直接删除 `graph.edges.label`，而不是重新引入一个泛化的 `measure` namespace。
+
+### 6.3 `graph.mindmaps.tick` 是什么
+
+当前 `clock` 真正会影响 graph 的，本质上只是时间驱动的 mindmap enter 动画。
+
+所以长期最优里不应该保留：
+
+```ts
+clock: { changed: boolean }
+```
+
+而应该收敛成：
+
+```ts
+graph: {
+  mindmaps: {
+    tick: ReadonlySet<MindmapId>
+  }
+}
+```
+
+也就是说：
+
+- 不是“时间变了，所以 graph 变了”
+- 而是“这些 mindmap 正在被时间驱动，需要 patch”
+
+### 为什么 `InputDelta` 是第一性条件
 
 因为后面所有增量都建立在它上面：
 
 ```txt
-source delta
+input delta
   -> graph touched ids
   -> spatial touched keys
   -> publish change
 ```
 
-如果 `SourceDelta` 不精确，后面每一层都会退化成大面积扫描。
+如果 `InputDelta` 不精确，后面每一层都会退化成大面积扫描。
 
 ---
 
@@ -292,7 +431,7 @@ source delta
 
 ```ts
 interface GraphDelta {
-  orderChanged: boolean
+  order: boolean
   entities: {
     nodes: IdDelta<NodeId>
     edges: IdDelta<EdgeId>
@@ -380,19 +519,19 @@ patchMindmap(mindmapId)
 
 ```ts
 interface SpatialDelta {
-  orderChanged: boolean
+  order: boolean
   records: IdDelta<SpatialKey>
-  visibilityDirty: boolean
+  visible: boolean
 }
 ```
 
 ### 含义
 
-- `orderChanged`
+- `order`
   - scene order 改了，但未必改 tree bounds
 - `records`
   - 哪些 spatial record add/update/remove
-- `visibilityDirty`
+- `visible`
   - 当前 viewport visible 是否需要重算
 
 ### 为什么不需要更重的 `SpatialDelta`
@@ -417,19 +556,19 @@ patchSpatialRecord(key)
   -> if add: spatial.records.added.add(key)
   -> if remove: spatial.records.removed.add(key)
   -> if update: spatial.records.updated.add(key)
-  -> spatial.visibilityDirty = true
+  -> spatial.visible = true
 ```
 
 ```txt
 patchSpatialOrder()
-  -> spatial.orderChanged = true
-  -> spatial.visibilityDirty = true
+  -> spatial.order = true
+  -> spatial.visible = true
 ```
 
 ```txt
 viewport changed
   -> do not touch spatial.records
-  -> spatial.visibilityDirty = true
+  -> spatial.visible = true
 ```
 
 这里再次强调：
@@ -462,12 +601,12 @@ interface PublishDelta {
     groups: ReadonlySet<GroupId>
   }
   scene: {
-    orderChanged: boolean
-    visibilityChanged: boolean
+    order: boolean
+    visible: boolean
   }
   ui: {
-    selectionChanged: boolean
-    chromeChanged: boolean
+    selection: boolean
+    chrome: boolean
   }
 }
 ```
@@ -479,7 +618,7 @@ interface PublishDelta {
 例如：
 
 - spatial tree patch 了 12 个 key
-- 但外部只需要知道 `scene.visibilityChanged = true`
+- 但外部只需要知道 `scene.visible = true`
 
 所以必须把：
 
@@ -496,11 +635,11 @@ interface PublishDelta {
 publish.graph.nodes
   <- graph.entities.nodes.added/updated/removed
 
-publish.scene.orderChanged
-  <- graph.orderChanged || spatial.orderChanged
+publish.scene.order
+  <- graph.order || spatial.order
 
-publish.scene.visibilityChanged
-  <- spatial.visibilityDirty
+publish.scene.visible
+  <- spatial.visible
 ```
 
 也就是说：
@@ -514,7 +653,7 @@ publish.scene.visibilityChanged
 最终 update 应是：
 
 ```txt
-create UpdateDeltaBuilder from input.sourceDelta
+create UpdateDeltaBuilder from input.delta
   -> patch graph, append graph delta
   -> patch spatial, append spatial delta
   -> patch ui, append ui publish bits
@@ -556,7 +695,7 @@ const result = publish(runtime, delta)
 长期最优里应该改成：
 
 ```txt
-source delta
+input delta
   -> planner
   -> decide graph/spatial/visibility/ui patch scopes
 ```
@@ -566,7 +705,7 @@ source delta
 #### 只改 viewport
 
 ```txt
-source.viewport.changed = true
+input.scene.viewport = true
   -> skip graph patch
   -> skip spatial record patch
   -> run visibility derive only
@@ -575,7 +714,7 @@ source.viewport.changed = true
 #### 只改 node draft
 
 ```txt
-source.session.draftNodes.updated = {nodeId}
+input.graph.nodes.draft.updated = {nodeId}
   -> patch touched node graph
   -> patch dependent spatial records
   -> recompute visible
@@ -584,10 +723,29 @@ source.session.draftNodes.updated = {nodeId}
 #### 只改 text measure
 
 ```txt
-source.measure.textNodes.updated = {nodeId}
+input.graph.nodes.text.updated = {nodeId}
   -> patch touched node graph
   -> patch dependent mindmap/group/edge if geometry changed
   -> patch spatial
+  -> recompute visible
+```
+
+#### 只改 hover / selection
+
+```txt
+input.ui.hover = true
+input.ui.selection = true
+  -> skip graph patch
+  -> skip spatial patch
+  -> patch ui only
+```
+
+#### 只改动画 tick
+
+```txt
+input.graph.mindmaps.tick = {mindmapId}
+  -> patch touched mindmap graph
+  -> patch dependent spatial records
   -> recompute visible
 ```
 
@@ -658,7 +816,7 @@ interface MutableIdDelta<TId extends string> {
 
 这样好处是：
 
-- graph/spatial/source 全部统一
+- graph/spatial/input 全部统一
 - 不需要每层发明自己的三元组结构
 
 ---
@@ -786,7 +944,7 @@ fanoutNodeGeometry(nodeId, ctx, delta)
 它只是同一条 update 事务里的下游消费者：
 
 ```txt
-SourceDelta
+InputDelta
   -> GraphDelta
   -> SpatialDelta
   -> PublishDelta
@@ -853,7 +1011,7 @@ ui publish
 
 ### 第一步
 
-先把 `Input.impact` 重写成正式 `SourceDelta`。
+先把 `Input.impact` 重写成正式 `InputDelta`。
 
 ### 第二步
 
@@ -877,7 +1035,7 @@ ui publish
 
 重写 planner：
 
-- 从粗 flags 改成 source delta 驱动
+- 从粗 flags 改成 input delta 驱动
 
 ### 第六步
 
@@ -910,7 +1068,7 @@ ui publish
 最终长期最优只有一个答案：
 
 1. 每次 update 只有一份统一 `UpdateDelta`
-2. 这份 delta 内部分成 `source / graph / spatial / publish` 四层 namespace
+2. 这份 delta 内部分成 `input / graph / spatial / publish` 四层 namespace
 3. `graph delta` 和 `spatial delta` 必须存在，但只是同一事务里的两个工作集
 4. 所有 delta 都必须在 patch 过程中顺手产出
 5. 不允许 phase 结束后再通过 diff 回推 delta

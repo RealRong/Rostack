@@ -6,7 +6,7 @@ import { meta } from '@dataview/meta'
 import type { TokenTranslator } from '@shared/i18n'
 import {
   query
-} from '@dataview/runtime/model'
+} from '@dataview/runtime'
 
 export const SORT_DIRECTIONS = [
   'asc',

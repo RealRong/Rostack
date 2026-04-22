@@ -12,7 +12,7 @@ import type {
   KanbanBoard as KanbanBoardModel,
   KanbanCard,
   KanbanSection
-} from '@dataview/runtime/model'
+} from '@dataview/runtime'
 import { store } from '@shared/core'
 import type { Rect } from '@shared/dom'
 import type { BoardLayout } from '@dataview/react/views/kanban/drag'
@@ -20,7 +20,7 @@ import type { BoardLayout } from '@dataview/react/views/kanban/drag'
 export type {
   KanbanCard,
   KanbanSection
-} from '@dataview/runtime/model'
+} from '@dataview/runtime'
 
 export interface KanbanVisibility {
   ids: readonly ItemId[]

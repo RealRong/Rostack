@@ -2,7 +2,7 @@ import { store } from '@shared/core'
 import type { CellRef } from '@dataview/engine'
 import type {
   TableGrid
-} from '@dataview/runtime/table'
+} from '@dataview/runtime'
 import { fill, type GridSelection } from '@dataview/table'
 import { sameOptionalCell, tableCellKey } from '@dataview/react/views/table/runtime/cell'
 

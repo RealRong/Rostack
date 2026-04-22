@@ -10,20 +10,16 @@ import type {
 } from '@dataview/core/contracts'
 import { store } from '@shared/core'
 import type {
+  ActiveViewGallery,
+  ActiveViewKanban,
+  ActiveViewQuery,
+  ActiveViewTable,
   EngineCore,
-} from '@dataview/engine/contracts/core'
-import type {
   ItemId,
   ItemPlacement,
   Section,
   SectionKey
-} from '@dataview/engine/contracts/shared'
-import type {
-  ActiveViewGallery,
-  ActiveViewKanban,
-  ActiveViewQuery,
-  ActiveViewTable
-} from '@dataview/engine/contracts/view'
+} from '@dataview/engine'
 
 export interface EntitySource<Key, Value> extends store.KeyedReadStore<Key, Value | undefined> {
   ids: store.ReadStore<readonly Key[]>

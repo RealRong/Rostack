@@ -3,9 +3,6 @@ import {
   type ItemId
 } from '@dataview/engine'
 import type {
-  DataViewSource
-} from '@dataview/runtime/dataview/types'
-import type {
   DataViewGalleryModel,
   GalleryBody,
   GalleryCard,
@@ -15,10 +12,13 @@ import {
   createActiveCustomFieldListStore,
   createItemCardContentStore,
   createRecordCardPropertiesStore
-} from '@dataview/runtime/model/internal/card'
+} from '@dataview/runtime/model/card'
 import {
   createPresentListStore
-} from '@dataview/runtime/model/internal/list'
+} from '@dataview/runtime/model/list'
+import type {
+  EngineSource
+} from '@dataview/runtime/source'
 
 const DEFAULT_GALLERY_TITLE_PLACEHOLDER = '输入名称...'
 const EMPTY_SECTIONS = [] as const
@@ -67,7 +67,10 @@ const sameCard = (
 )
 
 export const createGalleryModel = (input: {
-  source: DataViewSource
+  source: EngineSource
+  selectionMembershipStore: store.KeyedReadStore<ItemId, boolean>
+  previewSelectionMembershipStore: store.KeyedReadStore<ItemId, boolean | null>
+  inlineEditingStore: store.KeyedReadStore<string, boolean>
   inlineKey: (input: {
     viewId: string
     itemId: ItemId
@@ -159,11 +162,11 @@ export const createGalleryModel = (input: {
         wrap: gallery.wrap,
         canDrag: gallery.canReorder,
         selected: (
-          store.read(input.source.selection.preview, itemId)
-          ?? store.read(input.source.selection.member, itemId)
+          store.read(input.previewSelectionMembershipStore, itemId)
+          ?? store.read(input.selectionMembershipStore, itemId)
         ),
         editing: store.read(
-          input.source.inline.editing,
+          input.inlineEditingStore,
           input.inlineKey({
             viewId,
             itemId

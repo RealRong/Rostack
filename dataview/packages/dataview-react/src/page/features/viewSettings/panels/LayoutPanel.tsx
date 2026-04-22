@@ -71,7 +71,7 @@ export const LayoutPanel = () => {
   const engine = dataView.engine
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
-  const view = settings.currentView
+  const view = settings.activeView
   const viewApi = view
     ? engine.active
     : undefined

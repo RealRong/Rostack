@@ -5,4 +5,4 @@ export {
 } from '@dataview/react/page/features/sort/sortUi'
 export {
   query
-} from '@dataview/runtime/model'
+} from '@dataview/runtime'

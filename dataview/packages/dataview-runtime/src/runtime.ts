@@ -3,35 +3,29 @@ import type {
   View
 } from '@dataview/core/contracts'
 import {
-  createCreateRecordApi
-} from '@dataview/runtime/createRecord'
+  createRecordWorkflow
+} from '@dataview/runtime/workflow/createRecord'
 import {
   createInlineSessionApi,
   type InlineSessionApi
-} from '@dataview/runtime/inlineSession'
+} from '@dataview/runtime/session/inline'
 import {
-  createPageSessionApi
-} from '@dataview/runtime/page/session/api'
-import {
-  createPageStateStore
-} from '@dataview/runtime/page/state'
+  createPageSessionController
+} from '@dataview/runtime/session/page'
 import {
   createGalleryModel,
   createKanbanModel,
   createPageModel
 } from '@dataview/runtime/model'
 import {
-  createPresentListStore
-} from '@dataview/runtime/model/internal/list'
-import {
   createMarqueeController
-} from '@dataview/runtime/marquee'
+} from '@dataview/runtime/session/marquee'
 import {
   createEngineSource
 } from '@dataview/runtime/source'
 import {
-  createTableRuntime
-} from '@dataview/runtime/table'
+  createTableModel
+} from '@dataview/runtime/model/table'
 import {
   createItemArraySelectionDomain,
   createSelectionController,
@@ -39,12 +33,11 @@ import {
 } from '@dataview/runtime/selection'
 import type {
   CreateDataViewRuntimeInput,
-  DataViewRuntime,
-  DataViewSessionState
-} from '@dataview/runtime/dataview/types'
+  DataViewRuntime
+} from '@dataview/runtime/contracts'
 import {
   createValueEditorApi
-} from '@dataview/runtime/valueEditor'
+} from '@dataview/runtime/session/valueEditor'
 
 const bindInlineSessionToView = (input: {
   activeView: store.ReadStore<View | undefined>
@@ -133,12 +126,12 @@ export const createDataViewRuntime = (
   const sourceRuntime = createEngineSource({
     core: input.engine.core
   })
-  const page = createPageSessionApi(input.initialPage)
-  const inlineSession = createInlineSessionApi()
-  const createRecord = createCreateRecordApi({
+  const page = createPageSessionController(input.initialPage)
+  const inline = createInlineSessionApi()
+  const createRecord = createRecordWorkflow({
     activeView: sourceRuntime.source.active.view.current
   })
-  const table = createTableRuntime(sourceRuntime.source.active)
+  const table = createTableModel(sourceRuntime.source.active)
   const valueEditor = createValueEditorApi()
   const activeItemIds = sourceRuntime.source.active.items.ids
   const activeView = sourceRuntime.source.active.view.current
@@ -156,57 +149,33 @@ export const createDataViewRuntime = (
     selection,
     resolveDomain: () => store.read(activeSelectionDomain)
   })
-  const fieldsStore = createPresentListStore({
-    ids: sourceRuntime.source.doc.fields.ids,
-    values: sourceRuntime.source.doc.fields
-  })
-  const pageStateStore = createPageStateStore({
-    fields: fieldsStore,
-    activeViewId: sourceRuntime.source.active.view.id,
-    activeView,
-    page: page.store,
-    valueEditorOpen: valueEditor.openStore
-  })
-  const source = {
-    doc: sourceRuntime.source.doc,
-    active: sourceRuntime.source.active,
-    selection: {
-      member: selection.store.membership,
-      preview: marquee.preview.membership
-    },
-    inline: {
-      editing: inlineSession.editing
-    }
-  }
-  const sessionStore = store.createDerivedStore<DataViewSessionState>({
-    get: () => ({
-      page: store.read(pageStateStore),
-      editing: {
-        inline: store.read(inlineSession.store),
-        valueEditor: store.read(valueEditor.store)
-      },
-      selection: store.read(selection.state.store)
-    })
-  })
   const model = {
     page: createPageModel({
-      source,
-      pageStateStore
+      source: sourceRuntime.source,
+      pageSessionStore: page.store,
+      valueEditorOpenStore: valueEditor.openStore
     }),
+    table,
     gallery: createGalleryModel({
-      source,
-      inlineKey: inlineSession.key
+      source: sourceRuntime.source,
+      selectionMembershipStore: selection.store.membership,
+      previewSelectionMembershipStore: marquee.preview.membership,
+      inlineEditingStore: inline.editing,
+      inlineKey: inline.key
     }),
     kanban: createKanbanModel({
-      source,
-      inlineKey: inlineSession.key
+      source: sourceRuntime.source,
+      selectionMembershipStore: selection.store.membership,
+      previewSelectionMembershipStore: marquee.preview.membership,
+      inlineEditingStore: inline.editing,
+      inlineKey: inline.key
     })
   }
 
   const disposeBindings = store.joinUnsubscribes([
     bindInlineSessionToSelection({
       selection,
-      inlineSession
+      inlineSession: inline
     }),
     bindMarqueeToView({
       activeView,
@@ -215,37 +184,22 @@ export const createDataViewRuntime = (
     bindInlineSessionToView({
       activeView,
       items: sourceRuntime.source.active.items,
-      inlineSession
+      inlineSession: inline
     })
   ])
 
   return {
     engine: input.engine,
-    source,
-    table,
+    source: sourceRuntime.source,
     session: {
-      store: sessionStore,
-      page: {
-        ...page,
-        store: pageStateStore
-      },
+      page,
       selection,
-      editing: {
-        inline: inlineSession,
-        valueEditor
-      },
-      creation: createRecord,
+      inline,
+      valueEditor,
       marquee
     },
-    intent: {
-      page,
-      selection: selection.command,
-      editing: {
-        inline: inlineSession,
-        valueEditor
-      },
+    workflow: {
       createRecord,
-      marquee
     },
     model,
     dispose: () => {

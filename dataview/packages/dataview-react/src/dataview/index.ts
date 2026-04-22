@@ -2,14 +2,12 @@ export {
   EngineProvider,
   useDataView,
   useDataViewModel,
-  useDataViewIntent,
   useDataViewSession,
   useDataViewSource,
   usePageRuntime
 } from '@dataview/react/dataview/provider'
 export {
   useDataViewKeyedValue,
-  useDataViewSessionSelector,
   useDataViewValue
 } from '@dataview/react/dataview/useDataViewValue'
 

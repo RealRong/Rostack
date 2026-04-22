@@ -2,7 +2,7 @@ import { store as coreStore } from '@shared/core'
 import type { CellRef, ItemId } from '@dataview/engine'
 import type {
   TableGrid
-} from '@dataview/runtime/table'
+} from '@dataview/runtime'
 import {
   gridSelection,
   type GridSelection

@@ -5,7 +5,7 @@ import {
   createItemArraySelectionDomain,
   createSelectionController,
   selectionSnapshot
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 import {
   gridSelection
 } from '@dataview/table'

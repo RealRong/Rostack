@@ -23,7 +23,7 @@ import {
   readGroupSummary
 } from '@dataview/react/page/features/viewSettings/groupUi'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
-import { supportsGroupSettings } from '@dataview/runtime/page/session/settings'
+import { supportsGroupSettings } from '@dataview/runtime'
 import { useTranslation } from '@shared/i18n/react'
 import {
   useStoreValue
@@ -40,18 +40,18 @@ interface RootMenuItemConfig {
 }
 
 const ViewSettingsIdentitySection = (props: {
-  currentView?: View
+  activeView?: View
   onRename: (name: string) => void
   autoFocusName?: boolean
 }) => {
   const { t } = useTranslation()
-  const [name, setName] = useState(props.currentView?.name ?? '')
+  const [name, setName] = useState(props.activeView?.name ?? '')
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const Icon = meta.view.get(props.currentView?.type).Icon
+  const Icon = meta.view.get(props.activeView?.type).Icon
 
   useEffect(() => {
-    setName(props.currentView?.name ?? '')
-  }, [props.currentView?.id, props.currentView?.name])
+    setName(props.activeView?.name ?? '')
+  }, [props.activeView?.id, props.activeView?.name])
 
   useEffect(() => {
     if (!props.autoFocusName) {
@@ -62,20 +62,20 @@ const ViewSettingsIdentitySection = (props: {
       inputRef.current?.focus()
       inputRef.current?.select()
     })
-  }, [props.autoFocusName, props.currentView?.id])
+  }, [props.autoFocusName, props.activeView?.id])
 
   const commit = () => {
-    if (!props.currentView) {
+    if (!props.activeView) {
       return
     }
 
     const nextName = name.trim()
     if (!nextName) {
-      setName(props.currentView.name)
+      setName(props.activeView.name)
       return
     }
 
-    if (nextName !== props.currentView.name) {
+    if (nextName !== props.activeView.name) {
       props.onRename(nextName)
     }
   }
@@ -100,7 +100,7 @@ const ViewSettingsIdentitySection = (props: {
               }
             }}
             placeholder={t(meta.ui.viewSettings.viewNamePlaceholder)}
-            disabled={!props.currentView}
+            disabled={!props.activeView}
             className="h-8 px-2 text-sm font-medium rounded-lg"
           />
         </div>
@@ -153,7 +153,7 @@ export const RootPanel = () => {
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
   const router = useViewSettings()
-  const currentView = settings.currentView
+  const currentView = settings.activeView
   const fields = settings.fields
   const filterProjection = settings.filter
   const sortProjection = settings.sort
@@ -220,7 +220,7 @@ export const RootPanel = () => {
         {t(meta.ui.viewSettings.title)}
       </div>
       <ViewSettingsIdentitySection
-        currentView={currentView}
+        activeView={currentView}
         autoFocusName={router.route.kind === 'root' && router.route.focusTarget === 'viewName'}
         onRename={name => {
           if (!currentView) {

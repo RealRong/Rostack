@@ -23,7 +23,7 @@ import {
 } from '@dataview/engine'
 import type {
   TableGrid
-} from '@dataview/runtime/table'
+} from '@dataview/runtime'
 import type {
   CellRef
 } from '@dataview/engine'
@@ -487,7 +487,7 @@ export const usePointer = (
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const grid = useStoreValue(dataView.table.grid)
+  const grid = useStoreValue(dataView.model.table.grid)
   if (!grid) {
     throw new Error('Table pointer interactions require an active table grid.')
   }

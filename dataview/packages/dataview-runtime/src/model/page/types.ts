@@ -9,14 +9,17 @@ import type {
 } from '@dataview/engine'
 import type {
   QueryBarEntry,
-  QueryBarState
-} from '@dataview/runtime/page/session/types'
+  QueryBarState,
+  SettingsRoute
+} from '@dataview/runtime/session/page'
 import { store } from '@shared/core'
 
 
 export interface PageBody {
   viewType?: View['type']
   empty: boolean
+  valueEditorOpen: boolean
+  locked: boolean
 }
 
 export interface PageHeader {
@@ -27,7 +30,7 @@ export interface PageHeader {
 
 export interface PageToolbar {
   views: readonly View[]
-  currentView?: View
+  activeView?: View
   activeViewId?: ViewId
   queryBar: QueryBarState
   search: string
@@ -40,7 +43,7 @@ export interface PageToolbar {
 export interface PageQuery {
   visible: boolean
   route: QueryBarEntry | null
-  currentView?: View
+  activeView?: View
   filters: ActiveViewQuery['filters']['rules']
   sorts: ActiveViewQuery['sort']['rules']
   availableFilterFields: readonly Field[]
@@ -59,12 +62,14 @@ export interface PageSortRow {
 }
 
 export interface PageSettings {
+  visible: boolean
+  route: SettingsRoute
   viewsCount: number
   fields: readonly Field[]
   displayFieldIds: readonly Field['id'][]
   visibleFields: readonly Field[]
   hiddenFields: readonly Field[]
-  currentView?: View
+  activeView?: View
   filter?: ActiveViewQuery['filters']
   sort?: ActiveViewQuery['sort']
   group?: ActiveViewQuery['group']

@@ -29,8 +29,8 @@ export const ViewSettingsPopover = () => {
   const dataView = useDataView()
   const page = dataView.session.page
   const pageRuntime = usePageRuntime()
-  const currentView = useStoreValue(pageRuntime.settings).currentView
-  const viewSettings = useStoreValue(dataView.session.page.store).settings
+  const viewSettings = useStoreValue(pageRuntime.settings)
+  const currentView = viewSettings.activeView
   const open = viewSettings.visible
   const resolvedRoute = viewSettings.route
 

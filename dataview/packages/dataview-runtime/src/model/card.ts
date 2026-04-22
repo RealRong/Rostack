@@ -12,15 +12,15 @@ import type {
 } from '@dataview/engine'
 import { equal, store } from '@shared/core'
 import type {
-  DataViewSource
-} from '@dataview/runtime/dataview/types'
-import type {
   CardContent,
   CardProperty
 } from '@dataview/runtime/model/shared'
 import {
   createPresentListStore
-} from '@dataview/runtime/model/internal/list'
+} from '@dataview/runtime/model/list'
+import type {
+  EngineSource
+} from '@dataview/runtime/source'
 
 const sameProperty = (
   left: CardProperty,
@@ -53,14 +53,14 @@ const sameContent = (
 )
 
 export const createActiveCustomFieldListStore = (
-  source: DataViewSource
+  source: EngineSource
 ): store.ReadStore<readonly CustomField[]> => createPresentListStore({
   ids: source.active.fields.custom.ids,
   values: source.active.fields.custom
 })
 
 export const createRecordCardPropertiesStore = (input: {
-  source: DataViewSource
+  source: EngineSource
   fields: store.ReadStore<readonly CustomField[]>
 }): store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined> => store.createKeyedDerivedStore<RecordId, readonly CardProperty[] | undefined>({
   get: recordId => {
@@ -78,7 +78,7 @@ export const createRecordCardPropertiesStore = (input: {
 })
 
 export const createItemCardContentStore = (input: {
-  source: DataViewSource
+  source: EngineSource
   viewType: 'gallery' | 'kanban'
   properties: store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined>
   placeholderText: (input: {

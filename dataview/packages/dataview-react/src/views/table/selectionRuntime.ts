@@ -1,7 +1,7 @@
 import { store } from '@shared/core'
 import type {
   TableGrid
-} from '@dataview/runtime/table'
+} from '@dataview/runtime'
 import {
   createGridSelection,
   type GridSelectionStore
@@ -9,7 +9,7 @@ import {
 import type {
   ItemSelectionController,
   ItemSelectionSnapshot
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 
 export type TableSelectionMode =
   | 'none'

@@ -5,7 +5,7 @@ import type {
 import {
   createItemArraySelectionScope,
   type SelectionScope
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 import type {
   TableBlock,
   TableColumnFooterBlock,

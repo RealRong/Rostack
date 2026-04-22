@@ -10,23 +10,23 @@ import {
 import {
   createItemListSelectionDomain,
   selectionSnapshot
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 import { store } from '@shared/core'
 import type {
   Field,
   FieldId,
   ViewId
 } from '@dataview/core/contracts'
-import type { PageState } from '@dataview/runtime/page/session/types'
+import type { PageBody } from '@dataview/runtime'
 import type {
   ItemSelectionController,
   ItemSelectionSnapshot
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 import type {
   TableGrid,
-  TableRuntime
-} from '@dataview/runtime/table'
-import type { ValueEditorApi } from '@dataview/runtime/valueEditor'
+  TableModel
+} from '@dataview/runtime'
+import type { ValueEditorApi } from '@dataview/runtime'
 import {
   createCapabilities,
   type Capabilities
@@ -200,8 +200,8 @@ const selectionRow = (input: {
 
 export const createTableUiRuntime = (options: {
   engine: Engine
-  tableRuntime: TableRuntime
-  pageStore: store.ReadStore<PageState>
+  tableModel: TableModel
+  pageBodyStore: store.ReadStore<PageBody>
   selection: ItemSelectionController
   selectionMembershipStore: store.KeyedReadStore<ItemId, boolean>
   previewSelectionMembershipStore: store.KeyedReadStore<ItemId, boolean | null>
@@ -210,17 +210,17 @@ export const createTableUiRuntime = (options: {
   layout: TableLayout
   nodes: Nodes
 }): TableUiRuntime => {
-  const grid = options.tableRuntime.grid
-  const view = options.tableRuntime.view
+  const grid = options.tableModel.grid
+  const view = options.tableModel.view
   const selection = createTableSelectionRuntime({
     gridStore: grid,
     rowSelection: options.selection
   })
   const lockedStore = store.createDerivedStore<boolean>({
-    get: () => store.read(options.pageStore).lock !== null
+    get: () => store.read(options.pageBodyStore).locked
   })
   const valueEditorOpenStore = store.createDerivedStore<boolean>({
-    get: () => store.read(options.pageStore).valueEditorOpen
+    get: () => store.read(options.pageBodyStore).valueEditorOpen
   })
   const selectionVisibleStore = store.createDerivedStore<boolean>({
     get: () => !store.read(valueEditorOpenStore),

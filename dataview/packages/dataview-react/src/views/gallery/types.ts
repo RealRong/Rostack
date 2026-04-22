@@ -15,14 +15,14 @@ import type {
   GalleryBody as GalleryBodyModel,
   GalleryCard,
   GallerySection
-} from '@dataview/runtime/model'
+} from '@dataview/runtime'
 import { store } from '@shared/core'
 
 
 export type {
   GalleryCard,
   GallerySection
-} from '@dataview/runtime/model'
+} from '@dataview/runtime'
 
 export interface GalleryBody extends GalleryBodyModel {
   blocks: readonly GalleryBlock[]

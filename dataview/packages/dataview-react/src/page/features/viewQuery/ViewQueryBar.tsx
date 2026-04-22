@@ -9,7 +9,7 @@ import { FieldPicker } from '@dataview/react/field/picker'
 import { Popover } from '@shared/ui/popover'
 import { meta } from '@dataview/meta'
 import { useTranslation } from '@shared/i18n/react'
-import type { QueryBarEntry } from '@dataview/runtime/page/session/types'
+import type { QueryBarEntry } from '@dataview/runtime'
 import { QueryChip } from '@dataview/react/page/features/query'
 import {
   useStoreValue
@@ -24,7 +24,7 @@ export const ViewQueryBar = () => {
   const page = dataView.session.page
   const pageRuntime = usePageRuntime()
   const query = useStoreValue(pageRuntime.query)
-  const currentView = query.currentView
+  const currentView = query.activeView
 
   const currentViewDomain = currentView
     ? engine.active

@@ -32,7 +32,7 @@ const View = (props: ColumnFooterBlockProps) => {
   } = useTranslation()
   const dataView = useDataView()
   const table = useTableContext()
-  const summary = useKeyedStoreValue(dataView.table.summary, props.scopeId)
+  const summary = useKeyedStoreValue(dataView.model.table.summary, props.scopeId)
   const calculations = summary?.byField
 
   return (

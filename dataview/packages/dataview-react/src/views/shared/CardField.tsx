@@ -57,7 +57,7 @@ const applyRecordValue = (input: {
 export const CardField = (props: CardFieldProps) => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const valueEditor = dataView.session.editing.valueEditor
+  const valueEditor = dataView.session.valueEditor
   const empty = fieldApi.value.empty(props.value)
 
   if (empty) {

@@ -1,6 +1,6 @@
 import { useOverlayKey } from '@shared/ui/overlay'
 import { keyDown } from '@dataview/react/interaction'
-import { useDataView, usePageRuntime, useDataViewValue } from '@dataview/react/dataview'
+import { useDataView, usePageRuntime } from '@dataview/react/dataview'
 import { closestTarget } from '@shared/dom'
 import { pageShortcutAction } from '@dataview/react/page/keyboard'
 import { useStoreValue } from '@shared/react'
@@ -17,10 +17,7 @@ export const PageKeyboardHost = () => {
   const engine = dataView.engine
   const page = usePageRuntime()
   const pageBody = useStoreValue(page.body)
-  const valueEditorOpen = useDataViewValue(
-    dataView => dataView.session.page.store,
-    state => state.valueEditorOpen
-  )
+  const valueEditorOpen = pageBody.valueEditorOpen
 
   useOverlayKey({
     order: -100,

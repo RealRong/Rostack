@@ -1,4 +1,5 @@
 import type {
+  CustomField,
   Field,
   FieldId,
   View
@@ -7,9 +8,6 @@ import { equal, store } from '@shared/core'
 import type {
   ActiveViewQuery
 } from '@dataview/engine'
-import type {
-  DataViewSource
-} from '@dataview/runtime/dataview/types'
 import type {
   PageBody,
   PageHeader,
@@ -21,14 +19,19 @@ import type {
   PageToolbar
 } from '@dataview/runtime/model/page/types'
 import type {
-  PageState
-} from '@dataview/runtime/page/session/types'
+  EngineSource
+} from '@dataview/runtime/source'
 import {
   createPresentListStore
-} from '@dataview/runtime/model/internal/list'
+} from '@dataview/runtime/model/list'
 import {
   query as queryApi
 } from '@dataview/runtime/model/queryFields'
+import {
+  resolvePageQueryBarState,
+  resolvePageSettingsState,
+  type PageSessionState
+} from '@dataview/runtime/session/page'
 
 const EMPTY_FIELD_IDS: readonly FieldId[] = []
 const EMPTY_FIELDS: readonly Field[] = []
@@ -87,6 +90,8 @@ const sameBody = (
   right: PageBody
 ) => left.viewType === right.viewType
   && left.empty === right.empty
+  && left.valueEditorOpen === right.valueEditorOpen
+  && left.locked === right.locked
 
 const sameHeader = (
   left: PageHeader,
@@ -98,7 +103,7 @@ const sameHeader = (
 const sameToolbar = (
   left: PageToolbar,
   right: PageToolbar
-) => left.currentView === right.currentView
+) => left.activeView === right.activeView
   && left.activeViewId === right.activeViewId
   && sameQueryBar(left.queryBar, right.queryBar)
   && left.search === right.search
@@ -113,17 +118,34 @@ const sameQuery = (
   right: PageQuery
 ) => left.visible === right.visible
   && sameRoute(left.route, right.route)
-  && left.currentView === right.currentView
+  && left.activeView === right.activeView
   && left.filters === right.filters
   && left.sorts === right.sorts
   && equal.sameOrder(left.availableFilterFields, right.availableFilterFields)
   && equal.sameOrder(left.availableSortFields, right.availableSortFields)
 
+const sameSettingsRoute = (
+  left: PageSettings['route'],
+  right: PageSettings['route']
+) => left.kind === right.kind
+  && (
+    left.kind !== 'fieldSchema'
+    || right.kind !== 'fieldSchema'
+    || left.fieldId === right.fieldId
+  )
+  && (
+    left.kind !== 'root'
+    || right.kind !== 'root'
+    || left.focusTarget === right.focusTarget
+  )
+
 const sameSettings = (
   left: PageSettings,
   right: PageSettings
-) => left.viewsCount === right.viewsCount
-  && left.currentView === right.currentView
+) => left.visible === right.visible
+  && sameSettingsRoute(left.route, right.route)
+  && left.viewsCount === right.viewsCount
+  && left.activeView === right.activeView
   && left.filter === right.filter
   && left.sort === right.sort
   && left.group === right.group
@@ -149,10 +171,10 @@ const sameSortRow = (
   && equal.sameOrder(left.availableFields, right.availableFields)
 )
 
-const createAvailableFieldsStore = (input: {
-  fields: store.ReadStore<readonly Field[]>
+const createAvailableFieldsStore = <TField extends Field>(input: {
+  fields: store.ReadStore<readonly TField[]>
   usedFieldIds: store.ReadStore<readonly FieldId[]>
-}) => store.createDerivedStore<readonly Field[]>({
+}) => store.createDerivedStore<readonly TField[]>({
   get: () => {
     const fields = store.read(input.fields)
     const usedFieldIds = store.read(input.usedFieldIds)
@@ -167,10 +189,11 @@ const createAvailableFieldsStore = (input: {
 })
 
 export const createPageModel = (input: {
-  source: DataViewSource
-  pageStateStore: store.ReadStore<PageState>
+  source: EngineSource
+  pageSessionStore: store.ReadStore<PageSessionState>
+  valueEditorOpenStore: store.ReadStore<boolean>
 }): PageModel => {
-  const fields = store.createDerivedStore<readonly Field[]>({
+  const customFields = store.createDerivedStore<readonly CustomField[]>({
     get: () => store.read(input.source.doc.fields.ids)
       .flatMap(fieldId => {
         const field = store.read(input.source.doc.fields, fieldId)
@@ -182,15 +205,7 @@ export const createPageModel = (input: {
     ids: input.source.doc.views.ids,
     values: input.source.doc.views
   })
-  const currentView = store.createDerivedStore<View | undefined>({
-    get: () => {
-      const viewId = store.read(input.source.active.view.id)
-      return viewId
-        ? store.read(input.source.doc.views, viewId)
-        : undefined
-    },
-    isEqual: Object.is
-  })
+  const activeView = input.source.active.view.current
   const filterFieldIds = store.createDerivedStore<readonly FieldId[]>({
     get: () => readFilterFieldIds(store.read(input.source.active.query)),
     isEqual: equal.sameOrder
@@ -200,11 +215,11 @@ export const createPageModel = (input: {
     isEqual: equal.sameOrder
   })
   const availableFilterFields = createAvailableFieldsStore({
-    fields,
+    fields: customFields,
     usedFieldIds: filterFieldIds
   })
   const availableSortFields = createAvailableFieldsStore({
-    fields,
+    fields: customFields,
     usedFieldIds: sortFieldIds
   })
   const filterCount = store.createDerivedStore<number>({
@@ -219,8 +234,30 @@ export const createPageModel = (input: {
     get: () => store.read(input.source.active.query).sort.rules,
     isEqual: equal.sameOrder
   })
+  const queryBar = store.createDerivedStore<PageToolbar['queryBar']>({
+    get: () => resolvePageQueryBarState({
+      activeView: store.read(activeView),
+      query: store.read(input.pageSessionStore).query
+    }),
+    isEqual: sameQueryBar
+  })
+  const settingsState = store.createDerivedStore<{
+    visible: boolean
+    route: PageSettings['route']
+  }>({
+    get: () => resolvePageSettingsState({
+      fields: store.read(customFields),
+      activeViewId: store.read(input.source.active.view.id),
+      activeViewType: store.read(input.source.active.view.type),
+      settings: store.read(input.pageSessionStore).settings
+    }),
+    isEqual: (left, right) => (
+      left.visible === right.visible
+      && sameSettingsRoute(left.route, right.route)
+    )
+  })
   const displayFieldIds = store.createDerivedStore<readonly FieldId[]>({
-    get: () => store.read(currentView)?.display.fields ?? EMPTY_FIELD_IDS,
+    get: () => store.read(activeView)?.display.fields ?? EMPTY_FIELD_IDS,
     isEqual: equal.sameOrder
   })
   const visibleFields = store.createDerivedStore<readonly Field[]>({
@@ -230,7 +267,7 @@ export const createPageModel = (input: {
         return EMPTY_FIELDS
       }
 
-      const fieldById = new Map(store.read(fields).map(field => [field.id, field] as const))
+      const fieldById = new Map(store.read(customFields).map(field => [field.id, field] as const))
       return orderedFieldIds.flatMap(fieldId => {
         const field = fieldById.get(fieldId)
         return field
@@ -242,7 +279,7 @@ export const createPageModel = (input: {
   })
   const hiddenFields = store.createDerivedStore<readonly Field[]>({
     get: () => {
-      const allFields = store.read(fields)
+      const allFields = store.read(customFields)
       const shownFieldIds = store.read(displayFieldIds)
       if (!shownFieldIds.length) {
         return allFields
@@ -257,14 +294,16 @@ export const createPageModel = (input: {
   const body = store.createDerivedStore<PageBody>({
     get: () => ({
       viewType: store.read(input.source.active.view.type),
-      empty: store.read(input.source.active.items.ids).length === 0
+      empty: store.read(input.source.active.items.ids).length === 0,
+      valueEditorOpen: store.read(input.valueEditorOpenStore),
+      locked: store.read(input.valueEditorOpenStore)
     }),
     isEqual: sameBody
   })
 
   const header = store.createDerivedStore<PageHeader>({
     get: () => {
-      const view = store.read(currentView)
+      const view = store.read(activeView)
       return {
         viewId: store.read(input.source.active.view.id),
         viewType: view?.type,
@@ -276,13 +315,11 @@ export const createPageModel = (input: {
 
   const toolbar = store.createDerivedStore<PageToolbar>({
     get: () => {
-      const pageState = store.read(input.pageStateStore)
-
       return {
         views: store.read(views),
-        currentView: store.read(currentView),
+        activeView: store.read(activeView),
         activeViewId: store.read(input.source.active.view.id),
-        queryBar: pageState.query,
+        queryBar: store.read(queryBar),
         search: store.read(input.source.active.query).search.query,
         filterCount: store.read(filterCount),
         sortCount: store.read(sortCount),
@@ -295,11 +332,11 @@ export const createPageModel = (input: {
 
   const query = store.createDerivedStore<PageQuery>({
     get: () => {
-      const pageState = store.read(input.pageStateStore)
+      const currentQueryBar = store.read(queryBar)
       return {
-        visible: pageState.query.visible,
-        route: pageState.query.route,
-        currentView: store.read(currentView),
+        visible: currentQueryBar.visible,
+        route: currentQueryBar.route,
+        activeView: store.read(activeView),
         filters: store.read(input.source.active.query).filters.rules,
         sorts: store.read(sortRules),
         availableFilterFields: store.read(availableFilterFields),
@@ -323,7 +360,7 @@ export const createPageModel = (input: {
         return undefined
       }
 
-      const allFields = store.read(fields)
+      const allFields = store.read(customFields)
       const sorters = rules.map(entry => entry.sorter)
       return {
         sorter: rule.sorter,
@@ -339,17 +376,22 @@ export const createPageModel = (input: {
   })
 
   const settings = store.createDerivedStore<PageSettings>({
-    get: () => ({
-      viewsCount: store.read(input.source.doc.views.ids).length,
-      fields: store.read(fields),
-      displayFieldIds: store.read(displayFieldIds),
-      visibleFields: store.read(visibleFields),
-      hiddenFields: store.read(hiddenFields),
-      currentView: store.read(currentView),
-      filter: store.read(input.source.active.query).filters,
-      sort: store.read(input.source.active.query).sort,
-      group: store.read(input.source.active.query).group
-    }),
+    get: () => {
+      const currentSettings = store.read(settingsState)
+      return {
+        visible: currentSettings.visible,
+        route: currentSettings.route,
+        viewsCount: store.read(input.source.doc.views.ids).length,
+        fields: store.read(customFields),
+        displayFieldIds: store.read(displayFieldIds),
+        visibleFields: store.read(visibleFields),
+        hiddenFields: store.read(hiddenFields),
+        activeView: store.read(activeView),
+        filter: store.read(input.source.active.query).filters,
+        sort: store.read(input.source.active.query).sort,
+        group: store.read(input.source.active.query).group
+      }
+    },
     isEqual: sameSettings
   })
 

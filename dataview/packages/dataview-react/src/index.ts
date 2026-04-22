@@ -39,10 +39,8 @@ export {
   EngineProvider,
   useDataView,
   useDataViewModel,
-  useDataViewIntent,
   useDataViewKeyedValue,
   useDataViewSession,
-  useDataViewSessionSelector,
   useDataViewSource,
   useDataViewValue,
   usePageRuntime

@@ -15,7 +15,7 @@ import { useTranslation } from '@shared/i18n/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { Button } from '@shared/ui/button'
 import { PlusIcon } from 'lucide-react'
-import type { CreateRecordOpenResult } from '@dataview/runtime/createRecord'
+import type { CreateRecordOpenResult } from '@dataview/runtime'
 
 const MAX_OPEN_ATTEMPTS = 8
 
@@ -48,7 +48,7 @@ const View = (props: CreateRecordBlockProps) => {
     recordId: string,
     _attempt: number
   ): CreateRecordOpenResult => {
-    const grid = dataView.table.grid.get()
+    const grid = dataView.model.table.grid.get()
     if (!grid) {
       return 'failed'
     }
@@ -82,12 +82,12 @@ const View = (props: CreateRecordBlockProps) => {
     })
       ? 'opened'
       : 'retry'
-  }, [dataView.table.grid, table])
+  }, [dataView.model.table.grid, table])
 
   const onCreate = useCallback(() => {
-    const ownerViewId = dataView.table.view.get()?.id
+    const ownerViewId = dataView.model.table.view.get()?.id
 
-    dataView.intent.createRecord.create({
+    dataView.workflow.createRecord.create({
       ownerViewId,
       create: () => dataView.engine.active.records.create({
         sectionKey: props.sectionKey
@@ -96,7 +96,7 @@ const View = (props: CreateRecordBlockProps) => {
       retryFrames: MAX_OPEN_ATTEMPTS,
       onFailure: table.focus
     })
-  }, [dataView.engine.active.records, dataView.intent.createRecord, dataView.table.view, openCreatedRecord, props.sectionKey, table])
+  }, [dataView.engine.active.records, dataView.workflow.createRecord, dataView.model.table.view, openCreatedRecord, props.sectionKey, table])
 
   return (
     <div

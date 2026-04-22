@@ -130,7 +130,7 @@ export const ToolbarTabs = () => {
   const page = dataView.session.page
   const pageRuntime = usePageRuntime()
   const toolbar = useStoreValue(pageRuntime.toolbar)
-  const currentView = toolbar.currentView
+  const currentView = toolbar.activeView
   const views = toolbar.views
   const [tabMenuViewId, setTabMenuViewId] = useState<ViewId | null>(null)
 

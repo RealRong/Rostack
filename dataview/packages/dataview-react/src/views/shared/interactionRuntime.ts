@@ -13,7 +13,7 @@ import type {
 } from '@dataview/react/page/marqueeBridge'
 import type {
   MarqueeMode
-} from '@dataview/runtime/marquee'
+} from '@dataview/runtime'
 import { useStoreValue } from '@shared/react'
 import type {
   ItemInteractionRuntime

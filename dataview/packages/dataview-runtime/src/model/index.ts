@@ -32,6 +32,18 @@ export type {
   PageToolbar
 } from '@dataview/runtime/model/page/types'
 
+export {
+  createTableModel
+} from '@dataview/runtime/model/table'
+export type {
+  TableColumnState,
+  TableGrid,
+  TableItemList,
+  TableModel,
+  TableQueryState,
+  TableViewState
+} from '@dataview/runtime/model/table'
+
 export type {
   Card,
   CardContent,

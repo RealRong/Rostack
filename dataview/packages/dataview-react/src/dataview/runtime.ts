@@ -3,10 +3,10 @@ import type {
 } from '@dataview/engine'
 import {
   createDataViewRuntime
-} from '@dataview/runtime/dataview/runtime'
+} from '@dataview/runtime'
 import type {
   PageSessionInput
-} from '@dataview/runtime/page/session/types'
+} from '@dataview/runtime'
 import {
   createDragApi
 } from '@dataview/react/page/drag'

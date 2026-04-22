@@ -1,9 +1,27 @@
-import type { View } from '@dataview/core/contracts'
-import { store } from '@shared/core'
 import type {
-  CreateRecordApi,
-  CreateRecordRequest
-} from '@dataview/runtime/createRecord/types'
+  RecordId,
+  View,
+  ViewId
+} from '@dataview/core/contracts'
+import { store } from '@shared/core'
+
+export type CreateRecordOpenResult =
+  | 'opened'
+  | 'retry'
+  | 'failed'
+
+export interface CreateRecordRequest {
+  ownerViewId?: ViewId
+  create: () => RecordId | undefined
+  open: (recordId: RecordId, attempt: number) => CreateRecordOpenResult
+  onFailure?: () => void
+  retryFrames?: number
+}
+
+export interface CreateRecordApi {
+  create(request: CreateRecordRequest): RecordId | undefined
+  cancel(): void
+}
 
 const scheduleFrame = (
   callback: () => void
@@ -24,7 +42,7 @@ const scheduleFrame = (
   }
 }
 
-export const createCreateRecordApi = (input: {
+export const createRecordWorkflow = (input: {
   activeView: store.ReadStore<View | undefined>
 }): CreateRecordApi => {
   let requestToken = 0
@@ -91,4 +109,3 @@ export const createCreateRecordApi = (input: {
     cancel
   }
 }
-

@@ -45,7 +45,7 @@ export const useColumnReorder = (): ColumnReorderApi => {
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const grid = useStoreValue(dataView.table.grid)
+  const grid = useStoreValue(dataView.model.table.grid)
   if (!grid) {
     throw new Error('Table column reorder requires an active table grid.')
   }

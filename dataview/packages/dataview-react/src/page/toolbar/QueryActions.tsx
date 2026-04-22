@@ -29,7 +29,7 @@ export const ToolbarQueryActions = () => {
   const pageRuntime = usePageRuntime()
   const toolbar = useStoreValue(pageRuntime.toolbar)
   const sortPanel = useStoreValue(pageRuntime.sortPanel)
-  const currentView = toolbar.currentView
+  const currentView = toolbar.activeView
   const currentViewDomain = currentView
     ? engine.active
     : undefined

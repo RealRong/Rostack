@@ -17,7 +17,7 @@ export const GroupFieldPickerPanel = () => {
   const engine = dataView.engine
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
-  const currentView = settings.currentView
+  const currentView = settings.activeView
   const groupProjection = settings.group
   const currentViewDomain = currentView
     ? engine.active

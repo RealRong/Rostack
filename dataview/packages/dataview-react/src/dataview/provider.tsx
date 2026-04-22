@@ -56,5 +56,3 @@ export const usePageRuntime = () => useDataView().model.page
 export const useDataViewSource = () => useDataView().source
 
 export const useDataViewSession = () => useDataView().session
-
-export const useDataViewIntent = () => useDataView().intent

@@ -7,10 +7,10 @@ import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
   createDataViewRuntime
-} from '@dataview/runtime/dataview/runtime'
+} from '@dataview/runtime'
 import {
   createItemArraySelectionScope
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 
 const FIELD_STATUS = 'status'
 const VIEW_TABLE = 'view_table'
@@ -165,7 +165,7 @@ describe('data view runtime regressions', () => {
     }).not.toThrow()
 
     const itemId = engine.active.state()?.items.ids[0]
-    expect(runtime.model.page.toolbar.get().currentView?.id).toBe(VIEW_BOARD)
+    expect(runtime.model.page.toolbar.get().activeView?.id).toBe(VIEW_BOARD)
     expect(runtime.model.kanban.board.get()?.viewId).toBe(VIEW_BOARD)
     expect(itemId).toBeDefined()
     expect(() => runtime.model.kanban.card.get(itemId!)).not.toThrow()
@@ -267,9 +267,9 @@ describe('data view runtime regressions', () => {
       value: 'blocked'
     })
 
-    expect(runtime.table.summary.get('todo')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
-    expect(runtime.table.summary.get('doing')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
-    expect(runtime.table.summary.get('done')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+    expect(runtime.model.table.summary.get('todo')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+    expect(runtime.model.table.summary.get('doing')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+    expect(runtime.model.table.summary.get('done')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
 
     runtime.dispose()
   })

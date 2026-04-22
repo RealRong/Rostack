@@ -15,7 +15,7 @@ import {
 import type { ItemId } from '@dataview/engine'
 import type {
   SelectionCommandApi
-} from '@dataview/runtime/selection'
+} from '@dataview/runtime'
 import { shouldCapturePointer } from '@shared/dom'
 import {
   useDataView

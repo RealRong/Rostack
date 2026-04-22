@@ -27,7 +27,7 @@ export const GroupingPanel = () => {
   const router = useViewSettings()
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
-  const currentView = settings.currentView
+  const currentView = settings.activeView
   const group = settings.group
   const currentViewDomain = currentView
     ? engine.active

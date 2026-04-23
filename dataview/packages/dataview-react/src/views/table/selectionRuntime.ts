@@ -43,7 +43,7 @@ export const createTableSelectionRuntime = (input: {
     input.rowSelection.command.clear()
   }
   const clearCells = () => {
-    if (!baseCells.get()) {
+    if (!store.peek(baseCells.store)) {
       return
     }
 

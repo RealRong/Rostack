@@ -15,6 +15,10 @@ import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
+import {
+  replaceSelection,
+  startEdgeLabelEdit
+} from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 type EdgeLabelDragDraft = {
@@ -204,7 +208,7 @@ const createEdgeLabelDragState = (
 }
 
 export const createEdgeLabelPressSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write' | 'ops'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write' | 'session' | 'document'>,
   start: PointerDownInput,
   input: {
     edgeId: EdgeId
@@ -229,10 +233,15 @@ export const createEdgeLabelPressSession = (
     )
   },
   onTap: (nextInput) => {
-    ctx.ops.selection.replace({
+    replaceSelection({
+      session: ctx.session
+    }, {
       edgeIds: [input.edgeId]
     })
-    ctx.ops.edit.startEdgeLabel(input.edgeId, input.labelId, {
+    startEdgeLabelEdit({
+      session: ctx.session,
+      document: ctx.document
+    }, input.edgeId, input.labelId, {
       caret: {
         kind: 'point',
         client: nextInput.client
@@ -242,7 +251,7 @@ export const createEdgeLabelPressSession = (
 })
 
 export const startEdgeLabelPress = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'ops'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'session'>,
   pointer: PointerDownInput
 ): {
   edgeId: EdgeId
@@ -259,7 +268,9 @@ export const startEdgeLabelPress = (
   }
 
   if (!isSingleSelectedEdge(ctx, pointer.pick.id)) {
-    ctx.ops.selection.replace({
+    replaceSelection({
+      session: ctx.session
+    }, {
       edgeIds: [pointer.pick.id]
     })
     return 'handled'

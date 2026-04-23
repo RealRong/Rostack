@@ -16,6 +16,7 @@ import { useTableContext } from '@dataview/react/views/table/context'
 import { Button } from '@shared/ui/button'
 import { PlusIcon } from 'lucide-react'
 import type { CreateRecordOpenResult } from '@dataview/runtime'
+import { store } from '@shared/core'
 
 const MAX_OPEN_ATTEMPTS = 8
 
@@ -48,7 +49,7 @@ const View = (props: CreateRecordBlockProps) => {
     recordId: string,
     _attempt: number
   ): CreateRecordOpenResult => {
-    const grid = dataView.model.table.grid.get()
+    const grid = store.peek(dataView.model.table.grid)
     if (!grid) {
       return 'failed'
     }
@@ -85,7 +86,7 @@ const View = (props: CreateRecordBlockProps) => {
   }, [dataView.model.table.grid, table])
 
   const onCreate = useCallback(() => {
-    const ownerViewId = dataView.model.table.view.get()?.id
+    const ownerViewId = store.peek(dataView.model.table.view)?.id
 
     dataView.workflow.createRecord.create({
       ownerViewId,

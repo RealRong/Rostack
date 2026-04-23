@@ -106,12 +106,13 @@ export const createTableHover = (): TableHoverRuntime => {
 
   const set = (
     target: TableHoverTarget | null,
-    point: Point | null = state.get().pointer
+    point: Point | null = store.peek(state).pointer
   ) => {
-    const previous = state.get().target
+    const current = store.peek(state)
+    const previous = current.target
     if (
       sameHoverTarget(previous, target)
-      && equal.sameOptionalPoint(state.get().pointer, point)
+      && equal.sameOptionalPoint(current.pointer, point)
     ) {
       return
     }
@@ -131,11 +132,11 @@ export const createTableHover = (): TableHoverRuntime => {
     }),
     row,
     cell,
-    get: () => state.get().target,
-    point: () => state.get().pointer,
+    get: () => store.peek(state).target,
+    point: () => store.peek(state).pointer,
     set,
     clear: point => {
-      const current = state.get()
+      const current = store.peek(state)
       set(
         null,
         point === undefined

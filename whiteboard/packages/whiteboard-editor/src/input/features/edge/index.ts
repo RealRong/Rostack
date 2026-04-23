@@ -1,5 +1,9 @@
 import { HANDLED } from '@whiteboard/editor/input/session/result'
 import type { InteractionBinding } from '@whiteboard/editor/input/core/types'
+import {
+  removeEdgeRoutePoint,
+  replaceSelection
+} from '@whiteboard/editor/input/helpers'
 import { createEdgeConnectSession, tryStartEdgeConnect } from '@whiteboard/editor/input/features/edge/connect'
 import {
   createEdgeLabelPressSession,
@@ -13,16 +17,18 @@ import {
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 const selectEdge = (
-  ctx: Pick<EditorHostDeps, 'ops'>,
+  ctx: Pick<EditorHostDeps, 'session'>,
   edgeId: string
 ) => {
-  ctx.ops.selection.replace({
+  replaceSelection({
+    session: ctx.session
+  }, {
     edgeIds: [edgeId]
   })
 }
 
 export const createEdgeBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'projection' | 'sessionRead' | 'write' | 'ops' | 'snap'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'write' | 'session' | 'tool' | 'snap'>
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {
@@ -78,7 +84,10 @@ export const createEdgeBinding = (
       )
 
       if (route.kind === 'remove') {
-        ctx.ops.edge.route.removePoint(route.edgeId, route.index)
+        removeEdgeRoutePoint({
+          graph: ctx.projection,
+          write: ctx.write
+        }, route.edgeId, route.index)
         return HANDLED
       }
 

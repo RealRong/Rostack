@@ -11,8 +11,9 @@ import { createEngine } from '@dataview/engine'
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
-import { EngineProvider, Page } from '@dataview/react'
+import { DataViewProvider, Page } from '@dataview/react'
 import { I18nProvider } from '@shared/i18n/react'
+import { entityTable } from '@shared/core'
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
@@ -110,12 +111,14 @@ const createDefaultDocument = (): DataDoc => {
           name: 'Tasks',
           filter: {
             mode: 'and',
-            rules: []
+            rules: entityTable.normalize.list([])
           },
           search: {
             query: ''
           },
-          sort: [],
+          sort: {
+            rules: entityTable.normalize.list([])
+          },
           calc: {},
           display: {
             fields: tableFieldIds
@@ -131,14 +134,16 @@ const createDefaultDocument = (): DataDoc => {
           name: 'Board',
           filter: {
             mode: 'and',
-            rules: []
+            rules: entityTable.normalize.list([])
           },
           search: {
             query: ''
           },
-          sort: [],
+          sort: {
+            rules: entityTable.normalize.list([])
+          },
           group: {
-            field: FIELD_STATUS,
+            fieldId: FIELD_STATUS,
             mode: 'option',
             bucketSort: 'manual'
           },
@@ -198,8 +203,8 @@ const engine = createEngine({
 
 createRoot(root).render(
   <I18nProvider lang="en">
-    <EngineProvider engine={engine}>
+    <DataViewProvider engine={engine}>
       <DemoTable />
-    </EngineProvider>
+    </DataViewProvider>
   </I18nProvider>
 )

@@ -348,7 +348,7 @@ export const createTableVirtualRuntime = (options: {
   let canvasTopInScrollContent: number | null = null
   let lastPageScrollTop = 0
   let currentBucketKey: string | number = '__default__'
-  let currentLayoutState = layoutStateStore.get()
+  let currentLayoutState = store.peek(layoutStateStore)
   let layoutRevision = 0
   let layoutModel = currentLayoutState
     ? TableLayoutModel.fromState({
@@ -373,13 +373,13 @@ export const createTableVirtualRuntime = (options: {
   const updateWindowSnapshot = () => {
     windowStore.set(resolveTableWindowSnapshot({
       model: layoutModel,
-      viewport: viewportStore.get(),
-      interaction: interaction.get()
+      viewport: store.peek(viewportStore),
+      interaction: store.peek(interaction)
     }))
   }
 
   const resolveAnchor = () => {
-    const viewport = viewportStore.get()
+    const viewport = store.peek(viewportStore)
     if (!attachedScrollNode || !viewport.ready || !layoutModel) {
       return null
     }
@@ -406,7 +406,7 @@ export const createTableVirtualRuntime = (options: {
     top: number
   } | null) => {
     const scrollNode = attachedScrollNode
-    const viewport = viewportStore.get()
+    const viewport = store.peek(viewportStore)
     if (!anchor || !scrollNode || !viewport.ready || !layoutModel) {
       return
     }
@@ -490,7 +490,7 @@ export const createTableVirtualRuntime = (options: {
     }
 
     const metrics = scrollMetrics(scrollNode)
-    const previous = viewportStore.get()
+    const previous = store.peek(viewportStore)
     const deltaTop = flags & MEASURE_RESET_DIRECTION
       ? 0
       : metrics.top - lastPageScrollTop
@@ -766,7 +766,7 @@ export const createTableVirtualRuntime = (options: {
   }
 
   const unsubscribeLayoutState = layoutStateStore.subscribe(() => {
-    currentLayoutState = layoutStateStore.get()
+    currentLayoutState = store.peek(layoutStateStore)
     rebuildLayoutModel()
   })
   const unsubscribeViewport = viewportStore.subscribe(() => {

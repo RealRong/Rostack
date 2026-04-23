@@ -146,9 +146,9 @@ const createItemListStore = (input: {
         count: ids.length,
         order: collection.createOrderedAccess(ids),
         read: {
-          record: itemId => input.source.read.record.get(itemId),
-          section: itemId => input.source.read.section.get(itemId),
-          placement: itemId => input.source.read.placement.get(itemId)
+          record: itemId => store.read(input.source.read.record, itemId),
+          section: itemId => store.read(input.source.read.section, itemId),
+          placement: itemId => store.read(input.source.read.placement, itemId)
         }
       }
 
@@ -186,7 +186,7 @@ const createSectionListStore = (input: {
       const next = collection.createOrderedKeyedCollection({
         ids,
         all,
-        get: sectionId => input.source.get(sectionId)
+        get: sectionId => store.read(input.source, sectionId)
       })
 
       previous = next
@@ -227,7 +227,7 @@ const createFieldListStore = (input: {
         ...collection.createOrderedKeyedCollection({
           ids,
           all,
-          get: fieldId => input.all.get(fieldId)
+          get: fieldId => store.read(input.all, fieldId)
         }),
         custom
       }

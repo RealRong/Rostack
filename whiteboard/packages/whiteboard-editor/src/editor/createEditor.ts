@@ -2,8 +2,7 @@ import type { Viewport } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
 import {
-  createEditorActionCommands,
-  createEditorActions
+  createEditorActionsApi
 } from '@whiteboard/editor/action'
 import {
   createEditorBoundaryRuntime
@@ -11,15 +10,9 @@ import {
 import {
   createEditorBoundaryTaskRuntime
 } from '@whiteboard/editor/boundary/task'
-import {
-  createEditorCommandContext,
-  type EditorCommandContext
-} from '@whiteboard/editor/command/context'
-import { createEditorCommandRunner } from '@whiteboard/editor/command/runner'
 import { createDocumentRead } from '@whiteboard/editor/document/read'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorStore } from '@whiteboard/editor/editor/store'
-import { createEditorInputOps } from '@whiteboard/editor/input/ops'
 import {
   createEditorInputApi
 } from '@whiteboard/editor/input/host'
@@ -28,7 +21,7 @@ import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
 import { createProjectionController } from '@whiteboard/editor/projection/controller'
 import { createGraphRead } from '@whiteboard/editor/read/graph'
 import { createEditorRead } from '@whiteboard/editor/read/public'
-import { createSessionRead } from '@whiteboard/editor/session/read'
+import { createToolService } from '@whiteboard/editor/services/tool'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
@@ -97,7 +90,6 @@ export const createEditor = ({
     selection: session.state.selection,
     nodeType
   })
-  const sessionRead = createSessionRead(session)
   const write = createEditorWrite({
     engine,
     history,
@@ -105,14 +97,8 @@ export const createEditor = ({
     projection: graph,
     layout
   })
-  const context = createEditorCommandContext({
-    engine,
-    document,
-    graph,
-    session,
-    sessionRead,
-    layout,
-    write
+  const tool = createToolService({
+    session
   })
   let boundary: ReturnType<typeof createEditorBoundaryRuntime>
   const tasks = createEditorBoundaryTaskRuntime({
@@ -128,39 +114,27 @@ export const createEditor = ({
     projection,
     tasks
   })
-  const runner = createEditorCommandRunner({
+  const actions = createEditorActionsApi({
     boundary,
-    context
-  })
-  const commands = createEditorActionCommands({
+    engine,
     document,
     session,
     graph,
     layout,
+    tool,
     write,
     registry,
     defaults: defaults.templates
-  })
-  const actions = createEditorActions({
-    runner,
-    commands
-  })
-  const ops = createEditorInputOps({
-    document,
-    graph,
-    registry,
-    session,
-    write
   })
   const host = createEditorHost({
     engine,
     document,
     projection: graph,
-    sessionRead,
     session,
     layout,
     write,
-    ops
+    tool,
+    registry
   })
   const input = createEditorInputApi({
     boundary,
@@ -179,7 +153,7 @@ export const createEditor = ({
     read: createEditorRead({
       document,
       graph,
-      sessionRead,
+      session,
       store: editorStore,
       history,
       nodeType,

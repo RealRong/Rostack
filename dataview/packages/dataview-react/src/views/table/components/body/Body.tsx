@@ -19,6 +19,7 @@ import {
 import {
   useDataView
 } from '@dataview/react/dataview'
+import { store } from '@shared/core'
 import { useStoreValue } from '@shared/react'
 import { type CellRef } from '@dataview/engine'
 import { applyPaste, handleTableKey } from '@dataview/react/views/table/input'
@@ -178,7 +179,7 @@ const View = () => {
     table
   ])
   const onPaste = useCallback<ClipboardEventHandler<HTMLDivElement>>(event => {
-    const currentGridSelection = table.selection.cells.get()
+    const currentGridSelection = store.peek(table.selection.cells.store)
     if (locked || !currentGridSelection) {
       return
     }

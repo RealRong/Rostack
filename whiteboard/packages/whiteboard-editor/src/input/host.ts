@@ -6,11 +6,13 @@ import type {
   EditorStore
 } from '@whiteboard/editor/types/editor'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
+import {
+  replaceSelection
+} from '@whiteboard/editor/input/helpers'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
-import type { EditorInputOps } from '@whiteboard/editor/input/ops'
 
 const readSelectionIntent = (
   selection: EditorStore['selection'],
@@ -33,14 +35,12 @@ export const createEditorInputHost = ({
   interaction,
   edgeHover,
   document,
-  session,
-  ops
+  session
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
   document: Pick<DocumentRead, 'group'>
-  session: Pick<EditorSession, 'state' | 'viewport' | 'interaction'>
-  ops: Pick<EditorInputOps, 'selection'>
+  session: Pick<EditorSession, 'state' | 'mutate' | 'viewport' | 'interaction'>
 }): EditorInputHost => {
   const writePointer = (sample: {
     client: { x: number, y: number }
@@ -91,7 +91,9 @@ export const createEditorInputHost = ({
             return readSelectionIntent(session.state.selection, input.screen)
           }
 
-          ops.selection.replace({
+          replaceSelection({
+            session
+          }, {
             nodeIds: [input.pick.id]
           })
           return readSelectionIntent(session.state.selection, input.screen)
@@ -106,11 +108,15 @@ export const createEditorInputHost = ({
             }
           }
 
-          ops.selection.replace(target)
+          replaceSelection({
+            session
+          }, target)
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'edge':
-          ops.selection.replace({
+          replaceSelection({
+            session
+          }, {
             edgeIds: [input.pick.id]
           })
           return {

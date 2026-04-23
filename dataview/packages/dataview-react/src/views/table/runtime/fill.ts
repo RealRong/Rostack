@@ -46,15 +46,16 @@ export const createTableFillRuntime = (input: {
     isEqual: Object.is
   })
 
-  let currentKey = handle.get()
-    ? tableCellKey(handle.get()!)
+  const readHandle = () => store.peek(handle)
+  let currentKey = readHandle()
+    ? tableCellKey(readHandle()!)
     : undefined
   if (currentKey) {
     state.set(currentKey, true)
   }
 
   const sync = () => {
-    const next = handle.get()
+    const next = readHandle()
     const nextKey = next
       ? tableCellKey(next)
       : undefined

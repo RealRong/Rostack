@@ -38,9 +38,9 @@ export const createGridSelection = (
     initial: null,
     isEqual: gridSelection.equal
   })
-  const getGrid = gridStore.get
+  const getGrid = () => coreStore.peek(gridStore)
   const unsubscribe = gridStore.subscribe(() => {
-    const grid = gridStore.get()
+    const grid = coreStore.read(gridStore)
     selectionStore.update(current => grid
       ? gridSelection.reconcile(
           current,
@@ -53,7 +53,7 @@ export const createGridSelection = (
 
   return {
     store: selectionStore,
-    get: selectionStore.get,
+    get: () => coreStore.peek(selectionStore),
     clear: () => {
       selectionStore.set(null)
     },

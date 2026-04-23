@@ -22,6 +22,9 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
+import {
+  replaceSelection
+} from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
 import {
@@ -584,7 +587,7 @@ const readReconnectWorld = ({
   : world
 
 const commitConnectState = (
-  ctx: Pick<EditorHostDeps, 'write' | 'ops'>,
+  ctx: Pick<EditorHostDeps, 'write' | 'tool' | 'session'>,
   state: EdgeConnectState,
   reconnectDraftPatch?: EdgePatch
 ) => {
@@ -630,16 +633,16 @@ const commitConnectState = (
     return
   }
 
-  ctx.ops.tool.set({
-    type: 'select'
-  })
-  ctx.ops.selection.replace({
+  ctx.tool.select()
+  replaceSelection({
+    session: ctx.session
+  }, {
     edgeIds: [result.data.edgeId]
   })
 }
 
 export const createEdgeConnectSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'snap' | 'write' | 'ops'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'snap' | 'write' | 'tool' | 'session'>,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial

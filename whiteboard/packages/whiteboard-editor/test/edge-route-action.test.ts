@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Edge } from '@whiteboard/core/types'
 import {
-  createEditorActionCommands,
-  createEditorActions
+  createEditorActionsApi
 } from '../src/action'
-import type { EditorCommandContext } from '../src/command/context'
+import { createToolService } from '../src/services/tool'
 
 const okResult = () => ({ ok: true }) as const
 
@@ -299,40 +298,38 @@ const createActions = (edge = createEdge()) => {
       clear: vi.fn()
     }
   } as never
-  const context = {
+  const boundary = {
+    atomic: <TArgs extends unknown[], TResult>(fn: (...args: TArgs) => TResult) => (
+      ...args: TArgs
+    ) => fn(...args),
+    procedure: <TArgs extends unknown[], TResult>(fn: (...args: TArgs) => Generator<unknown, TResult, unknown>) => (
+      ...args: TArgs
+    ) => {
+      const procedure = fn(...args)
+      let step = procedure.next()
+
+      while (!step.done) {
+        throw new Error(`Unexpected procedure signal: ${(step.value as { kind?: string })?.kind ?? 'unknown'}`)
+      }
+
+      return step.value
+    }
+  } as const
+  const actions = createEditorActionsApi({
+    boundary,
     engine: {
       current: vi.fn(() => ({
         snapshot: {},
         change: {}
       }))
-    },
+    } as never,
     document,
-    graph,
     session,
-    sessionRead: {
-      viewport: {
-        get: vi.fn(() => ({
-          center: { x: 0, y: 0 },
-          zoom: 1
-        }))
-      }
-    },
+    graph,
     layout,
-    write,
-    publish: vi.fn(() => {
-      throw new Error('Unexpected publish in edge route action test.')
+    tool: createToolService({
+      session
     }),
-    task: {
-      microtask: vi.fn(),
-      frame: vi.fn(),
-      delay: vi.fn()
-    }
-  } as never as EditorCommandContext
-  const commands = createEditorActionCommands({
-    document,
-    session,
-    graph,
-    layout,
     write,
     registry: {
       get: vi.fn(() => undefined)
@@ -340,23 +337,6 @@ const createActions = (edge = createEdge()) => {
     defaults: {
       frame: vi.fn()
     } as never
-  })
-  const actions = createEditorActions({
-    runner: {
-      bind: (handler) => (
-        ...args: never[]
-      ) => {
-        const command = handler(context, ...args)
-        let step = command.next()
-
-        while (!step.done) {
-          throw new Error(`Unexpected command signal: ${step.value.kind}`)
-        }
-
-        return step.value
-      }
-    },
-    commands
   })
 
   return {

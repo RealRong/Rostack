@@ -130,8 +130,8 @@ export const createTableSelectRuntime = (input: {
   let focusKey: string | undefined
 
   const sync = () => {
-    const grid = input.gridStore.get()
-    const selection = input.gridSelectionStore.get()
+    const grid = coreStore.peek(input.gridStore)
+    const selection = coreStore.peek(input.gridSelectionStore)
     const nextSelectedKeys = collectCellKeys(selection, grid)
     patchBooleanKeyedMembership(
       selectedState,

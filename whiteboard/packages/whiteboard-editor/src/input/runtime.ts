@@ -14,11 +14,15 @@ import { createSelectionBinding } from '@whiteboard/editor/input/features/select
 import {
   createEditorInputHost
 } from '@whiteboard/editor/input/host'
-import type { EditorInputOps } from '@whiteboard/editor/input/ops'
 import type { GraphRead } from '@whiteboard/editor/read/graph'
+import {
+  createSessionRead,
+  type SessionRead
+} from '@whiteboard/editor/session/read'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
-import type { SessionRead } from '@whiteboard/editor/session/read'
+import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type EditorHostDeps = {
@@ -29,7 +33,8 @@ export type EditorHostDeps = {
   session: EditorSession
   layout: EditorLayout
   write: EditorWrite
-  ops: EditorInputOps
+  tool: ToolService
+  registry: NodeRegistry
   snap: SnapRuntime
 }
 
@@ -37,14 +42,14 @@ const createEditorSnapRuntime = ({
   engine,
   document,
   projection,
-  sessionRead
+  session
 }: {
   engine: Engine
   document: DocumentRead
   projection: GraphRead
-  sessionRead: SessionRead
+  session: Pick<EditorSession, 'viewport'>
 }) => createSnapRuntime({
-  readZoom: () => sessionRead.viewport.get().zoom,
+  readZoom: () => session.viewport.read.get().zoom,
   node: {
     config: engine.config.node,
     query: document.index.snap.inRect
@@ -60,17 +65,18 @@ export const createEditorHost = ({
   engine,
   document,
   projection,
-  sessionRead,
   session,
   layout,
   write,
-  ops
-}: Omit<EditorHostDeps, 'snap'>): EditorInputHost => {
+  tool,
+  registry
+}: Omit<EditorHostDeps, 'snap' | 'sessionRead'>): EditorInputHost => {
+  const sessionRead = createSessionRead(session)
   const snap = createEditorSnapRuntime({
     engine,
     document,
     projection,
-    sessionRead
+    session
   })
   const deps: EditorHostDeps = {
     engine,
@@ -80,7 +86,8 @@ export const createEditorHost = ({
     session,
     layout,
     write,
-    ops,
+    tool,
+    registry,
     snap
   }
   const interaction = createInteractionRuntime({
@@ -99,7 +106,7 @@ export const createEditorHost = ({
   })
   const edgeHover = createEdgeHoverService(
     {
-      sessionRead,
+      readTool: session.state.tool.get,
       snap
     },
     session.interaction.write
@@ -108,8 +115,7 @@ export const createEditorHost = ({
     interaction,
     edgeHover,
     document,
-    session,
-    ops
+    session
   })
 
   return host

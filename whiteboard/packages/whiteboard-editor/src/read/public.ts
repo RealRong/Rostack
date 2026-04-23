@@ -2,6 +2,7 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { store } from '@shared/core'
 import type { HistoryApi } from '@whiteboard/history'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
+import { createEditorStore } from '@whiteboard/editor/editor/store'
 import {
   isMindmapChromeEqual,
   readAddChildTargets,
@@ -21,7 +22,11 @@ import {
   readSelectedEdgeId,
   readSelectedEdgeRoutePoints
 } from '@whiteboard/editor/read/edgeShared'
-import type { SessionRead } from '@whiteboard/editor/session/read'
+import {
+  createSessionRead,
+  type SessionRead
+} from '@whiteboard/editor/session/read'
+import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorStore } from '@whiteboard/editor/types/editor'
 import type {
   EditorChromePresentation,
@@ -116,21 +121,23 @@ export const createEditorRead = (
   {
     document,
     graph,
-    sessionRead,
-    store: state,
+    session,
+    store: providedStore,
     history,
     nodeType,
     defaults
   }: {
     document: Pick<DocumentRead, 'document' | 'group' | 'mindmap' | 'node'>
     graph: Pick<GraphRead, 'scene' | 'node' | 'edge' | 'selection' | 'mindmap' | 'chrome'>
-    sessionRead: SessionRead
-    store: EditorStore
+    session: Pick<EditorSession, 'state' | 'interaction' | 'viewport' | 'preview'>
+    store?: EditorStore
     history: HistoryApi
     nodeType: NodeTypeSupport
     defaults: EditorDefaults['selection']
   }
 ): EditorRead => {
+  const state = providedStore ?? createEditorStore(session)
+  const sessionRead = createSessionRead(session)
   const selectionSummary = graph.selection.summary
   const selectionMembers = graph.selection.members
   const selectionAffordance = graph.selection.affordance

@@ -13,6 +13,7 @@ import {
   type PointerEventHandler
 } from 'react'
 import type { Point } from '@shared/dom'
+import { store } from '@shared/core'
 import {
   gridSelection
 } from '@dataview/table'
@@ -503,7 +504,10 @@ export const usePointer = (
     enabled: options.enabled
   })
 
-  const readGridSelection = useCallback(() => table.selection.cells.get(), [table])
+  const readGridSelection = useCallback(
+    () => store.peek(table.selection.cells.store),
+    [table.selection.cells.store]
+  )
   const readColumn = useCallback((fieldId: string) => (
     grid.fields.all.find((field: { id: string }) => field.id === fieldId)
   ), [grid.fields.all])
@@ -629,7 +633,7 @@ export const usePointer = (
 
   const fillSelection = useCallback((current: FillPointerState) => {
     const input = resolveFillWriteManyInput({
-      selection: table.selection.cells.get(),
+      selection: store.peek(table.selection.cells.store),
       anchor: current.anchor,
       grid,
       readCell

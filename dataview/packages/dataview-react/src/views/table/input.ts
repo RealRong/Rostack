@@ -13,6 +13,7 @@ import {
   createItemListSelectionDomain,
   selectionSnapshot
 } from '@dataview/runtime'
+import { store } from '@shared/core'
 import {
   gridKeyAction,
   isSelectAll,
@@ -57,8 +58,8 @@ export const handleTableKey = (input: {
     return true
   }
 
-  const mode = input.selection.mode.get()
-  const currentGridSelection = input.selection.cells.get()
+  const mode = store.peek(input.selection.mode)
+  const currentGridSelection = store.peek(input.selection.cells.store)
   if (mode === 'cells' && currentGridSelection) {
     if (key.key === 'Escape') {
       const rowIds = gridSelection.itemIds(

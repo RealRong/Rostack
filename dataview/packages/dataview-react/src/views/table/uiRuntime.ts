@@ -315,9 +315,9 @@ export const createTableUiRuntime = (options: {
   const revealCursor = () => {
     const target = selectionRow({
       locateRow: virtual.locateRow,
-      grid: grid.get(),
+      grid: store.peek(grid),
       selection: selection.rows.state.getSnapshot(),
-      gridSelection: selection.cells.get()
+      gridSelection: store.peek(selection.cells.store)
     })
     if (!target) {
       return
@@ -336,7 +336,7 @@ export const createTableUiRuntime = (options: {
           }
         : undefined
     },
-    view: view.get,
+    view: () => store.peek(view),
     gridSelection: selection.cells,
     dom,
     revealCursor,

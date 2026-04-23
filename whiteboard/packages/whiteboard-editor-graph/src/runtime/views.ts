@@ -9,11 +9,10 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   EdgeLabelView,
   EdgeView,
+  EdgeBoxView,
   GroupView,
-  HoverState,
   MindmapView,
   NodeView,
-  SelectionState,
   SessionInput
 } from '../contracts/editor'
 import type {
@@ -34,42 +33,18 @@ export const buildNodeView = (input: {
   measuredSize?: Size
   treeRect?: Rect
   edit: SessionInput['edit']
-  selection: SelectionState
-  hover: HoverState
 }): NodeView => {
   const view = buildProjectedNodeView(input)
-  const edit = input.edit?.kind === 'node'
-    && input.edit.nodeId === input.entry.base.node.id
-    ? {
-        field: input.edit.field,
-        caret: input.edit.caret
-      }
-    : undefined
-  const patch = input.entry.preview?.patch
-  const handle = patch && 'handle' in patch
-    ? patch.handle
-    : undefined
 
   return {
     base: {
       node: view.node,
       owner: input.entry.base.owner
     },
-    layout: {
-      measuredSize: input.measuredSize,
+    geometry: {
       rotation: view.rotation,
       rect: view.rect,
       bounds: view.bounds
-    },
-    render: {
-      hidden: input.entry.preview?.hidden ?? false,
-      editing: edit !== undefined,
-      hovered: input.hover.kind === 'node'
-        && input.hover.nodeId === input.entry.base.node.id,
-      selected: input.selection.nodeIds.includes(input.entry.base.node.id),
-      patched: Boolean(patch),
-      resizing: Boolean(patch?.size || handle),
-      edit
     }
   }
 }
@@ -81,19 +56,19 @@ const toEdgeNodeSnapshot = (
       node: {
         ...nodeView.base.node,
         position: {
-          x: nodeView.layout.rect.x,
-          y: nodeView.layout.rect.y
+          x: nodeView.geometry.rect.x,
+          y: nodeView.geometry.rect.y
         },
         size: {
-          width: nodeView.layout.rect.width,
-          height: nodeView.layout.rect.height
+          width: nodeView.geometry.rect.width,
+          height: nodeView.geometry.rect.height
         },
-        rotation: nodeView.layout.rotation
+        rotation: nodeView.geometry.rotation
       },
       geometry: nodeApi.outline.geometry(
         nodeView.base.node,
-        nodeView.layout.rect,
-        nodeView.layout.rotation
+        nodeView.geometry.rect,
+        nodeView.geometry.rotation
       )
     }
   : undefined
@@ -120,10 +95,10 @@ const readEdgeBox = (
   rect: Rect | undefined,
   edge: GraphEdgeEntry['base']['edge']
 ) => rect
-  ? {
+  ? ({
       rect,
       pad: Math.max(24, (edge.style?.width ?? 2) + 16)
-    }
+    } satisfies EdgeBoxView)
   : undefined
 
 export const buildEdgeView = (input: {
@@ -132,7 +107,6 @@ export const buildEdgeView = (input: {
   nodes: ReadonlyMap<string, NodeView>
   labelMeasures?: ReadonlyMap<string, { size: Size }>
   edit: SessionInput['edit']
-  selection: SelectionState
 }): EdgeView => {
   const edge = readProjectedEdge(input.entry)
   const geometry = (() => {
@@ -157,11 +131,10 @@ export const buildEdgeView = (input: {
       && input.edit.labelId === label.id
       ? input.edit
       : undefined
-    const editable = Boolean(editSession)
     const text = editSession
       ? editSession.text
       : label.text ?? ''
-    const displayText = readEdgeLabelDisplayText(text, editable)
+    const displayText = readEdgeLabelDisplayText(text, Boolean(editSession))
     if (!displayText.trim()) {
       return []
     }
@@ -202,8 +175,6 @@ export const buildEdgeView = (input: {
       text,
       displayText,
       style: label.style,
-      editable,
-      caret: editSession?.caret,
       size,
       point: placement.point,
       angle,
@@ -243,17 +214,7 @@ export const buildEdgeView = (input: {
       handles: geometry?.handles ?? [],
       labels
     },
-    render: {
-      hidden: false,
-      selected: input.selection.edgeIds.includes(input.edgeId),
-      patched: Boolean(input.entry.preview?.patch ?? input.entry.draft?.patch),
-      activeRouteIndex: input.entry.preview?.activeRouteIndex ?? input.entry.draft?.activeRouteIndex,
-      box: readEdgeBox(pathBounds, edge),
-      editingLabelId: input.edit?.kind === 'edge-label'
-        && input.edit.edgeId === input.edgeId
-        ? input.edit.labelId
-        : undefined
-    }
+    box: readEdgeBox(pathBounds, edge)
   }
 }
 
@@ -288,7 +249,7 @@ export const buildGroupView = (input: {
 
   input.items.forEach((item) => {
     if (item.kind === 'node') {
-      const rect = input.nodes.get(item.id)?.layout.bounds
+      const rect = input.nodes.get(item.id)?.geometry.bounds
       if (rect) {
         rects.push(rect)
       }

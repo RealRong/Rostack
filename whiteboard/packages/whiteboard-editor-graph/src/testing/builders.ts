@@ -21,7 +21,11 @@ export const createEditorGraphDelta = (
     delta.document.reset = true
   }
   if (input.graph) {
-    delta.graph.interaction.selection = true
+    delta.graph.nodes.preview = {
+      added: new Set(),
+      updated: new Set(['__graph__']),
+      removed: new Set()
+    }
   }
   if (input.ui) {
     delta.ui.selection = true

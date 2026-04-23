@@ -62,15 +62,12 @@ export const createEmptyInputDelta = (): Input['delta'] => ({
     mindmaps: {
       preview: createEmptyIdDelta(),
       tick: new Set()
-    },
-    interaction: {
-      selection: false,
-      drag: false
     }
   },
   ui: {
     tool: false,
     selection: false,
+    hover: false,
     marquee: false,
     guides: false,
     draw: false,
@@ -212,6 +209,14 @@ export const createEmptySnapshot = (): Snapshot => ({
         mindmap: null
       },
       edit: null
+    },
+    nodes: {
+      ids: [],
+      byId: new Map()
+    },
+    edges: {
+      ids: [],
+      byId: new Map()
     }
   }
 })

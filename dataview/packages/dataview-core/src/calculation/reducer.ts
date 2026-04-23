@@ -465,28 +465,32 @@ const buildCountStateFromDenseEntries = (input: {
   recordIndexes?: readonly number[]
 }): CountReducerState => {
   let nonEmpty = 0
+  const entriesByIndex = input.entriesByIndex
+  const recordIndexes = input.recordIndexes
 
-  if (input.recordIndexes) {
-    for (let index = 0; index < input.recordIndexes.length; index += 1) {
-      if (input.entriesByIndex[input.recordIndexes[index]!]!.empty !== true) {
+  if (recordIndexes) {
+    const length = recordIndexes.length
+    for (let index = 0; index < length; index += 1) {
+      if (entriesByIndex[recordIndexes[index]!]!.empty !== true) {
         nonEmpty += 1
       }
     }
 
     return {
-      count: input.recordIndexes.length,
+      count: length,
       nonEmpty
     }
   }
 
-  for (let index = 0; index < input.entriesByIndex.length; index += 1) {
-    if (input.entriesByIndex[index]!.empty !== true) {
+  const length = entriesByIndex.length
+  for (let index = 0; index < length; index += 1) {
+    if (entriesByIndex[index]!.empty !== true) {
       nonEmpty += 1
     }
   }
 
   return {
-    count: input.entriesByIndex.length,
+    count: length,
     nonEmpty
   }
 }
@@ -496,10 +500,12 @@ const buildUniqueCountsFromDenseEntries = (input: {
   recordIndexes?: readonly number[]
 }): ReadonlyMap<string, number> => {
   const counts = new Map<string, number>()
+  const entriesByIndex = input.entriesByIndex
+  const recordIndexes = input.recordIndexes
 
-  if (input.recordIndexes) {
-    for (let index = 0; index < input.recordIndexes.length; index += 1) {
-      const uniqueKey = input.entriesByIndex[input.recordIndexes[index]!]!.uniqueKey
+  if (recordIndexes) {
+    for (let index = 0; index < recordIndexes.length; index += 1) {
+      const uniqueKey = entriesByIndex[recordIndexes[index]!]!.uniqueKey
       if (uniqueKey === undefined) {
         continue
       }
@@ -508,8 +514,8 @@ const buildUniqueCountsFromDenseEntries = (input: {
       counts.set(uniqueKey, current === undefined ? 1 : current + 1)
     }
   } else {
-    for (let index = 0; index < input.entriesByIndex.length; index += 1) {
-      const uniqueKey = input.entriesByIndex[index]!.uniqueKey
+    for (let index = 0; index < entriesByIndex.length; index += 1) {
+      const uniqueKey = entriesByIndex[index]!.uniqueKey
       if (uniqueKey === undefined) {
         continue
       }
@@ -533,10 +539,12 @@ const buildNumericStateFromDenseEntries = (input: {
 } => {
   let sum = 0
   const counts = new Map<number, number>()
+  const entriesByIndex = input.entriesByIndex
+  const recordIndexes = input.recordIndexes
 
-  if (input.recordIndexes) {
-    for (let index = 0; index < input.recordIndexes.length; index += 1) {
-      const number = input.entriesByIndex[input.recordIndexes[index]!]!.number
+  if (recordIndexes) {
+    for (let index = 0; index < recordIndexes.length; index += 1) {
+      const number = entriesByIndex[recordIndexes[index]!]!.number
       if (number === undefined) {
         continue
       }
@@ -546,8 +554,8 @@ const buildNumericStateFromDenseEntries = (input: {
       counts.set(number, current === undefined ? 1 : current + 1)
     }
   } else {
-    for (let index = 0; index < input.entriesByIndex.length; index += 1) {
-      const number = input.entriesByIndex[index]!.number
+    for (let index = 0; index < entriesByIndex.length; index += 1) {
+      const number = entriesByIndex[index]!.number
       if (number === undefined) {
         continue
       }
@@ -571,10 +579,12 @@ const buildOptionCountsFromDenseEntries = (input: {
   recordIndexes?: readonly number[]
 }): ReadonlyMap<string, number> => {
   const counts = createStringCounterTable()
+  const entriesByIndex = input.entriesByIndex
+  const recordIndexes = input.recordIndexes
 
-  if (input.recordIndexes) {
-    for (let index = 0; index < input.recordIndexes.length; index += 1) {
-      const optionIds: readonly string[] | undefined = input.entriesByIndex[input.recordIndexes[index]!]!.optionIds
+  if (recordIndexes) {
+    for (let index = 0; index < recordIndexes.length; index += 1) {
+      const optionIds: readonly string[] | undefined = entriesByIndex[recordIndexes[index]!]!.optionIds
       if (!optionIds?.length) {
         continue
       }
@@ -589,8 +599,8 @@ const buildOptionCountsFromDenseEntries = (input: {
       }
     }
   } else {
-    for (let index = 0; index < input.entriesByIndex.length; index += 1) {
-      const optionIds: readonly string[] | undefined = input.entriesByIndex[index]!.optionIds
+    for (let index = 0; index < entriesByIndex.length; index += 1) {
+      const optionIds: readonly string[] | undefined = entriesByIndex[index]!.optionIds
       if (!optionIds?.length) {
         continue
       }
@@ -644,14 +654,16 @@ export const buildFieldReducerState = (input: {
   const needsUnique = capabilities.unique === true
   const needsNumeric = capabilities.numeric === true
   const needsOption = capabilities.option === true
+  const denseEntries = entriesByIndex
+  const indexedRecordIndexes = recordIndexes
 
-  if (entriesByIndex) {
+  if (denseEntries) {
     if (needsCount && !needsUnique && !needsNumeric && !needsOption) {
       return buildReducerState({
         capabilities,
         countState: buildCountStateFromDenseEntries({
-          entriesByIndex,
-          ...(recordIndexes ? { recordIndexes } : {})
+          entriesByIndex: denseEntries,
+          ...(indexedRecordIndexes ? { recordIndexes: indexedRecordIndexes } : {})
         })
       })
     }
@@ -660,16 +672,16 @@ export const buildFieldReducerState = (input: {
       return buildReducerState({
         capabilities,
         uniqueCounts: buildUniqueCountsFromDenseEntries({
-          entriesByIndex,
-          ...(recordIndexes ? { recordIndexes } : {})
+          entriesByIndex: denseEntries,
+          ...(indexedRecordIndexes ? { recordIndexes: indexedRecordIndexes } : {})
         })
       })
     }
 
     if (!needsCount && !needsUnique && needsNumeric && !needsOption) {
       const numericState = buildNumericStateFromDenseEntries({
-        entriesByIndex,
-        ...(recordIndexes ? { recordIndexes } : {})
+        entriesByIndex: denseEntries,
+        ...(indexedRecordIndexes ? { recordIndexes: indexedRecordIndexes } : {})
       })
       return buildReducerState({
         capabilities,
@@ -682,8 +694,8 @@ export const buildFieldReducerState = (input: {
       return buildReducerState({
         capabilities,
         optionCounts: buildOptionCountsFromDenseEntries({
-          entriesByIndex,
-          ...(recordIndexes ? { recordIndexes } : {})
+          entriesByIndex: denseEntries,
+          ...(indexedRecordIndexes ? { recordIndexes: indexedRecordIndexes } : {})
         })
       })
     }
@@ -704,9 +716,9 @@ export const buildFieldReducerState = (input: {
     ? createStringCounterTable()
     : undefined
 
-  if (recordIndexes && entriesByIndex) {
-    for (let index = 0; index < recordIndexes.length; index += 1) {
-      const entry = entriesByIndex[recordIndexes[index]!]!
+  if (indexedRecordIndexes && denseEntries) {
+    for (let index = 0; index < indexedRecordIndexes.length; index += 1) {
+      const entry = denseEntries[indexedRecordIndexes[index]!]!
       if (needsCount && entry.empty !== true) {
         nonEmpty += 1
       }
@@ -736,9 +748,9 @@ export const buildFieldReducerState = (input: {
         }
       }
     }
-  } else if (entriesByIndex) {
-    for (let index = 0; index < entriesByIndex.length; index += 1) {
-      const entry = entriesByIndex[index]!
+  } else if (denseEntries) {
+    for (let index = 0; index < denseEntries.length; index += 1) {
+      const entry = denseEntries[index]!
       if (needsCount && entry.empty !== true) {
         nonEmpty += 1
       }

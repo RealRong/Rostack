@@ -32,6 +32,7 @@ export type GraphRead = {
   group: {
     view: ProjectionSources['group']
   }
+  ui: ProjectionSources['ui']
   chrome: ProjectionSources['chrome']
   graph: ProjectionSources['graph']
 }
@@ -43,7 +44,7 @@ export const createGraphRead = ({
   nodeType
 }: {
   document: Pick<DocumentRead, 'node' | 'edge'>
-  sources: Pick<ProjectionSources, 'snapshot' | 'graph' | 'scene' | 'selection' | 'chrome' | 'node' | 'edge' | 'mindmap' | 'group'>
+  sources: Pick<ProjectionSources, 'snapshot' | 'graph' | 'scene' | 'ui' | 'selection' | 'chrome' | 'nodeGraph' | 'edgeGraph' | 'mindmap' | 'group' | 'nodeUi' | 'edgeUi'>
   selection: store.ReadStore<SelectionTarget>
   nodeType: NodeTypeSupport
 }): GraphRead => {
@@ -77,6 +78,7 @@ export const createGraphRead = ({
     group: {
       view: sources.group
     },
+    ui: sources.ui,
     chrome: sources.chrome,
     graph: sources.graph
   }

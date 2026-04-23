@@ -574,7 +574,7 @@ const applyItemDelta = (input: {
     return
   }
 
-  input.runtime.table.write.apply({
+  input.runtime.table.write.applyExact({
     ...(set?.length
       ? {
           set

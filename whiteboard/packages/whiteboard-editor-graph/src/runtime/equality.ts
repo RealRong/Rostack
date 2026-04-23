@@ -6,9 +6,13 @@ import { edge as edgeApi } from '@whiteboard/core/edge'
 import { isListEqual } from '@shared/projection-runtime'
 import type {
   ChromeView,
+  EditCaret,
+  EdgeLabelUiView,
+  EdgeUiView,
   EdgeView,
   GroupView,
   MindmapView,
+  NodeUiView,
   NodeView,
   SceneSnapshot,
   SelectionView
@@ -20,8 +24,7 @@ import {
   isPointEqual,
   isRectEqual,
   isSceneItemEqual,
-  isSelectionStateEqual,
-  isSizeEqual
+  isSelectionStateEqual
 } from './geometry'
 
 export const isNodeViewEqual = (
@@ -31,25 +34,9 @@ export const isNodeViewEqual = (
   left.base.node === right.base.node
   && left.base.owner?.kind === right.base.owner?.kind
   && left.base.owner?.id === right.base.owner?.id
-  && isSizeEqual(left.layout.measuredSize, right.layout.measuredSize)
-  && left.layout.rotation === right.layout.rotation
-  && isRectEqual(left.layout.rect, right.layout.rect)
-  && isRectEqual(left.layout.bounds, right.layout.bounds)
-  && left.render.hidden === right.render.hidden
-  && left.render.editing === right.render.editing
-  && left.render.hovered === right.render.hovered
-  && left.render.selected === right.render.selected
-  && left.render.patched === right.render.patched
-  && left.render.resizing === right.render.resizing
-  && left.render.edit?.field === right.render.edit?.field
-  && left.render.edit?.caret.kind === right.render.edit?.caret.kind
-  && (
-    left.render.edit?.caret.kind !== 'point'
-    || (
-      right.render.edit?.caret.kind === 'point'
-      && isPointEqual(left.render.edit.caret.client, right.render.edit.caret.client)
-    )
-  )
+  && left.geometry.rotation === right.geometry.rotation
+  && isRectEqual(left.geometry.rect, right.geometry.rect)
+  && isRectEqual(left.geometry.bounds, right.geometry.bounds)
 )
 
 export const isEdgeViewEqual = (
@@ -67,13 +54,75 @@ export const isEdgeViewEqual = (
   && isListEqual(left.route.points, right.route.points, isPointEqual)
   && isListEqual(left.route.handles, right.route.handles, isEdgeHandleEqual)
   && isListEqual(left.route.labels, right.route.labels, isEdgeLabelViewEqual)
-  && left.render.hidden === right.render.hidden
-  && left.render.selected === right.render.selected
-  && left.render.patched === right.render.patched
-  && left.render.activeRouteIndex === right.render.activeRouteIndex
-  && left.render.box?.pad === right.render.box?.pad
-  && isRectEqual(left.render.box?.rect, right.render.box?.rect)
-  && left.render.editingLabelId === right.render.editingLabelId
+  && left.box?.pad === right.box?.pad
+  && isRectEqual(left.box?.rect, right.box?.rect)
+)
+
+const isEditCaretEqual = (
+  left: EditCaret | undefined,
+  right: EditCaret | undefined
+): boolean => left?.kind === right?.kind && (
+  left?.kind !== 'point'
+  || (
+    right?.kind === 'point'
+    && isPointEqual(left.client, right.client)
+  )
+)
+
+export const isNodeUiViewEqual = (
+  left: NodeUiView,
+  right: NodeUiView
+): boolean => (
+  left.hidden === right.hidden
+  && left.selected === right.selected
+  && left.hovered === right.hovered
+  && left.editing === right.editing
+  && left.patched === right.patched
+  && left.resizing === right.resizing
+  && left.edit?.field === right.edit?.field
+  && isEditCaretEqual(left.edit?.caret, right.edit?.caret)
+)
+
+const isEdgeLabelUiViewEqual = (
+  left: EdgeLabelUiView,
+  right: EdgeLabelUiView
+): boolean => (
+  left.editing === right.editing
+  && isEditCaretEqual(left.caret, right.caret)
+)
+
+const isReadonlyMapEqual = <TValue>(
+  left: ReadonlyMap<string, TValue>,
+  right: ReadonlyMap<string, TValue>,
+  isEqual: (left: TValue, right: TValue) => boolean
+): boolean => {
+  if (left === right) {
+    return true
+  }
+
+  if (left.size !== right.size) {
+    return false
+  }
+
+  for (const [key, leftValue] of left.entries()) {
+    const rightValue = right.get(key)
+    if (!rightValue || !isEqual(leftValue, rightValue)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+export const isEdgeUiViewEqual = (
+  left: EdgeUiView,
+  right: EdgeUiView
+): boolean => (
+  left.selected === right.selected
+  && left.patched === right.patched
+  && left.activeRouteIndex === right.activeRouteIndex
+  && left.editingLabelId === right.editingLabelId
+  && isReadonlyMapEqual(left.labels, right.labels, isEdgeLabelUiViewEqual)
 )
 
 const isEdgeEndsEqual = (
@@ -306,7 +355,7 @@ const isMindmapPreviewEqual = (
   )
 }
 
-const isEditCaretEqual = (
+const isChromeEditCaretEqual = (
   left: NonNullable<ChromeView['edit']>['caret'],
   right: NonNullable<ChromeView['edit']>['caret']
 ): boolean => left.kind === right.kind && (
@@ -326,7 +375,7 @@ const isEditSessionEqual = (
   && left.kind === right.kind
   && left.text === right.text
   && left.composing === right.composing
-  && isEditCaretEqual(left.caret, right.caret)
+  && isChromeEditCaretEqual(left.caret, right.caret)
   && (
     left.kind === 'node'
       ? right.kind === 'node'

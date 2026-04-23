@@ -14,16 +14,19 @@ import type {
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection-runtime'
 import type {
+  ChromeView,
   EdgeDraft,
   EdgePreview,
+  EdgeUiView,
   EdgeView,
   GroupView,
   MindmapView,
   NodeDraft,
   NodePreview,
+  NodeUiView,
   NodeView,
   SceneSnapshot,
-  UiSnapshot
+  SelectionView
 } from './editor'
 
 export interface WorkingState {
@@ -31,7 +34,7 @@ export interface WorkingState {
     document: Revision
   }
   graph: GraphState
-  ui: UiSnapshot
+  ui: UiState
   scene: SceneSnapshot
 }
 
@@ -42,6 +45,13 @@ export interface GraphState {
     mindmaps: ReadonlyMap<MindmapId, MindmapView>
     groups: ReadonlyMap<GroupId, GroupView>
   }
+}
+
+export interface UiState {
+  selection: SelectionView
+  chrome: ChromeView
+  nodes: ReadonlyMap<NodeId, NodeUiView>
+  edges: ReadonlyMap<EdgeId, EdgeUiView>
 }
 
 export interface GraphNodeEntry {

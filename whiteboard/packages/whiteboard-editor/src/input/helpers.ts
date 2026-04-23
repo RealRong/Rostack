@@ -115,7 +115,7 @@ export const removeEdgeRoutePoint = (
   edgeId: EdgeId,
   index: number
 ) => {
-  const edge = ctx.graph.edge.view.get(edgeId)?.base.edge
+  const edge = ctx.graph.edge.graph.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }

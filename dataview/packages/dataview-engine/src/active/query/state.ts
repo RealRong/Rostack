@@ -33,6 +33,26 @@ import {
   type DocumentReader
 } from '@dataview/engine/document/reader'
 
+const createPublishedSelection = (input: {
+  previous?: QueryState['matched']
+  index: IndexState
+  ids: readonly RecordId[]
+}) => {
+  if (
+    input.previous
+    && input.previous.rows === input.index.rows
+    && input.previous.ids === input.ids
+  ) {
+    return input.previous
+  }
+
+  return createSelectionFromIds({
+    rows: input.index.rows,
+    ids: input.ids,
+    previous: input.previous
+  })
+}
+
 const publishQueryState = (input: {
   previous?: QueryState
   index: IndexState
@@ -56,20 +76,20 @@ const publishQueryState = (input: {
     : input.visible
 
   return {
-    matched: createSelectionFromIds({
-      rows: input.index.rows,
-      ids: nextMatched,
-      previous: previous?.matched
+    matched: createPublishedSelection({
+      previous: previous?.matched,
+      index: input.index,
+      ids: nextMatched
     }),
-    ordered: createSelectionFromIds({
-      rows: input.index.rows,
-      ids: nextOrdered,
-      previous: previous?.ordered
+    ordered: createPublishedSelection({
+      previous: previous?.ordered,
+      index: input.index,
+      ids: nextOrdered
     }),
-    visible: createSelectionFromIds({
-      rows: input.index.rows,
-      ids: nextVisible,
-      previous: previous?.visible
+    visible: createPublishedSelection({
+      previous: previous?.visible,
+      index: input.index,
+      ids: nextVisible
     }),
     ...(input.search
       ? {

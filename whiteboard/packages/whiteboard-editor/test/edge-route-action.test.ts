@@ -137,12 +137,12 @@ const createActions = (edge = createEdge()) => {
   } as never
   const graph = {
     node: {
-      view: {
+      graph: {
         get: vi.fn(() => undefined)
       }
     },
     edge: {
-      view: {
+      graph: {
         get: vi.fn((edgeId: string) => (
           edgeId === edge.id
             ? {

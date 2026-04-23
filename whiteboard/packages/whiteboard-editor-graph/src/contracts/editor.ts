@@ -371,15 +371,12 @@ export interface GraphInputDelta {
     preview: document.IdDelta<MindmapId>
     tick: ReadonlySet<MindmapId>
   }
-  interaction: {
-    selection: boolean
-    drag: boolean
-  }
 }
 
 export interface UiInputDelta {
   tool: boolean
   selection: boolean
+  hover: boolean
   marquee: boolean
   guides: boolean
   draw: boolean
@@ -406,8 +403,7 @@ export interface GraphSnapshot {
 
 export interface NodeView {
   base: NodeBaseView
-  layout: NodeLayoutView
-  render: NodeRenderView
+  geometry: NodeGeometryView
 }
 
 export interface NodeBaseView {
@@ -415,32 +411,16 @@ export interface NodeBaseView {
   owner?: document.OwnerRef
 }
 
-export interface NodeLayoutView {
-  measuredSize?: Size
+export interface NodeGeometryView {
   rotation: number
   rect: Rect
   bounds: Rect
 }
 
-export interface NodeRenderView {
-  hidden: boolean
-  editing: boolean
-  hovered: boolean
-  selected: boolean
-  patched: boolean
-  resizing: boolean
-  edit?: NodeRenderEdit
-}
-
-export interface NodeRenderEdit {
-  field: EditField
-  caret: EditCaret
-}
-
 export interface EdgeView {
   base: EdgeBaseView
   route: EdgeRouteView
-  render: EdgeRenderView
+  box?: EdgeBoxView
 }
 
 export interface EdgeBaseView {
@@ -464,8 +444,6 @@ export interface EdgeLabelView {
   text: string
   displayText: string
   style: NonNullable<Edge['labels']>[number]['style']
-  editable: boolean
-  caret?: EditCaret
   size: Size
   point: Point
   angle: number
@@ -473,16 +451,37 @@ export interface EdgeLabelView {
   maskRect: EdgeLabelMaskRect
 }
 
-export interface EdgeRenderView {
+export interface EdgeBoxView {
+  rect: Rect
+  pad: number
+}
+
+export interface NodeUiView {
   hidden: boolean
+  selected: boolean
+  hovered: boolean
+  editing: boolean
+  patched: boolean
+  resizing: boolean
+  edit?: NodeUiEdit
+}
+
+export interface NodeUiEdit {
+  field: EditField
+  caret: EditCaret
+}
+
+export interface EdgeUiView {
   selected: boolean
   patched: boolean
   activeRouteIndex?: number
-  box?: {
-    rect: Rect
-    pad: number
-  }
   editingLabelId?: string
+  labels: ReadonlyMap<string, EdgeLabelUiView>
+}
+
+export interface EdgeLabelUiView {
+  editing: boolean
+  caret?: EditCaret
 }
 
 export interface OwnerViews {
@@ -580,6 +579,8 @@ export interface SceneSnapshot {
 export interface UiSnapshot {
   selection: SelectionView
   chrome: ChromeView
+  nodes: Family<NodeId, NodeUiView>
+  edges: Family<EdgeId, EdgeUiView>
 }
 
 export interface SelectionView {
@@ -650,6 +651,8 @@ export interface OwnerChange {
 export interface UiChange {
   selection: Flags
   chrome: Flags
+  nodes: Ids<NodeId>
+  edges: Ids<EdgeId>
 }
 
 export interface Runtime {
@@ -671,6 +674,8 @@ export interface Read {
   edge(id: EdgeId): EdgeView | undefined
   mindmap(id: MindmapId): MindmapView | undefined
   group(id: GroupId): GroupView | undefined
+  nodeUi(id: NodeId): NodeUiView | undefined
+  edgeUi(id: EdgeId): EdgeUiView | undefined
   scene(): SceneSnapshot
   ui(): UiSnapshot
   selection(): SelectionView

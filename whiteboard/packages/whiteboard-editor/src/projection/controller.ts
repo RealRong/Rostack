@@ -53,7 +53,6 @@ const unionIds = <TId extends string>(
 
 const createSelectionDelta = (): InputDelta => {
   const delta = createEmptyEditorGraphInputDelta()
-  delta.graph.interaction.selection = true
   delta.ui.selection = true
   return delta
 }
@@ -67,12 +66,6 @@ const createToolDelta = (): InputDelta => {
 const createViewportDelta = (): InputDelta => {
   const delta = createEmptyEditorGraphInputDelta()
   delta.scene.viewport = true
-  return delta
-}
-
-const createDragDelta = (): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
-  delta.graph.interaction.drag = true
   return delta
 }
 
@@ -130,6 +123,12 @@ const createPreviewDelta = (input: {
     delta.graph.mindmaps.preview = createTouchedIdDelta(touchedMindmapIds)
   }
   if (
+    input.previous.selection.node.frameHoverId !== input.next.selection.node.frameHoverId
+    || input.previous.edge.interaction !== input.next.edge.interaction
+  ) {
+    delta.ui.hover = true
+  }
+  if (
     input.previous.selection.marquee !== input.next.selection.marquee
   ) {
     delta.ui.marquee = true
@@ -149,14 +148,13 @@ const createPreviewDelta = (input: {
 
 const createBootstrapDelta = (input: {
   engine: ReturnType<Engine['current']>
-  session: Pick<EditorSession, 'state' | 'preview'>
+  session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
 }): InputDelta => {
   const delta = createEmptyEditorGraphInputDelta()
   delta.document = createDocumentInputDelta(input.engine.change)
-  delta.graph.interaction.selection = true
-  delta.graph.interaction.drag = true
   delta.ui.tool = true
   delta.ui.selection = true
+  delta.ui.hover = true
   delta.ui.marquee = true
   delta.ui.guides = true
   delta.ui.draw = true
@@ -303,9 +301,6 @@ export const createProjectionController = ({
         previous: previousPreview,
         next: currentPreview
       }))
-    }),
-    session.interaction.read.mode.subscribe(() => {
-      mark(createDragDelta())
     }),
     session.viewport.read.subscribe(() => {
       mark(createViewportDelta())

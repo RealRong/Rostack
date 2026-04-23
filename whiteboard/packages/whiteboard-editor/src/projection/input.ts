@@ -96,15 +96,12 @@ export const createEmptyEditorGraphInputDelta = (): InputDelta => ({
     mindmaps: {
       preview: createEmptyIdDelta(),
       tick: new Set()
-    },
-    interaction: {
-      selection: false,
-      drag: false
     }
   },
   ui: {
     tool: false,
     selection: false,
+    hover: false,
     marquee: false,
     guides: false,
     draw: false,
@@ -179,15 +176,12 @@ export const cloneEditorGraphInputDelta = (
         removed: new Set(delta.graph.mindmaps.preview.removed)
       },
       tick: new Set(delta.graph.mindmaps.tick)
-    },
-    interaction: {
-      selection: delta.graph.interaction.selection,
-      drag: delta.graph.interaction.drag
     }
   },
   ui: {
     tool: delta.ui.tool,
     selection: delta.ui.selection,
+    hover: delta.ui.hover,
     marquee: delta.ui.marquee,
     guides: delta.ui.guides,
     draw: delta.ui.draw,
@@ -218,17 +212,10 @@ export const mergeEditorGraphInputDelta = (
   source.graph.mindmaps.tick.forEach((mindmapId) => {
     ;(target.graph.mindmaps.tick as Set<string>).add(mindmapId)
   })
-  target.graph.interaction.selection = (
-    target.graph.interaction.selection
-    || source.graph.interaction.selection
-  )
-  target.graph.interaction.drag = (
-    target.graph.interaction.drag
-    || source.graph.interaction.drag
-  )
 
   target.ui.tool = target.ui.tool || source.ui.tool
   target.ui.selection = target.ui.selection || source.ui.selection
+  target.ui.hover = target.ui.hover || source.ui.hover
   target.ui.marquee = target.ui.marquee || source.ui.marquee
   target.ui.guides = target.ui.guides || source.ui.guides
   target.ui.draw = target.ui.draw || source.ui.draw
@@ -265,10 +252,9 @@ export const hasEditorGraphInputDelta = (
   || hasIdDelta(delta.graph.edges.edit)
   || hasIdDelta(delta.graph.mindmaps.preview)
   || delta.graph.mindmaps.tick.size > 0
-  || delta.graph.interaction.selection
-  || delta.graph.interaction.drag
   || delta.ui.tool
   || delta.ui.selection
+  || delta.ui.hover
   || delta.ui.marquee
   || delta.ui.guides
   || delta.ui.draw
@@ -568,14 +554,15 @@ export const readPreviewNodeIds = (
   preview: EditorInputPreviewState
 ): ReadonlySet<string> => new Set([
   ...preview.selection.node.patches.map((entry) => entry.id),
-  ...preview.node.text.patches.map((entry) => entry.id),
-  ...preview.draw.hidden
+  ...preview.node.text.patches.map((entry) => entry.id)
 ])
 
 export const readPreviewEdgeIds = (
   preview: EditorInputPreviewState
 ): ReadonlySet<string> => new Set(
-  preview.edge.interaction.map((entry) => entry.id)
+  preview.edge.interaction
+    .filter((entry) => entry.patch !== undefined)
+    .map((entry) => entry.id)
 )
 
 export const readPreviewMindmapIds = (

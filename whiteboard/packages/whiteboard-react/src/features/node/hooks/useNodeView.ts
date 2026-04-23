@@ -38,8 +38,8 @@ const buildOverlayFrameStyle = (
 
 export type NodeView = {
   nodeId: NodeId
-  node: RuntimeNodeView['base']['node']
-  rect: RuntimeNodeView['layout']['rect']
+  node: RuntimeNodeView['node']
+  rect: RuntimeNodeView['rect']
   rotation: number
   hidden: boolean
   resizing: boolean
@@ -65,19 +65,16 @@ export type NodeOverlayView = {
 type RuntimeNodeView = NonNullable<
   ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['view']['get']>
 >
-type RuntimeNodeCapability = NonNullable<
-  ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['capability']['get']>
->
 const resolveNodeOverlayViewState = (
   view: RuntimeNodeView,
-  capability: RuntimeNodeCapability
+  capability: NonNullable<ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['capability']['get']>>
 ): NodeOverlayView => {
   return {
-    nodeId: view.base.node.id,
-    node: view.base.node,
-    rect: view.layout.rect,
-    transformFrameStyle: buildOverlayFrameStyle(view.layout.rect, view.layout.rotation),
-    rotation: view.layout.rotation,
+    nodeId: view.node.id,
+    node: view.node,
+    rect: view.rect,
+    transformFrameStyle: buildOverlayFrameStyle(view.rect, view.rotation),
+    rotation: view.rotation,
     canConnect: capability.connect,
     canResize: capability.resize,
     canRotate: capability.rotate
@@ -88,39 +85,39 @@ const resolveNodeViewState = (
   editor: Pick<ReturnType<typeof useEditorRuntime>, 'actions'>,
   registry: Pick<NodeRegistry, 'get'>,
   baseView: RuntimeNodeView,
-  capability: RuntimeNodeCapability
+  capability: NonNullable<ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['capability']['get']>>
 ): NodeView => {
-  const definition = registry.get(baseView.base.node.type)
+  const definition = registry.get(baseView.node.type)
   const write: NodeWrite = {
     patch: (update: NodeUpdateInput) => {
-      editor.actions.node.patch([baseView.base.node.id], update)
+      editor.actions.node.patch([baseView.node.id], update)
     }
   }
   const renderProps: NodeRenderProps = {
-    node: baseView.base.node,
-    rect: baseView.layout.rect,
-    rotation: baseView.layout.rotation,
-    selected: baseView.render.selected,
-    hovered: baseView.render.hovered,
-    edit: baseView.render.edit,
+    node: baseView.node,
+    rect: baseView.rect,
+    rotation: baseView.rotation,
+    selected: baseView.selected,
+    hovered: baseView.hovered,
+    edit: baseView.edit,
     write
   }
   const nodeStyle = definition?.style
     ? definition.style(renderProps)
     : {}
   const transformStyle = buildNodeTransformStyle(
-    baseView.layout.rect,
-    baseView.layout.rotation,
+    baseView.rect,
+    baseView.rotation,
     nodeStyle
   )
 
   return {
-    nodeId: baseView.base.node.id,
-    node: baseView.base.node,
-    rect: baseView.layout.rect,
-    rotation: baseView.layout.rotation,
-    hidden: baseView.render.hidden,
-    resizing: baseView.render.resizing,
+    nodeId: baseView.node.id,
+    node: baseView.node,
+    rect: baseView.rect,
+    rotation: baseView.rotation,
+    hidden: baseView.hidden,
+    resizing: baseView.resizing,
     canConnect: capability.connect,
     canResize: capability.resize,
     canRotate: capability.rotate,
@@ -141,21 +138,21 @@ export const useNodeView = (
     nodeId,
     undefined
   )
-  const capability = useOptionalKeyedStoreValue(
-    editor.read.node.capability,
-    nodeId,
-    undefined
-  )
 
   return useMemo(
     () => {
-      if (!nodeId || !view || !capability) {
+      if (!nodeId || !view) {
+        return undefined
+      }
+
+      const capability = editor.read.node.capability.get(nodeId)
+      if (!capability) {
         return undefined
       }
 
       return resolveNodeViewState(editor, registry, view, capability)
     },
-    [editor, registry, nodeId, view, capability]
+    [editor, registry, nodeId, view]
   )
 }
 
@@ -168,20 +165,20 @@ export const useNodeOverlayView = (
     nodeId,
     undefined
   )
-  const capability = useOptionalKeyedStoreValue(
-    editor.read.node.capability,
-    nodeId,
-    undefined
-  )
 
   return useMemo(
     () => {
-      if (!nodeId || !view || !capability) {
+      if (!nodeId || !view) {
+        return undefined
+      }
+
+      const capability = editor.read.node.capability.get(nodeId)
+      if (!capability) {
         return undefined
       }
 
       return resolveNodeOverlayViewState(view, capability)
     },
-    [nodeId, view, capability]
+    [editor, nodeId, view]
   )
 }

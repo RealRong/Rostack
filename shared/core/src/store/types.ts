@@ -36,6 +36,7 @@ export interface KeyTableStore<Key, Value> extends KeyTableReadStore<Key, Value>
   write: {
     replace: (next: ReadonlyMap<Key, Value>) => void
     apply: (patch: KeyTablePatch<Key, Value>) => void
+    applyExact: (patch: KeyTablePatch<Key, Value>) => void
     clear: () => void
   }
   project: {

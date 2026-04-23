@@ -329,9 +329,7 @@ export const createGraphPhase = (): EditorPhase => ({
         entry,
         measuredSize: context.input.measure.text.nodes.get(nodeId)?.size,
         treeRect,
-        edit: context.input.session.edit,
-        selection: context.input.interaction.selection,
-        hover: context.input.interaction.hover
+        edit: context.input.session.edit
       }))
     })
 
@@ -342,8 +340,7 @@ export const createGraphPhase = (): EditorPhase => ({
         entry,
         nodes: nodeViews,
         labelMeasures: context.input.measure.text.edgeLabels.get(edgeId),
-        edit: context.input.session.edit,
-        selection: context.input.interaction.selection
+        edit: context.input.session.edit
       }))
     })
 

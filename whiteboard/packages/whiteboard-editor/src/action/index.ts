@@ -291,7 +291,7 @@ const readMindmapIdForNodes = (
   }
 ): MindmapId | undefined => {
   const resolved = input.nodeIds.map((nodeId) => {
-    const projectedNode = input.graph.node.view.get(nodeId)?.base.node
+    const projectedNode = input.graph.node.graph.get(nodeId)?.base.node
     const committedNode = input.document.node.committed.get(nodeId)?.node
     const projectedOwner = projectedNode?.owner
     const committedOwner = committedNode?.owner
@@ -330,7 +330,7 @@ const readEdgeOrThrow = (
   graph: Pick<GraphRead, 'edge'>,
   edgeId: string
 ) => {
-  const edge = graph.edge.view.get(edgeId)?.base.edge
+  const edge = graph.edge.graph.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }

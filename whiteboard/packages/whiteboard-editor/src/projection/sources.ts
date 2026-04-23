@@ -2,10 +2,12 @@ import { store } from '@shared/core'
 import type {
   Change,
   ChromeView,
+  EdgeUiView,
   EdgeView,
   GraphSnapshot,
   GroupView,
   MindmapView,
+  NodeUiView,
   NodeView,
   SceneSnapshot,
   SelectionView,
@@ -16,12 +18,15 @@ export interface ProjectionSources {
   snapshot: store.ReadStore<Snapshot>
   graph: store.ReadStore<GraphSnapshot>
   scene: store.ReadStore<SceneSnapshot>
+  ui: store.ReadStore<Snapshot['ui']>
   selection: store.ReadStore<SelectionView>
   chrome: store.ReadStore<ChromeView>
-  node: store.KeyedReadStore<string, NodeView | undefined>
-  edge: store.KeyedReadStore<string, EdgeView | undefined>
+  nodeGraph: store.KeyedReadStore<string, NodeView | undefined>
+  edgeGraph: store.KeyedReadStore<string, EdgeView | undefined>
   mindmap: store.KeyedReadStore<string, MindmapView | undefined>
   group: store.KeyedReadStore<string, GroupView | undefined>
+  nodeUi: store.KeyedReadStore<string, NodeUiView | undefined>
+  edgeUi: store.KeyedReadStore<string, EdgeUiView | undefined>
 }
 
 export const createProjectionSources = (
@@ -36,6 +41,10 @@ export const createProjectionSources = (
     source: snapshot,
     select: (current) => current.scene
   }),
+  ui: store.createProjectedStore({
+    source: snapshot,
+    select: (current) => current.ui
+  }),
   selection: store.createProjectedStore({
     source: snapshot,
     select: (current) => current.ui.selection
@@ -44,12 +53,12 @@ export const createProjectionSources = (
     source: snapshot,
     select: (current) => current.ui.chrome
   }),
-  node: store.createProjectedKeyedStore({
+  nodeGraph: store.createProjectedKeyedStore({
     source: snapshot,
     select: (current) => current.graph.nodes.byId,
     emptyValue: undefined
   }),
-  edge: store.createProjectedKeyedStore({
+  edgeGraph: store.createProjectedKeyedStore({
     source: snapshot,
     select: (current) => current.graph.edges.byId,
     emptyValue: undefined
@@ -62,6 +71,16 @@ export const createProjectionSources = (
   group: store.createProjectedKeyedStore({
     source: snapshot,
     select: (current) => current.graph.owners.groups.byId,
+    emptyValue: undefined
+  }),
+  nodeUi: store.createProjectedKeyedStore({
+    source: snapshot,
+    select: (current) => current.ui.nodes.byId,
+    emptyValue: undefined
+  }),
+  edgeUi: store.createProjectedKeyedStore({
+    source: snapshot,
+    select: (current) => current.ui.edges.byId,
     emptyValue: undefined
   })
 })

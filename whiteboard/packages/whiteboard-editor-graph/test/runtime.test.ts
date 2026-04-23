@@ -424,11 +424,12 @@ describe('editor graph runtime', () => {
       })
     )
 
-    const beforeRoot = baseline.snapshot.graph.nodes.byId.get(created.rootId)?.layout.rect
-    const beforeChild = baseline.snapshot.graph.nodes.byId.get(childId)?.layout.rect
+    const beforeRoot = baseline.snapshot.graph.nodes.byId.get(created.rootId)?.geometry.rect
+    const beforeChild = baseline.snapshot.graph.nodes.byId.get(childId)?.geometry.rect
     const liveRootView = live.snapshot.graph.nodes.byId.get(created.rootId)
-    const liveRoot = live.snapshot.graph.nodes.byId.get(created.rootId)?.layout.rect
-    const liveChild = live.snapshot.graph.nodes.byId.get(childId)?.layout.rect
+    const liveRootUi = live.snapshot.ui.nodes.byId.get(created.rootId)
+    const liveRoot = live.snapshot.graph.nodes.byId.get(created.rootId)?.geometry.rect
+    const liveChild = live.snapshot.graph.nodes.byId.get(childId)?.geometry.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -438,10 +439,12 @@ describe('editor graph runtime', () => {
     expect(liveRoot!.x).toBe(beforeRoot!.x)
     expect(liveRoot!.width).toBeGreaterThan(beforeRoot!.width)
     expect(liveChild!.x).toBeGreaterThan(beforeChild!.x)
-    expect(liveRootView!.render.editing).toBe(true)
-    expect(liveRootView!.render.edit?.field).toBe('text')
+    expect(liveRootView).toBeDefined()
+    expect(liveRootUi?.editing).toBe(true)
+    expect(liveRootUi?.edit?.field).toBe('text')
     expect(live.change.graph.nodes.all.has(childId)).toBe(true)
     expect(live.change.graph.owners.mindmaps.all.has(created.mindmapId)).toBe(true)
+    expect(live.change.ui.nodes.all.has(created.rootId)).toBe(true)
   })
 
   it('relayouts sibling positions while topic live height grows', () => {
@@ -494,10 +497,10 @@ describe('editor graph runtime', () => {
       })
     )
 
-    const beforeFirst = baseline.snapshot.graph.nodes.byId.get(firstId)?.layout.rect
-    const beforeSecond = baseline.snapshot.graph.nodes.byId.get(secondId)?.layout.rect
-    const liveFirst = live.snapshot.graph.nodes.byId.get(firstId)?.layout.rect
-    const liveSecond = live.snapshot.graph.nodes.byId.get(secondId)?.layout.rect
+    const beforeFirst = baseline.snapshot.graph.nodes.byId.get(firstId)?.geometry.rect
+    const beforeSecond = baseline.snapshot.graph.nodes.byId.get(secondId)?.geometry.rect
+    const liveFirst = live.snapshot.graph.nodes.byId.get(firstId)?.geometry.rect
+    const liveSecond = live.snapshot.graph.nodes.byId.get(secondId)?.geometry.rect
 
     expect(beforeFirst).toBeDefined()
     expect(beforeSecond).toBeDefined()
@@ -624,16 +627,19 @@ describe('editor graph runtime', () => {
 
     const firstNode = result.snapshot.graph.nodes.byId.get(firstId)
     const edgeView = result.snapshot.graph.edges.byId.get(edgeId)
+    const firstNodeUi = result.snapshot.ui.nodes.byId.get(firstId)
+    const edgeUi = result.snapshot.ui.edges.byId.get(edgeId)
     const selection = result.snapshot.ui.selection
     const chrome = result.snapshot.ui.chrome
     const overlayKinds = chrome.overlays.map((overlay) => overlay.kind)
 
     expect(firstNode).toBeDefined()
-    expect(firstNode!.layout.rotation).toBe(30)
-    expect(firstNode!.layout.bounds.width).toBeGreaterThan(firstNode!.layout.rect.width)
-    expect(firstNode!.layout.bounds.height).toBeGreaterThan(firstNode!.layout.rect.height)
-    expect(firstNode!.render.selected).toBe(true)
-    expect(firstNode!.render.hovered).toBe(false)
+    expect(firstNode!.geometry.rotation).toBe(30)
+    expect(firstNode!.geometry.bounds.width).toBeGreaterThan(firstNode!.geometry.rect.width)
+    expect(firstNode!.geometry.bounds.height).toBeGreaterThan(firstNode!.geometry.rect.height)
+    expect(firstNodeUi?.selected).toBe(true)
+    expect(firstNodeUi?.hovered).toBe(false)
+    expect(firstNodeUi?.hidden).toBe(true)
 
     expect(edgeView).toBeDefined()
     expect(edgeView!.route.svgPath).toBeTruthy()
@@ -644,7 +650,8 @@ describe('editor graph runtime', () => {
     expect(edgeView!.route.labels[0]?.text).toBe('Edited label')
     expect(edgeView!.route.labels[0]?.point).toBeDefined()
     expect(edgeView!.route.labels[0]?.rect).toBeDefined()
-    expect(edgeView!.render.editingLabelId).toBe(labelId)
+    expect(edgeUi?.editingLabelId).toBe(labelId)
+    expect(edgeUi?.labels.get(labelId)?.editing).toBe(true)
 
     expect(selection.kind).toBe('nodes')
     expect(selection.summary.count).toBe(2)
@@ -711,6 +718,8 @@ describe('editor graph runtime', () => {
     expect(result.change.scene.changed).toBe(true)
     expect(result.change.ui.selection.changed).toBe(true)
     expect(result.change.ui.chrome.changed).toBe(true)
+    expect(result.change.ui.nodes.all.has(firstId)).toBe(true)
+    expect(result.change.ui.edges.all.has(edgeId)).toBe(true)
   })
 
   it('publishes mindmap connectors and mindmap preview chrome state', () => {

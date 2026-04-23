@@ -362,7 +362,7 @@ describe('node edit selection chrome', () => {
       nodeIds: ['shape-1']
     })
 
-    const beforeRect = editor.read.node.view.get('shape-1')?.layout.rect
+    const beforeRect = editor.read.node.view.get('shape-1')?.rect
     expect(beforeRect).toBeDefined()
 
     editor.input.pointerDown(createPointerInput({
@@ -400,7 +400,7 @@ describe('node edit selection chrome', () => {
       x: 128,
       y: 152
     })
-    expect(editor.read.node.view.get('shape-1')?.layout.rect).toMatchObject({
+    expect(editor.read.node.view.get('shape-1')?.rect).toMatchObject({
       x: 128,
       y: 152
     })
@@ -419,7 +419,7 @@ describe('node edit selection chrome', () => {
       stroke: '#ef4444',
       strokeWidth: 3
     })
-    expect(editor.read.node.view.get('shape-1')?.base.node.style).toMatchObject({
+    expect(editor.read.node.view.get('shape-1')?.node.style).toMatchObject({
       fill: '#22c55e',
       stroke: '#ef4444',
       strokeWidth: 3
@@ -433,7 +433,7 @@ describe('node edit selection chrome', () => {
       nodeIds: ['root-1']
     })
 
-    const beforeRect = editor.read.node.view.get('root-1')?.layout.rect
+    const beforeRect = editor.read.node.view.get('root-1')?.rect
     expect(beforeRect).toBeDefined()
 
     editor.input.pointerDown(createPointerInput({
@@ -471,7 +471,7 @@ describe('node edit selection chrome', () => {
       x: 248,
       y: 220
     })
-    expect(editor.read.node.view.get('root-1')?.layout.rect).toMatchObject({
+    expect(editor.read.node.view.get('root-1')?.rect).toMatchObject({
       x: 248,
       y: 220
     })
@@ -507,7 +507,7 @@ describe('node edit selection chrome', () => {
       strokeWidth: 3,
       fill: '#22c55e'
     })
-    expect(editor.read.node.view.get('root-1')?.base.node.style).toMatchObject({
+    expect(editor.read.node.view.get('root-1')?.node.style).toMatchObject({
       frameKind: 'underline',
       stroke: '#ef4444',
       strokeWidth: 3,

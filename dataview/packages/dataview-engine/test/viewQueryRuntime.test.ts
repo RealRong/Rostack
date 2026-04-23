@@ -284,6 +284,8 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
   })
 
   assert.equal(result.action, 'sync')
+  assert.equal(result.state.matched, previousStage.state.matched)
+  assert.equal(result.state.ordered, previousStage.state.ordered)
   assert.equal(result.state.matched.read.ids(), previousStage.state.matched.read.ids())
   assert.equal(result.state.ordered.read.ids(), previousStage.state.ordered.read.ids())
   assert.equal(result.records.matched, previousPublished.matched)

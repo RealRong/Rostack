@@ -101,7 +101,7 @@ const readNodeLocked = ({
   document: Pick<DocumentRead, 'node'>
   nodeId: string
 }) => (
-  store.read(graph.node.view, nodeId)?.base.node.locked
+  store.read(graph.node.graph, nodeId)?.base.node.locked
   ?? store.read(document.node.committed, nodeId)?.node.locked
   ?? false
 )
@@ -114,7 +114,7 @@ const readNodeRect = ({
   graph: Pick<GraphRead, 'node'>
   document: Pick<DocumentRead, 'node'>
   nodeId: string
-}) => store.read(graph.node.view, nodeId)?.layout.rect
+}) => store.read(graph.node.graph, nodeId)?.geometry.rect
   ?? store.read(document.node.committed, nodeId)?.rect
 
 export const createEditorRead = (
@@ -271,7 +271,7 @@ export const createEditorRead = (
 
   const nodeCapability: EditorRead['node']['capability'] = store.createKeyedDerivedStore({
     get: (nodeId: string) => {
-      const current = store.read(graph.node.view, nodeId)
+      const current = store.read(graph.node.graph, nodeId)
       return current
         ? graph.node.capability(current.base.node)
         : undefined
@@ -297,7 +297,8 @@ export const createEditorRead = (
         return undefined
       }
 
-      const current = store.read(graph.edge.view, selectedEdgeId)
+      const current = store.read(graph.edge.graph, selectedEdgeId)
+      const currentUi = store.read(graph.edge.ui, selectedEdgeId)
       const currentEnds = current?.route.ends
       if (!current || !currentEnds) {
         return undefined
@@ -325,7 +326,7 @@ export const createEditorRead = (
           edgeId: selectedEdgeId,
           edge: current.base.edge,
           handles: current.route.handles,
-          activeRouteIndex: current.render.activeRouteIndex
+          activeRouteIndex: currentUi?.activeRouteIndex
         })
       }
     },

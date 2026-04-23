@@ -58,7 +58,7 @@ describe('createMoveInteraction', () => {
               text: 'node-1'
             }
           }],
-          view: {
+          graph: {
             get: () => ({
               base: {
                 node: {
@@ -69,7 +69,7 @@ describe('createMoveInteraction', () => {
                   }
                 }
               },
-              layout: {
+              geometry: {
                 rect: {
                   x: 100,
                   y: 120,
@@ -84,7 +84,6 @@ describe('createMoveInteraction', () => {
                 },
                 rotation: 0
               },
-              render: {}
             })
           }
         },

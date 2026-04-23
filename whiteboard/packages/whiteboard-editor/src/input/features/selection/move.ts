@@ -126,12 +126,12 @@ export const createMoveInteraction = (
 
   const initialState = nodeApi.move.state.start({
     nodes: ctx.projection.node.ordered().flatMap((node) => {
-      const view = ctx.projection.node.view.get(node.id)
+      const view = ctx.projection.node.graph.get(node.id)
       return view
         ? [toSpatialNode({
             node: view.base.node,
-            rect: view.layout.rect,
-            rotation: view.layout.rotation
+            rect: view.geometry.rect,
+            rotation: view.geometry.rotation
           })]
         : []
     }),

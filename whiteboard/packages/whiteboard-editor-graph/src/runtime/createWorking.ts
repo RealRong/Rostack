@@ -44,13 +44,15 @@ export const createWorking = (): WorkingState => {
         hover: {
           kind: 'none'
         },
-        preview: {
-          guides: [],
-          draw: null,
-          mindmap: null
-        },
-        edit: null
-      }
+      preview: {
+        guides: [],
+        draw: null,
+        mindmap: null
+      },
+      edit: null
+      },
+      nodes: new Map(),
+      edges: new Map()
     },
     scene: {
       layers: EMPTY_SCENE_LAYERS,

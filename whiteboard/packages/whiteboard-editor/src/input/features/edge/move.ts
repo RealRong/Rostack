@@ -36,10 +36,10 @@ const readEdgeMovePatch = (
   : undefined
 
 const readMovableEdge = (
-  edge: Pick<GraphEdgeRead, 'view' | 'capability'>,
+  edge: Pick<GraphEdgeRead, 'graph' | 'capability'>,
   edgeId: EdgeId
 ) => {
-  const current = edge.view.get(edgeId)?.base.edge
+  const current = edge.graph.get(edgeId)?.base.edge
 
   return current && edge.capability(current).move
     ? current
@@ -47,7 +47,7 @@ const readMovableEdge = (
 }
 
 export const startEdgeMove = (input: {
-  edge: Pick<GraphEdgeRead, 'view' | 'capability'>
+  edge: Pick<GraphEdgeRead, 'graph' | 'capability'>
   edgeId: EdgeId
   pointerId: number
   start: Point

@@ -53,9 +53,17 @@ export const reduce = {
 
     const dense = readDenseColumn(input.column)
     if (dense) {
+      const fullDenseSelection = (
+        input.selection.ids === input.selection.rows.ids
+        && input.selection.indexes.length === dense.length
+      )
       return calculation.state.build({
         entriesByIndex: dense,
-        recordIndexes: input.selection.indexes,
+        ...(fullDenseSelection
+          ? {}
+          : {
+              recordIndexes: input.selection.indexes
+            }),
         capabilities: input.capabilities
       })
     }

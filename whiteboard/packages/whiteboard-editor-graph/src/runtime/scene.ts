@@ -24,7 +24,7 @@ const readSceneItemBounds = (input: {
 }): Rect | undefined => {
   switch (input.item.kind) {
     case 'node':
-      return input.graph.nodes.get(input.item.id)?.layout.bounds
+      return input.graph.nodes.get(input.item.id)?.geometry.bounds
     case 'edge':
       return input.graph.edges.get(input.item.id)?.route.bounds
     case 'mindmap':
@@ -53,10 +53,7 @@ export const buildSceneSnapshot = (input: {
     input.visibleWorld
   ))
   const visibleNodeIds = [...input.graph.nodes.entries()]
-    .filter(([, node]) => (
-      !node.render.hidden
-      && isVisibleInWorld(node.layout.bounds, input.visibleWorld)
-    ))
+    .filter(([, node]) => isVisibleInWorld(node.geometry.bounds, input.visibleWorld))
     .map(([nodeId]) => nodeId)
   const visibleEdgeIds = [...input.graph.edges.entries()]
     .filter(([, edge]) => isVisibleInWorld(edge.route.bounds, input.visibleWorld))

@@ -1,6 +1,9 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import { collection, store } from '@shared/core'
-import type { NodeView } from '@whiteboard/editor-graph'
+import type {
+  NodeUiView as RuntimeNodeUiView,
+  NodeView as RuntimeNodeView
+} from '@whiteboard/editor-graph'
 import type {
   Node,
   NodeGeometry,
@@ -21,14 +24,87 @@ export type GraphNodeGeometry = NodeGeometry & {
   rotation: number
 }
 
+export type EditorNodeView = {
+  nodeId: NodeId
+  node: NodeModel
+  rect: Rect
+  bounds: Rect
+  rotation: number
+  hidden: boolean
+  selected: boolean
+  hovered: boolean
+  patched: boolean
+  resizing: boolean
+  edit?: RuntimeNodeUiView['edit']
+}
+
 export type GraphNodeRead = {
   list: DocumentRead['node']['list']
   committed: DocumentRead['node']['committed']
-  view: store.KeyedReadStore<NodeId, NodeView | undefined>
+  graph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
+  ui: store.KeyedReadStore<NodeId, RuntimeNodeUiView | undefined>
+  view: store.KeyedReadStore<NodeId, EditorNodeView | undefined>
   nodes: (nodeIds: readonly NodeId[]) => readonly NodeModel[]
   capability: (node: Pick<NodeModel, 'id' | 'type' | 'owner'>) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
   ordered: () => readonly NodeModel[]
+}
+
+const isEditorNodeViewEqual = (
+  left: EditorNodeView | undefined,
+  right: EditorNodeView | undefined
+) => left === right || (
+  left !== undefined
+  && right !== undefined
+  && left.nodeId === right.nodeId
+  && left.node === right.node
+  && left.rotation === right.rotation
+  && left.rect.x === right.rect.x
+  && left.rect.y === right.rect.y
+  && left.rect.width === right.rect.width
+  && left.rect.height === right.rect.height
+  && left.bounds.x === right.bounds.x
+  && left.bounds.y === right.bounds.y
+  && left.bounds.width === right.bounds.width
+  && left.bounds.height === right.bounds.height
+  && left.hidden === right.hidden
+  && left.selected === right.selected
+  && left.hovered === right.hovered
+  && left.patched === right.patched
+  && left.resizing === right.resizing
+  && left.edit?.field === right.edit?.field
+  && left.edit?.caret.kind === right.edit?.caret.kind
+  && (
+    left.edit?.caret.kind !== 'point'
+    || (
+      right.edit?.caret.kind === 'point'
+      && left.edit.caret.client.x === right.edit.caret.client.x
+      && left.edit.caret.client.y === right.edit.caret.client.y
+    )
+  )
+)
+
+const toEditorNodeView = (
+  graph: RuntimeNodeView | undefined,
+  ui: RuntimeNodeUiView | undefined
+): EditorNodeView | undefined => {
+  if (!graph) {
+    return undefined
+  }
+
+  return {
+    nodeId: graph.base.node.id,
+    node: graph.base.node,
+    rect: graph.geometry.rect,
+    bounds: graph.geometry.bounds,
+    rotation: graph.geometry.rotation,
+    hidden: ui?.hidden ?? false,
+    selected: ui?.selected ?? false,
+    hovered: ui?.hovered ?? false,
+    patched: ui?.patched ?? false,
+    resizing: ui?.resizing ?? false,
+    edit: ui?.edit
+  }
 }
 
 export const toSpatialNode = ({
@@ -93,12 +169,20 @@ export const createGraphNodeRead = ({
   type
 }: {
   document: Pick<DocumentRead, 'node'>
-  sources: Pick<ProjectionSources, 'node'>
+  sources: Pick<ProjectionSources, 'nodeGraph' | 'nodeUi'>
   type: Pick<NodeTypeSupport, 'capability'>
 }): GraphNodeRead => {
   const readProjectedNodes = (
     nodeIds: readonly NodeId[]
-  ) => collection.presentValues(nodeIds, (nodeId) => store.read(sources.node, nodeId)?.base.node)
+  ) => collection.presentValues(nodeIds, (nodeId) => store.read(sources.nodeGraph, nodeId)?.base.node)
+
+  const view: GraphNodeRead['view'] = store.createKeyedDerivedStore({
+    get: (nodeId: NodeId) => toEditorNodeView(
+      store.read(sources.nodeGraph, nodeId),
+      store.read(sources.nodeUi, nodeId)
+    ),
+    isEqual: isEditorNodeViewEqual
+  })
 
   const idsInRect: GraphNodeRead['idsInRect'] = (rect, options) => {
     const match = options?.match ?? 'touch'
@@ -114,16 +198,16 @@ export const createGraphNodeRead = ({
       match,
       policy,
       getEntry: (nodeId) => {
-        const current = store.read(sources.node, nodeId)
+        const current = store.read(sources.nodeGraph, nodeId)
         return current
           ? {
               node: toSpatialNode({
                 node: current.base.node,
-                rect: current.layout.rect,
-                rotation: current.layout.rotation
+                rect: current.geometry.rect,
+                rotation: current.geometry.rotation
               }),
-              rect: current.layout.rect,
-              rotation: current.layout.rotation
+              rect: current.geometry.rect,
+              rotation: current.geometry.rotation
             }
           : undefined
       },
@@ -134,7 +218,9 @@ export const createGraphNodeRead = ({
   return {
     list: document.node.list,
     committed: document.node.committed,
-    view: sources.node,
+    graph: sources.nodeGraph,
+    ui: sources.nodeUi,
+    view,
     nodes: readProjectedNodes,
     capability: (node) => resolveNodeCapability(node, type),
     idsInRect,

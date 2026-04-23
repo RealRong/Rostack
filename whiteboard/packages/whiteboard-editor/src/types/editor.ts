@@ -10,14 +10,13 @@ import type {
 } from '@whiteboard/core/types'
 import type { HistoryApi, HistoryState } from '@whiteboard/history'
 import type {
-  EdgeView,
   MindmapView,
-  NodeView,
   SceneSnapshot,
   SelectionView
 } from '@whiteboard/editor-graph'
 import type { EditorActions } from '@whiteboard/editor/action/types'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { EditorEdgeView } from '@whiteboard/editor/read/edge'
 import type { MindmapChrome } from '@whiteboard/editor/read/mindmap'
 import type {
   MarqueePreview,
@@ -45,7 +44,10 @@ import type {
 } from '@whiteboard/editor/session/edit'
 import type { SessionRead } from '@whiteboard/editor/session/read'
 import type { SelectedEdgeChrome } from '@whiteboard/editor/read/edgeShared'
-import type { NodeCapability } from '@whiteboard/editor/read/node'
+import type {
+  EditorNodeView,
+  NodeCapability
+} from '@whiteboard/editor/read/node'
 import type {
   SelectionNodeStats,
   SelectionOverlay,
@@ -135,11 +137,11 @@ export type EditorRead = {
   history: HistoryApi
   mindmap: EditorMindmapRead
   node: {
-    view: store.KeyedReadStore<NodeId, NodeView | undefined>
+    view: store.KeyedReadStore<NodeId, EditorNodeView | undefined>
     capability: store.KeyedReadStore<NodeId, NodeCapability | undefined>
   }
   edge: {
-    view: store.KeyedReadStore<EdgeId, EdgeView | undefined>
+    view: store.KeyedReadStore<EdgeId, EditorEdgeView | undefined>
     selectedChrome: store.ReadStore<SelectedEdgeChrome | undefined>
   }
   scene: {

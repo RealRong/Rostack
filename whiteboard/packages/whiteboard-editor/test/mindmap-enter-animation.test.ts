@@ -136,14 +136,14 @@ describe('mindmap enter animation', () => {
         return
       }
 
-      const startRect = editor.read.node.view.get(inserted.data.nodeId)?.layout.rect
+      const startRect = editor.read.node.view.get(inserted.data.nodeId)?.rect
       expect(startRect).toBeDefined()
 
       vi.advanceTimersByTime(120)
-      const midRect = editor.read.node.view.get(inserted.data.nodeId)?.layout.rect
+      const midRect = editor.read.node.view.get(inserted.data.nodeId)?.rect
 
       vi.advanceTimersByTime(200)
-      const endRect = editor.read.node.view.get(inserted.data.nodeId)?.layout.rect
+      const endRect = editor.read.node.view.get(inserted.data.nodeId)?.rect
 
       expect(midRect).toBeDefined()
       expect(endRect).toBeDefined()

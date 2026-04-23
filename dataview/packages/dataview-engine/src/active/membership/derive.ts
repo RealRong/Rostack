@@ -155,27 +155,28 @@ const buildGroupedSections = (input: {
   }
 
   const fullVisible = input.visible.ids === input.visible.rows.ids
-  const visibleKeysByRecord = fullVisible
-    ? undefined
-    : new Map<RecordId, readonly SectionId[]>()
+  let visibleKeysByRecord: Map<RecordId, readonly SectionId[]> | undefined
   const indexesByKey = new Map<SectionId, number[]>()
+  const visibleIds = input.visible.ids
+  const visibleIndexes = input.visible.indexes
+  const rows = input.visible.rows
+  const keysByRecord = input.keysByRecord
 
-  for (let offset = 0; offset < input.visible.indexes.length; offset += 1) {
-    const rowIndex = input.visible.indexes[offset]!
-    const recordId = input.visible.rows.at(rowIndex)
-    if (!recordId) {
-      continue
-    }
-
-    const keys = input.keysByRecord.get(recordId)
+  for (let offset = 0; offset < visibleIds.length; offset += 1) {
+    const recordId = visibleIds[offset]!
+    const keys = keysByRecord.get(recordId)
     if (!keys?.length) {
       continue
     }
 
     if (!fullVisible) {
-      visibleKeysByRecord!.set(recordId, keys)
+      visibleKeysByRecord ??= new Map<RecordId, readonly SectionId[]>()
+      visibleKeysByRecord.set(recordId, keys)
     }
 
+    const rowIndex = fullVisible
+      ? offset
+      : visibleIndexes[offset]!
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
       const sectionId = keys[keyIndex]!
       const existing = indexesByKey.get(sectionId)
@@ -188,19 +189,19 @@ const buildGroupedSections = (input: {
     }
   }
 
-  const keysByRecord = fullVisible
-    ? input.keysByRecord
-    : visibleKeysByRecord!.size
+  const nextKeysByRecord = fullVisible
+    ? keysByRecord
+    : visibleKeysByRecord?.size
       ? visibleKeysByRecord!
       : EMPTY_KEYS_BY_RECORD
 
   return {
-    keysByRecord,
+    keysByRecord: nextKeysByRecord,
     sections: buildSectionPartition({
-      rows: input.visible.rows,
+      rows,
       order: input.order,
       indexesByKey,
-      keysByRecord,
+      keysByRecord: nextKeysByRecord,
       previous: input.previous
     })
   }

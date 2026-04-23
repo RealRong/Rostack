@@ -261,6 +261,13 @@ const buildPublishedState = (input: {
       return
     }
 
+    if (
+      input.nextItemIds === section.itemIds
+      || input.nextRecordIds === section.recordIds
+    ) {
+      return
+    }
+
     if (!input.nextItemIds?.length) {
       for (let index = 0; index < section.itemIds.length; index += 1) {
         const itemId = section.itemIds[index]!
@@ -348,20 +355,25 @@ const buildPublishedState = (input: {
             return EMPTY_ITEM_IDS
           }
 
+          const allocateItemId = input.itemIds.allocate.section(sectionId)
           const nextItemIds = new Array<ItemId>(publishedRecordIds.length)
           for (let index = 0; index < publishedRecordIds.length; index += 1) {
             const recordId = publishedRecordIds[index]!
-            const itemId = input.itemIds.allocate.placement(sectionId, recordId)
+            const itemId = allocateItemId(recordId)
             const previousPlacement = previousItemPlacements.get(itemId)
-            const placement = previousPlacement ?? {
+            nextItemIds[index] = itemId
+            if (previousPlacement) {
+              if (rebuiltPlacementByItemId) {
+                rebuiltPlacementByItemId.set(itemId, previousPlacement)
+              }
+              continue
+            }
+
+            addedItemIds.push(itemId)
+            setItemState(itemId, {
               sectionId,
               recordId
-            }
-            nextItemIds[index] = itemId
-            if (!previousPlacement) {
-              addedItemIds.push(itemId)
-            }
-            setItemState(itemId, placement)
+            })
           }
 
           return previousSection && equal.sameOrder(previousSection.itemIds, nextItemIds)

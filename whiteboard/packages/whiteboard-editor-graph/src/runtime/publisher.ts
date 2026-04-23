@@ -6,19 +6,23 @@ import {
 } from '@shared/projection-runtime'
 import type {
   Change,
+  EdgeUiView,
   EdgeView,
   GraphSnapshot,
   GroupView,
   MindmapView,
+  NodeUiView,
   NodeView,
   Snapshot
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import {
   isChromeViewEqual,
+  isEdgeUiViewEqual,
   isEdgeViewEqual,
   isGroupViewEqual,
   isMindmapViewEqual,
+  isNodeUiViewEqual,
   isNodeViewEqual,
   isSceneSnapshotEqual,
   isSelectionViewEqual
@@ -116,6 +120,64 @@ const publishGraphSnapshot = (
   }
 }
 
+const publishUiSnapshot = (
+  previous: Snapshot['ui'],
+  working: WorkingState
+) => {
+  const selection = publishValue({
+    previous: previous.selection,
+    next: working.ui.selection,
+    isEqual: isSelectionViewEqual
+  })
+  const chrome = publishValue({
+    previous: previous.chrome,
+    next: working.ui.chrome,
+    isEqual: isChromeViewEqual
+  })
+  const nodes = publishFamily<string, NodeUiView, NodeUiView>({
+    previous: previous.nodes,
+    ids: [...working.ui.nodes.keys()],
+    read: (nodeId) => working.ui.nodes.get(nodeId)!,
+    publish: ({ previous: previousNode, next }) => publishEntry(
+      previousNode,
+      next,
+      isNodeUiViewEqual
+    )
+  })
+  const edges = publishFamily<string, EdgeUiView, EdgeUiView>({
+    previous: previous.edges,
+    ids: [...working.ui.edges.keys()],
+    read: (edgeId) => working.ui.edges.get(edgeId)!,
+    publish: ({ previous: previousEdge, next }) => publishEntry(
+      previousEdge,
+      next,
+      isEdgeUiViewEqual
+    )
+  })
+
+  const ui = selection.value === previous.selection
+    && chrome.value === previous.chrome
+    && nodes.value === previous.nodes
+    && edges.value === previous.edges
+    ? previous
+    : {
+        selection: selection.value,
+        chrome: chrome.value,
+        nodes: nodes.value,
+        edges: edges.value
+      }
+
+  return {
+    ui,
+    change: {
+      selection: createFlags(selection.changed),
+      chrome: createFlags(chrome.changed),
+      nodes: nodes.ids,
+      edges: edges.ids
+    }
+  }
+}
+
 export const createEditorGraphPublisher = (): RuntimePublisher<
   WorkingState,
   Snapshot,
@@ -123,28 +185,12 @@ export const createEditorGraphPublisher = (): RuntimePublisher<
 > => ({
   publish: ({ revision, previous, working }) => {
     const publishedGraph = publishGraphSnapshot(previous.graph, working)
+    const publishedUi = publishUiSnapshot(previous.ui, working)
     const scene = publishValue({
       previous: previous.scene,
       next: working.scene,
       isEqual: isSceneSnapshotEqual
     })
-    const selection = publishValue({
-      previous: previous.ui.selection,
-      next: working.ui.selection,
-      isEqual: isSelectionViewEqual
-    })
-    const chrome = publishValue({
-      previous: previous.ui.chrome,
-      next: working.ui.chrome,
-      isEqual: isChromeViewEqual
-    })
-    const ui = selection.value === previous.ui.selection
-      && chrome.value === previous.ui.chrome
-      ? previous.ui
-      : {
-          selection: selection.value,
-          chrome: chrome.value
-        }
 
     return {
       snapshot: {
@@ -152,15 +198,12 @@ export const createEditorGraphPublisher = (): RuntimePublisher<
         documentRevision: working.revision.document,
         graph: publishedGraph.graph,
         scene: scene.value,
-        ui
+        ui: publishedUi.ui
       },
       change: {
         graph: publishedGraph.change,
         scene: createFlags(scene.changed),
-        ui: {
-          selection: createFlags(selection.changed),
-          chrome: createFlags(chrome.changed)
-        }
+        ui: publishedUi.change
       }
     }
   }

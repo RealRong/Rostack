@@ -41,8 +41,6 @@ const hasGraphDelta = (
   || hasIdDelta(delta.edges.edit)
   || hasIdDelta(delta.mindmaps.preview)
   || delta.mindmaps.tick.size > 0
-  || delta.interaction.selection
-  || delta.interaction.drag
 )
 
 const hasUiDelta = (
@@ -50,6 +48,7 @@ const hasUiDelta = (
 ): boolean => (
   delta.tool
   || delta.selection
+  || delta.hover
   || delta.marquee
   || delta.guides
   || delta.draw

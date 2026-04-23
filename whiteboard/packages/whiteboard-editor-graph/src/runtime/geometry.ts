@@ -94,15 +94,6 @@ export const isEdgeLabelViewEqual = (
   && left.text === right.text
   && left.displayText === right.displayText
   && left.style === right.style
-  && left.editable === right.editable
-  && left.caret?.kind === right.caret?.kind
-  && (
-    left.caret?.kind !== 'point'
-    || (
-      right.caret?.kind === 'point'
-      && isPointEqual(left.caret.client, right.caret.client)
-    )
-  )
   && isSizeEqual(left.size, right.size)
   && isPointEqual(left.point, right.point)
   && left.angle === right.angle

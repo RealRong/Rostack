@@ -8,13 +8,21 @@ import { selection as selectionApi } from '@whiteboard/core/selection'
 import type {
   ChromeOverlay,
   ChromeView,
+  EdgeLabelUiView,
+  EdgeUiView,
   EdgeView,
   HoverState,
+  NodeUiEdit,
+  NodeUiView,
   NodeView,
   SelectionState,
   SelectionView,
   SessionInput
 } from '../contracts/editor'
+import type {
+  GraphEdgeEntry,
+  GraphNodeEntry
+} from '../contracts/working'
 
 export const readSelectionKind = (
   selection: SelectionState
@@ -86,7 +94,7 @@ export const buildSelectionView = (input: {
     target: input.selection,
     nodes: selectedNodes,
     edges: selectedEdges,
-    readNodeRect: (node) => input.nodes.get(node.id)?.layout.bounds,
+    readNodeRect: (node) => input.nodes.get(node.id)?.geometry.bounds,
     readEdgeBounds: (edge) => input.edges.get(edge.id)?.route.bounds,
     resolveNodeTransformBehavior: readSelectionNodeTransformBehavior
   })
@@ -116,6 +124,98 @@ export const buildSelectionView = (input: {
       canRotate: affordance.canRotate,
       handles: affordance.transformPlan?.handles ?? []
     }
+  }
+}
+
+const readNodeUiEdit = (
+  nodeId: NodeId,
+  edit: SessionInput['edit']
+): NodeUiEdit | undefined => edit?.kind === 'node' && edit.nodeId === nodeId
+  ? {
+      field: edit.field,
+      caret: edit.caret
+    }
+  : undefined
+
+export const buildNodeUiView = (input: {
+  nodeId: NodeId
+  draft?: GraphNodeEntry['draft']
+  preview?: GraphNodeEntry['preview']
+  draw: SessionInput['preview']['draw']
+  edit: SessionInput['edit']
+  selection: SelectionState
+  hover: HoverState
+}): NodeUiView => {
+  const edit = readNodeUiEdit(input.nodeId, input.edit)
+  const patch = input.preview?.patch
+  const handle = patch && 'handle' in patch
+    ? patch.handle
+    : undefined
+
+  return {
+    hidden: input.preview?.hidden ?? input.draw?.hiddenNodeIds.includes(input.nodeId) ?? false,
+    selected: input.selection.nodeIds.includes(input.nodeId),
+    hovered: (
+      input.hover.kind === 'node'
+      && input.hover.nodeId === input.nodeId
+    ) || Boolean(input.preview?.hovered),
+    editing: edit !== undefined,
+    patched: Boolean(
+      patch
+      || (input.draft?.kind === 'patch' ? input.draft.fields : undefined)
+    ),
+    resizing: Boolean(patch?.size || handle),
+    edit
+  }
+}
+
+const isEditingEdgeLabel = (
+  edgeId: EdgeId,
+  labelId: string,
+  edit: SessionInput['edit']
+) => edit?.kind === 'edge-label'
+  && edit.edgeId === edgeId
+  && edit.labelId === labelId
+
+export const buildEdgeUiView = (input: {
+  edgeId: EdgeId
+  entry: GraphEdgeEntry
+  view: EdgeView
+  edit: SessionInput['edit']
+  selection: SelectionState
+}): EdgeUiView => {
+  const labelIds = new Set<string>()
+
+  input.entry.base.edge.labels?.forEach((label) => {
+    labelIds.add(label.id)
+  })
+  input.view.route.labels.forEach((label) => {
+    labelIds.add(label.labelId)
+  })
+  if (input.edit?.kind === 'edge-label' && input.edit.edgeId === input.edgeId) {
+    labelIds.add(input.edit.labelId)
+  }
+
+  const labels = new Map<string, EdgeLabelUiView>()
+  labelIds.forEach((labelId) => {
+    const editing = isEditingEdgeLabel(input.edgeId, labelId, input.edit)
+    labels.set(labelId, {
+      editing,
+      caret: editing && input.edit?.kind === 'edge-label'
+        ? input.edit.caret
+        : undefined
+    })
+  })
+
+  return {
+    selected: input.selection.edgeIds.includes(input.edgeId),
+    patched: Boolean(input.entry.preview?.patch ?? input.entry.draft?.patch),
+    activeRouteIndex: input.entry.preview?.activeRouteIndex ?? input.entry.draft?.activeRouteIndex,
+    editingLabelId: input.edit?.kind === 'edge-label'
+      && input.edit.edgeId === input.edgeId
+      ? input.edit.labelId
+      : undefined,
+    labels
   }
 }
 

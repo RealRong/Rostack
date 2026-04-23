@@ -13,7 +13,7 @@ export type EdgeLabelView = {
   text: string
   displayText: string
   style: NonNullable<Edge['labels']>[number]['style']
-  editable: boolean
+  editing: boolean
   caret?: EditCaret
   point: Point
   angle: number
@@ -25,7 +25,7 @@ export type EdgeView = {
   edgeId: EdgeId
   edge: Edge
   selected: boolean
-  box: {
+  box?: {
     rect: {
       x: number
       y: number
@@ -35,7 +35,7 @@ export type EdgeView = {
     pad: number
   }
   path: {
-    svgPath: string
+    svgPath?: string
     points: readonly Point[]
   }
   labels: readonly EdgeLabelView[]

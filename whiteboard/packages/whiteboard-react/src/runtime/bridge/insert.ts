@@ -117,7 +117,7 @@ const recenterNode = ({
   nodeId: NodeId
   center: Point
 }) => {
-  const rect = editor.read.node.view.get(nodeId)?.layout.rect
+  const rect = editor.read.node.view.get(nodeId)?.rect
   if (!rect) {
     return
   }
@@ -126,7 +126,7 @@ const recenterNode = ({
     x: center.x - rect.width / 2,
     y: center.y - rect.height / 2
   }
-  const currentRect = editor.read.node.view.get(nodeId)?.layout.rect
+  const currentRect = editor.read.node.view.get(nodeId)?.rect
   if (
     currentRect
     && currentRect.x === nextPosition.x

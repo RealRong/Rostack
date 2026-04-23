@@ -33,9 +33,9 @@ import {
   type GraphNodeRead
 } from '@whiteboard/editor/read/node'
 
-type EdgeConnectNodeRead = Pick<GraphNodeRead, 'view' | 'capability'>
-type EdgeConnectPreviewNodeRead = Pick<GraphNodeRead, 'view'>
-type EdgeConnectEdgeRead = Pick<GraphEdgeRead, 'view' | 'geometry' | 'capability'>
+type EdgeConnectNodeRead = Pick<GraphNodeRead, 'graph' | 'capability'>
+type EdgeConnectPreviewNodeRead = Pick<GraphNodeRead, 'graph'>
+type EdgeConnectEdgeRead = Pick<GraphEdgeRead, 'graph' | 'geometry' | 'capability'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
 }) => EdgeConnectEvaluation
@@ -65,7 +65,7 @@ type EdgeConnectGestureInput = {
 }
 
 type ConnectNodeEntry = NonNullable<
-  ReturnType<EdgeConnectNodeRead['view']['get']>
+  ReturnType<EdgeConnectNodeRead['graph']['get']>
 >
 
 const EMPTY_MODIFIERS: ModifierKeys = {
@@ -103,7 +103,7 @@ const readConnectNode = (
   node: EdgeConnectNodeRead,
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
-  const entry = node.view.get(nodeId)
+  const entry = node.graph.get(nodeId)
   const currentNode = entry?.base.node
   if (!entry || !currentNode || currentNode.locked || !node.capability(currentNode).connect) {
     return undefined
@@ -190,12 +190,12 @@ const resolveNodeHandleStart = (input: {
     point: nodeApi.outline.anchor(
       toSpatialNode({
         node: entry.base.node,
-        rect: entry.layout.rect,
-        rotation: entry.layout.rotation
+        rect: entry.geometry.rect,
+        rotation: entry.geometry.rotation
       }),
-      entry.layout.rect,
+      entry.geometry.rect,
       anchor,
-      entry.layout.rotation
+      entry.geometry.rotation
     )
   })
 }
@@ -223,11 +223,11 @@ const resolveNodeBodyStart = (input: {
   const resolved = edgeApi.anchor.resolveFromPoint({
     node: toSpatialNode({
       node: entry.base.node,
-      rect: entry.layout.rect,
-      rotation: entry.layout.rotation
+      rect: entry.geometry.rect,
+      rotation: entry.geometry.rotation
     }),
-    rect: entry.layout.rect,
-    rotation: entry.layout.rotation,
+    rect: entry.geometry.rect,
+    rotation: entry.geometry.rotation,
     pointWorld: input.pointer.world,
     zoom: input.zoom,
     config: input.config
@@ -259,7 +259,7 @@ const resolveReconnectStart = (input: {
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const edge = input.edge.view.get(input.edgeId)?.base.edge
+  const edge = input.edge.graph.get(input.edgeId)?.base.edge
   const resolved = input.edge.geometry.get(input.edgeId)
   if (!edge || !resolved) {
     return undefined
@@ -363,18 +363,18 @@ const readPreviewNodeSnapshot = (
   node: ReturnType<typeof toSpatialNode>
   geometry: ReturnType<typeof toGraphNodeGeometry>
 } | undefined => {
-  const view = node.view.get(nodeId)
+  const view = node.graph.get(nodeId)
   return view
     ? {
         node: toSpatialNode({
           node: view.base.node,
-          rect: view.layout.rect,
-          rotation: view.layout.rotation
+          rect: view.geometry.rect,
+          rotation: view.geometry.rotation
         }),
         geometry: toGraphNodeGeometry({
           node: view.base.node,
-          rect: view.layout.rect,
-          rotation: view.layout.rotation
+          rect: view.geometry.rect,
+          rotation: view.geometry.rotation
         })
       }
     : undefined

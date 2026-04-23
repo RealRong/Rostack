@@ -9,6 +9,7 @@ import type {
 export interface ItemIdPool {
   allocate: {
     placement: (sectionId: SectionId, recordId: RecordId) => ItemId
+    section: (sectionId: SectionId) => (recordId: RecordId) => ItemId
   }
   gc: {
     clear: () => void
@@ -30,19 +31,30 @@ export const createItemIdPool = (): ItemIdPool => {
     return created
   }
 
+  const allocateInSection = (
+    idsByRecord: Map<RecordId, ItemId>,
+    recordId: RecordId
+  ): ItemId => {
+    const existing = idsByRecord.get(recordId)
+    if (existing !== undefined) {
+      return existing
+    }
+
+    const itemId = nextId
+    nextId += 1
+    idsByRecord.set(recordId, itemId)
+    return itemId
+  }
+
   return {
     allocate: {
       placement: (sectionId, recordId) => {
         const idsByRecord = ensureSection(sectionId)
-        const existing = idsByRecord.get(recordId)
-        if (existing !== undefined) {
-          return existing
-        }
-
-        const itemId = nextId
-        nextId += 1
-        idsByRecord.set(recordId, itemId)
-        return itemId
+        return allocateInSection(idsByRecord, recordId)
+      },
+      section: sectionId => {
+        const idsByRecord = ensureSection(sectionId)
+        return recordId => allocateInSection(idsByRecord, recordId)
       }
     },
     gc: {

@@ -36,7 +36,7 @@ const createDeps = () => {
     ctx: {
       projection: {
         edge: {
-          view: {
+          graph: {
             get: () => ({
               base: {
                 edge

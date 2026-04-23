@@ -94,12 +94,12 @@ const EdgeLabelItem = ({
       data-selection-ignore
       className="wb-edge-label"
       data-selected={selected ? 'true' : undefined}
-      data-editing={label.editable ? 'true' : undefined}
+      data-editing={label.editing ? 'true' : undefined}
       style={{
         transform: `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${label.angle}deg)`
       }}
     >
-      {label.editable ? (
+      {label.editing ? (
         <EditableSlot
           bindRef={bindLabelRef}
           value={label.text}
@@ -201,7 +201,7 @@ const EdgeItemBase = ({
   }
 
   const edge = entry.edge
-  const box = entry.box
+  const box = entry.box!
   const showAccent = !entry.selected && (hovered || focused)
   const accentStroke = stroke
   const accentStrokeWidth = hoverStrokeWidth

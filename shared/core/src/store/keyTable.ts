@@ -118,6 +118,21 @@ export const createKeyTableStore = <Key, Value>({
       })
     })
   }
+  const notifyPatchedKeys = (
+    keys: readonly Key[]
+  ) => {
+    if (!keys.length) {
+      return
+    }
+
+    batch(() => {
+      for (let index = 0; index < keys.length; index += 1) {
+        const key = keys[index]!
+        notifyKey(internalListenersByKey, key)
+        queueKey(publicListenersByKey, key)
+      }
+    })
+  }
 
   const proxy = createKeyedReadStore<Key, Value | undefined>({
     get: readValue,
@@ -174,29 +189,87 @@ export const createKeyTableStore = <Key, Value>({
           previousByKey.set(key, current.get(key))
         }
 
-        patch.set?.forEach(([key, value]) => {
-          const previous = current.get(key)
-          if (
-            previous !== undefined
-            && isEqual(previous, value)
-          ) {
-            return
+        const set = patch.set
+        if (set?.length) {
+          for (let index = 0; index < set.length; index += 1) {
+            const [key, value] = set[index]!
+            const previous = current.get(key)
+            if (
+              previous !== undefined
+              && isEqual(previous, value)
+            ) {
+              continue
+            }
+
+            capturePrevious(key)
+            current.set(key, value)
           }
+        }
 
-          capturePrevious(key)
-          current.set(key, value)
-        })
+        const remove = patch.remove
+        if (remove?.length) {
+          for (let index = 0; index < remove.length; index += 1) {
+            const key = remove[index]!
+            if (!current.has(key)) {
+              continue
+            }
 
-        patch.remove?.forEach(key => {
-          if (!current.has(key)) {
-            return
+            capturePrevious(key)
+            current.delete(key)
           }
-
-          capturePrevious(key)
-          current.delete(key)
-        })
+        }
 
         notifyChangedKeys(previousByKey)
+      },
+      applyExact: patch => {
+        if (!patch.set?.length && !patch.remove?.length) {
+          return
+        }
+
+        const noListeners = (
+          publicListenersByKey.size === 0
+          && internalListenersByKey.size === 0
+        )
+        const changedKeys: Key[] = []
+        const changedKeySet = new Set<Key>()
+        const recordChangedKey = (
+          key: Key
+        ) => {
+          if (!hasListeners(key) || changedKeySet.has(key)) {
+            return
+          }
+
+          changedKeySet.add(key)
+          changedKeys.push(key)
+        }
+
+        const set = patch.set
+        if (set?.length) {
+          for (let index = 0; index < set.length; index += 1) {
+            const [key, value] = set[index]!
+            current.set(key, value)
+            if (!noListeners) {
+              recordChangedKey(key)
+            }
+          }
+        }
+
+        const remove = patch.remove
+        if (remove?.length) {
+          for (let index = 0; index < remove.length; index += 1) {
+            const key = remove[index]!
+            current.delete(key)
+            if (!noListeners) {
+              recordChangedKey(key)
+            }
+          }
+        }
+
+        if (noListeners) {
+          return
+        }
+
+        notifyPatchedKeys(changedKeys)
       },
       clear: () => {
         if (!current.size) {

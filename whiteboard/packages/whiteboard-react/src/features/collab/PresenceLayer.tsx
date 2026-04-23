@@ -55,7 +55,7 @@ const PresenceNodeSelection = ({
     <div
       className="wb-presence-selection"
       style={{
-        ...toScreenRect(editor, item.layout.bounds),
+        ...toScreenRect(editor, item.bounds),
         borderColor: color,
         backgroundColor: `${color}18`
       }}
@@ -81,7 +81,7 @@ const PresenceEdgeSelection = ({
 
   void viewport
 
-  const bounds = edge.render.box?.rect
+  const bounds = edge.box?.rect
   if (!bounds) {
     return null
   }

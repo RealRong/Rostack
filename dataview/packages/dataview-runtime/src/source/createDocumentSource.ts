@@ -1,12 +1,14 @@
 import { document as documentApi } from '@dataview/core/document'
 import type {
   CustomField,
+  DataDoc,
   DataRecord,
   FieldId,
   RecordId,
   View,
   ViewId
 } from '@dataview/core/contracts'
+import { equal, store } from '@shared/core'
 import type {
   DocDelta,
   EngineSnapshot
@@ -28,6 +30,7 @@ const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 
 export interface DocumentSourceRuntime {
   source: DocumentSource
+  meta: store.ValueStore<DataDoc['meta']>
   records: EntitySourceRuntime<RecordId, DataRecord>
   fields: EntitySourceRuntime<FieldId, CustomField>
   views: EntitySourceRuntime<ViewId, View>
@@ -35,6 +38,10 @@ export interface DocumentSourceRuntime {
 }
 
 export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
+  const meta = store.createValueStore<DataDoc['meta']>({
+    initial: undefined,
+    isEqual: equal.sameJsonValue
+  })
   const records = createEntitySourceRuntime<RecordId, DataRecord>()
   const fields = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
   const views = createEntitySourceRuntime<ViewId, View>()
@@ -49,6 +56,7 @@ export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
 
   return {
     source: {
+      meta,
       records: records.source,
       fields: {
         ...fields.source,
@@ -59,10 +67,12 @@ export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
         list: viewList
       }
     },
+    meta,
     records,
     fields,
     views,
     clear: () => {
+      meta.set(undefined)
       records.clear()
       fields.clear()
       views.clear()
@@ -74,6 +84,7 @@ export const resetDocumentSource = (input: {
   runtime: DocumentSourceRuntime
   snapshot: EngineSnapshot
 }) => {
+  input.runtime.meta.set(input.snapshot.doc.meta)
   const recordIds = documentApi.records.ids(input.snapshot.doc)
   const fieldIds = documentApi.fields.custom.ids(input.snapshot.doc)
   const viewIds = documentApi.views.ids(input.snapshot.doc)
@@ -116,6 +127,9 @@ export const applyDocumentDelta = (input: {
     return
   }
 
+  if (input.delta.meta) {
+    input.runtime.meta.set(input.snapshot.doc.meta)
+  }
   applyEntityDelta({
     delta: input.delta.records,
     runtime: input.runtime.records,

@@ -51,6 +51,7 @@ export const projectDocumentDelta = (input: {
 
   if (input.impact.reset) {
     return {
+      meta: true,
       records: createCollectionDelta({
         list: true,
         update: nextRecordIds
@@ -93,9 +94,17 @@ export const projectDocumentDelta = (input: {
     ) as readonly ViewId[],
     removed: [...(input.impact.views?.removed ?? [])]
   })
+  const meta = !equal.sameJsonValue(input.previous.meta, input.next.meta)
+    ? true
+    : undefined
 
-  return records || fields || views
+  return meta || records || fields || views
     ? {
+        ...(meta
+          ? {
+              meta
+            }
+          : {}),
         ...(records
           ? {
               records

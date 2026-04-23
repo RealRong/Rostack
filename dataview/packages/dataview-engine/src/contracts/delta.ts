@@ -15,6 +15,7 @@ export interface CollectionDelta<Key> {
 }
 
 export interface DocDelta {
+  meta?: true
   records?: CollectionDelta<RecordId>
   fields?: CollectionDelta<FieldId>
   views?: CollectionDelta<ViewId>

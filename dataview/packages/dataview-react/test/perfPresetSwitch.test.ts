@@ -5,6 +5,7 @@ import { createDataViewRuntime } from '@dataview/runtime'
 import {
   PERF_PRESETS,
   applyPerfPreset,
+  readPerfPresetMeta,
   type PerfPresetId
 } from '@dataview/react/page/perfPresets'
 
@@ -67,6 +68,26 @@ test('switching perf presets keeps table rows resolvable', () => {
     presetId: 'roadmap-1k'
   })
   assertResolvedTableRows(runtime)
+
+  runtime.dispose()
+})
+
+test('switching perf presets updates runtime document meta', () => {
+  const engine = createEngine({
+    document: getPreset('roadmap-1k').createDocument()
+  })
+  const runtime = createDataViewRuntime({
+    engine
+  })
+
+  assert.equal(readPerfPresetMeta(runtime.source.document.meta.get())?.id, 'roadmap-1k')
+
+  applyPerfPreset({
+    engine,
+    presetId: 'engineering-50k'
+  })
+
+  assert.equal(readPerfPresetMeta(runtime.source.document.meta.get())?.id, 'engineering-50k')
 
   runtime.dispose()
 })

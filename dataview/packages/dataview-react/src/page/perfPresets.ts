@@ -2451,9 +2451,9 @@ const hasPerfPresetMeta = (
 )
 
 export const readPerfPresetMeta = (
-  document: DataDoc
+  meta: Record<string, unknown> | undefined
 ): PerfPresetMeta | undefined => {
-  const source = document.meta?.[PERF_PRESET_META_KEY]
+  const source = meta?.[PERF_PRESET_META_KEY]
   return hasPerfPresetMeta(source)
     ? source
     : undefined

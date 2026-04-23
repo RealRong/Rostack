@@ -1,14 +1,14 @@
 import {
   ChevronDown,
   Database,
-  LoaderCircle,
-  Sparkles
+  LoaderCircle
 } from 'lucide-react'
 import {
   useCallback,
   useMemo,
   useState
 } from 'react'
+import { equal } from '@shared/core'
 import { Button } from '@shared/ui/button'
 import { Menu } from '@shared/ui/menu'
 import {
@@ -17,9 +17,7 @@ import {
 } from '@dataview/react/dataview'
 import {
   applyPerfPreset,
-  PERF_PRESETS,
   buildPerfPresetMenuItems,
-  formatPerfPresetCount,
   readPerfPresetMeta,
   type PerfPresetId
 } from '@dataview/react/page/perfPresets'
@@ -39,17 +37,13 @@ export interface PageTitleProps {}
 
 export const PageTitle = (_props: PageTitleProps) => {
   const dataView = useDataView()
-  useDataViewValue(dataView => dataView.source.document.records.ids)
-  useDataViewValue(dataView => dataView.source.document.fields.ids)
-  useDataViewValue(dataView => dataView.source.document.views.ids)
-  useDataViewValue(dataView => dataView.source.active.view)
-  const document = dataView.engine.document.get()
-  const currentPreset = readPerfPresetMeta(document)
+  const currentPreset = useDataViewValue(
+    dataView => dataView.source.document.meta,
+    readPerfPresetMeta,
+    equal.sameJsonValue
+  )
   const [busyPresetId, setBusyPresetId] = useState<PerfPresetId | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const busyLabel = busyPresetId
-    ? PERF_PRESETS.find(preset => preset.id === busyPresetId)?.label
-    : undefined
 
   const onSelectPreset = useCallback((presetId: PerfPresetId) => {
     if (busyPresetId) {
@@ -82,10 +76,6 @@ export const PageTitle = (_props: PageTitleProps) => {
     busyPresetId,
     onSelect: onSelectPreset
   }), [busyPresetId, currentPreset?.id, onSelectPreset])
-
-  const recordCount = document.records.order.length
-  const fieldCount = document.fields.order.length + 1
-  const viewCount = document.views.order.length
   const title = currentPreset?.label ?? 'DataView 场景预设'
 
   return (

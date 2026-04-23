@@ -40,7 +40,7 @@ const sameSection = (
 ) => left === right || (
   !!left
   && !!right
-  && left.key === right.key
+  && left.id === right.id
   && left.label === right.label
   && left.bucket === right.bucket
   && left.collapsed === right.collapsed
@@ -127,7 +127,7 @@ export const createKanbanModel = (input: {
       const value = store.read(input.source.active.sections, key)
       return value
         ? {
-            key: value.key,
+            id: value.id,
             label: value.label,
             bucket: value.bucket,
             collapsed: value.collapsed,
@@ -177,7 +177,7 @@ export const createKanbanModel = (input: {
           })
         ),
         color: kanban.groupUsesOptionColors
-          ? store.read(input.source.active.sections, placement.sectionKey)?.color
+          ? store.read(input.source.active.sections, placement.sectionId)?.color
           : undefined
       }
     },

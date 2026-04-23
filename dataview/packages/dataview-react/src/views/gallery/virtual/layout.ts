@@ -105,12 +105,12 @@ export const buildGalleryLayout = (input: {
 
     if (input.grouped) {
       const headerBlock: GallerySectionHeaderBlock = {
-        key: `section-header:${section.key}`,
+        key: `section-header:${section.id}`,
         kind: 'section-header',
         top,
         height: GALLERY_SECTION_HEADER_HEIGHT,
         section: {
-          key: section.key,
+          id: section.id,
           label: section.label,
           color: section.color
         }
@@ -130,12 +130,12 @@ export const buildGalleryLayout = (input: {
       }
 
       const emptyBlock: GallerySectionEmptyBlock = {
-        key: `section-empty:${section.key}`,
+        key: `section-empty:${section.id}`,
         kind: 'section-empty',
         top,
         height: GALLERY_SECTION_EMPTY_HEIGHT,
         section: {
-          key: section.key,
+          id: section.id,
           label: section.label
         }
       }
@@ -152,7 +152,7 @@ export const buildGalleryLayout = (input: {
         heightById: input.heightById
       })
       const row: GalleryRowLayout = {
-        sectionKey: section.key,
+        sectionId: section.id,
         rowIndex,
         top,
         height,
@@ -160,7 +160,7 @@ export const buildGalleryLayout = (input: {
       }
       rows.push(row)
       const rowBlock: GalleryRowBlock = {
-        key: `row:${section.key}:${rowIndex}`,
+        key: `row:${section.id}:${rowIndex}`,
         kind: 'row',
         top,
         height,
@@ -173,7 +173,7 @@ export const buildGalleryLayout = (input: {
         const left = input.contentInsetLeft + columnIndex * (cardWidth + gap)
         cards.push({
           id,
-          sectionKey: section.key,
+          sectionId: section.id,
           rowIndex,
           columnIndex,
           rect: {

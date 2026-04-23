@@ -31,7 +31,7 @@ import type {
   ViewStageMetrics
 } from '@dataview/engine/contracts/performance'
 import type {
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 import { now } from '@dataview/engine/runtime/clock'
 
@@ -67,7 +67,7 @@ const resolveMembershipAction = (input: {
     return 'rebuild'
   }
 
-  const groupField = input.view.group?.field
+  const groupField = input.view.group?.fieldId
   if (!groupField) {
     return hasQueryChanges(input.queryDelta)
       ? 'sync'
@@ -98,9 +98,9 @@ const buildMembershipDelta = (input: {
   records: MembershipDelta['records']
   action: DeriveAction
 }): MembershipDelta => {
-  const nextKeys = input.next.sections.order.filter(sectionKey => input.next.sections.get(sectionKey))
+  const nextKeys = input.next.sections.order.filter(sectionId => input.next.sections.get(sectionId))
   const previousKeys = input.previous?.sections.order ?? []
-  const removed = previousKeys.filter(sectionKey => !input.next.sections.get(sectionKey))
+  const removed = previousKeys.filter(sectionId => !input.next.sections.get(sectionId))
   const rebuild = input.action === 'rebuild'
   const orderChanged = !equal.sameOrder(previousKeys, input.next.sections.order)
 
@@ -114,26 +114,26 @@ const buildMembershipDelta = (input: {
     }
   }
 
-  const changed = new Set<SectionKey>()
+  const changed = new Set<SectionId>()
   input.records.forEach(({ before, after }) => {
-    before.forEach(sectionKey => {
-      changed.add(sectionKey)
+    before.forEach(sectionId => {
+      changed.add(sectionId)
     })
-    after.forEach(sectionKey => {
-      changed.add(sectionKey)
+    after.forEach(sectionId => {
+      changed.add(sectionId)
     })
   })
-  nextKeys.forEach(sectionKey => {
-    const previousSelection = input.previous?.sections.get(sectionKey)
-    const nextSelection = input.next.sections.get(sectionKey)
+  nextKeys.forEach(sectionId => {
+    const previousSelection = input.previous?.sections.get(sectionId)
+    const nextSelection = input.next.sections.get(sectionId)
     if (
       nextSelection
       && (
         previousSelection !== nextSelection
-        || input.previous?.meta.get(sectionKey) !== input.next.meta.get(sectionKey)
+        || input.previous?.meta.get(sectionId) !== input.next.meta.get(sectionId)
       )
     ) {
-      changed.add(sectionKey)
+      changed.add(sectionId)
     }
   })
 

@@ -53,7 +53,7 @@ export const GroupingPanel = () => {
         ? String(group.bucketInterval)
         : ''
     )
-  }, [group, group?.bucketInterval, group?.fieldId, group?.mode, groupField, router])
+  }, [group, group?.bucketInterval, group?.field, group?.mode, groupField, router])
 
   const commitInterval = () => {
     if (!groupField) {

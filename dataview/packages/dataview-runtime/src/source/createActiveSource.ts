@@ -22,7 +22,7 @@ import type {
   ItemList,
   ItemPlacement,
   Section,
-  SectionKey,
+  SectionId,
   SectionList,
   ViewState
 } from '@dataview/engine'
@@ -43,14 +43,14 @@ import {
 
 interface ItemValue {
   recordId: RecordId
-  sectionKey: SectionKey
+  sectionId: SectionId
   placement: ItemPlacement
 }
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
-const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
+const EMPTY_SECTION_KEYS = [] as readonly SectionId[]
 const EMPTY_QUERY: ActiveViewQuery = {
   search: {
     query: ''
@@ -86,14 +86,14 @@ const EMPTY_KANBAN: ActiveViewKanban = {
 
 interface SectionSourceRuntime {
   source: Pick<SectionSource, 'ids' | 'get' | 'subscribe' | 'isEqual'>
-  ids: store.ValueStore<readonly SectionKey[]>
-  values: store.KeyedStore<SectionKey, Section | undefined>
+  ids: store.ValueStore<readonly SectionId[]>
+  values: store.KeyedStore<SectionId, Section | undefined>
   clear(): void
 }
 
 interface SummarySourceRuntime {
-  source: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
-  values: store.KeyedStore<SectionKey, CalculationCollection | undefined>
+  source: store.KeyedReadStore<SectionId, CalculationCollection | undefined>
+  values: store.KeyedStore<SectionId, CalculationCollection | undefined>
   clear(): void
 }
 
@@ -147,7 +147,7 @@ const createItemListStore = (input: {
         order: collection.createOrderedAccess(ids),
         read: {
           record: itemId => input.source.read.recordId.get(itemId),
-          section: itemId => input.source.read.sectionKey.get(itemId),
+          section: itemId => input.source.read.sectionId.get(itemId),
           placement: itemId => input.source.read.placement.get(itemId)
         }
       }
@@ -171,8 +171,8 @@ const createSectionListStore = (input: {
         previous
         && previous.ids === ids
         && previous.all.length === ids.length
-        && ids.every((sectionKey, index) => (
-          previous!.all[index] === store.read(input.source, sectionKey)
+        && ids.every((sectionId, index) => (
+          previous!.all[index] === store.read(input.source, sectionId)
         ))
       )
       if (canReuse) {
@@ -181,12 +181,12 @@ const createSectionListStore = (input: {
 
       const all = collection.presentValues(
         ids,
-        sectionKey => store.read(input.source, sectionKey)
+        sectionId => store.read(input.source, sectionId)
       )
       const next = collection.createOrderedKeyedCollection({
         ids,
         all,
-        get: sectionKey => input.source.get(sectionKey)
+        get: sectionId => input.source.get(sectionId)
       })
 
       previous = next
@@ -240,11 +240,11 @@ const createFieldListStore = (input: {
 }
 
 const createSectionSourceRuntime = (): SectionSourceRuntime => {
-  const ids = store.createValueStore<readonly SectionKey[]>({
+  const ids = store.createValueStore<readonly SectionId[]>({
     initial: EMPTY_SECTION_KEYS,
     isEqual: equal.sameOrder
   })
-  const values = store.createKeyedStore<SectionKey, Section | undefined>({
+  const values = store.createKeyedStore<SectionId, Section | undefined>({
     emptyValue: undefined
   })
 
@@ -265,7 +265,7 @@ const createSectionSourceRuntime = (): SectionSourceRuntime => {
 }
 
 const createSummarySourceRuntime = (): SummarySourceRuntime => {
-  const values = store.createKeyedStore<SectionKey, CalculationCollection | undefined>({
+  const values = store.createKeyedStore<SectionId, CalculationCollection | undefined>({
     emptyValue: undefined
   })
 
@@ -289,7 +289,7 @@ const createItemSourceRuntime = (): ItemSourceRuntime => {
   })
   const table = store.createKeyTableStore<ItemId, ItemValue>()
   const recordId = table.project.field(value => value?.recordId)
-  const sectionKey = table.project.field(value => value?.sectionKey)
+  const sectionId = table.project.field(value => value?.sectionId)
   const placement = table.project.field(value => value?.placement)
 
   return {
@@ -297,7 +297,7 @@ const createItemSourceRuntime = (): ItemSourceRuntime => {
       ids,
       read: {
         recordId,
-        sectionKey,
+        sectionId,
         placement
       }
     },
@@ -321,7 +321,7 @@ const readItemValue = (
 
   return {
     recordId: placement.recordId,
-    sectionKey: placement.sectionKey,
+    sectionId: placement.sectionId,
     placement
   }
 }
@@ -524,16 +524,16 @@ export const resetActiveSource = (input: {
   input.runtime.sections.values.clear()
   if (snapshot.sections.all.length) {
     input.runtime.sections.values.patch({
-      set: snapshot.sections.all.map(section => [section.key, section] as const)
+      set: snapshot.sections.all.map(section => [section.id, section] as const)
     })
   }
   input.runtime.summaries.values.clear()
   if (snapshot.sections.ids.length) {
     input.runtime.summaries.values.patch({
-      set: snapshot.sections.ids.flatMap(sectionKey => {
-        const summary = snapshot.summaries.get(sectionKey)
+      set: snapshot.sections.ids.flatMap(sectionId => {
+        const summary = snapshot.summaries.get(sectionId)
         return summary
-          ? [[sectionKey, summary] as const]
+          ? [[sectionId, summary] as const]
           : []
       })
     })
@@ -663,7 +663,7 @@ export const applyActiveDelta = (input: {
     delta: input.delta.sections,
     runtime: input.runtime.sections,
     readIds: () => snapshot.sections.ids,
-    readValue: sectionKey => snapshot.sections.get(sectionKey)
+    readValue: sectionId => snapshot.sections.get(sectionId)
   })
   applyEntityDelta({
     delta: input.delta.summaries,
@@ -671,7 +671,7 @@ export const applyActiveDelta = (input: {
       values: input.runtime.summaries.values
     },
     readIds: () => snapshot.sections.ids,
-    readValue: sectionKey => snapshot.summaries.get(sectionKey)
+    readValue: sectionId => snapshot.summaries.get(sectionId)
   })
   applyEntityDelta({
     delta: input.delta.fields?.all,

@@ -1,6 +1,6 @@
 import type {
   ItemId,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import {
   createItemArraySelectionScope,
@@ -49,12 +49,12 @@ interface TableColumnFooterDescriptor extends TableBlockDescriptorBase {
 
 interface TableCreateRecordDescriptor extends TableBlockDescriptorBase {
   kind: 'create-record'
-  sectionKey: string
+  sectionId: string
 }
 
 interface TableSectionHeaderDescriptor extends TableBlockDescriptorBase {
   kind: 'section-header'
-  sectionKey: SectionKey
+  sectionId: SectionId
 }
 
 type TableBlockDescriptor =
@@ -212,7 +212,7 @@ const materializeBlock = (input: {
         height: input.height,
         estimatedHeight: input.descriptor.estimatedHeight,
         measuredHeight,
-        sectionKey: input.descriptor.sectionKey
+        sectionId: input.descriptor.sectionId
       }
       return block
     }
@@ -225,7 +225,7 @@ const materializeBlock = (input: {
         height: input.height,
         estimatedHeight: input.descriptor.estimatedHeight,
         measuredHeight,
-        sectionKey: input.descriptor.sectionKey
+        sectionId: input.descriptor.sectionId
       }
       return block
     }
@@ -234,7 +234,7 @@ const materializeBlock = (input: {
 
 const buildSectionMeasurementIds = (input: {
   grouped: boolean
-  sectionKey: SectionKey
+  sectionId: SectionId
   collapsed: boolean
   itemIds: readonly ItemId[]
 }) => input.grouped
@@ -242,16 +242,16 @@ const buildSectionMeasurementIds = (input: {
       input.collapsed
         ? [tableBlockKey({
             kind: 'section-header',
-            sectionKey: input.sectionKey
+            sectionId: input.sectionId
           })]
         : [
             tableBlockKey({
               kind: 'section-header',
-              sectionKey: input.sectionKey
+              sectionId: input.sectionId
             }),
             tableBlockKey({
               kind: 'column-header',
-              sectionKey: input.sectionKey
+              sectionId: input.sectionId
             }),
             ...input.itemIds.map(rowId => tableBlockKey({
               kind: 'row',
@@ -259,18 +259,18 @@ const buildSectionMeasurementIds = (input: {
             })),
             tableBlockKey({
               kind: 'create-record',
-              sectionKey: input.sectionKey
+              sectionId: input.sectionId
             }),
             tableBlockKey({
               kind: 'column-footer',
-              sectionKey: input.sectionKey
+              sectionId: input.sectionId
             })
           ]
     )
   : [
       tableBlockKey({
         kind: 'column-header',
-        sectionKey: input.sectionKey
+        sectionId: input.sectionId
       }),
       ...input.itemIds.map(rowId => tableBlockKey({
         kind: 'row',
@@ -278,11 +278,11 @@ const buildSectionMeasurementIds = (input: {
       })),
       tableBlockKey({
         kind: 'create-record',
-        sectionKey: input.sectionKey
+        sectionId: input.sectionId
       }),
       tableBlockKey({
         kind: 'column-footer',
-        sectionKey: input.sectionKey
+        sectionId: input.sectionId
       })
     ]
 
@@ -294,7 +294,7 @@ const sameSectionState = (
   && left.itemIds === right.itemIds
 
 class TableLayoutSectionModel {
-  readonly key: SectionKey
+  readonly key: SectionId
   readonly grouped: boolean
   readonly collapsed: boolean
   readonly itemIds: readonly ItemId[]
@@ -331,19 +331,19 @@ class TableLayoutSectionModel {
     this.headerHeight = input.headerHeight
     this.sectionHeaderId = {
       kind: 'section-header',
-      sectionKey: input.state.key
+      sectionId: input.state.key
     }
     this.columnHeaderId = {
       kind: 'column-header',
-      sectionKey: input.state.key
+      sectionId: input.state.key
     }
     this.createRecordId = {
       kind: 'create-record',
-      sectionKey: input.state.key
+      sectionId: input.state.key
     }
     this.columnFooterId = {
       kind: 'column-footer',
-      sectionKey: input.state.key
+      sectionId: input.state.key
     }
     this.sectionHeaderKey = tableBlockKey(this.sectionHeaderId)
     this.columnHeaderKey = tableBlockKey(this.columnHeaderId)
@@ -408,7 +408,7 @@ class TableLayoutSectionModel {
   get measurementIds() {
     return buildSectionMeasurementIds({
       grouped: this.grouped,
-      sectionKey: this.key,
+      sectionId: this.key,
       collapsed: this.collapsed,
       itemIds: this.itemIds
     })
@@ -430,7 +430,7 @@ class TableLayoutSectionModel {
   }
 
   topOfBlock(id: TableBlockId, sectionTop: number) {
-    if (id.kind === 'section-header' && id.sectionKey === this.key && this.grouped) {
+    if (id.kind === 'section-header' && id.sectionId === this.key && this.grouped) {
       return sectionTop
     }
 
@@ -438,7 +438,7 @@ class TableLayoutSectionModel {
       return null
     }
 
-    if (id.kind === 'column-header' && id.sectionKey === this.key) {
+    if (id.kind === 'column-header' && id.sectionId === this.key) {
       return sectionTop + this.sectionHeaderHeight
     }
 
@@ -451,11 +451,11 @@ class TableLayoutSectionModel {
       return sectionTop + this.rowsTop() + this.rowHeights.prefixSum(rowIndex)
     }
 
-    if (id.kind === 'create-record' && id.sectionKey === this.key) {
+    if (id.kind === 'create-record' && id.sectionId === this.key) {
       return sectionTop + this.rowsBottom()
     }
 
-    if (id.kind === 'column-footer' && id.sectionKey === this.key) {
+    if (id.kind === 'column-footer' && id.sectionId === this.key) {
       return sectionTop + this.rowsBottom() + this.createRecordHeight
     }
 
@@ -523,7 +523,7 @@ class TableLayoutSectionModel {
         id: this.sectionHeaderId,
         kind: 'section-header',
         estimatedHeight: this.headerHeight,
-        sectionKey: this.key
+        sectionId: this.key
       }, this.sectionHeaderHeight, top)
       top += this.sectionHeaderHeight
     }
@@ -590,7 +590,7 @@ class TableLayoutSectionModel {
       id: this.createRecordId,
       kind: 'create-record',
       estimatedHeight: this.rowHeight,
-      sectionKey: this.key
+      sectionId: this.key
     }, this.createRecordHeight, top)
     top += this.createRecordHeight
 

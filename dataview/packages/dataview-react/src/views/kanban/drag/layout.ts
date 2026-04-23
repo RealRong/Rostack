@@ -5,7 +5,7 @@ import {
 import type {
   ItemId,
   Section,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import type {
   KanbanVisibility
@@ -17,7 +17,7 @@ export interface CardLayout {
 }
 
 export interface ColumnLayout {
-  key: SectionKey
+  key: SectionId
   rect: Rect
   bodyRect: Rect
   cards: readonly CardLayout[]
@@ -32,19 +32,19 @@ export const KANBAN_CARD_ESTIMATED_HEIGHT = 132
 
 export const buildBoardLayout = (input: {
   sections: readonly Section[]
-  visibilityBySection: ReadonlyMap<SectionKey, KanbanVisibility | undefined>
-  bodyRectBySectionKey: ReadonlyMap<SectionKey, Rect>
+  visibilityBySection: ReadonlyMap<SectionId, KanbanVisibility | undefined>
+  bodyRectBySectionId: ReadonlyMap<SectionId, Rect>
   heightById: ReadonlyMap<ItemId, number>
   estimatedHeight?: number
 }): BoardLayout | null => {
   const estimatedHeight = input.estimatedHeight ?? KANBAN_CARD_ESTIMATED_HEIGHT
   const columns = input.sections.flatMap<ColumnLayout>(section => {
-    const bodyRect = input.bodyRectBySectionKey.get(section.key)
+    const bodyRect = input.bodyRectBySectionId.get(section.id)
     if (!bodyRect) {
       return []
     }
 
-    const visibleIds = input.visibilityBySection.get(section.key)?.ids ?? section.itemIds
+    const visibleIds = input.visibilityBySection.get(section.id)?.ids ?? section.itemIds
     let top = bodyRect.top
     const cards = visibleIds.map<CardLayout>(id => {
       const height = input.heightById.get(id) ?? estimatedHeight
@@ -64,7 +64,7 @@ export const buildBoardLayout = (input: {
     })
 
     return [{
-      key: section.key,
+      key: section.id,
       rect: bodyRect,
       bodyRect,
       cards

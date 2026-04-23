@@ -1,7 +1,8 @@
 import { collection, equal } from '@shared/core'
 import type {
   RecordId,
-  View
+  View,
+  ViewGroupBucketId
 } from '@dataview/core/contracts'
 import {
   createMapPatchBuilder
@@ -17,7 +18,7 @@ import type {
   ItemList,
   ItemPlacement,
   Section,
-  SectionKey,
+  SectionId,
   SectionList
 } from '@dataview/engine/contracts/shared'
 import type {
@@ -29,7 +30,7 @@ import type {
 
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
-const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
+const EMPTY_SECTION_KEYS = [] as readonly SectionId[]
 const EMPTY_ITEM_PLACEMENTS = new Map<ItemId, ItemPlacement>()
 const ITEM_PLACEMENTS_CACHE = new WeakMap<ItemList, ReadonlyMap<ItemId, ItemPlacement>>()
 const MIN_LARGE_PLACEMENT_TOUCH_COUNT = 256
@@ -42,7 +43,7 @@ const readItemPlacements = (
 
 const sectionVisible = (input: {
   view: View
-  sectionKey: SectionKey
+  bucketId?: ViewGroupBucketId
   selectionCount: number
 }) => {
   const group = input.view.group
@@ -50,7 +51,7 @@ const sectionVisible = (input: {
     return true
   }
 
-  if (group.buckets?.[input.sectionKey]?.hidden === true) {
+  if (input.bucketId && group.buckets?.[input.bucketId]?.hidden === true) {
     return false
   }
 
@@ -59,8 +60,10 @@ const sectionVisible = (input: {
 
 const sectionCollapsed = (
   view: View,
-  sectionKey: SectionKey
-) => view.group?.buckets?.[sectionKey]?.collapsed === true
+  bucketId?: ViewGroupBucketId
+) => bucketId
+  ? view.group?.buckets?.[bucketId]?.collapsed === true
+  : false
 
 const createItemList = (input: {
   ids: readonly ItemId[]
@@ -82,7 +85,7 @@ const createItemList = (input: {
     order: collection.createOrderedAccess(input.ids),
     read: {
       record: itemId => input.placements.get(itemId)?.recordId,
-      section: itemId => input.placements.get(itemId)?.sectionKey,
+      section: itemId => input.placements.get(itemId)?.sectionId,
       placement: itemId => input.placements.get(itemId)
     }
   }
@@ -146,11 +149,11 @@ const buildPublishedState = (input: {
   const removedItemIds: ItemId[] = []
   const visibleItemIds: ItemId[] = []
   const sections: Section[] = []
-  const sectionByKey = new Map<SectionKey, Section>()
-  const sectionKeys: SectionKey[] = []
-  const changedSectionKeys: SectionKey[] = []
-  const removedSectionKeys: SectionKey[] = []
-  const nextSectionKeySet = new Set<SectionKey>()
+  const sectionByKey = new Map<SectionId, Section>()
+  const sectionIds: SectionId[] = []
+  const changedSectionIds: SectionId[] = []
+  const removedSectionIds: SectionId[] = []
+  const nextSectionIdSet = new Set<SectionId>()
   const createdPlacementByItemId = new Map<ItemId, ItemPlacement>()
   let touchedPlacementCount = 0
   let rebuiltPlacementByItemId: Map<ItemId, ItemPlacement> | undefined
@@ -292,35 +295,36 @@ const buildPublishedState = (input: {
     }
   }
 
-  input.sections.sections.order.forEach(sectionKey => {
-    const selection = input.sections.sections.get(sectionKey)
+  input.sections.sections.order.forEach(sectionId => {
+    const selection = input.sections.sections.get(sectionId)
+    const meta = input.sections.meta.get(sectionId)
+    const bucketId = meta?.bucket?.id
     if (
       !selection
       || !sectionVisible({
         view: input.view,
-        sectionKey,
+        bucketId,
         selectionCount: selection.indexes.length
       })
     ) {
       return
     }
 
-    nextSectionKeySet.add(sectionKey)
-    const meta = input.sections.meta.get(sectionKey)
-    const collapsed = sectionCollapsed(input.view, sectionKey)
-    const previousSection = previousPublishedSections?.get(sectionKey)
+    nextSectionIdSet.add(sectionId)
+    const collapsed = sectionCollapsed(input.view, bucketId)
+    const previousSection = previousPublishedSections?.get(sectionId)
     const canReuseSection = Boolean(
       previousSection
-      && input.previousSections?.sections.get(sectionKey) === selection
-      && input.previousSections.meta.get(sectionKey) === meta
+      && input.previousSections?.sections.get(sectionId) === selection
+      && input.previousSections.meta.get(sectionId) === meta
       && previousSection.collapsed === collapsed
     )
 
     if (canReuseSection && previousSection) {
       addPublishedItemPlacements(previousSection.itemIds)
       sections.push(previousSection)
-      sectionKeys.push(sectionKey)
-      sectionByKey.set(sectionKey, previousSection)
+      sectionIds.push(sectionId)
+      sectionByKey.set(sectionId, previousSection)
       if (!collapsed) {
         visibleItemIds.push(...previousSection.itemIds)
       }
@@ -347,10 +351,10 @@ const buildPublishedState = (input: {
           const nextItemIds = new Array<ItemId>(publishedRecordIds.length)
           for (let index = 0; index < publishedRecordIds.length; index += 1) {
             const recordId = publishedRecordIds[index]!
-            const itemId = input.itemIds.allocate.placement(sectionKey, recordId)
+            const itemId = input.itemIds.allocate.placement(sectionId, recordId)
             const previousPlacement = previousItemPlacements.get(itemId)
             const placement = previousPlacement ?? {
-              sectionKey,
+              sectionId,
               recordId
             }
             nextItemIds[index] = itemId
@@ -383,14 +387,14 @@ const buildPublishedState = (input: {
     }
 
     const section: Section = previousSection
-      && input.previousSections?.meta.get(sectionKey) === meta
+      && input.previousSections?.meta.get(sectionId) === meta
       && previousSection.collapsed === collapsed
       && previousSection.recordIds === publishedRecordIds
       && previousSection.itemIds === publishedItemIds
       ? previousSection
       : {
-          key: sectionKey,
-          label: meta?.label ?? sectionKey,
+          id: sectionId,
+          label: meta?.label ?? sectionId,
           color: meta?.color,
           bucket: meta?.bucket,
           collapsed,
@@ -398,21 +402,21 @@ const buildPublishedState = (input: {
           itemIds: publishedItemIds
         }
     sections.push(section)
-    sectionKeys.push(sectionKey)
-    sectionByKey.set(sectionKey, section)
+    sectionIds.push(sectionId)
+    sectionByKey.set(sectionId, section)
     if (section !== previousSection) {
-      changedSectionKeys.push(sectionKey)
+      changedSectionIds.push(sectionId)
     }
   })
 
-  previousPublishedSections?.ids.forEach(sectionKey => {
-    if (nextSectionKeySet.has(sectionKey)) {
+  previousPublishedSections?.ids.forEach(sectionId => {
+    if (nextSectionIdSet.has(sectionId)) {
       return
     }
 
-    const removedSection = previousPublishedSections.get(sectionKey)
+    const removedSection = previousPublishedSections.get(sectionId)
     trackPlacementTouches(removedSection?.itemIds.length ?? 0)
-    removedSectionKeys.push(sectionKey)
+    removedSectionIds.push(sectionId)
     removePublishedSectionItems({
       section: removedSection
     })
@@ -431,9 +435,9 @@ const buildPublishedState = (input: {
         : (createdPlacementByItemId.size ? createdPlacementByItemId : EMPTY_ITEM_PLACEMENTS),
     previous: previousItems
   })
-  const publishedSectionKeys = previousPublishedSections && equal.sameOrder(previousPublishedSections.ids, sectionKeys)
+  const publishedSectionIds = previousPublishedSections && equal.sameOrder(previousPublishedSections.ids, sectionIds)
     ? previousPublishedSections.ids
-    : (sectionKeys.length ? sectionKeys : EMPTY_SECTION_KEYS)
+    : (sectionIds.length ? sectionIds : EMPTY_SECTION_KEYS)
   const publishedSections = previousPublishedSections
     && previousPublishedSections.all.length === sections.length
     && previousPublishedSections.all.every((section, index) => section === sections[index])
@@ -441,13 +445,13 @@ const buildPublishedState = (input: {
     : sections
 
   const list = previousPublishedSections
-    && previousPublishedSections.ids === publishedSectionKeys
+    && previousPublishedSections.ids === publishedSectionIds
     && previousPublishedSections.all === publishedSections
     ? previousPublishedSections
     : collection.createOrderedKeyedCollection({
-        ids: publishedSectionKeys,
+        ids: publishedSectionIds,
         all: publishedSections,
-        get: sectionKey => sectionByKey.get(sectionKey)
+        get: sectionId => sectionByKey.get(sectionId)
       })
 
   return {
@@ -456,9 +460,9 @@ const buildPublishedState = (input: {
     delta: previousPublishedSections || previousItems
       ? {
           sections: createCollectionDelta({
-            list: previousPublishedSections?.ids !== publishedSectionKeys,
-            update: changedSectionKeys,
-            remove: removedSectionKeys
+            list: previousPublishedSections?.ids !== publishedSectionIds,
+            update: changedSectionIds,
+            remove: removedSectionIds
           }),
           items: createCollectionDelta({
             list: previousVisibleIds !== publishedVisibleIds,
@@ -483,7 +487,7 @@ export const publishSections = (input: {
   items: ItemList
   sections: SectionList
   delta?: {
-    sections?: CollectionDelta<SectionKey>
+    sections?: CollectionDelta<SectionId>
     items?: CollectionDelta<ItemId>
   }
 } => buildPublishedState(input)

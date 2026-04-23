@@ -86,7 +86,7 @@ const resolveBucketFilterCandidates = (input: {
   }
 
   const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec({
-    field: input.fieldId
+    fieldId: input.fieldId
   }))
   if (!bucketIndex) {
     return undefined

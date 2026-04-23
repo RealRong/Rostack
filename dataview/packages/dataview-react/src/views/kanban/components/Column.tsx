@@ -1,6 +1,6 @@
 import { resolveOptionColumnStyle } from '@shared/ui/color'
 import { cn } from '@shared/ui/utils'
-import type { SectionKey } from '@dataview/engine'
+import type { SectionId } from '@dataview/engine'
 import { useKanbanRuntimeContext } from '@dataview/react/views/kanban/KanbanView'
 import { ColumnBody } from '@dataview/react/views/kanban/components/ColumnBody'
 import { ColumnHeader } from '@dataview/react/views/kanban/components/ColumnHeader'
@@ -10,16 +10,16 @@ import {
 } from '@shared/react'
 
 export const Column = (props: {
-  sectionKey: SectionKey
+  sectionId: SectionId
 }) => {
   const runtime = useKanbanRuntimeContext()
   const board = useStoreValue(runtime.board)
-  const section = useKeyedStoreValue(runtime.section, props.sectionKey)
+  const section = useKeyedStoreValue(runtime.section, props.sectionId)
   if (!section) {
     return null
   }
   const overTarget = runtime.drag.overTarget
-  const isColumnTarget = overTarget?.sectionKey === section.key
+  const isColumnTarget = overTarget?.sectionId === section.id
     && !overTarget.beforeItemId
   const sectionColor = board.groupUsesOptionColors
     ? section.color
@@ -27,7 +27,7 @@ export const Column = (props: {
 
   return (
     <section
-      data-kanban-column-key={section.key}
+      data-kanban-column-key={section.id}
       className={'flex shrink-0 flex-col w-20'}
       style={{
         width: section.collapsed ? undefined : runtime.layout.columnWidth
@@ -43,8 +43,8 @@ export const Column = (props: {
           ? resolveOptionColumnStyle(sectionColor)
           : undefined}
       >
-        <ColumnHeader sectionKey={section.key} />
-        {section.collapsed ? null : <ColumnBody sectionKey={section.key} />}
+        <ColumnHeader sectionId={section.id} />
+        {section.collapsed ? null : <ColumnBody sectionId={section.id} />}
       </div>
     </section>
   )

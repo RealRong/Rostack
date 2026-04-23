@@ -5,7 +5,7 @@ import type {
 import type {
   ItemId,
   Section,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import { store } from '@shared/core'
 import type {
@@ -23,7 +23,7 @@ export interface GalleryBody {
 }
 
 export interface GallerySection {
-  key: SectionKey
+  id: SectionId
   label: Section['label']
   count: number
 }
@@ -33,7 +33,7 @@ export interface GalleryCard extends Card {}
 export interface DataViewGalleryModel {
   body: store.ReadStore<GalleryBody | null>
   sections: store.ReadStore<readonly Section[]>
-  section: store.KeyedReadStore<SectionKey, GallerySection | undefined>
+  section: store.KeyedReadStore<SectionId, GallerySection | undefined>
   card: store.KeyedReadStore<ItemId, GalleryCard | undefined>
   content: store.KeyedReadStore<ItemId, CardContent | undefined>
 }

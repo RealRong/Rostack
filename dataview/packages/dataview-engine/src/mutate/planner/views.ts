@@ -169,18 +169,18 @@ const validateGroup = (
     return []
   }
 
-  const issues = string.isNonEmptyString(group.field)
+  const issues = string.isNonEmptyString(group.fieldId)
     ? []
     : [createIssue(source, 'error', 'view.invalidProjection', 'group field must be a non-empty string', `${path}.field`)]
 
-  const field = string.isNonEmptyString(group.field)
-    ? reader.fields.get(group.field)
+  const field = string.isNonEmptyString(group.fieldId)
+    ? reader.fields.get(group.fieldId)
     : undefined
   const fieldGroupMeta = field ? fieldApi.group.meta(field) : undefined
   const fieldGroupMetaForMode = field ? fieldApi.group.meta(field, { mode: group.mode }) : undefined
 
   if (!field) {
-    issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${group.field}`, `${path}.field`))
+    issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${group.fieldId}`, `${path}.field`))
   }
   if (!string.isNonEmptyString(group.mode)) {
     issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group mode must be a non-empty string', `${path}.mode`))
@@ -282,13 +282,19 @@ const validateKanbanOptions = (
 const validateViewOptions = (
   reader: DocumentReader,
   source: IssueSource,
+  viewType: View['type'],
   options: View['options'],
   path = 'view.options'
-) => [
-  ...validateTableOptions(reader, source, options.table, `${path}.table`),
-  ...validateGalleryOptions(source, options.gallery, `${path}.gallery`),
-  ...validateKanbanOptions(source, options.kanban, `${path}.kanban`)
-]
+) => {
+  switch (viewType) {
+    case 'table':
+      return validateTableOptions(reader, source, options as TableOptions, path)
+    case 'gallery':
+      return validateGalleryOptions(source, options as GalleryOptions, path)
+    case 'kanban':
+      return validateKanbanOptions(source, options as KanbanOptions, path)
+  }
+}
 
 const validateOrders = (
   reader: DocumentReader,
@@ -366,7 +372,7 @@ const validateView = (
     ...validateGroup(reader, source, view.group),
     ...validateCalc(reader, source, view.calc),
     ...validateDisplay(reader, source, view.display),
-    ...validateViewOptions(reader, source, view.options),
+    ...validateViewOptions(reader, source, view.type, view.options),
     ...validateOrders(reader, source, view.orders)
   )
 
@@ -374,58 +380,95 @@ const validateView = (
 }
 
 const applyViewPatch = (
+  reader: DocumentReader,
   view: View,
   patch: Extract<Action, { type: 'view.patch' }>['patch']
 ): View => {
-  let next = view
-  const ensureMutable = () => {
-    if (next === view) {
-      next = { ...view }
-    }
-    return next
+  const nextType = patch.type ?? view.type
+  const nextGroup = patch.group !== undefined
+    ? (patch.group === null ? undefined : patch.group)
+    : view.group
+  const nextShared = {
+    id: view.id,
+    name: patch.name !== undefined ? patch.name : view.name,
+    type: nextType,
+    search: patch.search !== undefined
+      ? searchApi.state.clone(patch.search)
+      : searchApi.state.clone(view.search),
+    filter: patch.filter !== undefined
+      ? filterApi.state.clone(patch.filter)
+      : filterApi.state.clone(view.filter),
+    sort: patch.sort !== undefined
+      ? {
+          rules: sortApi.rules.clone(patch.sort.rules)
+        }
+      : {
+          rules: sortApi.rules.clone(view.sort.rules)
+        },
+    calc: patch.calc !== undefined
+      ? viewApi.calc.clone(patch.calc)
+      : viewApi.calc.clone(view.calc),
+    display: patch.display !== undefined
+      ? viewApi.display.clone(patch.display)
+      : viewApi.display.clone(view.display),
+    orders: patch.orders !== undefined
+      ? [...patch.orders]
+      : [...view.orders]
   }
 
-  if (patch.name !== undefined && patch.name !== view.name) {
-    ensureMutable().name = patch.name
-  }
-  if (patch.type !== undefined && patch.type !== view.type) {
-    ensureMutable().type = patch.type
-  }
-  if (patch.search !== undefined && !searchApi.state.same(view.search, patch.search)) {
-    ensureMutable().search = searchApi.state.clone(patch.search)
-  }
-  if (patch.filter !== undefined && !filterApi.state.same(view.filter, patch.filter)) {
-    ensureMutable().filter = filterApi.state.clone(patch.filter)
-  }
-  if (patch.sort !== undefined && !sortApi.rules.same(view.sort.rules, patch.sort.rules)) {
-    ensureMutable().sort = {
-      rules: sortApi.rules.clone(patch.sort.rules)
-    }
-  }
-  if (patch.group !== undefined) {
-    const nextGroup = patch.group === null ? undefined : patch.group
-    if (!group.state.same(view.group, nextGroup)) {
-      const nextView = ensureMutable()
-      if (nextGroup) {
-        nextView.group = group.state.clone(nextGroup)
-      } else {
-        delete (nextView as View & { group?: ViewGroup }).group
+  switch (nextType) {
+    case 'table':
+      return {
+        ...nextShared,
+        type: 'table',
+        ...(nextGroup
+          ? {
+              group: group.state.clone(nextGroup)
+            }
+          : {}),
+        options: patch.options !== undefined
+          ? viewApi.options.clone('table', patch.options as TableOptions)
+          : view.type === 'table'
+            ? viewApi.options.clone('table', view.options)
+            : viewApi.options.defaults('table', [])
+      }
+    case 'gallery':
+      return {
+        ...nextShared,
+        type: 'gallery',
+        ...(nextGroup
+          ? {
+              group: group.state.clone(nextGroup)
+            }
+          : {}),
+        options: patch.options !== undefined
+          ? viewApi.options.clone('gallery', patch.options as GalleryOptions)
+          : view.type === 'gallery'
+            ? viewApi.options.clone('gallery', view.options)
+            : viewApi.options.defaults('gallery', [])
+      }
+    case 'kanban': {
+      const resolvedGroup = nextGroup
+        ? group.state.clone(nextGroup)
+        : (view.group
+            ? group.state.clone(view.group)
+            : resolveDefaultKanbanGroup(reader))
+      if (!resolvedGroup) {
+        return view
+      }
+
+      return {
+        ...nextShared,
+        type: 'kanban',
+        group: resolvedGroup,
+        options: patch.options !== undefined
+          ? viewApi.options.clone('kanban', patch.options as KanbanOptions)
+          : view.type === 'kanban'
+            ? viewApi.options.clone('kanban', view.options)
+            : viewApi.options.defaults('kanban', [])
       }
     }
   }
-  if (patch.calc !== undefined && !viewApi.calc.same(view.calc, patch.calc)) {
-    ensureMutable().calc = viewApi.calc.clone(patch.calc)
-  }
-  if (patch.display !== undefined && !viewApi.display.same(view.display, patch.display)) {
-    ensureMutable().display = viewApi.display.clone(patch.display)
-  }
-  if (patch.options !== undefined && !viewApi.options.same(view.options, patch.options)) {
-    ensureMutable().options = viewApi.options.clone(patch.options)
-  }
-  if (patch.orders !== undefined && !sameRecordOrder(view.orders, patch.orders)) {
-    ensureMutable().orders = [...patch.orders]
-  }
-  return next
 }
 
 const normalizeView = (
@@ -434,25 +477,52 @@ const normalizeView = (
 ): View => {
   const fields = reader.fields.list()
   const nextGroup = group.state.normalize(view.group)
-
-  return {
-    ...view,
+  const normalizedShared = {
+    id: view.id,
+    name: view.name,
     search: searchApi.state.normalize(view.search),
     filter: filterApi.state.normalize(view.filter),
     sort: {
       rules: sortApi.rules.normalize(view.sort.rules)
     },
-    ...(nextGroup ? { group: nextGroup } : {}),
-    ...(!nextGroup ? { group: undefined } : {}),
     calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map(field => [field.id, field] as const))
     }),
     display: viewApi.display.normalize(view.display),
-    options: viewApi.options.normalize(view.options, {
-      type: view.type,
-      fields
-    }),
     orders: [...view.orders]
+  }
+
+  switch (view.type) {
+    case 'table':
+      return {
+        ...normalizedShared,
+        type: 'table',
+        ...(nextGroup ? { group: nextGroup } : {}),
+        options: viewApi.options.normalize(view.options, {
+          type: 'table',
+          fields
+        })
+      }
+    case 'gallery':
+      return {
+        ...normalizedShared,
+        type: 'gallery',
+        ...(nextGroup ? { group: nextGroup } : {}),
+        options: viewApi.options.normalize(view.options, {
+          type: 'gallery',
+          fields
+        })
+      }
+    case 'kanban':
+      return {
+        ...normalizedShared,
+        type: 'kanban',
+        group: nextGroup ?? resolveDefaultKanbanGroup(reader) ?? view.group,
+        options: viewApi.options.normalize(view.options, {
+          type: 'kanban',
+          fields
+        })
+      }
   }
 }
 
@@ -532,13 +602,12 @@ const lowerViewCreate = (
   }
 
   const fields = scope.reader.fields.list()
-  const view = ensureKanbanGroup(scope.reader, normalizeView(scope.reader, {
+  const base = {
     id: explicitViewId || dataviewId.create('view'),
     name: viewApi.name.unique({
       views: scope.reader.views.list(),
       preferredName
     }),
-    type: action.input.type,
     search: action.input.search ?? { query: '' },
     filter: action.input.filter ?? {
       mode: 'and',
@@ -547,16 +616,57 @@ const lowerViewCreate = (
     sort: action.input.sort ?? {
       rules: entityTable.normalize.list([])
     },
-    ...(action.input.group ? { group: action.input.group } : {}),
     calc: action.input.calc ?? {},
     display: action.input.display
       ? viewApi.display.clone(action.input.display)
       : viewApi.options.defaultDisplay(action.input.type, fields),
-    options: action.input.options
-      ? viewApi.options.clone(action.input.options)
-      : viewApi.options.defaults(action.input.type, fields),
     orders: action.input.orders ? [...action.input.orders] : []
-  } satisfies View))
+  }
+  let created: View
+  switch (action.input.type) {
+    case 'table':
+      created = {
+        ...base,
+        type: 'table',
+        ...(action.input.group ? { group: action.input.group } : {}),
+        options: action.input.options
+          ? viewApi.options.clone('table', action.input.options)
+          : viewApi.options.defaults('table', fields)
+      }
+      break
+    case 'gallery':
+      created = {
+        ...base,
+        type: 'gallery',
+        ...(action.input.group ? { group: action.input.group } : {}),
+        options: action.input.options
+          ? viewApi.options.clone('gallery', action.input.options)
+          : viewApi.options.defaults('gallery', fields)
+      }
+      break
+    case 'kanban': {
+      const resolvedGroup = action.input.group ?? resolveDefaultKanbanGroup(scope.reader)
+      if (!resolvedGroup) {
+        scope.issue(
+          'view.invalidProjection',
+          'Kanban view requires a groupable field',
+          'input.group'
+        )
+        return scope.finish()
+      }
+
+      created = {
+        ...base,
+        type: 'kanban',
+        group: resolvedGroup,
+        options: action.input.options
+          ? viewApi.options.clone('kanban', action.input.options)
+          : viewApi.options.defaults('kanban', fields)
+      }
+      break
+    }
+  }
+  const view = ensureKanbanGroup(scope.reader, normalizeView(scope.reader, created))
 
   scope.report(...validateView(scope.reader, scope.source, view))
   return scope.finish(toViewPut(view))
@@ -580,8 +690,8 @@ const lowerViewPatch = (
 
   const nextView = (
     action.patch.type === 'kanban'
-      ? ensureKanbanGroup(scope.reader, normalizeView(scope.reader, applyViewPatch(view, action.patch)))
-      : normalizeView(scope.reader, applyViewPatch(view, action.patch))
+      ? ensureKanbanGroup(scope.reader, normalizeView(scope.reader, applyViewPatch(scope.reader, view, action.patch)))
+      : normalizeView(scope.reader, applyViewPatch(scope.reader, view, action.patch))
   )
   if (equal.sameJsonValue(nextView, view)) {
     return scope.finish()

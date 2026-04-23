@@ -57,7 +57,7 @@ const createView = (): View => ({
     rules: entityTable.normalize.list([])
   },
   group: {
-    field: FIELD_STATUS,
+    fieldId: FIELD_STATUS,
     mode: 'option',
     bucketSort: 'manual',
     showEmpty: true
@@ -66,7 +66,11 @@ const createView = (): View => ({
   display: {
     fields: [FIELD_STATUS]
   },
-  options: {},
+  options: {
+    widths: {},
+    showVerticalLines: true,
+    wrap: false
+  },
   orders: []
 })
 

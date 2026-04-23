@@ -7,7 +7,7 @@ import type {
 import type {
   ItemId,
   Section,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import { store } from '@shared/core'
 import type {
@@ -27,7 +27,7 @@ export interface KanbanBoard {
 }
 
 export interface KanbanSection {
-  key: SectionKey
+  id: SectionId
   label: Section['label']
   bucket: Section['bucket'] | undefined
   collapsed: boolean
@@ -42,7 +42,7 @@ export interface KanbanCard extends Card {
 export interface DataViewKanbanModel {
   board: store.ReadStore<KanbanBoard | null>
   sections: store.ReadStore<readonly Section[]>
-  section: store.KeyedReadStore<SectionKey, KanbanSection | undefined>
+  section: store.KeyedReadStore<SectionId, KanbanSection | undefined>
   card: store.KeyedReadStore<ItemId, KanbanCard | undefined>
   content: store.KeyedReadStore<ItemId, CardContent | undefined>
 }

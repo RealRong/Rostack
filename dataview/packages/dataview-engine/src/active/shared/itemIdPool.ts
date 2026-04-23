@@ -3,12 +3,12 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   ItemId,
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 
 export interface ItemIdPool {
   allocate: {
-    placement: (sectionKey: SectionKey, recordId: RecordId) => ItemId
+    placement: (sectionId: SectionId, recordId: RecordId) => ItemId
   }
   gc: {
     clear: () => void
@@ -17,23 +17,23 @@ export interface ItemIdPool {
 
 export const createItemIdPool = (): ItemIdPool => {
   let nextId = 1
-  const idsBySection = new Map<SectionKey, Map<RecordId, ItemId>>()
+  const idsBySection = new Map<SectionId, Map<RecordId, ItemId>>()
 
-  const ensureSection = (sectionKey: SectionKey) => {
-    const existing = idsBySection.get(sectionKey)
+  const ensureSection = (sectionId: SectionId) => {
+    const existing = idsBySection.get(sectionId)
     if (existing) {
       return existing
     }
 
     const created = new Map<RecordId, ItemId>()
-    idsBySection.set(sectionKey, created)
+    idsBySection.set(sectionId, created)
     return created
   }
 
   return {
     allocate: {
-      placement: (sectionKey, recordId) => {
-        const idsByRecord = ensureSection(sectionKey)
+      placement: (sectionId, recordId) => {
+        const idsByRecord = ensureSection(sectionId)
         const existing = idsByRecord.get(recordId)
         if (existing !== undefined) {
           return existing

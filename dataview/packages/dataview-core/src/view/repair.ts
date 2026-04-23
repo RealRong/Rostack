@@ -1,7 +1,8 @@
 import type {
   CustomField,
   CustomFieldId,
-  View
+  View,
+  ViewGroup
 } from '@dataview/core/contracts'
 import {
   calculation
@@ -41,7 +42,6 @@ export const repairViewForRemovedField = (
   view: View,
   fieldId: CustomFieldId
 ): View => {
-  const nextOptions = pruneFieldFromViewOptions(view.options, fieldId)
   const nextFilterRules = entityTable.normalize.list(
     filterApi.rules
       .list(view.filter.rules)
@@ -53,16 +53,19 @@ export const repairViewForRemovedField = (
       .filter(rule => rule.fieldId !== fieldId)
   )
   const nextSearchFields = cleanupSearchFields(view.search.fields, fieldId)
-  const nextGroup = view.group?.field === fieldId
+  const currentGroup = 'group' in view
+    ? view.group
+    : undefined
+  const nextGroup = currentGroup?.fieldId === fieldId
     ? undefined
-    : view.group
+    : currentGroup
   const nextCalc = {
     ...view.calc
   }
   const nextDisplayFields = view.display.fields.filter(currentFieldId => currentFieldId !== fieldId)
   delete nextCalc[fieldId]
 
-  const nextView: View = {
+  const nextShared = {
     ...view,
     filter: {
       ...view.filter,
@@ -77,19 +80,37 @@ export const repairViewForRemovedField = (
     sort: {
       rules: nextSortRules
     },
-    ...(nextGroup ? { group: nextGroup } : {}),
     calc: nextCalc,
     display: {
       fields: nextDisplayFields
-    },
-    options: nextOptions
-  }
+    }
+  } as const
+  const nextView: View = view.type === 'table'
+    ? {
+        ...nextShared,
+        type: 'table',
+        ...(nextGroup ? { group: nextGroup } : {}),
+        options: pruneFieldFromViewOptions(view, fieldId)
+      }
+    : view.type === 'gallery'
+      ? {
+          ...nextShared,
+          type: 'gallery',
+          ...(nextGroup ? { group: nextGroup } : {}),
+          options: view.options
+        }
+      : {
+          ...nextShared,
+          type: 'kanban',
+          group: nextGroup ?? view.group,
+          options: view.options
+        }
 
   if (nextSearchFields === undefined && Object.prototype.hasOwnProperty.call(nextView.search, 'fields')) {
     delete (nextView.search as { fields?: readonly string[] }).fields
   }
-  if (!nextGroup && Object.prototype.hasOwnProperty.call(nextView, 'group')) {
-    delete (nextView as { group?: View['group'] }).group
+  if ((view.type === 'table' || view.type === 'gallery') && !nextGroup && Object.prototype.hasOwnProperty.call(nextView, 'group')) {
+    delete (nextView as { group?: ViewGroup }).group
   }
 
   return equal.sameJsonValue(nextView, view)
@@ -110,15 +131,17 @@ export const repairViewForConvertedField = (
       ))
   )
 
-  let nextGroup = view.group
-  if (view.group?.field === field.id) {
+  let nextGroup = 'group' in view
+    ? view.group
+    : undefined
+  if (nextGroup?.fieldId === field.id) {
     const defaultMeta = fieldApi.group.meta(field)
     if (!defaultMeta.modes.length || !defaultMeta.sorts.length) {
       nextGroup = undefined
     } else {
-      const modeMeta = fieldApi.group.meta(field, { mode: view.group.mode })
+      const modeMeta = fieldApi.group.meta(field, { mode: nextGroup.mode })
       nextGroup = {
-        field: field.id,
+        fieldId: field.id,
         mode: modeMeta.mode,
         bucketSort: modeMeta.sort || 'manual',
         ...(modeMeta.bucketInterval !== undefined
@@ -136,18 +159,41 @@ export const repairViewForConvertedField = (
     delete nextCalc[field.id]
   }
 
-  const nextView: View = {
-    ...view,
-    filter: {
-      ...view.filter,
-      rules: nextFilterRules
-    },
-    ...(nextGroup ? { group: nextGroup } : {}),
-    calc: nextCalc
+  const nextView: View = view.type === 'table'
+    ? {
+        ...view,
+        type: 'table',
+        filter: {
+          ...view.filter,
+          rules: nextFilterRules
+        },
+        ...(nextGroup ? { group: nextGroup } : {}),
+        calc: nextCalc
+      }
+    : view.type === 'gallery'
+      ? {
+          ...view,
+          type: 'gallery',
+          filter: {
+            ...view.filter,
+            rules: nextFilterRules
+          },
+          ...(nextGroup ? { group: nextGroup } : {}),
+          calc: nextCalc
+        }
+      : {
+          ...view,
+          type: 'kanban',
+          filter: {
+            ...view.filter,
+            rules: nextFilterRules
+          },
+          group: nextGroup ?? view.group,
+          calc: nextCalc
   }
 
-  if (!nextGroup && Object.prototype.hasOwnProperty.call(nextView, 'group')) {
-    delete (nextView as { group?: View['group'] }).group
+  if ((view.type === 'table' || view.type === 'gallery') && !nextGroup && Object.prototype.hasOwnProperty.call(nextView, 'group')) {
+    delete (nextView as { group?: ViewGroup }).group
   }
 
   return equal.sameJsonValue(nextView, view)

@@ -26,7 +26,7 @@ const GridSectionHeaderView = (props: {
 }) => {
   const { t } = useTranslation()
   const runtime = useGalleryRuntimeContext()
-  const section = useKeyedStoreValue(runtime.section, props.section.key)
+  const section = useKeyedStoreValue(runtime.section, props.section.id)
 
   return (
     <div

@@ -1,11 +1,17 @@
 import type {
   CalculationMetric,
   FieldId,
+  GalleryView,
+  KanbanView,
   RecordId,
+  TableOptions,
+  TableView,
   ViewCalc,
-  ViewDisplay,
-  ViewOptions
+  ViewDisplay
 } from '@dataview/core/contracts'
+import type {
+  ViewOptionsByType
+} from '@dataview/core/contracts/viewOptions'
 import {
   collection,
   equal,
@@ -144,22 +150,52 @@ export const reorderViewOrders = (input: {
 
 export const clearViewOrders = (): RecordId[] => []
 
-export const sameViewOptions = (
-  left: ViewOptions,
-  right: ViewOptions
-): boolean => (
-  equal.sameShallowRecord(left.table.widths, right.table.widths)
-  && left.table.showVerticalLines === right.table.showVerticalLines
-  && left.table.wrap === right.table.wrap
-  && left.gallery.card.wrap === right.gallery.card.wrap
-  && left.gallery.card.size === right.gallery.card.size
-  && left.gallery.card.layout === right.gallery.card.layout
-  && left.kanban.card.wrap === right.kanban.card.wrap
-  && left.kanban.card.size === right.kanban.card.size
-  && left.kanban.card.layout === right.kanban.card.layout
-  && left.kanban.fillColumnColor === right.kanban.fillColumnColor
-  && left.kanban.cardsPerColumn === right.kanban.cardsPerColumn
-)
+export function sameViewOptions (
+  type: 'table',
+  left: ViewOptionsByType['table'],
+  right: ViewOptionsByType['table']
+): boolean
+export function sameViewOptions (
+  type: 'gallery',
+  left: ViewOptionsByType['gallery'],
+  right: ViewOptionsByType['gallery']
+): boolean
+export function sameViewOptions (
+  type: 'kanban',
+  left: ViewOptionsByType['kanban'],
+  right: ViewOptionsByType['kanban']
+): boolean
+export function sameViewOptions (
+  type: keyof ViewOptionsByType,
+  left: ViewOptionsByType[keyof ViewOptionsByType],
+  right: ViewOptionsByType[keyof ViewOptionsByType]
+): boolean {
+  switch (type) {
+    case 'table':
+      return (
+        equal.sameShallowRecord(
+          (left as ViewOptionsByType['table']).widths,
+          (right as ViewOptionsByType['table']).widths
+        )
+        && (left as ViewOptionsByType['table']).showVerticalLines === (right as ViewOptionsByType['table']).showVerticalLines
+        && (left as ViewOptionsByType['table']).wrap === (right as ViewOptionsByType['table']).wrap
+      )
+    case 'gallery':
+      return (
+        (left as ViewOptionsByType['gallery']).card.wrap === (right as ViewOptionsByType['gallery']).card.wrap
+        && (left as ViewOptionsByType['gallery']).card.size === (right as ViewOptionsByType['gallery']).card.size
+        && (left as ViewOptionsByType['gallery']).card.layout === (right as ViewOptionsByType['gallery']).card.layout
+      )
+    case 'kanban':
+      return (
+        (left as ViewOptionsByType['kanban']).card.wrap === (right as ViewOptionsByType['kanban']).card.wrap
+        && (left as ViewOptionsByType['kanban']).card.size === (right as ViewOptionsByType['kanban']).card.size
+        && (left as ViewOptionsByType['kanban']).card.layout === (right as ViewOptionsByType['kanban']).card.layout
+        && (left as ViewOptionsByType['kanban']).fillColumnColor === (right as ViewOptionsByType['kanban']).fillColumnColor
+        && (left as ViewOptionsByType['kanban']).cardsPerColumn === (right as ViewOptionsByType['kanban']).cardsPerColumn
+      )
+  }
+}
 
 export interface TableLayoutPatch {
   widths?: Partial<Record<FieldId, number>>
@@ -168,34 +204,33 @@ export interface TableLayoutPatch {
 }
 
 export interface GalleryLayoutPatch {
-  card?: Partial<ViewOptions['gallery']['card']>
+  card?: Partial<GalleryView['options']['card']>
 }
 
 export interface KanbanLayoutPatch {
-  card?: Partial<ViewOptions['kanban']['card']>
+  card?: Partial<KanbanView['options']['card']>
   fillColumnColor?: boolean
-  cardsPerColumn?: ViewOptions['kanban']['cardsPerColumn']
+  cardsPerColumn?: KanbanView['options']['cardsPerColumn']
 }
 
 export const patchTableLayout = (
-  options: ViewOptions,
+  options: TableOptions,
   patch: TableLayoutPatch
-): ViewOptions => {
+): TableOptions => {
   if (
     patch.widths === undefined
     && patch.showVerticalLines === undefined
     && patch.wrap === undefined
   ) {
-    return cloneViewOptions(options)
+    return cloneViewOptions('table', options)
   }
 
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.table = {
-    ...nextOptions.table,
+  return {
+    ...options,
     ...(patch.widths !== undefined
       ? {
           widths: {
-            ...nextOptions.table.widths,
+            ...options.widths,
             ...patch.widths
           }
         }
@@ -211,49 +246,43 @@ export const patchTableLayout = (
         }
       : {})
   }
-
-  return nextOptions
 }
 
 export const patchGalleryLayout = (
-  options: ViewOptions,
+  options: GalleryView['options'],
   patch: GalleryLayoutPatch
-): ViewOptions => {
+): GalleryView['options'] => {
   if (patch.card === undefined) {
-    return cloneViewOptions(options)
+    return cloneViewOptions('gallery', options)
   }
 
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.gallery = {
-    ...nextOptions.gallery,
+  return {
+    ...options,
     card: {
-      ...nextOptions.gallery.card,
+      ...options.card,
       ...patch.card
     }
   }
-
-  return nextOptions
 }
 
 export const patchKanbanLayout = (
-  options: ViewOptions,
+  options: KanbanView['options'],
   patch: KanbanLayoutPatch
-): ViewOptions => {
+): KanbanView['options'] => {
   if (
     patch.card === undefined
     && patch.fillColumnColor === undefined
     && patch.cardsPerColumn === undefined
   ) {
-    return cloneViewOptions(options)
+    return cloneViewOptions('kanban', options)
   }
 
-  const nextOptions = cloneViewOptions(options)
-  nextOptions.kanban = {
-    ...nextOptions.kanban,
+  return {
+    ...options,
     ...(patch.card !== undefined
       ? {
           card: {
-            ...nextOptions.kanban.card,
+            ...options.card,
             ...patch.card
           }
         }
@@ -269,6 +298,4 @@ export const patchKanbanLayout = (
         }
       : {})
   }
-
-  return nextOptions
 }

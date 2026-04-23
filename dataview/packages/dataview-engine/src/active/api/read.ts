@@ -18,7 +18,7 @@ export const createActiveViewReadApi = (input: {
 }): ActiveViewReadApi => {
   const readState = () => input.state()
   const readField = (fieldId: FieldId) => input.reader.fields.get(fieldId)
-  const readSection = (sectionKey: string) => readState()?.sections.get(sectionKey)
+  const readSection = (sectionId: string) => readState()?.sections.get(sectionId)
   const readPlacement = (itemId: ItemId) => readState()?.items.read.placement(itemId)
   const readCell = (cell: CellRef): ViewCell | undefined => {
     const state = readState()
@@ -40,7 +40,7 @@ export const createActiveViewReadApi = (input: {
       itemId: cell.itemId,
       recordId: placement.recordId,
       fieldId: cell.fieldId,
-      sectionKey: placement.sectionKey,
+      sectionId: placement.sectionId,
       record,
       field: readField(cell.fieldId),
       value: cell.fieldId === 'title'

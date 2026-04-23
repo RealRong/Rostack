@@ -41,7 +41,10 @@ const collectViewQueryAspects = (
   if (!sort.rules.same(previousView.sort.rules, nextView.sort.rules)) {
     aspects.add('sort')
   }
-  if (!group.state.same(previousView.group, nextView.group)) {
+  if (!group.state.same(
+    'group' in previousView ? previousView.group : undefined,
+    'group' in nextView ? nextView.group : undefined
+  )) {
     aspects.add('group')
   }
   if (!sameIdList(previousView.orders, nextView.orders)) {

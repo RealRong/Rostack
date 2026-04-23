@@ -10,7 +10,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   Section,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import { equal, store as coreStore } from '@shared/core'
 import type { KanbanVisibility } from '@dataview/react/views/kanban/types'
@@ -39,7 +39,7 @@ const resolveInitialVisibleCount = (
 const readSectionLengths = (
   sections: readonly Section[]
 ) => new Map(
-  sections.map(section => [section.key, section.itemIds.length] as const)
+  sections.map(section => [section.id, section.itemIds.length] as const)
 )
 
 const resolveVisibility = (input: {
@@ -71,11 +71,11 @@ const resolveVisibility = (input: {
 }
 
 export interface KanbanVisibilityRuntime {
-  section: coreStore.KeyedReadStore<SectionKey, KanbanVisibility | undefined>
+  section: coreStore.KeyedReadStore<SectionId, KanbanVisibility | undefined>
   version: coreStore.ReadStore<number>
-  showMore: (sectionKey: SectionKey) => void
+  showMore: (sectionId: SectionId) => void
   reset: () => void
-  all: () => ReadonlyMap<SectionKey, KanbanVisibility | undefined>
+  all: () => ReadonlyMap<SectionId, KanbanVisibility | undefined>
 }
 
 export const useKanbanVisibility = (input: {
@@ -83,11 +83,11 @@ export const useKanbanVisibility = (input: {
   sections: readonly Section[]
   cardsPerColumn: KanbanCardsPerColumn
 }): KanbanVisibilityRuntime => {
-  const initialRef = useRef<ReadonlyMap<SectionKey, KanbanVisibility | undefined> | null>(null)
+  const initialRef = useRef<ReadonlyMap<SectionId, KanbanVisibility | undefined> | null>(null)
   if (!initialRef.current) {
     initialRef.current = new Map(
       input.sections.map(section => [
-        section.key,
+        section.id,
         resolveVisibility({
           section,
           cardsPerColumn: input.cardsPerColumn
@@ -95,16 +95,16 @@ export const useKanbanVisibility = (input: {
       ] as const)
     )
   }
-  const visibilityStore = useMemo(() => coreStore.createKeyedStore<SectionKey, KanbanVisibility | undefined>({
+  const visibilityStore = useMemo(() => coreStore.createKeyedStore<SectionId, KanbanVisibility | undefined>({
     emptyValue: undefined,
     initial: initialRef.current ?? undefined,
     isEqual: sameVisibility
   }), [])
   const version = useMemo(() => coreStore.createValueStore(0), [])
-  const [expandedCountBySectionKey, setExpandedCountBySectionKey] = useState<Partial<Record<SectionKey, number>>>({})
-  const previousSectionLengthsRef = useRef(new Map<SectionKey, number>())
+  const [expandedCountBySectionId, setExpandedCountBySectionId] = useState<Partial<Record<SectionId, number>>>({})
+  const previousSectionLengthsRef = useRef(new Map<SectionId, number>())
   const sectionIdsByKey = useMemo(() => new Map(
-    input.sections.map(section => [section.key, section.itemIds] as const)
+    input.sections.map(section => [section.id, section.itemIds] as const)
   ), [input.sections])
 
   const bumpVersion = useCallback(() => {
@@ -113,7 +113,7 @@ export const useKanbanVisibility = (input: {
 
   const reset = useCallback(() => {
     previousSectionLengthsRef.current = readSectionLengths(input.sections)
-    setExpandedCountBySectionKey({})
+    setExpandedCountBySectionId({})
   }, [input.sections])
 
   useEffect(() => {
@@ -126,23 +126,23 @@ export const useKanbanVisibility = (input: {
       return
     }
 
-    setExpandedCountBySectionKey(previous => {
+    setExpandedCountBySectionId(previous => {
       let changed = false
       const next = {
         ...previous
       }
       const previousLengths = previousSectionLengthsRef.current
-      const sectionKeys = new Set(input.sections.map(section => section.key))
+      const sectionIds = new Set(input.sections.map(section => section.id))
 
-      Object.keys(next).forEach(sectionKey => {
-        if (!sectionKeys.has(sectionKey)) {
-          delete next[sectionKey]
+      Object.keys(next).forEach(sectionId => {
+        if (!sectionIds.has(sectionId)) {
+          delete next[sectionId]
           changed = true
         }
       })
 
       input.sections.forEach(section => {
-        const previousLength = previousLengths.get(section.key)
+        const previousLength = previousLengths.get(section.id)
         if (previousLength === undefined) {
           return
         }
@@ -151,20 +151,20 @@ export const useKanbanVisibility = (input: {
           input.cardsPerColumn,
           previousLength
         )
-        const previousExpandedCount = previous[section.key]
+        const previousExpandedCount = previous[section.id]
         const previousVisible = previousExpandedCount === undefined
           ? previousInitialVisible
           : Math.min(
             previousLength,
             Math.max(previousInitialVisible, previousExpandedCount)
           )
-        const currentVisible = next[section.key] === undefined
+        const currentVisible = next[section.id] === undefined
           ? resolveInitialVisibleCount(input.cardsPerColumn, section.itemIds.length)
           : Math.min(
             section.itemIds.length,
             Math.max(
               resolveInitialVisibleCount(input.cardsPerColumn, section.itemIds.length),
-              next[section.key]!
+              next[section.id]!
             )
           )
 
@@ -173,7 +173,7 @@ export const useKanbanVisibility = (input: {
           && previousVisible >= previousLength
           && currentVisible < section.itemIds.length
         ) {
-          next[section.key] = section.itemIds.length
+          next[section.id] = section.itemIds.length
           changed = true
         }
       })
@@ -188,25 +188,25 @@ export const useKanbanVisibility = (input: {
 
   useEffect(() => {
     const current = visibilityStore.all()
-    const activeSectionKeys = new Set(input.sections.map(section => section.key))
-    const set: Array<readonly [SectionKey, KanbanVisibility | undefined]> = []
-    const del: SectionKey[] = []
+    const activeSectionIds = new Set(input.sections.map(section => section.id))
+    const set: Array<readonly [SectionId, KanbanVisibility | undefined]> = []
+    const del: SectionId[] = []
 
     input.sections.forEach(section => {
       const next = resolveVisibility({
         section,
         cardsPerColumn: input.cardsPerColumn,
-        expandedCount: expandedCountBySectionKey[section.key]
+        expandedCount: expandedCountBySectionId[section.id]
       })
-      const previous = current.get(section.key)
+      const previous = current.get(section.id)
       if (!sameVisibility(previous, next)) {
-        set.push([section.key, next] as const)
+        set.push([section.id, next] as const)
       }
     })
 
-    current.forEach((_, sectionKey) => {
-      if (!activeSectionKeys.has(sectionKey)) {
-        del.push(sectionKey)
+    current.forEach((_, sectionId) => {
+      if (!activeSectionIds.has(sectionId)) {
+        del.push(sectionId)
       }
     })
 
@@ -225,20 +225,20 @@ export const useKanbanVisibility = (input: {
     bumpVersion()
   }, [
     bumpVersion,
-    expandedCountBySectionKey,
+    expandedCountBySectionId,
     input.cardsPerColumn,
     input.sections,
     visibilityStore
   ])
 
-  const showMore = useCallback((sectionKey: SectionKey) => {
+  const showMore = useCallback((sectionId: SectionId) => {
     const step = input.cardsPerColumn
     if (step === 'all') {
       return
     }
 
-    setExpandedCountBySectionKey(previous => {
-      const sectionIds = sectionIdsByKey.get(sectionKey)
+    setExpandedCountBySectionId(previous => {
+      const sectionIds = sectionIdsByKey.get(sectionId)
       if (!sectionIds?.length) {
         return previous
       }
@@ -247,9 +247,9 @@ export const useKanbanVisibility = (input: {
         input.cardsPerColumn,
         sectionIds.length
       )
-      const currentVisible = previous[sectionKey] === undefined
+      const currentVisible = previous[sectionId] === undefined
         ? initialVisible
-        : Math.min(sectionIds.length, Math.max(initialVisible, previous[sectionKey]!))
+        : Math.min(sectionIds.length, Math.max(initialVisible, previous[sectionId]!))
       const nextVisible = Math.min(
         sectionIds.length,
         currentVisible + step
@@ -261,7 +261,7 @@ export const useKanbanVisibility = (input: {
 
       return {
         ...previous,
-        [sectionKey]: nextVisible
+        [sectionId]: nextVisible
       }
     })
   }, [input.cardsPerColumn, sectionIdsByKey])

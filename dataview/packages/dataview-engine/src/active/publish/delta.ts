@@ -9,7 +9,7 @@ import type {
 } from '@dataview/engine/contracts/delta'
 import type {
   ItemId,
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 import {
   buildKeyedCollectionDelta,
@@ -32,10 +32,10 @@ const buildSummaryCollectionDelta = (input: {
   previous: ViewState
   next: ViewState
   delta: SummaryDelta
-}): CollectionDelta<SectionKey> | undefined => {
+}): CollectionDelta<SectionId> | undefined => {
   if (input.delta.rebuild) {
     const removed = input.previous.sections.ids.filter(
-      sectionKey => !input.next.summaries.has(sectionKey)
+      sectionId => !input.next.summaries.has(sectionId)
     )
 
     return createCollectionDelta({
@@ -55,7 +55,7 @@ const buildSummaryCollectionDelta = (input: {
 export const projectActiveDelta = (input: {
   previous?: ViewState
   next?: ViewState
-  sections?: CollectionDelta<SectionKey>
+  sections?: CollectionDelta<SectionId>
   items?: CollectionDelta<ItemId>
   summaries: SummaryDelta
 }): ActiveDelta | undefined => {

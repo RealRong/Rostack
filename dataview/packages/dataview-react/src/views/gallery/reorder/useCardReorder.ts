@@ -31,7 +31,7 @@ const sameTarget = (
   left?: GalleryDropTarget,
   right?: GalleryDropTarget
 ) => (
-  left?.sectionKey === right?.sectionKey
+  left?.sectionId === right?.sectionId
   && left?.anchorId === right?.anchorId
   && left?.side === right?.side
   && left?.beforeItemId === right?.beforeItemId

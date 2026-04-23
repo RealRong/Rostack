@@ -34,10 +34,10 @@ export const createTableProjection = (input: {
   fields: Pick<FieldList, 'ids'>
 }): ActiveViewTable => ({
   wrap: input.view.type === 'table'
-    ? input.view.options.table.wrap
+    ? input.view.options.wrap
     : false,
   showVerticalLines: input.view.type === 'table'
-    ? input.view.options.table.showVerticalLines
+    ? input.view.options.showVerticalLines
     : false,
   calc: input.view.type === 'table'
     ? new Map(
@@ -64,9 +64,9 @@ export const createGalleryProjection = (input: {
   }
 
   return {
-    wrap: input.view.options.gallery.card.wrap,
-    size: input.view.options.gallery.card.size,
-    layout: input.view.options.gallery.card.layout,
+    wrap: input.view.options.card.wrap,
+    size: input.view.options.card.size,
+    layout: input.view.options.card.layout,
     canReorder: !input.query.group && input.query.sort.rules.length === 0,
     groupUsesOptionColors: fieldSpec.view.groupUsesOptionColors(input.query.group?.field)
   }
@@ -91,13 +91,13 @@ export const createKanbanProjection = (input: {
   const groupUsesOptionColors = fieldSpec.view.groupUsesOptionColors(input.query.group?.field)
 
   return {
-    wrap: input.view.options.kanban.card.wrap,
-    size: input.view.options.kanban.card.size,
-    layout: input.view.options.kanban.card.layout,
+    wrap: input.view.options.card.wrap,
+    size: input.view.options.card.size,
+    layout: input.view.options.card.layout,
     canReorder: Boolean(input.query.group) && input.query.sort.rules.length === 0,
     groupUsesOptionColors,
-    fillColumnColor: groupUsesOptionColors && input.view.options.kanban.fillColumnColor,
-    cardsPerColumn: input.view.options.kanban.cardsPerColumn
+    fillColumnColor: groupUsesOptionColors && input.view.options.fillColumnColor,
+    cardsPerColumn: input.view.options.cardsPerColumn
   }
 }
 

@@ -17,7 +17,7 @@ import {
 import type {
   ItemId,
   Section,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import {
   buildBoardLayout,
@@ -32,9 +32,9 @@ import {
 
 export interface KanbanLayoutRuntime {
   board: store.ReadStore<BoardLayout | null>
-  body: store.KeyedReadStore<SectionKey, Rect | undefined>
+  body: store.KeyedReadStore<SectionId, Rect | undefined>
   measure: {
-    body: (sectionKey: SectionKey) => (node: HTMLDivElement | null) => void
+    body: (sectionId: SectionId) => (node: HTMLDivElement | null) => void
     card: (id: ItemId) => (node: HTMLElement | null) => void
   }
 }
@@ -48,14 +48,14 @@ export const useKanbanLayout = (input: {
   const visibilityVersion = useStoreValue(input.visibility.version)
   const visibleIds = useMemo(
     () => input.sections.flatMap(section => (
-      input.visibility.all().get(section.key)?.ids ?? section.itemIds
+      input.visibility.all().get(section.id)?.ids ?? section.itemIds
     )),
     [input.sections, input.visibility, visibilityVersion]
   )
   const measured = useMeasuredHeights({
     ids: visibleIds
   })
-  const bodyStore = useMemo(() => store.createKeyedStore<SectionKey, Rect | undefined>({
+  const bodyStore = useMemo(() => store.createKeyedStore<SectionId, Rect | undefined>({
     emptyValue: undefined,
     isEqual: equal.sameOptionalRect
   }), [])
@@ -63,9 +63,9 @@ export const useKanbanLayout = (input: {
   const heightStore = useMemo(() => store.createValueStore<ReadonlyMap<ItemId, number>>(new Map<ItemId, number>(), {
     isEqual: equal.sameMap
   }), [])
-  const bodyNodeBySectionKeyRef = useRef(new Map<SectionKey, HTMLDivElement>())
-  const cleanupBySectionKeyRef = useRef(new Map<SectionKey, () => void>())
-  const bodyMeasureRefBySectionKeyRef = useRef(new Map<SectionKey, (node: HTMLDivElement | null) => void>())
+  const bodyNodeBySectionIdRef = useRef(new Map<SectionId, HTMLDivElement>())
+  const cleanupBySectionIdRef = useRef(new Map<SectionId, () => void>())
+  const bodyMeasureRefBySectionIdRef = useRef(new Map<SectionId, (node: HTMLDivElement | null) => void>())
 
   const bumpBodyVersion = useCallback(() => {
     bodyVersion.update(current => current + 1)
@@ -75,26 +75,26 @@ export const useKanbanLayout = (input: {
     heightStore.set(measured.heightById)
   }, [heightStore, measured.heightById])
 
-  const syncBodyRect = useCallback((sectionKey: SectionKey) => {
+  const syncBodyRect = useCallback((sectionId: SectionId) => {
     const container = input.containerRef.current
-    const node = bodyNodeBySectionKeyRef.current.get(sectionKey)
+    const node = bodyNodeBySectionIdRef.current.get(sectionId)
     if (!container || !node) {
-      if (bodyStore.get(sectionKey) === undefined) {
+      if (bodyStore.get(sectionId) === undefined) {
         return
       }
 
-      bodyStore.delete(sectionKey)
+      bodyStore.delete(sectionId)
       bumpBodyVersion()
       return
     }
 
     const nextRect = elementRectIn(container, node)
-    const previousRect = bodyStore.get(sectionKey)
+    const previousRect = bodyStore.get(sectionId)
     if (equal.sameOptionalRect(previousRect, nextRect)) {
       return
     }
 
-    bodyStore.set(sectionKey, nextRect)
+    bodyStore.set(sectionId, nextRect)
     bumpBodyVersion()
   }, [
     bodyStore,
@@ -103,68 +103,68 @@ export const useKanbanLayout = (input: {
   ])
 
   useEffect(() => {
-    const activeSectionKeys = new Set(input.sections.map(section => section.key))
-    Array.from(bodyNodeBySectionKeyRef.current.keys()).forEach(sectionKey => {
-      if (activeSectionKeys.has(sectionKey)) {
+    const activeSectionIds = new Set(input.sections.map(section => section.id))
+    Array.from(bodyNodeBySectionIdRef.current.keys()).forEach(sectionId => {
+      if (activeSectionIds.has(sectionId)) {
         return
       }
 
-      cleanupBySectionKeyRef.current.get(sectionKey)?.()
-      cleanupBySectionKeyRef.current.delete(sectionKey)
-      bodyNodeBySectionKeyRef.current.delete(sectionKey)
-      bodyMeasureRefBySectionKeyRef.current.delete(sectionKey)
-      if (bodyStore.get(sectionKey) !== undefined) {
-        bodyStore.delete(sectionKey)
+      cleanupBySectionIdRef.current.get(sectionId)?.()
+      cleanupBySectionIdRef.current.delete(sectionId)
+      bodyNodeBySectionIdRef.current.delete(sectionId)
+      bodyMeasureRefBySectionIdRef.current.delete(sectionId)
+      if (bodyStore.get(sectionId) !== undefined) {
+        bodyStore.delete(sectionId)
         bumpBodyVersion()
       }
     })
   }, [bodyStore, bumpBodyVersion, input.sections])
 
   useEffect(() => () => {
-    cleanupBySectionKeyRef.current.forEach(cleanup => {
+    cleanupBySectionIdRef.current.forEach(cleanup => {
       cleanup()
     })
-    cleanupBySectionKeyRef.current.clear()
-    bodyNodeBySectionKeyRef.current.clear()
-    bodyMeasureRefBySectionKeyRef.current.clear()
+    cleanupBySectionIdRef.current.clear()
+    bodyNodeBySectionIdRef.current.clear()
+    bodyMeasureRefBySectionIdRef.current.clear()
     bodyStore.clear()
   }, [bodyStore])
 
-  const measureBody = useCallback((sectionKey: SectionKey) => {
-    const cached = bodyMeasureRefBySectionKeyRef.current.get(sectionKey)
+  const measureBody = useCallback((sectionId: SectionId) => {
+    const cached = bodyMeasureRefBySectionIdRef.current.get(sectionId)
     if (cached) {
       return cached
     }
 
     const ref = (node: HTMLDivElement | null) => {
-      const previousNode = bodyNodeBySectionKeyRef.current.get(sectionKey)
+      const previousNode = bodyNodeBySectionIdRef.current.get(sectionId)
       if (previousNode === node) {
         if (node) {
-          syncBodyRect(sectionKey)
+          syncBodyRect(sectionId)
         }
         return
       }
 
-      cleanupBySectionKeyRef.current.get(sectionKey)?.()
-      cleanupBySectionKeyRef.current.delete(sectionKey)
+      cleanupBySectionIdRef.current.get(sectionId)?.()
+      cleanupBySectionIdRef.current.delete(sectionId)
 
       if (!node) {
-        bodyNodeBySectionKeyRef.current.delete(sectionKey)
-        syncBodyRect(sectionKey)
+        bodyNodeBySectionIdRef.current.delete(sectionId)
+        syncBodyRect(sectionId)
         return
       }
 
-      bodyNodeBySectionKeyRef.current.set(sectionKey, node)
-      cleanupBySectionKeyRef.current.set(sectionKey, observeElementSize(node, {
+      bodyNodeBySectionIdRef.current.set(sectionId, node)
+      cleanupBySectionIdRef.current.set(sectionId, observeElementSize(node, {
         emitInitial: false,
         onChange: () => {
-          syncBodyRect(sectionKey)
+          syncBodyRect(sectionId)
         }
       }))
-      syncBodyRect(sectionKey)
+      syncBodyRect(sectionId)
     }
 
-    bodyMeasureRefBySectionKeyRef.current.set(sectionKey, ref)
+    bodyMeasureRefBySectionIdRef.current.set(sectionId, ref)
     return ref
   }, [syncBodyRect])
 
@@ -174,16 +174,16 @@ export const useKanbanLayout = (input: {
       store.read(input.visibility.version)
       const sections = store.read(input.sectionsStore)
       const heightById = store.read(heightStore)
-      const bodyRectBySectionKey = new Map<SectionKey, Rect>()
-      bodyStore.all().forEach((rect, sectionKey) => {
+      const bodyRectBySectionId = new Map<SectionId, Rect>()
+      bodyStore.all().forEach((rect, sectionId) => {
         if (rect) {
-          bodyRectBySectionKey.set(sectionKey, rect)
+          bodyRectBySectionId.set(sectionId, rect)
         }
       })
       return buildBoardLayout({
         sections,
         visibilityBySection: input.visibility.all(),
-        bodyRectBySectionKey,
+        bodyRectBySectionId,
         heightById
       })
     }

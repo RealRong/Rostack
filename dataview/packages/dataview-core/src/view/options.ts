@@ -1,12 +1,16 @@
 import type {
   Field,
   FieldId,
+  GalleryView,
+  KanbanView,
+  TableView,
   ViewDisplay,
   TableOptions,
-  ViewOptions,
   ViewType
 } from '@dataview/core/contracts'
-import { cloneViewOptions } from '@dataview/core/view/shared'
+import type {
+  ViewOptionsByType
+} from '@dataview/core/contracts/viewOptions'
 
 export const cloneTableOptions = (
   table: TableOptions
@@ -29,54 +33,67 @@ export const createDefaultViewDisplay = (
       : []
 })
 
-export const createDefaultViewOptions = (
-  _type: ViewType,
+export function createDefaultViewOptions (
+  type: 'table',
+  fields: readonly Field[]
+): TableOptions
+export function createDefaultViewOptions (
+  type: 'gallery',
+  fields: readonly Field[]
+): GalleryView['options']
+export function createDefaultViewOptions (
+  type: 'kanban',
+  fields: readonly Field[]
+): KanbanView['options']
+export function createDefaultViewOptions (
+  type: ViewType,
   _fields: readonly Field[]
-): ViewOptions => ({
-  table: {
-    widths: {},
-    showVerticalLines: true,
-    wrap: false
-  },
-  gallery: {
-    card: {
-      wrap: false,
-      size: 'md',
-      layout: 'stacked'
-    }
-  },
-  kanban: {
-    card: {
-      wrap: false,
-      size: 'md',
-      layout: 'compact'
-    },
-    fillColumnColor: true,
-    cardsPerColumn: 25
+): ViewOptionsByType[ViewType] {
+  switch (type) {
+    case 'table':
+      return {
+        widths: {},
+        showVerticalLines: true,
+        wrap: false
+      }
+    case 'gallery':
+      return {
+        card: {
+          wrap: false,
+          size: 'md',
+          layout: 'stacked'
+        }
+      }
+    case 'kanban':
+      return {
+        card: {
+          wrap: false,
+          size: 'md',
+          layout: 'compact'
+        },
+        fillColumnColor: true,
+        cardsPerColumn: 25
+      }
   }
-})
+}
 
 export const pruneFieldFromViewOptions = (
-  options: ViewOptions,
+  view: TableView,
   fieldId: FieldId
-): ViewOptions => {
-  const current = cloneViewOptions(options)
-  const hasWidth = Object.prototype.hasOwnProperty.call(current.table.widths, fieldId)
+): TableOptions => {
+  const hasWidth = Object.prototype.hasOwnProperty.call(view.options.widths, fieldId)
 
   if (!hasWidth) {
-    return options
+    return view.options
   }
 
-  if (hasWidth) {
-    const widths = {
-      ...current.table.widths
-    }
-    delete widths[fieldId]
-    current.table = {
-      ...current.table,
-      widths
-    }
+  const widths = {
+    ...view.options.widths
   }
+  delete widths[fieldId]
 
-  return current
+  return {
+    ...view.options,
+    widths
+  }
 }

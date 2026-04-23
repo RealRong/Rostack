@@ -1,6 +1,6 @@
 import type {
   ItemId,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 
 export type TableBlockId =
@@ -10,19 +10,19 @@ export type TableBlockId =
     }
   | {
       kind: 'section-header'
-      sectionKey: SectionKey
+      sectionId: SectionId
     }
   | {
       kind: 'column-header'
-      sectionKey: SectionKey
+      sectionId: SectionId
     }
   | {
       kind: 'create-record'
-      sectionKey: SectionKey
+      sectionId: SectionId
     }
   | {
       kind: 'column-footer'
-      sectionKey: SectionKey
+      sectionId: SectionId
     }
 
 export const tableBlockKey = (id: TableBlockId): string => {
@@ -30,13 +30,13 @@ export const tableBlockKey = (id: TableBlockId): string => {
     case 'row':
       return `row:${id.rowId}`
     case 'section-header':
-      return `section-header:${id.sectionKey}`
+      return `section-header:${id.sectionId}`
     case 'column-header':
-      return `column-header:${id.sectionKey}`
+      return `column-header:${id.sectionId}`
     case 'create-record':
-      return `create-record:${id.sectionKey}`
+      return `create-record:${id.sectionId}`
     case 'column-footer':
-      return `column-footer:${id.sectionKey}`
+      return `column-footer:${id.sectionId}`
   }
 }
 
@@ -56,28 +56,28 @@ export const parseTableBlockKey = (
   if (key.startsWith('section-header:')) {
     return {
       kind: 'section-header',
-      sectionKey: key.slice('section-header:'.length)
+      sectionId: key.slice('section-header:'.length)
     }
   }
 
   if (key.startsWith('column-header:')) {
     return {
       kind: 'column-header',
-      sectionKey: key.slice('column-header:'.length)
+      sectionId: key.slice('column-header:'.length)
     }
   }
 
   if (key.startsWith('create-record:')) {
     return {
       kind: 'create-record',
-      sectionKey: key.slice('create-record:'.length)
+      sectionId: key.slice('create-record:'.length)
     }
   }
 
   if (key.startsWith('column-footer:')) {
     return {
       kind: 'column-footer',
-      sectionKey: key.slice('column-footer:'.length)
+      sectionId: key.slice('column-footer:'.length)
     }
   }
 

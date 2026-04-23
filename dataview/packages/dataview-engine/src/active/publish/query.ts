@@ -110,10 +110,10 @@ const createGroupProjection = (input: {
     return undefined
   }
 
-  const field = input.fieldsById.get(group.field)
+  const field = input.fieldsById.get(group.fieldId)
   if (!field) {
     return {
-      fieldId: group.field,
+      fieldId: group.fieldId,
       field: undefined,
       mode: group.mode,
       bucketSort: group.bucketSort,

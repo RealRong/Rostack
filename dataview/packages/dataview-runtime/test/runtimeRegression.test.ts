@@ -102,7 +102,7 @@ const createView = (input: {
     ...(input.type === 'kanban'
       ? {
           group: {
-            field: FIELD_STATUS,
+            fieldId: FIELD_STATUS,
             mode: 'option',
             bucketSort: 'manual',
             showEmpty: true
@@ -239,8 +239,8 @@ describe('data view runtime regressions', () => {
 
     engine.views.open(VIEW_BOARD)
 
-    const readVisibleItemIds = () => runtime.source.active.sections.ids.get().flatMap(sectionKey => (
-      runtime.source.active.sections.get(sectionKey)?.itemIds ?? []
+    const readVisibleItemIds = () => runtime.source.active.sections.ids.get().flatMap(sectionId => (
+      runtime.source.active.sections.get(sectionId)?.itemIds ?? []
     ))
     const assertReadableCards = (expectedRecordIds: readonly string[]) => {
       const visibleItemIds = readVisibleItemIds()

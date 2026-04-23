@@ -27,7 +27,7 @@ import type {
   ViewStageMetrics
 } from '@dataview/engine/contracts/performance'
 import type {
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 import { now } from '@dataview/engine/runtime/clock'
 
@@ -49,7 +49,7 @@ const resolveSummaryAction = (input: {
   membershipDelta: MembershipDelta
 }): {
   action: DeriveAction
-  touchedSections?: ReadonlySet<SectionKey> | 'all'
+  touchedSections?: ReadonlySet<SectionId> | 'all'
 } => {
   const commit = input.impact.commit
 
@@ -78,7 +78,7 @@ const resolveSummaryAction = (input: {
     }
   }
 
-  const groupField = input.view.group?.field
+  const groupField = input.view.group?.fieldId
   const viewChange = commitImpact.view.change(commit, input.activeViewId)
 
   if (viewChange?.calculationFields) {

@@ -38,8 +38,8 @@ export const KanbanCanvas = () => {
           >
             {board.sections.map(section => (
               <Column
-                key={section.key}
-                sectionKey={section.key}
+                key={section.id}
+                sectionId={section.id}
               />
             ))}
           </div>

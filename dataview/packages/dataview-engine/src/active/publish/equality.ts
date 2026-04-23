@@ -12,7 +12,7 @@ import type {
   ItemList,
   Section,
   SectionList,
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 import {
   sameList
@@ -32,7 +32,7 @@ const equalSection = (
   left: Section,
   right: Section
 ) => (
-  left.key === right.key
+  left.id === right.id
   && equal.sameJsonValue(left.label, right.label)
   && left.color === right.color
   && left.collapsed === right.collapsed
@@ -108,6 +108,6 @@ export const sameFieldList = (
 )
 
 export const sameSummariesBySection = (
-  left: ReadonlyMap<SectionKey, CalculationCollection>,
-  right: ReadonlyMap<SectionKey, CalculationCollection>
+  left: ReadonlyMap<SectionId, CalculationCollection>,
+  right: ReadonlyMap<SectionId, CalculationCollection>
 ) => equal.sameMap(left, right, equalCalculationCollection)

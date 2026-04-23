@@ -1,7 +1,8 @@
 import type {
   BucketState,
   Field,
-  ViewGroup
+  ViewGroup,
+  ViewGroupBucketId
 } from '@dataview/core/contracts'
 import {
   field as fieldApi
@@ -35,8 +36,8 @@ const normalizeBucketState = (
 }
 
 const cloneBuckets = (
-  buckets: Readonly<Record<string, BucketState>> | undefined
-): Readonly<Record<string, BucketState>> | undefined => {
+  buckets: Readonly<Record<ViewGroupBucketId, BucketState>> | undefined
+): Readonly<Record<ViewGroupBucketId, BucketState>> | undefined => {
   if (!buckets) {
     return undefined
   }
@@ -61,7 +62,7 @@ export const cloneGroupState = (
     ? (() => {
         const buckets = cloneBuckets(group.buckets)
         return {
-          field: group.field,
+          fieldId: group.fieldId,
           mode: group.mode,
           bucketSort: group.bucketSort,
           ...(group.bucketInterval !== undefined
@@ -82,7 +83,7 @@ export const sameGroupState = (
   left: ViewGroup | undefined,
   right: ViewGroup | undefined
 ) => (
-  left?.field === right?.field
+  left?.fieldId === right?.fieldId
   && left?.mode === right?.mode
   && left?.bucketSort === right?.bucketSort
   && left?.bucketInterval === right?.bucketInterval
@@ -94,8 +95,8 @@ export const normalizeGroupState = (
   group: unknown
 ): ViewGroup | undefined => {
   const source = typeof group === 'object' && group !== null
-    ? group as {
-        field?: unknown
+      ? group as {
+        fieldId?: unknown
         mode?: unknown
         bucketSort?: unknown
         bucketInterval?: unknown
@@ -103,13 +104,13 @@ export const normalizeGroupState = (
         buckets?: unknown
       }
     : undefined
-  if (!source || typeof source.field !== 'string') {
+  if (!source || typeof source.fieldId !== 'string') {
     return undefined
   }
 
   const buckets = normalizeBuckets(source.buckets)
   return {
-    field: source.field,
+    fieldId: source.fieldId,
     mode: typeof source.mode === 'string'
       ? source.mode
       : '',
@@ -136,7 +137,7 @@ const normalizeBucketSort = (
 
 const normalizeBuckets = (
   value: unknown
-): Readonly<Record<string, BucketState>> | undefined => {
+): Readonly<Record<ViewGroupBucketId, BucketState>> | undefined => {
   if (typeof value !== 'object' || value === null) {
     return undefined
   }
@@ -170,7 +171,7 @@ const buildGroup = (input: {
   const buckets = cloneBuckets(input.patch?.buckets)
 
   return {
-    field: input.field.id,
+    fieldId: input.field.id,
     mode: meta.mode,
     bucketSort: meta.sort || 'manual',
     ...(meta.bucketInterval !== undefined
@@ -186,11 +187,11 @@ const buildGroup = (input: {
 }
 
 const patchBuckets = (
-  buckets: Readonly<Record<string, BucketState>> | undefined,
-  key: string,
+  buckets: Readonly<Record<ViewGroupBucketId, BucketState>> | undefined,
+  bucketId: ViewGroupBucketId,
   patch: BucketState
-): Readonly<Record<string, BucketState>> | undefined => {
-  const current = normalizeBucketState(buckets?.[key])
+): Readonly<Record<ViewGroupBucketId, BucketState>> | undefined => {
+  const current = normalizeBucketState(buckets?.[bucketId])
   const nextState = normalizeBucketState({
     ...current,
     ...patch
@@ -200,9 +201,9 @@ const patchBuckets = (
   }
 
   if (nextState) {
-    next[key] = nextState
+    next[bucketId] = nextState
   } else {
-    delete next[key]
+    delete next[bucketId]
   }
 
   return cloneBuckets(next)
@@ -231,7 +232,7 @@ export const patchGroupState = (
     ? patch!.showEmpty
     : group?.showEmpty
   const buckets = (
-    group?.field === field.id
+    group?.fieldId === field.id
     && group.mode === nextMode
     && group.bucketInterval === nextBucketInterval
   )
@@ -282,7 +283,7 @@ export const toggle = (
   group: ViewGroup | undefined,
   field: Field
 ): ViewGroup | undefined => (
-  group?.field === field.id
+  group?.fieldId === field.id
     ? clear(group)
     : set(group, field)
 )
@@ -301,15 +302,15 @@ export const patch = (
 export const patchBucket = (
   group: ViewGroup | undefined,
   field: Field,
-  key: string,
+  bucketId: ViewGroupBucketId,
   patch: BucketState
 ): ViewGroup | undefined => {
-  if (group?.field !== field.id) {
+  if (group?.fieldId !== field.id) {
     return group
   }
 
   const nextGroup = patchGroupState(group, field, {
-    buckets: patchBuckets(group.buckets, key, patch)
+    buckets: patchBuckets(group.buckets, bucketId, patch)
   })
   return sameGroupState(group, nextGroup)
     ? group
@@ -319,18 +320,18 @@ export const patchBucket = (
 export const toggleGroupBucketCollapsed = (
   group: ViewGroup | undefined,
   field: Field,
-  key: string
+  bucketId: ViewGroupBucketId
 ): ViewGroup | undefined => {
-  if (group?.field !== field.id) {
+  if (group?.fieldId !== field.id) {
     return group
   }
 
   return patchBucket(
     group,
     field,
-    key,
+    bucketId,
     {
-      collapsed: group.buckets?.[key]?.collapsed !== true
+      collapsed: group.buckets?.[bucketId]?.collapsed !== true
     }
   )
 }
@@ -344,8 +345,8 @@ const sameBucketState = (
 )
 
 const sameBuckets = (
-  left: Readonly<Record<string, BucketState>> | undefined,
-  right: Readonly<Record<string, BucketState>> | undefined
+  left: Readonly<Record<ViewGroupBucketId, BucketState>> | undefined,
+  right: Readonly<Record<ViewGroupBucketId, BucketState>> | undefined
 ) => {
   const leftEntries = Object.entries(left ?? {})
     .filter(([, state]) => state.hidden === true || state.collapsed === true)
@@ -356,5 +357,5 @@ const sameBuckets = (
     return false
   }
 
-  return leftEntries.every(([key, state]) => sameBucketState(state, right?.[key]))
+  return leftEntries.every(([bucketId, state]) => sameBucketState(state, right?.[bucketId as ViewGroupBucketId]))
 }

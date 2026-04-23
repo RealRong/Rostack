@@ -1,6 +1,7 @@
 import type {
   Field,
-  ViewGroup
+  ViewGroup,
+  ViewGroupBucketId
 } from '@dataview/core/contracts'
 import {
   KANBAN_EMPTY_BUCKET_KEY
@@ -18,16 +19,16 @@ export type GroupWriteResult =
   | { kind: 'invalid' }
 
 const isEmptyBucket = (
-  key: string
-) => key === KANBAN_EMPTY_BUCKET_KEY
+  bucketId: ViewGroupBucketId
+) => bucketId === KANBAN_EMPTY_BUCKET_KEY
 
 const parseNumberRangeKey = (
-  key: string
+  bucketId: ViewGroupBucketId
 ): {
   start: number
   interval: number
 } | undefined => {
-  const match = /^range:([^:]+):([^:]+)$/.exec(key)
+  const match = /^range:([^:]+):([^:]+)$/.exec(bucketId)
   if (!match) {
     return undefined
   }
@@ -55,21 +56,21 @@ const appendOptionId = (
   : [...ids, optionId]
 
 const nextTextValue = (
-  bucketKey: string
+  bucketId: ViewGroupBucketId
 ): GroupWriteResult => (
-  isEmptyBucket(bucketKey)
+  isEmptyBucket(bucketId)
     ? { kind: 'clear' }
-    : { kind: 'set', value: bucketKey }
+    : { kind: 'set', value: bucketId }
 )
 
 const nextNumberValue = (
-  bucketKey: string
+  bucketId: ViewGroupBucketId
 ): GroupWriteResult => {
-  if (isEmptyBucket(bucketKey)) {
+  if (isEmptyBucket(bucketId)) {
     return { kind: 'clear' }
   }
 
-  const range = parseNumberRangeKey(bucketKey)
+  const range = parseNumberRangeKey(bucketId)
   return range
     ? { kind: 'set', value: range.start }
     : { kind: 'invalid' }
@@ -77,28 +78,28 @@ const nextNumberValue = (
 
 const nextSelectValue = (
   field: Extract<Field, { kind: 'select' }>,
-  bucketKey: string
+  bucketId: ViewGroupBucketId
 ): GroupWriteResult => {
-  if (isEmptyBucket(bucketKey)) {
+  if (isEmptyBucket(bucketId)) {
     return { kind: 'clear' }
   }
 
-  return fieldApi.option.read.get(field, bucketKey)
-    ? { kind: 'set', value: bucketKey }
+  return fieldApi.option.read.get(field, bucketId)
+    ? { kind: 'set', value: bucketId }
     : { kind: 'invalid' }
 }
 
 const nextStatusValue = (
   field: Extract<Field, { kind: 'status' }>,
   mode: string,
-  bucketKey: string
+  bucketId: ViewGroupBucketId
 ): GroupWriteResult => {
-  if (isEmptyBucket(bucketKey)) {
+  if (isEmptyBucket(bucketId)) {
     return { kind: 'clear' }
   }
 
   if (mode === 'category') {
-    const category = bucketKey as typeof fieldApi.status.categories[number]
+    const category = bucketId as typeof fieldApi.status.categories[number]
     if (!fieldApi.status.categories.includes(category)) {
       return { kind: 'invalid' }
     }
@@ -109,23 +110,23 @@ const nextStatusValue = (
       : { kind: 'invalid' }
   }
 
-  return fieldApi.option.read.get(field, bucketKey)
-    ? { kind: 'set', value: bucketKey }
+  return fieldApi.option.read.get(field, bucketId)
+    ? { kind: 'set', value: bucketId }
     : { kind: 'invalid' }
 }
 
 const nextBooleanValue = (
-  bucketKey: string
+  bucketId: ViewGroupBucketId
 ): GroupWriteResult => {
-  if (isEmptyBucket(bucketKey)) {
+  if (isEmptyBucket(bucketId)) {
     return { kind: 'clear' }
   }
 
-  if (bucketKey === 'true') {
+  if (bucketId === 'true') {
     return { kind: 'set', value: true }
   }
 
-  if (bucketKey === 'false') {
+  if (bucketId === 'false') {
     return { kind: 'set', value: false }
   }
 
@@ -134,14 +135,14 @@ const nextBooleanValue = (
 
 const nextDateValue = (input: {
   field: Extract<Field, { kind: 'date' }>
-  bucketKey: string
+  bucketId: ViewGroupBucketId
   currentValue: unknown
 }): GroupWriteResult => {
-  if (isEmptyBucket(input.bucketKey)) {
+  if (isEmptyBucket(input.bucketId)) {
     return { kind: 'clear' }
   }
 
-  const parsed = fieldApi.date.group.parseKey(input.bucketKey)
+  const parsed = fieldApi.date.group.parseKey(input.bucketId)
   if (!parsed) {
     return { kind: 'invalid' }
   }
@@ -158,18 +159,18 @@ const nextDateValue = (input: {
 }
 
 const nextMultiSelectValue = (input: {
-  bucketKey: string
+  bucketId: ViewGroupBucketId
   currentValue: unknown
-  fromKey?: string
+  fromBucketId?: ViewGroupBucketId
 }): GroupWriteResult => {
   let next = normalizeOptionIds(input.currentValue)
 
-  if (input.fromKey && !isEmptyBucket(input.fromKey)) {
-    next = removeOptionId(next, input.fromKey)
+  if (input.fromBucketId && !isEmptyBucket(input.fromBucketId)) {
+    next = removeOptionId(next, input.fromBucketId)
   }
 
-  if (!isEmptyBucket(input.bucketKey)) {
-    next = appendOptionId(next, input.bucketKey)
+  if (!isEmptyBucket(input.bucketId)) {
+    next = appendOptionId(next, input.bucketId)
   }
 
   return next.length
@@ -178,9 +179,9 @@ const nextMultiSelectValue = (input: {
 }
 
 const nextPresenceValue = (
-  bucketKey: string
+  bucketId: ViewGroupBucketId
 ): GroupWriteResult => (
-  isEmptyBucket(bucketKey)
+  isEmptyBucket(bucketId)
     ? { kind: 'clear' }
     : { kind: 'invalid' }
 )
@@ -189,8 +190,8 @@ export const groupWriteValue = (input: {
   field: Field | undefined
   group: Pick<ViewGroup, 'mode'> | undefined
   currentValue: unknown
-  fromKey?: string
-  toKey: string
+  fromBucketId?: ViewGroupBucketId
+  bucketId: ViewGroupBucketId
 }): GroupWriteResult => {
   if (!input.field || !input.group) {
     return { kind: 'invalid' }
@@ -202,29 +203,29 @@ export const groupWriteValue = (input: {
     case 'url':
     case 'email':
     case 'phone':
-      return nextTextValue(input.toKey)
+      return nextTextValue(input.bucketId)
     case 'number':
-      return nextNumberValue(input.toKey)
+      return nextNumberValue(input.bucketId)
     case 'date':
       return nextDateValue({
         field: input.field,
-        bucketKey: input.toKey,
+        bucketId: input.bucketId,
         currentValue: input.currentValue
       })
     case 'select':
-      return nextSelectValue(input.field, input.toKey)
+      return nextSelectValue(input.field, input.bucketId)
     case 'status':
-      return nextStatusValue(input.field, input.group.mode, input.toKey)
+      return nextStatusValue(input.field, input.group.mode, input.bucketId)
     case 'boolean':
-      return nextBooleanValue(input.toKey)
+      return nextBooleanValue(input.bucketId)
     case 'multiSelect':
       return nextMultiSelectValue({
-        bucketKey: input.toKey,
+        bucketId: input.bucketId,
         currentValue: input.currentValue,
-        fromKey: input.fromKey
+        fromBucketId: input.fromBucketId
       })
     case 'asset':
-      return nextPresenceValue(input.toKey)
+      return nextPresenceValue(input.bucketId)
     default:
       return { kind: 'invalid' }
   }

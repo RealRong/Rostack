@@ -1,5 +1,8 @@
 import type { EntityTable } from '@shared/core'
-import { ViewOptions } from '@dataview/core/contracts/viewOptions'
+import type {
+  TableOptions,
+  ViewOptionsByType
+} from '@dataview/core/contracts/viewOptions'
 
 export type { EntityTable } from '@shared/core'
 
@@ -8,12 +11,13 @@ export type ViewId = string
 export type CustomFieldId = string
 export type ViewFilterRuleId = string
 export type ViewSortRuleId = string
+export type ViewGroupBucketId = string
 export const TITLE_FIELD_ID = 'title'
 export type TitleFieldId = typeof TITLE_FIELD_ID
 export type FieldId = CustomFieldId | TitleFieldId
 export type FilterPresetId = string
 export type NodeId = string
-export type ViewType = 'table' | 'gallery' | 'list' | 'kanban' | 'calendar' | (string & {})
+export type ViewType = 'table' | 'gallery' | 'kanban'
 export type SortDirection = 'asc' | 'desc'
 export type BucketSort = 'manual' | 'labelAsc' | 'labelDesc' | 'valueAsc' | 'valueDesc'
 export type FilterOperator = 'eq' | 'neq' | 'contains' | 'in' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists' | 'custom'
@@ -263,31 +267,51 @@ export interface BucketState {
 }
 
 export interface ViewGroup {
-  field: FieldId
+  fieldId: FieldId
   mode: string
   bucketSort: BucketSort
   bucketInterval?: number
   showEmpty?: boolean
-  buckets?: Readonly<Record<string, BucketState>>
+  buckets?: Readonly<Record<ViewGroupBucketId, BucketState>>
 }
 
 export interface ViewDisplay {
   fields: readonly FieldId[]
 }
 
-export interface View {
+export interface ViewBase {
   id: ViewId
-  type: ViewType
   name: string
   search: Search
   filter: Filter
   sort: Sort
-  group?: ViewGroup
   calc: ViewCalc
   display: ViewDisplay
-  options: ViewOptions
   orders: RecordId[]
 }
+
+export interface TableView extends ViewBase {
+  type: 'table'
+  group?: ViewGroup
+  options: TableOptions
+}
+
+export interface GalleryView extends ViewBase {
+  type: 'gallery'
+  group?: ViewGroup
+  options: ViewOptionsByType['gallery']
+}
+
+export interface KanbanView extends ViewBase {
+  type: 'kanban'
+  group: ViewGroup
+  options: ViewOptionsByType['kanban']
+}
+
+export type View =
+  | TableView
+  | GalleryView
+  | KanbanView
 
 export interface DataDoc {
   schemaVersion: number

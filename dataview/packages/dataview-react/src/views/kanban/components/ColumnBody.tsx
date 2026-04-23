@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { DATAVIEW_APPEARANCE_ID_ATTR } from '@dataview/react/dom/appearance'
 import { Button } from '@shared/ui/button'
-import type { ItemId, SectionKey } from '@dataview/engine'
+import type { ItemId, SectionId } from '@dataview/engine'
 import { useKanbanRuntimeContext } from '@dataview/react/views/kanban/KanbanView'
 import { Card } from '@dataview/react/views/kanban/components/Card'
 import { ColumnDropIndicator } from '@dataview/react/views/kanban/components/ColumnDropIndicator'
@@ -24,16 +24,16 @@ const findCardNode = (
 ).find(node => node.getAttribute(DATAVIEW_APPEARANCE_ID_ATTR) === String(itemId))
 
 export const ColumnBody = (props: {
-  sectionKey: SectionKey
+  sectionId: SectionId
 }) => {
   const runtime = useKanbanRuntimeContext()
   const board = useStoreValue(runtime.board)
-  const section = useKeyedStoreValue(runtime.section, props.sectionKey)
-  const visibility = useKeyedStoreValue(runtime.visibility.section, props.sectionKey)
+  const section = useKeyedStoreValue(runtime.section, props.sectionId)
+  const visibility = useKeyedStoreValue(runtime.visibility.section, props.sectionId)
   const bodyRef = useRef<HTMLDivElement | null>(null)
   const measureBodyRef = useMemo(
-    () => runtime.layout.measure.body(props.sectionKey),
-    [props.sectionKey, runtime.layout.measure]
+    () => runtime.layout.measure.body(props.sectionId),
+    [props.sectionId, runtime.layout.measure]
   )
   const setBodyRef = useCallback((node: HTMLDivElement | null) => {
     bodyRef.current = node
@@ -47,7 +47,7 @@ export const ColumnBody = (props: {
   const hiddenCount = visibility?.hidden ?? 0
   const showMoreCount = visibility?.more ?? 0
   const overTarget = runtime.drag.overTarget
-  const sectionOverTarget = overTarget?.sectionKey === section.key
+  const sectionOverTarget = overTarget?.sectionId === section.id
     ? overTarget
     : undefined
   const indicatorTop = (() => {
@@ -120,7 +120,7 @@ export const ColumnBody = (props: {
                 size="sm"
                 className="shrink-0"
                 onClick={() => {
-                  runtime.visibility.showMore(section.key)
+                  runtime.visibility.showMore(section.id)
                 }}
               >
                 {`Show ${showMoreCount} more`}

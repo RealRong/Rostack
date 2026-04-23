@@ -29,7 +29,7 @@ const sameTarget = (
   left?: DropTarget,
   right?: DropTarget
 ) => (
-  left?.sectionKey === right?.sectionKey
+  left?.sectionId === right?.sectionId
   && left?.beforeItemId === right?.beforeItemId
 )
 

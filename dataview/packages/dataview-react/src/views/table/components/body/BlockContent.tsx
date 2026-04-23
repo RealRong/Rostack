@@ -65,7 +65,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
             return (
               <SectionHeader
                 key={block.key}
-                sectionKey={block.sectionKey}
+                sectionId={block.sectionId}
                 measureRef={blockMeasureRef}
               />
             )
@@ -112,7 +112,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
             return (
               <CreateRecordBlock
                 key={block.key}
-                sectionKey={block.sectionKey}
+                sectionId={block.sectionId}
                 measureRef={blockMeasureRef}
               />
             )

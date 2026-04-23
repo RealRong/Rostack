@@ -124,7 +124,7 @@ const writeDraftValue = (
 
 const resolveCreateContext = (input: {
   state: ViewState
-  sectionKey?: string
+  sectionId?: string
   before?: ItemId
 }) => {
   const beforePlacement = input.before === undefined
@@ -134,20 +134,20 @@ const resolveCreateContext = (input: {
     return undefined
   }
 
-  const nextSectionKey = input.sectionKey
-    ?? beforePlacement?.sectionKey
+  const nextSectionId = input.sectionId
+    ?? beforePlacement?.sectionId
     ?? (!input.state.view.group
       ? input.state.sections.ids[0]
       : undefined)
-  if (!nextSectionKey) {
+  if (!nextSectionId) {
     return undefined
   }
 
-  if (beforePlacement && beforePlacement.sectionKey !== nextSectionKey) {
+  if (beforePlacement && beforePlacement.sectionId !== nextSectionId) {
     return undefined
   }
 
-  const section = input.state.sections.get(nextSectionKey)
+  const section = input.state.sections.get(nextSectionId)
   if (!section) {
     return undefined
   }
@@ -157,7 +157,7 @@ const resolveCreateContext = (input: {
   }
 
   return {
-    sectionKey: nextSectionKey,
+    sectionId: nextSectionId,
     beforeRecordId: beforePlacement?.recordId
   }
 }
@@ -219,23 +219,24 @@ const applyFilterDefaults = (input: {
 const applyGroupDefault = (input: {
   state: ViewState
   draft: CreateDraftState
-  sectionKey: string
+  sectionId: string
 }): boolean => {
   const group = input.state.view.group
   const field = input.state.query.group?.field
+  const bucketId = input.state.sections.get(input.sectionId)?.bucket?.id
   if (!group) {
     return true
   }
-  if (!field) {
+  if (!field || !bucketId) {
     return false
   }
 
-  const currentValue = readDraftValue(input.draft, group.field)
+  const currentValue = readDraftValue(input.draft, group.fieldId)
   const next = groupCore.write.value({
     field,
     group,
     currentValue,
-    toKey: input.sectionKey
+    bucketId
   })
   if (next.kind === 'invalid') {
     return false
@@ -244,7 +245,7 @@ const applyGroupDefault = (input: {
   if (next.kind === 'clear') {
     if (currentValue !== undefined) {
       if (
-        fieldApi.id.isTitle(group.field)
+        fieldApi.id.isTitle(group.fieldId)
         && typeof currentValue === 'string'
         && currentValue.length === 0
       ) {
@@ -255,13 +256,13 @@ const applyGroupDefault = (input: {
       return false
     }
 
-    if (fieldApi.id.isTitle(group.field)) {
+    if (fieldApi.id.isTitle(group.fieldId)) {
       input.draft.title = ''
       return true
     }
 
-    delete input.draft.values[group.field]
-    input.draft.clearFieldIds.add(group.field)
+    delete input.draft.values[group.fieldId]
+    input.draft.clearFieldIds.add(group.fieldId)
     return true
   }
 
@@ -269,7 +270,7 @@ const applyGroupDefault = (input: {
     return false
   }
 
-  writeDraftValue(input.draft, group.field, next.value)
+  writeDraftValue(input.draft, group.fieldId, next.value)
   return true
 }
 
@@ -308,7 +309,7 @@ export const createActiveRecordsApi = (input: {
 
     const context = resolveCreateContext({
       state,
-      sectionKey: createInput?.sectionKey,
+      sectionId: createInput?.sectionId,
       before: createInput?.before
     })
     if (!context) {
@@ -326,7 +327,7 @@ export const createActiveRecordsApi = (input: {
     if (!applyGroupDefault({
       state,
       draft,
-      sectionKey: context.sectionKey
+      sectionId: context.sectionId
     })) {
       return undefined
     }

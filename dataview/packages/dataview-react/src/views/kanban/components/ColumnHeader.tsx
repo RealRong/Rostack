@@ -1,4 +1,4 @@
-import type { SectionKey } from '@dataview/engine'
+import type { SectionId } from '@dataview/engine'
 import { FieldValueContent } from '@dataview/react/field/value'
 import { useTranslation } from '@shared/i18n/react'
 import { cn } from '@shared/ui/utils'
@@ -9,12 +9,12 @@ import {
 } from '@shared/react'
 
 export const ColumnHeader = (props: {
-  sectionKey: SectionKey
+  sectionId: SectionId
 }) => {
   const { t } = useTranslation()
   const runtime = useKanbanRuntimeContext()
   const board = useStoreValue(runtime.board)
-  const section = useKeyedStoreValue(runtime.section, props.sectionKey)
+  const section = useKeyedStoreValue(runtime.section, props.sectionId)
   if (!section) {
     return null
   }

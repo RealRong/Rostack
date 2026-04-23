@@ -2,7 +2,7 @@ import type { RefObject } from 'react'
 import type {
   ItemId,
   Section,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import type {
   ItemInteractionRuntime
@@ -37,24 +37,24 @@ export interface KanbanBoard extends KanbanBoardModel {
 
 export interface KanbanViewRuntime extends ItemInteractionRuntime {
   board: store.ReadStore<KanbanBoard>
-  section: store.KeyedReadStore<SectionKey, KanbanSection | undefined>
+  section: store.KeyedReadStore<SectionId, KanbanSection | undefined>
   card: DataViewKanbanModel['card']
   content: DataViewKanbanModel['content']
   layout: {
     columnWidth: number
     columnMinHeight: number
     board: store.ReadStore<BoardLayout | null>
-    body: store.KeyedReadStore<SectionKey, Rect | undefined>
+    body: store.KeyedReadStore<SectionId, Rect | undefined>
     measure: {
       card: (id: ItemId) => (node: HTMLElement | null) => void
-      body: (sectionKey: SectionKey) => (node: HTMLDivElement | null) => void
+      body: (sectionId: SectionId) => (node: HTMLDivElement | null) => void
     }
   }
   scrollRef: RefObject<HTMLDivElement | null>
   drag: ReturnType<typeof import('@dataview/react/views/kanban/drag').useDrag>
   visibility: {
-    section: store.KeyedReadStore<SectionKey, KanbanVisibility | undefined>
-    showMore: (sectionKey: SectionKey) => void
+    section: store.KeyedReadStore<SectionId, KanbanVisibility | undefined>
+    showMore: (sectionId: SectionId) => void
     reset: () => void
   }
 }

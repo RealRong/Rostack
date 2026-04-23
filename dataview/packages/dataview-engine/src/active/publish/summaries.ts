@@ -11,7 +11,7 @@ import type {
   View
 } from '@dataview/core/contracts'
 import type {
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 import type {
   SummaryPhaseState as SummaryState
@@ -30,38 +30,38 @@ const readCalcFields = (
 export const publishSummaries = (input: {
   summary: SummaryState
   previousSummary?: SummaryState
-  previous?: ReadonlyMap<SectionKey, CalculationCollection>
+  previous?: ReadonlyMap<SectionId, CalculationCollection>
   fieldsById: ReadonlyMap<FieldId, Field>
   view: View
-}): ReadonlyMap<SectionKey, CalculationCollection> => {
+}): ReadonlyMap<SectionId, CalculationCollection> => {
   const calcFields = readCalcFields(input.view)
-  const sectionKeys = [...input.summary.bySection.keys()]
+  const sectionIds = [...input.summary.bySection.keys()]
   const previousKeys = input.previous
     ? [...input.previous.keys()]
     : undefined
 
   if (!calcFields.length) {
     return buildEmptyPublishedSummaries(
-      sectionKeys,
+      sectionIds,
       input.previous
     )
   }
 
-  const next = new Map<SectionKey, CalculationCollection>()
+  const next = new Map<SectionId, CalculationCollection>()
   let sameAsPrevious = Boolean(
     input.previous
     && input.previous.size === input.summary.bySection.size
     && previousKeys
-    && equal.sameOrder(previousKeys, sectionKeys)
+    && equal.sameOrder(previousKeys, sectionIds)
   )
 
-  input.summary.bySection.forEach((states, sectionKey) => {
-    const previousCollection = input.previousSummary?.bySection.get(sectionKey) === states
-      ? input.previous?.get(sectionKey)
+  input.summary.bySection.forEach((states, sectionId) => {
+    const previousCollection = input.previousSummary?.bySection.get(sectionId) === states
+      ? input.previous?.get(sectionId)
       : undefined
 
     if (previousCollection) {
-      next.set(sectionKey, previousCollection)
+      next.set(sectionId, previousCollection)
       return
     }
 
@@ -80,8 +80,8 @@ export const publishSummaries = (input: {
     })
 
     const collection = createSummaryCollection(byField)
-    next.set(sectionKey, collection)
-    if (sameAsPrevious && input.previous?.get(sectionKey) !== collection) {
+    next.set(sectionId, collection)
+    if (sameAsPrevious && input.previous?.get(sectionId) !== collection) {
       sameAsPrevious = false
     }
   })

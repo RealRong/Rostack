@@ -188,7 +188,11 @@ const createTableView = (input = {}) => {
     display: {
       fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
     },
-    options: {},
+    options: {
+      widths: {},
+      showVerticalLines: true,
+      wrap: false
+    },
     orders: [],
     ...rest
   }

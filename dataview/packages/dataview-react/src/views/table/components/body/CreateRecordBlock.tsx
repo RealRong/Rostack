@@ -20,7 +20,7 @@ import type { CreateRecordOpenResult } from '@dataview/runtime'
 const MAX_OPEN_ATTEMPTS = 8
 
 export interface CreateRecordBlockProps {
-  sectionKey: string
+  sectionId: string
   measureRef?: (node: HTMLDivElement | null) => void
 }
 
@@ -90,13 +90,13 @@ const View = (props: CreateRecordBlockProps) => {
     dataView.workflow.createRecord.create({
       ownerViewId,
       create: () => dataView.engine.active.records.create({
-        sectionKey: props.sectionKey
+        sectionId: props.sectionId
       }),
       open: (recordId, attempt) => openCreatedRecord(recordId, attempt),
       retryFrames: MAX_OPEN_ATTEMPTS,
       onFailure: table.focus
     })
-  }, [dataView.engine.active.records, dataView.workflow.createRecord, dataView.model.table.view, openCreatedRecord, props.sectionKey, table])
+  }, [dataView.engine.active.records, dataView.workflow.createRecord, dataView.model.table.view, openCreatedRecord, props.sectionId, table])
 
   return (
     <div
@@ -136,7 +136,7 @@ const same = (
   left: CreateRecordBlockProps,
   right: CreateRecordBlockProps
 ) => (
-  left.sectionKey === right.sectionKey
+  left.sectionId === right.sectionId
   && left.measureRef === right.measureRef
 )
 

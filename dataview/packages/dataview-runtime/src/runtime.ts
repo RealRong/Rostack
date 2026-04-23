@@ -47,7 +47,7 @@ const bindInlineSessionToView = (input: {
     read: {
       placement: store.KeyedReadStore<number, {
         recordId: string
-        sectionKey: string
+        sectionId: string
       } | undefined>
     }
   }

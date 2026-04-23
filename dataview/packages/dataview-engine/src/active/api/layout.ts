@@ -101,21 +101,27 @@ export const createSummaryApi = (
 export const createTableApi = (input: {
   base: ActiveViewContext
 }): ActiveViewApi['table'] => ({
-  setColumnWidths: widths => input.base.patchView(view => ({
-    options: viewApi.layout.table.patch(view.options, {
-      widths
-    })
-  })),
-  setVerticalLines: value => input.base.patchView(view => ({
-    options: viewApi.layout.table.patch(view.options, {
-      showVerticalLines: value
-    })
-  })),
-  setWrap: value => input.base.patchView(view => ({
-    options: viewApi.layout.table.patch(view.options, {
-      wrap: value
-    })
-  })),
+  setColumnWidths: widths => input.base.patchView(view => view.type === 'table'
+    ? {
+        options: viewApi.layout.table.patch(view.options, {
+          widths
+        })
+      }
+    : undefined),
+  setVerticalLines: value => input.base.patchView(view => view.type === 'table'
+    ? {
+        options: viewApi.layout.table.patch(view.options, {
+          showVerticalLines: value
+        })
+      }
+    : undefined),
+  setWrap: value => input.base.patchView(view => view.type === 'table'
+    ? {
+        options: viewApi.layout.table.patch(view.options, {
+          wrap: value
+        })
+      }
+    : undefined),
   insertFieldLeft: (anchorFieldId, fieldInput) => {
     return insertField(input.base, anchorFieldId, 'left', fieldInput)
   },
@@ -127,61 +133,77 @@ export const createTableApi = (input: {
 export const createGalleryApi = (
   base: ActiveViewContext
 ): ActiveViewApi['gallery'] => ({
-  setWrap: value => base.patchView(view => ({
-    options: viewApi.layout.gallery.patch(view.options, {
-      card: {
-        wrap: value
+  setWrap: value => base.patchView(view => view.type === 'gallery'
+    ? {
+        options: viewApi.layout.gallery.patch(view.options, {
+          card: {
+            wrap: value
+          }
+        })
       }
-    })
-  })),
-  setSize: value => base.patchView(view => ({
-    options: viewApi.layout.gallery.patch(view.options, {
-      card: {
-        size: value
+    : undefined),
+  setSize: value => base.patchView(view => view.type === 'gallery'
+    ? {
+        options: viewApi.layout.gallery.patch(view.options, {
+          card: {
+            size: value
+          }
+        })
       }
-    })
-  })),
-  setLayout: value => base.patchView(view => ({
-    options: viewApi.layout.gallery.patch(view.options, {
-      card: {
-        layout: value
+    : undefined),
+  setLayout: value => base.patchView(view => view.type === 'gallery'
+    ? {
+        options: viewApi.layout.gallery.patch(view.options, {
+          card: {
+            layout: value
+          }
+        })
       }
-    })
-  }))
+    : undefined)
 })
 
 export const createKanbanApi = (
   base: ActiveViewContext
 ): ActiveViewApi['kanban'] => ({
-  setWrap: value => base.patchView(view => ({
-    options: viewApi.layout.kanban.patch(view.options, {
-      card: {
-        wrap: value
+  setWrap: value => base.patchView(view => view.type === 'kanban'
+    ? {
+        options: viewApi.layout.kanban.patch(view.options, {
+          card: {
+            wrap: value
+          }
+        })
       }
-    })
-  })),
-  setSize: value => base.patchView(view => ({
-    options: viewApi.layout.kanban.patch(view.options, {
-      card: {
-        size: value
+    : undefined),
+  setSize: value => base.patchView(view => view.type === 'kanban'
+    ? {
+        options: viewApi.layout.kanban.patch(view.options, {
+          card: {
+            size: value
+          }
+        })
       }
-    })
-  })),
-  setLayout: value => base.patchView(view => ({
-    options: viewApi.layout.kanban.patch(view.options, {
-      card: {
-        layout: value
+    : undefined),
+  setLayout: value => base.patchView(view => view.type === 'kanban'
+    ? {
+        options: viewApi.layout.kanban.patch(view.options, {
+          card: {
+            layout: value
+          }
+        })
       }
-    })
-  })),
-  setFillColor: value => base.patchView(view => ({
-    options: viewApi.layout.kanban.patch(view.options, {
-      fillColumnColor: value
-    })
-  })),
-  setCardsPerColumn: value => base.patchView(view => ({
-    options: viewApi.layout.kanban.patch(view.options, {
-      cardsPerColumn: value
-    })
-  }))
+    : undefined),
+  setFillColor: value => base.patchView(view => view.type === 'kanban'
+    ? {
+        options: viewApi.layout.kanban.patch(view.options, {
+          fillColumnColor: value
+        })
+      }
+    : undefined),
+  setCardsPerColumn: value => base.patchView(view => view.type === 'kanban'
+    ? {
+        options: viewApi.layout.kanban.patch(view.options, {
+          cardsPerColumn: value
+        })
+      }
+    : undefined)
 })

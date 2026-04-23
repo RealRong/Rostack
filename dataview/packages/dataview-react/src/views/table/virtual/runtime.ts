@@ -184,10 +184,10 @@ const sameWindowBlock = (
         && left.scopeId === right.scopeId
     case 'create-record':
       return right.kind === 'create-record'
-        && left.sectionKey === right.sectionKey
+        && left.sectionId === right.sectionId
     case 'section-header':
       return right.kind === 'section-header'
-        && left.sectionKey === right.sectionKey
+        && left.sectionId === right.sectionId
   }
 }
 
@@ -277,11 +277,11 @@ const createTableLayoutStateStore = (
       return null
     }
 
-    const nextSections = grid.sections.ids.flatMap(sectionKey => {
-      const section = grid.sections.get(sectionKey)
+    const nextSections = grid.sections.ids.flatMap(sectionId => {
+      const section = grid.sections.get(sectionId)
       return section
         ? [{
-            key: section.key,
+            key: section.id,
             collapsed: section.collapsed,
             itemIds: section.itemIds
           }] as const

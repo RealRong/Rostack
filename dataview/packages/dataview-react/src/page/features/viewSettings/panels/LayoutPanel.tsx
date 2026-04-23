@@ -76,8 +76,8 @@ export const LayoutPanel = () => {
     ? engine.active
     : undefined
   const fieldMap = new Map(settings.fields.map(field => [field.id, field] as const))
-  const groupField = view?.group?.field
-    ? fieldMap.get(view.group.field)
+  const groupField = view?.group?.fieldId
+    ? fieldMap.get(view.group.fieldId)
     : undefined
   const canFillKanbanColumns = usesOptionGroupingColors(groupField)
   const cardsPerColumnOptions = KANBAN_CARDS_PER_COLUMN_OPTIONS.map(value => ({
@@ -103,20 +103,20 @@ export const LayoutPanel = () => {
           kind: 'toggle',
           key: 'showVerticalLines',
           label: t(meta.ui.viewSettings.layoutPanel.showVerticalLines),
-          checked: view.options.table.showVerticalLines,
+          checked: view.options.showVerticalLines,
           indicator: 'switch',
           onSelect: () => {
-            viewApi.table.setVerticalLines(!view.options.table.showVerticalLines)
+            viewApi.table.setVerticalLines(!view.options.showVerticalLines)
           }
         },
         {
           kind: 'toggle',
           key: 'wrap',
           label: t(meta.ui.viewSettings.layoutPanel.wrap),
-          checked: view.options.table.wrap,
+          checked: view.options.wrap,
           indicator: 'switch',
           onSelect: () => {
-            viewApi.table.setWrap(!view.options.table.wrap)
+            viewApi.table.setWrap(!view.options.wrap)
           }
         }
       ]
@@ -129,16 +129,16 @@ export const LayoutPanel = () => {
           key: 'wrap',
           label: t(meta.ui.viewSettings.layoutPanel.wrap),
           checked: view.type === 'gallery'
-            ? view.options.gallery.card.wrap
-            : view.options.kanban.card.wrap,
+            ? view.options.card.wrap
+            : view.options.card.wrap,
           indicator: 'switch',
           onSelect: () => {
             if (view.type === 'gallery') {
-              viewApi.gallery.setWrap(!view.options.gallery.card.wrap)
+              viewApi.gallery.setWrap(!view.options.card.wrap)
               return
             }
 
-            viewApi.kanban.setWrap(!view.options.kanban.card.wrap)
+            viewApi.kanban.setWrap(!view.options.card.wrap)
           }
         },
         buildChoiceSubmenuItem({
@@ -146,12 +146,12 @@ export const LayoutPanel = () => {
           label: t(meta.ui.viewSettings.layoutPanel.cardSize),
           suffix: t(meta.ui.viewSettings.layoutPanel.cardSizeOption(
             view.type === 'gallery'
-              ? view.options.gallery.card.size
-              : view.options.kanban.card.size
+              ? view.options.card.size
+              : view.options.card.size
           )),
           value: view.type === 'gallery'
-            ? view.options.gallery.card.size
-            : view.options.kanban.card.size,
+            ? view.options.card.size
+            : view.options.card.size,
           options: cardSizeOptions.map(option => ({
             id: option.value,
             label: option.label
@@ -173,12 +173,12 @@ export const LayoutPanel = () => {
           label: t(meta.ui.viewSettings.layoutPanel.cardLayout),
           suffix: t(meta.ui.viewSettings.layoutPanel.cardLayoutOption(
             view.type === 'gallery'
-              ? view.options.gallery.card.layout
-              : view.options.kanban.card.layout
+              ? view.options.card.layout
+              : view.options.card.layout
           )),
           value: view.type === 'gallery'
-            ? view.options.gallery.card.layout
-            : view.options.kanban.card.layout,
+            ? view.options.card.layout
+            : view.options.card.layout,
           options: cardLayoutOptions.map(option => ({
             id: option.value,
             label: option.label
@@ -205,10 +205,10 @@ export const LayoutPanel = () => {
           label: t(meta.ui.viewSettings.layoutPanel.cardsPerColumn),
           suffix: t(
             meta.ui.viewSettings.layoutPanel.cardsPerColumnOption(
-              view.options.kanban.cardsPerColumn
+              view.options.cardsPerColumn
             )
           ),
-          value: String(view.options.kanban.cardsPerColumn),
+          value: String(view.options.cardsPerColumn),
           options: cardsPerColumnOptions.map(option => ({
             id: option.value,
             label: option.label
@@ -225,11 +225,11 @@ export const LayoutPanel = () => {
           kind: 'toggle',
           key: 'fillColumnColor',
           label: t(meta.ui.viewSettings.layoutPanel.fillColumnColor),
-          checked: view.options.kanban.fillColumnColor,
+          checked: view.options.fillColumnColor,
           disabled: !canFillKanbanColumns,
           indicator: 'switch',
           onSelect: () => {
-            viewApi.kanban.setFillColor(!view.options.kanban.fillColumnColor)
+            viewApi.kanban.setFillColor(!view.options.fillColumnColor)
           }
         }
       ]

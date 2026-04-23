@@ -20,7 +20,7 @@ import type {
   ItemList,
   ItemPlacement,
   Section,
-  SectionKey,
+  SectionId,
   SectionList
 } from '@dataview/engine'
 
@@ -32,8 +32,8 @@ export interface ListedEntitySource<Key, Value> extends EntitySource<Key, Value>
   list: store.ReadStore<readonly Value[]>
 }
 
-export interface SectionSource extends store.KeyedReadStore<SectionKey, Section | undefined> {
-  ids: store.ReadStore<readonly SectionKey[]>
+export interface SectionSource extends store.KeyedReadStore<SectionId, Section | undefined> {
+  ids: store.ReadStore<readonly SectionId[]>
   list: store.ReadStore<SectionList>
 }
 
@@ -41,7 +41,7 @@ export interface ItemSource {
   ids: store.ReadStore<readonly ItemId[]>
   read: {
     recordId: store.KeyedReadStore<ItemId, RecordId | undefined>
-    sectionKey: store.KeyedReadStore<ItemId, SectionKey | undefined>
+    sectionId: store.KeyedReadStore<ItemId, SectionId | undefined>
     placement: store.KeyedReadStore<ItemId, ItemPlacement | undefined>
   }
   list: store.ReadStore<ItemList>
@@ -70,7 +70,7 @@ export interface ActiveSource {
   }
   items: ItemSource
   sections: SectionSource
-  summaries: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
+  summaries: store.KeyedReadStore<SectionId, CalculationCollection | undefined>
   fields: {
     all: EntitySource<FieldId, Field>
     custom: EntitySource<FieldId, CustomField>

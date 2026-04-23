@@ -46,10 +46,10 @@ export const dropTargetFromPoint = (
   const beforeCard = column.cards.find(card => point.y < card.rect.top + card.rect.height / 2)
   return beforeCard
     ? {
-        sectionKey: column.key,
+        sectionId: column.key,
         beforeItemId: beforeCard.id
       }
     : {
-        sectionKey: column.key
+        sectionId: column.key
       }
 }

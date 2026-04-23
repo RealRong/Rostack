@@ -7,17 +7,17 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import type {
-  SectionKey,
+  SectionId,
   ViewSummaries
 } from '@dataview/engine/contracts/shared'
 
 export interface SummaryStateShape {
-  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>
+  bySection: ReadonlyMap<SectionId, ReadonlyMap<FieldId, FieldReducerState>>
 }
 
 export const EMPTY_SECTION_SUMMARY_AGGREGATES = new Map<FieldId, FieldReducerState>()
 
-const EMPTY_SUMMARY_BY_SECTION = new Map<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>()
+const EMPTY_SUMMARY_BY_SECTION = new Map<SectionId, ReadonlyMap<FieldId, FieldReducerState>>()
 
 export const EMPTY_SUMMARY_STATE: SummaryStateShape = {
   bySection: EMPTY_SUMMARY_BY_SECTION
@@ -33,51 +33,51 @@ export const createSummaryCollection = (
 export const EMPTY_SUMMARY_COLLECTION = createSummaryCollection(new Map())
 
 const sameEmptySectionMap = <T,>(
-  previous: ReadonlyMap<SectionKey, T> | undefined,
-  sectionKeys: readonly SectionKey[],
+  previous: ReadonlyMap<SectionId, T> | undefined,
+  sectionIds: readonly SectionId[],
   emptyValue: T
 ) => Boolean(
   previous
-  && previous.size === sectionKeys.length
-  && [...previous.keys()].every((sectionKey, index) => (
-    sectionKey === sectionKeys[index]
-    && previous.get(sectionKey) === emptyValue
+  && previous.size === sectionIds.length
+  && [...previous.keys()].every((sectionId, index) => (
+    sectionId === sectionIds[index]
+    && previous.get(sectionId) === emptyValue
   ))
 )
 
 const createEmptySectionMap = <T,>(
-  sectionKeys: readonly SectionKey[],
+  sectionIds: readonly SectionId[],
   value: T
-): ReadonlyMap<SectionKey, T> => {
-  const map = new Map<SectionKey, T>()
+): ReadonlyMap<SectionId, T> => {
+  const map = new Map<SectionId, T>()
 
-  sectionKeys.forEach(sectionKey => {
-    map.set(sectionKey, value)
+  sectionIds.forEach(sectionId => {
+    map.set(sectionId, value)
   })
 
   return map
 }
 
 export const buildEmptySummaryState = (
-  sectionKeys: readonly SectionKey[],
+  sectionIds: readonly SectionId[],
   previous?: SummaryStateShape
 ): SummaryStateShape => {
-  if (sameEmptySectionMap(previous?.bySection, sectionKeys, EMPTY_SECTION_SUMMARY_AGGREGATES)) {
+  if (sameEmptySectionMap(previous?.bySection, sectionIds, EMPTY_SECTION_SUMMARY_AGGREGATES)) {
     return previous as SummaryStateShape
   }
 
   return {
-    bySection: createEmptySectionMap(sectionKeys, EMPTY_SECTION_SUMMARY_AGGREGATES)
+    bySection: createEmptySectionMap(sectionIds, EMPTY_SECTION_SUMMARY_AGGREGATES)
   }
 }
 
 export const buildEmptyPublishedSummaries = (
-  sectionKeys: readonly SectionKey[],
+  sectionIds: readonly SectionId[],
   previous?: ViewSummaries
 ): ViewSummaries => {
-  if (sameEmptySectionMap(previous, sectionKeys, EMPTY_SUMMARY_COLLECTION)) {
+  if (sameEmptySectionMap(previous, sectionIds, EMPTY_SUMMARY_COLLECTION)) {
     return previous as ViewSummaries
   }
 
-  return createEmptySectionMap(sectionKeys, EMPTY_SUMMARY_COLLECTION)
+  return createEmptySectionMap(sectionIds, EMPTY_SUMMARY_COLLECTION)
 }

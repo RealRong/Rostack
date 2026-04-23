@@ -2,7 +2,7 @@ import type { Rect } from '@shared/dom'
 import { collection } from '@shared/core'
 import type {
   ItemId,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import type {
   GalleryLayoutCache
@@ -11,7 +11,7 @@ import type {
 type GalleryCard = GalleryLayoutCache['cards'][number]
 
 export interface GalleryDropTarget {
-  sectionKey: SectionKey
+  sectionId: SectionId
   anchorId: ItemId
   side: 'left' | 'right'
   beforeItemId?: ItemId
@@ -25,7 +25,7 @@ export interface GalleryDropTarget {
 const EDGE_OFFSET = 8
 
 interface RowHitLayout {
-  sectionKey: SectionKey
+  sectionId: SectionId
   top: number
   bottom: number
   cards: readonly GalleryCard[]
@@ -80,7 +80,7 @@ export const dropTargetFromPoint = (
   }
 
   const cardsByRowKey = cards.reduce<Map<string, GalleryCard[]>>((map, card) => {
-    const key = `${card.sectionKey}\u0000${card.rowIndex}`
+    const key = `${card.sectionId}\u0000${card.rowIndex}`
     const current = map.get(key)
     if (current) {
       current.push(card)
@@ -91,13 +91,13 @@ export const dropTargetFromPoint = (
     return map
   }, new Map())
   const rows = layout.rows.flatMap<RowHitLayout>(row => {
-    const rowCards = cardsByRowKey.get(`${row.sectionKey}\u0000${row.rowIndex}`)
+    const rowCards = cardsByRowKey.get(`${row.sectionId}\u0000${row.rowIndex}`)
     if (!rowCards?.length) {
       return []
     }
 
     return [{
-      sectionKey: row.sectionKey,
+      sectionId: row.sectionId,
       top: row.top,
       bottom: row.top + row.height,
       cards: rowCards
@@ -116,7 +116,7 @@ export const dropTargetFromPoint = (
 
   if (point.x <= firstCard.rect.left) {
     return {
-      sectionKey: row.sectionKey,
+      sectionId: row.sectionId,
       anchorId: firstCard.id,
       side: 'left',
       beforeItemId: firstCard.id,
@@ -143,7 +143,7 @@ export const dropTargetFromPoint = (
       const side = point.x < centerX(card.rect) ? 'left' : 'right'
 
       return {
-        sectionKey: row.sectionKey,
+        sectionId: row.sectionId,
         anchorId: card.id,
         side,
         beforeItemId: side === 'left' ? card.id : nextCard?.id,
@@ -160,7 +160,7 @@ export const dropTargetFromPoint = (
     const nextRowCard = row.cards[index + 1]
     if (nextRowCard && point.x > card.rect.right && point.x < nextRowCard.rect.left) {
       return {
-        sectionKey: row.sectionKey,
+        sectionId: row.sectionId,
         anchorId: nextRowCard.id,
         side: 'left',
         beforeItemId: nextRowCard.id,
@@ -179,7 +179,7 @@ export const dropTargetFromPoint = (
     : undefined
 
   return {
-    sectionKey: row.sectionKey,
+    sectionId: row.sectionId,
     anchorId: lastCard.id,
     side: 'right',
     beforeItemId: nextVisibleCard?.id,

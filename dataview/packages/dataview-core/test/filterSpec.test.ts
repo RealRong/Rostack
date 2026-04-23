@@ -156,12 +156,14 @@ test('option bucket filter specs share bucket lookup semantics', () => {
 
 test('fixed presets still clear editable value and keep none preview fallback', () => {
   const nextRule = filter.rule.applyPreset(textField, {
+    id: 'filter_rule_1',
     fieldId: textField.id,
     presetId: 'contains',
     value: 'hello'
   }, 'exists_true')
 
   assert.deepEqual(nextRule, {
+    id: 'filter_rule_1',
     fieldId: textField.id,
     presetId: 'exists_true'
   })

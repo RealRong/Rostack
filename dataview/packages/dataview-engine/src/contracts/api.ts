@@ -46,7 +46,7 @@ export type {
   MoveTarget,
   Section,
   SectionBucket,
-  SectionKey,
+  SectionId,
   SectionList,
   ViewFieldRef,
   ViewRecords,

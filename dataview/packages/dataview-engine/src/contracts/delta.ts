@@ -5,7 +5,7 @@ import type {
 } from '@dataview/core/contracts'
 import type {
   ItemId,
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 
 export interface CollectionDelta<Key> {
@@ -36,9 +36,9 @@ export interface ActiveDelta {
     all?: CollectionDelta<FieldId>
     custom?: CollectionDelta<FieldId>
   }
-  sections?: CollectionDelta<SectionKey>
+  sections?: CollectionDelta<SectionId>
   items?: CollectionDelta<ItemId>
-  summaries?: CollectionDelta<SectionKey>
+  summaries?: CollectionDelta<SectionId>
 }
 
 export interface EngineDelta {

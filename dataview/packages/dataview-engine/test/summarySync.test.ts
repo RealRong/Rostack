@@ -66,32 +66,32 @@ const createGroupedMembershipState = (
   const order = Object.keys(sections)
   const keysByRecord = new Map<string, string[]>()
 
-  order.forEach(sectionKey => {
-    sections[sectionKey]?.forEach(recordId => {
+  order.forEach(sectionId => {
+    sections[sectionId]?.forEach(recordId => {
       const keys = keysByRecord.get(recordId) ?? []
       if (!keysByRecord.has(recordId)) {
         keysByRecord.set(recordId, keys)
       }
-      keys.push(sectionKey)
+      keys.push(sectionId)
     })
   })
 
   return {
     sections: createPartition({
       order,
-      byKey: new Map(order.map(sectionKey => [
-        sectionKey,
+      byKey: new Map(order.map(sectionId => [
+        sectionId,
         createSelectionFromIds({
           rows,
-          ids: sections[sectionKey] ?? []
+          ids: sections[sectionId] ?? []
         })
       ] as const)),
       keysById: keysByRecord
     }),
-    meta: new Map(order.map(sectionKey => [
-      sectionKey,
+    meta: new Map(order.map(sectionId => [
+      sectionId,
       {
-        label: sectionKey as never
+        label: sectionId as never
       }
     ] as const))
   }
@@ -119,7 +119,11 @@ const createView = (
   display: {
     fields: ['title', FIELD_STATUS, FIELD_POINTS]
   },
-  options: {},
+  options: {
+    widths: {},
+    showVerticalLines: true,
+    wrap: false
+  },
   orders: [],
   ...input
 })
@@ -279,7 +283,7 @@ test('summary stage syncs when membership changes without record transitions', (
   })
   const view = createView({
     group: {
-      field: FIELD_STATUS,
+      fieldId: FIELD_STATUS,
       mode: 'option',
       bucketSort: 'manual'
     }
@@ -339,7 +343,7 @@ test('summary stage reuses previous state when only section meta changes', () =>
   }
   const view = createView({
     group: {
-      field: FIELD_STATUS,
+      fieldId: FIELD_STATUS,
       mode: 'option',
       bucketSort: 'manual'
     }

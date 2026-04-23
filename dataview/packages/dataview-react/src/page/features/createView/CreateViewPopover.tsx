@@ -20,7 +20,7 @@ export const CreateViewPopover = () => {
 
     const viewId = dataView.engine.views.create({
       name: t(item.label),
-      type: item.type
+      type: item.type as 'table' | 'gallery' | 'kanban'
     })
     if (!viewId) {
       return

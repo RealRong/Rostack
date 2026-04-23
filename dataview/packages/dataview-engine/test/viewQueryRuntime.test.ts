@@ -135,7 +135,11 @@ const createView = (input = {}) => {
     display: {
       fields: ['title', FIELD_STATUS, FIELD_POINTS]
     },
-    options: {},
+    options: {
+      widths: {},
+      showVerticalLines: true,
+      wrap: false
+    },
     orders: [],
     ...rest
   }

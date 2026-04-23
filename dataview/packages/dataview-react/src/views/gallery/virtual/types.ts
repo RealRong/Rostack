@@ -10,7 +10,7 @@ import type {
 } from '@dataview/react/virtual'
 
 export interface GalleryRowLayout {
-  sectionKey: Section['key']
+  sectionId: Section['id']
   rowIndex: number
   top: number
   height: number
@@ -19,7 +19,7 @@ export interface GalleryRowLayout {
 
 export interface GalleryCardLayout {
   id: ItemId
-  sectionKey: Section['key']
+  sectionId: Section['id']
   rowIndex: number
   columnIndex: number
   rect: Rect
@@ -27,7 +27,7 @@ export interface GalleryCardLayout {
 
 export interface GallerySectionHeaderBlock extends VirtualBlock {
   kind: 'section-header'
-  section: Pick<Section, 'key' | 'label' | 'color'>
+  section: Pick<Section, 'id' | 'label' | 'color'>
 }
 
 export interface GalleryRowBlock extends VirtualBlock {
@@ -37,7 +37,7 @@ export interface GalleryRowBlock extends VirtualBlock {
 
 export interface GallerySectionEmptyBlock extends VirtualBlock {
   kind: 'section-empty'
-  section: Pick<Section, 'key' | 'label'>
+  section: Pick<Section, 'id' | 'label'>
 }
 
 export type GalleryBlock =

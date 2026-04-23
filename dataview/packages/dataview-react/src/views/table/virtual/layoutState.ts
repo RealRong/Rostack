@@ -1,11 +1,11 @@
 import type {
   ItemId,
-  SectionKey
+  SectionId
 } from '@dataview/engine'
 import { equal } from '@shared/core'
 
 export interface TableLayoutSectionState {
-  key: SectionKey
+  key: SectionId
   collapsed: boolean
   itemIds: readonly ItemId[]
 }

@@ -50,10 +50,10 @@ const EMPTY_BUCKET_KEYS: readonly BucketKey[] = []
 const EMPTY_RECORD_IDS: readonly RecordId[] = []
 
 export const createBucketSpec = (
-  input: Pick<ViewGroup, 'field'>
+  input: Pick<ViewGroup, 'fieldId'>
     & Partial<Pick<ViewGroup, 'mode' | 'bucketInterval'>>
 ): BucketSpec => ({
-  fieldId: input.field,
+  fieldId: input.fieldId,
   ...(input.mode === undefined ? {} : { mode: input.mode }),
   ...(input.bucketInterval === undefined ? {} : { interval: input.bucketInterval })
 })

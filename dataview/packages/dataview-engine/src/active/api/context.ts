@@ -61,7 +61,7 @@ export const createActiveContext = (
   const resolveGroupField = (
     currentView = view()
   ): Field | undefined => {
-    const fieldId = currentView?.group?.field
+    const fieldId = currentView?.group?.fieldId
     return fieldId
       ? reader.fields.get(fieldId)
       : undefined

@@ -1,13 +1,15 @@
 import type {
   Field,
   FieldId,
-  ViewOptions,
   ViewType
 } from '@dataview/core/contracts'
+import type {
+  TableOptions,
+  ViewOptionsByType
+} from '@dataview/core/contracts/viewOptions'
 import { collection, json, string } from '@shared/core'
 import { normalizeGalleryOptions } from '@dataview/core/view/gallery'
 import { normalizeKanbanOptions } from '@dataview/core/view/kanban'
-import { createDefaultViewOptions } from '@dataview/core/view/options'
 
 export interface NormalizeViewOptionsContext {
   type?: ViewType
@@ -17,7 +19,7 @@ export interface NormalizeViewOptionsContext {
 const normalizeWidths = (
   value: unknown,
   validFieldIds?: ReadonlySet<FieldId>
-): ViewOptions['table']['widths'] => {
+): TableOptions['widths'] => {
   if (!json.isJsonObject(value)) {
     return {}
   }
@@ -53,24 +55,40 @@ const normalizeWrap = (value: unknown) => (
     : false
 )
 
-export const normalizeViewOptions = (
+export function normalizeViewOptions (
+  options: unknown,
+  context: { type: 'table'; fields?: readonly Field[] }
+): TableOptions
+export function normalizeViewOptions (
+  options: unknown,
+  context: { type: 'gallery'; fields?: readonly Field[] }
+): ViewOptionsByType['gallery']
+export function normalizeViewOptions (
+  options: unknown,
+  context: { type: 'kanban'; fields?: readonly Field[] }
+): ViewOptionsByType['kanban']
+export function normalizeViewOptions (
   options: unknown,
   context: NormalizeViewOptionsContext = {}
-): ViewOptions => {
+): ViewOptionsByType[ViewType] {
   const root = json.isJsonObject(options) ? options : undefined
-  const defaultOptions = createDefaultViewOptions(context.type ?? 'table', context.fields ?? [])
   const validFieldIds = collection.presentSet(
     context.fields?.map(field => field.id)
   )
-  const table = json.isJsonObject(root?.table) ? root.table : undefined
+  const type = context.type ?? 'table'
 
-  return {
-    table: {
-      widths: normalizeWidths(table?.widths, validFieldIds),
-      showVerticalLines: normalizeShowVerticalLines(table?.showVerticalLines),
-      wrap: normalizeWrap(table?.wrap)
-    },
-    gallery: normalizeGalleryOptions(root?.gallery),
-    kanban: normalizeKanbanOptions(root?.kanban)
+  switch (type) {
+    case 'table': {
+      const table = json.isJsonObject(root) ? root : undefined
+      return {
+        widths: normalizeWidths(table?.widths, validFieldIds),
+        showVerticalLines: normalizeShowVerticalLines(table?.showVerticalLines),
+        wrap: normalizeWrap(table?.wrap)
+      }
+    }
+    case 'gallery':
+      return normalizeGalleryOptions(root)
+    case 'kanban':
+      return normalizeKanbanOptions(root)
   }
 }

@@ -181,7 +181,7 @@ const createMultiViewDocument = () => {
           id: VIEW_BOARD,
           name: 'Board',
           group: {
-            field: FIELD_STATUS,
+            fieldId: FIELD_STATUS,
             mode: 'option',
             bucketSort: 'manual',
             showEmpty: true
@@ -275,7 +275,7 @@ const moveRecordOrder = (engine, recordIds, beforeRecordId) => {
   }
 
   engine.active.items.move(itemIds, {
-    section,
+    sectionId: section,
     ...(beforeItemId ? { before: beforeItemId } : {})
   })
 }
@@ -285,9 +285,9 @@ const openView = (engine, viewId) => {
   return engine.active
 }
 
-const viewSectionRecordIds = (engine, sectionKey) => {
+const viewSectionRecordIds = (engine, sectionId) => {
   const state = readViewState(engine)
-  return [...(state?.sections.get(sectionKey)?.recordIds ?? [])]
+  return [...(state?.sections.get(sectionId)?.recordIds ?? [])]
 }
 
 const assertPublishedItemsMatchSections = engine => {
@@ -302,7 +302,7 @@ const assertPublishedItemsMatchSections = engine => {
     assert.equal(
       section.itemIds.length,
       section.recordIds.length,
-      `section ${section.key} should publish one item per record`
+      `section ${section.id} should publish one item per record`
     )
   })
   assert.deepEqual(state?.items.ids, visibleSectionItems)
@@ -319,13 +319,13 @@ const viewSnapshot = engine => {
       visible: [...(state?.records.visible ?? [])]
     },
     sections: (state?.sections.all ?? []).map(section => ({
-      key: section.key,
+      id: section.id,
       collapsed: section.collapsed,
-      recordIds: viewSectionRecordIds(engine, section.key)
+      recordIds: viewSectionRecordIds(engine, section.id)
     })),
     summaries: Object.fromEntries(
-      Array.from(state?.summaries.entries() ?? []).map(([sectionKey, collection]) => [
-        sectionKey,
+      Array.from(state?.summaries.entries() ?? []).map(([sectionId, collection]) => [
+        sectionId,
         Object.fromEntries(Array.from(collection.byField.entries()))
       ])
     )
@@ -350,7 +350,7 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
     }
   })
   assert.equal(
-    sections.find(section => section.key === 'todo')?.collapsed,
+    sections.find(section => section.id === 'todo')?.collapsed,
     true
   )
 
@@ -361,7 +361,7 @@ test('view group bucket toggle clears the final collapsed bucket state', () => {
 
   assert.equal(view.group?.buckets, undefined)
   assert.equal(
-    sections.find(section => section.key === 'todo')?.collapsed,
+    sections.find(section => section.id === 'todo')?.collapsed,
     false
   )
 })
@@ -389,7 +389,7 @@ test('kanban cards per column defaults to all and persists through the view api'
   const fields = createFields()
 
   assert.equal(
-    view.options.defaults('kanban', fields).kanban.cardsPerColumn,
+    view.options.defaults('kanban', fields).cardsPerColumn,
     25
   )
 
@@ -399,7 +399,7 @@ test('kanban cards per column defaults to all and persists through the view api'
     type: 'kanban',
     name: 'Board',
     group: {
-      field: FIELD_STATUS,
+      fieldId: FIELD_STATUS,
       mode: 'option',
       bucketSort: 'manual',
       showEmpty: true
@@ -412,19 +412,19 @@ test('kanban cards per column defaults to all and persists through the view api'
   })
 
   let board = engine.read.view(VIEW_BOARD)
-  assert.equal(board.options.kanban.cardsPerColumn, 25)
+  assert.equal(board.options.cardsPerColumn, 25)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(25)
   board = engine.read.view(VIEW_BOARD)
-  assert.equal(board.options.kanban.cardsPerColumn, 25)
+  assert.equal(board.options.cardsPerColumn, 25)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn(100)
   board = engine.read.view(VIEW_BOARD)
-  assert.equal(board.options.kanban.cardsPerColumn, 100)
+  assert.equal(board.options.cardsPerColumn, 100)
 
   openView(engine, VIEW_BOARD).kanban.setCardsPerColumn('all')
   board = engine.read.view(VIEW_BOARD)
-  assert.equal(board.options.kanban.cardsPerColumn, 'all')
+  assert.equal(board.options.cardsPerColumn, 'all')
 })
 
 test('view.create and changeType to kanban resolve a default group field', () => {
@@ -438,13 +438,13 @@ test('view.create and changeType to kanban resolve a default group field', () =>
   })
   assert.ok(createdId)
   assert.equal(
-    engine.views.get(createdId!)?.group?.field,
+    engine.views.get(createdId!)?.group?.fieldId,
     FIELD_STATUS
   )
 
   openView(engine, VIEW_TABLE).changeType('kanban')
   assert.equal(engine.active.view()?.type, 'kanban')
-  assert.equal(engine.active.view()?.group?.field, FIELD_STATUS)
+  assert.equal(engine.active.view()?.group?.fieldId, FIELD_STATUS)
 })
 
 test('kanban default group prefers option-like fields over earlier scalar fields', () => {
@@ -479,7 +479,7 @@ test('kanban default group prefers option-like fields over earlier scalar fields
   })
 
   assert.ok(createdId)
-  assert.equal(engine.views.get(createdId!)?.group?.field, FIELD_STATUS)
+  assert.equal(engine.views.get(createdId!)?.group?.fieldId, FIELD_STATUS)
 })
 
 test('engine.core keeps active boundaries inside one active pipeline', () => {
@@ -562,7 +562,7 @@ test('engine.active.state exposes body projections for the active view', () => {
   const summaries = state?.summaries
 
   assert.deepEqual(records?.visible, ['rec_1', 'rec_2', 'rec_3'])
-  assert.deepEqual(sections?.map(section => section.key), ['todo', 'doing', 'done', '(empty)'])
+  assert.deepEqual(sections?.map(section => section.id), ['todo', 'doing', 'done', '(empty)'])
   assert.equal(items?.ids.length, 3)
   assert.deepEqual(fields?.ids, [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])
   assert.deepEqual(fields?.custom.map(field => field.id), [FIELD_STATUS, FIELD_POINTS])
@@ -687,11 +687,11 @@ test('engine.active.state removes deleted records from filtered query results an
   assert.deepEqual(state?.items.ids, [])
   assert.deepEqual(
     state?.sections.all.map(section => ({
-      key: section.key,
+      id: section.id,
       recordIds: section.recordIds
     })),
     [{
-      key: 'root',
+      id: 'root',
       recordIds: []
     }]
   )
@@ -720,7 +720,7 @@ test('engine.active.state grouped sections keep visible record order inside each
   const state = readViewState(engine)
   const sections = state?.sections.all
   const todoIds = sections
-    ?.find(section => section.key === 'todo')
+    ?.find(section => section.id === 'todo')
     ?.recordIds
 
   assert.deepEqual(todoIds, ['rec_4', 'rec_1'])
@@ -792,14 +792,14 @@ test('engine.active.records.create inserts before the target item when sort is i
   )
 })
 
-test('engine.active.records.create derives the group field from sectionKey', () => {
+test('engine.active.records.create derives the group field from sectionId', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   const createdId = openView(engine, VIEW_TABLE).records.create({
-    sectionKey: 'doing',
+    sectionId: 'doing',
     set: {
       [TITLE_FIELD_ID]: 'Grouped'
     }
@@ -817,7 +817,7 @@ test('engine.active.records.create clears status defaults when creating in the e
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   const createdId = openView(engine, VIEW_TABLE).records.create({
-    sectionKey: KANBAN_EMPTY_BUCKET_KEY,
+    sectionId: KANBAN_EMPTY_BUCKET_KEY,
     set: {
       [TITLE_FIELD_ID]: 'Inbox'
     }
@@ -978,7 +978,7 @@ test('engine.active.records.create resolves grouped status against multi-option 
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
-    sectionKey: 'doing',
+    sectionId: 'doing',
     set: {
       [TITLE_FIELD_ID]: 'Grouped Filtered'
     }
@@ -1062,7 +1062,7 @@ test('engine.active.records.create rejects explicit values that conflict with th
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
-    sectionKey: 'doing',
+    sectionId: 'doing',
     set: {
       [TITLE_FIELD_ID]: 'Wrong Group',
       [FIELD_STATUS]: 'todo'
@@ -1086,7 +1086,7 @@ test('engine.active.records.create rejects conflicting group and filter defaults
   })
 
   const createdId = openView(engine, VIEW_TABLE).records.create({
-    sectionKey: 'todo',
+    sectionId: 'todo',
     set: {
       [TITLE_FIELD_ID]: 'Conflict'
     }
@@ -1285,8 +1285,8 @@ test('engine.active sync reuses unaffected grouped sections and summaries on dat
   const sectionsBefore = stateBefore?.sections.all
   const itemsBefore = stateBefore?.items
   const summariesBefore = stateBefore?.summaries
-  const doingSectionBefore = sectionsBefore?.find(section => section.key === 'doing')
-  const doneSectionBefore = sectionsBefore?.find(section => section.key === 'done')
+  const doingSectionBefore = sectionsBefore?.find(section => section.id === 'doing')
+  const doneSectionBefore = sectionsBefore?.find(section => section.id === 'done')
   const doingSummaryBefore = summariesBefore?.get('doing')
   const doneSummaryBefore = summariesBefore?.get('done')
   const doingItemBefore = doingSectionBefore?.itemIds[0]
@@ -1300,8 +1300,8 @@ test('engine.active sync reuses unaffected grouped sections and summaries on dat
   const sectionsAfter = stateAfter?.sections.all
   const itemsAfter = stateAfter?.items
   const summariesAfter = stateAfter?.summaries
-  const doingSectionAfter = sectionsAfter?.find(section => section.key === 'doing')
-  const doneSectionAfter = sectionsAfter?.find(section => section.key === 'done')
+  const doingSectionAfter = sectionsAfter?.find(section => section.id === 'doing')
+  const doneSectionAfter = sectionsAfter?.find(section => section.id === 'done')
   const doingItemAfter = doingSectionAfter?.itemIds[0]
     ? itemsAfter?.read.placement(doingSectionAfter.itemIds[0])
     : undefined

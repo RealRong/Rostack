@@ -54,9 +54,9 @@ const createGroupValueActions = (input: {
   field: Field
   items: ItemList
   itemIds: readonly ItemId[]
-  targetSection: string
+  targetBucketId: string
 }): readonly Action[] | undefined => {
-  const fieldId = input.group.field
+  const fieldId = input.group.fieldId
   const itemIdsByRecordId = new Map<RecordId, ItemId[]>()
 
   input.itemIds.forEach(itemId => {
@@ -88,8 +88,8 @@ const createGroupValueActions = (input: {
         field: input.field,
         group: input.group,
         currentValue,
-        fromKey: input.items.read.section(itemId),
-        toKey: input.targetSection
+        fromBucketId: input.items.read.section(itemId),
+        bucketId: input.targetBucketId
       })
       if (next.kind === 'invalid') {
         return undefined
@@ -136,14 +136,14 @@ export const planMove = (
       changed: false,
       sectionChanged: false,
       target: {
-        section: target.section
+        sectionId: target.sectionId
       }
     }
   }
 
   const validIds = itemIds.filter(id => state.items.order.has(id))
   const movingSet = new Set(validIds)
-  const section = state.sections.get(target.section)
+  const section = state.sections.get(target.sectionId)
   const sectionItemIds = section?.itemIds ?? []
   const beforeItemId = target.before && sectionItemIds.includes(target.before)
     ? target.before
@@ -172,7 +172,7 @@ export const planMove = (
   const beforeRecordId = nextBeforeItemId
     ? state.items.read.record(nextBeforeItemId)
     : undefined
-  const sectionChanged = validIds.some(id => state.items.read.section(id) !== target.section)
+  const sectionChanged = validIds.some(id => state.items.read.section(id) !== target.sectionId)
   const changed = validIds.length > 0 && (
     sectionChanged
     || nextSectionItemIds.length !== sectionItemIds.length
@@ -185,7 +185,7 @@ export const planMove = (
     changed,
     sectionChanged,
     target: {
-      section: target.section,
+      sectionId: target.sectionId,
       ...(nextBeforeItemId ? { beforeItemId: nextBeforeItemId } : {}),
       ...(beforeRecordId ? { beforeRecordId } : {})
     }
@@ -221,13 +221,18 @@ export const createActiveItemsApi = (input: {
     const actions: Action[] = []
 
     if (plan.sectionChanged && groupWrite) {
+      const targetBucketId = state.sections.get(plan.target.sectionId)?.bucket?.id
+      if (!targetBucketId) {
+        return
+      }
+
       const valueActions = createGroupValueActions({
         readRecord: input.read.record,
         group: groupWrite.group,
         field: groupWrite.field,
         items: state.items,
         itemIds: plan.itemIds,
-        targetSection: plan.target.section
+        targetBucketId
       })
       if (!valueActions) {
         return

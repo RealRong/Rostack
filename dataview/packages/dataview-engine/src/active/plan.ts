@@ -247,7 +247,7 @@ export const compileViewPlan = (
   ).map(fieldId => createBucketSpec(fieldId))
   const section = view.group
     ? {
-        fieldId: view.group.field,
+        fieldId: view.group.fieldId,
         ...(view.group.mode === undefined ? {} : { mode: view.group.mode }),
         ...(view.group.bucketSort === undefined ? {} : { sort: view.group.bucketSort }),
         ...(view.group.bucketInterval === undefined ? {} : { interval: view.group.bucketInterval }),

@@ -19,6 +19,7 @@ import type {
   SortRule,
   View,
   ViewGroup,
+  ViewGroupBucketId,
   ViewFilterRuleId,
   ViewId,
   ViewSortRuleId,
@@ -33,7 +34,7 @@ import type {
   ItemList,
   MoveTarget,
   Section,
-  SectionKey,
+  SectionId,
   SectionList,
   ViewRecords,
   ViewSummaries
@@ -129,7 +130,7 @@ export interface ViewCell {
   itemId: ItemId
   recordId: RecordId
   fieldId: FieldId
-  sectionKey: SectionKey
+  sectionId: SectionId
   record: DataRecord
   field: Field | undefined
   value: unknown
@@ -141,7 +142,7 @@ export interface MovePlan {
   changed: boolean
   sectionChanged: boolean
   target: {
-    section: SectionKey
+    sectionId: SectionId
     beforeItemId?: ItemId
     beforeRecordId?: RecordId
   }
@@ -150,7 +151,7 @@ export interface MovePlan {
 export interface ActiveViewReadApi {
   record: (recordId: RecordId) => DataRecord | undefined
   field: (fieldId: FieldId) => Field | undefined
-  section: (sectionKey: SectionKey) => Section | undefined
+  section: (sectionId: SectionId) => Section | undefined
   placement: (itemId: ItemId) => ItemPlacement | undefined
   cell: (cell: CellRef) => ViewCell | undefined
 }
@@ -183,7 +184,7 @@ export interface ActiveItemsApi {
 
 export interface ActiveRecordsApi {
   create: (input?: {
-    sectionKey?: SectionKey
+    sectionId?: SectionId
     before?: ItemId
     set?: Partial<Record<FieldId, unknown>>
   }) => RecordId | undefined
@@ -233,11 +234,11 @@ export interface ActiveViewApi {
     setShowEmpty: (value: boolean) => void
   }
   sections: {
-    show: (sectionKey: string) => void
-    hide: (sectionKey: string) => void
-    collapse: (sectionKey: string) => void
-    expand: (sectionKey: string) => void
-    toggleCollapse: (sectionKey: string) => void
+    show: (bucketId: ViewGroupBucketId) => void
+    hide: (bucketId: ViewGroupBucketId) => void
+    collapse: (bucketId: ViewGroupBucketId) => void
+    expand: (bucketId: ViewGroupBucketId) => void
+    toggleCollapse: (bucketId: ViewGroupBucketId) => void
   }
   summary: {
     set: (fieldId: FieldId, metric: CalculationMetric | null) => void

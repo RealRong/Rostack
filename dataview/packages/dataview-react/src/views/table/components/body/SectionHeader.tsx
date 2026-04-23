@@ -7,7 +7,7 @@ import {
 import {
   useDataView
 } from '@dataview/react/dataview'
-import type { SectionKey } from '@dataview/engine'
+import type { SectionId } from '@dataview/engine'
 import {
   useStoreValue
 } from '@shared/react'
@@ -18,7 +18,7 @@ import { cn } from '@shared/ui/utils'
 import { useTranslation } from '@shared/i18n/react'
 
 export interface SectionHeaderProps {
-  sectionKey: SectionKey
+  sectionId: SectionId
   measureRef?: (node: HTMLDivElement | null) => void
 }
 
@@ -27,7 +27,7 @@ const View = (props: SectionHeaderProps) => {
   const dataView = useDataView()
   const table = useTableContext()
   const grid = useStoreValue(dataView.model.table.grid)
-  const section = grid?.sections.get(props.sectionKey)
+  const section = grid?.sections.get(props.sectionId)
   if (!section) {
     throw new Error('Table section header requires an active table section.')
   }
@@ -36,7 +36,7 @@ const View = (props: SectionHeaderProps) => {
     <div
       ref={props.measureRef}
       data-table-target="group-row"
-      data-group-key={props.sectionKey}
+      data-group-key={props.sectionId}
       className="flex self-stretch min-w-full w-max items-center"
       style={{
         minHeight: table.layout.headerHeight
@@ -61,7 +61,7 @@ const View = (props: SectionHeaderProps) => {
             event.stopPropagation()
           }}
           onClick={() => {
-            dataView.engine.active.sections.toggleCollapse(section.key)
+            dataView.engine.active.sections.toggleCollapse(section.id)
             table.focus()
           }}
         >
@@ -82,7 +82,7 @@ const View = (props: SectionHeaderProps) => {
 const same = (
   left: SectionHeaderProps,
   right: SectionHeaderProps
-) => left.sectionKey === right.sectionKey
+) => left.sectionId === right.sectionId
   && left.measureRef === right.measureRef
 
 export const SectionHeader = memo(View, same)

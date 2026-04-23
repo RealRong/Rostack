@@ -8,8 +8,10 @@ export interface TableOptions {
   wrap: boolean
 }
 
-export interface ViewOptions {
+export interface ViewOptionsByType {
   table: TableOptions
   gallery: GalleryOptions
   kanban: KanbanOptions
 }
+
+export type ViewLayoutOptions = ViewOptionsByType[keyof ViewOptionsByType]

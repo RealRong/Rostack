@@ -118,17 +118,17 @@ export const useRowReorder = (): RowReorderApi => {
       }
 
       const beforeId = rowBeforeId(target)
-      const sectionKey = (
+      const sectionId = (
         beforeId
           ? grid.items.read.section(beforeId)
           : grid.items.read.section(dragIds[0]!)
-      ) ?? grid.sections.all[0]?.key
-      if (!sectionKey) {
+      ) ?? grid.sections.all[0]?.id
+      if (!sectionId) {
         return
       }
 
       dataView.engine.active.items.move(dragIds, {
-        section: sectionKey,
+        sectionId,
         ...(beforeId ? { before: beforeId } : {})
       })
     },

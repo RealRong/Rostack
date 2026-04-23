@@ -8,12 +8,15 @@ import type {
   FieldId,
   Filter,
   FilterRule,
+  GalleryOptions,
+  KanbanOptions,
   Sort,
   SortDirection,
   SortRule,
+  TableOptions,
   View,
   ViewGroup,
-  ViewOptions,
+  ViewOptionsByType,
   ViewType
 } from '@dataview/core/contracts'
 import { entityTable } from '@shared/core'
@@ -245,32 +248,70 @@ const createDateField = (
   defaultTimezone: null
 })
 
-const patchViewOptions = (
+function patchViewOptions (
+  type: 'table',
+  fields: readonly CustomField[],
+  patch?: {
+    table?: Partial<TableOptions>
+    gallery?: Partial<GalleryOptions>
+    kanban?: Partial<KanbanOptions>
+  }
+): TableOptions
+function patchViewOptions (
+  type: 'gallery',
+  fields: readonly CustomField[],
+  patch?: {
+    table?: Partial<TableOptions>
+    gallery?: Partial<GalleryOptions>
+    kanban?: Partial<KanbanOptions>
+  }
+): GalleryOptions
+function patchViewOptions (
+  type: 'kanban',
+  fields: readonly CustomField[],
+  patch?: {
+    table?: Partial<TableOptions>
+    gallery?: Partial<GalleryOptions>
+    kanban?: Partial<KanbanOptions>
+  }
+): KanbanOptions
+function patchViewOptions (
   type: ViewType,
   fields: readonly CustomField[],
-  patch: Partial<ViewOptions> = {}
-): ViewOptions => {
-  const base = view.options.defaults(type, fields)
-
-  return {
-    table: {
-      ...base.table,
-      ...patch.table
-    },
-    gallery: {
-      ...base.gallery,
-      ...patch.gallery,
-      card: {
-        ...base.gallery.card,
-        ...patch.gallery?.card
+  patch: {
+    table?: Partial<TableOptions>
+    gallery?: Partial<GalleryOptions>
+    kanban?: Partial<KanbanOptions>
+  } = {}
+): ViewOptionsByType[ViewType] {
+  switch (type) {
+    case 'table': {
+      const base = view.options.defaults('table', fields)
+      return {
+        ...base,
+        ...patch.table
       }
-    },
-    kanban: {
-      ...base.kanban,
-      ...patch.kanban,
-      card: {
-        ...base.kanban.card,
-        ...patch.kanban?.card
+    }
+    case 'gallery': {
+      const base = view.options.defaults('gallery', fields)
+      return {
+        ...base,
+        ...patch.gallery,
+        card: {
+          ...base.card,
+          ...patch.gallery?.card
+        }
+      }
+    }
+    case 'kanban': {
+      const base = view.options.defaults('kanban', fields)
+      return {
+        ...base,
+        ...patch.kanban,
+        card: {
+          ...base.card,
+          ...patch.kanban?.card
+        }
       }
     }
   }
@@ -286,32 +327,73 @@ const createView = (input: {
   group?: ViewGroup
   calc?: Partial<Record<FieldId, CalculationMetric>>
   filter?: Filter
-  options?: Partial<ViewOptions>
-}): View => ({
-  id: input.id,
-  type: input.type,
-  name: input.name,
-  search: {
-    query: ''
-  },
-  filter: input.filter ?? createEmptyFilter(),
-  sort: createSort(input.id, input.sort),
-  ...(input.group
-    ? {
-        group: {
-          ...input.group
-        }
+  options?: {
+    table?: Partial<TableOptions>
+    gallery?: Partial<GalleryOptions>
+    kanban?: Partial<KanbanOptions>
+  }
+}): View => {
+  const base = {
+    id: input.id,
+    name: input.name,
+    search: {
+      query: ''
+    },
+    filter: input.filter ?? createEmptyFilter(),
+    sort: createSort(input.id, input.sort),
+    calc: {
+      ...(input.calc ?? {})
+    },
+    display: {
+      fields: [...input.displayFields]
+    },
+    orders: []
+  }
+
+  switch (input.type) {
+    case 'table':
+      return {
+        ...base,
+        type: 'table',
+        ...(input.group
+          ? {
+              group: {
+                ...input.group
+              }
+            }
+          : {}),
+        options: patchViewOptions('table', input.fields, input.options)
       }
-    : {}),
-  calc: {
-    ...(input.calc ?? {})
-  },
-  display: {
-    fields: [...input.displayFields]
-  },
-  options: patchViewOptions(input.type, input.fields, input.options),
-  orders: []
-})
+    case 'gallery':
+      return {
+        ...base,
+        type: 'gallery',
+        ...(input.group
+          ? {
+              group: {
+                ...input.group
+              }
+            }
+          : {}),
+        options: patchViewOptions('gallery', input.fields, input.options)
+      }
+    case 'kanban':
+      return {
+        ...base,
+        type: 'kanban',
+        group: input.group
+          ? {
+              ...input.group
+            }
+          : {
+              fieldId: 'status',
+              mode: 'category',
+              bucketSort: 'manual'
+            },
+        options: patchViewOptions('kanban', input.fields, input.options)
+      }
+  }
+}
 
 const createDateValue = (offsetDays: number): DateValue => ({
   kind: 'date',
@@ -1295,7 +1377,7 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
       'tags'
     ],
     group: {
-      field: 'status',
+      fieldId: 'status',
       mode: 'option',
       bucketSort: 'manual',
       showEmpty: true
@@ -1527,7 +1609,7 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
       'closeDate'
     ],
     group: {
-      field: 'stage',
+      fieldId: 'stage',
       mode: 'option',
       bucketSort: 'manual',
       showEmpty: true
@@ -1739,7 +1821,7 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
       'tags'
     ],
     group: {
-      field: 'status',
+      fieldId: 'status',
       mode: 'option',
       bucketSort: 'manual',
       showEmpty: true
@@ -1960,7 +2042,7 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
       direction: 'desc'
     }],
     group: {
-      field: 'status',
+      fieldId: 'status',
       mode: 'option',
       bucketSort: 'manual',
       showEmpty: true
@@ -1984,7 +2066,7 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
       'labels'
     ],
     group: {
-      field: 'status',
+      fieldId: 'status',
       mode: 'option',
       bucketSort: 'manual',
       showEmpty: true
@@ -2215,7 +2297,7 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
       direction: 'desc'
     }],
     group: {
-      field: 'segment',
+      fieldId: 'segment',
       mode: 'option',
       bucketSort: 'manual',
       showEmpty: true
@@ -2242,7 +2324,7 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
       'score'
     ],
     group: {
-      field: 'status',
+      fieldId: 'status',
       mode: 'option',
       bucketSort: 'manual',
       showEmpty: true

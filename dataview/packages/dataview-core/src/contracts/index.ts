@@ -3,8 +3,14 @@ export type {
   ActionType,
   EditTarget,
   FieldCreateInput,
+  GalleryViewCreateInput,
+  KanbanViewCreateInput,
   RecordFieldWriteManyInput,
   RowCreateInput,
+  TableViewCreateInput,
+  TableViewPatch,
+  GalleryViewPatch,
+  KanbanViewPatch,
   ViewCreateInput,
   ViewPatch
 } from '@dataview/core/contracts/actions'
@@ -27,7 +33,8 @@ export type {
 } from '@dataview/core/contracts/gallery'
 export type {
   TableOptions,
-  ViewOptions
+  ViewLayoutOptions,
+  ViewOptionsByType
 } from '@dataview/core/contracts/viewOptions'
 export {
   KANBAN_EMPTY_BUCKET_KEY,
@@ -84,6 +91,7 @@ export type {
   FilterRule,
   FilterValue,
   ViewGroup,
+  ViewGroupBucketId,
   NodeId,
   DataRecord,
   ResolvedGroupKey,
@@ -104,8 +112,12 @@ export type {
   UrlField,
   AssetField,
   View,
+  ViewBase,
   ViewCalc,
   ViewDisplay,
+  TableView,
+  GalleryView,
+  KanbanView,
   ViewType,
   IndexPath,
   RecordId,

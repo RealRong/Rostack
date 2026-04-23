@@ -22,7 +22,7 @@ import {
 } from '@dataview/engine/active/summary/empty'
 import type {
   SectionBucket,
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 import type {
   Token
@@ -59,35 +59,35 @@ export interface MembershipMetaState {
 }
 
 export interface MembershipPhaseState {
-  sections: Partition<SectionKey>
-  meta: ReadonlyMap<SectionKey, MembershipMetaState>
+  sections: Partition<SectionId>
+  meta: ReadonlyMap<SectionId, MembershipMetaState>
 }
 
 export interface MembershipRecordChange {
-  before: readonly SectionKey[]
-  after: readonly SectionKey[]
+  before: readonly SectionId[]
+  after: readonly SectionId[]
 }
 
 export interface MembershipPhaseDelta {
   rebuild: boolean
   orderChanged: boolean
-  removed: readonly SectionKey[]
-  changed: readonly SectionKey[]
+  removed: readonly SectionId[]
+  changed: readonly SectionId[]
   records: ReadonlyMap<RecordId, MembershipRecordChange>
 }
 
 export interface SummaryPhaseState {
-  bySection: ReadonlyMap<SectionKey, ReadonlyMap<FieldId, FieldReducerState>>
+  bySection: ReadonlyMap<SectionId, ReadonlyMap<FieldId, FieldReducerState>>
 }
 
 export interface SummaryPhaseDelta {
   rebuild: boolean
-  changed: readonly SectionKey[]
-  removed: readonly SectionKey[]
+  changed: readonly SectionId[]
+  removed: readonly SectionId[]
 }
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
-const EMPTY_SECTION_KEYS = [] as readonly SectionKey[]
+const EMPTY_SECTION_KEYS = [] as readonly SectionId[]
 
 export const EMPTY_QUERY_PHASE_DELTA: QueryPhaseDelta = {
   rebuild: false,

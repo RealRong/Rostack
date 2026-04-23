@@ -37,7 +37,7 @@ import {
   ROOT_SECTION_ORDER
 } from '@dataview/engine/active/shared/sections'
 import type {
-  SectionKey
+  SectionId
 } from '@dataview/engine/contracts/shared'
 import type {
   MembershipMetaState,
@@ -51,7 +51,7 @@ import {
 } from '@shared/i18n'
 
 const EMPTY_INDEXES = [] as readonly number[]
-const EMPTY_KEYS_BY_RECORD = new Map<RecordId, readonly SectionKey[]>()
+const EMPTY_KEYS_BY_RECORD = new Map<RecordId, readonly SectionId[]>()
 const EMPTY_RECORD_CHANGES = new Map<RecordId, MembershipRecordChange>()
 const MAX_INCREMENTAL_SECTION_TOUCH_RATIO = 0.25
 const MIN_LARGE_SECTION_TOUCH_COUNT = 1024
@@ -65,7 +65,7 @@ const sameBucket = (
     return left === right
   }
 
-  return left.key === right.key
+  return left.id === right.id
     && equal.sameJsonValue(left.label, right.label)
     && left.value === right.value
     && left.clearValue === right.clearValue
@@ -85,11 +85,11 @@ const sameMeta = (
 
 const buildSectionPartition = (input: {
   rows: Selection['rows']
-  order: readonly SectionKey[]
-  indexesByKey: ReadonlyMap<SectionKey, readonly number[]>
-  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
-  previous?: Partition<SectionKey>
-}): Partition<SectionKey> => {
+  order: readonly SectionId[]
+  indexesByKey: ReadonlyMap<SectionId, readonly number[]>
+  keysByRecord: ReadonlyMap<RecordId, readonly SectionId[]>
+  previous?: Partition<SectionId>
+}): Partition<SectionId> => {
   const order = input.previous && equal.sameOrder(input.previous.order, input.order)
     ? input.previous.order
     : input.order
@@ -101,25 +101,25 @@ const buildSectionPartition = (input: {
     : undefined
   const nextOrder = new Set(order)
 
-  previousSelections?.forEach((_selection, sectionKey) => {
-    if (!nextOrder.has(sectionKey as SectionKey)) {
-      byKey!.delete(sectionKey as SectionKey)
+  previousSelections?.forEach((_selection, sectionId) => {
+    if (!nextOrder.has(sectionId as SectionId)) {
+      byKey!.delete(sectionId as SectionId)
     }
   })
 
-  const createdSelections = new Map<SectionKey, Selection>()
-  order.forEach(sectionKey => {
+  const createdSelections = new Map<SectionId, Selection>()
+  order.forEach(sectionId => {
     const selection = createSelection({
       rows: input.rows,
-      indexes: input.indexesByKey.get(sectionKey) ?? EMPTY_INDEXES,
-      previous: input.previous?.get(sectionKey)
+      indexes: input.indexesByKey.get(sectionId) ?? EMPTY_INDEXES,
+      previous: input.previous?.get(sectionId)
     })
     if (byKey) {
-      byKey.set(sectionKey, selection)
+      byKey.set(sectionId, selection)
       return
     }
 
-    createdSelections.set(sectionKey, selection)
+    createdSelections.set(sectionId, selection)
   })
 
   return createPartition({
@@ -134,12 +134,12 @@ const buildSectionPartition = (input: {
 
 const buildGroupedSections = (input: {
   visible: Selection
-  order: readonly SectionKey[]
-  keysByRecord?: ReadonlyMap<RecordId, readonly SectionKey[]>
-  previous?: Partition<SectionKey>
+  order: readonly SectionId[]
+  keysByRecord?: ReadonlyMap<RecordId, readonly SectionId[]>
+  previous?: Partition<SectionId>
 }): {
-  keysByRecord: ReadonlyMap<RecordId, readonly SectionKey[]>
-  sections: Partition<SectionKey>
+  keysByRecord: ReadonlyMap<RecordId, readonly SectionId[]>
+  sections: Partition<SectionId>
 } => {
   if (!input.visible.read.count() || !input.keysByRecord) {
     return {
@@ -157,8 +157,8 @@ const buildGroupedSections = (input: {
   const fullVisible = input.visible.ids === input.visible.rows.ids
   const visibleKeysByRecord = fullVisible
     ? undefined
-    : new Map<RecordId, readonly SectionKey[]>()
-  const indexesByKey = new Map<SectionKey, number[]>()
+    : new Map<RecordId, readonly SectionId[]>()
+  const indexesByKey = new Map<SectionId, number[]>()
 
   for (let offset = 0; offset < input.visible.indexes.length; offset += 1) {
     const rowIndex = input.visible.indexes[offset]!
@@ -177,14 +177,14 @@ const buildGroupedSections = (input: {
     }
 
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex += 1) {
-      const sectionKey = keys[keyIndex]!
-      const existing = indexesByKey.get(sectionKey)
+      const sectionId = keys[keyIndex]!
+      const existing = indexesByKey.get(sectionId)
       if (existing) {
         existing.push(rowIndex)
         continue
       }
 
-      indexesByKey.set(sectionKey, [rowIndex])
+      indexesByKey.set(sectionId, [rowIndex])
     }
   }
 
@@ -207,17 +207,17 @@ const buildGroupedSections = (input: {
 }
 
 const buildMetaMap = (input: {
-  order: readonly SectionKey[]
-  buckets?: ReadonlyMap<SectionKey, Bucket>
-  previous?: ReadonlyMap<SectionKey, MembershipMetaState>
-}): ReadonlyMap<SectionKey, MembershipMetaState> => {
-  const next = new Map<SectionKey, MembershipMetaState>()
+  order: readonly SectionId[]
+  buckets?: ReadonlyMap<SectionId, Bucket>
+  previous?: ReadonlyMap<SectionId, MembershipMetaState>
+}): ReadonlyMap<SectionId, MembershipMetaState> => {
+  const next = new Map<SectionId, MembershipMetaState>()
   let changed = !equal.sameOrder(input.previous ? [...input.previous.keys()] : [], input.order)
 
-  input.order.forEach(sectionKey => {
-    const bucket = input.buckets?.get(sectionKey)
+  input.order.forEach(sectionId => {
+    const bucket = input.buckets?.get(sectionId)
     const created: MembershipMetaState = {
-      label: bucket?.label ?? sectionKey,
+      label: bucket?.label ?? sectionId,
       ...(bucket?.color
         ? {
             color: bucket.color
@@ -226,7 +226,7 @@ const buildMetaMap = (input: {
       ...(bucket
         ? {
             bucket: {
-              key: bucket.key as SectionKey,
+              id: bucket.key as SectionId,
               label: bucket.label,
               value: bucket.value,
               clearValue: bucket.clearValue,
@@ -236,14 +236,14 @@ const buildMetaMap = (input: {
           }
         : {})
     }
-    const previousMeta = input.previous?.get(sectionKey)
+    const previousMeta = input.previous?.get(sectionId)
     const published = sameMeta(previousMeta, created)
       ? previousMeta!
       : created
     if (published !== previousMeta) {
       changed = true
     }
-    next.set(sectionKey, published)
+    next.set(sectionId, published)
   })
 
   return !changed && input.previous
@@ -257,7 +257,7 @@ const buildRootMembershipState = (
 ): MembershipState => {
   const keysByRecord = query.visible.read.count()
     ? (() => {
-        const next = new Map<RecordId, readonly SectionKey[]>()
+        const next = new Map<RecordId, readonly SectionId[]>()
         const visibleIds = query.visible.ids
         for (let index = 0; index < visibleIds.length; index += 1) {
           next.set(visibleIds[index]!, ROOT_SECTION_KEYS)
@@ -293,7 +293,7 @@ export const buildMembershipState = (input: {
   view: View
   query: QueryState
   index: IndexState
-  keysByRecord?: ReadonlyMap<RecordId, readonly SectionKey[]>
+  keysByRecord?: ReadonlyMap<RecordId, readonly SectionId[]>
   previous?: MembershipState
 }): MembershipState => {
   if (!input.view.group) {
@@ -305,7 +305,7 @@ export const buildMembershipState = (input: {
     field: bucketIndex?.field,
     spec: createBucketSpec(input.view.group),
     sort: input.view.group.bucketSort,
-    values: input.index.records.values.get(input.view.group.field)?.byRecord,
+    values: input.index.records.values.get(input.view.group.fieldId)?.byRecord,
     recordsByKey: bucketIndex?.recordsByKey ?? new Map(),
     previous: undefined
   })
@@ -320,7 +320,7 @@ export const buildMembershipState = (input: {
     sections: grouped.sections,
     meta: buildMetaMap({
       order: presentation.order,
-      buckets: presentation.buckets as ReadonlyMap<SectionKey, Bucket>,
+      buckets: presentation.buckets as ReadonlyMap<SectionId, Bucket>,
       previous: input.previous?.meta
     })
   }
@@ -328,7 +328,7 @@ export const buildMembershipState = (input: {
 
 export const readMembershipKeysByRecord = (
   membership: MembershipState
-): ReadonlyMap<RecordId, readonly SectionKey[]> => readPartitionKeysById(membership.sections)
+): ReadonlyMap<RecordId, readonly SectionId[]> => readPartitionKeysById(membership.sections)
 
 const addChangedRecordIds = (
   target: Set<RecordId>,
@@ -339,7 +339,7 @@ const addChangedRecordIds = (
   })
 }
 
-const sameSectionKeys = (
+const sameSectionIds = (
   left: readonly string[],
   right: readonly string[]
 ) => equal.sameOrder(left, right)
@@ -407,7 +407,7 @@ const buildRecordChanges = (input: {
         ? input.bucketKeysByRecord.get(recordId) ?? EMPTY_SECTION_KEYS
         : EMPTY_SECTION_KEYS
 
-    if (sameSectionKeys(before, after)) {
+    if (sameSectionIds(before, after)) {
       return
     }
 

@@ -4,7 +4,7 @@ import type {
   FieldList,
   ItemId,
   ItemList,
-  SectionKey,
+  SectionId,
   SectionList
 } from '@dataview/engine'
 import type { CalculationCollection } from '@dataview/core/calculation'
@@ -13,6 +13,7 @@ import type {
   Field,
   FieldId,
   SortDirection,
+  TableView,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -52,12 +53,12 @@ export interface TableModel {
   grid: store.ReadStore<TableGrid | undefined>
   view: store.ReadStore<TableViewState | undefined>
   column: store.KeyedReadStore<FieldId, TableColumnState | undefined>
-  summary: store.KeyedReadStore<SectionKey, CalculationCollection | undefined>
+  summary: store.KeyedReadStore<SectionId, CalculationCollection | undefined>
 }
 
 const readTableView = (
   active: ActiveSource
-): View | undefined => {
+): TableView | undefined => {
   const view = store.read(active.view.current)
   return view?.type === 'table'
     ? view
@@ -65,7 +66,7 @@ const readTableView = (
 }
 
 const buildWidths = (
-  widths: View['options']['table']['widths']
+  widths: TableView['options']['widths']
 ): ReadonlyMap<FieldId, number> => new Map(
   Object.entries(widths) as [FieldId, number][]
 )
@@ -94,7 +95,7 @@ export const createTableModel = (
 ): TableModel => {
   let previousGrid: TableGrid | undefined
   let previousView: TableViewState | undefined
-  let previousWidthSource: View['options']['table']['widths'] | undefined
+  let previousWidthSource: TableView['options']['widths'] | undefined
 
   const grid = store.createDerivedStore<TableGrid | undefined>({
     get: () => {
@@ -135,7 +136,7 @@ export const createTableModel = (
 
       const query = store.read(active.query)
       const table = store.read(active.table)
-      const widthSource = tableView.options.table.widths
+      const widthSource = tableView.options.widths
       const widths = previousWidthSource === widthSource && previousView
         ? previousView.widths
         : buildWidths(widthSource)
@@ -201,9 +202,9 @@ export const createTableModel = (
     isEqual: sameColumn
   })
 
-  const summary = store.createKeyedDerivedStore<SectionKey, CalculationCollection | undefined>({
-    get: sectionKey => readTableView(active)
-      ? store.read(active.summaries, sectionKey)
+  const summary = store.createKeyedDerivedStore<SectionId, CalculationCollection | undefined>({
+    get: sectionId => readTableView(active)
+      ? store.read(active.summaries, sectionId)
       : undefined,
     isEqual: Object.is
   })

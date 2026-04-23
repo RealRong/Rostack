@@ -5,6 +5,7 @@ import type {
   Field,
   FieldId,
   RecordId,
+  ViewGroupBucketId,
   ViewId
 } from '@dataview/core/contracts'
 import type {
@@ -15,10 +16,10 @@ import type {
 } from '@shared/i18n'
 
 export type ItemId = number
-export type SectionKey = string
+export type SectionId = string
 
 export interface SectionBucket {
-  key: string
+  id: ViewGroupBucketId
   label: Token
   value: unknown
   clearValue?: unknown
@@ -28,17 +29,17 @@ export interface SectionBucket {
 
 export interface ItemPlacement {
   recordId: RecordId
-  sectionKey: SectionKey
+  sectionId: SectionId
 }
 
 export interface ItemRead {
   record: (itemId: ItemId) => RecordId | undefined
-  section: (itemId: ItemId) => SectionKey | undefined
+  section: (itemId: ItemId) => SectionId | undefined
   placement: (itemId: ItemId) => ItemPlacement | undefined
 }
 
 export interface Section {
-  key: SectionKey
+  id: SectionId
   label: Token
   color?: string
   bucket?: SectionBucket
@@ -47,7 +48,7 @@ export interface Section {
   itemIds: readonly ItemId[]
 }
 
-export interface SectionList extends collection.OrderedKeyedCollection<SectionKey, Section> {}
+export interface SectionList extends collection.OrderedKeyedCollection<SectionId, Section> {}
 
 export interface ItemList {
   ids: readonly ItemId[]
@@ -71,7 +72,7 @@ export interface ViewFieldRef extends CellRef {
 }
 
 export interface MoveTarget {
-  section: SectionKey
+  sectionId: SectionId
   before?: ItemId
 }
 
@@ -81,4 +82,4 @@ export interface ViewRecords {
   visible: readonly RecordId[]
 }
 
-export type ViewSummaries = ReadonlyMap<SectionKey, CalculationCollection>
+export type ViewSummaries = ReadonlyMap<SectionId, CalculationCollection>

@@ -1,21 +1,27 @@
 import type {
   CustomField,
   CustomFieldId,
+  GalleryView,
   CustomFieldKind,
   FieldId,
   Filter,
+  KanbanView,
   RecordId,
   DataRecord,
   Search,
   Sort,
   StatusCategory,
+  TableView,
   ViewCalc,
   ViewDisplay,
   ViewGroup,
   ViewId,
   ViewType
 } from '@dataview/core/contracts/state'
-import type { ViewOptions } from '@dataview/core/contracts/viewOptions'
+import type {
+  TableOptions,
+  ViewOptionsByType
+} from '@dataview/core/contracts/viewOptions'
 
 export type EditTarget =
   | {
@@ -48,32 +54,73 @@ export interface RecordFieldWriteManyInput {
   clear?: readonly FieldId[]
 }
 
-export interface ViewCreateInput {
+interface ViewCreateInputBase {
   id?: ViewId
   name: string
-  type: ViewType
   search?: Search
   filter?: Filter
   sort?: Sort
-  group?: ViewGroup
   calc?: ViewCalc
   display?: ViewDisplay
-  options?: ViewOptions
   orders?: RecordId[]
 }
 
-export interface ViewPatch {
+export interface TableViewCreateInput extends ViewCreateInputBase {
+  type: TableView['type']
+  group?: ViewGroup
+  options?: TableOptions
+}
+
+export interface GalleryViewCreateInput extends ViewCreateInputBase {
+  type: GalleryView['type']
+  group?: ViewGroup
+  options?: ViewOptionsByType['gallery']
+}
+
+export interface KanbanViewCreateInput extends ViewCreateInputBase {
+  type: KanbanView['type']
+  group?: ViewGroup
+  options?: ViewOptionsByType['kanban']
+}
+
+export type ViewCreateInput =
+  | TableViewCreateInput
+  | GalleryViewCreateInput
+  | KanbanViewCreateInput
+
+interface ViewPatchBase {
   name?: string
   type?: ViewType
   search?: Search
   filter?: Filter
   sort?: Sort
-  group?: ViewGroup | null
   calc?: ViewCalc
   display?: ViewDisplay
-  options?: ViewOptions
   orders?: RecordId[]
 }
+
+export interface TableViewPatch extends ViewPatchBase {
+  type?: TableView['type']
+  group?: ViewGroup | null
+  options?: TableOptions
+}
+
+export interface GalleryViewPatch extends ViewPatchBase {
+  type?: GalleryView['type']
+  group?: ViewGroup | null
+  options?: ViewOptionsByType['gallery']
+}
+
+export interface KanbanViewPatch extends ViewPatchBase {
+  type?: KanbanView['type']
+  group?: ViewGroup
+  options?: ViewOptionsByType['kanban']
+}
+
+export type ViewPatch =
+  | TableViewPatch
+  | GalleryViewPatch
+  | KanbanViewPatch
 
 export type Action =
   | {

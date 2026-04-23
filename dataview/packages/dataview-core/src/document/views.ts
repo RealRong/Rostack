@@ -25,33 +25,96 @@ const normalizeOrders = (
   orders: readonly RecordId[] | undefined
 ) => normalizeRecordOrderIds(orders, createValidRecordIdSet(document))
 
+const resolveDefaultKanbanGroup = (
+  document: DataDoc
+) => {
+  const fields = documentFields.list(document)
+  for (let index = 0; index < fields.length; index += 1) {
+    const nextGroup = group.set(undefined, fields[index]!)
+    if (nextGroup) {
+      return nextGroup
+    }
+  }
+
+  return undefined
+}
+
 const normalizeView = (
   document: DataDoc,
   view: View
 ): View => {
   const fields = documentFields.list(document)
-  const normalizedOptions = normalizeViewOptions(view.options, {
-    type: view.type,
-    fields
-  })
-  const normalizedGroup = group.state.normalize(view.group)
-
-  return {
+  const normalizedGroup = group.state.normalize(
+    'group' in view
+      ? view.group
+      : undefined
+  )
+  const normalizedShared = {
     ...entityTable.clone.entity(view),
     search: search.state.normalize(view.search),
     filter: filter.state.normalize(view.filter),
     sort: {
       rules: sort.rules.normalize(view.sort.rules)
     },
-    ...(normalizedGroup
-      ? { group: normalizedGroup }
-      : {}),
     calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map(fieldEntry => [fieldEntry.id, fieldEntry] as const))
     }),
     display: normalizeViewDisplay(view.display),
-    options: normalizedOptions,
     orders: normalizeOrders(document, view.orders)
+  } as const
+
+  switch (view.type) {
+    case 'table':
+      return {
+        ...normalizedShared,
+        type: 'table',
+        ...(normalizedGroup
+          ? { group: normalizedGroup }
+          : {}),
+        options: normalizeViewOptions(view.options, {
+          type: 'table',
+          fields
+        })
+      }
+    case 'gallery':
+      return {
+        ...normalizedShared,
+        type: 'gallery',
+        ...(normalizedGroup
+          ? { group: normalizedGroup }
+          : {}),
+        options: normalizeViewOptions(view.options, {
+          type: 'gallery',
+          fields
+        })
+      }
+    case 'kanban':
+      if (!normalizedGroup) {
+        const fallbackGroup = resolveDefaultKanbanGroup(document)
+        if (!fallbackGroup) {
+          throw new Error(`Kanban view ${view.id} requires a groupable field`)
+        }
+
+        return {
+          ...normalizedShared,
+          type: 'kanban',
+          group: fallbackGroup,
+          options: normalizeViewOptions(view.options, {
+            type: 'kanban',
+            fields
+          })
+        }
+      }
+
+      return {
+        ...normalizedShared,
+        type: 'kanban',
+        group: normalizedGroup,
+        options: normalizeViewOptions(view.options, {
+          type: 'kanban',
+          fields
+        })
+      }
   }
 }
 

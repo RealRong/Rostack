@@ -39,7 +39,7 @@ const sameSection = (
 ) => left === right || (
   !!left
   && !!right
-  && left.key === right.key
+  && left.id === right.id
   && left.label === right.label
   && left.count === right.count
 )
@@ -119,7 +119,7 @@ export const createGalleryModel = (input: {
       const value = store.read(input.source.active.sections, key)
       return value
         ? {
-            key: value.key,
+            id: value.id,
             label: value.label,
             count: value.itemIds.length
           }

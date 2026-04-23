@@ -41,12 +41,6 @@ import {
   createPresentSourceListStore
 } from '@dataview/runtime/source/list'
 
-interface ItemValue {
-  recordId: RecordId
-  sectionId: SectionId
-  placement: ItemPlacement
-}
-
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
@@ -100,7 +94,7 @@ interface SummarySourceRuntime {
 interface ItemSourceRuntime {
   source: Pick<ItemSource, 'ids' | 'read'>
   ids: store.ValueStore<readonly ItemId[]>
-  table: ReturnType<typeof store.createKeyTableStore<ItemId, ItemValue>>
+  table: ReturnType<typeof store.createKeyTableStore<ItemId, ItemPlacement>>
   clear(): void
 }
 
@@ -287,10 +281,10 @@ const createItemSourceRuntime = (): ItemSourceRuntime => {
     initial: EMPTY_ITEM_IDS,
     isEqual: equal.sameOrder
   })
-  const table = store.createKeyTableStore<ItemId, ItemValue>()
-  const recordId = table.project.field(value => value?.recordId)
-  const sectionId = table.project.field(value => value?.sectionId)
-  const placement = table.project.field(value => value?.placement)
+  const table = store.createKeyTableStore<ItemId, ItemPlacement>()
+  const recordId = table.project.field(placement => placement?.recordId)
+  const sectionId = table.project.field(placement => placement?.sectionId)
+  const placement = table.project.field(placement => placement)
 
   return {
     source: {
@@ -310,35 +304,24 @@ const createItemSourceRuntime = (): ItemSourceRuntime => {
   }
 }
 
-const readItemValue = (
+const readItemPlacement = (
   snapshot: ViewState,
   itemId: ItemId
-): ItemValue | undefined => {
-  const placement = snapshot.items.read.placement(itemId)
-  if (!placement) {
-    return undefined
-  }
+): ItemPlacement | undefined => snapshot.items.read.placement(itemId)
 
-  return {
-    recordId: placement.recordId,
-    sectionId: placement.sectionId,
-    placement
-  }
-}
-
-const collectSectionItemValues = (
+const collectSectionItemPlacements = (
   snapshot: ViewState
-): readonly (readonly [ItemId, ItemValue])[] => {
-  const pairs: Array<readonly [ItemId, ItemValue]> = []
+): readonly (readonly [ItemId, ItemPlacement])[] => {
+  const pairs: Array<readonly [ItemId, ItemPlacement]> = []
 
   snapshot.sections.all.forEach(section => {
     section.itemIds.forEach(itemId => {
-      const value = readItemValue(snapshot, itemId)
-      if (!value) {
+      const placement = readItemPlacement(snapshot, itemId)
+      if (!placement) {
         return
       }
 
-      pairs.push([itemId, value] as const)
+      pairs.push([itemId, placement] as const)
     })
   })
 
@@ -512,10 +495,10 @@ export const resetActiveSource = (input: {
   input.runtime.recordsVisible.set(snapshot.records.visible)
   input.runtime.items.ids.set(snapshot.items.ids)
   input.runtime.items.table.write.clear()
-  const itemValues = collectSectionItemValues(snapshot)
-  if (itemValues.length) {
-    input.runtime.items.table.write.apply({
-      set: itemValues
+  const itemPlacements = collectSectionItemPlacements(snapshot)
+  if (itemPlacements.length) {
+    input.runtime.items.table.write.applyExact({
+      set: itemPlacements
     })
   }
   input.runtime.sections.ids.set(snapshot.sections.ids)
@@ -555,18 +538,18 @@ const applyItemDelta = (input: {
     input.runtime.ids.set(input.snapshot.items.ids)
   }
 
-  let set: Array<readonly [ItemId, ItemValue]> | undefined
+  let set: Array<readonly [ItemId, ItemPlacement]> | undefined
   const update = input.delta.update
   if (update?.length) {
     set = []
     for (let index = 0; index < update.length; index += 1) {
       const itemId = update[index]!
-      const value = readItemValue(input.snapshot, itemId)
-      if (!value) {
+      const placement = readItemPlacement(input.snapshot, itemId)
+      if (!placement) {
         continue
       }
 
-      set.push([itemId, value] as const)
+      set.push([itemId, placement] as const)
     }
   }
 

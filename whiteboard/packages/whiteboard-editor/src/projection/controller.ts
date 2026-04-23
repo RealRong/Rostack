@@ -9,6 +9,10 @@ import {
 } from '@whiteboard/editor-graph'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type {
+  HoverState as EditorHoverState,
+  HoverTarget
+} from '@whiteboard/editor/input/hover/store'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -51,6 +55,31 @@ const unionIds = <TId extends string>(
   values.flatMap((value) => [...value])
 )
 
+const isHoverTargetEqual = (
+  left: HoverTarget | undefined,
+  right: HoverTarget | undefined
+): boolean => {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right || left.kind !== right.kind) {
+    return false
+  }
+
+  switch (left.kind) {
+    case 'node':
+      return right.kind === 'node' && left.nodeId === right.nodeId
+    case 'edge':
+      return right.kind === 'edge' && left.edgeId === right.edgeId
+    case 'mindmap':
+      return right.kind === 'mindmap' && left.mindmapId === right.mindmapId
+    case 'group':
+      return right.kind === 'group' && left.groupId === right.groupId
+    case 'selection-box':
+      return right.kind === 'selection-box'
+  }
+}
+
 const createSelectionDelta = (): InputDelta => {
   const delta = createEmptyEditorGraphInputDelta()
   delta.ui.selection = true
@@ -60,6 +89,17 @@ const createSelectionDelta = (): InputDelta => {
 const createToolDelta = (): InputDelta => {
   const delta = createEmptyEditorGraphInputDelta()
   delta.ui.tool = true
+  return delta
+}
+
+const createHoverDelta = (input: {
+  previous: EditorHoverState
+  next: EditorHoverState
+}): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+  if (!isHoverTargetEqual(input.previous.target, input.next.target)) {
+    delta.ui.hover = true
+  }
   return delta
 }
 
@@ -215,6 +255,7 @@ export const createProjectionController = ({
 
   let currentEdit = store.read(session.state.edit)
   let currentPreview = store.read(session.preview.state)
+  let currentHover = store.read(session.interaction.read.hover)
 
   const notify = (
     result: Result
@@ -301,6 +342,17 @@ export const createProjectionController = ({
         previous: previousPreview,
         next: currentPreview
       }))
+    }),
+    session.interaction.read.hover.subscribe(() => {
+      const previousHover = currentHover
+      currentHover = store.read(session.interaction.read.hover)
+      const delta = createHoverDelta({
+        previous: previousHover,
+        next: currentHover
+      })
+      if (delta.ui.hover) {
+        mark(delta)
+      }
     }),
     session.viewport.read.subscribe(() => {
       mark(createViewportDelta())

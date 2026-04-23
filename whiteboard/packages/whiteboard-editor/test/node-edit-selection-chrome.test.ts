@@ -150,12 +150,13 @@ const createPointerInput = (
     x: number
     y: number
     pick: PointerInput['pick']
+    buttons?: number
   }
 ): PointerInput => ({
   phase: input.phase,
   pointerId: 1,
   button: 0,
-  buttons: input.phase === 'up' ? 0 : 1,
+  buttons: input.buttons ?? (input.phase === 'up' ? 0 : 1),
   detail: 1,
   client: { x: input.x, y: input.y },
   screen: { x: input.x, y: input.y },
@@ -513,5 +514,30 @@ describe('node edit selection chrome', () => {
       strokeWidth: 3,
       fill: '#22c55e'
     })
+  })
+
+  it('updates node hovered from idle pointer hover and clears it on leave', () => {
+    const editor = createShapeEditor()
+    const view = editor.read.node.view.get('shape-1')
+
+    expect(view?.hovered).toBe(false)
+
+    editor.input.pointerMove(createPointerInput({
+      phase: 'move',
+      x: view!.rect.x + view!.rect.width / 2,
+      y: view!.rect.y + view!.rect.height / 2,
+      pick: {
+        kind: 'node',
+        id: 'shape-1',
+        part: 'body'
+      },
+      buttons: 0
+    }))
+
+    expect(editor.read.node.view.get('shape-1')?.hovered).toBe(true)
+
+    editor.input.pointerLeave()
+
+    expect(editor.read.node.view.get('shape-1')?.hovered).toBe(false)
   })
 })

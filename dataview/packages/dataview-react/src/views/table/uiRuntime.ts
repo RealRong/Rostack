@@ -362,12 +362,13 @@ export const createTableUiRuntime = (options: {
 
       const windowState = store.read(virtual.window)
       const layoutState = store.read(virtual.layout)
+      const measurementPlan = store.read(virtual.measurement.plan)
 
       return {
         viewId: currentView.id,
         columns: previousColumns,
         rowCount: layoutState.rowCount,
-        measurementIds: layoutState.measurementIds,
+        measurementIds: measurementPlan.ids,
         grouped: Boolean(currentView.query.group),
         showVerticalLines: currentView.showVerticalLines,
         wrap: currentView.wrap,

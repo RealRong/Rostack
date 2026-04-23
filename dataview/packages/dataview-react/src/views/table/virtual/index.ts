@@ -1,5 +1,9 @@
 export { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
 export {
+  createTableMeasurementPlan,
+  EMPTY_TABLE_MEASUREMENT_PLAN
+} from '@dataview/react/views/table/virtual/measurementPlan'
+export {
   createTableVirtualRuntime,
   resolveTableWindowOverscan,
   resolveTableWindowSnapshot
@@ -20,3 +24,6 @@ export type {
   TableVirtualViewportSnapshot,
   TableVirtualWindowSnapshot
 } from '@dataview/react/views/table/virtual/runtime'
+export type {
+  TableMeasurementPlan
+} from '@dataview/react/views/table/virtual/measurementPlan'

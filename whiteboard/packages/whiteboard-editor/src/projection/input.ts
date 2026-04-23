@@ -22,6 +22,9 @@ import type {
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type {
+  HoverState as EditorHoverState
+} from '@whiteboard/editor/input/hover/store'
+import type {
   EditorInputPreviewState,
   TextPreviewPatch
 } from '@whiteboard/editor/session/preview/types'
@@ -36,6 +39,39 @@ const EMPTY_HOVER_STATE: HoverState = {
 }
 
 const EMPTY_NODE_DRAFTS = new Map<string, NodeDraft>()
+
+const readInteractionHover = (
+  hover: EditorHoverState
+): HoverState => {
+  switch (hover.target?.kind) {
+    case 'node':
+      return {
+        kind: 'node',
+        nodeId: hover.target.nodeId
+      }
+    case 'edge':
+      return {
+        kind: 'edge',
+        edgeId: hover.target.edgeId
+      }
+    case 'mindmap':
+      return {
+        kind: 'mindmap',
+        mindmapId: hover.target.mindmapId
+      }
+    case 'group':
+      return {
+        kind: 'group',
+        groupId: hover.target.groupId
+      }
+    case 'selection-box':
+      return {
+        kind: 'selection-box'
+      }
+    default:
+      return EMPTY_HOVER_STATE
+  }
+}
 
 export const createEmptyIdDelta = <TId extends string>(): IdDelta<TId> => ({
   added: new Set(),
@@ -673,7 +709,9 @@ export const createEditorGraphInput = ({
     },
     interaction: {
       selection,
-      hover: EMPTY_HOVER_STATE,
+      hover: readInteractionHover(
+        store.read(session.interaction.read.hover)
+      ),
       drag: readDragState(snapshot, session)
     },
     viewport: {

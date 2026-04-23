@@ -15,7 +15,7 @@ export interface KeyedReadStore<K, T> {
   isEqual?: Equality<T>
 }
 
-export interface KeyTablePatch<Key, Value> {
+export interface ExactKeyTablePatch<Key, Value> {
   set?: readonly (readonly [Key, Value])[]
   remove?: readonly Key[]
 }
@@ -35,8 +35,7 @@ export interface KeyTableReadStore<Key, Value> {
 export interface KeyTableStore<Key, Value> extends KeyTableReadStore<Key, Value> {
   write: {
     replace: (next: ReadonlyMap<Key, Value>) => void
-    apply: (patch: KeyTablePatch<Key, Value>) => void
-    applyExact: (patch: KeyTablePatch<Key, Value>) => void
+    applyExact: (patch: ExactKeyTablePatch<Key, Value>) => void
     clear: () => void
   }
   project: {

@@ -1,6 +1,6 @@
 export type {
+  ExactKeyTablePatch,
   KeyedReadStore,
-  KeyTablePatch,
   KeyTableReadStore,
   KeyTableStore,
   KeyedStore,

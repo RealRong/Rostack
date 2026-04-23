@@ -35,30 +35,6 @@ const sameOptionalValue = <Value,>(
   && isEqual(left, right)
 )
 
-const subscribeKey = <Key,>(
-  listenersByKey: Map<Key, Set<Listener>>,
-  key: Key,
-  listener: Listener
-) => {
-  const listeners = listenersByKey.get(key) ?? new Set<Listener>()
-  if (!listenersByKey.has(key)) {
-    listenersByKey.set(key, listeners)
-  }
-  listeners.add(listener)
-
-  return () => {
-    const currentListeners = listenersByKey.get(key)
-    if (!currentListeners) {
-      return
-    }
-
-    currentListeners.delete(listener)
-    if (!currentListeners.size) {
-      listenersByKey.delete(key)
-    }
-  }
-}
-
 const notifyKey = <Key,>(
   listenersByKey: ReadonlyMap<Key, ReadonlySet<Listener>>,
   key: Key
@@ -93,12 +69,46 @@ export const createKeyTableStore = <Key, Value>({
   let current = new Map(initial)
   const publicListenersByKey = new Map<Key, Set<Listener>>()
   const internalListenersByKey = new Map<Key, Set<Listener>>()
+  const listenedKeys = new Set<Key>()
 
   const readValue = (key: Key) => current.get(key)
-  const hasListeners = (key: Key) => (
-    Boolean(publicListenersByKey.get(key)?.size)
-    || Boolean(internalListenersByKey.get(key)?.size)
-  )
+  const refreshListeningState = (key: Key) => {
+    if (
+      publicListenersByKey.has(key)
+      || internalListenersByKey.has(key)
+    ) {
+      listenedKeys.add(key)
+      return
+    }
+
+    listenedKeys.delete(key)
+  }
+  const subscribeKey = (
+    listenersByKey: Map<Key, Set<Listener>>,
+    key: Key,
+    listener: Listener
+  ) => {
+    const listeners = listenersByKey.get(key) ?? new Set<Listener>()
+    if (!listenersByKey.has(key)) {
+      listenersByKey.set(key, listeners)
+    }
+    listeners.add(listener)
+    listenedKeys.add(key)
+
+    return () => {
+      const currentListeners = listenersByKey.get(key)
+      if (!currentListeners) {
+        return
+      }
+
+      currentListeners.delete(listener)
+      if (!currentListeners.size) {
+        listenersByKey.delete(key)
+      }
+
+      refreshListeningState(key)
+    }
+  }
   const notifyChangedKeys = (
     previousByKey: ReadonlyMap<Key, Value | undefined>
   ) => {
@@ -163,62 +173,11 @@ export const createKeyTableStore = <Key, Value>({
         const previous = current
         const previousByKey = new Map<Key, Value | undefined>()
 
-        publicListenersByKey.forEach((_listeners, key) => {
+        listenedKeys.forEach(key => {
           previousByKey.set(key, previous.get(key))
-        })
-        internalListenersByKey.forEach((_listeners, key) => {
-          if (!previousByKey.has(key)) {
-            previousByKey.set(key, previous.get(key))
-          }
         })
 
         current = new Map(next)
-        notifyChangedKeys(previousByKey)
-      },
-      apply: patch => {
-        if (!patch.set?.length && !patch.remove?.length) {
-          return
-        }
-
-        const previousByKey = new Map<Key, Value | undefined>()
-        const capturePrevious = (key: Key) => {
-          if (!hasListeners(key) || previousByKey.has(key)) {
-            return
-          }
-
-          previousByKey.set(key, current.get(key))
-        }
-
-        const set = patch.set
-        if (set?.length) {
-          for (let index = 0; index < set.length; index += 1) {
-            const [key, value] = set[index]!
-            const previous = current.get(key)
-            if (
-              previous !== undefined
-              && isEqual(previous, value)
-            ) {
-              continue
-            }
-
-            capturePrevious(key)
-            current.set(key, value)
-          }
-        }
-
-        const remove = patch.remove
-        if (remove?.length) {
-          for (let index = 0; index < remove.length; index += 1) {
-            const key = remove[index]!
-            if (!current.has(key)) {
-              continue
-            }
-
-            capturePrevious(key)
-            current.delete(key)
-          }
-        }
-
         notifyChangedKeys(previousByKey)
       },
       applyExact: patch => {
@@ -226,30 +185,16 @@ export const createKeyTableStore = <Key, Value>({
           return
         }
 
-        const noListeners = (
-          publicListenersByKey.size === 0
-          && internalListenersByKey.size === 0
-        )
+        const noListeners = listenedKeys.size === 0
         const changedKeys: Key[] = []
-        const changedKeySet = new Set<Key>()
-        const recordChangedKey = (
-          key: Key
-        ) => {
-          if (!hasListeners(key) || changedKeySet.has(key)) {
-            return
-          }
-
-          changedKeySet.add(key)
-          changedKeys.push(key)
-        }
 
         const set = patch.set
         if (set?.length) {
           for (let index = 0; index < set.length; index += 1) {
             const [key, value] = set[index]!
             current.set(key, value)
-            if (!noListeners) {
-              recordChangedKey(key)
+            if (!noListeners && listenedKeys.has(key)) {
+              changedKeys.push(key)
             }
           }
         }
@@ -259,8 +204,8 @@ export const createKeyTableStore = <Key, Value>({
           for (let index = 0; index < remove.length; index += 1) {
             const key = remove[index]!
             current.delete(key)
-            if (!noListeners) {
-              recordChangedKey(key)
+            if (!noListeners && listenedKeys.has(key)) {
+              changedKeys.push(key)
             }
           }
         }
@@ -277,17 +222,7 @@ export const createKeyTableStore = <Key, Value>({
         }
 
         const previousByKey = new Map<Key, Value | undefined>()
-        publicListenersByKey.forEach((_listeners, key) => {
-          const previous = current.get(key)
-          if (previous !== undefined) {
-            previousByKey.set(key, previous)
-          }
-        })
-        internalListenersByKey.forEach((_listeners, key) => {
-          if (previousByKey.has(key)) {
-            return
-          }
-
+        listenedKeys.forEach(key => {
           const previous = current.get(key)
           if (previous !== undefined) {
             previousByKey.set(key, previous)

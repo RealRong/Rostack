@@ -13,6 +13,10 @@ import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
+import type {
+  HoverTarget
+} from '@whiteboard/editor/input/hover/store'
+import type { EditorPick } from '@whiteboard/editor/types/pick'
 
 const readSelectionIntent = (
   selection: EditorStore['selection'],
@@ -29,6 +33,64 @@ const readSelectionIntent = (
         screen
       }
     : null
+}
+
+const isHoverTargetEqual = (
+  left: HoverTarget | undefined,
+  right: HoverTarget | undefined
+): boolean => {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right || left.kind !== right.kind) {
+    return false
+  }
+
+  switch (left.kind) {
+    case 'node':
+      return right.kind === 'node' && left.nodeId === right.nodeId
+    case 'edge':
+      return right.kind === 'edge' && left.edgeId === right.edgeId
+    case 'mindmap':
+      return right.kind === 'mindmap' && left.mindmapId === right.mindmapId
+    case 'group':
+      return right.kind === 'group' && left.groupId === right.groupId
+    case 'selection-box':
+      return right.kind === 'selection-box'
+  }
+}
+
+const readHoverTarget = (
+  pick: EditorPick
+): HoverTarget | undefined => {
+  switch (pick.kind) {
+    case 'background':
+      return undefined
+    case 'selection-box':
+      return {
+        kind: 'selection-box'
+      }
+    case 'node':
+      return {
+        kind: 'node',
+        nodeId: pick.id
+      }
+    case 'edge':
+      return {
+        kind: 'edge',
+        edgeId: pick.id
+      }
+    case 'group':
+      return {
+        kind: 'group',
+        groupId: pick.id
+      }
+    case 'mindmap':
+      return {
+        kind: 'mindmap',
+        mindmapId: pick.treeId
+      }
+  }
 }
 
 export const createEditorInputHost = ({
@@ -60,6 +122,7 @@ export const createEditorInputHost = ({
 
   const clearTransientState = () => {
     clearPointer()
+    session.interaction.write.clearHover()
     edgeHover.clear()
   }
 
@@ -138,6 +201,7 @@ export const createEditorInputHost = ({
 
       const handled = interaction.handlePointerDown(input)
       if (handled) {
+        session.interaction.write.clearHover()
         edgeHover.clear()
       }
 
@@ -149,10 +213,28 @@ export const createEditorInputHost = ({
     pointerMove: (input) => {
       writePointer(input)
       const handled = interaction.handlePointerMove(input)
-      if (!handled) {
-        edgeHover.move(input.world)
+      if (handled) {
+        session.interaction.write.clearHover()
+        edgeHover.clear()
+        return true
       }
-      return handled
+
+      const target = readHoverTarget(input.pick)
+      session.interaction.write.setHover((current) => (
+        isHoverTargetEqual(current.target, target)
+          ? current
+          : {
+              ...current,
+              target
+            }
+      ))
+
+      if (session.state.tool.get().type === 'edge') {
+        edgeHover.move(input.world)
+      } else {
+        edgeHover.clear()
+      }
+      return false
     },
     pointerUp: (input) => {
       writePointer(input)

@@ -15,38 +15,61 @@ export const createEdgeHoverService = (
     snap: SnapRuntime
   },
   hover: {
-    setHover: (hover: HoverState) => void
-    clearHover: () => void
+    setHover: (
+      next:
+        | HoverState
+        | ((current: HoverState) => HoverState)
+    ) => void
   }
 ): EdgeHoverService => {
   let hoverPoint: Point | null = null
 
   const hoverTask = scheduler.createFrameTask(() => {
     if (!hoverPoint || ctx.readTool().type !== 'edge') {
-      hover.clearHover()
+      hover.setHover((current) => (
+        current.edgeGuide === undefined
+          ? current
+          : {
+              ...current,
+              edgeGuide: undefined
+            }
+      ))
       return
     }
 
     const evaluation = ctx.snap.edge.connect({
       pointerWorld: hoverPoint
     })
-    hover.setHover({
-      edgeGuide:
-        evaluation.focusedNodeId || evaluation.resolution.mode !== 'free'
-          ? {
-              connect: {
-                focusedNodeId: evaluation.focusedNodeId,
-                resolution: evaluation.resolution
-              }
+    const edgeGuide =
+      evaluation.focusedNodeId || evaluation.resolution.mode !== 'free'
+        ? {
+            connect: {
+              focusedNodeId: evaluation.focusedNodeId,
+              resolution: evaluation.resolution
             }
-          : undefined
-    })
+          }
+        : undefined
+    hover.setHover((current) => (
+      current.edgeGuide === edgeGuide
+        ? current
+        : {
+            ...current,
+            edgeGuide
+          }
+    ))
   })
 
   const clear = () => {
     hoverTask.cancel()
     hoverPoint = null
-    hover.clearHover()
+    hover.setHover((current) => (
+      current.edgeGuide === undefined
+        ? current
+        : {
+            ...current,
+            edgeGuide: undefined
+          }
+    ))
   }
 
   return {

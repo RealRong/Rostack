@@ -13,9 +13,15 @@ import {
   viewportRect,
   type ScrollNode
 } from '@shared/dom'
-import { equal, store } from '@shared/core'
+import { store } from '@shared/core'
 import type { TableLayout } from '@dataview/react/views/table/layout'
 import { TableLayoutModel } from '@dataview/react/views/table/virtual/layoutModel'
+import {
+  createTableMeasurementPlan,
+  EMPTY_TABLE_MEASUREMENT_PLAN,
+  sameTableMeasurementPlan,
+  type TableMeasurementPlan
+} from '@dataview/react/views/table/virtual/measurementPlan'
 import {
   createTableLayoutState,
   sameTableLayoutState,
@@ -49,7 +55,6 @@ export interface TableVirtualLayoutSnapshot {
   totalHeight: number
   revision: number
   rowCount: number
-  measurementIds: readonly string[]
 }
 
 export interface TableVirtualViewportSnapshot {
@@ -90,6 +95,7 @@ export interface TableVirtualRuntime {
     bottom: number
   }) => readonly ItemId[]
   measurement: {
+    plan: store.ReadStore<TableMeasurementPlan>
     sync: (input: {
       bucketKey: string | number
       heightById?: ReadonlyMap<string, number>
@@ -106,8 +112,7 @@ export interface TableVirtualRuntime {
 const EMPTY_LAYOUT_SNAPSHOT: TableVirtualLayoutSnapshot = {
   totalHeight: 0,
   revision: 0,
-  rowCount: 0,
-  measurementIds: []
+  rowCount: 0
 }
 
 const createBootstrapViewportSnapshot = (): TableVirtualViewportSnapshot => {
@@ -136,7 +141,6 @@ const sameLayoutSnapshot = (
 ) => left.totalHeight === right.totalHeight
   && left.revision === right.revision
   && left.rowCount === right.rowCount
-  && equal.sameOrder(left.measurementIds, right.measurementIds)
 
 const sameViewportSnapshot = (
   left: TableVirtualViewportSnapshot,
@@ -307,6 +311,17 @@ export const createTableVirtualRuntime = (options: {
     grid: options.grid,
     view: options.view
   })
+  const measurementPlanStore = store.createDerivedStore<TableMeasurementPlan>({
+    get: () => {
+      const layoutState = store.read(layoutStateStore)
+      return layoutState
+        ? createTableMeasurementPlan({
+            state: layoutState
+          })
+        : EMPTY_TABLE_MEASUREMENT_PLAN
+    },
+    isEqual: sameTableMeasurementPlan
+  })
   const layoutStore = store.createValueStore<TableVirtualLayoutSnapshot>({
     initial: EMPTY_LAYOUT_SNAPSHOT,
     isEqual: sameLayoutSnapshot
@@ -364,8 +379,7 @@ export const createTableVirtualRuntime = (options: {
       ? {
           totalHeight: layoutModel.totalHeight,
           revision: layoutRevision,
-          rowCount: layoutModel.rowCount,
-          measurementIds: layoutModel.measurementIds
+          rowCount: layoutModel.rowCount
         }
       : EMPTY_LAYOUT_SNAPSHOT)
   }
@@ -796,6 +810,7 @@ export const createTableVirtualRuntime = (options: {
       )) ?? []
     ),
     measurement: {
+      plan: measurementPlanStore,
       sync: syncMeasurements
     },
     attach,

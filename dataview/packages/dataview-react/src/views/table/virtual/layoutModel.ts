@@ -80,9 +80,9 @@ class FenwickTree {
     this.values = [...values]
     this.tree = new Array(values.length + 1).fill(0)
 
-    values.forEach((value, index) => {
-      this.add(index, value)
-    })
+    for (let index = 0; index < values.length; index += 1) {
+      this.add(index, values[index]!)
+    }
   }
 
   valueAt(index: number) {
@@ -232,59 +232,10 @@ const materializeBlock = (input: {
   }
 }
 
-const buildSectionMeasurementIds = (input: {
-  grouped: boolean
-  sectionId: SectionId
-  collapsed: boolean
-  itemIds: readonly ItemId[]
-}) => input.grouped
-  ? (
-      input.collapsed
-        ? [tableBlockKey({
-            kind: 'section-header',
-            sectionId: input.sectionId
-          })]
-        : [
-            tableBlockKey({
-              kind: 'section-header',
-              sectionId: input.sectionId
-            }),
-            tableBlockKey({
-              kind: 'column-header',
-              sectionId: input.sectionId
-            }),
-            ...input.itemIds.map(rowId => tableBlockKey({
-              kind: 'row',
-              rowId
-            })),
-            tableBlockKey({
-              kind: 'create-record',
-              sectionId: input.sectionId
-            }),
-            tableBlockKey({
-              kind: 'column-footer',
-              sectionId: input.sectionId
-            })
-          ]
-    )
-  : [
-      tableBlockKey({
-        kind: 'column-header',
-        sectionId: input.sectionId
-      }),
-      ...input.itemIds.map(rowId => tableBlockKey({
-        kind: 'row',
-        rowId
-      })),
-      tableBlockKey({
-        kind: 'create-record',
-        sectionId: input.sectionId
-      }),
-      tableBlockKey({
-        kind: 'column-footer',
-        sectionId: input.sectionId
-      })
-    ]
+interface TableRowLocation {
+  sectionIndex: number
+  rowIndex: number
+}
 
 const sameSectionState = (
   left: TableLayoutSectionState,
@@ -298,11 +249,18 @@ class TableLayoutSectionModel {
   readonly grouped: boolean
   readonly collapsed: boolean
   readonly itemIds: readonly ItemId[]
-  readonly rowIndexById: ReadonlyMap<ItemId, number>
-  readonly sectionHeaderId: TableBlockId
-  readonly columnHeaderId: TableBlockId
-  readonly createRecordId: TableBlockId
-  readonly columnFooterId: TableBlockId
+  readonly sectionHeaderId: Extract<TableBlockId, {
+    kind: 'section-header'
+  }>
+  readonly columnHeaderId: Extract<TableBlockId, {
+    kind: 'column-header'
+  }>
+  readonly createRecordId: Extract<TableBlockId, {
+    kind: 'create-record'
+  }>
+  readonly columnFooterId: Extract<TableBlockId, {
+    kind: 'column-footer'
+  }>
   readonly sectionHeaderKey: string
   readonly columnHeaderKey: string
   readonly createRecordKey: string
@@ -317,6 +275,8 @@ class TableLayoutSectionModel {
   private columnFooterHeight: number
 
   constructor(input: {
+    sectionIndex: number
+    rowLocationById: Map<ItemId, TableRowLocation>
     grouped: boolean
     state: TableLayoutSectionState
     rowHeight: number
@@ -350,17 +310,19 @@ class TableLayoutSectionModel {
     this.createRecordKey = tableBlockKey(this.createRecordId)
     this.columnFooterKey = tableBlockKey(this.columnFooterId)
 
-    const rowIndexById = new Map<ItemId, number>()
-    const resolvedRowHeights = this.itemIds.map((rowId, index) => {
-      rowIndexById.set(rowId, index)
-      return input.measuredHeights?.get(tableBlockKey({
+    const resolvedRowHeights = new Array<number>(this.itemIds.length)
+    for (let index = 0; index < this.itemIds.length; index += 1) {
+      const rowId = this.itemIds[index]!
+      input.rowLocationById.set(rowId, {
+        sectionIndex: input.sectionIndex,
+        rowIndex: index
+      })
+      resolvedRowHeights[index] = input.measuredHeights?.get(tableBlockKey({
         kind: 'row',
         rowId
-      }))
-        ?? this.rowHeight
-    })
+      })) ?? this.rowHeight
+    }
 
-    this.rowIndexById = rowIndexById
     this.rowHeights = new FenwickTree(resolvedRowHeights)
     this.sectionHeaderHeight = this.grouped
       ? (input.measuredHeights?.get(this.sectionHeaderKey) ?? this.headerHeight)
@@ -377,24 +339,32 @@ class TableLayoutSectionModel {
   }
 
   sync(input: {
+    sectionIndex: number
+    rowLocationById: Map<ItemId, TableRowLocation>
     grouped: boolean
     state: TableLayoutSectionState
     measuredHeights?: ReadonlyMap<string, number>
   }) {
-    return this.grouped === input.grouped
+    const unchanged = this.grouped === input.grouped
       && sameSectionState({
         key: this.key,
         collapsed: this.collapsed,
         itemIds: this.itemIds
       }, input.state)
-      ? this
-      : new TableLayoutSectionModel({
-          grouped: input.grouped,
-          state: input.state,
-          rowHeight: this.rowHeight,
-          headerHeight: this.headerHeight,
-          measuredHeights: input.measuredHeights
-        })
+    if (unchanged) {
+      this.appendRowLocations(input.rowLocationById, input.sectionIndex)
+      return this
+    }
+
+    return new TableLayoutSectionModel({
+      sectionIndex: input.sectionIndex,
+      rowLocationById: input.rowLocationById,
+      grouped: input.grouped,
+      state: input.state,
+      rowHeight: this.rowHeight,
+      headerHeight: this.headerHeight,
+      measuredHeights: input.measuredHeights
+    })
   }
 
   get totalHeight() {
@@ -405,31 +375,27 @@ class TableLayoutSectionModel {
       + this.columnFooterHeight
   }
 
-  get measurementIds() {
-    return buildSectionMeasurementIds({
-      grouped: this.grouped,
-      sectionId: this.key,
-      collapsed: this.collapsed,
-      itemIds: this.itemIds
-    })
+  locateRow(
+    rowIndex: number,
+    rowId: ItemId,
+    sectionTop: number
+  ) {
+    const top = this.topOfRow(rowIndex, sectionTop)
+    return top === null
+      ? null
+      : {
+          rowId,
+          top,
+          bottom: top + this.rowHeights.valueAt(rowIndex)
+        }
   }
 
-  locateRow(rowId: ItemId, sectionTop: number) {
-    const rowIndex = this.rowIndexById.get(rowId)
-    if (rowIndex === undefined || this.collapsed) {
-      return null
-    }
-
-    const rowsTop = this.rowsTop()
-    const top = sectionTop + rowsTop + this.rowHeights.prefixSum(rowIndex)
-    return {
-      rowId,
-      top,
-      bottom: top + this.rowHeights.valueAt(rowIndex)
-    }
-  }
-
-  topOfBlock(id: TableBlockId, sectionTop: number) {
+  topOfBlock(
+    id: Exclude<TableBlockId, {
+      kind: 'row'
+    }>,
+    sectionTop: number
+  ) {
     if (id.kind === 'section-header' && id.sectionId === this.key && this.grouped) {
       return sectionTop
     }
@@ -440,15 +406,6 @@ class TableLayoutSectionModel {
 
     if (id.kind === 'column-header' && id.sectionId === this.key) {
       return sectionTop + this.sectionHeaderHeight
-    }
-
-    if (id.kind === 'row') {
-      const rowIndex = this.rowIndexById.get(id.rowId)
-      if (rowIndex === undefined) {
-        return null
-      }
-
-      return sectionTop + this.rowsTop() + this.rowHeights.prefixSum(rowIndex)
     }
 
     if (id.kind === 'create-record' && id.sectionId === this.key) {
@@ -462,6 +419,21 @@ class TableLayoutSectionModel {
     return null
   }
 
+  topOfRow(
+    rowIndex: number,
+    sectionTop: number
+  ) {
+    if (
+      this.collapsed
+      || rowIndex < 0
+      || rowIndex >= this.itemIds.length
+    ) {
+      return null
+    }
+
+    return sectionTop + this.rowsTop() + this.rowHeights.prefixSum(rowIndex)
+  }
+
   replaceMeasuredHeights(heightByKey: ReadonlyMap<string, number>) {
     let changed = false
 
@@ -470,17 +442,24 @@ class TableLayoutSectionModel {
     changed = this.setSimpleHeight('create-record', heightByKey.get(this.createRecordKey)) || changed
     changed = this.setSimpleHeight('column-footer', heightByKey.get(this.columnFooterKey)) || changed
 
-    this.itemIds.forEach(rowId => {
-      changed = this.setRowHeight(rowId, heightByKey.get(tableBlockKey({
-        kind: 'row',
-        rowId
-      }))) || changed
-    })
+    for (let index = 0; index < this.itemIds.length; index += 1) {
+      const rowId = this.itemIds[index]!
+      changed = this.rowHeights.set(
+        index,
+        heightByKey.get(tableBlockKey({
+          kind: 'row',
+          rowId
+        })) ?? this.rowHeight
+      ) || changed
+    }
 
     return changed
   }
 
-  applyMeasuredHeight(key: string, height: number | undefined) {
+  applySimpleMeasuredHeight(
+    key: string,
+    height: number | undefined
+  ) {
     switch (key) {
       case this.sectionHeaderKey:
         return this.setSimpleHeight('section-header', height)
@@ -491,8 +470,18 @@ class TableLayoutSectionModel {
       case this.columnFooterKey:
         return this.setSimpleHeight('column-footer', height)
       default:
-        return this.setRowHeightByKey(key, height)
+        return false
     }
+  }
+
+  applyRowMeasuredHeight(
+    rowIndex: number,
+    height: number | undefined
+  ) {
+    return this.rowHeights.set(
+      rowIndex,
+      height ?? this.rowHeight
+    )
   }
 
   materializeWindow(input: {
@@ -551,7 +540,8 @@ class TableLayoutSectionModel {
     top += this.columnHeaderHeight
     blockCount += this.itemIds.length
 
-    if (top <= input.end && top + this.rowHeights.total() >= input.start) {
+    const rowsHeight = this.rowHeights.total()
+    if (top <= input.end && top + rowsHeight >= input.start) {
       const relativeStart = Math.max(0, input.start - top)
       const startIndex = this.rowHeights.lowerBound(relativeStart)
       let rowTop = top + this.rowHeights.prefixSum(startIndex)
@@ -584,7 +574,7 @@ class TableLayoutSectionModel {
       }
     }
 
-    top += this.rowHeights.total()
+    top += rowsHeight
 
     pushSimple({
       id: this.createRecordId,
@@ -607,6 +597,18 @@ class TableLayoutSectionModel {
     }
   }
 
+  private appendRowLocations(
+    rowLocationById: Map<ItemId, TableRowLocation>,
+    sectionIndex: number
+  ) {
+    for (let index = 0; index < this.itemIds.length; index += 1) {
+      rowLocationById.set(this.itemIds[index]!, {
+        sectionIndex,
+        rowIndex: index
+      })
+    }
+  }
+
   private rowsTop() {
     return this.sectionHeaderHeight + this.columnHeaderHeight
   }
@@ -619,39 +621,6 @@ class TableLayoutSectionModel {
     return this.collapsed
       ? 0
       : this.rowHeights.total()
-  }
-
-  private rowIndexOfKey(key: string) {
-    const id = parseTableBlockKey(key)
-    if (!id || id.kind !== 'row') {
-      return undefined
-    }
-
-    return this.rowIndexById.get(id.rowId)
-  }
-
-  private setRowHeightByKey(key: string, height: number | undefined) {
-    const rowIndex = this.rowIndexOfKey(key)
-    if (rowIndex === undefined) {
-      return false
-    }
-
-    return this.rowHeights.set(
-      rowIndex,
-      height ?? this.rowHeight
-    )
-  }
-
-  private setRowHeight(rowId: ItemId, height: number | undefined) {
-    const rowIndex = this.rowIndexById.get(rowId)
-    if (rowIndex === undefined) {
-      return false
-    }
-
-    return this.rowHeights.set(
-      rowIndex,
-      height ?? this.rowHeight
-    )
   }
 
   private setSimpleHeight(
@@ -705,13 +674,12 @@ class TableLayoutSectionModel {
 
 export class TableLayoutModel {
   readonly grouped: boolean
-  readonly measurementIds: readonly string[]
   readonly rowCount: number
 
   private readonly rowHeight: number
   private readonly headerHeight: number
   private readonly sections: readonly TableLayoutSectionModel[]
-  private readonly sectionIndexByRowId: ReadonlyMap<ItemId, number>
+  private readonly rowLocationById: ReadonlyMap<ItemId, TableRowLocation>
   private readonly sectionIndexByBlockKey: ReadonlyMap<string, number>
   private sectionHeights: FenwickTree
 
@@ -721,15 +689,27 @@ export class TableLayoutModel {
     headerHeight: number
     measuredHeights?: ReadonlyMap<string, number>
   }) {
-    return new TableLayoutModel({
-      ...input,
-      sections: input.state.sections.map(state => new TableLayoutSectionModel({
+    const rowLocationById = new Map<ItemId, TableRowLocation>()
+    const sections = new Array<TableLayoutSectionModel>(input.state.sections.length)
+
+    for (let index = 0; index < input.state.sections.length; index += 1) {
+      sections[index] = new TableLayoutSectionModel({
+        sectionIndex: index,
+        rowLocationById,
         grouped: input.state.grouped,
-        state,
+        state: input.state.sections[index]!,
         rowHeight: input.rowHeight,
         headerHeight: input.headerHeight,
         measuredHeights: input.measuredHeights
-      }))
+      })
+    }
+
+    return new TableLayoutModel({
+      state: input.state,
+      rowHeight: input.rowHeight,
+      headerHeight: input.headerHeight,
+      sections,
+      rowLocationById
     })
   }
 
@@ -738,31 +718,28 @@ export class TableLayoutModel {
     rowHeight: number
     headerHeight: number
     sections: readonly TableLayoutSectionModel[]
+    rowLocationById: ReadonlyMap<ItemId, TableRowLocation>
   }) {
     this.grouped = input.state.grouped
-    this.measurementIds = input.sections.flatMap(section => section.measurementIds)
     this.rowCount = input.state.rowCount
     this.rowHeight = input.rowHeight
     this.headerHeight = input.headerHeight
     this.sections = input.sections
+    this.rowLocationById = input.rowLocationById
 
-    const sectionIndexByRowId = new Map<ItemId, number>()
     const sectionIndexByBlockKey = new Map<string, number>()
-    input.sections.forEach((section, index) => {
+    const sectionHeights = new Array<number>(input.sections.length)
+    for (let index = 0; index < input.sections.length; index += 1) {
+      const section = input.sections[index]!
       sectionIndexByBlockKey.set(section.sectionHeaderKey, index)
       sectionIndexByBlockKey.set(section.columnHeaderKey, index)
       sectionIndexByBlockKey.set(section.createRecordKey, index)
       sectionIndexByBlockKey.set(section.columnFooterKey, index)
-      section.itemIds.forEach(rowId => {
-        sectionIndexByRowId.set(rowId, index)
-      })
-    })
+      sectionHeights[index] = section.totalHeight
+    }
 
-    this.sectionIndexByRowId = sectionIndexByRowId
     this.sectionIndexByBlockKey = sectionIndexByBlockKey
-    this.sectionHeights = new FenwickTree(
-      input.sections.map(section => section.totalHeight)
-    )
+    this.sectionHeights = new FenwickTree(sectionHeights)
   }
 
   get totalHeight() {
@@ -786,22 +763,30 @@ export class TableLayoutModel {
       })
     }
 
-    const nextSections = this.sections.map((section, index) => section.sync({
-      grouped: input.state.grouped,
-      state: input.state.sections[index]!,
-      measuredHeights: input.measuredHeights
-    }))
-    const changed = (
-      this.rowCount !== input.state.rowCount
-      || nextSections.some((section, index) => section !== this.sections[index])
-    )
+    const rowLocationById = new Map<ItemId, TableRowLocation>()
+    const nextSections = new Array<TableLayoutSectionModel>(this.sections.length)
+    let changed = this.rowCount !== input.state.rowCount
+
+    for (let index = 0; index < this.sections.length; index += 1) {
+      const section = this.sections[index]!
+      const nextSection = section.sync({
+        sectionIndex: index,
+        rowLocationById,
+        grouped: input.state.grouped,
+        state: input.state.sections[index]!,
+        measuredHeights: input.measuredHeights
+      })
+      nextSections[index] = nextSection
+      changed = changed || nextSection !== section
+    }
 
     return changed
       ? new TableLayoutModel({
           state: input.state,
           rowHeight: this.rowHeight,
           headerHeight: this.headerHeight,
-          sections: nextSections
+          sections: nextSections,
+          rowLocationById
         })
       : this
   }
@@ -865,19 +850,34 @@ export class TableLayoutModel {
   }
 
   locateRow(rowId: ItemId) {
-    const sectionIndex = this.sectionIndexByRowId.get(rowId)
-    if (sectionIndex === undefined) {
+    const location = this.rowLocationById.get(rowId)
+    if (!location) {
       return null
     }
 
-    const section = this.sections[sectionIndex]
-    return section?.locateRow(rowId, this.topOfSection(sectionIndex)) ?? null
+    const section = this.sections[location.sectionIndex]
+    return section?.locateRow(
+      location.rowIndex,
+      rowId,
+      this.topOfSection(location.sectionIndex)
+    ) ?? null
   }
 
   topOfBlock(id: TableBlockId) {
-    const sectionIndex = id.kind === 'row'
-      ? this.sectionIndexByRowId.get(id.rowId)
-      : this.sectionIndexByBlockKey.get(tableBlockKey(id))
+    if (id.kind === 'row') {
+      const location = this.rowLocationById.get(id.rowId)
+      if (!location) {
+        return null
+      }
+
+      const section = this.sections[location.sectionIndex]
+      return section?.topOfRow(
+        location.rowIndex,
+        this.topOfSection(location.sectionIndex)
+      ) ?? null
+    }
+
+    const sectionIndex = this.sectionIndexByBlockKey.get(tableBlockKey(id))
     if (sectionIndex === undefined) {
       return null
     }
@@ -889,13 +889,14 @@ export class TableLayoutModel {
   replaceMeasuredHeights(heightByKey: ReadonlyMap<string, number>) {
     let changed = false
 
-    this.sections.forEach((section, index) => {
+    for (let index = 0; index < this.sections.length; index += 1) {
+      const section = this.sections[index]!
       if (!section.replaceMeasuredHeights(heightByKey)) {
-        return
+        continue
       }
 
       changed = this.sectionHeights.set(index, section.totalHeight) || changed
-    })
+    }
 
     return changed
   }
@@ -919,15 +920,31 @@ export class TableLayoutModel {
 
   private applyMeasuredHeight(key: string, height: number | undefined) {
     const id = parseTableBlockKey(key)
-    const sectionIndex = id?.kind === 'row'
-      ? this.sectionIndexByRowId.get(id.rowId)
-      : this.sectionIndexByBlockKey.get(key)
+    if (!id) {
+      return false
+    }
+
+    if (id.kind === 'row') {
+      const location = this.rowLocationById.get(id.rowId)
+      if (!location) {
+        return false
+      }
+
+      const section = this.sections[location.sectionIndex]
+      if (!section?.applyRowMeasuredHeight(location.rowIndex, height)) {
+        return false
+      }
+
+      return this.sectionHeights.set(location.sectionIndex, section.totalHeight)
+    }
+
+    const sectionIndex = this.sectionIndexByBlockKey.get(key)
     if (sectionIndex === undefined) {
       return false
     }
 
     const section = this.sections[sectionIndex]
-    if (!section?.applyMeasuredHeight(key, height)) {
+    if (!section?.applySimpleMeasuredHeight(key, height)) {
       return false
     }
 

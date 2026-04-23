@@ -36,7 +36,7 @@ const createMoveOrderAction = (
 
   return {
     type: 'view.patch',
-    viewId,
+    id: viewId,
     patch: {
       orders: viewApi.order.reorder({
         allRecordIds: base.reader.document().records.order,
@@ -106,7 +106,7 @@ const createGroupValueActions = (input: {
 
     actions.push({
       type: 'record.fields.writeMany',
-      input: currentValue === undefined
+      ...(currentValue === undefined
         ? {
             recordIds: [recordId],
             clear: [fieldId]
@@ -116,7 +116,7 @@ const createGroupValueActions = (input: {
             set: {
               [fieldId]: currentValue
             }
-          }
+          })
     })
   }
 
@@ -136,14 +136,14 @@ export const planMove = (
       changed: false,
       sectionChanged: false,
       target: {
-        sectionId: target.sectionId
+        section: target.section
       }
     }
   }
 
   const validIds = itemIds.filter(id => state.items.order.has(id))
   const movingSet = new Set(validIds)
-  const section = state.sections.get(target.sectionId)
+  const section = state.sections.get(target.section)
   const sectionItemIds = section?.itemIds ?? []
   const beforeItemId = target.before && sectionItemIds.includes(target.before)
     ? target.before
@@ -172,7 +172,7 @@ export const planMove = (
   const beforeRecordId = nextBeforeItemId
     ? state.items.read.record(nextBeforeItemId)
     : undefined
-  const sectionChanged = validIds.some(id => state.items.read.section(id) !== target.sectionId)
+  const sectionChanged = validIds.some(id => state.items.read.section(id) !== target.section)
   const changed = validIds.length > 0 && (
     sectionChanged
     || nextSectionItemIds.length !== sectionItemIds.length
@@ -185,9 +185,9 @@ export const planMove = (
     changed,
     sectionChanged,
     target: {
-      sectionId: target.sectionId,
-      ...(nextBeforeItemId ? { beforeItemId: nextBeforeItemId } : {}),
-      ...(beforeRecordId ? { beforeRecordId } : {})
+      section: target.section,
+      ...(nextBeforeItemId ? { before: nextBeforeItemId } : {}),
+      ...(beforeRecordId ? { beforeRecord: beforeRecordId } : {})
     }
   }
 }
@@ -221,7 +221,7 @@ export const createActiveItemsApi = (input: {
     const actions: Action[] = []
 
     if (plan.sectionChanged && groupWrite) {
-      const targetBucketId = state.sections.get(plan.target.sectionId)?.bucket?.id
+      const targetBucketId = state.sections.get(plan.target.section)?.bucket?.id
       if (!targetBucketId) {
         return
       }
@@ -245,7 +245,7 @@ export const createActiveItemsApi = (input: {
       const moveAction = createMoveOrderAction(
         input.base,
         plan.recordIds,
-        plan.target.beforeRecordId
+        plan.target.beforeRecord
       )
       if (moveAction) {
         actions.push(moveAction)
@@ -289,11 +289,9 @@ export const createCellsApi = (input: {
 
     input.base.dispatch({
       type: 'record.fields.writeMany',
-      input: {
-        recordIds: [target.recordId],
-        set: {
-          [target.fieldId]: value
-        }
+      recordIds: [target.recordId],
+      set: {
+        [target.fieldId]: value
       }
     })
   },
@@ -305,10 +303,8 @@ export const createCellsApi = (input: {
 
     input.base.dispatch({
       type: 'record.fields.writeMany',
-      input: {
-        recordIds: [target.recordId],
-        clear: [target.fieldId]
-      }
+      recordIds: [target.recordId],
+      clear: [target.fieldId]
     })
   }
 })

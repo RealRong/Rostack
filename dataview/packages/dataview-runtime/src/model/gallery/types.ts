@@ -30,7 +30,7 @@ export interface GallerySection {
 
 export interface GalleryCard extends Card {}
 
-export interface DataViewGalleryModel {
+export interface GalleryModel {
   body: store.ReadStore<GalleryBody | null>
   sections: store.ReadStore<readonly Section[]>
   section: store.KeyedReadStore<SectionId, GallerySection | undefined>

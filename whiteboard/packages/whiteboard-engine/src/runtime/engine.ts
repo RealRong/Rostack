@@ -20,6 +20,7 @@ import { createWrite } from '../write'
 import { buildChange } from '../change/build'
 import type { EngineState } from './state'
 import { publishEngine } from './publish'
+import { createEngineQuery } from './query'
 import type { EngineWrite } from '../types/engineWrite'
 
 const createInitialChange = (
@@ -90,6 +91,10 @@ export const createEngine = ({
     listeners: new Set(),
     writeListeners: new Set()
   }
+  const query = createEngineQuery({
+    config,
+    current: () => state.publish
+  })
 
   const commit = <T,>(
     draft: ReturnType<typeof writer.execute> | ReturnType<typeof writer.apply>
@@ -131,6 +136,7 @@ export const createEngine = ({
 
   return {
     config,
+    query,
     writes: {
       subscribe: (listener) => {
         state.writeListeners.add(listener)

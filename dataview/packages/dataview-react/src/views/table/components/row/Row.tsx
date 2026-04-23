@@ -57,7 +57,7 @@ const same = (left: RowProps, right: RowProps) => (
 )
 
 export const applyRowCheckboxSelection = (input: {
-  selection: Pick<SelectionCommandApi<ItemId>, 'range' | 'ids'>
+  selection: Pick<SelectionCommandApi<ItemId>, 'range' | 'applyIds'>
   rowId: ItemId
   shiftKey: boolean
 }) => {
@@ -66,7 +66,7 @@ export const applyRowCheckboxSelection = (input: {
     return
   }
 
-  input.selection.ids.toggle([input.rowId])
+  input.selection.applyIds('toggle', [input.rowId])
 }
 
 const View = (props: RowProps) => {
@@ -103,12 +103,12 @@ const View = (props: RowProps) => {
     props.itemId
   )
   const recordId = useOptionalKeyedStoreValue<ItemId, RecordId | undefined>(
-    dataView.source.active.items.read.recordId,
+    dataView.source.active.items.read.record,
     props.itemId,
     undefined
   )
   const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
-    dataView.source.doc.records,
+    dataView.source.document.records,
     recordId,
     undefined
   )

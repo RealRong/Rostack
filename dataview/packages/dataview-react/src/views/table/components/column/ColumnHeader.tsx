@@ -261,15 +261,9 @@ const View = (props: ColumnHeaderProps) => {
 
   const insertProperty = useCallback((side: 'left' | 'right') => {
     const name = t(meta.field.kind.get('text').defaultName)
-    if (side === 'left') {
-      viewApi.table.insertFieldLeft(props.field.id, {
-        kind: 'text',
-        name
-      })
-      return
-    }
-
-    viewApi.table.insertFieldRight(props.field.id, {
+    viewApi.table.insertField({
+      anchor: props.field.id,
+      side,
       kind: 'text',
       name
     })
@@ -289,7 +283,7 @@ const View = (props: ColumnHeaderProps) => {
         indicator: 'switch',
         closeOnSelect: false,
         onSelect: () => {
-          editor.fields.update(urlConfig.id, {
+          editor.fields.patch(urlConfig.id, {
             displayFullUrl: !urlConfig.displayFullUrl
           } as Partial<Omit<CustomField, 'id'>>)
         }
@@ -308,7 +302,7 @@ const View = (props: ColumnHeaderProps) => {
           kind: customField.kind,
           isTitleProperty: false,
           onSelect: nextKind => {
-            editor.fields.changeType(customField.id, { kind: nextKind })
+            editor.fields.setKind(customField.id, nextKind)
             setMenuOpen(false)
           }
         })

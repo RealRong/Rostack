@@ -142,9 +142,9 @@ export interface MovePlan {
   changed: boolean
   sectionChanged: boolean
   target: {
-    sectionId: SectionId
-    beforeItemId?: ItemId
-    beforeRecordId?: RecordId
+    section: SectionId
+    before?: ItemId
+    beforeRecord?: RecordId
   }
 }
 
@@ -184,9 +184,9 @@ export interface ActiveItemsApi {
 
 export interface ActiveRecordsApi {
   create: (input?: {
-    sectionId?: SectionId
+    section?: SectionId
     before?: ItemId
-    set?: Partial<Record<FieldId, unknown>>
+    values?: Partial<Record<FieldId, unknown>>
   }) => RecordId | undefined
 }
 
@@ -220,7 +220,12 @@ export interface ActiveViewApi {
       id: ViewSortRuleId,
       patch: Partial<Pick<SortRule, 'fieldId' | 'direction'>>
     ) => void
-    move: (id: ViewSortRuleId, beforeId?: ViewSortRuleId | null) => void
+    move: (
+      id: ViewSortRuleId,
+      target: {
+        before?: ViewSortRuleId | null
+      }
+    ) => void
     remove: (id: ViewSortRuleId) => void
     clear: () => void
   }
@@ -245,7 +250,12 @@ export interface ActiveViewApi {
   }
   display: {
     replace: (fieldIds: readonly FieldId[]) => void
-    move: (fieldIds: readonly FieldId[], beforeFieldId?: FieldId | null) => void
+    move: (
+      ids: readonly FieldId[],
+      target: {
+        before?: FieldId | null
+      }
+    ) => void
     show: (fieldId: FieldId, beforeFieldId?: FieldId | null) => void
     hide: (fieldId: FieldId) => void
     clear: () => void
@@ -254,20 +264,12 @@ export interface ActiveViewApi {
     setColumnWidths: (widths: Partial<Record<FieldId, number>>) => void
     setVerticalLines: (value: boolean) => void
     setWrap: (value: boolean) => void
-    insertFieldLeft: (
-      anchorFieldId: FieldId,
-      input?: {
-        name?: string
-        kind?: CustomFieldKind
-      }
-    ) => CustomFieldId | undefined
-    insertFieldRight: (
-      anchorFieldId: FieldId,
-      input?: {
-        name?: string
-        kind?: CustomFieldKind
-      }
-    ) => CustomFieldId | undefined
+    insertField: (input: {
+      anchor: FieldId
+      side: 'left' | 'right'
+      name?: string
+      kind?: CustomFieldKind
+    }) => CustomFieldId | undefined
   }
   gallery: GalleryApi
   kanban: KanbanApi

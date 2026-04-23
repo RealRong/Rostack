@@ -14,7 +14,7 @@ import { cn } from '@shared/ui/utils'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'
 import {
   useDataView,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { token } from '@shared/i18n'
@@ -128,9 +128,9 @@ export const ToolbarTabs = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.session.page
-  const pageRuntime = usePageRuntime()
-  const toolbar = useStoreValue(pageRuntime.toolbar)
-  const currentView = toolbar.activeView
+  const pageModel = usePageModel()
+  const toolbar = useStoreValue(pageModel.toolbar)
+  const currentView = toolbar.view
   const views = toolbar.views
   const [tabMenuViewId, setTabMenuViewId] = useState<ViewId | null>(null)
 
@@ -191,4 +191,3 @@ export const ToolbarTabs = () => {
     </div>
   )
 }
-

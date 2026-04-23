@@ -705,8 +705,8 @@ export const selectionSnapshot = {
   applyIds: <TId,>(
     domain: OrderedSelectionDomain<TId>,
     current: SelectionSnapshot<TId>,
-    ids: Iterable<TId>,
     mode: SelectionApplyMode,
+    ids: Iterable<TId>,
     domainRevision: number,
     options?: {
       anchor?: TId
@@ -721,6 +721,29 @@ export const selectionSnapshot = {
       case 'replace':
       default:
         return selectionSnapshot.replaceIds(domain, ids, domainRevision, options)
+    }
+  },
+  applyScope: <TId,>(
+    domain: OrderedSelectionDomain<TId>,
+    current: SelectionSnapshot<TId>,
+    mode: SelectionApplyMode,
+    scope: SelectionScope<TId>,
+    domainRevision: number,
+    options?: {
+      anchor?: TId
+      focus?: TId
+    }
+  ) => {
+    switch (mode) {
+      case 'toggle':
+        return selectionSnapshot.toggleScope(domain, current, scope, domainRevision)
+      case 'add':
+        return selectionSnapshot.addScope(domain, current, scope, domainRevision)
+      case 'remove':
+        return selectionSnapshot.removeScope(domain, current, scope, domainRevision)
+      case 'replace':
+      default:
+        return selectionSnapshot.replaceScope(domain, scope, domainRevision, options)
     }
   },
   rebase: <TId,>(

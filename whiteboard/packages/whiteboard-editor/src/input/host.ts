@@ -1,10 +1,6 @@
 import type {
-  EditorCommandContext
-} from '@whiteboard/editor/command/context'
-import type {
-  EditorCommandRunner,
-  EditorCommandTree
-} from '@whiteboard/editor/command/contracts'
+  EditorBoundaryRuntime
+} from '@whiteboard/editor/boundary/runtime'
 import type {
   EditorInputHost,
   EditorStore
@@ -15,11 +11,6 @@ import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import type { EditorInputOps } from '@whiteboard/editor/input/ops'
-
-export type EditorInputCommands = EditorCommandTree<
-  EditorCommandContext,
-  EditorInputHost
->
 
 const readSelectionIntent = (
   selection: EditorStore['selection'],
@@ -198,62 +189,22 @@ export const createEditorInputHost = ({
   }
 }
 
-export const createEditorInputCommands = ({
+export const createEditorInputApi = ({
+  boundary,
   host
 }: {
+  boundary: Pick<EditorBoundaryRuntime, 'atomic'>
   host: EditorInputHost
-}): EditorInputCommands => ({
-  contextMenu: function* (_ctx, input) {
-    return host.contextMenu(input)
-  },
-  pointerDown: function* (_ctx, input) {
-    return host.pointerDown(input)
-  },
-  pointerMove: function* (_ctx, input) {
-    return host.pointerMove(input)
-  },
-  pointerUp: function* (_ctx, input) {
-    return host.pointerUp(input)
-  },
-  pointerCancel: function* (_ctx, input) {
-    return host.pointerCancel(input)
-  },
-  pointerLeave: function* (_ctx) {
-    host.pointerLeave()
-  },
-  wheel: function* (_ctx, input) {
-    return host.wheel(input)
-  },
-  cancel: function* (_ctx) {
-    host.cancel()
-  },
-  keyDown: function* (_ctx, input) {
-    return host.keyDown(input)
-  },
-  keyUp: function* (_ctx, input) {
-    return host.keyUp(input)
-  },
-  blur: function* (_ctx) {
-    host.blur()
-  }
-})
-
-export const bindEditorInputHost = ({
-  runner,
-  commands
-}: {
-  runner: Pick<EditorCommandRunner<EditorCommandContext>, 'bind'>
-  commands: EditorInputCommands
 }): EditorInputHost => ({
-  contextMenu: runner.bind(commands.contextMenu),
-  pointerDown: runner.bind(commands.pointerDown),
-  pointerMove: runner.bind(commands.pointerMove),
-  pointerUp: runner.bind(commands.pointerUp),
-  pointerCancel: runner.bind(commands.pointerCancel),
-  pointerLeave: runner.bind(commands.pointerLeave),
-  wheel: runner.bind(commands.wheel),
-  cancel: runner.bind(commands.cancel),
-  keyDown: runner.bind(commands.keyDown),
-  keyUp: runner.bind(commands.keyUp),
-  blur: runner.bind(commands.blur)
+  contextMenu: boundary.atomic(host.contextMenu),
+  pointerDown: boundary.atomic(host.pointerDown),
+  pointerMove: boundary.atomic(host.pointerMove),
+  pointerUp: boundary.atomic(host.pointerUp),
+  pointerCancel: boundary.atomic(host.pointerCancel),
+  pointerLeave: boundary.atomic(host.pointerLeave),
+  wheel: boundary.atomic(host.wheel),
+  cancel: boundary.atomic(host.cancel),
+  keyDown: boundary.atomic(host.keyDown),
+  keyUp: boundary.atomic(host.keyUp),
+  blur: boundary.atomic(host.blur)
 })

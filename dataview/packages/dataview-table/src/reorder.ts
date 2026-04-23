@@ -71,39 +71,35 @@ export const sameRowHint = (
   && left?.top === right?.top
 )
 
-export const reorderRows = (
-  current: readonly ItemId[],
-  moving: readonly ItemId[],
-  beforeId?: ItemId | null
-) => {
-  const movingIds = collection.unique(moving)
+export const reorderRows = (input: {
+  rowIds: readonly ItemId[]
+  movingIds: readonly ItemId[]
+  before?: ItemId | null
+}) => {
+  const movingIds = collection.unique(input.movingIds)
   if (!movingIds.length) {
-    return [...current]
+    return [...input.rowIds]
   }
 
-  return order.moveBlock(current, movingIds, {
-    before: beforeId ?? undefined
+  return order.moveBlock(input.rowIds, movingIds, {
+    before: input.before ?? undefined
   })
 }
 
-export const rowBeforeId = (
-  hint: TableRowReorderHint
-) => hint.beforeId
-
-export const showRowHint = (
-  hint: TableRowReorderHint | null,
-  rowIds: readonly ItemId[],
+export const showRowHint = (input: {
+  hint: TableRowReorderHint | null
+  rowIds: readonly ItemId[]
   dragIds: readonly ItemId[]
-) => {
-  if (!hint || !dragIds.length) {
+}) => {
+  if (!input.hint || !input.dragIds.length) {
     return false
   }
 
-  const nextRowIds = reorderRows(
-    rowIds,
-    dragIds,
-    rowBeforeId(hint)
-  )
+  const nextRowIds = reorderRows({
+    rowIds: input.rowIds,
+    movingIds: input.dragIds,
+    before: input.hint.beforeId
+  })
 
-  return !equal.sameOrder(nextRowIds, rowIds)
+  return !equal.sameOrder(nextRowIds, input.rowIds)
 }

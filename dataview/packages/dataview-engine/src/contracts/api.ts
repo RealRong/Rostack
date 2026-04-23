@@ -1,12 +1,9 @@
-import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   Action,
-  CalculationMetric,
   CustomField,
   CustomFieldId,
   CustomFieldKind,
   DataDoc,
-  Field,
   FieldId,
   FieldOption,
   RecordFieldWriteManyInput,
@@ -18,13 +15,6 @@ import type {
   ViewType
 } from '@dataview/core/contracts'
 import type {
-  EngineCore
-} from '@dataview/engine/contracts/core'
-import type {
-  ActiveViewApi,
-  ViewState
-} from '@dataview/engine/contracts/view'
-import type {
   HistoryApi,
   HistoryOptions
 } from '@dataview/engine/contracts/history'
@@ -33,8 +23,12 @@ import type {
   PerformanceOptions
 } from '@dataview/engine/contracts/performance'
 import type {
-  ActionResult
+  ActionResult,
+  EngineResult
 } from '@dataview/engine/contracts/result'
+import type {
+  ActiveViewApi
+} from '@dataview/engine/contracts/view'
 
 export type { RecordFieldWriteManyInput } from '@dataview/core/contracts'
 export type {
@@ -59,82 +53,82 @@ export interface CreateEngineOptions {
   performance?: PerformanceOptions
 }
 
-export interface EngineReadApi {
-  document: () => DataDoc
-  record: (recordId: RecordId) => DataRecord | undefined
-  field: (fieldId: FieldId) => CustomField | undefined
-  view: (viewId: ViewId) => View | undefined
-}
-
 export interface ViewsApi {
   list: () => readonly View[]
-  get: (viewId: ViewId) => View | undefined
-  open: (viewId: ViewId) => void
+  get: (id: ViewId) => View | undefined
+  open: (id: ViewId) => void
   create: (input: {
     name: string
     type: ViewType
   }) => ViewId | undefined
-  rename: (viewId: ViewId, name: string) => void
-  duplicate: (viewId: ViewId) => ViewId | undefined
-  remove: (viewId: ViewId) => void
+  rename: (id: ViewId, name: string) => void
+  duplicate: (id: ViewId) => ViewId | undefined
+  remove: (id: ViewId) => void
 }
 
 export interface FieldsApi {
   list: () => readonly CustomField[]
-  get: (fieldId: CustomFieldId) => CustomField | undefined
+  get: (id: CustomFieldId) => CustomField | undefined
   create: (input: {
     name: string
     kind?: CustomFieldKind
   }) => CustomFieldId | undefined
-  rename: (fieldId: CustomFieldId, name: string) => void
-  update: (fieldId: CustomFieldId, patch: Partial<Omit<CustomField, 'id'>>) => void
-  replace: (fieldId: CustomFieldId, field: CustomField) => void
-  changeType: (
-    fieldId: CustomFieldId,
-    input: {
-      kind: CustomFieldKind
-    }
-  ) => void
-  duplicate: (fieldId: CustomFieldId) => CustomFieldId | undefined
-  remove: (fieldId: CustomFieldId) => boolean
+  rename: (id: CustomFieldId, name: string) => void
+  patch: (id: CustomFieldId, patch: Partial<Omit<CustomField, 'id'>>) => void
+  replace: (id: CustomFieldId, field: CustomField) => void
+  setKind: (id: CustomFieldId, kind: CustomFieldKind) => void
+  duplicate: (id: CustomFieldId) => CustomFieldId | undefined
+  remove: (id: CustomFieldId) => boolean
   options: {
-    append: (fieldId: CustomFieldId) => FieldOption | undefined
-    create: (fieldId: CustomFieldId, name: string) => FieldOption | undefined
-    reorder: (fieldId: CustomFieldId, optionIds: readonly string[]) => void
-    update: (
-      fieldId: CustomFieldId,
-      optionId: string,
+    create: (
+      id: CustomFieldId,
+      input?: {
+        name?: string
+      }
+    ) => FieldOption | undefined
+    setOrder: (id: CustomFieldId, order: readonly string[]) => void
+    patch: (input: {
+      field: CustomFieldId
+      option: string
       patch: {
         name?: string
         color?: string
         category?: StatusCategory
       }
-    ) => FieldOption | undefined
-    remove: (fieldId: CustomFieldId, optionId: string) => void
+    }) => FieldOption | undefined
+    remove: (input: {
+      field: CustomFieldId
+      option: string
+    }) => void
   }
+}
+
+export interface RecordCreateOptions {
+  values?: Partial<Record<CustomFieldId, unknown>>
+}
+
+export interface RecordFieldWriteApi {
+  set: (record: RecordId, field: FieldId, value: unknown) => void
+  clear: (record: RecordId, field: FieldId) => void
+  writeMany: (input: RecordFieldWriteManyInput) => void
 }
 
 export interface RecordsApi {
-  get: (recordId: RecordId) => DataRecord | undefined
-  create: (input?: {
-    values?: Partial<Record<CustomFieldId, unknown>>
-  }) => RecordId | undefined
-  remove: (recordId: RecordId) => void
-  removeMany: (recordIds: readonly RecordId[]) => void
-  fields: {
-    set: (recordId: RecordId, fieldId: FieldId, value: unknown) => void
-    clear: (recordId: RecordId, fieldId: FieldId) => void
-    writeMany: (input: RecordFieldWriteManyInput) => void
-  }
+  get: (id: RecordId) => DataRecord | undefined
+  create: (input?: RecordCreateOptions) => RecordId | undefined
+  remove: (id: RecordId) => void
+  removeMany: (ids: readonly RecordId[]) => void
+  fields: RecordFieldWriteApi
 }
 
 export interface DocumentApi {
+  get: () => DataDoc
   replace: (document: DataDoc) => DataDoc
 }
 
 export interface Engine {
-  core: EngineCore
-  read: EngineReadApi
+  result: () => EngineResult
+  subscribe: (listener: (result: EngineResult) => void) => () => void
   active: ActiveViewApi
   views: ViewsApi
   fields: FieldsApi

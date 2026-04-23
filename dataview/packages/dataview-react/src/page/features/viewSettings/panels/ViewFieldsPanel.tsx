@@ -9,7 +9,7 @@ import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem, type MenuReorderItem } from '@shared/ui/menu'
 import {
   useDataView,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import {
@@ -25,9 +25,9 @@ export const ViewFieldsPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const pageRuntime = usePageRuntime()
-  const settings = useStoreValue(pageRuntime.settings)
-  const currentView = settings.activeView
+  const pageModel = usePageModel()
+  const settings = useStoreValue(pageModel.settings)
+  const currentView = settings.view
   const currentViewDomain = currentView
     ? engine.active
     : undefined
@@ -162,7 +162,9 @@ export const ViewFieldsPanel = () => {
                     : beforeFieldId
                   currentViewDomain?.display.move(
                     [fieldId],
-                    nextBeforeFieldId
+                    {
+                      before: nextBeforeFieldId
+                    }
                   )
                 }}
                 className="gap-1"

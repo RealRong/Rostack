@@ -1,49 +1,23 @@
 import type {
-  GraphSnapshot,
-  InputDelta,
-  SceneSnapshot,
-  UiSnapshot
-} from '@whiteboard/editor-graph'
+  EditorBoundaryTaskRuntime
+} from '@whiteboard/editor/boundary/task'
+import type {
+  EditorProcedure,
+  EditorProcedureSignal,
+  EditorPublished,
+  EditorPublishRequest,
+  EditorTaskRequest
+} from '@whiteboard/editor/boundary/procedure'
 
-export interface EditorPublished {
-  revision: number
-  graph: GraphSnapshot
-  scene: SceneSnapshot
-  ui: UiSnapshot
+export type {
+  EditorPublished,
+  EditorPublishRequest,
+  EditorTaskRequest
 }
 
-export type EditorCommand<TResult = void> = Generator<
-  EditorCommandSignal,
-  TResult,
-  EditorPublished
->
+export type EditorCommand<TResult = void> = EditorProcedure<TResult>
 
-export type EditorPublishRequest = {
-  kind: 'publish'
-  delta?: InputDelta
-}
-
-export type EditorTaskRequest =
-  | {
-      kind: 'task'
-      lane: 'microtask'
-      command: EditorCommand<void>
-    }
-  | {
-      kind: 'task'
-      lane: 'frame'
-      command: EditorCommand<void>
-    }
-  | {
-      kind: 'task'
-      lane: 'delay'
-      delayMs: number
-      command: EditorCommand<void>
-    }
-
-export type EditorCommandSignal =
-  | EditorPublishRequest
-  | EditorTaskRequest
+export type EditorCommandSignal = EditorProcedureSignal
 
 export type EditorCommandHandler<TContext, TArgs extends unknown[], TResult> = (
   ctx: TContext,
@@ -58,10 +32,7 @@ export type EditorCommandTree<TContext, TValue> = {
       : never
 }
 
-export interface EditorCommandTaskRuntime {
-  schedule(request: EditorTaskRequest): void
-  dispose(): void
-}
+export type EditorCommandTaskRuntime = EditorBoundaryTaskRuntime
 
 export interface EditorCommandRunner<TContext> {
   bind<TArgs extends unknown[], TResult>(

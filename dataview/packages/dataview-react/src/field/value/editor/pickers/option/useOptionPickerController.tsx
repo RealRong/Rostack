@@ -198,7 +198,9 @@ export const useOptionPickerController = (
       return false
     }
 
-    const created = editor.fields.options.create(fieldId, query)
+    const created = editor.fields.options.create(fieldId, {
+      name: query
+    })
     if (!created) {
       return false
     }
@@ -398,7 +400,7 @@ export const useOptionPickerController = (
   ])
 
   const reorderOptions = useCallback((from: number, to: number) => {
-    editor.fields.options.reorder(
+    editor.fields.options.setOrder(
       fieldId,
       order.moveAt(options, from, to).map(option => option.id)
     )

@@ -3,7 +3,7 @@ import { FilterRulePopover } from '@dataview/react/page/features/filter'
 import { SortPopover } from '@dataview/react/page/features/sort'
 import {
   useDataView,
-  usePageRuntime,
+  usePageModel,
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { Popover } from '@shared/ui/popover'
@@ -22,9 +22,9 @@ export const ViewQueryBar = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.session.page
-  const pageRuntime = usePageRuntime()
-  const query = useStoreValue(pageRuntime.query)
-  const currentView = query.activeView
+  const pageModel = usePageModel()
+  const query = useStoreValue(pageModel.query)
+  const currentView = query.view
 
   const currentViewDomain = currentView
     ? engine.active

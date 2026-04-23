@@ -3,7 +3,7 @@ import {
   type ItemId
 } from '@dataview/engine'
 import type {
-  DataViewGalleryModel,
+  GalleryModel,
   GalleryBody,
   GalleryCard,
   GallerySection
@@ -71,12 +71,12 @@ export const createGalleryModel = (input: {
     viewId: string
     itemId: ItemId
   }) => string
-}): DataViewGalleryModel => {
+}): GalleryModel => {
   const customFields = input.source.active.fields.customList
   const sectionList = input.source.active.sections.list
   const sections = store.createDerivedStore({
     get: () => (
-      store.read(input.source.active.view.type) === 'gallery'
+      store.read(input.source.active.viewType) === 'gallery'
         ? store.read(sectionList).all
         : EMPTY_SECTIONS
     ),
@@ -88,11 +88,11 @@ export const createGalleryModel = (input: {
   })
   const body = store.createDerivedStore<GalleryBody | null>({
     get: () => {
-      if (store.read(input.source.active.view.type) !== 'gallery') {
+      if (store.read(input.source.active.viewType) !== 'gallery') {
         return null
       }
 
-      const viewId = store.read(input.source.active.view.id)
+      const viewId = store.read(input.source.active.viewId)
       if (!viewId) {
         return null
       }
@@ -112,7 +112,7 @@ export const createGalleryModel = (input: {
 
   const section = store.createKeyedDerivedStore<string, GallerySection | undefined>({
     get: key => {
-      if (store.read(input.source.active.view.type) !== 'gallery') {
+      if (store.read(input.source.active.viewType) !== 'gallery') {
         return undefined
       }
 
@@ -130,16 +130,16 @@ export const createGalleryModel = (input: {
 
   const card = store.createKeyedDerivedStore<ItemId, GalleryCard | undefined>({
     get: itemId => {
-      if (store.read(input.source.active.view.type) !== 'gallery') {
+      if (store.read(input.source.active.viewType) !== 'gallery') {
         return undefined
       }
 
-      const viewId = store.read(input.source.active.view.id)
+      const viewId = store.read(input.source.active.viewId)
       if (!viewId) {
         return undefined
       }
 
-      const recordId = store.read(input.source.active.items.read.recordId, itemId)
+      const recordId = store.read(input.source.active.items.read.record, itemId)
       if (!recordId) {
         return undefined
       }

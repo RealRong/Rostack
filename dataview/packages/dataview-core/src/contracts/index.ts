@@ -3,10 +3,11 @@ export type {
   ActionType,
   EditTarget,
   FieldCreateInput,
+  FieldOptionPatch,
   GalleryViewCreateInput,
   KanbanViewCreateInput,
   RecordFieldWriteManyInput,
-  RowCreateInput,
+  RecordCreateInput,
   TableViewCreateInput,
   TableViewPatch,
   GalleryViewPatch,
@@ -50,7 +51,7 @@ export type {
   OperationPayload,
   OperationType,
   RecordFieldWriteManyOperationInput,
-  RowInsertTarget,
+  RecordInsertTarget,
 } from '@dataview/core/contracts/operations'
 export type {
   FilterConditionProjection,

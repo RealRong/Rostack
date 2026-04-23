@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import type { SortRule } from '@dataview/core/contracts'
 import {
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { Button } from '@shared/ui/button'
@@ -34,8 +34,8 @@ export interface SortRuleRowProps {
 
 export const SortRuleRow = (props: SortRuleRowProps) => {
   const { t } = useTranslation()
-  const pageRuntime = usePageRuntime()
-  const row = useKeyedStoreValue(pageRuntime.sortRow, props.id)
+  const pageModel = usePageModel()
+  const row = useKeyedStoreValue(pageModel.sortRow, props.id)
   const [fieldOpen, setFieldOpen] = useState(false)
   const [directionOpen, setDirectionOpen] = useState(false)
   const rule = row?.rule

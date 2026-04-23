@@ -2,6 +2,7 @@ import { store } from '@shared/core'
 import {
   createEditorGraphRuntime,
   type InputDelta,
+  type Read as EditorGraphQuery,
   type Result,
   type Runtime,
   type Snapshot
@@ -32,6 +33,7 @@ import {
 
 export interface ProjectionController {
   runtime: Runtime
+  query: EditorGraphQuery
   sources: ProjectionSources
   current(): {
     snapshot: Snapshot
@@ -318,6 +320,7 @@ export const createProjectionController = ({
 
   return {
     runtime,
+    query: runtime.query,
     sources,
     current: () => ({
       snapshot: snapshotStore.get(),

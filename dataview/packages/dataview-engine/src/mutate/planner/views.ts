@@ -677,11 +677,11 @@ const lowerViewPatch = (
   action: Extract<Action, { type: 'view.patch' }>
 ): PlannedActionResult => {
   const view = scope.require(
-    scope.reader.views.get(action.viewId),
+    scope.reader.views.get(action.id),
     {
       code: 'view.notFound',
-      message: `Unknown view: ${action.viewId}`,
-      path: 'viewId'
+      message: `Unknown view: ${action.id}`,
+      path: 'id'
     }
   )
   if (!view) {
@@ -706,17 +706,17 @@ const lowerViewOpen = (
   action: Extract<Action, { type: 'view.open' }>
 ): PlannedActionResult => {
   const view = scope.require(
-    scope.reader.views.get(action.viewId),
+    scope.reader.views.get(action.id),
     {
       code: 'view.notFound',
-      message: `Unknown view: ${action.viewId}`,
-      path: 'viewId'
+      message: `Unknown view: ${action.id}`,
+      path: 'id'
     }
   )
   return view
     ? scope.finish({
         type: 'document.activeView.set',
-        viewId: view.id
+        id: view.id
       })
     : scope.finish()
 }
@@ -726,17 +726,17 @@ const lowerViewRemove = (
   action: Extract<Action, { type: 'view.remove' }>
 ): PlannedActionResult => {
   const view = scope.require(
-    scope.reader.views.get(action.viewId),
+    scope.reader.views.get(action.id),
     {
       code: 'view.notFound',
-      message: `Unknown view: ${action.viewId}`,
-      path: 'viewId'
+      message: `Unknown view: ${action.id}`,
+      path: 'id'
     }
   )
   return view
     ? scope.finish({
         type: 'document.view.remove',
-        viewId: view.id
+        id: view.id
       })
     : scope.finish()
 }

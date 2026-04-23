@@ -36,20 +36,20 @@ export {
 } from '@dataview/react/views/table'
 export type { TableViewProps } from '@dataview/react/views/table'
 export {
-  EngineProvider,
+  DataViewProvider,
   useDataView,
   useDataViewModel,
   useDataViewKeyedValue,
   useDataViewSession,
   useDataViewSource,
   useDataViewValue,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 export { meta } from '@dataview/meta'
 export type {
   DataViewReactContextValue,
   DataViewReactSession,
-  EngineProviderProps,
+  DataViewProviderProps,
   MarqueeBridgeApi,
   MarqueeScene,
 } from '@dataview/react/dataview'

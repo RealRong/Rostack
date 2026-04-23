@@ -27,7 +27,7 @@ public api
 - `boundary runtime` 只负责统一 flush 和少量 staged procedure 调度
 - `service` 只保留两类：`interaction/*` 和 `tool`
 - `primitive` 只有两类：`session mutation` 和 `write/*`
-- `infrastructure` 是 `read/*`、`projection/*`、`layout/*`、`snap/*`、`history`、`engine adapter` 等底层设施
+- `infrastructure` 是 `query/*`、`projection/*`、`layout/*`、`snap/*`、`history`、`engine adapter` 等底层设施
 
 这就是最终模型。
 
@@ -63,6 +63,8 @@ public api
 - 当存在独立 policy 时，走 `public api -> boundary -> service -> primitive`
 - 当只是直接写入或直接 session mutation 时，走 `public api -> boundary -> primitive`
 - `infrastructure` 在最底层，只提供读能力、运行时能力、适配能力
+- editor core 内部优先使用同步 `query`
+- reactive `read/store` 尽量留在 public / react side
 
 ---
 
@@ -181,15 +183,15 @@ public api
 
 包括：
 
-- `document/read/*`
-- `read/graph/*`
+- `engine.query`
+- `editor-graph.query`
 - `projection/controller`
 - `layout/*`
 - `snap/*`
 - `history binding`
 - `engine`
 - scheduler / task runtime
-- hover store / preview store / derived store
+- hover / preview 等底层状态容器
 
 它们提供：
 
@@ -200,6 +202,48 @@ public api
 - 适配
 
 但不表达 editor 业务 policy。
+
+### 3.6 core query / public read
+
+这一层再补一条硬边界：
+
+- editor core 用同步 `query`
+- public / react side 用 `read/store`
+
+也就是：
+
+- action / input / service / procedure 内部读状态，优先走同步 `get/current/query`
+- 不在 editor 业务层依赖 `store.read(...)` 形成隐式 reactive 链
+- committed query 应由 `engine` 直接提供
+- published query 应由 `editor-graph` / `projection` 直接提供
+- `editor` 不再自己拼一层 query facade
+- `editor.read` 和 `editor.store` 仍然可以存在，但它们是 public facade，不是 core 主要依赖
+
+最终希望的时序是：
+
+```txt
+action / input
+  -> mutate / write
+  -> publish / flush
+  -> sync query latest state
+```
+
+而不是：
+
+```txt
+action / input
+  -> store.read(...)
+  -> derived store graph
+  -> 隐式依赖链
+```
+
+允许的情况只有一个：
+
+- store 可以作为底层实现细节存在
+
+但不允许：
+
+- editor core 把 store/derived-store 当成主要读模型
 
 ---
 
@@ -280,8 +324,9 @@ public api -> boundary runtime -> service -> primitive -> infrastructure
 - `write/*`
 - `session.mutate.*`
 - `session.viewport.commands`
-- `document/read/*`
-- `graph/read/*`
+- `engine.query`
+- `editor-graph.query`
+- `public read/store`
 - `projection/*`
 - `layout/*`
 - `snap/*`
@@ -292,8 +337,8 @@ public api -> boundary runtime -> service -> primitive -> infrastructure
 确实会存在一些可复用的同步逻辑，比如：
 
 - `selection.replace` 会联动清 `edit`
-- `edit.startNode` 要先读 committed node 和 registry capability
-- `edge.route.removePoint` 要先读 projected edge，再算 patch，再写回
+- `edit.startNode` 要先通过 `engine.query.node(...)` 读 committed node 和 registry capability
+- `edge.route.removePoint` 要先通过 `editorGraph.query.edge(...)` 读 projected edge，再算 patch，再写回
 - `clipboard.paste` 要写文档，再更新 selection
 
 但这些不需要被抬升成新的架构层。
@@ -310,6 +355,33 @@ public api -> boundary runtime -> service -> primitive -> infrastructure
 - 其他大多数“共享同步逻辑”只是 helper，不是 service
 
 这能把概念数压到最低。
+
+### 6.4 editor core 的读规则
+
+这一条单独写死：
+
+- core 只依赖同步 query
+- react / public side 才依赖 read/store
+
+也就是：
+
+- `documentQuery.node(id)`
+- `publishedQuery.edge(id)`
+- `session.state.tool.get()`
+
+这类显式同步读取是允许的。
+
+而下面这种 editor core 读法不应该成为默认：
+
+- `store.read(...)`
+- `createDerivedStore(...)`
+- `createKeyedDerivedStore(...)`
+- 基于隐式 reactive chain 的业务逻辑
+
+原因不是 store 不能用，而是：
+
+- 它可以作为底层实现
+- 但不能成为 editor 业务层的主要语义
 
 ---
 
@@ -455,7 +527,81 @@ export interface ToolService {
 - `input`
 - `boundary runtime`
 
-### 7.5 `EditorActions`
+### 7.5 upstream-owned query API
+
+editor 内部不再默认依赖 `DocumentRead / GraphRead` 这种 reactive read facade，
+也不再自己定义 `EditorDocumentQuery` / `EditorPublishedQuery` 这种二次命名。
+
+同步 query 应由状态 owner 直接暴露：
+
+- `engine.query`
+- `editor-graph.query`
+
+建议接口如下：
+
+```ts
+export interface EngineQuery {
+  document(): Document
+  background(): Document['background'] | undefined
+  bounds(): Rect
+  node(id: NodeId): NodeItem | undefined
+  edge(id: EdgeId): EdgeItem | undefined
+  nodeIds(): readonly NodeId[]
+  edgeIds(): readonly EdgeId[]
+  groupTarget(groupId: GroupId): SelectionTarget | undefined
+  relatedEdges(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+  mindmap(id: MindmapId): MindmapStructureItem | undefined
+}
+
+export interface Engine {
+  readonly config: BoardConfig
+  readonly query: EngineQuery
+  current(): EnginePublish
+  subscribe(listener: (publish: EnginePublish) => void): () => void
+  execute(...): CommandResult
+  apply(...): CommandResult
+}
+
+export interface EditorGraphQuery {
+  snapshot(): EditorPublished
+  scene(): SceneSnapshot
+  selection(): SelectionView
+  node(id: NodeId): NodeView | undefined
+  edge(id: EdgeId): EdgeView | undefined
+  mindmap(id: MindmapId): MindmapView | undefined
+  chrome(): ChromeView
+}
+
+export interface ProjectionController {
+  readonly query: EditorGraphQuery
+  mark(delta: InputDelta): void
+  flush(): Result | null
+  dispose(): void
+}
+```
+
+它们的语义非常直接：
+
+- `engine.query` 读 committed / authoritative state
+- `projection.query` 直接暴露 `editor-graph` 的 published query
+- `editor` 只是消费 query，不再自己从 `snapshot` / `sources` 二次拼装
+
+对 editor core 来说，允许的就是这种同步 query：
+
+- `engine.query.node(id)`
+- `projection.query.edge(id)`
+- `projection.query.snapshot()`
+
+而不是 reactive read graph。
+
+实现细节上：
+
+- query 内部可以缓存
+- query 内部可以复用 store
+- 但对 editor core 暴露的语义必须是同步函数，不是 store
+- `snap candidates`、`slice export` 这类纯 authoritative 派生，也应归到 `engine.query`
+
+### 7.6 `EditorActions`
 
 public actions shape 可以基本保持现在的分类，但实现方式要变。
 
@@ -492,8 +638,8 @@ export type CreateEditorActionsApiDeps = {
   boundary: EditorBoundaryRuntime
   tool: ToolService
   session: EditorSession
-  document: DocumentRead
-  graph: GraphRead
+  document: EngineQuery
+  published: EditorGraphQuery
   layout: EditorLayout
   write: EditorWrite
   registry: NodeRegistry
@@ -571,6 +717,7 @@ const insertMindmap = (
 ) => insertMindmapProcedure(
   {
     document,
+    published,
     session,
     write,
     registry
@@ -597,7 +744,7 @@ return {
 - `mindmap.insert`
 - 部分 `edge.label.*`
 
-### 7.6 `EditorInputHost`
+### 7.7 `EditorInputHost`
 
 public input shape 继续保持 imperative host。
 
@@ -669,7 +816,7 @@ pointerUp: boundary.atomic(interaction.pointerUp)
 - 但不再镜像成 command tree
 - `boundary` 只在 API 装配处出现一次
 
-### 7.7 `createEditor`
+### 7.8 `createEditor`
 
 `createEditor` 最终只做 wiring。
 
@@ -684,10 +831,10 @@ export const createEditor = ({
   services
 }: CreateEditorOptions): Editor => {
   const session = createEditorSession(...)
-  const document = createDocumentRead({ engine })
+  const document = engine.query
   const layout = createEditorLayout(...)
   const projection = createProjectionController(...)
-  const graph = createGraphRead(...)
+  const published = projection.query
   const write = createEditorWrite(...)
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(registry)
@@ -705,7 +852,7 @@ export const createEditor = ({
   const interaction = createInteractionRuntime({
     engine,
     document,
-    graph,
+    published,
     session,
     layout,
     write,
@@ -717,7 +864,7 @@ export const createEditor = ({
     tool,
     session,
     document,
-    graph,
+    published,
     layout,
     write,
     registry,
@@ -733,7 +880,7 @@ export const createEditor = ({
     store: editorStore,
     read: createEditorRead({
       document,
-      graph,
+      published,
       session,
       store: editorStore,
       history,
@@ -762,7 +909,53 @@ export const createEditor = ({
 另外再补一条：
 
 - `sessionRead` 不在 `createEditor` 装配
-- `createEditorRead(...)` 如果需要 read facade，就在内部从 `session` 自行构造
+- `createEditorRead(...)` 如果需要 reactive read facade，就在内部从 `session + query` 自行构造
+- `engine.query` 服务 editor core 的 committed 读取
+- `projection.query` 直接承接 `editor-graph.query`，服务 editor core 的 published 读取
+- `createEditorRead(...)` / `createEditorStore(...)` 服务 public / react side
+
+### 7.9 public read / store facade
+
+public side 仍然可以保留：
+
+- `editor.store`
+- `editor.read`
+
+但它们的定位必须收窄成：
+
+- UI / framework adapter 使用
+- React side 主要消费
+- 不作为 editor core 的主要依赖
+
+建议接口形态如下：
+
+```ts
+export type CreateEditorReadDeps = {
+  document: EngineQuery
+  published: EditorGraphQuery
+  session: EditorSession
+  store: EditorStore
+  history: HistoryApi
+  nodeType: NodeTypeSupport
+  defaults: EditorDefaults['selection']
+}
+
+export declare const createEditorRead: (
+  deps: CreateEditorReadDeps
+) => EditorRead
+```
+
+这里允许：
+
+- `createEditorRead(...)` 内部为了 public facade 自行构造 `sessionRead`
+- `createEditorRead(...)` 内部使用 store / derived-store
+
+但只允许发生在这一层：
+
+- public read facade
+- public store facade
+
+不允许 editor core 业务逻辑再反向依赖这些 reactive 语义。
 
 ---
 
@@ -824,9 +1017,9 @@ mindmap: {
 #### A. 交给 interaction service
 
 ```ts
-pointerDown: boundary.atomic((input) => interaction.handlePointerDown(input))
-keyDown: boundary.atomic((input) => interaction.handleKeyDown(input))
-blur: boundary.atomic(() => interaction.handleBlur())
+pointerDown: boundary.atomic(interaction.pointerDown)
+keyDown: boundary.atomic(interaction.keyDown)
+blur: boundary.atomic(interaction.blur)
 ```
 
 #### B. 直接 primitive
@@ -835,7 +1028,7 @@ blur: boundary.atomic(() => interaction.handleBlur())
 
 ```ts
 wheel: boundary.atomic((input) => {
-  if (interaction.handleWheel(input)) {
+  if (interaction.wheel(input)) {
     return true
   }
 
@@ -850,7 +1043,7 @@ wheel: boundary.atomic((input) => {
 - `tool service`
 - `session mutation`
 - `write/*`
-- 读取类 infra
+- 同步 query
 
 但不允许调用：
 
@@ -898,25 +1091,22 @@ generator 只允许出现在下面两种场景。
 最终建议的组织如下：
 
 ```txt
-src/
-  api/
-    actions.ts
-    input.ts
-  boundary/
-    runtime.ts
-    procedure.ts
-    task.ts
-  services/
-    tool.ts
-    interaction/*
-  procedures/
-    mindmap.ts
-    animation.ts
-  session/*
-  write/*
-  read/*
-  projection/*
-  layout/*
+whiteboard-engine/
+  src/query/*
+
+whiteboard-editor-graph/
+  src/query/*
+
+whiteboard-editor/
+  src/api/*
+  src/boundary/*
+  src/services/*
+  src/procedures/*
+  src/public/*
+  src/session/*
+  src/write/*
+  src/projection/*
+  src/layout/*
 ```
 
 注意：
@@ -924,11 +1114,15 @@ src/
 - 不再保留固定 `ops/`
 - 不再保留 `command/` 作为 public API 的镜像执行系统
 - 小型同步 helper 放在最接近调用方的模块里，不单独升格成系统层
+- `whiteboard-editor` 内部不再保留 `query/*`
 
 也就是：
 
+- committed query 归 `whiteboard-engine`
+- published query 归 `whiteboard-editor-graph`
 - 有独立 policy，才进 `services/`
 - 有 staged continuation，才进 `procedures/`
+- reactive facade 进 `whiteboard-editor/src/public/*`
 - 否则直接留在 API 叶子或本地 helper
 
 ---
@@ -942,11 +1136,19 @@ src/
 - `write/*`
 - `input/core/runtime.ts`
 - `projection/controller.ts`
-- `read/*`
 - `layout/*`
+- `editor/store.ts`
 
 ### 11.2 改名或重定位
 
+- `document/read.ts`
+  应从 `whiteboard-editor` 移出，authoritative query 收敛到 `whiteboard-engine` 的 `engine.query`
+- `read/graph.ts`
+  应从 `whiteboard-editor` 移出，published query 收敛到 `whiteboard-editor-graph`，由 `projection/controller.ts` 直接暴露 `query`
+- `read/public.ts`
+  应定位为 `public/read.ts`，主要服务 public / react side
+- `projection/controller.ts`
+  应直接暴露 `query`，不要再要求 editor 从 `projection.sources` 拼 `GraphRead`
 - `action/selection.ts`
   不是 action command，应该是 selection helper
 - `action/clipboard.ts`
@@ -967,6 +1169,7 @@ src/
 - `bindEditorInputHost`
 - `createEditorInputOps`
 - giant `EditorCommandContext`
+- editor core 对 `store.read(...)` / `createDerivedStore(...)` 的直接业务依赖
 
 ---
 
@@ -987,6 +1190,16 @@ src/
 
 ### 第二步
 
+把 core query 上移到 owner：
+
+- 在 `engine` 引入 `query`
+- 在 `editor-graph` 把现有同步 read 收敛为正式 `query`
+- `projection/controller.ts` 直接暴露 `query`
+- action / input / service / procedure 内部改用 `engine.query` 和 `projection.query`
+- 不再让 editor core 直接依赖 reactive read facade
+
+### 第三步
+
 删除 `input` 的 command/bind 链：
 
 - 删除 `createEditorInputCommands`
@@ -994,7 +1207,7 @@ src/
 
 因为这是最确定的纯重复层。
 
-### 第三步
+### 第四步
 
 抽出 `ToolService`，让下面这些逻辑只保留一份：
 
@@ -1005,7 +1218,7 @@ src/
 - `tool.insert`
 - `tool.hand`
 
-### 第四步
+### 第五步
 
 把 `action/index.ts` 中真正 staged 的逻辑迁入 `procedures/*`：
 
@@ -1013,18 +1226,26 @@ src/
 - enter animation tick
 - delay remove
 
-### 第五步
+### 第六步
 
 把大部分同步 action 改成：
 
 - `boundary.atomic(() => primitive(...))`
 - `boundary.atomic(() => service(...))`
 
-### 第六步
+### 第七步
+
+把 `createEditorRead(...)` 和 `createEditorStore(...)` 明确收敛为 public facade：
+
+- `createEditorRead(...)` 内部如果需要 reactive read，可以自行从 `session + query` 构造
+- `createEditorStore(...)` 继续只服务 public / react side
+- editor core 不直接依赖它们的 reactive 语义
+
+### 第八步
 
 把零散共享同步逻辑下沉为本地 helper，不再保留固定 `ops` 层。
 
-### 第七步
+### 第九步
 
 把 `createEditor` 收敛成纯 wiring。
 
@@ -1052,7 +1273,12 @@ public api
       - session mutation
       - write/*
       -> infrastructure
-        - read / projection / layout / snap / history / engine
+        - engine.query
+        - editor-graph.query
+        - projection / layout / snap / history / engine
+
+public / react side
+  -> read/store facade
 ```
 
 并且必须满足：
@@ -1061,6 +1287,8 @@ public api
 - 单向依赖
 - service 只有 `interaction` 和 `tool`
 - 其他绝大多数东西都是 primitive 或 infrastructure
+- editor core 用同步 query，不用 reactive read chain
+- public / react side 才消费 read/store facade
 - 没有重复抽象
 - 没有镜像型 command tree
 - 没有固定 `ops` 层

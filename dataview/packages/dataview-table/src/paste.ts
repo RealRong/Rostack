@@ -153,8 +153,3 @@ export const planPaste = (options: {
     })
   })
 }
-
-export const paste = {
-  parseClipboardMatrix,
-  planPaste
-} as const

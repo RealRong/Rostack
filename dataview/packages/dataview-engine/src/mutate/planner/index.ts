@@ -74,12 +74,12 @@ export type {
 
 const lowerExternalBump = (
   scope: ReturnType<typeof createPlannerScope>,
-  action: Extract<Action, { type: 'external.bumpVersion' }>
+  action: Extract<Action, { type: 'external.version.bump' }>
 ): PlannedActionResult => {
   if (!string.isNonEmptyString(action.source)) {
     scope.issue(
       'external.invalidSource',
-      'external.bumpVersion requires a non-empty source',
+      'external.version.bump requires a non-empty source',
       'source'
     )
   }
@@ -103,11 +103,11 @@ const planAction = (
     case 'field.create':
     case 'field.patch':
     case 'field.replace':
-    case 'field.convert':
+    case 'field.setKind':
     case 'field.duplicate':
     case 'field.option.create':
-    case 'field.option.reorder':
-    case 'field.option.update':
+    case 'field.option.setOrder':
+    case 'field.option.patch':
     case 'field.option.remove':
     case 'field.remove':
       return planFieldAction(scope, action)
@@ -116,7 +116,7 @@ const planAction = (
     case 'view.open':
     case 'view.remove':
       return planViewAction(scope, action)
-    case 'external.bumpVersion':
+    case 'external.version.bump':
       return lowerExternalBump(scope, action)
     default: {
       const unexpectedAction: never = action

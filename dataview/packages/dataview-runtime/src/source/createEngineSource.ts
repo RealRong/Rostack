@@ -17,12 +17,12 @@ import {
 export const createEngineSource = (
   input: CreateEngineSourceInput
 ): EngineSourceRuntime => {
-  const snapshot = input.core.read.result().snapshot
+  const snapshot = input.engine.result().snapshot
   const documentSource = createDocumentSourceRuntime()
   const activeSource = createActiveSourceRuntime()
 
   const source = {
-    doc: documentSource.source,
+    document: documentSource.source,
     active: activeSource.source
   }
 
@@ -48,7 +48,7 @@ export const createEngineSource = (
 
   reset(snapshot)
 
-  const unsubscribe = input.core.subscribe(result => {
+  const unsubscribe = input.engine.subscribe(result => {
     store.batch(() => {
       applyDocumentDelta({
         runtime: documentSource,

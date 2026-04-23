@@ -27,15 +27,13 @@ export const createRecordsApi = (options: {
 
     options.dispatch({
       type: 'record.fields.writeMany',
-      input: {
-        ...input,
-        recordIds
-      }
+      ...input,
+      recordIds
     })
   }
 
   return {
-    get: recordId => documentApi.records.get(options.document(), recordId),
+    get: id => documentApi.records.get(options.document(), id),
     create: input => {
       const result = options.dispatch({
         type: 'record.create',
@@ -46,14 +44,14 @@ export const createRecordsApi = (options: {
 
       return result.created?.records?.[0]
     },
-    remove: (recordId: RecordId) => {
+    remove: (id: RecordId) => {
       options.dispatch({
         type: 'record.remove',
-        recordIds: [recordId]
+        recordIds: [id]
       })
     },
-    removeMany: recordIds => {
-      const nextRecordIds = collection.unique(recordIds)
+    removeMany: ids => {
+      const nextRecordIds = collection.unique(ids)
       if (!nextRecordIds.length) {
         return
       }
@@ -64,18 +62,18 @@ export const createRecordsApi = (options: {
       })
     },
     fields: {
-      set: (recordId, fieldId, value) => {
+      set: (record, field, value) => {
         writeMany({
-          recordIds: [recordId],
+          recordIds: [record],
           set: {
-            [fieldId]: value
+            [field]: value
           }
         })
       },
-      clear: (recordId, fieldId) => {
+      clear: (record, field) => {
         writeMany({
-          recordIds: [recordId],
-          clear: [fieldId]
+          recordIds: [record],
+          clear: [field]
         })
       },
       writeMany

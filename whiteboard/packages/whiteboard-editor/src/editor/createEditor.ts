@@ -6,15 +6,23 @@ import {
   createEditorActions
 } from '@whiteboard/editor/action'
 import {
+  createEditorBoundaryRuntime
+} from '@whiteboard/editor/boundary/runtime'
+import {
+  createEditorBoundaryTaskRuntime
+} from '@whiteboard/editor/boundary/task'
+import {
   createEditorCommandContext,
   type EditorCommandContext
 } from '@whiteboard/editor/command/context'
 import { createEditorCommandRunner } from '@whiteboard/editor/command/runner'
-import { createEditorCommandTaskRuntime } from '@whiteboard/editor/command/task'
 import { createDocumentRead } from '@whiteboard/editor/document/read'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorStore } from '@whiteboard/editor/editor/store'
 import { createEditorInputOps } from '@whiteboard/editor/input/ops'
+import {
+  createEditorInputApi
+} from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
 import { createProjectionController } from '@whiteboard/editor/projection/controller'
@@ -106,20 +114,23 @@ export const createEditor = ({
     layout,
     write
   })
-  let runner: ReturnType<typeof createEditorCommandRunner<EditorCommandContext>>
-  const tasks = createEditorCommandTaskRuntime({
-    execute: (command) => {
-      if (!runner) {
-        throw new Error('Editor command runner is not ready.')
+  let boundary: ReturnType<typeof createEditorBoundaryRuntime>
+  const tasks = createEditorBoundaryTaskRuntime({
+    execute: (procedure) => {
+      if (!boundary) {
+        throw new Error('Editor boundary runtime is not ready.')
       }
 
-      runner.execute(command)
+      boundary.execute(procedure)
     }
   })
-  runner = createEditorCommandRunner({
-    controller: projection,
-    context,
+  boundary = createEditorBoundaryRuntime({
+    projection,
     tasks
+  })
+  const runner = createEditorCommandRunner({
+    boundary,
+    context
   })
   const commands = createEditorActionCommands({
     document,
@@ -149,14 +160,17 @@ export const createEditor = ({
     session,
     layout,
     write,
-    ops,
-    runner
+    ops
+  })
+  const input = createEditorInputApi({
+    boundary,
+    host
   })
   const events = createEditorEvents({
     engine,
     session,
     document,
-    resetHost: host.cancel
+    resetHost: input.cancel
   })
   const editorStore = createEditorStore(session)
 
@@ -172,12 +186,12 @@ export const createEditor = ({
       defaults: defaults.selection
     }),
     actions,
-    input: host,
+    input,
     events: events.events,
     dispose: () => {
       events.dispose()
       host.cancel()
-      runner.dispose()
+      boundary.dispose()
       projection.dispose()
       session.reset()
       layout.text.clear()

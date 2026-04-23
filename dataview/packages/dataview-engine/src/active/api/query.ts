@@ -103,7 +103,7 @@ export const createSortApi = (
   },
   move: (id, beforeId) => {
     base.patchView(view => ({
-      sort: sort.write.move(view.sort, id, beforeId)
+      sort: sort.write.move(view.sort, id, beforeId.before)
     }))
   },
   remove: id => {

@@ -259,10 +259,10 @@ const equalPageSessionState = (
 )
 
 const resolveQueryRoute = (
-  activeView: View | undefined,
+  view: View | undefined,
   route: QueryBarEntry | null
 ): QueryBarEntry | null => {
-  if (!route || !activeView) {
+  if (!route || !view) {
     return null
   }
 
@@ -271,12 +271,12 @@ const resolveQueryRoute = (
   }
 
   if (route.kind === 'sort') {
-    return activeView.sort.rules.byId[route.id]
+    return view.sort.rules.byId[route.id]
       ? { kind: 'sort', id: route.id }
       : null
   }
 
-  const rule = activeView.filter.rules.byId[route.id]
+  const rule = view.filter.rules.byId[route.id]
   return rule
     ? {
         kind: 'filter',
@@ -286,20 +286,20 @@ const resolveQueryRoute = (
 }
 
 export const resolvePageQueryBarState = (input: {
-  activeView: View | undefined
+  view: View | undefined
   query: QueryBarState
 }): QueryBarState => {
   const hasEntries = Boolean(
-    input.activeView
+    input.view
     && (
-      input.activeView.filter.rules.order.length > 0
-      || input.activeView.sort.rules.order.length > 0
+      input.view.filter.rules.order.length > 0
+      || input.view.sort.rules.order.length > 0
     )
   )
 
   return {
     visible: input.query.visible && hasEntries,
-    route: resolveQueryRoute(input.activeView, input.query.route)
+    route: resolveQueryRoute(input.view, input.query.route)
   }
 }
 

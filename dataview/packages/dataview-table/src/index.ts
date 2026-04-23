@@ -6,11 +6,12 @@ export {
   type GridSelection
 } from '@dataview/table/gridSelection'
 export {
-  fill,
+  canFill,
+  fillHandleCell,
+  planFill,
   type TableFillEntry
 } from '@dataview/table/fill'
 export {
-  paste,
   parseClipboardMatrix,
   planPaste,
   type TablePasteEntry
@@ -27,7 +28,6 @@ export {
   columnBeforeId,
   rowDragIds,
   rowSelectionTarget,
-  rowBeforeId,
   sameRowHint,
   showRowHint,
   type TableRowReorderHint

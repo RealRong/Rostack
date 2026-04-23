@@ -3,7 +3,7 @@ import type { CellRef } from '@dataview/engine'
 import type {
   TableGrid
 } from '@dataview/runtime'
-import { fill, type GridSelection } from '@dataview/table'
+import { fillHandleCell, type GridSelection } from '@dataview/table'
 import { sameOptionalCell, tableCellKey } from '@dataview/react/views/table/runtime/cell'
 
 export interface TableFillRuntime {
@@ -28,11 +28,11 @@ export const createTableFillRuntime = (input: {
         return undefined
       }
 
-      return fill.handleCell(
-        store.read(input.gridSelectionStore),
-        grid.items,
-        grid.fields
-      )
+      return fillHandleCell({
+        selection: store.read(input.gridSelectionStore),
+        items: grid.items,
+        fields: grid.fields
+      })
     },
     isEqual: sameOptionalCell
   })

@@ -10,9 +10,16 @@ import type {
   MindmapRecord,
   Node,
   NodeId,
-  Operation
+  Operation,
+  Point,
+  Rect
 } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/core/config'
+import type { SliceExportResult } from '@whiteboard/core/document'
+import type { MindmapLayoutSpec, MindmapTree } from '@whiteboard/core/mindmap'
+import type { SnapCandidate } from '@whiteboard/core/node'
+import type { SelectionTarget } from '@whiteboard/core/selection'
+import type { ResolvedEdgeEnds } from '@whiteboard/core/types/edge'
 import type { EngineWrite } from '../types/engineWrite'
 import type {
   BatchApplyOptions,
@@ -117,8 +124,61 @@ export interface EngineWrites {
   subscribe(listener: (write: EngineWrite) => void): () => void
 }
 
+export interface EngineNodeQueryItem {
+  id: NodeId
+  node: Node
+  rect: Rect
+  bounds: Rect
+  rotation: number
+}
+
+export interface EngineEdgeQueryItem {
+  id: EdgeId
+  edge: Edge
+  ends: ResolvedEdgeEnds
+}
+
+export interface EngineMindmapQueryItem {
+  id: MindmapId
+  rootId: NodeId
+  nodeIds: readonly NodeId[]
+  tree: MindmapTree
+  layout: MindmapLayoutSpec
+}
+
+export interface EngineQuery {
+  document(): Document
+  background(): Document['background'] | undefined
+  bounds(): Rect
+  scene(): readonly CanvasItemRef[]
+  frameOf(nodeId: NodeId): NodeId | undefined
+  frameAt(point: Point): NodeId | undefined
+  groupOfNode(nodeId: NodeId): GroupId | undefined
+  groupTarget(groupId: GroupId): SelectionTarget | undefined
+  groupExactIds(target: SelectionTarget): readonly GroupId[]
+  snapCandidatesInRect(rect: Rect): readonly SnapCandidate[]
+  sliceFromSelection(input: {
+    nodeIds?: readonly NodeId[]
+    edgeIds?: readonly EdgeId[]
+  }): SliceExportResult | undefined
+  nodeIds(): readonly NodeId[]
+  node(id: NodeId): EngineNodeQueryItem | undefined
+  edgeIds(): readonly EdgeId[]
+  edge(id: EdgeId): EngineEdgeQueryItem | undefined
+  relatedEdges(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+  edgeIdsInRect(
+    rect: Rect,
+    options?: {
+      match?: 'touch' | 'contain'
+    }
+  ): EdgeId[]
+  mindmapIds(): readonly MindmapId[]
+  mindmap(id: MindmapId | NodeId): EngineMindmapQueryItem | undefined
+}
+
 export interface Engine {
   readonly config: BoardConfig
+  readonly query: EngineQuery
   readonly writes: EngineWrites
   current(): EnginePublish
   subscribe(listener: (publish: EnginePublish) => void): () => void

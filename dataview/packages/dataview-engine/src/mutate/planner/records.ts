@@ -231,13 +231,13 @@ const lowerRecordFieldsWriteMany = (
   scope: PlannerScope,
   action: Extract<Action, { type: 'record.fields.writeMany' }>
 ): PlannedActionResult => {
-  const recordIds = requireRecordIds(scope, action.input.recordIds, 'input.recordIds')
+  const recordIds = requireRecordIds(scope, action.recordIds, 'recordIds')
   const nextSet: Partial<Record<FieldId, unknown>> = {}
   const nextClear = new Set<FieldId>()
 
-  Object.entries(action.input.set ?? {}).forEach(([fieldId, value], indexOfField) => {
+  Object.entries(action.set ?? {}).forEach(([fieldId, value], indexOfField) => {
     const typedFieldId = fieldId as FieldId
-    if (!validateWritableField(scope, typedFieldId, `input.set.${indexOfField}`)) {
+    if (!validateWritableField(scope, typedFieldId, `set.${indexOfField}`)) {
       return
     }
 
@@ -249,8 +249,8 @@ const lowerRecordFieldsWriteMany = (
     nextSet[typedFieldId] = value
   })
 
-  ;(action.input.clear ?? []).forEach((fieldId, indexOfField) => {
-    if (!validateWritableField(scope, fieldId, `input.clear.${indexOfField}`)) {
+  ;(action.clear ?? []).forEach((fieldId, indexOfField) => {
+    if (!validateWritableField(scope, fieldId, `clear.${indexOfField}`)) {
       return
     }
 

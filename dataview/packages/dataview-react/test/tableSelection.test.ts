@@ -95,18 +95,8 @@ const createSelectionRuntimeStub = (input: {
         restore: vi.fn(),
         clear: vi.fn(),
         selectAll: vi.fn(),
-        ids: {
-          replace: vi.fn(),
-          add: vi.fn(),
-          remove: vi.fn(),
-          toggle: vi.fn()
-        },
-        scope: {
-          replace: vi.fn(),
-          add: vi.fn(),
-          remove: vi.fn(),
-          toggle: vi.fn()
-        },
+        applyIds: vi.fn(),
+        applyScope: vi.fn(),
         range: {
           extendTo: vi.fn(),
           step: vi.fn(() => false)
@@ -165,7 +155,7 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
     rowSelection
   })
 
-  runtime.rows.command.ids.replace(['row_1'], {
+  runtime.rows.command.applyIds('replace', ['row_1'], {
     anchor: 'row_1',
     focus: 'row_1'
   })
@@ -190,7 +180,7 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
     }
   })
 
-  runtime.rows.command.ids.toggle(['row_1'])
+  runtime.rows.command.applyIds('toggle', ['row_1'])
   assert.equal(runtime.mode.get(), 'rows')
   assert.deepEqual(runtime.rows.enumerate.materialize(), ['row_1'])
   assert.equal(runtime.cells.get(), null)

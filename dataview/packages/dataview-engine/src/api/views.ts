@@ -27,11 +27,11 @@ export const createViewsApi = (options: {
 
   return {
     list: readViews,
-    get: viewId => documentApi.views.get(options.document(), viewId),
-    open: viewId => {
+    get: id => documentApi.views.get(options.document(), id),
+    open: id => {
       options.dispatch({
         type: 'view.open',
-        viewId
+        id
       })
     },
     create: input => {
@@ -49,7 +49,7 @@ export const createViewsApi = (options: {
       })
       return result.created?.views?.[0]
     },
-    rename: (viewId: ViewId, name: string) => {
+    rename: (id: ViewId, name: string) => {
       const nextName = string.trimToUndefined(name)
       if (!nextName) {
         return
@@ -57,14 +57,14 @@ export const createViewsApi = (options: {
 
       options.dispatch({
         type: 'view.patch',
-        viewId,
+        id,
         patch: {
           name: nextName
         }
       })
     },
-    duplicate: viewId => {
-      const sourceView = documentApi.views.get(options.document(), viewId)
+    duplicate: id => {
+      const sourceView = documentApi.views.get(options.document(), id)
       if (!sourceView) {
         return undefined
       }
@@ -75,10 +75,10 @@ export const createViewsApi = (options: {
       })
       return result.created?.views?.[0]
     },
-    remove: viewId => {
+    remove: id => {
       options.dispatch({
         type: 'view.remove',
-        viewId
+        id
       })
     }
   }

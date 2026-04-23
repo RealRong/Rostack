@@ -14,7 +14,7 @@ import type {
   ActiveViewKanban,
   ActiveViewQuery,
   ActiveViewTable,
-  EngineCore,
+  Engine,
   FieldList,
   ItemId,
   ItemList,
@@ -40,8 +40,8 @@ export interface SectionSource extends store.KeyedReadStore<SectionId, Section |
 export interface ItemSource {
   ids: store.ReadStore<readonly ItemId[]>
   read: {
-    recordId: store.KeyedReadStore<ItemId, RecordId | undefined>
-    sectionId: store.KeyedReadStore<ItemId, SectionId | undefined>
+    record: store.KeyedReadStore<ItemId, RecordId | undefined>
+    section: store.KeyedReadStore<ItemId, SectionId | undefined>
     placement: store.KeyedReadStore<ItemId, ItemPlacement | undefined>
   }
   list: store.ReadStore<ItemList>
@@ -54,11 +54,9 @@ export interface DocumentSource {
 }
 
 export interface ActiveSource {
-  view: {
-    id: store.ReadStore<ViewId | undefined>
-    type: store.ReadStore<View['type'] | undefined>
-    current: store.ReadStore<View | undefined>
-  }
+  view: store.ReadStore<View | undefined>
+  viewId: store.ReadStore<ViewId | undefined>
+  viewType: store.ReadStore<View['type'] | undefined>
   query: store.ReadStore<ActiveViewQuery>
   table: store.ReadStore<ActiveViewTable>
   gallery: store.ReadStore<ActiveViewGallery>
@@ -80,7 +78,7 @@ export interface ActiveSource {
 }
 
 export interface EngineSource {
-  doc: DocumentSource
+  document: DocumentSource
   active: ActiveSource
 }
 
@@ -90,5 +88,5 @@ export interface EngineSourceRuntime {
 }
 
 export interface CreateEngineSourceInput {
-  core: EngineCore
+  engine: Pick<Engine, 'result' | 'subscribe'>
 }

@@ -5,7 +5,7 @@ import {
   type KanbanCardsPerColumn,
   type ViewType
 } from '@dataview/core/contracts'
-import { useDataView, usePageRuntime } from '@dataview/react/dataview'
+import { useDataView, usePageModel } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'
 import { usesOptionGroupingColors } from '@dataview/react/views/shared/optionGrouping'
@@ -69,9 +69,9 @@ export const LayoutPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const pageRuntime = usePageRuntime()
-  const settings = useStoreValue(pageRuntime.settings)
-  const view = settings.activeView
+  const pageModel = usePageModel()
+  const settings = useStoreValue(pageModel.settings)
+  const view = settings.view
   const viewApi = view
     ? engine.active
     : undefined

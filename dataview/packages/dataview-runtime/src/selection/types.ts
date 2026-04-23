@@ -12,6 +12,7 @@ export type SelectionSummary =
 export type SelectionApplyMode =
   | 'replace'
   | 'add'
+  | 'remove'
   | 'toggle'
 
 export interface OrderedSelectionDomain<TId> {
@@ -58,30 +59,22 @@ export interface SelectionCommandApi<TId> {
   restore(snapshot: SelectionSnapshot<TId>): void
   clear(): void
   selectAll(): void
-  ids: {
-    replace(
-      ids: Iterable<TId>,
-      options?: {
-        anchor?: TId
-        focus?: TId
-      }
-    ): void
-    add(ids: Iterable<TId>): void
-    remove(ids: Iterable<TId>): void
-    toggle(ids: Iterable<TId>): void
-  }
-  scope: {
-    replace(
-      scope: SelectionScope<TId>,
-      options?: {
-        anchor?: TId
-        focus?: TId
-      }
-    ): void
-    add(scope: SelectionScope<TId>): void
-    remove(scope: SelectionScope<TId>): void
-    toggle(scope: SelectionScope<TId>): void
-  }
+  applyIds(
+    mode: SelectionApplyMode,
+    ids: Iterable<TId>,
+    options?: {
+      anchor?: TId
+      focus?: TId
+    }
+  ): void
+  applyScope(
+    mode: SelectionApplyMode,
+    scope: SelectionScope<TId>,
+    options?: {
+      anchor?: TId
+      focus?: TId
+    }
+  ): void
   range: {
     extendTo(id: TId): void
     step(

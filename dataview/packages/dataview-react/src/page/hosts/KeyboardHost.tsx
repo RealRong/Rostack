@@ -1,6 +1,6 @@
 import { useOverlayKey } from '@shared/ui/overlay'
 import { keyDown } from '@dataview/react/interaction'
-import { useDataView, usePageRuntime } from '@dataview/react/dataview'
+import { useDataView, usePageModel } from '@dataview/react/dataview'
 import { closestTarget } from '@shared/dom'
 import { pageShortcutAction } from '@dataview/react/page/keyboard'
 import { useStoreValue } from '@shared/react'
@@ -15,7 +15,7 @@ const editingTargetSelector = [
 export const PageKeyboardHost = () => {
   const dataView = useDataView()
   const engine = dataView.engine
-  const page = usePageRuntime()
+  const page = usePageModel()
   const pageBody = useStoreValue(page.body)
   const valueEditorOpen = pageBody.valueEditorOpen
 

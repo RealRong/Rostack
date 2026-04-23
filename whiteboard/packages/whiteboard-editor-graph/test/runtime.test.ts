@@ -40,18 +40,6 @@ type RuntimeInputOptions = {
   delta?: EditorGraphInput['delta']
 }
 
-const createEditorGraphRead = (
-  runtime: Pick<ReturnType<typeof createEditorGraphHarness>['runtime'], 'snapshot'>
-) => ({
-  snapshot: () => runtime.snapshot(),
-  node: (id: NodeId) => runtime.snapshot().graph.nodes.byId.get(id),
-  edge: (id: EdgeId) => runtime.snapshot().graph.edges.byId.get(id),
-  mindmap: (id: string) => runtime.snapshot().graph.owners.mindmaps.byId.get(id),
-  group: (id: string) => runtime.snapshot().graph.owners.groups.byId.get(id),
-  scene: () => runtime.snapshot().scene,
-  ui: () => runtime.snapshot().ui
-})
-
 const createEditorGraphPublishSpec = () => ({
   graph: {
     read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.graph,
@@ -374,7 +362,7 @@ describe('editor graph runtime', () => {
     const result = harness.update(createInput(engine, {
       delta: DOCUMENT_DELTA
     }))
-    const read = createEditorGraphRead(harness.runtime)
+    const read = harness.read
     const publish = createEditorGraphPublishSpec()
 
     expect(harness.snapshot()).toBe(result.snapshot)
@@ -384,6 +372,8 @@ describe('editor graph runtime', () => {
     expect(read.node(nodeId)).toBe(result.snapshot.graph.nodes.byId.get(nodeId))
     expect(read.scene()).toBe(result.snapshot.scene)
     expect(read.ui()).toBe(result.snapshot.ui)
+    expect(read.selection()).toBe(result.snapshot.ui.selection)
+    expect(read.chrome()).toBe(result.snapshot.ui.chrome)
     expect(publish.graph.read(result.snapshot)).toBe(result.snapshot.graph)
     expect(publish.graph.change(result.change)).toBe(result.change.graph)
     expect(publish.scene.read(result.snapshot)).toBe(result.snapshot.scene)

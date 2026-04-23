@@ -98,7 +98,7 @@ export const FieldValueEditorHost = () => {
   const field = session?.field
   const fieldId = field?.fieldId
   const customField = useOptionalKeyedStoreValue(
-    dataView.source.doc.fields,
+    dataView.source.document.fields,
     (fieldId && !fieldApi.id.isTitle(fieldId))
       ? fieldId
       : undefined,
@@ -109,7 +109,7 @@ export const FieldValueEditorHost = () => {
     customField
   })
   const record = useOptionalKeyedStoreValue(
-    dataView.source.doc.records,
+    dataView.source.document.records,
     field?.recordId,
     undefined
   )

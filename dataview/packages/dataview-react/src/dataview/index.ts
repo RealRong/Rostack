@@ -1,10 +1,10 @@
 export {
-  EngineProvider,
+  DataViewProvider,
   useDataView,
   useDataViewModel,
   useDataViewSession,
   useDataViewSource,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview/provider'
 export {
   useDataViewKeyedValue,
@@ -14,7 +14,7 @@ export {
 export type {
   DataViewReactContextValue,
   DataViewReactSession,
-  EngineProviderProps
+  DataViewProviderProps
 } from '@dataview/react/dataview/types'
 
 export type {

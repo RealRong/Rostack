@@ -59,7 +59,7 @@ export interface TableModel {
 const readTableView = (
   active: ActiveSource
 ): TableView | undefined => {
-  const view = store.read(active.view.current)
+  const view = store.read(active.view)
   return view?.type === 'table'
     ? view
     : undefined

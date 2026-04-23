@@ -41,7 +41,7 @@ import {
 } from '@dataview/runtime/session/valueEditor'
 
 const bindInlineSessionToView = (input: {
-  activeView: store.ReadStore<View | undefined>
+  view: store.ReadStore<View | undefined>
   items: {
     ids: store.ReadStore<readonly number[]>
     read: {
@@ -59,7 +59,7 @@ const bindInlineSessionToView = (input: {
       return
     }
 
-    const view = input.activeView.get()
+    const view = input.view.get()
     const placement = input.items.read.placement.get(session.itemId)
     if (!view || !placement || view.id !== session.viewId) {
       input.inlineSession.exit({
@@ -70,7 +70,7 @@ const bindInlineSessionToView = (input: {
 
   sync()
   return store.joinUnsubscribes([
-    input.activeView.subscribe(sync),
+    input.view.subscribe(sync),
     input.items.ids.subscribe(sync)
   ])
 }
@@ -103,13 +103,13 @@ const bindInlineSessionToSelection = (input: {
 ])
 
 const bindMarqueeToView = (input: {
-  activeView: store.ReadStore<View | undefined>
+  view: store.ReadStore<View | undefined>
   marquee: Pick<ReturnType<typeof createMarqueeController>, 'get' | 'clear'>
 }) => {
-  let previousViewId = input.activeView.get()?.id
+  let previousViewId = input.view.get()?.id
 
   const sync = () => {
-    const nextViewId = input.activeView.get()?.id
+    const nextViewId = input.view.get()?.id
     if (previousViewId !== nextViewId && input.marquee.get()) {
       input.marquee.clear()
     }
@@ -118,24 +118,24 @@ const bindMarqueeToView = (input: {
   }
 
   sync()
-  return input.activeView.subscribe(sync)
+  return input.view.subscribe(sync)
 }
 
 export const createDataViewRuntime = (
   input: CreateDataViewRuntimeInput
 ): DataViewRuntime => {
   const sourceRuntime = createEngineSource({
-    core: input.engine.core
+    engine: input.engine
   })
-  const page = createPageSessionController(input.initialPage)
+  const page = createPageSessionController(input.page)
   const inline = createInlineSessionApi()
   const createRecord = createRecordWorkflow({
-    activeView: sourceRuntime.source.active.view.current
+    view: sourceRuntime.source.active.view
   })
   const table = createTableModel(sourceRuntime.source.active)
   const valueEditor = createValueEditorApi()
   const activeItems = sourceRuntime.source.active.items.list
-  const activeView = sourceRuntime.source.active.view.current
+  const view = sourceRuntime.source.active.view
   const activeSelectionDomain = createItemSelectionDomainSource({
     store: activeItems
   })
@@ -176,11 +176,11 @@ export const createDataViewRuntime = (
       inlineSession: inline
     }),
     bindMarqueeToView({
-      activeView,
+      view,
       marquee
     }),
     bindInlineSessionToView({
-      activeView,
+      view,
       items: sourceRuntime.source.active.items,
       inlineSession: inline
     })

@@ -33,11 +33,11 @@ const toViewPut = (
 })
 
 const toFieldPatch = (
-  fieldId: string,
+  id: string,
   patch: Partial<Omit<CustomField, 'id'>>
 ): DocumentOperation => ({
   type: 'document.field.patch',
-  fieldId,
+  id,
   patch
 })
 
@@ -100,11 +100,9 @@ const buildConvertedFieldViewOps = (
 
 const createFieldConvertPatch = (
   field: CustomField,
-  input: {
-    kind: CustomField['kind']
-  }
+  kind: CustomField['kind']
 ): Partial<Omit<CustomField, 'id'>> => {
-  const next = fieldApi.kind.convert(field, input.kind)
+  const next = fieldApi.kind.convert(field, kind)
   const { id: _id, ...patch } = next
   return patch
 }
@@ -207,7 +205,7 @@ const lowerFieldPatch = (
 ): PlannedActionResult => {
   const document = scope.reader.document()
   const views = scope.reader.views.list()
-  const field = requireCustomField(scope, action.fieldId)
+  const field = requireCustomField(scope, action.id, 'id')
   if (!field) {
     return scope.finish()
   }
@@ -227,7 +225,7 @@ const lowerFieldPatch = (
   } as CustomField
   scope.report(...validateField(document, scope.source, nextField, 'patch'))
 
-  return scope.finish(toFieldPatch(action.fieldId, action.patch))
+  return scope.finish(toFieldPatch(action.id, action.patch))
 }
 
 const lowerFieldReplace = (
@@ -235,13 +233,13 @@ const lowerFieldReplace = (
   action: Extract<Action, { type: 'field.replace' }>
 ): PlannedActionResult => {
   const document = scope.reader.document()
-  if (!requireCustomField(scope, action.fieldId)) {
+  if (!requireCustomField(scope, action.id, 'id')) {
     return scope.finish()
   }
 
   const field = {
     ...structuredClone(action.field),
-    id: action.fieldId
+    id: action.id
   } satisfies CustomField
 
   scope.report(...validateField(document, scope.source, field, 'field'))
@@ -251,26 +249,26 @@ const lowerFieldReplace = (
   })
 }
 
-const lowerFieldConvert = (
+const lowerFieldSetKind = (
   scope: PlannerScope,
-  action: Extract<Action, { type: 'field.convert' }>
+  action: Extract<Action, { type: 'field.setKind' }>
 ): PlannedActionResult => {
   const document = scope.reader.document()
   const views = scope.reader.views.list()
-  const field = requireCustomField(scope, action.fieldId)
+  const field = requireCustomField(scope, action.id, 'id')
   if (!field) {
     return scope.finish()
   }
 
-  const patch = createFieldConvertPatch(field, action.input)
+  const patch = createFieldConvertPatch(field, action.kind)
   const nextField = {
     ...field,
     ...patch
   } as CustomField
-  scope.report(...validateField(document, scope.source, nextField, 'input'))
+  scope.report(...validateField(document, scope.source, nextField, 'kind'))
 
   return scope.finish(
-    toFieldPatch(action.fieldId, patch),
+    toFieldPatch(action.id, patch),
     ...buildConvertedFieldViewOps(views, nextField)
   )
 }
@@ -282,7 +280,7 @@ const lowerFieldDuplicate = (
   const document = scope.reader.document()
   const views = scope.reader.views.list()
   const records = scope.reader.records.list()
-  const sourceField = requireCustomField(scope, action.fieldId)
+  const sourceField = requireCustomField(scope, action.id, 'id')
   if (!sourceField) {
     return scope.finish()
   }
@@ -353,17 +351,17 @@ const lowerFieldOptionCreate = (
   scope: PlannerScope,
   action: Extract<Action, { type: 'field.option.create' }>
 ): PlannedActionResult => {
-  const context = requireOptionField(scope, action.fieldId)
+  const context = requireOptionField(scope, action.field)
   if (!context) {
     return scope.finish()
   }
 
-  const explicitName = string.trimToUndefined(action.input?.name)
-  if (action.input?.name !== undefined && !explicitName) {
+  const explicitName = string.trimToUndefined(action.name)
+  if (action.name !== undefined && !explicitName) {
     scope.issue(
       'field.invalid',
       'Field option name must be a non-empty string',
-      'input.name'
+      'name'
     )
     return scope.finish()
   }
@@ -381,21 +379,21 @@ const lowerFieldOptionCreate = (
     [...context.options, nextOption]
   ) as Partial<Omit<CustomField, 'id'>>
 
-  return scope.finish(toFieldPatch(action.fieldId, patch))
+  return scope.finish(toFieldPatch(action.field, patch))
 }
 
-const lowerFieldOptionReorder = (
+const lowerFieldOptionSetOrder = (
   scope: PlannerScope,
-  action: Extract<Action, { type: 'field.option.reorder' }>
+  action: Extract<Action, { type: 'field.option.setOrder' }>
 ): PlannedActionResult => {
-  const context = requireOptionField(scope, action.fieldId)
+  const context = requireOptionField(scope, action.field)
   if (!context) {
     return scope.finish()
   }
 
   const optionMap = new Map(context.options.map((option: FieldOption) => [option.id, option] as const))
   const seen = new Set<string>()
-  const ordered = action.optionIds
+  const ordered = action.order
     .map(optionId => {
       if (seen.has(optionId)) {
         return undefined
@@ -415,27 +413,27 @@ const lowerFieldOptionReorder = (
 
   return scope.finish(
     toFieldPatch(
-      action.fieldId,
+      action.field,
       fieldApi.option.write.replace(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>
     )
   )
 }
 
-const lowerFieldOptionUpdate = (
+const lowerFieldOptionPatch = (
   scope: PlannerScope,
-  action: Extract<Action, { type: 'field.option.update' }>
+  action: Extract<Action, { type: 'field.option.patch' }>
 ): PlannedActionResult => {
-  const context = requireOptionField(scope, action.fieldId)
+  const context = requireOptionField(scope, action.field)
   if (!context) {
     return scope.finish()
   }
 
-  const optionId = string.trimToUndefined(action.optionId)
+  const optionId = string.trimToUndefined(action.option)
   if (!optionId) {
     scope.issue(
       'field.invalid',
       'Field option id must be a non-empty string',
-      'optionId'
+      'option'
     )
     return scope.finish()
   }
@@ -445,7 +443,7 @@ const lowerFieldOptionUpdate = (
     scope.issue(
       'field.invalid',
       `Unknown field option: ${optionId}`,
-      'optionId'
+      'option'
     )
     return scope.finish()
   }
@@ -500,7 +498,7 @@ const lowerFieldOptionUpdate = (
     context.options.map(option => option.id === optionId ? nextOption : option)
   ) as Partial<Omit<CustomField, 'id'>>
 
-  return scope.finish(toFieldPatch(action.fieldId, patch))
+  return scope.finish(toFieldPatch(action.field, patch))
 }
 
 const lowerFieldOptionRemove = (
@@ -508,17 +506,17 @@ const lowerFieldOptionRemove = (
   action: Extract<Action, { type: 'field.option.remove' }>
 ): PlannedActionResult => {
   const records = scope.reader.records.list()
-  const context = requireOptionField(scope, action.fieldId)
+  const context = requireOptionField(scope, action.field)
   if (!context) {
     return scope.finish()
   }
 
-  const optionId = string.trimToUndefined(action.optionId)
+  const optionId = string.trimToUndefined(action.option)
   if (!optionId) {
     scope.issue(
       'field.invalid',
       'Field option id must be a non-empty string',
-      'optionId'
+      'option'
     )
     return scope.finish()
   }
@@ -526,7 +524,7 @@ const lowerFieldOptionRemove = (
     scope.issue(
       'field.invalid',
       `Unknown field option: ${optionId}`,
-      'optionId'
+      'option'
     )
     return scope.finish()
   }
@@ -570,7 +568,7 @@ const lowerFieldOptionRemove = (
   }
 
   return scope.finish(
-    toFieldPatch(action.fieldId, patch),
+    toFieldPatch(action.field, patch),
     ...valueOps
   )
 }
@@ -580,15 +578,15 @@ const lowerFieldRemove = (
   action: Extract<Action, { type: 'field.remove' }>
 ): PlannedActionResult => {
   const views = scope.reader.views.list()
-  if (!requireCustomField(scope, action.fieldId)) {
+  if (!requireCustomField(scope, action.id, 'id')) {
     return scope.finish()
   }
 
   return scope.finish(
-    ...buildRemovedFieldViewOps(views, action.fieldId),
+    ...buildRemovedFieldViewOps(views, action.id),
     {
       type: 'document.field.remove',
-      fieldId: action.fieldId
+      id: action.id
     }
   )
 }
@@ -604,16 +602,16 @@ export const planFieldAction = (
       return lowerFieldPatch(scope, action)
     case 'field.replace':
       return lowerFieldReplace(scope, action)
-    case 'field.convert':
-      return lowerFieldConvert(scope, action)
+    case 'field.setKind':
+      return lowerFieldSetKind(scope, action)
     case 'field.duplicate':
       return lowerFieldDuplicate(scope, action)
     case 'field.option.create':
       return lowerFieldOptionCreate(scope, action)
-    case 'field.option.reorder':
-      return lowerFieldOptionReorder(scope, action)
-    case 'field.option.update':
-      return lowerFieldOptionUpdate(scope, action)
+    case 'field.option.setOrder':
+      return lowerFieldOptionSetOrder(scope, action)
+    case 'field.option.patch':
+      return lowerFieldOptionPatch(scope, action)
     case 'field.option.remove':
       return lowerFieldOptionRemove(scope, action)
     case 'field.remove':

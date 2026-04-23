@@ -653,6 +653,7 @@ export interface UiChange {
 }
 
 export interface Runtime {
+  readonly query: Read
   snapshot(): Snapshot
   update(input: Input): Result
   subscribe(listener: (snapshot: Snapshot, change: Change) => void): () => void
@@ -672,4 +673,6 @@ export interface Read {
   group(id: GroupId): GroupView | undefined
   scene(): SceneSnapshot
   ui(): UiSnapshot
+  selection(): SelectionView
+  chrome(): ChromeView
 }

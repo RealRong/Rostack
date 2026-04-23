@@ -1,8 +1,8 @@
 import type {
-  DataViewGalleryModel
+  GalleryModel
 } from '@dataview/runtime/model/gallery/types'
 import type {
-  DataViewKanbanModel
+  KanbanModel
 } from '@dataview/runtime/model/kanban/types'
 import type {
   PageModel
@@ -14,6 +14,6 @@ import type {
 export interface DataViewModel {
   page: PageModel
   table: TableModel
-  gallery: DataViewGalleryModel
-  kanban: DataViewKanbanModel
+  gallery: GalleryModel
+  kanban: KanbanModel
 }

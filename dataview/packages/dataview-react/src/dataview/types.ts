@@ -25,8 +25,8 @@ export interface DataViewReactSession extends DataViewReactContextValue {
   dispose(): void
 }
 
-export interface EngineProviderProps {
+export interface DataViewProviderProps {
   engine: DataViewRuntime['engine']
-  initialPage?: PageSessionInput
+  page?: PageSessionInput
   children?: ReactNode
 }

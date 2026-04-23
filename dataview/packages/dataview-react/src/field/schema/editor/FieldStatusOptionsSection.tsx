@@ -58,13 +58,17 @@ export const FieldStatusOptionsSection = (props: {
   }, [editingOptionId, options])
 
   const appendOption = (category: StatusCategory) => {
-    const option = editor.fields.options.append(props.field.id)
+    const option = editor.fields.options.create(props.field.id)
     if (!option) {
       return
     }
 
     if (category !== 'todo') {
-      editor.fields.options.update(props.field.id, option.id, { category })
+      editor.fields.options.patch({
+        field: props.field.id,
+        option: option.id,
+        patch: { category }
+      })
     }
     setEditingOptionId(option.id)
   }
@@ -133,7 +137,7 @@ export const FieldStatusOptionsSection = (props: {
                 }}
                 onMove={(from, to) => {
                   const reordered = order.moveAt(section.options, from, to)
-                  editor.fields.options.reorder(
+                  editor.fields.options.setOrder(
                     props.field.id,
                     buildOrderedIds(sections, section.category, reordered)
                   )

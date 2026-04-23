@@ -27,7 +27,7 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   const editor = useDataView().engine
   const router = useViewSettings()
   const field = useDataViewKeyedValue(
-    dataView => dataView.source.doc.fields,
+    dataView => dataView.source.document.fields,
     props.fieldId
   )
   const [nameDraft, setNameDraft] = useState('')
@@ -48,7 +48,7 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
   }
 
   const update = (patch: Partial<Omit<CustomField, 'id'>>) => {
-    editor.fields.update(field.id, patch)
+    editor.fields.patch(field.id, patch)
   }
   const typeItems: readonly MenuItem[] = [{
     kind: 'submenu',
@@ -62,7 +62,7 @@ export const FieldSchemaEditor = (props: FieldSchemaEditorProps) => {
       kind: field.kind,
       isTitleProperty: false,
       onSelect: nextKind => {
-        editor.fields.changeType(field.id, { kind: nextKind })
+        editor.fields.setKind(field.id, nextKind)
       }
     })
   }]

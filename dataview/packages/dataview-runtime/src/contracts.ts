@@ -41,7 +41,7 @@ export interface DataViewSessionApi {
 
 export interface CreateDataViewRuntimeInput {
   engine: Engine
-  initialPage?: PageSessionInput
+  page?: PageSessionInput
 }
 
 export interface DataViewRuntime {

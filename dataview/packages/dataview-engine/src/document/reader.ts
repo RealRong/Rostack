@@ -92,9 +92,9 @@ export const createDocumentReader = (
     },
     fields: createEntityReader({
       readDocument,
-      ids: document.fields.ids,
-      list: document.fields.list,
-      get: document.fields.get
+      ids: document.fields.all.ids,
+      list: document.fields.all.list,
+      get: document.fields.all.get
     }),
     views: {
       ...createEntityReader({

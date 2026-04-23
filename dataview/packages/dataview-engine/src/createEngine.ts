@@ -16,7 +16,6 @@ import { createActiveViewApi } from '@dataview/engine/active/api/active'
 import { createFieldsApi } from '@dataview/engine/api/fields'
 import { createRecordsApi } from '@dataview/engine/api/records'
 import { createViewsApi } from '@dataview/engine/api/views'
-import { createEngineReadApi } from '@dataview/engine/api/read'
 import {
   createCoreRuntime,
   createEngineSnapshot,
@@ -88,28 +87,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       planMs: now() - planStart
     })
   }
-  const core = {
-    read: {
-      result: () => runtime.result()
-    },
-    commit: {
-      actions: (actions: readonly Action[]) => dispatch(actions),
-      replace: (nextDocument: DataDoc) => write.load(document.clone(nextDocument)),
-      undo: write.history.undo,
-      redo: write.history.redo,
-      clearHistory: write.history.clear
-    },
-    history: {
-      state: write.history.state,
-      canUndo: write.history.canUndo,
-      canRedo: write.history.canRedo
-    },
-    subscribe: runtime.subscribe
-  } satisfies Engine['core']
-  const readDocument = () => core.read.result().snapshot.doc
-  const readActiveState = () => core.read.result().snapshot.active
-
-  const readApi = createEngineReadApi(readDocument)
+  const readDocument = () => runtime.result().snapshot.doc
+  const readActiveState = () => runtime.result().snapshot.active
   const fields = createFieldsApi({
     document: readDocument,
     dispatch
@@ -129,15 +108,16 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   })
 
   return {
-    core,
-    read: readApi,
+    result: runtime.result,
+    subscribe: runtime.subscribe,
     active,
     views,
     fields,
     records,
     document: {
+      get: () => document.clone(readDocument()),
       replace: (nextDocument: DataDoc) => {
-        core.commit.replace(document.clone(nextDocument))
+        write.load(document.clone(nextDocument))
         return document.clone(readDocument())
       }
     },

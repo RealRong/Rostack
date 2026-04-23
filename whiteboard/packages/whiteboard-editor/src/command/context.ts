@@ -22,9 +22,9 @@ export interface EditorCommandContext {
   write: EditorWrite
   publish(delta?: InputDelta): EditorPublishRequest
   task: {
-    microtask(command: EditorCommand<void>): EditorTaskRequest
-    frame(command: EditorCommand<void>): EditorTaskRequest
-    delay(delayMs: number, command: EditorCommand<void>): EditorTaskRequest
+    microtask(procedure: EditorCommand<void>): EditorTaskRequest
+    frame(procedure: EditorCommand<void>): EditorTaskRequest
+    delay(delayMs: number, procedure: EditorCommand<void>): EditorTaskRequest
   }
 }
 
@@ -57,21 +57,21 @@ export const createEditorCommandContext = ({
     delta
   }),
   task: {
-    microtask: (command) => ({
+    microtask: (procedure) => ({
       kind: 'task',
       lane: 'microtask',
-      command
+      procedure
     }),
-    frame: (command) => ({
+    frame: (procedure) => ({
       kind: 'task',
       lane: 'frame',
-      command
+      procedure
     }),
-    delay: (delayMs, command) => ({
+    delay: (delayMs, procedure) => ({
       kind: 'task',
       lane: 'delay',
       delayMs,
-      command
+      procedure
     })
   }
 })

@@ -1,5 +1,4 @@
 export * from '@dataview/engine/contracts/api'
-export * from '@dataview/engine/contracts/core'
 export * from '@dataview/engine/contracts/delta'
 export * from '@dataview/engine/contracts/history'
 export * from '@dataview/engine/contracts/performance'

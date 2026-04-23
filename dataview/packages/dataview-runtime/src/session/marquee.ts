@@ -200,8 +200,8 @@ export const createMarqueeController = (input: {
       ? selectionSnapshot.applyIds(
           domain,
           session.baseSelection,
-          session.hitIds,
           session.mode,
+          session.hitIds,
           input.selection.state.getSnapshot().domainRevision
         )
       : session.baseSelection

@@ -38,7 +38,7 @@ const View = (props: RowScopeSelectionRailProps) => {
   const disabled = props.scope.count === 0
 
   const onPress = useCallback(() => {
-    table.selection.rows.command.scope.toggle(props.scope)
+    table.selection.rows.command.applyScope('toggle', props.scope)
     table.focus()
   }, [props.scope, table])
 

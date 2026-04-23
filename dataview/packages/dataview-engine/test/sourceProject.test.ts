@@ -91,7 +91,9 @@ test('engine source records refresh after writing a value into a newly inserted 
     document: createDocument()
   })
 
-  const fieldId = engine.active.table.insertFieldRight(FIELD_STATUS, {
+  const fieldId = engine.active.table.insertField({
+    anchor: FIELD_STATUS,
+    side: 'right',
     kind: 'text',
     name: 'Notes'
   })
@@ -100,7 +102,7 @@ test('engine source records refresh after writing a value into a newly inserted 
   engine.records.fields.set('rec_1', fieldId, 'hello world')
 
   assert.equal(
-    engine.read.record('rec_1')?.values[fieldId],
+    engine.records.get('rec_1')?.values[fieldId],
     'hello world'
   )
 })

@@ -1,6 +1,7 @@
 import { store } from '@shared/core'
 import type {
   OrderedSelectionDomain,
+  SelectionApplyMode,
   SelectionController,
   SelectionControllerInstance,
   SelectionDomainSource,
@@ -79,6 +80,52 @@ export const createSelectionController = <TId,>(
     stateStore.set(next)
   }
 
+  const applyIds = (
+    mode: SelectionApplyMode,
+    ids: Iterable<TId>,
+    options?: {
+      anchor?: TId
+      focus?: TId
+    }
+  ) => {
+    const current = stateStore.get()
+    commit(resolveSnapshot(currentDomain, current, ({
+      domain,
+      current: snapshot,
+      domainRevision
+    }) => selectionSnapshot.applyIds(
+      domain,
+      snapshot,
+      mode,
+      ids,
+      domainRevision,
+      options
+    )))
+  }
+
+  const applyScope = (
+    mode: SelectionApplyMode,
+    scope: SelectionScope<TId>,
+    options?: {
+      anchor?: TId
+      focus?: TId
+    }
+  ) => {
+    const current = stateStore.get()
+    commit(resolveSnapshot(currentDomain, current, ({
+      domain,
+      current: snapshot,
+      domainRevision
+    }) => selectionSnapshot.applyScope(
+      domain,
+      snapshot,
+      mode,
+      scope,
+      domainRevision,
+      options
+    )))
+  }
+
   const controller: SelectionController<TId> = {
     state: {
       store: stateStore,
@@ -107,124 +154,8 @@ export const createSelectionController = <TId,>(
           domainRevision
         )))
       },
-      ids: {
-        replace: (
-          ids: Iterable<TId>,
-          options?: {
-            anchor?: TId
-            focus?: TId
-          }
-        ) => {
-          const current = stateStore.get()
-          commit(resolveSnapshot(currentDomain, current, ({
-            domain,
-            domainRevision
-          }) => selectionSnapshot.replaceIds(
-            domain,
-            ids,
-            domainRevision,
-            options
-          )))
-        },
-        add: (ids: Iterable<TId>) => {
-          const current = stateStore.get()
-          commit(resolveSnapshot(currentDomain, current, ({
-            domain,
-            current: snapshot,
-            domainRevision
-          }) => selectionSnapshot.addIds(
-            domain,
-            snapshot,
-            ids,
-            domainRevision
-          )))
-        },
-        remove: (ids: Iterable<TId>) => {
-          const current = stateStore.get()
-          commit(resolveSnapshot(currentDomain, current, ({
-            domain,
-            current: snapshot,
-            domainRevision
-          }) => selectionSnapshot.removeIds<TId>(
-            domain,
-            snapshot,
-            ids,
-            domainRevision
-          )))
-        },
-        toggle: (ids: Iterable<TId>) => {
-          const current = stateStore.get()
-          commit(resolveSnapshot(currentDomain, current, ({
-            domain,
-            current: snapshot,
-            domainRevision
-          }) => selectionSnapshot.toggleIds(
-            domain,
-            snapshot,
-            ids,
-            domainRevision
-          )))
-        }
-      },
-      scope: {
-        replace: (
-          scope: SelectionScope<TId>,
-          options?: {
-            anchor?: TId
-            focus?: TId
-          }
-        ) => {
-          const current = stateStore.get()
-          commit(resolveSnapshot(currentDomain, current, ({
-            domain,
-            domainRevision
-          }) => selectionSnapshot.replaceScope(
-            domain,
-            scope,
-            domainRevision,
-            options
-          )))
-        },
-        add: (scope: SelectionScope<TId>) => {
-          const current = stateStore.get()
-          commit(resolveSnapshot(currentDomain, current, ({
-            domain,
-            current: snapshot,
-            domainRevision
-          }) => selectionSnapshot.addScope(
-            domain,
-            snapshot,
-            scope,
-            domainRevision
-          )))
-        },
-        remove: (scope: SelectionScope<TId>) => {
-          const current = stateStore.get()
-          commit(resolveSnapshot(currentDomain, current, ({
-            domain,
-            current: snapshot,
-            domainRevision
-          }) => selectionSnapshot.removeScope<TId>(
-            domain,
-            snapshot,
-            scope,
-            domainRevision
-          )))
-        },
-        toggle: (scope: SelectionScope<TId>) => {
-          const current = stateStore.get()
-          commit(resolveSnapshot(currentDomain, current, ({
-            domain,
-            current: snapshot,
-            domainRevision
-          }) => selectionSnapshot.toggleScope<TId>(
-            domain,
-            snapshot,
-            scope,
-            domainRevision
-          )))
-        }
-      },
+      applyIds,
+      applyScope,
       range: {
         extendTo: (id: TId) => {
           const current = stateStore.get()

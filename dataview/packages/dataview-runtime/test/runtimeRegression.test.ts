@@ -185,7 +185,7 @@ describe('data view runtime regressions', () => {
     }).not.toThrow()
 
     const itemId = engine.active.state()?.items.ids[0]
-    expect(runtime.model.page.toolbar.get().activeView?.id).toBe(VIEW_BOARD)
+    expect(runtime.model.page.toolbar.get().view?.id).toBe(VIEW_BOARD)
     expect(runtime.model.kanban.board.get()?.viewId).toBe(VIEW_BOARD)
     expect(itemId).toBeDefined()
     expect(() => runtime.model.kanban.card.get(itemId!)).not.toThrow()

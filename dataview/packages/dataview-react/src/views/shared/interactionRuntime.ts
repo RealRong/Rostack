@@ -36,17 +36,7 @@ export const useRegisterMarqueeScene = (
 export const useItemSelectionRuntime = (): ItemInteractionRuntime['selection'] => {
   const dataView = useDataView()
   const select = useCallback((id: ItemId, mode: MarqueeMode | 'replace' = 'replace') => {
-    if (mode === 'toggle') {
-      dataView.session.selection.command.ids.toggle([id])
-      return
-    }
-
-    if (mode === 'add') {
-      dataView.session.selection.command.ids.add([id])
-      return
-    }
-
-    dataView.session.selection.command.ids.replace([id], {
+    dataView.session.selection.command.applyIds(mode, [id], {
       anchor: id,
       focus: id
     })

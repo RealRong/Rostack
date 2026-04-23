@@ -33,7 +33,7 @@ export type EditTarget =
       recordIds: RecordId[]
     }
 
-export interface RowCreateInput {
+export interface RecordCreateInput {
   id?: RecordId
   title?: string
   type?: string
@@ -52,6 +52,12 @@ export interface RecordFieldWriteManyInput {
   recordIds: RecordId[]
   set?: Partial<Record<FieldId, unknown>>
   clear?: readonly FieldId[]
+}
+
+export interface FieldOptionPatch {
+  name?: string
+  color?: string
+  category?: StatusCategory
 }
 
 interface ViewCreateInputBase {
@@ -125,7 +131,7 @@ export type ViewPatch =
 export type Action =
   | {
       type: 'record.create'
-      input: RowCreateInput
+      input: RecordCreateInput
     }
   | {
       type: 'record.patch'
@@ -138,7 +144,9 @@ export type Action =
     }
   | {
       type: 'record.fields.writeMany'
-      input: RecordFieldWriteManyInput
+      recordIds: RecordId[]
+      set?: Partial<Record<FieldId, unknown>>
+      clear?: readonly FieldId[]
     }
   | {
       type: 'field.create'
@@ -146,55 +154,47 @@ export type Action =
     }
   | {
       type: 'field.patch'
-      fieldId: CustomFieldId
+      id: CustomFieldId
       patch: Partial<Omit<CustomField, 'id'>>
     }
   | {
       type: 'field.replace'
-      fieldId: CustomFieldId
+      id: CustomFieldId
       field: CustomField
     }
   | {
-      type: 'field.convert'
-      fieldId: CustomFieldId
-      input: {
-        kind: CustomFieldKind
-      }
+      type: 'field.setKind'
+      id: CustomFieldId
+      kind: CustomFieldKind
     }
   | {
       type: 'field.duplicate'
-      fieldId: CustomFieldId
+      id: CustomFieldId
     }
   | {
       type: 'field.option.create'
-      fieldId: CustomFieldId
-      input?: {
-        name?: string
-      }
+      field: CustomFieldId
+      name?: string
     }
   | {
-      type: 'field.option.reorder'
-      fieldId: CustomFieldId
-      optionIds: string[]
+      type: 'field.option.setOrder'
+      field: CustomFieldId
+      order: string[]
     }
   | {
-      type: 'field.option.update'
-      fieldId: CustomFieldId
-      optionId: string
-      patch: {
-        name?: string
-        color?: string
-        category?: StatusCategory
-      }
+      type: 'field.option.patch'
+      field: CustomFieldId
+      option: string
+      patch: FieldOptionPatch
     }
   | {
       type: 'field.option.remove'
-      fieldId: CustomFieldId
-      optionId: string
+      field: CustomFieldId
+      option: string
     }
   | {
       type: 'field.remove'
-      fieldId: CustomFieldId
+      id: CustomFieldId
     }
   | {
       type: 'view.create'
@@ -202,19 +202,19 @@ export type Action =
     }
   | {
       type: 'view.patch'
-      viewId: ViewId
+      id: ViewId
       patch: ViewPatch
     }
   | {
       type: 'view.open'
-      viewId: ViewId
+      id: ViewId
     }
   | {
       type: 'view.remove'
-      viewId: ViewId
+      id: ViewId
     }
   | {
-      type: 'external.bumpVersion'
+      type: 'external.version.bump'
       source: string
     }
 

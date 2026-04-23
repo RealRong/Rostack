@@ -39,7 +39,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
   const { t } = useTranslation()
   const editor = useDataView().engine
   const field = useDataViewKeyedValue(
-    dataView => dataView.source.doc.fields,
+    dataView => dataView.source.document.fields,
     props.fieldId
   )
   const currentOption = fieldApi.option.read.get(field, props.option.id)
@@ -70,8 +70,12 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
       return
     }
 
-    const updated = editor.fields.options.update(props.fieldId, props.option.id, {
-      name: nextName
+    const updated = editor.fields.options.patch({
+      field: props.fieldId,
+      option: props.option.id,
+      patch: {
+        name: nextName
+      }
     })
     if (updated === undefined) {
       setDraftName(optionName)
@@ -90,7 +94,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
       return
     }
 
-    editor.fields.options.reorder(
+    editor.fields.options.setOrder(
       props.fieldId,
       buildStatusIdsAfterCategoryMove(
         fieldApi.status.sections(field),
@@ -99,15 +103,23 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
         category
       )
     )
-    editor.fields.options.update(props.fieldId, props.option.id, { category })
+    editor.fields.options.patch({
+      field: props.fieldId,
+      option: props.option.id,
+      patch: { category }
+    })
   }
 
   const colorItems = useMemo<MenuItem[]>(() => buildOptionColorItems({
     selectedColor: optionColor ?? '',
     t,
     onSelect: colorId => {
-      editor.fields.options.update(props.fieldId, props.option.id, {
-        color: colorId
+      editor.fields.options.patch({
+        field: props.fieldId,
+        option: props.option.id,
+        patch: {
+          color: colorId
+        }
       })
     }
   }), [
@@ -132,7 +144,7 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
           : undefined,
         closeOnSelect: false,
         onSelect: () => {
-          editor.fields.update(props.fieldId, {
+          editor.fields.patch(props.fieldId, {
             defaultOptionId: props.option.id
           } as Partial<Omit<StatusField, 'id'>>)
         }
@@ -164,7 +176,10 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
       leading: <Trash2 className="size-4" size={16} strokeWidth={1.8} />,
       tone: 'destructive',
       onSelect: () => {
-        editor.fields.options.remove(props.fieldId, props.option.id)
+        editor.fields.options.remove({
+          field: props.fieldId,
+          option: props.option.id
+        })
         props.onDeleted?.()
         props.onRequestClose?.()
       }

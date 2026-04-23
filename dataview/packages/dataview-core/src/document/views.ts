@@ -28,7 +28,7 @@ const normalizeOrders = (
 const resolveDefaultKanbanGroup = (
   document: DataDoc
 ) => {
-  const fields = documentFields.list(document)
+  const fields = documentFields.all.list(document)
   for (let index = 0; index < fields.length; index += 1) {
     const nextGroup = group.set(undefined, fields[index]!)
     if (nextGroup) {
@@ -43,7 +43,7 @@ const normalizeView = (
   document: DataDoc,
   view: View
 ): View => {
-  const fields = documentFields.list(document)
+  const fields = documentFields.all.list(document)
   const normalizedGroup = group.state.normalize(
     'group' in view
       ? view.group

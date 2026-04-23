@@ -3,7 +3,7 @@ import {
   type ItemId
 } from '@dataview/engine'
 import type {
-  DataViewKanbanModel,
+  KanbanModel,
   KanbanBoard,
   KanbanCard,
   KanbanSection
@@ -76,12 +76,12 @@ export const createKanbanModel = (input: {
     viewId: string
     itemId: ItemId
   }) => string
-}): DataViewKanbanModel => {
+}): KanbanModel => {
   const customFields = input.source.active.fields.customList
   const sectionList = input.source.active.sections.list
   const sections = store.createDerivedStore({
     get: () => (
-      store.read(input.source.active.view.type) === 'kanban'
+      store.read(input.source.active.viewType) === 'kanban'
         ? store.read(sectionList).all
         : EMPTY_SECTIONS
     ),
@@ -93,11 +93,11 @@ export const createKanbanModel = (input: {
   })
   const board = store.createDerivedStore<KanbanBoard | null>({
     get: () => {
-      if (store.read(input.source.active.view.type) !== 'kanban') {
+      if (store.read(input.source.active.viewType) !== 'kanban') {
         return null
       }
 
-      const viewId = store.read(input.source.active.view.id)
+      const viewId = store.read(input.source.active.viewId)
       if (!viewId) {
         return null
       }
@@ -120,7 +120,7 @@ export const createKanbanModel = (input: {
 
   const section = store.createKeyedDerivedStore<string, KanbanSection | undefined>({
     get: key => {
-      if (store.read(input.source.active.view.type) !== 'kanban') {
+      if (store.read(input.source.active.viewType) !== 'kanban') {
         return undefined
       }
 
@@ -141,11 +141,11 @@ export const createKanbanModel = (input: {
 
   const card = store.createKeyedDerivedStore<ItemId, KanbanCard | undefined>({
     get: itemId => {
-      if (store.read(input.source.active.view.type) !== 'kanban') {
+      if (store.read(input.source.active.viewType) !== 'kanban') {
         return undefined
       }
 
-      const viewId = store.read(input.source.active.view.id)
+      const viewId = store.read(input.source.active.viewId)
       if (!viewId) {
         return undefined
       }

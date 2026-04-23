@@ -1,7 +1,7 @@
 import { FieldPicker } from '@dataview/react/field/picker'
 import {
   useDataView,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
@@ -15,11 +15,11 @@ export const QueryFieldPickerPanel = (props: {
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.session.page
-  const pageRuntime = usePageRuntime()
-  const settings = useStoreValue(pageRuntime.settings)
-  const query = useStoreValue(pageRuntime.query)
-  const sortPanel = useStoreValue(pageRuntime.sortPanel)
-  const currentView = settings.activeView
+  const pageModel = usePageModel()
+  const settings = useStoreValue(pageModel.settings)
+  const query = useStoreValue(pageModel.query)
+  const sortPanel = useStoreValue(pageModel.sortPanel)
+  const currentView = settings.view
   const currentViewDomain = currentView
     ? engine.active
     : undefined

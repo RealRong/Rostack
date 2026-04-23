@@ -38,14 +38,14 @@ export const AddCardFieldTrigger = (props: AddCardFieldTriggerProps) => {
       onClick={event => {
         event.stopPropagation()
         if (!props.openOnClick) {
-          dataView.session.selection.command.ids.replace([props.field.itemId])
+          dataView.session.selection.command.applyIds('replace', [props.field.itemId])
         }
         openCardField({
           valueEditor: dataView.session.valueEditor,
           field: props.field,
           element: event.currentTarget,
           focusOwner: () => {
-            dataView.session.selection.command.ids.replace([props.field.itemId])
+            dataView.session.selection.command.applyIds('replace', [props.field.itemId])
           }
         })
       }}

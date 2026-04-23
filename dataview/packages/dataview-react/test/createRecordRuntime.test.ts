@@ -11,7 +11,7 @@ afterEach(() => {
 test('createRecord runtime retries opening until the created record becomes available', () => {
   vi.useFakeTimers()
 
-  const activeView = store.createValueStore({
+  const view = store.createValueStore({
     initial: {
       id: 'view_table',
       type: 'table',
@@ -35,7 +35,7 @@ test('createRecord runtime retries opening until the created record becomes avai
     } as any
   })
   const runtime = createRecordWorkflow({
-    activeView
+    view
   })
   const openAttempts: number[] = []
 
@@ -60,7 +60,7 @@ test('createRecord runtime retries opening until the created record becomes avai
 test('createRecord runtime cancels pending retries when the owner view changes', () => {
   vi.useFakeTimers()
 
-  const activeView = store.createValueStore({
+  const view = store.createValueStore({
     initial: {
       id: 'view_table',
       type: 'table',
@@ -84,7 +84,7 @@ test('createRecord runtime cancels pending retries when the owner view changes',
     } as any
   })
   const runtime = createRecordWorkflow({
-    activeView
+    view
   })
   const openAttempts: number[] = []
   let failed = 0
@@ -95,8 +95,8 @@ test('createRecord runtime cancels pending retries when the owner view changes',
     open: (_recordId, attempt) => {
       openAttempts.push(attempt)
       if (attempt === 0) {
-        activeView.set({
-          ...activeView.get(),
+        view.set({
+          ...view.get(),
           id: 'other_view'
         } as any)
       }

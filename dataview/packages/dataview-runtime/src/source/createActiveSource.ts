@@ -108,7 +108,7 @@ export interface ActiveSourceRuntime {
   source: ActiveSource
   viewId: store.ValueStore<ViewId | undefined>
   viewType: store.ValueStore<View['type'] | undefined>
-  viewCurrent: store.ValueStore<View | undefined>
+  view: store.ValueStore<View | undefined>
   query: store.ValueStore<ActiveViewQuery>
   table: store.ValueStore<ActiveViewTable>
   gallery: store.ValueStore<ActiveViewGallery>
@@ -146,8 +146,8 @@ const createItemListStore = (input: {
         count: ids.length,
         order: collection.createOrderedAccess(ids),
         read: {
-          record: itemId => input.source.read.recordId.get(itemId),
-          section: itemId => input.source.read.sectionId.get(itemId),
+          record: itemId => input.source.read.record.get(itemId),
+          section: itemId => input.source.read.section.get(itemId),
           placement: itemId => input.source.read.placement.get(itemId)
         }
       }
@@ -296,8 +296,8 @@ const createItemSourceRuntime = (): ItemSourceRuntime => {
     source: {
       ids,
       read: {
-        recordId,
-        sectionId,
+        record: recordId,
+        section: sectionId,
         placement
       }
     },
@@ -362,7 +362,7 @@ const resetActiveFields = (input: {
 export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
   const viewId = store.createValueStore<ViewId | undefined>(undefined)
   const viewType = store.createValueStore<View['type'] | undefined>(undefined)
-  const viewCurrent = store.createValueStore<View | undefined>(undefined)
+  const view = store.createValueStore<View | undefined>(undefined)
   const query = store.createValueStore<ActiveViewQuery>(EMPTY_QUERY)
   const table = store.createValueStore<ActiveViewTable>(EMPTY_TABLE)
   const gallery = store.createValueStore<ActiveViewGallery>(EMPTY_GALLERY)
@@ -392,11 +392,9 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
 
   return {
     source: {
-      view: {
-        id: viewId,
-        type: viewType,
-        current: viewCurrent
-      },
+      view,
+      viewId,
+      viewType,
       query,
       table,
       gallery,
@@ -424,7 +422,7 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
     },
     viewId,
     viewType,
-    viewCurrent,
+    view,
     query,
     table,
     gallery,
@@ -442,7 +440,7 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
         runtime: {
           viewId,
           viewType,
-          viewCurrent,
+          view,
           query,
           table,
           gallery,
@@ -466,7 +464,7 @@ export const resetActiveSource = (input: {
   runtime: Pick<ActiveSourceRuntime,
     | 'viewId'
     | 'viewType'
-    | 'viewCurrent'
+    | 'view'
     | 'query'
     | 'table'
     | 'gallery'
@@ -486,7 +484,7 @@ export const resetActiveSource = (input: {
   if (!snapshot) {
     input.runtime.viewId.set(undefined)
     input.runtime.viewType.set(undefined)
-    input.runtime.viewCurrent.set(undefined)
+    input.runtime.view.set(undefined)
     input.runtime.query.set(EMPTY_QUERY)
     input.runtime.table.set(EMPTY_TABLE)
     input.runtime.gallery.set(EMPTY_GALLERY)
@@ -504,7 +502,7 @@ export const resetActiveSource = (input: {
 
   input.runtime.viewId.set(snapshot.view.id)
   input.runtime.viewType.set(snapshot.view.type)
-  input.runtime.viewCurrent.set(snapshot.view)
+  input.runtime.view.set(snapshot.view)
   input.runtime.query.set(snapshot.query)
   input.runtime.table.set(snapshot.table)
   input.runtime.gallery.set(snapshot.gallery)
@@ -594,7 +592,7 @@ export const applyActiveDelta = (input: {
   runtime: Pick<ActiveSourceRuntime,
     | 'viewId'
     | 'viewType'
-    | 'viewCurrent'
+    | 'view'
     | 'query'
     | 'table'
     | 'gallery'
@@ -628,7 +626,7 @@ export const applyActiveDelta = (input: {
   if (input.delta.view) {
     input.runtime.viewId.set(snapshot.view.id)
     input.runtime.viewType.set(snapshot.view.type)
-    input.runtime.viewCurrent.set(snapshot.view)
+    input.runtime.view.set(snapshot.view)
   }
 
   if (input.delta.query) {

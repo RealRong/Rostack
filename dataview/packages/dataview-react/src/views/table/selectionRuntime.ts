@@ -64,41 +64,13 @@ export const createTableSelectionRuntime = (input: {
         clearCells()
         input.rowSelection.command.selectAll()
       },
-      ids: {
-        replace: (ids, options) => {
-          clearCells()
-          input.rowSelection.command.ids.replace(ids, options)
-        },
-        add: ids => {
-          clearCells()
-          input.rowSelection.command.ids.add(ids)
-        },
-        remove: ids => {
-          clearCells()
-          input.rowSelection.command.ids.remove(ids)
-        },
-        toggle: ids => {
-          clearCells()
-          input.rowSelection.command.ids.toggle(ids)
-        }
+      applyIds: (mode, ids, options) => {
+        clearCells()
+        input.rowSelection.command.applyIds(mode, ids, options)
       },
-      scope: {
-        replace: (scope, options) => {
-          clearCells()
-          input.rowSelection.command.scope.replace(scope, options)
-        },
-        add: scope => {
-          clearCells()
-          input.rowSelection.command.scope.add(scope)
-        },
-        remove: scope => {
-          clearCells()
-          input.rowSelection.command.scope.remove(scope)
-        },
-        toggle: scope => {
-          clearCells()
-          input.rowSelection.command.scope.toggle(scope)
-        }
+      applyScope: (mode, scope, options) => {
+        clearCells()
+        input.rowSelection.command.applyScope(mode, scope, options)
       },
       range: {
         extendTo: id => {

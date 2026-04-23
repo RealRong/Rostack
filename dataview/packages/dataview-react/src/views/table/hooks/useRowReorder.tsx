@@ -9,7 +9,6 @@ import type { ItemId } from '@dataview/engine'
 import {
   rowDragIds,
   rowSelectionTarget,
-  rowBeforeId,
   sameRowHint,
   showRowHint,
   type TableRowReorderHint
@@ -107,7 +106,11 @@ export const useRowReorder = (): RowReorderApi => {
         rowIds,
         point: pointer
       })
-      return showRowHint(nextHint, rowIds, dragIds)
+      return showRowHint({
+        hint: nextHint,
+        rowIds,
+        dragIds
+      })
         ? nextHint ?? undefined
         : undefined
     },
@@ -117,7 +120,7 @@ export const useRowReorder = (): RowReorderApi => {
         return
       }
 
-      const beforeId = rowBeforeId(target)
+      const beforeId = target.beforeId
       const sectionId = (
         beforeId
           ? grid.items.read.section(beforeId)
@@ -128,7 +131,7 @@ export const useRowReorder = (): RowReorderApi => {
       }
 
       dataView.engine.active.items.move(dragIds, {
-        sectionId,
+        section: sectionId,
         ...(beforeId ? { before: beforeId } : {})
       })
     },
@@ -140,7 +143,7 @@ export const useRowReorder = (): RowReorderApi => {
       table.rail.set(null)
       sourceNodeRef.current = null
       if (!input.cancelled && selectionTargetRef.current) {
-        table.selection.rows.command.ids.replace([selectionTargetRef.current], {
+        table.selection.rows.command.applyIds('replace', [selectionTargetRef.current], {
           anchor: selectionTargetRef.current,
           focus: selectionTargetRef.current
         })

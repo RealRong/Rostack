@@ -69,7 +69,7 @@ export const handleTableKey = (input: {
         return false
       }
 
-      input.selection.rows.command.ids.replace(rowIds, {
+      input.selection.rows.command.applyIds('replace', rowIds, {
         anchor: rowIds[0],
         focus: rowIds[rowIds.length - 1]
       })

@@ -19,7 +19,7 @@ import type {
 
 export const createDataViewReactSession = (input: {
   engine: Engine
-  initialPage?: PageSessionInput
+  page?: PageSessionInput
 }): DataViewReactSession => {
   const runtime = createDataViewRuntime(input)
   const drag = createDragApi()

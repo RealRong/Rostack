@@ -17,7 +17,7 @@ import { Popover } from '@shared/ui/popover'
 import { VerticalReorderList } from '@shared/ui/vertical-reorder-list'
 import {
   useDataView,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import type {
   Field
@@ -50,9 +50,9 @@ export const SortPopover = (props: SortPopoverProps) => {
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.session.page
-  const pageRuntime = usePageRuntime()
-  const settings = useStoreValue(pageRuntime.settings)
-  const currentView = settings.activeView
+  const pageModel = usePageModel()
+  const settings = useStoreValue(pageModel.settings)
+  const currentView = settings.view
   const currentViewDomain = currentView
     ? engine.active
     : undefined
@@ -161,7 +161,9 @@ export const SortPopover = (props: SortPopoverProps) => {
               const beforeId = to >= remainingRules.length
                 ? undefined
                 : remainingRules[to]?.rule.id
-              currentViewDomain.sort.move(movingRule.id, beforeId)
+              currentViewDomain.sort.move(movingRule.id, {
+                before: beforeId
+              })
             }}
             renderItem={(entry, drag) => (
               <SortRuleRow

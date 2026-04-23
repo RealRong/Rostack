@@ -1,6 +1,6 @@
 import {
   useDataView,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta } from '@dataview/meta'
@@ -15,9 +15,9 @@ export const GroupFieldPickerPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const pageRuntime = usePageRuntime()
-  const settings = useStoreValue(pageRuntime.settings)
-  const currentView = settings.activeView
+  const pageModel = usePageModel()
+  const settings = useStoreValue(pageModel.settings)
+  const currentView = settings.view
   const groupProjection = settings.group
   const currentViewDomain = currentView
     ? engine.active

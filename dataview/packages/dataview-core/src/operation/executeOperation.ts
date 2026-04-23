@@ -557,7 +557,7 @@ const executeFieldPut = (
         }]
       : [{
           type: 'document.field.remove',
-          fieldId: operation.field.id
+          id: operation.field.id
         }]
   }
 }
@@ -567,7 +567,7 @@ const executeFieldPatch = (
   operation: Extract<DocumentOperation, { type: 'document.field.patch' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeField = documentApi.fields.custom.get(document, operation.fieldId)
+  const beforeField = documentApi.fields.custom.get(document, operation.id)
   if (!beforeField) {
     return {
       document,
@@ -575,7 +575,7 @@ const executeFieldPatch = (
     }
   }
 
-  const nextDocument = documentApi.fields.custom.patch(document, operation.fieldId, operation.patch)
+  const nextDocument = documentApi.fields.custom.patch(document, operation.id, operation.patch)
   if (nextDocument === document) {
     return {
       document,
@@ -583,10 +583,10 @@ const executeFieldPatch = (
     }
   }
 
-  const afterField = documentApi.fields.custom.get(nextDocument, operation.fieldId)
+  const afterField = documentApi.fields.custom.get(nextDocument, operation.id)
   markFieldSchema(
     impact,
-    operation.fieldId,
+    operation.id,
     commitImpact.field.schemaAspects(beforeField, afterField)
   )
 
@@ -594,7 +594,7 @@ const executeFieldPatch = (
     document: nextDocument,
     inverse: [{
       type: 'document.field.patch',
-      fieldId: operation.fieldId,
+      id: operation.id,
       patch: Object.fromEntries(
         Object.keys(operation.patch).map(key => [key, json.readObjectKey(beforeField, key)])
       ) as Partial<Omit<CustomField, 'id'>>
@@ -607,7 +607,7 @@ const executeFieldRemove = (
   operation: Extract<DocumentOperation, { type: 'document.field.remove' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeField = documentApi.fields.custom.get(document, operation.fieldId)
+  const beforeField = documentApi.fields.custom.get(document, operation.id)
   if (!beforeField) {
     return {
       document,
@@ -615,7 +615,7 @@ const executeFieldRemove = (
     }
   }
 
-  const nextDocument = documentApi.fields.custom.remove(document, operation.fieldId)
+  const nextDocument = documentApi.fields.custom.remove(document, operation.id)
   if (nextDocument === document) {
     return {
       document,
@@ -624,11 +624,11 @@ const executeFieldRemove = (
   }
 
   const fields = impact.fields ?? (impact.fields = {})
-  if (fields.inserted?.delete(operation.fieldId)) {
-    deleteFieldImpact(impact, operation.fieldId)
+  if (fields.inserted?.delete(operation.id)) {
+    deleteFieldImpact(impact, operation.id)
   } else {
-    fields.removed = addSetValue(fields.removed, operation.fieldId)
-    markFieldSchema(impact, operation.fieldId, ['all'])
+    fields.removed = addSetValue(fields.removed, operation.id)
+    markFieldSchema(impact, operation.id, ['all'])
   }
 
   return {
@@ -711,7 +711,7 @@ const executeViewPut = (
         }]
       : [{
           type: 'document.view.remove',
-          viewId: operation.view.id
+          id: operation.view.id
         }]
   }
 }
@@ -722,7 +722,7 @@ const executeActiveViewSet = (
   impact: CommitImpact
 ): ExecuteOperationResult => {
   const beforeViewId = documentApi.views.activeId.get(document)
-  const nextDocument = documentApi.views.activeId.set(document, operation.viewId)
+  const nextDocument = documentApi.views.activeId.set(document, operation.id)
   const afterViewId = documentApi.views.activeId.get(nextDocument)
   if (beforeViewId === afterViewId) {
     return {
@@ -736,7 +736,7 @@ const executeActiveViewSet = (
     document: nextDocument,
     inverse: [{
       type: 'document.activeView.set',
-      viewId: beforeViewId
+      id: beforeViewId
     }]
   }
 }
@@ -746,7 +746,7 @@ const executeViewRemove = (
   operation: Extract<DocumentOperation, { type: 'document.view.remove' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeView = documentApi.views.get(document, operation.viewId)
+  const beforeView = documentApi.views.get(document, operation.id)
   if (!beforeView) {
     return {
       document,
@@ -755,17 +755,17 @@ const executeViewRemove = (
   }
 
   const beforeActiveViewId = documentApi.views.activeId.get(document)
-  const nextDocument = documentApi.views.remove(document, operation.viewId)
+  const nextDocument = documentApi.views.remove(document, operation.id)
   const afterActiveViewId = documentApi.views.activeId.get(nextDocument)
 
   const views = impact.views ?? (impact.views = {})
-  if (views.inserted?.delete(operation.viewId)) {
-    deleteViewImpact(impact, operation.viewId)
-    clearTouchedView(impact, operation.viewId)
+  if (views.inserted?.delete(operation.id)) {
+    deleteViewImpact(impact, operation.id)
+    clearTouchedView(impact, operation.id)
   } else {
-    views.removed = addSetValue(views.removed, operation.viewId)
-    markTouchedView(impact, operation.viewId)
-    deleteViewImpact(impact, operation.viewId)
+    views.removed = addSetValue(views.removed, operation.id)
+    markTouchedView(impact, operation.id)
+    deleteViewImpact(impact, operation.id)
   }
 
   mergeActiveViewImpact(impact, beforeActiveViewId, afterActiveViewId)

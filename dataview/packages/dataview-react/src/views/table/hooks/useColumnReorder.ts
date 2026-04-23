@@ -102,7 +102,9 @@ export const useColumnReorder = (): ColumnReorderApi => {
 
     editor.active.display.move(
       [sourcePropertyId],
-      beforeId
+      {
+        before: beforeId
+      }
     )
     finishDrag()
   }, [editor, finishDrag, fieldIds])

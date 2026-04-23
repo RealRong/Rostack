@@ -2,7 +2,7 @@ export {
   createGalleryModel
 } from '@dataview/runtime/model/gallery/api'
 export type {
-  DataViewGalleryModel,
+  GalleryModel,
   GalleryBody,
   GalleryCard,
   GallerySection
@@ -12,7 +12,7 @@ export {
   createKanbanModel
 } from '@dataview/runtime/model/kanban/api'
 export type {
-  DataViewKanbanModel,
+  KanbanModel,
   KanbanBoard,
   KanbanCard,
   KanbanSection

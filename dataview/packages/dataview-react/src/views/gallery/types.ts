@@ -11,7 +11,7 @@ import type {
   ItemInteractionRuntime
 } from '@dataview/react/views/shared/types'
 import type {
-  DataViewGalleryModel,
+  GalleryModel,
   GalleryBody as GalleryBodyModel,
   GalleryCard,
   GallerySection
@@ -32,9 +32,9 @@ export interface GalleryBody extends GalleryBodyModel {
 
 export interface GalleryViewRuntime extends ItemInteractionRuntime {
   body: store.ReadStore<GalleryBody>
-  section: DataViewGalleryModel['section']
-  card: DataViewGalleryModel['card']
-  content: DataViewGalleryModel['content']
+  section: GalleryModel['section']
+  card: GalleryModel['card']
+  content: GalleryModel['content']
   containerRef: RefObject<HTMLDivElement | null>
   virtual: {
     layout: GalleryLayoutCache

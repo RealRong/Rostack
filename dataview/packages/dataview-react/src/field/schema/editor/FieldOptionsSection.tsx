@@ -67,7 +67,7 @@ const PlainFieldOptionsSection = (props: {
       <Button
         leading={<Plus className="size-4" size={14} strokeWidth={1.8} />}
         onClick={() => {
-          const option = editor.fields.options.append(props.field.id)
+          const option = editor.fields.options.create(props.field.id)
           if (option) {
             setOpenOptionId(option.id)
           }

@@ -54,7 +54,7 @@ export const createRecordCardPropertiesStore = (input: {
   fields: store.ReadStore<readonly CustomField[]>
 }): store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined> => store.createKeyedDerivedStore<RecordId, readonly CardProperty[] | undefined>({
   get: recordId => {
-    const record = store.read(input.source.doc.records, recordId)
+    const record = store.read(input.source.document.records, recordId)
     if (!record) {
       return undefined
     }
@@ -78,7 +78,7 @@ export const createItemCardContentStore = (input: {
   }) => string
 }): store.KeyedReadStore<ItemId, CardContent | undefined> => store.createKeyedDerivedStore({
   get: itemId => {
-    if (store.read(input.source.active.view.type) !== input.viewType) {
+    if (store.read(input.source.active.viewType) !== input.viewType) {
       return undefined
     }
 
@@ -87,7 +87,7 @@ export const createItemCardContentStore = (input: {
       return undefined
     }
 
-    const record = store.read(input.source.doc.records, item.recordId)
+    const record = store.read(input.source.document.records, item.recordId)
     const properties = store.read(input.properties, item.recordId)
     if (!record || !properties) {
       return undefined

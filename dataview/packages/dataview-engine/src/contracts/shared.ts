@@ -72,7 +72,7 @@ export interface ViewFieldRef extends CellRef {
 }
 
 export interface MoveTarget {
-  sectionId: SectionId
+  section: SectionId
   before?: ItemId
 }
 

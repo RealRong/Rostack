@@ -30,8 +30,8 @@ export interface PageHeader {
 
 export interface PageToolbar {
   views: readonly View[]
-  activeView?: View
-  activeViewId?: ViewId
+  view?: View
+  viewId?: ViewId
   queryBar: QueryBarState
   search: string
   filterCount: number
@@ -43,7 +43,7 @@ export interface PageToolbar {
 export interface PageQuery {
   visible: boolean
   route: QueryBarEntry | null
-  activeView?: View
+  view?: View
   filters: ActiveViewQuery['filters']['rules']
   sorts: ActiveViewQuery['sort']['rules']
   availableFilterFields: readonly Field[]
@@ -69,7 +69,7 @@ export interface PageSettings {
   displayFieldIds: readonly Field['id'][]
   visibleFields: readonly Field[]
   hiddenFields: readonly Field[]
-  activeView?: View
+  view?: View
   filter?: ActiveViewQuery['filters']
   sort?: ActiveViewQuery['sort']
   group?: ActiveViewQuery['group']

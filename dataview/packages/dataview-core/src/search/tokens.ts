@@ -89,7 +89,7 @@ const readContextField = (
   }
 
   if (context.document) {
-    return documentApi.fields.get(context.document, fieldId)
+    return documentApi.fields.all.get(context.document, fieldId)
   }
 
   return context.fields?.find(field => field.id === fieldId)

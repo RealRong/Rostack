@@ -8,7 +8,7 @@ import type {
   ItemInteractionRuntime
 } from '@dataview/react/views/shared/types'
 import type {
-  DataViewKanbanModel,
+  KanbanModel,
   KanbanBoard as KanbanBoardModel,
   KanbanCard,
   KanbanSection
@@ -38,8 +38,8 @@ export interface KanbanBoard extends KanbanBoardModel {
 export interface KanbanViewRuntime extends ItemInteractionRuntime {
   board: store.ReadStore<KanbanBoard>
   section: store.KeyedReadStore<SectionId, KanbanSection | undefined>
-  card: DataViewKanbanModel['card']
-  content: DataViewKanbanModel['content']
+  card: KanbanModel['card']
+  content: KanbanModel['content']
   layout: {
     columnWidth: number
     columnMinHeight: number

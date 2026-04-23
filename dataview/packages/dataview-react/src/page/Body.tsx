@@ -1,6 +1,6 @@
 import { GalleryView } from '@dataview/react/views/gallery'
 import {
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import type { KanbanViewProps } from '@dataview/react/views/kanban'
 import { KanbanView } from '@dataview/react/views/kanban'
@@ -16,8 +16,8 @@ export interface PageBodyProps {
 }
 
 export const PageBody = (props: PageBodyProps) => {
-  const pageRuntime = usePageRuntime()
-  const body = useStoreValue(pageRuntime.body)
+  const pageModel = usePageModel()
+  const body = useStoreValue(pageModel.body)
   const viewType = body.viewType
 
   if (!viewType) {

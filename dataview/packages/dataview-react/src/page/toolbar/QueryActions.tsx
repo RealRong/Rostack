@@ -11,7 +11,7 @@ import { FieldPicker } from '@dataview/react/field/picker'
 import { ViewSettingsPopover } from '@dataview/react/page/features/viewSettings'
 import {
   useDataView,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { useTranslation } from '@shared/i18n/react'
@@ -26,10 +26,10 @@ export const ToolbarQueryActions = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const page = dataView.session.page
-  const pageRuntime = usePageRuntime()
-  const toolbar = useStoreValue(pageRuntime.toolbar)
-  const sortPanel = useStoreValue(pageRuntime.sortPanel)
-  const currentView = toolbar.activeView
+  const pageModel = usePageModel()
+  const toolbar = useStoreValue(pageModel.toolbar)
+  const sortPanel = useStoreValue(pageModel.sortPanel)
+  const currentView = toolbar.view
   const currentViewDomain = currentView
     ? engine.active
     : undefined

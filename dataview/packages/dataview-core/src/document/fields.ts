@@ -95,6 +95,12 @@ export const documentFields = {
     get: getTitleField,
     isId: isTitleFieldId
   },
+  all: {
+    list: listFields,
+    ids: getFieldIds,
+    get: getField,
+    has: hasField
+  },
   custom: {
     list: listCustomFields,
     ids: getCustomFieldIds,
@@ -103,12 +109,5 @@ export const documentFields = {
     put: putCustomField,
     patch: patchCustomField,
     remove: removeCustomField
-  },
-  list: listFields,
-  ids: getFieldIds,
-  get: getField,
-  has: hasField,
-  put: putCustomField,
-  patch: patchCustomField,
-  remove: removeCustomField
+  }
 } as const

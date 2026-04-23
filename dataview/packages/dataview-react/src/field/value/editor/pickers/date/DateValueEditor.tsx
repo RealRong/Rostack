@@ -160,7 +160,7 @@ export const DateValueEditor = (
       return
     }
 
-    editor.fields.update(field.id, {
+    editor.fields.patch(field.id, {
       ...patch
     } as Partial<Omit<CustomField, 'id'>>)
   }

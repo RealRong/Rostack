@@ -6,7 +6,7 @@ import {
 import { type ComponentType } from 'react'
 import type { ViewType } from '@dataview/core/contracts'
 import {
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import {
   useStoreValue
@@ -37,8 +37,8 @@ export interface PageHeaderProps {
 }
 
 export const PageHeader = (_props: PageHeaderProps) => {
-  const pageRuntime = usePageRuntime()
-  const header = useStoreValue(pageRuntime.header)
+  const pageModel = usePageModel()
+  const header = useStoreValue(pageModel.header)
   const CurrentIcon = viewIcon(header.viewType)
 
   return (

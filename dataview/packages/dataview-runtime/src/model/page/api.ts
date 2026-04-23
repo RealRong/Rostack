@@ -74,8 +74,8 @@ const sameHeader = (
 const sameToolbar = (
   left: PageToolbar,
   right: PageToolbar
-) => left.activeView === right.activeView
-  && left.activeViewId === right.activeViewId
+) => left.view === right.view
+  && left.viewId === right.viewId
   && sameQueryBar(left.queryBar, right.queryBar)
   && left.search === right.search
   && left.filterCount === right.filterCount
@@ -89,7 +89,7 @@ const sameQuery = (
   right: PageQuery
 ) => left.visible === right.visible
   && sameRoute(left.route, right.route)
-  && left.activeView === right.activeView
+  && left.view === right.view
   && left.filters === right.filters
   && left.sorts === right.sorts
   && equal.sameOrder(left.availableFilterFields, right.availableFilterFields)
@@ -116,7 +116,7 @@ const sameSettings = (
 ) => left.visible === right.visible
   && sameSettingsRoute(left.route, right.route)
   && left.viewsCount === right.viewsCount
-  && left.activeView === right.activeView
+  && left.view === right.view
   && left.filter === right.filter
   && left.sort === right.sort
   && left.group === right.group
@@ -164,9 +164,9 @@ export const createPageModel = (input: {
   pageSessionStore: store.ReadStore<PageSessionState>
   valueEditorOpenStore: store.ReadStore<boolean>
 }): PageModel => {
-  const customFields = input.source.doc.fields.list
-  const views = input.source.doc.views.list
-  const activeView = input.source.active.view.current
+  const customFields = input.source.document.fields.list
+  const views = input.source.document.views.list
+  const view = input.source.active.view
   const filterFieldIds = store.createDerivedStore<readonly FieldId[]>({
     get: () => {
       const ids = queryFieldOptions.used.filterIds(
@@ -211,7 +211,7 @@ export const createPageModel = (input: {
   })
   const queryBar = store.createDerivedStore<PageToolbar['queryBar']>({
     get: () => resolvePageQueryBarState({
-      activeView: store.read(activeView),
+      view: store.read(view),
       query: store.read(input.pageSessionStore).query
     }),
     isEqual: sameQueryBar
@@ -222,8 +222,8 @@ export const createPageModel = (input: {
   }>({
     get: () => resolvePageSettingsState({
       fields: store.read(customFields),
-      activeViewId: store.read(input.source.active.view.id),
-      activeViewType: store.read(input.source.active.view.type),
+      activeViewId: store.read(input.source.active.viewId),
+      activeViewType: store.read(input.source.active.viewType),
       settings: store.read(input.pageSessionStore).settings
     }),
     isEqual: (left, right) => (
@@ -232,7 +232,7 @@ export const createPageModel = (input: {
     )
   })
   const displayFieldIds = store.createDerivedStore<readonly FieldId[]>({
-    get: () => store.read(activeView)?.display.fields ?? EMPTY_FIELD_IDS,
+    get: () => store.read(view)?.display.fields ?? EMPTY_FIELD_IDS,
     isEqual: equal.sameOrder
   })
   const visibleFields = store.createDerivedStore<readonly Field[]>({
@@ -268,7 +268,7 @@ export const createPageModel = (input: {
 
   const body = store.createDerivedStore<PageBody>({
     get: () => ({
-      viewType: store.read(input.source.active.view.type),
+      viewType: store.read(input.source.active.viewType),
       empty: store.read(input.source.active.items.list).count === 0,
       valueEditorOpen: store.read(input.valueEditorOpenStore),
       locked: store.read(input.valueEditorOpenStore)
@@ -278,11 +278,11 @@ export const createPageModel = (input: {
 
   const header = store.createDerivedStore<PageHeader>({
     get: () => {
-      const view = store.read(activeView)
+      const currentView = store.read(view)
       return {
-        viewId: store.read(input.source.active.view.id),
-        viewType: view?.type,
-        viewName: view?.name
+        viewId: store.read(input.source.active.viewId),
+        viewType: currentView?.type,
+        viewName: currentView?.name
       }
     },
     isEqual: sameHeader
@@ -292,8 +292,8 @@ export const createPageModel = (input: {
     get: () => {
       return {
         views: store.read(views),
-        activeView: store.read(activeView),
-        activeViewId: store.read(input.source.active.view.id),
+        view: store.read(view),
+        viewId: store.read(input.source.active.viewId),
         queryBar: store.read(queryBar),
         search: store.read(input.source.active.query).search.query,
         filterCount: store.read(filterCount),
@@ -311,7 +311,7 @@ export const createPageModel = (input: {
       return {
         visible: currentQueryBar.visible,
         route: currentQueryBar.route,
-        activeView: store.read(activeView),
+        view: store.read(view),
         filters: store.read(input.source.active.query).filters.rules,
         sorts: store.read(sortRules),
         availableFilterFields: store.read(availableFilterFields),
@@ -361,7 +361,7 @@ export const createPageModel = (input: {
         displayFieldIds: store.read(displayFieldIds),
         visibleFields: store.read(visibleFields),
         hiddenFields: store.read(hiddenFields),
-        activeView: store.read(activeView),
+        view: store.read(view),
         filter: store.read(input.source.active.query).filters,
         sort: store.read(input.source.active.query).sort,
         group: store.read(input.source.active.query).group

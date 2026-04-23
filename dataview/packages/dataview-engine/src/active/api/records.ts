@@ -51,7 +51,7 @@ const createMoveOrderAction = (
 
   return {
     type: 'view.patch',
-    viewId,
+    id: viewId,
     patch: {
       orders: viewApi.order.reorder({
         allRecordIds,
@@ -124,7 +124,7 @@ const writeDraftValue = (
 
 const resolveCreateContext = (input: {
   state: ViewState
-  sectionId?: string
+  section?: string
   before?: ItemId
 }) => {
   const beforePlacement = input.before === undefined
@@ -134,7 +134,7 @@ const resolveCreateContext = (input: {
     return undefined
   }
 
-  const nextSectionId = input.sectionId
+  const nextSectionId = input.section
     ?? beforePlacement?.sectionId
     ?? (!input.state.view.group
       ? input.state.sections.ids[0]
@@ -157,8 +157,8 @@ const resolveCreateContext = (input: {
   }
 
   return {
-    sectionId: nextSectionId,
-    beforeRecordId: beforePlacement?.recordId
+    section: nextSectionId,
+    beforeRecord: beforePlacement?.recordId
   }
 }
 
@@ -309,7 +309,7 @@ export const createActiveRecordsApi = (input: {
 
     const context = resolveCreateContext({
       state,
-      sectionId: createInput?.sectionId,
+      section: createInput?.section,
       before: createInput?.before
     })
     if (!context) {
@@ -317,7 +317,7 @@ export const createActiveRecordsApi = (input: {
     }
 
     const draft = createDraftState(
-      createInput?.set,
+      createInput?.values,
       fieldId => fieldId === TITLE_FIELD_ID || input.base.reader.fields.has(fieldId)
     )
     if (!draft) {
@@ -327,7 +327,7 @@ export const createActiveRecordsApi = (input: {
     if (!applyGroupDefault({
       state,
       draft,
-      sectionId: context.sectionId
+      sectionId: context.section
     })) {
       return undefined
     }
@@ -353,18 +353,16 @@ export const createActiveRecordsApi = (input: {
     if (clearFieldIds.length) {
       actions.push({
         type: 'record.fields.writeMany',
-        input: {
-          recordIds: [recordId],
-          clear: clearFieldIds
-        }
+        recordIds: [recordId],
+        clear: clearFieldIds
       })
     }
 
-    if (!state.view.sort.rules.order.length && context.beforeRecordId) {
+    if (!state.view.sort.rules.order.length && context.beforeRecord) {
       const moveAction = createMoveOrderAction(
         input.base,
         [recordId],
-        context.beforeRecordId
+        context.beforeRecord
       )
       if (moveAction) {
         actions.push(moveAction)

@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react'
 import { FieldPicker } from '@dataview/react/field/picker'
 import { Menu } from '@shared/ui/menu'
-import { usePageRuntime } from '@dataview/react/dataview'
+import { usePageModel } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { useTranslation } from '@shared/i18n/react'
 import { useStoreValue } from '@shared/react'
@@ -10,7 +10,7 @@ import { useViewSettings } from '@dataview/react/page/features/viewSettings/cont
 export const FieldListPanel = () => {
   const { t } = useTranslation()
   const router = useViewSettings()
-  const page = usePageRuntime()
+  const page = usePageModel()
   const fields = useStoreValue(page.settings).fields
 
   return (

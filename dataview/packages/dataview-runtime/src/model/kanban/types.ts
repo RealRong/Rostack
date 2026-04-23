@@ -39,7 +39,7 @@ export interface KanbanCard extends Card {
   color?: string
 }
 
-export interface DataViewKanbanModel {
+export interface KanbanModel {
   board: store.ReadStore<KanbanBoard | null>
   sections: store.ReadStore<readonly Section[]>
   section: store.KeyedReadStore<SectionId, KanbanSection | undefined>

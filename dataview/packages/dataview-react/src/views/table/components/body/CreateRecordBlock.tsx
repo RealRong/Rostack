@@ -90,7 +90,7 @@ const View = (props: CreateRecordBlockProps) => {
     dataView.workflow.createRecord.create({
       ownerViewId,
       create: () => dataView.engine.active.records.create({
-        sectionId: props.sectionId
+        section: props.sectionId
       }),
       open: (recordId, attempt) => openCreatedRecord(recordId, attempt),
       retryFrames: MAX_OPEN_ATTEMPTS,

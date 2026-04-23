@@ -53,7 +53,7 @@ export const createActiveContext = (
     return nextPatch
       ? options.dispatch({
           type: 'view.patch',
-          viewId,
+          id: viewId,
           patch: nextPatch
         }).applied
       : false

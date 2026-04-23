@@ -4,7 +4,7 @@ import { PanelHeader } from '@shared/ui/panel-header'
 import { Popover } from '@shared/ui/popover'
 import {
   useDataView,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { FieldSchemaEditor } from '@dataview/react/field/schema'
@@ -28,9 +28,9 @@ export const ViewSettingsPopover = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const page = dataView.session.page
-  const pageRuntime = usePageRuntime()
-  const viewSettings = useStoreValue(pageRuntime.settings)
-  const currentView = viewSettings.activeView
+  const pageModel = usePageModel()
+  const viewSettings = useStoreValue(pageModel.settings)
+  const currentView = viewSettings.view
   const open = viewSettings.visible
   const resolvedRoute = viewSettings.route
 

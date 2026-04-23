@@ -5,7 +5,7 @@ import { createIndexState } from '@dataview/engine/active/index/runtime'
 import type {
   EngineResult,
   EngineSnapshot
-} from '@dataview/engine/contracts/core'
+} from '@dataview/engine/contracts/result'
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'

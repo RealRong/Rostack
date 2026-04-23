@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { View } from '@dataview/core/contracts'
 import {
   useDataView,
-  usePageRuntime
+  usePageModel
 } from '@dataview/react/dataview'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
@@ -40,18 +40,18 @@ interface RootMenuItemConfig {
 }
 
 const ViewSettingsIdentitySection = (props: {
-  activeView?: View
+  view?: View
   onRename: (name: string) => void
   autoFocusName?: boolean
 }) => {
   const { t } = useTranslation()
-  const [name, setName] = useState(props.activeView?.name ?? '')
+  const [name, setName] = useState(props.view?.name ?? '')
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const Icon = meta.view.get(props.activeView?.type).Icon
+  const Icon = meta.view.get(props.view?.type).Icon
 
   useEffect(() => {
-    setName(props.activeView?.name ?? '')
-  }, [props.activeView?.id, props.activeView?.name])
+    setName(props.view?.name ?? '')
+  }, [props.view?.id, props.view?.name])
 
   useEffect(() => {
     if (!props.autoFocusName) {
@@ -62,20 +62,20 @@ const ViewSettingsIdentitySection = (props: {
       inputRef.current?.focus()
       inputRef.current?.select()
     })
-  }, [props.autoFocusName, props.activeView?.id])
+  }, [props.autoFocusName, props.view?.id])
 
   const commit = () => {
-    if (!props.activeView) {
+    if (!props.view) {
       return
     }
 
     const nextName = name.trim()
     if (!nextName) {
-      setName(props.activeView.name)
+      setName(props.view.name)
       return
     }
 
-    if (nextName !== props.activeView.name) {
+    if (nextName !== props.view.name) {
       props.onRename(nextName)
     }
   }
@@ -100,7 +100,7 @@ const ViewSettingsIdentitySection = (props: {
               }
             }}
             placeholder={t(meta.ui.viewSettings.viewNamePlaceholder)}
-            disabled={!props.activeView}
+            disabled={!props.view}
             className="h-8 px-2 text-sm font-medium rounded-lg"
           />
         </div>
@@ -150,10 +150,10 @@ export const RootPanel = () => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
-  const pageRuntime = usePageRuntime()
-  const settings = useStoreValue(pageRuntime.settings)
+  const pageModel = usePageModel()
+  const settings = useStoreValue(pageModel.settings)
   const router = useViewSettings()
-  const currentView = settings.activeView
+  const currentView = settings.view
   const fields = settings.fields
   const filterProjection = settings.filter
   const sortProjection = settings.sort
@@ -220,7 +220,7 @@ export const RootPanel = () => {
         {t(meta.ui.viewSettings.title)}
       </div>
       <ViewSettingsIdentitySection
-        activeView={currentView}
+        view={currentView}
         autoFocusName={router.route.kind === 'root' && router.route.focusTarget === 'viewName'}
         onRename={name => {
           if (!currentView) {

@@ -1,6 +1,6 @@
 import type { CustomFieldId, CustomField, DataRecord, FieldId, View, RecordId, ViewId } from '@dataview/core/contracts/state'
 
-export interface RowInsertTarget {
+export interface RecordInsertTarget {
   index?: number
 }
 
@@ -20,7 +20,7 @@ export type DocumentOperation =
   | {
       type: 'document.record.insert'
       records: DataRecord[]
-      target?: RowInsertTarget
+      target?: RecordInsertTarget
     }
   | {
       type: 'document.record.patch'
@@ -47,11 +47,11 @@ export type DocumentOperation =
     }
   | {
       type: 'document.activeView.set'
-      viewId?: ViewId
+      id?: ViewId
     }
   | {
       type: 'document.view.remove'
-      viewId: ViewId
+      id: ViewId
     }
   | {
       type: 'document.field.put'
@@ -59,12 +59,12 @@ export type DocumentOperation =
     }
   | {
       type: 'document.field.patch'
-      fieldId: CustomFieldId
+      id: CustomFieldId
       patch: Partial<Omit<CustomField, 'id'>>
     }
   | {
       type: 'document.field.remove'
-      fieldId: CustomFieldId
+      id: CustomFieldId
     }
   | {
       type: 'external.version.bump'

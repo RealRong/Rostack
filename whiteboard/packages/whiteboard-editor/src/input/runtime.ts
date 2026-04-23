@@ -1,6 +1,4 @@
 import type { Engine } from '@whiteboard/engine'
-import type { EditorCommandContext } from '@whiteboard/editor/command/context'
-import type { EditorCommandRunner } from '@whiteboard/editor/command/contracts'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorInputHost } from '@whiteboard/editor/types/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
@@ -14,8 +12,6 @@ import { createEdgeBinding } from '@whiteboard/editor/input/features/edge'
 import { createTransformBinding } from '@whiteboard/editor/input/features/transform'
 import { createSelectionBinding } from '@whiteboard/editor/input/features/selection/press'
 import {
-  bindEditorInputHost,
-  createEditorInputCommands,
   createEditorInputHost
 } from '@whiteboard/editor/input/host'
 import type { EditorInputOps } from '@whiteboard/editor/input/ops'
@@ -68,11 +64,8 @@ export const createEditorHost = ({
   session,
   layout,
   write,
-  ops,
-  runner
-}: Omit<EditorHostDeps, 'snap'> & {
-  runner: Pick<EditorCommandRunner<EditorCommandContext>, 'bind'>
-}): EditorInputHost => {
+  ops
+}: Omit<EditorHostDeps, 'snap'>): EditorInputHost => {
   const snap = createEditorSnapRuntime({
     engine,
     document,
@@ -119,10 +112,5 @@ export const createEditorHost = ({
     ops
   })
 
-  return bindEditorInputHost({
-    runner,
-    commands: createEditorInputCommands({
-      host
-    })
-  })
+  return host
 }

@@ -15,47 +15,48 @@ export interface TableFillEntry {
   value: unknown | undefined
 }
 
-const handleCell = (
-  current: GridSelection | null,
-  items: Pick<ItemList, 'order'>,
+export const fillHandleCell = (input: {
+  selection: GridSelection | null
+  items: Pick<ItemList, 'order'>
   fields: Pick<FieldList, 'range'>
-): CellRef | undefined => {
-  if (!current) {
+}): CellRef | undefined => {
+  if (!input.selection) {
     return undefined
   }
 
-  const rowIds = gridSelection.itemIds(current, items)
-  const fieldIds = gridSelection.fieldIds(current, fields)
+  const rowIds = gridSelection.itemIds(input.selection, input.items)
+  const fieldIds = gridSelection.fieldIds(input.selection, input.fields)
 
   if (rowIds.length !== 1 || !fieldIds.length) {
     return undefined
   }
 
-  return current.focus
+  return input.selection.focus
 }
 
-const can = (
-  current: GridSelection | null,
-  items: Pick<ItemList, 'order'>,
+export const canFill = (input: {
+  selection: GridSelection | null
+  items: Pick<ItemList, 'order'>
   fields: Pick<FieldList, 'range'>
-) => Boolean(handleCell(current, items, fields))
+}) => Boolean(fillHandleCell(input))
 
-const plan = (
-  current: GridSelection | null,
-  items: Pick<ItemList, 'order'>,
-  fields: Pick<FieldList, 'range'>,
+export const planFill = (input: {
+  selection: GridSelection | null
+  items: Pick<ItemList, 'order'>
+  fields: Pick<FieldList, 'range'>
   read: (cell: CellRef) => {
     exists: boolean
     value: unknown
   }
-): TableFillEntry[] => {
-  if (!current) {
+}): TableFillEntry[] => {
+  if (!input.selection) {
     return []
   }
 
-  const fieldIds = gridSelection.fieldIds(current, fields)
-  const targetAppearanceIds = gridSelection.itemIds(current, items)
-    .filter(itemId => itemId !== current.anchor.itemId)
+  const selection = input.selection
+  const fieldIds = gridSelection.fieldIds(selection, input.fields)
+  const targetAppearanceIds = gridSelection.itemIds(selection, input.items)
+    .filter(itemId => itemId !== selection.anchor.itemId)
 
   if (!fieldIds.length || !targetAppearanceIds.length) {
     return []
@@ -67,16 +68,10 @@ const plan = (
         itemId,
         fieldId
       },
-      value: read({
-        itemId: current.anchor.itemId,
+      value: input.read({
+        itemId: selection.anchor.itemId,
         fieldId
       }).value
     }))
   ))
 }
-
-export const fill = {
-  can,
-  handleCell,
-  plan
-} as const

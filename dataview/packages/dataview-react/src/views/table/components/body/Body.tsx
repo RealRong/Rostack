@@ -135,13 +135,13 @@ const View = () => {
   const readCell = useCallback((cell: CellRef) => {
     const recordId = grid.items.read.record(cell.itemId)
     const record = recordId
-      ? dataView.source.doc.records.get(recordId)
+      ? dataView.source.document.records.get(recordId)
       : undefined
 
     return {
       exists: Boolean(record)
     }
-  }, [dataView.source.doc.records, grid.items])
+  }, [dataView.source.document.records, grid.items])
   const onKeyDown = useCallback<KeyboardEventHandler<HTMLDivElement>>(event => {
     if (
       event.defaultPrevented

@@ -14,9 +14,9 @@ import type { ActiveViewContext } from '@dataview/engine/active/api/context'
 
 const insertField = (
   base: ActiveViewContext,
-  anchorFieldId: FieldId,
-  side: 'left' | 'right',
-  input?: {
+  input: {
+    anchor: FieldId
+    side: 'left' | 'right'
     name?: string
     kind?: CustomFieldKind
   }
@@ -26,7 +26,7 @@ const insertField = (
     return undefined
   }
 
-  const name = input?.name?.trim()
+  const name = input.name?.trim()
   if (!name) {
     return undefined
   }
@@ -34,8 +34,8 @@ const insertField = (
   const fieldId = dataviewId.create('field')
   const beforeFieldId = viewApi.display.insertBefore(
     view.display.fields,
-    anchorFieldId,
-    side
+    input.anchor,
+    input.side
   )
   const result = base.dispatch([
     {
@@ -43,12 +43,12 @@ const insertField = (
       input: {
         id: fieldId,
         name,
-        kind: input?.kind ?? 'text'
+        kind: input.kind ?? 'text'
       }
     },
     {
       type: 'view.patch',
-      viewId: view.id,
+      id: view.id,
       patch: {
         display: viewApi.display.show(view.display, fieldId, beforeFieldId)
       }
@@ -68,9 +68,9 @@ export const createDisplayApi = (
       display: viewApi.display.replace(fieldIds)
     }))
   },
-  move: (fieldIds, beforeFieldId) => {
+  move: (ids, target) => {
     base.patchView(view => ({
-      display: viewApi.display.move(view.display, fieldIds, beforeFieldId)
+      display: viewApi.display.move(view.display, ids, target.before)
     }))
   },
   show: (fieldId, beforeFieldId) => {
@@ -122,12 +122,7 @@ export const createTableApi = (input: {
         })
       }
     : undefined),
-  insertFieldLeft: (anchorFieldId, fieldInput) => {
-    return insertField(input.base, anchorFieldId, 'left', fieldInput)
-  },
-  insertFieldRight: (anchorFieldId, fieldInput) => {
-    return insertField(input.base, anchorFieldId, 'right', fieldInput)
-  }
+  insertField: fieldInput => insertField(input.base, fieldInput)
 })
 
 export const createGalleryApi = (

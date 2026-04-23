@@ -43,7 +43,7 @@ const scheduleFrame = (
 }
 
 export const createRecordWorkflow = (input: {
-  activeView: store.ReadStore<View | undefined>
+  view: store.ReadStore<View | undefined>
 }): CreateRecordApi => {
   let requestToken = 0
   let cancelScheduled: (() => void) | undefined
@@ -76,7 +76,7 @@ export const createRecordWorkflow = (input: {
 
       if (
         request.ownerViewId
-        && input.activeView.get()?.id !== request.ownerViewId
+        && input.view.get()?.id !== request.ownerViewId
       ) {
         cancel()
         request.onFailure?.()

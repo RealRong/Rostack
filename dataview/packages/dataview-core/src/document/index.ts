@@ -1,7 +1,6 @@
 import { documentDocument } from '@dataview/core/document/normalize'
 import { documentFields } from '@dataview/core/document/fields'
 import { documentRecords } from '@dataview/core/document/records'
-import { entityTable } from '@dataview/core/document/table'
 import { documentViews } from '@dataview/core/document/views'
 
 export type {
@@ -11,7 +10,6 @@ export type {
 
 export const document = {
   ...documentDocument,
-  table: entityTable,
   fields: documentFields,
   records: documentRecords,
   views: documentViews

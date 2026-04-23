@@ -6,7 +6,8 @@ import {
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
-  createDataViewRuntime
+  createDataViewRuntime,
+  recordValueRef
 } from '@dataview/runtime'
 import {
   createItemArraySelectionScope
@@ -280,6 +281,56 @@ describe('data view runtime regressions', () => {
     expect(runtime.model.table.summary.get('todo')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
     expect(runtime.model.table.summary.get('doing')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
     expect(runtime.model.table.summary.get('done')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
+
+    runtime.dispose()
+  })
+
+  test('document value source stays synced for title, field writes, clears, and record removal', () => {
+    const engine = createEngine({
+      document: createDocument()
+    })
+    const runtime = createDataViewRuntime({
+      engine
+    })
+
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', TITLE_FIELD_ID))).toBe('Task 1')
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBe('todo')
+
+    engine.records.fields.set('rec_1', TITLE_FIELD_ID, 'Task 1 updated')
+    engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
+
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', TITLE_FIELD_ID))).toBe('Task 1 updated')
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBe('done')
+
+    engine.records.fields.clear('rec_1', FIELD_STATUS)
+
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBeUndefined()
+
+    engine.records.remove('rec_1')
+
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', TITLE_FIELD_ID))).toBeUndefined()
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBeUndefined()
+
+    runtime.dispose()
+  })
+
+  test('document value source clears removed field values across records', () => {
+    const engine = createEngine({
+      document: createDocument()
+    })
+    const runtime = createDataViewRuntime({
+      engine
+    })
+
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBe('todo')
+    expect(runtime.source.document.values.get(recordValueRef('rec_2', FIELD_STATUS))).toBe('doing')
+
+    engine.fields.remove(FIELD_STATUS)
+
+    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBeUndefined()
+    expect(runtime.source.document.values.get(recordValueRef('rec_2', FIELD_STATUS))).toBeUndefined()
+    expect(runtime.source.document.values.get(recordValueRef('rec_3', FIELD_STATUS))).toBeUndefined()
+    expect(runtime.source.document.values.get(recordValueRef('rec_2', TITLE_FIELD_ID))).toBe('Task 2')
 
     runtime.dispose()
   })

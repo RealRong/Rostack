@@ -19,12 +19,8 @@ import {
 } from '@dataview/table'
 import {
   type ItemList,
-  type FieldList,
   type ItemId,
 } from '@dataview/engine'
-import type {
-  TableGrid
-} from '@dataview/runtime'
 import type {
   CellRef
 } from '@dataview/engine'
@@ -57,6 +53,7 @@ import {
   canFallbackToRowHover,
   resolveHoverTargetFromPoint
 } from '@dataview/react/views/table/model/hoverResolver'
+import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields'
 
 export interface PointerOptions {
   enabled: boolean
@@ -108,9 +105,16 @@ const sameCellRef = (
 export const resolveFillWriteManyInput = (input: {
   selection: ReturnType<typeof gridSelection.set> | null
   anchor: CellRef
-  grid: TableGrid
+  items: ItemList
+  fields: TableDisplayedFields
+  readRow: (itemId: ItemId) => {
+    recordId: RecordId
+  } | undefined
   readCell: (cell: CellRef) => {
     exists: boolean
+    field?: {
+      id: FieldId
+    }
     value: unknown
   }
 }): RecordFieldWriteManyInput | undefined => {
@@ -120,7 +124,7 @@ export const resolveFillWriteManyInput = (input: {
 
   const fieldIds = gridSelection.fieldIds(
     input.selection,
-    input.grid.fields
+    input.fields
   )
   if (!fieldIds.length) {
     return undefined
@@ -130,13 +134,13 @@ export const resolveFillWriteManyInput = (input: {
   const targetRecordIdSet = new Set<RecordId>()
   gridSelection.itemIds(
     input.selection,
-    input.grid.items
+    input.items
   ).forEach(itemId => {
     if (itemId === input.anchor.itemId) {
       return
     }
 
-    const recordId = input.grid.items.read.record(itemId)
+    const recordId = input.readRow(itemId)?.recordId
     if (!recordId || targetRecordIdSet.has(recordId)) {
       return
     }
@@ -182,7 +186,7 @@ export const resolveFillWriteManyInput = (input: {
 interface RowHoverContext {
   container: HTMLElement | null
   items: Pick<ItemList, 'order'>
-  fields: Pick<FieldList, 'has'>
+  fields: Pick<TableDisplayedFields, 'has'>
   rowIds: readonly ItemId[]
   rowIdAtPoint: (input: {
     rowIds: readonly ItemId[]
@@ -238,7 +242,7 @@ const rowHoverTargetFromElement = (
 const hoverTargetFromElement = (
   target: EventTarget | null,
   items: Pick<ItemList, 'order'>,
-  fields: Pick<FieldList, 'has'>
+  fields: Pick<TableDisplayedFields, 'has'>
 ): TableHoverTarget | null => {
   const cell = (
     cellFromTarget(target, items, fields, 'cell')
@@ -319,10 +323,11 @@ const hoverTargetFromPoint = (
 
 const useHoverBinding = (input: {
   table: ReturnType<typeof useTableContext>
-  grid: TableGrid
+  items: ItemList
+  fields: TableDisplayedFields
   enabled: boolean
 }) => {
-  const rowIds = input.grid.items.ids
+  const rowIds = input.items.ids
   const enabledRef = useRef(input.enabled)
   const rowIdsRef = useRef(rowIds)
   const frameRef = useRef<number | undefined>(undefined)
@@ -332,13 +337,13 @@ const useHoverBinding = (input: {
 
   const rowContext = useCallback((): RowHoverContext => ({
     container: input.table.dom.container(),
-    items: input.grid.items,
-    fields: input.grid.fields,
+    items: input.items,
+    fields: input.fields,
     rowIds: rowIdsRef.current,
     rowIdAtPoint: input.table.rowHit.idAtPoint
   }), [
-    input.grid.items,
-    input.grid.fields,
+    input.fields,
+    input.items,
     input.table
   ])
 
@@ -488,9 +493,10 @@ export const usePointer = (
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const grid = useStoreValue(dataView.model.table.grid)
-  if (!grid) {
-    throw new Error('Table pointer interactions require an active table grid.')
+  const items = useStoreValue(dataView.source.active.items.list)
+  const fields = useStoreValue(table.displayedFields)
+  if (!fields) {
+    throw new Error('Table pointer interactions require displayed table fields.')
   }
 
   const [dragActive, setDragActive] = useState(false)
@@ -500,7 +506,8 @@ export const usePointer = (
   onBlankPointerDownRef.current = options.onBlankPointerDown
   const hover = useHoverBinding({
     table,
-    grid,
+    items,
+    fields,
     enabled: options.enabled
   })
 
@@ -509,21 +516,20 @@ export const usePointer = (
     [table.selection.cells.store]
   )
   const readColumn = useCallback((fieldId: string) => (
-    grid.fields.all.find((field: { id: string }) => field.id === fieldId)
-  ), [grid.fields.all])
+    fields.get(fieldId)
+  ), [fields])
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = grid.items.read.record(cell.itemId)
-    const record = recordId
-      ? dataView.source.document.records.get(recordId)
-      : undefined
+    const current = dataView.model.table.cell.get(cell)
 
     return {
-      exists: Boolean(record),
-      value: record
-        ? fieldApi.value.read(record, cell.fieldId)
-        : undefined
+      exists: Boolean(current),
+      field: current?.field ?? readColumn(cell.fieldId),
+      value: current?.value
     }
-  }, [dataView.source.document.records, grid.items])
+  }, [dataView.model.table.cell, readColumn])
+  const readRow = useCallback((itemId: ItemId) => (
+    dataView.model.table.row.get(itemId)
+  ), [dataView.model.table.row])
 
   const selectCell = useCallback((
     cell: CellRef,
@@ -560,11 +566,11 @@ export const usePointer = (
     setDragTarget(
       cellFromPoint(
         point,
-        grid.items,
-        grid.fields
+        items,
+        fields
       ) ?? undefined
     )
-  }, [grid.fields, grid.items, setDragTarget, table.hover])
+  }, [fields, items, setDragTarget, table.hover])
 
   const resolveAutoPanTargets = useCallback(
     () => dragActive
@@ -611,7 +617,7 @@ export const usePointer = (
 
     const action = fieldApi.behavior.primaryAction({
       exists: data.exists,
-      field: field,
+      field,
       value: data.value
     })
     switch (action.kind) {
@@ -635,7 +641,9 @@ export const usePointer = (
     const input = resolveFillWriteManyInput({
       selection: store.peek(table.selection.cells.store),
       anchor: current.anchor,
-      grid,
+      items,
+      fields,
+      readRow,
       readCell
     })
     if (!input) {
@@ -647,7 +655,9 @@ export const usePointer = (
     table.focus()
   }, [
     editor,
-    grid,
+    fields,
+    items,
+    readRow,
     readCell,
     table,
   ])
@@ -663,8 +673,8 @@ export const usePointer = (
     table.hover.clear(point)
     const target = cellFromPoint(
       point,
-      grid.items,
-      grid.fields
+      items,
+      fields
     ) ?? undefined
 
     if (current.type === 'press') {
@@ -696,8 +706,8 @@ export const usePointer = (
 
     setDragTarget(target)
   }, [
-    grid.fields,
-    grid.items,
+    fields,
+    items,
     readGridSelection,
     setDragTarget,
     table
@@ -842,8 +852,8 @@ export const usePointer = (
 
       const fillCell = cellFromTarget(
         event.target,
-        grid.items,
-        grid.fields,
+        items,
+        fields,
         'fill-handle'
       )
       if (fillCell) {
@@ -854,8 +864,8 @@ export const usePointer = (
 
       const cell = cellFromTarget(
         event.target,
-        grid.items,
-        grid.fields,
+        items,
+        fields,
         'cell'
       )
       if (cell) {
@@ -872,8 +882,8 @@ export const usePointer = (
       onBlankPointerDownRef.current(event)
     },
     [
-      grid.fields,
-      grid.items,
+      fields,
+      items,
       startFill,
       startPress
     ]

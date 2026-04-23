@@ -24,9 +24,11 @@ import {
 import type {
   CalculationMetric,
   CustomField,
-  Field,
   FieldId
 } from '@dataview/core/contracts'
+import type {
+  TableColumn
+} from '@dataview/runtime'
 import {
   Menu,
   type MenuItem,
@@ -46,13 +48,9 @@ import {
   TABLE_CELL_INLINE_PADDING,
   TABLE_HEADER_BLOCK_PADDING
 } from '@dataview/react/views/table/layout'
-import {
-  useKeyedStoreValue,
-  useStoreValue
-} from '@shared/react'
 
 export interface ColumnHeaderProps {
-  field: Field
+  column: TableColumn
   sortId: string
   showVerticalLines: boolean
   wrap: boolean
@@ -209,11 +207,6 @@ const View = (props: ColumnHeaderProps) => {
   } | null>(null)
   const suppressClickRef = useRef(false)
   const table = useTableContext()
-  const headerState = useKeyedStoreValue(
-    dataView.model.table.column,
-    props.field.id
-  )
-  const activeView = useStoreValue(dataView.model.table.view)
   const sortable = useSortable({
     id: props.sortId,
     transition: {
@@ -225,49 +218,50 @@ const View = (props: ColumnHeaderProps) => {
     ? `translate3d(${Math.round(sortable.transform.x)}px, 0, 0)`
     : undefined
   const isDragging = sortable.isDragging
-  const grouped = headerState?.grouped ?? false
-  const sortDirection = headerState?.sortDir
+  const field = props.column.field
+  const grouped = props.column.grouped
+  const sortDirection = props.column.sortDir
   const wrap = props.wrap
-  const calculationMetric = headerState?.calc
-  const calculationMetrics = calculation.metric.forField(props.field)
-  const kind = meta.field.kind.get(props.field.kind)
+  const calculationMetric = props.column.calc
+  const calculationMetrics = calculation.metric.forField(field)
+  const kind = meta.field.kind.get(field.kind)
   const KindIcon = kind.Icon
   const sortDirectionMeta = sortDirection
     ? meta.sort.direction.get(sortDirection)
     : undefined
   const columnRef = useCallback((node: HTMLDivElement | null) => {
     sortable.setNodeRef(node)
-    table.nodes.registerColumn(props.field.id, node)
-  }, [props.field.id, sortable, table.nodes])
-  const customField = fieldApi.kind.isCustom(props.field)
-    ? props.field
+    table.nodes.registerColumn(field.id, node)
+  }, [field.id, sortable, table.nodes])
+  const customField = fieldApi.kind.isCustom(field)
+    ? field
     : undefined
   const urlConfig = customField?.kind === 'url'
     ? customField
     : undefined
   const viewApi = editor.active
-  const sortRules = activeView?.query.sort.rules ?? []
-  const currentSortRule = sortRules.find(rule => rule.rule.fieldId === props.field.id)
 
   const applySingleSort = useCallback((direction: 'asc' | 'desc') => {
+    const sortRules = editor.active.state()?.query.sort.rules ?? []
+    const currentSortRule = sortRules.find(rule => rule.rule.fieldId === field.id)
     if (currentSortRule && sortRules.length === 1) {
       viewApi.sort.patch(currentSortRule.rule.id, { direction })
       return
     }
 
     viewApi.sort.clear()
-    viewApi.sort.create(props.field.id, direction)
-  }, [currentSortRule, props.field.id, sortRules.length, viewApi.sort])
+    viewApi.sort.create(field.id, direction)
+  }, [editor.active, field.id, viewApi.sort])
 
   const insertProperty = useCallback((side: 'left' | 'right') => {
     const name = t(meta.field.kind.get('text').defaultName)
     viewApi.table.insertField({
-      anchor: props.field.id,
+      anchor: field.id,
       side,
       kind: 'text',
       name
     })
-  }, [props.field.id, t, viewApi.table])
+  }, [field.id, t, viewApi.table])
 
   const items = useMemo<readonly MenuItem[]>(() => {
     if (!menuOpen) {
@@ -364,7 +358,7 @@ const View = (props: ColumnHeaderProps) => {
             return
           }
 
-          viewApi.group.set(props.field.id)
+          viewApi.group.set(field.id)
         }
       },
       {
@@ -373,7 +367,7 @@ const View = (props: ColumnHeaderProps) => {
         label: t(meta.ui.filter.label),
         leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
         onSelect: () => {
-          const id = viewApi.filters.create(props.field.id)
+          const id = viewApi.filters.create(field.id)
           page.query.open({
             kind: 'filter',
             id
@@ -422,10 +416,10 @@ const View = (props: ColumnHeaderProps) => {
           metrics: calculationMetrics,
           currentMetric: calculationMetric,
           onClear: () => {
-            viewApi.summary.set(props.field.id, null)
+            viewApi.summary.set(field.id, null)
           },
           onSelectMetric: metric => {
-            viewApi.summary.set(props.field.id, metric)
+            viewApi.summary.set(field.id, metric)
           }
         })
       },
@@ -436,7 +430,7 @@ const View = (props: ColumnHeaderProps) => {
         leading: <EyeOff className="size-4" size={16} strokeWidth={1.8} />,
         disabled: false,
         onSelect: () => {
-          viewApi.display.hide(props.field.id)
+          viewApi.display.hide(field.id)
         }
       },
       {
@@ -474,21 +468,21 @@ const View = (props: ColumnHeaderProps) => {
       ...customFieldItems
     ]
   }, [
+    applySingleSort,
     calculationMetric,
     calculationMetrics,
     customField,
     editor.fields,
+    field.id,
     grouped,
     insertProperty,
     kind.token,
     menuOpen,
     page.query,
     page.settings,
-    props.field.id,
     sortDirection,
     sortDirectionMeta,
     t,
-    dataView.model.table.view,
     urlConfig,
     viewApi,
     wrap
@@ -560,7 +554,7 @@ const View = (props: ColumnHeaderProps) => {
             : 'truncate'
         )}
       >
-        {props.field.name}
+        {field.name}
       </span>
     </div>
   )
@@ -569,7 +563,7 @@ const View = (props: ColumnHeaderProps) => {
     <div
       ref={columnRef}
       data-table-target="column"
-      data-column-id={props.field.id}
+      data-column-id={field.id}
       className={cn(
         'group/header relative box-border h-full min-w-0',
         props.showVerticalLines && 'border-r border-divider'
@@ -592,7 +586,7 @@ const View = (props: ColumnHeaderProps) => {
         trigger={trigger}
       />
       <ResizeHandle
-        fieldId={props.field.id}
+        fieldId={field.id}
         active={Boolean(props.resizeActive)}
         onResizeStart={props.onResizeStart}
       />
@@ -604,7 +598,7 @@ const same = (
   left: ColumnHeaderProps,
   right: ColumnHeaderProps
 ) => (
-  left.field === right.field
+  left.column === right.column
   && left.sortId === right.sortId
   && left.showVerticalLines === right.showVerticalLines
   && left.wrap === right.wrap

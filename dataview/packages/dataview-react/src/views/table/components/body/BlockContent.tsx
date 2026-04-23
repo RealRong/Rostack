@@ -12,6 +12,9 @@ import type {
 import type {
   ItemId
 } from '@dataview/engine'
+import type {
+  TableColumn
+} from '@dataview/runtime'
 import { useMeasuredHeights } from '@dataview/react/virtual'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { Row } from '@dataview/react/views/table/components/row/Row'
@@ -20,11 +23,19 @@ import { ColumnHeaderBlock } from '@dataview/react/views/table/components/body/C
 import { CreateRecordBlock } from '@dataview/react/views/table/components/body/CreateRecordBlock'
 import { SectionHeader } from '@dataview/react/views/table/components/body/SectionHeader'
 import type {
-  TableBodyRenderState
-} from '@dataview/react/views/table/uiRuntime'
+  TableBlock
+} from '@dataview/react/views/table/virtual'
 
 export interface BlockContentProps {
-  body: TableBodyRenderState
+  columns: readonly TableColumn[]
+  showVerticalLines: boolean
+  wrap: boolean
+  marqueeActive: boolean
+  blocks: readonly TableBlock[]
+  totalHeight: number
+  startTop: number
+  measurementIds: readonly string[]
+  containerWidth: number
   template: string
   dragActive: boolean
   dragIdSet: ReadonlySet<ItemId>
@@ -39,15 +50,12 @@ export interface BlockContentProps {
   ) => void
 }
 
-interface RenderedBlocksProps extends Omit<BlockContentProps, 'body'> {
-  body: TableBodyRenderState
+interface RenderedBlocksProps extends BlockContentProps {
   measure: (id: string) => (node: HTMLElement | null) => void
 }
 
 const RenderedBlocksView = (props: RenderedBlocksProps) => {
-  const table = useTableContext()
-
-  if (!props.body.blocks.length) {
+  if (!props.blocks.length) {
     return null
   }
 
@@ -55,10 +63,10 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
     <div
       className="relative min-w-full w-max"
       style={{
-        transform: `translateY(${props.body.startTop}px)`
+        transform: `translateY(${props.startTop}px)`
       }}
     >
-      {props.body.blocks.map(block => {
+      {props.blocks.map(block => {
         const blockMeasureRef = props.measure(block.key)
         switch (block.kind) {
           case 'section-header':
@@ -77,9 +85,9 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 scope={block.scope}
                 label={block.label}
                 measureRef={blockMeasureRef}
-                columns={props.body.columns}
-                showVerticalLines={props.body.showVerticalLines}
-                wrap={props.body.wrap}
+                columns={props.columns}
+                showVerticalLines={props.showVerticalLines}
+                wrap={props.wrap}
                 template={props.template}
                 resizingPropertyId={props.resizingPropertyId}
                 onResizeStart={props.onResizeStart}
@@ -91,6 +99,10 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 key={block.key}
                 itemId={block.rowId}
                 measureRef={blockMeasureRef}
+                columns={props.columns}
+                showVerticalLines={props.showVerticalLines}
+                wrap={props.wrap}
+                marqueeActive={props.marqueeActive}
                 template={props.template}
                 dragActive={props.dragActive}
                 isDragging={props.dragIdSet.has(block.rowId)}
@@ -103,8 +115,7 @@ const RenderedBlocksView = (props: RenderedBlocksProps) => {
                 key={block.key}
                 scopeId={block.scopeId}
                 measureRef={blockMeasureRef}
-                columns={props.body.columns}
-                wrap={props.body.wrap}
+                columns={props.columns}
                 template={props.template}
               />
             )
@@ -126,7 +137,15 @@ const sameRenderedBlocks = (
   left: RenderedBlocksProps,
   right: RenderedBlocksProps
 ) => (
-  left.body === right.body
+  left.columns === right.columns
+  && left.showVerticalLines === right.showVerticalLines
+  && left.wrap === right.wrap
+  && left.marqueeActive === right.marqueeActive
+  && left.blocks === right.blocks
+  && left.totalHeight === right.totalHeight
+  && left.startTop === right.startTop
+  && left.measurementIds === right.measurementIds
+  && left.containerWidth === right.containerWidth
   && left.measure === right.measure
   && left.template === right.template
   && left.dragActive === right.dragActive
@@ -141,8 +160,8 @@ const RenderedBlocks = memo(RenderedBlocksView, sameRenderedBlocks)
 export const BlockContent = (props: BlockContentProps) => {
   const table = useTableContext()
   const measurementBucketKey = useMemo(
-    () => `${props.body.containerWidth}:${props.body.wrap ? 'wrap' : 'nowrap'}`,
-    [props.body.containerWidth, props.body.wrap]
+    () => `${props.containerWidth}:${props.wrap ? 'wrap' : 'nowrap'}`,
+    [props.containerWidth, props.wrap]
   )
   const onMeasurementsChange = useCallback((input: {
     bucketKey: string | number
@@ -160,7 +179,7 @@ export const BlockContent = (props: BlockContentProps) => {
     })
   }, [table.virtual])
   const measured = useMeasuredHeights<string>({
-    ids: props.body.measurementIds,
+    ids: props.measurementIds,
     bucketKey: measurementBucketKey,
     debugName: 'flushTableBlockMeasurementsMicrotask',
     reactive: false,
@@ -172,7 +191,7 @@ export const BlockContent = (props: BlockContentProps) => {
       className="relative min-w-full"
       style={{
         overflowAnchor: 'none',
-        height: props.body.totalHeight
+        height: props.totalHeight
       }}
     >
       <RenderedBlocks

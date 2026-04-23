@@ -35,7 +35,6 @@ export const useTableContext = (): TableUiRuntime => {
 
 export const TableProvider = (props: TableProviderProps) => {
   const dataView = useDataView()
-  const engine = dataView.engine
   const containerRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const nodes = useMemo(() => createNodes(), [])
@@ -46,8 +45,9 @@ export const TableProvider = (props: TableProviderProps) => {
     canvasRef
   }), [props.headerHeight, props.rowHeight])
   const table = useMemo(() => createTableUiRuntime({
-    engine,
     tableModel: dataView.model.table,
+    itemsStore: dataView.source.active.items.list,
+    queryStore: dataView.source.active.query,
     pageBodyStore: dataView.model.page.body,
     selection: dataView.session.selection,
     selectionMembershipStore: dataView.session.selection.store.membership,
@@ -64,7 +64,8 @@ export const TableProvider = (props: TableProviderProps) => {
     dataView.session.selection,
     dataView.session.valueEditor,
     dataView.model.table,
-    engine,
+    dataView.source.active.items.list,
+    dataView.source.active.query,
     layout,
     nodes
   ])

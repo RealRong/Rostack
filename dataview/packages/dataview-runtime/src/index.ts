@@ -17,7 +17,8 @@ export type {
   EngineSourceRuntime,
   EntitySource,
   ItemSource,
-  SectionSource
+  SectionSource,
+  RecordValueRef
 } from '@dataview/runtime/source'
 
 export type {
@@ -41,11 +42,11 @@ export type {
   PageSortPanel,
   PageSortRow,
   PageToolbar,
-  TableColumnState,
-  TableGrid,
+  TableBody,
+  TableCell,
+  TableColumn,
   TableModel,
-  TableQueryState,
-  TableViewState
+  TableRow
 } from '@dataview/runtime/model'
 
 export {
@@ -135,3 +136,12 @@ export type {
   CreateRecordOpenResult,
   CreateRecordRequest
 } from '@dataview/runtime/workflow/createRecord'
+
+export {
+  recordValueKey,
+  recordValueRef,
+  sameCellRef,
+  sameOptionalCell,
+  tableCell,
+  tableCellKey
+} from '@dataview/runtime/refs'

@@ -44,15 +44,20 @@ const View = () => {
   const dataView = useDataView()
   const engine = dataView.engine
   const table = useTableContext()
-  const body = useStoreValue(table.body)
-  const grid = useStoreValue(dataView.model.table.grid)
-  if (!body || !grid) {
-    throw new Error('Table body requires an active table body and grid.')
+  const body = useStoreValue(dataView.model.table.body)
+  const windowState = useStoreValue(table.virtual.window)
+  const measurementPlan = useStoreValue(table.virtual.measurement.plan)
+  const viewport = useStoreValue(table.virtual.viewport)
+  const interaction = useStoreValue(table.virtual.interaction)
+  const displayedFields = useStoreValue(table.displayedFields)
+  const items = useStoreValue(dataView.source.active.items.list)
+  if (!body || !displayedFields) {
+    throw new Error('Table body requires an active table body.')
   }
 
   const locked = useStoreValue(table.locked)
   const canHover = useStoreValue(table.can.hover)
-  const marqueeActive = body.marqueeActive
+  const marqueeActive = interaction.marqueeActive
   const previousMarqueeActiveRef = useRef(false)
   const columnResize = useColumnResize()
   const template = useMemo(
@@ -134,15 +139,11 @@ const View = () => {
     onBlankPointerDown
   })
   const readCell = useCallback((cell: CellRef) => {
-    const recordId = grid.items.read.record(cell.itemId)
-    const record = recordId
-      ? dataView.source.document.records.get(recordId)
-      : undefined
-
+    const resolved = dataView.model.table.cell.get(cell)
     return {
-      exists: Boolean(record)
+      exists: Boolean(resolved)
     }
-  }, [dataView.source.document.records, grid.items])
+  }, [dataView.model.table.cell])
   const onKeyDown = useCallback<KeyboardEventHandler<HTMLDivElement>>(event => {
     if (
       event.defaultPrevented
@@ -157,7 +158,8 @@ const View = () => {
         modifiers: modifiers(event)
       },
       editor: engine,
-      grid,
+      items,
+      fields: displayedFields,
       selection: table.selection,
       locked,
       readCell,
@@ -172,8 +174,9 @@ const View = () => {
 
     event.preventDefault()
   }, [
+    displayedFields,
     engine,
-    grid,
+    items,
     locked,
     readCell,
     table
@@ -186,7 +189,8 @@ const View = () => {
 
     const didPaste = applyPaste({
       editor: engine,
-      grid,
+      items,
+      fields: displayedFields,
       gridSelection: currentGridSelection,
       text: event.clipboardData.getData('text/plain')
     })
@@ -196,7 +200,7 @@ const View = () => {
 
     table.revealCursor()
     event.preventDefault()
-  }, [engine, grid, locked, table])
+  }, [displayedFields, engine, items, locked, table])
   const gridBounds = gridContentBounds({
     container: table.layout.containerRef.current,
     canvas: table.layout.canvasRef.current
@@ -229,7 +233,15 @@ const View = () => {
             />
           ) : null}
           <BlockContent
-            body={body}
+            columns={body.columns}
+            showVerticalLines={body.showVerticalLines}
+            wrap={body.wrap}
+            marqueeActive={marqueeActive}
+            blocks={windowState.items}
+            totalHeight={windowState.totalHeight}
+            startTop={windowState.startTop}
+            measurementIds={measurementPlan.ids}
+            containerWidth={viewport.containerWidth}
             template={template}
             dragActive={rowReorder.active}
             dragIdSet={rowReorder.dragIdSet}

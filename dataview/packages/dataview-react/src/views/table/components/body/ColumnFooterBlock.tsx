@@ -1,6 +1,3 @@
-import type {
-  Field
-} from '@dataview/core/contracts'
 import {
   memo
 } from 'react'
@@ -15,12 +12,14 @@ import {
   TABLE_CELL_INLINE_PADDING,
   TABLE_TRAILING_ACTION_WIDTH
 } from '@dataview/react/views/table/layout'
+import type {
+  TableColumn
+} from '@dataview/runtime'
 
 export interface ColumnFooterBlockProps {
   scopeId: string
   measureRef?: (node: HTMLDivElement | null) => void
-  columns: readonly Field[]
-  wrap: boolean
+  columns: readonly TableColumn[]
   template: string
 }
 
@@ -49,8 +48,8 @@ const View = (props: ColumnFooterBlockProps) => {
           gridTemplateColumns: props.template
         }}
       >
-        {props.columns.map(field => {
-          const result = calculations?.get(field.id)
+        {props.columns.map(column => {
+          const result = calculations?.get(column.field.id)
           const content = (() => {
             if (!result) {
               return null
@@ -107,7 +106,7 @@ const View = (props: ColumnFooterBlockProps) => {
 
           return (
             <div
-              key={field.id}
+              key={column.field.id}
               className={'min-w-0 box-border flex items-start'}
               style={{
                 paddingInline: TABLE_CELL_INLINE_PADDING,
@@ -137,7 +136,6 @@ const same = (
   left.scopeId === right.scopeId
   && left.measureRef === right.measureRef
   && left.columns === right.columns
-  && left.wrap === right.wrap
   && left.template === right.template
 )
 

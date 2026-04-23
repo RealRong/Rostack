@@ -36,11 +36,11 @@ export {
   createTableModel
 } from '@dataview/runtime/model/table'
 export type {
-  TableColumnState,
-  TableGrid,
+  TableBody,
+  TableCell,
+  TableColumn,
   TableModel,
-  TableQueryState,
-  TableViewState
+  TableRow
 } from '@dataview/runtime/model/table'
 
 export type {

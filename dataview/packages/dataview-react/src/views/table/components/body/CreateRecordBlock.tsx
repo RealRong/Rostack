@@ -12,6 +12,7 @@ import type {
 import { fieldAnchor } from '@dataview/react/dom/field'
 import { useDataView } from '@dataview/react/dataview'
 import { useTranslation } from '@shared/i18n/react'
+import { useStoreValue } from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { Button } from '@shared/ui/button'
 import { PlusIcon } from 'lucide-react'
@@ -43,29 +44,30 @@ const View = (props: CreateRecordBlockProps) => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const table = useTableContext()
+  const body = useStoreValue(dataView.model.table.body)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+  if (!body) {
+    throw new Error('Table create-record block requires an active table body.')
+  }
 
   const openCreatedRecord = useCallback((
     recordId: string,
     _attempt: number
   ): CreateRecordOpenResult => {
-    const grid = store.peek(dataView.model.table.grid)
-    if (!grid) {
-      return 'failed'
-    }
+    const items = store.peek(dataView.source.active.items.list)
 
     const itemId = findItemIdByRecordId(
-      grid.items.ids,
-      grid.items.read.record,
+      items.ids,
+      item => dataView.model.table.row.get(item)?.recordId,
       recordId
     )
     if (itemId === undefined) {
       return 'retry'
     }
 
-    const selectionFieldId = grid.fields.has(TITLE_FIELD_ID)
+    const selectionFieldId = body.columns.some(column => column.field.id === TITLE_FIELD_ID)
       ? TITLE_FIELD_ID
-      : grid.fields.ids[0] ?? TITLE_FIELD_ID
+      : body.columns[0]?.field.id ?? TITLE_FIELD_ID
     return table.openCell({
       cell: {
         itemId,
@@ -83,13 +85,11 @@ const View = (props: CreateRecordBlockProps) => {
     })
       ? 'opened'
       : 'retry'
-  }, [dataView.model.table.grid, table])
+  }, [body.columns, dataView.model.table.row, dataView.source.active.items.list, table])
 
   const onCreate = useCallback(() => {
-    const ownerViewId = store.peek(dataView.model.table.view)?.id
-
     dataView.workflow.createRecord.create({
-      ownerViewId,
+      ownerViewId: body.viewId,
       create: () => dataView.engine.active.records.create({
         section: props.sectionId
       }),
@@ -97,7 +97,7 @@ const View = (props: CreateRecordBlockProps) => {
       retryFrames: MAX_OPEN_ATTEMPTS,
       onFailure: table.focus
     })
-  }, [dataView.engine.active.records, dataView.workflow.createRecord, dataView.model.table.view, openCreatedRecord, props.sectionId, table])
+  }, [body.viewId, dataView.engine.active.records, dataView.workflow.createRecord, openCreatedRecord, props.sectionId, table])
 
   return (
     <div

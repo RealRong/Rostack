@@ -1,4 +1,4 @@
-import type { CellRef, Engine, ItemId } from '@dataview/engine'
+import type { CellRef, ItemId, ItemList } from '@dataview/engine'
 import {
   createInteractionCoordinator,
   type InteractionApi
@@ -13,17 +13,14 @@ import {
 } from '@dataview/runtime'
 import { store } from '@shared/core'
 import type {
-  Field,
-  FieldId,
-  ViewId
-} from '@dataview/core/contracts'
+  ActiveViewQuery
+} from '@dataview/engine'
 import type { PageBody } from '@dataview/runtime'
 import type {
   ItemSelectionController,
   ItemSelectionSnapshot
 } from '@dataview/runtime'
 import type {
-  TableGrid,
   TableModel
 } from '@dataview/runtime'
 import type { ValueEditorApi } from '@dataview/runtime'
@@ -79,46 +76,17 @@ import {
   createTableSelectionRuntime,
   type TableSelectionRuntime
 } from '@dataview/react/views/table/selectionRuntime'
-
-export interface TableBodyRenderState {
-  viewId: ViewId
-  columns: readonly Field[]
-  rowCount: number
-  measurementIds: readonly string[]
-  grouped: boolean
-  showVerticalLines: boolean
-  wrap: boolean
-  blocks: readonly TableBlock[]
-  totalHeight: number
-  startTop: number
-  containerWidth: number
-  marqueeActive: boolean
-}
-
-const sameBodyRenderState = (
-  left: TableBodyRenderState | null,
-  right: TableBodyRenderState | null
-) => left === right || (
-  !!left
-  && !!right
-  && left.viewId === right.viewId
-  && left.columns === right.columns
-  && left.rowCount === right.rowCount
-  && left.measurementIds === right.measurementIds
-  && left.grouped === right.grouped
-  && left.showVerticalLines === right.showVerticalLines
-  && left.wrap === right.wrap
-  && left.blocks === right.blocks
-  && left.totalHeight === right.totalHeight
-  && left.startTop === right.startTop
-  && left.containerWidth === right.containerWidth
-  && left.marqueeActive === right.marqueeActive
-)
+import {
+  createTableDisplayedFieldsStore
+} from '@dataview/react/views/table/displayFields'
+import type {
+  TableDisplayedFields
+} from '@dataview/react/views/table/displayFields'
 
 export interface TableUiRuntime {
-  body: store.ReadStore<TableBodyRenderState | null>
   locked: store.ReadStore<boolean>
   valueEditorOpen: store.ReadStore<boolean>
+  displayedFields: store.ReadStore<TableDisplayedFields | undefined>
   selection: TableSelectionRuntime
   select: TableSelectRuntime
   fill: TableFillRuntime
@@ -148,35 +116,13 @@ export type {
   TableSelectionRuntime
 }
 
-const resolveDisplayedColumns = (input: {
-  previous?: readonly Field[]
-  fieldIds: readonly FieldId[]
-  readField: (fieldId: FieldId) => Field | undefined
-}): readonly Field[] => {
-  const canReuse = Boolean(
-    input.previous
-    && input.previous.length === input.fieldIds.length
-    && input.fieldIds.every((fieldId, index) => input.previous![index] === input.readField(fieldId))
-  )
-  if (canReuse) {
-    return input.previous as readonly Field[]
-  }
-
-  return input.fieldIds.flatMap(fieldId => {
-    const field = input.readField(fieldId)
-    return field
-      ? [field]
-      : []
-  })
-}
-
 const selectionRow = (input: {
   locateRow: (rowId: ItemId) => {
     rowId: ItemId
     top: number
     bottom: number
   } | null
-  grid: TableGrid | undefined
+  items: ItemList
   selection: ItemSelectionSnapshot
   gridSelection: ReturnType<TableSelectionRuntime['cells']['get']>
 }): {
@@ -186,9 +132,7 @@ const selectionRow = (input: {
 } | null => {
   const rowId = input.gridSelection?.focus.itemId
     ?? selectionSnapshot.primary(
-      input.grid
-        ? createItemListSelectionDomain(input.grid.items)
-        : undefined,
+      createItemListSelectionDomain(input.items),
       input.selection
     )
   if (!rowId) {
@@ -199,8 +143,9 @@ const selectionRow = (input: {
 }
 
 export const createTableUiRuntime = (options: {
-  engine: Engine
   tableModel: TableModel
+  itemsStore: store.ReadStore<ItemList>
+  queryStore: store.ReadStore<ActiveViewQuery>
   pageBodyStore: store.ReadStore<PageBody>
   selection: ItemSelectionController
   selectionMembershipStore: store.KeyedReadStore<ItemId, boolean>
@@ -210,10 +155,11 @@ export const createTableUiRuntime = (options: {
   layout: TableLayout
   nodes: Nodes
 }): TableUiRuntime => {
-  const grid = options.tableModel.grid
-  const view = options.tableModel.view
+  const body = options.tableModel.body
+  const displayFields = createTableDisplayedFieldsStore(body)
   const selection = createTableSelectionRuntime({
-    gridStore: grid,
+    itemsStore: options.itemsStore,
+    fieldsStore: displayFields,
     rowSelection: options.selection
   })
   const lockedStore = store.createDerivedStore<boolean>({
@@ -228,7 +174,8 @@ export const createTableUiRuntime = (options: {
   })
   const interaction = createInteractionCoordinator()
   const can = createTableCanRuntime(createCapabilities({
-    view,
+    body,
+    query: options.queryStore,
     locked: lockedStore,
     interaction: interaction.store
   }))
@@ -237,12 +184,14 @@ export const createTableUiRuntime = (options: {
     rowMembershipStore: options.selectionMembershipStore,
     previewMembershipStore: options.previewSelectionMembershipStore,
     gridSelectionStore: selection.cells.store,
-    gridStore: grid,
+    itemsStore: options.itemsStore,
+    fieldsStore: displayFields,
     visibleStore: selectionVisibleStore
   })
   const fill = createTableFillRuntime({
     gridSelectionStore: select.cells.state,
-    gridStore: grid,
+    itemsStore: options.itemsStore,
+    fieldsStore: displayFields,
     enabledStore: can.fill
   })
   const rail = createTableRailRuntime()
@@ -257,8 +206,9 @@ export const createTableUiRuntime = (options: {
     selectionVisible: select.cells.visible
   })
   const virtual = createTableVirtualRuntime({
-    grid,
-    view,
+    body,
+    sectionIds: options.tableModel.sectionIds,
+    section: options.tableModel.section,
     marqueeActiveStore: options.marqueeActiveStore,
     layout: options.layout
   })
@@ -315,7 +265,7 @@ export const createTableUiRuntime = (options: {
   const revealCursor = () => {
     const target = selectionRow({
       locateRow: virtual.locateRow,
-      grid: store.peek(grid),
+      items: store.peek(options.itemsStore),
       selection: selection.rows.state.getSnapshot(),
       gridSelection: store.peek(selection.cells.store)
     })
@@ -327,65 +277,28 @@ export const createTableUiRuntime = (options: {
   }
   const openCell = createCellOpener({
     valueEditor: options.valueEditor,
-    resolveCell: cell => {
-      const resolved = options.engine.active.read.cell(cell)
-      return resolved
+    resolveField: cell => {
+      const currentBody = store.peek(body)
+      const currentRow = options.tableModel.row.get(cell.itemId)
+      return currentBody && currentRow
         ? {
-            recordId: resolved.recordId,
-            fieldId: resolved.fieldId
+            viewId: currentBody.viewId,
+            itemId: cell.itemId,
+            recordId: currentRow.recordId,
+            fieldId: cell.fieldId
           }
         : undefined
     },
-    view: () => store.peek(view),
     gridSelection: selection.cells,
     dom,
     revealCursor,
     focus
   })
 
-  let previousColumns: readonly Field[] | undefined
-
-  const body = store.createDerivedStore<TableBodyRenderState | null>({
-    get: () => {
-      const currentGrid = store.read(grid)
-      const currentView = store.read(view)
-      if (!currentGrid || !currentView) {
-        previousColumns = undefined
-        return null
-      }
-
-      previousColumns = resolveDisplayedColumns({
-        previous: previousColumns,
-        fieldIds: currentView.displayFieldIds,
-        readField: fieldId => currentGrid.fields.get(fieldId)
-      })
-
-      const windowState = store.read(virtual.window)
-      const layoutState = store.read(virtual.layout)
-      const measurementPlan = store.read(virtual.measurement.plan)
-
-      return {
-        viewId: currentView.id,
-        columns: previousColumns,
-        rowCount: layoutState.rowCount,
-        measurementIds: measurementPlan.ids,
-        grouped: Boolean(currentView.query.group),
-        showVerticalLines: currentView.showVerticalLines,
-        wrap: currentView.wrap,
-        blocks: windowState.items,
-        totalHeight: windowState.totalHeight,
-        startTop: windowState.startTop,
-        containerWidth: store.read(virtual.viewport).containerWidth,
-        marqueeActive: store.read(virtual.interaction).marqueeActive
-      }
-    },
-    isEqual: sameBodyRenderState
-  })
-
   return {
-    body,
     locked: lockedStore,
     valueEditorOpen: valueEditorOpenStore,
+    displayedFields: displayFields,
     selection,
     select,
     fill,

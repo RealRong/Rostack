@@ -1,10 +1,14 @@
 import { store } from '@shared/core'
 import type { CellRef } from '@dataview/engine'
 import type {
-  TableGrid
-} from '@dataview/runtime'
+  ItemList
+} from '@dataview/engine'
 import { fillHandleCell, type GridSelection } from '@dataview/table'
-import { sameOptionalCell, tableCellKey } from '@dataview/react/views/table/runtime/cell'
+import {
+  sameOptionalCell,
+  tableCellKey
+} from '@dataview/runtime'
+import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields'
 
 export interface TableFillRuntime {
   handle: store.ReadStore<CellRef | undefined>
@@ -14,7 +18,8 @@ export interface TableFillRuntime {
 
 export const createTableFillRuntime = (input: {
   gridSelectionStore: store.ReadStore<GridSelection | null>
-  gridStore: store.ReadStore<TableGrid | undefined>
+  itemsStore: store.ReadStore<ItemList>
+  fieldsStore: store.ReadStore<TableDisplayedFields | undefined>
   enabledStore: store.ReadStore<boolean>
 }): TableFillRuntime => {
   const handle = store.createDerivedStore<CellRef | undefined>({
@@ -23,15 +28,15 @@ export const createTableFillRuntime = (input: {
         return undefined
       }
 
-      const grid = store.read(input.gridStore)
-      if (!grid) {
+      const fields = store.read(input.fieldsStore)
+      if (!fields) {
         return undefined
       }
 
       return fillHandleCell({
         selection: store.read(input.gridSelectionStore),
-        items: grid.items,
-        fields: grid.fields
+        items: store.read(input.itemsStore),
+        fields
       })
     },
     isEqual: sameOptionalCell

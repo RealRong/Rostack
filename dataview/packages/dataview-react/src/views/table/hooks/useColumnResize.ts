@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent
@@ -39,15 +40,17 @@ export const useColumnResize = () => {
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const grid = useStoreValue(dataView.model.table.grid)
-  const view = useStoreValue(dataView.model.table.view)
-  if (!grid || !view) {
-    throw new Error('Table column resize requires an active table grid and view.')
+  const body = useStoreValue(dataView.model.table.body)
+  if (!body) {
+    throw new Error('Table column resize requires an active table body.')
   }
 
-  const columns = grid.fields.all
+  const columns = body.columns
   const canResize = useStoreValue(table.can.columnResize)
-  const persistedWidths = view.widths
+  const persistedWidths = useMemo(() => new Map(columns.map(column => [
+    column.field.id,
+    column.width
+  ] as const)), [columns])
   const [preview, setPreview] = useState<ColumnWidthPreview | null>(null)
   const previewRef = useRef<ColumnWidthPreview | null>(preview)
 
@@ -82,7 +85,7 @@ export const useColumnResize = () => {
     }
 
     const widths = new Map<FieldId, number>()
-    for (const columnNode of table.nodes.columns(columns.map(column => column.id))) {
+    for (const columnNode of table.nodes.columns(columns.map(column => column.field.id))) {
       const columnId = columnNode.dataset.columnId as FieldId | undefined
       if (!columnId) {
         continue
@@ -125,19 +128,19 @@ export const useColumnResize = () => {
         const current = previewRef.current
         if (current?.fieldId === fieldId) {
           const nextWidths: Partial<Record<FieldId, number>> = {}
-          columns.forEach(field => {
-            const width = current.widths.get(field.id)
+          columns.forEach(column => {
+            const width = current.widths.get(column.field.id)
             if (!width) {
               return
             }
 
-            nextWidths[field.id] = width
+            nextWidths[column.field.id] = width
           })
 
           const persistedEntries = Array.from(persistedWidths.entries())
           const changed = (
             persistedEntries.length !== Object.keys(nextWidths).length
-            || columns.some(field => persistedWidths.get(field.id) !== nextWidths[field.id])
+            || columns.some(column => persistedWidths.get(column.field.id) !== nextWidths[column.field.id])
           )
 
           if (changed) {

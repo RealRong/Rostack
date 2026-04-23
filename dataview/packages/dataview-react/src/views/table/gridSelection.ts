@@ -5,13 +5,14 @@ import type {
   CellRef
 } from '@dataview/engine'
 import type {
-  TableGrid
-} from '@dataview/runtime'
+  ItemList
+} from '@dataview/engine'
 import {
   gridSelection,
   type GridSelection
 } from '@dataview/table'
 import { store as coreStore } from '@shared/core'
+import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields'
 
 
 export interface GridSelectionStore {
@@ -32,24 +33,39 @@ export interface GridSelectionStore {
 }
 
 export const createGridSelection = (
-  gridStore: coreStore.ReadStore<TableGrid | undefined>
+  itemsStore: coreStore.ReadStore<ItemList>,
+  fieldsStore: coreStore.ReadStore<TableDisplayedFields | undefined>
 ): GridSelectionStore => {
   const selectionStore = coreStore.createValueStore<GridSelection | null>({
     initial: null,
     isEqual: gridSelection.equal
   })
-  const getGrid = () => coreStore.peek(gridStore)
-  const unsubscribe = gridStore.subscribe(() => {
-    const grid = coreStore.read(gridStore)
-    selectionStore.update(current => grid
-      ? gridSelection.reconcile(
-          current,
-          grid.items,
-          grid.fields
-        )
-      : null
-    )
-  })
+  const readItems = () => coreStore.peek(itemsStore)
+  const readFields = () => coreStore.peek(fieldsStore)
+  const unsubscribe = coreStore.joinUnsubscribes([
+    itemsStore.subscribe(() => {
+      const fields = coreStore.read(fieldsStore)
+      selectionStore.update(current => fields
+        ? gridSelection.reconcile(
+            current,
+            coreStore.read(itemsStore),
+            fields
+          )
+        : null
+      )
+    }),
+    fieldsStore.subscribe(() => {
+      const fields = coreStore.read(fieldsStore)
+      selectionStore.update(current => fields
+        ? gridSelection.reconcile(
+            current,
+            coreStore.read(itemsStore),
+            fields
+          )
+        : null
+      )
+    })
+  ])
 
   return {
     store: selectionStore,
@@ -61,8 +77,8 @@ export const createGridSelection = (
       selectionStore.set(gridSelection.set(cell, anchor))
     },
     move: (rowDelta, columnDelta, options) => {
-      const grid = getGrid()
-      if (!grid) {
+      const fields = readFields()
+      if (!fields) {
         return
       }
 
@@ -70,21 +86,21 @@ export const createGridSelection = (
         current,
         rowDelta,
         columnDelta,
-        grid.items,
-        grid.fields,
+        readItems(),
+        fields,
         options
       ) ?? current)
     },
     first: rowId => {
-      const grid = getGrid()
-      if (!grid) {
+      const fields = readFields()
+      if (!fields) {
         return
       }
 
       selectionStore.update(current => gridSelection.first(
         current,
-        grid.items,
-        grid.fields,
+        readItems(),
+        fields,
         rowId
       ) ?? null)
     },

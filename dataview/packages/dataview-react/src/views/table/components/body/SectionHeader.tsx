@@ -9,7 +9,7 @@ import {
 } from '@dataview/react/dataview'
 import type { SectionId } from '@dataview/engine'
 import {
-  useStoreValue
+  useKeyedStoreValue
 } from '@shared/react'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
@@ -26,8 +26,7 @@ const View = (props: SectionHeaderProps) => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const table = useTableContext()
-  const grid = useStoreValue(dataView.model.table.grid)
-  const section = grid?.sections.get(props.sectionId)
+  const section = useKeyedStoreValue(dataView.model.table.section, props.sectionId)
   if (!section) {
     throw new Error('Table section header requires an active table section.')
   }

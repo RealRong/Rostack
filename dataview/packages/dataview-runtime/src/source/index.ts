@@ -12,3 +12,7 @@ export type {
   ItemSource,
   SectionSource
 } from '@dataview/runtime/source/contracts'
+
+export type {
+  RecordValueRef
+} from '@dataview/runtime/refs'

@@ -1,14 +1,15 @@
 import { store as coreStore } from '@shared/core'
-import type { CellRef, ItemId } from '@dataview/engine'
-import type {
-  TableGrid
-} from '@dataview/runtime'
+import type { CellRef, ItemId, ItemList } from '@dataview/engine'
 import {
   gridSelection,
   type GridSelection
 } from '@dataview/table'
 import type { GridSelectionEdges } from '@dataview/table/gridSelection'
-import { tableCell, tableCellKey } from '@dataview/react/views/table/runtime/cell'
+import {
+  tableCell,
+  tableCellKey
+} from '@dataview/runtime'
+import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields'
 
 export interface TableSelectRuntime {
   rows: coreStore.KeyedReadStore<ItemId, boolean>
@@ -33,14 +34,15 @@ const sameRange = (
 
 const collectCellKeys = (
   selection: GridSelection | null,
-  grid: TableGrid | undefined
+  items: ItemList,
+  fields: TableDisplayedFields | undefined
 ) => {
-  if (!selection || !grid) {
+  if (!selection || !fields) {
     return new Set<string>()
   }
 
-  const itemIds = gridSelection.itemIds(selection, grid.items)
-  const fieldIds = gridSelection.fieldIds(selection, grid.fields)
+  const itemIds = gridSelection.itemIds(selection, items)
+  const fieldIds = gridSelection.fieldIds(selection, fields)
   const keys = new Set<string>()
   itemIds.forEach(itemId => {
     fieldIds.forEach(fieldId => {
@@ -79,7 +81,8 @@ export const createTableSelectRuntime = (input: {
   rowMembershipStore: coreStore.KeyedReadStore<ItemId, boolean>
   previewMembershipStore: coreStore.KeyedReadStore<ItemId, boolean | null>
   gridSelectionStore: coreStore.ReadStore<GridSelection | null>
-  gridStore: coreStore.ReadStore<TableGrid | undefined>
+  itemsStore: coreStore.ReadStore<ItemList>
+  fieldsStore: coreStore.ReadStore<TableDisplayedFields | undefined>
   visibleStore: coreStore.ReadStore<boolean>
 }): TableSelectRuntime => {
   const rows = coreStore.createKeyedDerivedStore<ItemId, boolean>({
@@ -92,10 +95,10 @@ export const createTableSelectRuntime = (input: {
   })
   const range = coreStore.createDerivedStore<GridSelectionEdges | undefined>({
     get: () => {
-      const grid = coreStore.read(input.gridStore)
+      const fields = coreStore.read(input.fieldsStore)
       const selection = coreStore.read(input.gridSelectionStore)
-      return grid && selection
-        ? gridSelection.edges(selection, grid.items, grid.fields)
+      return fields && selection
+        ? gridSelection.edges(selection, coreStore.read(input.itemsStore), fields)
         : undefined
     },
     isEqual: sameRange
@@ -130,9 +133,14 @@ export const createTableSelectRuntime = (input: {
   let focusKey: string | undefined
 
   const sync = () => {
-    const grid = coreStore.peek(input.gridStore)
+    const items = coreStore.peek(input.itemsStore)
+    const fields = coreStore.peek(input.fieldsStore)
     const selection = coreStore.peek(input.gridSelectionStore)
-    const nextSelectedKeys = collectCellKeys(selection, grid)
+    const nextSelectedKeys = collectCellKeys(
+      selection,
+      items,
+      fields
+    )
     patchBooleanKeyedMembership(
       selectedState,
       selectedKeys,
@@ -176,7 +184,8 @@ export const createTableSelectRuntime = (input: {
       focus
     },
     dispose: coreStore.joinUnsubscribes([
-      input.gridStore.subscribe(sync),
+      input.itemsStore.subscribe(sync),
+      input.fieldsStore.subscribe(sync),
       input.gridSelectionStore.subscribe(sync)
     ])
   }

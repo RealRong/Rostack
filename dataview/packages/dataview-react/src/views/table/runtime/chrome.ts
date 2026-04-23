@@ -1,6 +1,6 @@
 import { store } from '@shared/core'
 import type { CellRef, ItemId } from '@dataview/engine'
-import { tableCellKey } from '@dataview/react/views/table/runtime/cell'
+import { tableCellKey } from '@dataview/runtime'
 
 export interface TableRowChrome {
   selected: boolean

@@ -132,7 +132,7 @@ export const createDataViewRuntime = (
   const createRecord = createRecordWorkflow({
     view: sourceRuntime.source.active.view
   })
-  const table = createTableModel(sourceRuntime.source.active)
+  const table = createTableModel(sourceRuntime.source)
   const valueEditor = createValueEditorApi()
   const activeItems = sourceRuntime.source.active.items.list
   const view = sourceRuntime.source.active.view

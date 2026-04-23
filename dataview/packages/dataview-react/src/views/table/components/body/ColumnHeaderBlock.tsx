@@ -5,14 +5,14 @@ import {
   memo
 } from 'react'
 import type {
-  Field,
   FieldId
 } from '@dataview/core/contracts'
 import type {
   ItemId
 } from '@dataview/engine'
 import type {
-  SelectionScope
+  SelectionScope,
+  TableColumn
 } from '@dataview/runtime'
 import { useTableContext } from '@dataview/react/views/table/context'
 import { ColumnHeaderRow } from '@dataview/react/views/table/components/column/ColumnHeaderRow'
@@ -22,7 +22,7 @@ export interface ColumnHeaderBlockProps {
   scope: SelectionScope<ItemId>
   label?: string
   measureRef?: (node: HTMLDivElement | null) => void
-  columns: readonly Field[]
+  columns: readonly TableColumn[]
   showVerticalLines: boolean
   wrap: boolean
   template: string

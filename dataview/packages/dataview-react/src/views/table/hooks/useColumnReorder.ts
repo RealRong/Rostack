@@ -45,14 +45,14 @@ export const useColumnReorder = (): ColumnReorderApi => {
   const dataView = useDataView()
   const editor = dataView.engine
   const table = useTableContext()
-  const grid = useStoreValue(dataView.model.table.grid)
-  if (!grid) {
-    throw new Error('Table column reorder requires an active table grid.')
+  const body = useStoreValue(dataView.model.table.body)
+  if (!body) {
+    throw new Error('Table column reorder requires an active table body.')
   }
 
-  const columns = grid.fields.all
+  const columns = body.columns
   const fieldIds = useMemo(
-    () => columns.map(field => field.id),
+    () => columns.map(column => column.field.id),
     [columns]
   )
   const sensors = useSensors(

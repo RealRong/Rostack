@@ -11,10 +11,10 @@ import type {
   ItemId
 } from '@dataview/engine'
 import type {
-  SelectionScope
+  SelectionScope,
+  TableColumn
 } from '@dataview/runtime'
 import type {
-  Field,
   FieldId
 } from '@dataview/core/contracts'
 import { columnSortId } from '@dataview/react/views/table/hooks/useColumnReorder'
@@ -26,7 +26,7 @@ export interface ColumnHeaderRowProps {
   scopeId: string
   scope: SelectionScope<ItemId>
   label?: string
-  columns: readonly Field[]
+  columns: readonly TableColumn[]
   showVerticalLines: boolean
   wrap: boolean
   template: string
@@ -39,7 +39,7 @@ export interface ColumnHeaderRowProps {
 
 interface ColumnHeaderFieldsProps {
   scopeId: string
-  columns: readonly Field[]
+  columns: readonly TableColumn[]
   showVerticalLines: boolean
   wrap: boolean
   template: string
@@ -52,7 +52,7 @@ interface ColumnHeaderFieldsProps {
 
 const ColumnHeaderFieldsView = (props: ColumnHeaderFieldsProps) => {
   const sortIds = useMemo(
-    () => props.columns.map(field => columnSortId(props.scopeId, field.id)),
+    () => props.columns.map(column => columnSortId(props.scopeId, column.field.id)),
     [props.columns, props.scopeId]
   )
 
@@ -67,14 +67,14 @@ const ColumnHeaderFieldsView = (props: ColumnHeaderFieldsProps) => {
           gridTemplateColumns: props.template
         }}
       >
-        {props.columns.map((field, index) => (
+        {props.columns.map((column, index) => (
           <ColumnHeader
-            key={field.id}
-            field={field}
-            sortId={sortIds[index] ?? columnSortId(props.scopeId, field.id)}
+            key={column.field.id}
+            column={column}
+            sortId={sortIds[index] ?? columnSortId(props.scopeId, column.field.id)}
             showVerticalLines={props.showVerticalLines}
             wrap={props.wrap}
-            resizeActive={field.id === props.resizingPropertyId}
+            resizeActive={column.field.id === props.resizingPropertyId}
             onResizeStart={props.onResizeStart}
           />
         ))}

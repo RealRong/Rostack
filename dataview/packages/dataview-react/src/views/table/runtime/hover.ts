@@ -7,7 +7,7 @@ import {
   sameHoverTarget,
   type TableHoverTarget
 } from '@dataview/react/views/table/model/hover'
-import { tableCellKey } from '@dataview/react/views/table/runtime/cell'
+import { tableCellKey } from '@dataview/runtime'
 
 export interface TableHoverRuntime {
   target: store.ReadStore<TableHoverTarget | null>

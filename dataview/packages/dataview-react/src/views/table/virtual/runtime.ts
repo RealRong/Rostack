@@ -1,10 +1,8 @@
 import type {
-  ItemId
+  ItemId,
+  Section,
+  SectionId
 } from '@dataview/engine'
-import type {
-  TableGrid,
-  TableViewState
-} from '@dataview/runtime'
 import {
   observeElementSize,
   pageScrollNode,
@@ -28,6 +26,9 @@ import {
   type TableLayoutState
 } from '@dataview/react/views/table/virtual/layoutState'
 import type { TableBlock } from '@dataview/react/views/table/virtual/types'
+import type {
+  TableBody
+} from '@dataview/runtime'
 import type {
   TableBlockId
 } from '@dataview/react/views/table/virtual/blockId'
@@ -270,19 +271,19 @@ const resolveMarqueeActive = (input: {
 
 const createTableLayoutStateStore = (
   input: {
-    grid: store.ReadStore<TableGrid | undefined>
-    view: store.ReadStore<TableViewState | undefined>
+    body: store.ReadStore<TableBody | null>
+    sectionIds: store.ReadStore<readonly SectionId[]>
+    section: store.KeyedReadStore<SectionId, Section | undefined>
   }
 ) => store.createDerivedStore<TableLayoutState | null>({
   get: () => {
-    const grid = store.read(input.grid)
-    const view = store.read(input.view)
-    if (!grid || !view) {
+    const body = store.read(input.body)
+    if (!body) {
       return null
     }
 
-    const nextSections = grid.sections.ids.flatMap(sectionId => {
-      const section = grid.sections.get(sectionId)
+    const nextSections = store.read(input.sectionIds).flatMap(sectionId => {
+      const section = store.read(input.section, sectionId)
       return section
         ? [{
             key: section.id,
@@ -293,23 +294,25 @@ const createTableLayoutStateStore = (
     })
 
     return createTableLayoutState({
-      grouped: Boolean(view.query.group),
+      grouped: body.grouped,
       sections: nextSections,
-      rowCount: grid.items.ids.length
+      rowCount: body.rowCount
     })
   },
   isEqual: sameTableLayoutState
 })
 
 export const createTableVirtualRuntime = (options: {
-  grid: store.ReadStore<TableGrid | undefined>
-  view: store.ReadStore<TableViewState | undefined>
+  body: store.ReadStore<TableBody | null>
+  sectionIds: store.ReadStore<readonly SectionId[]>
+  section: store.KeyedReadStore<SectionId, Section | undefined>
   marqueeActiveStore: store.ReadStore<boolean>
   layout: TableLayout
 }): TableVirtualRuntime => {
   const layoutStateStore = createTableLayoutStateStore({
-    grid: options.grid,
-    view: options.view
+    body: options.body,
+    sectionIds: options.sectionIds,
+    section: options.section
   })
   const measurementPlanStore = store.createDerivedStore<TableMeasurementPlan>({
     get: () => {

@@ -3,9 +3,6 @@ import type {
   ViewFieldRef
 } from '@dataview/engine'
 import type {
-  TableViewState
-} from '@dataview/runtime'
-import type {
   ValueEditorAnchor,
   ValueEditorApi,
 } from '@dataview/runtime'
@@ -119,11 +116,7 @@ const createTableSessionPolicy = (input: {
 
 export const createCellOpener = (options: {
   valueEditor: ValueEditorApi
-  resolveCell: (cell: CellRef) => {
-    recordId: string
-    fieldId: string
-  } | undefined
-  view: () => TableViewState | undefined
+  resolveField: (cell: CellRef) => ViewFieldRef | undefined
   gridSelection: GridSelectionStore
   dom: Dom
   revealCursor: () => void
@@ -160,24 +153,14 @@ export const createCellOpener = (options: {
   }
 
   return (input: CellOpenInput) => {
-    const view = options.view()
-    if (!view) {
-      return false
-    }
-
-    const resolved = options.resolveCell(input.cell)
-    if (!resolved) {
+    const field = options.resolveField(input.cell)
+    if (!field) {
       return false
     }
 
     return openTarget({
       cell: input.cell,
-      field: {
-        viewId: view.id,
-        itemId: input.cell.itemId,
-        recordId: resolved.recordId,
-        fieldId: resolved.fieldId
-      },
+      field,
       selectionCell: input.selectionCell,
       element: input.element,
       fallbackAnchor: input.fallbackAnchor,

@@ -6,15 +6,11 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type {
-  DataRecord,
-  RecordId
-} from '@dataview/core/contracts'
-import {
-  field as fieldApi
-} from '@dataview/core/field'
-import type { ItemId } from '@dataview/engine'
+  ItemId
+} from '@dataview/engine'
 import type {
-  SelectionCommandApi
+  SelectionCommandApi,
+  TableColumn
 } from '@dataview/runtime'
 import { shouldCapturePointer } from '@shared/dom'
 import {
@@ -30,13 +26,15 @@ import { Cell } from '@dataview/react/views/table/components/cell/Cell'
 import { RowRail } from '@dataview/react/views/table/components/row/RowRail'
 import { TABLE_TRAILING_ACTION_WIDTH } from '@dataview/react/views/table/layout'
 import {
-  useKeyedStoreValue,
-  useOptionalKeyedStoreValue,
-  useStoreValue
+  useKeyedStoreValue
 } from '@shared/react'
 
 export interface RowProps {
   itemId: ItemId
+  columns: readonly TableColumn[]
+  showVerticalLines: boolean
+  wrap: boolean
+  marqueeActive: boolean
   measureRef?: (node: HTMLDivElement | null) => void
   template: string
   dragActive: boolean
@@ -49,6 +47,10 @@ export interface RowProps {
 
 const same = (left: RowProps, right: RowProps) => (
   left.itemId === right.itemId
+  && left.columns === right.columns
+  && left.showVerticalLines === right.showVerticalLines
+  && left.wrap === right.wrap
+  && left.marqueeActive === right.marqueeActive
   && left.measureRef === right.measureRef
   && left.template === right.template
   && left.dragActive === right.dragActive
@@ -73,15 +75,22 @@ const View = (props: RowProps) => {
   const dataView = useDataView()
   const table = useTableContext()
   const rowNodeRef = useRef<HTMLDivElement | null>(null)
-  const body = useStoreValue(table.body)
+  const rowState = useKeyedStoreValue(
+    dataView.model.table.row,
+    props.itemId
+  )
+  const chrome = useKeyedStoreValue(
+    table.chrome.row,
+    props.itemId
+  )
 
   const rowRef = useCallback((node: HTMLDivElement | null) => {
     rowNodeRef.current = node
     props.measureRef?.(node)
   }, [props.measureRef])
 
-  if (!body) {
-    throw new Error('Table row requires an active body.')
+  if (!rowState) {
+    return null
   }
 
   useLayoutEffect(() => {
@@ -98,26 +107,13 @@ const View = (props: RowProps) => {
       itemDomBridge.clear.node(node)
     }
   }, [props.itemId, table.nodes])
-  const row = useKeyedStoreValue(
-    table.chrome.row,
-    props.itemId
-  )
-  const recordId = useOptionalKeyedStoreValue<ItemId, RecordId | undefined>(
-    dataView.source.active.items.read.record,
-    props.itemId,
-    undefined
-  )
-  const record = useOptionalKeyedStoreValue<RecordId, DataRecord | undefined>(
-    dataView.source.document.records,
-    recordId,
-    undefined
-  )
-  const selected = row.selected
+
+  const selected = chrome.selected
   const rail = rowRailState({
     dragActive: props.dragActive,
-    dragDisabled: !row.canDrag,
-    marqueeActive: body.marqueeActive,
-    exposed: row.exposed,
+    dragDisabled: !chrome.canDrag,
+    marqueeActive: props.marqueeActive,
+    exposed: chrome.exposed,
     selected
   })
   const rowTone = cn(
@@ -175,7 +171,7 @@ const View = (props: RowProps) => {
           rowId={props.itemId}
           selected={selected}
           state={rail}
-          marqueeActive={body.marqueeActive}
+          marqueeActive={props.marqueeActive}
           onSelectionPointerStart={onSelectionPointerStart}
           onDragPointerStart={event => {
             table.rail.set(null)
@@ -191,19 +187,15 @@ const View = (props: RowProps) => {
             gridTemplateColumns: props.template
           }}
         >
-          {body.columns.map(field => (
+          {props.columns.map(column => (
             <Cell
-              key={field.id}
-              itemId={props.itemId}
-              recordId={recordId}
-              viewId={body.viewId}
-              showVerticalLines={body.showVerticalLines}
-              wrap={body.wrap}
-              field={field}
-              value={record
-                ? fieldApi.value.read(record, field.id)
-                : undefined}
-              exists={Boolean(record)}
+              key={column.field.id}
+              cell={{
+                itemId: props.itemId,
+                fieldId: column.field.id
+              }}
+              showVerticalLines={props.showVerticalLines}
+              wrap={props.wrap}
             />
           ))}
         </div>

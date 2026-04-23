@@ -1,8 +1,11 @@
 import { store } from '@shared/core'
 import type { InteractionState } from '@dataview/react/interaction'
 import type {
-  TableViewState
+  TableBody
 } from '@dataview/runtime'
+import type {
+  ActiveViewQuery
+} from '@dataview/engine'
 
 export interface Capabilities {
   canHover: boolean
@@ -22,14 +25,16 @@ const equalCapabilities = (
 )
 
 export const createCapabilities = (options: {
-  view: store.ReadStore<TableViewState | undefined>
+  body: store.ReadStore<TableBody | null>
+  query: store.ReadStore<ActiveViewQuery>
   locked: store.ReadStore<boolean>
   interaction: store.ReadStore<InteractionState>
 }): store.ReadStore<Capabilities> => store.createDerivedStore<Capabilities>({
   get: () => {
     const locked = store.read(options.locked)
     const interaction = store.read(options.interaction)
-    const view = store.read(options.view)
+    const body = store.read(options.body)
+    const query = store.read(options.query)
     const canHover = !locked && (
       interaction.mode === 'idle'
       || interaction.mode === 'keyboard'
@@ -43,9 +48,9 @@ export const createCapabilities = (options: {
     return {
       canHover,
       canRowDrag: !locked && Boolean(
-        view
-        && view.query.sort.rules.length === 0
-        && !view.query.group
+        body
+        && query.sort.rules.length === 0
+        && !query.group
       ),
       canColumnResize: !locked,
       showFillHandle

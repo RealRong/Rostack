@@ -4,12 +4,11 @@ import {
   useLayoutEffect,
   useRef
 } from 'react'
-import type { Field, RecordId, ViewId } from '@dataview/core/contracts'
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import {
-  type ItemId
+import type {
+  CellRef
 } from '@dataview/engine'
 import { useDataView } from '@dataview/react/dataview'
 import { fieldAttrs } from '@dataview/react/dom/field'
@@ -27,37 +26,39 @@ import { cellChrome } from '@dataview/react/views/table/model/chrome'
 import {
   useKeyedStoreValue
 } from '@shared/react'
+import {
+  sameCellRef
+} from '@dataview/runtime'
+import type {
+  TableCell as TableCellModel
+} from '@dataview/runtime'
 
 export interface CellProps {
-  itemId: ItemId
-  recordId?: RecordId
-  viewId: ViewId
+  cell: CellRef
   showVerticalLines: boolean
   wrap: boolean
-  field: Field
-  value: unknown
-  exists: boolean
 }
 
-const same = (left: CellProps, right: CellProps) => (
-  left.itemId === right.itemId
-  && left.recordId === right.recordId
-  && left.viewId === right.viewId
+interface PresentCellProps extends CellProps {
+  value: TableCellModel
+}
+
+const sameCell = (left: CellProps, right: CellProps) => (
+  sameCellRef(left.cell, right.cell)
   && left.showVerticalLines === right.showVerticalLines
   && left.wrap === right.wrap
-  && left.field === right.field
-  && left.exists === right.exists
-  && Object.is(left.value, right.value)
 )
 
-const View = (props: CellProps) => {
+const samePresentCell = (left: PresentCellProps, right: PresentCellProps) => (
+  sameCell(left, right)
+  && left.value === right.value
+)
+
+const PresentCellView = (props: PresentCellProps) => {
   const engine = useDataView().engine
   const table = useTableContext()
   const cellNodeRef = useRef<HTMLDivElement | null>(null)
-  const chrome = useKeyedStoreValue(table.chrome.cell, {
-    itemId: props.itemId,
-    fieldId: props.field.id
-  })
+  const chrome = useKeyedStoreValue(table.chrome.cell, props.cell)
   const visual = cellChrome({
     selected: chrome.selected,
     frameActive: chrome.focus,
@@ -65,16 +66,12 @@ const View = (props: CellProps) => {
     fillHandleActive: chrome.fill,
     selectionVisible: true
   })
-  const canQuickToggle = fieldApi.behavior.canQuickToggle(props.field)
+  const canQuickToggle = fieldApi.behavior.canQuickToggle(props.value.field)
   const cellRef = useCallback((node: HTMLDivElement | null) => {
     cellNodeRef.current = node
-    table.nodes.registerCell({
-      itemId: props.itemId,
-      fieldId: props.field.id
-    }, node)
+    table.nodes.registerCell(props.cell, node)
   }, [
-    props.field.id,
-    props.itemId,
+    props.cell,
     table.nodes
   ])
 
@@ -84,44 +81,31 @@ const View = (props: CellProps) => {
       return
     }
 
-    itemDomBridge.bind.node(node, props.itemId)
+    itemDomBridge.bind.node(node, props.cell.itemId)
 
     return () => {
       itemDomBridge.clear.node(node)
     }
-  }, [props.itemId])
+  }, [props.cell.itemId])
 
   const onQuickToggle = () => {
     const action = fieldApi.behavior.primaryAction({
-      exists: props.exists,
-      field: props.field,
-      value: props.value
+      exists: true,
+      field: props.value.field,
+      value: props.value.value
     })
     if (action.kind !== 'quickToggle') {
       return
     }
 
-    table.selection.cells.set({
-      itemId: props.itemId,
-      fieldId: props.field.id
-    })
+    table.selection.cells.set(props.cell)
     table.focus()
     if (action.value === undefined) {
-      engine.active.cells.clear({
-        itemId: props.itemId,
-        fieldId: props.field.id
-      })
+      engine.active.cells.clear(props.cell)
       return
     }
 
-    engine.active.cells.set({
-      itemId: props.itemId,
-      fieldId: props.field.id
-    }, action.value)
-  }
-
-  if (!props.exists || !props.recordId) {
-    return null
+    engine.active.cells.set(props.cell, action.value)
   }
 
   return (
@@ -129,13 +113,13 @@ const View = (props: CellProps) => {
       ref={cellRef}
       data-table-target="cell"
       data-table-cell="true"
-      data-row-id={props.itemId}
-      data-field-id={props.field.id}
+      data-row-id={props.cell.itemId}
+      data-field-id={props.value.field.id}
       {...fieldAttrs({
-        viewId: props.viewId,
-        itemId: props.itemId,
-        recordId: props.recordId,
-        fieldId: props.field.id
+        viewId: props.value.viewId,
+        itemId: props.cell.itemId,
+        recordId: props.value.recordId,
+        fieldId: props.value.field.id
       })}
       role="gridcell"
       aria-selected={chrome.selected}
@@ -169,8 +153,8 @@ const View = (props: CellProps) => {
       >
         <div className="min-w-0 flex-1">
           <CellValue
-            field={props.field}
-            value={props.value}
+            field={props.value.field}
+            value={props.value.value}
             canQuickToggle={canQuickToggle}
             onQuickToggle={onQuickToggle}
             wrap={props.wrap}
@@ -184,8 +168,8 @@ const View = (props: CellProps) => {
           tabIndex={-1}
           data-table-target="fill-handle"
           data-table-fill-handle="true"
-          data-row-id={props.itemId}
-          data-field-id={props.field.id}
+          data-row-id={props.cell.itemId}
+          data-field-id={props.value.field.id}
           className="absolute -bottom-1 -right-1 z-20 h-[9px] w-[9px] box-border cursor-ns-resize rounded-full border-2 border-primary bg-background transition-transform touch-none"
         />
       ) : null}
@@ -193,4 +177,25 @@ const View = (props: CellProps) => {
   )
 }
 
-export const Cell = memo(View, same)
+const PresentCell = memo(PresentCellView, samePresentCell)
+
+const CellSlotView = (props: CellProps) => {
+  const dataView = useDataView()
+  const value = useKeyedStoreValue(
+    dataView.model.table.cell,
+    props.cell
+  )
+
+  if (!value) {
+    return null
+  }
+
+  return (
+    <PresentCell
+      {...props}
+      value={value}
+    />
+  )
+}
+
+export const Cell = memo(CellSlotView, sameCell)

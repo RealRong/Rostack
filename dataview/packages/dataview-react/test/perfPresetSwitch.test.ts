@@ -19,17 +19,16 @@ const getPreset = (presetId: PerfPresetId) => {
 }
 
 const assertResolvedTableRows = (runtime: ReturnType<typeof createDataViewRuntime>) => {
-  const grid = runtime.model.table.grid.get()
-  const view = runtime.model.table.view.get()
+  const body = runtime.model.table.body.get()
+  const items = runtime.source.active.items.list.get()
 
-  assert.ok(view)
-  assert.ok(grid)
-  assert.ok(view.displayFieldIds.length > 0)
-  assert.ok(grid.fields.ids.length > 0)
-  assert.ok(grid.items.ids.length > 0)
+  assert.ok(body)
+  assert.ok(body.columns.length > 0)
+  assert.ok(items.ids.length > 0)
 
-  grid.items.ids.slice(0, 32).forEach(itemId => {
-    const recordId = grid.items.read.record(itemId)
+  items.ids.slice(0, 32).forEach(itemId => {
+    const row = runtime.model.table.row.get(itemId)
+    const recordId = row?.recordId
     assert.ok(recordId, `Missing recordId for item ${itemId}`)
     assert.ok(runtime.source.document.records.get(recordId), `Missing record ${recordId} for item ${itemId}`)
   })

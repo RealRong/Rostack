@@ -1,7 +1,7 @@
 import { store } from '@shared/core'
 import type {
-  TableGrid
-} from '@dataview/runtime'
+  ItemList
+} from '@dataview/engine'
 import {
   createGridSelection,
   type GridSelectionStore
@@ -10,6 +10,7 @@ import type {
   ItemSelectionController,
   ItemSelectionSnapshot
 } from '@dataview/runtime'
+import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields'
 
 export type TableSelectionMode =
   | 'none'
@@ -31,10 +32,14 @@ const hasRows = (
 ) => selection.selectedCount > 0
 
 export const createTableSelectionRuntime = (input: {
-  gridStore: store.ReadStore<TableGrid | undefined>
+  itemsStore: store.ReadStore<ItemList>
+  fieldsStore: store.ReadStore<TableDisplayedFields | undefined>
   rowSelection: ItemSelectionController
 }): TableSelectionRuntime => {
-  const baseCells = createGridSelection(input.gridStore)
+  const baseCells = createGridSelection(
+    input.itemsStore,
+    input.fieldsStore
+  )
   const clearRows = () => {
     if (!hasRows(input.rowSelection.state.getSnapshot())) {
       return

@@ -24,6 +24,7 @@ import type {
   SectionId,
   SectionList
 } from '@dataview/engine'
+import type { RecordValueRef } from '@dataview/runtime/refs'
 
 export interface EntitySource<Key, Value> extends store.KeyedReadStore<Key, Value | undefined> {
   ids: store.ReadStore<readonly Key[]>
@@ -51,6 +52,7 @@ export interface ItemSource {
 export interface DocumentSource {
   meta: store.ReadStore<DataDoc['meta']>
   records: EntitySource<RecordId, DataRecord>
+  values: store.KeyedReadStore<RecordValueRef, unknown>
   fields: ListedEntitySource<FieldId, CustomField>
   views: ListedEntitySource<ViewId, View>
 }

@@ -1,13 +1,22 @@
 import type { Viewport } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { HistoryApi } from '@whiteboard/history'
-import { createEditorActions } from '@whiteboard/editor/action'
+import {
+  createEditorActionCommands,
+  createEditorActions
+} from '@whiteboard/editor/action'
+import {
+  createEditorCommandContext,
+  type EditorCommandContext
+} from '@whiteboard/editor/command/context'
+import { createEditorCommandRunner } from '@whiteboard/editor/command/runner'
+import { createEditorCommandTaskRuntime } from '@whiteboard/editor/command/task'
 import { createDocumentRead } from '@whiteboard/editor/document/read'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorStore } from '@whiteboard/editor/editor/store'
+import { createEditorInputOps } from '@whiteboard/editor/input/ops'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
-import { createProjectionAnimationSource } from '@whiteboard/editor/projection/animation'
 import { createProjectionController } from '@whiteboard/editor/projection/controller'
 import { createGraphRead } from '@whiteboard/editor/read/graph'
 import { createEditorRead } from '@whiteboard/editor/read/public'
@@ -22,42 +31,10 @@ import {
   DEFAULT_EDITOR_DEFAULTS,
   type EditorDefaults
 } from '@whiteboard/editor/types/defaults'
-import type {
-  LayoutBackend
-} from '@whiteboard/editor/types/layout'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
-import { createNodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { LayoutBackend } from '@whiteboard/editor/types/layout'
+import { createNodeTypeSupport, type NodeRegistry } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
-
-const isRecord = (
-  value: unknown
-): value is Record<string, unknown> => (
-  typeof value === 'object'
-  && value !== null
-  && !Array.isArray(value)
-)
-
-const wrapBoundary = <T extends Record<string, unknown>>(
-  value: T,
-  run: <TResult>(fn: () => TResult) => TResult
-): T => Object.fromEntries(
-  Object.entries(value).map(([key, entry]) => {
-    if (typeof entry === 'function') {
-      return [
-        key,
-        (...args: unknown[]) => run(() => entry(...args))
-      ]
-    }
-
-    return [
-      key,
-      isRecord(entry)
-        ? wrapBoundary(entry, run)
-        : entry
-    ]
-  })
-) as T
 
 export const createEditor = ({
   engine,
@@ -106,12 +83,6 @@ export const createEditor = ({
     session,
     layout
   })
-  const projectionAnimation = createProjectionAnimationSource({
-    engine,
-    session,
-    mark: projection.mark,
-    flush: projection.flush
-  })
   const graph = createGraphRead({
     document,
     sources: projection.sources,
@@ -126,32 +97,61 @@ export const createEditor = ({
     projection: graph,
     layout
   })
-  const rawActions = createEditorActions({
+  const context = createEditorCommandContext({
+    engine,
+    document,
+    graph,
+    session,
+    sessionRead,
+    layout,
+    write
+  })
+  let runner: ReturnType<typeof createEditorCommandRunner<EditorCommandContext>>
+  const tasks = createEditorCommandTaskRuntime({
+    execute: (command) => {
+      if (!runner) {
+        throw new Error('Editor command runner is not ready.')
+      }
+
+      runner.execute(command)
+    }
+  })
+  runner = createEditorCommandRunner({
+    controller: projection,
+    context,
+    tasks
+  })
+  const commands = createEditorActionCommands({
     document,
     session,
-    projection: graph,
-    publish: {
-      flush: () => {
-        projection.flush()
-      }
-    },
+    graph,
     layout,
     write,
     registry,
     defaults: defaults.templates
   })
-  const actions = wrapBoundary(rawActions, projection.run)
-  const rawHost = createEditorHost({
+  const actions = createEditorActions({
+    runner,
+    commands
+  })
+  const ops = createEditorInputOps({
+    document,
+    graph,
+    registry,
+    session,
+    write
+  })
+  const host = createEditorHost({
     engine,
     document,
-    session,
     projection: graph,
     sessionRead,
+    session,
     layout,
     write,
-    actions: rawActions
+    ops,
+    runner
   })
-  const host = wrapBoundary(rawHost, projection.run)
   const events = createEditorEvents({
     engine,
     session,
@@ -176,9 +176,9 @@ export const createEditor = ({
     events: events.events,
     dispose: () => {
       events.dispose()
-      projectionAnimation.dispose()
-      projection.dispose()
       host.cancel()
+      runner.dispose()
+      projection.dispose()
       session.reset()
       layout.text.clear()
     }

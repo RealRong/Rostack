@@ -7,12 +7,16 @@ import type {
   DateValue,
   FieldId,
   Filter,
-  Sorter,
+  FilterRule,
+  Sort,
+  SortDirection,
+  SortRule,
   View,
   ViewGroup,
   ViewOptions,
   ViewType
 } from '@dataview/core/contracts'
+import { entityTable } from '@shared/core'
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts'
@@ -136,9 +140,34 @@ const createSeededRandom = (seed: number): RandomSource => {
 
 const createEntityTable = <T extends {
   id: string
-}>(items: readonly T[]) => ({
-  byId: Object.fromEntries(items.map(item => [item.id, item])) as Record<T['id'], T>,
-  order: items.map(item => item.id)
+}>(items: readonly T[]) => entityTable.normalize.list(items)
+
+type SortSeed = {
+  fieldId?: FieldId
+  direction?: SortDirection
+}
+
+const createEmptyFilter = (): Filter => ({
+  mode: 'and',
+  rules: createEntityTable<FilterRule>([])
+})
+
+const createSort = (
+  viewId: string,
+  rules: readonly SortSeed[] | undefined
+): Sort => ({
+  rules: createEntityTable((rules ?? []).map((rule, index) => {
+    const fieldId = rule.fieldId
+    if (!fieldId) {
+      throw new Error(`Sort preset at ${viewId}[${index}] is missing fieldId`)
+    }
+
+    return {
+      id: `${viewId}_sort_${index + 1}`,
+      fieldId,
+      direction: rule.direction === 'desc' ? 'desc' : 'asc'
+    } satisfies SortRule
+  }))
 })
 
 const createTextField = (
@@ -253,7 +282,7 @@ const createView = (input: {
   name: string
   fields: readonly CustomField[]
   displayFields: readonly FieldId[]
-  sort?: readonly Sorter[]
+  sort?: readonly SortSeed[]
   group?: ViewGroup
   calc?: Partial<Record<FieldId, CalculationMetric>>
   filter?: Filter
@@ -265,11 +294,8 @@ const createView = (input: {
   search: {
     query: ''
   },
-  filter: input.filter ?? {
-    mode: 'and',
-    rules: []
-  },
-  sort: [...(input.sort ?? [])],
+  filter: input.filter ?? createEmptyFilter(),
+  sort: createSort(input.id, input.sort),
   ...(input.group
     ? {
         group: {
@@ -1247,7 +1273,7 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
       'tags'
     ],
     sort: [{
-      field: 'targetDate',
+      fieldId: 'targetDate',
       direction: 'asc'
     }],
     calc: {
@@ -1288,7 +1314,7 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
       'summary'
     ],
     sort: [{
-      field: 'priority',
+      fieldId: 'priority',
       direction: 'asc'
     }],
     options: {
@@ -1480,7 +1506,7 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
       'tags'
     ],
     sort: [{
-      field: 'expectedRevenue',
+      fieldId: 'expectedRevenue',
       direction: 'desc'
     }],
     calc: {
@@ -1658,7 +1684,7 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
       'summary'
     ],
     sort: [{
-      field: 'publishDate',
+      fieldId: 'publishDate',
       direction: 'asc'
     }],
     calc: {
@@ -1692,7 +1718,7 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
       'tags'
     ],
     sort: [{
-      field: 'publishDate',
+      fieldId: 'publishDate',
       direction: 'asc'
     }],
     calc: {
@@ -1930,7 +1956,7 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
       'labels'
     ],
     sort: [{
-      field: 'updatedAt',
+      fieldId: 'updatedAt',
       direction: 'desc'
     }],
     group: {
@@ -1977,7 +2003,7 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
       'notes'
     ],
     sort: [{
-      field: 'updatedAt',
+      fieldId: 'updatedAt',
       direction: 'desc'
     }]
   })
@@ -2185,7 +2211,7 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
       'reviewDate'
     ],
     sort: [{
-      field: 'forecast',
+      fieldId: 'forecast',
       direction: 'desc'
     }],
     group: {

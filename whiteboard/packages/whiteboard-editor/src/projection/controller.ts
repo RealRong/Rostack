@@ -39,7 +39,6 @@ export interface ProjectionController {
   }
   mark(delta: InputDelta): void
   flush(): Result | null
-  run<T>(fn: () => T): T
   subscribe(listener: (result: Result) => void): () => void
   dispose(): void
 }
@@ -211,8 +210,7 @@ export const createProjectionController = ({
     engine: engine.current(),
     pending: createEmptyEditorGraphInputDelta(),
     flushing: false,
-    scheduled: false,
-    runDepth: 0
+    scheduled: false
   }
 
   let currentEdit = store.read(session.state.edit)
@@ -227,7 +225,7 @@ export const createProjectionController = ({
   }
 
   const scheduleFlush = () => {
-    if (state.scheduled || state.runDepth > 0) {
+    if (state.scheduled) {
       return
     }
 
@@ -266,27 +264,12 @@ export const createProjectionController = ({
       }
     } finally {
       state.flushing = false
-      if (hasEditorGraphInputDelta(state.pending) && state.runDepth === 0) {
+      if (hasEditorGraphInputDelta(state.pending)) {
         scheduleFlush()
       }
     }
 
     return currentResult
-  }
-
-  const run = <T,>(
-    fn: () => T
-  ) => {
-    state.runDepth += 1
-
-    try {
-      return fn()
-    } finally {
-      state.runDepth -= 1
-      if (state.runDepth === 0) {
-        flush()
-      }
-    }
   }
 
   const unsubscribes = [
@@ -342,7 +325,6 @@ export const createProjectionController = ({
     }),
     mark,
     flush,
-    run,
     subscribe: (listener) => {
       listeners.add(listener)
       return () => {

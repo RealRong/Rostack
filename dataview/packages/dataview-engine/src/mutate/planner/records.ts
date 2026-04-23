@@ -14,10 +14,12 @@ import {
   fieldSpec
 } from '@dataview/core/field/spec'
 import {
+  id as dataviewId
+} from '@dataview/core/id'
+import {
   collection,
   string
 } from '@shared/core'
-import { createRecordId } from '@dataview/engine/mutate/entityId'
 import type {
   PlannedActionResult,
   PlannerScope
@@ -163,7 +165,7 @@ const lowerRecordCreate = (
   }
 
   const record = {
-    id: explicitRecordId || createRecordId(),
+    id: explicitRecordId || dataviewId.create('record'),
     title: string.trimToUndefined(action.input.title) ?? '',
     type: action.input.type ?? resolveDefaultRecordType(scope.reader),
     values: resolveRecordCreateValues(scope.reader, action.input.values),

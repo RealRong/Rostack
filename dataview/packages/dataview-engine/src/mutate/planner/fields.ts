@@ -11,10 +11,12 @@ import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
+  id as dataviewId
+} from '@dataview/core/id'
+import {
   view as viewApi
 } from '@dataview/core/view'
 import { equal, string } from '@shared/core'
-import { createFieldId } from '@dataview/engine/mutate/entityId'
 import { validateField } from '@dataview/engine/mutate/validate/field'
 import type {
   PlannedActionResult,
@@ -186,7 +188,7 @@ const lowerFieldCreate = (
   }
 
   const field = fieldApi.create.default({
-    id: explicitFieldId || createFieldId(),
+    id: explicitFieldId || dataviewId.create('field'),
     name: action.input.name,
     kind: action.input.kind ?? 'text',
     meta: action.input.meta
@@ -285,7 +287,7 @@ const lowerFieldDuplicate = (
     return scope.finish()
   }
 
-  const nextFieldId = createFieldId()
+  const nextFieldId = dataviewId.create('field')
   const nextField: CustomField = {
     ...structuredClone(sourceField),
     id: nextFieldId,

@@ -584,7 +584,7 @@ const readReconnectWorld = ({
   : world
 
 const commitConnectState = (
-  ctx: Pick<EditorHostDeps, 'write' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'write' | 'ops'>,
   state: EdgeConnectState,
   reconnectDraftPatch?: EdgePatch
 ) => {
@@ -630,16 +630,16 @@ const commitConnectState = (
     return
   }
 
-  ctx.actions.tool.set({
+  ctx.ops.tool.set({
     type: 'select'
   })
-  ctx.actions.selection.replace({
+  ctx.ops.selection.replace({
     edgeIds: [result.data.edgeId]
   })
 }
 
 export const createEdgeConnectSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'snap' | 'write' | 'ops'>,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial

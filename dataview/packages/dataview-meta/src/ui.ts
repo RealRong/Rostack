@@ -4,7 +4,7 @@ import type {
   KanbanCardsPerColumn,
   Field,
   FilterRule,
-  Sorter,
+  SortRule,
   ViewType
 } from '@dataview/core/contracts'
 import { token, type Token } from '@shared/i18n'
@@ -198,31 +198,31 @@ export const ui = {
         : token('meta.ui.viewSettings.filterSummary.single', '1 filter')
     },
     sortSummary: (
-      sorters: readonly Sorter[],
+      rules: readonly SortRule[],
       fields: readonly Field[]
     ) => {
-      if (!sorters.length) {
+      if (!rules.length) {
         return token('meta.ui.viewSettings.sortSummary.empty', 'Manual')
       }
 
-      if (sorters.length > 1) {
+      if (rules.length > 1) {
         return summarizeCount(
           'meta.ui.viewSettings.sortSummary',
           '1 sort',
           '{count} sorts',
-          sorters.length
+          rules.length
         )
       }
 
-      const sorterItem = sorters[0]
-      const field = findField(fields, sorterItem?.field)
+      const rule = rules[0]
+      const field = findField(fields, rule?.fieldId)
       if (!field) {
         return token('meta.ui.viewSettings.sortSummary.single', '1 sort')
       }
 
       return token('meta.ui.viewSettings.sortSummary.field', '{{field}} · {{direction}}', {
         field: field.name,
-        direction: sort.direction.get(sorterItem.direction).token
+        direction: sort.direction.get(rule.direction).token
       })
     },
     routeTitle: (kind: SettingsRouteKind) => {

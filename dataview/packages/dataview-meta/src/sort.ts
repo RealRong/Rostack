@@ -1,6 +1,6 @@
 import type {
   SortDirection,
-  Sorter
+  SortRule
 } from '@dataview/core/contracts'
 import { defineMetaCollection } from '@dataview/meta/shared'
 import {
@@ -32,13 +32,13 @@ export const sort = {
       token: token('meta.sort.direction.unknown', id ?? 'Ascending')
     })
   }),
-  summary: (sorters: readonly Sorter[]) => ({
-    token: !sorters.length
+  summary: (rules: readonly SortRule[]) => ({
+    token: !rules.length
       ? token('meta.sort.summary.empty', 'Sort')
-      : sorters.length === 1
+      : rules.length === 1
         ? token('meta.sort.summary.single', '1 sort')
         : token('meta.sort.summary.multiple', '{{count}} sorts', {
-            count: sorters.length
+            count: rules.length
           })
   })
 } as const

@@ -65,7 +65,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'ops'>,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (
@@ -88,7 +88,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    ctx.actions.selection.replace(input.visibility.selection)
+    ctx.ops.selection.replace(input.visibility.selection)
   }
 
   if (pickedNodeId) {
@@ -109,7 +109,7 @@ export const createMoveInteraction = (
       session.cleanup = () => {
         cleanup?.()
         if (restoreSelection) {
-          ctx.actions.selection.replace(restoreSelection)
+          ctx.ops.selection.replace(restoreSelection)
         }
       }
 
@@ -210,7 +210,7 @@ export const createMoveInteraction = (
     },
     cleanup: () => {
       if (restoreSelection) {
-        ctx.actions.selection.replace(restoreSelection)
+        ctx.ops.selection.replace(restoreSelection)
       }
     }
   }

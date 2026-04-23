@@ -1,6 +1,10 @@
 import type {
-  EditorActions
-} from '@whiteboard/editor/action/types'
+  EditorCommandContext
+} from '@whiteboard/editor/command/context'
+import type {
+  EditorCommandRunner,
+  EditorCommandTree
+} from '@whiteboard/editor/command/contracts'
 import type {
   EditorInputHost,
   EditorStore
@@ -10,6 +14,12 @@ import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
+import type { EditorInputOps } from '@whiteboard/editor/input/ops'
+
+export type EditorInputCommands = EditorCommandTree<
+  EditorCommandContext,
+  EditorInputHost
+>
 
 const readSelectionIntent = (
   selection: EditorStore['selection'],
@@ -33,13 +43,13 @@ export const createEditorInputHost = ({
   edgeHover,
   document,
   session,
-  actions
+  ops
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
   document: Pick<DocumentRead, 'group'>
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction'>
-  actions: Pick<EditorActions, 'selection'>
+  ops: Pick<EditorInputOps, 'selection'>
 }): EditorInputHost => {
   const writePointer = (sample: {
     client: { x: number, y: number }
@@ -90,7 +100,7 @@ export const createEditorInputHost = ({
             return readSelectionIntent(session.state.selection, input.screen)
           }
 
-          actions.selection.replace({
+          ops.selection.replace({
             nodeIds: [input.pick.id]
           })
           return readSelectionIntent(session.state.selection, input.screen)
@@ -105,11 +115,11 @@ export const createEditorInputHost = ({
             }
           }
 
-          actions.selection.replace(target)
+          ops.selection.replace(target)
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'edge':
-          actions.selection.replace({
+          ops.selection.replace({
             edgeIds: [input.pick.id]
           })
           return {
@@ -187,3 +197,63 @@ export const createEditorInputHost = ({
     }
   }
 }
+
+export const createEditorInputCommands = ({
+  host
+}: {
+  host: EditorInputHost
+}): EditorInputCommands => ({
+  contextMenu: function* (_ctx, input) {
+    return host.contextMenu(input)
+  },
+  pointerDown: function* (_ctx, input) {
+    return host.pointerDown(input)
+  },
+  pointerMove: function* (_ctx, input) {
+    return host.pointerMove(input)
+  },
+  pointerUp: function* (_ctx, input) {
+    return host.pointerUp(input)
+  },
+  pointerCancel: function* (_ctx, input) {
+    return host.pointerCancel(input)
+  },
+  pointerLeave: function* (_ctx) {
+    host.pointerLeave()
+  },
+  wheel: function* (_ctx, input) {
+    return host.wheel(input)
+  },
+  cancel: function* (_ctx) {
+    host.cancel()
+  },
+  keyDown: function* (_ctx, input) {
+    return host.keyDown(input)
+  },
+  keyUp: function* (_ctx, input) {
+    return host.keyUp(input)
+  },
+  blur: function* (_ctx) {
+    host.blur()
+  }
+})
+
+export const bindEditorInputHost = ({
+  runner,
+  commands
+}: {
+  runner: Pick<EditorCommandRunner<EditorCommandContext>, 'bind'>
+  commands: EditorInputCommands
+}): EditorInputHost => ({
+  contextMenu: runner.bind(commands.contextMenu),
+  pointerDown: runner.bind(commands.pointerDown),
+  pointerMove: runner.bind(commands.pointerMove),
+  pointerUp: runner.bind(commands.pointerUp),
+  pointerCancel: runner.bind(commands.pointerCancel),
+  pointerLeave: runner.bind(commands.pointerLeave),
+  wheel: runner.bind(commands.wheel),
+  cancel: runner.bind(commands.cancel),
+  keyDown: runner.bind(commands.keyDown),
+  keyUp: runner.bind(commands.keyUp),
+  blur: runner.bind(commands.blur)
+})

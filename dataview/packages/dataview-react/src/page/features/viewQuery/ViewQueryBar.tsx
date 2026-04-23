@@ -47,8 +47,14 @@ export const ViewQueryBar = () => {
           open={query.route?.kind === 'sort'}
           onOpenChange={open => {
             if (open) {
+              const firstRuleId = sorts[0]?.rule.id
+              if (!firstRuleId) {
+                return
+              }
+
               page.query.open({
-                kind: 'sort'
+                kind: 'sort',
+                id: firstRuleId
               })
               return
             }
@@ -58,16 +64,16 @@ export const ViewQueryBar = () => {
         />
       ) : null}
 
-      {filters.map((entry, index) => (
+      {filters.map(entry => (
         <FilterRulePopover
-          key={`filter_${entry.rule.fieldId}_${index}`}
+          key={entry.rule.id}
           entry={entry}
-          open={query.route?.kind === 'filter' && query.route.index === index}
+          open={query.route?.kind === 'filter' && query.route.id === entry.rule.id}
           onOpenChange={open => {
             if (open) {
               page.query.open({
                 kind: 'filter',
-                index
+                id: entry.rule.id
               })
               return
             }
@@ -75,13 +81,13 @@ export const ViewQueryBar = () => {
             page.query.close()
           }}
           onPresetChange={presetId => {
-            currentViewDomain?.filters.setPreset(index, presetId)
+            currentViewDomain?.filters.patch(entry.rule.id, { presetId })
           }}
           onValueChange={value => {
-            currentViewDomain?.filters.setValue(index, value)
+            currentViewDomain?.filters.patch(entry.rule.id, { value })
           }}
           onRemove={() => {
-            currentViewDomain?.filters.remove(index)
+            currentViewDomain?.filters.remove(entry.rule.id)
             page.query.close()
           }}
         />
@@ -89,11 +95,11 @@ export const ViewQueryBar = () => {
 
       {availableFilterFields.length ? (
         <Popover
-          open={query.route?.kind === 'addFilter'}
+          open={query.route?.kind === 'filterCreate'}
           onOpenChange={open => {
             if (open) {
               page.query.open({
-                kind: 'addFilter'
+                kind: 'filterCreate'
               })
               return
             }
@@ -108,7 +114,7 @@ export const ViewQueryBar = () => {
         >
           <Popover.Trigger>
             <QueryChip
-              state={query.route?.kind === 'addFilter' ? 'open' : 'add'}
+              state={query.route?.kind === 'filterCreate' ? 'open' : 'add'}
               trailing={<ChevronDown className="shrink-0" size={14} strokeWidth={1.8} />}
             >
               {`+ ${t(meta.ui.filter.label)}`}
@@ -123,10 +129,14 @@ export const ViewQueryBar = () => {
               <FieldPicker
                 fields={availableFilterFields}
                 onSelect={fieldId => {
-                  currentViewDomain?.filters.add(fieldId)
+                  if (!currentViewDomain) {
+                    return
+                  }
+
+                  const id = currentViewDomain.filters.create(fieldId)
                   page.query.open({
                     kind: 'filter',
-                    index: filters.length
+                    id
                   })
                 }}
               />
@@ -137,11 +147,11 @@ export const ViewQueryBar = () => {
 
       {!sorts.length && availableSorterFields.length ? (
         <Popover
-          open={query.route?.kind === 'addSort'}
+          open={query.route?.kind === 'sortCreate'}
           onOpenChange={open => {
             if (open) {
               page.query.open({
-                kind: 'addSort'
+                kind: 'sortCreate'
               })
               return
             }
@@ -156,7 +166,7 @@ export const ViewQueryBar = () => {
         >
           <Popover.Trigger>
             <QueryChip
-              state={query.route?.kind === 'addSort' ? 'open' : 'add'}
+              state={query.route?.kind === 'sortCreate' ? 'open' : 'add'}
               trailing={<ChevronDown className="shrink-0" size={14} strokeWidth={1.8} />}
             >
               {`+ ${t(meta.ui.sort.label)}`}
@@ -171,9 +181,14 @@ export const ViewQueryBar = () => {
               <FieldPicker
                 fields={availableSorterFields}
                 onSelect={fieldId => {
-                  currentViewDomain?.sort.add(fieldId)
+                  if (!currentViewDomain) {
+                    return
+                  }
+
+                  const id = currentViewDomain.sort.create(fieldId)
                   page.query.open({
-                    kind: 'sort'
+                    kind: 'sort',
+                    id
                   })
                 }}
               />

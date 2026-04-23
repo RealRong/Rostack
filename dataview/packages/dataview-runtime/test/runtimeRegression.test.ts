@@ -11,6 +11,7 @@ import {
 import {
   createItemArraySelectionScope
 } from '@dataview/runtime'
+import { entityTable } from '@shared/core'
 
 const FIELD_STATUS = 'status'
 const VIEW_TABLE = 'view_table'
@@ -47,10 +48,32 @@ const createFields = (): readonly Field[] => ([
   }
 ])
 
-const createFieldTable = (fields: readonly Field[]) => ({
-  byId: Object.fromEntries(fields.map(field => [field.id, field])),
-  order: fields.map(field => field.id)
+const createFieldTable = (fields: readonly Field[]) => entityTable.normalize.list(fields)
+
+const createEmptyFilter = () => ({
+  mode: 'and' as const,
+  rules: entityTable.normalize.list([])
 })
+
+const createEmptySort = () => ({
+  rules: entityTable.normalize.list([])
+})
+
+const addOptionFilter = (
+  engine: ReturnType<typeof createEngine>,
+  fieldId: string,
+  optionIds: readonly string[]
+) => {
+  const id = engine.active.filters.create(fieldId)
+  engine.active.filters.patch(id, {
+    presetId: 'eq',
+    value: {
+      kind: 'option-set',
+      optionIds: [...optionIds]
+    }
+  })
+  return id
+}
 
 const createView = (input: {
   id: string
@@ -63,14 +86,11 @@ const createView = (input: {
     id: input.id,
     type: input.type,
     name: input.name,
-    filter: {
-      mode: 'and',
-      rules: []
-    },
+    filter: createEmptyFilter(),
     search: {
       query: ''
     },
-    sort: [],
+    sort: createEmptySort(),
     calc: {},
     display: {
       fields: [TITLE_FIELD_ID, FIELD_STATUS]
@@ -234,16 +254,11 @@ describe('data view runtime regressions', () => {
 
     assertReadableCards(['rec_1', 'rec_2', 'rec_3'])
 
-    engine.active.filters.add(FIELD_STATUS)
-    engine.active.filters.update(0, {
-      fieldId: FIELD_STATUS,
-      presetId: 'eq',
-      value: 'done'
-    })
+    const filterId = addOptionFilter(engine, FIELD_STATUS, ['done'])
 
     assertReadableCards(['rec_3'])
 
-    engine.active.filters.remove(0)
+    engine.active.filters.remove(filterId)
 
     assertReadableCards(['rec_1', 'rec_2', 'rec_3'])
 
@@ -260,12 +275,7 @@ describe('data view runtime regressions', () => {
 
     engine.active.summary.set(FIELD_STATUS, 'countByOption')
     engine.active.group.set(FIELD_STATUS)
-    engine.active.filters.add(FIELD_STATUS)
-    engine.active.filters.update(0, {
-      fieldId: FIELD_STATUS,
-      presetId: 'eq',
-      value: 'blocked'
-    })
+    addOptionFilter(engine, FIELD_STATUS, ['blocked'])
 
     expect(runtime.model.table.summary.get('todo')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')
     expect(runtime.model.table.summary.get('doing')?.byField.get(FIELD_STATUS)?.kind).toBe('empty')

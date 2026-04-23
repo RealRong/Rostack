@@ -157,7 +157,7 @@ const resolveSelectionEditField = (
 
 const createSelectionSession = (
   input: {
-    ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions' | 'session'>
+    ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'ops' | 'session'>
     start: PointerDownInput
     decision: SelectionDragAction | SelectionMarqueeAction | undefined
   }
@@ -653,16 +653,16 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'ops'>,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
   switch (tap.kind) {
     case 'clear':
-      ctx.actions.selection.clear()
+      ctx.ops.selection.clear()
       return
     case 'select':
-      ctx.actions.selection.replace(tap.target)
+      ctx.ops.selection.replace(tap.target)
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
@@ -672,7 +672,7 @@ const applySelectionTap = (
         return
       }
 
-      ctx.actions.edit.startNode(tap.nodeId, field, {
+      ctx.ops.edit.startNode(tap.nodeId, field, {
         caret: {
           kind: 'point',
           client: input.client
@@ -682,9 +682,9 @@ const applySelectionTap = (
     }
     case 'edit-field':
       if (!selectionApi.target.equal(ctx.projection.selection.summary.get().target, tap.selection)) {
-        ctx.actions.selection.replace(tap.selection)
+        ctx.ops.selection.replace(tap.selection)
       }
-      ctx.actions.edit.startNode(tap.nodeId, tap.field, {
+      ctx.ops.edit.startNode(tap.nodeId, tap.field, {
         caret: {
           kind: 'point',
           client: input.client
@@ -694,7 +694,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'ops' | 'session'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -729,7 +729,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'ops' | 'session'>,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.sessionRead.tool.get()
@@ -793,7 +793,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'actions' | 'session'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'ops' | 'session'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

@@ -13,16 +13,16 @@ import {
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 const selectEdge = (
-  ctx: Pick<EditorHostDeps, 'actions'>,
+  ctx: Pick<EditorHostDeps, 'ops'>,
   edgeId: string
 ) => {
-  ctx.actions.selection.replace({
+  ctx.ops.selection.replace({
     edgeIds: [edgeId]
   })
 }
 
 export const createEdgeBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'projection' | 'sessionRead' | 'write' | 'actions' | 'snap'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'projection' | 'sessionRead' | 'write' | 'ops' | 'snap'>
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {
@@ -78,7 +78,7 @@ export const createEdgeBinding = (
       )
 
       if (route.kind === 'remove') {
-        ctx.actions.edge.route.removePoint(route.edgeId, route.index)
+        ctx.ops.edge.route.removePoint(route.edgeId, route.index)
         return HANDLED
       }
 

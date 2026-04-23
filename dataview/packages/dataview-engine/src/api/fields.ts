@@ -9,10 +9,12 @@ import {
   document as documentApi
 } from '@dataview/core/document'
 import {
+  id as dataviewId
+} from '@dataview/core/id'
+import {
   field as fieldApi
 } from '@dataview/core/field'
 import { string } from '@shared/core'
-import { createFieldId } from '@dataview/engine/mutate/entityId'
 import type {
   ActionResult
 } from '@dataview/engine/contracts/result'
@@ -56,7 +58,7 @@ export const createFieldsApi = (options: {
         return undefined
       }
 
-      const fieldId = createFieldId()
+      const fieldId = dataviewId.create('field')
       const result = dispatch({
         type: 'field.create',
         input: {

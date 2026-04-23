@@ -2,6 +2,7 @@ import {
   view,
   TITLE_FIELD_ID
 } from '@dataview/engine/bench/runtime'
+import { entityTable } from '@shared/core'
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
@@ -65,16 +66,7 @@ const createFields = () => ([
 ])
 
 const createFieldTable = (fields) => {
-  const byId = {}
-
-  fields.forEach(field => {
-    byId[field.id] = field
-  })
-
-  return {
-    byId,
-    order: fields.map(field => field.id)
-  }
+  return entityTable.normalize.list(fields)
 }
 
 const padRecordNumber = (value: number) => String(value).padStart(6, '0')
@@ -113,12 +105,14 @@ const createDocument = (recordCount: number) => {
           name: 'Tasks',
           filter: {
             mode: 'and',
-            rules: []
+            rules: entityTable.normalize.list([])
           },
           search: {
             query: ''
           },
-          sort: [],
+          sort: {
+            rules: entityTable.normalize.list([])
+          },
           calc: {},
           display: {
             fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS, FIELD_ESTIMATE]

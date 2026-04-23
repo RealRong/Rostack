@@ -10,6 +10,7 @@ import { createEngine } from '@dataview/engine'
 import {
   projectDocumentDelta
 } from '@dataview/engine/core/delta'
+import { entityTable } from '@shared/core'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -23,16 +24,7 @@ const createFields = () => ([
 ])
 
 const createFieldTable = (fields) => {
-  const byId = {}
-
-  fields.forEach(field => {
-    byId[field.id] = field
-  })
-
-  return {
-    byId,
-    order: fields.map(field => field.id)
-  }
+  return entityTable.normalize.list(fields)
 }
 
 const createTableView = () => {
@@ -44,12 +36,14 @@ const createTableView = () => {
     name: 'Tasks',
     filter: {
       mode: 'and',
-      rules: []
+      rules: entityTable.normalize.list([])
     },
     search: {
       query: ''
     },
-    sort: [],
+    sort: {
+      rules: entityTable.normalize.list([])
+    },
     calc: {},
     display: {
       fields: [TITLE_FIELD_ID, FIELD_STATUS]

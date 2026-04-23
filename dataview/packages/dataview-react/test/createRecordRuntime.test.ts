@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, test, vi } from 'vitest'
 import { store } from '@shared/core'
 import { createRecordWorkflow } from '@dataview/runtime'
+import { entityTable } from '@shared/core'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -17,12 +18,14 @@ test('createRecord runtime retries opening until the created record becomes avai
       name: 'Table',
       filter: {
         mode: 'and',
-        rules: []
+        rules: entityTable.normalize.list([])
       },
       search: {
         query: ''
       },
-      sort: [],
+      sort: {
+        rules: entityTable.normalize.list([])
+      },
       calc: {},
       display: {
         fields: []
@@ -64,12 +67,14 @@ test('createRecord runtime cancels pending retries when the owner view changes',
       name: 'Table',
       filter: {
         mode: 'and',
-        rules: []
+        rules: entityTable.normalize.list([])
       },
       search: {
         query: ''
       },
-      sort: [],
+      sort: {
+        rules: entityTable.normalize.list([])
+      },
       calc: {},
       display: {
         fields: []

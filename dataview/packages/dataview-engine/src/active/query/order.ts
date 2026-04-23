@@ -362,19 +362,19 @@ const sortRecordIds = (input: {
     }
   }
 
-  const sorters = sortRules.map(rule => ({
+  const sortEntries = sortRules.map(rule => ({
     direction: rule.direction,
     field: input.reader.fields.get(rule.fieldId),
     values: input.index.records.values.get(rule.fieldId)?.byRecord
   }))
 
   return input.ids.slice().sort((leftId, rightId) => {
-    for (const sorter of sorters) {
+    for (const sortEntry of sortEntries) {
       const result = fieldApi.compare.sort(
-        sorter.field,
-        sorter.values?.get(leftId),
-        sorter.values?.get(rightId),
-        sorter.direction
+        sortEntry.field,
+        sortEntry.values?.get(leftId),
+        sortEntry.values?.get(rightId),
+        sortEntry.direction
       )
 
       if (result !== 0) {

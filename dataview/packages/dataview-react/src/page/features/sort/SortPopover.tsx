@@ -30,7 +30,7 @@ import { meta } from '@dataview/meta'
 import { SortRuleRow } from '@dataview/react/page/features/sort/SortRuleRow'
 import { useTranslation } from '@shared/i18n/react'
 import {
-  getSorterItemId,
+  getSortRuleItemId,
   readSortSummary
 } from '@dataview/react/page/features/sort/sortUi'
 import { QueryChip } from '@dataview/react/page/features/query'
@@ -49,6 +49,7 @@ export const SortPopover = (props: SortPopoverProps) => {
   const { t } = useTranslation()
   const dataView = useDataView()
   const engine = dataView.engine
+  const page = dataView.session.page
   const pageRuntime = usePageRuntime()
   const settings = useStoreValue(pageRuntime.settings)
   const currentView = settings.activeView
@@ -57,9 +58,8 @@ export const SortPopover = (props: SortPopoverProps) => {
     : undefined
   const [addSortOpen, setAddSortOpen] = useState(false)
   const sortRules = props.rules
-  const sorters = sortRules.map(entry => entry.sorter)
   const singleSortDirection = sortRules.length === 1
-    ? sortRules[0]?.sorter.direction
+    ? sortRules[0]?.rule.direction
     : undefined
   const availableFields = props.availableFields
   const addItem: MenuSubmenuItem | null = availableFields.length
@@ -78,7 +78,15 @@ export const SortPopover = (props: SortPopoverProps) => {
           fields={availableFields}
           emptyMessage={meta.ui.fieldPicker.allSorted}
           onSelect={fieldId => {
-            currentViewDomain?.sort.add(fieldId)
+            if (!currentViewDomain) {
+              return
+            }
+
+            const id = currentViewDomain.sort.create(fieldId)
+            page.query.open({
+              kind: 'sort',
+              id
+            })
             setAddSortOpen(false)
           }}
         />
@@ -100,7 +108,7 @@ export const SortPopover = (props: SortPopoverProps) => {
     ? [addItem, clearItem]
     : [clearItem]
 
-  if (!sorters.length) {
+  if (!sortRules.length) {
     return null
   }
 
@@ -137,24 +145,48 @@ export const SortPopover = (props: SortPopoverProps) => {
       >
         <div className="flex max-h-[72vh] flex-col p-2">
           <VerticalReorderList
-            items={sorters}
-            getItemId={getSorterItemId}
+            items={sortRules}
+            getItemId={getSortRuleItemId}
             onMove={(from, to) => {
-              currentViewDomain?.sort.move(from, to)
+              if (!currentViewDomain) {
+                return
+              }
+
+              const movingRule = sortRules[from]?.rule
+              if (!movingRule) {
+                return
+              }
+
+              const remainingRules = sortRules.filter((_, index) => index !== from)
+              const beforeId = to >= remainingRules.length
+                ? undefined
+                : remainingRules[to]?.rule.id
+              currentViewDomain.sort.move(movingRule.id, beforeId)
             }}
-            renderItem={(sorter, drag, index) => (
+            renderItem={(entry, drag) => (
               <SortRuleRow
-                index={index}
+                id={entry.rule.id}
                 drag={drag}
-                onChange={nextSorter => {
-                  currentViewDomain?.sort.replace(index, nextSorter)
+                onChange={patch => {
+                  currentViewDomain?.sort.patch(entry.rule.id, patch)
                 }}
                 onRemove={() => {
-                  currentViewDomain?.sort.remove(index)
-
-                  if (sorters.length === 1) {
-                    props.onOpenChange(false)
+                  if (!currentViewDomain) {
+                    return
                   }
+
+                  const nextRuleId = sortRules.find(rule => rule.rule.id !== entry.rule.id)?.rule.id
+                  currentViewDomain.sort.remove(entry.rule.id)
+
+                  if (!nextRuleId) {
+                    props.onOpenChange(false)
+                    return
+                  }
+
+                  page.query.open({
+                    kind: 'sort',
+                    id: nextRuleId
+                  })
                 }}
               />
             )}

@@ -37,6 +37,7 @@ import {
 import type {
   QueryPhaseState as QueryState
 } from '@dataview/engine/active/state'
+import { entityTable } from '@shared/core'
 
 const FIELD_STATUS = 'status'
 const VIEW_ID = 'view_table'
@@ -50,9 +51,11 @@ const createView = (): View => ({
   },
   filter: {
     mode: 'and',
-    rules: []
+    rules: entityTable.normalize.list([])
   },
-  sort: [],
+  sort: {
+    rules: entityTable.normalize.list([])
+  },
   group: {
     field: FIELD_STATUS,
     mode: 'option',

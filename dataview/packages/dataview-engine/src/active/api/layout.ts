@@ -4,11 +4,13 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import {
+  id as dataviewId
+} from '@dataview/core/id'
+import {
   view as viewApi
 } from '@dataview/core/view'
 import type { ActiveViewApi } from '@dataview/engine/contracts/view'
 import type { ActiveViewContext } from '@dataview/engine/active/api/context'
-import { createFieldId } from '@dataview/engine/mutate/entityId'
 
 const insertField = (
   base: ActiveViewContext,
@@ -29,7 +31,7 @@ const insertField = (
     return undefined
   }
 
-  const fieldId = createFieldId()
+  const fieldId = dataviewId.create('field')
   const beforeFieldId = viewApi.display.insertBefore(
     view.display.fields,
     anchorFieldId,

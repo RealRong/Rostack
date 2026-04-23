@@ -18,10 +18,10 @@ import {
 import {
   view as viewApi
 } from '@dataview/core/view'
-import { equal } from '@shared/core'
 import {
-  createRecordId
-} from '@dataview/engine/mutate/entityId'
+  id as dataviewId
+} from '@dataview/core/id'
+import { equal } from '@shared/core'
 import type {
   ItemId
 } from '@dataview/engine/contracts/shared'
@@ -338,7 +338,7 @@ export const createActiveRecordsApi = (input: {
       return undefined
     }
 
-    const recordId = createRecordId()
+    const recordId = dataviewId.create('record')
     const actions: Action[] = [{
       type: 'record.create',
       input: toRecordCreateInput({

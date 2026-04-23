@@ -24,6 +24,7 @@ import {
 import type {
   View
 } from '@dataview/core/contracts'
+import { entityTable } from '@shared/core'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -107,9 +108,11 @@ const createView = (
   },
   filter: {
     mode: 'and',
-    rules: []
+    rules: entityTable.normalize.list([])
   },
-  sort: [],
+  sort: {
+    rules: entityTable.normalize.list([])
+  },
   calc: {
     [FIELD_POINTS]: 'count'
   },

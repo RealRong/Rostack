@@ -1,5 +1,6 @@
 import type { Engine } from '@whiteboard/engine'
-import type { EditorActions } from '@whiteboard/editor/action/types'
+import type { EditorCommandContext } from '@whiteboard/editor/command/context'
+import type { EditorCommandRunner } from '@whiteboard/editor/command/contracts'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorInputHost } from '@whiteboard/editor/types/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
@@ -12,7 +13,12 @@ import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
 import { createEdgeBinding } from '@whiteboard/editor/input/features/edge'
 import { createTransformBinding } from '@whiteboard/editor/input/features/transform'
 import { createSelectionBinding } from '@whiteboard/editor/input/features/selection/press'
-import { createEditorInputHost } from '@whiteboard/editor/input/host'
+import {
+  bindEditorInputHost,
+  createEditorInputCommands,
+  createEditorInputHost
+} from '@whiteboard/editor/input/host'
+import type { EditorInputOps } from '@whiteboard/editor/input/ops'
 import type { GraphRead } from '@whiteboard/editor/read/graph'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { SessionRead } from '@whiteboard/editor/session/read'
@@ -27,7 +33,7 @@ export type EditorHostDeps = {
   session: EditorSession
   layout: EditorLayout
   write: EditorWrite
-  actions: EditorActions
+  ops: EditorInputOps
   snap: SnapRuntime
 }
 
@@ -62,8 +68,11 @@ export const createEditorHost = ({
   session,
   layout,
   write,
-  actions
-}: Omit<EditorHostDeps, 'snap'>): EditorInputHost => {
+  ops,
+  runner
+}: Omit<EditorHostDeps, 'snap'> & {
+  runner: Pick<EditorCommandRunner<EditorCommandContext>, 'bind'>
+}): EditorInputHost => {
   const snap = createEditorSnapRuntime({
     engine,
     document,
@@ -78,7 +87,7 @@ export const createEditorHost = ({
     session,
     layout,
     write,
-    actions,
+    ops,
     snap
   }
   const interaction = createInteractionRuntime({
@@ -102,12 +111,18 @@ export const createEditorHost = ({
     },
     session.interaction.write
   )
-
-  return createEditorInputHost({
+  const host = createEditorInputHost({
     interaction,
     edgeHover,
     document,
     session,
-    actions
+    ops
+  })
+
+  return bindEditorInputHost({
+    runner,
+    commands: createEditorInputCommands({
+      host
+    })
   })
 }

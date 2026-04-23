@@ -7,6 +7,7 @@ import {
 import { filter } from '@dataview/core/filter'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
+import { entityTable } from '@shared/core'
 
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
@@ -53,17 +54,26 @@ const createFields = () => ([
   }
 ])
 
-const createFieldTable = fields => {
-  const byId = {}
+const createFieldTable = fields => entityTable.normalize.list(fields)
 
-  fields.forEach(field => {
-    byId[field.id] = field
-  })
+const createEmptyFilter = () => ({
+  mode: 'and' as const,
+  rules: entityTable.normalize.list([])
+})
 
-  return {
-    byId,
-    order: fields.map(field => field.id)
-  }
+const createEmptySort = () => ({
+  rules: entityTable.normalize.list([])
+})
+
+const addFilterRule = (active, fieldId, patch) => {
+  const id = active.filters.create(fieldId)
+  active.filters.patch(id, patch)
+  return id
+}
+
+const setSingleSortRule = (active, fieldId, direction) => {
+  active.sort.clear()
+  return active.sort.create(fieldId, direction)
 }
 
 const createDocument = () => {
@@ -78,14 +88,11 @@ const createDocument = () => {
           id: VIEW_TABLE,
           type: 'table',
           name: 'Tasks',
-          filter: {
-            mode: 'and',
-            rules: []
-          },
+          filter: createEmptyFilter(),
           search: {
             query: ''
           },
-          sort: [],
+          sort: createEmptySort(),
           calc: {},
           display: {
             fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
@@ -141,14 +148,11 @@ const createView = (input = {}) => {
     id: input.id ?? VIEW_TABLE,
     type: input.type ?? 'table',
     name: input.name ?? 'Tasks',
-    filter: {
-      mode: 'and',
-      rules: []
-    },
+    filter: createEmptyFilter(),
     search: {
       query: ''
     },
-    sort: [],
+    sort: createEmptySort(),
     calc: {},
     display: {
       fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
@@ -502,11 +506,11 @@ test('engine.core keeps active boundaries inside one active pipeline', () => {
   assert.equal(readViewState(engine)?.query.group, undefined)
   assert.equal(readViewState(engine)?.query.sort.rules.length, 0)
 
-  openView(engine, VIEW_TABLE).sort.add(FIELD_POINTS)
+  openView(engine, VIEW_TABLE).sort.create(FIELD_POINTS)
 
   assert.equal(engine.active.id(), VIEW_TABLE)
   assert.equal(readViewState(engine)?.query.sort.rules.length, 1)
-  assert.equal(readViewState(engine)?.query.sort.rules[0]?.sorter.field, FIELD_POINTS)
+  assert.equal(readViewState(engine)?.query.sort.rules[0]?.rule.fieldId, FIELD_POINTS)
   assert.equal(idEvents, 0)
   assert.equal(sortEvents, 1)
 
@@ -582,11 +586,9 @@ test('engine.active.state records honor search filter sort and manual order', ()
   )
 
   openView(engine, VIEW_TABLE).search.set('')
-  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_STATUS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
     presetId: 'eq',
-    value: 'done'
+    value: filter.value.optionSet.create(['done'])
   })
   assert.deepEqual(
     readViewState(engine)?.records.visible,
@@ -594,7 +596,7 @@ test('engine.active.state records honor search filter sort and manual order', ()
   )
 
   openView(engine, VIEW_TABLE).filters.clear()
-  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  setSingleSortRule(openView(engine, VIEW_TABLE), FIELD_POINTS, 'desc')
   assert.deepEqual(
     readViewState(engine)?.records.matched,
     ['rec_3', 'rec_2', 'rec_1']
@@ -629,17 +631,15 @@ test('engine.active.state keeps grouped section items aligned when filters are a
 
   assertPublishedItemsMatchSections(engine)
 
-  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_STATUS,
+  const filterId = addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
     presetId: 'eq',
-    value: 'done'
+    value: filter.value.optionSet.create(['done'])
   })
 
   assert.deepEqual(readViewState(engine)?.records.visible, ['rec_3'])
   assertPublishedItemsMatchSections(engine)
 
-  openView(engine, VIEW_TABLE).filters.remove(0)
+  openView(engine, VIEW_TABLE).filters.remove(filterId)
 
   assert.deepEqual(
     readViewState(engine)?.records.visible,
@@ -656,7 +656,7 @@ test('engine.active.state removes deleted records from sorted query results and 
     document: createDocument()
   })
 
-  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  setSingleSortRule(openView(engine, VIEW_TABLE), FIELD_POINTS, 'desc')
   engine.records.remove('rec_2')
 
   const state = readViewState(engine)
@@ -675,11 +675,9 @@ test('engine.active.state removes deleted records from filtered query results an
     document: createDocument()
   })
 
-  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_STATUS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
     presetId: 'eq',
-    value: 'doing'
+    value: filter.value.optionSet.create(['doing'])
   })
   engine.records.remove('rec_2')
 
@@ -716,7 +714,7 @@ test('engine.active.state grouped sections keep visible record order inside each
     document
   })
 
-  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  setSingleSortRule(openView(engine, VIEW_TABLE), FIELD_POINTS, 'desc')
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
 
   const state = readViewState(engine)
@@ -748,7 +746,7 @@ test('engine.active.state grouped sections reorder when sort changes after group
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   assert.deepEqual(viewSectionRecordIds(engine, 'todo'), ['rec_1', 'rec_4'])
 
-  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  setSingleSortRule(openView(engine, VIEW_TABLE), FIELD_POINTS, 'desc')
 
   assert.deepEqual(viewSectionRecordIds(engine, 'todo'), ['rec_4', 'rec_1'])
 })
@@ -762,7 +760,7 @@ test('engine.active.state sort reorders records without reallocating item ids', 
   const rec2ItemId = itemIdByRecordId(engine, 'rec_2')
   const rec3ItemId = itemIdByRecordId(engine, 'rec_3')
 
-  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  setSingleSortRule(openView(engine, VIEW_TABLE), FIELD_POINTS, 'desc')
   const state = readViewState(engine)
   const itemRecordIds = state
     ? state.items.ids.map(itemId => state.items.read.record(itemId))
@@ -838,9 +836,7 @@ test('engine.active.records.create derives supported filter defaults', () => {
     document: createDocument()
   })
 
-  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_STATUS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
     presetId: 'eq',
     value: filter.value.optionSet.create(['doing'])
   })
@@ -919,14 +915,11 @@ test('engine.active.records.create supports multiple concrete select filters and
             id: VIEW_TABLE,
             type: 'table',
             name: 'Tasks',
-            filter: {
-              mode: 'and',
-              rules: []
-            },
+            filter: createEmptyFilter(),
             search: {
               query: ''
             },
-            sort: [],
+            sort: createEmptySort(),
             calc: {},
             display: {
               fields: [TITLE_FIELD_ID, fieldA, fieldB, fieldC]
@@ -947,21 +940,15 @@ test('engine.active.records.create supports multiple concrete select filters and
     }
   })
 
-  openView(engine, VIEW_TABLE).filters.add(fieldA)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: fieldA,
+  addFilterRule(openView(engine, VIEW_TABLE), fieldA, {
     presetId: 'eq',
     value: filter.value.optionSet.create(['option_1'])
   })
-  openView(engine, VIEW_TABLE).filters.add(fieldB)
-  openView(engine, VIEW_TABLE).filters.update(1, {
-    fieldId: fieldB,
+  addFilterRule(openView(engine, VIEW_TABLE), fieldB, {
     presetId: 'eq',
     value: filter.value.optionSet.create(['option_2', 'option_3'])
   })
-  openView(engine, VIEW_TABLE).filters.add(fieldC)
-  openView(engine, VIEW_TABLE).filters.update(2, {
-    fieldId: fieldC,
+  addFilterRule(openView(engine, VIEW_TABLE), fieldC, {
     presetId: 'contains',
     value: filter.value.optionSet.create(['option_4'])
   })
@@ -985,9 +972,7 @@ test('engine.active.records.create resolves grouped status against multi-option 
   })
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_STATUS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
     presetId: 'eq',
     value: filter.value.optionSet.create(['todo', 'doing'])
   })
@@ -1009,9 +994,7 @@ test('engine.active.records.create chooses the first option from multi-option st
     document: createDocument()
   })
 
-  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_STATUS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
     presetId: 'eq',
     value: filter.value.optionSet.create(['todo', 'doing'])
   })
@@ -1032,9 +1015,7 @@ test('engine.active.records.create accepts explicit status values that satisfy m
     document: createDocument()
   })
 
-  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_STATUS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
     presetId: 'eq',
     value: filter.value.optionSet.create(['todo', 'doing'])
   })
@@ -1057,9 +1038,7 @@ test('engine.active.records.create rejects unsupported effective filter rules', 
   })
   const beforeOrder = [...engine.read.document().records.order]
 
-  openView(engine, VIEW_TABLE).filters.add(TITLE_FIELD_ID)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: TITLE_FIELD_ID,
+  addFilterRule(openView(engine, VIEW_TABLE), TITLE_FIELD_ID, {
     presetId: 'contains',
     value: 'Task'
   })
@@ -1101,9 +1080,7 @@ test('engine.active.records.create rejects conflicting group and filter defaults
   const beforeOrder = [...engine.read.document().records.order]
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.add(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_STATUS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
     presetId: 'eq',
     value: filter.value.optionSet.create(['doing'])
   })
@@ -1124,7 +1101,7 @@ test('engine.active.records.create uses before as context only when sort is acti
     document: createDocument()
   })
 
-  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  setSingleSortRule(openView(engine, VIEW_TABLE), FIELD_POINTS, 'desc')
   const beforeItemId = itemIdByRecordId(engine, 'rec_1')
   const createdId = openView(engine, VIEW_TABLE).records.create({
     before: beforeItemId,
@@ -1192,9 +1169,7 @@ test('engine.active.state clears grouped summaries when filters leave every sect
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   openView(engine, VIEW_TABLE).summary.set(FIELD_STATUS, 'countByOption')
 
-  openView(engine, VIEW_TABLE).filters.add(FIELD_POINTS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_POINTS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_POINTS, {
     presetId: 'gt',
     value: 100
   })
@@ -1219,9 +1194,7 @@ test('engine.active state clears grouped summaries when filters leave every sect
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   openView(engine, VIEW_TABLE).summary.set(FIELD_STATUS, 'countByOption')
 
-  openView(engine, VIEW_TABLE).filters.add(FIELD_POINTS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_POINTS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_POINTS, {
     presetId: 'gt',
     value: 100
   })
@@ -1254,9 +1227,7 @@ test('engine.performance syncs summaries when grouped filters change visible mem
   engine.performance.traces.clear()
   engine.performance.stats.clear()
 
-  openView(engine, VIEW_TABLE).filters.add(FIELD_POINTS)
-  openView(engine, VIEW_TABLE).filters.update(0, {
-    fieldId: FIELD_POINTS,
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_POINTS, {
     presetId: 'gt',
     value: 100
   })
@@ -1287,7 +1258,7 @@ test('engine.performance reuses summaries when sort only reorders records', () =
   engine.performance.traces.clear()
   engine.performance.stats.clear()
 
-  openView(engine, VIEW_TABLE).sort.keepOnly(FIELD_POINTS, 'desc')
+  setSingleSortRule(openView(engine, VIEW_TABLE), FIELD_POINTS, 'desc')
 
   const trace = engine.performance.traces.last()
   const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')

@@ -35,19 +35,24 @@ export const QueryFieldPickerPanel = (props: {
           ? meta.ui.fieldPicker.allFiltered
           : meta.ui.fieldPicker.allSorted}
         onSelect={fieldId => {
+          if (!currentViewDomain) {
+            return
+          }
+
           if (props.kind === 'filter') {
-            currentViewDomain?.filters.add(fieldId)
+            const id = currentViewDomain.filters.create(fieldId)
             page.query.open({
               kind: 'filter',
-              index: query.filters.length
+              id
             })
             router.close()
             return
           }
 
-          currentViewDomain?.sort.add(fieldId)
+          const id = currentViewDomain.sort.create(fieldId)
           page.query.open({
-            kind: 'sort'
+            kind: 'sort',
+            id
           })
           router.close()
         }}

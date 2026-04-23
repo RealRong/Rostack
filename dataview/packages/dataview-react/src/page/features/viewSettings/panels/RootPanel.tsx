@@ -187,7 +187,7 @@ export const RootPanel = () => {
     {
       icon: ArrowUpDown,
       label: t(meta.ui.viewSettings.sort),
-      suffix: t(meta.ui.viewSettings.sortSummary(sortProjection?.rules.map(entry => entry.sorter) ?? [], fields)),
+      suffix: t(meta.ui.viewSettings.sortSummary(sortProjection?.rules.map(entry => entry.rule) ?? [], fields)),
       panel: 'sort'
     },
     {

@@ -6,10 +6,42 @@ import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { runQueryStage } from '@dataview/engine/active/query/runtime'
 import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
 import { createDocumentReadContext } from '@dataview/engine/document/reader'
+import { entityTable } from '@shared/core'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
+const createEmptyFilter = () => ({
+  mode: 'and' as const,
+  rules: entityTable.normalize.list([])
+})
+const createEmptySort = () => ({
+  rules: entityTable.normalize.list([])
+})
+const createFilterState = (input) => input
+  ? {
+      mode: input.mode ?? 'and',
+      rules: Array.isArray(input.rules)
+        ? entityTable.normalize.list(input.rules.map((rule, index) => ({
+            id: rule.id ?? `filter_${index + 1}`,
+            fieldId: rule.fieldId,
+            presetId: rule.presetId,
+            ...(Object.prototype.hasOwnProperty.call(rule, 'value')
+              ? { value: rule.value }
+              : {})
+          })))
+        : input.rules
+    }
+  : createEmptyFilter()
+const createSortState = (rules) => ({
+  rules: Array.isArray(rules)
+    ? entityTable.normalize.list(rules.map((rule, index) => ({
+        id: rule.id ?? `sort_${index + 1}`,
+        fieldId: rule.fieldId,
+        direction: rule.direction === 'desc' ? 'desc' : 'asc'
+      })))
+    : (rules ?? createEmptySort().rules)
+})
 
 const createDocument = (
   view,
@@ -83,37 +115,43 @@ const createDocument = (
   meta: {}
 })
 
-const createView = (input = {}) => ({
-  id: VIEW_ID,
-  type: 'table',
-  name: 'Tasks',
-  filter: {
-    mode: 'and',
-    rules: []
-  },
-  search: {
-    query: ''
-  },
-  sort: [],
-  calc: {},
-  display: {
-    fields: ['title', FIELD_STATUS, FIELD_POINTS]
-  },
-  options: {},
-  orders: [],
-  ...input
-})
+const createView = (input = {}) => {
+  const {
+    filter: filterInput,
+    sort: sortInput,
+    ...rest
+  } = input
+
+  return {
+    id: VIEW_ID,
+    type: 'table',
+    name: 'Tasks',
+    filter: createFilterState(filterInput),
+    search: {
+      query: ''
+    },
+    sort: createSortState(sortInput?.rules ?? sortInput),
+    calc: {},
+    display: {
+      fields: ['title', FIELD_STATUS, FIELD_POINTS]
+    },
+    options: {},
+    orders: [],
+    ...rest
+  }
+}
 
 test('engine.active.query stage reuses previous state when persisted filter change is ineffective', () => {
   const previousView = createView()
   const nextView = createView({
     filter: {
       mode: 'and',
-      rules: [{
+      rules: entityTable.normalize.list([{
+        id: 'filter_status',
         fieldId: FIELD_STATUS,
         presetId: 'eq',
         value: filter.value.optionSet.create()
-      }]
+      }])
     }
   })
   const document = createDocument(nextView)
@@ -166,13 +204,13 @@ test('engine.active.query stage reuses previous state when persisted filter chan
 test('engine.active.query reuses matched and ordered ids on filter-only sync', () => {
   const previousView = createView({
     sort: [{
-      field: FIELD_POINTS,
+      fieldId: FIELD_POINTS,
       direction: 'desc'
     }]
   })
   const nextView = createView({
     sort: [{
-      field: FIELD_POINTS,
+      fieldId: FIELD_POINTS,
       direction: 'desc'
     }],
     filter: {

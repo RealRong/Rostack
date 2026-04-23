@@ -153,11 +153,15 @@ export const ToolbarQueryActions = () => {
                 fields={toolbar.availableFilterFields}
                 emptyMessage={meta.ui.fieldPicker.allFiltered}
                 onSelect={fieldId => {
-                  currentViewDomain?.filters.add(fieldId)
+                  if (!currentViewDomain) {
+                    return
+                  }
+
+                  const id = currentViewDomain.filters.create(fieldId)
                   setToolbarRoute(null)
                   page.query.open({
                     kind: 'filter',
-                    index: filterCount
+                    id
                   })
                 }}
               />
@@ -223,10 +227,15 @@ export const ToolbarQueryActions = () => {
                 fields={sortPanel.availableFields}
                 emptyMessage={meta.ui.fieldPicker.allSorted}
                 onSelect={fieldId => {
-                  currentViewDomain?.sort.add(fieldId)
+                  if (!currentViewDomain) {
+                    return
+                  }
+
+                  const id = currentViewDomain.sort.create(fieldId)
                   setToolbarRoute(null)
                   page.query.open({
-                    kind: 'sort'
+                    kind: 'sort',
+                    id
                   })
                 }}
               />

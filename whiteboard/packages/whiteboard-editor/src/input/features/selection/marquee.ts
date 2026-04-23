@@ -184,13 +184,13 @@ const reduceMarqueeSelection = (
 }
 
 const syncMarqueeInteraction = (
-  ctx: Pick<EditorHostDeps, 'actions'>,
+  ctx: Pick<EditorHostDeps, 'ops'>,
   interaction: InteractionSession,
   previous: MarqueeSelectionState,
   next: MarqueeSelectionState
 ) => {
   if (!selectionApi.target.equal(previous.selection, next.selection)) {
-    ctx.actions.selection.replace(next.selection)
+    ctx.ops.selection.replace(next.selection)
   }
 
   interaction.gesture = next.kind === 'active'
@@ -205,7 +205,7 @@ const syncMarqueeInteraction = (
 }
 
 export const createMarqueeSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'actions'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'ops'>,
   input: {
     start: PointerDownInput
     action: SelectionMarqueeAction
@@ -222,7 +222,7 @@ export const createMarqueeSession = (
   let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    ctx.actions.selection.clear()
+    ctx.ops.selection.clear()
   }
 
   const dispatch = (

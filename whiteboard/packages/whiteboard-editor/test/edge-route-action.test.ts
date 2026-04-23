@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Edge } from '@whiteboard/core/types'
-import { createEditorActions } from '../src/action'
+import {
+  createEditorActionCommands,
+  createEditorActions
+} from '../src/action'
+import type { EditorCommandContext } from '../src/command/context'
 
 const okResult = () => ({ ok: true }) as const
 
@@ -32,267 +36,327 @@ const createActions = (edge = createEdge()) => {
   const deleteRoute = vi.fn(() => okResult())
   const clearRoute = vi.fn(() => okResult())
 
-  const actions = createEditorActions({
-    document: {
-      node: {
-        committed: {
-          get: vi.fn(() => undefined)
-        },
-        list: {
-          get: vi.fn(() => [])
-        }
+  const document = {
+    node: {
+      committed: {
+        get: vi.fn(() => undefined)
       },
-      edge: {
-        item: {
-          get: vi.fn((edgeId: string) => (
-            edgeId === edge.id
-              ? { edge }
-              : undefined
-          ))
-        },
-        list: {
-          get: vi.fn(() => [])
-        }
-      },
-      group: {
-        exactIds: vi.fn(() => []),
-        target: vi.fn(() => undefined)
-      },
-      mindmap: {
-        structure: {
-          get: vi.fn(() => undefined)
-        }
-      },
-      slice: {
-        fromSelection: vi.fn(() => undefined)
+      list: {
+        get: vi.fn(() => [])
       }
-    } as never,
-    session: {
-      mutate: {
-        tool: {
-          set: vi.fn()
-        },
-        draw: {
-          set: vi.fn(),
-          slot: vi.fn(),
-          patch: vi.fn()
-        },
-        selection: {
-          replace: vi.fn(() => true),
-          add: vi.fn(() => true),
-          remove: vi.fn(() => true),
-          toggle: vi.fn(() => true),
-          clear: vi.fn(() => true)
-        },
-        edit: {
-          set: vi.fn(),
-          input: vi.fn(),
-          caret: vi.fn(),
-          composing: vi.fn(),
-          clear: vi.fn()
-        }
+    },
+    edge: {
+      item: {
+        get: vi.fn((edgeId: string) => (
+          edgeId === edge.id
+            ? { edge }
+            : undefined
+        ))
       },
-      state: {
-        tool: {
-          get: vi.fn(() => ({ type: 'select' }))
-        },
-        selection: {
-          get: vi.fn(() => ({
-            nodeIds: [],
-            edgeIds: []
-          }))
-        },
-        edit: {
-          get: vi.fn(() => undefined)
-        }
-      },
-      viewport: {
-        commands: {
-          set: vi.fn(),
-          panBy: vi.fn(),
-          zoomTo: vi.fn(),
-          fit: vi.fn(),
-          reset: vi.fn()
-        },
-        setRect: vi.fn(),
-        setLimits: vi.fn(),
-        read: {
-          get: vi.fn(() => ({
-            center: { x: 0, y: 0 },
-            zoom: 1
-          }))
-        }
+      list: {
+        get: vi.fn(() => [])
       }
-    } as never,
-    projection: {
-      node: {
-        view: {
-          get: vi.fn(() => undefined)
-        }
-      },
-      edge: {
-        view: {
-          get: vi.fn((edgeId: string) => (
-            edgeId === edge.id
-              ? {
-                  base: {
-                    edge
-                  }
-                }
-              : undefined
-          ))
-        },
-        committed: {
-          get: vi.fn((edgeId: string) => (
-            edgeId === edge.id
-              ? { edge }
-              : undefined
-          ))
-        },
-        list: {
-          get: vi.fn(() => [])
-        }
-      },
-      mindmap: {
-        view: {
-          get: vi.fn(() => undefined)
-        }
+    },
+    group: {
+      exactIds: vi.fn(() => []),
+      target: vi.fn(() => undefined)
+    },
+    mindmap: {
+      structure: {
+        get: vi.fn(() => undefined)
       }
-    } as never,
-    layout: {
-      draft: {
-        node: {
-          get: vi.fn(() => undefined)
-        }
-      }
-    } as never,
-    write: {
-      document: {
-        replace: vi.fn(),
-        insert: vi.fn()
+    },
+    slice: {
+      fromSelection: vi.fn(() => undefined)
+    }
+  } as never
+  const session = {
+    mutate: {
+      tool: {
+        set: vi.fn()
       },
-      canvas: {
-        delete: vi.fn(),
-        duplicate: vi.fn(),
-        selection: {
-          move: vi.fn()
-        },
-        order: {
-          move: vi.fn()
-        }
+      draw: {
+        set: vi.fn(),
+        slot: vi.fn(),
+        patch: vi.fn()
       },
-      node: {
-        create: vi.fn(),
-        update: vi.fn(),
-        updateMany: vi.fn(),
-        move: vi.fn(),
-        align: vi.fn(),
-        distribute: vi.fn(),
-        delete: vi.fn(),
-        deleteCascade: vi.fn(),
-        duplicate: vi.fn(),
-        lock: {
-          set: vi.fn(),
-          toggle: vi.fn()
-        },
-        shape: {
-          set: vi.fn()
-        },
-        style: {
-          fill: vi.fn(),
-          fillOpacity: vi.fn(),
-          stroke: vi.fn(),
-          strokeWidth: vi.fn(),
-          strokeOpacity: vi.fn(),
-          strokeDash: vi.fn(),
-          opacity: vi.fn(),
-          textColor: vi.fn()
-        },
-        text: {
-          commit: vi.fn(),
-          color: vi.fn(),
-          size: vi.fn(),
-          weight: vi.fn(),
-          italic: vi.fn(),
-          align: vi.fn()
-        }
+      selection: {
+        replace: vi.fn(() => true),
+        add: vi.fn(() => true),
+        remove: vi.fn(() => true),
+        toggle: vi.fn(() => true),
+        clear: vi.fn(() => true)
       },
-      group: {
-        merge: vi.fn(),
-        ungroup: vi.fn(),
-        order: {
-          move: vi.fn()
-        }
-      },
-      edge: {
-        create: vi.fn(),
-        update: vi.fn(),
-        updateMany: vi.fn(),
-        reconnectCommit: vi.fn(),
-        delete: vi.fn(),
-        route: {
-          set: setRoute,
-          update: updateRoute,
-          clear: clearRoute
-        },
-        label: {
-          insert: vi.fn(),
-          update: vi.fn(),
-          move: vi.fn(),
-          delete: vi.fn()
-        },
-        style: {
-          color: vi.fn(),
-          opacity: vi.fn(),
-          width: vi.fn(),
-          dash: vi.fn(),
-          start: vi.fn(),
-          end: vi.fn(),
-          swapMarkers: vi.fn()
-        },
-        type: {
-          set: vi.fn()
-        },
-        lock: {
-          set: vi.fn(),
-          toggle: vi.fn()
-        },
-        textMode: {
-          set: vi.fn()
-        }
-      },
-      mindmap: {
-        create: vi.fn(),
-        delete: vi.fn(),
-        layout: {
-          set: vi.fn()
-        },
-        root: {
-          move: vi.fn()
-        },
-        branch: {
-          update: vi.fn()
-        },
-        topic: {
-          insert: vi.fn(),
-          move: vi.fn(),
-          delete: vi.fn(),
-          clone: vi.fn(),
-          update: vi.fn()
-        }
-      },
-      history: {
-        undo: vi.fn(),
-        redo: vi.fn(),
+      edit: {
+        set: vi.fn(),
+        input: vi.fn(),
+        caret: vi.fn(),
+        composing: vi.fn(),
         clear: vi.fn()
       }
-    } as never,
+    },
+    state: {
+      tool: {
+        get: vi.fn(() => ({ type: 'select' }))
+      },
+      selection: {
+        get: vi.fn(() => ({
+          nodeIds: [],
+          edgeIds: []
+        }))
+      },
+      edit: {
+        get: vi.fn(() => undefined)
+      }
+    },
+    preview: {
+      state: {
+        get: vi.fn(() => ({
+          mindmap: {
+            preview: undefined
+          }
+        }))
+      }
+    },
+    viewport: {
+      commands: {
+        set: vi.fn(),
+        panBy: vi.fn(),
+        zoomTo: vi.fn(),
+        fit: vi.fn(),
+        reset: vi.fn()
+      },
+      setRect: vi.fn(),
+      setLimits: vi.fn(),
+      read: {
+        get: vi.fn(() => ({
+          center: { x: 0, y: 0 },
+          zoom: 1
+        }))
+      }
+    }
+  } as never
+  const graph = {
+    node: {
+      view: {
+        get: vi.fn(() => undefined)
+      }
+    },
+    edge: {
+      view: {
+        get: vi.fn((edgeId: string) => (
+          edgeId === edge.id
+            ? {
+                base: {
+                  edge
+                }
+              }
+            : undefined
+        ))
+      },
+      committed: {
+        get: vi.fn((edgeId: string) => (
+          edgeId === edge.id
+            ? { edge }
+            : undefined
+        ))
+      },
+      list: {
+        get: vi.fn(() => [])
+      }
+    },
+    mindmap: {
+      view: {
+        get: vi.fn(() => undefined)
+      }
+    }
+  } as never
+  const layout = {
+    draft: {
+      node: {
+        get: vi.fn(() => undefined)
+      }
+    }
+  } as never
+  const write = {
+    document: {
+      replace: vi.fn(),
+      insert: vi.fn()
+    },
+    canvas: {
+      delete: vi.fn(),
+      duplicate: vi.fn(),
+      selection: {
+        move: vi.fn()
+      },
+      order: {
+        move: vi.fn()
+      }
+    },
+    node: {
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      move: vi.fn(),
+      align: vi.fn(),
+      distribute: vi.fn(),
+      delete: vi.fn(),
+      deleteCascade: vi.fn(),
+      duplicate: vi.fn(),
+      lock: {
+        set: vi.fn(),
+        toggle: vi.fn()
+      },
+      shape: {
+        set: vi.fn()
+      },
+      style: {
+        fill: vi.fn(),
+        fillOpacity: vi.fn(),
+        stroke: vi.fn(),
+        strokeWidth: vi.fn(),
+        strokeOpacity: vi.fn(),
+        strokeDash: vi.fn(),
+        opacity: vi.fn(),
+        textColor: vi.fn()
+      },
+      text: {
+        commit: vi.fn(),
+        color: vi.fn(),
+        size: vi.fn(),
+        weight: vi.fn(),
+        italic: vi.fn(),
+        align: vi.fn()
+      }
+    },
+    group: {
+      merge: vi.fn(),
+      ungroup: vi.fn(),
+      order: {
+        move: vi.fn()
+      }
+    },
+    edge: {
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      reconnectCommit: vi.fn(),
+      delete: vi.fn(),
+      route: {
+        set: setRoute,
+        update: updateRoute,
+        clear: clearRoute
+      },
+      label: {
+        insert: vi.fn(),
+        update: vi.fn(),
+        move: vi.fn(),
+        delete: vi.fn()
+      },
+      style: {
+        color: vi.fn(),
+        opacity: vi.fn(),
+        width: vi.fn(),
+        dash: vi.fn(),
+        start: vi.fn(),
+        end: vi.fn(),
+        swapMarkers: vi.fn()
+      },
+      type: {
+        set: vi.fn()
+      },
+      lock: {
+        set: vi.fn(),
+        toggle: vi.fn()
+      },
+      textMode: {
+        set: vi.fn()
+      }
+    },
+    mindmap: {
+      create: vi.fn(),
+      delete: vi.fn(),
+      layout: {
+        set: vi.fn()
+      },
+      root: {
+        move: vi.fn()
+      },
+      branch: {
+        update: vi.fn()
+      },
+      topic: {
+        insert: vi.fn(),
+        move: vi.fn(),
+        delete: vi.fn(),
+        clone: vi.fn(),
+        update: vi.fn()
+      }
+    },
+    history: {
+      undo: vi.fn(),
+      redo: vi.fn(),
+      clear: vi.fn()
+    }
+  } as never
+  const context = {
+    engine: {
+      current: vi.fn(() => ({
+        snapshot: {},
+        change: {}
+      }))
+    },
+    document,
+    graph,
+    session,
+    sessionRead: {
+      viewport: {
+        get: vi.fn(() => ({
+          center: { x: 0, y: 0 },
+          zoom: 1
+        }))
+      }
+    },
+    layout,
+    write,
+    publish: vi.fn(() => {
+      throw new Error('Unexpected publish in edge route action test.')
+    }),
+    task: {
+      microtask: vi.fn(),
+      frame: vi.fn(),
+      delay: vi.fn()
+    }
+  } as never as EditorCommandContext
+  const commands = createEditorActionCommands({
+    document,
+    session,
+    graph,
+    layout,
+    write,
     registry: {
       get: vi.fn(() => undefined)
     } as never,
     defaults: {
       frame: vi.fn()
     } as never
+  })
+  const actions = createEditorActions({
+    runner: {
+      bind: (handler) => (
+        ...args: never[]
+      ) => {
+        const command = handler(context, ...args)
+        let step = command.next()
+
+        while (!step.done) {
+          throw new Error(`Unexpected command signal: ${step.value.kind}`)
+        }
+
+        return step.value
+      }
+    },
+    commands
   })
 
   return {

@@ -7,6 +7,17 @@ const openView = (engine, viewId) => {
   return engine.active
 }
 
+const addFilterRule = (active, fieldId, patch) => {
+  const id = active.filters.create(fieldId)
+  active.filters.patch(id, patch)
+  return id
+}
+
+const setSingleSortRule = (active, fieldId, direction) => {
+  active.sort.clear()
+  return active.sort.create(fieldId, direction)
+}
+
 const SCENARIOS = [
   scenario({
     id: 'record.value.points.single',
@@ -91,21 +102,32 @@ const SCENARIOS = [
     id: 'view.query.filter.set',
     title: 'Filter value update',
     setup: (engine, fixture) => {
-      openView(engine, fixture.viewId).filters.add(fixture.fields.status)
+      addFilterRule(openView(engine, fixture.viewId), fixture.fields.status, {
+        presetId: 'eq',
+        value: { kind: 'option-set', optionIds: [] }
+      })
     },
     run: (engine, fixture) => {
-      openView(engine, fixture.viewId).filters.update(0, {
-        fieldId: fixture.fields.status,
+      const active = openView(engine, fixture.viewId)
+      const filterId = active.view()?.filter.rules.order[0]
+      if (!filterId) {
+        throw new Error('Expected existing filter rule')
+      }
+
+      active.filters.patch(filterId, {
         presetId: 'eq',
-        value: STATUS_OPTIONS[2].id
+        value: {
+          kind: 'option-set',
+          optionIds: [STATUS_OPTIONS[2].id]
+        }
       })
     }
   }),
   scenario({
-    id: 'view.query.sort.keepOnly',
+    id: 'view.query.sort.single',
     title: 'Sort rule update',
     run: (engine, fixture) => {
-      openView(engine, fixture.viewId).sort.keepOnly(fixture.fields.points, 'desc')
+      setSingleSortRule(openView(engine, fixture.viewId), fixture.fields.points, 'desc')
     }
   }),
   scenario({

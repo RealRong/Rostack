@@ -47,7 +47,8 @@ import {
   TABLE_HEADER_BLOCK_PADDING
 } from '@dataview/react/views/table/layout'
 import {
-  useKeyedStoreValue
+  useKeyedStoreValue,
+  useStoreValue
 } from '@shared/react'
 
 export interface ColumnHeaderProps {
@@ -212,6 +213,7 @@ const View = (props: ColumnHeaderProps) => {
     dataView.model.table.column,
     props.field.id
   )
+  const activeView = useStoreValue(dataView.model.table.view)
   const sortable = useSortable({
     id: props.sortId,
     transition: {
@@ -244,6 +246,18 @@ const View = (props: ColumnHeaderProps) => {
     ? customField
     : undefined
   const viewApi = editor.active
+  const sortRules = activeView?.query.sort.rules ?? []
+  const currentSortRule = sortRules.find(rule => rule.rule.fieldId === props.field.id)
+
+  const applySingleSort = useCallback((direction: 'asc' | 'desc') => {
+    if (currentSortRule && sortRules.length === 1) {
+      viewApi.sort.patch(currentSortRule.rule.id, { direction })
+      return
+    }
+
+    viewApi.sort.clear()
+    viewApi.sort.create(props.field.id, direction)
+  }, [currentSortRule, props.field.id, sortRules.length, viewApi.sort])
 
   const insertProperty = useCallback((side: 'left' | 'right') => {
     const name = t(meta.field.kind.get('text').defaultName)
@@ -365,11 +379,10 @@ const View = (props: ColumnHeaderProps) => {
         label: t(meta.ui.filter.label),
         leading: <Filter className="size-4" size={16} strokeWidth={1.8} />,
         onSelect: () => {
-          viewApi.filters.add(props.field.id)
-          const index = dataView.model.table.view.get()?.query.filters.rules.length ?? 0
+          const id = viewApi.filters.create(props.field.id)
           page.query.open({
             kind: 'filter',
-            index
+            id
           })
         }
       },
@@ -388,7 +401,7 @@ const View = (props: ColumnHeaderProps) => {
             label: t(meta.sort.direction.get('asc').token),
             checked: sortDirection === 'asc',
             onSelect: () => {
-              viewApi.sort.keepOnly(props.field.id, 'asc')
+              applySingleSort('asc')
             }
           },
           {
@@ -397,7 +410,7 @@ const View = (props: ColumnHeaderProps) => {
             label: t(meta.sort.direction.get('desc').token),
             checked: sortDirection === 'desc',
             onSelect: () => {
-              viewApi.sort.keepOnly(props.field.id, 'desc')
+              applySingleSort('desc')
             }
           }
         ]

@@ -25,6 +25,7 @@ import {
   buildQueryState
 } from '@dataview/engine/active/query/state'
 import { createDocumentReadContext } from '@dataview/engine/document/reader'
+import { entityTable } from '@shared/core'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -73,16 +74,33 @@ const createFields = (options = STATUS_OPTIONS) => ([
 ])
 
 const createFieldTable = (fields) => {
-  const byId = {}
-  fields.forEach(field => {
-    byId[field.id] = field
-  })
-
-  return {
-    byId,
-    order: fields.map(field => field.id)
-  }
+  return entityTable.normalize.list(fields)
 }
+
+const createFilterState = (
+  mode = 'and',
+  rules = []
+) => ({
+  mode,
+  rules: entityTable.normalize.list(rules.map((rule, index) => ({
+    id: rule.id ?? `filter_${index + 1}`,
+    fieldId: rule.fieldId,
+    presetId: rule.presetId,
+    ...(Object.prototype.hasOwnProperty.call(rule, 'value')
+      ? { value: rule.value }
+      : {})
+  })))
+})
+
+const createSortState = (
+  rules = []
+) => ({
+  rules: entityTable.normalize.list(rules.map((rule, index) => ({
+    id: rule.id ?? `sort_${index + 1}`,
+    fieldId: rule.fieldId,
+    direction: rule.direction === 'desc' ? 'desc' : 'asc'
+  })))
+})
 
 const createDocument = (input = {}) => {
   const fields = input.fieldDefs ?? createFields()
@@ -147,26 +165,34 @@ const resolveDemand = (document, viewId) => {
   return plan.index
 }
 
-const createTableView = (input = {}) => ({
-  id: 'view_table',
-  type: 'table',
-  name: 'Tasks',
-  filter: {
-    mode: 'and',
-    rules: []
-  },
-  search: {
-    query: ''
-  },
-  sort: [],
-  calc: {},
-  display: {
-    fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
-  },
-  options: {},
-  orders: [],
-  ...input
-})
+const createTableView = (input = {}) => {
+  const {
+    filter: filterInput,
+    sort: sortInput,
+    ...rest
+  } = input
+
+  return {
+    id: 'view_table',
+    type: 'table',
+    name: 'Tasks',
+    filter: createFilterState(
+      filterInput?.mode,
+      filterInput?.rules
+    ),
+    search: {
+      query: ''
+    },
+    sort: createSortState(sortInput),
+    calc: {},
+    display: {
+      fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
+    },
+    options: {},
+    orders: [],
+    ...rest
+  }
+}
 
 const createIndexHarness = (document, demand) => {
   let currentDemand = normalizeDemand(document, demand)
@@ -383,7 +409,7 @@ test('engine.active.view plan demand provisions bucket and sort substrate only f
   ]
   const view = createTableView({
     sort: [{
-      field: FIELD_DUE,
+      fieldId: FIELD_DUE,
       direction: 'desc'
     }],
     filter: {
@@ -782,14 +808,11 @@ test('engine.active.query derives descending order from single asc sort index', 
       search: {
         query: ''
       },
-      filter: {
-        mode: 'and',
-        rules: []
-      },
-      sort: [{
-        field: FIELD_POINTS,
+      filter: createFilterState(),
+      sort: createSortState([{
+        fieldId: FIELD_POINTS,
         direction: 'desc'
-      }],
+      }]),
       calc: {},
       display: {},
       options: {
@@ -806,14 +829,11 @@ test('engine.active.query derives descending order from single asc sort index', 
       search: {
         query: ''
       },
-      filter: {
-        mode: 'and',
-        rules: []
-      },
-      sort: [{
-        field: FIELD_POINTS,
+      filter: createFilterState(),
+      sort: createSortState([{
+        fieldId: FIELD_POINTS,
         direction: 'desc'
-      }],
+      }]),
       calc: {},
       display: {},
       options: {
@@ -865,25 +885,25 @@ test('engine.active.query keeps empty values at the end for title, status, and n
   const reader = createDocumentReadContext(document).reader
   const titleAscView = createTableView({
     sort: [{
-      field: TITLE_FIELD_ID,
+      fieldId: TITLE_FIELD_ID,
       direction: 'asc'
     }]
   })
   const titleDescView = createTableView({
     sort: [{
-      field: TITLE_FIELD_ID,
+      fieldId: TITLE_FIELD_ID,
       direction: 'desc'
     }]
   })
   const statusDescView = createTableView({
     sort: [{
-      field: FIELD_STATUS,
+      fieldId: FIELD_STATUS,
       direction: 'desc'
     }]
   })
   const pointsDescView = createTableView({
     sort: [{
-      field: FIELD_POINTS,
+      fieldId: FIELD_POINTS,
       direction: 'desc'
     }]
   })

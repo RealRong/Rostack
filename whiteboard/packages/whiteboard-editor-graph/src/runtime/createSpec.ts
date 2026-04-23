@@ -4,6 +4,7 @@ import type {
   Input,
   Snapshot
 } from '../contracts/editor'
+import type { EditorPhaseScopeMap } from '../contracts/delta'
 import type { WorkingState } from '../contracts/working'
 import { createEditorGraphPhases } from '../phases'
 import { createEmptySnapshot } from './createEmptySnapshot'
@@ -18,7 +19,7 @@ export const createEditorGraphRuntimeSpec = (): RuntimeSpec<
   Snapshot,
   Change,
   EditorPhaseName,
-  never,
+  EditorPhaseScopeMap,
   undefined,
   {
     count: number

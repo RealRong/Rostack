@@ -1,6 +1,6 @@
 import { store } from '@shared/core'
 import type { CellRef, ItemId } from '@dataview/engine'
-import { tableCellKey } from '@dataview/runtime'
+import { cellId } from '@dataview/runtime'
 
 export interface TableRowChrome {
   selected: boolean
@@ -53,7 +53,7 @@ export const createTableChromeRuntime = (input: {
     isEqual: sameRowChrome
   }),
   cell: store.createKeyedDerivedStore<CellRef, TableCellChrome>({
-    keyOf: tableCellKey,
+    keyOf: cellId,
     get: cell => {
       const rawSelected = store.read(input.cellSelected, cell)
       const visible = store.read(input.selectionVisible)

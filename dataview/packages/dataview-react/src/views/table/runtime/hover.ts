@@ -2,12 +2,15 @@ import { equal, store } from '@shared/core'
 import type { Point } from '@shared/dom'
 import type { CellRef, ItemId } from '@dataview/engine'
 import {
+  cellId,
+  type CellId
+} from '@dataview/runtime'
+import {
   hoveredCellOf,
   hoveredRowIdOf,
   sameHoverTarget,
   type TableHoverTarget
 } from '@dataview/react/views/table/model/hover'
-import { tableCellKey } from '@dataview/runtime'
 
 export interface TableHoverRuntime {
   target: store.ReadStore<TableHoverTarget | null>
@@ -42,13 +45,13 @@ export const createTableHover = (): TableHoverRuntime => {
     emptyValue: false,
     isEqual: Object.is
   })
-  const cellState = store.createKeyedStore<string, boolean>({
+  const cellState = store.createKeyedStore<CellId, boolean>({
     emptyValue: false,
     isEqual: Object.is
   })
   const cell = store.createKeyedDerivedStore<CellRef, boolean>({
-    keyOf: tableCellKey,
-    get: current => store.read(cellState, tableCellKey(current)),
+    keyOf: cellId,
+    get: current => store.read(cellState, cellId(current)),
     isEqual: Object.is
   })
 
@@ -79,16 +82,16 @@ export const createTableHover = (): TableHoverRuntime => {
     const previousCell = hoveredCellOf(previous)
     const nextCell = hoveredCellOf(next)
     const previousCellKey = previousCell
-      ? tableCellKey(previousCell)
+      ? cellId(previousCell)
       : undefined
     const nextCellKey = nextCell
-      ? tableCellKey(nextCell)
+      ? cellId(nextCell)
       : undefined
     if (previousCellKey === nextCellKey) {
       return
     }
 
-    const set: Array<readonly [string, boolean]> = []
+    const set: Array<readonly [CellId, boolean]> = []
     if (previousCellKey) {
       set.push([previousCellKey, false] as const)
     }

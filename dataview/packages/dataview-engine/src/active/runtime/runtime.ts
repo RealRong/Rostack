@@ -6,6 +6,7 @@ import type {
 } from '@dataview/core/contracts'
 import {
   createRuntime,
+  type DefaultPhaseScopeMap,
   type PhaseSpec,
   type RuntimeContext,
   type RuntimePublisher,
@@ -143,7 +144,40 @@ const createMetrics = (input: {
 type ActivePhaseContext = RuntimeContext<
   ActiveRuntimeRunInput,
   ActiveRuntimeWorking,
-  ViewState | undefined
+  ViewState | undefined,
+  undefined
+>
+
+type QueryPhase = PhaseSpec<
+  'query',
+  ActivePhaseContext,
+  undefined,
+  ActivePhaseMetrics,
+  ActivePhaseName
+>
+
+type MembershipPhase = PhaseSpec<
+  'membership',
+  ActivePhaseContext,
+  undefined,
+  ActivePhaseMetrics,
+  ActivePhaseName
+>
+
+type SummaryPhase = PhaseSpec<
+  'summary',
+  ActivePhaseContext,
+  undefined,
+  ActivePhaseMetrics,
+  ActivePhaseName
+>
+
+type PublishPhase = PhaseSpec<
+  'publish',
+  ActivePhaseContext,
+  undefined,
+  ActivePhaseMetrics,
+  ActivePhaseName
 >
 
 const readActiveView = (
@@ -181,12 +215,7 @@ const createPublishReset = (
       action: 'reuse'
     }
 
-const queryPhase: PhaseSpec<
-  ActivePhaseName,
-  ActivePhaseContext,
-  undefined,
-  ActivePhaseMetrics
-> = {
+const queryPhase: QueryPhase = {
   name: 'query',
   deps: [],
   run: (context) => {
@@ -233,12 +262,7 @@ const queryPhase: PhaseSpec<
   }
 }
 
-const membershipPhase: PhaseSpec<
-  ActivePhaseName,
-  ActivePhaseContext,
-  undefined,
-  ActivePhaseMetrics
-> = {
+const membershipPhase: MembershipPhase = {
   name: 'membership',
   deps: ['query'],
   run: (context) => {
@@ -288,12 +312,7 @@ const membershipPhase: PhaseSpec<
   }
 }
 
-const summaryPhase: PhaseSpec<
-  ActivePhaseName,
-  ActivePhaseContext,
-  undefined,
-  ActivePhaseMetrics
-> = {
+const summaryPhase: SummaryPhase = {
   name: 'summary',
   deps: ['membership'],
   run: (context) => {
@@ -353,12 +372,7 @@ const summaryPhase: PhaseSpec<
   }
 }
 
-const publishPhase: PhaseSpec<
-  ActivePhaseName,
-  ActivePhaseContext,
-  undefined,
-  ActivePhaseMetrics
-> = {
+const publishPhase: PublishPhase = {
   name: 'publish',
   deps: ['query', 'membership', 'summary'],
   run: (context) => {
@@ -439,7 +453,7 @@ const createActiveRuntimeSpec = (): RuntimeSpec<
   ViewState | undefined,
   ActiveDelta | undefined,
   ActivePhaseName,
-  never,
+  DefaultPhaseScopeMap<ActivePhaseName>,
   undefined,
   ActivePhaseMetrics
 > => ({

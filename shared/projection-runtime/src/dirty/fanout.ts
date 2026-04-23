@@ -2,35 +2,26 @@ import type * as phase from '../contracts/phase'
 
 export interface PhaseGraph<
   TPhaseName extends string,
-  TContext,
-  TPhaseChange = unknown,
-  TPhaseMetrics = unknown
+  TSpec extends {
+    name: TPhaseName
+    deps: readonly TPhaseName[]
+  }
 > {
   order: readonly TPhaseName[]
-  specs: ReadonlyMap<
-    TPhaseName,
-    phase.Spec<TPhaseName, TContext, TPhaseChange, TPhaseMetrics>
-  >
+  specs: ReadonlyMap<TPhaseName, TSpec>
   dependents: ReadonlyMap<TPhaseName, readonly TPhaseName[]>
 }
 
 export const createPhaseGraph = <
   TPhaseName extends string,
-  TContext,
-  TPhaseChange = unknown,
-  TPhaseMetrics = unknown
+  TSpec extends {
+    name: TPhaseName
+    deps: readonly TPhaseName[]
+  }
 >(
-  phases: readonly phase.Spec<
-    TPhaseName,
-    TContext,
-    TPhaseChange,
-    TPhaseMetrics
-  >[]
-): PhaseGraph<TPhaseName, TContext, TPhaseChange, TPhaseMetrics> => {
-  const specs = new Map<
-    TPhaseName,
-    phase.Spec<TPhaseName, TContext, TPhaseChange, TPhaseMetrics>
-  >()
+  phases: readonly TSpec[]
+): PhaseGraph<TPhaseName, TSpec> => {
+  const specs = new Map<TPhaseName, TSpec>()
   const dependents = new Map<TPhaseName, TPhaseName[]>()
   const indegree = new Map<TPhaseName, number>()
 

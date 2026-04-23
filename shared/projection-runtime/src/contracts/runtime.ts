@@ -1,34 +1,61 @@
 import type * as phase from './phase'
 import type * as trace from './trace'
 import type { Revision } from './core'
+import type {
+  DefaultPhaseScopeMap,
+  PhaseScopeInput,
+  PhaseScopeMap
+} from './scope'
 
 export interface Context<
   TInput,
   TWorking,
   TSnapshot,
-  TDirty = never
+  TScope = undefined
 > {
   input: TInput
   previous: TSnapshot
   working: TWorking
-  dirty?: ReadonlySet<TDirty>
+  scope: TScope
 }
 
-export interface Plan<TPhaseName extends string, TDirty = never> {
+export type PhaseEntry<
+  TInput,
+  TWorking,
+  TSnapshot,
+  TPhaseName extends string,
+  TScopeMap extends PhaseScopeMap<TPhaseName>,
+  TPhaseChange,
+  TPhaseMetrics
+> = {
+  [K in TPhaseName]: phase.Spec<
+    K,
+    Context<TInput, TWorking, TSnapshot, TScopeMap[K]>,
+    TPhaseChange,
+    TPhaseMetrics,
+    TPhaseName,
+    TScopeMap
+  >
+}[TPhaseName]
+
+export interface Plan<
+  TPhaseName extends string,
+  TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>
+> {
   phases: ReadonlySet<TPhaseName>
-  dirty?: ReadonlyMap<TPhaseName, ReadonlySet<TDirty>>
+  scope?: PhaseScopeInput<TPhaseName, TScopeMap>
 }
 
 export interface Planner<
   TInput,
   TSnapshot,
   TPhaseName extends string,
-  TDirty = never
+  TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>
 > {
   plan(input: {
     input: TInput
     previous: TSnapshot
-  }): Plan<TPhaseName, TDirty>
+  }): Plan<TPhaseName, TScopeMap>
 }
 
 export interface PublishResult<TSnapshot, TChange> {
@@ -61,17 +88,20 @@ export interface Spec<
   TSnapshot,
   TChange,
   TPhaseName extends string,
-  TDirty = never,
+  TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>,
   TPhaseChange = unknown,
   TPhaseMetrics = unknown
 > {
   createWorking(): TWorking
   createSnapshot(): TSnapshot
-  planner: Planner<TInput, TSnapshot, TPhaseName, TDirty>
+  planner: Planner<TInput, TSnapshot, TPhaseName, TScopeMap>
   publisher: Publisher<TWorking, TSnapshot, TChange>
-  phases: readonly phase.Spec<
+  phases: readonly PhaseEntry<
+    TInput,
+    TWorking,
+    TSnapshot,
     TPhaseName,
-    Context<TInput, TWorking, TSnapshot, TDirty>,
+    TScopeMap,
     TPhaseChange,
     TPhaseMetrics
   >[]

@@ -1,6 +1,7 @@
 import type { WorkingState } from '../contracts/working'
 import { EMPTY_SCENE_LAYERS } from './geometry'
 import { createEmptyDocumentSnapshot } from './createEmptySnapshot'
+import { createGraphDelta } from './graphPatch/delta'
 
 export const createWorking = (): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
@@ -71,6 +72,9 @@ export const createWorking = (): WorkingState => {
       pick: {
         items: []
       }
+    },
+    delta: {
+      graph: createGraphDelta()
     }
   }
 }

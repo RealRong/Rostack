@@ -27,7 +27,7 @@ import {
   useKeyedStoreValue
 } from '@shared/react'
 import {
-  sameCellRef
+  sameCell
 } from '@dataview/runtime'
 import type {
   TableCell as TableCellModel
@@ -43,14 +43,14 @@ interface PresentCellProps extends CellProps {
   value: TableCellModel
 }
 
-const sameCell = (left: CellProps, right: CellProps) => (
-  sameCellRef(left.cell, right.cell)
+const sameCellProps = (left: CellProps, right: CellProps) => (
+  sameCell(left.cell, right.cell)
   && left.showVerticalLines === right.showVerticalLines
   && left.wrap === right.wrap
 )
 
 const samePresentCell = (left: PresentCellProps, right: PresentCellProps) => (
-  sameCell(left, right)
+  sameCellProps(left, right)
   && left.value === right.value
 )
 
@@ -198,4 +198,4 @@ const CellSlotView = (props: CellProps) => {
   )
 }
 
-export const Cell = memo(CellSlotView, sameCell)
+export const Cell = memo(CellSlotView, sameCellProps)

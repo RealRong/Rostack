@@ -1,0 +1,174 @@
+import { describe, expect, it } from 'vitest'
+import { document as documentApi } from '@whiteboard/core/document'
+import type {
+  EdgeId,
+  NodeId,
+  Size
+} from '@whiteboard/core/types'
+import { createEngine } from '@whiteboard/engine'
+import { createPhaseGraph } from '@shared/projection-runtime'
+import { publishRuntimeResult } from '@shared/projection-runtime/runtime/publish'
+import { createRuntimeState } from '@shared/projection-runtime/runtime/state'
+import { runRuntimeUpdate } from '@shared/projection-runtime/runtime/update'
+import type { Input } from '../src/contracts/editor'
+import { createEmptyInput, createEmptyInputDelta } from '../src/runtime/createEmptySnapshot'
+import { createEditorGraphRuntimeSpec } from '../src/runtime/createSpec'
+import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
+
+const createNode = (input: {
+  engine: ReturnType<typeof createEngine>
+  position: { x: number; y: number }
+  text: string
+  size?: Size
+}) => {
+  const result = input.engine.execute({
+    type: 'node.create',
+    input: {
+      type: 'text',
+      position: input.position,
+      size: input.size,
+      data: {
+        text: input.text
+      }
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to create node')
+  }
+
+  return result.data.nodeId
+}
+
+const createEdge = (input: {
+  engine: ReturnType<typeof createEngine>
+  sourceId: NodeId
+  targetId: NodeId
+}) => {
+  const result = input.engine.execute({
+    type: 'edge.create',
+    input: {
+      type: 'straight',
+      source: {
+        kind: 'node',
+        nodeId: input.sourceId
+      },
+      target: {
+        kind: 'node',
+        nodeId: input.targetId
+      }
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to create edge')
+  }
+
+  return result.data.edgeId
+}
+
+const createInput = (input: {
+  engine: ReturnType<typeof createEngine>
+  delta: Input['delta']
+  edit?: Input['session']['edit']
+  nodeMeasures?: ReadonlyMap<NodeId, Size>
+}): Input => {
+  const value = createEmptyInput()
+  value.document.snapshot = input.engine.current().snapshot
+  value.session.edit = input.edit ?? null
+  value.measure.text.ready = (input.nodeMeasures?.size ?? 0) > 0
+  value.measure.text.nodes = new Map(
+    [...(input.nodeMeasures ?? new Map())].map(([nodeId, size]) => [
+      nodeId,
+      createEditorGraphTextMeasureEntry(size)
+    ])
+  )
+  value.delta = input.delta
+  return value
+}
+
+describe('graph delta patching', () => {
+  it('records touched node and related edge geometry in working delta', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_graph_delta')
+    })
+    const firstId = createNode({
+      engine,
+      position: { x: 40, y: 40 },
+      text: 'First',
+      size: { width: 120, height: 44 }
+    })
+    const secondId = createNode({
+      engine,
+      position: { x: 260, y: 40 },
+      text: 'Second',
+      size: { width: 120, height: 44 }
+    })
+    const edgeId = createEdge({
+      engine,
+      sourceId: firstId,
+      targetId: secondId
+    })
+
+    const spec = createEditorGraphRuntimeSpec()
+    const graph = createPhaseGraph(spec.phases)
+    const state = createRuntimeState(
+      spec.createWorking(),
+      spec.createSnapshot()
+    )
+
+    const bootstrapDelta = createEmptyInputDelta()
+    bootstrapDelta.document.reset = true
+
+    const bootstrap = runRuntimeUpdate({
+      spec,
+      graph,
+      state,
+      nextInput: createInput({
+        engine,
+        delta: bootstrapDelta,
+        nodeMeasures: new Map([
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+    publishRuntimeResult(state, bootstrap)
+
+    const liveDelta = createEmptyInputDelta()
+    liveDelta.graph.nodes.edit.updated.add(firstId)
+
+    const live = runRuntimeUpdate({
+      spec,
+      graph,
+      state,
+      nextInput: createInput({
+        engine,
+        delta: liveDelta,
+        edit: {
+          kind: 'node',
+          nodeId: firstId,
+          field: 'text',
+          text: 'First node with much wider live content',
+          composing: false,
+          caret: {
+            kind: 'end'
+          }
+        },
+        nodeMeasures: new Map([
+          [firstId, { width: 220, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+
+    expect(live.trace.phases[0]?.name).toBe('graph')
+    expect(state.working.delta.graph.entities.nodes.updated.has(firstId)).toBe(true)
+    expect(state.working.delta.graph.geometry.nodes.has(firstId)).toBe(true)
+    expect(state.working.delta.graph.entities.edges.updated.has(edgeId)).toBe(true)
+    expect(state.working.delta.graph.geometry.edges.has(edgeId)).toBe(true)
+    expect(state.working.delta.graph.entities.nodes.updated.has(secondId)).toBe(false)
+  })
+})

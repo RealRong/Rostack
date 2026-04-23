@@ -8,20 +8,20 @@ export const createHarness = <
   TSnapshot,
   TChange,
   TPhaseName extends string,
-  TDirty = never,
+  TScopeMap extends import('../contracts/scope').PhaseScopeMap<TPhaseName> = import('../contracts/scope').DefaultPhaseScopeMap<TPhaseName>,
   TPhaseChange = unknown,
   TPhaseMetrics = unknown
 >(
   spec: runtime.Spec<
     TInput,
     TWorking,
-    TSnapshot,
-    TChange,
-    TPhaseName,
-    TDirty,
-    TPhaseChange,
-    TPhaseMetrics
-  >
+      TSnapshot,
+      TChange,
+      TPhaseName,
+      TScopeMap,
+      TPhaseChange,
+      TPhaseMetrics
+    >
 ): testing.Harness<
   TInput,
   TSnapshot,

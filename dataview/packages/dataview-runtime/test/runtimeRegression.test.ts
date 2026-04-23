@@ -6,8 +6,7 @@ import {
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {
-  createDataViewRuntime,
-  recordValueRef
+  createDataViewRuntime
 } from '@dataview/runtime'
 import {
   createItemArraySelectionScope
@@ -293,23 +292,44 @@ describe('data view runtime regressions', () => {
       engine
     })
 
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', TITLE_FIELD_ID))).toBe('Task 1')
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBe('todo')
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: TITLE_FIELD_ID
+    })).toBe('Task 1')
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: FIELD_STATUS
+    })).toBe('todo')
 
     engine.records.fields.set('rec_1', TITLE_FIELD_ID, 'Task 1 updated')
     engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
 
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', TITLE_FIELD_ID))).toBe('Task 1 updated')
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBe('done')
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: TITLE_FIELD_ID
+    })).toBe('Task 1 updated')
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: FIELD_STATUS
+    })).toBe('done')
 
     engine.records.fields.clear('rec_1', FIELD_STATUS)
 
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBeUndefined()
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: FIELD_STATUS
+    })).toBeUndefined()
 
     engine.records.remove('rec_1')
 
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', TITLE_FIELD_ID))).toBeUndefined()
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBeUndefined()
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: TITLE_FIELD_ID
+    })).toBeUndefined()
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: FIELD_STATUS
+    })).toBeUndefined()
 
     runtime.dispose()
   })
@@ -322,15 +342,33 @@ describe('data view runtime regressions', () => {
       engine
     })
 
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBe('todo')
-    expect(runtime.source.document.values.get(recordValueRef('rec_2', FIELD_STATUS))).toBe('doing')
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: FIELD_STATUS
+    })).toBe('todo')
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_2',
+      fieldId: FIELD_STATUS
+    })).toBe('doing')
 
     engine.fields.remove(FIELD_STATUS)
 
-    expect(runtime.source.document.values.get(recordValueRef('rec_1', FIELD_STATUS))).toBeUndefined()
-    expect(runtime.source.document.values.get(recordValueRef('rec_2', FIELD_STATUS))).toBeUndefined()
-    expect(runtime.source.document.values.get(recordValueRef('rec_3', FIELD_STATUS))).toBeUndefined()
-    expect(runtime.source.document.values.get(recordValueRef('rec_2', TITLE_FIELD_ID))).toBe('Task 2')
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_1',
+      fieldId: FIELD_STATUS
+    })).toBeUndefined()
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_2',
+      fieldId: FIELD_STATUS
+    })).toBeUndefined()
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_3',
+      fieldId: FIELD_STATUS
+    })).toBeUndefined()
+    expect(runtime.source.document.values.get({
+      recordId: 'rec_2',
+      fieldId: TITLE_FIELD_ID
+    })).toBe('Task 2')
 
     runtime.dispose()
   })

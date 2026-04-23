@@ -1,4 +1,8 @@
 import type * as runtime from '../contracts/runtime'
+import type {
+  DefaultPhaseScopeMap,
+  PhaseScopeMap
+} from '../contracts/scope'
 import { createPhaseGraph } from '../dirty/fanout'
 import { publishRuntimeResult } from './publish'
 import { createRuntimeState } from './state'
@@ -10,20 +14,20 @@ export const createRuntime = <
   TSnapshot,
   TChange,
   TPhaseName extends string,
-  TDirty = never,
+  TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>,
   TPhaseChange = unknown,
   TPhaseMetrics = unknown
 >(
   spec: runtime.Spec<
     TInput,
     TWorking,
-    TSnapshot,
-    TChange,
-    TPhaseName,
-    TDirty,
-    TPhaseChange,
-    TPhaseMetrics
-  >
+      TSnapshot,
+      TChange,
+      TPhaseName,
+      TScopeMap,
+      TPhaseChange,
+      TPhaseMetrics
+    >
 ): runtime.Instance<
   TInput,
   TSnapshot,
@@ -31,7 +35,18 @@ export const createRuntime = <
   TPhaseName,
   TPhaseMetrics
 > => {
-  const graph = createPhaseGraph(spec.phases)
+  const graph = createPhaseGraph<
+    TPhaseName,
+    runtime.PhaseEntry<
+      TInput,
+      TWorking,
+      TSnapshot,
+      TPhaseName,
+      TScopeMap,
+      TPhaseChange,
+      TPhaseMetrics
+    >
+  >(spec.phases)
   const state = createRuntimeState<
     TWorking,
     TSnapshot,

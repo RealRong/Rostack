@@ -1,8 +1,8 @@
 import { buildSceneSnapshot } from '../runtime/scene'
-import type { EditorPhase } from './shared'
+import type { SceneEditorPhase } from './shared'
 import { toMetric } from './shared'
 
-export const createScenePhase = (): EditorPhase => ({
+export const createScenePhase = (): SceneEditorPhase => ({
   name: 'scene',
   deps: ['graph'],
   run: (context) => {

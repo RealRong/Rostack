@@ -21,9 +21,6 @@ import type {
 import type {
   EngineSource
 } from '@dataview/runtime/source'
-import {
-  recordValueRef
-} from '@dataview/runtime/refs'
 
 const EMPTY_SECTION_IDS = [] as readonly SectionId[]
 const DEFAULT_COLUMN_WIDTH = 160
@@ -291,10 +288,10 @@ export const createTableModel = (
         recordId: currentRow.recordId,
         viewId: currentBody.viewId,
         field,
-        value: store.read(source.document.values, recordValueRef(
-          currentRow.recordId,
-          current.fieldId
-        ))
+        value: store.read(source.document.values, {
+          recordId: currentRow.recordId,
+          fieldId: current.fieldId
+        })
       }
     },
     isEqual: sameCell

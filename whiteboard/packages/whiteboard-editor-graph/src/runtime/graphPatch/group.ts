@@ -1,0 +1,74 @@
+import type { GroupId } from '@whiteboard/core/types'
+import type { Input, GroupView } from '../../contracts/editor'
+import type { GraphDelta } from '../../contracts/delta'
+import type {
+  GraphGroupEntry,
+  WorkingState
+} from '../../contracts/working'
+import { isGroupViewEqual } from '../equality'
+import { isRectEqual } from '../geometry'
+import { buildGroupView } from '../views'
+import { markGeometryTouched } from './delta'
+import { patchFamilyEntry, patchOrderedIds } from './helpers'
+
+const readGroupEntry = (
+  input: Input,
+  groupId: GroupId
+): GraphGroupEntry | undefined => {
+  const group = input.document.snapshot.state.facts.entities.owners.groups.get(groupId)
+  if (!group) {
+    return undefined
+  }
+
+  return {
+    items: input.document.snapshot.state.facts.relations.groupItems.get(groupId) ?? []
+  }
+}
+
+const isGroupGeometryChanged = (
+  previous: GroupView | undefined,
+  next: GroupView | undefined
+): boolean => (
+  previous === undefined
+  || next === undefined
+  || !isRectEqual(previous.frame.bounds, next.frame.bounds)
+)
+
+export const patchGroup = (input: {
+  input: Input
+  working: WorkingState
+  delta: GraphDelta
+  groupId: GroupId
+}): boolean => {
+  const previous = input.working.graph.owners.groups.get(input.groupId)
+  const entry = readGroupEntry(input.input, input.groupId)
+  const group = input.input.document.snapshot.state.facts.entities.owners.groups.get(input.groupId)
+  const next = entry && group
+    ? buildGroupView({
+        group,
+        items: patchOrderedIds({
+          previous: previous?.structure.items,
+          next: entry.items
+        }),
+        nodes: input.working.graph.nodes,
+        mindmaps: input.working.graph.owners.mindmaps
+      })
+    : undefined
+  const action = patchFamilyEntry({
+    family: input.working.graph.owners.groups,
+    id: input.groupId,
+    next,
+    isEqual: isGroupViewEqual,
+    delta: input.delta.entities.groups
+  })
+  const current = input.working.graph.owners.groups.get(input.groupId)
+  const geometryTouched = action === 'added'
+    || action === 'removed'
+    || isGroupGeometryChanged(previous, current)
+
+  if (geometryTouched) {
+    markGeometryTouched(input.delta.geometry.groups, input.groupId)
+  }
+
+  return action !== 'unchanged'
+}

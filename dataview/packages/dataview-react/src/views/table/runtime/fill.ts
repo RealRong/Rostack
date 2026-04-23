@@ -5,8 +5,9 @@ import type {
 } from '@dataview/engine'
 import { fillHandleCell, type GridSelection } from '@dataview/table'
 import {
+  cellId,
   sameOptionalCell,
-  tableCellKey
+  type CellId
 } from '@dataview/runtime'
 import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields'
 
@@ -41,19 +42,19 @@ export const createTableFillRuntime = (input: {
     },
     isEqual: sameOptionalCell
   })
-  const state = store.createKeyedStore<string, boolean>({
+  const state = store.createKeyedStore<CellId, boolean>({
     emptyValue: false,
     isEqual: Object.is
   })
   const cell = store.createKeyedDerivedStore<CellRef, boolean>({
-    keyOf: tableCellKey,
-    get: current => store.read(state, tableCellKey(current)),
+    keyOf: cellId,
+    get: current => store.read(state, cellId(current)),
     isEqual: Object.is
   })
 
   const readHandle = () => store.peek(handle)
   let currentKey = readHandle()
-    ? tableCellKey(readHandle()!)
+    ? cellId(readHandle()!)
     : undefined
   if (currentKey) {
     state.set(currentKey, true)
@@ -62,7 +63,7 @@ export const createTableFillRuntime = (input: {
   const sync = () => {
     const next = readHandle()
     const nextKey = next
-      ? tableCellKey(next)
+      ? cellId(next)
       : undefined
     if (currentKey === nextKey) {
       return

@@ -23,7 +23,7 @@ export interface GridSelectionEdges {
   fieldEnd: number
 }
 
-const sameCellRef = (
+const sameCell = (
   left: CellRef,
   right: CellRef
 ) => left.itemId === right.itemId && left.fieldId === right.fieldId
@@ -31,7 +31,7 @@ const sameCellRef = (
 const equal = (
   left: GridSelection | null,
   right: GridSelection | null
-) => selection.sameAnchorFocusPair(left, right, sameCellRef)
+) => selection.sameAnchorFocusPair(left, right, sameCell)
 
 const set = (
   focus: CellRef,

@@ -14,5 +14,5 @@ export type {
 } from '@dataview/runtime/source/contracts'
 
 export type {
-  RecordValueRef
-} from '@dataview/runtime/refs'
+  ValueRef
+} from '@dataview/runtime/identity'

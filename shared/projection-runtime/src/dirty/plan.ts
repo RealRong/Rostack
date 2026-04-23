@@ -1,32 +1,47 @@
 import type * as runtime from '../contracts/runtime'
-import { createReadonlySet, isReadonlySetEmpty, mergeReadonlySets } from './set'
+import type {
+  DefaultPhaseScopeMap,
+  PhaseScopeInput,
+  PhaseScopeMap
+} from '../contracts/scope'
+
+const hasOwn = <TObject extends object>(
+  value: TObject,
+  key: PropertyKey
+): key is keyof TObject => Object.prototype.hasOwnProperty.call(value, key)
 
 export const createPlan = <
   TPhaseName extends string,
-  TDirty = never
+  TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>
 >(
   input?: {
     phases?: Iterable<TPhaseName>
-    dirty?: ReadonlyMap<TPhaseName, ReadonlySet<TDirty>>
+    scope?: PhaseScopeInput<TPhaseName, TScopeMap>
   }
-): runtime.Plan<TPhaseName, TDirty> => {
+): runtime.Plan<TPhaseName, TScopeMap> => {
   const phases = new Set(input?.phases ?? [])
-  const dirty = new Map<TPhaseName, ReadonlySet<TDirty>>()
+  const scope: Partial<Record<TPhaseName, unknown>> = {}
 
-  input?.dirty?.forEach((tokens, phaseName) => {
-    const nextTokens = createReadonlySet(tokens)
-    if (isReadonlySetEmpty(nextTokens)) {
-      return
+  if (input?.scope) {
+    for (const phaseName in input.scope) {
+      if (!hasOwn(input.scope, phaseName)) {
+        continue
+      }
+
+      const nextScope = input.scope[phaseName]
+      if (nextScope === undefined) {
+        continue
+      }
+
+      phases.add(phaseName)
+      scope[phaseName] = nextScope
     }
+  }
 
-    phases.add(phaseName)
-    dirty.set(phaseName, nextTokens)
-  })
-
-  return dirty.size > 0
+  return Object.keys(scope).length > 0
     ? {
         phases,
-        dirty
+        scope: scope as PhaseScopeInput<TPhaseName, TScopeMap>
       }
     : {
         phases
@@ -35,37 +50,39 @@ export const createPlan = <
 
 export const mergePlans = <
   TPhaseName extends string,
-  TDirty = never
+  TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>
 >(
-  ...plans: readonly runtime.Plan<TPhaseName, TDirty>[]
-): runtime.Plan<TPhaseName, TDirty> => {
+  ...plans: readonly runtime.Plan<TPhaseName, TScopeMap>[]
+): runtime.Plan<TPhaseName, TScopeMap> => {
   const phases = new Set<TPhaseName>()
-  const dirty = new Map<TPhaseName, ReadonlySet<TDirty>>()
+  const scope: Partial<Record<TPhaseName, unknown>> = {}
 
   plans.forEach((plan) => {
     plan.phases.forEach((phaseName) => {
       phases.add(phaseName)
     })
 
-    plan.dirty?.forEach((tokens, phaseName) => {
-      const merged = mergeReadonlySets(
-        dirty.get(phaseName),
-        tokens
-      )
+    if (plan.scope) {
+      for (const phaseName in plan.scope) {
+        if (!hasOwn(plan.scope, phaseName)) {
+          continue
+        }
 
-      if (isReadonlySetEmpty(merged)) {
-        return
+        const nextScope = plan.scope[phaseName]
+        if (nextScope === undefined) {
+          continue
+        }
+
+        phases.add(phaseName)
+        scope[phaseName] = nextScope
       }
-
-      phases.add(phaseName)
-      dirty.set(phaseName, merged)
-    })
+    }
   })
 
-  return dirty.size > 0
+  return Object.keys(scope).length > 0
     ? {
         phases,
-        dirty
+        scope: scope as PhaseScopeInput<TPhaseName, TScopeMap>
       }
     : {
         phases

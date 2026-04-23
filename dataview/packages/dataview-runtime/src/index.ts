@@ -18,7 +18,7 @@ export type {
   EntitySource,
   ItemSource,
   SectionSource,
-  RecordValueRef
+  ValueRef
 } from '@dataview/runtime/source'
 
 export type {
@@ -138,10 +138,12 @@ export type {
 } from '@dataview/runtime/workflow/createRecord'
 
 export {
-  recordValueKey,
-  recordValueRef,
-  sameCellRef,
+  cellId,
+  sameCell,
   sameOptionalCell,
-  tableCell,
-  tableCellKey
-} from '@dataview/runtime/refs'
+  valueId
+} from '@dataview/runtime/identity'
+export type {
+  CellId,
+  ValueId
+} from '@dataview/runtime/identity'

@@ -1,31 +1,43 @@
 import { describe, expect, it } from 'vitest'
 import {
   createPlan,
-  createReadonlySet,
   mergePlans
 } from '../src'
 
-describe('dirty plans', () => {
-  it('merges phases and dirty tokens deterministically', () => {
-    const left = createPlan<'graph' | 'scene', string>({
+describe('scope plans', () => {
+  it('merges phases and scoped payloads deterministically', () => {
+    type PhaseName = 'graph' | 'scene'
+    type ScopeMap = {
+      graph: {
+        ids: readonly string[]
+      }
+      scene: {
+        ids: readonly string[]
+      }
+    }
+
+    const left = createPlan<PhaseName, ScopeMap>({
       phases: ['graph'],
-      dirty: new Map([
-        ['scene', createReadonlySet(['node:1'])]
-      ])
+      scope: {
+        scene: {
+          ids: ['node:1']
+        }
+      }
     })
-    const right = createPlan<'graph' | 'scene', string>({
-      dirty: new Map([
-        ['scene', createReadonlySet(['node:2'])]
-      ])
+    const right = createPlan<PhaseName, ScopeMap>({
+      scope: {
+        scene: {
+          ids: ['node:2']
+        }
+      }
     })
 
     const merged = mergePlans(left, right)
 
     expect(merged.phases.has('graph')).toBe(true)
     expect(merged.phases.has('scene')).toBe(true)
-    expect(merged.dirty?.get('scene')).toEqual(new Set([
-      'node:1',
-      'node:2'
-    ]))
+    expect(merged.scope?.scene).toEqual({
+      ids: ['node:2']
+    })
   })
 })

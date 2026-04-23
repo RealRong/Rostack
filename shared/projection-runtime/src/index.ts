@@ -42,8 +42,14 @@ export type {
   Spec as PhaseSpec
 } from './contracts/phase'
 export type {
+  DefaultPhaseScopeMap,
+  PhaseScopeInput,
+  PhaseScopeMap
+} from './contracts/scope'
+export type {
   Context as RuntimeContext,
   Instance as RuntimeInstance,
+  PhaseEntry as RuntimePhaseEntry,
   Plan as RuntimePlan,
   Planner as RuntimePlanner,
   PublishResult as RuntimePublishResult,

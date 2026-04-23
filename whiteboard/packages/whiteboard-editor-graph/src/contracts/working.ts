@@ -13,6 +13,7 @@ import type {
 } from '@whiteboard/core/types'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection-runtime'
+import type { GraphDelta } from './delta'
 import type {
   ChromeView,
   EdgeDraft,
@@ -36,14 +37,17 @@ export interface WorkingState {
   graph: GraphState
   ui: UiState
   scene: SceneSnapshot
+  delta: {
+    graph: GraphDelta
+  }
 }
 
 export interface GraphState {
-  nodes: ReadonlyMap<NodeId, NodeView>
-  edges: ReadonlyMap<EdgeId, EdgeView>
+  nodes: Map<NodeId, NodeView>
+  edges: Map<EdgeId, EdgeView>
   owners: {
-    mindmaps: ReadonlyMap<MindmapId, MindmapView>
-    groups: ReadonlyMap<GroupId, GroupView>
+    mindmaps: Map<MindmapId, MindmapView>
+    groups: Map<GroupId, GroupView>
   }
 }
 

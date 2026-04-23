@@ -19,10 +19,11 @@ import type {
 import type {
   DocumentSource
 } from '@dataview/runtime/source/contracts'
-import type { RecordValueRef } from '@dataview/runtime/refs'
 import {
-  recordValueKey
-} from '@dataview/runtime/refs'
+  valueId,
+  type ValueId,
+  type ValueRef
+} from '@dataview/runtime/identity'
 import {
   applyEntityDelta,
   createEntitySourceRuntime,
@@ -40,8 +41,8 @@ export interface DocumentSourceRuntime {
   meta: store.ValueStore<DataDoc['meta']>
   records: EntitySourceRuntime<RecordId, DataRecord>
   values: {
-    source: store.KeyedReadStore<RecordValueRef, unknown>
-    values: store.KeyedStore<string, unknown>
+    source: store.KeyedReadStore<ValueRef, unknown>
+    store: store.KeyedStore<ValueId, unknown>
     clear(): void
   }
   fields: EntitySourceRuntime<FieldId, CustomField>
@@ -49,52 +50,52 @@ export interface DocumentSourceRuntime {
   clear(): void
 }
 
-const readRecordValue = (
+const readValue = (
   record: DataRecord,
   fieldId: FieldId
 ) => fieldId === TITLE_FIELD_ID
   ? record.title
   : record.values[fieldId]
 
-const collectRecordValueRefs = (
+const collectValueFieldIds = (
   record: DataRecord
 ) => [
   TITLE_FIELD_ID,
   ...Object.keys(record.values) as FieldId[]
 ]
 
-const collectRecordValueEntries = (
+const collectValueEntries = (
   record: DataRecord
-): readonly (readonly [string, unknown])[] => collectRecordValueRefs(record).flatMap(fieldId => {
-  const value = readRecordValue(record, fieldId)
+): readonly (readonly [ValueId, unknown])[] => collectValueFieldIds(record).flatMap(fieldId => {
+  const value = readValue(record, fieldId)
   return value === undefined
     ? []
-    : [[recordValueKey({
+    : [[valueId({
       recordId: record.id,
       fieldId
     }), value] as const]
 })
 
-const collectRecordValueKeys = (
+const collectValueIds = (
   record: DataRecord
-): readonly string[] => collectRecordValueRefs(record).map(fieldId => recordValueKey({
+): readonly ValueId[] => collectValueFieldIds(record).map(fieldId => valueId({
   recordId: record.id,
   fieldId
 }))
 
 const createDocumentValueSourceRuntime = () => {
-  const values = store.createKeyedStore<string, unknown>({
+  const values = store.createKeyedStore<ValueId, unknown>({
     emptyValue: undefined,
     isEqual: equal.sameJsonValue
   })
 
   return {
-    source: store.createKeyedDerivedStore<RecordValueRef, unknown>({
-      keyOf: recordValueKey,
-      get: ref => store.read(values, recordValueKey(ref)),
+    source: store.createKeyedDerivedStore<ValueRef, unknown>({
+      keyOf: valueId,
+      get: value => store.read(values, valueId(value)),
       isEqual: equal.sameJsonValue
     }),
-    values,
+    store: values,
     clear: () => {
       values.clear()
     }
@@ -114,14 +115,14 @@ const resetDocumentValues = (input: {
   const set = recordIds.flatMap(recordId => {
     const record = documentApi.records.get(input.snapshot.doc, recordId)
     return record
-      ? collectRecordValueEntries(record)
+      ? collectValueEntries(record)
       : []
   })
   if (!set.length) {
     return
   }
 
-  input.runtime.values.patch({
+  input.runtime.store.patch({
     set
   })
 }
@@ -132,8 +133,8 @@ const applyDocumentValueDelta = (input: {
   snapshot: EngineSnapshot
 }) => {
   if (input.delta.records?.update?.length !== undefined || input.delta.records?.remove?.length !== undefined || input.delta.fields?.remove?.length !== undefined) {
-    const set: Array<readonly [string, unknown]> = []
-    const deleteKeys = new Set<string>()
+    const set: Array<readonly [ValueId, unknown]> = []
+    const deleteKeys = new Set<ValueId>()
     const updatedRecordIds = input.delta.records?.update ?? []
 
     updatedRecordIds.forEach(recordId => {
@@ -141,22 +142,22 @@ const applyDocumentValueDelta = (input: {
       const nextRecord = documentApi.records.get(input.snapshot.doc, recordId)
       if (!nextRecord) {
         if (previousRecord) {
-          collectRecordValueKeys(previousRecord).forEach(key => {
+          collectValueIds(previousRecord).forEach(key => {
             deleteKeys.add(key)
           })
         }
         return
       }
 
-      collectRecordValueEntries(nextRecord).forEach(entry => {
+      collectValueEntries(nextRecord).forEach(entry => {
         set.push(entry)
       })
       if (!previousRecord) {
         return
       }
 
-      const nextKeySet = new Set(collectRecordValueKeys(nextRecord))
-      collectRecordValueKeys(previousRecord).forEach(key => {
+      const nextKeySet = new Set(collectValueIds(nextRecord))
+      collectValueIds(previousRecord).forEach(key => {
         if (!nextKeySet.has(key)) {
           deleteKeys.add(key)
         }
@@ -169,14 +170,14 @@ const applyDocumentValueDelta = (input: {
         return
       }
 
-      collectRecordValueKeys(previousRecord).forEach(key => {
+      collectValueIds(previousRecord).forEach(key => {
         deleteKeys.add(key)
       })
     })
 
     input.delta.fields?.remove?.forEach(fieldId => {
       store.peek(input.runtime.records.ids).forEach(recordId => {
-        deleteKeys.add(recordValueKey({
+        deleteKeys.add(valueId({
           recordId,
           fieldId
         }))
@@ -187,7 +188,7 @@ const applyDocumentValueDelta = (input: {
       return
     }
 
-    input.runtime.values.values.patch({
+    input.runtime.values.store.patch({
       ...(set.length
         ? {
             set

@@ -55,6 +55,20 @@ type Change = {
   items: Ids<string>
 }
 
+type ScopedPhaseName = 'left' | 'right' | 'sink'
+
+type ScopedScopeMap = {
+  left: {
+    values: readonly number[]
+  }
+  right: {
+    values: readonly number[]
+  }
+  sink: {
+    values: readonly number[]
+  }
+}
+
 const EMPTY_ITEMS: Family<string, ItemView> = {
   ids: [],
   byId: new Map()
@@ -224,6 +238,93 @@ const createSpec = () => ({
   }]
 })
 
+const createScopedSpec = () => ({
+  createWorking: () => ({
+    seen: [] as readonly number[]
+  }),
+  createSnapshot: () => ({
+    seen: [] as readonly number[]
+  }),
+  planner: {
+    plan: () => createPlan<ScopedPhaseName, ScopedScopeMap>({
+      phases: ['left', 'right'],
+      scope: {
+        left: {
+          values: [1]
+        },
+        right: {
+          values: [2]
+        }
+      }
+    })
+  },
+  publisher: {
+    publish: (input: {
+      working: {
+        seen: readonly number[]
+      }
+    }) => ({
+      snapshot: {
+        seen: input.working.seen
+      },
+      change: input.working.seen
+    })
+  },
+  phases: [{
+    name: 'left' as const,
+    deps: [] as const,
+    run: (context: {
+      scope: ScopedScopeMap['left']
+    }) => ({
+      action: 'sync' as const,
+      change: undefined,
+      emit: {
+        sink: {
+          values: context.scope.values
+        }
+      }
+    })
+  }, {
+    name: 'right' as const,
+    deps: [] as const,
+    run: (context: {
+      scope: ScopedScopeMap['right']
+    }) => ({
+      action: 'sync' as const,
+      change: undefined,
+      emit: {
+        sink: {
+          values: context.scope.values
+        }
+      }
+    })
+  }, {
+    name: 'sink' as const,
+    deps: ['left', 'right'] as const,
+    mergeScope: (
+      current: ScopedScopeMap['sink'] | undefined,
+      next: ScopedScopeMap['sink']
+    ) => ({
+      values: [
+        ...(current?.values ?? []),
+        ...next.values
+      ]
+    }),
+    run: (context: {
+      working: {
+        seen: readonly number[]
+      }
+      scope: ScopedScopeMap['sink']
+    }) => {
+      context.working.seen = context.scope.values
+      return {
+        action: 'sync' as const,
+        change: undefined
+      }
+    }
+  }]
+})
+
 describe('createRuntime', () => {
   it('runs phases in topological order and publishes once', () => {
     const runtime = createRuntime(createSpec())
@@ -341,5 +442,21 @@ describe('createRuntime', () => {
         })
       }]
     })).toThrow('Projection runtime phases must form a DAG.')
+  })
+
+  it('merges emitted scope before running downstream phases', () => {
+    const runtime = createRuntime(createScopedSpec())
+
+    const result = runtime.update({
+      count: 0,
+      labels: [],
+      impact: {
+        count: createFlags(false),
+        labels: createFlags(false)
+      }
+    })
+
+    expect(result.snapshot.seen).toEqual([1, 2])
+    assertPhaseOrder(result.trace, ['left', 'right', 'sink'])
   })
 })

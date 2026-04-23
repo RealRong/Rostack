@@ -41,6 +41,9 @@ import {
   useAutoPan
 } from '@dataview/react/interaction/autoPan'
 import { useStoreValue } from '@shared/react'
+import {
+  sameOptionalCell
+} from '@dataview/runtime'
 import type { TableHoverTarget } from '@dataview/react/views/table/model/hover'
 import { hoveredRowIdOf } from '@dataview/react/views/table/model/hover'
 import { useTableContext } from '@dataview/react/views/table/context'
@@ -96,11 +99,6 @@ type FillPointerState = Extract<PointerState, {
   type: 'drag'
   mode: 'fill'
 }>
-
-const sameCellRef = (
-  left: CellRef,
-  right: CellRef
-) => left.itemId === right.itemId && left.fieldId === right.fieldId
 
 export const resolveFillWriteManyInput = (input: {
   selection: ReturnType<typeof gridSelection.set> | null
@@ -545,7 +543,7 @@ export const usePointer = (
       return
     }
 
-    if (current.lastTarget && sameCellRef(current.lastTarget, target)) {
+    if (sameOptionalCell(current.lastTarget, target)) {
       return
     }
 

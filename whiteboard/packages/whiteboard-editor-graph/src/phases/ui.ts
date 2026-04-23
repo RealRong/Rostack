@@ -4,10 +4,10 @@ import {
   buildNodeUiView,
   buildSelectionView
 } from '../runtime/ui'
-import type { EditorPhase } from './shared'
+import type { UiEditorPhase } from './shared'
 import { toMetric } from './shared'
 
-export const createUiPhase = (): EditorPhase => ({
+export const createUiPhase = (): UiEditorPhase => ({
   name: 'ui',
   deps: ['graph'],
   run: (context) => {

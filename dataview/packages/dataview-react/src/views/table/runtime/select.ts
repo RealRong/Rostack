@@ -6,8 +6,8 @@ import {
 } from '@dataview/table'
 import type { GridSelectionEdges } from '@dataview/table/gridSelection'
 import {
-  tableCell,
-  tableCellKey
+  cellId,
+  type CellId
 } from '@dataview/runtime'
 import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields'
 
@@ -38,26 +38,29 @@ const collectCellKeys = (
   fields: TableDisplayedFields | undefined
 ) => {
   if (!selection || !fields) {
-    return new Set<string>()
+    return new Set<CellId>()
   }
 
   const itemIds = gridSelection.itemIds(selection, items)
   const fieldIds = gridSelection.fieldIds(selection, fields)
-  const keys = new Set<string>()
+  const keys = new Set<CellId>()
   itemIds.forEach(itemId => {
     fieldIds.forEach(fieldId => {
-      keys.add(tableCellKey(tableCell(itemId, fieldId)))
+      keys.add(cellId({
+        itemId,
+        fieldId
+      }))
     })
   })
   return keys
 }
 
 const patchBooleanKeyedMembership = (
-  membershipStore: ReturnType<typeof coreStore.createKeyedStore<string, boolean>>,
-  previous: ReadonlySet<string>,
-  next: ReadonlySet<string>
+  membershipStore: ReturnType<typeof coreStore.createKeyedStore<CellId, boolean>>,
+  previous: ReadonlySet<CellId>,
+  next: ReadonlySet<CellId>
 ) => {
-  const set: Array<readonly [string, boolean]> = []
+  const set: Array<readonly [CellId, boolean]> = []
   previous.forEach(key => {
     if (!next.has(key)) {
       set.push([key, false] as const)
@@ -110,27 +113,27 @@ export const createTableSelectRuntime = (input: {
       && left?.fieldId === right?.fieldId
     )
   })
-  const selectedState = coreStore.createKeyedStore<string, boolean>({
+  const selectedState = coreStore.createKeyedStore<CellId, boolean>({
     emptyValue: false,
     isEqual: Object.is
   })
-  const focusState = coreStore.createKeyedStore<string, boolean>({
+  const focusState = coreStore.createKeyedStore<CellId, boolean>({
     emptyValue: false,
     isEqual: Object.is
   })
   const selected = coreStore.createKeyedDerivedStore<CellRef, boolean>({
-    keyOf: tableCellKey,
-    get: cell => coreStore.read(selectedState, tableCellKey(cell)),
+    keyOf: cellId,
+    get: cell => coreStore.read(selectedState, cellId(cell)),
     isEqual: Object.is
   })
   const focus = coreStore.createKeyedDerivedStore<CellRef, boolean>({
-    keyOf: tableCellKey,
-    get: cell => coreStore.read(focusState, tableCellKey(cell)),
+    keyOf: cellId,
+    get: cell => coreStore.read(focusState, cellId(cell)),
     isEqual: Object.is
   })
 
-  let selectedKeys = new Set<string>()
-  let focusKey: string | undefined
+  let selectedKeys = new Set<CellId>()
+  let focusKey: CellId | undefined
 
   const sync = () => {
     const items = coreStore.peek(input.itemsStore)
@@ -152,10 +155,10 @@ export const createTableSelectRuntime = (input: {
       ? gridSelection.focus(selection)
       : undefined
     const nextFocusKey = nextCursor
-      ? tableCellKey(nextCursor)
+      ? cellId(nextCursor)
       : undefined
     if (focusKey !== nextFocusKey) {
-      const set: Array<readonly [string, boolean]> = []
+      const set: Array<readonly [CellId, boolean]> = []
       if (focusKey) {
         set.push([focusKey, false] as const)
       }

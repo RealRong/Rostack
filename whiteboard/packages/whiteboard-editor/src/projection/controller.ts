@@ -235,8 +235,8 @@ export const createProjectionController = ({
   layout: Pick<EditorLayout, 'draft'>
 }): ProjectionController => {
   const runtime = createEditorGraphRuntime()
-  const snapshotStore = store.createValueStore(runtime.snapshot())
-  const sources = createProjectionSources(snapshotStore)
+  const projectionSources = createProjectionSources(runtime.snapshot())
+  const sources = projectionSources.sources
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()
   const state = {
@@ -293,7 +293,7 @@ export const createProjectionController = ({
           delta
         }))
         currentResult = result
-        snapshotStore.set(result.snapshot)
+        projectionSources.sync(result)
         notify(result)
       }
     } finally {
@@ -360,7 +360,7 @@ export const createProjectionController = ({
     query: runtime.query,
     sources,
     current: () => ({
-      snapshot: snapshotStore.get(),
+      snapshot: sources.snapshot.get(),
       result: currentResult
     }),
     mark,

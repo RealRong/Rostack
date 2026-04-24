@@ -1,6 +1,9 @@
 export type {
+  FamilyPatch,
+  FamilyStore,
   TablePatch,
   KeyedReadStore,
+  StoreFamily,
   TableReadStore,
   TableStore,
   KeyedStore,
@@ -36,6 +39,9 @@ import {
   createTableStore
 } from './table'
 import {
+  createFamilyStore
+} from './familyStore'
+import {
   createDerivedStore
 } from './derived'
 import {
@@ -68,6 +74,7 @@ export {
   createNormalizedValue,
   createKeyedReadStore,
   createTableStore,
+  createFamilyStore,
   createKeyedStore,
   createDerivedStore,
   createKeyedDerivedStore,

@@ -1,22 +1,25 @@
-import { store } from '@shared/core'
+import {
+  store,
+  type IdChangeSet
+} from '@shared/core'
 import type {
+  Change,
   ChromeView,
   EdgeUiView,
   EdgeView,
-  GraphSnapshot,
   GroupView,
   MindmapView,
   NodeUiView,
   NodeView,
+  Result,
   SceneItem,
-  Snapshot
+  Snapshot,
+  UiSnapshot
 } from '@whiteboard/editor-graph'
 
 export interface ProjectionSources {
   snapshot: store.ReadStore<Snapshot>
-  graph: store.ReadStore<GraphSnapshot>
   items: store.ReadStore<readonly SceneItem[]>
-  ui: store.ReadStore<Snapshot['ui']>
   chrome: store.ReadStore<ChromeView>
   nodeGraph: store.KeyedReadStore<string, NodeView | undefined>
   edgeGraph: store.KeyedReadStore<string, EdgeView | undefined>
@@ -26,54 +29,174 @@ export interface ProjectionSources {
   edgeUi: store.KeyedReadStore<string, EdgeUiView | undefined>
 }
 
-export const createProjectionSources = (
-  snapshot: store.ReadStore<Snapshot>
-): ProjectionSources => ({
-  snapshot,
-  graph: store.createProjectedStore({
-    source: snapshot,
-    select: (current) => current.graph
-  }),
-  items: store.createProjectedStore({
-    source: snapshot,
-    select: (current) => current.items
-  }),
-  ui: store.createProjectedStore({
-    source: snapshot,
-    select: (current) => current.ui
-  }),
-  chrome: store.createProjectedStore({
-    source: snapshot,
-    select: (current) => current.ui.chrome
-  }),
-  nodeGraph: store.createProjectedKeyedStore({
-    source: snapshot,
-    select: (current) => current.graph.nodes.byId,
-    emptyValue: undefined
-  }),
-  edgeGraph: store.createProjectedKeyedStore({
-    source: snapshot,
-    select: (current) => current.graph.edges.byId,
-    emptyValue: undefined
-  }),
-  mindmap: store.createProjectedKeyedStore({
-    source: snapshot,
-    select: (current) => current.graph.owners.mindmaps.byId,
-    emptyValue: undefined
-  }),
-  group: store.createProjectedKeyedStore({
-    source: snapshot,
-    select: (current) => current.graph.owners.groups.byId,
-    emptyValue: undefined
-  }),
-  nodeUi: store.createProjectedKeyedStore({
-    source: snapshot,
-    select: (current) => current.ui.nodes.byId,
-    emptyValue: undefined
-  }),
-  edgeUi: store.createProjectedKeyedStore({
-    source: snapshot,
-    select: (current) => current.ui.edges.byId,
-    emptyValue: undefined
-  })
+export interface ProjectionSourceState {
+  sources: ProjectionSources
+  sync(result: Result): void
+}
+
+const createFamilyRead = <Key, Value>(
+  family: store.FamilyStore<Key, Value>
+): store.KeyedReadStore<Key, Value | undefined> => store.createKeyedReadStore({
+  get: key => family.read.get(key),
+  subscribe: (key, listener) => family.byId.subscribe.key(key, listener),
+  isEqual: (left, right) => left === right
 })
+
+const toSetEntries = <Key extends string, Value>(
+  change: IdChangeSet<Key>,
+  byId: ReadonlyMap<Key, Value>
+): readonly (readonly [Key, Value])[] | undefined => {
+  const set: Array<readonly [Key, Value]> = []
+  const collect = (ids: ReadonlySet<Key>) => {
+    ids.forEach((id) => {
+      const value = byId.get(id)
+      if (value !== undefined) {
+        set.push([id, value])
+      }
+    })
+  }
+
+  collect(change.added)
+  collect(change.updated)
+
+  return set.length > 0
+    ? set
+    : undefined
+}
+
+const toRemoveIds = <Key extends string>(
+  change: IdChangeSet<Key>
+): readonly Key[] | undefined => {
+  if (change.removed.size === 0) {
+    return undefined
+  }
+
+  return [...change.removed]
+}
+
+const applyFamilyChange = <Key extends string, Value>({
+  target,
+  previous,
+  next,
+  change
+}: {
+  target: store.FamilyStore<Key, Value>
+  previous: store.StoreFamily<Key, Value>
+  next: store.StoreFamily<Key, Value>
+  change: IdChangeSet<Key>
+}) => {
+  const ids = previous.ids === next.ids
+    ? undefined
+    : next.ids
+  const set = toSetEntries(change, next.byId)
+  const remove = toRemoveIds(change)
+
+  if (ids === undefined && !set?.length && !remove?.length) {
+    return
+  }
+
+  target.write.apply({
+    ...(ids !== undefined ? {
+      ids
+    } : {}),
+    ...(set?.length ? {
+      set
+    } : {}),
+    ...(remove?.length ? {
+      remove
+    } : {})
+  })
+}
+
+export const createProjectionSources = (
+  initial: Snapshot
+): ProjectionSourceState => {
+  const snapshot = store.createValueStore(initial)
+  const items = store.createValueStore(initial.items)
+  const chrome = store.createValueStore(initial.ui.chrome)
+  const nodeGraphFamily = store.createFamilyStore({
+    initial: initial.graph.nodes
+  })
+  const edgeGraphFamily = store.createFamilyStore({
+    initial: initial.graph.edges
+  })
+  const mindmapFamily = store.createFamilyStore({
+    initial: initial.graph.owners.mindmaps
+  })
+  const groupFamily = store.createFamilyStore({
+    initial: initial.graph.owners.groups
+  })
+  const nodeUiFamily = store.createFamilyStore({
+    initial: initial.ui.nodes
+  })
+  const edgeUiFamily = store.createFamilyStore({
+    initial: initial.ui.edges
+  })
+
+  return {
+    sources: {
+      snapshot,
+      items,
+      chrome,
+      nodeGraph: createFamilyRead(nodeGraphFamily),
+      edgeGraph: createFamilyRead(edgeGraphFamily),
+      mindmap: createFamilyRead(mindmapFamily),
+      group: createFamilyRead(groupFamily),
+      nodeUi: createFamilyRead(nodeUiFamily),
+      edgeUi: createFamilyRead(edgeUiFamily)
+    },
+    sync: (result) => {
+      const previous = snapshot.get()
+      const next = result.snapshot
+      const change: Change = result.change
+
+      store.batch(() => {
+        snapshot.set(next)
+
+        applyFamilyChange({
+          target: nodeGraphFamily,
+          previous: previous.graph.nodes,
+          next: next.graph.nodes,
+          change: change.graph.nodes
+        })
+        applyFamilyChange({
+          target: edgeGraphFamily,
+          previous: previous.graph.edges,
+          next: next.graph.edges,
+          change: change.graph.edges
+        })
+        applyFamilyChange({
+          target: mindmapFamily,
+          previous: previous.graph.owners.mindmaps,
+          next: next.graph.owners.mindmaps,
+          change: change.graph.owners.mindmaps
+        })
+        applyFamilyChange({
+          target: groupFamily,
+          previous: previous.graph.owners.groups,
+          next: next.graph.owners.groups,
+          change: change.graph.owners.groups
+        })
+        applyFamilyChange({
+          target: nodeUiFamily,
+          previous: previous.ui.nodes,
+          next: next.ui.nodes,
+          change: change.ui.nodes
+        })
+        applyFamilyChange({
+          target: edgeUiFamily,
+          previous: previous.ui.edges,
+          next: next.ui.edges,
+          change: change.ui.edges
+        })
+
+        if (change.items.changed) {
+          items.set(next.items)
+        }
+        if (change.ui.chrome.changed) {
+          chrome.set(next.ui.chrome)
+        }
+      })
+    }
+  }
+}

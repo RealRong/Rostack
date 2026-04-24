@@ -46,6 +46,37 @@ export interface TableStore<Key, Value> extends TableReadStore<Key, Value> {
   }
 }
 
+export interface StoreFamily<Key, Value> {
+  ids: readonly Key[]
+  byId: ReadonlyMap<Key, Value>
+}
+
+export interface FamilyPatch<Key, Value> {
+  ids?: readonly Key[]
+  set?: readonly (readonly [Key, Value])[]
+  remove?: readonly Key[]
+}
+
+export interface FamilyStore<Key, Value> {
+  ids: ReadStore<readonly Key[]>
+  byId: TableStore<Key, Value>
+  read: {
+    family: () => StoreFamily<Key, Value>
+    get: (key: Key) => Value | undefined
+  }
+  write: {
+    replace: (next: StoreFamily<Key, Value>) => void
+    apply: (patch: FamilyPatch<Key, Value>) => void
+    clear: () => void
+  }
+  project: {
+    field: <Projected>(
+      select: (value: Value | undefined) => Projected,
+      isEqual?: Equality<Projected>
+    ) => KeyedReadStore<Key, Projected>
+  }
+}
+
 export interface ValueStore<T> extends ReadStore<T> {
   set(next: T): void
   update(recipe: (previous: T) => T): void

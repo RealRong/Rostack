@@ -33,9 +33,11 @@ import type {
 } from '@dataview/runtime/source/contracts'
 import {
   applyEntityDelta,
+  createSourceTableRuntime,
   createEntitySourceRuntime,
   resetEntityRuntime,
-  type EntitySourceRuntime
+  type EntitySourceRuntime,
+  type SourceTableRuntime
 } from '@dataview/runtime/source/patch'
 import {
   createPresentSourceListStore
@@ -78,23 +80,13 @@ const EMPTY_KANBAN: ActiveViewKanban = {
   cardsPerColumn: 0 as KanbanCardsPerColumn
 }
 
-interface SectionSourceRuntime {
-  source: Pick<SectionSource, 'ids' | 'get' | 'subscribe' | 'isEqual'>
-  ids: store.ValueStore<readonly SectionId[]>
-  values: store.KeyedStore<SectionId, Section | undefined>
-  clear(): void
-}
-
-interface SummarySourceRuntime {
-  source: store.KeyedReadStore<SectionId, CalculationCollection | undefined>
-  values: store.KeyedStore<SectionId, CalculationCollection | undefined>
-  clear(): void
-}
+type SectionSourceRuntime = EntitySourceRuntime<SectionId, Section>
+type SummarySourceRuntime = SourceTableRuntime<SectionId, CalculationCollection>
 
 interface ItemSourceRuntime {
   source: Pick<ItemSource, 'ids' | 'read'>
   ids: store.ValueStore<readonly ItemId[]>
-  table: ReturnType<typeof store.createKeyTableStore<ItemId, ItemPlacement>>
+  table: store.TableStore<ItemId, ItemPlacement>
   clear(): void
 }
 
@@ -233,55 +225,18 @@ const createFieldListStore = (input: {
   })
 }
 
-const createSectionSourceRuntime = (): SectionSourceRuntime => {
-  const ids = store.createValueStore<readonly SectionId[]>({
-    initial: EMPTY_SECTION_KEYS,
-    isEqual: equal.sameOrder
-  })
-  const values = store.createKeyedStore<SectionId, Section | undefined>({
-    emptyValue: undefined
-  })
+const createSectionSourceRuntime = (): SectionSourceRuntime =>
+  createEntitySourceRuntime<SectionId, Section>(EMPTY_SECTION_KEYS)
 
-  return {
-    source: {
-      ids,
-      get: values.get,
-      subscribe: values.subscribe,
-      isEqual: values.isEqual
-    },
-    ids,
-    values,
-    clear: () => {
-      ids.set(EMPTY_SECTION_KEYS)
-      values.clear()
-    }
-  }
-}
-
-const createSummarySourceRuntime = (): SummarySourceRuntime => {
-  const values = store.createKeyedStore<SectionId, CalculationCollection | undefined>({
-    emptyValue: undefined
-  })
-
-  return {
-    source: {
-      get: values.get,
-      subscribe: values.subscribe,
-      isEqual: values.isEqual
-    },
-    values,
-    clear: () => {
-      values.clear()
-    }
-  }
-}
+const createSummarySourceRuntime = (): SummarySourceRuntime =>
+  createSourceTableRuntime<SectionId, CalculationCollection>()
 
 const createItemSourceRuntime = (): ItemSourceRuntime => {
   const ids = store.createValueStore<readonly ItemId[]>({
     initial: EMPTY_ITEM_IDS,
     isEqual: equal.sameOrder
   })
-  const table = store.createKeyTableStore<ItemId, ItemPlacement>()
+  const table = store.createTableStore<ItemId, ItemPlacement>()
   const recordId = table.project.field(placement => placement?.recordId)
   const sectionId = table.project.field(placement => placement?.sectionId)
   const placement = table.project.field(placement => placement)
@@ -494,31 +449,20 @@ export const resetActiveSource = (input: {
   input.runtime.recordsOrdered.set(snapshot.records.ordered)
   input.runtime.recordsVisible.set(snapshot.records.visible)
   input.runtime.items.ids.set(snapshot.items.ids)
-  input.runtime.items.table.write.clear()
   const itemPlacements = collectSectionItemPlacements(snapshot)
-  if (itemPlacements.length) {
-    input.runtime.items.table.write.applyExact({
-      set: itemPlacements
+  input.runtime.items.table.write.replace(new Map(itemPlacements))
+  resetEntityRuntime(input.runtime.sections, {
+    ids: snapshot.sections.ids,
+    values: snapshot.sections.all.map(section => [section.id, section] as const)
+  })
+  input.runtime.summaries.table.write.replace(new Map(
+    snapshot.sections.ids.flatMap(sectionId => {
+      const summary = snapshot.summaries.get(sectionId)
+      return summary
+        ? [[sectionId, summary] as const]
+        : []
     })
-  }
-  input.runtime.sections.ids.set(snapshot.sections.ids)
-  input.runtime.sections.values.clear()
-  if (snapshot.sections.all.length) {
-    input.runtime.sections.values.patch({
-      set: snapshot.sections.all.map(section => [section.id, section] as const)
-    })
-  }
-  input.runtime.summaries.values.clear()
-  if (snapshot.sections.ids.length) {
-    input.runtime.summaries.values.patch({
-      set: snapshot.sections.ids.flatMap(sectionId => {
-        const summary = snapshot.summaries.get(sectionId)
-        return summary
-          ? [[sectionId, summary] as const]
-          : []
-      })
-    })
-  }
+  ))
   resetActiveFields({
     runtime: input.runtime as ActiveSourceRuntime,
     fields: snapshot.fields
@@ -557,7 +501,7 @@ const applyItemDelta = (input: {
     return
   }
 
-  input.runtime.table.write.applyExact({
+  input.runtime.table.write.apply({
     ...(set?.length
       ? {
           set
@@ -649,7 +593,7 @@ export const applyActiveDelta = (input: {
   applyEntityDelta({
     delta: input.delta.summaries,
     runtime: {
-      values: input.runtime.summaries.values
+      table: input.runtime.summaries.table
     },
     readIds: () => snapshot.sections.ids,
     readValue: sectionId => snapshot.summaries.get(sectionId)

@@ -13,7 +13,10 @@ import type {
 } from '@whiteboard/core/types'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection-runtime'
-import type { GraphDelta } from './delta'
+import type {
+  GraphDelta,
+  SpatialDelta
+} from './delta'
 import type {
   ChromeView,
   EdgeDraft,
@@ -29,16 +32,19 @@ import type {
   SceneSnapshot,
   SelectionView
 } from './editor'
+import type { SpatialIndexState } from '../runtime/spatial/state'
 
 export interface WorkingState {
   revision: {
     document: Revision
   }
   graph: GraphState
+  spatial: SpatialIndexState
   ui: UiState
   scene: SceneSnapshot
   delta: {
     graph: GraphDelta
+    spatial: SpatialDelta
   }
 }
 

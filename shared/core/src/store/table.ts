@@ -16,7 +16,7 @@ import {
   read
 } from './read'
 import type {
-  KeyTableStore,
+  TableStore,
   Listener
 } from './types'
 
@@ -59,13 +59,13 @@ const queueKey = <Key,>(
   queueListeners(listeners)
 }
 
-export const createKeyTableStore = <Key, Value>({
+export const createTableStore = <Key, Value>({
   initial,
   isEqual = sameValue
 }: {
   initial?: ReadonlyMap<Key, Value>
   isEqual?: Equality<Value>
-} = {}): KeyTableStore<Key, Value> => {
+} = {}): TableStore<Key, Value> => {
   let current = new Map(initial)
   const publicListenersByKey = new Map<Key, Set<Listener>>()
   const internalListenersByKey = new Map<Key, Set<Listener>>()
@@ -180,7 +180,7 @@ export const createKeyTableStore = <Key, Value>({
         current = new Map(next)
         notifyChangedKeys(previousByKey)
       },
-      applyExact: patch => {
+      apply: patch => {
         if (!patch.set?.length && !patch.remove?.length) {
           return
         }

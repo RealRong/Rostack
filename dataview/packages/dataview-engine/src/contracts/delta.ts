@@ -1,6 +1,7 @@
 import type {
   FieldId,
   RecordId,
+  ValueRef,
   ViewId
 } from '@dataview/core/contracts'
 import type {
@@ -14,11 +15,24 @@ export interface CollectionDelta<Key> {
   remove?: readonly Key[]
 }
 
+export interface KeyDelta<Key> {
+  update?: readonly Key[]
+  remove?: readonly Key[]
+}
+
+export interface ListedDelta<Key> {
+  ids?: true
+  update?: readonly Key[]
+  remove?: readonly Key[]
+}
+
 export interface DocDelta {
+  reset?: true
   meta?: true
-  records?: CollectionDelta<RecordId>
-  fields?: CollectionDelta<FieldId>
-  views?: CollectionDelta<ViewId>
+  records?: ListedDelta<RecordId>
+  values?: KeyDelta<ValueRef>
+  fields?: ListedDelta<FieldId>
+  views?: ListedDelta<ViewId>
 }
 
 export interface ActiveDelta {

@@ -28,7 +28,44 @@ const createGridStub = () => ({
       placement: () => undefined
     }
   },
-  fields: createOrderedIdsStub(['title', 'points']),
+  fields: collection.createOrderedKeyedCollection({
+    ids: ['title', 'points'],
+    all: [
+      {
+        id: 'title',
+        kind: 'title',
+        name: 'Title',
+        system: true
+      } as const,
+      {
+        id: 'points',
+        kind: 'number',
+        name: 'Points',
+        format: 'number',
+        precision: null,
+        currency: null,
+        useThousandsSeparator: false
+      } as const
+    ],
+    get: fieldId => fieldId === 'title'
+      ? {
+          id: 'title',
+          kind: 'title',
+          name: 'Title',
+          system: true
+        }
+      : fieldId === 'points'
+        ? {
+            id: 'points',
+            kind: 'number',
+            name: 'Points',
+            format: 'number',
+            precision: null,
+            currency: null,
+            useThousandsSeparator: false
+          }
+        : undefined
+  }),
   sections: collection.createOrderedKeyedCollection({
     ids: [],
     all: [],
@@ -37,6 +74,7 @@ const createGridStub = () => ({
 })
 
 test('resolveFillWriteManyInput batches non-title fill by field across all target rows', () => {
+  const grid = createGridStub()
   const input = resolveFillWriteManyInput({
     selection: gridSelection.set(
       {
@@ -52,7 +90,16 @@ test('resolveFillWriteManyInput batches non-title fill by field across all targe
       itemId: 'row_1',
       fieldId: 'points'
     },
-    grid: createGridStub() as never,
+    items: grid.items as never,
+    fields: grid.fields as never,
+    readRow: itemId => {
+      const recordId = grid.items.read.record(itemId)
+      return recordId
+        ? {
+            recordId
+          }
+        : undefined
+    },
     readCell: () => ({
       exists: true,
       value: 42
@@ -68,6 +115,7 @@ test('resolveFillWriteManyInput batches non-title fill by field across all targe
 })
 
 test('resolveFillWriteManyInput includes title writes and dedupes repeated records', () => {
+  const grid = createGridStub()
   const input = resolveFillWriteManyInput({
     selection: gridSelection.set(
       {
@@ -83,7 +131,16 @@ test('resolveFillWriteManyInput includes title writes and dedupes repeated recor
       itemId: 'row_1',
       fieldId: 'title'
     },
-    grid: createGridStub() as never,
+    items: grid.items as never,
+    fields: grid.fields as never,
+    readRow: itemId => {
+      const recordId = grid.items.read.record(itemId)
+      return recordId
+        ? {
+            recordId
+          }
+        : undefined
+    },
     readCell: () => ({
       exists: true,
       value: 'Seed title'
@@ -99,6 +156,7 @@ test('resolveFillWriteManyInput includes title writes and dedupes repeated recor
 })
 
 test('resolveFillWriteManyInput emits clear when source field is empty', () => {
+  const grid = createGridStub()
   const input = resolveFillWriteManyInput({
     selection: gridSelection.set(
       {
@@ -114,7 +172,16 @@ test('resolveFillWriteManyInput emits clear when source field is empty', () => {
       itemId: 'row_1',
       fieldId: 'points'
     },
-    grid: createGridStub() as never,
+    items: grid.items as never,
+    fields: grid.fields as never,
+    readRow: itemId => {
+      const recordId = grid.items.read.record(itemId)
+      return recordId
+        ? {
+            recordId
+          }
+        : undefined
+    },
     readCell: () => ({
       exists: true,
       value: undefined

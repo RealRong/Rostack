@@ -12,7 +12,6 @@ export type {
   ItemSource,
   SectionSource
 } from '@dataview/runtime/source/contracts'
-
 export type {
   ValueRef
-} from '@dataview/runtime/identity'
+} from '@dataview/core/contracts'

@@ -1,10 +1,15 @@
 import {
   field as fieldApi
 } from '@dataview/core/field'
+import {
+  document as documentApi
+} from '@dataview/core/document'
 import type {
   CustomField,
-  DataRecord,
   RecordId
+} from '@dataview/core/contracts'
+import {
+  TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import type {
   ItemId,
@@ -13,6 +18,7 @@ import type {
 import { equal, store } from '@shared/core'
 import type {
   CardContent,
+  CardTitle,
   CardProperty
 } from '@dataview/runtime/model/shared'
 import {
@@ -43,15 +49,16 @@ const sameContent = (
 ) => left === right || (
   !!left
   && !!right
-  && left.titleText === right.titleText
-  && left.placeholderText === right.placeholderText
+  && left.title.field === right.title.field
+  && left.title.value === right.title.value
+  && left.title.placeholderText === right.title.placeholderText
   && left.hasProperties === right.hasProperties
   && sameProperties(left.properties, right.properties)
 )
 
 export const createRecordCardPropertiesStore = (input: {
   source: EngineSource
-  fields: store.ReadStore<readonly CustomField[]>
+  propertyFields: store.ReadStore<readonly CustomField[]>
 }): store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined> => store.createKeyedDerivedStore<RecordId, readonly CardProperty[] | undefined>({
   get: recordId => {
     const record = store.read(input.source.document.records, recordId)
@@ -59,13 +66,18 @@ export const createRecordCardPropertiesStore = (input: {
       return undefined
     }
 
-    return store.read(input.fields).map<CardProperty>(field => ({
+    return store.read(input.propertyFields).map<CardProperty>(field => ({
       field,
-      value: record.values[field.id]
+      value: store.read(input.source.document.values, {
+        recordId,
+        fieldId: field.id
+      })
     }))
   },
   isEqual: sameProperties
 })
+
+const TITLE_FIELD = documentApi.fields.title.get()
 
 export const createItemCardContentStore = (input: {
   source: EngineSource
@@ -74,7 +86,6 @@ export const createItemCardContentStore = (input: {
   placeholderText: (input: {
     itemId: ItemId
     item: ItemPlacement
-    record: DataRecord
   }) => string
 }): store.KeyedReadStore<ItemId, CardContent | undefined> => store.createKeyedDerivedStore({
   get: itemId => {
@@ -87,19 +98,26 @@ export const createItemCardContentStore = (input: {
       return undefined
     }
 
-    const record = store.read(input.source.document.records, item.recordId)
     const properties = store.read(input.properties, item.recordId)
-    if (!record || !properties) {
+    const titleValue = store.read(input.source.document.values, {
+      recordId: item.recordId,
+      fieldId: TITLE_FIELD_ID
+    })
+    if (titleValue === undefined || !properties) {
       return undefined
     }
 
-    return {
-      titleText: record.title,
+    const title: CardTitle = {
+      field: TITLE_FIELD,
+      value: String(titleValue),
       placeholderText: input.placeholderText({
         itemId,
-        item,
-        record
-      }),
+        item
+      })
+    }
+
+    return {
+      title,
       properties,
       hasProperties: properties.some(property => !fieldApi.value.empty(property.value))
     }

@@ -323,6 +323,7 @@ describe('editor graph runtime', () => {
     expect(result.trace).toBeDefined()
     assertPhaseOrder(result.trace!, [
       'graph',
+      'spatial',
       'ui',
       'scene'
     ])
@@ -370,6 +371,25 @@ describe('editor graph runtime', () => {
     expect(harness.lastTrace()).toEqual(result.trace)
     expect(read.snapshot()).toBe(result.snapshot)
     expect(read.node(nodeId)).toBe(result.snapshot.graph.nodes.byId.get(nodeId))
+    expect(read.spatial.get(`node:${nodeId}`)).toEqual(expect.objectContaining({
+      key: `node:${nodeId}`,
+      kind: 'node',
+      item: {
+        kind: 'node',
+        id: nodeId
+      }
+    }))
+    expect(read.spatial.rect({
+      x: -100,
+      y: -100,
+      width: 400,
+      height: 400
+    }).some((record) => record.key === `node:${nodeId}`)).toBe(true)
+    const spatialRecord = read.spatial.get(`node:${nodeId}`)!
+    expect(read.spatial.point({
+      x: spatialRecord.bounds.x + spatialRecord.bounds.width / 2,
+      y: spatialRecord.bounds.y + spatialRecord.bounds.height / 2
+    }).some((record) => record.key === spatialRecord.key)).toBe(true)
     expect(read.scene()).toBe(result.snapshot.scene)
     expect(read.ui()).toBe(result.snapshot.ui)
     expect(read.selection()).toBe(result.snapshot.ui.selection)

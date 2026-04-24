@@ -5,11 +5,9 @@ import type {
   DataRecord,
   FieldId,
   RecordId,
+  ValueRef,
   View,
   ViewId
-} from '@dataview/core/contracts'
-import {
-  TITLE_FIELD_ID
 } from '@dataview/core/contracts'
 import { equal, store } from '@shared/core'
 import type {
@@ -21,11 +19,12 @@ import type {
 } from '@dataview/runtime/source/contracts'
 import {
   valueId,
-  type ValueId,
-  type ValueRef
+  type ValueId
 } from '@dataview/runtime/identity'
 import {
-  applyEntityDelta,
+  applyMappedKeyDelta,
+  applyListedDelta,
+  createMappedTableSourceRuntime,
   createEntitySourceRuntime,
   resetEntityRuntime,
   type EntitySourceRuntime
@@ -36,171 +35,72 @@ import {
 
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 
+interface DocumentValueSourceRuntime {
+  source: store.KeyedReadStore<ValueRef, unknown>
+  table: store.TableStore<ValueId, unknown>
+  clear(): void
+}
+
 export interface DocumentSourceRuntime {
   source: DocumentSource
   meta: store.ValueStore<DataDoc['meta']>
   records: EntitySourceRuntime<RecordId, DataRecord>
-  values: {
-    source: store.KeyedReadStore<ValueRef, unknown>
-    store: store.KeyedStore<ValueId, unknown>
-    clear(): void
-  }
+  values: DocumentValueSourceRuntime
   fields: EntitySourceRuntime<FieldId, CustomField>
   views: EntitySourceRuntime<ViewId, View>
   clear(): void
 }
 
-const readValue = (
-  record: DataRecord,
-  fieldId: FieldId
-) => fieldId === TITLE_FIELD_ID
-  ? record.title
-  : record.values[fieldId]
-
-const collectValueFieldIds = (
-  record: DataRecord
-) => [
-  TITLE_FIELD_ID,
-  ...Object.keys(record.values) as FieldId[]
-]
-
-const collectValueEntries = (
-  record: DataRecord
-): readonly (readonly [ValueId, unknown])[] => collectValueFieldIds(record).flatMap(fieldId => {
-  const value = readValue(record, fieldId)
-  return value === undefined
-    ? []
-    : [[valueId({
-      recordId: record.id,
-      fieldId
-    }), value] as const]
-})
-
-const collectValueIds = (
-  record: DataRecord
-): readonly ValueId[] => collectValueFieldIds(record).map(fieldId => valueId({
-  recordId: record.id,
-  fieldId
-}))
-
-const createDocumentValueSourceRuntime = () => {
-  const values = store.createKeyedStore<ValueId, unknown>({
-    emptyValue: undefined,
+const createDocumentValueSourceRuntime = (): DocumentValueSourceRuntime => {
+  const values = createMappedTableSourceRuntime<ValueRef, ValueId, unknown>({
+    keyOf: valueId,
     isEqual: equal.sameJsonValue
   })
 
   return {
-    source: store.createKeyedDerivedStore<ValueRef, unknown>({
-      keyOf: valueId,
-      get: value => store.read(values, valueId(value)),
-      isEqual: equal.sameJsonValue
-    }),
-    store: values,
-    clear: () => {
-      values.clear()
-    }
+    source: values.source,
+    table: values.table,
+    clear: values.clear
   }
 }
 
 const resetDocumentValues = (input: {
-  runtime: DocumentSourceRuntime['values']
+  runtime: DocumentValueSourceRuntime
   snapshot: EngineSnapshot
 }) => {
-  input.runtime.clear()
   const recordIds = documentApi.records.ids(input.snapshot.doc)
-  if (!recordIds.length) {
-    return
-  }
-
   const set = recordIds.flatMap(recordId => {
     const record = documentApi.records.get(input.snapshot.doc, recordId)
     return record
-      ? collectValueEntries(record)
+      ? documentApi.values.entries(record).map(([fieldId, value]) => [
+          valueId({
+            recordId,
+            fieldId
+          }),
+          value
+        ] as const)
       : []
   })
-  if (!set.length) {
-    return
-  }
 
-  input.runtime.store.patch({
-    set
-  })
+  input.runtime.table.write.replace(new Map(set))
 }
 
 const applyDocumentValueDelta = (input: {
-  runtime: Pick<DocumentSourceRuntime, 'records' | 'values'>
+  runtime: Pick<DocumentSourceRuntime, 'values'>
   delta: DocDelta
   snapshot: EngineSnapshot
 }) => {
-  if (input.delta.records?.update?.length !== undefined || input.delta.records?.remove?.length !== undefined || input.delta.fields?.remove?.length !== undefined) {
-    const set: Array<readonly [ValueId, unknown]> = []
-    const deleteKeys = new Set<ValueId>()
-    const updatedRecordIds = input.delta.records?.update ?? []
-
-    updatedRecordIds.forEach(recordId => {
-      const previousRecord = input.runtime.records.source.get(recordId)
-      const nextRecord = documentApi.records.get(input.snapshot.doc, recordId)
-      if (!nextRecord) {
-        if (previousRecord) {
-          collectValueIds(previousRecord).forEach(key => {
-            deleteKeys.add(key)
-          })
-        }
-        return
-      }
-
-      collectValueEntries(nextRecord).forEach(entry => {
-        set.push(entry)
-      })
-      if (!previousRecord) {
-        return
-      }
-
-      const nextKeySet = new Set(collectValueIds(nextRecord))
-      collectValueIds(previousRecord).forEach(key => {
-        if (!nextKeySet.has(key)) {
-          deleteKeys.add(key)
-        }
-      })
-    })
-
-    input.delta.records?.remove?.forEach(recordId => {
-      const previousRecord = input.runtime.records.source.get(recordId)
-      if (!previousRecord) {
-        return
-      }
-
-      collectValueIds(previousRecord).forEach(key => {
-        deleteKeys.add(key)
-      })
-    })
-
-    input.delta.fields?.remove?.forEach(fieldId => {
-      store.peek(input.runtime.records.ids).forEach(recordId => {
-        deleteKeys.add(valueId({
-          recordId,
-          fieldId
-        }))
-      })
-    })
-
-    if (!set.length && !deleteKeys.size) {
-      return
+  applyMappedKeyDelta({
+    delta: input.delta.values,
+    table: input.runtime.values.table,
+    keyOf: valueId,
+    readValue: ref => {
+      const record = documentApi.records.get(input.snapshot.doc, ref.recordId)
+      return record
+        ? documentApi.values.get(record, ref.fieldId)
+        : undefined
     }
-
-    input.runtime.values.store.patch({
-      ...(set.length
-        ? {
-            set
-          }
-        : {}),
-      ...(deleteKeys.size
-        ? {
-            delete: [...deleteKeys]
-          }
-        : {})
-    })
-  }
+  })
 }
 
 export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
@@ -301,6 +201,11 @@ export const applyDocumentDelta = (input: {
     return
   }
 
+  if (input.delta.reset) {
+    resetDocumentSource(input)
+    return
+  }
+
   if (input.delta.meta) {
     input.runtime.meta.set(input.snapshot.doc.meta)
   }
@@ -309,19 +214,19 @@ export const applyDocumentDelta = (input: {
     delta: input.delta,
     snapshot: input.snapshot
   })
-  applyEntityDelta({
+  applyListedDelta({
     delta: input.delta.records,
     runtime: input.runtime.records,
     readIds: () => documentApi.records.ids(input.snapshot.doc),
     readValue: recordId => documentApi.records.get(input.snapshot.doc, recordId)
   })
-  applyEntityDelta({
+  applyListedDelta({
     delta: input.delta.fields,
     runtime: input.runtime.fields,
     readIds: () => documentApi.fields.custom.ids(input.snapshot.doc),
     readValue: fieldId => documentApi.fields.custom.get(input.snapshot.doc, fieldId)
   })
-  applyEntityDelta({
+  applyListedDelta({
     delta: input.delta.views,
     runtime: input.runtime.views,
     readIds: () => documentApi.views.ids(input.snapshot.doc),

@@ -31,7 +31,9 @@ export const summarizeImpact = (
   addFact(facts, 'record.insert', impact.records?.inserted?.size)
   addFact(facts, 'record.remove', impact.records?.removed?.size)
   addFact(facts, 'record.patch', impact.records?.patched?.size)
-  addFact(facts, 'record.title', impact.records?.titleChanged?.size)
+  addFact(facts, 'record.value', impact.values?.touched === 'all'
+    ? undefined
+    : impact.values?.touched?.size)
   addFact(facts, 'field.insert', impact.fields?.inserted?.size)
   addFact(facts, 'field.remove', impact.fields?.removed?.size)
   addFact(facts, 'field.schema', impact.fields?.schema?.size)

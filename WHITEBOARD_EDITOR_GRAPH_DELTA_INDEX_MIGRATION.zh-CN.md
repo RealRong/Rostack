@@ -564,7 +564,6 @@ scene/spatial/
 - `node:${id}`
 - `edge:${id}`
 - `mindmap:${id}`
-- `group:${id}`
 
 3. 定义 `SpatialRecord` 最低字段：
 
@@ -593,6 +592,12 @@ scene/spatial/
 
 它只负责 world-space query。
 
+这里额外把 group 的边界写死：
+
+- `group.frame.bounds` 继续保留在 graph truth
+- group 不 materialize 成 `SpatialRecord`
+- group shell / promotion 继续属于 ui/chrome 派生语义
+
 #### 6.10 阶段完成标准
 
 - runtime 内存在正式 `spatial state`
@@ -617,6 +622,9 @@ scene/spatial/
 - hover candidate
 - edge connect candidate 预筛选
 - viewport visible candidate
+
+这里的 spatial 候选仍只覆盖 `node / edge / mindmap`。  
+group shell 继续从命中的 group member、selection、marquee、drag 结果里归约出来。
 
 #### 6.12 为什么这一阶段不能提前做
 

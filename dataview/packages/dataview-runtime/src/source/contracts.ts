@@ -6,6 +6,7 @@ import type {
   Field,
   FieldId,
   RecordId,
+  ValueRef,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -24,7 +25,6 @@ import type {
   SectionId,
   SectionList
 } from '@dataview/engine'
-import type { ValueRef } from '@dataview/runtime/identity'
 
 export interface EntitySource<Key, Value> extends store.KeyedReadStore<Key, Value | undefined> {
   ids: store.ReadStore<readonly Key[]>

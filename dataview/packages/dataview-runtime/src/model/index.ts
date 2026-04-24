@@ -46,6 +46,7 @@ export type {
 export type {
   Card,
   CardContent,
+  CardTitle,
   CardProperty
 } from '@dataview/runtime/model/shared'
 

@@ -15,12 +15,12 @@ export interface KeyedReadStore<K, T> {
   isEqual?: Equality<T>
 }
 
-export interface ExactKeyTablePatch<Key, Value> {
+export interface TablePatch<Key, Value> {
   set?: readonly (readonly [Key, Value])[]
   remove?: readonly Key[]
 }
 
-export interface KeyTableReadStore<Key, Value> {
+export interface TableReadStore<Key, Value> {
   read: {
     get: (key: Key) => Value | undefined
     has: (key: Key) => boolean
@@ -32,10 +32,10 @@ export interface KeyTableReadStore<Key, Value> {
   }
 }
 
-export interface KeyTableStore<Key, Value> extends KeyTableReadStore<Key, Value> {
+export interface TableStore<Key, Value> extends TableReadStore<Key, Value> {
   write: {
     replace: (next: ReadonlyMap<Key, Value>) => void
-    applyExact: (patch: ExactKeyTablePatch<Key, Value>) => void
+    apply: (patch: TablePatch<Key, Value>) => void
     clear: () => void
   }
   project: {

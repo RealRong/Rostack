@@ -132,15 +132,24 @@ test('document delta omits list refresh on non-structural value writes', () => {
     next: nextDocument,
     impact: {
       records: {
-        touched: new Set(['rec_1']),
-        valueChangedFields: new Set([FIELD_STATUS])
+        touched: new Set(['rec_1'])
+      },
+      values: {
+        touched: new Map([
+          ['rec_1', new Set([FIELD_STATUS])]
+        ])
       }
     },
   })
 
-  assert.equal(output?.records?.list, undefined)
+  assert.equal(output?.records?.ids, undefined)
   assert.deepEqual(output?.records?.update, ['rec_1'])
   assert.deepEqual(output?.records?.remove ?? [], [])
+  assert.deepEqual(output?.values?.update, [{
+    recordId: 'rec_1',
+    fieldId: FIELD_STATUS
+  }])
+  assert.deepEqual(output?.values?.remove ?? [], [])
 })
 
 test('active summary follows snapshot changes without source adapter', () => {

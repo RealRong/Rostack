@@ -4,6 +4,10 @@ import type {
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
+import type {
+  SpatialKey,
+  SpatialPatchScope
+} from '../runtime/spatial/contracts'
 
 export interface IdDelta<TId extends string> {
   added: Set<TId>
@@ -27,6 +31,12 @@ export interface GraphDelta {
   }
 }
 
+export interface SpatialDelta {
+  order: boolean
+  records: IdDelta<SpatialKey>
+  visible: boolean
+}
+
 export interface GraphPatchScope {
   reset: boolean
   order: boolean
@@ -38,6 +48,7 @@ export interface GraphPatchScope {
 
 export interface EditorPhaseScopeMap {
   graph: GraphPatchScope
+  spatial: SpatialPatchScope
   ui: undefined
   scene: undefined
 }

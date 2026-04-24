@@ -11,9 +11,6 @@ import type {
   ViewId
 } from '@dataview/core/contracts/state'
 import {
-  TITLE_FIELD_ID
-} from '@dataview/core/contracts/state'
-import {
   document
 } from '@dataview/core/document'
 import {
@@ -54,6 +51,24 @@ const cleanupMap = <TKey, TValue>(
   ? value
   : undefined
 
+const cleanupTouchedValues = (
+  value: Map<RecordId, Set<FieldId>> | 'all' | undefined
+): Map<RecordId, Set<FieldId>> | 'all' | undefined => {
+  if (value === 'all') {
+    return value
+  }
+
+  value?.forEach((fieldIds, recordId) => {
+    if (!fieldIds.size) {
+      value.delete(recordId)
+    }
+  })
+
+  return value?.size
+    ? value
+    : undefined
+}
+
 const createCommitImpact = (): CommitImpact => ({})
 
 const createResetCommitImpact = (
@@ -68,8 +83,10 @@ const createResetCommitImpact = (
   return {
     reset: true,
     records: {
-      touched: 'all',
-      valueChangedFields: 'all'
+      touched: 'all'
+    },
+    values: {
+      touched: 'all'
     },
     fields: {
       touched: 'all'
@@ -95,8 +112,6 @@ const finalizeCommitImpact = (
     impact.records.inserted = cleanupPlainSet(impact.records.inserted)
     impact.records.removed = cleanupPlainSet(impact.records.removed)
     impact.records.touched = cleanupSet(impact.records.touched)
-    impact.records.titleChanged = cleanupPlainSet(impact.records.titleChanged)
-    impact.records.valueChangedFields = cleanupSet(impact.records.valueChangedFields)
 
     impact.records.patched?.forEach((aspects, recordId) => {
       if (!aspects.size) {
@@ -113,11 +128,16 @@ const finalizeCommitImpact = (
       && !impact.records.removed
       && !impact.records.patched
       && !impact.records.touched
-      && !impact.records.titleChanged
-      && !impact.records.valueChangedFields
       && !impact.records.recordSetChanged
     ) {
       impact.records = undefined
+    }
+  }
+
+  if (impact.values) {
+    impact.values.touched = cleanupTouchedValues(impact.values.touched)
+    if (!impact.values.touched) {
+      impact.values = undefined
     }
   }
 
@@ -187,9 +207,8 @@ const hasIndexImpact = (
   impact.reset
   || impact.records?.recordSetChanged
   || impact.records?.patched?.size
-  || impact.records?.titleChanged?.size
-  || impact.records?.valueChangedFields === 'all'
-  || impact.records?.valueChangedFields?.size
+  || impact.values?.touched === 'all'
+  || impact.values?.touched?.size
   || impact.fields?.schema?.size
 )
 
@@ -235,46 +254,35 @@ const collectSchemaFieldIds = (
     )
 
 const collectValueFieldIds = (
-  impact: CommitImpact,
-  options?: {
-    includeTitlePatch?: boolean
-  }
+  impact: CommitImpact
 ): ReadonlySet<FieldId> | 'all' => {
-  if (impact.reset || impact.records?.valueChangedFields === 'all') {
+  if (impact.reset || impact.values?.touched === 'all') {
     return 'all'
   }
 
-  const ids = impact.records?.valueChangedFields ?? EMPTY_FIELD_IDS
-  if (options?.includeTitlePatch && impact.records?.titleChanged?.size) {
-    const next = new Set<FieldId>(ids)
-    next.add(TITLE_FIELD_ID)
-    return next
+  if (!impact.values?.touched?.size) {
+    return EMPTY_FIELD_IDS
   }
 
-  return ids
+  const fieldIds = new Set<FieldId>()
+  impact.values.touched.forEach(recordFieldIds => {
+    recordFieldIds.forEach(fieldId => fieldIds.add(fieldId))
+  })
+  return fieldIds
 }
 
 const collectTouchedFieldIds = (
-  impact: CommitImpact,
-  options?: {
-    includeTitlePatch?: boolean
-  }
+  impact: CommitImpact
 ): ReadonlySet<FieldId> | 'all' => {
   if (impact.reset || impact.fields?.touched === 'all') {
     return 'all'
-  }
-
-  if (options?.includeTitlePatch && impact.fields?.touched) {
-    return impact.fields.touched
   }
 
   if (impact.fields?.touched) {
     return impact.fields.touched
   }
 
-  const valueFields = collectValueFieldIds(impact, {
-    includeTitlePatch: options?.includeTitlePatch
-  })
+  const valueFields = collectValueFieldIds(impact)
   if (valueFields === 'all') {
     return 'all'
   }
@@ -300,7 +308,7 @@ const collectTouchedRecordIds = (
     !impact.records?.inserted?.size
     && !impact.records?.removed?.size
     && !impact.records?.patched?.size
-    && !impact.records?.titleChanged?.size
+    && !impact.values?.touched
   ) {
     return EMPTY_RECORD_IDS
   }
@@ -309,7 +317,9 @@ const collectTouchedRecordIds = (
   impact.records?.inserted?.forEach(recordId => touched.add(recordId))
   impact.records?.removed?.forEach(recordId => touched.add(recordId))
   impact.records?.patched?.forEach((_, recordId) => touched.add(recordId))
-  impact.records?.titleChanged?.forEach(recordId => touched.add(recordId))
+  if (impact.values?.touched !== 'all') {
+    impact.values?.touched?.forEach((_, recordId) => touched.add(recordId))
+  }
   return touched
 }
 
@@ -354,8 +364,7 @@ const summarizeCommitImpact = (
     || impact.records?.inserted
     || impact.records?.removed
     || impact.records?.patched
-    || impact.records?.titleChanged
-    || impact.records?.valueChangedFields
+    || impact.values?.touched
   ),
   fields: Boolean(
     impact.reset
@@ -385,9 +394,7 @@ const touchedRecordCountOfImpact = (
 const touchedFieldCountOfImpact = (
   impact: CommitImpact
 ): number | 'all' | undefined => {
-  const touched = collectTouchedFieldIds(impact, {
-    includeTitlePatch: true
-  })
+  const touched = collectTouchedFieldIds(impact)
   return touched === 'all'
     ? 'all'
     : touched.size || undefined
@@ -452,5 +459,10 @@ export const impact = {
     patchAspects: commitAspects.record.patch,
     touchedIds: collectTouchedRecordIds,
     touchedCount: touchedRecordCountOfImpact
+  },
+  value: {
+    touched: (commit: CommitImpact) => commit.reset
+      ? 'all'
+      : commit.values?.touched
   }
 } as const

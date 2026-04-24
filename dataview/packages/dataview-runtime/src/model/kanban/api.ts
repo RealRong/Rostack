@@ -57,7 +57,7 @@ const sameCard = (
   && left.viewId === right.viewId
   && left.itemId === right.itemId
   && left.recordId === right.recordId
-  && equal.sameOrder(left.fields, right.fields)
+  && equal.sameOrder(left.propertyFields, right.propertyFields)
   && left.size === right.size
   && left.layout === right.layout
   && left.wrap === right.wrap
@@ -89,7 +89,7 @@ export const createKanbanModel = (input: {
   })
   const properties = createRecordCardPropertiesStore({
     source: input.source,
-    fields: customFields
+    propertyFields: customFields
   })
   const board = store.createDerivedStore<KanbanBoard | null>({
     get: () => {
@@ -160,7 +160,7 @@ export const createKanbanModel = (input: {
         viewId,
         itemId,
         recordId: placement.recordId,
-        fields: store.read(customFields),
+        propertyFields: store.read(customFields),
         size: kanban.size,
         layout: kanban.layout,
         wrap: kanban.wrap,

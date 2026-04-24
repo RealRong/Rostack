@@ -220,6 +220,8 @@ export const FieldValueEditorHost = () => {
     return null
   }
 
+  const value = documentApi.values.get(record, valueField.id)
+
   const writeValue = (value: unknown | undefined) => {
     if (value === undefined) {
       engine.records.fields.clear(record.id, valueField.id)
@@ -302,9 +304,7 @@ export const FieldValueEditorHost = () => {
               key={`${session.field.viewId}\u0000${session.field.itemId}\u0000${session.field.fieldId}\u0000${valueField.kind}`}
               ref={editorRef}
               field={valueField}
-              value={fieldApi.id.isTitle(valueField.id)
-                ? record.title
-                : record.values[valueField.id]}
+              value={value}
               seedDraft={session.seedDraft}
               autoFocus
               onInput={applyInput}

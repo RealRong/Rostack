@@ -2,6 +2,8 @@ import type { WorkingState } from '../contracts/working'
 import { EMPTY_SCENE_LAYERS } from './geometry'
 import { createEmptyDocumentSnapshot } from './createEmptySnapshot'
 import { createGraphDelta } from './graphPatch/delta'
+import { createSpatialDelta } from './spatial/update'
+import { createSpatialState } from './spatial/state'
 
 export const createWorking = (): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
@@ -18,6 +20,7 @@ export const createWorking = (): WorkingState => {
         groups: new Map()
       }
     },
+    spatial: createSpatialState(),
     ui: {
       selection: {
         target: {
@@ -74,7 +77,8 @@ export const createWorking = (): WorkingState => {
       }
     },
     delta: {
-      graph: createGraphDelta()
+      graph: createGraphDelta(),
+      spatial: createSpatialDelta()
     }
   }
 }

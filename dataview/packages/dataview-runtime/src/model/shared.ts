@@ -3,6 +3,7 @@ import type {
   CardSize,
   CustomField,
   RecordId,
+  TitleField,
   ViewId
 } from '@dataview/core/contracts'
 import type {
@@ -13,7 +14,7 @@ export interface Card {
   viewId: ViewId
   itemId: ItemId
   recordId: RecordId
-  fields: readonly CustomField[]
+  propertyFields: readonly CustomField[]
   size: CardSize
   layout: CardLayout
   wrap: boolean
@@ -22,14 +23,19 @@ export interface Card {
   editing: boolean
 }
 
+export interface CardTitle {
+  field: TitleField
+  value: string
+  placeholderText: string
+}
+
 export interface CardProperty {
   field: CustomField
   value: unknown
 }
 
 export interface CardContent {
-  titleText: string
-  placeholderText: string
+  title: CardTitle
   properties: readonly CardProperty[]
   hasProperties: boolean
 }

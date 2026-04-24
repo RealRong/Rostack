@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import { store } from '@shared/core'
 
-describe('createKeyTableStore', () => {
-  test('applyExact updates projected keyed reads', () => {
-    const table = store.createKeyTableStore<string, {
+describe('createTableStore', () => {
+  test('apply updates projected keyed reads', () => {
+    const table = store.createTableStore<string, {
       value: number
       label: string
     }>()
@@ -13,7 +13,7 @@ describe('createKeyTableStore', () => {
       values.push(projected.get('left'))
     })
 
-    table.write.applyExact({
+    table.write.apply({
       set: [[
         'left',
         {
@@ -22,7 +22,7 @@ describe('createKeyTableStore', () => {
         }
       ]]
     })
-    table.write.applyExact({
+    table.write.apply({
       set: [[
         'left',
         {
@@ -31,7 +31,7 @@ describe('createKeyTableStore', () => {
         }
       ]]
     })
-    table.write.applyExact({
+    table.write.apply({
       remove: ['left']
     })
 

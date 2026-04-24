@@ -24,6 +24,7 @@ export type {
 export type {
   Card,
   CardContent,
+  CardTitle,
   CardProperty,
   GalleryModel,
   KanbanModel,
@@ -140,10 +141,8 @@ export type {
 export {
   cellId,
   sameCell,
-  sameOptionalCell,
-  valueId
+  sameOptionalCell
 } from '@dataview/runtime/identity'
 export type {
-  CellId,
-  ValueId
+  CellId
 } from '@dataview/runtime/identity'

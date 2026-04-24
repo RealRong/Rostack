@@ -15,6 +15,10 @@ import {
   createGraphPatchScope,
   hasGraphPatchScope
 } from './graphPatch/scope'
+import {
+  createSpatialPatchScope,
+  hasSpatialPatchScope
+} from './spatial/contracts'
 
 const hasIdDelta = <TId extends string>(
   delta: {
@@ -26,29 +30,6 @@ const hasIdDelta = <TId extends string>(
   delta.added.size > 0
   || delta.updated.size > 0
   || delta.removed.size > 0
-)
-
-const hasDocumentDelta = (
-  delta: Input['delta']['document']
-): boolean => (
-  delta.reset
-  || delta.order
-  || hasIdDelta(delta.nodes)
-  || hasIdDelta(delta.edges)
-  || hasIdDelta(delta.mindmaps)
-  || hasIdDelta(delta.groups)
-)
-
-const hasGraphDelta = (
-  delta: Input['delta']['graph']
-): boolean => (
-  hasIdDelta(delta.nodes.draft)
-  || hasIdDelta(delta.nodes.preview)
-  || hasIdDelta(delta.nodes.edit)
-  || hasIdDelta(delta.edges.preview)
-  || hasIdDelta(delta.edges.edit)
-  || hasIdDelta(delta.mindmaps.preview)
-  || delta.mindmaps.tick.size > 0
 )
 
 const hasUiDelta = (
@@ -66,6 +47,12 @@ const hasUiDelta = (
 const hasSceneDelta = (
   delta: Input['delta']['scene']
 ): boolean => delta.viewport
+
+const createSpatialPlannerScope = (
+  input: Input
+) => createSpatialPatchScope({
+  visible: hasSceneDelta(input.delta.scene)
+})
 
 const appendIdDelta = <TId extends string>(
   target: Set<TId>,
@@ -164,31 +151,38 @@ export const createEditorGraphPlanner = (): RuntimePlanner<
           order: true
         })
       : createGraphPlannerScope(input)
+    const spatialScope = createSpatialPlannerScope(input)
     const graphChanged = hasGraphPatchScope(graphScope)
     const uiChanged = graphChanged || hasUiDelta(input.delta.ui)
-    const sceneChanged = graphChanged || hasSceneDelta(input.delta.scene)
+    const spatialChanged = hasSpatialPatchScope(spatialScope)
 
-    if (!graphChanged && !uiChanged && !sceneChanged) {
+    if (!graphChanged && !uiChanged && !spatialChanged) {
       return createPlan<EditorPhaseName>()
     }
 
     if (graphChanged) {
       return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
-        phases: new Set([
-          'graph'
-        ]),
+        phases: new Set(
+          spatialChanged
+            ? ['graph', 'spatial']
+            : ['graph']
+        ),
         scope: {
-          graph: graphScope
+          graph: graphScope,
+          spatial: spatialChanged ? spatialScope : undefined
         }
       })
     }
 
-    if (uiChanged && sceneChanged) {
-      return createPlan<EditorPhaseName>({
+    if (uiChanged && spatialChanged) {
+      return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
         phases: new Set([
           'ui',
-          'scene'
-        ])
+          'spatial'
+        ]),
+        scope: {
+          spatial: spatialScope
+        }
       })
     }
 
@@ -200,11 +194,14 @@ export const createEditorGraphPlanner = (): RuntimePlanner<
       })
     }
 
-    if (sceneChanged) {
-      return createPlan<EditorPhaseName>({
+    if (spatialChanged) {
+      return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
         phases: new Set([
-          'scene'
-        ])
+          'spatial'
+        ]),
+        scope: {
+          spatial: spatialScope
+        }
       })
     }
 

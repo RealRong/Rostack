@@ -19,6 +19,9 @@ import {
 import {
   resolveInlineSessionExitEffect
 } from '@dataview/runtime'
+import type {
+  CardTitle
+} from '@dataview/runtime'
 import {
   focusInputWithoutScroll
 } from '@shared/dom'
@@ -41,7 +44,7 @@ const useEditableCardTitleState = (input: {
   viewId: ViewId
   itemId: ItemId
   recordId: RecordId
-  titleText: string
+  title: CardTitle
 }): EditableCardTitleState => {
   const dataView = useDataView()
   const editing = useKeyedStoreValue<string, boolean>(
@@ -51,9 +54,9 @@ const useEditableCardTitleState = (input: {
       itemId: input.itemId
     })
   )
-  const [titleDraft, setTitleDraft] = useState(() => input.titleText)
+  const [titleDraft, setTitleDraft] = useState(() => input.title.value)
   const titleDraftRef = useRef(titleDraft)
-  const committedTitleRef = useRef(input.titleText)
+  const committedTitleRef = useRef(input.title.value)
   const exitEffectRef = useRef<ReturnType<typeof resolveInlineSessionExitEffect> | null>(null)
 
   useEffect(() => {
@@ -61,8 +64,8 @@ const useEditableCardTitleState = (input: {
   }, [titleDraft])
 
   useEffect(() => {
-    committedTitleRef.current = input.titleText
-  }, [input.titleText])
+    committedTitleRef.current = input.title.value
+  }, [input.title.value])
 
   useEffect(() => {
     if (editing) {
@@ -70,11 +73,11 @@ const useEditableCardTitleState = (input: {
       return
     }
 
-    setTitleDraft(input.titleText)
-  }, [editing, input.titleText])
+    setTitleDraft(input.title.value)
+  }, [editing, input.title.value])
 
   const enterEdit = useCallback(() => {
-    setTitleDraft(input.titleText)
+    setTitleDraft(input.title.value)
     dataView.session.selection.command.clear()
     dataView.session.inline.enter({
       viewId: input.viewId,
@@ -84,7 +87,7 @@ const useEditableCardTitleState = (input: {
     dataView.session.inline,
     dataView.session.selection,
     input.itemId,
-    input.titleText,
+    input.title.value,
     input.viewId
   ])
 
@@ -161,8 +164,7 @@ export interface EditableCardTitleProps {
   viewId: ViewId
   itemId: ItemId
   recordId: RecordId
-  titleText: string
-  placeholderText: string
+  title: CardTitle
   wrap?: boolean
   showEditAction?: boolean
   rootClassName?: string
@@ -177,7 +179,7 @@ export const EditableCardTitle = (props: EditableCardTitleProps) => {
     viewId: props.viewId,
     itemId: props.itemId,
     recordId: props.recordId,
-    titleText: props.titleText
+    title: props.title
   })
 
   useEffect(() => {
@@ -222,7 +224,7 @@ export const EditableCardTitle = (props: EditableCardTitleProps) => {
         <input
           ref={inputRef}
           value={state.titleDraft}
-          placeholder={props.placeholderText}
+          placeholder={props.title.placeholderText}
           className={cn(
             'min-w-0',
             props.rootClassName,
@@ -254,13 +256,13 @@ export const EditableCardTitle = (props: EditableCardTitleProps) => {
               ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
               : 'truncate',
             props.rootClassName,
-            props.titleText.trim()
+            props.title.value.trim()
               ? 'text-foreground'
               : 'text-muted-foreground',
             props.textClassName
           )}
         >
-          {props.titleText.trim() || props.placeholderText}
+          {props.title.value.trim() || props.title.placeholderText}
         </div>
       )}
     </>

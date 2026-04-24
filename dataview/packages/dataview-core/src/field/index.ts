@@ -4,6 +4,9 @@ import type {
   FieldId
 } from '@dataview/core/contracts'
 import {
+  documentValues
+} from '@dataview/core/document/values'
+import {
   TITLE_FIELD_ID
 } from '@dataview/core/contracts/state'
 import {
@@ -64,11 +67,7 @@ const isTitleFieldId = (
 const readFieldValue = (
   record: DataRecord,
   fieldId: FieldId
-): unknown => (
-  isTitleFieldId(fieldId)
-    ? record.title
-    : record.values[fieldId]
-)
+): unknown => documentValues.get(record, fieldId)
 
 export type {
   Bucket,

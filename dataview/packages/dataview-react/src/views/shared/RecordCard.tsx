@@ -128,8 +128,7 @@ const RecordCardComponent = (props: RecordCardProps) => {
       viewId={props.card.viewId}
       itemId={props.card.itemId}
       recordId={props.card.recordId}
-      titleText={props.content.titleText}
-      placeholderText={props.content.placeholderText}
+      title={props.content.title}
       wrap={props.card.wrap}
       showEditAction={props.showEditAction && !draggingActive}
       rootClassName={presentation.slots.title?.content}
@@ -145,8 +144,7 @@ const RecordCardComponent = (props: RecordCardProps) => {
     props.card.recordId,
     props.card.viewId,
     props.card.wrap,
-    props.content.placeholderText,
-    props.content.titleText,
+    props.content.title,
     props.showEditAction
   ])
   const visibleProperties = useMemo(() => (

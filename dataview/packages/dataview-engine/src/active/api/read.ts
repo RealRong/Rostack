@@ -43,9 +43,7 @@ export const createActiveViewReadApi = (input: {
       sectionId: placement.sectionId,
       record,
       field: readField(cell.fieldId),
-      value: cell.fieldId === 'title'
-        ? record.title
-        : record.values[cell.fieldId]
+      value: input.reader.values.get(placement.recordId, cell.fieldId)
     }
   }
 

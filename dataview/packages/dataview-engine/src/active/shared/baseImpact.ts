@@ -21,12 +21,8 @@ export const createBaseImpact = (
 ): BaseImpact => ({
   commit,
   touchedRecords: commitImpact.record.touchedIds(commit),
-  touchedFields: commitImpact.field.touchedIds(commit, {
-    includeTitlePatch: true
-  }),
-  valueFields: commitImpact.field.valueIds(commit, {
-    includeTitlePatch: true
-  }),
+  touchedFields: commitImpact.field.touchedIds(commit),
+  valueFields: commitImpact.field.valueIds(commit),
   schemaFields: commitImpact.field.schemaIds(commit),
   recordSetChanged: commitImpact.has.recordSetChange(commit)
 })

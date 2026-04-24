@@ -15,6 +15,10 @@ export type ViewGroupBucketId = string
 export const TITLE_FIELD_ID = 'title'
 export type TitleFieldId = typeof TITLE_FIELD_ID
 export type FieldId = CustomFieldId | TitleFieldId
+export interface ValueRef {
+  recordId: RecordId
+  fieldId: FieldId
+}
 export type FilterPresetId = string
 export type NodeId = string
 export type ViewType = 'table' | 'gallery' | 'kanban'

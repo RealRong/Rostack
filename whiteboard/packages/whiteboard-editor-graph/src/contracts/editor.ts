@@ -41,6 +41,7 @@ import type {
   Revision,
   TraceRun
 } from '@shared/projection-runtime'
+import type { SpatialRead } from '../runtime/spatial/contracts'
 
 export interface Input {
   document: DocumentInput
@@ -676,6 +677,7 @@ export interface Read {
   group(id: GroupId): GroupView | undefined
   nodeUi(id: NodeId): NodeUiView | undefined
   edgeUi(id: EdgeId): EdgeUiView | undefined
+  spatial: SpatialRead
   scene(): SceneSnapshot
   ui(): UiSnapshot
   selection(): SelectionView

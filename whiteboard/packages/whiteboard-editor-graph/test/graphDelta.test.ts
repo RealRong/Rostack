@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   EdgeId,
+  GroupId,
   NodeId,
   Size
 } from '@whiteboard/core/types'
@@ -67,6 +68,25 @@ const createEdge = (input: {
   }
 
   return result.data.edgeId
+}
+
+const createGroup = (input: {
+  engine: ReturnType<typeof createEngine>
+  nodeIds: readonly NodeId[]
+}): GroupId => {
+  const result = input.engine.execute({
+    type: 'group.merge',
+    target: {
+      nodeIds: input.nodeIds
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to create group')
+  }
+
+  return result.data.groupId
 }
 
 const createInput = (input: {
@@ -169,6 +189,124 @@ describe('graph delta patching', () => {
     expect(state.working.delta.graph.geometry.nodes.has(firstId)).toBe(true)
     expect(state.working.delta.graph.entities.edges.updated.has(edgeId)).toBe(true)
     expect(state.working.delta.graph.geometry.edges.has(edgeId)).toBe(true)
+    expect(state.working.delta.spatial.records.updated.has(`node:${firstId}`)).toBe(true)
+    expect(state.working.delta.spatial.records.updated.has(`edge:${edgeId}`)).toBe(true)
+    expect(state.working.delta.spatial.visible).toBe(true)
     expect(state.working.delta.graph.entities.nodes.updated.has(secondId)).toBe(false)
+  })
+
+  it('marks spatial visible without synthetic record updates on viewport-only input', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_spatial_viewport')
+    })
+    const nodeId = createNode({
+      engine,
+      position: { x: 40, y: 40 },
+      text: 'Node',
+      size: { width: 120, height: 44 }
+    })
+
+    const spec = createEditorGraphRuntimeSpec()
+    const graph = createPhaseGraph(spec.phases)
+    const state = createRuntimeState(
+      spec.createWorking(),
+      spec.createSnapshot()
+    )
+
+    const bootstrapDelta = createEmptyInputDelta()
+    bootstrapDelta.document.reset = true
+
+    const bootstrap = runRuntimeUpdate({
+      spec,
+      graph,
+      state,
+      nextInput: createInput({
+        engine,
+        delta: bootstrapDelta,
+        nodeMeasures: new Map([
+          [nodeId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+    publishRuntimeResult(state, bootstrap)
+
+    const viewportDelta = createEmptyInputDelta()
+    viewportDelta.scene.viewport = true
+
+    const result = runRuntimeUpdate({
+      spec,
+      graph,
+      state,
+      nextInput: createInput({
+        engine,
+        delta: viewportDelta,
+        nodeMeasures: new Map([
+          [nodeId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+
+    expect(result.trace.phases.map((phase) => phase.name)).toEqual([
+      'spatial',
+      'scene'
+    ])
+    expect(state.working.delta.spatial.visible).toBe(true)
+    expect(state.working.delta.spatial.order).toBe(false)
+    expect(state.working.delta.spatial.records.added.size).toBe(0)
+    expect(state.working.delta.spatial.records.updated.size).toBe(0)
+    expect(state.working.delta.spatial.records.removed.size).toBe(0)
+  })
+
+  it('keeps group frame in graph while excluding group records from spatial state', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_spatial_group_boundary')
+    })
+    const firstId = createNode({
+      engine,
+      position: { x: 40, y: 40 },
+      text: 'First',
+      size: { width: 120, height: 44 }
+    })
+    const secondId = createNode({
+      engine,
+      position: { x: 220, y: 40 },
+      text: 'Second',
+      size: { width: 120, height: 44 }
+    })
+    const groupId = createGroup({
+      engine,
+      nodeIds: [firstId, secondId]
+    })
+
+    const spec = createEditorGraphRuntimeSpec()
+    const graph = createPhaseGraph(spec.phases)
+    const state = createRuntimeState(
+      spec.createWorking(),
+      spec.createSnapshot()
+    )
+
+    const bootstrapDelta = createEmptyInputDelta()
+    bootstrapDelta.document.reset = true
+
+    runRuntimeUpdate({
+      spec,
+      graph,
+      state,
+      nextInput: createInput({
+        engine,
+        delta: bootstrapDelta,
+        nodeMeasures: new Map([
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+
+    expect(state.working.graph.owners.groups.get(groupId)?.frame.bounds).toBeDefined()
+    expect([...state.working.spatial.records.keys()]).toEqual([
+      `node:${firstId}`,
+      `node:${secondId}`
+    ])
+    expect([...state.working.spatial.records.keys()]).not.toContain(`group:${groupId}`)
   })
 })

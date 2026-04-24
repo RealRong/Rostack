@@ -12,6 +12,7 @@ import type {
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import type { EditorPhaseName } from '../runtime/phaseNames'
+import type { SpatialPatchScope } from '../runtime/spatial/contracts'
 
 export type EditorContext = RuntimeContext<
   Input,
@@ -49,6 +50,24 @@ export type UiEditorPhase = PhaseSpec<
   EditorPhaseScopeMap
 >
 
+export type SpatialEditorContext = RuntimeContext<
+  Input,
+  WorkingState,
+  Snapshot,
+  SpatialPatchScope
+>
+
+export type SpatialEditorPhase = PhaseSpec<
+  'spatial',
+  SpatialEditorContext,
+  undefined,
+  {
+    count: number
+  },
+  EditorPhaseName,
+  EditorPhaseScopeMap
+>
+
 export type SceneEditorPhase = PhaseSpec<
   'scene',
   EditorContext,
@@ -62,6 +81,7 @@ export type SceneEditorPhase = PhaseSpec<
 
 export type EditorPhase =
   | GraphEditorPhase
+  | SpatialEditorPhase
   | UiEditorPhase
   | SceneEditorPhase
 

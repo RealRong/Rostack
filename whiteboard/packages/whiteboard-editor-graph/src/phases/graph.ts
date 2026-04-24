@@ -15,6 +15,7 @@ import {
   normalizeGraphPatchScope
 } from '../runtime/graphPatch/scope'
 import { resetGraphDelta } from '../runtime/graphPatch/delta'
+import { createSpatialPatchScope } from '../runtime/spatial/contracts'
 
 const drainQueue = <TId extends string>(
   queue: Set<TId>
@@ -177,7 +178,13 @@ export const createGraphPhase = (): GraphEditorPhase => ({
     return {
       action: 'sync',
       change: undefined,
-      metrics: toMetric(count)
+      metrics: toMetric(count),
+      emit: {
+        spatial: createSpatialPatchScope({
+          reset: scope.reset,
+          graph: true
+        })
+      }
     }
   }
 })

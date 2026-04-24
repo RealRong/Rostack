@@ -85,6 +85,24 @@ const ensureFieldSchema = (
   return aspects
 }
 
+const ensureValueTouched = (
+  impact: CommitImpact,
+  recordId: RecordId
+): Set<FieldId> => {
+  const values = impact.values ?? (impact.values = {})
+  const touched = values.touched === 'all'
+    ? undefined
+    : (values.touched ?? (values.touched = new Map()))
+  if (!touched) {
+    return new Set<FieldId>()
+  }
+  const fieldIds = touched.get(recordId) ?? new Set<FieldId>()
+  if (!touched.has(recordId)) {
+    touched.set(recordId, fieldIds)
+  }
+  return fieldIds
+}
+
 const ensureViewChange = (
   impact: CommitImpact,
   viewId: ViewId
@@ -110,28 +128,15 @@ const markTouchedRecord = (
   records.touched = addSetValue(records.touched as Set<RecordId> | undefined, recordId)
 }
 
-const markTitleChanged = (
+const markValueTouched = (
   impact: CommitImpact,
-  recordId: RecordId
-) => {
-  const records = impact.records ?? (impact.records = {})
-  records.titleChanged = addSetValue(records.titleChanged, recordId)
-  const fields = impact.fields ?? (impact.fields = {})
-  if (fields.touched !== 'all') {
-    fields.touched = addSetValue(fields.touched as Set<FieldId> | undefined, TITLE_FIELD_ID)
-  }
-}
-
-const markValueFieldChanged = (
-  impact: CommitImpact,
+  recordId: RecordId,
   fieldId: FieldId
 ) => {
-  if (impact.records?.valueChangedFields === 'all') {
-    return
+  if (impact.values?.touched !== 'all') {
+    ensureValueTouched(impact, recordId).add(fieldId)
   }
 
-  const records = impact.records ?? (impact.records = {})
-  records.valueChangedFields = addSetValue(records.valueChangedFields as Set<FieldId> | undefined, fieldId)
   const fields = impact.fields ?? (impact.fields = {})
   if (fields.touched !== 'all') {
     fields.touched = addSetValue(fields.touched as Set<FieldId> | undefined, fieldId)
@@ -152,7 +157,7 @@ const markRecordPatch = (
   aspects.forEach(aspect => {
     target.add(aspect)
     if (aspect === 'title') {
-      markTitleChanged(impact, recordId)
+      markValueTouched(impact, recordId, TITLE_FIELD_ID)
     }
   })
 }
@@ -308,11 +313,7 @@ const applyRecordFieldWriteImpact = (
 ) => {
   markTouchedRecord(impact, change.recordId)
   for (const fieldId of change.changedFields) {
-    if (fieldId === TITLE_FIELD_ID) {
-      markTitleChanged(impact, change.recordId)
-      continue
-    }
-    markValueFieldChanged(impact, fieldId)
+    markValueTouched(impact, change.recordId, fieldId)
   }
 }
 
@@ -321,7 +322,9 @@ const deletePatchedRecord = (
   recordId: RecordId
 ) => {
   impact.records?.patched?.delete(recordId)
-  impact.records?.titleChanged?.delete(recordId)
+  if (impact.values?.touched !== 'all') {
+    impact.values?.touched?.delete(recordId)
+  }
   if (impact.records?.touched !== 'all') {
     impact.records?.touched?.delete(recordId)
   }

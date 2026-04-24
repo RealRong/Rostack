@@ -1,15 +1,12 @@
+export type {
+  ValueRef
+} from '@dataview/core/contracts'
 import type {
-  FieldId,
-  RecordId
+  ValueRef
 } from '@dataview/core/contracts'
 import type {
   CellRef
 } from '@dataview/engine'
-
-export interface ValueRef {
-  recordId: RecordId
-  fieldId: FieldId
-}
 
 export type CellId = string
 export type ValueId = string

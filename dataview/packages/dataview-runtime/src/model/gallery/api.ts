@@ -53,7 +53,7 @@ const sameCard = (
   && left.viewId === right.viewId
   && left.itemId === right.itemId
   && left.recordId === right.recordId
-  && equal.sameOrder(left.fields, right.fields)
+  && equal.sameOrder(left.propertyFields, right.propertyFields)
   && left.size === right.size
   && left.layout === right.layout
   && left.wrap === right.wrap
@@ -84,7 +84,7 @@ export const createGalleryModel = (input: {
   })
   const properties = createRecordCardPropertiesStore({
     source: input.source,
-    fields: customFields
+    propertyFields: customFields
   })
   const body = store.createDerivedStore<GalleryBody | null>({
     get: () => {
@@ -149,7 +149,7 @@ export const createGalleryModel = (input: {
         viewId,
         itemId,
         recordId,
-        fields: store.read(customFields),
+        propertyFields: store.read(customFields),
         size: gallery.size,
         layout: gallery.layout,
         wrap: gallery.wrap,

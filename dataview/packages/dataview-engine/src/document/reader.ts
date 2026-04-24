@@ -31,6 +31,9 @@ export interface RecordReader extends EntityReader<RecordId, DataRecord> {
 export interface DocumentReader {
   document(): DataDoc
   records: RecordReader
+  values: {
+    get(recordId: RecordId, fieldId: FieldId): unknown | undefined
+  }
   fields: EntityReader<FieldId, Field>
   views: EntityReader<ViewId, View> & {
     activeId(): ViewId | undefined
@@ -89,6 +92,14 @@ export const createDocumentReader = (
         recordIds,
         toRecordIdSet(validIds, records.ids)
       )
+    },
+    values: {
+      get: (recordId, fieldId) => {
+        const record = records.get(recordId)
+        return record
+          ? document.values.get(record, fieldId)
+          : undefined
+      }
     },
     fields: createEntityReader({
       readDocument,

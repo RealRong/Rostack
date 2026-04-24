@@ -74,9 +74,7 @@ const buildRecordFieldTextFromField = (
 
   return buildFieldText(
     field,
-    fieldId === 'title'
-      ? record.title
-      : record.values[fieldId]
+    documentApi.values.get(record, fieldId)
   )
 }
 
@@ -136,14 +134,20 @@ const appendRecordDefaultSearchTokens = (
   record: DataRecord,
   fields: readonly CustomField[]
 ) => {
-  const titleTokens = fieldApi.search.tokens(undefined, record.title)
+  const titleTokens = fieldApi.search.tokens(
+    undefined,
+    documentApi.values.get(record, 'title')
+  )
   if (titleTokens.length) {
     appendTokens(target, titleTokens)
   }
 
   for (let index = 0; index < fields.length; index += 1) {
     const field = fields[index]!
-    const tokens = fieldApi.search.tokens(field, record.values[field.id])
+    const tokens = fieldApi.search.tokens(
+      field,
+      documentApi.values.get(record, field.id)
+    )
     if (tokens.length) {
       appendTokens(target, tokens)
     }

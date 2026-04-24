@@ -257,9 +257,12 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
 
   const state = index.sync(updatedDocument, createImpact({
     records: {
-      touched: new Set(['rec_2']),
-      titleChanged: new Set(['rec_2']),
-      valueChangedFields: new Set([FIELD_STATUS, FIELD_POINTS])
+      touched: new Set(['rec_2'])
+    },
+    values: {
+      touched: new Map([
+        ['rec_2', new Set([TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])]
+      ])
     }
   })).state
 
@@ -311,8 +314,12 @@ test('engine.active.index buckets status category mode with fast category keys',
 
   const nextBucket = readBucketIndex(index.sync(updatedDocument, createImpact({
     records: {
-      touched: new Set(['rec_2']),
-      valueChangedFields: new Set([FIELD_STATUS])
+      touched: new Set(['rec_2'])
+    },
+    values: {
+      touched: new Map([
+        ['rec_2', new Set([FIELD_STATUS])]
+      ])
     }
   })).state.bucket, {
     fieldId: FIELD_STATUS,

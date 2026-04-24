@@ -116,6 +116,7 @@ export type {
   ViewBase,
   ViewCalc,
   ViewDisplay,
+  ValueRef,
   TableView,
   GalleryView,
   KanbanView,

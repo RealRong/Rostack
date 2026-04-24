@@ -44,9 +44,10 @@ export interface CommitImpact {
     removed?: Set<RecordId>
     patched?: Map<RecordId, Set<RecordPatchAspect>>
     touched?: Set<RecordId> | 'all'
-    titleChanged?: Set<RecordId>
-    valueChangedFields?: Set<FieldId> | 'all'
     recordSetChanged?: boolean
+  }
+  values?: {
+    touched?: Map<RecordId, Set<FieldId>> | 'all'
   }
   fields?: {
     inserted?: Set<CustomFieldId>

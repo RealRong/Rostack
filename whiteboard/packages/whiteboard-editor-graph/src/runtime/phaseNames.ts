@@ -1,5 +1,6 @@
 export const EDITOR_PHASES = [
   'graph',
+  'spatial',
   'ui',
   'scene'
 ] as const

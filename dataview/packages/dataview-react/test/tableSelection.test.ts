@@ -32,9 +32,15 @@ const createItemListStub = (ids: readonly string[]) => {
   }
 }
 
-const createFieldListStub = (ids: readonly string[]) => ({
+const createFieldListStub = (ids: readonly string[]) => collection.createOrderedKeyedCollection({
   ids,
-  ...collection.createOrderedAccess(ids),
+  all: ids.flatMap(id => id === 'field_1'
+    ? [{
+        id: 'field_1',
+        kind: 'text',
+        name: 'Name'
+      } as const]
+    : []),
   get: (id: string) => id === 'field_1'
     ? {
         id: 'field_1',
@@ -64,6 +70,8 @@ const createSelectionRuntimeStub = (input: {
 }) => {
   const rowIds = input.rowIds ?? []
   const grid = input.grid ?? null
+  const modeStore = store.createValueStore<typeof input.mode>(input.mode)
+  const cellStore = store.createValueStore<ReturnType<typeof gridSelection.set> | null>(grid)
   const domain = createItemArraySelectionDomain(rowIds)
   const selection = rowIds.length
     ? selectionSnapshot.replaceIds(
@@ -78,10 +86,7 @@ const createSelectionRuntimeStub = (input: {
     : selectionSnapshot.empty<string>(0)
 
   return {
-    mode: {
-      get: () => input.mode,
-      subscribe: () => () => {}
-    },
+    mode: modeStore,
     rows: {
       state: {
         store: {
@@ -123,12 +128,16 @@ const createSelectionRuntimeStub = (input: {
       }
     },
     cells: {
-      get: () => grid,
-      clear: vi.fn(),
-      set: vi.fn(),
+      get: () => store.peek(cellStore),
+      clear: vi.fn(() => {
+        cellStore.set(null)
+      }),
+      set: vi.fn(next => {
+        cellStore.set(gridSelection.set(next))
+      }),
       move: vi.fn(),
       first: vi.fn(),
-      store: null as never,
+      store: cellStore,
       dispose: vi.fn()
     },
     clear: vi.fn(),
@@ -150,8 +159,14 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
       itemIds: ['row_1', 'row_2']
     })
   })
+  const grid = gridStore.get()
   const runtime = createTableSelectionRuntime({
-    gridStore,
+    itemsStore: store.createValueStore({
+      initial: grid.items
+    }),
+    fieldsStore: store.createValueStore({
+      initial: grid.fields
+    }),
     rowSelection
   })
 
@@ -192,6 +207,9 @@ test('handleTableKey deletes selected rows in row mode', () => {
     mode: 'rows',
     rowIds: ['row_1', 'row_2']
   })
+  const grid = createGridStub({
+    itemIds: ['row_1', 'row_2']
+  })
 
   const handled = handleTableKey({
     key: {
@@ -210,9 +228,8 @@ test('handleTableKey deletes selected rows in row mode', () => {
         }
       }
     } as never,
-    grid: createGridStub({
-      itemIds: ['row_1', 'row_2']
-    }) as never,
+    items: grid.items as never,
+    fields: grid.fields as never,
     selection,
     locked: false,
     readCell: () => ({
@@ -234,6 +251,9 @@ test('handleTableKey does not reveal after select all in row mode', () => {
   })
   const reveal = vi.fn()
   const setKeyboardMode = vi.fn()
+  const grid = createGridStub({
+    itemIds: ['row_1', 'row_2']
+  })
 
   const handled = handleTableKey({
     key: {
@@ -252,9 +272,8 @@ test('handleTableKey does not reveal after select all in row mode', () => {
         }
       }
     } as never,
-    grid: createGridStub({
-      itemIds: ['row_1', 'row_2']
-    }) as never,
+    items: grid.items as never,
+    fields: grid.fields as never,
     selection,
     locked: false,
     readCell: () => ({
@@ -281,6 +300,10 @@ test('handleTableKey keeps delete-as-clear for active cell selection in cell mod
       fieldId: 'field_1'
     })
   })
+  const grid = createGridStub({
+    itemIds: ['row_1'],
+    fieldIds: ['field_1']
+  })
 
   const handled = handleTableKey({
     key: {
@@ -302,10 +325,8 @@ test('handleTableKey keeps delete-as-clear for active cell selection in cell mod
         }
       }
     } as never,
-    grid: createGridStub({
-      itemIds: ['row_1'],
-      fieldIds: ['field_1']
-    }) as never,
+    items: grid.items as never,
+    fields: grid.fields as never,
     selection,
     locked: false,
     readCell: () => ({

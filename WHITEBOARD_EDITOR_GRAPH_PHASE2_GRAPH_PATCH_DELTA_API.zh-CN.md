@@ -1067,6 +1067,10 @@ group geometry touched 的判定写死成：
 - 只记 `entities.groups.updated`
 - 不记 `geometry.groups`
 
+这里的 `group.frame.bounds` 是 graph structural truth。  
+它服务于 selection/chrome 和后续下游派生，  
+但不意味着后续 spatial phase 必须把 group materialize 成常驻 `SpatialRecord`。
+
 ---
 
 ## 12. fanout 规则

@@ -2,7 +2,14 @@ import type { CommitImpact } from '@dataview/core/contracts/commit'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
 import { impact as commitImpact } from '@dataview/core/commit/impact'
-import { mutationContext, type InverseBuilder } from '@shared/core'
+import {
+  operationBuffer,
+  type InverseBuilder
+} from '@shared/core'
+import {
+  cowDraft,
+  type Draft
+} from '@shared/mutation'
 
 export interface DocumentMutationResult {
   document: DataDoc
@@ -15,6 +22,7 @@ export interface DocumentMutationContext {
   readonly impact: CommitImpact
   readonly inverse: InverseBuilder<DocumentOperation>
   document(): DataDoc
+  writeDocument(): DataDoc
   replaceDocument(document: DataDoc): DataDoc
   finish(): DocumentMutationResult
 }
@@ -25,33 +33,28 @@ export const createDocumentMutationContext = (
     impact?: CommitImpact
   } = {}
 ): DocumentMutationContext => {
-  const context = mutationContext.createMutationContext<
-    DataDoc,
-    DataDoc,
-    DocumentOperation,
-    {
-      impact: CommitImpact
-    }
-  >({
-    base: document,
-    working: {
-      impact: input.impact ?? commitImpact.create()
-    }
-  })
+  const createDraft = cowDraft.create<DataDoc>()
+  let draft: Draft<DataDoc> = createDraft(document)
+  const inverse = operationBuffer.createInverseBuilder<DocumentOperation>()
+  const impact = input.impact ?? commitImpact.create()
 
   return {
-    base: context.base,
-    impact: context.working.impact,
-    inverse: context.inverse,
-    document: () => context.current(),
-    replaceDocument: (nextDocument) => context.replace(nextDocument),
+    base: document,
+    impact,
+    inverse,
+    document: () => draft.doc(),
+    writeDocument: () => draft.write(),
+    replaceDocument: (nextDocument) => {
+      draft = createDraft(nextDocument)
+      return draft.doc()
+    },
     finish: () => {
-      const result = context.finish()
-      commitImpact.finalize(result.working.impact)
+      const nextDocument = draft.done()
+      commitImpact.finalize(impact)
       return {
-        document: result.current,
-        impact: result.working.impact,
-        inverse: result.inverse
+        document: nextDocument,
+        impact,
+        inverse: inverse.finish()
       }
     }
   }

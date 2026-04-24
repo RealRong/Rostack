@@ -309,9 +309,9 @@ export const createEngineQuery = ({
       ) ?? EMPTY_RECT
     },
     scene: () => documentApi.list.canvasRefs(document()),
-    frameOf: (nodeId) => {
+    frameParent: (nodeId) => {
       const nodes = readCanvasNodeCandidates(document())
-      return nodeApi.frame.of({
+      return nodeApi.frame.parent({
         nodes,
         nodeId,
         getNodeRect: (currentNode) => nodeApi.geometry.rect(currentNode, config.nodeSize),
@@ -324,7 +324,7 @@ export const createEngineQuery = ({
     },
     frameAt: (point) => {
       const nodes = readCanvasNodeCandidates(document())
-      return nodeApi.frame.atPoint({
+      return nodeApi.frame.at({
         nodes,
         point,
         getFrameRect: (currentNode) => (
@@ -390,7 +390,7 @@ export const createEngineQuery = ({
         ? exported.data
         : undefined
     },
-    nodeIds: () => documentApi.list.nodes(document()).map((node) => node.id),
+    nodeIds: () => Object.keys(document().nodes) as readonly NodeId[],
     node: (id) => {
       const currentNode = document().nodes[id]
       return currentNode
@@ -400,7 +400,7 @@ export const createEngineQuery = ({
           })
         : undefined
     },
-    edgeIds: () => documentApi.list.edges(document()).map((edge) => edge.id),
+    edgeIds: () => Object.keys(document().edges) as readonly EdgeId[],
     edge: (id) => readEdgeItem({
       edge: document().edges[id],
       snapshot: snapshot(),
@@ -408,18 +408,17 @@ export const createEngineQuery = ({
     }),
     relatedEdges: (nodeIds) => [...edgeApi.relation.collect(
       edgeApi.relation.create(
-        documentApi.list.edges(document())
+        Object.values(document().edges)
       ).nodeToEdgeIds,
       nodeIds
     )],
     edgeIdsInRect: (rect, options) => {
       const match = options?.match ?? 'touch'
 
-      return documentApi.list.edges(document())
-        .map((edge) => edge.id)
+      return Object.keys(document().edges)
         .filter((edgeId) => {
           const view = readCommittedEdgeView({
-            edgeId,
+            edgeId: edgeId as EdgeId,
             snapshot: snapshot(),
             nodeSize: config.nodeSize
           })
@@ -431,7 +430,7 @@ export const createEngineQuery = ({
                 mode: match
               })
             : false
-        })
+        }) as EdgeId[]
     },
     mindmapIds: () => Object.keys(document().mindmaps),
     mindmap: (id) => {

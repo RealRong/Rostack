@@ -1,6 +1,7 @@
-import { changeSet, json, record } from '@shared/core'
+import { changeSet, json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
+import { applyRecordPathMutation } from '../../../mutation/recordPath'
 
 const applyEdgeRecordMutation = (
   edge: import('@whiteboard/core/types').Edge,
@@ -10,7 +11,7 @@ const applyEdgeRecordMutation = (
   const current = scope === 'data'
     ? edge.data
     : edge.style
-  const result = record.apply(current, mutation)
+  const result = applyRecordPathMutation(current, mutation)
   if (!result.ok) {
     return result
   }

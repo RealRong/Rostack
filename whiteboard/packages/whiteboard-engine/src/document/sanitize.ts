@@ -1,8 +1,12 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
+  CanvasItemRef,
   Document,
+  EdgeId,
+  MindmapId,
   Node,
+  NodeId,
   Operation
 } from '@whiteboard/core/types'
 
@@ -69,9 +73,76 @@ export const sanitizeDocument = (
     entities[id] = node
   })
 
-  return changed
+  const normalizedOrder = (() => {
+    const next: CanvasItemRef[] = []
+    const seen = new Set<string>()
+    const push = (ref: CanvasItemRef) => {
+      const key = `${ref.kind}:${ref.id}`
+      if (seen.has(key)) {
+        return
+      }
+
+      seen.add(key)
+      next.push(ref)
+    }
+    const isTopLevelNode = (nodeId: NodeId) => Boolean(entities[nodeId] && !entities[nodeId]?.owner)
+
+    document.canvas.order.forEach((ref) => {
+      switch (ref.kind) {
+        case 'node':
+          if (isTopLevelNode(ref.id)) {
+            push(ref)
+          }
+          return
+        case 'mindmap':
+          if (document.mindmaps[ref.id]) {
+            push(ref)
+          }
+          return
+        case 'edge':
+          if (document.edges[ref.id]) {
+            push(ref)
+          }
+      }
+    })
+
+    ;(Object.keys(entities) as readonly NodeId[]).forEach((nodeId) => {
+      if (isTopLevelNode(nodeId)) {
+        push({
+          kind: 'node',
+          id: nodeId
+        })
+      }
+    })
+    ;(Object.keys(document.mindmaps) as readonly MindmapId[]).forEach((mindmapId) => {
+      push({
+        kind: 'mindmap',
+        id: mindmapId
+      })
+    })
+    ;(Object.keys(document.edges) as readonly EdgeId[]).forEach((edgeId) => {
+      push({
+        kind: 'edge',
+        id: edgeId
+      })
+    })
+
+    return next
+  })()
+  const orderChanged =
+    normalizedOrder.length !== document.canvas.order.length
+    || normalizedOrder.some((ref, index) => (
+      ref.kind !== document.canvas.order[index]?.kind
+      || ref.id !== document.canvas.order[index]?.id
+    ))
+
+  return changed || orderChanged
     ? {
         ...document,
+        canvas: {
+          ...document.canvas,
+          order: normalizedOrder
+        },
         nodes: entities
       }
     : document

@@ -391,7 +391,11 @@ export const collectConnectedEdges = (
 ))
 
 export const createReduceRuntime = (
-  document: Document
+  document: Document,
+  input: {
+    inverse?: InverseBuilder<import('@whiteboard/core/types').Operation>
+    footprint?: HistoryFootprintCollector<HistoryKey>
+  } = {}
 ): ReduceRuntime => {
   const mutation = mutationContext.createMutationContext<
     Document,
@@ -405,7 +409,7 @@ export const createReduceRuntime = (
       changes: createChangeSet(),
       dirty: createInvalidation(),
       history: {
-        footprint: historyFootprint.createHistoryFootprintCollector(
+        footprint: input.footprint ?? historyFootprint.createHistoryFootprintCollector(
           serializeHistoryKey
         )
       },
@@ -426,7 +430,7 @@ export const createReduceRuntime = (
     },
     changes: mutation.working.changes,
     dirty: mutation.working.dirty,
-    inverse: mutation.inverse,
+    inverse: input.inverse ?? mutation.inverse,
     history: mutation.working.history,
     get shortCircuit() {
       return mutation.working.shortCircuit

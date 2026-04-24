@@ -1,4 +1,4 @@
-import { planningContext, type ValidationIssue } from '@shared/core'
+import type { CompileCtx } from '@shared/mutation'
 import type {
   Document,
   ErrorInfo,
@@ -6,11 +6,10 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   CommandCompilerTx,
-  CompileResult,
   CompilerIds
 } from '../types'
 
-type CompilerFailure = {
+export type CompilerFailure = {
   kind: 'compile-failure'
   error: {
     ok: false
@@ -34,7 +33,7 @@ const createCompilerFailure = (
   }
 })
 
-const isCompilerFailure = (
+export const isCompilerFailure = (
   error: unknown
 ): error is CompilerFailure => (
   typeof error === 'object'
@@ -43,40 +42,31 @@ const isCompilerFailure = (
   && (error as { kind?: string }).kind === 'compile-failure'
 )
 
-const raiseCompilerFailure = (
-  issue: ValidationIssue<'invalid' | 'cancelled'>
-): never => {
-  throw createCompilerFailure(issue.code, issue.message, issue.details)
-}
-
 export const createCompilerTx = ({
-  document,
+  ctx,
   ids
 }: {
-  document: Document
+  ctx: CompileCtx<Document, Operation>
   ids: CompilerIds
-}) => {
-  let context!: planningContext.PlanningContext<
-    CommandCompilerTx['read'],
-    Operation,
-    'invalid' | 'cancelled'
-  >
-
-  context = planningContext.createPlanningContext({
+}): {
+  tx: CommandCompilerTx
+} => {
+  const tx: CommandCompilerTx = {
     read: {
       document: {
-        get: () => document
+        get: () => ctx.doc()
       },
       canvas: {
-        order: () => document.canvas.order
+        order: () => ctx.doc().canvas.order
       },
       node: {
-        get: (id) => document.nodes[id],
+        get: (id) => ctx.doc().nodes[id],
         require: (id) => {
-          const node = context.require(document.nodes[id], {
-            code: 'invalid',
-            message: `Node ${id} not found.`
-          })
+          const node = ctx.require(
+            ctx.doc().nodes[id],
+            'invalid',
+            `Node ${id} not found.`
+          )
           if (!node) {
             throw new Error(`Unexpected missing node ${id}.`)
           }
@@ -84,12 +74,13 @@ export const createCompilerTx = ({
         }
       },
       edge: {
-        get: (id) => document.edges[id],
+        get: (id) => ctx.doc().edges[id],
         require: (id) => {
-          const edge = context.require(document.edges[id], {
-            code: 'invalid',
-            message: `Edge ${id} not found.`
-          })
+          const edge = ctx.require(
+            ctx.doc().edges[id],
+            'invalid',
+            `Edge ${id} not found.`
+          )
           if (!edge) {
             throw new Error(`Unexpected missing edge ${id}.`)
           }
@@ -97,12 +88,13 @@ export const createCompilerTx = ({
         }
       },
       group: {
-        get: (id) => document.groups[id],
+        get: (id) => ctx.doc().groups[id],
         require: (id) => {
-          const group = context.require(document.groups[id], {
-            code: 'invalid',
-            message: `Group ${id} not found.`
-          })
+          const group = ctx.require(
+            ctx.doc().groups[id],
+            'invalid',
+            `Group ${id} not found.`
+          )
           if (!group) {
             throw new Error(`Unexpected missing group ${id}.`)
           }
@@ -110,12 +102,13 @@ export const createCompilerTx = ({
         }
       },
       mindmap: {
-        get: (id) => document.mindmaps[id],
+        get: (id) => ctx.doc().mindmaps[id],
         require: (id) => {
-          const mindmap = context.require(document.mindmaps[id], {
-            code: 'invalid',
-            message: `Mindmap ${id} not found.`
-          })
+          const mindmap = ctx.require(
+            ctx.doc().mindmaps[id],
+            'invalid',
+            `Mindmap ${id} not found.`
+          )
           if (!mindmap) {
             throw new Error(`Unexpected missing mindmap ${id}.`)
           }
@@ -123,47 +116,22 @@ export const createCompilerTx = ({
         }
       }
     },
-    mode: 'fail-fast',
-    raise: raiseCompilerFailure
-  })
-
-  const tx: CommandCompilerTx = {
-    read: context.read,
     ids,
-    emit: context.emit,
-    emitMany: context.emitMany,
+    emit: ctx.emit,
+    emitMany: (ops) => {
+      ctx.emitMany(...ops)
+    },
     fail: {
       invalid: (message, details) => {
-        context.issue({
-          code: 'invalid',
-          message,
-          details
-        })
-        throw new Error('Unreachable compiler invalid branch.')
+        throw createCompilerFailure('invalid', message, details)
       },
       cancelled: (message, details) => {
-        context.issue({
-          code: 'cancelled',
-          message,
-          details
-        })
-        throw new Error('Unreachable compiler cancelled branch.')
+        throw createCompilerFailure('cancelled', message, details)
       }
     }
   }
 
   return {
-    tx,
-    ok: <T>(output: T): CompileResult<T> => ({
-      ok: true,
-      ops: context.finish().operations,
-      output
-    }),
-    fail: (error: unknown): CompileResult => {
-      if (isCompilerFailure(error)) {
-        return error.error
-      }
-      throw error
-    }
+    tx
   }
 }

@@ -12,6 +12,7 @@
   ],
   "dependencies": {
     "@shared/core": "workspace:*",
+    "@shared/mutation": "workspace:*",
     "@whiteboard/core": "workspace:*"
   },
   "scripts": {

@@ -7,6 +7,9 @@
     ".": "./src/index.ts",
     "./path": "./src/path.ts",
     "./meta": "./src/meta.ts",
+    "./compiler": "./src/compiler.ts",
+    "./apply": "./src/apply.ts",
+    "./draft": "./src/draft.ts",
     "./write": "./src/write.ts"
   },
   "scripts": {

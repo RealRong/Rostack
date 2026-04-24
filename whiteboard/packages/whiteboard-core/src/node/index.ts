@@ -16,10 +16,11 @@ import {
   resolveDrawStroke
 } from '@whiteboard/core/node/draw'
 import {
-  collectFrameMembers,
-  expandFrameSelection,
-  resolveFrameAtPoint,
-  resolveNodeFrame
+  createFrameQuery,
+  frameAt,
+  frameChildren,
+  frameDescendants,
+  frameParent
 } from '@whiteboard/core/node/frame'
 import {
   getNodeAABB,
@@ -189,10 +190,11 @@ export const node = {
     rectEquals
   },
   frame: {
-    collectMembers: collectFrameMembers,
-    expandSelection: expandFrameSelection,
-    atPoint: resolveFrameAtPoint,
-    of: resolveNodeFrame
+    create: createFrameQuery,
+    at: frameAt,
+    parent: frameParent,
+    children: frameChildren,
+    descendants: frameDescendants
   },
   move: {
     buildCommit: buildMoveCommit,

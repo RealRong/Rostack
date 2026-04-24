@@ -5,7 +5,7 @@ import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { getNodesBoundingRect } from '@whiteboard/core/node/group'
-import { expandFrameSelection } from '@whiteboard/core/node/frame'
+import { createFrameQuery } from '@whiteboard/core/node/frame'
 import { buildNodeCreateOperation } from '@whiteboard/core/node/commands'
 import { createId } from '@whiteboard/core/id'
 import { err, ok } from '@whiteboard/core/result'
@@ -233,23 +233,8 @@ const collectExpandedNodeIds = (
   selectedIds: readonly NodeId[],
   nodeSize: Size
 ) => {
-  const nodeById = new Map<NodeId, Node>(nodes.map((node) => [node.id, node]))
-  const expandedIds = new Set<NodeId>()
-  const stack = dedupeIds(selectedIds)
-
-  while (stack.length) {
-    const nodeId = stack.pop()
-    if (!nodeId || expandedIds.has(nodeId)) continue
-
-    const node = nodeById.get(nodeId)
-    if (!node) continue
-
-    expandedIds.add(nodeId)
-  }
-
-  return expandFrameSelection({
+  const frame = createFrameQuery({
     nodes,
-    ids: [...expandedIds],
     getNodeRect: (current) => nodeApi.geometry.rect(current, nodeSize),
     getFrameRect: (node) => (
       node.type === 'frame'
@@ -257,6 +242,15 @@ const collectExpandedNodeIds = (
         : undefined
     )
   })
+  const expandedIds = new Set(dedupeIds(selectedIds))
+
+  ;[...expandedIds].forEach((nodeId) => {
+    frame.descendants(nodeId).forEach((childId) => {
+      expandedIds.add(childId)
+    })
+  })
+
+  return expandedIds
 }
 
 const getEdgeBounds = ({

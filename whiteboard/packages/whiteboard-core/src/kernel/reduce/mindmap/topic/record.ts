@@ -1,6 +1,7 @@
-import { changeSet, json, record } from '@shared/core'
+import { changeSet, json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { getNode } from '@whiteboard/core/kernel/reduce/runtime'
+import { applyRecordPathMutation } from '../../../../mutation/recordPath'
 
 const applyTopicRecordMutation = (
   node: import('@whiteboard/core/types').Node,
@@ -10,7 +11,7 @@ const applyTopicRecordMutation = (
   const current = scope === 'data'
     ? node.data
     : node.style
-  const result = record.apply(current, mutation)
+  const result = applyRecordPathMutation(current, mutation)
   if (!result.ok) {
     return result
   }

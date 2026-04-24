@@ -18,7 +18,6 @@ import type {
   GroupId,
   Node,
   NodeId,
-  Point,
   Rect
 } from '@whiteboard/core/types'
 import type { SliceExportResult } from '@whiteboard/core/document'
@@ -69,10 +68,6 @@ export interface DocumentRead {
     get: () => Document
     background: store.ReadStore<Document['background'] | undefined>
     bounds: () => Rect
-  }
-  frame: {
-    of: (nodeId: NodeId) => NodeId | undefined
-    at: (point: Point) => NodeId | undefined
   }
   group: {
     ofNode: (nodeId: NodeId) => GroupId | undefined
@@ -407,45 +402,6 @@ const readCommittedEdgeView = ({
   }
 }
 
-const readCanvasNodeCandidates = (
-  document: Document
-): readonly Node[] => Object.values(document.nodes)
-  .filter((node) => !node.owner)
-
-const createFrameRead = ({
-  document,
-  nodeSize
-}: {
-  document: () => Document
-  nodeSize: Engine['config']['nodeSize']
-}) => ({
-  of: (nodeId: NodeId) => {
-    const nodes = readCanvasNodeCandidates(document())
-    return nodeApi.frame.of({
-      nodes,
-      nodeId,
-      getNodeRect: (current) => nodeApi.geometry.rect(current, nodeSize),
-      getFrameRect: (current) => (
-        current.type === 'frame'
-          ? nodeApi.geometry.rect(current, nodeSize)
-          : undefined
-      )
-    })
-  },
-  at: (point: Point) => {
-    const nodes = readCanvasNodeCandidates(document())
-    return nodeApi.frame.atPoint({
-      nodes,
-      point,
-      getFrameRect: (current) => (
-        current.type === 'frame'
-          ? nodeApi.geometry.rect(current, nodeSize)
-          : undefined
-      )
-    })
-  }
-})
-
 const createGroupRead = ({
   document
 }: {
@@ -495,7 +451,7 @@ export const createDocumentRead = ({
   })
 
   const nodeList = store.createDerivedStore<readonly NodeId[]>({
-    get: () => documentApi.list.nodes(store.read(documentStore)).map((node) => node.id),
+    get: () => Object.keys(store.read(documentStore).nodes) as readonly NodeId[],
     isEqual: equal.sameOrder
   })
 
@@ -513,13 +469,13 @@ export const createDocumentRead = ({
   })
 
   const edgeList = store.createDerivedStore<readonly EdgeId[]>({
-    get: () => documentApi.list.edges(store.read(documentStore)).map((edge) => edge.id),
+    get: () => Object.keys(store.read(documentStore).edges) as readonly EdgeId[],
     isEqual: equal.sameOrder
   })
 
   const edgeRelations = store.createDerivedStore<ReadonlyMap<NodeId, ReadonlySet<EdgeId>>>({
     get: () => edgeApi.relation.create(
-      documentApi.list.edges(store.read(documentStore))
+      Object.values(store.read(documentStore).edges)
     ).nodeToEdgeIds,
     isEqual: (left, right) => left === right
   })
@@ -562,14 +518,10 @@ export const createDocumentRead = ({
   })
 
   const sceneList = store.createDerivedStore<readonly CanvasItemRef[]>({
-    get: () => documentApi.list.canvasRefs(store.read(documentStore)),
+    get: () => store.read(documentStore).canvas.order,
     isEqual: equal.sameOrder
   })
 
-  const frame = createFrameRead({
-    document: () => store.read(documentStore),
-    nodeSize: engine.config.nodeSize
-  })
   const group = createGroupRead({
     document: () => store.read(documentStore)
   })
@@ -613,7 +565,6 @@ export const createDocumentRead = ({
         ) ?? EMPTY_RECT
       }
     },
-    frame,
     group,
     index: {
       snap: {

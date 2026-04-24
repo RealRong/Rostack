@@ -1,6 +1,7 @@
 import type { Action, DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import { operation } from '@dataview/core/operation'
+import { compile } from '@shared/mutation'
 import { string } from '@shared/core'
 import { planFieldAction } from '@dataview/engine/mutate/planner/fields'
 import {
@@ -25,46 +26,47 @@ export const planActions = (input: {
   document: DataDoc
   actions: readonly Action[]
 }): PlannedWriteBatch => {
-  const issues: ValidationIssue[] = []
-  const operations: DocumentOperation[] = []
-  let workingDocument = input.document
+  const plannedActions: PlannedActionResult[] = []
+  const result = compile<DataDoc, Action, DocumentOperation>({
+    doc: input.document,
+    intents: input.actions,
+    run: (ctx, action, index) => {
+      const planned = planAction(
+        createPlannerScope({
+          document: ctx.doc(),
+          action,
+          index
+        }),
+        action
+      )
 
-  for (const [index, action] of input.actions.entries()) {
-    const planned = planAction(
-      createPlannerScope({
-        document: workingDocument,
-        action,
-        index
-      }),
-      action
-    )
-    issues.push(...planned.issues)
-    if (hasValidationErrors(planned.issues)) {
-      return {
-        operations: [],
-        issues,
-        canApply: false
+      plannedActions.push(planned)
+      planned.issues.forEach((issue) => {
+        ctx.issue({
+          code: issue.code,
+          message: issue.message,
+          path: issue.path,
+          level: issue.severity
+        })
+      })
+
+      if (!hasValidationErrors(planned.issues) && planned.operations.length) {
+        ctx.emitMany(...planned.operations)
       }
-    }
-
-    if (!planned.operations.length) {
-      continue
-    }
-
-    operations.push(...planned.operations)
-
-    // Only advance planner state when later actions still depend on the mutated document.
-    if (index < input.actions.length - 1) {
-      const context = operation.createContext(workingDocument)
-      operation.reduce.all(context, planned.operations)
-      workingDocument = context.finish().document
-    }
-  }
+    },
+    previewApply: (document, operations) => {
+      const context = operation.createContext(document)
+      operation.reduce.all(context, operations)
+      return context.finish().document
+    },
+    stopOnError: true
+  })
+  const issues = plannedActions.flatMap((entry) => entry.issues)
 
   return {
-    operations,
+    operations: result.ops,
     issues,
-    canApply: true
+    canApply: !hasValidationErrors(issues)
   }
 }
 export type {

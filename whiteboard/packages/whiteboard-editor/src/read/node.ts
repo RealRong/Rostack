@@ -40,15 +40,15 @@ export type EditorNodeView = {
 }
 
 export type GraphNodeRead = {
-  list: DocumentRead['node']['list']
   committed: DocumentRead['node']['committed']
   graph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
   ui: store.KeyedReadStore<NodeId, RuntimeNodeUiView | undefined>
   view: store.KeyedReadStore<NodeId, EditorNodeView | undefined>
+  ids: () => readonly NodeId[]
+  all: () => readonly RuntimeNodeView[]
   nodes: (nodeIds: readonly NodeId[]) => readonly NodeModel[]
   capability: (node: Pick<NodeModel, 'id' | 'type' | 'owner'>) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
-  ordered: () => readonly NodeModel[]
 }
 
 type EditorNodeViewSources = {
@@ -176,13 +176,20 @@ export const createGraphNodeRead = ({
   type
 }: {
   document: Pick<DocumentRead, 'node'>
-  sources: Pick<ProjectionSources, 'nodeGraph' | 'nodeUi'>
+  sources: Pick<ProjectionSources, 'nodeGraphIds' | 'nodeGraph' | 'nodeUi'>
   spatial: EditorGraphQuery['spatial']
   type: Pick<NodeTypeSupport, 'capability'>
 }): GraphNodeRead => {
+  const readIds = () => store.read(sources.nodeGraphIds) as readonly NodeId[]
+
   const readProjectedNodes = (
     nodeIds: readonly NodeId[]
   ) => collection.presentValues(nodeIds, (nodeId) => store.read(sources.nodeGraph, nodeId)?.base.node)
+
+  const readAll = () => collection.presentValues(
+    readIds(),
+    (nodeId) => store.read(sources.nodeGraph, nodeId)
+  )
 
   const viewSources = store.createStructKeyedStore<NodeId, EditorNodeViewSources>({
     fields: {
@@ -239,14 +246,14 @@ export const createGraphNodeRead = ({
   }
 
   return {
-    list: document.node.list,
     committed: document.node.committed,
     graph: sources.nodeGraph,
     ui: sources.nodeUi,
     view,
+    ids: readIds,
+    all: readAll,
     nodes: readProjectedNodes,
     capability: (node) => resolveNodeCapability(node, type),
-    idsInRect,
-    ordered: () => readProjectedNodes(store.read(document.node.list))
+    idsInRect
   }
 }

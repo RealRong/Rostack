@@ -339,7 +339,10 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     }
   }, [collab?.presence?.binding, editor])
 
-  const { history: _history, ...contextServices } = services
+  const contextServices = useMemo(() => {
+    const { history: _history, ...rest } = services
+    return rest
+  }, [services])
 
   return (
     <WhiteboardServicesProvider value={contextServices}>

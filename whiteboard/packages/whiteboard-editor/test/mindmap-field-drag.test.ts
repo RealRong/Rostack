@@ -62,10 +62,6 @@ describe('mindmap field drag', () => {
             get: vi.fn(() => [])
           },
         },
-        frame: {
-          at: vi.fn(),
-          of: vi.fn()
-        },
         mindmap: {
           structure: {
             get: () => ({
@@ -105,14 +101,18 @@ describe('mindmap field drag', () => {
         }
       },
       projection: {
+        frame: {
+          at: vi.fn(),
+          parent: vi.fn()
+        },
         node: {
-          ordered: vi.fn(() => []),
+          all: vi.fn(() => []),
           view: {
             get: vi.fn(() => undefined)
           }
         },
         edge: {
-          edges: vi.fn(() => [])
+          all: vi.fn(() => [])
         },
         mindmap: {
           view: {

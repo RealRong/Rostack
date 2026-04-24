@@ -39,12 +39,12 @@ const toMoveEdgePatches = (
 }))
 
 const findParentFrameId = (
-  ctx: Pick<EditorHostDeps, 'document'>,
+  ctx: Pick<EditorHostDeps, 'projection'>,
   nodeId: string
-) => ctx.document.frame.of(nodeId)
+) => ctx.projection.frame.parent(nodeId)
 
 const resolveFrameHoverId = (
-  ctx: Pick<EditorHostDeps, 'document'>,
+  ctx: Pick<EditorHostDeps, 'projection'>,
   state: Parameters<typeof nodeApi.move.state.finish>[0],
   pointerWorld: {
     x: number
@@ -52,7 +52,7 @@ const resolveFrameHoverId = (
   }
 ) => {
   const movingIds = new Set(state.move.members.map((member) => member.id))
-  let frameId = ctx.document.frame.at(pointerWorld)
+  let frameId = ctx.projection.frame.at(pointerWorld)
 
   while (frameId && movingIds.has(frameId)) {
     frameId = findParentFrameId(ctx, frameId)
@@ -125,17 +125,12 @@ export const createMoveInteraction = (
   }
 
   const initialState = nodeApi.move.state.start({
-    nodes: ctx.projection.node.ordered().flatMap((node) => {
-      const view = ctx.projection.node.graph.get(node.id)
-      return view
-        ? [toSpatialNode({
-            node: view.base.node,
-            rect: view.geometry.rect,
-            rotation: view.geometry.rotation
-          })]
-        : []
-    }),
-    edges: ctx.projection.edge.edges(ctx.document.edge.list.get()),
+    nodes: ctx.projection.node.all().map((view) => toSpatialNode({
+      node: view.base.node,
+      rect: view.geometry.rect,
+      rotation: view.geometry.rotation
+    })),
+    edges: ctx.projection.edge.all().map((view) => view.base.edge),
     target: input.target,
     startWorld: input.start.world,
     nodeSize: ctx.engine.config.nodeSize

@@ -11,28 +11,31 @@ type FrameNodeLike = Pick<Node, 'id' | 'type'>
 type FrameRectReader<TNode extends FrameNodeLike> = (node: TNode) => Rect | undefined
 type NodeRectReader<TNode extends FrameNodeLike> = (node: TNode) => Rect | undefined
 
-const readArea = (rect: Rect) => rect.width * rect.height
+export interface FrameQuery<TNode extends FrameNodeLike> {
+  at(point: Point): NodeId | undefined
+  parent(nodeId: NodeId): NodeId | undefined
+  children(frameId: NodeId): readonly NodeId[]
+  descendants(frameId: NodeId): readonly NodeId[]
+}
 
-const selectBetterFrame = (
-  current: {
-    id: NodeId
-    area: number
-    index: number
-  } | undefined,
-  next: {
-    id: NodeId
-    area: number
-    index: number
-  }
+type Candidate = {
+  id: NodeId
+  area: number
+  index: number
+}
+
+const area = (rect: Rect) => rect.width * rect.height
+
+const pick = (
+  current: Candidate | undefined,
+  next: Candidate
 ) => {
   if (!current) {
     return next
   }
-
   if (next.area < current.area) {
     return next
   }
-
   if (next.area > current.area) {
     return current
   }
@@ -42,60 +45,30 @@ const selectBetterFrame = (
     : current
 }
 
-const buildNodeById = <TNode extends FrameNodeLike>(
-  nodes: readonly TNode[]
-): ReadonlyMap<NodeId, TNode> =>
-  new Map(nodes.map((node) => [node.id, node] as const))
+const contains = (
+  outer: Rect,
+  inner: Rect
+) => geometryApi.rect.contains(outer, inner)
 
-const buildDirectFrameMembership = <TNode extends FrameNodeLike>({
-  nodes,
-  getNodeRect,
-  getFrameRect
-}: {
-  nodes: readonly TNode[]
-  getNodeRect: NodeRectReader<TNode>
-  getFrameRect: FrameRectReader<TNode>
-}) => {
-  const directFrameByNode = new Map<NodeId, NodeId>()
+const scanFrames = <TNode extends FrameNodeLike>(
+  nodes: readonly TNode[],
+  frameRect: FrameRectReader<TNode>
+) => nodes.flatMap((node, index) => {
+  if (node.type !== 'frame') {
+    return []
+  }
 
-  nodes.forEach((node) => {
-    const nodeRect = getNodeRect(node)
-    if (!nodeRect) {
-      return
-    }
-
-    let best: {
-      id: NodeId
-      area: number
-      index: number
-    } | undefined
-
-    nodes.forEach((candidate, index) => {
-      if (candidate.type !== 'frame' || candidate.id === node.id) {
-        return
-      }
-
-      const frameRect = getFrameRect(candidate)
-      if (!frameRect || !geometryApi.rect.contains(frameRect, nodeRect)) {
-        return
-      }
-
-      best = selectBetterFrame(best, {
-        id: candidate.id,
-        area: readArea(frameRect),
+  const rect = frameRect(node)
+  return rect
+    ? [{
+        node,
+        rect,
         index
-      })
-    })
+      }]
+    : []
+})
 
-    if (best) {
-      directFrameByNode.set(node.id, best.id)
-    }
-  })
-
-  return directFrameByNode
-}
-
-export const resolveFrameAtPoint = <TNode extends FrameNodeLike>({
+export const frameAt = <TNode extends FrameNodeLike>({
   nodes,
   point,
   getFrameRect
@@ -104,33 +77,26 @@ export const resolveFrameAtPoint = <TNode extends FrameNodeLike>({
   point: Point
   getFrameRect: FrameRectReader<TNode>
 }): NodeId | undefined => {
-  let best: {
-    id: NodeId
-    area: number
-    index: number
-  } | undefined
+  let best: Candidate | undefined
+  const frames = scanFrames(nodes, getFrameRect)
 
-  nodes.forEach((node, index) => {
-    if (node.type !== 'frame') {
-      return
+  for (let index = 0; index < frames.length; index += 1) {
+    const frame = frames[index]!
+    if (!geometryApi.rect.containsPoint(point, frame.rect)) {
+      continue
     }
 
-    const rect = getFrameRect(node)
-    if (!rect || !geometryApi.rect.containsPoint(point, rect)) {
-      return
-    }
-
-    best = selectBetterFrame(best, {
-      id: node.id,
-      area: readArea(rect),
-      index
+    best = pick(best, {
+      id: frame.node.id,
+      area: area(frame.rect),
+      index: frame.index
     })
-  })
+  }
 
   return best?.id
 }
 
-export const resolveNodeFrame = <TNode extends FrameNodeLike>({
+export const frameParent = <TNode extends FrameNodeLike>({
   nodes,
   nodeId,
   getNodeRect,
@@ -141,51 +107,88 @@ export const resolveNodeFrame = <TNode extends FrameNodeLike>({
   getNodeRect: NodeRectReader<TNode>
   getFrameRect: FrameRectReader<TNode>
 }): NodeId | undefined => {
-  const node = buildNodeById(nodes).get(nodeId)
-  if (!node) {
+  const node = nodes.find((entry) => entry.id === nodeId)
+  const rect = node ? getNodeRect(node) : undefined
+  if (!rect) {
     return undefined
   }
 
-  const directFrameByNode = buildDirectFrameMembership({
-    nodes,
-    getNodeRect,
-    getFrameRect
-  })
+  let best: Candidate | undefined
+  const frames = scanFrames(nodes, getFrameRect)
 
-  return directFrameByNode.get(node.id)
+  for (let index = 0; index < frames.length; index += 1) {
+    const frame = frames[index]!
+    if (frame.node.id === nodeId || !contains(frame.rect, rect)) {
+      continue
+    }
+
+    best = pick(best, {
+      id: frame.node.id,
+      area: area(frame.rect),
+      index: frame.index
+    })
+  }
+
+  return best?.id
 }
 
-export const collectFrameMembers = <TNode extends FrameNodeLike>({
+export const frameChildren = <TNode extends FrameNodeLike>({
   nodes,
   frameId,
   getNodeRect,
-  getFrameRect,
-  deep = false
+  getFrameRect
 }: {
   nodes: readonly TNode[]
   frameId: NodeId
   getNodeRect: NodeRectReader<TNode>
   getFrameRect: FrameRectReader<TNode>
-  deep?: boolean
 }): NodeId[] => {
-  const nodeById = buildNodeById(nodes)
-  const directFrameByNode = buildDirectFrameMembership({
-    nodes,
-    getNodeRect,
-    getFrameRect
-  })
+  const result: NodeId[] = []
 
-  const directMembers = nodes
-    .filter((node) => directFrameByNode.get(node.id) === frameId)
-    .map((node) => node.id)
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index]!
+    if (node.id === frameId) {
+      continue
+    }
 
-  if (!deep) {
-    return directMembers
+    const rect = getNodeRect(node)
+    if (!rect) {
+      continue
+    }
+    if (frameParent({
+      nodes,
+      nodeId: node.id,
+      getNodeRect,
+      getFrameRect
+    }) !== frameId) {
+      continue
+    }
+
+    result.push(node.id)
   }
 
+  return result
+}
+
+export const frameDescendants = <TNode extends FrameNodeLike>({
+  nodes,
+  frameId,
+  getNodeRect,
+  getFrameRect
+}: {
+  nodes: readonly TNode[]
+  frameId: NodeId
+  getNodeRect: NodeRectReader<TNode>
+  getFrameRect: FrameRectReader<TNode>
+}): NodeId[] => {
   const result: NodeId[] = []
   const visited = new Set<NodeId>()
-  const stack = [...directMembers].reverse()
+  const stack = [...frameChildren({
+    nodes,
+    frameId,
+    getNodeRect,
+    getFrameRect
+  })].reverse()
 
   while (stack.length > 0) {
     const currentId = stack.pop()
@@ -196,49 +199,50 @@ export const collectFrameMembers = <TNode extends FrameNodeLike>({
     visited.add(currentId)
     result.push(currentId)
 
-    const current = nodeById.get(currentId)
-    if (current?.type !== 'frame') {
-      continue
-    }
-
-    const children = nodes
-      .filter((node) => directFrameByNode.get(node.id) === currentId)
-      .map((node) => node.id)
-
-    for (let index = children.length - 1; index >= 0; index -= 1) {
-      stack.push(children[index]!)
+    const directChildren = frameChildren({
+      nodes,
+      frameId: currentId,
+      getNodeRect,
+      getFrameRect
+    })
+    for (let index = directChildren.length - 1; index >= 0; index -= 1) {
+      stack.push(directChildren[index]!)
     }
   }
 
   return result
 }
 
-export const expandFrameSelection = <TNode extends FrameNodeLike>({
+export const createFrameQuery = <TNode extends FrameNodeLike>({
   nodes,
-  ids,
   getNodeRect,
   getFrameRect
 }: {
   nodes: readonly TNode[]
-  ids: readonly NodeId[]
   getNodeRect: NodeRectReader<TNode>
   getFrameRect: FrameRectReader<TNode>
-}) => {
-  const next = new Set(ids)
-
-  ids.forEach((id) => {
-    const members = collectFrameMembers({
-      nodes,
-      frameId: id,
-      getNodeRect,
-      getFrameRect,
-      deep: true
-    })
-
-    members.forEach((memberId) => {
-      next.add(memberId)
-    })
+}): FrameQuery<TNode> => ({
+  at: (point) => frameAt({
+    nodes,
+    point,
+    getFrameRect
+  }),
+  parent: (nodeId) => frameParent({
+    nodes,
+    nodeId,
+    getNodeRect,
+    getFrameRect
+  }),
+  children: (frameId) => frameChildren({
+    nodes,
+    frameId,
+    getNodeRect,
+    getFrameRect
+  }),
+  descendants: (frameId) => frameDescendants({
+    nodes,
+    frameId,
+    getNodeRect,
+    getFrameRect
   })
-
-  return next
-}
+})

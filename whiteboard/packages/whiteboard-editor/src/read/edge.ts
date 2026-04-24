@@ -62,12 +62,13 @@ export type EditorEdgeView = {
 }
 
 export type GraphEdgeRead = {
-  list: DocumentRead['edge']['list']
   committed: DocumentRead['edge']['item']
   graph: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
   ui: store.KeyedReadStore<EdgeId, RuntimeEdgeUiView | undefined>
   view: store.KeyedReadStore<EdgeId, EditorEdgeView | undefined>
   geometry: store.KeyedReadStore<EdgeId, CoreEdgeView | undefined>
+  ids: () => readonly EdgeId[]
+  all: () => readonly RuntimeEdgeView[]
   edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
   label: {
     metrics: (ref: EdgeLabelRef) => Size | undefined
@@ -316,10 +317,12 @@ export const createGraphEdgeRead = ({
   node
 }: {
   document: Pick<DocumentRead, 'edge' | 'node'>
-  sources: Pick<ProjectionSources, 'edgeGraph' | 'edgeUi'>
+  sources: Pick<ProjectionSources, 'edgeGraphIds' | 'edgeGraph' | 'edgeUi'>
   spatial: EditorGraphQuery['spatial']
   node: Pick<GraphNodeRead, 'graph' | 'capability'>
 }): GraphEdgeRead => {
+  const readIds = () => store.read(sources.edgeGraphIds) as readonly EdgeId[]
+
   const viewSources = store.createStructKeyedStore<EdgeId, EditorEdgeViewSources>({
     fields: {
       graph: {
@@ -392,12 +395,16 @@ export const createGraphEdgeRead = ({
   )
 
   return {
-    list: document.edge.list,
     committed: document.edge.item,
     graph: sources.edgeGraph,
     ui: sources.edgeUi,
     view,
     geometry,
+    ids: readIds,
+    all: () => collection.presentValues(
+      readIds(),
+      (edgeId) => store.read(sources.edgeGraph, edgeId)
+    ),
     edges: (edgeIds) => collection.presentValues(edgeIds, (edgeId) => store.read(sources.edgeGraph, edgeId)?.base.edge),
     label: {
       metrics: (ref) => readLabelMetrics({

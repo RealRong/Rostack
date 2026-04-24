@@ -21,7 +21,9 @@ export interface ProjectionSources {
   snapshot: store.ReadStore<Snapshot>
   items: store.ReadStore<readonly SceneItem[]>
   chrome: store.ReadStore<ChromeView>
+  nodeGraphIds: store.ReadStore<readonly string[]>
   nodeGraph: store.KeyedReadStore<string, NodeView | undefined>
+  edgeGraphIds: store.ReadStore<readonly string[]>
   edgeGraph: store.KeyedReadStore<string, EdgeView | undefined>
   mindmap: store.KeyedReadStore<string, MindmapView | undefined>
   group: store.KeyedReadStore<string, GroupView | undefined>
@@ -138,7 +140,9 @@ export const createProjectionSources = (
       snapshot,
       items,
       chrome,
+      nodeGraphIds: nodeGraphFamily.ids,
       nodeGraph: createFamilyRead(nodeGraphFamily),
+      edgeGraphIds: edgeGraphFamily.ids,
       edgeGraph: createFamilyRead(edgeGraphFamily),
       mindmap: createFamilyRead(mindmapFamily),
       group: createFamilyRead(groupFamily),

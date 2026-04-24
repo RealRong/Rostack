@@ -1,4 +1,9 @@
-import { json, path } from '@shared/core'
+import { json } from '@shared/core'
+import {
+  applyRecordPathMutation,
+  hasRecordPath,
+  readRecordPath
+} from '../mutation/recordPath'
 import type {
   CoreRegistries,
   EdgeInput,
@@ -70,21 +75,45 @@ const applyFieldDefaults = (target: SchemaTarget, fields: SchemaField[]) => {
     if (scope === 'label' && !('label' in target)) return
     if (scope === 'data') {
       target.data = target.data ?? {}
-      if (!path.has(target.data, field.path)) {
-        path.set(target.data, field.path, json.clone(field.defaultValue))
+      if (!hasRecordPath(target.data, field.path)) {
+        const result = applyRecordPathMutation(target.data, {
+          op: 'set',
+          path: field.path,
+          value: field.defaultValue
+        })
+        if (!result.ok) {
+          throw new Error(result.message)
+        }
+        target.data = result.value as Record<string, unknown>
       }
       return
     }
     if (scope === 'style') {
       target.style = target.style ?? {}
-      if (!path.has(target.style, field.path)) {
-        path.set(target.style, field.path, json.clone(field.defaultValue))
+      if (!hasRecordPath(target.style, field.path)) {
+        const result = applyRecordPathMutation(target.style, {
+          op: 'set',
+          path: field.path,
+          value: field.defaultValue
+        })
+        if (!result.ok) {
+          throw new Error(result.message)
+        }
+        target.style = result.value as Record<string, unknown>
       }
       return
     }
     target.label = target.label ?? {}
-    if (!path.has(target.label, field.path)) {
-      path.set(target.label, field.path, json.clone(field.defaultValue))
+    if (!hasRecordPath(target.label, field.path)) {
+      const result = applyRecordPathMutation(target.label, {
+        op: 'set',
+        path: field.path,
+        value: field.defaultValue
+      })
+      if (!result.ok) {
+        throw new Error(result.message)
+      }
+      target.label = result.value as Record<string, unknown>
     }
   })
 }
@@ -134,7 +163,7 @@ const isMissingRequired = (container: unknown, field: SchemaField) => {
   if (!field.required) return false
   if (field.defaultValue !== undefined) return false
   if (!container) return true
-  return !path.has(container, field.path)
+  return !hasRecordPath(container, field.path)
 }
 
 const getMissingNodeFields = (input: NodeInput, registries: CoreRegistries): string[] => {
@@ -179,9 +208,9 @@ const getMissingEdgeFields = (input: EdgeInput, registries: CoreRegistries): str
 
 const getSchemaFieldValue = (target: SchemaTarget, field: SchemaField): unknown => {
   const scope = field.scope ?? 'data'
-  if (scope === 'style') return path.get(target.style, field.path)
-  if (scope === 'label') return path.get(target.label, field.path)
-  return path.get(target.data, field.path)
+  if (scope === 'style') return readRecordPath(target.style, field.path)
+  if (scope === 'label') return readRecordPath(target.label, field.path)
+  return readRecordPath(target.data, field.path)
 }
 
 export type NodeSchemaFieldRef = Pick<SchemaField, 'path'> & {

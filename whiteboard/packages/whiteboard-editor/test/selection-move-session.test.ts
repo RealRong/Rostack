@@ -39,10 +39,6 @@ describe('createMoveInteraction', () => {
             get: () => ['edge-1']
           }
         },
-        frame: {
-          at: vi.fn(),
-          of: vi.fn()
-        },
         mindmap: {
           structure: {
             get: vi.fn(() => undefined)
@@ -50,57 +46,56 @@ describe('createMoveInteraction', () => {
         }
       },
       projection: {
+        frame: {
+          at: vi.fn(),
+          parent: vi.fn()
+        },
         node: {
-          ordered: () => [{
-            id: 'node-1',
-            type: 'text',
-            data: {
-              text: 'node-1'
-            }
-          }],
-          graph: {
-            get: () => ({
-              base: {
-                node: {
-                  id: 'node-1',
-                  type: 'text',
-                  data: {
-                    text: 'node-1'
-                  }
+          all: () => [{
+            base: {
+              node: {
+                id: 'node-1',
+                type: 'text',
+                data: {
+                  text: 'node-1'
                 }
+              }
+            },
+            geometry: {
+              rect: {
+                x: 100,
+                y: 120,
+                width: 120,
+                height: 40
               },
-              geometry: {
-                rect: {
-                  x: 100,
-                  y: 120,
-                  width: 120,
-                  height: 40
-                },
-                bounds: {
-                  x: 100,
-                  y: 120,
-                  width: 120,
-                  height: 40
-                },
-                rotation: 0
+              bounds: {
+                x: 100,
+                y: 120,
+                width: 120,
+                height: 40
               },
-            })
-          }
+              rotation: 0
+            },
+          }]
         },
         edge: {
-          edges: () => [{
-            id: 'edge-1',
-            type: 'straight',
-            source: {
-              kind: 'point',
-              point: { x: 80, y: 140 }
-            },
-            target: {
-              kind: 'point',
-              point: { x: 200, y: 140 }
-            },
-            route: {
-              kind: 'auto'
+          all: () => [{
+            base: {
+              edge: {
+                id: 'edge-1',
+                type: 'straight',
+                source: {
+                  kind: 'point',
+                  point: { x: 80, y: 140 }
+                },
+                target: {
+                  kind: 'point',
+                  point: { x: 200, y: 140 }
+                },
+                route: {
+                  kind: 'auto'
+                }
+              }
             }
           }],
         },

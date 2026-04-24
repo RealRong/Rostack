@@ -13,6 +13,10 @@ import {
   type GraphEdgeRead
 } from './edge'
 import {
+  createFrameRead,
+  type FrameRead
+} from './frame'
+import {
   createGraphNodeRead,
   type GraphNodeRead
 } from './node'
@@ -25,6 +29,7 @@ export type GraphRead = {
   snapshot: ProjectionSources['snapshot']
   items: ProjectionSources['items']
   spatial: EditorGraphQuery['spatial']
+  frame: FrameRead
   node: GraphNodeRead
   edge: GraphEdgeRead
   selection: GraphSelectionRead
@@ -45,7 +50,7 @@ export const createGraphRead = ({
   nodeType
 }: {
   document: Pick<DocumentRead, 'node' | 'edge'>
-  sources: Pick<ProjectionSources, 'snapshot' | 'items' | 'chrome' | 'nodeGraph' | 'edgeGraph' | 'mindmap' | 'group' | 'nodeUi' | 'edgeUi'>
+  sources: Pick<ProjectionSources, 'snapshot' | 'items' | 'chrome' | 'nodeGraphIds' | 'nodeGraph' | 'edgeGraphIds' | 'edgeGraph' | 'mindmap' | 'group' | 'nodeUi' | 'edgeUi'>
   spatial: EditorGraphQuery['spatial']
   selection: store.ReadStore<SelectionTarget>
   nodeType: NodeTypeSupport
@@ -67,6 +72,10 @@ export const createGraphRead = ({
     snapshot: sources.snapshot,
     items: sources.items,
     spatial,
+    frame: createFrameRead({
+      spatial,
+      node
+    }),
     node,
     edge,
     selection: createGraphSelectionRead({

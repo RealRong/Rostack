@@ -802,7 +802,7 @@ const executeExternalBump = (
   }
 }
 
-const reduceOperationEffect = (
+export const reduceOperationEffect = (
   document: DataDoc,
   operation: DocumentOperation,
   impact: CommitImpact

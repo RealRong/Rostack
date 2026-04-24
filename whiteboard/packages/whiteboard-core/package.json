@@ -24,7 +24,8 @@
     "dist"
   ],
   "dependencies": {
-    "@shared/core": "workspace:*"
+    "@shared/core": "workspace:*",
+    "@shared/mutation": "workspace:*"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

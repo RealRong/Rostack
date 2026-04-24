@@ -1,6 +1,7 @@
-import { changeSet, json, record } from '@shared/core'
+import { changeSet, json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
+import { applyRecordPathMutation } from '../../../mutation/recordPath'
 
 const getLabels = (
   tx: ReducerTx,
@@ -171,7 +172,7 @@ export const createEdgeLabelsCollectionApi = (
       tx.inverse.prepend(previous === undefined
         ? { type: 'edge.label.record.unset', edgeId, labelId, scope, path }
         : { type: 'edge.label.record.set', edgeId, labelId, scope, path, value: json.clone(previous) })
-      const result = record.apply(currentRoot, { op: 'set', path, value })
+      const result = applyRecordPathMutation(currentRoot, { op: 'set', path, value })
       if (!result.ok) {
         throw new Error(result.message)
       }
@@ -202,7 +203,7 @@ export const createEdgeLabelsCollectionApi = (
         path,
         value: json.clone(tx.read.record.path(currentRoot, path))
       })
-      const result = record.apply(currentRoot, { op: 'unset', path })
+      const result = applyRecordPathMutation(currentRoot, { op: 'unset', path })
       if (!result.ok) {
         throw new Error(result.message)
       }

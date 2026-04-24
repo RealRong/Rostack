@@ -9,7 +9,7 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import { expandFrameSelection } from '@whiteboard/core/node/frame'
+import { createFrameQuery } from '@whiteboard/core/node/frame'
 import { getNodeBoundsByNode } from '@whiteboard/core/node/geometry'
 
 export type MoveMember = {
@@ -86,9 +86,8 @@ export const buildMoveSet = (options: {
     node: Node
   ): Rect | undefined => getNodeBoundsByNode(node, nodeSize)
 
-  const expandedIds = expandFrameSelection({
+  const frame = createFrameQuery({
     nodes,
-    ids: rootIds,
     getNodeRect: readNodeRect,
     getFrameRect: (node) => (
       node.type === 'frame'
@@ -96,6 +95,14 @@ export const buildMoveSet = (options: {
         : undefined
     )
   })
+  const expandedIds = new Set(rootIds)
+
+  rootIds.forEach((nodeId) => {
+    frame.descendants(nodeId).forEach((childId) => {
+      expandedIds.add(childId)
+    })
+  })
+
   const members = nodes.flatMap((node) => (
     expandedIds.has(node.id)
       ? [{

@@ -17,9 +17,13 @@ import { createMindmapApi } from '@whiteboard/core/kernel/reduce/mindmap'
 import { createCommitApi } from '@whiteboard/core/kernel/reduce/commit'
 
 export const createReducerTx = (
-  document: Document
+  document: Document,
+  input: {
+    inverse?: import('@shared/core').InverseBuilder<import('@whiteboard/core/types').Operation>
+    footprint?: import('@shared/core').HistoryFootprintCollector<import('@whiteboard/core/spec/history').HistoryKey>
+  } = {}
 ): ReducerTx => mutationTx.createMutationTx({
-  runtime: createReduceRuntime(document),
+  runtime: createReduceRuntime(document, input),
   create: (tx: ReducerTx) => ({
     read: createReadApi(tx),
     document: createDocumentApi(tx),

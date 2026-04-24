@@ -151,7 +151,7 @@ export interface EngineQuery {
   background(): Document['background'] | undefined
   bounds(): Rect
   scene(): readonly CanvasItemRef[]
-  frameOf(nodeId: NodeId): NodeId | undefined
+  frameParent(nodeId: NodeId): NodeId | undefined
   frameAt(point: Point): NodeId | undefined
   groupOfNode(nodeId: NodeId): GroupId | undefined
   groupTarget(groupId: GroupId): SelectionTarget | undefined

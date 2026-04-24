@@ -1,3 +1,4 @@
+import { changeSet } from '@shared/core'
 import { err, ok } from '@whiteboard/core/result'
 import { materializeHistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
@@ -42,9 +43,7 @@ const RESET_PROJECTIONS = new Set<string>([
 ])
 
 export const createChangeIds = <Id extends string>(): ChangeIds<Id> => ({
-  add: new Set<Id>(),
-  update: new Set<Id>(),
-  delete: new Set<Id>()
+  ...changeSet.createLegacy<Id>()
 })
 
 export const createChangeSet = (): ChangeSet => ({
@@ -73,24 +72,7 @@ export const markChange = <Id extends string>(
   kind: 'add' | 'update' | 'delete',
   id: Id
 ) => {
-  if (kind === 'add') {
-    bucket.delete.delete(id)
-    bucket.update.delete(id)
-    bucket.add.add(id)
-    return
-  }
-  if (kind === 'update') {
-    if (!bucket.add.has(id) && !bucket.delete.has(id)) {
-      bucket.update.add(id)
-    }
-    return
-  }
-  if (bucket.add.delete(id)) {
-    bucket.update.delete(id)
-    return
-  }
-  bucket.update.delete(id)
-  bucket.delete.add(id)
+  changeSet.mark(bucket, kind, id)
 }
 
 export const finalizeDirty = (

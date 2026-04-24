@@ -1,3 +1,4 @@
+import { changeSet } from '@shared/core'
 import type {
   EdgeId,
   GroupId,
@@ -10,17 +11,13 @@ import type {
 } from '../../contracts/delta'
 
 const createIdDelta = <TId extends string>(): IdDelta<TId> => ({
-  added: new Set(),
-  updated: new Set(),
-  removed: new Set()
+  ...changeSet.create<TId>()
 })
 
 const resetIdDelta = <TId extends string>(
   delta: IdDelta<TId>
 ) => {
-  delta.added.clear()
-  delta.updated.clear()
-  delta.removed.clear()
+  changeSet.reset(delta)
 }
 
 export const createGraphDelta = (): GraphDelta => ({
@@ -59,32 +56,21 @@ export const markAdded = <TId extends string>(
   delta: IdDelta<TId>,
   id: TId
 ) => {
-  delta.removed.delete(id)
-  delta.updated.delete(id)
-  delta.added.add(id)
+  changeSet.markAdded(delta, id)
 }
 
 export const markUpdated = <TId extends string>(
   delta: IdDelta<TId>,
   id: TId
 ) => {
-  if (delta.added.has(id) || delta.removed.has(id)) {
-    return
-  }
-
-  delta.updated.add(id)
+  changeSet.markUpdated(delta, id)
 }
 
 export const markRemoved = <TId extends string>(
   delta: IdDelta<TId>,
   id: TId
 ) => {
-  if (delta.added.delete(id)) {
-    return
-  }
-
-  delta.updated.delete(id)
-  delta.removed.add(id)
+  changeSet.markRemoved(delta, id)
 }
 
 export const markGeometryTouched = <TId extends string>(

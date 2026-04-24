@@ -1,6 +1,5 @@
 import { store } from '@shared/core'
 import type {
-  Change,
   ChromeView,
   EdgeUiView,
   EdgeView,
@@ -84,8 +83,3 @@ export const createProjectionSources = (
     emptyValue: undefined
   })
 })
-
-export const graphChangeTouchesId = (
-  change: Change['graph']['nodes'] | Change['graph']['edges'] | Change['graph']['owners']['mindmaps'] | Change['graph']['owners']['groups'],
-  id: string
-): boolean => change.all.has(id)

@@ -1,3 +1,4 @@
+import { changeSet } from '@shared/core'
 import type {
   EdgeId,
   GroupId,
@@ -20,33 +21,20 @@ import {
 } from '../graphPatch/delta'
 
 const createIdDelta = <TId extends string>(): IdDelta<TId> => ({
-  added: new Set(),
-  updated: new Set(),
-  removed: new Set()
+  ...changeSet.create<TId>()
 })
 
 const resetIdDelta = <TId extends string>(
   delta: IdDelta<TId>
 ) => {
-  delta.added.clear()
-  delta.updated.clear()
-  delta.removed.clear()
+  changeSet.reset(delta)
 }
 
 const syncIdDelta = <TId extends string>(input: {
   source: IdDelta<TId>
   target: IdDelta<TId>
 }) => {
-  resetIdDelta(input.target)
-  input.source.added.forEach((id) => {
-    input.target.added.add(id)
-  })
-  input.source.updated.forEach((id) => {
-    input.target.updated.add(id)
-  })
-  input.source.removed.forEach((id) => {
-    input.target.removed.add(id)
-  })
+  changeSet.assign(input.target, input.source)
 }
 
 export const createPublishDelta = (): PublishDelta => ({

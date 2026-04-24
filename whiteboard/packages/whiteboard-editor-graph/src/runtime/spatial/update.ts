@@ -1,3 +1,4 @@
+import { changeSet } from '@shared/core'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type {
   EdgeId,
@@ -30,17 +31,13 @@ import type { SpatialIndexState } from './state'
 import { resetSpatialState } from './state'
 
 const createIdDelta = <TId extends string>(): IdDelta<TId> => ({
-  added: new Set(),
-  updated: new Set(),
-  removed: new Set()
+  ...changeSet.create<TId>()
 })
 
 const resetIdDelta = <TId extends string>(
   delta: IdDelta<TId>
 ) => {
-  delta.added.clear()
-  delta.updated.clear()
-  delta.removed.clear()
+  changeSet.reset(delta)
 }
 
 const isSpatialRecordEqual = (

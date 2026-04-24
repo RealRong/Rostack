@@ -1,3 +1,4 @@
+import { changeSet } from '@shared/core'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/overlay'
 import type { HistoryKey } from '@whiteboard/core/spec/history'
@@ -48,9 +49,7 @@ export type ReduceRuntime = {
 }
 
 const createChangeIds = <Id extends string>(): ChangeIds<Id> => ({
-  add: new Set<Id>(),
-  update: new Set<Id>(),
-  delete: new Set<Id>()
+  ...changeSet.createLegacy<Id>()
 })
 
 const createChangeSet = (): ChangeSet => ({

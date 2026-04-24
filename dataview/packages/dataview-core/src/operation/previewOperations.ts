@@ -1,7 +1,7 @@
 import type { DataDoc } from '@dataview/core/contracts/state'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import { impact as commitImpact } from '@dataview/core/commit/impact'
-import { applyOperationMutation } from '@dataview/core/operation/mutation'
+import { applyDataviewOperation } from '@dataview/core/operation/definition'
 import {
   cowDraft,
   type Draft
@@ -16,15 +16,16 @@ export const previewOperations = (
   const impact = commitImpact.create()
 
   operations.forEach((operation) => {
-    applyOperationMutation({
+    applyDataviewOperation({
       doc: () => draft.doc(),
       replace: (nextDocument) => {
         draft = createDraft(nextDocument)
       },
       inverse: {
         prependMany: () => {}
-      }
-    }, operation, impact)
+      },
+      trace: impact
+    }, operation)
   })
 
   return draft.done()

@@ -29,16 +29,47 @@ import {
   type AppliedDocumentRecordFieldWrite,
   document as documentApi
 } from '@dataview/core/document'
+import {
+  dataviewMutationKey
+} from '@dataview/core/mutation/key'
+import type {
+  DocumentMutationContext,
+  DocumentMutationFootprintContext
+} from '@dataview/core/operation/context'
 import { equal, json } from '@shared/core'
+import {
+  meta as mutationMeta
+} from '@shared/mutation'
 
-type InverseSink<TOp> = {
-  prependMany(ops: readonly TOp[]): void
+type DocumentOperationType = DocumentOperation['type']
+type DocumentOperationFamily =
+  | 'record'
+  | 'field'
+  | 'view'
+  | 'external'
+
+type DocumentOperationByType<TType extends DocumentOperationType> = Extract<
+  DocumentOperation,
+  { type: TType }
+>
+
+export interface DocumentOperationDefinition<
+  TType extends DocumentOperationType = DocumentOperationType
+> {
+  family: DocumentOperationFamily
+  history?: boolean
+  footprint?(
+    ctx: DocumentMutationFootprintContext,
+    op: DocumentOperationByType<TType>
+  ): void
+  apply(
+    ctx: DocumentMutationContext,
+    op: DocumentOperationByType<TType>
+  ): void
 }
 
-export interface DocumentOperationRuntime {
-  doc(): DataDoc
-  replace(document: DataDoc): void
-  inverse: InverseSink<DocumentOperation>
+type DocumentOperationDefinitionTable = {
+  [TType in DocumentOperationType]: DocumentOperationDefinition<TType>
 }
 
 const addSetValue = <T>(
@@ -352,22 +383,57 @@ const deleteViewImpact = (
 }
 
 const commitMutation = (
-  runtime: DocumentOperationRuntime,
+  ctx: DocumentMutationContext,
   document: DataDoc,
   inverse: readonly DocumentOperation[]
 ) => {
-  runtime.replace(document)
+  ctx.replace(document)
   if (inverse.length) {
-    runtime.inverse.prependMany(inverse)
+    ctx.inverse.prependMany(inverse)
   }
 }
 
+const addRecordValueKey = (
+  input: {
+    recordId: RecordId
+    fieldId: FieldId
+  },
+  ctx: DocumentMutationFootprintContext
+) => {
+  ctx.footprint(dataviewMutationKey.recordField(input.recordId, input.fieldId))
+  ctx.footprint(dataviewMutationKey.fieldValues(input.fieldId, input.recordId))
+}
+
+const addRecordValueKeys = (
+  input: {
+    recordIds: readonly RecordId[]
+    set?: Partial<Record<FieldId, unknown>>
+    clear?: readonly FieldId[]
+  },
+  ctx: DocumentMutationFootprintContext
+) => {
+  input.recordIds.forEach((recordId) => {
+    Object.keys(input.set ?? {}).forEach((fieldId) => {
+      addRecordValueKey({
+        recordId,
+        fieldId: fieldId as FieldId
+      }, ctx)
+    })
+    ;(input.clear ?? []).forEach((fieldId) => {
+      addRecordValueKey({
+        recordId,
+        fieldId
+      }, ctx)
+    })
+  })
+}
+
 const applyRecordInsert = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.record.insert' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.record.insert' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const nextDocument = documentApi.records.insert(document, operation.records, operation.target?.index)
   if (nextDocument === document) {
     return
@@ -389,18 +455,18 @@ const applyRecordInsert = (
     markTouchedRecord(impact, recordId)
   })
 
-  commitMutation(runtime, nextDocument, [{
+  commitMutation(ctx, nextDocument, [{
     type: 'document.record.remove',
     recordIds: [...recordIds]
   }])
 }
 
 const applyRecordPatch = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.record.patch' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.record.patch' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const beforeRecord = documentApi.records.get(document, operation.recordId)
   if (!beforeRecord) {
     return
@@ -415,7 +481,7 @@ const applyRecordPatch = (
   const aspects = commitImpact.record.patchAspects(beforeRecord, afterRecord)
   markRecordPatch(impact, operation.recordId, aspects)
 
-  commitMutation(runtime, nextDocument, [{
+  commitMutation(ctx, nextDocument, [{
     type: 'document.record.patch',
     recordId: operation.recordId,
     patch: Object.fromEntries(
@@ -425,11 +491,11 @@ const applyRecordPatch = (
 }
 
 const applyRecordRemove = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.record.remove' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.record.remove' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const removedEntries = captureRecordEntries(document, operation.recordIds)
   if (!removedEntries.length) {
     return
@@ -451,7 +517,7 @@ const applyRecordRemove = (
     markTouchedRecord(impact, entry.record.id)
   })
 
-  commitMutation(runtime, nextDocument, removedEntries.map(entry => ({
+  commitMutation(ctx, nextDocument, removedEntries.map(entry => ({
     type: 'document.record.insert',
     records: [entry.record],
     target: {
@@ -461,15 +527,15 @@ const applyRecordRemove = (
 }
 
 const applyRecordFieldWrite = (
-  runtime: DocumentOperationRuntime,
+  ctx: DocumentMutationContext,
   operation: Extract<DocumentOperation, {
     type:
       | 'document.record.fields.writeMany'
       | 'document.record.fields.restoreMany'
-  }>,
-  impact: CommitImpact
+  }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const applied = operation.type === 'document.record.fields.writeMany'
     ? documentApi.records.writeFieldsWithChanges(document, operation)
     : documentApi.records.restoreFieldsWithChanges(document, operation.entries)
@@ -484,7 +550,7 @@ const applyRecordFieldWrite = (
   })
 
   commitMutation(
-    runtime,
+    ctx,
     applied.document,
     inverseEntries.length
       ? [{
@@ -496,11 +562,11 @@ const applyRecordFieldWrite = (
 }
 
 const applyFieldPut = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.field.put' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.field.put' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const beforeField = documentApi.schema.fields.get(document, operation.field.id)
   const nextDocument = documentApi.schema.fields.put(document, operation.field)
   const afterField = documentApi.schema.fields.get(nextDocument, operation.field.id)
@@ -527,7 +593,7 @@ const applyFieldPut = (
   }
 
   commitMutation(
-    runtime,
+    ctx,
     nextDocument,
     beforeField
       ? [{
@@ -542,11 +608,11 @@ const applyFieldPut = (
 }
 
 const applyFieldPatch = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.field.patch' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.field.patch' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const beforeField = documentApi.schema.fields.get(document, operation.id)
   if (!beforeField) {
     return
@@ -564,7 +630,7 @@ const applyFieldPatch = (
     commitImpact.field.schemaAspects(beforeField, afterField)
   )
 
-  commitMutation(runtime, nextDocument, [{
+  commitMutation(ctx, nextDocument, [{
     type: 'document.field.patch',
     id: operation.id,
     patch: Object.fromEntries(
@@ -574,11 +640,11 @@ const applyFieldPatch = (
 }
 
 const applyFieldRemove = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.field.remove' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.field.remove' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const beforeField = documentApi.schema.fields.get(document, operation.id)
   if (!beforeField) {
     return
@@ -597,18 +663,18 @@ const applyFieldRemove = (
     markFieldSchema(impact, operation.id, ['all'])
   }
 
-  commitMutation(runtime, nextDocument, [{
+  commitMutation(ctx, nextDocument, [{
     type: 'document.field.put',
     field: beforeField
   }])
 }
 
 const applyViewPut = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.view.put' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.view.put' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const beforeView = documentApi.views.get(document, operation.view.id)
   const nextDocument = documentApi.views.put(document, operation.view)
   const afterView = documentApi.views.get(nextDocument, operation.view.id)
@@ -661,7 +727,7 @@ const applyViewPut = (
   mergeActiveViewImpact(impact, beforeActiveViewId, afterActiveViewId)
 
   commitMutation(
-    runtime,
+    ctx,
     nextDocument,
     beforeView
       ? [{
@@ -676,11 +742,11 @@ const applyViewPut = (
 }
 
 const applyActiveViewSet = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.activeView.set' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.activeView.set' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const beforeViewId = documentApi.views.activeId.get(document)
   const nextDocument = documentApi.views.activeId.set(document, operation.id)
   const afterViewId = documentApi.views.activeId.get(nextDocument)
@@ -689,18 +755,18 @@ const applyActiveViewSet = (
   }
 
   mergeActiveViewImpact(impact, beforeViewId, afterViewId)
-  commitMutation(runtime, nextDocument, [{
+  commitMutation(ctx, nextDocument, [{
     type: 'document.activeView.set',
     id: beforeViewId
   }])
 }
 
 const applyViewRemove = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'document.view.remove' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'document.view.remove' }>
 ): void => {
-  const document = runtime.doc()
+  const impact = ctx.trace
+  const document = ctx.doc()
   const beforeView = documentApi.views.get(document, operation.id)
   if (!beforeView) {
     return
@@ -722,56 +788,211 @@ const applyViewRemove = (
 
   mergeActiveViewImpact(impact, beforeActiveViewId, afterActiveViewId)
 
-  commitMutation(runtime, nextDocument, [{
+  commitMutation(ctx, nextDocument, [{
     type: 'document.view.put',
     view: beforeView
   }])
 }
 
 const applyExternalBump = (
-  runtime: DocumentOperationRuntime,
-  operation: Extract<DocumentOperation, { type: 'external.version.bump' }>,
-  impact: CommitImpact
+  ctx: DocumentMutationContext,
+  operation: Extract<DocumentOperation, { type: 'external.version.bump' }>
 ): void => {
-  impact.external = {
+  ctx.trace.external = {
     versionBumped: true,
     source: operation.source
   }
 
-  runtime.inverse.prependMany([{
+  ctx.inverse.prependMany([{
     type: 'external.version.bump',
     source: operation.source
   }])
 }
 
-export const applyOperationMutation = (
-  runtime: DocumentOperationRuntime,
-  operation: DocumentOperation,
-  impact: CommitImpact
-): void => {
-  switch (operation.type) {
-    case 'document.record.insert':
-      return applyRecordInsert(runtime, operation, impact)
-    case 'document.record.patch':
-      return applyRecordPatch(runtime, operation, impact)
-    case 'document.record.remove':
-      return applyRecordRemove(runtime, operation, impact)
-    case 'document.record.fields.writeMany':
-    case 'document.record.fields.restoreMany':
-      return applyRecordFieldWrite(runtime, operation, impact)
-    case 'document.field.put':
-      return applyFieldPut(runtime, operation, impact)
-    case 'document.field.patch':
-      return applyFieldPatch(runtime, operation, impact)
-    case 'document.field.remove':
-      return applyFieldRemove(runtime, operation, impact)
-    case 'document.view.put':
-      return applyViewPut(runtime, operation, impact)
-    case 'document.activeView.set':
-      return applyActiveViewSet(runtime, operation, impact)
-    case 'document.view.remove':
-      return applyViewRemove(runtime, operation, impact)
-    case 'external.version.bump':
-      return applyExternalBump(runtime, operation, impact)
+const definitions: DocumentOperationDefinitionTable = {
+  'document.record.insert': {
+    family: 'record',
+    footprint: (ctx, operation) => {
+      ctx.footprint(dataviewMutationKey.recordsOrder())
+      operation.records.forEach((record) => {
+        ctx.footprint(dataviewMutationKey.record(record.id))
+        Object.keys(record.values).forEach((fieldId) => {
+          addRecordValueKey({
+            recordId: record.id,
+            fieldId: fieldId as FieldId
+          }, ctx)
+        })
+      })
+    },
+    apply: applyRecordInsert
+  },
+  'document.record.patch': {
+    family: 'record',
+    footprint: (ctx, operation) => {
+      ctx.footprint(dataviewMutationKey.record(operation.recordId))
+    },
+    apply: applyRecordPatch
+  },
+  'document.record.remove': {
+    family: 'record',
+    footprint: (ctx, operation) => {
+      ctx.footprint(dataviewMutationKey.recordsOrder())
+      operation.recordIds.forEach((recordId) => {
+        ctx.footprint(dataviewMutationKey.record(recordId))
+      })
+    },
+    apply: applyRecordRemove
+  },
+  'document.record.fields.writeMany': {
+    family: 'record',
+    footprint: (ctx, operation) => {
+      addRecordValueKeys(operation, ctx)
+    },
+    apply: applyRecordFieldWrite
+  },
+  'document.record.fields.restoreMany': {
+    family: 'record',
+    footprint: (ctx, operation) => {
+      operation.entries.forEach((entry) => {
+        addRecordValueKeys({
+          recordIds: [entry.recordId],
+          set: entry.set,
+          clear: entry.clear
+        }, ctx)
+      })
+    },
+    apply: applyRecordFieldWrite
+  },
+  'document.field.put': {
+    family: 'field',
+    footprint: (ctx, operation) => {
+      const existed = Boolean(ctx.doc().fields.byId[operation.field.id])
+      if (!existed) {
+        ctx.footprint(dataviewMutationKey.fieldsOrder())
+      }
+      ctx.footprint(dataviewMutationKey.field(operation.field.id))
+    },
+    apply: applyFieldPut
+  },
+  'document.field.patch': {
+    family: 'field',
+    footprint: (ctx, operation) => {
+      ctx.footprint(dataviewMutationKey.field(operation.id))
+    },
+    apply: applyFieldPatch
+  },
+  'document.field.remove': {
+    family: 'field',
+    footprint: (ctx, operation) => {
+      ctx.footprint(dataviewMutationKey.fieldsOrder())
+      ctx.footprint(dataviewMutationKey.field(operation.id))
+    },
+    apply: applyFieldRemove
+  },
+  'document.view.put': {
+    family: 'view',
+    footprint: (ctx, operation) => {
+      const existed = Boolean(ctx.doc().views.byId[operation.view.id])
+      if (!existed) {
+        ctx.footprint(dataviewMutationKey.viewsOrder())
+      }
+      ctx.footprint(dataviewMutationKey.view(operation.view.id))
+    },
+    apply: applyViewPut
+  },
+  'document.activeView.set': {
+    family: 'view',
+    footprint: (ctx) => {
+      ctx.footprint(dataviewMutationKey.activeView())
+    },
+    apply: applyActiveViewSet
+  },
+  'document.view.remove': {
+    family: 'view',
+    footprint: (ctx, operation) => {
+      ctx.footprint(dataviewMutationKey.viewsOrder())
+      ctx.footprint(dataviewMutationKey.view(operation.id))
+    },
+    apply: applyViewRemove
+  },
+  'external.version.bump': {
+    family: 'external',
+    history: false,
+    footprint: (ctx, operation) => {
+      ctx.footprint(dataviewMutationKey.external(operation.source))
+    },
+    apply: applyExternalBump
   }
+}
+
+const typeOfOperation = <TType extends DocumentOperationType>(
+  input: TType | DocumentOperationByType<TType>
+): TType => (
+  typeof input === 'string'
+    ? input
+    : input.type
+)
+
+const createOperationMeta = (
+  table: DocumentOperationDefinitionTable
+) => {
+  const entries = Object.entries(table) as [
+    DocumentOperationType,
+    DocumentOperationDefinition
+  ][]
+
+  return mutationMeta.family<DocumentOperation>(
+    Object.fromEntries(
+      entries.map(([type, definition]) => [
+        type,
+        definition.history === false
+          ? {
+              family: definition.family,
+              history: false
+            }
+          : {
+              family: definition.family
+            }
+      ])
+    ) as {
+      [TType in DocumentOperationType]: {
+        family: DocumentOperationFamily
+        history?: boolean
+      }
+    }
+  )
+}
+
+export const DATAVIEW_OPERATION_DEFINITIONS = Object.freeze(definitions)
+
+export const DATAVIEW_OPERATION_META = createOperationMeta(
+  DATAVIEW_OPERATION_DEFINITIONS
+)
+
+export const readDataviewOperationDefinition = <
+  TType extends DocumentOperationType
+>(
+  input: TType | DocumentOperationByType<TType>
+): DocumentOperationDefinition<TType> => (
+  DATAVIEW_OPERATION_DEFINITIONS[typeOfOperation(input)] as DocumentOperationDefinition<TType>
+)
+
+export const collectDataviewOperationFootprint = (
+  ctx: DocumentMutationFootprintContext,
+  operation: DocumentOperation
+) => {
+  readDataviewOperationDefinition(operation).footprint?.(
+    ctx,
+    operation as never
+  )
+}
+
+export const applyDataviewOperation = (
+  ctx: DocumentMutationContext,
+  operation: DocumentOperation
+) => {
+  readDataviewOperationDefinition(operation).apply(
+    ctx,
+    operation as never
+  )
 }

@@ -1,4 +1,5 @@
 import type {
+  ReducerHandler,
   ReducerContext,
   ReducerDraftAdapter,
   ReducerHandlerMap,
@@ -29,11 +30,13 @@ const readHandler = <
   Ctx,
   Op extends { type: string }
 >(
-  handlers: ReducerHandlerMap<Ctx, Op>,
+  handlers: ReducerHandlerMap<Ctx, Op> | undefined,
   op: Op
-) => (
+) => handlers
+  ? (
   handlers as Record<string, unknown>
-)[op.type] as ReducerHandlerMap<Ctx, Op>[Op['type']] | undefined
+  )[op.type] as ReducerHandlerMap<Ctx, Op>[Op['type']] | undefined
+  : undefined
 
 export class Reducer<
   Doc extends object,
@@ -165,7 +168,9 @@ export class Reducer<
         }
 
         phase = 'handler'
-        const handler = readHandler(this.#spec.handlers, op)
+        const handler = (
+          this.#spec.handle as ReducerHandler<DomainCtx, Op> | undefined
+        ) ?? readHandler(this.#spec.handlers, op)
         if (!handler) {
           abortWith({
             code: MISSING_HANDLER_CODE as Code,

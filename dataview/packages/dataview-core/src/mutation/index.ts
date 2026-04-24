@@ -14,16 +14,19 @@ export type {
   ValidationSeverity
 } from './compile/index'
 export {
-  collectOperationFootprint,
   dataviewMutationKeyConflicts,
   serializeDataviewMutationKey
-} from './footprint'
+} from './key'
 export type {
   DataviewMutationKey
-} from './footprint'
+} from './key'
 export {
   dataviewTrace
 } from './trace'
 export type {
   DataviewTrace
 } from './trace'
+export {
+  dataviewReducer,
+  dataviewReducerSpec
+} from './spec'

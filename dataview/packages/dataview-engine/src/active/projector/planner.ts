@@ -10,13 +10,16 @@ import {
 } from '@dataview/engine/active/shared/transition'
 import {
   createPlan,
+  mergePlans,
   type ProjectorPlanner
 } from '@shared/projector'
 import type { ViewState } from '@dataview/engine/contracts/view'
 import type {
+  ActivePhaseScopeMap,
   ActivePhaseName,
   ActiveProjectorRunInput
-} from './projector'
+} from '../contracts/projector'
+import { createPublishPhaseScope } from './scopes/publishScope'
 
 const hasField = (
   fields: ReadonlySet<string> | 'all',
@@ -138,70 +141,97 @@ const QUERY_ASPECTS = [
   'order'
 ] as const satisfies readonly ViewQueryAspect[]
 
-export const createActiveProjectorPlan = (): ProjectorPlanner<
-  ActiveProjectorRunInput,
-  ViewState | undefined,
-  ActivePhaseName
-> => ({
-  plan: ({ input, previous }) => {
-    const activeViewId = input.read.reader.views.activeId()
-    const activeView = input.read.reader.views.active()
-    const plan = input.view.plan
-    const phases = new Set<ActivePhaseName>()
+const readPlannerState = (
+  input: ActiveProjectorRunInput
+) => ({
+  activeViewId: input.read.reader.views.activeId(),
+  activeView: input.read.reader.views.active(),
+  plan: input.view.plan
+})
 
-    if (!activeViewId || !activeView || !plan) {
-      return previous
-        ? createPlan<ActivePhaseName>({
-            phases: ['publish']
+const createEmptyPlan = () => createPlan<ActivePhaseName, ActivePhaseScopeMap>()
+
+const planReset = (
+  input: ActiveProjectorRunInput,
+  previous: ViewState | undefined
+) => {
+  const {
+    activeViewId,
+    activeView,
+    plan
+  } = readPlannerState(input)
+
+  if (activeViewId && activeView && plan) {
+    return createEmptyPlan()
+  }
+
+  return previous
+    ? createPlan<ActivePhaseName, ActivePhaseScopeMap>({
+        scope: {
+          publish: createPublishPhaseScope({
+            reset: true
           })
-        : createPlan<ActivePhaseName>()
-    }
+        }
+      })
+    : createEmptyPlan()
+}
 
-    const viewChange = dataviewTrace.view.change(
-      input.impact.trace,
-      activeViewId
-    )
+const planQuery = (
+  input: ActiveProjectorRunInput,
+  previous: ViewState | undefined
+) => {
+  const {
+    activeViewId,
+    activeView,
+    plan
+  } = readPlannerState(input)
 
-    if (
-      !previous
-      || previous.view.id !== activeViewId
-    ) {
-      phases.add('query')
-    }
+  if (!activeViewId || !activeView || !plan) {
+    return createEmptyPlan()
+  }
 
-    if (dataviewTrace.has.activeView(input.impact.trace)) {
-      phases.add('query')
-    }
+  const viewChange = dataviewTrace.view.change(
+    input.impact.trace,
+    activeViewId
+  )
+  const shouldRun = (
+    !previous
+    || previous.view.id !== activeViewId
+    || dataviewTrace.has.activeView(input.impact.trace)
+    || QUERY_ASPECTS.some((aspect) => viewChange?.queryAspects?.has(aspect))
+    || input.view.previousPlan?.query.executionKey !== plan.query.executionKey
+    || input.impact.recordSetChanged
+    || hasQuerySchemaChange(input)
+    || hasQueryFieldChange(input)
+  )
 
-    if (viewChange?.queryAspects?.has('group')) {
-      phases.add('membership')
-      phases.add('publish')
-    }
+  return shouldRun
+    ? createPlan<ActivePhaseName, ActivePhaseScopeMap>({
+        phases: ['query']
+      })
+    : createEmptyPlan()
+}
 
-    if (QUERY_ASPECTS.some(aspect => viewChange?.queryAspects?.has(aspect))) {
-      phases.add('query')
-      phases.add('publish')
-    }
+const planMembership = (
+  input: ActiveProjectorRunInput
+) => {
+  const {
+    activeViewId,
+    activeView,
+    plan
+  } = readPlannerState(input)
 
-    if (viewChange?.calculationFields) {
-      phases.add('summary')
-      phases.add('publish')
-    }
+  if (!activeViewId || !activeView || !plan) {
+    return createEmptyPlan()
+  }
 
-    if (viewChange?.layoutAspects?.size) {
-      phases.add('publish')
-    }
-
-    if (
-      input.view.previousPlan?.query.executionKey !== plan.query.executionKey
-      || input.impact.recordSetChanged
-      || hasQuerySchemaChange(input)
-      || hasQueryFieldChange(input)
-    ) {
-      phases.add('query')
-    }
-
-    if (
+  const viewChange = dataviewTrace.view.change(
+    input.impact.trace,
+    activeViewId
+  )
+  const shouldRun = (
+    viewChange?.queryAspects?.has('group') === true
+    || Boolean(
       plan.section
       && (
         sectionChanged(input)
@@ -210,26 +240,94 @@ export const createActiveProjectorPlan = (): ProjectorPlanner<
         || hasMembershipChanges(input.index.delta?.bucket)
         || input.index.delta?.bucket?.rebuild
       )
-    ) {
-      phases.add('membership')
-    }
+    )
+  )
 
-    if (
+  return shouldRun
+    ? createPlan<ActivePhaseName, ActivePhaseScopeMap>({
+        phases: ['membership']
+      })
+    : createEmptyPlan()
+}
+
+const planSummary = (
+  input: ActiveProjectorRunInput
+) => {
+  const {
+    activeViewId,
+    activeView,
+    plan
+  } = readPlannerState(input)
+
+  if (!activeViewId || !activeView || !plan) {
+    return createEmptyPlan()
+  }
+
+  const viewChange = dataviewTrace.view.change(
+    input.impact.trace,
+    activeViewId
+  )
+  const shouldRun = (
+    Boolean(viewChange?.calculationFields)
+    || Boolean(
       plan.calcFields.length
       && (
         calculationFieldsChanged(input)
         || hasCalculationChanges(input.index.delta?.calculation, plan.calcFields)
       )
-    ) {
-      phases.add('summary')
-    }
+    )
+  )
 
-    if (hasPublishSchemaChange(input)) {
-      phases.add('publish')
-    }
+  return shouldRun
+    ? createPlan<ActivePhaseName, ActivePhaseScopeMap>({
+        phases: ['summary']
+      })
+    : createEmptyPlan()
+}
 
-    return createPlan<ActivePhaseName>({
-      phases
-    })
+const planPublish = (
+  input: ActiveProjectorRunInput
+) => {
+  const {
+    activeViewId,
+    activeView,
+    plan
+  } = readPlannerState(input)
+
+  if (!activeViewId || !activeView || !plan) {
+    return createEmptyPlan()
   }
-})
+
+  const viewChange = dataviewTrace.view.change(
+    input.impact.trace,
+    activeViewId
+  )
+  const shouldRun = (
+    viewChange?.queryAspects?.has('group') === true
+    || QUERY_ASPECTS.some((aspect) => viewChange?.queryAspects?.has(aspect))
+    || Boolean(viewChange?.calculationFields)
+    || Boolean(viewChange?.layoutAspects?.size)
+    || hasPublishSchemaChange(input)
+  )
+
+  return shouldRun
+    ? createPlan<ActivePhaseName, ActivePhaseScopeMap>({
+        phases: ['publish']
+      })
+    : createEmptyPlan()
+}
+
+export const activeProjectorPlanner: ProjectorPlanner<
+  ActiveProjectorRunInput,
+  ViewState | undefined,
+  ActivePhaseName,
+  ActivePhaseScopeMap
+> = {
+  plan: ({ input, previous }) => mergePlans(
+    planReset(input, previous),
+    planQuery(input, previous),
+    planMembership(input),
+    planSummary(input),
+    planPublish(input)
+  )
+}

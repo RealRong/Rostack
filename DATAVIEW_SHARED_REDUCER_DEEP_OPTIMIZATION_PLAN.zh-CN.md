@@ -2,6 +2,22 @@
 
 本文讨论 `dataview/packages/dataview-core` 的 mutation / reducer 主链，下一步如何**继续降复杂度**，并且**更深地利用 `shared/reducer`**。
 
+## 当前落地状态
+
+以下阶段已完成并已代码落地：
+
+- Phase 1：footprint 已移入 `ReducerSpec.beforeEach`
+- Phase 2：`shared/reducer` 已支持单入口 `handle`
+- Phase 3：Dataview 已收敛为单一 operation definition registry
+- Phase 4：`DocumentMutationContext` 已引入并成为 operation apply 的唯一局部上下文
+- Phase 5：`dataviewReducerSpec` 已提炼完成，`mutation/apply.ts` 已收敛为薄入口
+
+旧实现已删除：
+
+- `dataview/packages/dataview-core/src/operation/meta.ts`
+- `dataview/packages/dataview-core/src/operation/mutation.ts`
+- `dataview/packages/dataview-core/src/mutation/footprint.ts`
+
 前提明确如下：
 
 - 不做兼容层。

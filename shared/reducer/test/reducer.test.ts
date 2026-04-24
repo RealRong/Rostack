@@ -209,4 +209,87 @@ describe('Reducer', () => {
       }
     })
   })
+
+  test('supports single handle reducer entry', () => {
+    const reducer = new Reducer<
+      {
+        count: number
+      },
+      | {
+          type: 'add'
+          value: number
+        }
+      | {
+          type: 'double'
+        },
+      string,
+      {
+        count: number
+      }
+    >({
+      spec: {
+        serializeKey: (key) => key,
+        handle: (ctx, op) => {
+          if (op.type === 'add') {
+            ctx.replace({
+              count: ctx.doc().count + op.value
+            })
+            ctx.inverse({
+              type: 'add',
+              value: -op.value
+            })
+            ctx.footprint(`add:${op.value}`)
+            return
+          }
+
+          ctx.replace({
+            count: ctx.doc().count * 2
+          })
+          ctx.inverse({
+            type: 'double'
+          })
+          ctx.footprint('double')
+        },
+        done: (ctx) => ({
+          count: ctx.doc().count
+        })
+      }
+    })
+
+    const result = reducer.reduce({
+      doc: {
+        count: 2
+      },
+      ops: [{
+        type: 'add',
+        value: 3
+      }, {
+        type: 'double'
+      }]
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      doc: {
+        count: 10
+      },
+      forward: [{
+        type: 'add',
+        value: 3
+      }, {
+        type: 'double'
+      }],
+      inverse: [{
+        type: 'double'
+      }, {
+        type: 'add',
+        value: -3
+      }],
+      footprint: ['add:3', 'double'],
+      extra: {
+        count: 10
+      },
+      issues: []
+    })
+  })
 })

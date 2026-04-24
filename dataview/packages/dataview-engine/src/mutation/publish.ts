@@ -24,7 +24,7 @@ import {
 } from '@dataview/engine/active/plan'
 import {
   createActiveProjector
-} from '@dataview/engine/active/projector/projector'
+} from '@dataview/engine/active/projector/createActiveProjector'
 import {
   createBaseImpact
 } from '@dataview/engine/active/shared/baseImpact'

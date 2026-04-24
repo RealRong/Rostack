@@ -1,6 +1,6 @@
 import {
-  META
-} from '@dataview/core/operation/meta'
+  DATAVIEW_OPERATION_META
+} from '@dataview/core/operation/definition'
 import {
   applyOperations
 } from '@dataview/core/mutation/apply'
@@ -13,7 +13,7 @@ export type {
 } from '@dataview/core/mutation/apply'
 
 export const operation = {
-  meta: META,
+  meta: DATAVIEW_OPERATION_META,
   apply: applyOperations,
   preview: previewOperations
 } as const

@@ -13,7 +13,7 @@ import type { ProjectorTrace } from '@shared/projector'
 import type {
   ActivePhaseMetrics,
   ActivePhaseName
-} from './projector'
+} from '../contracts/projector'
 
 const SNAPSHOT_KEYS = [
   'view',

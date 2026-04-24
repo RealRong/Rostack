@@ -85,7 +85,9 @@ export interface ReducerSpec<
 
   beforeEach?(ctx: DomainCtx, op: Op): void
 
-  handlers: ReducerHandlerMap<DomainCtx, Op>
+  handle?(ctx: DomainCtx, op: Op): void
+
+  handlers?: ReducerHandlerMap<DomainCtx, Op>
 
   settle?(ctx: DomainCtx): void
 

@@ -1,0 +1,21 @@
+{
+  "name": "@shared/mutation",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./path": "./src/path.ts",
+    "./meta": "./src/meta.ts",
+    "./write": "./src/write.ts"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

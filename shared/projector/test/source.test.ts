@@ -7,6 +7,7 @@ import {
   createFamilySink,
   createFamilySync,
   createFlags,
+  createIdDeltaFamilySync,
   createIds,
   createListSink,
   createListSync,
@@ -14,6 +15,7 @@ import {
   createValueSync
 } from '../src'
 import type { EntityDelta, Family } from '../src'
+import { idDelta } from '../src'
 
 type Snapshot = {
   title: string
@@ -158,6 +160,69 @@ describe('source sync', () => {
       apply: (patch, nextSink) => {
         if (patch.order) {
           nextSink.order(patch.order)
+        }
+        patch.set?.forEach(([key, value]) => {
+          nextSink.set(key, value)
+        })
+        patch.remove?.forEach((key) => {
+          nextSink.remove(key)
+        })
+      }
+    })
+
+    sync.sync({
+      previous,
+      next,
+      change,
+      sink
+    })
+
+    expect(sink.get().ids).toEqual(['c', 'a'])
+    expect(sink.get().byId.get('a')).toEqual({ value: 10 })
+    expect(sink.get().byId.get('b')).toBeUndefined()
+    expect(sink.get().byId.get('c')).toEqual({ value: 3 })
+  })
+
+  it('applies id delta family patches without rescanning unchanged values', () => {
+    const previous = createSnapshot({
+      title: 'before',
+      order: ['a', 'b'],
+      nodes: [
+        ['a', { value: 1 }],
+        ['b', { value: 2 }]
+      ],
+      version: 1
+    })
+    const next = createSnapshot({
+      title: 'before',
+      order: ['c', 'a'],
+      nodes: [
+        ['c', { value: 3 }],
+        ['a', { value: 10 }]
+      ],
+      version: 1
+    })
+    const change = {
+      nodes: idDelta.create<string>()
+    }
+    idDelta.update(change.nodes, 'a')
+    idDelta.remove(change.nodes, 'b')
+    idDelta.add(change.nodes, 'c')
+
+    const sink = createFamilySink<string, {
+      value: number
+    }>()
+
+    sink.set('a', { value: 1 })
+    sink.set('b', { value: 2 })
+    sink.order(['a', 'b'])
+
+    const sync = createIdDeltaFamilySync({
+      delta: (nextChange: typeof change) => nextChange.nodes,
+      read: (snapshot: Snapshot) => snapshot.nodes,
+      apply: (patch, nextSink) => {
+        if (patch.ids) {
+          nextSink.order(patch.ids)
         }
         patch.set?.forEach(([key, value]) => {
           nextSink.set(key, value)

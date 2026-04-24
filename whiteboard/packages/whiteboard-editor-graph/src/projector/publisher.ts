@@ -5,54 +5,44 @@ import type {
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import {
-  resetGraphPublishDelta,
-  resetPublishDelta,
-  syncGraphPublishDelta,
-  syncItemsPublishDelta
+  createGraphPublishDelta,
+  createUiPublishDelta
 } from './publish/delta'
 import { patchPublishedGraph } from './publish/graph'
 import { patchPublishedItems } from './publish/items'
 import { patchPublishedUi } from './publish/ui'
 
-export const createEditorGraphPublisher = (): ProjectorPublisher<
+const EMPTY_GRAPH_PUBLISH_DELTA = createGraphPublishDelta()
+const EMPTY_UI_PUBLISH_DELTA = createUiPublishDelta()
+
+export const editorGraphPublisher: ProjectorPublisher<
   WorkingState,
   Snapshot,
   Change
-> => ({
+> = {
   publish: ({ revision, previous, working }) => {
-    const delta = working.delta.publish
-
-    resetGraphPublishDelta(delta.graph)
-    if (working.delta.graph.revision === revision) {
-      syncGraphPublishDelta({
-        source: working.delta.graph,
-        target: delta.graph
-      })
-    }
-
-    delta.items = working.delta.graph.revision === revision
-      ? syncItemsPublishDelta({
-          graph: working.delta.graph
-        })
-      : false
-
     const graph = patchPublishedGraph({
       previous: previous.graph,
       working,
-      delta: delta.graph
+      delta: working.publish.graph.revision === revision
+        ? working.publish.graph.delta
+        : EMPTY_GRAPH_PUBLISH_DELTA
     })
     const items = patchPublishedItems({
       previous: previous.items,
       working,
-      changed: delta.items
+      changed: working.publish.items.revision === revision
+        && working.publish.items.changed
     })
     const ui = patchPublishedUi({
       previous: previous.ui,
       working,
-      delta: delta.ui
+      delta: working.publish.ui.revision === revision
+        ? working.publish.ui.delta
+        : EMPTY_UI_PUBLISH_DELTA
     })
 
-    const result = {
+    return {
       snapshot: {
         revision,
         documentRevision: working.revision.document,
@@ -66,9 +56,5 @@ export const createEditorGraphPublisher = (): ProjectorPublisher<
         ui: ui.change
       }
     }
-
-    resetPublishDelta(delta)
-
-    return result
   }
-})
+}

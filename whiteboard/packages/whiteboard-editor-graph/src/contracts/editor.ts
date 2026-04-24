@@ -36,7 +36,7 @@ import type {
   Revision,
 } from '@shared/projector'
 import type { IdDelta } from './delta'
-import type { SpatialRead } from '../runtime/spatial/contracts'
+import type { SpatialRead } from '../domain/spatial/contracts'
 
 export interface Input {
   document: DocumentInput

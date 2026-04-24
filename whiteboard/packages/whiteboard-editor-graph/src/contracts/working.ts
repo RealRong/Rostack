@@ -13,8 +13,9 @@ import type {
 import type { Revision } from '@shared/projector'
 import type {
   GraphDelta,
-  PublishDelta,
-  SpatialDelta
+  GraphPublishDelta,
+  SpatialDelta,
+  UiPublishDelta
 } from './delta'
 import type {
   ChromeView,
@@ -33,7 +34,7 @@ import type {
   NodeUiView,
   NodeView
 } from './editor'
-import type { SpatialIndexState } from '../runtime/spatial/state'
+import type { SpatialIndexState } from '../domain/spatial/state'
 
 export interface WorkingState {
   revision: {
@@ -47,8 +48,27 @@ export interface WorkingState {
   delta: {
     graph: GraphDelta
     spatial: SpatialDelta
-    publish: PublishDelta
   }
+  publish: {
+    graph: GraphPublishState
+    ui: UiPublishState
+    items: ItemsPublishState
+  }
+}
+
+export interface GraphPublishState {
+  revision: Revision
+  delta: GraphPublishDelta
+}
+
+export interface UiPublishState {
+  revision: Revision
+  delta: UiPublishDelta
+}
+
+export interface ItemsPublishState {
+  revision: Revision
+  changed: boolean
 }
 
 export interface GraphState {

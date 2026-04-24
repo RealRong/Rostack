@@ -6,11 +6,11 @@ import type {
 } from '@dataview/core/contracts'
 import {
   createProjector,
+  defineProjectorSpec,
   type DefaultProjectorScopeMap,
   type ProjectorContext,
   type ProjectorPhase,
   type ProjectorPublisher,
-  type ProjectorSpec
 } from '@shared/projector'
 import type {
   IndexDelta,
@@ -447,16 +447,7 @@ const createActiveProjectorPublisher = (): ProjectorPublisher<
   })
 })
 
-const createActiveProjectorSpec = (): ProjectorSpec<
-  ActiveProjectorRunInput,
-  ActiveProjectorWorking,
-  ViewState | undefined,
-  ActiveDelta | undefined,
-  ActivePhaseName,
-  DefaultProjectorScopeMap<ActivePhaseName>,
-  undefined,
-  ActivePhaseMetrics
-> => ({
+const activeProjectorSpec = defineProjectorSpec({
   createWorking: createActiveProjectorWorking,
   createSnapshot: () => undefined,
   plan: createActiveProjectorPlan().plan,
@@ -470,7 +461,7 @@ const createActiveProjectorSpec = (): ProjectorSpec<
 })
 
 export const createActiveProjector = (): ActiveProjector => {
-  const projector = createProjector(createActiveProjectorSpec())
+  const projector = createProjector(activeProjectorSpec)
   let runId = 0
 
   return {

@@ -1,265 +1,332 @@
 import { idDelta } from '@shared/projector'
 import type {
   EdgeId,
-  MindmapId,
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  HoverState,
-  SelectionState
+  EdgeUiView,
+  NodeUiView
 } from '../contracts/editor'
-import type { UiPublishDelta } from '../contracts/delta'
 import {
-  buildEdgeUiView,
-  buildChromeView,
-  buildNodeUiView
-} from '../runtime/ui'
+  isChromeViewEqual,
+  isEdgeUiViewEqual,
+  isNodeUiViewEqual
+} from '../domain/equality'
 import {
+  hasUiPublishDelta,
   resetUiPublishDelta
-} from '../runtime/publish/delta'
-import type { UiEditorPhase } from './shared'
-import { toMetric } from './shared'
+} from '../projector/publish/delta'
+import {
+  buildChromeView,
+  buildEdgeUiView,
+  buildNodeUiView
+} from '../domain/ui'
+import {
+  type EditorGraphPhase,
+  defineEditorGraphPhase,
+  toPhaseMetrics
+} from '../projector/context'
+import {
+  mergeUiPatchScope,
+  normalizeUiPatchScope,
+  readUiPatchScopeKeys
+} from '../projector/scopes/uiScope'
 
-const appendIds = <TId extends string>(
-  target: Set<TId>,
-  ids: Iterable<TId>
+type UiPhaseContext = Parameters<EditorGraphPhase<'ui'>['run']>[0]
+
+const writeUiChange = <TId extends string, TValue>(input: {
+  id: TId
+  previous: TValue | undefined
+  next: TValue | undefined
+  delta: {
+    added: Set<TId>
+    updated: Set<TId>
+    removed: Set<TId>
+  }
+}) => {
+  if (input.next === undefined) {
+    if (input.previous !== undefined) {
+      idDelta.remove(input.delta, input.id)
+    }
+    return
+  }
+
+  if (input.previous === input.next) {
+    return
+  }
+
+  if (input.previous === undefined) {
+    idDelta.add(input.delta, input.id)
+    return
+  }
+
+  idDelta.update(input.delta, input.id)
+}
+
+const buildCurrentNodeUiView = (
+  context: UiPhaseContext,
+  nodeId: NodeId,
+  previous: NodeUiView | undefined
+): NodeUiView | undefined => {
+  const graph = context.working.graph.nodes.get(nodeId)
+  if (!graph) {
+    return undefined
+  }
+
+  const next = buildNodeUiView({
+    nodeId,
+    draft: context.input.session.draft.nodes.get(nodeId),
+    preview: context.input.session.preview.nodes.get(nodeId),
+    draw: context.input.session.preview.draw,
+    edit: context.input.session.edit,
+    selection: context.input.interaction.selection,
+    hover: context.input.interaction.hover
+  })
+
+  return previous && isNodeUiViewEqual(previous, next)
+    ? previous
+    : next
+}
+
+const buildCurrentEdgeUiView = (
+  context: UiPhaseContext,
+  edgeId: EdgeId,
+  previous: EdgeUiView | undefined
+): EdgeUiView | undefined => {
+  const view = context.working.graph.edges.get(edgeId)
+  if (!view) {
+    return undefined
+  }
+
+  const next = buildEdgeUiView({
+    edgeId,
+    entry: {
+      base: {
+        edge: view.base.edge,
+        nodes: view.base.nodes
+      },
+      draft: context.input.session.draft.edges.get(edgeId),
+      preview: context.input.session.preview.edges.get(edgeId)
+    },
+    view,
+    edit: context.input.session.edit,
+    selection: context.input.interaction.selection
+  })
+
+  return previous && isEdgeUiViewEqual(previous, next)
+    ? previous
+    : next
+}
+
+const rebuildNodeUi = (
+  context: UiPhaseContext,
+  delta: {
+    added: Set<NodeId>
+    updated: Set<NodeId>
+    removed: Set<NodeId>
+  }
 ) => {
-  for (const id of ids) {
-    target.add(id)
-  }
-}
+  const previous = context.working.ui.nodes
+  const next = new Map<NodeId, NodeUiView>()
 
-const readHoveredNodeId = (
-  hover: HoverState
-): NodeId | undefined => hover.kind === 'node'
-  ? hover.nodeId
-  : undefined
+  context.working.graph.nodes.forEach((_view, nodeId) => {
+    const previousView = previous.get(nodeId)
+    const nextView = buildCurrentNodeUiView(context, nodeId, previousView)
+    if (nextView === undefined) {
+      return
+    }
 
-const appendMindmapNodeIds = (input: {
-  target: Set<NodeId>
-  mindmapIds: Iterable<MindmapId>
-  nodesByMindmap: ReadonlyMap<MindmapId, readonly NodeId[]>
-}) => {
-  for (const mindmapId of input.mindmapIds) {
-    input.nodesByMindmap.get(mindmapId)?.forEach((nodeId) => {
-      input.target.add(nodeId)
+    next.set(nodeId, nextView)
+    writeUiChange({
+      id: nodeId,
+      previous: previousView,
+      next: nextView,
+      delta
     })
-  }
-}
-
-const createMindmapNodeIndex = (
-  context: Parameters<UiEditorPhase['run']>[0]
-): ReadonlyMap<MindmapId, readonly NodeId[]> => {
-  const index = new Map<MindmapId, readonly NodeId[]>()
-
-  context.previous.graph.owners.mindmaps.byId.forEach((view, mindmapId) => {
-    index.set(mindmapId, view.structure.nodeIds)
-  })
-  context.working.graph.owners.mindmaps.forEach((view, mindmapId) => {
-    index.set(mindmapId, view.structure.nodeIds)
   })
 
-  return index
-}
-
-const markSelectionUiDelta = (input: {
-  target: UiPublishDelta
-  previous: {
-    nodes: ReadonlyMap<NodeId, {
-      selected: boolean
-    }>
-    edges: ReadonlyMap<EdgeId, {
-      selected: boolean
-    }>
-  }
-  next: SelectionState
-}) => {
-  input.previous.nodes.forEach((view, nodeId) => {
-    if (view.selected) {
-      idDelta.update(input.target.nodes, nodeId)
+  previous.forEach((_view, nodeId) => {
+    if (next.has(nodeId)) {
+      return
     }
-  })
-  input.previous.edges.forEach((view, edgeId) => {
-    if (view.selected) {
-      idDelta.update(input.target.edges, edgeId)
-    }
+
+    writeUiChange({
+      id: nodeId,
+      previous: previous.get(nodeId),
+      next: undefined,
+      delta
+    })
   })
 
-  input.next.nodeIds.forEach((nodeId) => {
-    idDelta.update(input.target.nodes, nodeId)
+  context.working.ui.nodes = next
+}
+
+const rebuildEdgeUi = (
+  context: UiPhaseContext,
+  delta: {
+    added: Set<EdgeId>
+    updated: Set<EdgeId>
+    removed: Set<EdgeId>
+  }
+) => {
+  const previous = context.working.ui.edges
+  const next = new Map<EdgeId, EdgeUiView>()
+
+  context.working.graph.edges.forEach((_view, edgeId) => {
+    const previousView = previous.get(edgeId)
+    const nextView = buildCurrentEdgeUiView(context, edgeId, previousView)
+    if (nextView === undefined) {
+      return
+    }
+
+    next.set(edgeId, nextView)
+    writeUiChange({
+      id: edgeId,
+      previous: previousView,
+      next: nextView,
+      delta
+    })
   })
-  input.next.edgeIds.forEach((edgeId) => {
-    idDelta.update(input.target.edges, edgeId)
+
+  previous.forEach((_view, edgeId) => {
+    if (next.has(edgeId)) {
+      return
+    }
+
+    writeUiChange({
+      id: edgeId,
+      previous: previous.get(edgeId),
+      next: undefined,
+      delta
+    })
+  })
+
+  context.working.ui.edges = next
+}
+
+const patchTouchedNodeUi = (
+  context: UiPhaseContext,
+  touchedNodeIds: ReadonlySet<NodeId>,
+  delta: {
+    added: Set<NodeId>
+    updated: Set<NodeId>
+    removed: Set<NodeId>
+  }
+) => {
+  const nodes = context.working.ui.nodes as Map<NodeId, NodeUiView>
+
+  touchedNodeIds.forEach((nodeId) => {
+    const previous = nodes.get(nodeId)
+    const next = buildCurrentNodeUiView(context, nodeId, previous)
+
+    if (next === undefined) {
+      if (previous !== undefined) {
+        nodes.delete(nodeId)
+      }
+    } else {
+      nodes.set(nodeId, next)
+    }
+
+    writeUiChange({
+      id: nodeId,
+      previous,
+      next,
+      delta
+    })
   })
 }
 
-export const createUiPhase = (): UiEditorPhase => ({
+const patchTouchedEdgeUi = (
+  context: UiPhaseContext,
+  touchedEdgeIds: ReadonlySet<EdgeId>,
+  delta: {
+    added: Set<EdgeId>
+    updated: Set<EdgeId>
+    removed: Set<EdgeId>
+  }
+) => {
+  const edges = context.working.ui.edges as Map<EdgeId, EdgeUiView>
+
+  touchedEdgeIds.forEach((edgeId) => {
+    const previous = edges.get(edgeId)
+    const next = buildCurrentEdgeUiView(context, edgeId, previous)
+
+    if (next === undefined) {
+      if (previous !== undefined) {
+        edges.delete(edgeId)
+      }
+    } else {
+      edges.set(edgeId, next)
+    }
+
+    writeUiChange({
+      id: edgeId,
+      previous,
+      next,
+      delta
+    })
+  })
+}
+
+const patchChrome = (
+  context: UiPhaseContext,
+  force: boolean
+) => {
+  if (!force) {
+    return
+  }
+
+  const previous = context.working.ui.chrome
+  const nextCandidate = buildChromeView({
+    session: context.input.session,
+    selection: context.input.interaction.selection,
+    hover: context.input.interaction.hover
+  })
+  const next = isChromeViewEqual(previous, nextCandidate)
+    ? previous
+    : nextCandidate
+
+  context.working.ui.chrome = next
+  context.working.publish.ui.delta.chrome = next !== previous
+}
+
+export const uiPhase = defineEditorGraphPhase({
   name: 'ui',
-  deps: ['graph'],
+  deps: [],
+  mergeScope: mergeUiPatchScope,
   run: (context) => {
-    const currentRevision = context.previous.revision + 1
-    const publishDelta = context.working.delta.publish.ui
-    const graphDelta = context.working.delta.graph.revision === currentRevision
-      ? context.working.delta.graph
-      : undefined
-    const mindmapNodeIndex = createMindmapNodeIndex(context)
-    const selection = context.input.interaction.selection
+    const scope = normalizeUiPatchScope(context.scope)
+    const revision = context.previous.revision + 1
+    const publish = context.working.publish.ui
+    const touchedNodeIds = readUiPatchScopeKeys(scope.nodes)
+    const touchedEdgeIds = readUiPatchScopeKeys(scope.edges)
 
-    resetUiPublishDelta(publishDelta)
+    resetUiPublishDelta(publish.delta)
 
-    const nodes = new Map()
-    context.working.graph.nodes.forEach((view, nodeId) => {
-      nodes.set(nodeId, buildNodeUiView({
-        nodeId,
-        draft: context.input.session.draft.nodes.get(nodeId),
-        preview: context.input.session.preview.nodes.get(nodeId),
-        draw: context.input.session.preview.draw,
-        edit: context.input.session.edit,
-        selection,
-        hover: context.input.interaction.hover
-      }))
-    })
-
-    const edges = new Map()
-    context.working.graph.edges.forEach((view, edgeId) => {
-      edges.set(edgeId, buildEdgeUiView({
-        edgeId,
-        entry: {
-          base: {
-            edge: view.base.edge,
-            nodes: view.base.nodes
-          },
-          draft: context.input.session.draft.edges.get(edgeId),
-          preview: context.input.session.preview.edges.get(edgeId)
-        },
-        view,
-        edit: context.input.session.edit,
-        selection
-      }))
-    })
-
-    context.working.ui = {
-      chrome: buildChromeView({
-        session: context.input.session,
-        selection,
-        hover: context.input.interaction.hover
-      }),
-      nodes,
-      edges
+    if (scope.reset) {
+      rebuildNodeUi(context, publish.delta.nodes)
+      rebuildEdgeUi(context, publish.delta.edges)
+    } else {
+      patchTouchedNodeUi(context, touchedNodeIds, publish.delta.nodes)
+      patchTouchedEdgeUi(context, touchedEdgeIds, publish.delta.edges)
     }
 
-    if (graphDelta) {
-      graphDelta.entities.nodes.added.forEach((nodeId) => {
-        idDelta.add(publishDelta.nodes, nodeId)
-      })
-      graphDelta.entities.nodes.updated.forEach((nodeId) => {
-        idDelta.update(publishDelta.nodes, nodeId)
-      })
-      graphDelta.entities.nodes.removed.forEach((nodeId) => {
-        idDelta.remove(publishDelta.nodes, nodeId)
-      })
+    patchChrome(context, scope.reset || scope.chrome)
 
-      graphDelta.entities.edges.added.forEach((edgeId) => {
-        idDelta.add(publishDelta.edges, edgeId)
-      })
-      graphDelta.entities.edges.updated.forEach((edgeId) => {
-        idDelta.update(publishDelta.edges, edgeId)
-      })
-      graphDelta.entities.edges.removed.forEach((edgeId) => {
-        idDelta.remove(publishDelta.edges, edgeId)
-      })
-
-      const touchedMindmaps = idDelta.touched(graphDelta.entities.mindmaps)
-      touchedMindmaps.forEach((mindmapId) => {
-        mindmapNodeIndex.get(mindmapId)?.forEach((nodeId) => {
-          idDelta.update(publishDelta.nodes, nodeId)
-        })
-      })
-    }
-
-    if (context.input.delta.ui.selection) {
-      markSelectionUiDelta({
-        target: publishDelta,
-        previous: {
-          nodes: context.previous.ui.nodes.byId,
-          edges: context.previous.ui.edges.byId
-        },
-        next: selection
-      })
-    }
-
-    if (
-      context.input.delta.ui.selection
-      || context.input.delta.ui.tool
-      || context.input.delta.ui.hover
-      || context.input.delta.ui.marquee
-      || context.input.delta.ui.guides
-      || context.input.delta.ui.draw
-      || context.input.delta.ui.edit
-    ) {
-      publishDelta.chrome = true
-    }
-
-    if (context.input.delta.ui.hover) {
-      const previousNodeId = readHoveredNodeId(context.previous.ui.chrome.hover)
-      const nextNodeId = readHoveredNodeId(context.input.interaction.hover)
-
-      if (previousNodeId) {
-        idDelta.update(publishDelta.nodes, previousNodeId)
-      }
-      if (nextNodeId) {
-        idDelta.update(publishDelta.nodes, nextNodeId)
-      }
-    }
-
-    const touchedNodeUiIds = new Set<NodeId>()
-    const touchedPreviewMindmaps = new Set<MindmapId>()
-    appendIds(touchedNodeUiIds, idDelta.touched(context.input.delta.graph.nodes.draft))
-    appendIds(touchedNodeUiIds, idDelta.touched(context.input.delta.graph.nodes.preview))
-    appendIds(touchedNodeUiIds, idDelta.touched(context.input.delta.graph.nodes.edit))
-    appendIds(touchedPreviewMindmaps, idDelta.touched(context.input.delta.graph.mindmaps.preview))
-    appendMindmapNodeIds({
-      target: touchedNodeUiIds,
-      mindmapIds: touchedPreviewMindmaps,
-      nodesByMindmap: mindmapNodeIndex
-    })
-    appendMindmapNodeIds({
-      target: touchedNodeUiIds,
-      mindmapIds: context.input.delta.graph.mindmaps.tick,
-      nodesByMindmap: mindmapNodeIndex
-    })
-
-    if (context.input.delta.ui.draw) {
-      appendIds(
-        touchedNodeUiIds,
-        context.previous.ui.chrome.preview.draw?.hiddenNodeIds ?? []
-      )
-      appendIds(
-        touchedNodeUiIds,
-        context.input.session.preview.draw?.hiddenNodeIds ?? []
-      )
-    }
-
-    touchedNodeUiIds.forEach((nodeId) => {
-      idDelta.update(publishDelta.nodes, nodeId)
-    })
-
-    const touchedEdgeUiIds = new Set<EdgeId>()
-    appendIds(touchedEdgeUiIds, idDelta.touched(context.input.delta.graph.edges.preview))
-    appendIds(touchedEdgeUiIds, idDelta.touched(context.input.delta.graph.edges.edit))
-    touchedEdgeUiIds.forEach((edgeId) => {
-      idDelta.update(publishDelta.edges, edgeId)
-    })
+    publish.revision = hasUiPublishDelta(publish.delta)
+      ? revision
+      : 0
 
     return {
-      action: 'sync',
+      action: publish.revision === revision
+        ? 'sync'
+        : 'reuse',
       change: undefined,
-      metrics: toMetric(
-        selection.nodeIds.length
-        + selection.edgeIds.length
+      metrics: toPhaseMetrics(
+        (scope.reset
+          ? context.working.ui.nodes.size + context.working.ui.edges.size
+          : touchedNodeIds.size + touchedEdgeIds.size)
         + context.working.ui.chrome.overlays.length
-        + nodes.size
-        + edges.size
       )
     }
   }

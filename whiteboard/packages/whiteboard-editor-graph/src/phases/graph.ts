@@ -1,22 +1,37 @@
 import type { MindmapId, NodeId } from '@whiteboard/core/types'
-import type { GraphEditorPhase } from './shared'
-import { toMetric } from './shared'
-import { patchEdge } from '../runtime/graphPatch/edge'
+import { patchEdge } from '../domain/graphPatch/edge'
 import {
   createGraphPatchQueue,
   preFanoutSeeds,
   seedGraphPatchQueue
-} from '../runtime/graphPatch/fanout'
-import { patchGroup } from '../runtime/graphPatch/group'
-import { patchMindmap } from '../runtime/graphPatch/mindmap'
-import { patchNode } from '../runtime/graphPatch/node'
+} from '../domain/graphPatch/fanout'
+import { patchGroup } from '../domain/graphPatch/group'
+import { patchMindmap } from '../domain/graphPatch/mindmap'
+import { patchNode } from '../domain/graphPatch/node'
+import { patchIndexState } from '../domain/indexes'
+import { resetGraphDelta } from '../domain/graphPatch/delta'
 import {
+  type EditorGraphPhase,
+  defineEditorGraphPhase,
+  toPhaseMetrics
+} from '../projector/context'
+import {
+  hasGraphPublishDelta,
+  writeGraphPublishDelta
+} from '../projector/publish/delta'
+import {
+  createGraphPatchScope,
   mergeGraphPatchScope,
   normalizeGraphPatchScope
-} from '../runtime/graphPatch/scope'
-import { resetGraphDelta } from '../runtime/graphPatch/delta'
-import { patchIndexState } from '../runtime/indexes'
-import { createSpatialPatchScope } from '../runtime/spatial/contracts'
+} from '../projector/scopes/graphScope'
+import { createSpatialPatchScope } from '../projector/scopes/spatialScope'
+import {
+  createMindmapNodeIndexFromState,
+  createUiPatchScope,
+  hasUiPatchScope
+} from '../projector/scopes/uiScope'
+
+type GraphPhaseContext = Parameters<EditorGraphPhase<'graph'>['run']>[0]
 
 const drainQueue = <TId extends string>(
   queue: Set<TId>
@@ -27,7 +42,7 @@ const drainQueue = <TId extends string>(
 }
 
 const patchStandaloneNodes = (
-  context: Parameters<GraphEditorPhase['run']>[0],
+  context: GraphPhaseContext,
   queue: ReturnType<typeof createGraphPatchQueue>
 ): number => {
   const deferred = new Set<NodeId>()
@@ -60,7 +75,7 @@ const patchStandaloneNodes = (
 }
 
 const patchMindmaps = (
-  context: Parameters<GraphEditorPhase['run']>[0],
+  context: GraphPhaseContext,
   queue: ReturnType<typeof createGraphPatchQueue>
 ): number => {
   let count = 0
@@ -81,7 +96,7 @@ const patchMindmaps = (
 }
 
 const patchMindmapMemberNodes = (
-  context: Parameters<GraphEditorPhase['run']>[0],
+  context: GraphPhaseContext,
   queue: ReturnType<typeof createGraphPatchQueue>
 ): number => {
   let count = 0
@@ -102,7 +117,7 @@ const patchMindmapMemberNodes = (
 }
 
 const patchEdges = (
-  context: Parameters<GraphEditorPhase['run']>[0],
+  context: GraphPhaseContext,
   queue: ReturnType<typeof createGraphPatchQueue>
 ): number => {
   let count = 0
@@ -122,7 +137,7 @@ const patchEdges = (
 }
 
 const patchGroups = (
-  context: Parameters<GraphEditorPhase['run']>[0],
+  context: GraphPhaseContext,
   queue: ReturnType<typeof createGraphPatchQueue>
 ): number => {
   let count = 0
@@ -141,7 +156,7 @@ const patchGroups = (
   return count
 }
 
-export const createGraphPhase = (): GraphEditorPhase => ({
+export const graphPhase = defineEditorGraphPhase({
   name: 'graph',
   deps: [],
   mergeScope: mergeGraphPatchScope,
@@ -149,6 +164,7 @@ export const createGraphPhase = (): GraphEditorPhase => ({
     const scope = normalizeGraphPatchScope(context.scope)
     const queue = createGraphPatchQueue()
     const delta = context.working.delta.graph
+    const publish = context.working.publish.graph
     const revision = context.previous.revision + 1
 
     resetGraphDelta(delta)
@@ -185,15 +201,39 @@ export const createGraphPhase = (): GraphEditorPhase => ({
 
     context.working.revision.document = context.input.document.snapshot.revision
 
+    writeGraphPublishDelta({
+      source: delta,
+      target: publish.delta
+    })
+    publish.revision = hasGraphPublishDelta(publish.delta)
+      ? revision
+      : 0
+
+    const uiScope = createUiPatchScope({
+      reset: scope.reset,
+      input: context.input,
+      previous: context.previous,
+      graphDelta: delta,
+      mindmapNodeIndex: createMindmapNodeIndexFromState({
+        previous: context.previous,
+        working: context.working
+      })
+    })
+
     return {
       action: 'sync',
       change: undefined,
-      metrics: toMetric(count),
+      metrics: toPhaseMetrics(count),
       emit: {
         spatial: createSpatialPatchScope({
           reset: scope.reset,
           graph: true
-        })
+        }),
+        ...(hasUiPatchScope(uiScope)
+          ? {
+              ui: uiScope
+            }
+          : {})
       }
     }
   }

@@ -1,4 +1,7 @@
-import type { ProjectorSpec } from '@shared/projector'
+import {
+  defineProjectorSpec,
+  type ProjectorSpec
+} from '@shared/projector'
 import type {
   Change,
   Input,
@@ -6,14 +9,15 @@ import type {
 } from '../contracts/editor'
 import type { EditorPhaseScopeMap } from '../contracts/delta'
 import type { WorkingState } from '../contracts/working'
-import { createEditorGraphPhases } from '../phases'
+import { editorGraphPhases } from '../phases'
 import { createEmptySnapshot } from './createEmptySnapshot'
 import { createWorking } from './createWorking'
-import { createEditorGraphPlanner } from './planner'
-import { createEditorGraphPublisher } from './publisher'
+import type { EditorGraphPhaseMetrics } from './context'
 import type { EditorPhaseName } from './phaseNames'
+import { editorGraphPlanner } from './planner'
+import { editorGraphPublisher } from './publisher'
 
-export const createEditorGraphProjectorSpec = (): ProjectorSpec<
+export const editorGraphProjectorSpec: ProjectorSpec<
   Input,
   WorkingState,
   Snapshot,
@@ -21,13 +25,11 @@ export const createEditorGraphProjectorSpec = (): ProjectorSpec<
   EditorPhaseName,
   EditorPhaseScopeMap,
   undefined,
-  {
-    count: number
-  }
-> => ({
+  EditorGraphPhaseMetrics
+> = defineProjectorSpec({
   createWorking,
   createSnapshot: createEmptySnapshot,
-  plan: createEditorGraphPlanner().plan,
-  publish: createEditorGraphPublisher().publish,
-  phases: createEditorGraphPhases()
+  plan: editorGraphPlanner.plan,
+  publish: editorGraphPublisher.publish,
+  phases: editorGraphPhases
 })

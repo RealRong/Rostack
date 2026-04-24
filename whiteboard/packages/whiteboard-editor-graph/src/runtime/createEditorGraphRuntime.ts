@@ -5,11 +5,11 @@ import type {
   Runtime,
   Snapshot
 } from '../contracts/editor'
-import { createEditorGraphProjectorSpec } from './createSpec'
+import { editorGraphProjectorSpec } from '../projector/spec'
 import { createEditorGraphQuery } from './query'
 
 export const createEditorGraphRuntime = (): Runtime => {
-  const projector = createProjector(createEditorGraphProjectorSpec())
+  const projector = createProjector(editorGraphProjectorSpec)
   const snapshot = (): Snapshot => projector.snapshot()
   const query = createEditorGraphQuery({
     snapshot,

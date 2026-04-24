@@ -11,7 +11,7 @@ import type {
   IndexState
 } from '../../contracts/working'
 import { readRelatedEdgeIds } from '../indexes'
-import { readGraphPatchScopeKeys } from './scope'
+import { readGraphPatchScopeKeys } from '../../projector/scopes/graphScope'
 
 export interface GraphPatchQueue {
   nodes: Set<NodeId>

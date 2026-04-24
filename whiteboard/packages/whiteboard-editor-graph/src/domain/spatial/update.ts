@@ -19,11 +19,11 @@ import {
 } from './records'
 import type {
   SpatialKey,
-  SpatialPatchScope,
   SpatialRecord
 } from './contracts'
 import type { SpatialIndexState } from './state'
 import { resetSpatialState } from './state'
+import type { SpatialPatchScope } from '../../projector/scopes/spatialScope'
 
 const isSpatialRecordEqual = (
   left: SpatialRecord,

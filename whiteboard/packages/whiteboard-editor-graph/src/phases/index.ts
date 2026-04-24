@@ -1,12 +1,11 @@
-import { createGraphPhase } from './graph'
-import { createItemsPhase } from './items'
-import { createSpatialPhase } from './spatial'
-import { createUiPhase } from './ui'
-import type { EditorPhase } from './shared'
+import { graphPhase } from './graph'
+import { itemsPhase } from './items'
+import { spatialPhase } from './spatial'
+import { uiPhase } from './ui'
 
-export const createEditorGraphPhases = (): readonly EditorPhase[] => [
-  createGraphPhase(),
-  createSpatialPhase(),
-  createUiPhase(),
-  createItemsPhase()
-]
+export const editorGraphPhases = [
+  graphPhase,
+  spatialPhase,
+  uiPhase,
+  itemsPhase
+] as const

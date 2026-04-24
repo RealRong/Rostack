@@ -16,9 +16,9 @@ import {
   readGroupSignatureFromTarget,
   readRelatedEdgeIds,
   readTreeDescendants
-} from './indexes'
-import type { SpatialIndexState } from './spatial/state'
-import { createSpatialRead } from './spatial/query'
+} from '../domain/indexes'
+import type { SpatialIndexState } from '../domain/spatial/state'
+import { createSpatialRead } from '../domain/spatial/query'
 
 type Candidate = {
   id: NodeId

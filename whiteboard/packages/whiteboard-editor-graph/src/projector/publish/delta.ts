@@ -8,25 +8,22 @@ import type {
 import type {
   GraphDelta,
   GraphPublishDelta,
-  PublishDelta,
   UiPublishDelta
 } from '../../contracts/delta'
 
-export const createPublishDelta = (): PublishDelta => ({
-  graph: {
-    nodes: idDelta.create<NodeId>(),
-    edges: idDelta.create<EdgeId>(),
-    owners: {
-      mindmaps: idDelta.create<MindmapId>(),
-      groups: idDelta.create<GroupId>()
-    }
-  },
-  items: false,
-  ui: {
-    chrome: false,
-    nodes: idDelta.create<NodeId>(),
-    edges: idDelta.create<EdgeId>()
+export const createGraphPublishDelta = (): GraphPublishDelta => ({
+  nodes: idDelta.create<NodeId>(),
+  edges: idDelta.create<EdgeId>(),
+  owners: {
+    mindmaps: idDelta.create<MindmapId>(),
+    groups: idDelta.create<GroupId>()
   }
+})
+
+export const createUiPublishDelta = (): UiPublishDelta => ({
+  chrome: false,
+  nodes: idDelta.create<NodeId>(),
+  edges: idDelta.create<EdgeId>()
 })
 
 export const resetGraphPublishDelta = (
@@ -46,25 +43,35 @@ export const resetUiPublishDelta = (
   idDelta.reset(delta.edges)
 }
 
-export const resetPublishDelta = (
-  delta: PublishDelta
-) => {
-  resetGraphPublishDelta(delta.graph)
-  delta.items = false
-  resetUiPublishDelta(delta.ui)
-}
-
-export const syncGraphPublishDelta = (input: {
+export const writeGraphPublishDelta = (input: {
   source: GraphDelta
   target: GraphPublishDelta
 }) => {
+  resetGraphPublishDelta(input.target)
   idDelta.assign(input.target.nodes, input.source.entities.nodes)
   idDelta.assign(input.target.edges, input.source.entities.edges)
   idDelta.assign(input.target.owners.mindmaps, input.source.entities.mindmaps)
   idDelta.assign(input.target.owners.groups, input.source.entities.groups)
 }
 
-export const syncItemsPublishDelta = (input: {
+export const hasGraphPublishDelta = (
+  delta: GraphPublishDelta
+): boolean => (
+  idDelta.hasAny(delta.nodes)
+  || idDelta.hasAny(delta.edges)
+  || idDelta.hasAny(delta.owners.mindmaps)
+  || idDelta.hasAny(delta.owners.groups)
+)
+
+export const hasUiPublishDelta = (
+  delta: UiPublishDelta
+): boolean => (
+  delta.chrome
+  || idDelta.hasAny(delta.nodes)
+  || idDelta.hasAny(delta.edges)
+)
+
+export const readItemsPublishChanged = (input: {
   graph: GraphDelta
 }): boolean => (
   input.graph.order

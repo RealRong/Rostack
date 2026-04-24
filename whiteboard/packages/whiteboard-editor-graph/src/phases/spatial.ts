@@ -1,14 +1,16 @@
-import { patchSpatial } from '../runtime/spatial/update'
+import { patchSpatial } from '../domain/spatial/update'
 import {
   mergeSpatialPatchScope,
   normalizeSpatialPatchScope
-} from '../runtime/spatial/contracts'
-import type { SpatialEditorPhase } from './shared'
-import { toMetric } from './shared'
+} from '../projector/scopes/spatialScope'
+import {
+  defineEditorGraphPhase,
+  toPhaseMetrics
+} from '../projector/context'
 
-export const createSpatialPhase = (): SpatialEditorPhase => ({
+export const spatialPhase = defineEditorGraphPhase({
   name: 'spatial',
-  deps: ['graph'],
+  deps: [],
   mergeScope: mergeSpatialPatchScope,
   run: (context) => {
     const scope = normalizeSpatialPatchScope(context.scope)
@@ -25,7 +27,7 @@ export const createSpatialPhase = (): SpatialEditorPhase => ({
     return {
       action: result.changed ? 'sync' : 'reuse',
       change: undefined,
-      metrics: toMetric(result.count)
+      metrics: toPhaseMetrics(result.count)
     }
   }
 })

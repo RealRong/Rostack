@@ -16,19 +16,12 @@ import type { EditorPhaseName } from './phaseNames'
 import {
   createGraphPatchScope,
   hasGraphPatchScope
-} from './graphPatch/scope'
-
-const hasUiDelta = (
-  delta: Input['delta']['ui']
-): boolean => (
-  delta.tool
-  || delta.selection
-  || delta.hover
-  || delta.marquee
-  || delta.guides
-  || delta.draw
-  || delta.edit
-)
+} from './scopes/graphScope'
+import {
+  createMindmapNodeIndexFromSnapshot,
+  createUiPatchScope,
+  hasUiPatchScope
+} from './scopes/uiScope'
 
 const createGraphPlannerScope = (
   input: Input
@@ -91,12 +84,12 @@ const createGraphPlannerScope = (
   return scope
 }
 
-export const createEditorGraphPlanner = (): ProjectorPlanner<
+export const editorGraphPlanner: ProjectorPlanner<
   Input,
   Snapshot,
   EditorPhaseName,
   EditorPhaseScopeMap
-> => ({
+> = {
   plan: ({ input, previous }) => {
     const bootstrap = previous.revision === 0
     const graphScope = bootstrap
@@ -105,32 +98,27 @@ export const createEditorGraphPlanner = (): ProjectorPlanner<
           order: true
         })
       : createGraphPlannerScope(input)
-    const graphChanged = hasGraphPatchScope(graphScope)
-    const uiChanged = hasUiDelta(input.delta.ui)
-
-    if (!graphChanged && !uiChanged) {
-      return createPlan<EditorPhaseName>()
-    }
-
-    if (graphChanged) {
+    if (hasGraphPatchScope(graphScope)) {
       return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
-        phases: new Set([
-          'graph'
-        ]),
+        phases: ['graph'],
         scope: {
           graph: graphScope
         }
       })
     }
 
-    if (uiChanged) {
-      return createPlan<EditorPhaseName>({
-        phases: new Set([
-          'ui'
-        ])
-      })
-    }
+    const uiScope = createUiPatchScope({
+      input,
+      previous,
+      mindmapNodeIndex: createMindmapNodeIndexFromSnapshot(previous)
+    })
 
-    return createPlan<EditorPhaseName>()
+    return hasUiPatchScope(uiScope)
+      ? createPlan<EditorPhaseName, EditorPhaseScopeMap>({
+          scope: {
+            ui: uiScope
+          }
+        })
+      : createPlan<EditorPhaseName>()
   }
-})
+}

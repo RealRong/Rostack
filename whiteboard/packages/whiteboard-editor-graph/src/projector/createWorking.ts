@@ -1,9 +1,12 @@
 import type { WorkingState } from '../contracts/working'
 import { createEmptyDocumentSnapshot } from './createEmptySnapshot'
-import { createGraphDelta } from './graphPatch/delta'
-import { createPublishDelta } from './publish/delta'
-import { createSpatialDelta } from './spatial/update'
-import { createSpatialState } from './spatial/state'
+import { createGraphDelta } from '../domain/graphPatch/delta'
+import {
+  createGraphPublishDelta,
+  createUiPublishDelta
+} from './publish/delta'
+import { createSpatialDelta } from '../domain/spatial/update'
+import { createSpatialState } from '../domain/spatial/state'
 
 export const createWorking = (): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
@@ -52,8 +55,21 @@ export const createWorking = (): WorkingState => {
     items: [],
     delta: {
       graph: createGraphDelta(),
-      spatial: createSpatialDelta(),
-      publish: createPublishDelta()
+      spatial: createSpatialDelta()
+    },
+    publish: {
+      graph: {
+        revision: 0,
+        delta: createGraphPublishDelta()
+      },
+      ui: {
+        revision: 0,
+        delta: createUiPublishDelta()
+      },
+      items: {
+        revision: 0,
+        changed: false
+      }
     }
   }
 }

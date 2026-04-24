@@ -10,9 +10,9 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  SpatialKey,
-  SpatialPatchScope
-} from '../runtime/spatial/contracts'
+  SpatialKey
+} from '../domain/spatial/contracts'
+import type { SpatialPatchScope } from '../projector/scopes/spatialScope'
 
 export type IdDelta<TId extends string> = SharedIdDelta<TId>
 
@@ -39,12 +39,6 @@ export interface SpatialDelta {
   records: IdDelta<SpatialKey>
 }
 
-export interface PublishDelta {
-  graph: GraphPublishDelta
-  items: boolean
-  ui: UiPublishDelta
-}
-
 export interface GraphPublishDelta {
   nodes: IdDelta<NodeId>
   edges: IdDelta<EdgeId>
@@ -69,9 +63,16 @@ export interface GraphPatchScope {
   groups: KeySet<GroupId>
 }
 
+export interface UiPatchScope {
+  reset: boolean
+  chrome: boolean
+  nodes: KeySet<NodeId>
+  edges: KeySet<EdgeId>
+}
+
 export interface EditorPhaseScopeMap {
   graph: GraphPatchScope
   spatial: SpatialPatchScope
-  ui: undefined
+  ui: UiPatchScope
   items: undefined
 }

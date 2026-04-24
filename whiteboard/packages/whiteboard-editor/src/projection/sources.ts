@@ -1,7 +1,11 @@
 import {
   store
 } from '@shared/core'
-import type { IdDelta } from '@shared/projector'
+import {
+  composeSync,
+  createIdDeltaFamilySync,
+  createValueSync
+} from '@shared/projector'
 import type {
   Change,
   ChromeView,
@@ -13,8 +17,7 @@ import type {
   NodeView,
   Result,
   SceneItem,
-  Snapshot,
-  UiSnapshot
+  Snapshot
 } from '@whiteboard/editor-graph'
 
 export interface ProjectionSources {
@@ -36,6 +39,18 @@ export interface ProjectionSourceState {
   sync(result: Result): void
 }
 
+interface ProjectionSink {
+  snapshot: store.ValueStore<Snapshot>
+  items: store.ValueStore<readonly SceneItem[]>
+  chrome: store.ValueStore<ChromeView>
+  nodeGraph: store.FamilyStore<string, NodeView>
+  edgeGraph: store.FamilyStore<string, EdgeView>
+  mindmap: store.FamilyStore<string, MindmapView>
+  group: store.FamilyStore<string, GroupView>
+  nodeUi: store.FamilyStore<string, NodeUiView>
+  edgeUi: store.FamilyStore<string, EdgeUiView>
+}
+
 const createFamilyRead = <Key, Value>(
   family: store.FamilyStore<Key, Value>
 ): store.KeyedReadStore<Key, Value | undefined> => store.createKeyedReadStore({
@@ -44,71 +59,75 @@ const createFamilyRead = <Key, Value>(
   isEqual: (left, right) => left === right
 })
 
-const toSetEntries = <Key extends string, Value>(
-  change: IdDelta<Key>,
-  byId: ReadonlyMap<Key, Value>
-): readonly (readonly [Key, Value])[] | undefined => {
-  const set: Array<readonly [Key, Value]> = []
-  const collect = (ids: ReadonlySet<Key>) => {
-    ids.forEach((id) => {
-      const value = byId.get(id)
-      if (value !== undefined) {
-        set.push([id, value])
-      }
-    })
-  }
-
-  collect(change.added)
-  collect(change.updated)
-
-  return set.length > 0
-    ? set
-    : undefined
-}
-
-const toRemoveIds = <Key extends string>(
-  change: IdDelta<Key>
-): readonly Key[] | undefined => {
-  if (change.removed.size === 0) {
-    return undefined
-  }
-
-  return [...change.removed]
-}
-
-const applyFamilyChange = <Key extends string, Value>({
-  target,
-  previous,
-  next,
-  change
-}: {
-  target: store.FamilyStore<Key, Value>
-  previous: store.StoreFamily<Key, Value>
-  next: store.StoreFamily<Key, Value>
-  change: IdDelta<Key>
-}) => {
-  const ids = previous.ids === next.ids
-    ? undefined
-    : next.ids
-  const set = toSetEntries(change, next.byId)
-  const remove = toRemoveIds(change)
-
-  if (ids === undefined && !set?.length && !remove?.length) {
-    return
-  }
-
-  target.write.apply({
-    ...(ids !== undefined ? {
-      ids
-    } : {}),
-    ...(set?.length ? {
-      set
-    } : {}),
-    ...(remove?.length ? {
-      remove
-    } : {})
+const projectionSync = composeSync<
+  Snapshot,
+  Change,
+  ProjectionSink
+>(
+  createValueSync({
+    hasChanged: () => true,
+    read: snapshot => snapshot,
+    write: (value, sink) => {
+      sink.snapshot.set(value)
+    }
+  }),
+  createValueSync({
+    hasChanged: change => change.items.changed,
+    read: snapshot => snapshot.items,
+    write: (value, sink) => {
+      sink.items.set(value)
+    }
+  }),
+  createValueSync({
+    hasChanged: change => change.ui.chrome.changed,
+    read: snapshot => snapshot.ui.chrome,
+    write: (value, sink) => {
+      sink.chrome.set(value)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.graph.nodes,
+    read: snapshot => snapshot.graph.nodes,
+    apply: (patch, sink) => {
+      sink.nodeGraph.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.graph.edges,
+    read: snapshot => snapshot.graph.edges,
+    apply: (patch, sink) => {
+      sink.edgeGraph.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.graph.owners.mindmaps,
+    read: snapshot => snapshot.graph.owners.mindmaps,
+    apply: (patch, sink) => {
+      sink.mindmap.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.graph.owners.groups,
+    read: snapshot => snapshot.graph.owners.groups,
+    apply: (patch, sink) => {
+      sink.group.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.ui.nodes,
+    read: snapshot => snapshot.ui.nodes,
+    apply: (patch, sink) => {
+      sink.nodeUi.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.ui.edges,
+    read: snapshot => snapshot.ui.edges,
+    apply: (patch, sink) => {
+      sink.edgeUi.write.apply(patch)
+    }
   })
-}
+)
 
 export const createProjectionSources = (
   initial: Snapshot
@@ -134,6 +153,17 @@ export const createProjectionSources = (
   const edgeUiFamily = store.createFamilyStore({
     initial: initial.ui.edges
   })
+  const sink: ProjectionSink = {
+    snapshot,
+    items,
+    chrome,
+    nodeGraph: nodeGraphFamily,
+    edgeGraph: edgeGraphFamily,
+    mindmap: mindmapFamily,
+    group: groupFamily,
+    nodeUi: nodeUiFamily,
+    edgeUi: edgeUiFamily
+  }
 
   return {
     sources: {
@@ -151,55 +181,14 @@ export const createProjectionSources = (
     },
     sync: (result) => {
       const previous = snapshot.get()
-      const next = result.snapshot
-      const change: Change = result.change
 
       store.batch(() => {
-        snapshot.set(next)
-
-        applyFamilyChange({
-          target: nodeGraphFamily,
-          previous: previous.graph.nodes,
-          next: next.graph.nodes,
-          change: change.graph.nodes
+        projectionSync.sync({
+          previous,
+          next: result.snapshot,
+          change: result.change,
+          sink
         })
-        applyFamilyChange({
-          target: edgeGraphFamily,
-          previous: previous.graph.edges,
-          next: next.graph.edges,
-          change: change.graph.edges
-        })
-        applyFamilyChange({
-          target: mindmapFamily,
-          previous: previous.graph.owners.mindmaps,
-          next: next.graph.owners.mindmaps,
-          change: change.graph.owners.mindmaps
-        })
-        applyFamilyChange({
-          target: groupFamily,
-          previous: previous.graph.owners.groups,
-          next: next.graph.owners.groups,
-          change: change.graph.owners.groups
-        })
-        applyFamilyChange({
-          target: nodeUiFamily,
-          previous: previous.ui.nodes,
-          next: next.ui.nodes,
-          change: change.ui.nodes
-        })
-        applyFamilyChange({
-          target: edgeUiFamily,
-          previous: previous.ui.edges,
-          next: next.ui.edges,
-          change: change.ui.edges
-        })
-
-        if (change.items.changed) {
-          items.set(next.items)
-        }
-        if (change.ui.chrome.changed) {
-          chrome.set(next.ui.chrome)
-        }
       })
     }
   }

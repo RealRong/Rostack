@@ -19,11 +19,16 @@ export {
 export { publishFamily } from './publish/family'
 export { isListEqual, publishList } from './publish/list'
 export { publishValue } from './publish/value'
+export {
+  definePhase,
+  defineProjectorSpec
+} from './projector/define'
 export { createProjector } from './projector/createProjector'
 export { composeSync } from './source/compose'
 export { createEntityDeltaSync } from './source/entity'
 export { createEventSync } from './source/event'
 export { createFamilySync } from './source/family'
+export { createIdDeltaFamilySync } from './source/idDelta'
 export { createListSync } from './source/list'
 export { createValueSync } from './source/value'
 export { idDelta } from './delta/idDelta'
@@ -73,6 +78,10 @@ export type {
   EntityDeltaSyncPatch,
   EntityDeltaSyncSpec
 } from './source/entity'
+export type {
+  IdDeltaFamilySyncPatch,
+  IdDeltaFamilySyncSpec
+} from './source/idDelta'
 export type { Harness } from './contracts/testing'
 export type {
   Phase as ProjectorTracePhase,

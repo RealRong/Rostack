@@ -221,31 +221,24 @@ export type ReducerTx = {
   }
   dirty: {
     document: {
-      value(): void
+      touch(): void
       background(): void
     }
     canvas: {
       order(): void
     }
     node: {
-      geometry(id: NodeId): void
-      value(id: NodeId): void
+      touch(id: NodeId): void
     }
     edge: {
-      geometry(id: EdgeId): void
-      value(id: EdgeId): void
+      touch(id: EdgeId): void
     }
     group: {
-      value(id: GroupId): void
+      touch(id: GroupId): void
     }
     mindmap: {
       layout(id: MindmapId): void
-      value(id: MindmapId): void
-    }
-    projection: {
-      node(): void
-      edge(): void
-      mindmap(): void
+      touch(id: MindmapId): void
     }
   }
   reconcile: {

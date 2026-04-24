@@ -21,7 +21,7 @@ export const createEdgeLifecycleApi = (
     })
     changeSet.markAdded(tx._runtime.changes.edges, edge.id)
     tx._runtime.changes.canvasOrder = true
-    tx.dirty.edge.value(edge.id)
+    tx.dirty.edge.touch(edge.id)
     tx.dirty.canvas.order()
   },
   restore: (
@@ -39,7 +39,7 @@ export const createEdgeLifecycleApi = (
     })
     changeSet.markAdded(tx._runtime.changes.edges, edge.id)
     tx._runtime.changes.canvasOrder = true
-    tx.dirty.edge.value(edge.id)
+    tx.dirty.edge.touch(edge.id)
     tx.dirty.canvas.order()
   },
   delete: (id: import('@whiteboard/core/types').EdgeId) => {
@@ -58,7 +58,7 @@ export const createEdgeLifecycleApi = (
     deleteEdge(tx._runtime.draft, id)
     changeSet.markRemoved(tx._runtime.changes.edges, id)
     tx._runtime.changes.canvasOrder = true
-    tx.dirty.edge.value(id)
+    tx.dirty.edge.touch(id)
     tx.dirty.canvas.order()
   }
 })

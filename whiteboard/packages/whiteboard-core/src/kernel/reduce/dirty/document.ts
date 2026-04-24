@@ -3,7 +3,7 @@ import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 export const createDirtyDocumentApi = (
   tx: ReducerTx
 ) => ({
-  value: () => {
+  touch: () => {
     tx._runtime.dirty.document = true
   },
   background: () => {

@@ -50,7 +50,7 @@ export const createEdgeLabelsCollectionApi = (
         labels
       })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.value(edgeId)
+      tx.dirty.edge.touch(edgeId)
     },
     delete: (itemId: string) => {
       const current = getEdge(tx._runtime.draft, edgeId)
@@ -73,7 +73,7 @@ export const createEdgeLabelsCollectionApi = (
         labels: labels.filter((entry) => entry.id !== itemId)
       })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.value(edgeId)
+      tx.dirty.edge.touch(edgeId)
     },
     move: (itemId: string, anchor: import('@whiteboard/core/kernel/reduce/types').OrderedAnchor) => {
       const current = getEdge(tx._runtime.draft, edgeId)
@@ -110,7 +110,7 @@ export const createEdgeLabelsCollectionApi = (
         labels
       })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.value(edgeId)
+      tx.dirty.edge.touch(edgeId)
     }
   },
   field: {
@@ -132,7 +132,7 @@ export const createEdgeLabelsCollectionApi = (
       }
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.value(edgeId)
+      tx.dirty.edge.touch(edgeId)
     },
     unset: (labelId: string, field: import('@whiteboard/core/types').EdgeLabelField) => {
       const current = getEdge(tx._runtime.draft, edgeId)
@@ -154,7 +154,7 @@ export const createEdgeLabelsCollectionApi = (
       labels[index] = nextLabel
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.value(edgeId)
+      tx.dirty.edge.touch(edgeId)
     }
   },
   record: {
@@ -183,7 +183,7 @@ export const createEdgeLabelsCollectionApi = (
       }
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.value(edgeId)
+      tx.dirty.edge.touch(edgeId)
     },
     unset: (labelId: string, scope: import('@whiteboard/core/types').EdgeLabelRecordScope, path: string) => {
       const current = getEdge(tx._runtime.draft, edgeId)
@@ -214,7 +214,7 @@ export const createEdgeLabelsCollectionApi = (
       }
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.value(edgeId)
+      tx.dirty.edge.touch(edgeId)
     }
   }
 })

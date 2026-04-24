@@ -313,5 +313,4 @@ export type Invalidation = {
   edges: Set<EdgeId>
   groups: Set<GroupId>
   mindmaps: Set<MindmapId>
-  projections: Set<string>
 }

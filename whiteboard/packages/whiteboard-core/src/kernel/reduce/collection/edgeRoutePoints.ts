@@ -58,7 +58,7 @@ export const createEdgeRoutePointsCollectionApi = (
         }
       })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.geometry(edgeId)
+      tx.dirty.edge.touch(edgeId)
     },
     delete: (itemId: string) => {
       const current = getEdge(tx._runtime.draft, edgeId)
@@ -84,7 +84,7 @@ export const createEdgeRoutePointsCollectionApi = (
           : { kind: 'auto' }
       })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.geometry(edgeId)
+      tx.dirty.edge.touch(edgeId)
     },
     move: (itemId: string, anchor: import('@whiteboard/core/kernel/reduce/types').OrderedAnchor) => {
       const current = getEdge(tx._runtime.draft, edgeId)
@@ -121,7 +121,7 @@ export const createEdgeRoutePointsCollectionApi = (
         route: { kind: 'manual', points }
       })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.geometry(edgeId)
+      tx.dirty.edge.touch(edgeId)
     }
   },
   field: {
@@ -149,7 +149,7 @@ export const createEdgeRoutePointsCollectionApi = (
         route: { kind: 'manual', points }
       })
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
-      tx.dirty.edge.geometry(edgeId)
+      tx.dirty.edge.touch(edgeId)
     }
   }
 })

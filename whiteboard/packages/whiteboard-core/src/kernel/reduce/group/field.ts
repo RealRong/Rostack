@@ -39,7 +39,7 @@ export const createGroupFieldApi = (
     })
     tx._runtime.draft.groups.set(id, setGroupField(current, field, value))
     changeSet.markUpdated(tx._runtime.changes.groups, id)
-    tx.dirty.group.value(id)
+    tx.dirty.group.touch(id)
   },
   unset: (
     id: import('@whiteboard/core/types').GroupId,
@@ -57,6 +57,6 @@ export const createGroupFieldApi = (
     })
     tx._runtime.draft.groups.set(id, unsetGroupField(current, field))
     changeSet.markUpdated(tx._runtime.changes.groups, id)
-    tx.dirty.group.value(id)
+    tx.dirty.group.touch(id)
   }
 })

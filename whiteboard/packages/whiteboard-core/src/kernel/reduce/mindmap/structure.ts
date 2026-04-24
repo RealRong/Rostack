@@ -28,7 +28,7 @@ export const createMindmapStructureApi = (
     input.nodes.forEach((node) => {
       setNode(tx._runtime.draft, node)
       changeSet.markAdded(tx._runtime.changes.nodes, node.id)
-      tx.dirty.node.value(node.id)
+      tx.dirty.node.touch(node.id)
     })
     tx._runtime.changes.canvasOrder = true
     tx.dirty.canvas.order()
@@ -43,7 +43,7 @@ export const createMindmapStructureApi = (
     snapshot.nodes.forEach((node) => {
       tx._runtime.draft.nodes.set(node.id, node)
       changeSet.markAdded(tx._runtime.changes.nodes, node.id)
-      tx.dirty.node.value(node.id)
+      tx.dirty.node.touch(node.id)
     })
     tx.collection.canvas.order().structure.insert({
       kind: 'mindmap',
@@ -79,7 +79,7 @@ export const createMindmapStructureApi = (
       })
       deleteEdge(tx._runtime.draft, edge.id)
       changeSet.markRemoved(tx._runtime.changes.edges, edge.id)
-      tx.dirty.edge.value(edge.id)
+      tx.dirty.edge.touch(edge.id)
     })
     tx._runtime.inverse.unshift({
       type: 'mindmap.restore',
@@ -88,12 +88,12 @@ export const createMindmapStructureApi = (
     nodeIds.forEach((nodeId) => {
       deleteNode(tx._runtime.draft, nodeId)
       changeSet.markRemoved(tx._runtime.changes.nodes, nodeId)
-      tx.dirty.node.value(nodeId)
+      tx.dirty.node.touch(nodeId)
     })
     deleteMindmap(tx._runtime.draft, id)
     changeSet.markRemoved(tx._runtime.changes.mindmaps, id)
     tx._runtime.changes.canvasOrder = true
     tx.dirty.canvas.order()
-    tx.dirty.mindmap.value(id)
+    tx.dirty.mindmap.touch(id)
   }
 })

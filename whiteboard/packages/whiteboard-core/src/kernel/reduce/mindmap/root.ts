@@ -25,7 +25,7 @@ export const createMindmapRootApi = (
       position: clonePoint(position)!
     })
     changeSet.markUpdated(tx._runtime.changes.nodes, root.id)
-    tx.dirty.node.geometry(root.id)
+    tx.dirty.node.touch(root.id)
     tx.dirty.mindmap.layout(id)
   }
 })

@@ -64,8 +64,7 @@ export const createInvalidation = (): Invalidation => ({
   nodes: new Set<NodeId>(),
   edges: new Set<EdgeId>(),
   groups: new Set<GroupId>(),
-  mindmaps: new Set<MindmapId>(),
-  projections: new Set<string>()
+  mindmaps: new Set<MindmapId>()
 })
 
 export const sameCanvasRef = (

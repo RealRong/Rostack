@@ -54,7 +54,7 @@ export const createMindmapTopicRecordApi = (
     }
     tx._runtime.draft.nodes.set(topicId, next.node)
     changeSet.markUpdated(tx._runtime.changes.nodes, topicId)
-    tx.dirty.node.value(topicId)
+    tx.dirty.node.touch(topicId)
     tx.dirty.mindmap.layout(id)
   },
   unset: (
@@ -85,7 +85,7 @@ export const createMindmapTopicRecordApi = (
     }
     tx._runtime.draft.nodes.set(topicId, next.node)
     changeSet.markUpdated(tx._runtime.changes.nodes, topicId)
-    tx.dirty.node.value(topicId)
+    tx.dirty.node.touch(topicId)
     tx.dirty.mindmap.layout(id)
   }
 })

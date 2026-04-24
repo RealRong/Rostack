@@ -22,7 +22,7 @@ export const createNodeLifecycleApi = (
       id: node.id
     })
     changeSet.markAdded(tx._runtime.changes.nodes, node.id)
-    tx.dirty.node.value(node.id)
+    tx.dirty.node.touch(node.id)
     if (isTopLevelNode(tx._runtime.draft, node)) {
       tx._runtime.changes.canvasOrder = true
       tx.dirty.canvas.order()
@@ -46,7 +46,7 @@ export const createNodeLifecycleApi = (
       id: node.id
     })
     changeSet.markAdded(tx._runtime.changes.nodes, node.id)
-    tx.dirty.node.value(node.id)
+    tx.dirty.node.touch(node.id)
   },
   delete: (id: import('@whiteboard/core/types').NodeId) => {
     const current = getNode(tx._runtime.draft, id)
@@ -63,7 +63,7 @@ export const createNodeLifecycleApi = (
     })
     deleteNode(tx._runtime.draft, id)
     changeSet.markRemoved(tx._runtime.changes.nodes, id)
-    tx.dirty.node.value(id)
+    tx.dirty.node.touch(id)
     if (slot) {
       tx._runtime.changes.canvasOrder = true
       tx.dirty.canvas.order()

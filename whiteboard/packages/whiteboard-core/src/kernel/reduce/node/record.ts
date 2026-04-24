@@ -66,7 +66,7 @@ export const createNodeRecordApi = (
     }
     tx._runtime.draft.nodes.set(id, next.node)
     changeSet.markUpdated(tx._runtime.changes.nodes, id)
-    tx.dirty.node.value(id)
+    tx.dirty.node.touch(id)
     if (current.owner?.kind === 'mindmap') {
       tx.dirty.mindmap.layout(current.owner.id)
     }
@@ -99,7 +99,7 @@ export const createNodeRecordApi = (
     }
     tx._runtime.draft.nodes.set(id, next.node)
     changeSet.markUpdated(tx._runtime.changes.nodes, id)
-    tx.dirty.node.value(id)
+    tx.dirty.node.touch(id)
     if (current.owner?.kind === 'mindmap') {
       tx.dirty.mindmap.layout(current.owner.id)
     }

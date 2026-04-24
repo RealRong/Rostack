@@ -66,7 +66,7 @@ export const createEdgeRecordApi = (
     }
     tx._runtime.draft.edges.set(id, next.edge)
     changeSet.markUpdated(tx._runtime.changes.edges, id)
-    tx.dirty.edge.value(id)
+    tx.dirty.edge.touch(id)
   },
   unset: (
     id: import('@whiteboard/core/types').EdgeId,
@@ -96,6 +96,6 @@ export const createEdgeRecordApi = (
     }
     tx._runtime.draft.edges.set(id, next.edge)
     changeSet.markUpdated(tx._runtime.changes.edges, id)
-    tx.dirty.edge.value(id)
+    tx.dirty.edge.touch(id)
   }
 })

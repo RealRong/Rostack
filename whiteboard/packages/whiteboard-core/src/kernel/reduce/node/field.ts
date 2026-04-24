@@ -2,8 +2,6 @@ import { changeSet, json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { getNode } from '@whiteboard/core/kernel/reduce/runtime'
 
-const GEOMETRY_FIELDS = new Set(['position', 'size', 'rotation'])
-
 const setNodeField = <Field extends import('@whiteboard/core/types').NodeField>(
   node: import('@whiteboard/core/types').Node,
   field: Field,
@@ -50,11 +48,7 @@ export const createNodeFieldApi = (
     )
     tx._runtime.draft.nodes.set(id, setNodeField(current, field, value))
     changeSet.markUpdated(tx._runtime.changes.nodes, id)
-    if (GEOMETRY_FIELDS.has(field)) {
-      tx.dirty.node.geometry(id)
-    } else {
-      tx.dirty.node.value(id)
-    }
+    tx.dirty.node.touch(id)
     if (field === 'owner' && current.owner?.kind === 'mindmap') {
       tx.dirty.mindmap.layout(current.owner.id)
     }
@@ -78,11 +72,7 @@ export const createNodeFieldApi = (
     })
     tx._runtime.draft.nodes.set(id, unsetNodeField(current, field))
     changeSet.markUpdated(tx._runtime.changes.nodes, id)
-    if (GEOMETRY_FIELDS.has(field)) {
-      tx.dirty.node.geometry(id)
-    } else {
-      tx.dirty.node.value(id)
-    }
+    tx.dirty.node.touch(id)
     if (current.owner?.kind === 'mindmap') {
       tx.dirty.mindmap.layout(current.owner.id)
     }

@@ -11,7 +11,7 @@ export const createGroupLifecycleApi = (
       id: group.id
     })
     changeSet.markAdded(tx._runtime.changes.groups, group.id)
-    tx.dirty.group.value(group.id)
+    tx.dirty.group.touch(group.id)
   },
   restore: (group: import('@whiteboard/core/types').Group) => {
     tx._runtime.draft.groups.set(group.id, group)
@@ -20,7 +20,7 @@ export const createGroupLifecycleApi = (
       id: group.id
     })
     changeSet.markAdded(tx._runtime.changes.groups, group.id)
-    tx.dirty.group.value(group.id)
+    tx.dirty.group.touch(group.id)
   },
   delete: (id: import('@whiteboard/core/types').GroupId) => {
     const current = tx._runtime.draft.groups.get(id)
@@ -33,6 +33,6 @@ export const createGroupLifecycleApi = (
     })
     tx._runtime.draft.groups.delete(id)
     changeSet.markRemoved(tx._runtime.changes.groups, id)
-    tx.dirty.group.value(id)
+    tx.dirty.group.touch(id)
   }
 })

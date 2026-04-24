@@ -37,49 +37,31 @@ export const RESET_READ_IMPACT: KernelReadImpact = {
   }
 }
 
-const RESET_PROJECTIONS = new Set<string>([
-  'node',
-  'edge',
-  'mindmap'
-])
-
-export const finalizeDirty = (
-  dirty: Invalidation
-): Invalidation => {
-  if (dirty.nodes.size > 0) {
-    dirty.projections.add('node')
-  }
-  if (dirty.edges.size > 0 || dirty.nodes.size > 0) {
-    dirty.projections.add('edge')
-  }
-  if (dirty.mindmaps.size > 0 || dirty.nodes.size > 0) {
-    dirty.projections.add('mindmap')
-  }
-  return dirty
-}
-
 export const deriveImpact = (
   invalidation: Invalidation
 ): KernelReadImpact => {
   const nodeIds = [...invalidation.nodes]
   const edgeIds = [...invalidation.edges]
   const reset = invalidation.document
+  const nodeTouched = nodeIds.length > 0
+  const edgeTouched = edgeIds.length > 0
+  const mindmapTouched = invalidation.mindmaps.size > 0
 
   return {
     reset,
     document: invalidation.document || invalidation.background,
     node: {
       ids: reset ? EMPTY_NODE_IDS : nodeIds,
-      geometry: reset || invalidation.canvasOrder || invalidation.mindmaps.size > 0 || nodeIds.length > 0,
+      geometry: reset || invalidation.canvasOrder || mindmapTouched || nodeTouched,
       list: reset || invalidation.canvasOrder,
-      value: reset || invalidation.mindmaps.size > 0 || nodeIds.length > 0
+      value: reset || mindmapTouched || nodeTouched
     },
     edge: {
       ids: reset ? EMPTY_EDGE_IDS : edgeIds,
       nodeIds: reset ? EMPTY_NODE_IDS : nodeIds,
-      geometry: reset || invalidation.canvasOrder || nodeIds.length > 0 || edgeIds.length > 0,
+      geometry: reset || invalidation.canvasOrder || nodeTouched || edgeTouched,
       list: reset || invalidation.canvasOrder,
-      value: reset || nodeIds.length > 0 || edgeIds.length > 0
+      value: reset || nodeTouched || edgeTouched
     }
   }
 }
@@ -112,7 +94,7 @@ export const createCommitApi = (
       return tx._runtime.shortCircuit
     }
 
-    const invalidation = finalizeDirty(tx._runtime.dirty)
+    const invalidation = tx._runtime.dirty
     return ok({
       doc: materializeDraftDocument(tx._runtime.draft),
       changes: tx._runtime.changes,
@@ -138,13 +120,12 @@ export const createDocumentReplaceResult = (
       background: true,
       canvasOrder: true
     },
-    invalidation: finalizeDirty({
+    invalidation: {
       ...createInvalidation(),
       document: true,
       background: true,
-      canvasOrder: true,
-      projections: new Set(RESET_PROJECTIONS)
-    }),
+      canvasOrder: true
+    },
     inverse: tx._runtime.inverse,
     history: {
       footprint: []

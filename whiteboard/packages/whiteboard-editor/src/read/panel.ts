@@ -7,9 +7,9 @@ import {
 } from '@whiteboard/core/selection'
 import type { Edge, EdgeId, MindmapId, MindmapNodeId, NodeId, NodeModel } from '@whiteboard/core/types'
 import { collection, equal } from '@shared/core'
-import type { MindmapStructureItem } from '@whiteboard/editor/document/read'
 import type { EditorDefaults, EditorNodePaintDefaults } from '@whiteboard/editor/types/defaults'
 import type { EditSession } from '@whiteboard/editor/session/edit'
+import type { EditorMindmapStructure } from './mindmap'
 import type {
   SelectionEdgeStats,
   SelectionEdgeTypeInfo,
@@ -371,7 +371,7 @@ export const readNodeScope = ({
   primaryNode?: NodeModel
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
   nodeStats: SelectionNodeStats
-  readMindmapStructure: (id: MindmapId) => MindmapStructureItem | undefined
+  readMindmapStructure: (id: MindmapId) => EditorMindmapStructure | undefined
   defaults: EditorDefaults['selection']
 }): SelectionToolbarNodeScope => {
   const readPaintDefaults = defaults.node.readPaint
@@ -662,7 +662,7 @@ export const resolveSelectionToolbar = ({
   nodeScope: SelectionToolbarNodeScope | undefined
   edgeScope: SelectionToolbarEdgeScope | undefined
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
-  readMindmapStructure: (id: MindmapId) => MindmapStructureItem | undefined
+  readMindmapStructure: (id: MindmapId) => EditorMindmapStructure | undefined
   tool: Tool
   edit: EditSession
   interactionChrome: boolean

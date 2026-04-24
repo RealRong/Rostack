@@ -17,9 +17,10 @@ import { patchFamilyEntry } from './helpers'
 
 const readNodeEntry = (
   input: Input,
+  owner: WorkingState['indexes']['ownerByNode'],
   nodeId: NodeId
 ): GraphNodeEntry | undefined => {
-  const node = input.document.snapshot.state.facts.entities.nodes.get(nodeId)
+  const node = input.document.snapshot.document.nodes[nodeId]
   if (!node) {
     return undefined
   }
@@ -27,7 +28,7 @@ const readNodeEntry = (
   return {
     base: {
       node,
-      owner: input.document.snapshot.state.facts.relations.nodeOwner.get(nodeId)
+      owner: owner.get(nodeId)
     },
     draft: input.session.draft.nodes.get(nodeId),
     preview: input.session.preview.nodes.get(nodeId)
@@ -53,7 +54,11 @@ export const patchNode = (input: {
   nodeId: NodeId
 }): boolean => {
   const previous = input.working.graph.nodes.get(input.nodeId)
-  const entry = readNodeEntry(input.input, input.nodeId)
+  const entry = readNodeEntry(
+    input.input,
+    input.working.indexes.ownerByNode,
+    input.nodeId
+  )
   const owner = entry?.base.owner
   const treeRect = owner?.kind === 'mindmap'
     ? input.working.graph.owners.mindmaps.get(owner.id)?.tree.layout?.node[input.nodeId]
@@ -81,7 +86,8 @@ export const patchNode = (input: {
   if (geometryTouched) {
     input.delta.geometry.nodes.add(input.nodeId)
     fanoutNodeGeometry({
-      snapshot: input.input.document.snapshot,
+      indexes: input.working.indexes,
+      owner,
       queue: input.queue,
       nodeId: input.nodeId
     })

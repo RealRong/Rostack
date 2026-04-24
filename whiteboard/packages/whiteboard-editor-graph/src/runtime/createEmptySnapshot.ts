@@ -15,30 +15,7 @@ import type {
 
 export const createEmptyDocumentSnapshot = (): document.Snapshot => ({
   revision: 0,
-  state: {
-    root: documentApi.create('__editor_graph_runtime__'),
-    facts: {
-      entities: {
-        nodes: new Map(),
-        edges: new Map(),
-        owners: {
-          mindmaps: new Map(),
-          groups: new Map()
-        }
-      },
-      relations: {
-        nodeOwner: new Map(),
-        ownerNodes: {
-          mindmaps: new Map(),
-          groups: new Map()
-        },
-        parentNode: new Map(),
-        childNodes: new Map(),
-        edgeNodes: new Map(),
-        groupItems: new Map()
-      }
-    }
-  }
+  document: documentApi.create('__editor_graph_runtime__')
 })
 
 export const createEmptyInputDelta = (): Input['delta'] => ({
@@ -78,7 +55,17 @@ export const createEmptyInputDelta = (): Input['delta'] => ({
 
 export const createEmptyInput = (): Input => ({
   document: {
-    snapshot: createEmptyDocumentSnapshot()
+    previous: null,
+    snapshot: createEmptyDocumentSnapshot(),
+    delta: {
+      reset: false,
+      background: false,
+      order: false,
+      nodes: changeSet.create<NodeId>(),
+      edges: changeSet.create<EdgeId>(),
+      mindmaps: changeSet.create<MindmapId>(),
+      groups: changeSet.create<GroupId>()
+    }
   },
   session: {
     edit: null,

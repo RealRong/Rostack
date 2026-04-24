@@ -12,9 +12,9 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview'
+import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import type { GraphRead } from '@whiteboard/editor/read/graph'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -68,22 +68,24 @@ const previewMindmapDrag = (
 
 const readMindmapTreeView = (
   mindmap: {
-    structure: DocumentRead['mindmap']['structure']
+    id: GraphRead['mindmap']['id']
+    structure: GraphRead['mindmap']['structure']
     layout: GraphRead['mindmap']['view']
   },
   treeId: NodeId
 ) => {
-  const structure = mindmap.structure.get(treeId)
+  const structure = mindmap.structure(treeId)
   const view = mindmap.layout.get(treeId)
+  const id = mindmap.id(treeId)
   const computed = view?.tree.layout
-  if (!structure || !computed) {
+  if (!structure || !computed || !id) {
     return undefined
   }
 
   return {
-    id: structure.id,
+    id,
     tree: structure.tree,
-    layout: structure.layout,
+    layout: structure.tree.layout,
     computed
   }
 }
@@ -92,7 +94,8 @@ export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    structure: DocumentRead['mindmap']['structure']
+    id: GraphRead['mindmap']['id']
+    structure: GraphRead['mindmap']['structure']
     layout: GraphRead['mindmap']['view']
   }
   node: Pick<DocumentRead, 'node'>
@@ -114,8 +117,8 @@ export const tryStartMindmapDrag = (input: {
       : undefined
   const locked = Boolean(
     (treeId
-        ? (() => {
-          const structure = input.mindmap.structure.get(treeId)
+      ? (() => {
+          const structure = input.mindmap.structure(treeId)
           return structure
             ? input.node.node.committed.get(structure.rootId)?.node.locked
             : undefined
@@ -172,7 +175,8 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    structure: DocumentRead['mindmap']['structure']
+    id: GraphRead['mindmap']['id']
+    structure: GraphRead['mindmap']['structure']
     layout: GraphRead['mindmap']['view']
   }
   node: Pick<DocumentRead, 'node'>
@@ -185,7 +189,7 @@ export const tryStartMindmapDragForNode = (input: {
     pickedNode?.locked
     || (treeId
       ? (() => {
-        const structure = input.mindmap.structure.get(treeId)
+        const structure = input.mindmap.structure(treeId)
         return structure
             ? input.node.node.committed.get(structure.rootId)?.node.locked
             : undefined
@@ -229,7 +233,8 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    structure: DocumentRead['mindmap']['structure']
+    id: GraphRead['mindmap']['id']
+    structure: GraphRead['mindmap']['structure']
     layout: GraphRead['mindmap']['view']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
@@ -291,7 +296,8 @@ export const createMindmapDragSession = (
       state,
       world,
       mindmap: {
-        structure: ctx.document.mindmap.structure,
+        id: ctx.projection.mindmap.id,
+        structure: ctx.projection.mindmap.structure,
         layout: ctx.projection.mindmap.view
       }
     })

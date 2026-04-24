@@ -19,6 +19,10 @@ import type {
 import { isMindmapLayoutEqual, isMindmapViewEqual } from '../equality'
 import { collectRects, isRectEqual } from '../geometry'
 import {
+  readMindmapNodeIds,
+  readMindmapTree
+} from '../indexes'
+import {
   readProjectedNodeRect,
   readProjectedNodeSize
 } from '../projection'
@@ -62,9 +66,10 @@ const readEnterProgress = (
 
 const readNodeEntry = (
   input: Input,
+  ownerByNode: WorkingState['indexes']['ownerByNode'],
   nodeId: NodeId
 ): GraphNodeEntry | undefined => {
-  const node = input.document.snapshot.state.facts.entities.nodes.get(nodeId)
+  const node = input.document.snapshot.document.nodes[nodeId]
   if (!node) {
     return undefined
   }
@@ -72,7 +77,7 @@ const readNodeEntry = (
   return {
     base: {
       node,
-      owner: input.document.snapshot.state.facts.relations.nodeOwner.get(nodeId)
+      owner: ownerByNode.get(nodeId)
     },
     draft: input.session.draft.nodes.get(nodeId),
     preview: input.session.preview.nodes.get(nodeId)
@@ -145,27 +150,33 @@ const applyEnterPreview = (input: {
 
 const buildMindmapEntry = (
   input: Input,
+  working: WorkingState,
   mindmapId: MindmapId
 ): GraphMindmapEntry | undefined => {
-  const mindmap = input.document.snapshot.state.facts.entities.owners.mindmaps.get(mindmapId)
+  const mindmap = input.document.snapshot.document.mindmaps[mindmapId]
   if (!mindmap) {
     return undefined
   }
 
-  const nodeIds = input.document.snapshot.state.facts.relations.ownerNodes.mindmaps.get(mindmapId) ?? []
-  const tree = mindmapApi.tree.fromRecord(mindmap)
+  const nodeIds = working.indexes.mindmapNodes.get(mindmapId) ?? readMindmapNodeIds(mindmap)
+  const tree = readMindmapTree(mindmap)
+  if (!tree) {
+    return undefined
+  }
   const preview = input.session.preview.mindmap
-  const rootEntry = readNodeEntry(input, tree.rootNodeId)
+  const rootEntry = readNodeEntry(input, working.indexes.ownerByNode, tree.rootNodeId)
 
   if (!rootEntry) {
-    return {
-      base: {
-        mindmap
-      },
-      nodeIds,
-      tree: {
-        layout: undefined,
-        connectors: []
+      return {
+        base: {
+          mindmap
+        },
+        rootId: tree.rootNodeId,
+        nodeIds,
+        structure: tree,
+        tree: {
+          layout: undefined,
+          connectors: []
       }
     }
   }
@@ -180,7 +191,7 @@ const buildMindmapEntry = (
     computed: mindmapApi.layout.compute(
       tree,
       (nodeId) => {
-        const nodeEntry = readNodeEntry(input, nodeId)
+        const nodeEntry = readNodeEntry(input, working.indexes.ownerByNode, nodeId)
         return nodeEntry
           ? readProjectedNodeSize({
               entry: nodeEntry,
@@ -224,7 +235,9 @@ const buildMindmapEntry = (
     base: {
       mindmap
     },
+    rootId: tree.rootNodeId,
     nodeIds,
+    structure: tree,
     tree: {
       layout,
       connectors: mindmapApi.render.resolve({
@@ -316,14 +329,16 @@ export const patchMindmap = (input: {
   mindmapId: MindmapId
 }): boolean => {
   const previous = input.working.graph.owners.mindmaps.get(input.mindmapId)
-  const entry = buildMindmapEntry(input.input, input.mindmapId)
+  const entry = buildMindmapEntry(input.input, input.working, input.mindmapId)
   const next = entry
     ? buildMindmapView({
         mindmap: entry.base.mindmap,
+        rootId: entry.rootId,
         nodeIds: patchOrderedIds({
           previous: previous?.structure.nodeIds,
           next: entry.nodeIds
         }),
+        tree: entry.structure,
         layout: entry.tree.layout,
         connectors: entry.tree.connectors
       })
@@ -351,7 +366,6 @@ export const patchMindmap = (input: {
   if (geometryTouched) {
     input.delta.geometry.mindmaps.add(input.mindmapId)
     fanoutMindmapGeometry({
-      snapshot: input.input.document.snapshot,
       queue: input.queue,
       mindmapId: input.mindmapId
     })

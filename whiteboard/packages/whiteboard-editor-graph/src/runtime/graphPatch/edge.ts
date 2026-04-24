@@ -21,9 +21,10 @@ import { patchFamilyEntry } from './helpers'
 
 const readEdgeEntry = (
   input: Input,
+  indexes: WorkingState['indexes'],
   edgeId: EdgeId
 ): GraphEdgeEntry | undefined => {
-  const edge = input.document.snapshot.state.facts.entities.edges.get(edgeId)
+  const edge = input.document.snapshot.document.edges[edgeId]
   if (!edge) {
     return undefined
   }
@@ -31,7 +32,7 @@ const readEdgeEntry = (
   return {
     base: {
       edge,
-      nodes: input.document.snapshot.state.facts.relations.edgeNodes.get(edgeId) ?? {}
+      nodes: indexes.edgeNodesByEdge.get(edgeId) ?? {}
     },
     draft: input.session.draft.edges.get(edgeId),
     preview: input.session.preview.edges.get(edgeId)
@@ -105,7 +106,7 @@ export const patchEdge = (input: {
   edgeId: EdgeId
 }): boolean => {
   const previous = input.working.graph.edges.get(input.edgeId)
-  const entry = readEdgeEntry(input.input, input.edgeId)
+  const entry = readEdgeEntry(input.input, input.working.indexes, input.edgeId)
   const next = entry
     ? buildEdgeView({
         edgeId: input.edgeId,

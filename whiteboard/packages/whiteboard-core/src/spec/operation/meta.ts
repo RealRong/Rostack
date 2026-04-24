@@ -1,23 +1,9 @@
-import { meta as mutationMeta, type OpSync } from '@shared/mutation'
+import {
+  meta as mutationMeta
+} from '@shared/mutation'
 import type { Operation } from '@whiteboard/core/types'
 
-export type OperationType = Operation['type']
-
-export type OperationFamily =
-  | 'document'
-  | 'node'
-  | 'edge'
-  | 'group'
-  | 'mindmap'
-
-export type OperationMeta = {
-  family: OperationFamily
-  sync?: OpSync
-}
-
-export type OperationMetaTable = Record<OperationType, OperationMeta>
-
-const TABLE = {
+export const META = mutationMeta.family<Operation>({
   'document.replace': {
     family: 'document',
     sync: 'checkpoint'
@@ -166,6 +152,4 @@ const TABLE = {
   'mindmap.topic.collapse': {
     family: 'mindmap'
   }
-} satisfies OperationMetaTable
-
-export const META = mutationMeta.create<Operation>(TABLE)
+})

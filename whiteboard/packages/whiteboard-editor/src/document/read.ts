@@ -1,26 +1,16 @@
+import type { SliceExportResult } from '@whiteboard/core/document'
 import { document as documentApi } from '@whiteboard/core/document'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import {
-  mindmap as mindmapApi,
-  type MindmapLayout,
-  type MindmapLayoutSpec,
-  type MindmapRenderConnector,
-  type MindmapTree
-} from '@whiteboard/core/mindmap'
-import { node as nodeApi, type SnapCandidate } from '@whiteboard/core/node'
-import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
+import { node as nodeApi } from '@whiteboard/core/node'
 import type {
-  CanvasItemRef,
   Document,
   Edge,
   EdgeId,
-  GroupId,
   Node,
   NodeId,
   Rect
 } from '@whiteboard/core/types'
-import type { SliceExportResult } from '@whiteboard/core/document'
 import type { ResolvedEdgeEnds } from '@whiteboard/core/types/edge'
 import type { Engine, Snapshot } from '@whiteboard/engine'
 import { equal, store } from '@shared/core'
@@ -39,48 +29,11 @@ export type EdgeItem = {
   ends: ResolvedEdgeEnds
 }
 
-export type MindmapStructureItem = {
-  id: string
-  rootId: NodeId
-  nodeIds: readonly NodeId[]
-  tree: MindmapTree
-  layout: MindmapLayoutSpec
-}
-
-export type MindmapLayoutItem = {
-  id: string
-  rootId: NodeId
-  nodeIds: readonly NodeId[]
-  computed: MindmapLayout
-  connectors: readonly MindmapRenderConnector[]
-}
-
-export type MindmapSceneItem = {
-  id: string
-  rootId: NodeId
-  nodeIds: readonly NodeId[]
-  bbox: Rect
-  connectors: readonly MindmapRenderConnector[]
-}
-
 export interface DocumentRead {
   document: {
     get: () => Document
     background: store.ReadStore<Document['background'] | undefined>
     bounds: () => Rect
-  }
-  group: {
-    ofNode: (nodeId: NodeId) => GroupId | undefined
-    target: (groupId: GroupId) => SelectionTarget | undefined
-    exactIds: (target: SelectionTarget) => readonly GroupId[]
-  }
-  index: {
-    snap: {
-      inRect: (rect: Rect) => readonly SnapCandidate[]
-    }
-  }
-  scene: {
-    list: store.ReadStore<readonly CanvasItemRef[]>
   }
   slice: {
     fromSelection: (input: {
@@ -95,18 +48,6 @@ export interface DocumentRead {
   edge: {
     list: store.ReadStore<readonly EdgeId[]>
     item: store.KeyedReadStore<EdgeId, EdgeItem | undefined>
-    related: (nodeIds: Iterable<NodeId>) => readonly EdgeId[]
-    idsInRect: (
-      rect: Rect,
-      options?: {
-        match?: 'touch' | 'contain'
-      }
-    ) => EdgeId[]
-  }
-  mindmap: {
-    list: store.ReadStore<readonly string[]>
-    structure: store.KeyedReadStore<NodeId, MindmapStructureItem | undefined>
-    layout: store.KeyedReadStore<NodeId, MindmapLayoutItem | undefined>
   }
 }
 
@@ -115,24 +56,6 @@ const EMPTY_RECT: Rect = {
   y: 0,
   width: 0,
   height: 0
-}
-
-const readSnapshotDocument = (
-  snapshot: Snapshot
-) => snapshot.state.root
-
-const readMindmapId = (
-  snapshot: Snapshot,
-  value: string
-): string | undefined => {
-  if (snapshot.state.facts.entities.owners.mindmaps.has(value)) {
-    return value
-  }
-
-  const owner = snapshot.state.facts.relations.nodeOwner.get(value)
-  return owner?.kind === 'mindmap'
-    ? owner.id
-    : undefined
 }
 
 const isNodeItemEqual = (
@@ -161,36 +84,6 @@ const isEdgeItemEqual = (
     && left.edge === right.edge
     && edgeApi.equal.resolvedEnd(left.ends.source, right.ends.source)
     && edgeApi.equal.resolvedEnd(left.ends.target, right.ends.target)
-  )
-)
-
-const isMindmapStructureEqual = (
-  left: MindmapStructureItem | undefined,
-  right: MindmapStructureItem | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.rootId === right.rootId
-    && left.layout === right.layout
-    && left.tree === right.tree
-    && equal.sameOrder(left.nodeIds, right.nodeIds)
-  )
-)
-
-const isMindmapLayoutEqual = (
-  left: MindmapLayoutItem | undefined,
-  right: MindmapLayoutItem | undefined
-) => (
-  left === right
-  || (
-    left !== undefined
-    && right !== undefined
-    && left.rootId === right.rootId
-    && left.computed === right.computed
-    && left.connectors === right.connectors
-    && equal.sameOrder(left.nodeIds, right.nodeIds)
   )
 )
 
@@ -244,90 +137,6 @@ const readCommittedNodeSnapshot = ({
   }
 }
 
-const buildMindmapStructure = ({
-  snapshot,
-  mindmapId
-}: {
-  snapshot: Snapshot
-  mindmapId: string
-}): MindmapStructureItem | undefined => {
-  const record = snapshot.state.root.mindmaps[mindmapId]
-  if (!record) {
-    return undefined
-  }
-
-  const tree = mindmapApi.tree.fromRecord(record)
-  const nodeIds = snapshot.state.facts.relations.ownerNodes.mindmaps.get(mindmapId)
-    ?? mindmapApi.tree.subtreeIds(tree, tree.rootNodeId)
-
-  return {
-    id: mindmapId,
-    rootId: record.root,
-    nodeIds,
-    tree,
-    layout: tree.layout
-  }
-}
-
-const buildMindmapLayout = ({
-  structure,
-  snapshot,
-  nodeSize
-}: {
-  structure: MindmapStructureItem | undefined
-  snapshot: Snapshot
-  nodeSize: Engine['config']['nodeSize']
-}): MindmapLayoutItem | undefined => {
-  if (!structure) {
-    return undefined
-  }
-
-  const rootNode = snapshot.state.root.nodes[structure.rootId]
-  if (!rootNode) {
-    return undefined
-  }
-
-  const computed = mindmapApi.layout.anchor({
-    tree: structure.tree,
-    computed: mindmapApi.layout.compute(
-      structure.tree,
-      (nodeId) => {
-        const node = snapshot.state.root.nodes[nodeId]
-        if (!node) {
-          return {
-            width: 1,
-            height: 1
-          }
-        }
-
-        const item = buildNodeItem({
-          node,
-          nodeSize
-        })
-
-        return {
-          width: item.rect.width,
-          height: item.rect.height
-        }
-      },
-      structure.layout
-    ),
-    position: rootNode.position
-  })
-  const connectors = mindmapApi.render.resolve({
-    tree: structure.tree,
-    computed
-  }).connectors
-
-  return {
-    id: structure.id,
-    rootId: structure.rootId,
-    nodeIds: structure.nodeIds,
-    computed,
-    connectors
-  }
-}
-
 const readEdgeItem = ({
   edge,
   snapshot,
@@ -345,13 +154,13 @@ const readEdgeItem = ({
     edge,
     source: edge.source.kind === 'node'
       ? readCommittedNodeSnapshot({
-          node: snapshot.state.root.nodes[edge.source.nodeId],
+          node: snapshot.document.nodes[edge.source.nodeId],
           nodeSize
         })
       : undefined,
     target: edge.target.kind === 'node'
       ? readCommittedNodeSnapshot({
-          node: snapshot.state.root.nodes[edge.target.nodeId],
+          node: snapshot.document.nodes[edge.target.nodeId],
           nodeSize
         })
       : undefined
@@ -376,7 +185,7 @@ const readCommittedEdgeView = ({
   snapshot: Snapshot
   nodeSize: Engine['config']['nodeSize']
 }) => {
-  const edge = snapshot.state.root.edges[edgeId]
+  const edge = snapshot.document.edges[edgeId]
   if (!edge) {
     return undefined
   }
@@ -386,13 +195,13 @@ const readCommittedEdgeView = ({
       edge,
       source: edge.source.kind === 'node'
         ? readCommittedNodeSnapshot({
-            node: snapshot.state.root.nodes[edge.source.nodeId],
+            node: snapshot.document.nodes[edge.source.nodeId],
             nodeSize
           })
         : undefined,
       target: edge.target.kind === 'node'
         ? readCommittedNodeSnapshot({
-            node: snapshot.state.root.nodes[edge.target.nodeId],
+            node: snapshot.document.nodes[edge.target.nodeId],
             nodeSize
           })
         : undefined
@@ -401,39 +210,6 @@ const readCommittedEdgeView = ({
     return undefined
   }
 }
-
-const createGroupRead = ({
-  document
-}: {
-  document: () => Document
-}) => ({
-  ofNode: (nodeId: NodeId) => document().nodes[nodeId]?.groupId,
-  target: (groupId: GroupId) => {
-    const current = document()
-    if (!current.groups[groupId]) {
-      return undefined
-    }
-
-    return selectionApi.target.normalize({
-      nodeIds: documentApi.list.groupNodeIds(current, groupId),
-      edgeIds: documentApi.list.groupEdgeIds(current, groupId)
-    })
-  },
-  exactIds: (target: SelectionTarget) => {
-    const current = document()
-    const normalized = selectionApi.target.normalize(target)
-
-    return Object.keys(current.groups).filter((groupId) => (
-      selectionApi.target.equal(
-        normalized,
-        selectionApi.target.normalize({
-          nodeIds: documentApi.list.groupNodeIds(current, groupId),
-          edgeIds: documentApi.list.groupEdgeIds(current, groupId)
-        })
-      )
-    ))
-  }
-})
 
 export const createDocumentRead = ({
   engine
@@ -446,7 +222,7 @@ export const createDocumentRead = ({
   })
 
   const documentStore = store.createDerivedStore<Document>({
-    get: () => readSnapshotDocument(store.read(snapshotStore)),
+    get: () => store.read(snapshotStore).document,
     isEqual: (left, right) => left === right
   })
 
@@ -473,13 +249,6 @@ export const createDocumentRead = ({
     isEqual: equal.sameOrder
   })
 
-  const edgeRelations = store.createDerivedStore<ReadonlyMap<NodeId, ReadonlySet<EdgeId>>>({
-    get: () => edgeApi.relation.create(
-      Object.values(store.read(documentStore).edges)
-    ).nodeToEdgeIds,
-    isEqual: (left, right) => left === right
-  })
-
   const edgeItem = store.createKeyedDerivedStore<EdgeId, EdgeItem | undefined>({
     get: (edgeId) => readEdgeItem({
       edge: store.read(documentStore).edges[edgeId],
@@ -487,43 +256,6 @@ export const createDocumentRead = ({
       nodeSize: engine.config.nodeSize
     }),
     isEqual: isEdgeItemEqual
-  })
-
-  const mindmapList = store.createDerivedStore<readonly string[]>({
-    get: () => Object.keys(store.read(documentStore).mindmaps),
-    isEqual: equal.sameOrder
-  })
-
-  const mindmapStructure = store.createKeyedDerivedStore<NodeId, MindmapStructureItem | undefined>({
-    get: (id) => {
-      const snapshot = store.read(snapshotStore)
-      const mindmapId = readMindmapId(snapshot, id)
-      return mindmapId
-        ? buildMindmapStructure({
-            snapshot,
-            mindmapId
-          })
-        : undefined
-    },
-    isEqual: isMindmapStructureEqual
-  })
-
-  const mindmapLayout = store.createKeyedDerivedStore<NodeId, MindmapLayoutItem | undefined>({
-    get: (id) => buildMindmapLayout({
-      structure: store.read(mindmapStructure, id),
-      snapshot: store.read(snapshotStore),
-      nodeSize: engine.config.nodeSize
-    }),
-    isEqual: isMindmapLayoutEqual
-  })
-
-  const sceneList = store.createDerivedStore<readonly CanvasItemRef[]>({
-    get: () => store.read(documentStore).canvas.order,
-    isEqual: equal.sameOrder
-  })
-
-  const group = createGroupRead({
-    document: () => store.read(documentStore)
   })
 
   return {
@@ -534,55 +266,29 @@ export const createDocumentRead = ({
         isEqual: (left, right) => left === right
       }),
       bounds: () => {
-        const rects = store.read(sceneList).flatMap((ref) => {
-          switch (ref.kind) {
-            case 'node': {
-              const item = store.read(nodeCommitted, ref.id)
-              return item ? [item.bounds] : []
-            }
-            case 'edge': {
-              const view = readCommittedEdgeView({
-                edgeId: ref.id,
-                snapshot: store.read(snapshotStore),
-                nodeSize: engine.config.nodeSize
-              })
-              const bounds = view
-                ? edgeApi.path.bounds(view.path)
-                : undefined
-              return bounds ? [bounds] : []
-            }
-            case 'mindmap': {
-              const layout = store.read(mindmapLayout, ref.id)
-              return layout ? [layout.computed.bbox] : []
-            }
-          }
+        const nodeBounds = store.read(nodeList).flatMap((nodeId) => {
+          const item = store.read(nodeCommitted, nodeId)
+          return item ? [item.bounds] : []
         })
-
-        return (
-          rects.length > 0
-            ? geometryApi.rect.boundingRect(rects)
+        const edgeBounds = store.read(edgeList).flatMap((edgeId) => {
+          const view = readCommittedEdgeView({
+            edgeId,
+            snapshot: store.read(snapshotStore),
+            nodeSize: engine.config.nodeSize
+          })
+          const bounds = view
+            ? edgeApi.path.bounds(view.path)
             : undefined
-        ) ?? EMPTY_RECT
+
+          return bounds ? [bounds] : []
+        })
+        const bounds = geometryApi.rect.boundingRect([
+          ...nodeBounds,
+          ...edgeBounds
+        ])
+
+        return bounds ?? EMPTY_RECT
       }
-    },
-    group,
-    index: {
-      snap: {
-        inRect: (rect) => nodeApi.snap.buildCandidates(
-          store.read(nodeList).flatMap((nodeId) => {
-            const item = store.read(nodeCommitted, nodeId)
-            return item
-              ? [{
-                  id: nodeId,
-                  rect: item.rect
-                }]
-              : []
-          }).filter((candidate) => geometryApi.rect.intersects(candidate.rect, rect))
-        )
-      }
-    },
-    scene: {
-      list: sceneList
     },
     slice: {
       fromSelection: ({
@@ -607,33 +313,7 @@ export const createDocumentRead = ({
     },
     edge: {
       list: edgeList,
-      item: edgeItem,
-      related: (nodeIds) => [...edgeApi.relation.collect(
-        store.read(edgeRelations),
-        nodeIds
-      )],
-      idsInRect: (rect, options) => {
-        const mode = options?.match ?? 'touch'
-        return store.read(edgeList).filter((edgeId) => {
-          const view = readCommittedEdgeView({
-            edgeId,
-            snapshot: store.read(snapshotStore),
-            nodeSize: engine.config.nodeSize
-          })
-          return view
-            ? edgeApi.hit.test({
-                path: view.path,
-                queryRect: rect,
-                mode
-              })
-            : false
-        })
-      }
-    },
-    mindmap: {
-      list: mindmapList,
-      structure: mindmapStructure,
-      layout: mindmapLayout
+      item: edgeItem
     }
   }
 }

@@ -57,7 +57,7 @@ const createActions = (edge = createEdge()) => {
       }
     },
     group: {
-      exactIds: vi.fn(() => []),
+      exact: vi.fn(() => []),
       target: vi.fn(() => undefined)
     },
     mindmap: {

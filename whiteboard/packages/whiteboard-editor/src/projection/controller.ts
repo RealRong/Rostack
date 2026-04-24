@@ -185,7 +185,7 @@ const createBootstrapDelta = (input: {
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
 }): InputDelta => {
   const delta = createEmptyEditorGraphInputDelta()
-  delta.document = createDocumentInputDelta(input.engine.change)
+  delta.document = createDocumentInputDelta(input.engine.delta)
   delta.ui.tool = true
   delta.ui.selection = true
   delta.ui.hover = true
@@ -241,6 +241,7 @@ export const createProjectionController = ({
   const listeners = new Set<(result: Result) => void>()
   const state = {
     engine: engine.current(),
+    previousDocumentSnapshot: null as ReturnType<Engine['current']>['snapshot'] | null,
     pending: createEmptyEditorGraphInputDelta(),
     flushing: false,
     scheduled: false
@@ -287,6 +288,7 @@ export const createProjectionController = ({
       while (hasEditorGraphInputDelta(state.pending)) {
         const delta = takeEditorGraphInputDelta(state.pending)
         const result = runtime.update(createEditorGraphInput({
+          previous: state.previousDocumentSnapshot,
           publish: state.engine,
           session,
           layout,
@@ -308,9 +310,10 @@ export const createProjectionController = ({
 
   const unsubscribes = [
     engine.subscribe((publish) => {
+      state.previousDocumentSnapshot = state.engine.snapshot
       state.engine = publish
       const delta = createEmptyEditorGraphInputDelta()
-      delta.document = createDocumentInputDelta(publish.change)
+      delta.document = createDocumentInputDelta(publish.delta)
       mark(delta)
     }),
     session.state.tool.subscribe(() => {

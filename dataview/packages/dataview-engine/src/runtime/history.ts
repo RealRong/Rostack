@@ -1,5 +1,5 @@
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import { META } from '@dataview/core/operation'
+import { operation } from '@dataview/core/operation'
 import type {
   HistoryApi,
   HistoryState
@@ -35,7 +35,7 @@ export const createEngineHistory = (input: {
     conflicts: () => false,
     track: (write) => (
       write.origin === 'user'
-      && write.forward.every((operation) => mutationMeta.tracksHistory(META, operation))
+      && write.forward.every((entry) => mutationMeta.tracksHistory(operation.meta, entry))
     )
   })
 

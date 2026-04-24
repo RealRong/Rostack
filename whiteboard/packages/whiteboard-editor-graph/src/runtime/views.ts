@@ -13,12 +13,12 @@ import type {
   GroupView,
   MindmapView,
   NodeView,
+  GroupItemRef,
   SessionInput
 } from '../contracts/editor'
 import type {
   GraphEdgeEntry,
-  GraphNodeEntry,
-  GroupItemRef
+  GraphNodeEntry
 } from '../contracts/working'
 import { collectRects } from './geometry'
 import {
@@ -220,7 +220,9 @@ export const buildEdgeView = (input: {
 
 export const buildMindmapView = (input: {
   mindmap: MindmapView['base']['mindmap']
+  rootId: MindmapView['structure']['rootId']
   nodeIds: readonly string[]
+  tree: MindmapView['structure']['tree']
   layout?: MindmapView['tree']['layout']
   connectors: readonly MindmapView['render']['connectors'][number][]
 }): MindmapView => ({
@@ -228,7 +230,9 @@ export const buildMindmapView = (input: {
     mindmap: input.mindmap
   },
   structure: {
-    nodeIds: input.nodeIds
+    rootId: input.rootId,
+    nodeIds: input.nodeIds,
+    tree: input.tree
   },
   tree: {
     layout: input.layout,
@@ -243,7 +247,7 @@ export const buildGroupView = (input: {
   group: GroupView['base']['group']
   items: readonly GroupItemRef[]
   nodes: ReadonlyMap<string, NodeView>
-  mindmaps: ReadonlyMap<string, MindmapView>
+  edges: ReadonlyMap<string, EdgeView>
 }): GroupView => {
   const rects: Rect[] = []
 
@@ -256,11 +260,9 @@ export const buildGroupView = (input: {
       return
     }
 
-    if (item.kind === 'mindmap') {
-      const rect = input.mindmaps.get(item.id)?.tree.bbox
-      if (rect) {
-        rects.push(rect)
-      }
+    const rect = input.edges.get(item.id)?.route.bounds
+    if (rect) {
+      rects.push(rect)
     }
   })
 

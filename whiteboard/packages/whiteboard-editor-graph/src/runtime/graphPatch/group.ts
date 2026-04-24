@@ -12,15 +12,16 @@ import { patchFamilyEntry, patchOrderedIds } from './helpers'
 
 const readGroupEntry = (
   input: Input,
+  indexes: WorkingState['indexes'],
   groupId: GroupId
 ): GraphGroupEntry | undefined => {
-  const group = input.document.snapshot.state.facts.entities.owners.groups.get(groupId)
+  const group = input.document.snapshot.document.groups[groupId]
   if (!group) {
     return undefined
   }
 
   return {
-    items: input.document.snapshot.state.facts.relations.groupItems.get(groupId) ?? []
+    items: indexes.groupItems.get(groupId) ?? []
   }
 }
 
@@ -40,8 +41,8 @@ export const patchGroup = (input: {
   groupId: GroupId
 }): boolean => {
   const previous = input.working.graph.owners.groups.get(input.groupId)
-  const entry = readGroupEntry(input.input, input.groupId)
-  const group = input.input.document.snapshot.state.facts.entities.owners.groups.get(input.groupId)
+  const entry = readGroupEntry(input.input, input.working.indexes, input.groupId)
+  const group = input.input.document.snapshot.document.groups[input.groupId]
   const next = entry && group
     ? buildGroupView({
         group,
@@ -50,7 +51,7 @@ export const patchGroup = (input: {
           next: entry.items
         }),
         nodes: input.working.graph.nodes,
-        mindmaps: input.working.graph.owners.mindmaps
+        edges: input.working.graph.edges
       })
     : undefined
   const action = patchFamilyEntry({

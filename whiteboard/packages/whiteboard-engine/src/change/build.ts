@@ -1,7 +1,7 @@
 import type { ChangeSet } from '@whiteboard/core/types'
-import type { EngineChange } from '../contracts/document'
+import type { EngineDelta } from '../contracts/document'
 import { changeFromReduce } from './fromReduce'
 
 export const buildChange = (
   changeSet: ChangeSet
-): EngineChange => changeFromReduce(changeSet)
+): EngineDelta => changeFromReduce(changeSet)

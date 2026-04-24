@@ -19,7 +19,7 @@ export const readSceneOrder = (
   snapshot: document.Snapshot,
   item: SpatialItemRef
 ): number => {
-  const index = snapshot.state.root.canvas.order.findIndex((entry) => (
+  const index = snapshot.document.canvas.order.findIndex((entry) => (
     entry.kind === item.kind && entry.id === item.id
   ))
 

@@ -779,10 +779,10 @@ const tryStartSelectionPress = (
           ? ctx.projection.node.capability(node).enter
           : false
       },
-      groupId: ctx.document.group.ofNode
+      groupId: ctx.projection.group.ofNode
     },
     group: {
-      target: (groupId) => ctx.document.group.target(groupId)
+      target: (groupId) => ctx.projection.group.target(groupId)
     }
   }
   const mode = resolveSelectionPressMode(input.modifiers)

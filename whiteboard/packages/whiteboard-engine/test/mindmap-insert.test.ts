@@ -4,7 +4,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 
-test('engine exposes created mindmap roots through committed facts', () => {
+test('engine exposes created mindmap roots through committed document and delta', () => {
   const engine = createEngine({
     document: documentApi.create('doc_mindmap_insert')
   })
@@ -26,10 +26,11 @@ test('engine exposes created mindmap roots through committed facts', () => {
   const { mindmapId, rootId } = result.data
   const publish = engine.current()
   const snapshot = publish.snapshot
-  assert.equal(snapshot.state.facts.entities.nodes.get(rootId)?.type, 'text')
-  assert.equal(snapshot.state.facts.relations.nodeOwner.get(rootId)?.kind, 'mindmap')
-  assert.equal(snapshot.state.facts.relations.nodeOwner.get(rootId)?.id, mindmapId)
-  assert.deepEqual(snapshot.state.facts.relations.ownerNodes.mindmaps.get(mindmapId), [rootId])
-  assert.ok(publish.change.entities.nodes.added.has(rootId))
-  assert.ok(publish.change.entities.mindmaps.added.has(mindmapId))
+  assert.equal(snapshot.document.nodes[rootId]?.type, 'text')
+  assert.equal(snapshot.document.nodes[rootId]?.owner?.kind, 'mindmap')
+  assert.equal(snapshot.document.nodes[rootId]?.owner?.id, mindmapId)
+  assert.equal(snapshot.document.mindmaps[mindmapId]?.root, rootId)
+  assert.ok(Boolean(snapshot.document.mindmaps[mindmapId]?.members[rootId]))
+  assert.ok(publish.delta.nodes.added.has(rootId))
+  assert.ok(publish.delta.mindmaps.added.has(mindmapId))
 })

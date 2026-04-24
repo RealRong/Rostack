@@ -40,19 +40,17 @@ export type EditorHostDeps = {
 
 const createEditorSnapRuntime = ({
   engine,
-  document,
   projection,
   session
 }: {
   engine: Engine
-  document: DocumentRead
   projection: GraphRead
   session: Pick<EditorSession, 'viewport'>
 }) => createSnapRuntime({
   readZoom: () => session.viewport.read.get().zoom,
   node: {
     config: engine.config.node,
-    query: document.index.snap.inRect
+    query: projection.snap.rect
   },
   edge: {
     config: engine.config.edge,
@@ -74,7 +72,6 @@ export const createEditorHost = ({
   const sessionRead = createSessionRead(session)
   const snap = createEditorSnapRuntime({
     engine,
-    document,
     projection,
     session
   })
@@ -114,7 +111,7 @@ export const createEditorHost = ({
   const host = createEditorInputHost({
     interaction,
     edgeHover,
-    document,
+    projection,
     session
   })
 

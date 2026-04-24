@@ -31,7 +31,7 @@ describe('document engine subscribe', () => {
     expect(result.ok).toBe(true)
     expect(count).toBe(1)
     expect(revision).toBe(1)
-    expect(engine.current().snapshot.state.facts.entities.nodes.size).toBe(1)
+    expect(Object.keys(engine.current().snapshot.document.nodes)).toHaveLength(1)
   })
 
   it('increments revision monotonically across execute and apply', () => {
@@ -64,6 +64,6 @@ describe('document engine subscribe', () => {
 
     expect(second.ok).toBe(true)
     expect(engine.current().rev).toBe(2)
-    expect(engine.current().change.entities.nodes.updated.has('node_1')).toBe(true)
+    expect(engine.current().delta.nodes.updated.has('node_1')).toBe(true)
   })
 })

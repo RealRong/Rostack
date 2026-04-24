@@ -42,4 +42,21 @@ describe('meta', () => {
       'missing.type' as TestOp['type']
     )).toThrow('Unknown operation meta: missing.type')
   })
+
+  test('family helper keeps domain family typing', () => {
+    const table = meta.family<TestOp>({
+      'doc.rename': {
+        family: 'doc'
+      },
+      'doc.reindex': {
+        family: 'doc',
+        history: false
+      }
+    })
+
+    expect(meta.get(table, 'doc.reindex')).toEqual({
+      family: 'doc',
+      history: false
+    })
+  })
 })

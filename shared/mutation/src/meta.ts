@@ -8,8 +8,17 @@ export interface OpMeta {
   history?: boolean
 }
 
+export interface FamilyMeta<Family extends string = string> extends OpMeta {
+  family: Family
+}
+
 export type OpMetaTable<Op extends { type: string }> =
   Record<Op['type'], OpMeta>
+
+export type FamilyMetaTable<
+  Op extends { type: string },
+  Family extends string
+> = Record<Op['type'], FamilyMeta<Family>>
 
 const getType = <Op extends { type: string }>(
   input: Op | Op['type']
@@ -43,6 +52,12 @@ export const meta = {
 
     return Object.freeze(next) as Table
   },
+  family: <
+    Op extends { type: string },
+    Table extends FamilyMetaTable<Op, string> = FamilyMetaTable<Op, string>
+  >(
+    table: Table
+  ): Table => meta.create(table),
   get: <
     Op extends { type: string },
     Table extends OpMetaTable<Op> = OpMetaTable<Op>

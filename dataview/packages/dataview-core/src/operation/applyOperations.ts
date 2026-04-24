@@ -2,7 +2,7 @@ import type { CommitImpact } from '@dataview/core/contracts/commit'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { DataDoc } from '@dataview/core/contracts/state'
 import {
-  reduceOperationEffect
+  applyOperationMutation
 } from '@dataview/core/operation/mutation'
 import { impact as commitImpact } from '@dataview/core/commit/impact'
 import { apply, type ApplyResult } from '@shared/mutation'
@@ -32,13 +32,11 @@ export const applyOperations = (
         impact: commitImpact.create()
       }),
       step: (ctx, operation) => {
-        const effect = reduceOperationEffect(
-          ctx.doc(),
+        applyOperationMutation(
+          ctx,
           operation,
           ctx.state.impact
         )
-        ctx.replace(effect.document)
-        ctx.inverse.prependMany(effect.inverse)
       },
       done: (ctx) => {
         commitImpact.finalize(ctx.state.impact)

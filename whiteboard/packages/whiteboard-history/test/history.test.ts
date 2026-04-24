@@ -6,7 +6,7 @@ import { history as historyApi } from '@whiteboard/history'
 
 const readDocument = (
   engine: ReturnType<typeof engineApi.create>
-) => engine.current().snapshot.state.root
+) => engine.current().snapshot.document
 
 test('local engine history captures user writes and replays undo/redo', () => {
   const engine = engineApi.create({

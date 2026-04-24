@@ -52,7 +52,7 @@ const resolveFrameHoverId = (
   }
 ) => {
   const movingIds = new Set(state.move.members.map((member) => member.id))
-  let frameId = ctx.projection.frame.at(pointerWorld)
+  let frameId = ctx.projection.frame.pick(pointerWorld)
 
   while (frameId && movingIds.has(frameId)) {
     frameId = findParentFrameId(ctx, frameId)
@@ -102,7 +102,8 @@ export const createMoveInteraction = (
       pointerId: input.start.pointerId,
       world: input.start.world,
       mindmap: {
-        structure: ctx.document.mindmap.structure,
+        id: ctx.projection.mindmap.id,
+        structure: ctx.projection.mindmap.structure,
         layout: ctx.projection.mindmap.view
       },
       node: ctx.document

@@ -139,6 +139,7 @@ export const isMindmapViewEqual = (
   right: MindmapView
 ): boolean => (
   left.base.mindmap === right.base.mindmap
+  && left.structure.rootId === right.structure.rootId
   && isListEqual(left.structure.nodeIds, right.structure.nodeIds)
   && isMindmapLayoutEqual(left.tree.layout, right.tree.layout)
   && isRectEqual(left.tree.bbox, right.tree.bbox)

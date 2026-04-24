@@ -3,7 +3,6 @@ import type {
   MindmapLayout,
 } from '@whiteboard/core/mindmap'
 import type {
-  CanvasItemRef,
   Edge,
   EdgeId,
   GroupId,
@@ -11,7 +10,6 @@ import type {
   Node,
   NodeId
 } from '@whiteboard/core/types'
-import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection-runtime'
 import type {
   GraphDelta,
@@ -20,11 +18,14 @@ import type {
 } from './delta'
 import type {
   ChromeView,
+  EdgeNodes,
   EdgeDraft,
   EdgePreview,
   EdgeUiView,
   EdgeView,
   GroupView,
+  GroupItemRef,
+  OwnerRef,
   SceneItem,
   MindmapView,
   NodeDraft,
@@ -39,6 +40,7 @@ export interface WorkingState {
     document: Revision
   }
   graph: GraphState
+  indexes: IndexState
   spatial: SpatialIndexState
   ui: UiState
   items: readonly SceneItem[]
@@ -58,6 +60,19 @@ export interface GraphState {
   }
 }
 
+export interface IndexState {
+  ownerByNode: Map<NodeId, OwnerRef | undefined>
+  mindmapNodes: Map<MindmapId, readonly NodeId[]>
+  parentByNode: Map<NodeId, NodeId | undefined>
+  childrenByNode: Map<NodeId, readonly NodeId[]>
+  edgeNodesByEdge: Map<EdgeId, EdgeNodes>
+  edgeIdsByNode: Map<NodeId, Set<EdgeId>>
+  groupItems: Map<GroupId, readonly GroupItemRef[]>
+  groupSignature: Map<GroupId, string>
+  groupIdsBySignature: Map<string, readonly GroupId[]>
+  groupByEdge: Map<EdgeId, GroupId | undefined>
+}
+
 export interface UiState {
   chrome: ChromeView
   nodes: ReadonlyMap<NodeId, NodeUiView>
@@ -67,7 +82,7 @@ export interface UiState {
 export interface GraphNodeEntry {
   base: {
     node: Node
-    owner?: document.OwnerRef
+    owner?: OwnerRef
   }
   draft?: NodeDraft
   preview?: NodePreview
@@ -76,7 +91,7 @@ export interface GraphNodeEntry {
 export interface GraphEdgeEntry {
   base: {
     edge: Edge
-    nodes: document.EdgeNodes
+    nodes: EdgeNodes
   }
   draft?: EdgeDraft
   preview?: EdgePreview
@@ -84,7 +99,9 @@ export interface GraphEdgeEntry {
 
 export interface GraphMindmapEntry {
   base: MindmapView['base']
+  rootId: NodeId
   nodeIds: readonly NodeId[]
+  structure: MindmapView['structure']['tree']
   tree: {
     layout?: MindmapLayout
     connectors: readonly MindmapRenderConnector[]
@@ -94,5 +111,3 @@ export interface GraphMindmapEntry {
 export interface GraphGroupEntry {
   items: readonly GroupItemRef[]
 }
-
-export type GroupItemRef = CanvasItemRef

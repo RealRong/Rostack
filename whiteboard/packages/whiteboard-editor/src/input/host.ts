@@ -5,7 +5,7 @@ import type {
   EditorInputHost,
   EditorStore
 } from '@whiteboard/editor/types/editor'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { GraphRead } from '@whiteboard/editor/read/graph'
 import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'
@@ -96,12 +96,12 @@ const readHoverTarget = (
 export const createEditorInputHost = ({
   interaction,
   edgeHover,
-  document,
+  projection,
   session
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  document: Pick<DocumentRead, 'group'>
+  projection: Pick<GraphRead, 'group'>
   session: Pick<EditorSession, 'state' | 'mutate' | 'viewport' | 'interaction'>
 }): EditorInputHost => {
   const writePointer = (sample: {
@@ -162,7 +162,7 @@ export const createEditorInputHost = ({
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'group': {
-          const target = document.group.target(input.pick.id)
+          const target = projection.group.target(input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',

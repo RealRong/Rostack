@@ -11,17 +11,15 @@ import { normalizeDocument } from '../document/normalize'
 import type {
   CreateEngineOptions,
   Engine,
-  EngineChange,
+  EngineDelta,
   EnginePublish
 } from '../contracts/document'
-import { buildFacts } from '../facts/build'
 import { createDocumentSource } from './document'
 import { success } from '../result'
 import { createWrite } from '../write'
 import { buildChange } from '../change/build'
 import type { EngineState } from './state'
 import { publishEngine } from './publish'
-import { createEngineQuery } from './query'
 import type { EngineWrite } from '../types/engineWrite'
 
 const createInitialEntityChange = <TId extends string>(
@@ -36,7 +34,7 @@ const createInitialEntityChange = <TId extends string>(
 
 const createInitialChange = (
   document: Document
-): EngineChange => buildChange({
+): EngineDelta => buildChange({
   document: true,
   background: true,
   canvasOrder: true,
@@ -48,11 +46,11 @@ const createInitialChange = (
 
 const createPublish = (input: {
   snapshot: ReturnType<typeof createDocumentSnapshot>
-  change: EngineChange
+  delta: EngineDelta
 }): EnginePublish => ({
   rev: input.snapshot.revision,
   snapshot: input.snapshot,
-  change: input.change
+  delta: input.delta
 })
 
 export const createEngine = ({
@@ -64,7 +62,6 @@ export const createEngine = ({
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
   const initialDocument = normalizeDocument(document, config)
-  const initialFacts = buildFacts(initialDocument)
   const documentSource = createDocumentSource(initialDocument)
   const writer = createWrite({
     document: documentSource,
@@ -73,23 +70,18 @@ export const createEngine = ({
   })
   const initialSnapshot = createDocumentSnapshot({
     revision: 0,
-    document: initialDocument,
-    facts: initialFacts
+    document: initialDocument
   })
-  const initialChange = createInitialChange(initialDocument)
+  const initialDelta = createInitialChange(initialDocument)
 
   const state: EngineState = {
     publish: createPublish({
       snapshot: initialSnapshot,
-      change: initialChange
+      delta: initialDelta
     }),
     listeners: new Set(),
     writeListeners: new Set()
   }
-  const query = createEngineQuery({
-    config,
-    current: () => state.publish
-  })
 
   const commit = <T,>(
     draft: ReturnType<typeof writer.execute> | ReturnType<typeof writer.apply>
@@ -99,17 +91,15 @@ export const createEngine = ({
     }
 
     const nextDocument = normalizeDocument(draft.doc, config)
-    const nextFacts = buildFacts(nextDocument)
     documentSource.commit(nextDocument)
-    const nextChange = buildChange(draft.changes)
+    const nextDelta = buildChange(draft.changes)
     const nextSnapshot = createDocumentSnapshot({
       revision: state.publish.rev + 1,
-      document: nextDocument,
-      facts: nextFacts
+      document: nextDocument
     })
     const nextPublish = createPublish({
       snapshot: nextSnapshot,
-      change: nextChange
+      delta: nextDelta
     })
     const write: EngineWrite = {
       rev: nextSnapshot.revision,
@@ -133,7 +123,6 @@ export const createEngine = ({
 
   return {
     config,
-    query,
     writes: {
       subscribe: (listener) => {
         state.writeListeners.add(listener)

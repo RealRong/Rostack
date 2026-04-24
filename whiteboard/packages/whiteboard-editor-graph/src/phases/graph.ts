@@ -15,6 +15,7 @@ import {
   normalizeGraphPatchScope
 } from '../runtime/graphPatch/scope'
 import { resetGraphDelta } from '../runtime/graphPatch/delta'
+import { patchIndexState } from '../runtime/indexes'
 import { createSpatialPatchScope } from '../runtime/spatial/contracts'
 
 const drainQueue = <TId extends string>(
@@ -33,7 +34,7 @@ const patchStandaloneNodes = (
   let count = 0
 
   drainQueue(queue.nodes).forEach((nodeId) => {
-    const owner = context.input.document.snapshot.state.facts.relations.nodeOwner.get(nodeId)
+    const owner = context.working.indexes.ownerByNode.get(nodeId)
       ?? context.working.graph.nodes.get(nodeId)?.base.owner
     if (owner?.kind === 'mindmap') {
       deferred.add(nodeId)
@@ -154,6 +155,13 @@ export const createGraphPhase = (): GraphEditorPhase => ({
     delta.revision = revision
     delta.order = scope.reset || scope.order
 
+    patchIndexState({
+      state: context.working.indexes,
+      previous: context.input.document.previous?.document,
+      next: context.input.document.snapshot.document,
+      delta: context.input.document.delta
+    })
+
     seedGraphPatchQueue({
       snapshot: context.input.document.snapshot,
       working: context.working.graph,
@@ -161,7 +169,7 @@ export const createGraphPhase = (): GraphEditorPhase => ({
       queue
     })
     preFanoutSeeds({
-      snapshot: context.input.document.snapshot,
+      indexes: context.working.indexes,
       working: context.working.graph,
       scope,
       queue

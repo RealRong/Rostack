@@ -5,9 +5,11 @@ import type {
 } from '@whiteboard/core/edge'
 import type { EdgeHandle } from '@whiteboard/core/types/edge'
 import type { Guide, TransformPreviewPatch } from '@whiteboard/core/node'
-import type { MindmapRenderConnector } from '@whiteboard/core/mindmap'
 import type {
-  CanvasItemRef,
+  MindmapRenderConnector,
+  MindmapTree
+} from '@whiteboard/core/mindmap'
+import type {
   Edge,
   EdgeId,
   EdgePatch,
@@ -27,13 +29,13 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type * as document from '@whiteboard/engine/contracts/document'
 import type {
   Family,
   Flags,
   Revision,
   TraceRun
 } from '@shared/projection-runtime'
+import type { IdDelta } from './delta'
 import type { SpatialRead } from '../runtime/spatial/contracts'
 
 export interface Input {
@@ -46,8 +48,50 @@ export interface Input {
 }
 
 export interface DocumentInput {
-  snapshot: document.Snapshot
+  previous: EngineSnapshot | null
+  snapshot: EngineSnapshot
+  delta: EngineDelta
 }
+
+export interface EngineSnapshot {
+  revision: Revision
+  document: import('@whiteboard/core/types').Document
+}
+
+export interface EngineDelta {
+  reset: boolean
+  background: boolean
+  order: boolean
+  nodes: IdDelta<NodeId>
+  edges: IdDelta<EdgeId>
+  groups: IdDelta<GroupId>
+  mindmaps: IdDelta<MindmapId>
+}
+
+export type OwnerRef =
+  | {
+      kind: 'mindmap'
+      id: MindmapId
+    }
+  | {
+      kind: 'group'
+      id: GroupId
+    }
+
+export interface EdgeNodes {
+  source?: NodeId
+  target?: NodeId
+}
+
+export type GroupItemRef =
+  | {
+      kind: 'node'
+      id: NodeId
+    }
+  | {
+      kind: 'edge'
+      id: EdgeId
+    }
 
 export interface SessionInput {
   edit: EditSession | null
@@ -338,24 +382,24 @@ export interface InputDelta {
 export interface DocumentDelta {
   reset: boolean
   order: boolean
-  nodes: document.IdDelta<NodeId>
-  edges: document.IdDelta<EdgeId>
-  mindmaps: document.IdDelta<MindmapId>
-  groups: document.IdDelta<GroupId>
+  nodes: IdDelta<NodeId>
+  edges: IdDelta<EdgeId>
+  mindmaps: IdDelta<MindmapId>
+  groups: IdDelta<GroupId>
 }
 
 export interface GraphInputDelta {
   nodes: {
-    draft: document.IdDelta<NodeId>
-    preview: document.IdDelta<NodeId>
-    edit: document.IdDelta<NodeId>
+    draft: IdDelta<NodeId>
+    preview: IdDelta<NodeId>
+    edit: IdDelta<NodeId>
   }
   edges: {
-    preview: document.IdDelta<EdgeId>
-    edit: document.IdDelta<EdgeId>
+    preview: IdDelta<EdgeId>
+    edit: IdDelta<EdgeId>
   }
   mindmaps: {
-    preview: document.IdDelta<MindmapId>
+    preview: IdDelta<MindmapId>
     tick: ReadonlySet<MindmapId>
   }
 }
@@ -391,7 +435,7 @@ export interface NodeView {
 
 export interface NodeBaseView {
   node: NodeModel
-  owner?: document.OwnerRef
+  owner?: OwnerRef
 }
 
 export interface NodeGeometryView {
@@ -408,7 +452,7 @@ export interface EdgeView {
 
 export interface EdgeBaseView {
   edge: Edge
-  nodes: document.EdgeNodes
+  nodes: EdgeNodes
 }
 
 export interface EdgeRouteView {
@@ -484,7 +528,9 @@ export interface MindmapBaseView {
 }
 
 export interface MindmapStructureView {
+  rootId: NodeId
   nodeIds: readonly NodeId[]
+  tree: MindmapTree
 }
 
 export interface MindmapTreeView {
@@ -507,7 +553,7 @@ export interface GroupBaseView {
 }
 
 export interface GroupStructureView {
-  items: readonly CanvasItemRef[]
+  items: readonly GroupItemRef[]
 }
 
 export interface GroupFrameView {
@@ -563,20 +609,20 @@ export interface Change {
 }
 
 export interface GraphChange {
-  nodes: document.IdDelta<NodeId>
-  edges: document.IdDelta<EdgeId>
+  nodes: IdDelta<NodeId>
+  edges: IdDelta<EdgeId>
   owners: OwnerChange
 }
 
 export interface OwnerChange {
-  mindmaps: document.IdDelta<MindmapId>
-  groups: document.IdDelta<GroupId>
+  mindmaps: IdDelta<MindmapId>
+  groups: IdDelta<GroupId>
 }
 
 export interface UiChange {
   chrome: Flags
-  nodes: document.IdDelta<NodeId>
-  edges: document.IdDelta<EdgeId>
+  nodes: IdDelta<NodeId>
+  edges: IdDelta<EdgeId>
 }
 
 export interface Runtime {
@@ -598,9 +644,25 @@ export interface Read {
   edge(id: EdgeId): EdgeView | undefined
   mindmap(id: MindmapId): MindmapView | undefined
   group(id: GroupId): GroupView | undefined
+  mindmapId(value: string): MindmapId | undefined
+  mindmapStructure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
+  relatedEdges(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+  groupExact(target: import('@whiteboard/core/selection').SelectionTarget): readonly GroupId[]
   nodeUi(id: NodeId): NodeUiView | undefined
   edgeUi(id: EdgeId): EdgeUiView | undefined
   spatial: SpatialRead
+  snap(rect: Rect): readonly import('@whiteboard/core/node').SnapCandidate[]
+  frame: {
+    point(point: Point): readonly NodeId[]
+    rect(rect: Rect): readonly NodeId[]
+    pick(point: Point, options?: {
+      excludeIds?: readonly NodeId[]
+    }): NodeId | undefined
+    parent(nodeId: NodeId, options?: {
+      excludeIds?: readonly NodeId[]
+    }): NodeId | undefined
+    descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
+  }
   items(): readonly SceneItem[]
   ui(): UiSnapshot
   chrome(): ChromeView

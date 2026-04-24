@@ -314,11 +314,13 @@ export const createGraphEdgeRead = ({
   document,
   sources,
   spatial,
+  relatedEdges,
   node
 }: {
   document: Pick<DocumentRead, 'edge' | 'node'>
   sources: Pick<ProjectionSources, 'edgeGraphIds' | 'edgeGraph' | 'edgeUi'>
   spatial: EditorGraphQuery['spatial']
+  relatedEdges: EditorGraphQuery['relatedEdges']
   node: Pick<GraphNodeRead, 'graph' | 'capability'>
 }): GraphEdgeRead => {
   const readIds = () => store.read(sources.edgeGraphIds) as readonly EdgeId[]
@@ -418,7 +420,7 @@ export const createGraphEdgeRead = ({
       edge,
       readNodeLocked
     }),
-    related: document.edge.related,
+    related: relatedEdges,
     idsInRect: (rect, options) => {
       const mode = options?.match ?? 'touch'
       return spatial.rect(rect, {

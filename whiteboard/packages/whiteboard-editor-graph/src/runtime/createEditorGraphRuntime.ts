@@ -34,7 +34,9 @@ export const createEditorGraphRuntime = (): Runtime => {
   const snapshot = (): Snapshot => state.snapshot
   const query = createEditorGraphQuery({
     snapshot,
-    spatial: () => state.working.spatial
+    spatial: () => state.working.spatial,
+    graph: () => state.working.graph,
+    indexes: () => state.working.indexes
   })
 
   return {

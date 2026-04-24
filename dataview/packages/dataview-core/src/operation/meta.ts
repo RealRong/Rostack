@@ -1,23 +1,11 @@
-import { meta as mutationMeta } from '@shared/mutation'
+import {
+  meta as mutationMeta
+} from '@shared/mutation'
 import type {
-  DocumentOperation,
-  OperationType
+  DocumentOperation
 } from '@dataview/core/contracts/operations'
 
-export type DocumentOperationFamily =
-  | 'record'
-  | 'field'
-  | 'view'
-  | 'external'
-
-export type DocumentOperationMeta = {
-  family: DocumentOperationFamily
-  history?: boolean
-}
-
-export type DocumentOperationMetaTable = Record<OperationType, DocumentOperationMeta>
-
-const TABLE = {
+export const META = mutationMeta.family<DocumentOperation>({
   'document.record.insert': {
     family: 'record'
   },
@@ -55,6 +43,4 @@ const TABLE = {
     family: 'external',
     history: false
   }
-} satisfies DocumentOperationMetaTable
-
-export const META = mutationMeta.create<DocumentOperation>(TABLE)
+})

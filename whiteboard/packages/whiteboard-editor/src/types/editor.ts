@@ -142,7 +142,7 @@ export type EditorRead = {
     get: () => Document
   }
   group: {
-    exactIds: (target: SelectionTarget) => readonly string[]
+    exact: (target: SelectionTarget) => readonly string[]
   }
   history: HistoryApi
   mindmap: EditorMindmapRead

@@ -1,5 +1,4 @@
 import type {
-  CanvasItemRef,
   EdgeId,
   GroupId,
   MindmapId,
@@ -7,7 +6,11 @@ import type {
 } from '@whiteboard/core/types'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { GraphPatchScope } from '../../contracts/delta'
-import type { GraphState } from '../../contracts/working'
+import type {
+  GraphState,
+  IndexState
+} from '../../contracts/working'
+import { readRelatedEdgeIds } from '../indexes'
 import { readGraphPatchScopeKeys } from './scope'
 
 export interface GraphPatchQueue {
@@ -33,40 +36,10 @@ const enqueueAll = <TId extends string>(
   }
 }
 
-const isItemRefEqual = (
-  left: CanvasItemRef,
-  right: CanvasItemRef
-) => left.kind === right.kind && left.id === right.id
-
 export const collectRelatedEdges = (
-  snapshot: document.Snapshot,
+  indexes: Pick<IndexState, 'edgeIdsByNode'>,
   nodeId: NodeId
-): readonly EdgeId[] => {
-  const related: EdgeId[] = []
-
-  snapshot.state.facts.relations.edgeNodes.forEach((nodes, edgeId) => {
-    if (nodes.source === nodeId || nodes.target === nodeId) {
-      related.push(edgeId)
-    }
-  })
-
-  return related
-}
-
-export const collectContainingGroups = (
-  snapshot: document.Snapshot,
-  item: CanvasItemRef
-): readonly GroupId[] => {
-  const groups: GroupId[] = []
-
-  snapshot.state.facts.relations.groupItems.forEach((items, groupId) => {
-    if (items.some((candidate) => isItemRefEqual(candidate, item))) {
-      groups.push(groupId)
-    }
-  })
-
-  return groups
-}
+): readonly EdgeId[] => readRelatedEdgeIds(indexes, [nodeId])
 
 export const seedGraphPatchQueue = (input: {
   snapshot: document.Snapshot
@@ -75,18 +48,18 @@ export const seedGraphPatchQueue = (input: {
   queue: GraphPatchQueue
 }) => {
   if (input.scope.reset) {
-    enqueueAll(input.queue.nodes, input.snapshot.state.facts.entities.nodes.keys())
+    enqueueAll(input.queue.nodes, Object.keys(input.snapshot.document.nodes) as readonly NodeId[])
     enqueueAll(input.queue.nodes, input.working.nodes.keys())
-    enqueueAll(input.queue.edges, input.snapshot.state.facts.entities.edges.keys())
+    enqueueAll(input.queue.edges, Object.keys(input.snapshot.document.edges) as readonly EdgeId[])
     enqueueAll(input.queue.edges, input.working.edges.keys())
     enqueueAll(
       input.queue.mindmaps,
-      input.snapshot.state.facts.entities.owners.mindmaps.keys()
+      Object.keys(input.snapshot.document.mindmaps) as readonly MindmapId[]
     )
     enqueueAll(input.queue.mindmaps, input.working.owners.mindmaps.keys())
     enqueueAll(
       input.queue.groups,
-      input.snapshot.state.facts.entities.owners.groups.keys()
+      Object.keys(input.snapshot.document.groups) as readonly GroupId[]
     )
     enqueueAll(input.queue.groups, input.working.owners.groups.keys())
     return
@@ -99,7 +72,7 @@ export const seedGraphPatchQueue = (input: {
 }
 
 export const preFanoutSeeds = (input: {
-  snapshot: document.Snapshot
+  indexes: Pick<IndexState, 'ownerByNode' | 'edgeIdsByNode'>
   working: GraphState
   scope: GraphPatchScope
   queue: GraphPatchQueue
@@ -109,7 +82,7 @@ export const preFanoutSeeds = (input: {
   }
 
   readGraphPatchScopeKeys(input.scope.nodes).forEach((nodeId) => {
-    const nextOwner = input.snapshot.state.facts.relations.nodeOwner.get(nodeId)
+    const nextOwner = input.indexes.ownerByNode.get(nodeId)
     const previousOwner = input.working.nodes.get(nodeId)?.base.owner
 
     if (nextOwner?.kind === 'mindmap') {
@@ -120,7 +93,8 @@ export const preFanoutSeeds = (input: {
     }
 
     fanoutNodeGeometry({
-      snapshot: input.snapshot,
+      indexes: input.indexes,
+      owner: nextOwner,
       queue: input.queue,
       nodeId
     })
@@ -128,24 +102,24 @@ export const preFanoutSeeds = (input: {
 }
 
 export const fanoutNodeGeometry = (input: {
-  snapshot: document.Snapshot
+  indexes: Pick<IndexState, 'edgeIdsByNode'>
+  owner?: {
+    kind: 'mindmap' | 'group'
+    id: string
+  }
   queue: GraphPatchQueue
   nodeId: NodeId
 }) => {
-  enqueueAll(input.queue.edges, collectRelatedEdges(input.snapshot, input.nodeId))
-  enqueueAll(input.queue.groups, collectContainingGroups(input.snapshot, {
-    kind: 'node',
-    id: input.nodeId
-  }))
+  enqueueAll(input.queue.edges, collectRelatedEdges(input.indexes, input.nodeId))
+  if (input.owner?.kind === 'group') {
+    input.queue.groups.add(input.owner.id as GroupId)
+  }
 }
 
 export const fanoutMindmapGeometry = (input: {
-  snapshot: document.Snapshot
   queue: GraphPatchQueue
   mindmapId: MindmapId
 }) => {
-  enqueueAll(input.queue.groups, collectContainingGroups(input.snapshot, {
-    kind: 'mindmap',
-    id: input.mindmapId
-  }))
+  void input.queue
+  void input.mindmapId
 }

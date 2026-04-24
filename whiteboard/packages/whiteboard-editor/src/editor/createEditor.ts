@@ -87,6 +87,7 @@ export const createEditor = ({
   const graph = createGraphRead({
     document,
     sources: projection.sources,
+    query: projection.query,
     spatial: projection.query.spatial,
     selection: session.state.selection,
     nodeType

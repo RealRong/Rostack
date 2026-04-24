@@ -20,6 +20,18 @@ export const createWorking = (): WorkingState => {
         groups: new Map()
       }
     },
+    indexes: {
+      ownerByNode: new Map(),
+      mindmapNodes: new Map(),
+      parentByNode: new Map(),
+      childrenByNode: new Map(),
+      edgeNodesByEdge: new Map(),
+      edgeIdsByNode: new Map(),
+      groupItems: new Map(),
+      groupSignature: new Map(),
+      groupIdsBySignature: new Map(),
+      groupByEdge: new Map()
+    },
     spatial: createSpatialState(),
     ui: {
       chrome: {

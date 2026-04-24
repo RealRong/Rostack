@@ -285,8 +285,9 @@ const toEdgeUpdateInput = (
 
 const readMindmapIdForNodes = (
   input: {
-    document: Pick<DocumentRead, 'mindmap' | 'node'>
+    document: Pick<DocumentRead, 'node'>
     graph: Pick<GraphRead, 'node'>
+      & Pick<GraphRead, 'mindmap'>
     nodeIds: readonly NodeId[]
   }
 ): MindmapId | undefined => {
@@ -306,10 +307,7 @@ const readMindmapIdForNodes = (
         ? committedId
         : undefined
     })()
-    const structureId = input.document.mindmap.structure.get(nodeId)?.id
-      ?? input.document.mindmap.list.get().find((mindmapId) => (
-        input.document.mindmap.structure.get(mindmapId)?.nodeIds.includes(nodeId)
-      ))
+    const structureId = input.graph.mindmap.id(nodeId)
 
     return projectedOwner?.kind === 'mindmap'
       ? projectedOwner.id
@@ -369,7 +367,7 @@ export const createEditorActionsApi = ({
     clearSelection: selectionSession.clear
   }
   const selectionActionsCore = createSelectionActions({
-    read: document,
+    read: graph,
     canvas: write.canvas,
     group: write.group,
     node: write.node,
@@ -392,7 +390,7 @@ export const createEditorActionsApi = ({
   })
   const mindmapProcedures = createMindmapActionProcedures({
     engine,
-    document,
+    graph,
     session,
     write,
     focusNode: ({ nodeId, behavior }) => {
@@ -784,7 +782,7 @@ export const createEditorActionsApi = ({
         })),
       moveRoot: atomic((input) => {
         const directNode = document.node.committed.get(input.nodeId)?.node
-        const structure = document.mindmap.structure.get(input.nodeId)
+        const structure = graph.mindmap.structure(input.nodeId)
         const node = directNode ?? (
           structure
             ? document.node.committed.get(structure.rootId)?.node
@@ -792,7 +790,7 @@ export const createEditorActionsApi = ({
         )
         const mindmapId = directNode?.owner?.kind === 'mindmap'
           ? directNode.owner.id
-          : structure?.id
+          : graph.mindmap.id(input.nodeId)
         if (!node || !mindmapId) {
           return undefined
         }
@@ -816,7 +814,7 @@ export const createEditorActionsApi = ({
       style: {
         branch: atomic((input) => {
           const scopeIds = input.scope === 'subtree' && input.id
-            ? document.mindmap.structure.get(input.id)?.nodeIds ?? input.nodeIds
+            ? graph.mindmap.structure(input.id)?.nodeIds ?? input.nodeIds
             : input.nodeIds
 
           return write.mindmap.branch.update(

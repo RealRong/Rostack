@@ -12,5 +12,5 @@ const toSceneItem = (
 }) as SceneItem
 
 export const buildItems = (snapshot: document.Snapshot): readonly SceneItem[] => (
-  snapshot.state.root.canvas.order.map(toSceneItem)
+  snapshot.document.canvas.order.map(toSceneItem)
 )

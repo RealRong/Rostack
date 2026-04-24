@@ -1,9 +1,11 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { NodeId, Rect } from '@whiteboard/core/types'
 import type {
-  MindmapStructureItem
-} from '@whiteboard/editor/document/read'
+  MindmapView
+} from '@whiteboard/editor-graph'
 import type { EditSession } from '@whiteboard/editor/session/edit'
+
+export type EditorMindmapStructure = MindmapView['structure']
 
 export type MindmapChrome = {
   addChildTargets: readonly {
@@ -45,7 +47,7 @@ export const readAddChildTargets = ({
   readNodeLocked,
   readNodeRect
 }: {
-  structure: MindmapStructureItem
+  structure: EditorMindmapStructure
   selection: SelectionTarget
   edit: EditSession
   readNodeLocked: (nodeId: NodeId) => boolean
@@ -106,7 +108,7 @@ export const readMindmapNavigateTarget = ({
   fromNodeId,
   direction
 }: {
-  structure: MindmapStructureItem
+  structure: EditorMindmapStructure
   fromNodeId: NodeId
   direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
 }) => {

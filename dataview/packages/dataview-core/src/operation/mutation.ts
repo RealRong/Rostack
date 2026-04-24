@@ -29,13 +29,12 @@ import {
   type AppliedDocumentRecordFieldWrite,
   document as documentApi
 } from '@dataview/core/document'
-import { equal, json } from '@shared/core'
-import type { DocumentMutationContext } from '@dataview/core/operation/context'
+import { equal, json, type InverseBuilder } from '@shared/core'
 
-
-interface OperationMutationEffect {
-  document: DataDoc
-  inverse: readonly DocumentOperation[]
+export interface DocumentOperationRuntime {
+  doc(): DataDoc
+  replace(document: DataDoc): void
+  inverse: Pick<InverseBuilder<DocumentOperation>, 'prependMany'>
 }
 
 const addSetValue = <T>(
@@ -257,16 +256,6 @@ const mergeActiveViewImpact = (
       }
 }
 
-const trackActiveViewChange = (
-  impact: CommitImpact,
-  beforeDocument: DataDoc,
-  afterDocument: DataDoc
-) => mergeActiveViewImpact(
-  impact,
-  documentApi.views.activeId.get(beforeDocument),
-  documentApi.views.activeId.get(afterDocument)
-)
-
 const collectInsertedRecordIds = (
   records: readonly DataRecord[]
 ): readonly RecordId[] => {
@@ -358,25 +347,31 @@ const deleteViewImpact = (
   impact.views?.changed?.delete(viewId)
 }
 
-const executeRecordInsert = (
+const commitMutation = (
+  runtime: DocumentOperationRuntime,
   document: DataDoc,
+  inverse: readonly DocumentOperation[]
+) => {
+  runtime.replace(document)
+  if (inverse.length) {
+    runtime.inverse.prependMany(inverse)
+  }
+}
+
+const applyRecordInsert = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.record.insert' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const nextDocument = documentApi.records.insert(document, operation.records, operation.target?.index)
   if (nextDocument === document) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const recordIds = collectInsertedRecordIds(operation.records)
   if (!recordIds.length) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const records = impact.records ?? (impact.records = {})
@@ -390,71 +385,55 @@ const executeRecordInsert = (
     markTouchedRecord(impact, recordId)
   })
 
-  return {
-    document: nextDocument,
-    inverse: [{
-      type: 'document.record.remove',
-      recordIds: [...recordIds]
-    }]
-  }
+  commitMutation(runtime, nextDocument, [{
+    type: 'document.record.remove',
+    recordIds: [...recordIds]
+  }])
 }
 
-const executeRecordPatch = (
-  document: DataDoc,
+const applyRecordPatch = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.record.patch' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const beforeRecord = documentApi.records.get(document, operation.recordId)
   if (!beforeRecord) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const nextDocument = documentApi.records.patch(document, operation.recordId, operation.patch)
   if (nextDocument === document) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const afterRecord = documentApi.records.get(nextDocument, operation.recordId)
   const aspects = commitImpact.record.patchAspects(beforeRecord, afterRecord)
   markRecordPatch(impact, operation.recordId, aspects)
 
-  return {
-    document: nextDocument,
-    inverse: [{
-      type: 'document.record.patch',
-      recordId: operation.recordId,
-      patch: Object.fromEntries(
-        Object.keys(operation.patch).map(key => [key, json.readObjectKey(beforeRecord, key)])
-      ) as Partial<Omit<DataRecord, 'id' | 'values'>>
-    }]
-  }
+  commitMutation(runtime, nextDocument, [{
+    type: 'document.record.patch',
+    recordId: operation.recordId,
+    patch: Object.fromEntries(
+      Object.keys(operation.patch).map(key => [key, json.readObjectKey(beforeRecord, key)])
+    ) as Partial<Omit<DataRecord, 'id' | 'values'>>
+  }])
 }
 
-const executeRecordRemove = (
-  document: DataDoc,
+const applyRecordRemove = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.record.remove' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const removedEntries = captureRecordEntries(document, operation.recordIds)
   if (!removedEntries.length) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const nextDocument = documentApi.records.remove(document, operation.recordIds)
   if (nextDocument === document) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const records = impact.records ?? (impact.records = {})
@@ -468,36 +447,31 @@ const executeRecordRemove = (
     markTouchedRecord(impact, entry.record.id)
   })
 
-  return {
-    document: nextDocument,
-    inverse: removedEntries.map(entry => ({
-      type: 'document.record.insert',
-      records: [entry.record],
-      target: {
-        index: entry.index
-      }
-    }))
-  }
+  commitMutation(runtime, nextDocument, removedEntries.map(entry => ({
+    type: 'document.record.insert',
+    records: [entry.record],
+    target: {
+      index: entry.index
+    }
+  })))
 }
 
-const executeRecordFieldWrite = (
-  document: DataDoc,
+const applyRecordFieldWrite = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, {
     type:
       | 'document.record.fields.writeMany'
       | 'document.record.fields.restoreMany'
   }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const applied = operation.type === 'document.record.fields.writeMany'
     ? documentApi.records.writeFieldsWithChanges(document, operation)
     : documentApi.records.restoreFieldsWithChanges(document, operation.entries)
 
   if (applied.document === document) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const inverseEntries = applied.changes.map(change => {
@@ -505,39 +479,35 @@ const executeRecordFieldWrite = (
     return createRecordFieldRestoreEntry(change)
   })
 
-  return {
-    document: applied.document,
-    inverse: inverseEntries.length
+  commitMutation(
+    runtime,
+    applied.document,
+    inverseEntries.length
       ? [{
           type: 'document.record.fields.restoreMany',
           entries: inverseEntries
         }]
       : []
-  }
+  )
 }
 
-const executeFieldPut = (
-  document: DataDoc,
+const applyFieldPut = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.field.put' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const beforeField = documentApi.schema.fields.get(document, operation.field.id)
   const nextDocument = documentApi.schema.fields.put(document, operation.field)
   const afterField = documentApi.schema.fields.get(nextDocument, operation.field.id)
   const aspects = commitImpact.field.schemaAspects(beforeField, afterField)
 
   if (!beforeField && !afterField) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   if (beforeField && afterField && !aspects.length) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const fields = impact.fields ?? (impact.fields = {})
@@ -552,9 +522,10 @@ const executeFieldPut = (
     markFieldSchema(impact, operation.field.id, aspects)
   }
 
-  return {
-    document: nextDocument,
-    inverse: beforeField
+  commitMutation(
+    runtime,
+    nextDocument,
+    beforeField
       ? [{
           type: 'document.field.put',
           field: beforeField
@@ -563,28 +534,23 @@ const executeFieldPut = (
           type: 'document.field.remove',
           id: operation.field.id
         }]
-  }
+  )
 }
 
-const executeFieldPatch = (
-  document: DataDoc,
+const applyFieldPatch = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.field.patch' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const beforeField = documentApi.schema.fields.get(document, operation.id)
   if (!beforeField) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const nextDocument = documentApi.schema.fields.patch(document, operation.id, operation.patch)
   if (nextDocument === document) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const afterField = documentApi.schema.fields.get(nextDocument, operation.id)
@@ -594,37 +560,29 @@ const executeFieldPatch = (
     commitImpact.field.schemaAspects(beforeField, afterField)
   )
 
-  return {
-    document: nextDocument,
-    inverse: [{
-      type: 'document.field.patch',
-      id: operation.id,
-      patch: Object.fromEntries(
-        Object.keys(operation.patch).map(key => [key, json.readObjectKey(beforeField, key)])
-      ) as Partial<Omit<CustomField, 'id'>>
-    }]
-  }
+  commitMutation(runtime, nextDocument, [{
+    type: 'document.field.patch',
+    id: operation.id,
+    patch: Object.fromEntries(
+      Object.keys(operation.patch).map(key => [key, json.readObjectKey(beforeField, key)])
+    ) as Partial<Omit<CustomField, 'id'>>
+  }])
 }
 
-const executeFieldRemove = (
-  document: DataDoc,
+const applyFieldRemove = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.field.remove' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const beforeField = documentApi.schema.fields.get(document, operation.id)
   if (!beforeField) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const nextDocument = documentApi.schema.fields.remove(document, operation.id)
   if (nextDocument === document) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const fields = impact.fields ?? (impact.fields = {})
@@ -635,20 +593,18 @@ const executeFieldRemove = (
     markFieldSchema(impact, operation.id, ['all'])
   }
 
-  return {
-    document: nextDocument,
-    inverse: [{
-      type: 'document.field.put',
-      field: beforeField
-    }]
-  }
+  commitMutation(runtime, nextDocument, [{
+    type: 'document.field.put',
+    field: beforeField
+  }])
 }
 
-const executeViewPut = (
-  document: DataDoc,
+const applyViewPut = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.view.put' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const beforeView = documentApi.views.get(document, operation.view.id)
   const nextDocument = documentApi.views.put(document, operation.view)
   const afterView = documentApi.views.get(nextDocument, operation.view.id)
@@ -656,10 +612,7 @@ const executeViewPut = (
   const afterActiveViewId = documentApi.views.activeId.get(nextDocument)
 
   if (!afterView) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const queryAspects = beforeView
@@ -680,10 +633,7 @@ const executeViewPut = (
     && beforeActiveViewId === afterActiveViewId
     && equal.sameJsonValue(beforeView, afterView)
   ) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const views = impact.views ?? (impact.views = {})
@@ -706,9 +656,10 @@ const executeViewPut = (
 
   mergeActiveViewImpact(impact, beforeActiveViewId, afterActiveViewId)
 
-  return {
-    document: nextDocument,
-    inverse: beforeView
+  commitMutation(
+    runtime,
+    nextDocument,
+    beforeView
       ? [{
           type: 'document.view.put',
           view: beforeView
@@ -717,45 +668,38 @@ const executeViewPut = (
           type: 'document.view.remove',
           id: operation.view.id
         }]
-  }
+  )
 }
 
-const executeActiveViewSet = (
-  document: DataDoc,
+const applyActiveViewSet = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.activeView.set' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const beforeViewId = documentApi.views.activeId.get(document)
   const nextDocument = documentApi.views.activeId.set(document, operation.id)
   const afterViewId = documentApi.views.activeId.get(nextDocument)
   if (beforeViewId === afterViewId) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   mergeActiveViewImpact(impact, beforeViewId, afterViewId)
-  return {
-    document: nextDocument,
-    inverse: [{
-      type: 'document.activeView.set',
-      id: beforeViewId
-    }]
-  }
+  commitMutation(runtime, nextDocument, [{
+    type: 'document.activeView.set',
+    id: beforeViewId
+  }])
 }
 
-const executeViewRemove = (
-  document: DataDoc,
+const applyViewRemove = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'document.view.remove' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
+  const document = runtime.doc()
   const beforeView = documentApi.views.get(document, operation.id)
   if (!beforeView) {
-    return {
-      document,
-      inverse: []
-    }
+    return
   }
 
   const beforeActiveViewId = documentApi.views.activeId.get(document)
@@ -774,75 +718,56 @@ const executeViewRemove = (
 
   mergeActiveViewImpact(impact, beforeActiveViewId, afterActiveViewId)
 
-  return {
-    document: nextDocument,
-    inverse: [{
-      type: 'document.view.put',
-      view: beforeView
-    }]
-  }
+  commitMutation(runtime, nextDocument, [{
+    type: 'document.view.put',
+    view: beforeView
+  }])
 }
 
-const executeExternalBump = (
-  document: DataDoc,
+const applyExternalBump = (
+  runtime: DocumentOperationRuntime,
   operation: Extract<DocumentOperation, { type: 'external.version.bump' }>,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
   impact.external = {
     versionBumped: true,
     source: operation.source
   }
 
-  return {
-    document,
-    inverse: [{
-      type: 'external.version.bump',
-      source: operation.source
-    }]
-  }
+  runtime.inverse.prependMany([{
+    type: 'external.version.bump',
+    source: operation.source
+  }])
 }
 
-export const reduceOperationEffect = (
-  document: DataDoc,
+export const applyOperationMutation = (
+  runtime: DocumentOperationRuntime,
   operation: DocumentOperation,
   impact: CommitImpact
-): OperationMutationEffect => {
+): void => {
   switch (operation.type) {
     case 'document.record.insert':
-      return executeRecordInsert(document, operation, impact)
+      return applyRecordInsert(runtime, operation, impact)
     case 'document.record.patch':
-      return executeRecordPatch(document, operation, impact)
+      return applyRecordPatch(runtime, operation, impact)
     case 'document.record.remove':
-      return executeRecordRemove(document, operation, impact)
+      return applyRecordRemove(runtime, operation, impact)
     case 'document.record.fields.writeMany':
     case 'document.record.fields.restoreMany':
-      return executeRecordFieldWrite(document, operation, impact)
+      return applyRecordFieldWrite(runtime, operation, impact)
     case 'document.field.put':
-      return executeFieldPut(document, operation, impact)
+      return applyFieldPut(runtime, operation, impact)
     case 'document.field.patch':
-      return executeFieldPatch(document, operation, impact)
+      return applyFieldPatch(runtime, operation, impact)
     case 'document.field.remove':
-      return executeFieldRemove(document, operation, impact)
+      return applyFieldRemove(runtime, operation, impact)
     case 'document.view.put':
-      return executeViewPut(document, operation, impact)
+      return applyViewPut(runtime, operation, impact)
     case 'document.activeView.set':
-      return executeActiveViewSet(document, operation, impact)
+      return applyActiveViewSet(runtime, operation, impact)
     case 'document.view.remove':
-      return executeViewRemove(document, operation, impact)
+      return applyViewRemove(runtime, operation, impact)
     case 'external.version.bump':
-      return executeExternalBump(document, operation, impact)
+      return applyExternalBump(runtime, operation, impact)
   }
-}
-
-export const reduceOperationMutation = (
-  context: DocumentMutationContext,
-  operation: DocumentOperation
-): void => {
-  const effect = reduceOperationEffect(
-    context.doc(),
-    operation,
-    context.impact
-  )
-  context.replace(effect.document)
-  context.inverse.prependMany(effect.inverse)
 }

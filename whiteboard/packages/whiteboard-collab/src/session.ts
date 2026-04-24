@@ -171,7 +171,7 @@ export const createYjsSession = ({
   >({
     actorId,
     engine: {
-      doc: () => engine.current().snapshot.state.root,
+      doc: () => engine.current().snapshot.document,
       replace: (nextDocument, options) => engine.execute({
         type: 'document.replace',
         document: nextDocument
@@ -186,7 +186,7 @@ export const createYjsSession = ({
     store: sharedStore,
     meta: operationMeta,
     history: localHistoryController.controller,
-    empty: () => documentApi.create(engine.current().snapshot.state.root.id),
+    empty: () => documentApi.create(engine.current().snapshot.document.id),
     createId: () => createId('sync'),
     checkpointEvery: checkpointThreshold,
     onReject: (change) => {

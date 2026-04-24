@@ -94,28 +94,21 @@ const projectWorldRect = (
 
 const readNodeLocked = ({
   graph,
-  document,
   nodeId
 }: {
   graph: Pick<GraphRead, 'node'>
-  document: Pick<DocumentRead, 'node'>
   nodeId: string
-}) => (
+}) => Boolean(
   store.read(graph.node.graph, nodeId)?.base.node.locked
-  ?? store.read(document.node.committed, nodeId)?.node.locked
-  ?? false
 )
 
 const readNodeRect = ({
   graph,
-  document,
   nodeId
 }: {
   graph: Pick<GraphRead, 'node'>
-  document: Pick<DocumentRead, 'node'>
   nodeId: string
 }) => store.read(graph.node.graph, nodeId)?.geometry.rect
-  ?? store.read(document.node.committed, nodeId)?.rect
 
 export const createEditorRead = (
   {
@@ -127,8 +120,8 @@ export const createEditorRead = (
     nodeType,
     defaults
   }: {
-    document: Pick<DocumentRead, 'document' | 'group' | 'mindmap' | 'node'>
-    graph: Pick<GraphRead, 'snapshot' | 'items' | 'spatial' | 'node' | 'edge' | 'selection' | 'mindmap' | 'chrome'>
+    document: Pick<DocumentRead, 'document'>
+    graph: Pick<GraphRead, 'snapshot' | 'items' | 'spatial' | 'node' | 'edge' | 'selection' | 'mindmap' | 'group' | 'chrome'>
     session: Pick<EditorSession, 'state' | 'interaction' | 'viewport' | 'preview'>
     store?: EditorStore
     history: HistoryApi
@@ -183,7 +176,7 @@ export const createEditorRead = (
         primaryNode: currentMembers.primaryNode,
         nodeType,
         nodeStats: currentNodeStats,
-        readMindmapStructure: (id) => store.read(document.mindmap.structure, id),
+        readMindmapStructure: (id) => graph.mindmap.structure(id),
         defaults
       })
     }
@@ -232,7 +225,7 @@ export const createEditorRead = (
         nodeScope: store.read(selectionNodeScope),
         edgeScope: store.read(selectionEdgeScope),
         nodeType,
-        readMindmapStructure: (id) => store.read(document.mindmap.structure, id),
+        readMindmapStructure: (id) => graph.mindmap.structure(id),
         tool: store.read(state.tool),
         edit: store.read(state.edit),
         interactionChrome: interaction.chrome,
@@ -365,7 +358,7 @@ export const createEditorRead = (
 
   const mindmapChrome: EditorRead['mindmap']['chrome'] = store.createKeyedDerivedStore<string, ReturnType<EditorRead['mindmap']['chrome']['get']>>({
     get: (mindmapId: string) => {
-      const structure = store.read(document.mindmap.structure, mindmapId)
+      const structure = graph.mindmap.structure(mindmapId)
       if (!structure) {
         return undefined
       }
@@ -377,12 +370,10 @@ export const createEditorRead = (
           edit: store.read(state.edit),
           readNodeLocked: (nodeId) => readNodeLocked({
             graph,
-            document,
             nodeId
           }),
           readNodeRect: (nodeId) => readNodeRect({
             graph,
-            document,
             nodeId
           })
         })
@@ -425,14 +416,14 @@ export const createEditorRead = (
       bounds: document.document.bounds
     },
     group: {
-      exactIds: document.group.exactIds
+      exact: graph.group.exact
     },
     history,
     mindmap: {
       view: graph.mindmap.view,
       chrome: mindmapChrome,
       navigate: (input) => {
-        const currentStructure = store.read(document.mindmap.structure, input.id)
+        const currentStructure = graph.mindmap.structure(input.id)
         if (!currentStructure) {
           return undefined
         }

@@ -1,6 +1,7 @@
 import { scheduler } from '@shared/core'
 import type {
   GraphSnapshot,
+  MindmapView,
   InputDelta
 } from '@whiteboard/editor-graph'
 import type {
@@ -21,14 +22,11 @@ import type {
   EditorPublishRequest,
   EditorTaskRequest
 } from '@whiteboard/editor/boundary/procedure'
-import type {
-  DocumentRead,
-  MindmapStructureItem
-} from '@whiteboard/editor/document/read'
 import {
   createEmptyEditorGraphInputDelta,
   readActiveMindmapTickIds
 } from '@whiteboard/editor/projection/input'
+import type { GraphRead } from '@whiteboard/editor/read/graph'
 import type {
   MindmapEnterPreview,
   MindmapPreviewState
@@ -159,13 +157,13 @@ const buildMindmapEnterPreview = ({
   nodeId,
   anchorId
 }: {
-  structure: DocumentRead['mindmap']['structure']
+  structure: GraphRead['mindmap']['structure']
   graph: GraphSnapshot
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterPreview | undefined => {
-  const currentStructure = structure.get(treeId)
+  const currentStructure = structure(treeId)
   const computed = graph.owners.mindmaps.byId.get(treeId)?.tree.layout
   if (!currentStructure || !computed) {
     return undefined
@@ -205,7 +203,7 @@ const readMindmapInsertSide = ({
   targetNodeId,
   side
 }: {
-  structure: MindmapStructureItem
+  structure: MindmapView['structure']
   targetNodeId: MindmapNodeId
   side?: 'left' | 'right'
 }): 'left' | 'right' => {
@@ -230,7 +228,7 @@ const buildMindmapRelativeInsertInput = ({
   side,
   payload
 }: {
-  structure: MindmapStructureItem
+  structure: MindmapView['structure']
   targetNodeId: MindmapNodeId
   relation: MindmapInsertRelation
   side?: 'left' | 'right'
@@ -314,7 +312,7 @@ const createMindmapTickDelta = (
 
 type MindmapProcedureDeps = {
   engine: Pick<Engine, 'current'>
-  document: Pick<DocumentRead, 'mindmap'>
+  graph: Pick<GraphRead, 'mindmap'>
   session: Pick<EditorSession, 'preview'>
   write: Pick<EditorWrite, 'mindmap'>
   focusNode: (input: {
@@ -329,7 +327,7 @@ type MindmapProcedureDeps = {
 
 export const createMindmapActionProcedures = ({
   engine,
-  document,
+  graph,
   session,
   write,
   focusNode,
@@ -425,7 +423,7 @@ export const createMindmapActionProcedures = ({
   ): EditorProcedure<number> {
     const published = yield publish()
     const preview = buildMindmapEnterPreview({
-      structure: document.mindmap.structure,
+      structure: graph.mindmap.structure,
       graph: published.graph,
       treeId: input.treeId,
       nodeId: input.nodeId,
@@ -487,7 +485,7 @@ export const createMindmapActionProcedures = ({
   const insertRelative = function* (
     input: Parameters<MindmapActions['insertRelative']>[0]
   ): EditorProcedure<ReturnType<MindmapActions['insertRelative']>> {
-    const structure = document.mindmap.structure.get(input.id)
+    const structure = graph.mindmap.structure(input.id)
     if (!structure) {
       return undefined
     }

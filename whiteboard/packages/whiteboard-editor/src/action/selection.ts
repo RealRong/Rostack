@@ -3,7 +3,7 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { GraphRead } from '@whiteboard/editor/read/graph'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   CanvasWrite,
@@ -22,7 +22,7 @@ export type SelectionActionHelpers = Pick<
 >
 
 type SelectionActionHelpersHost = {
-  read: Pick<DocumentRead, 'group'>
+  read: Pick<GraphRead, 'group'>
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
@@ -54,11 +54,6 @@ const toCanvasRefs = (
     id
   }))
 ]
-
-const readGroupTarget = (
-  read: Pick<DocumentRead, 'group'>,
-  groupId: GroupId
-): SelectionTarget | undefined => read.group.target(groupId)
 
 const createFrame = (
   node: Pick<NodeWrite, 'create'>,
@@ -145,7 +140,7 @@ export const createSelectionActions = ({
   },
   order: (input, mode) => {
     const target = selectionApi.target.normalize(input)
-    const groupIds = read.group.exactIds(target)
+    const groupIds = read.group.exact(target)
     if (groupIds.length > 0) {
       return orderGroups(group, groupIds, mode).ok
     }
@@ -168,13 +163,12 @@ export const createSelectionActions = ({
       return true
     }
 
-    const selection = readGroupTarget(read, result.data.groupId)
-    session.replaceSelection(selection ?? target)
+    session.replaceSelection(target)
     return true
   },
   ungroup: (input, options) => {
     const target = selectionApi.target.normalize(input)
-    const groupIds = [...read.group.exactIds(target)]
+    const groupIds = [...read.group.exact(target)]
     if (!groupIds.length) {
       return false
     }

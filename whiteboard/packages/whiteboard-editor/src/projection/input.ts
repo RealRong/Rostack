@@ -14,7 +14,7 @@ import type {
   EditSession as EditorEditSession
 } from '@whiteboard/editor/session/edit'
 import type {
-  EngineChange,
+  EngineDelta,
   EnginePublish,
   IdDelta,
   Snapshot as DocumentSnapshot
@@ -292,14 +292,12 @@ const readMindmapId = (
   snapshot: DocumentSnapshot,
   value: string
 ): string | undefined => {
-  if (snapshot.state.facts.entities.owners.mindmaps.has(value)) {
+  if (snapshot.document.mindmaps[value]) {
     return value
   }
 
-  const owner = snapshot.state.facts.relations.nodeOwner.get(value)
-  return owner?.kind === 'mindmap'
-    ? owner.id
-    : undefined
+  const owner = snapshot.document.nodes[value]?.owner
+  return owner?.kind === 'mindmap' ? owner.id : undefined
 }
 
 const mergeNodePreviewPatch = (
@@ -538,29 +536,29 @@ const readDragState = (
 }
 
 export const createDocumentInputDelta = (
-  change: EngineChange
+  delta: EngineDelta
 ): InputDelta['document'] => ({
-  reset: change.root.doc,
-  order: change.root.order,
+  reset: delta.reset,
+  order: delta.order,
   nodes: {
-    added: new Set(change.entities.nodes.added),
-    updated: new Set(change.entities.nodes.updated),
-    removed: new Set(change.entities.nodes.removed)
+    added: new Set(delta.nodes.added),
+    updated: new Set(delta.nodes.updated),
+    removed: new Set(delta.nodes.removed)
   },
   edges: {
-    added: new Set(change.entities.edges.added),
-    updated: new Set(change.entities.edges.updated),
-    removed: new Set(change.entities.edges.removed)
+    added: new Set(delta.edges.added),
+    updated: new Set(delta.edges.updated),
+    removed: new Set(delta.edges.removed)
   },
   mindmaps: {
-    added: new Set(change.entities.mindmaps.added),
-    updated: new Set(change.entities.mindmaps.updated),
-    removed: new Set(change.entities.mindmaps.removed)
+    added: new Set(delta.mindmaps.added),
+    updated: new Set(delta.mindmaps.updated),
+    removed: new Set(delta.mindmaps.removed)
   },
   groups: {
-    added: new Set(change.entities.groups.added),
-    updated: new Set(change.entities.groups.updated),
-    removed: new Set(change.entities.groups.removed)
+    added: new Set(delta.groups.added),
+    updated: new Set(delta.groups.updated),
+    removed: new Set(delta.groups.removed)
   }
 })
 
@@ -644,12 +642,14 @@ export const readActiveMindmapTickIds = (input: {
 }
 
 export const createEditorGraphInput = ({
+  previous,
   publish,
   session,
   layout,
   delta,
   now = scheduler.readMonotonicNow()
 }: {
+  previous: DocumentSnapshot | null
   publish: EnginePublish
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
   layout: Pick<EditorLayout, 'draft'>
@@ -662,7 +662,9 @@ export const createEditorGraphInput = ({
 
   return {
     document: {
-      snapshot
+      previous,
+      snapshot,
+      delta: publish.delta
     },
     session: {
       edit: store.read(session.state.edit),

@@ -1,7 +1,13 @@
 export { path } from './path'
 export type { Path, PathKey } from './path'
 export { meta } from './meta'
-export type { OpMeta, OpMetaTable, OpSync } from './meta'
+export type {
+  FamilyMeta,
+  FamilyMetaTable,
+  OpMeta,
+  OpMetaTable,
+  OpSync
+} from './meta'
 export { compile } from './compiler'
 export type {
   CompileCtx,
@@ -15,6 +21,15 @@ export type {
   ApplyResult,
   Model
 } from './apply'
+export { MutationEngine } from './engine'
+export type {
+  MutationCommitResult,
+  MutationCurrent,
+  MutationEngineSpec,
+  MutationHistorySpec,
+  MutationPlan,
+  MutationPublishSpec
+} from './engine'
 export { collab } from './collab'
 export type {
   Change,

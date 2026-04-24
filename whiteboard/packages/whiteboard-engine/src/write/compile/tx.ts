@@ -1,3 +1,4 @@
+import { planningContext, type ValidationIssue } from '@shared/core'
 import type {
   Document,
   ErrorInfo,
@@ -42,6 +43,12 @@ const isCompilerFailure = (
   && (error as { kind?: string }).kind === 'compile-failure'
 )
 
+const raiseCompilerFailure = (
+  issue: ValidationIssue<'invalid' | 'cancelled'>
+): never => {
+  throw createCompilerFailure(issue.code, issue.message, issue.details)
+}
+
 export const createCompilerTx = ({
   document,
   ids
@@ -49,9 +56,13 @@ export const createCompilerTx = ({
   document: Document
   ids: CompilerIds
 }) => {
-  const ops: Operation[] = []
+  let context!: planningContext.PlanningContext<
+    CommandCompilerTx['read'],
+    Operation,
+    'invalid' | 'cancelled'
+  >
 
-  const tx: CommandCompilerTx = {
+  context = planningContext.createPlanningContext({
     read: {
       document: {
         get: () => document
@@ -62,9 +73,12 @@ export const createCompilerTx = ({
       node: {
         get: (id) => document.nodes[id],
         require: (id) => {
-          const node = document.nodes[id]
+          const node = context.require(document.nodes[id], {
+            code: 'invalid',
+            message: `Node ${id} not found.`
+          })
           if (!node) {
-            throw createCompilerFailure('invalid', `Node ${id} not found.`)
+            throw new Error(`Unexpected missing node ${id}.`)
           }
           return node
         }
@@ -72,9 +86,12 @@ export const createCompilerTx = ({
       edge: {
         get: (id) => document.edges[id],
         require: (id) => {
-          const edge = document.edges[id]
+          const edge = context.require(document.edges[id], {
+            code: 'invalid',
+            message: `Edge ${id} not found.`
+          })
           if (!edge) {
-            throw createCompilerFailure('invalid', `Edge ${id} not found.`)
+            throw new Error(`Unexpected missing edge ${id}.`)
           }
           return edge
         }
@@ -82,9 +99,12 @@ export const createCompilerTx = ({
       group: {
         get: (id) => document.groups[id],
         require: (id) => {
-          const group = document.groups[id]
+          const group = context.require(document.groups[id], {
+            code: 'invalid',
+            message: `Group ${id} not found.`
+          })
           if (!group) {
-            throw createCompilerFailure('invalid', `Group ${id} not found.`)
+            throw new Error(`Unexpected missing group ${id}.`)
           }
           return group
         }
@@ -92,24 +112,42 @@ export const createCompilerTx = ({
       mindmap: {
         get: (id) => document.mindmaps[id],
         require: (id) => {
-          const mindmap = document.mindmaps[id]
+          const mindmap = context.require(document.mindmaps[id], {
+            code: 'invalid',
+            message: `Mindmap ${id} not found.`
+          })
           if (!mindmap) {
-            throw createCompilerFailure('invalid', `Mindmap ${id} not found.`)
+            throw new Error(`Unexpected missing mindmap ${id}.`)
           }
           return mindmap
         }
       }
     },
+    mode: 'fail-fast',
+    raise: raiseCompilerFailure
+  })
+
+  const tx: CommandCompilerTx = {
+    read: context.read,
     ids,
-    emit: (op) => {
-      ops.push(op)
-    },
+    emit: context.emit,
+    emitMany: context.emitMany,
     fail: {
       invalid: (message, details) => {
-        throw createCompilerFailure('invalid', message, details)
+        context.issue({
+          code: 'invalid',
+          message,
+          details
+        })
+        throw new Error('Unreachable compiler invalid branch.')
       },
       cancelled: (message, details) => {
-        throw createCompilerFailure('cancelled', message, details)
+        context.issue({
+          code: 'cancelled',
+          message,
+          details
+        })
+        throw new Error('Unreachable compiler cancelled branch.')
       }
     }
   }
@@ -118,7 +156,7 @@ export const createCompilerTx = ({
     tx,
     ok: <T>(output: T): CompileResult<T> => ({
       ok: true,
-      ops,
+      ops: context.finish().operations,
       output
     }),
     fail: (error: unknown): CompileResult => {

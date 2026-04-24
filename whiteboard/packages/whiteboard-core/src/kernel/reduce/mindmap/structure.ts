@@ -21,7 +21,7 @@ export const createMindmapStructureApi = (
   }) => {
     setMindmap(tx._runtime.draft, input.mindmap)
     changeSet.markAdded(tx._runtime.changes.mindmaps, input.mindmap.id)
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.delete',
       id: input.mindmap.id
     })
@@ -53,7 +53,7 @@ export const createMindmapStructureApi = (
       : snapshot.slot?.next
         ? { kind: 'before', itemId: `${snapshot.slot.next.kind}:${snapshot.slot.next.id}` }
         : { kind: 'end' })
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.delete',
       id: snapshot.mindmap.id
     })
@@ -69,7 +69,7 @@ export const createMindmapStructureApi = (
     const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, tree.rootNodeId))
     const connectedEdges = collectConnectedEdges(tx._runtime.draft, nodeIds)
     connectedEdges.forEach((edge) => {
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.restore',
         edge: tx.snapshot.edge.capture(edge.id),
         slot: tx.snapshot.canvas.slot({
@@ -81,7 +81,7 @@ export const createMindmapStructureApi = (
       changeSet.markRemoved(tx._runtime.changes.edges, edge.id)
       tx.dirty.edge.touch(edge.id)
     })
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.restore',
       snapshot: tx.snapshot.mindmap.capture(id)
     })

@@ -6,7 +6,7 @@ export const createGroupLifecycleApi = (
 ) => ({
   create: (group: import('@whiteboard/core/types').Group) => {
     tx._runtime.draft.groups.set(group.id, group)
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'group.delete',
       id: group.id
     })
@@ -15,7 +15,7 @@ export const createGroupLifecycleApi = (
   },
   restore: (group: import('@whiteboard/core/types').Group) => {
     tx._runtime.draft.groups.set(group.id, group)
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'group.delete',
       id: group.id
     })
@@ -27,7 +27,7 @@ export const createGroupLifecycleApi = (
     if (!current) {
       return
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'group.restore',
       group: tx.snapshot.group.capture(id)
     })

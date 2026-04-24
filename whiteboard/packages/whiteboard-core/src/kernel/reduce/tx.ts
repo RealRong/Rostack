@@ -32,6 +32,21 @@ export const createReducerTx = (
   tx.dirty = createDirtyApi(tx)
   tx.reconcile = createReconcileApi(tx)
   tx.mindmap = createMindmapApi(tx)
+  tx.inverse = {
+    prepend: (op) => {
+      tx._runtime.inverse.prepend(op)
+    },
+    prependMany: (ops) => {
+      tx._runtime.inverse.prependMany(ops)
+    },
+    append: (op) => {
+      tx._runtime.inverse.append(op)
+    },
+    appendMany: (ops) => {
+      tx._runtime.inverse.appendMany(ops)
+    },
+    finish: () => tx._runtime.inverse.finish()
+  }
   tx.commit = createCommitApi(tx)
 
   return tx

@@ -18,7 +18,7 @@ export const createMindmapTopicCollapseApi = (
     if (!member) {
       throw new Error(`Topic ${topicId} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.topic.collapse',
       id,
       topicId,

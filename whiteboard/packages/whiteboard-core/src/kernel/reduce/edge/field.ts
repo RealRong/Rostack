@@ -32,7 +32,7 @@ export const createEdgeFieldApi = (
     if (!current) {
       throw new Error(`Edge ${id} not found.`)
     }
-    tx._runtime.inverse.unshift(
+    tx.inverse.prepend(
       ((current as unknown as Record<string, unknown>)[field] === undefined) && field !== 'source' && field !== 'target' && field !== 'type'
         ? {
             type: 'edge.field.unset',
@@ -58,7 +58,7 @@ export const createEdgeFieldApi = (
     if (!current) {
       throw new Error(`Edge ${id} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'edge.field.set',
       id,
       field,

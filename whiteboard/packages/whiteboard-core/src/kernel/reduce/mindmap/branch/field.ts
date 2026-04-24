@@ -19,7 +19,7 @@ export const createMindmapBranchFieldApi = (
     if (!member) {
       throw new Error(`Topic ${topicId} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.branch.field.set',
       id,
       topicId,
@@ -55,7 +55,7 @@ export const createMindmapBranchFieldApi = (
     if (!member) {
       throw new Error(`Topic ${topicId} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.branch.field.set',
       id,
       topicId,

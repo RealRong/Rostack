@@ -7,7 +7,7 @@ const emitOps = (
   ctx: Pick<CommandCompileContext, 'tx'>,
   ops: readonly import('@whiteboard/core/types').Operation[]
 ) => {
-  ops.forEach((op) => ctx.tx.emit(op))
+  ctx.tx.emitMany(ops)
 }
 
 export const compileDocumentCommand = (

@@ -4,7 +4,6 @@ import { operation } from '@dataview/core/operation'
 import { string } from '@shared/core'
 import { planFieldAction } from '@dataview/engine/mutate/planner/fields'
 import {
-  createIssue,
   hasValidationErrors,
   type ValidationIssue
 } from '@dataview/engine/mutate/issues'
@@ -56,7 +55,9 @@ export const planActions = (input: {
 
     // Only advance planner state when later actions still depend on the mutated document.
     if (index < input.actions.length - 1) {
-      workingDocument = operation.reduce.all(workingDocument, planned.operations)
+      const context = operation.createContext(workingDocument)
+      operation.reduce.all(context, planned.operations)
+      workingDocument = context.finish().document
     }
   }
 

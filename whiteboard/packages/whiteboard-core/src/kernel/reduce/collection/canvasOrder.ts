@@ -94,7 +94,7 @@ export const createCanvasOrderCollectionApi = (
             })()
 
       filtered.splice(insertAt, 0, ...existingRefs)
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'canvas.order.move',
         refs: [...existingRefs],
         to: previousTo

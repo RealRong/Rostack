@@ -42,7 +42,7 @@ export const createEdgeRecordApi = (
       ? current.data
       : current.style
     const previous = tx.read.record.path(currentRoot, path)
-    tx._runtime.inverse.unshift(previous === undefined
+    tx.inverse.prepend(previous === undefined
       ? {
           type: 'edge.record.unset',
           id,
@@ -80,7 +80,7 @@ export const createEdgeRecordApi = (
     const currentRoot = scope === 'data'
       ? current.data
       : current.style
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'edge.record.set',
       id,
       scope,

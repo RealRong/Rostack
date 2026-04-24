@@ -99,7 +99,7 @@ export const createCommitApi = (
       doc: materializeDraftDocument(tx._runtime.draft),
       changes: tx._runtime.changes,
       invalidation,
-      inverse: tx._runtime.inverse,
+      inverse: tx.inverse.finish(),
       history: {
         footprint: materializeHistoryFootprint(tx._runtime.history.footprint)
       },
@@ -126,7 +126,7 @@ export const createDocumentReplaceResult = (
       background: true,
       canvasOrder: true
     },
-    inverse: tx._runtime.inverse,
+    inverse: tx.inverse.finish(),
     history: {
       footprint: []
     },

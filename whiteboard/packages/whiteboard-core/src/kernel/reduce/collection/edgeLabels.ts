@@ -40,7 +40,7 @@ export const createEdgeLabelsCollectionApi = (
               return anchor.kind === 'before' ? anchorIndex : anchorIndex + 1
             })()
       labels.splice(insertAt, 0, item)
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.label.delete',
         edgeId,
         labelId: item.id
@@ -60,7 +60,7 @@ export const createEdgeLabelsCollectionApi = (
         return
       }
       const label = labels[index]!
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.label.insert',
         edgeId,
         label: json.clone(label),
@@ -99,7 +99,7 @@ export const createEdgeLabelsCollectionApi = (
               return anchor.kind === 'before' ? anchorIndex : anchorIndex + 1
             })()
       labels.splice(insertAt, 0, label)
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.label.move',
         edgeId,
         labelId: itemId,
@@ -123,7 +123,7 @@ export const createEdgeLabelsCollectionApi = (
       }
       const label = labels[index]!
       const previous = (label as Record<string, unknown>)[field]
-      tx._runtime.inverse.unshift(previous === undefined
+      tx.inverse.prepend(previous === undefined
         ? { type: 'edge.label.field.unset', edgeId, labelId, field }
         : { type: 'edge.label.field.set', edgeId, labelId, field, value: json.clone(previous) })
       labels[index] = {
@@ -142,7 +142,7 @@ export const createEdgeLabelsCollectionApi = (
         throw new Error(`Edge label ${labelId} not found.`)
       }
       const label = labels[index]!
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.label.field.set',
         edgeId,
         labelId,
@@ -168,7 +168,7 @@ export const createEdgeLabelsCollectionApi = (
       const label = labels[index]!
       const currentRoot = scope === 'data' ? label.data : label.style
       const previous = tx.read.record.path(currentRoot, path)
-      tx._runtime.inverse.unshift(previous === undefined
+      tx.inverse.prepend(previous === undefined
         ? { type: 'edge.label.record.unset', edgeId, labelId, scope, path }
         : { type: 'edge.label.record.set', edgeId, labelId, scope, path, value: json.clone(previous) })
       const result = record.apply(currentRoot, { op: 'set', path, value })
@@ -194,7 +194,7 @@ export const createEdgeLabelsCollectionApi = (
       }
       const label = labels[index]!
       const currentRoot = scope === 'data' ? label.data : label.style
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.label.record.set',
         edgeId,
         labelId,

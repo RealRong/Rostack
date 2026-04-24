@@ -5,7 +5,7 @@ export const createDocumentBackgroundApi = (
   tx: ReducerTx
 ) => ({
   set: (background: import('@whiteboard/core/types').Document['background']) => {
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'document.background',
       background: cloneBackground(tx._runtime.draft.background)
     })

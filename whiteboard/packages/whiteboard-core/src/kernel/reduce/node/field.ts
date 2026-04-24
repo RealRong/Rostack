@@ -32,7 +32,7 @@ export const createNodeFieldApi = (
     if (!current) {
       throw new Error(`Node ${id} not found.`)
     }
-    tx._runtime.inverse.unshift(
+    tx.inverse.prepend(
       (current as Record<string, unknown>)[field] === undefined && field !== 'position'
         ? {
             type: 'node.field.unset',
@@ -64,7 +64,7 @@ export const createNodeFieldApi = (
     if (!current) {
       throw new Error(`Node ${id} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'node.field.set',
       id,
       field,

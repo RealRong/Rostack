@@ -6,7 +6,7 @@ export const createDocumentLifecycleApi = (
   tx: ReducerTx
 ) => ({
   replace: (document: import('@whiteboard/core/types').Document) => {
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'document.replace',
       document: materializeDraftDocument(tx._runtime.draft)
     })

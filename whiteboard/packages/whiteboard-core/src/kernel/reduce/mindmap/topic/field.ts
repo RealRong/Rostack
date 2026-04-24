@@ -33,7 +33,7 @@ export const createMindmapTopicFieldApi = (
     if (!current) {
       throw new Error(`Topic ${topicId} not found.`)
     }
-    tx._runtime.inverse.unshift(
+    tx.inverse.prepend(
       (current as Record<string, unknown>)[field] === undefined && field !== 'size'
         ? {
             type: 'mindmap.topic.field.unset',
@@ -63,7 +63,7 @@ export const createMindmapTopicFieldApi = (
     if (!current) {
       throw new Error(`Topic ${topicId} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.topic.field.set',
       id,
       topicId,

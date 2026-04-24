@@ -307,12 +307,14 @@ export const createDemoUser = (): DemoUser => {
 const createChannelName = (roomId: string) =>
   `${CHANNEL_PREFIX}:${roomId}`
 
-export const readRoomIdFromUrl = () => {
+export const readRoomIdFromUrl = (
+  defaultRoomId = 'playground'
+) => {
   if (typeof window === 'undefined') {
-    return 'playground'
+    return normalizeRoomId(defaultRoomId)
   }
   const params = new URLSearchParams(window.location.search)
-  return normalizeRoomId(params.get('room') ?? 'playground')
+  return normalizeRoomId(params.get('room') ?? defaultRoomId)
 }
 
 export const buildRoomUrl = (roomId: string) => {

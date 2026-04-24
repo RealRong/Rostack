@@ -14,7 +14,7 @@ export const createMindmapLayoutApi = (
     if (!current) {
       throw new Error(`Mindmap ${id} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.layout',
       id,
       patch: cloneLayoutPatch(current.layout)!

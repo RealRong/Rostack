@@ -17,7 +17,7 @@ export const createNodeLifecycleApi = (
 ) => ({
   create: (node: import('@whiteboard/core/types').Node) => {
     setNode(tx._runtime.draft, node)
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'node.delete',
       id: node.id
     })
@@ -41,7 +41,7 @@ export const createNodeLifecycleApi = (
       tx._runtime.changes.canvasOrder = true
       tx.dirty.canvas.order()
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'node.delete',
       id: node.id
     })
@@ -56,7 +56,7 @@ export const createNodeLifecycleApi = (
     const slot = isTopLevelNode(tx._runtime.draft, current)
       ? readCanvasSlot(readCanvasOrder(tx._runtime.draft), { kind: 'node', id: current.id })
       : undefined
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'node.restore',
       node: tx.snapshot.node.capture(id),
       slot: cloneCanvasSlot(slot)

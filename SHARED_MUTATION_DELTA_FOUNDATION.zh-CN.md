@@ -72,6 +72,46 @@
 - Whiteboard Editor Graph `publish/ui` 已删除本地 `markUi*` 薄包装；UI phase 直接写 `changeSet.mark*` 与布尔标记。
 - 本文后续若出现旧命名或旧包装，属于历史分析，不再建议保留。
 
+## 阶段 2 当前状态（2026-04-24）
+
+阶段 2 已完成 `planning/compiler context` 合流，且不保留旧基础设施分叉：
+
+- `shared/core` 新增 `planningContext`，统一承载 `read + issueCollector + operationBuffer`。
+- Dataview planner 不再自己维护 `issues[] + finish(...ops)` 的底层状态；其 `PlannerScope` 现在只是基于 shared `planningContext` 的领域包装，保留 `resolveTarget` 这类 Dataview 专属辅助。
+- Whiteboard compiler 不再自己维护 `ops[] + fail-fast throw` 的底层状态；`createCompilerTx` 现在基于 shared `planningContext` 的 `fail-fast` 模式构建。
+- Dataview 的 `ValidationIssue` 已与 shared `ValidationIssue<TCode, TSource>` 对齐，动作位置信息收敛为 `issue.source`，不再维持一套平铺字段模型。
+- Whiteboard compiler 的 `emit` / `emitMany` 与 `fail.invalid/cancelled` 已统一落在 shared context 上，compiler tx 只保留 Whiteboard 领域读模型和 id 分配器。
+
+这一步的本质不是“抽一个共同父接口”而已，而是把两边共同的三件事彻底下沉：
+
+1. 读取上下文承载；
+2. operation 累积；
+3. collect / fail-fast 两种问题处理模式。
+
+因此，后续无论是 Dataview 的 action planner，还是 Whiteboard 的 command compiler，都不应该再各自维护一份 `issues/ops/fail` 生命周期状态机；新增场景直接复用 shared `planningContext`。
+
+## 阶段 3 当前状态（2026-04-24）
+
+阶段 3 已完成 `reduce / mutation context` 合流：
+
+- `shared/core` 新增 `mutationContext`，统一承载 `base + current + inverse + working` 的 mutation 生命周期。
+- Dataview 已新增 `DocumentMutationContext`，`applyOperations` 与 `reduceOperations` 不再经过 `executeOperation` 入口，而是通过 `reduceOperation(context, operation)` 驱动。
+- Dataview 的旧 `executeOperation.ts` 已退出入口层；操作级副作用逻辑收敛到 `operation/mutation.ts`，公共入口改为 `operation.createContext + operation.reduce.*`。
+- Whiteboard `ReduceRuntime` 已改为基于 shared `mutationContext` 创建，`inverse` 不再是裸数组，而是 shared `InverseBuilder`。
+- Whiteboard `ReducerTx` 已提升出显式 `tx.inverse` API；各 reducer handler 不再直接操作 `_runtime.inverse.unshift(...)`。
+- Whiteboard commit 阶段只消费 `tx.inverse.finish()`，不再泄漏底层 inverse 存储实现。
+
+这一步完成后，两边在 mutation 生命周期上的共同底层已经统一为：
+
+1. base/current 状态承载；
+2. inverse builder；
+3. working/trace 附属状态。
+
+剩余差异已基本只剩领域层：
+
+- Dataview 的 `CommitImpact` 规则与 record/field/view 语义；
+- Whiteboard 的 `draft/changes/dirty/history/reconcile` 规则与 node/edge/group/mindmap 语义。
+
 ## 当前重复模式
 
 ### 1. add/update/remove 净变更规则重复

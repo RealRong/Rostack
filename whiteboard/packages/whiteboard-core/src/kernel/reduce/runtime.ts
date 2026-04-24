@@ -1,4 +1,4 @@
-import { changeSet } from '@shared/core'
+import { changeSet, mutationContext, type InverseBuilder, type MutationContext } from '@shared/core'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/overlay'
 import type { HistoryKey } from '@whiteboard/core/spec/history'
@@ -11,6 +11,7 @@ import type {
   Group,
   GroupId,
   Invalidation,
+  KernelReduceResult,
   MindmapId,
   MindmapRecord,
   Node,
@@ -32,15 +33,37 @@ export type ReconcileTask = {
   id: MindmapId
 }
 
-export type ReduceRuntime = {
-  draft: DraftDocument
+export type ReduceRuntimeWorking = {
   changes: ChangeSet
   dirty: Invalidation
-  inverse: import('@whiteboard/core/types').Operation[]
   history: {
     footprint: Map<string, HistoryKey>
   }
-  shortCircuit?: import('@whiteboard/core/types').KernelReduceResult
+  shortCircuit?: KernelReduceResult
+  reconcile: {
+    tasks: ReconcileTask[]
+    queued: Set<string>
+  }
+}
+
+export type ReduceMutationContext = MutationContext<
+  Document,
+  DraftDocument,
+  import('@whiteboard/core/types').Operation,
+  ReduceRuntimeWorking
+>
+
+export type ReduceRuntime = {
+  mutation: ReduceMutationContext
+  readonly base: Document
+  readonly draft: DraftDocument
+  changes: ChangeSet
+  dirty: Invalidation
+  inverse: InverseBuilder<import('@whiteboard/core/types').Operation>
+  history: {
+    footprint: Map<string, HistoryKey>
+  }
+  shortCircuit?: KernelReduceResult
   reconcile: {
     tasks: ReconcileTask[]
     queued: Set<string>
@@ -358,16 +381,46 @@ export const collectConnectedEdges = (
 
 export const createReduceRuntime = (
   document: Document
-): ReduceRuntime => ({
-  draft: createDraftDocument(document),
-  changes: createChangeSet(),
-  dirty: createInvalidation(),
-  inverse: [],
-  history: {
-    footprint: new Map()
-  },
-  reconcile: {
-    tasks: [],
-    queued: new Set<string>()
+): ReduceRuntime => {
+  const mutation = mutationContext.createMutationContext<
+    Document,
+    DraftDocument,
+    import('@whiteboard/core/types').Operation,
+    ReduceRuntimeWorking
+  >({
+    base: document,
+    current: createDraftDocument(document),
+    working: {
+      changes: createChangeSet(),
+      dirty: createInvalidation(),
+      history: {
+        footprint: new Map()
+      },
+      reconcile: {
+        tasks: [],
+        queued: new Set<string>()
+      }
+    }
+  })
+
+  return {
+    mutation,
+    get base() {
+      return mutation.base
+    },
+    get draft() {
+      return mutation.current()
+    },
+    changes: mutation.working.changes,
+    dirty: mutation.working.dirty,
+    inverse: mutation.inverse,
+    history: mutation.working.history,
+    get shortCircuit() {
+      return mutation.working.shortCircuit
+    },
+    set shortCircuit(value) {
+      mutation.working.shortCircuit = value
+    },
+    reconcile: mutation.working.reconcile
   }
-})
+}

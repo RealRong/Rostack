@@ -1,63 +1,19 @@
 import type {
+  ShapeKind
+} from '@whiteboard/core/node/shape'
+import type {
   Document,
   Edge,
   Node,
   SpatialNode
 } from '@whiteboard/core/types'
-import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
-
-type Scenario = {
-  id: string
-  documentId: string
-  label: string
-  description: string
-  create: () => Document
-}
-
-const toRecord = <T extends { id: string }>(items: T[]) =>
-  Object.fromEntries(items.map((item) => [item.id, item]))
-
-const toNodeEnd = (nodeId: string) => ({
-  kind: 'node' as const,
-  nodeId
-})
-
-const createShapeNode = (
-  input: Omit<SpatialNode, 'type'> & {
-    kind: string
-    text: string
-  }
-): Node => {
-  const {
-    kind,
-    text,
-    data,
-    ...node
-  } = input
-
-  return {
-    ...node,
-    type: 'shape',
-    data: {
-      ...(data ?? {}),
-      kind,
-      text
-    }
-  }
-}
-
-const createBaseDocument = (id: string, nodes: Node[], edges: Edge[]): Document => ({
-  ...documentApi.create(id),
-  nodes: toRecord(nodes),
-  edges: toRecord(edges),
-  canvas: {
-    order: [
-    ...nodes.map((node) => ({ kind: 'node' as const, id: node.id })),
-    ...edges.map((edge) => ({ kind: 'edge' as const, id: edge.id }))
-    ]
-  }
-})
+import {
+  createDocumentFromParts,
+  createShapeNode,
+  toNodeEnd
+} from '@whiteboard/demo/scenarios/builder'
+import type { ScenarioPreset } from '@whiteboard/demo/scenarios/types'
 
 const createBasicDocument = (): Document => {
   const groupId = 'group-1'
@@ -110,7 +66,7 @@ const createBasicDocument = (): Document => {
   ]
 
   return {
-    ...createBaseDocument('demo-basic', nodes, edges),
+    ...createDocumentFromParts('demo-basic', nodes, edges),
     groups: {
       [groupId]: {
         id: groupId,
@@ -148,23 +104,27 @@ const createDenseDocument = (): Document => {
     }
   }
 
-  const linkEvery = 4
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
-      if ((row + col) % linkEvery !== 0) continue
-      const sourceId = `grid-${row}-${col}`
+      if ((row + col) % 4 !== 0) {
+        continue
+      }
+
       const targetCol = col + 1
-      if (targetCol >= cols) continue
+      if (targetCol >= cols) {
+        continue
+      }
+
       edges.push({
         id: `edge-${row}-${col}`,
         type: 'linear',
-        source: toNodeEnd(sourceId),
+        source: toNodeEnd(`grid-${row}-${col}`),
         target: toNodeEnd(`grid-${row}-${targetCol}`)
       })
     }
   }
 
-  return createBaseDocument('demo-dense', nodes, edges)
+  return createDocumentFromParts('demo-dense', nodes, edges)
 }
 
 const createMindmapDocument = (): Document => {
@@ -265,7 +225,7 @@ const createMindmapDocument = (): Document => {
   ]
 
   return {
-    ...createBaseDocument('demo-mindmap', nodes, []),
+    ...createDocumentFromParts('demo-mindmap', nodes, []),
     mindmaps: {
       [mindmapId]: {
         id: mindmapId,
@@ -289,71 +249,78 @@ const createMindmapDocument = (): Document => {
 }
 
 const createShapesDocument = (): Document => {
+  const create = (
+    input: Omit<SpatialNode, 'type'> & {
+      kind: ShapeKind
+      text: string
+    }
+  ) => createShapeNode(input)
+
   const nodes: Node[] = [
-    createShapeNode({
+    create({
       id: 'shape-start',
       kind: 'pill',
       text: 'Start',
       position: { x: -520, y: -160 },
       size: { width: 200, height: 100 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-process',
       kind: 'rect',
       text: 'Process',
       position: { x: -240, y: -160 },
       size: { width: 180, height: 110 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-data',
       kind: 'parallelogram',
       text: 'Input / Output',
       position: { x: 20, y: -160 },
       size: { width: 210, height: 110 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-diamond',
       kind: 'diamond',
       text: 'Decision',
       position: { x: 320, y: -180 },
       size: { width: 180, height: 180 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-database',
       kind: 'cylinder',
       text: 'Database',
       position: { x: -460, y: 120 },
       size: { width: 180, height: 130 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-document',
       kind: 'document',
       text: 'Document',
       position: { x: -180, y: 120 },
       size: { width: 190, height: 130 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-subprocess',
       kind: 'predefined-process',
       text: 'Subprocess',
       position: { x: 120, y: 130 },
       size: { width: 210, height: 110 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-callout',
       kind: 'callout',
       text: '统一 shape 节点后，文本编辑、切换样式、catalog 都走一条链路。',
       position: { x: 410, y: 100 },
       size: { width: 280, height: 170 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-cloud',
       kind: 'cloud',
       text: 'Cloud',
       position: { x: 380, y: -10 },
       size: { width: 220, height: 140 }
     }),
-    createShapeNode({
+    create({
       id: 'shape-highlight',
       kind: 'highlight',
       text: 'Annotation',
@@ -407,38 +374,40 @@ const createShapesDocument = (): Document => {
     }
   ]
 
-  return createBaseDocument('demo-shapes', nodes, edges)
+  return createDocumentFromParts('demo-shapes', nodes, edges)
 }
 
-export const scenarios: Scenario[] = [
+export const showcaseScenarios: ScenarioPreset[] = [
   {
     id: 'basic',
+    kind: 'showcase',
     documentId: 'demo-basic',
     label: '基础流程',
-    description: '常规节点 + 连线 + 分组',
+    description: '常规节点、连线与基础编辑行为。',
     create: createBasicDocument
   },
   {
-    id: 'dense',
-    documentId: 'demo-dense',
-    label: '超多节点',
-    description: '大规模节点渲染压力测试',
-    create: createDenseDocument
-  },
-  {
     id: 'mindmap',
+    kind: 'showcase',
     documentId: 'demo-mindmap',
     label: '思维导图',
-    description: '内置 Mindmap 树与交互',
+    description: '内置 mindmap 树、布局与拖拽交互。',
     create: createMindmapDocument
   },
   {
     id: 'shapes',
+    kind: 'showcase',
     documentId: 'demo-shapes',
     label: '图形节点',
-    description: '第一批 shape / sticker 节点',
+    description: '第一批 shape、sticky 与注释节点。',
     create: createShapesDocument
+  },
+  {
+    id: 'dense',
+    kind: 'showcase',
+    documentId: 'demo-dense',
+    label: 'Synthetic Dense',
+    description: '保留的纯渲染密集样例，不作为有语义数据主入口。',
+    create: createDenseDocument
   }
 ]
-
-export type { Scenario }

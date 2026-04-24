@@ -285,6 +285,13 @@ export type ReducerTx = {
       }
     }
   }
+  inverse: {
+    prepend(op: Operation): void
+    prependMany(ops: readonly Operation[]): void
+    append(op: Operation): void
+    appendMany(ops: readonly Operation[]): void
+    finish(): readonly Operation[]
+  }
   commit: {
     result(): KernelReduceResult
   }

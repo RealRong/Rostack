@@ -4,20 +4,34 @@ import {
   type WhiteboardInstance
 } from '@whiteboard/react'
 import type { Document } from '@whiteboard/core/types'
-import { scenarios } from '@whiteboard/demo/scenarios'
+import {
+  buildScenarioRoomId,
+  defaultScenarioPreset,
+  resolveScenarioPreset
+} from '@whiteboard/demo/scenarios'
 import {
   createBroadcastChannelCollab,
   createDemoUser,
   readRoomIdFromUrl
 } from '@whiteboard/demo/collab'
 
-const resolveScenario = (id: string) =>
-  scenarios.find((item) => item.id === id) ?? scenarios[0]
+const readScenarioPresetFromUrl = () => {
+  if (typeof window === 'undefined') {
+    return defaultScenarioPreset
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  return resolveScenarioPreset({
+    scenarioId: params.get('scenario'),
+    size: params.get('size')
+  })
+}
 
 export const App = () => {
+  const [preset] = useState(() => readScenarioPresetFromUrl())
   const [user] = useState(() => createDemoUser())
-  const roomId = readRoomIdFromUrl()
-  const [doc, setDoc] = useState<Document>(() => resolveScenario(scenarios[0].id).create())
+  const roomId = readRoomIdFromUrl(buildScenarioRoomId(preset))
+  const [doc, setDoc] = useState<Document>(() => preset.create())
   const instanceRef = useRef<WhiteboardInstance | null>(null)
   const collabBinding = useMemo(
     () => createBroadcastChannelCollab({

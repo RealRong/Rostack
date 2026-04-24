@@ -15,7 +15,7 @@ export const createEdgeLifecycleApi = (
 ) => ({
   create: (edge: import('@whiteboard/core/types').Edge) => {
     setEdge(tx._runtime.draft, edge)
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'edge.delete',
       id: edge.id
     })
@@ -33,7 +33,7 @@ export const createEdgeLifecycleApi = (
       kind: 'edge',
       id: edge.id
     }, slot))
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'edge.delete',
       id: edge.id
     })
@@ -47,7 +47,7 @@ export const createEdgeLifecycleApi = (
     if (!current) {
       return
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'edge.restore',
       edge: tx.snapshot.edge.capture(id),
       slot: tx.snapshot.canvas.slot({

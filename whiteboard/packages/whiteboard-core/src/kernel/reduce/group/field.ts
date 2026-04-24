@@ -31,7 +31,7 @@ export const createGroupFieldApi = (
     if (!current) {
       throw new Error(`Group ${id} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'group.field.set',
       id,
       field,
@@ -49,7 +49,7 @@ export const createGroupFieldApi = (
     if (!current) {
       throw new Error(`Group ${id} not found.`)
     }
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'group.field.set',
       id,
       field,

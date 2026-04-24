@@ -45,7 +45,7 @@ export const createEdgeRoutePointsCollectionApi = (
               return anchor.kind === 'before' ? anchorIndex : anchorIndex + 1
             })()
       points.splice(insertAt, 0, item)
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.route.point.delete',
         edgeId,
         pointId: item.id
@@ -68,7 +68,7 @@ export const createEdgeRoutePointsCollectionApi = (
         return
       }
       const point = points[index]!
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.route.point.insert',
         edgeId,
         point: json.clone(point),
@@ -110,7 +110,7 @@ export const createEdgeRoutePointsCollectionApi = (
               return anchor.kind === 'before' ? anchorIndex : anchorIndex + 1
             })()
       points.splice(insertAt, 0, point)
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.route.point.move',
         edgeId,
         pointId: itemId,
@@ -133,7 +133,7 @@ export const createEdgeRoutePointsCollectionApi = (
         throw new Error(`Edge route point ${pointId} not found.`)
       }
       const point = points[index]!
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.route.point.field.set',
         edgeId,
         pointId,

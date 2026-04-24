@@ -1,6 +1,10 @@
 import type { ActionType } from '@dataview/core/contracts/actions'
+import type {
+  IssueSeverity,
+  ValidationIssue as SharedValidationIssue
+} from '@shared/core'
 
-export type ValidationSeverity = 'error' | 'warning'
+export type ValidationSeverity = IssueSeverity
 
 export type ValidationCode =
   | 'batch.emptyCollection'
@@ -22,19 +26,12 @@ export type ValidationCode =
   | 'field.invalid'
   | 'external.invalidSource'
 
-export interface ValidationIssue {
-  severity: ValidationSeverity
-  code: ValidationCode
-  message: string
-  actionIndex: number
-  actionType: ActionType
-  path?: string
-}
-
 export interface IssueSource {
   index: number
   type: ActionType
 }
+
+export type ValidationIssue = SharedValidationIssue<ValidationCode, IssueSource>
 
 export const createIssue = (
   source: IssueSource,
@@ -46,9 +43,8 @@ export const createIssue = (
   severity,
   code,
   message,
-  actionIndex: source.index,
-  actionType: source.type,
-  path
+  path,
+  source
 })
 
 export const hasValidationErrors = (issues: readonly ValidationIssue[]) => issues.some(issue => issue.severity === 'error')

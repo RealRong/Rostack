@@ -71,7 +71,7 @@ export const createMindmapTopicStructureApi = (
         }
       })
       tx._runtime.draft.nodes.set(nextId, input.topic)
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'mindmap.topic.delete',
         id: input.id,
         input: { nodeId: nextId }
@@ -108,7 +108,7 @@ export const createMindmapTopicStructureApi = (
       children: nextChildren
     })
     tx._runtime.draft.nodes.set(input.topic.id, input.topic)
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.topic.delete',
       id: input.id,
       input: { nodeId: input.topic.id }
@@ -168,7 +168,7 @@ export const createMindmapTopicStructureApi = (
       changeSet.markAdded(tx._runtime.changes.nodes, node.id)
       tx.dirty.node.touch(node.id)
     })
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.topic.delete',
       id: input.id,
       input: { nodeId: input.snapshot.root }
@@ -222,7 +222,7 @@ export const createMindmapTopicStructureApi = (
         [nextParentId]: nextSiblings
       }
     })
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.topic.move',
       id: input.id,
       input: {
@@ -257,7 +257,7 @@ export const createMindmapTopicStructureApi = (
     const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, input.nodeId))
     const connectedEdges = collectConnectedEdges(tx._runtime.draft, nodeIds)
     connectedEdges.forEach((edge) => {
-      tx._runtime.inverse.unshift({
+      tx.inverse.prepend({
         type: 'edge.restore',
         edge: tx.snapshot.edge.capture(edge.id),
         slot: tx.snapshot.canvas.slot({
@@ -269,7 +269,7 @@ export const createMindmapTopicStructureApi = (
       changeSet.markRemoved(tx._runtime.changes.edges, edge.id)
       tx.dirty.edge.touch(edge.id)
     })
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.topic.restore',
       id: input.id,
       snapshot: tx.snapshot.mindmap.topic(input.id, input.nodeId)

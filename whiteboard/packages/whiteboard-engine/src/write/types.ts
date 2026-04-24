@@ -63,6 +63,7 @@ export type CommandCompilerTx = {
   }
   ids: CompilerIds
   emit: (op: Operation) => void
+  emitMany: (ops: readonly Operation[]) => void
   fail: {
     invalid: (message: string, details?: unknown) => never
     cancelled: (message: string, details?: unknown) => never

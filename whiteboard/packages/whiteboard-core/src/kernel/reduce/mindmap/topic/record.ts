@@ -41,7 +41,7 @@ export const createMindmapTopicRecordApi = (
     }
     const currentRoot = scope === 'data' ? current.data : current.style
     const previous = tx.read.record.path(currentRoot, path)
-    tx._runtime.inverse.unshift(previous === undefined
+    tx.inverse.prepend(previous === undefined
       ? { type: 'mindmap.topic.record.unset', id, topicId, scope, path }
       : { type: 'mindmap.topic.record.set', id, topicId, scope, path, value: json.clone(previous) })
     const next = applyTopicRecordMutation(current, scope, {
@@ -68,7 +68,7 @@ export const createMindmapTopicRecordApi = (
       throw new Error(`Topic ${topicId} not found.`)
     }
     const currentRoot = scope === 'data' ? current.data : current.style
-    tx._runtime.inverse.unshift({
+    tx.inverse.prepend({
       type: 'mindmap.topic.record.set',
       id,
       topicId,

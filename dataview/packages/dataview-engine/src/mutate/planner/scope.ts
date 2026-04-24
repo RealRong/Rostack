@@ -5,13 +5,12 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import { collection, string } from '@shared/core'
+import { collection, planningContext, string } from '@shared/core'
 import {
   createDocumentReader,
   type DocumentReader
 } from '@dataview/engine/document/reader'
 import {
-  createIssue,
   hasValidationErrors,
   type IssueSource,
   type ValidationCode,
@@ -27,6 +26,8 @@ export interface PlannedActionResult {
 export interface PlannerScope {
   readonly reader: DocumentReader
   readonly source: IssueSource
+  emit(operation: DocumentOperation): void
+  emitMany(...operations: readonly DocumentOperation[]): void
   issue(
     code: ValidationCode,
     message: string,
@@ -55,54 +56,27 @@ export const createPlannerScope = (input: {
   action: Action
   index: number
 }): PlannerScope => {
-  const issues: ValidationIssue[] = []
   const source: IssueSource = {
     index: input.index,
     type: input.action.type
   }
-  const reader = createDocumentReader(() => input.document)
-
-  const issue = (
-    code: ValidationCode,
-    message: string,
-    path?: string,
-    severity: ValidationSeverity = 'error'
-  ) => {
-    issues.push(createIssue(source, severity, code, message, path))
-  }
-
-  const report = (...nextIssues: readonly ValidationIssue[]) => {
-    issues.push(...nextIssues)
-  }
-
-  const requireValue = <T,>(
-    value: T | undefined,
-    requirement: {
-      code: ValidationCode
-      message: string
-      path?: string
-      severity?: ValidationSeverity
-    }
-  ): T | undefined => {
-    if (value !== undefined) {
-      return value
-    }
-
-    issue(
-      requirement.code,
-      requirement.message,
-      requirement.path,
-      requirement.severity
-    )
-    return undefined
-  }
+  const context = planningContext.createPlanningContext<
+    DocumentReader,
+    DocumentOperation,
+    ValidationCode,
+    IssueSource
+  >({
+    read: createDocumentReader(() => input.document),
+    source
+  })
+  const reader = context.read
 
   const resolveTarget = (
     target: EditTarget,
     path = 'target'
   ): readonly RecordId[] | undefined => {
     if (target.type === 'record') {
-      const record = requireValue(
+      const record = context.require(
         reader.records.get(target.recordId),
         {
           code: 'record.notFound',
@@ -117,22 +91,22 @@ export const createPlannerScope = (input: {
 
     const recordIds = collection.unique(target.recordIds) as RecordId[]
     if (!recordIds.length) {
-      issue(
-        'batch.emptyCollection',
-        `${source.type} requires at least one item`,
-        `${path}.recordIds`
-      )
+      context.issue({
+        code: 'batch.emptyCollection',
+        message: `${source.type} requires at least one item`,
+        path: `${path}.recordIds`
+      })
       return undefined
     }
 
     const resolved: RecordId[] = []
     recordIds.forEach((recordId, index) => {
       if (!string.isNonEmptyString(recordId) || !reader.records.has(recordId)) {
-        issue(
-          'record.notFound',
-          `Unknown record: ${recordId}`,
-          `${path}.recordIds.${index}`
-        )
+        context.issue({
+          code: 'record.notFound',
+          message: `Unknown record: ${recordId}`,
+          path: `${path}.recordIds.${index}`
+        })
         return
       }
 
@@ -146,19 +120,38 @@ export const createPlannerScope = (input: {
 
   const finish = (
     ...operations: readonly DocumentOperation[]
-  ): PlannedActionResult => ({
-    issues: [...issues],
-    operations: hasValidationErrors(issues)
-      ? []
-      : [...operations]
-  })
+  ): PlannedActionResult => {
+    context.emitMany(operations)
+    const result = context.finish()
+    return {
+      issues: [...result.issues],
+      operations: hasValidationErrors(result.issues)
+        ? []
+        : [...result.operations]
+    }
+  }
 
   return {
     reader,
     source,
-    issue,
-    report,
-    require: requireValue,
+    emit: (operation) => {
+      context.emit(operation)
+    },
+    emitMany: (...operations) => {
+      context.emitMany(operations)
+    },
+    issue: (code, message, path, severity = 'error') => {
+      context.issue({
+        code,
+        message,
+        path,
+        severity
+      })
+    },
+    report: (...issues) => {
+      context.report(...issues)
+    },
+    require: (value, requirement) => context.require(value, requirement),
     resolveTarget,
     finish
   }

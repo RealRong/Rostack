@@ -30,9 +30,10 @@ import {
   document as documentApi
 } from '@dataview/core/document'
 import { equal, json } from '@shared/core'
+import type { DocumentMutationContext } from '@dataview/core/operation/context'
 
 
-export interface ExecuteOperationResult {
+interface OperationMutationEffect {
   document: DataDoc
   inverse: readonly DocumentOperation[]
 }
@@ -361,7 +362,7 @@ const executeRecordInsert = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.record.insert' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const nextDocument = documentApi.records.insert(document, operation.records, operation.target?.index)
   if (nextDocument === document) {
     return {
@@ -402,7 +403,7 @@ const executeRecordPatch = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.record.patch' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const beforeRecord = documentApi.records.get(document, operation.recordId)
   if (!beforeRecord) {
     return {
@@ -439,7 +440,7 @@ const executeRecordRemove = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.record.remove' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const removedEntries = captureRecordEntries(document, operation.recordIds)
   if (!removedEntries.length) {
     return {
@@ -487,7 +488,7 @@ const executeRecordFieldWrite = (
       | 'document.record.fields.restoreMany'
   }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const applied = operation.type === 'document.record.fields.writeMany'
     ? documentApi.records.writeFieldsWithChanges(document, operation)
     : documentApi.records.restoreFieldsWithChanges(document, operation.entries)
@@ -519,7 +520,7 @@ const executeFieldPut = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.field.put' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const beforeField = documentApi.schema.fields.get(document, operation.field.id)
   const nextDocument = documentApi.schema.fields.put(document, operation.field)
   const afterField = documentApi.schema.fields.get(nextDocument, operation.field.id)
@@ -569,7 +570,7 @@ const executeFieldPatch = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.field.patch' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const beforeField = documentApi.schema.fields.get(document, operation.id)
   if (!beforeField) {
     return {
@@ -609,7 +610,7 @@ const executeFieldRemove = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.field.remove' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const beforeField = documentApi.schema.fields.get(document, operation.id)
   if (!beforeField) {
     return {
@@ -647,7 +648,7 @@ const executeViewPut = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.view.put' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const beforeView = documentApi.views.get(document, operation.view.id)
   const nextDocument = documentApi.views.put(document, operation.view)
   const afterView = documentApi.views.get(nextDocument, operation.view.id)
@@ -723,7 +724,7 @@ const executeActiveViewSet = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.activeView.set' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const beforeViewId = documentApi.views.activeId.get(document)
   const nextDocument = documentApi.views.activeId.set(document, operation.id)
   const afterViewId = documentApi.views.activeId.get(nextDocument)
@@ -748,7 +749,7 @@ const executeViewRemove = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'document.view.remove' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   const beforeView = documentApi.views.get(document, operation.id)
   if (!beforeView) {
     return {
@@ -786,7 +787,7 @@ const executeExternalBump = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'external.version.bump' }>,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   impact.external = {
     versionBumped: true,
     source: operation.source
@@ -801,11 +802,11 @@ const executeExternalBump = (
   }
 }
 
-export const executeOperation = (
+const reduceOperationEffect = (
   document: DataDoc,
   operation: DocumentOperation,
   impact: CommitImpact
-): ExecuteOperationResult => {
+): OperationMutationEffect => {
   switch (operation.type) {
     case 'document.record.insert':
       return executeRecordInsert(document, operation, impact)
@@ -831,4 +832,17 @@ export const executeOperation = (
     case 'external.version.bump':
       return executeExternalBump(document, operation, impact)
   }
+}
+
+export const reduceOperationMutation = (
+  context: DocumentMutationContext,
+  operation: DocumentOperation
+): void => {
+  const effect = reduceOperationEffect(
+    context.document(),
+    operation,
+    context.impact
+  )
+  context.replaceDocument(effect.document)
+  context.inverse.prependMany(effect.inverse)
 }

@@ -445,6 +445,315 @@
    如果是，可以保留 `isEqual`，但要把它视为止损，不要误判成根因已经解决。
 4. 如果还要继续优化，目标应该是减少临时分配和结构抖动，而不是盲目删掉比较器。
 
+## 组合位置最终决策
+
+为避免后续再次把“组合位置”做散，最终方案明确按下面分层执行：
+
+### 1. `ProjectionSources` 继续保持 raw source
+
+`whiteboard/packages/whiteboard-editor/src/projection/sources.ts` 只负责把 snapshot 拆成 source：
+
+- `nodeGraph`
+- `edgeGraph`
+- `nodeUi`
+- `edgeUi`
+- `scene`
+- `chrome`
+- 其他 owner/source
+
+这里不引入 editor-facing 的组合视图，不在这一层生成：
+
+- `node.view`
+- `edge.view`
+- `panel`
+- `chrome`
+- 任何 toolbar / overlay / capability read model
+
+原因很简单：
+
+- `ProjectionSources` 是 snapshot 到 source store 的纯拆分层。
+- 一旦在这里做 editor 组合，这层就不再是 source，而会开始掺杂具体消费方语义。
+- 这样只会把组合逻辑前移，但不会减少重复，反而会让 `ProjectionSources` 变成新的混合层。
+
+### 2. graph adapter 层作为唯一跨 source 组合点
+
+`whiteboard/packages/whiteboard-editor/src/read/graph.ts` 及其子模块是唯一允许做“graph + ui 合成单个订阅单元”的位置。
+
+这里应该承接：
+
+- `node.view`
+- `edge.view`
+- editor 自己那一份 canonical selection model
+
+这里不应该承接：
+
+- screen-space 投影
+- toolbar / panel 这种 public presentation 包装
+
+原因：
+
+- `node.view` / `edge.view` 的目标就是把多个 raw source 合成一个下游订阅面，避免 React 同时订阅两个源。
+- 这种组合是 read-model adapter 的职责，不是 raw source 的职责，也不是 React 组件的职责。
+
+### 3. `public.ts` 只做 editor-specific presentation
+
+`whiteboard/packages/whiteboard-editor/src/read/public.ts` 只负责把 graph adapter 层和 session read 层进一步拼成 editor public read：
+
+- `panel`
+- `chrome`
+- `selectedEdgeChrome`
+- `mindmapChrome`
+- selection toolbar / overlay / scope / stats
+
+这一层不再重新组合 raw graph/ui source，只消费已经稳定的 adapter 结果。
+
+### 4. React 不再直接 join raw source
+
+React 下游只订阅：
+
+- `editor.read.node.view`
+- `editor.read.edge.view`
+- `editor.read.selection.*`
+- `editor.read.chrome`
+- `editor.read.panel`
+
+React 不再承担：
+
+- 同时订阅 `nodeGraph + nodeUi`
+- 同时订阅 `edgeGraph + edgeUi`
+- 自己做 bundle / shallow compare / passthrough 合并
+
+这样可以把组合次数固定在一处，而不是在 hook、component、public read 三处重复出现。
+
+## 最终实施方案
+
+目标是同时做到三件事：
+
+1. 保留必要组合。
+2. 删除重复组合。
+3. 把剩余组合收敛到少数固定位置，并由底层设施负责结构复用。
+
+为了尽可能减少重复和复杂度，最终方案只新增一个底层抽象，不新增并行 read 体系，也不新增第二套 public API。
+
+### A. 新增一个通用的 struct/combine store 设施
+
+新增位置：
+
+- `shared/core/src/store/`
+
+建议新增能力：
+
+- `createStructStore(...)`
+- `createStructKeyedStore(...)`
+
+职责：
+
+- 从多个 store 组合出一个对象值。
+- 当字段值都未变化时，直接复用上一份组合对象。
+- 支持按字段配置 `select` / `isEqual`，避免每个业务点都手写整对象 `isEqual`。
+
+这一步是整个方案里唯一新增的底层抽象。
+
+不再允许业务层继续普遍使用下面这种模式：
+
+- `get: () => ({ ... })`
+- `isEqual: (left, right) => left.a === right.a && left.b === right.b ...`
+
+### B. 保留 `node.view / edge.view`，但把它们固定为 adapter 层唯一组合点
+
+修改位置：
+
+- `whiteboard/packages/whiteboard-editor/src/read/node.ts`
+- `whiteboard/packages/whiteboard-editor/src/read/edge.ts`
+
+具体做法：
+
+- 继续保留 `EditorNodeView` / `EditorEdgeView` 这两个 editor-facing 组合视图。
+- 不把这两个视图下放到 `ProjectionSources`。
+- 不把这两个组合推迟到 React hook。
+- 改为用 `createStructKeyedStore(...)` 统一承接 `graph + ui` 的组合与结构复用。
+
+结果：
+
+- React 仍然只订阅一个 keyed store。
+- 组合只发生一次。
+- 比较逻辑不再继续散落成手写 `isEqual`。
+
+这部分是“必须组合，但组合位置要固定”的代表。
+
+### C. selection 只保留 editor 自己的一份 canonical model
+
+这是整个方案里最重要的收缩点。
+
+当前问题不是只有 wrapper 多，而是 selection 语义本身分散在两处：
+
+- `editor-graph` 里有一份 `SelectionView`
+- `whiteboard-editor/src/read/selection.ts` 里又重新推导一份 `members / summary / affordance`
+
+最终方案是：
+
+- editor 侧只保留一份 canonical selection model。
+- `EditorRead.selection.view`、`members`、`summary`、`affordance` 都从这同一份 model 出来。
+- editor 不再透传 `graph.selection.view`。
+
+修改位置：
+
+- `whiteboard/packages/whiteboard-editor/src/read/selection.ts`
+- `whiteboard/packages/whiteboard-editor/src/read/graph.ts`
+- `whiteboard/packages/whiteboard-editor/src/read/public.ts`
+- `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+
+具体做法：
+
+- 在 `read/selection.ts` 内部直接建立 editor canonical selection model。
+- 这份 model 包含：
+  - `view`
+  - `members`
+  - `summary`
+  - `affordance`
+- 删除 `SelectionModel` bundle + 再拆 wrapper 的现有结构。
+- `GraphSelectionRead` 直接暴露最终需要的 store，不再先打包再拆包。
+
+为了彻底消除重复，后续同步删除 editor 对 `editor-graph` selection projection 的依赖。
+
+对应修改位置：
+
+- `whiteboard/packages/whiteboard-editor/src/projection/sources.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/contracts/editor.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/contracts/working.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/ui.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/phases/ui.ts`
+
+目标是：
+
+- 如果 selection 语义最终由 editor 拥有，就不要再在 `editor-graph` 保留一份近似但不完全一致的 projection。
+- 这样可以同时消掉：
+  - duplicated selection projection
+  - `SelectionModel` 包装层
+  - `graph.selection.view` 的透传依赖
+
+为了降低改动面，`EditorRead.selection.view` 的对外 shape 尽量保持与现有消费方兼容，优先保证 React 组件无感。
+
+### D. `public.ts` 的 `panel / chrome` 改成 leaf store + struct combine
+
+修改位置：
+
+- `whiteboard/packages/whiteboard-editor/src/read/public.ts`
+
+具体做法：
+
+- 先把 `panel` 和 `chrome` 里真正有独立语义的字段拆成 leaf store：
+  - `marquee`
+  - `draw`
+  - `edgeGuide`
+  - `snap`
+  - `selectionOverlay`
+  - `selectionToolbar`
+  - `history`
+  - `drawState`
+- 再用 `createStructStore(...)` 组合出：
+  - `EditorChromePresentation`
+  - `EditorPanelPresentation`
+
+这样做以后：
+
+- 不再手写 `isChromeMarqueeEqual`
+- 不再手写 `isChromeDrawEqual`
+- 不再在 `panel` / `chrome` 上维持 ad hoc shallow compare
+
+这里的重点不是“拆更多 store”，而是“先拆 leaf，再由统一组合设施复用对象”。
+
+### E. `nodeCapability` 暂时保留现状，只在主线完成后再决定是否 canonicalize
+
+修改位置：
+
+- `whiteboard/packages/whiteboard-editor/src/read/public.ts`
+- 可能扩展到 `whiteboard/packages/whiteboard-editor/src/read/node.ts`
+
+结论：
+
+- `nodeCapability` 当前不是第一优先级。
+- 主线先完成 A/B/C/D。
+- 如果 profiling 证明 capability 分配仍然是热点，再把 capability 改成 canonical value。
+
+这样可以避免把“主线收缩”与“进一步微优化”绑在一起，增加复杂度。
+
+## 要修改的文件
+
+为了让实施范围更清楚，最终方案对应的文件修改可以直接收敛成下面这组。
+
+### 必改
+
+- `shared/core/src/store/*`
+  新增 `createStructStore` / `createStructKeyedStore`，并导出到 store index
+- `whiteboard/packages/whiteboard-editor/src/read/node.ts`
+  `node.view` 改为统一组合设施承接
+- `whiteboard/packages/whiteboard-editor/src/read/edge.ts`
+  `edge.view` 改为统一组合设施承接
+- `whiteboard/packages/whiteboard-editor/src/read/selection.ts`
+  删除 `SelectionModel` bundle + passthrough wrapper，改成 editor canonical selection model
+- `whiteboard/packages/whiteboard-editor/src/read/graph.ts`
+  调整 `GraphRead.selection` 的来源和结构
+- `whiteboard/packages/whiteboard-editor/src/read/public.ts`
+  `panel / chrome` 改成 leaf store + struct combine，并切到新的 selection read model
+- `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+  调整 `EditorRead.selection.view` 的类型来源
+
+### 同步清理
+
+- `whiteboard/packages/whiteboard-editor/src/projection/sources.ts`
+  删除 editor 不再使用的 `selection` source
+- `whiteboard/packages/whiteboard-editor-graph/src/contracts/editor.ts`
+  删除 editor 已不再依赖的 `SelectionView` 暴露面
+- `whiteboard/packages/whiteboard-editor-graph/src/contracts/working.ts`
+  删除 `ui.selection`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/ui.ts`
+  删除 selection view 构建
+- `whiteboard/packages/whiteboard-editor-graph/src/phases/ui.ts`
+  删除 selection publish/update 相关逻辑
+
+### 不改
+
+下面这些这轮不作为主线目标：
+
+- `selectedEdgeChrome` 的语义与比较方式
+- `mindmapChrome` 的语义与比较方式
+- `edge.geometry` 的投影方式
+- `panel.ts` 内部纯函数的局部 comparator
+
+这些点可以等主线完成、profiling 后再决定是否深入。
+
+## 实施后的结构
+
+完成后，整个结构应当收敛成：
+
+1. `editor-graph`
+   发布 graph / ui / scene / chrome 等 canonical raw projection，不再承担 editor selection 语义。
+2. `ProjectionSources`
+   只做 snapshot -> source 拆分。
+3. `read/graph/*`
+   作为唯一跨 source adapter，负责：
+   - `node.view`
+   - `edge.view`
+   - editor canonical selection model
+4. `read/public.ts`
+   只做 editor-specific presentation 组合：
+   - `panel`
+   - `chrome`
+   - overlay / toolbar / selected edge chrome / mindmap chrome
+5. React
+   只订阅 public read 或 adapter read，不再自行 join raw source。
+
+这样可以同时减少：
+
+- 重复组合
+- 重复比较
+- 语义分叉
+- 包装层级
+- downstream 多源订阅
+
+同时不会引入第二套平行 read 系统，复杂度也能控制在一条清晰主线上。
+
 ## 额外观察
 
 在把冗余 equal 清掉之后，下一批真正值得重新评估的，反而可能是不带 `isEqual` 的包装 store，例如 `public.ts` 里的这些：

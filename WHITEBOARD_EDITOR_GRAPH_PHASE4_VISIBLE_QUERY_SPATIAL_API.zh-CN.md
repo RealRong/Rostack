@@ -695,7 +695,231 @@ whiteboard/packages/whiteboard-editor-graph/src/runtime/sceneVisible.ts
 
 ---
 
-## 12. 阶段四完成标准
+## 12. 实施方案
+
+这一节不再讨论“设计应该是什么”，而是明确“代码应该按什么顺序落”。
+
+阶段四推荐按下面这条切线顺序推进：
+
+```txt
+先接 editor query 注入口
+  -> 再切 scene.visible
+  -> 再切 node / edge rect query
+  -> 再切 connect candidate
+  -> 最后清理旧扫描路径和补测试
+```
+
+这里故意不建议“按文件分散着改一点点”，而是按消费链切。  
+原因很简单：
+
+- phase 4 的收益点在消费方
+- 不是在 spatial state 本身
+
+### 12.1 第一步：先把 `runtime.query.spatial` 接进 `GraphRead`
+
+先做这一步，是为了后面的 query 迁移能都挂在同一个 editor 读口上。
+
+推荐修改：
+
+```txt
+whiteboard/packages/whiteboard-editor/src/read/graph.ts
+whiteboard/packages/whiteboard-editor/src/editor/createEditor.ts
+whiteboard/packages/whiteboard-editor/src/input/runtime.ts
+```
+
+具体动作：
+
+1. 在 `GraphRead` 上新增 `spatial`。
+2. `createGraphRead(...)` 改成显式接收 `spatial`。
+3. `createEditor(...)` 把 `projection.query.spatial` 传进去。
+4. 收口所有因为 `GraphRead` 类型变化而报错的 editor input / action / read 代码。
+
+这一步的目标不是行为变化，而是把后续所有 spatial 消费都接到统一入口。
+
+这一步完成时，应满足：
+
+- editor 层只有一个 `GraphRead` 入口
+- 没有新增 `ProjectionSources.spatial`
+- 没有新增新的 store 订阅面
+
+### 12.2 第二步：切 `scene.visible`，先让 runtime 自己开始消费 spatial
+
+这一步推荐只动 `editor-graph` runtime，不同时改 editor query。
+
+推荐修改：
+
+```txt
+whiteboard/packages/whiteboard-editor-graph/src/runtime/scene.ts
+whiteboard/packages/whiteboard-editor-graph/src/phases/scene.ts
+```
+
+如有必要，再补：
+
+```txt
+whiteboard/packages/whiteboard-editor-graph/src/runtime/sceneVisible.ts
+```
+
+具体动作：
+
+1. 保留 `scene.items` 的完整 canvas order 构造。
+2. 新增一个只负责从 `SpatialIndexState` 派生 visible 结果的小 helper。
+3. `buildSceneSnapshot(...)` 改成：
+   - `items` 继续来自 document order
+   - `visible` 改来自 spatial
+   - `scene.spatial / scene.pick` 改成 visible 的薄投影
+4. 删除 `runtime/scene.ts` 里对 `graph.nodes / graph.edges / graph.owners.mindmaps` 的 visible 扫描逻辑。
+
+这一步完成时，应满足：
+
+- viewport visible 已经不再依赖全量扫 graph family
+- `scene.pick.items` 只是 `scene.visible.items` 的映射，不再自扫一遍
+- `scene.spatial.*` 只是 visible 的映射，不再自扫一遍
+
+### 12.3 第三步：切 node / edge rect query
+
+这一步开始让 editor 热查询真正吃到 spatial 候选收益。
+
+推荐修改：
+
+```txt
+whiteboard/packages/whiteboard-editor/src/read/node.ts
+whiteboard/packages/whiteboard-editor/src/read/edge.ts
+```
+
+具体动作：
+
+1. `node.idsInRect(...)`：
+   - 候选来源改为 `graph.spatial.rect(rect, { kinds: ['node'] })`
+   - 保留 `exclude / match / policy`
+   - 继续走 `nodeApi.hit.matchRect`
+2. `edge.idsInRect(...)`：
+   - 候选来源改为 `graph.spatial.rect(rect, { kinds: ['edge'] })`
+   - 保留 `match`
+   - 继续走 `edgeApi.hit.test`
+3. 删除这两条路径里对 `document.node.list`、`document.edge.list` 的默认整表扫描。
+
+这里要明确一条实现原则：
+
+> 候选来源可以切，但精确命中语义不能退。
+
+如果改完以后：
+
+- marquee contain/touch 语义变了
+- 旋转 node 命中退化了
+- edge path 命中退化成 bounds 命中
+
+那就是实现错误，不是可接受 tradeoff。
+
+### 12.4 第四步：切 `edge.connectCandidates(...)`
+
+这一步单独拆出来，不要和 `edge.idsInRect(...)` 混成一个 helper。
+
+推荐修改：
+
+```txt
+whiteboard/packages/whiteboard-editor/src/read/edge.ts
+whiteboard/packages/whiteboard-editor/src/input/runtime.ts
+```
+
+具体动作：
+
+1. `connectCandidates(rect)` 直接调用：
+   - `graph.spatial.rect(rect, { kinds: ['node'] })`
+2. 从 candidate node ids 读取 node graph entry。
+3. 保留 capability 过滤。
+4. 继续构造现有 `EdgeConnectCandidate[]` 输出。
+5. 删除通过 `node.idsInRect(...)` 间接取 connect candidate 的旧链路。
+
+之所以把这一步单独列出来，是因为它和 node rect query 的目标不同：
+
+- node `idsInRect(...)`
+  - 是精确 rect 命中
+- `connectCandidates(...)`
+  - 是连接候选预筛选
+
+二者都可以从 spatial 开始，但不能为了省事强行共用同一套“最终命中” helper。
+
+### 12.5 第五步：清理旧路径，并补行为测试
+
+当前阶段四的最大风险不是“类型改不过”，而是：
+
+- 旧扫描路径还偷偷留着
+- 测试看起来都过了，但实际语义退化
+
+所以最后一步必须明确做清理和验证。
+
+推荐动作：
+
+1. 删除或收口已经不再需要的整图扫描 helper。
+2. 删掉只为旧扫描路径存在的临时变量和 import。
+3. 让 `read/node.ts`、`read/edge.ts` 中新的 spatial 候选链路成为唯一实现。
+4. 跑 editor-graph 和 editor 两侧的针对性测试。
+
+### 12.6 推荐的提交/落地边界
+
+虽然本次重构允许中途暂时不通过，但阶段四仍然推荐收敛成下面这几个落地块：
+
+1. `GraphRead.spatial` 接线。
+2. `scene.visible` 切到 spatial。
+3. node / edge `idsInRect(...)` 切到 spatial。
+4. `edge.connectCandidates(...)` 切到 spatial。
+5. 清理旧路径和补测试。
+
+这样拆的好处是：
+
+- 每一块都对应一类明确消费方
+- 出问题时容易定位是 scene、rect query 还是 connect query
+- 不需要为了排障再引入兼容层
+
+### 12.7 推荐的验收与测试清单
+
+阶段四建议至少覆盖下面几类验证。
+
+#### runtime / projection 侧
+
+重点回归：
+
+- `whiteboard/packages/whiteboard-editor-graph/test/runtime.test.ts`
+  - `scene.visible.items`
+  - `scene.visible.nodeIds`
+  - `scene.visible.edgeIds`
+  - `scene.visible.mindmapIds`
+  - `scene.spatial.*`
+  - `scene.pick.items`
+- `whiteboard/packages/whiteboard-editor-graph/test/graphDelta.test.ts`
+  - viewport-only input 只标记 `spatial.visible`
+  - group 仍然不进入 spatial
+
+#### editor query / interaction 侧
+
+重点回归：
+
+- `whiteboard/packages/whiteboard-editor/test/selection-move-session.test.ts`
+  - marquee / selection 相关 rect query
+- `whiteboard/packages/whiteboard-editor/test/edge-connect-session.test.ts`
+  - connect candidate / connect guide
+- `whiteboard/packages/whiteboard-editor/test/node-edit-selection-chrome.test.ts`
+  - node hover / selection chrome 相关表现
+
+如果 draw / eraser 仍然依赖 `node.idsInRect(...)`，还应补跑：
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/draw.ts` 相关测试覆盖
+
+### 12.8 实施时最容易犯的错误
+
+阶段四实现时最容易踩的坑主要有五类：
+
+1. `scene.visible` 虽然切了 spatial，但 `scene.pick` / `scene.spatial` 还在各自重扫。
+2. node / edge query 直接把 bounds 命中当最终命中，导致精度退化。
+3. `connectCandidates(...)` 继续绕 `node.idsInRect(...)`，把两种语义重新耦合回去。
+4. 为了让 React 订阅方便，把 `runtime.query.spatial` 包成新的 store source。
+5. 为了中途跑通，保留“spatial miss 时 fallback 整图扫描”。
+
+这五条都不应该接受。
+
+---
+
+## 13. 阶段四完成标准
 
 阶段四完成时，应满足下面这些结果：
 
@@ -713,7 +937,7 @@ whiteboard/packages/whiteboard-editor-graph/src/runtime/sceneVisible.ts
 
 ---
 
-## 13. 这一阶段故意不解决什么
+## 14. 这一阶段故意不解决什么
 
 为了把范围收住，阶段四明确不解决：
 
@@ -732,7 +956,7 @@ whiteboard/packages/whiteboard-editor-graph/src/runtime/sceneVisible.ts
 
 ---
 
-## 14. 最终结论
+## 15. 最终结论
 
 阶段四最核心的设计，不是“再给 spatial 增加更多状态”，而是把它真正接成消费底座。
 

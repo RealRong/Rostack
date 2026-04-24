@@ -1,3 +1,4 @@
+import { changeSet } from '@shared/core'
 import { createRegistries } from '@whiteboard/core/kernel'
 import type {
   Document,
@@ -23,32 +24,26 @@ import { publishEngine } from './publish'
 import { createEngineQuery } from './query'
 import type { EngineWrite } from '../types/engineWrite'
 
+const createInitialEntityChange = <TId extends string>(
+  entities: Record<TId, unknown>
+) => {
+  const delta = changeSet.create<TId>()
+  Object.keys(entities).forEach((id) => {
+    changeSet.markAdded(delta, id as TId)
+  })
+  return delta
+}
+
 const createInitialChange = (
   document: Document
 ): EngineChange => buildChange({
   document: true,
   background: true,
   canvasOrder: true,
-  nodes: {
-    added: new Set(Object.keys(document.nodes)),
-    updated: new Set(),
-    removed: new Set()
-  },
-  edges: {
-    added: new Set(Object.keys(document.edges)),
-    updated: new Set(),
-    removed: new Set()
-  },
-  groups: {
-    added: new Set(Object.keys(document.groups)),
-    updated: new Set(),
-    removed: new Set()
-  },
-  mindmaps: {
-    added: new Set(Object.keys(document.mindmaps)),
-    updated: new Set(),
-    removed: new Set()
-  }
+  nodes: createInitialEntityChange(document.nodes),
+  edges: createInitialEntityChange(document.edges),
+  groups: createInitialEntityChange(document.groups),
+  mindmaps: createInitialEntityChange(document.mindmaps)
 })
 
 const createPublish = (input: {

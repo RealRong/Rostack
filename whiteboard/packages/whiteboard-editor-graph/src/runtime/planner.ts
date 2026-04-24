@@ -1,4 +1,4 @@
-import { keySet, type KeySet } from '@shared/core'
+import { changeSet, keySet } from '@shared/core'
 import {
   createPlan,
   type RuntimePlanner
@@ -20,18 +20,6 @@ import {
   createSpatialPatchScope,
   hasSpatialPatchScope
 } from './spatial/contracts'
-
-const hasIdDelta = <TId extends string>(
-  delta: {
-    added: ReadonlySet<TId>
-    updated: ReadonlySet<TId>
-    removed: ReadonlySet<TId>
-  }
-): boolean => (
-  delta.added.size > 0
-  || delta.updated.size > 0
-  || delta.removed.size > 0
-)
 
 const hasUiDelta = (
   delta: Input['delta']['ui']
@@ -55,26 +43,6 @@ const createSpatialPlannerScope = (
   visible: hasSceneDelta(input.delta.scene)
 })
 
-const appendIdDelta = <TId extends string>(
-  target: KeySet<TId>,
-  delta: {
-    added: ReadonlySet<TId>
-    updated: ReadonlySet<TId>
-    removed: ReadonlySet<TId>
-  }
-): KeySet<TId> => keySet.addMany(
-  keySet.addMany(
-    keySet.addMany(target, delta.added),
-    delta.updated
-  ),
-  delta.removed
-)
-
-const appendMapKeys = <TId extends string>(
-  target: KeySet<TId>,
-  entries: ReadonlyMap<TId, unknown>
-): KeySet<TId> => keySet.addMany(target, entries.keys())
-
 const createGraphPlannerScope = (
   input: Input
 ): GraphPatchScope => {
@@ -90,25 +58,25 @@ const createGraphPlannerScope = (
 
   scope.order = delta.document.order
 
-  scope.nodes = appendIdDelta(scope.nodes, delta.document.nodes)
-  scope.edges = appendIdDelta(scope.edges, delta.document.edges)
-  scope.mindmaps = appendIdDelta(scope.mindmaps, delta.document.mindmaps)
-  scope.groups = appendIdDelta(scope.groups, delta.document.groups)
+  scope.nodes = keySet.addMany(scope.nodes, changeSet.touched(delta.document.nodes))
+  scope.edges = keySet.addMany(scope.edges, changeSet.touched(delta.document.edges))
+  scope.mindmaps = keySet.addMany(scope.mindmaps, changeSet.touched(delta.document.mindmaps))
+  scope.groups = keySet.addMany(scope.groups, changeSet.touched(delta.document.groups))
 
-  scope.nodes = appendIdDelta(scope.nodes, delta.graph.nodes.draft)
-  scope.nodes = appendIdDelta(scope.nodes, delta.graph.nodes.preview)
-  scope.nodes = appendIdDelta(scope.nodes, delta.graph.nodes.edit)
-  scope.edges = appendIdDelta(scope.edges, delta.graph.edges.preview)
-  scope.edges = appendIdDelta(scope.edges, delta.graph.edges.edit)
-  scope.mindmaps = appendIdDelta(scope.mindmaps, delta.graph.mindmaps.preview)
+  scope.nodes = keySet.addMany(scope.nodes, changeSet.touched(delta.graph.nodes.draft))
+  scope.nodes = keySet.addMany(scope.nodes, changeSet.touched(delta.graph.nodes.preview))
+  scope.nodes = keySet.addMany(scope.nodes, changeSet.touched(delta.graph.nodes.edit))
+  scope.edges = keySet.addMany(scope.edges, changeSet.touched(delta.graph.edges.preview))
+  scope.edges = keySet.addMany(scope.edges, changeSet.touched(delta.graph.edges.edit))
+  scope.mindmaps = keySet.addMany(scope.mindmaps, changeSet.touched(delta.graph.mindmaps.preview))
   delta.graph.mindmaps.tick.forEach((mindmapId) => {
     scope.mindmaps = keySet.add(scope.mindmaps, mindmapId)
   })
 
-  scope.nodes = appendMapKeys(scope.nodes, input.session.draft.nodes)
-  scope.edges = appendMapKeys(scope.edges, input.session.draft.edges)
-  scope.nodes = appendMapKeys(scope.nodes, input.session.preview.nodes)
-  scope.edges = appendMapKeys(scope.edges, input.session.preview.edges)
+  scope.nodes = keySet.addMany(scope.nodes, input.session.draft.nodes.keys())
+  scope.edges = keySet.addMany(scope.edges, input.session.draft.edges.keys())
+  scope.nodes = keySet.addMany(scope.nodes, input.session.preview.nodes.keys())
+  scope.edges = keySet.addMany(scope.edges, input.session.preview.edges.keys())
 
   if (input.session.edit?.kind === 'node') {
     scope.nodes = keySet.add(scope.nodes, input.session.edit.nodeId)

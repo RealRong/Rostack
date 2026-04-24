@@ -1,7 +1,5 @@
+import type { IdChangeSet } from '@shared/core'
+
 export type Revision = number
 
-export interface IdDelta<TKey> {
-  added: ReadonlySet<TKey>
-  updated: ReadonlySet<TKey>
-  removed: ReadonlySet<TKey>
-}
+export type IdDelta<TKey> = IdChangeSet<TKey>

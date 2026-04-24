@@ -17,7 +17,6 @@ import {
   isRectEqual
 } from '../geometry'
 import { buildEdgeView } from '../views'
-import { markGeometryTouched } from './delta'
 import { patchFamilyEntry } from './helpers'
 
 const readEdgeEntry = (
@@ -129,7 +128,7 @@ export const patchEdge = (input: {
     || isEdgeGeometryChanged(previous, current)
 
   if (geometryTouched) {
-    markGeometryTouched(input.delta.geometry.edges, input.edgeId)
+    input.delta.geometry.edges.add(input.edgeId)
   }
 
   return action !== 'unchanged'

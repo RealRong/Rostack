@@ -1,4 +1,11 @@
+import { changeSet } from '@shared/core'
 import { document as documentApi } from '@whiteboard/core/document'
+import type {
+  EdgeId,
+  GroupId,
+  MindmapId,
+  NodeId
+} from '@whiteboard/core/types'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type {
   Input,
@@ -34,33 +41,27 @@ export const createEmptyDocumentSnapshot = (): document.Snapshot => ({
   }
 })
 
-const createEmptyIdDelta = <TId extends string>(): document.IdDelta<TId> => ({
-  added: new Set(),
-  updated: new Set(),
-  removed: new Set()
-})
-
 export const createEmptyInputDelta = (): Input['delta'] => ({
   document: {
     reset: false,
     order: false,
-    nodes: createEmptyIdDelta(),
-    edges: createEmptyIdDelta(),
-    mindmaps: createEmptyIdDelta(),
-    groups: createEmptyIdDelta()
+    nodes: changeSet.create<NodeId>(),
+    edges: changeSet.create<EdgeId>(),
+    mindmaps: changeSet.create<MindmapId>(),
+    groups: changeSet.create<GroupId>()
   },
   graph: {
     nodes: {
-      draft: createEmptyIdDelta(),
-      preview: createEmptyIdDelta(),
-      edit: createEmptyIdDelta()
+      draft: changeSet.create<NodeId>(),
+      preview: changeSet.create<NodeId>(),
+      edit: changeSet.create<NodeId>()
     },
     edges: {
-      preview: createEmptyIdDelta(),
-      edit: createEmptyIdDelta()
+      preview: changeSet.create<EdgeId>(),
+      edit: changeSet.create<EdgeId>()
     },
     mindmaps: {
-      preview: createEmptyIdDelta(),
+      preview: changeSet.create<MindmapId>(),
       tick: new Set()
     }
   },

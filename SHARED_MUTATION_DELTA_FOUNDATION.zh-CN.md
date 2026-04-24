@@ -67,6 +67,9 @@
 - Whiteboard `dirty` API 已收敛为 `touch()` 语义；`node/edge` 不再伪造 `geometry/value` 两套同义入口。
 - Whiteboard `Invalidation.projections` 已删除；projection 需求改为提交阶段按需推导，而不是在 reducer 内维护一份死字段。
 - Whiteboard Editor Graph `GraphPatchScope` 已切到 shared `KeySet` 语义，不再手写局部 set merge/clone 规则。
+- Whiteboard Engine / Editor Graph 的 `IdDelta` 已与 shared `IdChangeSet` 对齐；graph patch / spatial / publish 直接复用 `changeSet.create/reset/assign/hasAny/touched/mark*`。
+- Whiteboard Engine `changeFromReduce` 已删除本地 `toIdDelta/hasIdChange`；直接复用 `changeSet.clone/hasAny`。
+- Whiteboard Editor Graph `publish/ui` 已删除本地 `markUi*` 薄包装；UI phase 直接写 `changeSet.mark*` 与布尔标记。
 - 本文后续若出现旧命名或旧包装，属于历史分析，不再建议保留。
 
 ## 当前重复模式
@@ -772,6 +775,7 @@ Whiteboard 仍保留：
 - Whiteboard `ChangeSet`、engine 初始变更、`change/fromReduce.ts` 已统一切到 `added/updated/removed`。
 - Whiteboard `dirty` / `invalidation` 已删除无效 `projection(s)` 层，并把实体 dirty 标记统一收敛为 `touch()`。
 - Whiteboard Editor Graph `GraphPatchScope` 已收敛到 shared `keySet`，合并/判空/clone 不再重复实现。
+- Whiteboard Engine / Editor Graph 的 `IdDelta` 已收敛到 shared `IdChangeSet` 形态，`graphPatch` / `spatial` / `publish` 内部不再保留同构 helper。
 - Editor Graph 已删除重复 mark helpers，直接调用 shared `changeSet`。
 - Dataview 后续新增代码应直接使用 `KeySet` / `EntityDelta` / canonical `IdChangeSet`，不再引入兼容命名。
 - 阶段 1 不保留 compatibility wrapper。

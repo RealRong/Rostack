@@ -12,11 +12,6 @@ import type {
 } from '../../contracts/delta'
 import type { GraphState } from '../../contracts/working'
 import {
-  markAdded,
-  markRemoved,
-  markUpdated
-} from '../graphPatch/delta'
-import {
   readEdgeSpatialRecord,
   readMindmapSpatialRecord,
   readNodeSpatialRecord,
@@ -29,16 +24,6 @@ import type {
 } from './contracts'
 import type { SpatialIndexState } from './state'
 import { resetSpatialState } from './state'
-
-const createIdDelta = <TId extends string>(): IdDelta<TId> => ({
-  ...changeSet.create<TId>()
-})
-
-const resetIdDelta = <TId extends string>(
-  delta: IdDelta<TId>
-) => {
-  changeSet.reset(delta)
-}
 
 const isSpatialRecordEqual = (
   left: SpatialRecord,
@@ -53,14 +38,6 @@ const isSpatialRecordEqual = (
   && left.bounds.y === right.bounds.y
   && left.bounds.width === right.bounds.width
   && left.bounds.height === right.bounds.height
-)
-
-const hasIdDelta = <TId extends string>(
-  delta: IdDelta<TId>
-): boolean => (
-  delta.added.size > 0
-  || delta.updated.size > 0
-  || delta.removed.size > 0
 )
 
 const collectRecordIds = <TId extends string>(
@@ -230,7 +207,7 @@ const patchGraphRecords = (input: {
 export const createSpatialDelta = (): SpatialDelta => ({
   revision: 0,
   order: false,
-  records: createIdDelta<SpatialKey>(),
+  records: changeSet.create<SpatialKey>(),
   visible: false
 })
 
@@ -239,7 +216,7 @@ export const resetSpatialDelta = (
 ) => {
   delta.revision = 0
   delta.order = false
-  resetIdDelta(delta.records)
+  changeSet.reset(delta.records)
   delta.visible = false
 }
 
@@ -263,14 +240,14 @@ export const patchSpatialRecord = (input: {
   if (!input.next) {
     input.state.records.delete(input.key)
     input.state.tree.remove(previous!)
-    markRemoved(input.delta, input.key)
+    changeSet.markRemoved(input.delta, input.key)
     return 'removed'
   }
 
   if (!previous) {
     input.state.records.set(input.key, input.next)
     input.state.tree.insert(input.next)
-    markAdded(input.delta, input.key)
+    changeSet.markAdded(input.delta, input.key)
     return 'added'
   }
 
@@ -280,7 +257,7 @@ export const patchSpatialRecord = (input: {
 
   input.state.records.set(input.key, input.next)
   input.state.tree.update(previous, input.next)
-  markUpdated(input.delta, input.key)
+  changeSet.markUpdated(input.delta, input.key)
   return 'updated'
 }
 
@@ -355,7 +332,7 @@ export const patchSpatial = (input: {
     })
   }
 
-  if (input.scope.visible || hasIdDelta(input.delta.records) || input.delta.order) {
+  if (input.scope.visible || changeSet.hasAny(input.delta.records) || input.delta.order) {
     markSpatialVisibleDirty({
       state: input.state,
       delta: input.delta
@@ -363,7 +340,7 @@ export const patchSpatial = (input: {
   }
 
   return {
-    changed: hasIdDelta(input.delta.records) || input.delta.order || input.delta.visible,
+    changed: changeSet.hasAny(input.delta.records) || input.delta.order || input.delta.visible,
     count
   }
 }

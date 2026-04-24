@@ -8,7 +8,6 @@ import type {
 import { isGroupViewEqual } from '../equality'
 import { isRectEqual } from '../geometry'
 import { buildGroupView } from '../views'
-import { markGeometryTouched } from './delta'
 import { patchFamilyEntry, patchOrderedIds } from './helpers'
 
 const readGroupEntry = (
@@ -67,7 +66,7 @@ export const patchGroup = (input: {
     || isGroupGeometryChanged(previous, current)
 
   if (geometryTouched) {
-    markGeometryTouched(input.delta.geometry.groups, input.groupId)
+    input.delta.geometry.groups.add(input.groupId)
   }
 
   return action !== 'unchanged'

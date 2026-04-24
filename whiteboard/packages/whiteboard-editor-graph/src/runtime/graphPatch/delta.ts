@@ -5,29 +5,16 @@ import type {
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
-import type {
-  GraphDelta,
-  IdDelta
-} from '../../contracts/delta'
-
-const createIdDelta = <TId extends string>(): IdDelta<TId> => ({
-  ...changeSet.create<TId>()
-})
-
-const resetIdDelta = <TId extends string>(
-  delta: IdDelta<TId>
-) => {
-  changeSet.reset(delta)
-}
+import type { GraphDelta } from '../../contracts/delta'
 
 export const createGraphDelta = (): GraphDelta => ({
   revision: 0,
   order: false,
   entities: {
-    nodes: createIdDelta<NodeId>(),
-    edges: createIdDelta<EdgeId>(),
-    mindmaps: createIdDelta<MindmapId>(),
-    groups: createIdDelta<GroupId>()
+    nodes: changeSet.create<NodeId>(),
+    edges: changeSet.create<EdgeId>(),
+    mindmaps: changeSet.create<MindmapId>(),
+    groups: changeSet.create<GroupId>()
   },
   geometry: {
     nodes: new Set(),
@@ -42,40 +29,12 @@ export const resetGraphDelta = (
 ) => {
   delta.revision = 0
   delta.order = false
-  resetIdDelta(delta.entities.nodes)
-  resetIdDelta(delta.entities.edges)
-  resetIdDelta(delta.entities.mindmaps)
-  resetIdDelta(delta.entities.groups)
+  changeSet.reset(delta.entities.nodes)
+  changeSet.reset(delta.entities.edges)
+  changeSet.reset(delta.entities.mindmaps)
+  changeSet.reset(delta.entities.groups)
   delta.geometry.nodes.clear()
   delta.geometry.edges.clear()
   delta.geometry.mindmaps.clear()
   delta.geometry.groups.clear()
-}
-
-export const markAdded = <TId extends string>(
-  delta: IdDelta<TId>,
-  id: TId
-) => {
-  changeSet.markAdded(delta, id)
-}
-
-export const markUpdated = <TId extends string>(
-  delta: IdDelta<TId>,
-  id: TId
-) => {
-  changeSet.markUpdated(delta, id)
-}
-
-export const markRemoved = <TId extends string>(
-  delta: IdDelta<TId>,
-  id: TId
-) => {
-  changeSet.markRemoved(delta, id)
-}
-
-export const markGeometryTouched = <TId extends string>(
-  target: Set<TId>,
-  id: TId
-) => {
-  target.add(id)
 }

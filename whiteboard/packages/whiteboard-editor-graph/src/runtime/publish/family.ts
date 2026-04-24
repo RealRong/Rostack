@@ -1,3 +1,4 @@
+import { changeSet } from '@shared/core'
 import { createIds, type Family, type Ids } from '@shared/projection-runtime'
 import type { IdDelta } from '../../contracts/delta'
 
@@ -7,21 +8,13 @@ export interface PatchedFamily<TKey, TValue> {
   changed: boolean
 }
 
-const hasIdDelta = <TKey extends string>(
-  delta: IdDelta<TKey>
-): boolean => (
-  delta.added.size > 0
-  || delta.updated.size > 0
-  || delta.removed.size > 0
-)
-
 export const patchPublishedFamily = <TKey extends string, TValue>(input: {
   previous: Family<TKey, TValue>
   ids: readonly TKey[]
   delta: IdDelta<TKey>
   read(id: TKey): TValue | undefined
 }): PatchedFamily<TKey, TValue> => {
-  if (!hasIdDelta(input.delta)) {
+  if (!changeSet.hasAny(input.delta)) {
     return {
       value: input.previous,
       ids: createIds<TKey>(),

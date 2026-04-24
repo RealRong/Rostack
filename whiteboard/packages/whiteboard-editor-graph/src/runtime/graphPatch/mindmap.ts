@@ -23,7 +23,6 @@ import {
   readProjectedNodeSize
 } from '../projection'
 import { buildMindmapView } from '../views'
-import { markGeometryTouched } from './delta'
 import type { GraphPatchQueue } from './fanout'
 import { fanoutMindmapGeometry } from './fanout'
 import { patchFamilyEntry, patchOrderedIds } from './helpers'
@@ -350,7 +349,7 @@ export const patchMindmap = (input: {
     || isMindmapGeometryChanged(previous, current)
 
   if (geometryTouched) {
-    markGeometryTouched(input.delta.geometry.mindmaps, input.mindmapId)
+    input.delta.geometry.mindmaps.add(input.mindmapId)
     fanoutMindmapGeometry({
       snapshot: input.input.document.snapshot,
       queue: input.queue,

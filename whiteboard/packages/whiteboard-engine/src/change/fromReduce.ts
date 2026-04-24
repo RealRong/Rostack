@@ -1,63 +1,45 @@
+import { changeSet } from '@shared/core'
 import type { ChangeSet } from '@whiteboard/core/types'
 import type { EngineChange } from '../contracts/document'
 
-const toIdDelta = <T,>(input: {
-  added: ReadonlySet<T>
-  updated: ReadonlySet<T>
-  removed: ReadonlySet<T>
-}) => ({
-  added: new Set(input.added),
-  updated: new Set(input.updated),
-  removed: new Set(input.removed)
-})
-
 const hasAny = (values: readonly boolean[]) => values.some(Boolean)
-const hasIdChange = <T,>(input: {
-  added: ReadonlySet<T>
-  updated: ReadonlySet<T>
-  removed: ReadonlySet<T>
-}) => (
-  input.added.size
-  + input.updated.size
-  + input.removed.size
-) > 0
 
 export const changeFromReduce = (
-  changeSet: ChangeSet
+  changes: ChangeSet
 ): EngineChange => {
-  const nodeTouched = hasIdChange(changeSet.nodes)
-  const edgeTouched = hasIdChange(changeSet.edges)
-  const groupTouched = hasIdChange(changeSet.groups)
-  const mindmapTouched = hasIdChange(changeSet.mindmaps)
+  const nodeTouched = changeSet.hasAny(changes.nodes)
+  const edgeTouched = changeSet.hasAny(changes.edges)
+  const groupTouched = changeSet.hasAny(changes.groups)
+  const mindmapTouched = changeSet.hasAny(changes.mindmaps)
 
   return {
     root: {
-      doc: changeSet.document,
-      background: changeSet.background,
-      order: changeSet.canvasOrder
+      doc: changes.document,
+      background: changes.background,
+      order: changes.canvasOrder
     },
     entities: {
-      nodes: toIdDelta(changeSet.nodes),
-      edges: toIdDelta(changeSet.edges),
-      mindmaps: toIdDelta(changeSet.mindmaps),
-      groups: toIdDelta(changeSet.groups)
+      nodes: changeSet.clone(changes.nodes),
+      edges: changeSet.clone(changes.edges),
+      mindmaps: changeSet.clone(changes.mindmaps),
+      groups: changeSet.clone(changes.groups)
     },
     relations: {
       graph: hasAny([
         nodeTouched,
         edgeTouched,
-        changeSet.canvasOrder,
-        changeSet.document
+        changes.canvasOrder,
+        changes.document
       ]),
       ownership: hasAny([
         nodeTouched,
         groupTouched,
         mindmapTouched,
-        changeSet.document
+        changes.document
       ]),
       hierarchy: hasAny([
         mindmapTouched,
-        changeSet.document
+        changes.document
       ])
     }
   }

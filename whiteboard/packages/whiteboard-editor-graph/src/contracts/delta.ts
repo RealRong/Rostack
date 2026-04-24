@@ -1,4 +1,7 @@
-import type { KeySet } from '@shared/core'
+import type {
+  IdChangeSet,
+  KeySet
+} from '@shared/core'
 import type {
   Revision,
 } from '@shared/projection-runtime'
@@ -13,11 +16,7 @@ import type {
   SpatialPatchScope
 } from '../runtime/spatial/contracts'
 
-export interface IdDelta<TId extends string> {
-  added: Set<TId>
-  updated: Set<TId>
-  removed: Set<TId>
-}
+export type IdDelta<TId extends string> = IdChangeSet<TId>
 
 export interface GraphDelta {
   revision: Revision

@@ -1,10 +1,6 @@
+import { changeSet } from '@shared/core'
 import { isListEqual } from '@shared/projection-runtime'
 import type { IdDelta } from '../../contracts/delta'
-import {
-  markAdded,
-  markRemoved,
-  markUpdated
-} from './delta'
 
 export type PatchAction = 'unchanged' | 'added' | 'updated' | 'removed'
 
@@ -23,13 +19,13 @@ export const patchFamilyEntry = <TId extends string, TValue>(input: {
     }
 
     input.family.delete(input.id)
-    markRemoved(input.delta, input.id)
+    changeSet.markRemoved(input.delta, input.id)
     return 'removed'
   }
 
   if (previous === undefined) {
     input.family.set(input.id, input.next)
-    markAdded(input.delta, input.id)
+    changeSet.markAdded(input.delta, input.id)
     return 'added'
   }
 
@@ -38,7 +34,7 @@ export const patchFamilyEntry = <TId extends string, TValue>(input: {
   }
 
   input.family.set(input.id, input.next)
-  markUpdated(input.delta, input.id)
+  changeSet.markUpdated(input.delta, input.id)
   return 'updated'
 }
 

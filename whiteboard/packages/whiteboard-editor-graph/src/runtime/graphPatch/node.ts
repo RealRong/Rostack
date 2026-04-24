@@ -13,7 +13,6 @@ import { isRectEqual } from '../geometry'
 import { buildNodeView } from '../views'
 import type { GraphPatchQueue } from './fanout'
 import { fanoutNodeGeometry } from './fanout'
-import { markGeometryTouched } from './delta'
 import { patchFamilyEntry } from './helpers'
 
 const readNodeEntry = (
@@ -80,7 +79,7 @@ export const patchNode = (input: {
     || isNodeGeometryChanged(previous, current)
 
   if (geometryTouched) {
-    markGeometryTouched(input.delta.geometry.nodes, input.nodeId)
+    input.delta.geometry.nodes.add(input.nodeId)
     fanoutNodeGeometry({
       snapshot: input.input.document.snapshot,
       queue: input.queue,

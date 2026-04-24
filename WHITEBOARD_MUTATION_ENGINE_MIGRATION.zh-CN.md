@@ -12,7 +12,7 @@
 
 - `Command` 全量改为 `Intent`
 - Whiteboard 写入内核全面迁移到 `new MutationEngine(...)`
-- `query` 继续保留在 Whiteboard 领域层，不进入 shared mutation engine
+- Whiteboard engine 只保留 mutation / publish 主线，不再承担 query 层
 - `string path` 全量改为 `Path`
 
 ---
@@ -23,7 +23,7 @@ Whiteboard 迁移完成后，整体结构应该变成三层：
 
 1. `shared/mutation`：提供通用 `MutationEngine`
 2. `whiteboard-engine` mutation 层：提供 `whiteboardMutationSpec`
-3. `whiteboard-engine` 外层 engine：只负责 `query + public API`
+3. `whiteboard-engine` 外层 engine：只负责 `publish + public API`
 
 最终主轴：
 
@@ -38,9 +38,9 @@ Whiteboard 不再自己手写 commit orchestration。
 Whiteboard 是最适合先落 `MutationEngine` 的项目，原因很直接：
 
 - 写入链已经相对独立
-- `query` 已经独立在 runtime/query
 - `EngineWrite` 已经是标准 shared `Write`
 - history / collab 已经大量 shared 化
+- `EnginePublish` 已经收缩成 `snapshot(document) + delta`
 
 Whiteboard 当前真正的问题不是“模型不够统一”，而是还保留了几层旧壳：
 
@@ -61,13 +61,12 @@ Whiteboard 当前真正的问题不是“模型不够统一”，而是还保留
 
 - `mutation/`
 - `runtime/`
-- `query/`
 
 其中：
 
 - `mutation/` 负责 Whiteboard 写入语义接入 `MutationEngine`
 - `runtime/` 负责组装 Whiteboard 外层 engine
-- `query/` 负责读链
+- 读链不再属于 `whiteboard-engine` 的收尾范围
 
 ## 4.2 迁移后目录建议
 
@@ -90,9 +89,6 @@ whiteboard/packages/whiteboard-engine/src/
   runtime/
     engine.ts
     state.ts
-  query/
-    index.ts
-    createQuery.ts
   types/
     intent.ts
     result.ts
@@ -103,7 +99,7 @@ whiteboard/packages/whiteboard-engine/src/
 
 - compile / apply / publish 都归到 `mutation/`
 - runtime 不再实现写入内核
-- query 不再碰 mutation 编排
+- 不再为已删除的 `facts/*`、`runtime/query.ts` 预留结构位置
 
 ---
 
@@ -200,7 +196,7 @@ Whiteboard 的写入接入面最终应该收口为一个 spec：
 ```ts
 export type WhiteboardMutationPublish = {
   snapshot: Snapshot
-  change: EngineChange
+  delta: EngineDelta
 }
 
 export type WhiteboardMutationSpec = MutationEngineSpec<
@@ -225,7 +221,7 @@ export const createWhiteboardMutationSpec = (input: {
 
 - `compile`：`Intent -> Operation[]`
 - `apply`：`Operation[] -> doc / inverse / footprint / extra`
-- `publish`：`Write -> snapshot / change`
+- `publish`：`Write -> snapshot / delta`
 - `history`：提供 footprint conflict 规则
 
 Whiteboard 不需要在 runtime 里重新拼这些东西。
@@ -236,12 +232,11 @@ Whiteboard 不需要在 runtime 里重新拼这些东西。
 
 ## 6.1 最终 public 形态
 
-迁移后，`whiteboard-engine` 对外仍然只提供一个外层 engine，但它本质上是 `MutationEngine + Query` 的薄壳。
+迁移后，`whiteboard-engine` 对外仍然只提供一个外层 engine，但它本质上是 `MutationEngine + Publish` 的薄壳。
 
 ```ts
 export interface Engine {
   readonly config: BoardConfig
-  readonly query: EngineQuery
   readonly writes: WriteStream<EngineWrite>
 
   current(): EnginePublish
@@ -266,19 +261,35 @@ export interface Engine {
 
 ## 6.2 `EnginePublish`
 
-`EnginePublish` 可以继续保留当前读侧友好的形态，不需要为了 shared 化而改变。
+`EnginePublish` 可以继续保留当前轻量 publish 形态，不需要为了 shared 化而改变。
 
 ```ts
+export interface Snapshot {
+  revision: Revision
+  document: Document
+}
+
+export interface EngineDelta {
+  reset: boolean
+  background: boolean
+  order: boolean
+  nodes: IdDelta<NodeId>
+  edges: IdDelta<EdgeId>
+  mindmaps: IdDelta<MindmapId>
+  groups: IdDelta<GroupId>
+}
+
 export interface EnginePublish {
   rev: Revision
   snapshot: Snapshot
-  change: EngineChange
+  delta: EngineDelta
 }
 ```
 
 原因很简单：
 
-- 这是 Whiteboard 读链消费的结果
+- 这是 Whiteboard 外层状态发布结果
+- `facts/*` 已经删除，不需要再维持一份重读模型快照
 - 它属于领域 publish 模型，不属于 shared mutation engine
 
 shared engine 只需要维护：
@@ -308,8 +319,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => { ... }
 
 1. 创建 `whiteboardMutationSpec`
 2. 创建 `new MutationEngine({ doc, spec })`
-3. 创建 `query`
-4. 组装 public engine
+3. 组装 public engine
 
 ---
 
@@ -323,7 +333,6 @@ export const createEngine = (options: CreateEngineOptions): Engine => { ... }
 - 创建 `whiteboardMutationSpec`
 - 创建 `MutationEngine`
 - 把 mutation publish 映射成 `EnginePublish`
-- 创建并暴露 `query`
 - 透传 `execute / apply / writes / subscribe / current`
 
 它不再负责：
@@ -333,6 +342,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => { ... }
 - write 生成
 - history capture
 - 本地 commit 流程编排
+- 不再承担 `facts/*` 或 `runtime/query.ts` 这类读链模块职责
 
 这些全部交给 `MutationEngine`。
 
@@ -362,7 +372,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => { ... }
 const coreSession = mutationCollab.create({
   actorId,
   engine: {
-    doc: () => engine.current().snapshot.state.root,
+    doc: () => engine.current().snapshot.document,
     replace: (nextDocument, options) => engine.execute({
       type: 'document.replace',
       document: nextDocument
@@ -475,8 +485,8 @@ Whiteboard 在迁到 `MutationEngine` 时，下面这些问题必须一起清掉
 让它只做：
 
 - `MutationEngine` 实例化
-- query 组装
 - public engine 暴露
+- publish 映射
 
 删除本地 commit orchestration。
 
@@ -517,6 +527,7 @@ Whiteboard 在迁到 `MutationEngine` 时，下面这些问题必须一起清掉
 - runtime 中的本地 commit orchestration
 - collab 中额外的私有历史内核
 - string path 兼容逻辑
+- 文档中不再假设存在 `facts/*`、`runtime/query.ts`、`engine.query` 配套层
 
 如果这些层还在，说明 Whiteboard 只是“局部套用了 MutationEngine”，而不是完成了整体迁移。
 
@@ -527,7 +538,7 @@ Whiteboard 在迁到 `MutationEngine` 时，下面这些问题必须一起清掉
 当下面这些条件同时满足时，Whiteboard 才算完成迁移：
 
 - Whiteboard 写入内核由 `new MutationEngine(...)` 驱动
-- 外层 engine 只是 `MutationEngine + Query` 的薄壳
+- 外层 engine 只是 `MutationEngine + Publish` 的薄壳
 - public API 全面使用 `Intent`
 - `EngineWrite` 继续使用 shared `Write`
 - collab / history 围绕 engine 的 writes 和 history 运转

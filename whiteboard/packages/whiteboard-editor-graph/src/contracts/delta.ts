@@ -1,10 +1,8 @@
 import type {
-  IdChangeSet,
-  KeySet
-} from '@shared/core'
-import type {
+  IdDelta as SharedIdDelta,
+  KeySet,
   Revision,
-} from '@shared/projection-runtime'
+} from '@shared/projector'
 import type {
   EdgeId,
   GroupId,
@@ -16,7 +14,7 @@ import type {
   SpatialPatchScope
 } from '../runtime/spatial/contracts'
 
-export type IdDelta<TId extends string> = IdChangeSet<TId>
+export type IdDelta<TId extends string> = SharedIdDelta<TId>
 
 export interface GraphDelta {
   revision: Revision

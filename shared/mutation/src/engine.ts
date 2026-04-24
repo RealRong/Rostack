@@ -1,6 +1,6 @@
 import type {
-  ApplyResult
-} from './apply'
+  ReducerResult
+} from '@shared/reducer'
 import type {
   Issue
 } from './compiler'
@@ -42,7 +42,7 @@ export type MutationApplyResult<
 > =
   | {
       ok: true
-      data: ApplyResult<Doc, Op, Key, Extra>
+      data: Extract<ReducerResult<Doc, Op, Key, Extra, Code>, { ok: true }>
     }
   | MutationFailure<Code>
 
@@ -185,7 +185,7 @@ const success = <T, W>(
 })
 
 const applySuccess = <Doc, Op, Key, Extra>(
-  data: ApplyResult<Doc, Op, Key, Extra>
+  data: Extract<ReducerResult<Doc, Op, Key, Extra>, { ok: true }>
 ): MutationApplyResult<Doc, Op, Key, Extra> => ({
   ok: true,
   data

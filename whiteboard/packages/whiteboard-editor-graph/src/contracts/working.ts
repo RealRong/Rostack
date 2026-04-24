@@ -10,7 +10,7 @@ import type {
   Node,
   NodeId
 } from '@whiteboard/core/types'
-import type { Revision } from '@shared/projection-runtime'
+import type { Revision } from '@shared/projector'
 import type {
   GraphDelta,
   PublishDelta,

@@ -1,3 +1,4 @@
+import { createProjector } from '@shared/projector'
 import type {
   Input,
   Read,
@@ -5,13 +6,22 @@ import type {
   Runtime,
   Snapshot
 } from '../contracts/editor'
+import type { WorkingState } from '../contracts/working'
 import { createEditorGraphRuntime } from '../runtime/createEditorGraphRuntime'
+import { createEditorGraphProjectorSpec } from '../runtime/createSpec'
 
 export interface EditorGraphHarness {
   runtime: Runtime
   read: Read
   update(input: Input): Result
   snapshot(): Snapshot
+  lastTrace(): Result['trace']
+}
+
+export interface EditorGraphProjectorHarness {
+  snapshot(): Snapshot
+  working(): WorkingState
+  update(input: Input): Result
   lastTrace(): Result['trace']
 }
 
@@ -34,6 +44,22 @@ export const createEditorGraphHarness = (): EditorGraphHarness => {
     read: runtime.query,
     update: (input) => runtime.update(input),
     snapshot: () => runtime.snapshot(),
+    lastTrace: () => trace
+  }
+}
+
+export const createEditorGraphProjectorHarness = (): EditorGraphProjectorHarness => {
+  const projector = createProjector(createEditorGraphProjectorSpec())
+  let trace: Result['trace']
+
+  return {
+    snapshot: () => projector.snapshot(),
+    working: () => projector.working(),
+    update: (input) => {
+      const result = projector.update(input)
+      trace = result.trace
+      return result
+    },
     lastTrace: () => trace
   }
 }

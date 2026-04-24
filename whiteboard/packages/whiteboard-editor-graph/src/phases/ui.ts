@@ -1,4 +1,4 @@
-import { changeSet } from '@shared/core'
+import { idDelta } from '@shared/projector'
 import type {
   EdgeId,
   MindmapId,
@@ -76,20 +76,20 @@ const markSelectionUiDelta = (input: {
 }) => {
   input.previous.nodes.forEach((view, nodeId) => {
     if (view.selected) {
-      changeSet.markUpdated(input.target.nodes, nodeId)
+      idDelta.update(input.target.nodes, nodeId)
     }
   })
   input.previous.edges.forEach((view, edgeId) => {
     if (view.selected) {
-      changeSet.markUpdated(input.target.edges, edgeId)
+      idDelta.update(input.target.edges, edgeId)
     }
   })
 
   input.next.nodeIds.forEach((nodeId) => {
-    changeSet.markUpdated(input.target.nodes, nodeId)
+    idDelta.update(input.target.nodes, nodeId)
   })
   input.next.edgeIds.forEach((edgeId) => {
-    changeSet.markUpdated(input.target.edges, edgeId)
+    idDelta.update(input.target.edges, edgeId)
   })
 }
 
@@ -150,29 +150,29 @@ export const createUiPhase = (): UiEditorPhase => ({
 
     if (graphDelta) {
       graphDelta.entities.nodes.added.forEach((nodeId) => {
-        changeSet.markAdded(publishDelta.nodes, nodeId)
+        idDelta.add(publishDelta.nodes, nodeId)
       })
       graphDelta.entities.nodes.updated.forEach((nodeId) => {
-        changeSet.markUpdated(publishDelta.nodes, nodeId)
+        idDelta.update(publishDelta.nodes, nodeId)
       })
       graphDelta.entities.nodes.removed.forEach((nodeId) => {
-        changeSet.markRemoved(publishDelta.nodes, nodeId)
+        idDelta.remove(publishDelta.nodes, nodeId)
       })
 
       graphDelta.entities.edges.added.forEach((edgeId) => {
-        changeSet.markAdded(publishDelta.edges, edgeId)
+        idDelta.add(publishDelta.edges, edgeId)
       })
       graphDelta.entities.edges.updated.forEach((edgeId) => {
-        changeSet.markUpdated(publishDelta.edges, edgeId)
+        idDelta.update(publishDelta.edges, edgeId)
       })
       graphDelta.entities.edges.removed.forEach((edgeId) => {
-        changeSet.markRemoved(publishDelta.edges, edgeId)
+        idDelta.remove(publishDelta.edges, edgeId)
       })
 
-      const touchedMindmaps = changeSet.touched(graphDelta.entities.mindmaps)
+      const touchedMindmaps = idDelta.touched(graphDelta.entities.mindmaps)
       touchedMindmaps.forEach((mindmapId) => {
         mindmapNodeIndex.get(mindmapId)?.forEach((nodeId) => {
-          changeSet.markUpdated(publishDelta.nodes, nodeId)
+          idDelta.update(publishDelta.nodes, nodeId)
         })
       })
     }
@@ -205,19 +205,19 @@ export const createUiPhase = (): UiEditorPhase => ({
       const nextNodeId = readHoveredNodeId(context.input.interaction.hover)
 
       if (previousNodeId) {
-        changeSet.markUpdated(publishDelta.nodes, previousNodeId)
+        idDelta.update(publishDelta.nodes, previousNodeId)
       }
       if (nextNodeId) {
-        changeSet.markUpdated(publishDelta.nodes, nextNodeId)
+        idDelta.update(publishDelta.nodes, nextNodeId)
       }
     }
 
     const touchedNodeUiIds = new Set<NodeId>()
     const touchedPreviewMindmaps = new Set<MindmapId>()
-    appendIds(touchedNodeUiIds, changeSet.touched(context.input.delta.graph.nodes.draft))
-    appendIds(touchedNodeUiIds, changeSet.touched(context.input.delta.graph.nodes.preview))
-    appendIds(touchedNodeUiIds, changeSet.touched(context.input.delta.graph.nodes.edit))
-    appendIds(touchedPreviewMindmaps, changeSet.touched(context.input.delta.graph.mindmaps.preview))
+    appendIds(touchedNodeUiIds, idDelta.touched(context.input.delta.graph.nodes.draft))
+    appendIds(touchedNodeUiIds, idDelta.touched(context.input.delta.graph.nodes.preview))
+    appendIds(touchedNodeUiIds, idDelta.touched(context.input.delta.graph.nodes.edit))
+    appendIds(touchedPreviewMindmaps, idDelta.touched(context.input.delta.graph.mindmaps.preview))
     appendMindmapNodeIds({
       target: touchedNodeUiIds,
       mindmapIds: touchedPreviewMindmaps,
@@ -241,14 +241,14 @@ export const createUiPhase = (): UiEditorPhase => ({
     }
 
     touchedNodeUiIds.forEach((nodeId) => {
-      changeSet.markUpdated(publishDelta.nodes, nodeId)
+      idDelta.update(publishDelta.nodes, nodeId)
     })
 
     const touchedEdgeUiIds = new Set<EdgeId>()
-    appendIds(touchedEdgeUiIds, changeSet.touched(context.input.delta.graph.edges.preview))
-    appendIds(touchedEdgeUiIds, changeSet.touched(context.input.delta.graph.edges.edit))
+    appendIds(touchedEdgeUiIds, idDelta.touched(context.input.delta.graph.edges.preview))
+    appendIds(touchedEdgeUiIds, idDelta.touched(context.input.delta.graph.edges.edit))
     touchedEdgeUiIds.forEach((edgeId) => {
-      changeSet.markUpdated(publishDelta.edges, edgeId)
+      idDelta.update(publishDelta.edges, edgeId)
     })
 
     return {

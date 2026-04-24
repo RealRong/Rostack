@@ -3,6 +3,40 @@ import { createMoveInteraction } from '../src/input/features/selection/move'
 
 describe('mindmap field drag', () => {
   it('routes selected mindmap root field drags into mindmap drag instead of generic node drag', () => {
+    const structure = {
+      id: 'mind-1',
+      rootId: 'root-1',
+      nodeIds: ['root-1'],
+      tree: {
+        rootNodeId: 'root-1',
+        nodes: {
+          'root-1': {
+            branch: {
+              color: '#111827',
+              line: 'curve',
+              width: 2,
+              stroke: 'solid'
+            }
+          }
+        },
+        children: {
+          'root-1': []
+        },
+        layout: {
+          side: 'both',
+          mode: 'tidy',
+          hGap: 28,
+          vGap: 18
+        }
+      },
+      layout: {
+        side: 'both',
+        mode: 'tidy',
+        hGap: 28,
+        vGap: 18
+      }
+    } as const
+
     const session = createMoveInteraction({
       document: {
         node: {
@@ -64,45 +98,13 @@ describe('mindmap field drag', () => {
         },
         mindmap: {
           structure: {
-            get: () => ({
-              id: 'mind-1',
-              rootId: 'root-1',
-              nodeIds: ['root-1'],
-              tree: {
-                rootNodeId: 'root-1',
-                nodes: {
-                  'root-1': {
-                    branch: {
-                      color: '#111827',
-                      line: 'curve',
-                      width: 2,
-                      stroke: 'solid'
-                    }
-                  }
-                },
-                children: {
-                  'root-1': []
-                },
-                layout: {
-                  side: 'both',
-                  mode: 'tidy',
-                  hGap: 28,
-                  vGap: 18
-                }
-              },
-              layout: {
-                side: 'both',
-                mode: 'tidy',
-                hGap: 28,
-                vGap: 18
-              }
-            })
+            get: () => structure
           }
         }
       },
       projection: {
         frame: {
-          at: vi.fn(),
+          pick: vi.fn(() => undefined),
           parent: vi.fn()
         },
         node: {
@@ -115,6 +117,8 @@ describe('mindmap field drag', () => {
           all: vi.fn(() => [])
         },
         mindmap: {
+          id: vi.fn(() => 'mind-1'),
+          structure: vi.fn(() => structure),
           view: {
             get: () => ({
               structure: {

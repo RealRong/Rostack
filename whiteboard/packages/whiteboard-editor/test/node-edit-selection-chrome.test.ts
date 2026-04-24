@@ -470,11 +470,11 @@ describe('node edit selection chrome', () => {
 
     expect(editor.read.document.get().nodes['root-1']?.position).toEqual({
       x: 248,
-      y: 220
+      y: 212
     })
     expect(editor.read.node.view.get('root-1')?.rect).toMatchObject({
       x: 248,
-      y: 220
+      y: 212
     })
   })
 

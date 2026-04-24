@@ -10,7 +10,7 @@ import type {
   RecordId,
   ViewId
 } from '@dataview/core/contracts/state'
-import { mutationTrace } from '@shared/core'
+import { mutationTrace } from '@shared/mutation'
 import {
   document
 } from '@dataview/core/document'

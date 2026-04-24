@@ -1,4 +1,4 @@
-import { publishEntityFamily } from '@shared/projection-runtime'
+import { publishEntityFamily } from '@shared/projector'
 import type { GraphChange, GraphSnapshot } from '../../contracts/editor'
 import type { GraphPublishDelta } from '../../contracts/delta'
 import type { WorkingState } from '../../contracts/working'

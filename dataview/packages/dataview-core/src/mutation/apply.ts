@@ -8,9 +8,10 @@ import {
   applyOperationMutation
 } from '@dataview/core/operation/mutation'
 import {
-  apply,
-  type ApplyResult
-} from '@shared/mutation'
+  Reducer,
+  type ReducerContext,
+  type ReducerResult
+} from '@shared/reducer'
 import {
   collectOperationFootprint,
   serializeDataviewMutationKey,
@@ -21,7 +22,7 @@ import {
   type DataviewTrace
 } from './trace'
 
-export type DocumentApplyResult = ApplyResult<
+export type DocumentApplyResult = ReducerResult<
   DataDoc,
   DocumentOperation,
   DataviewMutationKey,
@@ -30,40 +31,70 @@ export type DocumentApplyResult = ApplyResult<
   }
 >
 
-export const applyOperations = (
-  document: DataDoc,
-  operations: readonly DocumentOperation[]
-): DocumentApplyResult => apply<
+type DataviewReduceContext = ReducerContext<
+  DataDoc,
+  DocumentOperation,
+  DataviewMutationKey
+> & {
+  trace: DataviewTrace
+}
+
+const applyDataviewOperation = (
+  ctx: DataviewReduceContext,
+  operation: DocumentOperation
+) => {
+  collectOperationFootprint(ctx, operation)
+  applyOperationMutation({
+    doc: ctx.doc,
+    replace: ctx.replace,
+    inverse: {
+      prependMany: ctx.inverseMany
+    }
+  }, operation, ctx.trace)
+}
+
+const dataviewReducer = new Reducer<
   DataDoc,
   DocumentOperation,
   DataviewMutationKey,
   {
     trace: DataviewTrace
   },
-  {
-    trace: DataviewTrace
-  }
+  DataviewReduceContext
 >({
-  doc: document,
-  ops: operations,
-  serializeKey: serializeDataviewMutationKey,
-  model: {
-    init: () => ({
+  spec: {
+    serializeKey: serializeDataviewMutationKey,
+    createContext: (ctx) => ({
+      ...ctx,
       trace: dataviewTrace.create()
     }),
-    step: (ctx, operation) => {
-      collectOperationFootprint(ctx, operation)
-      applyOperationMutation(
-        ctx,
-        operation,
-        ctx.state.trace
-      )
+    handlers: {
+      'document.record.insert': applyDataviewOperation,
+      'document.record.patch': applyDataviewOperation,
+      'document.record.remove': applyDataviewOperation,
+      'document.record.fields.writeMany': applyDataviewOperation,
+      'document.record.fields.restoreMany': applyDataviewOperation,
+      'document.field.put': applyDataviewOperation,
+      'document.field.patch': applyDataviewOperation,
+      'document.field.remove': applyDataviewOperation,
+      'document.view.put': applyDataviewOperation,
+      'document.activeView.set': applyDataviewOperation,
+      'document.view.remove': applyDataviewOperation,
+      'external.version.bump': applyDataviewOperation
     },
     done: (ctx) => {
-      dataviewTrace.finalize(ctx.state.trace)
+      dataviewTrace.finalize(ctx.trace)
       return {
-        trace: ctx.state.trace
+        trace: ctx.trace
       }
     }
   }
 })
+
+export const applyOperations = (
+  document: DataDoc,
+  operations: readonly DocumentOperation[]
+): DocumentApplyResult => dataviewReducer.reduce({
+  doc: document,
+  ops: operations
+}) as DocumentApplyResult

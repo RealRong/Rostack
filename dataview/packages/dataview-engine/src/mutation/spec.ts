@@ -99,9 +99,15 @@ export const createDataviewMutationSpec = (input?: {
         outputs: result.outputs
       }
     },
-    apply: ({ doc, ops }) => mutationApply.success(
-      applyOperations(doc, ops)
-    ),
+    apply: ({ doc, ops }) => {
+      const result = applyOperations(doc, ops)
+      return result.ok
+        ? mutationApply.success(result)
+        : {
+            ok: false as const,
+            error: result.error
+          }
+    },
     publish: createDataviewPublishSpec({
       performance: input?.performance
     }),

@@ -20,7 +20,7 @@
     "@shared/core": "workspace:*",
     "@shared/mutation": "workspace:*",
     "@shared/i18n": "workspace:*",
-    "@shared/projection-runtime": "workspace:*"
+    "@shared/projector": "workspace:*"
   },
   "files": [
     "src",

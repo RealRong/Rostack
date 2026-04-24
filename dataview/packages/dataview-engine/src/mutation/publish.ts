@@ -23,8 +23,8 @@ import {
   resolveViewPlan
 } from '@dataview/engine/active/plan'
 import {
-  createActiveRuntime
-} from '@dataview/engine/active/runtime/runtime'
+  createActiveProjector
+} from '@dataview/engine/active/projector/projector'
 import {
   createBaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
@@ -74,7 +74,7 @@ const createEmptyIndexTrace = (): IndexTrace => ({
 const createPublishState = (input: {
   doc: DataDoc
   trace: DataviewTrace
-  activeRuntime: ReturnType<typeof createActiveRuntime>
+  activeProjector: ReturnType<typeof createActiveProjector>
 }): DataviewPublishState => {
   const read = createDocumentReadContext(input.doc)
   const plan = resolveViewPlan(read, read.activeViewId)
@@ -82,7 +82,7 @@ const createPublishState = (input: {
     input.doc,
     plan?.index ?? emptyNormalizedIndexDemand()
   )
-  const active = input.activeRuntime.update({
+  const active = input.activeProjector.update({
     read: {
       reader: read.reader,
       fieldsById: read.fieldsById
@@ -119,16 +119,16 @@ export const createDataviewPublishSpec = (input?: {
   },
   DataviewPublishState
 > => {
-  let activeRuntime = createActiveRuntime()
+  let activeProjector = createActiveProjector()
   let bootstrapped = false
 
   return {
     init: (doc) => {
-      activeRuntime = createActiveRuntime()
+      activeProjector = createActiveProjector()
       const state = createPublishState({
         doc,
         trace: dataviewTrace.reset(undefined, doc),
-        activeRuntime
+        activeProjector
       })
       if (bootstrapped) {
         state.delta = {
@@ -156,7 +156,7 @@ export const createDataviewPublishSpec = (input?: {
         impact: createBaseImpact(trace),
         demand: plan?.index
       })
-      const active = activeRuntime.update({
+      const active = activeProjector.update({
         read: {
           reader: read.reader,
           fieldsById: read.fieldsById

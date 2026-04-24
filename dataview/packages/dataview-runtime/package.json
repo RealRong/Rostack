@@ -15,7 +15,7 @@
     "@dataview/core": "workspace:*",
     "@dataview/engine": "workspace:*",
     "@shared/core": "workspace:*",
-    "@shared/projection-runtime": "workspace:*"
+    "@shared/projector": "workspace:*"
   },
   "files": [
     "src",

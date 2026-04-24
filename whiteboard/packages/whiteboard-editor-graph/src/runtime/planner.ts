@@ -1,8 +1,9 @@
-import { changeSet, keySet } from '@shared/core'
 import {
   createPlan,
-  type RuntimePlanner
-} from '@shared/projection-runtime'
+  idDelta,
+  keySet,
+  type ProjectorPlanner
+} from '@shared/projector'
 import type {
   EditorPhaseScopeMap,
   GraphPatchScope
@@ -44,17 +45,17 @@ const createGraphPlannerScope = (
 
   scope.order = delta.document.order
 
-  scope.nodes = keySet.addMany(scope.nodes, changeSet.touched(delta.document.nodes))
-  scope.edges = keySet.addMany(scope.edges, changeSet.touched(delta.document.edges))
-  scope.mindmaps = keySet.addMany(scope.mindmaps, changeSet.touched(delta.document.mindmaps))
-  scope.groups = keySet.addMany(scope.groups, changeSet.touched(delta.document.groups))
+  scope.nodes = keySet.addMany(scope.nodes, idDelta.touched(delta.document.nodes))
+  scope.edges = keySet.addMany(scope.edges, idDelta.touched(delta.document.edges))
+  scope.mindmaps = keySet.addMany(scope.mindmaps, idDelta.touched(delta.document.mindmaps))
+  scope.groups = keySet.addMany(scope.groups, idDelta.touched(delta.document.groups))
 
-  scope.nodes = keySet.addMany(scope.nodes, changeSet.touched(delta.graph.nodes.draft))
-  scope.nodes = keySet.addMany(scope.nodes, changeSet.touched(delta.graph.nodes.preview))
-  scope.nodes = keySet.addMany(scope.nodes, changeSet.touched(delta.graph.nodes.edit))
-  scope.edges = keySet.addMany(scope.edges, changeSet.touched(delta.graph.edges.preview))
-  scope.edges = keySet.addMany(scope.edges, changeSet.touched(delta.graph.edges.edit))
-  scope.mindmaps = keySet.addMany(scope.mindmaps, changeSet.touched(delta.graph.mindmaps.preview))
+  scope.nodes = keySet.addMany(scope.nodes, idDelta.touched(delta.graph.nodes.draft))
+  scope.nodes = keySet.addMany(scope.nodes, idDelta.touched(delta.graph.nodes.preview))
+  scope.nodes = keySet.addMany(scope.nodes, idDelta.touched(delta.graph.nodes.edit))
+  scope.edges = keySet.addMany(scope.edges, idDelta.touched(delta.graph.edges.preview))
+  scope.edges = keySet.addMany(scope.edges, idDelta.touched(delta.graph.edges.edit))
+  scope.mindmaps = keySet.addMany(scope.mindmaps, idDelta.touched(delta.graph.mindmaps.preview))
   delta.graph.mindmaps.tick.forEach((mindmapId) => {
     scope.mindmaps = keySet.add(scope.mindmaps, mindmapId)
   })
@@ -90,7 +91,7 @@ const createGraphPlannerScope = (
   return scope
 }
 
-export const createEditorGraphPlanner = (): RuntimePlanner<
+export const createEditorGraphPlanner = (): ProjectorPlanner<
   Input,
   Snapshot,
   EditorPhaseName,

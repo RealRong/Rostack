@@ -1,4 +1,4 @@
-import type { RuntimePublisher } from '@shared/projection-runtime'
+import type { ProjectorPublisher } from '@shared/projector'
 import type {
   Change,
   Snapshot
@@ -14,7 +14,7 @@ import { patchPublishedGraph } from './publish/graph'
 import { patchPublishedItems } from './publish/items'
 import { patchPublishedUi } from './publish/ui'
 
-export const createEditorGraphPublisher = (): RuntimePublisher<
+export const createEditorGraphPublisher = (): ProjectorPublisher<
   WorkingState,
   Snapshot,
   Change

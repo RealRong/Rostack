@@ -1,9 +1,11 @@
 import {
   collection,
   equal,
-  type EntityDelta
 } from '@shared/core'
-import { publishEntityList } from '@shared/projection-runtime'
+import {
+  publishEntityList,
+  type EntityDelta
+} from '@shared/projector'
 import type {
   RecordId,
   View,

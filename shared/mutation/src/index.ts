@@ -17,12 +17,8 @@ export type {
   Issue
 } from './compiler'
 export { compileControl } from './compiler'
-export { apply } from './apply'
-export type {
-  ApplyCtx,
-  ApplyResult,
-  Model
-} from './apply'
+export * as mutationTrace from './mutationTrace'
+export * as planningContext from './planningContext'
 export { MutationEngine } from './engine'
 export { mutationApply } from './engine'
 export type {
@@ -60,3 +56,18 @@ export type {
 export { cowDraft, draftList, draftPath } from './draft'
 export type { Draft, DraftFactory } from './draft'
 export type { Origin, Write, WriteStream } from './write'
+export type {
+  MutationTrace,
+  MutationTraceBuilder,
+  MutationTraceCount,
+  MutationTraceFact,
+  FactCounter,
+  FactCountInput,
+  TouchedCountInput
+} from './mutationTrace'
+export type {
+  IssueInput,
+  IssueSeverity,
+  ValidationIssue,
+  PlanningContext
+} from './planningContext'

@@ -16,9 +16,9 @@ import {
 } from '@dataview/core/mutation'
 import {
   entityDelta,
-  equal,
   type EntityDelta
-} from '@shared/core'
+} from '@shared/projector'
+import { equal } from '@shared/core'
 import type {
   ActiveDelta,
   DocumentDelta

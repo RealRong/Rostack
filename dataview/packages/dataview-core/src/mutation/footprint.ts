@@ -1,7 +1,9 @@
 import type {
-  ApplyCtx,
   Path
 } from '@shared/mutation'
+import type {
+  ReducerContext
+} from '@shared/reducer'
 import {
   path as mutationPath
 } from '@shared/mutation'
@@ -34,10 +36,10 @@ const addRecordValueKey = (
     recordId: RecordId
     fieldId: FieldId
   },
-  ctx: Pick<ApplyCtx<DataDoc, DocumentOperation, DataviewMutationKey>, 'footprint'>
+  ctx: Pick<ReducerContext<DataDoc, DocumentOperation, DataviewMutationKey>, 'footprint'>
 ) => {
-  ctx.footprint.add(key.recordField(input.recordId, input.fieldId))
-  ctx.footprint.add(key.fieldValues(input.fieldId, input.recordId))
+  ctx.footprint(key.recordField(input.recordId, input.fieldId))
+  ctx.footprint(key.fieldValues(input.fieldId, input.recordId))
 }
 
 const addRecordValueKeys = (
@@ -46,7 +48,7 @@ const addRecordValueKeys = (
     set?: Partial<Record<FieldId, unknown>>
     clear?: readonly FieldId[]
   },
-  ctx: Pick<ApplyCtx<DataDoc, DocumentOperation, DataviewMutationKey>, 'footprint'>
+  ctx: Pick<ReducerContext<DataDoc, DocumentOperation, DataviewMutationKey>, 'footprint'>
 ) => {
   input.recordIds.forEach((recordId) => {
     Object.keys(input.set ?? {}).forEach((fieldId) => {
@@ -74,16 +76,16 @@ export const dataviewMutationKeyConflicts = (
 ): boolean => mutationPath.overlaps(left, right)
 
 export const collectOperationFootprint = (
-  ctx: Pick<ApplyCtx<DataDoc, DocumentOperation, DataviewMutationKey>, 'doc' | 'footprint'>,
+  ctx: Pick<ReducerContext<DataDoc, DocumentOperation, DataviewMutationKey>, 'doc' | 'footprint'>,
   operation: DocumentOperation
 ) => {
   const current = ctx.doc()
 
   switch (operation.type) {
     case 'document.record.insert':
-      ctx.footprint.add(key.recordsOrder())
+      ctx.footprint(key.recordsOrder())
       operation.records.forEach((record) => {
-        ctx.footprint.add(key.record(record.id))
+        ctx.footprint(key.record(record.id))
         Object.keys(record.values).forEach((fieldId) => {
           addRecordValueKey({
             recordId: record.id,
@@ -93,12 +95,12 @@ export const collectOperationFootprint = (
       })
       return
     case 'document.record.patch':
-      ctx.footprint.add(key.record(operation.recordId))
+      ctx.footprint(key.record(operation.recordId))
       return
     case 'document.record.remove':
-      ctx.footprint.add(key.recordsOrder())
+      ctx.footprint(key.recordsOrder())
       operation.recordIds.forEach((recordId) => {
-        ctx.footprint.add(key.record(recordId))
+        ctx.footprint(key.record(recordId))
       })
       return
     case 'document.record.fields.writeMany':
@@ -116,35 +118,35 @@ export const collectOperationFootprint = (
     case 'document.field.put': {
       const existed = Boolean(current.fields.byId[operation.field.id])
       if (!existed) {
-        ctx.footprint.add(key.fieldsOrder())
+        ctx.footprint(key.fieldsOrder())
       }
-      ctx.footprint.add(key.field(operation.field.id))
+      ctx.footprint(key.field(operation.field.id))
       return
     }
     case 'document.field.patch':
-      ctx.footprint.add(key.field(operation.id))
+      ctx.footprint(key.field(operation.id))
       return
     case 'document.field.remove':
-      ctx.footprint.add(key.fieldsOrder())
-      ctx.footprint.add(key.field(operation.id))
+      ctx.footprint(key.fieldsOrder())
+      ctx.footprint(key.field(operation.id))
       return
     case 'document.view.put': {
       const existed = Boolean(current.views.byId[operation.view.id])
       if (!existed) {
-        ctx.footprint.add(key.viewsOrder())
+        ctx.footprint(key.viewsOrder())
       }
-      ctx.footprint.add(key.view(operation.view.id))
+      ctx.footprint(key.view(operation.view.id))
       return
     }
     case 'document.activeView.set':
-      ctx.footprint.add(key.activeView())
+      ctx.footprint(key.activeView())
       return
     case 'document.view.remove':
-      ctx.footprint.add(key.viewsOrder())
-      ctx.footprint.add(key.view(operation.id))
+      ctx.footprint(key.viewsOrder())
+      ctx.footprint(key.view(operation.id))
       return
     case 'external.version.bump':
-      ctx.footprint.add(key.external(operation.source))
+      ctx.footprint(key.external(operation.source))
       return
   }
 }

@@ -1,0 +1,22 @@
+{
+  "name": "@shared/projector",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts/*": "./src/contracts/*.ts"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "dependencies": {
+    "@shared/core": "workspace:*"
+  }
+}

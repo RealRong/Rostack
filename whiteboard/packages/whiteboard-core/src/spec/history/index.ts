@@ -1,5 +1,6 @@
 export {
   assertHistoryFootprint,
+  createHistoryKeyCollector,
   historyFootprintConflicts,
   historyKeyConflicts,
   isHistoryKey,
@@ -8,6 +9,7 @@ export {
 
 export type {
   HistoryFootprint,
+  HistoryKeyCollector,
   HistoryKey
 } from '@whiteboard/core/spec/history/key'
 
@@ -18,5 +20,6 @@ export {
 export type {
   HistoryCollectContext,
   OperationHistoryCollector,
-  OperationHistoryRegistry
+  OperationHistoryRegistry,
+  WhiteboardHistoryRead
 } from '@whiteboard/core/spec/history/collect'

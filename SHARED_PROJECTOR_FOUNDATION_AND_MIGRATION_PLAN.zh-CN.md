@@ -1,254 +1,258 @@
-# shared/projector 底层设施与 Dataview / Whiteboard 复用方案
+# Shared Projector 基础设施最终方案（不兼容版）
 
-## 1. 核心结论
+本文给出 `projector` 底层设施的最终方案。
 
-Dataview active/projector 与 Whiteboard editor-graph projector 已经在做同一类事情：
+前提明确：
 
-```txt
-Input + Previous Snapshot + Delta/Impact
-  -> Plan dirty phases
-  -> Run derived phases
-  -> Publish next snapshot + change
-  -> Sync read stores / UI sources
-```
-
-但两边真正可复用的不是领域阶段本身，而是 projector 的底层运行模型：
-
-- phase plan
-- dirty scope
-- phase graph / dependency fanout
-- snapshot publish
-- entity/family/list/value change patch
-- result store sync
-- trace/metrics
-
-现有 `shared/projection-runtime` 已经提供了一部分完整 runtime，但它偏“运行时实现”，还缺一个更薄、更稳定的 `shared/projector` contract 层。
-
-推荐最终形态：
-
-```txt
-shared/projector             projector contract + Projector runtime 主入口
-shared/projection-runtime    internal/runtime implementation 或高级 phase runtime
-shared/store                 read store / family store / value store
-shared/core                  primitive
-```
-
-更像 `MutationEngine` / `Reducer` 的 API 应该是：
-
-```ts
-const projector = new Projector({
-  spec: dataviewActiveProjectorSpec
-})
-```
-
-或：
-
-```ts
-const projector = new Projector({
-  spec: whiteboardEditorGraphProjectorSpec
-})
-```
-
-领域项目只写 spec、phase handlers、publish adapter，不直接拼装一堆 dirty/publish/source helper。
+- 不保留兼容层
+- 不保留双轨
+- 不做 `shared/projector` 套 `shared/projection-runtime` 的过渡结构
+- 最终目标是让 `dataview` 与 `whiteboard` 都收敛到同一套 projector contract
 
 ---
 
-## 2. 为什么需要 `shared/projector`
+## 1. 结论
 
-当前存在三个问题。
+这件事值得做。
 
-### 2.1 `shared/projection-runtime` 偏底层且名字偏 runtime
+但正确做法不是：
 
-它已经有：
+```txt
+shared/projector
+  -> 包一层新 API
+shared/projection-runtime
+  -> 继续保留为底层实现
+```
+
+而是：
+
+```txt
+shared/projector
+  -> 直接成为唯一 projector 内核
+shared/projection-runtime
+  -> 删除
+```
+
+也就是说，这不是“新增一个更漂亮的 facade”，而是**直接把现有 `projection-runtime` 收口成最终 canonical package**。
+
+---
+
+## 2. 为什么值得做
+
+当前代码已经证明 `projector` 是一类独立底层模型，不是 Dataview 或 Whiteboard 的局部技巧。
+
+它们都在做同一件事：
+
+```txt
+input + previous snapshot
+  -> plan dirty phases
+  -> run phases
+  -> publish snapshot + change
+  -> sync read side / ui side
+```
+
+### 2.1 现有 `projection-runtime` 已经是 projector 内核
+
+现有共享层已经有完整核心能力：
 
 - `createRuntime`
 - `RuntimeSpec`
-- `RuntimePlanner`
-- `PhaseSpec`
-- `createPlan`
-- `publishEntityFamily`
-- `publishList`
-- dirty fanout / set / plan
+- `RuntimeInstance`
+- `plan`
+- `phase deps`
+- `publish`
+- `trace`
+- `publishEntityFamily / publishList / publishValue`
+- source sync helpers
 
-Dataview active 已经直接使用它。
+这说明问题不是“缺一个 projector 模型”，而是**名字、边界和包归属还没收口**。
 
-但如果所有项目都直接依赖 `shared/projection-runtime`，会出现两个问题：
+### 2.2 Whiteboard 现在直接依赖 runtime internals，结构不干净
 
-1. 领域项目需要理解 runtime internals：phase graph、working、publisher、scope map。
-2. 纯 delta/contract/publish helper 与完整 runtime 混在一起，包边界不清。
+`whiteboard-editor-graph` 当前并不是只吃 public contract。
 
-### 2.2 Whiteboard 已有自己的 projector 形态，但没有统一 contract
+它直接拼装：
 
-Whiteboard editor-graph 已经有：
+- `createPhaseGraph`
+- `createRuntimeState`
+- `runRuntimeUpdate`
+- `publishRuntimeResult`
 
-- graph / spatial / ui / items phases
-- planner
-- publisher
-- publish delta
-- projection sources
-- snapshot/change/result
+这说明 whiteboard 还在“手搓 runtime orchestration”，没有真正站在统一 contract 上。
 
-它和 Dataview active 非常像，但类型名、delta helper、store sync 方式都是自己的一套。
+### 2.3 Dataview active 已经很接近最终形态
 
-### 2.3 `shared/core` 仍在承载 projector primitives
+`dataview` active 侧已经基本按 spec 化写法运行：
 
-当前 projector 相关 primitive 还散在 `shared/core`：
+- 有清晰 phase：`query / membership / summary / publish`
+- 有 planner
+- 有 publish
+- 有 `createRuntime(createActiveRuntimeSpec())`
+
+所以 Dataview 这边的主要工作是**命名与包收口**，不是重做模型。
+
+### 2.4 projector primitive 不该继续挂在 `shared/core`
+
+当前这些东西本质上都是 projector 语义：
 
 - `changeSet`
 - `keySet`
 - `entityDelta`
-- `store`
 
-例如：
-
-- Dataview delta 使用 `EntityDelta` from `@shared/core`
-- Whiteboard planner/publisher 使用 `changeSet` / `keySet` from `@shared/core`
-- Whiteboard projection sources 使用 `store` from `@shared/core`
-
-这会让 `shared/core` 持续膨胀。
+继续放在 `shared/core`，会让 `core` 变成“什么都放一点”的桶。
 
 ---
 
-## 3. 不应该复用的部分
+## 3. 不应该做的事
 
-## 3.1 Dataview 保留领域侧
+下面这些都不做。
 
-Dataview active/projector 的这些部分不应该进入 shared：
+### 3.1 不做双层包
 
-- active view 语义
-- query/filter/search/sort/group 规则
-- membership derive
-- summary derive
-- calculation index
-- field/value/view 的 impact 判断
-- table/gallery/kanban/card 的具体 publish 结构
-- `CommitImpact` / `BaseImpact` 的领域维度
-
-这些属于 Dataview 读模型。
-
-## 3.2 Whiteboard 保留领域侧
-
-Whiteboard projector 的这些部分不应该进入 shared：
-
-- graph node/edge view build
-- spatial index 结构与命中算法
-- mindmap tree projection
-- node size / edge route / label mask / bounds 计算
-- selection/hover/draft/preview/edit 的白板 UI 语义
-- canvas items 与 owner 关系
-
-这些属于 Whiteboard 编辑器读模型。
-
-## 3.3 不做统一 ReadModelEngine
-
-不要把 Dataview active 与 Whiteboard editor graph 抽成统一业务 read model。
-
-正确抽象层是：
+不做：
 
 ```txt
-phase projector runtime + publish/change/store sync primitives
+@shared/projector
+  -> facade
+@shared/projection-runtime
+  -> real runtime
 ```
 
-而不是：
+原因很直接：
+
+- 这只是过渡层
+- 会制造新旧术语双轨
+- 和“不兼容、直接收口”的目标冲突
+
+### 3.2 不做兼容 re-export
+
+不保留：
+
+- `@shared/projection-runtime -> @shared/projector` re-export
+- `RuntimeSpec = ProjectorSpec` alias
+- `createRuntime = createProjector` alias
+
+一次性迁完，直接删旧名字。
+
+### 3.3 不做统一业务读模型
+
+不抽象：
+
+- Dataview active 业务语义
+- Whiteboard graph/spatial/ui/items 业务语义
+
+shared 只抽：
+
+- phase orchestration
+- dirty scope / scope merge
+- publish helper
+- common delta primitive
+- source sync helper
+
+### 3.4 现在不做 `shared/store` 大拆分
+
+这一步不是当前主矛盾。
+
+当前最值得做的是：
+
+- projector runtime 包收口
+- primitive 迁出 `shared/core`
+- whiteboard 停止依赖 runtime internals
+
+`shared/store` 如果以后要拆，单独做，不和这次混在一起。
+
+---
+
+## 4. 最终包边界
+
+最终只保留一个 projector 包：
 
 ```txt
-Dataview/Whiteboard 共同 Query Engine
+shared/projector
+  src/
+    contracts/
+    delta/
+    publish/
+    source/
+    projector/
+    testing/
 ```
 
----
+最终删除：
 
-## 4. 建议包拆分
+```txt
+shared/projection-runtime
+```
 
-## 4.1 `shared/projector`
+同时从 `shared/core` 迁出：
 
-公开、稳定、面向领域项目的 projector API。
-
-职责：
-
-- `Projector`
-- `ProjectorSpec`
-- `ProjectorContext`
-- `ProjectorResult`
-- `ProjectorPlan`
-- `ProjectorPhaseSpec`
-- `ProjectorPublisher`
-- delta primitives：`EntityDelta`、`IdDelta`、`Flags`、`Ids`
-- publish patch helpers：value/list/family/entity
-- store sync contracts，但不强绑 React
-
-## 4.2 `shared/projection-runtime`
-
-可以有两种演进方式：
-
-### 方案 A：保留为 internal runtime
-
-`shared/projector` 内部复用 `shared/projection-runtime`，领域项目只依赖 `@shared/projector`。
-
-### 方案 B：改名/并入 `shared/projector`
-
-长期把 `projection-runtime` 的 public API 收敛进 `shared/projector`，旧包只保留兼容 re-export。
-
-推荐：先走方案 A，降低迁移风险。
-
-## 4.3 `shared/store`
-
-从 `shared/core` 拆出的 reactive store 包：
-
-- value store
-- family store
-- keyed store
-- derived store
-- staged/projected store
-- batch
-
-Projector 的结果同步层可以依赖 `shared/store`，但 `Projector` 本身不应强制依赖 store。
+- `changeSet`
+- `keySet`
+- `entityDelta`
 
 ---
 
-## 5. 主 API：`new Projector({ spec })`
+## 5. 最终 API 设计
 
-## 5.1 `Projector`
+目标是简单、直接、可复用。
+
+不采用额外复杂 class 层，直接保留函数式主入口。
+
+### 5.1 主入口
 
 ```ts
-export class Projector<
+export interface Projector<
+  Input,
+  Working,
+  Snapshot,
+  Change,
+  PhaseName extends string = string,
+  PhaseMetrics = unknown
+> {
+  snapshot(): Snapshot
+  working(): Working
+
+  update(
+    input: Input
+  ): ProjectorResult<Snapshot, Change, PhaseName, PhaseMetrics>
+
+  subscribe(
+    listener: (
+      result: ProjectorResult<Snapshot, Change, PhaseName, PhaseMetrics>
+    ) => void
+  ): () => void
+}
+
+export const createProjector = <
   Input,
   Working,
   Snapshot,
   Change,
   PhaseName extends string,
-  DomainCtx = ProjectorContext<Input, Working, Snapshot>,
+  ScopeMap extends ProjectorScopeMap<PhaseName> = DefaultProjectorScopeMap<PhaseName>,
+  PhaseChange = unknown,
   PhaseMetrics = unknown
-> {
-  constructor(input: {
-    spec: ProjectorSpec<
-      Input,
-      Working,
-      Snapshot,
-      Change,
-      PhaseName,
-      DomainCtx,
-      PhaseMetrics
-    >
-  })
-
-  snapshot(): Snapshot
-
-  update(input: Input): ProjectorResult<Snapshot, Change, PhaseName, PhaseMetrics>
-
-  subscribe(
-    listener: (result: ProjectorResult<Snapshot, Change, PhaseName, PhaseMetrics>) => void
-  ): () => void
-}
+>(
+  spec: ProjectorSpec<
+    Input,
+    Working,
+    Snapshot,
+    Change,
+    PhaseName,
+    ScopeMap,
+    PhaseChange,
+    PhaseMetrics
+  >
+): Projector<Input, Working, Snapshot, Change, PhaseName, PhaseMetrics>
 ```
 
-设计原则：
+选择 `createProjector(spec)` 而不是 `new Projector(...)` 的原因：
 
-- `Projector` 是有状态 runtime，维护 current snapshot。
-- 每次 `update(input)` 根据 previous snapshot 和 input delta 计算新 snapshot/change。
-- 与 `Reducer` 不同，Projector 需要持有 snapshot，因为它是读模型 runtime。
-- 不关心 write/history/collab。
+- 更接近现有 `createRuntime(spec)`，迁移最短
+- 不引入额外 OO 外壳
+- 更容易保持 API 简洁
 
-## 5.2 `ProjectorSpec`
+### 5.2 `ProjectorSpec`
 
 ```ts
 export interface ProjectorSpec<
@@ -257,7 +261,8 @@ export interface ProjectorSpec<
   Snapshot,
   Change,
   PhaseName extends string,
-  DomainCtx = ProjectorContext<Input, Working, Snapshot>,
+  ScopeMap extends ProjectorScopeMap<PhaseName> = DefaultProjectorScopeMap<PhaseName>,
+  PhaseChange = unknown,
   PhaseMetrics = unknown
 > {
   createWorking(): Working
@@ -266,88 +271,105 @@ export interface ProjectorSpec<
   plan(input: {
     input: Input
     previous: Snapshot
-  }): ProjectorPlan<PhaseName>
-
-  createContext?(input: {
-    ctx: ProjectorContext<Input, Working, Snapshot>
-  }): DomainCtx
-
-  phases: ProjectorPhaseSpec<DomainCtx, PhaseName, PhaseMetrics>[]
+  }): ProjectorPlan<PhaseName, ScopeMap>
 
   publish(input: {
     revision: number
     previous: Snapshot
     working: Working
-    input: Input
   }): ProjectorPublishResult<Snapshot, Change>
 
-  resetWorking?(working: Working): void
+  phases: readonly ProjectorPhase<
+    Input,
+    Working,
+    Snapshot,
+    PhaseName,
+    ScopeMap,
+    PhaseChange,
+    PhaseMetrics
+  >[]
 }
 ```
 
-字段含义：
+这里直接把现有 `planner` / `publisher` 内联进 spec，并保留 `createWorking()` + `working()` 这一对原语。
 
-- `createWorking`：创建可复用 working state。
-- `createSnapshot`：创建初始 snapshot。
-- `plan`：从 input + previous 推导要跑哪些 phase。
-- `createContext`：把 shared ctx 包装成领域 ctx。
-- `phases`：阶段声明。
-- `publish`：从 working 生成 snapshot/change。
-- `resetWorking`：每轮 update 前清理 working 中的 delta/temp。
+原因：
 
-## 5.3 `ProjectorContext`
+- 最终 API 更短
+- 领域项目不需要再理解“planner object / publisher object”两层概念
+- whiteboard query / spatial 这类读链可以直接读取稳定 working state
+
+### 5.3 `ProjectorPhase`
 
 ```ts
-export interface ProjectorContext<Input, Working, Snapshot> {
-  readonly input: Input
-  readonly previous: Snapshot
-  readonly working: Working
-  readonly revision: number
+export interface ProjectorContext<
+  Input,
+  Working,
+  Snapshot,
+  Scope = undefined
+> {
+  input: Input
+  previous: Snapshot
+  working: Working
+  scope: Scope
 }
-```
 
-领域项目通常不直接使用基础 ctx，而是通过 `createContext` 包装。
-
-## 5.4 `ProjectorPhaseSpec`
-
-```ts
-export interface ProjectorPhaseSpec<
-  Ctx,
+export interface ProjectorPhase<
+  Input,
+  Working,
+  Snapshot,
   PhaseName extends string,
-  Metrics = unknown
+  ScopeMap extends ProjectorScopeMap<PhaseName>,
+  PhaseChange = unknown,
+  PhaseMetrics = unknown
 > {
   name: PhaseName
-  deps?: readonly PhaseName[]
+  deps: readonly PhaseName[]
 
-  run(input: {
-    ctx: Ctx
-    scope?: unknown
-  }): ProjectorPhaseResult<Metrics>
+  mergeScope?: (
+    current: ScopeMap[PhaseName] | undefined,
+    next: ScopeMap[PhaseName]
+  ) => ScopeMap[PhaseName]
+
+  run(
+    context: ProjectorContext<Input, Working, Snapshot, ScopeMap[PhaseName]>
+  ): ProjectorPhaseResult<PhaseChange, PhaseMetrics, PhaseName, ScopeMap>
 }
 ```
 
-```ts
-export interface ProjectorPhaseResult<Metrics = unknown> {
-  action?: 'reuse' | 'sync' | 'rebuild'
-  changed?: boolean
-  metrics?: Metrics
-}
-```
-
-`action` 不是强制语义，只是 trace/metrics 的通用表达。
-
-## 5.5 `ProjectorPlan`
+### 5.4 `ProjectorPlan`
 
 ```ts
-export interface ProjectorPlan<PhaseName extends string> {
+export interface ProjectorPlan<
+  PhaseName extends string,
+  ScopeMap extends ProjectorScopeMap<PhaseName> = DefaultProjectorScopeMap<PhaseName>
+> {
   phases: ReadonlySet<PhaseName>
-  scope?: Partial<Record<PhaseName, unknown>>
+  scope?: Partial<{
+    [K in PhaseName]: ScopeMap[K]
+  }>
 }
 ```
 
-可以继续复用现有 `createPlan` 思路，但对外名称收敛到 `ProjectorPlan`。
+### 5.5 `ProjectorPhaseResult`
 
-## 5.6 `ProjectorResult`
+```ts
+export interface ProjectorPhaseResult<
+  PhaseName extends string,
+  ScopeMap extends ProjectorScopeMap<PhaseName>,
+  PhaseChange = unknown,
+  PhaseMetrics = unknown
+> {
+  action: 'reuse' | 'sync' | 'rebuild'
+  emit?: Partial<{
+    [K in PhaseName]: ScopeMap[K]
+  }>
+  change?: PhaseChange
+  metrics?: PhaseMetrics
+}
+```
+
+### 5.6 `ProjectorResult`
 
 ```ts
 export interface ProjectorResult<
@@ -363,284 +385,211 @@ export interface ProjectorResult<
 ```
 
 ```ts
-export interface ProjectorTrace<PhaseName extends string, Metrics = unknown> {
+export interface ProjectorTrace<
+  PhaseName extends string,
+  PhaseMetrics = unknown
+> {
+  revision: number
+  totalMs: number
   phases: readonly {
     name: PhaseName
     action: 'reuse' | 'sync' | 'rebuild'
+    changed: boolean
     durationMs: number
-    metrics?: Metrics
+    metrics?: PhaseMetrics
   }[]
 }
 ```
 
 ---
 
-## 6. Delta / Publish 底层设施
+## 6. 共通 primitive 最终设计
 
-`shared/projector` 应该提供少量通用 change primitives，替代 `shared/core` 的 `changeSet/entityDelta/keySet` 角色。
+### 6.1 `IdDelta`
 
-## 6.1 `IdDelta`
+它就是现在 `changeSet` 的最终名字。
 
 ```ts
 export interface IdDelta<Id> {
-  added: ReadonlySet<Id>
-  updated: ReadonlySet<Id>
-  removed: ReadonlySet<Id>
+  added: Set<Id>
+  updated: Set<Id>
+  removed: Set<Id>
 }
-```
 
-```ts
 export const idDelta = {
-  create<Id>(): MutableIdDelta<Id>,
-  reset<Id>(delta: MutableIdDelta<Id>): void,
-  add<Id>(delta: MutableIdDelta<Id>, id: Id): void,
-  update<Id>(delta: MutableIdDelta<Id>, id: Id): void,
-  remove<Id>(delta: MutableIdDelta<Id>, id: Id): void,
+  create<Id>(): IdDelta<Id>,
+  reset<Id>(delta: IdDelta<Id>): void,
+  add<Id>(delta: IdDelta<Id>, id: Id): void,
+  update<Id>(delta: IdDelta<Id>, id: Id): void,
+  remove<Id>(delta: IdDelta<Id>, id: Id): void,
   touched<Id>(delta: IdDelta<Id>): ReadonlySet<Id>,
-  clone<Id>(delta: IdDelta<Id>): MutableIdDelta<Id>,
-  assign<Id>(target: MutableIdDelta<Id>, source: IdDelta<Id>): void,
+  clone<Id>(delta: IdDelta<Id>): IdDelta<Id>,
+  assign<Id>(target: IdDelta<Id>, source: IdDelta<Id>): IdDelta<Id>,
   hasAny<Id>(delta: IdDelta<Id>): boolean
 }
 ```
 
-迁移来源：
+改名原因：
 
-- `shared/core/changeSet`
+- `changeSet` 太泛
+- 在 projector 语境里，本质上就是 id 级增量
 
-命名建议：
+### 6.2 `KeySet`
 
-- `changeSet` 在 projector 语境中改名为 `idDelta`，更准确。
-
-## 6.2 `KeySet`
+保留现有语义，但迁到 `shared/projector`。
 
 ```ts
-export type KeySet<Key> = ReadonlySet<Key> | 'all'
+export type KeySet<Key> =
+  | { kind: 'none' }
+  | { kind: 'all' }
+  | { kind: 'some'; keys: ReadonlySet<Key> }
+```
 
+```ts
 export const keySet = {
-  empty<Key>(): KeySet<Key>,
+  none<Key>(): KeySet<Key>,
   all<Key>(): KeySet<Key>,
+  some<Key>(keys: Iterable<Key>): KeySet<Key>,
+  clone<Key>(set: KeySet<Key>): KeySet<Key>,
+  isEmpty<Key>(set: KeySet<Key>): boolean,
+  has<Key>(set: KeySet<Key>, key: Key): boolean,
   add<Key>(set: KeySet<Key>, key: Key): KeySet<Key>,
   addMany<Key>(set: KeySet<Key>, keys: Iterable<Key>): KeySet<Key>,
-  has<Key>(set: KeySet<Key>, key: Key): boolean,
-  hasAny<Key>(set: KeySet<Key>): boolean,
-  merge<Key>(left: KeySet<Key>, right: KeySet<Key>): KeySet<Key>
+  union<Key>(...sets: readonly KeySet<Key>[]): KeySet<Key>,
+  subtract<Key>(set: KeySet<Key>, keys: Iterable<Key>, allKeys?: readonly Key[]): KeySet<Key>,
+  intersects<Key>(left: KeySet<Key>, right: KeySet<Key>): boolean,
+  materialize<Key>(set: KeySet<Key>, allKeys: readonly Key[]): readonly Key[]
 }
 ```
 
-迁移来源：
+### 6.3 `EntityDelta`
 
-- `shared/core/keySet`
-
-用途：
-
-- projector dirty scope
-- partial rebuild scope
-- touched entity scope
-
-## 6.3 `EntityDelta`
+对外发布的 JSON-friendly 结构继续保留。
 
 ```ts
 export interface EntityDelta<Id> {
-  rebuild?: true
-  added?: readonly Id[]
-  updated?: readonly Id[]
-  removed?: readonly Id[]
+  order?: true
+  set?: readonly Id[]
+  remove?: readonly Id[]
 }
 ```
-
-或直接统一成 `IdDelta`。
-
-建议：
-
-- 内部 runtime 使用 `IdDelta<Id>`。
-- 对外 API 如需 JSON-friendly delta，可用 `EntityDelta<Id>`。
-- 提供转换：
 
 ```ts
 export const entityDelta = {
-  fromIdDelta<Id>(delta: IdDelta<Id>): EntityDelta<Id>,
-  toIdDelta<Id>(delta: EntityDelta<Id>): MutableIdDelta<Id>
+  normalize<Id>(delta: EntityDelta<Id>): EntityDelta<Id> | undefined,
+  merge<Id>(...deltas: readonly (EntityDelta<Id> | undefined)[]): EntityDelta<Id> | undefined,
+  fromIdDelta<Id>(input: {
+    changes: IdDelta<Id>
+    includeAdded?: boolean
+    includeUpdated?: boolean
+    includeRemoved?: boolean
+    order?: boolean
+  }): EntityDelta<Id> | undefined,
+  fromSnapshots<Id, Value>(input: {
+    previousIds: readonly Id[]
+    nextIds: readonly Id[]
+    previousGet: (id: Id) => Value | undefined
+    nextGet: (id: Id) => Value | undefined
+    equal?: (left: Value, right: Value) => boolean
+  }): EntityDelta<Id> | undefined
 }
 ```
 
-## 6.4 Publish helpers
+最终关系是：
 
-保留现有 `shared/projection-runtime/publish/*` 的能力，但从 `shared/projector` 导出更稳定名称：
-
-```ts
-export const publish = {
-  value,
-  list,
-  family,
-  entityFamily,
-  entityList
-}
-```
-
-它们只做结构共享与 change 生成，不知道领域语义。
+- 内部 working / phase patch 用 `IdDelta`
+- 对外 publish change 用 `EntityDelta`
 
 ---
 
-## 7. Store sync 底层设施
+## 7. publish / source helper 最终归属
 
-Whiteboard `projection/sources.ts` 和 Dataview runtime source 都在做同一类事情：
+下面这些保留，而且迁到 `shared/projector`：
 
-```txt
-ProjectorResult(snapshot, change)
-  -> sync value store
-  -> sync family store by id delta
-  -> sync list store
-```
+- `publishValue`
+- `publishList`
+- `publishFamily`
+- `publishEntityFamily`
+- `publishEntityList`
 
-建议 `shared/projector` 提供可选 sync helper，但不要强制 Projector 依赖 store。
+source sync helper 也归到同包：
 
-```ts
-export interface ProjectorSourceSpec<Snapshot, Change> {
-  sync(input: {
-    previous: Snapshot
-    next: Snapshot
-    change: Change
-  }): void
-}
+- `composeSync`
+- `createEntityDeltaSync`
+- `createFamilySync`
+- `createListSync`
+- `createValueSync`
 
-export const projectorSources = {
-  createValue,
-  createFamily,
-  createList,
-  syncFamilyByIdDelta
-}
-```
+原因：
 
-如果 `shared/store` 拆出，helper 可以放：
-
-```txt
-shared/projector-store
-```
-
-或者：
-
-```txt
-shared/projector/src/storeSync.ts
-```
-
-建议第一阶段先不新增额外包，等 `shared/store` 拆出后再整理。
+- 它们都直接服务 projector publish / source sync
+- 没必要再拆第二个小包
 
 ---
 
-## 8. Dataview active/projector 迁移方案
+## 8. Dataview 最终迁移方案
 
-## 8.1 当前形态
+Dataview 这边**值得迁，但收益主要是收口命名和 shared 边界**。
 
-Dataview active 已经非常接近 shared projector runtime：
+### 8.1 Dataview 最终形态
 
-- `active/runtime/runtime.ts` 使用 `createRuntime`
-- phase：`query` / `membership` / `summary` / `publish`
-- planner：`active/runtime/planner.ts`
-- working：`active/runtime/working.ts`
-- publisher：active publish runtime
-- input：`ActiveRuntimeInput`
-- result：`ActiveRuntimeResult`
+Dataview active 最终固定为：
 
-它的问题不是没有 runtime，而是：
-
-- 直接依赖 `@shared/projection-runtime` 的底层类型。
-- active/projector 与 Dataview 领域 impact/query 仍耦合较深。
-- `EntityDelta` 仍从 `@shared/core` 来。
-- active runtime 是一个局部 projector，但没有统一命名成 `ProjectorSpec`。
-
-## 8.2 目标形态
-
-```ts
-export const dataviewActiveProjector = new Projector<
-  ActiveProjectorInput,
-  ActiveProjectorWorking,
-  ViewState | undefined,
-  ActiveDelta | undefined,
-  ActivePhaseName,
-  DataviewActiveProjectorCtx,
-  ActivePhaseMetrics
->({
-  spec: dataviewActiveProjectorSpec
-})
+```txt
+createProjector(dataviewActiveProjectorSpec)
 ```
 
-Phase 仍然是 Dataview 自己的：
+phase 仍然保留：
 
 - `query`
 - `membership`
 - `summary`
 - `publish`
 
-但 runtime orchestration 来自 `shared/projector`。
+Dataview 不需要改业务模型，只改：
 
-## 8.3 `DataviewActiveProjectorCtx`
+- import 来源
+- runtime 术语
+- primitive 归属
 
-```ts
-export interface DataviewActiveProjectorCtx {
-  readonly input: ActiveProjectorInput
-  readonly previous: ViewState | undefined
-  readonly working: ActiveProjectorWorking
+### 8.2 Dataview 需要改的地方
 
-  read: {
-    reader: DocumentReader
-    fieldsById: ReadonlyMap<FieldId, Field>
-    activeView(): View | undefined
-    activeViewId(): ViewId | undefined
-  }
+#### A. active runtime 术语改为 projector
 
-  impact: BaseImpact
-  index: {
-    state: IndexState
-    delta?: IndexDelta
-  }
-
-  view: {
-    plan?: ViewPlan
-    previousPlan?: ViewPlan
-  }
-}
-```
-
-这样 phase handler 不直接依赖 shared runtime ctx。
-
-## 8.4 迁移步骤
-
-### 步骤 A：类型重命名，不改逻辑
-
-把 active runtime 术语从 `Runtime` 改成 `Projector`：
+例如：
 
 - `ActiveRuntimeInput` -> `ActiveProjectorInput`
 - `ActiveRuntimeWorking` -> `ActiveProjectorWorking`
 - `ActiveRuntimeResult` -> `ActiveProjectorResult`
-- `createActiveRuntimePlanner` -> `createActiveProjectorPlanner`
+- `createActiveRuntime` -> `createActiveProjector`
+- `createActiveRuntimePlanner` -> `createActiveProjectorPlan`
 
-短期可保留 alias。
+这一步不保留 alias。
 
-### 步骤 B：从 `createRuntime` 切到 `new Projector`
+#### B. import 全部切到 `@shared/projector`
 
-将：
-
-```ts
-createRuntime({
-  createWorking,
-  createSnapshot,
-  planner,
-  publisher,
-  phases
-})
-```
-
-替换为：
+把：
 
 ```ts
-new Projector({
-  spec: dataviewActiveProjectorSpec
-})
+import {
+  createRuntime,
+  type RuntimeSpec,
+  type RuntimePublisher,
+  type PhaseSpec
+} from '@shared/projection-runtime'
 ```
 
-内部仍可由 `Projector` 复用 `projection-runtime`。
+改成：
 
-### 步骤 C：Delta primitive 改到 `@shared/projector`
+```ts
+import {
+  createProjector,
+  type ProjectorSpec,
+  type ProjectorPhase
+} from '@shared/projector'
+```
+
+#### C. `EntityDelta` 改归属
 
 把：
 
@@ -648,460 +597,308 @@ new Projector({
 import type { EntityDelta } from '@shared/core'
 ```
 
-改为：
+改成：
 
 ```ts
 import type { EntityDelta } from '@shared/projector'
 ```
 
-如果采用 `IdDelta`，则逐步把 active/doc delta 统一到：
+#### D. active projector 不碰 mutation apply 主轴
 
-```ts
-IdDelta<RecordId>
-IdDelta<FieldId>
-IdDelta<ViewId>
-IdDelta<ItemId>
-IdDelta<SectionId>
-```
-
-### 步骤 D：active 只消费 write impact
-
-Dataview active projector 输入应来自 `MutationEngine.writes` 之后的 doc snapshot + impact：
+Dataview 的 projector 输入仍然来自：
 
 ```txt
-MutationEngine Write.extra = CommitImpact
-  -> BaseImpact
-  -> DataviewActiveProjector.update(input)
+MutationEngine publish.reduce
+  -> doc / plan / index / trace
+  -> active projector update
 ```
 
-active projector 不参与 reducer apply。
+Projector 不进入 reducer，不进入 mutation apply。
 
-### 步骤 E：publish helpers 标准化
+### 8.3 Dataview 迁移完成标准
 
-Dataview active publish 中可复用 `shared/projector.publish.*`：
-
-- family publish
-- list publish
-- value publish
-- entity delta publish
-
-保留 table/gallery/kanban 的领域结构构造。
-
-## 8.5 Dataview 收益
-
-- active 成为明确的 Projector，不再只是 engine runtime 的内部阶段。
-- shared 层只提供 phase orchestration 和 publish primitives。
-- `@shared/core` 不再承载 `EntityDelta`。
-- active 与 mutation apply 的耦合进一步降低。
+- 不再 import `@shared/projection-runtime`
+- 不再从 `@shared/core` import `EntityDelta`
+- active runtime 术语全部变成 projector
+- active 仍保留原四个 phase，不改业务逻辑
 
 ---
 
-## 9. Whiteboard projector 迁移方案
+## 9. Whiteboard 最终迁移方案
 
-## 9.1 当前形态
+Whiteboard 这边**更值得做**，因为它现在还有一层手工 runtime 组装和 internal import。
 
-Whiteboard projector 主要在 `whiteboard-editor-graph`：
+### 9.1 Whiteboard 最终形态
 
-- `runtime/planner.ts`
-- `runtime/publisher.ts`
-- `runtime/publish/delta.ts`
-- `runtime/projection.ts`
-- `runtime/spatial/*`
-- `runtime/items.ts`
-- `runtime/ui.ts`
-- `contracts/delta.ts`
-- `contracts/editor.ts`
-- `contracts/working.ts`
+`whiteboard-editor-graph` 最终固定为：
 
-它已经有 phase 化结构：
+```txt
+createProjector(whiteboardEditorGraphProjectorSpec)
+```
+
+phase 保留：
 
 - `graph`
 - `spatial`
 - `ui`
 - `items`
 
-planner 使用：
+### 9.2 Whiteboard 需要改的地方
 
-- document delta
-- UI delta
-- keySet/changeSet touched scope
+#### A. 删除 runtime internals 直连
 
-publisher 产出：
-
-- graph snapshot/change
-- items snapshot/change
-- ui snapshot/change
-
-projection sources 负责把 result 同步到 store family。
-
-## 9.2 目标形态
+下面这种写法必须消失：
 
 ```ts
-export const whiteboardEditorGraphProjector = new Projector<
-  EditorGraphInput,
-  EditorGraphWorking,
-  EditorGraphSnapshot,
-  EditorGraphChange,
-  EditorGraphPhaseName,
-  WhiteboardEditorGraphProjectorCtx,
-  EditorGraphPhaseMetrics
->({
-  spec: whiteboardEditorGraphProjectorSpec
-})
+import { publishRuntimeResult } from '@shared/projection-runtime/runtime/publish'
+import { createRuntimeState } from '@shared/projection-runtime/runtime/state'
+import { runRuntimeUpdate } from '@shared/projection-runtime/runtime/update'
 ```
 
-Whiteboard phases 保留领域侧：
+whiteboard 不应该再知道这些内部模块。
 
-- `graph`
-- `spatial`
-- `ui`
-- `items`
+#### B. editor graph runtime 改成只吃 public projector contract
 
-`shared/projector` 只接管 runtime orchestration。
+把现有手工编排：
 
-## 9.3 `WhiteboardEditorGraphProjectorCtx`
+- `createPhaseGraph`
+- `createRuntimeState`
+- `runRuntimeUpdate`
+- `publishRuntimeResult`
+
+全部删掉，直接变成：
 
 ```ts
-export interface WhiteboardEditorGraphProjectorCtx {
-  readonly input: EditorGraphInput
-  readonly previous: EditorGraphSnapshot
-  readonly working: EditorGraphWorking
-
-  document: {
-    snapshot: EngineSnapshot
-    previous: EngineSnapshot | null
-    delta: EngineDelta
-  }
-
-  session: SessionInput
-  measure: MeasureInput
-  interaction: InteractionInput
-  clock: ClockInput
-
-  graph: {
-    patch(scope: GraphPatchScope): void
-    readNode(id: NodeId): GraphNodeEntry | undefined
-    readEdge(id: EdgeId): GraphEdgeEntry | undefined
-  }
-
-  spatial: {
-    rebuild(): void
-    patch(scope: SpatialPatchScope): void
-  }
-
-  ui: {
-    sync(): void
-  }
-}
+const projector = createProjector(whiteboardEditorGraphProjectorSpec)
 ```
 
-handler 不需要知道 shared phase runtime。
+#### C. `changeSet` 全部改成 `idDelta`
 
-## 9.4 迁移步骤
-
-### 步骤 A：把 `changeSet/keySet` 迁到 `@shared/projector`
-
-当前：
+把：
 
 ```ts
-import { changeSet, keySet } from '@shared/core'
+import { changeSet } from '@shared/core'
 ```
+
+改成：
+
+```ts
+import { idDelta } from '@shared/projector'
+```
+
+#### D. `keySet` 迁到 projector
+
+把：
+
+```ts
+import { keySet } from '@shared/core'
+```
+
+改成：
+
+```ts
+import { keySet } from '@shared/projector'
+```
+
+#### E. publish helper 仍走 shared projector
+
+下面这些继续保留，但 import 改到 `@shared/projector`：
+
+- `publishEntityFamily`
+- `publishList`
+- `publishValue`
+
+### 9.3 Whiteboard 迁移完成标准
+
+- 不再 import runtime internal 文件
+- 不再 import `@shared/projection-runtime`
+- 不再 import `changeSet` / `keySet` from `@shared/core`
+- editor graph runtime 只剩 `createProjector(spec)` 一个主入口
+
+---
+
+## 10. 最终目录结构
+
+### 10.1 shared
+
+```txt
+shared/projector/src/
+  contracts/
+    core.ts
+    plan.ts
+    phase.ts
+    projector.ts
+    source.ts
+    trace.ts
+  delta/
+    idDelta.ts
+    keySet.ts
+    entityDelta.ts
+  publish/
+    value.ts
+    list.ts
+    family.ts
+    entity.ts
+  source/
+    compose.ts
+    entity.ts
+    event.ts
+    family.ts
+    list.ts
+    value.ts
+  projector/
+    createProjector.ts
+    publish.ts
+    state.ts
+    update.ts
+  testing/
+    assert.ts
+    fakeSink.ts
+    harness.ts
+  index.ts
+```
+
+### 10.2 删除项
+
+必须删除：
+
+```txt
+shared/projection-runtime
+```
+
+同时从 `shared/core` 删除导出：
+
+- `changeSet`
+- `keySet`
+- `entityDelta`
+
+---
+
+## 11. 实施顺序
+
+### Phase 1：shared projector 收口
 
 目标：
 
-```ts
-import { idDelta, keySet } from '@shared/projector'
-```
+- 用 `shared/projector` 替换 `shared/projection-runtime`
+- 把 `changeSet/keySet/entityDelta` 迁入 projector
 
-类型：
+实施项：
 
-```ts
-export type IdDelta<TId extends string> = ProjectorIdDelta<TId>
-```
+- 新建 `shared/projector`
+- 迁移 runtime / publish / source / testing
+- `changeSet -> idDelta`
+- `keySet` 迁移
+- `entityDelta` 迁移
+- 删除 `shared/projection-runtime`
+- 删除 `shared/core` 里对应导出
 
-### 步骤 B：把 editor graph runtime spec 包成 `ProjectorSpec`
+完成状态：
 
-现有：
+- 已完成
+- `shared/projector` 已成为唯一 canonical projector package
+- `shared/projection-runtime` 已删除
+- `shared/core` 中的 `changeSet/keySet/entityDelta` 旧实现与导出已删除
 
-```ts
-createRuntime({
-  createWorking,
-  createSnapshot,
-  planner,
-  publisher,
-  phases
-})
-```
+### Phase 2：Whiteboard 切换
 
 目标：
 
-```ts
-new Projector({
-  spec: whiteboardEditorGraphProjectorSpec
-})
-```
+- whiteboard-editor-graph 只吃 projector public API
 
-### 步骤 C：保留领域 projector 函数
+实施项：
 
-这些继续留在 Whiteboard：
+- 删除对 runtime internals 的 import
+- `createEditorGraphRuntime` 改成 `createProjector(...)`
+- `changeSet/keySet` import 改到 `@shared/projector`
+- publish helper import 改到 `@shared/projector`
 
-- `readProjectedNodeRect`
-- `buildProjectedNodeView`
-- `readProjectedEdge`
-- `buildNodeUiView`
-- `buildEdgeUiView`
-- spatial query/update
-- graph patch / mindmap owner patch
+完成状态：
 
-不要抽到 shared。
+- 已完成
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/createEditorGraphRuntime.ts` 已切到 `createProjector(createEditorGraphProjectorSpec())`
+- editor-graph 不再依赖 projector runtime internals
+- whiteboard core / engine / editor-graph 侧的 delta primitive 已统一切到 `@shared/projector`
 
-### 步骤 D：projection sources 标准化
+### Phase 3：Dataview 切换
 
-当前 `whiteboard-editor/src/projection/sources.ts` 自己实现了 family sync。
+目标：
 
-可以逐步改为 shared helper：
+- dataview active runtime 全面改名为 projector
 
-```ts
-projectorSources.syncFamilyByIdDelta({
-  target: nodeGraphFamily,
-  previous: previous.graph.nodes,
-  next: next.graph.nodes,
-  delta: change.graph.nodes
-})
-```
+实施项：
 
-但这一步依赖 `shared/store` 拆包，建议后置。
+- `Runtime*` 术语替换为 `Projector*`
+- import 改到 `@shared/projector`
+- `EntityDelta` import 改归属
 
-### 步骤 E：document delta 与 editor delta 分层
+完成状态：
 
-Whiteboard 当前 input delta 包含：
+- 已完成
+- `dataview/packages/dataview-engine/src/active/projector/` 已替代旧 `active/runtime/`
+- dataview active 主入口已切到 `createProjector(...)`
+- dataview active 相关 delta primitive 已统一切到 `@shared/projector`
 
-- document delta
-- session/ui delta
-- measure delta
-- interaction delta
+### Phase 4：最终清理
 
-目标是让 `ProjectorSpec.plan` 只依赖 delta，不主动读取外部 mutable state。
+目标：
 
-即：
+- 删除所有旧术语与旧路径
 
-```txt
-Engine publish delta -> document delta
-Session store changes -> session delta
-Measure observer -> measure delta
-Interaction store -> interaction delta
-```
+实施项：
 
-全部作为 Projector input。
+- 删空 `projection-runtime`
+- 全仓 `rg` 清理 `RuntimeSpec|createRuntime|changeSet|@shared/projection-runtime`
+- 更新测试
 
-## 9.5 Whiteboard 收益
+完成状态：
 
-- editor graph projector 与 Dataview active projector 使用同一 runtime contract。
-- `changeSet/keySet` 从 `shared/core` 移出。
-- projection sources 的 family sync 可复用。
-- Whiteboard projector 保留领域复杂度，但 orchestration 更薄。
+- 已完成
+- 旧包、旧 primitive、旧 runtime 路径均已删除
+- 全仓已无 `@shared/projection-runtime` 与 projector 相关 `changeSet` 残留引用
+- shared / dataview / whiteboard 的 typecheck 与 test 已通过
 
 ---
 
-## 10. `shared/projector` 与 `shared/projection-runtime` 的关系
+## 12. 验收标准
 
-推荐短期实现：
+全部完成后，仓库必须满足：
 
-```txt
-@shared/projector
-  exports Projector / ProjectorSpec / delta / publish helpers
-  internally imports @shared/projection-runtime
+- 不存在 `@shared/projection-runtime` import
+- 不存在 projector 相关 runtime internal import
+- 不存在 projector 相关 `changeSet/keySet/entityDelta` from `@shared/core`
+- Dataview active 与 Whiteboard editor graph 都走同一套 `createProjector(spec)`
+- `shared/projector` 成为唯一 projector canonical package
 
-@shared/projection-runtime
-  keeps current implementation
-  becomes lower-level runtime package
-```
-
-长期可以：
-
-```txt
-@shared/projection-runtime -> deprecated facade
-@shared/projector -> canonical package
-```
-
-原因：
-
-- `projector` 是面向产品领域的概念。
-- `projection-runtime` 是实现细节，名字更底层。
-- Dataview/Whiteboard 应该依赖 canonical API，不依赖 runtime internals。
+只要上面任意一项没满足，这件事就还没完成。
 
 ---
 
-## 11. 与 MutationEngine / Reducer 的整体关系
+## 13. 落地确认
 
-最终三条主轴：
+对照上面的验收标准，当前仓库状态如下：
 
-```txt
-MutationEngine
-  Intent -> Operation[] -> ApplyResult -> Write
+- 已无 `@shared/projection-runtime` import
+- 已无 projector 相关 runtime internal import
+- 已无 projector 相关 `changeSet/keySet/entityDelta` from `@shared/core`
+- Dataview active 与 Whiteboard editor graph 都已走 `createProjector(spec)`
+- `shared/projector` 已成为唯一 projector canonical package
 
-Reducer
-  Operation[] -> next Doc + inverse + footprint + extra
+验证命令：
 
-Projector
-  Write/Delta/Input -> Snapshot + Change
-```
+- `pnpm --filter @shared/projector run typecheck`
+- `pnpm --filter @shared/projector run test`
+- `pnpm -C dataview run typecheck`
+- `pnpm -C dataview run test`
+- `pnpm -C whiteboard run typecheck`
+- `pnpm -C whiteboard run test`
 
-Dataview：
-
-```txt
-MutationEngine.write.extra = CommitImpact
-  -> document projector publishes doc delta
-  -> active projector updates ViewState
-  -> sources sync UI stores
-```
-
-Whiteboard：
-
-```txt
-MutationEngine.publish = EnginePublish(snapshot + delta)
-  -> editor graph projector input.document.delta
-  -> graph/spatial/ui/items snapshot + change
-  -> sources sync UI stores
-```
-
-注意：
-
-- Reducer 不调用 Projector。
-- Projector 不调用 Reducer。
-- MutationEngine 只发布 write/current。
-- 外层 engine 负责把 write/current 喂给 projector。
-
-这样耦合最低。
+上述命令当前均已通过。
 
 ---
 
-## 12. 建议文件结构
+## 14. 一句话结论
 
-```txt
-shared/projector/
-  package.json
-  src/
-    index.ts
-    Projector.ts
-    contracts.ts
-    delta/
-      idDelta.ts
-      keySet.ts
-      entityDelta.ts
-      flags.ts
-    publish/
-      value.ts
-      list.ts
-      family.ts
-      entity.ts
-    sources/
-      contracts.ts
-      familySync.ts
-```
+这件事值得做，而且应该做得更激进：
 
-如果短期复用 `projection-runtime`：
-
-```txt
-shared/projector/src/Projector.ts
-  -> wraps shared/projection-runtime/createRuntime
-```
-
----
-
-## 13. 迁移顺序
-
-## 阶段 1：建立 `shared/projector`
-
-- 新建 `Projector` wrapper。
-- 从 `shared/projection-runtime` re-export 或包装核心类型。
-- 移入/包装 `IdDelta`、`KeySet`、`EntityDelta`。
-- 移入/包装 publish helpers。
-
-## 阶段 2：迁移 delta primitives
-
-- Dataview `contracts/delta.ts` 改用 `@shared/projector` 的 `EntityDelta` / `IdDelta`。
-- Whiteboard `contracts/delta.ts` 改用 `@shared/projector` 的 `IdDelta` / `KeySet`。
-- Whiteboard `runtime/publish/delta.ts` 改用 `idDelta`。
-
-## 阶段 3：Dataview active 切到 `Projector`
-
-- 新建 `dataviewActiveProjectorSpec`。
-- 保留现有 phase 实现。
-- `createRuntime` 改为 `new Projector({ spec })`。
-- active runtime 命名逐步改为 active projector。
-
-## 阶段 4：Whiteboard editor-graph 切到 `Projector`
-
-- 新建 `whiteboardEditorGraphProjectorSpec`。
-- 保留现有 graph/spatial/ui/items phase。
-- `createRuntime` 改为 `new Projector({ spec })`。
-- planner/publisher 接口对齐 `ProjectorSpec`。
-
-## 阶段 5：projection sources 标准化
-
-- 拆出 `shared/store` 后，提供 family/value/list sync helper。
-- Whiteboard `projection/sources.ts` 使用 shared sync helper。
-- Dataview runtime source 也逐步复用。
-
-## 阶段 6：收紧 `shared/core`
-
-- 删除或 deprecated `changeSet/keySet/entityDelta/store` 的 projector 语义导出。
-- `shared/core` 只保留 primitive。
-
----
-
-## 14. 验收标准
-
-## API 验收
-
-- 领域项目创建 projector 只需要 `new Projector({ spec })`。
-- `@shared/projector` 是领域项目依赖的主包。
-- `@shared/projection-runtime` 不再被 Dataview/Whiteboard 直接大量使用，或只作为兼容层。
-- `IdDelta/KeySet/EntityDelta` 不再从 `@shared/core` 导出给领域项目使用。
-
-## Dataview 验收
-
-- active runtime 命名和结构收敛为 active projector。
-- query/membership/summary/publish phases 保持领域侧。
-- active projector 只消费 input/impact/index delta，不参与 mutation apply。
-- active delta 使用 `@shared/projector` primitives。
-
-## Whiteboard 验收
-
-- editor graph runtime 收敛为 editor graph projector。
-- graph/spatial/ui/items phases 保持领域侧。
-- planner 使用 `@shared/projector` 的 `IdDelta/KeySet`。
-- projection sources 可逐步复用 shared family sync。
-
----
-
-## 15. 最终判断
-
-Dataview active/projector 和 Whiteboard editor-graph projector 可以复用同一个底层设施，但复用边界必须放在 projector runtime 与 publish/change/store sync primitives，而不是领域 read model。
-
-推荐最终形态：
-
-```ts
-new Projector({ spec })
-```
-
-并形成三层：
-
-```txt
-shared/projector
-  Projector + contracts + delta + publish helpers
-
-领域 projector spec
-  Dataview active phases / Whiteboard graph phases
-
-领域 read API / UI sources
-  Dataview active API / Whiteboard projection sources
-```
-
-这样能同时满足：
-
-- 降低 shared/core 复杂度。
-- 降低 Dataview active 与 mutation apply 的耦合。
-- 降低 Whiteboard editor graph runtime 对 scattered helper 的依赖。
-- 保留两个项目真正不同的领域 projection 逻辑。
+**不是新增 `shared/projector` 去包装 `shared/projection-runtime`，而是直接让 `shared/projector` 成为唯一 projector 内核，whiteboard 和 dataview 一次性全部切过去，旧包和旧术语直接删除。**

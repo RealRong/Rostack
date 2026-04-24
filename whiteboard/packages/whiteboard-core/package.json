@@ -14,6 +14,7 @@
     "./edge": "./src/edge/index.ts",
     "./schema": "./src/schema/index.ts",
     "./kernel": "./src/kernel/index.ts",
+    "./reducer": "./src/reducer/index.ts",
     "./config": "./src/config/index.ts",
     "./document": "./src/document/index.ts",
     "./document/normalize": "./src/document/normalize.ts",
@@ -29,7 +30,9 @@
   ],
   "dependencies": {
     "@shared/core": "workspace:*",
-    "@shared/mutation": "workspace:*"
+    "@shared/mutation": "workspace:*",
+    "@shared/projector": "workspace:*",
+    "@shared/reducer": "workspace:*"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

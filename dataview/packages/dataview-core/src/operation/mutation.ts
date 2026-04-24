@@ -29,12 +29,16 @@ import {
   type AppliedDocumentRecordFieldWrite,
   document as documentApi
 } from '@dataview/core/document'
-import { equal, json, type InverseBuilder } from '@shared/core'
+import { equal, json } from '@shared/core'
+
+type InverseSink<TOp> = {
+  prependMany(ops: readonly TOp[]): void
+}
 
 export interface DocumentOperationRuntime {
   doc(): DataDoc
   replace(document: DataDoc): void
-  inverse: Pick<InverseBuilder<DocumentOperation>, 'prependMany'>
+  inverse: InverseSink<DocumentOperation>
 }
 
 const addSetValue = <T>(

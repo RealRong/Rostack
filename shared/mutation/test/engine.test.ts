@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import {
   MutationEngine,
-  apply,
   draftPath,
   mutationApply,
   path,
   type MutationEngineSpec,
   type MutationIntentTable
 } from '@shared/mutation'
+import { Reducer } from '@shared/reducer'
 
 type TestDoc = {
   count: number
@@ -46,7 +46,40 @@ const createSpec = (): MutationEngineSpec<
   TestPublish,
   number,
   TestExtra
-> => ({
+> => {
+  const reducer = new Reducer<
+    TestDoc,
+    TestOp,
+    TestKey,
+    TestExtra,
+    import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey> & {
+      total: number
+    }
+  >({
+    spec: {
+      serializeKey: (key) => key,
+      createContext: (ctx) => ({
+        ...ctx,
+        total: 0
+      }),
+      handlers: {
+        'count.add': (ctx, op) => {
+          ctx.total += op.value
+          draftPath.set(ctx.write(), path.of('count'), ctx.doc().count + op.value)
+          ctx.inverse({
+            type: 'count.add',
+            value: -op.value
+          })
+          ctx.footprint('count')
+        }
+      },
+      done: (ctx) => ({
+        total: ctx.doc().count
+      })
+    }
+  })
+
+  return {
   clone: (doc) => ({
     ...doc
   }),
@@ -63,28 +96,12 @@ const createSpec = (): MutationEngineSpec<
   apply: ({
     doc,
     ops
-  }) => mutationApply.success(apply({
-    doc,
-    ops,
-    serializeKey: (key: TestKey) => key,
-    model: {
-      init: () => ({
-        total: doc.count
-      }),
-      step: (ctx, op) => {
-        ctx.state.total += op.value
-        draftPath.set(ctx.write(), path.of('count'), ctx.state.total)
-        ctx.inverse.prepend({
-          type: 'count.add',
-          value: -op.value
-        })
-        ctx.footprint.add('count')
-      },
-      done: (ctx) => ({
-        total: ctx.doc().count
-      })
-    }
-  })),
+  }) => mutationApply.success(
+    reducer.reduce({
+      doc,
+      ops
+    })
+  ),
   publish: {
     init: (doc) => ({
       count: doc.count
@@ -101,7 +118,8 @@ const createSpec = (): MutationEngineSpec<
     clear: (write) => write.forward.some((op) => op.value === 99),
     conflicts: (left, right) => left === right
   }
-})
+}
+}
 
 describe('MutationEngine', () => {
   test('executes a typed intent and publishes writes/history', () => {
@@ -285,16 +303,22 @@ describe('MutationEngine', () => {
         apply: ({
           doc,
           ops
-        }) => mutationApply.success(apply({
-          doc,
-          ops,
-          serializeKey: (key: TestKey) => key,
-          model: {
-            init: () => undefined,
-            step: (ctx, op: TestOp) => {
-              draftPath.set(ctx.write(), path.of('count'), ctx.doc().count + op.value)
+        }) => mutationApply.success(new Reducer<
+          TestDoc,
+          TestOp,
+          TestKey
+        >({
+          spec: {
+            serializeKey: (key) => key,
+            handlers: {
+              'count.add': (ctx, op) => {
+                draftPath.set(ctx.write(), path.of('count'), ctx.doc().count + op.value)
+              }
             }
           }
+        }).reduce({
+          doc,
+          ops
         }))
       }
     })

@@ -1,4 +1,4 @@
-import type { IdChangeSet } from '@shared/core'
+import type { IdDelta as SharedIdDelta } from '@shared/projector'
 import type { Path } from '@shared/mutation'
 import type {
   Background,
@@ -300,10 +300,10 @@ export type ChangeSet = {
   document: boolean
   background: boolean
   canvasOrder: boolean
-  nodes: IdChangeSet<NodeId>
-  edges: IdChangeSet<EdgeId>
-  groups: IdChangeSet<GroupId>
-  mindmaps: IdChangeSet<MindmapId>
+  nodes: SharedIdDelta<NodeId>
+  edges: SharedIdDelta<EdgeId>
+  groups: SharedIdDelta<GroupId>
+  mindmaps: SharedIdDelta<MindmapId>
 }
 
 export type Invalidation = {

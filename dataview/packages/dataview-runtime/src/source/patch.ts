@@ -1,9 +1,11 @@
 import {
   equal,
-  store,
-  type EntityDelta
+  store
 } from '@shared/core'
-import { createEntityDeltaSync } from '@shared/projection-runtime'
+import {
+  createEntityDeltaSync,
+  type EntityDelta
+} from '@shared/projector'
 import type {
   EntitySource
 } from '@dataview/runtime/source/contracts'
@@ -151,7 +153,7 @@ const applyTablePatch = <Key, Value>(
   })
 }
 
-const createRuntimeEntityDeltaSync = <Key, Value>() =>
+const createEntityDeltaTableSync = <Key, Value>() =>
   createEntityDeltaSync<
     EntityDeltaSnapshot<Key, Value>,
     EntityDelta<Key> | undefined,
@@ -174,7 +176,7 @@ const createRuntimeEntityDeltaSync = <Key, Value>() =>
     }
   })
 
-const createMappedRuntimeEntityDeltaSync = <
+const createMappedEntityDeltaTableSync = <
   PublicKey,
   InternalKey,
   Value
@@ -236,7 +238,7 @@ export const applyEntityDelta = <Key, Value>(input: {
     readValue: input.readValue
   }
 
-  createRuntimeEntityDeltaSync<Key, Value>().sync({
+  createEntityDeltaTableSync<Key, Value>().sync({
     previous: snapshot,
     next: snapshot,
     change: input.delta,
@@ -254,7 +256,7 @@ export const applyMappedEntityDelta = <PublicKey, InternalKey, Value>(input: {
     readValue: input.readValue
   }
 
-  createMappedRuntimeEntityDeltaSync<PublicKey, InternalKey, Value>(
+  createMappedEntityDeltaTableSync<PublicKey, InternalKey, Value>(
     input.keyOf
   ).sync({
     previous: snapshot,

@@ -1,6 +1,5 @@
-import { scheduler } from '@shared/core'
 import { compile, type Issue } from '@shared/mutation'
-import { reduceOperations } from '@whiteboard/core/kernel'
+import { whiteboardReducer } from '@whiteboard/core/reducer'
 import type {
   CoreRegistries,
   Document,
@@ -20,7 +19,7 @@ import type {
 } from '@whiteboard/core/intent/types'
 
 const previewIssueCode = (
-  code: import('@whiteboard/core/types').ResultCode
+  code: import('@whiteboard/core/reducer').WhiteboardReduceIssueCode
 ): 'invalid' | 'cancelled' => code === 'cancelled'
   ? 'cancelled'
   : 'invalid'
@@ -51,8 +50,9 @@ export const compileWhiteboardIntents = (input: {
       return handler(intent as never, compileContext)
     },
     previewApply: (document, ops) => {
-      const preview = reduceOperations(document, ops, {
-        now: scheduler.readMonotonicNow,
+      const preview = whiteboardReducer.reduce({
+        doc: document,
+        ops,
         origin: 'system'
       })
       if (!preview.ok) {
@@ -65,7 +65,7 @@ export const compileWhiteboardIntents = (input: {
           }
         }
       }
-      return preview.data.doc
+      return preview.doc
     },
     stopOnError: true
   })

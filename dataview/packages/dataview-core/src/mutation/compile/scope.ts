@@ -5,7 +5,8 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import { collection, planningContext, string } from '@shared/core'
+import { collection, string } from '@shared/core'
+import { planningContext } from '@shared/mutation'
 import {
   createDocumentReader,
   type DocumentReader

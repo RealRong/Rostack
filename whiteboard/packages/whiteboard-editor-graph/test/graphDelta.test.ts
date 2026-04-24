@@ -7,14 +7,10 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
-import { createPhaseGraph } from '@shared/projection-runtime'
-import { publishRuntimeResult } from '@shared/projection-runtime/runtime/publish'
-import { createRuntimeState } from '@shared/projection-runtime/runtime/state'
-import { runRuntimeUpdate } from '@shared/projection-runtime/runtime/update'
 import type { Input } from '../src/contracts/editor'
 import { createEmptyInput, createEmptyInputDelta } from '../src/runtime/createEmptySnapshot'
-import { createEditorGraphRuntimeSpec } from '../src/runtime/createSpec'
 import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
+import { createEditorGraphProjectorHarness } from '../src/testing/runtime'
 
 const createNode = (input: {
   engine: ReturnType<typeof createEngine>
@@ -132,39 +128,24 @@ describe('graph delta patching', () => {
       targetId: secondId
     })
 
-    const spec = createEditorGraphRuntimeSpec()
-    const graph = createPhaseGraph(spec.phases)
-    const state = createRuntimeState(
-      spec.createWorking(),
-      spec.createSnapshot()
-    )
+    const runtime = createEditorGraphProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
 
-    const bootstrap = runRuntimeUpdate({
-      spec,
-      graph,
-      state,
-      nextInput: createInput({
+    runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
-    publishRuntimeResult(state, bootstrap)
+      }))
 
     const liveDelta = createEmptyInputDelta()
     liveDelta.graph.nodes.edit.updated.add(firstId)
 
-    const live = runRuntimeUpdate({
-      spec,
-      graph,
-      state,
-      nextInput: createInput({
+    const live = runtime.update(createInput({
         engine,
         delta: liveDelta,
         edit: {
@@ -181,18 +162,17 @@ describe('graph delta patching', () => {
           [firstId, { width: 220, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
+      }))
 
     expect(live.trace.phases[0]?.name).toBe('graph')
-    expect(state.working.delta.graph.entities.nodes.updated.has(firstId)).toBe(true)
-    expect(state.working.delta.graph.geometry.nodes.has(firstId)).toBe(true)
-    expect(state.working.delta.graph.entities.edges.updated.has(edgeId)).toBe(true)
-    expect(state.working.delta.graph.geometry.edges.has(edgeId)).toBe(true)
-    expect(state.working.delta.spatial.records.updated.has(`node:${firstId}`)).toBe(true)
-    expect(state.working.delta.spatial.records.updated.has(`edge:${edgeId}`)).toBe(true)
-    expect(state.working.delta.spatial.order).toBe(false)
-    expect(state.working.delta.graph.entities.nodes.updated.has(secondId)).toBe(false)
+    expect(runtime.working().delta.graph.entities.nodes.updated.has(firstId)).toBe(true)
+    expect(runtime.working().delta.graph.geometry.nodes.has(firstId)).toBe(true)
+    expect(runtime.working().delta.graph.entities.edges.updated.has(edgeId)).toBe(true)
+    expect(runtime.working().delta.graph.geometry.edges.has(edgeId)).toBe(true)
+    expect(runtime.working().delta.spatial.records.updated.has(`node:${firstId}`)).toBe(true)
+    expect(runtime.working().delta.spatial.records.updated.has(`edge:${edgeId}`)).toBe(true)
+    expect(runtime.working().delta.spatial.order).toBe(false)
+    expect(runtime.working().delta.graph.entities.nodes.updated.has(secondId)).toBe(false)
   })
 
   it('marks spatial order without synthetic record updates on canvas order input', () => {
@@ -212,30 +192,19 @@ describe('graph delta patching', () => {
       size: { width: 120, height: 44 }
     })
 
-    const spec = createEditorGraphRuntimeSpec()
-    const graph = createPhaseGraph(spec.phases)
-    const state = createRuntimeState(
-      spec.createWorking(),
-      spec.createSnapshot()
-    )
+    const runtime = createEditorGraphProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
 
-    const bootstrap = runRuntimeUpdate({
-      spec,
-      graph,
-      state,
-      nextInput: createInput({
+    runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
-    publishRuntimeResult(state, bootstrap)
+      }))
 
     const reorder = engine.execute({
       type: 'canvas.order.move',
@@ -250,19 +219,14 @@ describe('graph delta patching', () => {
     const orderDelta = createEmptyInputDelta()
     orderDelta.document.order = true
 
-    const result = runRuntimeUpdate({
-      spec,
-      graph,
-      state,
-      nextInput: createInput({
+    const result = runtime.update(createInput({
         engine,
         delta: orderDelta,
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
+      }))
 
     expect(result.trace.phases.map((phase) => phase.name)).toEqual([
       'graph',
@@ -270,10 +234,10 @@ describe('graph delta patching', () => {
       'ui',
       'items'
     ])
-    expect(state.working.delta.spatial.order).toBe(true)
-    expect(state.working.delta.spatial.records.added.size).toBe(0)
-    expect(state.working.delta.spatial.records.updated.size).toBe(0)
-    expect(state.working.delta.spatial.records.removed.size).toBe(0)
+    expect(runtime.working().delta.spatial.order).toBe(true)
+    expect(runtime.working().delta.spatial.records.added.size).toBe(0)
+    expect(runtime.working().delta.spatial.records.updated.size).toBe(0)
+    expect(runtime.working().delta.spatial.records.removed.size).toBe(0)
   })
 
   it('keeps group frame in graph while excluding group records from spatial state', () => {
@@ -297,35 +261,25 @@ describe('graph delta patching', () => {
       nodeIds: [firstId, secondId]
     })
 
-    const spec = createEditorGraphRuntimeSpec()
-    const graph = createPhaseGraph(spec.phases)
-    const state = createRuntimeState(
-      spec.createWorking(),
-      spec.createSnapshot()
-    )
+    const runtime = createEditorGraphProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
 
-    runRuntimeUpdate({
-      spec,
-      graph,
-      state,
-      nextInput: createInput({
+    runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
+      }))
 
-    expect(state.working.graph.owners.groups.get(groupId)?.frame.bounds).toBeDefined()
-    expect([...state.working.spatial.records.keys()]).toEqual([
+    expect(runtime.working().graph.owners.groups.get(groupId)?.frame.bounds).toBeDefined()
+    expect([...runtime.working().spatial.records.keys()]).toEqual([
       `node:${firstId}`,
       `node:${secondId}`
     ])
-    expect([...state.working.spatial.records.keys()]).not.toContain(`group:${groupId}`)
+    expect([...runtime.working().spatial.records.keys()]).not.toContain(`group:${groupId}`)
   })
 })

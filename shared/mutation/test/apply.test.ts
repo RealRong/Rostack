@@ -1,73 +1,165 @@
 import { describe, expect, test } from 'vitest'
-import { apply, draftPath, path } from '@shared/mutation'
+import { draftPath, path } from '@shared/mutation'
+import { Reducer } from '@shared/reducer'
 
-describe('apply', () => {
-  test('runs model step/settle/done and returns inverse/footprint', () => {
-    const result = apply({
-      doc: {
-        count: 0
+describe('Reducer', () => {
+  test('runs handlers, settle, and done while collecting inverse and footprint', () => {
+    let total = 0
+    const reducer = new Reducer<
+      {
+        count: number
       },
-      ops: [1, 2, 3],
-      serializeKey: (key: string) => key,
-      model: {
-        init: () => ({
-          total: 0
-        }),
-        step: (ctx, op: number) => {
-          ctx.state.total += op
-          draftPath.set(ctx.write(), path.of('count'), ctx.state.total)
-          ctx.inverse.prepend(-op)
-          ctx.footprint.add(`count:${op}`)
+      {
+        type: 'count.add'
+        value: number
+      },
+      string,
+      {
+        total: number
+        current: number
+      }
+    >({
+      spec: {
+        serializeKey: (key) => key,
+        handlers: {
+          'count.add': (ctx, op) => {
+            total += op.value
+            draftPath.set(ctx.write(), path.of('count'), total)
+            ctx.inverse({
+              type: 'count.add',
+              value: -op.value
+            })
+            ctx.footprint(`count:${op.value}`)
+          }
         },
         settle: (ctx) => {
-          ctx.footprint.add('done')
+          ctx.footprint('done')
         },
         done: (ctx) => ({
-          total: ctx.state.total,
+          total,
           current: ctx.doc().count
         })
       }
     })
 
-    expect(result.doc).toEqual({
-      count: 6
+    const result = reducer.reduce({
+      doc: {
+        count: 0
+      },
+      ops: [{
+        type: 'count.add',
+        value: 1
+      }, {
+        type: 'count.add',
+        value: 2
+      }, {
+        type: 'count.add',
+        value: 3
+      }]
     })
-    expect(result.forward).toEqual([1, 2, 3])
-    expect(result.inverse).toEqual([-3, -2, -1])
-    expect(result.footprint).toEqual([
-      'count:1',
-      'count:2',
-      'count:3',
-      'done'
-    ])
-    expect(result.extra).toEqual({
-      total: 6,
-      current: 6
+
+    expect(result).toEqual({
+      ok: true,
+      doc: {
+        count: 6
+      },
+      forward: [{
+        type: 'count.add',
+        value: 1
+      }, {
+        type: 'count.add',
+        value: 2
+      }, {
+        type: 'count.add',
+        value: 3
+      }],
+      inverse: [{
+        type: 'count.add',
+        value: -3
+      }, {
+        type: 'count.add',
+        value: -2
+      }, {
+        type: 'count.add',
+        value: -1
+      }],
+      footprint: [
+        'count:1',
+        'count:2',
+        'count:3',
+        'done'
+      ],
+      extra: {
+        total: 6,
+        current: 6
+      },
+      issues: []
     })
   })
 
   test('supports full document replace without touching draft.write', () => {
-    const result = apply({
-      doc: {
-        value: 1
+    const reducer = new Reducer<
+      {
+        value: number
       },
-      ops: [2, 3],
-      serializeKey: (_key: never) => '',
-      model: {
-        init: () => undefined,
-        step: (ctx, op: number) => {
-          ctx.replace({
-            value: ctx.doc().value + op
-          })
-          ctx.inverse.prepend(ctx.doc().value - op)
+      {
+        type: 'replace'
+        value: number
+      },
+      never
+    >({
+      spec: {
+        serializeKey: (_key) => '',
+        handlers: {
+          replace: (ctx, op) => {
+            const current = ctx.doc().value
+            ctx.replace({
+              value: current + op.value
+            })
+            ctx.inverse({
+              type: 'replace',
+              value: current
+            })
+          }
         }
       }
     })
 
-    expect(result.doc).toEqual({
-      value: 6
+    const result = reducer.reduce({
+      doc: {
+        value: 1
+      },
+      ops: [{
+        type: 'replace',
+        value: 2
+      }, {
+        type: 'replace',
+        value: 3
+      }]
     })
-    expect(result.inverse).toEqual([3, 1])
-    expect(result.footprint).toEqual([])
+
+    expect(result).toEqual({
+      ok: true,
+      doc: {
+        value: 6
+      },
+      forward: [{
+        type: 'replace',
+        value: 2
+      }, {
+        type: 'replace',
+        value: 3
+      }],
+      inverse: [{
+        type: 'replace',
+        value: 3
+      }, {
+        type: 'replace',
+        value: 1
+      }],
+      footprint: [],
+      extra: undefined,
+      issues: []
+    })
   })
 })

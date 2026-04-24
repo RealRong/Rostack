@@ -4,7 +4,7 @@ import type { Invalidation } from '@whiteboard/core/types'
 import {
   deriveImpact,
   summarizeInvalidation
-} from '@whiteboard/core/kernel/reduce/commit'
+} from '@whiteboard/core/reducer'
 
 const createInvalidation = (): Invalidation => ({
   document: false,

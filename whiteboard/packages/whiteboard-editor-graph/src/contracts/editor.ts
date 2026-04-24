@@ -32,9 +32,9 @@ import type {
 import type {
   Family,
   Flags,
+  ProjectorTrace,
   Revision,
-  TraceRun
-} from '@shared/projection-runtime'
+} from '@shared/projector'
 import type { IdDelta } from './delta'
 import type { SpatialRead } from '../runtime/spatial/contracts'
 
@@ -635,7 +635,7 @@ export interface Runtime {
 export interface Result {
   snapshot: Snapshot
   change: Change
-  trace?: TraceRun
+  trace?: ProjectorTrace
 }
 
 export interface Read {

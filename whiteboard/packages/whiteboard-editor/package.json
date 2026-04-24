@@ -12,6 +12,7 @@
   "dependencies": {
     "@shared/core": "workspace:*",
     "@shared/dom": "workspace:*",
+    "@shared/projector": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/editor-graph": "workspace:*",
     "@whiteboard/engine": "workspace:*",

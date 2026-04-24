@@ -1,4 +1,4 @@
-import { changeSet } from '@shared/core'
+import { idDelta } from '@shared/projector'
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   EdgeId,
@@ -22,23 +22,23 @@ export const createEmptyInputDelta = (): Input['delta'] => ({
   document: {
     reset: false,
     order: false,
-    nodes: changeSet.create<NodeId>(),
-    edges: changeSet.create<EdgeId>(),
-    mindmaps: changeSet.create<MindmapId>(),
-    groups: changeSet.create<GroupId>()
+    nodes: idDelta.create<NodeId>(),
+    edges: idDelta.create<EdgeId>(),
+    mindmaps: idDelta.create<MindmapId>(),
+    groups: idDelta.create<GroupId>()
   },
   graph: {
     nodes: {
-      draft: changeSet.create<NodeId>(),
-      preview: changeSet.create<NodeId>(),
-      edit: changeSet.create<NodeId>()
+      draft: idDelta.create<NodeId>(),
+      preview: idDelta.create<NodeId>(),
+      edit: idDelta.create<NodeId>()
     },
     edges: {
-      preview: changeSet.create<EdgeId>(),
-      edit: changeSet.create<EdgeId>()
+      preview: idDelta.create<EdgeId>(),
+      edit: idDelta.create<EdgeId>()
     },
     mindmaps: {
-      preview: changeSet.create<MindmapId>(),
+      preview: idDelta.create<MindmapId>(),
       tick: new Set()
     }
   },
@@ -61,10 +61,10 @@ export const createEmptyInput = (): Input => ({
       reset: false,
       background: false,
       order: false,
-      nodes: changeSet.create<NodeId>(),
-      edges: changeSet.create<EdgeId>(),
-      mindmaps: changeSet.create<MindmapId>(),
-      groups: changeSet.create<GroupId>()
+      nodes: idDelta.create<NodeId>(),
+      edges: idDelta.create<EdgeId>(),
+      mindmaps: idDelta.create<MindmapId>(),
+      groups: idDelta.create<GroupId>()
     }
   },
   session: {

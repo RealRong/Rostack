@@ -1,7 +1,7 @@
 import {
-  store,
-  type IdChangeSet
+  store
 } from '@shared/core'
+import type { IdDelta } from '@shared/projector'
 import type {
   Change,
   ChromeView,
@@ -45,7 +45,7 @@ const createFamilyRead = <Key, Value>(
 })
 
 const toSetEntries = <Key extends string, Value>(
-  change: IdChangeSet<Key>,
+  change: IdDelta<Key>,
   byId: ReadonlyMap<Key, Value>
 ): readonly (readonly [Key, Value])[] | undefined => {
   const set: Array<readonly [Key, Value]> = []
@@ -67,7 +67,7 @@ const toSetEntries = <Key extends string, Value>(
 }
 
 const toRemoveIds = <Key extends string>(
-  change: IdChangeSet<Key>
+  change: IdDelta<Key>
 ): readonly Key[] | undefined => {
   if (change.removed.size === 0) {
     return undefined
@@ -85,7 +85,7 @@ const applyFamilyChange = <Key extends string, Value>({
   target: store.FamilyStore<Key, Value>
   previous: store.StoreFamily<Key, Value>
   next: store.StoreFamily<Key, Value>
-  change: IdChangeSet<Key>
+  change: IdDelta<Key>
 }) => {
   const ids = previous.ids === next.ids
     ? undefined

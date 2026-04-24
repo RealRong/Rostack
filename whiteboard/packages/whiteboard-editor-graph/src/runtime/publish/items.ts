@@ -1,4 +1,4 @@
-import { createFlags, type Flags } from '@shared/projection-runtime'
+import { createFlags, type Flags } from '@shared/projector'
 import type { SceneItem } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 

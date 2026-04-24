@@ -47,7 +47,7 @@ describe('createMoveInteraction', () => {
       },
       projection: {
         frame: {
-          at: vi.fn(),
+          pick: vi.fn(() => undefined),
           parent: vi.fn()
         },
         node: {
@@ -100,6 +100,8 @@ describe('createMoveInteraction', () => {
           }],
         },
         mindmap: {
+          id: vi.fn(() => undefined),
+          structure: vi.fn(() => undefined),
           view: {
             get: vi.fn(() => undefined)
           }

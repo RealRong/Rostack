@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { path as mutationPath } from '@shared/mutation'
-import { reduceOperations } from '@whiteboard/core/kernel'
+import { whiteboardReducer } from '@whiteboard/core/reducer'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
@@ -42,25 +42,29 @@ const createTextNode = (overrides = {}) => ({
 })
 
 const replayInverse = (doc, operations) =>
-  reduceOperations(doc, operations, {
-    now: () => FIXED_TIMESTAMP
+  whiteboardReducer.reduce({
+    doc,
+    ops: operations,
+    origin: 'user'
   })
 
 test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () => {
   const doc = createDocWithNode(createTextNode())
-  const result = reduceOperations(doc, nodeApi.update.createOperation('node_1', {
-    records: [{
-      scope: 'data',
-      op: 'set',
-      path: mutationPath.of('text'),
-      value: 'world'
-    }]
-  }), {
-    now: () => FIXED_TIMESTAMP
+  const result = whiteboardReducer.reduce({
+    doc,
+    ops: nodeApi.update.createOperation('node_1', {
+      records: [{
+        scope: 'data',
+        op: 'set',
+        path: mutationPath.of('text'),
+        value: 'world'
+      }]
+    }),
+    origin: 'user'
   })
 
   assert.ok(result.ok)
-  assert.deepEqual(result.data.inverse, [{
+  assert.deepEqual(result.inverse, [{
     type: 'node.record.set',
     id: 'node_1',
     scope: 'data',
@@ -68,9 +72,9 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
     value: 'hello'
   }])
 
-  const reverted = replayInverse(result.data.doc, result.data.inverse)
+  const reverted = replayInverse(result.doc, result.inverse)
   assert.ok(reverted.ok)
-  assert.deepEqual(reverted.data.doc.nodes.node_1, doc.nodes.node_1)
+  assert.deepEqual(reverted.doc.nodes.node_1, doc.nodes.node_1)
 })
 
 test('node.update inverse 在 set(path) 创建缺失祖先时退化为 scope 根级 set', () => {
@@ -192,20 +196,22 @@ test('node.update 会为 direct mindmap data mutation 标记 node.value', () => 
     meta: tree.meta
   }
 
-  const result = reduceOperations(doc, nodeApi.update.createOperation('mind_1', {
-    records: [{
-      scope: 'data',
-      op: 'set',
-      path: mutationPath.of('meta', 'title'),
-      value: 'new'
-    }]
-  }), {
-    now: () => FIXED_TIMESTAMP
+  const result = whiteboardReducer.reduce({
+    doc,
+    ops: nodeApi.update.createOperation('mind_1', {
+      records: [{
+        scope: 'data',
+        op: 'set',
+        path: mutationPath.of('meta', 'title'),
+        value: 'new'
+      }]
+    }),
+    origin: 'user'
   })
 
   assert.ok(result.ok)
-  assert.equal(result.data.impact.node.value, true)
-  assert.deepEqual(result.data.impact.node.ids, ['mind_1'])
+  assert.equal(result.extra.impact.node.value, true)
+  assert.deepEqual(result.extra.impact.node.ids, ['mind_1'])
 })
 
 test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容器的 path set', () => {

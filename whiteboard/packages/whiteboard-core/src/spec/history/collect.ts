@@ -1,29 +1,32 @@
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   Edge,
+  Group,
+  MindmapRecord,
   Node,
   NodeOwner,
   Operation
 } from '@whiteboard/core/types'
-import type { ReducerReadApi } from '@whiteboard/core/kernel/reduce/types'
-import type { DraftDocument } from '@whiteboard/core/kernel/reduce/runtime'
-import { collectConnectedEdges } from '@whiteboard/core/kernel/reduce/runtime'
-import type {
-  HistoryKey
-} from '@whiteboard/core/spec/history/key'
+import type { MindmapTree, EdgeId, GroupId, MindmapId, NodeId } from '@whiteboard/core/types'
+import type { HistoryKey } from '@whiteboard/core/spec/history/key'
+
+export interface WhiteboardHistoryRead {
+  node(id: NodeId): Node | undefined
+  edge(id: EdgeId): Edge | undefined
+  group(id: GroupId): Group | undefined
+  mindmap(id: MindmapId): MindmapRecord | undefined
+  mindmapTree(id: MindmapId | NodeId): MindmapTree | undefined
+  connectedEdges(nodeIds: ReadonlySet<NodeId>): readonly Edge[]
+}
 
 export type HistoryCollectContext = {
-  read: ReducerReadApi
+  read: WhiteboardHistoryRead
   add(key: HistoryKey): void
   addMany(keys: readonly HistoryKey[]): void
 }
 
-type HistoryCollectRuntimeContext = HistoryCollectContext & {
-  draft: DraftDocument
-}
-
 export type OperationHistoryCollector<K extends Operation['type'] = Operation['type']> = (
-  ctx: HistoryCollectRuntimeContext,
+  ctx: HistoryCollectContext,
   op: Extract<Operation, { type: K }>
 ) => void
 
@@ -32,7 +35,7 @@ export type OperationHistoryRegistry = {
 }
 
 const addOwnerMindmap = (
-  ctx: HistoryCollectRuntimeContext,
+  ctx: HistoryCollectContext,
   owner: NodeOwner | undefined
 ) => {
   if (owner?.kind === 'mindmap') {
@@ -44,7 +47,7 @@ const addOwnerMindmap = (
 }
 
 const addNodeExists = (
-  ctx: HistoryCollectRuntimeContext,
+  ctx: HistoryCollectContext,
   nodeId: string
 ) => {
   ctx.add({
@@ -54,7 +57,7 @@ const addNodeExists = (
 }
 
 const addEdgeExists = (
-  ctx: HistoryCollectRuntimeContext,
+  ctx: HistoryCollectContext,
   edgeId: string
 ) => {
   ctx.add({
@@ -64,22 +67,19 @@ const addEdgeExists = (
 }
 
 const collectNodeSubtreeEdgeKeys = (
-  ctx: HistoryCollectRuntimeContext,
-  nodeIds: ReadonlySet<string>
+  ctx: HistoryCollectContext,
+  nodeIds: ReadonlySet<NodeId>
 ) => {
-  const connectedEdges = collectConnectedEdges(
-    ctx.draft,
-    nodeIds as ReadonlySet<import('@whiteboard/core/types').NodeId>
-  )
+  const connectedEdges = ctx.read.connectedEdges(nodeIds)
   connectedEdges.forEach((edge) => addEdgeExists(ctx, edge.id))
 }
 
 const readMindmapSubtreeNodeIds = (
-  ctx: HistoryCollectRuntimeContext,
-  mindmapId: string,
-  rootId: string
-): readonly string[] => {
-  const tree = ctx.read.mindmap.tree(mindmapId)
+  ctx: HistoryCollectContext,
+  mindmapId: MindmapId,
+  rootId: NodeId
+): readonly NodeId[] => {
+  const tree = ctx.read.mindmapTree(mindmapId)
   return tree
     ? mindmapApi.tree.subtreeIds(tree, rootId)
     : []
@@ -102,10 +102,6 @@ const readNodeOwner = (
   return owners
 }
 
-const readEdgeIdSet = (
-  edges: readonly Pick<Edge, 'id'>[]
-): readonly string[] => edges.map((edge) => edge.id)
-
 const COLLECTORS: OperationHistoryRegistry = {
   'document.replace': () => {},
   'document.background': (ctx) => {
@@ -127,7 +123,7 @@ const COLLECTORS: OperationHistoryRegistry = {
     addOwnerMindmap(ctx, op.node.owner)
   },
   'node.field.set': (ctx, op) => {
-    const node = ctx.read.node.get(op.id)
+    const node = ctx.read.node(op.id)
     ctx.add({
       kind: 'node.field',
       nodeId: op.id,
@@ -135,11 +131,13 @@ const COLLECTORS: OperationHistoryRegistry = {
     })
     readNodeOwner(
       node,
-      op.field === 'owner' ? op.value as NodeOwner : undefined
+      op.field === 'owner'
+        ? op.value as NodeOwner
+        : undefined
     ).forEach((owner) => addOwnerMindmap(ctx, owner))
   },
   'node.field.unset': (ctx, op) => {
-    const node = ctx.read.node.get(op.id)
+    const node = ctx.read.node(op.id)
     ctx.add({
       kind: 'node.field',
       nodeId: op.id,
@@ -148,7 +146,7 @@ const COLLECTORS: OperationHistoryRegistry = {
     addOwnerMindmap(ctx, node?.owner)
   },
   'node.record.set': (ctx, op) => {
-    const node = ctx.read.node.get(op.id)
+    const node = ctx.read.node(op.id)
     ctx.add({
       kind: 'node.record',
       nodeId: op.id,
@@ -158,7 +156,7 @@ const COLLECTORS: OperationHistoryRegistry = {
     addOwnerMindmap(ctx, node?.owner)
   },
   'node.record.unset': (ctx, op) => {
-    const node = ctx.read.node.get(op.id)
+    const node = ctx.read.node(op.id)
     ctx.add({
       kind: 'node.record',
       nodeId: op.id,
@@ -168,7 +166,7 @@ const COLLECTORS: OperationHistoryRegistry = {
     addOwnerMindmap(ctx, node?.owner)
   },
   'node.delete': (ctx, op) => {
-    const node = ctx.read.node.get(op.id)
+    const node = ctx.read.node(op.id)
     addNodeExists(ctx, op.id)
     addOwnerMindmap(ctx, node?.owner)
   },
@@ -365,7 +363,7 @@ const COLLECTORS: OperationHistoryRegistry = {
     op.snapshot.nodes.forEach((node) => addNodeExists(ctx, node.id))
   },
   'mindmap.delete': (ctx, op) => {
-    const mindmap = ctx.read.mindmap.get(op.id)
+    const mindmap = ctx.read.mindmap(op.id)
     ctx.add({
       kind: 'mindmap.exists',
       mindmapId: op.id
@@ -490,7 +488,7 @@ const COLLECTORS: OperationHistoryRegistry = {
 
 export const collect = {
   operation: (
-    ctx: HistoryCollectRuntimeContext,
+    ctx: HistoryCollectContext,
     op: Operation
   ): void => {
     COLLECTORS[op.type](ctx as never, op as never)

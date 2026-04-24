@@ -1,7 +1,7 @@
 import type {
-  PhaseSpec,
-  RuntimeContext
-} from '@shared/projection-runtime'
+  ProjectorContext,
+  ProjectorPhase
+} from '@shared/projector'
 import type {
   EditorPhaseScopeMap,
   GraphPatchScope
@@ -14,21 +14,21 @@ import type { WorkingState } from '../contracts/working'
 import type { EditorPhaseName } from '../runtime/phaseNames'
 import type { SpatialPatchScope } from '../runtime/spatial/contracts'
 
-export type EditorContext = RuntimeContext<
+export type EditorContext = ProjectorContext<
   Input,
   WorkingState,
   Snapshot,
   undefined
 >
 
-export type GraphEditorContext = RuntimeContext<
+export type GraphEditorContext = ProjectorContext<
   Input,
   WorkingState,
   Snapshot,
   GraphPatchScope
 >
 
-export type GraphEditorPhase = PhaseSpec<
+export type GraphEditorPhase = ProjectorPhase<
   'graph',
   GraphEditorContext,
   undefined,
@@ -39,7 +39,7 @@ export type GraphEditorPhase = PhaseSpec<
   EditorPhaseScopeMap
 >
 
-export type UiEditorPhase = PhaseSpec<
+export type UiEditorPhase = ProjectorPhase<
   'ui',
   EditorContext,
   undefined,
@@ -50,14 +50,14 @@ export type UiEditorPhase = PhaseSpec<
   EditorPhaseScopeMap
 >
 
-export type SpatialEditorContext = RuntimeContext<
+export type SpatialEditorContext = ProjectorContext<
   Input,
   WorkingState,
   Snapshot,
   SpatialPatchScope
 >
 
-export type SpatialEditorPhase = PhaseSpec<
+export type SpatialEditorPhase = ProjectorPhase<
   'spatial',
   SpatialEditorContext,
   undefined,
@@ -68,7 +68,7 @@ export type SpatialEditorPhase = PhaseSpec<
   EditorPhaseScopeMap
 >
 
-export type ItemsEditorPhase = PhaseSpec<
+export type ItemsEditorPhase = ProjectorPhase<
   'items',
   EditorContext,
   undefined,

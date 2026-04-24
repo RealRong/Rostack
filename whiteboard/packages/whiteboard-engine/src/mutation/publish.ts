@@ -1,4 +1,4 @@
-import { changeSet } from '@shared/core'
+import { idDelta } from '@shared/projector'
 import type { MutationPublishSpec } from '@shared/mutation'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
@@ -19,18 +19,18 @@ const buildChange = (
   reset: changes.document,
   background: changes.background,
   order: changes.canvasOrder,
-  nodes: changeSet.clone(changes.nodes),
-  edges: changeSet.clone(changes.edges),
-  mindmaps: changeSet.clone(changes.mindmaps),
-  groups: changeSet.clone(changes.groups)
+  nodes: idDelta.clone(changes.nodes),
+  edges: idDelta.clone(changes.edges),
+  mindmaps: idDelta.clone(changes.mindmaps),
+  groups: idDelta.clone(changes.groups)
 })
 
 const createInitialEntityChange = <TId extends string>(
   entities: Record<TId, unknown>
 ) => {
-  const delta = changeSet.create<TId>()
+  const delta = idDelta.create<TId>()
   Object.keys(entities).forEach((id) => {
-    changeSet.markAdded(delta, id as TId)
+    idDelta.add(delta, id as TId)
   })
   return delta
 }

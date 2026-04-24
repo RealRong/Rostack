@@ -1,4 +1,4 @@
-import type { RuntimeSpec } from '@shared/projection-runtime'
+import type { ProjectorSpec } from '@shared/projector'
 import type {
   Change,
   Input,
@@ -13,7 +13,7 @@ import { createEditorGraphPlanner } from './planner'
 import { createEditorGraphPublisher } from './publisher'
 import type { EditorPhaseName } from './phaseNames'
 
-export const createEditorGraphRuntimeSpec = (): RuntimeSpec<
+export const createEditorGraphProjectorSpec = (): ProjectorSpec<
   Input,
   WorkingState,
   Snapshot,
@@ -27,7 +27,7 @@ export const createEditorGraphRuntimeSpec = (): RuntimeSpec<
 > => ({
   createWorking,
   createSnapshot: createEmptySnapshot,
-  planner: createEditorGraphPlanner(),
-  publisher: createEditorGraphPublisher(),
+  plan: createEditorGraphPlanner().plan,
+  publish: createEditorGraphPublisher().publish,
   phases: createEditorGraphPhases()
 })

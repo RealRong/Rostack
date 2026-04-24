@@ -1,5 +1,4 @@
 import {
-  historyFootprint,
   json
 } from '@shared/core'
 import {
@@ -41,6 +40,14 @@ export type HistoryKey =
   | { kind: 'mindmap.branch.field'; mindmapId: MindmapId; topicId: NodeId; field: MindmapBranchField }
 
 export type HistoryFootprint = readonly HistoryKey[]
+
+export interface HistoryKeyCollector {
+  add(key: HistoryKey): void
+  addMany(keys: Iterable<HistoryKey>): void
+  has(key: HistoryKey): boolean
+  finish(): HistoryFootprint
+  clear(): void
+}
 
 const isRecord = (
   value: unknown
@@ -85,6 +92,30 @@ const isMindmapKey = (
 export const serializeHistoryKey = (
   key: HistoryKey
 ): string => json.stableStringify(key)
+
+export const createHistoryKeyCollector = (): HistoryKeyCollector => {
+  const byKey = new Map<string, HistoryKey>()
+
+  const add = (
+    key: HistoryKey
+  ) => {
+    byKey.set(serializeHistoryKey(key), key)
+  }
+
+  return {
+    add,
+    addMany: (keys) => {
+      for (const key of keys) {
+        add(key)
+      }
+    },
+    has: (key) => byKey.has(serializeHistoryKey(key)),
+    finish: () => [...byKey.values()],
+    clear: () => {
+      byKey.clear()
+    }
+  }
+}
 
 export const isHistoryKey = (
   value: unknown
@@ -159,14 +190,19 @@ export const isHistoryKey = (
 
 export const assertHistoryFootprint = (
   value: unknown
-): HistoryFootprint => historyFootprint.assertHistoryFootprint(
-  value,
-  isHistoryKey,
-  {
-    invalidCollectionMessage: 'History footprint must be an array.',
-    invalidKeyMessage: 'History key is invalid.'
+): HistoryFootprint => {
+  if (!Array.isArray(value)) {
+    throw new Error('History footprint must be an array.')
   }
-)
+
+  value.forEach((entry) => {
+    if (!isHistoryKey(entry)) {
+      throw new Error('History key is invalid.')
+    }
+  })
+
+  return value
+}
 
 export const historyKeyConflicts = (
   left: HistoryKey,
@@ -348,8 +384,14 @@ export const historyKeyConflicts = (
 export const historyFootprintConflicts = (
   left: HistoryFootprint,
   right: HistoryFootprint
-): boolean => historyFootprint.historyFootprintConflicts(
-  left,
-  right,
-  historyKeyConflicts
-)
+): boolean => {
+  for (let leftIndex = 0; leftIndex < left.length; leftIndex += 1) {
+    for (let rightIndex = 0; rightIndex < right.length; rightIndex += 1) {
+      if (historyKeyConflicts(left[leftIndex]!, right[rightIndex]!)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}

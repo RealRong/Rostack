@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { changeSet } from '@shared/core'
+import { idDelta } from '@shared/projector'
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   EdgeId,
@@ -7,17 +7,13 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
-import { createPhaseGraph } from '@shared/projection-runtime'
-import { publishRuntimeResult } from '@shared/projection-runtime/runtime/publish'
-import { createRuntimeState } from '@shared/projection-runtime/runtime/state'
-import { runRuntimeUpdate } from '@shared/projection-runtime/runtime/update'
 import type { Input } from '../src/contracts/editor'
 import {
   createEmptyInput,
   createEmptyInputDelta
 } from '../src/runtime/createEmptySnapshot'
-import { createEditorGraphRuntimeSpec } from '../src/runtime/createSpec'
 import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
+import { createEditorGraphProjectorHarness } from '../src/testing/runtime'
 
 const touchedIds = <TId extends string>(
   delta: {
@@ -25,7 +21,7 @@ const touchedIds = <TId extends string>(
     updated: ReadonlySet<TId>
     removed: ReadonlySet<TId>
   }
-): readonly TId[] => [...changeSet.touched(delta)]
+): readonly TId[] => [...idDelta.touched(delta)]
 
 const createNode = (input: {
   engine: ReturnType<typeof createEngine>
@@ -112,17 +108,7 @@ const createInput = (input: {
   return value
 }
 
-const createRuntimeHarness = () => {
-  const spec = createEditorGraphRuntimeSpec()
-  return {
-    spec,
-    graph: createPhaseGraph(spec.phases),
-    state: createRuntimeState(
-      spec.createWorking(),
-      spec.createSnapshot()
-    )
-  }
-}
+const createProjectorHarness = () => createEditorGraphProjectorHarness()
 
 describe('delta-driven publisher', () => {
   it('patches graph families by touched ids and reuses untouched graph entries', () => {
@@ -146,35 +132,25 @@ describe('delta-driven publisher', () => {
       sourceId: firstId,
       targetId: secondId
     })
-    const runtime = createRuntimeHarness()
+    const runtime = createProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
 
-    const bootstrap = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
-    publishRuntimeResult(runtime.state, bootstrap)
+      }))
 
-    const baseline = runtime.state.snapshot
+    const baseline = runtime.snapshot()
     const liveDelta = createEmptyInputDelta()
     liveDelta.graph.nodes.edit.updated.add(firstId)
 
-    const result = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    const result = runtime.update(createInput({
         engine,
         delta: liveDelta,
         edit: {
@@ -191,8 +167,7 @@ describe('delta-driven publisher', () => {
           [firstId, { width: 220, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
+      }))
 
     expect(touchedIds(result.change.graph.nodes)).toEqual([firstId])
     expect(touchedIds(result.change.graph.edges)).toEqual([edgeId])
@@ -225,27 +200,21 @@ describe('delta-driven publisher', () => {
       text: 'Second',
       size: { width: 120, height: 44 }
     })
-    const runtime = createRuntimeHarness()
+    const runtime = createProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
 
-    const bootstrap = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
-    publishRuntimeResult(runtime.state, bootstrap)
+      }))
 
-    const baseline = runtime.state.snapshot
+    const baseline = runtime.snapshot()
     const reorder = engine.execute({
       type: 'canvas.order.move',
       refs: [{
@@ -259,19 +228,14 @@ describe('delta-driven publisher', () => {
     const orderDelta = createEmptyInputDelta()
     orderDelta.document.order = true
 
-    const result = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    const result = runtime.update(createInput({
         engine,
         delta: orderDelta,
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
+      }))
 
     expect(touchedIds(result.change.graph.nodes)).toEqual([])
     expect(touchedIds(result.change.graph.edges)).toEqual([])
@@ -315,35 +279,25 @@ describe('delta-driven publisher', () => {
       sourceId: firstId,
       targetId: secondId
     })
-    const runtime = createRuntimeHarness()
+    const runtime = createProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
 
-    const bootstrap = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
-    publishRuntimeResult(runtime.state, bootstrap)
+      }))
 
-    const baseline = runtime.state.snapshot
+    const baseline = runtime.snapshot()
     const selectionDelta = createEmptyInputDelta()
     selectionDelta.ui.selection = true
 
-    const result = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    const result = runtime.update(createInput({
         engine,
         delta: selectionDelta,
         selection: {
@@ -354,8 +308,7 @@ describe('delta-driven publisher', () => {
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      })
-    })
+      }))
 
     expect(touchedIds(result.change.graph.nodes)).toEqual([])
     expect(touchedIds(result.change.graph.edges)).toEqual([])
@@ -380,30 +333,20 @@ describe('delta-driven publisher', () => {
       text: 'Node',
       size: { width: 120, height: 44 }
     })
-    const runtime = createRuntimeHarness()
+    const runtime = createProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
 
-    const bootstrap = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
           [nodeId, { width: 120, height: 44 }]
         ])
-      })
-    })
-    publishRuntimeResult(runtime.state, bootstrap)
+      }))
 
-    const result = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    const result = runtime.update(createInput({
         engine,
         delta: {
           ...createEmptyInputDelta(),
@@ -419,8 +362,7 @@ describe('delta-driven publisher', () => {
         nodeMeasures: new Map([
           [nodeId, { width: 120, height: 44 }]
         ])
-      })
-    })
+      }))
 
     expect(touchedIds(result.change.graph.nodes)).toEqual([])
     expect(result.change.items.changed).toBe(false)
@@ -440,38 +382,27 @@ describe('delta-driven publisher', () => {
       text: 'Node',
       size: { width: 120, height: 44 }
     })
-    const runtime = createRuntimeHarness()
+    const runtime = createProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
 
-    const bootstrap = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
           [nodeId, { width: 120, height: 44 }]
         ])
-      })
-    })
-    publishRuntimeResult(runtime.state, bootstrap)
+      }))
 
-    const baseline = runtime.state.snapshot
-    const result = runRuntimeUpdate({
-      spec: runtime.spec,
-      graph: runtime.graph,
-      state: runtime.state,
-      nextInput: createInput({
+    const baseline = runtime.snapshot()
+    const result = runtime.update(createInput({
         engine,
         delta: createEmptyInputDelta(),
         nodeMeasures: new Map([
           [nodeId, { width: 120, height: 44 }]
         ])
-      })
-    })
+      }))
 
     expect(touchedIds(result.change.graph.nodes)).toEqual([])
     expect(touchedIds(result.change.graph.edges)).toEqual([])

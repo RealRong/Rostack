@@ -1,7 +1,7 @@
 import type {
   IndexStageTrace
 } from '@dataview/engine/contracts/performance'
-import { mutationTrace } from '@shared/core'
+import { mutationTrace } from '@shared/mutation'
 import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'

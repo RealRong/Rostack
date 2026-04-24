@@ -3,7 +3,7 @@ import type {
 } from '@shared/mutation'
 import {
   mutationTrace
-} from '@shared/core'
+} from '@shared/mutation'
 import {
   dataviewTrace,
   type DataviewTrace

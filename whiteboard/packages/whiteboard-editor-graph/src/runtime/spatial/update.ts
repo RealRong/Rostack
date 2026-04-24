@@ -1,4 +1,4 @@
-import { changeSet } from '@shared/core'
+import { idDelta } from '@shared/projector'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type {
   EdgeId,
@@ -207,7 +207,7 @@ const patchGraphRecords = (input: {
 export const createSpatialDelta = (): SpatialDelta => ({
   revision: 0,
   order: false,
-  records: changeSet.create<SpatialKey>()
+  records: idDelta.create<SpatialKey>()
 })
 
 export const resetSpatialDelta = (
@@ -215,7 +215,7 @@ export const resetSpatialDelta = (
 ) => {
   delta.revision = 0
   delta.order = false
-  changeSet.reset(delta.records)
+  idDelta.reset(delta.records)
 }
 
 export type SpatialPatchAction =
@@ -238,14 +238,14 @@ export const patchSpatialRecord = (input: {
   if (!input.next) {
     input.state.records.delete(input.key)
     input.state.tree.remove(previous!)
-    changeSet.markRemoved(input.delta, input.key)
+    idDelta.remove(input.delta, input.key)
     return 'removed'
   }
 
   if (!previous) {
     input.state.records.set(input.key, input.next)
     input.state.tree.insert(input.next)
-    changeSet.markAdded(input.delta, input.key)
+    idDelta.add(input.delta, input.key)
     return 'added'
   }
 
@@ -255,7 +255,7 @@ export const patchSpatialRecord = (input: {
 
   input.state.records.set(input.key, input.next)
   input.state.tree.update(previous, input.next)
-  changeSet.markUpdated(input.delta, input.key)
+  idDelta.update(input.delta, input.key)
   return 'updated'
 }
 
@@ -323,7 +323,7 @@ export const patchSpatial = (input: {
   }
 
   return {
-    changed: changeSet.hasAny(input.delta.records) || input.delta.order,
+    changed: idDelta.hasAny(input.delta.records) || input.delta.order,
     count
   }
 }

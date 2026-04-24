@@ -1,4 +1,4 @@
-import { keySet, type KeySet } from '@shared/core'
+import { keySet, type KeySet } from '@shared/projector'
 import type {
   EdgeId,
   GroupId,

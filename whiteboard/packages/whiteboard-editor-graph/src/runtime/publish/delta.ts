@@ -1,4 +1,4 @@
-import { changeSet } from '@shared/core'
+import { idDelta } from '@shared/projector'
 import type {
   EdgeId,
   GroupId,
@@ -14,36 +14,36 @@ import type {
 
 export const createPublishDelta = (): PublishDelta => ({
   graph: {
-    nodes: changeSet.create<NodeId>(),
-    edges: changeSet.create<EdgeId>(),
+    nodes: idDelta.create<NodeId>(),
+    edges: idDelta.create<EdgeId>(),
     owners: {
-      mindmaps: changeSet.create<MindmapId>(),
-      groups: changeSet.create<GroupId>()
+      mindmaps: idDelta.create<MindmapId>(),
+      groups: idDelta.create<GroupId>()
     }
   },
   items: false,
   ui: {
     chrome: false,
-    nodes: changeSet.create<NodeId>(),
-    edges: changeSet.create<EdgeId>()
+    nodes: idDelta.create<NodeId>(),
+    edges: idDelta.create<EdgeId>()
   }
 })
 
 export const resetGraphPublishDelta = (
   delta: GraphPublishDelta
 ) => {
-  changeSet.reset(delta.nodes)
-  changeSet.reset(delta.edges)
-  changeSet.reset(delta.owners.mindmaps)
-  changeSet.reset(delta.owners.groups)
+  idDelta.reset(delta.nodes)
+  idDelta.reset(delta.edges)
+  idDelta.reset(delta.owners.mindmaps)
+  idDelta.reset(delta.owners.groups)
 }
 
 export const resetUiPublishDelta = (
   delta: UiPublishDelta
 ) => {
   delta.chrome = false
-  changeSet.reset(delta.nodes)
-  changeSet.reset(delta.edges)
+  idDelta.reset(delta.nodes)
+  idDelta.reset(delta.edges)
 }
 
 export const resetPublishDelta = (
@@ -58,10 +58,10 @@ export const syncGraphPublishDelta = (input: {
   source: GraphDelta
   target: GraphPublishDelta
 }) => {
-  changeSet.assign(input.target.nodes, input.source.entities.nodes)
-  changeSet.assign(input.target.edges, input.source.entities.edges)
-  changeSet.assign(input.target.owners.mindmaps, input.source.entities.mindmaps)
-  changeSet.assign(input.target.owners.groups, input.source.entities.groups)
+  idDelta.assign(input.target.nodes, input.source.entities.nodes)
+  idDelta.assign(input.target.edges, input.source.entities.edges)
+  idDelta.assign(input.target.owners.mindmaps, input.source.entities.mindmaps)
+  idDelta.assign(input.target.owners.groups, input.source.entities.groups)
 }
 
 export const syncItemsPublishDelta = (input: {

@@ -1,5 +1,6 @@
 import {
   MutationEngineSpec,
+  mutationApply,
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createId } from '@whiteboard/core/id'
@@ -9,6 +10,9 @@ import {
   type WhiteboardIntent,
   type WhiteboardMutationTable
 } from '@whiteboard/core/intent'
+import {
+  whiteboardReducer
+} from '@whiteboard/core/reducer'
 import { META } from '@whiteboard/core/spec/operation'
 import { historyKeyConflicts } from '@whiteboard/core/spec/history'
 import type { BoardConfig } from '@whiteboard/core/config'
@@ -26,7 +30,7 @@ import type {
   EnginePublish
 } from '../contracts/document'
 import { normalizeDocument } from '@whiteboard/core/document/normalize'
-import { applyWhiteboardOperations } from './apply'
+import { failure } from '../result'
 import { whiteboardPublishSpec } from './publish'
 import type {
   WhiteboardMutationExtra,
@@ -123,7 +127,21 @@ export const createWhiteboardMutationSpec = (input: {
       doc,
       ops,
       origin
-    }) => applyWhiteboardOperations(doc, ops, toKernelOrigin(origin)),
+    }) => {
+      const reduced = whiteboardReducer.reduce({
+        doc,
+        ops,
+        origin: toKernelOrigin(origin)
+      })
+
+      return reduced.ok
+        ? mutationApply.success(reduced)
+        : failure(
+            reduced.error.code,
+            reduced.error.message,
+            reduced.error.details
+          )
+    },
     publish: whiteboardPublishSpec,
     history: {
       capacity: historyConfig.capacity,

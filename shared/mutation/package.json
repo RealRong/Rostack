@@ -8,12 +8,14 @@
     "./path": "./src/path.ts",
     "./meta": "./src/meta.ts",
     "./compiler": "./src/compiler.ts",
-    "./apply": "./src/apply.ts",
     "./engine": "./src/engine.ts",
     "./collab": "./src/collab.ts",
     "./history": "./src/history.ts",
     "./draft": "./src/draft.ts",
     "./write": "./src/write.ts"
+  },
+  "dependencies": {
+    "@shared/reducer": "workspace:*"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

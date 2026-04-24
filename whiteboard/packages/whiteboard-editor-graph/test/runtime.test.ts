@@ -1,8 +1,8 @@
 import {
   assertPhaseOrder,
-  assertPublishedOnce
-} from '@shared/projection-runtime'
-import { changeSet } from '@shared/core'
+  assertPublishedOnce,
+  idDelta
+} from '@shared/projector'
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
@@ -62,7 +62,7 @@ const touchedIds = <TId extends string>(
     updated: ReadonlySet<TId>
     removed: ReadonlySet<TId>
   }
-): ReadonlySet<TId> => changeSet.touched(delta)
+): ReadonlySet<TId> => idDelta.touched(delta)
 
 const createEdgeLabelMeasureEntries = (
   edgeLabelMeasures?: RuntimeInputOptions['edgeLabelMeasures']

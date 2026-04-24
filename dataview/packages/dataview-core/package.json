@@ -31,6 +31,7 @@
   "dependencies": {
     "@date-fns/tz": "^1.4.1",
     "@shared/core": "workspace:*",
+    "@shared/reducer": "workspace:*",
     "@shared/mutation": "workspace:*",
     "@shared/i18n": "workspace:*",
     "date-fns": "^4.1.0"

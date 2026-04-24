@@ -2,7 +2,7 @@ import type { IntentType } from '@dataview/core/contracts/intents'
 import type {
   IssueSeverity,
   ValidationIssue as SharedValidationIssue
-} from '@shared/core'
+} from '@shared/mutation'
 
 export type ValidationSeverity = IssueSeverity
 

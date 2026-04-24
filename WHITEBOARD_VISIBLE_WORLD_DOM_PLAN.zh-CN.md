@@ -19,10 +19,11 @@
 - `visibleWorld` 可以保留，但它只应该存在于 query 组合层，不应该驱动 graph runtime phase，也不应该进入 published `scene`。
 - `query.visible()` 不够，它只能是一个便利函数，不能成为唯一查询原语。
 - 最小且足够的模型是：
-  - published: `scene.items`
-  - query primitive: `query.rect(worldRect, options?)`
+  - published: `items`
+  - query primitive: `query.rect(rect, options?)`
   - query helper: `query.visible(options?)`
-- `scene.visible`、`scene.pick`、`scene.spatial` 都应删除。
+- `SceneSnapshot` 整体删除。
+- `EditorPublished` 直接产出 `items`，不再保留 `scene` 包装层。
 
 换句话说：
 
@@ -31,7 +32,7 @@
 
 ## 生产路径核验
 
-### 1. `CanvasScene` 只消费 `scene.items`
+### 1. `CanvasScene` 实际只消费 `items`
 
 当前生产渲染路径里：
 
@@ -53,6 +54,11 @@ const scene = useStoreValue(editor.read.scene.view).items
 - `scene.visible`
 - `scene.pick`
 - `scene.spatial`
+
+也就是说：
+
+- 当前 `scene.view` 只是 `items` 的包装层
+- `CanvasScene` 并不需要 `SceneSnapshot` 这个对象本身
 
 ### 2. DOM pick 不消费 `scene.pick`
 
@@ -147,7 +153,7 @@ viewport: {
 
 因此：
 
-- `visible()` 只是 `rect(currentViewportWorldRect)` 的一个特例
+- `visible()` 只是 `rect(viewport.worldRect())` 的一个特例
 - 真正的最小查询原语应该是 `rect`
 
 如果继续强推“整个系统只保留 `visible()`”，最后只会出现两种结果：
@@ -161,7 +167,7 @@ viewport: {
 
 ### 1. Published 层
 
-published `scene` 只保留：
+published 层直接保留：
 
 - `items`
 
@@ -173,9 +179,18 @@ published `scene` 只保留：
 
 不再保留：
 
+- `SceneSnapshot`
+- `scene.layers`
 - `scene.visible`
 - `scene.pick`
 - `scene.spatial`
+
+结论固定为：
+
+- 不是把 `SceneSnapshot` 收缩成 `{ items }`
+- 而是把 `SceneSnapshot` 整体删除
+
+原因是当它只剩一个字段时，它已经不再是 snapshot，只是一个无语义的包装壳。
 
 ### 2. Query 层
 
@@ -183,7 +198,7 @@ published `scene` 只保留：
 
 ```ts
 interface EditorQuery {
-  rect(worldRect: Rect, options?: QueryOptions): readonly SpatialRecord[]
+  rect(rect: Rect, options?: QueryOptions): readonly SpatialRecord[]
   visible(options?: QueryOptions): readonly SpatialRecord[]
 }
 ```
@@ -238,9 +253,223 @@ interface ViewportRead {
 - 可以保留为内部能力或测试辅助
 - 不应再主导公开架构表达
 
+## `SceneSnapshot` 是否保留
+
+结论固定为：
+
+- 不保留
+- 直接删除
+
+原因如下：
+
+### 1. 删除 `layers / visible / pick / spatial` 后，`SceneSnapshot` 只剩 `items`
+
+一旦按本文结论继续清理，`SceneSnapshot` 会退化成：
+
+```ts
+interface SceneSnapshot {
+  items: readonly SceneItem[]
+}
+```
+
+这已经没有独立存在价值。
+
+### 2. 当前生产消费者并不需要这个包装层
+
+当前真实消费的是：
+
+- `items`
+
+不是：
+
+- `scene` 这个命名空间对象
+
+`CanvasScene` 现在虽然写成：
+
+```ts
+useStoreValue(editor.read.scene.view).items
+```
+
+但它真正消费的仍然只是 `items`。
+
+### 3. 继续保留 `SceneSnapshot` 只会把空壳往上传递
+
+如果保留它，就会继续出现以下无意义透传：
+
+- graph runtime `Snapshot.scene`
+- graph runtime `query.scene()`
+- `ProjectionSources.scene`
+- `GraphRead.scene.view`
+- `EditorRead.scene.view`
+- `EditorPublished.scene`
+
+这些层都只是在传一个 `{ items }`。
+
+### 4. 正确做法是直接把 `items` 提到外层
+
+因此：
+
+- graph runtime `Snapshot` 直接产出 `items`
+- graph runtime 删除 `query.scene()`，如确有需要再改为 `items()`
+- editor projection sources 直接暴露 `items`
+- editor read 直接暴露 `items`
+- `EditorPublished` 直接暴露 `items`
+
+而不是继续保留：
+
+- `scene.items`
+- `scene.view.items`
+- `published.scene.items`
+
+## `EditorPublished` 是否直接产出 `items`
+
+结论固定为：
+
+- 可以
+- 应该
+
+原因如下：
+
+### 1. `EditorPublished.scene` 当前没有真实消费价值
+
+当前 procedure 侧对 `yield publish()` 的已知消费只用到了：
+
+- `published.graph`
+
+没有看到生产代码依赖：
+
+- `published.scene`
+
+### 2. `EditorPublished` 本来就是边界投影，不需要忠实复刻 runtime snapshot 结构
+
+`EditorPublished` 是 boundary 层手工整理后的结构，不是 runtime snapshot 的镜像类型。
+
+既然如此，就没有必要为了一个单字段包装层继续保留：
+
+- `scene: { items }`
+
+### 3. 如果未来 procedure 需要场景顺序，直接拿 `items` 最干净
+
+因此 boundary 层正确的目标是：
+
+```ts
+interface EditorPublished {
+  revision: number
+  graph: GraphSnapshot
+  items: readonly SceneItem[]
+  ui: UiSnapshot
+}
+```
+
+而不是：
+
+```ts
+interface EditorPublished {
+  revision: number
+  graph: GraphSnapshot
+  scene: {
+    items: readonly SceneItem[]
+  }
+  ui: UiSnapshot
+}
+```
+
+## 命名规则
+
+### 1. 默认 world 语境里，不重复写 `world`
+
+如果一个模块或 API 的语义已经固定为 world space，就不要再重复写：
+
+- `worldRect`
+- `worldPoint`
+
+这类命名应收敛为：
+
+```ts
+interface EditorQuery {
+  rect(rect: Rect, options?: QueryOptions): readonly SpatialRecord[]
+  visible(options?: QueryOptions): readonly SpatialRecord[]
+}
+```
+
+原因很简单：
+
+- `query.rect(...)` 所在语境已经默认是 world query
+- 再写 `worldRect` 只是重复信息
+
+### 2. 多坐标系并存时，必须保留前缀
+
+如果同一个对象、同一个函数、同一个流程里同时出现：
+
+- `client`
+- `screen`
+- `world`
+
+那么 `world` 前缀不能去掉。
+
+例如：
+
+- pointer input 的 `client / screen / world`
+- viewport projection 的 `screenToWorld / worldToScreen`
+
+这里如果把 `world` 退化成普通 `point`，语义会立刻变糊。
+
+### 3. 同一个值域里同时存在 screen rect 和 world rect 时，保留 `worldRect`
+
+如果一个结构里同时有：
+
+- 一个已经投影到 screen 的 `rect`
+- 一个未投影的 world `rect`
+
+那么 world 版本应继续叫：
+
+- `worldRect`
+
+典型例子就是 marquee：
+
+- preview state 里保留 `worldRect`
+- 投影后的 preview 里使用 `rect`
+
+这样调用方一眼就能看出：
+
+- 哪个是源数据
+- 哪个是投影结果
+
+### 4. 函数名只有在需要消除输入/输出歧义时才保留 `world`
+
+例如：
+
+- `projectWorldRect(...)`
+
+这个名字有价值，因为它明确表达了：
+
+- 输入是 world rect
+- 输出是 screen rect
+
+但如果一个函数本身所在模块已经明确是 world query，则不需要：
+
+- `queryWorldRect(...)`
+- `queryWorldPoint(...)`
+
+### 5. 本次收敛建议
+
+应改为无前缀：
+
+- `query.rect(worldRect, options?)` -> `query.rect(rect, options?)`
+- `query.point(worldPoint, options?)` -> `query.point(point, options?)`
+- `queryRect({ worldRect })` -> `queryRect({ rect })`
+- `queryPoint({ worldPoint })` -> `queryPoint({ point })`
+
+应保留前缀：
+
+- `viewport.worldRect()`
+- `projectWorldRect(...)`
+- `MarqueePreviewState.worldRect`
+- 任意同时出现 `client / screen / world` 的输入结构
+
 ## 职责划分
 
-### 1. `scene.items`
+### 1. `items`
 
 职责：
 
@@ -316,7 +545,7 @@ interface ViewportRead {
 
 - graph 更新
 - spatial index 更新
-- `scene.items` 视需要更新
+- `items` 视需要更新
 
 ### 2. viewport 变化
 
@@ -327,7 +556,7 @@ interface ViewportRead {
 ### 3. 调用方需要 visible 候选时
 
 - 调用 `viewport.worldRect()`
-- 调用 `query.rect(worldRect)`
+- 调用 `query.rect(rect)`
 
 或者直接：
 
@@ -370,7 +599,7 @@ interface ViewportRead {
 
 而不是压掉：
 
-- `rect(worldRect)`
+- `rect(rect)`
 
 ### 4. `visible()` 只是 sugar
 
@@ -387,7 +616,7 @@ interface ViewportRead {
 当前优先级应该是：
 
 - 去掉 viewport -> visible publish 链
-- 去掉 scene 上无消费者的字段
+- 去掉 scene 相关空壳和无消费者字段
 - 收敛 query API
 - 隔离 React rerender
 
@@ -397,29 +626,77 @@ interface ViewportRead {
 
 ## 详细实施方案
 
-### 阶段 1. 删除 published `scene.visible` / `scene.pick` / `scene.spatial`
+### 阶段 1. 删除 `SceneSnapshot`，published 直接产出 `items`
 
 #### 要改什么
 
 - `whiteboard/packages/whiteboard-editor-graph/src/contracts/editor.ts`
 - `whiteboard/packages/whiteboard-editor-graph/src/runtime/createEmptySnapshot.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/createWorking.ts`
 - `whiteboard/packages/whiteboard-editor-graph/src/runtime/scene.ts`
 - `whiteboard/packages/whiteboard-editor-graph/src/runtime/publish/scene.ts`
+- `whiteboard/packages/whiteboard-editor/src/boundary/procedure.ts`
 - `whiteboard/packages/whiteboard-editor/src/projection/sources.ts`
 - `whiteboard/packages/whiteboard-editor/src/read/graph.ts`
+- `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+- `whiteboard/packages/whiteboard-editor/src/read/public.ts`
 - 所有相关 tests
 
 #### 改造目标
 
-把 scene 收缩为：
+删除：
+
+- `SceneSnapshot`
+- `EditorPublished.scene`
+- `read.scene.view`
+- `ProjectionSources.scene`
+
+published 直接收敛为：
 
 ```ts
-interface SceneSnapshot {
+interface Snapshot {
+  revision: Revision
+  documentRevision: Revision
+  graph: GraphSnapshot
   items: readonly SceneItem[]
+  ui: UiSnapshot
 }
 ```
 
-如果 `layers` 没有真实消费者，也应一起评估删除。
+boundary 直接收敛为：
+
+```ts
+interface EditorPublished {
+  revision: number
+  graph: GraphSnapshot
+  items: readonly SceneItem[]
+  ui: UiSnapshot
+}
+```
+
+editor read 直接收敛为：
+
+```ts
+interface EditorRead {
+  items: store.ReadStore<readonly SceneItem[]>
+}
+```
+
+结论固定为：
+
+- `layers` 删除
+- `visible` 删除
+- `pick` 删除
+- `scene.spatial` 删除
+- `SceneSnapshot` 删除
+- 不做“先收成 `{ items }` 再看”的过渡写法
+
+原因是当前代码搜索结果显示：
+
+- `layers` 没有任何生产消费者
+- `SceneSnapshot` 的其余字段也没有任何生产消费者
+- `CanvasScene` 真正消费的是 `items`
+- `EditorPublished.scene` 目前也没有生产消费者
 
 ### 阶段 2. 删除 viewport -> visible publish 链
 
@@ -456,7 +733,7 @@ interface SceneSnapshot {
 
 ```ts
 interface EditorQuery {
-  rect(worldRect: Rect, options?: QueryOptions): readonly SpatialRecord[]
+  rect(rect: Rect, options?: QueryOptions): readonly SpatialRecord[]
   visible(options?: QueryOptions): readonly SpatialRecord[]
 }
 ```
@@ -548,6 +825,8 @@ interface ViewportRead {
 
 当前方案明确不做：
 
+- 保留 `SceneSnapshot`
+- 保留 `EditorPublished.scene`
 - 保留 `scene.visible` / `scene.pick` / `scene.spatial` 作为兼容字段
 - 让 viewport 变化继续驱动 scene publish
 - 在 graph runtime 里维护 viewport-aware visible state
@@ -560,11 +839,12 @@ interface ViewportRead {
 完成阶段 1-5 后，应满足：
 
 1. pan/zoom 不再触发 scene visible rebuild / publish。
-2. `SceneSnapshot` 不再包含 `visible`、`pick`、`scene.spatial`。
-3. `CanvasScene` 只因 `scene.items` 变化而更新，不因 viewport 改变被 scene publish 打醒。
-4. 需要 visible 候选时，可通过 `query.visible()` 获取。
-5. 需要任意区域候选时，可通过 `query.rect(worldRect)` 获取。
-6. DOM pick 继续走 `PickRegistry`，不回退到 scene visible/pick。
+2. `SceneSnapshot` 已删除，published 直接产出 `items`。
+3. `EditorPublished` 直接产出 `items`，不再包含 `scene`。
+4. `CanvasScene` 只因 `items` 变化而更新，不因 viewport 改变被 scene publish 打醒。
+5. 需要 visible 候选时，可通过 `query.visible()` 获取。
+6. 需要任意区域候选时，可通过 `query.rect(rect)` 获取。
+7. DOM pick 继续走 `PickRegistry`，不回退到 scene visible/pick。
 
 ## 结论
 
@@ -581,14 +861,16 @@ interface ViewportRead {
 
 因此最小且干净的最终模型应当是：
 
-- `scene.items`
-- `query.rect(worldRect, options?)`
+- `items`
+- `query.rect(rect, options?)`
 - `query.visible(options?)`
 
 其中：
 
 - `rect` 是 primitive
 - `visible` 是 sugar
+- `SceneSnapshot` 不保留
+- `EditorPublished` 直接产出 `items`
 - 其余与 visible 相关的 published scene 结构都应删除
 
 这才是当前 whiteboard 在 DOM 方案下最干净、最可维护的收敛方式。

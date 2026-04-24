@@ -1016,6 +1016,22 @@ reduceOperation + DocumentMutationContext
 - inverse builder / operation buffer。
 - 更通用的 mutation tx skeleton。
 
+当前完成状态：
+
+- `shared/core/src/mutationTx.ts` 已新增 `createMutationTx`，用于构造带 `_runtime` 的自引用 tx facade。
+- Whiteboard `kernel/reduce/tx.ts` 已改用 shared `createMutationTx`，删除本地 `as unknown as ReducerTx` 拼装样板。
+- Whiteboard `ReducerTx.inverse` 已直接暴露 shared `InverseBuilder<Operation>`，不再包一层手写转发器。
+- Whiteboard reconcile 队列已改为 shared `OperationBuffer<ReconcileTask>`：
+  - enqueue 用 `emit`
+  - run 阶段按 batch drain + clear
+- Whiteboard `dirty/*` 一层的一次性样板文件已删除，统一收敛回 `kernel/reduce/dirty/index.ts`。
+- Whiteboard 外部领域 API 保持不变：
+  - `ReducerTx`
+  - `ChangeSet`
+  - `Invalidation`
+  - reducer handler / reconcile 语义
+- Phase 7 当前范围内已完成；下一阶段只剩 overlay 是否值得下沉的判断，不再继续为 Whiteboard tx 保留额外兼容层。
+
 ### Phase 8：评估 overlay 下沉
 
 当 Dataview 也出现明确 draft/working set 需求后，再将 Whiteboard `OverlayTable` 抽象为 `shared/core/overlayMap`。如果 Dataview 继续保持不可变 documentApi，则 overlay 不急于下沉。

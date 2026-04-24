@@ -2,6 +2,7 @@ import {
   changeSet,
   historyFootprint,
   mutationContext,
+  operationBuffer,
   type HistoryFootprintCollector,
   type InverseBuilder,
   type MutationContext
@@ -51,7 +52,7 @@ export type ReduceRuntimeWorking = {
   }
   shortCircuit?: KernelReduceResult
   reconcile: {
-    tasks: ReconcileTask[]
+    tasks: import('@shared/core').OperationBuffer<ReconcileTask>
     queued: Set<string>
   }
 }
@@ -75,7 +76,7 @@ export type ReduceRuntime = {
   }
   shortCircuit?: KernelReduceResult
   reconcile: {
-    tasks: ReconcileTask[]
+    tasks: import('@shared/core').OperationBuffer<ReconcileTask>
     queued: Set<string>
   }
 }
@@ -409,7 +410,7 @@ export const createReduceRuntime = (
         )
       },
       reconcile: {
-        tasks: [],
+        tasks: operationBuffer.createOperationBuffer<ReconcileTask>(),
         queued: new Set<string>()
       }
     }

@@ -15,30 +15,35 @@ export const createReconcileApi = (
     const repeats = new Map<string, number>()
     let steps = 0
 
-    while (tx._runtime.reconcile.tasks.length > 0) {
-      if (steps >= MAX_RECONCILE_STEPS) {
-        return err('internal', 'Reconcile budget exceeded.', {
-          reason: 'reconcile_budget_exceeded'
-        })
+    while (!tx._runtime.reconcile.tasks.isEmpty()) {
+      const tasks = tx._runtime.reconcile.tasks.finish()
+      tx._runtime.reconcile.tasks.clear()
+
+      for (let index = 0; index < tasks.length; index += 1) {
+        if (steps >= MAX_RECONCILE_STEPS) {
+          return err('internal', 'Reconcile budget exceeded.', {
+            reason: 'reconcile_budget_exceeded'
+          })
+        }
+
+        const task = tasks[index]!
+        const key = `${task.type}:${task.id}`
+        tx._runtime.reconcile.queued.delete(key)
+
+        const count = (repeats.get(key) ?? 0) + 1
+        repeats.set(key, count)
+        if (count > MAX_RECONCILE_REPEAT) {
+          return err('internal', 'Reconcile cycle detected.', {
+            reason: 'reconcile_cycle'
+          })
+        }
+
+        if (task.type === 'mindmap.layout') {
+          runMindmapLayout(tx, task.id)
+        }
+
+        steps += 1
       }
-
-      const task = tx._runtime.reconcile.tasks.shift()!
-      const key = `${task.type}:${task.id}`
-      tx._runtime.reconcile.queued.delete(key)
-
-      const count = (repeats.get(key) ?? 0) + 1
-      repeats.set(key, count)
-      if (count > MAX_RECONCILE_REPEAT) {
-        return err('internal', 'Reconcile cycle detected.', {
-          reason: 'reconcile_cycle'
-        })
-      }
-
-      if (task.type === 'mindmap.layout') {
-        runMindmapLayout(tx, task.id)
-      }
-
-      steps += 1
     }
 
     return ok(undefined)

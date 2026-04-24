@@ -34,6 +34,8 @@ export type {
   MutationTraceFact,
   TouchedCountInput
 } from './mutationTrace'
+export * as mutationTx from './mutationTx'
+export type { MutationTxRuntime } from './mutationTx'
 export * as operationBuffer from './operationBuffer'
 export type {
   InverseBuilder,

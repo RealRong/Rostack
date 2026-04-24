@@ -16,7 +16,7 @@ export const enqueueMindmapLayout = (
     return
   }
   tx._runtime.reconcile.queued.add(key)
-  tx._runtime.reconcile.tasks.push({
+  tx._runtime.reconcile.tasks.emit({
     type: 'mindmap.layout',
     id
   })

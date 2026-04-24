@@ -1,3 +1,4 @@
+import { mutationTx } from '@shared/core'
 import type {
   Document
 } from '@whiteboard/core/types'
@@ -17,37 +18,20 @@ import { createCommitApi } from '@whiteboard/core/kernel/reduce/commit'
 
 export const createReducerTx = (
   document: Document
-): ReducerTx => {
-  const tx = {
-    _runtime: createReduceRuntime(document)
-  } as unknown as ReducerTx
-
-  tx.read = createReadApi(tx)
-  tx.document = createDocumentApi(tx)
-  tx.node = createNodeApi(tx)
-  tx.edge = createEdgeApi(tx)
-  tx.group = createGroupApi(tx)
-  tx.collection = createCollectionApi(tx)
-  tx.snapshot = createSnapshotApi(tx)
-  tx.dirty = createDirtyApi(tx)
-  tx.reconcile = createReconcileApi(tx)
-  tx.mindmap = createMindmapApi(tx)
-  tx.inverse = {
-    prepend: (op) => {
-      tx._runtime.inverse.prepend(op)
-    },
-    prependMany: (ops) => {
-      tx._runtime.inverse.prependMany(ops)
-    },
-    append: (op) => {
-      tx._runtime.inverse.append(op)
-    },
-    appendMany: (ops) => {
-      tx._runtime.inverse.appendMany(ops)
-    },
-    finish: () => tx._runtime.inverse.finish()
-  }
-  tx.commit = createCommitApi(tx)
-
-  return tx
-}
+): ReducerTx => mutationTx.createMutationTx({
+  runtime: createReduceRuntime(document),
+  create: (tx: ReducerTx) => ({
+    read: createReadApi(tx),
+    document: createDocumentApi(tx),
+    node: createNodeApi(tx),
+    edge: createEdgeApi(tx),
+    group: createGroupApi(tx),
+    collection: createCollectionApi(tx),
+    snapshot: createSnapshotApi(tx),
+    dirty: createDirtyApi(tx),
+    reconcile: createReconcileApi(tx),
+    mindmap: createMindmapApi(tx),
+    inverse: tx._runtime.inverse,
+    commit: createCommitApi(tx)
+  })
+})

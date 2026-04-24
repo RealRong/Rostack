@@ -1,6 +1,6 @@
+import { changeSet } from '@shared/core'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import {
   collectConnectedEdges,
   deleteMindmap,
@@ -20,14 +20,14 @@ export const createMindmapStructureApi = (
     nodes: readonly import('@whiteboard/core/types').Node[]
   }) => {
     setMindmap(tx._runtime.draft, input.mindmap)
-    markChange(tx._runtime.changes.mindmaps, 'add', input.mindmap.id)
+    changeSet.markAdded(tx._runtime.changes.mindmaps, input.mindmap.id)
     tx._runtime.inverse.unshift({
       type: 'mindmap.delete',
       id: input.mindmap.id
     })
     input.nodes.forEach((node) => {
       setNode(tx._runtime.draft, node)
-      markChange(tx._runtime.changes.nodes, 'add', node.id)
+      changeSet.markAdded(tx._runtime.changes.nodes, node.id)
       tx.dirty.node.value(node.id)
     })
     tx._runtime.changes.canvasOrder = true
@@ -42,7 +42,7 @@ export const createMindmapStructureApi = (
     tx._runtime.draft.mindmaps.set(snapshot.mindmap.id, snapshot.mindmap)
     snapshot.nodes.forEach((node) => {
       tx._runtime.draft.nodes.set(node.id, node)
-      markChange(tx._runtime.changes.nodes, 'add', node.id)
+      changeSet.markAdded(tx._runtime.changes.nodes, node.id)
       tx.dirty.node.value(node.id)
     })
     tx.collection.canvas.order().structure.insert({
@@ -57,7 +57,7 @@ export const createMindmapStructureApi = (
       type: 'mindmap.delete',
       id: snapshot.mindmap.id
     })
-    markChange(tx._runtime.changes.mindmaps, 'add', snapshot.mindmap.id)
+    changeSet.markAdded(tx._runtime.changes.mindmaps, snapshot.mindmap.id)
     tx.dirty.mindmap.layout(snapshot.mindmap.id)
   },
   delete: (id: import('@whiteboard/core/types').MindmapId) => {
@@ -78,7 +78,7 @@ export const createMindmapStructureApi = (
         })
       })
       deleteEdge(tx._runtime.draft, edge.id)
-      markChange(tx._runtime.changes.edges, 'delete', edge.id)
+      changeSet.markRemoved(tx._runtime.changes.edges, edge.id)
       tx.dirty.edge.value(edge.id)
     })
     tx._runtime.inverse.unshift({
@@ -87,11 +87,11 @@ export const createMindmapStructureApi = (
     })
     nodeIds.forEach((nodeId) => {
       deleteNode(tx._runtime.draft, nodeId)
-      markChange(tx._runtime.changes.nodes, 'delete', nodeId)
+      changeSet.markRemoved(tx._runtime.changes.nodes, nodeId)
       tx.dirty.node.value(nodeId)
     })
     deleteMindmap(tx._runtime.draft, id)
-    markChange(tx._runtime.changes.mindmaps, 'delete', id)
+    changeSet.markRemoved(tx._runtime.changes.mindmaps, id)
     tx._runtime.changes.canvasOrder = true
     tx.dirty.canvas.order()
     tx.dirty.mindmap.value(id)

@@ -1,6 +1,5 @@
-import { json } from '@shared/core'
+import { changeSet, json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
 
 const getPoints = (
@@ -58,7 +57,7 @@ export const createEdgeRoutePointsCollectionApi = (
           points
         }
       })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.geometry(edgeId)
     },
     delete: (itemId: string) => {
@@ -84,7 +83,7 @@ export const createEdgeRoutePointsCollectionApi = (
           ? { kind: 'manual', points: nextPoints }
           : { kind: 'auto' }
       })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.geometry(edgeId)
     },
     move: (itemId: string, anchor: import('@whiteboard/core/kernel/reduce/types').OrderedAnchor) => {
@@ -121,7 +120,7 @@ export const createEdgeRoutePointsCollectionApi = (
         ...current,
         route: { kind: 'manual', points }
       })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.geometry(edgeId)
     }
   },
@@ -149,7 +148,7 @@ export const createEdgeRoutePointsCollectionApi = (
         ...current,
         route: { kind: 'manual', points }
       })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.geometry(edgeId)
     }
   }

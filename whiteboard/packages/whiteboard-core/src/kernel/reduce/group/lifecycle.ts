@@ -1,5 +1,5 @@
+import { changeSet } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 
 export const createGroupLifecycleApi = (
   tx: ReducerTx
@@ -10,7 +10,7 @@ export const createGroupLifecycleApi = (
       type: 'group.delete',
       id: group.id
     })
-    markChange(tx._runtime.changes.groups, 'add', group.id)
+    changeSet.markAdded(tx._runtime.changes.groups, group.id)
     tx.dirty.group.value(group.id)
   },
   restore: (group: import('@whiteboard/core/types').Group) => {
@@ -19,7 +19,7 @@ export const createGroupLifecycleApi = (
       type: 'group.delete',
       id: group.id
     })
-    markChange(tx._runtime.changes.groups, 'add', group.id)
+    changeSet.markAdded(tx._runtime.changes.groups, group.id)
     tx.dirty.group.value(group.id)
   },
   delete: (id: import('@whiteboard/core/types').GroupId) => {
@@ -32,7 +32,7 @@ export const createGroupLifecycleApi = (
       group: tx.snapshot.group.capture(id)
     })
     tx._runtime.draft.groups.delete(id)
-    markChange(tx._runtime.changes.groups, 'delete', id)
+    changeSet.markRemoved(tx._runtime.changes.groups, id)
     tx.dirty.group.value(id)
   }
 })

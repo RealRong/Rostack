@@ -4,7 +4,6 @@ import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/o
 import type { HistoryKey } from '@whiteboard/core/spec/history'
 import type {
   CanvasItemRef,
-  ChangeIds,
   ChangeSet,
   Document,
   Edge,
@@ -48,21 +47,17 @@ export type ReduceRuntime = {
   }
 }
 
-const createChangeIds = <Id extends string>(): ChangeIds<Id> => ({
-  ...changeSet.createLegacy<Id>()
-})
-
-const createChangeSet = (): ChangeSet => ({
+export const createChangeSet = (): ChangeSet => ({
   document: false,
   background: false,
   canvasOrder: false,
-  nodes: createChangeIds<NodeId>(),
-  edges: createChangeIds<EdgeId>(),
-  groups: createChangeIds<GroupId>(),
-  mindmaps: createChangeIds<MindmapId>()
+  nodes: changeSet.create<NodeId>(),
+  edges: changeSet.create<EdgeId>(),
+  groups: changeSet.create<GroupId>(),
+  mindmaps: changeSet.create<MindmapId>()
 })
 
-const createInvalidation = (): Invalidation => ({
+export const createInvalidation = (): Invalidation => ({
   document: false,
   background: false,
   canvasOrder: false,

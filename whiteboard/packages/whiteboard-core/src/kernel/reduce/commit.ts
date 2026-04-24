@@ -1,9 +1,6 @@
-import { changeSet } from '@shared/core'
 import { err, ok } from '@whiteboard/core/result'
 import { materializeHistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
-  ChangeIds,
-  ChangeSet,
   Invalidation,
   KernelReadImpact,
   NodeId,
@@ -12,7 +9,11 @@ import type {
   MindmapId,
   Operation
 } from '@whiteboard/core/types'
-import { materializeDraftDocument } from '@whiteboard/core/kernel/reduce/runtime'
+import {
+  createChangeSet,
+  createInvalidation,
+  materializeDraftDocument
+} from '@whiteboard/core/kernel/reduce/runtime'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []
@@ -41,39 +42,6 @@ const RESET_PROJECTIONS = new Set<string>([
   'edge',
   'mindmap'
 ])
-
-export const createChangeIds = <Id extends string>(): ChangeIds<Id> => ({
-  ...changeSet.createLegacy<Id>()
-})
-
-export const createChangeSet = (): ChangeSet => ({
-  document: false,
-  background: false,
-  canvasOrder: false,
-  nodes: createChangeIds<NodeId>(),
-  edges: createChangeIds<EdgeId>(),
-  groups: createChangeIds<GroupId>(),
-  mindmaps: createChangeIds<MindmapId>()
-})
-
-export const createInvalidation = (): Invalidation => ({
-  document: false,
-  background: false,
-  canvasOrder: false,
-  nodes: new Set<NodeId>(),
-  edges: new Set<EdgeId>(),
-  groups: new Set<GroupId>(),
-  mindmaps: new Set<MindmapId>(),
-  projections: new Set<string>()
-})
-
-export const markChange = <Id extends string>(
-  bucket: ChangeIds<Id>,
-  kind: 'add' | 'update' | 'delete',
-  id: Id
-) => {
-  changeSet.mark(bucket, kind, id)
-}
 
 export const finalizeDirty = (
   dirty: Invalidation

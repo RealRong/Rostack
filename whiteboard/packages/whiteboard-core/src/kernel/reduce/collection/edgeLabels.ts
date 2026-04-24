@@ -1,6 +1,5 @@
-import { json, record } from '@shared/core'
+import { changeSet, json, record } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
 
 const getLabels = (
@@ -50,7 +49,7 @@ export const createEdgeLabelsCollectionApi = (
         ...current,
         labels
       })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.value(edgeId)
     },
     delete: (itemId: string) => {
@@ -73,7 +72,7 @@ export const createEdgeLabelsCollectionApi = (
         ...current,
         labels: labels.filter((entry) => entry.id !== itemId)
       })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.value(edgeId)
     },
     move: (itemId: string, anchor: import('@whiteboard/core/kernel/reduce/types').OrderedAnchor) => {
@@ -110,7 +109,7 @@ export const createEdgeLabelsCollectionApi = (
         ...current,
         labels
       })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.value(edgeId)
     }
   },
@@ -132,7 +131,7 @@ export const createEdgeLabelsCollectionApi = (
         [field]: json.clone(value) as never
       }
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.value(edgeId)
     },
     unset: (labelId: string, field: import('@whiteboard/core/types').EdgeLabelField) => {
@@ -154,7 +153,7 @@ export const createEdgeLabelsCollectionApi = (
       delete nextLabel[field]
       labels[index] = nextLabel
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.value(edgeId)
     }
   },
@@ -183,7 +182,7 @@ export const createEdgeLabelsCollectionApi = (
           : { style: result.value as NonNullable<typeof label.style> })
       }
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.value(edgeId)
     },
     unset: (labelId: string, scope: import('@whiteboard/core/types').EdgeLabelRecordScope, path: string) => {
@@ -214,7 +213,7 @@ export const createEdgeLabelsCollectionApi = (
           : { style: result.value as NonNullable<typeof label.style> })
       }
       tx._runtime.draft.edges.set(edgeId, { ...current, labels })
-      markChange(tx._runtime.changes.edges, 'update', edgeId)
+      changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.value(edgeId)
     }
   }

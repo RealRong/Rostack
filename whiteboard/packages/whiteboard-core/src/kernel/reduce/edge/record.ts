@@ -1,6 +1,5 @@
-import { json, record } from '@shared/core'
+import { changeSet, json, record } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
 
 const applyEdgeRecordMutation = (
@@ -66,7 +65,7 @@ export const createEdgeRecordApi = (
       throw new Error(next.message)
     }
     tx._runtime.draft.edges.set(id, next.edge)
-    markChange(tx._runtime.changes.edges, 'update', id)
+    changeSet.markUpdated(tx._runtime.changes.edges, id)
     tx.dirty.edge.value(id)
   },
   unset: (
@@ -96,7 +95,7 @@ export const createEdgeRecordApi = (
       throw new Error(next.message)
     }
     tx._runtime.draft.edges.set(id, next.edge)
-    markChange(tx._runtime.changes.edges, 'update', id)
+    changeSet.markUpdated(tx._runtime.changes.edges, id)
     tx.dirty.edge.value(id)
   }
 })

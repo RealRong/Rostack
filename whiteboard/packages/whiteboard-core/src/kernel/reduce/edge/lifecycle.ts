@@ -1,5 +1,5 @@
+import { changeSet } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import {
   deleteEdge,
   getEdge,
@@ -19,7 +19,7 @@ export const createEdgeLifecycleApi = (
       type: 'edge.delete',
       id: edge.id
     })
-    markChange(tx._runtime.changes.edges, 'add', edge.id)
+    changeSet.markAdded(tx._runtime.changes.edges, edge.id)
     tx._runtime.changes.canvasOrder = true
     tx.dirty.edge.value(edge.id)
     tx.dirty.canvas.order()
@@ -37,7 +37,7 @@ export const createEdgeLifecycleApi = (
       type: 'edge.delete',
       id: edge.id
     })
-    markChange(tx._runtime.changes.edges, 'add', edge.id)
+    changeSet.markAdded(tx._runtime.changes.edges, edge.id)
     tx._runtime.changes.canvasOrder = true
     tx.dirty.edge.value(edge.id)
     tx.dirty.canvas.order()
@@ -56,7 +56,7 @@ export const createEdgeLifecycleApi = (
       })
     })
     deleteEdge(tx._runtime.draft, id)
-    markChange(tx._runtime.changes.edges, 'delete', id)
+    changeSet.markRemoved(tx._runtime.changes.edges, id)
     tx._runtime.changes.canvasOrder = true
     tx.dirty.edge.value(id)
     tx.dirty.canvas.order()

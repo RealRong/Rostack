@@ -1,5 +1,5 @@
+import { changeSet } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getMindmap } from '@whiteboard/core/kernel/reduce/runtime'
 
 const listChildren = (
@@ -44,7 +44,7 @@ export const createMindmapChildrenCollectionApi = (
           [parentId]: children
         }
       })
-      markChange(tx._runtime.changes.mindmaps, 'update', mindmapId)
+      changeSet.markUpdated(tx._runtime.changes.mindmaps, mindmapId)
       tx.dirty.mindmap.layout(mindmapId)
     },
     delete: (itemId: string) => {
@@ -59,7 +59,7 @@ export const createMindmapChildrenCollectionApi = (
           [parentId]: (current.children[parentId] ?? []).filter((id) => id !== itemId)
         }
       })
-      markChange(tx._runtime.changes.mindmaps, 'update', mindmapId)
+      changeSet.markUpdated(tx._runtime.changes.mindmaps, mindmapId)
       tx.dirty.mindmap.layout(mindmapId)
     },
     move: (itemId: string, anchor: import('@whiteboard/core/kernel/reduce/types').OrderedAnchor) => {

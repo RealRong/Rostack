@@ -1,3 +1,4 @@
+import type { IdChangeSet } from '@shared/core'
 import type {
   Background,
   CanvasItemRef,
@@ -22,6 +23,7 @@ import type {
 } from '@whiteboard/core/types/model'
 import type {
   MindmapBranchLineKind,
+  MindmapId,
   MindmapLayoutSpec,
   MindmapRecord,
   MindmapStrokeStyle,
@@ -189,12 +191,6 @@ export type MindmapBranchField =
 
 export type Origin = 'user' | 'remote' | 'system'
 
-export type ChangeIds<Id extends string> = {
-  add: Set<Id>
-  update: Set<Id>
-  delete: Set<Id>
-}
-
 export type CanvasSlot = {
   prev?: CanvasItemRef
   next?: CanvasItemRef
@@ -303,10 +299,10 @@ export type ChangeSet = {
   document: boolean
   background: boolean
   canvasOrder: boolean
-  nodes: ChangeIds<NodeId>
-  edges: ChangeIds<EdgeId>
-  groups: ChangeIds<GroupId>
-  mindmaps: ChangeIds<string>
+  nodes: IdChangeSet<NodeId>
+  edges: IdChangeSet<EdgeId>
+  groups: IdChangeSet<GroupId>
+  mindmaps: IdChangeSet<MindmapId>
 }
 
 export type Invalidation = {
@@ -316,6 +312,6 @@ export type Invalidation = {
   nodes: Set<NodeId>
   edges: Set<EdgeId>
   groups: Set<GroupId>
-  mindmaps: Set<string>
+  mindmaps: Set<MindmapId>
   projections: Set<string>
 }

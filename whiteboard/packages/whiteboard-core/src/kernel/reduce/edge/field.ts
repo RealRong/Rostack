@@ -1,6 +1,5 @@
-import { json } from '@shared/core'
+import { changeSet, json } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
 
 const GEOMETRY_FIELDS = new Set(['source', 'target', 'type'])
@@ -50,7 +49,7 @@ export const createEdgeFieldApi = (
           }
     )
     tx._runtime.draft.edges.set(id, setEdgeField(current, field, value))
-    markChange(tx._runtime.changes.edges, 'update', id)
+    changeSet.markUpdated(tx._runtime.changes.edges, id)
     if (GEOMETRY_FIELDS.has(field)) {
       tx.dirty.edge.geometry(id)
     } else {
@@ -72,7 +71,7 @@ export const createEdgeFieldApi = (
       value: json.clone((current as unknown as Record<string, unknown>)[field])
     })
     tx._runtime.draft.edges.set(id, unsetEdgeField(current, field))
-    markChange(tx._runtime.changes.edges, 'update', id)
+    changeSet.markUpdated(tx._runtime.changes.edges, id)
     tx.dirty.edge.value(id)
   }
 })

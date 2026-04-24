@@ -19,20 +19,6 @@ describe('changeSet', () => {
     expect(changeSet.touched(bucket)).toEqual(new Set(['b', 'c']))
   })
 
-  test('supports legacy add update delete buckets', () => {
-    const bucket = changeSet.createLegacy<string>()
-
-    changeSet.mark(bucket, 'add', 'a')
-    changeSet.mark(bucket, 'update', 'b')
-    changeSet.mark(bucket, 'delete', 'b')
-
-    expect(bucket).toEqual({
-      add: new Set(['a']),
-      update: new Set(),
-      delete: new Set(['b'])
-    })
-  })
-
   test('assigns between canonical buckets', () => {
     const source = changeSet.create<string>()
     changeSet.markAdded(source, 'a')

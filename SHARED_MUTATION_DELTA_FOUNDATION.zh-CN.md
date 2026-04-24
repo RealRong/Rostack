@@ -56,6 +56,16 @@
 
 换句话说，`shared/core` 提供“变更代数”和“事务容器”，项目提供“领域解释器”。
 
+## 阶段 1 当前状态（2026-04-24）
+
+阶段 1 已经按“不保留兼容层”的标准收敛到最终态：
+
+- `shared/core/changeSet` 已固定为 canonical-only 模型：`added/updated/removed`。
+- Whiteboard 的 `ChangeIds`、`markChange`、`createChangeIds` 已删除。
+- Whiteboard reducer、engine 初始 change、engine change 转换已统一切到 `IdChangeSet`。
+- Whiteboard Editor Graph 已直接复用 shared `changeSet`，不再保留本地 mark helper。
+- 本文后续若出现旧命名或旧包装，属于历史分析，不再建议保留。
+
 ## 当前重复模式
 
 ### 1. add/update/remove 净变更规则重复
@@ -66,7 +76,7 @@ Dataview 当前在 `executeOperation.ts` 中手写抵消逻辑：
 - record remove 后 insert：删除 removed 并 mark touched。
 - field put/remove、view put/remove 都有类似逻辑。
 
-Whiteboard 在 `whiteboard-core/src/kernel/reduce/commit.ts` 中有 `markChange`：
+Whiteboard 原先在 `whiteboard-core/src/kernel/reduce/commit.ts` 中有 `markChange`：
 
 ```ts
 add    => delete.delete(id); update.delete(id); add.add(id)
@@ -397,10 +407,10 @@ publishEntityFamily(input): {
 提供：
 
 - `IdChangeSet<TId>`。
-- `create/reset/markAdded/markUpdated/markRemoved/hasAny/touched/clone`。
+- `create/reset/markAdded/markUpdated/markRemoved/hasAny/touched/clone/assign`。
 - 可选 `EntityChangeSet<TKey, TPatch>`，用于带 patch/aspect 的 updated。
 
-替代：
+已替代：
 
 - Whiteboard `ChangeIds` + `markChange` 的基础实现。
 - Whiteboard Editor Graph `IdDelta` mark helpers。
@@ -723,11 +733,11 @@ Dataview 仍保留：
 
 Whiteboard 的长期路径：
 
-1. 用 `shared/core/changeSet` 替换 `ChangeIds` 与 `markChange` 基础实现。
+1. 已完成：用 `shared/core/changeSet` 替换 `ChangeIds` 与 `markChange` 基础实现，并统一为 `added/updated/removed`。
 2. 用 `shared/core/keySet` 表达 `Invalidation` 与 `GraphPatchScope` 的 reset/all/some。
 3. 保留 `ReducerTx` 领域 API，但内部逐步改用 `shared/core/mutationTx`。
 4. `EngineChange.entities.*` 可以继续暴露 `IdDelta`，但底层类型来自 `IdChangeSet`。
-5. `whiteboard-editor-graph/runtime/graphPatch/delta.ts` 删除重复 mark helpers，改用 `changeSet`。
+5. 已完成：`whiteboard-editor-graph/runtime/graphPatch/delta.ts` 删除重复 mark helpers，改用 `changeSet`。
 6. Graph publish 改用 `publishEntityFamily`，同时得到 changed ids 与 `EntityDelta`。
 7. Compiler 层改用 `PlanningContext + IssueCollector + OperationBuffer`，保留领域 `registries/nodeSize/ids`。
 8. Reducer inverse 改用 `InverseBuilder`，替代分散的 `inverse.unshift`。
@@ -742,7 +752,7 @@ Whiteboard 仍保留：
 
 ## 推荐落地顺序
 
-### Phase 1：纯工具下沉，低风险
+### Phase 1：纯工具下沉，已完成
 
 新增：
 
@@ -752,11 +762,14 @@ Whiteboard 仍保留：
 - `shared/core/src/operationBuffer.ts`
 - `shared/core/src/issueCollector.ts`
 
-先不改架构，只替换重复 helper：
+当前完成状态：
 
-- Whiteboard `markChange` 调用 shared `idChangeSet.mark*`。
-- Editor Graph `markAdded/markUpdated/markRemoved` 调用 shared `idChangeSet.mark*`。
-- Dataview 新增代码优先使用 `KeySet` 和 `EntityDelta` builder。
+- `shared/core/changeSet` 已收敛为 canonical-only `IdChangeSet`。
+- Whiteboard reducer 已直接调用 shared `changeSet.markAdded/markUpdated/markRemoved`。
+- Whiteboard `ChangeSet`、engine 初始变更、`change/fromReduce.ts` 已统一切到 `added/updated/removed`。
+- Editor Graph 已删除重复 mark helpers，直接调用 shared `changeSet`。
+- Dataview 后续新增代码应直接使用 `KeySet` / `EntityDelta` / canonical `IdChangeSet`，不再引入兼容命名。
+- 阶段 1 不保留 compatibility wrapper。
 
 ### Phase 2：planning/compiler context 合流
 
@@ -818,10 +831,9 @@ reduceOperation + DocumentMutationContext
 
 保持 Whiteboard 外部 API 不变，内部把这些替换成 shared primitives：
 
-- `ChangeIds`。
-- `markChange`。
 - dirty set merge/reset。
-- graph patch delta helpers。
+- inverse builder / operation buffer。
+- 更通用的 mutation tx skeleton。
 
 ### Phase 7：评估 overlay 下沉
 

@@ -1,6 +1,5 @@
-import { json, record } from '@shared/core'
+import { changeSet, json, record } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getNode } from '@whiteboard/core/kernel/reduce/runtime'
 
 const applyNodeRecordMutation = (
@@ -66,7 +65,7 @@ export const createNodeRecordApi = (
       throw new Error(next.message)
     }
     tx._runtime.draft.nodes.set(id, next.node)
-    markChange(tx._runtime.changes.nodes, 'update', id)
+    changeSet.markUpdated(tx._runtime.changes.nodes, id)
     tx.dirty.node.value(id)
     if (current.owner?.kind === 'mindmap') {
       tx.dirty.mindmap.layout(current.owner.id)
@@ -99,7 +98,7 @@ export const createNodeRecordApi = (
       throw new Error(next.message)
     }
     tx._runtime.draft.nodes.set(id, next.node)
-    markChange(tx._runtime.changes.nodes, 'update', id)
+    changeSet.markUpdated(tx._runtime.changes.nodes, id)
     tx.dirty.node.value(id)
     if (current.owner?.kind === 'mindmap') {
       tx.dirty.mindmap.layout(current.owner.id)

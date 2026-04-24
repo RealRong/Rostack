@@ -1,7 +1,7 @@
+import { changeSet } from '@shared/core'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { cloneBranchStyle, cloneMindmapMember } from '@whiteboard/core/kernel/reduce/copy'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import {
   collectConnectedEdges,
   deleteEdge,
@@ -76,8 +76,8 @@ export const createMindmapTopicStructureApi = (
         id: input.id,
         input: { nodeId: nextId }
       })
-      markChange(tx._runtime.changes.nodes, 'add', nextId)
-      markChange(tx._runtime.changes.mindmaps, 'update', input.id)
+      changeSet.markAdded(tx._runtime.changes.nodes, nextId)
+      changeSet.markUpdated(tx._runtime.changes.mindmaps, input.id)
       tx.dirty.node.value(nextId)
       tx.dirty.mindmap.layout(input.id)
       return
@@ -113,8 +113,8 @@ export const createMindmapTopicStructureApi = (
       id: input.id,
       input: { nodeId: input.topic.id }
     })
-    markChange(tx._runtime.changes.nodes, 'add', input.topic.id)
-    markChange(tx._runtime.changes.mindmaps, 'update', input.id)
+    changeSet.markAdded(tx._runtime.changes.nodes, input.topic.id)
+    changeSet.markUpdated(tx._runtime.changes.mindmaps, input.id)
     tx.dirty.node.value(input.topic.id)
     tx.dirty.mindmap.layout(input.id)
   },
@@ -165,7 +165,7 @@ export const createMindmapTopicStructureApi = (
     })
     input.snapshot.nodes.forEach((node) => {
       tx._runtime.draft.nodes.set(node.id, node)
-      markChange(tx._runtime.changes.nodes, 'add', node.id)
+      changeSet.markAdded(tx._runtime.changes.nodes, node.id)
       tx.dirty.node.value(node.id)
     })
     tx._runtime.inverse.unshift({
@@ -173,7 +173,7 @@ export const createMindmapTopicStructureApi = (
       id: input.id,
       input: { nodeId: input.snapshot.root }
     })
-    markChange(tx._runtime.changes.mindmaps, 'update', input.id)
+    changeSet.markUpdated(tx._runtime.changes.mindmaps, input.id)
     tx.dirty.mindmap.layout(input.id)
   },
   move: (input: {
@@ -232,7 +232,7 @@ export const createMindmapTopicStructureApi = (
         side: member.side
       }
     })
-    markChange(tx._runtime.changes.mindmaps, 'update', input.id)
+    changeSet.markUpdated(tx._runtime.changes.mindmaps, input.id)
     tx.dirty.mindmap.layout(input.id)
   },
   delete: (input: {
@@ -266,7 +266,7 @@ export const createMindmapTopicStructureApi = (
         })
       })
       deleteEdge(tx._runtime.draft, edge.id)
-      markChange(tx._runtime.changes.edges, 'delete', edge.id)
+      changeSet.markRemoved(tx._runtime.changes.edges, edge.id)
       tx.dirty.edge.value(edge.id)
     })
     tx._runtime.inverse.unshift({
@@ -281,7 +281,7 @@ export const createMindmapTopicStructureApi = (
       delete nextMembers[nodeId]
       delete nextChildren[nodeId]
       tx._runtime.draft.nodes.delete(nodeId)
-      markChange(tx._runtime.changes.nodes, 'delete', nodeId)
+      changeSet.markRemoved(tx._runtime.changes.nodes, nodeId)
       tx.dirty.node.value(nodeId)
     })
     tx._runtime.draft.mindmaps.set(input.id, {
@@ -289,7 +289,7 @@ export const createMindmapTopicStructureApi = (
       members: nextMembers,
       children: nextChildren
     })
-    markChange(tx._runtime.changes.mindmaps, 'update', input.id)
+    changeSet.markUpdated(tx._runtime.changes.mindmaps, input.id)
     tx.dirty.mindmap.layout(input.id)
   }
 })

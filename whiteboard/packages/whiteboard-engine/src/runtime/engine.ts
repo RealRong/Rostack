@@ -30,24 +30,24 @@ const createInitialChange = (
   background: true,
   canvasOrder: true,
   nodes: {
-    add: new Set(Object.keys(document.nodes)),
-    update: new Set(),
-    delete: new Set()
+    added: new Set(Object.keys(document.nodes)),
+    updated: new Set(),
+    removed: new Set()
   },
   edges: {
-    add: new Set(Object.keys(document.edges)),
-    update: new Set(),
-    delete: new Set()
+    added: new Set(Object.keys(document.edges)),
+    updated: new Set(),
+    removed: new Set()
   },
   groups: {
-    add: new Set(Object.keys(document.groups)),
-    update: new Set(),
-    delete: new Set()
+    added: new Set(Object.keys(document.groups)),
+    updated: new Set(),
+    removed: new Set()
   },
   mindmaps: {
-    add: new Set(Object.keys(document.mindmaps)),
-    update: new Set(),
-    delete: new Set()
+    added: new Set(Object.keys(document.mindmaps)),
+    updated: new Set(),
+    removed: new Set()
   }
 })
 

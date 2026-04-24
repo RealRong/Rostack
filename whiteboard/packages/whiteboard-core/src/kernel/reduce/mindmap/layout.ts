@@ -1,6 +1,6 @@
+import { changeSet } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { cloneLayoutPatch } from '@whiteboard/core/kernel/reduce/copy'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getMindmap } from '@whiteboard/core/kernel/reduce/runtime'
 
 export const createMindmapLayoutApi = (
@@ -26,7 +26,7 @@ export const createMindmapLayoutApi = (
         ...patch
       }
     })
-    markChange(tx._runtime.changes.mindmaps, 'update', id)
+    changeSet.markUpdated(tx._runtime.changes.mindmaps, id)
     tx.dirty.mindmap.layout(id)
   }
 })

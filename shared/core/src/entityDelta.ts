@@ -1,5 +1,4 @@
-import type { AnyIdChangeSet } from './changeSet'
-import { toCanonical } from './changeSet'
+import type { IdChangeSet } from './changeSet'
 
 export interface EntityDelta<TKey> {
   order?: true
@@ -76,13 +75,13 @@ export const merge = <TKey>(
 })
 
 export const fromChangeSet = <TKey>(input: {
-  changes: AnyIdChangeSet<TKey>
+  changes: IdChangeSet<TKey>
   includeAdded?: boolean
   includeUpdated?: boolean
   includeRemoved?: boolean
   order?: boolean
 }): EntityDelta<TKey> | undefined => {
-  const changes = toCanonical(input.changes)
+  const { changes } = input
   const set: TKey[] = []
   const remove: TKey[] = []
 

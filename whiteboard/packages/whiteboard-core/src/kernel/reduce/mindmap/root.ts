@@ -1,6 +1,6 @@
+import { changeSet } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { clonePoint } from '@whiteboard/core/kernel/reduce/copy'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import { getMindmap, getNode } from '@whiteboard/core/kernel/reduce/runtime'
 
 export const createMindmapRootApi = (
@@ -24,7 +24,7 @@ export const createMindmapRootApi = (
       ...root,
       position: clonePoint(position)!
     })
-    markChange(tx._runtime.changes.nodes, 'update', root.id)
+    changeSet.markUpdated(tx._runtime.changes.nodes, root.id)
     tx.dirty.node.geometry(root.id)
     tx.dirty.mindmap.layout(id)
   }

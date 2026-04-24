@@ -1,3 +1,4 @@
+import { changeSet } from '@shared/core'
 import {
   getMindmap,
   getMindmapTreeFromDraft,
@@ -5,7 +6,6 @@ import {
 } from '@whiteboard/core/kernel/reduce/runtime'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 
 export const enqueueMindmapLayout = (
   tx: ReducerTx,
@@ -36,7 +36,7 @@ export const runMindmapLayout = (
     return
   }
   mindmapApi.tree.subtreeIds(tree, record.root).forEach((nodeId) => {
-    markChange(tx._runtime.changes.nodes, 'update', nodeId)
+    changeSet.markUpdated(tx._runtime.changes.nodes, nodeId)
     tx._runtime.dirty.nodes.add(nodeId)
   })
 }

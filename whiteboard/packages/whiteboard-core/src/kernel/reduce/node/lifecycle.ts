@@ -1,6 +1,6 @@
+import { changeSet } from '@shared/core'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { cloneCanvasSlot } from '@whiteboard/core/kernel/reduce/copy'
-import { markChange } from '@whiteboard/core/kernel/reduce/commit'
 import {
   deleteNode,
   getNode,
@@ -21,7 +21,7 @@ export const createNodeLifecycleApi = (
       type: 'node.delete',
       id: node.id
     })
-    markChange(tx._runtime.changes.nodes, 'add', node.id)
+    changeSet.markAdded(tx._runtime.changes.nodes, node.id)
     tx.dirty.node.value(node.id)
     if (isTopLevelNode(tx._runtime.draft, node)) {
       tx._runtime.changes.canvasOrder = true
@@ -45,7 +45,7 @@ export const createNodeLifecycleApi = (
       type: 'node.delete',
       id: node.id
     })
-    markChange(tx._runtime.changes.nodes, 'add', node.id)
+    changeSet.markAdded(tx._runtime.changes.nodes, node.id)
     tx.dirty.node.value(node.id)
   },
   delete: (id: import('@whiteboard/core/types').NodeId) => {
@@ -62,7 +62,7 @@ export const createNodeLifecycleApi = (
       slot: cloneCanvasSlot(slot)
     })
     deleteNode(tx._runtime.draft, id)
-    markChange(tx._runtime.changes.nodes, 'delete', id)
+    changeSet.markRemoved(tx._runtime.changes.nodes, id)
     tx.dirty.node.value(id)
     if (slot) {
       tx._runtime.changes.canvasOrder = true

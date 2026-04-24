@@ -207,8 +207,7 @@ const patchGraphRecords = (input: {
 export const createSpatialDelta = (): SpatialDelta => ({
   revision: 0,
   order: false,
-  records: changeSet.create<SpatialKey>(),
-  visible: false
+  records: changeSet.create<SpatialKey>()
 })
 
 export const resetSpatialDelta = (
@@ -217,7 +216,6 @@ export const resetSpatialDelta = (
   delta.revision = 0
   delta.order = false
   changeSet.reset(delta.records)
-  delta.visible = false
 }
 
 export type SpatialPatchAction =
@@ -281,14 +279,6 @@ export const patchSpatialOrder = (input: {
   })
 }
 
-export const markSpatialVisibleDirty = (input: {
-  state: SpatialIndexState
-  delta: SpatialDelta
-}) => {
-  input.state.visible.dirty = true
-  input.delta.visible = true
-}
-
 export const patchSpatial = (input: {
   revision: number
   graph: GraphState
@@ -332,15 +322,8 @@ export const patchSpatial = (input: {
     })
   }
 
-  if (input.scope.visible || changeSet.hasAny(input.delta.records) || input.delta.order) {
-    markSpatialVisibleDirty({
-      state: input.state,
-      delta: input.delta
-    })
-  }
-
   return {
-    changed: changeSet.hasAny(input.delta.records) || input.delta.order || input.delta.visible,
+    changed: changeSet.hasAny(input.delta.records) || input.delta.order,
     count
   }
 }

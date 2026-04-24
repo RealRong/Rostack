@@ -9,7 +9,6 @@ export type EditorGraphDeltaFlags = Partial<{
   document: boolean
   graph: boolean
   ui: boolean
-  scene: boolean
 }>
 
 export const createEditorGraphDelta = (
@@ -30,10 +29,6 @@ export const createEditorGraphDelta = (
   if (input.ui) {
     delta.ui.selection = true
   }
-  if (input.scene) {
-    delta.scene.viewport = true
-  }
-
   return delta
 }
 

@@ -46,7 +46,6 @@ export interface SpatialTree {
 export interface SpatialPatchScope {
   reset: boolean
   graph: boolean
-  visible: boolean
 }
 
 export interface SpatialRead {
@@ -55,13 +54,13 @@ export interface SpatialRead {
     kinds?: readonly SpatialKind[]
   }): readonly SpatialRecord[]
   rect(
-    worldRect: Rect,
+    rect: Rect,
     options?: {
       kinds?: readonly SpatialKind[]
     }
   ): readonly SpatialRecord[]
   point(
-    worldPoint: Point,
+    point: Point,
     options?: {
       kinds?: readonly SpatialKind[]
     }
@@ -72,8 +71,7 @@ export const createSpatialPatchScope = (
   input: Partial<SpatialPatchScope> = {}
 ): SpatialPatchScope => ({
   reset: input.reset ?? false,
-  graph: input.graph ?? false,
-  visible: input.visible ?? false
+  graph: input.graph ?? false
 })
 
 export const normalizeSpatialPatchScope = (
@@ -85,8 +83,7 @@ export const mergeSpatialPatchScope = (
   next: SpatialPatchScope
 ): SpatialPatchScope => createSpatialPatchScope({
   reset: (current?.reset ?? false) || next.reset,
-  graph: (current?.graph ?? false) || next.graph,
-  visible: (current?.visible ?? false) || next.visible
+  graph: (current?.graph ?? false) || next.graph
 })
 
 export const hasSpatialPatchScope = (
@@ -94,5 +91,4 @@ export const hasSpatialPatchScope = (
 ): boolean => Boolean(
   scope?.reset
   || scope?.graph
-  || scope?.visible
 )

@@ -10,7 +10,6 @@ import type { Guide } from '@whiteboard/core/node'
 import type {
   EdgeId,
   NodeId,
-  Rect,
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
@@ -36,7 +35,6 @@ type RuntimeInputOptions = {
   marquee?: EditorGraphInput['session']['preview']['selection']['marquee']
   guides?: readonly Guide[]
   mindmapPreview?: EditorGraphInput['session']['preview']['mindmap']
-  visibleWorld?: Rect
   now?: number
   delta?: EditorGraphInput['delta']
 }
@@ -46,9 +44,9 @@ const createEditorGraphPublishSpec = () => ({
     read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.graph,
     change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.graph
   },
-  scene: {
-    read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.scene,
-    change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.scene
+  items: {
+    read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.items,
+    change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.items
   },
   ui: {
     chrome: {
@@ -134,13 +132,6 @@ const createInput = (
       kind: 'idle' as const
     }
   },
-  viewport: {
-    viewport: {
-      center: { x: 0, y: 0 },
-      zoom: 1
-    },
-    visibleWorld: options.visibleWorld
-  },
   clock: {
     now: options.now ?? 0
   },
@@ -160,8 +151,7 @@ const IDLE_DELTA = createEditorGraphDelta()
 const FULL_INPUT_DELTA = createEditorGraphDelta({
   document: true,
   graph: true,
-  ui: true,
-  scene: true
+  ui: true
 })
 
 const createNode = (input: {
@@ -320,7 +310,7 @@ describe('editor graph runtime', () => {
     unsubscribe()
 
     expect(result.snapshot.graph.nodes.ids.length).toBe(1)
-    expect(result.snapshot.scene.items.length).toBe(1)
+    expect(result.snapshot.items.length).toBe(1)
     expect(result.snapshot.documentRevision).toBe(1)
     expect(emissions).toHaveLength(1)
 
@@ -330,7 +320,7 @@ describe('editor graph runtime', () => {
       'graph',
       'spatial',
       'ui',
-      'scene'
+      'items'
     ])
   })
 
@@ -350,7 +340,7 @@ describe('editor graph runtime', () => {
     expect(idle.trace).toBeDefined()
     expect(idle.trace!.phases).toHaveLength(0)
     expect(touchedIds(idle.change.graph.nodes).size).toBe(0)
-    expect(idle.change.scene.changed).toBe(false)
+    expect(idle.change.items.changed).toBe(false)
     expect(idle.change.ui.chrome.changed).toBe(false)
   })
 
@@ -395,13 +385,13 @@ describe('editor graph runtime', () => {
       x: spatialRecord.bounds.x + spatialRecord.bounds.width / 2,
       y: spatialRecord.bounds.y + spatialRecord.bounds.height / 2
     }).some((record) => record.key === spatialRecord.key)).toBe(true)
-    expect(read.scene()).toBe(result.snapshot.scene)
+    expect(read.items()).toBe(result.snapshot.items)
     expect(read.ui()).toBe(result.snapshot.ui)
     expect(read.chrome()).toBe(result.snapshot.ui.chrome)
     expect(publish.graph.read(result.snapshot)).toBe(result.snapshot.graph)
     expect(publish.graph.change(result.change)).toBe(result.change.graph)
-    expect(publish.scene.read(result.snapshot)).toBe(result.snapshot.scene)
-    expect(publish.scene.change(result.change)).toBe(result.change.scene)
+    expect(publish.items.read(result.snapshot)).toBe(result.snapshot.items)
+    expect(publish.items.change(result.change)).toBe(result.change.items)
     expect(publish.ui.chrome.change(result.change)).toBe(result.change.ui.chrome)
   })
 
@@ -639,12 +629,6 @@ describe('editor graph runtime', () => {
           },
           hiddenNodeIds: [firstId]
         },
-        visibleWorld: {
-          x: 0,
-          y: 0,
-          width: 700,
-          height: 320
-        }
       })
     )
 
@@ -705,26 +689,43 @@ describe('editor graph runtime', () => {
     expect(chrome.edit?.kind).toBe('edge-label')
     expect(chrome.edit?.labelId).toBe(labelId)
 
-    expect(result.snapshot.scene.items).toHaveLength(4)
-    expect(result.snapshot.scene.visible.items).toEqual(expect.arrayContaining([
+    expect(result.snapshot.items).toHaveLength(4)
+    expect(result.snapshot.items).toEqual(expect.arrayContaining([
       { kind: 'node', id: firstId },
       { kind: 'node', id: secondId },
+      { kind: 'node', id: offscreenId },
       { kind: 'edge', id: edgeId }
     ]))
     expect(
-      result.snapshot.scene.visible.items.some((item) => (
-        item.kind === 'node' && item.id === offscreenId
-      ))
-    ).toBe(false)
-    expect(result.snapshot.scene.visible.nodeIds).toEqual(expect.arrayContaining([
-      firstId,
-      secondId
+      runtime.query.spatial.rect({
+        x: 0,
+        y: 0,
+        width: 700,
+        height: 320
+      }).map((record) => record.key)
+    ).toEqual(expect.arrayContaining([
+      `node:${firstId}`,
+      `node:${secondId}`,
+      `edge:${edgeId}`
     ]))
-    expect(result.snapshot.scene.visible.nodeIds).not.toContain(offscreenId)
-    expect(result.snapshot.scene.spatial.nodes).toEqual(result.snapshot.scene.visible.nodeIds)
-    expect(result.snapshot.scene.spatial.edges).toEqual(result.snapshot.scene.visible.edgeIds)
-    expect(result.snapshot.scene.pick.items).toEqual(result.snapshot.scene.visible.items)
-    expect(result.change.scene.changed).toBe(true)
+    expect(
+      runtime.query.spatial.rect({
+        x: 0,
+        y: 0,
+        width: 700,
+        height: 320
+      }).some((record) => record.key === `node:${offscreenId}`)
+    ).toBe(false)
+    expect(
+      runtime.query.spatial.all({
+        kinds: ['node']
+      }).map((record) => record.item.id)
+    ).toEqual(expect.arrayContaining([
+      firstId,
+      secondId,
+      offscreenId
+    ]))
+    expect(result.change.items.changed).toBe(true)
     expect(result.change.ui.chrome.changed).toBe(true)
     expect(touchedIds(result.change.ui.nodes).has(firstId)).toBe(true)
     expect(touchedIds(result.change.ui.edges).has(edgeId)).toBe(true)
@@ -763,12 +764,6 @@ describe('editor graph runtime', () => {
             }
           }
         },
-        visibleWorld: {
-          x: -200,
-          y: -200,
-          width: 1200,
-          height: 1200
-        }
       })
     )
 
@@ -791,17 +786,25 @@ describe('editor graph runtime', () => {
       x: 40,
       y: 24
     })
-    expect(result.snapshot.scene.items).toContainEqual({
+    expect(result.snapshot.items).toContainEqual({
       kind: 'mindmap',
       id: created.mindmapId
     })
-    expect(result.snapshot.scene.visible.mindmapIds).toContain(created.mindmapId)
-    expect(result.snapshot.scene.spatial.mindmaps).toContain(created.mindmapId)
+    expect(
+      runtime.query.spatial.rect({
+        x: -200,
+        y: -200,
+        width: 1200,
+        height: 1200
+      }, {
+        kinds: ['mindmap']
+      }).map((record) => record.item.id)
+    ).toContain(created.mindmapId)
   })
 
-  it('keeps visible scene items at top-level canvas items while exposing owned nodes through visible node ids', () => {
+  it('keeps top-level items separate from spatial queries over owned nodes', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_scene_visible_top_level_items')
+      document: documentApi.create('doc_editor_graph_runtime_top_level_items')
     })
     const created = createMindmap(engine)
     const childId = insertTopic({
@@ -818,41 +821,43 @@ describe('editor graph runtime', () => {
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [childId, { width: 120, height: 44 }]
-        ]),
-        visibleWorld: {
-          x: -200,
-          y: -200,
-          width: 1200,
-          height: 1200
-        }
+        ])
       })
     )
 
-    expect(result.snapshot.scene.items).toEqual([
+    expect(result.snapshot.items).toEqual([
       {
         kind: 'mindmap',
         id: created.mindmapId
       }
     ])
-    expect(result.snapshot.scene.visible.items).toEqual([
+    expect(
+      runtime.query.spatial.rect({
+        x: -200,
+        y: -200,
+        width: 1200,
+        height: 1200
+      }, {
+        kinds: ['mindmap']
+      }).map((record) => record.item)
+    ).toEqual([
       {
         kind: 'mindmap',
         id: created.mindmapId
       }
     ])
-    expect(result.snapshot.scene.visible.items).not.toContainEqual({
-      kind: 'node',
-      id: created.rootId
-    })
-    expect(result.snapshot.scene.visible.nodeIds).toEqual(expect.arrayContaining([
+    expect(
+      runtime.query.spatial.rect({
+        x: -200,
+        y: -200,
+        width: 1200,
+        height: 1200
+      }, {
+        kinds: ['node']
+      }).map((record) => record.item.id)
+    ).toEqual(expect.arrayContaining([
       created.rootId,
       childId
     ]))
-    expect(result.snapshot.scene.pick.items).toEqual([
-      {
-        kind: 'mindmap',
-        id: created.mindmapId
-      }
-    ])
   })
 })

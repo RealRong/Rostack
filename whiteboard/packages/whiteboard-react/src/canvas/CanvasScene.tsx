@@ -1,4 +1,7 @@
 import {
+  memo
+} from 'react'
+import {
   useStoreValue
 } from '@shared/react'
 import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
@@ -7,9 +10,9 @@ import { EdgeItem } from '@whiteboard/react/features/edge/components/EdgeItem'
 import { MindmapSceneItem } from '@whiteboard/react/features/mindmap/components/MindmapSceneItem'
 import { EdgeCanvasMarkerDefs } from '@whiteboard/react/features/edge/ui/marker'
 
-export const CanvasScene = () => {
+export const CanvasScene = memo(() => {
   const editor = useEditorRuntime()
-  const scene = useStoreValue(editor.read.scene.view).items
+  const scene = useStoreValue(editor.read.items)
 
   return (
     <div className="wb-scene">
@@ -42,4 +45,6 @@ export const CanvasScene = () => {
       ))}
     </div>
   )
-}
+})
+
+CanvasScene.displayName = 'CanvasScene'

@@ -148,7 +148,7 @@ const SelectionHandlesOverlay = ({
   )
 }
 
-export const NodeOverlayLayer = () => {
+export const NodeOverlayLayer = memo(() => {
   const editor = useEditorRuntime()
   const chrome = useStoreValue(editor.read.chrome)
   const guides = chrome.snap
@@ -178,4 +178,6 @@ export const NodeOverlayLayer = () => {
       <NodeInteractionGuidesLayer guides={guides} />
     </>
   )
-}
+})
+
+NodeOverlayLayer.displayName = 'NodeOverlayLayer'

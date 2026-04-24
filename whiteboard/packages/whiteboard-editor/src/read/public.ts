@@ -128,7 +128,7 @@ export const createEditorRead = (
     defaults
   }: {
     document: Pick<DocumentRead, 'document' | 'group' | 'mindmap' | 'node'>
-    graph: Pick<GraphRead, 'scene' | 'node' | 'edge' | 'selection' | 'mindmap' | 'chrome'>
+    graph: Pick<GraphRead, 'snapshot' | 'items' | 'spatial' | 'node' | 'edge' | 'selection' | 'mindmap' | 'chrome'>
     session: Pick<EditorSession, 'state' | 'interaction' | 'viewport' | 'preview'>
     store?: EditorStore
     history: HistoryApi
@@ -138,6 +138,19 @@ export const createEditorRead = (
 ): EditorRead => {
   const state = providedStore ?? createEditorStore(session)
   const sessionRead = createSessionRead(session)
+  const visibleQueryCache = {
+    revision: -1,
+    rect: undefined as
+      | {
+          x: number
+          y: number
+          width: number
+          height: number
+        }
+      | undefined,
+    kinds: '' as string,
+    result: [] as ReturnType<EditorRead['query']['rect']>
+  }
   const selectionSummary = graph.selection.summary
   const selectionMembers = graph.selection.members
   const selectionAffordance = graph.selection.affordance
@@ -378,6 +391,33 @@ export const createEditorRead = (
     isEqual: isMindmapChromeEqual
   })
 
+  const query: EditorRead['query'] = {
+    rect: (rect, options) => graph.spatial.rect(rect, options),
+    visible: (options) => {
+      const rect = sessionRead.viewport.worldRect()
+      const snapshot = store.read(graph.snapshot)
+      const kinds = options?.kinds?.join('|') ?? '*'
+
+      if (
+        visibleQueryCache.revision === snapshot.revision
+        && visibleQueryCache.kinds === kinds
+        && visibleQueryCache.rect?.x === rect.x
+        && visibleQueryCache.rect?.y === rect.y
+        && visibleQueryCache.rect?.width === rect.width
+        && visibleQueryCache.rect?.height === rect.height
+      ) {
+        return visibleQueryCache.result
+      }
+
+      const result = graph.spatial.rect(rect, options)
+      visibleQueryCache.revision = snapshot.revision
+      visibleQueryCache.rect = rect
+      visibleQueryCache.kinds = kinds
+      visibleQueryCache.result = result
+      return result
+    }
+  }
+
   return {
     document: {
       get: document.document.get,
@@ -412,9 +452,8 @@ export const createEditorRead = (
       view: graph.edge.view,
       selectedChrome: selectedEdgeChrome
     },
-    scene: {
-      view: graph.scene.view
-    },
+    items: graph.items,
+    query,
     selection: {
       view: graph.selection.view,
       node: {

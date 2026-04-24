@@ -4,7 +4,6 @@ import { document as documentApi } from '@whiteboard/core/document'
 import type {
   EdgeId,
   NodeId,
-  Rect,
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
@@ -88,7 +87,6 @@ const createInput = (input: {
   edit?: Input['session']['edit']
   selection?: Input['interaction']['selection']
   hover?: Input['interaction']['hover']
-  visibleWorld?: Rect
   nodeMeasures?: ReadonlyMap<NodeId, Size>
 }): Input => {
   const value = createEmptyInput()
@@ -103,7 +101,6 @@ const createInput = (input: {
   value.interaction.hover = input.hover ?? {
     kind: 'none'
   }
-  value.viewport.visibleWorld = input.visibleWorld
   value.measure.text.ready = (input.nodeMeasures?.size ?? 0) > 0
   value.measure.text.nodes = new Map(
     [...(input.nodeMeasures ?? new Map())].map(([nodeId, size]) => [
@@ -208,16 +205,24 @@ describe('delta-driven publisher', () => {
     expect(result.snapshot.graph.nodes.byId.get(secondId)).toBe(
       baseline.graph.nodes.byId.get(secondId)
     )
+    expect(result.change.items.changed).toBe(false)
+    expect(result.snapshot.items).toBe(baseline.items)
   })
 
-  it('publishes viewport-only updates through scene only', () => {
+  it('publishes canvas order updates through items only', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_publish_scene_only')
+      document: documentApi.create('doc_editor_graph_runtime_publish_items_only')
     })
-    const nodeId = createNode({
+    const firstId = createNode({
       engine,
       position: { x: 40, y: 40 },
-      text: 'Node',
+      text: 'First',
+      size: { width: 120, height: 44 }
+    })
+    const secondId = createNode({
+      engine,
+      position: { x: 240, y: 40 },
+      text: 'Second',
       size: { width: 120, height: 44 }
     })
     const runtime = createRuntimeHarness()
@@ -233,15 +238,26 @@ describe('delta-driven publisher', () => {
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
-          [nodeId, { width: 120, height: 44 }]
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
         ])
       })
     })
     publishRuntimeResult(runtime.state, bootstrap)
 
     const baseline = runtime.state.snapshot
-    const viewportDelta = createEmptyInputDelta()
-    viewportDelta.scene.viewport = true
+    const reorder = engine.execute({
+      type: 'canvas.order.move',
+      refs: [{
+        kind: 'node',
+        id: firstId
+      }],
+      mode: 'front'
+    })
+    expect(reorder.ok).toBe(true)
+
+    const orderDelta = createEmptyInputDelta()
+    orderDelta.document.order = true
 
     const result = runRuntimeUpdate({
       spec: runtime.spec,
@@ -249,15 +265,10 @@ describe('delta-driven publisher', () => {
       state: runtime.state,
       nextInput: createInput({
         engine,
-        delta: viewportDelta,
-        visibleWorld: {
-          x: 0,
-          y: 0,
-          width: 10,
-          height: 10
-        },
+        delta: orderDelta,
         nodeMeasures: new Map([
-          [nodeId, { width: 120, height: 44 }]
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
         ])
       })
     })
@@ -267,11 +278,20 @@ describe('delta-driven publisher', () => {
     expect(touchedIds(result.change.ui.nodes)).toEqual([])
     expect(touchedIds(result.change.ui.edges)).toEqual([])
     expect(result.change.ui.chrome.changed).toBe(false)
-    expect(result.change.scene.changed).toBe(true)
+    expect(result.change.items.changed).toBe(true)
     expect(result.snapshot.graph).toBe(baseline.graph)
     expect(result.snapshot.ui).toBe(baseline.ui)
-    expect(result.snapshot.scene.items).toBe(baseline.scene.items)
-    expect(result.snapshot.scene.visible.nodeIds).toEqual([])
+    expect(result.snapshot.items).not.toBe(baseline.items)
+    expect(result.snapshot.items).toEqual([
+      {
+        kind: 'node',
+        id: secondId
+      },
+      {
+        kind: 'node',
+        id: firstId
+      }
+    ])
   })
 
   it('publishes selection-only updates through chrome and touched ids', () => {
@@ -339,7 +359,7 @@ describe('delta-driven publisher', () => {
 
     expect(touchedIds(result.change.graph.nodes)).toEqual([])
     expect(touchedIds(result.change.graph.edges)).toEqual([])
-    expect(result.change.scene.changed).toBe(false)
+    expect(result.change.items.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(true)
     expect(touchedIds(result.change.ui.nodes)).toEqual([firstId])
     expect(touchedIds(result.change.ui.edges)).toEqual([edgeId])
@@ -403,7 +423,7 @@ describe('delta-driven publisher', () => {
     })
 
     expect(touchedIds(result.change.graph.nodes)).toEqual([])
-    expect(result.change.scene.changed).toBe(false)
+    expect(result.change.items.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(true)
     expect(touchedIds(result.change.ui.nodes)).toEqual([nodeId])
     expect(touchedIds(result.change.ui.edges)).toEqual([])
@@ -455,12 +475,12 @@ describe('delta-driven publisher', () => {
 
     expect(touchedIds(result.change.graph.nodes)).toEqual([])
     expect(touchedIds(result.change.graph.edges)).toEqual([])
-    expect(result.change.scene.changed).toBe(false)
+    expect(result.change.items.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(false)
     expect(touchedIds(result.change.ui.nodes)).toEqual([])
     expect(touchedIds(result.change.ui.edges)).toEqual([])
     expect(result.snapshot.graph).toBe(baseline.graph)
-    expect(result.snapshot.scene).toBe(baseline.scene)
+    expect(result.snapshot.items).toBe(baseline.items)
     expect(result.snapshot.ui).toBe(baseline.ui)
   })
 })

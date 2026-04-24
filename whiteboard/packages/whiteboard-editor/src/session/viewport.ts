@@ -24,6 +24,7 @@ export type ViewportRead = store.ReadStore<Viewport> & {
     clientY: number
   }) => ViewportPointer
   worldToScreen: (point: Point) => Point
+  worldRect: () => Rect
 }
 
 export type ViewportCommands = {
@@ -105,7 +106,17 @@ export const createViewport = ({
         }
       },
       worldToScreen: (point) =>
-        geometryApi.viewport.worldToScreen(point, store.read(state), rect)
+        geometryApi.viewport.worldToScreen(point, store.read(state), rect),
+      worldRect: () => geometryApi.rect.fromPoints(
+        geometryApi.viewport.screenToWorld({
+          x: 0,
+          y: 0
+        }, store.read(state), rect),
+        geometryApi.viewport.screenToWorld({
+          x: rect.width,
+          y: rect.height
+        }, store.read(state), rect)
+      )
     },
     commands: {
       set: (viewport) => {

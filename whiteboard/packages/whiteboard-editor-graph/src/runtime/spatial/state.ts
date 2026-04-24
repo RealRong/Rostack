@@ -53,17 +53,11 @@ const createSpatialTree = (): SpatialTree => {
 export interface SpatialIndexState {
   records: Map<SpatialKey, SpatialRecord>
   tree: SpatialTree
-  visible: {
-    dirty: boolean
-  }
 }
 
 export const createSpatialState = (): SpatialIndexState => ({
   records: new Map(),
-  tree: createSpatialTree(),
-  visible: {
-    dirty: false
-  }
+  tree: createSpatialTree()
 })
 
 export const resetSpatialState = (
@@ -71,5 +65,4 @@ export const resetSpatialState = (
 ) => {
   state.records.clear()
   state.tree = createSpatialTree()
-  state.visible.dirty = false
 }

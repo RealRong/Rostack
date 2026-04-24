@@ -39,12 +39,11 @@ export interface SpatialDelta {
   revision: Revision
   order: boolean
   records: IdDelta<SpatialKey>
-  visible: boolean
 }
 
 export interface PublishDelta {
   graph: GraphPublishDelta
-  scene: ScenePublishDelta
+  items: boolean
   ui: UiPublishDelta
 }
 
@@ -55,11 +54,6 @@ export interface GraphPublishDelta {
     mindmaps: IdDelta<MindmapId>
     groups: IdDelta<GroupId>
   }
-}
-
-export interface ScenePublishDelta {
-  items: boolean
-  visible: boolean
 }
 
 export interface UiPublishDelta {
@@ -81,5 +75,5 @@ export interface EditorPhaseScopeMap {
   graph: GraphPatchScope
   spatial: SpatialPatchScope
   ui: undefined
-  scene: undefined
+  items: undefined
 }

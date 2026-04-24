@@ -1,6 +1,9 @@
 import type {
   CSSProperties
 } from 'react'
+import {
+  memo
+} from 'react'
 import { useStoreValue } from '@shared/react'
 import { WHITEBOARD_LINE_DEFAULT_COLOR } from '@whiteboard/product/palette'
 import {
@@ -207,7 +210,7 @@ const EdgeSelectedOverlay = ({
   </>
 )
 
-export const EdgeOverlayLayer = () => {
+export const EdgeOverlayLayer = memo(() => {
   const selectedEdgeChrome = useSelectedEdgeChrome()
 
   return (
@@ -220,4 +223,6 @@ export const EdgeOverlayLayer = () => {
       <EdgeHintOverlay />
     </>
   )
-}
+})
+
+EdgeOverlayLayer.displayName = 'EdgeOverlayLayer'

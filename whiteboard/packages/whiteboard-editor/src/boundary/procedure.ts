@@ -1,7 +1,7 @@
 import type {
   GraphSnapshot,
   InputDelta,
-  SceneSnapshot,
+  SceneItem,
   Snapshot,
   UiSnapshot
 } from '@whiteboard/editor-graph'
@@ -9,7 +9,7 @@ import type {
 export interface EditorPublished {
   revision: number
   graph: GraphSnapshot
-  scene: SceneSnapshot
+  items: readonly SceneItem[]
   ui: UiSnapshot
 }
 
@@ -51,6 +51,6 @@ export const toEditorPublished = (
 ): EditorPublished => ({
   revision: snapshot.revision,
   graph: snapshot.graph,
-  scene: snapshot.scene,
+  items: snapshot.items,
   ui: snapshot.ui
 })

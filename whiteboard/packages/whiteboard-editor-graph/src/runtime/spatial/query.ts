@@ -52,21 +52,21 @@ export const queryAll = (input: {
 
 export const queryRect = (input: {
   state: SpatialIndexState
-  worldRect: Rect
+  rect: Rect
   kinds?: readonly SpatialKind[]
 }): readonly SpatialRecord[] => collectRecords({
   state: input.state,
-  keys: input.state.tree.rect(input.worldRect),
+  keys: input.state.tree.rect(input.rect),
   kinds: input.kinds
 })
 
 export const queryPoint = (input: {
   state: SpatialIndexState
-  worldPoint: Point
+  point: Point
   kinds?: readonly SpatialKind[]
 }): readonly SpatialRecord[] => collectRecords({
   state: input.state,
-  keys: input.state.tree.point(input.worldPoint),
+  keys: input.state.tree.point(input.point),
   kinds: input.kinds
 })
 
@@ -78,14 +78,14 @@ export const createSpatialRead = (input: {
     state: input.state(),
     kinds: options?.kinds
   }),
-  rect: (worldRect, options) => queryRect({
+  rect: (rect, options) => queryRect({
     state: input.state(),
-    worldRect,
+    rect,
     kinds: options?.kinds
   }),
-  point: (worldPoint, options) => queryPoint({
+  point: (point, options) => queryPoint({
     state: input.state(),
-    worldPoint,
+    point,
     kinds: options?.kinds
   })
 })

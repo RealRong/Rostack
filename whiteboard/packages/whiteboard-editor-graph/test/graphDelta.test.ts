@@ -191,18 +191,24 @@ describe('graph delta patching', () => {
     expect(state.working.delta.graph.geometry.edges.has(edgeId)).toBe(true)
     expect(state.working.delta.spatial.records.updated.has(`node:${firstId}`)).toBe(true)
     expect(state.working.delta.spatial.records.updated.has(`edge:${edgeId}`)).toBe(true)
-    expect(state.working.delta.spatial.visible).toBe(true)
+    expect(state.working.delta.spatial.order).toBe(false)
     expect(state.working.delta.graph.entities.nodes.updated.has(secondId)).toBe(false)
   })
 
-  it('marks spatial visible without synthetic record updates on viewport-only input', () => {
+  it('marks spatial order without synthetic record updates on canvas order input', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_spatial_viewport')
+      document: documentApi.create('doc_editor_graph_runtime_spatial_order')
     })
-    const nodeId = createNode({
+    const firstId = createNode({
       engine,
       position: { x: 40, y: 40 },
-      text: 'Node',
+      text: 'First',
+      size: { width: 120, height: 44 }
+    })
+    const secondId = createNode({
+      engine,
+      position: { x: 240, y: 40 },
+      text: 'Second',
       size: { width: 120, height: 44 }
     })
 
@@ -224,14 +230,25 @@ describe('graph delta patching', () => {
         engine,
         delta: bootstrapDelta,
         nodeMeasures: new Map([
-          [nodeId, { width: 120, height: 44 }]
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
         ])
       })
     })
     publishRuntimeResult(state, bootstrap)
 
-    const viewportDelta = createEmptyInputDelta()
-    viewportDelta.scene.viewport = true
+    const reorder = engine.execute({
+      type: 'canvas.order.move',
+      refs: [{
+        kind: 'node',
+        id: firstId
+      }],
+      mode: 'front'
+    })
+    expect(reorder.ok).toBe(true)
+
+    const orderDelta = createEmptyInputDelta()
+    orderDelta.document.order = true
 
     const result = runRuntimeUpdate({
       spec,
@@ -239,19 +256,21 @@ describe('graph delta patching', () => {
       state,
       nextInput: createInput({
         engine,
-        delta: viewportDelta,
+        delta: orderDelta,
         nodeMeasures: new Map([
-          [nodeId, { width: 120, height: 44 }]
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
         ])
       })
     })
 
     expect(result.trace.phases.map((phase) => phase.name)).toEqual([
+      'graph',
       'spatial',
-      'scene'
+      'ui',
+      'items'
     ])
-    expect(state.working.delta.spatial.visible).toBe(true)
-    expect(state.working.delta.spatial.order).toBe(false)
+    expect(state.working.delta.spatial.order).toBe(true)
     expect(state.working.delta.spatial.records.added.size).toBe(0)
     expect(state.working.delta.spatial.records.updated.size).toBe(0)
     expect(state.working.delta.spatial.records.removed.size).toBe(0)

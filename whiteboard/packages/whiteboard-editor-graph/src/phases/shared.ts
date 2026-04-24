@@ -68,8 +68,8 @@ export type SpatialEditorPhase = PhaseSpec<
   EditorPhaseScopeMap
 >
 
-export type SceneEditorPhase = PhaseSpec<
-  'scene',
+export type ItemsEditorPhase = PhaseSpec<
+  'items',
   EditorContext,
   undefined,
   {
@@ -83,7 +83,7 @@ export type EditorPhase =
   | GraphEditorPhase
   | SpatialEditorPhase
   | UiEditorPhase
-  | SceneEditorPhase
+  | ItemsEditorPhase
 
 export const toMetric = (
   count: number

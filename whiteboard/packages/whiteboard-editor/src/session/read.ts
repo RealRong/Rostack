@@ -23,6 +23,7 @@ export type SessionRead = {
     subscribe: EditorSession['viewport']['read']['subscribe']
     pointer: EditorSession['viewport']['read']['pointer']
     worldToScreen: EditorSession['viewport']['read']['worldToScreen']
+    worldRect: EditorSession['viewport']['read']['worldRect']
     screenPoint: EditorSession['viewport']['input']['screenPoint']
     size: EditorSession['viewport']['input']['size']
   }
@@ -80,6 +81,7 @@ export const createSessionRead = (
     subscribe: session.viewport.read.subscribe,
     pointer: session.viewport.read.pointer,
     worldToScreen: session.viewport.read.worldToScreen,
+    worldRect: session.viewport.read.worldRect,
     screenPoint: session.viewport.input.screenPoint,
     size: session.viewport.input.size
   },

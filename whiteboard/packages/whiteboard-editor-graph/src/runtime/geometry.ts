@@ -8,7 +8,6 @@ import type {
   ChromeOverlay,
   EdgeLabelView,
   SceneItem,
-  SceneLayer,
   SelectionState
 } from '../contracts/editor'
 
@@ -23,13 +22,6 @@ export const EMPTY_RECT: Rect = {
   width: 0,
   height: 0
 }
-
-export const EMPTY_SCENE_LAYERS: readonly SceneLayer[] = [
-  'owners',
-  'edges',
-  'nodes',
-  'ui'
-]
 
 export const isPointEqual = (
   left: Point | undefined,

@@ -8,14 +8,14 @@ import type {
   MindmapView,
   NodeUiView,
   NodeView,
-  SceneSnapshot,
+  SceneItem,
   Snapshot
 } from '@whiteboard/editor-graph'
 
 export interface ProjectionSources {
   snapshot: store.ReadStore<Snapshot>
   graph: store.ReadStore<GraphSnapshot>
-  scene: store.ReadStore<SceneSnapshot>
+  items: store.ReadStore<readonly SceneItem[]>
   ui: store.ReadStore<Snapshot['ui']>
   chrome: store.ReadStore<ChromeView>
   nodeGraph: store.KeyedReadStore<string, NodeView | undefined>
@@ -34,9 +34,9 @@ export const createProjectionSources = (
     source: snapshot,
     select: (current) => current.graph
   }),
-  scene: store.createProjectedStore({
+  items: store.createProjectedStore({
     source: snapshot,
-    select: (current) => current.scene
+    select: (current) => current.items
   }),
   ui: store.createProjectedStore({
     source: snapshot,

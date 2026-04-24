@@ -103,12 +103,6 @@ const createHoverDelta = (input: {
   return delta
 }
 
-const createViewportDelta = (): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
-  delta.scene.viewport = true
-  return delta
-}
-
 const createEditDelta = (input: {
   previous: EditSession | null
   next: EditSession | null
@@ -199,7 +193,6 @@ const createBootstrapDelta = (input: {
   delta.ui.guides = true
   delta.ui.draw = true
   delta.ui.edit = true
-  delta.scene.viewport = true
 
   const edit = input.session.state.edit.get()
   const editedNodeIds = readEditedNodeIds(edit)
@@ -238,7 +231,7 @@ export const createProjectionController = ({
   layout
 }: {
   engine: Engine
-  session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
+  session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
   layout: Pick<EditorLayout, 'draft'>
 }): ProjectionController => {
   const runtime = createEditorGraphRuntime()
@@ -353,9 +346,6 @@ export const createProjectionController = ({
       if (delta.ui.hover) {
         mark(delta)
       }
-    }),
-    session.viewport.read.subscribe(() => {
-      mark(createViewportDelta())
     })
   ]
 

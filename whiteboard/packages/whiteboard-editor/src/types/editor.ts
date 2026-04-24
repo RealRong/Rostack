@@ -6,12 +6,15 @@ import type {
   EdgeId,
   MindmapId,
   NodeId,
+  Point,
+  Rect,
   Viewport
 } from '@whiteboard/core/types'
 import type { HistoryApi, HistoryState } from '@whiteboard/history'
 import type {
   MindmapView,
-  SceneSnapshot
+  Read as EditorGraphQuery,
+  SceneItem
 } from '@whiteboard/editor-graph'
 import type { EditorActions } from '@whiteboard/editor/action/types'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
@@ -127,6 +130,13 @@ export type EditorMindmapRead = {
   }) => NodeId | undefined
 }
 
+export type EditorQuery = {
+  rect: EditorGraphQuery['spatial']['rect']
+  visible: (
+    options?: Parameters<EditorGraphQuery['spatial']['rect']>[1]
+  ) => ReturnType<EditorGraphQuery['spatial']['rect']>
+}
+
 export type EditorRead = {
   document: Pick<DocumentRead['document'], 'background' | 'bounds'> & {
     get: () => Document
@@ -144,9 +154,8 @@ export type EditorRead = {
     view: store.KeyedReadStore<EdgeId, EditorEdgeView | undefined>
     selectedChrome: store.ReadStore<SelectedEdgeChrome | undefined>
   }
-  scene: {
-    view: store.ReadStore<SceneSnapshot>
-  }
+  items: store.ReadStore<readonly SceneItem[]>
+  query: EditorQuery
   selection: {
     view: store.ReadStore<EditorSelectionView>
     node: EditorSelectionNodeRead

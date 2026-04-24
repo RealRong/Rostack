@@ -9,9 +9,9 @@ import type {
 import type * as document from '@whiteboard/engine/contracts/document'
 import type {
   Input,
+  SceneItem,
   Snapshot
 } from '../contracts/editor'
-import { EMPTY_SCENE_LAYERS } from './geometry'
 
 export const createEmptyDocumentSnapshot = (): document.Snapshot => ({
   revision: 0,
@@ -73,9 +73,6 @@ export const createEmptyInputDelta = (): Input['delta'] => ({
     guides: false,
     draw: false,
     edit: false
-  },
-  scene: {
-    viewport: false
   }
 })
 
@@ -121,15 +118,6 @@ export const createEmptyInput = (): Input => ({
       kind: 'idle'
     }
   },
-  viewport: {
-    viewport: {
-      center: {
-        x: 0,
-        y: 0
-      },
-      zoom: 1
-    }
-  },
   clock: {
     now: 0
   },
@@ -159,24 +147,7 @@ export const createEmptySnapshot = (): Snapshot => ({
       }
     }
   },
-  scene: {
-    layers: EMPTY_SCENE_LAYERS,
-    items: [],
-    visible: {
-      items: [],
-      nodeIds: [],
-      edgeIds: [],
-      mindmapIds: []
-    },
-    spatial: {
-      nodes: [],
-      edges: [],
-      mindmaps: []
-    },
-    pick: {
-      items: []
-    }
-  },
+  items: [] as readonly SceneItem[],
   ui: {
     chrome: {
       overlays: [],

@@ -24,7 +24,7 @@ export const createEditorGraphQuery = (
   spatial: createSpatialRead({
     state: runtime.spatial
   }),
-  scene: () => runtime.snapshot().scene,
+  items: () => runtime.snapshot().items,
   ui: () => runtime.snapshot().ui,
   chrome: () => runtime.snapshot().ui.chrome
 })

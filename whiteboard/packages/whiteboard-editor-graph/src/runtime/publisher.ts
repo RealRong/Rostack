@@ -7,12 +7,11 @@ import type { WorkingState } from '../contracts/working'
 import {
   resetGraphPublishDelta,
   resetPublishDelta,
-  resetScenePublishDelta,
   syncGraphPublishDelta,
-  syncScenePublishDelta
+  syncItemsPublishDelta
 } from './publish/delta'
 import { patchPublishedGraph } from './publish/graph'
-import { patchPublishedScene } from './publish/scene'
+import { patchPublishedItems } from './publish/items'
 import { patchPublishedUi } from './publish/ui'
 
 export const createEditorGraphPublisher = (): RuntimePublisher<
@@ -31,33 +30,21 @@ export const createEditorGraphPublisher = (): RuntimePublisher<
       })
     }
 
-    resetScenePublishDelta(delta.scene)
-    syncScenePublishDelta({
-      graph: working.delta.graph.revision === revision
-        ? working.delta.graph
-        : {
-            ...working.delta.graph,
-            order: false
-          },
-      spatial: working.delta.spatial.revision === revision
-        ? working.delta.spatial
-        : {
-            ...working.delta.spatial,
-            order: false,
-            visible: false
-          },
-      target: delta.scene
-    })
+    delta.items = working.delta.graph.revision === revision
+      ? syncItemsPublishDelta({
+          graph: working.delta.graph
+        })
+      : false
 
     const graph = patchPublishedGraph({
       previous: previous.graph,
       working,
       delta: delta.graph
     })
-    const scene = patchPublishedScene({
-      previous: previous.scene,
+    const items = patchPublishedItems({
+      previous: previous.items,
       working,
-      delta: delta.scene
+      changed: delta.items
     })
     const ui = patchPublishedUi({
       previous: previous.ui,
@@ -70,12 +57,12 @@ export const createEditorGraphPublisher = (): RuntimePublisher<
         revision,
         documentRevision: working.revision.document,
         graph: graph.value,
-        scene: scene.value,
+        items: items.value,
         ui: ui.value
       },
       change: {
         graph: graph.change,
-        scene: scene.change,
+        items: items.change,
         ui: ui.change
       }
     }

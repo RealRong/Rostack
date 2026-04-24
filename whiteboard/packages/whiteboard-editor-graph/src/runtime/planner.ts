@@ -16,10 +16,6 @@ import {
   createGraphPatchScope,
   hasGraphPatchScope
 } from './graphPatch/scope'
-import {
-  createSpatialPatchScope,
-  hasSpatialPatchScope
-} from './spatial/contracts'
 
 const hasUiDelta = (
   delta: Input['delta']['ui']
@@ -32,16 +28,6 @@ const hasUiDelta = (
   || delta.draw
   || delta.edit
 )
-
-const hasSceneDelta = (
-  delta: Input['delta']['scene']
-): boolean => delta.viewport
-
-const createSpatialPlannerScope = (
-  input: Input
-) => createSpatialPatchScope({
-  visible: hasSceneDelta(input.delta.scene)
-})
 
 const createGraphPlannerScope = (
   input: Input
@@ -118,37 +104,20 @@ export const createEditorGraphPlanner = (): RuntimePlanner<
           order: true
         })
       : createGraphPlannerScope(input)
-    const spatialScope = createSpatialPlannerScope(input)
     const graphChanged = hasGraphPatchScope(graphScope)
-    const uiChanged = graphChanged || hasUiDelta(input.delta.ui)
-    const spatialChanged = hasSpatialPatchScope(spatialScope)
+    const uiChanged = hasUiDelta(input.delta.ui)
 
-    if (!graphChanged && !uiChanged && !spatialChanged) {
+    if (!graphChanged && !uiChanged) {
       return createPlan<EditorPhaseName>()
     }
 
     if (graphChanged) {
       return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
-        phases: new Set(
-          spatialChanged
-            ? ['graph', 'spatial']
-            : ['graph']
-        ),
-        scope: {
-          graph: graphScope,
-          spatial: spatialChanged ? spatialScope : undefined
-        }
-      })
-    }
-
-    if (uiChanged && spatialChanged) {
-      return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
         phases: new Set([
-          'ui',
-          'spatial'
+          'graph'
         ]),
         scope: {
-          spatial: spatialScope
+          graph: graphScope
         }
       })
     }
@@ -158,17 +127,6 @@ export const createEditorGraphPlanner = (): RuntimePlanner<
         phases: new Set([
           'ui'
         ])
-      })
-    }
-
-    if (spatialChanged) {
-      return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
-        phases: new Set([
-          'spatial'
-        ]),
-        scope: {
-          spatial: spatialScope
-        }
       })
     }
 

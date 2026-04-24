@@ -25,12 +25,12 @@ import type {
   EdgeUiView,
   EdgeView,
   GroupView,
+  SceneItem,
   MindmapView,
   NodeDraft,
   NodePreview,
   NodeUiView,
-  NodeView,
-  SceneSnapshot
+  NodeView
 } from './editor'
 import type { SpatialIndexState } from '../runtime/spatial/state'
 
@@ -41,7 +41,7 @@ export interface WorkingState {
   graph: GraphState
   spatial: SpatialIndexState
   ui: UiState
-  scene: SceneSnapshot
+  items: readonly SceneItem[]
   delta: {
     graph: GraphDelta
     spatial: SpatialDelta

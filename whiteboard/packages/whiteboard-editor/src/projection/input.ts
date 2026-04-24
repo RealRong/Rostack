@@ -142,9 +142,6 @@ export const createEmptyEditorGraphInputDelta = (): InputDelta => ({
     guides: false,
     draw: false,
     edit: false
-  },
-  scene: {
-    viewport: false
   }
 })
 
@@ -222,9 +219,6 @@ export const cloneEditorGraphInputDelta = (
     guides: delta.ui.guides,
     draw: delta.ui.draw,
     edit: delta.ui.edit
-  },
-  scene: {
-    viewport: delta.scene.viewport
   }
 })
 
@@ -256,8 +250,6 @@ export const mergeEditorGraphInputDelta = (
   target.ui.guides = target.ui.guides || source.ui.guides
   target.ui.draw = target.ui.draw || source.ui.draw
   target.ui.edit = target.ui.edit || source.ui.edit
-
-  target.scene.viewport = target.scene.viewport || source.scene.viewport
 }
 
 export const takeEditorGraphInputDelta = (
@@ -268,7 +260,6 @@ export const takeEditorGraphInputDelta = (
   pending.document = empty.document
   pending.graph = empty.graph
   pending.ui = empty.ui
-  pending.scene = empty.scene
   return current
 }
 
@@ -295,7 +286,6 @@ export const hasEditorGraphInputDelta = (
   || delta.ui.guides
   || delta.ui.draw
   || delta.ui.edit
-  || delta.scene.viewport
 )
 
 const readMindmapId = (
@@ -661,7 +651,7 @@ export const createEditorGraphInput = ({
   now = scheduler.readMonotonicNow()
 }: {
   publish: EnginePublish
-  session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
+  session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
   layout: Pick<EditorLayout, 'draft'>
   delta: InputDelta
   now?: number
@@ -713,9 +703,6 @@ export const createEditorGraphInput = ({
         store.read(session.interaction.read.hover)
       ),
       drag: readDragState(snapshot, session)
-    },
-    viewport: {
-      viewport: store.read(session.viewport.read)
     },
     clock: {
       now

@@ -9,8 +9,6 @@ import type {
   GraphDelta,
   GraphPublishDelta,
   PublishDelta,
-  ScenePublishDelta,
-  SpatialDelta,
   UiPublishDelta
 } from '../../contracts/delta'
 
@@ -23,10 +21,7 @@ export const createPublishDelta = (): PublishDelta => ({
       groups: changeSet.create<GroupId>()
     }
   },
-  scene: {
-    items: false,
-    visible: false
-  },
+  items: false,
   ui: {
     chrome: false,
     nodes: changeSet.create<NodeId>(),
@@ -43,13 +38,6 @@ export const resetGraphPublishDelta = (
   changeSet.reset(delta.owners.groups)
 }
 
-export const resetScenePublishDelta = (
-  delta: ScenePublishDelta
-) => {
-  delta.items = false
-  delta.visible = false
-}
-
 export const resetUiPublishDelta = (
   delta: UiPublishDelta
 ) => {
@@ -62,7 +50,7 @@ export const resetPublishDelta = (
   delta: PublishDelta
 ) => {
   resetGraphPublishDelta(delta.graph)
-  resetScenePublishDelta(delta.scene)
+  delta.items = false
   resetUiPublishDelta(delta.ui)
 }
 
@@ -76,11 +64,14 @@ export const syncGraphPublishDelta = (input: {
   changeSet.assign(input.target.owners.groups, input.source.entities.groups)
 }
 
-export const syncScenePublishDelta = (input: {
+export const syncItemsPublishDelta = (input: {
   graph: GraphDelta
-  spatial: SpatialDelta
-  target: ScenePublishDelta
-}) => {
-  input.target.items = input.graph.order
-  input.target.visible = input.spatial.order || input.spatial.visible
-}
+}): boolean => (
+  input.graph.order
+  || input.graph.entities.nodes.added.size > 0
+  || input.graph.entities.nodes.removed.size > 0
+  || input.graph.entities.edges.added.size > 0
+  || input.graph.entities.edges.removed.size > 0
+  || input.graph.entities.mindmaps.added.size > 0
+  || input.graph.entities.mindmaps.removed.size > 0
+)

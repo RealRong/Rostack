@@ -25,8 +25,7 @@ import type {
   NodeTemplate,
   Point,
   Rect,
-  Size,
-  Viewport
+  Size
 } from '@whiteboard/core/types'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type {
@@ -42,7 +41,6 @@ export interface Input {
   session: SessionInput
   measure: MeasureInput
   interaction: InteractionInput
-  viewport: ViewportInput
   clock: ClockInput
   delta: InputDelta
 }
@@ -327,11 +325,6 @@ export type DragState =
       nodeId: NodeId
     }
 
-export interface ViewportInput {
-  viewport: Viewport
-  visibleWorld?: Rect
-}
-
 export interface ClockInput {
   now: number
 }
@@ -340,7 +333,6 @@ export interface InputDelta {
   document: DocumentDelta
   graph: GraphInputDelta
   ui: UiInputDelta
-  scene: SceneInputDelta
 }
 
 export interface DocumentDelta {
@@ -378,15 +370,11 @@ export interface UiInputDelta {
   edit: boolean
 }
 
-export interface SceneInputDelta {
-  viewport: boolean
-}
-
 export interface Snapshot {
   revision: Revision
   documentRevision: Revision
   graph: GraphSnapshot
-  scene: SceneSnapshot
+  items: readonly SceneItem[]
   ui: UiSnapshot
 }
 
@@ -526,12 +514,6 @@ export interface GroupFrameView {
   bounds?: Rect
 }
 
-export type SceneLayer =
-  | 'owners'
-  | 'edges'
-  | 'nodes'
-  | 'ui'
-
 export type SceneItem =
   | {
       kind: 'mindmap'
@@ -545,31 +527,6 @@ export type SceneItem =
       kind: 'edge'
       id: EdgeId
     }
-
-export interface SpatialView {
-  nodes: readonly NodeId[]
-  edges: readonly EdgeId[]
-  mindmaps: readonly MindmapId[]
-}
-
-export interface VisibleSceneView {
-  items: readonly SceneItem[]
-  nodeIds: readonly NodeId[]
-  edgeIds: readonly EdgeId[]
-  mindmapIds: readonly MindmapId[]
-}
-
-export interface PickView {
-  items: readonly CanvasItemRef[]
-}
-
-export interface SceneSnapshot {
-  layers: readonly SceneLayer[]
-  items: readonly SceneItem[]
-  visible: VisibleSceneView
-  spatial: SpatialView
-  pick: PickView
-}
 
 export interface UiSnapshot {
   chrome: ChromeView
@@ -601,7 +558,7 @@ export interface ChromeOverlay {
 
 export interface Change {
   graph: GraphChange
-  scene: Flags
+  items: Flags
   ui: UiChange
 }
 
@@ -644,7 +601,7 @@ export interface Read {
   nodeUi(id: NodeId): NodeUiView | undefined
   edgeUi(id: EdgeId): EdgeUiView | undefined
   spatial: SpatialRead
-  scene(): SceneSnapshot
+  items(): readonly SceneItem[]
   ui(): UiSnapshot
   chrome(): ChromeView
 }

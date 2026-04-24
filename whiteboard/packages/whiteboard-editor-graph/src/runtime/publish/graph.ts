@@ -1,7 +1,7 @@
+import { publishEntityFamily } from '@shared/projection-runtime'
 import type { GraphChange, GraphSnapshot } from '../../contracts/editor'
 import type { GraphPublishDelta } from '../../contracts/delta'
 import type { WorkingState } from '../../contracts/working'
-import { patchPublishedFamily } from './family'
 
 export const patchPublishedGraph = (input: {
   previous: GraphSnapshot
@@ -11,28 +11,28 @@ export const patchPublishedGraph = (input: {
   value: GraphSnapshot
   change: GraphChange
 } => {
-  const nodes = patchPublishedFamily({
+  const nodes = publishEntityFamily({
     previous: input.previous.nodes,
     ids: [...input.working.graph.nodes.keys()],
-    delta: input.delta.nodes,
+    change: input.delta.nodes,
     read: (nodeId) => input.working.graph.nodes.get(nodeId)
   })
-  const edges = patchPublishedFamily({
+  const edges = publishEntityFamily({
     previous: input.previous.edges,
     ids: [...input.working.graph.edges.keys()],
-    delta: input.delta.edges,
+    change: input.delta.edges,
     read: (edgeId) => input.working.graph.edges.get(edgeId)
   })
-  const mindmaps = patchPublishedFamily({
+  const mindmaps = publishEntityFamily({
     previous: input.previous.owners.mindmaps,
     ids: [...input.working.graph.owners.mindmaps.keys()],
-    delta: input.delta.owners.mindmaps,
+    change: input.delta.owners.mindmaps,
     read: (mindmapId) => input.working.graph.owners.mindmaps.get(mindmapId)
   })
-  const groups = patchPublishedFamily({
+  const groups = publishEntityFamily({
     previous: input.previous.owners.groups,
     ids: [...input.working.graph.owners.groups.keys()],
-    delta: input.delta.owners.groups,
+    change: input.delta.owners.groups,
     read: (groupId) => input.working.graph.owners.groups.get(groupId)
   })
 
@@ -61,11 +61,11 @@ export const patchPublishedGraph = (input: {
   return {
     value,
     change: {
-      nodes: nodes.ids,
-      edges: edges.ids,
+      nodes: nodes.change,
+      edges: edges.change,
       owners: {
-        mindmaps: mindmaps.ids,
-        groups: groups.ids
+        mindmaps: mindmaps.change,
+        groups: groups.change
       }
     }
   }

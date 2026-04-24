@@ -1,41 +1,48 @@
 import type { Field, FieldId } from '@dataview/core/contracts'
+import {
+  entityDelta,
+  type EntityDelta
+} from '@shared/core'
 import type {
-  ActiveDelta,
-  CollectionDelta
+  ActiveDelta
 } from '@dataview/engine/contracts/delta'
 import type {
   ItemId,
   SectionId
 } from '@dataview/engine/contracts/shared'
-import {
-  buildKeyedCollectionDelta,
-  createCollectionDelta
-} from '@dataview/engine/active/shared/delta'
 import type { SummaryPhaseDelta as SummaryDelta } from '@dataview/engine/active/state'
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 
-const buildSummaryCollectionDelta = (input: {
+const buildSummaryEntityDelta = (input: {
   previous: ViewState
   next: ViewState
   delta: SummaryDelta
-}): CollectionDelta<SectionId> | undefined => {
+}): EntityDelta<SectionId> | undefined => {
   if (input.delta.rebuild) {
     const removed = input.previous.sections.ids.filter(
       sectionId => !input.next.summaries.has(sectionId)
     )
 
-    return createCollectionDelta({
-      list: input.previous.sections.ids !== input.next.sections.ids,
-      update: input.next.sections.ids,
+    return entityDelta.normalize({
+      ...(input.previous.sections.ids === input.next.sections.ids
+        ? {}
+        : {
+            order: true as const
+          }),
+      set: input.next.sections.ids,
       remove: removed
     })
   }
 
-  return createCollectionDelta({
-    list: input.previous.sections.ids !== input.next.sections.ids,
-    update: input.delta.changed,
+  return entityDelta.normalize({
+    ...(input.previous.sections.ids === input.next.sections.ids
+      ? {}
+      : {
+          order: true as const
+        }),
+    set: input.delta.changed,
     remove: input.delta.removed
   })
 }
@@ -43,8 +50,8 @@ const buildSummaryCollectionDelta = (input: {
 export const projectActiveDelta = (input: {
   previous?: ViewState
   next?: ViewState
-  sections?: CollectionDelta<SectionId>
-  items?: CollectionDelta<ItemId>
+  sections?: EntityDelta<SectionId>
+  items?: EntityDelta<ItemId>
   summaries: SummaryDelta
 }): ActiveDelta | undefined => {
   if (!input.previous && !input.next) {
@@ -99,13 +106,13 @@ export const projectActiveDelta = (input: {
           : {})
       }
     : undefined
-  const all = buildKeyedCollectionDelta<FieldId, Field>({
+  const all = entityDelta.fromSnapshots<FieldId, Field>({
     previousIds: previous.fields.ids,
     nextIds: next.fields.ids,
     previousGet: fieldId => previous.fields.get(fieldId),
     nextGet: fieldId => next.fields.get(fieldId)
   })
-  const summaries = buildSummaryCollectionDelta({
+  const summaries = buildSummaryEntityDelta({
     previous,
     next,
     delta: input.summaries

@@ -20,6 +20,16 @@ export * as keySet from './keySet'
 export type { KeySet } from './keySet'
 export * as mutationContext from './mutationContext'
 export type { MutationContext } from './mutationContext'
+export * as mutationTrace from './mutationTrace'
+export type {
+  FactCounter,
+  FactCountInput,
+  MutationTrace,
+  MutationTraceBuilder,
+  MutationTraceCount,
+  MutationTraceFact,
+  TouchedCountInput
+} from './mutationTrace'
 export * as operationBuffer from './operationBuffer'
 export type {
   InverseBuilder,

@@ -3,6 +3,7 @@ import {
 } from '@dataview/core/commit/impact'
 import type { CommitImpact } from '@dataview/core/contracts'
 import type { TraceImpactSummary } from '@dataview/engine/contracts/performance'
+import { mutationTrace } from '@shared/core'
 
 type WriteKind =
   | 'write'
@@ -10,55 +11,43 @@ type WriteKind =
   | 'redo'
   | 'load'
 
-const addFact = (
-  facts: Map<string, number>,
-  kind: string,
-  count: number | undefined
-) => {
-  if (!count) {
-    return
-  }
-
-  facts.set(kind, (facts.get(kind) ?? 0) + count)
-}
-
 export const summarizeImpact = (
   impact: CommitImpact
 ): TraceImpactSummary => {
-  const summary = commitImpact.summary(impact)
-  const facts = new Map<string, number>()
-
-  addFact(facts, 'record.insert', impact.records?.inserted?.size)
-  addFact(facts, 'record.remove', impact.records?.removed?.size)
-  addFact(facts, 'record.patch', impact.records?.patched?.size)
-  addFact(facts, 'record.value', impact.values?.touched === 'all'
-    ? undefined
-    : impact.values?.touched?.size)
-  addFact(facts, 'field.insert', impact.fields?.inserted?.size)
-  addFact(facts, 'field.remove', impact.fields?.removed?.size)
-  addFact(facts, 'field.schema', impact.fields?.schema?.size)
-  addFact(facts, 'view.insert', impact.views?.inserted?.size)
-  addFact(facts, 'view.remove', impact.views?.removed?.size)
-  addFact(facts, 'view.change', impact.views?.changed?.size)
-  addFact(facts, 'activeView.set', impact.activeView ? 1 : undefined)
-  addFact(facts, 'external.version.bump', impact.external?.versionBumped ? 1 : undefined)
-  addFact(facts, 'reset', impact.reset ? 1 : undefined)
-
-  return {
+  const trace = mutationTrace.createMutationTrace<
+    TraceImpactSummary['summary'],
+    TraceImpactSummary['entities']
+  >({
     summary: {
-      ...summary,
-      indexes: commitImpact.has.index(impact)
+      ...commitImpact.summary(impact),
+      indexes: false
     },
-    facts: Array.from(facts.entries()).map(([kind, count]) => ({
-      kind,
-      ...(count > 1 ? { count } : {})
-    })),
     entities: {
-      touchedRecordCount: commitImpact.record.touchedCount(impact),
-      touchedFieldCount: commitImpact.field.touchedCount(impact),
-      touchedViewCount: commitImpact.view.touchedCount(impact)
+      touchedRecordCount: undefined,
+      touchedFieldCount: undefined,
+      touchedViewCount: undefined
     }
-  }
+  })
+
+  trace.setSummary('indexes', commitImpact.has.index(impact))
+  trace.addFact('record.insert', impact.records?.inserted)
+  trace.addFact('record.remove', impact.records?.removed)
+  trace.addFact('record.patch', impact.records?.patched)
+  trace.addFact('record.value', impact.values?.touched)
+  trace.addFact('field.insert', impact.fields?.inserted)
+  trace.addFact('field.remove', impact.fields?.removed)
+  trace.addFact('field.schema', impact.fields?.schema)
+  trace.addFact('view.insert', impact.views?.inserted)
+  trace.addFact('view.remove', impact.views?.removed)
+  trace.addFact('view.change', impact.views?.changed)
+  trace.addFact('activeView.set', Boolean(impact.activeView))
+  trace.addFact('external.version.bump', Boolean(impact.external?.versionBumped))
+  trace.addFact('reset', Boolean(impact.reset))
+  trace.setEntity('touchedRecordCount', commitImpact.record.touchedCount(impact))
+  trace.setEntity('touchedFieldCount', commitImpact.field.touchedCount(impact))
+  trace.setEntity('touchedViewCount', commitImpact.view.touchedCount(impact))
+
+  return trace.finish()
 }
 
 export const toTraceKind = (

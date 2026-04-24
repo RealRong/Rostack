@@ -1,4 +1,9 @@
-import { collection, equal } from '@shared/core'
+import {
+  collection,
+  equal,
+  type EntityDelta
+} from '@shared/core'
+import { publishEntityList } from '@shared/projection-runtime'
 import type {
   RecordId,
   View,
@@ -7,12 +12,6 @@ import type {
 import {
   createMapPatchBuilder
 } from '@dataview/engine/active/shared/patch'
-import {
-  createCollectionDelta
-} from '@dataview/engine/active/shared/delta'
-import type {
-  CollectionDelta
-} from '@dataview/engine/contracts/delta'
 import type {
   ItemId,
   ItemList,
@@ -471,16 +470,18 @@ const buildPublishedState = (input: {
     sections: list,
     delta: previousPublishedSections || previousItems
       ? {
-          sections: createCollectionDelta({
-            list: previousPublishedSections?.ids !== publishedSectionIds,
-            update: changedSectionIds,
+          sections: publishEntityList({
+            previous: previousPublishedSections?.ids ?? EMPTY_SECTION_KEYS,
+            next: publishedSectionIds,
+            set: changedSectionIds,
             remove: removedSectionIds
-          }),
-          items: createCollectionDelta({
-            list: previousVisibleIds !== publishedVisibleIds,
-            update: addedItemIds,
+          }).delta,
+          items: publishEntityList({
+            previous: previousVisibleIds ?? EMPTY_ITEM_IDS,
+            next: publishedVisibleIds,
+            set: addedItemIds,
             remove: removedItemIds
-          })
+          }).delta
         }
       : undefined
   }
@@ -499,7 +500,7 @@ export const publishSections = (input: {
   items: ItemList
   sections: SectionList
   delta?: {
-    sections?: CollectionDelta<SectionId>
-    items?: CollectionDelta<ItemId>
+    sections?: EntityDelta<SectionId>
+    items?: EntityDelta<ItemId>
   }
 } => buildPublishedState(input)

@@ -2,6 +2,7 @@ import {
   assertPhaseOrder,
   assertPublishedOnce
 } from '@shared/projection-runtime'
+import { changeSet } from '@shared/core'
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
@@ -56,6 +57,14 @@ const createEditorGraphPublishSpec = () => ({
     }
   }
 })
+
+const touchedIds = <TId extends string>(
+  delta: {
+    added: ReadonlySet<TId>
+    updated: ReadonlySet<TId>
+    removed: ReadonlySet<TId>
+  }
+): ReadonlySet<TId> => changeSet.touched(delta)
 
 const createEdgeLabelMeasureEntries = (
   edgeLabelMeasures?: RuntimeInputOptions['edgeLabelMeasures']
@@ -340,7 +349,7 @@ describe('editor graph runtime', () => {
 
     expect(idle.trace).toBeDefined()
     expect(idle.trace!.phases).toHaveLength(0)
-    expect(idle.change.graph.nodes.all.size).toBe(0)
+    expect(touchedIds(idle.change.graph.nodes).size).toBe(0)
     expect(idle.change.scene.changed).toBe(false)
     expect(idle.change.ui.chrome.changed).toBe(false)
   })
@@ -456,9 +465,9 @@ describe('editor graph runtime', () => {
     expect(liveRootView).toBeDefined()
     expect(liveRootUi?.editing).toBe(true)
     expect(liveRootUi?.edit?.field).toBe('text')
-    expect(live.change.graph.nodes.all.has(childId)).toBe(true)
-    expect(live.change.graph.owners.mindmaps.all.has(created.mindmapId)).toBe(true)
-    expect(live.change.ui.nodes.all.has(created.rootId)).toBe(true)
+    expect(touchedIds(live.change.graph.nodes).has(childId)).toBe(true)
+    expect(touchedIds(live.change.graph.owners.mindmaps).has(created.mindmapId)).toBe(true)
+    expect(touchedIds(live.change.ui.nodes).has(created.rootId)).toBe(true)
   })
 
   it('relayouts sibling positions while topic live height grows', () => {
@@ -523,8 +532,8 @@ describe('editor graph runtime', () => {
     expect(liveFirst!.height).toBe(88)
     expect(liveFirst!.y).toBeLessThan(beforeFirst!.y)
     expect(liveSecond!.y).toBeGreaterThan(beforeSecond!.y)
-    expect(live.change.graph.nodes.all.has(secondId)).toBe(true)
-    expect(live.change.graph.owners.mindmaps.all.has(created.mindmapId)).toBe(true)
+    expect(touchedIds(live.change.graph.nodes).has(secondId)).toBe(true)
+    expect(touchedIds(live.change.graph.owners.mindmaps).has(created.mindmapId)).toBe(true)
   })
 
   it('publishes renderer-ready element, chrome, and scene state', () => {
@@ -717,8 +726,8 @@ describe('editor graph runtime', () => {
     expect(result.snapshot.scene.pick.items).toEqual(result.snapshot.scene.visible.items)
     expect(result.change.scene.changed).toBe(true)
     expect(result.change.ui.chrome.changed).toBe(true)
-    expect(result.change.ui.nodes.all.has(firstId)).toBe(true)
-    expect(result.change.ui.edges.all.has(edgeId)).toBe(true)
+    expect(touchedIds(result.change.ui.nodes).has(firstId)).toBe(true)
+    expect(touchedIds(result.change.ui.edges).has(edgeId)).toBe(true)
   })
 
   it('publishes mindmap connectors and mindmap preview chrome state', () => {

@@ -362,12 +362,12 @@ test('publishSections emits section and item deltas from published membership ch
     itemIds
   })
 
-  assert.deepEqual(nextPublished.delta?.sections?.update, ['todo', 'done'])
+  assert.deepEqual(nextPublished.delta?.sections?.set, ['todo', 'done'])
   assert.equal(nextPublished.delta?.sections?.remove, undefined)
-  assert.equal(nextPublished.delta?.sections?.list, undefined)
-  assert.equal(nextPublished.delta?.items?.update?.length, 1)
+  assert.equal(nextPublished.delta?.sections?.order, undefined)
+  assert.equal(nextPublished.delta?.items?.set?.length, 1)
   assert.equal(nextPublished.delta?.items?.remove?.length, 1)
-  assert.equal(nextPublished.delta?.items?.list, true)
+  assert.equal(nextPublished.delta?.items?.order, true)
 })
 
 test('publishSections preserves surviving item ids for filter-only section changes', () => {
@@ -429,7 +429,7 @@ test('publishSections preserves surviving item ids for filter-only section chang
   assert.deepEqual(nextPublished.delta?.items?.remove, [
     previousTodoItemIds[1]
   ])
-  assert.equal(nextPublished.delta?.items?.update, undefined)
+  assert.equal(nextPublished.delta?.items?.set, undefined)
 })
 
 test('publishSections rebuilds placement state when filter removes most items in a section', () => {
@@ -563,9 +563,9 @@ test('publishSections does not remove retained items when section order changes'
       : undefined,
     'rec_2'
   )
-  assert.equal(nextPublished.delta?.items?.update, undefined)
+  assert.equal(nextPublished.delta?.items?.set, undefined)
   assert.equal(nextPublished.delta?.items?.remove, undefined)
-  assert.equal(nextPublished.delta?.items?.list, true)
+  assert.equal(nextPublished.delta?.items?.order, true)
 })
 
 test('buildMembershipState reuses grouped partition when visible membership is unchanged', () => {

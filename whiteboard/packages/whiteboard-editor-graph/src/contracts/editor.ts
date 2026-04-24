@@ -32,7 +32,6 @@ import type * as document from '@whiteboard/engine/contracts/document'
 import type {
   Family,
   Flags,
-  Ids,
   Revision,
   TraceRun
 } from '@shared/projection-runtime'
@@ -607,20 +606,20 @@ export interface Change {
 }
 
 export interface GraphChange {
-  nodes: Ids<NodeId>
-  edges: Ids<EdgeId>
+  nodes: document.IdDelta<NodeId>
+  edges: document.IdDelta<EdgeId>
   owners: OwnerChange
 }
 
 export interface OwnerChange {
-  mindmaps: Ids<MindmapId>
-  groups: Ids<GroupId>
+  mindmaps: document.IdDelta<MindmapId>
+  groups: document.IdDelta<GroupId>
 }
 
 export interface UiChange {
   chrome: Flags
-  nodes: Ids<NodeId>
-  edges: Ids<EdgeId>
+  nodes: document.IdDelta<NodeId>
+  edges: document.IdDelta<EdgeId>
 }
 
 export interface Runtime {

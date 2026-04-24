@@ -442,52 +442,6 @@ export const resetActiveSource = (input: {
   })
 }
 
-const applyItemDelta = (input: {
-  delta: ActiveDelta['items']
-  runtime: ItemSourceRuntime
-  snapshot: ViewState
-}) => {
-  if (!input.delta) {
-    return
-  }
-
-  if (input.delta.list) {
-    input.runtime.ids.set(input.snapshot.items.ids)
-  }
-
-  let set: Array<readonly [ItemId, ItemPlacement]> | undefined
-  const update = input.delta.update
-  if (update?.length) {
-    set = []
-    for (let index = 0; index < update.length; index += 1) {
-      const itemId = update[index]!
-      const placement = readItemPlacement(input.snapshot, itemId)
-      if (!placement) {
-        continue
-      }
-
-      set.push([itemId, placement] as const)
-    }
-  }
-
-  if (!set?.length && !input.delta.remove?.length) {
-    return
-  }
-
-  input.runtime.table.write.apply({
-    ...(set?.length
-      ? {
-          set
-        }
-      : {}),
-    ...(input.delta.remove?.length
-      ? {
-          remove: input.delta.remove
-        }
-      : {})
-  })
-}
-
 export const applyActiveDelta = (input: {
   runtime: Pick<ActiveSourceRuntime,
     | 'viewId'
@@ -551,10 +505,11 @@ export const applyActiveDelta = (input: {
     input.runtime.recordsVisible.set(snapshot.records.visible)
   }
 
-  applyItemDelta({
+  applyEntityDelta({
     delta: input.delta.items,
     runtime: input.runtime.items,
-    snapshot
+    readIds: () => snapshot.items.ids,
+    readValue: itemId => readItemPlacement(snapshot, itemId)
   })
   applyEntityDelta({
     delta: input.delta.sections,

@@ -142,10 +142,10 @@ test('document delta omits list refresh on non-structural value writes', () => {
     },
   })
 
-  assert.equal(output?.records?.ids, undefined)
-  assert.deepEqual(output?.records?.update, ['rec_1'])
+  assert.equal(output?.records?.order, undefined)
+  assert.deepEqual(output?.records?.set, ['rec_1'])
   assert.deepEqual(output?.records?.remove ?? [], [])
-  assert.deepEqual(output?.values?.update, [{
+  assert.deepEqual(output?.values?.set, [{
     recordId: 'rec_1',
     fieldId: FIELD_STATUS
   }])

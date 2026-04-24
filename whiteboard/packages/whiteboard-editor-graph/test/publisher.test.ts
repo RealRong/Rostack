@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { changeSet } from '@shared/core'
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   EdgeId,
@@ -18,6 +19,14 @@ import {
 } from '../src/runtime/createEmptySnapshot'
 import { createEditorGraphRuntimeSpec } from '../src/runtime/createSpec'
 import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
+
+const touchedIds = <TId extends string>(
+  delta: {
+    added: ReadonlySet<TId>
+    updated: ReadonlySet<TId>
+    removed: ReadonlySet<TId>
+  }
+): readonly TId[] => [...changeSet.touched(delta)]
 
 const createNode = (input: {
   engine: ReturnType<typeof createEngine>
@@ -188,10 +197,10 @@ describe('delta-driven publisher', () => {
       })
     })
 
-    expect([...result.change.graph.nodes.all]).toEqual([firstId])
-    expect([...result.change.graph.edges.all]).toEqual([edgeId])
-    expect([...result.change.graph.owners.mindmaps.all]).toEqual([])
-    expect([...result.change.graph.owners.groups.all]).toEqual([])
+    expect(touchedIds(result.change.graph.nodes)).toEqual([firstId])
+    expect(touchedIds(result.change.graph.edges)).toEqual([edgeId])
+    expect(touchedIds(result.change.graph.owners.mindmaps)).toEqual([])
+    expect(touchedIds(result.change.graph.owners.groups)).toEqual([])
     expect(result.snapshot.graph.nodes.ids).toBe(baseline.graph.nodes.ids)
     expect(result.snapshot.graph.nodes.byId.get(firstId)).not.toBe(
       baseline.graph.nodes.byId.get(firstId)
@@ -253,10 +262,10 @@ describe('delta-driven publisher', () => {
       })
     })
 
-    expect([...result.change.graph.nodes.all]).toEqual([])
-    expect([...result.change.graph.edges.all]).toEqual([])
-    expect([...result.change.ui.nodes.all]).toEqual([])
-    expect([...result.change.ui.edges.all]).toEqual([])
+    expect(touchedIds(result.change.graph.nodes)).toEqual([])
+    expect(touchedIds(result.change.graph.edges)).toEqual([])
+    expect(touchedIds(result.change.ui.nodes)).toEqual([])
+    expect(touchedIds(result.change.ui.edges)).toEqual([])
     expect(result.change.ui.chrome.changed).toBe(false)
     expect(result.change.scene.changed).toBe(true)
     expect(result.snapshot.graph).toBe(baseline.graph)
@@ -328,12 +337,12 @@ describe('delta-driven publisher', () => {
       })
     })
 
-    expect([...result.change.graph.nodes.all]).toEqual([])
-    expect([...result.change.graph.edges.all]).toEqual([])
+    expect(touchedIds(result.change.graph.nodes)).toEqual([])
+    expect(touchedIds(result.change.graph.edges)).toEqual([])
     expect(result.change.scene.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(true)
-    expect([...result.change.ui.nodes.all]).toEqual([firstId])
-    expect([...result.change.ui.edges.all]).toEqual([edgeId])
+    expect(touchedIds(result.change.ui.nodes)).toEqual([firstId])
+    expect(touchedIds(result.change.ui.edges)).toEqual([edgeId])
     expect(result.snapshot.ui.chrome).not.toBe(baseline.ui.chrome)
     expect(result.snapshot.ui.nodes.byId.get(firstId)?.selected).toBe(true)
     expect(result.snapshot.ui.nodes.byId.get(secondId)).toBe(
@@ -393,11 +402,11 @@ describe('delta-driven publisher', () => {
       })
     })
 
-    expect([...result.change.graph.nodes.all]).toEqual([])
+    expect(touchedIds(result.change.graph.nodes)).toEqual([])
     expect(result.change.scene.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(true)
-    expect([...result.change.ui.nodes.all]).toEqual([nodeId])
-    expect([...result.change.ui.edges.all]).toEqual([])
+    expect(touchedIds(result.change.ui.nodes)).toEqual([nodeId])
+    expect(touchedIds(result.change.ui.edges)).toEqual([])
     expect(result.snapshot.ui.nodes.byId.get(nodeId)?.hovered).toBe(true)
   })
 
@@ -444,12 +453,12 @@ describe('delta-driven publisher', () => {
       })
     })
 
-    expect([...result.change.graph.nodes.all]).toEqual([])
-    expect([...result.change.graph.edges.all]).toEqual([])
+    expect(touchedIds(result.change.graph.nodes)).toEqual([])
+    expect(touchedIds(result.change.graph.edges)).toEqual([])
     expect(result.change.scene.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(false)
-    expect([...result.change.ui.nodes.all]).toEqual([])
-    expect([...result.change.ui.edges.all]).toEqual([])
+    expect(touchedIds(result.change.ui.nodes)).toEqual([])
+    expect(touchedIds(result.change.ui.edges)).toEqual([])
     expect(result.snapshot.graph).toBe(baseline.graph)
     expect(result.snapshot.scene).toBe(baseline.scene)
     expect(result.snapshot.ui).toBe(baseline.ui)

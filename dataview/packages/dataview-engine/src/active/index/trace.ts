@@ -1,6 +1,7 @@
 import type {
   IndexStageTrace
 } from '@dataview/engine/contracts/performance'
+import { mutationTrace } from '@shared/core'
 import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'
@@ -14,15 +15,15 @@ export const fullRebuildFrom = (
 
 export const touchedRecordCountOfImpact = (
   impact: BaseImpact
-): number | 'all' | undefined => impact.touchedRecords === 'all'
-  ? 'all'
-  : impact.touchedRecords.size || undefined
+): number | 'all' | undefined => mutationTrace.toTouchedCount(
+  impact.touchedRecords
+)
 
 export const touchedFieldCountOfImpact = (
   impact: BaseImpact
-): number | 'all' | undefined => impact.touchedFields === 'all'
-  ? 'all'
-  : impact.touchedFields.size || undefined
+): number | 'all' | undefined => mutationTrace.toTouchedCount(
+  impact.touchedFields
+)
 
 export const searchEntryCountOf = (
   search: SearchIndex

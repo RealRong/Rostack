@@ -10,6 +10,7 @@ import type {
   RecordId,
   ViewId
 } from '@dataview/core/contracts/state'
+import { mutationTrace } from '@shared/core'
 import {
   document
 } from '@dataview/core/document'
@@ -384,30 +385,21 @@ const summarizeCommitImpact = (
 
 const touchedRecordCountOfImpact = (
   impact: CommitImpact
-): number | 'all' | undefined => {
-  const touched = collectTouchedRecordIds(impact)
-  return touched === 'all'
-    ? 'all'
-    : touched.size || undefined
-}
+): number | 'all' | undefined => mutationTrace.toTouchedCount(
+  collectTouchedRecordIds(impact)
+)
 
 const touchedFieldCountOfImpact = (
   impact: CommitImpact
-): number | 'all' | undefined => {
-  const touched = collectTouchedFieldIds(impact)
-  return touched === 'all'
-    ? 'all'
-    : touched.size || undefined
-}
+): number | 'all' | undefined => mutationTrace.toTouchedCount(
+  collectTouchedFieldIds(impact)
+)
 
 const touchedViewCountOfImpact = (
   impact: CommitImpact
-): number | 'all' | undefined => {
-  const touched = collectTouchedViewIds(impact)
-  return touched === 'all'
-    ? 'all'
-    : touched.size || undefined
-}
+): number | 'all' | undefined => mutationTrace.toTouchedCount(
+  collectTouchedViewIds(impact)
+)
 
 const hasFieldSchemaAspect = (
   impact: CommitImpact,

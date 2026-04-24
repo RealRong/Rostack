@@ -15,5 +15,8 @@
   "files": [
     "src",
     "dist"
-  ]
+  ],
+  "dependencies": {
+    "@shared/core": "workspace:*"
+  }
 }

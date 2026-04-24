@@ -24,8 +24,8 @@ import {
   type ValueId
 } from '@dataview/runtime/identity'
 import {
-  applyMappedKeyDelta,
-  applyListedDelta,
+  applyEntityDelta,
+  applyMappedEntityDelta,
   createMappedTableSourceRuntime,
   createEntitySourceRuntime,
   resetEntityRuntime,
@@ -94,7 +94,7 @@ const applyDocumentValueDelta = (input: {
   delta: DocDelta
   snapshot: EngineSnapshot
 }) => {
-  applyMappedKeyDelta({
+  applyMappedEntityDelta({
     delta: input.delta.values,
     table: input.runtime.values.table,
     keyOf: valueId,
@@ -241,25 +241,25 @@ export const applyDocumentDelta = (input: {
     delta: input.delta,
     snapshot: input.snapshot
   })
-  applyListedDelta({
+  applyEntityDelta({
     delta: input.delta.records,
     runtime: input.runtime.records,
     readIds: () => documentApi.records.ids(input.snapshot.doc),
     readValue: recordId => documentApi.records.get(input.snapshot.doc, recordId)
   })
-  applyListedDelta({
+  applyEntityDelta({
     delta: input.delta.fields,
     runtime: input.runtime.fields,
     readIds: () => documentApi.fields.ids(input.snapshot.doc),
     readValue: fieldId => documentApi.fields.get(input.snapshot.doc, fieldId)
   })
-  applyListedDelta({
+  applyEntityDelta({
     delta: input.delta.schema?.fields,
     runtime: input.runtime.schemaFields,
     readIds: () => documentApi.schema.fields.ids(input.snapshot.doc),
     readValue: fieldId => documentApi.schema.fields.get(input.snapshot.doc, fieldId)
   })
-  applyListedDelta({
+  applyEntityDelta({
     delta: input.delta.views,
     runtime: input.runtime.views,
     readIds: () => documentApi.views.ids(input.snapshot.doc),

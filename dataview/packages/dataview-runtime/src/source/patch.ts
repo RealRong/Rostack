@@ -1,9 +1,8 @@
-import { equal, store } from '@shared/core'
-import type {
-  CollectionDelta,
-  KeyDelta,
-  ListedDelta
-} from '@dataview/engine'
+import {
+  equal,
+  store,
+  type EntityDelta
+} from '@shared/core'
 import type {
   EntitySource
 } from '@dataview/runtime/source/contracts'
@@ -126,7 +125,7 @@ export const resetEntityRuntime = <Key, Value>(runtime: {
 }
 
 export const applyEntityDelta = <Key, Value>(input: {
-  delta: CollectionDelta<Key> | undefined
+  delta: EntityDelta<Key> | undefined
   runtime: {
     ids?: store.ValueStore<readonly Key[]>
     table: store.TableStore<Key, Value>
@@ -138,16 +137,15 @@ export const applyEntityDelta = <Key, Value>(input: {
     return
   }
 
-  if (input.delta.list && input.runtime.ids) {
+  if (input.delta.order && input.runtime.ids) {
     input.runtime.ids.set(input.readIds())
   }
 
   let set: Array<readonly [Key, Value]> | undefined
-  const update = input.delta.update
-  if (update?.length) {
+  if (input.delta.set?.length) {
     set = []
-    for (let index = 0; index < update.length; index += 1) {
-      const key = update[index]!
+    for (let index = 0; index < input.delta.set.length; index += 1) {
+      const key = input.delta.set[index]!
       const value = input.readValue(key)
       if (value === undefined) {
         continue
@@ -175,92 +173,8 @@ export const applyEntityDelta = <Key, Value>(input: {
   })
 }
 
-export const applyListedDelta = <Key, Value>(input: {
-  delta: ListedDelta<Key> | undefined
-  runtime: {
-    ids?: store.ValueStore<readonly Key[]>
-    table: store.TableStore<Key, Value>
-  }
-  readIds: () => readonly Key[]
-  readValue: (key: Key) => Value | undefined
-}) => {
-  if (!input.delta) {
-    return
-  }
-
-  if (input.delta.ids && input.runtime.ids) {
-    input.runtime.ids.set(input.readIds())
-  }
-
-  let set: Array<readonly [Key, Value]> | undefined
-  const update = input.delta.update
-  if (update?.length) {
-    set = []
-    for (let index = 0; index < update.length; index += 1) {
-      const key = update[index]!
-      const value = input.readValue(key)
-      if (value === undefined) {
-        continue
-      }
-
-      set.push([key, value] as const)
-    }
-  }
-
-  if (!set?.length && !input.delta.remove?.length) {
-    return
-  }
-
-  input.runtime.table.write.apply({
-    ...(set?.length
-      ? { set }
-      : {}),
-    ...(input.delta.remove?.length
-      ? { remove: input.delta.remove }
-      : {})
-  })
-}
-
-export const applyKeyDelta = <Key, Value>(input: {
-  delta: KeyDelta<Key> | undefined
-  table: store.TableStore<Key, Value>
-  readValue: (key: Key) => Value | undefined
-}) => {
-  if (!input.delta) {
-    return
-  }
-
-  let set: Array<readonly [Key, Value]> | undefined
-  const update = input.delta.update
-  if (update?.length) {
-    set = []
-    for (let index = 0; index < update.length; index += 1) {
-      const key = update[index]!
-      const value = input.readValue(key)
-      if (value === undefined) {
-        continue
-      }
-
-      set.push([key, value] as const)
-    }
-  }
-
-  if (!set?.length && !input.delta.remove?.length) {
-    return
-  }
-
-  input.table.write.apply({
-    ...(set?.length
-      ? { set }
-      : {}),
-    ...(input.delta.remove?.length
-      ? { remove: input.delta.remove }
-      : {})
-  })
-}
-
-export const applyMappedKeyDelta = <PublicKey, InternalKey, Value>(input: {
-  delta: KeyDelta<PublicKey> | undefined
+export const applyMappedEntityDelta = <PublicKey, InternalKey, Value>(input: {
+  delta: EntityDelta<PublicKey> | undefined
   table: store.TableStore<InternalKey, Value>
   keyOf: (key: PublicKey) => InternalKey
   readValue: (key: PublicKey) => Value | undefined
@@ -270,11 +184,10 @@ export const applyMappedKeyDelta = <PublicKey, InternalKey, Value>(input: {
   }
 
   let set: Array<readonly [InternalKey, Value]> | undefined
-  const update = input.delta.update
-  if (update?.length) {
+  if (input.delta.set?.length) {
     set = []
-    for (let index = 0; index < update.length; index += 1) {
-      const key = update[index]!
+    for (let index = 0; index < input.delta.set.length; index += 1) {
+      const key = input.delta.set[index]!
       const value = input.readValue(key)
       if (value === undefined) {
         continue

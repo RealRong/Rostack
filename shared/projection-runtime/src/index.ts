@@ -12,6 +12,10 @@ export {
   mergeFlags,
   mergeIds
 } from './publish/change'
+export {
+  publishEntityFamily,
+  publishEntityList
+} from './publish/entity'
 export { publishFamily } from './publish/family'
 export { isListEqual, publishList } from './publish/list'
 export { publishValue } from './publish/value'

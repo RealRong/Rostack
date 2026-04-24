@@ -390,7 +390,7 @@ createFlags
 createIds
 ```
 
-Dataview Active Delta 仍有自己的：
+原先 Dataview Active Delta 仍有自己的：
 
 ```ts
 buildKeyedCollectionDelta
@@ -414,7 +414,7 @@ createCollectionDelta
 { order?: true; set?: keys; remove?: keys }
 ```
 
-建议扩展 `shared/projection-runtime`，而不是放 `shared/core`：
+当前已扩展 `shared/projection-runtime`，而不是放在 `shared/core`：
 
 ```ts
 publishEntityFamily(input): {
@@ -425,11 +425,21 @@ publishEntityFamily(input): {
 }
 ```
 
-这样：
+并补了列表层对应原语：
 
-- Whiteboard Editor Graph publisher 可以少写 `GraphDelta` 手工转换。
-- Dataview `projectActiveDelta` 的 fields/sections/items/summaries 可以统一走 publish delta。
-- Dataview `projectDocumentDelta` 的 listed/value delta 可以复用 `entityDelta` builder。
+```ts
+publishEntityList(input): {
+  value: readonly TKey[]
+  delta?: EntityDelta<TKey>
+  action: Action
+}
+```
+
+当前收益：
+
+- Whiteboard Editor Graph publisher 已删除本地 `patchPublishedFamily`。
+- Dataview `projectActiveDelta` 的 `fields/sections/items/summaries` 已统一走 `EntityDelta`。
+- Dataview `projectDocumentDelta` 的 document delta builder 已统一走 `entityDelta.normalize/fromSnapshots`。
 
 ## 建议下沉模块
 
@@ -486,32 +496,56 @@ interface EntityDelta<TKey> {
 
 ### `shared/core/src/mutationTrace.ts`
 
-职责：领域无关 trace bucket builder。
+职责：领域无关的 trace / impact 摘要基础设施。
 
-建议设计为泛型 bucket，而不是固定 records/nodes：
+它不直接承载 Dataview `CommitImpact`、Whiteboard `Invalidation`、`KernelReadImpact`
+这类领域协议，而是只承载三类公共原语：
+
+- `summary flags`：布尔摘要。
+- `facts`：`kind/count` 聚合。
+- `entity touched count`：`number | 'all'` 计数摘要。
+
+当前实现提供：
 
 ```ts
-type BucketName = string
+type MutationTraceCount = number | 'all'
 
-interface MutationTraceBucket<TKey, TPatch = unknown> {
-  changes: IdChangeSet<TKey>
-  patches: Map<TKey, TPatch>
-  touched: KeySet<TKey>
+toTouchedCount(
+  input: number | ReadonlySet<unknown> | ReadonlyMap<unknown, unknown> | 'all' | undefined
+): MutationTraceCount | undefined
+
+hasTouchedCount(
+  input: MutationTraceCount | undefined
+): boolean
+
+createFactCounter(): {
+  add(kind: string, count?: boolean | number | ReadonlySet<unknown> | ReadonlyMap<unknown, unknown> | 'all'): void
+  finish(): readonly { kind: string; count?: number }[]
 }
 
-interface MutationTraceBuilder<TBuckets extends Record<string, unknown>> {
-  bucket<TKey, TPatch>(name: string): MutationTraceBucket<TKey, TPatch>
-  reset(): void
-  finish(): MutationTrace<TBuckets>
+createMutationTrace({
+  summary,
+  entities
+}): {
+  assignSummary(...)
+  setSummary(...)
+  setEntity(...)
+  addFact(...)
+  finish()
 }
 ```
 
-领域层再包装：
+当前接入：
 
-```ts
-trace.records.patch(recordId, ['title'])
-trace.nodes.geometry(nodeId)
-```
+- Dataview `mutate/commit/trace.ts`
+- Dataview `commit/impact.ts` touched count helper
+- Dataview `active/index/trace.ts` touched count helper
+- Whiteboard `kernel/reduce/commit.ts` invalidation summary
+
+边界明确：
+
+- `shared/core/mutationTrace` 只负责“摘要承载”；
+- Dataview / Whiteboard 仍各自负责领域规则与外部协议。
 
 ### `shared/core/src/mutationTx.ts`
 
@@ -704,7 +738,33 @@ Whiteboard 已有 `OverlayTable`，可以作为候选实现来源。
 
 职责：发布快照时直接返回 `EntityDelta`。
 
-建议放在 `shared/projection-runtime` 而不是 `shared/core`，因为它依赖 publish/reuse/action 语义。
+当前实现位于 `shared/projection-runtime/src/publish/entity.ts`，并保留在
+`shared/projection-runtime` 而不是 `shared/core`，因为它依赖 publish/reuse/action
+语义。
+
+当前 API：
+
+```ts
+publishEntityFamily(input): {
+  value: Family<TKey, TValue>
+  change: IdChangeSet<TKey>
+  delta?: EntityDelta<TKey>
+  changed: boolean
+  action: Action
+}
+
+publishEntityList(input): {
+  value: readonly TKey[]
+  delta?: EntityDelta<TKey>
+  changed: boolean
+  action: Action
+}
+```
+
+当前接入：
+
+- Whiteboard Editor Graph graph/ui publisher
+- Dataview active publish sections
 
 ### `shared/projection-runtime` 扩展：`createEntityDeltaSync`
 
@@ -834,21 +894,7 @@ Whiteboard 仍保留：
 - Whiteboard `write/compile/tx.ts`，保留 `registries/nodeSize` 领域能力。
 - 两边统一 issue collection、operation emit、require 校验、id factory 注入。
 
-### Phase 3：publish delta 合流
-
-扩展 `shared/projection-runtime`：
-
-- `publishEntityFamily`
-- `publishEntityList`
-- `entityDelta` 桥接输出
-
-然后改造：
-
-- Dataview `active/shared/delta.ts`。
-- Dataview `active/publish/delta.ts`。
-- Whiteboard Editor Graph publisher 的 changed ids 产出。
-
-### Phase 4：Dataview reducer context 化
+### Phase 3：reducer / mutation context 合流，已完成
 
 新增 Dataview `DocumentMutationContext`，基于 shared mutation primitives：
 
@@ -862,7 +908,60 @@ reduceOperation + DocumentMutationContext
 
 然后删除 `executeOperation.ts` 的独立执行逻辑。
 
-### Phase 5：source sync 与 metrics 合流
+当前完成状态：
+
+- `shared/core/src/mutationContext.ts` 已承载 `base/current/working/inverse` 生命周期。
+- Dataview `executeOperation.ts` 已被 `operation/mutation.ts` 取代。
+- Dataview reducer 已统一为 `reduceOperation(context, operation)` / `reduceOperations(context, operations)`。
+- Whiteboard `ReducerTx` 已把 inverse 累积收敛到底层 `InverseBuilder`。
+- Whiteboard handler 层不再直接写 `_runtime.inverse.unshift(...)`。
+
+### Phase 4：impact / invalidation / trace 合流，已完成
+
+新增：
+
+- `shared/core/src/mutationTrace.ts`
+
+然后改造：
+
+- Dataview `mutate/commit/trace.ts` 改为 shared trace builder。
+- Dataview `commit/impact.ts` / `active/index/trace.ts` 改为 shared touched-count helper。
+- Whiteboard `kernel/reduce/commit.ts` 新增 `summarizeInvalidation()`，并通过 shared trace helper 推导 `KernelReadImpact`。
+
+当前完成状态：
+
+- `CommitImpact` 与 `KernelReadImpact` 没有被强行合并。
+- 两边统一到同一层 `summary/facts/entities(count)` 基础模型。
+- Whiteboard 仍保留自己的 `Invalidation -> KernelReadImpact` 领域投影规则。
+- Dataview 仍保留自己的 `CommitImpact` 领域语义与 downstream delta 规则。
+
+### Phase 5：publish delta 合流
+
+扩展 `shared/projection-runtime`：
+
+- `publishEntityFamily`
+- `publishEntityList`
+- `entityDelta` 桥接输出
+
+然后改造：
+
+- Dataview `active/shared/delta.ts`
+- Dataview `active/publish/delta.ts`
+- Dataview `core/delta.ts`
+- Whiteboard Editor Graph publisher 的 changed ids 产出
+
+当前完成状态：
+
+- `shared/projection-runtime/src/publish/entity.ts` 已新增 `publishEntityFamily` 与 `publishEntityList`。
+- Dataview `contracts/delta.ts` 已删除 `CollectionDelta/KeyDelta/ListedDelta`，统一改用 `shared/core/EntityDelta`。
+- Dataview `active/shared/delta.ts` 已删除。
+- Dataview `active/publish/sections.ts` 已改为 `publishEntityList` 产出 publish delta。
+- Dataview `active/publish/delta.ts`、`core/delta.ts` 已改为 `entityDelta.normalize/fromSnapshots`。
+- Dataview runtime source patch 已先行收敛为通用 `applyEntityDelta/applyMappedEntityDelta`，删除 `applyListedDelta/applyKeyDelta/applyMappedKeyDelta` 三套重复实现。
+- Whiteboard Editor Graph publisher 已改用 shared `publishEntityFamily`，并删除本地 `runtime/publish/family.ts`。
+- Whiteboard Editor Graph publish change 已从 `Ids<TKey>` 收敛为 canonical `IdChangeSet<TKey>`。
+
+### Phase 6：source sync 与 metrics 合流
 
 新增：
 
@@ -876,7 +975,7 @@ reduceOperation + DocumentMutationContext
 - Dataview runtime performance running stat。
 - Whiteboard 后续 graph/source sync 与 trace。
 
-### Phase 6：Whiteboard tx 内核瘦身
+### Phase 7：Whiteboard tx 内核瘦身
 
 保持 Whiteboard 外部 API 不变，内部把这些替换成 shared primitives：
 
@@ -884,7 +983,7 @@ reduceOperation + DocumentMutationContext
 - inverse builder / operation buffer。
 - 更通用的 mutation tx skeleton。
 
-### Phase 7：评估 overlay 下沉
+### Phase 8：评估 overlay 下沉
 
 当 Dataview 也出现明确 draft/working set 需求后，再将 Whiteboard `OverlayTable` 抽象为 `shared/core/overlayMap`。如果 Dataview 继续保持不可变 documentApi，则 overlay 不急于下沉。
 

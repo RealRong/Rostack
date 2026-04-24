@@ -9,11 +9,13 @@ import type {
   ValueRef,
   ViewId
 } from '@dataview/core/contracts'
-import { equal } from '@shared/core'
+import {
+  entityDelta,
+  equal,
+  type EntityDelta
+} from '@shared/core'
 import type {
-  DocDelta,
-  KeyDelta,
-  ListedDelta
+  DocDelta
 } from '@dataview/engine/contracts/delta'
 
 const readTouchedIds = <T,>(
@@ -23,35 +25,20 @@ const readTouchedIds = <T,>(
   ? all
   : [...touched]
 
-const buildListedDelta = <Key>(input: {
+const buildEntityDelta = <Key>(input: {
   previousIds: readonly Key[]
   nextIds: readonly Key[]
   touched?: readonly Key[]
   removed?: readonly Key[]
-}): ListedDelta<Key> | undefined => {
-  const removed = input.removed ?? []
-  const removedSet = removed.length
-    ? new Set(removed)
-    : undefined
-  const update = (input.touched ?? []).filter(key => !removedSet?.has(key))
-  const ids = !equal.sameOrder(input.previousIds, input.nextIds)
-    ? true as const
-    : undefined
-
-  return ids || update.length || removed.length
-    ? {
-        ...(ids
-          ? { ids }
-          : {}),
-        ...(update.length
-          ? { update }
-          : {}),
-        ...(removed.length
-          ? { remove: removed }
-          : {})
-      }
-    : undefined
-}
+}): EntityDelta<Key> | undefined => entityDelta.normalize({
+  ...(equal.sameOrder(input.previousIds, input.nextIds)
+    ? {}
+    : {
+        order: true as const
+      }),
+  set: input.touched,
+  remove: input.removed
+})
 
 const valueRefKey = (
   ref: ValueRef
@@ -80,14 +67,14 @@ const buildValueDelta = (input: {
   previous: DataDoc
   next: DataDoc
   impact: CommitImpact
-}): KeyDelta<ValueRef> | undefined => {
+}): EntityDelta<ValueRef> | undefined => {
   const changes = new Map<string, {
     ref: ValueRef
-    kind: 'update' | 'remove'
+    kind: 'set' | 'remove'
   }>()
   const setChange = (
     ref: ValueRef,
-    kind: 'update' | 'remove'
+    kind: 'set' | 'remove'
   ) => {
     changes.set(valueRefKey(ref), {
       ref,
@@ -101,7 +88,7 @@ const buildValueDelta = (input: {
     const nextRefKeySet = new Set(nextRefs.map(valueRefKey))
 
     nextRefs.forEach(ref => {
-      setChange(ref, 'update')
+      setChange(ref, 'set')
     })
     collectAllValueRefs(input.previous).forEach(ref => {
       if (!nextRefKeySet.has(valueRefKey(ref))) {
@@ -125,7 +112,7 @@ const buildValueDelta = (input: {
           : undefined
 
         if (nextValue !== undefined) {
-          setChange(ref, 'update')
+          setChange(ref, 'set')
           return
         }
 
@@ -163,27 +150,21 @@ const buildValueDelta = (input: {
     return undefined
   }
 
-  const update: ValueRef[] = []
+  const set: ValueRef[] = []
   const remove: ValueRef[] = []
   changes.forEach(change => {
-    if (change.kind === 'update') {
-      update.push(change.ref)
+    if (change.kind === 'set') {
+      set.push(change.ref)
       return
     }
 
     remove.push(change.ref)
   })
 
-  return update.length || remove.length
-    ? {
-        ...(update.length
-          ? { update }
-          : {}),
-        ...(remove.length
-          ? { remove }
-          : {})
-      }
-    : undefined
+  return entityDelta.normalize({
+    set,
+    remove
+  })
 }
 
 export const projectDocumentDelta = (input: {
@@ -201,7 +182,7 @@ export const projectDocumentDelta = (input: {
   const nextFieldIds = documentApi.fields.ids(input.next)
   const nextSchemaFieldIds = documentApi.schema.fields.ids(input.next)
   const nextViewIds = documentApi.views.ids(input.next)
-  const records = buildListedDelta<RecordId>({
+  const records = buildEntityDelta<RecordId>({
     previousIds: documentApi.records.ids(input.previous),
     nextIds: nextRecordIds,
     touched: readTouchedIds(
@@ -211,7 +192,7 @@ export const projectDocumentDelta = (input: {
     removed: [...(input.impact.records?.removed ?? [])]
   })
   const values = buildValueDelta(input)
-  const fields = buildListedDelta<FieldId>({
+  const fields = buildEntityDelta<FieldId>({
     previousIds: documentApi.fields.ids(input.previous),
     nextIds: nextFieldIds,
     touched: readTouchedIds(
@@ -220,7 +201,7 @@ export const projectDocumentDelta = (input: {
     ) as readonly FieldId[],
     removed: [...(input.impact.fields?.removed ?? [])]
   })
-  const schemaFields = buildListedDelta<CustomFieldId>({
+  const schemaFields = buildEntityDelta<CustomFieldId>({
     previousIds: documentApi.schema.fields.ids(input.previous),
     nextIds: nextSchemaFieldIds,
     touched: readTouchedIds(
@@ -229,7 +210,7 @@ export const projectDocumentDelta = (input: {
     ) as readonly CustomFieldId[],
     removed: [...(input.impact.fields?.removed ?? [])]
   })
-  const views = buildListedDelta<ViewId>({
+  const views = buildEntityDelta<ViewId>({
     previousIds: documentApi.views.ids(input.previous),
     nextIds: nextViewIds,
     touched: readTouchedIds(

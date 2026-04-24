@@ -1,3 +1,4 @@
+import type { EntityDelta as SharedEntityDelta } from '@shared/core'
 import type {
   CustomFieldId,
   FieldId,
@@ -10,33 +11,18 @@ import type {
   SectionId
 } from '@dataview/engine/contracts/shared'
 
-export interface CollectionDelta<Key> {
-  list?: true
-  update?: readonly Key[]
-  remove?: readonly Key[]
-}
-
-export interface KeyDelta<Key> {
-  update?: readonly Key[]
-  remove?: readonly Key[]
-}
-
-export interface ListedDelta<Key> {
-  ids?: true
-  update?: readonly Key[]
-  remove?: readonly Key[]
-}
+export type { EntityDelta } from '@shared/core'
 
 export interface DocDelta {
   reset?: true
   meta?: true
-  records?: ListedDelta<RecordId>
-  values?: KeyDelta<ValueRef>
-  fields?: ListedDelta<FieldId>
+  records?: SharedEntityDelta<RecordId>
+  values?: SharedEntityDelta<ValueRef>
+  fields?: SharedEntityDelta<FieldId>
   schema?: {
-    fields?: ListedDelta<CustomFieldId>
+    fields?: SharedEntityDelta<CustomFieldId>
   }
-  views?: ListedDelta<ViewId>
+  views?: SharedEntityDelta<ViewId>
 }
 
 export interface ActiveDelta {
@@ -51,10 +37,10 @@ export interface ActiveDelta {
     ordered?: true
     visible?: true
   }
-  fields?: CollectionDelta<FieldId>
-  sections?: CollectionDelta<SectionId>
-  items?: CollectionDelta<ItemId>
-  summaries?: CollectionDelta<SectionId>
+  fields?: SharedEntityDelta<FieldId>
+  sections?: SharedEntityDelta<SectionId>
+  items?: SharedEntityDelta<ItemId>
+  summaries?: SharedEntityDelta<SectionId>
 }
 
 export interface EngineDelta {

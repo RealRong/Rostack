@@ -249,6 +249,7 @@ interface PatchedFamily<TKey, TValue> {
 
 function patchPublishedFamily<TKey extends string, TValue>(input: {
   previous: Family<TKey, TValue>
+  ids: readonly TKey[]
   delta: IdDelta<TKey>
   read(id: TKey): TValue | undefined
 }): PatchedFamily<TKey, TValue>
@@ -521,6 +522,7 @@ selection：
 
 chrome：
 
+- `input.delta.ui.selection`
 - `input.delta.ui.hover`
 - `input.delta.ui.marquee`
 - `input.delta.ui.guides`

@@ -24,6 +24,7 @@ const resetIdDelta = <TId extends string>(
 }
 
 export const createGraphDelta = (): GraphDelta => ({
+  revision: 0,
   order: false,
   entities: {
     nodes: createIdDelta<NodeId>(),
@@ -42,6 +43,7 @@ export const createGraphDelta = (): GraphDelta => ({
 export const resetGraphDelta = (
   delta: GraphDelta
 ) => {
+  delta.revision = 0
   delta.order = false
   resetIdDelta(delta.entities.nodes)
   resetIdDelta(delta.entities.edges)

@@ -1,0 +1,462 @@
+import { describe, expect, it } from 'vitest'
+import { document as documentApi } from '@whiteboard/core/document'
+import type {
+  EdgeId,
+  NodeId,
+  Rect,
+  Size
+} from '@whiteboard/core/types'
+import { createEngine } from '@whiteboard/engine'
+import { createPhaseGraph } from '@shared/projection-runtime'
+import { publishRuntimeResult } from '@shared/projection-runtime/runtime/publish'
+import { createRuntimeState } from '@shared/projection-runtime/runtime/state'
+import { runRuntimeUpdate } from '@shared/projection-runtime/runtime/update'
+import type { Input } from '../src/contracts/editor'
+import {
+  createEmptyInput,
+  createEmptyInputDelta
+} from '../src/runtime/createEmptySnapshot'
+import { createEditorGraphRuntimeSpec } from '../src/runtime/createSpec'
+import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
+
+const createNode = (input: {
+  engine: ReturnType<typeof createEngine>
+  position: { x: number; y: number }
+  text: string
+  size?: Size
+}) => {
+  const result = input.engine.execute({
+    type: 'node.create',
+    input: {
+      type: 'text',
+      position: input.position,
+      size: input.size,
+      data: {
+        text: input.text
+      }
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to create node')
+  }
+
+  return result.data.nodeId
+}
+
+const createEdge = (input: {
+  engine: ReturnType<typeof createEngine>
+  sourceId: NodeId
+  targetId: NodeId
+}) => {
+  const result = input.engine.execute({
+    type: 'edge.create',
+    input: {
+      type: 'straight',
+      source: {
+        kind: 'node',
+        nodeId: input.sourceId
+      },
+      target: {
+        kind: 'node',
+        nodeId: input.targetId
+      }
+    }
+  })
+
+  expect(result.ok).toBe(true)
+  if (!result.ok) {
+    throw new Error('failed to create edge')
+  }
+
+  return result.data.edgeId
+}
+
+const createInput = (input: {
+  engine: ReturnType<typeof createEngine>
+  delta: Input['delta']
+  edit?: Input['session']['edit']
+  selection?: Input['interaction']['selection']
+  hover?: Input['interaction']['hover']
+  visibleWorld?: Rect
+  nodeMeasures?: ReadonlyMap<NodeId, Size>
+}): Input => {
+  const value = createEmptyInput()
+
+  value.document.snapshot = input.engine.current().snapshot
+  value.delta = input.delta
+  value.session.edit = input.edit ?? null
+  value.interaction.selection = input.selection ?? {
+    nodeIds: [],
+    edgeIds: []
+  }
+  value.interaction.hover = input.hover ?? {
+    kind: 'none'
+  }
+  value.viewport.visibleWorld = input.visibleWorld
+  value.measure.text.ready = (input.nodeMeasures?.size ?? 0) > 0
+  value.measure.text.nodes = new Map(
+    [...(input.nodeMeasures ?? new Map())].map(([nodeId, size]) => [
+      nodeId,
+      createEditorGraphTextMeasureEntry(size)
+    ])
+  )
+
+  return value
+}
+
+const createRuntimeHarness = () => {
+  const spec = createEditorGraphRuntimeSpec()
+  return {
+    spec,
+    graph: createPhaseGraph(spec.phases),
+    state: createRuntimeState(
+      spec.createWorking(),
+      spec.createSnapshot()
+    )
+  }
+}
+
+describe('delta-driven publisher', () => {
+  it('patches graph families by touched ids and reuses untouched graph entries', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_publish_graph_delta')
+    })
+    const firstId = createNode({
+      engine,
+      position: { x: 40, y: 40 },
+      text: 'First',
+      size: { width: 120, height: 44 }
+    })
+    const secondId = createNode({
+      engine,
+      position: { x: 240, y: 40 },
+      text: 'Second',
+      size: { width: 120, height: 44 }
+    })
+    const edgeId = createEdge({
+      engine,
+      sourceId: firstId,
+      targetId: secondId
+    })
+    const runtime = createRuntimeHarness()
+
+    const bootstrapDelta = createEmptyInputDelta()
+    bootstrapDelta.document.reset = true
+
+    const bootstrap = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: bootstrapDelta,
+        nodeMeasures: new Map([
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+    publishRuntimeResult(runtime.state, bootstrap)
+
+    const baseline = runtime.state.snapshot
+    const liveDelta = createEmptyInputDelta()
+    liveDelta.graph.nodes.edit.updated.add(firstId)
+
+    const result = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: liveDelta,
+        edit: {
+          kind: 'node',
+          nodeId: firstId,
+          field: 'text',
+          text: 'First node with much wider live content',
+          composing: false,
+          caret: {
+            kind: 'end'
+          }
+        },
+        nodeMeasures: new Map([
+          [firstId, { width: 220, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+
+    expect([...result.change.graph.nodes.all]).toEqual([firstId])
+    expect([...result.change.graph.edges.all]).toEqual([edgeId])
+    expect([...result.change.graph.owners.mindmaps.all]).toEqual([])
+    expect([...result.change.graph.owners.groups.all]).toEqual([])
+    expect(result.snapshot.graph.nodes.ids).toBe(baseline.graph.nodes.ids)
+    expect(result.snapshot.graph.nodes.byId.get(firstId)).not.toBe(
+      baseline.graph.nodes.byId.get(firstId)
+    )
+    expect(result.snapshot.graph.nodes.byId.get(secondId)).toBe(
+      baseline.graph.nodes.byId.get(secondId)
+    )
+  })
+
+  it('publishes viewport-only updates through scene only', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_publish_scene_only')
+    })
+    const nodeId = createNode({
+      engine,
+      position: { x: 40, y: 40 },
+      text: 'Node',
+      size: { width: 120, height: 44 }
+    })
+    const runtime = createRuntimeHarness()
+
+    const bootstrapDelta = createEmptyInputDelta()
+    bootstrapDelta.document.reset = true
+
+    const bootstrap = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: bootstrapDelta,
+        nodeMeasures: new Map([
+          [nodeId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+    publishRuntimeResult(runtime.state, bootstrap)
+
+    const baseline = runtime.state.snapshot
+    const viewportDelta = createEmptyInputDelta()
+    viewportDelta.scene.viewport = true
+
+    const result = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: viewportDelta,
+        visibleWorld: {
+          x: 0,
+          y: 0,
+          width: 10,
+          height: 10
+        },
+        nodeMeasures: new Map([
+          [nodeId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+
+    expect([...result.change.graph.nodes.all]).toEqual([])
+    expect([...result.change.graph.edges.all]).toEqual([])
+    expect([...result.change.ui.nodes.all]).toEqual([])
+    expect([...result.change.ui.edges.all]).toEqual([])
+    expect(result.change.ui.selection.changed).toBe(false)
+    expect(result.change.ui.chrome.changed).toBe(false)
+    expect(result.change.scene.changed).toBe(true)
+    expect(result.snapshot.graph).toBe(baseline.graph)
+    expect(result.snapshot.ui).toBe(baseline.ui)
+    expect(result.snapshot.scene.items).toBe(baseline.scene.items)
+    expect(result.snapshot.scene.visible.nodeIds).toEqual([])
+  })
+
+  it('publishes selection-only updates through ui selection, chrome, and touched ids', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_publish_selection_only')
+    })
+    const firstId = createNode({
+      engine,
+      position: { x: 40, y: 40 },
+      text: 'First',
+      size: { width: 120, height: 44 }
+    })
+    const secondId = createNode({
+      engine,
+      position: { x: 240, y: 40 },
+      text: 'Second',
+      size: { width: 120, height: 44 }
+    })
+    const edgeId = createEdge({
+      engine,
+      sourceId: firstId,
+      targetId: secondId
+    })
+    const runtime = createRuntimeHarness()
+
+    const bootstrapDelta = createEmptyInputDelta()
+    bootstrapDelta.document.reset = true
+
+    const bootstrap = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: bootstrapDelta,
+        nodeMeasures: new Map([
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+    publishRuntimeResult(runtime.state, bootstrap)
+
+    const baseline = runtime.state.snapshot
+    const selectionDelta = createEmptyInputDelta()
+    selectionDelta.ui.selection = true
+
+    const result = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: selectionDelta,
+        selection: {
+          nodeIds: [firstId],
+          edgeIds: [edgeId]
+        },
+        nodeMeasures: new Map([
+          [firstId, { width: 120, height: 44 }],
+          [secondId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+
+    expect([...result.change.graph.nodes.all]).toEqual([])
+    expect([...result.change.graph.edges.all]).toEqual([])
+    expect(result.change.scene.changed).toBe(false)
+    expect(result.change.ui.selection.changed).toBe(true)
+    expect(result.change.ui.chrome.changed).toBe(true)
+    expect([...result.change.ui.nodes.all]).toEqual([firstId])
+    expect([...result.change.ui.edges.all]).toEqual([edgeId])
+    expect(result.snapshot.ui.selection).not.toBe(baseline.ui.selection)
+    expect(result.snapshot.ui.chrome).not.toBe(baseline.ui.chrome)
+    expect(result.snapshot.ui.nodes.byId.get(firstId)?.selected).toBe(true)
+    expect(result.snapshot.ui.nodes.byId.get(secondId)).toBe(
+      baseline.ui.nodes.byId.get(secondId)
+    )
+  })
+
+  it('publishes hover-only updates through chrome and hovered node ui', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_publish_hover_only')
+    })
+    const nodeId = createNode({
+      engine,
+      position: { x: 40, y: 40 },
+      text: 'Node',
+      size: { width: 120, height: 44 }
+    })
+    const runtime = createRuntimeHarness()
+
+    const bootstrapDelta = createEmptyInputDelta()
+    bootstrapDelta.document.reset = true
+
+    const bootstrap = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: bootstrapDelta,
+        nodeMeasures: new Map([
+          [nodeId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+    publishRuntimeResult(runtime.state, bootstrap)
+
+    const result = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: {
+          ...createEmptyInputDelta(),
+          ui: {
+            ...createEmptyInputDelta().ui,
+            hover: true
+          }
+        },
+        hover: {
+          kind: 'node',
+          nodeId
+        },
+        nodeMeasures: new Map([
+          [nodeId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+
+    expect([...result.change.graph.nodes.all]).toEqual([])
+    expect(result.change.scene.changed).toBe(false)
+    expect(result.change.ui.selection.changed).toBe(false)
+    expect(result.change.ui.chrome.changed).toBe(true)
+    expect([...result.change.ui.nodes.all]).toEqual([nodeId])
+    expect([...result.change.ui.edges.all]).toEqual([])
+    expect(result.snapshot.ui.nodes.byId.get(nodeId)?.hovered).toBe(true)
+  })
+
+  it('reuses previous snapshot subtrees on idle updates', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_publish_idle_reuse')
+    })
+    const nodeId = createNode({
+      engine,
+      position: { x: 40, y: 40 },
+      text: 'Node',
+      size: { width: 120, height: 44 }
+    })
+    const runtime = createRuntimeHarness()
+
+    const bootstrapDelta = createEmptyInputDelta()
+    bootstrapDelta.document.reset = true
+
+    const bootstrap = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: bootstrapDelta,
+        nodeMeasures: new Map([
+          [nodeId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+    publishRuntimeResult(runtime.state, bootstrap)
+
+    const baseline = runtime.state.snapshot
+    const result = runRuntimeUpdate({
+      spec: runtime.spec,
+      graph: runtime.graph,
+      state: runtime.state,
+      nextInput: createInput({
+        engine,
+        delta: createEmptyInputDelta(),
+        nodeMeasures: new Map([
+          [nodeId, { width: 120, height: 44 }]
+        ])
+      })
+    })
+
+    expect([...result.change.graph.nodes.all]).toEqual([])
+    expect([...result.change.graph.edges.all]).toEqual([])
+    expect(result.change.scene.changed).toBe(false)
+    expect(result.change.ui.selection.changed).toBe(false)
+    expect(result.change.ui.chrome.changed).toBe(false)
+    expect([...result.change.ui.nodes.all]).toEqual([])
+    expect([...result.change.ui.edges.all]).toEqual([])
+    expect(result.snapshot.graph).toBe(baseline.graph)
+    expect(result.snapshot.scene).toBe(baseline.scene)
+    expect(result.snapshot.ui).toBe(baseline.ui)
+  })
+})

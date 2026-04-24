@@ -2,6 +2,7 @@ import type { WorkingState } from '../contracts/working'
 import { EMPTY_SCENE_LAYERS } from './geometry'
 import { createEmptyDocumentSnapshot } from './createEmptySnapshot'
 import { createGraphDelta } from './graphPatch/delta'
+import { createPublishDelta } from './publish/delta'
 import { createSpatialDelta } from './spatial/update'
 import { createSpatialState } from './spatial/state'
 
@@ -78,7 +79,8 @@ export const createWorking = (): WorkingState => {
     },
     delta: {
       graph: createGraphDelta(),
-      spatial: createSpatialDelta()
+      spatial: createSpatialDelta(),
+      publish: createPublishDelta()
     }
   }
 }

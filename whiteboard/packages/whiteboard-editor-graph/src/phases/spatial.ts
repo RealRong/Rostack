@@ -13,6 +13,7 @@ export const createSpatialPhase = (): SpatialEditorPhase => ({
   run: (context) => {
     const scope = normalizeSpatialPatchScope(context.scope)
     const result = patchSpatial({
+      revision: context.previous.revision + 1,
       graph: context.working.graph,
       snapshot: context.input.document.snapshot,
       graphDelta: context.working.delta.graph,

@@ -15,6 +15,7 @@ import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection-runtime'
 import type {
   GraphDelta,
+  PublishDelta,
   SpatialDelta
 } from './delta'
 import type {
@@ -45,6 +46,7 @@ export interface WorkingState {
   delta: {
     graph: GraphDelta
     spatial: SpatialDelta
+    publish: PublishDelta
   }
 }
 

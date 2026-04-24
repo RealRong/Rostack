@@ -35,32 +35,20 @@ const toCanvasItemRef = (
   id: item.id
 })
 
-const readVisibleRecords = (input: {
-  spatial: SpatialIndexState
-  visibleWorld?: Rect
-}) => {
-  if (input.visibleWorld) {
-    return queryRect({
-      state: input.spatial,
-      worldRect: input.visibleWorld
-    })
-  }
-
-  return queryAll({
-    state: input.spatial
-  })
-}
-
 export const buildSceneSnapshot = (input: {
   snapshot: document.Snapshot
   spatial: SpatialIndexState
   visibleWorld?: Rect
 }): SceneSnapshot => {
   const items = input.snapshot.state.root.canvas.order.map(toSceneItem)
-  const visibleRecords = readVisibleRecords({
-    spatial: input.spatial,
-    visibleWorld: input.visibleWorld
-  })
+  const visibleRecords = input.visibleWorld
+    ? queryRect({
+        state: input.spatial,
+        worldRect: input.visibleWorld
+      })
+    : queryAll({
+        state: input.spatial
+      })
   const visibleKeys = new Set(visibleRecords.map((record) => record.key))
   const visibleItems = items.filter((item) => visibleKeys.has(
     toVisibleItemKey(item)

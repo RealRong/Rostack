@@ -148,8 +148,10 @@ export const createGraphPhase = (): GraphEditorPhase => ({
     const scope = normalizeGraphPatchScope(context.scope)
     const queue = createGraphPatchQueue()
     const delta = context.working.delta.graph
+    const revision = context.previous.revision + 1
 
     resetGraphDelta(delta)
+    delta.revision = revision
     delta.order = scope.reset || scope.order
 
     seedGraphPatchQueue({

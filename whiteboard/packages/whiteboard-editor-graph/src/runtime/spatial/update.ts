@@ -231,6 +231,7 @@ const patchGraphRecords = (input: {
 }
 
 export const createSpatialDelta = (): SpatialDelta => ({
+  revision: 0,
   order: false,
   records: createIdDelta<SpatialKey>(),
   visible: false
@@ -239,6 +240,7 @@ export const createSpatialDelta = (): SpatialDelta => ({
 export const resetSpatialDelta = (
   delta: SpatialDelta
 ) => {
+  delta.revision = 0
   delta.order = false
   resetIdDelta(delta.records)
   delta.visible = false
@@ -314,6 +316,7 @@ export const markSpatialVisibleDirty = (input: {
 }
 
 export const patchSpatial = (input: {
+  revision: number
   graph: GraphState
   snapshot: document.Snapshot
   graphDelta: GraphDelta
@@ -327,6 +330,7 @@ export const patchSpatial = (input: {
   let count = 0
 
   resetSpatialDelta(input.delta)
+  input.delta.revision = input.revision
 
   if (input.scope.reset) {
     resetSpatialState(input.state)

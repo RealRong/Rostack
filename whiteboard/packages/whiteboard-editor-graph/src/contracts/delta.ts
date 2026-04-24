@@ -1,4 +1,7 @@
 import type {
+  Revision,
+} from '@shared/projection-runtime'
+import type {
   EdgeId,
   GroupId,
   MindmapId,
@@ -16,6 +19,7 @@ export interface IdDelta<TId extends string> {
 }
 
 export interface GraphDelta {
+  revision: Revision
   order: boolean
   entities: {
     nodes: IdDelta<NodeId>
@@ -32,9 +36,37 @@ export interface GraphDelta {
 }
 
 export interface SpatialDelta {
+  revision: Revision
   order: boolean
   records: IdDelta<SpatialKey>
   visible: boolean
+}
+
+export interface PublishDelta {
+  graph: GraphPublishDelta
+  scene: ScenePublishDelta
+  ui: UiPublishDelta
+}
+
+export interface GraphPublishDelta {
+  nodes: IdDelta<NodeId>
+  edges: IdDelta<EdgeId>
+  owners: {
+    mindmaps: IdDelta<MindmapId>
+    groups: IdDelta<GroupId>
+  }
+}
+
+export interface ScenePublishDelta {
+  items: boolean
+  visible: boolean
+}
+
+export interface UiPublishDelta {
+  selection: boolean
+  chrome: boolean
+  nodes: IdDelta<NodeId>
+  edges: IdDelta<EdgeId>
 }
 
 export interface GraphPatchScope {

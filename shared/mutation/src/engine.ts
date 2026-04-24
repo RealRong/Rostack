@@ -110,6 +110,7 @@ export interface MutationPublishSpec<Doc, Op, Key, Extra, Publish> {
 export interface MutationHistorySpec<Doc, Op, Key, Extra> {
   capacity?: number
   track(write: Write<Doc, Op, Key, Extra>): boolean
+  clear?(write: Write<Doc, Op, Key, Extra>): boolean
   conflicts(left: Key, right: Key): boolean
 }
 
@@ -530,8 +531,12 @@ export class MutationEngine<
         : {})
     }
 
-    if (input.origin !== 'history') {
-      this.history?.capture(write)
+    if (input.origin !== 'history' && this.history) {
+      if (this.#spec.history?.clear?.(write)) {
+        this.history.clear()
+      } else {
+        this.history.capture(write)
+      }
     }
 
     this.#emitCurrent()

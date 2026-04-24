@@ -15,7 +15,7 @@ import type {
 import {
   getSide,
   getSubtreeIds
-} from '@whiteboard/core/mindmap/query'
+} from '@whiteboard/core/mindmap/tree'
 
 type ComputeEdgeAlignmentResult = {
   key: 'left-to-right' | 'right-to-left' | 'top-to-bottom' | 'bottom-to-top'

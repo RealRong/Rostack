@@ -1,7 +1,8 @@
 import type {
   CustomFieldId,
   CustomFieldKind,
-  FieldId
+  FieldId,
+  Intent as CoreIntent
 } from '@dataview/core/contracts'
 import {
   id as dataviewId
@@ -11,7 +12,6 @@ import {
 } from '@dataview/core/view'
 import type { ActiveViewApi } from '@dataview/engine/contracts/view'
 import type { ActiveViewContext } from '@dataview/engine/active/api/context'
-
 const insertField = (
   base: ActiveViewContext,
   input: {
@@ -37,7 +37,7 @@ const insertField = (
     input.anchor,
     input.side
   )
-  const result = base.dispatch([
+  const result = base.executeMany([
     {
       type: 'field.create',
       input: {
@@ -53,9 +53,9 @@ const insertField = (
         display: viewApi.display.show(view.display, fieldId, beforeFieldId)
       }
     }
-  ])
+  ] as const satisfies readonly CoreIntent[])
 
-  return result.applied
+  return result.ok
     ? fieldId
     : undefined
 }

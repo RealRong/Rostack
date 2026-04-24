@@ -29,7 +29,7 @@ import {
 } from '@dataview/engine/active/publish/base'
 import {
   projectActiveDelta
-} from '@dataview/engine/active/publish/delta'
+} from '@dataview/engine/mutation/delta'
 import {
   publishSections
 } from '@dataview/engine/active/publish/sections'

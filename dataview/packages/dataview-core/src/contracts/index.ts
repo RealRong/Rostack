@@ -1,6 +1,6 @@
 export type {
-  Action,
-  ActionType,
+  Intent,
+  IntentType,
   EditTarget,
   FieldCreateInput,
   FieldOptionPatch,
@@ -14,16 +14,7 @@ export type {
   KanbanViewPatch,
   ViewCreateInput,
   ViewPatch
-} from '@dataview/core/contracts/actions'
-export type {
-  CommitImpact,
-  CommitImpactViewChange,
-  CommitSummary,
-  FieldSchemaAspect,
-  RecordPatchAspect,
-  ViewLayoutAspect,
-  ViewQueryAspect
-} from '@dataview/core/contracts/commit'
+} from '@dataview/core/contracts/intents'
 export type {
   CardLayout,
   CardOptions,

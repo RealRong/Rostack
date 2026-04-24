@@ -9,7 +9,7 @@ import {
 import { createEngine } from '@dataview/engine'
 import {
   projectDocumentDelta
-} from '@dataview/engine/core/delta'
+} from '@dataview/engine/mutation/delta'
 import { entityTable } from '@shared/core'
 
 const VIEW_ID = 'view_table'
@@ -130,7 +130,7 @@ test('document delta omits list refresh on non-structural value writes', () => {
   const output = projectDocumentDelta({
     previous: previousDocument,
     next: nextDocument,
-    impact: {
+    trace: {
       records: {
         touched: new Set(['rec_1'])
       },

@@ -9,6 +9,7 @@ import {
 
 const normalizeDocument = (document: DataDoc): DataDoc => {
   const records = entityTable.normalize.table(document.records)
+  const preferredActiveViewId = documentViews.activeId.resolve(document)
   const nextDocument: DataDoc = {
     schemaVersion: document.schemaVersion,
     records,
@@ -17,11 +18,14 @@ const normalizeDocument = (document: DataDoc): DataDoc => {
       ...document,
       records
     }),
-    activeViewId: undefined,
+    activeViewId: preferredActiveViewId,
     meta: document.meta ? structuredClone(document.meta) : undefined
   }
 
-  nextDocument.activeViewId = documentViews.activeId.resolve(nextDocument)
+  nextDocument.activeViewId = documentViews.activeId.resolve(
+    nextDocument,
+    preferredActiveViewId
+  )
   return nextDocument
 }
 

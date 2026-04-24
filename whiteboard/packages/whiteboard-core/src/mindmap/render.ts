@@ -1,4 +1,4 @@
-import { getSide } from '@whiteboard/core/mindmap/query'
+import { getSide } from '@whiteboard/core/mindmap/tree'
 import type {
   MindmapBranchStyle,
   MindmapLayout,

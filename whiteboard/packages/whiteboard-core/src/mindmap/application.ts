@@ -17,7 +17,7 @@ import type {
 } from '@whiteboard/core/mindmap/types'
 import {
   resolveInsertPlan
-} from '@whiteboard/core/mindmap/query'
+} from '@whiteboard/core/mindmap/tree'
 
 export const DEFAULT_ROOT_MOVE_THRESHOLD = 0.5
 

@@ -1,13 +1,17 @@
-import type { CommitImpact, DataDoc } from '@dataview/core/contracts'
+import type { DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
+import type {
+  DataviewMutationKey,
+  DataviewTrace
+} from '@dataview/core/mutation'
 import type { Write, WriteStream } from '@shared/mutation'
 
 export type EngineWrite = Write<
   DataDoc,
   DocumentOperation,
-  never,
+  DataviewMutationKey,
   {
-    impact: CommitImpact
+    trace: DataviewTrace
   }
 >
 

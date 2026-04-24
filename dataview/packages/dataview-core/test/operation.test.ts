@@ -29,7 +29,7 @@ test('operation apply returns shared mutation shape', () => {
   assert.equal(result.forward[0]?.type, 'document.field.put')
   assert.equal(result.inverse.length, 1)
   assert.equal(result.inverse[0]?.type, 'document.field.remove')
-  assert.ok(result.extra.impact.fields?.inserted?.has('field_notes'))
+  assert.ok(result.extra.trace.fields?.inserted?.has('field_notes'))
 })
 
 test('operation meta marks external bump as non-history', () => {

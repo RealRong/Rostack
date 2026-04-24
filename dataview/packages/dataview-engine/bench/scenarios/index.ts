@@ -18,6 +18,30 @@ const setSingleSortRule = (active, fieldId, direction) => {
   return active.sort.create(fieldId, direction)
 }
 
+const applyHistory = (engine, kind) => {
+  const history = engine.history
+  if (!history) {
+    return
+  }
+
+  const operations = kind === 'undo'
+    ? history.undo()
+    : history.redo()
+  if (!operations) {
+    return
+  }
+
+  const result = engine.apply(operations, {
+    origin: 'history'
+  })
+  if (result.ok) {
+    history.confirm()
+    return
+  }
+
+  history.cancel('restore')
+}
+
 const SCENARIOS = [
   scenario({
     id: 'record.value.points.single',
@@ -148,7 +172,7 @@ const SCENARIOS = [
       engine.records.fields.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
     },
     run: engine => {
-      engine.history.undo()
+      applyHistory(engine, 'undo')
     }
   }),
   scenario({
@@ -160,10 +184,10 @@ const SCENARIOS = [
     },
     prepare: (engine, fixture) => {
       engine.records.fields.set(fixture.ids.groupTarget, fixture.fields.status, STATUS_OPTIONS[2].id)
-      engine.history.undo()
+      applyHistory(engine, 'undo')
     },
     run: engine => {
-      engine.history.redo()
+      applyHistory(engine, 'redo')
     }
   })
 ]

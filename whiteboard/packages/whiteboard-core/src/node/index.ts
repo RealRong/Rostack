@@ -4,10 +4,10 @@ import {
   TEXT_BOOTSTRAP_SIZE
 } from '@whiteboard/core/node/bootstrap'
 import {
-  buildNodeAlignOperations,
-  buildNodeCreateOperation,
-  buildNodeDistributeOperations
-} from '@whiteboard/core/node/commands'
+  createNodeOp,
+  planNodeAlignOps,
+  planNodeDistributeOps
+} from '@whiteboard/core/node/ops'
 import {
   matchDrawRect,
   readDrawBaseSize,
@@ -250,10 +250,10 @@ export const node = {
     idsInRect: getNodeIdsInRect,
     matchRect: matchCanvasNodeRect
   },
-  command: {
-    buildCreate: buildNodeCreateOperation,
-    buildAlign: buildNodeAlignOperations,
-    buildDistribute: buildNodeDistributeOperations
+  op: {
+    create: createNodeOp,
+    align: planNodeAlignOps,
+    distribute: planNodeDistributeOps
   },
   layout: {
     align: alignNodes,

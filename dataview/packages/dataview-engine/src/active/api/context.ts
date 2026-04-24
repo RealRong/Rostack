@@ -1,17 +1,18 @@
 import type {
-  Action,
   DataDoc,
   Field,
+  Intent as CoreIntent,
   View,
   ViewPatch
 } from '@dataview/core/contracts'
 import type {
-  ActionResult
-} from '@dataview/engine/contracts/result'
-import type {
   ActiveViewApi,
   ViewState
 } from '@dataview/engine/contracts/view'
+import type {
+  BatchExecuteResult,
+  ExecuteResult,
+} from '@dataview/engine/types/intent'
 import {
   createDocumentReader,
   type DocumentReader
@@ -20,14 +21,16 @@ import {
 export interface ActiveContextOptions {
   document: () => DataDoc
   active: () => ViewState | undefined
-  dispatch: (action: Action | readonly Action[]) => ActionResult
+  execute: (intent: CoreIntent) => ExecuteResult
+  executeMany: (intents: readonly CoreIntent[]) => BatchExecuteResult
 }
 
 export interface ActiveViewContext {
   id: ActiveViewApi['id']
   state: ActiveViewApi['state']
   reader: DocumentReader
-  dispatch: ActiveContextOptions['dispatch']
+  execute: ActiveContextOptions['execute']
+  executeMany: ActiveContextOptions['executeMany']
   view: () => View | undefined
   resolveGroupField: (view?: View) => Field | undefined
   patchView: (
@@ -51,11 +54,11 @@ export const createActiveContext = (
 
     const nextPatch = resolve(currentView, reader)
     return nextPatch
-      ? options.dispatch({
+      ? options.execute({
           type: 'view.patch',
           id: viewId,
           patch: nextPatch
-        }).applied
+        }).ok
       : false
   }
   const resolveGroupField = (
@@ -71,7 +74,8 @@ export const createActiveContext = (
     id: () => options.active()?.view.id,
     state: options.active,
     reader,
-    dispatch: options.dispatch,
+    execute: options.execute,
+    executeMany: options.executeMany,
     view,
     resolveGroupField,
     patchView

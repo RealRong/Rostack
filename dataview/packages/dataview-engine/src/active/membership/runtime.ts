@@ -1,4 +1,6 @@
-import { impact as commitImpact } from '@dataview/core/commit/impact'
+import {
+  dataviewTrace
+} from '@dataview/core/mutation'
 import type {
   View,
   ViewId
@@ -53,12 +55,10 @@ const resolveMembershipAction = (input: {
   queryDelta: QueryDelta
   indexDelta?: IndexDelta
 }): DeriveAction => {
-  const commit = input.impact.commit
-
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || commitImpact.has.activeView(commit)
+    || dataviewTrace.has.activeView(input.impact.trace)
   ) {
     return 'rebuild'
   }
@@ -75,9 +75,9 @@ const resolveMembershipAction = (input: {
   }
 
   if (
-    commitImpact.has.viewQuery(commit, input.activeViewId, ['group'])
-    || commitImpact.has.fieldSchema(commit, groupField)
-    || commitImpact.has.recordSetChange(commit)
+    dataviewTrace.has.viewQuery(input.impact.trace, input.activeViewId, ['group'])
+    || dataviewTrace.has.fieldSchema(input.impact.trace, groupField)
+    || dataviewTrace.has.recordSetChange(input.impact.trace)
   ) {
     return 'rebuild'
   }

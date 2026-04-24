@@ -1,42 +1,64 @@
 import type {
-  Action,
   CustomField,
   CustomFieldId,
   CustomFieldKind,
   DataDoc,
+  DataRecord,
   FieldId,
   FieldOption,
   RecordFieldWriteManyInput,
   RecordId,
-  DataRecord,
   StatusCategory,
   View,
   ViewId,
   ViewType
 } from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type {
-  HistoryApi,
-  HistoryOptions
+  DocumentOperation
+} from '@dataview/core/contracts/operations'
+import type {
+  MutationOptions,
+  MutationResult
+} from '@shared/mutation'
+import type {
+  ActiveViewApi
+} from '@dataview/engine/contracts/view'
+import type {
+  DataviewDelta
+} from '@dataview/engine/contracts/delta'
+import type {
+  DataviewHistory,
+  DataviewHistoryConfig
 } from '@dataview/engine/contracts/history'
+import type {
+  DataviewCurrent
+} from '@dataview/engine/contracts/result'
 import type {
   PerformanceApi,
   PerformanceOptions
 } from '@dataview/engine/contracts/performance'
 import type {
-  ActionResult,
-  CommitResult,
-  EngineResult
-} from '@dataview/engine/contracts/result'
-import type {
+  EngineWrite,
   EngineWrites
 } from '@dataview/engine/contracts/write'
 import type {
-  ActiveViewApi
-} from '@dataview/engine/contracts/view'
-import type { Origin } from '@shared/mutation'
+  BatchExecuteResult,
+  DataviewErrorCode,
+  ExecuteResult,
+  Intent,
+  IntentData,
+  IntentKind
+} from '@dataview/engine/types/intent'
 
 export type { RecordFieldWriteManyInput } from '@dataview/core/contracts'
+export type {
+  BatchExecuteResult,
+  DataviewErrorCode,
+  ExecuteResult,
+  Intent,
+  IntentData,
+  IntentKind
+} from '@dataview/engine/types/intent'
 export type {
   CellRef,
   FieldList,
@@ -55,16 +77,8 @@ export type {
 
 export interface CreateEngineOptions {
   document: DataDoc
-  history?: HistoryOptions
+  history?: Partial<DataviewHistoryConfig>
   performance?: PerformanceOptions
-}
-
-export interface ExecuteOptions {
-  origin?: Origin
-}
-
-export interface ApplyOptions {
-  origin?: Origin
 }
 
 export interface ViewsApi {
@@ -135,28 +149,33 @@ export interface RecordsApi {
   fields: RecordFieldWriteApi
 }
 
-export interface DocumentApi {
-  get: () => DataDoc
-  replace: (document: DataDoc) => DataDoc
-}
-
 export interface Engine {
-  result: () => EngineResult
-  subscribe: (listener: (result: EngineResult) => void) => () => void
   readonly writes: EngineWrites
-  active: ActiveViewApi
-  views: ViewsApi
-  fields: FieldsApi
-  records: RecordsApi
-  document: DocumentApi
-  history: HistoryApi
-  performance: PerformanceApi
-  execute: (
-    action: Action | readonly Action[],
-    options?: ExecuteOptions
-  ) => ActionResult
-  apply: (
+  readonly history?: DataviewHistory
+  readonly active: ActiveViewApi
+  readonly views: ViewsApi
+  readonly fields: FieldsApi
+  readonly records: RecordsApi
+  readonly performance: PerformanceApi
+
+  current(): DataviewCurrent
+  subscribe(listener: (current: DataviewCurrent) => void): () => void
+
+  doc(): DataDoc
+  load(document: DataDoc): void
+
+  execute<K extends IntentKind>(
+    intent: Intent<K>,
+    options?: MutationOptions
+  ): ExecuteResult<K>
+
+  executeMany(
+    intents: readonly Intent[],
+    options?: MutationOptions
+  ): BatchExecuteResult
+
+  apply(
     operations: readonly DocumentOperation[],
-    options?: ApplyOptions
-  ) => CommitResult
+    options?: MutationOptions
+  ): MutationResult<void, EngineWrite, DataviewErrorCode>
 }

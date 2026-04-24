@@ -1,6 +1,6 @@
 import { getAnchorFromPoint } from '@whiteboard/core/edge/anchor'
 import {
-  buildEdgeCreateOperation,
+  createEdgeOp,
   clearRoute,
   insertRoutePoint,
   moveEdge,
@@ -8,7 +8,7 @@ import {
   moveRoutePoint,
   removeRoutePoint,
   setRoutePoints
-} from '@whiteboard/core/edge/commands'
+} from '@whiteboard/core/edge/ops'
 import {
   DEFAULT_EDGE_ANCHOR_OFFSET,
   resolveAnchorFromPoint,
@@ -128,8 +128,8 @@ export const edge = {
   duplicate: {
     duplicate: createEdgeDuplicateInput
   },
-  command: {
-    buildCreate: buildEdgeCreateOperation
+  op: {
+    create: createEdgeOp
   },
   edit: {
     move: moveEdge,

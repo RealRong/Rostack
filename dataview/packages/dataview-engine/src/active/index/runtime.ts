@@ -88,9 +88,9 @@ const createIndexDeriveContext = (
   touchedRecords: impact.touchedRecords,
   recordSetChanged: impact.recordSetChanged,
   changed: Boolean(
-    impact.commit.reset
-    || impact.commit.records
-    || impact.commit.fields?.schema
+    impact.trace.reset
+    || impact.trace.records
+    || impact.trace.fields?.schema
   )
 })
 

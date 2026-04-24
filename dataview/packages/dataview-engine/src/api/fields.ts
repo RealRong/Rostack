@@ -1,26 +1,35 @@
 import type {
-  Action,
   CustomField,
   CustomFieldId,
   DataDoc,
-  FieldOption
+  FieldOption,
+  Intent as CoreIntent
 } from '@dataview/core/contracts'
 import {
   document as documentApi
 } from '@dataview/core/document'
 import {
-  id as dataviewId
-} from '@dataview/core/id'
-import {
   field as fieldApi
 } from '@dataview/core/field'
+import {
+  id as dataviewId
+} from '@dataview/core/id'
 import { string } from '@shared/core'
-import type {
-  ActionResult
-} from '@dataview/engine/contracts/result'
 import type {
   FieldsApi
 } from '@dataview/engine/contracts/api'
+import type {
+  ExecuteResult,
+} from '@dataview/engine/types/intent'
+
+const readId = (
+  result: ExecuteResult
+): string | undefined => result.ok
+  && typeof result.data === 'object'
+  && result.data !== null
+  && 'id' in result.data
+    ? String(result.data.id)
+    : undefined
 
 const getOptionField = (
   field?: CustomField
@@ -32,17 +41,16 @@ const findAddedOption = (
   previous: readonly FieldOption[],
   next: readonly FieldOption[]
 ) => {
-  const previousIds = new Set(previous.map(option => option.id))
-  return next.find(option => !previousIds.has(option.id))
+  const previousIds = new Set(previous.map((option) => option.id))
+  return next.find((option) => !previousIds.has(option.id))
 }
 
 export const createFieldsApi = (options: {
   document: () => DataDoc
-  dispatch: (action: Action | readonly Action[]) => ActionResult
+  execute: (intent: CoreIntent) => ExecuteResult
 }): FieldsApi => {
-  const dispatch = options.dispatch
   const listFields = () => documentApi.schema.fields.ids(options.document())
-    .flatMap(fieldId => {
+    .flatMap((fieldId) => {
       const field = documentApi.schema.fields.get(options.document(), fieldId)
       return field ? [field] : []
     })
@@ -52,14 +60,14 @@ export const createFieldsApi = (options: {
   return {
     list: listFields,
     get: getField,
-    create: input => {
+    create: (input) => {
       const name = string.trimToUndefined(input.name)
       if (!name) {
         return undefined
       }
 
       const fieldId = dataviewId.create('field')
-      const result = dispatch({
+      const result = options.execute({
         type: 'field.create',
         input: {
           id: fieldId,
@@ -68,9 +76,7 @@ export const createFieldsApi = (options: {
         }
       })
 
-      return result.applied
-        ? fieldId
-        : undefined
+      return readId(result)
     },
     rename: (id, name) => {
       const nextName = string.trimToUndefined(name)
@@ -78,7 +84,7 @@ export const createFieldsApi = (options: {
         return
       }
 
-      dispatch({
+      options.execute({
         type: 'field.patch',
         id,
         patch: {
@@ -91,38 +97,38 @@ export const createFieldsApi = (options: {
         return
       }
 
-      dispatch({
+      options.execute({
         type: 'field.patch',
         id,
         patch
       })
     },
     replace: (id, field) => {
-      dispatch({
+      options.execute({
         type: 'field.replace',
         id,
         field
       })
     },
     setKind: (id, kind) => {
-      dispatch({
+      options.execute({
         type: 'field.setKind',
         id,
         kind
       })
     },
-    duplicate: id => {
-      const result = dispatch({
+    duplicate: (id) => {
+      const result = options.execute({
         type: 'field.duplicate',
         id
       })
 
-      return result.created?.fields?.[0]
+      return readId(result)
     },
-    remove: id => dispatch({
+    remove: (id) => options.execute({
       type: 'field.remove',
       id
-    }).applied,
+    }).ok,
     options: {
       create: (id, input) => {
         const field = getOptionFieldById(id)
@@ -139,12 +145,12 @@ export const createFieldsApi = (options: {
           }
         }
 
-        const result = dispatch({
+        const result = options.execute({
           type: 'field.option.create',
           field: id,
           ...(nextName ? { name: nextName } : {})
         })
-        if (!result.applied) {
+        if (!result.ok) {
           return undefined
         }
 
@@ -156,20 +162,20 @@ export const createFieldsApi = (options: {
         return findAddedOption(currentOptions, fieldApi.option.read.list(nextField))
       },
       setOrder: (id, order) => {
-        dispatch({
+        options.execute({
           type: 'field.option.setOrder',
           field: id,
           order: [...order]
         })
       },
-      patch: input => {
+      patch: (input) => {
         const field = getOptionFieldById(input.field)
         if (!field) {
           return undefined
         }
 
         const currentOptions = fieldApi.option.read.list(field)
-        const target = currentOptions.find(option => option.id === input.option)
+        const target = currentOptions.find((option) => option.id === input.option)
         if (!target) {
           return undefined
         }
@@ -186,7 +192,7 @@ export const createFieldsApi = (options: {
           }
         }
 
-        const result = dispatch({
+        const result = options.execute({
           type: 'field.option.patch',
           field: input.field,
           option: input.option,
@@ -196,19 +202,17 @@ export const createFieldsApi = (options: {
             ...(input.patch.category !== undefined ? { category: input.patch.category } : {})
           }
         })
-        if (!result.applied) {
-          return result.issues.length
-            ? undefined
-            : target
+        if (!result.ok) {
+          return undefined
         }
 
         const nextField = getOptionFieldById(input.field)
         return nextField
-          ? fieldApi.option.read.list(nextField).find((option: FieldOption) => option.id === input.option)
+          ? fieldApi.option.read.list(nextField).find((option) => option.id === input.option)
           : undefined
       },
-      remove: input => {
-        dispatch({
+      remove: (input) => {
+        options.execute({
           type: 'field.option.remove',
           field: input.field,
           option: input.option

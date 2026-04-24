@@ -81,7 +81,7 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
     { kind: 'node', id: last.id }
   ]
 
-  const result = nodeApi.command.buildDistribute({
+  const result = nodeApi.op.distribute({
     ids: [first.id, middle.id, last.id],
     doc,
     nodeSize: DEFAULT_SIZE,

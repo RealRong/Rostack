@@ -1,12 +1,12 @@
 import { json } from '@shared/core'
-import { buildEdgeCreateOperation } from '@whiteboard/core/edge/commands'
+import { createEdgeOp } from '@whiteboard/core/edge/ops'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { getNodesBoundingRect } from '@whiteboard/core/node/group'
 import { createFrameQuery } from '@whiteboard/core/node/frame'
-import { buildNodeCreateOperation } from '@whiteboard/core/node/commands'
+import { createNodeOp } from '@whiteboard/core/node/ops'
 import { createId } from '@whiteboard/core/id'
 import { err, ok } from '@whiteboard/core/result'
 import type {
@@ -773,7 +773,7 @@ export const exportSliceFromSelection = ({
   })
 }
 
-export const buildInsertSliceOperations = ({
+export const createInsertSliceOps = ({
   doc,
   slice,
   nodeSize,
@@ -821,7 +821,7 @@ export const buildInsertSliceOperations = ({
       return err('invalid', `Node ${sourceNode.id} could not be remapped.`)
     }
 
-    const planned = buildNodeCreateOperation({
+    const planned = createNodeOp({
       payload: remapSliceNodeInput({
         node: sourceNode,
         nextNodeId,
@@ -859,7 +859,7 @@ export const buildInsertSliceOperations = ({
       return err('invalid', `Edge ${sourceEdge.id} references nodes outside the slice.`)
     }
 
-    const planned = buildEdgeCreateOperation({
+    const planned = createEdgeOp({
       payload,
       doc: withCreatedEdges(withCreatedNodes(doc, duplicatedNodeOperations), duplicatedEdgeOperations),
       registries,

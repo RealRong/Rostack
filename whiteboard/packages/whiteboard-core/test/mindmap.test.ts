@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 
-test('mindmap commands mutate the authored tree directly', () => {
+test('mindmap tree helpers mutate the authored tree directly', () => {
   let nodeSeq = 1
   const idGenerator = {
     nodeId: () => `node_${nodeSeq++}`
@@ -12,7 +12,7 @@ test('mindmap commands mutate the authored tree directly', () => {
   assert.equal(tree.rootNodeId, 'node_1')
   assert.deepEqual(tree.children[tree.rootNodeId], [])
 
-  const addRight = mindmapApi.command.addChild(
+  const addRight = mindmapApi.tree.addChild(
     tree,
     tree.rootNodeId,
     { kind: 'text', text: 'child-1' },
@@ -20,7 +20,7 @@ test('mindmap commands mutate the authored tree directly', () => {
   )
   assert.ok(addRight.ok)
 
-  const addLeft = mindmapApi.command.addChild(
+  const addLeft = mindmapApi.tree.addChild(
     addRight.data.tree,
     tree.rootNodeId,
     { kind: 'text', text: 'child-2' },
@@ -33,7 +33,7 @@ test('mindmap commands mutate the authored tree directly', () => {
   assert.equal(tree2.nodes[rightChildId]?.side, 'right')
   assert.equal(tree2.nodes[leftChildId]?.side, 'left')
 
-  const move = mindmapApi.command.moveSubtree(tree2, {
+  const move = mindmapApi.tree.moveSubtree(tree2, {
     nodeId: leftChildId,
     parentId: rightChildId
   })
@@ -41,7 +41,7 @@ test('mindmap commands mutate the authored tree directly', () => {
   assert.equal(move.data.tree.nodes[leftChildId]?.parentId, rightChildId)
   assert.equal(move.data.tree.nodes[leftChildId]?.side, undefined)
 
-  const removed = mindmapApi.command.removeSubtree(move.data.tree, {
+  const removed = mindmapApi.tree.removeSubtree(move.data.tree, {
     nodeId: rightChildId
   })
   assert.ok(removed.ok)
@@ -55,7 +55,7 @@ test('mindmap layout outputs coordinates for authored nodes', () => {
     nodeId: () => `node_${nodeSeq++}`
   }
   const tree = mindmapApi.tree.create({}, { idGenerator })
-  const add = mindmapApi.command.addChild(
+  const add = mindmapApi.tree.addChild(
     tree,
     tree.rootNodeId,
     { kind: 'text', text: 'child' },
@@ -76,7 +76,7 @@ test('mindmap layout outputs coordinates for authored nodes', () => {
 
 test('mindmap patch only updates layout authored data', () => {
   const tree = mindmapApi.tree.create()
-  const result = mindmapApi.command.patchTree(tree, {
+  const result = mindmapApi.tree.patch(tree, {
     layout: {
       mode: 'tidy',
       hGap: 180
@@ -98,7 +98,7 @@ test('mindmap insertNode inserts a new parent in the authored tree', () => {
   }
 
   const tree = mindmapApi.tree.create({}, { idGenerator })
-  const childResult = mindmapApi.command.addChild(
+  const childResult = mindmapApi.tree.addChild(
     tree,
     tree.rootNodeId,
     { kind: 'text', text: 'child' },
@@ -106,7 +106,7 @@ test('mindmap insertNode inserts a new parent in the authored tree', () => {
   )
   assert.ok(childResult.ok)
 
-  const wrapResult = mindmapApi.command.insertNode(
+  const wrapResult = mindmapApi.tree.insertNode(
     childResult.data.tree,
     {
       kind: 'parent',

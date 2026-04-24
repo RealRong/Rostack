@@ -2527,7 +2527,7 @@ export const applyPerfPreset = (input: {
   }
 
   const document = preset.createDocument()
-  input.engine.document.replace(document)
+  input.engine.load(document)
 
   return {
     preset,

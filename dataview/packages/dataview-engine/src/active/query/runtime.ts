@@ -1,4 +1,6 @@
-import { impact as commitImpact } from '@dataview/core/commit/impact'
+import {
+  dataviewTrace
+} from '@dataview/core/mutation'
 import type {
   FieldId,
   RecordId,
@@ -149,12 +151,12 @@ const resolveQueryAction = (input: {
   plan: QueryPlan
   previous?: QueryState
 }): DeriveAction => {
-  const commit = input.impact.commit
+  const trace = input.impact.trace
 
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || commitImpact.has.activeView(commit)
+    || dataviewTrace.has.activeView(trace)
   ) {
     return 'rebuild'
   }
@@ -164,12 +166,12 @@ const resolveQueryAction = (input: {
   }
 
   for (const fieldId of input.plan.watch.filter) {
-    if (commitImpact.has.fieldSchema(commit, fieldId)) {
+    if (dataviewTrace.has.fieldSchema(trace, fieldId)) {
       return 'sync'
     }
   }
   for (const fieldId of input.plan.watch.sort) {
-    if (commitImpact.has.fieldSchema(commit, fieldId)) {
+    if (dataviewTrace.has.fieldSchema(trace, fieldId)) {
       return 'sync'
     }
   }
@@ -179,7 +181,7 @@ const resolveQueryAction = (input: {
     }
   } else {
     for (const fieldId of input.plan.watch.search) {
-      if (commitImpact.has.fieldSchema(commit, fieldId)) {
+      if (dataviewTrace.has.fieldSchema(trace, fieldId)) {
         return 'sync'
       }
     }
@@ -191,7 +193,7 @@ const resolveQueryAction = (input: {
   }
 
   if (
-    commitImpact.has.recordSetChange(commit)
+    dataviewTrace.has.recordSetChange(trace)
     || setCore.intersectsValues(input.plan.watch.filter, changedFields)
     || setCore.intersectsValues(input.plan.watch.sort, changedFields)
     || (
@@ -213,16 +215,15 @@ const hasSortInputChanges = (input: {
   impact: BaseImpact
   plan: QueryPlan
 }): boolean => {
-  const commit = input.impact.commit
   if (
     input.impact.recordSetChanged
-    || commitImpact.has.viewQuery(commit, input.activeViewId, ['sort'])
+    || dataviewTrace.has.viewQuery(input.impact.trace, input.activeViewId, ['sort'])
   ) {
     return true
   }
 
   for (const fieldId of input.plan.watch.sort) {
-    if (commitImpact.has.fieldSchema(commit, fieldId)) {
+    if (dataviewTrace.has.fieldSchema(input.impact.trace, fieldId)) {
       return true
     }
   }
@@ -258,7 +259,7 @@ const resolveQueryReuse = (input: {
   const canReuseOrdered = canReuseMatched
     && (
       input.view.sort.rules.order.length > 0
-      || !commitImpact.has.viewQuery(input.impact.commit, input.activeViewId, ['order'])
+      || !dataviewTrace.has.viewQuery(input.impact.trace, input.activeViewId, ['order'])
     )
 
   if (!canReuseMatched && !canReuseOrdered) {

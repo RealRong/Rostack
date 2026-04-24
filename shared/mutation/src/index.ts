@@ -10,11 +10,13 @@ export type {
 } from './meta'
 export { compile } from './compiler'
 export type {
+  CompileControl,
   CompileCtx,
   CompileOne,
   CompileResult,
   Issue
 } from './compiler'
+export { compileControl } from './compiler'
 export { apply } from './apply'
 export type {
   ApplyCtx,

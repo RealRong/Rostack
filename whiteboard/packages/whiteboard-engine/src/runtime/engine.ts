@@ -3,8 +3,6 @@ import {
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createRegistries } from '@whiteboard/core/kernel'
-import { META } from '@whiteboard/core/spec/operation'
-import type { Operation } from '@whiteboard/core/types'
 import { resolveBoardConfig } from '../config'
 import type {
   CreateEngineOptions,
@@ -12,13 +10,14 @@ import type {
   EngineHistoryConfig,
   EnginePublish
 } from '../contracts/document'
-import { createWhiteboardMutationSpec } from '../mutation'
-import { DEFAULT_ENGINE_HISTORY_CONFIG } from '../mutation/spec'
 import type {
   ExecuteResult,
   Intent,
   IntentKind
-} from '../types/intent'
+} from '../contracts/intent'
+import { createWhiteboardMutationSpec } from '../mutation'
+import { DEFAULT_ENGINE_HISTORY_CONFIG } from '../mutation/spec'
+import { failure } from '../result'
 
 const resolveIntentOrigin = (
   intent: Intent,
@@ -35,31 +34,6 @@ const resolveIntentOrigin = (
     ?? 'user'
 }
 
-const shouldTrackHistoryOrigin = (
-  origin: MutationOrigin,
-  config: EngineHistoryConfig
-): boolean => {
-  if (!config.enabled || origin === 'history' || origin === 'load') {
-    return false
-  }
-  if (origin === 'system') {
-    return config.captureSystem
-  }
-  if (origin === 'remote') {
-    return config.captureRemote
-  }
-  return true
-}
-
-const shouldClearHistory = (
-  write: {
-    origin: MutationOrigin
-    forward: readonly Operation[]
-  },
-  config: EngineHistoryConfig
-): boolean => shouldTrackHistoryOrigin(write.origin, config)
-  && write.forward.some((op) => META[op.type].sync === 'checkpoint')
-
 const readPublish = (
   publish?: EnginePublish
 ): EnginePublish => {
@@ -67,6 +41,40 @@ const readPublish = (
     throw new Error('Whiteboard engine publish is unavailable.')
   }
   return publish
+}
+
+const mapExecuteFailure = <K extends IntentKind>(
+  result: ExecuteResult<K>
+): ExecuteResult<K> => {
+  if (result.ok) {
+    return result
+  }
+  if (
+    result.error.code !== 'mutation_engine.compile.blocked'
+    || typeof result.error.details !== 'object'
+    || result.error.details === null
+    || !('issues' in result.error.details)
+  ) {
+    return result
+  }
+
+  const issues = (result.error.details as {
+    issues?: readonly {
+      code: string
+      message: string
+      details?: unknown
+    }[]
+  }).issues
+  const issue = issues?.[0]
+  if (!issue || (issue.code !== 'invalid' && issue.code !== 'cancelled')) {
+    return result
+  }
+
+  return failure(
+    issue.code,
+    issue.message,
+    issue.details
+  ) as ExecuteResult<K>
 }
 
 export const createEngine = ({
@@ -92,14 +100,6 @@ export const createEngine = ({
     })
   })
 
-  if (core.history) {
-    core.writes.subscribe((write) => {
-      if (shouldClearHistory(write, resolvedHistory)) {
-        core.history?.clear()
-      }
-    })
-  }
-
   if (onDocumentChange) {
     let currentDocument = core.current().doc
     core.subscribe((current) => {
@@ -119,9 +119,11 @@ export const createEngine = ({
     subscribe: (listener) => core.subscribe((current) => {
       listener(readPublish(current.publish))
     }),
-    execute: ((intent, options) => core.execute(intent as never, {
-      origin: resolveIntentOrigin(intent, options?.origin)
-    }) as ExecuteResult<IntentKind>) as Engine['execute'],
+    execute: ((intent, options) => mapExecuteFailure(
+      core.execute(intent as never, {
+        origin: resolveIntentOrigin(intent, options?.origin)
+      }) as ExecuteResult<IntentKind>
+    )) as Engine['execute'],
     apply: (ops, options) => core.apply(ops, {
       origin: options?.origin ?? 'user'
     })

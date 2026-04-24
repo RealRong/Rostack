@@ -239,6 +239,31 @@ const createEngineForTest = options => createEngine({
     : {})
 })
 
+const applyHistory = (engine, kind) => {
+  const history = engine.history
+  if (!history) {
+    return false
+  }
+
+  const operations = kind === 'undo'
+    ? history.undo()
+    : history.redo()
+  if (!operations) {
+    return false
+  }
+
+  const result = engine.apply(operations, {
+    origin: 'history'
+  })
+  if (result.ok) {
+    history.confirm()
+    return true
+  }
+
+  history.cancel('restore')
+  return false
+}
+
 const readViewState = engine => engine.active.state()
 
 const itemIdByRecordId = (engine, recordId) => {
@@ -491,8 +516,8 @@ test('engine.subscribe keeps active boundaries inside one active pipeline', () =
   let idEvents = 0
   let sortEvents = 0
   const unsubscribe = engine.subscribe(result => {
-    const delta = result.delta?.active
-    const nextViewId = result.snapshot.active?.view.id
+    const delta = result.publish?.delta?.active
+    const nextViewId = result.publish?.active?.view.id
     if (nextViewId !== previousViewId) {
       idEvents += 1
       previousViewId = nextViewId
@@ -524,7 +549,7 @@ test('engine.subscribe keeps active boundaries inside one active pipeline', () =
   unsubscribe()
 })
 
-test('engine.document.replace publishes coherent active view state in one step', () => {
+test('engine.load publishes coherent active view state in one step', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
@@ -533,12 +558,12 @@ test('engine.document.replace publishes coherent active view state in one step',
 
   const unsubscribe = engine.subscribe(() => {
     documentEvents += 1
-    assert.equal(engine.document.get().activeViewId, VIEW_TABLE)
+    assert.equal(engine.doc().activeViewId, VIEW_TABLE)
     assert.equal(engine.active.id(), VIEW_TABLE)
     assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1'])
   })
 
-  engine.document.replace(nextDocument)
+  engine.load(nextDocument)
 
   assert.equal(documentEvents, 1)
   assert.equal(engine.active.id(), VIEW_TABLE)
@@ -1039,7 +1064,7 @@ test('engine.active.records.create rejects unsupported effective filter rules', 
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.document.get().records.order]
+  const beforeOrder = [...engine.doc().records.order]
 
   addFilterRule(openView(engine, VIEW_TABLE), TITLE_FIELD_ID, {
     presetId: 'contains',
@@ -1053,14 +1078,14 @@ test('engine.active.records.create rejects unsupported effective filter rules', 
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.document.get().records.order, beforeOrder)
+  assert.deepEqual(engine.doc().records.order, beforeOrder)
 })
 
 test('engine.active.records.create rejects explicit values that conflict with the target section', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.document.get().records.order]
+  const beforeOrder = [...engine.doc().records.order]
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
 
@@ -1073,14 +1098,14 @@ test('engine.active.records.create rejects explicit values that conflict with th
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.document.get().records.order, beforeOrder)
+  assert.deepEqual(engine.doc().records.order, beforeOrder)
 })
 
 test('engine.active.records.create rejects conflicting group and filter defaults', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.document.get().records.order]
+  const beforeOrder = [...engine.doc().records.order]
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
@@ -1096,7 +1121,7 @@ test('engine.active.records.create rejects conflicting group and filter defaults
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.document.get().records.order, beforeOrder)
+  assert.deepEqual(engine.doc().records.order, beforeOrder)
 })
 
 test('engine.active.records.create uses before as context only when sort is active', () => {
@@ -1335,20 +1360,20 @@ test('engine.active reconcile keeps undo redo equivalent across sequential delta
   engine.records.fields.set('rec_1', FIELD_STATUS, 'doing')
   const afterGroupMove = viewSnapshot(engine)
 
-  assert.equal(engine.history.canUndo(), true)
-  assert.equal(engine.history.canRedo(), false)
+  assert.equal(engine.history?.state().canUndo, true)
+  assert.equal(engine.history?.state().canRedo, false)
 
-  engine.history.undo()
+  assert.equal(applyHistory(engine, 'undo'), true)
   assert.deepEqual(viewSnapshot(engine), afterPoints)
 
-  engine.history.undo()
+  assert.equal(applyHistory(engine, 'undo'), true)
   assert.deepEqual(viewSnapshot(engine), initial)
-  assert.equal(engine.history.canRedo(), true)
+  assert.equal(engine.history?.state().canRedo, true)
 
-  engine.history.redo()
+  assert.equal(applyHistory(engine, 'redo'), true)
   assert.deepEqual(viewSnapshot(engine), afterPoints)
 
-  engine.history.redo()
+  assert.equal(applyHistory(engine, 'redo'), true)
   assert.deepEqual(viewSnapshot(engine), afterGroupMove)
 })
 
@@ -1408,7 +1433,9 @@ test('view.create resolves duplicate names in the write planner', () => {
     }
   })
 
-  const createdViewId = result.created?.views?.[0]
+  const createdViewId = result.ok && result.data && 'id' in result.data
+    ? result.data.id
+    : undefined
   assert.ok(createdViewId)
   assert.equal(engine.views.get(createdViewId!)?.name, 'Tasks 2')
 })
@@ -1418,14 +1445,16 @@ test('engine.views.duplicate reuses the shared unique naming rule', () => {
     document: createEmptyDocument()
   })
 
-  const sourceViewId = engine.execute({
+  const sourceViewCreate = engine.execute({
     type: 'view.create',
     input: {
       name: 'Tasks',
       type: 'table'
     }
-  }).created?.views?.[0]
-
+  })
+  const sourceViewId = sourceViewCreate.ok && sourceViewCreate.data && 'id' in sourceViewCreate.data
+    ? sourceViewCreate.data.id
+    : undefined
   assert.ok(sourceViewId)
 
   engine.execute({
@@ -1459,11 +1488,11 @@ test('engine writes stream emits shared write objects for execute', () => {
   })
 
   unsubscribe()
-  assert.equal(result.applied, true)
+  assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
   assert.equal(result.write, writes[0])
   assert.equal(writes[0]?.origin, 'user')
-  assert.ok(writes[0]?.extra.impact.views?.inserted?.size)
+  assert.ok(writes[0]?.extra.trace.views?.inserted?.size)
 })
 
 test('engine apply emits shared write objects', () => {
@@ -1483,10 +1512,10 @@ test('engine apply emits shared write objects', () => {
   })
 
   unsubscribe()
-  assert.equal(result.applied, true)
+  assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
   assert.equal(result.write, writes[0])
   assert.equal(writes[0]?.origin, 'remote')
   assert.equal(writes[0]?.forward.length, 1)
-  assert.equal(writes[0]?.extra.impact.external?.versionBumped, true)
+  assert.equal(writes[0]?.extra.trace.external?.versionBumped, true)
 })

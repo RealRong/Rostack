@@ -1,7 +1,7 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { Edge, EdgeId, EdgePatch, Point } from '@whiteboard/core/types'
 import type { EdgeHandle } from '@whiteboard/core/types/edge'
-import { clearRoute, setRoutePoints } from '@whiteboard/core/edge/commands'
+import { clearRoute, setRoutePoints } from '@whiteboard/core/edge/ops'
 
 export type EdgeRouteHandlePick = {
   index?: number

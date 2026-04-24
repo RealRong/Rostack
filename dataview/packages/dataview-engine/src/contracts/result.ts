@@ -1,33 +1,20 @@
-import type { CommitSummary, CustomFieldId, DataDoc, RecordId, ViewId } from '@dataview/core/contracts'
-import type { EngineDelta } from '@dataview/engine/contracts/delta'
-import type { ViewState } from '@dataview/engine/contracts/view'
-import type { EngineWrite } from '@dataview/engine/contracts/write'
-import type { ValidationIssue } from '@dataview/engine/mutate/issues'
+import type {
+  DataDoc
+} from '@dataview/core/contracts'
+import type {
+  DataviewDelta
+} from '@dataview/engine/contracts/delta'
+import type {
+  ViewState
+} from '@dataview/engine/contracts/view'
 
-export interface EngineSnapshot {
-  doc: DataDoc
+export interface DataviewPublish {
   active?: ViewState
+  delta?: DataviewDelta
 }
 
-export interface EngineResult {
+export interface DataviewCurrent {
   rev: number
-  snapshot: EngineSnapshot
-  delta?: EngineDelta
-}
-
-export interface CommitResult {
-  issues: readonly ValidationIssue[]
-  applied: boolean
-  summary?: CommitSummary
-  write?: EngineWrite
-}
-
-export interface CreatedEntities {
-  records?: readonly RecordId[]
-  fields?: readonly CustomFieldId[]
-  views?: readonly ViewId[]
-}
-
-export interface ActionResult extends CommitResult {
-  created?: CreatedEntities
+  doc: DataDoc
+  publish?: DataviewPublish
 }

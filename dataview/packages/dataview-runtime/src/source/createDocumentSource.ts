@@ -13,8 +13,8 @@ import type {
 } from '@dataview/core/contracts'
 import { equal, store } from '@shared/core'
 import type {
-  DocDelta,
-  EngineSnapshot
+  DataviewCurrent,
+  DocDelta
 } from '@dataview/engine'
 import type {
   DocumentSource
@@ -37,6 +37,7 @@ import {
 
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_SCHEMA_FIELD_IDS = [] as readonly CustomFieldId[]
+type DocumentSnapshot = Pick<DataviewCurrent, 'doc'>
 
 interface DocumentValueSourceRuntime {
   source: store.KeyedReadStore<ValueRef, unknown>
@@ -70,7 +71,7 @@ const createDocumentValueSourceRuntime = (): DocumentValueSourceRuntime => {
 
 const resetDocumentValues = (input: {
   runtime: DocumentValueSourceRuntime
-  snapshot: EngineSnapshot
+  snapshot: DocumentSnapshot
 }) => {
   const recordIds = documentApi.records.ids(input.snapshot.doc)
   const set = recordIds.flatMap(recordId => {
@@ -92,7 +93,7 @@ const resetDocumentValues = (input: {
 const applyDocumentValueDelta = (input: {
   runtime: Pick<DocumentSourceRuntime, 'values'>
   delta: DocDelta
-  snapshot: EngineSnapshot
+  snapshot: DocumentSnapshot
 }) => {
   applyMappedEntityDelta({
     delta: input.delta.values,
@@ -169,7 +170,7 @@ export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
 
 export const resetDocumentSource = (input: {
   runtime: DocumentSourceRuntime
-  snapshot: EngineSnapshot
+  snapshot: DocumentSnapshot
 }) => {
   input.runtime.meta.set(input.snapshot.doc.meta)
   const recordIds = documentApi.records.ids(input.snapshot.doc)
@@ -222,7 +223,7 @@ export const resetDocumentSource = (input: {
 export const applyDocumentDelta = (input: {
   runtime: DocumentSourceRuntime
   delta: DocDelta | undefined
-  snapshot: EngineSnapshot
+  snapshot: DocumentSnapshot
 }) => {
   if (!input.delta) {
     return
@@ -254,7 +255,7 @@ export const applyDocumentDelta = (input: {
     readValue: fieldId => documentApi.fields.get(input.snapshot.doc, fieldId)
   })
   applyEntityDelta({
-    delta: input.delta.schema?.fields,
+    delta: input.delta.schemaFields,
     runtime: input.runtime.schemaFields,
     readIds: () => documentApi.schema.fields.ids(input.snapshot.doc),
     readValue: fieldId => documentApi.schema.fields.get(input.snapshot.doc, fieldId)

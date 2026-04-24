@@ -1,145 +1,121 @@
 import type {
-  Action,
-  DocumentOperation,
-  DataDoc
+  DataDoc,
+  Intent as CoreIntent
 } from '@dataview/core/contracts'
-import { impact } from '@dataview/core/commit/impact'
-import { document } from '@dataview/core/document'
-import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
 import type {
-  ApplyOptions,
-  CreateEngineOptions,
-  Engine,
-  ExecuteOptions
-} from '@dataview/engine/contracts/api'
-import { createActiveRuntime } from '@dataview/engine/active/runtime/runtime'
-import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
-import { now } from '@dataview/engine/runtime/clock'
+  DocumentOperation
+} from '@dataview/core/contracts/operations'
+import {
+  document
+} from '@dataview/core/document'
+import {
+  MutationEngine
+} from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
 import { createFieldsApi } from '@dataview/engine/api/fields'
 import { createRecordsApi } from '@dataview/engine/api/records'
 import { createViewsApi } from '@dataview/engine/api/views'
-import {
-  createCoreRuntime,
-  createEngineSnapshot,
-  createInitialEngineState
-} from '@dataview/engine/core/runtime'
-import { createDocumentReadContext } from '@dataview/engine/document/reader'
-import { planActions } from '@dataview/engine/mutate/planner'
-import { createWriteControl } from '@dataview/engine/mutate/commit/runtime'
-import { createEngineHistory } from '@dataview/engine/runtime/history'
+import type {
+  CreateEngineOptions,
+  Engine
+} from '@dataview/engine/contracts/api'
+import type {
+  DataviewCurrent
+} from '@dataview/engine/contracts/result'
+import { createDataviewMutationSpec } from '@dataview/engine/mutation'
+import type {
+  DataviewPublishState
+} from '@dataview/engine/mutation'
+import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
+import type {
+  BatchExecuteResult,
+  ExecuteResult,
+} from '@dataview/engine/types/intent'
+
+const toCurrent = (current: {
+  rev: number
+  doc: DataDoc
+  publish?: DataviewPublishState
+}): DataviewCurrent => ({
+  rev: current.rev,
+  doc: current.doc,
+  ...(current.publish?.active || current.publish?.delta
+    ? {
+        publish: {
+          ...(current.publish.active
+            ? { active: current.publish.active }
+            : {}),
+          ...(current.publish.delta
+            ? { delta: current.publish.delta }
+            : {})
+        }
+      }
+    : {})
+})
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
-  const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
-  const initialDocument = document.clone(options.document)
   const performance = createPerformanceRuntime(options.performance)
-  const capturePerformance = Boolean(options.performance?.traces || options.performance?.stats)
-  const activeRuntime = createActiveRuntime()
-  const initialState = createInitialEngineState({
-    doc: initialDocument
-  })
-  const initialDocumentContext = createDocumentReadContext(initialDocument)
-  const initialActive = activeRuntime.update({
-    read: {
-      reader: initialDocumentContext.reader,
-      fieldsById: initialDocumentContext.fieldsById
-    },
-    view: {
-      plan: initialState.active.plan
-    },
-    index: {
-      state: initialState.active.index
-    },
-    impact: createBaseImpact(impact.reset(undefined, initialDocument))
-  })
-  const runtime = createCoreRuntime({
-    state: initialState,
-    result: {
-      rev: initialState.rev,
-      snapshot: createEngineSnapshot({
-        state: initialState,
-        active: initialActive.snapshot
-      })
-    }
-  })
-  const write = createWriteControl({
-    runtime,
-    activeRuntime,
-    perf: performance,
-    capturePerf: capturePerformance
-  })
-  const execute = (
-    action: Action | readonly Action[],
-    options?: ExecuteOptions
-  ) => {
-    const actions = Array.isArray(action)
-      ? action
-      : [action]
-    if (!capturePerformance) {
-      return write.execute(planActions({
-        document: runtime.state().doc,
-        actions
-      }), options)
-    }
-
-    const planStart = now()
-    const batch = planActions({
-      document: runtime.state().doc,
-      actions
+  const mutationEngine = new MutationEngine({
+    doc: document.clone(options.document),
+    spec: createDataviewMutationSpec({
+      history: options.history,
+      performance
     })
-
-    return write.execute({
-      ...batch,
-      planMs: now() - planStart
-    }, options)
-  }
-  const apply = (
-    operations: readonly DocumentOperation[],
-    options?: ApplyOptions
-  ) => write.apply(operations, options)
-  const history = createEngineHistory({
-    capacity: historyCapacity,
-    writes: write.writes,
-    replay: write.replay
   })
-  const readDocument = () => runtime.result().snapshot.doc
-  const readActiveState = () => runtime.result().snapshot.active
+
+  const execute = (
+    intent: CoreIntent
+  ): ExecuteResult => mutationEngine.execute(intent) as ExecuteResult
+
+  const executeMany = (
+    intents: readonly CoreIntent[]
+  ): BatchExecuteResult => mutationEngine.executeMany(intents) as BatchExecuteResult
+
+  const readDocument = () => mutationEngine.current().doc
+  const readActiveState = () => mutationEngine.current().publish?.active
   const fields = createFieldsApi({
     document: readDocument,
-    dispatch: execute
+    execute
   })
   const records = createRecordsApi({
     document: readDocument,
-    dispatch: execute
+    execute
   })
   const active = createActiveViewApi({
     document: readDocument,
     active: readActiveState,
-    dispatch: execute
+    execute,
+    executeMany
   })
   const views = createViewsApi({
     document: readDocument,
-    dispatch: execute
+    execute
   })
 
   return {
-    result: runtime.result,
-    subscribe: runtime.subscribe,
-    writes: write.writes,
+    writes: mutationEngine.writes,
+    history: mutationEngine.history,
     active,
     views,
     fields,
     records,
-    execute,
-    apply,
-    document: {
-      get: () => document.clone(readDocument()),
-      replace: (nextDocument: DataDoc) => {
-        write.load(document.clone(nextDocument))
-        return document.clone(readDocument())
-      }
+    performance: performance.api,
+    current: () => toCurrent(mutationEngine.current()),
+    subscribe: (listener) => mutationEngine.subscribe((current) => {
+      listener(toCurrent(current))
+    }),
+    doc: () => mutationEngine.doc(),
+    load: (nextDocument: DataDoc) => {
+      mutationEngine.load(document.clone(nextDocument))
     },
-    history,
-    performance: performance.api
+    execute: ((intent, executeOptions) => (
+      mutationEngine.execute(intent, executeOptions)
+    )) as Engine['execute'],
+    executeMany: ((intents, executeOptions) => (
+      mutationEngine.executeMany(intents, executeOptions)
+    )) as Engine['executeMany'],
+    apply: ((operations: readonly DocumentOperation[], applyOptions) => (
+      mutationEngine.apply(operations, applyOptions)
+    )) as Engine['apply']
   }
 }

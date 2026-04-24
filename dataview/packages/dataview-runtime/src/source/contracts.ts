@@ -93,5 +93,5 @@ export interface EngineSourceRuntime {
 }
 
 export interface CreateEngineSourceInput {
-  engine: Pick<Engine, 'result' | 'subscribe'>
+  engine: Pick<Engine, 'current' | 'subscribe'>
 }

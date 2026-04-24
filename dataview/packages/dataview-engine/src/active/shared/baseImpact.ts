@@ -1,14 +1,16 @@
 import {
-  impact as commitImpact
-} from '@dataview/core/commit/impact'
+  dataviewTrace
+} from '@dataview/core/mutation'
 import type {
-  CommitImpact,
   FieldId,
   RecordId
 } from '@dataview/core/contracts'
+import type {
+  DataviewTrace
+} from '@dataview/core/mutation'
 
 export interface BaseImpact {
-  commit: CommitImpact
+  trace: DataviewTrace
   touchedRecords: ReadonlySet<RecordId> | 'all'
   touchedFields: ReadonlySet<FieldId> | 'all'
   valueFields: ReadonlySet<FieldId> | 'all'
@@ -17,12 +19,12 @@ export interface BaseImpact {
 }
 
 export const createBaseImpact = (
-  commit: CommitImpact
+  trace: DataviewTrace
 ): BaseImpact => ({
-  commit,
-  touchedRecords: commitImpact.record.touchedIds(commit),
-  touchedFields: commitImpact.field.touchedIds(commit),
-  valueFields: commitImpact.field.valueIds(commit),
-  schemaFields: commitImpact.field.schemaIds(commit),
-  recordSetChanged: commitImpact.has.recordSetChange(commit)
+  trace,
+  touchedRecords: dataviewTrace.record.touchedIds(trace),
+  touchedFields: dataviewTrace.field.touchedIds(trace),
+  valueFields: dataviewTrace.field.valueIds(trace),
+  schemaFields: dataviewTrace.field.schemaIds(trace),
+  recordSetChanged: dataviewTrace.has.recordSetChange(trace)
 })

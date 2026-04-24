@@ -1,4 +1,6 @@
-import { impact as commitImpact } from '@dataview/core/commit/impact'
+import {
+  dataviewTrace
+} from '@dataview/core/mutation'
 import type {
   ViewQueryAspect
 } from '@dataview/core/contracts/commit'
@@ -155,8 +157,8 @@ export const createActiveRuntimePlanner = (): RuntimePlanner<
         : createPlan<ActivePhaseName>()
     }
 
-    const viewChange = commitImpact.view.change(
-      input.impact.commit,
+    const viewChange = dataviewTrace.view.change(
+      input.impact.trace,
       activeViewId
     )
 
@@ -167,7 +169,7 @@ export const createActiveRuntimePlanner = (): RuntimePlanner<
       phases.add('query')
     }
 
-    if (commitImpact.has.activeView(input.impact.commit)) {
+    if (dataviewTrace.has.activeView(input.impact.trace)) {
       phases.add('query')
     }
 

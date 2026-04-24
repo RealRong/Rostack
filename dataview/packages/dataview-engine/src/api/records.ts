@@ -1,6 +1,6 @@
 import type {
-  Action,
   DataDoc,
+  Intent as CoreIntent,
   RecordId
 } from '@dataview/core/contracts'
 import {
@@ -12,12 +12,21 @@ import type {
   RecordsApi
 } from '@dataview/engine/contracts/api'
 import type {
-  ActionResult
-} from '@dataview/engine/contracts/result'
+  ExecuteResult,
+} from '@dataview/engine/types/intent'
+
+const readId = (
+  result: ExecuteResult
+): string | undefined => result.ok
+  && typeof result.data === 'object'
+  && result.data !== null
+  && 'id' in result.data
+    ? String(result.data.id)
+    : undefined
 
 export const createRecordsApi = (options: {
   document: () => DataDoc
-  dispatch: (action: Action | readonly Action[]) => ActionResult
+  execute: (intent: CoreIntent) => ExecuteResult
 }): RecordsApi => {
   const writeMany = (input: RecordFieldWriteManyInput) => {
     const recordIds = collection.unique(input.recordIds)
@@ -25,7 +34,7 @@ export const createRecordsApi = (options: {
       return
     }
 
-    options.dispatch({
+    options.execute({
       type: 'record.fields.writeMany',
       ...input,
       recordIds
@@ -33,30 +42,30 @@ export const createRecordsApi = (options: {
   }
 
   return {
-    get: id => documentApi.records.get(options.document(), id),
-    create: input => {
-      const result = options.dispatch({
+    get: (id) => documentApi.records.get(options.document(), id),
+    create: (input) => {
+      const result = options.execute({
         type: 'record.create',
         input: {
           values: input?.values
         }
       })
 
-      return result.created?.records?.[0]
+      return readId(result)
     },
     remove: (id: RecordId) => {
-      options.dispatch({
+      options.execute({
         type: 'record.remove',
         recordIds: [id]
       })
     },
-    removeMany: ids => {
+    removeMany: (ids) => {
       const nextRecordIds = collection.unique(ids)
       if (!nextRecordIds.length) {
         return
       }
 
-      options.dispatch({
+      options.execute({
         type: 'record.remove',
         recordIds: nextRecordIds
       })

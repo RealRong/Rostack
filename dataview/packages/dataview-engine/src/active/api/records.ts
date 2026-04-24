@@ -1,6 +1,6 @@
 import type {
-  Action,
   FieldId,
+  Intent as CoreIntent,
   RecordId
 } from '@dataview/core/contracts'
 import {
@@ -32,12 +32,11 @@ import type {
 import type {
   ActiveViewContext
 } from '@dataview/engine/active/api/context'
-
 const createMoveOrderAction = (
   base: ActiveViewContext,
   recordIds: readonly RecordId[],
   beforeRecordId?: RecordId
-): Extract<Action, { type: 'view.patch' }> | undefined => {
+): Extract<CoreIntent, { type: 'view.patch' }> | undefined => {
   const view = base.view()
   const viewId = base.reader.views.activeId()
   if (!view || !viewId || !recordIds.length) {
@@ -340,7 +339,7 @@ export const createActiveRecordsApi = (input: {
     }
 
     const recordId = dataviewId.create('record')
-    const actions: Action[] = [{
+    const actions: CoreIntent[] = [{
       type: 'record.create',
       input: toRecordCreateInput({
         recordId,
@@ -369,8 +368,8 @@ export const createActiveRecordsApi = (input: {
       }
     }
 
-    const result = input.base.dispatch(actions)
-    return result.applied
+    const result = input.base.executeMany(actions)
+    return result.ok
       ? recordId
       : undefined
   }

@@ -1,5 +1,9 @@
 import { json } from '@shared/core'
-import type { Path } from '@shared/mutation'
+import {
+  path as mutationPath,
+  type Path,
+  type PathKey
+} from '@shared/mutation'
 import {
   applyRecordPathMutation,
   hasRecordPath,
@@ -224,6 +228,14 @@ const toNodeRecordPath = (
   ? path
   : undefined
 
+const normalizeRecordPath = (
+  path: Path | PathKey
+): Path => (
+  typeof path === 'string' || typeof path === 'number'
+    ? mutationPath.of(path)
+    : path
+)
+
 const compileNodeFieldRecord = (
   field: NodeSchemaFieldRef,
   value: unknown
@@ -277,23 +289,23 @@ const compileNodeFieldUpdates = (
 }
 
 const compileNodeDataUpdate = (
-  path: Path,
+  path: Path | PathKey,
   value: unknown
 ): NodeUpdateInput => compileNodeFieldUpdate(
   {
     scope: 'data',
-    path
+    path: normalizeRecordPath(path)
   },
   value
 )
 
 const compileNodeStyleUpdate = (
-  path: Path,
+  path: Path | PathKey,
   value: unknown
 ): NodeUpdateInput => compileNodeFieldUpdate(
   {
     scope: 'style',
-    path
+    path: normalizeRecordPath(path)
   },
   value
 )

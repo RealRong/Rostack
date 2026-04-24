@@ -101,4 +101,48 @@ describe('compile', () => {
       count: 2
     })
   })
+
+  test('supports explicit blocking without throw/catch control flow', () => {
+    const result = compile<CounterDoc, string, number>({
+      doc: {
+        count: 0
+      },
+      intents: ['ok', 'block', 'skip'],
+      run: (ctx, intent) => {
+        if (intent === 'ok') {
+          ctx.emit(1)
+          return
+        }
+
+        if (intent === 'block') {
+          ctx.emit(2)
+          return ctx.block({
+            code: 'invalid',
+            message: 'Blocked.',
+            details: {
+              reason: 'test'
+            }
+          })
+        }
+
+        ctx.emit(3)
+      },
+      previewApply: (doc, ops) => ({
+        count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+      })
+    })
+
+    expect(result.ops).toEqual([1])
+    expect(result.issues).toEqual([{
+      code: 'invalid',
+      message: 'Blocked.',
+      details: {
+        reason: 'test'
+      },
+      level: 'error'
+    }])
+    expect(result.doc).toEqual({
+      count: 1
+    })
+  })
 })

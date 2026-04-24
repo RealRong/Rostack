@@ -1,7 +1,7 @@
 import type {
-  Action,
   DataRecord,
   Field,
+  Intent as CoreIntent,
   RecordId,
   ViewGroup
 } from '@dataview/core/contracts'
@@ -22,12 +22,11 @@ import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import type { ActiveViewContext } from '@dataview/engine/active/api/context'
-
 const createMoveOrderAction = (
   base: ActiveViewContext,
   recordIds: readonly RecordId[],
   beforeRecordId?: RecordId
-): Extract<Action, { type: 'view.patch' }> | undefined => {
+): Extract<CoreIntent, { type: 'view.patch' }> | undefined => {
   const view = base.view()
   const viewId = base.reader.views.activeId()
   if (!view || !viewId || !recordIds.length) {
@@ -55,7 +54,7 @@ const createGroupValueActions = (input: {
   items: ItemList
   itemIds: readonly ItemId[]
   targetBucketId: string
-}): readonly Action[] | undefined => {
+}): readonly CoreIntent[] | undefined => {
   const fieldId = input.group.fieldId
   const itemIdsByRecordId = new Map<RecordId, ItemId[]>()
 
@@ -74,7 +73,7 @@ const createGroupValueActions = (input: {
     itemIdsByRecordId.set(recordId, [itemId])
   })
 
-  const actions: Action[] = []
+  const actions: CoreIntent[] = []
 
   for (const [recordId, itemIds] of itemIdsByRecordId) {
     const record = input.readRecord(recordId)
@@ -218,7 +217,7 @@ export const createActiveItemsApi = (input: {
       return
     }
 
-    const actions: Action[] = []
+    const actions: CoreIntent[] = []
 
     if (plan.sectionChanged && groupWrite) {
       const targetBucketId = state.sections.get(plan.target.section)?.bucket?.id
@@ -253,7 +252,7 @@ export const createActiveItemsApi = (input: {
     }
 
     if (actions.length) {
-      input.base.dispatch(actions)
+      input.base.executeMany(actions)
     }
   },
   remove: itemIds => {
@@ -270,7 +269,7 @@ export const createActiveItemsApi = (input: {
       return
     }
 
-    input.base.dispatch({
+    input.base.execute({
       type: 'record.remove',
       recordIds: [...recordIds]
     })
@@ -287,7 +286,7 @@ export const createCellsApi = (input: {
       return
     }
 
-    input.base.dispatch({
+    input.base.execute({
       type: 'record.fields.writeMany',
       recordIds: [target.recordId],
       set: {
@@ -301,7 +300,7 @@ export const createCellsApi = (input: {
       return
     }
 
-    input.base.dispatch({
+    input.base.execute({
       type: 'record.fields.writeMany',
       recordIds: [target.recordId],
       clear: [target.fieldId]

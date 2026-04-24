@@ -13,17 +13,17 @@ import type {
 
 export type { EntityDelta } from '@shared/core'
 
-export interface DocDelta {
+export interface DocumentDelta {
   reset?: true
   meta?: true
   records?: SharedEntityDelta<RecordId>
   values?: SharedEntityDelta<ValueRef>
   fields?: SharedEntityDelta<FieldId>
-  schema?: {
-    fields?: SharedEntityDelta<CustomFieldId>
-  }
+  schemaFields?: SharedEntityDelta<CustomFieldId>
   views?: SharedEntityDelta<ViewId>
 }
+
+export type DocDelta = DocumentDelta
 
 export interface ActiveDelta {
   reset?: true
@@ -43,7 +43,9 @@ export interface ActiveDelta {
   summaries?: SharedEntityDelta<SectionId>
 }
 
-export interface EngineDelta {
+export interface DataviewDelta {
   doc?: DocDelta
   active?: ActiveDelta
 }
+
+export type EngineDelta = DataviewDelta

@@ -17,7 +17,7 @@ import {
 export const createEngineSource = (
   input: CreateEngineSourceInput
 ): EngineSourceRuntime => {
-  const snapshot = input.engine.result().snapshot
+  const current = input.engine.current()
   const documentSource = createDocumentSourceRuntime()
   const activeSource = createActiveSourceRuntime()
 
@@ -26,15 +26,17 @@ export const createEngineSource = (
     active: activeSource.source
   }
 
-  const reset = (nextSnapshot: typeof snapshot) => {
+  const reset = (nextCurrent: typeof current) => {
     store.batch(() => {
       resetDocumentSource({
         runtime: documentSource,
-        snapshot: nextSnapshot
+        snapshot: {
+          doc: nextCurrent.doc
+        }
       })
       resetActiveSource({
         runtime: activeSource,
-        snapshot: nextSnapshot.active
+        snapshot: nextCurrent.publish?.active
       })
     })
   }
@@ -46,19 +48,21 @@ export const createEngineSource = (
     })
   }
 
-  reset(snapshot)
+  reset(current)
 
-  const unsubscribe = input.engine.subscribe(result => {
+  const unsubscribe = input.engine.subscribe(nextCurrent => {
     store.batch(() => {
       applyDocumentDelta({
         runtime: documentSource,
-        delta: result.delta?.doc,
-        snapshot: result.snapshot
+        delta: nextCurrent.publish?.delta?.doc,
+        snapshot: {
+          doc: nextCurrent.doc
+        }
       })
       applyActiveDelta({
         runtime: activeSource,
-        delta: result.delta?.active,
-        snapshot: result.snapshot.active
+        delta: nextCurrent.publish?.delta?.active,
+        snapshot: nextCurrent.publish?.active
       })
     })
   })

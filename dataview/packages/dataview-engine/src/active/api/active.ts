@@ -1,14 +1,15 @@
 import type {
-  Action,
-  DataDoc
+  DataDoc,
+  Intent as CoreIntent
 } from '@dataview/core/contracts'
-import type {
-  ActionResult
-} from '@dataview/engine/contracts/result'
 import type {
   ActiveViewApi,
   ViewState
 } from '@dataview/engine/contracts/view'
+import type {
+  BatchExecuteResult,
+  ExecuteResult,
+} from '@dataview/engine/types/intent'
 import { createActiveContext } from '@dataview/engine/active/api/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/api/read'
 import {
@@ -34,12 +35,14 @@ import {
 export const createActiveViewApi = (options: {
   document: () => DataDoc
   active: () => ViewState | undefined
-  dispatch: (action: Action | readonly Action[]) => ActionResult
+  execute: (intent: CoreIntent) => ExecuteResult
+  executeMany: (intents: readonly CoreIntent[]) => BatchExecuteResult
 }): ActiveViewApi => {
   const base = createActiveContext({
     document: options.document,
     active: options.active,
-    dispatch: options.dispatch
+    execute: options.execute,
+    executeMany: options.executeMany
   })
   const readApi = createActiveViewReadApi({
     reader: base.reader,
@@ -52,7 +55,7 @@ export const createActiveViewApi = (options: {
     view: base.view,
     state: base.state,
     read: readApi,
-    changeType: type => {
+    changeType: (type) => {
       base.patchView(() => ({
         type
       }))

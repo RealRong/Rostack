@@ -3,14 +3,14 @@ import {
 } from '@dataview/core/operation/meta'
 import {
   applyOperations
-} from '@dataview/core/operation/applyOperations'
+} from '@dataview/core/mutation/apply'
 import {
   previewOperations
 } from '@dataview/core/operation/previewOperations'
 
 export type {
   DocumentApplyResult
-} from '@dataview/core/operation/applyOperations'
+} from '@dataview/core/mutation/apply'
 
 export const operation = {
   meta: META,

@@ -15,9 +15,9 @@ import {
   listGroupNodeIds,
   listGroups,
   listNodes
-} from '@whiteboard/core/document/query'
+} from '@whiteboard/core/document/read'
 import {
-  buildInsertSliceOperations,
+  createInsertSliceOps,
   exportSliceFromEdge,
   exportSliceFromNodes,
   exportSliceFromSelection,
@@ -55,8 +55,10 @@ export const document = {
       nodes: exportSliceFromNodes,
       edge: exportSliceFromEdge,
       selection: exportSliceFromSelection
-    },
-    buildInsertOps: buildInsertSliceOperations
+    }
+  },
+  op: {
+    insertSlice: createInsertSliceOps
   }
 } as const
 

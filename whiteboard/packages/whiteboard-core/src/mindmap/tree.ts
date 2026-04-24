@@ -16,11 +16,8 @@ import { layoutMindmap, layoutMindmapTidy } from '@whiteboard/core/mindmap/layou
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   Document,
-  MindmapCreateInput,
   Node,
-  NodeId,
-  Operation,
-  Point
+  NodeId
 } from '@whiteboard/core/types'
 
 const resolveMindmapLayoutSpec = (
@@ -197,47 +194,3 @@ export const computeMindmapLayout = (
     : layoutMindmap
   return layoutFn(tree, getNodeSize, resolvedLayout)
 }
-
-export const createMindmapCreateOp = ({
-  id,
-  tree,
-  position = {
-    x: 0,
-    y: 0
-  }
-}: {
-  id: string
-  tree: MindmapTree
-  position?: Point
-}): Operation => ({
-  type: 'mindmap.create',
-  mindmap: {
-    id,
-    root: tree.rootNodeId,
-    members: Object.fromEntries(
-      Object.entries(tree.nodes).map(([nodeId, node]) => [
-        nodeId,
-        {
-          parentId: node.parentId,
-          side: node.side,
-          collapsed: node.collapsed,
-          branchStyle: json.clone(node.branch)
-        }
-      ])
-    ),
-    children: json.clone(tree.children),
-    layout: json.clone(tree.layout),
-    meta: json.clone(tree.meta)
-  },
-  nodes: [
-    {
-      id: tree.rootNodeId,
-      type: 'text',
-      owner: {
-        kind: 'mindmap',
-        id
-      },
-      position: json.clone(position)
-    }
-  ]
-})

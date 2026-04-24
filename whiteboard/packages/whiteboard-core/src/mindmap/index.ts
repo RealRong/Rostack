@@ -12,7 +12,7 @@ import {
   moveSubtree,
   patchMindmap,
   removeSubtree
-} from '@whiteboard/core/mindmap/mutate'
+} from '@whiteboard/core/mindmap/treeMutate'
 import {
   computeSubtreeDropTarget,
   createRootDrag,
@@ -23,6 +23,7 @@ import {
   layoutMindmap,
   layoutMindmapTidy
 } from '@whiteboard/core/mindmap/layout'
+import { createMindmapOp } from '@whiteboard/core/mindmap/ops'
 import {
   anchorMindmapLayout,
   resolveMindmapRender,
@@ -30,7 +31,6 @@ import {
 } from '@whiteboard/core/mindmap/render'
 import {
   computeMindmapLayout,
-  createMindmapCreateOp,
   getMindmapIdByNode,
   getMindmapRecordByNodeId,
   getMindmapTree,
@@ -39,7 +39,7 @@ import {
   getSubtreeIds,
   resolveInsertPlan,
   toMindmapTree
-} from '@whiteboard/core/mindmap/query'
+} from '@whiteboard/core/mindmap/tree'
 import {
   cloneMindmapTemplate,
   createBlankMindmapTemplate,
@@ -53,6 +53,12 @@ import { buildMindmapTextNodeStyle } from '@whiteboard/core/mindmap/types'
 export const mindmap = {
   tree: {
     create: createMindmap,
+    addChild,
+    insertNode,
+    moveSubtree,
+    removeSubtree,
+    cloneSubtree,
+    patch: patchMindmap,
     fromRecord: toMindmapTree,
     fromDocument: getMindmapTreeFromDocument,
     get: getMindmapTree,
@@ -76,14 +82,8 @@ export const mindmap = {
     translate: translateMindmapLayout,
     anchor: anchorMindmapLayout
   },
-  mutate: {
-    buildCreate: createMindmapCreateOp,
-    addChild,
-    insertNode,
-    moveSubtree,
-    removeSubtree,
-    cloneSubtree,
-    patchTree: patchMindmap
+  op: {
+    create: createMindmapOp
   },
   template: {
     defaultBranchStyle: DEFAULT_MINDMAP_BRANCH_STYLE,

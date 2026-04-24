@@ -1,20 +1,25 @@
-import type { CommitResult } from '@dataview/engine/contracts/result'
+import type {
+  DocumentOperation
+} from '@dataview/core/contracts/operations'
+import type {
+  DataviewMutationKey
+} from '@dataview/core/mutation'
+import type {
+  HistoryController
+} from '@shared/mutation'
+import type {
+  EngineWrite
+} from './write'
 
-export interface HistoryState {
+export interface DataviewHistoryConfig {
+  enabled: boolean
   capacity: number
-  undoDepth: number
-  redoDepth: number
+  captureSystem: boolean
+  captureRemote: boolean
 }
 
-export interface HistoryOptions {
-  capacity?: number
-}
-
-export interface HistoryApi {
-  state: () => HistoryState
-  canUndo: () => boolean
-  canRedo: () => boolean
-  undo: () => CommitResult
-  redo: () => CommitResult
-  clear: () => void
-}
+export type DataviewHistory = HistoryController<
+  DocumentOperation,
+  DataviewMutationKey,
+  EngineWrite
+>

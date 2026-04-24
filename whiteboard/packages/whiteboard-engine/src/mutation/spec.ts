@@ -3,6 +3,13 @@ import {
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createId } from '@whiteboard/core/id'
+import {
+  compileWhiteboardIntents,
+  type WhiteboardCompileIds,
+  type WhiteboardIntent,
+  type WhiteboardMutationTable
+} from '@whiteboard/core/intent'
+import { META } from '@whiteboard/core/spec/operation'
 import { historyKeyConflicts } from '@whiteboard/core/spec/history'
 import type { BoardConfig } from '@whiteboard/core/config'
 import type {
@@ -18,13 +25,8 @@ import type {
   EngineHistoryConfig,
   EnginePublish
 } from '../contracts/document'
-import { normalizeDocument } from '../document/normalize'
-import type {
-  Intent,
-  WhiteboardMutationTable
-} from '../types/intent'
+import { normalizeDocument } from '@whiteboard/core/document/normalize'
 import { applyWhiteboardOperations } from './apply'
-import { compileIntents } from './compile'
 import { whiteboardPublishSpec } from './publish'
 import type {
   WhiteboardMutationExtra,
@@ -61,6 +63,15 @@ const shouldTrackOrigin = (
   return true
 }
 
+const shouldClearHistory = (
+  write: {
+    origin: MutationOrigin
+    forward: readonly Operation[]
+  },
+  config: EngineHistoryConfig
+): boolean => shouldTrackOrigin(write.origin, config)
+  && write.forward.some((op) => META[op.type].sync === 'checkpoint')
+
 const toKernelOrigin = (
   origin: MutationOrigin
 ): import('@whiteboard/core/types').Origin => (
@@ -86,7 +97,7 @@ export const createWhiteboardMutationSpec = (input: {
   history?: Partial<EngineHistoryConfig>
 }): WhiteboardMutationSpec => {
   const historyConfig = resolveEngineHistoryConfig(input.history)
-  const ids = {
+  const ids: WhiteboardCompileIds = {
     node: (): NodeId => createId('node'),
     edge: (): EdgeId => createId('edge'),
     edgeLabel: (): string => createId('edge_label'),
@@ -101,9 +112,9 @@ export const createWhiteboardMutationSpec = (input: {
     compile: ({
       doc,
       intents
-    }) => compileIntents({
+    }) => compileWhiteboardIntents({
       document: doc,
-      intents: intents as readonly Intent[],
+      intents: intents as readonly WhiteboardIntent[],
       registries: input.registries,
       ids,
       nodeSize: input.config.nodeSize
@@ -117,6 +128,7 @@ export const createWhiteboardMutationSpec = (input: {
     history: {
       capacity: historyConfig.capacity,
       track: (write) => shouldTrackOrigin(write.origin, historyConfig),
+      clear: (write) => shouldClearHistory(write, historyConfig),
       conflicts: historyKeyConflicts
     }
   }

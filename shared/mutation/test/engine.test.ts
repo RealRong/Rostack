@@ -98,6 +98,7 @@ const createSpec = (): MutationEngineSpec<
   history: {
     capacity: 10,
     track: (write) => write.origin === 'user',
+    clear: (write) => write.forward.some((op) => op.value === 99),
     conflicts: (left, right) => left === right
   }
 })
@@ -245,6 +246,29 @@ describe('MutationEngine', () => {
       publish: {
         count: 9
       }
+    })
+    expect(engine.history?.state().undoDepth).toBe(0)
+  })
+
+  test('history clear policy can clear and skip capturing the current write', () => {
+    const engine = new MutationEngine({
+      doc: {
+        count: 0
+      },
+      spec: createSpec()
+    })
+
+    engine.execute({
+      type: 'count.add',
+      value: 1
+    })
+    engine.execute({
+      type: 'count.add',
+      value: 99
+    })
+
+    expect(engine.current().doc).toEqual({
+      count: 100
     })
     expect(engine.history?.state().undoDepth).toBe(0)
   })

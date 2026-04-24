@@ -23,7 +23,7 @@ test('external version bump does not create undo history', () => {
     source: 'test'
   }])
 
-  assert.equal(result.applied, true)
-  assert.equal(engine.history.canUndo(), false)
-  assert.equal(engine.history.canRedo(), false)
+  assert.equal(result.ok, true)
+  assert.equal(engine.history?.state().canUndo, false)
+  assert.equal(engine.history?.state().canRedo, false)
 })

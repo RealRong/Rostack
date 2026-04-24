@@ -1,4 +1,6 @@
-import { impact as commitImpact } from '@dataview/core/commit/impact'
+import {
+  dataviewTrace
+} from '@dataview/core/mutation'
 import { equal } from '@shared/core'
 import type {
   FieldId,
@@ -51,13 +53,11 @@ const resolveSummaryAction = (input: {
   action: DeriveAction
   touchedSections?: ReadonlySet<SectionId> | 'all'
 } => {
-  const commit = input.impact.commit
-
   if (
     !input.previous
     || !input.previousMembership
     || input.previousViewId !== input.activeViewId
-    || commitImpact.has.activeView(commit)
+    || dataviewTrace.has.activeView(input.impact.trace)
   ) {
     return {
       action: 'rebuild'
@@ -79,7 +79,7 @@ const resolveSummaryAction = (input: {
   }
 
   const groupField = input.view.group?.fieldId
-  const viewChange = commitImpact.view.change(commit, input.activeViewId)
+  const viewChange = dataviewTrace.view.change(input.impact.trace, input.activeViewId)
 
   if (viewChange?.calculationFields) {
     return {
@@ -94,13 +94,13 @@ const resolveSummaryAction = (input: {
       }
     }
 
-    if (commitImpact.has.fieldSchema(commit, fieldId)) {
+    if (dataviewTrace.has.fieldSchema(input.impact.trace, fieldId)) {
       return {
         action: 'rebuild'
       }
     }
   }
-  if (groupField && commitImpact.has.fieldSchema(commit, groupField)) {
+  if (groupField && dataviewTrace.has.fieldSchema(input.impact.trace, groupField)) {
     return {
       action: 'rebuild'
     }

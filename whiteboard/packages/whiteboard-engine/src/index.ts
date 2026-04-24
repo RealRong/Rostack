@@ -1,5 +1,5 @@
 export { DEFAULT_BOARD_CONFIG } from './config/defaults'
-export { normalizeDocument } from './document/normalize'
+export { normalizeDocument } from '@whiteboard/core/document/normalize'
 export { createEngine } from './runtime/engine'
 export { DEFAULT_ENGINE_HISTORY_CONFIG } from './mutation'
 

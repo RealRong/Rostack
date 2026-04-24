@@ -1,6 +1,6 @@
 import type {
-  Action,
   DataDoc,
+  Intent as CoreIntent,
   ViewId
 } from '@dataview/core/contracts'
 import {
@@ -12,42 +12,52 @@ import type {
   ViewsApi
 } from '@dataview/engine/contracts/api'
 import type {
-  ActionResult
-} from '@dataview/engine/contracts/result'
+  ExecuteResult,
+} from '@dataview/engine/types/intent'
+
+const readId = (
+  result: ExecuteResult
+): string | undefined => result.ok
+  && typeof result.data === 'object'
+  && result.data !== null
+  && 'id' in result.data
+    ? String(result.data.id)
+    : undefined
 
 export const createViewsApi = (options: {
   document: () => DataDoc
-  dispatch: (action: Action | readonly Action[]) => ActionResult
+  execute: (intent: CoreIntent) => ExecuteResult
 }): ViewsApi => {
   const readViews = () => documentApi.views.ids(options.document())
-    .flatMap(viewId => {
+    .flatMap((viewId) => {
       const view = documentApi.views.get(options.document(), viewId)
       return view ? [view] : []
     })
 
   return {
     list: readViews,
-    get: id => documentApi.views.get(options.document(), id),
-    open: id => {
-      options.dispatch({
+    get: (id) => documentApi.views.get(options.document(), id),
+    open: (id) => {
+      options.execute({
         type: 'view.open',
         id
       })
     },
-    create: input => {
+    create: (input) => {
       const preferredName = string.trimToUndefined(input.name)
       if (!preferredName) {
         return undefined
       }
 
-      const result = options.dispatch({
+      const result = options.execute({
         type: 'view.create',
         input: {
           name: preferredName,
           type: input.type
         }
       })
-      return result.created?.views?.[0]
+
+      return readId(result)
     },
     rename: (id: ViewId, name: string) => {
       const nextName = string.trimToUndefined(name)
@@ -55,7 +65,7 @@ export const createViewsApi = (options: {
         return
       }
 
-      options.dispatch({
+      options.execute({
         type: 'view.patch',
         id,
         patch: {
@@ -63,20 +73,21 @@ export const createViewsApi = (options: {
         }
       })
     },
-    duplicate: id => {
+    duplicate: (id) => {
       const sourceView = documentApi.views.get(options.document(), id)
       if (!sourceView) {
         return undefined
       }
 
-      const result = options.dispatch({
+      const result = options.execute({
         type: 'view.create',
         input: viewApi.duplicate.input(sourceView)
       })
-      return result.created?.views?.[0]
+
+      return readId(result)
     },
-    remove: id => {
-      options.dispatch({
+    remove: (id) => {
+      options.execute({
         type: 'view.remove',
         id
       })

@@ -11,7 +11,7 @@ import type {
 
 export const fullRebuildFrom = (
   impact: BaseImpact
-) => impact.commit.reset === true
+) => impact.trace.reset === true
 
 export const touchedRecordCountOfImpact = (
   impact: BaseImpact

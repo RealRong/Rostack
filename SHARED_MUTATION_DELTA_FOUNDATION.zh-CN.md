@@ -692,10 +692,18 @@ interface FootprintCollector<TKey> {
   addMany(keys: Iterable<TKey>): void
   has(key: TKey): boolean
   finish(): readonly TKey[]
+  clear(): void
 }
 ```
 
-具体 operation 影响哪些 key，仍由领域层定义。
+同时提供两个纯算法 helper：
+
+```ts
+assertHistoryFootprint(value, isKey): readonly TKey[]
+historyFootprintConflicts(left, right, conflicts): boolean
+```
+
+具体 operation 影响哪些 key，仍由领域层定义；shared 只负责容器、校验和 pairwise conflict 骨架。
 
 ### `shared/core/src/metrics.ts`
 
@@ -712,19 +720,16 @@ interface RunningStat {
   p95?: number
 }
 
-interface MetricsCollector<TPhaseName extends string> {
-  start(phase: TPhaseName): void
-  end(phase: TPhaseName, input?: { changed?: boolean; rebuilt?: boolean }): void
-  record(name: string, value: number): void
-  snapshot(): unknown
-}
+createRunningStat(): RunningStat
+cloneRunningStat(stat): RunningStat
+updateRunningStat(stat, value): void
 ```
 
 收益：
 
 - Dataview `runtime/performance.ts` 可以瘦身。
-- Projection runtime phase trace 可以统一统计输出。
-- Whiteboard 后续 engine/editor graph trace 可直接复用。
+- `RunningStat` 类型不必在领域包重复声明。
+- `scheduler.readMonotonicNow` 可作为统一时间源继续复用。
 
 ### `shared/core/src/overlayMap.ts`（可选）
 
@@ -773,21 +778,26 @@ publishEntityList(input): {
 当前 `shared/projection-runtime` 已有 `createFamilySync`，Dataview runtime source 也有多套 `applyListedDelta/applyEntityDelta/applyItemDelta`。可以新增 delta-first sync：
 
 ```ts
-interface EntityDeltaSyncSpec<TSnapshot, TSink, TKey, TValue> {
-  delta(snapshot: TSnapshot): EntityDelta<TKey> | undefined
+interface EntityDeltaSyncPatch<TKey, TValue> {
+  order?: readonly TKey[]
+  set?: readonly (readonly [TKey, TValue])[]
+  remove?: readonly TKey[]
+}
+
+interface EntityDeltaSyncSpec<TSnapshot, TChange, TSink, TKey, TValue> {
+  delta(change: TChange): EntityDelta<TKey> | undefined
   list(snapshot: TSnapshot): readonly TKey[]
   read(snapshot: TSnapshot, key: TKey): TValue | undefined
-  set(key: TKey, value: TValue, sink: TSink): void
-  remove(key: TKey, sink: TSink): void
-  order?(ids: readonly TKey[], sink: TSink): void
+  apply(patch: EntityDeltaSyncPatch<TKey, TValue>, sink: TSink): void
 }
 ```
 
 收益：
 
+- `EntityDelta -> order/set/remove patch` 的规约统一。
 - Dataview document/active source patch 可以直接复用。
-- Whiteboard editor graph source/sink 同步可以复用。
-- `order/set/remove` 的应用顺序和缺失值处理统一。
+- Whiteboard 若后续出现 concrete source/sink 同步层，可直接复用。
+- 缺失值过滤、顺序补发、批量写入都统一走一个底层原语。
 
 ## 不建议下沉的内容
 
@@ -847,7 +857,7 @@ Whiteboard 的长期路径：
 6. Graph publish 改用 `publishEntityFamily`，同时得到 changed ids 与 `EntityDelta`。
 7. Compiler 层改用 `PlanningContext + IssueCollector + OperationBuffer`，保留领域 `registries/nodeSize/ids`。
 8. Reducer inverse 改用 `InverseBuilder`，替代分散的 `inverse.unshift`。
-9. Graph/source sync 改用 `createEntityDeltaSync`。
+9. 如果后续出现 concrete graph/source sync 层，直接改用 `createEntityDeltaSync`。
 10. 如果 Dataview 也需要 draft overlay，再把 `OverlayTable` 提炼到 `shared/core/overlayMap`。
 
 Whiteboard 仍保留：
@@ -957,7 +967,6 @@ reduceOperation + DocumentMutationContext
 - Dataview `active/shared/delta.ts` 已删除。
 - Dataview `active/publish/sections.ts` 已改为 `publishEntityList` 产出 publish delta。
 - Dataview `active/publish/delta.ts`、`core/delta.ts` 已改为 `entityDelta.normalize/fromSnapshots`。
-- Dataview runtime source patch 已先行收敛为通用 `applyEntityDelta/applyMappedEntityDelta`，删除 `applyListedDelta/applyKeyDelta/applyMappedKeyDelta` 三套重复实现。
 - Whiteboard Editor Graph publisher 已改用 shared `publishEntityFamily`，并删除本地 `runtime/publish/family.ts`。
 - Whiteboard Editor Graph publish change 已从 `Ids<TKey>` 收敛为 canonical `IdChangeSet<TKey>`。
 
@@ -974,6 +983,30 @@ reduceOperation + DocumentMutationContext
 - Dataview runtime source apply。
 - Dataview runtime performance running stat。
 - Whiteboard 后续 graph/source sync 与 trace。
+
+当前完成状态：
+
+- `shared/projection-runtime/src/source/entity.ts` 已新增 `createEntityDeltaSync`。
+- `shared/projection-runtime/test/source.test.ts` 已补 `EntityDelta` 驱动的 source sync 用例。
+- Dataview `runtime/source/patch.ts` 已改为由 `createEntityDeltaSync` 驱动：
+  - entity source：`order/set/remove`
+  - mapped table source：`set/remove`
+- Dataview runtime source patch 已不再手写 `EntityDelta` 循环展开与缺失值过滤。
+- Whiteboard 当前还没有独立的 concrete source sync 层，这个位点先保留，不做伪抽象。
+- `shared/core/src/metrics.ts` 已新增 `RunningStat` 基础原语：
+  - `createRunningStat`
+  - `cloneRunningStat`
+  - `updateRunningStat`
+- Dataview `contracts/performance.ts` 的 `RunningStat` 已直接来自 `@shared/core`。
+- Dataview `runtime/performance.ts` 已删除本地 running stat helper，统一改用 shared `metrics`。
+- `shared/core/src/historyFootprint.ts` 已新增：
+  - `createHistoryFootprintCollector`
+  - `assertHistoryFootprint`
+  - `historyFootprintConflicts`
+- Whiteboard reducer 的 footprint 收集已不再直接操作 `Map<string, HistoryKey>`，而是改为 shared collector。
+- Whiteboard `spec/history/key.ts` 的 footprint 校验与冲突扫描已改为 shared generic helper 包装。
+- `shared/projection-runtime`、`dataview-engine`、`whiteboard-engine` 已统一改用 `scheduler.readMonotonicNow`，删除重复 `performance.now()/Date.now()` 分支。
+- Phase 6 当前范围内已完成；更高一层的 phase-level metrics collector 先不做伪抽象，等第二个真实消费者出现再下沉。
 
 ### Phase 7：Whiteboard tx 内核瘦身
 

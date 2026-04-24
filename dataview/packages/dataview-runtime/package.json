@@ -14,7 +14,8 @@
   "dependencies": {
     "@dataview/core": "workspace:*",
     "@dataview/engine": "workspace:*",
-    "@shared/core": "workspace:*"
+    "@shared/core": "workspace:*",
+    "@shared/projection-runtime": "workspace:*"
   },
   "files": [
     "src",

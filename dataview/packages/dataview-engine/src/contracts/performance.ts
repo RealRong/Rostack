@@ -1,3 +1,5 @@
+import type { RunningStat as SharedRunningStat } from '@shared/core'
+
 export interface PerformanceOptions {
   traces?: boolean | {
     capacity?: number
@@ -121,13 +123,7 @@ export interface CommitTrace {
   snapshot: SnapshotTrace
 }
 
-export interface RunningStat {
-  count: number
-  total: number
-  avg: number
-  max: number
-  p95?: number
-}
+export type RunningStat = SharedRunningStat
 
 export interface PerformanceCounter {
   total: number

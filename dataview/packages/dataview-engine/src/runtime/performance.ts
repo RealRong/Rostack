@@ -1,10 +1,10 @@
+import { metrics } from '@shared/core'
 import type {
   CommitTrace,
   PerformanceApi,
   PerformanceCounter,
   PerformanceOptions,
   PerformanceStats,
-  RunningStat,
   StagePerformanceStats,
   ViewStageName
 } from '@dataview/engine/contracts/performance'
@@ -18,23 +18,6 @@ const VIEW_STAGE_NAMES: readonly ViewStageName[] = [
   'publish'
 ]
 
-const cloneRunningStat = (
-  stat: RunningStat
-): RunningStat => ({
-  count: stat.count,
-  total: stat.total,
-  avg: stat.avg,
-  max: stat.max,
-  ...(stat.p95 === undefined ? {} : { p95: stat.p95 })
-})
-
-const createRunningStat = (): RunningStat => ({
-  count: 0,
-  total: 0,
-  avg: 0,
-  max: 0
-})
-
 const createPerformanceCounter = (): PerformanceCounter => ({
   total: 0,
   changed: 0,
@@ -47,22 +30,8 @@ const createStagePerformanceStats = (): StagePerformanceStats => ({
   sync: 0,
   rebuild: 0,
   changed: 0,
-  duration: createRunningStat()
+  duration: metrics.createRunningStat()
 })
-
-const updateRunningStat = (
-  stat: RunningStat,
-  value: number | undefined
-) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return
-  }
-
-  stat.count += 1
-  stat.total += value
-  stat.avg = stat.total / stat.count
-  stat.max = Math.max(stat.max, value)
-}
 
 const createPerformanceStats = (): PerformanceStats => ({
   commits: {
@@ -73,11 +42,11 @@ const createPerformanceStats = (): PerformanceStats => ({
     replace: 0
   },
   timings: {
-    totalMs: createRunningStat(),
-    planMs: createRunningStat(),
-    indexMs: createRunningStat(),
-    viewMs: createRunningStat(),
-    outputMs: createRunningStat()
+    totalMs: metrics.createRunningStat(),
+    planMs: metrics.createRunningStat(),
+    indexMs: metrics.createRunningStat(),
+    viewMs: metrics.createRunningStat(),
+    outputMs: metrics.createRunningStat()
   },
   indexes: {
     records: createPerformanceCounter(),
@@ -98,11 +67,11 @@ const clonePerformanceStats = (
     ...stats.commits
   },
   timings: {
-    totalMs: cloneRunningStat(stats.timings.totalMs),
-    planMs: cloneRunningStat(stats.timings.planMs),
-    indexMs: cloneRunningStat(stats.timings.indexMs),
-    viewMs: cloneRunningStat(stats.timings.viewMs),
-    outputMs: cloneRunningStat(stats.timings.outputMs)
+    totalMs: metrics.cloneRunningStat(stats.timings.totalMs),
+    planMs: metrics.cloneRunningStat(stats.timings.planMs),
+    indexMs: metrics.cloneRunningStat(stats.timings.indexMs),
+    viewMs: metrics.cloneRunningStat(stats.timings.viewMs),
+    outputMs: metrics.cloneRunningStat(stats.timings.outputMs)
   },
   indexes: {
     records: { ...stats.indexes.records },
@@ -116,7 +85,7 @@ const clonePerformanceStats = (
       stage,
       {
         ...stats.stages[stage],
-        duration: cloneRunningStat(stats.stages[stage].duration)
+        duration: metrics.cloneRunningStat(stats.stages[stage].duration)
       }
     ] as const)
   ) as Record<ViewStageName, StagePerformanceStats>
@@ -239,11 +208,11 @@ export const createPerformanceRuntime = (
 
       stats.commits.total += 1
       stats.commits[nextTrace.kind] += 1
-      updateRunningStat(stats.timings.totalMs, nextTrace.timings.totalMs)
-      updateRunningStat(stats.timings.planMs, nextTrace.timings.planMs)
-      updateRunningStat(stats.timings.indexMs, nextTrace.timings.indexMs)
-      updateRunningStat(stats.timings.viewMs, nextTrace.timings.viewMs)
-      updateRunningStat(stats.timings.outputMs, nextTrace.timings.outputMs)
+      metrics.updateRunningStat(stats.timings.totalMs, nextTrace.timings.totalMs)
+      metrics.updateRunningStat(stats.timings.planMs, nextTrace.timings.planMs)
+      metrics.updateRunningStat(stats.timings.indexMs, nextTrace.timings.indexMs)
+      metrics.updateRunningStat(stats.timings.viewMs, nextTrace.timings.viewMs)
+      metrics.updateRunningStat(stats.timings.outputMs, nextTrace.timings.outputMs)
 
       ;(['records', 'search', 'bucket', 'sort', 'summaries'] as const).forEach(indexName => {
         const counter = stats.indexes[indexName]
@@ -264,7 +233,7 @@ export const createPerformanceRuntime = (
         if (stage.changed) {
           target.changed += 1
         }
-        updateRunningStat(target.duration, stage.durationMs)
+        metrics.updateRunningStat(target.duration, stage.durationMs)
       })
     }
   }

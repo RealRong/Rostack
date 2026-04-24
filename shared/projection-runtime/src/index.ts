@@ -21,6 +21,7 @@ export { isListEqual, publishList } from './publish/list'
 export { publishValue } from './publish/value'
 export { createRuntime } from './runtime/createRuntime'
 export { composeSync } from './source/compose'
+export { createEntityDeltaSync } from './source/entity'
 export { createEventSync } from './source/event'
 export { createFamilySync } from './source/family'
 export { createListSync } from './source/list'
@@ -65,6 +66,10 @@ export type {
   Input as SourceInput,
   Sync as SourceSync
 } from './contracts/source'
+export type {
+  EntityDeltaSyncPatch,
+  EntityDeltaSyncSpec
+} from './source/entity'
 export type { Harness } from './contracts/testing'
 export type {
   Phase as TracePhase,

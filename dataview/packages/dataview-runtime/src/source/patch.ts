@@ -3,6 +3,7 @@ import {
   store,
   type EntityDelta
 } from '@shared/core'
+import { createEntityDeltaSync } from '@shared/projection-runtime'
 import type {
   EntitySource
 } from '@dataview/runtime/source/contracts'
@@ -124,6 +125,101 @@ export const resetEntityRuntime = <Key, Value>(runtime: {
   runtime.table.write.replace(new Map(input.values))
 }
 
+interface EntityDeltaSnapshot<Key, Value> {
+  ids: readonly Key[]
+  readValue(key: Key): Value | undefined
+}
+
+const applyTablePatch = <Key, Value>(
+  table: store.TableStore<Key, Value>,
+  patch: {
+    set?: readonly (readonly [Key, Value])[]
+    remove?: readonly Key[]
+  }
+) => {
+  if (!patch.set?.length && !patch.remove?.length) {
+    return
+  }
+
+  table.write.apply({
+    ...(patch.set?.length
+      ? { set: patch.set }
+      : {}),
+    ...(patch.remove?.length
+      ? { remove: patch.remove }
+      : {})
+  })
+}
+
+const createRuntimeEntityDeltaSync = <Key, Value>() =>
+  createEntityDeltaSync<
+    EntityDeltaSnapshot<Key, Value>,
+    EntityDelta<Key> | undefined,
+    {
+      ids?: store.ValueStore<readonly Key[]>
+      table: store.TableStore<Key, Value>
+    },
+    Key,
+    Value
+  >({
+    delta: change => change,
+    list: snapshot => snapshot.ids,
+    read: (snapshot, key) => snapshot.readValue(key),
+    apply: (patch, runtime) => {
+      if (patch.order && runtime.ids) {
+        runtime.ids.set(patch.order)
+      }
+
+      applyTablePatch(runtime.table, patch)
+    }
+  })
+
+const createMappedRuntimeEntityDeltaSync = <
+  PublicKey,
+  InternalKey,
+  Value
+>(
+  keyOf: (key: PublicKey) => InternalKey
+) => createEntityDeltaSync<
+  {
+    readValue(key: PublicKey): Value | undefined
+  },
+  EntityDelta<PublicKey> | undefined,
+  store.TableStore<InternalKey, Value>,
+  PublicKey,
+  Value
+>({
+  delta: change => {
+    if (!change || (!change.set?.length && !change.remove?.length)) {
+      return undefined
+    }
+
+    return {
+      ...(change.set?.length
+        ? { set: change.set }
+        : {}),
+      ...(change.remove?.length
+        ? { remove: change.remove }
+        : {})
+    }
+  },
+  list: () => [],
+  read: (snapshot, key) => snapshot.readValue(key),
+  apply: (patch, table) => {
+    const set = patch.set?.map(([key, value]) => [keyOf(key), value] as const)
+    const remove = patch.remove?.map(keyOf)
+
+    applyTablePatch(table, {
+      ...(set?.length
+        ? { set }
+        : {}),
+      ...(remove?.length
+        ? { remove }
+        : {})
+    })
+  }
+})
+
 export const applyEntityDelta = <Key, Value>(input: {
   delta: EntityDelta<Key> | undefined
   runtime: {
@@ -133,43 +229,18 @@ export const applyEntityDelta = <Key, Value>(input: {
   readIds: () => readonly Key[]
   readValue: (key: Key) => Value | undefined
 }) => {
-  if (!input.delta) {
-    return
+  const snapshot: EntityDeltaSnapshot<Key, Value> = {
+    get ids() {
+      return input.readIds()
+    },
+    readValue: input.readValue
   }
 
-  if (input.delta.order && input.runtime.ids) {
-    input.runtime.ids.set(input.readIds())
-  }
-
-  let set: Array<readonly [Key, Value]> | undefined
-  if (input.delta.set?.length) {
-    set = []
-    for (let index = 0; index < input.delta.set.length; index += 1) {
-      const key = input.delta.set[index]!
-      const value = input.readValue(key)
-      if (value === undefined) {
-        continue
-      }
-
-      set.push([key, value] as const)
-    }
-  }
-
-  if (!set?.length && !input.delta.remove?.length) {
-    return
-  }
-
-  input.runtime.table.write.apply({
-    ...(set?.length
-      ? {
-          set
-        }
-      : {}),
-    ...(input.delta.remove?.length
-      ? {
-          remove: input.delta.remove
-        }
-      : {})
+  createRuntimeEntityDeltaSync<Key, Value>().sync({
+    previous: snapshot,
+    next: snapshot,
+    change: input.delta,
+    sink: input.runtime
   })
 }
 
@@ -179,34 +250,16 @@ export const applyMappedEntityDelta = <PublicKey, InternalKey, Value>(input: {
   keyOf: (key: PublicKey) => InternalKey
   readValue: (key: PublicKey) => Value | undefined
 }) => {
-  if (!input.delta) {
-    return
+  const snapshot = {
+    readValue: input.readValue
   }
 
-  let set: Array<readonly [InternalKey, Value]> | undefined
-  if (input.delta.set?.length) {
-    set = []
-    for (let index = 0; index < input.delta.set.length; index += 1) {
-      const key = input.delta.set[index]!
-      const value = input.readValue(key)
-      if (value === undefined) {
-        continue
-      }
-
-      set.push([input.keyOf(key), value] as const)
-    }
-  }
-
-  if (!set?.length && !input.delta.remove?.length) {
-    return
-  }
-
-  input.table.write.apply({
-    ...(set?.length
-      ? { set }
-      : {}),
-    ...(input.delta.remove?.length
-      ? { remove: input.delta.remove.map(input.keyOf) }
-      : {})
+  createMappedRuntimeEntityDeltaSync<PublicKey, InternalKey, Value>(
+    input.keyOf
+  ).sync({
+    previous: snapshot,
+    next: snapshot,
+    change: input.delta,
+    sink: input.table
   })
 }

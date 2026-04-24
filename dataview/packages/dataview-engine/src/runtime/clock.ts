@@ -1,6 +1,3 @@
-export const now = (): number => (
-  typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now()
-)
+import { scheduler } from '@shared/core'
 
+export const now = (): number => scheduler.readMonotonicNow()

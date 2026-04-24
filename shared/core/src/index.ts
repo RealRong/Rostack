@@ -8,6 +8,8 @@ export type { EntityDelta } from './entityDelta'
 export * as equal from './equality'
 export type { EntityTable } from './entityTable'
 export { entityTable } from './entityTable'
+export * as historyFootprint from './historyFootprint'
+export type { HistoryFootprintCollector } from './historyFootprint'
 export * as issueCollector from './issueCollector'
 export type {
   IssueCollector,
@@ -18,6 +20,8 @@ export type {
 export * as json from './json'
 export * as keySet from './keySet'
 export type { KeySet } from './keySet'
+export * as metrics from './metrics'
+export type { RunningStat } from './metrics'
 export * as mutationContext from './mutationContext'
 export type { MutationContext } from './mutationContext'
 export * as mutationTrace from './mutationTrace'

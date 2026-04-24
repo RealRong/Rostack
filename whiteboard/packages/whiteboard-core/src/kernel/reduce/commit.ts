@@ -1,5 +1,4 @@
 import { err, ok } from '@whiteboard/core/result'
-import { materializeHistoryFootprint } from '@whiteboard/core/spec/history'
 import { mutationTrace } from '@shared/core'
 import type {
   Invalidation,
@@ -167,7 +166,7 @@ export const createCommitApi = (
       invalidation,
       inverse: tx.inverse.finish(),
       history: {
-        footprint: materializeHistoryFootprint(tx._runtime.history.footprint)
+        footprint: tx._runtime.history.footprint.finish()
       },
       impact: deriveImpact(invalidation)
     })

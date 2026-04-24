@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   composeSync,
+  createEntityDeltaSync,
   createEventSink,
   createEventSync,
   createFamilySink,
@@ -12,7 +13,7 @@ import {
   createValueSink,
   createValueSync
 } from '../src'
-import type { Family } from '../src'
+import type { EntityDelta, Family } from '../src'
 
 type Snapshot = {
   title: string
@@ -36,6 +37,10 @@ type Change = {
   version: {
     changed: boolean
   }
+}
+
+type DeltaChange = {
+  nodes?: EntityDelta<string>
 }
 
 const createSnapshot = (input: {
@@ -97,6 +102,70 @@ describe('source sync', () => {
       remove: sink.remove,
       hasOrderChanged: (nextChange: Change) => nextChange.order.changed,
       order: sink.order
+    })
+
+    sync.sync({
+      previous,
+      next,
+      change,
+      sink
+    })
+
+    expect(sink.get().ids).toEqual(['c', 'a'])
+    expect(sink.get().byId.get('a')).toEqual({ value: 10 })
+    expect(sink.get().byId.get('b')).toBeUndefined()
+    expect(sink.get().byId.get('c')).toEqual({ value: 3 })
+  })
+
+  it('applies entity delta patches without re-deriving membership', () => {
+    const previous = createSnapshot({
+      title: 'before',
+      order: ['a', 'b'],
+      nodes: [
+        ['a', { value: 1 }],
+        ['b', { value: 2 }]
+      ],
+      version: 1
+    })
+    const next = createSnapshot({
+      title: 'before',
+      order: ['c', 'a'],
+      nodes: [
+        ['c', { value: 3 }],
+        ['a', { value: 10 }]
+      ],
+      version: 1
+    })
+    const change: DeltaChange = {
+      nodes: {
+        order: true,
+        set: ['a', 'c'],
+        remove: ['b']
+      }
+    }
+    const sink = createFamilySink<string, {
+      value: number
+    }>()
+
+    sink.set('a', { value: 1 })
+    sink.set('b', { value: 2 })
+    sink.order(['a', 'b'])
+
+    const sync = createEntityDeltaSync({
+      delta: (nextChange: DeltaChange) => nextChange.nodes,
+      list: (snapshot: Snapshot) => snapshot.order,
+      read: (snapshot: Snapshot, key: string) => snapshot.nodes.byId.get(key),
+      apply: (patch, nextSink) => {
+        if (patch.order) {
+          nextSink.order(patch.order)
+        }
+        patch.set?.forEach(([key, value]) => {
+          nextSink.set(key, value)
+        })
+        patch.remove?.forEach((key) => {
+          nextSink.remove(key)
+        })
+      }
     })
 
     sync.sync({

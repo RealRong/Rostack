@@ -2,164 +2,87 @@
 
 ## 目标
 
-本文回答三个问题：
+本文只回答四个问题：
 
-1. 在当前 whiteboard 的 DOM 渲染方案下，`visibleWorld` 是否仍然需要保留。
-2. 如果 `visibleWorld` 不驱动渲染，pan 时是否还应该重建 `visible`。
-3. 更合理的职责划分应该是什么。
+1. 在当前 whiteboard 的 DOM 渲染方案下，`visible` 这个概念到底有没有必要。
+2. `visibleWorld` 是否还需要保留。
+3. 架构最小能收敛成什么模型。
+4. 是否可以只剩一个 `query.visible()`。
 
-本文的目标不是讨论“要不要做虚拟化”，而是明确：
-
-- `visibleWorld` 是查询边界，不是渲染边界。
-- `visible` 不应在 pan 时作为 published scene state 被 eager 重建。
-- 当前应该改的是数据流和订阅结构，而不是先上 DOM 卸载。
+本文不讨论“以后要不要做更激进的 DOM 裁剪”，只讨论当前模型应该如何收敛。
 
 ## 结论
 
 结论固定为：
 
-- `visibleWorld` 需要保留。
-- 但 `visibleWorld` 在当前 DOM 方案里应当只是 query helper，不应当驱动 published `scene.visible`。
-- 如果 `visibleWorld` 不驱动渲染，那么 pan 时不应该 eager 重建 `visible`。
-- 当前更合理的模型是：
-  - `scene.items` 继续发布
-  - `spatial` 继续维护索引
-  - `visible` 改成按需查询
+- `visible` 有用，但它只应该作为懒查询语义存在，不应该作为 published snapshot/state 存在。
+- `visibleWorld` 可以保留，但它只应该存在于 query 组合层，不应该驱动 graph runtime phase，也不应该进入 published `scene`。
+- `query.visible()` 不够，它只能是一个便利函数，不能成为唯一查询原语。
+- 最小且足够的模型是：
+  - published: `scene.items`
+  - query primitive: `query.rect(worldRect, options?)`
+  - query helper: `query.visible(options?)`
+- `scene.visible`、`scene.pick`、`scene.spatial` 都应删除。
 
 换句话说：
 
-- 要保留的是“可见区查询能力”。
-- 不需要保留的是“每次 viewport 变化就预先发布一份 visible snapshot”。
+- 要保留的是“按当前 viewport 做一次 visible 查询的能力”。
+- 不需要保留的是“每次 viewport 改变时预先发布一份 visible snapshot”。
 
-## 当前问题
+## 生产路径核验
 
-### 1. `flushWheel` 会先触发 viewport 更新
+### 1. `CanvasScene` 只消费 `scene.items`
 
-`flushWheel` 在：
-
-- `whiteboard/packages/whiteboard-react/src/runtime/viewport/useBindViewportInput.ts:91-103`
-
-它最终会调用：
-
-- `editor.input.wheel(input)`
-
-继续走到：
-
-- `whiteboard/packages/whiteboard-editor/src/input/host.ts:251-265`
-
-最后落到：
-
-- `whiteboard/packages/whiteboard-editor/src/session/viewport.ts:161-170`
-
-这里会真正更新 viewport store。
-
-### 2. `Surface` 自己订阅了 viewport，pan 时父组件先重渲染
-
-`Surface` 在：
-
-- `whiteboard/packages/whiteboard-react/src/canvas/Surface.tsx:33`
-
-直接：
-
-```ts
-const viewport = useStoreValue(editor.store.viewport)
-```
-
-然后在：
-
-- `whiteboard/packages/whiteboard-react/src/canvas/Surface.tsx:42-48`
-
-重新生成 transform style。
-
-这意味着：
-
-- 每次 pan，`Surface` 本身都会 rerender。
-- `CanvasScene`、`NodeOverlayLayer`、`EdgeOverlayLayer`、`DrawLayer` 都在它的子树下。
-- 即使它们自己的 store 没变，也会先被父组件带着执行一次 render。
-
-### 3. projection 还会把 viewport 变化翻译成 visible 重建
-
-projection controller 订阅 viewport 的位置在：
-
-- `whiteboard/packages/whiteboard-editor/src/projection/controller.ts:357-359`
-
-它会对每次 viewport 变化执行：
-
-```ts
-mark(createViewportDelta())
-```
-
-随后：
-
-- `whiteboard/packages/whiteboard-editor-graph/src/runtime/planner.ts:40-44`
-
-把 scene delta 翻译成 spatial 的 `visible` scope。
-
-接着：
-
-- `whiteboard/packages/whiteboard-editor-graph/src/runtime/spatial/update.ts:335-339`
-
-会把 `delta.visible` 标记为 `true`。
-
-再往后：
-
-- `whiteboard/packages/whiteboard-editor-graph/src/runtime/publish/delta.ts:79-85`
-
-把 spatial visible 变化同步到 scene publish delta。
-
-最终：
-
-- `whiteboard/packages/whiteboard-editor-graph/src/runtime/publish/scene.ts:14-39`
-
-会返回一个新的 `SceneSnapshot`。
-
-问题在于：
-
-- 这条链路隐含前提是“viewport 一变，就应该预先算好 visible 并发布”。
-- 如果 `visibleWorld` 不驱动渲染，这个前提就是错的。
-
-### 4. `CanvasScene` 订阅的是整个 `scene.view`
-
-`CanvasScene` 在：
+当前生产渲染路径里：
 
 - `whiteboard/packages/whiteboard-react/src/canvas/CanvasScene.tsx:12`
 
-读取：
+只读取：
 
 ```ts
 const scene = useStoreValue(editor.read.scene.view).items
 ```
 
-这里的问题有两个：
+这说明当前主 scene 渲染实际依赖的是：
 
-1. 它订的是整个 `scene.view`，不是更细的 `items` store。
-2. 它消费的是 `scene.items`，不是某种“真正需要随视口变的可见集”。
+- 场景顺序
+- 场景全集
 
-所以：
+而不是：
 
-- 只要 `SceneSnapshot` 外层对象换引用，它就会被通知。
-- 即使变化的只是 `visible` 或 `pick`，它也会重新执行整段 `scene.map(...)`。
+- `scene.visible`
+- `scene.pick`
+- `scene.spatial`
 
-### 5. 当前 `visibleWorld` 甚至没有真正进入 queryRect 路径
+### 2. DOM pick 不消费 `scene.pick`
 
-graph runtime 的 scene phase 接口支持：
+当前 pointer/pick 命中路径走的是：
 
-- `whiteboard/packages/whiteboard-editor-graph/src/contracts/editor.ts:333-336`
+- `whiteboard/packages/whiteboard-react/src/dom/host/input.ts`
+- `whiteboard/packages/whiteboard-react/src/dom/host/pickRegistry.ts`
 
-```ts
-export interface ViewportInput {
-  viewport: Viewport
-  visibleWorld?: Rect
-}
-```
+也就是说当前命中是：
 
-scene 构造时也支持：
+- DOM element -> `PickRegistry` -> `EditorPick`
+
+不是：
+
+- `scene.pick`
+- `spatial.point(...)`
+
+因此 `scene.pick` 在当前生产路径中没有实际存在价值。
+
+### 3. `visibleWorld` 目前只停留在 runtime 接口和测试里
+
+graph runtime 的接口支持：
+
+- `whiteboard/packages/whiteboard-editor-graph/src/contracts/editor.ts:332-336`
+
+scene phase 也支持：
 
 - `whiteboard/packages/whiteboard-editor-graph/src/runtime/scene.ts:38-50`
 
-有 `visibleWorld` 时走 `queryRect`，否则走 `queryAll`。
-
-但当前 projection input 实际只传了：
+但 projection 实际输入只传了：
 
 - `whiteboard/packages/whiteboard-editor/src/projection/input.ts:717-719`
 
@@ -169,108 +92,179 @@ viewport: {
 }
 ```
 
-也就是说：
+这说明现在的问题不是“`visibleWorld` 很重要所以必须 eager 发布”，而是：
 
-- 现在既有 eager visible rebuild
-- 又没有真的用上 `visibleWorld`
+- 当前代码既保留了 visible publish 链
+- 又没有真正把 `visibleWorld` 用作 query 输入
 
-这是最糟糕的组合：既付出了预计算成本，又没拿到查询收敛收益。
+### 4. 真实生产需求是任意 rect query，不是 viewport query 一种
 
-## Profile 结论
+当前已有生产使用：
 
-### `flush.json`
+- `whiteboard/packages/whiteboard-editor/src/read/node.ts:206-223`
+- `whiteboard/packages/whiteboard-editor/src/read/edge.ts:355-430`
 
-关键信息：
+都依赖：
 
-- `flushWheel -> flush -> update -> buildSceneSnapshot`
-- `buildSceneSnapshot -> queryAll`
+- `spatial.rect(rect, ...)`
 
-这说明当前 pan flush 时：
+这些能力包括：
 
-- scene phase 正在参与 viewport 更新链
-- `visible` 是 eager 重建的
-- 而且还退化成了全量空间查询
+- 选区命中候选收敛
+- edge connect 候选收敛
+- edge rect hit 收敛
 
-### `render.json`
+它们都不是“当前 viewport 可见集”的同义词。
 
-关键信息：
+### 5. `scene.visible` / `scene.pick` / `scene.spatial` 没有生产消费者
 
-- 绝大多数时间都在 `CanvasScene`
-- 成本主要落在 React beginWork / JSX 创建
+当前代码搜索结果显示，这几个字段的主要使用面只剩：
 
-这说明当前瓶颈更偏向：
+- graph runtime 内部构造和 publish
+- tests
 
-- `CanvasScene` 被频繁打醒
-- 醒来后又在为全量 `scene.items` 重建 React 元素
+没有生产 React/UI 直接消费它们。
 
-而不是单纯的 spatial query 本身太慢。
+所以这些字段更像历史遗留发布面，而不是仍然必要的架构核心。
 
-## 为什么 `visibleWorld` 仍然要保留
+## 为什么不能只剩 `query.visible()`
 
-### 1. 它是查询边界，不等于 visible snapshot
+答案是不能。
 
-`visibleWorld` 的核心价值首先是：
+原因不是抽象偏好，而是当前产品已经有真实需求：
 
-- 表示“当前相机对应的 world rect”
+- 给任意 marquee rect 找节点候选
+- 给任意 edge query rect 找边候选
+- 给任意 connect 区域找可连接节点
 
-它的自然用途是：
+这些都要求：
 
-- `spatial.rect(visibleWorld)` 的输入
-- hover / marquee / edge connect 等局部候选收敛
-- 只与当前视口有关的 overlay / pick 查询
+- “给我一个 world rect，返回候选集”
 
-这不要求它必须被发布成 snapshot。
+而不是：
 
-### 2. 当前 DOM 方案里，更重要的是裁剪计算，不是裁剪生命期
-
-白板节点不是轻量 cell，它们通常还带着：
-
-- 文本编辑状态
-- selection / hover / transform chrome
-- edge 连接关系
-- shape / marker / label 子树
-- focus / composition / contenteditable 状态
-
-如果把 `visibleWorld` 直接变成硬 mount/unmount 边界，会引入：
-
-- React reconciliation 抖动
-- DOM 创建与销毁
-- focus / IME 断裂
-- 刚出边界就卸载、刚进边界又挂载的 thrash
+- “给我当前 viewport 的 visible 集”
 
 因此：
 
-- `visibleWorld` 应用于“缩小查询范围”是合理的
-- `visibleWorld` 应用于“严格控制节点生命期”在当前阶段不合理
+- `visible()` 只是 `rect(currentViewportWorldRect)` 的一个特例
+- 真正的最小查询原语应该是 `rect`
 
-## 正确的职责划分
+如果继续强推“整个系统只保留 `visible()`”，最后只会出现两种结果：
+
+- 要么调用方绕回去自己算 rect，再去找别的底层接口
+- 要么不断给 `visible()` 增加不自然的参数，直到它变相重新长成 `rect(...)`
+
+这两种都不干净。
+
+## 最小收敛模型
+
+### 1. Published 层
+
+published `scene` 只保留：
+
+- `items`
+
+职责：
+
+- 表示场景顺序
+- 表示场景实体全集
+- 驱动 `CanvasScene`
+
+不再保留：
+
+- `scene.visible`
+- `scene.pick`
+- `scene.spatial`
+
+### 2. Query 层
+
+最小公共查询面只保留两层：
+
+```ts
+interface EditorQuery {
+  rect(worldRect: Rect, options?: QueryOptions): readonly SpatialRecord[]
+  visible(options?: QueryOptions): readonly SpatialRecord[]
+}
+```
+
+其中：
+
+- `rect(...)` 是唯一必要的底层查询原语
+- `visible()` 只是 sugar
+
+其内部展开应当等价于：
+
+```ts
+query.rect(viewport.worldRect(), options)
+```
+
+### 3. Viewport 层
+
+viewport 需要提供一个稳定的只读 helper：
+
+```ts
+interface ViewportRead {
+  get(): Viewport
+  pointer(input: { clientX: number, clientY: number }): ViewportPointer
+  worldToScreen(point: Point): Point
+  worldRect(): Rect
+}
+```
+
+这里的 `worldRect()` 才是 `visibleWorld` 最合理的存在形态。
+
+它属于：
+
+- session/editor read 侧的读取辅助
+
+不属于：
+
+- graph runtime input contract
+- scene snapshot
+
+### 4. Spatial 层
+
+`spatial` 仍然是底层常驻索引，但它是内部能力，不再是 scene published 语义。
+
+它的职责仍然是：
+
+- 维护几何索引
+- 支持 `rect` 查询
+
+`all()` 和 `point()` 是否保留，取决于是否还有真实消费者：
+
+- 以当前生产路径看，它们不是最小模型必须部分
+- 可以保留为内部能力或测试辅助
+- 不应再主导公开架构表达
+
+## 职责划分
 
 ### 1. `scene.items`
 
 职责：
 
-- 表示画布顺序
-- 表示场景实体全集
-- 驱动 `CanvasScene` 主渲染
+- 主渲染顺序
+- 场景全集
 
 更新时机：
 
 - document order 变化
 - graph order 变化
-- 实体增删导致 items 结构变化
+- 实体增删
 
-不应因为以下事件更新：
+不应因以下事件更新：
 
 - pan
 - zoom
-- 当前视口变化
+- viewport 变化
 
 ### 2. `spatial`
 
 职责：
 
 - 维护常驻空间索引
-- 支持 `all / rect / point` 查询
+- 提供 `rect` 查询底座
 
 更新时机：
 
@@ -278,45 +272,87 @@ viewport: {
 - order 变化
 - 实体增删
 
-不应因为以下事件更新记录本身：
+不应因以下事件更新记录本身：
 
 - pan
 - zoom
 
-### 3. `visible`
+### 3. `viewport.worldRect()`
 
 职责：
 
-- 某次查询的结果
+- 在读取时把当前 viewport 和 container rect 组合成 world rect
 
-它不应该是：
+它是：
 
-- published scene snapshot 的一部分
-- viewport 每次变化都要 eager 维护的常驻状态
+- query 输入
 
-它应该是：
+不是：
 
-- 调用方按需从 `spatial` 查询出来的临时结果
+- scene phase 输入
+- published snapshot 字段
 
-### 4. `visibleWorld`
+### 4. `visible()`
 
 职责：
 
-- 某次 query 的输入参数
+- 一个便利查询
 
-它可以：
+它是：
 
-- 由 viewport + container rect 在读取时计算
-- 或者作为薄缓存的 key 一部分
+- `rect(viewport.worldRect())` 的别名
 
-它不应该：
+不是：
 
-- 强制驱动 runtime phase
-- 强制触发 scene publish
+- 常驻 state
+- store
+- publish 结果
+
+## 数据流
+
+正确的数据流应收敛为：
+
+### 1. 文档/几何变化
+
+- graph 更新
+- spatial index 更新
+- `scene.items` 视需要更新
+
+### 2. viewport 变化
+
+- 只更新 viewport store
+- 不触发 scene visible rebuild
+- 不触发 scene publish
+
+### 3. 调用方需要 visible 候选时
+
+- 调用 `viewport.worldRect()`
+- 调用 `query.rect(worldRect)`
+
+或者直接：
+
+- 调用 `query.visible()`
+
+也就是说：
+
+- visible 是读取阶段的组合结果
+- 不是 projection/runtime publish 阶段的产物
 
 ## 设计原则
 
-### 1. `visible` 改为 lazy query
+### 1. 不做兼容期、不做双轨期
+
+这次收敛直接按最终模型重构：
+
+- 可以接受中途短时间跑不通
+- 不保留旧 `scene.visible` / `scene.pick` / `scene.spatial` 过渡层
+- 不做新旧两套 query 并行
+
+原则是：
+
+- 架构先收敛正确，再恢复运行
+
+### 2. `visible` 只做 lazy query
 
 规则固定为：
 
@@ -324,86 +360,68 @@ viewport: {
 - 需要时再查
 - 相同输入可缓存
 
-### 2. `pan` 只改 viewport transform，不重建 visible
+### 3. `rect` 是唯一必要的底层查询原语
 
-pan 的主成本应该是：
+如果要继续压 API 面，应优先压掉：
 
-- transform 更新
+- published `visible`
+- published `pick`
+- published `scene.spatial`
 
-不应该是：
+而不是压掉：
 
-- `scene.visible` eager rebuild
-- `CanvasScene` 全量 rerender
+- `rect(worldRect)`
 
-### 3. 查询按调用场景区分，不做统一 eager visible 集
+### 4. `visible()` 只是 sugar
 
-不同能力直接调用不同查询：
+它的存在是为了：
 
-- hover: `point(worldPoint)`
-- marquee: `rect(worldRect)`
-- edge connect: 局部 `point/rect`
-- 视口统计或 viewport overlay: `rect(visibleWorld)`
+- 减少调用方重复拼装 viewport world rect
 
-没有必要为了所有场景都先预建一份“当前视口所有可见元素”。
+不是为了：
 
-### 4. 如果多处需要同一份 visible query，使用懒缓存而不是 phase publish
+- 重新引入 viewport 驱动的 runtime phase
 
-如果担心同一帧重复查多次同一个 `visibleWorld`，允许加一层薄缓存。
+### 5. 先修数据流，再讨论 DOM 裁剪
 
-缓存 key 建议包含：
+当前优先级应该是：
 
-- `spatialRevision`
-- `viewportToken`
-- `queryKind`
+- 去掉 viewport -> visible publish 链
+- 去掉 scene 上无消费者的字段
+- 收敛 query API
+- 隔离 React rerender
 
-这仍然是：
+不是先做：
 
-- 按需计算
-- 按 revision 失效
-
-不是：
-
-- pan 时无条件发布新 snapshot
-
-## 目标架构
-
-### A. 发布层
-
-发布层只保留稳定、结构性的内容：
-
-- `scene.items`
-- `graph.*`
-- `ui.*`
-
-不再发布：
-
-- `scene.visible`
-- `scene.pick` 中依赖当前 viewport 的 eager 结果
-
-### B. 查询层
-
-查询层直接读：
-
-- `spatial`
-- `viewport`
-
-在调用时组合得到：
-
-- `visibleWorld`
-- `visibleItems`
-- `pickCandidates`
-
-### C. React 层
-
-React 层应满足：
-
-- `CanvasScene` 只订阅稳定的 `scene.items`
-- viewport 变化不再通过 scene publish 打醒 `CanvasScene`
-- 需要 visible 候选的组件，按需调用更细粒度 query
+- 视口外 DOM 卸载
 
 ## 详细实施方案
 
-### 阶段 1. 去掉 pan 对 published visible 的依赖
+### 阶段 1. 删除 published `scene.visible` / `scene.pick` / `scene.spatial`
+
+#### 要改什么
+
+- `whiteboard/packages/whiteboard-editor-graph/src/contracts/editor.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/createEmptySnapshot.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/scene.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/publish/scene.ts`
+- `whiteboard/packages/whiteboard-editor/src/projection/sources.ts`
+- `whiteboard/packages/whiteboard-editor/src/read/graph.ts`
+- 所有相关 tests
+
+#### 改造目标
+
+把 scene 收缩为：
+
+```ts
+interface SceneSnapshot {
+  items: readonly SceneItem[]
+}
+```
+
+如果 `layers` 没有真实消费者，也应一起评估删除。
+
+### 阶段 2. 删除 viewport -> visible publish 链
 
 #### 要改什么
 
@@ -411,8 +429,9 @@ React 层应满足：
 - `whiteboard/packages/whiteboard-editor/src/projection/input.ts`
 - `whiteboard/packages/whiteboard-editor-graph/src/runtime/planner.ts`
 - `whiteboard/packages/whiteboard-editor-graph/src/runtime/publish/delta.ts`
-- `whiteboard/packages/whiteboard-editor-graph/src/runtime/publish/scene.ts`
 - `whiteboard/packages/whiteboard-editor-graph/src/phases/scene.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/spatial/state.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/spatial/update.ts`
 
 #### 改造目标
 
@@ -422,91 +441,65 @@ React 层应满足：
 - scene visible rebuild
 - scene publish
 
-也就是说，pan 时不再有“published visible 重建”这条链。
+`visibleWorld` 也不再作为 scene runtime input contract 的一部分存在。
 
-#### 原则
-
-- 如果 scene 主渲染不依赖 visible，那么 viewport delta 不应进入 scene publish。
-- scene phase 应只处理结构性 scene 数据，而不是当前相机查询结果。
-
-### 阶段 2. 明确 scene 只发布 `items`
-
-#### 要改什么
-
-- `whiteboard/packages/whiteboard-editor-graph/src/contracts/editor.ts`
-- `whiteboard/packages/whiteboard-editor-graph/src/runtime/createEmptySnapshot.ts`
-- `whiteboard/packages/whiteboard-editor-graph/src/runtime/scene.ts`
-- `whiteboard/packages/whiteboard-editor/src/projection/sources.ts`
-- `whiteboard/packages/whiteboard-editor/src/read/graph.ts`
-
-#### 改造方向
-
-把当前的 scene 语义收缩为：
-
-- `items`
-
-如果仍需保留 `visible / pick` 字段，也必须改成：
-
-- 非 viewport 驱动的 published 数据
-- 或仅作为非默认、非主链路的 read helper
-
-更推荐的方向是直接把 viewport 相关的 `visible / pick` 从 published scene 中拿掉。
-
-### 阶段 3. 引入 lazy visible query
+### 阶段 3. 增加最小 query API
 
 #### 要改什么
 
 - `whiteboard/packages/whiteboard-editor/src/read/graph.ts`
-- 新增一层 query/read helper
+- `whiteboard/packages/whiteboard-editor/src/read/public.ts`
+- `whiteboard/packages/whiteboard-editor/src/session/viewport.ts`
+- 必要时新增 editor query/read helper 文件
 
 #### 目标 API
 
-例如：
-
 ```ts
-visible: {
-  rect(worldRect: Rect, options?): readonly SpatialRecord[]
-  point(worldPoint: Point, options?): readonly SpatialRecord[]
-  viewport(options?): readonly SpatialRecord[]
+interface EditorQuery {
+  rect(worldRect: Rect, options?: QueryOptions): readonly SpatialRecord[]
+  visible(options?: QueryOptions): readonly SpatialRecord[]
 }
 ```
 
-其中：
+以及：
 
-- `viewport()` 内部再读取当前 viewport 与 container rect，计算 `visibleWorld`
-- 然后调用 `spatial.rect(visibleWorld)`
-
-#### 原则
-
-- 这是 query API，不是 store snapshot。
-- 调用方主动拉取，而不是 projection 主动推送。
-
-### 阶段 4. 给 lazy query 增加可选缓存
-
-#### 什么时候需要
-
-当出现以下情况时再做：
-
-- 同一帧多个消费者重复请求同一个 viewport visible rect
-- query 成本开始明显进入 profile
-
-#### 缓存策略
-
-- key: `spatialRevision + viewportToken + queryKind`
-- value: query result
-- spatial revision 变化时失效
-- viewport token 变化时失效
+```ts
+interface ViewportRead {
+  worldRect(): Rect
+}
+```
 
 #### 原则
 
-- 先有正确职责，再做缓存
-- 不要反过来用“缓存”去合理化 eager publish
+- `rect(...)` 是 primitive
+- `visible(...)` 只是组合 helper
+- query API 是 pull，不是 push
 
-### 阶段 5. 再处理 `Surface` 与 `CanvasScene` 的 rerender 链
+### 阶段 4. 收缩 `spatial` 公开表面
+
+#### 要改什么
+
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/query.ts`
+- `whiteboard/packages/whiteboard-editor-graph/src/runtime/spatial/query.ts`
+- `whiteboard/packages/whiteboard-editor/src/read/*`
+- tests
+
+#### 改造方向
+
+按生产使用面决定：
+
+- `rect` 保留
+- `all` / `point` 降为内部能力、测试能力，或直接删除公开暴露
+
+原则是：
+
+- 公开 API 只保留真实需要的最小面
+
+### 阶段 5. 处理 `Surface` 与 `CanvasScene` rerender 链
 
 #### 当前问题
 
-即使去掉 published visible，`Surface` 仍会因为订阅 viewport 而 rerender，并把 `CanvasScene` 带着一起 render。
+即使拿掉 visible publish，只要 `Surface` 自己订阅 viewport，pan 时父组件仍会先 rerender。
 
 #### 要改什么
 
@@ -518,92 +511,84 @@ visible: {
 优先级从高到低：
 
 1. 给 `CanvasScene`、`NodeOverlayLayer`、`EdgeOverlayLayer` 做 `memo` 隔离。
-2. 把 viewport transform 的更新从大组件 render 收缩到更小的 host 层。
+2. 把 viewport transform 更新收缩到更小的 host 层。
 3. 如仍不够，再考虑让 transform 走 ref + layout effect。
 
-#### 原则
+### 阶段 6. 只有 profiling 证明需要时，再补 query cache
 
-- pan 的主工作应该是改 transform。
-- 不应让主 scene 子树反复执行 render 才得到位移。
+#### 什么时候需要
 
-### 阶段 6. 如未来需要裁剪，只做软裁剪
+仅当出现以下情况时：
 
-只有在完成前五阶段、且 profiling 证明“全 DOM 保活”仍然是主瓶颈后，才允许进入这一阶段。
+- 同一帧多个消费者重复请求相同 `visible()`
+- query 成本开始进入 profile 主路径
 
-#### 策略约束
+#### 缓存策略
 
-- 必须使用 overscan，而不是严格裁边。
-- 必须加入 hysteresis，避免边界抖动。
-- 以下对象必须保活：
-  - 正在编辑的节点
-  - 当前选中的节点
-  - 当前 hover 的节点
-  - 正在连接或变换中的节点
-  - 其关联 edge 仍在可视候选中的关键端点节点
+- key: `spatialRevision + viewportToken + queryKind`
+- value: query result
+- revision/token 变化时失效
 
 #### 原则
 
-- 软裁剪是最后一步，不是第一步。
-- 只有在订阅结构和 query 结构都正确之后，它才有意义。
+- cache 是 lazy query 的优化
+- 不是 eager publish 的替代品
+
+### 阶段 7. 如未来仍需要裁剪，只做软裁剪
+
+只有在前六阶段完成且 profile 证明“全 DOM 保活”仍然是主瓶颈后，才允许进入这一阶段。
+
+策略约束：
+
+- 必须使用 overscan，而不是严格裁边
+- 必须加入 hysteresis，避免边界抖动
+- 编辑中、选中、hover、变换中对象必须保活
 
 ## 非目标
 
 当前方案明确不做：
 
-- 在 pan 过程中 eager 重建 published `visible`
-- 把 `visibleWorld` 变成 scene 主渲染输入
-- 在未拆掉 eager visible publish 之前直接上 DOM virtualization
+- 保留 `scene.visible` / `scene.pick` / `scene.spatial` 作为兼容字段
+- 让 viewport 变化继续驱动 scene publish
+- 在 graph runtime 里维护 viewport-aware visible state
+- 用 `query.visible()` 取代所有任意 rect 查询
+- 在未清理数据流前直接上 DOM virtualization
 - 在当前阶段按视口硬卸载 node DOM
 
 ## 验收标准
 
 完成阶段 1-5 后，应满足：
 
-1. pan 不再触发 scene visible rebuild / publish。
-2. `CanvasScene` 不再因为 `scene.visible` 或等价物变化被动 rerender。
-3. `CanvasScene` 不再因为 `Surface` 订阅 viewport 而被父组件连带 rerender。
-4. 需要 visible 候选时，可以通过 lazy query 获取。
-5. 相同 viewport query 如有重复，可通过 revision/token 缓存复用。
-6. 当前 DOM 方案仍保持节点保活，不因为可视边界抖动而出现 mount/unmount thrash。
-
-## 建议的实施顺序
-
-顺序固定为：
-
-1. 先去掉 published visible 的 pan 重建链。
-2. 再把 scene 收缩成稳定的 `items` 发布面。
-3. 再引入 lazy visible query。
-4. 需要时补 query cache。
-5. 最后处理 `Surface` 与 `CanvasScene` 的 rerender 隔离。
-6. 再评估是否需要软裁剪。
-
-这个顺序不能反过来。
-
-如果先讨论 DOM 卸载，会把真正的问题掩盖掉：
-
-- viewport 不该驱动 visible publish
-- `CanvasScene` 不该订过粗的数据面
-- `Surface` 不该在 pan 时带着整棵 scene 子树 render
+1. pan/zoom 不再触发 scene visible rebuild / publish。
+2. `SceneSnapshot` 不再包含 `visible`、`pick`、`scene.spatial`。
+3. `CanvasScene` 只因 `scene.items` 变化而更新，不因 viewport 改变被 scene publish 打醒。
+4. 需要 visible 候选时，可通过 `query.visible()` 获取。
+5. 需要任意区域候选时，可通过 `query.rect(worldRect)` 获取。
+6. DOM pick 继续走 `PickRegistry`，不回退到 scene visible/pick。
 
 ## 结论
 
-`visibleWorld` 在当前 DOM 白板里是需要的，但它的职责应当是：
+`visible` 在当前 DOM 白板里不是完全没用，但它的正确形态只能是：
 
-- 作为 query 输入
-- 帮助收敛空间查询
-- 为按需 visible 计算提供边界
+- 一个懒查询概念
+- 一个 viewport query helper
 
-而不是：
+不能是：
 
-- 成为 published scene snapshot 的一部分
-- 在 pan 时被 eager 重建
-- 直接承担 DOM 生命期控制
+- published scene state
+- viewport 驱动的 runtime phase
+- 主渲染订阅面
 
-当前最应该修的是：
+因此最小且干净的最终模型应当是：
 
-- 去掉 viewport -> visible publish 这条错误链路
-- 让 `scene.items` 回到稳定发布面
-- 把 `visible` 改成 lazy query
-- 再拆 `Surface` 与 `CanvasScene` 的 rerender 关系
+- `scene.items`
+- `query.rect(worldRect, options?)`
+- `query.visible(options?)`
 
-这些问题修完之后，再讨论是否需要软裁剪，顺序才是正确的。
+其中：
+
+- `rect` 是 primitive
+- `visible` 是 sugar
+- 其余与 visible 相关的 published scene 结构都应删除
+
+这才是当前 whiteboard 在 DOM 方案下最干净、最可维护的收敛方式。

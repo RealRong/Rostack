@@ -1,4 +1,7 @@
-import { json } from '@shared/core'
+import {
+  historyFootprint,
+  json
+} from '@shared/core'
 import type {
   EdgeField,
   EdgeId,
@@ -173,19 +176,14 @@ export const isHistoryKey = (
 
 export const assertHistoryFootprint = (
   value: unknown
-): HistoryFootprint => {
-  if (!Array.isArray(value)) {
-    throw new Error('History footprint must be an array.')
+): HistoryFootprint => historyFootprint.assertHistoryFootprint(
+  value,
+  isHistoryKey,
+  {
+    invalidCollectionMessage: 'History footprint must be an array.',
+    invalidKeyMessage: 'History key is invalid.'
   }
-
-  value.forEach((entry) => {
-    if (!isHistoryKey(entry)) {
-      throw new Error('History key is invalid.')
-    }
-  })
-
-  return value
-}
+)
 
 export const historyKeyConflicts = (
   left: HistoryKey,
@@ -367,13 +365,8 @@ export const historyKeyConflicts = (
 export const historyFootprintConflicts = (
   left: HistoryFootprint,
   right: HistoryFootprint
-): boolean => {
-  for (let leftIndex = 0; leftIndex < left.length; leftIndex += 1) {
-    for (let rightIndex = 0; rightIndex < right.length; rightIndex += 1) {
-      if (historyKeyConflicts(left[leftIndex]!, right[rightIndex]!)) {
-        return true
-      }
-    }
-  }
-  return false
-}
+): boolean => historyFootprint.historyFootprintConflicts(
+  left,
+  right,
+  historyKeyConflicts
+)

@@ -9,7 +9,6 @@ import type { ReducerReadApi } from '@whiteboard/core/kernel/reduce/types'
 import type { DraftDocument } from '@whiteboard/core/kernel/reduce/runtime'
 import { collectConnectedEdges } from '@whiteboard/core/kernel/reduce/runtime'
 import type {
-  HistoryFootprint,
   HistoryKey
 } from '@whiteboard/core/spec/history/key'
 
@@ -497,7 +496,3 @@ export const collect = {
     COLLECTORS[op.type](ctx as never, op as never)
   }
 }
-
-export const materializeHistoryFootprint = (
-  values: ReadonlyMap<string, HistoryKey>
-): HistoryFootprint => [...values.values()]

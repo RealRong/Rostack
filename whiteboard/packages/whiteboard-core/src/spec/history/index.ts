@@ -13,7 +13,6 @@ export type {
 
 export {
   collect,
-  materializeHistoryFootprint
 } from '@whiteboard/core/spec/history/collect'
 
 export type {

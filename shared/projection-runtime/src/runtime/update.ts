@@ -1,3 +1,4 @@
+import { scheduler } from '@shared/core'
 import type * as runtime from '../contracts/runtime'
 import type {
   DefaultPhaseScopeMap,
@@ -7,12 +8,6 @@ import type {
 import type * as trace from '../contracts/trace'
 import { fanoutDependents, type PhaseGraph } from '../dirty/fanout'
 import type { RuntimeState } from './state'
-
-const readNow = () => (
-  typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now()
-)
 
 const didPhaseChange = (
   action: trace.Phase['action']
@@ -149,7 +144,7 @@ export const runRuntimeUpdate = <
     scope: plan.scope
   })
 
-  const startAt = readNow()
+  const startAt = scheduler.readMonotonicNow()
 
   input.graph.order.forEach((phaseName) => {
     if (!pending.has(phaseName)) {
@@ -157,7 +152,7 @@ export const runRuntimeUpdate = <
     }
 
     const spec = input.graph.specs.get(phaseName)!
-    const phaseStartAt = readNow()
+    const phaseStartAt = scheduler.readMonotonicNow()
     const phaseScope = pendingScope[phaseName] as
       | TScopeMap[typeof phaseName]
       | undefined
@@ -176,7 +171,7 @@ export const runRuntimeUpdate = <
       name: phaseName,
       action: result.action,
       changed,
-      durationMs: readNow() - phaseStartAt,
+      durationMs: scheduler.readMonotonicNow() - phaseStartAt,
       metrics: result.metrics
     })
 
@@ -211,7 +206,7 @@ export const runRuntimeUpdate = <
     trace: {
       revision,
       phases,
-      totalMs: readNow() - startAt
+      totalMs: scheduler.readMonotonicNow() - startAt
     }
   }
 }

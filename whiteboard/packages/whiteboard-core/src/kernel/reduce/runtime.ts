@@ -1,7 +1,17 @@
-import { changeSet, mutationContext, type InverseBuilder, type MutationContext } from '@shared/core'
+import {
+  changeSet,
+  historyFootprint,
+  mutationContext,
+  type HistoryFootprintCollector,
+  type InverseBuilder,
+  type MutationContext
+} from '@shared/core'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/overlay'
-import type { HistoryKey } from '@whiteboard/core/spec/history'
+import {
+  serializeHistoryKey,
+  type HistoryKey
+} from '@whiteboard/core/spec/history'
 import type {
   CanvasItemRef,
   ChangeSet,
@@ -37,7 +47,7 @@ export type ReduceRuntimeWorking = {
   changes: ChangeSet
   dirty: Invalidation
   history: {
-    footprint: Map<string, HistoryKey>
+    footprint: HistoryFootprintCollector<HistoryKey>
   }
   shortCircuit?: KernelReduceResult
   reconcile: {
@@ -61,7 +71,7 @@ export type ReduceRuntime = {
   dirty: Invalidation
   inverse: InverseBuilder<import('@whiteboard/core/types').Operation>
   history: {
-    footprint: Map<string, HistoryKey>
+    footprint: HistoryFootprintCollector<HistoryKey>
   }
   shortCircuit?: KernelReduceResult
   reconcile: {
@@ -394,7 +404,9 @@ export const createReduceRuntime = (
       changes: createChangeSet(),
       dirty: createInvalidation(),
       history: {
-        footprint: new Map()
+        footprint: historyFootprint.createHistoryFootprintCollector(
+          serializeHistoryKey
+        )
       },
       reconcile: {
         tasks: [],

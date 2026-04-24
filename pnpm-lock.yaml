@@ -263,6 +263,9 @@ importers:
       '@shared/i18n':
         specifier: workspace:*
         version: link:../../../shared/i18n
+      '@shared/projection-runtime':
+        specifier: workspace:*
+        version: link:../../../shared/projection-runtime
 
   dataview/packages/dataview-meta:
     dependencies:
@@ -341,9 +344,9 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
-      '@shared/i18n':
+      '@shared/projection-runtime':
         specifier: workspace:*
-        version: link:../../../shared/i18n
+        version: link:../../../shared/projection-runtime
 
   dataview/packages/dataview-table:
     dependencies:
@@ -380,6 +383,12 @@ importers:
       '@types/react':
         specifier: ^19.1.12
         version: 19.2.14
+
+  shared/projection-runtime:
+    dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../core
 
   shared/react:
     dependencies:
@@ -456,6 +465,9 @@ importers:
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
+      '@whiteboard/history':
+        specifier: workspace:*
+        version: link:../whiteboard-history
       yjs:
         specifier: ^13.6.27
         version: 13.6.30
@@ -477,6 +489,24 @@ importers:
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
+      '@whiteboard/editor-graph':
+        specifier: workspace:*
+        version: link:../whiteboard-editor-graph
+      '@whiteboard/engine':
+        specifier: workspace:*
+        version: link:../whiteboard-engine
+      '@whiteboard/history':
+        specifier: workspace:*
+        version: link:../whiteboard-history
+
+  whiteboard/packages/whiteboard-editor-graph:
+    dependencies:
+      '@shared/projection-runtime':
+        specifier: workspace:*
+        version: link:../../../shared/projection-runtime
+      '@whiteboard/core':
+        specifier: workspace:*
+        version: link:../whiteboard-core
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
@@ -489,6 +519,18 @@ importers:
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
+
+  whiteboard/packages/whiteboard-history:
+    dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
+      '@whiteboard/core':
+        specifier: workspace:*
+        version: link:../whiteboard-core
+      '@whiteboard/engine':
+        specifier: workspace:*
+        version: link:../whiteboard-engine
 
   whiteboard/packages/whiteboard-product:
     dependencies:
@@ -525,6 +567,9 @@ importers:
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
+      '@whiteboard/history':
+        specifier: workspace:*
+        version: link:../whiteboard-history
       '@whiteboard/product':
         specifier: workspace:*
         version: link:../whiteboard-product

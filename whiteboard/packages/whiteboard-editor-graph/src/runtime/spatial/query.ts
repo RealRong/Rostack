@@ -41,6 +41,15 @@ const collectRecords = (input: {
   return records
 }
 
+export const queryAll = (input: {
+  state: SpatialIndexState
+  kinds?: readonly SpatialKind[]
+}): readonly SpatialRecord[] => collectRecords({
+  state: input.state,
+  keys: [...input.state.records.keys()],
+  kinds: input.kinds
+})
+
 export const queryRect = (input: {
   state: SpatialIndexState
   worldRect: Rect
@@ -65,6 +74,10 @@ export const createSpatialRead = (input: {
   state: () => SpatialIndexState
 }): SpatialRead => ({
   get: (key) => input.state().records.get(key),
+  all: (options) => queryAll({
+    state: input.state(),
+    kinds: options?.kinds
+  }),
   rect: (worldRect, options) => queryRect({
     state: input.state(),
     worldRect,

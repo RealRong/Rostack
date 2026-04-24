@@ -19,7 +19,7 @@ type SettingsRouteKind =
   | 'viewProperties'
   | 'fieldList'
   | 'fieldCreate'
-  | 'fieldSchema'
+  | 'field'
   | 'filter'
   | 'sort'
 
@@ -56,6 +56,10 @@ export const ui = {
     allFiltered: token('meta.ui.fieldPicker.allFiltered', 'All fields are already filtered.'),
     allSorted: token('meta.ui.fieldPicker.allSorted', 'All fields are already sorted.')
   },
+  card: {
+    titlePlaceholder: token('meta.ui.card.titlePlaceholder', 'Title'),
+    emptyTitle: token('meta.ui.card.emptyTitle', 'Untitled')
+  },
   toolbar: {
     newView: token('meta.ui.toolbar.newView', 'New view'),
     search: token('meta.ui.toolbar.search', 'Search'),
@@ -88,14 +92,18 @@ export const ui = {
         : token('meta.ui.toolbar.settings.default', 'Settings')
     )
   },
-  field: {
-    editor: {
-      fieldNamePlaceholder: token('meta.ui.field.editor.fieldNamePlaceholder', 'Field name'),
-      type: token('meta.ui.field.editor.type', 'Type'),
-      format: token('meta.ui.field.editor.format', 'Format'),
-      displayFullUrl: token('meta.ui.field.editor.displayFullUrl', 'Show full URL'),
-      displayDateFormat: token('meta.ui.field.editor.displayDateFormat', 'Date format'),
-      displayTimeFormat: token('meta.ui.field.editor.displayTimeFormat', 'Time format'),
+    field: {
+      editor: {
+        fieldNamePlaceholder: token('meta.ui.field.editor.fieldNamePlaceholder', 'Field name'),
+        type: token('meta.ui.field.editor.type', 'Type'),
+        format: token('meta.ui.field.editor.format', 'Format'),
+        titleDescription: token(
+          'meta.ui.field.editor.titleDescription',
+          'The title field is built in and is edited directly on each record.'
+        ),
+        displayFullUrl: token('meta.ui.field.editor.displayFullUrl', 'Show full URL'),
+        displayDateFormat: token('meta.ui.field.editor.displayDateFormat', 'Date format'),
+        displayTimeFormat: token('meta.ui.field.editor.displayTimeFormat', 'Time format'),
       defaultValueKind: token('meta.ui.field.editor.defaultValueKind', 'Default value'),
       defaultTimezone: token('meta.ui.field.editor.defaultTimezone', 'Default timezone'),
       duplicate: token('meta.ui.field.editor.duplicate', 'Duplicate field'),
@@ -239,7 +247,7 @@ export const ui = {
           return token('meta.ui.viewSettings.route.propertyList', 'Edit fields')
         case 'fieldCreate':
           return token('meta.ui.viewSettings.route.propertyCreate', 'New field')
-        case 'fieldSchema':
+        case 'field':
           return token('meta.ui.viewSettings.route.propertySchema', 'Edit field')
         case 'filter':
           return token('meta.ui.viewSettings.route.filter', 'Filter')

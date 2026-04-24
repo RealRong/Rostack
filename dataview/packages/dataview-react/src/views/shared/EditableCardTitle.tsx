@@ -16,6 +16,8 @@ import type {
 import {
   useDataView
 } from '@dataview/react/dataview'
+import { meta } from '@dataview/meta'
+import { useTranslation } from '@shared/i18n/react'
 import {
   resolveInlineSessionExitEffect
 } from '@dataview/runtime'
@@ -174,6 +176,7 @@ export interface EditableCardTitleProps {
 }
 
 export const EditableCardTitle = (props: EditableCardTitleProps) => {
+  const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const state = useEditableCardTitleState({
     viewId: props.viewId,
@@ -224,7 +227,7 @@ export const EditableCardTitle = (props: EditableCardTitleProps) => {
         <input
           ref={inputRef}
           value={state.titleDraft}
-          placeholder={props.title.placeholderText}
+          placeholder={t(meta.ui.card.titlePlaceholder)}
           className={cn(
             'min-w-0',
             props.rootClassName,
@@ -262,7 +265,7 @@ export const EditableCardTitle = (props: EditableCardTitleProps) => {
             props.textClassName
           )}
         >
-          {props.title.value.trim() || props.title.placeholderText}
+          {props.title.value.trim() || t(meta.ui.card.emptyTitle)}
         </div>
       )}
     </>

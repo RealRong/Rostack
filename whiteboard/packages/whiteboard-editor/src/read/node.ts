@@ -1,6 +1,7 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import { collection, store } from '@shared/core'
 import type {
+  Read as EditorGraphQuery,
   NodeUiView as RuntimeNodeUiView,
   NodeView as RuntimeNodeView
 } from '@whiteboard/editor-graph'
@@ -166,10 +167,12 @@ export const resolveNodeCapability = (
 export const createGraphNodeRead = ({
   document,
   sources,
+  spatial,
   type
 }: {
   document: Pick<DocumentRead, 'node'>
   sources: Pick<ProjectionSources, 'nodeGraph' | 'nodeUi'>
+  spatial: EditorGraphQuery['spatial']
   type: Pick<NodeTypeSupport, 'capability'>
 }): GraphNodeRead => {
   const readProjectedNodes = (
@@ -190,7 +193,11 @@ export const createGraphNodeRead = ({
     const exclude = options?.exclude?.length
       ? new Set(options.exclude)
       : undefined
-    const candidateIds = store.read(document.node.list).filter((nodeId) => !exclude?.has(nodeId))
+    const candidateIds = spatial.rect(rect, {
+      kinds: ['node']
+    })
+      .map((record) => record.item.id)
+      .filter((nodeId) => !exclude?.has(nodeId))
 
     return nodeApi.hit.filterIdsInRect({
       rect,

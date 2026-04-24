@@ -14,7 +14,6 @@ export interface Card {
   viewId: ViewId
   itemId: ItemId
   recordId: RecordId
-  propertyFields: readonly CustomField[]
   size: CardSize
   layout: CardLayout
   wrap: boolean
@@ -26,7 +25,6 @@ export interface Card {
 export interface CardTitle {
   field: TitleField
   value: string
-  placeholderText: string
 }
 
 export interface CardProperty {
@@ -35,7 +33,7 @@ export interface CardProperty {
 }
 
 export interface CardContent {
-  title: CardTitle
+  title?: CardTitle
   properties: readonly CardProperty[]
   hasProperties: boolean
 }

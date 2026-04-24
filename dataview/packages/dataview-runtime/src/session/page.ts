@@ -1,6 +1,6 @@
 import type {
-  CustomField,
-  CustomFieldId,
+  Field,
+  FieldId,
   View,
   ViewFilterRuleId,
   ViewId,
@@ -36,7 +36,7 @@ export type SettingsRoute =
   | { kind: 'viewProperties' }
   | { kind: 'fieldList' }
   | { kind: 'fieldCreate' }
-  | { kind: 'fieldSchema', fieldId: CustomFieldId }
+  | { kind: 'field', fieldId: FieldId }
   | { kind: 'filter' }
   | { kind: 'sort' }
 
@@ -103,9 +103,9 @@ const cloneSettingsRoute = (
             focusTarget: route.focusTarget
           }
         : ROOT_SETTINGS_ROUTE
-    case 'fieldSchema':
+    case 'field':
       return {
-        kind: 'fieldSchema',
+        kind: 'field',
         fieldId: route.fieldId
       }
     default:
@@ -121,7 +121,7 @@ const equalSettingsRoute = (
     return false
   }
 
-  if (left.kind === 'fieldSchema' && right.kind === 'fieldSchema') {
+  if (left.kind === 'field' && right.kind === 'field') {
     return left.fieldId === right.fieldId
   }
 
@@ -137,7 +137,7 @@ const parentSettingsRoute = (
 ): SettingsRoute => {
   switch (route.kind) {
     case 'fieldCreate':
-    case 'fieldSchema':
+    case 'field':
       return { kind: 'fieldList' }
     case 'groupField':
       return { kind: 'group' }
@@ -155,7 +155,7 @@ const parentSettingsRoute = (
 
 const normalizeSettingsRoute = (input: {
   route: SettingsRoute
-  fields: readonly CustomField[]
+  fields: readonly Field[]
   hasView: boolean
   viewType?: ViewType | string
 }): SettingsRoute => {
@@ -179,7 +179,7 @@ const normalizeSettingsRoute = (input: {
       return supportsGroupSettings(input.viewType)
         ? route
         : ROOT_SETTINGS_ROUTE
-    case 'fieldSchema':
+    case 'field':
       return input.fields.find(field => field.id === route.fieldId)
         ? route
         : { kind: 'fieldList' }
@@ -304,7 +304,7 @@ export const resolvePageQueryBarState = (input: {
 }
 
 export const resolvePageSettingsState = (input: {
-  fields: readonly CustomField[]
+  fields: readonly Field[]
   activeViewId: ViewId | undefined
   activeViewType: View['type'] | undefined
   settings: SettingsState

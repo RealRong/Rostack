@@ -16,7 +16,7 @@ export const compareSortRecords = (
   rule: SortRule,
   document: DataDoc
 ): number => {
-  const currentField = documentApi.fields.all.get(document, rule.fieldId)
+  const currentField = documentApi.fields.get(document, rule.fieldId)
   return fieldApi.compare.sort(
     currentField,
     fieldApi.value.read(left, rule.fieldId),

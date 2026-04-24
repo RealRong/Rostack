@@ -87,7 +87,7 @@ const readContextField = (
   }
 
   if (context.document) {
-    return documentApi.fields.all.get(context.document, fieldId)
+    return documentApi.fields.get(context.document, fieldId)
   }
 
   return context.fields?.find(field => field.id === fieldId)
@@ -108,7 +108,7 @@ const readContextFields = (
 
   for (let index = 0; index < context.document.fields.order.length; index += 1) {
     const fieldId = context.document.fields.order[index]!
-    const field = documentApi.fields.custom.get(context.document, fieldId)
+    const field = documentApi.schema.fields.get(context.document, fieldId)
     if (field && isDefaultSearchField(field)) {
       fields.push(field)
     }

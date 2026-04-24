@@ -26,11 +26,11 @@ export const reduceOperation = (
     case 'document.view.remove':
       return documentApi.views.remove(document, operation.id)
     case 'document.field.put':
-      return documentApi.fields.custom.put(document, operation.field)
+      return documentApi.schema.fields.put(document, operation.field)
     case 'document.field.patch':
-      return documentApi.fields.custom.patch(document, operation.id, operation.patch)
+      return documentApi.schema.fields.patch(document, operation.id, operation.patch)
     case 'document.field.remove':
-      return documentApi.fields.custom.remove(document, operation.id)
+      return documentApi.schema.fields.remove(document, operation.id)
     case 'external.version.bump':
       return document
   }

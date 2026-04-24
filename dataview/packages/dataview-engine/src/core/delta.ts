@@ -2,6 +2,7 @@ import { impact as commitImpact } from '@dataview/core/commit/impact'
 import { document as documentApi } from '@dataview/core/document'
 import type {
   CommitImpact,
+  CustomFieldId,
   DataDoc,
   FieldId,
   RecordId,
@@ -197,7 +198,8 @@ export const projectDocumentDelta = (input: {
   }
 
   const nextRecordIds = documentApi.records.ids(input.next)
-  const nextFieldIds = documentApi.fields.custom.ids(input.next)
+  const nextFieldIds = documentApi.fields.ids(input.next)
+  const nextSchemaFieldIds = documentApi.schema.fields.ids(input.next)
   const nextViewIds = documentApi.views.ids(input.next)
   const records = buildListedDelta<RecordId>({
     previousIds: documentApi.records.ids(input.previous),
@@ -210,12 +212,21 @@ export const projectDocumentDelta = (input: {
   })
   const values = buildValueDelta(input)
   const fields = buildListedDelta<FieldId>({
-    previousIds: documentApi.fields.custom.ids(input.previous),
+    previousIds: documentApi.fields.ids(input.previous),
     nextIds: nextFieldIds,
     touched: readTouchedIds(
       commitImpact.field.schemaIds(input.impact),
       nextFieldIds
     ) as readonly FieldId[],
+    removed: [...(input.impact.fields?.removed ?? [])]
+  })
+  const schemaFields = buildListedDelta<CustomFieldId>({
+    previousIds: documentApi.schema.fields.ids(input.previous),
+    nextIds: nextSchemaFieldIds,
+    touched: readTouchedIds(
+      commitImpact.field.schemaIds(input.impact),
+      nextSchemaFieldIds
+    ) as readonly CustomFieldId[],
     removed: [...(input.impact.fields?.removed ?? [])]
   })
   const views = buildListedDelta<ViewId>({
@@ -231,7 +242,7 @@ export const projectDocumentDelta = (input: {
     ? true
     : undefined
 
-  return meta || records || values || fields || views
+  return meta || records || values || fields || schemaFields || views
     ? {
         ...(meta
           ? { meta }
@@ -244,6 +255,13 @@ export const projectDocumentDelta = (input: {
           : {}),
         ...(fields
           ? { fields }
+          : {}),
+        ...(schemaFields
+          ? {
+              schema: {
+                fields: schemaFields
+              }
+            }
           : {}),
         ...(views
           ? { views }

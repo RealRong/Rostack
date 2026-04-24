@@ -1,5 +1,4 @@
 import type {
-  CustomField,
   Field,
   FieldId,
   View,
@@ -100,8 +99,8 @@ const sameSettingsRoute = (
   right: PageSettings['route']
 ) => left.kind === right.kind
   && (
-    left.kind !== 'fieldSchema'
-    || right.kind !== 'fieldSchema'
+    left.kind !== 'field'
+    || right.kind !== 'field'
     || left.fieldId === right.fieldId
   )
   && (
@@ -164,7 +163,7 @@ export const createPageModel = (input: {
   pageSessionStore: store.ReadStore<PageSessionState>
   valueEditorOpenStore: store.ReadStore<boolean>
 }): PageModel => {
-  const customFields = input.source.document.fields.list
+  const fields = input.source.document.fields.list
   const views = input.source.document.views.list
   const view = input.source.active.view
   const filterFieldIds = store.createDerivedStore<readonly FieldId[]>({
@@ -190,11 +189,11 @@ export const createPageModel = (input: {
     isEqual: equal.sameOrder
   })
   const availableFilterFields = createAvailableFieldsStore({
-    fields: customFields,
+    fields,
     usedFieldIds: filterFieldIds
   })
   const availableSortFields = createAvailableFieldsStore({
-    fields: customFields,
+    fields,
     usedFieldIds: sortFieldIds
   })
   const filterCount = store.createDerivedStore<number>({
@@ -221,7 +220,7 @@ export const createPageModel = (input: {
     route: PageSettings['route']
   }>({
     get: () => resolvePageSettingsState({
-      fields: store.read(customFields),
+      fields: store.read(fields),
       activeViewId: store.read(input.source.active.viewId),
       activeViewType: store.read(input.source.active.viewType),
       settings: store.read(input.pageSessionStore).settings
@@ -242,7 +241,7 @@ export const createPageModel = (input: {
         return EMPTY_FIELDS
       }
 
-      const fieldById = new Map(store.read(customFields).map(field => [field.id, field] as const))
+      const fieldById = new Map(store.read(fields).map(field => [field.id, field] as const))
       return orderedFieldIds.flatMap(fieldId => {
         const field = fieldById.get(fieldId)
         return field
@@ -254,7 +253,7 @@ export const createPageModel = (input: {
   })
   const hiddenFields = store.createDerivedStore<readonly Field[]>({
     get: () => {
-      const allFields = store.read(customFields)
+      const allFields = store.read(fields)
       const shownFieldIds = store.read(displayFieldIds)
       if (!shownFieldIds.length) {
         return allFields
@@ -335,7 +334,7 @@ export const createPageModel = (input: {
         return undefined
       }
 
-      const allFields = store.read(customFields)
+      const allFields = store.read(fields)
       const currentSortRules = currentRules.map(entry => entry.rule)
       return {
         rule: currentRow.rule,
@@ -357,7 +356,7 @@ export const createPageModel = (input: {
         visible: currentSettings.visible,
         route: currentSettings.route,
         viewsCount: store.read(views).length,
-        fields: store.read(customFields),
+        fields: store.read(fields),
         displayFieldIds: store.read(displayFieldIds),
         visibleFields: store.read(visibleFields),
         hiddenFields: store.read(hiddenFields),

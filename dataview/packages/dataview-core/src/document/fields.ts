@@ -91,17 +91,14 @@ const listFields = (
 ]
 
 export const documentFields = {
-  title: {
-    get: getTitleField,
-    isId: isTitleFieldId
-  },
-  all: {
-    list: listFields,
-    ids: getFieldIds,
-    get: getField,
-    has: hasField
-  },
-  custom: {
+  list: listFields,
+  ids: getFieldIds,
+  get: getField,
+  has: hasField
+} as const
+
+export const documentSchema = {
+  fields: {
     list: listCustomFields,
     ids: getCustomFieldIds,
     get: getCustomField,

@@ -520,9 +520,9 @@ const executeFieldPut = (
   operation: Extract<DocumentOperation, { type: 'document.field.put' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeField = documentApi.fields.custom.get(document, operation.field.id)
-  const nextDocument = documentApi.fields.custom.put(document, operation.field)
-  const afterField = documentApi.fields.custom.get(nextDocument, operation.field.id)
+  const beforeField = documentApi.schema.fields.get(document, operation.field.id)
+  const nextDocument = documentApi.schema.fields.put(document, operation.field)
+  const afterField = documentApi.schema.fields.get(nextDocument, operation.field.id)
   const aspects = commitImpact.field.schemaAspects(beforeField, afterField)
 
   if (!beforeField && !afterField) {
@@ -570,7 +570,7 @@ const executeFieldPatch = (
   operation: Extract<DocumentOperation, { type: 'document.field.patch' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeField = documentApi.fields.custom.get(document, operation.id)
+  const beforeField = documentApi.schema.fields.get(document, operation.id)
   if (!beforeField) {
     return {
       document,
@@ -578,7 +578,7 @@ const executeFieldPatch = (
     }
   }
 
-  const nextDocument = documentApi.fields.custom.patch(document, operation.id, operation.patch)
+  const nextDocument = documentApi.schema.fields.patch(document, operation.id, operation.patch)
   if (nextDocument === document) {
     return {
       document,
@@ -586,7 +586,7 @@ const executeFieldPatch = (
     }
   }
 
-  const afterField = documentApi.fields.custom.get(nextDocument, operation.id)
+  const afterField = documentApi.schema.fields.get(nextDocument, operation.id)
   markFieldSchema(
     impact,
     operation.id,
@@ -610,7 +610,7 @@ const executeFieldRemove = (
   operation: Extract<DocumentOperation, { type: 'document.field.remove' }>,
   impact: CommitImpact
 ): ExecuteOperationResult => {
-  const beforeField = documentApi.fields.custom.get(document, operation.id)
+  const beforeField = documentApi.schema.fields.get(document, operation.id)
   if (!beforeField) {
     return {
       document,
@@ -618,7 +618,7 @@ const executeFieldRemove = (
     }
   }
 
-  const nextDocument = documentApi.fields.custom.remove(document, operation.id)
+  const nextDocument = documentApi.schema.fields.remove(document, operation.id)
   if (nextDocument === document) {
     return {
       document,

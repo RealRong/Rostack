@@ -1,8 +1,10 @@
 import { document as documentApi } from '@dataview/core/document'
 import type {
   CustomField,
+  CustomFieldId,
   DataDoc,
   DataRecord,
+  Field,
   FieldId,
   RecordId,
   ValueRef,
@@ -34,6 +36,7 @@ import {
 } from '@dataview/runtime/source/list'
 
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
+const EMPTY_SCHEMA_FIELD_IDS = [] as readonly CustomFieldId[]
 
 interface DocumentValueSourceRuntime {
   source: store.KeyedReadStore<ValueRef, unknown>
@@ -46,7 +49,8 @@ export interface DocumentSourceRuntime {
   meta: store.ValueStore<DataDoc['meta']>
   records: EntitySourceRuntime<RecordId, DataRecord>
   values: DocumentValueSourceRuntime
-  fields: EntitySourceRuntime<FieldId, CustomField>
+  fields: EntitySourceRuntime<FieldId, Field>
+  schemaFields: EntitySourceRuntime<CustomFieldId, CustomField>
   views: EntitySourceRuntime<ViewId, View>
   clear(): void
 }
@@ -110,11 +114,16 @@ export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
   })
   const records = createEntitySourceRuntime<RecordId, DataRecord>()
   const values = createDocumentValueSourceRuntime()
-  const fields = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
+  const fields = createEntitySourceRuntime<FieldId, Field>(EMPTY_FIELD_IDS)
+  const schemaFields = createEntitySourceRuntime<CustomFieldId, CustomField>(EMPTY_SCHEMA_FIELD_IDS)
   const views = createEntitySourceRuntime<ViewId, View>()
   const fieldList = createPresentSourceListStore({
     ids: fields.source.ids,
     values: fields.source
+  })
+  const schemaFieldList = createPresentSourceListStore({
+    ids: schemaFields.source.ids,
+    values: schemaFields.source
   })
   const viewList = createPresentSourceListStore({
     ids: views.source.ids,
@@ -130,6 +139,12 @@ export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
         ...fields.source,
         list: fieldList
       },
+      schema: {
+        fields: {
+          ...schemaFields.source,
+          list: schemaFieldList
+        }
+      },
       views: {
         ...views.source,
         list: viewList
@@ -139,12 +154,14 @@ export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
     records,
     values,
     fields,
+    schemaFields,
     views,
     clear: () => {
       meta.set(undefined)
       records.clear()
       values.clear()
       fields.clear()
+      schemaFields.clear()
       views.clear()
     }
   }
@@ -156,7 +173,8 @@ export const resetDocumentSource = (input: {
 }) => {
   input.runtime.meta.set(input.snapshot.doc.meta)
   const recordIds = documentApi.records.ids(input.snapshot.doc)
-  const fieldIds = documentApi.fields.custom.ids(input.snapshot.doc)
+  const fieldIds = documentApi.fields.ids(input.snapshot.doc)
+  const schemaFieldIds = documentApi.schema.fields.ids(input.snapshot.doc)
   const viewIds = documentApi.views.ids(input.snapshot.doc)
 
   resetEntityRuntime(input.runtime.records, {
@@ -175,7 +193,16 @@ export const resetDocumentSource = (input: {
   resetEntityRuntime(input.runtime.fields, {
     ids: fieldIds,
     values: fieldIds.flatMap(fieldId => {
-      const value = documentApi.fields.custom.get(input.snapshot.doc, fieldId)
+      const value = documentApi.fields.get(input.snapshot.doc, fieldId)
+      return value
+        ? [[fieldId, value] as const]
+        : []
+    })
+  })
+  resetEntityRuntime(input.runtime.schemaFields, {
+    ids: schemaFieldIds,
+    values: schemaFieldIds.flatMap(fieldId => {
+      const value = documentApi.schema.fields.get(input.snapshot.doc, fieldId)
       return value
         ? [[fieldId, value] as const]
         : []
@@ -223,8 +250,14 @@ export const applyDocumentDelta = (input: {
   applyListedDelta({
     delta: input.delta.fields,
     runtime: input.runtime.fields,
-    readIds: () => documentApi.fields.custom.ids(input.snapshot.doc),
-    readValue: fieldId => documentApi.fields.custom.get(input.snapshot.doc, fieldId)
+    readIds: () => documentApi.fields.ids(input.snapshot.doc),
+    readValue: fieldId => documentApi.fields.get(input.snapshot.doc, fieldId)
+  })
+  applyListedDelta({
+    delta: input.delta.schema?.fields,
+    runtime: input.runtime.schemaFields,
+    readIds: () => documentApi.schema.fields.ids(input.snapshot.doc),
+    readValue: fieldId => documentApi.schema.fields.get(input.snapshot.doc, fieldId)
   })
   applyListedDelta({
     delta: input.delta.views,

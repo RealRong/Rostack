@@ -10,7 +10,9 @@ import type {
 } from '@dataview/runtime/model/kanban/types'
 import {
   createItemCardContentStore,
-  createRecordCardPropertiesStore
+  createRecordCardPropertiesStore,
+  createVisibleCustomFieldsStore,
+  createVisibleTitleFieldStore
 } from '@dataview/runtime/model/card'
 import type {
   EngineSource
@@ -57,7 +59,6 @@ const sameCard = (
   && left.viewId === right.viewId
   && left.itemId === right.itemId
   && left.recordId === right.recordId
-  && equal.sameOrder(left.propertyFields, right.propertyFields)
   && left.size === right.size
   && left.layout === right.layout
   && left.wrap === right.wrap
@@ -77,7 +78,12 @@ export const createKanbanModel = (input: {
     itemId: ItemId
   }) => string
 }): KanbanModel => {
-  const customFields = input.source.active.fields.customList
+  const visibleFields = createVisibleCustomFieldsStore({
+    source: input.source
+  })
+  const titleField = createVisibleTitleFieldStore({
+    source: input.source
+  })
   const sectionList = input.source.active.sections.list
   const sections = store.createDerivedStore({
     get: () => (
@@ -89,7 +95,7 @@ export const createKanbanModel = (input: {
   })
   const properties = createRecordCardPropertiesStore({
     source: input.source,
-    propertyFields: customFields
+    fields: visibleFields
   })
   const board = store.createDerivedStore<KanbanBoard | null>({
     get: () => {
@@ -160,7 +166,6 @@ export const createKanbanModel = (input: {
         viewId,
         itemId,
         recordId: placement.recordId,
-        propertyFields: store.read(customFields),
         size: kanban.size,
         layout: kanban.layout,
         wrap: kanban.wrap,
@@ -188,7 +193,7 @@ export const createKanbanModel = (input: {
     source: input.source,
     viewType: 'kanban',
     properties,
-    placeholderText: ({ item }) => item.recordId
+    titleField
   })
 
   return {

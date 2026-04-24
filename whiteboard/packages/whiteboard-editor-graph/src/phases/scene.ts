@@ -8,7 +8,7 @@ export const createScenePhase = (): SceneEditorPhase => ({
   run: (context) => {
     context.working.scene = buildSceneSnapshot({
       snapshot: context.input.document.snapshot,
-      graph: context.working.graph,
+      spatial: context.working.spatial,
       visibleWorld: context.input.viewport.visibleWorld
     })
     context.working.spatial.visible.dirty = false

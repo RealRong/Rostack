@@ -6,6 +6,7 @@ import {
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { collection, equal, store } from '@shared/core'
 import type {
+  Read as EditorGraphQuery,
   EdgeLabelUiView as RuntimeEdgeLabelUiView,
   EdgeUiView as RuntimeEdgeUiView,
   EdgeView as RuntimeEdgeView
@@ -306,11 +307,13 @@ const readLabelMetrics = ({
 export const createGraphEdgeRead = ({
   document,
   sources,
+  spatial,
   node
 }: {
   document: Pick<DocumentRead, 'edge' | 'node'>
   sources: Pick<ProjectionSources, 'edgeGraph' | 'edgeUi'>
-  node: Pick<GraphNodeRead, 'graph' | 'idsInRect' | 'capability'>
+  spatial: EditorGraphQuery['spatial']
+  node: Pick<GraphNodeRead, 'graph' | 'capability'>
 }): GraphEdgeRead => {
   const view: GraphEdgeRead['view'] = store.createKeyedDerivedStore({
     get: (edgeId: EdgeId) => toEditorEdgeView(
@@ -336,7 +339,9 @@ export const createGraphEdgeRead = ({
   const connectCandidates: GraphEdgeRead['connectCandidates'] = (
     rect
   ) => {
-    const nodeIds = node.idsInRect(rect)
+    const nodeIds = spatial.rect(rect, {
+      kinds: ['node']
+    }).map((record) => record.item.id)
     const candidates: EdgeConnectCandidate[] = []
 
     for (let index = 0; index < nodeIds.length; index += 1) {
@@ -393,15 +398,18 @@ export const createGraphEdgeRead = ({
     related: document.edge.related,
     idsInRect: (rect, options) => {
       const mode = options?.match ?? 'touch'
-      return store.read(document.edge.list).filter((edgeId) => {
+      return spatial.rect(rect, {
+        kinds: ['edge']
+      }).flatMap((record) => {
+        const edgeId = record.item.id
         const current = store.read(geometry, edgeId)
-        return current
-          ? edgeApi.hit.test({
-              path: current.path,
-              queryRect: rect,
-              mode
-            })
-          : false
+        return current && edgeApi.hit.test({
+          path: current.path,
+          queryRect: rect,
+          mode
+        })
+          ? [edgeId]
+          : []
       })
     },
     connectCandidates

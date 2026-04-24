@@ -1,4 +1,5 @@
 import type {
+  CustomFieldId,
   FieldId,
   RecordId,
   ValueRef,
@@ -32,6 +33,9 @@ export interface DocDelta {
   records?: ListedDelta<RecordId>
   values?: KeyDelta<ValueRef>
   fields?: ListedDelta<FieldId>
+  schema?: {
+    fields?: ListedDelta<CustomFieldId>
+  }
   views?: ListedDelta<ViewId>
 }
 
@@ -47,10 +51,7 @@ export interface ActiveDelta {
     ordered?: true
     visible?: true
   }
-  fields?: {
-    all?: CollectionDelta<FieldId>
-    custom?: CollectionDelta<FieldId>
-  }
+  fields?: CollectionDelta<FieldId>
   sections?: CollectionDelta<SectionId>
   items?: CollectionDelta<ItemId>
   summaries?: CollectionDelta<SectionId>

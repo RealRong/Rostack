@@ -41,12 +41,12 @@ export const createFieldsApi = (options: {
   dispatch: (action: Action | readonly Action[]) => ActionResult
 }): FieldsApi => {
   const dispatch = options.dispatch
-  const listFields = () => documentApi.fields.custom.ids(options.document())
+  const listFields = () => documentApi.schema.fields.ids(options.document())
     .flatMap(fieldId => {
-      const field = documentApi.fields.custom.get(options.document(), fieldId)
+      const field = documentApi.schema.fields.get(options.document(), fieldId)
       return field ? [field] : []
     })
-  const getField = (fieldId: CustomFieldId) => documentApi.fields.custom.get(options.document(), fieldId)
+  const getField = (fieldId: CustomFieldId) => documentApi.schema.fields.get(options.document(), fieldId)
   const getOptionFieldById = (fieldId: CustomFieldId) => getOptionField(getField(fieldId))
 
   return {

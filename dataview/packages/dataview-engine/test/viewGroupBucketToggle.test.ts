@@ -565,7 +565,10 @@ test('engine.active.state exposes body projections for the active view', () => {
   assert.deepEqual(sections?.map(section => section.id), ['todo', 'doing', 'done', '(empty)'])
   assert.equal(items?.ids.length, 3)
   assert.deepEqual(fields?.ids, [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])
-  assert.deepEqual(fields?.custom.map(field => field.id), [FIELD_STATUS, FIELD_POINTS])
+  assert.deepEqual(
+    fields?.all.filter(field => field.kind !== 'title').map(field => field.id),
+    [FIELD_STATUS, FIELD_POINTS]
+  )
   assert.ok(summaries?.get('todo'))
 })
 

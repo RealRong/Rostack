@@ -7,9 +7,6 @@ import {
   useState
 } from 'react'
 import {
-  document as documentApi
-} from '@dataview/core/document'
-import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
@@ -51,13 +48,6 @@ const clamp = (
   max: number
 ) => Math.max(min, Math.min(value, max))
 
-export const resolveFieldValueEditorField = (input: {
-  fieldId?: string
-  customField?: Parameters<typeof getFieldValueSpec>[0]
-}) => (input.fieldId && fieldApi.id.isTitle(input.fieldId))
-  ? documentApi.fields.title.get()
-  : input.customField
-
 export const resolveFieldValueEditorPosition = (input: {
   anchor: OpenValueEditorInput['anchor']
   viewportWidth: number
@@ -97,17 +87,11 @@ export const FieldValueEditorHost = () => {
   const session = useStoreValue(valueEditor.store)
   const field = session?.field
   const fieldId = field?.fieldId
-  const customField = useOptionalKeyedStoreValue(
+  const valueField = useOptionalKeyedStoreValue(
     dataView.source.document.fields,
-    (fieldId && !fieldApi.id.isTitle(fieldId))
-      ? fieldId
-      : undefined,
+    fieldId,
     undefined
   )
-  const valueField = resolveFieldValueEditorField({
-    fieldId,
-    customField
-  })
   const record = useOptionalKeyedStoreValue(
     dataView.source.document.records,
     field?.recordId,
@@ -220,7 +204,7 @@ export const FieldValueEditorHost = () => {
     return null
   }
 
-  const value = documentApi.values.get(record, valueField.id)
+  const value = fieldApi.value.read(record, valueField.id)
 
   const writeValue = (value: unknown | undefined) => {
     if (value === undefined) {

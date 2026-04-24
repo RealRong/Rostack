@@ -123,19 +123,21 @@ const RecordCardComponent = (props: RecordCardProps) => {
     surfaceHover?.backgroundColor,
     surfaceHover?.boxShadow
   ])
-  const title = useMemo(() => (
-    <EditableCardTitle
-      viewId={props.card.viewId}
-      itemId={props.card.itemId}
-      recordId={props.card.recordId}
-      title={props.content.title}
-      wrap={props.card.wrap}
-      showEditAction={props.showEditAction && !draggingActive}
-      rootClassName={presentation.slots.title?.content}
-      textClassName={presentation.slots.title?.text}
-      inputClassName={presentation.slots.title?.input}
-    />
-  ), [
+  const title = useMemo(() => props.content.title
+    ? (
+        <EditableCardTitle
+          viewId={props.card.viewId}
+          itemId={props.card.itemId}
+          recordId={props.card.recordId}
+          title={props.content.title}
+          wrap={props.card.wrap}
+          showEditAction={props.showEditAction && !draggingActive}
+          rootClassName={presentation.slots.title?.content}
+          textClassName={presentation.slots.title?.text}
+          inputClassName={presentation.slots.title?.input}
+        />
+      )
+    : null, [
     draggingActive,
     presentation.slots.title?.content,
     presentation.slots.title?.input,

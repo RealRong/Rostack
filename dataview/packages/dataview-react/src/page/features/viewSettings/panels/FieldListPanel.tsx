@@ -19,7 +19,7 @@ export const FieldListPanel = () => {
         fields={fields}
         onSelect={fieldId => {
           router.push({
-            kind: 'fieldSchema',
+            kind: 'field',
             fieldId
           })
         }}

@@ -27,7 +27,7 @@ export interface CardContentSlots {
 
 export interface CardContentProps extends Omit<ComponentPropsWithoutRef<'article'>, 'children'> {
   slots?: CardContentSlots
-  titleNode: ReactNode
+  titleNode?: ReactNode
   properties?: readonly CardContentPropertyNode[]
 }
 
@@ -45,9 +45,11 @@ export const CardContent = forwardRef<HTMLElement, CardContentProps>((props, ref
       ref={ref}
       className={cn(slots?.root, className)}
     >
-      <div className={cn('min-w-0', slots?.title?.row)}>
-        {titleNode}
-      </div>
+      {titleNode ? (
+        <div className={cn('min-w-0', slots?.title?.row)}>
+          {titleNode}
+        </div>
+      ) : null}
 
       {properties?.length ? (
         <div className={slots?.property?.list}>

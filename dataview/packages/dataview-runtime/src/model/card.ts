@@ -1,12 +1,10 @@
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import {
-  document as documentApi
-} from '@dataview/core/document'
 import type {
   CustomField,
-  RecordId
+  RecordId,
+  TitleField
 } from '@dataview/core/contracts'
 import {
   TITLE_FIELD_ID
@@ -18,12 +16,13 @@ import type {
 import { equal, store } from '@shared/core'
 import type {
   CardContent,
-  CardTitle,
   CardProperty
 } from '@dataview/runtime/model/shared'
 import {
   EngineSource
 } from '@dataview/runtime/source'
+
+const EMPTY_CUSTOM_FIELDS = [] as readonly CustomField[]
 
 const sameProperty = (
   left: CardProperty,
@@ -43,22 +42,55 @@ const sameProperties = (
   )
 )
 
+const sameTitle = (
+  left: CardContent['title'],
+  right: CardContent['title']
+) => left === right || (
+  !!left
+  && !!right
+  && left.field === right.field
+  && left.value === right.value
+)
+
 const sameContent = (
   left: CardContent | undefined,
   right: CardContent | undefined
 ) => left === right || (
   !!left
   && !!right
-  && left.title.field === right.title.field
-  && left.title.value === right.title.value
-  && left.title.placeholderText === right.title.placeholderText
+  && sameTitle(left.title, right.title)
   && left.hasProperties === right.hasProperties
   && sameProperties(left.properties, right.properties)
 )
 
+export const createVisibleCustomFieldsStore = (input: {
+  source: EngineSource
+}): store.ReadStore<readonly CustomField[]> => store.createDerivedStore({
+  get: () => {
+    const fields = store.read(input.source.active.fields.list).all
+    const customFields = fields.filter(fieldApi.kind.isCustom)
+    return customFields.length
+      ? customFields
+      : EMPTY_CUSTOM_FIELDS
+  },
+  isEqual: equal.sameOrder
+})
+
+export const createVisibleTitleFieldStore = (input: {
+  source: EngineSource
+}): store.ReadStore<TitleField | undefined> => store.createDerivedStore({
+  get: () => {
+    const field = store.read(input.source.active.fields, TITLE_FIELD_ID)
+    return field && field.kind === 'title'
+      ? field
+      : undefined
+  },
+  isEqual: Object.is
+})
+
 export const createRecordCardPropertiesStore = (input: {
   source: EngineSource
-  propertyFields: store.ReadStore<readonly CustomField[]>
+  fields: store.ReadStore<readonly CustomField[]>
 }): store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined> => store.createKeyedDerivedStore<RecordId, readonly CardProperty[] | undefined>({
   get: recordId => {
     const record = store.read(input.source.document.records, recordId)
@@ -66,7 +98,7 @@ export const createRecordCardPropertiesStore = (input: {
       return undefined
     }
 
-    return store.read(input.propertyFields).map<CardProperty>(field => ({
+    return store.read(input.fields).map<CardProperty>(field => ({
       field,
       value: store.read(input.source.document.values, {
         recordId,
@@ -77,16 +109,11 @@ export const createRecordCardPropertiesStore = (input: {
   isEqual: sameProperties
 })
 
-const TITLE_FIELD = documentApi.fields.title.get()
-
 export const createItemCardContentStore = (input: {
   source: EngineSource
   viewType: 'gallery' | 'kanban'
   properties: store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined>
-  placeholderText: (input: {
-    itemId: ItemId
-    item: ItemPlacement
-  }) => string
+  titleField: store.ReadStore<TitleField | undefined>
 }): store.KeyedReadStore<ItemId, CardContent | undefined> => store.createKeyedDerivedStore({
   get: itemId => {
     if (store.read(input.source.active.viewType) !== input.viewType) {
@@ -107,17 +134,17 @@ export const createItemCardContentStore = (input: {
       return undefined
     }
 
-    const title: CardTitle = {
-      field: TITLE_FIELD,
-      value: String(titleValue),
-      placeholderText: input.placeholderText({
-        itemId,
-        item
-      })
-    }
+    const titleField = store.read(input.titleField)
 
     return {
-      title,
+      ...(titleField
+        ? {
+            title: {
+              field: titleField,
+              value: String(titleValue)
+            }
+          }
+        : {}),
       properties,
       hasProperties: properties.some(property => !fieldApi.value.empty(property.value))
     }

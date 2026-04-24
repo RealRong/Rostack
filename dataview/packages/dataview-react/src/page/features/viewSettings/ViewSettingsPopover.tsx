@@ -7,11 +7,11 @@ import {
   usePageModel
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
-import { FieldSchemaEditor } from '@dataview/react/field/schema'
 import { useTranslation } from '@shared/i18n/react'
 import {
   ViewSettingsContext,
 } from '@dataview/react/page/features/viewSettings/context'
+import { FieldPanel } from '@dataview/react/page/features/viewSettings/panels/FieldPanel'
 import { GroupingPanel } from '@dataview/react/page/features/viewSettings/panels/GroupingPanel'
 import { GroupFieldPickerPanel } from '@dataview/react/page/features/viewSettings/panels/GroupFieldPickerPanel'
 import { LayoutPanel } from '@dataview/react/page/features/viewSettings/panels/LayoutPanel'
@@ -57,8 +57,8 @@ export const ViewSettingsPopover = () => {
         return <FieldListPanel />
       case 'fieldCreate':
         return <FieldCreatePanel />
-      case 'fieldSchema':
-        return <FieldSchemaEditor fieldId={resolvedRoute.fieldId} />
+      case 'field':
+        return <FieldPanel fieldId={resolvedRoute.fieldId} />
       case 'filter':
         return <QueryFieldPickerPanel kind="filter" />
       case 'sort':

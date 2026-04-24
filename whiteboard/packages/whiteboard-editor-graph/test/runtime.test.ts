@@ -385,6 +385,7 @@ describe('editor graph runtime', () => {
       width: 400,
       height: 400
     }).some((record) => record.key === `node:${nodeId}`)).toBe(true)
+    expect(read.spatial.all().some((record) => record.key === `node:${nodeId}`)).toBe(true)
     const spatialRecord = read.spatial.get(`node:${nodeId}`)!
     expect(read.spatial.point({
       x: spatialRecord.bounds.x + spatialRecord.bounds.width / 2,
@@ -809,5 +810,62 @@ describe('editor graph runtime', () => {
     })
     expect(result.snapshot.scene.visible.mindmapIds).toContain(created.mindmapId)
     expect(result.snapshot.scene.spatial.mindmaps).toContain(created.mindmapId)
+  })
+
+  it('keeps visible scene items at top-level canvas items while exposing owned nodes through visible node ids', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_scene_visible_top_level_items')
+    })
+    const created = createMindmap(engine)
+    const childId = insertTopic({
+      engine,
+      mindmapId: created.mindmapId,
+      parentId: created.rootId,
+      text: 'Child'
+    })
+
+    const runtime = createEditorGraphRuntime()
+    const result = runtime.update(
+      createInput(engine, {
+        delta: FULL_INPUT_DELTA,
+        nodeMeasures: new Map([
+          [created.rootId, { width: 160, height: 44 }],
+          [childId, { width: 120, height: 44 }]
+        ]),
+        visibleWorld: {
+          x: -200,
+          y: -200,
+          width: 1200,
+          height: 1200
+        }
+      })
+    )
+
+    expect(result.snapshot.scene.items).toEqual([
+      {
+        kind: 'mindmap',
+        id: created.mindmapId
+      }
+    ])
+    expect(result.snapshot.scene.visible.items).toEqual([
+      {
+        kind: 'mindmap',
+        id: created.mindmapId
+      }
+    ])
+    expect(result.snapshot.scene.visible.items).not.toContainEqual({
+      kind: 'node',
+      id: created.rootId
+    })
+    expect(result.snapshot.scene.visible.nodeIds).toEqual(expect.arrayContaining([
+      created.rootId,
+      childId
+    ]))
+    expect(result.snapshot.scene.pick.items).toEqual([
+      {
+        kind: 'mindmap',
+        id: created.mindmapId
+      }
+    ])
   })
 })

@@ -1,8 +1,4 @@
-import type {
-  CustomField,
-  Field,
-  FieldId
-} from '@dataview/core/contracts'
+import type { Field, FieldId } from '@dataview/core/contracts'
 import type {
   ActiveDelta,
   CollectionDelta
@@ -15,18 +11,10 @@ import {
   buildKeyedCollectionDelta,
   createCollectionDelta
 } from '@dataview/engine/active/shared/delta'
-import type {
-  SummaryPhaseDelta as SummaryDelta
-} from '@dataview/engine/active/state'
+import type { SummaryPhaseDelta as SummaryDelta } from '@dataview/engine/active/state'
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
-
-const customFieldIds = (
-  fields: ViewState['fields'] | undefined
-): readonly FieldId[] => fields?.custom.length
-  ? fields.custom.map(field => field.id)
-  : []
 
 const buildSummaryCollectionDelta = (input: {
   previous: ViewState
@@ -117,12 +105,6 @@ export const projectActiveDelta = (input: {
     previousGet: fieldId => previous.fields.get(fieldId),
     nextGet: fieldId => next.fields.get(fieldId)
   })
-  const custom = buildKeyedCollectionDelta<FieldId, CustomField>({
-    previousIds: customFieldIds(previous.fields),
-    nextIds: customFieldIds(next.fields),
-    previousGet: fieldId => previous.fields.get(fieldId) as CustomField | undefined,
-    nextGet: fieldId => next.fields.get(fieldId) as CustomField | undefined
-  })
   const summaries = buildSummaryCollectionDelta({
     previous,
     next,
@@ -136,7 +118,6 @@ export const projectActiveDelta = (input: {
     || kanban
     || records
     || all
-    || custom
     || input.sections
     || input.items
     || summaries
@@ -171,20 +152,9 @@ export const projectActiveDelta = (input: {
               records
             }
           : {}),
-        ...(all || custom
+        ...(all
           ? {
-              fields: {
-                ...(all
-                  ? {
-                      all
-                    }
-                  : {}),
-                ...(custom
-                  ? {
-                      custom
-                    }
-                  : {})
-              }
+              fields: all
             }
           : {}),
         ...(input.sections

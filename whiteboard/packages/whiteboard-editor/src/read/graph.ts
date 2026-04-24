@@ -1,6 +1,9 @@
 import { store } from '@shared/core'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type {
+  Read as EditorGraphQuery
+} from '@whiteboard/editor-graph'
+import type {
   DocumentRead
 } from '@whiteboard/editor/document/read'
 import type { ProjectionSources } from '@whiteboard/editor/projection/sources'
@@ -23,6 +26,7 @@ export type GraphRead = {
   scene: {
     view: ProjectionSources['scene']
   }
+  spatial: EditorGraphQuery['spatial']
   node: GraphNodeRead
   edge: GraphEdgeRead
   selection: GraphSelectionRead
@@ -40,22 +44,26 @@ export type GraphRead = {
 export const createGraphRead = ({
   document,
   sources,
+  spatial,
   selection,
   nodeType
 }: {
   document: Pick<DocumentRead, 'node' | 'edge'>
   sources: Pick<ProjectionSources, 'snapshot' | 'graph' | 'scene' | 'ui' | 'selection' | 'chrome' | 'nodeGraph' | 'edgeGraph' | 'mindmap' | 'group' | 'nodeUi' | 'edgeUi'>
+  spatial: EditorGraphQuery['spatial']
   selection: store.ReadStore<SelectionTarget>
   nodeType: NodeTypeSupport
 }): GraphRead => {
   const node = createGraphNodeRead({
     document,
     sources,
+    spatial,
     type: nodeType
   })
   const edge = createGraphEdgeRead({
     document,
     sources,
+    spatial,
     node
   })
 
@@ -64,6 +72,7 @@ export const createGraphRead = ({
     scene: {
       view: sources.scene
     },
+    spatial,
     node,
     edge,
     selection: createGraphSelectionRead({

@@ -1,6 +1,5 @@
 import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
-  CustomField,
   DataRecord,
   Field,
   FieldId,
@@ -57,9 +56,7 @@ export interface ItemList {
   read: ItemRead
 }
 
-export interface FieldList extends collection.OrderedKeyedCollection<FieldId, Field> {
-  custom: readonly CustomField[]
-}
+export interface FieldList extends collection.OrderedKeyedCollection<FieldId, Field> {}
 
 export interface CellRef {
   itemId: ItemId

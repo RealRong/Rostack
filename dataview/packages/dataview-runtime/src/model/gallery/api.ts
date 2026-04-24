@@ -10,13 +10,14 @@ import type {
 } from '@dataview/runtime/model/gallery/types'
 import {
   createItemCardContentStore,
-  createRecordCardPropertiesStore
+  createRecordCardPropertiesStore,
+  createVisibleCustomFieldsStore,
+  createVisibleTitleFieldStore
 } from '@dataview/runtime/model/card'
 import type {
   EngineSource
 } from '@dataview/runtime/source'
 
-const DEFAULT_GALLERY_TITLE_PLACEHOLDER = '输入名称...'
 const EMPTY_SECTIONS = [] as const
 
 const sameBody = (
@@ -53,7 +54,6 @@ const sameCard = (
   && left.viewId === right.viewId
   && left.itemId === right.itemId
   && left.recordId === right.recordId
-  && equal.sameOrder(left.propertyFields, right.propertyFields)
   && left.size === right.size
   && left.layout === right.layout
   && left.wrap === right.wrap
@@ -72,7 +72,12 @@ export const createGalleryModel = (input: {
     itemId: ItemId
   }) => string
 }): GalleryModel => {
-  const customFields = input.source.active.fields.customList
+  const visibleFields = createVisibleCustomFieldsStore({
+    source: input.source
+  })
+  const titleField = createVisibleTitleFieldStore({
+    source: input.source
+  })
   const sectionList = input.source.active.sections.list
   const sections = store.createDerivedStore({
     get: () => (
@@ -84,7 +89,7 @@ export const createGalleryModel = (input: {
   })
   const properties = createRecordCardPropertiesStore({
     source: input.source,
-    propertyFields: customFields
+    fields: visibleFields
   })
   const body = store.createDerivedStore<GalleryBody | null>({
     get: () => {
@@ -149,7 +154,6 @@ export const createGalleryModel = (input: {
         viewId,
         itemId,
         recordId,
-        propertyFields: store.read(customFields),
         size: gallery.size,
         layout: gallery.layout,
         wrap: gallery.wrap,
@@ -174,7 +178,7 @@ export const createGalleryModel = (input: {
     source: input.source,
     viewType: 'gallery',
     properties,
-    placeholderText: () => DEFAULT_GALLERY_TITLE_PLACEHOLDER
+    titleField
   })
 
   return {

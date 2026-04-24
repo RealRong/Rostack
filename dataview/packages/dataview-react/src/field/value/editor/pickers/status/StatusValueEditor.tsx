@@ -241,8 +241,8 @@ export const StatusValueEditor = (
           autoFocus={false}
           items={[{
             kind: 'action',
-            key: 'fieldSchema',
-            label: t(meta.ui.viewSettings.routeTitle('fieldSchema')),
+            key: 'field',
+            label: t(meta.ui.viewSettings.routeTitle('field')),
             leading: <Settings2 className="size-4" size={16} strokeWidth={1.8} />,
             onSelect: () => {
               valueEditor.close({
@@ -250,7 +250,7 @@ export const StatusValueEditor = (
               })
               window.requestAnimationFrame(() => {
                 page.settings.open({
-                  kind: 'fieldSchema',
+                  kind: 'field',
                   fieldId
                 })
               })

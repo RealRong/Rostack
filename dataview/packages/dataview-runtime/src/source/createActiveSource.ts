@@ -2,7 +2,6 @@ import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   CardLayout,
   CardSize,
-  CustomField,
   Field,
   FieldId,
   KanbanCardsPerColumn,
@@ -39,9 +38,6 @@ import {
   type EntitySourceRuntime,
   type SourceTableRuntime
 } from '@dataview/runtime/source/patch'
-import {
-  createPresentSourceListStore
-} from '@dataview/runtime/source/list'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
@@ -105,8 +101,7 @@ export interface ActiveSourceRuntime {
   items: ItemSourceRuntime
   sections: SectionSourceRuntime
   summaries: SummarySourceRuntime
-  fieldsAll: EntitySourceRuntime<FieldId, Field>
-  fieldsCustom: EntitySourceRuntime<FieldId, CustomField>
+  fields: EntitySourceRuntime<FieldId, Field>
   clear(): void
 }
 
@@ -183,22 +178,19 @@ const createSectionListStore = (input: {
 }
 
 const createFieldListStore = (input: {
-  all: EntitySourceRuntime<FieldId, Field>['source']
-  customList: store.ReadStore<readonly CustomField[]>
+  fields: EntitySourceRuntime<FieldId, Field>['source']
 }): store.ReadStore<FieldList> => {
   let previous: FieldList | undefined
 
   return store.createDerivedStore<FieldList>({
     get: () => {
-      const ids = store.read(input.all.ids)
-      const custom = store.read(input.customList)
+      const ids = store.read(input.fields.ids)
       const canReuse = Boolean(
         previous
         && previous.ids === ids
-        && previous.custom === custom
         && previous.all.length === ids.length
         && ids.every((fieldId, index) => (
-          previous!.all[index] === store.read(input.all, fieldId)
+          previous!.all[index] === store.read(input.fields, fieldId)
         ))
       )
       if (canReuse) {
@@ -207,16 +199,13 @@ const createFieldListStore = (input: {
 
       const all = collection.presentValues(
         ids,
-        fieldId => store.read(input.all, fieldId)
+        fieldId => store.read(input.fields, fieldId)
       )
-      const next: FieldList = {
-        ...collection.createOrderedKeyedCollection({
-          ids,
-          all,
-          get: fieldId => store.read(input.all, fieldId)
-        }),
-        custom
-      }
+      const next = collection.createOrderedKeyedCollection({
+        ids,
+        all,
+        get: fieldId => store.read(input.fields, fieldId)
+      })
 
       previous = next
       return next
@@ -287,13 +276,9 @@ const resetActiveFields = (input: {
   runtime: ActiveSourceRuntime
   fields: FieldList
 }) => {
-  resetEntityRuntime(input.runtime.fieldsAll, {
+  resetEntityRuntime(input.runtime.fields, {
     ids: input.fields.ids,
     values: input.fields.all.map(field => [field.id, field] as const)
-  })
-  resetEntityRuntime(input.runtime.fieldsCustom, {
-    ids: input.fields.custom.map(field => field.id),
-    values: input.fields.custom.map(field => [field.id, field] as const)
   })
 }
 
@@ -311,21 +296,15 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
   const items = createItemSourceRuntime()
   const sections = createSectionSourceRuntime()
   const summaries = createSummarySourceRuntime()
-  const fieldsAll = createEntitySourceRuntime<FieldId, Field>(EMPTY_FIELD_IDS)
-  const fieldsCustom = createEntitySourceRuntime<FieldId, CustomField>(EMPTY_FIELD_IDS)
+  const fields = createEntitySourceRuntime<FieldId, Field>(EMPTY_FIELD_IDS)
   const itemList = createItemListStore({
     source: items.source
   })
   const sectionList = createSectionListStore({
     source: sections.source
   })
-  const customFieldList = createPresentSourceListStore({
-    ids: fieldsCustom.source.ids,
-    values: fieldsCustom.source
-  })
   const fieldList = createFieldListStore({
-    all: fieldsAll.source,
-    customList: customFieldList
+    fields: fields.source
   })
 
   return {
@@ -352,10 +331,8 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
       },
       summaries: summaries.source,
       fields: {
-        all: fieldsAll.source,
-        custom: fieldsCustom.source,
-        list: fieldList,
-        customList: customFieldList
+        ...fields.source,
+        list: fieldList
       }
     },
     viewId,
@@ -371,8 +348,7 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
     items,
     sections,
     summaries,
-    fieldsAll,
-    fieldsCustom,
+    fields,
     clear: () => {
       resetActiveSource({
         runtime: {
@@ -389,8 +365,7 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
           items,
           sections,
           summaries,
-          fieldsAll,
-          fieldsCustom
+          fields
         } as ActiveSourceRuntime,
         snapshot: undefined
       })
@@ -413,8 +388,7 @@ export const resetActiveSource = (input: {
     | 'items'
     | 'sections'
     | 'summaries'
-    | 'fieldsAll'
-    | 'fieldsCustom'
+    | 'fields'
   >
   snapshot?: ViewState
 }) => {
@@ -433,8 +407,7 @@ export const resetActiveSource = (input: {
     input.runtime.items.clear()
     input.runtime.sections.clear()
     input.runtime.summaries.clear()
-    input.runtime.fieldsAll.clear()
-    input.runtime.fieldsCustom.clear()
+    input.runtime.fields.clear()
     return
   }
 
@@ -530,8 +503,7 @@ export const applyActiveDelta = (input: {
     | 'items'
     | 'sections'
     | 'summaries'
-    | 'fieldsAll'
-    | 'fieldsCustom'
+    | 'fields'
   >
   delta: ActiveDelta | undefined
   snapshot?: ViewState
@@ -599,15 +571,9 @@ export const applyActiveDelta = (input: {
     readValue: sectionId => snapshot.summaries.get(sectionId)
   })
   applyEntityDelta({
-    delta: input.delta.fields?.all,
-    runtime: input.runtime.fieldsAll,
+    delta: input.delta.fields,
+    runtime: input.runtime.fields,
     readIds: () => snapshot.fields.ids,
     readValue: fieldId => snapshot.fields.get(fieldId)
-  })
-  applyEntityDelta({
-    delta: input.delta.fields?.custom,
-    runtime: input.runtime.fieldsCustom,
-    readIds: () => snapshot.fields.custom.map(field => field.id),
-    readValue: fieldId => snapshot.fields.get(fieldId) as CustomField | undefined
   })
 }

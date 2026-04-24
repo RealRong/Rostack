@@ -1,6 +1,7 @@
 import type { CalculationCollection } from '@dataview/core/calculation'
 import type {
   CustomField,
+  CustomFieldId,
   DataDoc,
   DataRecord,
   Field,
@@ -53,7 +54,10 @@ export interface DocumentSource {
   meta: store.ReadStore<DataDoc['meta']>
   records: EntitySource<RecordId, DataRecord>
   values: store.KeyedReadStore<ValueRef, unknown>
-  fields: ListedEntitySource<FieldId, CustomField>
+  fields: ListedEntitySource<FieldId, Field>
+  schema: {
+    fields: ListedEntitySource<CustomFieldId, CustomField>
+  }
   views: ListedEntitySource<ViewId, View>
 }
 
@@ -73,11 +77,8 @@ export interface ActiveSource {
   items: ItemSource
   sections: SectionSource
   summaries: store.KeyedReadStore<SectionId, CalculationCollection | undefined>
-  fields: {
-    all: EntitySource<FieldId, Field>
-    custom: EntitySource<FieldId, CustomField>
+  fields: EntitySource<FieldId, Field> & {
     list: store.ReadStore<FieldList>
-    customList: store.ReadStore<readonly CustomField[]>
   }
 }
 

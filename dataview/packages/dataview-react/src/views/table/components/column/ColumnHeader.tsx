@@ -312,7 +312,7 @@ const View = (props: ColumnHeaderProps) => {
           setMenuOpen(false)
           window.requestAnimationFrame(() => {
             page.settings.open({
-              kind: 'fieldSchema',
+              kind: 'field',
               fieldId: customField.id
             })
           })

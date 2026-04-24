@@ -3,13 +3,19 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type * as document from '@whiteboard/engine/contracts/document'
-import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   SceneItem,
   SceneSnapshot
 } from '../contracts/editor'
-import type { GraphState } from '../contracts/working'
 import { EMPTY_SCENE_LAYERS } from './geometry'
+import type {
+  SpatialKey,
+} from './spatial/contracts'
+import {
+  queryAll,
+  queryRect
+} from './spatial/query'
+import type { SpatialIndexState } from './spatial/state'
 
 const toSceneItem = (
   ref: CanvasItemRef
@@ -18,51 +24,62 @@ const toSceneItem = (
   id: ref.id
 }) as SceneItem
 
-const readSceneItemBounds = (input: {
+const toVisibleItemKey = (
   item: SceneItem
-  graph: GraphState
-}): Rect | undefined => {
-  switch (input.item.kind) {
-    case 'node':
-      return input.graph.nodes.get(input.item.id)?.geometry.bounds
-    case 'edge':
-      return input.graph.edges.get(input.item.id)?.route.bounds
-    case 'mindmap':
-      return input.graph.owners.mindmaps.get(input.item.id)?.tree.bbox
-  }
-}
+): SpatialKey => `${item.kind}:${item.id}` as SpatialKey
 
-const isVisibleInWorld = (
-  rect: Rect | undefined,
-  visibleWorld: Rect | undefined
-) => !visibleWorld
-  || !rect
-  || geometryApi.rect.intersects(rect, visibleWorld)
+const toCanvasItemRef = (
+  item: SceneItem
+): CanvasItemRef => ({
+  kind: item.kind,
+  id: item.id
+})
+
+const readVisibleRecords = (input: {
+  spatial: SpatialIndexState
+  visibleWorld?: Rect
+}) => {
+  if (input.visibleWorld) {
+    return queryRect({
+      state: input.spatial,
+      worldRect: input.visibleWorld
+    })
+  }
+
+  return queryAll({
+    state: input.spatial
+  })
+}
 
 export const buildSceneSnapshot = (input: {
   snapshot: document.Snapshot
-  graph: GraphState
+  spatial: SpatialIndexState
   visibleWorld?: Rect
 }): SceneSnapshot => {
   const items = input.snapshot.state.root.canvas.order.map(toSceneItem)
-  const visibleItems = items.filter((item) => isVisibleInWorld(
-    readSceneItemBounds({
-      item,
-      graph: input.graph
-    }),
-    input.visibleWorld
+  const visibleRecords = readVisibleRecords({
+    spatial: input.spatial,
+    visibleWorld: input.visibleWorld
+  })
+  const visibleKeys = new Set(visibleRecords.map((record) => record.key))
+  const visibleItems = items.filter((item) => visibleKeys.has(
+    toVisibleItemKey(item)
   ))
-  const visibleNodeIds = [...input.graph.nodes.entries()]
-    .filter(([, node]) => isVisibleInWorld(node.geometry.bounds, input.visibleWorld))
-    .map(([nodeId]) => nodeId)
-  const visibleEdgeIds = [...input.graph.edges.entries()]
-    .filter(([, edge]) => isVisibleInWorld(edge.route.bounds, input.visibleWorld))
-    .map(([edgeId]) => edgeId)
-  const visibleMindmapIds = [...input.graph.owners.mindmaps.keys()]
-    .filter((mindmapId) => isVisibleInWorld(
-      input.graph.owners.mindmaps.get(mindmapId)?.tree.bbox,
-      input.visibleWorld
-    ))
+  const visibleNodeIds = visibleRecords.flatMap((record) => (
+    record.kind === 'node'
+      ? [record.item.id]
+      : []
+  ))
+  const visibleEdgeIds = visibleRecords.flatMap((record) => (
+    record.kind === 'edge'
+      ? [record.item.id]
+      : []
+  ))
+  const visibleMindmapIds = visibleRecords.flatMap((record) => (
+    record.kind === 'mindmap'
+      ? [record.item.id]
+      : []
+  ))
 
   return {
     layers: EMPTY_SCENE_LAYERS,
@@ -79,10 +96,7 @@ export const buildSceneSnapshot = (input: {
       mindmaps: visibleMindmapIds
     },
     pick: {
-      items: visibleItems.map((item) => ({
-        kind: item.kind,
-        id: item.id
-      })) as readonly CanvasItemRef[]
+      items: visibleItems.map(toCanvasItemRef)
     }
   }
 }

@@ -215,7 +215,7 @@ export const createTableModel = (
       const columns = resolveColumns({
         previous: previousColumns,
         fieldIds: tableView.display.fields,
-        readField: fieldId => store.read(source.active.fields.all, fieldId),
+        readField: fieldId => store.read(source.active.fields, fieldId),
         widths: tableView.options.widths,
         query,
         calcByField: table.calc
@@ -278,7 +278,7 @@ export const createTableModel = (
         return undefined
       }
 
-      const field = store.read(source.active.fields.all, current.fieldId)
+      const field = store.read(source.active.fields, current.fieldId)
       if (!field) {
         return undefined
       }

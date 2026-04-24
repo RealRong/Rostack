@@ -51,6 +51,9 @@ export interface SpatialPatchScope {
 
 export interface SpatialRead {
   get(key: SpatialKey): SpatialRecord | undefined
+  all(options?: {
+    kinds?: readonly SpatialKind[]
+  }): readonly SpatialRecord[]
   rect(
     worldRect: Rect,
     options?: {

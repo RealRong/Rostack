@@ -40,7 +40,7 @@ export const ColumnAddPropertyAction = () => {
       editor.active.display.show(fieldId)
       openNextFrame(() => {
         page.settings.open({
-          kind: 'fieldSchema',
+          kind: 'field',
           fieldId
         })
       })

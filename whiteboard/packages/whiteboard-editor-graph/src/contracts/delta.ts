@@ -1,3 +1,4 @@
+import type { KeySet } from '@shared/core'
 import type {
   Revision,
 } from '@shared/projection-runtime'
@@ -63,7 +64,6 @@ export interface ScenePublishDelta {
 }
 
 export interface UiPublishDelta {
-  selection: boolean
   chrome: boolean
   nodes: IdDelta<NodeId>
   edges: IdDelta<EdgeId>
@@ -72,10 +72,10 @@ export interface UiPublishDelta {
 export interface GraphPatchScope {
   reset: boolean
   order: boolean
-  nodes: ReadonlySet<NodeId>
-  edges: ReadonlySet<EdgeId>
-  mindmaps: ReadonlySet<MindmapId>
-  groups: ReadonlySet<GroupId>
+  nodes: KeySet<NodeId>
+  edges: KeySet<EdgeId>
+  mindmaps: KeySet<MindmapId>
+  groups: KeySet<GroupId>
 }
 
 export interface EditorPhaseScopeMap {

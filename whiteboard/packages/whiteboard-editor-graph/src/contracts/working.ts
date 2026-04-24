@@ -30,8 +30,7 @@ import type {
   NodePreview,
   NodeUiView,
   NodeView,
-  SceneSnapshot,
-  SelectionView
+  SceneSnapshot
 } from './editor'
 import type { SpatialIndexState } from '../runtime/spatial/state'
 
@@ -60,7 +59,6 @@ export interface GraphState {
 }
 
 export interface UiState {
-  selection: SelectionView
   chrome: ChromeView
   nodes: ReadonlyMap<NodeId, NodeUiView>
   edges: ReadonlyMap<EdgeId, EdgeUiView>

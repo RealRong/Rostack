@@ -46,6 +46,10 @@ import {
   createProjectedKeyedStore
 } from './projected'
 import {
+  createStructStore,
+  createStructKeyedStore
+} from './struct'
+import {
   createStagedValueStore,
   createStagedKeyedStore
 } from './staged'
@@ -69,6 +73,8 @@ export {
   createKeyedDerivedStore,
   createProjectedStore,
   createProjectedKeyedStore,
+  createStructStore,
+  createStructKeyedStore,
   createStagedValueStore,
   createStagedKeyedStore,
   createFrameValueStore,

@@ -11,8 +11,7 @@ import type { UiPublishDelta } from '../contracts/delta'
 import {
   buildEdgeUiView,
   buildChromeView,
-  buildNodeUiView,
-  buildSelectionView
+  buildNodeUiView
 } from '../runtime/ui'
 import {
   markUiChromeChanged,
@@ -22,7 +21,6 @@ import {
   markUiNodeAdded,
   markUiNodeRemoved,
   markUiNodeUpdated,
-  markUiSelectionChanged,
   resetUiPublishDelta
 } from '../runtime/publish/delta'
 import type { UiEditorPhase } from './shared'
@@ -91,19 +89,29 @@ const createMindmapNodeIndex = (
 
 const markSelectionUiDelta = (input: {
   target: UiPublishDelta
-  previous: SelectionState
+  previous: {
+    nodes: ReadonlyMap<NodeId, {
+      selected: boolean
+    }>
+    edges: ReadonlyMap<EdgeId, {
+      selected: boolean
+    }>
+  }
   next: SelectionState
 }) => {
-  markUiSelectionChanged(input.target)
-
-  input.previous.nodeIds.forEach((nodeId) => {
-    markUiNodeUpdated(input.target, nodeId)
+  input.previous.nodes.forEach((view, nodeId) => {
+    if (view.selected) {
+      markUiNodeUpdated(input.target, nodeId)
+    }
   })
+  input.previous.edges.forEach((view, edgeId) => {
+    if (view.selected) {
+      markUiEdgeUpdated(input.target, edgeId)
+    }
+  })
+
   input.next.nodeIds.forEach((nodeId) => {
     markUiNodeUpdated(input.target, nodeId)
-  })
-  input.previous.edgeIds.forEach((edgeId) => {
-    markUiEdgeUpdated(input.target, edgeId)
   })
   input.next.edgeIds.forEach((edgeId) => {
     markUiEdgeUpdated(input.target, edgeId)
@@ -120,6 +128,7 @@ export const createUiPhase = (): UiEditorPhase => ({
       ? context.working.delta.graph
       : undefined
     const mindmapNodeIndex = createMindmapNodeIndex(context)
+    const selection = context.input.interaction.selection
 
     resetUiPublishDelta(publishDelta)
 
@@ -131,15 +140,9 @@ export const createUiPhase = (): UiEditorPhase => ({
         preview: context.input.session.preview.nodes.get(nodeId),
         draw: context.input.session.preview.draw,
         edit: context.input.session.edit,
-        selection: context.input.interaction.selection,
+        selection,
         hover: context.input.interaction.hover
       }))
-    })
-
-    const selection = buildSelectionView({
-      selection: context.input.interaction.selection,
-      nodes: context.working.graph.nodes,
-      edges: context.working.graph.edges
     })
 
     const edges = new Map()
@@ -156,15 +159,14 @@ export const createUiPhase = (): UiEditorPhase => ({
         },
         view,
         edit: context.input.session.edit,
-        selection: context.input.interaction.selection
+        selection
       }))
     })
 
     context.working.ui = {
-      selection,
       chrome: buildChromeView({
         session: context.input.session,
-        selection: selection.target,
+        selection,
         hover: context.input.interaction.hover
       }),
       nodes,
@@ -204,8 +206,11 @@ export const createUiPhase = (): UiEditorPhase => ({
     if (context.input.delta.ui.selection) {
       markSelectionUiDelta({
         target: publishDelta,
-        previous: context.previous.ui.selection.target,
-        next: context.input.interaction.selection
+        previous: {
+          nodes: context.previous.ui.nodes.byId,
+          edges: context.previous.ui.edges.byId
+        },
+        next: selection
       })
     }
 
@@ -276,8 +281,8 @@ export const createUiPhase = (): UiEditorPhase => ({
       action: 'sync',
       change: undefined,
       metrics: toMetric(
-        selection.target.nodeIds.length
-        + selection.target.edgeIds.length
+        selection.nodeIds.length
+        + selection.edgeIds.length
         + context.working.ui.chrome.overlays.length
         + nodes.size
         + edges.size

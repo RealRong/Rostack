@@ -26,6 +26,5 @@ export const createEditorGraphQuery = (
   }),
   scene: () => runtime.snapshot().scene,
   ui: () => runtime.snapshot().ui,
-  selection: () => runtime.snapshot().ui.selection,
   chrome: () => runtime.snapshot().ui.chrome
 })

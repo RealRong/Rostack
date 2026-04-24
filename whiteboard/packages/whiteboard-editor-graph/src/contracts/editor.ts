@@ -5,12 +5,7 @@ import type {
 } from '@whiteboard/core/edge'
 import type { EdgeHandle } from '@whiteboard/core/types/edge'
 import type { Guide, TransformPreviewPatch } from '@whiteboard/core/node'
-import type { SelectionTransformHandlePlan } from '@whiteboard/core/node'
 import type { MindmapRenderConnector } from '@whiteboard/core/mindmap'
-import type {
-  SelectionAffordanceMoveHit,
-  SelectionAffordanceOwner
-} from '@whiteboard/core/selection'
 import type {
   CanvasItemRef,
   Edge,
@@ -578,36 +573,9 @@ export interface SceneSnapshot {
 }
 
 export interface UiSnapshot {
-  selection: SelectionView
   chrome: ChromeView
   nodes: Family<NodeId, NodeUiView>
   edges: Family<EdgeId, EdgeUiView>
-}
-
-export interface SelectionView {
-  target: SelectionState
-  kind: 'none' | 'nodes' | 'edges' | 'mixed'
-  summary: SelectionSummaryView
-  affordance: SelectionAffordanceView
-}
-
-export interface SelectionSummaryView {
-  box?: Rect
-  count: number
-  nodeCount: number
-  edgeCount: number
-  groupIds: readonly GroupId[]
-}
-
-export interface SelectionAffordanceView {
-  owner: SelectionAffordanceOwner
-  ownerNodeId?: NodeId
-  displayBox?: Rect
-  moveHit: SelectionAffordanceMoveHit
-  canMove: boolean
-  canResize: boolean
-  canRotate: boolean
-  handles: readonly SelectionTransformHandlePlan[]
 }
 
 export interface ChromeView {
@@ -650,7 +618,6 @@ export interface OwnerChange {
 }
 
 export interface UiChange {
-  selection: Flags
   chrome: Flags
   nodes: Ids<NodeId>
   edges: Ids<EdgeId>
@@ -680,6 +647,5 @@ export interface Read {
   spatial: SpatialRead
   scene(): SceneSnapshot
   ui(): UiSnapshot
-  selection(): SelectionView
   chrome(): ChromeView
 }

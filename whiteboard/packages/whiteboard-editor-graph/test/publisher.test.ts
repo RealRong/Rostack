@@ -257,7 +257,6 @@ describe('delta-driven publisher', () => {
     expect([...result.change.graph.edges.all]).toEqual([])
     expect([...result.change.ui.nodes.all]).toEqual([])
     expect([...result.change.ui.edges.all]).toEqual([])
-    expect(result.change.ui.selection.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(false)
     expect(result.change.scene.changed).toBe(true)
     expect(result.snapshot.graph).toBe(baseline.graph)
@@ -266,7 +265,7 @@ describe('delta-driven publisher', () => {
     expect(result.snapshot.scene.visible.nodeIds).toEqual([])
   })
 
-  it('publishes selection-only updates through ui selection, chrome, and touched ids', () => {
+  it('publishes selection-only updates through chrome and touched ids', () => {
     const engine = createEngine({
       document: documentApi.create('doc_editor_graph_runtime_publish_selection_only')
     })
@@ -332,11 +331,9 @@ describe('delta-driven publisher', () => {
     expect([...result.change.graph.nodes.all]).toEqual([])
     expect([...result.change.graph.edges.all]).toEqual([])
     expect(result.change.scene.changed).toBe(false)
-    expect(result.change.ui.selection.changed).toBe(true)
     expect(result.change.ui.chrome.changed).toBe(true)
     expect([...result.change.ui.nodes.all]).toEqual([firstId])
     expect([...result.change.ui.edges.all]).toEqual([edgeId])
-    expect(result.snapshot.ui.selection).not.toBe(baseline.ui.selection)
     expect(result.snapshot.ui.chrome).not.toBe(baseline.ui.chrome)
     expect(result.snapshot.ui.nodes.byId.get(firstId)?.selected).toBe(true)
     expect(result.snapshot.ui.nodes.byId.get(secondId)).toBe(
@@ -398,7 +395,6 @@ describe('delta-driven publisher', () => {
 
     expect([...result.change.graph.nodes.all]).toEqual([])
     expect(result.change.scene.changed).toBe(false)
-    expect(result.change.ui.selection.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(true)
     expect([...result.change.ui.nodes.all]).toEqual([nodeId])
     expect([...result.change.ui.edges.all]).toEqual([])
@@ -451,7 +447,6 @@ describe('delta-driven publisher', () => {
     expect([...result.change.graph.nodes.all]).toEqual([])
     expect([...result.change.graph.edges.all]).toEqual([])
     expect(result.change.scene.changed).toBe(false)
-    expect(result.change.ui.selection.changed).toBe(false)
     expect(result.change.ui.chrome.changed).toBe(false)
     expect([...result.change.ui.nodes.all]).toEqual([])
     expect([...result.change.ui.edges.all]).toEqual([])

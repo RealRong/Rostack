@@ -34,6 +34,20 @@ describe('keySet', () => {
     )).toEqual(['x', 'y'])
   })
 
+  test('clones key sets without sharing mutable set instances', () => {
+    const source = keySet.some(['a', 'b'])
+    const cloned = keySet.clone(source)
+
+    expect(cloned).toEqual({
+      kind: 'some',
+      keys: new Set(['a', 'b'])
+    })
+    expect(cloned).not.toBe(source)
+    if (source.kind === 'some' && cloned.kind === 'some') {
+      expect(cloned.keys).not.toBe(source.keys)
+    }
+  })
+
   test('requires allKeys when subtracting from all', () => {
     expect(() => {
       keySet.subtract(

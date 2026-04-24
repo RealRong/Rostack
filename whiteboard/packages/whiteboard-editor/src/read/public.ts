@@ -229,44 +229,61 @@ export const createEditorRead = (
     }
   })
 
-  const chrome = store.createDerivedStore<EditorChromePresentation>({
+  const chromeMarquee = store.createDerivedStore<EditorChromePresentation['marquee']>({
     get: () => {
-      const current = store.read(graph.chrome)
-      const marquee = current.preview.marquee
+      const marquee = store.read(graph.chrome).preview.marquee
 
-      return {
-        marquee: marquee
-          ? {
-              rect: projectWorldRect(sessionRead.viewport, marquee.worldRect),
-              match: marquee.match
-            }
-          : undefined,
-        draw: current.preview.draw,
-        edgeGuide: store.read(sessionRead.chrome.edgeGuide),
-        snap: current.preview.guides,
-        selection: store.read(selectionOverlay)
-      }
+      return marquee
+        ? {
+            rect: projectWorldRect(sessionRead.viewport, marquee.worldRect),
+            match: marquee.match
+          }
+        : undefined
     },
-    isEqual: (left, right) => (
-      isChromeMarqueeEqual(left.marquee, right.marquee)
-      && isChromeDrawEqual(left.draw, right.draw)
-      && left.edgeGuide === right.edgeGuide
-      && left.snap === right.snap
-      && left.selection === right.selection
-    )
+    isEqual: isChromeMarqueeEqual
   })
 
-  const panel = store.createDerivedStore<EditorPanelPresentation>({
-    get: () => ({
-      selectionToolbar: store.read(selectionToolbar),
-      history: store.read(history),
-      draw: store.read(state.draw)
-    }),
-    isEqual: (left, right) => (
-      left.selectionToolbar === right.selectionToolbar
-      && left.history === right.history
-      && left.draw === right.draw
-    )
+  const chromeDraw = store.createDerivedStore<EditorChromePresentation['draw']>({
+    get: () => store.read(graph.chrome).preview.draw,
+    isEqual: isChromeDrawEqual
+  })
+
+  const chromeSnap = store.createDerivedStore<EditorChromePresentation['snap']>({
+    get: () => store.read(graph.chrome).preview.guides
+  })
+
+  const chrome = store.createStructStore<EditorChromePresentation>({
+    fields: {
+      marquee: {
+        get: () => store.read(chromeMarquee)
+      },
+      draw: {
+        get: () => store.read(chromeDraw)
+      },
+      edgeGuide: {
+        get: () => store.read(sessionRead.chrome.edgeGuide)
+      },
+      snap: {
+        get: () => store.read(chromeSnap)
+      },
+      selection: {
+        get: () => store.read(selectionOverlay)
+      }
+    }
+  })
+
+  const panel = store.createStructStore<EditorPanelPresentation>({
+    fields: {
+      selectionToolbar: {
+        get: () => store.read(selectionToolbar)
+      },
+      history: {
+        get: () => store.read(history)
+      },
+      draw: {
+        get: () => store.read(state.draw)
+      }
+    }
   })
 
   const nodeCapability: EditorRead['node']['capability'] = store.createKeyedDerivedStore({

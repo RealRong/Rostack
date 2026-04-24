@@ -1,9 +1,20 @@
-import type { SelectionAffordance, SelectionSummary, SelectionTarget } from '@whiteboard/core/selection'
-import type { SelectionTransformPlan, ShapeKind } from '@whiteboard/core/node'
+import type {
+  SelectionAffordance,
+  SelectionAffordanceMoveHit,
+  SelectionAffordanceOwner,
+  SelectionSummary,
+  SelectionTarget
+} from '@whiteboard/core/selection'
+import type {
+  SelectionTransformHandlePlan,
+  SelectionTransformPlan,
+  ShapeKind
+} from '@whiteboard/core/node'
 import type {
   Edge,
   EdgeDash,
   EdgeId,
+  GroupId,
   EdgeMarker,
   EdgeTextMode,
   EdgeType,
@@ -64,6 +75,32 @@ export type SelectionModel = {
   members: SelectionMembers
   summary: SelectionSummary
   affordance: SelectionAffordance
+}
+
+export type EditorSelectionSummaryView = {
+  box?: Rect
+  count: number
+  nodeCount: number
+  edgeCount: number
+  groupIds: readonly GroupId[]
+}
+
+export type EditorSelectionAffordanceView = {
+  owner: SelectionAffordanceOwner
+  ownerNodeId?: NodeId
+  displayBox?: Rect
+  moveHit: SelectionAffordanceMoveHit
+  canMove: boolean
+  canResize: boolean
+  canRotate: boolean
+  handles: readonly SelectionTransformHandlePlan[]
+}
+
+export type EditorSelectionView = {
+  target: SelectionTarget
+  kind: 'none' | 'nodes' | 'edges' | 'mixed'
+  summary: EditorSelectionSummaryView
+  affordance: EditorSelectionAffordanceView
 }
 
 export type SelectionToolbarNodeKind =

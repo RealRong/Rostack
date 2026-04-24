@@ -8,6 +8,7 @@ import type {
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { GraphPatchScope } from '../../contracts/delta'
 import type { GraphState } from '../../contracts/working'
+import { readGraphPatchScopeKeys } from './scope'
 
 export interface GraphPatchQueue {
   nodes: Set<NodeId>
@@ -91,10 +92,10 @@ export const seedGraphPatchQueue = (input: {
     return
   }
 
-  enqueueAll(input.queue.nodes, input.scope.nodes)
-  enqueueAll(input.queue.edges, input.scope.edges)
-  enqueueAll(input.queue.mindmaps, input.scope.mindmaps)
-  enqueueAll(input.queue.groups, input.scope.groups)
+  enqueueAll(input.queue.nodes, readGraphPatchScopeKeys(input.scope.nodes))
+  enqueueAll(input.queue.edges, readGraphPatchScopeKeys(input.scope.edges))
+  enqueueAll(input.queue.mindmaps, readGraphPatchScopeKeys(input.scope.mindmaps))
+  enqueueAll(input.queue.groups, readGraphPatchScopeKeys(input.scope.groups))
 }
 
 export const preFanoutSeeds = (input: {
@@ -107,7 +108,7 @@ export const preFanoutSeeds = (input: {
     return
   }
 
-  input.scope.nodes.forEach((nodeId) => {
+  readGraphPatchScopeKeys(input.scope.nodes).forEach((nodeId) => {
     const nextOwner = input.snapshot.state.facts.relations.nodeOwner.get(nodeId)
     const previousOwner = input.working.nodes.get(nodeId)?.base.owner
 

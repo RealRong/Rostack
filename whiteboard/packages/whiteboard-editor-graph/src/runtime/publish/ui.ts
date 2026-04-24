@@ -26,11 +26,6 @@ export const patchPublishedUi = (input: {
   value: UiSnapshot
   change: UiChange
 } => {
-  const selection = patchPublishedValue({
-    previous: input.previous.selection,
-    next: input.working.ui.selection,
-    changed: input.delta.selection
-  })
   const chrome = patchPublishedValue({
     previous: input.previous.chrome,
     next: input.working.ui.chrome,
@@ -50,14 +45,12 @@ export const patchPublishedUi = (input: {
   })
 
   const value = (
-    selection.value === input.previous.selection
-    && chrome.value === input.previous.chrome
+    chrome.value === input.previous.chrome
     && nodes.value === input.previous.nodes
     && edges.value === input.previous.edges
   )
     ? input.previous
     : {
-        selection: selection.value,
         chrome: chrome.value,
         nodes: nodes.value,
         edges: edges.value
@@ -66,7 +59,6 @@ export const patchPublishedUi = (input: {
   return {
     value,
     change: {
-      selection: createFlags(selection.changed),
       chrome: createFlags(chrome.changed),
       nodes: nodes.ids,
       edges: edges.ids

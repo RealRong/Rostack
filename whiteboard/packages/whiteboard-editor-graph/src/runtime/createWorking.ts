@@ -23,27 +23,6 @@ export const createWorking = (): WorkingState => {
     },
     spatial: createSpatialState(),
     ui: {
-      selection: {
-        target: {
-          nodeIds: [],
-          edgeIds: []
-        },
-        kind: 'none',
-        summary: {
-          count: 0,
-          nodeCount: 0,
-          edgeCount: 0,
-          groupIds: []
-        },
-        affordance: {
-          owner: 'none',
-          moveHit: 'none',
-          canMove: false,
-          canResize: false,
-          canRotate: false,
-          handles: []
-        }
-      },
       chrome: {
         overlays: [],
         hover: {

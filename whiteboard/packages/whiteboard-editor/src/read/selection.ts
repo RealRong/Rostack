@@ -4,19 +4,23 @@ import {
   type SelectionSummary,
   type SelectionTarget
 } from '@whiteboard/core/selection'
-import { node as nodeApi } from '@whiteboard/core/node'
-import { store } from '@shared/core'
+import {
+  node as nodeApi,
+  type SelectionTransformHandlePlan
+} from '@whiteboard/core/node'
+import { equal, store } from '@shared/core'
 import type { EdgeId, NodeId } from '@whiteboard/core/types'
-import type { ProjectionSources } from '@whiteboard/editor/projection/sources'
 import type {
-  SelectionMembers,
-  SelectionModel
+  EditorSelectionAffordanceView,
+  EditorSelectionSummaryView,
+  EditorSelectionView,
+  SelectionMembers
 } from '@whiteboard/editor/types/selectionPresentation'
 import type { GraphEdgeRead } from './edge'
 import type { GraphNodeRead } from './node'
 
 export type GraphSelectionRead = {
-  view: ProjectionSources['selection']
+  view: store.ReadStore<EditorSelectionView>
   members: store.ReadStore<SelectionMembers>
   summary: store.ReadStore<SelectionSummary>
   affordance: store.ReadStore<SelectionAffordance>
@@ -28,30 +32,57 @@ export type GraphSelectionRead = {
   }
 }
 
-type SelectionModelRead = store.ReadStore<SelectionModel>
-
 const EMPTY_SELECTED_NODES = new Map<NodeId, boolean>()
 const EMPTY_SELECTED_EDGES = new Map<EdgeId, boolean>()
+const EMPTY_SELECTION_HANDLES: readonly SelectionTransformHandlePlan[] = []
 
 const isSelectionMembersEqual = (
   left: SelectionMembers,
   right: SelectionMembers
 ) => (
   left.key === right.key
-  && left.target === right.target
-  && left.nodes === right.nodes
-  && left.edges === right.edges
+  && selectionApi.target.equal(left.target, right.target)
+  && equal.sameOrder(left.nodes, right.nodes)
+  && equal.sameOrder(left.edges, right.edges)
   && left.primaryNode === right.primaryNode
   && left.primaryEdge === right.primaryEdge
 )
 
-const isSelectionModelEqual = (
-  left: SelectionModel,
-  right: SelectionModel
+const isSelectionSummaryViewEqual = (
+  left: EditorSelectionSummaryView,
+  right: EditorSelectionSummaryView
 ) => (
-  isSelectionMembersEqual(left.members, right.members)
-  && selectionApi.derive.isSummaryEqual(left.summary, right.summary)
-  && selectionApi.derive.isAffordanceEqual(left.affordance, right.affordance)
+  left.count === right.count
+  && left.nodeCount === right.nodeCount
+  && left.edgeCount === right.edgeCount
+  && left.groupIds === right.groupIds
+  && equal.sameOptionalRect(left.box, right.box)
+)
+
+const isSelectionHandleEqual = (
+  left: SelectionTransformHandlePlan,
+  right: SelectionTransformHandlePlan
+) => (
+  left.id === right.id
+  && left.visible === right.visible
+  && left.enabled === right.enabled
+  && left.family === right.family
+  && left.cursor === right.cursor
+)
+
+const isSelectionAffordanceViewEqual = (
+  left: EditorSelectionAffordanceView,
+  right: EditorSelectionAffordanceView
+) => (
+  left.owner === right.owner
+  && left.ownerNodeId === right.ownerNodeId
+  && left.moveHit === right.moveHit
+  && left.canMove === right.canMove
+  && left.canResize === right.canResize
+  && left.canRotate === right.canRotate
+  && left.handles === right.handles
+  && equal.sameOptionalRect(left.displayBox, right.displayBox)
+  && equal.sameOrder(left.handles, right.handles, isSelectionHandleEqual)
 )
 
 const readSelectionMembersKey = (
@@ -70,7 +101,17 @@ const readNodeTransformCapability = (
   }
 }
 
-const createSelectionModelRead = ({
+const toSelectionViewKind = (
+  kind: SelectionSummary['kind']
+): EditorSelectionView['kind'] => (
+  kind === 'node'
+    ? 'nodes'
+    : kind === 'edge'
+      ? 'edges'
+      : kind
+)
+
+export const createGraphSelectionRead = ({
   source,
   node,
   edge
@@ -78,7 +119,7 @@ const createSelectionModelRead = ({
   source: store.ReadStore<SelectionTarget>
   node: GraphNodeRead
   edge: Pick<GraphEdgeRead, 'edges' | 'bounds'>
-}): SelectionModelRead => {
+}): GraphSelectionRead => {
   const members = store.createDerivedStore<SelectionMembers>({
     get: () => {
       const target = store.read(source)
@@ -125,46 +166,55 @@ const createSelectionModelRead = ({
     isEqual: selectionApi.derive.isAffordanceEqual
   })
 
-  return store.createDerivedStore<SelectionModel>({
-    get: () => ({
-      members: store.read(members),
-      summary: store.read(summary),
-      affordance: store.read(affordance)
-    }),
-    isEqual: isSelectionModelEqual
-  })
-}
+  const viewSummary = store.createDerivedStore<EditorSelectionSummaryView>({
+    get: () => {
+      const current = store.read(summary)
 
-export const createGraphSelectionRead = ({
-  source,
-  view,
-  node,
-  edge
-}: {
-  source: store.ReadStore<SelectionTarget>
-  view: ProjectionSources['selection']
-  node: GraphNodeRead
-  edge: Pick<GraphEdgeRead, 'edges' | 'bounds'>
-}): GraphSelectionRead => {
-  const model = createSelectionModelRead({
-    source,
-    node,
-    edge
+      return {
+        box: current.box,
+        count: current.items.count,
+        nodeCount: current.items.nodeCount,
+        edgeCount: current.items.edgeCount,
+        groupIds: current.target.groupIds
+      }
+    },
+    isEqual: isSelectionSummaryViewEqual
   })
 
-  const members = store.createDerivedStore<SelectionMembers>({
-    get: () => store.read(model).members,
-    isEqual: isSelectionMembersEqual
+  const viewAffordance = store.createDerivedStore<EditorSelectionAffordanceView>({
+    get: () => {
+      const current = store.read(affordance)
+
+      return {
+        owner: current.owner,
+        ownerNodeId: current.ownerNodeId,
+        displayBox: current.displayBox,
+        moveHit: current.moveHit,
+        canMove: current.canMove,
+        canResize: current.canResize,
+        canRotate: current.canRotate,
+        handles: current.transformPlan?.handles ?? EMPTY_SELECTION_HANDLES
+      }
+    },
+    isEqual: isSelectionAffordanceViewEqual
   })
 
-  const summary = store.createDerivedStore<SelectionSummary>({
-    get: () => store.read(model).summary,
-    isEqual: (left, right) => left === right
-  })
-
-  const affordance = store.createDerivedStore<SelectionAffordance>({
-    get: () => store.read(model).affordance,
-    isEqual: (left, right) => left === right
+  const view = store.createStructStore<EditorSelectionView>({
+    fields: {
+      target: {
+        get: () => store.read(source),
+        isEqual: selectionApi.target.equal
+      },
+      kind: {
+        get: () => toSelectionViewKind(store.read(summary).kind)
+      },
+      summary: {
+        get: () => store.read(viewSummary)
+      },
+      affordance: {
+        get: () => store.read(viewAffordance)
+      }
+    }
   })
 
   return {

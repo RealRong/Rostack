@@ -1,3 +1,4 @@
+import { keySet, type KeySet } from '@shared/core'
 import {
   createPlan,
   type RuntimePlanner
@@ -55,32 +56,24 @@ const createSpatialPlannerScope = (
 })
 
 const appendIdDelta = <TId extends string>(
-  target: Set<TId>,
+  target: KeySet<TId>,
   delta: {
     added: ReadonlySet<TId>
     updated: ReadonlySet<TId>
     removed: ReadonlySet<TId>
   }
-) => {
-  delta.added.forEach((id) => {
-    target.add(id)
-  })
-  delta.updated.forEach((id) => {
-    target.add(id)
-  })
-  delta.removed.forEach((id) => {
-    target.add(id)
-  })
-}
+): KeySet<TId> => keySet.addMany(
+  keySet.addMany(
+    keySet.addMany(target, delta.added),
+    delta.updated
+  ),
+  delta.removed
+)
 
 const appendMapKeys = <TId extends string>(
-  target: Set<TId>,
+  target: KeySet<TId>,
   entries: ReadonlyMap<TId, unknown>
-) => {
-  entries.forEach((_value, id) => {
-    target.add(id)
-  })
-}
+): KeySet<TId> => keySet.addMany(target, entries.keys())
 
 const createGraphPlannerScope = (
   input: Input
@@ -97,41 +90,47 @@ const createGraphPlannerScope = (
 
   scope.order = delta.document.order
 
-  appendIdDelta(scope.nodes, delta.document.nodes)
-  appendIdDelta(scope.edges, delta.document.edges)
-  appendIdDelta(scope.mindmaps, delta.document.mindmaps)
-  appendIdDelta(scope.groups, delta.document.groups)
+  scope.nodes = appendIdDelta(scope.nodes, delta.document.nodes)
+  scope.edges = appendIdDelta(scope.edges, delta.document.edges)
+  scope.mindmaps = appendIdDelta(scope.mindmaps, delta.document.mindmaps)
+  scope.groups = appendIdDelta(scope.groups, delta.document.groups)
 
-  appendIdDelta(scope.nodes, delta.graph.nodes.draft)
-  appendIdDelta(scope.nodes, delta.graph.nodes.preview)
-  appendIdDelta(scope.nodes, delta.graph.nodes.edit)
-  appendIdDelta(scope.edges, delta.graph.edges.preview)
-  appendIdDelta(scope.edges, delta.graph.edges.edit)
-  appendIdDelta(scope.mindmaps, delta.graph.mindmaps.preview)
+  scope.nodes = appendIdDelta(scope.nodes, delta.graph.nodes.draft)
+  scope.nodes = appendIdDelta(scope.nodes, delta.graph.nodes.preview)
+  scope.nodes = appendIdDelta(scope.nodes, delta.graph.nodes.edit)
+  scope.edges = appendIdDelta(scope.edges, delta.graph.edges.preview)
+  scope.edges = appendIdDelta(scope.edges, delta.graph.edges.edit)
+  scope.mindmaps = appendIdDelta(scope.mindmaps, delta.graph.mindmaps.preview)
   delta.graph.mindmaps.tick.forEach((mindmapId) => {
-    scope.mindmaps.add(mindmapId)
+    scope.mindmaps = keySet.add(scope.mindmaps, mindmapId)
   })
 
-  appendMapKeys(scope.nodes, input.session.draft.nodes)
-  appendMapKeys(scope.edges, input.session.draft.edges)
-  appendMapKeys(scope.nodes, input.session.preview.nodes)
-  appendMapKeys(scope.edges, input.session.preview.edges)
+  scope.nodes = appendMapKeys(scope.nodes, input.session.draft.nodes)
+  scope.edges = appendMapKeys(scope.edges, input.session.draft.edges)
+  scope.nodes = appendMapKeys(scope.nodes, input.session.preview.nodes)
+  scope.edges = appendMapKeys(scope.edges, input.session.preview.edges)
 
   if (input.session.edit?.kind === 'node') {
-    scope.nodes.add(input.session.edit.nodeId)
+    scope.nodes = keySet.add(scope.nodes, input.session.edit.nodeId)
   }
   if (input.session.edit?.kind === 'edge-label') {
-    scope.edges.add(input.session.edit.edgeId)
+    scope.edges = keySet.add(scope.edges, input.session.edit.edgeId)
   }
 
   if (input.session.preview.mindmap?.rootMove) {
-    scope.mindmaps.add(input.session.preview.mindmap.rootMove.mindmapId)
+    scope.mindmaps = keySet.add(
+      scope.mindmaps,
+      input.session.preview.mindmap.rootMove.mindmapId
+    )
   }
   if (input.session.preview.mindmap?.subtreeMove) {
-    scope.mindmaps.add(input.session.preview.mindmap.subtreeMove.mindmapId)
+    scope.mindmaps = keySet.add(
+      scope.mindmaps,
+      input.session.preview.mindmap.subtreeMove.mindmapId
+    )
   }
   input.session.preview.mindmap?.enter?.forEach((entry) => {
-    scope.mindmaps.add(entry.mindmapId)
+    scope.mindmaps = keySet.add(scope.mindmaps, entry.mindmapId)
   })
 
   return scope

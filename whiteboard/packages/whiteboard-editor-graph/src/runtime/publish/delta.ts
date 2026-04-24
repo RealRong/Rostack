@@ -51,7 +51,6 @@ export const createPublishDelta = (): PublishDelta => ({
     visible: false
   },
   ui: {
-    selection: false,
     chrome: false,
     nodes: createIdDelta<NodeId>(),
     edges: createIdDelta<EdgeId>()
@@ -77,7 +76,6 @@ export const resetScenePublishDelta = (
 export const resetUiPublishDelta = (
   delta: UiPublishDelta
 ) => {
-  delta.selection = false
   delta.chrome = false
   resetIdDelta(delta.nodes)
   resetIdDelta(delta.edges)
@@ -120,12 +118,6 @@ export const syncScenePublishDelta = (input: {
 }) => {
   input.target.items = input.graph.order
   input.target.visible = input.spatial.order || input.spatial.visible
-}
-
-export const markUiSelectionChanged = (
-  delta: UiPublishDelta
-) => {
-  delta.selection = true
 }
 
 export const markUiChromeChanged = (

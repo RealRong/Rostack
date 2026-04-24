@@ -38,6 +38,18 @@ export const some = <TKey>(
     : none<TKey>()
 }
 
+export const clone = <TKey>(
+  set: KeySet<TKey>
+): KeySet<TKey> => {
+  if (set.kind === 'none') {
+    return none<TKey>()
+  }
+  if (set.kind === 'all') {
+    return all<TKey>()
+  }
+  return some(set.keys)
+}
+
 export const isEmpty = <TKey>(
   set: KeySet<TKey>
 ): boolean => set.kind === 'none'

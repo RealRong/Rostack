@@ -82,6 +82,11 @@ export type GraphEdgeRead = {
   connectCandidates: (rect: Rect) => readonly EdgeConnectCandidate[]
 }
 
+type EditorEdgeViewSources = {
+  graph: RuntimeEdgeView | undefined
+  ui: RuntimeEdgeUiView | undefined
+}
+
 const isEditCaretEqual = (
   left: EditorEdgeLabelView['caret'],
   right: EditorEdgeLabelView['caret']
@@ -315,11 +320,22 @@ export const createGraphEdgeRead = ({
   spatial: EditorGraphQuery['spatial']
   node: Pick<GraphNodeRead, 'graph' | 'capability'>
 }): GraphEdgeRead => {
+  const viewSources = store.createStructKeyedStore<EdgeId, EditorEdgeViewSources>({
+    fields: {
+      graph: {
+        get: (edgeId) => store.read(sources.edgeGraph, edgeId)
+      },
+      ui: {
+        get: (edgeId) => store.read(sources.edgeUi, edgeId)
+      }
+    }
+  })
+
   const view: GraphEdgeRead['view'] = store.createKeyedDerivedStore({
-    get: (edgeId: EdgeId) => toEditorEdgeView(
-      store.read(sources.edgeGraph, edgeId),
-      store.read(sources.edgeUi, edgeId)
-    ),
+    get: (edgeId: EdgeId) => {
+      const current = store.read(viewSources, edgeId)
+      return toEditorEdgeView(current.graph, current.ui)
+    },
     isEqual: isEditorEdgeViewEqual
   })
 

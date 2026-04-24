@@ -11,8 +11,7 @@ import type {
 import type { HistoryApi, HistoryState } from '@whiteboard/history'
 import type {
   MindmapView,
-  SceneSnapshot,
-  SelectionView
+  SceneSnapshot
 } from '@whiteboard/editor-graph'
 import type { EditorActions } from '@whiteboard/editor/action/types'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
@@ -49,6 +48,7 @@ import type {
   NodeCapability
 } from '@whiteboard/editor/read/node'
 import type {
+  EditorSelectionView,
   SelectionNodeStats,
   SelectionOverlay,
   SelectionToolbarContext,
@@ -148,7 +148,7 @@ export type EditorRead = {
     view: store.ReadStore<SceneSnapshot>
   }
   selection: {
-    view: store.ReadStore<SelectionView>
+    view: store.ReadStore<EditorSelectionView>
     node: EditorSelectionNodeRead
   }
   tool: SessionRead['tool']

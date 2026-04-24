@@ -50,10 +50,6 @@ const createEditorGraphPublishSpec = () => ({
     change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.scene
   },
   ui: {
-    selection: {
-      read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.ui.selection,
-      change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.ui.selection
-    },
     chrome: {
       read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.ui.chrome,
       change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.ui.chrome
@@ -346,7 +342,6 @@ describe('editor graph runtime', () => {
     expect(idle.trace!.phases).toHaveLength(0)
     expect(idle.change.graph.nodes.all.size).toBe(0)
     expect(idle.change.scene.changed).toBe(false)
-    expect(idle.change.ui.selection.changed).toBe(false)
     expect(idle.change.ui.chrome.changed).toBe(false)
   })
 
@@ -393,13 +388,11 @@ describe('editor graph runtime', () => {
     }).some((record) => record.key === spatialRecord.key)).toBe(true)
     expect(read.scene()).toBe(result.snapshot.scene)
     expect(read.ui()).toBe(result.snapshot.ui)
-    expect(read.selection()).toBe(result.snapshot.ui.selection)
     expect(read.chrome()).toBe(result.snapshot.ui.chrome)
     expect(publish.graph.read(result.snapshot)).toBe(result.snapshot.graph)
     expect(publish.graph.change(result.change)).toBe(result.change.graph)
     expect(publish.scene.read(result.snapshot)).toBe(result.snapshot.scene)
     expect(publish.scene.change(result.change)).toBe(result.change.scene)
-    expect(publish.ui.selection.read(result.snapshot)).toBe(result.snapshot.ui.selection)
     expect(publish.ui.chrome.change(result.change)).toBe(result.change.ui.chrome)
   })
 
@@ -534,7 +527,7 @@ describe('editor graph runtime', () => {
     expect(live.change.graph.owners.mindmaps.all.has(created.mindmapId)).toBe(true)
   })
 
-  it('publishes renderer-ready element, selection, chrome, and scene state', () => {
+  it('publishes renderer-ready element, chrome, and scene state', () => {
     const engine = createEngine({
       document: documentApi.create('doc_editor_graph_runtime_element_scene')
     })
@@ -650,7 +643,6 @@ describe('editor graph runtime', () => {
     const edgeView = result.snapshot.graph.edges.byId.get(edgeId)
     const firstNodeUi = result.snapshot.ui.nodes.byId.get(firstId)
     const edgeUi = result.snapshot.ui.edges.byId.get(edgeId)
-    const selection = result.snapshot.ui.selection
     const chrome = result.snapshot.ui.chrome
     const overlayKinds = chrome.overlays.map((overlay) => overlay.kind)
 
@@ -673,19 +665,6 @@ describe('editor graph runtime', () => {
     expect(edgeView!.route.labels[0]?.rect).toBeDefined()
     expect(edgeUi?.editingLabelId).toBe(labelId)
     expect(edgeUi?.labels.get(labelId)?.editing).toBe(true)
-
-    expect(selection.kind).toBe('nodes')
-    expect(selection.summary.count).toBe(2)
-    expect(selection.summary.nodeCount).toBe(2)
-    expect(selection.summary.edgeCount).toBe(0)
-    expect(selection.summary.box).toBeDefined()
-    expect(selection.affordance.owner).toBe('multi-selection')
-    expect(selection.affordance.canMove).toBe(true)
-    expect(selection.affordance.canResize).toBe(true)
-    expect(selection.affordance.canRotate).toBe(false)
-    expect(
-      selection.affordance.handles.some((handle) => handle.id === 'se' && handle.visible)
-    ).toBe(true)
 
     expect(chrome.hover).toEqual({
       kind: 'edge',
@@ -737,7 +716,6 @@ describe('editor graph runtime', () => {
     expect(result.snapshot.scene.spatial.edges).toEqual(result.snapshot.scene.visible.edgeIds)
     expect(result.snapshot.scene.pick.items).toEqual(result.snapshot.scene.visible.items)
     expect(result.change.scene.changed).toBe(true)
-    expect(result.change.ui.selection.changed).toBe(true)
     expect(result.change.ui.chrome.changed).toBe(true)
     expect(result.change.ui.nodes.all.has(firstId)).toBe(true)
     expect(result.change.ui.edges.all.has(edgeId)).toBe(true)

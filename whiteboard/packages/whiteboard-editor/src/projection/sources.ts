@@ -9,7 +9,6 @@ import type {
   NodeUiView,
   NodeView,
   SceneSnapshot,
-  SelectionView,
   Snapshot
 } from '@whiteboard/editor-graph'
 
@@ -18,7 +17,6 @@ export interface ProjectionSources {
   graph: store.ReadStore<GraphSnapshot>
   scene: store.ReadStore<SceneSnapshot>
   ui: store.ReadStore<Snapshot['ui']>
-  selection: store.ReadStore<SelectionView>
   chrome: store.ReadStore<ChromeView>
   nodeGraph: store.KeyedReadStore<string, NodeView | undefined>
   edgeGraph: store.KeyedReadStore<string, EdgeView | undefined>
@@ -43,10 +41,6 @@ export const createProjectionSources = (
   ui: store.createProjectedStore({
     source: snapshot,
     select: (current) => current.ui
-  }),
-  selection: store.createProjectedStore({
-    source: snapshot,
-    select: (current) => current.ui.selection
   }),
   chrome: store.createProjectedStore({
     source: snapshot,

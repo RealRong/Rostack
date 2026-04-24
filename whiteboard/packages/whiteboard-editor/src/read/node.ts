@@ -51,6 +51,11 @@ export type GraphNodeRead = {
   ordered: () => readonly NodeModel[]
 }
 
+type EditorNodeViewSources = {
+  graph: RuntimeNodeView | undefined
+  ui: RuntimeNodeUiView | undefined
+}
+
 const isEditorNodeViewEqual = (
   left: EditorNodeView | undefined,
   right: EditorNodeView | undefined
@@ -179,11 +184,22 @@ export const createGraphNodeRead = ({
     nodeIds: readonly NodeId[]
   ) => collection.presentValues(nodeIds, (nodeId) => store.read(sources.nodeGraph, nodeId)?.base.node)
 
+  const viewSources = store.createStructKeyedStore<NodeId, EditorNodeViewSources>({
+    fields: {
+      graph: {
+        get: (nodeId) => store.read(sources.nodeGraph, nodeId)
+      },
+      ui: {
+        get: (nodeId) => store.read(sources.nodeUi, nodeId)
+      }
+    }
+  })
+
   const view: GraphNodeRead['view'] = store.createKeyedDerivedStore({
-    get: (nodeId: NodeId) => toEditorNodeView(
-      store.read(sources.nodeGraph, nodeId),
-      store.read(sources.nodeUi, nodeId)
-    ),
+    get: (nodeId: NodeId) => {
+      const current = store.read(viewSources, nodeId)
+      return toEditorNodeView(current.graph, current.ui)
+    },
     isEqual: isEditorNodeViewEqual
   })
 

@@ -16,6 +16,7 @@ export type {
 } from './issueCollector'
 export * as json from './json'
 export * as keySet from './keySet'
+export type { KeySet } from './keySet'
 export * as operationBuffer from './operationBuffer'
 export type {
   InverseBuilder,

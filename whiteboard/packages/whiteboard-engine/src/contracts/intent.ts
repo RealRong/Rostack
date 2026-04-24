@@ -1,9 +1,16 @@
 export type {
-  BatchApplyOptions,
-  Command,
-  CommandOutput,
-  EngineCommand,
-  ExecuteOptions,
+  CanvasIntent,
+  DocumentIntent,
+  EdgeIntent,
+  EngineIntent,
   ExecuteResult,
-  OrderMode
-} from '../types/command'
+  GroupIntent,
+  Intent,
+  IntentData,
+  IntentKind,
+  MindmapIntent,
+  NodeIntent,
+  OrderMode,
+  ReplaceDocumentIntent,
+  WhiteboardIntentTable
+} from '../types/intent'

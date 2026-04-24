@@ -1,3 +1,7 @@
+import {
+  path as mutationPath,
+  type Path
+} from '@shared/mutation'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { TransformPreviewPatch } from '@whiteboard/core/node'
@@ -31,27 +35,38 @@ import type { DocumentRead } from '@whiteboard/editor/document/read'
 
 const TEXT_PLACEHOLDER = 'Text'
 
-const SIZE_LAYOUT_STYLE_PATHS = new Set([
-  'fontSize',
-  'fontWeight',
-  'fontStyle'
-])
+const SIZE_LAYOUT_STYLE_PATHS: readonly Path[] = [
+  mutationPath.of('fontSize'),
+  mutationPath.of('fontWeight'),
+  mutationPath.of('fontStyle')
+]
 
-const SIZE_LAYOUT_DATA_PATHS = new Set([
-  'text',
-  'widthMode',
-  'wrapWidth'
-])
+const SIZE_LAYOUT_DATA_PATHS: readonly Path[] = [
+  mutationPath.of('text'),
+  mutationPath.of('widthMode'),
+  mutationPath.of('wrapWidth')
+]
 
-const FIT_LAYOUT_STYLE_PATHS = new Set([
-  'fontWeight',
-  'fontStyle'
-])
+const FIT_LAYOUT_STYLE_PATHS: readonly Path[] = [
+  mutationPath.of('fontWeight'),
+  mutationPath.of('fontStyle')
+]
 
-const FIT_LAYOUT_DATA_PATHS = new Set([
-  'text',
-  'fontMode'
-])
+const FIT_LAYOUT_DATA_PATHS: readonly Path[] = [
+  mutationPath.of('text'),
+  mutationPath.of('fontMode')
+]
+
+const FONT_MODE_PATH = mutationPath.of('fontMode')
+const FONT_SIZE_PATH = mutationPath.of('fontSize')
+
+const hasTrackedPath = (
+  paths: readonly Path[],
+  value?: Path
+) => {
+  const target = value ?? mutationPath.root()
+  return paths.some((path) => mutationPath.eq(path, target))
+}
 
 const hasOwn = <T extends object>(
   value: T,
@@ -231,13 +246,13 @@ const isLayoutAffectingUpdate = (
     record.scope === 'style'
       ? (
           kind === 'size'
-            ? SIZE_LAYOUT_STYLE_PATHS.has(record.path ?? '')
-            : FIT_LAYOUT_STYLE_PATHS.has(record.path ?? '')
+            ? hasTrackedPath(SIZE_LAYOUT_STYLE_PATHS, record.path)
+            : hasTrackedPath(FIT_LAYOUT_STYLE_PATHS, record.path)
         )
       : (
           kind === 'size'
-            ? SIZE_LAYOUT_DATA_PATHS.has(record.path ?? '')
-            : FIT_LAYOUT_DATA_PATHS.has(record.path ?? '')
+            ? hasTrackedPath(SIZE_LAYOUT_DATA_PATHS, record.path)
+            : hasTrackedPath(FIT_LAYOUT_DATA_PATHS, record.path)
         )
   ))
 }
@@ -256,10 +271,10 @@ const normalizeStickyFontModeUpdate = ({
   }
 
   const touchesFontMode = (update.records ?? []).some(
-    (record) => record.scope === 'data' && record.path === 'fontMode'
+    (record) => record.scope === 'data' && mutationPath.eq(record.path ?? mutationPath.root(), FONT_MODE_PATH)
   )
   const touchesFontSize = (update.records ?? []).some(
-    (record) => record.scope === 'style' && record.path === 'fontSize'
+    (record) => record.scope === 'style' && mutationPath.eq(record.path ?? mutationPath.root(), FONT_SIZE_PATH)
   )
 
   if (!touchesFontSize || touchesFontMode) {
@@ -268,7 +283,7 @@ const normalizeStickyFontModeUpdate = ({
 
   return schemaApi.node.mergeUpdates(
     update,
-    schemaApi.node.compileDataUpdate('fontMode', 'fixed')
+    schemaApi.node.compileDataUpdate(mutationPath.of('fontMode'), 'fixed')
   )
 }
 
@@ -305,7 +320,7 @@ const toLayoutResultUpdate = ({
 
     return currentFontSize === fontSize
       ? undefined
-      : schemaApi.node.compileStyleUpdate('fontSize', fontSize)
+      : schemaApi.node.compileStyleUpdate(mutationPath.of('fontSize'), fontSize)
   }
 
   return undefined

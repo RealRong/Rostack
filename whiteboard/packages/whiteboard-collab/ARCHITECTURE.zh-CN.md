@@ -8,7 +8,7 @@
 
 它不负责：
 
-- command compile
+- intent compile
 - reducer 语义
 - editor session / preview / selection
 - DOM / awareness UI
@@ -16,8 +16,8 @@
 
 它只负责：
 
-- 监听 `engine.writeRecord`
-- 把本地 `writeRecord.forward` 与 `writeRecord.history.footprint` 发布成 shared change
+- 监听 `engine.writes`
+- 把本地 `EngineWrite.forward` 与 `EngineWrite.footprint` 发布成 shared change
 - 从 Yjs 读取 checkpoint 与 shared change
 - 以 canonical order 驱动 `engine.apply(...)` / `engine.execute(document.replace, ...)`
 - 管理 bootstrap、resync、checkpoint rotation、diagnostics
@@ -55,11 +55,11 @@
 
 `engine` 负责：
 
-- command -> operation compile
+- intent -> operation compile
 - semantic validation
 - reducer apply
 - inverse / history
-- 生成 `Commit` / `WriteRecord`
+- 生成 `EngineWrite`
 
 `collab` 永远不复写这部分逻辑。
 
@@ -134,7 +134,7 @@ type SharedCheckpoint = {
 
 当前设计明确反过来：
 
-- 本地语义写入的共享载体是 `writeRecord.forward`
+- 本地语义写入的共享载体是 `EngineWrite.forward`
 - 远端消费也只回放 `ops`
 - 本地 document 只是 replay 结果，不是共享协议本身
 
@@ -190,11 +190,11 @@ type SharedCheckpoint = {
 
 本地 publish 流程：
 
-1. 监听 `engine.writeRecord`
+1. 监听 `engine.writes`
 2. 忽略 `origin === 'remote'`
-3. 如果 `writeRecord.forward` 含 `document.replace`，写 checkpoint 并清空 tail log
-4. 否则把 `writeRecord.forward` 过滤成 `SharedOperation[]`
-5. 用 `writeRecord.history.footprint` 组装 `SharedChange`
+3. 如果 `EngineWrite.forward` 含 checkpoint op，写 checkpoint 并清空 tail log
+4. 否则把 `EngineWrite.forward` 过滤成 `SharedOperation[]`
+5. 用 `EngineWrite.footprint` 组装 `SharedChange`
 6. append 到 Yjs `changes`
 
 约束：
@@ -385,7 +385,7 @@ type SharedCheckpoint = {
 
 ### 11.2 为什么 shared change 以 batch 为原子单位
 
-因为 `writeRecord.forward` 本身就是一次完整的语义写入结果。
+因为 `EngineWrite.forward` 本身就是一次完整的语义写入结果。
 
 如果把一次本地语义写入再拆成多个共享原子，协作层就需要额外定义：
 
@@ -397,7 +397,7 @@ type SharedCheckpoint = {
 
 因此，当前与长期都固定为：
 
-- 一条 `SharedChange` 对应一次本地 `writeRecord`
+- 一条 `SharedChange` 对应一次本地 `EngineWrite`
 - replay 失败按整条 change reject
 
 ### 11.3 为什么 reject 只记录，不自动补偿

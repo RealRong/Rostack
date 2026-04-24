@@ -1,6 +1,6 @@
 import type {
-  CanvasItemRef,
   ChangeSet,
+  CanvasItemRef,
   CoreRegistries,
   Document,
   Edge,
@@ -12,12 +12,11 @@ import type {
   Node,
   NodeId,
   Operation,
-  Origin,
   Size
 } from '@whiteboard/core/types'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
-import type { Command, CommandOutput } from '../types/command'
-import type { CommandFailure } from '../types/result'
+import type { Intent, IntentData } from '../types/intent'
+import type { IntentFailure } from '../types/result'
 
 export type CompileResult<T = unknown> =
   | {
@@ -25,7 +24,7 @@ export type CompileResult<T = unknown> =
       ops: readonly Operation[]
       output: T
     }
-  | CommandFailure<'invalid' | 'cancelled'>
+  | IntentFailure<'invalid' | 'cancelled'>
 
 export type CompilerIds = {
   node: () => NodeId
@@ -36,7 +35,7 @@ export type CompilerIds = {
   mindmap: () => MindmapId
 }
 
-export type CommandCompilerTx = {
+export type IntentCompilerTx = {
   read: {
     document: {
       get: () => Document
@@ -70,36 +69,20 @@ export type CommandCompilerTx = {
   }
 }
 
-export type CommandCompileContext = {
-  tx: CommandCompilerTx
+export type IntentCompileContext = {
+  tx: IntentCompilerTx
   registries: CoreRegistries
   nodeSize: Size
 }
 
-export type CompileHandler<C extends Command = Command> = (
-  command: C,
-  ctx: CommandCompileContext
-) => CommandOutput<C> | void
+export type CompileHandler<I extends Intent = Intent> = (
+  intent: I,
+  ctx: IntentCompileContext
+) => IntentData<I['type']> | void
 
-export type WriteRuntime = {
-  execute: <C extends Command>(command: C, origin?: Origin) => WriteDraft<CommandOutput<C>>
-  apply: (
-    ops: readonly Operation[],
-    origin?: Origin
-  ) => WriteDraft
+export type WhiteboardMutationExtra = {
+  changes: ChangeSet
 }
 
-export type WriteDraft<T = void> =
-  | CommandFailure
-  | {
-      ok: true
-      origin: Origin
-      doc: Document
-      ops: readonly Operation[]
-      inverse: readonly Operation[]
-      changes: ChangeSet
-      history: {
-        footprint: HistoryFootprint
-      }
-      value: T
-    }
+export type WhiteboardMutationKey =
+  HistoryFootprint[number]

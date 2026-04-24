@@ -1,20 +1,30 @@
+import {
+  mutationApply,
+  type MutationApplyResult
+} from '@shared/mutation'
 import { scheduler } from '@shared/core'
 import { reduceOperations } from '@whiteboard/core/kernel'
+import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
   Document,
   Operation,
   Origin
 } from '@whiteboard/core/types'
 import { failure } from '../result'
-import { createWriteDraft } from './draft'
-import type { WriteDraft } from './types'
+import type { WhiteboardMutationExtra } from './types'
 
-export const applyOperations = <T,>(
+export type WhiteboardApplyResult = MutationApplyResult<
+  Document,
+  Operation,
+  HistoryFootprint[number],
+  WhiteboardMutationExtra
+>
+
+export const applyWhiteboardOperations = (
   document: Document,
   ops: readonly Operation[],
-  origin: Origin,
-  value: T
-): WriteDraft<T> => {
+  origin: Origin
+): WhiteboardApplyResult => {
   const reduced = reduceOperations(document, ops, {
     now: scheduler.readMonotonicNow,
     origin
@@ -28,9 +38,13 @@ export const applyOperations = <T,>(
     )
   }
 
-  return createWriteDraft(reduced, {
-    origin,
-    ops,
-    value
+  return mutationApply.success({
+    doc: reduced.data.doc,
+    forward: ops,
+    inverse: reduced.data.inverse,
+    footprint: reduced.data.history.footprint,
+    extra: {
+      changes: reduced.data.changes
+    }
   })
 }

@@ -22,13 +22,24 @@ export type {
   Model
 } from './apply'
 export { MutationEngine } from './engine'
+export { mutationApply } from './engine'
 export type {
-  MutationCommitResult,
+  MutationApplyResult,
+  MutationBatchData,
   MutationCurrent,
+  MutationError,
   MutationEngineSpec,
+  MutationExecuteResult,
+  MutationFailure,
   MutationHistorySpec,
+  MutationIntentKind,
+  MutationIntentOf,
+  MutationIntentTable,
+  MutationOptions,
+  MutationOutputOf,
   MutationPlan,
-  MutationPublishSpec
+  MutationPublishSpec,
+  MutationResult
 } from './engine'
 export { collab } from './collab'
 export type {

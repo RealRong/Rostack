@@ -75,9 +75,10 @@ export const createWhiteboardServices = ({
     registries: coreRegistries,
     document,
     onDocumentChange,
-    config: boardConfig
+    config: boardConfig,
+    history: resolvedConfig.history
   })
-  const baseHistory = historyApi.local.create(engine, resolvedConfig.history)
+  const baseHistory = historyApi.local.create(engine)
   const history = historyApi.binding.create(baseHistory)
   const textSources = createTextSourceStore()
   const editor = editorApi.create({

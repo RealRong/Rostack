@@ -1,3 +1,7 @@
+import {
+  path as mutationPath,
+  type Path
+} from '@shared/mutation'
 import type { NodeModel, NodeSchema, NodeType, SchemaField } from '@whiteboard/core/types'
 import { resolvePaletteColor } from '@whiteboard/react/features/palette'
 
@@ -35,12 +39,12 @@ export const getNodeLabel = (node: Pick<NodeModel, 'data'>, fallback: string) =>
 
 const createField = (
   scope: 'data' | 'style',
-  path: string,
+  path: Path,
   label: string,
   type: SchemaField['type'],
   extra: Partial<SchemaField> = {}
 ): SchemaField => ({
-  id: `${scope}.${path}`,
+  id: `${scope}.${mutationPath.toString(path)}`,
   label,
   type,
   scope,
@@ -49,21 +53,25 @@ const createField = (
 })
 
 export const dataField = (
-  path: string,
+  path: Path,
   label: string,
   type: SchemaField['type'],
   extra?: Partial<SchemaField>
 ) => createField('data', path, label, type, extra)
 
 export const styleField = (
-  path: string,
+  path: Path,
   label: string,
   type: SchemaField['type'],
   extra?: Partial<SchemaField>
 ) => createField('style', path, label, type, extra)
 
-export const createTextField = (path: 'title' | 'text') =>
-  dataField(path, path === 'title' ? 'Title' : 'Text', path === 'title' ? 'string' : 'text')
+export const createTextField = (field: 'title' | 'text') =>
+  dataField(
+    mutationPath.of(field),
+    field === 'title' ? 'Title' : 'Text',
+    field === 'title' ? 'string' : 'text'
+  )
 
 export const createSchema = (
   type: NodeType,

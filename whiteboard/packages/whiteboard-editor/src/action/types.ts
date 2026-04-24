@@ -26,7 +26,7 @@ import type {
   Origin,
   Point
 } from '@whiteboard/core/types'
-import type { CommandResult } from '@whiteboard/engine/types/result'
+import type { IntentResult } from '@whiteboard/engine/types/result'
 import type { ClipboardPacket } from '@whiteboard/editor/clipboard/packet'
 import type {
   BrushStylePatch,
@@ -82,7 +82,7 @@ export type MindmapInsertRelation =
   | 'parent'
 
 export type AppActions = {
-  replace: (document: Document) => CommandResult
+  replace: (document: Document) => IntentResult
 }
 
 export type ToolActions = {
@@ -174,47 +174,47 @@ export type NodeActions = {
   create: (input: {
     position: Point
     template: NodeTemplate
-  }) => CommandResult<{ nodeId: NodeId }>
+  }) => IntentResult<{ nodeId: NodeId }>
   patch: (
     ids: readonly NodeId[],
     update: NodeUpdateInput,
     options?: {
       origin?: Origin
     }
-  ) => CommandResult | undefined
+  ) => IntentResult | undefined
   move: (input: {
     ids: readonly NodeId[]
     delta: Point
-  }) => CommandResult
+  }) => IntentResult
   align: (
     ids: readonly NodeId[],
     mode: import('@whiteboard/core/node').NodeAlignMode
-  ) => CommandResult
+  ) => IntentResult
   distribute: (
     ids: readonly NodeId[],
     mode: import('@whiteboard/core/node').NodeDistributeMode
-  ) => CommandResult
-  delete: (ids: NodeId[]) => CommandResult
-  duplicate: (ids: NodeId[]) => CommandResult<{
+  ) => IntentResult
+  delete: (ids: NodeId[]) => IntentResult
+  duplicate: (ids: NodeId[]) => IntentResult<{
     nodeIds: readonly NodeId[]
     edgeIds: readonly EdgeId[]
   }>
   lock: {
-    set: (nodeIds: readonly NodeId[], locked: boolean) => CommandResult
-    toggle: (nodeIds: readonly NodeId[]) => CommandResult
+    set: (nodeIds: readonly NodeId[], locked: boolean) => IntentResult
+    toggle: (nodeIds: readonly NodeId[]) => IntentResult
   }
   shape: {
-    set: (nodeIds: readonly NodeId[], kind: string) => CommandResult
+    set: (nodeIds: readonly NodeId[], kind: string) => IntentResult
   }
   style: {
-    fill: (nodeIds: readonly NodeId[], value: string) => CommandResult
-    fillOpacity: (nodeIds: readonly NodeId[], value?: number) => CommandResult
-    stroke: (nodeIds: readonly NodeId[], value: string) => CommandResult
-    strokeWidth: (nodeIds: readonly NodeId[], value: number) => CommandResult
-    strokeOpacity: (nodeIds: readonly NodeId[], value?: number) => CommandResult
-    strokeDash: (nodeIds: readonly NodeId[], value?: readonly number[]) => CommandResult
-    opacity: (nodeIds: readonly NodeId[], value: number) => CommandResult
-    textColor: (nodeIds: readonly NodeId[], value: string) => CommandResult
+    fill: (nodeIds: readonly NodeId[], value: string) => IntentResult
+    fillOpacity: (nodeIds: readonly NodeId[], value?: number) => IntentResult
+    stroke: (nodeIds: readonly NodeId[], value: string) => IntentResult
+    strokeWidth: (nodeIds: readonly NodeId[], value: number) => IntentResult
+    strokeOpacity: (nodeIds: readonly NodeId[], value?: number) => IntentResult
+    strokeDash: (nodeIds: readonly NodeId[], value?: readonly number[]) => IntentResult
+    opacity: (nodeIds: readonly NodeId[], value: number) => IntentResult
+    textColor: (nodeIds: readonly NodeId[], value: string) => IntentResult
   }
   text: {
     commit: (input: {
@@ -224,18 +224,18 @@ export type NodeActions = {
       size?: import('@whiteboard/core/types').Size
       fontSize?: number
       wrapWidth?: number
-    }) => CommandResult | undefined
-    color: (nodeIds: readonly NodeId[], color: string) => CommandResult
+    }) => IntentResult | undefined
+    color: (nodeIds: readonly NodeId[], color: string) => IntentResult
     size: (input: {
       nodeIds: readonly NodeId[]
       value?: number
-    }) => CommandResult
-    weight: (nodeIds: readonly NodeId[], weight?: number) => CommandResult
-    italic: (nodeIds: readonly NodeId[], italic: boolean) => CommandResult
+    }) => IntentResult
+    weight: (nodeIds: readonly NodeId[], weight?: number) => IntentResult
+    italic: (nodeIds: readonly NodeId[], italic: boolean) => IntentResult
     align: (
       nodeIds: readonly NodeId[],
       align?: 'left' | 'center' | 'right'
-    ) => CommandResult
+    ) => IntentResult
   }
 }
 
@@ -244,15 +244,15 @@ export type EdgeActions = {
     from: EdgeEnd
     to: EdgeEnd
     template: EdgeTemplate
-  }) => CommandResult<{ edgeId: EdgeId }>
+  }) => IntentResult<{ edgeId: EdgeId }>
   patch: (
     edgeIds: readonly EdgeId[],
     patch: EdgePatch
-  ) => CommandResult | undefined
+  ) => IntentResult | undefined
   move: (input: {
     ids: readonly EdgeId[]
     delta: Point
-  }) => CommandResult
+  }) => IntentResult
   reconnectCommit: (input: {
     edgeId: EdgeId
     end: 'source' | 'target'
@@ -261,14 +261,14 @@ export type EdgeActions = {
       type?: EdgeType
       route?: import('@whiteboard/core/types').EdgeRouteInput
     }
-  }) => CommandResult
-  delete: (ids: EdgeId[]) => CommandResult
+  }) => IntentResult
+  delete: (ids: EdgeId[]) => IntentResult
   route: {
-    set: (edgeId: EdgeId, route: EdgeRouteInput) => CommandResult
-    insertPoint: (edgeId: EdgeId, index: number, point: Point) => CommandResult
-    movePoint: (edgeId: EdgeId, index: number, point: Point) => CommandResult
-    removePoint: (edgeId: EdgeId, index: number) => CommandResult
-    clear: (edgeId: EdgeId) => CommandResult
+    set: (edgeId: EdgeId, route: EdgeRouteInput) => IntentResult
+    insertPoint: (edgeId: EdgeId, index: number, point: Point) => IntentResult
+    movePoint: (edgeId: EdgeId, index: number, point: Point) => IntentResult
+    removePoint: (edgeId: EdgeId, index: number) => IntentResult
+    clear: (edgeId: EdgeId) => IntentResult
   }
   label: {
     add: (edgeId: EdgeId) => string | undefined
@@ -276,27 +276,27 @@ export type EdgeActions = {
       edgeId: EdgeId,
       labelId: string,
       patch: EdgeLabelPatch
-    ) => CommandResult | undefined
-    remove: (edgeId: EdgeId, labelId: string) => CommandResult | undefined
+    ) => IntentResult | undefined
+    remove: (edgeId: EdgeId, labelId: string) => IntentResult | undefined
   }
   style: {
-    color: (edgeIds: readonly EdgeId[], value?: string) => CommandResult | undefined
-    opacity: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
-    width: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
-    dash: (edgeIds: readonly EdgeId[], value?: EdgeDash) => CommandResult | undefined
-    start: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
-    end: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
-    swapMarkers: (edgeIds: readonly EdgeId[]) => CommandResult | undefined
+    color: (edgeIds: readonly EdgeId[], value?: string) => IntentResult | undefined
+    opacity: (edgeIds: readonly EdgeId[], value?: number) => IntentResult | undefined
+    width: (edgeIds: readonly EdgeId[], value?: number) => IntentResult | undefined
+    dash: (edgeIds: readonly EdgeId[], value?: EdgeDash) => IntentResult | undefined
+    start: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => IntentResult | undefined
+    end: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => IntentResult | undefined
+    swapMarkers: (edgeIds: readonly EdgeId[]) => IntentResult | undefined
   }
   type: {
-    set: (edgeIds: readonly EdgeId[], value: EdgeType) => CommandResult | undefined
+    set: (edgeIds: readonly EdgeId[], value: EdgeType) => IntentResult | undefined
   }
   lock: {
-    set: (edgeIds: readonly EdgeId[], locked: boolean) => CommandResult | undefined
-    toggle: (edgeIds: readonly EdgeId[]) => CommandResult | undefined
+    set: (edgeIds: readonly EdgeId[], locked: boolean) => IntentResult | undefined
+    toggle: (edgeIds: readonly EdgeId[]) => IntentResult | undefined
   }
   textMode: {
-    set: (edgeIds: readonly EdgeId[], value?: EdgeTextMode) => CommandResult | undefined
+    set: (edgeIds: readonly EdgeId[], value?: EdgeTextMode) => IntentResult | undefined
   }
 }
 
@@ -306,34 +306,34 @@ export type MindmapActions = {
     options?: {
       focus?: 'edit-root' | 'select-root' | 'none'
     }
-  ) => CommandResult<{
+  ) => IntentResult<{
     mindmapId: MindmapId
     rootId: MindmapNodeId
   }>
-  delete: (ids: MindmapId[]) => CommandResult
+  delete: (ids: MindmapId[]) => IntentResult
   patch: (
     id: MindmapId,
     input: import('@whiteboard/core/types').MindmapTreePatch
-  ) => CommandResult
+  ) => IntentResult
   insert: (
     id: MindmapId,
     input: MindmapInsertInput,
     options?: {
       behavior?: MindmapInsertBehavior
     }
-  ) => CommandResult<{ nodeId: MindmapNodeId }>
+  ) => IntentResult<{ nodeId: MindmapNodeId }>
   moveSubtree: (
     id: MindmapId,
     input: import('@whiteboard/core/types').MindmapMoveSubtreeInput
-  ) => CommandResult
+  ) => IntentResult
   removeSubtree: (
     id: MindmapId,
     input: import('@whiteboard/core/types').MindmapRemoveSubtreeInput
-  ) => CommandResult
+  ) => IntentResult
   cloneSubtree: (
     id: MindmapId,
     input: import('@whiteboard/core/types').MindmapCloneSubtreeInput
-  ) => CommandResult<{
+  ) => IntentResult<{
     nodeId: MindmapNodeId
     map: Record<MindmapNodeId, MindmapNodeId>
   }>
@@ -344,7 +344,7 @@ export type MindmapActions = {
     side?: 'left' | 'right'
     payload?: MindmapTopicData
     behavior?: MindmapInsertBehavior
-  }) => CommandResult<{ nodeId: MindmapNodeId }> | undefined
+  }) => IntentResult<{ nodeId: MindmapNodeId }> | undefined
   moveByDrop: (input: {
     id: NodeId
     nodeId: MindmapNodeId
@@ -358,24 +358,24 @@ export type MindmapActions = {
       index?: number
     }
     layout: MindmapLayoutSpec
-  }) => CommandResult | undefined
+  }) => IntentResult | undefined
   moveRoot: (input: {
     nodeId: NodeId
     position: Point
     origin?: Point
     threshold?: number
-  }) => CommandResult | undefined
+  }) => IntentResult | undefined
   style: {
     branch: (input: {
       id: MindmapId
       nodeIds: readonly MindmapNodeId[]
       patch: MindmapBranchPatch
       scope?: 'node' | 'subtree'
-    }) => CommandResult | undefined
+    }) => IntentResult | undefined
     topic: (input: {
       nodeIds: readonly NodeId[]
       patch: MindmapBorderPatch
-    }) => CommandResult | undefined
+    }) => IntentResult | undefined
   }
 }
 
@@ -389,8 +389,8 @@ export type ClipboardActions = {
 }
 
 export type HistoryActions = {
-  undo: () => CommandResult
-  redo: () => CommandResult
+  undo: () => IntentResult
+  redo: () => IntentResult
   clear: () => void
 }
 

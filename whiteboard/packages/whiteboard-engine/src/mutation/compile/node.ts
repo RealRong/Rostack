@@ -1,3 +1,4 @@
+import { path as mutationPath } from '@shared/mutation'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { schema as schemaApi } from '@whiteboard/core/schema'
@@ -12,8 +13,8 @@ import type {
   NodeUpdateInput,
   Operation
 } from '@whiteboard/core/types'
-import type { NodeCommand } from '../../types/command'
-import type { CommandCompileContext } from '../types'
+import type { NodeIntent } from '../../types/intent'
+import type { IntentCompileContext } from '../types'
 import {
   compileCanvasDelete,
   compileCanvasDuplicate
@@ -156,7 +157,7 @@ const compileMindmapTopicUpdate = (
       id: mindmapId,
       topicId: nodeId,
       scope: record.scope,
-      path: record.path ?? '',
+      path: record.path ?? mutationPath.root(),
       value: record.value
     })
   }
@@ -165,8 +166,8 @@ const compileMindmapTopicUpdate = (
 }
 
 const compileNodeTextCommit = (
-  command: Extract<NodeCommand, { type: 'node.text.commit' }>,
-  ctx: CommandCompileContext
+  command: Extract<NodeIntent, { type: 'node.text.commit' }>,
+  ctx: IntentCompileContext
 ) => {
   const document = ctx.tx.read.document.get()
   const node = document.nodes[command.nodeId]
@@ -214,7 +215,7 @@ const compileNodeTextCommit = (
   const input = schemaApi.node.mergeUpdates(
     command.value === currentValue
       ? undefined
-      : schemaApi.node.compileDataUpdate(command.field, command.value),
+      : schemaApi.node.compileDataUpdate(mutationPath.of(command.field), command.value),
     command.size && !geometryApi.equal.size(command.size, node.size)
       ? {
           fields: {
@@ -223,10 +224,10 @@ const compileNodeTextCommit = (
         }
       : undefined,
     command.fontSize !== undefined && currentFontSize !== command.fontSize
-      ? schemaApi.node.compileStyleUpdate('fontSize', command.fontSize)
+      ? schemaApi.node.compileStyleUpdate(mutationPath.of('fontSize'), command.fontSize)
       : undefined,
     node.type === 'text' && node.data?.wrapWidth !== command.wrapWidth
-      ? schemaApi.node.compileDataUpdate('wrapWidth', command.wrapWidth)
+      ? schemaApi.node.compileDataUpdate(mutationPath.of('wrapWidth'), command.wrapWidth)
       : undefined
   )
 
@@ -241,9 +242,9 @@ const compileNodeTextCommit = (
   planned.data.forEach((op) => ctx.tx.emit(op))
 }
 
-export const compileNodeCommand = (
-  command: NodeCommand,
-  ctx: CommandCompileContext
+export const compileNodeIntent = (
+  command: NodeIntent,
+  ctx: IntentCompileContext
 ) => {
   const document = ctx.tx.read.document.get()
 

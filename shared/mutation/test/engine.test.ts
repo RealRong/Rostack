@@ -3,17 +3,14 @@ import {
   MutationEngine,
   apply,
   draftPath,
+  mutationApply,
   path,
-  type MutationEngineSpec
+  type MutationEngineSpec,
+  type MutationIntentTable
 } from '@shared/mutation'
 
 type TestDoc = {
   count: number
-}
-
-type TestIntent = {
-  type: 'count.add'
-  value: number
 }
 
 type TestOp = {
@@ -31,9 +28,19 @@ type TestExtra = {
   total: number
 }
 
+interface TestIntentTable extends MutationIntentTable {
+  'count.add': {
+    intent: {
+      type: 'count.add'
+      value: number
+    }
+    output: number
+  }
+}
+
 const createSpec = (): MutationEngineSpec<
   TestDoc,
-  TestIntent,
+  TestIntentTable,
   TestOp,
   TestKey,
   TestPublish,
@@ -43,7 +50,6 @@ const createSpec = (): MutationEngineSpec<
   clone: (doc) => ({
     ...doc
   }),
-  serializeKey: (key) => key,
   compile: ({
     intents
   }) => ({
@@ -51,12 +57,13 @@ const createSpec = (): MutationEngineSpec<
       type: 'count.add',
       value: intent.value
     })),
+    outputs: intents.map((intent) => intent.value),
     value: intents.reduce((sum, intent) => sum + intent.value, 0)
   }),
   apply: ({
     doc,
     ops
-  }) => apply({
+  }) => mutationApply.success(apply({
     doc,
     ops,
     serializeKey: (key: TestKey) => key,
@@ -77,7 +84,7 @@ const createSpec = (): MutationEngineSpec<
         total: ctx.doc().count
       })
     }
-  }),
+  })),
   publish: {
     init: (doc) => ({
       count: doc.count
@@ -96,7 +103,7 @@ const createSpec = (): MutationEngineSpec<
 })
 
 describe('MutationEngine', () => {
-  test('executes intents and publishes writes/history', () => {
+  test('executes a typed intent and publishes writes/history', () => {
     const engine = new MutationEngine({
       doc: {
         count: 1
@@ -118,18 +125,20 @@ describe('MutationEngine', () => {
       value: 2
     })
 
-    expect(result.applied).toBe(true)
-    expect(result.issues).toEqual([])
-    expect(result.value).toBe(2)
-    expect(result.write?.doc).toEqual({
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
+      return
+    }
+    expect(result.data).toBe(2)
+    expect(result.write.doc).toEqual({
       count: 3
     })
-    expect(result.write?.inverse).toEqual([{
+    expect(result.write.inverse).toEqual([{
       type: 'count.add',
       value: -2
     }])
-    expect(result.write?.footprint).toEqual(['count'])
-    expect(result.write?.extra).toEqual({
+    expect(result.write.footprint).toEqual(['count'])
+    expect(result.write.extra).toEqual({
       total: 3
     })
     expect(engine.current()).toEqual({
@@ -144,6 +153,39 @@ describe('MutationEngine', () => {
     expect(states).toEqual([3])
     expect(writes).toEqual([3])
     expect(engine.history?.state().undoDepth).toBe(1)
+  })
+
+  test('supports executeMany with batch data', () => {
+    const engine = new MutationEngine({
+      doc: {
+        count: 0
+      },
+      spec: createSpec()
+    })
+
+    const result = engine.executeMany([{
+      type: 'count.add',
+      value: 2
+    }, {
+      type: 'count.add',
+      value: 3
+    }])
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
+      return
+    }
+    expect(result.data).toBe(5)
+    expect(result.write.doc).toEqual({
+      count: 5
+    })
+    expect(result.write.forward).toEqual([{
+      type: 'count.add',
+      value: 2
+    }, {
+      type: 'count.add',
+      value: 3
+    }])
   })
 
   test('supports direct apply and does not capture remote writes into history', () => {
@@ -161,7 +203,7 @@ describe('MutationEngine', () => {
       origin: 'remote'
     })
 
-    expect(result.applied).toBe(true)
+    expect(result.ok).toBe(true)
     expect(engine.current().doc).toEqual({
       count: 5
     })
@@ -207,7 +249,7 @@ describe('MutationEngine', () => {
     expect(engine.history?.state().undoDepth).toBe(0)
   })
 
-  test('returns a compile issue when execute is unavailable', () => {
+  test('returns a failure when execute is unavailable', () => {
     const engine = new MutationEngine({
       doc: {
         count: 0
@@ -216,11 +258,10 @@ describe('MutationEngine', () => {
         clone: (doc: TestDoc) => ({
           ...doc
         }),
-        serializeKey: (key: TestKey) => key,
         apply: ({
           doc,
           ops
-        }) => apply({
+        }) => mutationApply.success(apply({
           doc,
           ops,
           serializeKey: (key: TestKey) => key,
@@ -230,7 +271,7 @@ describe('MutationEngine', () => {
               draftPath.set(ctx.write(), path.of('count'), ctx.doc().count + op.value)
             }
           }
-        })
+        }))
       }
     })
 
@@ -239,11 +280,14 @@ describe('MutationEngine', () => {
       value: 1
     })
 
-    expect(result.applied).toBe(false)
-    expect(result.issues).toEqual([{
+    expect(result.ok).toBe(false)
+    if (result.ok) {
+      return
+    }
+    expect(result.error).toEqual({
       code: 'mutation_engine.compile.missing',
       message: 'MutationEngine.execute requires spec.compile.'
-    }])
+    })
   })
 
   test('protects internal doc state via clone on current reads', () => {
@@ -259,6 +303,39 @@ describe('MutationEngine', () => {
 
     expect(engine.current().doc).toEqual({
       count: 2
+    })
+  })
+
+  test('returns a failure when spec.apply fails', () => {
+    const engine = new MutationEngine({
+      doc: {
+        count: 0
+      },
+      spec: {
+        clone: (doc: TestDoc) => ({
+          ...doc
+        }),
+        apply: () => ({
+          ok: false,
+          error: {
+            code: 'invalid',
+            message: 'Cannot apply.'
+          }
+        })
+      }
+    })
+
+    const result = engine.apply([{
+      type: 'count.add',
+      value: 1
+    }])
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: 'invalid',
+        message: 'Cannot apply.'
+      }
     })
   })
 })

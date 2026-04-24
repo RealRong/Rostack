@@ -1,4 +1,5 @@
 import { json } from '@shared/core'
+import type { Path } from '@shared/mutation'
 import {
   applyRecordPathMutation,
   hasRecordPath,
@@ -218,11 +219,10 @@ export type NodeSchemaFieldRef = Pick<SchemaField, 'path'> & {
 }
 
 const toNodeRecordPath = (
-  path: string
-): string | undefined => {
-  const normalized = path.trim()
-  return normalized ? normalized : undefined
-}
+  path: Path
+): Path | undefined => path.length
+  ? path
+  : undefined
 
 const compileNodeFieldRecord = (
   field: NodeSchemaFieldRef,
@@ -277,7 +277,7 @@ const compileNodeFieldUpdates = (
 }
 
 const compileNodeDataUpdate = (
-  path: string,
+  path: Path,
   value: unknown
 ): NodeUpdateInput => compileNodeFieldUpdate(
   {
@@ -288,7 +288,7 @@ const compileNodeDataUpdate = (
 )
 
 const compileNodeStyleUpdate = (
-  path: string,
+  path: Path,
   value: unknown
 ): NodeUpdateInput => compileNodeFieldUpdate(
   {

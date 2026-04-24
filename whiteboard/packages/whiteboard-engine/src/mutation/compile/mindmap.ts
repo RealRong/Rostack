@@ -1,3 +1,4 @@
+import { path as mutationPath } from '@shared/mutation'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   MindmapBranchField,
@@ -7,8 +8,8 @@ import type {
   NodeId,
   Operation
 } from '@whiteboard/core/types'
-import type { MindmapCommand } from '../../types/command'
-import type { CommandCompileContext } from '../types'
+import type { MindmapIntent } from '../../types/intent'
+import type { IntentCompileContext } from '../types'
 
 const hasOwn = <T extends object>(
   target: T,
@@ -77,7 +78,7 @@ const emitMindmapTopicUpdateOps = (
   mindmapId: MindmapId,
   topicId: NodeId,
   input: import('@whiteboard/core/types').MindmapTopicUpdateInput,
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const fields = input.fields
   const fieldMap: Record<'size' | 'rotation' | 'locked', MindmapTopicField> = {
@@ -128,7 +129,7 @@ const emitMindmapTopicUpdateOps = (
       id: mindmapId,
       topicId,
       scope: record.scope,
-      path: record.path ?? '',
+      path: record.path ?? mutationPath.root(),
       value: record.value
     })
   }
@@ -138,7 +139,7 @@ const emitMindmapBranchUpdateOps = (
   mindmapId: MindmapId,
   topicId: NodeId,
   input: import('@whiteboard/core/types').MindmapBranchUpdateInput,
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const fields = input.fields
   if (!fields) {
@@ -173,7 +174,7 @@ const emitMindmapBranchUpdateOps = (
 
 const compileMindmapCreate = (
   input: import('@whiteboard/core/types').MindmapCreateInput,
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const mindmapId = input.id ?? ctx.tx.ids.mindmap()
   const rootId = ctx.tx.ids.node()
@@ -231,9 +232,9 @@ const compileMindmapCreate = (
   }
 }
 
-export const compileMindmapCommand = (
-  command: MindmapCommand,
-  ctx: CommandCompileContext
+export const compileMindmapIntent = (
+  command: MindmapIntent,
+  ctx: IntentCompileContext
 ) => {
   switch (command.type) {
     case 'mindmap.create':

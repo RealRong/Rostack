@@ -1,3 +1,4 @@
+import { path as mutationPath } from '@shared/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { product } from '@whiteboard/product'
 import { useCallback, useRef, type CSSProperties } from 'react'
@@ -19,18 +20,18 @@ import {
 } from '@whiteboard/react/features/node/registry/default/shared'
 
 const shapeSchema = createSchema('shape', 'Shape', [
-  styleField('fillOpacity', 'Fill opacity', 'number', { min: 0, max: 1, step: 0.05 }),
+  styleField(mutationPath.of('fillOpacity'), 'Fill opacity', 'number', { min: 0, max: 1, step: 0.05 }),
   createTextField('text'),
-  styleField('fill', 'Fill', 'color'),
-  styleField('stroke', 'Stroke', 'color'),
-  styleField('strokeWidth', 'Stroke width', 'number', { min: 0, step: 1 }),
-  styleField('strokeOpacity', 'Stroke opacity', 'number', { min: 0, max: 1, step: 0.05 }),
-  styleField('strokeDash', 'Stroke dash', 'string'),
-  styleField('color', 'Text color', 'color'),
-  styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 }),
-  styleField('fontWeight', 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
-  styleField('fontStyle', 'Font style', 'string'),
-  styleField('textAlign', 'Text align', 'string')
+  styleField(mutationPath.of('fill'), 'Fill', 'color'),
+  styleField(mutationPath.of('stroke'), 'Stroke', 'color'),
+  styleField(mutationPath.of('strokeWidth'), 'Stroke width', 'number', { min: 0, step: 1 }),
+  styleField(mutationPath.of('strokeOpacity'), 'Stroke opacity', 'number', { min: 0, max: 1, step: 0.05 }),
+  styleField(mutationPath.of('strokeDash'), 'Stroke dash', 'string'),
+  styleField(mutationPath.of('color'), 'Text color', 'color'),
+  styleField(mutationPath.of('fontSize'), 'Font size', 'number', { min: 8, step: 1 }),
+  styleField(mutationPath.of('fontWeight'), 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
+  styleField(mutationPath.of('fontStyle'), 'Font style', 'string'),
+  styleField(mutationPath.of('textAlign'), 'Text align', 'string')
 ])
 
 const readShapeColors = (

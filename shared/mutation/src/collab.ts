@@ -335,15 +335,6 @@ export const collab = {
           id: change.id,
           footprint: change.footprint
         })
-      } else if (write.origin === 'user') {
-        input.history.capture({
-          ...write,
-          forward: live.live,
-          footprint: change.footprint
-        }, {
-          id: change.id,
-          footprint: change.footprint
-        })
       }
 
       maybeRotateCheckpoint()

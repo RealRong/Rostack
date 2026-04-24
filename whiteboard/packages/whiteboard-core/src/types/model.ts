@@ -1,3 +1,4 @@
+import type { Path } from '@shared/mutation'
 import type {
   MindmapId,
   MindmapLayoutSpec,
@@ -225,7 +226,7 @@ export type SchemaFieldOption = { label: string; value: string | number }
 
 export type SchemaFieldVisibility = {
   scope?: SchemaFieldScope
-  path: string
+  path: Path
   equals?: unknown
   notEquals?: unknown
   exists?: boolean
@@ -236,7 +237,7 @@ export type SchemaField = {
   label: string
   type: SchemaFieldType
   scope?: SchemaFieldScope
-  path: string
+  path: Path
   defaultValue?: unknown
   required?: boolean
   options?: SchemaFieldOption[]

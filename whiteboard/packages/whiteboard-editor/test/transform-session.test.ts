@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import {
+  path as mutationPath,
+  type Path
+} from '@shared/mutation'
 import type { Node } from '@whiteboard/core/types'
 import { createTransformSession } from '../src/input/features/transform'
 
@@ -88,7 +92,7 @@ const createTransformContext = ({
       records?: readonly {
         scope: string
         op: string
-        path: string
+        path: Path
         value: unknown
       }[]
     }
@@ -165,7 +169,7 @@ describe('createTransformSession', () => {
         records?: readonly {
           scope: string
           op: string
-          path: string
+          path: Path
           value: unknown
         }[]
       }
@@ -242,13 +246,13 @@ describe('createTransformSession', () => {
           {
             scope: 'data',
             op: 'set',
-            path: 'widthMode',
+            path: mutationPath.of('widthMode'),
             value: 'wrap'
           },
           {
             scope: 'data',
             op: 'set',
-            path: 'wrapWidth',
+            path: mutationPath.of('wrapWidth'),
             value: 180
           }
         ]
@@ -278,7 +282,7 @@ describe('createTransformSession', () => {
         records?: readonly {
           scope: string
           op: string
-          path: string
+          path: Path
           value: unknown
         }[]
       }
@@ -336,7 +340,7 @@ describe('createTransformSession', () => {
       {
         scope: 'style',
         op: 'set',
-        path: 'fontSize',
+        path: mutationPath.of('fontSize'),
         value: 25
       }
     ])

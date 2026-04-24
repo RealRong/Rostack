@@ -1,17 +1,19 @@
 import type {
-  ErrorInfo
-} from '@whiteboard/core/types'
+  MutationError,
+  MutationFailure,
+  MutationResult
+} from '@shared/mutation'
 import type { EngineWrite } from './engineWrite'
 
-export type CommandFailure<C extends string = string> = {
-  ok: false
-  error: ErrorInfo<C>
-}
+export type WhiteboardErrorCode = string
 
-export type CommandResult<T = void, C extends string = string> =
-  | {
-      ok: true
-      data: T
-      write: EngineWrite
-    }
-  | CommandFailure<C>
+export type IntentError<C extends string = WhiteboardErrorCode> =
+  MutationError<C>
+
+export type IntentFailure<C extends string = WhiteboardErrorCode> =
+  MutationFailure<C>
+
+export type IntentResult<
+  T = void,
+  C extends string = WhiteboardErrorCode
+> = MutationResult<T, EngineWrite, C>

@@ -49,38 +49,38 @@ import type {
   SliceInsertOptions,
   SliceInsertResult
 } from '@whiteboard/core/document'
-import type { CommandResult } from '@whiteboard/engine/types/result'
+import type { IntentResult } from '@whiteboard/engine/types/result'
 
 export type { OrderMode } from '@whiteboard/core/types'
 
 export type DocumentWrite = {
-  replace: (document: Document) => CommandResult
+  replace: (document: Document) => IntentResult
   insert: (
     slice: Slice,
     options?: SliceInsertOptions
-  ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+  ) => IntentResult<Omit<SliceInsertResult, 'operations'>>
   background: {
-    set: (background?: Document['background']) => CommandResult
+    set: (background?: Document['background']) => IntentResult
   }
 }
 
 export type CanvasWrite = {
-  delete: (refs: readonly CanvasItemRef[]) => CommandResult
+  delete: (refs: readonly CanvasItemRef[]) => IntentResult
   duplicate: (
     refs: readonly CanvasItemRef[]
-  ) => CommandResult<Omit<SliceInsertResult, 'operations'>>
+  ) => IntentResult<Omit<SliceInsertResult, 'operations'>>
   selection: {
     move: (input: {
       nodeIds: readonly NodeId[]
       edgeIds: readonly EdgeId[]
       delta: Point
-    }) => CommandResult
+    }) => IntentResult
   }
   order: {
     move: (
       refs: readonly CanvasItemRef[],
       mode: OrderMode
-    ) => CommandResult
+    ) => IntentResult
   }
 }
 
@@ -88,7 +88,7 @@ export type NodeUpdateWrite = {
   update: (
     id: NodeId,
     input: NodeUpdateInput
-  ) => CommandResult
+  ) => IntentResult
   updateMany: (
     updates: readonly {
       id: NodeId
@@ -97,7 +97,7 @@ export type NodeUpdateWrite = {
     options?: {
       origin?: Origin
     }
-  ) => CommandResult
+  ) => IntentResult
 }
 
 export type NodeTextWrite = {
@@ -108,56 +108,56 @@ export type NodeTextWrite = {
     size?: Size
     fontSize?: number
     wrapWidth?: number
-  }) => CommandResult | undefined
-  color: (nodeIds: readonly NodeId[], color: string) => CommandResult
+  }) => IntentResult | undefined
+  color: (nodeIds: readonly NodeId[], color: string) => IntentResult
   size: (input: {
     nodeIds: readonly NodeId[]
     value?: number
-  }) => CommandResult
-  weight: (nodeIds: readonly NodeId[], weight?: number) => CommandResult
-  italic: (nodeIds: readonly NodeId[], italic: boolean) => CommandResult
+  }) => IntentResult
+  weight: (nodeIds: readonly NodeId[], weight?: number) => IntentResult
+  italic: (nodeIds: readonly NodeId[], italic: boolean) => IntentResult
   align: (
     nodeIds: readonly NodeId[],
     align?: 'left' | 'center' | 'right'
-  ) => CommandResult
+  ) => IntentResult
 }
 
 export type NodeLockWrite = {
-  set: (nodeIds: readonly NodeId[], locked: boolean) => CommandResult
-  toggle: (nodeIds: readonly NodeId[]) => CommandResult
+  set: (nodeIds: readonly NodeId[], locked: boolean) => IntentResult
+  toggle: (nodeIds: readonly NodeId[]) => IntentResult
 }
 
 export type NodeShapeWrite = {
-  set: (nodeIds: readonly NodeId[], kind: string) => CommandResult
+  set: (nodeIds: readonly NodeId[], kind: string) => IntentResult
 }
 
 export type NodeStyleWrite = {
-  fill: (nodeIds: readonly NodeId[], value: string) => CommandResult
-  fillOpacity: (nodeIds: readonly NodeId[], value?: number) => CommandResult
-  stroke: (nodeIds: readonly NodeId[], value: string) => CommandResult
-  strokeWidth: (nodeIds: readonly NodeId[], value: number) => CommandResult
-  strokeOpacity: (nodeIds: readonly NodeId[], value?: number) => CommandResult
-  strokeDash: (nodeIds: readonly NodeId[], value?: readonly number[]) => CommandResult
-  opacity: (nodeIds: readonly NodeId[], value: number) => CommandResult
-  textColor: (nodeIds: readonly NodeId[], value: string) => CommandResult
+  fill: (nodeIds: readonly NodeId[], value: string) => IntentResult
+  fillOpacity: (nodeIds: readonly NodeId[], value?: number) => IntentResult
+  stroke: (nodeIds: readonly NodeId[], value: string) => IntentResult
+  strokeWidth: (nodeIds: readonly NodeId[], value: number) => IntentResult
+  strokeOpacity: (nodeIds: readonly NodeId[], value?: number) => IntentResult
+  strokeDash: (nodeIds: readonly NodeId[], value?: readonly number[]) => IntentResult
+  opacity: (nodeIds: readonly NodeId[], value: number) => IntentResult
+  textColor: (nodeIds: readonly NodeId[], value: string) => IntentResult
 }
 
 export type NodeWrite = {
   create: (input: {
     position: Point
     template: NodeTemplate
-  }) => CommandResult<{ nodeId: NodeId }>
+  }) => IntentResult<{ nodeId: NodeId }>
   update: NodeUpdateWrite['update']
   updateMany: NodeUpdateWrite['updateMany']
   move: (input: {
     ids: readonly NodeId[]
     delta: Point
-  }) => CommandResult
-  align: (ids: readonly NodeId[], mode: NodeAlignMode) => CommandResult
-  distribute: (ids: readonly NodeId[], mode: NodeDistributeMode) => CommandResult
-  delete: (ids: readonly NodeId[]) => CommandResult
-  deleteCascade: (ids: readonly NodeId[]) => CommandResult
-  duplicate: (ids: readonly NodeId[]) => CommandResult<{
+  }) => IntentResult
+  align: (ids: readonly NodeId[], mode: NodeAlignMode) => IntentResult
+  distribute: (ids: readonly NodeId[], mode: NodeDistributeMode) => IntentResult
+  delete: (ids: readonly NodeId[]) => IntentResult
+  deleteCascade: (ids: readonly NodeId[]) => IntentResult
+  duplicate: (ids: readonly NodeId[]) => IntentResult<{
     nodeIds: readonly NodeId[]
     edgeIds: readonly EdgeId[]
   }>
@@ -171,16 +171,16 @@ export type GroupWrite = {
   merge: (target: {
     nodeIds?: readonly NodeId[]
     edgeIds?: readonly EdgeId[]
-  }) => CommandResult<{ groupId: GroupId }>
+  }) => IntentResult<{ groupId: GroupId }>
   order: {
     move: (
       ids: readonly GroupId[],
       mode: OrderMode
-    ) => CommandResult
+    ) => IntentResult
   }
   ungroup: (
     ids: readonly GroupId[]
-  ) => CommandResult<{
+  ) => IntentResult<{
     nodeIds: readonly NodeId[]
     edgeIds: readonly EdgeId[]
   }>
@@ -191,11 +191,11 @@ export type EdgeRouteWrite = {
     edgeId: EdgeId,
     point: Point,
     to?: EdgeRoutePointAnchor
-  ) => CommandResult<{ pointId: string }>
+  ) => IntentResult<{ pointId: string }>
   set: (
     edgeId: EdgeId,
     route: EdgeRouteInput
-  ) => CommandResult
+  ) => IntentResult
   update: (
     edgeId: EdgeId,
     pointId: string,
@@ -203,14 +203,14 @@ export type EdgeRouteWrite = {
       x?: number
       y?: number
     }
-  ) => CommandResult
+  ) => IntentResult
   move: (
     edgeId: EdgeId,
     pointId: string,
     to: EdgeRoutePointAnchor
-  ) => CommandResult
-  delete: (edgeId: EdgeId, pointId: string) => CommandResult
-  clear: (edgeId: EdgeId) => CommandResult
+  ) => IntentResult
+  delete: (edgeId: EdgeId, pointId: string) => IntentResult
+  clear: (edgeId: EdgeId) => IntentResult
 }
 
 export type EdgeLabelPatch = Partial<NonNullable<EdgeLabelUpdateInput['fields']>> & {
@@ -229,41 +229,41 @@ export type EdgeLabelWrite = {
       data?: Record<string, unknown>
     },
     to?: EdgeLabelAnchor
-  ) => CommandResult<{ labelId: string }>
+  ) => IntentResult<{ labelId: string }>
   update: (
     edgeId: EdgeId,
     labelId: string,
     input: EdgeLabelUpdateInput
-  ) => CommandResult
+  ) => IntentResult
   move: (
     edgeId: EdgeId,
     labelId: string,
     to: EdgeLabelAnchor
-  ) => CommandResult
-  delete: (edgeId: EdgeId, labelId: string) => CommandResult
+  ) => IntentResult
+  delete: (edgeId: EdgeId, labelId: string) => IntentResult
 }
 
 export type EdgeStyleWrite = {
-  color: (edgeIds: readonly EdgeId[], value?: string) => CommandResult | undefined
-  opacity: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
-  width: (edgeIds: readonly EdgeId[], value?: number) => CommandResult | undefined
-  dash: (edgeIds: readonly EdgeId[], value?: EdgeDash) => CommandResult | undefined
-  start: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
-  end: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => CommandResult | undefined
-  swapMarkers: (edgeIds: readonly EdgeId[]) => CommandResult | undefined
+  color: (edgeIds: readonly EdgeId[], value?: string) => IntentResult | undefined
+  opacity: (edgeIds: readonly EdgeId[], value?: number) => IntentResult | undefined
+  width: (edgeIds: readonly EdgeId[], value?: number) => IntentResult | undefined
+  dash: (edgeIds: readonly EdgeId[], value?: EdgeDash) => IntentResult | undefined
+  start: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => IntentResult | undefined
+  end: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => IntentResult | undefined
+  swapMarkers: (edgeIds: readonly EdgeId[]) => IntentResult | undefined
 }
 
 export type EdgeTypeWrite = {
-  set: (edgeIds: readonly EdgeId[], value: EdgeType) => CommandResult | undefined
+  set: (edgeIds: readonly EdgeId[], value: EdgeType) => IntentResult | undefined
 }
 
 export type EdgeLockWrite = {
-  set: (edgeIds: readonly EdgeId[], locked: boolean) => CommandResult | undefined
-  toggle: (edgeIds: readonly EdgeId[]) => CommandResult | undefined
+  set: (edgeIds: readonly EdgeId[], locked: boolean) => IntentResult | undefined
+  toggle: (edgeIds: readonly EdgeId[]) => IntentResult | undefined
 }
 
 export type EdgeTextModeWrite = {
-  set: (edgeIds: readonly EdgeId[], value?: EdgeTextMode) => CommandResult | undefined
+  set: (edgeIds: readonly EdgeId[], value?: EdgeTextMode) => IntentResult | undefined
 }
 
 export type EdgeWrite = {
@@ -271,18 +271,18 @@ export type EdgeWrite = {
     from: EdgeEnd
     to: EdgeEnd
     template: EdgeTemplate
-  }) => CommandResult<{ edgeId: EdgeId }>
-  update: (id: EdgeId, input: EdgeUpdateInput) => CommandResult
+  }) => IntentResult<{ edgeId: EdgeId }>
+  update: (id: EdgeId, input: EdgeUpdateInput) => IntentResult
   updateMany: (
     updates: readonly {
       id: EdgeId
       input: EdgeUpdateInput
     }[]
-  ) => CommandResult
+  ) => IntentResult
   move: (input: {
     ids: readonly EdgeId[]
     delta: Point
-  }) => CommandResult
+  }) => IntentResult
   reconnectCommit: (input: {
     edgeId: EdgeId
     end: 'source' | 'target'
@@ -291,8 +291,8 @@ export type EdgeWrite = {
       type?: EdgeType
       route?: EdgeRouteInput
     }
-  }) => CommandResult
-  delete: (ids: readonly EdgeId[]) => CommandResult
+  }) => IntentResult
+  delete: (ids: readonly EdgeId[]) => IntentResult
   label: EdgeLabelWrite
   route: EdgeRouteWrite
   style: EdgeStyleWrite
@@ -318,32 +318,32 @@ export type MindmapBorderPatch = Partial<{
 export type MindmapWrite = {
   create: (
     input: MindmapCreateInput
-  ) => CommandResult<{
+  ) => IntentResult<{
     mindmapId: MindmapId
     rootId: MindmapNodeId
   }>
-  delete: (ids: readonly MindmapId[]) => CommandResult
+  delete: (ids: readonly MindmapId[]) => IntentResult
   layout: {
-    set: (id: MindmapId, layout: Partial<MindmapLayoutSpec>) => CommandResult
+    set: (id: MindmapId, layout: Partial<MindmapLayoutSpec>) => IntentResult
   }
-  move: (id: MindmapId, position: Point) => CommandResult
+  move: (id: MindmapId, position: Point) => IntentResult
   topic: {
     insert: (
       id: MindmapId,
       input: MindmapInsertInput
-    ) => CommandResult<{ nodeId: MindmapNodeId }>
+    ) => IntentResult<{ nodeId: MindmapNodeId }>
     move: (
       id: MindmapId,
       input: MindmapMoveSubtreeInput
-    ) => CommandResult
+    ) => IntentResult
     delete: (
       id: MindmapId,
       input: MindmapRemoveSubtreeInput
-    ) => CommandResult
+    ) => IntentResult
     clone: (
       id: MindmapId,
       input: MindmapCloneSubtreeInput
-    ) => CommandResult<{
+    ) => IntentResult<{
       nodeId: MindmapNodeId
       map: Record<MindmapNodeId, MindmapNodeId>
     }>
@@ -353,13 +353,13 @@ export type MindmapWrite = {
         topicId: NodeId
         input: MindmapTopicUpdateInput
       }[]
-    ) => CommandResult
+    ) => IntentResult
     collapse: {
       set: (
         id: MindmapId,
         topicId: NodeId,
         collapsed?: boolean
-      ) => CommandResult
+      ) => IntentResult
     }
   }
   branch: {
@@ -369,13 +369,13 @@ export type MindmapWrite = {
         topicId: NodeId
         input: MindmapBranchUpdateInput
       }[]
-    ) => CommandResult
+    ) => IntentResult
   }
 }
 
 export type HistoryWrite = {
-  undo: () => CommandResult
-  redo: () => CommandResult
+  undo: () => IntentResult
+  redo: () => IntentResult
   clear: () => void
 }
 

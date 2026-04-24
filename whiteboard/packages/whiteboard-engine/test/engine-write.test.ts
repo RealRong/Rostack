@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { path as mutationPath } from '@shared/mutation'
 import { document as documentApi } from '@whiteboard/core/document'
 import { serializeHistoryKey } from '@whiteboard/core/spec/history'
-import type { CommandResult } from '@whiteboard/engine'
+import type { IntentResult } from '@whiteboard/engine'
 import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 
 const readSerializedFootprint = (
-  result: CommandResult
+  result: IntentResult
 ) => new Set(
   (result.ok ? result.write.footprint : []).map(serializeHistoryKey)
 )
 
-test('engine exposes node create footprint through command results', () => {
+test('engine exposes node create footprint through intent results', () => {
   const engine = createEngine({
     document: documentApi.create('doc_engine_write_create')
   })
@@ -73,7 +74,7 @@ test('engine maps mindmap topic updates to node + mindmap history keys', () => {
         records: [{
           scope: 'data',
           op: 'set',
-          path: 'text',
+          path: mutationPath.of('text'),
           value: 'Updated topic'
         }]
       }
@@ -89,7 +90,7 @@ test('engine maps mindmap topic updates to node + mindmap history keys', () => {
         kind: 'node.record',
         nodeId: createResult.data.rootId,
         scope: 'data',
-        path: 'text'
+        path: mutationPath.of('text')
       }),
       serializeHistoryKey({
         kind: 'mindmap.exists',

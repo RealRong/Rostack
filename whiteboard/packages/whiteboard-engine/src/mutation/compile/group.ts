@@ -1,11 +1,11 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import type { GroupCommand } from '../../types/command'
-import type { CommandCompileContext } from '../types'
+import type { GroupIntent } from '../../types/intent'
+import type { IntentCompileContext } from '../types'
 import { createCanvasOrderMoveOps } from './canvas'
 
-export const compileGroupCommand = (
-  command: GroupCommand,
-  ctx: CommandCompileContext
+export const compileGroupIntent = (
+  command: GroupIntent,
+  ctx: IntentCompileContext
 ) => {
   const document = ctx.tx.read.document.get()
 

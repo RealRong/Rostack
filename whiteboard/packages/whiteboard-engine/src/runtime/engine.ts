@@ -1,152 +1,129 @@
-import { changeSet } from '@shared/core'
+import {
+  MutationEngine,
+  type Origin as MutationOrigin
+} from '@shared/mutation'
 import { createRegistries } from '@whiteboard/core/kernel'
-import type {
-  Document,
-  Origin,
-  Operation
-} from '@whiteboard/core/types'
+import { META } from '@whiteboard/core/spec/operation'
+import type { Operation } from '@whiteboard/core/types'
 import { resolveBoardConfig } from '../config'
-import { createDocumentSnapshot } from '../document/create'
-import { normalizeDocument } from '../document/normalize'
 import type {
   CreateEngineOptions,
   Engine,
-  EngineDelta,
+  EngineHistoryConfig,
   EnginePublish
 } from '../contracts/document'
-import { createDocumentSource } from './document'
-import { success } from '../result'
-import { createWrite } from '../write'
-import { buildChange } from '../change/build'
-import type { EngineState } from './state'
-import { publishEngine } from './publish'
-import type { EngineWrite } from '../types/engineWrite'
+import { createWhiteboardMutationSpec } from '../mutation'
+import { DEFAULT_ENGINE_HISTORY_CONFIG } from '../mutation/spec'
+import type {
+  ExecuteResult,
+  Intent,
+  IntentKind
+} from '../types/intent'
 
-const createInitialEntityChange = <TId extends string>(
-  entities: Record<TId, unknown>
-) => {
-  const delta = changeSet.create<TId>()
-  Object.keys(entities).forEach((id) => {
-    changeSet.markAdded(delta, id as TId)
-  })
-  return delta
+const resolveIntentOrigin = (
+  intent: Intent,
+  origin?: MutationOrigin
+): MutationOrigin => {
+  const intentOrigin = (
+    'origin' in intent
+      ? intent.origin
+      : undefined
+  ) as import('@whiteboard/core/types').Origin | undefined
+
+  return origin
+    ?? intentOrigin
+    ?? 'user'
 }
 
-const createInitialChange = (
-  document: Document
-): EngineDelta => buildChange({
-  document: true,
-  background: true,
-  canvasOrder: true,
-  nodes: createInitialEntityChange(document.nodes),
-  edges: createInitialEntityChange(document.edges),
-  groups: createInitialEntityChange(document.groups),
-  mindmaps: createInitialEntityChange(document.mindmaps)
-})
+const shouldTrackHistoryOrigin = (
+  origin: MutationOrigin,
+  config: EngineHistoryConfig
+): boolean => {
+  if (!config.enabled || origin === 'history' || origin === 'load') {
+    return false
+  }
+  if (origin === 'system') {
+    return config.captureSystem
+  }
+  if (origin === 'remote') {
+    return config.captureRemote
+  }
+  return true
+}
 
-const createPublish = (input: {
-  snapshot: ReturnType<typeof createDocumentSnapshot>
-  delta: EngineDelta
-}): EnginePublish => ({
-  rev: input.snapshot.revision,
-  snapshot: input.snapshot,
-  delta: input.delta
-})
+const shouldClearHistory = (
+  write: {
+    origin: MutationOrigin
+    forward: readonly Operation[]
+  },
+  config: EngineHistoryConfig
+): boolean => shouldTrackHistoryOrigin(write.origin, config)
+  && write.forward.some((op) => META[op.type].sync === 'checkpoint')
+
+const readPublish = (
+  publish?: EnginePublish
+): EnginePublish => {
+  if (!publish) {
+    throw new Error('Whiteboard engine publish is unavailable.')
+  }
+  return publish
+}
 
 export const createEngine = ({
   registries,
   document,
   onDocumentChange,
-  config: overrides
+  config: overrides,
+  history
 }: CreateEngineOptions): Engine => {
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
-  const initialDocument = normalizeDocument(document, config)
-  const documentSource = createDocumentSource(initialDocument)
-  const writer = createWrite({
-    document: documentSource,
-    config,
-    registries: resolvedRegistries
-  })
-  const initialSnapshot = createDocumentSnapshot({
-    revision: 0,
-    document: initialDocument
-  })
-  const initialDelta = createInitialChange(initialDocument)
-
-  const state: EngineState = {
-    publish: createPublish({
-      snapshot: initialSnapshot,
-      delta: initialDelta
-    }),
-    listeners: new Set(),
-    writeListeners: new Set()
+  const resolvedHistory: EngineHistoryConfig = {
+    ...DEFAULT_ENGINE_HISTORY_CONFIG,
+    ...(history ?? {})
   }
 
-  const commit = <T,>(
-    draft: ReturnType<typeof writer.execute> | ReturnType<typeof writer.apply>
-  ) => {
-    if (!draft.ok) {
-      return draft
-    }
+  const core = new MutationEngine({
+    doc: document,
+    spec: createWhiteboardMutationSpec({
+      config,
+      registries: resolvedRegistries,
+      history: resolvedHistory
+    })
+  })
 
-    const nextDocument = normalizeDocument(draft.doc, config)
-    documentSource.commit(nextDocument)
-    const nextDelta = buildChange(draft.changes)
-    const nextSnapshot = createDocumentSnapshot({
-      revision: state.publish.rev + 1,
-      document: nextDocument
-    })
-    const nextPublish = createPublish({
-      snapshot: nextSnapshot,
-      delta: nextDelta
-    })
-    const write: EngineWrite = {
-      rev: nextSnapshot.revision,
-      at: Date.now(),
-      origin: draft.origin,
-      doc: nextDocument,
-      forward: draft.ops,
-      inverse: draft.inverse,
-      footprint: draft.history.footprint,
-      extra: {
-        changes: draft.changes
+  if (core.history) {
+    core.writes.subscribe((write) => {
+      if (shouldClearHistory(write, resolvedHistory)) {
+        core.history?.clear()
       }
-    }
-    publishEngine(state, nextPublish)
-    state.writeListeners.forEach((listener) => {
-      listener(write)
     })
-    onDocumentChange?.(nextDocument)
-    return success(write, draft.value as T)
+  }
+
+  if (onDocumentChange) {
+    let currentDocument = core.current().doc
+    core.subscribe((current) => {
+      if (current.doc === currentDocument) {
+        return
+      }
+      currentDocument = current.doc
+      onDocumentChange(current.doc)
+    })
   }
 
   return {
     config,
-    writes: {
-      subscribe: (listener) => {
-        state.writeListeners.add(listener)
-        return () => {
-          state.writeListeners.delete(listener)
-        }
-      }
-    },
-    current: () => state.publish,
-    subscribe: (listener) => {
-      state.listeners.add(listener)
-      return () => {
-        state.listeners.delete(listener)
-      }
-    },
-    execute: (command, options) => {
-      const origin = options?.origin ?? ('origin' in command ? command.origin : undefined) ?? 'user'
-      return commit(writer.execute(command, origin))
-    },
-    apply: (
-      ops: readonly Operation[],
-      options?: {
-        origin?: Origin
-      }
-    ) => commit(writer.apply(ops, options?.origin ?? 'user'))
+    writes: core.writes,
+    history: core.history,
+    current: () => readPublish(core.current().publish),
+    subscribe: (listener) => core.subscribe((current) => {
+      listener(readPublish(current.publish))
+    }),
+    execute: ((intent, options) => core.execute(intent as never, {
+      origin: resolveIntentOrigin(intent, options?.origin)
+    }) as ExecuteResult<IntentKind>) as Engine['execute'],
+    apply: (ops, options) => core.apply(ops, {
+      origin: options?.origin ?? 'user'
+    })
   }
 }

@@ -1,4 +1,8 @@
-import type { WriteStream } from '@shared/mutation'
+import type {
+  HistoryController,
+  MutationOptions,
+  WriteStream
+} from '@shared/mutation'
 import type {
   CoreRegistries,
   Document,
@@ -9,14 +13,14 @@ import type {
   MindmapId
 } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/core/config'
+import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 import type { EngineWrite } from '../types/engineWrite'
 import type {
-  BatchApplyOptions,
-  Command,
-  CommandOutput,
-  ExecuteOptions
-} from './command'
-import type { CommandResult } from './result'
+  ExecuteResult,
+  Intent,
+  IntentKind
+} from './intent'
+import type { IntentResult } from './result'
 import type {
   IdDelta,
   Revision
@@ -46,19 +50,31 @@ export interface EnginePublish {
 
 export type EngineWrites = WriteStream<EngineWrite>
 
+export interface EngineHistoryConfig {
+  enabled: boolean
+  capacity: number
+  captureSystem: boolean
+  captureRemote: boolean
+}
+
 export interface Engine {
   readonly config: BoardConfig
   readonly writes: EngineWrites
+  readonly history?: HistoryController<
+    Operation,
+    HistoryFootprint[number],
+    EngineWrite
+  >
   current(): EnginePublish
   subscribe(listener: (publish: EnginePublish) => void): () => void
-  execute<C extends Command>(
-    command: C,
-    options?: ExecuteOptions
-  ): CommandResult<CommandOutput<C>>
+  execute<TIntent extends Intent>(
+    intent: TIntent,
+    options?: MutationOptions
+  ): ExecuteResult<TIntent['type'] & IntentKind>
   apply(
     ops: readonly Operation[],
-    options?: BatchApplyOptions
-  ): CommandResult
+    options?: MutationOptions
+  ): IntentResult
 }
 
 export interface CreateEngineOptions {
@@ -66,4 +82,5 @@ export interface CreateEngineOptions {
   document: Document
   onDocumentChange?: (document: Document) => void
   config?: Partial<BoardConfig>
+  history?: Partial<EngineHistoryConfig>
 }

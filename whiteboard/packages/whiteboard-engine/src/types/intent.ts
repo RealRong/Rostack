@@ -1,12 +1,16 @@
 import type {
+  MutationIntentTable,
+  MutationResult
+} from '@shared/mutation'
+import type {
   CanvasItemRef,
   Document,
   EdgeEnd,
   EdgeId,
   EdgeInput,
   EdgeLabelAnchor,
-  EdgeRouteInput,
   EdgeLabelUpdateInput,
+  EdgeRouteInput,
   EdgeRoutePointAnchor,
   EdgeType,
   EdgeUpdateInput,
@@ -38,7 +42,8 @@ import type {
   NodeAlignMode,
   NodeDistributeMode
 } from '@whiteboard/core/node'
-import type { CommandResult } from './result'
+import type { EngineWrite } from './engineWrite'
+import type { WhiteboardErrorCode } from './result'
 
 export type { OrderMode } from '@whiteboard/core/types'
 
@@ -62,7 +67,7 @@ export type MindmapBranchBatchUpdate = {
   input: MindmapBranchUpdateInput
 }
 
-export type DocumentCommand =
+export type DocumentIntent =
   | {
       type: 'document.replace'
       document: Document
@@ -77,7 +82,7 @@ export type DocumentCommand =
       background?: Document['background']
     }
 
-export type CanvasCommand =
+export type CanvasIntent =
   | {
       type: 'canvas.delete'
       refs: readonly CanvasItemRef[]
@@ -98,7 +103,7 @@ export type CanvasCommand =
       mode: OrderMode
     }
 
-export type NodeCommand =
+export type NodeIntent =
   | {
       type: 'node.create'
       input: NodeInput
@@ -145,7 +150,7 @@ export type NodeCommand =
       ids: readonly NodeId[]
     }
 
-export type GroupCommand =
+export type GroupIntent =
   | {
       type: 'group.merge'
       target: {
@@ -163,7 +168,7 @@ export type GroupCommand =
       ids: readonly GroupId[]
     }
 
-export type EdgeCommand =
+export type EdgeIntent =
   | {
       type: 'edge.create'
       input: EdgeInput
@@ -259,7 +264,7 @@ export type EdgeCommand =
       edgeId: EdgeId
     }
 
-export type MindmapCommand =
+export type MindmapIntent =
   | {
       type: 'mindmap.create'
       input: MindmapCreateInput
@@ -315,64 +320,219 @@ export type MindmapCommand =
       updates: readonly MindmapBranchBatchUpdate[]
     }
 
-export type Command =
-  | DocumentCommand
-  | CanvasCommand
-  | NodeCommand
-  | GroupCommand
-  | EdgeCommand
-  | MindmapCommand
+export interface WhiteboardIntentTable {
+  'document.replace': {
+    intent: Extract<DocumentIntent, { type: 'document.replace' }>
+    output: void
+  }
+  'document.insert': {
+    intent: Extract<DocumentIntent, { type: 'document.insert' }>
+    output: Omit<SliceInsertResult, 'operations'>
+  }
+  'document.background.set': {
+    intent: Extract<DocumentIntent, { type: 'document.background.set' }>
+    output: void
+  }
+  'canvas.delete': {
+    intent: Extract<CanvasIntent, { type: 'canvas.delete' }>
+    output: void
+  }
+  'canvas.duplicate': {
+    intent: Extract<CanvasIntent, { type: 'canvas.duplicate' }>
+    output: Omit<SliceInsertResult, 'operations'>
+  }
+  'canvas.selection.move': {
+    intent: Extract<CanvasIntent, { type: 'canvas.selection.move' }>
+    output: void
+  }
+  'canvas.order.move': {
+    intent: Extract<CanvasIntent, { type: 'canvas.order.move' }>
+    output: void
+  }
+  'node.create': {
+    intent: Extract<NodeIntent, { type: 'node.create' }>
+    output: { nodeId: NodeId }
+  }
+  'node.update': {
+    intent: Extract<NodeIntent, { type: 'node.update' }>
+    output: void
+  }
+  'node.move': {
+    intent: Extract<NodeIntent, { type: 'node.move' }>
+    output: void
+  }
+  'node.text.commit': {
+    intent: Extract<NodeIntent, { type: 'node.text.commit' }>
+    output: void
+  }
+  'node.align': {
+    intent: Extract<NodeIntent, { type: 'node.align' }>
+    output: void
+  }
+  'node.distribute': {
+    intent: Extract<NodeIntent, { type: 'node.distribute' }>
+    output: void
+  }
+  'node.delete': {
+    intent: Extract<NodeIntent, { type: 'node.delete' }>
+    output: void
+  }
+  'node.deleteCascade': {
+    intent: Extract<NodeIntent, { type: 'node.deleteCascade' }>
+    output: void
+  }
+  'node.duplicate': {
+    intent: Extract<NodeIntent, { type: 'node.duplicate' }>
+    output: {
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }
+  }
+  'group.merge': {
+    intent: Extract<GroupIntent, { type: 'group.merge' }>
+    output: { groupId: GroupId }
+  }
+  'group.order.move': {
+    intent: Extract<GroupIntent, { type: 'group.order.move' }>
+    output: void
+  }
+  'group.ungroup': {
+    intent: Extract<GroupIntent, { type: 'group.ungroup' }>
+    output: {
+      nodeIds: readonly NodeId[]
+      edgeIds: readonly EdgeId[]
+    }
+  }
+  'edge.create': {
+    intent: Extract<EdgeIntent, { type: 'edge.create' }>
+    output: { edgeId: EdgeId }
+  }
+  'edge.update': {
+    intent: Extract<EdgeIntent, { type: 'edge.update' }>
+    output: void
+  }
+  'edge.move': {
+    intent: Extract<EdgeIntent, { type: 'edge.move' }>
+    output: void
+  }
+  'edge.reconnect.commit': {
+    intent: Extract<EdgeIntent, { type: 'edge.reconnect.commit' }>
+    output: void
+  }
+  'edge.delete': {
+    intent: Extract<EdgeIntent, { type: 'edge.delete' }>
+    output: void
+  }
+  'edge.label.insert': {
+    intent: Extract<EdgeIntent, { type: 'edge.label.insert' }>
+    output: { labelId: string }
+  }
+  'edge.label.update': {
+    intent: Extract<EdgeIntent, { type: 'edge.label.update' }>
+    output: void
+  }
+  'edge.label.move': {
+    intent: Extract<EdgeIntent, { type: 'edge.label.move' }>
+    output: void
+  }
+  'edge.label.delete': {
+    intent: Extract<EdgeIntent, { type: 'edge.label.delete' }>
+    output: void
+  }
+  'edge.route.insert': {
+    intent: Extract<EdgeIntent, { type: 'edge.route.insert' }>
+    output: { pointId: string }
+  }
+  'edge.route.update': {
+    intent: Extract<EdgeIntent, { type: 'edge.route.update' }>
+    output: void
+  }
+  'edge.route.set': {
+    intent: Extract<EdgeIntent, { type: 'edge.route.set' }>
+    output: void
+  }
+  'edge.route.move': {
+    intent: Extract<EdgeIntent, { type: 'edge.route.move' }>
+    output: void
+  }
+  'edge.route.delete': {
+    intent: Extract<EdgeIntent, { type: 'edge.route.delete' }>
+    output: void
+  }
+  'edge.route.clear': {
+    intent: Extract<EdgeIntent, { type: 'edge.route.clear' }>
+    output: void
+  }
+  'mindmap.create': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.create' }>
+    output: {
+      mindmapId: MindmapId
+      rootId: MindmapNodeId
+    }
+  }
+  'mindmap.delete': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.delete' }>
+    output: void
+  }
+  'mindmap.layout.set': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.layout.set' }>
+    output: void
+  }
+  'mindmap.move': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.move' }>
+    output: void
+  }
+  'mindmap.topic.insert': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.topic.insert' }>
+    output: { nodeId: MindmapNodeId }
+  }
+  'mindmap.topic.move': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.topic.move' }>
+    output: void
+  }
+  'mindmap.topic.delete': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.topic.delete' }>
+    output: void
+  }
+  'mindmap.topic.clone': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.topic.clone' }>
+    output: {
+      nodeId: MindmapNodeId
+      map: Record<MindmapNodeId, MindmapNodeId>
+    }
+  }
+  'mindmap.topic.update': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.topic.update' }>
+    output: void
+  }
+  'mindmap.topic.collapse.set': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.topic.collapse.set' }>
+    output: void
+  }
+  'mindmap.branch.update': {
+    intent: Extract<MindmapIntent, { type: 'mindmap.branch.update' }>
+    output: void
+  }
+}
 
-export type EngineCommand = Command
+export type WhiteboardMutationTable =
+  WhiteboardIntentTable
+  & MutationIntentTable
 
-export type ReplaceDocumentCommand = Extract<
-  Command,
+export type IntentKind = keyof WhiteboardIntentTable & string
+
+export type Intent<K extends IntentKind = IntentKind> =
+  WhiteboardIntentTable[K]['intent']
+
+export type IntentData<K extends IntentKind = IntentKind> =
+  WhiteboardIntentTable[K]['output']
+
+export type EngineIntent = Intent
+
+export type ReplaceDocumentIntent = Extract<
+  Intent,
   { type: 'document.replace' }
 >
 
-export type CommandOutput<C extends Command> =
-  C extends { type: 'document.insert' | 'canvas.duplicate' }
-    ? Omit<SliceInsertResult, 'operations'>
-    : C extends { type: 'node.create' }
-      ? { nodeId: NodeId }
-      : C extends { type: 'node.duplicate' }
-        ? {
-            nodeIds: readonly NodeId[]
-            edgeIds: readonly EdgeId[]
-          }
-        : C extends { type: 'group.merge' }
-          ? { groupId: GroupId }
-          : C extends { type: 'group.ungroup' }
-            ? {
-                nodeIds: readonly NodeId[]
-                edgeIds: readonly EdgeId[]
-              }
-            : C extends { type: 'edge.create' }
-              ? { edgeId: EdgeId }
-              : C extends { type: 'edge.label.insert' }
-                ? { labelId: string }
-                : C extends { type: 'edge.route.insert' }
-                  ? { pointId: string }
-                  : C extends { type: 'mindmap.create' }
-                    ? {
-                        mindmapId: MindmapId
-                        rootId: MindmapNodeId
-                      }
-                    : C extends { type: 'mindmap.topic.insert' }
-                      ? { nodeId: MindmapNodeId }
-                      : C extends { type: 'mindmap.topic.clone' }
-                        ? {
-                            nodeId: MindmapNodeId
-                            map: Record<MindmapNodeId, MindmapNodeId>
-                          }
-                        : void
-
-export type ExecuteOptions = {
-  origin?: Origin
-}
-
-export type BatchApplyOptions = ExecuteOptions
-
-export type ExecuteResult<
-  C extends Command = Command
-> = CommandResult<CommandOutput<C>>
+export type ExecuteResult<K extends IntentKind = IntentKind> =
+  MutationResult<IntentData<K>, EngineWrite, WhiteboardErrorCode>

@@ -7,8 +7,8 @@ import type {
   MindmapId,
   Node
 } from '@whiteboard/core/types'
-import type { CanvasCommand } from '../../types/command'
-import type { CommandCompileContext } from '../types'
+import type { CanvasIntent } from '../../types/intent'
+import type { IntentCompileContext } from '../types'
 import {
   emitEdgeMovePatchOps
 } from './edge'
@@ -33,7 +33,7 @@ const isMindmapRoot = (
 }
 
 const failLockedModification = (
-  ctx: CommandCompileContext,
+  ctx: IntentCompileContext,
   reason?: import('@whiteboard/core/lock').LockDecisionReason
 ) => ctx.tx.fail.cancelled(
   reason === 'locked-node'
@@ -134,7 +134,7 @@ export const createCanvasOrderMoveOps = (
 
 export const compileCanvasDelete = (
   refs: readonly CanvasItemRef[],
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const document = ctx.tx.read.document.get()
   const decision = resolveLockDecision({
@@ -193,7 +193,7 @@ export const compileCanvasDelete = (
 
 export const compileCanvasDuplicate = (
   refs: readonly CanvasItemRef[],
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const document = ctx.tx.read.document.get()
   const decision = resolveLockDecision({
@@ -256,8 +256,8 @@ export const compileCanvasDuplicate = (
 }
 
 const compileCanvasSelectionMove = (
-  command: Extract<CanvasCommand, { type: 'canvas.selection.move' }>,
-  ctx: CommandCompileContext
+  command: Extract<CanvasIntent, { type: 'canvas.selection.move' }>,
+  ctx: IntentCompileContext
 ) => {
   const document = ctx.tx.read.document.get()
 
@@ -390,9 +390,9 @@ const compileCanvasSelectionMove = (
   })
 }
 
-export const compileCanvasCommand = (
-  command: CanvasCommand,
-  ctx: CommandCompileContext
+export const compileCanvasIntent = (
+  command: CanvasIntent,
+  ctx: IntentCompileContext
 ) => {
   switch (command.type) {
     case 'canvas.delete':

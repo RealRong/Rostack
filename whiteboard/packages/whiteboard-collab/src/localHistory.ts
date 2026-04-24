@@ -1,20 +1,11 @@
 import { store as coreStore } from '@shared/core'
-import { history as mutationHistory } from '@shared/mutation'
-import { historyFootprintConflicts } from '@whiteboard/core/spec/history'
-import type { HistoryFootprint } from '@whiteboard/core/spec/history'
-import type { Engine } from '@whiteboard/engine'
-import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
-import type { CommandResult } from '@whiteboard/engine/types/result'
+import type { Engine, IntentResult } from '@whiteboard/engine'
 import type { HistoryState } from '@whiteboard/history'
 import type {
   CollabLocalHistory
 } from '@whiteboard/collab/types/session'
 
-type BaseController = ReturnType<typeof mutationHistory.create<
-  import('@whiteboard/core/types').Operation,
-  HistoryFootprint[number],
-  EngineWrite
->>
+type BaseController = NonNullable<Engine['history']>
 
 type LocalHistoryController = {
   controller: BaseController
@@ -24,7 +15,7 @@ type LocalHistoryController = {
 
 const readHistoryCancelled = (
   message: string
-): CommandResult => ({
+): IntentResult => ({
   ok: false,
   error: {
     code: 'cancelled',
@@ -36,12 +27,67 @@ const publishState = (
   stateStore: ReturnType<typeof coreStore.createValueStore<HistoryState>>,
   controller: BaseController
 ) => {
-  const runtime = controller.state()
   stateStore.set({
-    ...runtime,
+    ...controller.state(),
     lastUpdatedAt: Date.now()
   })
 }
+
+const createObservedController = (input: {
+  controller: BaseController
+  publish: () => void
+}): BaseController => ({
+  state: () => input.controller.state(),
+  capture: (...args) => {
+    const changed = input.controller.capture(...args)
+    if (changed) {
+      input.publish()
+    }
+    return changed
+  },
+  observe: (...args) => {
+    const changed = input.controller.observe(...args)
+    if (changed) {
+      input.publish()
+    }
+    return changed
+  },
+  undo: () => {
+    const operations = input.controller.undo()
+    if (operations) {
+      input.publish()
+    }
+    return operations
+  },
+  redo: () => {
+    const operations = input.controller.redo()
+    if (operations) {
+      input.publish()
+    }
+    return operations
+  },
+  confirm: (...args) => {
+    const changed = input.controller.confirm(...args)
+    if (changed) {
+      input.publish()
+    }
+    return changed
+  },
+  cancel: (...args) => {
+    const changed = input.controller.cancel(...args)
+    if (changed) {
+      input.publish()
+    }
+    return changed
+  },
+  clear: () => {
+    const changed = input.controller.clear()
+    if (changed) {
+      input.publish()
+    }
+    return changed
+  }
+})
 
 export const createLocalHistoryController = ({
   engine,
@@ -50,75 +96,27 @@ export const createLocalHistoryController = ({
   engine: Engine
   canApply: () => boolean
 }): LocalHistoryController => {
-  const state = coreStore.createValueStore<HistoryState>({
-    ...mutationHistory.emptyState(),
-    lastUpdatedAt: undefined
-  })
+  if (!engine.history) {
+    throw new Error('Collab local history requires engine.history.')
+  }
 
-  const baseController = mutationHistory.create<
-    import('@whiteboard/core/types').Operation,
-    HistoryFootprint[number],
-    EngineWrite
-  >({
-    conflicts: historyFootprintConflicts
+  const state = coreStore.createValueStore<HistoryState>({
+    ...engine.history.state(),
+    lastUpdatedAt: undefined
   })
 
   const publish = () => {
     publishState(state, controller)
   }
 
-  const controller: BaseController = {
-    state: () => baseController.state(),
-    capture: (...args) => {
-      const changed = baseController.capture(...args)
-      if (changed) {
-        publish()
-      }
-      return changed
-    },
-    observe: (...args) => {
-      const changed = baseController.observe(...args)
-      if (changed) {
-        publish()
-      }
-      return changed
-    },
-    undo: () => {
-      const operations = baseController.undo()
-      if (operations) {
-        publish()
-      }
-      return operations
-    },
-    redo: () => {
-      const operations = baseController.redo()
-      if (operations) {
-        publish()
-      }
-      return operations
-    },
-    confirm: (...args) => {
-      const changed = baseController.confirm(...args)
-      if (changed) {
-        publish()
-      }
-      return changed
-    },
-    cancel: (...args) => {
-      const changed = baseController.cancel(...args)
-      if (changed) {
-        publish()
-      }
-      return changed
-    },
-    clear: () => {
-      const changed = baseController.clear()
-      if (changed) {
-        publish()
-      }
-      return changed
-    }
-  }
+  const controller = createObservedController({
+    controller: engine.history,
+    publish
+  })
+
+  engine.writes.subscribe(() => {
+    publish()
+  })
 
   const failPending = () => {
     controller.cancel('invalidate')
@@ -128,7 +126,7 @@ export const createLocalHistoryController = ({
     controller.clear()
   }
 
-  const undo = (): CommandResult => {
+  const undo = (): IntentResult => {
     if (!canApply()) {
       return readHistoryCancelled('Collaboration session is not connected.')
     }
@@ -141,15 +139,18 @@ export const createLocalHistoryController = ({
     }
 
     const result = engine.apply(operations, {
-      origin: 'user'
+      origin: 'history'
     })
     if (!result.ok) {
       failPending()
+    } else {
+      controller.confirm()
     }
+    publish()
     return result
   }
 
-  const redo = (): CommandResult => {
+  const redo = (): IntentResult => {
     if (!canApply()) {
       return readHistoryCancelled('Collaboration session is not connected.')
     }
@@ -162,11 +163,14 @@ export const createLocalHistoryController = ({
     }
 
     const result = engine.apply(operations, {
-      origin: 'user'
+      origin: 'history'
     })
     if (!result.ok) {
       failPending()
+    } else {
+      controller.confirm()
     }
+    publish()
     return result
   }
 

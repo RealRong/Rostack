@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react'
 import type { CSSProperties } from 'react'
+import { path as mutationPath } from '@shared/mutation'
 import {
   WHITEBOARD_FRAME_DEFAULT_FILL as FRAME_DEFAULT_FILL,
   WHITEBOARD_FRAME_DEFAULT_STROKE as FRAME_DEFAULT_STROKE,
@@ -22,18 +23,18 @@ import {
 
 const frameSchema = createSchema('frame', 'Frame', [
   createTextField('title'),
-  styleField('fill', 'Fill', 'color', {
+  styleField(mutationPath.of('fill'), 'Fill', 'color', {
     defaultValue: FRAME_DEFAULT_FILL
   }),
-  styleField('stroke', 'Stroke', 'color', {
+  styleField(mutationPath.of('stroke'), 'Stroke', 'color', {
     defaultValue: FRAME_DEFAULT_STROKE
   }),
-  styleField('strokeWidth', 'Stroke width', 'number', {
+  styleField(mutationPath.of('strokeWidth'), 'Stroke width', 'number', {
     min: 0,
     step: 1,
     defaultValue: FRAME_DEFAULT_STROKE_WIDTH
   }),
-  styleField('color', 'Text color', 'color', {
+  styleField(mutationPath.of('color'), 'Text color', 'color', {
     defaultValue: FRAME_DEFAULT_TEXT_COLOR
   })
 ])

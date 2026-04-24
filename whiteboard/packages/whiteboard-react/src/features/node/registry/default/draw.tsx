@@ -1,3 +1,4 @@
+import { path as mutationPath } from '@shared/mutation'
 import {
   WHITEBOARD_TEXT_DEFAULT_COLOR
 } from '@whiteboard/product/palette'
@@ -13,9 +14,9 @@ import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import { createSchema, getStyleNumber, getStyleString, styleField } from '@whiteboard/react/features/node/registry/default/shared'
 
 const drawSchema = createSchema('draw', 'Draw', [
-  styleField('stroke', 'Stroke', 'color'),
-  styleField('strokeWidth', 'Stroke width', 'number', { min: 1, step: 1 }),
-  styleField('opacity', 'Opacity', 'number', { min: 0, max: 1, step: 0.05 })
+  styleField(mutationPath.of('stroke'), 'Stroke', 'color'),
+  styleField(mutationPath.of('strokeWidth'), 'Stroke width', 'number', { min: 1, step: 1 }),
+  styleField(mutationPath.of('opacity'), 'Opacity', 'number', { min: 0, max: 1, step: 0.05 })
 ])
 
 export const DrawNodeDefinition: NodeDefinition = {

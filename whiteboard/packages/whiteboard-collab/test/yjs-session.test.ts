@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import * as Y from 'yjs'
+import { path as mutationPath } from '@shared/mutation'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { collab as collabApi } from '@whiteboard/collab'
@@ -92,7 +93,7 @@ test('shared sessions replay remote operations and keep remote changes out of lo
           {
             scope: 'data',
             op: 'set',
-            path: 'items',
+            path: mutationPath.of('items'),
             value: ['a']
           }
         ]
@@ -110,13 +111,13 @@ test('shared sessions replay remote operations and keep remote changes out of lo
           {
             scope: 'data',
             op: 'set',
-            path: 'items',
+            path: mutationPath.of('items'),
             value: ['a', 'b']
           },
           {
             scope: 'data',
             op: 'set',
-            path: 'nested.value',
+            path: mutationPath.of('nested', 'value'),
             value: 'synced'
           }
         ]
@@ -288,7 +289,7 @@ test('remote changes invalidate conflicting local history', () => {
         records: [{
           scope: 'data',
           op: 'set',
-          path: 'text',
+          path: mutationPath.of('text'),
           value: 'remote update'
         }]
       }

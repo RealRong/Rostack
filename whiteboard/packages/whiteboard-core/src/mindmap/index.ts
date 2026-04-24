@@ -12,7 +12,7 @@ import {
   moveSubtree,
   patchMindmap,
   removeSubtree
-} from '@whiteboard/core/mindmap/commands'
+} from '@whiteboard/core/mindmap/mutate'
 import {
   computeSubtreeDropTarget,
   createRootDrag,
@@ -76,7 +76,7 @@ export const mindmap = {
     translate: translateMindmapLayout,
     anchor: anchorMindmapLayout
   },
-  command: {
+  mutate: {
     buildCreate: createMindmapCreateOp,
     addChild,
     insertNode,

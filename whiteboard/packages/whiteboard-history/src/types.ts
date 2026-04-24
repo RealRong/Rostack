@@ -1,5 +1,8 @@
 import { store } from '@shared/core'
-import type { CommandResult } from '@whiteboard/engine/types/result'
+import type {
+  EngineHistoryConfig,
+  IntentResult
+} from '@whiteboard/engine'
 
 export type HistoryState = {
   canUndo: boolean
@@ -12,8 +15,8 @@ export type HistoryState = {
 }
 
 export type HistoryApi = store.ReadStore<HistoryState> & {
-  undo: () => CommandResult
-  redo: () => CommandResult
+  undo: () => IntentResult
+  redo: () => IntentResult
   clear: () => void
 }
 
@@ -22,9 +25,4 @@ export type HistoryBinding = HistoryApi & {
   reset: () => void
 }
 
-export type LocalEngineHistoryConfig = {
-  enabled: boolean
-  capacity: number
-  captureSystem: boolean
-  captureRemote: boolean
-}
+export type LocalEngineHistoryConfig = EngineHistoryConfig

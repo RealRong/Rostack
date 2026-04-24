@@ -3,6 +3,7 @@ import {
   useRef,
   type CSSProperties
 } from 'react'
+import { path as mutationPath } from '@shared/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { product } from '@whiteboard/product'
 import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
@@ -32,25 +33,25 @@ import {
 
 const textSchema = createSchema('text', 'Text', [
   createTextField('text'),
-  styleField('fill', 'Background', 'color'),
-  styleField('color', 'Text color', 'color'),
-  styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 }),
-  styleField('fontWeight', 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
-  styleField('fontStyle', 'Font style', 'string')
+  styleField(mutationPath.of('fill'), 'Background', 'color'),
+  styleField(mutationPath.of('color'), 'Text color', 'color'),
+  styleField(mutationPath.of('fontSize'), 'Font size', 'number', { min: 8, step: 1 }),
+  styleField(mutationPath.of('fontWeight'), 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
+  styleField(mutationPath.of('fontStyle'), 'Font style', 'string')
 ])
 
 const stickySchema = createSchema('sticky', 'Sticky', [
   createTextField('text'),
-  dataField('fontMode', 'Font mode', 'enum', {
+  dataField(mutationPath.of('fontMode'), 'Font mode', 'enum', {
     options: [...product.node.text.WHITEBOARD_STICKY_FONT_MODE_OPTIONS]
   }),
-  styleField('fill', 'Fill', 'color'),
-  styleField('color', 'Text color', 'color'),
-  styleField('fontSize', 'Font size', 'number', { min: 8, step: 1 }),
-  styleField('fontWeight', 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
-  styleField('fontStyle', 'Font style', 'string'),
-  styleField('stroke', 'Stroke', 'color'),
-  styleField('strokeWidth', 'Stroke width', 'number', { min: 0, step: 1 })
+  styleField(mutationPath.of('fill'), 'Fill', 'color'),
+  styleField(mutationPath.of('color'), 'Text color', 'color'),
+  styleField(mutationPath.of('fontSize'), 'Font size', 'number', { min: 8, step: 1 }),
+  styleField(mutationPath.of('fontWeight'), 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
+  styleField(mutationPath.of('fontStyle'), 'Font style', 'string'),
+  styleField(mutationPath.of('stroke'), 'Stroke', 'color'),
+  styleField(mutationPath.of('strokeWidth'), 'Stroke width', 'number', { min: 0, step: 1 })
 ])
 
 const readStickyFill = (

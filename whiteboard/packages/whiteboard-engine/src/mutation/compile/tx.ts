@@ -5,8 +5,8 @@ import type {
   Operation
 } from '@whiteboard/core/types'
 import type {
-  CommandCompilerTx,
-  CompilerIds
+  CompilerIds,
+  IntentCompilerTx
 } from '../types'
 
 export type CompilerFailure = {
@@ -49,9 +49,9 @@ export const createCompilerTx = ({
   ctx: CompileCtx<Document, Operation>
   ids: CompilerIds
 }): {
-  tx: CommandCompilerTx
+  tx: IntentCompilerTx
 } => {
-  const tx: CommandCompilerTx = {
+  const tx: IntentCompilerTx = {
     read: {
       document: {
         get: () => ctx.doc()

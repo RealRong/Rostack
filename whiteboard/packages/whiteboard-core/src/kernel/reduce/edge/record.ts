@@ -1,4 +1,5 @@
 import { changeSet, json } from '@shared/core'
+import type { Path } from '@shared/mutation'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
 import { applyRecordPathMutation } from '../../../mutation/recordPath'
@@ -6,7 +7,7 @@ import { applyRecordPathMutation } from '../../../mutation/recordPath'
 const applyEdgeRecordMutation = (
   edge: import('@whiteboard/core/types').Edge,
   scope: import('@whiteboard/core/types').EdgeRecordScope,
-  mutation: { op: 'set'; path: string; value: unknown } | { op: 'unset'; path: string }
+  mutation: { op: 'set'; path: Path; value: unknown } | { op: 'unset'; path: Path }
 ) => {
   const current = scope === 'data'
     ? edge.data
@@ -32,7 +33,7 @@ export const createEdgeRecordApi = (
   set: (
     id: import('@whiteboard/core/types').EdgeId,
     scope: import('@whiteboard/core/types').EdgeRecordScope,
-    path: string,
+    path: Path,
     value: unknown
   ) => {
     const current = getEdge(tx._runtime.draft, id)
@@ -72,7 +73,7 @@ export const createEdgeRecordApi = (
   unset: (
     id: import('@whiteboard/core/types').EdgeId,
     scope: import('@whiteboard/core/types').EdgeRecordScope,
-    path: string
+    path: Path
   ) => {
     const current = getEdge(tx._runtime.draft, id)
     if (!current) {

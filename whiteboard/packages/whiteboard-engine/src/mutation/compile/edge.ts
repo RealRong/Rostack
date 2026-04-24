@@ -1,4 +1,8 @@
 import { json } from '@shared/core'
+import {
+  path as mutationPath,
+  type Path
+} from '@shared/mutation'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { resolveLockDecision } from '@whiteboard/core/lock'
 import type {
@@ -11,8 +15,8 @@ import type {
   Operation,
   Point
 } from '@whiteboard/core/types'
-import type { EdgeCommand } from '../../types/command'
-import type { CommandCompileContext } from '../types'
+import type { EdgeIntent } from '../../types/intent'
+import type { IntentCompileContext } from '../types'
 
 const hasOwn = <T extends object>(
   target: T,
@@ -28,14 +32,14 @@ const isRecordTree = (
 )
 
 const appendRecordSetPaths = (
-  path: string,
+  path: Path,
   value: unknown,
-  emitSet: (path: string, value: unknown) => void
+  emitSet: (path: Path, value: unknown) => void
 ) => {
   if (isRecordTree(value) && Object.keys(value).length > 0) {
     Object.entries(value).forEach(([key, entry]) => {
       appendRecordSetPaths(
-        path ? `${path}.${key}` : key,
+        mutationPath.append(path, key),
         entry,
         emitSet
       )
@@ -43,21 +47,21 @@ const appendRecordSetPaths = (
     return
   }
 
-  if (!path) {
+  if (!path.length) {
     return
   }
   emitSet(path, value)
 }
 
 const appendRecordUnsetPaths = (
-  path: string,
+  path: Path,
   value: unknown,
-  emitUnset: (path: string) => void
+  emitUnset: (path: Path) => void
 ) => {
   if (isRecordTree(value) && Object.keys(value).length > 0) {
     Object.entries(value).forEach(([key, entry]) => {
       appendRecordUnsetPaths(
-        path ? `${path}.${key}` : key,
+        mutationPath.append(path, key),
         entry,
         emitUnset
       )
@@ -65,7 +69,7 @@ const appendRecordUnsetPaths = (
     return
   }
 
-  if (!path) {
+  if (!path.length) {
     return
   }
   emitUnset(path)
@@ -76,13 +80,13 @@ const diffRecordTrees = ({
   next,
   emitSet,
   emitUnset,
-  path = ''
+  path = mutationPath.root()
 }: {
   current: unknown
   next: unknown
-  emitSet: (path: string, value: unknown) => void
-  emitUnset: (path: string) => void
-  path?: string
+  emitSet: (path: Path, value: unknown) => void
+  emitUnset: (path: Path) => void
+  path?: Path
 }) => {
   if (json.equal(current, next)) {
     return
@@ -95,7 +99,7 @@ const diffRecordTrees = ({
     ])
 
     keys.forEach((key) => {
-      const childPath = path ? `${path}.${key}` : key
+      const childPath = mutationPath.append(path, key)
       if (!hasOwn(next, key)) {
         appendRecordUnsetPaths(childPath, current[key], emitUnset)
         return
@@ -120,7 +124,7 @@ const diffRecordTrees = ({
     return
   }
 
-  if (!path) {
+  if (!path.length) {
     appendRecordSetPaths(path, next, emitSet)
     return
   }
@@ -132,7 +136,7 @@ const emitEdgeRouteDiffOps = (
   edgeId: EdgeId,
   currentPoints: readonly EdgeRoutePoint[],
   nextPoints: readonly Point[],
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const samePoint = (left: Point | undefined, right: Point | undefined) => (
     left?.x === right?.x && left?.y === right?.y
@@ -261,7 +265,7 @@ const emitEdgeRouteDiffOps = (
 const emitEdgeUpdateInputOps = (
   edge: Edge,
   input: EdgeUpdateInput,
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const fields = input.fields
 
@@ -353,7 +357,7 @@ const emitEdgeUpdateInputOps = (
       type: 'edge.record.set',
       id: edge.id,
       scope: record.scope,
-      path: record.path ?? '',
+      path: record.path ?? mutationPath.root(),
       value: record.value
     })
   }
@@ -362,7 +366,7 @@ const emitEdgeUpdateInputOps = (
 export const emitEdgeMovePatchOps = (
   edge: Edge,
   patch: EdgePatch,
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const records: import('@whiteboard/core/types').EdgeRecordMutation[] = []
   const input: EdgeUpdateInput = {
@@ -451,7 +455,7 @@ export const emitEdgeMovePatchOps = (
 const compileEdgeRouteDelete = (
   edge: Edge,
   pointId: string,
-  ctx: CommandCompileContext
+  ctx: IntentCompileContext
 ) => {
   const point = edge.route?.kind === 'manual'
     ? edge.route.points.find((entry) => entry.id === pointId)
@@ -467,9 +471,9 @@ const compileEdgeRouteDelete = (
   })
 }
 
-export const compileEdgeCommand = (
-  command: EdgeCommand,
-  ctx: CommandCompileContext
+export const compileEdgeIntent = (
+  command: EdgeIntent,
+  ctx: IntentCompileContext
 ) => {
   const document = ctx.tx.read.document.get()
 
@@ -725,7 +729,7 @@ export const compileEdgeCommand = (
           edgeId: edge.id,
           labelId: label.id,
           scope: record.scope,
-          path: record.path ?? '',
+          path: record.path ?? mutationPath.root(),
           value: record.value
         })
       }

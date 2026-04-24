@@ -1,4 +1,5 @@
 import { changeSet, json } from '@shared/core'
+import type { Path } from '@shared/mutation'
 import type { ReducerTx } from '@whiteboard/core/kernel/reduce/types'
 import { getEdge } from '@whiteboard/core/kernel/reduce/runtime'
 import { applyRecordPathMutation } from '../../../mutation/recordPath'
@@ -159,7 +160,7 @@ export const createEdgeLabelsCollectionApi = (
     }
   },
   record: {
-    set: (labelId: string, scope: import('@whiteboard/core/types').EdgeLabelRecordScope, path: string, value: unknown) => {
+    set: (labelId: string, scope: import('@whiteboard/core/types').EdgeLabelRecordScope, path: Path, value: unknown) => {
       const current = getEdge(tx._runtime.draft, edgeId)
       const labels = [...(current?.labels ?? [])]
       const index = findIndex(labels, labelId)
@@ -186,7 +187,7 @@ export const createEdgeLabelsCollectionApi = (
       changeSet.markUpdated(tx._runtime.changes.edges, edgeId)
       tx.dirty.edge.touch(edgeId)
     },
-    unset: (labelId: string, scope: import('@whiteboard/core/types').EdgeLabelRecordScope, path: string) => {
+    unset: (labelId: string, scope: import('@whiteboard/core/types').EdgeLabelRecordScope, path: Path) => {
       const current = getEdge(tx._runtime.draft, edgeId)
       const labels = [...(current?.labels ?? [])]
       const index = findIndex(labels, labelId)

@@ -1,4 +1,5 @@
 import type { InverseBuilder } from '@shared/core'
+import type { Path } from '@shared/mutation'
 import type {
   CanvasItemRef,
   ChangeSet,
@@ -75,7 +76,7 @@ export type ReducerReadApi = {
     topicRecord(id: MindmapId, topicId: NodeId, scope: MindmapTopicRecordScope): unknown
   }
   record: {
-    path(root: unknown, path: string): unknown
+    path(root: unknown, path: Path): unknown
   }
 }
 
@@ -101,8 +102,8 @@ export type ReducerTx = {
       unset(id: NodeId, field: NodeUnsetField): void
     }
     record: {
-      set(id: NodeId, scope: NodeRecordScope, path: string, value: unknown): void
-      unset(id: NodeId, scope: NodeRecordScope, path: string): void
+      set(id: NodeId, scope: NodeRecordScope, path: Path, value: unknown): void
+      unset(id: NodeId, scope: NodeRecordScope, path: Path): void
     }
   }
   edge: {
@@ -116,8 +117,8 @@ export type ReducerTx = {
       unset(id: EdgeId, field: import('@whiteboard/core/types').EdgeUnsetField): void
     }
     record: {
-      set(id: EdgeId, scope: EdgeRecordScope, path: string, value: unknown): void
-      unset(id: EdgeId, scope: EdgeRecordScope, path: string): void
+      set(id: EdgeId, scope: EdgeRecordScope, path: Path, value: unknown): void
+      unset(id: EdgeId, scope: EdgeRecordScope, path: Path): void
     }
   }
   group: {
@@ -167,8 +168,8 @@ export type ReducerTx = {
           unset(labelId: string, field: EdgeLabelField): void
         }
         record: {
-          set(labelId: string, scope: EdgeLabelRecordScope, path: string, value: unknown): void
-          unset(labelId: string, scope: EdgeLabelRecordScope, path: string): void
+          set(labelId: string, scope: EdgeLabelRecordScope, path: Path, value: unknown): void
+          unset(labelId: string, scope: EdgeLabelRecordScope, path: Path): void
         }
       }
       routePoints(edgeId: EdgeId): {
@@ -272,8 +273,8 @@ export type ReducerTx = {
         unset(id: MindmapId, topicId: NodeId, field: MindmapTopicUnsetField): void
       }
       record: {
-        set(id: MindmapId, topicId: NodeId, scope: MindmapTopicRecordScope, path: string, value: unknown): void
-        unset(id: MindmapId, topicId: NodeId, scope: MindmapTopicRecordScope, path: string): void
+        set(id: MindmapId, topicId: NodeId, scope: MindmapTopicRecordScope, path: Path, value: unknown): void
+        unset(id: MindmapId, topicId: NodeId, scope: MindmapTopicRecordScope, path: Path): void
       }
       collapse: {
         set(id: MindmapId, topicId: NodeId, collapsed?: boolean): void

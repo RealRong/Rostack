@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { path as mutationPath } from '@shared/mutation'
 import { node as nodeApi, type Guide } from '@whiteboard/core/node'
 import type { Node } from '@whiteboard/core/types'
 
@@ -306,13 +307,13 @@ test('text resize-x commit writes wrap mode and wrap width', () => {
     {
       scope: 'data',
       op: 'set',
-      path: 'widthMode',
+      path: mutationPath.of('widthMode'),
       value: 'wrap'
     },
     {
       scope: 'data',
       op: 'set',
-      path: 'wrapWidth',
+      path: mutationPath.of('wrapWidth'),
       value: 120
     }
   ])
@@ -397,13 +398,13 @@ test('single text resize-x gesture produces wrap mode and wrap width updates', (
     {
       scope: 'data',
       op: 'set',
-      path: 'widthMode',
+      path: mutationPath.of('widthMode'),
       value: 'wrap'
     },
     {
       scope: 'data',
       op: 'set',
-      path: 'wrapWidth',
+      path: mutationPath.of('wrapWidth'),
       value: 180
     }
   ])

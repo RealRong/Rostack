@@ -1,7 +1,11 @@
-import { json, record } from '@shared/core'
+import { json } from '@shared/core'
+import {
+  path as mutationPath,
+  type Path
+} from '@shared/mutation'
 import type {
-  NodeField,
   Node,
+  NodeField,
   NodeFieldPatch,
   NodeId,
   NodePatch,
@@ -10,6 +14,7 @@ import type {
   NodeUpdateInput,
   Operation
 } from '@whiteboard/core/types'
+import { applyRecordPathMutation } from '../mutation/recordPath'
 
 export type NodeUpdateImpact = {
   geometry: boolean
@@ -45,6 +50,18 @@ const hasOwn = <T extends object>(
   target: T,
   key: PropertyKey
 ) => Object.prototype.hasOwnProperty.call(target, key)
+
+const isRecordLike = (
+  value: unknown
+): value is Record<string | number, unknown> => (
+  typeof value === 'object'
+  && value !== null
+  && !Array.isArray(value)
+)
+
+const displayPath = (
+  value: Path
+): string => mutationPath.toString(value)
 
 const applyFieldPatch = (
   fields?: NodeFieldPatch
@@ -87,20 +104,19 @@ const applyRecordMutation = (
   current: unknown,
   mutation: NodeRecordMutation
 ): { ok: true; value: unknown } | { ok: false; message: string } => {
-  return record.apply(current, mutation)
+  return applyRecordPathMutation(current, mutation)
 }
 
 const inspectRecordPath = (
   current: unknown,
-  path: string
+  targetPath: Path
 ): {
   canAddressPath: boolean
   exists: boolean
   value: unknown
   parentIsArray: boolean
 } => {
-  const parts = path.split('.').filter(Boolean)
-  if (!parts.length) {
+  if (!targetPath.length) {
     return {
       canAddressPath: false,
       exists: false,
@@ -108,7 +124,7 @@ const inspectRecordPath = (
       parentIsArray: false
     }
   }
-  if (!record.isRecordLike(current)) {
+  if (!isRecordLike(current)) {
     return {
       canAddressPath: false,
       exists: false,
@@ -117,9 +133,9 @@ const inspectRecordPath = (
     }
   }
 
-  let container: any = current
-  for (let index = 0; index < parts.length - 1; index += 1) {
-    const part = parts[index]
+  let container: Record<string | number, unknown> = current
+  for (let index = 0; index < targetPath.length - 1; index += 1) {
+    const part = targetPath[index]!
     if (!hasOwn(container, part)) {
       return {
         canAddressPath: false,
@@ -130,7 +146,7 @@ const inspectRecordPath = (
     }
 
     const nextValue = container[part]
-    if (!record.isRecordLike(nextValue)) {
+    if (!isRecordLike(nextValue)) {
       return {
         canAddressPath: false,
         exists: false,
@@ -142,7 +158,7 @@ const inspectRecordPath = (
     container = nextValue
   }
 
-  const key = parts[parts.length - 1]
+  const key = targetPath[targetPath.length - 1]!
   const exists = hasOwn(container, key)
   return {
     canAddressPath: true,
@@ -156,7 +172,7 @@ const buildSetRecordInverse = (
   current: unknown,
   mutation: Extract<NodeRecordMutation, { op: 'set' }>
 ): NodeRecordMutation => {
-  if (!mutation.path) {
+  if (!mutation.path || mutation.path.length === 0) {
     return {
       scope: mutation.scope,
       op: 'set',
@@ -197,7 +213,7 @@ const buildUnsetRecordInverse = (
   if (!inspected.canAddressPath || !inspected.exists) {
     return {
       ok: false,
-      message: `Path "${mutation.path}" does not exist.`
+      message: `Path ${displayPath(mutation.path)} does not exist.`
     }
   }
 
@@ -222,13 +238,7 @@ const buildRecordInverse = (
       record: buildSetRecordInverse(current, mutation)
     }
   }
-  if (mutation.op === 'unset') {
-    return buildUnsetRecordInverse(current, mutation)
-  }
-  return {
-    ok: true,
-    record: buildSetRecordInverse(current, mutation)
-  }
+  return buildUnsetRecordInverse(current, mutation)
 }
 
 export const isNodeUpdateEmpty = (update: NodeUpdateInput): boolean =>
@@ -296,7 +306,7 @@ export const createNodeUpdateOperation = (
       type: 'node.record.set',
       id,
       scope: record.scope,
-      path: record.path ?? '',
+      path: record.path ?? mutationPath.root(),
       value: json.clone(record.value)
     })
   }
@@ -336,7 +346,7 @@ export const classifyNodeUpdate = (
     }
   }
 
-  for (const record of update.records ?? []) {
+  for (const _record of update.records ?? []) {
     impact.value = true
   }
 

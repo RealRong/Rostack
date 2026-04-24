@@ -1,3 +1,7 @@
+import {
+  draftPath,
+  path as mutationPath
+} from '@shared/mutation'
 import type {
   Node,
   NodeType
@@ -16,6 +20,11 @@ import type {
 } from '@whiteboard/editor/types/node/read'
 
 const EMPTY_CONTROLS: readonly ControlId[] = []
+
+const readStyleValue = (
+  node: Pick<Node, 'style'>,
+  path: Parameters<NodeTypeSupport['supportsStyle']>[1]
+) => draftPath.get(node.style, path)
 
 const readFallbackMeta = (
   type: NodeType
@@ -98,19 +107,19 @@ export const createNodeTypeSupport = (
     capability,
     hasControl: (node, control) => meta(node.type).controls.includes(control),
     supportsStyle: (node: Pick<Node, 'type' | 'style'>, path, kind) => {
-      const cacheKey = `${node.type}\u0001${path}\u0001${kind}`
+      const cacheKey = `${node.type}\u0001${mutationPath.toString(path)}\u0001${kind}`
       const cached = styleSupportCache.get(cacheKey)
       if (cached !== undefined) {
-        return cached || readStyleValueMatchesKind(node.style?.[path], kind)
+        return cached || readStyleValueMatchesKind(readStyleValue(node, path), kind)
       }
 
       const supported = readDefinition(node.type)?.schema?.fields.some((field) => (
         field.scope === 'style'
-        && field.path === path
+        && mutationPath.eq(field.path, path)
       )) ?? false
 
       styleSupportCache.set(cacheKey, supported)
-      return supported || readStyleValueMatchesKind(node.style?.[path], kind)
+      return supported || readStyleValueMatchesKind(readStyleValue(node, path), kind)
     }
   }
 }

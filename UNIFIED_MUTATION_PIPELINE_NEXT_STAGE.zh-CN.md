@@ -87,11 +87,73 @@
 下一阶段建议在 `shared/mutation/src/engine.ts` 中只增加一个非常薄的 spec。
 
 ```ts
-export interface MutationPlan<Op, Value = void> {
+export interface MutationError<Code extends string = string> {
+  code: Code
+  message: string
+  details?: unknown
+}
+
+export type MutationFailure<Code extends string = string> = {
+  ok: false
+  error: MutationError<Code>
+}
+
+export type MutationResult<T, W, Code extends string = string> =
+  | {
+      ok: true
+      data: T
+      write: W
+    }
+  | MutationFailure<Code>
+
+export interface MutationIntentTable {
+  [kind: string]: {
+    intent: { type: string }
+    output: unknown
+  }
+}
+
+export type MutationIntentKind<T extends MutationIntentTable> =
+  keyof T & string
+
+export type MutationIntentOf<
+  T extends MutationIntentTable,
+  K extends MutationIntentKind<T> = MutationIntentKind<T>
+> = T[K]['intent']
+
+export type MutationOutputOf<
+  T extends MutationIntentTable,
+  K extends MutationIntentKind<T> = MutationIntentKind<T>
+> = T[K]['output']
+
+export type MutationExecuteResult<
+  T extends MutationIntentTable,
+  W,
+  K extends MutationIntentKind<T>,
+  Code extends string = string
+> = MutationResult<MutationOutputOf<T, K>, W, Code>
+
+export type MutationBatchData<
+  T extends MutationIntentTable,
+  BatchValue = void
+> = [BatchValue] extends [void]
+  ? readonly MutationOutputOf<T>[]
+  : BatchValue
+
+export interface MutationOptions {
+  origin?: Origin
+}
+
+export interface MutationPlan<
+  Op,
+  Output = void,
+  BatchValue = void
+> {
   ops: readonly Op[]
   issues?: readonly Issue[]
   canApply?: boolean
-  value?: Value
+  outputs?: readonly Output[]
+  value?: BatchValue
 }
 
 export interface MutationPublishSpec<Doc, Op, Key, Extra, Publish> {
@@ -111,21 +173,20 @@ export interface MutationHistorySpec<Doc, Op, Key, Extra> {
 
 export interface MutationEngineSpec<
   Doc extends object,
-  Intent,
+  Table extends MutationIntentTable,
   Op,
   Key,
   Publish,
-  Value = void,
+  BatchValue = void,
   Extra = void
 > {
   clone(doc: Doc): Doc
   normalize?(doc: Doc): Doc
-  serializeKey(key: Key): string
 
   compile?(input: {
     doc: Doc
-    intents: readonly Intent[]
-  }): MutationPlan<Op, Value>
+    intents: readonly MutationIntentOf<Table>[]
+  }): MutationPlan<Op, MutationOutputOf<Table>, BatchValue>
 
   apply(input: {
     doc: Doc
@@ -141,7 +202,9 @@ export interface MutationEngineSpec<
 
 - 字段尽量少
 - 不塞一堆 runtime policy
+- shared 只提供结果壳与表驱动 helper，不提供领域自己的 `IntentTable`
 - `compile` 可选，允许纯 `apply(operation[])`
+- `outputs` 用于支撑 typed `execute(intent)`；`value` 用于支撑 `executeMany(...)` 的 batch 返回
 - `apply` 只做文档变异与 write 相关产物
 - `publish` 可选，允许某些场景只关心文档与 writes
 - `history` 只关心 track / conflicts，不再承载额外职责
@@ -153,16 +216,16 @@ export interface MutationEngineSpec<
 ```ts
 export class MutationEngine<
   Doc extends object,
-  Intent,
+  Table extends MutationIntentTable,
   Op,
   Key,
   Publish,
-  Value = void,
+  BatchValue = void,
   Extra = void
 > {
   constructor(input: {
     doc: Doc
-    spec: MutationEngineSpec<Doc, Intent, Op, Key, Publish, Value, Extra>
+    spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, BatchValue, Extra>
   })
 
   doc(): Doc
@@ -180,35 +243,47 @@ export class MutationEngine<
 
   readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
 
-  execute(
-    intent: Intent | readonly Intent[],
-    options?: { origin?: Origin }
-  ): {
-    applied: boolean
-    issues: readonly Issue[]
-    value?: Value
-    write?: Write<Doc, Op, Key, Extra>
-  }
+  execute<K extends MutationIntentKind<Table>>(
+    intent: MutationIntentOf<Table, K>,
+    options?: MutationOptions
+  ): MutationExecuteResult<
+    Table,
+    Write<Doc, Op, Key, Extra>,
+    K
+  >
+
+  executeMany(
+    intents: readonly MutationIntentOf<Table>[],
+    options?: MutationOptions
+  ): MutationResult<
+    MutationBatchData<Table, BatchValue>,
+    Write<Doc, Op, Key, Extra>
+  >
 
   apply(
     ops: readonly Op[],
-    options?: { origin?: Origin }
-  ): {
-    applied: boolean
-    issues: readonly Issue[]
-    write?: Write<Doc, Op, Key, Extra>
-  }
+    options?: MutationOptions
+  ): MutationResult<
+    void,
+    Write<Doc, Op, Key, Extra>
+  >
 
   load(doc: Doc): void
 
-  history?: HistoryController<Op>
+  history?: HistoryController<
+    Op,
+    Key,
+    Write<Doc, Op, Key, Extra>
+  >
 }
 ```
 
 设计原则：
 
 - `new MutationEngine(...)` 直接表达“这是共享的写入运行时”
-- 对外只暴露 `execute / apply / writes / current / subscribe / load / history`
+- `execute` 只处理单个 typed intent，batch 走显式 `executeMany`
+- `MutationResult` 是 shared 壳；具体 `IntentTable` 条目留在领域侧
+- 对外只暴露 `execute / executeMany / apply / writes / current / subscribe / load / history`
 - `load(doc)` 用于统一 Dataview 的 `document.replace`
 - query/read/projector 不进入这个类
 
@@ -240,7 +315,7 @@ Whiteboard 已经最接近最终形态：
 - 有独立 compile
 - 有独立 apply
 - 有标准 `EngineWrite`
-- `query` 已经和写链分离
+- publish 外观已经足够薄
 
 所以 Whiteboard 不需要先大改结构，只需要把现有写侧塞进 `MutationEngineSpec`。
 
@@ -251,7 +326,6 @@ Whiteboard 应该收敛成：
 - `whiteboardMutationSpec`
 - `new MutationEngine({ doc, spec: whiteboardMutationSpec })`
 - 外层 whiteboard engine 只负责：
-  - 挂 `query`
   - 把 `publish` 映射成现有 `current()`
   - 暴露领域 API
 
@@ -269,7 +343,15 @@ Whiteboard 应该收敛成：
 - `apply` 直接复用现有 apply 主轴
 - `publish` 负责从 write 递推出：
   - `snapshot`
-  - `change`
+  - `delta`
+
+其中类型关系统一改成：
+
+- `WhiteboardIntentTable`
+- `IntentKind`
+- `Intent<K>`
+- `IntentResult<T>`
+- `ExecuteResult<K>`
 
 ### C. 把 engine runtime 变成薄壳
 
@@ -317,6 +399,7 @@ Dataview 应该收敛成三层：
 
 只负责：
 
+- `DataviewIntentTable`
 - `Intent -> Operation[]`
 - `Operation[] -> ApplyResult`
 - `Write -> doc-level publish`

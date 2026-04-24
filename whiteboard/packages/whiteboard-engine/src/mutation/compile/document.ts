@@ -1,18 +1,18 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import type { DocumentCommand } from '../../types/command'
+import type { DocumentIntent } from '../../types/intent'
 import { normalizeDocument } from '../../document/normalize'
-import type { CommandCompileContext } from '../types'
+import type { IntentCompileContext } from '../types'
 
 const emitOps = (
-  ctx: Pick<CommandCompileContext, 'tx'>,
+  ctx: Pick<IntentCompileContext, 'tx'>,
   ops: readonly import('@whiteboard/core/types').Operation[]
 ) => {
   ctx.tx.emitMany(ops)
 }
 
-export const compileDocumentCommand = (
-  command: DocumentCommand,
-  ctx: CommandCompileContext
+export const compileDocumentIntent = (
+  command: DocumentIntent,
+  ctx: IntentCompileContext
 ) => {
   switch (command.type) {
     case 'document.replace':

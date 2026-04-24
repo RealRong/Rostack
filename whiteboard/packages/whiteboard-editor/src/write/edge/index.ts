@@ -1,3 +1,8 @@
+import {
+  draftPath,
+  path as mutationPath,
+  type Path
+} from '@shared/mutation'
 import type {
   Edge,
   EdgeId,
@@ -26,7 +31,7 @@ const readCommittedEdge = (
 ) => read.edge.item.get(edgeId)?.edge
 
 const createStyleMutation = (
-  path: string,
+  path: Path,
   value: unknown
 ) => value === undefined
   ? {
@@ -100,10 +105,10 @@ const updateEdgeStyle = (
   edgeIds: readonly EdgeId[],
   read: Pick<GraphEdgeRead, 'graph'>,
   engine: Engine,
-  path: string,
+  path: Path,
   value: unknown
 ) => updateEdgesBy(edgeIds, read, engine, (edge) => {
-  const current = edge.style?.[path as keyof NonNullable<Edge['style']>]
+  const current = draftPath.get(edge.style, path)
   if (current === value) {
     return undefined
   }
@@ -183,12 +188,12 @@ export const createEdgeWrite = ({
   label: createEdgeLabelWrite(engine),
   route: createEdgeRouteWrite(engine),
   style: {
-    color: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'color', value),
-    opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'opacity', value),
-    width: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'width', value),
-    dash: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'dash', value),
-    start: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'start', value),
-    end: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, 'end', value),
+    color: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('color'), value),
+    opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('opacity'), value),
+    width: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('width'), value),
+    dash: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('dash'), value),
+    start: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('start'), value),
+    end: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('end'), value),
     swapMarkers: (edgeIds) => updateEdgesBy(edgeIds, read.projection, engine, (edge) => {
       const start = edge.style?.start
       const end = edge.style?.end
@@ -198,8 +203,8 @@ export const createEdgeWrite = ({
 
       return {
         records: [
-          createStyleMutation('start', end),
-          createStyleMutation('end', start)
+          createStyleMutation(mutationPath.of('start'), end),
+          createStyleMutation(mutationPath.of('end'), start)
         ]
       }
     })

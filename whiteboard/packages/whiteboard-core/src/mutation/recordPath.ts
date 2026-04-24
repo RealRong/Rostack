@@ -8,13 +8,13 @@ import {
 
 type SetRecordPathMutation = {
   op: 'set'
-  path?: string
+  path?: Path
   value: unknown
 }
 
 type UnsetRecordPathMutation = {
   op: 'unset'
-  path: string
+  path: Path
 }
 
 export type RecordPathMutation =
@@ -23,50 +23,41 @@ export type RecordPathMutation =
 
 const isRecordLike = (
   value: unknown
-): value is Record<string, unknown> => (
+): value is Record<string | number, unknown> => (
   typeof value === 'object'
   && value !== null
   && !Array.isArray(value)
 )
 
-const toRecordPath = (
-  rawPath: string
-): Path => {
-  const parts = rawPath
-    .split('.')
-    .filter(Boolean)
-
-  return parts.length
-    ? mutationPath.of(...parts)
-    : mutationPath.root()
-}
-
 const readOwn = (
-  value: Record<string, unknown>,
-  key: string
+  value: Record<string | number, unknown>,
+  key: string | number
 ): unknown => value[key]
 
 const hasOwn = (
-  value: Record<string, unknown>,
-  key: string
+  value: Record<string | number, unknown>,
+  key: string | number
 ): boolean => Object.prototype.hasOwnProperty.call(value, key)
 
+const displayPath = (
+  value: Path
+): string => mutationPath.toString(value)
+
 const validateSetPath = (
-  current: Record<string, unknown>,
-  rawPath: string,
-  path: Path
+  current: Record<string | number, unknown>,
+  targetPath: Path
 ): { ok: true } | { ok: false; message: string } => {
   let cursor: unknown = current
 
-  for (let index = 0; index < path.length - 1; index += 1) {
+  for (let index = 0; index < targetPath.length - 1; index += 1) {
     if (!isRecordLike(cursor)) {
       return {
         ok: false,
-        message: `Cannot set path "${rawPath}" through a non-object container.`
+        message: `Cannot set path ${displayPath(targetPath)} through a non-object container.`
       }
     }
 
-    const next = readOwn(cursor, path[index] as string)
+    const next = readOwn(cursor, targetPath[index]!)
     if (next == null) {
       return {
         ok: true
@@ -76,7 +67,7 @@ const validateSetPath = (
     if (!isRecordLike(next)) {
       return {
         ok: false,
-        message: `Cannot set path "${rawPath}" through a non-object container.`
+        message: `Cannot set path ${displayPath(targetPath)} through a non-object container.`
       }
     }
 
@@ -89,29 +80,28 @@ const validateSetPath = (
 }
 
 const validateUnsetPath = (
-  current: Record<string, unknown>,
-  rawPath: string,
-  path: Path
+  current: Record<string | number, unknown>,
+  targetPath: Path
 ): { ok: true } | { ok: false; message: string } => {
-  let cursor: Record<string, unknown> = current
+  let cursor: Record<string | number, unknown> = current
 
-  for (let index = 0; index < path.length - 1; index += 1) {
-    const next = readOwn(cursor, path[index] as string)
+  for (let index = 0; index < targetPath.length - 1; index += 1) {
+    const next = readOwn(cursor, targetPath[index]!)
     if (!isRecordLike(next)) {
       return {
         ok: false,
-        message: `Path "${rawPath}" does not exist.`
+        message: `Path ${displayPath(targetPath)} does not exist.`
       }
     }
 
     cursor = next
   }
 
-  const key = path[path.length - 1] as string
+  const key = targetPath[targetPath.length - 1]!
   if (!hasOwn(cursor, key)) {
     return {
       ok: false,
-      message: `Path "${rawPath}" does not exist.`
+      message: `Path ${displayPath(targetPath)} does not exist.`
     }
   }
 
@@ -122,47 +112,46 @@ const validateUnsetPath = (
 
 export const readRecordPath = (
   root: unknown,
-  rawPath: string
-): unknown => draftPath.get(root, toRecordPath(rawPath))
+  targetPath: Path
+): unknown => draftPath.get(root, targetPath)
 
 export const hasRecordPath = (
   root: unknown,
-  rawPath: string
-): boolean => draftPath.has(root, toRecordPath(rawPath))
+  targetPath: Path
+): boolean => draftPath.has(root, targetPath)
 
 export const applyRecordPathMutation = (
   current: unknown,
   mutation: RecordPathMutation
 ): { ok: true; value: unknown } | { ok: false; message: string } => {
   if (mutation.op === 'set') {
-    const rawPath = mutation.path ?? ''
-    if (!rawPath) {
+    const targetPath = mutation.path ?? mutationPath.root()
+    if (targetPath.length === 0) {
       return {
         ok: true,
         value: json.clone(mutation.value)
       }
     }
 
-    const path = toRecordPath(rawPath)
     if (current !== undefined && !isRecordLike(current)) {
       return {
         ok: false,
-        message: `Cannot set path "${rawPath}" on a non-object root.`
+        message: `Cannot set path ${displayPath(targetPath)} on a non-object root.`
       }
     }
 
     const root = isRecordLike(current)
       ? current
       : {}
-    const validation = validateSetPath(root, rawPath, path)
+    const validation = validateSetPath(root, targetPath)
     if (!validation.ok) {
       return validation
     }
 
-    const draft = cowDraft.create<Record<string, unknown>>()(root)
+    const draft = cowDraft.create<Record<string | number, unknown>>()(root)
     draftPath.set(
       draft.write(),
-      path,
+      targetPath,
       json.clone(mutation.value)
     )
     return {
@@ -171,9 +160,8 @@ export const applyRecordPathMutation = (
     }
   }
 
-  const rawPath = mutation.path
-  const path = toRecordPath(rawPath)
-  if (!path.length) {
+  const targetPath = mutation.path
+  if (!targetPath.length) {
     return {
       ok: false,
       message: 'Unset path is required.'
@@ -183,17 +171,17 @@ export const applyRecordPathMutation = (
   if (!isRecordLike(current)) {
     return {
       ok: false,
-      message: `Cannot unset path "${rawPath}" from a non-object root.`
+      message: `Cannot unset path ${displayPath(targetPath)} from a non-object root.`
     }
   }
 
-  const validation = validateUnsetPath(current, rawPath, path)
+  const validation = validateUnsetPath(current, targetPath)
   if (!validation.ok) {
     return validation
   }
 
-  const draft = cowDraft.create<Record<string, unknown>>()(current)
-  draftPath.unset(draft.write(), path)
+  const draft = cowDraft.create<Record<string | number, unknown>>()(current)
+  draftPath.unset(draft.write(), targetPath)
   return {
     ok: true,
     value: draft.done()

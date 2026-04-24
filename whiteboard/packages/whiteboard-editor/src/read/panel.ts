@@ -1,3 +1,4 @@
+import { path as mutationPath } from '@shared/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import {
   selection as selectionApi,
@@ -393,16 +394,16 @@ export const readNodeScope = ({
   const canEditFill = hasControl(nodes, nodeType, 'fill')
   const canEditStroke = hasControl(nodes, nodeType, 'stroke')
   const canEditTextColor = hasControl(nodes, nodeType, 'text')
-    && nodes.every((node) => nodeType.supportsStyle(node, 'color', 'string'))
+    && nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('color'), 'string'))
   const styleSupport = {
-    fontSize: nodes.every((node) => nodeType.supportsStyle(node, 'fontSize', 'number')),
-    fontWeight: nodes.every((node) => nodeType.supportsStyle(node, 'fontWeight', 'number')),
-    fontStyle: nodes.every((node) => nodeType.supportsStyle(node, 'fontStyle', 'string')),
-    textAlign: nodes.every((node) => nodeType.supportsStyle(node, 'textAlign', 'string')),
-    fillOpacity: nodes.every((node) => nodeType.supportsStyle(node, 'fillOpacity', 'number')),
-    strokeOpacity: nodes.every((node) => nodeType.supportsStyle(node, 'strokeOpacity', 'number')),
-    strokeDash: nodes.every((node) => nodeType.supportsStyle(node, 'strokeDash', 'numberArray')),
-    opacity: nodes.every((node) => nodeType.supportsStyle(node, 'opacity', 'number'))
+    fontSize: nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('fontSize'), 'number')),
+    fontWeight: nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('fontWeight'), 'number')),
+    fontStyle: nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('fontStyle'), 'string')),
+    textAlign: nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('textAlign'), 'string')),
+    fillOpacity: nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('fillOpacity'), 'number')),
+    strokeOpacity: nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('strokeOpacity'), 'number')),
+    strokeDash: nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('strokeDash'), 'numberArray')),
+    opacity: nodes.every((node) => nodeType.supportsStyle(node, mutationPath.of('opacity'), 'number'))
   }
   const canEditFillOpacity = canEditFill && styleSupport.fillOpacity
   const canEditStrokeOpacity = canEditStroke && styleSupport.strokeOpacity

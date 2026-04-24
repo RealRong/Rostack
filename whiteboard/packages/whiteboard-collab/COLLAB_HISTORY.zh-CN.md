@@ -115,14 +115,14 @@ type HistoryKey =
   | { kind: 'canvas.order' }
   | { kind: 'node.exists'; nodeId: NodeId }
   | { kind: 'node.field'; nodeId: NodeId; field: NodeField }
-  | { kind: 'node.record'; nodeId: NodeId; scope: 'data' | 'style'; path: string }
+  | { kind: 'node.record'; nodeId: NodeId; scope: 'data' | 'style'; path: Path }
   | { kind: 'edge.exists'; edgeId: EdgeId }
   | { kind: 'edge.field'; edgeId: EdgeId; field: EdgeField }
-  | { kind: 'edge.record'; edgeId: EdgeId; scope: 'data' | 'style'; path: string }
+  | { kind: 'edge.record'; edgeId: EdgeId; scope: 'data' | 'style'; path: Path }
   | { kind: 'edge.labels'; edgeId: EdgeId }
   | { kind: 'edge.label.exists'; edgeId: EdgeId; labelId: string }
   | { kind: 'edge.label.field'; edgeId: EdgeId; labelId: string; field: EdgeLabelField }
-  | { kind: 'edge.label.record'; edgeId: EdgeId; labelId: string; scope: 'data' | 'style'; path: string }
+  | { kind: 'edge.label.record'; edgeId: EdgeId; labelId: string; scope: 'data' | 'style'; path: Path }
   | { kind: 'edge.route'; edgeId: EdgeId }
   | { kind: 'edge.route.point'; edgeId: EdgeId; pointId: string }
   | { kind: 'group.exists'; groupId: GroupId }
@@ -229,16 +229,14 @@ type WriteRecord = {
 
 ### 5.2 `engine` 暴露面
 
-长期最优下，`engine` 需要新增：
+最终落地形态没有新增 `writeRecord`。
 
-```ts
-type Engine = {
-  // existing fields ...
-  writeRecord: ReadStore<WriteRecord | null>
-}
-```
+长期正式形态是：
 
-`@whiteboard/collab` 的本地 publish 与本地 history capture 都以 `writeRecord` 为准，不再依赖 `engine.history`。
+- 本地 publish 直接来自 `engine.writes`
+- 本地 history 直接复用 `engine.history`
+- collab 侧只负责 remote observe 与 history applying confirm
+- shared collab 不再重复 capture 本地 user write
 
 ---
 
@@ -374,8 +372,8 @@ type CollabLocalHistoryState = {
 
 ```ts
 type CollabLocalHistory = ReadStore<CollabLocalHistoryState> & {
-  undo: () => CommandResult
-  redo: () => CommandResult
+  undo: () => IntentResult
+  redo: () => IntentResult
   clear: () => void
 }
 ```
@@ -396,8 +394,8 @@ type CollabSession = {
 约束：
 
 - 协作态 UI 只读 `session.localHistory`
-- 协作态 UI 不再直接绑定 `engine.history`
-- `engine.history` 保留给单机场景或非协作模式
+- `session.localHistory` 是对 `engine.history` 的可观测包装
+- 协作态 UI 不直接绕过 `session.localHistory` 调 `engine.history`
 
 ---
 
@@ -524,30 +522,14 @@ type PendingTransition =
 
 ## 13. 实施方案
 
-### Phase 1
+### 已落地阶段
 
-目标：补齐底层模型。
-
-- 在 `core` reducer runtime 内收集 `HistoryFootprint`
-- 在 `engine` 暴露 `writeRecord`
-- 保留当前 `engine.history` 不动
-
-### Phase 2
-
-目标：落地 `session.localHistory`。
-
-- 新增 `collab` 本地 history controller
-- capture 本地 published change
-- 远端 change 按 footprint invalidation
-- `undo` / `redo` 通过新的 shared change append 实现
-
-### Phase 3
-
-目标：切 UI。
-
-- 协作态 UI 改读 `session.localHistory`
-- 非协作态继续读 `engine.history`
-- 保持 `remote replay` 只做 footprint invalidation，不再引入额外的 history 清空逻辑
+- `HistoryFootprint` 已在 reducer / write 主线稳定产出
+- 本地 publish 直接读 `engine.writes`
+- `session.localHistory` 已直接包装 `engine.history`
+- 远端 change 通过 footprint 做 invalidation
+- `undo` / `redo` 已通过 shared change append 落地
+- 协作态 UI 统一读 `session.localHistory`
 
 ---
 

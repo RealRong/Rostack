@@ -1,5 +1,7 @@
 export type { EngineWrite } from '../types/engineWrite'
 export type {
-  CommandFailure,
-  CommandResult
+  IntentError,
+  IntentFailure,
+  IntentResult,
+  WhiteboardErrorCode
 } from '../types/result'

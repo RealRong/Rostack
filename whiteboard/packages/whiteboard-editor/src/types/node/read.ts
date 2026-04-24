@@ -1,3 +1,4 @@
+import type { Path } from '@shared/mutation'
 import type {
   NodeModel,
   NodeRole,
@@ -27,7 +28,7 @@ export type NodeTypeSupport = NodeTypeRead & {
   hasControl: (node: NodeModel, control: ControlId) => boolean
   supportsStyle: (
     node: NodeModel,
-    path: string,
+    path: Path,
     kind: NodeStyleFieldKind
   ) => boolean
 }

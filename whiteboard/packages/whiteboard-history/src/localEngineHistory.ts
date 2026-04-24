@@ -1,27 +1,21 @@
 import { store } from '@shared/core'
-import { history as mutationHistory } from '@shared/mutation'
-import type { HistoryFootprint } from '@whiteboard/core/spec/history'
-import { META } from '@whiteboard/core/spec/operation'
-import type { Operation } from '@whiteboard/core/types'
-import type { Engine, EngineWrites } from '@whiteboard/engine'
-import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
-import type { CommandResult } from '@whiteboard/engine/types/result'
+import {
+  DEFAULT_ENGINE_HISTORY_CONFIG,
+  type Engine,
+  type IntentResult
+} from '@whiteboard/engine'
 import type {
   HistoryApi,
   HistoryState,
   LocalEngineHistoryConfig
 } from '@whiteboard/history/types'
 
-export const DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG: LocalEngineHistoryConfig = {
-  enabled: true,
-  capacity: 100,
-  captureSystem: false,
-  captureRemote: false
-}
+export const DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG: LocalEngineHistoryConfig =
+  DEFAULT_ENGINE_HISTORY_CONFIG
 
 const readCancelled = (
   message: string
-): CommandResult => ({
+): IntentResult => ({
   ok: false,
   error: {
     code: 'cancelled',
@@ -29,73 +23,58 @@ const readCancelled = (
   }
 })
 
-const shouldCaptureOrigin = (
-  origin: EngineWrite['origin'],
-  config: LocalEngineHistoryConfig
-): boolean => {
-  if (origin === 'system') {
-    return config.captureSystem
-  }
-  if (origin === 'remote') {
-    return config.captureRemote
-  }
-  return true
+const publishState = (
+  state: ReturnType<typeof store.createValueStore<HistoryState>>,
+  engine: Pick<Engine, 'history'>
+) => {
+  state.set({
+    ...(engine.history?.state() ?? {
+      canUndo: false,
+      canRedo: false,
+      undoDepth: 0,
+      redoDepth: 0,
+      invalidatedDepth: 0,
+      isApplying: false
+    }),
+    lastUpdatedAt: Date.now()
+  })
 }
 
 export const createLocalEngineHistory = (
-  engine: Pick<Engine, 'apply'> & {
-    writes: EngineWrites
-  },
-  config?: Partial<LocalEngineHistoryConfig>
-): HistoryApi => {
-  const resolvedConfig: LocalEngineHistoryConfig = {
-    ...DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG,
-    ...(config ?? {})
+  engine: Pick<Engine, 'apply' | 'history'> & {
+    writes: Engine['writes']
   }
-  const controller = mutationHistory.create<
-    Operation,
-    HistoryFootprint[number],
-    EngineWrite
-  >({
-    capacity: resolvedConfig.capacity,
-    conflicts: () => false,
-    track: (write) => (
-      resolvedConfig.enabled
-      && shouldCaptureOrigin(write.origin, resolvedConfig)
-    )
-  })
+): HistoryApi => {
+  const controller = engine.history
   const state = store.createValueStore<HistoryState>({
-    ...mutationHistory.emptyState(),
+    ...(controller?.state() ?? {
+      canUndo: false,
+      canRedo: false,
+      undoDepth: 0,
+      redoDepth: 0,
+      invalidatedDepth: 0,
+      isApplying: false
+    }),
     lastUpdatedAt: undefined
   })
 
   const publish = () => {
-    const current = controller.state()
-    state.set({
-      ...current,
-      lastUpdatedAt: Date.now()
-    })
+    publishState(state, engine)
   }
 
-  const captureWrite = (
-    write: EngineWrite
-  ) => {
-    if (write.forward.some((op) => META[op.type].sync === 'checkpoint')) {
-      if (!shouldCaptureOrigin(write.origin, resolvedConfig)) {
-        return
-      }
-      if (controller.clear()) {
-        publish()
-      }
-      return
-    }
+  engine.writes.subscribe(() => {
+    publish()
+  })
 
-    if (controller.capture(write)) {
-      publish()
+  if (!controller) {
+    return {
+      get: state.get,
+      subscribe: state.subscribe,
+      clear: () => {},
+      undo: () => readCancelled('History is unavailable.'),
+      redo: () => readCancelled('History is unavailable.')
     }
   }
-
-  engine.writes.subscribe(captureWrite)
 
   return {
     get: state.get,
@@ -114,7 +93,7 @@ export const createLocalEngineHistory = (
       publish()
 
       const result = engine.apply(operations, {
-        origin: 'system'
+        origin: 'history'
       })
       if (!result.ok) {
         controller.cancel('restore')
@@ -135,7 +114,7 @@ export const createLocalEngineHistory = (
       publish()
 
       const result = engine.apply(operations, {
-        origin: 'system'
+        origin: 'history'
       })
       if (!result.ok) {
         controller.cancel('restore')

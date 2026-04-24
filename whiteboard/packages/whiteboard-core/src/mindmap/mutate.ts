@@ -6,7 +6,7 @@ import {
 } from '@whiteboard/core/mindmap/template'
 import type {
   MindmapBranchStyle,
-  MindmapCommandResult,
+  MindmapMutationResult,
   MindmapCloneSubtreeInput,
   MindmapCreateInput,
   MindmapIdGenerator,
@@ -177,7 +177,7 @@ export const addChild = (
     side?: 'left' | 'right'
     idGenerator?: MindmapIdGenerator
   }
-): MindmapCommandResult<{ nodeId: MindmapNodeId }> => {
+): MindmapMutationResult<{ nodeId: MindmapNodeId }> => {
   if (!ensureNode(tree, parentId)) {
     return createFailure(`Parent node ${parentId} not found.`)
   }
@@ -216,7 +216,7 @@ export const insertNode = (
   options?: {
     idGenerator?: MindmapIdGenerator
   }
-): MindmapCommandResult<{ nodeId: MindmapNodeId }> => {
+): MindmapMutationResult<{ nodeId: MindmapNodeId }> => {
   switch (input.kind) {
     case 'child':
       return addChild(tree, input.parentId, input.payload, {
@@ -293,7 +293,7 @@ export const insertNode = (
 export const moveSubtree = (
   tree: MindmapTree,
   input: MindmapMoveSubtreeInput
-): MindmapCommandResult => {
+): MindmapMutationResult => {
   if (input.nodeId === tree.rootNodeId) {
     return createFailure('Root node cannot be moved as a subtree.')
   }
@@ -352,7 +352,7 @@ export const moveSubtree = (
 export const removeSubtree = (
   tree: MindmapTree,
   input: MindmapRemoveSubtreeInput
-): MindmapCommandResult<{ removedIds: MindmapNodeId[] }> => {
+): MindmapMutationResult<{ removedIds: MindmapNodeId[] }> => {
   if (input.nodeId === tree.rootNodeId) {
     return createFailure('Root node cannot be removed from the tree.')
   }
@@ -384,7 +384,7 @@ export const cloneSubtree = (
   options?: {
     idGenerator?: MindmapIdGenerator
   }
-): MindmapCommandResult<{
+): MindmapMutationResult<{
   nodeId: MindmapNodeId
   map: Record<MindmapNodeId, MindmapNodeId>
 }> => {
@@ -450,7 +450,7 @@ export const cloneSubtree = (
 export const patchMindmap = (
   tree: MindmapTree,
   patch: MindmapTreePatch
-): MindmapCommandResult => {
+): MindmapMutationResult => {
   const layoutPatch = patch.layout
   if (!layoutPatch) {
     return ok({

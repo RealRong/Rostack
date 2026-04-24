@@ -2,6 +2,10 @@ import {
   historyFootprint,
   json
 } from '@shared/core'
+import {
+  path as mutationPath,
+  type Path
+} from '@shared/mutation'
 import type {
   EdgeField,
   EdgeId,
@@ -19,14 +23,14 @@ export type HistoryKey =
   | { kind: 'canvas.order' }
   | { kind: 'node.exists'; nodeId: NodeId }
   | { kind: 'node.field'; nodeId: NodeId; field: NodeField }
-  | { kind: 'node.record'; nodeId: NodeId; scope: 'data' | 'style'; path: string }
+  | { kind: 'node.record'; nodeId: NodeId; scope: 'data' | 'style'; path: Path }
   | { kind: 'edge.exists'; edgeId: EdgeId }
   | { kind: 'edge.field'; edgeId: EdgeId; field: EdgeField }
-  | { kind: 'edge.record'; edgeId: EdgeId; scope: 'data' | 'style'; path: string }
+  | { kind: 'edge.record'; edgeId: EdgeId; scope: 'data' | 'style'; path: Path }
   | { kind: 'edge.labels'; edgeId: EdgeId }
   | { kind: 'edge.label.exists'; edgeId: EdgeId; labelId: string }
   | { kind: 'edge.label.field'; edgeId: EdgeId; labelId: string; field: EdgeLabelField }
-  | { kind: 'edge.label.record'; edgeId: EdgeId; labelId: string; scope: 'data' | 'style'; path: string }
+  | { kind: 'edge.label.record'; edgeId: EdgeId; labelId: string; scope: 'data' | 'style'; path: Path }
   | { kind: 'edge.route'; edgeId: EdgeId }
   | { kind: 'edge.route.point'; edgeId: EdgeId; pointId: string }
   | { kind: 'group.exists'; groupId: GroupId }
@@ -52,36 +56,15 @@ const readString = (
   ? value
   : undefined
 
-const normalizePath = (
-  path: string
-): string => path
-  .split('.')
-  .filter(Boolean)
-  .join('.')
-
-const samePath = (
-  left: string,
-  right: string
-): boolean => normalizePath(left) === normalizePath(right)
-
-const pathContains = (
-  root: string,
-  target: string
-): boolean => {
-  const normalizedRoot = normalizePath(root)
-  const normalizedTarget = normalizePath(target)
-  if (normalizedRoot.length === 0) {
-    return true
-  }
-  return normalizedTarget === normalizedRoot
-    || normalizedTarget.startsWith(`${normalizedRoot}.`)
-}
+const isPath = (
+  value: unknown
+): value is Path => Array.isArray(value)
+  && value.every((entry) => typeof entry === 'string' || typeof entry === 'number')
 
 const pathsOverlap = (
-  left: string,
-  right: string
-): boolean => pathContains(left, right)
-  || pathContains(right, left)
+  left: Path,
+  right: Path
+): boolean => mutationPath.overlaps(left, right)
 
 const isNodeKey = (
   key: HistoryKey
@@ -122,7 +105,7 @@ export const isHistoryKey = (
       return (
         readString(value.nodeId) !== undefined
         && (value.scope === 'data' || value.scope === 'style')
-        && typeof value.path === 'string'
+        && isPath(value.path)
       )
     case 'edge.exists':
       return readString(value.edgeId) !== undefined
@@ -132,7 +115,7 @@ export const isHistoryKey = (
       return (
         readString(value.edgeId) !== undefined
         && (value.scope === 'data' || value.scope === 'style')
-        && typeof value.path === 'string'
+        && isPath(value.path)
       )
     case 'edge.labels':
       return readString(value.edgeId) !== undefined
@@ -149,7 +132,7 @@ export const isHistoryKey = (
         readString(value.edgeId) !== undefined
         && readString(value.labelId) !== undefined
         && (value.scope === 'data' || value.scope === 'style')
-        && typeof value.path === 'string'
+        && isPath(value.path)
       )
     case 'edge.route':
       return readString(value.edgeId) !== undefined

@@ -1,4 +1,5 @@
 import type { IdChangeSet } from '@shared/core'
+import type { Path } from '@shared/mutation'
 import type {
   Background,
   CanvasItemRef,
@@ -79,8 +80,8 @@ export type NodeUnsetField = Exclude<NodeField, 'position'>
 export type NodeRecordScope = 'data' | 'style'
 
 export type NodeRecordMutation =
-  | { scope: NodeRecordScope; op: 'set'; path?: string; value: unknown }
-  | { scope: NodeRecordScope; op: 'unset'; path: string }
+  | { scope: NodeRecordScope; op: 'set'; path?: Path; value: unknown }
+  | { scope: NodeRecordScope; op: 'unset'; path: Path }
 
 export type NodeUpdateInput = {
   fields?: NodeFieldPatch
@@ -120,8 +121,8 @@ export type EdgeField =
 export type EdgeUnsetField = Exclude<EdgeField, 'source' | 'target' | 'type'>
 export type EdgeRecordScope = 'data' | 'style'
 export type EdgeRecordMutation =
-  | { scope: EdgeRecordScope; op: 'set'; path?: string; value: unknown }
-  | { scope: EdgeRecordScope; op: 'unset'; path: string }
+  | { scope: EdgeRecordScope; op: 'set'; path?: Path; value: unknown }
+  | { scope: EdgeRecordScope; op: 'unset'; path: Path }
 
 export type EdgeUpdateInput = {
   fields?: EdgeFieldPatch
@@ -144,8 +145,8 @@ export type EdgeLabelFieldPatch = {
 }
 
 export type EdgeLabelRecordMutation =
-  | { scope: EdgeLabelRecordScope; op: 'set'; path?: string; value: unknown }
-  | { scope: EdgeLabelRecordScope; op: 'unset'; path: string }
+  | { scope: EdgeLabelRecordScope; op: 'set'; path?: Path; value: unknown }
+  | { scope: EdgeLabelRecordScope; op: 'unset'; path: Path }
 
 export type EdgeLabelUpdateInput = {
   fields?: EdgeLabelFieldPatch
@@ -218,8 +219,8 @@ export type MindmapTopicSnapshot = {
 
 export type MindmapTopicRecordScope = 'data' | 'style'
 export type MindmapTopicRecordMutation =
-  | { scope: MindmapTopicRecordScope; op: 'set'; path?: string; value: unknown }
-  | { scope: MindmapTopicRecordScope; op: 'unset'; path: string }
+  | { scope: MindmapTopicRecordScope; op: 'set'; path?: Path; value: unknown }
+  | { scope: MindmapTopicRecordScope; op: 'unset'; path: Path }
 
 export type MindmapTopicUpdateInput = {
   fields?: MindmapTopicFieldPatch
@@ -245,22 +246,22 @@ export type Op =
   | { readonly type: 'node.restore'; readonly node: Node; readonly slot?: CanvasSlot }
   | { readonly type: 'node.field.set'; readonly id: NodeId; readonly field: NodeField; readonly value: unknown }
   | { readonly type: 'node.field.unset'; readonly id: NodeId; readonly field: NodeUnsetField }
-  | { readonly type: 'node.record.set'; readonly id: NodeId; readonly scope: NodeRecordScope; readonly path: string; readonly value: unknown }
-  | { readonly type: 'node.record.unset'; readonly id: NodeId; readonly scope: NodeRecordScope; readonly path: string }
+  | { readonly type: 'node.record.set'; readonly id: NodeId; readonly scope: NodeRecordScope; readonly path: Path; readonly value: unknown }
+  | { readonly type: 'node.record.unset'; readonly id: NodeId; readonly scope: NodeRecordScope; readonly path: Path }
   | { readonly type: 'node.delete'; readonly id: NodeId }
   | { readonly type: 'edge.create'; readonly edge: Edge }
   | { readonly type: 'edge.restore'; readonly edge: Edge; readonly slot?: CanvasSlot }
   | { readonly type: 'edge.field.set'; readonly id: EdgeId; readonly field: EdgeField; readonly value: unknown }
   | { readonly type: 'edge.field.unset'; readonly id: EdgeId; readonly field: EdgeUnsetField }
-  | { readonly type: 'edge.record.set'; readonly id: EdgeId; readonly scope: EdgeRecordScope; readonly path: string; readonly value: unknown }
-  | { readonly type: 'edge.record.unset'; readonly id: EdgeId; readonly scope: EdgeRecordScope; readonly path: string }
+  | { readonly type: 'edge.record.set'; readonly id: EdgeId; readonly scope: EdgeRecordScope; readonly path: Path; readonly value: unknown }
+  | { readonly type: 'edge.record.unset'; readonly id: EdgeId; readonly scope: EdgeRecordScope; readonly path: Path }
   | { readonly type: 'edge.label.insert'; readonly edgeId: EdgeId; readonly label: EdgeLabel; readonly to: EdgeLabelAnchor }
   | { readonly type: 'edge.label.delete'; readonly edgeId: EdgeId; readonly labelId: string }
   | { readonly type: 'edge.label.move'; readonly edgeId: EdgeId; readonly labelId: string; readonly to: EdgeLabelAnchor }
   | { readonly type: 'edge.label.field.set'; readonly edgeId: EdgeId; readonly labelId: string; readonly field: EdgeLabelField; readonly value: unknown }
   | { readonly type: 'edge.label.field.unset'; readonly edgeId: EdgeId; readonly labelId: string; readonly field: EdgeLabelField }
-  | { readonly type: 'edge.label.record.set'; readonly edgeId: EdgeId; readonly labelId: string; readonly scope: EdgeLabelRecordScope; readonly path: string; readonly value: unknown }
-  | { readonly type: 'edge.label.record.unset'; readonly edgeId: EdgeId; readonly labelId: string; readonly scope: EdgeLabelRecordScope; readonly path: string }
+  | { readonly type: 'edge.label.record.set'; readonly edgeId: EdgeId; readonly labelId: string; readonly scope: EdgeLabelRecordScope; readonly path: Path; readonly value: unknown }
+  | { readonly type: 'edge.label.record.unset'; readonly edgeId: EdgeId; readonly labelId: string; readonly scope: EdgeLabelRecordScope; readonly path: Path }
   | { readonly type: 'edge.route.point.insert'; readonly edgeId: EdgeId; readonly point: EdgeRoutePoint; readonly to: EdgeRoutePointAnchor }
   | { readonly type: 'edge.route.point.delete'; readonly edgeId: EdgeId; readonly pointId: string }
   | { readonly type: 'edge.route.point.move'; readonly edgeId: EdgeId; readonly pointId: string; readonly to: EdgeRoutePointAnchor }
@@ -282,8 +283,8 @@ export type Op =
   | { readonly type: 'mindmap.topic.delete'; readonly id: string; readonly input: MindmapTopicDeleteInput }
   | { readonly type: 'mindmap.topic.field.set'; readonly id: string; readonly topicId: NodeId; readonly field: MindmapTopicField; readonly value: unknown }
   | { readonly type: 'mindmap.topic.field.unset'; readonly id: string; readonly topicId: NodeId; readonly field: MindmapTopicUnsetField }
-  | { readonly type: 'mindmap.topic.record.set'; readonly id: string; readonly topicId: NodeId; readonly scope: MindmapTopicRecordScope; readonly path: string; readonly value: unknown }
-  | { readonly type: 'mindmap.topic.record.unset'; readonly id: string; readonly topicId: NodeId; readonly scope: MindmapTopicRecordScope; readonly path: string }
+  | { readonly type: 'mindmap.topic.record.set'; readonly id: string; readonly topicId: NodeId; readonly scope: MindmapTopicRecordScope; readonly path: Path; readonly value: unknown }
+  | { readonly type: 'mindmap.topic.record.unset'; readonly id: string; readonly topicId: NodeId; readonly scope: MindmapTopicRecordScope; readonly path: Path }
   | { readonly type: 'mindmap.branch.field.set'; readonly id: string; readonly topicId: NodeId; readonly field: MindmapBranchField; readonly value: unknown }
   | { readonly type: 'mindmap.branch.field.unset'; readonly id: string; readonly topicId: NodeId; readonly field: MindmapBranchField }
   | { readonly type: 'mindmap.topic.collapse'; readonly id: string; readonly topicId: NodeId; readonly collapsed?: boolean }

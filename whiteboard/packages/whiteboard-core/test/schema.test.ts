@@ -1,44 +1,45 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { path as mutationPath } from '@shared/mutation'
 import { createRegistries } from '@whiteboard/core/kernel'
 import { schema } from '@whiteboard/core/schema'
 
 test('compileNodeFieldRecord 将 schema field 编译为 canonical node record', () => {
   assert.deepEqual(
     schema.node.compileFieldRecord(
-      { scope: 'style', path: 'fontSize' },
+      { scope: 'style', path: mutationPath.of('fontSize') },
       14
     ),
     {
       scope: 'style',
       op: 'set',
-      path: 'fontSize',
+      path: mutationPath.of('fontSize'),
       value: 14
     }
   )
 
   assert.deepEqual(
     schema.node.compileFieldRecord(
-      { path: 'title' },
+      { path: mutationPath.of('title') },
       'Board'
     ),
     {
       scope: 'data',
       op: 'set',
-      path: 'title',
+      path: mutationPath.of('title'),
       value: 'Board'
     }
   )
 
   assert.deepEqual(
     schema.node.compileFieldRecord(
-      { scope: 'style', path: 'fontSize' },
+      { scope: 'style', path: mutationPath.of('fontSize') },
       undefined
     ),
     {
       scope: 'style',
       op: 'unset',
-      path: 'fontSize'
+      path: mutationPath.of('fontSize')
     }
   )
 })
@@ -46,14 +47,14 @@ test('compileNodeFieldRecord 将 schema field 编译为 canonical node record', 
 test('compileNodeFieldUpdate 与 compileNodeFieldUpdates 只输出 canonical records', () => {
   assert.deepEqual(
     schema.node.compileFieldUpdate(
-      { scope: 'data', path: 'text' },
+      { scope: 'data', path: mutationPath.of('text') },
       'hello'
     ),
     {
       records: [{
         scope: 'data',
         op: 'set',
-        path: 'text',
+        path: mutationPath.of('text'),
         value: 'hello'
       }]
     }
@@ -62,11 +63,11 @@ test('compileNodeFieldUpdate 与 compileNodeFieldUpdates 只输出 canonical rec
   assert.deepEqual(
     schema.node.compileFieldUpdates([
       {
-        field: { scope: 'style', path: 'color' },
+        field: { scope: 'style', path: mutationPath.of('color') },
         value: '#111111'
       },
       {
-        field: { scope: 'style', path: 'fontSize' },
+        field: { scope: 'style', path: mutationPath.of('fontSize') },
         value: undefined
       }
     ]),
@@ -75,13 +76,13 @@ test('compileNodeFieldUpdate 与 compileNodeFieldUpdates 只输出 canonical rec
         {
           scope: 'style',
           op: 'set',
-          path: 'color',
+          path: mutationPath.of('color'),
           value: '#111111'
         },
         {
           scope: 'style',
           op: 'unset',
-          path: 'fontSize'
+          path: mutationPath.of('fontSize')
         }
       ]
     }

@@ -238,7 +238,7 @@ export type MindmapDragDropTarget = {
   insertLine?: MindmapDragDropLine
 }
 
-export type MindmapCommandResult<T extends object = {}> = Result<{
+export type MindmapMutationResult<T extends object = {}> = Result<{
   tree: MindmapTree
 } & T, 'invalid'>
 

@@ -81,7 +81,6 @@ export const runProjectorUpdate = <
   TChange,
   TPhaseName extends string,
   TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>,
-  TPhaseChange = unknown,
   TPhaseMetrics = unknown
 >(
   input: {
@@ -92,7 +91,6 @@ export const runProjectorUpdate = <
       TChange,
       TPhaseName,
       TScopeMap,
-      TPhaseChange,
       TPhaseMetrics
     >
     graph: PhaseGraph<
@@ -103,7 +101,6 @@ export const runProjectorUpdate = <
         TSnapshot,
         TPhaseName,
         TScopeMap,
-        TPhaseChange,
         TPhaseMetrics
       >
     >

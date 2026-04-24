@@ -1,5 +1,4 @@
 import {
-  defineProjectorSpec,
   type ProjectorSpec
 } from '@shared/projector'
 import type { ActiveDelta } from '@dataview/engine/contracts/delta'
@@ -8,7 +7,7 @@ import type {
   ActivePhaseMetrics,
   ActivePhaseName,
   ActivePhaseScopeMap,
-  ActiveProjectorRunInput,
+  ActiveProjectorInput,
   ActiveProjectorWorking
 } from '../contracts/projector'
 import { activeMembershipPhase } from '../phases/membership'
@@ -21,15 +20,14 @@ import { activeProjectorPlanner } from './planner'
 import { activeProjectorPublisher } from './publisher'
 
 export const activeProjectorSpec: ProjectorSpec<
-  ActiveProjectorRunInput,
+  ActiveProjectorInput,
   ActiveProjectorWorking,
   ViewState | undefined,
   ActiveDelta | undefined,
   ActivePhaseName,
   ActivePhaseScopeMap,
-  undefined,
   ActivePhaseMetrics
-> = defineProjectorSpec({
+> = {
   createWorking: createActiveProjectorWorking,
   createSnapshot: createEmptyActiveSnapshot,
   plan: activeProjectorPlanner.plan,
@@ -40,4 +38,4 @@ export const activeProjectorSpec: ProjectorSpec<
     activeSummaryPhase,
     activePublishPhase
   ]
-})
+}

@@ -25,13 +25,11 @@ export type PhaseEntry<
   TSnapshot,
   TPhaseName extends string,
   TScopeMap extends PhaseScopeMap<TPhaseName>,
-  TPhaseChange,
   TPhaseMetrics
 > = {
   [K in TPhaseName]: phase.Spec<
     K,
     Context<TInput, TWorking, TSnapshot, TScopeMap[K]>,
-    TPhaseChange,
     TPhaseMetrics,
     TPhaseName,
     TScopeMap
@@ -89,7 +87,6 @@ export interface Spec<
   TChange,
   TPhaseName extends string,
   TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>,
-  TPhaseChange = unknown,
   TPhaseMetrics = unknown
 > {
   createWorking(): TWorking
@@ -109,21 +106,18 @@ export interface Spec<
     TSnapshot,
     TPhaseName,
     TScopeMap,
-    TPhaseChange,
     TPhaseMetrics
   >[]
 }
 
 export interface Instance<
   TInput,
-  TWorking,
   TSnapshot,
   TChange,
   TPhaseName extends string = string,
   TPhaseMetrics = unknown
 > {
   snapshot(): TSnapshot
-  working(): TWorking
   update(
     input: TInput
   ): Result<TSnapshot, TChange, TPhaseName, TPhaseMetrics>

@@ -1,5 +1,4 @@
 import {
-  defineProjectorSpec,
   type ProjectorSpec
 } from '@shared/projector'
 import type {
@@ -24,12 +23,11 @@ export const editorGraphProjectorSpec: ProjectorSpec<
   Change,
   EditorPhaseName,
   EditorPhaseScopeMap,
-  undefined,
   EditorGraphPhaseMetrics
-> = defineProjectorSpec({
+> = {
   createWorking,
   createSnapshot: createEmptySnapshot,
   plan: editorGraphPlanner.plan,
   publish: editorGraphPublisher.publish,
   phases: editorGraphPhases
-})
+}

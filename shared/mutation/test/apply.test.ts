@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'vitest'
-import { draftPath, path } from '@shared/mutation'
 import { Reducer } from '@shared/reducer'
 
 describe('Reducer', () => {
@@ -21,16 +20,16 @@ describe('Reducer', () => {
     >({
       spec: {
         serializeKey: (key) => key,
-        handlers: {
-          'count.add': (ctx, op) => {
-            total += op.value
-            draftPath.set(ctx.write(), path.of('count'), total)
-            ctx.inverse({
-              type: 'count.add',
-              value: -op.value
-            })
-            ctx.footprint(`count:${op.value}`)
-          }
+        handle: (ctx, op) => {
+          total += op.value
+          ctx.replace({
+            count: total
+          })
+          ctx.inverseMany([{
+            type: 'count.add',
+            value: -op.value
+          }])
+          ctx.footprint(`count:${op.value}`)
         },
         settle: (ctx) => {
           ctx.footprint('done')
@@ -63,16 +62,6 @@ describe('Reducer', () => {
       doc: {
         count: 6
       },
-      forward: [{
-        type: 'count.add',
-        value: 1
-      }, {
-        type: 'count.add',
-        value: 2
-      }, {
-        type: 'count.add',
-        value: 3
-      }],
       inverse: [{
         type: 'count.add',
         value: -3
@@ -92,8 +81,7 @@ describe('Reducer', () => {
       extra: {
         total: 6,
         current: 6
-      },
-      issues: []
+      }
     })
   })
 
@@ -110,18 +98,17 @@ describe('Reducer', () => {
     >({
       spec: {
         serializeKey: (_key) => '',
-        handlers: {
-          replace: (ctx, op) => {
-            const current = ctx.doc().value
-            ctx.replace({
-              value: current + op.value
-            })
-            ctx.inverse({
-              type: 'replace',
-              value: current
-            })
-          }
-        }
+        handle: (ctx, op) => {
+          const current = ctx.doc().value
+          ctx.replace({
+            value: current + op.value
+          })
+          ctx.inverseMany([{
+            type: 'replace',
+            value: current
+          }])
+        },
+        done: () => undefined
       }
     })
 
@@ -143,13 +130,6 @@ describe('Reducer', () => {
       doc: {
         value: 6
       },
-      forward: [{
-        type: 'replace',
-        value: 2
-      }, {
-        type: 'replace',
-        value: 3
-      }],
       inverse: [{
         type: 'replace',
         value: 3
@@ -158,8 +138,7 @@ describe('Reducer', () => {
         value: 1
       }],
       footprint: [],
-      extra: undefined,
-      issues: []
+      extra: undefined
     })
   })
 })

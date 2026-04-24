@@ -6,7 +6,7 @@ import {
   idDelta,
   type IdDelta
 } from '../delta/idDelta'
-import type { Action, Family } from '../contracts/core'
+import type { Family } from '../contracts/core'
 import { isListEqual } from './list'
 
 const createEmptyChange = <TKey,>(): IdDelta<TKey> => idDelta.create<TKey>()
@@ -16,25 +16,15 @@ const filterPresentIds = <TKey>(
   byId: ReadonlyMap<TKey, unknown>
 ): readonly TKey[] => ids.filter((id) => byId.has(id))
 
-const resolveEntityAction = (
-  changed: boolean
-): Action => changed
-  ? 'sync'
-  : 'reuse'
-
 export interface PublishedEntityFamily<TKey, TValue> {
   value: Family<TKey, TValue>
   change: IdDelta<TKey>
   delta?: EntityDelta<TKey>
-  changed: boolean
-  action: Action
 }
 
 export interface PublishedEntityList<TKey> {
   value: readonly TKey[]
   delta?: EntityDelta<TKey>
-  changed: boolean
-  action: Action
 }
 
 export const publishEntityList = <TKey>(input: {
@@ -66,9 +56,7 @@ export const publishEntityList = <TKey>(input: {
     value: orderChanged
       ? input.next
       : input.previous,
-    delta,
-    changed: Boolean(delta),
-    action: resolveEntityAction(Boolean(delta))
+    delta
   }
 }
 
@@ -144,9 +132,7 @@ export const publishEntityFamily = <TKey extends string, TValue>(input: {
   if (!changed) {
     return {
       value: input.previous,
-      change: nextChange,
-      action: 'reuse',
-      changed: false
+      change: nextChange
     }
   }
 
@@ -159,8 +145,6 @@ export const publishEntityFamily = <TKey extends string, TValue>(input: {
     delta: entityDelta.fromChangeSet({
       changes: nextChange,
       order: !idsEqual
-    }),
-    changed: true,
-    action: resolveEntityAction(true)
+    })
   }
 }

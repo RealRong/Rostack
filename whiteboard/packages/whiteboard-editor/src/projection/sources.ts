@@ -5,7 +5,7 @@ import {
   composeSync,
   createIdDeltaFamilySync,
   createValueSync
-} from '@shared/projector'
+} from '@shared/projector/sync'
 import type {
   Change,
   ChromeView,

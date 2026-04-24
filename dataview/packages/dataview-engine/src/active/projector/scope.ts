@@ -1,11 +1,38 @@
 import type {
-  PublishPhaseScope
-} from '../../contracts/projector'
+  MembershipPhaseScope,
+  PublishPhaseScope,
+  SummaryPhaseScope
+} from '../contracts/projector'
 import type {
+  MembershipPhaseDelta,
   MembershipPhaseState,
+  PhaseAction,
+  QueryPhaseDelta,
   SummaryPhaseDelta,
   SummaryPhaseState
-} from '../../state'
+} from '../state'
+
+export const createMembershipPhaseScope = (input: {
+  action: PhaseAction
+  delta: QueryPhaseDelta
+}): MembershipPhaseScope => ({
+  query: {
+    action: input.action,
+    delta: input.delta
+  }
+})
+
+export const createSummaryPhaseScope = (input: {
+  action: PhaseAction
+  previous?: MembershipPhaseState
+  delta: MembershipPhaseDelta
+}): SummaryPhaseScope => ({
+  membership: {
+    action: input.action,
+    previous: input.previous,
+    delta: input.delta
+  }
+})
 
 export const createPublishPhaseScope = (
   input?: {

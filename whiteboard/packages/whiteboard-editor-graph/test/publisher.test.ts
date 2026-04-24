@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { idDelta } from '@shared/projector'
+import { idDelta } from '@shared/projector/delta'
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   EdgeId,

@@ -1,7 +1,3 @@
-import {
-  dataviewTrace
-} from '@dataview/core/mutation'
-import { equal } from '@shared/core'
 import type {
   FieldId,
   View,
@@ -15,9 +11,11 @@ import type {
   BaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
 import {
-  deriveSummaryState,
-  resolveSummaryTouchedSections
+  deriveSummaryState
 } from '@dataview/engine/active/summary/derive'
+import {
+  resolveSummaryAction
+} from '@dataview/engine/active/projector/policy'
 import type {
   MembershipPhaseDelta as MembershipDelta,
   MembershipPhaseState as MembershipState,
@@ -28,109 +26,9 @@ import type {
 import type {
   ViewStageMetrics
 } from '@dataview/engine/contracts/performance'
-import type {
-  SectionId
-} from '@dataview/engine/contracts/shared'
 import { now } from '@dataview/engine/runtime/clock'
 
-export {
-  deriveSummaryState
-} from '@dataview/engine/active/summary/derive'
-
-const resolveSummaryAction = (input: {
-  activeViewId: ViewId
-  previousViewId?: ViewId
-  impact: BaseImpact
-  indexDelta?: IndexDelta
-  view: View
-  calcFields: readonly FieldId[]
-  previous?: SummaryState
-  previousMembership?: MembershipState
-  membership: MembershipState
-  membershipAction: DeriveAction
-  membershipDelta: MembershipDelta
-}): {
-  action: DeriveAction
-  touchedSections?: ReadonlySet<SectionId> | 'all'
-} => {
-  if (
-    !input.previous
-    || !input.previousMembership
-    || input.previousViewId !== input.activeViewId
-    || dataviewTrace.has.activeView(input.impact.trace)
-  ) {
-    return {
-      action: 'rebuild'
-    }
-  }
-
-  if (!input.calcFields.length) {
-    return {
-      action: equal.sameOrder(input.previousMembership.sections.order, input.membership.sections.order)
-        ? 'reuse'
-        : 'sync'
-    }
-  }
-
-  if (input.membershipAction === 'rebuild' || input.membershipDelta.rebuild) {
-    return {
-      action: 'rebuild'
-    }
-  }
-
-  const groupField = input.view.group?.fieldId
-  const viewChange = dataviewTrace.view.change(input.impact.trace, input.activeViewId)
-
-  if (viewChange?.calculationFields) {
-    return {
-      action: 'rebuild'
-    }
-  }
-
-  for (const fieldId of input.calcFields) {
-    if (input.indexDelta?.calculation?.fields.get(fieldId)?.rebuild) {
-      return {
-        action: 'rebuild'
-      }
-    }
-
-    if (dataviewTrace.has.fieldSchema(input.impact.trace, fieldId)) {
-      return {
-        action: 'rebuild'
-      }
-    }
-  }
-  if (groupField && dataviewTrace.has.fieldSchema(input.impact.trace, groupField)) {
-    return {
-      action: 'rebuild'
-    }
-  }
-
-  const touchedSections = resolveSummaryTouchedSections({
-    previousMembership: input.previousMembership,
-    membership: input.membership,
-    membershipDelta: input.membershipDelta,
-    calcFields: input.calcFields,
-    calculationDelta: input.indexDelta?.calculation
-  })
-
-  if (
-    !equal.sameOrder(input.previousMembership.sections.order, input.membership.sections.order)
-    || input.membershipDelta.removed.length > 0
-    || touchedSections === 'all'
-    || touchedSections.size > 0
-  ) {
-    return {
-      action: 'sync',
-      touchedSections
-    }
-  }
-
-  return {
-    action: 'reuse',
-    touchedSections
-  }
-}
+export { deriveSummaryState } from '@dataview/engine/active/summary/derive'
 
 export const runSummaryStage = (input: {
   activeViewId: ViewId

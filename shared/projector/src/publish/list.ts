@@ -1,11 +1,3 @@
-import type { Action } from '../contracts/core'
-
-export interface PublishedList<TValue> {
-  value: readonly TValue[]
-  changed: boolean
-  action: Action
-}
-
 const isSameValue = <TValue>(
   left: TValue,
   right: TValue
@@ -31,24 +23,4 @@ export const isListEqual = <TValue>(
   }
 
   return true
-}
-
-export const publishList = <TValue>(input: {
-  previous: readonly TValue[]
-  next: readonly TValue[]
-  isEqual?: (left: TValue, right: TValue) => boolean
-}): PublishedList<TValue> => {
-  if (isListEqual(input.previous, input.next, input.isEqual)) {
-    return {
-      value: input.previous,
-      changed: false,
-      action: 'reuse'
-    }
-  }
-
-  return {
-    value: input.next,
-    changed: true,
-    action: 'rebuild'
-  }
 }

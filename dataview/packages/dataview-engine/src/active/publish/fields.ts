@@ -9,14 +9,14 @@ import type {
 
 export const createFieldsProjection = (input: {
   fieldIds: readonly FieldId[]
-  byId: ReadonlyMap<FieldId, Field>
+  getField: (fieldId: FieldId) => Field | undefined
 }): FieldList => {
   const all: Field[] = []
   const ids: FieldId[] = []
   const visibleById = new Map<FieldId, Field>()
 
   input.fieldIds.forEach(fieldId => {
-    const field = input.byId.get(fieldId)
+    const field = input.getField(fieldId)
     if (!field) {
       return
     }

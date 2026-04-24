@@ -1,8 +1,8 @@
 import type {
   IdDelta as SharedIdDelta,
-  KeySet,
-  Revision,
-} from '@shared/projector'
+  KeySet
+} from '@shared/projector/delta'
+import type { Revision } from '@shared/projector'
 import type {
   EdgeId,
   GroupId,

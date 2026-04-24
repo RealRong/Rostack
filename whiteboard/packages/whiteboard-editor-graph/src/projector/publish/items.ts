@@ -1,4 +1,4 @@
-import { createFlags, type Flags } from '@shared/projector'
+import { createFlags, type Flags } from '@shared/projector/publish'
 import type { SceneItem } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 

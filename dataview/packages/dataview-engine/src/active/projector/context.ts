@@ -9,7 +9,6 @@ import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import {
-  definePhase,
   type ProjectorContext,
   type ProjectorPhase
 } from '@shared/projector'
@@ -17,12 +16,12 @@ import type {
   ActivePhaseMetrics,
   ActivePhaseName,
   ActivePhaseScopeMap,
-  ActiveProjectorRunInput,
+  ActiveProjectorInput,
   ActiveProjectorWorking
 } from '../contracts/projector'
 
 export type ActiveProjectorContext<TScope> = ProjectorContext<
-  ActiveProjectorRunInput,
+  ActiveProjectorInput,
   ActiveProjectorWorking,
   ViewState | undefined,
   TScope
@@ -33,7 +32,6 @@ export type ActiveProjectorPhase<
 > = ProjectorPhase<
   TName,
   ActiveProjectorContext<ActivePhaseScopeMap[TName]>,
-  undefined,
   ActivePhaseMetrics,
   ActivePhaseName,
   ActivePhaseScopeMap
@@ -43,7 +41,7 @@ export const defineActiveProjectorPhase = <
   TName extends ActivePhaseName
 >(
   phase: ActiveProjectorPhase<TName>
-): ActiveProjectorPhase<TName> => definePhase(phase)
+): ActiveProjectorPhase<TName> => phase
 
 export const toActivePhaseMetrics = (input: {
   deriveMs: number
@@ -56,7 +54,7 @@ export const toActivePhaseMetrics = (input: {
 })
 
 export const readActiveView = (
-  input: ActiveProjectorRunInput
+  input: ActiveProjectorInput
 ): {
   activeViewId?: ViewId
   view?: View

@@ -9,7 +9,7 @@ import {
   readActiveView,
   toActivePhaseMetrics
 } from '../projector/context'
-import { mergePublishPhaseScope } from '../projector/scopes/publishScope'
+import { mergePublishPhaseScope } from '../projector/scope'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,
@@ -51,18 +51,17 @@ export const activePublishPhase = defineActiveProjectorPhase({
 
       return {
         action: reset.action,
-        change: undefined,
         metrics: EMPTY_METRICS
       }
     }
 
     const result = runPublishStage({
       reader: context.input.read.reader,
-      fieldsById: context.input.read.fieldsById,
       activeViewId,
       previous: context.previous,
       view,
-      records: context.working.query.records,
+      queryState: context.working.query.state,
+      previousRecords: context.previous?.records,
       membershipState: context.working.membership.state,
       previousMembershipState: scope?.membership?.previous ?? context.working.membership.state,
       previousSections: context.previous?.sections,
@@ -79,7 +78,6 @@ export const activePublishPhase = defineActiveProjectorPhase({
 
     return {
       action: result.action,
-      change: undefined,
       metrics: toActivePhaseMetrics({
         deriveMs: result.deriveMs,
         publishMs: result.publishMs,

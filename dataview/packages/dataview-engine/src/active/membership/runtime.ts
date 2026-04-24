@@ -1,6 +1,3 @@
-import {
-  dataviewTrace
-} from '@dataview/core/mutation'
 import type {
   View,
   ViewId
@@ -14,11 +11,11 @@ import type {
   BaseImpact
 } from '@dataview/engine/active/shared/baseImpact'
 import {
-  hasMembershipChanges
-} from '@dataview/engine/active/shared/transition'
-import {
   syncMembershipState
 } from '@dataview/engine/active/membership/derive'
+import {
+  resolveMembershipAction
+} from '@dataview/engine/active/projector/policy'
 import {
   EMPTY_MEMBERSHIP_PHASE_DELTA
 } from '@dataview/engine/active/state'
@@ -36,61 +33,6 @@ import type {
   SectionId
 } from '@dataview/engine/contracts/shared'
 import { now } from '@dataview/engine/runtime/clock'
-
-const hasQueryChanges = (
-  delta: QueryDelta
-): boolean => Boolean(
-  delta.rebuild
-  || delta.orderChanged
-  || delta.added.length
-  || delta.removed.length
-)
-
-const resolveMembershipAction = (input: {
-  activeViewId: ViewId
-  previousViewId?: ViewId
-  impact: BaseImpact
-  view: View
-  previous?: MembershipState
-  queryDelta: QueryDelta
-  indexDelta?: IndexDelta
-}): DeriveAction => {
-  if (
-    !input.previous
-    || input.previousViewId !== input.activeViewId
-    || dataviewTrace.has.activeView(input.impact.trace)
-  ) {
-    return 'rebuild'
-  }
-
-  if (input.queryDelta.rebuild || input.indexDelta?.bucket?.rebuild) {
-    return 'rebuild'
-  }
-
-  const groupField = input.view.group?.fieldId
-  if (!groupField) {
-    return hasQueryChanges(input.queryDelta)
-      ? 'sync'
-      : 'reuse'
-  }
-
-  if (
-    dataviewTrace.has.viewQuery(input.impact.trace, input.activeViewId, ['group'])
-    || dataviewTrace.has.fieldSchema(input.impact.trace, groupField)
-    || dataviewTrace.has.recordSetChange(input.impact.trace)
-  ) {
-    return 'rebuild'
-  }
-
-  const touchedFields = input.impact.touchedFields
-  if (touchedFields === 'all' || touchedFields.has(groupField)) {
-    return 'sync'
-  }
-
-  return hasQueryChanges(input.queryDelta) || hasMembershipChanges(input.indexDelta?.bucket)
-    ? 'sync'
-    : 'reuse'
-}
 
 const buildMembershipDelta = (input: {
   previous?: MembershipState

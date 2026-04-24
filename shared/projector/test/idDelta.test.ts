@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { idDelta } from '../src'
+import { idDelta } from '../src/delta'
 
 describe('idDelta', () => {
   test('tracks canonical add update remove net effects', () => {

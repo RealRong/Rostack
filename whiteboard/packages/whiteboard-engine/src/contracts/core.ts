@@ -1,4 +1,4 @@
-import type { IdDelta as SharedIdDelta } from '@shared/projector'
+import type { IdDelta as SharedIdDelta } from '@shared/projector/delta'
 
 export type Revision = number
 

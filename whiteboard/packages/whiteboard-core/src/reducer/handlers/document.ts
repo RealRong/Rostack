@@ -13,7 +13,7 @@ export const reduceDocumentOperation = (
   switch (operation.type) {
     case 'document.replace':
       ctx.document.replace(operation.document)
-      return ctx.stop()
+      return
     case 'document.background':
       ctx.document.setBackground(operation.background)
       return

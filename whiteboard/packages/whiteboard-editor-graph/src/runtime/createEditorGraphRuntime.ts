@@ -5,17 +5,22 @@ import type {
   Runtime,
   Snapshot
 } from '../contracts/editor'
+import { createWorking } from '../projector/createWorking'
 import { editorGraphProjectorSpec } from '../projector/spec'
 import { createEditorGraphQuery } from './query'
 
 export const createEditorGraphRuntime = (): Runtime => {
-  const projector = createProjector(editorGraphProjectorSpec)
+  const working = createWorking()
+  const projector = createProjector({
+    ...editorGraphProjectorSpec,
+    createWorking: () => working
+  })
   const snapshot = (): Snapshot => projector.snapshot()
   const query = createEditorGraphQuery({
     snapshot,
-    spatial: () => projector.working().spatial,
-    graph: () => projector.working().graph,
-    indexes: () => projector.working().indexes
+    spatial: () => working.spatial,
+    graph: () => working.graph,
+    indexes: () => working.indexes
   })
 
   return {

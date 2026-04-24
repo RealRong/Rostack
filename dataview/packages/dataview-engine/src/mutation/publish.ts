@@ -84,8 +84,7 @@ const createPublishState = (input: {
   )
   const active = input.activeProjector.update({
     read: {
-      reader: read.reader,
-      fieldsById: read.fieldsById
+      reader: read.reader
     },
     view: {
       plan
@@ -158,8 +157,7 @@ export const createDataviewPublishSpec = (input?: {
       })
       const active = activeProjector.update({
         read: {
-          reader: read.reader,
-          fieldsById: read.fieldsById
+          reader: read.reader
         },
         view: {
           plan,

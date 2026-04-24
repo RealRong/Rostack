@@ -2,7 +2,8 @@ import { describe, expect, test } from 'vitest'
 import { Reducer } from '@shared/reducer'
 
 describe('Reducer', () => {
-  test('runs handlers, collects inverse and footprint, and returns done extra', () => {
+  test('runs handle, beforeEach, settle, and done while collecting inverse and footprint', () => {
+    let total = 0
     const reducer = new Reducer<
       {
         count: number
@@ -18,18 +19,22 @@ describe('Reducer', () => {
     >({
       spec: {
         serializeKey: (key) => key,
-        handlers: {
-          add: (ctx, op) => {
-            const current = ctx.doc()
-            ctx.replace({
-              count: current.count + op.value
-            })
-            ctx.inverse({
-              type: 'add',
-              value: -op.value
-            })
-            ctx.footprint(`count:${op.value}`)
-          }
+        beforeEach: (ctx, op) => {
+          ctx.footprint(`before:${op.value}`)
+        },
+        handle: (ctx, op) => {
+          total += op.value
+          ctx.replace({
+            count: ctx.doc().count + op.value
+          })
+          ctx.inverseMany([{
+            type: 'add',
+            value: -op.value
+          }])
+          ctx.footprint(`count:${op.value}`)
+        },
+        settle: (ctx) => {
+          ctx.footprint('done')
         },
         done: (ctx) => ({
           count: ctx.doc().count
@@ -55,13 +60,6 @@ describe('Reducer', () => {
       doc: {
         count: 3
       },
-      forward: [{
-        type: 'add',
-        value: 1
-      }, {
-        type: 'add',
-        value: 2
-      }],
       inverse: [{
         type: 'add',
         value: -2
@@ -69,145 +67,18 @@ describe('Reducer', () => {
         type: 'add',
         value: -1
       }],
-      footprint: ['count:1', 'count:2'],
+      footprint: [
+        'before:1',
+        'count:1',
+        'before:2',
+        'count:2',
+        'done'
+      ],
       extra: {
         count: 3
-      },
-      issues: []
-    })
-  })
-
-  test('supports stop and only keeps processed ops in forward', () => {
-    const reducer = new Reducer<
-      {
-        value: number
-      },
-      | {
-          type: 'replace'
-          value: number
-        }
-      | {
-          type: 'add'
-          value: number
-        },
-      never,
-      {
-        value: number
-      }
-    >({
-      spec: {
-        serializeKey: () => '',
-        handlers: {
-          replace: (ctx, op) => {
-            ctx.replace({
-              value: op.value
-            })
-            ctx.stop()
-          },
-          add: (ctx, op) => {
-            ctx.replace({
-              value: ctx.doc().value + op.value
-            })
-          }
-        },
-        done: (ctx) => ({
-          value: ctx.doc().value
-        })
       }
     })
-
-    const result = reducer.reduce({
-      doc: {
-        value: 1
-      },
-      ops: [{
-        type: 'replace',
-        value: 10
-      }, {
-        type: 'add',
-        value: 5
-      }]
-    })
-
-    expect(result).toEqual({
-      ok: true,
-      doc: {
-        value: 10
-      },
-      forward: [{
-        type: 'replace',
-        value: 10
-      }],
-      inverse: [],
-      footprint: [],
-      extra: {
-        value: 10
-      },
-      issues: []
-    })
-  })
-
-  test('returns failure without committing draft when a handler fails', () => {
-    const reducer = new Reducer<
-      {
-        value: number
-      },
-      {
-        type: 'fail'
-      },
-      never,
-      void,
-      import('@shared/reducer').ReducerContext<{
-        value: number
-      }, {
-        type: 'fail'
-      }, never, 'invalid'>,
-      'invalid'
-    >({
-      spec: {
-        serializeKey: () => '',
-        handlers: {
-          fail: (ctx) => {
-            ctx.replace({
-              value: 2
-            })
-            ctx.fail({
-              code: 'invalid',
-              message: 'boom'
-            })
-          }
-        }
-      }
-    })
-
-    const result = reducer.reduce({
-      doc: {
-        value: 1
-      },
-      ops: [{
-        type: 'fail'
-      }]
-    })
-
-    expect(result).toEqual({
-      ok: false,
-      doc: {
-        value: 1
-      },
-      forward: [],
-      inverse: [],
-      footprint: [],
-      issues: [{
-        code: 'invalid',
-        message: 'boom',
-        level: 'error'
-      }],
-      error: {
-        code: 'invalid',
-        message: 'boom',
-        level: 'error'
-      }
-    })
+    expect(total).toBe(3)
   })
 
   test('supports single handle reducer entry', () => {
@@ -234,10 +105,10 @@ describe('Reducer', () => {
             ctx.replace({
               count: ctx.doc().count + op.value
             })
-            ctx.inverse({
+            ctx.inverseMany([{
               type: 'add',
               value: -op.value
-            })
+            }])
             ctx.footprint(`add:${op.value}`)
             return
           }
@@ -245,9 +116,9 @@ describe('Reducer', () => {
           ctx.replace({
             count: ctx.doc().count * 2
           })
-          ctx.inverse({
+          ctx.inverseMany([{
             type: 'double'
-          })
+          }])
           ctx.footprint('double')
         },
         done: (ctx) => ({
@@ -273,12 +144,6 @@ describe('Reducer', () => {
       doc: {
         count: 10
       },
-      forward: [{
-        type: 'add',
-        value: 3
-      }, {
-        type: 'double'
-      }],
       inverse: [{
         type: 'double'
       }, {
@@ -288,8 +153,57 @@ describe('Reducer', () => {
       footprint: ['add:3', 'double'],
       extra: {
         count: 10
+      }
+    })
+  })
+
+  test('returns failure without exposing partial reducer state', () => {
+    const reducer = new Reducer<
+      {
+        value: number
       },
-      issues: []
+      {
+        type: 'fail'
+      },
+      never,
+      void,
+      import('@shared/reducer').ReducerContext<{
+        value: number
+      }, {
+        type: 'fail'
+      }, never, 'invalid'>,
+      'invalid'
+    >({
+      spec: {
+        serializeKey: () => '',
+        handle: (ctx) => {
+          ctx.replace({
+            value: 2
+          })
+          ctx.fail({
+            code: 'invalid',
+            message: 'boom'
+          })
+        },
+        done: () => undefined
+      }
+    })
+
+    const result = reducer.reduce({
+      doc: {
+        value: 1
+      },
+      ops: [{
+        type: 'fail'
+      }]
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: 'invalid',
+        message: 'boom'
+      }
     })
   })
 })

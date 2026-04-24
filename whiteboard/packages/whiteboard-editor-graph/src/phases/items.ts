@@ -24,7 +24,6 @@ export const itemsPhase = defineEditorGraphPhase({
     if (!changed) {
       return {
         action: 'reuse',
-        change: undefined,
         metrics: toPhaseMetrics(0)
       }
     }
@@ -35,7 +34,6 @@ export const itemsPhase = defineEditorGraphPhase({
 
     return {
       action: 'sync',
-      change: undefined,
       metrics: toPhaseMetrics(context.working.items.length)
     }
   }

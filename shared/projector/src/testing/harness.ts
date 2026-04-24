@@ -9,7 +9,6 @@ export const createHarness = <
   TChange,
   TPhaseName extends string,
   TScopeMap extends import('../contracts/scope').PhaseScopeMap<TPhaseName> = import('../contracts/scope').DefaultPhaseScopeMap<TPhaseName>,
-  TPhaseChange = unknown,
   TPhaseMetrics = unknown
 >(
   spec: projector.Spec<
@@ -19,7 +18,6 @@ export const createHarness = <
     TChange,
     TPhaseName,
     TScopeMap,
-    TPhaseChange,
     TPhaseMetrics
   >
 ): testing.Harness<

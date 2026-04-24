@@ -9,16 +9,11 @@ import { activeProjectorSpec } from './spec'
 
 export const createActiveProjector = (): ActiveProjector => {
   const projector = createProjector(activeProjectorSpec)
-  let runId = 0
 
   return {
     update: (input: ActiveProjectorInput): ActiveProjectorResult => {
-      runId += 1
       const previous = projector.snapshot()
-      const result = projector.update({
-        ...input,
-        runId
-      })
+      const result = projector.update(input)
 
       return {
         snapshot: result.snapshot,

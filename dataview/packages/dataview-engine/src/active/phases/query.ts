@@ -4,7 +4,7 @@ import {
   readActiveView,
   toActivePhaseMetrics
 } from '../projector/context'
-import { createMembershipPhaseScope } from '../projector/scopes/membershipScope'
+import { createMembershipPhaseScope } from '../projector/scope'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,
@@ -20,7 +20,6 @@ export const activeQueryPhase = defineActiveProjectorPhase({
     if (!activeViewId || !view || !plan) {
       return {
         action: 'reuse',
-        change: undefined,
         metrics: EMPTY_METRICS
       }
     }
@@ -34,16 +33,13 @@ export const activeQueryPhase = defineActiveProjectorPhase({
       plan: plan.query,
       previousPlan: context.input.view.previousPlan?.query,
       index: context.input.index.state,
-      previous: context.working.query.state,
-      previousPublished: context.previous?.records
+      previous: context.working.query.state
     })
 
     context.working.query.state = result.state
-    context.working.query.records = result.records
 
     return {
       action: result.action,
-      change: undefined,
       metrics: toActivePhaseMetrics({
         deriveMs: result.deriveMs,
         publishMs: result.publishMs,

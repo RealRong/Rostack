@@ -508,7 +508,7 @@ export class MutationEngine<
       at: Date.now(),
       origin: input.origin,
       doc: this.#spec.clone(nextDoc),
-      forward: commit.forward,
+      forward: input.ops.slice(),
       inverse: commit.inverse,
       footprint: commit.footprint,
       extra: commit.extra

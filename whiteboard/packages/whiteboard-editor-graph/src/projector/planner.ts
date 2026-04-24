@@ -1,9 +1,11 @@
 import {
   createPlan,
-  idDelta,
-  keySet,
   type ProjectorPlanner
 } from '@shared/projector'
+import {
+  idDelta,
+  keySet
+} from '@shared/projector/delta'
 import type {
   EditorPhaseScopeMap,
   GraphPatchScope

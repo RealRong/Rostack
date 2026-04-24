@@ -26,7 +26,6 @@ export const spatialPhase = defineEditorGraphPhase({
 
     return {
       action: result.changed ? 'sync' : 'reuse',
-      change: undefined,
       metrics: toPhaseMetrics(result.count)
     }
   }

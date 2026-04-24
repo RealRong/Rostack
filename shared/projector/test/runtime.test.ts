@@ -1,20 +1,21 @@
 import { describe, expect, it } from 'vitest'
+import { createPlan, createProjector } from '../src'
+import {
+  idDelta,
+  type IdDelta
+} from '../src/delta'
+import {
+  createFlags,
+  publishEntityFamily,
+  publishEntityList,
+  type Family,
+  type Flags
+} from '../src/publish'
 import {
   assertPhaseOrder,
-  createFlags,
-  createHarness,
-  createIds,
-  createPlan,
-  createProjector,
-  publishFamily,
-  publishList,
-  publishValue
-} from '../src'
-import type {
-  Family,
-  Flags,
-  Ids
-} from '../src'
+  assertPublishedOnce,
+  createHarness
+} from '../src/testing'
 
 type PhaseName = 'count' | 'label' | 'items'
 
@@ -52,7 +53,7 @@ type Change = {
   count: Flags
   label: Flags
   labels: Flags
-  items: Ids<string>
+  items: IdDelta<string>
 }
 
 type ScopedPhaseName = 'left' | 'right' | 'sink'
@@ -74,6 +75,61 @@ const EMPTY_ITEMS: Family<string, ItemView> = {
   byId: new Map()
 }
 
+const isItemEqual = (
+  left: ItemView | undefined,
+  right: ItemView | undefined
+): boolean => left?.id === right?.id && left?.value === right?.value
+
+const buildItemChange = (input: {
+  previous: Family<string, ItemView>
+  next: readonly ItemView[]
+}): IdDelta<string> => {
+  const change = idDelta.create<string>()
+  const nextById = new Map(input.next.map((item) => [item.id, item] as const))
+
+  input.previous.ids.forEach((id) => {
+    if (!nextById.has(id)) {
+      idDelta.remove(change, id)
+    }
+  })
+
+  input.next.forEach((item) => {
+    const previous = input.previous.byId.get(item.id)
+    if (!previous) {
+      idDelta.add(change, item.id)
+      return
+    }
+
+    if (!isItemEqual(previous, item)) {
+      idDelta.update(change, item.id)
+    }
+  })
+
+  return change
+}
+
+const hasItemListChanged = (input: {
+  previous: Family<string, ItemView>
+  next: readonly ItemView[]
+}): boolean => {
+  if (input.previous.ids.length !== input.next.length) {
+    return true
+  }
+
+  for (let index = 0; index < input.next.length; index += 1) {
+    const item = input.next[index]!
+    if (input.previous.ids[index] !== item.id) {
+      return true
+    }
+
+    if (!isItemEqual(input.previous.byId.get(item.id), item)) {
+      return true
+    }
+  }
+
+  return false
+}
+
 const createSpec = () => ({
   createWorking: (): Working => ({
     count: 0,
@@ -91,7 +147,6 @@ const createSpec = () => ({
   }),
   plan: (input: {
     input: Input
-    previous: Snapshot
   }) => createPlan<PhaseName>({
     phases: [
       ...(input.input.impact.count.changed ? ['count' as const] : []),
@@ -102,62 +157,46 @@ const createSpec = () => ({
     revision: number
     previous: Snapshot
     working: Working
-  }): {
-    snapshot: Snapshot
-    change: Change
-  } => {
-    const count = publishValue({
-      previous: input.previous.state.count,
-      next: input.working.count
-    })
-    const label = publishValue({
-      previous: input.previous.state.label,
-      next: input.working.label
-    })
-    const labels = publishList({
-      previous: input.previous.state.labels,
-      next: input.working.items.map((item) => item.id)
-    })
-    const nextItems = new Map(
+  }) => {
+    const nextItemIds = input.working.items.map((item) => item.id)
+    const nextItemsById = new Map(
       input.working.items.map((item) => [item.id, item] as const)
     )
-    const items = publishFamily({
-      previous: input.previous.state.items,
-      ids: input.working.items.map((item) => item.id),
-      read: (id: string) => nextItems.get(id)!,
-      publish: ({
-        previous,
-        next
-      }) => previous
-        ? publishValue({
-            previous,
-            next,
-            isEqual: (left, right) => (
-              left.id === right.id && left.value === right.value
-            )
-          })
-        : {
-            value: next,
-            changed: true,
-            action: 'rebuild' as const
-          }
+    const labels = publishEntityList({
+      previous: input.previous.state.labels,
+      next: nextItemIds
     })
+    const items = publishEntityFamily({
+      previous: input.previous.state.items,
+      ids: nextItemIds,
+      change: buildItemChange({
+        previous: input.previous.state.items,
+        next: input.working.items
+      }),
+      read: (id: string) => nextItemsById.get(id)
+    })
+    const countChanged = input.previous.state.count !== input.working.count
+    const labelChanged = input.previous.state.label !== input.working.label
 
     return {
       snapshot: {
         revision: input.revision,
         state: {
-          count: count.value,
-          label: label.value,
+          count: countChanged
+            ? input.working.count
+            : input.previous.state.count,
+          label: labelChanged
+            ? input.working.label
+            : input.previous.state.label,
           labels: labels.value,
           items: items.value
         }
       },
       change: {
-        count: createFlags(count.changed),
-        label: createFlags(label.changed),
-        labels: createFlags(labels.changed),
-        items: items.ids
+        count: createFlags(countChanged),
+        label: createFlags(labelChanged),
+        labels: createFlags(Boolean(labels.delta)),
+        items: items.change
       }
     }
   },
@@ -175,7 +214,6 @@ const createSpec = () => ({
         action: next === context.previous.state.count
           ? 'reuse' as const
           : 'rebuild' as const,
-        change: createFlags(next !== context.previous.state.count),
         metrics: {
           outputCount: 1
         }
@@ -194,7 +232,6 @@ const createSpec = () => ({
         action: next === context.previous.state.label
           ? 'reuse' as const
           : 'rebuild' as const,
-        change: createFlags(next !== context.previous.state.label),
         metrics: {
           outputCount: 1
         }
@@ -213,19 +250,14 @@ const createSpec = () => ({
         value: context.working.count + index
       }))
       context.working.items = next
-      const changed = (
-        next.length !== context.previous.state.items.ids.length
-        || next.some((item) => {
-          const previous = context.previous.state.items.byId.get(item.id)
-          return !previous || previous.value !== item.value
-        })
-      )
 
       return {
-        action: changed
+        action: hasItemListChanged({
+          previous: context.previous.state.items,
+          next
+        })
           ? 'rebuild' as const
           : 'reuse' as const,
-        change: createIds(next.map((item) => item.id)),
         metrics: {
           outputCount: next.length
         }
@@ -269,7 +301,6 @@ const createScopedSpec = () => ({
       scope: ScopedScopeMap['left']
     }) => ({
       action: 'sync' as const,
-      change: undefined,
       emit: {
         sink: {
           values: context.scope.values
@@ -283,7 +314,6 @@ const createScopedSpec = () => ({
       scope: ScopedScopeMap['right']
     }) => ({
       action: 'sync' as const,
-      change: undefined,
       emit: {
         sink: {
           values: context.scope.values
@@ -310,8 +340,7 @@ const createScopedSpec = () => ({
     }) => {
       context.working.seen = context.scope.values
       return {
-        action: 'sync' as const,
-        change: undefined
+        action: 'sync' as const
       }
     }
   }]
@@ -320,10 +349,10 @@ const createScopedSpec = () => ({
 describe('createProjector', () => {
   it('runs phases in topological order and publishes once', () => {
     const runtime = createProjector(createSpec())
-    const published: Change[] = []
+    const published: Array<ReturnType<typeof runtime.update>> = []
 
     const unsubscribe = runtime.subscribe((result) => {
-      published.push(result.change)
+      published.push(result)
     })
 
     const result = runtime.update({
@@ -337,7 +366,7 @@ describe('createProjector', () => {
 
     unsubscribe()
 
-    expect(published).toHaveLength(1)
+    assertPublishedOnce(published)
     expect(result.snapshot.revision).toBe(1)
     expect(result.snapshot.state.count).toBe(4)
     expect(result.snapshot.state.label).toBe('label:4')
@@ -399,7 +428,7 @@ describe('createProjector', () => {
     expect(result.snapshot.state.items).toBe(previous.state.items)
     expect(result.snapshot.state.labels).toBe(previous.state.labels)
     expect(result.snapshot.state.label).toBe(previous.state.label)
-    expect(result.change.items.all.size).toBe(0)
+    expect(idDelta.hasAny(result.change.items)).toBe(false)
     expect(result.change.count.changed).toBe(false)
   })
 
@@ -418,15 +447,13 @@ describe('createProjector', () => {
         name: 'a' as const,
         deps: ['b'] as const,
         run: () => ({
-          action: 'reuse' as const,
-          change: {}
+          action: 'reuse' as const
         })
       }, {
         name: 'b' as const,
         deps: ['a'] as const,
         run: () => ({
-          action: 'reuse' as const,
-          change: {}
+          action: 'reuse' as const
         })
       }]
     })).toThrow('Projection runtime phases must form a DAG.')

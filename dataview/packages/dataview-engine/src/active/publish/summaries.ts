@@ -5,17 +5,14 @@ import type {
 import {
   calculation
 } from '@dataview/core/calculation'
-import type {
-  Field,
-  FieldId,
-  View
-} from '@dataview/core/contracts'
+import type { FieldId, View } from '@dataview/core/contracts'
 import type {
   SectionId
 } from '@dataview/engine/contracts/shared'
 import type {
   SummaryPhaseState as SummaryState
 } from '@dataview/engine/active/state'
+import type { DocumentReader } from '@dataview/engine/document/reader'
 import { equal } from '@shared/core'
 import {
   buildEmptyPublishedSummaries,
@@ -31,7 +28,7 @@ export const publishSummaries = (input: {
   summary: SummaryState
   previousSummary?: SummaryState
   previous?: ReadonlyMap<SectionId, CalculationCollection>
-  fieldsById: ReadonlyMap<FieldId, Field>
+  reader: DocumentReader
   view: View
 }): ReadonlyMap<SectionId, CalculationCollection> => {
   const calcFields = readCalcFields(input.view)
@@ -75,7 +72,7 @@ export const publishSummaries = (input: {
 
       byField.set(
         fieldId,
-        calculation.metric.compute(input.fieldsById.get(fieldId), metric, state)
+        calculation.metric.compute(input.reader.fields.get(fieldId), metric, state)
       )
     })
 

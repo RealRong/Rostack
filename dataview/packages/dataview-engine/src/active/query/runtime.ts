@@ -2,15 +2,11 @@ import {
   dataviewTrace
 } from '@dataview/core/mutation'
 import type {
-  FieldId,
   RecordId,
   View,
   ViewId
 } from '@dataview/core/contracts'
 import type { DocumentReader } from '@dataview/engine/document/reader'
-import type {
-  ViewRecords
-} from '@dataview/engine/contracts/shared'
 import type {
   ViewStageMetrics
 } from '@dataview/engine/contracts/performance'
@@ -29,6 +25,9 @@ import {
 import {
   readSelectionIdSet
 } from '@dataview/engine/active/shared/selection'
+import {
+  resolveQueryAction
+} from '@dataview/engine/active/projector/policy'
 import type {
   PhaseAction as DeriveAction,
   QueryPhaseDelta as QueryDelta,
@@ -42,13 +41,6 @@ export {
 import {
   buildQueryState
 } from '@dataview/engine/active/query/state'
-
-const queryUsesChangedFields = (
-  fields: readonly FieldId[] | 'all',
-  changedFields: ReadonlySet<FieldId>
-) => fields === 'all'
-  ? changedFields.size > 0
-  : setCore.intersectsValues(fields, changedFields)
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_VISIBLE_DIFF = {
@@ -143,73 +135,6 @@ const collectVisibleDiff = (input: {
   }
 }
 
-const resolveQueryAction = (input: {
-  activeViewId: ViewId
-  previousViewId?: ViewId
-  impact: BaseImpact
-  previousPlan?: QueryPlan
-  plan: QueryPlan
-  previous?: QueryState
-}): DeriveAction => {
-  const trace = input.impact.trace
-
-  if (
-    !input.previous
-    || input.previousViewId !== input.activeViewId
-    || dataviewTrace.has.activeView(trace)
-  ) {
-    return 'rebuild'
-  }
-
-  if (input.previousPlan?.executionKey !== input.plan.executionKey) {
-    return 'sync'
-  }
-
-  for (const fieldId of input.plan.watch.filter) {
-    if (dataviewTrace.has.fieldSchema(trace, fieldId)) {
-      return 'sync'
-    }
-  }
-  for (const fieldId of input.plan.watch.sort) {
-    if (dataviewTrace.has.fieldSchema(trace, fieldId)) {
-      return 'sync'
-    }
-  }
-  if (input.plan.watch.search === 'all') {
-    if (input.impact.schemaFields.size > 0) {
-      return 'sync'
-    }
-  } else {
-    for (const fieldId of input.plan.watch.search) {
-      if (dataviewTrace.has.fieldSchema(trace, fieldId)) {
-        return 'sync'
-      }
-    }
-  }
-
-  const changedFields = input.impact.touchedFields
-  if (changedFields === 'all') {
-    return 'sync'
-  }
-
-  if (
-    dataviewTrace.has.recordSetChange(trace)
-    || setCore.intersectsValues(input.plan.watch.filter, changedFields)
-    || setCore.intersectsValues(input.plan.watch.sort, changedFields)
-    || (
-      (
-        input.plan.watch.search === 'all'
-        || input.plan.watch.search.length !== 0
-      )
-      && queryUsesChangedFields(input.plan.watch.search, changedFields)
-    )
-  ) {
-    return 'sync'
-  }
-
-  return 'reuse'
-}
-
 const hasSortInputChanges = (input: {
   activeViewId: ViewId
   impact: BaseImpact
@@ -280,30 +205,6 @@ const resolveQueryReuse = (input: {
   }
 }
 
-const publishRecords = (input: {
-  previous?: ViewRecords
-  state: QueryState
-}): ViewRecords => {
-  const matched = input.state.matched.read.ids()
-  const ordered = input.state.ordered.read.ids()
-  const visible = input.state.visible.read.ids()
-
-  if (
-    input.previous
-    && input.previous.matched === matched
-    && input.previous.ordered === ordered
-    && input.previous.visible === visible
-  ) {
-    return input.previous
-  }
-
-  return {
-    matched,
-    ordered,
-    visible
-  }
-}
-
 export const runQueryStage = (input: {
   reader: DocumentReader
   activeViewId: ViewId
@@ -314,12 +215,10 @@ export const runQueryStage = (input: {
   index: IndexState
   previousPlan?: QueryPlan
   previous?: QueryState
-  previousPublished?: ViewRecords
 }): {
   action: DeriveAction
   state: QueryState
   delta: QueryDelta
-  records: ViewRecords
   deriveMs: number
   publishMs: number
   metrics: ViewStageMetrics
@@ -352,24 +251,10 @@ export const runQueryStage = (input: {
         reuse
       })
   const deriveMs = now() - deriveStart
-  const canReusePublished = (
-    input.previousPublished !== undefined
-    && state.matched.read.ids() === input.previousPublished.matched
-    && state.ordered.read.ids() === input.previousPublished.ordered
-    && state.visible.read.ids() === input.previousPublished.visible
-  )
-  const publishStart = canReusePublished
-    ? 0
-    : now()
-  const records: ViewRecords = canReusePublished
-    ? input.previousPublished!
-    : publishRecords({
-        previous: input.previousPublished,
-        state
-      })
-  const publishMs = canReusePublished
-    ? 0
-    : now() - publishStart
+  const matched = state.matched.read.ids()
+  const ordered = state.ordered.read.ids()
+  const visible = state.visible.read.ids()
+  const publishMs = 0
 
   let changedRecordCount = 0
   let delta: QueryDelta = {
@@ -381,15 +266,15 @@ export const runQueryStage = (input: {
   if (action === 'rebuild') {
     delta = {
       rebuild: true,
-      added: state.visible.read.ids(),
+      added: visible,
       removed: EMPTY_RECORD_IDS,
       orderChanged: false
     }
   } else if (action === 'sync' && input.previous) {
     const previousVisible = input.previous.visible.read.ids()
-    const nextVisible = state.visible.read.ids()
+    const nextVisible = visible
     const previousOrdered = input.previous.ordered.read.ids()
-    const nextOrdered = state.ordered.read.ids()
+    const nextOrdered = ordered
     const orderChanged = previousOrdered !== nextOrdered
     const diff = collectVisibleDiff({
       previous: previousVisible,
@@ -421,22 +306,21 @@ export const runQueryStage = (input: {
     action,
     state,
     delta,
-    records,
     deriveMs,
     publishMs,
     metrics: {
       inputCount: input.previous?.visible.read.count(),
       outputCount: state.visible.read.count(),
       reusedNodeCount: (
-        (input.previousPublished?.matched === records.matched ? 1 : 0)
-        + (input.previousPublished?.ordered === records.ordered ? 1 : 0)
-        + (input.previousPublished?.visible === records.visible ? 1 : 0)
+        (input.previous?.matched.read.ids() === matched ? 1 : 0)
+        + (input.previous?.ordered.read.ids() === ordered ? 1 : 0)
+        + (input.previous?.visible.read.ids() === visible ? 1 : 0)
       ),
       rebuiltNodeCount: (
         3 - (
-          (input.previousPublished?.matched === records.matched ? 1 : 0)
-          + (input.previousPublished?.ordered === records.ordered ? 1 : 0)
-          + (input.previousPublished?.visible === records.visible ? 1 : 0)
+          (input.previous?.matched.read.ids() === matched ? 1 : 0)
+          + (input.previous?.ordered.read.ids() === ordered ? 1 : 0)
+          + (input.previous?.visible.read.ids() === visible ? 1 : 0)
         )
       ),
       changedRecordCount

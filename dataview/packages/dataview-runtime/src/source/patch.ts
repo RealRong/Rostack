@@ -3,9 +3,9 @@ import {
   store
 } from '@shared/core'
 import {
-  createEntityDeltaSync,
   type EntityDelta
-} from '@shared/projector'
+} from '@shared/projector/delta'
+import { createEntityDeltaSync } from '@shared/projector/sync'
 import type {
   EntitySource
 } from '@dataview/runtime/source/contracts'

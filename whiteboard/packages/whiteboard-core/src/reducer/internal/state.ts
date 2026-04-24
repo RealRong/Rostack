@@ -1,8 +1,7 @@
 import { json } from '@shared/core'
-import { idDelta } from '@shared/projector'
+import { idDelta } from '@shared/projector/delta'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/overlay'
-import type { HistoryKeyCollector } from '@whiteboard/core/spec/history'
 import type {
   Background,
   CanvasItemRef,
@@ -16,7 +15,6 @@ import type {
   Group,
   GroupId,
   Invalidation,
-  KernelReduceResult,
   MindmapId,
   MindmapLayoutSpec,
   MindmapMemberRecord,
@@ -41,21 +39,14 @@ export type DraftDocument = {
 export interface WhiteboardInverse<TOp> {
   prepend(op: TOp): void
   prependMany(ops: readonly TOp[]): void
-  append(op: TOp): void
-  appendMany(ops: readonly TOp[]): void
-  isEmpty(): boolean
-  clear(): void
-  finish(): readonly TOp[]
 }
 
 export type WhiteboardReduceState = {
-  base: Document
   draft: DraftDocument
   inverse: WhiteboardInverse<Operation>
-  footprint: HistoryKeyCollector
   changes: ChangeSet
   invalidation: Invalidation
-  shortCircuit?: KernelReduceResult
+  replaced: boolean
   queue: {
     mindmapLayout: MindmapId[]
     mindmapLayoutSet: Set<MindmapId>

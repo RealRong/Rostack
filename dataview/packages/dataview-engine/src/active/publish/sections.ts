@@ -3,9 +3,9 @@ import {
   equal,
 } from '@shared/core'
 import {
-  publishEntityList,
   type EntityDelta
-} from '@shared/projector'
+} from '@shared/projector/delta'
+import { publishEntityList } from '@shared/projector/publish'
 import type {
   RecordId,
   View,

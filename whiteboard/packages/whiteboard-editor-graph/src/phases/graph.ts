@@ -222,7 +222,6 @@ export const graphPhase = defineEditorGraphPhase({
 
     return {
       action: 'sync',
-      change: undefined,
       metrics: toPhaseMetrics(count),
       emit: {
         spatial: createSpatialPatchScope({

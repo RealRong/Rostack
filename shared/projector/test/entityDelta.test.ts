@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { entityDelta, idDelta } from '../src'
+import { entityDelta, idDelta } from '../src/delta'
 
 describe('entityDelta', () => {
   test('normalizes remove-over-set conflicts', () => {

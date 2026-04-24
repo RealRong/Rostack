@@ -8,7 +8,7 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import { isListEqual } from '@shared/projector'
+import { isListEqual } from '@shared/projector/publish'
 import type { Input, MindmapView } from '../../contracts/editor'
 import type { GraphDelta } from '../../contracts/delta'
 import type {

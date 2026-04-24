@@ -1,4 +1,4 @@
-import type { EntityDelta as SharedEntityDelta } from '@shared/projector'
+import type { EntityDelta as SharedEntityDelta } from '@shared/projector/delta'
 import type {
   CustomFieldId,
   FieldId,
@@ -11,7 +11,7 @@ import type {
   SectionId
 } from '@dataview/engine/contracts/shared'
 
-export type { EntityDelta } from '@shared/projector'
+export type { EntityDelta } from '@shared/projector/delta'
 
 export interface DocumentDelta {
   reset?: true

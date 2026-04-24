@@ -1,5 +1,4 @@
 import {
-  definePhase,
   type ProjectorContext,
   type ProjectorPhase
 } from '@shared/projector'
@@ -27,7 +26,6 @@ export type EditorGraphPhase<
 > = ProjectorPhase<
   TName,
   EditorGraphContext<EditorPhaseScopeMap[TName]>,
-  undefined,
   EditorGraphPhaseMetrics,
   EditorPhaseName,
   EditorPhaseScopeMap
@@ -37,7 +35,7 @@ export const defineEditorGraphPhase = <
   TName extends EditorPhaseName
 >(
   phase: EditorGraphPhase<TName>
-): EditorGraphPhase<TName> => definePhase(phase)
+): EditorGraphPhase<TName> => phase
 
 export const toPhaseMetrics = (
   count: number

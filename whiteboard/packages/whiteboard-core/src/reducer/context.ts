@@ -1,8 +1,6 @@
 import type { ReducerContext } from '@shared/reducer'
 import {
-  createHistoryKeyCollector,
-  type HistoryFootprint,
-  type HistoryKeyCollector
+  type HistoryFootprint
 } from '@whiteboard/core/spec/history'
 import type {
   Document,
@@ -112,64 +110,12 @@ const toWhiteboardOrigin = (
 const createMirroredInverse = (
   base: BaseReduceContext
 ): WhiteboardInverse<Operation> => {
-  const prefix: Operation[] = []
-  const suffix: Operation[] = []
-
   return {
     prepend: (op: Operation) => {
-      prefix.push(op)
-      base.inverse(op)
+      base.inverseMany([op])
     },
     prependMany: (ops: readonly Operation[]) => {
-      for (let index = ops.length - 1; index >= 0; index -= 1) {
-        const op = ops[index]
-        if (op !== undefined) {
-          prefix.push(op)
-        }
-      }
       base.inverseMany(ops)
-    },
-    append: (_op: Operation) => {
-      throw new Error('Whiteboard reducer internal append is not supported.')
-    },
-    appendMany: (_ops: readonly Operation[]) => {
-      throw new Error('Whiteboard reducer internal appendMany is not supported.')
-    },
-    isEmpty: () => prefix.length === 0 && suffix.length === 0,
-    clear: () => {
-      prefix.length = 0
-      suffix.length = 0
-    },
-    finish: () => [
-      ...prefix.slice().reverse(),
-      ...suffix
-    ]
-  }
-}
-
-const createMirroredFootprint = (
-  base: BaseReduceContext
-): HistoryKeyCollector => {
-  const collector = createHistoryKeyCollector()
-
-  const add = (
-    key: HistoryFootprint[number]
-  ) => {
-    collector.add(key)
-    base.footprint(key)
-  }
-
-  return {
-    add,
-    addMany: (keys: Iterable<HistoryFootprint[number]>) => {
-      for (const key of keys) {
-        add(key)
-      }
-    },
-    has: (key: HistoryFootprint[number]) => collector.has(key),
-    finish: () => collector.finish(),
-    clear: () => {
-      collector.clear()
     }
   }
 }
@@ -178,12 +124,11 @@ export const createWhiteboardReduceContext = (
   base: BaseReduceContext
 ): WhiteboardReduceCtx => {
   const state: WhiteboardReduceState = {
-    base: base.base,
-    draft: createDraftDocument(base.base),
+    draft: createDraftDocument(base.doc()),
     inverse: createMirroredInverse(base),
-    footprint: createMirroredFootprint(base),
     changes: createChangeSet(),
     invalidation: createInvalidation(),
+    replaced: false,
     queue: {
       mindmapLayout: [],
       mindmapLayoutSet: new Set()
@@ -192,7 +137,6 @@ export const createWhiteboardReduceContext = (
 
   let ctx!: WhiteboardReduceContextInternal
   ctx = {
-    base: base.base,
     origin: toWhiteboardOrigin(base.origin),
     document: {
       replace: (document) => {
@@ -361,22 +305,13 @@ export const createWhiteboardReduceContext = (
     },
     history: {
       add: (key) => {
-        state.footprint.add(key)
+        base.footprint(key)
       },
       addMany: (keys) => {
-        state.footprint.addMany(keys)
+        for (const key of keys) {
+          base.footprint(key)
+        }
       }
-    },
-    issue: (code, message, details) => {
-      base.issue({
-        code,
-        message,
-        ...(details === undefined
-          ? {}
-          : {
-              details
-            })
-      })
     },
     fail: (code, message, details) => base.fail({
       code,
@@ -387,7 +322,6 @@ export const createWhiteboardReduceContext = (
             details
           })
     }),
-    stop: () => base.stop(),
     [INTERNAL]: {
       base,
       state

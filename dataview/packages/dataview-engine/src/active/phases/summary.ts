@@ -7,7 +7,7 @@ import {
   readActiveView,
   toActivePhaseMetrics
 } from '../projector/context'
-import { createPublishPhaseScope } from '../projector/scopes/publishScope'
+import { createPublishPhaseScope } from '../projector/scope'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,
@@ -23,7 +23,6 @@ export const activeSummaryPhase = defineActiveProjectorPhase({
     if (!activeViewId || !view || !plan) {
       return {
         action: 'reuse',
-        change: undefined,
         metrics: EMPTY_METRICS
       }
     }
@@ -49,7 +48,6 @@ export const activeSummaryPhase = defineActiveProjectorPhase({
 
     return {
       action: result.action,
-      change: undefined,
       metrics: toActivePhaseMetrics({
         deriveMs: result.deriveMs,
         publishMs: result.publishMs,

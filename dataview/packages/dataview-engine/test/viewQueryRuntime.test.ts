@@ -172,11 +172,6 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     plan: previousPlan,
     index
   }).state
-  const previousPublished = {
-    matched: previousState.matched.read.ids(),
-    ordered: previousState.ordered.read.ids(),
-    visible: previousState.visible.read.ids()
-  }
 
   const result = runQueryStage({
     reader: context.reader,
@@ -195,14 +190,13 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     plan: nextPlan,
     previousPlan,
     index,
-    previous: previousState,
-    previousPublished
+    previous: previousState
   })
 
   assert.equal(previousPlan.executionKey, nextPlan.executionKey)
   assert.equal(result.action, 'reuse')
   assert.equal(result.state, previousState)
-  assert.equal(result.records, previousPublished)
+  assert.equal(result.publishMs, 0)
 })
 
 test('engine.active.query reuses matched and ordered ids on filter-only sync', () => {
@@ -256,11 +250,6 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
     plan: previousPlan,
     index
   })
-  const previousPublished = {
-    matched: previousStage.state.matched.read.ids(),
-    ordered: previousStage.state.ordered.read.ids(),
-    visible: previousStage.state.visible.read.ids()
-  }
 
   const result = runQueryStage({
     reader: context.reader,
@@ -279,8 +268,7 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
     plan: nextPlan,
     previousPlan,
     index,
-    previous: previousStage.state,
-    previousPublished
+    previous: previousStage.state
   })
 
   assert.equal(result.action, 'sync')
@@ -288,8 +276,6 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
   assert.equal(result.state.ordered, previousStage.state.ordered)
   assert.equal(result.state.matched.read.ids(), previousStage.state.matched.read.ids())
   assert.equal(result.state.ordered.read.ids(), previousStage.state.ordered.read.ids())
-  assert.equal(result.records.matched, previousPublished.matched)
-  assert.equal(result.records.ordered, previousPublished.ordered)
   assert.deepEqual([...result.state.visible.read.ids()].sort(), ['rec_1', 'rec_3'])
   assert.deepEqual(result.delta.added, [])
   assert.deepEqual(result.delta.removed, ['rec_2'])

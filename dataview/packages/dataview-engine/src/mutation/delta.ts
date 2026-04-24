@@ -17,7 +17,7 @@ import {
 import {
   entityDelta,
   type EntityDelta
-} from '@shared/projector'
+} from '@shared/projector/delta'
 import { equal } from '@shared/core'
 import type {
   ActiveDelta,

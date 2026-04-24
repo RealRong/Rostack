@@ -1,8 +1,4 @@
 import type {
-  Field,
-  FieldId
-} from '@dataview/core/contracts'
-import type {
   IndexDelta,
   IndexState
 } from '@dataview/engine/active/index/contracts'
@@ -24,7 +20,6 @@ import type {
   ViewStageMetrics,
   ViewTrace
 } from '@dataview/engine/contracts/performance'
-import type { ViewRecords } from '@dataview/engine/contracts/shared'
 import type { ViewState } from '@dataview/engine/contracts/view'
 import type { DocumentReader } from '@dataview/engine/document/reader'
 
@@ -37,7 +32,6 @@ export type ActivePhaseName =
 export interface ActiveProjectorInput {
   read: {
     reader: DocumentReader
-    fieldsById: ReadonlyMap<FieldId, Field>
   }
   view: {
     plan?: ViewPlan
@@ -48,10 +42,6 @@ export interface ActiveProjectorInput {
     delta?: IndexDelta
   }
   impact: BaseImpact
-}
-
-export interface ActiveProjectorRunInput extends ActiveProjectorInput {
-  runId: number
 }
 
 export interface ActivePhaseMetrics extends ViewStageMetrics {
@@ -95,7 +85,6 @@ export interface ActivePhaseScopeMap {
 export interface ActiveProjectorWorking {
   query: {
     state: QueryPhaseState
-    records: ViewRecords
   }
   membership: {
     state: MembershipPhaseState

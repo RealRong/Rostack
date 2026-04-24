@@ -25,8 +25,6 @@ test('operation apply returns shared mutation shape', () => {
   }])
 
   assert.ok(result.doc.fields.byId.field_notes)
-  assert.equal(result.forward.length, 1)
-  assert.equal(result.forward[0]?.type, 'document.field.put')
   assert.equal(result.inverse.length, 1)
   assert.equal(result.inverse[0]?.type, 'document.field.remove')
   assert.ok(result.extra.trace.fields?.inserted?.has('field_notes'))

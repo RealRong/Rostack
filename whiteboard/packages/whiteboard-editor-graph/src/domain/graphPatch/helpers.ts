@@ -1,4 +1,5 @@
-import { idDelta, isListEqual } from '@shared/projector'
+import { idDelta } from '@shared/projector/delta'
+import { isListEqual } from '@shared/projector/publish'
 import type { IdDelta } from '../../contracts/delta'
 
 export type PatchAction = 'unchanged' | 'added' | 'updated' | 'removed'

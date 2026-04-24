@@ -1,4 +1,4 @@
-import { createFlags, publishEntityFamily } from '@shared/projector'
+import { createFlags, publishEntityFamily } from '@shared/projector/publish'
 import type { UiChange, UiSnapshot } from '../../contracts/editor'
 import type { UiPublishDelta } from '../../contracts/delta'
 import type { WorkingState } from '../../contracts/working'

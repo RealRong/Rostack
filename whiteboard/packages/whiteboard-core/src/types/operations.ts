@@ -1,4 +1,4 @@
-import type { IdDelta as SharedIdDelta } from '@shared/projector'
+import type { IdDelta as SharedIdDelta } from '@shared/projector/delta'
 import type { Path } from '@shared/mutation'
 import type {
   Background,

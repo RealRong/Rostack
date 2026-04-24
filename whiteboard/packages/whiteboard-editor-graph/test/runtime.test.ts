@@ -1,8 +1,8 @@
 import {
   assertPhaseOrder,
-  assertPublishedOnce,
-  idDelta
-} from '@shared/projector'
+  assertPublishedOnce
+} from '@shared/projector/testing'
+import { idDelta } from '@shared/projector/delta'
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'

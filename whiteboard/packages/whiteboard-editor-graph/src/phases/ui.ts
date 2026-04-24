@@ -1,4 +1,4 @@
-import { idDelta } from '@shared/projector'
+import { idDelta } from '@shared/projector/delta'
 import type {
   EdgeId,
   NodeId
@@ -321,7 +321,6 @@ export const uiPhase = defineEditorGraphPhase({
       action: publish.revision === revision
         ? 'sync'
         : 'reuse',
-      change: undefined,
       metrics: toPhaseMetrics(
         (scope.reset
           ? context.working.ui.nodes.size + context.working.ui.edges.size

@@ -1,4 +1,4 @@
-import { idDelta } from '@shared/projector'
+import { idDelta } from '@shared/projector/delta'
 import type {
   EdgeId,
   GroupId,

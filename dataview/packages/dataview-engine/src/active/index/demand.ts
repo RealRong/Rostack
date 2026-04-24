@@ -14,6 +14,7 @@ import type {
   IndexReadContext,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
+import { createBucketSpecKey } from '@dataview/engine/active/index/bucket'
 
 const EMPTY_NORMALIZED_INDEX_DEMAND: NormalizedIndexDemand = {
   recordFields: [],
@@ -24,14 +25,6 @@ const EMPTY_NORMALIZED_INDEX_DEMAND: NormalizedIndexDemand = {
 }
 
 export const emptyNormalizedIndexDemand = (): NormalizedIndexDemand => EMPTY_NORMALIZED_INDEX_DEMAND
-
-export const createBucketSpecKey = (
-  spec: BucketSpec
-): string => [
-  spec.fieldId,
-  spec.mode ?? '',
-  spec.interval ?? ''
-].join('\u0000')
 
 const uniqueBucketSpecs = (
   specs: readonly BucketSpec[] = []
@@ -88,17 +81,5 @@ export const normalizeIndexDemand = (
     calculations: calculation.demand.normalize(demand?.calculations)
   }
 }
-
-export const sameBucketSpecs = (
-  left: readonly BucketSpec[],
-  right: readonly BucketSpec[]
-) => left.length === right.length
-  && left.every((spec, index) => {
-    const next = right[index]
-    return next !== undefined
-      && spec.fieldId === next.fieldId
-      && spec.mode === next.mode
-      && spec.interval === next.interval
-  })
 
 export const sameCalculationDemand = calculation.demand.same

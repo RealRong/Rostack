@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   MutationEngine,
-  draftPath,
   mutationApply,
-  path,
   type MutationEngineSpec,
   type MutationIntentTable
 } from '@shared/mutation'
@@ -62,16 +60,16 @@ const createSpec = (): MutationEngineSpec<
         ...ctx,
         total: 0
       }),
-      handlers: {
-        'count.add': (ctx, op) => {
-          ctx.total += op.value
-          draftPath.set(ctx.write(), path.of('count'), ctx.doc().count + op.value)
-          ctx.inverse({
-            type: 'count.add',
-            value: -op.value
-          })
-          ctx.footprint('count')
-        }
+      handle: (ctx, op) => {
+        ctx.total += op.value
+        ctx.replace({
+          count: ctx.doc().count + op.value
+        })
+        ctx.inverseMany([{
+          type: 'count.add',
+          value: -op.value
+        }])
+        ctx.footprint('count')
       },
       done: (ctx) => ({
         total: ctx.doc().count
@@ -310,11 +308,12 @@ describe('MutationEngine', () => {
         >({
           spec: {
             serializeKey: (key) => key,
-            handlers: {
-              'count.add': (ctx, op) => {
-                draftPath.set(ctx.write(), path.of('count'), ctx.doc().count + op.value)
-              }
-            }
+            handle: (ctx, op) => {
+              ctx.replace({
+                count: ctx.doc().count + op.value
+              })
+            },
+            done: () => undefined
           }
         }).reduce({
           doc,

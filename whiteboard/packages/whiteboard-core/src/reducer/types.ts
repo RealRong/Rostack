@@ -42,9 +42,7 @@ import type {
   ResultCode
 } from '@whiteboard/core/types'
 
-export type WhiteboardReduceIssueCode =
-  | ResultCode
-  | 'reducer.handler.missing'
+export type WhiteboardReduceIssueCode = ResultCode
 
 export type WhiteboardReduceExtra = {
   changes: ChangeSet
@@ -69,7 +67,6 @@ export type WhiteboardReduceHistoryApi = {
 }
 
 export interface WhiteboardReduceCtx {
-  readonly base: Document
   readonly origin: Origin
 
   readonly document: {
@@ -142,9 +139,7 @@ export interface WhiteboardReduceCtx {
 
   readonly history: WhiteboardReduceHistoryApi
 
-  issue(code: WhiteboardReduceIssueCode, message: string, details?: unknown): void
-  fail(code: Exclude<WhiteboardReduceIssueCode, 'reducer.handler.missing'>, message: string, details?: unknown): never
-  stop(): never
+  fail(code: WhiteboardReduceIssueCode, message: string, details?: unknown): never
 }
 
 export type WhiteboardReduceResult = ReducerResult<

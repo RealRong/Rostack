@@ -5,7 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./contracts/*": "./src/contracts/*.ts"
+    "./delta": "./src/delta/index.ts",
+    "./publish": "./src/publish/index.ts",
+    "./sync": "./src/sync/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

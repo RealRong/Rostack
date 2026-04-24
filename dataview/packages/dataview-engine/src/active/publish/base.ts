@@ -1,6 +1,4 @@
 import type {
-  Field,
-  FieldId,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -40,7 +38,6 @@ import {
 
 export const publishViewBase = (input: {
   reader: DocumentReader
-  fieldsById: ReadonlyMap<FieldId, Field>
   viewId?: ViewId
   previous?: {
     view?: View
@@ -74,11 +71,11 @@ export const publishViewBase = (input: {
 
   const nextFields = createFieldsProjection({
     fieldIds: view.display.fields,
-    byId: input.fieldsById
+    getField: input.reader.fields.get
   })
   const nextQuery = createQueryProjection({
     view,
-    fieldsById: input.fieldsById
+    reader: input.reader
   })
   const nextTable = createTableProjection({
     view,

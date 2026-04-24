@@ -1,6 +1,5 @@
 export {
   RESET_READ_IMPACT,
-  createEmptyWhiteboardReduceExtra,
   deriveImpact,
   finishWhiteboardReduce,
   readLockViolationMessage,

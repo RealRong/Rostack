@@ -12,8 +12,6 @@ import type {
 } from '../types'
 import { readWhiteboardReduceInternal } from '../context'
 import {
-  createChangeSet,
-  createInvalidation,
   materializeDraftDocument
 } from './state'
 
@@ -152,34 +150,11 @@ export const readLockViolationMessage = (
   return `Locked node relations cannot be ${action}.`
 }
 
-export const createEmptyWhiteboardReduceExtra = (): WhiteboardReduceExtra => ({
-  changes: createChangeSet(),
-  invalidation: createInvalidation(),
-  impact: RESET_READ_IMPACT
-})
-
 export const finishWhiteboardReduce = (
   ctx: WhiteboardReduceCtx
 ): WhiteboardReduceExtra => {
   const internal = readWhiteboardReduceInternal(ctx)
   const { state } = internal
-
-  if (state.shortCircuit) {
-    if (!state.shortCircuit.ok) {
-      ctx.fail(
-        state.shortCircuit.error.code,
-        state.shortCircuit.error.message,
-        state.shortCircuit.error.details
-      )
-    }
-
-    internal.base.replace(state.shortCircuit.data.doc)
-    return {
-      changes: state.shortCircuit.data.changes,
-      invalidation: state.shortCircuit.data.invalidation,
-      impact: state.shortCircuit.data.impact
-    }
-  }
 
   const doc = materializeDraftDocument(state.draft)
   const invalidation = state.invalidation
@@ -187,6 +162,8 @@ export const finishWhiteboardReduce = (
   return {
     changes: state.changes,
     invalidation,
-    impact: deriveImpact(invalidation)
+    impact: state.replaced
+      ? RESET_READ_IMPACT
+      : deriveImpact(invalidation)
   }
 }

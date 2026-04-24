@@ -7,6 +7,7 @@ import type {
   Snapshot
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
+import { createWorking } from '../projector/createWorking'
 import { editorGraphProjectorSpec } from '../projector/spec'
 import { createEditorGraphRuntime } from '../runtime/createEditorGraphRuntime'
 
@@ -49,12 +50,16 @@ export const createEditorGraphHarness = (): EditorGraphHarness => {
 }
 
 export const createEditorGraphProjectorHarness = (): EditorGraphProjectorHarness => {
-  const projector = createProjector(editorGraphProjectorSpec)
+  const working = createWorking()
+  const projector = createProjector({
+    ...editorGraphProjectorSpec,
+    createWorking: () => working
+  })
   let trace: Result['trace']
 
   return {
     snapshot: () => projector.snapshot(),
-    working: () => projector.working(),
+    working: () => working,
     update: (input) => {
       const result = projector.update(input)
       trace = result.trace

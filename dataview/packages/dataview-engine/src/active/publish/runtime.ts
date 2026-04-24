@@ -1,6 +1,4 @@
 import type {
-  Field,
-  FieldId,
   View,
   ViewId
 } from '@dataview/core/contracts'
@@ -21,6 +19,7 @@ import type {
 } from '@dataview/engine/contracts/view'
 import type {
   MembershipPhaseState as MembershipState,
+  QueryPhaseState as QueryState,
   SummaryPhaseDelta as SummaryDelta,
   SummaryPhaseState as SummaryState
 } from '@dataview/engine/active/state'
@@ -85,13 +84,37 @@ const reuseSnapshot = (
     : next
 }
 
+const publishViewRecords = (input: {
+  state: QueryState
+  previous?: ViewRecords
+}): ViewRecords => {
+  const matched = input.state.matched.read.ids()
+  const ordered = input.state.ordered.read.ids()
+  const visible = input.state.visible.read.ids()
+
+  if (
+    input.previous
+    && input.previous.matched === matched
+    && input.previous.ordered === ordered
+    && input.previous.visible === visible
+  ) {
+    return input.previous
+  }
+
+  return {
+    matched,
+    ordered,
+    visible
+  }
+}
+
 export const runPublishStage = (input: {
   reader: DocumentReader
-  fieldsById: ReadonlyMap<FieldId, Field>
   activeViewId: ViewId
   previous?: ViewState
   view: View
-  records: ViewRecords
+  queryState: QueryState
+  previousRecords?: ViewRecords
   membershipState: MembershipState
   previousMembershipState?: MembershipState
   previousSections?: SectionList
@@ -114,6 +137,12 @@ export const runPublishStage = (input: {
   if (!canReusePublished) {
     input.itemIds.gc.clear()
   }
+  const records = publishViewRecords({
+    state: input.queryState,
+    previous: canReusePublished
+      ? input.previousRecords
+      : undefined
+  })
   const sections = publishSections({
     view: input.view,
     sections: input.membershipState,
@@ -136,12 +165,11 @@ export const runPublishStage = (input: {
     previous: canReusePublished
       ? input.previousSummaries
       : undefined,
-    fieldsById: input.fieldsById,
+    reader: input.reader,
     view: input.view
   })
   const base = publishViewBase({
     reader: input.reader,
-    fieldsById: input.fieldsById,
     viewId: input.activeViewId,
     previous: canReusePublished && input.previous
       ? {
@@ -158,7 +186,7 @@ export const runPublishStage = (input: {
     ? {
         view: base.view,
         query: base.query,
-        records: input.records,
+        records,
         sections: sections.sections,
         items: sections.items,
         fields: base.fields,

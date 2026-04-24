@@ -15,7 +15,6 @@ export const createProjector = <
   TChange,
   TPhaseName extends string,
   TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>,
-  TPhaseChange = unknown,
   TPhaseMetrics = unknown
 >(
   spec: projector.Spec<
@@ -25,12 +24,10 @@ export const createProjector = <
     TChange,
     TPhaseName,
     TScopeMap,
-    TPhaseChange,
     TPhaseMetrics
   >
 ): projector.Instance<
   TInput,
-  TWorking,
   TSnapshot,
   TChange,
   TPhaseName,
@@ -44,7 +41,6 @@ export const createProjector = <
       TSnapshot,
       TPhaseName,
       TScopeMap,
-      TPhaseChange,
       TPhaseMetrics
     >
   >(spec.phases)
@@ -61,7 +57,6 @@ export const createProjector = <
 
   return {
     snapshot: () => state.snapshot,
-    working: () => state.working,
     update: (input) => {
       const result = runProjectorUpdate({
         spec,

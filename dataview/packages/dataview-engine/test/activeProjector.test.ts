@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import {
   assertPhaseOrder,
   createHarness
-} from '@shared/projector'
+} from '@shared/projector/testing'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
 import {
@@ -177,7 +177,6 @@ const createProjectorInput = (input: {
   document: ReturnType<typeof createDocument> | ReturnType<typeof createEmptyDocument>
   previousPlan?: ReturnType<typeof resolveViewPlan>
   trace?: Parameters<typeof createBaseImpact>[0]
-  runId: number
 }) => {
   const read = createDocumentReadContext(input.document)
   const plan = resolveViewPlan(read, read.activeViewId)
@@ -189,8 +188,7 @@ const createProjectorInput = (input: {
   return {
     input: {
       read: {
-        reader: read.reader,
-        fieldsById: read.fieldsById
+        reader: read.reader
       },
       view: {
         plan,
@@ -199,8 +197,7 @@ const createProjectorInput = (input: {
       index: {
         state: index
       },
-      impact: createBaseImpact(input.trace ?? {}),
-      runId: input.runId
+      impact: createBaseImpact(input.trace ?? {})
     },
     plan
   }
@@ -211,8 +208,7 @@ test('engine.active.projector bootstrap fans out through query membership summar
   const {
     input
   } = createProjectorInput({
-    document: createDocument(),
-    runId: 1
+    document: createDocument()
   })
 
   const result = harness.update(input)
@@ -231,8 +227,7 @@ test('engine.active.projector bootstrap fans out through query membership summar
 test('engine.active.projector layout change runs publish only and reuses query results', () => {
   const harness = createHarness(activeProjectorSpec)
   const bootstrap = createProjectorInput({
-    document: createDocument(),
-    runId: 1
+    document: createDocument()
   })
   const previous = harness.update(bootstrap.input)
   const layoutDocument = createDocument(createView({
@@ -251,8 +246,7 @@ test('engine.active.projector layout change runs publish only and reuses query r
           }]
         ])
       }
-    },
-    runId: 2
+    }
   })
 
   const result = harness.update(input)
@@ -266,8 +260,7 @@ test('engine.active.projector layout change runs publish only and reuses query r
 test('engine.active.projector resets through publish scope when no active view remains', () => {
   const harness = createHarness(activeProjectorSpec)
   const bootstrap = createProjectorInput({
-    document: createDocument(),
-    runId: 1
+    document: createDocument()
   })
 
   harness.update(bootstrap.input)
@@ -276,8 +269,7 @@ test('engine.active.projector resets through publish scope when no active view r
     input
   } = createProjectorInput({
     document: createEmptyDocument(),
-    previousPlan: bootstrap.plan,
-    runId: 2
+    previousPlan: bootstrap.plan
   })
   const result = harness.update(input)
 

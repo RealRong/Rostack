@@ -3,7 +3,7 @@ import type {
   EdgeId,
   Point
 } from '@whiteboard/core/types'
-import { isListEqual } from '@shared/projector'
+import { isListEqual } from '@shared/projector/publish'
 import type { Input, EdgeView } from '../../contracts/editor'
 import type { GraphDelta } from '../../contracts/delta'
 import type {

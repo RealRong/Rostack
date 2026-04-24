@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  idDelta,
   publishEntityFamily,
   publishEntityList
-} from '../src'
-import type { Family } from '../src'
+} from '../src/publish'
+import type { Family } from '../src/publish'
+import { idDelta } from '../src/delta'
 
 const EMPTY_FAMILY: Family<string, { id: string; value: number }> = {
   ids: [],
@@ -21,8 +21,6 @@ describe('publishEntityList', () => {
 
     expect(result.value).toBe(previous)
     expect(result.delta).toBeUndefined()
-    expect(result.changed).toBe(false)
-    expect(result.action).toBe('reuse')
   })
 
   it('merges membership and explicit touched ids into entity delta', () => {
@@ -39,8 +37,6 @@ describe('publishEntityList', () => {
       set: ['c', 'b'],
       remove: ['a', 'ghost']
     })
-    expect(result.changed).toBe(true)
-    expect(result.action).toBe('sync')
   })
 })
 
@@ -82,7 +78,6 @@ describe('publishEntityFamily', () => {
       order: true,
       set: ['c', 'b']
     })
-    expect(result.action).toBe('sync')
   })
 
   it('reuses previous family when touched ids do not produce effective change', () => {
@@ -97,6 +92,5 @@ describe('publishEntityFamily', () => {
     expect(result.value).toBe(EMPTY_FAMILY)
     expect(result.change).toEqual(idDelta.create<string>())
     expect(result.delta).toBeUndefined()
-    expect(result.action).toBe('reuse')
   })
 })

@@ -20,6 +20,7 @@ import type {
   ViewSearchProjection,
   ViewSortProjection
 } from '@dataview/engine/contracts/view'
+import type { DocumentReader } from '@dataview/engine/document/reader'
 import {
   sameList,
   sameOptionalList,
@@ -64,21 +65,19 @@ const createFilterRuleProjection = (
 
 const createFilterProjection = (input: {
   view: View
-  fieldsById: ReadonlyMap<FieldId, Field>
+  reader: DocumentReader
 }): ViewFilterProjection => ({
   rules: filterApi.rules.list(input.view.filter.rules).map(rule => createFilterRuleProjection(
-    rule.fieldId === 'title'
-      ? input.fieldsById.get('title')
-      : input.fieldsById.get(rule.fieldId),
+    input.reader.fields.get(rule.fieldId),
     rule
   ))
 })
 
 const createSortRuleProjection = (input: {
   rule: SortRuleProjection['rule']
-  fieldsById: ReadonlyMap<string, SortRuleProjection['field']>
+  reader: DocumentReader
 }): SortRuleProjection => {
-  const field = input.fieldsById.get(input.rule.fieldId)
+  const field = input.reader.fields.get(input.rule.fieldId)
 
   return {
     rule: input.rule,
@@ -88,14 +87,14 @@ const createSortRuleProjection = (input: {
 
 const createSortProjection = (input: {
   view: View
-  fieldsById: ReadonlyMap<FieldId, Field>
+  reader: DocumentReader
 }): ViewSortProjection => ({
   rules: input.view.sort.rules.order.flatMap(ruleId => {
     const rule = input.view.sort.rules.byId[ruleId]
     return rule
       ? [createSortRuleProjection({
           rule,
-          fieldsById: input.fieldsById
+          reader: input.reader
         })]
       : []
   })
@@ -103,14 +102,14 @@ const createSortProjection = (input: {
 
 const createGroupProjection = (input: {
   view: View
-  fieldsById: ReadonlyMap<FieldId, Field>
+  reader: DocumentReader
 }): ViewGroupProjection | undefined => {
   const group = input.view.group
   if (!group) {
     return undefined
   }
 
-  const field = input.fieldsById.get(group.fieldId)
+  const field = input.reader.fields.get(group.fieldId)
   if (!field) {
     return {
       fieldId: group.fieldId,
@@ -214,7 +213,7 @@ const equalGroupProjection = (
 
 export const createQueryProjection = (input: {
   view: View
-  fieldsById: ReadonlyMap<FieldId, Field>
+  reader: DocumentReader
 }): ActiveViewQuery => ({
   search: createSearchProjection(input.view.search),
   filters: createFilterProjection(input),

@@ -2,7 +2,7 @@ import type {
   MindmapLayout
 } from '@whiteboard/core/types'
 import { edge as edgeApi } from '@whiteboard/core/edge'
-import { isListEqual } from '@shared/projector'
+import { isListEqual } from '@shared/projector/publish'
 import type {
   ChromeView,
   DrawPreview,

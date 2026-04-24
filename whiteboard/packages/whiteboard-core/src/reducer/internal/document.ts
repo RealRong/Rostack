@@ -1,9 +1,8 @@
-import { ok } from '@whiteboard/core/result'
 import type { Document } from '@whiteboard/core/types'
-import { RESET_READ_IMPACT } from './finalize'
 import {
   cloneBackground,
   createChangeSet,
+  createDraftDocument,
   createInvalidation,
   markBackgroundTouched,
   materializeDraftDocument,
@@ -18,26 +17,22 @@ export const replaceDocument = (
     type: 'document.replace',
     document: materializeDraftDocument(state.draft)
   })
-  state.shortCircuit = ok({
-    doc: document,
-    changes: {
-      ...createChangeSet(),
-      document: true,
-      background: true,
-      canvasOrder: true
-    },
-    invalidation: {
-      ...createInvalidation(),
-      document: true,
-      background: true,
-      canvasOrder: true
-    },
-    inverse: [],
-    history: {
-      footprint: []
-    },
-    impact: RESET_READ_IMPACT
-  })
+  state.draft = createDraftDocument(document)
+  state.changes = {
+    ...createChangeSet(),
+    document: true,
+    background: true,
+    canvasOrder: true
+  }
+  state.invalidation = {
+    ...createInvalidation(),
+    document: true,
+    background: true,
+    canvasOrder: true
+  }
+  state.replaced = true
+  state.queue.mindmapLayout = []
+  state.queue.mindmapLayoutSet.clear()
 }
 
 export const setDocumentBackground = (

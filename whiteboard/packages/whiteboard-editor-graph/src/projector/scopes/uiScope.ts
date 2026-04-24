@@ -2,7 +2,7 @@ import {
   idDelta,
   keySet,
   type KeySet
-} from '@shared/projector'
+} from '@shared/projector/delta'
 import type {
   EdgeId,
   MindmapId,

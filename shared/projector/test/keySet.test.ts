@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { keySet } from '../src'
+import { keySet } from '../src/delta'
 
 describe('keySet', () => {
   test('unions some sets and preserves all', () => {

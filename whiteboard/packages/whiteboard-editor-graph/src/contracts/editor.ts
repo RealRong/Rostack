@@ -30,11 +30,13 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type {
-  Family,
-  Flags,
   ProjectorTrace,
-  Revision,
+  Revision
 } from '@shared/projector'
+import type {
+  Family,
+  Flags
+} from '@shared/projector/publish'
 import type { IdDelta } from './delta'
 import type { SpatialRead } from '../domain/spatial/contracts'
 

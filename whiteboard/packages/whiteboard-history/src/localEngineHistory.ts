@@ -1,6 +1,8 @@
 import { store } from '@shared/core'
-import { sync } from '@whiteboard/core/spec/operation'
-import type { Operation, Origin } from '@whiteboard/core/types'
+import { history as mutationHistory } from '@shared/mutation'
+import type { HistoryFootprint } from '@whiteboard/core/spec/history'
+import { META } from '@whiteboard/core/spec/operation'
+import type { Operation } from '@whiteboard/core/types'
 import type { Engine, EngineWrites } from '@whiteboard/engine'
 import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 import type { CommandResult } from '@whiteboard/engine/types/result'
@@ -10,25 +12,11 @@ import type {
   LocalEngineHistoryConfig
 } from '@whiteboard/history/types'
 
-type HistoryEntry = {
-  forward: readonly Operation[]
-  inverse: readonly Operation[]
-}
-
 export const DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG: LocalEngineHistoryConfig = {
   enabled: true,
   capacity: 100,
   captureSystem: false,
   captureRemote: false
-}
-
-const EMPTY_STATE: HistoryState = {
-  canUndo: false,
-  canRedo: false,
-  undoDepth: 0,
-  redoDepth: 0,
-  invalidatedDepth: 0,
-  isApplying: false
 }
 
 const readCancelled = (
@@ -42,7 +30,7 @@ const readCancelled = (
 })
 
 const shouldCaptureOrigin = (
-  origin: Origin,
+  origin: EngineWrite['origin'],
   config: LocalEngineHistoryConfig
 ): boolean => {
   if (origin === 'system') {
@@ -64,75 +52,47 @@ export const createLocalEngineHistory = (
     ...DEFAULT_LOCAL_ENGINE_HISTORY_CONFIG,
     ...(config ?? {})
   }
-  const state = store.createValueStore<HistoryState>(EMPTY_STATE)
-
-  let undoStack: HistoryEntry[] = []
-  let redoStack: HistoryEntry[] = []
-  let isApplying = false
-  let lastUpdatedAt: number | undefined
+  const controller = mutationHistory.create<
+    Operation,
+    HistoryFootprint[number],
+    EngineWrite
+  >({
+    capacity: resolvedConfig.capacity,
+    conflicts: () => false,
+    track: (write) => (
+      resolvedConfig.enabled
+      && shouldCaptureOrigin(write.origin, resolvedConfig)
+    )
+  })
+  const state = store.createValueStore<HistoryState>({
+    ...mutationHistory.emptyState(),
+    lastUpdatedAt: undefined
+  })
 
   const publish = () => {
-    lastUpdatedAt = Date.now()
+    const current = controller.state()
     state.set({
-      canUndo: undoStack.length > 0,
-      canRedo: redoStack.length > 0,
-      undoDepth: undoStack.length,
-      redoDepth: redoStack.length,
-      invalidatedDepth: 0,
-      isApplying,
-      lastUpdatedAt
+      ...current,
+      lastUpdatedAt: Date.now()
     })
-  }
-
-  const trimUndo = () => {
-    const capacity = Math.max(0, resolvedConfig.capacity)
-    if (capacity === 0) {
-      undoStack = []
-      return
-    }
-    if (undoStack.length > capacity) {
-      undoStack.splice(0, undoStack.length - capacity)
-    }
-  }
-
-  const clearStacks = () => {
-    undoStack = []
-    redoStack = []
   }
 
   const captureWrite = (
     write: EngineWrite
   ) => {
-    if (isApplying) {
-      return
-    }
-
-    if (write.forward.some((op) => sync.isCheckpointOnly(op))) {
+    if (write.forward.some((op) => META[op.type].sync === 'checkpoint')) {
       if (!shouldCaptureOrigin(write.origin, resolvedConfig)) {
         return
       }
-      clearStacks()
+      if (controller.clear()) {
+        publish()
+      }
+      return
+    }
+
+    if (controller.capture(write)) {
       publish()
-      return
     }
-
-    if (!resolvedConfig.enabled) {
-      return
-    }
-    if (!shouldCaptureOrigin(write.origin, resolvedConfig)) {
-      return
-    }
-    if (write.forward.length === 0 || write.inverse.length === 0) {
-      return
-    }
-
-    undoStack.push({
-      forward: write.forward,
-      inverse: write.inverse
-    })
-    redoStack = []
-    trimUndo()
-    publish()
   }
 
   engine.writes.subscribe(captureWrite)
@@ -141,58 +101,49 @@ export const createLocalEngineHistory = (
     get: state.get,
     subscribe: state.subscribe,
     clear: () => {
-      clearStacks()
-      isApplying = false
-      publish()
+      if (controller.clear()) {
+        publish()
+      }
     },
     undo: () => {
-      const entry = undoStack[undoStack.length - 1]
-      if (!entry) {
+      const operations = controller.undo()
+      if (!operations) {
         return readCancelled('Nothing to undo.')
       }
 
-      undoStack = undoStack.slice(0, -1)
-      isApplying = true
       publish()
 
-      const result = engine.apply(entry.inverse, {
+      const result = engine.apply(operations, {
         origin: 'system'
       })
       if (!result.ok) {
-        undoStack = [...undoStack, entry]
-        isApplying = false
+        controller.cancel('restore')
         publish()
         return result
       }
 
-      redoStack = [...redoStack, entry]
-      isApplying = false
+      controller.confirm()
       publish()
       return result
     },
     redo: () => {
-      const entry = redoStack[redoStack.length - 1]
-      if (!entry) {
+      const operations = controller.redo()
+      if (!operations) {
         return readCancelled('Nothing to redo.')
       }
 
-      redoStack = redoStack.slice(0, -1)
-      isApplying = true
       publish()
 
-      const result = engine.apply(entry.forward, {
+      const result = engine.apply(operations, {
         origin: 'system'
       })
       if (!result.ok) {
-        redoStack = [...redoStack, entry]
-        isApplying = false
+        controller.cancel('restore')
         publish()
         return result
       }
 
-      undoStack = [...undoStack, entry]
-      trimUndo()
-      isApplying = false
+      controller.confirm()
       publish()
       return result
     }

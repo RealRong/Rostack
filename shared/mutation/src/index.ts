@@ -15,6 +15,20 @@ export type {
   ApplyResult,
   Model
 } from './apply'
+export { collab } from './collab'
+export type {
+  Change,
+  Checkpoint,
+  CollabEngine,
+  CollabSession,
+  CollabStore
+} from './collab'
+export { history } from './history'
+export type {
+  CaptureOptions,
+  HistoryController,
+  HistoryState
+} from './history'
 export { cowDraft, draftList, draftPath } from './draft'
 export type { Draft, DraftFactory } from './draft'
 export type { Origin, Write, WriteStream } from './write'

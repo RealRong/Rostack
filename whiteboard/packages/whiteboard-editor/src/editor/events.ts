@@ -1,5 +1,5 @@
 import { equal } from '@shared/core'
-import { sync } from '@whiteboard/core/spec/operation'
+import { META } from '@whiteboard/core/spec/operation'
 import type { Engine } from '@whiteboard/engine'
 import type { DocumentRead } from '@whiteboard/editor/document/read'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -54,7 +54,7 @@ export const createEditorEvents = ({
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()
   const unsubscribeWrite = engine.writes.subscribe((write) => {
-    if (write.forward.some((op) => sync.isCheckpointOnly(op))) {
+    if (write.forward.some((op) => META[op.type].sync === 'checkpoint')) {
       session.reset()
       resetHost()
       return

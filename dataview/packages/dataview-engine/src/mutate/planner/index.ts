@@ -55,9 +55,7 @@ export const planActions = (input: {
       }
     },
     previewApply: (document, operations) => {
-      const context = operation.createContext(document)
-      operation.reduce.all(context, operations)
-      return context.finish().document
+      return operation.preview(document, operations)
     },
     stopOnError: true
   })

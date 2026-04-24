@@ -43,6 +43,7 @@ test('engine exposes node create footprint through command results', () => {
       })
     ])
   )
+  assert.equal(result.write.extra.changes.nodes.added.has(result.data.nodeId), true)
 })
 
 test('engine maps mindmap topic updates to node + mindmap history keys', () => {

@@ -9,6 +9,8 @@
     "./meta": "./src/meta.ts",
     "./compiler": "./src/compiler.ts",
     "./apply": "./src/apply.ts",
+    "./collab": "./src/collab.ts",
+    "./history": "./src/history.ts",
     "./draft": "./src/draft.ts",
     "./write": "./src/write.ts"
   },

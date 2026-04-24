@@ -48,12 +48,9 @@ import type {
   CommitResult,
   CreatedEntities
 } from '@dataview/engine/contracts/result'
-import {
-  clearHistory,
-  clearRedo,
-  createWriteHistory,
-  pushUndo
-} from '@dataview/engine/runtime/history'
+import type {
+  EngineWrite
+} from '@dataview/engine/contracts/write'
 import {
   summarizeImpact,
   toTraceKind
@@ -73,12 +70,14 @@ type Draft<TResult extends CommitResult = CommitResult> =
       ok: false
       result: TResult
     }
-  | {
+    | {
       ok: true
       kind: Kind
+      origin: EngineWrite['origin']
       doc: DataDoc
-      history: EngineState['history']
       impact: CommitImpact
+      forward: readonly DocumentOperation[]
+      inverse: readonly DocumentOperation[]
       result: TResult
       planMs?: number
       ms?: number
@@ -111,8 +110,7 @@ const createdFromImpact = (
 const replayResult = (
   base: EngineState,
   kind: 'undo' | 'redo',
-  operations: readonly DocumentOperation[],
-  history: EngineState['history']
+  operations: readonly DocumentOperation[]
 ): Draft<CommitResult> => {
   const startedAt = now()
   const applied = operation.apply(base.doc, operations)
@@ -120,20 +118,23 @@ const replayResult = (
   return {
     ok: true,
     kind,
-    doc: applied.document,
-    history,
-    impact: applied.impact,
+    origin: 'history',
+    doc: applied.doc,
+    impact: applied.extra.impact,
+    forward: applied.forward,
+    inverse: applied.inverse,
     result: {
       issues: [],
       applied: true,
-      summary: impact.summary(applied.impact)
+      summary: impact.summary(applied.extra.impact)
     },
     ms: now() - startedAt
   }
 }
 
 const writePlan = (
-  batch: PlannedWriteBatch
+  batch: PlannedWriteBatch,
+  origin: EngineWrite['origin']
 ): Plan<ActionResult> => base => {
   if (!batch.canApply || !batch.operations.length) {
     return {
@@ -147,36 +148,64 @@ const writePlan = (
 
   const startedAt = now()
   const applied = operation.apply(base.doc, batch.operations)
-  const history = clearRedo(base.history)
-  const nextHistory = base.history.capacity > 0
-    ? pushUndo(history, {
-        undo: applied.undo,
-        redo: applied.redo
-      })
-    : history
 
   return {
     ok: true,
     kind: 'write',
-    doc: applied.document,
-    history: nextHistory,
-    impact: applied.impact,
+    origin,
+    doc: applied.doc,
+    impact: applied.extra.impact,
+    forward: applied.forward,
+    inverse: applied.inverse,
     result: {
       issues: batch.issues,
       applied: true,
-      summary: impact.summary(applied.impact),
-      created: createdFromImpact(applied.impact)
+      summary: impact.summary(applied.extra.impact),
+      created: createdFromImpact(applied.extra.impact)
     },
     planMs: batch.planMs,
     ms: now() - startedAt
   }
 }
 
+const applyPlan = (
+  operations: readonly DocumentOperation[],
+  origin: EngineWrite['origin']
+): Plan<CommitResult> => base => {
+  if (!operations.length) {
+    return {
+      ok: false,
+      result: {
+        issues: [],
+        applied: false
+      }
+    }
+  }
+
+  const startedAt = now()
+  const applied = operation.apply(base.doc, operations)
+
+  return {
+    ok: true,
+    kind: 'write',
+    origin,
+    doc: applied.doc,
+    impact: applied.extra.impact,
+    forward: applied.forward,
+    inverse: applied.inverse,
+    result: {
+      issues: [],
+      applied: true,
+      summary: impact.summary(applied.extra.impact)
+    },
+    ms: now() - startedAt
+  }
+}
+
 const replayPlan = (
   kind: 'undo' | 'redo',
-  operations: readonly DocumentOperation[],
-  history: EngineState['history']
-): Plan<CommitResult> => base => replayResult(base, kind, operations, history)
+  operations: readonly DocumentOperation[]
+): Plan<CommitResult> => base => replayResult(base, kind, operations)
 
 const loadPlan = (
   doc: DataDoc
@@ -186,9 +215,11 @@ const loadPlan = (
   return {
     ok: true,
     kind: 'load',
+    origin: 'load',
     doc,
-    history: clearHistory(base.history),
     impact: nextImpact,
+    forward: [],
+    inverse: [],
     result: {
       issues: [],
       applied: true,
@@ -204,6 +235,7 @@ const commit = <TResult extends CommitResult>(input: {
   perf: PerformanceRuntime
   capturePerf: boolean
   plan: Plan<TResult>
+  writeListeners: Set<(write: EngineWrite) => void>
 }): TResult => {
   const base = input.runtime.state()
   const startedAt = now()
@@ -247,7 +279,6 @@ const commit = <TResult extends CommitResult>(input: {
   const nextState: EngineState = {
     rev: base.rev + 1,
     doc: draft.doc,
-    history: draft.history,
     active: {
       ...(plan
         ? { plan }
@@ -288,6 +319,18 @@ const commit = <TResult extends CommitResult>(input: {
         }
       : {})
   }
+  const write: EngineWrite = {
+    rev: nextState.rev,
+    at: Date.now(),
+    origin: draft.origin,
+    doc: draft.doc,
+    forward: draft.forward,
+    inverse: draft.inverse,
+    footprint: [],
+    extra: {
+      impact: draft.impact
+    }
+  }
 
   if (
     input.perf.enabled
@@ -316,7 +359,13 @@ const commit = <TResult extends CommitResult>(input: {
     state: nextState,
     result: nextResult
   })
-  return draft.result
+  input.writeListeners.forEach((listener) => {
+    listener(write)
+  })
+  return {
+    ...draft.result,
+    write
+  } as TResult
 }
 
 export const createWriteControl = (input: {
@@ -325,6 +374,7 @@ export const createWriteControl = (input: {
   perf: PerformanceRuntime
   capturePerf: boolean
 }) => {
+  const writeListeners = new Set<(write: EngineWrite) => void>()
   const runPlan = <TResult extends CommitResult>(
     plan: Plan<TResult>
   ) => commit({
@@ -332,19 +382,35 @@ export const createWriteControl = (input: {
     activeRuntime: input.activeRuntime,
     perf: input.perf,
     capturePerf: input.capturePerf,
-    plan
+    plan,
+    writeListeners
   })
 
   return {
-    run: (batch: PlannedWriteBatch): ActionResult => runPlan(writePlan(batch)),
-    load: (doc: DataDoc): CommitResult => runPlan(loadPlan(doc)),
-    history: createWriteHistory({
-      runtime: input.runtime,
-      replay: (
-        kind: 'undo' | 'redo',
-        operations: readonly DocumentOperation[],
-        history: EngineState['history']
-      ) => runPlan(replayPlan(kind, operations, history))
-    })
+    writes: {
+      subscribe: (listener: (write: EngineWrite) => void) => {
+        writeListeners.add(listener)
+        return () => {
+          writeListeners.delete(listener)
+        }
+      }
+    },
+    execute: (
+      batch: PlannedWriteBatch,
+      options?: {
+        origin?: EngineWrite['origin']
+      }
+    ): ActionResult => runPlan(writePlan(batch, options?.origin ?? 'user')),
+    apply: (
+      operations: readonly DocumentOperation[],
+      options?: {
+        origin?: EngineWrite['origin']
+      }
+    ): CommitResult => runPlan(applyPlan(operations, options?.origin ?? 'user')),
+    replay: (
+      kind: 'undo' | 'redo',
+      operations: readonly DocumentOperation[]
+    ): CommitResult => runPlan(replayPlan(kind, operations)),
+    load: (doc: DataDoc): CommitResult => runPlan(loadPlan(doc))
   }
 }

@@ -116,10 +116,12 @@ export const createEngine = ({
       at: Date.now(),
       origin: draft.origin,
       doc: nextDocument,
-      changes: draft.changes,
       forward: draft.ops,
       inverse: draft.inverse,
-      footprint: draft.history.footprint
+      footprint: draft.history.footprint,
+      extra: {
+        changes: draft.changes
+      }
     }
     publishEngine(state, nextPublish)
     state.writeListeners.forEach((listener) => {

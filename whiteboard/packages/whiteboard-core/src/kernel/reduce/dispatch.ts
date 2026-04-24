@@ -7,13 +7,13 @@ import { handleNodeOperation } from '@whiteboard/core/kernel/reduce/handlers/nod
 import { handleEdgeOperation } from '@whiteboard/core/kernel/reduce/handlers/edge'
 import { handleGroupOperation } from '@whiteboard/core/kernel/reduce/handlers/group'
 import { handleMindmapOperation } from '@whiteboard/core/kernel/reduce/handlers/mindmap'
-import { meta } from '@whiteboard/core/spec/operation'
+import { META } from '@whiteboard/core/spec/operation'
 
 export const dispatchOperation = (
   tx: ReducerTx,
   operation: Operation
 ) => {
-  switch (meta.get(operation.type).reducer) {
+  switch (META[operation.type].family) {
     case 'document':
       handleDocumentOperation(tx, operation as Parameters<typeof handleDocumentOperation>[1])
       return

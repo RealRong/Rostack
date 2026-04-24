@@ -11,15 +11,6 @@ export const reduceOperation = (
   reduceOperationMutation(context, operation)
 }
 
-export const reduceDocumentOperation = (
-  document: DataDoc,
-  operation: DocumentOperation
-): DataDoc => {
-  const context = createDocumentMutationContext(document)
-  reduceOperation(context, operation)
-  return context.finish().document
-}
-
 export const reduceOperations = (
   context: DocumentMutationContext,
   operations: readonly DocumentOperation[]
@@ -29,11 +20,11 @@ export const reduceOperations = (
   }
 }
 
-export const reduceDocumentOperations = (
+export const previewOperations = (
   document: DataDoc,
   operations: readonly DocumentOperation[]
 ): DataDoc => {
   const context = createDocumentMutationContext(document)
   reduceOperations(context, operations)
-  return context.finish().document
+  return context.finish().doc
 }

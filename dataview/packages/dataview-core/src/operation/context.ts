@@ -12,7 +12,7 @@ import {
 } from '@shared/mutation'
 
 export interface DocumentMutationResult {
-  document: DataDoc
+  doc: DataDoc
   impact: CommitImpact
   inverse: readonly DocumentOperation[]
 }
@@ -21,9 +21,9 @@ export interface DocumentMutationContext {
   readonly base: DataDoc
   readonly impact: CommitImpact
   readonly inverse: InverseBuilder<DocumentOperation>
-  document(): DataDoc
-  writeDocument(): DataDoc
-  replaceDocument(document: DataDoc): DataDoc
+  doc(): DataDoc
+  write(): DataDoc
+  replace(document: DataDoc): DataDoc
   finish(): DocumentMutationResult
 }
 
@@ -42,9 +42,9 @@ export const createDocumentMutationContext = (
     base: document,
     impact,
     inverse,
-    document: () => draft.doc(),
-    writeDocument: () => draft.write(),
-    replaceDocument: (nextDocument) => {
+    doc: () => draft.doc(),
+    write: () => draft.write(),
+    replace: (nextDocument) => {
       draft = createDraft(nextDocument)
       return draft.doc()
     },
@@ -52,7 +52,7 @@ export const createDocumentMutationContext = (
       const nextDocument = draft.done()
       commitImpact.finalize(impact)
       return {
-        document: nextDocument,
+        doc: nextDocument,
         impact,
         inverse: inverse.finish()
       }

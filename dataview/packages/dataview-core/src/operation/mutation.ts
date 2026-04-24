@@ -839,10 +839,10 @@ export const reduceOperationMutation = (
   operation: DocumentOperation
 ): void => {
   const effect = reduceOperationEffect(
-    context.document(),
+    context.doc(),
     operation,
     context.impact
   )
-  context.replaceDocument(effect.document)
+  context.replace(effect.document)
   context.inverse.prependMany(effect.inverse)
 }

@@ -1,13 +1,16 @@
 import type {
   Action,
+  DocumentOperation,
   DataDoc
 } from '@dataview/core/contracts'
 import { impact } from '@dataview/core/commit/impact'
 import { document } from '@dataview/core/document'
 import { createBaseImpact } from '@dataview/engine/active/shared/baseImpact'
 import type {
+  ApplyOptions,
   CreateEngineOptions,
-  Engine
+  Engine,
+  ExecuteOptions
 } from '@dataview/engine/contracts/api'
 import { createActiveRuntime } from '@dataview/engine/active/runtime/runtime'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
@@ -24,6 +27,7 @@ import {
 import { createDocumentReadContext } from '@dataview/engine/document/reader'
 import { planActions } from '@dataview/engine/mutate/planner'
 import { createWriteControl } from '@dataview/engine/mutate/commit/runtime'
+import { createEngineHistory } from '@dataview/engine/runtime/history'
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const historyCapacity = Math.max(0, options.history?.capacity ?? 100)
@@ -32,8 +36,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const capturePerformance = Boolean(options.performance?.traces || options.performance?.stats)
   const activeRuntime = createActiveRuntime()
   const initialState = createInitialEngineState({
-    doc: initialDocument,
-    historyCap: historyCapacity
+    doc: initialDocument
   })
   const initialDocumentContext = createDocumentReadContext(initialDocument)
   const initialActive = activeRuntime.update({
@@ -65,15 +68,18 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     perf: performance,
     capturePerf: capturePerformance
   })
-  const dispatch = (action: Action | readonly Action[]) => {
+  const execute = (
+    action: Action | readonly Action[],
+    options?: ExecuteOptions
+  ) => {
     const actions = Array.isArray(action)
       ? action
       : [action]
     if (!capturePerformance) {
-      return write.run(planActions({
+      return write.execute(planActions({
         document: runtime.state().doc,
         actions
-      }))
+      }), options)
     }
 
     const planStart = now()
@@ -82,38 +88,50 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       actions
     })
 
-    return write.run({
+    return write.execute({
       ...batch,
       planMs: now() - planStart
-    })
+    }, options)
   }
+  const apply = (
+    operations: readonly DocumentOperation[],
+    options?: ApplyOptions
+  ) => write.apply(operations, options)
+  const history = createEngineHistory({
+    capacity: historyCapacity,
+    writes: write.writes,
+    replay: write.replay
+  })
   const readDocument = () => runtime.result().snapshot.doc
   const readActiveState = () => runtime.result().snapshot.active
   const fields = createFieldsApi({
     document: readDocument,
-    dispatch
+    dispatch: execute
   })
   const records = createRecordsApi({
     document: readDocument,
-    dispatch
+    dispatch: execute
   })
   const active = createActiveViewApi({
     document: readDocument,
     active: readActiveState,
-    dispatch
+    dispatch: execute
   })
   const views = createViewsApi({
     document: readDocument,
-    dispatch
+    dispatch: execute
   })
 
   return {
     result: runtime.result,
     subscribe: runtime.subscribe,
+    writes: write.writes,
     active,
     views,
     fields,
     records,
+    execute,
+    apply,
     document: {
       get: () => document.clone(readDocument()),
       replace: (nextDocument: DataDoc) => {
@@ -121,15 +139,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
         return document.clone(readDocument())
       }
     },
-    history: {
-      state: write.history.state,
-      canUndo: write.history.canUndo,
-      canRedo: write.history.canRedo,
-      undo: write.history.undo,
-      redo: write.history.redo,
-      clear: write.history.clear
-    },
-    performance: performance.api,
-    dispatch
+    history,
+    performance: performance.api
   }
 }

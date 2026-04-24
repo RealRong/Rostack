@@ -1,5 +1,5 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import { META, sync } from '@whiteboard/core/spec/operation'
+import { META } from '@whiteboard/core/spec/operation'
 import { assertHistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
   SharedChange,
@@ -38,7 +38,10 @@ const assertSharedOperations = (
     if (!isRecord(entry) || typeof entry.type !== 'string') {
       throw new Error('Shared change operation is invalid.')
     }
-    if (!(entry.type in META) || !sync.isLive(entry.type as SharedOperation['type'])) {
+    if (
+      !(entry.type in META)
+      || META[entry.type as SharedOperation['type']].sync === 'checkpoint'
+    ) {
       throw new Error('document.replace cannot appear in shared change log.')
     }
   })

@@ -1,3 +1,4 @@
+import type { WriteStream } from '@shared/mutation'
 import type {
   CanvasItemRef,
   CoreRegistries,
@@ -120,9 +121,7 @@ export interface EnginePublish {
   change: EngineChange
 }
 
-export interface EngineWrites {
-  subscribe(listener: (write: EngineWrite) => void): () => void
-}
+export type EngineWrites = WriteStream<EngineWrite>
 
 export interface EngineNodeQueryItem {
   id: NodeId

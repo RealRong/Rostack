@@ -14,6 +14,7 @@ import type {
   ViewId,
   ViewType
 } from '@dataview/core/contracts'
+import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type {
   HistoryApi,
   HistoryOptions
@@ -24,11 +25,16 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import type {
   ActionResult,
+  CommitResult,
   EngineResult
 } from '@dataview/engine/contracts/result'
 import type {
+  EngineWrites
+} from '@dataview/engine/contracts/write'
+import type {
   ActiveViewApi
 } from '@dataview/engine/contracts/view'
+import type { Origin } from '@shared/mutation'
 
 export type { RecordFieldWriteManyInput } from '@dataview/core/contracts'
 export type {
@@ -51,6 +57,14 @@ export interface CreateEngineOptions {
   document: DataDoc
   history?: HistoryOptions
   performance?: PerformanceOptions
+}
+
+export interface ExecuteOptions {
+  origin?: Origin
+}
+
+export interface ApplyOptions {
+  origin?: Origin
 }
 
 export interface ViewsApi {
@@ -129,6 +143,7 @@ export interface DocumentApi {
 export interface Engine {
   result: () => EngineResult
   subscribe: (listener: (result: EngineResult) => void) => () => void
+  readonly writes: EngineWrites
   active: ActiveViewApi
   views: ViewsApi
   fields: FieldsApi
@@ -136,5 +151,12 @@ export interface Engine {
   document: DocumentApi
   history: HistoryApi
   performance: PerformanceApi
-  dispatch: (action: Action | readonly Action[]) => ActionResult
+  execute: (
+    action: Action | readonly Action[],
+    options?: ExecuteOptions
+  ) => ActionResult
+  apply: (
+    operations: readonly DocumentOperation[],
+    options?: ApplyOptions
+  ) => CommitResult
 }

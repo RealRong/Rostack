@@ -41,7 +41,6 @@ export const createEngineSnapshot = (
 
 export const createInitialEngineState = (input: {
   doc: DataDoc
-  historyCap: number
 }): EngineState => {
   const documentContext = createDocumentReadContext(input.doc)
   const plan = resolveViewPlan(documentContext, documentContext.activeViewId)
@@ -50,11 +49,6 @@ export const createInitialEngineState = (input: {
   return {
     rev: 0,
     doc: input.doc,
-    history: {
-      capacity: input.historyCap,
-      undo: [],
-      redo: []
-    },
     active: {
       ...(plan
         ? { plan }

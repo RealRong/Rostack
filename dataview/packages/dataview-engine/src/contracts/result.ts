@@ -1,6 +1,7 @@
 import type { CommitSummary, CustomFieldId, DataDoc, RecordId, ViewId } from '@dataview/core/contracts'
 import type { EngineDelta } from '@dataview/engine/contracts/delta'
 import type { ViewState } from '@dataview/engine/contracts/view'
+import type { EngineWrite } from '@dataview/engine/contracts/write'
 import type { ValidationIssue } from '@dataview/engine/mutate/issues'
 
 export interface EngineSnapshot {
@@ -18,6 +19,7 @@ export interface CommitResult {
   issues: readonly ValidationIssue[]
   applied: boolean
   summary?: CommitSummary
+  write?: EngineWrite
 }
 
 export interface CreatedEntities {

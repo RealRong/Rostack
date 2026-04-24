@@ -25,25 +25,31 @@ const hasOwn = (
 ): boolean => Object.prototype.hasOwnProperty.call(value, key)
 
 export const meta = {
-  create: <Op extends { type: string }>(
-    table: Record<Op['type'], OpMeta>
-  ): OpMetaTable<Op> => {
+  create: <
+    Op extends { type: string },
+    Table extends OpMetaTable<Op> = OpMetaTable<Op>
+  >(
+    table: Table
+  ): Table => {
     const next = {
       ...table
-    } as OpMetaTable<Op>
+    } as Table
 
-    for (const type of Object.keys(next) as Op['type'][]) {
+    for (const type of Object.keys(next) as (keyof Table)[]) {
       next[type] = Object.freeze({
         ...next[type]
-      })
+      }) as Table[keyof Table]
     }
 
-    return Object.freeze(next)
+    return Object.freeze(next) as Table
   },
-  get: <Op extends { type: string }>(
-    table: OpMetaTable<Op>,
+  get: <
+    Op extends { type: string },
+    Table extends OpMetaTable<Op> = OpMetaTable<Op>
+  >(
+    table: Table,
     input: Op | Op['type']
-  ): OpMeta => {
+  ): Table[Op['type']] => {
     const type = getType(input)
 
     if (!hasOwn(table, type)) {

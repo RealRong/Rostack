@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { meta, type OpMetaTable } from '@shared/mutation'
+import { meta } from '@shared/mutation'
 
 type TestOp =
   | { type: 'doc.rename' }
@@ -35,7 +35,7 @@ describe('meta', () => {
       'doc.reindex': {
         family: 'doc'
       }
-    }) as OpMetaTable<TestOp>
+    })
 
     expect(() => meta.get(
       table,

@@ -5,24 +5,25 @@ import {
   reduceOperationEffect
 } from '@dataview/core/operation/mutation'
 import { impact as commitImpact } from '@dataview/core/commit/impact'
-import { apply } from '@shared/mutation'
+import { apply, type ApplyResult } from '@shared/mutation'
 
-export interface ApplyOperationsResult {
-  document: DataDoc
-  impact: CommitImpact
-  undo: DocumentOperation[]
-  redo: DocumentOperation[]
-}
+export type DocumentApplyResult = ApplyResult<
+  DataDoc,
+  DocumentOperation,
+  never,
+  {
+    impact: CommitImpact
+  }
+>
 
 export const applyOperations = (
   document: DataDoc,
   operations: readonly DocumentOperation[]
-): ApplyOperationsResult => {
-  const result = apply<DataDoc, DocumentOperation, never, {
-    impact: CommitImpact
-  }, {
-    impact: CommitImpact
-  }>({
+): DocumentApplyResult => apply<DataDoc, DocumentOperation, never, {
+  impact: CommitImpact
+}, {
+  impact: CommitImpact
+}>({
     doc: document,
     ops: operations,
     serializeKey: (_key: never) => '',
@@ -47,11 +48,3 @@ export const applyOperations = (
       }
     }
   })
-
-  return {
-    document: result.doc,
-    impact: result.extra.impact,
-    undo: [...result.inverse],
-    redo: [...result.forward]
-  }
-}

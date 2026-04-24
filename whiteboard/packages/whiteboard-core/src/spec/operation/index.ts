@@ -1,15 +1,10 @@
 export {
-  META,
-  meta,
-  sync
-} from '@whiteboard/core/spec/operation/meta'
+  META
+} from './meta'
 
 export type {
   OperationMeta,
   OperationMetaTable,
-  OperationNamespace,
-  OperationReducerFamily,
-  OperationSyncMode,
+  OperationFamily,
   OperationType
-} from '@whiteboard/core/spec/operation/meta'
-
+} from './meta'

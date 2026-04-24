@@ -1400,7 +1400,7 @@ test('view.create resolves duplicate names in the write planner', () => {
     document: createDocument()
   })
 
-  const result = engine.dispatch({
+  const result = engine.execute({
     type: 'view.create',
     input: {
       name: 'Tasks',
@@ -1418,7 +1418,7 @@ test('engine.views.duplicate reuses the shared unique naming rule', () => {
     document: createEmptyDocument()
   })
 
-  const sourceViewId = engine.dispatch({
+  const sourceViewId = engine.execute({
     type: 'view.create',
     input: {
       name: 'Tasks',
@@ -1428,7 +1428,7 @@ test('engine.views.duplicate reuses the shared unique naming rule', () => {
 
   assert.ok(sourceViewId)
 
-  engine.dispatch({
+  engine.execute({
     type: 'view.create',
     input: {
       name: 'Tasks Copy',
@@ -1439,4 +1439,54 @@ test('engine.views.duplicate reuses the shared unique naming rule', () => {
   const createdViewId = engine.views.duplicate(sourceViewId)
   assert.ok(createdViewId)
   assert.equal(engine.views.get(createdViewId!)?.name, 'Tasks Copy 2')
+})
+
+test('engine writes stream emits shared write objects for execute', () => {
+  const engine = createEngineForTest({
+    document: createEmptyDocument()
+  })
+  const writes = []
+  const unsubscribe = engine.writes.subscribe((write) => {
+    writes.push(write)
+  })
+
+  const result = engine.execute({
+    type: 'view.create',
+    input: {
+      name: 'Tasks',
+      type: 'table'
+    }
+  })
+
+  unsubscribe()
+  assert.equal(result.applied, true)
+  assert.equal(writes.length, 1)
+  assert.equal(result.write, writes[0])
+  assert.equal(writes[0]?.origin, 'user')
+  assert.ok(writes[0]?.extra.impact.views?.inserted?.size)
+})
+
+test('engine apply emits shared write objects', () => {
+  const engine = createEngineForTest({
+    document: createEmptyDocument()
+  })
+  const writes = []
+  const unsubscribe = engine.writes.subscribe((write) => {
+    writes.push(write)
+  })
+
+  const result = engine.apply([{
+    type: 'external.version.bump',
+    source: 'test'
+  }], {
+    origin: 'remote'
+  })
+
+  unsubscribe()
+  assert.equal(result.applied, true)
+  assert.equal(writes.length, 1)
+  assert.equal(result.write, writes[0])
+  assert.equal(writes[0]?.origin, 'remote')
+  assert.equal(writes[0]?.forward.length, 1)
+  assert.equal(writes[0]?.extra.impact.external?.versionBumped, true)
 })

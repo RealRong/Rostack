@@ -4,8 +4,8 @@ import type {
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
-import type { GraphRead } from '@whiteboard/editor/read/graph'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type {
   EditCaret,
   EditField
@@ -45,7 +45,7 @@ export const clearSelection = (
 export const startNodeEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
-    document: Pick<DocumentRead, 'node'>
+    document: Pick<EditorDocumentRuntimeSource, 'node'>
     registry: Pick<NodeRegistry, 'get'>
   },
   nodeId: NodeId,
@@ -81,7 +81,7 @@ export const startNodeEdit = (
 export const startEdgeLabelEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
-    document: Pick<DocumentRead, 'edge'>
+    document: Pick<EditorDocumentRuntimeSource, 'edge'>
   },
   edgeId: EdgeId,
   labelId: string,
@@ -109,7 +109,7 @@ export const startEdgeLabelEdit = (
 
 export const removeEdgeRoutePoint = (
   ctx: {
-    graph: Pick<GraphRead, 'edge'>
+    graph: Pick<EditorSceneRuntime, 'edge'>
     write: Pick<EditorWrite, 'edge'>
   },
   edgeId: EdgeId,

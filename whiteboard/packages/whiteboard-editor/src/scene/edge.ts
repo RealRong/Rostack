@@ -10,7 +10,7 @@ import type {
   EdgeLabelUiView as RuntimeEdgeLabelUiView,
   EdgeUiView as RuntimeEdgeUiView,
   EdgeView as RuntimeEdgeView
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 import type {
   Edge,
   EdgeId,
@@ -18,18 +18,18 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
-import type { ProjectionSources } from '@whiteboard/editor/projection/sources'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
+import type { ScenePublishedState } from '@whiteboard/editor/projection/sources'
 import {
   resolveEdgeCapability,
   type EdgeBox,
   type EdgeCapability
-} from '@whiteboard/editor/read/edgeShared'
+} from '@whiteboard/editor/session/edge'
 import {
   toGraphNodeGeometry,
   toSpatialNode,
   type GraphNodeRead
-} from '@whiteboard/editor/read/node'
+} from '@whiteboard/editor/scene/node'
 
 export type EdgeLabelRef = {
   edgeId: EdgeId
@@ -62,7 +62,7 @@ export type EditorEdgeView = {
 }
 
 export type GraphEdgeRead = {
-  committed: DocumentRead['edge']['item']
+  committed: EditorDocumentRuntimeSource['edge']['item']
   graph: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
   ui: store.KeyedReadStore<EdgeId, RuntimeEdgeUiView | undefined>
   view: store.KeyedReadStore<EdgeId, EditorEdgeView | undefined>
@@ -305,7 +305,7 @@ const readLabelMetrics = ({
   published,
   ref
 }: {
-  published: Pick<ProjectionSources, 'edgeGraph'>
+  published: Pick<ScenePublishedState, 'edgeGraph'>
   ref: EdgeLabelRef
 }): Size | undefined => store.read(published.edgeGraph, ref.edgeId)?.route.labels
   .find((entry) => entry.labelId === ref.labelId)?.size
@@ -317,8 +317,8 @@ export const createGraphEdgeRead = ({
   relatedEdges,
   node
 }: {
-  document: Pick<DocumentRead, 'edge' | 'node'>
-  sources: Pick<ProjectionSources, 'edgeGraphIds' | 'edgeGraph' | 'edgeUi'>
+  document: Pick<EditorDocumentRuntimeSource, 'edge' | 'node'>
+  sources: Pick<ScenePublishedState, 'edgeGraphIds' | 'edgeGraph' | 'edgeUi'>
   spatial: EditorGraphQuery['spatial']
   relatedEdges: EditorGraphQuery['relatedEdges']
   node: Pick<GraphNodeRead, 'graph' | 'capability'>

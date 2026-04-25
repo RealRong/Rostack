@@ -12,7 +12,7 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
+import type { GraphEdgeRead } from '@whiteboard/editor/scene/edge'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   CANCEL,

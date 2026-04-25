@@ -14,7 +14,7 @@ import {
 } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
+import type { GraphEdgeRead } from '@whiteboard/editor/scene/edge'
 
 export type EdgeMoveState = {
   edgeId: EdgeId

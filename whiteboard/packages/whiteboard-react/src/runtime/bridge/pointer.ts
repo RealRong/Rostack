@@ -25,8 +25,8 @@ const isViewportPanStart = (
 
   const leftDrag = event.button === 0 || (event.buttons & 1) === 1
   return leftDrag && (
-    editor.store.interaction.get().space
-    || editor.read.tool.is('hand')
+    editor.session.interaction.get().space
+    || editor.session.tool.is('hand')
   )
 }
 
@@ -83,7 +83,7 @@ export const createPointerBridge = ({
 
   const refreshContainerRect = (container: HTMLDivElement) => {
     const rect = container.getBoundingClientRect()
-    editor.actions.viewport.setRect({
+    editor.write.viewport.setRect({
       left: rect.left,
       top: rect.top,
       width: rect.width,

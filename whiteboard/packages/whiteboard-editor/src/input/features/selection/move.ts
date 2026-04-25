@@ -16,7 +16,7 @@ import type {
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { toSpatialNode } from '@whiteboard/editor/read/node'
+import { toSpatialNode } from '@whiteboard/editor/scene/node'
 
 const toMoveNodePatches = (
   result: MoveStepResult

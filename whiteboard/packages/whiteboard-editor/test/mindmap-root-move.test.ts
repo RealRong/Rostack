@@ -75,7 +75,7 @@ describe('mindmap root move', () => {
       registry
     })
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -87,13 +87,13 @@ describe('mindmap root move', () => {
     }
 
     const { mindmapId, rootId } = created.data
-    const beforeTree = editor.read.mindmap.view.get(mindmapId)?.tree.bbox
-    const beforeRoot = editor.read.document.get().nodes[rootId]?.position
+    const beforeTree = editor.scene.mindmap.view.get(mindmapId)?.tree.bbox
+    const beforeRoot = editor.document.get().nodes[rootId]?.position
 
     expect(beforeTree).toBeDefined()
     expect(beforeRoot).toBeDefined()
 
-    editor.actions.mindmap.moveRoot({
+    editor.write.mindmap.moveRoot({
       nodeId: mindmapId,
       position: {
         x: beforeRoot!.x + 120,
@@ -103,8 +103,8 @@ describe('mindmap root move', () => {
       threshold: 0
     })
 
-    const afterTree = editor.read.mindmap.view.get(mindmapId)?.tree.bbox
-    const afterRoot = editor.read.document.get().nodes[rootId]?.position
+    const afterTree = editor.scene.mindmap.view.get(mindmapId)?.tree.bbox
+    const afterRoot = editor.document.get().nodes[rootId]?.position
 
     expect(afterTree).toBeDefined()
     expect(afterTree!.x - beforeTree!.x).toBe(120)

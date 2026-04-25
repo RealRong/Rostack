@@ -15,7 +15,7 @@
     "build:shared": "pnpm --filter @shared/core run build && pnpm --filter @shared/draft run build && pnpm --filter @shared/reducer run build && pnpm --filter @shared/mutation run build && pnpm --filter @shared/dom run build && pnpm --filter @shared/i18n run build && pnpm --filter @shared/projector run build && pnpm --filter @shared/react run build && pnpm --filter @shared/ui run build",
     "build:dataview": "pnpm -C dataview run build",
     "build:dataview:app": "pnpm -C apps/dataview run build",
-    "build:whiteboard": "pnpm --filter @whiteboard/core run build && pnpm --filter @whiteboard/engine run build && pnpm --filter @whiteboard/editor-graph run build && pnpm --filter @whiteboard/editor run build && pnpm --filter @whiteboard/react run build && pnpm --filter @whiteboard/collab run build",
+    "build:whiteboard": "pnpm --filter @whiteboard/core run build && pnpm --filter @whiteboard/engine run build && pnpm --filter @whiteboard/editor-scene run build && pnpm --filter @whiteboard/editor run build && pnpm --filter @whiteboard/react run build && pnpm --filter @whiteboard/collab run build",
     "build:whiteboard:app": "pnpm -C apps/whiteboard run build",
     "build:whiteboard:demo": "pnpm run build:whiteboard:app",
     "typecheck": "pnpm run typecheck:shared && pnpm run typecheck:dataview && pnpm run typecheck:whiteboard",

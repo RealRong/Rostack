@@ -1,10 +1,10 @@
 import { store } from '@shared/core'
-import type { EditorInteractionState, EditorStore } from '@whiteboard/editor/types/editor'
+import type { EditorInteractionState, EditorSessionState } from '@whiteboard/editor/types/editor'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 
-export const createEditorStore = (
+export const createSessionState = (
   session: Pick<EditorSession, 'state' | 'interaction' | 'viewport'>
-): EditorStore => {
+): EditorSessionState => {
   const interactionState = store.createDerivedStore<EditorInteractionState>({
     get: () => {
       const mode = store.read(session.interaction.read.mode)

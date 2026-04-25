@@ -12,9 +12,9 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { GraphRead } from '@whiteboard/editor/read/graph'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -68,9 +68,9 @@ const previewMindmapDrag = (
 
 const readMindmapTreeView = (
   mindmap: {
-    id: GraphRead['mindmap']['id']
-    structure: GraphRead['mindmap']['structure']
-    layout: GraphRead['mindmap']['view']
+    id: EditorSceneRuntime['mindmap']['id']
+    structure: EditorSceneRuntime['mindmap']['structure']
+    layout: EditorSceneRuntime['mindmap']['view']
   },
   treeId: NodeId
 ) => {
@@ -94,11 +94,11 @@ export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    id: GraphRead['mindmap']['id']
-    structure: GraphRead['mindmap']['structure']
-    layout: GraphRead['mindmap']['view']
+    id: EditorSceneRuntime['mindmap']['id']
+    structure: EditorSceneRuntime['mindmap']['structure']
+    layout: EditorSceneRuntime['mindmap']['view']
   }
-  node: Pick<DocumentRead, 'node'>
+  node: Pick<EditorDocumentRuntimeSource, 'node'>
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
 }): MindmapDragState | undefined => {
   const pick = input.pointer.pick
@@ -175,11 +175,11 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    id: GraphRead['mindmap']['id']
-    structure: GraphRead['mindmap']['structure']
-    layout: GraphRead['mindmap']['view']
+    id: EditorSceneRuntime['mindmap']['id']
+    structure: EditorSceneRuntime['mindmap']['structure']
+    layout: EditorSceneRuntime['mindmap']['view']
   }
-  node: Pick<DocumentRead, 'node'>
+  node: Pick<EditorDocumentRuntimeSource, 'node'>
 }): MindmapDragState | undefined => {
   const pickedNode = input.node.node.committed.get(input.nodeId)?.node
   const treeId = pickedNode?.owner?.kind === 'mindmap'
@@ -233,9 +233,9 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    id: GraphRead['mindmap']['id']
-    structure: GraphRead['mindmap']['structure']
-    layout: GraphRead['mindmap']['view']
+    id: EditorSceneRuntime['mindmap']['id']
+    structure: EditorSceneRuntime['mindmap']['structure']
+    layout: EditorSceneRuntime['mindmap']['view']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,

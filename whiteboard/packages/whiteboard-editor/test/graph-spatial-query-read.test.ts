@@ -4,7 +4,7 @@ import type {
   EdgeView as RuntimeEdgeView,
   NodeView as RuntimeNodeView,
   Read as EditorGraphQuery
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 import type {
   Edge,
   EdgeId,
@@ -12,8 +12,8 @@ import type {
   NodeModel,
   Rect
 } from '@whiteboard/core/types'
-import { createGraphEdgeRead } from '../src/read/edge'
-import { createGraphNodeRead } from '../src/read/node'
+import { createGraphEdgeRead } from '../src/scene/edge'
+import { createGraphNodeRead } from '../src/scene/node'
 
 const createKeyedReadStore = <K extends string, TValue>(
   entries: ReadonlyMap<K, TValue>

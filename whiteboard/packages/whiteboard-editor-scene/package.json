@@ -1,5 +1,5 @@
 {
-  "name": "@whiteboard/editor-graph",
+  "name": "@whiteboard/editor-scene",
   "version": "0.1.0",
   "type": "module",
   "exports": {

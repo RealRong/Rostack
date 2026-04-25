@@ -29,12 +29,12 @@ import {
 import type {
   EditorBoundaryRuntime
 } from '@whiteboard/editor/boundary/runtime'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import {
   createMindmapActionProcedures
 } from '@whiteboard/editor/procedures/mindmap'
-import type { GraphRead } from '@whiteboard/editor/read/graph'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type { EditField } from '@whiteboard/editor/session/edit'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'
@@ -105,7 +105,7 @@ const startNodeEdit = ({
   caret
 }: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<DocumentRead, 'node'>
+  document: Pick<EditorDocumentRuntimeSource, 'node'>
   registry: Pick<NodeRegistry, 'get'>
   nodeId: NodeId
   field: EditField
@@ -155,7 +155,7 @@ const startEdgeLabelEdit = ({
   caret
 }: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<DocumentRead, 'edge'>
+  document: Pick<EditorDocumentRuntimeSource, 'edge'>
   edgeId: string
   labelId: string
   caret?: EditorEditActions['startEdgeLabel'] extends (
@@ -194,7 +194,7 @@ const applyMindmapFocus = ({
   behavior
 }: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<DocumentRead, 'node'>
+  document: Pick<EditorDocumentRuntimeSource, 'node'>
   registry: Pick<NodeRegistry, 'get'>
   nodeId: MindmapNodeId
   behavior: MindmapInsertBehavior | undefined
@@ -226,7 +226,7 @@ const applyMindmapRootFocus = ({
   focus
 }: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<DocumentRead, 'node'>
+  document: Pick<EditorDocumentRuntimeSource, 'node'>
   registry: Pick<NodeRegistry, 'get'>
   nodeId: MindmapNodeId
   focus: 'edit-root' | 'select-root' | 'none' | undefined
@@ -285,9 +285,9 @@ const toEdgeUpdateInput = (
 
 const readMindmapIdForNodes = (
   input: {
-    document: Pick<DocumentRead, 'node'>
-    graph: Pick<GraphRead, 'node'>
-      & Pick<GraphRead, 'mindmap'>
+    document: Pick<EditorDocumentRuntimeSource, 'node'>
+    graph: Pick<EditorSceneRuntime, 'node'>
+      & Pick<EditorSceneRuntime, 'mindmap'>
     nodeIds: readonly NodeId[]
   }
 ): MindmapId | undefined => {
@@ -325,7 +325,7 @@ const readMindmapIdForNodes = (
 }
 
 const readEdgeOrThrow = (
-  graph: Pick<GraphRead, 'edge'>,
+  graph: Pick<EditorSceneRuntime, 'edge'>,
   edgeId: string
 ) => {
   const edge = graph.edge.graph.get(edgeId)?.base.edge
@@ -339,9 +339,9 @@ const readEdgeOrThrow = (
 export type CreateEditorActionsApiDeps = {
   boundary: Pick<EditorBoundaryRuntime, 'atomic' | 'procedure'>
   engine: Engine
-  document: DocumentRead
+  document: EditorDocumentRuntimeSource
   session: EditorSession
-  graph: GraphRead
+  graph: EditorSceneRuntime
   layout: EditorLayout
   tool: ToolService
   write: EditorWrite
@@ -376,7 +376,7 @@ export const createEditorActionsApi = ({
   })
   const clipboard = createClipboardActions({
     editor: {
-      read: document,
+      documentSource: document,
       document: write.document,
       session: selectionSessionDeps,
       selection: {

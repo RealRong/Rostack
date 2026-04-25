@@ -9,7 +9,7 @@ import type {
   MindmapPreview,
   NodeDraft,
   NodePreview
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 import type {
   EditSession as EditorEditSession
 } from '@whiteboard/editor/session/edit'

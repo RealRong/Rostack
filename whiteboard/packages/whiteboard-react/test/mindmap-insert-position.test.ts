@@ -112,7 +112,7 @@ describe('mindmap insert position', () => {
     })
 
     expect(result).toBeDefined()
-    const rootRect = editor.read.node.view.get(result!.nodeId)?.rect
+    const rootRect = editor.scene.nodes.read.get(result!.nodeId)?.rect
     expect(rootRect).toBeDefined()
     expect(rootRect!.width).toBe(132)
     expect(rootRect!.height).toBe(44)
@@ -140,7 +140,7 @@ describe('mindmap insert position', () => {
       }
     })
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -151,10 +151,10 @@ describe('mindmap insert position', () => {
       return
     }
 
-    const beforeRoot = editor.read.node.view.get(created.data.rootId)?.rect
+    const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
     expect(beforeRoot).toBeDefined()
 
-    editor.actions.node.patch([created.data.rootId], {
+    editor.write.node.patch([created.data.rootId], {
       fields: {
         size: {
           width: 320,
@@ -163,7 +163,7 @@ describe('mindmap insert position', () => {
       }
     })
 
-    const afterRoot = editor.read.node.view.get(created.data.rootId)?.rect
+    const afterRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
     expect(afterRoot).toBeDefined()
     expect(afterRoot!.x).toBe(beforeRoot!.x)
     expect(afterRoot!.y).toBe(beforeRoot!.y)

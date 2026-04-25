@@ -98,7 +98,7 @@ describe('mindmap edit relayout preview', () => {
       }
     })
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -109,7 +109,7 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const insert = editor.actions.mindmap.insertRelative({
+    const insert = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -125,17 +125,17 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeRoot = editor.read.node.view.get(created.data.rootId)?.rect
-    const beforeChild = editor.read.node.view.get(insert.data.nodeId)?.rect
+    const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+    const beforeChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
 
-    editor.actions.edit.startNode(created.data.rootId, 'text')
-    editor.actions.edit.input('Central topic with much longer live width')
+    editor.write.edit.startNode(created.data.rootId, 'text')
+    editor.write.edit.input('Central topic with much longer live width')
 
-    const liveRoot = editor.read.node.view.get(created.data.rootId)?.rect
-    const liveChild = editor.read.node.view.get(insert.data.nodeId)?.rect
+    const liveRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+    const liveChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
 
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
@@ -164,7 +164,7 @@ describe('mindmap edit relayout preview', () => {
       }
     })
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -175,7 +175,7 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const insert = editor.actions.mindmap.insertRelative({
+    const insert = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -191,18 +191,18 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeChild = editor.read.node.view.get(insert.data.nodeId)?.rect
-    const beforeScene = editor.read.mindmap.view.get(created.data.mindmapId)?.tree.bbox
+    const beforeChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
+    const beforeScene = editor.scene.mindmap.view.get(created.data.mindmapId)?.tree.bbox
 
     expect(beforeChild).toBeDefined()
     expect(beforeScene).toBeDefined()
 
-    editor.actions.edit.startNode(insert.data.nodeId, 'text')
-    editor.actions.edit.input('Child topic with much longer text')
+    editor.write.edit.startNode(insert.data.nodeId, 'text')
+    editor.write.edit.input('Child topic with much longer text')
 
-    const liveChild = editor.read.node.view.get(insert.data.nodeId)?.rect
-    const liveScene = editor.read.mindmap.view.get(created.data.mindmapId)?.tree.bbox
-    const session = editor.store.edit.get()
+    const liveChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
+    const liveScene = editor.scene.mindmap.view.get(created.data.mindmapId)?.tree.bbox
+    const session = editor.session.edit.get()
 
     expect(liveChild).toBeDefined()
     expect(liveScene).toBeDefined()
@@ -253,7 +253,7 @@ describe('mindmap edit relayout preview', () => {
       }
     })
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -264,7 +264,7 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const first = editor.actions.mindmap.insertRelative({
+    const first = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -280,7 +280,7 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const second = editor.actions.mindmap.insertRelative({
+    const second = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -296,19 +296,19 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeFirst = editor.read.node.view.get(first.data.nodeId)?.rect
-    const beforeSecond = editor.read.node.view.get(second.data.nodeId)?.rect
+    const beforeFirst = editor.scene.nodes.read.get(first.data.nodeId)?.rect
+    const beforeSecond = editor.scene.nodes.read.get(second.data.nodeId)?.rect
 
     expect(beforeFirst).toBeDefined()
     expect(beforeSecond).toBeDefined()
     expect(beforeFirst!.height).toBe(44)
     expect(beforeSecond!.height).toBe(44)
 
-    editor.actions.edit.startNode(first.data.nodeId, 'text')
-    editor.actions.edit.input('First branch now wraps into multiple visual lines')
+    editor.write.edit.startNode(first.data.nodeId, 'text')
+    editor.write.edit.input('First branch now wraps into multiple visual lines')
 
-    const liveFirst = editor.read.node.view.get(first.data.nodeId)?.rect
-    const liveSecond = editor.read.node.view.get(second.data.nodeId)?.rect
+    const liveFirst = editor.scene.nodes.read.get(first.data.nodeId)?.rect
+    const liveSecond = editor.scene.nodes.read.get(second.data.nodeId)?.rect
 
     expect(liveFirst).toBeDefined()
     expect(liveSecond).toBeDefined()
@@ -355,7 +355,7 @@ describe('mindmap edit relayout preview', () => {
       }
     })
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -366,7 +366,7 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const first = editor.actions.mindmap.insertRelative({
+    const first = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -382,7 +382,7 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const second = editor.actions.mindmap.insertRelative({
+    const second = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -402,8 +402,8 @@ describe('mindmap edit relayout preview', () => {
       y: number
       height: number
     }> = []
-    const unsubscribe = editor.read.node.view.subscribe(second.data.nodeId, () => {
-      const rect = editor.read.node.view.get(second.data.nodeId)?.rect
+    const unsubscribe = editor.scene.nodes.read.subscribe(second.data.nodeId, () => {
+      const rect = editor.scene.nodes.read.get(second.data.nodeId)?.rect
       if (!rect) {
         return
       }
@@ -414,14 +414,14 @@ describe('mindmap edit relayout preview', () => {
       })
     })
 
-    editor.actions.edit.startNode(first.data.nodeId, 'text')
-    editor.actions.edit.input('First branch now wraps into multiple visual lines')
+    editor.write.edit.startNode(first.data.nodeId, 'text')
+    editor.write.edit.input('First branch now wraps into multiple visual lines')
 
     unsubscribe()
 
     expect(notifications.length).toBeGreaterThan(0)
     expect(notifications.at(-1)?.y).toBe(
-      editor.read.node.view.get(second.data.nodeId)?.rect.y
+      editor.scene.nodes.read.get(second.data.nodeId)?.rect.y
     )
   })
 })

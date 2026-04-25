@@ -18,9 +18,9 @@ import type {
   Result,
   SceneItem,
   Snapshot
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 
-export interface ProjectionSources {
+export interface ScenePublishedState {
   snapshot: store.ReadStore<Snapshot>
   items: store.ReadStore<readonly SceneItem[]>
   chrome: store.ReadStore<ChromeView>
@@ -34,12 +34,12 @@ export interface ProjectionSources {
   edgeUi: store.KeyedReadStore<string, EdgeUiView | undefined>
 }
 
-export interface ProjectionSourceState {
-  sources: ProjectionSources
+export interface ScenePublishedBinding {
+  sources: ScenePublishedState
   sync(result: Result): void
 }
 
-interface ProjectionSink {
+interface ScenePublishedSink {
   snapshot: store.ValueStore<Snapshot>
   items: store.ValueStore<readonly SceneItem[]>
   chrome: store.ValueStore<ChromeView>
@@ -62,7 +62,7 @@ const createFamilyRead = <Key, Value>(
 const projectionSync = composeSync<
   Snapshot,
   Change,
-  ProjectionSink
+  ScenePublishedSink
 >(
   createValueSync({
     hasChanged: () => true,
@@ -129,9 +129,9 @@ const projectionSync = composeSync<
   })
 )
 
-export const createProjectionSources = (
+export const createScenePublishedState = (
   initial: Snapshot
-): ProjectionSourceState => {
+): ScenePublishedBinding => {
   const snapshot = store.createValueStore(initial)
   const items = store.createValueStore(initial.items)
   const chrome = store.createValueStore(initial.ui.chrome)
@@ -153,7 +153,7 @@ export const createProjectionSources = (
   const edgeUiFamily = store.createFamilyStore({
     initial: initial.ui.edges
   })
-  const sink: ProjectionSink = {
+  const sink: ScenePublishedSink = {
     snapshot,
     items,
     chrome,

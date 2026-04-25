@@ -1,7 +1,7 @@
 import { equal } from '@shared/core'
 import { META } from '@whiteboard/core/spec/operation'
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorEvents } from '@whiteboard/editor/types/editor'
 
@@ -12,7 +12,7 @@ export type EditorEventRuntime = {
 
 const reconcileSessionAfterWrite = (
   session: Pick<EditorSession, 'state' | 'mutate'>,
-  document: Pick<DocumentRead, 'node' | 'edge'>
+  document: Pick<EditorDocumentRuntimeSource, 'node' | 'edge'>
 ) => {
   const selection = session.state.selection.get()
   const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.node.committed.get(id)))
@@ -49,7 +49,7 @@ export const createEditorEvents = ({
 }: {
   engine: Engine
   session: EditorSession
-  document: Pick<DocumentRead, 'node' | 'edge'>
+  document: Pick<EditorDocumentRuntimeSource, 'node' | 'edge'>
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()

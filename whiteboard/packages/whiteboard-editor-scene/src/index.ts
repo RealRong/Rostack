@@ -1,3 +1,3 @@
-export { createEditorGraphRuntime } from './runtime/createEditorGraphRuntime'
+export { createEditorSceneRuntime } from './runtime/createEditorSceneRuntime'
 
 export type * from './contracts/editor'

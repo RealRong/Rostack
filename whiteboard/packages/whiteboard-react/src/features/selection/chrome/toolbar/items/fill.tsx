@@ -57,11 +57,11 @@ export const fillItem: ToolbarItemSpec = {
           ? WHITEBOARD_STICKY_FILL_OPTIONS
           : WHITEBOARD_FILL_COLOR_OPTIONS}
         onFillChange={(value) => {
-          editor.actions.node.style.fill(node.nodeIds, value)
+          editor.write.node.style.fill(node.nodeIds, value)
         }}
         onFillOpacityChange={node.canEditFillOpacity
           ? (value) => {
-              editor.actions.node.style.fillOpacity(node.nodeIds, value)
+              editor.write.node.style.fillOpacity(node.nodeIds, value)
             }
           : undefined}
       />

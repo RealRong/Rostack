@@ -1,12 +1,12 @@
 import { store } from '@shared/core'
 import {
-  createEditorGraphRuntime,
+  createEditorSceneRuntime,
   type InputDelta,
   type Read as EditorGraphQuery,
   type Result,
   type Runtime,
   type Snapshot
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
@@ -31,14 +31,14 @@ import {
   takeEditorGraphInputDelta
 } from './input'
 import {
-  createProjectionSources,
-  type ProjectionSources
+  createScenePublishedState,
+  type ScenePublishedState
 } from './sources'
 
-export interface ProjectionController {
+export interface EditorSceneController {
   runtime: Runtime
   query: EditorGraphQuery
-  sources: ProjectionSources
+  sources: ScenePublishedState
   current(): {
     snapshot: Snapshot
     result: Result | null
@@ -225,7 +225,7 @@ const createBootstrapDelta = (input: {
   return delta
 }
 
-export const createProjectionController = ({
+export const createSceneController = ({
   engine,
   session,
   layout
@@ -233,9 +233,9 @@ export const createProjectionController = ({
   engine: Engine
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
   layout: Pick<EditorLayout, 'draft'>
-}): ProjectionController => {
-  const runtime = createEditorGraphRuntime()
-  const projectionSources = createProjectionSources(runtime.snapshot())
+}): EditorSceneController => {
+  const runtime = createEditorSceneRuntime()
+  const projectionSources = createScenePublishedState(runtime.snapshot())
   const sources = projectionSources.sources
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()

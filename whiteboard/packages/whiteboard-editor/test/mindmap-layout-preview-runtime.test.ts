@@ -105,7 +105,7 @@ describe('mindmap layout preview runtime', () => {
     })
 
     try {
-      const created = editor.actions.mindmap.create({
+      const created = editor.write.mindmap.create({
         template: product.mindmap.template.build({
           preset: 'mindmap.underline-split'
         })
@@ -116,7 +116,7 @@ describe('mindmap layout preview runtime', () => {
         return
       }
 
-      const inserted = editor.actions.mindmap.insertRelative({
+      const inserted = editor.write.mindmap.insertRelative({
         id: created.data.mindmapId,
         targetNodeId: created.data.rootId,
         relation: 'child',
@@ -132,12 +132,12 @@ describe('mindmap layout preview runtime', () => {
         return
       }
 
-      editor.actions.selection.replace({
+      editor.write.selection.replace({
         nodeIds: [created.data.rootId]
       })
 
-      const beforeRoot = editor.read.node.view.get(created.data.rootId)?.rect
-      const beforeChild = editor.read.node.view.get(inserted.data.nodeId)?.rect
+      const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+      const beforeChild = editor.scene.nodes.read.get(inserted.data.nodeId)?.rect
 
       expect(beforeRoot).toBeDefined()
       expect(beforeChild).toBeDefined()
@@ -165,12 +165,12 @@ describe('mindmap layout preview runtime', () => {
         }
       }))
 
-      expect(editor.read.node.view.get(created.data.rootId)?.rect).toEqual({
+      expect(editor.scene.nodes.read.get(created.data.rootId)?.rect).toEqual({
         ...beforeRoot!,
         x: beforeRoot!.x + 60,
         y: beforeRoot!.y + 40
       })
-      expect(editor.read.node.view.get(inserted.data.nodeId)?.rect).toEqual({
+      expect(editor.scene.nodes.read.get(inserted.data.nodeId)?.rect).toEqual({
         ...beforeChild!,
         x: beforeChild!.x + 60,
         y: beforeChild!.y + 40

@@ -3,7 +3,7 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { GraphRead } from '@whiteboard/editor/read/graph'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   CanvasWrite,
@@ -22,7 +22,7 @@ export type SelectionActionHelpers = Pick<
 >
 
 type SelectionActionHelpersHost = {
-  read: Pick<GraphRead, 'group'>
+  read: Pick<EditorSceneRuntime, 'group'>
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>

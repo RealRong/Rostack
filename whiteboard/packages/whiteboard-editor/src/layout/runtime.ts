@@ -31,7 +31,7 @@ import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import {
   createTextMetricsResource
 } from '@whiteboard/editor/layout/textMetrics'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 
 const TEXT_PLACEHOLDER = 'Text'
 
@@ -424,7 +424,7 @@ export const createEditorLayout = ({
 }: {
   read: {
     node: {
-      committed: DocumentRead['node']['committed']
+      committed: EditorDocumentRuntimeSource['node']['committed']
     }
   }
   session: {

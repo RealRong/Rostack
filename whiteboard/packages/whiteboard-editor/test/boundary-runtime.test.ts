@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createEditorGraphRuntime } from '@whiteboard/editor-graph'
+import { createEditorSceneRuntime } from '@whiteboard/editor-scene'
 import { createEditorBoundaryRuntime } from '../src/boundary/runtime'
 import { createEditorBoundaryTaskRuntime } from '../src/boundary/task'
 import { createEmptyEditorGraphInputDelta } from '../src/projection/input'
 
 describe('editor boundary runtime', () => {
   const createBoundary = () => {
-    const graph = createEditorGraphRuntime()
+    const graph = createEditorSceneRuntime()
     const mark = vi.fn()
     const flush = vi.fn(() => null)
     let boundary!: ReturnType<typeof createEditorBoundaryRuntime>

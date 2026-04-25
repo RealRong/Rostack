@@ -1,4 +1,4 @@
-import type { ProjectionController } from '@whiteboard/editor/projection/controller'
+import type { EditorSceneController } from '@whiteboard/editor/projection/controller'
 import type { EditorBoundaryTaskRuntime } from './task'
 import {
   toEditorPublished,
@@ -25,7 +25,7 @@ export const createEditorBoundaryRuntime = ({
   projection,
   tasks
 }: {
-  projection: Pick<ProjectionController, 'current' | 'mark' | 'flush'>
+  projection: Pick<EditorSceneController, 'current' | 'mark' | 'flush'>
   tasks: EditorBoundaryTaskRuntime
 }): EditorBoundaryExecutor => {
   const readPublished = () => toEditorPublished(

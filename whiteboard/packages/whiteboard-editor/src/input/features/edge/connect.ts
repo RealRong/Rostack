@@ -26,12 +26,12 @@ import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
+import type { GraphEdgeRead } from '@whiteboard/editor/scene/edge'
 import {
   toGraphNodeGeometry,
   toSpatialNode,
   type GraphNodeRead
-} from '@whiteboard/editor/read/node'
+} from '@whiteboard/editor/scene/node'
 
 type EdgeConnectNodeRead = Pick<GraphNodeRead, 'graph' | 'capability'>
 type EdgeConnectPreviewNodeRead = Pick<GraphNodeRead, 'graph'>

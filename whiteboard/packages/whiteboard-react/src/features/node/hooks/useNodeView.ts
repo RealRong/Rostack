@@ -63,11 +63,11 @@ export type NodeOverlayView = {
   canRotate: NodeView['canRotate']
 }
 type RuntimeNodeView = NonNullable<
-  ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['view']['get']>
+  ReturnType<ReturnType<typeof useEditorRuntime>['scene']['nodes']['read']['get']>
 >
 const resolveNodeOverlayViewState = (
   view: RuntimeNodeView,
-  capability: NonNullable<ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['capability']['get']>>
+  capability: NonNullable<ReturnType<ReturnType<typeof useEditorRuntime>['scene']['nodes']['capability']['get']>>
 ): NodeOverlayView => {
   return {
     nodeId: view.node.id,
@@ -82,15 +82,15 @@ const resolveNodeOverlayViewState = (
 }
 
 const resolveNodeViewState = (
-  editor: Pick<ReturnType<typeof useEditorRuntime>, 'actions'>,
+  editor: Pick<ReturnType<typeof useEditorRuntime>, 'write'>,
   registry: Pick<NodeRegistry, 'get'>,
   baseView: RuntimeNodeView,
-  capability: NonNullable<ReturnType<ReturnType<typeof useEditorRuntime>['read']['node']['capability']['get']>>
+  capability: NonNullable<ReturnType<ReturnType<typeof useEditorRuntime>['scene']['nodes']['capability']['get']>>
 ): NodeView => {
   const definition = registry.get(baseView.node.type)
   const write: NodeWrite = {
     patch: (update: NodeUpdateInput) => {
-      editor.actions.node.patch([baseView.node.id], update)
+      editor.write.node.patch([baseView.node.id], update)
     }
   }
   const renderProps: NodeRenderProps = {
@@ -134,7 +134,7 @@ export const useNodeView = (
   const editor = useEditorRuntime()
   const registry = useNodeRegistry()
   const view = useOptionalKeyedStoreValue(
-    editor.read.node.view,
+    editor.scene.nodes.read,
     nodeId,
     undefined
   )
@@ -145,7 +145,7 @@ export const useNodeView = (
         return undefined
       }
 
-      const capability = editor.read.node.capability.get(nodeId)
+      const capability = editor.scene.nodes.capability.get(nodeId)
       if (!capability) {
         return undefined
       }
@@ -161,7 +161,7 @@ export const useNodeOverlayView = (
 ): NodeOverlayView | undefined => {
   const editor = useEditorRuntime()
   const view = useOptionalKeyedStoreValue(
-    editor.read.node.view,
+    editor.scene.nodes.read,
     nodeId,
     undefined
   )
@@ -172,7 +172,7 @@ export const useNodeOverlayView = (
         return undefined
       }
 
-      const capability = editor.read.node.capability.get(nodeId)
+      const capability = editor.scene.nodes.capability.get(nodeId)
       if (!capability) {
         return undefined
       }

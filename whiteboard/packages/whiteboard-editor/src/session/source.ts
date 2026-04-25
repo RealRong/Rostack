@@ -1,13 +1,12 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { store } from '@shared/core'
 import type { HistoryApi } from '@whiteboard/history'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
-import { createEditorStore } from '@whiteboard/editor/editor/store'
+import { createSessionState } from '@whiteboard/editor/session/state'
 import {
   isMindmapChromeEqual,
   readAddChildTargets,
-  readMindmapNavigateTarget
-} from '@whiteboard/editor/read/mindmap'
+  type MindmapChrome
+} from '@whiteboard/editor/scene/mindmap'
 import {
   readEdgeScope,
   readNodeScope,
@@ -15,30 +14,32 @@ import {
   readSelectionNodeStats,
   resolveSelectionOverlay,
   resolveSelectionToolbar
-} from '@whiteboard/editor/read/panel'
-import type { GraphRead } from '@whiteboard/editor/read/graph'
+} from '@whiteboard/editor/session/panel'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import {
   isSelectedEdgeChromeEqual,
   readSelectedEdgeId,
   readSelectedEdgeRoutePoints
-} from '@whiteboard/editor/read/edgeShared'
+} from '@whiteboard/editor/session/edge'
 import {
   createSessionRead,
   type SessionRead
 } from '@whiteboard/editor/session/read'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
-import type { EditorStore } from '@whiteboard/editor/types/editor'
 import type {
+  EditorChromeSource,
   EditorChromePresentation,
+  EditorPanelSource,
   EditorPanelPresentation,
-  EditorRead
+  EditorSessionSource,
+  EditorSessionState
 } from '@whiteboard/editor/types/editor'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 
 const isChromeMarqueeEqual = (
-  left: EditorChromePresentation['marquee'],
-  right: EditorChromePresentation['marquee']
+  left: ReturnType<EditorChromeSource['marquee']['get']>,
+  right: ReturnType<EditorChromeSource['marquee']['get']>
 ) => (
   left === right
   || (
@@ -51,8 +52,8 @@ const isChromeMarqueeEqual = (
 )
 
 const isChromeDrawEqual = (
-  left: EditorChromePresentation['draw'],
-  right: EditorChromePresentation['draw']
+  left: ReturnType<EditorChromeSource['draw']['get']>,
+  right: ReturnType<EditorChromeSource['draw']['get']>
 ) => (
   left === right
   || (
@@ -96,7 +97,7 @@ const readNodeLocked = ({
   graph,
   nodeId
 }: {
-  graph: Pick<GraphRead, 'node'>
+  graph: Pick<EditorSceneRuntime, 'node'>
   nodeId: string
 }) => Boolean(
   store.read(graph.node.graph, nodeId)?.base.node.locked
@@ -106,50 +107,35 @@ const readNodeRect = ({
   graph,
   nodeId
 }: {
-  graph: Pick<GraphRead, 'node'>
+  graph: Pick<EditorSceneRuntime, 'node'>
   nodeId: string
 }) => store.read(graph.node.graph, nodeId)?.geometry.rect
 
-export const createEditorRead = (
+export const createSessionSource = (
   {
-    document,
     graph,
     session,
-    store: providedStore,
+    state: providedState,
     history,
     nodeType,
     defaults
   }: {
-    document: Pick<DocumentRead, 'document'>
-    graph: Pick<GraphRead, 'snapshot' | 'items' | 'spatial' | 'node' | 'edge' | 'selection' | 'mindmap' | 'group' | 'chrome'>
+    graph: Pick<EditorSceneRuntime, 'node' | 'edge' | 'selection' | 'mindmap' | 'chrome'>
     session: Pick<EditorSession, 'state' | 'interaction' | 'viewport' | 'preview'>
-    store?: EditorStore
+    state?: EditorSessionState
     history: HistoryApi
     nodeType: NodeTypeSupport
     defaults: EditorDefaults['selection']
   }
-): EditorRead => {
-  const state = providedStore ?? createEditorStore(session)
+): EditorSessionSource => {
+  const state = providedState ?? createSessionState(session)
   const sessionRead = createSessionRead(session)
-  const visibleQueryCache = {
-    revision: -1,
-    rect: undefined as
-      | {
-          x: number
-          y: number
-          width: number
-          height: number
-        }
-      | undefined,
-    kinds: '' as string,
-    result: [] as ReturnType<EditorRead['query']['rect']>
-  }
   const selectionSummary = graph.selection.summary
   const selectionMembers = graph.selection.members
   const selectionAffordance = graph.selection.affordance
   const selectionNodeSelected = graph.selection.node.selected
 
-  const selectionNodeStats: EditorRead['selection']['node']['stats'] = store.createDerivedStore({
+  const selectionNodeStats: EditorSessionSource['selection']['node']['stats'] = store.createDerivedStore({
     get: () => readSelectionNodeStats({
       summary: store.read(selectionSummary),
       nodeType
@@ -162,7 +148,7 @@ export const createEditorRead = (
     )
   })
 
-  const selectionNodeScope: EditorRead['selection']['node']['scope'] = store.createDerivedStore({
+  const selectionNodeScope: EditorSessionSource['selection']['node']['scope'] = store.createDerivedStore({
     get: () => {
       const currentMembers = store.read(selectionMembers)
       const currentNodeStats = store.read(selectionNodeStats)
@@ -235,7 +221,7 @@ export const createEditorRead = (
     }
   })
 
-  const chromeMarquee = store.createDerivedStore<EditorChromePresentation['marquee']>({
+  const chromeMarquee: EditorChromeSource['marquee'] = store.createDerivedStore({
     get: () => {
       const marquee = store.read(graph.chrome).preview.marquee
 
@@ -249,71 +235,25 @@ export const createEditorRead = (
     isEqual: isChromeMarqueeEqual
   })
 
-  const chromeDraw = store.createDerivedStore<EditorChromePresentation['draw']>({
-    get: () => store.read(graph.chrome).preview.draw,
+  const chromeDraw: EditorChromeSource['draw'] = store.createDerivedStore({
+    get: () => {
+      const preview = store.read(graph.chrome).preview.draw
+      return preview
+        ? {
+            kind: preview.kind,
+            style: preview.style,
+            points: preview.points
+          }
+        : null
+    },
     isEqual: isChromeDrawEqual
   })
 
-  const chromeSnap = store.createDerivedStore<EditorChromePresentation['snap']>({
+  const chromeSnap: EditorChromeSource['snap'] = store.createDerivedStore({
     get: () => store.read(graph.chrome).preview.guides
   })
 
-  const chrome = store.createStructStore<EditorChromePresentation>({
-    fields: {
-      marquee: {
-        get: () => store.read(chromeMarquee)
-      },
-      draw: {
-        get: () => store.read(chromeDraw)
-      },
-      edgeGuide: {
-        get: () => store.read(sessionRead.chrome.edgeGuide)
-      },
-      snap: {
-        get: () => store.read(chromeSnap)
-      },
-      selection: {
-        get: () => store.read(selectionOverlay)
-      }
-    }
-  })
-
-  const panel = store.createStructStore<EditorPanelPresentation>({
-    fields: {
-      selectionToolbar: {
-        get: () => store.read(selectionToolbar)
-      },
-      history: {
-        get: () => store.read(history)
-      },
-      draw: {
-        get: () => store.read(state.draw)
-      }
-    }
-  })
-
-  const nodeCapability: EditorRead['node']['capability'] = store.createKeyedDerivedStore({
-    get: (nodeId: string) => {
-      const current = store.read(graph.node.graph, nodeId)
-      return current
-        ? graph.node.capability(current.base.node)
-        : undefined
-    },
-    isEqual: (left, right) => (
-      left === right
-      || (
-        left !== undefined
-        && right !== undefined
-        && left.role === right.role
-        && left.connect === right.connect
-        && left.enter === right.enter
-        && left.resize === right.resize
-        && left.rotate === right.rotate
-      )
-    )
-  })
-
-  const selectedEdgeChrome: EditorRead['edge']['selectedChrome'] = store.createDerivedStore({
+  const selectedEdgeChrome: EditorSessionSource['selection']['edge']['chrome'] = store.createDerivedStore({
     get: () => {
       const selectedEdgeId = readSelectedEdgeId(store.read(state.selection))
       if (!selectedEdgeId) {
@@ -356,7 +296,7 @@ export const createEditorRead = (
     isEqual: isSelectedEdgeChromeEqual
   })
 
-  const mindmapChrome: EditorRead['mindmap']['chrome'] = store.createKeyedDerivedStore<string, ReturnType<EditorRead['mindmap']['chrome']['get']>>({
+  const mindmapChrome: EditorSessionSource['mindmap']['chrome'] = store.createKeyedDerivedStore<string, ReturnType<EditorSessionSource['mindmap']['chrome']['get']>>({
     get: (mindmapId: string) => {
       const structure = graph.mindmap.structure(mindmapId)
       if (!structure) {
@@ -376,86 +316,108 @@ export const createEditorRead = (
             graph,
             nodeId
           })
-        })
+        }) as MindmapChrome['addChildTargets']
       }
     },
     isEqual: isMindmapChromeEqual
   })
 
-  const query: EditorRead['query'] = {
-    rect: (rect, options) => graph.spatial.rect(rect, options),
-    visible: (options) => {
-      const rect = sessionRead.viewport.worldRect()
-      const snapshot = store.read(graph.snapshot)
-      const kinds = options?.kinds?.join('|') ?? '*'
+  const viewportZoom = store.createDerivedStore<number>({
+    get: () => store.read(state.viewport).zoom,
+    isEqual: (left, right) => left === right
+  })
 
-      if (
-        visibleQueryCache.revision === snapshot.revision
-        && visibleQueryCache.kinds === kinds
-        && visibleQueryCache.rect?.x === rect.x
-        && visibleQueryCache.rect?.y === rect.y
-        && visibleQueryCache.rect?.width === rect.width
-        && visibleQueryCache.rect?.height === rect.height
-      ) {
-        return visibleQueryCache.result
+  const viewportCenter = store.createDerivedStore({
+    get: () => store.read(state.viewport).center,
+    isEqual: geometryApi.equal.point
+  })
+
+  const chromeView = store.createStructStore<EditorChromePresentation>({
+    fields: {
+      marquee: {
+        get: () => store.read(chromeMarquee)
+      },
+      draw: {
+        get: () => store.read(chromeDraw)
+      },
+      edgeGuide: {
+        get: () => store.read(sessionRead.chrome.edgeGuide)
+      },
+      snap: {
+        get: () => store.read(chromeSnap)
+      },
+      selection: {
+        get: () => store.read(selectionOverlay)
       }
-
-      const result = graph.spatial.rect(rect, options)
-      visibleQueryCache.revision = snapshot.revision
-      visibleQueryCache.rect = rect
-      visibleQueryCache.kinds = kinds
-      visibleQueryCache.result = result
-      return result
     }
+  })
+
+  const chrome: EditorChromeSource = Object.assign(chromeView, {
+    marquee: chromeMarquee,
+    draw: chromeDraw,
+    edgeGuide: sessionRead.chrome.edgeGuide,
+    snap: chromeSnap,
+    selection: selectionOverlay
+  })
+
+  const panelView = store.createStructStore<EditorPanelPresentation>({
+    fields: {
+      selectionToolbar: {
+        get: () => store.read(selectionToolbar)
+      },
+      history: {
+        get: () => store.read(history)
+      },
+      draw: {
+        get: () => store.read(state.draw)
+      }
+    }
+  })
+
+  const panel: EditorPanelSource = Object.assign(panelView, {
+    selectionToolbar,
+    history,
+    draw: state.draw
+  })
+
+  const selectionSource: EditorSessionSource['selection'] = Object.assign(state.selection, {
+    target: state.selection,
+    view: graph.selection.view,
+    node: {
+      selected: selectionNodeSelected,
+      stats: selectionNodeStats,
+      scope: selectionNodeScope
+    },
+    edge: {
+      chrome: selectedEdgeChrome
+    }
+  })
+
+  const toolSource: EditorSessionSource['tool'] = {
+    get: session.state.tool.get,
+    subscribe: session.state.tool.subscribe,
+    type: sessionRead.tool.type,
+    value: sessionRead.tool.value,
+    is: sessionRead.tool.is
   }
 
   return {
-    document: {
-      get: document.document.get,
-      background: document.document.background,
-      bounds: document.document.bounds
+    selection: selectionSource,
+    tool: toolSource,
+    draw: state.draw,
+    edit: state.edit,
+    interaction: state.interaction,
+    viewport: {
+      ...sessionRead.viewport,
+      value: state.viewport,
+      zoom: viewportZoom,
+      center: viewportCenter
     },
-    group: {
-      exact: graph.group.exact
-    },
+    chrome,
+    panel,
     history,
     mindmap: {
-      view: graph.mindmap.view,
-      chrome: mindmapChrome,
-      navigate: (input) => {
-        const currentStructure = graph.mindmap.structure(input.id)
-        if (!currentStructure) {
-          return undefined
-        }
-
-        return readMindmapNavigateTarget({
-          structure: currentStructure,
-          fromNodeId: input.fromNodeId,
-          direction: input.direction
-        })
-      }
-    },
-    node: {
-      view: graph.node.view,
-      capability: nodeCapability
-    },
-    edge: {
-      view: graph.edge.view,
-      selectedChrome: selectedEdgeChrome
-    },
-    items: graph.items,
-    query,
-    selection: {
-      view: graph.selection.view,
-      node: {
-        selected: selectionNodeSelected,
-        stats: selectionNodeStats,
-        scope: selectionNodeScope
-      }
-    },
-    tool: sessionRead.tool,
-    viewport: sessionRead.viewport,
-    chrome,
-    panel
+      chrome: mindmapChrome
+    }
   }
 }

@@ -1,5 +1,5 @@
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorInputHost } from '@whiteboard/editor/types/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
@@ -14,7 +14,7 @@ import { createSelectionBinding } from '@whiteboard/editor/input/features/select
 import {
   createEditorInputHost
 } from '@whiteboard/editor/input/host'
-import type { GraphRead } from '@whiteboard/editor/read/graph'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import {
   createSessionRead,
   type SessionRead
@@ -27,8 +27,8 @@ import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type EditorHostDeps = {
   engine: Engine
-  document: DocumentRead
-  projection: GraphRead
+  document: EditorDocumentRuntimeSource
+  projection: EditorSceneRuntime
   sessionRead: SessionRead
   session: EditorSession
   layout: EditorLayout
@@ -44,7 +44,7 @@ const createEditorSnapRuntime = ({
   session
 }: {
   engine: Engine
-  projection: GraphRead
+  projection: EditorSceneRuntime
   session: Pick<EditorSession, 'viewport'>
 }) => createSnapRuntime({
   readZoom: () => session.viewport.read.get().zoom,

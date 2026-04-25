@@ -1,6 +1,6 @@
 export {
   useEditor,
-  useEditorStore,
+  useEditorValue,
   useEditorRuntime,
   useInteraction,
   useTool

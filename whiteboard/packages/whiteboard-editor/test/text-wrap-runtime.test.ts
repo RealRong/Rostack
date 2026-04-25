@@ -249,23 +249,23 @@ describe('text wrap runtime', () => {
   it('projects auto-width text rect from live edit layout before commit', () => {
     const editor = createAutoWidthTextEditor()
 
-    expect(editor.read.node.view.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
       width: 100,
       height: 24
     })
 
-    editor.actions.edit.startNode('text-1', 'text')
-    editor.actions.edit.input('hello world!!!')
+    editor.write.edit.startNode('text-1', 'text')
+    editor.write.edit.input('hello world!!!')
 
-    expect(editor.store.edit.get()).toMatchObject({
+    expect(editor.session.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.read.node.view.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
       width: 280,
       height: 24
     })
-    expect(editor.read.document.get().nodes['text-1']?.size).toMatchObject({
+    expect(editor.document.get().nodes['text-1']?.size).toMatchObject({
       width: 100,
       height: 24
     })
@@ -274,7 +274,7 @@ describe('text wrap runtime', () => {
   it('preserves wrap width when entering edit after a text patch commit', () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], schema.node.mergeUpdates(
+    editor.write.node.patch(['text-1'], schema.node.mergeUpdates(
       {
         fields: {
           size: {
@@ -287,23 +287,23 @@ describe('text wrap runtime', () => {
       schema.node.compileDataUpdate('wrapWidth', 180)
     ))
 
-    expect(editor.read.document.get().nodes['text-1']?.data).toMatchObject({
+    expect(editor.document.get().nodes['text-1']?.data).toMatchObject({
       widthMode: 'wrap',
       wrapWidth: 180
     })
-    expect(editor.read.node.view.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
       width: 180,
       height: 24
     })
 
-    editor.actions.edit.startNode('text-1', 'text')
-    editor.actions.edit.input('this stays wrapped at the committed width')
+    editor.write.edit.startNode('text-1', 'text')
+    editor.write.edit.input('this stays wrapped at the committed width')
 
-    expect(editor.store.edit.get()).toMatchObject({
+    expect(editor.session.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.read.node.view.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -312,7 +312,7 @@ describe('text wrap runtime', () => {
   it('recomputes wrap text size when font size changes via text command', () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], schema.node.mergeUpdates(
+    editor.write.node.patch(['text-1'], schema.node.mergeUpdates(
       {
         fields: {
           size: {
@@ -325,15 +325,15 @@ describe('text wrap runtime', () => {
       schema.node.compileDataUpdate('wrapWidth', 180)
     ))
 
-    editor.actions.node.text.size({
+    editor.write.node.text.size({
       nodeIds: ['text-1'],
       value: 20
     })
 
-    expect(editor.read.document.get().nodes['text-1']?.style).toMatchObject({
+    expect(editor.document.get().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.read.node.view.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -342,7 +342,7 @@ describe('text wrap runtime', () => {
   it('recomputes wrap text size when font size changes via generic node patch', () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], schema.node.mergeUpdates(
+    editor.write.node.patch(['text-1'], schema.node.mergeUpdates(
       {
         fields: {
           size: {
@@ -355,15 +355,15 @@ describe('text wrap runtime', () => {
       schema.node.compileDataUpdate('wrapWidth', 180)
     ))
 
-    editor.actions.node.patch(
+    editor.write.node.patch(
       ['text-1'],
       schema.node.compileStyleUpdate('fontSize', 20)
     )
 
-    expect(editor.read.document.get().nodes['text-1']?.style).toMatchObject({
+    expect(editor.document.get().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.read.node.view.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -374,7 +374,7 @@ describe('sticky fit runtime', () => {
   it('does not recompute auto font size when sticky only rotates', () => {
     const editor = createStickyEditor()
 
-    editor.actions.node.patch(
+    editor.write.node.patch(
       ['sticky-1'],
       {
         fields: {
@@ -383,8 +383,8 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.read.document.get().nodes['sticky-1']?.rotation).toBe(45)
-    expect(editor.read.document.get().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.document.get().nodes['sticky-1']?.rotation).toBe(45)
+    expect(editor.document.get().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 28
     })
   })
@@ -392,7 +392,7 @@ describe('sticky fit runtime', () => {
   it('recomputes auto font size when sticky size changes', () => {
     const editor = createStickyEditor()
 
-    editor.actions.node.patch(
+    editor.write.node.patch(
       ['sticky-1'],
       {
         fields: {
@@ -404,10 +404,10 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.read.document.get().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.document.get().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 18
     })
-    expect(editor.read.node.view.get('sticky-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('sticky-1')?.rect).toMatchObject({
       width: 100,
       height: 140
     })
@@ -416,15 +416,15 @@ describe('sticky fit runtime', () => {
   it('switches sticky to fixed mode when font size is manually set', () => {
     const editor = createStickyEditor()
 
-    editor.actions.node.patch(
+    editor.write.node.patch(
       ['sticky-1'],
       schema.node.compileStyleUpdate('fontSize', 32)
     )
 
-    expect(editor.read.document.get().nodes['sticky-1']?.data).toMatchObject({
+    expect(editor.document.get().nodes['sticky-1']?.data).toMatchObject({
       fontMode: 'fixed'
     })
-    expect(editor.read.document.get().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.document.get().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 32
     })
   })

@@ -11,7 +11,7 @@ import {
 } from '../projector/spec'
 import { createEditorGraphQuery } from './query'
 
-export const createEditorGraphRuntime = (): Runtime => {
+export const createEditorSceneRuntime = (): Runtime => {
   const working = createWorking()
   const projector = createProjector({
     ...editorGraphProjectorSpec,

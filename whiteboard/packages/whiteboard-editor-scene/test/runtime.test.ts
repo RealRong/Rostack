@@ -14,7 +14,7 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import {
-  createEditorGraphRuntime,
+  createEditorSceneRuntime,
   type Input as EditorGraphInput
 } from '../src'
 import {
@@ -295,7 +295,7 @@ describe('editor graph runtime', () => {
       }
     })
 
-    const runtime = createEditorGraphRuntime()
+    const runtime = createEditorSceneRuntime()
     const emissions: Array<{ snapshot: unknown; change: unknown }> = []
     const unsubscribe = runtime.subscribe((snapshot, change) => {
       emissions.push({
@@ -327,7 +327,7 @@ describe('editor graph runtime', () => {
     const engine = createEngine({
       document: documentApi.create('doc_editor_graph_runtime_idle')
     })
-    const runtime = createEditorGraphRuntime()
+    const runtime = createEditorSceneRuntime()
 
     runtime.update(createInput(engine, {
       delta: DOCUMENT_DELTA
@@ -406,7 +406,7 @@ describe('editor graph runtime', () => {
       text: 'Child'
     })
 
-    const runtime = createEditorGraphRuntime()
+    const runtime = createEditorSceneRuntime()
     const baseline = runtime.update(
       createInput(engine, {
         delta: DOCUMENT_DELTA,
@@ -477,7 +477,7 @@ describe('editor graph runtime', () => {
       text: 'Second'
     })
 
-    const runtime = createEditorGraphRuntime()
+    const runtime = createEditorSceneRuntime()
     const baseline = runtime.update(
       createInput(engine, {
         delta: DOCUMENT_DELTA,
@@ -559,7 +559,7 @@ describe('editor graph runtime', () => {
       text: 'Committed label'
     })
 
-    const runtime = createEditorGraphRuntime()
+    const runtime = createEditorSceneRuntime()
     const result = runtime.update(
       createInput(engine, {
         delta: FULL_INPUT_DELTA,
@@ -742,7 +742,7 @@ describe('editor graph runtime', () => {
       text: 'Child'
     })
 
-    const runtime = createEditorGraphRuntime()
+    const runtime = createEditorSceneRuntime()
     const result = runtime.update(
       createInput(engine, {
         delta: FULL_INPUT_DELTA,
@@ -813,7 +813,7 @@ describe('editor graph runtime', () => {
       text: 'Child'
     })
 
-    const runtime = createEditorGraphRuntime()
+    const runtime = createEditorSceneRuntime()
     const result = runtime.update(
       createInput(engine, {
         delta: FULL_INPUT_DELTA,

@@ -25,13 +25,13 @@ const applyInsertEffect = ({
   editor: WhiteboardRuntime
   result: InsertResult
 }) => {
-  editor.actions.tool.select()
-  editor.actions.selection.replace({
+  editor.write.tool.select()
+  editor.write.selection.replace({
     nodeIds: [result.nodeId]
   })
 
   if (result.edit) {
-    editor.actions.edit.startNode(result.edit.nodeId, result.edit.field)
+    editor.write.edit.startNode(result.edit.nodeId, result.edit.field)
   }
 }
 
@@ -117,7 +117,7 @@ const recenterNode = ({
   nodeId: NodeId
   center: Point
 }) => {
-  const rect = editor.read.node.view.get(nodeId)?.rect
+  const rect = editor.scene.nodes.read.get(nodeId)?.rect
   if (!rect) {
     return
   }
@@ -126,7 +126,7 @@ const recenterNode = ({
     x: center.x - rect.width / 2,
     y: center.y - rect.height / 2
   }
-  const currentRect = editor.read.node.view.get(nodeId)?.rect
+  const currentRect = editor.scene.nodes.read.get(nodeId)?.rect
   if (
     currentRect
     && currentRect.x === nextPosition.x
@@ -135,7 +135,7 @@ const recenterNode = ({
     return
   }
 
-  editor.actions.node.patch([nodeId], {
+  editor.write.node.patch([nodeId], {
     fields: {
       position: nextPosition
     }
@@ -151,7 +151,7 @@ const insertNodePreset = ({
   preset: WhiteboardNodeInsertPreset
   world: Point
 }): InsertResult | undefined => {
-  const result = editor.actions.node.create(
+  const result = editor.write.node.create(
     placeNode({
       world,
       template: preset.template.template,
@@ -185,7 +185,7 @@ const insertMindmapPreset = ({
   preset: WhiteboardMindmapInsertPreset
   world: Point
 }): InsertResult | undefined => {
-  const result = editor.actions.mindmap.create({
+  const result = editor.write.mindmap.create({
     position: {
       x: 0,
       y: 0
@@ -198,7 +198,7 @@ const insertMindmapPreset = ({
     return undefined
   }
 
-  const bbox = editor.read.mindmap.view.get(result.data.mindmapId)?.tree.bbox
+  const bbox = editor.scene.mindmap.view.get(result.data.mindmapId)?.tree.bbox
   const anchorX = bbox
     ? bbox.x + bbox.width / 2
     : 0
@@ -206,7 +206,7 @@ const insertMindmapPreset = ({
     ? bbox.y + bbox.height / 2
     : 0
 
-  editor.actions.mindmap.moveRoot({
+  editor.write.mindmap.moveRoot({
     nodeId: result.data.mindmapId,
     position: {
       x: world.x - anchorX,

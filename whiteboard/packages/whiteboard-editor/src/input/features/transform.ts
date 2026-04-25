@@ -10,7 +10,7 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { toSpatialNode } from '@whiteboard/editor/read/node'
+import { toSpatialNode } from '@whiteboard/editor/scene/node'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>

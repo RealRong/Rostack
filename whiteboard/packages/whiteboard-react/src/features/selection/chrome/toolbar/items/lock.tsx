@@ -22,12 +22,12 @@ export const lockItem: ToolbarItemSpec = {
         title={title}
         onClick={() => {
           if (edge) {
-            editor.actions.edge.lock.set(edge.edgeIds, !locked)
+            editor.write.edge.lock.set(edge.edgeIds, !locked)
             return
           }
 
           if (node) {
-            editor.actions.node.lock.set(node.nodeIds, !locked)
+            editor.write.node.lock.set(node.nodeIds, !locked)
           }
         }}
       >

@@ -304,19 +304,19 @@ describe('node edit selection chrome', () => {
   it('keeps toolbar and overlay visible while editing a selected text node', () => {
     const editor = createTextEditor()
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: ['text-1']
     })
-    editor.actions.edit.startNode('text-1', 'text')
+    editor.write.edit.startNode('text-1', 'text')
 
-    expect(editor.read.panel.get().selectionToolbar).toMatchObject({
+    expect(editor.session.panel.get().selectionToolbar).toMatchObject({
       selectionKind: 'nodes',
       target: {
         nodeIds: ['text-1'],
         edgeIds: []
       }
     })
-    expect(editor.read.chrome.get().selection).toMatchObject({
+    expect(editor.session.chrome.get().selection).toMatchObject({
       kind: 'node',
       nodeId: 'text-1',
       handles: false
@@ -326,19 +326,19 @@ describe('node edit selection chrome', () => {
   it('keeps toolbar and overlay visible while editing a selected mindmap-owned root topic', () => {
     const editor = createMindmapEditor()
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: ['root-1']
     })
-    editor.actions.edit.startNode('root-1', 'text')
+    editor.write.edit.startNode('root-1', 'text')
 
-    expect(editor.read.panel.get().selectionToolbar).toMatchObject({
+    expect(editor.session.panel.get().selectionToolbar).toMatchObject({
       selectionKind: 'nodes',
       target: {
         nodeIds: ['root-1'],
         edgeIds: []
       }
     })
-    expect(editor.read.chrome.get().selection).toMatchObject({
+    expect(editor.session.chrome.get().selection).toMatchObject({
       kind: 'node',
       nodeId: 'root-1',
       handles: false
@@ -348,22 +348,22 @@ describe('node edit selection chrome', () => {
   it('continues hiding the selection toolbar while editing an edge label', () => {
     const editor = createEdgeEditor()
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       edgeIds: ['edge-1']
     })
-    editor.actions.edit.startEdgeLabel('edge-1', 'label-1')
+    editor.write.edit.startEdgeLabel('edge-1', 'label-1')
 
-    expect(editor.read.panel.get().selectionToolbar).toBeUndefined()
+    expect(editor.session.panel.get().selectionToolbar).toBeUndefined()
   })
 
   it('keeps node drag and toolbar style writes working for a selected shape', () => {
     const editor = createShapeEditor()
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: ['shape-1']
     })
 
-    const beforeRect = editor.read.node.view.get('shape-1')?.rect
+    const beforeRect = editor.scene.nodes.read.get('shape-1')?.rect
     expect(beforeRect).toBeDefined()
 
     editor.input.pointerDown(createPointerInput({
@@ -397,30 +397,30 @@ describe('node edit selection chrome', () => {
       }
     }))
 
-    expect(editor.read.document.get().nodes['shape-1']?.position).toEqual({
+    expect(editor.document.get().nodes['shape-1']?.position).toEqual({
       x: 128,
       y: 152
     })
-    expect(editor.read.node.view.get('shape-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('shape-1')?.rect).toMatchObject({
       x: 128,
       y: 152
     })
 
-    const toolbar = editor.read.panel.get().selectionToolbar
+    const toolbar = editor.session.panel.get().selectionToolbar
     expect(toolbar?.defaultScopeKey).toBe('nodes')
     const scope = toolbar?.scopes.find((entry) => entry.key === toolbar.defaultScopeKey)
     expect(scope?.node?.nodeIds).toEqual(['shape-1'])
 
-    editor.actions.node.style.fill(scope!.node!.nodeIds, '#22c55e')
-    editor.actions.node.style.stroke(scope!.node!.nodeIds, '#ef4444')
-    editor.actions.node.style.strokeWidth(scope!.node!.nodeIds, 3)
+    editor.write.node.style.fill(scope!.node!.nodeIds, '#22c55e')
+    editor.write.node.style.stroke(scope!.node!.nodeIds, '#ef4444')
+    editor.write.node.style.strokeWidth(scope!.node!.nodeIds, 3)
 
-    expect(editor.read.document.get().nodes['shape-1']?.style).toMatchObject({
+    expect(editor.document.get().nodes['shape-1']?.style).toMatchObject({
       fill: '#22c55e',
       stroke: '#ef4444',
       strokeWidth: 3
     })
-    expect(editor.read.node.view.get('shape-1')?.node.style).toMatchObject({
+    expect(editor.scene.nodes.read.get('shape-1')?.node.style).toMatchObject({
       fill: '#22c55e',
       stroke: '#ef4444',
       strokeWidth: 3
@@ -430,11 +430,11 @@ describe('node edit selection chrome', () => {
   it('keeps root drag working for a selected mindmap-owned topic', () => {
     const editor = createMindmapEditor()
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: ['root-1']
     })
 
-    const beforeRect = editor.read.node.view.get('root-1')?.rect
+    const beforeRect = editor.scene.nodes.read.get('root-1')?.rect
     expect(beforeRect).toBeDefined()
 
     editor.input.pointerDown(createPointerInput({
@@ -468,11 +468,11 @@ describe('node edit selection chrome', () => {
       }
     }))
 
-    expect(editor.read.document.get().nodes['root-1']?.position).toEqual({
+    expect(editor.document.get().nodes['root-1']?.position).toEqual({
       x: 248,
       y: 212
     })
-    expect(editor.read.node.view.get('root-1')?.rect).toMatchObject({
+    expect(editor.scene.nodes.read.get('root-1')?.rect).toMatchObject({
       x: 248,
       y: 212
     })
@@ -481,16 +481,16 @@ describe('node edit selection chrome', () => {
   it('keeps mindmap topic style writes working for a selected root topic', () => {
     const editor = createMindmapEditor()
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: ['root-1']
     })
 
-    const toolbar = editor.read.panel.get().selectionToolbar
+    const toolbar = editor.session.panel.get().selectionToolbar
     expect(toolbar?.defaultScopeKey).toBe('nodes')
     const scope = toolbar?.scopes.find((entry) => entry.key === toolbar.defaultScopeKey)
     expect(scope?.node?.nodeIds).toEqual(['root-1'])
 
-    const result = editor.actions.mindmap.style.topic({
+    const result = editor.write.mindmap.style.topic({
       nodeIds: scope!.node!.nodeIds,
       patch: {
         frameKind: 'underline',
@@ -502,13 +502,13 @@ describe('node edit selection chrome', () => {
 
     expect(result?.ok).toBe(true)
 
-    expect(editor.read.document.get().nodes['root-1']?.style).toMatchObject({
+    expect(editor.document.get().nodes['root-1']?.style).toMatchObject({
       frameKind: 'underline',
       stroke: '#ef4444',
       strokeWidth: 3,
       fill: '#22c55e'
     })
-    expect(editor.read.node.view.get('root-1')?.node.style).toMatchObject({
+    expect(editor.scene.nodes.read.get('root-1')?.node.style).toMatchObject({
       frameKind: 'underline',
       stroke: '#ef4444',
       strokeWidth: 3,
@@ -518,7 +518,7 @@ describe('node edit selection chrome', () => {
 
   it('updates node hovered from idle pointer hover and clears it on leave', () => {
     const editor = createShapeEditor()
-    const view = editor.read.node.view.get('shape-1')
+    const view = editor.scene.nodes.read.get('shape-1')
 
     expect(view?.hovered).toBe(false)
 
@@ -534,10 +534,10 @@ describe('node edit selection chrome', () => {
       buttons: 0
     }))
 
-    expect(editor.read.node.view.get('shape-1')?.hovered).toBe(true)
+    expect(editor.scene.nodes.read.get('shape-1')?.hovered).toBe(true)
 
     editor.input.pointerLeave()
 
-    expect(editor.read.node.view.get('shape-1')?.hovered).toBe(false)
+    expect(editor.scene.nodes.read.get('shape-1')?.hovered).toBe(false)
   })
 })

@@ -105,7 +105,7 @@ describe('mindmap drag gesture runtime', () => {
     })
 
     try {
-      const created = editor.actions.mindmap.create({
+      const created = editor.write.mindmap.create({
         template: product.mindmap.template.build({
           preset: 'mindmap.underline-split'
         })
@@ -116,12 +116,12 @@ describe('mindmap drag gesture runtime', () => {
         return
       }
 
-      editor.actions.selection.replace({
+      editor.write.selection.replace({
         nodeIds: [created.data.rootId]
       })
 
-      const beforeRoot = editor.read.node.view.get(created.data.rootId)?.rect
-      const beforeScene = editor.read.mindmap.view.get(created.data.mindmapId)?.tree.bbox
+      const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+      const beforeScene = editor.scene.mindmap.view.get(created.data.mindmapId)?.tree.bbox
 
       expect(beforeRoot).toBeDefined()
       expect(beforeScene).toBeDefined()
@@ -149,8 +149,8 @@ describe('mindmap drag gesture runtime', () => {
         }
       }))
 
-      const liveRoot = editor.read.node.view.get(created.data.rootId)?.rect
-      const liveScene = editor.read.mindmap.view.get(created.data.mindmapId)?.tree.bbox
+      const liveRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+      const liveScene = editor.scene.mindmap.view.get(created.data.mindmapId)?.tree.bbox
 
       expect(liveRoot).toEqual({
         ...beforeRoot!,

@@ -15,7 +15,7 @@ import type { ResolvedEdgeEnds } from '@whiteboard/core/types/edge'
 import type { Engine, Snapshot } from '@whiteboard/engine'
 import { equal, store } from '@shared/core'
 
-export type NodeItem = {
+export type DocumentNodeItem = {
   id: NodeId
   node: Node
   rect: Rect
@@ -23,31 +23,47 @@ export type NodeItem = {
   rotation: number
 }
 
-export type EdgeItem = {
+export type DocumentEdgeItem = {
   id: EdgeId
   edge: Edge
   ends: ResolvedEdgeEnds
 }
 
-export interface DocumentRead {
+export type EditorDocumentSource = {
+  get: () => Document
+  background: store.ReadStore<Document['background'] | undefined>
+  bounds: () => Rect
+  slice: (input: {
+    nodeIds?: readonly NodeId[]
+    edgeIds?: readonly EdgeId[]
+  }) => SliceExportResult | undefined
+  nodes: {
+    get: (id: NodeId) => DocumentNodeItem | undefined
+    getMany: (ids: readonly NodeId[]) => readonly DocumentNodeItem[]
+    ids: () => readonly NodeId[]
+    read: store.KeyedReadStore<NodeId, DocumentNodeItem | undefined>
+  }
+  edges: {
+    get: (id: EdgeId) => DocumentEdgeItem | undefined
+    getMany: (ids: readonly EdgeId[]) => readonly DocumentEdgeItem[]
+    ids: () => readonly EdgeId[]
+    read: store.KeyedReadStore<EdgeId, DocumentEdgeItem | undefined>
+  }
+}
+
+export type EditorDocumentRuntimeSource = EditorDocumentSource & {
   document: {
     get: () => Document
     background: store.ReadStore<Document['background'] | undefined>
     bounds: () => Rect
   }
-  slice: {
-    fromSelection: (input: {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly EdgeId[]
-    }) => SliceExportResult | undefined
-  }
   node: {
     list: store.ReadStore<readonly NodeId[]>
-    committed: store.KeyedReadStore<NodeId, NodeItem | undefined>
+    committed: store.KeyedReadStore<NodeId, DocumentNodeItem | undefined>
   }
   edge: {
     list: store.ReadStore<readonly EdgeId[]>
-    item: store.KeyedReadStore<EdgeId, EdgeItem | undefined>
+    item: store.KeyedReadStore<EdgeId, DocumentEdgeItem | undefined>
   }
 }
 
@@ -59,8 +75,8 @@ const EMPTY_RECT: Rect = {
 }
 
 const isNodeItemEqual = (
-  left: NodeItem | undefined,
-  right: NodeItem | undefined
+  left: DocumentNodeItem | undefined,
+  right: DocumentNodeItem | undefined
 ) => (
   left === right
   || (
@@ -74,8 +90,8 @@ const isNodeItemEqual = (
 )
 
 const isEdgeItemEqual = (
-  left: EdgeItem | undefined,
-  right: EdgeItem | undefined
+  left: DocumentEdgeItem | undefined,
+  right: DocumentEdgeItem | undefined
 ) => (
   left === right
   || (
@@ -93,7 +109,7 @@ const buildNodeItem = ({
 }: {
   node: Node
   nodeSize: Engine['config']['nodeSize']
-}): NodeItem => {
+}): DocumentNodeItem => {
   const rect = nodeApi.geometry.rect(node, nodeSize)
   const rotation = nodeApi.geometry.rotation(node)
   const bounds = nodeApi.outline.geometry(
@@ -145,7 +161,7 @@ const readEdgeItem = ({
   edge: Edge | undefined
   snapshot: Snapshot
   nodeSize: Engine['config']['nodeSize']
-}): EdgeItem | undefined => {
+}): DocumentEdgeItem | undefined => {
   if (!edge) {
     return undefined
   }
@@ -211,11 +227,19 @@ const readCommittedEdgeView = ({
   }
 }
 
-export const createDocumentRead = ({
+const collectPresentValues = <TValue>(
+  ids: readonly string[],
+  readValue: (id: string) => TValue | undefined
+): readonly TValue[] => ids.flatMap((id) => {
+  const value = readValue(id)
+  return value ? [value] : []
+})
+
+export const createDocumentSource = ({
   engine
 }: {
   engine: Engine
-}): DocumentRead => {
+}): EditorDocumentRuntimeSource => {
   const snapshotStore = store.createValueStore(engine.current().snapshot)
   engine.subscribe((publish) => {
     snapshotStore.set(publish.snapshot)
@@ -231,7 +255,7 @@ export const createDocumentRead = ({
     isEqual: equal.sameOrder
   })
 
-  const nodeCommitted = store.createKeyedDerivedStore<NodeId, NodeItem | undefined>({
+  const nodeCommitted = store.createKeyedDerivedStore<NodeId, DocumentNodeItem | undefined>({
     get: (nodeId) => {
       const node = store.read(documentStore).nodes[nodeId]
       return node
@@ -249,7 +273,7 @@ export const createDocumentRead = ({
     isEqual: equal.sameOrder
   })
 
-  const edgeItem = store.createKeyedDerivedStore<EdgeId, EdgeItem | undefined>({
+  const edgeItem = store.createKeyedDerivedStore<EdgeId, DocumentEdgeItem | undefined>({
     get: (edgeId) => readEdgeItem({
       edge: store.read(documentStore).edges[edgeId],
       snapshot: store.read(snapshotStore),
@@ -258,54 +282,81 @@ export const createDocumentRead = ({
     isEqual: isEdgeItemEqual
   })
 
+  const background = store.createDerivedStore({
+    get: () => store.read(documentStore).background,
+    isEqual: (left, right) => left === right
+  })
+
+  const bounds = () => {
+    const nodeBounds = store.read(nodeList).flatMap((nodeId) => {
+      const item = store.read(nodeCommitted, nodeId)
+      return item ? [item.bounds] : []
+    })
+    const edgeBounds = store.read(edgeList).flatMap((edgeId) => {
+      const view = readCommittedEdgeView({
+        edgeId,
+        snapshot: store.read(snapshotStore),
+        nodeSize: engine.config.nodeSize
+      })
+      const viewBounds = view
+        ? edgeApi.path.bounds(view.path)
+        : undefined
+
+      return viewBounds ? [viewBounds] : []
+    })
+    const merged = geometryApi.rect.boundingRect([
+      ...nodeBounds,
+      ...edgeBounds
+    ])
+
+    return merged ?? EMPTY_RECT
+  }
+
+  const slice: EditorDocumentSource['slice'] = ({
+    nodeIds,
+    edgeIds
+  }) => {
+    const exported = documentApi.slice.export.selection({
+      doc: store.read(documentStore),
+      nodeIds,
+      edgeIds,
+      nodeSize: engine.config.nodeSize
+    })
+
+    return exported.ok
+      ? exported.data
+      : undefined
+  }
+
+  const nodes: EditorDocumentSource['nodes'] = {
+    get: (nodeId) => store.read(nodeCommitted, nodeId),
+    getMany: (nodeIds) => collectPresentValues(nodeIds as readonly string[], (nodeId) => (
+      store.read(nodeCommitted, nodeId as NodeId)
+    )) as readonly DocumentNodeItem[],
+    ids: () => store.read(nodeList),
+    read: nodeCommitted
+  }
+
+  const edges: EditorDocumentSource['edges'] = {
+    get: (edgeId) => store.read(edgeItem, edgeId),
+    getMany: (edgeIds) => collectPresentValues(edgeIds as readonly string[], (edgeId) => (
+      store.read(edgeItem, edgeId as EdgeId)
+    )) as readonly DocumentEdgeItem[],
+    ids: () => store.read(edgeList),
+    read: edgeItem
+  }
+
   return {
+    get: () => store.read(documentStore),
+    background,
+    bounds,
+    slice,
+    nodes,
+    edges,
     document: {
       get: () => store.read(documentStore),
-      background: store.createDerivedStore({
-        get: () => store.read(documentStore).background,
-        isEqual: (left, right) => left === right
-      }),
-      bounds: () => {
-        const nodeBounds = store.read(nodeList).flatMap((nodeId) => {
-          const item = store.read(nodeCommitted, nodeId)
-          return item ? [item.bounds] : []
-        })
-        const edgeBounds = store.read(edgeList).flatMap((edgeId) => {
-          const view = readCommittedEdgeView({
-            edgeId,
-            snapshot: store.read(snapshotStore),
-            nodeSize: engine.config.nodeSize
-          })
-          const bounds = view
-            ? edgeApi.path.bounds(view.path)
-            : undefined
-
-          return bounds ? [bounds] : []
-        })
-        const bounds = geometryApi.rect.boundingRect([
-          ...nodeBounds,
-          ...edgeBounds
-        ])
-
-        return bounds ?? EMPTY_RECT
-      }
-    },
-    slice: {
-      fromSelection: ({
-        nodeIds,
-        edgeIds
-      }) => {
-        const exported = documentApi.slice.export.selection({
-          doc: store.read(documentStore),
-          nodeIds,
-          edgeIds,
-          nodeSize: engine.config.nodeSize
-        })
-
-        return exported.ok
-          ? exported.data
-          : undefined
-      }
+      background,
+      bounds
     },
     node: {
       list: nodeList,

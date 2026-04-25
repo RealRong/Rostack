@@ -4,7 +4,7 @@ import type {
   Read as EditorGraphQuery,
   NodeUiView as RuntimeNodeUiView,
   NodeView as RuntimeNodeView
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 import type {
   Node,
   NodeGeometry,
@@ -12,8 +12,8 @@ import type {
   NodeModel,
   Rect
 } from '@whiteboard/core/types'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
-import type { ProjectionSources } from '@whiteboard/editor/projection/sources'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
+import type { ScenePublishedState } from '@whiteboard/editor/projection/sources'
 import type {
   NodeTypeCapability,
   NodeTypeSupport
@@ -40,7 +40,7 @@ export type EditorNodeView = {
 }
 
 export type GraphNodeRead = {
-  committed: DocumentRead['node']['committed']
+  committed: EditorDocumentRuntimeSource['node']['committed']
   graph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
   ui: store.KeyedReadStore<NodeId, RuntimeNodeUiView | undefined>
   view: store.KeyedReadStore<NodeId, EditorNodeView | undefined>
@@ -175,8 +175,8 @@ export const createGraphNodeRead = ({
   spatial,
   type
 }: {
-  document: Pick<DocumentRead, 'node'>
-  sources: Pick<ProjectionSources, 'nodeGraphIds' | 'nodeGraph' | 'nodeUi'>
+  document: Pick<EditorDocumentRuntimeSource, 'node'>
+  sources: Pick<ScenePublishedState, 'nodeGraphIds' | 'nodeGraph' | 'nodeUi'>
   spatial: EditorGraphQuery['spatial']
   type: Pick<NodeTypeSupport, 'capability'>
 }): GraphNodeRead => {

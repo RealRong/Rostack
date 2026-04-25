@@ -42,7 +42,7 @@ export type EdgeView = {
 }
 
 export type SelectedEdgeChrome = NonNullable<
-  ReturnType<WhiteboardRuntime['read']['edge']['selectedChrome']['get']>
+  ReturnType<WhiteboardRuntime['session']['selection']['edge']['chrome']['get']>
 >
 
 export type SelectedEdgeRoutePoint = SelectedEdgeChrome['routePoints'][number]

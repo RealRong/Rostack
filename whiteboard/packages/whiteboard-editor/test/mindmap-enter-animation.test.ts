@@ -106,7 +106,7 @@ describe('mindmap enter animation', () => {
     const editor = createEditor()
 
     try {
-      const created = editor.actions.mindmap.create({
+      const created = editor.write.mindmap.create({
         template: product.mindmap.template.build({
           preset: 'mindmap.underline-split'
         })
@@ -117,7 +117,7 @@ describe('mindmap enter animation', () => {
         return
       }
 
-      const inserted = editor.actions.mindmap.insertRelative({
+      const inserted = editor.write.mindmap.insertRelative({
         id: created.data.mindmapId,
         targetNodeId: created.data.rootId,
         relation: 'child',
@@ -136,14 +136,14 @@ describe('mindmap enter animation', () => {
         return
       }
 
-      const startRect = editor.read.node.view.get(inserted.data.nodeId)?.rect
+      const startRect = editor.scene.nodes.read.get(inserted.data.nodeId)?.rect
       expect(startRect).toBeDefined()
 
       vi.advanceTimersByTime(120)
-      const midRect = editor.read.node.view.get(inserted.data.nodeId)?.rect
+      const midRect = editor.scene.nodes.read.get(inserted.data.nodeId)?.rect
 
       vi.advanceTimersByTime(200)
-      const endRect = editor.read.node.view.get(inserted.data.nodeId)?.rect
+      const endRect = editor.scene.nodes.read.get(inserted.data.nodeId)?.rect
 
       expect(midRect).toBeDefined()
       expect(endRect).toBeDefined()

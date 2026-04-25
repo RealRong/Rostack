@@ -23,9 +23,9 @@ import { resolveEdgeMarkerUrl } from '@whiteboard/react/features/edge/ui/marker'
 
 const EdgeHintOverlay = () => {
   const editor = useEditorRuntime()
-  const chrome = useStoreValue(editor.read.chrome)
+  const chrome = useStoreValue(editor.session.chrome)
   const hint = chrome.edgeGuide
-  const zoom = useStoreValue(editor.store.viewport).zoom
+  const zoom = useStoreValue(editor.session.viewport).zoom
   const { path, connect } = hint
   const snap = connect && (
     connect.resolution.mode === 'outline'
@@ -158,7 +158,7 @@ const EdgeRoutePointHandle = ({
               return
             }
 
-            editor.actions.edge.route.removePoint(point.edgeId, point.pick.index)
+            editor.write.edge.route.removePoint(point.edgeId, point.pick.index)
             event.preventDefault()
             event.stopPropagation()
           }

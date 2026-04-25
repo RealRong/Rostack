@@ -10,17 +10,17 @@ import {
 import {
   createEditorBoundaryTaskRuntime
 } from '@whiteboard/editor/boundary/task'
-import { createDocumentRead } from '@whiteboard/editor/document/read'
+import { createDocumentSource } from '@whiteboard/editor/document/source'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
-import { createEditorStore } from '@whiteboard/editor/editor/store'
+import { createSessionState } from '@whiteboard/editor/session/state'
 import {
   createEditorInputApi
 } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
-import { createProjectionController } from '@whiteboard/editor/projection/controller'
-import { createGraphRead } from '@whiteboard/editor/read/graph'
-import { createEditorRead } from '@whiteboard/editor/read/public'
+import { createSceneController } from '@whiteboard/editor/projection/controller'
+import { createSceneSource } from '@whiteboard/editor/scene/source'
+import { createSessionSource } from '@whiteboard/editor/session/source'
 import { createToolService } from '@whiteboard/editor/services/tool'
 import {
   DEFAULT_DRAW_STATE,
@@ -62,7 +62,7 @@ export const createEditor = ({
     initialDrawState,
     initialViewport
   })
-  const document = createDocumentRead({
+  const document = createDocumentSource({
     engine
   })
   const layout = createEditorLayout({
@@ -79,24 +79,25 @@ export const createEditor = ({
   })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(registry)
-  const projection = createProjectionController({
+  const projection = createSceneController({
     engine,
     session,
     layout
   })
-  const graph = createGraphRead({
+  const scene = createSceneSource({
     document,
     sources: projection.sources,
     query: projection.query,
     spatial: projection.query.spatial,
     selection: session.state.selection,
-    nodeType
+    nodeType,
+    visibleRect: () => session.viewport.read.worldRect()
   })
-  const write = createEditorWrite({
+  const writeRuntime = createEditorWrite({
     engine,
     history,
     document,
-    projection: graph,
+    projection: scene,
     layout
   })
   const tool = createToolService({
@@ -121,20 +122,20 @@ export const createEditor = ({
     engine,
     document,
     session,
-    graph,
+    graph: scene,
     layout,
     tool,
-    write,
+    write: writeRuntime,
     registry,
     defaults: defaults.templates
   })
   const host = createEditorHost({
     engine,
     document,
-    projection: graph,
+    projection: scene,
     session,
     layout,
-    write,
+    write: writeRuntime,
     tool,
     registry
   })
@@ -148,20 +149,21 @@ export const createEditor = ({
     document,
     resetHost: input.cancel
   })
-  const editorStore = createEditorStore(session)
+  const sessionState = createSessionState(session)
+  const sessionSource = createSessionSource({
+    graph: scene,
+    session,
+    state: sessionState,
+    history,
+    nodeType,
+    defaults: defaults.selection
+  })
 
   return {
-    store: editorStore,
-    read: createEditorRead({
-      document,
-      graph,
-      session,
-      store: editorStore,
-      history,
-      nodeType,
-      defaults: defaults.selection
-    }),
-    actions,
+    document,
+    scene,
+    session: sessionSource,
+    write: actions,
     input,
     events: events.events,
     dispose: () => {

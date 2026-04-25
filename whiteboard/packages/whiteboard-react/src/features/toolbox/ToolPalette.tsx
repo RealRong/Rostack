@@ -34,7 +34,7 @@ export const ToolPalette = memo(() => {
   const buttonRefByKey = useRef<Partial<Record<ToolPaletteMenuKey, HTMLButtonElement | null>>>({})
   const [openMenu, setOpenMenu] = useState<ToolPaletteMenuKey | null>(null)
   const [drawPanelOpen, setDrawPanelOpen] = useState(false)
-  const drawState = useStoreValue(editor.store.draw)
+  const drawState = useStoreValue(editor.session.draw)
   const palette = useMemo(() => readToolPaletteView({
     tool,
     drawState,

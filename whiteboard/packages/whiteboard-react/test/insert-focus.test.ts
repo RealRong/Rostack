@@ -150,7 +150,7 @@ describe('insert focus', () => {
       catalog: product.insert.catalog.WHITEBOARD_INSERT_CATALOG
     })
 
-    editor.actions.tool.insert(
+    editor.write.tool.insert(
       createInsertTool(product.insert.catalog.WHITEBOARD_INSERT_CATALOG.defaults.text).template
     )
 
@@ -162,9 +162,9 @@ describe('insert focus', () => {
     })
 
     expect(result).toBeDefined()
-    expect(editor.store.tool.get().type).toBe('select')
-    expect(editor.read.node.view.get(result!.nodeId)?.selected).toBe(true)
-    expect(editor.store.edit.get()).toMatchObject({
+    expect(editor.session.tool.get().type).toBe('select')
+    expect(editor.scene.nodes.read.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.session.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
       field: 'text'
@@ -179,7 +179,7 @@ describe('insert focus', () => {
     })
 
     const presetKey = product.insert.catalog.WHITEBOARD_INSERT_CATALOG.defaults.sticky
-    editor.actions.tool.insert(
+    editor.write.tool.insert(
       createInsertTool(presetKey).template
     )
 
@@ -191,9 +191,9 @@ describe('insert focus', () => {
     })
 
     expect(result).toBeDefined()
-    expect(editor.store.tool.get().type).toBe('select')
-    expect(editor.read.node.view.get(result!.nodeId)?.selected).toBe(true)
-    expect(editor.store.edit.get()).toMatchObject({
+    expect(editor.session.tool.get().type).toBe('select')
+    expect(editor.scene.nodes.read.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.session.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
       field: 'text'
@@ -208,7 +208,7 @@ describe('insert focus', () => {
     })
 
     const presetKey = product.insert.catalog.WHITEBOARD_INSERT_CATALOG.defaults.mindmap
-    editor.actions.tool.insert(
+    editor.write.tool.insert(
       createInsertTool(presetKey).template
     )
 
@@ -220,9 +220,9 @@ describe('insert focus', () => {
     })
 
     expect(result).toBeDefined()
-    expect(editor.store.tool.get().type).toBe('select')
-    expect(editor.read.node.view.get(result!.nodeId)?.selected).toBe(true)
-    expect(editor.store.edit.get()).toMatchObject({
+    expect(editor.session.tool.get().type).toBe('select')
+    expect(editor.scene.nodes.read.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.session.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
       field: 'text'

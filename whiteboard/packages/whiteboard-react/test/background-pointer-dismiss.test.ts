@@ -8,7 +8,7 @@ describe('dismissBackgroundEditSelection', () => {
 
     dismissBackgroundEditSelection({
       editor: {
-        store: {
+        session: {
           edit: {
             get: () => ({
               kind: 'node',
@@ -28,7 +28,7 @@ describe('dismissBackgroundEditSelection', () => {
             })
           }
         },
-        actions: {
+        write: {
           edit: {
             commit
           },
@@ -61,7 +61,7 @@ describe('dismissBackgroundEditSelection', () => {
 
     dismissBackgroundEditSelection({
       editor: {
-        store: {
+        session: {
           edit: {
             get: () => ({
               kind: 'node',
@@ -81,7 +81,7 @@ describe('dismissBackgroundEditSelection', () => {
             })
           }
         },
-        actions: {
+        write: {
           edit: {
             commit
           },
@@ -111,7 +111,7 @@ describe('dismissBackgroundEditSelection', () => {
 
     dismissBackgroundEditSelection({
       editor: {
-        store: {
+        session: {
           edit: {
             get: () => null
           },
@@ -122,7 +122,7 @@ describe('dismissBackgroundEditSelection', () => {
             })
           }
         },
-        actions: {
+        write: {
           edit: {
             commit
           },
@@ -144,7 +144,7 @@ describe('dismissBackgroundEditSelection', () => {
 
     dismissBackgroundEditSelection({
       editor: {
-        store: {
+        session: {
           edit: {
             get: () => ({
               kind: 'node',
@@ -164,7 +164,7 @@ describe('dismissBackgroundEditSelection', () => {
             })
           }
         },
-        actions: {
+        write: {
           edit: {
             commit
           },

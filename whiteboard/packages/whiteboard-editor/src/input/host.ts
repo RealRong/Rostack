@@ -3,9 +3,9 @@ import type {
 } from '@whiteboard/editor/boundary/runtime'
 import type {
   EditorInputHost,
-  EditorStore
+  EditorSessionState
 } from '@whiteboard/editor/types/editor'
-import type { GraphRead } from '@whiteboard/editor/read/graph'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'
@@ -19,7 +19,7 @@ import type {
 import type { EditorPick } from '@whiteboard/editor/types/pick'
 
 const readSelectionIntent = (
-  selection: EditorStore['selection'],
+  selection: EditorSessionState['selection'],
   screen: {
     x: number
     y: number
@@ -101,7 +101,7 @@ export const createEditorInputHost = ({
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  projection: Pick<GraphRead, 'group'>
+  projection: Pick<EditorSceneRuntime, 'group'>
   session: Pick<EditorSession, 'state' | 'mutate' | 'viewport' | 'interaction'>
 }): EditorInputHost => {
   const writePointer = (sample: {

@@ -6,7 +6,7 @@ export const dismissBackgroundEditSelection = ({
   editor,
   input
 }: {
-  editor: Pick<WhiteboardRuntime, 'store' | 'actions'>
+  editor: Pick<WhiteboardRuntime, 'session' | 'write'>
   input: PointerDownInput
 }) => {
   if (
@@ -19,13 +19,13 @@ export const dismissBackgroundEditSelection = ({
     return
   }
 
-  if (!editor.store.edit.get()) {
+  if (!editor.session.edit.get()) {
     return
   }
 
-  editor.actions.edit.commit()
+  editor.write.edit.commit()
 
-  const selection = editor.store.selection.get()
+  const selection = editor.session.selection.get()
   if (
     selection.nodeIds.length === 0
     && selection.edgeIds.length === 0
@@ -33,5 +33,5 @@ export const dismissBackgroundEditSelection = ({
     return
   }
 
-  editor.actions.selection.clear()
+  editor.write.selection.clear()
 }

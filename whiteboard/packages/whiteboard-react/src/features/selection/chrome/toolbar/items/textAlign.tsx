@@ -59,7 +59,7 @@ export const textAlignItem: ToolbarItemSpec = {
       <TextAlignPanel
         value={node.textAlign}
         onChange={(value) => {
-          editor.actions.node.text.align(node.nodeIds, value)
+          editor.write.node.text.align(node.nodeIds, value)
         }}
       />
     )

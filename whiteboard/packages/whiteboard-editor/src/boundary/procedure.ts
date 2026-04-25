@@ -4,7 +4,7 @@ import type {
   SceneItem,
   Snapshot,
   UiSnapshot
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 
 export interface EditorPublished {
   revision: number

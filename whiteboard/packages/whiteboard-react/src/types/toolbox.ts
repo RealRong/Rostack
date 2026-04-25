@@ -22,7 +22,7 @@ export type ToolPaletteMenuKey =
 export type ToolPaletteDrawBrush = WhiteboardDrawView['brush']
 export type ToolPaletteDrawSlot = WhiteboardDrawView['slot']
 export type ToolPaletteBrushStyle = WhiteboardDrawView['state']['slots'][ToolPaletteDrawSlot]
-export type ToolPaletteBrushStylePatch = Parameters<Editor['actions']['draw']['patch']>[0]
+export type ToolPaletteBrushStylePatch = Parameters<Editor['write']['draw']['patch']>[0]
 
 export type ToolPaletteMemory = {
   drawMode: DrawMode

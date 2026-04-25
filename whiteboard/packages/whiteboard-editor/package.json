@@ -15,7 +15,7 @@
     "@shared/dom": "workspace:*",
     "@shared/projector": "workspace:*",
     "@whiteboard/core": "workspace:*",
-    "@whiteboard/editor-graph": "workspace:*",
+    "@whiteboard/editor-scene": "workspace:*",
     "@whiteboard/engine": "workspace:*",
     "@whiteboard/history": "workspace:*"
   },

@@ -5,7 +5,7 @@ import {
 import { schema as schemaApi } from '@whiteboard/core/schema'
 import type { NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type {
   NodeLockWrite,
   NodeShapeWrite,
@@ -20,7 +20,7 @@ type NodeTextCommitInput = Parameters<NodeTextWrite['commit']>[0]
 
 type NodeContext = {
   read: {
-    committed: (id: NodeId) => ReturnType<DocumentRead['node']['committed']['get']>
+    committed: (id: NodeId) => ReturnType<EditorDocumentRuntimeSource['node']['committed']['get']>
   }
   write: NodeUpdateWrite & {
     textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
@@ -59,7 +59,7 @@ const createNodeContext = ({
   update,
   textCommit
 }: {
-  read: Pick<DocumentRead, 'node'>
+  read: Pick<EditorDocumentRuntimeSource, 'node'>
   update: NodeUpdateWrite
   textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
 }): NodeContext => ({
@@ -199,7 +199,7 @@ export const createNodeWrite = ({
   layout
 }: {
   engine: Engine
-  read: Pick<DocumentRead, 'node'>
+  read: Pick<EditorDocumentRuntimeSource, 'node'>
   layout: EditorLayout
 }): NodeWrite => {
   const update = createNodeUpdateWrite(engine, {

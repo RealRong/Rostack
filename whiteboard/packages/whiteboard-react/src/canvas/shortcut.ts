@@ -42,16 +42,16 @@ const DEFAULT_SHORTCUT_INSERT_BEHAVIOR = {
 const readActiveMindmapShortcut = (
   editor: Editor
 ): ActiveMindmapShortcut | undefined => {
-  const selection = editor.store.selection.get()
+  const selection = editor.session.selection.get()
   if (
-    editor.store.edit.get() !== null
+    editor.session.edit.get() !== null
     || selection.edgeIds.length > 0
     || selection.nodeIds.length !== 1
   ) {
     return undefined
   }
 
-  const node = editor.read.node.view.get(selection.nodeIds[0] ?? '')?.node
+  const node = editor.scene.nodes.read.get(selection.nodeIds[0] ?? '')?.node
   if (node?.owner?.kind !== 'mindmap' || node.type !== 'text') {
     return undefined
   }
@@ -65,7 +65,7 @@ const readActiveMindmapShortcut = (
 const readShortcutState = (
   editor: Editor
 ) => {
-  const selection = editor.store.selection.get()
+  const selection = editor.session.selection.get()
   const count = selection.nodeIds.length + selection.edgeIds.length
 
   return {
@@ -104,7 +104,7 @@ const canRunShortcut = (
     case 'selection.selectAll':
       return true
     case 'selection.clear':
-      return state.hasSelection || !editor.read.tool.is('select')
+      return state.hasSelection || !editor.session.tool.is('select')
     case 'selection.delete':
       return state.hasSelection && state.canDelete
     case 'selection.duplicate':
@@ -139,29 +139,29 @@ export const runShortcut = (
 
   switch (action) {
     case 'selection.selectAll':
-      editor.actions.selection.selectAll()
+      editor.write.selection.selectAll()
       return true
     case 'selection.clear':
-      if (!editor.read.tool.is('select')) {
-        editor.actions.tool.select()
+      if (!editor.session.tool.is('select')) {
+        editor.write.tool.select()
       }
-      editor.actions.selection.clear()
+      editor.write.selection.clear()
       return true
     case 'selection.delete':
-      return editor.actions.selection.delete(selection)
+      return editor.write.selection.delete(selection)
     case 'selection.duplicate': {
-      return editor.actions.selection.duplicate(selection)
+      return editor.write.selection.duplicate(selection)
     }
     case 'group.merge': {
-      return editor.actions.selection.group(selection)
+      return editor.write.selection.group(selection)
     }
     case 'group.ungroup': {
-      return editor.actions.selection.ungroup(selection)
+      return editor.write.selection.ungroup(selection)
     }
     case 'history.undo':
-      return editor.actions.history.undo().ok
+      return editor.write.history.undo().ok
     case 'history.redo':
-      return editor.actions.history.redo().ok
+      return editor.write.history.redo().ok
     case 'mindmap.navigate.parent':
     case 'mindmap.navigate.first-child':
     case 'mindmap.navigate.prev-sibling':
@@ -170,7 +170,7 @@ export const runShortcut = (
         return false
       }
 
-      const target = editor.read.mindmap.navigate({
+      const target = editor.scene.mindmap.navigate({
         id: activeMindmap.treeId,
         fromNodeId: activeMindmap.nodeId,
         direction: action === 'mindmap.navigate.parent'
@@ -185,7 +185,7 @@ export const runShortcut = (
         return false
       }
 
-      editor.actions.selection.replace({
+      editor.write.selection.replace({
         nodeIds: [target]
       })
       return true
@@ -197,7 +197,7 @@ export const runShortcut = (
         return false
       }
 
-      return Boolean(editor.actions.mindmap.insertRelative({
+      return Boolean(editor.write.mindmap.insertRelative({
         id: activeMindmap.treeId,
         targetNodeId: activeMindmap.nodeId,
         relation: action === 'mindmap.insert.child'

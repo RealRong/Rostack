@@ -3,7 +3,7 @@ import type {
   GraphSnapshot,
   MindmapView,
   InputDelta
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 import type {
   MindmapId,
   MindmapInsertInput,
@@ -26,7 +26,7 @@ import {
   createEmptyEditorGraphInputDelta,
   readActiveMindmapTickIds
 } from '@whiteboard/editor/projection/input'
-import type { GraphRead } from '@whiteboard/editor/read/graph'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type {
   MindmapEnterPreview,
   MindmapPreviewState
@@ -157,7 +157,7 @@ const buildMindmapEnterPreview = ({
   nodeId,
   anchorId
 }: {
-  structure: GraphRead['mindmap']['structure']
+  structure: EditorSceneRuntime['mindmap']['structure']
   graph: GraphSnapshot
   treeId: MindmapId
   nodeId: MindmapNodeId
@@ -312,7 +312,7 @@ const createMindmapTickDelta = (
 
 type MindmapProcedureDeps = {
   engine: Pick<Engine, 'current'>
-  graph: Pick<GraphRead, 'mindmap'>
+  graph: Pick<EditorSceneRuntime, 'mindmap'>
   session: Pick<EditorSession, 'preview'>
   write: Pick<EditorWrite, 'mindmap'>
   focusNode: (input: {

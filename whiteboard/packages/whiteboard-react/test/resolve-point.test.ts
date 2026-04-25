@@ -63,7 +63,7 @@ describe('resolvePoint', () => {
       ))
     }
     const editor = {
-      read: {
+      session: {
         viewport: {
           pointer: vi.fn((input: { clientX: number, clientY: number }) => ({
             screen: {
@@ -75,9 +75,7 @@ describe('resolvePoint', () => {
               y: input.clientY / 2
             }
           }))
-        }
-      },
-      store: {
+        },
         selection: {
           get: () => ({
             nodeIds: [],
@@ -134,7 +132,7 @@ describe('resolvePoint', () => {
       })
     }
     const editor = {
-      read: {
+      session: {
         viewport: {
           pointer: vi.fn((input: { clientX: number, clientY: number }) => ({
             screen: {
@@ -146,9 +144,7 @@ describe('resolvePoint', () => {
               y: input.clientY
             }
           }))
-        }
-      },
-      store: {
+        },
         selection: {
           get: () => ({
             nodeIds: ['node-1'],

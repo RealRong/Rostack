@@ -25,7 +25,7 @@ export const MindmapConnectors = memo(({
 }: MindmapConnectorsProps) => {
   const editor = useEditorRuntime()
   const mindmap = useOptionalKeyedStoreValue(
-    editor.read.mindmap.view,
+    editor.scene.mindmap.view,
     mindmapId,
     undefined
   )

@@ -10,8 +10,8 @@ import type {
   EdgeUpdateInput
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentRead } from '@whiteboard/editor/document/read'
-import type { GraphEdgeRead } from '@whiteboard/editor/read/edge'
+import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
+import type { GraphEdgeRead } from '@whiteboard/editor/scene/edge'
 import type { EdgeWrite } from '@whiteboard/editor/write/types'
 import {
   createEdgeLabelWrite
@@ -26,7 +26,7 @@ const readEdge = (
 ) => read.graph.get(edgeId)?.base.edge
 
 const readCommittedEdge = (
-  read: Pick<DocumentRead, 'edge'>,
+  read: Pick<EditorDocumentRuntimeSource, 'edge'>,
   edgeId: EdgeId
 ) => read.edge.item.get(edgeId)?.edge
 
@@ -64,7 +64,7 @@ const updateEdges = (
 }
 
 const updateExistingEdges = (
-  read: Pick<DocumentRead, 'edge'>,
+  read: Pick<EditorDocumentRuntimeSource, 'edge'>,
   engine: Engine,
   edgeIds: readonly EdgeId[],
   input: EdgeUpdateInput
@@ -145,7 +145,7 @@ export const createEdgeWrite = ({
 }: {
   engine: Engine
   read: {
-    document: Pick<DocumentRead, 'edge'>
+    document: Pick<EditorDocumentRuntimeSource, 'edge'>
     projection: Pick<GraphEdgeRead, 'graph'>
   }
 }): EdgeWrite => ({

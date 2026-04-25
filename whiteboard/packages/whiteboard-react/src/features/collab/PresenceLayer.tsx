@@ -16,11 +16,11 @@ const toScreenRect = (
     height: number
   }
 ) => {
-  const topLeft = editor.read.viewport.worldToScreen({
+  const topLeft = editor.session.viewport.worldToScreen({
     x: rect.x,
     y: rect.y
   })
-  const bottomRight = editor.read.viewport.worldToScreen({
+  const bottomRight = editor.session.viewport.worldToScreen({
     x: rect.x + rect.width,
     y: rect.y + rect.height
   })
@@ -43,7 +43,7 @@ const PresenceNodeSelection = ({
   viewport: unknown
 }) => {
   const editor = useEditorRuntime()
-  const item = useKeyedStoreValue(editor.read.node.view, nodeId)
+  const item = useKeyedStoreValue(editor.scene.nodes.read, nodeId)
 
   if (!item) {
     return null
@@ -73,7 +73,7 @@ const PresenceEdgeSelection = ({
   viewport: unknown
 }) => {
   const editor = useEditorRuntime()
-  const edge = useKeyedStoreValue(editor.read.edge.view, edgeId)
+  const edge = useKeyedStoreValue(editor.scene.edges.read, edgeId)
 
   if (!edge) {
     return null
@@ -113,7 +113,7 @@ const PresenceCursor = ({
 
   void viewport
 
-  const cursor = editor.read.viewport.worldToScreen(peer.pointer.world)
+  const cursor = editor.session.viewport.worldToScreen(peer.pointer.world)
 
   return (
     <div
@@ -176,7 +176,7 @@ export const PresenceLayer = ({
   binding?: WhiteboardPresenceBinding
 }) => {
   const editor = useEditorRuntime()
-  const viewport = useStoreValue(editor.store.viewport)
+  const viewport = useStoreValue(editor.session.viewport)
   const [version, setVersion] = useState(0)
 
   useEffect(() => {

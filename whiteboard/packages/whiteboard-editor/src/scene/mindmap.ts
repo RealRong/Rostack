@@ -2,7 +2,7 @@ import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { NodeId, Rect } from '@whiteboard/core/types'
 import type {
   MindmapView
-} from '@whiteboard/editor-graph'
+} from '@whiteboard/editor-scene'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 
 export type EditorMindmapStructure = MindmapView['structure']

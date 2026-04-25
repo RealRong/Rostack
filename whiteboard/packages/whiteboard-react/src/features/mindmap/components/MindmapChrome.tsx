@@ -18,14 +18,14 @@ export const MindmapChrome = memo(({
 }: MindmapChromeProps) => {
   const editor = useEditorRuntime()
   const chrome = useOptionalKeyedStoreValue(
-    editor.read.mindmap.chrome,
+    editor.session.mindmap.chrome,
     mindmapId,
     undefined
   )
 
   const onAddChild = useCallback(
     (nodeId: MindmapNodeId, placement: 'left' | 'right') => {
-      editor.actions.mindmap.insertRelative({
+      editor.write.mindmap.insertRelative({
         id: mindmapId,
         targetNodeId: nodeId,
         relation: 'child',

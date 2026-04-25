@@ -108,7 +108,7 @@ const createPointerInput = (
 describe('mindmap drag preview', () => {
   it('commits whole-tree movement through pointer drag on root field', () => {
     const editor = createEditor()
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -119,7 +119,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const insert = editor.actions.mindmap.insertRelative({
+    const insert = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -135,12 +135,12 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: [created.data.rootId]
     })
 
-    const beforeRoot = editor.read.document.get().nodes[created.data.rootId]?.position
-    const beforeChild = editor.read.document.get().nodes[insert.data.nodeId]?.position
+    const beforeRoot = editor.document.get().nodes[created.data.rootId]?.position
+    const beforeChild = editor.document.get().nodes[insert.data.nodeId]?.position
 
     editor.input.pointerDown(createPointerInput({
       phase: 'down',
@@ -176,8 +176,8 @@ describe('mindmap drag preview', () => {
       }
     }))
 
-    const afterRoot = editor.read.document.get().nodes[created.data.rootId]?.position
-    const afterChild = editor.read.document.get().nodes[insert.data.nodeId]?.position
+    const afterRoot = editor.document.get().nodes[created.data.rootId]?.position
+    const afterChild = editor.document.get().nodes[insert.data.nodeId]?.position
 
     expect(afterRoot).toEqual({
       x: beforeRoot!.x + 60,
@@ -191,7 +191,7 @@ describe('mindmap drag preview', () => {
 
   it('updates root and child render rects during root drag preview', async () => {
     const editor = createEditor()
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -202,7 +202,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const insert = editor.actions.mindmap.insertRelative({
+    const insert = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -218,12 +218,12 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: [created.data.rootId]
     })
 
-    const beforeRoot = editor.read.node.view.get(created.data.rootId)?.rect
-    const beforeChild = editor.read.node.view.get(insert.data.nodeId)?.rect
+    const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+    const beforeChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -254,11 +254,11 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveRoot = editor.read.node.view.get(created.data.rootId)?.rect
-    const liveChild = editor.read.node.view.get(insert.data.nodeId)?.rect
+    const liveRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+    const liveChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
 
-    expect(editor.store.interaction.get().busy).toBe(true)
-    expect(editor.store.interaction.get().selecting).toBe(true)
+    expect(editor.session.interaction.get().busy).toBe(true)
+    expect(editor.session.interaction.get().selecting).toBe(true)
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
     expect(liveRoot!.x).toBe(beforeRoot!.x + 60)
@@ -269,7 +269,7 @@ describe('mindmap drag preview', () => {
 
   it('updates subtree render rects during topic drag preview', async () => {
     const editor = createEditor()
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -280,7 +280,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const first = editor.actions.mindmap.insertRelative({
+    const first = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -296,7 +296,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const second = editor.actions.mindmap.insertRelative({
+    const second = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: first.data.nodeId,
       relation: 'child',
@@ -312,12 +312,12 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: [first.data.nodeId]
     })
 
-    const beforeBranch = editor.read.node.view.get(first.data.nodeId)?.rect
-    const beforeLeaf = editor.read.node.view.get(second.data.nodeId)?.rect
+    const beforeBranch = editor.scene.nodes.read.get(first.data.nodeId)?.rect
+    const beforeLeaf = editor.scene.nodes.read.get(second.data.nodeId)?.rect
 
     expect(beforeBranch).toBeDefined()
     expect(beforeLeaf).toBeDefined()
@@ -348,11 +348,11 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveBranch = editor.read.node.view.get(first.data.nodeId)?.rect
-    const liveLeaf = editor.read.node.view.get(second.data.nodeId)?.rect
+    const liveBranch = editor.scene.nodes.read.get(first.data.nodeId)?.rect
+    const liveLeaf = editor.scene.nodes.read.get(second.data.nodeId)?.rect
 
-    expect(editor.store.interaction.get().busy).toBe(true)
-    expect(editor.store.interaction.get().selecting).toBe(true)
+    expect(editor.session.interaction.get().busy).toBe(true)
+    expect(editor.session.interaction.get().selecting).toBe(true)
     expect(liveBranch).toBeDefined()
     expect(liveLeaf).toBeDefined()
     expect(liveBranch!.x).toBe(beforeBranch!.x + 80)

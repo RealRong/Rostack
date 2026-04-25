@@ -101,7 +101,7 @@ const createEditor = () => {
 describe('mindmap root render', () => {
   it('treats the root as a normal node and exposes both root add buttons through chrome', () => {
     const editor = createEditor()
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -112,16 +112,16 @@ describe('mindmap root render', () => {
       return
     }
 
-    editor.actions.selection.replace({
+    editor.write.selection.replace({
       nodeIds: [created.data.rootId]
     })
 
-    const rootCapability = editor.read.node.capability.get(created.data.rootId)
+    const rootCapability = editor.scene.nodes.capability.get(created.data.rootId)
     expect(rootCapability?.connect).toBe(true)
     expect(rootCapability?.resize).toBe(false)
     expect(rootCapability?.rotate).toBe(false)
 
-    const chrome = editor.read.mindmap.chrome.get(created.data.mindmapId)
+    const chrome = editor.session.mindmap.chrome.get(created.data.mindmapId)
     expect(chrome?.addChildTargets.map((entry) => entry.placement)).toEqual([
       'left',
       'right'

@@ -11,7 +11,7 @@ import {
   createWorking,
   editorGraphProjectorSpec
 } from '../projector/spec'
-import { createEditorGraphRuntime } from '../runtime/createEditorGraphRuntime'
+import { createEditorSceneRuntime } from '../runtime/createEditorSceneRuntime'
 
 export interface EditorGraphHarness {
   runtime: Runtime
@@ -29,7 +29,7 @@ export interface EditorGraphProjectorHarness {
 }
 
 export const createEditorGraphHarness = (): EditorGraphHarness => {
-  const baseRuntime = createEditorGraphRuntime()
+  const baseRuntime = createEditorSceneRuntime()
   let trace: Result['trace']
   const runtime: Runtime = {
     query: baseRuntime.query,

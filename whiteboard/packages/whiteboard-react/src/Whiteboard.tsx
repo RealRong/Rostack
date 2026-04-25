@@ -126,7 +126,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   }, [editor])
 
   useEffect(() => {
-    editor.actions.viewport.setLimits(viewportLimits)
+    editor.write.viewport.setLimits(viewportLimits)
   }, [editor, viewportLimits])
 
   useEffect(() => {
@@ -144,7 +144,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       return
     }
     lastOutboundDocumentRef.current = inputDocument
-    editor.actions.app.replace(inputDocument)
+    editor.write.app.replace(inputDocument)
   }, [editor, inputDocument])
 
   useEffect(() => {
@@ -226,7 +226,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
           user: prev?.user ?? binding.user,
           pointer,
           selection: getSelectionSnapshot(editor),
-          tool: serializePresenceTool(editor.store.tool.get()),
+          tool: serializePresenceTool(editor.session.tool.get()),
           activity,
           updatedAt: Date.now()
         }
@@ -249,7 +249,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       }
       lastPointerPublishAtRef.current = now
 
-      const pointer = editor.read.viewport.pointer({
+      const pointer = editor.session.viewport.pointer({
         clientX,
         clientY
       })
@@ -275,13 +275,13 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       activity: 'idle'
     })
 
-    const unsubscribeSelection = editor.store.selection.subscribe(() => {
+    const unsubscribeSelection = editor.session.selection.subscribe(() => {
       syncPresence()
     })
-    const unsubscribeTool = editor.store.tool.subscribe(() => {
+    const unsubscribeTool = editor.session.tool.subscribe(() => {
       syncPresence()
     })
-    const unsubscribeEdit = editor.store.edit.subscribe(() => {
+    const unsubscribeEdit = editor.session.edit.subscribe(() => {
       syncPresence()
     })
 

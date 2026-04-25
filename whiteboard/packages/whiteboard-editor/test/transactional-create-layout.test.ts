@@ -130,7 +130,7 @@ describe('transactional create layout', () => {
   it('measures text nodes before node.create commits', () => {
     const editor = createTestEditor()
 
-    const result = editor.actions.node.create({
+    const result = editor.write.node.create({
       position: {
         x: 40,
         y: 24
@@ -148,7 +148,7 @@ describe('transactional create layout', () => {
       return
     }
 
-    expect(editor.read.document.get().nodes[result.data.nodeId]?.size).toEqual({
+    expect(editor.document.get().nodes[result.data.nodeId]?.size).toEqual({
       width: 132,
       height: 44
     })
@@ -157,7 +157,7 @@ describe('transactional create layout', () => {
   it('measures sticky auto font before node.create commits', () => {
     const editor = createTestEditor()
 
-    const result = editor.actions.node.create({
+    const result = editor.write.node.create({
       position: {
         x: 0,
         y: 0
@@ -179,13 +179,13 @@ describe('transactional create layout', () => {
       return
     }
 
-    expect(editor.read.document.get().nodes[result.data.nodeId]?.style?.fontSize).toBe(18)
+    expect(editor.document.get().nodes[result.data.nodeId]?.style?.fontSize).toBe(18)
   })
 
   it('measures mindmap root and inserted child before commit', () => {
     const editor = createTestEditor()
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -196,12 +196,12 @@ describe('transactional create layout', () => {
       return
     }
 
-    expect(editor.read.document.get().nodes[created.data.rootId]?.size).toEqual({
+    expect(editor.document.get().nodes[created.data.rootId]?.size).toEqual({
       width: 132,
       height: 44
     })
 
-    const inserted = editor.actions.mindmap.insertRelative({
+    const inserted = editor.write.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -217,7 +217,7 @@ describe('transactional create layout', () => {
       return
     }
 
-    expect(editor.read.document.get().nodes[inserted.data.nodeId]?.size).toEqual({
+    expect(editor.document.get().nodes[inserted.data.nodeId]?.size).toEqual({
       width: 132,
       height: 44
     })

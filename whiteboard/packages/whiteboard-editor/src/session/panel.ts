@@ -10,7 +10,7 @@ import type { Edge, EdgeId, MindmapId, MindmapNodeId, NodeId, NodeModel } from '
 import { collection, equal } from '@shared/core'
 import type { EditorDefaults, EditorNodePaintDefaults } from '@whiteboard/editor/types/defaults'
 import type { EditSession } from '@whiteboard/editor/session/edit'
-import type { EditorMindmapStructure } from './mindmap'
+import type { EditorMindmapStructure } from '@whiteboard/editor/scene/mindmap'
 import type {
   SelectionEdgeStats,
   SelectionEdgeTypeInfo,

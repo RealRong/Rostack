@@ -13,7 +13,7 @@ export const useEdgeView = (
 ): EdgeView | undefined => {
   const editor = useEditorRuntime()
   const view = useOptionalKeyedStoreValue<EdgeId, EdgeView | undefined>(
-    editor.read.edge.view,
+    editor.scene.edges.read,
     edgeId,
     undefined
   )
@@ -29,7 +29,7 @@ export const useEdgeView = (
 
 export const useSelectedEdgeChrome = (): SelectedEdgeChrome | undefined => {
   const editor = useEditorRuntime()
-  return useStoreValue(editor.read.edge.selectedChrome)
+  return useStoreValue(editor.session.selection.edge.chrome)
 }
 
 export type {

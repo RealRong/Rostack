@@ -226,9 +226,11 @@ export const createSceneController = ({
 }: {
   engine: Engine
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
-  layout: Pick<EditorLayout, 'draft'>
+  layout: Pick<EditorLayout, 'draft' | 'measureText'>
 }): EditorSceneController => {
-  const runtime = createEditorSceneRuntime()
+  const runtime = createEditorSceneRuntime({
+    measure: layout.measureText
+  })
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()
   const state = {

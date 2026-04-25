@@ -19,11 +19,13 @@ import {
 } from '../src'
 import {
   createEditorGraphDelta,
-  createEditorGraphTextMeasureEntry
+  createEditorGraphTextMeasure,
+  type EditorGraphTextMeasureState
 } from '../src/testing/builders'
 import {
   createEditorGraphHarness
 } from '../src/testing/runtime'
+import { createEmptyInput } from '../src/projector/spec'
 
 type RuntimeInputOptions = {
   edit?: EditorGraphInput['session']['edit']
@@ -64,79 +66,56 @@ const touchedIds = <TId extends string>(
   }
 ): ReadonlySet<TId> => idDelta.touched(delta)
 
-const createEdgeLabelMeasureEntries = (
-  edgeLabelMeasures?: RuntimeInputOptions['edgeLabelMeasures']
-) => new Map(
-      [...(edgeLabelMeasures ?? new Map())].map(([edgeId, labels]) => [
-        edgeId,
-        new Map(
-          [...labels].map(([labelId, size]) => [
-            labelId,
-            createEditorGraphTextMeasureEntry(size)
-          ])
-        )
-      ])
+let currentMeasureState: EditorGraphTextMeasureState = {}
+
+const setCurrentMeasureState = (
+  input: Pick<RuntimeInputOptions, 'nodeMeasures' | 'edgeLabelMeasures'> = {}
+) => {
+  currentMeasureState = {
+    nodeMeasures: input.nodeMeasures,
+    edgeLabelMeasures: input.edgeLabelMeasures
+  }
+}
+
+const measure = createEditorGraphTextMeasure(
+  () => currentMeasureState
 )
+
+const createRuntime = () => createEditorSceneRuntime({
+  measure
+})
+
+const createHarness = () => createEditorGraphHarness({
+  measure
+})
 
 const createInput = (
   engine: ReturnType<typeof createEngine>,
   options: RuntimeInputOptions = {}
-): EditorGraphInput => ({
-  document: {
-    snapshot: engine.current().snapshot
-  },
-  session: {
-    edit: options.edit ?? null,
-    draft: {
-      nodes: new Map(),
-      edges: new Map()
-    },
-    preview: {
-      nodes: new Map(),
-      edges: new Map(),
-      draw: options.draw ?? null,
-      selection: {
-        marquee: options.marquee,
-        guides: options.guides ?? []
-      },
-      mindmap: options.mindmapPreview ?? null
-    },
-    tool: {
-      type: 'select' as const
-    }
-  },
-  measure: {
-    text: {
-      ready: (
-        (options.nodeMeasures?.size ?? 0)
-        + (options.edgeLabelMeasures?.size ?? 0)
-      ) > 0,
-      nodes: new Map(
-        [...(options.nodeMeasures ?? new Map())].map(([nodeId, size]) => [
-          nodeId,
-          createEditorGraphTextMeasureEntry(size)
-        ])
-      ),
-      edgeLabels: createEdgeLabelMeasureEntries(options.edgeLabelMeasures)
-    }
-  },
-  interaction: {
-    selection: options.selection ?? {
-      nodeIds: [],
-      edgeIds: []
-    },
-    hover: options.hover ?? {
-      kind: 'none' as const
-    },
-    drag: {
-      kind: 'idle' as const
-    }
-  },
-  clock: {
-    now: options.now ?? 0
-  },
-  delta: options.delta ?? createEditorGraphDelta()
-})
+): EditorGraphInput => {
+  setCurrentMeasureState({
+    nodeMeasures: options.nodeMeasures,
+    edgeLabelMeasures: options.edgeLabelMeasures
+  })
+
+  const value = createEmptyInput()
+  value.document.snapshot = engine.current().snapshot
+  value.session.edit = options.edit ?? null
+  value.session.preview.draw = options.draw ?? null
+  value.session.preview.selection.marquee = options.marquee
+  value.session.preview.selection.guides = options.guides ?? []
+  value.session.preview.mindmap = options.mindmapPreview ?? null
+  value.interaction.selection = options.selection ?? {
+    nodeIds: [],
+    edgeIds: []
+  }
+  value.interaction.hover = options.hover ?? {
+    kind: 'none'
+  }
+  value.clock.now = options.now ?? 0
+  value.delta = options.delta ?? createEditorGraphDelta()
+  return value
+}
 
 const DOCUMENT_DELTA = createEditorGraphDelta({
   document: true
@@ -295,7 +274,7 @@ describe('editor graph runtime', () => {
       }
     })
 
-    const runtime = createEditorSceneRuntime()
+    const runtime = createRuntime()
     const emissions: Array<{ snapshot: unknown; change: unknown }> = []
     const unsubscribe = runtime.subscribe((snapshot, change) => {
       emissions.push({
@@ -327,7 +306,7 @@ describe('editor graph runtime', () => {
     const engine = createEngine({
       document: documentApi.create('doc_editor_graph_runtime_idle')
     })
-    const runtime = createEditorSceneRuntime()
+    const runtime = createRuntime()
 
     runtime.update(createInput(engine, {
       delta: DOCUMENT_DELTA
@@ -352,7 +331,7 @@ describe('editor graph runtime', () => {
       position: { x: 24, y: 48 },
       text: 'Public API'
     })
-    const harness = createEditorGraphHarness()
+    const harness = createHarness()
     const result = harness.update(createInput(engine, {
       delta: DOCUMENT_DELTA
     }))
@@ -411,7 +390,7 @@ describe('editor graph runtime', () => {
       }
     })
 
-    const runtime = createEditorSceneRuntime()
+    const runtime = createRuntime()
     runtime.update(createInput(engine, {
       delta: FULL_INPUT_DELTA
     }))
@@ -446,7 +425,7 @@ describe('editor graph runtime', () => {
       text: 'Child'
     })
 
-    const runtime = createEditorSceneRuntime()
+    const runtime = createRuntime()
     const baseline = runtime.update(
       createInput(engine, {
         delta: DOCUMENT_DELTA,
@@ -517,7 +496,7 @@ describe('editor graph runtime', () => {
       text: 'Second'
     })
 
-    const runtime = createEditorSceneRuntime()
+    const runtime = createRuntime()
     const baseline = runtime.update(
       createInput(engine, {
         delta: DOCUMENT_DELTA,
@@ -599,7 +578,7 @@ describe('editor graph runtime', () => {
       text: 'Committed label'
     })
 
-    const runtime = createEditorSceneRuntime()
+    const runtime = createRuntime()
     const result = runtime.update(
       createInput(engine, {
         delta: FULL_INPUT_DELTA,
@@ -782,7 +761,7 @@ describe('editor graph runtime', () => {
       text: 'Child'
     })
 
-    const runtime = createEditorSceneRuntime()
+    const runtime = createRuntime()
     const result = runtime.update(
       createInput(engine, {
         delta: FULL_INPUT_DELTA,
@@ -853,7 +832,7 @@ describe('editor graph runtime', () => {
       text: 'Child'
     })
 
-    const runtime = createEditorSceneRuntime()
+    const runtime = createRuntime()
     const result = runtime.update(
       createInput(engine, {
         delta: FULL_INPUT_DELTA,

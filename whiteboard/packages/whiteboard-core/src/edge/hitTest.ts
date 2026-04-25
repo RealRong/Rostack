@@ -90,6 +90,45 @@ const segmentIntersectsRect = (
   )
 }
 
+export const distanceToPath = (input: {
+  path: Pick<EdgePathResult, 'points' | 'segments'>
+  point: Point
+}): number => {
+  let best = Number.POSITIVE_INFINITY
+
+  if (input.path.segments.length === 0) {
+    for (let index = 1; index < input.path.points.length; index += 1) {
+      best = Math.min(
+        best,
+        geometryApi.segment.distanceToPoint(
+          input.point,
+          input.path.points[index - 1]!,
+          input.path.points[index]!
+        )
+      )
+    }
+
+    return best
+  }
+
+  input.path.segments.forEach((segment) => {
+    const points = toSegmentPoints(segment)
+
+    for (let index = 1; index < points.length; index += 1) {
+      best = Math.min(
+        best,
+        geometryApi.segment.distanceToPoint(
+          input.point,
+          points[index - 1]!,
+          points[index]!
+        )
+      )
+    }
+  })
+
+  return best
+}
+
 const getPathPoints = (
   path: Pick<EdgePathResult, 'points' | 'segments'>
 ): Point[] => {

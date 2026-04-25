@@ -11,6 +11,7 @@ import type {
 } from '@whiteboard/core/mindmap'
 import type {
   Edge,
+  EdgeLabel,
   EdgeId,
   EdgePatch,
   EdgeTemplate,
@@ -21,6 +22,7 @@ import type {
   MindmapLayout,
   MindmapRecord,
   MindmapTemplate,
+  Node,
   NodeGeometry,
   NodeModel,
   NodeFieldPatch,
@@ -44,7 +46,6 @@ import type { SpatialRead } from '../domain/spatial/contracts'
 export interface Input {
   document: DocumentInput
   session: SessionInput
-  measure: MeasureInput
   interaction: InteractionInput
   clock: ClockInput
   delta: InputDelta
@@ -270,27 +271,23 @@ export type InsertTemplate =
       focus?: 'edit-root' | 'select-root'
     }
 
-export interface MeasureInput {
-  text: TextMeasureInput
-}
+export type TextMeasureTarget =
+  | {
+      kind: 'node'
+      nodeId: NodeId
+      node: Node
+      rect: Rect
+    }
+  | {
+      kind: 'edge-label'
+      edgeId: EdgeId
+      labelId: string
+      label: EdgeLabel
+    }
 
-export interface TextMeasureInput {
-  ready: boolean
-  nodes: ReadonlyMap<NodeId, TextMeasureEntry>
-  edgeLabels: ReadonlyMap<EdgeId, ReadonlyMap<string, TextMeasureEntry>>
-}
-
-export interface TextMeasureEntry {
-  size: Size
-  metrics: TextMetrics
-  mode: 'single-line' | 'multi-line'
-  wrapWidth?: number
-}
-
-export interface TextMetrics {
-  width: number
-  height: number
-}
+export type TextMeasure = (
+  input: TextMeasureTarget
+) => Size | undefined
 
 export interface InteractionInput {
   selection: SelectionState

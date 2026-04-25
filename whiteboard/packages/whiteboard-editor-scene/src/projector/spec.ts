@@ -15,7 +15,8 @@ import type {
   Change,
   Input,
   SceneItem,
-  Snapshot
+  Snapshot,
+  TextMeasure
 } from '../contracts/editor'
 import type { EditorPhaseScopeMap } from '../contracts/delta'
 import {
@@ -111,15 +112,8 @@ export const createEmptyInput = (): Input => ({
     },
     tool: {
       type: 'select'
-    }
-  },
-  measure: {
-    text: {
-      ready: false,
-      nodes: new Map(),
-      edgeLabels: new Map()
-    }
-  },
+      }
+    },
   interaction: {
     selection: {
       nodeIds: [],
@@ -186,10 +180,13 @@ export const createEmptySnapshot = (): Snapshot => ({
   }
 })
 
-export const createWorking = (): WorkingState => {
+export const createWorking = (input: {
+  measure?: TextMeasure
+} = {}): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
 
   return {
+    measure: input.measure,
     revision: {
       document: snapshot.revision as Revision
     },

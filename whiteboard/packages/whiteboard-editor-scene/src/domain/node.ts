@@ -197,6 +197,53 @@ const buildProjectedNodeGeometry = (input: {
   }
 }
 
+export const readMeasuredNodeSize = (input: {
+  working: WorkingState
+  entry: GraphNodeEntry
+  nodeId: NodeId
+  treeRect?: Rect
+  edit: SessionInput['edit']
+}): Size | undefined => {
+  if (
+    !input.working.measure
+    || input.edit?.kind !== 'node'
+    || input.edit.nodeId !== input.nodeId
+    || input.edit.field !== 'text'
+  ) {
+    return undefined
+  }
+
+  const patch = readNodePatch(input.entry.draft, input.entry.preview)
+  const fallbackRect = input.treeRect ?? (() => {
+    const position = patch?.position ?? input.entry.base.node.position
+    const size = patch?.size ?? readNodeSize(input.entry.base.node)
+    return {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height
+    }
+  })()
+  const previewItem = nodeApi.projection.applyTextPreview({
+    node: input.entry.base.node,
+    rect: fallbackRect
+  }, input.entry.preview?.patch)
+  const contentItem = nodeApi.projection.applyTextDraft(
+    previewItem,
+    readNodeTextDraft({
+      entry: input.entry,
+      edit: input.edit
+    })
+  )
+
+  return input.working.measure({
+    kind: 'node',
+    nodeId: input.nodeId,
+    node: contentItem.node,
+    rect: contentItem.rect
+  })
+}
+
 export const buildNodeView = (input: {
   entry: GraphNodeEntry
   measuredSize?: Size
@@ -255,10 +302,19 @@ export const patchNode = (input: {
   const treeRect = owner?.kind === 'mindmap'
     ? input.working.graph.owners.mindmaps.get(owner.id)?.tree.layout?.node[input.nodeId]
     : undefined
+  const measuredSize = entry
+    ? readMeasuredNodeSize({
+        working: input.working,
+        entry,
+        nodeId: input.nodeId,
+        treeRect,
+        edit: input.input.session.edit
+      })
+    : undefined
   const next = entry
     ? buildNodeView({
         entry,
-        measuredSize: input.input.measure.text.nodes.get(input.nodeId)?.size,
+        measuredSize,
         treeRect,
         edit: input.input.session.edit
       })

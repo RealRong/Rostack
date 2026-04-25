@@ -1,4 +1,5 @@
 import { scheduler, store } from '@shared/core'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
@@ -74,57 +75,6 @@ const readRectDistance = (
       : 0
 
   return Math.hypot(dx, dy)
-}
-
-const readSegmentDistance = (
-  point: Point,
-  from: Point,
-  to: Point
-) => geometryApi.segment.distanceToPoint(point, from, to)
-
-const readEdgeDistance = (
-  edge: NonNullable<ReturnType<GraphEdgeRead['geometry']['get']>>,
-  point: Point
-) => {
-  if (edge.path.segments.length === 0) {
-    let best = Number.POSITIVE_INFINITY
-
-    for (let index = 1; index < edge.path.points.length; index += 1) {
-      best = Math.min(
-        best,
-        readSegmentDistance(
-          point,
-          edge.path.points[index - 1]!,
-          edge.path.points[index]!
-        )
-      )
-    }
-
-    return best
-  }
-
-  let best = Number.POSITIVE_INFINITY
-
-  edge.path.segments.forEach((segment) => {
-    const points = (
-      segment.hitPoints && segment.hitPoints.length >= 2
-        ? segment.hitPoints
-        : [segment.from, segment.to]
-    )
-
-    for (let index = 1; index < points.length; index += 1) {
-      best = Math.min(
-        best,
-        readSegmentDistance(
-          point,
-          points[index - 1]!,
-          points[index]!
-        )
-      )
-    }
-  })
-
-  return best
 }
 
 const pickBetter = (
@@ -274,7 +224,10 @@ export const createScenePick = ({
             return
           }
 
-          const distance = readEdgeDistance(geometry, input.point)
+          const distance = edgeApi.hit.distanceToPath({
+            path: geometry.path,
+            point: input.point
+          })
           if (!Number.isFinite(distance) || distance > radius) {
             return
           }

@@ -2,7 +2,14 @@ import type { TextSourceRef } from '@whiteboard/editor/types/layout'
 
 const readTextSourceStoreKey = (
   source: TextSourceRef
-) => `node:${source.nodeId}:${source.field}`
+) => {
+  switch (source.kind) {
+    case 'node':
+      return `node:${source.nodeId}:${source.field}`
+    case 'edge-label':
+      return `edge-label:${source.edgeId}:${source.labelId}`
+  }
+}
 
 export type TextSourceStore = {
   set: (

@@ -2,6 +2,7 @@ import {
   path as mutationPath,
   type Path
 } from '@shared/mutation'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { TransformPreviewPatch } from '@whiteboard/core/node'
@@ -17,6 +18,7 @@ import type {
   Size,
   Origin
 } from '@whiteboard/core/types'
+import type { TextMeasureTarget } from '@whiteboard/editor-scene'
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
 import type { EditField, EditSession } from '@whiteboard/editor/session/edit'
 import { store } from '@shared/core'
@@ -34,6 +36,18 @@ import {
 import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 
 const TEXT_PLACEHOLDER = 'Text'
+const EDGE_LABEL_PLACEHOLDER = 'Label'
+const EDGE_LABEL_MAX_WIDTH = 4096
+const EMPTY_TEXT_FRAME_INSETS = {
+  paddingTop: 0,
+  paddingRight: 0,
+  paddingBottom: 0,
+  paddingLeft: 0,
+  borderTop: 0,
+  borderRight: 0,
+  borderBottom: 0,
+  borderLeft: 0
+} as const
 
 const SIZE_LAYOUT_STYLE_PATHS: readonly Path[] = [
   mutationPath.of('fontSize'),
@@ -326,6 +340,94 @@ const toLayoutResultUpdate = ({
   return undefined
 }
 
+const buildMeasureRequest = ({
+  target,
+  registry
+}: {
+  target: TextMeasureTarget
+  registry: Pick<NodeRegistry, 'get'>
+}): LayoutRequest | undefined => {
+  if (target.kind === 'node') {
+    const kind = readLayoutKind(registry, target.node)
+    if (kind !== 'size') {
+      return undefined
+    }
+
+    return buildLayoutRequest({
+      nodeId: target.nodeId,
+      node: target.node,
+      rect: target.rect,
+      kind
+    })
+  }
+
+  return {
+    kind: 'size',
+    source: {
+      kind: 'edge-label',
+      edgeId: target.edgeId,
+      labelId: target.labelId
+    },
+    typography: 'edge-label',
+    text: typeof target.label.text === 'string'
+      ? target.label.text
+      : '',
+    placeholder: EDGE_LABEL_PLACEHOLDER,
+    widthMode: 'auto',
+    frame: EMPTY_TEXT_FRAME_INSETS,
+    minWidth: 1,
+    maxWidth: EDGE_LABEL_MAX_WIDTH,
+    fontSize: target.label.style?.size ?? edgeApi.label.defaultSize,
+    fontWeight: target.label.style?.weight,
+    fontStyle: target.label.style?.italic
+      ? 'italic'
+      : undefined
+  }
+}
+
+const measureEdgeLabelFallback = ({
+  target,
+  text
+}: {
+  target: Extract<TextMeasureTarget, { kind: 'edge-label' }>
+  text: TextMetricsResource
+}): Size => {
+  const value = typeof target.label.text === 'string'
+    ? target.label.text
+    : ''
+  const placeholder = EDGE_LABEL_PLACEHOLDER
+  const fontSize = target.label.style?.size ?? edgeApi.label.defaultSize
+  const fontWeight = target.label.style?.weight
+  const fontStyle = target.label.style?.italic
+    ? 'italic'
+    : undefined
+  const lines = value.split('\n')
+  const measureLines = lines.length > 0
+    ? lines
+    : ['']
+  const width = measureLines.reduce((current, line) => Math.max(
+    current,
+    text.measure({
+      profile: 'edge-label',
+      text: line,
+      placeholder: lines.length === 1 && line === ''
+        ? placeholder
+        : ' ',
+      fontSize,
+      fontWeight,
+      fontStyle
+    }).width
+  ), 1)
+
+  return {
+    width,
+    height: Math.max(
+      1,
+      Math.ceil(Math.max(1, lines.length) * fontSize * edgeApi.label.lineHeight)
+    )
+  }
+}
+
 const measureDraftNodeLayout = ({
   committed,
   nodeId,
@@ -391,6 +493,9 @@ const measureDraftNodeLayout = ({
 
 export type EditorLayout = {
   text: TextMetricsResource
+  measureText: (
+    request: TextMeasureTarget
+  ) => Size | undefined
   draft: {
     node: store.KeyedReadStore<NodeId, DraftMeasure>
   }
@@ -483,8 +588,35 @@ export const createEditorLayout = ({
     nodeId,
     node,
     rect,
-    kind: readLayoutKind(registry, node)
+      kind: readLayoutKind(registry, node)
   })
+
+  const measureText: EditorLayout['measureText'] = (request) => {
+    const layoutRequest = buildMeasureRequest({
+      target: request,
+      registry
+    })
+    if (!layoutRequest) {
+      return request.kind === 'edge-label'
+        ? measureEdgeLabelFallback({
+            target: request,
+            text
+          })
+        : undefined
+    }
+
+    const result = backend?.measure(layoutRequest)
+    if (result?.kind === 'size') {
+      return result.size
+    }
+
+    return request.kind === 'edge-label'
+      ? measureEdgeLabelFallback({
+          target: request,
+          text
+        })
+      : undefined
+  }
 
   const patchCreatePayload = (
     payload: NodeInput
@@ -585,6 +717,7 @@ export const createEditorLayout = ({
 
   return {
     text,
+    measureText,
     draft,
     patchNodeCreatePayload: patchCreatePayload,
     patchMindmapTemplate: (template, position = { x: 0, y: 0 }) => ({

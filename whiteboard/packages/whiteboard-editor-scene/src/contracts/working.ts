@@ -28,6 +28,7 @@ import type {
   GroupItemRef,
   OwnerRef,
   SceneItem,
+  TextMeasure,
   MindmapView,
   NodeDraft,
   NodePreview,
@@ -37,6 +38,7 @@ import type {
 import type { SpatialIndexState } from '../domain/spatial/state'
 
 export interface WorkingState {
+  measure?: TextMeasure
   revision: {
     document: Revision
   }

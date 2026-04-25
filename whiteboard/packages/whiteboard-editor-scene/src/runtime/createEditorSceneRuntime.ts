@@ -3,7 +3,8 @@ import type {
   Change,
   Input,
   Runtime,
-  Snapshot
+  Snapshot,
+  TextMeasure
 } from '../contracts/editor'
 import {
   createWorking,
@@ -11,8 +12,12 @@ import {
 } from '../projector/spec'
 import { createEditorGraphQuery } from './query'
 
-export const createEditorSceneRuntime = (): Runtime => {
-  const working = createWorking()
+export const createEditorSceneRuntime = (input: {
+  measure?: TextMeasure
+} = {}): Runtime => {
+  const working = createWorking({
+    measure: input.measure
+  })
   const projector = createProjector({
     ...editorGraphProjectorSpec,
     createWorking: () => working

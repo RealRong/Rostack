@@ -1,4 +1,5 @@
 import { equal, store } from '@shared/core'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type {
@@ -45,28 +46,6 @@ const isRenderStyleEqual = (
   && left.start === right.start
   && left.end === right.end
 )
-
-const readRenderStyle = (
-  edge: NonNullable<ReturnType<GraphEdgeRead['model']>>
-): EdgeRenderStyle => ({
-  color: edge.style?.color,
-  width: edge.style?.width ?? 2,
-  opacity: edge.style?.opacity ?? 1,
-  dash: edge.style?.dash,
-  start: edge.style?.start,
-  end: edge.style?.end
-})
-
-const toBucketId = (
-  style: EdgeRenderStyle
-) => [
-  style.color ?? '',
-  style.width,
-  style.opacity,
-  style.dash ?? '',
-  style.start ?? '',
-  style.end ?? ''
-].join('|')
 
 const isStaticBucketEqual = (
   left: EdgeStaticBucket,
@@ -355,8 +334,8 @@ export const createEdgeRenderRuntime = (input: {
           return
         }
 
-        const style = readRenderStyle(current.edge)
-        const bucketId = toBucketId(style)
+        const style = edgeApi.render.staticStyle(current.edge.style)
+        const bucketId = edgeApi.render.styleKey(current.edge.style)
         let bucket = buckets.get(bucketId)
         if (!bucket) {
           bucket = {
@@ -416,7 +395,7 @@ export const createEdgeRenderRuntime = (input: {
                 pad: current.box.pad
               }
             : undefined,
-          style: readRenderStyle(current.edge),
+          style: edgeApi.render.staticStyle(current.edge.style),
           state: {
             hovered: currentInteraction.hovered === edgeId,
             focused: false,

@@ -737,13 +737,6 @@ export const createEditorGraphInput = ({
       },
       tool: store.read(session.state.tool)
     },
-    measure: {
-      text: {
-        ready: false,
-        nodes: new Map(),
-        edgeLabels: new Map()
-      }
-    },
     interaction: {
       selection,
       hover: readInteractionHover(

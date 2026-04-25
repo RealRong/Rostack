@@ -23,6 +23,7 @@ import type {
 } from '../contracts/working'
 import {
   readNodeEntry,
+  readMeasuredNodeSize,
   readProjectedNodeRect,
   readProjectedNodeSize
 } from './node'
@@ -253,9 +254,15 @@ const buildMindmapEntry = (
     }
   }
 
+  const rootMeasuredSize = readMeasuredNodeSize({
+    working,
+    entry: rootEntry,
+    nodeId: tree.rootNodeId,
+    edit: input.session.edit
+  })
   const rootRect = readProjectedNodeRect({
     entry: rootEntry,
-    measuredSize: input.measure.text.nodes.get(tree.rootNodeId)?.size
+    measuredSize: rootMeasuredSize
   })
 
   let layout = mindmapApi.layout.anchor({
@@ -271,7 +278,12 @@ const buildMindmapEntry = (
         return nodeEntry
           ? readProjectedNodeSize({
               entry: nodeEntry,
-              measuredSize: input.measure.text.nodes.get(nodeId)?.size
+              measuredSize: readMeasuredNodeSize({
+                working,
+                entry: nodeEntry,
+                nodeId,
+                edit: input.session.edit
+              })
             })
           : {
               width: 1,

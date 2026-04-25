@@ -4,7 +4,8 @@ import type {
   Read,
   Result,
   Runtime,
-  Snapshot
+  Snapshot,
+  TextMeasure
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import {
@@ -28,8 +29,12 @@ export interface EditorGraphProjectorHarness {
   lastTrace(): Result['trace']
 }
 
-export const createEditorGraphHarness = (): EditorGraphHarness => {
-  const baseRuntime = createEditorSceneRuntime()
+export const createEditorGraphHarness = (input: {
+  measure?: TextMeasure
+} = {}): EditorGraphHarness => {
+  const baseRuntime = createEditorSceneRuntime({
+    measure: input.measure
+  })
   let trace: Result['trace']
   const runtime: Runtime = {
     query: baseRuntime.query,
@@ -51,8 +56,12 @@ export const createEditorGraphHarness = (): EditorGraphHarness => {
   }
 }
 
-export const createEditorGraphProjectorHarness = (): EditorGraphProjectorHarness => {
-  const working = createWorking()
+export const createEditorGraphProjectorHarness = (input: {
+  measure?: TextMeasure
+} = {}): EditorGraphProjectorHarness => {
+  const working = createWorking({
+    measure: input.measure
+  })
   const projector = createProjector({
     ...editorGraphProjectorSpec,
     createWorking: () => working

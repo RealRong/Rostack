@@ -249,7 +249,7 @@ export const buildEdgeView = (input: {
   entry: GraphEdgeEntry
   nodes: ReadonlyMap<string, NodeView>
   nodeSnapshotCache?: Map<NodeId, EdgeNodeSnapshot>
-  labelMeasures?: ReadonlyMap<string, { size: Size }>
+  measure?: WorkingState['measure']
   edit: SessionInput['edit']
 }): EdgeView => {
   const edge = readProjectedEdge(input.entry)
@@ -293,11 +293,22 @@ export const buildEdgeView = (input: {
       return []
     }
 
-    const measuredSize = input.labelMeasures?.get(label.id)?.size
+    const measuredLabel = label.text === displayText
+      ? label
+      : {
+          ...label,
+          text: displayText
+        }
+    const measuredSize = input.measure?.({
+      kind: 'edge-label',
+      edgeId: input.edgeId,
+      labelId: label.id,
+      label: measuredLabel
+    })
     const size = edgeApi.label.placementSize({
       textMode,
       measuredSize,
-      text,
+      text: displayText,
       fontSize: label.style?.size
     })
     if (!size) {
@@ -384,12 +395,12 @@ export const patchEdge = (input: {
   const previous = input.working.graph.edges.get(input.edgeId)
   const entry = readEdgeEntry(input.input, input.working.indexes, input.edgeId)
   const next = entry
-    ? buildEdgeView({
+      ? buildEdgeView({
         edgeId: input.edgeId,
         entry,
         nodes: input.working.graph.nodes,
         nodeSnapshotCache: input.nodeSnapshotCache,
-        labelMeasures: input.input.measure.text.edgeLabels.get(input.edgeId),
+        measure: input.working.measure,
         edit: input.input.session.edit
       })
     : undefined

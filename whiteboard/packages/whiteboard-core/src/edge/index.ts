@@ -51,7 +51,8 @@ import {
 } from '@whiteboard/core/edge/guards'
 import {
   getEdgePathBounds,
-  matchEdgeRect
+  matchEdgeRect,
+  distanceToPath
 } from '@whiteboard/core/edge/hitTest'
 import {
   EDGE_LABEL_CENTER_TOLERANCE,
@@ -69,6 +70,10 @@ import {
   buildEdgeLabelMaskRect,
   readEdgeLabelMaskTransform
 } from '@whiteboard/core/edge/labelMask'
+import {
+  staticStyle,
+  styleKey
+} from '@whiteboard/core/edge/render'
 import { getEdgePath } from '@whiteboard/core/edge/path'
 import {
   applyEdgePatch,
@@ -116,7 +121,12 @@ export const edge = {
   },
   hit: {
     test: matchEdgeRect,
-    pathBounds: getEdgePathBounds
+    pathBounds: getEdgePathBounds,
+    distanceToPath
+  },
+  render: {
+    staticStyle,
+    styleKey
   },
   relation: {
     collect: collectRelatedEdgeIds,
@@ -221,3 +231,4 @@ export type {
 } from '@whiteboard/core/edge/connect'
 export type { EdgeRouteHandleTarget } from '@whiteboard/core/edge/edit'
 export type { EdgeLabelMaskRect } from '@whiteboard/core/edge/labelMask'
+export type { EdgeStaticStyle } from '@whiteboard/core/edge/render'

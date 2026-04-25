@@ -9,7 +9,10 @@ import type {
 import { createEngine } from '@whiteboard/engine'
 import type { Input } from '../src/contracts/editor'
 import { createEmptyInput, createEmptyInputDelta } from '../src/projector/spec'
-import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
+import {
+  createEditorGraphTextMeasure,
+  type EditorGraphTextMeasureState
+} from '../src/testing/builders'
 import { createEditorGraphProjectorHarness } from '../src/testing/runtime'
 
 const createNode = (input: {
@@ -91,19 +94,23 @@ const createInput = (input: {
   edit?: Input['session']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
 }): Input => {
+  currentMeasureState = {
+    nodeMeasures: input.nodeMeasures
+  }
   const value = createEmptyInput()
   value.document.snapshot = input.engine.current().snapshot
   value.session.edit = input.edit ?? null
-  value.measure.text.ready = (input.nodeMeasures?.size ?? 0) > 0
-  value.measure.text.nodes = new Map(
-    [...(input.nodeMeasures ?? new Map())].map(([nodeId, size]) => [
-      nodeId,
-      createEditorGraphTextMeasureEntry(size)
-    ])
-  )
   value.delta = input.delta
   return value
 }
+
+let currentMeasureState: EditorGraphTextMeasureState = {}
+
+const createProjectorHarness = () => createEditorGraphProjectorHarness({
+  measure: createEditorGraphTextMeasure(
+    () => currentMeasureState
+  )
+})
 
 describe('graph delta patching', () => {
   it('records touched node and related edge geometry in working delta', () => {
@@ -128,7 +135,7 @@ describe('graph delta patching', () => {
       targetId: secondId
     })
 
-    const runtime = createEditorGraphProjectorHarness()
+    const runtime = createProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
@@ -192,7 +199,7 @@ describe('graph delta patching', () => {
       size: { width: 120, height: 44 }
     })
 
-    const runtime = createEditorGraphProjectorHarness()
+    const runtime = createProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
@@ -259,7 +266,7 @@ describe('graph delta patching', () => {
       nodeIds: [firstId, secondId]
     })
 
-    const runtime = createEditorGraphProjectorHarness()
+    const runtime = createProjectorHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true

@@ -1,16 +1,49 @@
 import type { CSSProperties } from 'react'
-import { memo } from 'react'
+import { memo, useCallback, useRef } from 'react'
 import { useStoreValue } from '@shared/react'
 import type { EdgeLabelRenderModel } from '@whiteboard/editor/types/editor'
 import {
   useEditorRuntime,
-  usePickRef
+  usePickRef,
+  useWhiteboardServices
 } from '@whiteboard/react/runtime/hooks'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import {
   resolveActiveLabelOutlineStyle,
   resolveEdgeLabelTextStyle
 } from './render'
+
+const useEdgeLabelTextSourceBinding = ({
+  edgeId,
+  labelId
+}: {
+  edgeId: string
+  labelId: string
+}) => {
+  const { textSources } = useWhiteboardServices()
+  const sourceRef = useRef<HTMLDivElement | null>(null)
+
+  return useCallback((element: HTMLDivElement | null) => {
+    if (sourceRef.current === element) {
+      return
+    }
+
+    if (sourceRef.current) {
+      textSources.set({
+        kind: 'edge-label',
+        edgeId,
+        labelId
+      }, null)
+    }
+
+    textSources.set({
+      kind: 'edge-label',
+      edgeId,
+      labelId
+    }, element)
+    sourceRef.current = element
+  }, [edgeId, labelId, textSources])
+}
 
 const EdgeLabelItem = ({
   label,
@@ -25,6 +58,14 @@ const EdgeLabelItem = ({
     part: 'label',
     labelId: label.labelId
   })
+  const bindTextSourceRef = useEdgeLabelTextSourceBinding({
+    edgeId: label.edgeId,
+    labelId: label.labelId
+  })
+  const bindRef = useCallback((element: HTMLDivElement | null) => {
+    bindTextSourceRef(element)
+    bindLabelRef(element)
+  }, [bindLabelRef, bindTextSourceRef])
   const textStyle = resolveEdgeLabelTextStyle(label.style)
 
   if (label.editing) {
@@ -37,7 +78,7 @@ const EdgeLabelItem = ({
         }}
       >
         <EditableSlot
-          bindRef={bindLabelRef}
+          bindRef={bindRef}
           value={label.text}
           caret={label.caret ?? { kind: 'end' }}
           multiline
@@ -61,7 +102,7 @@ const EdgeLabelItem = ({
       }}
     >
       <div
-        ref={bindLabelRef}
+        ref={bindRef}
         data-edit-edge-id={label.edgeId}
         data-edit-label-id={label.labelId}
         className="wb-edge-label-content"

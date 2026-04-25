@@ -1,6 +1,11 @@
 export { createPlan, mergePlans } from './dirty/plan'
 export { createStageMetrics } from './metrics'
 export { createProjector } from './projector/createProjector'
+export {
+  createProjectorStore,
+  family,
+  value
+} from './store'
 export { projectListChange, publishStruct } from './publish'
 export { defineScope, flag, set, slot } from './scope'
 
@@ -23,3 +28,13 @@ export type {
   Spec as ProjectorSpec
 } from './contracts/projector'
 export type { Run as ProjectorTrace } from './contracts/trace'
+export type {
+  InferProjectorStoreRead,
+  ProjectorRuntimeLike,
+  ProjectorStore,
+  ProjectorStoreFamilyField,
+  ProjectorStoreFamilyRead,
+  ProjectorStoreField,
+  ProjectorStoreSpec,
+  ProjectorStoreValueField
+} from './store'

@@ -1,5 +1,6 @@
 import type { TextFrameInsets, TextWidthMode } from '@whiteboard/core/node'
 import type {
+  EdgeId,
   NodeId,
   Rect,
   Size
@@ -19,11 +20,16 @@ export type TextTypographyProfile =
   | 'shape-label'
 
 export type TextSourceRef =
-  {
-    kind: 'node'
-    nodeId: NodeId
-    field: 'text' | 'title'
-  }
+  | {
+      kind: 'node'
+      nodeId: NodeId
+      field: 'text' | 'title'
+    }
+  | {
+      kind: 'edge-label'
+      edgeId: EdgeId
+      labelId: string
+    }
 
 export type TextMetricsSpec = {
   profile: TextTypographyProfile

@@ -1,7 +1,11 @@
-import type { Size } from '@whiteboard/core/types'
+import type {
+  EdgeId,
+  NodeId,
+  Size
+} from '@whiteboard/core/types'
 import type {
   InputDelta,
-  TextMeasureEntry
+  TextMeasure
 } from '../contracts/editor'
 import { createEmptyInputDelta } from '../projector/spec'
 
@@ -32,15 +36,22 @@ export const createEditorGraphDelta = (
   return delta
 }
 
-export const createEditorGraphTextMeasureEntry = (
-  size: Size,
-  input: Partial<Pick<TextMeasureEntry, 'mode' | 'wrapWidth'>> = {}
-): TextMeasureEntry => ({
-  size,
-  metrics: {
-    width: size.width,
-    height: size.height
-  },
-  mode: input.mode ?? 'multi-line',
-  wrapWidth: input.wrapWidth
-})
+export interface EditorGraphTextMeasureState {
+  nodeMeasures?: ReadonlyMap<NodeId, Size>
+  edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
+}
+
+export const createEditorGraphTextMeasure = (
+  read: () => EditorGraphTextMeasureState
+): TextMeasure => (target) => {
+  const current = read()
+
+  switch (target.kind) {
+    case 'node':
+      return current.nodeMeasures?.get(target.nodeId)
+    case 'edge-label':
+      return current.edgeLabelMeasures
+        ?.get(target.edgeId)
+        ?.get(target.labelId)
+  }
+}

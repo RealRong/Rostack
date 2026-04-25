@@ -12,7 +12,10 @@ import {
   createEmptyInput,
   createEmptyInputDelta
 } from '../src/projector/spec'
-import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
+import {
+  createEditorGraphTextMeasure,
+  type EditorGraphTextMeasureState
+} from '../src/testing/builders'
 import { createEditorGraphProjectorHarness } from '../src/testing/runtime'
 
 const touchedIds = <TId extends string>(
@@ -85,6 +88,9 @@ const createInput = (input: {
   hover?: Input['interaction']['hover']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
 }): Input => {
+  currentMeasureState = {
+    nodeMeasures: input.nodeMeasures
+  }
   const value = createEmptyInput()
 
   value.document.snapshot = input.engine.current().snapshot
@@ -97,18 +103,17 @@ const createInput = (input: {
   value.interaction.hover = input.hover ?? {
     kind: 'none'
   }
-  value.measure.text.ready = (input.nodeMeasures?.size ?? 0) > 0
-  value.measure.text.nodes = new Map(
-    [...(input.nodeMeasures ?? new Map())].map(([nodeId, size]) => [
-      nodeId,
-      createEditorGraphTextMeasureEntry(size)
-    ])
-  )
 
   return value
 }
 
-const createProjectorHarness = () => createEditorGraphProjectorHarness()
+let currentMeasureState: EditorGraphTextMeasureState = {}
+
+const createProjectorHarness = () => createEditorGraphProjectorHarness({
+  measure: createEditorGraphTextMeasure(
+    () => currentMeasureState
+  )
+})
 
 describe('delta-driven publisher', () => {
   it('patches graph families by touched ids and reuses untouched graph entries', () => {

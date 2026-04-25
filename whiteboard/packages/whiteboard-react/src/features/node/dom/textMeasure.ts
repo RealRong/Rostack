@@ -230,9 +230,12 @@ export const measureTextOuterSize = ({
       : undefined
   }
 
+  const baseOuterMinWidth = typography === 'edge-label'
+    ? 1
+    : nodeApi.text.autoMinWidth
   const resolvedOuterMinWidth = Math.max(
-    nodeApi.text.autoMinWidth,
-    Math.ceil(minWidth ?? nodeApi.text.autoMinWidth)
+    baseOuterMinWidth,
+    Math.ceil(minWidth ?? baseOuterMinWidth)
   )
   const resolvedOuterMaxWidth = Math.max(
     resolvedOuterMinWidth,

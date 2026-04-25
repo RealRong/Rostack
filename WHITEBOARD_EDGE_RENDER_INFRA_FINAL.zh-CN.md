@@ -26,7 +26,7 @@
 - edge labels / masks render projection
 - edge active render projection
 - edge overlay render projection
-- sync `edgeHit(point)` query
+- sync `hit.edge(point)` query
 - render delta publish
 
 ### 2.3 不应进入 `editor-scene` 的能力
@@ -79,7 +79,7 @@
 
 但当前 edge render 基本没接这些能力。
 
-### 3.3 `edgeHit` 已部分正确，但归属不对
+### 3.3 `hit.edge` 已部分正确，但归属不对
 
 现在 `scene.edge.hit.pick` 已经会走：
 
@@ -198,7 +198,7 @@
 `whiteboard-react` 只消费：
 
 - `editor.scene.edge.render.*`
-- `editor.scene.query.edgeHit(...)`
+- `editor.scene.query.hit.edge(...)`
 
 React 不再负责：
 
@@ -239,7 +239,7 @@ type Change = {
 
 ```ts
 type EdgeStaticStyleKey = string
-type EdgeStaticChunkId = string
+type EdgeStaticId = string
 type EdgeLabelKey = `${EdgeId}:${string}`
 
 type EdgeStaticPath = {
@@ -256,8 +256,8 @@ type EdgeStaticStyle = {
   markerEnd?: string
 }
 
-type EdgeStaticChunkView = {
-  id: EdgeStaticChunkId
+type EdgeStaticView = {
+  id: EdgeStaticId
   styleKey: EdgeStaticStyleKey
   style: EdgeStaticStyle
   paths: readonly EdgeStaticPath[]
@@ -309,7 +309,7 @@ type EdgeOverlayView = {
 
 type RenderSnapshot = {
   edge: {
-    staticChunks: Family<EdgeStaticChunkId, EdgeStaticChunkView>
+    statics: Family<EdgeStaticId, EdgeStaticView>
     active: Family<EdgeId, EdgeActiveView>
     labels: Family<EdgeLabelKey, EdgeLabelView>
     masks: Family<EdgeId, EdgeMaskView>
@@ -320,9 +320,9 @@ type RenderSnapshot = {
 
 ### 设计说明
 
-- `static` 不再是一个大 `ReadStore<EdgeStaticRenderModel>`，而是 **可增量 publish 的 family**。
-- 对外直接暴露 `staticChunks`，而不是把“bucket + chunk”两层都暴露出去。
-- `bucket` 是内部组织结构；`chunk` 是对外 render 单元。
+- `statics` 不再是一个大 `ReadStore<EdgeStaticRenderModel>`，而是 **可增量 publish 的 family**。
+- 对外直接暴露 `statics`，不再把“bucket + chunk”这些内部组织细节带进公开 API。
+- `bucket` 与 `chunking` 都只是内部实现策略；对外统一叫 `static` render 单元。
 - `overlay` 仍然保留为一个 value，因为数量始终很小，而且放在 chrome viewport 渲染。
 
 ---
@@ -332,7 +332,7 @@ type RenderSnapshot = {
 ```ts
 type RenderChange = {
   edge: {
-    staticChunks: IdDelta<EdgeStaticChunkId>
+    statics: IdDelta<EdgeStaticId>
     active: IdDelta<EdgeId>
     labels: IdDelta<EdgeLabelKey>
     masks: IdDelta<EdgeId>
@@ -345,7 +345,7 @@ type RenderChange = {
 
 ## 5.4 `editor-scene` Query
 
-最终 query 补一个 sync edge hit：
+最终 query 补一个 sync `hit.edge`：
 
 ```ts
 interface Read {
@@ -356,17 +356,19 @@ interface Read {
   frame: ...
 
   // new
-  edgeHit(input: {
-    point: Point
-    threshold?: number
-    excludeIds?: readonly EdgeId[]
-  }): EdgeId | undefined
+  hit: {
+    edge(input: {
+      point: Point
+      threshold?: number
+      excludeIds?: readonly EdgeId[]
+    }): EdgeId | undefined
+  }
 }
 ```
 
 说明：
 
-- **sync `edgeHit` 放进 `editor-scene`**
+- **sync `hit.edge` 放进 `editor-scene`**
 - **frame-throttled runtime schedule 继续留在 editor/react host**
 
 ---
@@ -381,7 +383,7 @@ type EditorSceneSource = {
   items: ReadStore<readonly SceneItem[]>
   edge: {
     render: {
-      staticChunks: FamilyRead<EdgeStaticChunkId, EdgeStaticChunkView>
+      statics: FamilyRead<EdgeStaticId, EdgeStaticView>
       active: FamilyRead<EdgeId, EdgeActiveView>
       labels: FamilyRead<EdgeLabelKey, EdgeLabelView>
       masks: FamilyRead<EdgeId, EdgeMaskView>
@@ -389,11 +391,13 @@ type EditorSceneSource = {
     }
   }
   query: {
-    edgeHit(input: {
-      point: Point
-      threshold?: number
-      excludeIds?: readonly EdgeId[]
-    }): EdgeId | undefined
+    hit: {
+      edge(input: {
+        point: Point
+        threshold?: number
+        excludeIds?: readonly EdgeId[]
+      }): EdgeId | undefined
+    }
   }
 }
 ```
@@ -424,7 +428,7 @@ graph -> spatial -> ui -> render
 
 为什么 `render` 放在 `ui` 后面：
 
-- `staticChunks` 主要依赖 graph
+- `statics` 主要依赖 graph
 - `labels/masks` 依赖 graph 和 edge label edit state
 - `active` 依赖 graph 和 ui / hover / selection
 - `overlay` 依赖 graph + ui + chrome preview/edit
@@ -440,18 +444,18 @@ graph -> spatial -> ui -> render
 ```ts
 type RenderPatchScope = {
   reset: boolean
-  staticEdges: ReadonlySet<EdgeId>
-  labelEdges: ReadonlySet<EdgeId>
-  activeEdges: ReadonlySet<EdgeId>
+  statics: ReadonlySet<EdgeId>
+  labels: ReadonlySet<EdgeId>
+  active: ReadonlySet<EdgeId>
   overlay: boolean
 }
 ```
 
 说明：
 
-- `staticEdges`：style/path/order 变化会影响 static chunk
-- `labelEdges`：label text/placement/mask/edit 变化会影响 labels/masks
-- `activeEdges`：hover/selection/editing 变化会影响 active
+- `statics`：style/path/order 变化会影响 static render
+- `labels`：label text/placement/mask/edit 变化会影响 labels/masks
+- `active`：hover/selection/editing 变化会影响 active
 - `overlay`：preview connect / selected route / reconnect handle 变化
 
 不要再把 render scope 简化成一个 `edges: Set<EdgeId>`；那样仍然会把不同成本模型混在一起。
@@ -464,12 +468,12 @@ type RenderPatchScope = {
 
 ```ts
 type EdgeRenderState = {
-  static: {
+  statics: {
     styleKeyByEdge: Map<EdgeId, EdgeStaticStyleKey>
     edgeIdsByStyleKey: Map<EdgeStaticStyleKey, readonly EdgeId[]>
-    chunkIdByEdge: Map<EdgeId, EdgeStaticChunkId>
-    chunksByStyleKey: Map<EdgeStaticStyleKey, readonly EdgeStaticChunkId[]>
-    chunks: Map<EdgeStaticChunkId, EdgeStaticChunkView>
+    staticIdByEdge: Map<EdgeId, EdgeStaticId>
+    staticIdsByStyleKey: Map<EdgeStaticStyleKey, readonly EdgeStaticId[]>
+    statics: Map<EdgeStaticId, EdgeStaticView>
   }
   labels: Map<EdgeLabelKey, EdgeLabelView>
   masks: Map<EdgeId, EdgeMaskView>
@@ -480,14 +484,14 @@ type EdgeRenderState = {
 
 关键点：
 
-- `styleKeyByEdge` / `edgeIdsByStyleKey` 是 static bucket membership index
-- `chunkIdByEdge` / `chunksByStyleKey` 让单条 edge 更新时只重建受影响 chunk
+- `styleKeyByEdge` / `edgeIdsByStyleKey` 是 static style membership index
+- `staticIdByEdge` / `staticIdsByStyleKey` 让单条 edge 更新时只重建受影响 static render 单元
 - `labels` / `masks` / `active` 都是直接 publish family
 - `overlay` 是 value，不需要 family
 
 ---
 
-## 6.4 Static render 为什么必须 chunk
+## 6.4 Static render 为什么内部必须做 chunking
 
 如果只暴露：
 
@@ -504,7 +508,7 @@ type EdgeRenderState = {
 
 这比今天的全量 `staticModel` 好，但还不够好。
 
-所以最终 API 直接用 `staticChunks`：
+所以最终 API 直接用 `statics`：
 
 - chunk 仍按 style 分组
 - 但 publish 单位是 chunk，不是整个 bucket
@@ -512,7 +516,7 @@ type EdgeRenderState = {
 
 这样单条 edge 更新时：
 
-- 只会触发受影响 chunk
+- 只会触发受影响 static render 单元
 - 不会把一个大 style bucket 整体拖下水
 
 ---
@@ -574,8 +578,8 @@ render publish 不应手写：
 - render phase
 - render working state
 - render publish delta
-- sync `edgeHit`
-- static chunk membership/index
+- sync `hit.edge`
+- static membership/index
 - labels/masks/active/overlay projection
 
 ### 适合后续一起进入
@@ -629,7 +633,7 @@ render publish 不应手写：
 
 ### 不该进入
 
-- edge static chunk builder
+- edge static builder / chunking logic
 - style bucket logic
 - spatial query
 - whiteboard-specific touched scope
@@ -648,7 +652,7 @@ render publish 不应手写：
 
 - `scene/edgeRender.ts`
 - editor 本地 edge render model 派生
-- editor 本地 `edgeHit` 包装逻辑
+- editor 本地 `hit.edge` 包装逻辑
 
 ---
 
@@ -766,11 +770,11 @@ React 不再做：
 
 新增：
 
-- `edgeHit(...)`
+- `hit.edge(...)`
 
 说明：
 
-- `edgeHit` 直接复用已有 `spatial.candidates`
+- `hit.edge` 直接复用已有 `spatial.candidates`
 - precise distance 调 core `edge.hit.distanceToPath`
 - schedule 层不进 `editor-scene`
 
@@ -828,9 +832,9 @@ React 不再做：
 变化：
 
 - 从“读一个大 render model”改成“读 family + value”
-- `EdgeStaticLayer` 改成渲染 `staticChunks`
+- `EdgeStaticLayer` 改成渲染 `statics`
 - `EdgeLabelLayer` / `EdgeMask` 直接消费 family
-- input host 改成调用 `editor.scene.query.edgeHit(...)`
+- input host 改成调用 `editor.scene.query.hit.edge(...)`
 
 ---
 
@@ -850,7 +854,7 @@ render phase 不需要重新发明 touched edge 计算。
 
 - `entities.edges`：edge base/style/labels/route/preview/edit 变化
 - `geometry.edges`：影响 spatial / hit / bounds / static path 的变化
-- `order`：影响 static chunk 排序
+- `order`：影响 static render 排序
 
 ---
 
@@ -883,7 +887,7 @@ active / overlay 不再从 editor 本地 session store 再算一遍。
 
 render families：
 
-- `staticChunks`
+- `statics`
 - `active`
 - `labels`
 - `masks`
@@ -954,7 +958,7 @@ render patch / publish 统一使用：
 
 ---
 
-## P2. 把 `edgeHit` 正式下沉到 `editor-scene`
+## P2. 把 `hit.edge` 正式下沉到 `editor-scene`
 
 目标：
 
@@ -967,7 +971,7 @@ render patch / publish 统一使用：
 
 完成标准：
 
-- `editor-scene Read.edgeHit(...)` 可用
+- `editor-scene Read.hit.edge(...)` 可用
 - `whiteboard-editor/src/scene/pick.ts` 不再自持 edge point distance 实现
 
 ---
@@ -1004,10 +1008,10 @@ render patch / publish 统一使用：
 
 完成标准：
 
-- static 渲染来自 `staticChunks`
+- static 渲染来自 `statics`
 - labels/masks/active 来自 family
 - overlay 来自 value
-- body hit 来自 `editor.scene.query.edgeHit`
+- body hit 来自 `editor.scene.query.hit.edge`
 
 ---
 
@@ -1018,9 +1022,9 @@ render patch / publish 统一使用：
 1. 不再存在 `whiteboard-editor/src/scene/edgeRender.ts`
 2. `editor-scene` snapshot 内存在 `render`
 3. `editor-scene` change 内存在 `render`
-4. edge static render 以增量 family/chunk 发布，而不是 editor 本地全量 `staticModel`
+4. edge static render 以增量 family 发布，内部允许 chunking，而不是 editor 本地全量 `staticModel`
 5. edge labels/masks/active/overlay 全部由 `editor-scene` 投影
-6. sync `edgeHit` 归属 `editor-scene query`
+6. sync `hit.edge` 归属 `editor-scene query`
 7. frame-throttled pick 调度仍留在 editor/react host
 8. `projection/input.ts` 已接入真实 node/edge label measure 数据
 9. projector -> store bridge 不再由 `scene/source.ts` 手写拼装

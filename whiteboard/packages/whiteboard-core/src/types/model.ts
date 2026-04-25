@@ -29,6 +29,12 @@ export type NodeOutline =
   | {
       kind: 'polygon'
       points: Point[]
+      sides: {
+        top: Point[]
+        right: Point[]
+        bottom: Point[]
+        left: Point[]
+      }
     }
 
 export type NodeGeometry = {

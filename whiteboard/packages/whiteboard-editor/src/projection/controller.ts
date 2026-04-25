@@ -22,6 +22,7 @@ import {
   createTouchedIdDelta,
   hasEditorGraphInputDelta,
   mergeEditorGraphInputDelta,
+  readChangedPreviewEdgeIds,
   readEditedEdgeIds,
   readEditedNodeIds,
   readPreviewEdgeIds,
@@ -131,10 +132,10 @@ const createPreviewDelta = (input: {
     readPreviewNodeIds(input.previous),
     readPreviewNodeIds(input.next)
   )
-  const touchedEdgeIds = unionIds(
-    readPreviewEdgeIds(input.previous),
-    readPreviewEdgeIds(input.next)
-  )
+  const touchedEdgeIds = readChangedPreviewEdgeIds({
+    previous: input.previous,
+    next: input.next
+  })
   const touchedMindmapIds = unionIds(
     readPreviewMindmapIds(input.snapshot, input.previous.mindmap.preview),
     readPreviewMindmapIds(input.snapshot, input.next.mindmap.preview)

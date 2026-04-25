@@ -52,11 +52,13 @@ const createSpatialTree = (): SpatialTree => {
 
 export interface SpatialIndexState {
   records: Map<SpatialKey, SpatialRecord>
+  orderByKey: Map<SpatialKey, number>
   tree: SpatialTree
 }
 
 export const createSpatialState = (): SpatialIndexState => ({
   records: new Map(),
+  orderByKey: new Map(),
   tree: createSpatialTree()
 })
 
@@ -64,5 +66,6 @@ export const resetSpatialState = (
   state: SpatialIndexState
 ) => {
   state.records.clear()
+  state.orderByKey.clear()
   state.tree = createSpatialTree()
 }

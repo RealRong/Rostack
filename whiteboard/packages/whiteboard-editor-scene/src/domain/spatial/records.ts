@@ -10,6 +10,7 @@ import type {
   SpatialKey,
   SpatialRecord
 } from './contracts'
+import type { SpatialIndexState } from './state'
 
 export const toSpatialKey = (
   input: SpatialItemRef
@@ -17,17 +18,21 @@ export const toSpatialKey = (
 
 export type SceneOrderRead = (item: SpatialItemRef) => number
 
-export const createSceneOrderRead = (
+export const syncSceneOrderState = (
+  state: Pick<SpatialIndexState, 'orderByKey'>,
   snapshot: document.Snapshot
-): SceneOrderRead => {
-  const orderByKey = new Map<SpatialKey, number>()
-
+) => {
+  state.orderByKey.clear()
   snapshot.document.canvas.order.forEach((item, index) => {
-    orderByKey.set(toSpatialKey(item), index)
+    state.orderByKey.set(toSpatialKey(item), index)
   })
-
-  return (item) => orderByKey.get(toSpatialKey(item)) ?? Number.MAX_SAFE_INTEGER
 }
+
+export const createSceneOrderRead = (
+  state: Pick<SpatialIndexState, 'orderByKey'>
+): SceneOrderRead => (
+  item
+) => state.orderByKey.get(toSpatialKey(item)) ?? Number.MAX_SAFE_INTEGER
 
 export const readNodeSpatialRecord = (input: {
   graph: GraphState

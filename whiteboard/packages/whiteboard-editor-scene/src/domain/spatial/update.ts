@@ -16,6 +16,7 @@ import {
   readEdgeSpatialRecord,
   readMindmapSpatialRecord,
   readNodeSpatialRecord,
+  syncSceneOrderState,
 } from './records'
 import type {
   SpatialKey,
@@ -261,11 +262,10 @@ export const patchSpatialRecord = (input: {
 
 export const patchSpatialOrder = (input: {
   state: SpatialIndexState
-  snapshot: document.Snapshot
   delta: SpatialDelta
 }): void => {
   input.delta.order = true
-  const readOrder = createSceneOrderRead(input.snapshot)
+  const readOrder = createSceneOrderRead(input.state)
 
   input.state.records.forEach((record, key) => {
     const nextOrder = readOrder(record.item)
@@ -293,13 +293,19 @@ export const patchSpatial = (input: {
   count: number
 } => {
   let count = 0
-  const readOrder = createSceneOrderRead(input.snapshot)
 
   resetSpatialDelta(input.delta)
   input.delta.revision = input.revision
 
+  if (input.scope.reset || input.graphDelta.order) {
+    syncSceneOrderState(input.state, input.snapshot)
+  }
+
+  const readOrder = createSceneOrderRead(input.state)
+
   if (input.scope.reset) {
     resetSpatialState(input.state)
+    syncSceneOrderState(input.state, input.snapshot)
     count += rebuildSpatialRecords({
       graph: input.graph,
       readOrder,
@@ -319,7 +325,6 @@ export const patchSpatial = (input: {
   if ((input.scope.reset || input.scope.graph) && input.graphDelta.order) {
     patchSpatialOrder({
       state: input.state,
-      snapshot: input.snapshot,
       delta: input.delta
     })
   }

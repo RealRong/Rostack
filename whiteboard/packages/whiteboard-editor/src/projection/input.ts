@@ -1,4 +1,5 @@
 import { scheduler, store } from '@shared/core'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   DrawPreview as GraphDrawPreview,
   DragState,
@@ -588,6 +589,50 @@ export const readPreviewEdgeIds = (
     .filter((entry) => entry.patch !== undefined)
     .map((entry) => entry.id)
 )
+
+const readPreviewEdgeProjectionMap = (
+  preview: EditorInputPreviewState
+) => {
+  const byId = new Map<string, {
+    patch?: EdgePreview['patch']
+    activeRouteIndex?: EdgePreview['activeRouteIndex']
+  }>()
+
+  preview.edge.interaction.forEach((entry) => {
+    byId.set(entry.id, {
+      patch: entry.patch,
+      activeRouteIndex: entry.activeRouteIndex
+    })
+  })
+
+  return byId
+}
+
+export const readChangedPreviewEdgeIds = (input: {
+  previous: EditorInputPreviewState
+  next: EditorInputPreviewState
+}): ReadonlySet<string> => {
+  const previous = readPreviewEdgeProjectionMap(input.previous)
+  const next = readPreviewEdgeProjectionMap(input.next)
+  const changed = new Set<string>()
+
+  for (const edgeId of new Set([
+    ...previous.keys(),
+    ...next.keys()
+  ])) {
+    const left = previous.get(edgeId)
+    const right = next.get(edgeId)
+
+    if (
+      !edgeApi.patch.equal(left?.patch, right?.patch)
+      || left?.activeRouteIndex !== right?.activeRouteIndex
+    ) {
+      changed.add(edgeId)
+    }
+  }
+
+  return changed
+}
 
 export const readPreviewMindmapIds = (
   snapshot: DocumentSnapshot,

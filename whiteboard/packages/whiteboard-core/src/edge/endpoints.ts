@@ -7,7 +7,7 @@ import type {
   ResolvedEdgeEnd,
   ResolvedEdgeEnds
 } from '@whiteboard/core/types/edge'
-import { getAutoAnchorFromRect } from '@whiteboard/core/edge/anchor'
+import { getAutoAnchorFromGeometry } from '@whiteboard/core/edge/anchor'
 import { isNodeEdgeEnd } from '@whiteboard/core/edge/guards'
 
 type ResolveNodeEndInput = {
@@ -25,12 +25,7 @@ const resolveNodeEnd = ({
   otherPoint
 }: ResolveNodeEndInput): ResolvedEdgeEnd => {
   const rotation = nodeApi.geometry.rotation(node.node)
-  const auto = getAutoAnchorFromRect(
-    node.node,
-    node.geometry.rect,
-    rotation,
-    otherPoint
-  )
+  const auto = getAutoAnchorFromGeometry(node.geometry, otherPoint)
   const anchor = end.anchor ?? auto.anchor
   const point = end.anchor
     ? getNodeAnchor(node.node, node.geometry.rect, anchor, rotation)

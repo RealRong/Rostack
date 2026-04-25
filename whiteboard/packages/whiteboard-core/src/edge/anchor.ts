@@ -1,6 +1,7 @@
-import type { EdgeAnchor, Node, Point, Rect } from '@whiteboard/core/types'
+import type { EdgeAnchor, Node, NodeGeometry, Point, Rect } from '@whiteboard/core/types'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import {
+  getAutoNodeGeometryAnchor,
   getAutoNodeAnchor,
   projectNodeAnchor
 } from '@whiteboard/core/node/outline'
@@ -35,3 +36,9 @@ export const getAutoAnchorFromRect = (
   otherCenter: Point,
   options?: { anchorOffset?: number }
 ) => getAutoNodeAnchor(node, rect, rotation, otherCenter, options)
+
+export const getAutoAnchorFromGeometry = (
+  geometry: NodeGeometry,
+  otherCenter: Point,
+  options?: { anchorOffset?: number }
+) => getAutoNodeGeometryAnchor(geometry, otherCenter, options)

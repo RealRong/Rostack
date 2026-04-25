@@ -16,6 +16,7 @@ import {
 type OutlineSide = EdgeAnchor['side']
 
 type OutlineSpec = ShapeOutlineSpec
+type OutlineSides = Record<OutlineSide, Point[]>
 
 export type NodeOutlineAnchorOptions = {
   snapMin: number
@@ -33,6 +34,7 @@ type Projection = {
 
 const DEFAULT_ANCHOR_OFFSET = 0.5
 const point = (x: number, y: number): Point => ({ x, y })
+const OUTLINE_SIDES: readonly OutlineSide[] = ['top', 'right', 'bottom', 'left']
 const FULL_RECT_OUTLINE: OutlineSpec = {
   top: [{ x: 0, y: 0 }, { x: 1, y: 0 }],
   right: [{ x: 1, y: 0 }, { x: 1, y: 1 }],
@@ -64,13 +66,60 @@ const toSidePoints = (
   side: OutlineSide
 ): Point[] => getOutlineSpec(node)[side].map((value) => toLocalPoint(rect, value))
 
-const readOutlinePoints = (
-  node: Pick<Node, 'type' | 'data'>,
+const toWorldPoint = (
+  pointValue: Point,
+  center: Point,
+  rotation: number
+) => rotation
+  ? geometryApi.point.rotate(pointValue, center, rotation)
+  : pointValue
+
+const toWorldSidePoints = (input: {
   rect: Rect
-) => {
-  const sides: OutlineSide[] = ['top', 'right', 'bottom', 'left']
-  return sides.flatMap((side) => toSidePoints(rect, node, side))
+  node: Pick<Node, 'type' | 'data'>
+  side: OutlineSide
+  rotation: number
+}) => {
+  const center = geometryApi.rect.center(input.rect)
+  return toSidePoints(input.rect, input.node, input.side).map((entry) => (
+    toWorldPoint(entry, center, input.rotation)
+  ))
 }
+
+const readOutlineSides = (
+  node: Pick<Node, 'type' | 'data'>,
+  rect: Rect,
+  rotation = 0
+): OutlineSides => ({
+  top: toWorldSidePoints({
+    rect,
+    node,
+    side: 'top',
+    rotation
+  }),
+  right: toWorldSidePoints({
+    rect,
+    node,
+    side: 'right',
+    rotation
+  }),
+  bottom: toWorldSidePoints({
+    rect,
+    node,
+    side: 'bottom',
+    rotation
+  }),
+  left: toWorldSidePoints({
+    rect,
+    node,
+    side: 'left',
+    rotation
+  })
+})
+
+const readOutlinePoints = (
+  sides: OutlineSides
+) => OUTLINE_SIDES.flatMap((side) => sides[side])
 
 const distance = (
   left: Point,
@@ -170,6 +219,8 @@ const projectToPolyline = (
 
   let best: Projection | undefined
   let walked = 0
+  const centerPoint = samplePolyline(points, DEFAULT_ANCHOR_OFFSET)
+  const centerDistance = distance(source, centerPoint)
 
   for (let index = 0; index < lengths.length; index += 1) {
     const length = lengths[index]
@@ -185,7 +236,7 @@ const projectToPolyline = (
         distance: nextDistance,
         point: projection.point,
         offset: nextOffset,
-        centerDistance: distance(source, samplePolyline(points, DEFAULT_ANCHOR_OFFSET))
+        centerDistance
       }
     }
 
@@ -274,14 +325,6 @@ const isPointInPolygon = (
   return inside
 }
 
-const toWorldPoint = (
-  pointValue: Point,
-  center: Point,
-  rotation: number
-) => rotation
-  ? geometryApi.point.rotate(pointValue, center, rotation)
-  : pointValue
-
 const resolveAutoSide = (
   center: Point,
   otherPoint: Point
@@ -327,12 +370,9 @@ const getNodeShapeBounds = (
     return rect
   }
 
-  const center = geometryApi.rect.center(rect)
-  const points = readOutlinePoints(node, rect).map((point) => (
-    rotation
-      ? geometryApi.point.rotate(point, center, rotation)
-      : point
-  ))
+  const points = readOutlinePoints(
+    readOutlineSides(node, rect, rotation)
+  )
 
   return geometryApi.rect.aabbFromPoints(points)
 }
@@ -364,15 +404,12 @@ export const getNodeOutline = (
     }
   }
 
-  const center = geometryApi.rect.center(rect)
+  const sides = readOutlineSides(node, rect, rotation)
 
   return {
     kind: 'polygon',
-    points: readOutlinePoints(node, rect).map((point) => (
-      rotation
-        ? geometryApi.point.rotate(point, center, rotation)
-        : point
-    ))
+    points: readOutlinePoints(sides),
+    sides
   }
 }
 
@@ -403,6 +440,111 @@ export const getNodeGeometry = (
     outline,
     bounds: getNodeBounds(node, rect, rotation)
   }
+}
+
+const readGeometrySidePoints = (
+  geometry: NodeGeometry
+): OutlineSides => {
+  if (geometry.outline.kind === 'polygon') {
+    return geometry.outline.sides
+  }
+
+  const corners = geometryApi.rotation.corners(
+    geometry.outline.rect,
+    geometry.outline.rotation
+  )
+
+  return {
+    top: [corners[0], corners[1]],
+    right: [corners[1], corners[2]],
+    bottom: [corners[3], corners[2]],
+    left: [corners[0], corners[3]]
+  }
+}
+
+const getNodeGeometryAnchorPoint = (
+  geometry: NodeGeometry,
+  anchor?: EdgeAnchor,
+  defaultOffset = DEFAULT_ANCHOR_OFFSET
+): Point => {
+  if (!anchor) {
+    return geometryApi.rect.center(geometry.rect)
+  }
+
+  return samplePolyline(
+    readGeometrySidePoints(geometry)[anchor.side],
+    Number.isFinite(anchor.offset)
+      ? anchor.offset
+      : defaultOffset
+  )
+}
+
+const projectToGeometryOutline = (
+  geometry: NodeGeometry,
+  pointValue: Point
+): Projection => {
+  const sides = readGeometrySidePoints(geometry)
+  let best = projectToPolyline(pointValue, 'top', sides.top)
+
+  for (let index = 1; index < OUTLINE_SIDES.length; index += 1) {
+    const side = OUTLINE_SIDES[index]!
+    const next = projectToPolyline(pointValue, side, sides[side])
+    if (next.distance < best.distance) {
+      best = next
+    }
+  }
+
+  return best
+}
+
+export const projectPointToNodeGeometryOutline = (
+  geometry: NodeGeometry,
+  pointValue: Point,
+  defaultOffset = DEFAULT_ANCHOR_OFFSET
+) => {
+  const projected = projectToGeometryOutline(geometry, pointValue)
+  const anchor: EdgeAnchor = {
+    side: projected.side,
+    offset: projected.offset
+  }
+  const point = getNodeGeometryAnchorPoint(
+    geometry,
+    anchor,
+    defaultOffset
+  )
+
+  return {
+    point,
+    anchor,
+    distance: distance(pointValue, point)
+  }
+}
+
+export const getAutoNodeGeometryAnchor = (
+  geometry: NodeGeometry,
+  otherPoint: Point,
+  options?: {
+    anchorOffset?: number
+  }
+) => {
+  const center = geometryApi.rect.center(geometry.rect)
+  if (center.x === otherPoint.x && center.y === otherPoint.y) {
+    const anchor: EdgeAnchor = {
+      side: resolveAutoSide(center, otherPoint),
+      offset: options?.anchorOffset ?? DEFAULT_ANCHOR_OFFSET
+    }
+
+    return {
+      anchor,
+      point: getNodeGeometryAnchorPoint(geometry, anchor, anchor.offset)
+    }
+  }
+
+  return projectPointToNodeGeometryOutline(
+    geometry,
+    otherPoint,
+    options?.anchorOffset ?? DEFAULT_ANCHOR_OFFSET
+  )
 }
 
 export const getNodeAnchor = (

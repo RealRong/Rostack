@@ -282,9 +282,13 @@ export class MutationEngine<
   }
 
   current(): MutationCurrent<Doc, Publish> {
+    return this.#readCurrent()
+  }
+
+  #readCurrent(): MutationCurrent<Doc, Publish> {
     return {
       rev: this.#state.rev,
-      doc: this.#spec.clone(this.#state.doc),
+      doc: this.#state.doc,
       ...(this.#state.publish !== undefined
         ? {
             publish: this.#state.publish
@@ -472,15 +476,7 @@ export class MutationEngine<
   #prepareExternalDoc(
     doc: Doc
   ): Doc {
-    return this.#normalizeDoc(this.#spec.clone(doc))
-  }
-
-  #normalizeDoc(
-    doc: Doc
-  ): Doc {
-    return this.#spec.normalize
-      ? this.#spec.normalize(doc)
-      : doc
+    return this.#spec.clone(doc)
   }
 
   #commit<TData>(input: {
@@ -501,13 +497,13 @@ export class MutationEngine<
     }
 
     const commit = applied.data
-    const nextDoc = this.#normalizeDoc(commit.doc)
+    const nextDoc = commit.doc
     const nextRev = this.#state.rev + 1
     const write: Write<Doc, Op, Key, Extra> = {
       rev: nextRev,
       at: Date.now(),
       origin: input.origin,
-      doc: this.#spec.clone(nextDoc),
+      doc: nextDoc,
       forward: input.ops.slice(),
       inverse: commit.inverse,
       footprint: commit.footprint,
@@ -546,8 +542,9 @@ export class MutationEngine<
   }
 
   #emitCurrent() {
+    const current = this.#readCurrent()
     this.#listeners.forEach((listener) => {
-      listener(this.current())
+      listener(current)
     })
   }
 

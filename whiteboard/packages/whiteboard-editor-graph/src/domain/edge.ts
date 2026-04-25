@@ -5,6 +5,7 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   Edge,
   EdgeId,
+  NodeId,
   Point,
   Rect,
   Size
@@ -64,6 +65,27 @@ const toEdgeNodeSnapshot = (
       )
     }
   : undefined
+
+export type EdgeNodeSnapshot = ReturnType<typeof toEdgeNodeSnapshot>
+
+const readEdgeNodeSnapshot = (input: {
+  nodeId: NodeId | undefined
+  nodes: ReadonlyMap<string, NodeView>
+  cache?: Map<NodeId, EdgeNodeSnapshot>
+}): EdgeNodeSnapshot => {
+  if (!input.nodeId) {
+    return undefined
+  }
+
+  const cached = input.cache?.get(input.nodeId)
+  if (cached || input.cache?.has(input.nodeId)) {
+    return cached
+  }
+
+  const snapshot = toEdgeNodeSnapshot(input.nodes.get(input.nodeId))
+  input.cache?.set(input.nodeId, snapshot)
+  return snapshot
+}
 
 const readProjectedEdge = (
   entry: GraphEdgeEntry
@@ -231,20 +253,31 @@ export const buildEdgeView = (input: {
   edgeId: EdgeId
   entry: GraphEdgeEntry
   nodes: ReadonlyMap<string, NodeView>
+  nodeSnapshotCache?: Map<NodeId, EdgeNodeSnapshot>
   labelMeasures?: ReadonlyMap<string, { size: Size }>
   edit: SessionInput['edit']
 }): EdgeView => {
   const edge = readProjectedEdge(input.entry)
+  const sourceNodeId = edge.source.kind === 'node'
+    ? edge.source.nodeId
+    : undefined
+  const targetNodeId = edge.target.kind === 'node'
+    ? edge.target.nodeId
+    : undefined
   const geometry = (() => {
     try {
       return edgeApi.view.resolve({
         edge,
-        source: edge.source.kind === 'node'
-          ? toEdgeNodeSnapshot(input.nodes.get(edge.source.nodeId))
-          : undefined,
-        target: edge.target.kind === 'node'
-          ? toEdgeNodeSnapshot(input.nodes.get(edge.target.nodeId))
-          : undefined
+        source: readEdgeNodeSnapshot({
+          nodeId: sourceNodeId,
+          nodes: input.nodes,
+          cache: input.nodeSnapshotCache
+        }),
+        target: readEdgeNodeSnapshot({
+          nodeId: targetNodeId,
+          nodes: input.nodes,
+          cache: input.nodeSnapshotCache
+        })
       })
     } catch {
       return undefined
@@ -348,6 +381,7 @@ export const patchEdge = (input: {
   working: WorkingState
   delta: GraphDelta
   edgeId: EdgeId
+  nodeSnapshotCache?: Map<NodeId, EdgeNodeSnapshot>
 }): {
   changed: boolean
   geometryChanged: boolean
@@ -359,6 +393,7 @@ export const patchEdge = (input: {
         edgeId: input.edgeId,
         entry,
         nodes: input.working.graph.nodes,
+        nodeSnapshotCache: input.nodeSnapshotCache,
         labelMeasures: input.input.measure.text.edgeLabels.get(input.edgeId),
         edit: input.input.session.edit
       })

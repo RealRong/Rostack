@@ -15,22 +15,23 @@ export const toSpatialKey = (
   input: SpatialItemRef
 ): SpatialKey => `${input.kind}:${input.id}` as SpatialKey
 
-export const readSceneOrder = (
-  snapshot: document.Snapshot,
-  item: SpatialItemRef
-): number => {
-  const index = snapshot.document.canvas.order.findIndex((entry) => (
-    entry.kind === item.kind && entry.id === item.id
-  ))
+export type SceneOrderRead = (item: SpatialItemRef) => number
 
-  return index >= 0
-    ? index
-    : Number.MAX_SAFE_INTEGER
+export const createSceneOrderRead = (
+  snapshot: document.Snapshot
+): SceneOrderRead => {
+  const orderByKey = new Map<SpatialKey, number>()
+
+  snapshot.document.canvas.order.forEach((item, index) => {
+    orderByKey.set(toSpatialKey(item), index)
+  })
+
+  return (item) => orderByKey.get(toSpatialKey(item)) ?? Number.MAX_SAFE_INTEGER
 }
 
 export const readNodeSpatialRecord = (input: {
   graph: GraphState
-  snapshot: document.Snapshot
+  readOrder: SceneOrderRead
   nodeId: NodeId
 }): SpatialRecord | undefined => {
   const node = input.graph.nodes.get(input.nodeId)
@@ -49,13 +50,13 @@ export const readNodeSpatialRecord = (input: {
     kind: item.kind,
     item,
     bounds,
-    order: readSceneOrder(input.snapshot, item)
+    order: input.readOrder(item)
   }
 }
 
 export const readEdgeSpatialRecord = (input: {
   graph: GraphState
-  snapshot: document.Snapshot
+  readOrder: SceneOrderRead
   edgeId: EdgeId
 }): SpatialRecord | undefined => {
   const edge = input.graph.edges.get(input.edgeId)
@@ -74,13 +75,13 @@ export const readEdgeSpatialRecord = (input: {
     kind: item.kind,
     item,
     bounds,
-    order: readSceneOrder(input.snapshot, item)
+    order: input.readOrder(item)
   }
 }
 
 export const readMindmapSpatialRecord = (input: {
   graph: GraphState
-  snapshot: document.Snapshot
+  readOrder: SceneOrderRead
   mindmapId: MindmapId
 }): SpatialRecord | undefined => {
   const mindmap = input.graph.owners.mindmaps.get(input.mindmapId)
@@ -99,6 +100,6 @@ export const readMindmapSpatialRecord = (input: {
     kind: item.kind,
     item,
     bounds,
-    order: readSceneOrder(input.snapshot, item)
+    order: input.readOrder(item)
   }
 }

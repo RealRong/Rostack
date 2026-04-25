@@ -12,10 +12,10 @@ import type {
 } from '../../contracts/delta'
 import type { GraphState } from '../../contracts/working'
 import {
+  createSceneOrderRead,
   readEdgeSpatialRecord,
   readMindmapSpatialRecord,
   readNodeSpatialRecord,
-  readSceneOrder
 } from './records'
 import type {
   SpatialKey,
@@ -48,7 +48,7 @@ const collectRecordIds = <TId extends string>(
 
 const patchNodeRecord = (input: {
   graph: GraphState
-  snapshot: document.Snapshot
+  readOrder: ReturnType<typeof createSceneOrderRead>
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
   nodeId: NodeId
@@ -57,7 +57,7 @@ const patchNodeRecord = (input: {
   key: `node:${input.nodeId}` as SpatialKey,
   next: readNodeSpatialRecord({
     graph: input.graph,
-    snapshot: input.snapshot,
+    readOrder: input.readOrder,
     nodeId: input.nodeId
   }),
   delta: input.delta
@@ -65,7 +65,7 @@ const patchNodeRecord = (input: {
 
 const patchEdgeRecord = (input: {
   graph: GraphState
-  snapshot: document.Snapshot
+  readOrder: ReturnType<typeof createSceneOrderRead>
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
   edgeId: EdgeId
@@ -74,7 +74,7 @@ const patchEdgeRecord = (input: {
   key: `edge:${input.edgeId}` as SpatialKey,
   next: readEdgeSpatialRecord({
     graph: input.graph,
-    snapshot: input.snapshot,
+    readOrder: input.readOrder,
     edgeId: input.edgeId
   }),
   delta: input.delta
@@ -82,7 +82,7 @@ const patchEdgeRecord = (input: {
 
 const patchMindmapRecord = (input: {
   graph: GraphState
-  snapshot: document.Snapshot
+  readOrder: ReturnType<typeof createSceneOrderRead>
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
   mindmapId: MindmapId
@@ -91,7 +91,7 @@ const patchMindmapRecord = (input: {
   key: `mindmap:${input.mindmapId}` as SpatialKey,
   next: readMindmapSpatialRecord({
     graph: input.graph,
-    snapshot: input.snapshot,
+    readOrder: input.readOrder,
     mindmapId: input.mindmapId
   }),
   delta: input.delta
@@ -99,7 +99,7 @@ const patchMindmapRecord = (input: {
 
 const rebuildSpatialRecords = (input: {
   graph: GraphState
-  snapshot: document.Snapshot
+  readOrder: ReturnType<typeof createSceneOrderRead>
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
 }): number => {
@@ -108,7 +108,7 @@ const rebuildSpatialRecords = (input: {
   input.graph.nodes.forEach((_view, nodeId) => {
     if (patchNodeRecord({
       graph: input.graph,
-      snapshot: input.snapshot,
+      readOrder: input.readOrder,
       state: input.state,
       delta: input.delta,
       nodeId
@@ -120,7 +120,7 @@ const rebuildSpatialRecords = (input: {
   input.graph.edges.forEach((_view, edgeId) => {
     if (patchEdgeRecord({
       graph: input.graph,
-      snapshot: input.snapshot,
+      readOrder: input.readOrder,
       state: input.state,
       delta: input.delta,
       edgeId
@@ -132,7 +132,7 @@ const rebuildSpatialRecords = (input: {
   input.graph.owners.mindmaps.forEach((_view, mindmapId) => {
     if (patchMindmapRecord({
       graph: input.graph,
-      snapshot: input.snapshot,
+      readOrder: input.readOrder,
       state: input.state,
       delta: input.delta,
       mindmapId
@@ -146,7 +146,7 @@ const rebuildSpatialRecords = (input: {
 
 const patchGraphRecords = (input: {
   graph: GraphState
-  snapshot: document.Snapshot
+  readOrder: ReturnType<typeof createSceneOrderRead>
   graphDelta: GraphDelta
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
@@ -160,7 +160,7 @@ const patchGraphRecords = (input: {
   ).forEach((nodeId) => {
     if (patchNodeRecord({
       graph: input.graph,
-      snapshot: input.snapshot,
+      readOrder: input.readOrder,
       state: input.state,
       delta: input.delta,
       nodeId
@@ -176,7 +176,7 @@ const patchGraphRecords = (input: {
   ).forEach((edgeId) => {
     if (patchEdgeRecord({
       graph: input.graph,
-      snapshot: input.snapshot,
+      readOrder: input.readOrder,
       state: input.state,
       delta: input.delta,
       edgeId
@@ -192,7 +192,7 @@ const patchGraphRecords = (input: {
   ).forEach((mindmapId) => {
     if (patchMindmapRecord({
       graph: input.graph,
-      snapshot: input.snapshot,
+      readOrder: input.readOrder,
       state: input.state,
       delta: input.delta,
       mindmapId
@@ -265,9 +265,10 @@ export const patchSpatialOrder = (input: {
   delta: SpatialDelta
 }): void => {
   input.delta.order = true
+  const readOrder = createSceneOrderRead(input.snapshot)
 
   input.state.records.forEach((record, key) => {
-    const nextOrder = readSceneOrder(input.snapshot, record.item)
+    const nextOrder = readOrder(record.item)
     if (record.order === nextOrder) {
       return
     }
@@ -292,6 +293,7 @@ export const patchSpatial = (input: {
   count: number
 } => {
   let count = 0
+  const readOrder = createSceneOrderRead(input.snapshot)
 
   resetSpatialDelta(input.delta)
   input.delta.revision = input.revision
@@ -300,14 +302,14 @@ export const patchSpatial = (input: {
     resetSpatialState(input.state)
     count += rebuildSpatialRecords({
       graph: input.graph,
-      snapshot: input.snapshot,
+      readOrder,
       state: input.state,
       delta: input.delta.records
     })
   } else if (input.scope.graph) {
     count += patchGraphRecords({
       graph: input.graph,
-      snapshot: input.snapshot,
+      readOrder,
       graphDelta: input.graphDelta,
       state: input.state,
       delta: input.delta.records

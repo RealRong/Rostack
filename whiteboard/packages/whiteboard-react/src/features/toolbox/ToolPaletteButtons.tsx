@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import {
   Eraser,
   GitBranch,
@@ -48,7 +49,7 @@ const DRAW_MODE_ICON = {
   eraser: Eraser
 } as const satisfies Record<DrawMode, typeof Pencil>
 
-export const ToolPaletteButtons = ({
+export const ToolPaletteButtons = memo(({
   tool,
   palette,
   controller,
@@ -170,4 +171,6 @@ export const ToolPaletteButtons = ({
       </PickerIconButton>
     </FloatingSurface>
   )
-}
+})
+
+ToolPaletteButtons.displayName = 'ToolPaletteButtons'

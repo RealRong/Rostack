@@ -18,6 +18,7 @@ import type {
   Snapshot
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
+import type { EdgeNodeSnapshot } from '../domain/edge'
 import { patchEdge } from '../domain/edge'
 import { patchGroup } from '../domain/group'
 import { readRelatedEdgeIds } from '../domain/index/read'
@@ -256,13 +257,15 @@ const patchEdges = (
   queue: GraphPatchQueue
 ): number => {
   let count = 0
+  const nodeSnapshotCache = new Map<NodeId, EdgeNodeSnapshot>()
 
   drainQueue(queue.edges).forEach((edgeId) => {
     if (patchEdge({
       input: context.input,
       working: context.working,
       delta: context.working.delta.graph,
-      edgeId
+      edgeId,
+      nodeSnapshotCache
     }).changed) {
       count += 1
     }

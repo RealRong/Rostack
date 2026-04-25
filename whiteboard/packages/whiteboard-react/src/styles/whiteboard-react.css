@@ -45,10 +45,20 @@
   pointer-events: none;
 }
 
-.wb-root-viewport {
+.wb-root-scene-viewport,
+.wb-root-chrome-viewport {
   position: absolute;
   inset: 0;
   overflow: visible;
+}
+
+.wb-root-scene-viewport {
+  z-index: 0;
+}
+
+.wb-root-chrome-viewport {
+  z-index: 1;
+  pointer-events: none;
 }
 
 .wb-canvas-background {
@@ -57,15 +67,19 @@
   pointer-events: none;
 }
 
-.wb-root-container[data-tool='hand'] .wb-root-viewport,
+.wb-root-container[data-tool='hand'] .wb-root-scene-viewport,
+.wb-root-container[data-tool='hand'] .wb-root-chrome-viewport,
 .wb-root-container[data-tool='hand'] .wb-node-block,
 .wb-root-container[data-tool='hand'] .wb-edge-item {
   cursor: grab;
 }
 
-.wb-root-container[data-tool='insert'] .wb-root-viewport,
-.wb-root-container[data-tool='edge'] .wb-root-viewport,
-.wb-root-container[data-tool='draw'] .wb-root-viewport,
+.wb-root-container[data-tool='insert'] .wb-root-scene-viewport,
+.wb-root-container[data-tool='insert'] .wb-root-chrome-viewport,
+.wb-root-container[data-tool='edge'] .wb-root-scene-viewport,
+.wb-root-container[data-tool='edge'] .wb-root-chrome-viewport,
+.wb-root-container[data-tool='draw'] .wb-root-scene-viewport,
+.wb-root-container[data-tool='draw'] .wb-root-chrome-viewport,
 .wb-root-container[data-tool='draw'] .wb-node-block,
 .wb-root-container[data-tool='draw'] .wb-edge-item {
   cursor: crosshair;
@@ -394,14 +408,9 @@
   transform-origin: center;
 }
 
-.wb-edge-label[data-selected='true'] .wb-edge-label-content {
-  box-shadow: 0 0 0 calc(1px / var(--wb-zoom, 1)) var(--ui-accent);
-}
-
 .wb-edge-label-content-editing {
   outline: none;
   background: var(--ui-surface);
-  box-shadow: 0 0 0 calc(1px / var(--wb-zoom, 1)) var(--ui-accent);
 }
 
 .wb-edge-label-content.wb-default-text-editor {

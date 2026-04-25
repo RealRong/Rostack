@@ -12,6 +12,7 @@ import { product } from '@whiteboard/product'
 import type { EdgeId } from '@whiteboard/core/types'
 import { edge as edgeApi, type EdgeLabelMaskRect } from '@whiteboard/core/edge'
 import {
+  useEditorStore,
   usePickRef,
   useResolvedConfig
 } from '@whiteboard/react/runtime/hooks'
@@ -32,6 +33,12 @@ import type { EdgeView } from '@whiteboard/react/types/edge'
 type EdgeItemProps = {
   edgeId: EdgeId
 }
+
+const resolveActiveLabelOutlineStyle = (
+  zoom: number
+): CSSProperties => ({
+  boxShadow: `0 0 0 ${1 / Math.max(zoom, 0.0001)}px var(--ui-accent)`
+})
 
 const resolveTextStyle = ({
   color,
@@ -99,29 +106,100 @@ const EdgeLabelItem = ({
         transform: `translate(${x}px, ${y}px) translate(-50%, -50%) rotate(${label.angle}deg)`
       }}
     >
-      {label.editing ? (
-        <EditableSlot
-          bindRef={bindLabelRef}
-          value={label.text}
-          caret={label.caret ?? { kind: 'end' }}
-          multiline
-          className="wb-edge-label-content wb-edge-label-content-editing wb-default-text-editor"
-          style={style}
-        />
-      ) : (
-          <div
-            ref={bindLabelRef}
-            data-edit-edge-id={edgeId}
-            data-edit-label-id={label.id}
-            className="wb-edge-label-content"
-            style={{
-              ...style,
-              opacity: label.text ? 1 : 0.48
-            }}
-          >
-            {label.displayText}
-          </div>
-        )}
+      <EdgeLabelContent
+        edgeId={edgeId}
+        label={label}
+        selected={selected}
+        bindLabelRef={bindLabelRef}
+        style={style}
+      />
+    </div>
+  )
+}
+
+const EdgeLabelContent = ({
+  edgeId,
+  label,
+  selected,
+  bindLabelRef,
+  style
+}: {
+  edgeId: EdgeId
+  label: EdgeView['labels'][number]
+  selected: boolean
+  bindLabelRef: (element: HTMLDivElement | null) => void
+  style: CSSProperties
+}) => {
+  if (label.editing || selected) {
+    return (
+      <ActiveEdgeLabelContent
+        edgeId={edgeId}
+        label={label}
+        bindLabelRef={bindLabelRef}
+        style={style}
+      />
+    )
+  }
+
+  return (
+    <div
+      ref={bindLabelRef}
+      data-edit-edge-id={edgeId}
+      data-edit-label-id={label.id}
+      className="wb-edge-label-content"
+      style={{
+        ...style,
+        opacity: label.text ? 1 : 0.48
+      }}
+    >
+      {label.displayText}
+    </div>
+  )
+}
+
+const ActiveEdgeLabelContent = ({
+  edgeId,
+  label,
+  bindLabelRef,
+  style
+}: {
+  edgeId: EdgeId
+  label: EdgeView['labels'][number]
+  bindLabelRef: (element: HTMLDivElement | null) => void
+  style: CSSProperties
+}) => {
+  const zoom = useEditorStore(editor => editor.store.viewport).zoom
+  const outlineStyle = resolveActiveLabelOutlineStyle(zoom)
+
+  if (label.editing) {
+    return (
+      <EditableSlot
+        bindRef={bindLabelRef}
+        value={label.text}
+        caret={label.caret ?? { kind: 'end' }}
+        multiline
+        className="wb-edge-label-content wb-edge-label-content-editing wb-default-text-editor"
+        style={{
+          ...style,
+          ...outlineStyle
+        }}
+      />
+    )
+  }
+
+  return (
+    <div
+      ref={bindLabelRef}
+      data-edit-edge-id={edgeId}
+      data-edit-label-id={label.id}
+      className="wb-edge-label-content"
+      style={{
+        ...style,
+        ...outlineStyle,
+        opacity: label.text ? 1 : 0.48
+      }}
+    >
+      {label.displayText}
     </div>
   )
 }

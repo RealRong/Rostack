@@ -9,6 +9,7 @@ import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 import { consumeDomEvent } from '@whiteboard/react/dom/host/event'
 import {
   resolvePoint,
+  resolveInteractionPointerInput,
   resolvePointerInput
 } from '@whiteboard/react/dom/host/input'
 import { createPickRegistry } from '@whiteboard/react/dom/host/pickRegistry'
@@ -114,6 +115,19 @@ export const createPointerBridge = ({
     return input
   }
 
+  const resolveSessionPointerInput = <Phase extends 'move' | 'up'>(
+    phase: Phase,
+    event: PointerEvent
+  ) => {
+    const input = resolveInteractionPointerInput({
+      phase,
+      editor,
+      event
+    })
+    point.set(input.world)
+    return input
+  }
+
   return {
     bindPick: (element, nextPick) => pick.bind(element, nextPick),
     contextMenu: ({ container, event }) => {
@@ -162,13 +176,13 @@ export const createPointerBridge = ({
           container,
           pointerId: input.pointerId,
           move: (nextEvent) => {
-            const moveInput = resolveCanvasPointerInput('move', container, nextEvent)
+            const moveInput = resolveSessionPointerInput('move', nextEvent)
             if (editor.input.pointerMove(moveInput)) {
               consumeDomEvent(nextEvent)
             }
           },
           up: (nextEvent) => {
-            const upInput = resolveCanvasPointerInput('up', container, nextEvent)
+            const upInput = resolveSessionPointerInput('up', nextEvent)
             if (editor.input.pointerUp(upInput)) {
               consumeDomEvent(nextEvent)
             }

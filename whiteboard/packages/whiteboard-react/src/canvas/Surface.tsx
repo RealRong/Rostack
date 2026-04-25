@@ -39,13 +39,24 @@ export const Surface = ({
     }),
     [resolvedConfig.viewport.enableWheel, resolvedConfig.viewport.wheelSensitivity]
   )
-  const transformStyle = useMemo(
+  const viewportTransform = useMemo(
+    () => `translate(50%, 50%) scale(${viewport.zoom}) translate(${-viewport.center.x}px, ${-viewport.center.y}px)`,
+    [viewport.center.x, viewport.center.y, viewport.zoom]
+  )
+  const sceneViewportStyle = useMemo(
     () => ({
-      transform: `translate(50%, 50%) scale(${viewport.zoom}) translate(${-viewport.center.x}px, ${-viewport.center.y}px)`,
+      transform: viewportTransform,
+      transformOrigin: '0 0'
+    } as CSSProperties),
+    [viewportTransform]
+  )
+  const chromeViewportStyle = useMemo(
+    () => ({
+      transform: viewportTransform,
       transformOrigin: '0 0',
       '--wb-zoom': `${viewport.zoom}`
     } as CSSProperties),
-    [viewport]
+    [viewport.zoom, viewportTransform]
   )
 
   useClipboard({
@@ -88,11 +99,13 @@ export const Surface = ({
         tabIndex={0}
       >
         <Background />
-        <div className="wb-root-viewport" style={transformStyle}>
+        <div className="wb-root-scene-viewport" style={sceneViewportStyle}>
           <CanvasScene />
+          <DrawLayer />
+        </div>
+        <div className="wb-root-chrome-viewport" style={chromeViewportStyle}>
           <NodeOverlayLayer />
           <EdgeOverlayLayer />
-          <DrawLayer />
         </div>
         <Marquee />
       </div>

@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { memo, useId, type ReactNode } from 'react'
 import { node as nodeApi, type ShapeKind, type ShapePathSpec } from '@whiteboard/core/node'
 
 type ShapeColors = {
@@ -63,7 +63,7 @@ const renderShapePath = (
   )
 }
 
-export const ShapeGlyph = ({
+export const ShapeGlyph = memo(({
   kind,
   size,
   width,
@@ -142,4 +142,6 @@ export const ShapeGlyph = ({
       ))}
     </svg>
   )
-}
+})
+
+ShapeGlyph.displayName = 'ShapeGlyph'

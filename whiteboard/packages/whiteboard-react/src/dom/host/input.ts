@@ -192,6 +192,44 @@ export const resolvePointerInput = <Phase extends PointerInput['phase']>({
           client: resolved.client,
           screen: resolved.screen,
           world: resolved.world
+      }]
+  }
+}
+
+export const resolveInteractionPointerInput = <Phase extends 'move' | 'up'>({
+  phase,
+  editor,
+  event
+}: {
+  phase: Phase
+  editor: WhiteboardRuntime
+  event: PointerEvent
+}): PointerInput<Phase> => {
+  // Captured interaction sessions consume coordinates/modifiers/samples only.
+  const point = readPointerSnapshot(editor, event)
+  const coalesced = readCoalescedPointerEvents(event)
+
+  return {
+    phase,
+    pointerId: event.pointerId,
+    button: event.button,
+    buttons: event.buttons,
+    detail: event.detail,
+    client: point.client,
+    screen: point.screen,
+    world: point.world,
+    modifiers: readModifierKeys(event),
+    pick: BackgroundPick,
+    editable: false,
+    ignoreInput: false,
+    ignoreSelection: false,
+    ignoreContextMenu: false,
+    samples: coalesced.length > 0
+      ? coalesced.map((entry) => toPointerSample(editor, entry))
+      : [{
+          client: point.client,
+          screen: point.screen,
+          world: point.world
         }]
   }
 }

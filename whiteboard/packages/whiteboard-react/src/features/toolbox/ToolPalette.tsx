@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -26,7 +27,7 @@ import type {
 } from '@whiteboard/react/types/toolbox'
 import { Point } from '@shared/dom'
 
-export const ToolPalette = () => {
+export const ToolPalette = memo(() => {
   const editor = useEditor()
   const tool = useTool()
   const paletteMemoryRef = useRef<ToolPaletteMemory>(DEFAULT_TOOL_PALETTE_MEMORY)
@@ -34,11 +35,11 @@ export const ToolPalette = () => {
   const [openMenu, setOpenMenu] = useState<ToolPaletteMenuKey | null>(null)
   const [drawPanelOpen, setDrawPanelOpen] = useState(false)
   const drawState = useStoreValue(editor.store.draw)
-  const palette = readToolPaletteView({
+  const palette = useMemo(() => readToolPaletteView({
     tool,
     drawState,
     memory: paletteMemoryRef.current
-  })
+  }), [drawState, tool])
 
   useEffect(() => {
     paletteMemoryRef.current = rememberToolPaletteTool(
@@ -102,4 +103,6 @@ export const ToolPalette = () => {
       ) : null}
     </FloatingLayer>
   )
-}
+})
+
+ToolPalette.displayName = 'ToolPalette'

@@ -36,6 +36,16 @@ export type CompileOne<Doc, Intent, Op, Output = void> = (
   index: number
 ) => Output | CompileControl | void
 
+export type CompileApplyResult<Doc> =
+  | {
+      ok: true
+      doc: Doc
+    }
+  | {
+      ok: false
+      issue: Issue
+    }
+
 export interface CompileResult<Doc, Op, Output = void> {
   doc: Doc
   ops: readonly Op[]
@@ -81,7 +91,7 @@ export const compile = <
   doc: Doc
   intents: readonly Intent[]
   run: CompileOne<Doc, Intent, Op, Output>
-  previewApply(doc: Doc, ops: readonly Op[]): Doc | CompileControl
+  apply(doc: Doc, ops: readonly Op[]): CompileApplyResult<Doc>
   stopOnError?: boolean
 }): CompileResult<Doc, Op, Output> => {
   const ops: Op[] = []
@@ -94,6 +104,7 @@ export const compile = <
     const pendingOps: Op[] = []
     const pendingIssues: Issue[] = []
     let shouldStop = false
+    let blocked = false
 
     const ctx: CompileCtx<Doc, Op> = {
       doc: () => workingDoc,
@@ -107,7 +118,7 @@ export const compile = <
         const normalized = normalizeIssue(issue)
         pendingIssues.push(normalized)
         if (stopOnError && normalized.level !== 'warning') {
-          shouldStop = true
+          blocked = true
         }
       },
       stop: () => {
@@ -116,7 +127,7 @@ export const compile = <
       },
       block: (issue) => {
         pendingIssues.push(normalizeIssue(issue))
-        shouldStop = true
+        blocked = true
         return compileControl.block(issue)
       },
       require: (value, code, message, path) => {
@@ -137,7 +148,11 @@ export const compile = <
 
     const output = input.run(ctx, intent, index)
     if (isCompileControl(output)) {
-      shouldStop = true
+      if (output.kind === 'stop') {
+        shouldStop = true
+      } else {
+        blocked = true
+      }
     } else if (output !== undefined) {
       outputs.push(output)
     }
@@ -146,22 +161,24 @@ export const compile = <
     if (shouldStop) {
       break
     }
+    if (blocked) {
+      if (stopOnError) {
+        break
+      }
+      continue
+    }
     if (!pendingOps.length) {
       continue
     }
 
-    const preview = input.previewApply(workingDoc, pendingOps)
-    if (isCompileControl(preview)) {
-      if (preview.kind === 'block') {
-        issues.push(normalizeIssue(preview.issue))
-      }
-      if (preview.kind === 'stop' || preview.kind === 'block') {
-        break
-      }
+    const applied = input.apply(workingDoc, pendingOps)
+    if (!applied.ok) {
+      issues.push(normalizeIssue(applied.issue))
+      break
     }
 
     ops.push(...pendingOps)
-    workingDoc = preview
+    workingDoc = applied.doc
   }
 
   return {

@@ -18,7 +18,7 @@ import type {
   WhiteboardIntentOutput
 } from '@whiteboard/core/intent/types'
 
-const previewIssueCode = (
+const reduceIssueCode = (
   code: import('@whiteboard/core/reducer').WhiteboardReduceIssueCode
 ): 'invalid' | 'cancelled' => code === 'cancelled'
   ? 'cancelled'
@@ -49,23 +49,26 @@ export const compileWhiteboardIntents = (input: {
       const handler = whiteboardIntentHandlers[intent.type]
       return handler(intent as never, compileContext)
     },
-    previewApply: (document, ops) => {
-      const preview = whiteboardReducer.reduce({
+    apply: (document, ops) => {
+      const reduced = whiteboardReducer.reduce({
         doc: document,
         ops,
         origin: 'system'
       })
-      if (!preview.ok) {
+      if (!reduced.ok) {
         return {
-          kind: 'block' as const,
+          ok: false as const,
           issue: {
-            code: previewIssueCode(preview.error.code),
-            message: preview.error.message,
-            details: preview.error.details
+            code: reduceIssueCode(reduced.error.code),
+            message: reduced.error.message,
+            details: reduced.error.details
           }
         }
       }
-      return preview.doc
+      return {
+        ok: true as const,
+        doc: reduced.doc
+      }
     },
     stopOnError: true
   })

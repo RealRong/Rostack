@@ -1,5 +1,5 @@
+import { draft } from '@shared/draft'
 import {
-  draftPath,
   path as mutationPath
 } from '@shared/mutation'
 import type {
@@ -24,7 +24,7 @@ const EMPTY_CONTROLS: readonly ControlId[] = []
 const readStyleValue = (
   node: Pick<Node, 'style'>,
   path: Parameters<NodeTypeSupport['supportsStyle']>[1]
-) => draftPath.get(node.style, path)
+) => draft.path.get(node.style, path)
 
 const readFallbackMeta = (
   type: NodeType

@@ -18,17 +18,25 @@ export interface FrameQuery<TNode extends FrameNodeLike> {
   descendants(frameId: NodeId): readonly NodeId[]
 }
 
-type Candidate = {
+export interface FrameCandidate {
   id: NodeId
-  area: number
-  index: number
+  rect: Rect
+  order: number
 }
 
 const area = (rect: Rect) => rect.width * rect.height
 
 const pick = (
-  current: Candidate | undefined,
-  next: Candidate
+  current: {
+    id: NodeId
+    area: number
+    order: number
+  } | undefined,
+  next: {
+    id: NodeId
+    area: number
+    order: number
+  }
 ) => {
   if (!current) {
     return next
@@ -40,7 +48,7 @@ const pick = (
     return current
   }
 
-  return next.index > current.index
+  return next.order > current.order
     ? next
     : current
 }
@@ -77,7 +85,11 @@ export const frameAt = <TNode extends FrameNodeLike>({
   point: Point
   getFrameRect: FrameRectReader<TNode>
 }): NodeId | undefined => {
-  let best: Candidate | undefined
+  let best: {
+    id: NodeId
+    area: number
+    order: number
+  } | undefined
   const frames = scanFrames(nodes, getFrameRect)
 
   for (let index = 0; index < frames.length; index += 1) {
@@ -89,7 +101,7 @@ export const frameAt = <TNode extends FrameNodeLike>({
     best = pick(best, {
       id: frame.node.id,
       area: area(frame.rect),
-      index: frame.index
+      order: frame.index
     })
   }
 
@@ -113,7 +125,11 @@ export const frameParent = <TNode extends FrameNodeLike>({
     return undefined
   }
 
-  let best: Candidate | undefined
+  let best: {
+    id: NodeId
+    area: number
+    order: number
+  } | undefined
   const frames = scanFrames(nodes, getFrameRect)
 
   for (let index = 0; index < frames.length; index += 1) {
@@ -125,7 +141,7 @@ export const frameParent = <TNode extends FrameNodeLike>({
     best = pick(best, {
       id: frame.node.id,
       area: area(frame.rect),
-      index: frame.index
+      order: frame.index
     })
   }
 
@@ -246,3 +262,62 @@ export const createFrameQuery = <TNode extends FrameNodeLike>({
     getFrameRect
   })
 })
+
+export const pickFrame = (input: {
+  candidates: readonly FrameCandidate[]
+  point: Point
+  excludeIds?: ReadonlySet<NodeId>
+}): NodeId | undefined => {
+  let best: {
+    id: NodeId
+    area: number
+    order: number
+  } | undefined
+
+  input.candidates.forEach((candidate) => {
+    if (input.excludeIds?.has(candidate.id)) {
+      return
+    }
+    if (!geometryApi.rect.containsPoint(input.point, candidate.rect)) {
+      return
+    }
+
+    best = pick(best, {
+      id: candidate.id,
+      area: area(candidate.rect),
+      order: candidate.order
+    })
+  })
+
+  return best?.id
+}
+
+export const pickFrameParent = (input: {
+  candidates: readonly FrameCandidate[]
+  rect: Rect
+  nodeId: NodeId
+  excludeIds?: ReadonlySet<NodeId>
+}): NodeId | undefined => {
+  let best: {
+    id: NodeId
+    area: number
+    order: number
+  } | undefined
+
+  input.candidates.forEach((candidate) => {
+    if (candidate.id === input.nodeId || input.excludeIds?.has(candidate.id)) {
+      return
+    }
+    if (!contains(candidate.rect, input.rect)) {
+      return
+    }
+
+    best = pick(best, {
+      id: candidate.id,
+      area: area(candidate.rect),
+      order: candidate.order
+    })
+  })
+
+  return best?.id
+}

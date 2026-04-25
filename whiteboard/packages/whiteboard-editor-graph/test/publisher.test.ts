@@ -11,7 +11,7 @@ import type { Input } from '../src/contracts/editor'
 import {
   createEmptyInput,
   createEmptyInputDelta
-} from '../src/projector/createEmptySnapshot'
+} from '../src/projector/spec'
 import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
 import { createEditorGraphProjectorHarness } from '../src/testing/runtime'
 

@@ -1,11 +1,14 @@
 import type {
   Field,
-  FilterRule,
   RecordId,
   View
 } from '@dataview/core/contracts'
 import { field as fieldApi } from '@dataview/core/field'
 import { filter as filterApi } from '@dataview/core/filter'
+import {
+  planFilterCandidateLookup,
+  type FilterCandidateLookupPlan
+} from '@dataview/core/query'
 import type {
   EffectiveFilterRule
 } from '@dataview/engine/active/plan'
@@ -20,7 +23,7 @@ import {
   intersectCandidates,
   sortIdsByRecordOrder,
   unionCandidates
-} from '@dataview/engine/active/query/order'
+} from '@dataview/engine/active/query/candidateSet'
 
 type FilterCandidate = {
   ids: readonly RecordId[]
@@ -75,16 +78,10 @@ const matchesFilter = (input: {
 }
 
 const resolveBucketFilterCandidates = (input: {
-  field: Field | undefined
   fieldId: string
-  rule: FilterRule
+  lookup: Extract<FilterCandidateLookupPlan, { kind: 'bucket' }>
   index: IndexState
 }): FilterCandidate | undefined => {
-  const lookup = filterApi.rule.bucketLookup(input.field, input.rule)
-  if (!lookup) {
-    return undefined
-  }
-
   const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec({
     fieldId: input.fieldId
   }))
@@ -121,9 +118,9 @@ const resolveBucketFilterCandidates = (input: {
   )
 
   return {
-    ids: lookup.mode === 'include'
-      ? readBucketIds(lookup.keys)
-      : readRemainingBucketIds(new Set(lookup.keys)),
+    ids: input.lookup.mode === 'include'
+      ? readBucketIds(input.lookup.keys)
+      : readRemainingBucketIds(new Set(input.lookup.keys)),
     exact: true
   }
 }
@@ -153,7 +150,7 @@ const lowerBoundByFilter = (input: {
 const resolveSortedFilterCandidates = (input: {
   field: Field | undefined
   fieldId: string
-  rule: FilterRule
+  lookup: Extract<FilterCandidateLookupPlan, { kind: 'sort' }>
   index: IndexState
 }): FilterCandidate | undefined => {
   const sortIndex = input.index.sort.fields.get(input.fieldId)
@@ -161,12 +158,7 @@ const resolveSortedFilterCandidates = (input: {
     return undefined
   }
 
-  const lookup = filterApi.rule.sortLookup(input.field, input.rule)
-  if (!lookup) {
-    return undefined
-  }
-
-  if (lookup.mode === 'exists') {
+  if (input.lookup.mode === 'exists') {
     return {
       ids: sortIdsByRecordOrder(
         input.index.records.values.get(input.fieldId)?.ids ?? [],
@@ -177,7 +169,7 @@ const resolveSortedFilterCandidates = (input: {
     }
   }
 
-  const expected = lookup.value
+  const expected = input.lookup.value
   const values = input.index.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
   const compare = (recordId: RecordId) => fieldApi.compare.value(
     input.field,
@@ -185,7 +177,7 @@ const resolveSortedFilterCandidates = (input: {
     expected
   )
 
-  switch (lookup.mode) {
+  switch (input.lookup.mode) {
     case 'eq': {
       const start = lowerBoundByFilter({
         ids: sortIndex.asc,
@@ -274,20 +266,30 @@ const resolveSortedFilterCandidates = (input: {
 const resolveFilterCandidatesForRule = (input: {
   rule: EffectiveFilterRule
   index: IndexState
-}): FilterCandidate | undefined => (
-  resolveBucketFilterCandidates({
+}): FilterCandidate | undefined => {
+  const lookup = planFilterCandidateLookup({
     field: input.rule.field,
-    fieldId: input.rule.fieldId,
-    rule: input.rule.rule,
-    index: input.index
+    rule: input.rule.rule
   })
-    ?? resolveSortedFilterCandidates({
-      field: input.rule.field,
-      fieldId: input.rule.fieldId,
-      rule: input.rule.rule,
-      index: input.index
-    })
-)
+
+  switch (lookup.kind) {
+    case 'bucket':
+      return resolveBucketFilterCandidates({
+        fieldId: input.rule.fieldId,
+        lookup,
+        index: input.index
+      })
+    case 'sort':
+      return resolveSortedFilterCandidates({
+        field: input.rule.field,
+        fieldId: input.rule.fieldId,
+        lookup,
+        index: input.index
+      })
+    default:
+      return undefined
+  }
+}
 
 export const resolveFilterPlans = (input: {
   rules: readonly EffectiveFilterRule[]

@@ -10,9 +10,9 @@ import {
 } from '@dataview/core/contracts'
 import { equal } from '@shared/core'
 import {
-  createArrayPatchBuilder,
-  createMapPatchBuilder
-} from '@dataview/engine/active/shared/patch'
+  createArrayDraft as createArrayPatchBuilder,
+  createMapDraft as createMapPatchBuilder
+} from '@shared/draft'
 import type {
   IndexDeriveContext,
   IndexReadContext,

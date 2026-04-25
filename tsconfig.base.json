@@ -8,6 +8,8 @@
     "paths": {
       "@rostack/dataview-demo/*": ["apps/dataview/src/*"],
       "@shared/core": ["shared/core/src/index.ts"],
+      "@shared/draft": ["shared/draft/src/index.ts"],
+      "@shared/draft/*": ["shared/draft/src/*"],
       "@shared/reducer": ["shared/reducer/src/index.ts"],
       "@shared/reducer/*": ["shared/reducer/src/*"],
       "@shared/mutation": ["shared/mutation/src/index.ts"],

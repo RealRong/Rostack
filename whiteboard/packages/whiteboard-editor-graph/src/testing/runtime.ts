@@ -7,8 +7,10 @@ import type {
   Snapshot
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
-import { createWorking } from '../projector/createWorking'
-import { editorGraphProjectorSpec } from '../projector/spec'
+import {
+  createWorking,
+  editorGraphProjectorSpec
+} from '../projector/spec'
 import { createEditorGraphRuntime } from '../runtime/createEditorGraphRuntime'
 
 export interface EditorGraphHarness {

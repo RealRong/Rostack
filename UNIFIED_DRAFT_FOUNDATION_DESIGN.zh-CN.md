@@ -1,173 +1,152 @@
-# Unified Draft Foundation 设计：mutable draft + lazy COW + stable references
+# Unified Draft Foundation 设计 v3
 
-## 1. 背景
+本文给出最终收敛方案。
 
-`UNIFIED_MUTATION_PIPELINE_FOUNDATION.zh-CN.md` 的 Draft Foundation 8.1 已经明确最终态只允许一种 draft 模型：
+目标不是继续讨论“是否可以”，而是明确：
 
-- mutable draft
-- lazy copy-on-write
-- stable references for untouched branches
-
-这意味着：
-
-- 不再保留 immutable current replace 模型。
-- 不再把 Whiteboard overlay draft 作为 shared foundation 暴露。
-- Dataview 与 Whiteboard 的 reducer/apply 都应统一到同一种 draft 风格。
-
-本文进一步明确：Dataview 目前也存在和 Whiteboard 类似的问题，只是表现形式不同。
-
-- Whiteboard 当前问题是私有 `OverlayTable`。
-- Dataview 当前问题是 immutable `nextDocument -> replace` 链，以及 `entityTable.overlay` 原型 overlay。
-
-两边都应该收敛到 shared reducer 的统一 Draft Foundation。
+- 最终基础设施放在哪里
+- 最终 API 长什么样
+- `preview` 应该怎么处理
+- Whiteboard 与 Dataview 如何一起推进
 
 ---
 
-## 2. 当前问题判断
+## 1. 最终结论
 
-## 2.1 Whiteboard 当前问题
+这件事值得做，而且应该和 compile/apply 收口一起推进。
 
-Whiteboard reducer 的 `DraftDocument` 当前使用私有 overlay table：
+最终应同时成立的结论有五条：
 
-```ts
-nodes: OverlayTable<NodeId, Node>
-edges: OverlayTable<EdgeId, Edge>
-groups: OverlayTable<GroupId, Group>
-mindmaps: OverlayTable<MindmapId, MindmapRecord>
-```
+1. 统一 draft foundation
+   - mutable draft
+   - lazy copy-on-write
+   - untouched branches stable references
+2. 外部公开写入 API 只保留 `apply`
+3. compile 内部继续维护 `current document`
+4. `preview` 不再作为公开概念存在
+5. `DraftEntityTable` 也进入 `shared/draft`
+   - 但它是建立在 `record/list` 之上的薄组合层
+   - 它与 `root / record / list / path` 一起作为一等 shared primitive 落地
+   - 不是反向驱动 primitive 设计的高层框架
 
-`OverlayTable` 的实现是：
+也就是说：
+
+> 要删除的不是“compile 阶段推进 current document”这件事。  
+> 要删除的是把这件事暴露成一个叫 `preview` 的外部 API。
+
+---
+
+## 2. 为什么 `preview` 设计得不好
+
+当前 Dataview / shared compile 里的 `preview` 本质不是 UI preview，而是：
+
+- speculative apply
+- advance working document
+- 让后一个 intent 能基于前一个 intent 的结果继续编译
+
+这件事本身是对的。
+
+问题在于当前设计把它暴露成了错误的概念：
+
+- `preview` 这个名字不准确
+- Dataview 还把它公开成 `operation.preview`
+- 它和正式 apply 不是同一个明确的内核边界
+
+最终应该收口为：
+
+- compile handler 继续只拿 `ctx.doc()` 作为 current document
+- compile runtime 在每轮 intent 后，用 **apply** 推进 working doc
+- 外部不再暴露 `preview`
+
+一句话：
+
+> current document 需要保留；public preview 不需要保留。
+
+---
+
+## 3. 最终边界
+
+最终有三层：
+
+### 3.1 `shared/draft`
+
+只负责 draft primitive：
+
+- root
+- record
+- list
+- entityTable
+- path
+
+### 3.2 `shared/mutation`
+
+只负责 compile / engine / history / collab。
+
+其中 compile 不再依赖 `previewApply`，而是依赖一个内部 `apply` 回调来推进 `workingDoc`。
+
+### 3.3 domain apply kernel
+
+Dataview / Whiteboard 各自提供：
+
+- `apply(document, ops)` 或等价 reducer kernel
+
+它既服务正式 apply，也服务 compile 阶段的 working document 推进。
+
+---
+
+## 4. 放置位置
+
+最终建议新增独立基础包：
 
 ```txt
-base record
-+ overlay Map
-+ tombstone
-+ materialize() => { ...base } + overlay patches
+shared/draft
 ```
 
-它已经有 lazy overlay 的味道，但还不是最终 Foundation：
+原因：
 
-1. 它是 Whiteboard 私有设施，不是 shared reducer foundation。
-2. `materialize()` 对每张表都会 `{ ...base }`，未变表也会产生新引用。
-3. 缺少 `changed()` / `baseIfUnchanged()` 语义。
-4. tombstone + overlay Map 是一套额外模型，不是统一 mutable draft。
-5. `background` / `canvasOrder` 仍是领域侧手写半 immutable 状态。
+1. `shared/reducer` 已经收成最小 apply runner，不应该再因为 draft 变胖。
+2. draft 不只服务 reducer，也服务 compile 内部 apply、preview 替代链、domain write helper。
+3. draft 是独立基础设施，应该和 `shared/reducer`、`shared/projector` 并列。
 
-所以 Whiteboard 不应该长期保留 `createOverlayTable`。
-
-## 2.2 Dataview 当前问题
-
-Dataview 目前的问题更明显：operation apply 仍是 immutable replace 模型。
-
-当前 `DocumentMutationContext` 是：
+最终导入方式：
 
 ```ts
-export interface DocumentMutationContext {
-  doc(): DataDoc
-  replace(doc: DataDoc): void
-  inverse: {
-    prependMany(ops: readonly DocumentOperation[]): void
-  }
-  trace: DataviewTrace
+import { draft } from '@shared/draft'
+```
+
+不建议：
+
+- 继续由 `shared/mutation` 持有 draft
+- 把 draft 再塞回 `shared/reducer`
+- 保留兼容 re-export
+
+---
+
+## 5. 最终 API
+
+## 5.1 `@shared/draft`
+
+最终 API 包含五个：
+
+- `draft.root`
+- `draft.record`
+- `draft.list`
+- `draft.entityTable`
+- `draft.path`
+
+导出形态：
+
+```ts
+export const draft = {
+  root,
+  record,
+  list,
+  entityTable,
+  path
 }
 ```
 
-operation handler 经常做：
-
-```txt
-const document = ctx.doc()
-const nextDocument = documentApi.records.patch(document, ...)
-if (nextDocument === document) return
-commitMutation(ctx, nextDocument, inverse)
-```
-
-而 `commitMutation` 本质是：
-
-```ts
-ctx.replace(document)
-ctx.inverse.prependMany(inverse)
-```
-
-这正是 Foundation 8.1 要删除的 immutable current replace 模型。
-
-Dataview 还有另一层问题：`entityTable.write.*` 使用 `Object.create(table.byId)` 做 overlay：
-
-```ts
-const createOverlay = (table) => Object.create(table.byId)
-```
-
-这会产生原型链式 byId record。虽然它能减少浅拷贝，但它不适合作为统一 Foundation：
-
-1. 原型链 record 不直观，容易影响枚举、序列化和调试。
-2. 多次 write 会产生多层 table/byId 引用关系。
-3. 它仍是 immutable table replacement 风格。
-4. 它没有明确的 draft lifecycle。
-5. 它和 Whiteboard 的 `OverlayTable` 是两套不同模型。
-
-所以 Dataview 也需要迁移到统一 lazy COW draft。
-
----
-
-## 3. 统一目标
-
-最终 reducer/apply 阶段只允许一种写法：
-
-```txt
-create draft from base document
-  -> read from draft
-  -> mutate writable branches in place
-  -> collect inverse / footprint / trace
-  -> finish draft
-  -> unchanged branches keep stable references
-```
-
-核心不变量：
-
-1. `draft.current()` 读当前事务态。
-2. `draft.write()` 或 domain writer 返回可写分支。
-3. 第一次写某个 branch 时才 copy。
-4. 未触碰的 branch 返回原始引用。
-5. 同一个事务内同一个 branch 只有一个 writable copy。
-6. reducer helper 不返回 `nextDocument`，而是直接 mutate draft。
-7. apply preview 和正式 apply 使用同一套 draft primitives。
-
----
-
-## 4. shared/reducer 应提供的 Draft Foundation
-
-建议 Draft Foundation 放在 `shared/reducer`，因为它是 reducer/apply runtime 的底层设施，不应该继续属于 `shared/mutation`。
-
-`shared/mutation` 可以继续消费它，但不拥有它。
-
-建议结构：
-
-```txt
-shared/reducer/src/draft/
-  root.ts
-  record.ts
-  list.ts
-  value.ts
-  path.ts
-  index.ts
-```
-
-公开 API 仍然保持克制：
-
-```ts
-export { draft } from './draft'
-export type {
-  DraftRoot,
-  DraftRecord,
-  DraftList,
-  DraftValue
-} from './draft'
-```
-
----
-
-## 5. Draft Root API
-
-统一 root draft：
+### `DraftRoot`
 
 ```ts
 export interface DraftRoot<Doc extends object> {
@@ -176,6 +155,7 @@ export interface DraftRoot<Doc extends object> {
   current(): Doc
   write(): Doc
   replace(doc: Doc): void
+
   changed(): boolean
   finish(): Doc
 }
@@ -183,35 +163,20 @@ export interface DraftRoot<Doc extends object> {
 
 语义：
 
-- `current()` 返回当前事务态。
-- `write()` 第一次调用时 shallow copy root。
-- `replace(doc)` 替换整个 root，标记 changed。
-- `changed()` 判断 root 是否变化。
-- `finish()` 返回最终 doc；未变化则返回 `base`。
+- `current()` 返回当前事务态
+- `write()` 第一次调用时 shallow copy root
+- `replace(doc)` 只用于 full-document replace 特例
+- `finish()` 未变返回 `base`
 
-实现原则：
+关键约束：
 
-```txt
-let current = base
-let written = false
+- `replace()` 不是常规写入口
+- Dataview 迁移完成后，普通 operation handler 不再依赖它
+- `DraftRoot` 只管理 root lifecycle 与 full-document replace
+- `DraftRecord / DraftList / DraftEntityTable` 是 branch draft，不自动绑定 root path
+- domain draft document 必须在 finalize 阶段显式组装最终 document
 
-write():
-  if !written:
-    current = shallowClone(base)
-    written = true
-  return current
-
-finish():
-  return written ? current : base
-```
-
-这类似当前 `shared/mutation/cowDraft`，但应迁入 `shared/reducer` 并扩展 branch draft 能力。
-
----
-
-## 6. Draft Record API
-
-这是替代 Whiteboard `OverlayTable` 和 Dataview `entityTable.overlay` 的关键。
+### `DraftRecord`
 
 ```ts
 export interface DraftRecord<Id extends string, Value> {
@@ -219,6 +184,7 @@ export interface DraftRecord<Id extends string, Value> {
 
   get(id: Id): Value | undefined
   has(id: Id): boolean
+
   set(id: Id, value: Value): void
   delete(id: Id): void
 
@@ -231,122 +197,30 @@ export interface DraftRecord<Id extends string, Value> {
 }
 ```
 
-实现模型：lazy COW record。
+约束：
 
-```ts
-const createDraftRecord = <Id extends string, Value>(
-  base: Record<Id, Value>
-): DraftRecord<Id, Value> => {
-  let current: Record<Id, Value> | undefined
+- 第一次 `set/delete` 才 copy
+- `set(id, value)` 在当前值与目标值 `Object.is` 相等时不触发 copy
+- `delete(id)` 在 key 不存在时不触发 copy
+- 后续写入复用同一个 current
+- `finish()` 未变返回 `base`
+- `has()` 必须基于 own-key 语义，不能基于 `Boolean(value)`
+- 不允许 tombstone
+- 不允许 prototype overlay
 
-  const write = () => {
-    if (!current) {
-      current = { ...base }
-    }
-    return current
-  }
-
-  return {
-    base,
-    get: id => (current ?? base)[id],
-    has: id => Boolean((current ?? base)[id]),
-    set: (id, value) => {
-      write()[id] = value
-    },
-    delete: id => {
-      delete write()[id]
-    },
-    entries: function * () {
-      yield * Object.entries(current ?? base) as IterableIterator<[Id, Value]>
-    },
-    values: function * () {
-      yield * Object.values(current ?? base) as IterableIterator<Value>
-    },
-    keys: function * () {
-      yield * Object.keys(current ?? base) as IterableIterator<Id>
-    },
-    changed: () => current !== undefined,
-    finish: () => current ?? base
-  }
-}
-```
-
-关键优势：
-
-- 无 tombstone。
-- 无原型链 overlay。
-- 第一次写才 `{ ...base }`。
-- 未修改时 `finish()` 返回 base。
-- API 与 Whiteboard 当前 `OverlayTable` 基本兼容。
-- Dataview table mutation 也能复用。
-
----
-
-## 7. Draft Entity Table API
-
-Dataview 和 Whiteboard 都有 `{ byId, order }` 或类似结构。
-
-建议在 `shared/reducer` 提供更高层 entity table draft：
-
-```ts
-export interface DraftEntityTable<Id extends string, Entity extends { id: Id }> {
-  readonly base: {
-    byId: Record<Id, Entity>
-    order: readonly Id[]
-  }
-
-  byId: DraftRecord<Id, Entity>
-  order: DraftList<Id>
-
-  get(id: Id): Entity | undefined
-  has(id: Id): boolean
-  put(entity: Entity): void
-  patch(id: Id, patch: Partial<Omit<Entity, 'id'>>): Entity | undefined
-  remove(id: Id): Entity | undefined
-
-  changed(): boolean
-  finish(): {
-    byId: Record<Id, Entity>
-    order: Id[]
-  }
-}
-```
-
-语义：
-
-- `put` 新增时自动维护 order。
-- `remove` 删除 byId 并从 order 移除。
-- `patch` 只在字段有变化时写。
-- `finish()` 未变时返回 base table。
-
-这可以替代 Dataview `entityTable.write.put/patch/remove` 的 immutable 返回模式。
-
-但建议分阶段做：
-
-1. 先提供 `DraftRecord`。
-2. Whiteboard 先迁掉 `OverlayTable`。
-3. Dataview 再迁 `EntityTable` 写入。
-4. 最后再抽 `DraftEntityTable`，避免 API 过早定死。
-
----
-
-## 8. Draft List API
-
-Whiteboard `canvasOrder`、Dataview `order` 都是 list 类分支。
-
-建议提供：
+### `DraftList`
 
 ```ts
 export interface DraftList<Value> {
   readonly base: readonly Value[]
 
-  read(): readonly Value[]
+  current(): readonly Value[]
   write(): Value[]
   set(values: readonly Value[]): void
 
   push(value: Value): void
   insert(index: number, value: Value): void
-  remove(index: number): void
+  removeAt(index: number): void
   move(from: number, to: number): void
 
   changed(): boolean
@@ -354,466 +228,506 @@ export interface DraftList<Value> {
 }
 ```
 
-实现：
+### `DraftEntityTable`
 
-```txt
-write() 第一次调用时 copy [...base]
-finish() 未变化返回 base
+`DraftEntityTable` 也放在 `@shared/draft`。
+
+原因：
+
+- 它不是 Dataview 私有语义，而是 ordered keyed table 的通用 draft 组合
+- 它只是 `DraftRecord + DraftList` 的薄组合层
+- 它不是“以后再抽”的可选 helper，而是第一阶段直接落地的 shared primitive
+- Dataview 会大量使用它
+- Whiteboard 即使暂时不用，也不妨碍它作为 shared draft 能力存在
+
+最终 API：
+
+```ts
+export interface EntityTable<
+  Id extends string,
+  Entity extends { id: Id }
+> {
+  byId: Record<Id, Entity>
+  order: readonly Id[]
+}
+
+export interface DraftEntityTableOptions<
+  Id extends string,
+  Entity extends { id: Id }
+> {
+  hasPatchChanges?: (
+    current: Entity,
+    patch: Partial<Omit<Entity, 'id'>>
+  ) => boolean
+}
+
+export interface DraftEntityTable<
+  Id extends string,
+  Entity extends { id: Id }
+> {
+  readonly base: EntityTable<Id, Entity>
+
+  readonly byId: DraftRecord<Id, Entity>
+  readonly order: DraftList<Id>
+
+  get(id: Id): Entity | undefined
+  has(id: Id): boolean
+
+  ids(): readonly Id[]
+  list(): readonly Entity[]
+
+  put(entity: Entity): void
+  patch(
+    id: Id,
+    patch: Partial<Omit<Entity, 'id'>>
+  ): Entity | undefined
+  remove(id: Id): Entity | undefined
+
+  changed(): boolean
+  finish(): EntityTable<Id, Entity>
+}
+
+draft.entityTable(base, options?: DraftEntityTableOptions<Id, Entity>)
 ```
 
-这样 Whiteboard 的 `canvasOrder` 可以从反复返回新数组，逐步转成 mutable list 操作。
+设计约束：
 
-Dataview table order 也可以复用。
+- `put` 只在 entity 不存在时追加 `order`
+- `patch` 只在 patch 真实变化时写入
+- 默认比较语义是 patch 各字段逐项 `Object.is` 的 shallow compare
+- shared 层不内建 JSON deep equal
+- 如领域需要不同 patch 判定，使用 `draft.entityTable(base, { hasPatchChanges })`
+- `remove` 同时移除 `byId` 和 `order`
+- `finish()` 未变化时返回 `base`
+- `finish()` 只替换发生变化的 `byId/order`
+
+边界约束：
+
+- `DraftEntityTable` 只是组合层
+- `DraftRecord / DraftList` 仍然是更底层 primitive
+- 不允许为了 `DraftEntityTable` 反向把 primitive 做复杂
+
+### `draft.path`
+
+`draft.path` 只做：
+
+- 在已经可写的 object / array 上执行 `get/set/unset`
+
+它不负责：
+
+- root copy
+- record copy
+- list copy
 
 ---
 
-## 9. Draft Value API
+## 5.2 `@shared/mutation` compile 最终 API
 
-对于 `background`、`activeViewId` 这类单值分支，可以提供：
+compile 继续保留 `ctx.doc()` 这个 current document 上下文。
+
+但它不再接收 `previewApply`。
+这里的 `apply` 必须是 pure apply kernel。
+
+最终 API 改成：
 
 ```ts
-export interface DraftValue<Value> {
-  readonly base: Value
-  get(): Value
-  set(value: Value): void
-  changed(): boolean
-  finish(): Value
+export type CompileApplyResult<Doc> =
+  | {
+      ok: true
+      doc: Doc
+    }
+  | {
+      ok: false
+      issue: Issue
+    }
+
+export const compile = <
+  Doc,
+  Intent,
+  Op,
+  Output = void
+>(input: {
+  doc: Doc
+  intents: readonly Intent[]
+  run: CompileOne<Doc, Intent, Op, Output>
+  apply(doc: Doc, ops: readonly Op[]): CompileApplyResult<Doc>
+  stopOnError?: boolean
+}): CompileResult<Doc, Op, Output>
+```
+
+compile loop 语义固定为：
+
+```txt
+workingDoc = input.doc
+
+for each intent:
+  run intent against ctx.doc() === workingDoc
+  collect issues
+  collect pendingOps
+  if current intent has blocking issue:
+    append issues
+    if stopOnError:
+      break
+    continue
+  if pendingOps not empty:
+    next = input.apply(workingDoc, pendingOps)
+    if next failed:
+      append issue
+      break
+    append issues
+    append pendingOps to output ops
+    workingDoc = next.doc
+  else:
+    append issues
+```
+
+这意味着：
+
+- current document 保留
+- preview 概念删除
+- 推进 working document 的唯一语义变成 apply
+- 只有当前 intent 没有 blocking issue 且存在 `pendingOps` 时才推进 `workingDoc`
+- warning / non-blocking issue 不阻止 apply
+- `compile.apply` 只能做 reducer/apply，自身不能触发 publish / history / write stream
+
+---
+
+## 5.3 domain 对外 API 最终形态
+
+Dataview / Whiteboard 对外都不再暴露 `preview`。
+
+最终公开面只保留：
+
+```ts
+export const operation = {
+  meta,
+  apply
 }
 ```
 
-不过它不是第一优先级，因为这类字段手写也不复杂。
+compile 内部如果需要推进 working document，直接调用 domain apply kernel。
 
-优先级：
+换句话说：
 
-```txt
-DraftRecord > DraftList > DraftEntityTable > DraftValue
-```
+> external API only apply  
+> internal compile also uses apply
+
+这才是最干净的边界。
 
 ---
 
-## 10. Whiteboard 迁移设计
+## 6. 基础不变量
 
-## 10.1 替换 OverlayTable
+无论 Whiteboard 还是 Dataview，统一 foundation 必须满足：
 
-当前：
+1. 第一次写某个 branch 时才 copy。
+2. 同一事务中同一 branch 只存在一个 writable copy。
+3. 未触碰 branch 在 `finish()` 后保持原引用。
+4. 未发生任何变更时，`finish()` 返回 `base`。
+5. compile 的 `current document` 与正式 apply 语义一致。
+6. 外部不再暴露 `preview` 作为 public API。
+
+如果做不到这六条，就不是最终方案。
+
+---
+
+## 7. Whiteboard 迁移方案
+
+Whiteboard 先迁，因为收益最大，而且已经有 reducer kernel。
+
+## 7.1 阶段 1：tables 迁到 `DraftRecord`
+
+把：
 
 ```ts
 nodes: OverlayTable<NodeId, Node>
+edges: OverlayTable<EdgeId, Edge>
+groups: OverlayTable<GroupId, Group>
+mindmaps: OverlayTable<MindmapId, MindmapRecord>
 ```
 
-目标：
+替换为：
 
 ```ts
 nodes: DraftRecord<NodeId, Node>
+edges: DraftRecord<EdgeId, Edge>
+groups: DraftRecord<GroupId, Group>
+mindmaps: DraftRecord<MindmapId, MindmapRecord>
 ```
 
-`createDraftDocument`：
+## 7.2 阶段 2：`canvas.order` 迁到 `DraftList`
 
 ```ts
-export const createDraftDocument = (document: Document): DraftDocument => ({
-  base: document,
-  background: document.background,
-  canvasOrder: draft.list(document.canvas.order),
-  nodes: draft.record(document.nodes),
-  edges: draft.record(document.edges),
-  groups: draft.record(document.groups),
-  mindmaps: draft.record(document.mindmaps)
-})
+canvasOrder: DraftList<CanvasItemRef>
 ```
 
-## 10.2 materialize 保持 stable references
+## 7.3 阶段 3：compile 收口到 internal apply
 
-当前：
+Whiteboard compile 不再依赖 `preview` 名义上的概念。
 
-```ts
-nodes: draft.nodes.materialize()
-```
+保留 current document：
 
-目标：
+- handler 继续只读 `ctx.doc()` / `ctx.tx.read.document.get()`
 
-```ts
-nodes: draft.nodes.finish()
-```
+但 compile runtime 在每轮 intent 后，统一调用 reducer/apply kernel 推进 `workingDoc`。
 
-并且：
+## 7.4 阶段 4：删除 overlay 与 preview 残留
 
-```ts
-canvas: draft.canvasOrder.changed()
-  ? { order: draft.canvasOrder.finish().map(cloneCanvasRef) }
-  : draft.base.canvas
-```
-
-完整思路：
-
-```ts
-export const materializeDraftDocument = (draft: DraftDocument): Document => {
-  const backgroundChanged = draft.background.changed()
-  const canvasOrderChanged = draft.canvasOrder.changed()
-  const nodes = draft.nodes.finish()
-  const edges = draft.edges.finish()
-  const groups = draft.groups.finish()
-  const mindmaps = draft.mindmaps.finish()
-
-  if (
-    !backgroundChanged
-    && !canvasOrderChanged
-    && nodes === draft.base.nodes
-    && edges === draft.base.edges
-    && groups === draft.base.groups
-    && mindmaps === draft.base.mindmaps
-  ) {
-    return draft.base
-  }
-
-  return {
-    ...draft.base,
-    background: backgroundChanged
-      ? cloneBackground(draft.background.get())
-      : draft.base.background,
-    canvas: canvasOrderChanged
-      ? { order: draft.canvasOrder.finish().map(ref => cloneCanvasRef(ref)!) }
-      : draft.base.canvas,
-    nodes,
-    edges,
-    groups,
-    mindmaps
-  }
-}
-```
-
-## 10.3 API 兼容
-
-Whiteboard 当前代码大量使用：
-
-```ts
-state.draft.nodes.get(id)
-state.draft.nodes.set(id, node)
-state.draft.nodes.delete(id)
-state.draft.edges.values()
-```
-
-`DraftRecord` 可以直接提供同名方法，因此迁移成本低。
-
-需要调整的是：
-
-- `materialize()` -> `finish()`
-- `canvasOrder` 从数组变成 `DraftList` 后，调用点要逐步改为 `canvasOrder.read()` / `canvasOrder.write()`。
-
-可以先不迁 `canvasOrder`，第一阶段只迁 tables。
-
-## 10.4 删除私有 overlay
-
-当所有 `createOverlayTable` 使用都迁完后，删除：
+删除：
 
 ```txt
 whiteboard/packages/whiteboard-core/src/kernel/overlay.ts
 ```
 
+同时不再保留任何 public preview 概念。
+
 ---
 
-## 11. Dataview 迁移设计
+## 8. Dataview 迁移方案
 
-## 11.1 当前 immutable replace 链
+Dataview 要和 compile/apply 收口一起做，不能只迁 draft。
 
-Dataview 当前 operation handler 是：
-
-```ts
-const document = ctx.doc()
-const nextDocument = documentApi.records.patch(document, ...)
-if (nextDocument === document) return
-commitMutation(ctx, nextDocument, inverse)
-```
-
-目标是改成：
-
-```ts
-const record = ctx.records.get(recordId)
-if (!record) return
-ctx.records.patch(recordId, patch)
-ctx.inverse.prependMany(inverse)
-ctx.trace.recordPatched(recordId)
-```
-
-也就是 operation handler 不再产生 `nextDocument`，而是 mutate draft branch。
-
-## 11.2 Dataview DraftDocument
-
-建议新增 Dataview reducer draft：
+## 8.1 先引入领域 draft 文档
 
 ```ts
 export interface DataviewDraftDocument {
-  base: DataDoc
-  records: DraftEntityTable<RecordId, DataRecord>
+  root: DraftRoot<DataDoc>
+
   fields: DraftEntityTable<CustomFieldId, CustomField>
+  records: DraftEntityTable<RecordId, DataRecord>
   views: DraftEntityTable<ViewId, View>
-  activeViewId: DraftValue<ViewId | undefined>
-  meta?: DraftValue<...>
+  activeViewId: DraftValue<ViewId | undefined> // 若 Phase 1 不单独提供 DraftValue，则由 root field helper 承接
 }
 ```
 
-如果先不做 `DraftEntityTable`，可以先用：
+这里需要明确两点：
 
-```ts
-recordsById: DraftRecord<RecordId, DataRecord>
-recordsOrder: DraftList<RecordId>
-fieldsById: DraftRecord<CustomFieldId, CustomField>
-fieldsOrder: DraftList<CustomFieldId>
-viewsById: DraftRecord<ViewId, View>
-viewsOrder: DraftList<ViewId>
-activeViewId: ViewId | undefined
-```
+- `fields` 只表示 custom fields，不包含 title field 这类 schema 固定字段
+- `activeViewId` 是 scalar branch；Phase 1 可先由 root field helper 承接，不强制要求 `shared/draft` 先提供 `DraftValue`
 
-## 11.3 Dataview documentApi 分层
+## 8.2 operation handler 改写目标
 
-当前 `documentApi.records.patch(document, ...)` 返回新 `DataDoc`。
-
-建议分成两层：
-
-### read API 保留
-
-```ts
-documentApi.records.get(document, id)
-documentApi.records.ids(document)
-documentApi.fields.get(document, id)
-```
-
-### write API 新增 draft 版本
-
-```ts
-documentDraft.records.insert(draft, records, index)
-documentDraft.records.patch(draft, recordId, patch)
-documentDraft.records.remove(draft, recordIds)
-documentDraft.records.writeFields(draft, input)
-
-documentDraft.fields.put(draft, field)
-documentDraft.fields.patch(draft, fieldId, patch)
-documentDraft.fields.remove(draft, fieldId)
-
-documentDraft.views.put(draft, view)
-documentDraft.views.remove(draft, viewId)
-documentDraft.views.setActive(draft, viewId)
-```
-
-不要让 reducer handler 继续调用 immutable `documentApi.write.*`。
-
-## 11.4 previewOperations 迁移
-
-当前 preview 已使用 `cowDraft`，但仍通过 `replace(nextDocument)` 重建 draft：
-
-```ts
-replace: (nextDocument) => {
-  draft = createDraft(nextDocument)
-}
-```
-
-这只是包了一层 immutable replace，未达到 Foundation 目标。
-
-目标：preview 与 apply 共用同一套 `DataviewDraftDocument`：
-
-```ts
-const draft = createDataviewDraft(document)
-operations.forEach(op => applyDataviewOperation(draftCtx, op))
-return draft.finish()
-```
-
-## 11.5 entityTable.overlay 迁移
-
-Dataview `entityTable.overlay` 不应再作为 write primitive。
-
-迁移后：
-
-- read/normalize helper 可保留在 domain/core。
-- write helper 改成 draft entity table 操作。
-- `Object.create(table.byId)` overlay 删除或仅作为 legacy internal，最终删除。
-
----
-
-## 12. shared/mutation 与 shared/reducer 的关系
-
-当前 `shared/mutation/src/draft.ts` 已有：
-
-- `cowDraft`
-- `draftPath`
-- `draftList`
-
-但 Draft Foundation 更适合归属 `shared/reducer`。
-
-推荐迁移：
+当前写法：
 
 ```txt
-shared/mutation/src/draft.ts
-  -> shared/reducer/src/draft/*
+read document
+build nextDocument
+replace(nextDocument)
 ```
 
-然后 `shared/mutation` 从 `@shared/reducer` re-export 或内部依赖：
-
-```ts
-export { draft } from '@shared/reducer'
-```
-
-最终：
-
-- `shared/reducer` 拥有 draft primitives。
-- `shared/mutation` 拥有 MutationEngine。
-- `shared/mutation/apply` 如保留，也使用 reducer draft。
-
----
-
-## 13. 推荐 API
-
-统一入口：
-
-```ts
-import { draft } from '@shared/reducer'
-```
-
-```ts
-const root = draft.root(document)
-const records = draft.record(document.records.byId)
-const order = draft.list(document.records.order)
-```
-
-API：
-
-```ts
-export const draft = {
-  root,
-  record,
-  list,
-  value,
-  entityTable,
-  path
-}
-```
-
-其中第一阶段只实现：
-
-```ts
-draft.root
-draft.record
-draft.list
-draft.path
-```
-
-`draft.entityTable` 第二阶段再实现。
-
----
-
-## 14. 迁移顺序
-
-## 阶段 1：shared/reducer 新增 DraftRecord / DraftList
-
-新增：
+目标写法：
 
 ```txt
-shared/reducer/src/draft/record.ts
-shared/reducer/src/draft/list.ts
-shared/reducer/src/draft/root.ts
-shared/reducer/src/draft/index.ts
+read draft branch
+mutate writable branch
+collect inverse
+collect trace
 ```
 
-并加测试：
+也就是：
 
-- 未写入 finish 返回 base。
-- 第一次 set/delete 才 copy。
-- 多次写同一 record 只用同一 current。
-- entries/values/keys 反映当前态。
-- list 未写返回 base，写后返回 copy。
+- 不再构造 `nextDocument`
+- 不再把 `replace()` 当常规写入口
+- 最终统一由 `draft.finish()` 产出 doc
 
-## 阶段 2：Whiteboard tables 迁移
+## 8.3 compile 去掉 public preview 依赖
+
+删除：
+
+```ts
+operation.preview(...)
+```
+
+compile 内部改成直接依赖 apply kernel：
+
+```ts
+compile({
+  doc,
+  intents,
+  run,
+  apply: (document, operations) => {
+    const result = applyOperations(document, operations)
+    return result.ok
+      ? {
+          ok: true,
+          doc: result.doc
+        }
+      : {
+          ok: false,
+          issue: {
+            code: result.error.code,
+            message: result.error.message,
+            details: result.error.details
+          }
+        }
+  }
+})
+```
+
+也就是：
+
+- current document 保留
+- preview public API 删除
+- compile 内部直接 apply
+
+## 8.4 previewOperations 的最终处理
+
+`previewOperations` 不是最终基础设施。
+
+它的真实职责只是 compile 阶段推进 `workingDoc`。
+
+因此最终处理应该是：
+
+- 删除 `operation.preview`
+- 删除 `previewOperations.ts`
+- 保留 compile 阶段“推进 current document”这件事
+- 这件事改由 apply kernel 完成
+
+---
+
+## 9. 明确不做的事
+
+下面这些都不进入第一阶段：
+
+## 9.1 `DraftValue` 不是 Phase 1 必选项
+
+原因：
+
+- `activeViewId` 这类标量字段可以先由 root field helper 承接
+- 当前主要复杂度仍在 record / list / entity table
+- 不是主要复杂度来源
+
+也就是说：
+
+- 不把 `DraftValue` 放进当前 `shared/draft` 的必选 primitive 集合
+- 但如果后续多个 domain 都稳定出现同类 scalar branch，再单独抽 `DraftValue` 也可以
+
+## 9.2 不把 draft 塞回 reducer 核心
+
+原因：
+
+- `shared/reducer` 现在的正确边界是最小 runner
+- draft 是数据结构基础设施，不是 reducer 生命周期能力
+
+## 9.3 不保留 public preview
+
+原因：
+
+- preview 是概念泄漏
+- 真正需要保留的是 compile 的 current document
+- 这件事应该由 internal apply 完成，不该作为外部 API 公开
+
+## 9.4 不保留兼容双轨
+
+原因：
+
+- 目标已经明确：不在乎重构成本，不做兼容
+
+---
+
+## 10. 一起推进的实施顺序
+
+这件事不能拆成“先做 draft，compile 以后再说”。
+
+正确顺序是一起推进：
+
+### Phase 1：`shared/draft` + compile API 收口
+
+同时完成：
+
+- 新增 `shared/draft`
+- `shared/mutation.compile` 从 `previewApply` 改成 `apply`
+- 删除 public preview 概念
+- 落地 `root / record / list / entityTable / path`
+
+新增文件：
+
+```txt
+shared/draft/src/root.ts
+shared/draft/src/record.ts
+shared/draft/src/list.ts
+shared/draft/src/entityTable.ts
+shared/draft/src/path.ts
+shared/draft/src/index.ts
+```
+
+同时修改：
+
+```txt
+shared/mutation/src/compiler.ts
+```
+
+### Phase 2：Whiteboard draft + internal apply 收口
+
+同时完成：
 
 - `OverlayTable` -> `DraftRecord`
-- `createOverlayTable` -> `draft.record`
-- `materialize()` -> `finish()`
-- 未变表保持 base 引用
+- `canvas.order` -> `DraftList`
+- compile 通过 reducer/apply 推进 working doc
 
-此阶段暂不改 `canvasOrder`。
+### Phase 3：Dataview draft + public preview 删除
 
-## 阶段 3：Whiteboard list/value 迁移
+同时完成：
 
-- `canvasOrder` -> `DraftList<CanvasItemRef>`
-- `background` -> `DraftValue<Background | undefined>` 或继续手写 changed flag
-- 删除 `kernel/overlay.ts`
+- Dataview draft 文档落地
+- reducer/apply 从 immutable replace 改成 draft mutation
+- compile 直接依赖 apply
+- 删除 `operation.preview`
+- 删除 `previewOperations.ts`
 
-## 阶段 4：Dataview draft 文档引入
+### Phase 4：残留旧写入清理
 
-- 新增 `DataviewDraftDocument`
-- operation context 从 `doc/replace` 改为领域 draft writer
-- 先迁 records，再迁 fields/views/activeViewId
+删除：
 
-## 阶段 5：Dataview 删除 immutable write API 依赖
-
-- operation handler 不再调用 `documentApi.records.patch -> nextDocument`
-- previewOperations 不再重建 cowDraft
-- `entityTable.overlay` 不再用于写入
-
-## 阶段 6：shared/mutation draft 迁出
-
-- `shared/mutation/cowDraft` 迁到 `shared/reducer/draft.root`
-- 保留兼容 re-export 一段时间
-- 最终所有 reducer/apply 使用 `@shared/reducer` draft
+- Dataview reducer/apply 对 immutable write helper 的依赖
+- Whiteboard overlay 残留
+- 所有 public preview 残留
 
 ---
 
-## 15. 验收标准
+## 11. 验收标准
 
-## 15.1 Foundation 验收
+### Foundation 验收
 
-- reducer/apply 阶段只有 mutable draft 风格。
-- 不再有 immutable `nextDocument -> replace` apply 主链。
-- 未触碰 branch 的引用稳定。
-- table/list 第一次写才 copy。
-- preview apply 与正式 apply 使用同一套 draft primitive。
+- `shared/draft` 提供 `root / record / list / entityTable / path`
+- 未变 branch 引用稳定
+- 未变 root 返回 `base`
+- `DraftEntityTable.finish()` 未变时返回 `base`
 
-## 15.2 Whiteboard 验收
+### Compile / Apply 验收
 
-- `OverlayTable` 删除。
-- `createOverlayTable` 删除。
-- 未修改的 `nodes/edges/groups/mindmaps` 在 reduce 后保持原引用。
-- reducer handler 仍可用 `get/set/delete/values` 语义。
+- `shared/mutation.compile` 不再依赖 `previewApply`
+- compile 仍然维护 `ctx.doc()` current document
+- compile 通过 internal apply 推进 `workingDoc`
+- 外部不再暴露 preview
 
-## 15.3 Dataview 验收
+### Whiteboard 验收
 
-- `DocumentMutationContext` 不再暴露 `replace(doc)` 作为常规写入口。
-- operation handler 不再返回或提交 `nextDocument`。
-- `documentApi.*` 的 immutable write helper 不再被 reducer apply 使用。
-- `entityTable.overlay` 不再用于 document mutation。
-- `previewOperations` 与正式 apply 共用同一 draft 写法。
+- `OverlayTable` 删除
+- reducer / compile 同一套 apply 语义
+
+### Dataview 验收
+
+- `nextDocument -> replace()` 不再是 apply 主链
+- `operation.preview` 删除
+- `previewOperations.ts` 删除
+- compile 与 apply 共用同一套 apply kernel
 
 ---
 
-## 16. 最终判断
+## 12. 最终判断
 
-Dataview 有同样的问题，而且比 Whiteboard 更需要迁移。
+最终方案不是“保留 preview，再额外引入 draft”。
 
-Whiteboard 当前是私有 overlay table 模型，不适合作为 shared foundation，但迁移到 `DraftRecord` 很直接。
+最终方案是：
 
-Dataview 当前是 immutable current replace 模型，已经与 Foundation 8.1 的目标冲突，需要逐步重写 operation apply，使其直接 mutate draft。
+1. 用 `shared/draft` 统一 draft primitive
+2. 把 compile 的 `previewApply` 收口成 `apply`
+3. 保留 current document
+4. 删除 public preview
+5. Whiteboard 与 Dataview 一起迁到这套边界
 
-最终应统一为：
+一句话总结：
 
-```txt
-shared/reducer/draft
-  root
-  record
-  list
-  value
-  entityTable
-  path
-
-Whiteboard reducer
-  uses DraftRecord for nodes/edges/groups/mindmaps
-  uses DraftList for canvasOrder
-
-Dataview reducer
-  uses DraftEntityTable for records/fields/views
-  uses DraftValue for activeViewId
-```
-
-这会让两边都满足：
-
-- mutable draft
-- lazy copy-on-write
-- stable references for untouched branches
-
-也会让 `Reducer` 真正成为多项目可复用的底层 mutation foundation。
+> 要统一推进的不是 draft 和 preview。  
+> 要统一推进的是：`shared/draft` + compile internal apply + external apply-only API。

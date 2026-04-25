@@ -18,7 +18,7 @@ import {
   projectCandidatesToOrderedIds,
   resolveQueryOrderState,
   type QueryReuseState
-} from '@dataview/engine/active/query/order'
+} from '@dataview/engine/active/query/candidateSet'
 import {
   resolveSearchMatches,
   type SearchMatches

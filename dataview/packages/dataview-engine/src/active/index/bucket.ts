@@ -22,8 +22,8 @@ import {
   type Bucket
 } from '@dataview/core/field/kind/group'
 import {
-  createMapPatchBuilder
-} from '@dataview/engine/active/shared/patch'
+  createMapDraft as createMapPatchBuilder
+} from '@shared/draft'
 import {
   applyOrderedIdDelta
 } from '@dataview/engine/active/shared/ordered'

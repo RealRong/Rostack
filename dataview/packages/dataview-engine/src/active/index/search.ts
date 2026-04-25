@@ -8,8 +8,8 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  createMapPatchBuilder
-} from '@dataview/engine/active/shared/patch'
+  createMapDraft as createMapPatchBuilder
+} from '@shared/draft'
 import {
   applyOrderedIdDelta
 } from '@dataview/engine/active/shared/ordered'

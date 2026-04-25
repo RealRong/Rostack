@@ -23,7 +23,7 @@ import type {
 } from './contracts'
 import type { SpatialIndexState } from './state'
 import { resetSpatialState } from './state'
-import type { SpatialPatchScope } from '../../projector/scopes/spatialScope'
+import type { SpatialPatchScope } from '../../contracts/delta'
 
 const isSpatialRecordEqual = (
   left: SpatialRecord,

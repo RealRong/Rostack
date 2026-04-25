@@ -10,10 +10,13 @@ import type {
 import type {
   DataviewTrace
 } from '@dataview/core/mutation/trace'
+import type {
+  DataviewDraftDocument
+} from '@dataview/core/mutation/draftDocument'
 
 export interface DocumentMutationContext {
   doc(): DataDoc
-  replace(doc: DataDoc): void
+  draft: DataviewDraftDocument
   inverse: {
     prependMany(ops: readonly DocumentOperation[]): void
   }

@@ -10,8 +10,8 @@ import {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  createMapPatchBuilder
-} from '@dataview/engine/active/shared/patch'
+  createMapDraft as createMapPatchBuilder
+} from '@shared/draft'
 import type {
   CalculationIndex,
   FieldCalcIndex,

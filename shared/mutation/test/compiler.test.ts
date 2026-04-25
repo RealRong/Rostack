@@ -6,7 +6,7 @@ type CounterDoc = {
 }
 
 describe('compile', () => {
-  test('previews accumulated operations for later intents', () => {
+  test('applies accumulated operations for later intents', () => {
     const result = compile<CounterDoc, number, number, number>({
       doc: {
         count: 0
@@ -16,8 +16,11 @@ describe('compile', () => {
         ctx.emit(ctx.doc().count + intent)
         return ctx.doc().count
       },
-      previewApply: (doc, ops) => ({
-        count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+      apply: (doc, ops) => ({
+        ok: true,
+        doc: {
+          count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+        }
       })
     })
 
@@ -51,8 +54,11 @@ describe('compile', () => {
 
         ctx.emit(3)
       },
-      previewApply: (doc, ops) => ({
-        count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+      apply: (doc, ops) => ({
+        ok: true,
+        doc: {
+          count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+        }
       }),
       stopOnError: true
     })
@@ -85,8 +91,11 @@ describe('compile', () => {
 
         ctx.emit(1)
       },
-      previewApply: (doc, ops) => ({
-        count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+      apply: (doc, ops) => ({
+        ok: true,
+        doc: {
+          count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+        }
       }),
       stopOnError: true
     })
@@ -102,7 +111,7 @@ describe('compile', () => {
     })
   })
 
-  test('supports explicit blocking without throw/catch control flow', () => {
+  test('skips blocked intent operations and continues by default', () => {
     const result = compile<CounterDoc, string, number>({
       doc: {
         count: 0
@@ -127,18 +136,57 @@ describe('compile', () => {
 
         ctx.emit(3)
       },
-      previewApply: (doc, ops) => ({
-        count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+      apply: (doc, ops) => ({
+        ok: true,
+        doc: {
+          count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+        }
       })
     })
 
-    expect(result.ops).toEqual([1])
+    expect(result.ops).toEqual([1, 3])
     expect(result.issues).toEqual([{
       code: 'invalid',
       message: 'Blocked.',
       details: {
         reason: 'test'
       },
+      level: 'error'
+    }])
+    expect(result.doc).toEqual({
+      count: 4
+    })
+  })
+
+  test('stops when apply reports an issue', () => {
+    const result = compile<CounterDoc, number, number>({
+      doc: {
+        count: 0
+      },
+      intents: [1, 2],
+      run: (ctx, intent) => {
+        ctx.emit(intent)
+      },
+      apply: (doc, ops) => ops[0] === 2
+        ? {
+            ok: false,
+            issue: {
+              code: 'invalid',
+              message: 'Apply failed.'
+            }
+          }
+        : {
+            ok: true,
+            doc: {
+              count: doc.count + ops.reduce((sum, value) => sum + value, 0)
+            }
+          }
+    })
+
+    expect(result.ops).toEqual([1])
+    expect(result.issues).toEqual([{
+      code: 'invalid',
+      message: 'Apply failed.',
       level: 'error'
     }])
     expect(result.doc).toEqual({

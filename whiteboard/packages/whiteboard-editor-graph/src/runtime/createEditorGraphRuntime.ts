@@ -5,8 +5,10 @@ import type {
   Runtime,
   Snapshot
 } from '../contracts/editor'
-import { createWorking } from '../projector/createWorking'
-import { editorGraphProjectorSpec } from '../projector/spec'
+import {
+  createWorking,
+  editorGraphProjectorSpec
+} from '../projector/spec'
 import { createEditorGraphQuery } from './query'
 
 export const createEditorGraphRuntime = (): Runtime => {

@@ -24,7 +24,7 @@ export interface FieldValueBehavior {
   toggle?: (value: unknown) => unknown | undefined
 }
 
-interface ResolvedFieldSpec {
+export interface ResolvedFieldSpec {
   value: KindSpec['value']
   group: KindSpec['group']
   index: KindSpec['index']

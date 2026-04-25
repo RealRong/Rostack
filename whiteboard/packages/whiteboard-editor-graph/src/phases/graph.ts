@@ -1,37 +1,72 @@
-import type { MindmapId, NodeId } from '@whiteboard/core/types'
-import { patchEdge } from '../domain/graphPatch/edge'
+import type {
+  ProjectorContext,
+  ProjectorPhase
+} from '@shared/projector'
+import type {
+  EdgeId,
+  GroupId,
+  MindmapId,
+  NodeId
+} from '@whiteboard/core/types'
+import type { EditorPhaseScopeMap } from '../contracts/delta'
+import { resetGraphDelta } from '../contracts/delta'
+import type {
+  Input,
+  Snapshot
+} from '../contracts/editor'
+import type { WorkingState } from '../contracts/working'
+import { patchEdge } from '../domain/edge'
+import { patchGroup } from '../domain/group'
+import { readRelatedEdgeIds } from '../domain/index/read'
+import { patchIndexState } from '../domain/index/update'
+import { buildItems } from '../domain/items'
+import { patchMindmap } from '../domain/mindmap'
+import { patchNode } from '../domain/node'
 import {
-  createGraphPatchQueue,
-  preFanoutSeeds,
-  seedGraphPatchQueue
-} from '../domain/graphPatch/fanout'
-import { patchGroup } from '../domain/graphPatch/group'
-import { patchMindmap } from '../domain/graphPatch/mindmap'
-import { patchNode } from '../domain/graphPatch/node'
-import { patchIndexState } from '../domain/indexes'
-import { resetGraphDelta } from '../domain/graphPatch/delta'
-import {
-  type EditorGraphPhase,
-  defineEditorGraphPhase,
-  toPhaseMetrics
-} from '../projector/context'
+  createSpatialPatchScope,
+  createUiPatchScope,
+  hasUiPatchScope,
+  mergeGraphPatchScope,
+  normalizeGraphPatchScope,
+  readGraphPatchScopeKeys
+} from '../projector/impact'
 import {
   hasGraphPublishDelta,
+  readItemsChangedFromGraphDelta,
   writeGraphPublishDelta
-} from '../projector/publish/delta'
-import {
-  createGraphPatchScope,
-  mergeGraphPatchScope,
-  normalizeGraphPatchScope
-} from '../projector/scopes/graphScope'
-import { createSpatialPatchScope } from '../projector/scopes/spatialScope'
-import {
-  createMindmapNodeIndexFromState,
-  createUiPatchScope,
-  hasUiPatchScope
-} from '../projector/scopes/uiScope'
+} from '../projector/publish'
 
-type GraphPhaseContext = Parameters<EditorGraphPhase<'graph'>['run']>[0]
+type EditorPhaseName = keyof EditorPhaseScopeMap & string
+
+type GraphPhaseContext = ProjectorContext<
+  Input,
+  WorkingState,
+  Snapshot,
+  EditorPhaseScopeMap['graph']
+>
+
+type GraphPatchQueue = {
+  nodes: Set<NodeId>
+  edges: Set<EdgeId>
+  mindmaps: Set<MindmapId>
+  groups: Set<GroupId>
+}
+
+const createGraphPatchQueue = (): GraphPatchQueue => ({
+  nodes: new Set(),
+  edges: new Set(),
+  mindmaps: new Set(),
+  groups: new Set()
+})
+
+const enqueueAll = <TId extends string>(
+  target: Set<TId>,
+  values: Iterable<TId>
+) => {
+  for (const value of values) {
+    target.add(value)
+  }
+}
 
 const drainQueue = <TId extends string>(
   queue: Set<TId>
@@ -41,9 +76,94 @@ const drainQueue = <TId extends string>(
   return ids
 }
 
+const seedGraphPatchQueue = (input: {
+  context: GraphPhaseContext
+  queue: GraphPatchQueue
+  reset: boolean
+}) => {
+  if (input.reset) {
+    enqueueAll(
+      input.queue.nodes,
+      Object.keys(input.context.input.document.snapshot.document.nodes) as readonly NodeId[]
+    )
+    enqueueAll(input.queue.nodes, input.context.working.graph.nodes.keys())
+    enqueueAll(
+      input.queue.edges,
+      Object.keys(input.context.input.document.snapshot.document.edges) as readonly EdgeId[]
+    )
+    enqueueAll(input.queue.edges, input.context.working.graph.edges.keys())
+    enqueueAll(
+      input.queue.mindmaps,
+      Object.keys(input.context.input.document.snapshot.document.mindmaps) as readonly MindmapId[]
+    )
+    enqueueAll(input.queue.mindmaps, input.context.working.graph.owners.mindmaps.keys())
+    enqueueAll(
+      input.queue.groups,
+      Object.keys(input.context.input.document.snapshot.document.groups) as readonly GroupId[]
+    )
+    enqueueAll(input.queue.groups, input.context.working.graph.owners.groups.keys())
+    return
+  }
+
+  enqueueAll(input.queue.nodes, readGraphPatchScopeKeys(input.context.scope.nodes))
+  enqueueAll(input.queue.edges, readGraphPatchScopeKeys(input.context.scope.edges))
+  enqueueAll(input.queue.mindmaps, readGraphPatchScopeKeys(input.context.scope.mindmaps))
+  enqueueAll(input.queue.groups, readGraphPatchScopeKeys(input.context.scope.groups))
+}
+
+const fanoutNodeGeometry = (input: {
+  context: GraphPhaseContext
+  owner?: {
+    kind: 'mindmap' | 'group'
+    id: string
+  }
+  queue: GraphPatchQueue
+  nodeId: NodeId
+}) => {
+  enqueueAll(
+    input.queue.edges,
+    readRelatedEdgeIds(input.context.working.indexes, [input.nodeId])
+  )
+  if (input.owner?.kind === 'group') {
+    input.queue.groups.add(input.owner.id as GroupId)
+  }
+}
+
+const preFanoutSeeds = (input: {
+  context: GraphPhaseContext
+  queue: GraphPatchQueue
+  reset: boolean
+}) => {
+  if (input.reset) {
+    return
+  }
+
+  readGraphPatchScopeKeys(input.context.scope.nodes).forEach((nodeId) => {
+    const nextOwner = input.context.working.indexes.ownerByNode.get(nodeId)
+    const previousOwner = input.context.working.graph.nodes.get(nodeId)?.base.owner
+
+    if (nextOwner?.kind === 'mindmap') {
+      input.queue.mindmaps.add(nextOwner.id)
+    }
+    if (previousOwner?.kind === 'mindmap') {
+      input.queue.mindmaps.add(previousOwner.id)
+    }
+
+    fanoutNodeGeometry({
+      context: input.context,
+      owner: nextOwner,
+      queue: input.queue,
+      nodeId
+    })
+    if (previousOwner?.kind === 'group') {
+      input.queue.groups.add(previousOwner.id)
+    }
+  })
+}
+
 const patchStandaloneNodes = (
   context: GraphPhaseContext,
-  queue: ReturnType<typeof createGraphPatchQueue>
+  queue: GraphPatchQueue
 ): number => {
   const deferred = new Set<NodeId>()
   let count = 0
@@ -56,14 +176,22 @@ const patchStandaloneNodes = (
       return
     }
 
-    if (patchNode({
+    const result = patchNode({
       input: context.input,
       working: context.working,
-      queue,
       delta: context.working.delta.graph,
       nodeId
-    })) {
+    })
+    if (result.changed) {
       count += 1
+    }
+    if (result.geometryChanged) {
+      fanoutNodeGeometry({
+        context,
+        owner: result.owner,
+        queue,
+        nodeId
+      })
     }
   })
 
@@ -76,20 +204,21 @@ const patchStandaloneNodes = (
 
 const patchMindmaps = (
   context: GraphPhaseContext,
-  queue: ReturnType<typeof createGraphPatchQueue>
+  queue: GraphPatchQueue
 ): number => {
   let count = 0
 
   drainQueue(queue.mindmaps).forEach((mindmapId) => {
-    if (patchMindmap({
+    const result = patchMindmap({
       input: context.input,
       working: context.working,
-      queue,
       delta: context.working.delta.graph,
-      mindmapId: mindmapId as MindmapId
-    })) {
+      mindmapId
+    })
+    if (result.changed) {
       count += 1
     }
+    enqueueAll(queue.nodes, result.changedNodeIds)
   })
 
   return count
@@ -97,19 +226,27 @@ const patchMindmaps = (
 
 const patchMindmapMemberNodes = (
   context: GraphPhaseContext,
-  queue: ReturnType<typeof createGraphPatchQueue>
+  queue: GraphPatchQueue
 ): number => {
   let count = 0
 
   drainQueue(queue.nodes).forEach((nodeId) => {
-    if (patchNode({
+    const result = patchNode({
       input: context.input,
       working: context.working,
-      queue,
       delta: context.working.delta.graph,
       nodeId
-    })) {
+    })
+    if (result.changed) {
       count += 1
+    }
+    if (result.geometryChanged) {
+      fanoutNodeGeometry({
+        context,
+        owner: result.owner,
+        queue,
+        nodeId
+      })
     }
   })
 
@@ -118,7 +255,7 @@ const patchMindmapMemberNodes = (
 
 const patchEdges = (
   context: GraphPhaseContext,
-  queue: ReturnType<typeof createGraphPatchQueue>
+  queue: GraphPatchQueue
 ): number => {
   let count = 0
 
@@ -128,7 +265,7 @@ const patchEdges = (
       working: context.working,
       delta: context.working.delta.graph,
       edgeId
-    })) {
+    }).changed) {
       count += 1
     }
   })
@@ -138,7 +275,7 @@ const patchEdges = (
 
 const patchGroups = (
   context: GraphPhaseContext,
-  queue: ReturnType<typeof createGraphPatchQueue>
+  queue: GraphPatchQueue
 ): number => {
   let count = 0
 
@@ -148,7 +285,7 @@ const patchGroups = (
       working: context.working,
       delta: context.working.delta.graph,
       groupId
-    })) {
+    }).changed) {
       count += 1
     }
   })
@@ -156,7 +293,25 @@ const patchGroups = (
   return count
 }
 
-export const graphPhase = defineEditorGraphPhase({
+const isSpatialGraphPatchRequired = (
+  context: GraphPhaseContext
+): boolean => {
+  const delta = context.working.delta.graph
+  return context.scope.reset
+    || delta.order
+    || hasGraphPublishDelta(context.working.publish.graph.delta)
+    || delta.geometry.nodes.size > 0
+    || delta.geometry.edges.size > 0
+    || delta.geometry.mindmaps.size > 0
+}
+
+export const graphPhase: ProjectorPhase<
+  'graph',
+  GraphPhaseContext,
+  { count: number },
+  EditorPhaseName,
+  EditorPhaseScopeMap
+> = {
   name: 'graph',
   deps: [],
   mergeScope: mergeGraphPatchScope,
@@ -179,16 +334,20 @@ export const graphPhase = defineEditorGraphPhase({
     })
 
     seedGraphPatchQueue({
-      snapshot: context.input.document.snapshot,
-      working: context.working.graph,
-      scope,
-      queue
+      context: {
+        ...context,
+        scope
+      },
+      queue,
+      reset: scope.reset
     })
     preFanoutSeeds({
-      indexes: context.working.indexes,
-      working: context.working.graph,
-      scope,
-      queue
+      context: {
+        ...context,
+        scope
+      },
+      queue,
+      reset: scope.reset
     })
 
     const count = (
@@ -209,31 +368,45 @@ export const graphPhase = defineEditorGraphPhase({
       ? revision
       : 0
 
+    if (readItemsChangedFromGraphDelta(delta)) {
+      context.working.items = buildItems(
+        context.input.document.snapshot
+      )
+    }
+
     const uiScope = createUiPatchScope({
       reset: scope.reset,
       input: context.input,
       previous: context.previous,
       graphDelta: delta,
-      mindmapNodeIndex: createMindmapNodeIndexFromState({
-        previous: context.previous,
-        working: context.working
-      })
+      readMindmapNodeIds: (mindmapId) => (
+        context.working.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
+        ?? context.previous.graph.owners.mindmaps.byId.get(mindmapId)?.structure.nodeIds
+      )
     })
 
+    const emit: Partial<EditorPhaseScopeMap> = {}
+    if (isSpatialGraphPatchRequired({
+      ...context,
+      scope
+    })) {
+      emit.spatial = createSpatialPatchScope({
+        reset: scope.reset,
+        graph: true
+      })
+    }
+    if (hasUiPatchScope(uiScope)) {
+      emit.ui = uiScope
+    }
+
     return {
-      action: 'sync',
-      metrics: toPhaseMetrics(count),
-      emit: {
-        spatial: createSpatialPatchScope({
-          reset: scope.reset,
-          graph: true
-        }),
-        ...(hasUiPatchScope(uiScope)
-          ? {
-              ui: uiScope
-            }
-          : {})
-      }
+      action: count > 0
+        ? 'sync'
+        : 'reuse',
+      metrics: {
+        count
+      },
+      emit
     }
   }
-})
+}

@@ -1,7 +1,12 @@
 import { json } from '@shared/core'
+import {
+  draft,
+  type DraftList,
+  type DraftRecord,
+  type DraftRoot
+} from '@shared/draft'
 import { idDelta } from '@shared/projector/delta'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
-import { createOverlayTable, type OverlayTable } from '@whiteboard/core/kernel/overlay'
 import type {
   Background,
   CanvasItemRef,
@@ -27,13 +32,14 @@ import type {
 } from '@whiteboard/core/types'
 
 export type DraftDocument = {
-  base: Document
+  root: DraftRoot<Document>
   background: Document['background']
-  canvasOrder: readonly CanvasItemRef[]
-  nodes: OverlayTable<NodeId, Node>
-  edges: OverlayTable<EdgeId, Edge>
-  groups: OverlayTable<GroupId, Group>
-  mindmaps: OverlayTable<MindmapId, MindmapRecord>
+  backgroundChanged: boolean
+  canvasOrder: DraftList<CanvasItemRef>
+  nodes: DraftRecord<NodeId, Node>
+  edges: DraftRecord<EdgeId, Edge>
+  groups: DraftRecord<GroupId, Group>
+  mindmaps: DraftRecord<MindmapId, MindmapRecord>
 }
 
 export interface WhiteboardInverse<TOp> {
@@ -76,28 +82,56 @@ export const createInvalidation = (): Invalidation => ({
 export const createDraftDocument = (
   document: Document
 ): DraftDocument => ({
-  base: document,
+  root: draft.root(document),
   background: document.background,
-  canvasOrder: document.canvas.order,
-  nodes: createOverlayTable(document.nodes),
-  edges: createOverlayTable(document.edges),
-  groups: createOverlayTable(document.groups),
-  mindmaps: createOverlayTable(document.mindmaps)
+  backgroundChanged: false,
+  canvasOrder: draft.list(document.canvas.order),
+  nodes: draft.record(document.nodes),
+  edges: draft.record(document.edges),
+  groups: draft.record(document.groups),
+  mindmaps: draft.record(document.mindmaps)
 })
 
 export const materializeDraftDocument = (
   draft: DraftDocument
-): Document => ({
-  ...draft.base,
-  background: cloneBackground(draft.background),
-  canvas: {
-    order: draft.canvasOrder.map((ref) => cloneCanvasRef(ref)!)
-  },
-  nodes: draft.nodes.materialize(),
-  edges: draft.edges.materialize(),
-  groups: draft.groups.materialize(),
-  mindmaps: draft.mindmaps.materialize()
-})
+): Document => {
+  if (
+    !draft.root.changed()
+    && !draft.backgroundChanged
+    && !draft.canvasOrder.changed()
+    && !draft.nodes.changed()
+    && !draft.edges.changed()
+    && !draft.groups.changed()
+    && !draft.mindmaps.changed()
+  ) {
+    return draft.root.finish()
+  }
+
+  const next = draft.root.write()
+  if (draft.backgroundChanged) {
+    next.background = draft.background
+  }
+  if (draft.canvasOrder.changed()) {
+    next.canvas = {
+      ...next.canvas,
+      order: draft.canvasOrder.finish() as CanvasItemRef[]
+    }
+  }
+  if (draft.nodes.changed()) {
+    next.nodes = draft.nodes.finish()
+  }
+  if (draft.edges.changed()) {
+    next.edges = draft.edges.finish()
+  }
+  if (draft.groups.changed()) {
+    next.groups = draft.groups.finish()
+  }
+  if (draft.mindmaps.changed()) {
+    next.mindmaps = draft.mindmaps.finish()
+  }
+
+  return draft.root.finish()
+}
 
 export const clonePoint = (
   point: Point | undefined

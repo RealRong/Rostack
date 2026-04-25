@@ -7,7 +7,10 @@ import {
   type IdDelta
 } from '../delta/idDelta'
 import type { Family } from '../contracts/core'
-import { isListEqual } from './list'
+import {
+  isListEqual,
+  projectListChange
+} from './list'
 
 const createEmptyChange = <TKey,>(): IdDelta<TKey> => idDelta.create<TKey>()
 
@@ -33,27 +36,28 @@ export const publishEntityList = <TKey>(input: {
   set?: readonly TKey[]
   remove?: readonly TKey[]
 }): PublishedEntityList<TKey> => {
-  const orderChanged = !isListEqual(input.previous, input.next)
-  const previousIdSet = new Set(input.previous)
-  const nextIdSet = new Set(input.next)
+  const listChange = projectListChange({
+    previous: input.previous,
+    next: input.next
+  })
   const delta = entityDelta.normalize({
-    ...(orderChanged
+    ...(listChange.orderChanged
       ? {
           order: true as const
         }
       : {}),
     set: [
-      ...input.next.filter((id) => !previousIdSet.has(id)),
+      ...listChange.added,
       ...(input.set ?? [])
     ],
     remove: [
-      ...input.previous.filter((id) => !nextIdSet.has(id)),
+      ...listChange.removed,
       ...(input.remove ?? [])
     ]
   })
 
   return {
-    value: orderChanged
+    value: listChange.orderChanged
       ? input.next
       : input.previous,
     delta

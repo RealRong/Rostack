@@ -1,5 +1,5 @@
+import { draft } from '@shared/draft'
 import {
-  draftPath,
   path as mutationPath,
   type Path
 } from '@shared/mutation'
@@ -108,7 +108,7 @@ const updateEdgeStyle = (
   path: Path,
   value: unknown
 ) => updateEdgesBy(edgeIds, read, engine, (edge) => {
-  const current = draftPath.get(edge.style, path)
+  const current = draft.path.get(edge.style, path)
   if (current === value) {
     return undefined
   }

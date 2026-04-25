@@ -19,7 +19,7 @@ import {
 } from '@dataview/engine/active/projector/spec'
 import {
   createBaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'
@@ -251,7 +251,26 @@ test('engine.active.projector layout change runs publish only and reuses query r
 
   const result = harness.update(input)
 
-  assertPhaseOrder(result.trace, ['publish'])
+  assertPhaseOrder(result.trace, ['query', 'membership', 'summary', 'publish'])
+  assert.deepEqual(
+    result.trace.phases.map(phase => ({
+      name: phase.name,
+      action: phase.action
+    })),
+    [{
+      name: 'query',
+      action: 'reuse'
+    }, {
+      name: 'membership',
+      action: 'reuse'
+    }, {
+      name: 'summary',
+      action: 'reuse'
+    }, {
+      name: 'publish',
+      action: 'sync'
+    }]
+  )
   assert.equal(result.snapshot?.table.wrap, true)
   assert.equal(result.snapshot?.records, previous.snapshot?.records)
   assert.equal(result.snapshot?.sections, previous.snapshot?.sections)

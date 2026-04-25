@@ -6,6 +6,8 @@
   "exports": {
     "./calculation": "./src/calculation/index.ts",
     "./commit/*": "./src/commit/*.ts",
+    "./command": "./src/command/index.ts",
+    "./command/*": "./src/command/*.ts",
     "./contracts": "./src/contracts/index.ts",
     "./contracts/*": "./src/contracts/*.ts",
     "./document": "./src/document/index.ts",
@@ -17,6 +19,8 @@
     "./mutation": "./src/mutation/index.ts",
     "./mutation/*": "./src/mutation/*.ts",
     "./operation": "./src/operation/index.ts",
+    "./query": "./src/query/index.ts",
+    "./query/*": "./src/query/*.ts",
     "./read/*": "./src/read/*.ts",
     "./search": "./src/search/index.ts",
     "./sort": "./src/sort/index.ts",
@@ -31,6 +35,7 @@
   "dependencies": {
     "@date-fns/tz": "^1.4.1",
     "@shared/core": "workspace:*",
+    "@shared/draft": "workspace:*",
     "@shared/reducer": "workspace:*",
     "@shared/mutation": "workspace:*",
     "@shared/i18n": "workspace:*",

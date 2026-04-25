@@ -1,38 +1,46 @@
 import { idDelta } from '@shared/projector/delta'
 import type {
+  ProjectorContext,
+  ProjectorPhase
+} from '@shared/projector'
+import type {
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
+import type { EditorPhaseScopeMap } from '../contracts/delta'
 import type {
   EdgeUiView,
-  NodeUiView
+  Input,
+  NodeUiView,
+  Snapshot
 } from '../contracts/editor'
-import {
-  isChromeViewEqual,
-  isEdgeUiViewEqual,
-  isNodeUiViewEqual
-} from '../domain/equality'
-import {
-  hasUiPublishDelta,
-  resetUiPublishDelta
-} from '../projector/publish/delta'
+import type { WorkingState } from '../contracts/working'
 import {
   buildChromeView,
   buildEdgeUiView,
-  buildNodeUiView
+  buildNodeUiView,
+  isChromeViewEqual,
+  isEdgeUiViewEqual,
+  isNodeUiViewEqual
 } from '../domain/ui'
 import {
-  type EditorGraphPhase,
-  defineEditorGraphPhase,
-  toPhaseMetrics
-} from '../projector/context'
+  hasUiPublishDelta,
+  resetUiPublishDelta
+} from '../projector/publish'
 import {
   mergeUiPatchScope,
   normalizeUiPatchScope,
   readUiPatchScopeKeys
-} from '../projector/scopes/uiScope'
+} from '../projector/impact'
 
-type UiPhaseContext = Parameters<EditorGraphPhase<'ui'>['run']>[0]
+type EditorPhaseName = keyof EditorPhaseScopeMap & string
+
+type UiPhaseContext = ProjectorContext<
+  Input,
+  WorkingState,
+  Snapshot,
+  EditorPhaseScopeMap['ui']
+>
 
 const writeUiChange = <TId extends string, TValue>(input: {
   id: TId
@@ -213,7 +221,7 @@ const patchTouchedNodeUi = (
     removed: Set<NodeId>
   }
 ) => {
-  const nodes = context.working.ui.nodes as Map<NodeId, NodeUiView>
+  const nodes = context.working.ui.nodes
 
   touchedNodeIds.forEach((nodeId) => {
     const previous = nodes.get(nodeId)
@@ -245,7 +253,7 @@ const patchTouchedEdgeUi = (
     removed: Set<EdgeId>
   }
 ) => {
-  const edges = context.working.ui.edges as Map<EdgeId, EdgeUiView>
+  const edges = context.working.ui.edges
 
   touchedEdgeIds.forEach((edgeId) => {
     const previous = edges.get(edgeId)
@@ -290,7 +298,13 @@ const patchChrome = (
   context.working.publish.ui.delta.chrome = next !== previous
 }
 
-export const uiPhase = defineEditorGraphPhase({
+export const uiPhase: ProjectorPhase<
+  'ui',
+  UiPhaseContext,
+  { count: number },
+  EditorPhaseName,
+  EditorPhaseScopeMap
+> = {
   name: 'ui',
   deps: [],
   mergeScope: mergeUiPatchScope,
@@ -321,12 +335,14 @@ export const uiPhase = defineEditorGraphPhase({
       action: publish.revision === revision
         ? 'sync'
         : 'reuse',
-      metrics: toPhaseMetrics(
-        (scope.reset
-          ? context.working.ui.nodes.size + context.working.ui.edges.size
-          : touchedNodeIds.size + touchedEdgeIds.size)
-        + context.working.ui.chrome.overlays.length
-      )
+      metrics: {
+        count: (
+          (scope.reset
+            ? context.working.ui.nodes.size + context.working.ui.edges.size
+            : touchedNodeIds.size + touchedEdgeIds.size)
+          + context.working.ui.chrome.overlays.length
+        )
+      }
     }
   }
-})
+}

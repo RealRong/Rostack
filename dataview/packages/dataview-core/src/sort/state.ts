@@ -221,7 +221,9 @@ export const writeSortMove = (
   return nextOrder.every((ruleId, index) => ruleId === sort.rules.order[index])
     ? sort
     : createSortState({
-        byId: entityTable.overlay(sort.rules),
+        byId: {
+          ...sort.rules.byId
+        },
         order: nextOrder
       })
 }

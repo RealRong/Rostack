@@ -4,24 +4,14 @@ import type {
   RecordId
 } from '@dataview/core/contracts'
 import {
-  TITLE_FIELD_ID
-} from '@dataview/core/contracts'
-import {
-  field as fieldApi
-} from '@dataview/core/field'
-import {
-  filter as filterApi
-} from '@dataview/core/filter'
-import {
-  group as groupCore
-} from '@dataview/core/group'
+  buildRecordCreateIntents
+} from '@dataview/core/command'
 import {
   view as viewApi
 } from '@dataview/core/view'
 import {
   id as dataviewId
 } from '@dataview/core/id'
-import { equal } from '@shared/core'
 import type {
   ItemId
 } from '@dataview/engine/contracts/shared'
@@ -32,6 +22,7 @@ import type {
 import type {
   ActiveViewContext
 } from '@dataview/engine/active/api/context'
+
 const createMoveOrderAction = (
   base: ActiveViewContext,
   recordIds: readonly RecordId[],
@@ -60,65 +51,6 @@ const createMoveOrderAction = (
       })
     }
   }
-}
-
-interface CreateDraftState {
-  title?: string
-  values: Partial<Record<FieldId, unknown>>
-  clearFieldIds: Set<FieldId>
-}
-
-const createDraftState = (
-  set?: Partial<Record<FieldId, unknown>>,
-  hasField?: (fieldId: FieldId) => boolean
-): CreateDraftState | undefined => {
-  const values: Partial<Record<FieldId, unknown>> = {}
-  let title: string | undefined
-
-  for (const [fieldId, value] of Object.entries(set ?? {}) as [FieldId, unknown][]) {
-    if (fieldId !== TITLE_FIELD_ID && !hasField?.(fieldId)) {
-      return undefined
-    }
-    if (value === undefined) {
-      continue
-    }
-
-    if (fieldApi.id.isTitle(fieldId)) {
-      title = String(value ?? '')
-      continue
-    }
-
-    values[fieldId] = value
-  }
-
-  return {
-    title,
-    values,
-    clearFieldIds: new Set<FieldId>()
-  }
-}
-
-const readDraftValue = (
-  draft: CreateDraftState,
-  fieldId: FieldId
-) => (
-  fieldApi.id.isTitle(fieldId)
-    ? draft.title
-    : draft.values[fieldId]
-)
-
-const writeDraftValue = (
-  draft: CreateDraftState,
-  fieldId: FieldId,
-  value: unknown
-) => {
-  draft.clearFieldIds.delete(fieldId)
-  if (fieldApi.id.isTitle(fieldId)) {
-    draft.title = String(value ?? '')
-    return
-  }
-
-  draft.values[fieldId] = value
 }
 
 const resolveCreateContext = (input: {
@@ -157,143 +89,8 @@ const resolveCreateContext = (input: {
 
   return {
     section: nextSectionId,
-    beforeRecord: beforePlacement?.recordId
-  }
-}
-
-const applyFilterDefaults = (input: {
-  state: ViewState
-  draft: CreateDraftState
-}): boolean => {
-  const effectiveRules = input.state.query.filters.rules.filter(
-    (rule: ViewState['query']['filters']['rules'][number]) => rule.effective
-  )
-  if (!effectiveRules.length) {
-    return true
-  }
-
-  if (input.state.view.filter.mode !== 'and') {
-    return false
-  }
-
-  const derived = new Map<FieldId, unknown>()
-
-  for (const projection of effectiveRules) {
-    const field = projection.field
-    if (!field) {
-      return false
-    }
-
-    const fieldId = field.id
-    const currentValue = readDraftValue(input.draft, fieldId)
-    if (filterApi.rule.match(field, currentValue, projection.rule)) {
-      continue
-    }
-    if (currentValue !== undefined) {
-      return false
-    }
-
-    const next = filterApi.rule.defaultValue(
-      field,
-      projection.rule
-    )
-    if (!next) {
-      return false
-    }
-    const current = derived.get(next.fieldId)
-    if (current !== undefined && !equal.sameJsonValue(current, next.value)) {
-      return false
-    }
-
-    derived.set(next.fieldId, next.value)
-  }
-
-  derived.forEach((value, fieldId) => {
-    writeDraftValue(input.draft, fieldId, value)
-  })
-
-  return true
-}
-
-const applyGroupDefault = (input: {
-  state: ViewState
-  draft: CreateDraftState
-  sectionId: string
-}): boolean => {
-  const group = input.state.view.group
-  const field = input.state.query.group?.field
-  const bucketId = input.state.sections.get(input.sectionId)?.bucket?.id
-  if (!group) {
-    return true
-  }
-  if (!field || !bucketId) {
-    return false
-  }
-
-  const currentValue = readDraftValue(input.draft, group.fieldId)
-  const next = groupCore.write.value({
-    field,
-    group,
-    currentValue,
-    bucketId
-  })
-  if (next.kind === 'invalid') {
-    return false
-  }
-
-  if (next.kind === 'clear') {
-    if (currentValue !== undefined) {
-      if (
-        fieldApi.id.isTitle(group.fieldId)
-        && typeof currentValue === 'string'
-        && currentValue.length === 0
-      ) {
-        input.draft.title = ''
-        return true
-      }
-
-      return false
-    }
-
-    if (fieldApi.id.isTitle(group.fieldId)) {
-      input.draft.title = ''
-      return true
-    }
-
-    delete input.draft.values[group.fieldId]
-    input.draft.clearFieldIds.add(group.fieldId)
-    return true
-  }
-
-  if (currentValue !== undefined && !equal.sameJsonValue(currentValue, next.value)) {
-    return false
-  }
-
-  writeDraftValue(input.draft, group.fieldId, next.value)
-  return true
-}
-
-const toRecordCreateInput = (input: {
-  recordId: RecordId
-  draft: CreateDraftState
-}) => {
-  const values: Partial<Record<FieldId, unknown>> = {}
-
-  for (const [fieldId, value] of Object.entries(input.draft.values) as [FieldId, unknown][]) {
-    if (value === undefined || fieldApi.id.isTitle(fieldId)) {
-      continue
-    }
-    values[fieldId] = value
-  }
-
-  return {
-    id: input.recordId,
-    ...(input.draft.title !== undefined
-      ? { title: input.draft.title }
-      : {}),
-    ...(Object.keys(values).length
-      ? { values }
-      : {})
+    beforeRecord: beforePlacement?.recordId,
+    bucketId: section.bucket?.id
   }
 }
 
@@ -315,47 +112,30 @@ export const createActiveRecordsApi = (input: {
       return undefined
     }
 
-    const draft = createDraftState(
-      createInput?.values,
-      fieldId => fieldId === TITLE_FIELD_ID || input.base.reader.fields.has(fieldId)
-    )
-    if (!draft) {
-      return undefined
-    }
-
-    if (!applyGroupDefault({
-      state,
-      draft,
-      sectionId: context.section
-    })) {
-      return undefined
-    }
-
-    if (!applyFilterDefaults({
-      state,
-      draft
-    })) {
-      return undefined
-    }
-
     const recordId = dataviewId.create('record')
-    const actions: CoreIntent[] = [{
-      type: 'record.create',
-      input: toRecordCreateInput({
-        recordId,
-        draft
-      })
-    }]
-
-    const clearFieldIds = Array.from(draft.clearFieldIds)
-      .filter(fieldId => !fieldApi.id.isTitle(fieldId))
-    if (clearFieldIds.length) {
-      actions.push({
-        type: 'record.fields.writeMany',
-        recordIds: [recordId],
-        clear: clearFieldIds
-      })
+    const created = buildRecordCreateIntents({
+      recordId,
+      values: createInput?.values as Partial<Record<FieldId, unknown>> | undefined,
+      hasField: fieldId => input.base.reader.fields.has(fieldId),
+      filter: {
+        mode: state.view.filter.mode,
+        rules: state.query.filters.rules.map(rule => ({
+          fieldId: rule.rule.fieldId,
+          field: rule.field,
+          rule: rule.rule,
+          effective: rule.effective
+        }))
+      },
+      group: {
+        view: state.view.group,
+        field: state.query.group?.field,
+        bucketId: context.bucketId
+      }
+    })
+    if (!created) {
+      return undefined
     }
+    const actions: CoreIntent[] = [...created]
 
     if (!state.view.sort.rules.order.length && context.beforeRecord) {
       const moveAction = createMoveOrderAction(

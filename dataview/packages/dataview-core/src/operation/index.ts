@@ -4,9 +4,6 @@ import {
 import {
   applyOperations
 } from '@dataview/core/mutation/apply'
-import {
-  previewOperations
-} from '@dataview/core/operation/previewOperations'
 
 export type {
   DocumentApplyResult
@@ -14,6 +11,5 @@ export type {
 
 export const operation = {
   meta: DATAVIEW_OPERATION_META,
-  apply: applyOperations,
-  preview: previewOperations
+  apply: applyOperations
 } as const

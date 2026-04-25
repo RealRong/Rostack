@@ -12,6 +12,9 @@ import {
   collectDataviewOperationFootprint
 } from '@dataview/core/operation/definition'
 import {
+  createDataviewDraftDocument
+} from '@dataview/core/mutation/draftDocument'
+import {
   Reducer,
   type ReducerContext,
   type ReducerResult,
@@ -42,6 +45,13 @@ export type DataviewReduceContext = ReducerContext<
   DocumentOperation,
   DataviewMutationKey
 > & {
+  base: ReducerContext<
+    DataDoc,
+    DocumentOperation,
+    DataviewMutationKey
+  >
+  doc(): DataDoc
+  draft: ReturnType<typeof createDataviewDraftDocument>
   trace: DataviewTrace
 }
 
@@ -51,16 +61,23 @@ const createDataviewReduceContext = (
     DocumentOperation,
     DataviewMutationKey
   >
-): DataviewReduceContext => ({
-  ...ctx,
-  trace: dataviewTrace.create()
-})
+): DataviewReduceContext => {
+  const draftDocument = createDataviewDraftDocument(ctx.doc())
+
+  return {
+    ...ctx,
+    base: ctx,
+    doc: () => draftDocument.current(),
+    draft: draftDocument,
+    trace: dataviewTrace.create()
+  }
+}
 
 const toDocumentMutationContext = (
   ctx: DataviewReduceContext
 ): DocumentMutationContext => ({
   doc: ctx.doc,
-  replace: ctx.replace,
+  draft: ctx.draft,
   inverse: {
     prependMany: ctx.inverseMany
   },
@@ -70,6 +87,7 @@ const toDocumentMutationContext = (
 const finalizeDataviewTrace = (
   ctx: DataviewReduceContext
 ): DocumentApplyExtra => {
+  ctx.base.replace(ctx.draft.finish())
   dataviewTrace.finalize(ctx.trace)
   return {
     trace: ctx.trace

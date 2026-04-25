@@ -238,7 +238,9 @@ const applyRecordFieldWriteEntries = (
     }
 
     if (!nextById) {
-      nextById = entityTable.overlay(document.records)
+      nextById = {
+        ...document.records.byId
+      }
     }
 
     nextById[entry.recordId] = applied.nextRecord
@@ -316,7 +318,9 @@ const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?
   const remainingOrder = document.records.order.filter(recordId => !insertedIdSet.has(recordId))
   const safeIndex = Math.max(0, Math.min(index ?? remainingOrder.length, remainingOrder.length))
   const nextOrder = [...remainingOrder.slice(0, safeIndex), ...insertedIds, ...remainingOrder.slice(safeIndex)]
-  const byId = entityTable.overlay(document.records)
+  const byId = {
+    ...document.records.byId
+  }
   insertedIds.forEach(recordId => {
     const record = nextRecords.byId[recordId]
     if (record) {
@@ -347,7 +351,9 @@ const patchRecord = (
 
   return entityTable.replace(document, 'records', {
     byId: (() => {
-      const byId = entityTable.overlay(document.records)
+      const byId = {
+        ...document.records.byId
+      }
       byId[recordId] = nextRecord
       return byId
     })(),
@@ -362,7 +368,9 @@ const removeRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataD
 
   const removed = new Set(recordIds)
   let removedCount = 0
-  const nextById = entityTable.overlay(document.records)
+  const nextById = {
+    ...document.records.byId
+  }
 
   recordIds.forEach(recordId => {
     if (!document.records.byId[recordId]) {

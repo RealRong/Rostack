@@ -89,10 +89,10 @@ export const createNode = (
 ): void => {
   state.draft.nodes.set(node.id, node)
   if (isTopLevelNode(node)) {
-    state.draft.canvasOrder = appendCanvasRef(state.draft.canvasOrder, {
+    state.draft.canvasOrder.set(appendCanvasRef(state.draft.canvasOrder.current(), {
       kind: 'node',
       id: node.id
-    })
+    }))
     markCanvasOrderTouched(state)
   }
   state.inverse.prepend({
@@ -109,10 +109,10 @@ export const restoreNode = (
 ): void => {
   state.draft.nodes.set(node.id, node)
   if (isTopLevelNode(node)) {
-    state.draft.canvasOrder = insertCanvasSlot(state.draft.canvasOrder, {
+    state.draft.canvasOrder.set(insertCanvasSlot(state.draft.canvasOrder.current(), {
       kind: 'node',
       id: node.id
-    }, slot)
+    }, slot))
     markCanvasOrderTouched(state)
   }
   state.inverse.prepend({
@@ -144,10 +144,10 @@ export const deleteNode = (
   })
   state.draft.nodes.delete(id)
   if (slot) {
-    state.draft.canvasOrder = removeCanvasRef(state.draft.canvasOrder, {
+    state.draft.canvasOrder.set(removeCanvasRef(state.draft.canvasOrder.current(), {
       kind: 'node',
       id
-    })
+    }))
     markCanvasOrderTouched(state)
   }
   markNodeRemoved(state, id)

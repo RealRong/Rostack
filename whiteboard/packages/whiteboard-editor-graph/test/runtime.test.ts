@@ -319,8 +319,7 @@ describe('editor graph runtime', () => {
     assertPhaseOrder(result.trace!, [
       'graph',
       'spatial',
-      'ui',
-      'items'
+      'ui'
     ])
   })
 

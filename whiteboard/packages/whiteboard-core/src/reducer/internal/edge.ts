@@ -89,10 +89,10 @@ export const createEdge = (
   edge: Edge
 ): void => {
   state.draft.edges.set(edge.id, edge)
-  state.draft.canvasOrder = appendCanvasRef(state.draft.canvasOrder, {
+  state.draft.canvasOrder.set(appendCanvasRef(state.draft.canvasOrder.current(), {
     kind: 'edge',
     id: edge.id
-  })
+  }))
   state.inverse.prepend({
     type: 'edge.delete',
     id: edge.id
@@ -107,10 +107,10 @@ export const restoreEdge = (
   slot?: import('@whiteboard/core/types').CanvasSlot
 ): void => {
   state.draft.edges.set(edge.id, edge)
-  state.draft.canvasOrder = insertCanvasSlot(state.draft.canvasOrder, {
+  state.draft.canvasOrder.set(insertCanvasSlot(state.draft.canvasOrder.current(), {
     kind: 'edge',
     id: edge.id
-  }, slot)
+  }, slot))
   state.inverse.prepend({
     type: 'edge.delete',
     id: edge.id
@@ -137,10 +137,10 @@ export const deleteEdge = (
     })
   })
   state.draft.edges.delete(id)
-  state.draft.canvasOrder = removeCanvasRef(state.draft.canvasOrder, {
+  state.draft.canvasOrder.set(removeCanvasRef(state.draft.canvasOrder.current(), {
     kind: 'edge',
     id
-  })
+  }))
   markEdgeRemoved(state, id)
   markCanvasOrderTouched(state)
 }

@@ -13,41 +13,14 @@ import type {
   IndexState
 } from '../contracts/working'
 import {
-  readGroupSignatureFromTarget,
+  readGroupSignatureFromTarget
+} from '../domain/group'
+import {
   readRelatedEdgeIds,
   readTreeDescendants
-} from '../domain/indexes'
+} from '../domain/index/read'
 import type { SpatialIndexState } from '../domain/spatial/state'
 import { createSpatialRead } from '../domain/spatial/query'
-
-type Candidate = {
-  id: NodeId
-  order: number
-  area: number
-}
-
-const readArea = (
-  rect: Rect
-) => rect.width * rect.height
-
-const pickCandidate = (
-  current: Candidate | undefined,
-  next: Candidate
-) => {
-  if (!current) {
-    return next
-  }
-  if (next.area < current.area) {
-    return next
-  }
-  if (next.area > current.area) {
-    return current
-  }
-
-  return next.order > current.order
-    ? next
-    : current
-}
 
 const isFrameView = (
   graph: GraphState,
@@ -64,32 +37,39 @@ const readFrameRect = (
     : undefined
 }
 
-const contains = (
-  outer: Rect,
-  inner: Rect
-) => geometryApi.rect.contains(outer, inner)
+const readFrameCandidates = (input: {
+  graph: GraphState
+  records: ReturnType<Read['spatial']['point']> | ReturnType<Read['spatial']['rect']>
+}): readonly {
+  id: NodeId
+  rect: Rect
+  order: number
+}[] => input.records.flatMap((record) => {
+  if (record.item.kind !== 'node') {
+    return []
+  }
 
-const containsPoint = (
-  rect: Rect,
-  point: Point
-) => geometryApi.rect.containsPoint(point, rect)
+  const rect = readFrameRect(input.graph, record.item.id)
+  return rect
+    ? [{
+        id: record.item.id,
+        rect,
+        order: record.order
+      }]
+    : []
+})
 
 const createFrameRead = (input: {
   graph: () => GraphState
   spatial: Read['spatial']
   indexes: () => IndexState
-}): Read['frame'] => {
-  const point: Read['frame']['point'] = (worldPoint) => input.spatial.point(worldPoint, {
+}): Read['frame'] => ({
+  point: (point) => input.spatial.point(point, {
     kinds: ['node']
-  }).flatMap((record) => {
-    if (record.item.kind !== 'node' || !isFrameView(input.graph(), record.item.id)) {
-      return []
-    }
-
-    return [record.item.id]
-  })
-
-  const rect: Read['frame']['rect'] = (worldRect) => input.spatial.rect(worldRect, {
+  }).flatMap((record) => record.item.kind === 'node' && isFrameView(input.graph(), record.item.id)
+    ? [record.item.id]
+    : []),
+  rect: (rect) => input.spatial.rect(rect, {
     kinds: ['node']
   }).flatMap((record) => {
     if (record.item.kind !== 'node') {
@@ -97,83 +77,44 @@ const createFrameRead = (input: {
     }
 
     const frameRect = readFrameRect(input.graph(), record.item.id)
-    return frameRect && contains(frameRect, worldRect)
+    return frameRect && geometryApi.rect.contains(frameRect, rect)
       ? [record.item.id]
       : []
-  })
-
-  const pick: Read['frame']['pick'] = (worldPoint, options) => {
-    const exclude = options?.excludeIds?.length
-      ? new Set(options.excludeIds)
-      : undefined
-    let best: Candidate | undefined
-
-    input.spatial.point(worldPoint, {
-      kinds: ['node']
-    }).forEach((record) => {
-      if (record.item.kind !== 'node' || exclude?.has(record.item.id)) {
-        return
-      }
-
-      const frameRect = readFrameRect(input.graph(), record.item.id)
-      if (!frameRect || !containsPoint(frameRect, worldPoint)) {
-        return
-      }
-
-      best = pickCandidate(best, {
-        id: record.item.id,
-        order: record.order,
-        area: readArea(frameRect)
+  }),
+  pick: (point, options) => nodeApi.frame.pick({
+    candidates: readFrameCandidates({
+      graph: input.graph(),
+      records: input.spatial.point(point, {
+        kinds: ['node']
       })
-    })
-
-    return best?.id
-  }
-
-  const parent: Read['frame']['parent'] = (nodeId, options) => {
-    const exclude = options?.excludeIds?.length
+    }),
+    point,
+    excludeIds: options?.excludeIds?.length
       ? new Set(options.excludeIds)
       : undefined
+  }),
+  parent: (nodeId, options) => {
     const rect = input.graph().nodes.get(nodeId)?.geometry.rect
     if (!rect) {
       return undefined
     }
 
-    let best: Candidate | undefined
-    input.spatial.rect(rect, {
-      kinds: ['node']
-    }).forEach((record) => {
-      if (record.item.kind !== 'node') {
-        return
-      }
-
-      if (record.item.id === nodeId || exclude?.has(record.item.id)) {
-        return
-      }
-
-      const frameRect = readFrameRect(input.graph(), record.item.id)
-      if (!frameRect || !contains(frameRect, rect)) {
-        return
-      }
-
-      best = pickCandidate(best, {
-        id: record.item.id,
-        order: record.order,
-        area: readArea(frameRect)
-      })
+    return nodeApi.frame.pickParent({
+      candidates: readFrameCandidates({
+        graph: input.graph(),
+        records: input.spatial.rect(rect, {
+          kinds: ['node']
+        })
+      }),
+      rect,
+      nodeId,
+      excludeIds: options?.excludeIds?.length
+        ? new Set(options.excludeIds)
+        : undefined
     })
-
-    return best?.id
-  }
-
-  return {
-    point,
-    rect,
-    pick,
-    parent,
-    descendants: (nodeIds) => readTreeDescendants(input.indexes(), nodeIds)
-  }
-}
+  },
+  descendants: (nodeIds) => readTreeDescendants(input.indexes(), nodeIds)
+})
 
 const resolveMindmapId = (
   graph: GraphState,

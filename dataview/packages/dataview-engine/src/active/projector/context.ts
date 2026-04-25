@@ -3,9 +3,6 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type {
-  ViewStageMetrics
-} from '@dataview/engine/contracts/performance'
-import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import {
@@ -42,16 +39,6 @@ export const defineActiveProjectorPhase = <
 >(
   phase: ActiveProjectorPhase<TName>
 ): ActiveProjectorPhase<TName> => phase
-
-export const toActivePhaseMetrics = (input: {
-  deriveMs: number
-  publishMs: number
-  stage?: ViewStageMetrics
-}): ActivePhaseMetrics => ({
-  deriveMs: input.deriveMs,
-  publishMs: input.publishMs,
-  ...(input.stage ?? {})
-})
 
 export const readActiveView = (
   input: ActiveProjectorInput

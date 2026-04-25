@@ -7,7 +7,7 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   BaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 
 export const fullRebuildFrom = (
   impact: BaseImpact

@@ -5,6 +5,7 @@ import { compile } from '@shared/mutation'
 import { string } from '@shared/core'
 import { compileFieldIntent } from './fields'
 import {
+  createIssue,
   hasValidationErrors,
   type ValidationIssue
 } from '@dataview/core/mutation/issues'
@@ -54,12 +55,77 @@ export const compileIntents = (input: {
         ctx.emitMany(...compiled.operations)
       }
     },
-    previewApply: (document, operations) => {
-      return operation.preview(document, operations)
+    apply: (document, operations) => {
+      const applied = operation.apply(document, operations)
+      return applied.ok
+        ? {
+            ok: true,
+            doc: applied.doc
+          }
+        : {
+            ok: false,
+            issue: {
+              code: applied.error.code,
+              message: applied.error.message,
+              details: applied.error.details
+            }
+          }
     },
     stopOnError: true
   })
   const issues = compiledIntents.flatMap((entry) => entry.issues)
+  const issueKeys = new Set(
+    issues.map((issue) => JSON.stringify([
+      issue.severity,
+      issue.code,
+      issue.message,
+      issue.path,
+      issue.source?.index,
+      issue.source?.type
+    ]))
+  )
+  const lastCompiledIndex = compiledIntents.length - 1
+  const fallbackIntent = lastCompiledIndex >= 0
+    ? input.intents[lastCompiledIndex]
+    : undefined
+
+  result.issues.forEach((issue) => {
+    if (
+      issues.some((entry) => (
+        entry.code === issue.code
+        && entry.message === issue.message
+        && entry.path === issue.path
+        && entry.severity === issue.level
+      ))
+    ) {
+      return
+    }
+
+    const normalized = createIssue(
+      {
+        index: Math.max(lastCompiledIndex, 0),
+        type: fallbackIntent?.type ?? 'external.version.bump'
+      },
+      'error',
+      'compile.applyFailed',
+      issue.message,
+      issue.path
+    )
+    const key = JSON.stringify([
+      normalized.severity,
+      normalized.code,
+      normalized.message,
+      normalized.path,
+      normalized.source?.index,
+      normalized.source?.type
+    ])
+    if (issueKeys.has(key)) {
+      return
+    }
+
+    issues.push(normalized)
+    issueKeys.add(key)
+  })
 
   return {
     ops: result.ops,

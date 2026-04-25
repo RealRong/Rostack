@@ -7,6 +7,7 @@ import type {
 export type ValidationSeverity = IssueSeverity
 
 export type ValidationCode =
+  | 'compile.applyFailed'
   | 'batch.emptyCollection'
   | 'record.notFound'
   | 'record.duplicateId'

@@ -38,6 +38,5 @@ export const entityTable = {
   },
   read: sharedEntityTable.read,
   write: sharedEntityTable.write,
-  patch: sharedEntityTable.patch,
-  overlay: sharedEntityTable.overlay
+  patch: sharedEntityTable.patch
 } as const

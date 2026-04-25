@@ -36,7 +36,11 @@ import type {
   DocumentMutationContext,
   DocumentMutationFootprintContext
 } from '@dataview/core/operation/context'
-import { equal, json } from '@shared/core'
+import {
+  applyRecordFieldWriteInputToDraft,
+  restoreRecordFieldsToDraft
+} from '@dataview/core/operation/recordFieldDraft'
+import { entityTable as sharedEntityTable, equal, json } from '@shared/core'
 import {
   meta as mutationMeta
 } from '@shared/mutation'
@@ -293,13 +297,7 @@ const mergeActiveViewImpact = (
 
 const collectInsertedRecordIds = (
   records: readonly DataRecord[]
-): readonly RecordId[] => {
-  const ids: RecordId[] = []
-  documentApi.records.enumerate(records, entry => {
-    ids.push(entry.record.id)
-  })
-  return ids
-}
+): readonly RecordId[] => sharedEntityTable.normalize.list(records).order
 
 const captureRecordEntries = (
   document: DataDoc,
@@ -384,13 +382,31 @@ const deleteViewImpact = (
 
 const commitMutation = (
   ctx: DocumentMutationContext,
-  document: DataDoc,
   inverse: readonly DocumentOperation[]
 ) => {
-  ctx.replace(document)
   if (inverse.length) {
     ctx.inverse.prependMany(inverse)
   }
+}
+
+const resolveActiveViewId = (
+  input: {
+    order: readonly ViewId[]
+    has(id: ViewId): boolean
+  },
+  preferredViewId?: ViewId
+): ViewId | undefined => {
+  if (preferredViewId && input.has(preferredViewId)) {
+    return preferredViewId
+  }
+
+  for (const viewId of input.order) {
+    if (input.has(viewId)) {
+      return viewId
+    }
+  }
+
+  return undefined
 }
 
 const addRecordValueKey = (
@@ -433,15 +449,39 @@ const applyRecordInsert = (
   operation: Extract<DocumentOperation, { type: 'document.record.insert' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const nextDocument = documentApi.records.insert(document, operation.records, operation.target?.index)
-  if (nextDocument === document) {
-    return
-  }
-
+  const nextRecords = sharedEntityTable.normalize.list(operation.records)
   const recordIds = collectInsertedRecordIds(operation.records)
   if (!recordIds.length) {
     return
+  }
+
+  const currentOrder = ctx.draft.records.order.current()
+  const insertedIdSet = new Set(recordIds)
+  const remainingOrder = currentOrder.filter((recordId) => !insertedIdSet.has(recordId))
+  const safeIndex = Math.max(0, Math.min(operation.target?.index ?? remainingOrder.length, remainingOrder.length))
+  const nextOrder = [
+    ...remainingOrder.slice(0, safeIndex),
+    ...recordIds,
+    ...remainingOrder.slice(safeIndex)
+  ]
+  const orderChanged = nextOrder.length !== currentOrder.length
+    || nextOrder.some((recordId, index) => currentOrder[index] !== recordId)
+  const valuesChanged = recordIds.some((recordId) => {
+    const nextRecord = nextRecords.byId[recordId]
+    return nextRecord !== undefined && !Object.is(ctx.draft.records.get(recordId), nextRecord)
+  })
+  if (!orderChanged && !valuesChanged) {
+    return
+  }
+
+  recordIds.forEach((recordId) => {
+    const record = nextRecords.byId[recordId]
+    if (record) {
+      ctx.draft.records.byId.set(recordId, record)
+    }
+  })
+  if (orderChanged) {
+    ctx.draft.records.order.set(nextOrder)
   }
 
   const records = impact.records ?? (impact.records = {})
@@ -455,7 +495,7 @@ const applyRecordInsert = (
     markTouchedRecord(impact, recordId)
   })
 
-  commitMutation(ctx, nextDocument, [{
+  commitMutation(ctx, [{
     type: 'document.record.remove',
     recordIds: [...recordIds]
   }])
@@ -466,22 +506,24 @@ const applyRecordPatch = (
   operation: Extract<DocumentOperation, { type: 'document.record.patch' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const beforeRecord = documentApi.records.get(document, operation.recordId)
+  const beforeRecord = ctx.draft.records.get(operation.recordId)
   if (!beforeRecord) {
     return
   }
 
-  const nextDocument = documentApi.records.patch(document, operation.recordId, operation.patch)
-  if (nextDocument === document) {
+  const afterRecord = sharedEntityTable.patch.merge(
+    beforeRecord,
+    operation.patch as Partial<DataRecord>
+  ) as DataRecord
+  if (afterRecord === beforeRecord) {
     return
   }
 
-  const afterRecord = documentApi.records.get(nextDocument, operation.recordId)
+  ctx.draft.records.byId.set(operation.recordId, afterRecord)
   const aspects = commitImpact.record.patchAspects(beforeRecord, afterRecord)
   markRecordPatch(impact, operation.recordId, aspects)
 
-  commitMutation(ctx, nextDocument, [{
+  commitMutation(ctx, [{
     type: 'document.record.patch',
     recordId: operation.recordId,
     patch: Object.fromEntries(
@@ -495,16 +537,13 @@ const applyRecordRemove = (
   operation: Extract<DocumentOperation, { type: 'document.record.remove' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const removedEntries = captureRecordEntries(document, operation.recordIds)
+  const removedEntries = captureRecordEntries(ctx.doc(), operation.recordIds)
   if (!removedEntries.length) {
     return
   }
-
-  const nextDocument = documentApi.records.remove(document, operation.recordIds)
-  if (nextDocument === document) {
-    return
-  }
+  removedEntries.forEach((entry) => {
+    ctx.draft.records.remove(entry.record.id)
+  })
 
   const records = impact.records ?? (impact.records = {})
   removedEntries.forEach(entry => {
@@ -517,7 +556,7 @@ const applyRecordRemove = (
     markTouchedRecord(impact, entry.record.id)
   })
 
-  commitMutation(ctx, nextDocument, removedEntries.map(entry => ({
+  commitMutation(ctx, removedEntries.map(entry => ({
     type: 'document.record.insert',
     records: [entry.record],
     target: {
@@ -535,23 +574,21 @@ const applyRecordFieldWrite = (
   }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const applied = operation.type === 'document.record.fields.writeMany'
-    ? documentApi.records.writeFieldsWithChanges(document, operation)
-    : documentApi.records.restoreFieldsWithChanges(document, operation.entries)
+  const changes = operation.type === 'document.record.fields.writeMany'
+    ? applyRecordFieldWriteInputToDraft(ctx.draft.records, operation)
+    : restoreRecordFieldsToDraft(ctx.draft.records, operation.entries)
 
-  if (applied.document === document) {
+  if (!changes.length) {
     return
   }
 
-  const inverseEntries = applied.changes.map(change => {
+  const inverseEntries = changes.map(change => {
     applyRecordFieldWriteImpact(impact, change)
     return createRecordFieldRestoreEntry(change)
   })
 
   commitMutation(
     ctx,
-    applied.document,
     inverseEntries.length
       ? [{
           type: 'document.record.fields.restoreMany',
@@ -566,10 +603,8 @@ const applyFieldPut = (
   operation: Extract<DocumentOperation, { type: 'document.field.put' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const beforeField = documentApi.schema.fields.get(document, operation.field.id)
-  const nextDocument = documentApi.schema.fields.put(document, operation.field)
-  const afterField = documentApi.schema.fields.get(nextDocument, operation.field.id)
+  const beforeField = ctx.draft.fields.get(operation.field.id)
+  const afterField = operation.field
   const aspects = commitImpact.field.schemaAspects(beforeField, afterField)
 
   if (!beforeField && !afterField) {
@@ -592,9 +627,9 @@ const applyFieldPut = (
     markFieldSchema(impact, operation.field.id, aspects)
   }
 
+  ctx.draft.fields.put(afterField)
   commitMutation(
     ctx,
-    nextDocument,
     beforeField
       ? [{
           type: 'document.field.put',
@@ -612,25 +647,27 @@ const applyFieldPatch = (
   operation: Extract<DocumentOperation, { type: 'document.field.patch' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const beforeField = documentApi.schema.fields.get(document, operation.id)
+  const beforeField = ctx.draft.fields.get(operation.id)
   if (!beforeField) {
     return
   }
 
-  const nextDocument = documentApi.schema.fields.patch(document, operation.id, operation.patch)
-  if (nextDocument === document) {
+  const afterField = sharedEntityTable.patch.merge(
+    beforeField,
+    operation.patch as Partial<CustomField>
+  ) as CustomField
+  if (afterField === beforeField) {
     return
   }
 
-  const afterField = documentApi.schema.fields.get(nextDocument, operation.id)
+  ctx.draft.fields.byId.set(operation.id, afterField)
   markFieldSchema(
     impact,
     operation.id,
     commitImpact.field.schemaAspects(beforeField, afterField)
   )
 
-  commitMutation(ctx, nextDocument, [{
+  commitMutation(ctx, [{
     type: 'document.field.patch',
     id: operation.id,
     patch: Object.fromEntries(
@@ -644,14 +681,8 @@ const applyFieldRemove = (
   operation: Extract<DocumentOperation, { type: 'document.field.remove' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const beforeField = documentApi.schema.fields.get(document, operation.id)
+  const beforeField = ctx.draft.fields.remove(operation.id)
   if (!beforeField) {
-    return
-  }
-
-  const nextDocument = documentApi.schema.fields.remove(document, operation.id)
-  if (nextDocument === document) {
     return
   }
 
@@ -663,7 +694,7 @@ const applyFieldRemove = (
     markFieldSchema(impact, operation.id, ['all'])
   }
 
-  commitMutation(ctx, nextDocument, [{
+  commitMutation(ctx, [{
     type: 'document.field.put',
     field: beforeField
   }])
@@ -674,16 +705,19 @@ const applyViewPut = (
   operation: Extract<DocumentOperation, { type: 'document.view.put' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const beforeView = documentApi.views.get(document, operation.view.id)
-  const nextDocument = documentApi.views.put(document, operation.view)
-  const afterView = documentApi.views.get(nextDocument, operation.view.id)
-  const beforeActiveViewId = documentApi.views.activeId.get(document)
-  const afterActiveViewId = documentApi.views.activeId.get(nextDocument)
-
-  if (!afterView) {
-    return
-  }
+  const beforeView = ctx.draft.views.get(operation.view.id)
+  const afterView = operation.view
+  const beforeActiveViewId = ctx.draft.activeViewId.current()
+  const afterActiveViewId = resolveActiveViewId({
+    order: beforeView
+      ? ctx.draft.views.order.current()
+      : [...ctx.draft.views.order.current(), operation.view.id],
+    has: (viewId) => (
+      viewId === operation.view.id
+        ? true
+        : ctx.draft.views.has(viewId)
+    )
+  }, beforeActiveViewId ?? operation.view.id)
 
   const queryAspects = beforeView
     ? commitImpact.view.queryAspects(beforeView, afterView)
@@ -704,6 +738,15 @@ const applyViewPut = (
     && equal.sameJsonValue(beforeView, afterView)
   ) {
     return
+  }
+
+  if (beforeView) {
+    ctx.draft.views.byId.set(operation.view.id, afterView)
+  } else {
+    ctx.draft.views.put(afterView)
+  }
+  if (beforeActiveViewId !== afterActiveViewId) {
+    ctx.draft.activeViewId.set(afterActiveViewId)
   }
 
   const views = impact.views ?? (impact.views = {})
@@ -728,7 +771,6 @@ const applyViewPut = (
 
   commitMutation(
     ctx,
-    nextDocument,
     beforeView
       ? [{
           type: 'document.view.put',
@@ -746,16 +788,18 @@ const applyActiveViewSet = (
   operation: Extract<DocumentOperation, { type: 'document.activeView.set' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const beforeViewId = documentApi.views.activeId.get(document)
-  const nextDocument = documentApi.views.activeId.set(document, operation.id)
-  const afterViewId = documentApi.views.activeId.get(nextDocument)
+  const beforeViewId = ctx.draft.activeViewId.current()
+  const afterViewId = resolveActiveViewId({
+    order: ctx.draft.views.order.current(),
+    has: (viewId) => ctx.draft.views.has(viewId)
+  }, operation.id)
   if (beforeViewId === afterViewId) {
     return
   }
 
+  ctx.draft.activeViewId.set(afterViewId)
   mergeActiveViewImpact(impact, beforeViewId, afterViewId)
-  commitMutation(ctx, nextDocument, [{
+  commitMutation(ctx, [{
     type: 'document.activeView.set',
     id: beforeViewId
   }])
@@ -766,15 +810,16 @@ const applyViewRemove = (
   operation: Extract<DocumentOperation, { type: 'document.view.remove' }>
 ): void => {
   const impact = ctx.trace
-  const document = ctx.doc()
-  const beforeView = documentApi.views.get(document, operation.id)
+  const beforeView = ctx.draft.views.get(operation.id)
   if (!beforeView) {
     return
   }
 
-  const beforeActiveViewId = documentApi.views.activeId.get(document)
-  const nextDocument = documentApi.views.remove(document, operation.id)
-  const afterActiveViewId = documentApi.views.activeId.get(nextDocument)
+  const beforeActiveViewId = ctx.draft.activeViewId.current()
+  const afterActiveViewId = resolveActiveViewId({
+    order: ctx.draft.views.order.current().filter((viewId) => viewId !== operation.id),
+    has: (viewId) => viewId !== operation.id && ctx.draft.views.has(viewId)
+  }, beforeActiveViewId === operation.id ? undefined : beforeActiveViewId)
 
   const views = impact.views ?? (impact.views = {})
   if (views.inserted?.delete(operation.id)) {
@@ -786,9 +831,13 @@ const applyViewRemove = (
     deleteViewImpact(impact, operation.id)
   }
 
+  ctx.draft.views.remove(operation.id)
+  if (beforeActiveViewId !== afterActiveViewId) {
+    ctx.draft.activeViewId.set(afterActiveViewId)
+  }
   mergeActiveViewImpact(impact, beforeActiveViewId, afterActiveViewId)
 
-  commitMutation(ctx, nextDocument, [{
+  commitMutation(ctx, [{
     type: 'document.view.put',
     view: beforeView
   }])

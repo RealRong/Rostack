@@ -1,0 +1,21 @@
+{
+  "name": "@shared/draft",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@shared/core": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

@@ -20,7 +20,9 @@ import {
   frameAt,
   frameChildren,
   frameDescendants,
-  frameParent
+  frameParent,
+  pickFrame,
+  pickFrameParent
 } from '@whiteboard/core/node/frame'
 import {
   getNodeAABB,
@@ -194,7 +196,9 @@ export const node = {
     at: frameAt,
     parent: frameParent,
     children: frameChildren,
-    descendants: frameDescendants
+    descendants: frameDescendants,
+    pick: pickFrame,
+    pickParent: pickFrameParent
   },
   move: {
     buildCommit: buildMoveCommit,

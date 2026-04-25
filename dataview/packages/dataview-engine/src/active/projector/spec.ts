@@ -10,10 +10,10 @@ import type {
   ActiveProjectorInput,
   ActiveProjectorWorking
 } from '../contracts/projector'
-import { activeMembershipPhase } from '../phases/membership'
-import { activePublishPhase } from '../phases/publish'
-import { activeQueryPhase } from '../phases/query'
-import { activeSummaryPhase } from '../phases/summary'
+import { activeMembershipPhase } from '../membership/stage'
+import { activePublishPhase } from '../publish/stage'
+import { activeQueryPhase } from '../query/stage'
+import { activeSummaryPhase } from '../summary/stage'
 import { createEmptyActiveSnapshot } from './createEmptySnapshot'
 import { createActiveProjectorWorking } from './createWorking'
 import { activeProjectorPlanner } from './planner'

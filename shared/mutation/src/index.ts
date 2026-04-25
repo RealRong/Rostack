@@ -10,6 +10,7 @@ export type {
 } from './meta'
 export { compile } from './compiler'
 export type {
+  CompileApplyResult,
   CompileControl,
   CompileCtx,
   CompileOne,
@@ -53,8 +54,6 @@ export type {
   HistoryController,
   HistoryState
 } from './history'
-export { cowDraft, draftList, draftPath } from './draft'
-export type { Draft, DraftFactory } from './draft'
 export type { Origin, Write, WriteStream } from './write'
 export type {
   MutationTrace,

@@ -15,7 +15,7 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   BaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 import {
   createPartition,
   readPartitionSelections,
@@ -23,8 +23,8 @@ import {
   type Partition
 } from '@dataview/engine/active/shared/partition'
 import {
-  createMapPatchBuilder
-} from '@dataview/engine/active/shared/patch'
+  createMapDraft as createMapPatchBuilder
+} from '@shared/draft'
 import {
   createSelection,
   readSelectionIdSet,

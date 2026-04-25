@@ -52,7 +52,6 @@ export interface WorkingState {
   publish: {
     graph: GraphPublishState
     ui: UiPublishState
-    items: ItemsPublishState
   }
 }
 
@@ -64,11 +63,6 @@ export interface GraphPublishState {
 export interface UiPublishState {
   revision: Revision
   delta: UiPublishDelta
-}
-
-export interface ItemsPublishState {
-  revision: Revision
-  changed: boolean
 }
 
 export interface GraphState {
@@ -95,8 +89,8 @@ export interface IndexState {
 
 export interface UiState {
   chrome: ChromeView
-  nodes: ReadonlyMap<NodeId, NodeUiView>
-  edges: ReadonlyMap<EdgeId, EdgeUiView>
+  nodes: Map<NodeId, NodeUiView>
+  edges: Map<EdgeId, EdgeUiView>
 }
 
 export interface GraphNodeEntry {

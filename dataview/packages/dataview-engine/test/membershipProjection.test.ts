@@ -15,10 +15,10 @@ import {
 } from '@dataview/engine/active/index/runtime'
 import {
   createBaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 import {
   createItemIdPool
-} from '@dataview/engine/active/shared/itemIdPool'
+} from '@dataview/engine/active/publish/itemIdPool'
 import {
   createMembershipTransition
 } from '@dataview/engine/active/shared/transition'
@@ -33,7 +33,7 @@ import {
 } from '@dataview/engine/active/membership/derive'
 import {
   runMembershipStage
-} from '@dataview/engine/active/membership/runtime'
+} from '@dataview/engine/active/membership/stage'
 import type {
   QueryPhaseState as QueryState
 } from '@dataview/engine/active/state'

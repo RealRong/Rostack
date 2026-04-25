@@ -37,13 +37,13 @@ const COMMON_TIMEZONES = [
   'America/Los_Angeles'
 ] as const
 
-interface DateOnlyParts {
+export interface DateOnlyParts {
   year: number
   month: number
   day: number
 }
 
-interface DateTimeParts extends DateOnlyParts {
+export interface DateTimeParts extends DateOnlyParts {
   hour: number
   minute: number
 }

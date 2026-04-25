@@ -5,7 +5,7 @@ import {
 } from '@dataview/core/calculation'
 import {
   createBaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 import {
   createPartition
 } from '@dataview/engine/active/shared/partition'
@@ -17,7 +17,7 @@ import {
 } from '@dataview/engine/active/shared/rows'
 import {
   runSummaryStage
-} from '@dataview/engine/active/summary/runtime'
+} from '@dataview/engine/active/summary/stage'
 import {
   deriveSummaryState
 } from '@dataview/engine/active/summary/derive'

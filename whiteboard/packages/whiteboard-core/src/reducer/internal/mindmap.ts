@@ -227,12 +227,12 @@ const removeMindmapNode = (
   nodeId: NodeId
 ): boolean => {
   state.draft.nodes.delete(nodeId)
-  const hasCanvasRef = state.draft.canvasOrder.some((ref) => ref.kind === 'node' && ref.id === nodeId)
+  const hasCanvasRef = state.draft.canvasOrder.current().some((ref) => ref.kind === 'node' && ref.id === nodeId)
   if (hasCanvasRef) {
-    state.draft.canvasOrder = removeCanvasRef(state.draft.canvasOrder, {
+    state.draft.canvasOrder.set(removeCanvasRef(state.draft.canvasOrder.current(), {
       kind: 'node',
       id: nodeId
-    })
+    }))
   }
   markNodeRemoved(state, nodeId)
   return hasCanvasRef
@@ -285,10 +285,10 @@ export const createMindmap = (
   }
 ): void => {
   state.draft.mindmaps.set(input.mindmap.id, input.mindmap)
-  state.draft.canvasOrder = appendCanvasRef(state.draft.canvasOrder, {
+  state.draft.canvasOrder.set(appendCanvasRef(state.draft.canvasOrder.current(), {
     kind: 'mindmap',
     id: input.mindmap.id
-  })
+  }))
   state.inverse.prepend({
     type: 'mindmap.delete',
     id: input.mindmap.id
@@ -311,10 +311,10 @@ export const restoreMindmap = (
     state.draft.nodes.set(node.id, node)
     markNodeAdded(state, node.id)
   })
-  state.draft.canvasOrder = insertCanvasSlot(state.draft.canvasOrder, {
+  state.draft.canvasOrder.set(insertCanvasSlot(state.draft.canvasOrder.current(), {
     kind: 'mindmap',
     id: snapshot.mindmap.id
-  }, snapshot.slot)
+  }, snapshot.slot))
   state.inverse.prepend({
     type: 'mindmap.delete',
     id: snapshot.mindmap.id
@@ -346,10 +346,10 @@ export const deleteMindmap = (
       })
     })
     state.draft.edges.delete(edge.id)
-    state.draft.canvasOrder = removeCanvasRef(state.draft.canvasOrder, {
+    state.draft.canvasOrder.set(removeCanvasRef(state.draft.canvasOrder.current(), {
       kind: 'edge',
       id: edge.id
-    })
+    }))
     markEdgeRemoved(state, edge.id)
   })
   state.inverse.prepend({
@@ -360,10 +360,10 @@ export const deleteMindmap = (
     removeMindmapNode(state, nodeId)
   })
   state.draft.mindmaps.delete(id)
-  state.draft.canvasOrder = removeCanvasRef(state.draft.canvasOrder, {
+  state.draft.canvasOrder.set(removeCanvasRef(state.draft.canvasOrder.current(), {
     kind: 'mindmap',
     id
-  })
+  }))
   markMindmapRemoved(state, id)
   markCanvasOrderTouched(state)
 }
@@ -711,10 +711,10 @@ export const deleteMindmapTopic = (
       })
     })
     state.draft.edges.delete(edge.id)
-    state.draft.canvasOrder = removeCanvasRef(state.draft.canvasOrder, {
+    state.draft.canvasOrder.set(removeCanvasRef(state.draft.canvasOrder.current(), {
       kind: 'edge',
       id: edge.id
-    })
+    }))
     markEdgeRemoved(state, edge.id)
   })
   state.inverse.prepend({

@@ -12,8 +12,8 @@ import type {
   ViewGroupBucketId
 } from '@dataview/core/contracts'
 import {
-  createMapPatchBuilder
-} from '@dataview/engine/active/shared/patch'
+  createMapDraft as createMapPatchBuilder
+} from '@shared/draft'
 import type {
   ItemId,
   ItemList,
@@ -27,7 +27,7 @@ import type {
 } from '@dataview/engine/active/state'
 import type {
   ItemIdPool
-} from '@dataview/engine/active/shared/itemIdPool'
+} from '@dataview/engine/active/publish/itemIdPool'
 
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]

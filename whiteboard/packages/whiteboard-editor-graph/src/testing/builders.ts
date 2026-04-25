@@ -3,7 +3,7 @@ import type {
   InputDelta,
   TextMeasureEntry
 } from '../contracts/editor'
-import { createEmptyInputDelta } from '../projector/createEmptySnapshot'
+import { createEmptyInputDelta } from '../projector/spec'
 
 export type EditorGraphDeltaFlags = Partial<{
   document: boolean

@@ -10,7 +10,7 @@ import {
   fieldSpec
 } from '@dataview/core/field/spec'
 import { equal } from '@shared/core'
-import { createMapPatchBuilder } from '@dataview/engine/active/shared/patch'
+import { createMapDraft as createMapPatchBuilder } from '@shared/draft'
 import type {
   IndexDeriveContext,
   IndexReadContext,

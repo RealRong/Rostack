@@ -2,6 +2,7 @@ import type {
   IdDelta as SharedIdDelta,
   KeySet
 } from '@shared/projector/delta'
+import { idDelta } from '@shared/projector/delta'
 import type { Revision } from '@shared/projector'
 import type {
   EdgeId,
@@ -12,7 +13,6 @@ import type {
 import type {
   SpatialKey
 } from '../domain/spatial/contracts'
-import type { SpatialPatchScope } from '../projector/scopes/spatialScope'
 
 export type IdDelta<TId extends string> = SharedIdDelta<TId>
 
@@ -54,6 +54,11 @@ export interface UiPublishDelta {
   edges: IdDelta<EdgeId>
 }
 
+export interface SpatialPatchScope {
+  reset: boolean
+  graph: boolean
+}
+
 export interface GraphPatchScope {
   reset: boolean
   order: boolean
@@ -74,5 +79,36 @@ export interface EditorPhaseScopeMap {
   graph: GraphPatchScope
   spatial: SpatialPatchScope
   ui: UiPatchScope
-  items: undefined
+}
+
+export const createGraphDelta = (): GraphDelta => ({
+  revision: 0,
+  order: false,
+  entities: {
+    nodes: idDelta.create<NodeId>(),
+    edges: idDelta.create<EdgeId>(),
+    mindmaps: idDelta.create<MindmapId>(),
+    groups: idDelta.create<GroupId>()
+  },
+  geometry: {
+    nodes: new Set(),
+    edges: new Set(),
+    mindmaps: new Set(),
+    groups: new Set()
+  }
+})
+
+export const resetGraphDelta = (
+  delta: GraphDelta
+) => {
+  delta.revision = 0
+  delta.order = false
+  idDelta.reset(delta.entities.nodes)
+  idDelta.reset(delta.entities.edges)
+  idDelta.reset(delta.entities.mindmaps)
+  idDelta.reset(delta.entities.groups)
+  delta.geometry.nodes.clear()
+  delta.geometry.edges.clear()
+  delta.geometry.mindmaps.clear()
+  delta.geometry.groups.clear()
 }

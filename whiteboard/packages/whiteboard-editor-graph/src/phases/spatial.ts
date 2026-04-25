@@ -1,14 +1,35 @@
+import type {
+  ProjectorContext,
+  ProjectorPhase
+} from '@shared/projector'
+import type { EditorPhaseScopeMap } from '../contracts/delta'
+import type {
+  Input,
+  Snapshot
+} from '../contracts/editor'
+import type { WorkingState } from '../contracts/working'
 import { patchSpatial } from '../domain/spatial/update'
 import {
   mergeSpatialPatchScope,
   normalizeSpatialPatchScope
-} from '../projector/scopes/spatialScope'
-import {
-  defineEditorGraphPhase,
-  toPhaseMetrics
-} from '../projector/context'
+} from '../projector/impact'
 
-export const spatialPhase = defineEditorGraphPhase({
+type EditorPhaseName = keyof EditorPhaseScopeMap & string
+
+type SpatialPhaseContext = ProjectorContext<
+  Input,
+  WorkingState,
+  Snapshot,
+  EditorPhaseScopeMap['spatial']
+>
+
+export const spatialPhase: ProjectorPhase<
+  'spatial',
+  SpatialPhaseContext,
+  { count: number },
+  EditorPhaseName,
+  EditorPhaseScopeMap
+> = {
   name: 'spatial',
   deps: [],
   mergeScope: mergeSpatialPatchScope,
@@ -26,7 +47,9 @@ export const spatialPhase = defineEditorGraphPhase({
 
     return {
       action: result.changed ? 'sync' : 'reuse',
-      metrics: toPhaseMetrics(result.count)
+      metrics: {
+        count: result.count
+      }
     }
   }
-})
+}

@@ -1,7 +1,6 @@
 import { json } from '@shared/core'
+import { draft } from '@shared/draft'
 import {
-  cowDraft,
-  draftPath,
   path as mutationPath,
   type Path
 } from '@shared/mutation'
@@ -113,12 +112,12 @@ const validateUnsetPath = (
 export const readRecordPath = (
   root: unknown,
   targetPath: Path
-): unknown => draftPath.get(root, targetPath)
+): unknown => draft.path.get(root, targetPath)
 
 export const hasRecordPath = (
   root: unknown,
   targetPath: Path
-): boolean => draftPath.has(root, targetPath)
+): boolean => draft.path.get(root, targetPath) !== undefined
 
 export const applyRecordPathMutation = (
   current: unknown,
@@ -148,15 +147,15 @@ export const applyRecordPathMutation = (
       return validation
     }
 
-    const draft = cowDraft.create<Record<string | number, unknown>>()(root)
-    draftPath.set(
-      draft.write(),
+    const rootDraft = draft.root<Record<string | number, unknown>>(root)
+    draft.path.set(
+      rootDraft.write(),
       targetPath,
       json.clone(mutation.value)
     )
     return {
       ok: true,
-      value: draft.done()
+      value: rootDraft.finish()
     }
   }
 
@@ -180,10 +179,10 @@ export const applyRecordPathMutation = (
     return validation
   }
 
-  const draft = cowDraft.create<Record<string | number, unknown>>()(current)
-  draftPath.unset(draft.write(), targetPath)
+  const rootDraft = draft.root<Record<string | number, unknown>>(current)
+  draft.path.unset(rootDraft.write(), targetPath)
   return {
     ok: true,
-    value: draft.done()
+    value: rootDraft.finish()
   }
 }

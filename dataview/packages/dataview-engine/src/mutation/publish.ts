@@ -27,7 +27,7 @@ import {
 } from '@dataview/engine/active/projector/createActiveProjector'
 import {
   createBaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'

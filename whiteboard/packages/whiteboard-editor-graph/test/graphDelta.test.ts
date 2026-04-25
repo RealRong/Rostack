@@ -8,7 +8,7 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import type { Input } from '../src/contracts/editor'
-import { createEmptyInput, createEmptyInputDelta } from '../src/projector/createEmptySnapshot'
+import { createEmptyInput, createEmptyInputDelta } from '../src/projector/spec'
 import { createEditorGraphTextMeasureEntry } from '../src/testing/builders'
 import { createEditorGraphProjectorHarness } from '../src/testing/runtime'
 
@@ -230,8 +230,7 @@ describe('graph delta patching', () => {
 
     expect(result.trace.phases.map((phase) => phase.name)).toEqual([
       'graph',
-      'spatial',
-      'items'
+      'spatial'
     ])
     expect(runtime.working().delta.spatial.order).toBe(true)
     expect(runtime.working().delta.spatial.records.added.size).toBe(0)

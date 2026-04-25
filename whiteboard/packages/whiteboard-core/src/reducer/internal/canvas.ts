@@ -22,7 +22,7 @@ export const appendCanvasRef = (
   ref: CanvasItemRef
 ): readonly CanvasItemRef[] => (
   order.some((entry) => canvasRefKey(entry) === canvasRefKey(ref))
-    ? [...order]
+    ? order
     : [...order, cloneCanvasRef(ref)!]
 )
 
@@ -32,7 +32,7 @@ export const removeCanvasRef = (
 ): readonly CanvasItemRef[] => {
   const index = order.findIndex((entry) => canvasRefKey(entry) === canvasRefKey(ref))
   if (index < 0) {
-    return [...order]
+    return order
   }
 
   return [
@@ -68,7 +68,7 @@ export const captureCanvasSlot = (
   state: WhiteboardReduceState,
   ref: CanvasItemRef
 ): CanvasSlot | undefined => readCanvasSlot(
-  state.draft.canvasOrder,
+  state.draft.canvasOrder.current(),
   ref
 )
 
@@ -77,7 +77,7 @@ export const moveCanvasItems = (
   refs: readonly CanvasItemRef[],
   to: Extract<import('@whiteboard/core/types').Operation, { type: 'canvas.order.move' }>['to']
 ): void => {
-  const currentOrder = [...state.draft.canvasOrder]
+  const currentOrder = [...state.draft.canvasOrder.current()]
   const existingRefs = refs.filter((ref) => currentOrder.some((entry) => canvasRefKey(entry) === canvasRefKey(ref)))
   if (existingRefs.length === 0) {
     return
@@ -118,6 +118,6 @@ export const moveCanvasItems = (
     refs: existingRefs.map((ref) => cloneCanvasRef(ref)!),
     to: previousTo
   })
-  state.draft.canvasOrder = filtered
+  state.draft.canvasOrder.set(filtered)
   markCanvasOrderTouched(state)
 }

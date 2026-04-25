@@ -11,7 +11,6 @@
     "./engine": "./src/engine.ts",
     "./collab": "./src/collab.ts",
     "./history": "./src/history.ts",
-    "./draft": "./src/draft.ts",
     "./write": "./src/write.ts"
   },
   "dependencies": {

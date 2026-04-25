@@ -1,4 +1,4 @@
-import { createItemIdPool } from '@dataview/engine/active/shared/itemIdPool'
+import { createItemIdPool } from '@dataview/engine/active/publish/itemIdPool'
 import {
   emptyMembershipPhaseState,
   emptyQueryPhaseState,

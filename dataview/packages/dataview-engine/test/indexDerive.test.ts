@@ -20,7 +20,7 @@ import {
 } from '@dataview/engine/active/plan'
 import {
   createBaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 import {
   buildQueryState
 } from '@dataview/engine/active/query/state'

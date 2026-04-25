@@ -1,5 +1,7 @@
 export { createPlan, mergePlans } from './dirty/plan'
+export { createStageMetrics } from './metrics'
 export { createProjector } from './projector/createProjector'
+export { projectListChange, publishStruct } from './publish'
 
 export type { Revision } from './contracts/core'
 export type {

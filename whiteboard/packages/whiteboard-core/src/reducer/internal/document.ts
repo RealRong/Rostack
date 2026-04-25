@@ -44,5 +44,6 @@ export const setDocumentBackground = (
     background: cloneBackground(state.draft.background)
   })
   state.draft.background = background
+  state.draft.backgroundChanged = true
   markBackgroundTouched(state)
 }

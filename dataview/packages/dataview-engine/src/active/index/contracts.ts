@@ -17,7 +17,7 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import type {
   BaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 import type {
   MembershipTransition,
   CalculationTransition

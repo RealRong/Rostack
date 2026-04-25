@@ -3,8 +3,8 @@ import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
-import type { BaseImpact } from '@dataview/engine/active/shared/baseImpact'
-import type { ItemIdPool } from '@dataview/engine/active/shared/itemIdPool'
+import type { BaseImpact } from '@dataview/engine/active/projector/impact'
+import type { ItemIdPool } from '@dataview/engine/active/publish/itemIdPool'
 import type {
   MembershipPhaseDelta,
   MembershipPhaseState,

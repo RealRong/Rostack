@@ -13,7 +13,7 @@ import type {
 import {
   intersectCandidates,
   unionCandidates
-} from '@dataview/engine/active/query/order'
+} from '@dataview/engine/active/query/candidateSet'
 
 export type SearchMatches = {
   query: string

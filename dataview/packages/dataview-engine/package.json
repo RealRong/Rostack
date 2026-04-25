@@ -18,6 +18,7 @@
     "@dataview/core": "workspace:*",
     "@dataview/meta": "workspace:*",
     "@shared/core": "workspace:*",
+    "@shared/draft": "workspace:*",
     "@shared/mutation": "workspace:*",
     "@shared/i18n": "workspace:*",
     "@shared/projector": "workspace:*"

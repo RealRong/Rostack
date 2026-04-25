@@ -55,7 +55,7 @@ import {
 } from '@dataview/engine/document/reader'
 import type {
   BaseImpact
-} from '@dataview/engine/active/shared/baseImpact'
+} from '@dataview/engine/active/projector/impact'
 import {
   createCalculationTransition,
   createMembershipTransition

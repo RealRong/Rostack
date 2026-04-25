@@ -128,6 +128,14 @@ export const createPointerBridge = ({
     return input
   }
 
+  const resolveCapturedPointerInput = <Phase extends 'move' | 'up'>(
+    phase: Phase,
+    container: HTMLDivElement,
+    event: PointerEvent
+  ) => editor.input.pointerMode(phase) === 'full'
+    ? resolveCanvasPointerInput(phase, container, event)
+    : resolveSessionPointerInput(phase, event)
+
   return {
     bindPick: (element, nextPick) => pick.bind(element, nextPick),
     contextMenu: ({ container, event }) => {
@@ -176,13 +184,21 @@ export const createPointerBridge = ({
           container,
           pointerId: input.pointerId,
           move: (nextEvent) => {
-            const moveInput = resolveSessionPointerInput('move', nextEvent)
+            const moveInput = resolveCapturedPointerInput(
+              'move',
+              container,
+              nextEvent
+            )
             if (editor.input.pointerMove(moveInput)) {
               consumeDomEvent(nextEvent)
             }
           },
           up: (nextEvent) => {
-            const upInput = resolveSessionPointerInput('up', nextEvent)
+            const upInput = resolveCapturedPointerInput(
+              'up',
+              container,
+              nextEvent
+            )
             if (editor.input.pointerUp(upInput)) {
               consumeDomEvent(nextEvent)
             }

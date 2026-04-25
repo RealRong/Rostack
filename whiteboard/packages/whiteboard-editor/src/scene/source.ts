@@ -1,4 +1,3 @@
-import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { store } from '@shared/core'
 import {
   composeSync,
@@ -6,14 +5,7 @@ import {
   createValueSync
 } from '@shared/projector/sync'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
-import type {
-  Edge,
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId,
-  Rect,
-} from '@whiteboard/core/types'
+import type { Edge, EdgeId, GroupId, MindmapId, Node, NodeId, Rect } from '@whiteboard/core/types'
 import type {
   Change,
   ChromeView,
@@ -34,10 +26,22 @@ import {
   createGraphEdgeRead,
   type GraphEdgeRead
 } from './edge'
+import {
+  createSceneGeometry
+} from './cache/geometry'
+import {
+  createSceneOrder
+} from './cache/order'
+import {
+  createSceneScope
+} from './cache/scope'
+import {
+  createSceneVisible
+} from './cache/visible'
 import { readMindmapNavigateTarget } from './mindmap'
 import {
   createGraphNodeRead,
-  toGraphNodeGeometry,
+  type GraphNodeGeometry,
   type GraphNodeRead
 } from './node'
 import {
@@ -89,7 +93,7 @@ export type EditorSceneRuntime = {
     rect: EditorGraphQuery['snap']
   }
   geometry: {
-    node: (nodeId: NodeId) => ReturnType<typeof toGraphNodeGeometry> & {
+    node: (nodeId: NodeId) => GraphNodeGeometry & {
       node: NonNullable<ReturnType<GraphNodeRead['get']>>['node']
     } | undefined
     edge: GraphEdgeRead['geometry']['get']
@@ -100,7 +104,7 @@ export type EditorSceneRuntime = {
   }
   scope: {
     move: (target: SelectionTarget) => {
-      nodes: ReturnType<GraphNodeRead['nodes']>
+      nodes: readonly Node[]
       edges: ReturnType<GraphEdgeRead['edges']>
     }
     relatedEdges: (nodeIds: readonly NodeId[]) => readonly EdgeId[]
@@ -362,34 +366,33 @@ export const createSceneSource = ({
   const sources = published.stores
   const query = controller.query
   const spatial = controller.query.spatial
+  const readRevision = () => store.read(sources.snapshot).revision
+  const geometry = createSceneGeometry({
+    revision: readRevision,
+    nodeGraph: sources.nodeGraph,
+    edgeGraph: sources.edgeGraph
+  })
 
   const node = createGraphNodeRead({
     sources,
     spatial,
-    type: nodeType
+    type: nodeType,
+    geometry: geometry.node
   })
   const edge = createGraphEdgeRead({
     sources,
     spatial,
     relatedEdges: query.relatedEdges,
-    node
+    node,
+    geometry: geometry.edge
   })
   const selectionSource = createGraphSelectionRead({
     source: selection,
     node,
     edge
   })
-  const visibleQueryCache = {
-    revision: -1,
-    rect: undefined as Rect | undefined,
-    kinds: '' as string,
-    result: [] as ReturnType<EditorGraphQuery['spatial']['rect']>
-  }
-  const orderIndex = store.createDerivedStore<Map<string, number>>({
-    get: () => new Map(
-      store.read(sources.items).map((item, index) => [`${item.kind}:${item.id}`, index] as const)
-    ),
-    isEqual: (left, right) => left === right
+  const order = createSceneOrder({
+    items: sources.items
   })
   const nodeCapability = store.createKeyedDerivedStore<NodeId, ReturnType<GraphNodeRead['capability']> | undefined>({
     get: (nodeId) => {
@@ -406,87 +409,37 @@ export const createSceneSource = ({
       ? edge.capability(current.edge)
       : undefined
   }
+  const visible = createSceneVisible({
+    revision: readRevision,
+    visibleRect,
+    rect: spatial.rect
+  })
 
   const queryApi: EditorSceneRuntime['query'] = {
     rect: spatial.rect,
-    visible: (options: Parameters<EditorGraphQuery['spatial']['rect']>[1]) => {
-      const rect = visibleRect()
-      const snapshot = store.read(sources.snapshot)
-      const kinds = options?.kinds?.join('|') ?? '*'
-
-      if (
-        visibleQueryCache.revision === snapshot.revision
-        && visibleQueryCache.kinds === kinds
-        && visibleQueryCache.rect?.x === rect.x
-        && visibleQueryCache.rect?.y === rect.y
-        && visibleQueryCache.rect?.width === rect.width
-        && visibleQueryCache.rect?.height === rect.height
-      ) {
-        return visibleQueryCache.result
-      }
-
-      const result = spatial.rect(rect, options)
-      visibleQueryCache.revision = snapshot.revision
-      visibleQueryCache.rect = rect
-      visibleQueryCache.kinds = kinds
-      visibleQueryCache.result = result
-      return result
-    }
+    visible
   }
+  const scope = createSceneScope({
+    spatialRect: spatial.rect,
+    relatedEdges: query.relatedEdges,
+    nodeView: node.view,
+    edgeBounds: edge.bounds,
+    readEdges: edge.edges
+  })
 
   return {
-    revision: () => store.read(sources.snapshot).revision,
+    revision: readRevision,
     items: sources.items,
     query: queryApi,
     snap: {
       rect: query.snap
     },
     geometry: {
-      node: (nodeId) => {
-        const current = store.read(node.view, nodeId)
-        return current
-          ? {
-              ...toGraphNodeGeometry({
-                node: current.node,
-                rect: current.rect,
-                rotation: current.rotation
-              }),
-              node: current.node
-            }
-          : undefined
-      },
+      node: node.geometry,
       edge: (edgeId) => store.read(edge.geometry, edgeId),
-      order: (item) => store.read(orderIndex).get(`${item.kind}:${item.id}`) ?? -1
+      order: order.get
     },
-    scope: {
-      move: (target) => {
-        const relatedEdgeIds = new Set([
-          ...target.edgeIds,
-          ...query.relatedEdges(target.nodeIds)
-        ])
-
-        return {
-          nodes: node.nodes(target.nodeIds),
-          edges: edge.edges([...relatedEdgeIds])
-        }
-      },
-      relatedEdges: (nodeIds) => query.relatedEdges(nodeIds),
-      bounds: (target) => {
-        const nodeBounds = target.nodeIds.flatMap((nodeId) => {
-          const current = store.read(node.view, nodeId)
-          return current ? [current.bounds] : []
-        })
-        const edgeBounds = target.edgeIds.flatMap((edgeId) => {
-          const current = store.read(edge.bounds, edgeId)
-          return current ? [current] : []
-        })
-
-        return geometryApi.rect.boundingRect([
-          ...nodeBounds,
-          ...edgeBounds
-        ])
-      }
-    },
+    scope,
     frame: query.frame,
     node: {
       get: node.get,

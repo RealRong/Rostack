@@ -42,6 +42,9 @@ export type GraphNodeRead = {
   ui: store.KeyedReadStore<NodeId, RuntimeNodeUiView | undefined>
   get: (nodeId: NodeId) => EditorNodeView | undefined
   view: store.KeyedReadStore<NodeId, EditorNodeView | undefined>
+  geometry: (nodeId: NodeId) => (GraphNodeGeometry & {
+    node: NodeModel
+  }) | undefined
   ids: () => readonly NodeId[]
   all: () => readonly EditorNodeView[]
   nodes: (nodeIds: readonly NodeId[]) => readonly NodeModel[]
@@ -170,7 +173,8 @@ export const resolveNodeCapability = (
 export const createGraphNodeRead = ({
   sources,
   spatial,
-  type
+  type,
+  geometry
 }: {
   sources: {
     nodeGraphIds: store.ReadStore<readonly NodeId[]>
@@ -179,6 +183,9 @@ export const createGraphNodeRead = ({
   }
   spatial: EditorGraphQuery['spatial']
   type: Pick<NodeTypeSupport, 'capability'>
+  geometry: (nodeId: NodeId) => (GraphNodeGeometry & {
+    node: NodeModel
+  }) | undefined
 }): GraphNodeRead => {
   const readIds = () => store.read(sources.nodeGraphIds) as readonly NodeId[]
 
@@ -250,6 +257,7 @@ export const createGraphNodeRead = ({
     ui: sources.nodeUi,
     get: (nodeId) => store.read(view, nodeId),
     view,
+    geometry,
     ids: readIds,
     all: readAll,
     nodes: readProjectedNodes,

@@ -21,6 +21,7 @@ import type {
   MindmapLayout,
   MindmapRecord,
   MindmapTemplate,
+  NodeGeometry,
   NodeModel,
   NodeFieldPatch,
   NodeId,
@@ -444,6 +445,7 @@ export interface NodeGeometryView {
   rotation: number
   rect: Rect
   bounds: Rect
+  outline: NodeGeometry
 }
 
 export interface EdgeView {

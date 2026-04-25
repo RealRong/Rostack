@@ -24,7 +24,6 @@ import {
   type EdgeCapability
 } from '@whiteboard/editor/session/edge'
 import {
-  toGraphNodeGeometry,
   toSpatialNode,
   type GraphNodeRead
 } from '@whiteboard/editor/scene/node'
@@ -255,50 +254,50 @@ const isEdgeGeometryEqual = (
 )
 
 const readResolvedNodeSnapshot = (
-  readNode: Pick<GraphNodeRead, 'get'>,
+  readNode: Pick<GraphNodeRead, 'geometry'>,
   edgeEnd: Edge['source'] | Edge['target']
 ): {
   node: ReturnType<typeof toSpatialNode>
-  geometry: ReturnType<typeof toGraphNodeGeometry>
+  geometry: NonNullable<ReturnType<GraphNodeRead['geometry']>>
 } | undefined => {
   if (edgeEnd.kind !== 'node') {
     return undefined
   }
 
-  const view = readNode.get(edgeEnd.nodeId)
-  return view
+  const geometry = readNode.geometry(edgeEnd.nodeId)
+  return geometry
     ? {
         node: toSpatialNode({
-          node: view.node,
-          rect: view.rect,
-          rotation: view.rotation
+          node: geometry.node,
+          rect: geometry.rect,
+          rotation: geometry.rotation
         }),
-        geometry: toGraphNodeGeometry({
-          node: view.node,
-          rect: view.rect,
-          rotation: view.rotation
-        })
+        geometry
       }
     : undefined
 }
 
-const readEdgeGeometry = (
-  node: Pick<GraphNodeRead, 'get'>,
+export const resolveGraphEdgeGeometry = (input: {
   edge: Edge
-): CoreEdgeView | undefined => {
-  const source = readResolvedNodeSnapshot(node, edge.source)
-  const target = readResolvedNodeSnapshot(node, edge.target)
+  readNodeGeometry: (nodeId: NodeId) => NonNullable<ReturnType<GraphNodeRead['geometry']>> | undefined
+}): CoreEdgeView | undefined => {
+  const source = readResolvedNodeSnapshot({
+    geometry: input.readNodeGeometry
+  }, input.edge.source)
+  const target = readResolvedNodeSnapshot({
+    geometry: input.readNodeGeometry
+  }, input.edge.target)
 
   if (
-    (edge.source.kind === 'node' && !source)
-    || (edge.target.kind === 'node' && !target)
+    (input.edge.source.kind === 'node' && !source)
+    || (input.edge.target.kind === 'node' && !target)
   ) {
     return undefined
   }
 
   try {
     return edgeApi.view.resolve({
-      edge,
+      edge: input.edge,
       source,
       target
     })
@@ -320,7 +319,8 @@ export const createGraphEdgeRead = ({
   sources,
   spatial,
   relatedEdges,
-  node
+  node,
+  geometry: readGeometry
 }: {
   sources: {
     edgeGraphIds: store.ReadStore<readonly EdgeId[]>
@@ -329,7 +329,8 @@ export const createGraphEdgeRead = ({
   }
   spatial: EditorGraphQuery['spatial']
   relatedEdges: EditorGraphQuery['relatedEdges']
-  node: Pick<GraphNodeRead, 'get' | 'capability'>
+  node: Pick<GraphNodeRead, 'geometry' | 'capability'>
+  geometry: (edgeId: EdgeId) => CoreEdgeView | undefined
 }): GraphEdgeRead => {
   const readIds = () => store.read(sources.edgeGraphIds) as readonly EdgeId[]
 
@@ -369,10 +370,7 @@ export const createGraphEdgeRead = ({
   })
 
   const geometry: GraphEdgeRead['geometry'] = store.createKeyedDerivedStore({
-    get: (edgeId: EdgeId) => {
-      const edge = store.read(sources.edgeGraph, edgeId)?.base.edge
-      return edge ? readEdgeGeometry(node, edge) : undefined
-    },
+    get: (edgeId: EdgeId) => readGeometry(edgeId),
     isEqual: isEdgeGeometryEqual
   })
 
@@ -390,23 +388,19 @@ export const createGraphEdgeRead = ({
     const candidates: EdgeConnectCandidate[] = []
 
     for (let index = 0; index < nodeIds.length; index += 1) {
-      const view = node.get(nodeIds[index])
-      if (!view || !node.capability(view.node).connect) {
+      const geometry = node.geometry(nodeIds[index])
+      if (!geometry || !node.capability(geometry.node).connect) {
         continue
       }
 
       candidates.push({
-        nodeId: view.node.id,
+        nodeId: geometry.node.id,
         node: toSpatialNode({
-          node: view.node,
-          rect: view.rect,
-          rotation: view.rotation
+          node: geometry.node,
+          rect: geometry.rect,
+          rotation: geometry.rotation
         }),
-        geometry: toGraphNodeGeometry({
-          node: view.node,
-          rect: view.rect,
-          rotation: view.rotation
-        })
+        geometry
       })
     }
 
@@ -415,7 +409,7 @@ export const createGraphEdgeRead = ({
 
   const readNodeLocked = (
     nodeId: NodeId
-  ) => Boolean(node.get(nodeId)?.node.locked)
+  ) => Boolean(node.geometry(nodeId)?.node.locked)
 
   return {
     projected: sources.edgeGraph,

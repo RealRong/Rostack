@@ -12,8 +12,8 @@ import type {
   NodeModel,
   Rect
 } from '@whiteboard/core/types'
-import { createGraphEdgeRead } from '../src/scene/edge'
-import { createGraphNodeRead } from '../src/scene/node'
+import { createGraphEdgeRead, resolveGraphEdgeGeometry } from '../src/scene/edge'
+import { createGraphNodeRead, toGraphNodeGeometry } from '../src/scene/node'
 
 const createKeyedReadStore = <K extends string, TValue>(
   entries: ReadonlyMap<K, TValue>
@@ -53,6 +53,23 @@ const createNodeView = (
     bounds: rect
   }
 })
+
+const readNodeGeometry = (
+  graph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>,
+  nodeId: NodeId
+) => {
+  const view = graph.get(nodeId)
+  return view
+    ? {
+        ...toGraphNodeGeometry({
+          node: view.base.node,
+          rect: view.geometry.rect,
+          rotation: view.geometry.rotation
+        }),
+        node: view.base.node
+      }
+    : undefined
+}
 
 const createEdge = (input: {
   edgeId: EdgeId
@@ -137,24 +154,26 @@ describe('spatial-backed graph read queries', () => {
         order: 0
       }
     ])
+    const nodeGraph = createKeyedReadStore<NodeId, RuntimeNodeView>(new Map([
+      [
+        spatialNodeId,
+        createNodeView(spatialNodeId, {
+          x: 16,
+          y: 24,
+          width: 120,
+          height: 48
+        })
+      ]
+    ]))
     const read = createGraphNodeRead({
       sources: {
         nodeGraphIds: store.createValueStore<NodeId[]>([spatialNodeId]),
-        nodeGraph: createKeyedReadStore<NodeId, RuntimeNodeView>(new Map([
-          [
-            spatialNodeId,
-            createNodeView(spatialNodeId, {
-              x: 16,
-              y: 24,
-              width: 120,
-              height: 48
-            })
-          ]
-        ])),
+        nodeGraph,
         nodeUi: createKeyedReadStore<NodeId, undefined>(new Map())
       },
       spatial,
-      type: NODE_TYPE_SUPPORT
+      type: NODE_TYPE_SUPPORT,
+      geometry: (nodeId: NodeId) => readNodeGeometry(nodeGraph, nodeId)
     })
 
     expect(read.idsInRect(queryRect)).toEqual([spatialNodeId])
@@ -227,23 +246,7 @@ describe('spatial-backed graph read queries', () => {
       },
       spatial,
       node: {
-        get: (nodeId: NodeId) => {
-          const view = nodeGraph.get(nodeId)
-          return view
-            ? {
-                nodeId: view.base.node.id,
-                node: view.base.node,
-                rect: view.geometry.rect,
-                bounds: view.geometry.bounds,
-                rotation: view.geometry.rotation,
-                hidden: false,
-                selected: false,
-                hovered: false,
-                patched: false,
-                resizing: false
-              }
-            : undefined
-        },
+        geometry: (nodeId: NodeId) => readNodeGeometry(nodeGraph, nodeId),
         capability: () => ({
           role: 'content',
           connect: true,
@@ -251,7 +254,18 @@ describe('spatial-backed graph read queries', () => {
           resize: true,
           rotate: true
         })
-      }
+      },
+      geometry: (currentEdgeId: EdgeId) => currentEdgeId === edgeId
+        ? resolveGraphEdgeGeometry({
+            edge: createEdge({
+              edgeId,
+              sourceId,
+              targetId
+            }),
+            readNodeGeometry: (nodeId: NodeId) => readNodeGeometry(nodeGraph, nodeId)
+          })
+        : undefined,
+      relatedEdges: () => []
     })
 
     expect(read.idsInRect({
@@ -306,23 +320,7 @@ describe('spatial-backed graph read queries', () => {
       },
       spatial,
       node: {
-        get: (nodeId: NodeId) => {
-          const view = nodeGraph.get(nodeId)
-          return view
-            ? {
-                nodeId: view.base.node.id,
-                node: view.base.node,
-                rect: view.geometry.rect,
-                bounds: view.geometry.bounds,
-                rotation: view.geometry.rotation,
-                hidden: false,
-                selected: false,
-                hovered: false,
-                patched: false,
-                resizing: false
-              }
-            : undefined
-        },
+        geometry: (nodeId: NodeId) => readNodeGeometry(nodeGraph, nodeId),
         capability: () => ({
           role: 'content',
           connect: true,
@@ -330,7 +328,9 @@ describe('spatial-backed graph read queries', () => {
           resize: true,
           rotate: true
         })
-      }
+      },
+      geometry: () => undefined,
+      relatedEdges: () => []
     })
 
     expect(read.connectCandidates({

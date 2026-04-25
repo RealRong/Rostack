@@ -203,6 +203,11 @@ export const createInteractionRuntime = ({
   }
 
   return {
+    pointerMode: (phase) => current?.session.pointer?.[phase] ?? (
+      phase === 'move'
+        ? 'point'
+        : 'full'
+    ),
     handlePointerDown: (input) => {
       if (current) {
         return false

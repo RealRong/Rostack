@@ -27,6 +27,10 @@ type AutoPanPointer = Readonly<{
   clientY: number
 }>
 
+export type PointerMode =
+  | 'full'
+  | 'point'
+
 export type InteractionSessionTransition =
   | {
       kind: 'finish'
@@ -50,6 +54,10 @@ export type InteractionSession = {
   pointerId?: number
   chrome?: boolean
   gesture?: ActiveGesture | null
+  pointer?: {
+    move?: PointerMode
+    up?: PointerMode
+  }
   attach?: (
     dispatch: (transition: InteractionSessionTransition) => void
   ) => void
@@ -76,6 +84,7 @@ export type InteractionBinding = {
 }
 
 export type InteractionRuntime = {
+  pointerMode: (phase: 'move' | 'up') => PointerMode
   handlePointerDown: (input: PointerDownInput) => boolean
   handlePointerMove: (input: PointerMoveInput) => boolean
   handlePointerUp: (input: PointerUpInput) => boolean

@@ -1,7 +1,6 @@
 import { equal } from '@shared/core'
 import { idDelta } from '@shared/projector/delta'
 import { edge as edgeApi } from '@whiteboard/core/edge'
-import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   Edge,
   EdgeId,
@@ -58,11 +57,7 @@ const toEdgeNodeSnapshot = (
         },
         rotation: nodeView.geometry.rotation
       },
-      geometry: nodeApi.outline.geometry(
-        nodeView.base.node,
-        nodeView.geometry.rect,
-        nodeView.geometry.rotation
-      )
+      geometry: nodeView.geometry.outline
     }
   : undefined
 

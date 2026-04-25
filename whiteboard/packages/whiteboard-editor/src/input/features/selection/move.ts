@@ -16,7 +16,6 @@ import type {
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { toSpatialNode } from '@whiteboard/editor/scene/node'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -125,13 +124,10 @@ export const createMoveInteraction = (
     }
   }
 
+  const moveScope = ctx.projection.scope.move(input.target)
   const initialState = nodeApi.move.state.start({
-    nodes: ctx.projection.node.all().map((view) => toSpatialNode({
-      node: view.node,
-      rect: view.rect,
-      rotation: view.rotation
-    })),
-    edges: ctx.projection.edge.all().map((view) => view.edge),
+    nodes: moveScope.nodes,
+    edges: moveScope.edges,
     target: input.target,
     startWorld: input.start.world,
     nodeSize: ctx.engine.config.nodeSize

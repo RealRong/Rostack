@@ -8,6 +8,7 @@ import type {
   Edge,
   EdgeId,
   MindmapId,
+  Node,
   NodeId,
   NodeModel,
   Point,
@@ -52,6 +53,7 @@ import type {
   PointerUpInput,
   WheelInput
 } from '@whiteboard/editor/types/input'
+import type { PointerMode } from '@whiteboard/editor/input/core/types'
 import type {
   EditorSelectionView,
   SelectionNodeStats,
@@ -68,6 +70,7 @@ export type EditorPointerDispatchResult = {
 }
 
 export type EditorInputHost = {
+  pointerMode: (phase: 'move' | 'up') => PointerMode
   contextMenu: (input: ContextMenuInput) => ContextMenuIntent | null
   pointerDown: (input: PointerDownInput) => EditorPointerDispatchResult
   pointerMove: (input: PointerMoveInput) => boolean
@@ -163,7 +166,7 @@ export type SceneGeometryCache = {
 
 export type SceneScope = {
   move: (target: SelectionTarget) => {
-    nodes: readonly NodeModel[]
+    nodes: readonly Node[]
     edges: readonly Edge[]
   }
   relatedEdges: (nodeIds: readonly NodeId[]) => readonly EdgeId[]

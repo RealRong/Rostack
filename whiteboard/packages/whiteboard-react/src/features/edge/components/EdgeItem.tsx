@@ -8,11 +8,12 @@ import {
   useMemo,
   useState
 } from 'react'
+import { useStoreValue } from '@shared/react'
 import { product } from '@whiteboard/product'
 import type { EdgeId } from '@whiteboard/core/types'
 import { edge as edgeApi, type EdgeLabelMaskRect } from '@whiteboard/core/edge'
 import {
-  useEditorValue,
+  useEditorRuntime,
   usePickRef,
   useResolvedConfig
 } from '@whiteboard/react/runtime/hooks'
@@ -168,7 +169,8 @@ const ActiveEdgeLabelContent = ({
   bindLabelRef: (element: HTMLDivElement | null) => void
   style: CSSProperties
 }) => {
-  const zoom = useEditorValue(editor => editor.session.viewport).zoom
+  const editor = useEditorRuntime()
+  const zoom = useStoreValue(editor.session.viewport.zoom)
   const outlineStyle = resolveActiveLabelOutlineStyle(zoom)
 
   if (label.editing) {

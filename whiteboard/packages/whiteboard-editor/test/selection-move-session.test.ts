@@ -37,6 +37,41 @@ describe('createMoveInteraction', () => {
         },
       },
       projection: {
+        scope: {
+          move: () => ({
+            nodes: [{
+              id: 'node-1',
+              type: 'text',
+              position: {
+                x: 100,
+                y: 120
+              },
+              size: {
+                width: 120,
+                height: 40
+              },
+              rotation: 0,
+              data: {
+                text: 'node-1'
+              }
+            }],
+            edges: [{
+              id: 'edge-1',
+              type: 'straight',
+              source: {
+                kind: 'point',
+                point: { x: 80, y: 140 }
+              },
+              target: {
+                kind: 'point',
+                point: { x: 200, y: 140 }
+              },
+              route: {
+                kind: 'auto'
+              }
+            }]
+          })
+        },
         frame: {
           pick: vi.fn(() => undefined),
           parent: vi.fn()

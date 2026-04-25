@@ -36,7 +36,7 @@ const formatZoom = (zoom: number) => `${Math.round(zoom * 100)}%`
 
 export const ViewportDock = () => {
   const editor = useEditor()
-  const viewport = useStoreValue(editor.session.viewport)
+  const zoom = useStoreValue(editor.session.viewport.zoom)
   const history = useStoreValue(editor.session.history)
 
   const fitToScreen = () => {
@@ -97,7 +97,7 @@ export const ViewportDock = () => {
             type="button"
             className={iconButtonClassName}
             onClick={() => {
-              editor.write.viewport.zoomTo(viewport.zoom / ZOOM_FACTOR)
+              editor.write.viewport.zoomTo(zoom / ZOOM_FACTOR)
             }}
             title="Zoom out"
           >
@@ -111,13 +111,13 @@ export const ViewportDock = () => {
             }}
             title="Reset zoom"
           >
-            {formatZoom(viewport.zoom)}
+            {formatZoom(zoom)}
           </ToolbarButton>
           <ToolbarIconButton
             type="button"
             className={iconButtonClassName}
             onClick={() => {
-              editor.write.viewport.zoomTo(viewport.zoom * ZOOM_FACTOR)
+              editor.write.viewport.zoomTo(zoom * ZOOM_FACTOR)
             }}
             title="Zoom in"
           >

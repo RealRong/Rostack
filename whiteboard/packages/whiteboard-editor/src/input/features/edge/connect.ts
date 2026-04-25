@@ -26,13 +26,13 @@ import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import { resolveGraphEdgeGeometry } from '@whiteboard/editor/scene/edge'
 import {
-  toGraphNodeGeometry,
   toSpatialNode
 } from '@whiteboard/editor/scene/node'
 
 type EdgeConnectNodeRead = Pick<EditorHostDeps['projection']['node'], 'get' | 'capability'>
-type EdgeConnectPreviewNodeRead = Pick<EditorHostDeps['projection']['node'], 'get'>
+type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection']['geometry'], 'node'>
 type EdgeConnectEdgeRead = Pick<EditorHostDeps['projection']['edge'], 'model' | 'geometry' | 'capabilityOf'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
@@ -48,7 +48,7 @@ type EdgeConnectStartInput = {
 }
 
 type EdgeConnectStepInput = {
-  node: EdgeConnectPreviewNodeRead
+  geometry: EdgeConnectPreviewGeometryRead
   state: EdgeConnectState
   world: PointerDownInput['world']
   snap: EdgeConnectSnap
@@ -56,7 +56,7 @@ type EdgeConnectStepInput = {
 }
 
 type EdgeConnectGestureInput = {
-  node: EdgeConnectPreviewNodeRead
+  geometry: EdgeConnectPreviewGeometryRead
   state: EdgeConnectState
   evaluation: EdgeConnectEvaluation
   showPreviewPath: boolean
@@ -357,62 +357,23 @@ const createPreviewEdge = (
   }
 }
 
-const readPreviewNodeSnapshot = (
-  node: EdgeConnectPreviewNodeRead,
-  nodeId: NodeId
-): {
-  node: ReturnType<typeof toSpatialNode>
-  geometry: ReturnType<typeof toGraphNodeGeometry>
-} | undefined => {
-  const view = node.get(nodeId)
-  return view
-    ? {
-        node: toSpatialNode({
-          node: view.node,
-          rect: view.rect,
-          rotation: view.rotation
-        }),
-        geometry: toGraphNodeGeometry({
-          node: view.node,
-          rect: view.rect,
-          rotation: view.rotation
-        })
-      }
-    : undefined
-}
-
 const resolveCreatePreviewPath = (
-  node: EdgeConnectPreviewNodeRead,
+  geometry: EdgeConnectPreviewGeometryRead,
   state: EdgeConnectState
 ): EdgeConnectPreview['path'] | undefined => {
   const edge = createPreviewEdge(state)
-  const targetDraft = state.kind === 'create'
-    ? state.to
-    : undefined
 
-  if (!edge || state.kind !== 'create' || !targetDraft) {
+  if (!edge || state.kind !== 'create' || !state.to) {
     return undefined
   }
 
-  const source = state.from.kind === 'node'
-    ? readPreviewNodeSnapshot(node, state.from.nodeId)
-    : undefined
-  const target = targetDraft.kind === 'node'
-    ? readPreviewNodeSnapshot(node, targetDraft.nodeId)
-    : undefined
-
-  if (
-    (state.from.kind === 'node' && !source)
-    || (targetDraft.kind === 'node' && !target)
-  ) {
-    return undefined
-  }
-
-  const view = edgeApi.view.resolve({
+  const view = resolveGraphEdgeGeometry({
     edge,
-    source,
-    target
+    readNodeGeometry: (nodeId) => geometry.node(nodeId)
   })
+  if (!view) {
+    return undefined
+  }
 
   return {
     svgPath: view.path.svgPath,
@@ -448,7 +409,7 @@ const readEdgeConnectGesture = (
   const preview = edgeApi.connect.preview(
     input.state,
     input.showPreviewPath
-      ? resolveCreatePreviewPath(input.node, input.state)
+      ? resolveCreatePreviewPath(input.geometry, input.state)
       : undefined
   )
 
@@ -504,7 +465,7 @@ const stepEdgeConnect = (
   return {
     state,
     gesture: readEdgeConnectGesture({
-      node: input.node,
+      geometry: input.geometry,
       state,
       evaluation,
       showPreviewPath: input.showPreviewPath
@@ -684,7 +645,7 @@ export const createEdgeConnectSession = (
       allowLatch
     })
     const result = stepEdgeConnect({
-      node: ctx.projection.node,
+      geometry: ctx.projection.geometry,
       state,
       world: readReconnectWorld({
         state,

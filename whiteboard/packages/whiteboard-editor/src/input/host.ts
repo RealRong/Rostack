@@ -127,6 +127,7 @@ export const createEditorInputHost = ({
   }
 
   return {
+    pointerMode: interaction.pointerMode,
     cancel: () => {
       clearTransientState()
       interaction.cancel()
@@ -284,6 +285,7 @@ export const createEditorInputApi = ({
   boundary: Pick<EditorBoundaryRuntime, 'atomic'>
   host: EditorInputHost
 }): EditorInputHost => ({
+  pointerMode: host.pointerMode,
   contextMenu: boundary.atomic(host.contextMenu),
   pointerDown: boundary.atomic(host.pointerDown),
   pointerMove: boundary.atomic(host.pointerMove),

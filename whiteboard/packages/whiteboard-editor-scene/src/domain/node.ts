@@ -190,16 +190,10 @@ const buildProjectedNodeGeometry = (input: {
 }) => {
   const rect = readProjectedNodeRect(input)
   const rotation = readProjectedNodeRotation(input.entry)
-  const geometry = nodeApi.outline.geometry(
-    input.entry.base.node,
-    rect,
-    rotation
-  )
 
   return {
     rect,
-    rotation,
-    bounds: geometry.bounds
+    rotation
   }
 }
 
@@ -224,15 +218,20 @@ export const buildNodeView = (input: {
       node: toNodeModel(contentItem.node),
       owner: input.entry.base.owner
     },
-    geometry: {
-      rotation: geometry.rotation,
-      rect: contentItem.rect,
-      bounds: nodeApi.outline.geometry(
+    geometry: (() => {
+      const outline = nodeApi.outline.geometry(
         contentItem.node,
         contentItem.rect,
         geometry.rotation
-      ).bounds
-    }
+      )
+
+      return {
+        rotation: geometry.rotation,
+        rect: contentItem.rect,
+        bounds: outline.bounds,
+        outline
+      }
+    })()
   }
 }
 

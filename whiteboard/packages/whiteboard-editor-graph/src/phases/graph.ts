@@ -1,6 +1,8 @@
 import type {
   ProjectorContext,
-  ProjectorPhase
+  ProjectorPhase,
+  ProjectorPhaseScopeInput,
+  ProjectorScopeValue
 } from '@shared/projector'
 import type {
   EdgeId,
@@ -9,6 +11,7 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type { EditorPhaseScopeMap } from '../contracts/delta'
+import { graphPhaseScope } from '../contracts/delta'
 import { resetGraphDelta } from '../contracts/delta'
 import type {
   Input,
@@ -23,12 +26,7 @@ import { buildItems } from '../domain/items'
 import { patchMindmap } from '../domain/mindmap'
 import { patchNode } from '../domain/node'
 import {
-  createSpatialPatchScope,
-  createUiPatchScope,
-  hasUiPatchScope,
-  mergeGraphPatchScope,
-  normalizeGraphPatchScope,
-  readGraphPatchScopeKeys
+  readUiPlanScope
 } from '../projector/impact'
 import {
   hasGraphPublishDelta,
@@ -42,7 +40,7 @@ type GraphPhaseContext = ProjectorContext<
   Input,
   WorkingState,
   Snapshot,
-  EditorPhaseScopeMap['graph']
+  ProjectorScopeValue<EditorPhaseScopeMap['graph']>
 >
 
 type GraphPatchQueue = {
@@ -105,10 +103,10 @@ const seedGraphPatchQueue = (input: {
     return
   }
 
-  enqueueAll(input.queue.nodes, readGraphPatchScopeKeys(input.context.scope.nodes))
-  enqueueAll(input.queue.edges, readGraphPatchScopeKeys(input.context.scope.edges))
-  enqueueAll(input.queue.mindmaps, readGraphPatchScopeKeys(input.context.scope.mindmaps))
-  enqueueAll(input.queue.groups, readGraphPatchScopeKeys(input.context.scope.groups))
+  enqueueAll(input.queue.nodes, input.context.scope.nodes)
+  enqueueAll(input.queue.edges, input.context.scope.edges)
+  enqueueAll(input.queue.mindmaps, input.context.scope.mindmaps)
+  enqueueAll(input.queue.groups, input.context.scope.groups)
 }
 
 const fanoutNodeGeometry = (input: {
@@ -138,7 +136,7 @@ const preFanoutSeeds = (input: {
     return
   }
 
-  readGraphPatchScopeKeys(input.context.scope.nodes).forEach((nodeId) => {
+  input.context.scope.nodes.forEach((nodeId) => {
     const nextOwner = input.context.working.indexes.ownerByNode.get(nodeId)
     const previousOwner = input.context.working.graph.nodes.get(nodeId)?.base.owner
 
@@ -314,9 +312,8 @@ export const graphPhase: ProjectorPhase<
 > = {
   name: 'graph',
   deps: [],
-  mergeScope: mergeGraphPatchScope,
+  scope: graphPhaseScope,
   run: (context) => {
-    const scope = normalizeGraphPatchScope(context.scope)
     const queue = createGraphPatchQueue()
     const delta = context.working.delta.graph
     const publish = context.working.publish.graph
@@ -324,7 +321,7 @@ export const graphPhase: ProjectorPhase<
 
     resetGraphDelta(delta)
     delta.revision = revision
-    delta.order = scope.reset || scope.order
+    delta.order = context.scope.reset || context.scope.order
 
     patchIndexState({
       state: context.working.indexes,
@@ -336,18 +333,18 @@ export const graphPhase: ProjectorPhase<
     seedGraphPatchQueue({
       context: {
         ...context,
-        scope
+        scope: context.scope
       },
       queue,
-      reset: scope.reset
+      reset: context.scope.reset
     })
     preFanoutSeeds({
       context: {
         ...context,
-        scope
+        scope: context.scope
       },
       queue,
-      reset: scope.reset
+      reset: context.scope.reset
     })
 
     const count = (
@@ -374,8 +371,8 @@ export const graphPhase: ProjectorPhase<
       )
     }
 
-    const uiScope = createUiPatchScope({
-      reset: scope.reset,
+    const uiScope = readUiPlanScope({
+      reset: context.scope.reset,
       input: context.input,
       previous: context.previous,
       graphDelta: delta,
@@ -385,19 +382,20 @@ export const graphPhase: ProjectorPhase<
       )
     })
 
-    const emit: Partial<EditorPhaseScopeMap> = {}
+    const emit: ProjectorPhaseScopeInput<
+      EditorPhaseName,
+      EditorPhaseScopeMap
+    > = {}
     if (isSpatialGraphPatchRequired({
       ...context,
-      scope
+      scope: context.scope
     })) {
-      emit.spatial = createSpatialPatchScope({
-        reset: scope.reset,
+      emit.spatial = {
+        reset: context.scope.reset,
         graph: true
-      })
+      }
     }
-    if (hasUiPatchScope(uiScope)) {
-      emit.ui = uiScope
-    }
+    emit.ui = uiScope
 
     return {
       action: count > 0

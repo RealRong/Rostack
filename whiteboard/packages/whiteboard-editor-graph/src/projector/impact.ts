@@ -1,9 +1,8 @@
-import { createPlan } from '@shared/projector'
 import {
-  idDelta,
-  keySet,
-  type KeySet
-} from '@shared/projector/delta'
+  createPlan,
+  type ProjectorScopeInputValue
+} from '@shared/projector'
+import { idDelta } from '@shared/projector/delta'
 import type {
   EdgeId,
   GroupId,
@@ -12,10 +11,7 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   EditorPhaseScopeMap,
-  GraphDelta,
-  GraphPatchScope,
-  SpatialPatchScope,
-  UiPatchScope
+  GraphDelta
 } from '../contracts/delta'
 import type {
   HoverState,
@@ -25,29 +21,11 @@ import type {
 
 type EditorPhaseName = keyof EditorPhaseScopeMap & string
 
-type ScopeKeys<TId extends string> =
-  | Iterable<TId>
-  | KeySet<TId>
+type GraphScopeInput =
+  NonNullable<ProjectorScopeInputValue<EditorPhaseScopeMap['graph']>>
 
-const EMPTY_SCOPE_KEYS = new Set<never>()
-
-const cloneScopeKeys = <TId extends string>(
-  keys?: ScopeKeys<TId>
-): KeySet<TId> => {
-  if (!keys) {
-    return keySet.none<TId>()
-  }
-
-  if (
-    typeof keys === 'object'
-    && keys !== null
-    && 'kind' in keys
-  ) {
-    return keySet.clone(keys as KeySet<TId>)
-  }
-
-  return keySet.some(keys as Iterable<TId>)
-}
+type UiScopeInput =
+  NonNullable<ProjectorScopeInputValue<EditorPhaseScopeMap['ui']>>
 
 const appendIds = <TId extends string>(
   target: Set<TId>,
@@ -121,157 +99,84 @@ const readSnapshotMindmapNodeIds = (
   mindmapId: MindmapId
 ): readonly NodeId[] | undefined => snapshot.graph.owners.mindmaps.byId.get(mindmapId)?.structure.nodeIds
 
-const createGraphPlannerScope = (
+const readGraphPlanScope = (
   input: Input
-): GraphPatchScope => {
-  const scope = createGraphPatchScope()
-  const { delta } = input
-
-  if (delta.document.reset) {
-    return createGraphPatchScope({
+): GraphScopeInput => {
+  if (input.delta.document.reset) {
+    return {
       reset: true,
       order: true
-    })
+    }
   }
 
-  scope.order = delta.document.order
+  const { delta } = input
+  const nodes = new Set<NodeId>()
+  const edges = new Set<EdgeId>()
+  const mindmaps = new Set<MindmapId>()
+  const groups = new Set<GroupId>()
 
-  scope.nodes = keySet.addMany(scope.nodes, idDelta.touched(delta.document.nodes))
-  scope.edges = keySet.addMany(scope.edges, idDelta.touched(delta.document.edges))
-  scope.mindmaps = keySet.addMany(scope.mindmaps, idDelta.touched(delta.document.mindmaps))
-  scope.groups = keySet.addMany(scope.groups, idDelta.touched(delta.document.groups))
+  appendIds(nodes, idDelta.touched(delta.document.nodes))
+  appendIds(edges, idDelta.touched(delta.document.edges))
+  appendIds(mindmaps, idDelta.touched(delta.document.mindmaps))
+  appendIds(groups, idDelta.touched(delta.document.groups))
 
-  scope.nodes = keySet.addMany(scope.nodes, idDelta.touched(delta.graph.nodes.draft))
-  scope.nodes = keySet.addMany(scope.nodes, idDelta.touched(delta.graph.nodes.preview))
-  scope.nodes = keySet.addMany(scope.nodes, idDelta.touched(delta.graph.nodes.edit))
-  scope.edges = keySet.addMany(scope.edges, idDelta.touched(delta.graph.edges.preview))
-  scope.edges = keySet.addMany(scope.edges, idDelta.touched(delta.graph.edges.edit))
-  scope.mindmaps = keySet.addMany(scope.mindmaps, idDelta.touched(delta.graph.mindmaps.preview))
-  delta.graph.mindmaps.tick.forEach((mindmapId) => {
-    scope.mindmaps = keySet.add(scope.mindmaps, mindmapId)
-  })
+  appendIds(nodes, idDelta.touched(delta.graph.nodes.draft))
+  appendIds(nodes, idDelta.touched(delta.graph.nodes.preview))
+  appendIds(nodes, idDelta.touched(delta.graph.nodes.edit))
+  appendIds(edges, idDelta.touched(delta.graph.edges.preview))
+  appendIds(edges, idDelta.touched(delta.graph.edges.edit))
+  appendIds(mindmaps, idDelta.touched(delta.graph.mindmaps.preview))
+  appendIds(mindmaps, delta.graph.mindmaps.tick)
 
-  scope.nodes = keySet.addMany(scope.nodes, input.session.draft.nodes.keys())
-  scope.edges = keySet.addMany(scope.edges, input.session.draft.edges.keys())
-  scope.nodes = keySet.addMany(scope.nodes, input.session.preview.nodes.keys())
-  scope.edges = keySet.addMany(scope.edges, input.session.preview.edges.keys())
+  appendIds(nodes, input.session.draft.nodes.keys())
+  appendIds(edges, input.session.draft.edges.keys())
+  appendIds(nodes, input.session.preview.nodes.keys())
+  appendIds(edges, input.session.preview.edges.keys())
 
   if (input.session.edit?.kind === 'node') {
-    scope.nodes = keySet.add(scope.nodes, input.session.edit.nodeId)
+    nodes.add(input.session.edit.nodeId)
   }
   if (input.session.edit?.kind === 'edge-label') {
-    scope.edges = keySet.add(scope.edges, input.session.edit.edgeId)
+    edges.add(input.session.edit.edgeId)
   }
 
   if (input.session.preview.mindmap?.rootMove) {
-    scope.mindmaps = keySet.add(
-      scope.mindmaps,
-      input.session.preview.mindmap.rootMove.mindmapId
-    )
+    mindmaps.add(input.session.preview.mindmap.rootMove.mindmapId)
   }
   if (input.session.preview.mindmap?.subtreeMove) {
-    scope.mindmaps = keySet.add(
-      scope.mindmaps,
-      input.session.preview.mindmap.subtreeMove.mindmapId
-    )
+    mindmaps.add(input.session.preview.mindmap.subtreeMove.mindmapId)
   }
   input.session.preview.mindmap?.enter?.forEach((entry) => {
-    scope.mindmaps = keySet.add(scope.mindmaps, entry.mindmapId)
+    mindmaps.add(entry.mindmapId)
   })
 
-  return scope
+  return {
+    order: delta.document.order,
+    nodes,
+    edges,
+    mindmaps,
+    groups
+  }
 }
 
-export const createGraphPatchScope = (
-  input: Partial<{
-    reset: boolean
-    order: boolean
-    nodes: ScopeKeys<NodeId>
-    edges: ScopeKeys<EdgeId>
-    mindmaps: ScopeKeys<MindmapId>
-    groups: ScopeKeys<GroupId>
-  }> = {}
-): GraphPatchScope => ({
-  reset: input.reset ?? false,
-  order: input.order ?? false,
-  nodes: cloneScopeKeys(input.nodes),
-  edges: cloneScopeKeys(input.edges),
-  mindmaps: cloneScopeKeys(input.mindmaps),
-  groups: cloneScopeKeys(input.groups)
-})
-
-export const normalizeGraphPatchScope = (
-  scope: GraphPatchScope | undefined
-): GraphPatchScope => createGraphPatchScope(scope)
-
-export const mergeGraphPatchScope = (
-  current: GraphPatchScope | undefined,
-  next: GraphPatchScope
-): GraphPatchScope => createGraphPatchScope({
-  reset: (current?.reset ?? false) || next.reset,
-  order: (current?.order ?? false) || next.order,
-  nodes: keySet.union(current?.nodes ?? keySet.none<NodeId>(), next.nodes),
-  edges: keySet.union(current?.edges ?? keySet.none<EdgeId>(), next.edges),
-  mindmaps: keySet.union(current?.mindmaps ?? keySet.none<MindmapId>(), next.mindmaps),
-  groups: keySet.union(current?.groups ?? keySet.none<GroupId>(), next.groups)
-})
-
-export const hasGraphPatchScope = (
-  scope: GraphPatchScope | undefined
+const hasGraphPlanScope = (
+  scope: GraphScopeInput
 ): boolean => Boolean(
-  scope?.reset
-  || scope?.order
-  || (scope && !keySet.isEmpty(scope.nodes))
-  || (scope && !keySet.isEmpty(scope.edges))
-  || (scope && !keySet.isEmpty(scope.mindmaps))
-  || (scope && !keySet.isEmpty(scope.groups))
+  scope.reset
+  || scope.order
+  || (scope.nodes instanceof Set && scope.nodes.size > 0)
+  || (scope.edges instanceof Set && scope.edges.size > 0)
+  || (scope.mindmaps instanceof Set && scope.mindmaps.size > 0)
+  || (scope.groups instanceof Set && scope.groups.size > 0)
 )
 
-export const readGraphPatchScopeKeys = <TId extends string>(
-  keys: KeySet<TId>
-): ReadonlySet<TId> => {
-  if (keys.kind === 'none') {
-    return EMPTY_SCOPE_KEYS as ReadonlySet<TId>
-  }
-  if (keys.kind === 'all') {
-    throw new Error('GraphPatchScope key sets must not be all; use reset instead.')
-  }
-  return keys.keys
-}
-
-export const createSpatialPatchScope = (
-  input: Partial<SpatialPatchScope> = {}
-): SpatialPatchScope => ({
-  reset: input.reset ?? false,
-  graph: input.graph ?? false
-})
-
-export const normalizeSpatialPatchScope = (
-  scope: SpatialPatchScope | undefined
-): SpatialPatchScope => createSpatialPatchScope(scope)
-
-export const mergeSpatialPatchScope = (
-  current: SpatialPatchScope | undefined,
-  next: SpatialPatchScope
-): SpatialPatchScope => createSpatialPatchScope({
-  reset: (current?.reset ?? false) || next.reset,
-  graph: (current?.graph ?? false) || next.graph
-})
-
-export const hasSpatialPatchScope = (
-  scope: SpatialPatchScope | undefined
-): boolean => Boolean(
-  scope?.reset
-  || scope?.graph
-)
-
-export const createUiPatchScope = (input: {
+export const readUiPlanScope = (input: {
   reset?: boolean
   input: Input
   previous: Snapshot
   graphDelta?: GraphDelta
   readMindmapNodeIds: (mindmapId: MindmapId) => readonly NodeId[] | undefined
-}): UiPatchScope => {
+}): UiScopeInput => {
   const nodes = new Set<NodeId>()
   const edges = new Set<EdgeId>()
   let chrome = false
@@ -303,9 +208,11 @@ export const createUiPatchScope = (input: {
     readNodeIds: input.readMindmapNodeIds
   })
 
-  if (input.input.delta.graph.mindmaps.preview.added.size > 0
+  if (
+    input.input.delta.graph.mindmaps.preview.added.size > 0
     || input.input.delta.graph.mindmaps.preview.updated.size > 0
-    || input.input.delta.graph.mindmaps.preview.removed.size > 0) {
+    || input.input.delta.graph.mindmaps.preview.removed.size > 0
+  ) {
     chrome = true
   }
 
@@ -359,61 +266,12 @@ export const createUiPatchScope = (input: {
     chrome = true
   }
 
-  return createUiPatchScopeState({
-    reset: input.reset ?? false,
+  return {
+    reset: input.reset,
     chrome,
     nodes,
     edges
-  })
-}
-
-export const createUiPatchScopeState = (
-  input: Partial<{
-    reset: boolean
-    chrome: boolean
-    nodes: ScopeKeys<NodeId>
-    edges: ScopeKeys<EdgeId>
-  }> = {}
-): UiPatchScope => ({
-  reset: input.reset ?? false,
-  chrome: input.chrome ?? false,
-  nodes: cloneScopeKeys(input.nodes),
-  edges: cloneScopeKeys(input.edges)
-})
-
-export const normalizeUiPatchScope = (
-  scope: UiPatchScope | undefined
-): UiPatchScope => createUiPatchScopeState(scope)
-
-export const mergeUiPatchScope = (
-  current: UiPatchScope | undefined,
-  next: UiPatchScope
-): UiPatchScope => createUiPatchScopeState({
-  reset: (current?.reset ?? false) || next.reset,
-  chrome: (current?.chrome ?? false) || next.chrome,
-  nodes: keySet.union(current?.nodes ?? keySet.none<NodeId>(), next.nodes),
-  edges: keySet.union(current?.edges ?? keySet.none<EdgeId>(), next.edges)
-})
-
-export const hasUiPatchScope = (
-  scope: UiPatchScope | undefined
-): boolean => Boolean(
-  scope?.reset
-  || scope?.chrome
-  || (scope && !keySet.isEmpty(scope.nodes))
-  || (scope && !keySet.isEmpty(scope.edges))
-)
-
-export const readUiPatchScopeKeys = <TId extends string>(
-  keys: KeySet<TId>
-): ReadonlySet<TId> => {
-  if (keys.kind === 'none') {
-    return EMPTY_SCOPE_KEYS as ReadonlySet<TId>
   }
-  if (keys.kind === 'all') {
-    throw new Error('UiPatchScope key sets must not be all; use reset instead.')
-  }
-  return keys.keys
 }
 
 export const planEditorGraphPhases = (input: {
@@ -422,13 +280,13 @@ export const planEditorGraphPhases = (input: {
 }) => {
   const bootstrap = input.previous.revision === 0
   const graphScope = bootstrap
-    ? createGraphPatchScope({
+    ? {
         reset: true,
         order: true
-      })
-    : createGraphPlannerScope(input.input)
+      }
+    : readGraphPlanScope(input.input)
 
-  if (hasGraphPatchScope(graphScope)) {
+  if (bootstrap || hasGraphPlanScope(graphScope)) {
     return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
       phases: ['graph'],
       scope: {
@@ -437,17 +295,15 @@ export const planEditorGraphPhases = (input: {
     })
   }
 
-  const uiScope = createUiPatchScope({
-    input: input.input,
-    previous: input.previous,
-    readMindmapNodeIds: (mindmapId) => readSnapshotMindmapNodeIds(input.previous, mindmapId)
-  })
-
-  return hasUiPatchScope(uiScope)
-    ? createPlan<EditorPhaseName, EditorPhaseScopeMap>({
-        scope: {
-          ui: uiScope
-        }
+  return createPlan<EditorPhaseName, EditorPhaseScopeMap>({
+    scope: {
+      ui: readUiPlanScope({
+        input: input.input,
+        previous: input.previous,
+        readMindmapNodeIds: (mindmapId) => (
+          readSnapshotMindmapNodeIds(input.previous, mindmapId)
+        )
       })
-    : createPlan<EditorPhaseName, EditorPhaseScopeMap>()
+    }
+  })
 }

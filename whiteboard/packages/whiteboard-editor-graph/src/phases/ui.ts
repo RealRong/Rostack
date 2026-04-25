@@ -1,13 +1,15 @@
 import { idDelta } from '@shared/projector/delta'
 import type {
   ProjectorContext,
-  ProjectorPhase
+  ProjectorPhase,
+  ProjectorScopeValue
 } from '@shared/projector'
 import type {
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
 import type { EditorPhaseScopeMap } from '../contracts/delta'
+import { uiPhaseScope } from '../contracts/delta'
 import type {
   EdgeUiView,
   Input,
@@ -27,11 +29,6 @@ import {
   hasUiPublishDelta,
   resetUiPublishDelta
 } from '../projector/publish'
-import {
-  mergeUiPatchScope,
-  normalizeUiPatchScope,
-  readUiPatchScopeKeys
-} from '../projector/impact'
 
 type EditorPhaseName = keyof EditorPhaseScopeMap & string
 
@@ -39,7 +36,7 @@ type UiPhaseContext = ProjectorContext<
   Input,
   WorkingState,
   Snapshot,
-  EditorPhaseScopeMap['ui']
+  ProjectorScopeValue<EditorPhaseScopeMap['ui']>
 >
 
 const writeUiChange = <TId extends string, TValue>(input: {
@@ -307,17 +304,16 @@ export const uiPhase: ProjectorPhase<
 > = {
   name: 'ui',
   deps: [],
-  mergeScope: mergeUiPatchScope,
+  scope: uiPhaseScope,
   run: (context) => {
-    const scope = normalizeUiPatchScope(context.scope)
     const revision = context.previous.revision + 1
     const publish = context.working.publish.ui
-    const touchedNodeIds = readUiPatchScopeKeys(scope.nodes)
-    const touchedEdgeIds = readUiPatchScopeKeys(scope.edges)
+    const touchedNodeIds = context.scope.nodes
+    const touchedEdgeIds = context.scope.edges
 
     resetUiPublishDelta(publish.delta)
 
-    if (scope.reset) {
+    if (context.scope.reset) {
       rebuildNodeUi(context, publish.delta.nodes)
       rebuildEdgeUi(context, publish.delta.edges)
     } else {
@@ -325,7 +321,7 @@ export const uiPhase: ProjectorPhase<
       patchTouchedEdgeUi(context, touchedEdgeIds, publish.delta.edges)
     }
 
-    patchChrome(context, scope.reset || scope.chrome)
+    patchChrome(context, context.scope.reset || context.scope.chrome)
 
     publish.revision = hasUiPublishDelta(publish.delta)
       ? revision
@@ -337,7 +333,7 @@ export const uiPhase: ProjectorPhase<
         : 'reuse',
       metrics: {
         count: (
-          (scope.reset
+          (context.scope.reset
             ? context.working.ui.nodes.size + context.working.ui.edges.size
             : touchedNodeIds.size + touchedEdgeIds.size)
           + context.working.ui.chrome.overlays.length

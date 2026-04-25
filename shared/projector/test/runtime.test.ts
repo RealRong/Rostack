@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { createPlan, createProjector } from '../src'
+import {
+  createPlan,
+  createProjector,
+  defineScope,
+  set
+} from '../src'
 import {
   idDelta,
   type IdDelta
@@ -58,16 +63,22 @@ type Change = {
 
 type ScopedPhaseName = 'left' | 'right' | 'sink'
 
+const leftScope = defineScope({
+  values: set<number>()
+})
+
+const rightScope = defineScope({
+  values: set<number>()
+})
+
+const sinkScope = defineScope({
+  values: set<number>()
+})
+
 type ScopedScopeMap = {
-  left: {
-    values: readonly number[]
-  }
-  right: {
-    values: readonly number[]
-  }
-  sink: {
-    values: readonly number[]
-  }
+  left: typeof leftScope
+  right: typeof rightScope
+  sink: typeof sinkScope
 }
 
 const EMPTY_ITEMS: Family<string, ItemView> = {
@@ -297,8 +308,11 @@ const createScopedSpec = () => ({
   phases: [{
     name: 'left' as const,
     deps: [] as const,
+    scope: leftScope,
     run: (context: {
-      scope: ScopedScopeMap['left']
+      scope: {
+        values: ReadonlySet<number>
+      }
     }) => ({
       action: 'sync' as const,
       emit: {
@@ -310,8 +324,11 @@ const createScopedSpec = () => ({
   }, {
     name: 'right' as const,
     deps: [] as const,
+    scope: rightScope,
     run: (context: {
-      scope: ScopedScopeMap['right']
+      scope: {
+        values: ReadonlySet<number>
+      }
     }) => ({
       action: 'sync' as const,
       emit: {
@@ -323,22 +340,16 @@ const createScopedSpec = () => ({
   }, {
     name: 'sink' as const,
     deps: ['left', 'right'] as const,
-    mergeScope: (
-      current: ScopedScopeMap['sink'] | undefined,
-      next: ScopedScopeMap['sink']
-    ) => ({
-      values: [
-        ...(current?.values ?? []),
-        ...next.values
-      ]
-    }),
+    scope: sinkScope,
     run: (context: {
       working: {
         seen: readonly number[]
       }
-      scope: ScopedScopeMap['sink']
+      scope: {
+        values: ReadonlySet<number>
+      }
     }) => {
-      context.working.seen = context.scope.values
+      context.working.seen = [...context.scope.values]
       return {
         action: 'sync' as const
       }

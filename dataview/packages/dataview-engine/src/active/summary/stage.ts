@@ -36,7 +36,7 @@ import {
   createActiveStageMetrics,
   toActivePhaseMetrics
 } from '../projector/metrics'
-import { createPublishPhaseScope } from '../projector/scope'
+import { summaryPhaseScope } from '../contracts/projector'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,
@@ -207,6 +207,7 @@ export const runSummaryStage = (input: {
 export const activeSummaryPhase = defineActiveProjectorPhase({
   name: 'summary',
   deps: ['membership'],
+  scope: summaryPhaseScope,
   run: (context) => {
     const { activeViewId, view } = readActiveView(context.input)
     const plan = context.input.view.plan
@@ -246,12 +247,12 @@ export const activeSummaryPhase = defineActiveProjectorPhase({
       ...(result.action !== 'reuse'
         ? {
             emit: {
-              publish: createPublishPhaseScope({
+              publish: {
                 summary: {
                   previous: previousState,
                   delta: result.delta
                 }
-              })
+              }
             }
           }
         : {})

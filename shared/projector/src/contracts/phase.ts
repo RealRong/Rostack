@@ -24,9 +24,6 @@ export interface Spec<
 > {
   name: TName
   deps: readonly TPhaseName[]
-  mergeScope?: (
-      current: TScopeMap[TName & TPhaseName] | undefined,
-      next: TScopeMap[TName & TPhaseName]
-    ) => TScopeMap[TName & TPhaseName]
+  scope?: TScopeMap[TName & TPhaseName]
   run(context: TContext): Result<TMetrics, TPhaseName, TScopeMap>
 }

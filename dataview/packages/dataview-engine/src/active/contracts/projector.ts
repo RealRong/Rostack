@@ -1,3 +1,8 @@
+import {
+  defineScope,
+  flag,
+  slot
+} from '@shared/projector'
 import type {
   IndexDelta,
   IndexState
@@ -75,11 +80,25 @@ export interface PublishPhaseScope {
   }
 }
 
+export const membershipPhaseScope = defineScope({
+  query: slot<MembershipPhaseScope['query']>()
+})
+
+export const summaryPhaseScope = defineScope({
+  membership: slot<SummaryPhaseScope['membership']>()
+})
+
+export const publishPhaseScope = defineScope({
+  reset: flag(),
+  membership: slot<PublishPhaseScope['membership']>(),
+  summary: slot<PublishPhaseScope['summary']>()
+})
+
 export interface ActivePhaseScopeMap {
   query: undefined
-  membership: MembershipPhaseScope
-  summary: SummaryPhaseScope
-  publish: PublishPhaseScope
+  membership: typeof membershipPhaseScope
+  summary: typeof summaryPhaseScope
+  publish: typeof publishPhaseScope
 }
 
 export interface ActiveProjectorWorking {

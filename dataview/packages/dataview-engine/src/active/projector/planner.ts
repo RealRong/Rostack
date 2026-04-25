@@ -12,7 +12,6 @@ import {
   readActiveProjectorResetContext,
   shouldResetActiveProjector
 } from './reset'
-import { createPublishPhaseScope } from './scope'
 
 const createEmptyPlan = () => createPlan<ActivePhaseName, ActivePhaseScopeMap>()
 
@@ -28,18 +27,20 @@ const createRunAllPlan = () => createPlan<ActivePhaseName, ActivePhaseScopeMap>(
 const createResetPlan = (
   input: ActiveProjectorInput,
   previous: ViewState | undefined
-) => {
+):
+  | ReturnType<typeof createEmptyPlan>
+  | undefined => {
   const context = readActiveProjectorResetContext(input, previous)
   if (!shouldResetActiveProjector(context)) {
-    return createEmptyPlan()
+    return undefined
   }
 
   return previous
     ? createPlan<ActivePhaseName, ActivePhaseScopeMap>({
         scope: {
-          publish: createPublishPhaseScope({
+          publish: {
             reset: true
-          })
+          }
         }
       })
     : createEmptyPlan()
@@ -53,7 +54,7 @@ export const activeProjectorPlanner: ProjectorPlanner<
 > = {
   plan: ({ input, previous }) => {
     const resetPlan = createResetPlan(input, previous)
-    return resetPlan.phases.size > 0
+    return resetPlan
       ? resetPlan
       : createRunAllPlan()
   }

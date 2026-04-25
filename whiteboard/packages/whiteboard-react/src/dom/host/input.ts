@@ -122,9 +122,7 @@ export const resolvePoint = ({
   container: Element
   event: TargetEvent
 }): ResolvedPoint => {
-  const elements = resolveElementsAtPoint(container, event)
-  const element = elements[0]
-    ?? resolveElementAtPoint(container, event)
+  const element = resolveElementAtPoint(container, event)
     ?? resolveElement(event.target, container)
   const point = readPointerSnapshot(editor, event)
   const primaryPick = pick.element(element, container) ?? BackgroundPick
@@ -135,7 +133,7 @@ export const resolvePoint = ({
           editor,
           pick,
           container,
-          elements.slice(1)
+          resolveElementsAtPoint(container, event).slice(1)
         ) ?? primaryPick
       : primaryPick
 

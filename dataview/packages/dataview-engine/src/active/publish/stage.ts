@@ -49,7 +49,7 @@ import {
   createActiveStageMetrics,
   toActivePhaseMetrics
 } from '../projector/metrics'
-import { mergePublishPhaseScope } from '../projector/scope'
+import { publishPhaseScope } from '../contracts/projector'
 
 const SNAPSHOT_KEYS = [
   'view',
@@ -250,7 +250,7 @@ const runPublishStage = (input: {
 export const activePublishPhase = defineActiveProjectorPhase({
   name: 'publish',
   deps: ['query', 'membership', 'summary'],
-  mergeScope: mergePublishPhaseScope,
+  scope: publishPhaseScope,
   run: (context) => {
     const scope = context.scope
     const { activeViewId, view } = readActiveView(context.input)

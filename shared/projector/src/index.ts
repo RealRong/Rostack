@@ -2,6 +2,7 @@ export { createPlan, mergePlans } from './dirty/plan'
 export { createStageMetrics } from './metrics'
 export { createProjector } from './projector/createProjector'
 export { projectListChange, publishStruct } from './publish'
+export { defineScope, flag, set, slot } from './scope'
 
 export type { Revision } from './contracts/core'
 export type {
@@ -9,7 +10,11 @@ export type {
 } from './contracts/phase'
 export type {
   DefaultPhaseScopeMap as DefaultProjectorScopeMap,
-  PhaseScopeMap as ProjectorScopeMap
+  PhaseScopeInput as ProjectorPhaseScopeInput,
+  PhaseScopeMap as ProjectorScopeMap,
+  ScopeInputValue as ProjectorScopeInputValue,
+  ScopeSchema as ProjectorScopeSchema,
+  ScopeValue as ProjectorScopeValue
 } from './contracts/scope'
 export type {
   Context as ProjectorContext,

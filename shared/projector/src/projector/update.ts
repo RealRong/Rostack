@@ -3,10 +3,18 @@ import type * as projector from '../contracts/projector'
 import type {
   DefaultPhaseScopeMap,
   PhaseScopeInput,
-  PhaseScopeMap
+  PhaseScopeMap,
+  ScopeInputValue,
+  ScopeSchema,
+  ScopeValue
 } from '../contracts/scope'
 import type * as trace from '../contracts/trace'
 import { fanoutDependents, type PhaseGraph } from '../dirty/fanout'
+import {
+  isScopeValueEmpty,
+  mergeScopeValue,
+  normalizeScopeValue
+} from './scope'
 import type { ProjectorState } from './state'
 
 const didPhaseChange = (
@@ -25,10 +33,7 @@ const applyScopeInput = <
   phases: ReadonlyMap<
     TPhaseName,
     {
-      mergeScope?: (
-        current: TScopeMap[TPhaseName] | undefined,
-        next: TScopeMap[TPhaseName]
-      ) => TScopeMap[TPhaseName]
+      scope?: TScopeMap[TPhaseName]
     }
   >
   pending: Set<TPhaseName>
@@ -59,15 +64,26 @@ const applyScopeInput = <
       throw new Error(`Unknown scoped phase ${phaseName}.`)
     }
 
+    if (!spec.scope) {
+      throw new Error(`Cannot apply scope to unscoped phase ${phaseName}.`)
+    }
+
     const currentScope = input.pendingScope[phaseName] as
-      | TScopeMap[typeof phaseName]
+      | ScopeValue<TScopeMap[typeof phaseName]>
       | undefined
-    const mergedScope = spec.mergeScope
-      ? spec.mergeScope(
-          currentScope as TScopeMap[TPhaseName] | undefined,
-          nextScope as TScopeMap[TPhaseName]
-        )
-      : nextScope
+    const mergedScope = mergeScopeValue(
+      spec.scope as ScopeSchema,
+      currentScope as ScopeValue<TScopeMap[TPhaseName]> | undefined,
+      nextScope as NonNullable<ScopeInputValue<TScopeMap[TPhaseName]>>
+    )
+
+    if (isScopeValueEmpty(
+      spec.scope as ScopeSchema,
+      mergedScope as ScopeValue<ScopeSchema>
+    )) {
+      delete input.pendingScope[phaseName]
+      continue
+    }
 
     input.pending.add(phaseName)
     input.pendingScope[phaseName] = mergedScope
@@ -150,15 +166,18 @@ export const runProjectorUpdate = <
 
     const spec = input.graph.specs.get(phaseName)!
     const phaseStartAt = scheduler.readMonotonicNow()
-    const phaseScope = pendingScope[phaseName] as
-      | TScopeMap[typeof phaseName]
-      | undefined
+    const phaseScope = spec.scope
+      ? normalizeScopeValue(
+          spec.scope as ScopeSchema,
+          pendingScope[phaseName] as ScopeInputValue<TScopeMap[typeof phaseName]> | undefined
+        )
+      : undefined
     delete pendingScope[phaseName]
     const result = spec.run({
       input: input.nextInput,
       previous,
       working: input.state.working,
-      scope: phaseScope as TScopeMap[TPhaseName]
+      scope: phaseScope as ScopeValue<TScopeMap[TPhaseName]>
     })
     const changed = didPhaseChange(result.action)
 

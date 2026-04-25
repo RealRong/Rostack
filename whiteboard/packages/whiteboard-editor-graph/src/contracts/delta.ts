@@ -1,6 +1,10 @@
+import {
+  defineScope,
+  flag,
+  set
+} from '@shared/projector'
 import type {
-  IdDelta as SharedIdDelta,
-  KeySet
+  IdDelta as SharedIdDelta
 } from '@shared/projector/delta'
 import { idDelta } from '@shared/projector/delta'
 import type { Revision } from '@shared/projector'
@@ -62,23 +66,44 @@ export interface SpatialPatchScope {
 export interface GraphPatchScope {
   reset: boolean
   order: boolean
-  nodes: KeySet<NodeId>
-  edges: KeySet<EdgeId>
-  mindmaps: KeySet<MindmapId>
-  groups: KeySet<GroupId>
+  nodes: ReadonlySet<NodeId>
+  edges: ReadonlySet<EdgeId>
+  mindmaps: ReadonlySet<MindmapId>
+  groups: ReadonlySet<GroupId>
 }
 
 export interface UiPatchScope {
   reset: boolean
   chrome: boolean
-  nodes: KeySet<NodeId>
-  edges: KeySet<EdgeId>
+  nodes: ReadonlySet<NodeId>
+  edges: ReadonlySet<EdgeId>
 }
 
+export const graphPhaseScope = defineScope({
+  reset: flag(),
+  order: flag(),
+  nodes: set<NodeId>(),
+  edges: set<EdgeId>(),
+  mindmaps: set<MindmapId>(),
+  groups: set<GroupId>()
+})
+
+export const spatialPhaseScope = defineScope({
+  reset: flag(),
+  graph: flag()
+})
+
+export const uiPhaseScope = defineScope({
+  reset: flag(),
+  chrome: flag(),
+  nodes: set<NodeId>(),
+  edges: set<EdgeId>()
+})
+
 export interface EditorPhaseScopeMap {
-  graph: GraphPatchScope
-  spatial: SpatialPatchScope
-  ui: UiPatchScope
+  graph: typeof graphPhaseScope
+  spatial: typeof spatialPhaseScope
+  ui: typeof uiPhaseScope
 }
 
 export const createGraphDelta = (): GraphDelta => ({

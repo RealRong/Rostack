@@ -4,7 +4,8 @@ import type { Revision } from './core'
 import type {
   DefaultPhaseScopeMap,
   PhaseScopeInput,
-  PhaseScopeMap
+  PhaseScopeMap,
+  ScopeValue
 } from './scope'
 
 export interface Context<
@@ -29,7 +30,7 @@ export type PhaseEntry<
 > = {
   [K in TPhaseName]: phase.Spec<
     K,
-    Context<TInput, TWorking, TSnapshot, TScopeMap[K]>,
+    Context<TInput, TWorking, TSnapshot, ScopeValue<TScopeMap[K]>>,
     TPhaseMetrics,
     TPhaseName,
     TScopeMap

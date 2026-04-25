@@ -45,7 +45,6 @@ import {
   createActiveStageMetrics,
   toActivePhaseMetrics
 } from '../projector/metrics'
-import { createMembershipPhaseScope } from '../projector/scope'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_METRICS = toActivePhaseMetrics({
@@ -296,10 +295,12 @@ export const activeQueryPhase = defineActiveProjectorPhase({
       ...(result.action !== 'reuse'
         ? {
             emit: {
-              membership: createMembershipPhaseScope({
-                action: result.action,
-                delta: result.delta
-              })
+              membership: {
+                query: {
+                  action: result.action,
+                  delta: result.delta
+                }
+              }
             }
           }
         : {})

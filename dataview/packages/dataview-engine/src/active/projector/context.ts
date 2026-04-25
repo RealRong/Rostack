@@ -7,7 +7,8 @@ import type {
 } from '@dataview/engine/contracts/view'
 import {
   type ProjectorContext,
-  type ProjectorPhase
+  type ProjectorPhase,
+  type ProjectorScopeValue
 } from '@shared/projector'
 import type {
   ActivePhaseMetrics,
@@ -28,7 +29,7 @@ export type ActiveProjectorPhase<
   TName extends ActivePhaseName
 > = ProjectorPhase<
   TName,
-  ActiveProjectorContext<ActivePhaseScopeMap[TName]>,
+  ActiveProjectorContext<ProjectorScopeValue<ActivePhaseScopeMap[TName]>>,
   ActivePhaseMetrics,
   ActivePhaseName,
   ActivePhaseScopeMap

@@ -33,7 +33,6 @@ export const createPlan = <
         continue
       }
 
-      phases.add(phaseName)
       scope[phaseName] = nextScope
     }
   }
@@ -73,7 +72,6 @@ export const mergePlans = <
           continue
         }
 
-        phases.add(phaseName)
         scope[phaseName] = nextScope
       }
     }

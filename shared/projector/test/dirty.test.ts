@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
   createPlan,
-  mergePlans
+  defineScope,
+  mergePlans,
+  set
 } from '../src'
 
 describe('scope plans', () => {
   it('merges phases and scoped payloads deterministically', () => {
     type PhaseName = 'graph' | 'scene'
+    const sceneScope = defineScope({
+      ids: set<string>()
+    })
     type ScopeMap = {
-      graph: {
-        ids: readonly string[]
-      }
-      scene: {
-        ids: readonly string[]
-      }
+      graph: undefined
+      scene: typeof sceneScope
     }
 
     const left = createPlan<PhaseName, ScopeMap>({
@@ -35,7 +36,7 @@ describe('scope plans', () => {
     const merged = mergePlans(left, right)
 
     expect(merged.phases.has('graph')).toBe(true)
-    expect(merged.phases.has('scene')).toBe(true)
+    expect(merged.phases.has('scene')).toBe(false)
     expect(merged.scope?.scene).toEqual({
       ids: ['node:2']
     })

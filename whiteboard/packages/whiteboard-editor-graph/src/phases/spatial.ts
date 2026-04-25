@@ -1,18 +1,16 @@
 import type {
   ProjectorContext,
-  ProjectorPhase
+  ProjectorPhase,
+  ProjectorScopeValue
 } from '@shared/projector'
 import type { EditorPhaseScopeMap } from '../contracts/delta'
+import { spatialPhaseScope } from '../contracts/delta'
 import type {
   Input,
   Snapshot
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import { patchSpatial } from '../domain/spatial/update'
-import {
-  mergeSpatialPatchScope,
-  normalizeSpatialPatchScope
-} from '../projector/impact'
 
 type EditorPhaseName = keyof EditorPhaseScopeMap & string
 
@@ -20,7 +18,7 @@ type SpatialPhaseContext = ProjectorContext<
   Input,
   WorkingState,
   Snapshot,
-  EditorPhaseScopeMap['spatial']
+  ProjectorScopeValue<EditorPhaseScopeMap['spatial']>
 >
 
 export const spatialPhase: ProjectorPhase<
@@ -32,16 +30,15 @@ export const spatialPhase: ProjectorPhase<
 > = {
   name: 'spatial',
   deps: [],
-  mergeScope: mergeSpatialPatchScope,
+  scope: spatialPhaseScope,
   run: (context) => {
-    const scope = normalizeSpatialPatchScope(context.scope)
     const result = patchSpatial({
       revision: context.previous.revision + 1,
       graph: context.working.graph,
       snapshot: context.input.document.snapshot,
       graphDelta: context.working.delta.graph,
       state: context.working.spatial,
-      scope,
+      scope: context.scope,
       delta: context.working.delta.spatial
     })
 

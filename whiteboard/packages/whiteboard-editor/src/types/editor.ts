@@ -36,7 +36,10 @@ import type {
   GraphNodeGeometry,
   NodeCapability
 } from '@whiteboard/editor/scene/node'
-import type { SelectedEdgeChrome } from '@whiteboard/editor/session/edge'
+import type {
+  SelectedEdgeChrome,
+  SelectedEdgeRoutePoint
+} from '@whiteboard/editor/session/edge'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { SessionRead, ToolRead } from '@whiteboard/editor/session/read'
 import type {
@@ -232,6 +235,157 @@ export type SceneScope = {
   bounds: (target: SelectionTarget) => Rect | undefined
 }
 
+export type EdgeRenderStyle = {
+  color?: Edge['style'] extends infer TStyle
+    ? TStyle extends {
+        color?: infer TValue
+      }
+      ? TValue
+      : never
+    : never
+  width: number
+  opacity: number
+  dash?: Edge['style'] extends infer TStyle
+    ? TStyle extends {
+        dash?: infer TValue
+      }
+      ? TValue
+      : never
+    : never
+  start?: Edge['style'] extends infer TStyle
+    ? TStyle extends {
+        start?: infer TValue
+      }
+      ? TValue
+      : never
+    : never
+  end?: Edge['style'] extends infer TStyle
+    ? TStyle extends {
+        end?: infer TValue
+      }
+      ? TValue
+      : never
+    : never
+}
+
+export type EdgeRenderBucketId = string
+
+export type EdgeStaticPath = {
+  id: EdgeId
+  svgPath: string
+}
+
+export type EdgeStaticBucket = {
+  id: EdgeRenderBucketId
+  style: EdgeRenderStyle
+  paths: readonly EdgeStaticPath[]
+}
+
+export type EdgeStaticRenderModel = {
+  buckets: readonly EdgeStaticBucket[]
+}
+
+export type EdgeActiveRenderItem = {
+  id: EdgeId
+  svgPath: string
+  box?: {
+    x: number
+    y: number
+    width: number
+    height: number
+    pad: number
+  }
+  style: EdgeRenderStyle
+  state: {
+    hovered: boolean
+    focused: boolean
+    selected: boolean
+    editing: boolean
+  }
+}
+
+export type EdgeActiveRenderModel = {
+  edges: readonly EdgeActiveRenderItem[]
+}
+
+export type EdgeLabelRenderItem = {
+  edgeId: EdgeId
+  labelId: string
+  point: Point
+  angle: number
+  text: string
+  displayText: string
+  editing: boolean
+  selected: boolean
+  style: NonNullable<Edge['labels']>[number]['style']
+  maskRect: {
+    x: number
+    y: number
+    width: number
+    height: number
+    radius: number
+    angle: number
+    center: Point
+  }
+  caret?: EditSession extends infer TEdit
+    ? TEdit extends {
+        kind: 'edge-label'
+        caret?: infer TCaret
+      }
+      ? TCaret
+      : never
+    : never
+}
+
+export type EdgeLabelRenderModel = {
+  labels: readonly EdgeLabelRenderItem[]
+}
+
+export type EdgeOverlayPreviewPath = {
+  svgPath: string
+  style?: Edge['style']
+}
+
+export type EdgeOverlayEndpointHandle = {
+  edgeId: EdgeId
+  end: 'source' | 'target'
+  point: Point
+}
+
+export type EdgeOverlayRenderModel = {
+  previewPath?: EdgeOverlayPreviewPath
+  snapPoint?: Point
+  endpointHandles: readonly EdgeOverlayEndpointHandle[]
+  routePoints: readonly SelectedEdgeRoutePoint[]
+}
+
+export type EdgeRenderRuntime = {
+  static: store.ReadStore<EdgeStaticRenderModel>
+  active: store.ReadStore<EdgeActiveRenderModel>
+  labels: store.ReadStore<EdgeLabelRenderModel>
+  overlay: store.ReadStore<EdgeOverlayRenderModel>
+}
+
+export type EdgeInteractionState = {
+  hovered?: EdgeId
+  focused?: EdgeId
+  selected: readonly EdgeId[]
+  editing?: EdgeId
+}
+
+export type EdgeInteractionRead = {
+  get: () => EdgeInteractionState
+  subscribe: (listener: () => void) => store.Unsubscribe
+}
+
+export type EdgeHitQuery = {
+  pick: (input: {
+    point: Point
+    threshold?: number
+    excludeIds?: readonly EdgeId[]
+  }) => EdgeId | undefined
+}
+
 export type EditorDocumentSource = {
   get: () => Document
   background: store.ReadStore<Document['background'] | undefined>
@@ -248,6 +402,11 @@ export type EditorSceneSource = {
   revision: () => number
   items: store.ReadStore<readonly SceneItem[]>
   query: EditorSceneQuery
+  edge: {
+    render: EdgeRenderRuntime
+    hit: EdgeHitQuery
+    interaction: EdgeInteractionRead
+  }
   pick: {
     rect: (point: Point, radius?: number) => Rect
     candidates: (input: {

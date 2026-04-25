@@ -5,7 +5,7 @@ import {
   createValueSync
 } from '@shared/projector/sync'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
-import type { Edge, EdgeId, GroupId, MindmapId, Node, NodeId, Rect } from '@whiteboard/core/types'
+import type { Edge, EdgeId, GroupId, MindmapId, Node, NodeId, Point, Rect } from '@whiteboard/core/types'
 import type {
   Change,
   ChromeView,
@@ -21,7 +21,13 @@ import type {
   Snapshot
 } from '@whiteboard/editor-scene'
 import type { EditorSceneController } from '@whiteboard/editor/projection/controller'
+import type { HoverStore } from '@whiteboard/editor/input/hover/store'
+import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
+import {
+  createEdgeRenderRuntime
+} from '@whiteboard/editor/scene/edgeRender'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { EditorSessionState } from '@whiteboard/editor/types/editor'
 import {
   createGraphEdgeRead,
   type GraphEdgeRead
@@ -140,6 +146,15 @@ export type EditorSceneRuntime = {
     related: GraphEdgeRead['related']
     idsInRect: GraphEdgeRead['idsInRect']
     connectCandidates: GraphEdgeRead['connectCandidates']
+    render: ReturnType<typeof createEdgeRenderRuntime>['render']
+    hit: {
+      pick: (input: {
+        point: Point
+        threshold?: number
+        excludeIds?: readonly EdgeId[]
+      }) => EdgeId | undefined
+    }
+    interaction: ReturnType<typeof createEdgeRenderRuntime>['interaction']
   }
   nodes: {
     get: GraphNodeRead['get']
@@ -353,13 +368,17 @@ const collectPresentValues = <TId extends string, TValue>(
 
 export const createSceneSource = ({
   controller,
-  selection,
+  state,
+  hover,
+  edgeGuide,
   nodeType,
   visibleRect,
   readZoom
 }: {
   controller: Pick<EditorSceneController, 'query' | 'current' | 'subscribe'>
-  selection: store.ReadStore<SelectionTarget>
+  state: EditorSessionState
+  hover: Pick<HoverStore, 'get' | 'subscribe'>
+  edgeGuide: store.ReadStore<EdgeGuide>
   nodeType: NodeTypeSupport
   visibleRect: () => Rect
   readZoom: () => number
@@ -393,7 +412,7 @@ export const createSceneSource = ({
     geometry: geometry.edge
   })
   const selectionSource = createGraphSelectionRead({
-    source: selection,
+    source: state.selection,
     node,
     edge
   })
@@ -439,6 +458,41 @@ export const createSceneSource = ({
     },
     mindmap: sources.mindmap
   })
+  const edgeRender = createEdgeRenderRuntime({
+    edge: {
+      ids: edge.ids,
+      view: edge.view,
+      detail: edge.detail,
+      model: edge.model,
+      capability: edge.capability
+    },
+    selection: state.selection,
+    edit: state.edit,
+    tool: state.tool,
+    interaction: state.interaction,
+    hover,
+    edgeGuide
+  })
+  const edgeHit: EditorSceneRuntime['edge']['hit'] = {
+    pick: ({
+      point,
+      threshold,
+      excludeIds
+    }) => {
+      const result = pick.resolve({
+        point,
+        radius: threshold ?? (8 / Math.max(readZoom(), 0.0001)),
+        kinds: ['edge']
+      })
+      if (result.target?.kind !== 'edge') {
+        return undefined
+      }
+      if (excludeIds?.includes(result.target.id)) {
+        return undefined
+      }
+      return result.target.id
+    }
+  }
   const scope = createSceneScope({
     spatialRect: spatial.rect,
     relatedEdges: query.relatedEdges,
@@ -486,7 +540,10 @@ export const createSceneSource = ({
       bounds: edge.bounds,
       related: edge.related,
       idsInRect: edge.idsInRect,
-      connectCandidates: edge.connectCandidates
+      connectCandidates: edge.connectCandidates,
+      render: edgeRender.render,
+      hit: edgeHit,
+      interaction: edgeRender.interaction
     },
     nodes: {
       get: node.get,

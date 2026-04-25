@@ -5,11 +5,6 @@ export type {
   ToolPaletteView
 } from '@whiteboard/react/types/toolbox'
 export type {
-  EdgeView,
-  SelectedEdgeChrome,
-  SelectedEdgeRoutePoint
-} from '@whiteboard/react/types/edge'
-export type {
   ContextMenuPlacement,
   ToolbarPlacement
 } from '@whiteboard/react/types/selection'

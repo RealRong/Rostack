@@ -31,8 +31,8 @@ type EdgeRenderRuntime = {
 
 约束：
 
-- `static` 只承载普通 edge 主路径
-- `active` 只承载少量活跃 edge
+- `static` 承载全量 edge 基础 path
+- `active` 只承载少量 edge 的额外强调视觉
 - `labels` 只承载 label DOM
 - `overlay` 只承载 route / endpoint / reconnect 等强交互元素
 - React 主渲染禁止再按 `edgeId -> EdgeItem` 映射整棵子树
@@ -110,9 +110,9 @@ type EdgeActiveRenderModel = {
 
 约束：
 
-- `active` 层只允许渲染极少数 edge
-- accent / outline / editing emphasis 只允许出现在这一层
-- 如果 edge 不在活跃集合里，不能落到这一层
+- `active` 层只允许渲染极少数 edge 的强调视觉
+- `active` 不承载 edge base path 的存在性
+- accent / outline / selected halo / editing emphasis 只允许出现在这一层
 
 ---
 
@@ -139,8 +139,9 @@ type EdgeLabelRenderModel = {
 约束：
 
 - label 与 path 分层
-- 默认 label 不使用 mask
-- 只有活跃 edge 才允许附加 cutout / mask 效果
+- 所有 labeled edge 都允许附加 cutout / mask 效果
+- mask / cutout 必须由 scene 级 render model 统一产出
+- 禁止回到 per-edge local `defs > mask` 实现
 
 ---
 
@@ -327,15 +328,17 @@ type EdgeSceneLayer = {
 
 目标：
 
-- 把少量交互 edge 从静态层剥离出来
+- 为少量交互 edge 建立独立强调层与 overlay 层
 
 修改清单：
 
 1. 在 `whiteboard-editor` 构建 `EdgeActiveRenderModel`
 2. 在 `whiteboard-editor` 构建 `EdgeOverlayRenderModel`
-3. 只把 `hovered / focused / selected / editing / reconnecting / routing` edge 放入 active / overlay
-4. React 新增 `EdgeActiveLayer`
-5. React 新增 `EdgeOverlayLayer`
+3. `static` 继续输出全量 edge base path
+4. 只把 `hovered / focused / selected / editing` edge 的强调视觉放入 `active`
+5. 只把 `reconnecting / routing / endpoint handle / route handle` 放入 `overlay`
+6. React 新增 `EdgeActiveLayer`
+7. React 新增 `EdgeOverlayLayer`
 
 修改文件：
 
@@ -346,7 +349,8 @@ type EdgeSceneLayer = {
 
 完成标准：
 
-- accent / selected / editing 视觉不再由静态层承担
+- `static` 持续渲染全量 edge base path
+- accent / selected / editing 强调视觉不再由静态层承担
 - endpoint / route handle / reconnect handle 不再混在普通 edge 渲染里
 
 ---
@@ -441,13 +445,13 @@ type EdgeSceneLayer = {
 
 目标：
 
-- mask 只保留给极少数 active edge
+- mask 只和 labeled edge 数量相关，不再和全部 edge 数量相关
 
 修改清单：
 
 1. 从静态层删除默认 `defs > mask`
-2. 从普通 label 渲染路径删除默认 cutout / mask
-3. 仅在 active / editing edge 上按需生成 mask
+2. 把 labeled edge 的 cutout / mask 统一收敛到 scene-level render model
+3. 所有 labeled edge 如需遮线，都通过统一 mask / cutout 产出
 4. 清理旧样式和旧 marker / mask 绑定逻辑
 
 修改文件：
@@ -459,8 +463,9 @@ type EdgeSceneLayer = {
 
 完成标准：
 
-- 普通 edge 默认不生成 mask
-- mask 数量与 active edge 数量同阶
+- 无 label edge 默认不生成 mask
+- mask 数量与 labeled edge 数量同阶
+- 不存在 per-edge local `defs > mask` 生成路径
 
 ---
 
@@ -498,11 +503,13 @@ type EdgeSceneLayer = {
 全部阶段完成后，必须满足：
 
 1. `CanvasScene` 的 edge 主渲染入口是 `EdgeSceneLayer`
-2. 普通 edge 由共享 `EdgeStaticLayer` 渲染
-3. 活跃 edge 只在 `EdgeActiveLayer` / `EdgeOverlayLayer` 中出现
+2. 全量 edge 基础 path 由共享 `EdgeStaticLayer` 渲染
+3. 活跃 edge 的强调视觉只在 `EdgeActiveLayer` / `EdgeOverlayLayer` 中出现
 4. label 只在 `EdgeLabelLayer` 中渲染
 5. 普通 edge 没有透明 hit path
 6. 普通 edge 没有默认 mask
-7. edge 组件没有本地 hover / focus state
-8. React 主渲染不再按 `edgeId -> EdgeItem` 建整棵子树
-9. 旧 `EdgeItem` 主实现已删除
+7. labeled edge 如需遮线，mask 由 scene-level render model 统一生成
+8. 不存在 per-edge local `defs > mask`
+9. edge 组件没有本地 hover / focus state
+10. React 主渲染不再按 `edgeId -> EdgeItem` 建整棵子树
+11. 旧 `EdgeItem` 主实现已删除

@@ -84,9 +84,12 @@ export const createEditor = ({
     session,
     layout
   })
+  const sessionState = createSessionState(session)
   const scene = createSceneSource({
     controller: projection,
-    selection: session.state.selection,
+    state: sessionState,
+    hover: session.interaction.read.hover,
+    edgeGuide: session.preview.selectors.edgeGuide,
     nodeType,
     visibleRect: () => session.viewport.read.worldRect(),
     readZoom: () => session.viewport.read.get().zoom
@@ -147,7 +150,6 @@ export const createEditor = ({
     document,
     resetHost: input.cancel
   })
-  const sessionState = createSessionState(session)
   const sessionSource = createSessionSource({
     graph: scene,
     session,

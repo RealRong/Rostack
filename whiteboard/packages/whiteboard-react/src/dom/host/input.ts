@@ -111,6 +111,23 @@ const resolveSelectionBoxUnderlyingPick = (
   return undefined
 }
 
+const resolveSceneEdgePick = (
+  editor: WhiteboardRuntime,
+  world: Point
+): EditorPick | undefined => {
+  const edgeId = editor.scene.edge.hit.pick({
+    point: world
+  })
+
+  return edgeId
+    ? {
+        kind: 'edge',
+        id: edgeId,
+        part: 'body'
+      }
+    : undefined
+}
+
 export const resolvePoint = ({
   editor,
   pick,
@@ -136,9 +153,12 @@ export const resolvePoint = ({
           resolveElementsAtPoint(container, event).slice(1)
         ) ?? primaryPick
       : primaryPick
+  const finalPick = resolvedPick.kind === 'background'
+    ? resolveSceneEdgePick(editor, point.world) ?? resolvedPick
+    : resolvedPick
 
   return {
-    pick: resolvedPick,
+    pick: finalPick,
     client: point.client,
     screen: point.screen,
     world: point.world,

@@ -70,7 +70,7 @@
 .wb-root-container[data-tool='hand'] .wb-root-scene-viewport,
 .wb-root-container[data-tool='hand'] .wb-root-chrome-viewport,
 .wb-root-container[data-tool='hand'] .wb-node-block,
-.wb-root-container[data-tool='hand'] .wb-edge-item {
+.wb-root-container[data-tool='hand'] .wb-edge-label {
   cursor: grab;
 }
 
@@ -81,7 +81,7 @@
 .wb-root-container[data-tool='draw'] .wb-root-scene-viewport,
 .wb-root-container[data-tool='draw'] .wb-root-chrome-viewport,
 .wb-root-container[data-tool='draw'] .wb-node-block,
-.wb-root-container[data-tool='draw'] .wb-edge-item {
+.wb-root-container[data-tool='draw'] .wb-edge-label {
   cursor: crosshair;
 }
 
@@ -284,28 +284,37 @@
   pointer-events: none;
 }
 
-.wb-edge-item {
+.wb-edge-scene {
   position: absolute;
-  left: 0;
-  top: 0;
+  inset: 0;
   overflow: visible;
   pointer-events: none;
 }
 
-.wb-edge-svg {
-  display: block;
+.wb-edge-static-layer,
+.wb-edge-active-layer,
+.wb-edge-label-layer {
+  position: absolute;
+  inset: 0;
   overflow: visible;
+}
+
+.wb-edge-scene-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
   pointer-events: none;
 }
 
-.wb-edge-item .wb-edge-accent-path,
-.wb-edge-item .wb-edge-visible-path {
+.wb-edge-static-layer,
+.wb-edge-active-layer {
+  pointer-events: none;
+}
+
+.wb-edge-scene .wb-edge-active-path,
+.wb-edge-scene .wb-edge-visible-path {
   transition: stroke 120ms ease, stroke-width 120ms ease, opacity 120ms ease;
-}
-
-.wb-edge-hit-path,
-.wb-edge-hit-path:focus-visible {
-  outline: none;
 }
 
 .wb-edge-endpoint-layer {

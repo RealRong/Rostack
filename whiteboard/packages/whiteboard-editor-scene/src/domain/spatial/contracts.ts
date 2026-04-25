@@ -35,29 +35,47 @@ export interface SpatialRecord {
   order: number
 }
 
-export interface SpatialTree {
-  insert(record: SpatialRecord): void
-  update(previous: SpatialRecord, next: SpatialRecord): void
-  remove(record: SpatialRecord): void
-  rect(rect: Rect): readonly SpatialKey[]
-  point(point: Point): readonly SpatialKey[]
+export interface SpatialQueryOptions {
+  kinds?: readonly SpatialKind[]
+}
+
+export interface SpatialQueryStats {
+  cells: number
+  candidates: number
+  oversized: number
+}
+
+export interface SpatialIndexStats {
+  records: number
+  cells: number
+  oversized: number
+}
+
+export interface SpatialQueryState {
+  keys: readonly SpatialKey[]
+  cells: number
+  oversizedKeys: readonly SpatialKey[]
+}
+
+export interface SpatialQueryResult {
+  records: readonly SpatialRecord[]
+  stats: SpatialQueryStats
 }
 
 export interface SpatialRead {
   get(key: SpatialKey): SpatialRecord | undefined
-  all(options?: {
-    kinds?: readonly SpatialKind[]
-  }): readonly SpatialRecord[]
+  all(options?: SpatialQueryOptions): readonly SpatialRecord[]
   rect(
     rect: Rect,
-    options?: {
-      kinds?: readonly SpatialKind[]
-    }
+    options?: SpatialQueryOptions
   ): readonly SpatialRecord[]
   point(
     point: Point,
-    options?: {
-      kinds?: readonly SpatialKind[]
-    }
+    options?: SpatialQueryOptions
   ): readonly SpatialRecord[]
+  candidates(
+    rect: Rect,
+    options?: SpatialQueryOptions
+  ): SpatialQueryResult
+  stats(): SpatialIndexStats
 }

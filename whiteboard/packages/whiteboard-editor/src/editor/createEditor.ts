@@ -88,7 +88,8 @@ export const createEditor = ({
     controller: projection,
     selection: session.state.selection,
     nodeType,
-    visibleRect: () => session.viewport.read.worldRect()
+    visibleRect: () => session.viewport.read.worldRect(),
+    readZoom: () => session.viewport.read.get().zoom
   })
   const writeRuntime = createEditorWrite({
     engine,

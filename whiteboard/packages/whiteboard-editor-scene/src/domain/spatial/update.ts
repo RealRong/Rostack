@@ -18,6 +18,10 @@ import {
   readNodeSpatialRecord,
   syncSceneOrderState,
 } from './records'
+import {
+  indexSpatialRecord,
+  removeSpatialRecordIndex
+} from './kernel'
 import type {
   SpatialKey,
   SpatialRecord
@@ -238,14 +242,14 @@ export const patchSpatialRecord = (input: {
 
   if (!input.next) {
     input.state.records.delete(input.key)
-    input.state.tree.remove(previous!)
+    removeSpatialRecordIndex(input.state, input.key)
     idDelta.remove(input.delta, input.key)
     return 'removed'
   }
 
   if (!previous) {
     input.state.records.set(input.key, input.next)
-    input.state.tree.insert(input.next)
+    indexSpatialRecord(input.state, input.next)
     idDelta.add(input.delta, input.key)
     return 'added'
   }
@@ -255,7 +259,7 @@ export const patchSpatialRecord = (input: {
   }
 
   input.state.records.set(input.key, input.next)
-  input.state.tree.update(previous, input.next)
+  indexSpatialRecord(input.state, input.next)
   idDelta.update(input.delta, input.key)
   return 'updated'
 }

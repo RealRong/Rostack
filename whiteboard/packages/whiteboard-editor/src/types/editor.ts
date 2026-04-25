@@ -19,7 +19,10 @@ import type { HistoryApi } from '@whiteboard/history'
 import type {
   MindmapView,
   Read as EditorSceneQueryRuntime,
-  SceneItem
+  SceneItem,
+  SpatialKind,
+  SpatialQueryStats,
+  SpatialRecord
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
 import type {
@@ -153,6 +156,62 @@ export type EditorSceneQuery = {
   ) => ReturnType<EditorSceneQueryRuntime['spatial']['rect']>
 }
 
+export type ScenePickKind = Extract<
+  SpatialKind,
+  'node' | 'edge' | 'mindmap'
+>
+
+export type ScenePickRequest = {
+  client: Point
+  screen: Point
+  world: Point
+  radius?: number
+  kinds?: readonly ScenePickKind[]
+}
+
+export type ScenePickTarget =
+  | {
+      kind: 'node'
+      id: NodeId
+    }
+  | {
+      kind: 'edge'
+      id: EdgeId
+    }
+  | {
+      kind: 'mindmap'
+      id: MindmapId
+    }
+
+export type ScenePickStats = SpatialQueryStats & {
+  hits: number
+  latency: number
+}
+
+export type ScenePickCandidateResult = {
+  rect: Rect
+  records: readonly SpatialRecord[]
+  stats: SpatialQueryStats
+}
+
+export type ScenePickResult = {
+  rect: Rect
+  target?: ScenePickTarget
+  stats: ScenePickStats
+}
+
+export type ScenePickRuntimeResult = {
+  request: ScenePickRequest
+  result: ScenePickResult
+}
+
+export type ScenePickRuntime = {
+  schedule: (request: ScenePickRequest) => void
+  get: () => ScenePickRuntimeResult | undefined
+  subscribe: (listener: () => void) => store.Unsubscribe
+  clear: () => void
+}
+
 export type SceneGeometryCache = {
   node: (nodeId: NodeId) => (GraphNodeGeometry & {
     node: NodeModel
@@ -189,6 +248,20 @@ export type EditorSceneSource = {
   revision: () => number
   items: store.ReadStore<readonly SceneItem[]>
   query: EditorSceneQuery
+  pick: {
+    rect: (point: Point, radius?: number) => Rect
+    candidates: (input: {
+      point: Point
+      radius?: number
+      kinds?: readonly ScenePickKind[]
+    }) => ScenePickCandidateResult
+    resolve: (input: {
+      point: Point
+      radius?: number
+      kinds?: readonly ScenePickKind[]
+    }) => ScenePickResult
+    runtime: ScenePickRuntime
+  }
   geometry: SceneGeometryCache
   scope: SceneScope
   frame: EditorSceneQueryRuntime['frame']

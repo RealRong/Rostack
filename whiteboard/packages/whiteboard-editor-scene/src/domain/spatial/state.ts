@@ -1,65 +1,42 @@
-import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import type {
-  Point,
-  Rect
-} from '@whiteboard/core/types'
 import type {
   SpatialKey,
-  SpatialRecord,
-  SpatialTree
+  SpatialRecord
 } from './contracts'
 
-const createSpatialTree = (): SpatialTree => {
-  const bounds = new Map<SpatialKey, Rect>()
+export type GridCellKey = `${number}:${number}`
 
-  return {
-    insert: (record) => {
-      bounds.set(record.key, record.bounds)
-    },
-    update: (previous, next) => {
-      if (previous.key !== next.key) {
-        bounds.delete(previous.key)
-      }
-      bounds.set(next.key, next.bounds)
-    },
-    remove: (record) => {
-      bounds.delete(record.key)
-    },
-    rect: (rect) => {
-      const keys: SpatialKey[] = []
+export interface SpatialGridConfig {
+  cellSize: number
+  maxCellsPerRecord: number
+  oversizedWorldSize: number
+}
 
-      bounds.forEach((boundsRect, key) => {
-        if (geometryApi.rect.intersects(boundsRect, rect)) {
-          keys.push(key)
-        }
-      })
-
-      return keys
-    },
-    point: (point) => {
-      const keys: SpatialKey[] = []
-
-      bounds.forEach((boundsRect, key) => {
-        if (geometryApi.rect.containsPoint(point, boundsRect)) {
-          keys.push(key)
-        }
-      })
-
-      return keys
-    }
-  }
+export const DEFAULT_SPATIAL_GRID_CONFIG: SpatialGridConfig = {
+  cellSize: 256,
+  maxCellsPerRecord: 24,
+  oversizedWorldSize: 4096
 }
 
 export interface SpatialIndexState {
   records: Map<SpatialKey, SpatialRecord>
   orderByKey: Map<SpatialKey, number>
-  tree: SpatialTree
+  grid: Map<GridCellKey, Set<SpatialKey>>
+  cellsByRecord: Map<SpatialKey, readonly GridCellKey[]>
+  oversized: Set<SpatialKey>
+  config: SpatialGridConfig
 }
 
-export const createSpatialState = (): SpatialIndexState => ({
+export const createSpatialState = (
+  config: SpatialGridConfig = DEFAULT_SPATIAL_GRID_CONFIG
+): SpatialIndexState => ({
   records: new Map(),
   orderByKey: new Map(),
-  tree: createSpatialTree()
+  grid: new Map(),
+  cellsByRecord: new Map(),
+  oversized: new Set(),
+  config: {
+    ...config
+  }
 })
 
 export const resetSpatialState = (
@@ -67,5 +44,7 @@ export const resetSpatialState = (
 ) => {
   state.records.clear()
   state.orderByKey.clear()
-  state.tree = createSpatialTree()
+  state.grid.clear()
+  state.cellsByRecord.clear()
+  state.oversized.clear()
 }

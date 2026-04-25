@@ -394,6 +394,46 @@ describe('editor graph runtime', () => {
     expect(publish.ui.chrome.change(result.change)).toBe(result.change.ui.chrome)
   })
 
+  it('tracks oversized spatial records through candidate diagnostics', () => {
+    const engine = createEngine({
+      document: documentApi.create('doc_editor_graph_runtime_spatial_diagnostics')
+    })
+    const nodeId = createNode({
+      engine,
+      position: {
+        x: 0,
+        y: 0
+      },
+      text: 'Large',
+      size: {
+        width: 5000,
+        height: 200
+      }
+    })
+
+    const runtime = createEditorSceneRuntime()
+    runtime.update(createInput(engine, {
+      delta: FULL_INPUT_DELTA
+    }))
+
+    const result = runtime.query.spatial.candidates({
+      x: 96,
+      y: 24,
+      width: 48,
+      height: 48
+    }, {
+      kinds: ['node']
+    })
+
+    expect(result.records.map((record) => record.key)).toContain(`node:${nodeId}`)
+    expect(result.stats.candidates).toBe(1)
+    expect(result.stats.oversized).toBe(1)
+    expect(runtime.query.spatial.stats()).toMatchObject({
+      records: 1,
+      oversized: 1
+    })
+  })
+
   it('relayouts mindmap children while root live width grows', () => {
     const engine = createEngine({
       document: documentApi.create('doc_editor_graph_runtime_mindmap_root_width')

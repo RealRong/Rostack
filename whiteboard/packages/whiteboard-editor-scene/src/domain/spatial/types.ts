@@ -4,8 +4,15 @@ export type {
   SpatialKind,
   SpatialRead,
   SpatialRecord,
-  SpatialTree
+  SpatialQueryOptions,
+  SpatialQueryResult,
+  SpatialQueryStats,
+  SpatialIndexStats
 } from './contracts'
 
-export type { SpatialIndexState } from './state'
+export type {
+  GridCellKey,
+  SpatialGridConfig,
+  SpatialIndexState
+} from './state'
 export type { SpatialPatchScope } from '../../contracts/delta'

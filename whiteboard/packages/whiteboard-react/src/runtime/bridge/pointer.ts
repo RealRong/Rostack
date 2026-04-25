@@ -30,6 +30,21 @@ const isViewportPanStart = (
   )
 }
 
+const scheduleScenePick = (
+  editor: WhiteboardRuntime,
+  input: {
+    client: Point
+    screen: Point
+    world: Point
+  }
+) => {
+  editor.scene.pick.runtime.schedule({
+    client: input.client,
+    screen: input.screen,
+    world: input.world
+  })
+}
+
 type PointerInputState = {
   set: (point: Point) => void
   clear: () => void
@@ -189,6 +204,7 @@ export const createPointerBridge = ({
               container,
               nextEvent
             )
+            scheduleScenePick(editor, moveInput)
             if (editor.input.pointerMove(moveInput)) {
               consumeDomEvent(nextEvent)
             }
@@ -227,6 +243,7 @@ export const createPointerBridge = ({
       }
 
       const input = resolveCanvasPointerInput('move', container, event)
+      scheduleScenePick(editor, input)
       editor.input.pointerMove(input)
     },
     leave: () => {
@@ -234,11 +251,13 @@ export const createPointerBridge = ({
         return
       }
 
+      editor.scene.pick.runtime.clear()
       point.clear()
       editor.input.pointerLeave()
     },
     cancel: () => {
       clearSession()
+      editor.scene.pick.runtime.clear()
       point.clear()
       editor.input.cancel()
     }

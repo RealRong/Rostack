@@ -40,6 +40,9 @@ import {
 } from './cache/visible'
 import { readMindmapNavigateTarget } from './mindmap'
 import {
+  createScenePick
+} from './pick'
+import {
   createGraphNodeRead,
   type GraphNodeGeometry,
   type GraphNodeRead
@@ -89,6 +92,7 @@ export type EditorSceneRuntime = {
       options?: Parameters<EditorGraphQuery['spatial']['rect']>[1]
     ) => ReturnType<EditorGraphQuery['spatial']['rect']>
   }
+  pick: ReturnType<typeof createScenePick>
   snap: {
     rect: EditorGraphQuery['snap']
   }
@@ -351,12 +355,14 @@ export const createSceneSource = ({
   controller,
   selection,
   nodeType,
-  visibleRect
+  visibleRect,
+  readZoom
 }: {
   controller: Pick<EditorSceneController, 'query' | 'current' | 'subscribe'>
   selection: store.ReadStore<SelectionTarget>
   nodeType: NodeTypeSupport
   visibleRect: () => Rect
+  readZoom: () => number
 }): EditorSceneRuntime => {
   const published = createProjectionBinding(controller.current().snapshot)
   controller.subscribe((result) => {
@@ -419,6 +425,20 @@ export const createSceneSource = ({
     rect: spatial.rect,
     visible
   }
+  const pick = createScenePick({
+    readZoom,
+    spatial: {
+      candidates: spatial.candidates
+    },
+    node: {
+      view: node.view,
+      geometry: node.geometry
+    },
+    edge: {
+      geometry: edge.geometry
+    },
+    mindmap: sources.mindmap
+  })
   const scope = createSceneScope({
     spatialRect: spatial.rect,
     relatedEdges: query.relatedEdges,
@@ -431,6 +451,7 @@ export const createSceneSource = ({
     revision: readRevision,
     items: sources.items,
     query: queryApi,
+    pick,
     snap: {
       rect: query.snap
     },

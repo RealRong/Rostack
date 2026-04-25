@@ -36,14 +36,14 @@ const toSpatialSelectionPlan = (
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
-    const view = ctx.projection.node.graph.get(member.id)
-    return view
+    const geometry = ctx.projection.geometry.node(member.id)
+    return geometry
       ? [{
           ...member,
           node: toSpatialNode({
-            node: view.base.node,
-            rect: view.geometry.rect,
-            rotation: view.geometry.rotation
+            node: geometry.node,
+            rect: geometry.rect,
+            rotation: geometry.rotation
           })
         }]
       : []
@@ -56,22 +56,22 @@ const readNodeTransformSpec = (
   handle: TransformPickHandle,
   input: PointerDownInput
 ): RuntimeTransformSpec | undefined => {
-  const view = ctx.projection.node.graph.get(nodeId)
-  if (!view || view.base.node.locked) {
+  const geometry = ctx.projection.geometry.node(nodeId)
+  if (!geometry || geometry.node.locked) {
     return undefined
   }
 
-  const capability = ctx.projection.node.capability(view.base.node)
+  const capability = ctx.projection.node.capability(geometry.node)
   const target: TransformTarget = {
-    id: view.base.node.id,
+    id: geometry.node.id,
     node: toSpatialNode({
-      node: view.base.node,
-      rect: view.geometry.rect,
-      rotation: view.geometry.rotation
+      node: geometry.node,
+      rect: geometry.rect,
+      rotation: geometry.rotation
     }),
-    rect: view.geometry.rect
+    rect: geometry.rect
   }
-  const rotation = view.geometry.rotation
+  const rotation = geometry.rotation
 
   if (handle.kind === 'resize') {
     if (!handle.direction || !capability.resize) {

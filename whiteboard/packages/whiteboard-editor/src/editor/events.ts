@@ -12,11 +12,11 @@ export type EditorEventRuntime = {
 
 const reconcileSessionAfterWrite = (
   session: Pick<EditorSession, 'state' | 'mutate'>,
-  document: Pick<EditorDocumentRuntimeSource, 'node' | 'edge'>
+  document: Pick<EditorDocumentRuntimeSource, 'nodes' | 'edges'>
 ) => {
   const selection = session.state.selection.get()
-  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.node.committed.get(id)))
-  const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(document.edge.item.get(id)))
+  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.nodes.get(id)))
+  const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(document.edges.get(id)))
 
   if (
     !equal.sameOrder(nextNodeIds, selection.nodeIds)
@@ -34,8 +34,8 @@ const reconcileSessionAfterWrite = (
   }
 
   if (
-    (currentEdit.kind === 'node' && !document.node.committed.get(currentEdit.nodeId))
-    || (currentEdit.kind === 'edge-label' && !document.edge.item.get(currentEdit.edgeId))
+    (currentEdit.kind === 'node' && !document.nodes.get(currentEdit.nodeId))
+    || (currentEdit.kind === 'edge-label' && !document.edges.get(currentEdit.edgeId))
   ) {
     session.mutate.edit.clear()
   }
@@ -49,7 +49,7 @@ export const createEditorEvents = ({
 }: {
   engine: Engine
   session: EditorSession
-  document: Pick<EditorDocumentRuntimeSource, 'node' | 'edge'>
+  document: Pick<EditorDocumentRuntimeSource, 'nodes' | 'edges'>
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()

@@ -146,7 +146,7 @@ export const createGraphSelectionRead = ({
         target: current.target,
         nodes: current.nodes,
         edges: current.edges,
-        readNodeRect: (entry) => store.read(node.graph, entry.id)?.geometry.rect,
+        readNodeRect: (entry) => store.read(node.view, entry.id)?.rect,
         readEdgeBounds: (entry) => store.read(edge.bounds, entry.id),
         resolveNodeTransformBehavior: (entry) => nodeApi.transform.resolveBehavior(entry, {
           role: node.capability(entry).role,

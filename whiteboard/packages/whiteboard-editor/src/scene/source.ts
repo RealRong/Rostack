@@ -1,7 +1,13 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { store } from '@shared/core'
+import {
+  composeSync,
+  createIdDeltaFamilySync,
+  createValueSync
+} from '@shared/projector/sync'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
+  Edge,
   EdgeId,
   GroupId,
   MindmapId,
@@ -9,13 +15,20 @@ import type {
   Rect,
 } from '@whiteboard/core/types'
 import type {
+  Change,
+  ChromeView,
+  EdgeUiView,
+  EdgeView as RuntimeEdgeView,
   GroupView,
-  Read as EditorGraphQuery
+  MindmapView,
+  NodeUiView,
+  NodeView as RuntimeNodeView,
+  Read as EditorGraphQuery,
+  Result,
+  SceneItem,
+  Snapshot
 } from '@whiteboard/editor-scene'
-import type {
-  EditorDocumentRuntimeSource
-} from '@whiteboard/editor/document/source'
-import type { ScenePublishedState } from '@whiteboard/editor/projection/sources'
+import type { EditorSceneController } from '@whiteboard/editor/projection/controller'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import {
   createGraphEdgeRead,
@@ -32,23 +45,52 @@ import {
   type GraphSelectionRead
 } from './selection'
 
+type SceneProjectionStores = {
+  snapshot: store.ReadStore<Snapshot>
+  items: store.ReadStore<readonly SceneItem[]>
+  chrome: store.ReadStore<ChromeView>
+  nodeGraphIds: store.ReadStore<readonly NodeId[]>
+  nodeGraph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
+  edgeGraphIds: store.ReadStore<readonly EdgeId[]>
+  edgeGraph: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
+  mindmap: store.KeyedReadStore<MindmapId, MindmapView | undefined>
+  group: store.KeyedReadStore<GroupId, GroupView | undefined>
+  nodeUi: store.KeyedReadStore<NodeId, NodeUiView | undefined>
+  edgeUi: store.KeyedReadStore<EdgeId, EdgeUiView | undefined>
+}
+
+type SceneProjectionBinding = {
+  stores: SceneProjectionStores
+  sync(result: Result): void
+}
+
+type SceneProjectionSink = {
+  snapshot: store.ValueStore<Snapshot>
+  items: store.ValueStore<readonly SceneItem[]>
+  chrome: store.ValueStore<ChromeView>
+  nodeGraph: store.FamilyStore<NodeId, RuntimeNodeView>
+  edgeGraph: store.FamilyStore<EdgeId, RuntimeEdgeView>
+  mindmap: store.FamilyStore<MindmapId, MindmapView>
+  group: store.FamilyStore<GroupId, GroupView>
+  nodeUi: store.FamilyStore<NodeId, NodeUiView>
+  edgeUi: store.FamilyStore<EdgeId, EdgeUiView>
+}
+
 export type EditorSceneRuntime = {
   revision: () => number
-  snapshot: ScenePublishedState['snapshot']
-  items: ScenePublishedState['items']
+  items: store.ReadStore<readonly SceneItem[]>
   query: {
     rect: EditorGraphQuery['spatial']['rect']
     visible: (
       options?: Parameters<EditorGraphQuery['spatial']['rect']>[1]
     ) => ReturnType<EditorGraphQuery['spatial']['rect']>
   }
-  spatial: EditorGraphQuery['spatial']
   snap: {
     rect: EditorGraphQuery['snap']
   }
   geometry: {
     node: (nodeId: NodeId) => ReturnType<typeof toGraphNodeGeometry> & {
-      node: NonNullable<ReturnType<GraphNodeRead['graph']['get']>>['base']['node']
+      node: NonNullable<ReturnType<GraphNodeRead['get']>>['node']
     } | undefined
     edge: GraphEdgeRead['geometry']['get']
     order: (item: {
@@ -65,25 +107,56 @@ export type EditorSceneRuntime = {
     bounds: (target: SelectionTarget) => Rect | undefined
   }
   frame: EditorGraphQuery['frame']
-  node: GraphNodeRead
-  edge: GraphEdgeRead
+  node: {
+    get: GraphNodeRead['get']
+    read: GraphNodeRead['view']
+    ids: GraphNodeRead['ids']
+    all: GraphNodeRead['all']
+    nodes: GraphNodeRead['nodes']
+    capability: GraphNodeRead['capability']
+    idsInRect: GraphNodeRead['idsInRect']
+  }
+  edge: {
+    get: GraphEdgeRead['get']
+    read: GraphEdgeRead['view']
+    detail: GraphEdgeRead['detail']
+    model: GraphEdgeRead['model']
+    ids: GraphEdgeRead['ids']
+    all: GraphEdgeRead['all']
+    edges: GraphEdgeRead['edges']
+    geometry: GraphEdgeRead['geometry']
+    label: GraphEdgeRead['label']
+    capability: GraphEdgeRead['capability']
+    capabilityOf: (edgeId: EdgeId) => ReturnType<GraphEdgeRead['capability']> | undefined
+    bounds: GraphEdgeRead['bounds']
+    related: GraphEdgeRead['related']
+    idsInRect: GraphEdgeRead['idsInRect']
+    connectCandidates: GraphEdgeRead['connectCandidates']
+  }
   nodes: {
-    get: (nodeId: NodeId) => ReturnType<GraphNodeRead['view']['get']>
-    getMany: (nodeIds: readonly NodeId[]) => readonly NonNullable<ReturnType<GraphNodeRead['view']['get']>>[]
+    get: GraphNodeRead['get']
+    getMany: (nodeIds: readonly NodeId[]) => readonly NonNullable<ReturnType<GraphNodeRead['get']>>[]
     ids: GraphNodeRead['ids']
     read: GraphNodeRead['view']
     capability: store.KeyedReadStore<NodeId, ReturnType<GraphNodeRead['capability']> | undefined>
+    idsInRect: GraphNodeRead['idsInRect']
   }
   edges: {
-    get: (edgeId: EdgeId) => ReturnType<GraphEdgeRead['view']['get']>
-    getMany: (edgeIds: readonly EdgeId[]) => readonly NonNullable<ReturnType<GraphEdgeRead['view']['get']>>[]
+    get: GraphEdgeRead['get']
+    getMany: (edgeIds: readonly EdgeId[]) => readonly NonNullable<ReturnType<GraphEdgeRead['get']>>[]
     ids: GraphEdgeRead['ids']
     read: GraphEdgeRead['view']
     geometry: GraphEdgeRead['geometry']
+    detail: GraphEdgeRead['detail']
+    model: GraphEdgeRead['model']
+    capability: (edgeId: EdgeId) => ReturnType<GraphEdgeRead['capability']> | undefined
+    label: GraphEdgeRead['label']
+    idsInRect: GraphEdgeRead['idsInRect']
+    connectCandidates: GraphEdgeRead['connectCandidates']
   }
   selection: GraphSelectionRead
   mindmap: {
-    view: ScenePublishedState['mindmap']
+    view: SceneProjectionStores['mindmap']
     id: (value: string) => MindmapId | undefined
     structure: (
       value: MindmapId | string
@@ -95,13 +168,156 @@ export type EditorSceneRuntime = {
     }) => NodeId | undefined
   }
   group: {
-    view: ScenePublishedState['group']
     ofNode: (nodeId: string) => GroupId | undefined
     ofEdge: (edgeId: string) => GroupId | undefined
     target: (groupId: GroupId) => SelectionTarget | undefined
     exact: (target: SelectionTarget) => readonly GroupId[]
   }
-  chrome: ScenePublishedState['chrome']
+  chrome: SceneProjectionStores['chrome']
+}
+
+const createFamilyRead = <Key, Value>(
+  family: store.FamilyStore<Key, Value>
+): store.KeyedReadStore<Key, Value | undefined> => store.createKeyedReadStore({
+  get: key => family.read.get(key),
+  subscribe: (key, listener) => family.byId.subscribe.key(key, listener),
+  isEqual: (left, right) => left === right
+})
+
+const projectionSync = composeSync<
+  Snapshot,
+  Change,
+  SceneProjectionSink
+>(
+  createValueSync({
+    hasChanged: () => true,
+    read: snapshot => snapshot,
+    write: (value, sink) => {
+      sink.snapshot.set(value)
+    }
+  }),
+  createValueSync({
+    hasChanged: change => change.items.changed,
+    read: snapshot => snapshot.items,
+    write: (value, sink) => {
+      sink.items.set(value)
+    }
+  }),
+  createValueSync({
+    hasChanged: change => change.ui.chrome.changed,
+    read: snapshot => snapshot.ui.chrome,
+    write: (value, sink) => {
+      sink.chrome.set(value)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.graph.nodes,
+    read: snapshot => snapshot.graph.nodes,
+    apply: (patch, sink) => {
+      sink.nodeGraph.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.graph.edges,
+    read: snapshot => snapshot.graph.edges,
+    apply: (patch, sink) => {
+      sink.edgeGraph.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.graph.owners.mindmaps,
+    read: snapshot => snapshot.graph.owners.mindmaps,
+    apply: (patch, sink) => {
+      sink.mindmap.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.graph.owners.groups,
+    read: snapshot => snapshot.graph.owners.groups,
+    apply: (patch, sink) => {
+      sink.group.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.ui.nodes,
+    read: snapshot => snapshot.ui.nodes,
+    apply: (patch, sink) => {
+      sink.nodeUi.write.apply(patch)
+    }
+  }),
+  createIdDeltaFamilySync({
+    delta: change => change.ui.edges,
+    read: snapshot => snapshot.ui.edges,
+    apply: (patch, sink) => {
+      sink.edgeUi.write.apply(patch)
+    }
+  })
+)
+
+const createProjectionBinding = (
+  initial: Snapshot
+): SceneProjectionBinding => {
+  const snapshot = store.createValueStore(initial)
+  const items = store.createValueStore(initial.items)
+  const chrome = store.createValueStore(initial.ui.chrome)
+  const nodeGraphFamily = store.createFamilyStore({
+    initial: initial.graph.nodes
+  })
+  const edgeGraphFamily = store.createFamilyStore({
+    initial: initial.graph.edges
+  })
+  const mindmapFamily = store.createFamilyStore({
+    initial: initial.graph.owners.mindmaps
+  })
+  const groupFamily = store.createFamilyStore({
+    initial: initial.graph.owners.groups
+  })
+  const nodeUiFamily = store.createFamilyStore({
+    initial: initial.ui.nodes
+  })
+  const edgeUiFamily = store.createFamilyStore({
+    initial: initial.ui.edges
+  })
+
+  const sink: SceneProjectionSink = {
+    snapshot,
+    items,
+    chrome,
+    nodeGraph: nodeGraphFamily,
+    edgeGraph: edgeGraphFamily,
+    mindmap: mindmapFamily,
+    group: groupFamily,
+    nodeUi: nodeUiFamily,
+    edgeUi: edgeUiFamily
+  }
+
+  return {
+    stores: {
+      snapshot,
+      items,
+      chrome,
+      nodeGraphIds: nodeGraphFamily.ids as store.ReadStore<readonly NodeId[]>,
+      nodeGraph: createFamilyRead(nodeGraphFamily),
+      edgeGraphIds: edgeGraphFamily.ids as store.ReadStore<readonly EdgeId[]>,
+      edgeGraph: createFamilyRead(edgeGraphFamily),
+      mindmap: createFamilyRead(mindmapFamily),
+      group: createFamilyRead(groupFamily),
+      nodeUi: createFamilyRead(nodeUiFamily),
+      edgeUi: createFamilyRead(edgeUiFamily)
+    },
+    sync: (result) => {
+      const previous = snapshot.get()
+
+      store.batch(() => {
+        projectionSync.sync({
+          previous,
+          next: result.snapshot,
+          change: result.change,
+          sink
+        })
+      })
+    }
+  }
 }
 
 const toGroupTarget = (
@@ -128,30 +344,31 @@ const collectPresentValues = <TId extends string, TValue>(
 })
 
 export const createSceneSource = ({
-  document,
-  sources,
-  query,
-  spatial,
+  controller,
   selection,
   nodeType,
   visibleRect
 }: {
-  document: Pick<EditorDocumentRuntimeSource, 'node' | 'edge'>
-  sources: Pick<ScenePublishedState, 'snapshot' | 'items' | 'chrome' | 'nodeGraphIds' | 'nodeGraph' | 'edgeGraphIds' | 'edgeGraph' | 'mindmap' | 'group' | 'nodeUi' | 'edgeUi'>
-  query: Pick<EditorGraphQuery, 'mindmapId' | 'mindmapStructure' | 'relatedEdges' | 'groupExact' | 'snap' | 'frame'>
-  spatial: EditorGraphQuery['spatial']
+  controller: Pick<EditorSceneController, 'query' | 'current' | 'subscribe'>
   selection: store.ReadStore<SelectionTarget>
   nodeType: NodeTypeSupport
   visibleRect: () => Rect
 }): EditorSceneRuntime => {
+  const published = createProjectionBinding(controller.current().snapshot)
+  controller.subscribe((result) => {
+    published.sync(result)
+  })
+
+  const sources = published.stores
+  const query = controller.query
+  const spatial = controller.query.spatial
+
   const node = createGraphNodeRead({
-    document,
     sources,
     spatial,
     type: nodeType
   })
   const edge = createGraphEdgeRead({
-    document,
     sources,
     spatial,
     relatedEdges: query.relatedEdges,
@@ -176,12 +393,19 @@ export const createSceneSource = ({
   })
   const nodeCapability = store.createKeyedDerivedStore<NodeId, ReturnType<GraphNodeRead['capability']> | undefined>({
     get: (nodeId) => {
-      const current = store.read(node.graph, nodeId)
+      const current = store.read(node.view, nodeId)
       return current
-        ? node.capability(current.base.node)
+        ? node.capability(current.node)
         : undefined
     }
   })
+  const edgeDetail: EditorSceneRuntime['edge']['detail'] = edge.detail
+  const edgeCapability = (edgeId: EdgeId) => {
+    const current = store.read(edge.detail, edgeId)
+    return current
+      ? edge.capability(current.edge)
+      : undefined
+  }
 
   const queryApi: EditorSceneRuntime['query'] = {
     rect: spatial.rect,
@@ -212,24 +436,22 @@ export const createSceneSource = ({
 
   return {
     revision: () => store.read(sources.snapshot).revision,
-    snapshot: sources.snapshot,
     items: sources.items,
     query: queryApi,
-    spatial,
     snap: {
       rect: query.snap
     },
     geometry: {
       node: (nodeId) => {
-        const current = store.read(node.graph, nodeId)
+        const current = store.read(node.view, nodeId)
         return current
           ? {
               ...toGraphNodeGeometry({
-                node: current.base.node,
-                rect: current.geometry.rect,
-                rotation: current.geometry.rotation
+                node: current.node,
+                rect: current.rect,
+                rotation: current.rotation
               }),
-              node: current.base.node
+              node: current.node
             }
           : undefined
       },
@@ -251,8 +473,8 @@ export const createSceneSource = ({
       relatedEdges: (nodeIds) => query.relatedEdges(nodeIds),
       bounds: (target) => {
         const nodeBounds = target.nodeIds.flatMap((nodeId) => {
-          const current = store.read(node.graph, nodeId)
-          return current ? [current.geometry.bounds] : []
+          const current = store.read(node.view, nodeId)
+          return current ? [current.bounds] : []
         })
         const edgeBounds = target.edgeIds.flatMap((edgeId) => {
           const current = store.read(edge.bounds, edgeId)
@@ -266,21 +488,52 @@ export const createSceneSource = ({
       }
     },
     frame: query.frame,
-    node,
-    edge,
+    node: {
+      get: node.get,
+      read: node.view,
+      ids: node.ids,
+      all: node.all,
+      nodes: node.nodes,
+      capability: node.capability,
+      idsInRect: node.idsInRect
+    },
+    edge: {
+      get: edge.get,
+      read: edge.view,
+      detail: edgeDetail,
+      model: edge.model,
+      ids: edge.ids,
+      all: edge.all,
+      edges: edge.edges,
+      geometry: edge.geometry,
+      label: edge.label,
+      capability: edge.capability,
+      capabilityOf: edgeCapability,
+      bounds: edge.bounds,
+      related: edge.related,
+      idsInRect: edge.idsInRect,
+      connectCandidates: edge.connectCandidates
+    },
     nodes: {
-      get: (nodeId) => store.read(node.view, nodeId),
+      get: node.get,
       getMany: (nodeIds) => collectPresentValues(nodeIds, (nodeId) => store.read(node.view, nodeId)),
       ids: node.ids,
       read: node.view,
-      capability: nodeCapability
+      capability: nodeCapability,
+      idsInRect: node.idsInRect
     },
     edges: {
-      get: (edgeId) => store.read(edge.view, edgeId),
+      get: edge.get,
       getMany: (edgeIds) => collectPresentValues(edgeIds, (edgeId) => store.read(edge.view, edgeId)),
       ids: edge.ids,
       read: edge.view,
-      geometry: edge.geometry
+      geometry: edge.geometry,
+      detail: edge.detail,
+      model: edge.model,
+      capability: edgeCapability,
+      label: edge.label,
+      idsInRect: edge.idsInRect,
+      connectCandidates: edge.connectCandidates
     },
     selection: selectionSource,
     mindmap: {
@@ -305,9 +558,8 @@ export const createSceneSource = ({
       }
     },
     group: {
-      view: sources.group,
-      ofNode: (nodeId) => store.read(sources.nodeGraph, nodeId)?.base.node.groupId,
-      ofEdge: (edgeId) => store.read(sources.edgeGraph, edgeId)?.base.edge.groupId,
+      ofNode: (nodeId) => store.read(node.view, nodeId)?.node.groupId,
+      ofEdge: (edgeId) => store.read(edge.view, edgeId)?.edge.groupId,
       target: (groupId) => {
         const group = store.read(sources.group, groupId)
         return group

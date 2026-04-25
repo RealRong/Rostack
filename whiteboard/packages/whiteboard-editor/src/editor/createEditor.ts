@@ -85,10 +85,7 @@ export const createEditor = ({
     layout
   })
   const scene = createSceneSource({
-    document,
-    sources: projection.sources,
-    query: projection.query,
-    spatial: projection.query.spatial,
+    controller: projection,
     selection: session.state.selection,
     nodeType,
     visibleRect: () => session.viewport.read.worldRect()

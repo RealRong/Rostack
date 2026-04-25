@@ -99,9 +99,7 @@ const readNodeLocked = ({
 }: {
   graph: Pick<EditorSceneRuntime, 'node'>
   nodeId: string
-}) => Boolean(
-  store.read(graph.node.graph, nodeId)?.base.node.locked
-)
+}) => Boolean(graph.node.get(nodeId)?.node.locked)
 
 const readNodeRect = ({
   graph,
@@ -109,7 +107,7 @@ const readNodeRect = ({
 }: {
   graph: Pick<EditorSceneRuntime, 'node'>
   nodeId: string
-}) => store.read(graph.node.graph, nodeId)?.geometry.rect
+}) => graph.node.get(nodeId)?.rect
 
 export const createSessionSource = (
   {
@@ -260,14 +258,13 @@ export const createSessionSource = (
         return undefined
       }
 
-      const current = store.read(graph.edge.graph, selectedEdgeId)
-      const currentUi = store.read(graph.edge.ui, selectedEdgeId)
+      const current = store.read(graph.edge.detail, selectedEdgeId)
       const currentEnds = current?.route.ends
       if (!current || !currentEnds) {
         return undefined
       }
 
-      const currentCapability = graph.edge.capability(current.base.edge)
+      const currentCapability = graph.edge.capability(current.edge)
       const currentEdit = store.read(state.edit)
       const interaction = store.read(state.interaction)
       const editingThisSelectedEdge =
@@ -287,9 +284,9 @@ export const createSessionSource = (
           && !editingThisSelectedEdge,
         routePoints: readSelectedEdgeRoutePoints({
           edgeId: selectedEdgeId,
-          edge: current.base.edge,
+          edge: current.edge,
           handles: current.route.handles,
-          activeRouteIndex: currentUi?.activeRouteIndex
+          activeRouteIndex: current.activeRouteIndex
         })
       }
     },

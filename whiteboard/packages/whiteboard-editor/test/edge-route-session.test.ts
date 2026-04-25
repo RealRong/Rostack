@@ -36,14 +36,8 @@ const createDeps = () => {
     ctx: {
       projection: {
         edge: {
-          graph: {
-            get: () => ({
-              base: {
-                edge
-              }
-            })
-          },
-          capability: () => ({
+          model: () => edge,
+          capabilityOf: () => ({
             editRoute: true
           })
         },

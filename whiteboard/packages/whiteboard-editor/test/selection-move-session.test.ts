@@ -15,35 +15,26 @@ describe('createMoveInteraction', () => {
         }
       },
       document: {
-        node: {
-          committed: {
-            get: () => ({
-              node: {
-                id: 'node-1',
-                type: 'text',
-                data: {
-                  text: 'node-1'
-                }
-              },
-              rect: {
-                x: 100,
-                y: 120,
-                width: 120,
-                height: 40
+        nodes: {
+          get: () => ({
+            node: {
+              id: 'node-1',
+              type: 'text',
+              data: {
+                text: 'node-1'
               }
-            })
-          }
+            },
+            rect: {
+              x: 100,
+              y: 120,
+              width: 120,
+              height: 40
+            }
+          })
         },
-        edge: {
-          list: {
-            get: () => ['edge-1']
-          }
+        edges: {
+          ids: () => ['edge-1']
         },
-        mindmap: {
-          structure: {
-            get: vi.fn(() => undefined)
-          }
-        }
       },
       projection: {
         frame: {
@@ -52,51 +43,57 @@ describe('createMoveInteraction', () => {
         },
         node: {
           all: () => [{
-            base: {
-              node: {
-                id: 'node-1',
-                type: 'text',
-                data: {
-                  text: 'node-1'
-                }
+            nodeId: 'node-1',
+            node: {
+              id: 'node-1',
+              type: 'text',
+              data: {
+                text: 'node-1'
               }
             },
-            geometry: {
-              rect: {
-                x: 100,
-                y: 120,
-                width: 120,
-                height: 40
-              },
-              bounds: {
-                x: 100,
-                y: 120,
-                width: 120,
-                height: 40
-              },
-              rotation: 0
+            rect: {
+              x: 100,
+              y: 120,
+              width: 120,
+              height: 40
             },
+            bounds: {
+              x: 100,
+              y: 120,
+              width: 120,
+              height: 40
+            },
+            rotation: 0,
+            hidden: false,
+            selected: false,
+            hovered: false,
+            patched: false,
+            resizing: false
           }]
         },
         edge: {
           all: () => [{
-            base: {
-              edge: {
-                id: 'edge-1',
-                type: 'straight',
-                source: {
-                  kind: 'point',
-                  point: { x: 80, y: 140 }
-                },
-                target: {
-                  kind: 'point',
-                  point: { x: 200, y: 140 }
-                },
-                route: {
-                  kind: 'auto'
-                }
+            edgeId: 'edge-1',
+            edge: {
+              id: 'edge-1',
+              type: 'straight',
+              source: {
+                kind: 'point',
+                point: { x: 80, y: 140 }
+              },
+              target: {
+                kind: 'point',
+                point: { x: 200, y: 140 }
+              },
+              route: {
+                kind: 'auto'
               }
-            }
+            },
+            selected: false,
+            path: {
+              points: []
+            },
+            labels: []
           }],
         },
         mindmap: {

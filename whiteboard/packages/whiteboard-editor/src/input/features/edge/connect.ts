@@ -26,16 +26,14 @@ import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { GraphEdgeRead } from '@whiteboard/editor/scene/edge'
 import {
   toGraphNodeGeometry,
-  toSpatialNode,
-  type GraphNodeRead
+  toSpatialNode
 } from '@whiteboard/editor/scene/node'
 
-type EdgeConnectNodeRead = Pick<GraphNodeRead, 'graph' | 'capability'>
-type EdgeConnectPreviewNodeRead = Pick<GraphNodeRead, 'graph'>
-type EdgeConnectEdgeRead = Pick<GraphEdgeRead, 'graph' | 'geometry' | 'capability'>
+type EdgeConnectNodeRead = Pick<EditorHostDeps['projection']['node'], 'get' | 'capability'>
+type EdgeConnectPreviewNodeRead = Pick<EditorHostDeps['projection']['node'], 'get'>
+type EdgeConnectEdgeRead = Pick<EditorHostDeps['projection']['edge'], 'model' | 'geometry' | 'capabilityOf'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
 }) => EdgeConnectEvaluation
@@ -65,7 +63,7 @@ type EdgeConnectGestureInput = {
 }
 
 type ConnectNodeEntry = NonNullable<
-  ReturnType<EdgeConnectNodeRead['graph']['get']>
+  ReturnType<EdgeConnectNodeRead['get']>
 >
 
 const EMPTY_MODIFIERS: ModifierKeys = {
@@ -103,8 +101,8 @@ const readConnectNode = (
   node: EdgeConnectNodeRead,
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
-  const entry = node.graph.get(nodeId)
-  const currentNode = entry?.base.node
+  const entry = node.get(nodeId)
+  const currentNode = entry?.node
   if (!entry || !currentNode || currentNode.locked || !node.capability(currentNode).connect) {
     return undefined
   }
@@ -189,13 +187,13 @@ const resolveNodeHandleStart = (input: {
     anchor,
     point: nodeApi.outline.anchor(
       toSpatialNode({
-        node: entry.base.node,
-        rect: entry.geometry.rect,
-        rotation: entry.geometry.rotation
+        node: entry.node,
+        rect: entry.rect,
+        rotation: entry.rotation
       }),
-      entry.geometry.rect,
+      entry.rect,
       anchor,
-      entry.geometry.rotation
+      entry.rotation
     )
   })
 }
@@ -222,12 +220,12 @@ const resolveNodeBodyStart = (input: {
 
   const resolved = edgeApi.anchor.resolveFromPoint({
     node: toSpatialNode({
-      node: entry.base.node,
-      rect: entry.geometry.rect,
-      rotation: entry.geometry.rotation
+      node: entry.node,
+      rect: entry.rect,
+      rotation: entry.rotation
     }),
-    rect: entry.geometry.rect,
-    rotation: entry.geometry.rotation,
+    rect: entry.rect,
+    rotation: entry.rotation,
     pointWorld: input.pointer.world,
     zoom: input.zoom,
     config: input.config
@@ -259,16 +257,19 @@ const resolveReconnectStart = (input: {
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const edge = input.edge.graph.get(input.edgeId)?.base.edge
+  const edge = input.edge.model(input.edgeId)
   const resolved = input.edge.geometry.get(input.edgeId)
   if (!edge || !resolved) {
     return undefined
   }
 
-  const capability = input.edge.capability(edge)
+  const capability = input.edge.capabilityOf(input.edgeId)
   if (
+    !capability
+    || (
     (input.end === 'source' && !capability.reconnectSource)
     || (input.end === 'target' && !capability.reconnectTarget)
+    )
   ) {
     return undefined
   }
@@ -363,18 +364,18 @@ const readPreviewNodeSnapshot = (
   node: ReturnType<typeof toSpatialNode>
   geometry: ReturnType<typeof toGraphNodeGeometry>
 } | undefined => {
-  const view = node.graph.get(nodeId)
+  const view = node.get(nodeId)
   return view
     ? {
         node: toSpatialNode({
-          node: view.base.node,
-          rect: view.geometry.rect,
-          rotation: view.geometry.rotation
+          node: view.node,
+          rect: view.rect,
+          rotation: view.rotation
         }),
         geometry: toGraphNodeGeometry({
-          node: view.base.node,
-          rect: view.geometry.rect,
-          rotation: view.geometry.rotation
+          node: view.node,
+          rect: view.rect,
+          rotation: view.rotation
         })
       }
     : undefined

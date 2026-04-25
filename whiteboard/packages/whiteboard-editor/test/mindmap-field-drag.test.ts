@@ -39,68 +39,59 @@ describe('mindmap field drag', () => {
 
     const session = createMoveInteraction({
       document: {
-        node: {
-          committed: {
-            get: (id: string) => {
-              if (id === 'root-1') {
-                return {
-                  node: {
-                    id: 'root-1',
-                    type: 'text',
-                    owner: {
-                      kind: 'mindmap',
-                      id: 'mind-1'
-                    },
-                    position: { x: 100, y: 120 },
-                    size: { width: 144, height: 44 },
-                    data: {
-                      text: 'Central topic'
-                    }
+        nodes: {
+          get: (id: string) => {
+            if (id === 'root-1') {
+              return {
+                node: {
+                  id: 'root-1',
+                  type: 'text',
+                  owner: {
+                    kind: 'mindmap',
+                    id: 'mind-1'
                   },
-                  rect: {
-                    x: 100,
-                    y: 120,
-                    width: 144,
-                    height: 44
+                  position: { x: 100, y: 120 },
+                  size: { width: 144, height: 44 },
+                  data: {
+                    text: 'Central topic'
                   }
+                },
+                rect: {
+                  x: 100,
+                  y: 120,
+                  width: 144,
+                  height: 44
                 }
               }
-
-              if (id === 'mind-1') {
-                return {
-                  node: {
-                    id: 'mind-1',
-                    type: 'text',
-                    owner: {
-                      kind: 'mindmap',
-                      id: 'mind-1'
-                    },
-                    position: { x: 100, y: 120 },
-                    data: {}
-                  },
-                  rect: {
-                    x: 100,
-                    y: 120,
-                    width: 144,
-                    height: 44
-                  }
-                }
-              }
-
-              return undefined
             }
+
+            if (id === 'mind-1') {
+              return {
+                node: {
+                  id: 'mind-1',
+                  type: 'text',
+                  owner: {
+                    kind: 'mindmap',
+                    id: 'mind-1'
+                  },
+                  position: { x: 100, y: 120 },
+                  data: {}
+                },
+                rect: {
+                  x: 100,
+                  y: 120,
+                  width: 144,
+                  height: 44
+                }
+              }
+            }
+
+            return undefined
           }
         },
-        edge: {
-          list: {
-            get: vi.fn(() => [])
-          },
+        edges: {
+          ids: vi.fn(() => [])
         },
-        mindmap: {
-          structure: {
-            get: () => structure
-          }
-        }
       },
       projection: {
         frame: {
@@ -109,9 +100,7 @@ describe('mindmap field drag', () => {
         },
         node: {
           all: vi.fn(() => []),
-          view: {
-            get: vi.fn(() => undefined)
-          }
+          get: vi.fn(() => undefined)
         },
         edge: {
           all: vi.fn(() => [])

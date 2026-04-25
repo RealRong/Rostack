@@ -36,25 +36,17 @@ const createActions = (edge = createEdge()) => {
   const clearRoute = vi.fn(() => okResult())
 
   const document = {
-    node: {
-      committed: {
-        get: vi.fn(() => undefined)
-      },
-      list: {
-        get: vi.fn(() => [])
-      }
+    nodes: {
+      get: vi.fn(() => undefined),
+      ids: vi.fn(() => [])
     },
-    edge: {
-      item: {
-        get: vi.fn((edgeId: string) => (
-          edgeId === edge.id
-            ? { edge }
-            : undefined
-        ))
-      },
-      list: {
-        get: vi.fn(() => [])
-      }
+    edges: {
+      get: vi.fn((edgeId: string) => (
+        edgeId === edge.id
+          ? { edge }
+          : undefined
+      )),
+      ids: vi.fn(() => [])
     },
     group: {
       exact: vi.fn(() => []),
@@ -137,32 +129,14 @@ const createActions = (edge = createEdge()) => {
   } as never
   const graph = {
     node: {
-      graph: {
-        get: vi.fn(() => undefined)
-      }
+      get: vi.fn(() => undefined)
     },
     edge: {
-      graph: {
-        get: vi.fn((edgeId: string) => (
-          edgeId === edge.id
-            ? {
-                base: {
-                  edge
-                }
-              }
-            : undefined
-        ))
-      },
-      committed: {
-        get: vi.fn((edgeId: string) => (
-          edgeId === edge.id
-            ? { edge }
-            : undefined
-        ))
-      },
-      list: {
-        get: vi.fn(() => [])
-      }
+      model: vi.fn((edgeId: string) => (
+        edgeId === edge.id
+          ? edge
+          : undefined
+      ))
     },
     mindmap: {
       view: {

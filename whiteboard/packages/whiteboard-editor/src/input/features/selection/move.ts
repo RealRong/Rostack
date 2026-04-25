@@ -127,11 +127,11 @@ export const createMoveInteraction = (
 
   const initialState = nodeApi.move.state.start({
     nodes: ctx.projection.node.all().map((view) => toSpatialNode({
-      node: view.base.node,
-      rect: view.geometry.rect,
-      rotation: view.geometry.rotation
+      node: view.node,
+      rect: view.rect,
+      rotation: view.rotation
     })),
-    edges: ctx.projection.edge.all().map((view) => view.base.edge),
+    edges: ctx.projection.edge.all().map((view) => view.edge),
     target: input.target,
     startWorld: input.start.world,
     nodeSize: ctx.engine.config.nodeSize

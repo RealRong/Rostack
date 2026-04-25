@@ -3,7 +3,7 @@ import type { SelectionMode } from '@whiteboard/core/node'
 import { equal, store as sharedStore } from '@shared/core'
 import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 
-type SelectionReadSource = Pick<EditorDocumentRuntimeSource, 'node' | 'edge'>
+type SelectionReadSource = Pick<EditorDocumentRuntimeSource, 'nodes' | 'edges'>
 
 const readNextSelectionTarget = (
   current: SelectionTarget,
@@ -18,16 +18,16 @@ const readNextSelectionTarget = (
 const readSelectionTargetByStore = (
   read: SelectionReadSource
 ): SelectionTarget => selectionApi.target.normalize({
-  nodeIds: read.node.list.get(),
-  edgeIds: read.edge.list.get()
+  nodeIds: read.nodes.ids(),
+  edgeIds: read.edges.ids()
 })
 
 const reconcileSelectionTarget = (
   read: SelectionReadSource,
   target: SelectionTarget
 ): SelectionTarget => selectionApi.target.normalize({
-  nodeIds: target.nodeIds.filter((nodeId) => Boolean(read.node.committed.get(nodeId))),
-  edgeIds: target.edgeIds.filter((edgeId) => Boolean(read.edge.item.get(edgeId)))
+  nodeIds: target.nodeIds.filter((nodeId) => Boolean(read.nodes.get(nodeId))),
+  edgeIds: target.edgeIds.filter((edgeId) => Boolean(read.edges.get(edgeId)))
 })
 
 export type SelectionMutate = {

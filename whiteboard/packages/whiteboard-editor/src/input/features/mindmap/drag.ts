@@ -98,12 +98,12 @@ export const tryStartMindmapDrag = (input: {
     structure: EditorSceneRuntime['mindmap']['structure']
     layout: EditorSceneRuntime['mindmap']['view']
   }
-  node: Pick<EditorDocumentRuntimeSource, 'node'>
+  node: Pick<EditorDocumentRuntimeSource, 'nodes'>
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
 }): MindmapDragState | undefined => {
   const pick = input.pointer.pick
   const pickedNode = pick.kind === 'node'
-    ? input.node.node.committed.get(pick.id)?.node
+    ? input.node.nodes.get(pick.id)?.node
     : undefined
   const treeId = pick.kind === 'mindmap'
     ? pick.treeId
@@ -120,7 +120,7 @@ export const tryStartMindmapDrag = (input: {
       ? (() => {
           const structure = input.mindmap.structure(treeId)
           return structure
-            ? input.node.node.committed.get(structure.rootId)?.node.locked
+            ? input.node.nodes.get(structure.rootId)?.node.locked
             : undefined
         })()
       : undefined)
@@ -179,9 +179,9 @@ export const tryStartMindmapDragForNode = (input: {
     structure: EditorSceneRuntime['mindmap']['structure']
     layout: EditorSceneRuntime['mindmap']['view']
   }
-  node: Pick<EditorDocumentRuntimeSource, 'node'>
+  node: Pick<EditorDocumentRuntimeSource, 'nodes'>
 }): MindmapDragState | undefined => {
-  const pickedNode = input.node.node.committed.get(input.nodeId)?.node
+  const pickedNode = input.node.nodes.get(input.nodeId)?.node
   const treeId = pickedNode?.owner?.kind === 'mindmap'
     ? pickedNode.owner.id
     : undefined
@@ -191,7 +191,7 @@ export const tryStartMindmapDragForNode = (input: {
       ? (() => {
         const structure = input.mindmap.structure(treeId)
         return structure
-            ? input.node.node.committed.get(structure.rootId)?.node.locked
+            ? input.node.nodes.get(structure.rootId)?.node.locked
             : undefined
       })()
       : undefined)

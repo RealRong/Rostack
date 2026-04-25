@@ -4,7 +4,6 @@ import {
   type InputDelta,
   type Read as EditorGraphQuery,
   type Result,
-  type Runtime,
   type Snapshot
 } from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
@@ -30,15 +29,9 @@ import {
   readPreviewNodeIds,
   takeEditorGraphInputDelta
 } from './input'
-import {
-  createScenePublishedState,
-  type ScenePublishedState
-} from './sources'
 
 export interface EditorSceneController {
-  runtime: Runtime
   query: EditorGraphQuery
-  sources: ScenePublishedState
   current(): {
     snapshot: Snapshot
     result: Result | null
@@ -235,8 +228,6 @@ export const createSceneController = ({
   layout: Pick<EditorLayout, 'draft'>
 }): EditorSceneController => {
   const runtime = createEditorSceneRuntime()
-  const projectionSources = createScenePublishedState(runtime.snapshot())
-  const sources = projectionSources.sources
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()
   const state = {
@@ -295,7 +286,6 @@ export const createSceneController = ({
           delta
         }))
         currentResult = result
-        projectionSources.sync(result)
         notify(result)
       }
     } finally {
@@ -359,11 +349,9 @@ export const createSceneController = ({
   flush()
 
   return {
-    runtime,
     query: runtime.query,
-    sources,
     current: () => ({
-      snapshot: sources.snapshot.get(),
+      snapshot: runtime.snapshot(),
       result: currentResult
     }),
     mark,

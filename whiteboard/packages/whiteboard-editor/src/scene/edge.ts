@@ -18,8 +18,6 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
-import type { ScenePublishedState } from '@whiteboard/editor/projection/sources'
 import {
   resolveEdgeCapability,
   type EdgeBox,
@@ -61,14 +59,22 @@ export type EditorEdgeView = {
   labels: readonly EditorEdgeLabelView[]
 }
 
+export type EditorEdgeDetail = {
+  edge: Edge
+  route: RuntimeEdgeView['route']
+  activeRouteIndex: number | undefined
+}
+
 export type GraphEdgeRead = {
-  committed: EditorDocumentRuntimeSource['edge']['item']
-  graph: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
+  projected: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
   ui: store.KeyedReadStore<EdgeId, RuntimeEdgeUiView | undefined>
+  get: (edgeId: EdgeId) => EditorEdgeView | undefined
   view: store.KeyedReadStore<EdgeId, EditorEdgeView | undefined>
+  detail: store.KeyedReadStore<EdgeId, EditorEdgeDetail | undefined>
+  model: (edgeId: EdgeId) => Edge | undefined
   geometry: store.KeyedReadStore<EdgeId, CoreEdgeView | undefined>
   ids: () => readonly EdgeId[]
-  all: () => readonly RuntimeEdgeView[]
+  all: () => readonly EditorEdgeView[]
   edges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
   label: {
     metrics: (ref: EdgeLabelRef) => Size | undefined
@@ -249,7 +255,7 @@ const isEdgeGeometryEqual = (
 )
 
 const readResolvedNodeSnapshot = (
-  readNode: Pick<GraphNodeRead, 'graph'>,
+  readNode: Pick<GraphNodeRead, 'get'>,
   edgeEnd: Edge['source'] | Edge['target']
 ): {
   node: ReturnType<typeof toSpatialNode>
@@ -259,25 +265,25 @@ const readResolvedNodeSnapshot = (
     return undefined
   }
 
-  const view = store.read(readNode.graph, edgeEnd.nodeId)
+  const view = readNode.get(edgeEnd.nodeId)
   return view
     ? {
         node: toSpatialNode({
-          node: view.base.node,
-          rect: view.geometry.rect,
-          rotation: view.geometry.rotation
+          node: view.node,
+          rect: view.rect,
+          rotation: view.rotation
         }),
         geometry: toGraphNodeGeometry({
-          node: view.base.node,
-          rect: view.geometry.rect,
-          rotation: view.geometry.rotation
+          node: view.node,
+          rect: view.rect,
+          rotation: view.rotation
         })
       }
     : undefined
 }
 
 const readEdgeGeometry = (
-  node: Pick<GraphNodeRead, 'graph'>,
+  node: Pick<GraphNodeRead, 'get'>,
   edge: Edge
 ): CoreEdgeView | undefined => {
   const source = readResolvedNodeSnapshot(node, edge.source)
@@ -302,26 +308,28 @@ const readEdgeGeometry = (
 }
 
 const readLabelMetrics = ({
-  published,
+  edgeGraph,
   ref
 }: {
-  published: Pick<ScenePublishedState, 'edgeGraph'>
+  edgeGraph: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
   ref: EdgeLabelRef
-}): Size | undefined => store.read(published.edgeGraph, ref.edgeId)?.route.labels
+}): Size | undefined => store.read(edgeGraph, ref.edgeId)?.route.labels
   .find((entry) => entry.labelId === ref.labelId)?.size
 
 export const createGraphEdgeRead = ({
-  document,
   sources,
   spatial,
   relatedEdges,
   node
 }: {
-  document: Pick<EditorDocumentRuntimeSource, 'edge' | 'node'>
-  sources: Pick<ScenePublishedState, 'edgeGraphIds' | 'edgeGraph' | 'edgeUi'>
+  sources: {
+    edgeGraphIds: store.ReadStore<readonly EdgeId[]>
+    edgeGraph: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
+    edgeUi: store.KeyedReadStore<EdgeId, RuntimeEdgeUiView | undefined>
+  }
   spatial: EditorGraphQuery['spatial']
   relatedEdges: EditorGraphQuery['relatedEdges']
-  node: Pick<GraphNodeRead, 'graph' | 'capability'>
+  node: Pick<GraphNodeRead, 'get' | 'capability'>
 }): GraphEdgeRead => {
   const readIds = () => store.read(sources.edgeGraphIds) as readonly EdgeId[]
 
@@ -342,6 +350,22 @@ export const createGraphEdgeRead = ({
       return toEditorEdgeView(current.graph, current.ui)
     },
     isEqual: isEditorEdgeViewEqual
+  })
+
+  const detail: GraphEdgeRead['detail'] = store.createKeyedDerivedStore({
+    get: (edgeId: EdgeId) => {
+      const graph = store.read(sources.edgeGraph, edgeId)
+      if (!graph) {
+        return undefined
+      }
+
+      return {
+        edge: graph.base.edge,
+        route: graph.route,
+        activeRouteIndex: store.read(sources.edgeUi, edgeId)?.activeRouteIndex
+      }
+    },
+    isEqual: (left, right) => left === right
   })
 
   const geometry: GraphEdgeRead['geometry'] = store.createKeyedDerivedStore({
@@ -366,22 +390,22 @@ export const createGraphEdgeRead = ({
     const candidates: EdgeConnectCandidate[] = []
 
     for (let index = 0; index < nodeIds.length; index += 1) {
-      const view = store.read(node.graph, nodeIds[index])
-      if (!view || !node.capability(view.base.node).connect) {
+      const view = node.get(nodeIds[index])
+      if (!view || !node.capability(view.node).connect) {
         continue
       }
 
       candidates.push({
-        nodeId: view.base.node.id,
+        nodeId: view.node.id,
         node: toSpatialNode({
-          node: view.base.node,
-          rect: view.geometry.rect,
-          rotation: view.geometry.rotation
+          node: view.node,
+          rect: view.rect,
+          rotation: view.rotation
         }),
         geometry: toGraphNodeGeometry({
-          node: view.base.node,
-          rect: view.geometry.rect,
-          rotation: view.geometry.rotation
+          node: view.node,
+          rect: view.rect,
+          rotation: view.rotation
         })
       })
     }
@@ -391,26 +415,25 @@ export const createGraphEdgeRead = ({
 
   const readNodeLocked = (
     nodeId: NodeId
-  ) => Boolean(
-    store.read(node.graph, nodeId)?.base.node.locked
-    ?? store.read(document.node.committed, nodeId)?.node.locked
-  )
+  ) => Boolean(node.get(nodeId)?.node.locked)
 
   return {
-    committed: document.edge.item,
-    graph: sources.edgeGraph,
+    projected: sources.edgeGraph,
     ui: sources.edgeUi,
+    get: (edgeId) => store.read(view, edgeId),
     view,
+    detail,
+    model: (edgeId) => store.read(sources.edgeGraph, edgeId)?.base.edge,
     geometry,
     ids: readIds,
     all: () => collection.presentValues(
       readIds(),
-      (edgeId) => store.read(sources.edgeGraph, edgeId)
+      (edgeId) => store.read(view, edgeId)
     ),
     edges: (edgeIds) => collection.presentValues(edgeIds, (edgeId) => store.read(sources.edgeGraph, edgeId)?.base.edge),
     label: {
       metrics: (ref) => readLabelMetrics({
-        published: sources,
+        edgeGraph: sources.edgeGraph,
         ref
       })
     },

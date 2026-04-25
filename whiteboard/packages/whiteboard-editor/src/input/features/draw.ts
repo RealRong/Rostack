@@ -203,7 +203,7 @@ const queryDrawNodeIdsInRect = (
 ): readonly NodeId[] => ctx.projection.node.idsInRect(rect, {
   match: 'touch'
 }).filter((nodeId) => (
-  ctx.document.node.committed.get(nodeId)?.node.type === 'draw'
+  ctx.document.nodes.get(nodeId)?.node.type === 'draw'
 ))
 
 const collectErasePoint = (

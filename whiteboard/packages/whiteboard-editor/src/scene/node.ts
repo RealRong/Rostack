@@ -12,8 +12,6 @@ import type {
   NodeModel,
   Rect
 } from '@whiteboard/core/types'
-import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
-import type { ScenePublishedState } from '@whiteboard/editor/projection/sources'
 import type {
   NodeTypeCapability,
   NodeTypeSupport
@@ -40,12 +38,12 @@ export type EditorNodeView = {
 }
 
 export type GraphNodeRead = {
-  committed: EditorDocumentRuntimeSource['node']['committed']
-  graph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
+  projected: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
   ui: store.KeyedReadStore<NodeId, RuntimeNodeUiView | undefined>
+  get: (nodeId: NodeId) => EditorNodeView | undefined
   view: store.KeyedReadStore<NodeId, EditorNodeView | undefined>
   ids: () => readonly NodeId[]
-  all: () => readonly RuntimeNodeView[]
+  all: () => readonly EditorNodeView[]
   nodes: (nodeIds: readonly NodeId[]) => readonly NodeModel[]
   capability: (node: Pick<NodeModel, 'id' | 'type' | 'owner'>) => NodeCapability
   idsInRect: (rect: Rect, options?: NodeRectHitOptions) => NodeId[]
@@ -170,13 +168,15 @@ export const resolveNodeCapability = (
 }
 
 export const createGraphNodeRead = ({
-  document,
   sources,
   spatial,
   type
 }: {
-  document: Pick<EditorDocumentRuntimeSource, 'node'>
-  sources: Pick<ScenePublishedState, 'nodeGraphIds' | 'nodeGraph' | 'nodeUi'>
+  sources: {
+    nodeGraphIds: store.ReadStore<readonly NodeId[]>
+    nodeGraph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
+    nodeUi: store.KeyedReadStore<NodeId, RuntimeNodeUiView | undefined>
+  }
   spatial: EditorGraphQuery['spatial']
   type: Pick<NodeTypeSupport, 'capability'>
 }): GraphNodeRead => {
@@ -188,7 +188,7 @@ export const createGraphNodeRead = ({
 
   const readAll = () => collection.presentValues(
     readIds(),
-    (nodeId) => store.read(sources.nodeGraph, nodeId)
+    (nodeId) => store.read(view, nodeId)
   )
 
   const viewSources = store.createStructKeyedStore<NodeId, EditorNodeViewSources>({
@@ -246,9 +246,9 @@ export const createGraphNodeRead = ({
   }
 
   return {
-    committed: document.node.committed,
-    graph: sources.nodeGraph,
+    projected: sources.nodeGraph,
     ui: sources.nodeUi,
+    get: (nodeId) => store.read(view, nodeId),
     view,
     ids: readIds,
     all: readAll,

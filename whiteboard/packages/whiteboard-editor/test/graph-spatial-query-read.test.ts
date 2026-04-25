@@ -138,13 +138,8 @@ describe('spatial-backed graph read queries', () => {
       }
     ])
     const read = createGraphNodeRead({
-      document: {
-        node: {
-          list: store.createValueStore<NodeId[]>(['node-only-in-document-list']),
-          committed: createKeyedReadStore<NodeId, undefined>(new Map())
-        }
-      },
       sources: {
+        nodeGraphIds: store.createValueStore<NodeId[]>([spatialNodeId]),
         nodeGraph: createKeyedReadStore<NodeId, RuntimeNodeView>(new Map([
           [
             spatialNodeId,
@@ -210,17 +205,8 @@ describe('spatial-backed graph read queries', () => {
       ]
     ]))
     const read = createGraphEdgeRead({
-      document: {
-        node: {
-          committed: createKeyedReadStore<NodeId, undefined>(new Map())
-        },
-        edge: {
-          list: store.createValueStore<EdgeId[]>(['edge-only-in-document-list']),
-          item: createKeyedReadStore<EdgeId, undefined>(new Map()),
-          related: () => []
-        }
-      },
       sources: {
+        edgeGraphIds: store.createValueStore<EdgeId[]>([edgeId]),
         edgeGraph: createKeyedReadStore<EdgeId, RuntimeEdgeView>(new Map([
           [
             edgeId,
@@ -241,7 +227,23 @@ describe('spatial-backed graph read queries', () => {
       },
       spatial,
       node: {
-        graph: nodeGraph,
+        get: (nodeId: NodeId) => {
+          const view = nodeGraph.get(nodeId)
+          return view
+            ? {
+                nodeId: view.base.node.id,
+                node: view.base.node,
+                rect: view.geometry.rect,
+                bounds: view.geometry.bounds,
+                rotation: view.geometry.rotation,
+                hidden: false,
+                selected: false,
+                hovered: false,
+                patched: false,
+                resizing: false
+              }
+            : undefined
+        },
         capability: () => ({
           role: 'content',
           connect: true,
@@ -297,23 +299,30 @@ describe('spatial-backed graph read queries', () => {
       ]
     ]))
     const read = createGraphEdgeRead({
-      document: {
-        node: {
-          committed: createKeyedReadStore<NodeId, undefined>(new Map())
-        },
-        edge: {
-          list: store.createValueStore<EdgeId[]>([]),
-          item: createKeyedReadStore<EdgeId, undefined>(new Map()),
-          related: () => []
-        }
-      },
       sources: {
+        edgeGraphIds: store.createValueStore<EdgeId[]>([]),
         edgeGraph: createKeyedReadStore<EdgeId, RuntimeEdgeView>(new Map()),
         edgeUi: createKeyedReadStore<EdgeId, undefined>(new Map())
       },
       spatial,
       node: {
-        graph: nodeGraph,
+        get: (nodeId: NodeId) => {
+          const view = nodeGraph.get(nodeId)
+          return view
+            ? {
+                nodeId: view.base.node.id,
+                node: view.base.node,
+                rect: view.geometry.rect,
+                bounds: view.geometry.bounds,
+                rotation: view.geometry.rotation,
+                hidden: false,
+                selected: false,
+                hovered: false,
+                patched: false,
+                resizing: false
+              }
+            : undefined
+        },
         capability: () => ({
           role: 'content',
           connect: true,

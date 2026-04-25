@@ -11,7 +11,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
-import type { GraphEdgeRead } from '@whiteboard/editor/scene/edge'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type { EdgeWrite } from '@whiteboard/editor/write/types'
 import {
   createEdgeLabelWrite
@@ -21,14 +21,14 @@ import {
 } from '@whiteboard/editor/write/edge/route'
 
 const readEdge = (
-  read: Pick<GraphEdgeRead, 'graph'>,
+  read: Pick<EditorSceneRuntime['edge'], 'model'>,
   edgeId: EdgeId
-) => read.graph.get(edgeId)?.base.edge
+) => read.model(edgeId)
 
 const readCommittedEdge = (
-  read: Pick<EditorDocumentRuntimeSource, 'edge'>,
+  read: Pick<EditorDocumentRuntimeSource, 'edges'>,
   edgeId: EdgeId
-) => read.edge.item.get(edgeId)?.edge
+) => read.edges.get(edgeId)?.edge
 
 const createStyleMutation = (
   path: Path,
@@ -64,7 +64,7 @@ const updateEdges = (
 }
 
 const updateExistingEdges = (
-  read: Pick<EditorDocumentRuntimeSource, 'edge'>,
+  read: Pick<EditorDocumentRuntimeSource, 'edges'>,
   engine: Engine,
   edgeIds: readonly EdgeId[],
   input: EdgeUpdateInput
@@ -80,7 +80,7 @@ const updateExistingEdges = (
 
 const updateEdgesBy = (
   edgeIds: readonly EdgeId[],
-  read: Pick<GraphEdgeRead, 'graph'>,
+  read: Pick<EditorSceneRuntime['edge'], 'model'>,
   engine: Engine,
   buildInput: (edge: Edge) => EdgeUpdateInput | undefined
 ) => updateEdges(
@@ -103,7 +103,7 @@ const updateEdgesBy = (
 
 const updateEdgeStyle = (
   edgeIds: readonly EdgeId[],
-  read: Pick<GraphEdgeRead, 'graph'>,
+  read: Pick<EditorSceneRuntime['edge'], 'model'>,
   engine: Engine,
   path: Path,
   value: unknown
@@ -122,7 +122,7 @@ const updateEdgeStyle = (
 
 const updateEdgeField = <Field extends keyof NonNullable<EdgeUpdateInput['fields']>>(
   edgeIds: readonly EdgeId[],
-  read: Pick<GraphEdgeRead, 'graph'>,
+  read: Pick<EditorSceneRuntime['edge'], 'model'>,
   engine: Engine,
   field: Field,
   value: NonNullable<EdgeUpdateInput['fields']>[Field]
@@ -145,8 +145,8 @@ export const createEdgeWrite = ({
 }: {
   engine: Engine
   read: {
-    document: Pick<EditorDocumentRuntimeSource, 'edge'>
-    projection: Pick<GraphEdgeRead, 'graph'>
+    document: Pick<EditorDocumentRuntimeSource, 'edges'>
+    projection: Pick<EditorSceneRuntime['edge'], 'model'>
   }
 }): EdgeWrite => ({
   create: (input: {

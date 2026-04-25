@@ -45,7 +45,7 @@ export const clearSelection = (
 export const startNodeEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
-    document: Pick<EditorDocumentRuntimeSource, 'node'>
+    document: Pick<EditorDocumentRuntimeSource, 'nodes'>
     registry: Pick<NodeRegistry, 'get'>
   },
   nodeId: NodeId,
@@ -54,7 +54,7 @@ export const startNodeEdit = (
     caret?: EditCaret
   }
 ) => {
-  const committed = ctx.document.node.committed.get(nodeId)
+  const committed = ctx.document.nodes.get(nodeId)
   if (!committed) {
     return
   }
@@ -81,7 +81,7 @@ export const startNodeEdit = (
 export const startEdgeLabelEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
-    document: Pick<EditorDocumentRuntimeSource, 'edge'>
+    document: Pick<EditorDocumentRuntimeSource, 'edges'>
   },
   edgeId: EdgeId,
   labelId: string,
@@ -89,7 +89,7 @@ export const startEdgeLabelEdit = (
     caret?: EditCaret
   }
 ) => {
-  const edge = ctx.document.edge.item.get(edgeId)?.edge
+  const edge = ctx.document.edges.get(edgeId)?.edge
   const label = edge?.labels?.find((entry) => entry.id === labelId)
   if (!edge || !label) {
     return
@@ -115,7 +115,7 @@ export const removeEdgeRoutePoint = (
   edgeId: EdgeId,
   index: number
 ) => {
-  const edge = ctx.graph.edge.graph.get(edgeId)?.base.edge
+  const edge = ctx.graph.edge.model(edgeId)
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }

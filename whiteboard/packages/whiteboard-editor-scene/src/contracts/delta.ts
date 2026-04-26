@@ -2,6 +2,13 @@ import type {
   IdDelta as SharedIdDelta
 } from '@shared/delta'
 import { idDelta } from '@shared/delta'
+import {
+  createFlagScopeField,
+  createScopeSchema,
+  createSetScopeField,
+  type InternalScopeInputValue as ScopeInputValue,
+  type InternalScopeValue as ScopeValue
+} from '@shared/projection/internal'
 import type { Revision } from '@shared/projection'
 import type {
   EdgeId,
@@ -65,102 +72,42 @@ export interface ViewPatchScope {
   overlay: boolean
 }
 
-type ScopeFlagField = {
-  kind: 'flag'
-}
-
-type ScopeSetField<TValue> = {
-  kind: 'set'
-  __value?: TValue
-}
-
-type ScopeField =
-  | ScopeFlagField
-  | ScopeSetField<unknown>
-
-type ScopeSchema<TFields extends Record<string, ScopeField>> = {
-  kind: 'scope'
-  fields: TFields
-}
-
-type ScopeFieldInputValue<TField extends ScopeField> =
-  TField extends ScopeFlagField
-    ? boolean
-    : TField extends ScopeSetField<infer TValue>
-      ? Iterable<TValue> | ReadonlySet<TValue>
-      : never
-
-type ScopeFieldValue<TField extends ScopeField> =
-  TField extends ScopeFlagField
-    ? boolean
-    : TField extends ScopeSetField<infer TValue>
-      ? ReadonlySet<TValue>
-      : never
-
-export type ScopeInputValue<TSchema> = TSchema extends ScopeSchema<infer TFields>
-  ? Partial<{
-      [K in keyof TFields]: ScopeFieldInputValue<TFields[K]>
-    }>
-  : undefined
-
-export type ScopeValue<TSchema> = TSchema extends ScopeSchema<infer TFields>
-  ? {
-      [K in keyof TFields]: ScopeFieldValue<TFields[K]>
-    }
-  : undefined
-
-const FLAG_SCOPE_FIELD = {
-  kind: 'flag'
-} as const satisfies ScopeFlagField
-
-const SET_SCOPE_FIELD = {
-  kind: 'set'
-} as const satisfies ScopeSetField<never>
-
-const scopeFlag = (): ScopeFlagField => FLAG_SCOPE_FIELD
-
-const scopeSet = <TValue,>(): ScopeSetField<TValue> => (
-  SET_SCOPE_FIELD as ScopeSetField<TValue>
-)
-
-const createScope = <TFields extends Record<string, ScopeField>>(
-  fields: TFields
-): ScopeSchema<TFields> => ({
-  kind: 'scope',
-  fields
+export const graphPhaseScope = createScopeSchema({
+  reset: createFlagScopeField(),
+  order: createFlagScopeField(),
+  nodes: createSetScopeField<NodeId>(),
+  edges: createSetScopeField<EdgeId>(),
+  mindmaps: createSetScopeField<MindmapId>(),
+  groups: createSetScopeField<GroupId>()
 })
 
-export const graphPhaseScope = createScope({
-  reset: scopeFlag(),
-  order: scopeFlag(),
-  nodes: scopeSet<NodeId>(),
-  edges: scopeSet<EdgeId>(),
-  mindmaps: scopeSet<MindmapId>(),
-  groups: scopeSet<GroupId>()
+export const spatialPhaseScope = createScopeSchema({
+  reset: createFlagScopeField(),
+  graph: createFlagScopeField()
 })
 
-export const spatialPhaseScope = createScope({
-  reset: scopeFlag(),
-  graph: scopeFlag()
-})
-
-export const viewPhaseScope = createScope({
-  reset: scopeFlag(),
-  chrome: scopeFlag(),
-  items: scopeFlag(),
-  nodes: scopeSet<NodeId>(),
-  edges: scopeSet<EdgeId>(),
-  statics: scopeSet<EdgeId>(),
-  labels: scopeSet<EdgeId>(),
-  active: scopeSet<EdgeId>(),
-  masks: scopeSet<EdgeId>(),
-  overlay: scopeFlag()
+export const viewPhaseScope = createScopeSchema({
+  reset: createFlagScopeField(),
+  chrome: createFlagScopeField(),
+  items: createFlagScopeField(),
+  nodes: createSetScopeField<NodeId>(),
+  edges: createSetScopeField<EdgeId>(),
+  statics: createSetScopeField<EdgeId>(),
+  labels: createSetScopeField<EdgeId>(),
+  active: createSetScopeField<EdgeId>(),
+  masks: createSetScopeField<EdgeId>(),
+  overlay: createFlagScopeField()
 })
 
 export interface EditorPhaseScopeMap {
   graph: typeof graphPhaseScope
   spatial: typeof spatialPhaseScope
   view: typeof viewPhaseScope
+}
+
+export type {
+  ScopeInputValue,
+  ScopeValue
 }
 
 export const createGraphDelta = (): GraphDelta => ({

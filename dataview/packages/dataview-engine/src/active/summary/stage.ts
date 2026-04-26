@@ -27,16 +27,16 @@ import {
 import { now } from '@dataview/engine/runtime/clock'
 import {
   type BaseImpact
-} from '../projector/impact'
+} from '../projection/impact'
 import {
-  type ActiveProjectorPhase,
+  type ActiveProjectionPhase,
   readActiveView
-} from '../projector/context'
+} from '../projection/context'
 import {
   createActiveStageMetrics,
   toActivePhaseMetrics
-} from '../projector/metrics'
-import { summaryPhaseScope } from '../contracts/projector'
+} from '../projection/metrics'
+import { summaryPhaseScope } from '../contracts/projection'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,
@@ -204,7 +204,7 @@ export const runSummaryStage = (input: {
   }
 }
 
-export const activeSummaryPhase: ActiveProjectorPhase<'summary'> = {
+export const activeSummaryPhase: ActiveProjectionPhase<'summary'> = {
   after: ['membership'],
   scope: summaryPhaseScope,
   run: (context) => {

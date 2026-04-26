@@ -3,21 +3,21 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type { ViewState } from '@dataview/engine/contracts/view'
-import type { ActiveProjectorInput } from '../contracts/projector'
+import type { ActiveProjectionInput } from '../contracts/projection'
 
-export interface ActiveProjectorResetContext {
+export interface ActiveProjectionResetContext {
   activeViewId?: ViewId
   view?: View
-  plan?: ActiveProjectorInput['view']['plan']
+  plan?: ActiveProjectionInput['view']['plan']
   previous?: ViewState
   previousViewId?: ViewState['view']['id']
-  previousPlan?: ActiveProjectorInput['view']['previousPlan']
+  previousPlan?: ActiveProjectionInput['view']['previousPlan']
 }
 
-export const readActiveProjectorResetContext = (
-  input: ActiveProjectorInput,
+export const readActiveProjectionResetContext = (
+  input: ActiveProjectionInput,
   previous: ViewState | undefined
-): ActiveProjectorResetContext => ({
+): ActiveProjectionResetContext => ({
   activeViewId: input.read.reader.views.activeId(),
   view: input.read.reader.views.active(),
   plan: input.view.plan,
@@ -26,8 +26,8 @@ export const readActiveProjectorResetContext = (
   previousPlan: input.view.previousPlan
 })
 
-export const shouldResetActiveProjector = (
-  context: ActiveProjectorResetContext
+export const shouldResetActiveProjection = (
+  context: ActiveProjectionResetContext
 ): boolean => !context.activeViewId
   || !context.view
   || !context.plan

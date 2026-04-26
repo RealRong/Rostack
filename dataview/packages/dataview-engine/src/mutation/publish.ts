@@ -16,18 +16,17 @@ import {
   emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'
 import {
-  createIndexState,
-  deriveIndex
-} from '@dataview/engine/active/index/runtime'
+  createIndexProjectionRuntime
+} from '@dataview/engine/active/index/projection'
 import {
   resolveViewPlan
 } from '@dataview/engine/active/plan'
 import {
-  createActiveProjector
-} from '@dataview/engine/active/projector/createActiveProjector'
+  createActiveProjectionRuntime
+} from '@dataview/engine/active/projection/runtime'
 import {
   createBaseImpact
-} from '@dataview/engine/active/projector/impact'
+} from '@dataview/engine/active/projection/impact'
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'
@@ -42,9 +41,7 @@ import type {
   IndexStageTrace,
   IndexTrace
 } from '@dataview/engine/contracts/performance'
-import {
-  projectDocumentDelta
-} from './documentDelta'
+import { createDocumentProjectionRuntime } from './projection/document'
 import type {
   DataviewMutationCache,
   DataviewPublish
@@ -71,18 +68,20 @@ const createEmptyIndexTrace = (): IndexTrace => ({
 const createDataviewMutationCache = (input: {
   doc: DataDoc
   trace: DataviewTrace
-  activeProjector: ReturnType<typeof createActiveProjector>
+  activeProjection: ReturnType<typeof createActiveProjectionRuntime>
+  indexProjection: ReturnType<typeof createIndexProjectionRuntime>
 }): {
   publish: DataviewPublish
   cache: DataviewMutationCache
 } => {
   const read = createDocumentReadContext(input.doc)
   const plan = resolveViewPlan(read, read.activeViewId)
-  const index = createIndexState(
-    input.doc,
-    plan?.index ?? emptyNormalizedIndexDemand()
-  )
-  const active = input.activeProjector.update({
+  input.indexProjection.update({
+    document: input.doc,
+    demand: plan?.index ?? emptyNormalizedIndexDemand()
+  })
+  const index = input.indexProjection.capture()
+  const active = input.activeProjection.update({
     read: {
       reader: read.reader
     },
@@ -90,7 +89,7 @@ const createDataviewMutationCache = (input: {
       plan
     },
     index: {
-      state: index
+      state: index.state
     },
     impact: createBaseImpact(input.trace)
   }).snapshot
@@ -105,7 +104,7 @@ const createDataviewMutationCache = (input: {
       ...(plan
         ? { plan }
         : {}),
-      index
+      index: index.state
     }
   }
 }
@@ -136,16 +135,21 @@ export const createDataviewPublishSpec = (input?: {
   DataviewPublish,
   DataviewMutationCache
 > => {
-  let activeProjector = createActiveProjector()
+  let activeProjection = createActiveProjectionRuntime()
+  let indexProjection = createIndexProjectionRuntime()
+  let documentProjection = createDocumentProjectionRuntime()
   let bootstrapped = false
 
   return {
     init: (doc) => {
-      activeProjector = createActiveProjector()
+      activeProjection = createActiveProjectionRuntime()
+      indexProjection = createIndexProjectionRuntime()
+      documentProjection = createDocumentProjectionRuntime()
       const runtime = createDataviewMutationCache({
         doc,
         trace: dataviewTrace.reset(undefined, doc),
-        activeProjector
+        activeProjection,
+        indexProjection
       })
       const shouldReset = bootstrapped
       bootstrapped = true
@@ -161,16 +165,16 @@ export const createDataviewPublishSpec = (input?: {
       const perf = input?.performance
       const startedAt = now()
       const trace = write.extra.trace
+      const impact = createBaseImpact(trace)
       const read = createDocumentReadContext(doc)
       const plan = resolveViewPlan(read, read.activeViewId)
-      const index = deriveIndex({
-        previous: prev.cache.index,
-        previousDemand: prev.cache.plan?.index ?? emptyNormalizedIndexDemand(),
+      indexProjection.update({
         document: doc,
-        impact: createBaseImpact(trace),
-        demand: plan?.index
+        demand: plan?.index ?? emptyNormalizedIndexDemand(),
+        impact
       })
-      const active = activeProjector.update({
+      const index = indexProjection.capture()
+      const active = activeProjection.update({
         read: {
           reader: read.reader
         },
@@ -180,17 +184,22 @@ export const createDataviewPublishSpec = (input?: {
         },
         index: {
           state: index.state,
-          delta: index.delta
+          ...(index.delta
+            ? {
+                delta: index.delta
+              }
+            : {})
         },
-        impact: createBaseImpact(trace)
+        impact
       })
 
       const outputStart = now()
-      const docDelta = projectDocumentDelta({
+      documentProjection.update({
         previous: prev.doc,
         next: doc,
         trace
       })
+      const docDelta = documentProjection.capture()
       const activeDelta = active.delta
       const delta = docDelta || activeDelta
         ? {

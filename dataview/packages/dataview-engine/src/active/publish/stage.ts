@@ -42,14 +42,14 @@ import type {
 } from '@dataview/core/contracts'
 import type { ItemIdPool } from './itemIdPool'
 import {
-  type ActiveProjectorPhase,
+  type ActiveProjectionPhase,
   readActiveView
-} from '../projector/context'
+} from '../projection/context'
 import {
   createActiveStageMetrics,
   toActivePhaseMetrics
-} from '../projector/metrics'
-import { publishPhaseScope } from '../contracts/projector'
+} from '../projection/metrics'
+import { publishPhaseScope } from '../contracts/projection'
 
 const SNAPSHOT_KEYS = [
   'view',
@@ -247,7 +247,7 @@ const runPublishStage = (input: {
   }
 }
 
-export const activePublishPhase: ActiveProjectorPhase<'publish'> = {
+export const activePublishPhase: ActiveProjectionPhase<'publish'> = {
   after: ['query', 'membership', 'summary'],
   scope: publishPhaseScope,
   run: (context) => {

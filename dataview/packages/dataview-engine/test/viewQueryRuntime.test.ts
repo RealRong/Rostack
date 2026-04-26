@@ -4,7 +4,7 @@ import { filter } from '@dataview/core/filter'
 import { compileViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { runQueryStage } from '@dataview/engine/active/query/stage'
-import { createBaseImpact } from '@dataview/engine/active/projector/impact'
+import { createBaseImpact } from '@dataview/engine/active/projection/impact'
 import { createDocumentReadContext } from '@dataview/engine/document/reader'
 import { entityTable } from '@shared/core'
 

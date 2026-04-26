@@ -3,7 +3,7 @@ import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
-import type { BaseImpact } from '@dataview/engine/active/projector/impact'
+import type { BaseImpact } from '@dataview/engine/active/projection/impact'
 import type { ItemIdPool } from '@dataview/engine/active/publish/itemIdPool'
 import type {
   MembershipPhaseDelta,
@@ -23,71 +23,13 @@ import type {
 import type { ViewState } from '@dataview/engine/contracts/view'
 import type { DocumentReader } from '@dataview/engine/document/reader'
 import type { ProjectionTrace } from '@shared/projection'
-
-type ScopeFlagField = {
-  kind: 'flag'
-}
-
-type ScopeSlotField<TValue> = {
-  kind: 'slot'
-  __value?: TValue
-}
-
-type ScopeField =
-  | ScopeFlagField
-  | ScopeSlotField<unknown>
-
-type ScopeSchema<TFields extends Record<string, ScopeField>> = {
-  kind: 'scope'
-  fields: TFields
-}
-
-type ScopeFieldInputValue<TField extends ScopeField> =
-  TField extends ScopeFlagField
-    ? boolean
-    : TField extends ScopeSlotField<infer TValue>
-      ? TValue
-      : never
-
-type ScopeFieldValue<TField extends ScopeField> =
-  TField extends ScopeFlagField
-    ? boolean
-    : TField extends ScopeSlotField<infer TValue>
-      ? TValue | undefined
-      : never
-
-export type ScopeInputValue<TSchema> = TSchema extends ScopeSchema<infer TFields>
-  ? Partial<{
-      [K in keyof TFields]: ScopeFieldInputValue<TFields[K]>
-    }>
-  : undefined
-
-export type ScopeValue<TSchema> = TSchema extends ScopeSchema<infer TFields>
-  ? {
-      [K in keyof TFields]: ScopeFieldValue<TFields[K]>
-    }
-  : undefined
-
-const FLAG_SCOPE_FIELD = {
-  kind: 'flag'
-} as const satisfies ScopeFlagField
-
-const SLOT_SCOPE_FIELD = {
-  kind: 'slot'
-} as const satisfies ScopeSlotField<never>
-
-const scopeFlag = (): ScopeFlagField => FLAG_SCOPE_FIELD
-
-const scopeSlot = <TValue,>(): ScopeSlotField<TValue> => (
-  SLOT_SCOPE_FIELD as ScopeSlotField<TValue>
-)
-
-const createScope = <TFields extends Record<string, ScopeField>>(
-  fields: TFields
-): ScopeSchema<TFields> => ({
-  kind: 'scope',
-  fields
-})
+import {
+  createFlagScopeField,
+  createScopeSchema,
+  createSlotScopeField,
+  type InternalScopeInputValue as ScopeInputValue,
+  type InternalScopeValue as ScopeValue
+} from '@shared/projection/internal'
 
 export type ActivePhaseName =
   | 'query'
@@ -95,7 +37,7 @@ export type ActivePhaseName =
   | 'summary'
   | 'publish'
 
-export interface ActiveProjectorInput {
+export interface ActiveProjectionInput {
   read: {
     reader: DocumentReader
   }
@@ -141,18 +83,18 @@ export interface PublishPhaseScope {
   }
 }
 
-export const membershipPhaseScope = createScope({
-  query: scopeSlot<MembershipPhaseScope['query']>()
+export const membershipPhaseScope = createScopeSchema({
+  query: createSlotScopeField<MembershipPhaseScope['query']>()
 })
 
-export const summaryPhaseScope = createScope({
-  membership: scopeSlot<SummaryPhaseScope['membership']>()
+export const summaryPhaseScope = createScopeSchema({
+  membership: createSlotScopeField<SummaryPhaseScope['membership']>()
 })
 
-export const publishPhaseScope = createScope({
-  reset: scopeFlag(),
-  membership: scopeSlot<PublishPhaseScope['membership']>(),
-  summary: scopeSlot<PublishPhaseScope['summary']>()
+export const publishPhaseScope = createScopeSchema({
+  reset: createFlagScopeField(),
+  membership: createSlotScopeField<PublishPhaseScope['membership']>(),
+  summary: createSlotScopeField<PublishPhaseScope['summary']>()
 })
 
 export interface ActivePhaseScopeMap {
@@ -162,7 +104,7 @@ export interface ActivePhaseScopeMap {
   publish: typeof publishPhaseScope
 }
 
-export interface ActiveProjectorWorking {
+export interface ActiveProjectionWorking {
   query: {
     state: QueryPhaseState
   }
@@ -185,23 +127,28 @@ export interface ActiveProjectionCapture {
   delta?: ActiveDelta
 }
 
-export interface ActiveProjectorTrace {
+export interface ActiveViewProjectionTrace {
   view: ViewTrace
   snapshot: SnapshotTrace
   snapshotMs: number
 }
 
-export interface ActiveProjectorResult {
+export interface ActiveProjectionResult {
   snapshot?: ViewState
   delta?: ActiveDelta
-  trace: ActiveProjectorTrace
+  trace: ActiveViewProjectionTrace
 }
 
-export interface ActiveProjector {
-  update(input: ActiveProjectorInput): ActiveProjectorResult
+export interface ActiveProjectionRuntime {
+  update(input: ActiveProjectionInput): ActiveProjectionResult
 }
 
 export type ActiveProjectionTrace = ProjectionTrace<
   ActivePhaseName,
   ActivePhaseMetrics
 >
+
+export type {
+  ScopeInputValue,
+  ScopeValue
+}

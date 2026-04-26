@@ -32,7 +32,7 @@ describe('editor boundary runtime', () => {
     })
 
     boundary = createEditorBoundaryRuntime({
-      projection: {
+      scene: {
         current: () => ({
           revision: graph.revision(),
           state: graph.state(),

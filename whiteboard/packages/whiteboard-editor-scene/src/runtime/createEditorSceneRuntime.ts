@@ -29,11 +29,11 @@ const createEditorSceneStateReader = (input: {
   }
 }
 
-export const createEditorSceneModelRuntime = (input: {
+export const createEditorSceneRuntime = (input: {
   measure?: TextMeasure
   nodeCapability?: NodeCapabilityInput
   view: SceneViewInput
-}) => {
+}): Runtime => {
   const runtime = createProjectionRuntime(
     createEditorSceneProjectionSpec(input)
   )
@@ -42,24 +42,10 @@ export const createEditorSceneModelRuntime = (input: {
   })
 
   return {
-    ...runtime,
-    working: runtime.state,
-    state
-  }
-}
-
-export const createEditorSceneRuntime = (input: {
-  measure?: TextMeasure
-  nodeCapability?: NodeCapabilityInput
-  view: SceneViewInput
-}): Runtime => {
-  const runtime = createEditorSceneModelRuntime(input)
-
-  return {
     stores: runtime.stores,
     query: runtime.read,
     revision: runtime.revision,
-    state: runtime.state,
+    state,
     capture: runtime.capture,
     update: (current) => runtime.update(current) as Result,
     subscribe: (listener) => runtime.subscribe((result) => {

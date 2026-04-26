@@ -35,18 +35,18 @@ import {
   type BaseImpact,
   hasField,
   hasQueryDeltaChanges
-} from '../projector/impact'
+} from '../projection/impact'
 import {
-  type ActiveProjectorPhase,
+  type ActiveProjectionPhase,
   readActiveView
-} from '../projector/context'
+} from '../projection/context'
 import {
   createActiveStageMetrics,
   toActivePhaseMetrics
-} from '../projector/metrics'
+} from '../projection/metrics'
 import {
   membershipPhaseScope
-} from '../contracts/projector'
+} from '../contracts/projection'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,
@@ -247,7 +247,7 @@ export const runMembershipStage = (input: {
   }
 }
 
-export const activeMembershipPhase: ActiveProjectorPhase<'membership'> = {
+export const activeMembershipPhase: ActiveProjectionPhase<'membership'> = {
   after: ['query'],
   scope: membershipPhaseScope,
   run: (context) => {

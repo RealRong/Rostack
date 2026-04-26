@@ -13,43 +13,37 @@ import type {
   ActivePhaseName,
   ActiveProjectionCapture,
   ActivePhaseScopeMap,
-  ActiveProjectorInput,
-  ActiveProjectorWorking,
+  ActiveProjectionInput,
+  ActiveProjectionWorking,
   ScopeValue
-} from '../contracts/projector'
+} from '../contracts/projection'
 
-type ActiveProjectorSurface = {}
+type ActiveProjectionSurface = {}
 
 type ActiveProjectionSpec = ProjectionSpec<
-  ActiveProjectorInput,
-  ActiveProjectorWorking,
+  ActiveProjectionInput,
+  ActiveProjectionWorking,
   {},
-  ActiveProjectorSurface,
+  ActiveProjectionSurface,
   ActivePhaseName,
   ActivePhaseScopeMap,
   ActivePhaseMetrics,
   ActiveProjectionCapture
 >
 
-export type ActiveProjectorContext<TScope> = {
-  input: ActiveProjectorInput
-  state: ActiveProjectorWorking
+export type ActiveProjectionContext<TScope> = {
+  input: ActiveProjectionInput
+  state: ActiveProjectionWorking
   revision: number
   scope: TScope
 }
 
-export type ActiveProjectorPhase<
+export type ActiveProjectionPhase<
   TName extends ActivePhaseName
 > = ActiveProjectionSpec['phases'][TName]
 
-export const defineActiveProjectorPhase = <
-  TName extends ActivePhaseName
->(
-  phase: ActiveProjectorPhase<TName>
-): ActiveProjectorPhase<TName> => phase
-
 export const readActiveView = (
-  input: ActiveProjectorInput
+  input: ActiveProjectionInput
 ): {
   activeViewId?: ViewId
   view?: View

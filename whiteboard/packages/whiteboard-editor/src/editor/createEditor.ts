@@ -17,7 +17,7 @@ import {
 } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorTextLayout } from '@whiteboard/editor/layout/textLayout'
-import { createSceneBridge } from '@whiteboard/editor/projection/bridge'
+import { createSceneOrchestrator } from '@whiteboard/editor/scene/orchestrator'
 import { createSceneSource } from '@whiteboard/editor/scene/source'
 import { createEditorSessionSource } from '@whiteboard/editor/editor/source/session'
 import { createToolService } from '@whiteboard/editor/services/tool'
@@ -67,14 +67,14 @@ export const createEditor = ({
   })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(registry)
-  const projection = createSceneBridge({
+  const sceneOrchestrator = createSceneOrchestrator({
     engine,
     session,
     measure: textLayout.measure,
     nodeType
   })
   const scene = createSceneSource({
-    controller: projection
+    controller: sceneOrchestrator
   })
   const document = scene.query.document
   const writeRuntime = createEditorWrite({
@@ -99,7 +99,7 @@ export const createEditor = ({
     }
   })
   boundary = createEditorBoundaryRuntime({
-    projection,
+    scene: sceneOrchestrator,
     tasks
   })
   const actions = createEditorActionsApi({
@@ -154,7 +154,7 @@ export const createEditor = ({
       host.cancel()
       boundary.dispose()
       scene.dispose()
-      projection.dispose()
+      sceneOrchestrator.dispose()
       session.reset()
       textLayout.text.clear()
     }

@@ -3,7 +3,7 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { EditorSceneBridge } from '@whiteboard/editor/projection/bridge'
+import type { EditorSceneOrchestrator } from '@whiteboard/editor/scene/orchestrator'
 import type {
   EditorSceneSource as EditorSceneRuntime,
   ScenePickRequest,
@@ -46,7 +46,7 @@ const isScenePickRuntimeResultEqual = (
 )
 
 const createScenePick = (input: {
-  query: EditorSceneBridge['query']
+  query: EditorSceneOrchestrator['query']
 }): ScenePickRuntime => {
   const listeners = new Set<() => void>()
   let pending: ScenePickRequest | undefined
@@ -147,7 +147,7 @@ const createScenePick = (input: {
 export const createSceneSource = ({
   controller
 }: {
-  controller: Pick<EditorSceneBridge, 'query' | 'current' | 'stores'>
+  controller: Pick<EditorSceneOrchestrator, 'query' | 'current' | 'stores'>
 }): EditorSceneRuntime & {
   dispose: () => void
 } => {

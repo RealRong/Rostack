@@ -1,17 +1,17 @@
 import { createProjectionRuntime } from '@shared/projection'
 import type {
-  ActiveProjector,
-  ActiveProjectorInput,
-  ActiveProjectorResult
-} from '../contracts/projector'
-import { createActiveProjectorTrace } from './trace'
-import { activeProjectorSpec } from './spec'
+  ActiveProjectionInput,
+  ActiveProjectionResult,
+  ActiveProjectionRuntime
+} from '../contracts/projection'
+import { createActiveProjectionTrace } from './trace'
+import { activeProjectionSpec } from './spec'
 
-export const createActiveProjector = (): ActiveProjector => {
-  const runtime = createProjectionRuntime(activeProjectorSpec)
+export const createActiveProjectionRuntime = (): ActiveProjectionRuntime => {
+  const runtime = createProjectionRuntime(activeProjectionSpec)
 
   return {
-    update: (input: ActiveProjectorInput): ActiveProjectorResult => {
+    update: (input: ActiveProjectionInput): ActiveProjectionResult => {
       const state = runtime.state()
       const previous = state.publish.snapshot
       state.publish.previous = previous
@@ -25,10 +25,10 @@ export const createActiveProjector = (): ActiveProjector => {
               delta: capture.delta
             }
           : {}),
-        trace: createActiveProjectorTrace({
+        trace: createActiveProjectionTrace({
           previous,
           next: capture.snapshot,
-          projectorTrace: result.trace
+          projectionTrace: result.trace
         })
       }
     }

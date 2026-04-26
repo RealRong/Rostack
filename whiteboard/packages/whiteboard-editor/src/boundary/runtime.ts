@@ -1,4 +1,4 @@
-import type { EditorSceneBridge } from '@whiteboard/editor/projection/bridge'
+import type { EditorSceneOrchestrator } from '@whiteboard/editor/scene/orchestrator'
 import type { EditorBoundaryTaskRuntime } from './task'
 import {
   toEditorPublished,
@@ -22,15 +22,15 @@ export interface EditorBoundaryExecutor extends EditorBoundaryRuntime {
 }
 
 export const createEditorBoundaryRuntime = ({
-  projection,
+  scene,
   tasks
 }: {
-  projection: Pick<EditorSceneBridge, 'current' | 'mark' | 'flush'>
+  scene: Pick<EditorSceneOrchestrator, 'current' | 'mark' | 'flush'>
   tasks: EditorBoundaryTaskRuntime
 }): EditorBoundaryExecutor => {
   const readPublished = () => toEditorPublished(
-    projection.current().state,
-    projection.current().revision
+    scene.current().state,
+    scene.current().revision
   )
 
   const execute = <TResult,>(
@@ -44,9 +44,9 @@ export const createEditorBoundaryRuntime = ({
 
         if (signal.kind === 'publish') {
           if (signal.delta) {
-            projection.mark(signal.delta)
+            scene.mark(signal.delta)
           }
-          projection.flush()
+          scene.flush()
           step = procedure.next(readPublished())
           continue
         }
@@ -57,7 +57,7 @@ export const createEditorBoundaryRuntime = ({
 
       return step.value
     } finally {
-      projection.flush()
+      scene.flush()
     }
   }
 
@@ -68,7 +68,7 @@ export const createEditorBoundaryRuntime = ({
       try {
         return fn(...args)
       } finally {
-        projection.flush()
+        scene.flush()
       }
     },
     procedure: (fn) => (

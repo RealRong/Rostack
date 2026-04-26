@@ -38,9 +38,9 @@ import {
   readPreviewEdgeIds,
   readPreviewMindmapIds,
   readPreviewNodeIds
-} from './adapter'
+} from '../projection/adapter'
 
-export interface EditorSceneBridge {
+export interface EditorSceneOrchestrator {
   stores: Runtime['stores']
   query: SceneQuery
   current(): {
@@ -60,14 +60,14 @@ const unionIds = <TId extends string>(
   values.flatMap((value) => [...value])
 )
 
-type ProjectionInteractionState = {
+type SceneInteractionState = {
   chrome: boolean
   editingEdge: boolean
 }
 
-const readProjectionInteractionState = (
+const readSceneInteractionState = (
   session: Pick<EditorSession, 'interaction'>
-): ProjectionInteractionState => {
+): SceneInteractionState => {
   const mode = store.read(session.interaction.read.mode)
 
   return {
@@ -76,9 +76,9 @@ const readProjectionInteractionState = (
   }
 }
 
-const isProjectionInteractionStateEqual = (
-  left: ProjectionInteractionState,
-  right: ProjectionInteractionState
+const isSceneInteractionStateEqual = (
+  left: SceneInteractionState,
+  right: SceneInteractionState
 ): boolean => (
   left.chrome === right.chrome
   && left.editingEdge === right.editingEdge
@@ -129,12 +129,12 @@ const createEditDelta = (input: {
 }
 
 const createInteractionDelta = (input: {
-  previous: ProjectionInteractionState
-  next: ProjectionInteractionState
+  previous: SceneInteractionState
+  next: SceneInteractionState
 }): InputDelta => {
   const delta = createInputDelta()
 
-  if (!isProjectionInteractionStateEqual(input.previous, input.next)) {
+  if (!isSceneInteractionStateEqual(input.previous, input.next)) {
     delta.session.interaction = true
   }
 
@@ -241,7 +241,7 @@ const createBootstrapDelta = (input: {
   return delta
 }
 
-export const createSceneBridge = ({
+export const createSceneOrchestrator = ({
   engine,
   session,
   measure,
@@ -251,7 +251,7 @@ export const createSceneBridge = ({
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
   measure: TextMeasure | undefined
   nodeType: Pick<NodeTypeSupport, 'meta' | 'edit' | 'capability'>
-}): EditorSceneBridge => {
+}): EditorSceneOrchestrator => {
   const runtime = createEditorSceneRuntime({
     measure,
     nodeCapability: {
@@ -281,7 +281,7 @@ export const createSceneBridge = ({
   let currentEdit = store.read(session.state.edit)
   let currentPreview = store.read(session.preview.state)
   let currentHover = store.read(session.interaction.read.hover)
-  let currentInteraction = readProjectionInteractionState(session)
+  let currentInteraction = readSceneInteractionState(session)
 
   const notify = (
     result: Result
@@ -382,7 +382,7 @@ export const createSceneBridge = ({
     }),
     session.interaction.read.mode.subscribe(() => {
       const previousInteraction = currentInteraction
-      currentInteraction = readProjectionInteractionState(session)
+      currentInteraction = readSceneInteractionState(session)
       const delta = createInteractionDelta({
         previous: previousInteraction,
         next: currentInteraction
@@ -393,7 +393,7 @@ export const createSceneBridge = ({
     }),
     session.interaction.read.chrome.subscribe(() => {
       const previousInteraction = currentInteraction
-      currentInteraction = readProjectionInteractionState(session)
+      currentInteraction = readSceneInteractionState(session)
       const delta = createInteractionDelta({
         previous: previousInteraction,
         next: currentInteraction

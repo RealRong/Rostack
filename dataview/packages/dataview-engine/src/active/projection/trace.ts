@@ -12,8 +12,8 @@ import type {
 import type {
   ActivePhaseMetrics,
   ActivePhaseName
-} from '../contracts/projector'
-import type { ActiveProjectionTrace } from '../contracts/projector'
+} from '../contracts/projection'
+import type { ActiveProjectionTrace } from '../contracts/projection'
 
 const SNAPSHOT_KEYS = [
   'view',
@@ -67,17 +67,17 @@ export const createSnapshotTrace = (
       : []
 })
 
-export const createActiveProjectorTrace = (input: {
+export const createActiveProjectionTrace = (input: {
   previous: ViewState | undefined
   next: ViewState | undefined
-  projectorTrace: ActiveProjectionTrace
+  projectionTrace: ActiveProjectionTrace
 }): {
   view: ViewTrace
   snapshot: SnapshotTrace
   snapshotMs: number
 } => {
   const stagesByName = new Map(
-    input.projectorTrace.phases.map(phase => [phase.name, phase] as const)
+    input.projectionTrace.phases.map(phase => [phase.name, phase] as const)
   )
   const stages: ViewStageTrace[] = PHASE_ORDER.map((stage) => {
     const phase = stagesByName.get(stage)
@@ -110,7 +110,7 @@ export const createActiveProjectorTrace = (input: {
         publish: stages[3].action
       },
       timings: {
-        totalMs: input.projectorTrace.totalMs
+        totalMs: input.projectionTrace.totalMs
       },
       stages
     },

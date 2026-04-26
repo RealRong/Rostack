@@ -6,22 +6,22 @@ import type {
   ActivePhaseName,
   ActiveProjectionCapture,
   ActivePhaseScopeMap,
-  ActiveProjectorInput,
-  ActiveProjectorWorking
-} from '../contracts/projector'
+  ActiveProjectionInput,
+  ActiveProjectionWorking
+} from '../contracts/projection'
 import { activeMembershipPhase } from '../membership/stage'
 import { activePublishPhase } from '../publish/stage'
 import { activeQueryPhase } from '../query/stage'
 import { activeSummaryPhase } from '../summary/stage'
-import { createActiveProjectorWorking } from './createWorking'
+import { createActiveProjectionWorking } from './createWorking'
 import {
-  readActiveProjectorResetContext,
-  shouldResetActiveProjector
+  readActiveProjectionResetContext,
+  shouldResetActiveProjection
 } from './reset'
 
-export const activeProjectorSpec: ProjectionSpec<
-  ActiveProjectorInput,
-  ActiveProjectorWorking,
+export const activeProjectionSpec: ProjectionSpec<
+  ActiveProjectionInput,
+  ActiveProjectionWorking,
   {},
   {},
   ActivePhaseName,
@@ -29,13 +29,13 @@ export const activeProjectorSpec: ProjectionSpec<
   ActivePhaseMetrics,
   ActiveProjectionCapture
 > = {
-  createState: createActiveProjectorWorking,
+  createState: createActiveProjectionWorking,
   createRead: () => ({}),
   surface: {},
   plan: ({ input, state }) => {
     const previous = state.publish.previous
-    const resetContext = readActiveProjectorResetContext(input, previous)
-    if (shouldResetActiveProjector(resetContext)) {
+    const resetContext = readActiveProjectionResetContext(input, previous)
+    if (shouldResetActiveProjection(resetContext)) {
       return previous
         ? {
             scope: {

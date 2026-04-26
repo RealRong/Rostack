@@ -1,4 +1,4 @@
-import type { ActivePhaseMetrics } from '../contracts/projector'
+import type { ActivePhaseMetrics } from '../contracts/projection'
 
 export const createActiveStageMetrics = (input: {
   inputCount?: number

@@ -5,7 +5,7 @@ import {
 } from '@dataview/core/calculation'
 import {
   createBaseImpact
-} from '@dataview/engine/active/projector/impact'
+} from '@dataview/engine/active/projection/impact'
 import {
   createPartition
 } from '@dataview/engine/active/shared/partition'

@@ -12,11 +12,11 @@ import {
   resolveViewPlan
 } from '@dataview/engine/active/plan'
 import {
-  activeProjectorSpec
-} from '@dataview/engine/active/projector/spec'
+  activeProjectionSpec
+} from '@dataview/engine/active/projection/spec'
 import {
   createBaseImpact
-} from '@dataview/engine/active/projector/impact'
+} from '@dataview/engine/active/projection/impact'
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'
@@ -36,7 +36,7 @@ const assertPhaseOrder = (
 }
 
 const createHarness = () => {
-  const runtime = createProjectionRuntime(activeProjectorSpec)
+  const runtime = createProjectionRuntime(activeProjectionSpec)
 
   return {
     update: (input: Parameters<typeof runtime.update>[0]) => {

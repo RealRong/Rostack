@@ -15,7 +15,7 @@ import {
 } from '@dataview/engine/active/index/runtime'
 import {
   createBaseImpact
-} from '@dataview/engine/active/projector/impact'
+} from '@dataview/engine/active/projection/impact'
 import {
   createItemIdPool
 } from '@dataview/engine/active/publish/itemIdPool'

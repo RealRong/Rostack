@@ -36,15 +36,15 @@ import { now } from '@dataview/engine/runtime/clock'
 import {
   type BaseImpact,
   hasQueryInputChanges
-} from '../projector/impact'
+} from '../projection/impact'
 import {
-  type ActiveProjectorPhase,
+  type ActiveProjectionPhase,
   readActiveView
-} from '../projector/context'
+} from '../projection/context'
 import {
   createActiveStageMetrics,
   toActivePhaseMetrics
-} from '../projector/metrics'
+} from '../projection/metrics'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_METRICS = toActivePhaseMetrics({
@@ -258,7 +258,7 @@ export const runQueryStage = (input: {
   }
 }
 
-export const activeQueryPhase: ActiveProjectorPhase<'query'> = {
+export const activeQueryPhase: ActiveProjectionPhase<'query'> = {
   after: [],
   run: (context) => {
     const { activeViewId, view } = readActiveView(context.input)

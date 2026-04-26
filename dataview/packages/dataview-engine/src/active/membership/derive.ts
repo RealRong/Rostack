@@ -15,7 +15,7 @@ import type {
 } from '@dataview/engine/active/index/contracts'
 import type {
   BaseImpact
-} from '@dataview/engine/active/projector/impact'
+} from '@dataview/engine/active/projection/impact'
 import {
   createPartition,
   readPartitionSelections,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   MutationEngine,
-  mutationApply,
+  applyResult,
   type MutationEngineSpec,
   type MutationIntentTable
 } from '@shared/mutation'
@@ -42,7 +42,6 @@ const createSpec = (): MutationEngineSpec<
   TestOp,
   TestKey,
   TestPublish,
-  number,
   TestExtra
 > => {
   const reducer = new Reducer<
@@ -78,45 +77,44 @@ const createSpec = (): MutationEngineSpec<
   })
 
   return {
-  clone: (doc) => ({
-    ...doc
-  }),
-  compile: ({
-    intents
-  }) => ({
-    ops: intents.map((intent) => ({
-      type: 'count.add',
-      value: intent.value
-    })),
-    outputs: intents.map((intent) => intent.value),
-    value: intents.reduce((sum, intent) => sum + intent.value, 0)
-  }),
-  apply: ({
-    doc,
-    ops
-  }) => mutationApply.success(
-    reducer.reduce({
+    clone: (doc) => ({
+      ...doc
+    }),
+    compile: ({
+      intents
+    }) => ({
+      ops: intents.map((intent) => ({
+        type: 'count.add',
+        value: intent.value
+      })),
+      outputs: intents.map((intent) => intent.value)
+    }),
+    apply: ({
       doc,
       ops
-    })
-  ),
-  publish: {
-    init: (doc) => ({
-      count: doc.count
-    }),
-    reduce: ({
-      doc
-    }) => ({
-      count: doc.count
-    })
-  },
-  history: {
-    capacity: 10,
-    track: (write) => write.origin === 'user',
-    clear: (write) => write.forward.some((op) => op.value === 99),
-    conflicts: (left, right) => left === right
+    }) => applyResult.success(
+      reducer.reduce({
+        doc,
+        ops
+      })
+    ),
+    publish: {
+      init: (doc) => ({
+        count: doc.count
+      }),
+      reduce: ({
+        doc
+      }) => ({
+        count: doc.count
+      })
+    },
+    history: {
+      capacity: 10,
+      track: (write) => write.origin === 'user',
+      clear: (write) => write.forward.some((op) => op.value === 99),
+      conflicts: (left, right) => left === right
+    }
   }
-}
 }
 
 describe('MutationEngine', () => {
@@ -172,7 +170,7 @@ describe('MutationEngine', () => {
     expect(engine.history?.state().undoDepth).toBe(1)
   })
 
-  test('supports executeMany with batch data', () => {
+  test('supports batched execute with output array', () => {
     const engine = new MutationEngine({
       doc: {
         count: 0
@@ -180,7 +178,7 @@ describe('MutationEngine', () => {
       spec: createSpec()
     })
 
-    const result = engine.executeMany([{
+    const result = engine.execute([{
       type: 'count.add',
       value: 2
     }, {
@@ -192,7 +190,7 @@ describe('MutationEngine', () => {
     if (!result.ok) {
       return
     }
-    expect(result.data).toBe(5)
+    expect(result.data).toEqual([2, 3])
     expect(result.write.doc).toEqual({
       count: 5
     })
@@ -301,7 +299,7 @@ describe('MutationEngine', () => {
         apply: ({
           doc,
           ops
-        }) => mutationApply.success(new Reducer<
+        }) => applyResult.success(new Reducer<
           TestDoc,
           TestOp,
           TestKey
@@ -337,7 +335,7 @@ describe('MutationEngine', () => {
     })
   })
 
-  test('protects internal doc state via clone on current reads', () => {
+  test('returns the live current doc snapshot', () => {
     const engine = new MutationEngine({
       doc: {
         count: 2
@@ -349,7 +347,7 @@ describe('MutationEngine', () => {
     snapshot.doc.count = 100
 
     expect(engine.current().doc).toEqual({
-      count: 2
+      count: 100
     })
   })
 

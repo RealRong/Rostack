@@ -18,6 +18,12 @@ import type {
 import { createWhiteboardMutationSpec } from '../mutation'
 import { DEFAULT_ENGINE_HISTORY_CONFIG } from '../mutation/spec'
 import { failure } from '../result'
+import type {
+  WhiteboardMutationExtra,
+  WhiteboardMutationKey
+} from '../mutation/types'
+import type { WhiteboardMutationTable } from '@whiteboard/core/intent'
+import type { Document, Operation } from '@whiteboard/core/types'
 
 const resolveIntentOrigin = (
   intent: Intent,
@@ -91,7 +97,14 @@ export const createEngine = ({
     ...(history ?? {})
   }
 
-  const core = new MutationEngine({
+  const core = new MutationEngine<
+    Document,
+    WhiteboardMutationTable,
+    Operation,
+    WhiteboardMutationKey,
+    EnginePublish,
+    WhiteboardMutationExtra
+  >({
     doc: document,
     spec: createWhiteboardMutationSpec({
       config,

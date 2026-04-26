@@ -148,7 +148,7 @@ export const createActiveRecordsApi = (input: {
       }
     }
 
-    const result = input.base.executeMany(actions)
+    const result = input.base.execute(actions)
     return result.ok
       ? recordId
       : undefined

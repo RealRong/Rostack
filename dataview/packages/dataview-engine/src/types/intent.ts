@@ -1,5 +1,7 @@
 import type {
+  MutationExecuteInput,
   MutationExecuteResult,
+  MutationExecuteResultOfInput,
   MutationIntentKind,
   MutationIntentOf,
   MutationIntentTable,
@@ -29,7 +31,7 @@ export type DataviewErrorCode =
   | 'mutation_engine.compile.blocked'
   | 'mutation_engine.compile.empty'
   | 'mutation_engine.apply.empty'
-  | 'mutation_engine.execute_many.empty'
+  | 'mutation_engine.execute.empty'
 
 export interface DataviewIntentTable extends MutationIntentTable {
   'record.create': {
@@ -131,11 +133,15 @@ export type IntentData<K extends IntentKind = IntentKind> =
 export type ExecuteResult<K extends IntentKind = IntentKind> =
   MutationExecuteResult<DataviewIntentTable, EngineWrite, K, DataviewErrorCode>
 
-export type BatchExecuteResult = MutationResult<
-  readonly IntentData[],
-  EngineWrite,
-  DataviewErrorCode
->
+export type ExecuteInput = MutationExecuteInput<DataviewIntentTable>
+
+export type ExecuteResultOf<I extends ExecuteInput> =
+  MutationExecuteResultOfInput<
+    DataviewIntentTable,
+    EngineWrite,
+    I,
+    DataviewErrorCode
+  >
 
 export type DispatchResult = MutationResult<
   unknown,

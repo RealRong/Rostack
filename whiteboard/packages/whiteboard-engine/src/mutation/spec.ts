@@ -1,6 +1,6 @@
 import {
   MutationEngineSpec,
-  mutationApply,
+  applyResult,
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createId } from '@whiteboard/core/id'
@@ -30,7 +30,6 @@ import type {
   EnginePublish
 } from '../contracts/document'
 import { normalizeDocument } from '@whiteboard/core/document/normalize'
-import { failure } from '../result'
 import { whiteboardPublishSpec } from './publish'
 import type {
   WhiteboardMutationExtra,
@@ -91,7 +90,6 @@ export type WhiteboardMutationSpec = MutationEngineSpec<
   Operation,
   WhiteboardMutationKey,
   EnginePublish,
-  void,
   WhiteboardMutationExtra
 >
 
@@ -135,12 +133,8 @@ export const createWhiteboardMutationSpec = (input: {
       })
 
       return reduced.ok
-        ? mutationApply.success(reduced)
-        : failure(
-            reduced.error.code,
-            reduced.error.message,
-            reduced.error.details
-          )
+        ? applyResult.success(reduced)
+        : applyResult.failure(reduced.error)
     },
     publish: whiteboardPublishSpec,
     history: {

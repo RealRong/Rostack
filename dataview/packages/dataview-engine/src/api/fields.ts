@@ -16,6 +16,7 @@ import {
 } from '@dataview/core/id'
 import { string } from '@shared/core'
 import type {
+  EngineFacadeHost,
   FieldsApi
 } from '@dataview/engine/contracts/api'
 import type {
@@ -45,16 +46,15 @@ const findAddedOption = (
   return next.find((option) => !previousIds.has(option.id))
 }
 
-export const createFieldsApi = (options: {
-  document: () => DataDoc
-  execute: (intent: CoreIntent) => ExecuteResult
-}): FieldsApi => {
-  const listFields = () => documentApi.schema.fields.ids(options.document())
+export const createFieldsApi = (
+  engine: EngineFacadeHost
+): FieldsApi => {
+  const listFields = () => documentApi.schema.fields.ids(engine.doc())
     .flatMap((fieldId) => {
-      const field = documentApi.schema.fields.get(options.document(), fieldId)
+      const field = documentApi.schema.fields.get(engine.doc(), fieldId)
       return field ? [field] : []
     })
-  const getField = (fieldId: CustomFieldId) => documentApi.schema.fields.get(options.document(), fieldId)
+  const getField = (fieldId: CustomFieldId) => documentApi.schema.fields.get(engine.doc(), fieldId)
   const getOptionFieldById = (fieldId: CustomFieldId) => getOptionField(getField(fieldId))
 
   return {
@@ -67,7 +67,7 @@ export const createFieldsApi = (options: {
       }
 
       const fieldId = dataviewId.create('field')
-      const result = options.execute({
+      const result = engine.execute({
         type: 'field.create',
         input: {
           id: fieldId,
@@ -84,7 +84,7 @@ export const createFieldsApi = (options: {
         return
       }
 
-      options.execute({
+      engine.execute({
         type: 'field.patch',
         id,
         patch: {
@@ -97,35 +97,35 @@ export const createFieldsApi = (options: {
         return
       }
 
-      options.execute({
+      engine.execute({
         type: 'field.patch',
         id,
         patch
       })
     },
     replace: (id, field) => {
-      options.execute({
+      engine.execute({
         type: 'field.replace',
         id,
         field
       })
     },
     setKind: (id, kind) => {
-      options.execute({
+      engine.execute({
         type: 'field.setKind',
         id,
         kind
       })
     },
     duplicate: (id) => {
-      const result = options.execute({
+      const result = engine.execute({
         type: 'field.duplicate',
         id
       })
 
       return readId(result)
     },
-    remove: (id) => options.execute({
+    remove: (id) => engine.execute({
       type: 'field.remove',
       id
     }).ok,
@@ -145,7 +145,7 @@ export const createFieldsApi = (options: {
           }
         }
 
-        const result = options.execute({
+        const result = engine.execute({
           type: 'field.option.create',
           field: id,
           ...(nextName ? { name: nextName } : {})
@@ -162,7 +162,7 @@ export const createFieldsApi = (options: {
         return findAddedOption(currentOptions, fieldApi.option.read.list(nextField))
       },
       setOrder: (id, order) => {
-        options.execute({
+        engine.execute({
           type: 'field.option.setOrder',
           field: id,
           order: [...order]
@@ -192,7 +192,7 @@ export const createFieldsApi = (options: {
           }
         }
 
-        const result = options.execute({
+        const result = engine.execute({
           type: 'field.option.patch',
           field: input.field,
           option: input.option,
@@ -212,7 +212,7 @@ export const createFieldsApi = (options: {
           : undefined
       },
       remove: (input) => {
-        options.execute({
+        engine.execute({
           type: 'field.option.remove',
           field: input.field,
           option: input.option

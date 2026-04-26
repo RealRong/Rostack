@@ -1,15 +1,9 @@
 import type {
-  DataDoc,
-  Intent as CoreIntent
-} from '@dataview/core/contracts'
-import type {
-  ActiveViewApi,
-  ViewState
+  ActiveViewApi
 } from '@dataview/engine/contracts/view'
 import type {
-  BatchExecuteResult,
-  ExecuteResult,
-} from '@dataview/engine/types/intent'
+  EngineFacadeHost
+} from '@dataview/engine/contracts/api'
 import { createActiveContext } from '@dataview/engine/active/api/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/api/read'
 import {
@@ -32,18 +26,10 @@ import {
   createCellsApi
 } from '@dataview/engine/active/api/items'
 
-export const createActiveViewApi = (options: {
-  document: () => DataDoc
-  active: () => ViewState | undefined
-  execute: (intent: CoreIntent) => ExecuteResult
-  executeMany: (intents: readonly CoreIntent[]) => BatchExecuteResult
-}): ActiveViewApi => {
-  const base = createActiveContext({
-    document: options.document,
-    active: options.active,
-    execute: options.execute,
-    executeMany: options.executeMany
-  })
+export const createActiveViewApi = (
+  engine: EngineFacadeHost
+): ActiveViewApi => {
+  const base = createActiveContext(engine)
   const readApi = createActiveViewReadApi({
     reader: base.reader,
     state: base.state

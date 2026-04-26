@@ -21,14 +21,15 @@ export { compileControl } from './compiler'
 export * as mutationTrace from './mutationTrace'
 export * as planningContext from './planningContext'
 export { MutationEngine } from './engine'
-export { mutationApply } from './engine'
+export { applyResult, mutationFailure } from './engine'
 export type {
   MutationApplyResult,
-  MutationBatchData,
   MutationCurrent,
   MutationError,
   MutationEngineSpec,
+  MutationExecuteInput,
   MutationExecuteResult,
+  MutationExecuteResultOfInput,
   MutationFailure,
   MutationHistorySpec,
   MutationIntentKind,

@@ -1,7 +1,5 @@
 import type {
-  DataDoc,
   Field,
-  Intent as CoreIntent,
   View,
   ViewPatch
 } from '@dataview/core/contracts'
@@ -10,27 +8,18 @@ import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import type {
-  BatchExecuteResult,
-  ExecuteResult,
-} from '@dataview/engine/types/intent'
+  EngineFacadeHost
+} from '@dataview/engine/contracts/api'
 import {
   createDocumentReader,
   type DocumentReader
 } from '@dataview/engine/document/reader'
 
-export interface ActiveContextOptions {
-  document: () => DataDoc
-  active: () => ViewState | undefined
-  execute: (intent: CoreIntent) => ExecuteResult
-  executeMany: (intents: readonly CoreIntent[]) => BatchExecuteResult
-}
-
 export interface ActiveViewContext {
   id: ActiveViewApi['id']
   state: ActiveViewApi['state']
   reader: DocumentReader
-  execute: ActiveContextOptions['execute']
-  executeMany: ActiveContextOptions['executeMany']
+  execute: EngineFacadeHost['execute']
   view: () => View | undefined
   resolveGroupField: (view?: View) => Field | undefined
   patchView: (
@@ -39,10 +28,11 @@ export interface ActiveViewContext {
 }
 
 export const createActiveContext = (
-  options: ActiveContextOptions
+  engine: EngineFacadeHost
 ): ActiveViewContext => {
-  const reader = createDocumentReader(options.document)
-  const view = () => options.active()?.view
+  const state = (): ViewState | undefined => engine.current().publish?.active
+  const reader = createDocumentReader(() => engine.doc())
+  const view = () => state()?.view
   const patchView = (
     resolve: (currentView: View, currentReader: DocumentReader) => ViewPatch | undefined
   ): boolean => {
@@ -54,7 +44,7 @@ export const createActiveContext = (
 
     const nextPatch = resolve(currentView, reader)
     return nextPatch
-      ? options.execute({
+      ? engine.execute({
           type: 'view.patch',
           id: viewId,
           patch: nextPatch
@@ -71,11 +61,10 @@ export const createActiveContext = (
   }
 
   return {
-    id: () => options.active()?.view.id,
-    state: options.active,
+    id: () => state()?.view.id,
+    state,
     reader,
-    execute: options.execute,
-    executeMany: options.executeMany,
+    execute: engine.execute.bind(engine),
     view,
     resolveGroupField,
     patchView

@@ -1,6 +1,4 @@
 import type {
-  DataDoc,
-  Intent as CoreIntent,
   RecordId
 } from '@dataview/core/contracts'
 import {
@@ -8,6 +6,7 @@ import {
 } from '@dataview/core/document'
 import { collection } from '@shared/core'
 import type {
+  EngineFacadeHost,
   RecordFieldWriteManyInput,
   RecordsApi
 } from '@dataview/engine/contracts/api'
@@ -24,17 +23,16 @@ const readId = (
     ? String(result.data.id)
     : undefined
 
-export const createRecordsApi = (options: {
-  document: () => DataDoc
-  execute: (intent: CoreIntent) => ExecuteResult
-}): RecordsApi => {
+export const createRecordsApi = (
+  engine: EngineFacadeHost
+): RecordsApi => {
   const writeMany = (input: RecordFieldWriteManyInput) => {
     const recordIds = collection.unique(input.recordIds)
     if (!recordIds.length) {
       return
     }
 
-    options.execute({
+    engine.execute({
       type: 'record.fields.writeMany',
       ...input,
       recordIds
@@ -42,9 +40,9 @@ export const createRecordsApi = (options: {
   }
 
   return {
-    get: (id) => documentApi.records.get(options.document(), id),
+    get: (id) => documentApi.records.get(engine.doc(), id),
     create: (input) => {
-      const result = options.execute({
+      const result = engine.execute({
         type: 'record.create',
         input: {
           values: input?.values
@@ -54,7 +52,7 @@ export const createRecordsApi = (options: {
       return readId(result)
     },
     remove: (id: RecordId) => {
-      options.execute({
+      engine.execute({
         type: 'record.remove',
         recordIds: [id]
       })
@@ -65,7 +63,7 @@ export const createRecordsApi = (options: {
         return
       }
 
-      options.execute({
+      engine.execute({
         type: 'record.remove',
         recordIds: nextRecordIds
       })

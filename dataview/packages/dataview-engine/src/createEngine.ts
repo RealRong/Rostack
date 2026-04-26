@@ -1,15 +1,19 @@
 import type {
-  DataDoc,
-  Intent as CoreIntent
+  DataDoc
 } from '@dataview/core/contracts'
 import type {
   DocumentOperation
 } from '@dataview/core/contracts/operations'
+import type {
+  DataviewMutationKey,
+  DataviewTrace
+} from '@dataview/core/mutation'
 import {
   document
 } from '@dataview/core/document'
 import {
-  MutationEngine
+  MutationEngine,
+  type MutationOptions
 } from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
 import { createFieldsApi } from '@dataview/engine/api/fields'
@@ -17,6 +21,7 @@ import { createRecordsApi } from '@dataview/engine/api/records'
 import { createViewsApi } from '@dataview/engine/api/views'
 import type {
   CreateEngineOptions,
+  EngineFacadeHost,
   Engine
 } from '@dataview/engine/contracts/api'
 import type {
@@ -28,8 +33,10 @@ import type {
 } from '@dataview/engine/mutation'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import type {
-  BatchExecuteResult,
-  ExecuteResult,
+  DataviewIntentTable,
+  ExecuteInput,
+  ExecuteResultOf,
+  Intent,
 } from '@dataview/engine/types/intent'
 
 const toCurrent = (current: {
@@ -55,51 +62,24 @@ const toCurrent = (current: {
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const performance = createPerformanceRuntime(options.performance)
-  const mutationEngine = new MutationEngine({
-    doc: document.clone(options.document),
+  const mutationEngine = new MutationEngine<
+    DataDoc,
+    DataviewIntentTable,
+    DocumentOperation,
+    DataviewMutationKey,
+    DataviewPublishState,
+    {
+      trace: DataviewTrace
+    }
+  >({
+    doc: options.document,
     spec: createDataviewMutationSpec({
       history: options.history,
       performance
     })
   })
 
-  const execute = (
-    intent: CoreIntent
-  ): ExecuteResult => mutationEngine.execute(intent) as ExecuteResult
-
-  const executeMany = (
-    intents: readonly CoreIntent[]
-  ): BatchExecuteResult => mutationEngine.executeMany(intents) as BatchExecuteResult
-
-  const readDocument = () => mutationEngine.current().doc
-  const readActiveState = () => mutationEngine.current().publish?.active
-  const fields = createFieldsApi({
-    document: readDocument,
-    execute
-  })
-  const records = createRecordsApi({
-    document: readDocument,
-    execute
-  })
-  const active = createActiveViewApi({
-    document: readDocument,
-    active: readActiveState,
-    execute,
-    executeMany
-  })
-  const views = createViewsApi({
-    document: readDocument,
-    execute
-  })
-
-  return {
-    writes: mutationEngine.writes,
-    history: mutationEngine.history,
-    active,
-    views,
-    fields,
-    records,
-    performance: performance.api,
+  const baseEngine: EngineFacadeHost = {
     current: () => toCurrent(mutationEngine.current()),
     subscribe: (listener) => mutationEngine.subscribe((current) => {
       listener(toCurrent(current))
@@ -108,14 +88,31 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     load: (nextDocument: DataDoc) => {
       mutationEngine.load(document.clone(nextDocument))
     },
-    execute: ((intent, executeOptions) => (
-      mutationEngine.execute(intent, executeOptions)
-    )) as Engine['execute'],
-    executeMany: ((intents, executeOptions) => (
-      mutationEngine.executeMany(intents, executeOptions)
-    )) as Engine['executeMany'],
+    execute: (<I extends ExecuteInput>(
+      input: I,
+      executeOptions?: MutationOptions
+    ): ExecuteResultOf<I> => (
+      Array.isArray(input)
+        ? mutationEngine.execute(input as readonly Intent[], executeOptions)
+        : mutationEngine.execute(input as Intent, executeOptions)
+    ) as ExecuteResultOf<I>),
     apply: ((operations: readonly DocumentOperation[], applyOptions) => (
       mutationEngine.apply(operations, applyOptions)
     )) as Engine['apply']
+  }
+
+  const engine = {
+    ...baseEngine,
+    writes: mutationEngine.writes,
+    history: mutationEngine.history,
+    performance: performance.api
+  } as Omit<Engine, 'fields' | 'records' | 'views' | 'active'>
+
+  return {
+    ...engine,
+    fields: createFieldsApi(engine),
+    records: createRecordsApi(engine),
+    views: createViewsApi(engine),
+    active: createActiveViewApi(engine)
   }
 }

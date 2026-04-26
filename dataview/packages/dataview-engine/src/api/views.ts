@@ -1,6 +1,4 @@
 import type {
-  DataDoc,
-  Intent as CoreIntent,
   ViewId
 } from '@dataview/core/contracts'
 import {
@@ -9,6 +7,7 @@ import {
 import { string } from '@shared/core'
 import { view as viewApi } from '@dataview/core/view'
 import type {
+  EngineFacadeHost,
   ViewsApi
 } from '@dataview/engine/contracts/api'
 import type {
@@ -24,21 +23,20 @@ const readId = (
     ? String(result.data.id)
     : undefined
 
-export const createViewsApi = (options: {
-  document: () => DataDoc
-  execute: (intent: CoreIntent) => ExecuteResult
-}): ViewsApi => {
-  const readViews = () => documentApi.views.ids(options.document())
+export const createViewsApi = (
+  engine: EngineFacadeHost
+): ViewsApi => {
+  const readViews = () => documentApi.views.ids(engine.doc())
     .flatMap((viewId) => {
-      const view = documentApi.views.get(options.document(), viewId)
+      const view = documentApi.views.get(engine.doc(), viewId)
       return view ? [view] : []
     })
 
   return {
     list: readViews,
-    get: (id) => documentApi.views.get(options.document(), id),
+    get: (id) => documentApi.views.get(engine.doc(), id),
     open: (id) => {
-      options.execute({
+      engine.execute({
         type: 'view.open',
         id
       })
@@ -49,7 +47,7 @@ export const createViewsApi = (options: {
         return undefined
       }
 
-      const result = options.execute({
+      const result = engine.execute({
         type: 'view.create',
         input: {
           name: preferredName,
@@ -65,7 +63,7 @@ export const createViewsApi = (options: {
         return
       }
 
-      options.execute({
+      engine.execute({
         type: 'view.patch',
         id,
         patch: {
@@ -74,12 +72,12 @@ export const createViewsApi = (options: {
       })
     },
     duplicate: (id) => {
-      const sourceView = documentApi.views.get(options.document(), id)
+      const sourceView = documentApi.views.get(engine.doc(), id)
       if (!sourceView) {
         return undefined
       }
 
-      const result = options.execute({
+      const result = engine.execute({
         type: 'view.create',
         input: viewApi.duplicate.input(sourceView)
       })
@@ -87,7 +85,7 @@ export const createViewsApi = (options: {
       return readId(result)
     },
     remove: (id) => {
-      options.execute({
+      engine.execute({
         type: 'view.remove',
         id
       })

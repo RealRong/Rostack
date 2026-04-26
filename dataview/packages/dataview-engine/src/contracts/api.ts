@@ -42,9 +42,10 @@ import type {
   EngineWrites
 } from '@dataview/engine/contracts/write'
 import type {
-  BatchExecuteResult,
   DataviewErrorCode,
+  ExecuteInput,
   ExecuteResult,
+  ExecuteResultOf,
   Intent,
   IntentData,
   IntentKind
@@ -52,9 +53,10 @@ import type {
 
 export type { RecordFieldWriteManyInput } from '@dataview/core/contracts'
 export type {
-  BatchExecuteResult,
   DataviewErrorCode,
+  ExecuteInput,
   ExecuteResult,
+  ExecuteResultOf,
   Intent,
   IntentData,
   IntentKind
@@ -149,6 +151,21 @@ export interface RecordsApi {
   fields: RecordFieldWriteApi
 }
 
+export interface EngineFacadeHost {
+  current(): DataviewCurrent
+  doc(): DataDoc
+  load(document: DataDoc): void
+  subscribe(listener: (current: DataviewCurrent) => void): () => void
+  execute<I extends ExecuteInput>(
+    input: I,
+    options?: MutationOptions
+  ): ExecuteResultOf<I>
+  apply(
+    operations: readonly DocumentOperation[],
+    options?: MutationOptions
+  ): MutationResult<void, EngineWrite, DataviewErrorCode>
+}
+
 export interface Engine {
   readonly writes: EngineWrites
   readonly history?: DataviewHistory
@@ -164,15 +181,10 @@ export interface Engine {
   doc(): DataDoc
   load(document: DataDoc): void
 
-  execute<K extends IntentKind>(
-    intent: Intent<K>,
+  execute<I extends ExecuteInput>(
+    input: I,
     options?: MutationOptions
-  ): ExecuteResult<K>
-
-  executeMany(
-    intents: readonly Intent[],
-    options?: MutationOptions
-  ): BatchExecuteResult
+  ): ExecuteResultOf<I>
 
   apply(
     operations: readonly DocumentOperation[],

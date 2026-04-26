@@ -252,7 +252,7 @@ export const createActiveItemsApi = (input: {
     }
 
     if (actions.length) {
-      input.base.executeMany(actions)
+      input.base.execute(actions)
     }
   },
   remove: itemIds => {

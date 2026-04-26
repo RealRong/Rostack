@@ -75,12 +75,20 @@ export type MutationExecuteResult<
   Code extends string = string
 > = MutationResult<MutationOutputOf<T, K>, W, Code>
 
-export type MutationBatchData<
+export type MutationExecuteInput<T extends MutationIntentTable> =
+  | MutationIntentOf<T>
+  | readonly MutationIntentOf<T>[]
+
+export type MutationExecuteResultOfInput<
   T extends MutationIntentTable,
-  BatchValue = void
-> = [BatchValue] extends [void]
-  ? readonly MutationOutputOf<T>[]
-  : BatchValue
+  W,
+  Input extends MutationExecuteInput<T>,
+  Code extends string = string
+> = Input extends readonly MutationIntentOf<T>[]
+  ? MutationResult<readonly MutationOutputOf<T>[], W, Code>
+  : Input extends MutationIntentOf<T, infer K>
+    ? MutationExecuteResult<T, W, K, Code>
+    : never
 
 export interface MutationOptions {
   origin?: Origin
@@ -88,14 +96,12 @@ export interface MutationOptions {
 
 export interface MutationPlan<
   Op,
-  Output = void,
-  BatchValue = void
+  Output = void
 > {
   ops: readonly Op[]
   issues?: readonly Issue[]
   canApply?: boolean
   outputs?: readonly Output[]
-  value?: BatchValue
 }
 
 export interface MutationPublishSpec<Doc, Op, Key, Extra, Publish> {
@@ -120,7 +126,6 @@ export interface MutationEngineSpec<
   Op,
   Key,
   Publish,
-  BatchValue = void,
   Extra = void
 > {
   clone(doc: Doc): Doc
@@ -128,7 +133,7 @@ export interface MutationEngineSpec<
   compile?(input: {
     doc: Doc
     intents: readonly MutationIntentOf<Table>[]
-  }): MutationPlan<Op, MutationOutputOf<Table>, BatchValue>
+  }): MutationPlan<Op, MutationOutputOf<Table>>
   apply(input: {
     doc: Doc
     ops: readonly Op[]
@@ -148,7 +153,7 @@ const COMPILE_MISSING_CODE = 'mutation_engine.compile.missing'
 const COMPILE_BLOCKED_CODE = 'mutation_engine.compile.blocked'
 const COMPILE_EMPTY_CODE = 'mutation_engine.compile.empty'
 const APPLY_EMPTY_CODE = 'mutation_engine.apply.empty'
-const EXECUTE_MANY_EMPTY_CODE = 'mutation_engine.execute_many.empty'
+const EXECUTE_EMPTY_CODE = 'mutation_engine.execute.empty'
 
 const hasBlockingIssue = (
   issues: readonly Issue[]
@@ -158,7 +163,7 @@ const toIssues = (
   issues?: readonly Issue[]
 ): readonly Issue[] => issues ?? []
 
-const failure = <Code extends string>(
+export const mutationFailure = <Code extends string>(
   code: Code,
   message: string,
   details?: unknown
@@ -191,20 +196,16 @@ const applySuccess = <Doc, Op, Key, Extra>(
   data
 })
 
+const applyFailure = <Code extends string>(
+  error: MutationError<Code>
+): MutationFailure<Code> => ({
+  ok: false,
+  error
+})
+
 const readFirstOutput = <Output>(
   outputs?: readonly Output[]
 ): Output | undefined => outputs?.[0]
-
-const readBatchData = <
-  Table extends MutationIntentTable,
-  BatchValue
->(
-  plan: MutationPlan<unknown, MutationOutputOf<Table>, BatchValue>
-): MutationBatchData<Table, BatchValue> => (
-  plan.value !== undefined
-    ? plan.value
-    : (plan.outputs ?? [])
-) as MutationBatchData<Table, BatchValue>
 
 type State<Doc, Publish> = {
   rev: number
@@ -218,7 +219,6 @@ export class MutationEngine<
   Op,
   Key,
   Publish,
-  BatchValue = void,
   Extra = void
 > {
   readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
@@ -228,14 +228,14 @@ export class MutationEngine<
     Write<Doc, Op, Key, Extra>
   >
 
-  readonly #spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, BatchValue, Extra>
+  readonly #spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, Extra>
   #state: State<Doc, Publish>
   readonly #listeners = new Set<(current: MutationCurrent<Doc, Publish>) => void>()
   readonly #writeListeners = new Set<(write: Write<Doc, Op, Key, Extra>) => void>()
 
   constructor(input: {
     doc: Doc
-    spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, BatchValue, Extra>
+    spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, Extra>
   }) {
     this.#spec = input.spec
 
@@ -313,86 +313,47 @@ export class MutationEngine<
     Table,
     Write<Doc, Op, Key, Extra>,
     K
-  > {
-    if (!this.#spec.compile) {
-      return failure(
-        COMPILE_MISSING_CODE,
-        'MutationEngine.execute requires spec.compile.'
-      ) as MutationExecuteResult<
-        Table,
-        Write<Doc, Op, Key, Extra>,
-        K
-      >
-    }
-
-    const plan = this.#spec.compile({
-      doc: this.#state.doc,
-      intents: [intent]
-    })
-    const issues = toIssues(plan.issues)
-    const canApply = plan.canApply ?? (
-      plan.ops.length > 0
-      && !hasBlockingIssue(issues)
-    )
-
-    if (!canApply) {
-      return failure(
-        COMPILE_BLOCKED_CODE,
-        'MutationEngine.execute was blocked by compile issues.',
-        {
-          issues
-        }
-      ) as MutationExecuteResult<
-        Table,
-        Write<Doc, Op, Key, Extra>,
-        K
-      >
-    }
-
-    if (!plan.ops.length) {
-      return failure(
-        COMPILE_EMPTY_CODE,
-        'MutationEngine.execute produced no operations.',
-        {
-          issues
-        }
-      ) as MutationExecuteResult<
-        Table,
-        Write<Doc, Op, Key, Extra>,
-        K
-      >
-    }
-
-    return this.#commit({
-      ops: plan.ops,
-      data: readFirstOutput(plan.outputs) as MutationOutputOf<Table, K>,
-      origin: options?.origin ?? 'user'
-    }) as MutationExecuteResult<
-      Table,
-      Write<Doc, Op, Key, Extra>,
-      K
-    >
-  }
-
-  executeMany(
+  >
+  execute(
     intents: readonly MutationIntentOf<Table>[],
     options?: MutationOptions
   ): MutationResult<
-    MutationBatchData<Table, BatchValue>,
+    readonly MutationOutputOf<Table>[],
     Write<Doc, Op, Key, Extra>
+  >
+  execute<Input extends MutationExecuteInput<Table>>(
+    input: Input,
+    options?: MutationOptions
+  ): MutationExecuteResultOfInput<
+    Table,
+    Write<Doc, Op, Key, Extra>,
+    Input
   > {
+    const batch = Array.isArray(input)
+    const intents: readonly MutationIntentOf<Table>[] = batch
+      ? input as readonly MutationIntentOf<Table>[]
+      : [input as MutationIntentOf<Table>]
+
     if (intents.length === 0) {
-      return failure(
-        EXECUTE_MANY_EMPTY_CODE,
-        'MutationEngine.executeMany requires at least one intent.'
-      )
+      return mutationFailure(
+        EXECUTE_EMPTY_CODE,
+        'MutationEngine.execute requires at least one intent.'
+      ) as MutationExecuteResultOfInput<
+        Table,
+        Write<Doc, Op, Key, Extra>,
+        Input
+      >
     }
 
     if (!this.#spec.compile) {
-      return failure(
+      return mutationFailure(
         COMPILE_MISSING_CODE,
-        'MutationEngine.executeMany requires spec.compile.'
-      )
+        'MutationEngine.execute requires spec.compile.'
+      ) as MutationExecuteResultOfInput<
+        Table,
+        Write<Doc, Op, Key, Extra>,
+        Input
+      >
     }
 
     const plan = this.#spec.compile({
@@ -406,30 +367,52 @@ export class MutationEngine<
     )
 
     if (!canApply) {
-      return failure(
+      return mutationFailure(
         COMPILE_BLOCKED_CODE,
-        'MutationEngine.executeMany was blocked by compile issues.',
+        'MutationEngine.execute was blocked by compile issues.',
         {
           issues
         }
-      )
+      ) as MutationExecuteResultOfInput<
+        Table,
+        Write<Doc, Op, Key, Extra>,
+        Input
+      >
     }
 
     if (!plan.ops.length) {
-      return failure(
+      return mutationFailure(
         COMPILE_EMPTY_CODE,
-        'MutationEngine.executeMany produced no operations.',
+        'MutationEngine.execute produced no operations.',
         {
           issues
         }
-      )
+      ) as MutationExecuteResultOfInput<
+        Table,
+        Write<Doc, Op, Key, Extra>,
+        Input
+      >
     }
 
     return this.#commit({
       ops: plan.ops,
-      data: readBatchData<Table, BatchValue>(plan),
+      data: (
+        batch
+          ? (plan.outputs ?? [])
+          : readFirstOutput(plan.outputs)
+      ) as MutationExecuteResultOfInput<
+        Table,
+        Write<Doc, Op, Key, Extra>,
+        Input
+      > extends MutationResult<infer Data, Write<Doc, Op, Key, Extra>>
+        ? Data
+        : never,
       origin: options?.origin ?? 'user'
-    })
+    }) as MutationExecuteResultOfInput<
+      Table,
+      Write<Doc, Op, Key, Extra>,
+      Input
+    >
   }
 
   apply(
@@ -440,7 +423,7 @@ export class MutationEngine<
     Write<Doc, Op, Key, Extra>
   > {
     if (ops.length === 0) {
-      return failure(
+      return mutationFailure(
         APPLY_EMPTY_CODE,
         'MutationEngine.apply requires at least one operation.'
       )
@@ -557,6 +540,7 @@ export class MutationEngine<
   }
 }
 
-export const mutationApply = {
-  success: applySuccess
+export const applyResult = {
+  success: applySuccess,
+  failure: applyFailure
 } as const

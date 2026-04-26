@@ -1,517 +1,641 @@
-# Whiteboard Edge Render 最终基础设施与剩余工作
+# Whiteboard Scene Render / Hit 最终 API 设计与实施方案
 
-## 1. 口径
+## 1. 最终结论
 
-- 本文取代旧版 `WHITEBOARD_EDGE_RENDER_INFRA_FINAL.zh-CN.md`。
-- 旧版文档里的部分路径、phase 拆分、measure 方案已经落后于当前实现，不能继续作为实施依据。
-- 本文只描述两件事：
-  - 当前已经完成到什么程度
-  - 剩余哪些工作还值得继续做
-- 目标不变：
-  - `whiteboard-core` 只放纯 edge render / hit primitive
-  - `shared/projector` 只放通用 projector / delta / store bridge primitive
-  - `whiteboard-editor-scene` 成为唯一 scene render / hit / spatial runtime
-  - `whiteboard-editor` 与 `whiteboard-react` 退出 edge render 数据建模
+### 1.1 `render` 不能只有 edge
 
----
+`whiteboard-editor-scene` 不应只投影 edge render。
 
-## 2. 当前结论
+最终应由它统一投影：
 
-当前这条线已经基本到达本文原本想要的最终方向。
+- `render.node`
+- `render.edge`
+- `render.chrome`
 
-已经成立的事实：
+原因：
 
-- `whiteboard-core` 已有：
-  - `edge.render.styleKey`
-  - `edge.render.staticStyle`
-  - `edge.hit.distanceToPath`
-- `shared/projector` 已有：
-  - `createProjectorStore`
-  - `value(...)`
-  - `family(...)`
-  - `writeEntityChange(...)`
-- `whiteboard-editor-scene` 已经是 edge render 唯一投影源：
-  - `render.edge.statics`
-  - `render.edge.active`
-  - `render.edge.labels`
-  - `render.edge.masks`
-  - `render.edge.overlay`
-- `whiteboard-editor` 已删掉本地 `scene/edgeRender.ts`
-- `whiteboard-react` 已直接消费 family / value，而不是本地再算 render model
-- body hit 已通过 `editor.scene.query.hit.edge(...)` 走 `editor-scene`
+- node 的可见性、选中、hover、editing、resizing、patched、几何变换都属于 scene runtime 真相，不应由 React 再拼一遍。
+- 现在 public surface 里同时存在 `node` + `nodeUi`、`edge` + `edgeUi`，本质上是把“语义图数据”和“交互派生状态”拆成了调用方要自己再合成的两半，这不是长期最优。
+- edge render 已经证明：真正该由 host 负责的是 DOM 与调度，不是 render 数据建模。
 
-所以，后续不应该再做这些事情：
+但 `render.node` 的边界要收清楚：
 
-- 不应重新引入 `whiteboard-editor/src/scene/edgeRender.ts`
-- 不应在 `editor` 或 `react` 新做一套 edge render 投影
-- 不应为了对齐旧文档，再拆回单独的 `render phase`
-- 不应为了对齐旧文档，引入 `measure snapshot` / `measure delta` 这一整套额外状态模型
+- 进入 `editor-scene` 的是 scene-universal render model。
+- 不进入 `editor-scene` 的是节点具体 DOM 结构、editable DOM、React ref、组件内部局部 state。
 
----
+一句话：
 
-## 3. 旧文档哪里已经过时
+- `editor-scene` 负责“这个 node 在场景里应该怎样被渲染”。
+- `whiteboard-react` 负责“具体用什么 DOM / React 组件渲染出来”。
 
-### 3.1 不再存在旧目录结构
+### 1.2 `hit` 不能只有 edge
 
-旧文档里的这些路径已经不是现状：
+`hit` 不应只暴露 `edge`。
 
-- `whiteboard-editor-scene/src/projector/*`
-- `whiteboard-editor-scene/src/domain/render/*`
-- `whiteboard-editor-scene/src/runtime/query.ts`
-- `whiteboard-editor-scene/src/phases/render.ts`
+最终 `editor-scene` 应统一暴露：
 
-当前真实落点是：
-
-- `whiteboard-editor-scene/src/runtime/model.ts`
-- `whiteboard-editor-scene/src/runtime/read.ts`
-- `whiteboard-editor-scene/src/runtime/hit/edge.ts`
-- `whiteboard-editor-scene/src/model/view/render.ts`
-- `whiteboard-editor-scene/src/contracts/render.ts`
-
-### 3.2 不再采用独立 `render phase`
-
-旧文档假设最终 phase 是：
-
-```ts
-graph -> spatial -> ui -> render
-```
-
-当前真实实现已经收敛为：
-
-```ts
-graph -> spatial -> view
-```
+- `hit.node(...)`
+- `hit.edge(...)`
+- `hit.item(...)`
 
 其中：
 
-- `view` 已同时承载：
-  - `ui`
-  - `items`
-  - edge render projection
+- `node` 和 `edge` 是高频专用 query。
+- `item` 是通用场景命中 query，用于统一 node / edge / mindmap / group 等 winner resolve。
 
-这不是缺失，而是更收敛的最终形态。
+这样：
 
-### 3.3 不再采用 `InputDelta.measure`
+- React host 的 body hit、scene pick、其他 future query 不再各自维护一套 candidate + precise resolve。
+- `scene/pick.ts` 这种 editor 本地逻辑只保留 host runtime / frame scheduling，不再自持 scene truth。
 
-旧文档把下面这些当成前置：
+### 1.3 `nodeUi / edgeUi` 不应继续作为 public surface
 
-- `Input.measure snapshot`
-- `InputDelta.measure.nodes`
-- `InputDelta.measure.edgeLabels`
-- measure delta lifecycle
+当前 public surface 同时暴露：
 
-当前真实实现不走这条路。
+- `graph.node`
+- `graph.edge`
+- `ui.nodes`
+- `ui.edges`
+- edge render families
 
-当前实现采用的是更简单的模型：
+这会带来两个问题：
 
-- editor 把同步 `measure` 函数传给 `editor-scene runtime`
-- graph patch / edge patch 在需要时直接调用该函数
+1. 调用方需要知道“某个需求到底该读 `node`、`nodeUi`、`edge`、`edgeUi`、还是 render”。
+2. editor / react 很容易把两三层数据又包装成一份本地 read model。
 
-这意味着：
+最终口径：
 
-- 当前没有 `measure snapshot`
-- 当前没有 `measure delta`
-- 这不是未完成项，而是设计选择
+- `graph.node / graph.edge / graph.mindmap / graph.group` 只放语义图真相。
+- `graph.state.node / graph.state.edge / graph.state.chrome` 放交互派生状态。
+- `render.*` 只放 DOM-ready render model。
 
-除非后续证明同步 measure 成本或稳定性有问题，否则不应为了“概念完整”额外引入 measure state / delta。
+也就是说：
+
+- `nodeUi`
+- `edgeUi`
+
+都不应该继续作为 public API 存在。
+
+它们应收敛到：
+
+- `graph.state.node`
+- `graph.state.edge`
+- `graph.state.chrome`
+
+作为 render projection 的内部输入。
+
+### 1.4 `editor.scene` 不应继续做重复转发包装
+
+当前 `whiteboard-editor/src/scene/source.ts` 的问题不是又算了一套 edge render，而是它已经积累出一层重复包装：
+
+- `query`
+- `pick`
+- `node` / `nodes`
+- `edge` / `edges`
+- `geometry`
+- `scope`
+- `mindmap`
+- `group`
+
+而 `editor-scene` 本身已经有：
+
+- `read`
+- `stores`
+
+最终应把 `editor.scene` 收敛成三段：
+
+- `read`
+- `stores`
+- `host`
+
+语义：
+
+- `read`：同步 scene query / query-like API，直接来自 `editor-scene`
+- `stores`：reactive family / value surface，直接来自 `editor-scene`
+- `host`：只放 editor 本地 helper 与调度能力，例如 pick runtime、visible cache、geometry cache、scope helper
+
+这样才能把“scene truth”与“host convenience”明确分层。
 
 ---
 
-## 4. 当前真实职责划分
+## 2. 最终 API 设计
 
-### 4.1 `whiteboard-core`
+## 2.1 包职责
 
-只负责纯函数，不碰 projector state，不碰 store，不碰 DOM。
+### `whiteboard-core`
 
-当前 edge 侧职责：
+只放纯函数：
 
-- style key
-- static style presentation
-- path bounds
-- point-to-path precise distance
-- label placement
-- label mask
-- edge path / edge view resolve
+- node / edge / mindmap 的 geometry、path、label、mask、hit primitive
+- render style normalize / styleKey
+- 不依赖 projector state，不依赖 store，不依赖 DOM
 
-不应进入 `whiteboard-core` 的东西：
+### `shared/projector`
 
-- static chunk membership
-- active edge 集合
-- overlay projection
-- touched edge planning
-- spatial index state
-
-### 4.2 `shared/projector`
-
-只负责通用 runtime primitive：
+只放通用 runtime primitive：
 
 - change lifecycle
-- delta write helper
+- delta helper
 - projection runtime
-- projector store bridge
+- projector-store bridge
 
-不应进入 `shared/projector` 的东西：
+### `whiteboard-editor-scene`
 
-- edge render bucket / chunk 逻辑
-- spatial query
-- whiteboard scene touched scope
-
-### 4.3 `whiteboard-editor-scene`
-
-这是唯一 scene projection runtime。
-
-edge 相关职责已经在这里：
+只放 scene canonical runtime：
 
 - graph projection
 - spatial projection
-- edge render projection
-- sync `hit.edge`
-- render family/value publish
+- graph state projection
+- render projection
+- sync read / hit / snap / frame query
+- projector stores
 
-当前主要文件：
+### `whiteboard-editor`
 
-- [whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts:547)
-- [whiteboard/packages/whiteboard-editor-scene/src/model/view/render.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/model/view/render.ts:1)
-- [whiteboard/packages/whiteboard-editor-scene/src/runtime/hit/edge.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/runtime/hit/edge.ts:18)
+只放：
 
-### 4.4 `whiteboard-editor`
+- engine / session / layout -> scene input 组装
+- host runtime / schedule / cache
+- editor-facing action / write API
+- editor-facing convenience host helper
 
-只负责：
+### `whiteboard-react`
 
-- engine / session / layout -> `editor-scene Input`
-- input change 聚合
-- runtime assembly
-- editor-facing query / read / write convenience API
+只放：
 
-它可以保留包装层，但不能重新做 render projection。
-
-### 4.5 `whiteboard-react`
-
-只负责：
-
-- family -> DOM
-- value -> DOM
-- DOM host input / pick registry / editable DOM
-
-它不能再负责：
-
-- static style 分桶
-- active edge 集合构造
-- label / mask / overlay 数据派生
+- stores -> DOM
+- input host / DOM registry / editable DOM
 
 ---
 
-## 5. 当前最终 API 形态
+## 2.2 `whiteboard-editor-scene` 最终内部状态分层
 
-### 5.1 `whiteboard-editor-scene` render surface
-
-当前对外 render 形态应继续保持：
+最终内部状态建议收敛为：
 
 ```ts
-type EdgeStaticId = string
-type EdgeLabelKey = `${EdgeId}:${string}`
-
-type EdgeStaticView = {
-  id: EdgeStaticId
-  styleKey: string
-  style: EdgeStaticStyle
-  paths: readonly {
-    id: EdgeId
-    svgPath: string
-  }[]
-}
-
-type EdgeActiveView = {
-  edgeId: EdgeId
-  svgPath: string
-  style: EdgeStaticStyle
-  box?: {
-    rect: Rect
-    pad: number
+type SceneState = {
+  revision: {
+    document: Revision
   }
-  state: {
-    hovered: boolean
-    selected: boolean
-    editing: boolean
+  graph: {
+    node: Map<NodeId, NodeView>
+    edge: Map<EdgeId, EdgeView>
+    mindmap: Map<MindmapId, MindmapView>
+    group: Map<GroupId, GroupView>
+    state: {
+      node: Map<NodeId, NodeStateView>
+      edge: Map<EdgeId, EdgeStateView>
+      chrome: ChromeStateView
+    }
   }
-}
-
-type EdgeLabelView = {
-  key: EdgeLabelKey
-  edgeId: EdgeId
-  labelId: string
-  point: Point
-  angle: number
-  text: string
-  displayText: string
-  style: Edge['labels'][number]['style']
-  editing: boolean
-  selected: boolean
-  caret?: EditCaret
-}
-
-type EdgeMaskView = {
-  edgeId: EdgeId
-  rects: readonly EdgeLabelMaskRect[]
-}
-
-type EdgeOverlayView = {
-  previewPath?: {
-    svgPath: string
-    style: EdgeStaticStyle
+  indexes: SceneIndexState
+  spatial: SceneSpatialState
+  render: {
+    node: Map<NodeId, NodeRenderView>
+    edge: EdgeRenderState
+    chrome: ChromeRenderView
   }
-  snapPoint?: Point
-  endpointHandles: readonly {
-    edgeId: EdgeId
-    end: 'source' | 'target'
-    point: Point
-  }[]
-  routePoints: readonly EdgeOverlayRoutePoint[]
+  items: readonly SceneItem[]
 }
 ```
 
-对外 publish surface：
+说明：
+
+- `graph.node / graph.edge / graph.mindmap / graph.group` 是语义真相。
+- `graph.state.*` 是交互派生状态，只供内部 render 使用。
+- `render` 是 public render surface 的直接来源。
+- `ui` 这个名字应该退出 public 语义。
+
+---
+
+## 2.3 `graph` public surface
+
+`graph` 继续保留，因为很多逻辑不是 render，而是语义读。
+
+最终 public `stores.graph`：
 
 ```ts
-render: {
+type SceneGraphStores = {
+  node: FamilyRead<NodeId, NodeView>
+  edge: FamilyRead<EdgeId, EdgeView>
+  mindmap: FamilyRead<MindmapId, MindmapView>
+  group: FamilyRead<GroupId, GroupView>
+}
+```
+
+最终 public `query`：
+
+```ts
+type SceneQuery = {
+  revision(): Revision
+  node: {
+    get(id: NodeId): NodeView | undefined
+  }
   edge: {
-    statics: Family<EdgeStaticId, EdgeStaticView>
-    active: Family<EdgeId, EdgeActiveView>
-    labels: Family<EdgeLabelKey, EdgeLabelView>
-    masks: Family<EdgeId, EdgeMaskView>
-    overlay: Value<EdgeOverlayView>
+    get(id: EdgeId): EdgeView | undefined
+    related(nodeIds: Iterable<NodeId>): readonly EdgeId[]
   }
+  mindmap: {
+    get(id: MindmapId): MindmapView | undefined
+    resolve(value: string): MindmapId | undefined
+    structure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
+  }
+  group: {
+    get(id: GroupId): GroupView | undefined
+    exact(target: SelectionTarget): readonly GroupId[]
+  }
+
+  spatial: SpatialRead
+  snap(rect: Rect): readonly SnapCandidate[]
+  frame: {
+    point(point: Point): readonly NodeId[]
+    rect(rect: Rect): readonly NodeId[]
+    pick(point: Point, options?: {
+      excludeIds?: readonly NodeId[]
+    }): NodeId | undefined
+    parent(nodeId: NodeId, options?: {
+      excludeIds?: readonly NodeId[]
+    }): NodeId | undefined
+    descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
+  }
+
+  hit: SceneHitQuery
+  items(): readonly SceneItem[]
 }
-```
-
-### 5.2 `editor-scene` query
-
-当前 query 形态应继续保持：
-
-```ts
-read.hit.edge({
-  point,
-  threshold?,
-  excludeIds?
-}): EdgeId | undefined
-```
-
-这条 query 只负责：
-
-- spatial candidate query
-- precise edge distance compare
-
-它不负责：
-
-- frame-throttled pointer schedule
-- DOM pick registry
-- `elementsFromPoint`
-
-### 5.3 `whiteboard-editor` 对外 surface
-
-当前 editor-facing surface 继续维持简单包装即可：
-
-```ts
-editor.scene.edge.render.statics
-editor.scene.edge.render.active
-editor.scene.edge.render.labels
-editor.scene.edge.render.masks
-editor.scene.edge.render.overlay
-editor.scene.query.hit.edge(...)
 ```
 
 原则：
 
-- 可以包一层 editor-facing 读接口
-- 不可以在这层再做本地 edge render 派生
+- `graph` 负责 scene semantic truth 与 interaction-derived state。
+- `render` 负责 DOM-ready truth。
+- 不再 public 暴露 `nodeUi` / `edgeUi` / `chrome()`。
+- `query` 按实体 namespace 组织，不再保留 `graph` 杂项区。
 
 ---
 
-## 6. 仍然值得继续做的事情
+## 2.4 `render` public surface
 
-当前不是“大框架未完成”，而是还有少量收尾与统一工作。
+最终 public `stores.render`：
 
-### 6.1 收口 `scene/pick.ts` 里的 edge precise hit 逻辑
+```ts
+type SceneRenderStores = {
+  node: FamilyRead<NodeId, NodeRenderView>
+  edge: {
+    statics: FamilyRead<EdgeStaticId, EdgeStaticView>
+    active: FamilyRead<EdgeId, EdgeActiveView>
+    labels: FamilyRead<EdgeLabelKey, EdgeLabelView>
+    masks: FamilyRead<EdgeId, EdgeMaskView>
+  }
+  chrome: {
+    scene: ReadStore<ChromeRenderView>
+    edge: ReadStore<EdgeOverlayView>
+  }
+}
+```
 
-现状：
+### `NodeRenderView`
 
-- body hit 主路径已经走 `editor.scene.query.hit.edge(...)`
-- 但 `whiteboard-editor/src/scene/pick.ts` 的通用 pick 解析里，仍自持一份 `edge.hit.distanceToPath(...)`
+`NodeRenderView` 应合并今天 external caller 需要从 `NodeView + graph.state.node` 自己拼的内容：
 
-这会带来两个问题：
+```ts
+type NodeRenderView = {
+  id: NodeId
+  node: NodeModel
+  owner?: OwnerRef
+  rect: Rect
+  bounds: Rect
+  rotation: number
+  outline: NodeGeometry
+  state: {
+    hidden: boolean
+    selected: boolean
+    hovered: boolean
+    editing: boolean
+    patched: boolean
+    resizing: boolean
+  }
+  edit?: {
+    field: EditField
+    caret: EditCaret
+  }
+}
+```
 
-- edge precise hit 仍有双入口
-- 后续改 edge hit 策略时，需要改两处
+说明：
 
-最终目标：
+- 这不是“节点具体 DOM props”。
+- 这是 scene-universal node render model。
+- React node layer 直接消费它，不再自己同时订阅 `graph.node` 和 `ui.node` 再合成一遍。
 
-- edge precise hit 的“候选筛选 + 距离比较”能力只保留一份主实现
+### `Edge` render
 
-可选方案：
+edge render 继续保持今天已经较好的拆法：
 
-- 让 `scene/pick.ts` 直接调用 `editor-scene` 的 `read.hit.edge(...)`
-- 或者把共享的 nearest-edge resolver 下沉到 `editor-scene` 内部，并让 `pick.ts` 只消费 scene runtime 产物
+- `statics`
+- `active`
+- `labels`
+- `masks`
 
-要求：
+但 `overlay` 应明确归属到 `chrome`，因为它渲染在 chrome viewport，而不是 scene content viewport。
 
-- 不重新引入 editor 本地 spatial / distance 投影
-- 不把 DOM host 调度塞回 `editor-scene`
+### `ChromeRenderView`
 
-### 6.2 继续压缩 `scene/source.ts` 包装层
+最终 `chrome.scene` 应收口所有 chrome viewport render model：
 
-现状：
+```ts
+type ChromeRenderView = {
+  marquee?: {
+    worldRect: Rect
+    match: 'touch' | 'contain'
+  }
+  guides: readonly Guide[]
+  draw: DrawPreview | null
+  mindmap: MindmapPreview | null
+  edge: EdgeOverlayView
+}
+```
 
-- `scene/source.ts` 已经不再做 edge render 全量派生
-- 但仍承担了较多 editor-facing convenience read 组装
+原则：
 
-这里不是结构错误，但后续可以继续收口：
-
-- 能直接透传 runtime store 的，尽量透传
-- 包装层只保留 editor-facing sugar
-- 避免在这层重新积累第二套 scene read model
-
-目标不是“删到没有包装”，而是：
-
-- 包装层不再拥有独立投影逻辑
-
-### 6.3 继续统一 pick / visible / scope 的归属边界
-
-现状：
-
-- `hit.edge` 已进 `editor-scene`
-- `visible`、`scope`、`scene pick runtime` 仍有 editor 包装与本地组合逻辑
-
-这些不一定都必须立刻下沉，但要守住边界：
-
-- 世界状态与几何真相：`editor-scene`
-- host 调度、pointer frame、DOM event orchestration：`editor` / `react`
-
-也就是说，后续如果继续下沉：
-
-- 应下沉的是纯 query / pure resolve primitive
-- 不应下沉的是浏览器事件调度逻辑
-
-### 6.4 只在证据充分时再引入 measure state
-
-当前同步 `measure` 回调已经能支撑：
-
-- node text measure
-- edge label measure
-
-所以后续原则应明确：
-
-- 默认不引入 `measure snapshot`
-- 默认不引入 `measure delta`
-- 只有当同步 measure 的重复调用、去重能力或一致性真的成为瓶颈时，再单独设计 measure cache / state
-
-这件事不能再作为 edge render infra 的默认前置。
-
----
-
-## 7. 不再需要做的事情
-
-下面这些在当前架构下不应再继续：
-
-- 新建 `whiteboard-editor-scene/src/projector/*`
-- 新建 `whiteboard-editor-scene/src/domain/render/*`
-- 新建独立 `render phase`
-- 引入 `InputDelta.measure`
-- 为了对齐旧文档，额外做 measure snapshot / delta plumbing
-- 重建 editor 本地 edge render runtime
-
-一句话：
-
-- 旧文档里凡是“为了把 render 从 editor 挪进 scene”而设计的基础设施，凡是现在已经真实落地的，都不要再做第二遍。
+- chrome 下的 render 不再一部分挂 `render.edge.overlay`，一部分挂 `chrome`。
+- 最终都从 `render.chrome` 出来。
 
 ---
 
-## 8. 剩余实施顺序
+## 2.5 `hit` final API
 
-### P0. 文档与口径收敛
+最终 `hit` 应统一成：
+
+```ts
+type SceneHitTarget =
+  | {
+      kind: 'node'
+      id: NodeId
+    }
+  | {
+      kind: 'edge'
+      id: EdgeId
+    }
+  | {
+      kind: 'mindmap'
+      id: MindmapId
+    }
+  | {
+      kind: 'group'
+      id: GroupId
+    }
+
+type SceneHitQuery = {
+  node(input: {
+    point: Point
+    threshold?: number
+    excludeIds?: readonly NodeId[]
+  }): NodeId | undefined
+
+  edge(input: {
+    point: Point
+    threshold?: number
+    excludeIds?: readonly EdgeId[]
+  }): EdgeId | undefined
+
+  item(input: {
+    point: Point
+    threshold?: number
+    kinds?: readonly SceneHitTarget['kind'][]
+    exclude?: Partial<{
+      node: readonly NodeId[]
+      edge: readonly EdgeId[]
+      mindmap: readonly MindmapId[]
+      group: readonly GroupId[]
+    }>
+  }): SceneHitTarget | undefined
+}
+```
+
+原则：
+
+- `node` / `edge` 提供高频直达 query。
+- `item` 提供统一 winner resolve。
+- editor host 的 `pick` runtime 不再自己保留第二份 edge / node precise hit 主逻辑。
+
+---
+
+## 2.6 `editor.scene` 最终 public shape
+
+最终 `EditorSceneSource` 不应再是今天这种重复包装形态。
+
+最终应收敛为：
+
+```ts
+type EditorSceneSource = {
+  revision(): number
+
+  query: SceneQuery
+
+  stores: {
+    graph: SceneGraphStores
+    render: SceneRenderStores
+    items: ReadStore<readonly SceneItem[]>
+  }
+
+  host: {
+    pick: ScenePickRuntime
+    visible: (
+      options?: Parameters<SpatialRead['rect']>[1]
+    ) => ReturnType<SpatialRead['rect']>
+    geometry: {
+      node(nodeId: NodeId): NodeRenderView | undefined
+      edge(edgeId: EdgeId): EdgeGeometryView | undefined
+      order(item: {
+        kind: 'node' | 'edge' | 'mindmap'
+        id: string
+      }): number
+    }
+    scope: {
+      move(target: SelectionTarget): {
+        nodes: readonly Node[]
+        edges: readonly Edge[]
+      }
+      bounds(target: SelectionTarget): Rect | undefined
+    }
+  }
+}
+```
+
+约束：
+
+- `query` 与 `stores` 直接透传 scene runtime。
+- `host` 只放 editor 本地 helper。
+- 删除 today 的重复 API：
+  - `node` / `nodes`
+  - `edge` / `edges`
+  - `chrome`
+  - 单独再包装一层 `mindmap` / `group` convenience，如果只是同义转发就不应继续存在
+
+能直接从 `query` 或 `stores` 获得的，不要再在 `editor.scene` 上换个名字暴露一遍。
+
+---
+
+## 3. 实施方案
+
+## P0. 先定口径并改 public 命名
 
 目标：
 
-- 以后所有实现都以当前真实架构为准
+- 先把 surface 简化方向定死，再做实现迁移
+
+修改：
+
+- `whiteboard-editor-scene/src/contracts/editor.ts`
+- `whiteboard-editor-scene/src/contracts/state.ts`
+- `whiteboard-editor-scene/src/contracts/render.ts`
+- `whiteboard-editor/src/types/editor.ts`
 
 动作：
 
-- 本文替换旧版 edge render infra 文档
-- 后续相关文档引用当前真实路径和真实 phase
+- public `RuntimeStores.graph.nodes / edges / owners.*` 收敛为 `graph.node / edge / mindmap / group`
+- public graph state 收敛为 `graph.state.node / edge / chrome`
+- public `RuntimeStores.ui.*` 从 public surface 删除
+- public `query` 取代 `read`
+- public `SceneQuery` 改为 `node / edge / mindmap / group / spatial / frame / snap / hit` 编排
+- public `SceneQuery.nodeUi / edgeUi / chrome` 删除
+- public `SceneQuery.hit` 扩展为 `node / edge / item`
+- public `render.chrome` 成为正式 render namespace
 
 完成标准：
 
-- 不再有人按 `projector/*` / `domain/render/*` / `render phase` / `InputDelta.measure` 去实施
+- `editor-scene` public API 不再暴露 `nodeUi` / `edgeUi`
+- `editor-scene` public API 不再把 chrome 与 render 分裂在两处
+- `SceneRead` 命名退出，统一改为 `SceneQuery`
 
-### P1. 收掉 edge precise hit 的双实现
+## P1. 在 `editor-scene` 增加 `render.node`
 
 目标：
 
-- `hit.edge` 的核心逻辑只保留一份
+- node render 与 edge render 一样，进入 scene runtime
 
-修改面：
+修改：
 
-- `whiteboard/packages/whiteboard-editor/src/scene/pick.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/runtime/hit/edge.ts`
-- 必要时补一个 scene 内共享 helper
+- `whiteboard-editor-scene/src/model/view/render.ts`
+- `whiteboard-editor-scene/src/runtime/model.ts`
+- `whiteboard-editor-scene/src/contracts/render.ts`
+- `whiteboard-editor-scene/src/contracts/state.ts`
+
+动作：
+
+- 基于 today 的 `NodeView + graph.state.node` 生成 `NodeRenderView`
+- `render.node` 以 family publish
+- React node layer 后续直接消费 `render.node`
 
 完成标准：
 
-- editor 不再自持 edge precise distance 解析逻辑
-- body hit 与 scene pick 的 edge winner 规则一致
+- React 不再需要同时订阅 `graph.node` 与 `graph.state.node`
+- node render state 由 `editor-scene` 单点投影
 
-### P2. 继续瘦身 `scene/source.ts`
+## P2. 统一 `hit`
 
 目标：
 
-- `scene/source.ts` 只做 editor-facing 包装，不再继续长出本地 projection
+- 命中能力不再 edge-only，也不再 host-local 各自 resolve
 
-修改面：
+修改：
 
-- `whiteboard/packages/whiteboard-editor/src/scene/source.ts`
-- `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+- `whiteboard-editor-scene/src/runtime/read.ts`
+- `whiteboard-editor-scene/src/runtime/hit/*`
+- `whiteboard-editor/src/scene/pick.ts`
+
+动作：
+
+- 新增 `hit.node`
+- 新增 `hit.item`
+- 提取统一 winner resolve
+- `scene/pick.ts` 改成消费 scene hit primitive，而不是自己保留 edge/node precise hit 主逻辑
 
 完成标准：
 
-- render surface 只是转发 `editor-scene` stores
-- 不再新增本地 render/query 派生
+- edge precise hit 主逻辑只保留一份
+- node / edge / other item 的 hit 口径统一
 
-### P3. 视需要继续统一 pure query primitive
+## P3. 收口 chrome render
 
 目标：
 
-- 把仍然适合下沉的 pure query / resolve primitive 继续推进到 `editor-scene`
+- 所有 chrome viewport render model 从一个 namespace 出来
 
-候选：
+修改：
 
-- generic pick resolve 的 pure 部分
-- visible query 的 pure 部分
-- scope 里明显只依赖 scene state 的 pure 部分
+- `whiteboard-editor-scene/src/contracts/render.ts`
+- `whiteboard-editor-scene/src/model/view/render.ts`
+- `whiteboard-react/src/features/*chrome*`
+- `whiteboard-react/src/features/edge/components/EdgeOverlayLayer.tsx`
+
+动作：
+
+- 把 `edge overlay` 正式并入 `render.chrome`
+- `chrome scene render` 与 `edge overlay render` 用统一 value surface 暴露
 
 完成标准：
 
-- scene/runtime 和 editor/host 的职责边界更清晰
-- 不引入新的双轨 query 实现
+- chrome viewport render 不再散落在多个 namespace
+
+## P4. 删掉 `editor.scene` 的重复包装层
+
+目标：
+
+- `editor.scene` 只保留 `query / stores / host`
+
+修改：
+
+- `whiteboard-editor/src/scene/source.ts`
+- `whiteboard-editor/src/types/editor.ts`
+- 调用这些重复包装 API 的 editor / react 代码
+
+动作：
+
+- 删除 `node` / `nodes` 双轨
+- 删除 `edge` / `edges` 双轨
+- 删除纯转发型 query helper，改为直接用 `query`
+- 把 host-only helper 放进 `host`
+
+完成标准：
+
+- `editor.scene` 不再重复包装同一份 scene 数据
+- 调用方一眼能分清 `query`、`stores`、`host`
+
+## P5. 迁移 React 消费面
+
+目标：
+
+- React 完全基于 final scene surface 消费
+
+修改：
+
+- node scene layer
+- edge scene layer
+- chrome layers
+- DOM host input
+
+动作：
+
+- node layer 改读 `stores.render.node`
+- edge layer 继续读 `stores.render.edge.*`
+- chrome layer 改读 `stores.render.chrome.*`
+- body hit / generic pick 改用 final `query.hit.*`
+
+完成标准：
+
+- React 不再自己拼 `graph + graph.state`
+- React 不再自己做 scene hit resolve
 
 ---
 
-## 9. 最终验收标准
+## 4. 最终验收标准
 
-继续以这组标准作为终态判断：
-
-1. `whiteboard-editor` 中不再存在本地 edge render runtime。
-2. `whiteboard-editor-scene` 是唯一 edge render 投影源。
-3. `whiteboard-react` 只消费 family / value，不再做 edge render 数据建模。
-4. `whiteboard-core` 持有纯 edge render / hit primitive。
-5. `shared/projector` 持有通用 projector-store bridge primitive。
-6. body hit 通过 `editor.scene.query.hit.edge(...)` 进入 `editor-scene`。
-7. edge precise hit 逻辑最终只保留一份主实现。
-8. 不为了“概念完整”再引入 measure snapshot / delta。
-
----
-
-## 10. 一句话总结
-
-这条线已经不是“要不要把 edge render infra 做进 `editor-scene`”，而是：
-
-- **大方向已经做完了。**
-- **后续只需要把少量残留双实现收掉，并继续守住 scene / editor / react 的职责边界。**
+1. `render` 不再只有 edge，`render.node` 已进入 `editor-scene`。
+2. `hit` 不再只有 edge，至少具备 `hit.node`、`hit.edge`、`hit.item`。
+3. `nodeUi`、`edgeUi` 不再作为 public surface 暴露。
+4. public surface 只保留 `graph`、`render`、`hit` 三类 scene truth。
+5. `editor.scene` 收敛为 `query / stores / host`。
+6. `editor.scene` 不再重复包装 `node/nodes`、`edge/edges`、`query` 等同义数据。
+7. React 不再自己拼 `graph + graph.state -> render`。
+8. host 调度仍留在 `editor` / `react`，不回流到 `editor-scene`。

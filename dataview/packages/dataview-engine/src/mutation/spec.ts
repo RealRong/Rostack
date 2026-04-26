@@ -16,7 +16,7 @@ import type {
   DocumentOperation
 } from '@dataview/core/contracts/operations'
 import {
-  mutationApply,
+  applyResult,
   type MutationEngineSpec
 } from '@shared/mutation'
 import {
@@ -73,7 +73,6 @@ export const createDataviewMutationSpec = (input?: {
   DocumentOperation,
   DataviewMutationKey,
   DataviewPublishState,
-  void,
   {
     trace: DataviewTrace
   }
@@ -102,11 +101,8 @@ export const createDataviewMutationSpec = (input?: {
     apply: ({ doc, ops }) => {
       const result = applyOperations(doc, ops)
       return result.ok
-        ? mutationApply.success(result)
-        : {
-            ok: false as const,
-            error: result.error
-          }
+        ? applyResult.success(result)
+        : applyResult.failure(result.error)
     },
     publish: createDataviewPublishSpec({
       performance: input?.performance

@@ -37,7 +37,7 @@ const insertField = (
     input.anchor,
     input.side
   )
-  const result = base.executeMany([
+  const result = base.execute([
     {
       type: 'field.create',
       input: {

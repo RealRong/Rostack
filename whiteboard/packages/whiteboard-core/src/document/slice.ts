@@ -22,9 +22,7 @@ import type {
   Operation,
   Point,
   Rect,
-  Result,
-  Size,
-  SpatialNode
+  Result
 } from '@whiteboard/core/types'
 import type {
   Slice,
@@ -38,26 +36,22 @@ import { document as documentApi } from '@whiteboard/core/document'
 type ExportNodesInput = {
   doc: Document
   ids: readonly NodeId[]
-  nodeSize: Size
 }
 
 type ExportEdgeInput = {
   doc: Document
   edgeId: EdgeId
-  nodeSize: Size
 }
 
 type ExportSelectionInput = {
   doc: Document
   nodeIds?: readonly NodeId[]
   edgeIds?: readonly EdgeId[]
-  nodeSize: Size
 }
 
 type InsertSliceInput = {
   doc: Document
   slice: Slice
-  nodeSize: Size
   registries: CoreRegistries
   createNodeId?: () => NodeId
   createEdgeId?: () => EdgeId
@@ -82,10 +76,9 @@ const offsetPoint = (
 })
 
 const toEdgeNodeSnapshot = (
-  node: SpatialNode,
-  nodeSize: Size
+  node: Node
 ) => {
-  const rect = nodeApi.geometry.rect(node, nodeSize)
+  const rect = nodeApi.geometry.rect(node)
 
   return {
     node,
@@ -114,7 +107,7 @@ const cloneNode = (node: Node): Node => {
     id: node.id,
     type: node.type,
     position: json.clone(node.position),
-    size: node.size ? json.clone(node.size) : undefined,
+    size: json.clone(node.size),
     rotation: node.rotation,
     locked: node.locked,
     data: node.data ? json.clone(node.data) : undefined,
@@ -149,10 +142,6 @@ const remapSliceNodeInput = ({
   position: offsetPoint(node.position, delta),
   id: nextNodeId
 })
-
-const readSpatialNode = (
-  node: Node | undefined
-): SpatialNode | undefined => node
 
 const remapEdgeEnd = ({
   end,
@@ -230,15 +219,14 @@ const remapSliceEdgeInput = ({
 
 const collectExpandedNodeIds = (
   nodes: readonly Node[],
-  selectedIds: readonly NodeId[],
-  nodeSize: Size
+  selectedIds: readonly NodeId[]
 ) => {
   const frame = createFrameQuery({
     nodes,
-    getNodeRect: (current) => nodeApi.geometry.rect(current, nodeSize),
+    getNodeRect: (current) => nodeApi.geometry.rect(current),
     getFrameRect: (node) => (
       node.type === 'frame'
-        ? nodeApi.geometry.rect(node, nodeSize)
+        ? nodeApi.geometry.rect(node)
         : undefined
     )
   })
@@ -255,27 +243,25 @@ const collectExpandedNodeIds = (
 
 const getEdgeBounds = ({
   edge,
-  nodesById,
-  nodeSize
+  nodesById
 }: {
   edge: Edge
   nodesById: ReadonlyMap<NodeId, Node>
-  nodeSize: Size
 }): Rect | undefined => {
   const resolved = resolveEdgeEnds({
     edge,
     source: edgeApi.guard.isNodeEnd(edge.source)
       ? (() => {
-        const node = readSpatialNode(nodesById.get(edge.source.nodeId))
+        const node = nodesById.get(edge.source.nodeId)
         if (!node) return undefined
-        return toEdgeNodeSnapshot(node, nodeSize)
+        return toEdgeNodeSnapshot(node)
       })()
       : undefined,
     target: edgeApi.guard.isNodeEnd(edge.target)
       ? (() => {
-        const node = readSpatialNode(nodesById.get(edge.target.nodeId))
+        const node = nodesById.get(edge.target.nodeId)
         if (!node) return undefined
-        return toEdgeNodeSnapshot(node, nodeSize)
+        return toEdgeNodeSnapshot(node)
       })()
       : undefined
   })
@@ -364,16 +350,14 @@ const translateEdge = (
 })
 
 export const getSliceBounds = (
-  slice: Slice,
-  nodeSize: Size
+  slice: Slice
 ): Rect | undefined => {
-  const nodeBounds = getNodesBoundingRect(slice.nodes, nodeSize)
+  const nodeBounds = getNodesBoundingRect(slice.nodes)
   const nodesById = new Map<NodeId, Node>(slice.nodes.map((node) => [node.id, node]))
   const edgeBounds = slice.edges
     .map((edge) => getEdgeBounds({
       edge,
-      nodesById,
-      nodeSize
+      nodesById
     }))
     .filter((rect): rect is Rect => Boolean(rect))
 
@@ -404,27 +388,25 @@ export const translateSlice = (
 
 const detachEdge = ({
   edge,
-  doc,
-  nodeSize
+  doc
 }: {
   edge: Edge
   doc: Document
-  nodeSize: Size
 }): Result<Edge, 'invalid'> => {
   const sourceNode = edgeApi.guard.isNodeEnd(edge.source)
-    ? readSpatialNode(documentApi.read.node(doc, edge.source.nodeId))
+    ? documentApi.read.node(doc, edge.source.nodeId)
     : undefined
   const targetNode = edgeApi.guard.isNodeEnd(edge.target)
-    ? readSpatialNode(documentApi.read.node(doc, edge.target.nodeId))
+    ? documentApi.read.node(doc, edge.target.nodeId)
     : undefined
 
   const resolved = resolveEdgeEnds({
     edge,
     source: sourceNode
-      ? toEdgeNodeSnapshot(sourceNode, nodeSize)
+      ? toEdgeNodeSnapshot(sourceNode)
       : undefined,
     target: targetNode
-      ? toEdgeNodeSnapshot(targetNode, nodeSize)
+      ? toEdgeNodeSnapshot(targetNode)
       : undefined
   })
 
@@ -448,27 +430,25 @@ const detachEdge = ({
 const detachSelectionEdge = ({
   edge,
   doc,
-  nodeIds,
-  nodeSize
+  nodeIds
 }: {
   edge: Edge
   doc: Document
   nodeIds: ReadonlySet<NodeId>
-  nodeSize: Size
 }): Result<Edge, 'invalid'> => {
   const sourceNode = edgeApi.guard.isNodeEnd(edge.source)
-    ? readSpatialNode(documentApi.read.node(doc, edge.source.nodeId))
+    ? documentApi.read.node(doc, edge.source.nodeId)
     : undefined
   const targetNode = edgeApi.guard.isNodeEnd(edge.target)
-    ? readSpatialNode(documentApi.read.node(doc, edge.target.nodeId))
+    ? documentApi.read.node(doc, edge.target.nodeId)
     : undefined
   const resolved = resolveEdgeEnds({
     edge,
     source: sourceNode
-      ? toEdgeNodeSnapshot(sourceNode, nodeSize)
+      ? toEdgeNodeSnapshot(sourceNode)
       : undefined,
     target: targetNode
-      ? toEdgeNodeSnapshot(targetNode, nodeSize)
+      ? toEdgeNodeSnapshot(targetNode)
       : undefined
   })
 
@@ -619,8 +599,7 @@ const remapRoots = ({
 
 export const exportSliceFromNodes = ({
   doc,
-  ids,
-  nodeSize
+  ids
 }: ExportNodesInput): Result<SliceExportResult, 'invalid'> => {
   const selectedIds = dedupeIds(ids)
   if (!selectedIds.length) {
@@ -628,7 +607,7 @@ export const exportSliceFromNodes = ({
   }
 
   const orderedNodes = documentApi.list.nodes(doc)
-  const expandedIds = collectExpandedNodeIds(orderedNodes, selectedIds, nodeSize)
+  const expandedIds = collectExpandedNodeIds(orderedNodes, selectedIds)
   const rawNodes = orderedNodes
     .filter((node) => expandedIds.has(node.id))
     .map((node) => cloneNode(node))
@@ -647,7 +626,7 @@ export const exportSliceFromNodes = ({
     version: 1,
     nodes,
     edges
-  }, nodeSize)
+  })
   if (!bounds) {
     return err('invalid', 'Slice bounds could not be resolved.')
   }
@@ -668,8 +647,7 @@ export const exportSliceFromNodes = ({
 
 export const exportSliceFromEdge = ({
   doc,
-  edgeId,
-  nodeSize
+  edgeId
 }: ExportEdgeInput): Result<SliceExportResult, 'invalid'> => {
   const edge = documentApi.read.edge(doc, edgeId)
   if (!edge) {
@@ -678,8 +656,7 @@ export const exportSliceFromEdge = ({
 
   const detached = detachEdge({
     edge,
-    doc,
-    nodeSize
+    doc
   })
   if (!detached.ok) {
     return detached
@@ -690,7 +667,7 @@ export const exportSliceFromEdge = ({
     nodes: [],
     edges: [detached.data]
   }
-  const bounds = getSliceBounds(slice, nodeSize)
+  const bounds = getSliceBounds(slice)
   if (!bounds) {
     return err('invalid', 'Slice bounds could not be resolved.')
   }
@@ -708,8 +685,7 @@ export const exportSliceFromEdge = ({
 export const exportSliceFromSelection = ({
   doc,
   nodeIds = [],
-  edgeIds = [],
-  nodeSize
+  edgeIds = []
 }: ExportSelectionInput): Result<SliceExportResult, 'invalid'> => {
   const selectedNodeIds = dedupeIds(nodeIds)
   const selectedEdgeIds = dedupeIds(edgeIds)
@@ -718,7 +694,7 @@ export const exportSliceFromSelection = ({
   }
 
   const orderedNodes = documentApi.list.nodes(doc)
-  const expandedNodeIds = collectExpandedNodeIds(orderedNodes, selectedNodeIds, nodeSize)
+  const expandedNodeIds = collectExpandedNodeIds(orderedNodes, selectedNodeIds)
   const rawNodes = orderedNodes
     .filter((node) => expandedNodeIds.has(node.id))
     .map((node) => cloneNode(node))
@@ -742,8 +718,7 @@ export const exportSliceFromSelection = ({
     const detached = detachSelectionEdge({
       edge,
       doc,
-      nodeIds: nodeIdSet,
-      nodeSize
+      nodeIds: nodeIdSet
     })
     if (!detached.ok) {
       return
@@ -758,7 +733,7 @@ export const exportSliceFromSelection = ({
     nodes,
     edges
   }
-  const bounds = getSliceBounds(slice, nodeSize)
+  const bounds = getSliceBounds(slice)
   if (!bounds) {
     return err('invalid', 'Slice bounds could not be resolved.')
   }
@@ -776,7 +751,6 @@ export const exportSliceFromSelection = ({
 export const createInsertSliceOps = ({
   doc,
   slice,
-  nodeSize,
   registries,
   createNodeId = () => createId('node'),
   createEdgeId = () => createId('edge'),
@@ -788,7 +762,7 @@ export const createInsertSliceOps = ({
     return err('invalid', 'Slice is empty.')
   }
 
-  const bounds = getSliceBounds(slice, nodeSize)
+  const bounds = getSliceBounds(slice)
   if (!bounds) {
     return err('invalid', 'Slice bounds could not be resolved.')
   }

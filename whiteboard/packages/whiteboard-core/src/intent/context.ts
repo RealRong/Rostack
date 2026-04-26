@@ -13,8 +13,7 @@ import type {
   MindmapRecord,
   Node,
   NodeId,
-  Operation,
-  Size
+  Operation
 } from '@whiteboard/core/types'
 
 export type WhiteboardCompileIds = {
@@ -63,7 +62,6 @@ export type WhiteboardCompileTx = {
 export type WhiteboardIntentContext = {
   tx: WhiteboardCompileTx
   registries: CoreRegistries
-  nodeSize: Size
 }
 
 const requireNode = (
@@ -130,7 +128,6 @@ export const createWhiteboardIntentContext = (input: {
   ctx: CompileCtx<Document, Operation>
   ids: WhiteboardCompileIds
   registries: CoreRegistries
-  nodeSize: Size
 }): WhiteboardIntentContext => ({
   tx: {
     read: {
@@ -175,6 +172,5 @@ export const createWhiteboardIntentContext = (input: {
       })
     }
   },
-  registries: input.registries,
-  nodeSize: input.nodeSize
+  registries: input.registries
 })

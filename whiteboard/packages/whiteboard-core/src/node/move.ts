@@ -6,8 +6,7 @@ import type {
   Node,
   NodeId,
   Point,
-  Rect,
-  Size
+  Rect
 } from '@whiteboard/core/types'
 import { createFrameQuery } from '@whiteboard/core/node/frame'
 import { getNodeBoundsByNode } from '@whiteboard/core/node/geometry'
@@ -66,13 +65,8 @@ const toMemberIdSet = (
 export const buildMoveSet = (options: {
   nodes: readonly Node[]
   ids: readonly NodeId[]
-  nodeSize: Size
 }): MoveSet => {
-  const {
-    nodes,
-    ids,
-    nodeSize
-  } = options
+  const { nodes, ids } = options
   const rootIds = Array.from(new Set(ids))
   if (!rootIds.length) {
     return {
@@ -84,14 +78,14 @@ export const buildMoveSet = (options: {
 
   const readNodeRect = (
     node: Node
-  ): Rect | undefined => getNodeBoundsByNode(node, nodeSize)
+  ): Rect | undefined => getNodeBoundsByNode(node)
 
   const frame = createFrameQuery({
     nodes,
     getNodeRect: readNodeRect,
     getFrameRect: (node) => (
       node.type === 'frame'
-        ? getNodeBoundsByNode(node, nodeSize)
+        ? getNodeBoundsByNode(node)
         : undefined
     )
   })
@@ -206,11 +200,9 @@ const collectMovedEdgePatches = (options: {
 }
 
 export const resolveMoveEffect = (options: {
-  nodes: readonly Node[]
   edges?: readonly Edge[]
   move: MoveSet
   delta: Point
-  nodeSize: Size
 }): MoveEffect => {
   const positions = projectMovePositions(options.move.members, options.delta)
   if (!positions.length) {
@@ -233,18 +225,14 @@ export const resolveMoveEffect = (options: {
 }
 
 export const projectMovePreview = (options: {
-  nodes: readonly Node[]
   edgePlan?: MoveEdgePlan
   move: MoveSet
   delta: Point
-  nodeSize: Size
 }): MoveEffect => {
   const effect = resolveMoveEffect({
-    nodes: options.nodes,
     edges: options.edgePlan?.follow,
     move: options.move,
-    delta: options.delta,
-    nodeSize: options.nodeSize
+    delta: options.delta
   })
   const selectedEdgeChanges = collectMovedEdgePatches({
     edges: options.edgePlan?.dragged ?? [],

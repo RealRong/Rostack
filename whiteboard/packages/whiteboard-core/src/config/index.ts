@@ -1,8 +1,4 @@
-import type { Size } from '@whiteboard/core/types'
-
 export type BoardConfig = {
-  nodeSize: Size
-  mindmapNodeSize: Size
   node: {
     groupPadding: number
     snapThresholdScreen: number
@@ -10,6 +6,7 @@ export type BoardConfig = {
     snapGridCellSize: number
   }
   edge: {
+    connectQueryRadius: number
     hitTestThresholdScreen: number
     activationPaddingScreen: number
     outlineSnapMin: number
@@ -18,19 +15,7 @@ export type BoardConfig = {
   }
 }
 
-export const DEFAULT_NODE_SIZE: Size = {
-  width: 120,
-  height: 72
-}
-
-export const DEFAULT_MINDMAP_NODE_SIZE: Size = {
-  width: 140,
-  height: 36
-}
-
 export const DEFAULT_BOARD_CONFIG: BoardConfig = {
-  nodeSize: DEFAULT_NODE_SIZE,
-  mindmapNodeSize: DEFAULT_MINDMAP_NODE_SIZE,
   node: {
     groupPadding: 24,
     snapThresholdScreen: 8,
@@ -38,6 +23,7 @@ export const DEFAULT_BOARD_CONFIG: BoardConfig = {
     snapGridCellSize: 240
   },
   edge: {
+    connectQueryRadius: 24,
     hitTestThresholdScreen: 10,
     activationPaddingScreen: 24,
     outlineSnapMin: 12,

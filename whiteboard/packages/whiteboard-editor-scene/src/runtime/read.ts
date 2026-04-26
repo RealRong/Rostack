@@ -805,7 +805,6 @@ export const createEditorSceneRead = (runtime: {
   state: () => WorkingState
   items: () => readonly SceneItem[]
   spatial: () => SpatialIndexState
-  nodeSize: { width: number, height: number }
   nodeCapability?: NodeCapabilityInput
   view: () => SceneViewSnapshot
 }): Query => {
@@ -813,8 +812,7 @@ export const createEditorSceneRead = (runtime: {
     state: runtime.spatial
   })
   const document = createDocumentResolver({
-    state: runtime.state,
-    nodeSize: runtime.nodeSize
+    state: runtime.state
   })
   const frame = createFrameRead({
     state: runtime.state,

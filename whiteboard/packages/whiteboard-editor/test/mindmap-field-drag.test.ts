@@ -141,14 +141,7 @@ describe('mindmap field drag', () => {
           move: vi.fn()
         }
       },
-      engine: {
-        config: {
-          nodeSize: {
-            width: 120,
-            height: 72
-          }
-        }
-      } as never
+      engine: {} as never
     } as never, {
       start: {
         phase: 'down',

@@ -8,8 +8,7 @@ import type {
   NodeId,
   NodeInput,
   Operation,
-  Result,
-  Size
+  Result
 } from '@whiteboard/core/types'
 import {
   alignNodes,
@@ -21,9 +20,9 @@ import {
 } from '@whiteboard/core/node/layout'
 import {
   getNodeBoundsByNode,
-  getNodeRect
 } from '@whiteboard/core/node/geometry'
 import { createNodeFieldsUpdateOperation } from '@whiteboard/core/node/update'
+import { materializeCommittedNode } from '@whiteboard/core/node/materialize'
 
 type NodeCreateOpResult =
   Result<{
@@ -46,13 +45,11 @@ type CreateNodeOpInput = {
 type NodeLayoutOpsInput = {
   ids: readonly NodeId[]
   doc: Document
-  nodeSize: Size
 }
 
 const readLayoutEntries = ({
   ids,
-  doc,
-  nodeSize
+  doc
 }: NodeLayoutOpsInput): Result<{
   entries: NodeLayoutEntry[]
 }, 'invalid'> => {
@@ -70,7 +67,13 @@ const readLayoutEntries = ({
       return err('invalid', `Node ${id} not found.`)
     }
 
-    const bounds = getNodeBoundsByNode(node, nodeSize) ?? getNodeRect(node, nodeSize)
+    const bounds = getNodeBoundsByNode(node)
+      ?? {
+        x: node.position.x,
+        y: node.position.y,
+        width: node.size.width,
+        height: node.size.height
+      }
 
     entries.push({
       id: node.id,
@@ -86,7 +89,6 @@ const readLayoutEntries = ({
 
 const createLayoutOps = (
   doc: Document,
-  nodeSize: Size,
   updates: readonly NodeLayoutUpdate[]
 ): {
   operations: Operation[]
@@ -138,18 +140,19 @@ export const createNodeOp = ({
   }
 
   const normalized = schemaApi.node.applyDefaults(payload, registries)
-  const nextNode = normalized
-  const id = nextNode.id ?? createNodeId()
-  const node: Node = {
-    ...nextNode,
-    id
+  const materialized = materializeCommittedNode({
+    node: normalized,
+    createNodeId
+  })
+  if (!materialized.ok) {
+    return materialized
   }
 
   return ok({
-    nodeId: id,
+    nodeId: materialized.data.id,
     operation: {
       type: 'node.create',
-      node
+      node: materialized.data
     }
   })
 }
@@ -157,41 +160,37 @@ export const createNodeOp = ({
 export const planNodeAlignOps = ({
   ids,
   doc,
-  nodeSize,
   mode
 }: NodeLayoutOpsInput & {
   mode: NodeAlignMode
 }): NodeOpsResult => {
   const entriesResult = readLayoutEntries({
     ids,
-    doc,
-    nodeSize
+    doc
   })
   if (!entriesResult.ok) {
     return entriesResult
   }
 
   const updates = alignNodes(entriesResult.data.entries, mode)
-  return ok(createLayoutOps(doc, nodeSize, updates))
+  return ok(createLayoutOps(doc, updates))
 }
 
 export const planNodeDistributeOps = ({
   ids,
   doc,
-  nodeSize,
   mode
 }: NodeLayoutOpsInput & {
   mode: NodeDistributeMode
 }): NodeOpsResult => {
   const entriesResult = readLayoutEntries({
     ids,
-    doc,
-    nodeSize
+    doc
   })
   if (!entriesResult.ok) {
     return entriesResult
   }
 
   const updates = distributeNodes(entriesResult.data.entries, mode)
-  return ok(createLayoutOps(doc, nodeSize, updates))
+  return ok(createLayoutOps(doc, updates))
 }

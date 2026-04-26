@@ -3,8 +3,7 @@ import { whiteboardReducer } from '@whiteboard/core/reducer'
 import type {
   CoreRegistries,
   Document,
-  Operation,
-  Size
+  Operation
 } from '@whiteboard/core/types'
 import {
   createWhiteboardIntentContext,
@@ -29,7 +28,6 @@ export const compileWhiteboardIntents = (input: {
   intents: readonly WhiteboardIntent[]
   registries: CoreRegistries
   ids: WhiteboardCompileIds
-  nodeSize: Size
 }): {
   ops: readonly Operation[]
   outputs: readonly WhiteboardIntentOutput[]
@@ -43,8 +41,7 @@ export const compileWhiteboardIntents = (input: {
       const compileContext = createWhiteboardIntentContext({
         ctx,
         ids: input.ids,
-        registries: input.registries,
-        nodeSize: input.nodeSize
+        registries: input.registries
       })
       const handler = whiteboardIntentHandlers[intent.type]
       return handler(intent as never, compileContext)

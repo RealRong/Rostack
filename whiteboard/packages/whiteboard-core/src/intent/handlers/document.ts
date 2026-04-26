@@ -25,7 +25,6 @@ export const compileDocumentIntent = (
       const built = documentApi.op.insertSlice({
         doc: ctx.tx.read.document.get(),
         slice: intent.slice,
-        nodeSize: ctx.nodeSize,
         registries: ctx.registries,
         createNodeId: ctx.tx.ids.node,
         createEdgeId: ctx.tx.ids.edge,

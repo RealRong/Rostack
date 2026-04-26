@@ -20,6 +20,7 @@ import type {
   NodeOwner,
   NodeStyle,
   Point,
+  SpatialNode,
   Size
 } from '@whiteboard/core/types/model'
 import type {
@@ -34,7 +35,7 @@ import type {
   MindmapTopicMoveInput
 } from '@whiteboard/core/mindmap/types'
 
-export type SpatialNodeInput = Omit<Node, 'id'> & {
+export type SpatialNodeInput = Omit<SpatialNode, 'id'> & {
   id?: NodeId
 }
 

@@ -117,8 +117,7 @@ export const createWhiteboardMutationSpec = (input: {
       document: doc,
       intents: intents as readonly WhiteboardIntent[],
       registries: input.registries,
-      ids,
-      nodeSize: input.config.nodeSize
+      ids
     }),
     apply: ({
       doc,

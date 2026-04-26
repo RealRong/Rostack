@@ -14,8 +14,7 @@ import type {
   GroupId,
   MindmapId,
   NodeModel,
-  NodeId,
-  Size
+  NodeId
 } from '@whiteboard/core/types'
 import type {
   HoverState,
@@ -402,9 +401,7 @@ const readViewPatchScope = (input: {
   }
 }
 
-const createGraphPhase = (
-  nodeSize: Size
-): ProjectionPhase<
+const createGraphPhase = (): ProjectionPhase<
   'graph',
   {
     input: Input
@@ -423,7 +420,6 @@ const createGraphPhase = (
     patchDocumentState({
       current: context.input,
       working: context.state,
-      nodeSize,
       reset: context.scope.reset
     })
     const result = patchGraphState({
@@ -535,16 +531,8 @@ const viewPhase: ProjectionPhase<
 export const createEditorSceneProjectionModel = (input: {
   measure?: TextMeasure
   nodeCapability?: NodeCapabilityInput
-  document?: {
-    nodeSize: Size
-  }
   view: SceneViewInput
 }) => {
-  const nodeSize = input.document?.nodeSize ?? {
-    width: 0,
-    height: 0
-  }
-
   return defineProjectionModel<
   Input,
   WorkingState,
@@ -594,7 +582,6 @@ export const createEditorSceneProjectionModel = (input: {
     items: () => runtime.state().items,
     spatial: () => runtime.state().spatial,
     nodeCapability: input.nodeCapability,
-    nodeSize,
     view: input.view
   }),
   capture: ({ state, revision }) => buildEditorSceneCapture(
@@ -731,7 +718,7 @@ export const createEditorSceneProjectionModel = (input: {
     })
   },
   phases: [
-    createGraphPhase(nodeSize),
+    createGraphPhase(),
     spatialPhase,
     viewPhase
   ]

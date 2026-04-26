@@ -1,5 +1,5 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import type { Node, Rect, Size, SpatialNode } from '@whiteboard/core/types'
+import type { Node, Rect, SpatialNode } from '@whiteboard/core/types'
 import { getNodeBounds } from '@whiteboard/core/node/outline'
 
 export const readNodeRotation = (
@@ -7,26 +7,22 @@ export const readNodeRotation = (
 ): number => (typeof node.rotation === 'number' ? node.rotation : 0)
 
 export const getNodeRect = (
-  node: SpatialNode,
-  fallback: Size
+  node: Pick<Node, 'position' | 'size'>
 ): Rect => {
-  const width = node.size?.width ?? fallback.width
-  const height = node.size?.height ?? fallback.height
   const position = node.position
 
   return {
     x: position.x,
     y: position.y,
-    width,
-    height
+    width: node.size.width,
+    height: node.size.height
   }
 }
 
 export const getNodeAABB = (
-  node: SpatialNode,
-  fallback: Size
+  node: Pick<Node, 'position' | 'size' | 'rotation'>
 ): Rect => {
-  const rect = getNodeRect(node, fallback)
+  const rect = getNodeRect(node)
   const rotation = readNodeRotation(node)
   if (!rotation) return rect
   const corners = geometryApi.rotation.corners(rect, rotation)
@@ -34,21 +30,19 @@ export const getNodeAABB = (
 }
 
 export const getNodeBoundsByNode = (
-  node: Node,
-  fallbackSize: Size
+  node: Node
 ): Rect | undefined => {
-  const rect = getNodeRect(node, fallbackSize)
+  const rect = getNodeRect(node)
   const rotation = readNodeRotation(node)
 
   return getNodeBounds(node, rect, rotation)
 }
 
 export const getNodesBounds = (
-  nodes: readonly Node[],
-  fallbackSize: Size
+  nodes: readonly Node[]
 ): Rect | undefined => {
   const rects = nodes.flatMap((node) => {
-    const rect = getNodeBoundsByNode(node, fallbackSize)
+    const rect = getNodeBoundsByNode(node)
     return rect ? [rect] : []
   })
 

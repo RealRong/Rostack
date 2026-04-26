@@ -53,19 +53,19 @@ export const sanitizeDocument = (
 
   Object.entries(document.nodes).forEach(([id, node]) => {
     const stripped = stripLegacyNodeFields(node)
-    const bootstrapSize = nodeApi.bootstrap.resolve(stripped.node)
-
-    if (bootstrapSize && !geometryApi.equal.size(node.size, bootstrapSize)) {
-      entities[id] = {
-        ...stripped.node,
-        size: bootstrapSize
-      }
-      changed = true
+    const materialized = nodeApi.materialize.committed({
+      node: stripped.node
+    })
+    if (!materialized.ok) {
+      entities[id] = stripped.node as Node
       return
     }
 
-    if (stripped.changed) {
-      entities[id] = stripped.node
+    if (
+      !geometryApi.equal.size(node.size, materialized.data.size)
+      || stripped.changed
+    ) {
+      entities[id] = materialized.data
       changed = true
       return
     }
@@ -161,22 +161,20 @@ export const sanitizeOperations = ({
     switch (operation.type) {
       case 'node.create': {
         const stripped = stripLegacyNodeFields(operation.node)
-        const bootstrapSize = nodeApi.bootstrap.resolve(stripped.node)
-        if (bootstrapSize && !geometryApi.equal.size(stripped.node.size, bootstrapSize)) {
-          next.push({
-            ...operation,
-            node: {
-              ...stripped.node,
-              size: bootstrapSize
-            }
-          })
+        const materialized = nodeApi.materialize.committed({
+          node: stripped.node
+        })
+        if (!materialized.ok) {
+          next.push(operation)
           return
         }
-
-        if (stripped.changed) {
+        if (
+          !geometryApi.equal.size(stripped.node.size, materialized.data.size)
+          || stripped.changed
+        ) {
           next.push({
             ...operation,
-            node: stripped.node
+            node: materialized.data
           })
           return
         }

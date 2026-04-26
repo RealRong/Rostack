@@ -290,7 +290,6 @@ export const compileNodeIntent = (
       const built = nodeApi.op.align({
         ids: intent.ids,
         doc: document,
-        nodeSize: ctx.nodeSize,
         mode: intent.mode
       })
       if (!built.ok) {
@@ -303,7 +302,6 @@ export const compileNodeIntent = (
       const built = nodeApi.op.distribute({
         ids: intent.ids,
         doc: document,
-        nodeSize: ctx.nodeSize,
         mode: intent.mode
       })
       if (!built.ok) {

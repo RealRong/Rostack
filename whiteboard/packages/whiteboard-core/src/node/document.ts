@@ -1,8 +1,7 @@
 import type {
   Node,
   NodeOutline,
-  Rect,
-  Size
+  Rect
 } from '@whiteboard/core/types'
 import { getNodeRect, readNodeRotation } from '@whiteboard/core/node/geometry'
 import { getNodeGeometry } from '@whiteboard/core/node/outline'
@@ -19,9 +18,8 @@ export interface ResolvedDocumentNodeGeometry extends DocumentNodeGeometry {
 
 export const resolveDocumentNodeGeometry = (input: {
   node: Node
-  nodeSize: Size
 }): ResolvedDocumentNodeGeometry => {
-  const rect = getNodeRect(input.node, input.nodeSize)
+  const rect = getNodeRect(input.node)
   const rotation = readNodeRotation(input.node)
   const geometry = getNodeGeometry(
     input.node,

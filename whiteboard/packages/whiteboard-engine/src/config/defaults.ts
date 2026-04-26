@@ -1,14 +1,10 @@
 import {
-  DEFAULT_BOARD_CONFIG,
-  DEFAULT_MINDMAP_NODE_SIZE,
-  DEFAULT_NODE_SIZE
+  DEFAULT_BOARD_CONFIG
 } from '@whiteboard/core/config'
 import type { MindmapLayoutMode } from '@whiteboard/core/mindmap'
 import type { Size } from '@whiteboard/core/types'
 export {
-  DEFAULT_BOARD_CONFIG,
-  DEFAULT_MINDMAP_NODE_SIZE,
-  DEFAULT_NODE_SIZE
+  DEFAULT_BOARD_CONFIG
 } from '@whiteboard/core/config'
 
 export const DEFAULT_TUNING = {

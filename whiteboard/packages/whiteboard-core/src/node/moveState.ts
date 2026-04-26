@@ -5,8 +5,7 @@ import type {
   Node,
   NodeId,
   Point,
-  Rect,
-  Size
+  Rect
 } from '@whiteboard/core/types'
 import {
   buildMoveCommit,
@@ -20,14 +19,12 @@ import {
 import { getNodeRect } from '@whiteboard/core/node/geometry'
 
 export type MoveState = {
-  nodes: readonly Node[]
   move: MoveSet
   edgePlan: MoveEdgePlan
   bounds: Rect
   origin: Point
   startWorld: Point
   delta: Point
-  nodeSize: Size
 }
 
 export type MoveSnapResolver = (input: {
@@ -42,8 +39,7 @@ export type MoveStepResult = {
 
 const getMoveBounds = (
   nodes: readonly Node[],
-  move: MoveSet,
-  nodeSize: Size
+  move: MoveSet
 ): Rect | undefined => {
   const nodeById = new Map(nodes.map((node) => [node.id, node] as const))
   const rects = move.members.flatMap((member) => {
@@ -52,7 +48,7 @@ const getMoveBounds = (
       return []
     }
 
-    return [getNodeRect(node, nodeSize)]
+    return [getNodeRect(node)]
   })
 
   return geometryApi.rect.boundingRect(rects)
@@ -63,18 +59,16 @@ export const startMoveState = (input: {
   edges: readonly Edge[]
   target: SelectionTarget
   startWorld: Point
-  nodeSize: Size
 }): MoveState | null => {
   const move = buildMoveSet({
     nodes: input.nodes,
-    ids: input.target.nodeIds,
-    nodeSize: input.nodeSize
+    ids: input.target.nodeIds
   })
   if (!move.members.length) {
     return null
   }
 
-  const bounds = getMoveBounds(input.nodes, move, input.nodeSize)
+  const bounds = getMoveBounds(input.nodes, move)
   if (!bounds) {
     return null
   }
@@ -82,7 +76,6 @@ export const startMoveState = (input: {
   const draggedEdgeIds = new Set(input.target.edgeIds)
 
   return {
-    nodes: input.nodes,
     move,
     edgePlan: {
       dragged: input.edges.filter((edge) => draggedEdgeIds.has(edge.id)),
@@ -97,8 +90,7 @@ export const startMoveState = (input: {
     delta: {
       x: 0,
       y: 0
-    },
-    nodeSize: input.nodeSize
+    }
   }
 }
 
@@ -117,7 +109,7 @@ export const stepMoveState = (input: {
   const snapped = input.snap
     ? {
         rect: rawRect,
-      snappedRect: input.snap({
+        snappedRect: input.snap({
           rect: rawRect,
           excludeIds: state.move.snapExcludeIds
         })
@@ -138,11 +130,9 @@ export const stepMoveState = (input: {
   return {
     state: nextState,
     preview: projectMovePreview({
-      nodes: state.nodes,
       edgePlan: state.edgePlan,
       move: state.move,
-      delta,
-      nodeSize: state.nodeSize
+      delta
     })
   }
 }

@@ -1,4 +1,5 @@
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import { node as nodeApi } from '@whiteboard/core/node'
 import {
   createMindmapTopicNode,
   emitMindmapBranchUpdateOps,
@@ -22,22 +23,35 @@ const compileMindmapCreate = (
     createNodeId: ctx.tx.ids.node
   })
 
-  const nodes = Object.entries(instantiated.nodes).map(([nodeId, templateNode]) => ({
-    id: nodeId,
-    type: templateNode.type ?? 'text',
-    owner: {
-      kind: 'mindmap' as const,
-      id: mindmapId
-    },
-    position: nodeId === rootId
-      ? (input.position ?? { x: 0, y: 0 })
-      : { x: 0, y: 0 },
-    size: templateNode.size,
-    rotation: templateNode.rotation,
-    locked: templateNode.locked,
-    data: templateNode.data,
-    style: templateNode.style
-  }))
+  const nodes = Object.entries(instantiated.nodes).flatMap(([nodeId, templateNode]) => {
+    const materialized = nodeApi.materialize.committed({
+      node: {
+        id: nodeId,
+        type: templateNode.type ?? 'text',
+        owner: {
+          kind: 'mindmap' as const,
+          id: mindmapId
+        },
+        position: nodeId === rootId
+          ? (input.position ?? { x: 0, y: 0 })
+          : { x: 0, y: 0 },
+        size: templateNode.size,
+        rotation: templateNode.rotation,
+        locked: templateNode.locked,
+        data: templateNode.data,
+        style: templateNode.style
+      },
+      registries: ctx.registries
+    })
+    if (!materialized.ok) {
+      return []
+    }
+    return [materialized.data]
+  })
+
+  if (nodes.length !== Object.keys(instantiated.nodes).length) {
+    return ctx.tx.fail.invalid('Mindmap template nodes could not be materialized.')
+  }
 
   const members = Object.fromEntries(
     Object.entries(instantiated.tree.nodes).map(([nodeId, member]) => [
@@ -101,11 +115,18 @@ export const compileMindmapIntent = (
       return
     case 'mindmap.topic.insert': {
       const nodeId = ctx.tx.ids.node()
+      const materialized = nodeApi.materialize.committed({
+        node: createMindmapTopicNode(nodeId, intent.id, intent.input),
+        registries: ctx.registries
+      })
+      if (!materialized.ok) {
+        return ctx.tx.fail.invalid('Mindmap topic node could not be materialized.')
+      }
       ctx.tx.emit({
         type: 'mindmap.topic.insert',
         id: intent.id,
         input: intent.input,
-        node: createMindmapTopicNode(nodeId, intent.id, intent.input)
+        node: materialized.data
       })
       return {
         nodeId

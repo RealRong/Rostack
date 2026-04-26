@@ -259,9 +259,6 @@ export const createSceneBridge = ({
       edit: nodeType.edit,
       capability: (node) => resolveNodeEditorCapability(node, nodeType)
     },
-    document: {
-      nodeSize: engine.config.nodeSize
-    },
     view: () => {
       const viewport = session.viewport.read.get()
       return {

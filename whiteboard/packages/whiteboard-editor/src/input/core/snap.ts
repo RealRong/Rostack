@@ -181,12 +181,10 @@ const createNodeSnapRuntime = ({
 
 const createEdgeSnapRuntime = ({
   config,
-  nodeSize,
   readZoom,
   query
 }: {
   config: EdgeConnectConfig
-  nodeSize: Size
   readZoom: () => number
   query: (rect: Rect) => readonly EdgeConnectCandidate[]
 }): EdgeSnapRuntime => ({
@@ -197,7 +195,7 @@ const createEdgeSnapRuntime = ({
     return edgeApi.connect.evaluate({
       pointWorld: pointerWorld,
       candidates: query(
-        edgeApi.connect.queryRect(pointerWorld, zoom, config, nodeSize)
+        edgeApi.connect.queryRect(pointerWorld, zoom, config)
       ),
       zoom,
       config
@@ -217,7 +215,6 @@ export const createSnapRuntime = ({
   }
   edge: {
     config: EdgeConnectConfig
-    nodeSize: Size
     query: (rect: Rect) => readonly EdgeConnectCandidate[]
   }
 }): SnapRuntime => ({
@@ -228,7 +225,6 @@ export const createSnapRuntime = ({
   }),
   edge: createEdgeSnapRuntime({
     config: edge.config,
-    nodeSize: edge.nodeSize,
     readZoom,
     query: edge.query
   })

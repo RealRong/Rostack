@@ -84,7 +84,6 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
   const result = nodeApi.op.distribute({
     ids: [first.id, middle.id, last.id],
     doc,
-    nodeSize: DEFAULT_SIZE,
     mode: 'horizontal'
   })
 
@@ -104,9 +103,9 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
     position: operation.value
   }
 
-  const firstBounds = nodeApi.geometry.boundsByNode(first, DEFAULT_SIZE)
-  const middleBounds = nodeApi.geometry.boundsByNode(nextMiddle, DEFAULT_SIZE)
-  const lastBounds = nodeApi.geometry.boundsByNode(last, DEFAULT_SIZE)
+  const firstBounds = nodeApi.geometry.boundsByNode(first)
+  const middleBounds = nodeApi.geometry.boundsByNode(nextMiddle)
+  const lastBounds = nodeApi.geometry.boundsByNode(last)
 
   assert.ok(firstBounds)
   assert.ok(middleBounds)

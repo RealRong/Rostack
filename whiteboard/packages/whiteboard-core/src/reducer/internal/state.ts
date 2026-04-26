@@ -145,15 +145,11 @@ export const clonePoint = (
 )
 
 export const cloneSize = (
-  size: Size | undefined
-): Size | undefined => (
-  size
-    ? {
-        width: size.width,
-        height: size.height
-      }
-    : undefined
-)
+  size: Size
+): Size => ({
+  width: size.width,
+  height: size.height
+})
 
 export const cloneBackground = (
   background: Background | undefined

@@ -19,6 +19,7 @@ export type NodeConfig = {
 }
 
 export type EdgeConfig = {
+  connectQueryRadius?: number
   hitTestThresholdScreen?: number
   activationPaddingScreen?: number
   outlineSnapMin?: number

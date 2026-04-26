@@ -10,8 +10,7 @@ import type {
   Node,
   NodeId,
   Point,
-  Rect,
-  Size
+  Rect
 } from '@whiteboard/core/types'
 import {
   pickNearest,
@@ -88,12 +87,14 @@ export const resolveEdgeActivationPaddingWorld = (
 export const resolveEdgeConnectQueryRect = (
   pointWorld: Point,
   zoom: number,
-  config: EdgeConnectConfig,
-  nodeSize: Size
+  config: EdgeConnectConfig
 ) => rectFromPoint(
   pointWorld,
   Math.max(
-    resolveEdgeConnectThresholdWorld(config, zoom, nodeSize),
+    resolveScreenDistanceWorld(
+      config.connectQueryRadius,
+      zoom
+    ),
     resolveEdgeHandleSnapWorld(config, zoom),
     resolveEdgeActivationPaddingWorld(config, zoom)
   )

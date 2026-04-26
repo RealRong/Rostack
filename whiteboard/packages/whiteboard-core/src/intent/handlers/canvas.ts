@@ -115,8 +115,7 @@ export const compileCanvasDuplicate = (
   const exported = documentApi.slice.export.selection({
     doc: document,
     nodeIds,
-    edgeIds,
-    nodeSize: ctx.nodeSize
+    edgeIds
   })
   if (!exported.ok) {
     return ctx.tx.fail.invalid(exported.error.message, exported.error.details)
@@ -125,7 +124,6 @@ export const compileCanvasDuplicate = (
   const built = documentApi.op.insertSlice({
     doc: document,
     slice: exported.data.slice,
-    nodeSize: ctx.nodeSize,
     registries: ctx.registries,
     createNodeId: ctx.tx.ids.node,
     createEdgeId: ctx.tx.ids.edge,
@@ -168,19 +166,16 @@ const compileCanvasSelectionMove = (
   const edges = documentApi.list.edges(document)
   const move = nodeApi.move.buildSet({
     nodes,
-    ids: intent.nodeIds,
-    nodeSize: ctx.nodeSize
+    ids: intent.nodeIds
   })
   const movedNodeIds = move.members.map((member) => member.id)
   const selectedEdgeIdSet = new Set(intent.edgeIds)
   const selectedEdges = edges.filter((edge) => selectedEdgeIdSet.has(edge.id))
   const followEdges = edges.filter((edge) => !selectedEdgeIdSet.has(edge.id))
   const followEffect = nodeApi.move.resolveEffect({
-    nodes,
     edges: followEdges,
     move,
-    delta: intent.delta,
-    nodeSize: ctx.nodeSize
+    delta: intent.delta
   })
   const selectedEdgeChanges = nodeApi.move.buildCommit({
     delta: intent.delta,

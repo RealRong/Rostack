@@ -11,8 +11,7 @@ import type {
   NodeGeometry,
   Node,
   NodeId,
-  Rect,
-  Size
+  Rect
 } from '@whiteboard/core/types'
 import type { SliceExportResult } from '@whiteboard/core/document'
 import type { Revision } from '@shared/projection'
@@ -61,7 +60,6 @@ const createCache = (): ResolverCache => ({
 
 export const createDocumentResolver = (input: {
   state: () => WorkingState
-  nodeSize: Size
 }): DocumentResolver => {
   let cache = createCache()
 
@@ -90,8 +88,7 @@ export const createDocumentResolver = (input: {
     const node = readSnapshot().nodes[nodeId]
     const next = node
       ? resolveDocumentNodeGeometry({
-          node,
-          nodeSize: input.nodeSize
+          node
         })
       : null
     cache.nodeGeometry.set(nodeId, next)
@@ -223,8 +220,7 @@ export const createDocumentResolver = (input: {
       const exported = documentApi.slice.export.selection({
         doc: readSnapshot(),
         nodeIds,
-        edgeIds,
-        nodeSize: input.nodeSize
+        edgeIds
       })
 
       return exported.ok

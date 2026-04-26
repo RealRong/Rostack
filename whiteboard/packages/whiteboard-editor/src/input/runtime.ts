@@ -115,7 +115,6 @@ const createEditorSnapRuntime = ({
   },
   edge: {
     config: engine.config.edge,
-    nodeSize: engine.config.nodeSize,
     query: projection.query.edge.connectCandidates
   }
 })

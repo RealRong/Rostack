@@ -21,6 +21,7 @@ export type EdgeConnectTarget = {
 }
 
 export type EdgeConnectConfig = {
+  connectQueryRadius: number
   activationPaddingScreen: number
   outlineSnapMin: number
   outlineSnapRatio: number

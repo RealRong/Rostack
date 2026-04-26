@@ -17,8 +17,6 @@ const DEFAULT_VIEWPORT: Viewport = {
 const DEFAULT_CONFIG: ResolvedConfig = {
   className: undefined,
   style: undefined,
-  nodeSize: DEFAULT_BOARD_CONFIG.nodeSize,
-  mindmapNodeSize: DEFAULT_BOARD_CONFIG.mindmapNodeSize,
   viewport: {
     initial: DEFAULT_VIEWPORT,
     minZoom: 0.1,
@@ -64,8 +62,6 @@ const normalizeConfig = (
 const toBoardConfig = (
   config: ResolvedConfig
 ): EngineBoardConfig => ({
-  nodeSize: config.nodeSize,
-  mindmapNodeSize: config.mindmapNodeSize,
   node: {
     groupPadding: config.node.groupPadding,
     snapThresholdScreen: config.node.snapThresholdScreen,
@@ -73,6 +69,7 @@ const toBoardConfig = (
     snapGridCellSize: config.node.snapGridCellSize
   },
   edge: {
+    connectQueryRadius: config.edge.connectQueryRadius,
     hitTestThresholdScreen: config.edge.hitTestThresholdScreen,
     activationPaddingScreen: config.edge.activationPaddingScreen,
     outlineSnapMin: config.edge.outlineSnapMin,

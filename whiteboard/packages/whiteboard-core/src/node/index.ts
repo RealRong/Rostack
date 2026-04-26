@@ -55,6 +55,9 @@ import {
   resolveMoveEffect
 } from '@whiteboard/core/node/move'
 import {
+  materializeCommittedNode
+} from '@whiteboard/core/node/materialize'
+import {
   finishMoveState,
   startMoveState,
   stepMoveState
@@ -265,6 +268,9 @@ export const node = {
     create: createNodeOp,
     align: planNodeAlignOps,
     distribute: planNodeDistributeOps
+  },
+  materialize: {
+    committed: materializeCommittedNode
   },
   layout: {
     align: alignNodes,

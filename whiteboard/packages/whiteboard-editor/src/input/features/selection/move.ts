@@ -129,8 +129,7 @@ export const createMoveInteraction = (
     nodes: moveScope.nodes,
     edges: moveScope.edges,
     target: input.target,
-    startWorld: input.start.world,
-    nodeSize: ctx.engine.config.nodeSize
+    startWorld: input.start.world
   })
   if (!initialState) {
     return null

@@ -7,15 +7,10 @@ import type {
   SceneViewInput,
   TextMeasure
 } from '../contracts/editor'
-import type { NodeModel, Size } from '@whiteboard/core/types'
+import type { NodeModel } from '@whiteboard/core/types'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
 import { createEditorSceneProjectionModel } from './model'
-
-const DEFAULT_NODE_SIZE = {
-  width: 0,
-  height: 0
-} as const
 
 const createEditorSceneStateReader = (input: {
   state: () => WorkingState
@@ -37,18 +32,10 @@ const createEditorSceneStateReader = (input: {
 export const createEditorSceneModelRuntime = (input: {
   measure?: TextMeasure
   nodeCapability?: NodeCapabilityInput
-  document?: {
-    nodeSize: Size
-  }
   view: SceneViewInput
 }) => {
   const runtime = createProjectionRuntime(
-    createEditorSceneProjectionModel({
-      ...input,
-      document: input.document ?? {
-        nodeSize: DEFAULT_NODE_SIZE
-      }
-    })
+    createEditorSceneProjectionModel(input)
   )
   const state = createEditorSceneStateReader({
     state: runtime.state
@@ -64,9 +51,6 @@ export const createEditorSceneModelRuntime = (input: {
 export const createEditorSceneRuntime = (input: {
   measure?: TextMeasure
   nodeCapability?: NodeCapabilityInput
-  document?: {
-    nodeSize: Size
-  }
   view: SceneViewInput
 }): Runtime => {
   const runtime = createEditorSceneModelRuntime(input)

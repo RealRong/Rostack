@@ -1,5 +1,6 @@
 import { json } from '@shared/core'
 import { path as mutationPath } from '@shared/mutation'
+import { resolveTextNodeBootstrapSize } from '@whiteboard/core/node/bootstrap'
 import type {
   MindmapBranchField,
   MindmapId,
@@ -11,7 +12,8 @@ import type {
   Node,
   NodeId,
   Operation,
-  Point
+  Point,
+  SpatialNodeInput
 } from '@whiteboard/core/types'
 import type { MindmapBranchUpdateInput } from '@whiteboard/core/types'
 
@@ -79,7 +81,7 @@ export const createMindmapTopicNode = (
   id: NodeId,
   mindmapId: MindmapId,
   input?: MindmapInsertInput
-): Node => ({
+): SpatialNodeInput => ({
   id,
   type: input?.node?.type ?? 'text',
   owner: {
@@ -234,7 +236,10 @@ export const createMindmapOp = ({
         kind: 'mindmap',
         id
       },
-      position: json.clone(position)
+      position: json.clone(position),
+      size: resolveTextNodeBootstrapSize({
+        data: undefined
+      })
     }
   ]
 })

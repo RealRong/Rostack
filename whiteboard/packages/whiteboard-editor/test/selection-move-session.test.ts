@@ -6,14 +6,7 @@ describe('createMoveInteraction', () => {
     const moveSelection = vi.fn(() => ({ ok: true }))
 
     const session = createMoveInteraction({
-      engine: {
-        config: {
-          nodeSize: {
-            width: 120,
-            height: 40
-          }
-        }
-      },
+      engine: {},
       document: {
         node: {
           get: () => ({

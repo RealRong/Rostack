@@ -87,7 +87,9 @@ export type SpatialNode = BaseNode & {
   rotation?: number
 }
 
-export type Node = SpatialNode
+export type Node = Omit<SpatialNode, 'size'> & {
+  size: Size
+}
 export type NodeModel = Omit<Node, 'position' | 'size' | 'rotation'>
 export type NodeRecord = Node
 

@@ -1,6 +1,6 @@
 import type { Viewport } from '@whiteboard/core/types'
 import { store } from '@shared/core'
-import type { LocalHistoryApi } from '@shared/mutation'
+import type { HistoryPort } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
 import {
@@ -48,7 +48,7 @@ export const createEditor = ({
   services,
 }: {
   engine: Engine
-  history: LocalHistoryApi<IntentResult>
+  history: HistoryPort<IntentResult>
   initialTool: Tool
   initialDrawState?: DrawState
   initialViewport: Viewport

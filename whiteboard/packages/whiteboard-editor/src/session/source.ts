@@ -2,7 +2,7 @@ import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { selection as selectionApi } from '@whiteboard/core/selection'
 import { equal, store } from '@shared/core'
-import type { LocalHistoryApi } from '@shared/mutation'
+import type { HistoryPort } from '@shared/mutation'
 import { createSessionState } from '@whiteboard/editor/session/state'
 import {
   readEdgeScope,
@@ -203,7 +203,7 @@ export const createSessionSource = (
     graph: Pick<EditorSceneRuntime, 'query' | 'stores'>
     session: Pick<EditorSession, 'state' | 'interaction' | 'viewport' | 'preview'>
     state?: EditorSessionState
-    history: LocalHistoryApi<IntentResult>
+    history: HistoryPort<IntentResult>
     nodeType: NodeTypeSupport
     defaults: EditorDefaults['selection']
   }

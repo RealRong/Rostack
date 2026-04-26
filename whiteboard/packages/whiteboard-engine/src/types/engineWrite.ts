@@ -1,4 +1,7 @@
-import type { Write } from '@shared/mutation'
+import type {
+  CommitRecord,
+  Write
+} from '@shared/mutation'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
   Document,
@@ -9,6 +12,13 @@ import type {
 } from '@whiteboard/core/reducer'
 
 export type EngineWrite = Write<
+  Document,
+  Operation,
+  HistoryFootprint[number],
+  WhiteboardReduceExtra
+>
+
+export type EngineCommit = CommitRecord<
   Document,
   Operation,
   HistoryFootprint[number],

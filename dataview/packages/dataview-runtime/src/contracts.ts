@@ -2,7 +2,7 @@ import type {
   Engine
 } from '@dataview/engine'
 import type {
-  LocalHistoryBinding
+  HistoryBinding
 } from '@shared/mutation'
 import type {
   CreateRecordApi
@@ -49,7 +49,7 @@ export interface CreateDataViewRuntimeInput {
 
 export interface DataViewRuntime {
   engine: Engine
-  history: LocalHistoryBinding<ReturnType<Engine['apply']>>
+  history: HistoryBinding<ReturnType<Engine['apply']>>
   source: EngineSource
   session: DataViewSessionApi
   workflow: DataViewWorkflow

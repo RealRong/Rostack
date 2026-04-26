@@ -1,5 +1,6 @@
 import type {
-  HistoryController,
+  CommitStream,
+  HistoryPort,
   MutationOptions,
   WriteStream
 } from '@shared/mutation'
@@ -14,7 +15,10 @@ import type {
 } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/core/config'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
-import type { EngineWrite } from '../types/engineWrite'
+import type {
+  EngineCommit,
+  EngineWrite
+} from '../types/engineWrite'
 import type {
   ExecuteResult,
   Intent,
@@ -49,6 +53,7 @@ export interface EnginePublish {
 }
 
 export type EngineWrites = WriteStream<EngineWrite>
+export type EngineCommits = CommitStream<EngineCommit>
 
 export interface EngineHistoryConfig {
   enabled: boolean
@@ -59,12 +64,9 @@ export interface EngineHistoryConfig {
 
 export interface Engine {
   readonly config: BoardConfig
+  readonly commits: EngineCommits
   readonly writes: EngineWrites
-  readonly history?: HistoryController<
-    Operation,
-    HistoryFootprint[number],
-    EngineWrite
-  >
+  readonly history: HistoryPort<IntentResult>
   doc(): Document
   current(): EnginePublish
   subscribe(listener: (publish: EnginePublish) => void): () => void

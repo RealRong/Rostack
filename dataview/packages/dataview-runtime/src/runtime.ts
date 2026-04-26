@@ -1,7 +1,6 @@
 import { store } from '@shared/core'
 import {
-  createLocalHistoryBinding,
-  createLocalMutationHistory
+  createHistoryBinding
 } from '@shared/mutation'
 import type {
   View
@@ -127,12 +126,7 @@ const bindMarqueeToView = (input: {
 export const createDataViewRuntime = (
   input: CreateDataViewRuntimeInput
 ): DataViewRuntime => {
-  const baseHistory = createLocalMutationHistory(input.engine, {
-    apply: {
-      origin: 'history'
-    }
-  })
-  const history = createLocalHistoryBinding(baseHistory)
+  const history = createHistoryBinding(input.engine.history)
   const sourceRuntime = createEngineSource({
     engine: input.engine
   })

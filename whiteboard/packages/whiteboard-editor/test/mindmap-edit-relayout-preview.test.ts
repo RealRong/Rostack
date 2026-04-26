@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { createLocalMutationHistory } from '@shared/mutation'
+import { createHistoryPort } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
 import type { LayoutBackend, NodeRegistry } from '../src'
@@ -102,7 +102,7 @@ describe('mindmap edit relayout preview', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: createLocalMutationHistory(engine),
+      history: createHistoryPort(engine),
       initialTool: {
         type: 'select'
       },
@@ -168,7 +168,7 @@ describe('mindmap edit relayout preview', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: createLocalMutationHistory(engine),
+      history: createHistoryPort(engine),
       initialTool: {
         type: 'select'
       },
@@ -257,7 +257,7 @@ describe('mindmap edit relayout preview', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: createLocalMutationHistory(engine),
+      history: createHistoryPort(engine),
       initialTool: {
         type: 'select'
       },
@@ -359,7 +359,7 @@ describe('mindmap edit relayout preview', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: createLocalMutationHistory(engine),
+      history: createHistoryPort(engine),
       initialTool: {
         type: 'select'
       },

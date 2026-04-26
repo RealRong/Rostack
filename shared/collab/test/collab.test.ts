@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
+  type ApplyCommit,
+  type CommitRecord,
   mutationResult,
   history
 } from '@shared/mutation'
@@ -82,29 +84,65 @@ const createEngine = (doc = 'base') => {
     conflicts: (left, right) => left.some((key) => right.includes(key))
   })
   const writeListeners = new Set<(write: TestWrite) => void>()
+  const commitListeners = new Set<(commit: CommitRecord<string, TestOp, string, {}>) => void>()
+  let nextRev = 1
+
+  const emitCommit = (
+    commit: CommitRecord<string, TestOp, string, {}>
+  ) => {
+    current = commit.doc
+    commitListeners.forEach((listener) => listener(commit))
+    if (commit.kind === 'apply') {
+      writeListeners.forEach((listener) => listener(commit))
+    }
+  }
 
   return {
     engine: {
       doc: () => current,
-      replace: (nextDoc: string) => {
+      replace: (nextDoc: string, options?: {
+        origin?: TestWrite['origin']
+      }) => {
         current = nextDoc
         controller.clear()
+        emitCommit({
+          kind: 'replace',
+          rev: nextRev++,
+          at: 0,
+          origin: options?.origin ?? 'system',
+          doc: nextDoc
+        })
         return true
       },
-      apply: (ops: readonly TestOp[]) => {
+      apply: (ops: readonly TestOp[], options?: {
+        origin?: TestWrite['origin']
+      }) => {
         ops.forEach((op) => {
           current = op.value
         })
-        return mutationResult.success(undefined, {
+        const write: TestWrite = {
           rev: 0,
           at: 0,
-          origin: 'system',
+          origin: options?.origin ?? 'system',
           doc: current,
           forward: ops,
           inverse: [],
           footprint: [],
           extra: {}
-        } satisfies TestWrite)
+        }
+        emitCommit({
+          kind: 'apply',
+          ...write
+        } satisfies ApplyCommit<string, TestOp, string, {}>)
+        return mutationResult.success(undefined, write)
+      },
+      commits: {
+        subscribe: (listener: (commit: CommitRecord<string, TestOp, string, {}>) => void) => {
+          commitListeners.add(listener)
+          return () => {
+            commitListeners.delete(listener)
+          }
+        }
       },
       writes: {
         subscribe: (listener: (write: TestWrite) => void) => {
@@ -117,8 +155,10 @@ const createEngine = (doc = 'base') => {
       history: controller
     },
     emit: (write: TestWrite) => {
-      current = write.doc
-      writeListeners.forEach((listener) => listener(write))
+      emitCommit({
+        kind: 'apply',
+        ...write
+      })
     },
     doc: () => current,
     history: controller

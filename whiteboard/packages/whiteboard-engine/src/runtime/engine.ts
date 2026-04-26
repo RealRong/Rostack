@@ -1,5 +1,7 @@
 import {
   CommandMutationEngine,
+  createHistoryPort,
+  HISTORY_CONTROLLER,
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createRegistries } from '@whiteboard/core/kernel'
@@ -124,11 +126,17 @@ export const createEngine = ({
       onDocumentChange(current.doc)
     })
   }
+  const history = createHistoryPort(core, {
+    apply: {
+      origin: 'history'
+    }
+  })
 
-  return {
+  const engine = {
     config,
+    commits: core.commits,
     writes: core.writes,
-    history: core.history,
+    history,
     doc: () => core.doc(),
     current: () => readPublish(core.current().publish),
     subscribe: (listener) => core.subscribe((current) => {
@@ -146,4 +154,10 @@ export const createEngine = ({
       origin: options?.origin ?? 'user'
     })
   }
+
+  ;(engine as {
+    [HISTORY_CONTROLLER]?: typeof core.history
+  })[HISTORY_CONTROLLER] = core.history
+
+  return engine
 }

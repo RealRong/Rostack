@@ -5,9 +5,8 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import {
-  createLocalHistoryBinding,
-  createLocalMutationHistory,
-  type LocalHistoryBinding
+  createHistoryBinding,
+  type HistoryBinding
 } from '@shared/mutation'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi, type DrawState } from '@whiteboard/editor'
@@ -57,7 +56,7 @@ export const isMirroredDocumentFromEngine = (
 )
 
 export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {
-  history: LocalHistoryBinding<IntentResult>
+  history: HistoryBinding<IntentResult>
 }
 
 export const createWhiteboardServices = ({
@@ -83,12 +82,7 @@ export const createWhiteboardServices = ({
     config: boardConfig,
     history: resolvedConfig.history
   })
-  const baseHistory = createLocalMutationHistory(engine, {
-    apply: {
-      origin: 'history'
-    }
-  })
-  const history = createLocalHistoryBinding(baseHistory)
+  const history = createHistoryBinding(engine.history)
   const textSources = createTextSourceStore()
   const editor = editorApi.create({
     engine,

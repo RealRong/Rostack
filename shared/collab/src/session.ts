@@ -1,12 +1,13 @@
 import { store } from '@shared/core'
 import {
   mutationFailure,
+  type CommitRecord,
+  type CommitStream,
   type HistoryController,
-  type LocalHistoryApi,
-  type LocalHistoryState,
+  type HistoryPort,
+  type HistoryPortState,
   type Origin,
-  type Write,
-  type WriteStream
+  type Write
 } from '@shared/mutation'
 import {
   createSyncCursor,
@@ -74,7 +75,7 @@ export type MutationEngineLike<
       origin?: Origin
     }
   ): Result
-  writes: WriteStream<W>
+  commits: CommitStream<CommitRecord<Doc, Op, Key, any>>
   history?: HistoryController<Op, Key, W>
 }
 
@@ -141,7 +142,7 @@ export type MutationCollabSession<
   awareness?: unknown
   status: store.ReadStore<CollabStatus>
   diagnostics: store.ReadStore<CollabDiagnostics>
-  history: LocalHistoryApi<Result>
+  history: HistoryPort<Result>
   connect(): void
   disconnect(): void
   resync(): void
@@ -156,6 +157,24 @@ const readUnavailable = <Result extends {
   'cancelled',
   message
 ) as unknown as Result
+
+const toWriteRecord = <
+  Doc,
+  Op,
+  Key,
+  WriteRecord extends Write<Doc, Op, Key, any>
+>(
+  commit: Extract<CommitRecord<Doc, Op, Key, any>, { kind: 'apply' }>
+): WriteRecord => ({
+  rev: commit.rev,
+  at: commit.at,
+  origin: commit.origin,
+  doc: commit.doc,
+  forward: commit.forward,
+  inverse: commit.inverse,
+  footprint: commit.footprint,
+  extra: commit.extra
+}) as WriteRecord
 
 const createCollabHistory = <
   Doc,
@@ -174,7 +193,7 @@ const createCollabHistory = <
   }
 
   const controller = input.engine.history
-  const state = store.createValueStore<LocalHistoryState>({
+  const state = store.createValueStore<HistoryPortState>({
     ...controller.state(),
     lastUpdatedAt: undefined
   })
@@ -186,7 +205,7 @@ const createCollabHistory = <
     })
   }
 
-  input.engine.writes.subscribe(() => {
+  input.engine.commits.subscribe(() => {
     publish()
   })
 
@@ -227,7 +246,7 @@ const createCollabHistory = <
     return result
   }
 
-  const history: LocalHistoryApi<Result> = {
+  const history: HistoryPort<Result> = {
     get: state.get,
     subscribe: state.subscribe,
     undo: () => run('undo'),
@@ -462,12 +481,21 @@ export const createMutationCollabSession = <
     }
   }
 
-  const publishWrite = (
-    write: WriteRecord
+  const publishCommit = (
+    commit: CommitRecord<Doc, Op, Key, any>
   ) => {
-    if (write.origin === 'remote' || suppressLocalPublish) {
+    if (commit.origin === 'remote' || suppressLocalPublish) {
       return
     }
+
+    if (commit.kind === 'replace') {
+      publishCheckpoint(commit.doc)
+      historyRuntime.clear()
+      return
+    }
+
+    const write = toWriteRecord<Doc, Op, Key, WriteRecord>(commit)
+
     if (write.forward.length === 0) {
       return
     }
@@ -570,9 +598,9 @@ export const createMutationCollabSession = <
     }
 
     bootstrap()
-    unsubscribeWrites = engine.writes.subscribe((write) => {
+    unsubscribeWrites = engine.commits.subscribe((commit) => {
       try {
-        publishWrite(write)
+        publishCommit(commit)
       } catch {
         historyRuntime.cancel('invalidate')
         reportError()

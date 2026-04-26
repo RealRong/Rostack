@@ -6,9 +6,13 @@ import type {
 } from './compiler'
 import {
   history as historyRuntime,
+  HISTORY_CONTROLLER,
   type HistoryController
 } from './history'
 import type {
+  ApplyCommit,
+  CommitRecord,
+  CommitStream,
   Origin,
   Write,
   WriteStream
@@ -277,6 +281,7 @@ export class OperationMutationRuntime<
   Extra = void
 > {
   readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
+  readonly commits: CommitStream<CommitRecord<Doc, Op, Key, Extra>>
   readonly history?: HistoryController<
     Op,
     Key,
@@ -287,6 +292,9 @@ export class OperationMutationRuntime<
   private state: MutationInternalState<Doc, Publish, Cache>
   private readonly listeners = new Set<(current: MutationCurrent<Doc, Publish>) => void>()
   private readonly writeListeners = new Set<(write: Write<Doc, Op, Key, Extra>) => void>()
+  private readonly commitListeners = new Set<(
+    commit: CommitRecord<Doc, Op, Key, Extra>
+  ) => void>()
 
   constructor(input: {
     doc: Doc
@@ -312,12 +320,27 @@ export class OperationMutationRuntime<
         )
       })
     }
+    ;(this as {
+      [HISTORY_CONTROLLER]?: HistoryController<
+        Op,
+        Key,
+        Write<Doc, Op, Key, Extra>
+      >
+    })[HISTORY_CONTROLLER] = this.history
 
     this.writes = {
       subscribe: (listener) => {
         this.writeListeners.add(listener)
         return () => {
           this.writeListeners.delete(listener)
+        }
+      }
+    }
+    this.commits = {
+      subscribe: (listener) => {
+        this.commitListeners.add(listener)
+        return () => {
+          this.commitListeners.delete(listener)
         }
       }
     }
@@ -363,12 +386,20 @@ export class OperationMutationRuntime<
 
   replace(
     doc: Doc,
-    _options?: MutationOptions
+    options?: MutationOptions
   ): true {
     const nextDoc = this.prepareExternalDoc(doc)
-    this.state = this.createInitialState(nextDoc, this.state.rev + 1)
+    const commit: CommitRecord<Doc, Op, Key, Extra> = {
+      kind: 'replace',
+      rev: this.state.rev + 1,
+      at: Date.now(),
+      origin: options?.origin ?? 'system',
+      doc: nextDoc
+    }
+    this.state = this.createInitialState(nextDoc, commit.rev)
     this.history?.clear()
     this.emitCurrent()
+    this.emitCommit(commit)
     return true
   }
 
@@ -414,6 +445,10 @@ export class OperationMutationRuntime<
       footprint: commit.footprint,
       extra: commit.extra
     }
+    const appliedCommit: ApplyCommit<Doc, Op, Key, Extra> = {
+      kind: 'apply',
+      ...write
+    }
     const nextRuntime = this.spec.publish
       ? (
           this.state.publish !== undefined
@@ -451,6 +486,7 @@ export class OperationMutationRuntime<
 
     this.emitCurrent()
     this.emitWrite(write)
+    this.emitCommit(appliedCommit)
 
     return mutationSuccess(input.data, write)
   }
@@ -510,6 +546,14 @@ export class OperationMutationRuntime<
   ) {
     this.writeListeners.forEach((listener) => {
       listener(write)
+    })
+  }
+
+  private emitCommit(
+    commit: CommitRecord<Doc, Op, Key, Extra>
+  ) {
+    this.commitListeners.forEach((listener) => {
+      listener(commit)
     })
   }
 }

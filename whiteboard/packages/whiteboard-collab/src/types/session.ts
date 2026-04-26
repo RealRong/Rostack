@@ -1,5 +1,5 @@
 import { store as coreStore } from '@shared/core'
-import type { LocalHistoryApi } from '@shared/mutation'
+import type { HistoryPort } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
 import type * as Y from 'yjs'
@@ -23,7 +23,7 @@ export type CollabDiagnostics = {
   rejectedChangeIds: readonly string[]
 }
 
-export type CollabLocalHistory = LocalHistoryApi<IntentResult>
+export type CollabLocalHistory = HistoryPort<IntentResult>
 
 export type CollabSession = {
   awareness?: unknown

@@ -270,10 +270,14 @@ describe('CommandMutationEngine', () => {
       spec: createSpec()
     })
     let writeCount = 0
+    const commits: Array<'apply' | 'replace'> = []
     const revisions: number[] = []
 
     engine.writes.subscribe(() => {
       writeCount += 1
+    })
+    engine.commits.subscribe((commit) => {
+      commits.push(commit.kind)
     })
     engine.subscribe((current) => {
       revisions.push(current.rev)
@@ -288,6 +292,7 @@ describe('CommandMutationEngine', () => {
     })
 
     expect(writeCount).toBe(1)
+    expect(commits).toEqual(['apply', 'replace'])
     expect(revisions).toEqual([1, 2])
     expect(engine.current()).toEqual({
       rev: 2,
@@ -309,9 +314,13 @@ describe('CommandMutationEngine', () => {
       spec: createSpec()
     })
     let writeCount = 0
+    const commits: Array<'apply' | 'replace'> = []
 
     engine.writes.subscribe(() => {
       writeCount += 1
+    })
+    engine.commits.subscribe((commit) => {
+      commits.push(commit.kind)
     })
 
     engine.execute({
@@ -324,6 +333,7 @@ describe('CommandMutationEngine', () => {
 
     expect(replaced).toBe(true)
     expect(writeCount).toBe(1)
+    expect(commits).toEqual(['apply', 'replace'])
     expect(engine.current()).toEqual({
       rev: 2,
       doc: {

@@ -4,7 +4,7 @@ import type {
   CollabProvider,
   CollabStatus
 } from '@shared/collab'
-import type { LocalHistoryApi } from '@shared/mutation'
+import type { HistoryPort } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { DataviewMutationKey } from '@dataview/core/mutation'
@@ -53,7 +53,7 @@ export type CreateYjsSessionOptions = {
   checkpointThreshold?: number
 }
 
-export type CollabLocalHistory = LocalHistoryApi<ReturnType<Engine['apply']>>
+export type CollabLocalHistory = HistoryPort<ReturnType<Engine['apply']>>
 
 export type CollabDiagnostics = SharedCollabDiagnostics
 

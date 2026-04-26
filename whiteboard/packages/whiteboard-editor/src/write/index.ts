@@ -1,4 +1,4 @@
-import type { LocalHistoryApi } from '@shared/mutation'
+import type { HistoryPort } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
 import {
@@ -37,7 +37,7 @@ export const createEditorWrite = ({
   layout
 }: {
   engine: Engine
-  history: LocalHistoryApi<IntentResult>
+  history: HistoryPort<IntentResult>
   document: EditorDocumentSource & {
     node: {
       get(id: import('@whiteboard/core/types').NodeId): import('@whiteboard/editor-scene').CommittedNodeView | undefined

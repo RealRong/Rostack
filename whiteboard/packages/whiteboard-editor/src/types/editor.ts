@@ -1,5 +1,5 @@
 import { store } from '@shared/core'
-import type { LocalHistoryApi, LocalHistoryState } from '@shared/mutation'
+import type { HistoryPort, HistoryPortState } from '@shared/mutation'
 import type { SliceExportResult } from '@whiteboard/core/document'
 import type { EdgeRoutePoint } from '@whiteboard/core/edge'
 import type { Guide } from '@whiteboard/core/node'
@@ -29,14 +29,12 @@ import type {
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
 import type { EditSession } from '@whiteboard/editor/session/edit'
-import type { SessionRead, ToolRead } from '@whiteboard/editor/session/read'
 import type {
   DrawPreview,
   DrawState
 } from '@whiteboard/editor/session/draw/state'
 import type {
-  EdgeGuide,
-  MarqueePreview
+  EdgeGuide
 } from '@whiteboard/editor/session/preview/types'
 import type {
   ContextMenuInput,
@@ -58,7 +56,9 @@ import type {
 } from '@whiteboard/editor/types/selectionPresentation'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { IntentResult } from '@whiteboard/engine'
-import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
+import type {
+  EngineCommit
+} from '@whiteboard/engine/types/engineWrite'
 
 export type EditorPointerDispatchResult = {
   handled: boolean
@@ -108,6 +108,37 @@ export type EditorSelectionNodeRead = {
   scope: store.ReadStore<SelectionToolbarNodeScope | undefined>
 }
 
+export type ToolRead = {
+  get: () => Tool
+  type: () => Tool['type']
+  value: () => import('@whiteboard/editor/session/draw/model').DrawMode | undefined
+  is: (type: Tool['type'], value?: string) => boolean
+}
+
+export type SessionViewportRead = {
+  get: () => Viewport
+  subscribe: (listener: () => void) => store.Unsubscribe
+  pointer: (input: {
+    clientX: number
+    clientY: number
+  }) => {
+    screen: Point
+    world: Point
+  }
+  worldToScreen: (point: Point) => Point
+  worldRect: () => Rect
+  screenPoint: (clientX: number, clientY: number) => Point
+  size: () => {
+    width: number
+    height: number
+  }
+}
+
+export type EditorMarqueePreview = {
+  rect: Rect
+  match: 'touch' | 'contain'
+}
+
 export type SelectedEdgeChrome = {
   edgeId: EdgeId
   ends: import('@whiteboard/core/edge').ResolvedEdgeEnds
@@ -128,7 +159,7 @@ export type MindmapChrome = {
 }
 
 export type EditorChromePresentation = {
-  marquee: MarqueePreview | undefined
+  marquee: EditorMarqueePreview | undefined
   draw: DrawPreview | null
   edgeGuide: EdgeGuide
   snap: readonly Guide[]
@@ -137,7 +168,7 @@ export type EditorChromePresentation = {
 
 export type EditorPanelPresentation = {
   selectionToolbar: SelectionToolbarContext | undefined
-  history: LocalHistoryState
+  history: HistoryPortState
   draw: DrawState
 }
 
@@ -232,7 +263,7 @@ export type EditorSceneSource = {
 }
 
 export type EditorChromeSource = store.ReadStore<EditorChromePresentation> & {
-  marquee: store.ReadStore<MarqueePreview | undefined>
+  marquee: store.ReadStore<EditorMarqueePreview | undefined>
   draw: store.ReadStore<DrawPreview | null>
   edgeGuide: store.ReadStore<EdgeGuide>
   snap: store.ReadStore<readonly Guide[]>
@@ -241,7 +272,7 @@ export type EditorChromeSource = store.ReadStore<EditorChromePresentation> & {
 
 export type EditorPanelSource = store.ReadStore<EditorPanelPresentation> & {
   selectionToolbar: store.ReadStore<SelectionToolbarContext | undefined>
-  history: LocalHistoryApi<IntentResult>
+  history: HistoryPort<IntentResult>
   draw: store.ReadStore<DrawState>
 }
 
@@ -261,21 +292,21 @@ export type EditorSessionSource = {
     }
   }
   interaction: store.ReadStore<EditorInteractionState>
-  viewport: SessionRead['viewport'] & {
+  viewport: SessionViewportRead & {
     value: store.ReadStore<Viewport>
     zoom: store.ReadStore<number>
     center: store.ReadStore<Point>
   }
   chrome: EditorChromeSource
   panel: EditorPanelSource
-  history: LocalHistoryApi<IntentResult>
+  history: HistoryPort<IntentResult>
   mindmap: {
     chrome: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
   }
 }
 
 export type EditorEvents = {
-  change: (listener: (document: Document, write: EngineWrite) => void) => store.Unsubscribe
+  change: (listener: (document: Document, commit: EngineCommit) => void) => store.Unsubscribe
   dispose: (listener: () => void) => store.Unsubscribe
 }
 

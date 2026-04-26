@@ -4,7 +4,12 @@ import type {
   DataviewMutationKey,
   DataviewTrace
 } from '@dataview/core/mutation'
-import type { Write, WriteStream } from '@shared/mutation'
+import type {
+  CommitRecord,
+  CommitStream,
+  Write,
+  WriteStream
+} from '@shared/mutation'
 
 export type EngineWrite = Write<
   DataDoc,
@@ -16,3 +21,14 @@ export type EngineWrite = Write<
 >
 
 export type EngineWrites = WriteStream<EngineWrite>
+
+export type EngineCommit = CommitRecord<
+  DataDoc,
+  DocumentOperation,
+  DataviewMutationKey,
+  {
+    trace: DataviewTrace
+  }
+>
+
+export type EngineCommits = CommitStream<EngineCommit>

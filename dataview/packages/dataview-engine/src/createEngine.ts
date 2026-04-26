@@ -13,6 +13,8 @@ import {
 } from '@dataview/core/document'
 import {
   CommandMutationEngine,
+  createHistoryPort,
+  HISTORY_CONTROLLER,
   type MutationOptions
 } from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
@@ -110,13 +112,23 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       mutationEngine.apply(operations, applyOptions)
     )) as Engine['apply']
   }
+  const history = createHistoryPort(mutationEngine, {
+    apply: {
+      origin: 'history'
+    }
+  })
 
   const engine = {
     ...baseEngine,
+    commits: mutationEngine.commits,
     writes: mutationEngine.writes,
-    history: mutationEngine.history,
+    history,
     performance: performance.api
   } as Omit<Engine, 'fields' | 'records' | 'views' | 'active'>
+
+  ;(engine as {
+    [HISTORY_CONTROLLER]?: typeof mutationEngine.history
+  })[HISTORY_CONTROLLER] = mutationEngine.history
 
   return {
     ...engine,

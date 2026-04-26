@@ -1,12 +1,10 @@
 import type {
-  DocumentOperation
-} from '@dataview/core/contracts/operations'
-import type {
-  DataviewMutationKey
-} from '@dataview/core/mutation'
-import type {
-  HistoryController
+  HistoryPort,
+  MutationResult
 } from '@shared/mutation'
+import type {
+  DataviewErrorCode
+} from '@dataview/engine/types/intent'
 import type {
   EngineWrite
 } from './write'
@@ -18,8 +16,6 @@ export interface DataviewHistoryConfig {
   captureRemote: boolean
 }
 
-export type DataviewHistory = HistoryController<
-  DocumentOperation,
-  DataviewMutationKey,
-  EngineWrite
+export type DataviewHistory = HistoryPort<
+  MutationResult<void, EngineWrite, DataviewErrorCode>
 >

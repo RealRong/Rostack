@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { createLocalMutationHistory } from '@shared/mutation'
+import { createHistoryPort } from '@shared/mutation'
 import { editor as editorApi, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/editor'
 import { product } from '@whiteboard/product'
@@ -85,7 +85,7 @@ describe('mindmap insert position', () => {
     })
     const editor = editorApi.create({
       engine,
-      history: createLocalMutationHistory(engine),
+      history: createHistoryPort(engine),
       initialTool: {
         type: 'select'
       },
@@ -126,7 +126,7 @@ describe('mindmap insert position', () => {
     })
     const editor = editorApi.create({
       engine,
-      history: createLocalMutationHistory(engine),
+      history: createHistoryPort(engine),
       initialTool: {
         type: 'select'
       },

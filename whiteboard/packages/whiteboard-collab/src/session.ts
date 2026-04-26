@@ -2,7 +2,10 @@ import {
   createMutationCollabSession,
   type CollabStore
 } from '@shared/collab'
-import { meta as mutationMeta } from '@shared/mutation'
+import {
+  meta as mutationMeta,
+  readHistoryController
+} from '@shared/mutation'
 import { document as documentApi } from '@whiteboard/core/document'
 import { META as operationMeta } from '@whiteboard/core/spec/operation'
 import type {
@@ -113,8 +116,15 @@ export const createYjsSession = ({
     localOrigin,
     syncStore
   })
+  const historyController = readHistoryController(engine)
 
-  const session = createMutationCollabSession(engine, {
+  const session = createMutationCollabSession({
+    doc: () => engine.doc(),
+    replace: (nextDocument, options) => engine.replace(nextDocument, options),
+    apply: (operations, options) => engine.apply(operations, options),
+    commits: engine.commits,
+    history: historyController
+  }, {
     actor: {
       id: actorId,
       createChangeId: () => createId('sync')

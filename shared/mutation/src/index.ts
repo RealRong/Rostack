@@ -57,19 +57,32 @@ export type {
 export { history } from './history'
 export type {
   CaptureOptions,
+  HistoryControllerCarrier,
   HistoryController,
   HistoryState
 } from './history'
-export { createLocalHistoryBinding } from './historyBinding'
-export type { LocalHistoryBinding } from './historyBinding'
-export { createLocalMutationHistory } from './localHistory'
+export {
+  HISTORY_CONTROLLER,
+  readHistoryController
+} from './history'
+export { createHistoryBinding } from './historyBinding'
+export type { HistoryBinding } from './historyBinding'
+export { createHistoryPort } from './localHistory'
 export type {
-  LocalHistoryApi,
-  LocalHistoryEngine,
-  LocalHistoryOptions,
-  LocalHistoryState
+  HistoryPort,
+  HistoryPortEngine,
+  HistoryPortOptions,
+  HistoryPortState
 } from './localHistory'
-export type { Origin, Write, WriteStream } from './write'
+export type {
+  ApplyCommit,
+  CommitRecord,
+  CommitStream,
+  Origin,
+  ReplaceCommit,
+  Write,
+  WriteStream
+} from './write'
 export type {
   MutationTrace,
   MutationTraceBuilder,

@@ -38,6 +38,7 @@ import type {
   PerformanceOptions
 } from '@dataview/engine/contracts/performance'
 import type {
+  EngineCommits,
   EngineWrite,
   EngineWrites
 } from '@dataview/engine/contracts/write'
@@ -168,8 +169,9 @@ export interface EngineFacadeHost {
 }
 
 export interface Engine {
+  readonly commits: EngineCommits
   readonly writes: EngineWrites
-  readonly history?: DataviewHistory
+  readonly history: DataviewHistory
   readonly active: ActiveViewApi
   readonly views: ViewsApi
   readonly fields: FieldsApi

@@ -1,14 +1,14 @@
 import { store } from '@shared/core'
-import type { LocalHistoryApi } from './localHistory'
+import type { HistoryPort } from './localHistory'
 
-export type LocalHistoryBinding<Result> = LocalHistoryApi<Result> & {
-  set(next: LocalHistoryApi<Result>): void
+export type HistoryBinding<Result> = HistoryPort<Result> & {
+  set(next: HistoryPort<Result>): void
   reset(): void
 }
 
-export const createLocalHistoryBinding = <Result>(
-  initial: LocalHistoryApi<Result>
-): LocalHistoryBinding<Result> => {
+export const createHistoryBinding = <Result>(
+  initial: HistoryPort<Result>
+): HistoryBinding<Result> => {
   const state = store.createValueStore(initial.get())
   let current = initial
   let unsubscribe = current.subscribe(() => {
@@ -16,7 +16,7 @@ export const createLocalHistoryBinding = <Result>(
   })
 
   const bind = (
-    next: LocalHistoryApi<Result>
+    next: HistoryPort<Result>
   ) => {
     unsubscribe()
     current = next

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { createLocalMutationHistory } from '@shared/mutation'
+import { createHistoryPort } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeRegistry } from '../src'
 
@@ -129,7 +129,7 @@ const createTestEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: createLocalMutationHistory(engine),
+    history: createHistoryPort(engine),
     initialTool: {
       type: 'select'
     },

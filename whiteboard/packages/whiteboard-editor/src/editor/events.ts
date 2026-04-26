@@ -66,8 +66,11 @@ export const createEditorEvents = ({
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()
-  const unsubscribeWrite = engine.writes.subscribe((write) => {
-    if (write.forward.some((op) => META[op.type].sync === 'checkpoint')) {
+  const unsubscribeCommit = engine.commits.subscribe((commit) => {
+    if (
+      commit.kind === 'replace'
+      || commit.forward.some((op) => META[op.type].sync === 'checkpoint')
+    ) {
       session.reset()
       resetHost()
       return
@@ -78,8 +81,8 @@ export const createEditorEvents = ({
 
   return {
     events: {
-      change: (listener) => engine.writes.subscribe((write) => {
-        listener(write.doc, write)
+      change: (listener) => engine.commits.subscribe((commit) => {
+        listener(commit.doc, commit)
       }),
       dispose: (listener) => {
         disposeListeners.add(listener)
@@ -89,7 +92,7 @@ export const createEditorEvents = ({
       }
     },
     dispose: () => {
-      unsubscribeWrite()
+      unsubscribeCommit()
       Array.from(disposeListeners).forEach((listener) => listener())
       disposeListeners.clear()
     }

@@ -7,22 +7,23 @@ import type {
   HistoryState
 } from './history'
 import type {
+  CommitRecord,
+  CommitStream,
   Origin,
   Write,
-  WriteStream
 } from './write'
 
-export interface LocalHistoryState extends HistoryState {
+export interface HistoryPortState extends HistoryState {
   lastUpdatedAt?: number
 }
 
-export interface LocalHistoryApi<Result> extends store.ReadStore<LocalHistoryState> {
+export interface HistoryPort<Result> extends store.ReadStore<HistoryPortState> {
   undo(): Result
   redo(): Result
   clear(): void
 }
 
-export interface LocalHistoryOptions<Result> {
+export interface HistoryPortOptions<Result> {
   apply?: {
     origin?: Origin
     canRun?(): boolean
@@ -32,7 +33,7 @@ export interface LocalHistoryOptions<Result> {
   }
 }
 
-export interface LocalHistoryEngine<
+export interface HistoryPortEngine<
   Doc,
   Op,
   Key,
@@ -47,11 +48,11 @@ export interface LocalHistoryEngine<
       origin?: Origin
     }
   ): Result
-  writes: WriteStream<W>
+  commits: CommitStream<CommitRecord<Doc, Op, Key, any>>
   history?: HistoryController<Op, Key, W>
 }
 
-const EMPTY_HISTORY_STATE: LocalHistoryState = {
+const EMPTY_HISTORY_STATE: HistoryPortState = {
   canUndo: false,
   canRedo: false,
   undoDepth: 0,
@@ -71,7 +72,7 @@ const readCancelled = <Result>(
 const readUnavailable = <Result>(
   reason: 'history-missing' | 'cannot-apply' | 'empty',
   fallback: string,
-  options?: LocalHistoryOptions<Result>
+  options?: HistoryPortOptions<Result>
 ): Result => (
   options?.apply?.onUnavailable?.(reason)
   ?? readCancelled<Result>(fallback)
@@ -79,12 +80,12 @@ const readUnavailable = <Result>(
 
 const readState = (
   controller?: Pick<HistoryController<any, any, any>, 'state'>
-): LocalHistoryState => ({
+): HistoryPortState => ({
   ...(controller?.state() ?? EMPTY_HISTORY_STATE),
   lastUpdatedAt: Date.now()
 })
 
-export const createLocalMutationHistory = <
+export const createHistoryPort = <
   Doc,
   Op,
   Key,
@@ -93,11 +94,11 @@ export const createLocalMutationHistory = <
   },
   W extends Write<Doc, Op, Key, any> = Write<Doc, Op, Key, any>
 >(
-  engine: LocalHistoryEngine<Doc, Op, Key, Result, W>,
-  options?: LocalHistoryOptions<Result>
-): LocalHistoryApi<Result> => {
+  engine: HistoryPortEngine<Doc, Op, Key, Result, W>,
+  options?: HistoryPortOptions<Result>
+): HistoryPort<Result> => {
   const controller = engine.history
-  const state = store.createValueStore<LocalHistoryState>({
+  const state = store.createValueStore<HistoryPortState>({
     ...(controller?.state() ?? EMPTY_HISTORY_STATE),
     lastUpdatedAt: undefined
   })
@@ -106,7 +107,7 @@ export const createLocalMutationHistory = <
     state.set(readState(controller))
   }
 
-  engine.writes.subscribe(() => {
+  engine.commits.subscribe(() => {
     publish()
   })
 

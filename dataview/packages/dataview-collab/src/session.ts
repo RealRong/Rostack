@@ -2,14 +2,13 @@ import * as Y from 'yjs'
 import { createId } from '@shared/core'
 import {
   createMutationCollabSession,
-  type CollabStore,
-  type MutationEngineLike
+  type CollabStore
 } from '@shared/collab'
+import { readHistoryController } from '@shared/mutation'
 import { document as documentApi } from '@dataview/core/document'
+import type { DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { DataviewMutationKey } from '@dataview/core/mutation'
-import type { EngineWrite } from '@dataview/engine/contracts/write'
-import type { DataDoc } from '@dataview/core/contracts'
 import { createYjsSyncCodec } from '@dataview/collab/yjs/codec'
 import { createYjsSyncStore } from '@dataview/collab/yjs/store'
 import { createCollabLocalOrigin } from '@dataview/collab/yjs/shared'
@@ -19,6 +18,7 @@ import type {
   SharedChange,
   SharedCheckpoint
 } from '@dataview/collab/types'
+import type { EngineWrite } from '@dataview/engine/contracts/write'
 
 const DEFAULT_CHECKPOINT_THRESHOLD = 100
 
@@ -87,43 +87,18 @@ export const createYjsSession = ({
     localOrigin,
     syncStore
   })
-  let suppressLocalCheckpointRewrite = 0
-  const collabEngine: MutationEngineLike<
-    DataDoc,
+  const historyController = readHistoryController<
     DocumentOperation,
     DataviewMutationKey,
-    ReturnType<typeof engine.apply>,
     EngineWrite
-  > = {
+  >(engine)
+  const session = createMutationCollabSession({
     doc: () => engine.doc(),
-    replace: (nextDocument, options) => {
-      if (options?.origin === 'remote') {
-        suppressLocalCheckpointRewrite += 1
-      }
-      try {
-        return engine.replace(nextDocument, options)
-      } finally {
-        if (options?.origin === 'remote') {
-          suppressLocalCheckpointRewrite -= 1
-        }
-      }
-    },
-    apply: (operations, options) => {
-      if (options?.origin === 'remote') {
-        suppressLocalCheckpointRewrite += 1
-      }
-      try {
-        return engine.apply(operations, options)
-      } finally {
-        if (options?.origin === 'remote') {
-          suppressLocalCheckpointRewrite -= 1
-        }
-      }
-    },
-    writes: engine.writes,
-    history: engine.history
-  }
-  const session = createMutationCollabSession(collabEngine, {
+    replace: (nextDocument, options) => engine.replace(nextDocument, options),
+    apply: (operations, options) => engine.apply(operations, options),
+    commits: engine.commits,
+    history: historyController
+  }, {
     actor: {
       id: actorId,
       createChangeId: () => createId('sync')
@@ -173,45 +148,6 @@ export const createYjsSession = ({
       footprint: (change) => change.footprint
     }
   })
-  let lastCurrentRev = engine.current().rev
-  let lastWriteRev = -1
-
-  const publishLocalCheckpoint = () => {
-    suppressLocalCheckpointRewrite += 1
-    try {
-      doc.transact(() => {
-        syncStore.replaceCheckpoint({
-          id: createId('sync'),
-          doc: documentApi.clone(engine.doc())
-        })
-        syncStore.clearChanges()
-      }, localOrigin)
-      session.resync()
-    } finally {
-      suppressLocalCheckpointRewrite -= 1
-    }
-  }
-
-  const unsubscribeWrites = engine.writes.subscribe((write) => {
-    lastWriteRev = write.rev
-  })
-  const unsubscribeCurrent = engine.subscribe((current) => {
-    const revision = current.rev
-    if (revision <= lastCurrentRev) {
-      return
-    }
-    lastCurrentRev = revision
-    queueMicrotask(() => {
-      if (suppressLocalCheckpointRewrite > 0) {
-        return
-      }
-      if (lastWriteRev === revision) {
-        return
-      }
-
-      publishLocalCheckpoint()
-    })
-  })
 
   return {
     awareness: provider?.awareness,
@@ -221,10 +157,6 @@ export const createYjsSession = ({
     connect: session.connect,
     disconnect: session.disconnect,
     resync: session.resync,
-    destroy: () => {
-      unsubscribeCurrent()
-      unsubscribeWrites()
-      session.destroy()
-    }
+    destroy: session.destroy
   }
 }

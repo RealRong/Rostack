@@ -58,6 +58,16 @@ export interface UiPublishDelta {
   edges: IdDelta<EdgeId>
 }
 
+export interface RenderPublishDelta {
+  edge: {
+    statics: IdDelta<string>
+    active: IdDelta<EdgeId>
+    labels: IdDelta<`${EdgeId}:${string}`>
+    masks: IdDelta<EdgeId>
+    overlay: boolean
+  }
+}
+
 export interface SpatialPatchScope {
   reset: boolean
   graph: boolean
@@ -77,6 +87,14 @@ export interface UiPatchScope {
   chrome: boolean
   nodes: ReadonlySet<NodeId>
   edges: ReadonlySet<EdgeId>
+}
+
+export interface RenderPatchScope {
+  reset: boolean
+  statics: ReadonlySet<EdgeId>
+  labels: ReadonlySet<EdgeId>
+  active: ReadonlySet<EdgeId>
+  overlay: boolean
 }
 
 export const graphPhaseScope = defineScope({
@@ -100,10 +118,19 @@ export const uiPhaseScope = defineScope({
   edges: set<EdgeId>()
 })
 
+export const renderPhaseScope = defineScope({
+  reset: flag(),
+  statics: set<EdgeId>(),
+  labels: set<EdgeId>(),
+  active: set<EdgeId>(),
+  overlay: flag()
+})
+
 export interface EditorPhaseScopeMap {
   graph: typeof graphPhaseScope
   spatial: typeof spatialPhaseScope
   ui: typeof uiPhaseScope
+  render: typeof renderPhaseScope
 }
 
 export const createGraphDelta = (): GraphDelta => ({

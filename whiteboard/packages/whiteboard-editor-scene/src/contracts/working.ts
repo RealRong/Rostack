@@ -14,6 +14,7 @@ import type { Revision } from '@shared/projector'
 import type {
   GraphDelta,
   GraphPublishDelta,
+  RenderPublishDelta,
   SpatialDelta,
   UiPublishDelta
 } from './delta'
@@ -35,6 +36,15 @@ import type {
   NodeUiView,
   NodeView
 } from './editor'
+import type {
+  EdgeActiveView,
+  EdgeLabelKey,
+  EdgeLabelView,
+  EdgeMaskView,
+  EdgeOverlayView,
+  EdgeStaticId,
+  EdgeStaticView
+} from './render'
 import type { SpatialIndexState } from '../domain/spatial/state'
 
 export interface WorkingState {
@@ -46,6 +56,7 @@ export interface WorkingState {
   indexes: IndexState
   spatial: SpatialIndexState
   ui: UiState
+  render: RenderState
   items: readonly SceneItem[]
   delta: {
     graph: GraphDelta
@@ -54,6 +65,7 @@ export interface WorkingState {
   publish: {
     graph: GraphPublishState
     ui: UiPublishState
+    render: RenderPublishState
   }
 }
 
@@ -65,6 +77,11 @@ export interface GraphPublishState {
 export interface UiPublishState {
   revision: Revision
   delta: UiPublishDelta
+}
+
+export interface RenderPublishState {
+  revision: Revision
+  delta: RenderPublishDelta
 }
 
 export interface GraphState {
@@ -93,6 +110,20 @@ export interface UiState {
   chrome: ChromeView
   nodes: Map<NodeId, NodeUiView>
   edges: Map<EdgeId, EdgeUiView>
+}
+
+export interface RenderState {
+  statics: {
+    styleKeyByEdge: Map<EdgeId, string>
+    edgeIdsByStyleKey: Map<string, readonly EdgeId[]>
+    staticIdByEdge: Map<EdgeId, EdgeStaticId>
+    staticIdsByStyleKey: Map<string, readonly EdgeStaticId[]>
+    statics: Map<EdgeStaticId, EdgeStaticView>
+  }
+  labels: Map<EdgeLabelKey, EdgeLabelView>
+  masks: Map<EdgeId, EdgeMaskView>
+  active: Map<EdgeId, EdgeActiveView>
+  overlay: EdgeOverlayView
 }
 
 export interface GraphNodeEntry {

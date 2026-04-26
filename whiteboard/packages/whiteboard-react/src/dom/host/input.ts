@@ -115,8 +115,9 @@ const resolveSceneEdgePick = (
   editor: WhiteboardRuntime,
   world: Point
 ): EditorPick | undefined => {
-  const edgeId = editor.scene.edge.hit.pick({
-    point: world
+  const edgeId = editor.scene.query.hit.edge({
+    point: world,
+    threshold: 8 / Math.max(editor.session.viewport.get().zoom, 0.0001)
   })
 
   return edgeId

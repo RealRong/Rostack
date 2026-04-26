@@ -88,8 +88,6 @@ export const createEditor = ({
   const scene = createSceneSource({
     controller: projection,
     state: sessionState,
-    hover: session.interaction.read.hover,
-    edgeGuide: session.preview.selectors.edgeGuide,
     nodeType,
     visibleRect: () => session.viewport.read.worldRect(),
     readZoom: () => session.viewport.read.get().zoom

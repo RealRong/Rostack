@@ -27,6 +27,7 @@ import { buildItems } from '../domain/items'
 import { patchMindmap } from '../domain/mindmap'
 import { patchNode } from '../domain/node'
 import {
+  readGraphRenderPlanScope,
   readUiPlanScope
 } from '../projector/impact'
 import {
@@ -399,6 +400,11 @@ export const graphPhase: ProjectorPhase<
       }
     }
     emit.ui = uiScope
+    emit.render = readGraphRenderPlanScope({
+      reset: context.scope.reset,
+      graphDelta: delta,
+      readAllEdgeIds: () => context.working.graph.edges.keys()
+    })
 
     return {
       action: count > 0

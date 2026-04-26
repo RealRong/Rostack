@@ -26,6 +26,9 @@ import {
   isNodeUiViewEqual
 } from '../domain/ui'
 import {
+  readUiRenderPlanScope
+} from '../projector/impact'
+import {
   hasUiPublishDelta,
   resetUiPublishDelta
 } from '../projector/publish'
@@ -338,6 +341,13 @@ export const uiPhase: ProjectorPhase<
             : touchedNodeIds.size + touchedEdgeIds.size)
           + context.working.ui.chrome.overlays.length
         )
+      },
+      emit: {
+        render: readUiRenderPlanScope({
+          reset: context.scope.reset,
+          input: context.input,
+          previous: context.previous
+        })
       }
     }
   }

@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { memo } from 'react'
 import { useStoreValue } from '@shared/react'
-import type { SelectedEdgeRoutePoint } from '@whiteboard/editor/session/edge'
+import type { EdgeOverlayRoutePoint } from '@whiteboard/editor-scene'
 import { useEditorRuntime, usePickRef } from '@whiteboard/react/runtime/hooks'
 import {
   resolveEdgePathPresentation
@@ -42,7 +42,7 @@ const EdgeEndpointHandle = ({
 const EdgeRoutePointHandle = ({
   point
 }: {
-  point: SelectedEdgeRoutePoint
+  point: EdgeOverlayRoutePoint
 }) => {
   const editor = useEditorRuntime()
   const bindRef = usePickRef(
@@ -98,14 +98,7 @@ export const EdgeOverlayLayer = memo(() => {
   const editor = useEditorRuntime()
   const overlay = useStoreValue(editor.scene.edge.render.overlay)
   const previewPresentation = overlay.previewPath
-    ? resolveEdgePathPresentation({
-        color: overlay.previewPath.style?.color,
-        width: overlay.previewPath.style?.width ?? 2,
-        opacity: overlay.previewPath.style?.opacity ?? 1,
-        dash: overlay.previewPath.style?.dash,
-        start: overlay.previewPath.style?.start,
-        end: overlay.previewPath.style?.end
-      })
+    ? resolveEdgePathPresentation(overlay.previewPath.style)
     : undefined
   const zoom = useStoreValue(editor.session.viewport.zoom)
   const snapRadius = 6 / Math.max(zoom, 0.0001)

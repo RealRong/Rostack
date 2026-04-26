@@ -298,8 +298,10 @@ describe('editor graph runtime', () => {
     assertPhaseOrder(result.trace!, [
       'graph',
       'spatial',
-      'ui'
+      'ui',
+      'render'
     ])
+    expect(result.snapshot.render.edge.statics.ids).toBeDefined()
   })
 
   it('publishes once and reuses working state when there is no new input change', () => {

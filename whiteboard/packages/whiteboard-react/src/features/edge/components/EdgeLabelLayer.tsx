@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { memo, useCallback, useRef } from 'react'
-import { useStoreValue } from '@shared/react'
-import type { EdgeLabelRenderModel } from '@whiteboard/editor/types/editor'
+import { useKeyedStoreValue, useStoreValue } from '@shared/react'
+import type { EdgeLabelKey } from '@whiteboard/editor-scene'
 import {
   useEditorRuntime,
   usePickRef,
@@ -45,19 +45,34 @@ const useEdgeLabelTextSourceBinding = ({
   }, [edgeId, labelId, textSources])
 }
 
-const EdgeLabelItem = ({
-  label,
+const EdgeLabelItem = memo(({
+  labelKey,
   zoom
 }: {
-  label: EdgeLabelRenderModel['labels'][number]
+  labelKey: EdgeLabelKey
   zoom: number
 }) => {
-  const bindLabelRef = usePickRef({
-    kind: 'edge',
-    id: label.edgeId,
-    part: 'label',
-    labelId: label.labelId
-  })
+  const editor = useEditorRuntime()
+  const label = useKeyedStoreValue(
+    editor.scene.edge.render.labels.byId,
+    labelKey
+  )
+  const bindLabelRef = usePickRef(label
+    ? {
+        kind: 'edge',
+        id: label.edgeId,
+        part: 'label',
+        labelId: label.labelId
+      }
+    : {
+        kind: 'background'
+      }
+  )
+
+  if (!label) {
+    return null
+  }
+
   const bindTextSourceRef = useEdgeLabelTextSourceBinding({
     edgeId: label.edgeId,
     labelId: label.labelId
@@ -118,22 +133,21 @@ const EdgeLabelItem = ({
       </div>
     </div>
   )
-}
+})
 
-export const EdgeLabelLayer = memo(({
-  model
-}: {
-  model: EdgeLabelRenderModel
-}) => {
+EdgeLabelItem.displayName = 'EdgeLabelItem'
+
+export const EdgeLabelLayer = memo(() => {
   const editor = useEditorRuntime()
   const zoom = useStoreValue(editor.session.viewport.zoom)
+  const labelKeys = useStoreValue(editor.scene.edge.render.labels.ids)
 
   return (
     <div className="wb-edge-label-layer">
-      {model.labels.map((label) => (
+      {labelKeys.map((labelKey) => (
         <EdgeLabelItem
-          key={`${label.edgeId}:${label.labelId}`}
-          label={label}
+          key={labelKey}
+          labelKey={labelKey}
           zoom={zoom}
         />
       ))}

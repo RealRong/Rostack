@@ -22,8 +22,13 @@ import type {
 import type {
   GraphDelta,
   GraphPublishDelta,
+  RenderPublishDelta,
   UiPublishDelta
 } from '../contracts/delta'
+import type {
+  RenderChange,
+  RenderSnapshot
+} from '../contracts/render'
 import type { WorkingState } from '../contracts/working'
 
 const patchPublishedValue = <TValue>(input: {
@@ -55,6 +60,16 @@ export const createUiPublishDelta = (): UiPublishDelta => ({
   edges: idDelta.create<EdgeId>()
 })
 
+export const createRenderPublishDelta = (): RenderPublishDelta => ({
+  edge: {
+    statics: idDelta.create<string>(),
+    active: idDelta.create<EdgeId>(),
+    labels: idDelta.create<`${EdgeId}:${string}`>(),
+    masks: idDelta.create<EdgeId>(),
+    overlay: false
+  }
+})
+
 export const resetGraphPublishDelta = (
   delta: GraphPublishDelta
 ) => {
@@ -70,6 +85,16 @@ export const resetUiPublishDelta = (
   delta.chrome = false
   idDelta.reset(delta.nodes)
   idDelta.reset(delta.edges)
+}
+
+export const resetRenderPublishDelta = (
+  delta: RenderPublishDelta
+) => {
+  idDelta.reset(delta.edge.statics)
+  idDelta.reset(delta.edge.active)
+  idDelta.reset(delta.edge.labels)
+  idDelta.reset(delta.edge.masks)
+  delta.edge.overlay = false
 }
 
 export const writeGraphPublishDelta = (input: {
@@ -98,6 +123,16 @@ export const hasUiPublishDelta = (
   delta.chrome
   || idDelta.hasAny(delta.nodes)
   || idDelta.hasAny(delta.edges)
+)
+
+export const hasRenderPublishDelta = (
+  delta: RenderPublishDelta
+): boolean => (
+  idDelta.hasAny(delta.edge.statics)
+  || idDelta.hasAny(delta.edge.active)
+  || idDelta.hasAny(delta.edge.labels)
+  || idDelta.hasAny(delta.edge.masks)
+  || delta.edge.overlay
 )
 
 export const readItemsChangedFromGraphDelta = (
@@ -228,6 +263,78 @@ const patchPublishedUi = (input: {
   }
 }
 
+const patchPublishedRender = (input: {
+  previous: RenderSnapshot
+  working: WorkingState
+  delta: RenderPublishDelta
+}): {
+  value: RenderSnapshot
+  change: RenderChange
+} => {
+  const statics = publishEntityFamily({
+    previous: input.previous.edge.statics,
+    ids: [...input.working.render.statics.statics.keys()],
+    change: input.delta.edge.statics,
+    read: (staticId) => input.working.render.statics.statics.get(staticId)
+  })
+  const active = publishEntityFamily({
+    previous: input.previous.edge.active,
+    ids: [...input.working.render.active.keys()],
+    change: input.delta.edge.active,
+    read: (edgeId) => input.working.render.active.get(edgeId)
+  })
+  const labels = publishEntityFamily({
+    previous: input.previous.edge.labels,
+    ids: [...input.working.render.labels.keys()],
+    change: input.delta.edge.labels,
+    read: (labelKey) => input.working.render.labels.get(labelKey)
+  })
+  const masks = publishEntityFamily({
+    previous: input.previous.edge.masks,
+    ids: [...input.working.render.masks.keys()],
+    change: input.delta.edge.masks,
+    read: (edgeId) => input.working.render.masks.get(edgeId)
+  })
+  const overlay = patchPublishedValue({
+    previous: input.previous.edge.overlay,
+    next: input.working.render.overlay,
+    changed: input.delta.edge.overlay
+  })
+
+  const edge = (
+    statics.value === input.previous.edge.statics
+    && active.value === input.previous.edge.active
+    && labels.value === input.previous.edge.labels
+    && masks.value === input.previous.edge.masks
+    && overlay.value === input.previous.edge.overlay
+  )
+    ? input.previous.edge
+    : {
+        statics: statics.value,
+        active: active.value,
+        labels: labels.value,
+        masks: masks.value,
+        overlay: overlay.value
+      }
+
+  return {
+    value: edge === input.previous.edge
+      ? input.previous
+      : {
+          edge
+        },
+    change: {
+      edge: {
+        statics: statics.change,
+        active: active.change,
+        labels: labels.change,
+        masks: masks.change,
+        overlay: createFlags(overlay.changed)
+      }
+    }
+  }
+}
+
 const patchPublishedItems = (input: {
   previous: readonly Snapshot['items'][number][]
   working: WorkingState
@@ -251,6 +358,7 @@ const patchPublishedItems = (input: {
 
 const EMPTY_GRAPH_PUBLISH_DELTA = createGraphPublishDelta()
 const EMPTY_UI_PUBLISH_DELTA = createUiPublishDelta()
+const EMPTY_RENDER_PUBLISH_DELTA = createRenderPublishDelta()
 
 export const editorGraphPublisher: ProjectorPublisher<
   WorkingState,
@@ -272,6 +380,13 @@ export const editorGraphPublisher: ProjectorPublisher<
         ? working.publish.ui.delta
         : EMPTY_UI_PUBLISH_DELTA
     })
+    const render = patchPublishedRender({
+      previous: previous.render,
+      working,
+      delta: working.publish.render.revision === revision
+        ? working.publish.render.delta
+        : EMPTY_RENDER_PUBLISH_DELTA
+    })
     const items = patchPublishedItems({
       previous: previous.items,
       working,
@@ -284,11 +399,13 @@ export const editorGraphPublisher: ProjectorPublisher<
         revision,
         documentRevision: working.revision.document,
         graph: graph.value,
+        render: render.value,
         items: items.value,
         ui: ui.value
       },
       change: {
         graph: graph.change,
+        render: render.change,
         items: items.change,
         ui: ui.change
       }

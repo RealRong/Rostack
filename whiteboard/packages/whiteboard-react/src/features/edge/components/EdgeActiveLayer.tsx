@@ -1,8 +1,7 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
+import { useKeyedStoreValue, useStoreValue } from '@shared/react'
 import type { EdgeId } from '@whiteboard/core/types'
-import type {
-  EdgeActiveRenderModel,
-} from '@whiteboard/editor/types/editor'
+import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
 import {
   readEdgeLabelMaskId,
   resolveEdgePathPresentation
@@ -34,13 +33,62 @@ const resolveActiveAccent = (input: {
   return undefined
 }
 
-export const EdgeActiveLayer = memo(({
-  model,
-  labeledEdgeIds
+const EdgeActiveItem = memo(({
+  edgeId,
+  maskedEdgeIds
 }: {
-  model: EdgeActiveRenderModel
-  labeledEdgeIds: ReadonlySet<EdgeId>
+  edgeId: EdgeId
+  maskedEdgeIds: ReadonlySet<EdgeId>
 }) => {
+  const editor = useEditorRuntime()
+  const edge = useKeyedStoreValue(
+    editor.scene.edge.render.active.byId,
+    edgeId
+  )
+  if (!edge) {
+    return null
+  }
+
+  const presentation = resolveEdgePathPresentation(edge.style)
+  const accent = resolveActiveAccent({
+    selected: edge.state.selected,
+    editing: edge.state.editing,
+    hovered: edge.state.hovered,
+    stroke: presentation.stroke,
+    strokeWidth: presentation.strokeWidth
+  })
+  if (!accent) {
+    return null
+  }
+
+  return (
+    <path
+      d={edge.svgPath}
+      fill="none"
+      stroke={accent.stroke}
+      strokeWidth={accent.strokeWidth}
+      opacity={accent.opacity}
+      vectorEffect="non-scaling-stroke"
+      pointerEvents="none"
+      className="wb-edge-active-path"
+      mask={maskedEdgeIds.has(edge.edgeId)
+        ? `url(#${readEdgeLabelMaskId(edge.edgeId)})`
+        : undefined}
+    />
+  )
+})
+
+EdgeActiveItem.displayName = 'EdgeActiveItem'
+
+export const EdgeActiveLayer = memo(() => {
+  const editor = useEditorRuntime()
+  const activeIds = useStoreValue(editor.scene.edge.render.active.ids)
+  const maskIds = useStoreValue(editor.scene.edge.render.masks.ids)
+  const maskedEdgeIds = useMemo(
+    () => new Set(maskIds),
+    [maskIds]
+  )
+
   return (
     <svg
       width="100%"
@@ -50,36 +98,13 @@ export const EdgeActiveLayer = memo(({
       aria-hidden="true"
       focusable="false"
     >
-      {model.edges.map((edge) => {
-        const presentation = resolveEdgePathPresentation(edge.style)
-        const accent = resolveActiveAccent({
-          selected: edge.state.selected,
-          editing: edge.state.editing,
-          hovered: edge.state.hovered,
-          stroke: presentation.stroke,
-          strokeWidth: presentation.strokeWidth
-        })
-        if (!accent) {
-          return null
-        }
-
-        return (
-          <path
-            key={edge.id}
-            d={edge.svgPath}
-            fill="none"
-            stroke={accent.stroke}
-            strokeWidth={accent.strokeWidth}
-            opacity={accent.opacity}
-            vectorEffect="non-scaling-stroke"
-            pointerEvents="none"
-            className="wb-edge-active-path"
-            mask={labeledEdgeIds.has(edge.id)
-              ? `url(#${readEdgeLabelMaskId(edge.id)})`
-              : undefined}
-          />
-        )
-      })}
+      {activeIds.map((edgeId) => (
+        <EdgeActiveItem
+          key={edgeId}
+          edgeId={edgeId}
+          maskedEdgeIds={maskedEdgeIds}
+        />
+      ))}
     </svg>
   )
 })

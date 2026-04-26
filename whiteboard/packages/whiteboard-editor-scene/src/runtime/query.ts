@@ -19,6 +19,7 @@ import {
   readRelatedEdgeIds,
   readTreeDescendants
 } from '../domain/index/read'
+import { createEdgeHitRead } from '../domain/hit/edge'
 import type { SpatialIndexState } from '../domain/spatial/state'
 import { createSpatialRead } from '../domain/spatial/query'
 
@@ -147,6 +148,12 @@ export const createEditorGraphQuery = (
     spatial,
     indexes: runtime.indexes
   })
+  const hit = {
+    edge: createEdgeHitRead({
+      graph: runtime.graph,
+      spatial
+    })
+  }
 
   return {
     snapshot: () => runtime.snapshot(),
@@ -196,6 +203,7 @@ export const createEditorGraphQuery = (
       })
     ),
     frame,
+    hit,
     items: () => runtime.snapshot().items,
     ui: () => runtime.snapshot().ui,
     chrome: () => runtime.snapshot().ui.chrome

@@ -6,16 +6,16 @@ import { resolveEdgeDash } from '@whiteboard/react/features/edge/constants'
 import { resolvePaletteColor, resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import { resolveEdgeMarkerUrl } from '@whiteboard/react/features/edge/ui/marker'
 import type {
-  EdgeLabelRenderItem,
-  EdgeRenderStyle
-} from '@whiteboard/editor/types/editor'
+  EdgeRenderLabelView,
+  EdgeStaticView
+} from '@whiteboard/editor-scene'
 
 export const readEdgeLabelMaskId = (
   edgeId: EdgeId
 ) => `wb-edge-label-mask-${edgeId}`
 
 export const resolveEdgePathPresentation = (
-  style: EdgeRenderStyle
+  style: EdgeStaticView['style']
 ) => ({
   stroke: resolvePaletteColorOr(
     style.color,
@@ -29,7 +29,7 @@ export const resolveEdgePathPresentation = (
 })
 
 export const resolveEdgeLabelTextStyle = (
-  style: EdgeLabelRenderItem['style']
+  style: EdgeRenderLabelView['style']
 ): CSSProperties => ({
   color: resolvePaletteColorOr(style?.color, 'var(--ui-text-primary)') ?? 'var(--ui-text-primary)',
   background: resolvePaletteColor(style?.bg) ?? style?.bg ?? 'transparent',
@@ -45,8 +45,14 @@ export const resolveActiveLabelOutlineStyle = (
 })
 
 export const renderEdgeLabelMaskTransform = (
-  label: Pick<EdgeLabelRenderItem, 'maskRect'>
+  rect: {
+    angle: number
+    center: {
+      x: number
+      y: number
+    }
+  }
 ) => edgeApi.label.maskTransform({
-  angle: label.maskRect.angle,
-  center: label.maskRect.center
+  angle: rect.angle,
+  center: rect.center
 })

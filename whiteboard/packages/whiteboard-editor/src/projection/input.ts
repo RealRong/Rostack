@@ -41,6 +41,15 @@ const EMPTY_HOVER_STATE: HoverState = {
 
 const EMPTY_NODE_DRAFTS = new Map<string, NodeDraft>()
 
+const readInteractionEditingEdge = (
+  mode: ReturnType<EditorSession['interaction']['read']['mode']['get']>
+): boolean => (
+  mode === 'edge-drag'
+  || mode === 'edge-label'
+  || mode === 'edge-connect'
+  || mode === 'edge-route'
+)
+
 const readInteractionHover = (
   hover: EditorHoverState
 ): HoverState => {
@@ -142,7 +151,8 @@ export const createEmptyEditorGraphInputDelta = (): InputDelta => ({
     marquee: false,
     guides: false,
     draw: false,
-    edit: false
+    edit: false,
+    overlay: false
   }
 })
 
@@ -219,7 +229,8 @@ export const cloneEditorGraphInputDelta = (
     marquee: delta.ui.marquee,
     guides: delta.ui.guides,
     draw: delta.ui.draw,
-    edit: delta.ui.edit
+    edit: delta.ui.edit,
+    overlay: delta.ui.overlay
   }
 })
 
@@ -251,6 +262,7 @@ export const mergeEditorGraphInputDelta = (
   target.ui.guides = target.ui.guides || source.ui.guides
   target.ui.draw = target.ui.draw || source.ui.draw
   target.ui.edit = target.ui.edit || source.ui.edit
+  target.ui.overlay = target.ui.overlay || source.ui.overlay
 }
 
 export const takeEditorGraphInputDelta = (
@@ -287,6 +299,7 @@ export const hasEditorGraphInputDelta = (
   || delta.ui.guides
   || delta.ui.draw
   || delta.ui.edit
+  || delta.ui.overlay
 )
 
 const readMindmapId = (
@@ -723,6 +736,16 @@ export const createEditorGraphInput = ({
       preview: {
         nodes: new Map(readNodePreviews(preview)),
         edges: new Map(readEdgePreviews(preview)),
+        edgeGuide: preview.edge.guide
+          ? {
+              path: preview.edge.guide.path,
+              connect: preview.edge.guide.connect
+                ? {
+                    resolution: preview.edge.guide.connect.resolution
+                  }
+                : undefined
+            }
+          : undefined,
         draw: readDrawPreview(preview),
         selection: {
           marquee: preview.selection.marquee
@@ -742,7 +765,11 @@ export const createEditorGraphInput = ({
       hover: readInteractionHover(
         store.read(session.interaction.read.hover)
       ),
-      drag: readDragState(snapshot, session)
+      drag: readDragState(snapshot, session),
+      chrome: store.read(session.interaction.read.chrome),
+      editingEdge: readInteractionEditingEdge(
+        store.read(session.interaction.read.mode)
+      )
     },
     clock: {
       now

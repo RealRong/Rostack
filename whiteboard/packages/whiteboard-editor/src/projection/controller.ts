@@ -13,6 +13,7 @@ import type {
   HoverTarget
 } from '@whiteboard/editor/input/hover/store'
 import type { EditSession } from '@whiteboard/editor/session/edit'
+import { isEdgeGuideEqual } from '@whiteboard/editor/session/preview/edge'
 import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import {
@@ -74,6 +75,34 @@ const isHoverTargetEqual = (
   }
 }
 
+type ProjectionInteractionState = {
+  chrome: boolean
+  editingEdge: boolean
+}
+
+const readProjectionInteractionState = (
+  session: Pick<EditorSession, 'interaction'>
+): ProjectionInteractionState => {
+  const mode = store.read(session.interaction.read.mode)
+
+  return {
+    chrome: store.read(session.interaction.read.chrome),
+    editingEdge:
+      mode === 'edge-drag'
+      || mode === 'edge-label'
+      || mode === 'edge-connect'
+      || mode === 'edge-route'
+  }
+}
+
+const isProjectionInteractionStateEqual = (
+  left: ProjectionInteractionState,
+  right: ProjectionInteractionState
+): boolean => (
+  left.chrome === right.chrome
+  && left.editingEdge === right.editingEdge
+)
+
 const createSelectionDelta = (): InputDelta => {
   const delta = createEmptyEditorGraphInputDelta()
   delta.ui.selection = true
@@ -83,6 +112,7 @@ const createSelectionDelta = (): InputDelta => {
 const createToolDelta = (): InputDelta => {
   const delta = createEmptyEditorGraphInputDelta()
   delta.ui.tool = true
+  delta.ui.overlay = true
   return delta
 }
 
@@ -122,6 +152,19 @@ const createEditDelta = (input: {
   return delta
 }
 
+const createInteractionDelta = (input: {
+  previous: ProjectionInteractionState
+  next: ProjectionInteractionState
+}): InputDelta => {
+  const delta = createEmptyEditorGraphInputDelta()
+
+  if (!isProjectionInteractionStateEqual(input.previous, input.next)) {
+    delta.ui.overlay = true
+  }
+
+  return delta
+}
+
 const createPreviewDelta = (input: {
   snapshot: ReturnType<Engine['current']>['snapshot']
   previous: EditorInputPreviewState
@@ -156,6 +199,12 @@ const createPreviewDelta = (input: {
   ) {
     delta.ui.hover = true
   }
+  if (!isEdgeGuideEqual(
+    input.previous.edge.guide ?? {},
+    input.next.edge.guide ?? {}
+  )) {
+    delta.ui.overlay = true
+  }
   if (
     input.previous.selection.marquee !== input.next.selection.marquee
   ) {
@@ -187,6 +236,7 @@ const createBootstrapDelta = (input: {
   delta.ui.guides = true
   delta.ui.draw = true
   delta.ui.edit = true
+  delta.ui.overlay = true
 
   const edit = input.session.state.edit.get()
   const editedNodeIds = readEditedNodeIds(edit)
@@ -244,6 +294,7 @@ export const createSceneController = ({
   let currentEdit = store.read(session.state.edit)
   let currentPreview = store.read(session.preview.state)
   let currentHover = store.read(session.interaction.read.hover)
+  let currentInteraction = readProjectionInteractionState(session)
 
   const notify = (
     result: Result
@@ -340,6 +391,28 @@ export const createSceneController = ({
         next: currentHover
       })
       if (delta.ui.hover) {
+        mark(delta)
+      }
+    }),
+    session.interaction.read.mode.subscribe(() => {
+      const previousInteraction = currentInteraction
+      currentInteraction = readProjectionInteractionState(session)
+      const delta = createInteractionDelta({
+        previous: previousInteraction,
+        next: currentInteraction
+      })
+      if (delta.ui.overlay) {
+        mark(delta)
+      }
+    }),
+    session.interaction.read.chrome.subscribe(() => {
+      const previousInteraction = currentInteraction
+      currentInteraction = readProjectionInteractionState(session)
+      const delta = createInteractionDelta({
+        previous: previousInteraction,
+        next: currentInteraction
+      })
+      if (delta.ui.overlay) {
         mark(delta)
       }
     })

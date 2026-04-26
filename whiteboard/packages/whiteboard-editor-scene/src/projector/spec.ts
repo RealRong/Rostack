@@ -26,11 +26,13 @@ import type { WorkingState } from '../contracts/working'
 import { createSpatialDelta } from '../domain/spatial/update'
 import { createSpatialState } from '../domain/spatial/state'
 import { graphPhase } from '../phases/graph'
+import { renderPhase } from '../phases/render'
 import { spatialPhase } from '../phases/spatial'
 import { uiPhase } from '../phases/ui'
 import { planEditorGraphPhases } from './impact'
 import {
   createGraphPublishDelta,
+  createRenderPublishDelta,
   createUiPublishDelta,
   editorGraphPublisher
 } from './publish'
@@ -77,7 +79,8 @@ export const createEmptyInputDelta = (): Input['delta'] => ({
     marquee: false,
     guides: false,
     draw: false,
-    edit: false
+    edit: false,
+    overlay: false
   }
 })
 
@@ -104,6 +107,7 @@ export const createEmptyInput = (): Input => ({
     preview: {
       nodes: new Map(),
       edges: new Map(),
+      edgeGuide: undefined,
       draw: null,
       selection: {
         guides: []
@@ -124,7 +128,9 @@ export const createEmptyInput = (): Input => ({
     },
     drag: {
       kind: 'idle'
-    }
+    },
+    chrome: false,
+    editingEdge: false
   },
   clock: {
     now: 0
@@ -152,6 +158,30 @@ export const createEmptySnapshot = (): Snapshot => ({
       groups: {
         ids: [],
         byId: new Map()
+      }
+    }
+  },
+  render: {
+    edge: {
+      statics: {
+        ids: [],
+        byId: new Map()
+      },
+      active: {
+        ids: [],
+        byId: new Map()
+      },
+      labels: {
+        ids: [],
+        byId: new Map()
+      },
+      masks: {
+        ids: [],
+        byId: new Map()
+      },
+      overlay: {
+        endpointHandles: [],
+        routePoints: []
       }
     }
   },
@@ -227,6 +257,22 @@ export const createWorking = (input: {
       nodes: new Map(),
       edges: new Map()
     },
+    render: {
+      statics: {
+        styleKeyByEdge: new Map(),
+        edgeIdsByStyleKey: new Map(),
+        staticIdByEdge: new Map(),
+        staticIdsByStyleKey: new Map(),
+        statics: new Map()
+      },
+      labels: new Map(),
+      masks: new Map(),
+      active: new Map(),
+      overlay: {
+        endpointHandles: [],
+        routePoints: []
+      }
+    },
     items: [],
     delta: {
       graph: createGraphDelta(),
@@ -240,6 +286,10 @@ export const createWorking = (input: {
       ui: {
         revision: 0,
         delta: createUiPublishDelta()
+      },
+      render: {
+        revision: 0,
+        delta: createRenderPublishDelta()
       }
     }
   }
@@ -261,6 +311,7 @@ export const editorGraphProjectorSpec: ProjectorSpec<
   phases: [
     graphPhase,
     spatialPhase,
-    uiPhase
+    uiPhase,
+    renderPhase
   ]
 }

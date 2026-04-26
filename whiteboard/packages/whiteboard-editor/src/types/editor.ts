@@ -17,6 +17,13 @@ import type {
 } from '@whiteboard/core/types'
 import type { HistoryApi } from '@whiteboard/history'
 import type {
+  EdgeActiveView,
+  EdgeLabelKey,
+  EdgeRenderLabelView,
+  EdgeMaskView,
+  EdgeOverlayView,
+  EdgeStaticId,
+  EdgeStaticView,
   MindmapView,
   Read as EditorSceneQueryRuntime,
   SceneItem,
@@ -157,6 +164,13 @@ export type EditorSceneQuery = {
   visible: (
     options?: Parameters<EditorSceneQueryRuntime['spatial']['rect']>[1]
   ) => ReturnType<EditorSceneQueryRuntime['spatial']['rect']>
+  hit: {
+    edge: (input: {
+      point: Point
+      threshold?: number
+      excludeIds?: readonly EdgeId[]
+    }) => EdgeId | undefined
+  }
 }
 
 export type ScenePickKind = Extract<
@@ -235,155 +249,24 @@ export type SceneScope = {
   bounds: (target: SelectionTarget) => Rect | undefined
 }
 
-export type EdgeRenderStyle = {
-  color?: Edge['style'] extends infer TStyle
-    ? TStyle extends {
-        color?: infer TValue
-      }
-      ? TValue
-      : never
-    : never
-  width: number
-  opacity: number
-  dash?: Edge['style'] extends infer TStyle
-    ? TStyle extends {
-        dash?: infer TValue
-      }
-      ? TValue
-      : never
-    : never
-  start?: Edge['style'] extends infer TStyle
-    ? TStyle extends {
-        start?: infer TValue
-      }
-      ? TValue
-      : never
-    : never
-  end?: Edge['style'] extends infer TStyle
-    ? TStyle extends {
-        end?: infer TValue
-      }
-      ? TValue
-      : never
-    : never
-}
-
-export type EdgeRenderBucketId = string
-
-export type EdgeStaticPath = {
-  id: EdgeId
-  svgPath: string
-}
-
-export type EdgeStaticBucket = {
-  id: EdgeRenderBucketId
-  style: EdgeRenderStyle
-  paths: readonly EdgeStaticPath[]
-}
-
-export type EdgeStaticRenderModel = {
-  buckets: readonly EdgeStaticBucket[]
-}
-
-export type EdgeActiveRenderItem = {
-  id: EdgeId
-  svgPath: string
-  box?: {
-    x: number
-    y: number
-    width: number
-    height: number
-    pad: number
+export type EdgeRenderSource = {
+  statics: {
+    ids: store.ReadStore<readonly EdgeStaticId[]>
+    byId: store.KeyedReadStore<EdgeStaticId, EdgeStaticView | undefined>
   }
-  style: EdgeRenderStyle
-  state: {
-    hovered: boolean
-    focused: boolean
-    selected: boolean
-    editing: boolean
+  active: {
+    ids: store.ReadStore<readonly EdgeId[]>
+    byId: store.KeyedReadStore<EdgeId, EdgeActiveView | undefined>
   }
-}
-
-export type EdgeActiveRenderModel = {
-  edges: readonly EdgeActiveRenderItem[]
-}
-
-export type EdgeLabelRenderItem = {
-  edgeId: EdgeId
-  labelId: string
-  point: Point
-  angle: number
-  text: string
-  displayText: string
-  editing: boolean
-  selected: boolean
-  style: NonNullable<Edge['labels']>[number]['style']
-  maskRect: {
-    x: number
-    y: number
-    width: number
-    height: number
-    radius: number
-    angle: number
-    center: Point
+  labels: {
+    ids: store.ReadStore<readonly EdgeLabelKey[]>
+    byId: store.KeyedReadStore<EdgeLabelKey, EdgeRenderLabelView | undefined>
   }
-  caret?: EditSession extends infer TEdit
-    ? TEdit extends {
-        kind: 'edge-label'
-        caret?: infer TCaret
-      }
-      ? TCaret
-      : never
-    : never
-}
-
-export type EdgeLabelRenderModel = {
-  labels: readonly EdgeLabelRenderItem[]
-}
-
-export type EdgeOverlayPreviewPath = {
-  svgPath: string
-  style?: Edge['style']
-}
-
-export type EdgeOverlayEndpointHandle = {
-  edgeId: EdgeId
-  end: 'source' | 'target'
-  point: Point
-}
-
-export type EdgeOverlayRenderModel = {
-  previewPath?: EdgeOverlayPreviewPath
-  snapPoint?: Point
-  endpointHandles: readonly EdgeOverlayEndpointHandle[]
-  routePoints: readonly SelectedEdgeRoutePoint[]
-}
-
-export type EdgeRenderRuntime = {
-  static: store.ReadStore<EdgeStaticRenderModel>
-  active: store.ReadStore<EdgeActiveRenderModel>
-  labels: store.ReadStore<EdgeLabelRenderModel>
-  overlay: store.ReadStore<EdgeOverlayRenderModel>
-}
-
-export type EdgeInteractionState = {
-  hovered?: EdgeId
-  focused?: EdgeId
-  selected: readonly EdgeId[]
-  editing?: EdgeId
-}
-
-export type EdgeInteractionRead = {
-  get: () => EdgeInteractionState
-  subscribe: (listener: () => void) => store.Unsubscribe
-}
-
-export type EdgeHitQuery = {
-  pick: (input: {
-    point: Point
-    threshold?: number
-    excludeIds?: readonly EdgeId[]
-  }) => EdgeId | undefined
+  masks: {
+    ids: store.ReadStore<readonly EdgeId[]>
+    byId: store.KeyedReadStore<EdgeId, EdgeMaskView | undefined>
+  }
+  overlay: store.ReadStore<EdgeOverlayView>
 }
 
 export type EditorDocumentSource = {
@@ -403,9 +286,7 @@ export type EditorSceneSource = {
   items: store.ReadStore<readonly SceneItem[]>
   query: EditorSceneQuery
   edge: {
-    render: EdgeRenderRuntime
-    hit: EdgeHitQuery
-    interaction: EdgeInteractionRead
+    render: EdgeRenderSource
   }
   pick: {
     rect: (point: Point, radius?: number) => Rect

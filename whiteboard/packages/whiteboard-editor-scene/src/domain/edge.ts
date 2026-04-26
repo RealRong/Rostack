@@ -150,6 +150,21 @@ const isEdgeHandleEqual = (
   }
 }
 
+const isEdgeSegmentEqual = (
+  left: EdgeView['route']['segments'][number],
+  right: EdgeView['route']['segments'][number]
+): boolean => (
+  left === right
+  || (
+    left.role === right.role
+    && left.insertIndex === right.insertIndex
+    && geometryApi.equal.point(left.from, right.from)
+    && geometryApi.equal.point(left.to, right.to)
+    && geometryApi.equal.point(left.insertPoint, right.insertPoint)
+    && equal.sameOrder(left.hitPoints ?? [], right.hitPoints ?? [], geometryApi.equal.point)
+  )
+)
+
 const isEdgeLabelViewEqual = (
   left: EdgeView['route']['labels'][number],
   right: EdgeView['route']['labels'][number]
@@ -192,6 +207,7 @@ const isEdgeViewEqual = (
     )
   )
   && equal.sameOrder(left.route.points, right.route.points, geometryApi.equal.point)
+  && equal.sameOrder(left.route.segments, right.route.segments, isEdgeSegmentEqual)
   && equal.sameOrder(left.route.handles, right.route.handles, isEdgeHandleEqual)
   && equal.sameOrder(left.route.labels, right.route.labels, isEdgeLabelViewEqual)
   && left.box?.pad === right.box?.pad
@@ -218,6 +234,7 @@ const isEdgeGeometryChanged = (
     )
   )
   || !equal.sameOrder(previous.route.points, next.route.points, geometryApi.equal.point)
+  || !equal.sameOrder(previous.route.segments, next.route.segments, isEdgeSegmentEqual)
   || !equal.sameOrder(previous.route.handles, next.route.handles, isEdgeHandleEqual)
   || !equal.sameOrder(previous.route.labels, next.route.labels, isEdgeLabelViewEqual)
   || previous.box?.pad !== next.box?.pad
@@ -370,6 +387,7 @@ export const buildEdgeView = (input: {
     },
     route: {
       points: geometry?.path.points ?? readEdgePoints(edge),
+      segments: geometry?.path.segments ?? [],
       svgPath: geometry?.path.svgPath,
       bounds,
       source: geometry?.ends.source.point,

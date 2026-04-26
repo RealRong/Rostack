@@ -3,7 +3,10 @@ import type {
   EdgeLabelMaskRect,
   ResolvedEdgeEnds
 } from '@whiteboard/core/edge'
-import type { EdgeHandle } from '@whiteboard/core/types/edge'
+import type {
+  EdgeHandle,
+  EdgePathSegment
+} from '@whiteboard/core/types/edge'
 import type { Guide, TransformPreviewPatch } from '@whiteboard/core/node'
 import type {
   MindmapRenderConnector,
@@ -41,6 +44,10 @@ import type {
   Flags
 } from '@shared/projector/publish'
 import type { IdDelta } from './delta'
+import type {
+  RenderChange,
+  RenderSnapshot
+} from './render'
 import type { SpatialRead } from '../domain/spatial/contracts'
 
 export interface Input {
@@ -169,9 +176,20 @@ export interface EdgeDraft {
 export interface PreviewInput {
   nodes: ReadonlyMap<NodeId, NodePreview>
   edges: ReadonlyMap<EdgeId, EdgePreview>
+  edgeGuide?: EdgeGuidePreview
   draw: DrawPreview | null
   selection: SelectionPreview
   mindmap: MindmapPreview | null
+}
+
+export interface EdgeGuidePreview {
+  path?: {
+    svgPath: string
+    style?: Edge['style']
+  }
+  connect?: {
+    resolution: ConnectResolution
+  }
 }
 
 export type NodePreviewPatch = Omit<TransformPreviewPatch, 'id'>
@@ -293,6 +311,8 @@ export interface InteractionInput {
   selection: SelectionState
   hover: HoverState
   drag: DragState
+  chrome: boolean
+  editingEdge: boolean
 }
 
 export interface SelectionState {
@@ -412,12 +432,14 @@ export interface UiInputDelta {
   guides: boolean
   draw: boolean
   edit: boolean
+  overlay: boolean
 }
 
 export interface Snapshot {
   revision: Revision
   documentRevision: Revision
   graph: GraphSnapshot
+  render: RenderSnapshot
   items: readonly SceneItem[]
   ui: UiSnapshot
 }
@@ -458,6 +480,7 @@ export interface EdgeBaseView {
 
 export interface EdgeRouteView {
   points: readonly Point[]
+  segments: readonly EdgePathSegment[]
   svgPath?: string
   bounds?: Rect
   source?: Point
@@ -605,6 +628,7 @@ export interface ChromeOverlay {
 
 export interface Change {
   graph: GraphChange
+  render: RenderChange
   items: Flags
   ui: UiChange
 }
@@ -663,6 +687,13 @@ export interface Read {
       excludeIds?: readonly NodeId[]
     }): NodeId | undefined
     descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
+  }
+  hit: {
+    edge(input: {
+      point: Point
+      threshold?: number
+      excludeIds?: readonly EdgeId[]
+    }): EdgeId | undefined
   }
   items(): readonly SceneItem[]
   ui(): UiSnapshot

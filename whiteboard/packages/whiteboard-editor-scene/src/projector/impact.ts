@@ -27,6 +27,9 @@ type GraphScopeInput =
 type UiScopeInput =
   NonNullable<ProjectorScopeInputValue<EditorPhaseScopeMap['ui']>>
 
+type RenderScopeInput =
+  NonNullable<ProjectorScopeInputValue<EditorPhaseScopeMap['render']>>
+
 const appendIds = <TId extends string>(
   target: Set<TId>,
   ids: Iterable<TId>
@@ -52,6 +55,18 @@ const readHoveredNodeId = (
   hover: HoverState
 ): NodeId | undefined => hover.kind === 'node'
   ? hover.nodeId
+  : undefined
+
+const readHoveredEdgeId = (
+  hover: HoverState
+): EdgeId | undefined => hover.kind === 'edge'
+  ? hover.edgeId
+  : undefined
+
+const readEditingEdgeId = (
+  edit: Input['session']['edit'] | Snapshot['ui']['chrome']['edit']
+): EdgeId | undefined => edit?.kind === 'edge-label'
+  ? edit.edgeId
   : undefined
 
 const collectSelectedNodeIds = (
@@ -236,12 +251,20 @@ export const readUiPlanScope = (input: {
 
     const previousNodeId = readHoveredNodeId(input.previous.ui.chrome.hover)
     const nextNodeId = readHoveredNodeId(input.input.interaction.hover)
+    const previousEdgeId = readHoveredEdgeId(input.previous.ui.chrome.hover)
+    const nextEdgeId = readHoveredEdgeId(input.input.interaction.hover)
 
     if (previousNodeId) {
       nodes.add(previousNodeId)
     }
     if (nextNodeId) {
       nodes.add(nextNodeId)
+    }
+    if (previousEdgeId) {
+      edges.add(previousEdgeId)
+    }
+    if (nextEdgeId) {
+      edges.add(nextEdgeId)
     }
   }
 
@@ -265,12 +288,94 @@ export const readUiPlanScope = (input: {
   if (input.input.delta.ui.edit) {
     chrome = true
   }
+  if (input.input.delta.ui.tool || input.input.delta.ui.overlay) {
+    chrome = true
+  }
 
   return {
     reset: input.reset,
     chrome,
     nodes,
     edges
+  }
+}
+
+export const readGraphRenderPlanScope = (input: {
+  reset?: boolean
+  graphDelta: GraphDelta
+  readAllEdgeIds: () => Iterable<EdgeId>
+}): RenderScopeInput => {
+  const touched = input.graphDelta.order
+    ? new Set(input.readAllEdgeIds())
+    : new Set(idDelta.touched(input.graphDelta.entities.edges))
+
+  return {
+    reset: input.reset,
+    statics: touched,
+    labels: touched,
+    active: touched,
+    overlay: input.graphDelta.order || touched.size > 0
+  }
+}
+
+export const readUiRenderPlanScope = (input: {
+  reset?: boolean
+  input: Input
+  previous: Snapshot
+}): RenderScopeInput => {
+  const active = new Set<EdgeId>()
+  const labels = new Set<EdgeId>()
+  let overlay = false
+
+  if (input.input.delta.ui.selection) {
+    appendIds(active, collectSelectedEdgeIds(input.previous))
+    appendIds(active, input.input.interaction.selection.edgeIds)
+    appendIds(labels, collectSelectedEdgeIds(input.previous))
+    appendIds(labels, input.input.interaction.selection.edgeIds)
+    overlay = true
+  }
+
+  if (input.input.delta.ui.hover) {
+    const previousHovered = readHoveredEdgeId(input.previous.ui.chrome.hover)
+    const nextHovered = readHoveredEdgeId(input.input.interaction.hover)
+
+    if (previousHovered) {
+      active.add(previousHovered)
+    }
+    if (nextHovered) {
+      active.add(nextHovered)
+    }
+  }
+
+  if (input.input.delta.ui.edit) {
+    const previousEditing = readEditingEdgeId(input.previous.ui.chrome.edit)
+    const nextEditing = readEditingEdgeId(input.input.session.edit)
+
+    if (previousEditing) {
+      active.add(previousEditing)
+      labels.add(previousEditing)
+    }
+    if (nextEditing) {
+      active.add(nextEditing)
+      labels.add(nextEditing)
+    }
+
+    overlay = true
+  }
+
+  if (input.input.delta.ui.tool || input.input.delta.ui.overlay) {
+    overlay = true
+  }
+  if (idDelta.hasAny(input.input.delta.graph.edges.preview)) {
+    overlay = true
+  }
+
+  return {
+    reset: input.reset,
+    statics: new Set<EdgeId>(),
+    labels,
+    active,
+    overlay
   }
 }
 

@@ -237,7 +237,8 @@ describe('graph delta patching', () => {
 
     expect(result.trace.phases.map((phase) => phase.name)).toEqual([
       'graph',
-      'spatial'
+      'spatial',
+      'render'
     ])
     expect(runtime.working().delta.spatial.order).toBe(true)
     expect(runtime.working().delta.spatial.records.added.size).toBe(0)

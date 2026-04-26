@@ -11,6 +11,13 @@ import type { Edge, EdgeId, GroupId, MindmapId, Node, NodeId, Point, Rect } from
 import type {
   Change,
   ChromeView,
+  EdgeActiveView,
+  EdgeLabelKey,
+  EdgeRenderLabelView,
+  EdgeMaskView,
+  EdgeOverlayView,
+  EdgeStaticId,
+  EdgeStaticView,
   EdgeUiView,
   EdgeView as RuntimeEdgeView,
   GroupView,
@@ -22,11 +29,6 @@ import type {
   Snapshot
 } from '@whiteboard/editor-scene'
 import type { EditorSceneController } from '@whiteboard/editor/projection/controller'
-import type { HoverStore } from '@whiteboard/editor/input/hover/store'
-import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
-import {
-  createEdgeRenderRuntime
-} from '@whiteboard/editor/scene/edgeRender'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorSessionState } from '@whiteboard/editor/types/editor'
 import {
@@ -67,6 +69,15 @@ type SceneProjectionStores = {
   nodeGraph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
   edgeGraphIds: store.ReadStore<readonly EdgeId[]>
   edgeGraph: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
+  edgeRenderStaticsIds: store.ReadStore<readonly EdgeStaticId[]>
+  edgeRenderStatics: store.KeyedReadStore<EdgeStaticId, EdgeStaticView | undefined>
+  edgeRenderActiveIds: store.ReadStore<readonly EdgeId[]>
+  edgeRenderActive: store.KeyedReadStore<EdgeId, EdgeActiveView | undefined>
+  edgeRenderLabelsIds: store.ReadStore<readonly EdgeLabelKey[]>
+  edgeRenderLabels: store.KeyedReadStore<EdgeLabelKey, EdgeRenderLabelView | undefined>
+  edgeRenderMasksIds: store.ReadStore<readonly EdgeId[]>
+  edgeRenderMasks: store.KeyedReadStore<EdgeId, EdgeMaskView | undefined>
+  edgeRenderOverlay: store.ReadStore<EdgeOverlayView>
   mindmap: store.KeyedReadStore<MindmapId, MindmapView | undefined>
   group: store.KeyedReadStore<GroupId, GroupView | undefined>
   nodeUi: store.KeyedReadStore<NodeId, NodeUiView | undefined>
@@ -88,6 +99,13 @@ export type EditorSceneRuntime = {
     visible: (
       options?: Parameters<EditorGraphQuery['spatial']['rect']>[1]
     ) => ReturnType<EditorGraphQuery['spatial']['rect']>
+    hit: {
+      edge: (input: {
+        point: Point
+        threshold?: number
+        excludeIds?: readonly EdgeId[]
+      }) => EdgeId | undefined
+    }
   }
   pick: ReturnType<typeof createScenePick>
   snap: {
@@ -137,15 +155,25 @@ export type EditorSceneRuntime = {
     related: GraphEdgeRead['related']
     idsInRect: GraphEdgeRead['idsInRect']
     connectCandidates: GraphEdgeRead['connectCandidates']
-    render: ReturnType<typeof createEdgeRenderRuntime>['render']
-    hit: {
-      pick: (input: {
-        point: Point
-        threshold?: number
-        excludeIds?: readonly EdgeId[]
-      }) => EdgeId | undefined
+    render: {
+      statics: {
+        ids: SceneProjectionStores['edgeRenderStaticsIds']
+        byId: SceneProjectionStores['edgeRenderStatics']
+      }
+      active: {
+        ids: SceneProjectionStores['edgeRenderActiveIds']
+        byId: SceneProjectionStores['edgeRenderActive']
+      }
+      labels: {
+        ids: SceneProjectionStores['edgeRenderLabelsIds']
+        byId: SceneProjectionStores['edgeRenderLabels']
+      }
+      masks: {
+        ids: SceneProjectionStores['edgeRenderMasksIds']
+        byId: SceneProjectionStores['edgeRenderMasks']
+      }
+      overlay: SceneProjectionStores['edgeRenderOverlay']
     }
-    interaction: ReturnType<typeof createEdgeRenderRuntime>['interaction']
   }
   nodes: {
     get: GraphNodeRead['get']
@@ -212,6 +240,26 @@ const projectionStoreSpec = {
       read: snapshot => snapshot.graph.edges,
       delta: change => change.graph.edges
     }),
+    edgeRenderStatics: family<Snapshot, Change, EdgeStaticId, EdgeStaticView>({
+      read: snapshot => snapshot.render.edge.statics,
+      delta: change => change.render.edge.statics
+    }),
+    edgeRenderActive: family<Snapshot, Change, EdgeId, EdgeActiveView>({
+      read: snapshot => snapshot.render.edge.active,
+      delta: change => change.render.edge.active
+    }),
+    edgeRenderLabels: family<Snapshot, Change, EdgeLabelKey, EdgeRenderLabelView>({
+      read: snapshot => snapshot.render.edge.labels,
+      delta: change => change.render.edge.labels
+    }),
+    edgeRenderMasks: family<Snapshot, Change, EdgeId, EdgeMaskView>({
+      read: snapshot => snapshot.render.edge.masks,
+      delta: change => change.render.edge.masks
+    }),
+    edgeRenderOverlay: value<Snapshot, Change, EdgeOverlayView>({
+      read: snapshot => snapshot.render.edge.overlay,
+      changed: change => change.render.edge.overlay.changed
+    }),
     mindmap: family<Snapshot, Change, MindmapId, MindmapView>({
       read: snapshot => snapshot.graph.owners.mindmaps,
       delta: change => change.graph.owners.mindmaps
@@ -249,6 +297,15 @@ const createProjectionStore = (
       nodeGraph: projection.read.nodeGraph.byId,
       edgeGraphIds: projection.read.edgeGraph.ids,
       edgeGraph: projection.read.edgeGraph.byId,
+      edgeRenderStaticsIds: projection.read.edgeRenderStatics.ids,
+      edgeRenderStatics: projection.read.edgeRenderStatics.byId,
+      edgeRenderActiveIds: projection.read.edgeRenderActive.ids,
+      edgeRenderActive: projection.read.edgeRenderActive.byId,
+      edgeRenderLabelsIds: projection.read.edgeRenderLabels.ids,
+      edgeRenderLabels: projection.read.edgeRenderLabels.byId,
+      edgeRenderMasksIds: projection.read.edgeRenderMasks.ids,
+      edgeRenderMasks: projection.read.edgeRenderMasks.byId,
+      edgeRenderOverlay: projection.read.edgeRenderOverlay,
       mindmap: projection.read.mindmap.byId,
       group: projection.read.group.byId,
       nodeUi: projection.read.nodeUi.byId,
@@ -297,16 +354,12 @@ const collectPresentValues = <TId extends string, TValue>(
 export const createSceneSource = ({
   controller,
   state,
-  hover,
-  edgeGuide,
   nodeType,
   visibleRect,
   readZoom
 }: {
   controller: Pick<EditorSceneController, 'query' | 'current' | 'subscribe'>
   state: EditorSessionState
-  hover: Pick<HoverStore, 'get' | 'subscribe'>
-  edgeGuide: store.ReadStore<EdgeGuide>
   nodeType: NodeTypeSupport
   visibleRect: () => Rect
   readZoom: () => number
@@ -370,7 +423,18 @@ export const createSceneSource = ({
 
   const queryApi: EditorSceneRuntime['query'] = {
     rect: spatial.rect,
-    visible
+    visible,
+    hit: {
+      edge: ({
+        point,
+        threshold,
+        excludeIds
+      }) => query.hit.edge({
+        point,
+        threshold: threshold ?? (8 / Math.max(readZoom(), 0.0001)),
+        excludeIds
+      })
+    }
   }
   const pick = createScenePick({
     readZoom,
@@ -386,41 +450,6 @@ export const createSceneSource = ({
     },
     mindmap: sources.mindmap
   })
-  const edgeRender = createEdgeRenderRuntime({
-    edge: {
-      ids: edge.ids,
-      view: edge.view,
-      detail: edge.detail,
-      model: edge.model,
-      capability: edge.capability
-    },
-    selection: state.selection,
-    edit: state.edit,
-    tool: state.tool,
-    interaction: state.interaction,
-    hover,
-    edgeGuide
-  })
-  const edgeHit: EditorSceneRuntime['edge']['hit'] = {
-    pick: ({
-      point,
-      threshold,
-      excludeIds
-    }) => {
-      const result = pick.resolve({
-        point,
-        radius: threshold ?? (8 / Math.max(readZoom(), 0.0001)),
-        kinds: ['edge']
-      })
-      if (result.target?.kind !== 'edge') {
-        return undefined
-      }
-      if (excludeIds?.includes(result.target.id)) {
-        return undefined
-      }
-      return result.target.id
-    }
-  }
   const scope = createSceneScope({
     spatialRect: spatial.rect,
     relatedEdges: query.relatedEdges,
@@ -469,9 +498,25 @@ export const createSceneSource = ({
       related: edge.related,
       idsInRect: edge.idsInRect,
       connectCandidates: edge.connectCandidates,
-      render: edgeRender.render,
-      hit: edgeHit,
-      interaction: edgeRender.interaction
+      render: {
+        statics: {
+          ids: sources.edgeRenderStaticsIds,
+          byId: sources.edgeRenderStatics
+        },
+        active: {
+          ids: sources.edgeRenderActiveIds,
+          byId: sources.edgeRenderActive
+        },
+        labels: {
+          ids: sources.edgeRenderLabelsIds,
+          byId: sources.edgeRenderLabels
+        },
+        masks: {
+          ids: sources.edgeRenderMasksIds,
+          byId: sources.edgeRenderMasks
+        },
+        overlay: sources.edgeRenderOverlay
+      }
     },
     nodes: {
       get: node.get,

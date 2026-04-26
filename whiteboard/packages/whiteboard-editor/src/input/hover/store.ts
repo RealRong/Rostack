@@ -10,6 +10,7 @@ import {
   isEdgeGuideEqual
 } from '@whiteboard/editor/session/preview/edge'
 import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
+import type { EditorPick } from '@whiteboard/editor/types/pick'
 
 export type HoverTarget =
   | {
@@ -48,7 +49,7 @@ export type HoverStore = Pick<coreStore.ReadStore<HoverState>, 'get' | 'subscrib
 
 const EMPTY_HOVER_STATE: HoverState = {}
 
-const isHoverTargetEqual = (
+export const isHoverTargetEqual = (
   left: HoverTarget | undefined,
   right: HoverTarget | undefined
 ): boolean => {
@@ -70,6 +71,39 @@ const isHoverTargetEqual = (
       return right.kind === 'group' && left.groupId === right.groupId
     case 'selection-box':
       return right.kind === 'selection-box'
+  }
+}
+
+export const toHoverTargetFromPick = (
+  pick: EditorPick
+): HoverTarget | undefined => {
+  switch (pick.kind) {
+    case 'background':
+      return undefined
+    case 'selection-box':
+      return {
+        kind: 'selection-box'
+      }
+    case 'node':
+      return {
+        kind: 'node',
+        nodeId: pick.id
+      }
+    case 'edge':
+      return {
+        kind: 'edge',
+        edgeId: pick.id
+      }
+    case 'group':
+      return {
+        kind: 'group',
+        groupId: pick.id
+      }
+    case 'mindmap':
+      return {
+        kind: 'mindmap',
+        mindmapId: pick.treeId
+      }
   }
 }
 

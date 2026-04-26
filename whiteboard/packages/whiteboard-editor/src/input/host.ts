@@ -13,10 +13,10 @@ import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
-import type {
-  HoverTarget
+import {
+  isHoverTargetEqual,
+  toHoverTargetFromPick
 } from '@whiteboard/editor/input/hover/store'
-import type { EditorPick } from '@whiteboard/editor/types/pick'
 
 const readSelectionIntent = (
   selection: EditorSessionState['selection'],
@@ -33,64 +33,6 @@ const readSelectionIntent = (
         screen
       }
     : null
-}
-
-const isHoverTargetEqual = (
-  left: HoverTarget | undefined,
-  right: HoverTarget | undefined
-): boolean => {
-  if (left === right) {
-    return true
-  }
-  if (!left || !right || left.kind !== right.kind) {
-    return false
-  }
-
-  switch (left.kind) {
-    case 'node':
-      return right.kind === 'node' && left.nodeId === right.nodeId
-    case 'edge':
-      return right.kind === 'edge' && left.edgeId === right.edgeId
-    case 'mindmap':
-      return right.kind === 'mindmap' && left.mindmapId === right.mindmapId
-    case 'group':
-      return right.kind === 'group' && left.groupId === right.groupId
-    case 'selection-box':
-      return right.kind === 'selection-box'
-  }
-}
-
-const readHoverTarget = (
-  pick: EditorPick
-): HoverTarget | undefined => {
-  switch (pick.kind) {
-    case 'background':
-      return undefined
-    case 'selection-box':
-      return {
-        kind: 'selection-box'
-      }
-    case 'node':
-      return {
-        kind: 'node',
-        nodeId: pick.id
-      }
-    case 'edge':
-      return {
-        kind: 'edge',
-        edgeId: pick.id
-      }
-    case 'group':
-      return {
-        kind: 'group',
-        groupId: pick.id
-      }
-    case 'mindmap':
-      return {
-        kind: 'mindmap',
-        mindmapId: pick.treeId
-      }
-  }
 }
 
 export const createEditorInputHost = ({
@@ -220,7 +162,7 @@ export const createEditorInputHost = ({
         return true
       }
 
-      const target = readHoverTarget(input.pick)
+      const target = toHoverTargetFromPick(input.pick)
       session.interaction.write.setHover((current) => (
         isHoverTargetEqual(current.target, target)
           ? current

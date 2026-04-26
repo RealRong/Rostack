@@ -311,8 +311,8 @@ const createActions = (edge = createEdge()) => {
       session
     }),
     write,
-    registry: {
-      get: vi.fn(() => undefined)
+    nodeType: {
+      edit: vi.fn(() => undefined)
     } as never,
     defaults: {
       frame: vi.fn()

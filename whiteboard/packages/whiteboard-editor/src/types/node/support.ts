@@ -7,6 +7,10 @@ import type {
   NodeType
 } from '@whiteboard/core/types'
 import type {
+  EditCapability,
+  EditField
+} from '@whiteboard/editor/session/edit'
+import type {
   ControlId,
   NodeDefinition,
   NodeMeta,
@@ -87,6 +91,7 @@ export const createNodeTypeSupport = (
 ): NodeTypeSupport => {
   const metaCache = new Map<NodeType, NodeMeta>()
   const capabilityCache = new Map<NodeType, NodeTypeCapability>()
+  const editCache = new Map<string, EditCapability | undefined>()
   const styleSupportCache = new Map<string, boolean>()
 
   const readDefinition = (
@@ -117,9 +122,21 @@ export const createNodeTypeSupport = (
     return next
   }
 
+  const edit: NodeTypeRead['edit'] = (type, field) => {
+    const cacheKey = `${type}\u0001${field}`
+    if (editCache.has(cacheKey)) {
+      return editCache.get(cacheKey)
+    }
+
+    const next = readDefinition(type)?.edit?.fields?.[field]
+    editCache.set(cacheKey, next)
+    return next
+  }
+
   return {
     meta,
     capability,
+    edit,
     hasControl: (node, control) => meta(node.type).controls.includes(control),
     supportsStyle: (node: Pick<Node, 'type' | 'style'>, path, kind) => {
       const cacheKey = `${node.type}\u0001${mutationPath.toString(path)}\u0001${kind}`

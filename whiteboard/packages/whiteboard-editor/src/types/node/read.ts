@@ -5,6 +5,10 @@ import type {
   NodeType
 } from '@whiteboard/core/types'
 import type {
+  EditCapability,
+  EditField
+} from '@whiteboard/editor/session/edit'
+import type {
   ControlId,
   NodeMeta
 } from '@whiteboard/editor/types/node/registry'
@@ -22,6 +26,7 @@ export type NodeTypeCapability = {
 export type NodeTypeRead = {
   meta: (type: NodeType) => NodeMeta
   capability: (type: NodeType) => NodeTypeCapability
+  edit: (type: NodeType, field: EditField) => EditCapability | undefined
 }
 
 export type NodeTypeSupport = NodeTypeRead & {

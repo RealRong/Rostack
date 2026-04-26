@@ -1,5 +1,6 @@
 import { scheduler, store } from '@shared/core'
 import { edge as edgeApi } from '@whiteboard/core/edge'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   DrawPreview as GraphDrawPreview,
   DragState,
@@ -25,6 +26,7 @@ import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type {
   HoverState as EditorHoverState
 } from '@whiteboard/editor/input/hover/store'
+import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode'
 import type {
   EditorInputPreviewState,
   TextPreviewPatch
@@ -43,12 +45,7 @@ const EMPTY_NODE_DRAFTS = new Map<string, NodeDraft>()
 
 const readInteractionEditingEdge = (
   mode: ReturnType<EditorSession['interaction']['read']['mode']['get']>
-): boolean => (
-  mode === 'edge-drag'
-  || mode === 'edge-label'
-  || mode === 'edge-connect'
-  || mode === 'edge-route'
-)
+): boolean => isEdgeInteractionMode(mode)
 
 const readInteractionHover = (
   hover: EditorHoverState
@@ -90,18 +87,6 @@ export const createTouchedIdDelta = <TId extends string>(
   updated: new Set(ids),
   removed: new Set()
 })
-
-const readMindmapId = (
-  snapshot: DocumentSnapshot,
-  value: string
-): string | undefined => {
-  if (snapshot.document.mindmaps[value]) {
-    return value
-  }
-
-  const owner = snapshot.document.nodes[value]?.owner
-  return owner?.kind === 'mindmap' ? owner.id : undefined
-}
 
 const mergeNodePreviewPatch = (
   current: NodePreview | undefined,
@@ -189,10 +174,10 @@ const readMindmapPreview = (
   }
 
   const rootMoveMindmapId = preview.rootMove
-    ? readMindmapId(snapshot, preview.rootMove.treeId)
+    ? mindmapApi.tree.resolveId(snapshot.document, preview.rootMove.treeId)
     : undefined
   const subtreeMoveMindmapId = preview.subtreeMove
-    ? readMindmapId(snapshot, preview.subtreeMove.treeId)
+    ? mindmapApi.tree.resolveId(snapshot.document, preview.subtreeMove.treeId)
     : undefined
 
   return {
@@ -211,7 +196,7 @@ const readMindmapPreview = (
         }
       : undefined,
     enter: preview.enter?.flatMap((entry) => {
-      const mindmapId = readMindmapId(snapshot, entry.treeId)
+      const mindmapId = mindmapApi.tree.resolveId(snapshot.document, entry.treeId)
       return mindmapId
         ? [{
             mindmapId,
@@ -323,7 +308,7 @@ const readDragState = (
         return EMPTY_DRAG_STATE
       }
 
-      const mindmapId = readMindmapId(snapshot, subtreeMove.treeId)
+      const mindmapId = mindmapApi.tree.resolveId(snapshot.document, subtreeMove.treeId)
 
       return mindmapId
         ? {
@@ -443,21 +428,21 @@ export const readPreviewMindmapIds = (
   const ids = new Set<string>()
 
   const rootMoveMindmapId = preview?.rootMove
-    ? readMindmapId(snapshot, preview.rootMove.treeId)
+    ? mindmapApi.tree.resolveId(snapshot.document, preview.rootMove.treeId)
     : undefined
   if (rootMoveMindmapId) {
     ids.add(rootMoveMindmapId)
   }
 
   const subtreeMoveMindmapId = preview?.subtreeMove
-    ? readMindmapId(snapshot, preview.subtreeMove.treeId)
+    ? mindmapApi.tree.resolveId(snapshot.document, preview.subtreeMove.treeId)
     : undefined
   if (subtreeMoveMindmapId) {
     ids.add(subtreeMoveMindmapId)
   }
 
   preview?.enter?.forEach((entry) => {
-    const mindmapId = readMindmapId(snapshot, entry.treeId)
+    const mindmapId = mindmapApi.tree.resolveId(snapshot.document, entry.treeId)
     if (mindmapId) {
       ids.add(mindmapId)
     }
@@ -479,7 +464,7 @@ export const readActiveMindmapTickIds = (input: {
       return
     }
 
-    const mindmapId = readMindmapId(input.snapshot, entry.treeId)
+    const mindmapId = mindmapApi.tree.resolveId(input.snapshot.document, entry.treeId)
     if (mindmapId) {
       ids.add(mindmapId)
     }

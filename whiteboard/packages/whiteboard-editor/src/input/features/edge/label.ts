@@ -20,7 +20,10 @@ import {
   startEdgeLabelEdit
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { resolveEdgeCapability } from '@whiteboard/editor/session/edge'
+import {
+  readEdgeCapability,
+  readEdgeModel
+} from '@whiteboard/editor/edge/read'
 
 type EdgeLabelDragDraft = {
   t: number
@@ -51,28 +54,10 @@ const isSingleSelectedEdge = (
   )
 }
 
-const readEdgeModel = (
-  projection: Pick<EditorHostDeps, 'projection'>['projection'],
-  edgeId: EdgeId
-) => projection.query.edge.get(edgeId)?.base.edge
-
-const readEdgeGeometry = (
-  projection: Pick<EditorHostDeps, 'projection'>['projection'],
-  edgeId: EdgeId
-) => projection.host.geometry.edge(edgeId)
-
 const canEditEdgeLabel = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
   edgeId: EdgeId
-) => {
-  const edge = readEdgeModel(projection, edgeId)
-  return edge
-    ? resolveEdgeCapability({
-        edge,
-        readNodeLocked: (nodeId) => Boolean(projection.query.node.get(nodeId)?.base.node.locked)
-      }).editLabel
-    : false
-}
+) => readEdgeCapability(projection.query, edgeId)?.editLabel ?? false
 
 const readEdgeLabelMetrics = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
@@ -210,8 +195,8 @@ const createEdgeLabelDragState = (
     pointerId: number
   }
 ): EdgeLabelDragState | null => {
-  const edge = readEdgeModel(ctx.projection, input.edgeId)
-  const view = readEdgeGeometry(ctx.projection, input.edgeId)
+  const edge = readEdgeModel(ctx.projection.query, input.edgeId)
+  const view = ctx.projection.query.edge.get(input.edgeId)
   const ref = {
     edgeId: input.edgeId,
     labelId: input.labelId
@@ -219,6 +204,7 @@ const createEdgeLabelDragState = (
   if (
     !edge
     || !view
+    || !view.route.svgPath
     || !canEditEdgeLabel(ctx.projection, input.edgeId)
   ) {
     return null
@@ -234,7 +220,11 @@ const createEdgeLabelDragState = (
     edgeId: input.edgeId,
     labelId: input.labelId,
     pointerId: input.pointerId,
-    path: view.path,
+    path: {
+      points: [...view.route.points],
+      segments: [...view.route.segments],
+      svgPath: view.route.svgPath
+    },
     textMode: edge.textMode,
     labelSize
   }
@@ -309,7 +299,7 @@ export const startEdgeLabelPress = (
     return 'handled'
   }
 
-  const edge = readEdgeModel(ctx.projection, pointer.pick.id)
+  const edge = readEdgeModel(ctx.projection.query, pointer.pick.id)
   if (!edge || !canEditEdgeLabel(ctx.projection, pointer.pick.id)) {
     return 'handled'
   }

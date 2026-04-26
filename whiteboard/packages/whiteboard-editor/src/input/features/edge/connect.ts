@@ -27,11 +27,14 @@ import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { resolveEdgeCapability } from '@whiteboard/editor/session/edge'
-import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
+import {
+  readConnectableNode,
+  readEdgeCapability,
+  readEdgeModel
+} from '@whiteboard/editor/edge/read'
 
 type EdgeConnectNodeRead = Pick<EditorHostDeps, 'projection' | 'nodeType'>
-type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection']['host']['geometry'], 'node'>
+type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection']['query'], 'node'>
 type EdgeConnectEdgeRead = Pick<EditorHostDeps, 'projection'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
@@ -62,7 +65,7 @@ type EdgeConnectGestureInput = {
 }
 
 type ConnectNodeEntry = NonNullable<
-  ReturnType<EdgeConnectPreviewGeometryRead['node']>
+  ReturnType<EdgeConnectPreviewGeometryRead['node']['get']>
 >
 
 const EMPTY_MODIFIERS: ModifierKeys = {
@@ -94,24 +97,6 @@ const mergeEdgePatch = (
     ...base,
     ...patch
   }
-}
-
-const readConnectNode = (
-  node: EdgeConnectNodeRead,
-  nodeId: NodeId
-): ConnectNodeEntry | undefined => {
-  const entry = node.projection.host.geometry.node(nodeId)
-  const currentNode = entry?.node
-  if (
-    !entry
-    || !currentNode
-    || currentNode.locked
-    || !resolveNodeEditorCapability(currentNode, node.nodeType).connect
-  ) {
-    return undefined
-  }
-
-  return entry
 }
 
 const isNodeHandleConnectPick = (
@@ -174,7 +159,11 @@ const resolveNodeHandleStart = (input: {
     return undefined
   }
 
-  const entry = readConnectNode(input.node, pick.id)
+  const entry = readConnectableNode(
+    input.node.projection.query,
+    input.node.nodeType,
+    pick.id
+  ) as ConnectNodeEntry | undefined
   if (!entry) {
     return undefined
   }
@@ -191,13 +180,13 @@ const resolveNodeHandleStart = (input: {
     anchor,
     point: nodeApi.outline.anchor(
       toSpatialNode({
-        node: entry.node,
-        rect: entry.rect,
-        rotation: entry.rotation
+        node: entry.base.node,
+        rect: entry.geometry.rect,
+        rotation: entry.geometry.rotation
       }),
-      entry.rect,
+      entry.geometry.rect,
       anchor,
-      entry.rotation
+      entry.geometry.rotation
     )
   })
 }
@@ -217,19 +206,23 @@ const resolveNodeBodyStart = (input: {
     return undefined
   }
 
-  const entry = readConnectNode(input.node, pick.id)
+  const entry = readConnectableNode(
+    input.node.projection.query,
+    input.node.nodeType,
+    pick.id
+  ) as ConnectNodeEntry | undefined
   if (!entry) {
     return undefined
   }
 
   const resolved = edgeApi.anchor.resolveFromPoint({
     node: toSpatialNode({
-      node: entry.node,
-      rect: entry.rect,
-      rotation: entry.rotation
+      node: entry.base.node,
+      rect: entry.geometry.rect,
+      rotation: entry.geometry.rotation
     }),
-    rect: entry.rect,
-    rotation: entry.rotation,
+    rect: entry.geometry.rect,
+    rotation: entry.geometry.rotation,
     pointWorld: input.pointer.world,
     zoom: input.zoom,
     config: input.config
@@ -261,16 +254,17 @@ const resolveReconnectStart = (input: {
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const edge = input.edge.projection.query.edge.get(input.edgeId)?.base.edge
-  const resolved = input.edge.projection.host.geometry.edge(input.edgeId)
-  if (!edge || !resolved) {
+  const edge = readEdgeModel(input.edge.projection.query, input.edgeId)
+  const resolved = input.edge.projection.query.edge.get(input.edgeId)
+  const resolvedEnd = resolved?.route.ends?.[input.end]
+  if (!edge || !resolvedEnd) {
     return undefined
   }
 
-  const capability = resolveEdgeCapability({
-    edge,
-    readNodeLocked: (nodeId) => Boolean(input.edge.projection.query.node.get(nodeId)?.base.node.locked)
-  })
+  const capability = readEdgeCapability(
+    input.edge.projection.query,
+    input.edgeId
+  )
   if (
     !capability
     || (
@@ -287,8 +281,8 @@ const resolveReconnectStart = (input: {
     end: input.end,
     from: edgeApi.connect.resolveReconnectDraftEnd({
       end: edge[input.end],
-      point: resolved.ends[input.end].point,
-      anchor: resolved.ends[input.end].anchor,
+      point: resolvedEnd.point,
+      anchor: resolvedEnd.anchor,
       anchorOffset: edgeApi.connect.defaultAnchorOffset
     })
   })
@@ -377,14 +371,14 @@ const resolveCreatePreviewPath = (
   const view = resolveEdgeViewFromNodeGeometry({
     edge,
     readNodeGeometry: (nodeId) => {
-      const current = geometry.node(nodeId)
+      const current = geometry.node.get(nodeId)
       return current
         ? {
-            node: current.node,
-            rect: current.rect,
-            bounds: current.bounds,
-            outline: current.outline.outline,
-            rotation: current.rotation
+            node: current.base.node,
+            rect: current.geometry.rect,
+            bounds: current.geometry.bounds,
+            outline: current.geometry.outline.outline,
+            rotation: current.geometry.rotation
           }
         : undefined
     }
@@ -513,14 +507,14 @@ const readReconnectFixedPoint = (
     return undefined
   }
 
-  const resolved = ctx.projection.host.geometry.edge(state.edgeId)
+  const resolved = ctx.projection.query.edge.get(state.edgeId)
   if (!resolved) {
     return undefined
   }
 
   return state.end === 'source'
-    ? resolved.ends.target.point
-    : resolved.ends.source.point
+    ? resolved.route.ends?.target.point
+    : resolved.route.ends?.source.point
 }
 
 const readReconnectDraftPatch = ({
@@ -663,7 +657,7 @@ export const createEdgeConnectSession = (
       allowLatch
     })
     const result = stepEdgeConnect({
-      geometry: ctx.projection.host.geometry,
+      geometry: ctx.projection.query,
       state,
       world: readReconnectWorld({
         state,

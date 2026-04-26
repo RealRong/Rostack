@@ -40,7 +40,7 @@ import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 const resolveNodeCommitValue = (input: {
@@ -87,27 +87,17 @@ const createSelectionSession = (
   }
 })
 
-const resolveNodeCapability = ({
-  registry,
-  nodeType,
-  field
-}: {
-  registry: Pick<NodeRegistry, 'get'>
-  nodeType: Parameters<Pick<NodeRegistry, 'get'>['get']>[0]
-  field: EditField
-}) => registry.get(nodeType)?.edit?.fields?.[field]
-
 const startNodeEdit = ({
   session,
   document,
-  registry,
+  nodeType,
   nodeId,
   field,
   caret
 }: {
   session: Pick<EditorSession, 'mutate'>
   document: Pick<EditorDocumentSource, 'node'>
-  registry: Pick<NodeRegistry, 'get'>
+  nodeType: Pick<NodeTypeSupport, 'edit'>
   nodeId: NodeId
   field: EditField
   caret?: EditorEditActions['startNode'] extends (
@@ -125,11 +115,7 @@ const startNodeEdit = ({
     return
   }
 
-  const capabilities = resolveNodeCapability({
-    registry,
-    nodeType: committed.node.type,
-    field
-  })
+  const capabilities = nodeType.edit(committed.node.type, field)
   if (!capabilities) {
     return
   }
@@ -190,13 +176,13 @@ const startEdgeLabelEdit = ({
 const applyMindmapFocus = ({
   session,
   document,
-  registry,
+  nodeType,
   nodeId,
   behavior
 }: {
   session: Pick<EditorSession, 'mutate'>
   document: Pick<EditorDocumentSource, 'node'>
-  registry: Pick<NodeRegistry, 'get'>
+  nodeType: Pick<NodeTypeSupport, 'edit'>
   nodeId: MindmapNodeId
   behavior: MindmapInsertBehavior | undefined
 }) => {
@@ -212,7 +198,7 @@ const applyMindmapFocus = ({
     startNodeEdit({
       session,
       document,
-      registry,
+      nodeType,
       nodeId,
       field: 'text'
     })
@@ -222,13 +208,13 @@ const applyMindmapFocus = ({
 const applyMindmapRootFocus = ({
   session,
   document,
-  registry,
+  nodeType,
   nodeId,
   focus
 }: {
   session: Pick<EditorSession, 'mutate'>
   document: Pick<EditorDocumentSource, 'node'>
-  registry: Pick<NodeRegistry, 'get'>
+  nodeType: Pick<NodeTypeSupport, 'edit'>
   nodeId: MindmapNodeId
   focus: 'edit-root' | 'select-root' | 'none' | undefined
 }) => {
@@ -243,7 +229,7 @@ const applyMindmapRootFocus = ({
     startNodeEdit({
       session,
       document,
-      registry,
+      nodeType,
       nodeId,
       field: 'text'
     })
@@ -286,36 +272,25 @@ const toEdgeUpdateInput = (
 
 const readMindmapIdForNodes = (
   input: {
-    document: Pick<EditorDocumentSource, 'node'>
     graph: Pick<EditorSceneRuntime, 'query'>
     nodeIds: readonly NodeId[]
   }
 ): MindmapId | undefined => {
   const resolved = input.nodeIds.map((nodeId) => {
-    const projectedView = input.graph.query.node.get(nodeId)
-    const projectedNode = projectedView?.base.node
-    const committedNode = input.document.node.get(nodeId)?.node
-    const projectedOwner = projectedView?.base.owner
-    const committedOwner = committedNode?.owner
-    const legacyMindmapId = (() => {
-      const projectedId = (projectedNode as Record<string, unknown> | undefined)?.mindmapId
-      if (typeof projectedId === 'string') {
-        return projectedId
-      }
+    const resolvedId = input.graph.query.mindmap.resolve(nodeId)
+    if (resolvedId) {
+      return resolvedId
+    }
 
-      const committedId = (committedNode as Record<string, unknown> | undefined)?.mindmapId
-      return typeof committedId === 'string'
-        ? committedId
-        : undefined
-    })()
-    const structureId = input.graph.query.mindmap.resolve(nodeId)
+    const projectedNode = input.graph.query.node.get(nodeId)?.base.node as Record<string, unknown> | undefined
+    if (typeof projectedNode?.mindmapId === 'string') {
+      return projectedNode.mindmapId as MindmapId
+    }
 
-    return projectedOwner?.kind === 'mindmap'
-      ? projectedOwner.id
-      : committedOwner?.kind === 'mindmap'
-        ? committedOwner.id
-        : legacyMindmapId
-          ?? structureId
+    const committedNode = input.graph.query.document.node(nodeId)?.node as Record<string, unknown> | undefined
+    return typeof committedNode?.mindmapId === 'string'
+      ? committedNode.mindmapId as MindmapId
+      : undefined
   })
 
   const ids = [...new Set(resolved.filter(Boolean))]
@@ -346,7 +321,7 @@ export type CreateEditorActionsApiDeps = {
   layout: EditorLayout
   tool: ToolService
   write: EditorWrite
-  registry: NodeRegistry
+  nodeType: NodeTypeSupport
   defaults: EditorDefaults['templates']
 }
 
@@ -359,7 +334,7 @@ export const createEditorActionsApi = ({
   layout,
   tool,
   write,
-  registry,
+  nodeType,
   defaults
 }: CreateEditorActionsApiDeps): EditorActions => {
   const selectionSession = createSelectionSession(session)
@@ -398,7 +373,7 @@ export const createEditorActionsApi = ({
       applyMindmapFocus({
         session,
         document,
-        registry,
+        nodeType,
         nodeId,
         behavior
       })
@@ -407,7 +382,7 @@ export const createEditorActionsApi = ({
       applyMindmapRootFocus({
         session,
         document,
-        registry,
+        nodeType,
         nodeId,
         focus
       })
@@ -465,7 +440,7 @@ export const createEditorActionsApi = ({
         startNodeEdit({
           session,
           document,
-          registry,
+          nodeType,
           nodeId,
           field,
           caret: options?.caret
@@ -515,11 +490,10 @@ export const createEditorActionsApi = ({
             return
           }
 
-          const capability = resolveNodeCapability({
-            registry,
-            nodeType: committed.node.type,
-            field: currentEdit.field
-          })
+          const capability = nodeType.edit(
+            committed.node.type,
+            currentEdit.field
+          )
           if (!capability) {
             session.mutate.edit.clear()
             return
@@ -832,7 +806,6 @@ export const createEditorActionsApi = ({
         }),
         topic: atomic((input) => {
           const mindmapId = readMindmapIdForNodes({
-            document,
             graph,
             nodeIds: input.nodeIds
           })

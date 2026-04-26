@@ -23,7 +23,7 @@ import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorSessionSource } from '@whiteboard/editor/types/editor'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
-import type { NodeRegistry, NodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type EditorHostDeps = {
@@ -36,7 +36,6 @@ export type EditorHostDeps = {
   layout: EditorLayout
   write: EditorWrite
   tool: ToolService
-  registry: NodeRegistry
   nodeType: NodeTypeSupport
   snap: SnapRuntime
 }
@@ -71,7 +70,6 @@ export const createEditorHost = ({
   layout,
   write,
   tool,
-  registry,
   nodeType
 }: Omit<EditorHostDeps, 'snap' | 'sessionRead'>): EditorInputHost => {
   const sessionRead = createSessionRead(session)
@@ -90,7 +88,6 @@ export const createEditorHost = ({
     layout,
     write,
     tool,
-    registry,
     nodeType,
     snap
   }

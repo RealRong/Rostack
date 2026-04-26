@@ -13,30 +13,30 @@ const createInteractionDeps = () => {
     ctx: {
       projection: {
         query: {
-          node: {
-            get: vi.fn(() => undefined)
-          }
-        },
-        host: {
-          geometry: {
-            edge: () => ({
-              ends: {
-                source: {
-                  end: {
-                    kind: 'point',
+          edge: {
+            get: () => ({
+              route: {
+                ends: {
+                  source: {
+                    end: {
+                      kind: 'point',
+                      point: { x: 0, y: 0 }
+                    },
                     point: { x: 0, y: 0 }
                   },
-                  point: { x: 0, y: 0 }
-                },
-                target: {
-                  end: {
-                    kind: 'point',
+                  target: {
+                    end: {
+                      kind: 'point',
+                      point: { x: 10, y: 0 }
+                    },
                     point: { x: 10, y: 0 }
-                  },
-                  point: { x: 10, y: 0 }
+                  }
                 }
               }
             })
+          },
+          node: {
+            get: vi.fn(() => undefined)
           }
         }
       },

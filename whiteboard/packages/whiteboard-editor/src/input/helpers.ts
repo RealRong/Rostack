@@ -12,7 +12,7 @@ import type {
   EditField
 } from '@whiteboard/editor/session/edit'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 export const applySelectionMutation = (
@@ -47,7 +47,7 @@ export const startNodeEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
     document: Pick<EditorDocumentSource, 'node'>
-    registry: Pick<NodeRegistry, 'get'>
+    nodeType: Pick<NodeTypeSupport, 'edit'>
   },
   nodeId: NodeId,
   field: EditField,
@@ -60,7 +60,7 @@ export const startNodeEdit = (
     return
   }
 
-  const capability = ctx.registry.get(committed.node.type)?.edit?.fields?.[field]
+  const capability = ctx.nodeType.edit(committed.node.type, field)
   if (!capability) {
     return
   }

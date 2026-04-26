@@ -697,6 +697,13 @@ export interface Query {
     }): readonly EdgeId[]
     connectCandidates(rect: Rect): readonly EdgeConnectCandidate[]
   }
+  selection: {
+    move(target: import('@whiteboard/core/selection').SelectionTarget): {
+      nodes: readonly Node[]
+      edges: readonly Edge[]
+    }
+    bounds(target: import('@whiteboard/core/selection').SelectionTarget): Rect | undefined
+  }
   mindmap: {
     get(id: MindmapId): MindmapView | undefined
     resolve(value: string): MindmapId | undefined

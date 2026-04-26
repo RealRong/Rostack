@@ -1,7 +1,6 @@
 import { store } from '@shared/core'
 import type { LocalHistoryApi, LocalHistoryState } from '@shared/mutation'
 import type { SliceExportResult } from '@whiteboard/core/document'
-import type { EdgeView as CoreEdgeView } from '@whiteboard/core/edge'
 import type { Guide } from '@whiteboard/core/node'
 import type {
   SelectionAffordance,
@@ -10,10 +9,8 @@ import type {
 } from '@whiteboard/core/selection'
 import type {
   Document,
-  Edge,
   EdgeId,
   MindmapId,
-  Node,
   NodeId,
   NodeModel,
   Point,
@@ -23,10 +20,8 @@ import type {
 import type {
   CommittedEdgeView,
   CommittedNodeView,
-  NodeRenderView,
   Query as EditorSceneQueryRuntime,
   RuntimeStores,
-  SceneItem,
   SpatialKind,
   SpatialQueryStats,
   SpatialRecord
@@ -192,23 +187,6 @@ export type ScenePickRuntime = {
   dispose: () => void
 }
 
-export type SceneGeometryCache = {
-  node: (nodeId: NodeId) => NodeRenderView | undefined
-  edge: (edgeId: EdgeId) => CoreEdgeView | undefined
-  order: (item: SceneItem | {
-    kind: SceneItem['kind']
-    id: string
-  }) => number
-}
-
-export type SceneScope = {
-  move: (target: SelectionTarget) => {
-    nodes: readonly Node[]
-    edges: readonly Edge[]
-  }
-  bounds: (target: SelectionTarget) => Rect | undefined
-}
-
 export type EditorDocumentSource = {
   get: () => Document
   bounds: () => Rect
@@ -235,8 +213,6 @@ export type EditorSceneSource = {
     visible: (
       options?: Parameters<EditorSceneQueryRuntime['spatial']['rect']>[1]
     ) => ReturnType<EditorSceneQueryRuntime['spatial']['rect']>
-    geometry: SceneGeometryCache
-    scope: SceneScope
   }
 }
 

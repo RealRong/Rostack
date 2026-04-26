@@ -659,7 +659,7 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'session' | 'registry' | 'sessionSource'>,
+  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'session' | 'nodeType' | 'sessionSource'>,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
@@ -685,7 +685,7 @@ const applySelectionTap = (
       startNodeEdit({
         session: ctx.session,
         document: ctx.document,
-        registry: ctx.registry
+        nodeType: ctx.nodeType
       }, tap.nodeId, field, {
         caret: {
           kind: 'point',
@@ -703,7 +703,7 @@ const applySelectionTap = (
       startNodeEdit({
         session: ctx.session,
         document: ctx.document,
-        registry: ctx.registry
+        nodeType: ctx.nodeType
       }, tap.nodeId, tap.field, {
         caret: {
           kind: 'point',
@@ -714,7 +714,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry' | 'sessionSource' | 'nodeType'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'sessionSource' | 'nodeType'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -749,7 +749,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry' | 'sessionSource' | 'nodeType'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'sessionSource' | 'nodeType'>,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.sessionRead.tool.get()
@@ -813,7 +813,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry' | 'sessionSource' | 'nodeType'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'sessionSource' | 'nodeType'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

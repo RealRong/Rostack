@@ -1,4 +1,5 @@
 import { store } from '@shared/core'
+import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode'
 import type { EditorInteractionState, EditorSessionState } from '@whiteboard/editor/types/editor'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 
@@ -24,11 +25,7 @@ export const createSessionState = (
           || mode === 'node-drag'
           || mode === 'mindmap-drag'
           || mode === 'node-transform',
-        editingEdge:
-          mode === 'edge-drag'
-          || mode === 'edge-label'
-          || mode === 'edge-connect'
-          || mode === 'edge-route',
+        editingEdge: isEdgeInteractionMode(mode),
         space: store.read(session.interaction.read.space)
       }
     },

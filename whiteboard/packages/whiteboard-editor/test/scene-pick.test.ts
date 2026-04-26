@@ -122,15 +122,15 @@ const createPickEditor = () => {
 describe('scene pick', () => {
   it('resolves edge targets from rect candidates and precise hit', () => {
     const editor = createPickEditor()
-    const geometry = editor.scene.host.geometry.edge('edge-1')
+    const geometry = editor.scene.query.edge.get('edge-1')
 
     expect(geometry).toBeDefined()
     if (!geometry) {
       return
     }
 
-    const point = geometry.path.points[
-      Math.floor(geometry.path.points.length / 2)
+    const point = geometry.route.points[
+      Math.floor(geometry.route.points.length / 2)
     ]!
     const rect = {
       x: point.x - 16,

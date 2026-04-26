@@ -1,17 +1,9 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { Edge, EdgeId, NodeId, Rect } from '@whiteboard/core/types'
+import type { Edge, EdgeId, Rect } from '@whiteboard/core/types'
 import type { EdgeHandle, ResolvedEdgeEnds } from '@whiteboard/core/types/edge'
 import { equal } from '@shared/core'
-
-export type EdgeCapability = {
-  move: boolean
-  reconnectSource: boolean
-  reconnectTarget: boolean
-  editRoute: boolean
-  editLabel: boolean
-}
 
 export type EdgeBox = {
   rect: Rect
@@ -47,13 +39,6 @@ export type SelectedEdgeChrome = {
   showEditHandles: boolean
   routePoints: readonly SelectedEdgeRoutePoint[]
 }
-
-const EDGE_CAPABILITY_BASE = {
-  reconnectSource: true,
-  reconnectTarget: true,
-  editRoute: true,
-  editLabel: true
-} as const
 
 const isSelectedEdgeRoutePointEqual = (
   left: SelectedEdgeRoutePoint,
@@ -186,27 +171,4 @@ export const readSelectedEdgeRoutePoints = ({
 
     return []
   })
-}
-
-export const resolveEdgeCapability = ({
-  edge,
-  readNodeLocked
-}: {
-  edge: Edge
-  readNodeLocked: (nodeId: NodeId) => boolean
-}): EdgeCapability => {
-  const locked = Boolean(edge.locked)
-  const relationLocked = [edge.source, edge.target].some((end) => (
-    edgeApi.guard.isNodeEnd(end) && readNodeLocked(end.nodeId)
-  ))
-  const canEdit = !locked
-
-  return {
-    ...EDGE_CAPABILITY_BASE,
-    reconnectSource: canEdit && !relationLocked,
-    reconnectTarget: canEdit && !relationLocked,
-    editRoute: canEdit,
-    editLabel: canEdit,
-    move: canEdit && edgeApi.guard.isPointEnd(edge.source) && edgeApi.guard.isPointEnd(edge.target)
-  }
 }

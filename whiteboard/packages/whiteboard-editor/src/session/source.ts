@@ -20,8 +20,10 @@ import {
 } from '@whiteboard/editor/session/projection/selection'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import {
+  readEdgeCapability
+} from '@whiteboard/editor/edge/read'
+import {
   isSelectedEdgeChromeEqual,
-  resolveEdgeCapability,
   readSelectedEdgeId,
   readSelectedEdgeRoutePoints
 } from '@whiteboard/editor/session/edge'
@@ -98,22 +100,6 @@ const projectWorldRect = (
   return geometryApi.rect.fromPoints(topLeft, bottomRight)
 }
 
-const readNodeLocked = ({
-  graph,
-  nodeId
-}: {
-  graph: Pick<EditorSceneRuntime, 'query'>
-  nodeId: string
-}) => Boolean(graph.query.node.get(nodeId)?.base.node.locked)
-
-const readNodeRect = ({
-  graph,
-  nodeId
-}: {
-  graph: Pick<EditorSceneRuntime, 'query'>
-  nodeId: string
-}) => graph.query.node.get(nodeId)?.geometry.rect
-
 export const createSessionSource = (
   {
     graph,
@@ -123,7 +109,7 @@ export const createSessionSource = (
     nodeType,
     defaults
   }: {
-    graph: Pick<EditorSceneRuntime, 'query' | 'stores' | 'host'>
+    graph: Pick<EditorSceneRuntime, 'query' | 'stores'>
     session: Pick<EditorSession, 'state' | 'interaction' | 'viewport' | 'preview'>
     state?: EditorSessionState
     history: LocalHistoryApi<IntentResult>
@@ -271,18 +257,18 @@ export const createSessionSource = (
 
       const current = graph.query.edge.get(selectedEdgeId)
       const currentEdge = current?.base.edge
-      const currentEnds = graph.host.geometry.edge(selectedEdgeId)?.ends
+      const currentEnds = current?.route.ends
       if (!current || !currentEdge || !currentEnds) {
         return undefined
       }
 
-      const currentCapability = resolveEdgeCapability({
-        edge: currentEdge,
-        readNodeLocked: (nodeId) => readNodeLocked({
-          graph,
-          nodeId
-        })
-      })
+      const currentCapability = readEdgeCapability(
+        graph.query,
+        selectedEdgeId
+      )
+      if (!currentCapability) {
+        return undefined
+      }
       const activeRouteIndex = store.read(graph.stores.graph.state.edge.byId, selectedEdgeId)?.activeRouteIndex
       const currentEdit = store.read(state.edit)
       const interaction = store.read(state.interaction)
@@ -324,14 +310,8 @@ export const createSessionSource = (
           structure,
           selection: store.read(state.selection),
           edit: store.read(state.edit),
-          readNodeLocked: (nodeId) => readNodeLocked({
-            graph,
-            nodeId
-          }),
-          readNodeRect: (nodeId) => readNodeRect({
-            graph,
-            nodeId
-          })
+          readNodeLocked: (nodeId) => Boolean(graph.query.node.get(nodeId)?.base.node.locked),
+          readNodeRect: (nodeId) => graph.query.node.get(nodeId)?.geometry.rect
         }) as MindmapChrome['addChildTargets']
       }
     },

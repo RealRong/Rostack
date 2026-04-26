@@ -140,7 +140,7 @@ export const createEditor = ({
     layout,
     tool,
     write: writeRuntime,
-    registry,
+    nodeType,
     defaults: defaults.templates
   })
   const sessionSource = createSessionSource({
@@ -160,7 +160,6 @@ export const createEditor = ({
     layout,
     write: writeRuntime,
     tool,
-    registry,
     nodeType
   })
   const input = createEditorInputApi({

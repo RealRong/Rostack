@@ -14,7 +14,7 @@ import {
 } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { resolveEdgeCapability } from '@whiteboard/editor/session/edge'
+import { readEdgeCapability, readEdgeModel } from '@whiteboard/editor/edge/read'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -39,12 +39,9 @@ const readMovableEdge = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
   edgeId: EdgeId
 ) => {
-  const current = projection.query.edge.get(edgeId)?.base.edge
+  const current = readEdgeModel(projection.query, edgeId)
 
-  return current && resolveEdgeCapability({
-    edge: current,
-    readNodeLocked: (nodeId) => Boolean(projection.query.node.get(nodeId)?.base.node.locked)
-  }).move
+  return current && readEdgeCapability(projection.query, edgeId)?.move
     ? current
     : undefined
 }

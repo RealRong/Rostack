@@ -16,6 +16,7 @@ import { layoutMindmap, layoutMindmapTidy } from '@whiteboard/core/mindmap/layou
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   Document,
+  MindmapId,
   Node,
   NodeId
 } from '@whiteboard/core/types'
@@ -191,6 +192,17 @@ export const getMindmapIdByNode = (
   node?.owner?.kind === 'mindmap'
     ? node.owner.id
     : undefined
+)
+
+export const resolveMindmapId = (
+  document: Pick<Document, 'nodes' | 'mindmaps'>,
+  value: string
+): MindmapId | undefined => (
+  documentApi.read.mindmap(document, value as MindmapId)
+    ? value as MindmapId
+    : getMindmapIdByNode(
+        documentApi.read.node(document, value as NodeId)
+      ) as MindmapId | undefined
 )
 
 export const getMindmapRecordByNodeId = (

@@ -4,6 +4,7 @@ import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
+  Edge,
   EdgeId,
   GroupId,
   MindmapId,
@@ -145,6 +146,110 @@ const createFrameRead = (input: {
     })
   },
   descendants: (nodeIds) => readTreeDescendants(input.state().indexes, nodeIds)
+})
+
+const expandMoveNodeIds = (input: {
+  target: SelectionTarget
+  state: WorkingState
+  spatial: Query['spatial']
+}) => {
+  const normalized = selectionApi.target.normalize(input.target)
+  const expandedNodeIds = new Set(normalized.nodeIds)
+  const frameQueue = normalized.nodeIds.filter((nodeId) => (
+    input.state.graph.nodes.get(nodeId)?.base.node.type === 'frame'
+  ))
+
+  while (frameQueue.length > 0) {
+    const frameId = frameQueue.pop()
+    const frameRect = frameId
+      ? input.state.graph.nodes.get(frameId)?.geometry.rect
+      : undefined
+    if (!frameId || !frameRect) {
+      continue
+    }
+
+    input.spatial.rect(frameRect, {
+      kinds: ['node']
+    }).forEach((record) => {
+      if (record.item.kind !== 'node' || record.item.id === frameId) {
+        return
+      }
+
+      const current = input.state.graph.nodes.get(record.item.id)
+      if (
+        !current
+        || expandedNodeIds.has(current.base.node.id)
+        || !geometryApi.rect.contains(frameRect, current.geometry.rect)
+      ) {
+        return
+      }
+
+      expandedNodeIds.add(current.base.node.id)
+      if (current.base.node.type === 'frame') {
+        frameQueue.push(current.base.node.id)
+      }
+    })
+  }
+
+  return {
+    normalized,
+    expandedNodeIds
+  }
+}
+
+const createSelectionRead = (input: {
+  state: () => WorkingState
+  spatial: Query['spatial']
+}): Query['selection'] => ({
+  move: (target) => {
+    const state = input.state()
+    const {
+      normalized,
+      expandedNodeIds
+    } = expandMoveNodeIds({
+      target,
+      state,
+      spatial: input.spatial
+    })
+    const relatedEdgeIds = new Set([
+      ...normalized.edgeIds,
+      ...readRelatedEdgeIds(state.indexes, expandedNodeIds)
+    ])
+
+    return {
+      nodes: [...expandedNodeIds].flatMap((nodeId) => {
+        const current = state.graph.nodes.get(nodeId)
+        return current
+          ? [nodeApi.projection.toSpatial({
+              node: current.base.node,
+              rect: current.geometry.rect,
+              rotation: current.geometry.rotation
+            })]
+          : []
+      }),
+      edges: [...relatedEdgeIds].flatMap<Edge>((edgeId) => {
+        const current = state.graph.edges.get(edgeId)?.base.edge
+        return current ? [current] : []
+      })
+    }
+  },
+  bounds: (target) => {
+    const normalized = selectionApi.target.normalize(target)
+    const state = input.state()
+    const nodeBounds = normalized.nodeIds.flatMap((nodeId) => {
+      const current = state.graph.nodes.get(nodeId)
+      return current ? [current.geometry.bounds] : []
+    })
+    const edgeBounds = normalized.edgeIds.flatMap((edgeId) => {
+      const current = state.graph.edges.get(edgeId)?.route.bounds
+      return current ? [current] : []
+    })
+
+    return geometryApi.rect.boundingRect([
+      ...nodeBounds,
+      ...edgeBounds
+    ])
+  }
 })
 
 const resolveMindmapId = (
@@ -528,6 +633,10 @@ export const createEditorSceneRead = (runtime: {
     state: runtime.state,
     spatial
   })
+  const selection = createSelectionRead({
+    state: runtime.state,
+    spatial
+  })
   const hit = createHitRead({
     state: runtime.state,
     spatial
@@ -645,6 +754,7 @@ export const createEditorSceneRead = (runtime: {
         }]
       })
     },
+    selection,
     mindmap: {
       get: (id) => runtime.state().graph.owners.mindmaps.get(id),
       resolve: (value) => resolveMindmapId(runtime.state(), value),

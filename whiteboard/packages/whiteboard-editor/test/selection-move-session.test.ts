@@ -38,18 +38,7 @@ describe('createMoveInteraction', () => {
       },
       projection: {
         query: {
-          frame: {
-            pick: vi.fn(() => undefined),
-            parent: vi.fn()
-          },
-          mindmap: {
-            resolve: vi.fn(() => undefined),
-            structure: vi.fn(() => undefined),
-            get: vi.fn(() => undefined)
-          }
-        },
-        host: {
-          scope: {
+          selection: {
             move: () => ({
               nodes: [{
                 id: 'node-1',
@@ -83,6 +72,15 @@ describe('createMoveInteraction', () => {
                 }
               }]
             })
+          },
+          frame: {
+            pick: vi.fn(() => undefined),
+            parent: vi.fn()
+          },
+          mindmap: {
+            resolve: vi.fn(() => undefined),
+            structure: vi.fn(() => undefined),
+            get: vi.fn(() => undefined)
           }
         }
       },

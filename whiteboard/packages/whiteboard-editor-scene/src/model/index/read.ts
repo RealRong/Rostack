@@ -1,3 +1,4 @@
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   Document,
   EdgeId,
@@ -31,14 +32,13 @@ export const readMindmapId = (input: {
   indexes: Pick<IndexState, 'ownerByNode'>
   value: string
 }): MindmapId | undefined => {
-  if (input.document.mindmaps[input.value]) {
-    return input.value as MindmapId
+  const resolved = mindmapApi.tree.resolveId(input.document, input.value)
+  if (resolved) {
+    return resolved
   }
 
   const owner = input.indexes.ownerByNode.get(input.value as NodeId)
-  return owner?.kind === 'mindmap'
-    ? owner.id
-    : undefined
+  return owner?.kind === 'mindmap' ? owner.id : undefined
 }
 
 export const readMindmapStructure = (input: {

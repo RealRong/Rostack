@@ -124,7 +124,7 @@ export const createMoveInteraction = (
     }
   }
 
-  const moveScope = ctx.projection.host.scope.move(input.target)
+  const moveScope = ctx.projection.query.selection.move(input.target)
   const initialState = nodeApi.move.state.start({
     nodes: moveScope.nodes,
     edges: moveScope.edges,

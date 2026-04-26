@@ -17,8 +17,10 @@ import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
-  HoverState as EditorHoverState,
-  HoverTarget
+  HoverState as EditorHoverState
+} from '@whiteboard/editor/input/hover/store'
+import {
+  isHoverTargetEqual
 } from '@whiteboard/editor/input/hover/store'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import { isEdgeGuideEqual } from '@whiteboard/editor/session/preview/edge'
@@ -26,6 +28,7 @@ import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
+import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode'
 import {
   createDocumentInputDelta,
   createSceneInput,
@@ -58,31 +61,6 @@ const unionIds = <TId extends string>(
   values.flatMap((value) => [...value])
 )
 
-const isHoverTargetEqual = (
-  left: HoverTarget | undefined,
-  right: HoverTarget | undefined
-): boolean => {
-  if (left === right) {
-    return true
-  }
-  if (!left || !right || left.kind !== right.kind) {
-    return false
-  }
-
-  switch (left.kind) {
-    case 'node':
-      return right.kind === 'node' && left.nodeId === right.nodeId
-    case 'edge':
-      return right.kind === 'edge' && left.edgeId === right.edgeId
-    case 'mindmap':
-      return right.kind === 'mindmap' && left.mindmapId === right.mindmapId
-    case 'group':
-      return right.kind === 'group' && left.groupId === right.groupId
-    case 'selection-box':
-      return right.kind === 'selection-box'
-  }
-}
-
 type ProjectionInteractionState = {
   chrome: boolean
   editingEdge: boolean
@@ -95,11 +73,7 @@ const readProjectionInteractionState = (
 
   return {
     chrome: store.read(session.interaction.read.chrome),
-    editingEdge:
-      mode === 'edge-drag'
-      || mode === 'edge-label'
-      || mode === 'edge-connect'
-      || mode === 'edge-route'
+    editingEdge: isEdgeInteractionMode(mode)
   }
 }
 

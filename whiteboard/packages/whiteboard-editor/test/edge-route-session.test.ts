@@ -46,11 +46,6 @@ const createDeps = () => {
           node: {
             get: vi.fn(() => undefined)
           }
-        },
-        host: {
-          geometry: {
-            edge: vi.fn(() => undefined)
-          }
         }
       },
       sessionRead: {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
 import type { NodeRegistry, PointerInput } from '../src'
@@ -93,7 +93,7 @@ describe('mindmap layout preview runtime', () => {
     })
     const editor = editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -136,8 +136,8 @@ describe('mindmap layout preview runtime', () => {
         nodeIds: [created.data.rootId]
       })
 
-      const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
-      const beforeChild = editor.scene.nodes.read.get(inserted.data.nodeId)?.rect
+      const beforeRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+      const beforeChild = editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect
 
       expect(beforeRoot).toBeDefined()
       expect(beforeChild).toBeDefined()
@@ -165,12 +165,12 @@ describe('mindmap layout preview runtime', () => {
         }
       }))
 
-      expect(editor.scene.nodes.read.get(created.data.rootId)?.rect).toEqual({
+      expect(editor.scene.query.node.get(created.data.rootId)?.geometry.rect).toEqual({
         ...beforeRoot!,
         x: beforeRoot!.x + 60,
         y: beforeRoot!.y + 40
       })
-      expect(editor.scene.nodes.read.get(inserted.data.nodeId)?.rect).toEqual({
+      expect(editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect).toEqual({
         ...beforeChild!,
         x: beforeChild!.x + 60,
         y: beforeChild!.y + 40

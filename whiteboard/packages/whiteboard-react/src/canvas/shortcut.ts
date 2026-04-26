@@ -6,7 +6,7 @@ import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtim
 import {
   readSelectionCan
 } from '@whiteboard/react/features/selection/capability'
-import { readMindmapNavigateTarget } from '@whiteboard/editor/scene/mindmap'
+import { readMindmapNavigateTarget } from '@whiteboard/core/mindmap/tree'
 
 export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
   { key: 'Mod+G', action: 'group.merge' },
@@ -174,7 +174,7 @@ export const runShortcut = (
       const structure = editor.scene.query.mindmap.structure(activeMindmap.treeId)
       const target = structure
         ? readMindmapNavigateTarget({
-            structure,
+            tree: structure.tree,
             fromNodeId: activeMindmap.nodeId,
             direction: action === 'mindmap.navigate.parent'
               ? 'parent'

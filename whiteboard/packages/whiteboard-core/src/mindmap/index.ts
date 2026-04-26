@@ -37,6 +37,7 @@ import {
   getMindmapTreeFromDocument,
   getSide,
   getSubtreeIds,
+  readMindmapNavigateTarget,
   resolveInsertPlan,
   toMindmapTree
 } from '@whiteboard/core/mindmap/tree'
@@ -66,7 +67,8 @@ export const mindmap = {
     idByNode: getMindmapIdByNode,
     recordByNodeId: getMindmapRecordByNodeId,
     subtreeIds: getSubtreeIds,
-    side: getSide
+    side: getSide,
+    navigate: readMindmapNavigateTarget
   },
   plan: {
     defaultRootMoveThreshold: DEFAULT_ROOT_MOVE_THRESHOLD,

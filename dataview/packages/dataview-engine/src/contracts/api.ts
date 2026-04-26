@@ -154,6 +154,7 @@ export interface RecordsApi {
 export interface EngineFacadeHost {
   current(): DataviewCurrent
   doc(): DataDoc
+  replace(document: DataDoc, options?: MutationOptions): boolean
   load(document: DataDoc): void
   subscribe(listener: (current: DataviewCurrent) => void): () => void
   execute<I extends ExecuteInput>(
@@ -179,6 +180,7 @@ export interface Engine {
   subscribe(listener: (current: DataviewCurrent) => void): () => void
 
   doc(): DataDoc
+  replace(document: DataDoc, options?: MutationOptions): boolean
   load(document: DataDoc): void
 
   execute<I extends ExecuteInput>(

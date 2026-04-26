@@ -13,11 +13,11 @@
     "@shared/core": "workspace:*",
     "@shared/draft": "workspace:*",
     "@shared/dom": "workspace:*",
+    "@shared/mutation": "workspace:*",
     "@shared/projector": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/editor-scene": "workspace:*",
-    "@whiteboard/engine": "workspace:*",
-    "@whiteboard/history": "workspace:*"
+    "@whiteboard/engine": "workspace:*"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

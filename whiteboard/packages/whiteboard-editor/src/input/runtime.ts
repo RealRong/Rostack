@@ -20,9 +20,10 @@ import {
   type SessionRead
 } from '@whiteboard/editor/session/read'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
+import type { EditorSessionSource } from '@whiteboard/editor/types/editor'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { NodeRegistry, NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type EditorHostDeps = {
@@ -31,10 +32,12 @@ export type EditorHostDeps = {
   projection: EditorSceneRuntime
   sessionRead: SessionRead
   session: EditorSession
+  sessionSource: EditorSessionSource
   layout: EditorLayout
   write: EditorWrite
   tool: ToolService
   registry: NodeRegistry
+  nodeType: NodeTypeSupport
   snap: SnapRuntime
 }
 
@@ -50,12 +53,12 @@ const createEditorSnapRuntime = ({
   readZoom: () => session.viewport.read.get().zoom,
   node: {
     config: engine.config.node,
-    query: projection.snap.rect
+    query: projection.query.snap
   },
   edge: {
     config: engine.config.edge,
     nodeSize: engine.config.nodeSize,
-    query: projection.edge.connectCandidates
+    query: projection.query.edge.connectCandidates
   }
 })
 
@@ -64,10 +67,12 @@ export const createEditorHost = ({
   document,
   projection,
   session,
+  sessionSource,
   layout,
   write,
   tool,
-  registry
+  registry,
+  nodeType
 }: Omit<EditorHostDeps, 'snap' | 'sessionRead'>): EditorInputHost => {
   const sessionRead = createSessionRead(session)
   const snap = createEditorSnapRuntime({
@@ -81,10 +86,12 @@ export const createEditorHost = ({
     projection,
     sessionRead,
     session,
+    sessionSource,
     layout,
     write,
     tool,
     registry,
+    nodeType,
     snap
   }
   const interaction = createInteractionRuntime({

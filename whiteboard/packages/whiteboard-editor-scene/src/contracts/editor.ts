@@ -1,5 +1,6 @@
 import type {
   ConnectResolution,
+  EdgeConnectCandidate,
   EdgeLabelMaskRect,
   ResolvedEdgeEnds
 } from '@whiteboard/core/edge'
@@ -7,7 +8,11 @@ import type {
   EdgeHandle,
   EdgePathSegment
 } from '@whiteboard/core/types/edge'
-import type { Guide, TransformPreviewPatch } from '@whiteboard/core/node'
+import type {
+  Guide,
+  NodeRectHitOptions,
+  TransformPreviewPatch
+} from '@whiteboard/core/node'
 import type {
   MindmapRenderConnector,
   MindmapTree
@@ -663,18 +668,31 @@ export interface Query {
   revision(): Revision
   node: {
     get(id: NodeId): NodeView | undefined
+    idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]
   }
   edge: {
     get(id: EdgeId): EdgeView | undefined
     related(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+    idsInRect(rect: Rect, options?: {
+      match?: 'touch' | 'contain'
+    }): readonly EdgeId[]
+    connectCandidates(rect: Rect): readonly EdgeConnectCandidate[]
   }
   mindmap: {
     get(id: MindmapId): MindmapView | undefined
     resolve(value: string): MindmapId | undefined
     structure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
+    navigate(input: {
+      id: MindmapId
+      fromNodeId: NodeId
+      direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+    }): NodeId | undefined
   }
   group: {
     get(id: GroupId): GroupView | undefined
+    ofNode(nodeId: NodeId): GroupId | undefined
+    ofEdge(edgeId: EdgeId): GroupId | undefined
+    target(targetId: GroupId): import('@whiteboard/core/selection').SelectionTarget | undefined
     exact(target: import('@whiteboard/core/selection').SelectionTarget): readonly GroupId[]
   }
   spatial: SpatialRead

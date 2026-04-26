@@ -1,5 +1,5 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import type { Node, NodeFieldPatch, Point, Rect, Size } from '@whiteboard/core/types'
+import type { Node, NodeFieldPatch, NodeModel, Point, Rect, Size } from '@whiteboard/core/types'
 import type { TextWidthMode } from '@whiteboard/core/node/text'
 import {
   readTextWrapWidth,
@@ -12,6 +12,27 @@ type NodeProjectionItem<TNode extends Node = Node> = {
   node: TNode
   rect: Rect
 }
+
+export const toSpatialNode = ({
+  node,
+  rect,
+  rotation
+}: {
+  node: NodeModel
+  rect: Rect
+  rotation: number
+}): Node => ({
+  ...node,
+  position: {
+    x: rect.x,
+    y: rect.y
+  },
+  size: {
+    width: rect.width,
+    height: rect.height
+  },
+  rotation
+})
 
 type NodeTextPreviewPatch = {
   position?: Point

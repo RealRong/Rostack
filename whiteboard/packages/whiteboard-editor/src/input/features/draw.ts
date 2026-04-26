@@ -200,7 +200,7 @@ const commitDrawStroke = (
 const queryDrawNodeIdsInRect = (
   ctx: Pick<EditorHostDeps, 'projection' | 'document'>,
   rect: Rect
-): readonly NodeId[] => ctx.projection.node.idsInRect(rect, {
+): readonly NodeId[] => ctx.projection.query.node.idsInRect(rect, {
   match: 'touch'
 }).filter((nodeId) => (
   ctx.document.nodes.get(nodeId)?.node.type === 'draw'

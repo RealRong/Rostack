@@ -22,7 +22,7 @@ export type SelectionActionHelpers = Pick<
 >
 
 type SelectionActionHelpersHost = {
-  read: Pick<EditorSceneRuntime, 'group'>
+  read: Pick<EditorSceneRuntime, 'query'>
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
@@ -140,7 +140,7 @@ export const createSelectionActions = ({
   },
   order: (input, mode) => {
     const target = selectionApi.target.normalize(input)
-    const groupIds = read.group.exact(target)
+    const groupIds = read.query.group.exact(target)
     if (groupIds.length > 0) {
       return orderGroups(group, groupIds, mode).ok
     }
@@ -168,7 +168,7 @@ export const createSelectionActions = ({
   },
   ungroup: (input, options) => {
     const target = selectionApi.target.normalize(input)
-    const groupIds = [...read.group.exact(target)]
+    const groupIds = [...read.query.group.exact(target)]
     if (!groupIds.length) {
       return false
     }

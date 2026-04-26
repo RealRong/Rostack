@@ -2,6 +2,9 @@ import type {
   Engine
 } from '@dataview/engine'
 import type {
+  LocalHistoryApi
+} from '@shared/mutation'
+import type {
   CreateRecordApi
 } from '@dataview/runtime/workflow/createRecord'
 import type {
@@ -46,6 +49,7 @@ export interface CreateDataViewRuntimeInput {
 
 export interface DataViewRuntime {
   engine: Engine
+  history: LocalHistoryApi<ReturnType<Engine['apply']>>
   source: EngineSource
   session: DataViewSessionApi
   workflow: DataViewWorkflow

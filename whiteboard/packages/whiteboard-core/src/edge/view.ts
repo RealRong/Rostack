@@ -1,6 +1,14 @@
+import { toSpatialNode } from '@whiteboard/core/node/projection'
 import { getEdgePath } from '@whiteboard/core/edge/path'
 import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
+import type {
+  Edge,
+  NodeGeometry,
+  NodeId,
+  NodeModel,
+  Rect
+} from '@whiteboard/core/types'
 import type { EdgeHandle, EdgeView, ResolveEdgeEndsInput } from '@whiteboard/core/types/edge'
 
 const buildEdgeHandles = (
@@ -72,5 +80,65 @@ export const resolveEdgeView = (
     ends,
     path,
     handles: buildEdgeHandles(ends, input, path)
+  }
+}
+
+type NodeGeometryInput = {
+  node: NodeModel
+  rect: Rect
+  outline: NodeGeometry['outline']
+  bounds: Rect
+  rotation: number
+}
+
+const readResolvedNodeSnapshot = (
+  readNodeGeometry: (nodeId: NodeId) => NodeGeometryInput | undefined,
+  end: Edge['source'] | Edge['target']
+) => {
+  if (end.kind !== 'node') {
+    return undefined
+  }
+
+  const geometry = readNodeGeometry(end.nodeId)
+  return geometry
+    ? {
+        node: toSpatialNode(geometry),
+        geometry: {
+          rect: geometry.rect,
+          outline: geometry.outline,
+          bounds: geometry.bounds
+        }
+      }
+    : undefined
+}
+
+export const resolveEdgeViewFromNodeGeometry = (input: {
+  edge: Edge
+  readNodeGeometry: (nodeId: NodeId) => NodeGeometryInput | undefined
+}): EdgeView | undefined => {
+  const source = readResolvedNodeSnapshot(
+    input.readNodeGeometry,
+    input.edge.source
+  )
+  const target = readResolvedNodeSnapshot(
+    input.readNodeGeometry,
+    input.edge.target
+  )
+
+  if (
+    (input.edge.source.kind === 'node' && !source)
+    || (input.edge.target.kind === 'node' && !target)
+  ) {
+    return undefined
+  }
+
+  try {
+    return resolveEdgeView({
+      edge: input.edge,
+      source,
+      target
+    })
+  } catch {
+    return undefined
   }
 }

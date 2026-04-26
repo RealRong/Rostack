@@ -18,33 +18,7 @@ export const PageKeyboardHost = () => {
   const page = usePageModel()
   const pageBody = useStoreValue(page.body)
   const valueEditorOpen = pageBody.valueEditorOpen
-
-  const applyHistory = (
-    kind: 'undo' | 'redo'
-  ): boolean => {
-    const history = engine.history
-    if (!history) {
-      return false
-    }
-
-    const operations = kind === 'undo'
-      ? history.undo()
-      : history.redo()
-    if (!operations) {
-      return false
-    }
-
-    const result = engine.apply(operations, {
-      origin: 'history'
-    })
-    if (result.ok) {
-      history.confirm()
-      return true
-    }
-
-    history.cancel('restore')
-    return false
-  }
+  const history = dataView.history
 
   useOverlayKey({
     order: -100,
@@ -72,21 +46,21 @@ export const PageKeyboardHost = () => {
 
       switch (action.kind) {
         case 'undo':
-          if (!engine.history?.state().canUndo) {
+          if (!history.get().canUndo) {
             return
           }
 
-          if (applyHistory('undo')) {
+          if (history.undo().ok) {
             event.preventDefault()
             return true
           }
           return
         case 'redo':
-          if (!engine.history?.state().canRedo) {
+          if (!history.get().canRedo) {
             return
           }
 
-          if (applyHistory('redo')) {
+          if (history.redo().ok) {
             event.preventDefault()
             return true
           }

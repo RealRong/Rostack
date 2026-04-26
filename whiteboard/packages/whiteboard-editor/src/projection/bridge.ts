@@ -24,6 +24,8 @@ import type { EditSession } from '@whiteboard/editor/session/edit'
 import { isEdgeGuideEqual } from '@whiteboard/editor/session/preview/edge'
 import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 import {
   createDocumentInputDelta,
   createSceneInput,
@@ -280,14 +282,17 @@ const createBootstrapDelta = (input: {
 export const createSceneBridge = ({
   engine,
   session,
-  layout
+  layout,
+  nodeType
 }: {
   engine: Engine
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
   layout: Pick<EditorLayout, 'draft' | 'measureText'>
+  nodeType: Pick<NodeTypeSupport, 'capability'>
 }): EditorSceneBridge => {
   const runtime = createEditorSceneRuntime({
-    measure: layout.measureText
+    measure: layout.measureText,
+    canNodeConnect: ({ node }) => resolveNodeEditorCapability(node, nodeType).connect
   })
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { editor as editorApi } from '../src'
 import type { NodeRegistry } from '../src'
 
@@ -159,7 +159,7 @@ const createEdgeEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },

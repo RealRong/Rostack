@@ -5,21 +5,14 @@ import type {
 } from '@whiteboard/core/types'
 import type { Query } from '@whiteboard/editor-scene'
 import type {
-  ScenePickCandidateResult,
   ScenePickKind,
   ScenePickRequest,
   ScenePickResult,
   ScenePickRuntime,
   ScenePickRuntimeResult
-} from '../types/editor'
+} from '@whiteboard/editor/types/editor'
 
 const DEFAULT_PICK_RADIUS_SCREEN = 8
-
-type PickCandidateInput = {
-  point: Point
-  radius?: number
-  kinds?: readonly ScenePickKind[]
-}
 
 const toPickRect = (
   point: Point,
@@ -53,12 +46,7 @@ const isScenePickRuntimeResultEqual = (
 export const createScenePick = (input: {
   readZoom: () => number
   query: Pick<Query, 'hit' | 'spatial'>
-}): {
-  rect: (point: Point, radius?: number) => Rect
-  candidates: (input: PickCandidateInput) => ScenePickCandidateResult
-  resolve: (input: PickCandidateInput) => ScenePickResult
-  runtime: ScenePickRuntime
-} => {
+}): ScenePickRuntime => {
   const listeners = new Set<() => void>()
   let pending: ScenePickRequest | undefined
   let current: ScenePickRuntimeResult | undefined
@@ -70,41 +58,28 @@ export const createScenePick = (input: {
     DEFAULT_PICK_RADIUS_SCREEN / Math.max(input.readZoom(), 0.0001)
   )
 
-  const candidates = (
-    currentInput: PickCandidateInput
-  ): ScenePickCandidateResult => {
-    const radius = resolveRadius(currentInput.radius)
-    const rect = toPickRect(currentInput.point, radius)
-    const result = input.query.spatial.candidates(rect, {
-      kinds: currentInput.kinds
+  const resolve = (
+    request: ScenePickRequest
+  ): ScenePickResult => {
+    const startedAt = scheduler.readMonotonicNow()
+    const radius = resolveRadius(request.radius)
+    const rect = toPickRect(request.world, radius)
+    const candidates = input.query.spatial.candidates(rect, {
+      kinds: request.kinds
+    })
+    const target = input.query.hit.item({
+      point: request.world,
+      threshold: radius,
+      kinds: request.kinds
     })
 
     return {
       rect,
-      records: result.records,
-      stats: result.stats
-    }
-  }
-
-  const resolve = (
-    currentInput: PickCandidateInput
-  ): ScenePickResult => {
-    const startedAt = scheduler.readMonotonicNow()
-    const candidateResult = candidates(currentInput)
-    const radius = resolveRadius(currentInput.radius)
-    const target = input.query.hit.item({
-      point: currentInput.point,
-      threshold: radius,
-      kinds: currentInput.kinds
-    })
-
-    return {
-      rect: candidateResult.rect,
       target: target && target.kind !== 'group'
         ? target
         : undefined,
       stats: {
-        ...candidateResult.stats,
+        ...candidates.stats,
         hits: target ? 1 : 0,
         latency: scheduler.readMonotonicNow() - startedAt
       }
@@ -120,11 +95,7 @@ export const createScenePick = (input: {
     pending = undefined
     const next: ScenePickRuntimeResult = {
       request,
-      result: resolve({
-        point: request.world,
-        radius: request.radius,
-        kinds: request.kinds
-      })
+      result: resolve(request)
     }
 
     if (isScenePickRuntimeResultEqual(current, next)) {
@@ -139,52 +110,47 @@ export const createScenePick = (input: {
   })
 
   return {
-    rect: (point, radius) => toPickRect(point, resolveRadius(radius)),
-    candidates,
-    resolve,
-    runtime: {
-      schedule: (request) => {
-        if (disposed) {
-          return
-        }
-
-        pending = request
-        runtimeTask.schedule()
-      },
-      get: () => disposed
-        ? undefined
-        : current,
-      subscribe: (listener) => {
-        if (disposed) {
-          return () => {}
-        }
-
-        listeners.add(listener)
-        return () => {
-          listeners.delete(listener)
-        }
-      },
-      clear: () => {
-        if (disposed) {
-          return
-        }
-
-        pending = undefined
-        if (current === undefined) {
-          return
-        }
-
-        current = undefined
-        listeners.forEach((listener) => {
-          listener()
-        })
-      },
-      dispose: () => {
-        disposed = true
-        pending = undefined
-        current = undefined
-        listeners.clear()
+    schedule: (request) => {
+      if (disposed) {
+        return
       }
+
+      pending = request
+      runtimeTask.schedule()
+    },
+    get: () => disposed
+      ? undefined
+      : current,
+    subscribe: (listener) => {
+      if (disposed) {
+        return () => {}
+      }
+
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    clear: () => {
+      if (disposed) {
+        return
+      }
+
+      pending = undefined
+      if (current === undefined) {
+        return
+      }
+
+      current = undefined
+      listeners.forEach((listener) => {
+        listener()
+      })
+    },
+    dispose: () => {
+      disposed = true
+      pending = undefined
+      current = undefined
+      listeners.clear()
     }
   }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { editor as editorApi, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/editor'
 import { product } from '@whiteboard/product'
@@ -85,7 +85,7 @@ describe('mindmap insert position', () => {
     })
     const editor = editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -112,7 +112,7 @@ describe('mindmap insert position', () => {
     })
 
     expect(result).toBeDefined()
-    const rootRect = editor.scene.nodes.read.get(result!.nodeId)?.rect
+    const rootRect = editor.scene.query.node.get(result!.nodeId)?.geometry.rect
     expect(rootRect).toBeDefined()
     expect(rootRect!.width).toBe(132)
     expect(rootRect!.height).toBe(44)
@@ -126,7 +126,7 @@ describe('mindmap insert position', () => {
     })
     const editor = editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -151,7 +151,7 @@ describe('mindmap insert position', () => {
       return
     }
 
-    const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+    const beforeRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
     expect(beforeRoot).toBeDefined()
 
     editor.write.node.patch([created.data.rootId], {
@@ -163,7 +163,7 @@ describe('mindmap insert position', () => {
       }
     })
 
-    const afterRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
+    const afterRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
     expect(afterRoot).toBeDefined()
     expect(afterRoot!.x).toBe(beforeRoot!.x)
     expect(afterRoot!.y).toBe(beforeRoot!.y)

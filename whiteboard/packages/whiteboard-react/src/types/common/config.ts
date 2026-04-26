@@ -1,5 +1,5 @@
 import type { Tool } from '@whiteboard/editor'
-import type { LocalEngineHistoryConfig } from '@whiteboard/history'
+import type { EngineHistoryConfig } from '@whiteboard/engine'
 import type { WhiteboardOptions } from '@whiteboard/react/types/common/board'
 import type {
   EdgeConfig,
@@ -17,6 +17,6 @@ export type ResolvedConfig = Omit<
   viewport: Required<ViewportConfig>
   node: Required<NodeConfig>
   edge: Required<EdgeConfig>
-  history: LocalEngineHistoryConfig
+  history: EngineHistoryConfig
   initialTool: Tool
 }

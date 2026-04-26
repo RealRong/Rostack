@@ -14,11 +14,13 @@ import type {
   EdgeId,
   GroupId,
   MindmapId,
+  NodeModel,
   NodeId
 } from '@whiteboard/core/types'
 import type {
   HoverState,
   Input,
+  OwnerRef,
   TextMeasure
 } from '../contracts/editor'
 import type { Capture } from '../contracts/capture'
@@ -510,6 +512,10 @@ const viewPhase: ProjectorPhase<
 
 export const createEditorSceneProjectionModel = (input: {
   measure?: TextMeasure
+  canNodeConnect?: (input: {
+    node: NodeModel
+    owner?: OwnerRef
+  }) => boolean
 } = {}) => defineProjectionModel<
   Input,
   WorkingState,
@@ -554,6 +560,7 @@ export const createEditorSceneProjectionModel = (input: {
     state: runtime.state,
     items: () => runtime.state().items,
     spatial: () => runtime.state().spatial,
+    canNodeConnect: input.canNodeConnect
   }),
   capture: ({ state, revision }) => buildEditorSceneCapture(
     state,

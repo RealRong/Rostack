@@ -1,4 +1,5 @@
 import { node as nodeApi,
+  toSpatialNode,
   type TransformPreviewPatch,
   type TransformSelectionMember,
   type TransformSpec
@@ -10,7 +11,7 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { toSpatialNode } from '@whiteboard/editor/scene/node'
+import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -31,12 +32,12 @@ const toTransformNodePatches = (
 }))
 
 const toSpatialSelectionPlan = (
-  ctx: Pick<EditorHostDeps, 'projection'>,
-  plan: NonNullable<ReturnType<EditorHostDeps['projection']['selection']['summary']['get']>['transformPlan']>
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionSource'>,
+  plan: NonNullable<ReturnType<EditorHostDeps['sessionSource']['selection']['summary']['get']>['transformPlan']>
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
-    const geometry = ctx.projection.geometry.node(member.id)
+    const geometry = ctx.projection.host.geometry.node(member.id)
     return geometry
       ? [{
           ...member,
@@ -51,17 +52,17 @@ const toSpatialSelectionPlan = (
 })
 
 const readNodeTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'projection'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'nodeType'>,
   nodeId: NodeId,
   handle: TransformPickHandle,
   input: PointerDownInput
 ): RuntimeTransformSpec | undefined => {
-  const geometry = ctx.projection.geometry.node(nodeId)
+  const geometry = ctx.projection.host.geometry.node(nodeId)
   if (!geometry || geometry.node.locked) {
     return undefined
   }
 
-  const capability = ctx.projection.node.capability(geometry.node)
+  const capability = resolveNodeEditorCapability(geometry.node, ctx.nodeType)
   const target: TransformTarget = {
     id: geometry.node.id,
     node: toSpatialNode({
@@ -128,7 +129,7 @@ const readNodeTransformSpec = (
 }
 
 const resolveTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'nodeType' | 'sessionSource'>,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
   const tool = ctx.sessionRead.tool.get()
@@ -145,7 +146,7 @@ const resolveTransformSpec = (
     return readNodeTransformSpec(ctx, input.pick.id, input.pick.handle, input) ?? null
   }
 
-  const selection = ctx.projection.selection.summary.get()
+  const selection = ctx.sessionSource.selection.summary.get()
   if (
     !selection.transformPlan
     || input.pick.handle.kind !== 'resize'
@@ -254,7 +255,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'layout' | 'snap' | 'write'>
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'layout' | 'snap' | 'write' | 'nodeType' | 'sessionSource'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

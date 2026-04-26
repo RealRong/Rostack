@@ -1,5 +1,6 @@
+import type { LocalHistoryApi } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
-import type { HistoryApi } from '@whiteboard/history'
+import type { IntentResult } from '@whiteboard/engine'
 import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import {
   createDocumentWrite
@@ -36,7 +37,7 @@ export const createEditorWrite = ({
   layout
 }: {
   engine: Engine
-  history: HistoryApi
+  history: LocalHistoryApi<IntentResult>
   document: EditorDocumentRuntimeSource
   projection: EditorSceneRuntime
   layout: EditorLayout
@@ -54,7 +55,7 @@ export const createEditorWrite = ({
     engine,
     read: {
       document,
-      projection: projection.edge
+      readEdge: (edgeId) => projection.query.edge.get(edgeId)?.base.edge
     }
   })
   const mindmap = createMindmapWrite({

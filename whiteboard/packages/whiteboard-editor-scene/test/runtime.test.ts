@@ -257,7 +257,7 @@ describe('editor scene runtime', () => {
     expect(capture.graph.nodes.ids.length).toBe(1)
     expect(capture.items.length).toBe(1)
     expect(capture.documentRevision).toBe(1)
-    expect(runtime.read.node(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
+    expect(runtime.query.node.get(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
     expect(capture.render.edge.statics.ids).toBeDefined()
     expect(result.trace?.phases.map((phase) => phase.name)).toEqual([
       'graph',
@@ -307,12 +307,12 @@ describe('editor scene runtime', () => {
       delta: DOCUMENT_DELTA
     }))
     const capture = harness.capture()
-    const read = harness.read
+    const query = harness.query
 
     expect(harness.runtime.capture()).toBe(capture)
     expect(harness.lastTrace()).toEqual(result.trace)
-    expect(read.node(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
-    expect(read.spatial.get(`node:${nodeId}`)).toEqual(expect.objectContaining({
+    expect(query.node.get(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
+    expect(query.spatial.get(`node:${nodeId}`)).toEqual(expect.objectContaining({
       key: `node:${nodeId}`,
       kind: 'node',
       item: {
@@ -320,19 +320,19 @@ describe('editor scene runtime', () => {
         id: nodeId
       }
     }))
-    expect(read.spatial.rect({
+    expect(query.spatial.rect({
       x: -100,
       y: -100,
       width: 400,
       height: 400
     }).some((record) => record.key === `node:${nodeId}`)).toBe(true)
-    const spatialRecord = read.spatial.get(`node:${nodeId}`)!
-    expect(read.spatial.point({
+    const spatialRecord = query.spatial.get(`node:${nodeId}`)!
+    expect(query.spatial.point({
       x: spatialRecord.bounds.x + spatialRecord.bounds.width / 2,
       y: spatialRecord.bounds.y + spatialRecord.bounds.height / 2
     }).some((record) => record.key === spatialRecord.key)).toBe(true)
-    expect(read.items()).toBe(capture.items)
-    expect(read.chrome()).toBe(capture.ui.chrome)
+    expect(query.items()).toBe(capture.items)
+    expect(harness.runtime.state().ui.chrome).toBe(capture.ui.chrome)
   })
 
   it('relayouts mindmap members while live text measurement changes', () => {
@@ -388,7 +388,7 @@ describe('editor scene runtime', () => {
     expect(baselineMindmap?.tree.layout).toBeDefined()
     expect(liveMindmap?.tree.layout).toBeDefined()
     expect(liveRootUi?.editing).toBe(true)
-    expect(runtime.read.node(childId)).toBe(liveCapture.graph.nodes.byId.get(childId))
+    expect(runtime.query.node.get(childId)).toBe(liveCapture.graph.nodes.byId.get(childId))
   })
 
   it('builds renderer-ready edge, chrome, and spatial state in the view phase', () => {
@@ -553,7 +553,7 @@ describe('editor scene runtime', () => {
       { kind: 'edge', id: edgeId }
     ]))
     expect(
-      runtime.read.spatial.rect({
+      runtime.query.spatial.rect({
         x: 0,
         y: 0,
         width: 700,
@@ -565,7 +565,7 @@ describe('editor scene runtime', () => {
       `edge:${edgeId}`
     ]))
     expect(
-      runtime.read.spatial.rect({
+      runtime.query.spatial.rect({
         x: 0,
         y: 0,
         width: 700,

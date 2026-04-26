@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { schema } from '@whiteboard/core/schema'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { editor as editorApi } from '../src'
 import type {
   LayoutBackend,
@@ -195,7 +195,7 @@ const createTextEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -220,7 +220,7 @@ const createAutoWidthTextEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -245,7 +245,7 @@ const createStickyEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -267,7 +267,7 @@ describe('text wrap runtime', () => {
   it('projects auto-width text rect from live edit layout before commit', () => {
     const editor = createAutoWidthTextEditor()
 
-    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
       width: 100,
       height: 24
     })
@@ -279,7 +279,7 @@ describe('text wrap runtime', () => {
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
       width: 280,
       height: 24
     })
@@ -309,7 +309,7 @@ describe('text wrap runtime', () => {
       widthMode: 'wrap',
       wrapWidth: 180
     })
-    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -321,7 +321,7 @@ describe('text wrap runtime', () => {
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -351,7 +351,7 @@ describe('text wrap runtime', () => {
     expect(editor.document.get().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -381,7 +381,7 @@ describe('text wrap runtime', () => {
     expect(editor.document.get().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.scene.nodes.read.get('text-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -425,7 +425,7 @@ describe('sticky fit runtime', () => {
     expect(editor.document.get().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 18
     })
-    expect(editor.scene.nodes.read.get('sticky-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('sticky-1')?.geometry.rect).toMatchObject({
       width: 100,
       height: 140
     })

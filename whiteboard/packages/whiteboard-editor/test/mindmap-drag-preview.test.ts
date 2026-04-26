@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
 import type { NodeRegistry, PointerInput } from '../src'
@@ -81,7 +81,7 @@ const createEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -240,8 +240,8 @@ describe('mindmap drag preview', () => {
       nodeIds: [created.data.rootId]
     })
 
-    const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
-    const beforeChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
+    const beforeRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+    const beforeChild = editor.scene.query.node.get(insert.data.nodeId)?.geometry.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -272,8 +272,8 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
-    const liveChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
+    const liveRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+    const liveChild = editor.scene.query.node.get(insert.data.nodeId)?.geometry.rect
 
     expect(editor.session.interaction.get().busy).toBe(true)
     expect(editor.session.interaction.get().selecting).toBe(true)
@@ -334,8 +334,8 @@ describe('mindmap drag preview', () => {
       nodeIds: [first.data.nodeId]
     })
 
-    const beforeBranch = editor.scene.nodes.read.get(first.data.nodeId)?.rect
-    const beforeLeaf = editor.scene.nodes.read.get(second.data.nodeId)?.rect
+    const beforeBranch = editor.scene.query.node.get(first.data.nodeId)?.geometry.rect
+    const beforeLeaf = editor.scene.query.node.get(second.data.nodeId)?.geometry.rect
 
     expect(beforeBranch).toBeDefined()
     expect(beforeLeaf).toBeDefined()
@@ -366,8 +366,8 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveBranch = editor.scene.nodes.read.get(first.data.nodeId)?.rect
-    const liveLeaf = editor.scene.nodes.read.get(second.data.nodeId)?.rect
+    const liveBranch = editor.scene.query.node.get(first.data.nodeId)?.geometry.rect
+    const liveLeaf = editor.scene.query.node.get(second.data.nodeId)?.geometry.rect
 
     expect(editor.session.interaction.get().busy).toBe(true)
     expect(editor.session.interaction.get().selecting).toBe(true)

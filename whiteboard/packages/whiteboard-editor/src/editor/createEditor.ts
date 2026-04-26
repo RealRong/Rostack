@@ -1,6 +1,7 @@
 import type { Viewport } from '@whiteboard/core/types'
+import type { LocalHistoryApi } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
-import type { HistoryApi } from '@whiteboard/history'
+import type { IntentResult } from '@whiteboard/engine'
 import {
   createEditorActionsApi
 } from '@whiteboard/editor/action'
@@ -47,7 +48,7 @@ export const createEditor = ({
   services,
 }: {
   engine: Engine
-  history: HistoryApi
+  history: LocalHistoryApi<IntentResult>
   initialTool: Tool
   initialDrawState?: DrawState
   initialViewport: Viewport
@@ -82,13 +83,12 @@ export const createEditor = ({
   const projection = createSceneBridge({
     engine,
     session,
-    layout
+    layout,
+    nodeType
   })
   const sessionState = createSessionState(session)
   const scene = createSceneSource({
     controller: projection,
-    state: sessionState,
-    nodeType,
     visibleRect: () => session.viewport.read.worldRect(),
     readZoom: () => session.viewport.read.get().zoom
   })
@@ -128,15 +128,25 @@ export const createEditor = ({
     registry,
     defaults: defaults.templates
   })
+  const sessionSource = createSessionSource({
+    graph: scene,
+    session,
+    state: sessionState,
+    history,
+    nodeType,
+    defaults: defaults.selection
+  })
   const host = createEditorHost({
     engine,
     document,
     projection: scene,
     session,
+    sessionSource,
     layout,
     write: writeRuntime,
     tool,
-    registry
+    registry,
+    nodeType
   })
   const input = createEditorInputApi({
     boundary,
@@ -148,15 +158,6 @@ export const createEditor = ({
     document,
     resetHost: input.cancel
   })
-  const sessionSource = createSessionSource({
-    graph: scene,
-    session,
-    state: sessionState,
-    history,
-    nodeType,
-    defaults: defaults.selection
-  })
-
   return {
     document,
     scene,

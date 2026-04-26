@@ -1,9 +1,11 @@
 import { createProjectionRuntime } from '@shared/projector/model'
 import type {
+  OwnerRef,
   Result,
   Runtime,
   TextMeasure
 } from '../contracts/editor'
+import type { NodeModel } from '@whiteboard/core/types'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
 import { createEditorSceneProjectionModel } from './model'
@@ -26,6 +28,10 @@ const createEditorSceneStateReader = (input: {
 
 export const createEditorSceneModelRuntime = (input: {
   measure?: TextMeasure
+  canNodeConnect?: (input: {
+    node: NodeModel
+    owner?: OwnerRef
+  }) => boolean
 } = {}) => {
   const runtime = createProjectionRuntime(
     createEditorSceneProjectionModel(input)
@@ -43,6 +49,10 @@ export const createEditorSceneModelRuntime = (input: {
 
 export const createEditorSceneRuntime = (input: {
   measure?: TextMeasure
+  canNodeConnect?: (input: {
+    node: NodeModel
+    owner?: OwnerRef
+  }) => boolean
 } = {}): Runtime => {
   const runtime = createEditorSceneModelRuntime(input)
 

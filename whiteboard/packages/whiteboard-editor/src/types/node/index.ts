@@ -13,5 +13,6 @@ export type {
   NodeTypeSupport
 } from '@whiteboard/editor/types/node/read'
 export {
-  createNodeTypeSupport
+  createNodeTypeSupport,
+  resolveNodeEditorCapability
 } from '@whiteboard/editor/types/node/support'

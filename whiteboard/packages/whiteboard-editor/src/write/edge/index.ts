@@ -11,7 +11,6 @@ import type {
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type { EdgeWrite } from '@whiteboard/editor/write/types'
 import {
   createEdgeLabelWrite
@@ -21,9 +20,9 @@ import {
 } from '@whiteboard/editor/write/edge/route'
 
 const readEdge = (
-  read: Pick<EditorSceneRuntime['edge'], 'model'>,
+  read: (edgeId: EdgeId) => Edge | undefined,
   edgeId: EdgeId
-) => read.model(edgeId)
+) => read(edgeId)
 
 const readCommittedEdge = (
   read: Pick<EditorDocumentRuntimeSource, 'edges'>,
@@ -80,7 +79,7 @@ const updateExistingEdges = (
 
 const updateEdgesBy = (
   edgeIds: readonly EdgeId[],
-  read: Pick<EditorSceneRuntime['edge'], 'model'>,
+  read: (edgeId: EdgeId) => Edge | undefined,
   engine: Engine,
   buildInput: (edge: Edge) => EdgeUpdateInput | undefined
 ) => updateEdges(
@@ -103,7 +102,7 @@ const updateEdgesBy = (
 
 const updateEdgeStyle = (
   edgeIds: readonly EdgeId[],
-  read: Pick<EditorSceneRuntime['edge'], 'model'>,
+  read: (edgeId: EdgeId) => Edge | undefined,
   engine: Engine,
   path: Path,
   value: unknown
@@ -122,7 +121,7 @@ const updateEdgeStyle = (
 
 const updateEdgeField = <Field extends keyof NonNullable<EdgeUpdateInput['fields']>>(
   edgeIds: readonly EdgeId[],
-  read: Pick<EditorSceneRuntime['edge'], 'model'>,
+  read: (edgeId: EdgeId) => Edge | undefined,
   engine: Engine,
   field: Field,
   value: NonNullable<EdgeUpdateInput['fields']>[Field]
@@ -146,7 +145,7 @@ export const createEdgeWrite = ({
   engine: Engine
   read: {
     document: Pick<EditorDocumentRuntimeSource, 'edges'>
-    projection: Pick<EditorSceneRuntime['edge'], 'model'>
+    readEdge: (edgeId: EdgeId) => Edge | undefined
   }
 }): EdgeWrite => ({
   create: (input: {
@@ -188,13 +187,13 @@ export const createEdgeWrite = ({
   label: createEdgeLabelWrite(engine),
   route: createEdgeRouteWrite(engine),
   style: {
-    color: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('color'), value),
-    opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('opacity'), value),
-    width: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('width'), value),
-    dash: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('dash'), value),
-    start: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('start'), value),
-    end: (edgeIds, value) => updateEdgeStyle(edgeIds, read.projection, engine, mutationPath.of('end'), value),
-    swapMarkers: (edgeIds) => updateEdgesBy(edgeIds, read.projection, engine, (edge) => {
+    color: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('color'), value),
+    opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('opacity'), value),
+    width: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('width'), value),
+    dash: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('dash'), value),
+    start: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('start'), value),
+    end: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('end'), value),
+    swapMarkers: (edgeIds) => updateEdgesBy(edgeIds, read.readEdge, engine, (edge) => {
       const start = edge.style?.start
       const end = edge.style?.end
       if (start === end) {
@@ -210,7 +209,7 @@ export const createEdgeWrite = ({
     })
   },
   type: {
-    set: (edgeIds, value) => updateEdgeField(edgeIds, read.projection, engine, 'type', value)
+    set: (edgeIds, value) => updateEdgeField(edgeIds, read.readEdge, engine, 'type', value)
   },
   lock: {
     set: (edgeIds, locked) => updateExistingEdges(read.document, engine, edgeIds, {

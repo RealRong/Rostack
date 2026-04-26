@@ -20,6 +20,7 @@ import {
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import { resolveEdgeCapability } from '@whiteboard/editor/session/edge'
 
 export type EdgeRouteHandleState =
   | {
@@ -105,27 +106,45 @@ const isEdgeRoutePick = (
   && pick.part === 'path'
 )
 
+const readEdgeModel = (
+  projection: Pick<EditorHostDeps, 'projection'>['projection'],
+  edgeId: EdgeId
+) => projection.query.edge.get(edgeId)?.base.edge
+
+const canEditRoute = (
+  projection: Pick<EditorHostDeps, 'projection'>['projection'],
+  edgeId: EdgeId
+) => {
+  const edge = readEdgeModel(projection, edgeId)
+  return edge
+    ? resolveEdgeCapability({
+        edge,
+        readNodeLocked: (nodeId) => Boolean(projection.query.node.get(nodeId)?.base.node.locked)
+      }).editRoute
+    : false
+}
+
 const readEditableRouteView = (
-  edge: Pick<EditorHostDeps['projection']['edge'], 'geometry' | 'model' | 'capabilityOf'>,
+  projection: Pick<EditorHostDeps, 'projection'>['projection'],
   edgeId: EdgeId
 ): CoreEdgeView | undefined => {
-  const view = edge.geometry.get(edgeId)
-  const edgeModel = edge.model(edgeId)
+  const view = projection.host.geometry.edge(edgeId)
+  const edgeModel = readEdgeModel(projection, edgeId)
 
-  return view && edgeModel && edge.capabilityOf(edgeId)?.editRoute
+  return view && edgeModel && canEditRoute(projection, edgeId)
     ? view
     : undefined
 }
 
 const resolveEdgeRoutePickTarget = (
-  edge: Pick<EditorHostDeps['projection']['edge'], 'geometry' | 'model' | 'capabilityOf'>,
+  projection: Pick<EditorHostDeps, 'projection'>['projection'],
   pick: PointerDownInput['pick']
 ): EdgeRouteHandleTarget | undefined => {
   if (!isEdgeRoutePick(pick)) {
     return undefined
   }
 
-  const view = readEditableRouteView(edge, pick.id)
+  const view = readEditableRouteView(projection, pick.id)
   if (!view) {
     return undefined
   }
@@ -207,7 +226,7 @@ const startEdgeRouteSegment = (input: {
 })
 
 export const tryStartEdgeRoute = (input: {
-  edge: Pick<EditorHostDeps['projection']['edge'], 'geometry' | 'model' | 'capabilityOf'>
+  edge: Pick<EditorHostDeps, 'projection'>['projection']
   pointer: PointerDownInput
 }): EdgeRouteStart | undefined => {
   const target = resolveEdgeRoutePickTarget(
@@ -239,7 +258,7 @@ export const tryStartEdgeRoute = (input: {
     }
   }
 
-  const edge = input.edge.model(target.edgeId)
+  const edge = readEdgeModel(input.edge, target.edgeId)
   const view = readEditableRouteView(input.edge, target.edgeId)
 
   if ((edge?.type === 'elbow' || edge?.type === 'fillet') && view) {
@@ -483,7 +502,7 @@ const submitEdgeRouteCommit = (
     return
   }
 
-  const edge = ctx.projection.edge.model(commit.edgeId)
+  const edge = readEdgeModel(ctx.projection, commit.edgeId)
   const pointId = edge
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
@@ -498,7 +517,7 @@ const createEdgeRouteSession = (
 ): InteractionSession => {
   let state = initial
   let interaction = null as InteractionSession | null
-  const baseEdge = ctx.projection.edge.model(initial.edgeId)
+  const baseEdge = readEdgeModel(ctx.projection, initial.edgeId)
 
   const step = (
     pointer: {
@@ -506,8 +525,8 @@ const createEdgeRouteSession = (
       clientY: number
     }
   ) => {
-    const edge = ctx.projection.edge.model(state.edgeId)
-    if (!edge || !baseEdge || !ctx.projection.edge.capabilityOf(state.edgeId)?.editRoute) {
+    const edge = readEdgeModel(ctx.projection, state.edgeId)
+    if (!edge || !baseEdge || !canEditRoute(ctx.projection, state.edgeId)) {
       return CANCEL
     }
 
@@ -581,7 +600,7 @@ const commitInsertedRoute = (
   ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
-  const edge = ctx.projection.edge.model(input.edgeId)
+  const edge = readEdgeModel(ctx.projection, input.edgeId)
   if (!edge) {
     return null
   }

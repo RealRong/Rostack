@@ -12,10 +12,14 @@ const createInteractionDeps = () => {
     reconnectCommit,
     ctx: {
       projection: {
-        node: {},
-        edge: {
+        query: {
+          node: {
+            get: vi.fn(() => undefined)
+          }
+        },
+        host: {
           geometry: {
-            get: () => ({
+            edge: () => ({
               ends: {
                 source: {
                   end: {

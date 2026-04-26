@@ -1,12 +1,12 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { store } from '@shared/core'
-import type { HistoryApi } from '@whiteboard/history'
+import type { LocalHistoryApi } from '@shared/mutation'
 import { createSessionState } from '@whiteboard/editor/session/state'
 import {
   isMindmapChromeEqual,
   readAddChildTargets,
   type MindmapChrome
-} from '@whiteboard/editor/scene/mindmap'
+} from '@whiteboard/editor/session/presentation/mindmapChrome'
 import {
   readEdgeScope,
   readNodeScope,
@@ -15,9 +15,13 @@ import {
   resolveSelectionOverlay,
   resolveSelectionToolbar
 } from '@whiteboard/editor/session/panel'
+import {
+  createSessionSelectionProjection
+} from '@whiteboard/editor/session/projection/selection'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import {
   isSelectedEdgeChromeEqual,
+  resolveEdgeCapability,
   readSelectedEdgeId,
   readSelectedEdgeRoutePoints
 } from '@whiteboard/editor/session/edge'
@@ -36,6 +40,7 @@ import type {
 } from '@whiteboard/editor/types/editor'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { IntentResult } from '@whiteboard/engine'
 
 const isChromeMarqueeEqual = (
   left: ReturnType<EditorChromeSource['marquee']['get']>,
@@ -97,17 +102,17 @@ const readNodeLocked = ({
   graph,
   nodeId
 }: {
-  graph: Pick<EditorSceneRuntime, 'node'>
+  graph: Pick<EditorSceneRuntime, 'query'>
   nodeId: string
-}) => Boolean(graph.node.get(nodeId)?.node.locked)
+}) => Boolean(graph.query.node.get(nodeId)?.base.node.locked)
 
 const readNodeRect = ({
   graph,
   nodeId
 }: {
-  graph: Pick<EditorSceneRuntime, 'node'>
+  graph: Pick<EditorSceneRuntime, 'query'>
   nodeId: string
-}) => graph.node.get(nodeId)?.rect
+}) => graph.query.node.get(nodeId)?.geometry.rect
 
 export const createSessionSource = (
   {
@@ -118,20 +123,26 @@ export const createSessionSource = (
     nodeType,
     defaults
   }: {
-    graph: Pick<EditorSceneRuntime, 'node' | 'edge' | 'selection' | 'mindmap' | 'chrome'>
+    graph: Pick<EditorSceneRuntime, 'query' | 'stores' | 'host'>
     session: Pick<EditorSession, 'state' | 'interaction' | 'viewport' | 'preview'>
     state?: EditorSessionState
-    history: HistoryApi
+    history: LocalHistoryApi<IntentResult>
     nodeType: NodeTypeSupport
     defaults: EditorDefaults['selection']
   }
 ): EditorSessionSource => {
   const state = providedState ?? createSessionState(session)
   const sessionRead = createSessionRead(session)
-  const selectionSummary = graph.selection.summary
-  const selectionMembers = graph.selection.members
-  const selectionAffordance = graph.selection.affordance
-  const selectionNodeSelected = graph.selection.node.selected
+  const selectionProjection = createSessionSelectionProjection({
+    selection: state.selection,
+    query: graph.query,
+    stores: graph.stores,
+    nodeType
+  })
+  const selectionSummary = selectionProjection.summary
+  const selectionMembers = selectionProjection.members
+  const selectionAffordance = selectionProjection.affordance
+  const selectionNodeSelected = selectionProjection.node.selected
 
   const selectionNodeStats: EditorSessionSource['selection']['node']['stats'] = store.createDerivedStore({
     get: () => readSelectionNodeStats({
@@ -160,7 +171,7 @@ export const createSessionSource = (
         primaryNode: currentMembers.primaryNode,
         nodeType,
         nodeStats: currentNodeStats,
-        readMindmapStructure: (id) => graph.mindmap.structure(id),
+        readMindmapStructure: (id) => graph.query.mindmap.structure(id),
         defaults
       })
     }
@@ -209,7 +220,7 @@ export const createSessionSource = (
         nodeScope: store.read(selectionNodeScope),
         edgeScope: store.read(selectionEdgeScope),
         nodeType,
-        readMindmapStructure: (id) => graph.mindmap.structure(id),
+        readMindmapStructure: (id) => graph.query.mindmap.structure(id),
         tool: store.read(state.tool),
         edit: store.read(state.edit),
         interactionChrome: interaction.chrome,
@@ -221,7 +232,7 @@ export const createSessionSource = (
 
   const chromeMarquee: EditorChromeSource['marquee'] = store.createDerivedStore({
     get: () => {
-      const marquee = store.read(graph.chrome).preview.marquee
+      const marquee = store.read(graph.stores.graph.state.chrome).preview.marquee
 
       return marquee
         ? {
@@ -235,7 +246,7 @@ export const createSessionSource = (
 
   const chromeDraw: EditorChromeSource['draw'] = store.createDerivedStore({
     get: () => {
-      const preview = store.read(graph.chrome).preview.draw
+      const preview = store.read(graph.stores.graph.state.chrome).preview.draw
       return preview
         ? {
             kind: preview.kind,
@@ -248,7 +259,7 @@ export const createSessionSource = (
   })
 
   const chromeSnap: EditorChromeSource['snap'] = store.createDerivedStore({
-    get: () => store.read(graph.chrome).preview.guides
+    get: () => store.read(graph.stores.graph.state.chrome).preview.guides
   })
 
   const selectedEdgeChrome: EditorSessionSource['selection']['edge']['chrome'] = store.createDerivedStore({
@@ -258,13 +269,21 @@ export const createSessionSource = (
         return undefined
       }
 
-      const current = store.read(graph.edge.detail, selectedEdgeId)
-      const currentEnds = current?.route.ends
-      if (!current || !currentEnds) {
+      const current = graph.query.edge.get(selectedEdgeId)
+      const currentEdge = current?.base.edge
+      const currentEnds = graph.host.geometry.edge(selectedEdgeId)?.ends
+      if (!current || !currentEdge || !currentEnds) {
         return undefined
       }
 
-      const currentCapability = graph.edge.capability(current.edge)
+      const currentCapability = resolveEdgeCapability({
+        edge: currentEdge,
+        readNodeLocked: (nodeId) => readNodeLocked({
+          graph,
+          nodeId
+        })
+      })
+      const activeRouteIndex = store.read(graph.stores.graph.state.edge.byId, selectedEdgeId)?.activeRouteIndex
       const currentEdit = store.read(state.edit)
       const interaction = store.read(state.interaction)
       const editingThisSelectedEdge =
@@ -284,9 +303,9 @@ export const createSessionSource = (
           && !editingThisSelectedEdge,
         routePoints: readSelectedEdgeRoutePoints({
           edgeId: selectedEdgeId,
-          edge: current.edge,
+          edge: currentEdge,
           handles: current.route.handles,
-          activeRouteIndex: current.activeRouteIndex
+          activeRouteIndex
         })
       }
     },
@@ -295,7 +314,7 @@ export const createSessionSource = (
 
   const mindmapChrome: EditorSessionSource['mindmap']['chrome'] = store.createKeyedDerivedStore<string, ReturnType<EditorSessionSource['mindmap']['chrome']['get']>>({
     get: (mindmapId: string) => {
-      const structure = graph.mindmap.structure(mindmapId)
+      const structure = graph.query.mindmap.structure(mindmapId)
       if (!structure) {
         return undefined
       }
@@ -379,7 +398,10 @@ export const createSessionSource = (
 
   const selectionSource: EditorSessionSource['selection'] = Object.assign(state.selection, {
     target: state.selection,
-    view: graph.selection.view,
+    members: selectionProjection.members,
+    summary: selectionProjection.summary,
+    affordance: selectionProjection.affordance,
+    view: selectionProjection.view,
     node: {
       selected: selectionNodeSelected,
       stats: selectionNodeStats,

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { editor as editorApi } from '../src'
@@ -82,7 +82,7 @@ describe('mindmap root move', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -105,7 +105,7 @@ describe('mindmap root move', () => {
     }
 
     const { mindmapId, rootId } = created.data
-    const beforeTree = editor.scene.mindmap.view.get(mindmapId)?.tree.bbox
+    const beforeTree = editor.scene.query.mindmap.get(mindmapId)?.tree.bbox
     const beforeRoot = editor.document.get().nodes[rootId]?.position
 
     expect(beforeTree).toBeDefined()
@@ -121,7 +121,7 @@ describe('mindmap root move', () => {
       threshold: 0
     })
 
-    const afterTree = editor.scene.mindmap.view.get(mindmapId)?.tree.bbox
+    const afterTree = editor.scene.query.mindmap.get(mindmapId)?.tree.bbox
     const afterRoot = editor.document.get().nodes[rootId]?.position
 
     expect(afterTree).toBeDefined()

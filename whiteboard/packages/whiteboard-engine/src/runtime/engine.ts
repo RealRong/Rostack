@@ -129,6 +129,7 @@ export const createEngine = ({
     config,
     writes: core.writes,
     history: core.history,
+    doc: () => core.doc(),
     current: () => readPublish(core.current().publish),
     subscribe: (listener) => core.subscribe((current) => {
       listener(readPublish(current.publish))
@@ -138,6 +139,9 @@ export const createEngine = ({
         origin: resolveIntentOrigin(intent, options?.origin)
       }) as ExecuteResult<IntentKind>
     )) as Engine['execute'],
+    replace: (document, options) => core.replace(document, {
+      origin: options?.origin ?? 'system'
+    }),
     apply: (ops, options) => core.apply(ops, {
       origin: options?.origin ?? 'user'
     })

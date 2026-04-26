@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { editor as editorApi } from '../src'
 import type { NodeRegistry, PointerInput } from '../src'
 
@@ -111,7 +111,7 @@ const createTextEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -150,7 +150,7 @@ const createShapeEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -243,7 +243,7 @@ const createMindmapEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -306,7 +306,7 @@ const createEdgeEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -381,7 +381,7 @@ describe('node edit selection chrome', () => {
       nodeIds: ['shape-1']
     })
 
-    const beforeRect = editor.scene.nodes.read.get('shape-1')?.rect
+    const beforeRect = editor.scene.query.node.get('shape-1')?.geometry.rect
     expect(beforeRect).toBeDefined()
 
     editor.input.pointerDown(createPointerInput({
@@ -419,7 +419,7 @@ describe('node edit selection chrome', () => {
       x: 128,
       y: 152
     })
-    expect(editor.scene.nodes.read.get('shape-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('shape-1')?.geometry.rect).toMatchObject({
       x: 128,
       y: 152
     })
@@ -438,7 +438,7 @@ describe('node edit selection chrome', () => {
       stroke: '#ef4444',
       strokeWidth: 3
     })
-    expect(editor.scene.nodes.read.get('shape-1')?.node.style).toMatchObject({
+    expect(editor.scene.query.node.get('shape-1')?.base.node.style).toMatchObject({
       fill: '#22c55e',
       stroke: '#ef4444',
       strokeWidth: 3
@@ -452,7 +452,7 @@ describe('node edit selection chrome', () => {
       nodeIds: ['root-1']
     })
 
-    const beforeRect = editor.scene.nodes.read.get('root-1')?.rect
+    const beforeRect = editor.scene.query.node.get('root-1')?.geometry.rect
     expect(beforeRect).toBeDefined()
 
     editor.input.pointerDown(createPointerInput({
@@ -490,7 +490,7 @@ describe('node edit selection chrome', () => {
       x: 248,
       y: 212
     })
-    expect(editor.scene.nodes.read.get('root-1')?.rect).toMatchObject({
+    expect(editor.scene.query.node.get('root-1')?.geometry.rect).toMatchObject({
       x: 248,
       y: 212
     })
@@ -526,7 +526,7 @@ describe('node edit selection chrome', () => {
       strokeWidth: 3,
       fill: '#22c55e'
     })
-    expect(editor.scene.nodes.read.get('root-1')?.node.style).toMatchObject({
+    expect(editor.scene.query.node.get('root-1')?.base.node.style).toMatchObject({
       frameKind: 'underline',
       stroke: '#ef4444',
       strokeWidth: 3,
@@ -536,14 +536,14 @@ describe('node edit selection chrome', () => {
 
   it('updates node hovered from idle pointer hover and clears it on leave', () => {
     const editor = createShapeEditor()
-    const view = editor.scene.nodes.read.get('shape-1')
+    const view = editor.scene.query.node.get('shape-1')
 
-    expect(view?.hovered).toBe(false)
+    expect(editor.scene.stores.graph.state.node.byId.get('shape-1')?.hovered).toBe(false)
 
     editor.input.pointerMove(createPointerInput({
       phase: 'move',
-      x: view!.rect.x + view!.rect.width / 2,
-      y: view!.rect.y + view!.rect.height / 2,
+      x: view!.geometry.rect.x + view!.geometry.rect.width / 2,
+      y: view!.geometry.rect.y + view!.geometry.rect.height / 2,
       pick: {
         kind: 'node',
         id: 'shape-1',
@@ -552,10 +552,10 @@ describe('node edit selection chrome', () => {
       buttons: 0
     }))
 
-    expect(editor.scene.nodes.read.get('shape-1')?.hovered).toBe(true)
+    expect(editor.scene.stores.graph.state.node.byId.get('shape-1')?.hovered).toBe(true)
 
     editor.input.pointerLeave()
 
-    expect(editor.scene.nodes.read.get('shape-1')?.hovered).toBe(false)
+    expect(editor.scene.stores.graph.state.node.byId.get('shape-1')?.hovered).toBe(false)
   })
 })

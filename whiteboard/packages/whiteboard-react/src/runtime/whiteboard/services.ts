@@ -4,9 +4,13 @@ import type {
   Document,
   Point
 } from '@whiteboard/core/types'
+import {
+  createLocalMutationHistory,
+  type LocalHistoryApi
+} from '@shared/mutation'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi, type DrawState } from '@whiteboard/editor'
-import { history as historyApi, type HistoryBinding } from '@whiteboard/history'
+import type { IntentResult } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 import { createClipboardHostAdapter } from '@whiteboard/react/dom/host/clipboard'
@@ -15,6 +19,10 @@ import { createInsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import { createPointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import { createTextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
 import type { WhiteboardServicesContextValue } from '@whiteboard/react/runtime/hooks/useWhiteboard'
+import {
+  createHistoryBinding,
+  type HistoryBinding
+} from '@whiteboard/react/runtime/whiteboard/historyBinding'
 import { createLayoutBackend } from '@whiteboard/react/runtime/whiteboard/layout'
 import { dismissBackgroundEditSelection } from '@whiteboard/react/runtime/whiteboard/pointerDown'
 
@@ -52,7 +60,7 @@ export const isMirroredDocumentFromEngine = (
 )
 
 export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {
-  history: HistoryBinding
+  history: HistoryBinding<IntentResult>
 }
 
 export const createWhiteboardServices = ({
@@ -78,8 +86,12 @@ export const createWhiteboardServices = ({
     config: boardConfig,
     history: resolvedConfig.history
   })
-  const baseHistory = historyApi.local.create(engine)
-  const history = historyApi.binding.create(baseHistory)
+  const baseHistory: LocalHistoryApi<IntentResult> = createLocalMutationHistory(engine, {
+    apply: {
+      origin: 'history'
+    }
+  })
+  const history = createHistoryBinding(baseHistory)
   const textSources = createTextSourceStore()
   const editor = editorApi.create({
     engine,

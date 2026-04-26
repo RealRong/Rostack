@@ -10,7 +10,7 @@ import type { Edge, EdgeId, MindmapId, MindmapNodeId, NodeId, NodeModel } from '
 import { collection, equal } from '@shared/core'
 import type { EditorDefaults, EditorNodePaintDefaults } from '@whiteboard/editor/types/defaults'
 import type { EditSession } from '@whiteboard/editor/session/edit'
-import type { EditorMindmapStructure } from '@whiteboard/editor/scene/mindmap'
+import type { EditorMindmapStructure } from '@whiteboard/editor/session/presentation/mindmapChrome'
 import type {
   SelectionEdgeStats,
   SelectionEdgeTypeInfo,
@@ -30,6 +30,7 @@ import type {
   NodeFamily,
   NodeTypeSupport
 } from '@whiteboard/editor/types/node'
+import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 const readNodeCountLabel = (
   count: number
@@ -69,32 +70,17 @@ const normalizeDash = (
   value: readonly number[] | undefined
 ) => value?.length ? value : undefined
 
-export const readSelectionRole = (
-  node: NodeModel
-): 'content' | 'frame' => node.type === 'frame'
-  ? 'frame'
-  : 'content'
-
-export const readSelectionTransformCapability = (
-  node: NodeModel,
-  nodeType: Pick<NodeTypeSupport, 'capability'>
-) => {
-  const capability = nodeType.capability(node.type)
-  const mindmapOwned = node.owner?.kind === 'mindmap'
-
-  return {
-    resize: !mindmapOwned && capability.resize,
-    rotate: !mindmapOwned && capability.rotate
-  }
-}
-
 export const readSelectionNodeTransformBehavior = (
   node: NodeModel,
   nodeType: Pick<NodeTypeSupport, 'capability'>
-) => nodeApi.transform.resolveBehavior(node, {
-  role: readSelectionRole(node),
-  resize: readSelectionTransformCapability(node, nodeType).resize
-})
+) => {
+  const capability = resolveNodeEditorCapability(node, nodeType)
+
+  return nodeApi.transform.resolveBehavior(node, {
+    role: capability.role,
+    resize: capability.resize
+  })
+}
 
 export const readSelectionNodeStats = ({
   summary,

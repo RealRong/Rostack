@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
 import type { NodeRegistry, PointerInput } from '../src'
@@ -93,7 +93,7 @@ describe('mindmap drag gesture runtime', () => {
     })
     const editor = editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -120,8 +120,8 @@ describe('mindmap drag gesture runtime', () => {
         nodeIds: [created.data.rootId]
       })
 
-      const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
-      const beforeScene = editor.scene.mindmap.view.get(created.data.mindmapId)?.tree.bbox
+      const beforeRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+      const beforeScene = editor.scene.query.mindmap.get(created.data.mindmapId)?.tree.bbox
 
       expect(beforeRoot).toBeDefined()
       expect(beforeScene).toBeDefined()
@@ -149,8 +149,8 @@ describe('mindmap drag gesture runtime', () => {
         }
       }))
 
-      const liveRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
-      const liveScene = editor.scene.mindmap.view.get(created.data.mindmapId)?.tree.bbox
+      const liveRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+      const liveScene = editor.scene.query.mindmap.get(created.data.mindmapId)?.tree.bbox
 
       expect(liveRoot).toEqual({
         ...beforeRoot!,

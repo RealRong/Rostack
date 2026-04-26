@@ -1,11 +1,12 @@
 import {
   edge as edgeApi,
+  resolveEdgeViewFromNodeGeometry,
   type EdgeConnectEvaluation,
   type EdgeConnectPreview,
   type EdgeConnectState
 } from '@whiteboard/core/edge'
 import type { BoardConfig } from '@whiteboard/core/config'
-import { node as nodeApi } from '@whiteboard/core/node'
+import { node as nodeApi, toSpatialNode } from '@whiteboard/core/node'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   Edge,
@@ -26,14 +27,12 @@ import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import { resolveGraphEdgeGeometry } from '@whiteboard/editor/scene/edge'
-import {
-  toSpatialNode
-} from '@whiteboard/editor/scene/node'
+import { resolveEdgeCapability } from '@whiteboard/editor/session/edge'
+import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
-type EdgeConnectNodeRead = Pick<EditorHostDeps['projection']['node'], 'get' | 'capability'>
-type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection']['geometry'], 'node'>
-type EdgeConnectEdgeRead = Pick<EditorHostDeps['projection']['edge'], 'model' | 'geometry' | 'capabilityOf'>
+type EdgeConnectNodeRead = Pick<EditorHostDeps, 'projection' | 'nodeType'>
+type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection']['host']['geometry'], 'node'>
+type EdgeConnectEdgeRead = Pick<EditorHostDeps, 'projection'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
 }) => EdgeConnectEvaluation
@@ -63,7 +62,7 @@ type EdgeConnectGestureInput = {
 }
 
 type ConnectNodeEntry = NonNullable<
-  ReturnType<EdgeConnectNodeRead['get']>
+  ReturnType<EdgeConnectPreviewGeometryRead['node']>
 >
 
 const EMPTY_MODIFIERS: ModifierKeys = {
@@ -101,9 +100,14 @@ const readConnectNode = (
   node: EdgeConnectNodeRead,
   nodeId: NodeId
 ): ConnectNodeEntry | undefined => {
-  const entry = node.get(nodeId)
+  const entry = node.projection.host.geometry.node(nodeId)
   const currentNode = entry?.node
-  if (!entry || !currentNode || currentNode.locked || !node.capability(currentNode).connect) {
+  if (
+    !entry
+    || !currentNode
+    || currentNode.locked
+    || !resolveNodeEditorCapability(currentNode, node.nodeType).connect
+  ) {
     return undefined
   }
 
@@ -257,13 +261,16 @@ const resolveReconnectStart = (input: {
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const edge = input.edge.model(input.edgeId)
-  const resolved = input.edge.geometry.get(input.edgeId)
+  const edge = input.edge.projection.query.edge.get(input.edgeId)?.base.edge
+  const resolved = input.edge.projection.host.geometry.edge(input.edgeId)
   if (!edge || !resolved) {
     return undefined
   }
 
-  const capability = input.edge.capabilityOf(input.edgeId)
+  const capability = resolveEdgeCapability({
+    edge,
+    readNodeLocked: (nodeId) => Boolean(input.edge.projection.query.node.get(nodeId)?.base.node.locked)
+  })
   if (
     !capability
     || (
@@ -367,9 +374,20 @@ const resolveCreatePreviewPath = (
     return undefined
   }
 
-  const view = resolveGraphEdgeGeometry({
+  const view = resolveEdgeViewFromNodeGeometry({
     edge,
-    readNodeGeometry: (nodeId) => geometry.node(nodeId)
+    readNodeGeometry: (nodeId) => {
+      const current = geometry.node(nodeId)
+      return current
+        ? {
+            node: current.node,
+            rect: current.rect,
+            bounds: current.bounds,
+            outline: current.outline.outline,
+            rotation: current.rotation
+          }
+        : undefined
+    }
   })
   if (!view) {
     return undefined
@@ -495,7 +513,7 @@ const readReconnectFixedPoint = (
     return undefined
   }
 
-  const resolved = ctx.projection.edge.geometry.get(state.edgeId)
+  const resolved = ctx.projection.host.geometry.edge(state.edgeId)
   if (!resolved) {
     return undefined
   }
@@ -645,7 +663,7 @@ export const createEdgeConnectSession = (
       allowLatch
     })
     const result = stepEdgeConnect({
-      geometry: ctx.projection.geometry,
+      geometry: ctx.projection.host.geometry,
       state,
       world: readReconnectWorld({
         state,

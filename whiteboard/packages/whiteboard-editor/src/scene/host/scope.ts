@@ -1,6 +1,9 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { store } from '@shared/core'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
+import {
+  toSpatialNode
+} from '@whiteboard/core/node'
 import type {
   Edge,
   EdgeId,
@@ -12,9 +15,6 @@ import type {
   NodeRenderView,
   Query as EditorGraphQuery
 } from '@whiteboard/editor-scene'
-import {
-  toSpatialNode,
-} from '@whiteboard/editor/scene/node'
 
 const expandMoveNodeIds = (input: {
   target: SelectionTarget
@@ -69,7 +69,7 @@ export const createSceneScope = (input: {
   spatialRect: EditorGraphQuery['spatial']['rect']
   relatedEdges: (nodeIds: readonly NodeId[]) => readonly EdgeId[]
   nodeView: store.KeyedReadStore<NodeId, NodeRenderView | undefined>
-  edgeBounds: store.KeyedReadStore<EdgeId, Rect | undefined>
+  edgeBounds: (edgeId: EdgeId) => Rect | undefined
   readEdges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
 }) => ({
   move: (target: SelectionTarget): {
@@ -110,7 +110,7 @@ export const createSceneScope = (input: {
       return current ? [current.bounds] : []
     })
     const edgeBounds = normalized.edgeIds.flatMap((edgeId) => {
-      const current = store.read(input.edgeBounds, edgeId)
+      const current = input.edgeBounds(edgeId)
       return current ? [current] : []
     })
 

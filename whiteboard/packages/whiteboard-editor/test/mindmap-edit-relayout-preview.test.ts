@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
 import type { LayoutBackend, NodeRegistry } from '../src'
@@ -102,7 +102,7 @@ describe('mindmap edit relayout preview', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -143,8 +143,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
-    const beforeChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
+    const beforeRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+    const beforeChild = editor.scene.query.node.get(insert.data.nodeId)?.geometry.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -152,8 +152,8 @@ describe('mindmap edit relayout preview', () => {
     editor.write.edit.startNode(created.data.rootId, 'text')
     editor.write.edit.input('Central topic with much longer live width')
 
-    const liveRoot = editor.scene.nodes.read.get(created.data.rootId)?.rect
-    const liveChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
+    const liveRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+    const liveChild = editor.scene.query.node.get(insert.data.nodeId)?.geometry.rect
 
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
@@ -168,7 +168,7 @@ describe('mindmap edit relayout preview', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -209,8 +209,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
-    const beforeScene = editor.scene.mindmap.view.get(created.data.mindmapId)?.tree.bbox
+    const beforeChild = editor.scene.query.node.get(insert.data.nodeId)?.geometry.rect
+    const beforeScene = editor.scene.query.mindmap.get(created.data.mindmapId)?.tree.bbox
 
     expect(beforeChild).toBeDefined()
     expect(beforeScene).toBeDefined()
@@ -218,8 +218,8 @@ describe('mindmap edit relayout preview', () => {
     editor.write.edit.startNode(insert.data.nodeId, 'text')
     editor.write.edit.input('Child topic with much longer text')
 
-    const liveChild = editor.scene.nodes.read.get(insert.data.nodeId)?.rect
-    const liveScene = editor.scene.mindmap.view.get(created.data.mindmapId)?.tree.bbox
+    const liveChild = editor.scene.query.node.get(insert.data.nodeId)?.geometry.rect
+    const liveScene = editor.scene.query.mindmap.get(created.data.mindmapId)?.tree.bbox
     const session = editor.session.edit.get()
 
     expect(liveChild).toBeDefined()
@@ -257,7 +257,7 @@ describe('mindmap edit relayout preview', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -314,8 +314,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeFirst = editor.scene.nodes.read.get(first.data.nodeId)?.rect
-    const beforeSecond = editor.scene.nodes.read.get(second.data.nodeId)?.rect
+    const beforeFirst = editor.scene.query.node.get(first.data.nodeId)?.geometry.rect
+    const beforeSecond = editor.scene.query.node.get(second.data.nodeId)?.geometry.rect
 
     expect(beforeFirst).toBeDefined()
     expect(beforeSecond).toBeDefined()
@@ -325,8 +325,8 @@ describe('mindmap edit relayout preview', () => {
     editor.write.edit.startNode(first.data.nodeId, 'text')
     editor.write.edit.input('First branch now wraps into multiple visual lines')
 
-    const liveFirst = editor.scene.nodes.read.get(first.data.nodeId)?.rect
-    const liveSecond = editor.scene.nodes.read.get(second.data.nodeId)?.rect
+    const liveFirst = editor.scene.query.node.get(first.data.nodeId)?.geometry.rect
+    const liveSecond = editor.scene.query.node.get(second.data.nodeId)?.geometry.rect
 
     expect(liveFirst).toBeDefined()
     expect(liveSecond).toBeDefined()
@@ -359,7 +359,7 @@ describe('mindmap edit relayout preview', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: historyApi.local.create(engine),
+      history: createLocalMutationHistory(engine),
       initialTool: {
         type: 'select'
       },
@@ -420,8 +420,8 @@ describe('mindmap edit relayout preview', () => {
       y: number
       height: number
     }> = []
-    const unsubscribe = editor.scene.nodes.read.subscribe(second.data.nodeId, () => {
-      const rect = editor.scene.nodes.read.get(second.data.nodeId)?.rect
+    const unsubscribe = editor.scene.stores.render.node.byId.subscribe(second.data.nodeId, () => {
+      const rect = editor.scene.query.node.get(second.data.nodeId)?.geometry.rect
       if (!rect) {
         return
       }
@@ -439,7 +439,7 @@ describe('mindmap edit relayout preview', () => {
 
     expect(notifications.length).toBeGreaterThan(0)
     expect(notifications.at(-1)?.y).toBe(
-      editor.scene.nodes.read.get(second.data.nodeId)?.rect.y
+      editor.scene.query.node.get(second.data.nodeId)?.geometry.rect.y
     )
   })
 })

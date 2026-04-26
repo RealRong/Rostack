@@ -101,7 +101,7 @@ export const createEditorInputHost = ({
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  projection: Pick<EditorSceneRuntime, 'group'>
+  projection: Pick<EditorSceneRuntime, 'query'>
   session: Pick<EditorSession, 'state' | 'mutate' | 'viewport' | 'interaction'>
 }): EditorInputHost => {
   const writePointer = (sample: {
@@ -163,7 +163,7 @@ export const createEditorInputHost = ({
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'group': {
-          const target = projection.group.target(input.pick.id)
+          const target = projection.query.group.target(input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',

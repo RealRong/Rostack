@@ -67,6 +67,21 @@ const readDefinitionCapability = (
   }
 }
 
+export const resolveNodeEditorCapability = (
+  node: Pick<Node, 'id' | 'type' | 'owner'>,
+  type: Pick<NodeTypeSupport, 'capability'>
+): NodeTypeCapability => {
+  const base = type.capability(node.type)
+  const mindmapOwned = node.owner?.kind === 'mindmap'
+
+  return {
+    ...base,
+    connect: base.connect,
+    resize: !mindmapOwned && base.resize,
+    rotate: !mindmapOwned && base.rotate
+  }
+}
+
 export const createNodeTypeSupport = (
   registry: NodeRegistry
 ): NodeTypeSupport => {

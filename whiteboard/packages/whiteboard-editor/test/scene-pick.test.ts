@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { editor as editorApi } from '../src'
 import type { NodeRegistry } from '../src'
 
@@ -104,7 +104,7 @@ const createPickEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -122,7 +122,7 @@ const createPickEditor = () => {
 describe('scene pick', () => {
   it('resolves edge targets from rect candidates and precise hit', () => {
     const editor = createPickEditor()
-    const geometry = editor.scene.edges.geometry.get('edge-1')
+    const geometry = editor.scene.host.geometry.edge('edge-1')
 
     expect(geometry).toBeDefined()
     if (!geometry) {
@@ -132,24 +132,26 @@ describe('scene pick', () => {
     const point = geometry.path.points[
       Math.floor(geometry.path.points.length / 2)
     ]!
-    const candidates = editor.scene.pick.candidates({
-      point,
-      radius: 16,
+    const rect = {
+      x: point.x - 16,
+      y: point.y - 16,
+      width: 32,
+      height: 32
+    }
+    const candidates = editor.scene.query.spatial.candidates(rect, {
       kinds: ['edge']
     })
-    const resolved = editor.scene.pick.resolve({
+    const resolved = editor.scene.query.hit.item({
       point,
-      radius: 16,
+      threshold: 16,
       kinds: ['edge']
     })
 
     expect(candidates.records.map((record) => record.key)).toContain('edge:edge-1')
     expect(candidates.stats.candidates).toBeGreaterThan(0)
-    expect(resolved.target).toEqual({
+    expect(resolved).toEqual({
       kind: 'edge',
       id: 'edge-1'
     })
-    expect(resolved.stats.hits).toBeGreaterThan(0)
-    expect(resolved.stats.candidates).toBeGreaterThan(0)
   })
 })

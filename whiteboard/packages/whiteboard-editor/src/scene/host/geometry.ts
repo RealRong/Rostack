@@ -1,4 +1,5 @@
 import type { EdgeView as CoreEdgeView } from '@whiteboard/core/edge'
+import { resolveEdgeViewFromNodeGeometry } from '@whiteboard/core/edge'
 import { store } from '@shared/core'
 import type {
   EdgeId,
@@ -7,29 +8,32 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   EdgeView as RuntimeEdgeView,
-  NodeView as RuntimeNodeView
+  NodeRenderView,
+  SceneItem
 } from '@whiteboard/editor-scene'
-import {
-  resolveGraphEdgeGeometry
-} from '@whiteboard/editor/scene/edge'
-import type { GraphNodeGeometry } from '@whiteboard/editor/scene/node'
 
-export type SceneNodeGeometry = GraphNodeGeometry & {
+export type SceneNodeGeometry = {
   node: NodeModel
-}
+  rect: NodeRenderView['rect']
+  rotation: number
+} & NodeRenderView['outline']
 
-export type SceneGeometry = {
-  node: (nodeId: NodeId) => SceneNodeGeometry | undefined
-  edge: (edgeId: EdgeId) => CoreEdgeView | undefined
-}
+const readSceneItemKey = (
+  item: SceneItem | {
+    kind: SceneItem['kind']
+    id: string
+  }
+) => `${item.kind}:${item.id}`
 
 export const createSceneGeometry = (input: {
   revision: () => number
-  nodeGraph: store.KeyedReadStore<NodeId, RuntimeNodeView | undefined>
+  items: store.ReadStore<readonly SceneItem[]>
+  nodeView: store.KeyedReadStore<NodeId, NodeRenderView | undefined>
   edgeGraph: store.KeyedReadStore<EdgeId, RuntimeEdgeView | undefined>
-}): SceneGeometry => {
+}) => {
   const state = {
     revision: -1,
+    order: new Map<string, number>(),
     node: new Map<NodeId, SceneNodeGeometry | null>(),
     edge: new Map<EdgeId, CoreEdgeView | null>()
   }
@@ -41,6 +45,9 @@ export const createSceneGeometry = (input: {
     }
 
     state.revision = currentRevision
+    state.order = new Map(
+      store.read(input.items).map((item, order) => [readSceneItemKey(item), order] as const)
+    )
     state.node.clear()
     state.edge.clear()
   }
@@ -53,12 +60,13 @@ export const createSceneGeometry = (input: {
       return state.node.get(nodeId) ?? undefined
     }
 
-    const current = store.read(input.nodeGraph, nodeId)
+    const current = store.read(input.nodeView, nodeId)
     const next = current
       ? {
-          ...current.geometry.outline,
-          rotation: current.geometry.rotation,
-          node: current.base.node
+          ...current.outline,
+          rect: current.rect,
+          rotation: current.rotation,
+          node: current.node
         }
       : null
 
@@ -76,7 +84,7 @@ export const createSceneGeometry = (input: {
 
     const edge = store.read(input.edgeGraph, edgeId)?.base.edge
     const next = edge
-      ? resolveGraphEdgeGeometry({
+      ? resolveEdgeViewFromNodeGeometry({
           edge,
           readNodeGeometry
         }) ?? null
@@ -88,6 +96,15 @@ export const createSceneGeometry = (input: {
 
   return {
     node: readNodeGeometry,
-    edge: readEdgeGeometry
+    edge: readEdgeGeometry,
+    order: (
+      item: SceneItem | {
+        kind: SceneItem['kind']
+        id: string
+      }
+    ) => {
+      sync()
+      return state.order.get(readSceneItemKey(item)) ?? -1
+    }
   }
 }

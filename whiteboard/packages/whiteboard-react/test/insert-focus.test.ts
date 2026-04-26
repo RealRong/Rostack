@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { editor as editorApi, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/editor'
 import { product } from '@whiteboard/product'
@@ -113,7 +113,7 @@ const createEditor = () => {
 
   return editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -163,7 +163,7 @@ describe('insert focus', () => {
 
     expect(result).toBeDefined()
     expect(editor.session.tool.get().type).toBe('select')
-    expect(editor.scene.nodes.read.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.scene.stores.graph.state.node.byId.get(result!.nodeId)?.selected).toBe(true)
     expect(editor.session.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
@@ -192,7 +192,7 @@ describe('insert focus', () => {
 
     expect(result).toBeDefined()
     expect(editor.session.tool.get().type).toBe('select')
-    expect(editor.scene.nodes.read.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.scene.stores.graph.state.node.byId.get(result!.nodeId)?.selected).toBe(true)
     expect(editor.session.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
@@ -221,7 +221,7 @@ describe('insert focus', () => {
 
     expect(result).toBeDefined()
     expect(editor.session.tool.get().type).toBe('select')
-    expect(editor.scene.nodes.read.get(result!.nodeId)?.selected).toBe(true)
+    expect(editor.scene.stores.graph.state.node.byId.get(result!.nodeId)?.selected).toBe(true)
     expect(editor.session.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,

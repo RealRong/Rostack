@@ -86,7 +86,10 @@ import {
 import { resolveEdgePathFromRects } from '@whiteboard/core/edge/resolvedPath'
 import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
 import { getNearestEdgeInsertIndex } from '@whiteboard/core/edge/segment'
-import { resolveEdgeView } from '@whiteboard/core/edge/view'
+import {
+  resolveEdgeView,
+  resolveEdgeViewFromNodeGeometry
+} from '@whiteboard/core/edge/view'
 
 export const edge = {
   guard: {
@@ -117,7 +120,8 @@ export const edge = {
     resolve: resolveEdgeEnds
   },
   view: {
-    resolve: resolveEdgeView
+    resolve: resolveEdgeView,
+    resolveFromNodeGeometry: resolveEdgeViewFromNodeGeometry
   },
   hit: {
     test: matchEdgeRect,
@@ -232,3 +236,6 @@ export type {
 export type { EdgeRouteHandleTarget } from '@whiteboard/core/edge/edit'
 export type { EdgeLabelMaskRect } from '@whiteboard/core/edge/labelMask'
 export type { EdgeStaticStyle } from '@whiteboard/core/edge/render'
+export {
+  resolveEdgeViewFromNodeGeometry
+} from '@whiteboard/core/edge/view'

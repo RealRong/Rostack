@@ -14,6 +14,7 @@ import {
 } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import { resolveEdgeCapability } from '@whiteboard/editor/session/edge'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -35,18 +36,21 @@ const readEdgeMovePatch = (
   : undefined
 
 const readMovableEdge = (
-  edge: Pick<EditorHostDeps['projection']['edge'], 'model' | 'capabilityOf'>,
+  projection: Pick<EditorHostDeps, 'projection'>['projection'],
   edgeId: EdgeId
 ) => {
-  const current = edge.model(edgeId)
+  const current = projection.query.edge.get(edgeId)?.base.edge
 
-  return current && edge.capabilityOf(edgeId)?.move
+  return current && resolveEdgeCapability({
+    edge: current,
+    readNodeLocked: (nodeId) => Boolean(projection.query.node.get(nodeId)?.base.node.locked)
+  }).move
     ? current
     : undefined
 }
 
 export const startEdgeMove = (input: {
-  edge: Pick<EditorHostDeps['projection']['edge'], 'model' | 'capabilityOf'>
+  edge: Pick<EditorHostDeps, 'projection'>['projection']
   edgeId: EdgeId
   pointerId: number
   start: Point

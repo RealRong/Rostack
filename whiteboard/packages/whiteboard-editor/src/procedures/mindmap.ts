@@ -158,7 +158,7 @@ const buildMindmapEnterPreview = ({
   nodeId,
   anchorId
 }: {
-  structure: EditorSceneRuntime['mindmap']['structure']
+  structure: EditorSceneRuntime['query']['mindmap']['structure']
   graph: GraphState
   treeId: MindmapId
   nodeId: MindmapNodeId
@@ -313,7 +313,7 @@ const createMindmapTickDelta = (
 
 type MindmapProcedureDeps = {
   engine: Pick<Engine, 'current'>
-  graph: Pick<EditorSceneRuntime, 'mindmap'>
+  graph: Pick<EditorSceneRuntime, 'query'>
   session: Pick<EditorSession, 'preview'>
   write: Pick<EditorWrite, 'mindmap'>
   focusNode: (input: {
@@ -424,7 +424,7 @@ export const createMindmapActionProcedures = ({
   ): EditorProcedure<number> {
     const published = yield publish()
     const preview = buildMindmapEnterPreview({
-      structure: graph.mindmap.structure,
+      structure: graph.query.mindmap.structure,
       graph: published.graph,
       treeId: input.treeId,
       nodeId: input.nodeId,
@@ -486,7 +486,7 @@ export const createMindmapActionProcedures = ({
   const insertRelative = function* (
     input: Parameters<MindmapActions['insertRelative']>[0]
   ): EditorProcedure<ReturnType<MindmapActions['insertRelative']>> {
-    const structure = graph.mindmap.structure(input.id)
+    const structure = graph.query.mindmap.structure(input.id)
     if (!structure) {
       return undefined
     }

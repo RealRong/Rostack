@@ -9,11 +9,11 @@
     "./meta": "./src/meta.ts",
     "./compiler": "./src/compiler.ts",
     "./engine": "./src/engine.ts",
-    "./collab": "./src/collab.ts",
     "./history": "./src/history.ts",
     "./write": "./src/write.ts"
   },
   "dependencies": {
+    "@shared/core": "workspace:*",
     "@shared/reducer": "workspace:*"
   },
   "scripts": {

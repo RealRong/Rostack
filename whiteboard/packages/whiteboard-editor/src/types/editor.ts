@@ -1,8 +1,13 @@
 import { store } from '@shared/core'
+import type { LocalHistoryApi, LocalHistoryState } from '@shared/mutation'
 import type { SliceExportResult } from '@whiteboard/core/document'
 import type { EdgeView as CoreEdgeView } from '@whiteboard/core/edge'
 import type { Guide } from '@whiteboard/core/node'
-import type { SelectionTarget } from '@whiteboard/core/selection'
+import type {
+  SelectionAffordance,
+  SelectionSummary,
+  SelectionTarget
+} from '@whiteboard/core/selection'
 import type {
   Document,
   Edge,
@@ -15,7 +20,6 @@ import type {
   Rect,
   Viewport
 } from '@whiteboard/core/types'
-import type { HistoryApi } from '@whiteboard/history'
 import type {
   NodeRenderView,
   Query as EditorSceneQueryRuntime,
@@ -30,7 +34,7 @@ import type {
   DocumentEdgeItem,
   DocumentNodeItem
 } from '@whiteboard/editor/document/source'
-import type { MindmapChrome } from '@whiteboard/editor/scene/mindmap'
+import type { MindmapChrome } from '@whiteboard/editor/session/presentation/mindmapChrome'
 import type {
   SelectedEdgeChrome,
   SelectedEdgeRoutePoint
@@ -57,12 +61,14 @@ import type {
 import type { PointerMode } from '@whiteboard/editor/input/core/types'
 import type {
   EditorSelectionView,
+  SelectionMembers,
   SelectionNodeStats,
   SelectionOverlay,
   SelectionToolbarContext,
   SelectionToolbarNodeScope
 } from '@whiteboard/editor/types/selectionPresentation'
 import type { Tool } from '@whiteboard/editor/types/tool'
+import type { IntentResult } from '@whiteboard/engine'
 import type { EngineWrite } from '@whiteboard/engine/types/engineWrite'
 
 export type EditorPointerDispatchResult = {
@@ -130,7 +136,7 @@ export type EditorChromePresentation = {
 
 export type EditorPanelPresentation = {
   selectionToolbar: SelectionToolbarContext | undefined
-  history: ReturnType<HistoryApi['get']>
+  history: LocalHistoryState
   draw: DrawState
 }
 
@@ -248,7 +254,7 @@ export type EditorChromeSource = store.ReadStore<EditorChromePresentation> & {
 
 export type EditorPanelSource = store.ReadStore<EditorPanelPresentation> & {
   selectionToolbar: store.ReadStore<SelectionToolbarContext | undefined>
-  history: HistoryApi
+  history: LocalHistoryApi<IntentResult>
   draw: store.ReadStore<DrawState>
 }
 
@@ -258,6 +264,9 @@ export type EditorSessionSource = {
   edit: store.ReadStore<EditSession>
   selection: store.ReadStore<SelectionTarget> & {
     target: store.ReadStore<SelectionTarget>
+    members: store.ReadStore<SelectionMembers>
+    summary: store.ReadStore<SelectionSummary>
+    affordance: store.ReadStore<SelectionAffordance>
     view: store.ReadStore<EditorSelectionView>
     node: EditorSelectionNodeRead
     edge: {
@@ -272,7 +281,7 @@ export type EditorSessionSource = {
   }
   chrome: EditorChromeSource
   panel: EditorPanelSource
-  history: HistoryApi
+  history: LocalHistoryApi<IntentResult>
   mindmap: {
     chrome: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
   }

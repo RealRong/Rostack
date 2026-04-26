@@ -94,21 +94,14 @@ describe('mindmap field drag', () => {
         },
       },
       projection: {
-        frame: {
-          pick: vi.fn(() => undefined),
-          parent: vi.fn()
-        },
-        node: {
-          all: vi.fn(() => []),
-          get: vi.fn(() => undefined)
-        },
-        edge: {
-          all: vi.fn(() => [])
-        },
-        mindmap: {
-          id: vi.fn(() => 'mind-1'),
-          structure: vi.fn(() => structure),
-          view: {
+        query: {
+          frame: {
+            pick: vi.fn(() => undefined),
+            parent: vi.fn()
+          },
+          mindmap: {
+            resolve: vi.fn(() => 'mind-1'),
+            structure: vi.fn(() => structure),
             get: () => ({
               structure: {
                 nodeIds: ['root-1']

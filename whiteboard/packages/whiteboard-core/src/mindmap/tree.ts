@@ -64,6 +64,47 @@ export const getSide = (
   return undefined
 }
 
+export const readMindmapNavigateTarget = ({
+  tree,
+  fromNodeId,
+  direction
+}: {
+  tree: MindmapTree
+  fromNodeId: MindmapNodeId
+  direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+}) => {
+  switch (direction) {
+    case 'parent':
+      return tree.nodes[fromNodeId]?.parentId
+    case 'first-child':
+      return tree.children[fromNodeId]?.[0]
+    case 'prev-sibling': {
+      const parentId = tree.nodes[fromNodeId]?.parentId
+      if (!parentId) {
+        return undefined
+      }
+
+      const siblings = tree.children[parentId] ?? []
+      const index = siblings.indexOf(fromNodeId)
+      return index > 0
+        ? siblings[index - 1]
+        : undefined
+    }
+    case 'next-sibling': {
+      const parentId = tree.nodes[fromNodeId]?.parentId
+      if (!parentId) {
+        return undefined
+      }
+
+      const siblings = tree.children[parentId] ?? []
+      const index = siblings.indexOf(fromNodeId)
+      return index >= 0
+        ? siblings[index + 1]
+        : undefined
+    }
+  }
+}
+
 export const resolveInsertPlan = ({
   tree,
   targetNodeId,

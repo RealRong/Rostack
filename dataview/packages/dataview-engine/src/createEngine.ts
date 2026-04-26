@@ -92,6 +92,9 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       listener(toCurrent(current))
     }),
     doc: () => mutationEngine.doc(),
+    replace: (nextDocument: DataDoc, replaceOptions?: MutationOptions) => (
+      mutationEngine.replace(document.clone(nextDocument), replaceOptions)
+    ),
     load: (nextDocument: DataDoc) => {
       mutationEngine.load(document.clone(nextDocument))
     },

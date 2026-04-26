@@ -35,12 +35,23 @@ const createDeps = () => {
     updateRoute,
     ctx: {
       projection: {
-        edge: {
-          model: () => edge,
-          capabilityOf: () => ({
-            editRoute: true
-          })
+        query: {
+          edge: {
+            get: () => ({
+              base: {
+                edge
+              }
+            })
+          },
+          node: {
+            get: vi.fn(() => undefined)
+          }
         },
+        host: {
+          geometry: {
+            edge: vi.fn(() => undefined)
+          }
+        }
       },
       sessionRead: {
         viewport: {

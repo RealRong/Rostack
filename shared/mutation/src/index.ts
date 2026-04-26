@@ -54,20 +54,19 @@ export type {
   MutationPublishSpec,
   MutationResult
 } from './engine'
-export { collab } from './collab'
-export type {
-  Change,
-  Checkpoint,
-  CollabEngine,
-  CollabSession,
-  CollabStore
-} from './collab'
 export { history } from './history'
 export type {
   CaptureOptions,
   HistoryController,
   HistoryState
 } from './history'
+export { createLocalMutationHistory } from './localHistory'
+export type {
+  LocalHistoryApi,
+  LocalHistoryEngine,
+  LocalHistoryOptions,
+  LocalHistoryState
+} from './localHistory'
 export type { Origin, Write, WriteStream } from './write'
 export type {
   MutationTrace,

@@ -16,6 +16,7 @@ import {
   startNodeEdit
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 export type SelectionPressTarget<TField extends string = string> =
   | { kind: 'background' }
@@ -658,7 +659,7 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'session' | 'registry'>,
+  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'session' | 'registry' | 'sessionSource'>,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
@@ -694,7 +695,7 @@ const applySelectionTap = (
       return
     }
     case 'edit-field':
-      if (!selectionApi.target.equal(ctx.projection.selection.summary.get().target, tap.selection)) {
+      if (!selectionApi.target.equal(ctx.sessionSource.selection.summary.get().target, tap.selection)) {
         replaceSelection({
           session: ctx.session
         }, tap.selection)
@@ -713,7 +714,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry' | 'sessionSource' | 'nodeType'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -748,7 +749,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry' | 'sessionSource' | 'nodeType'>,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.sessionRead.tool.get()
@@ -768,21 +769,21 @@ const tryStartSelectionPress = (
     return null
   }
 
-  const selectionSummary = ctx.projection.selection.summary.get()
-  const selectionAffordance = ctx.projection.selection.affordance.get()
+  const selectionSummary = ctx.sessionSource.selection.summary.get()
+  const selectionAffordance = ctx.sessionSource.selection.affordance.get()
   const deps: SelectionPressDeps = {
     node: {
       get: (nodeId) => ctx.document.nodes.get(nodeId)?.node,
       canEnter: (nodeId) => {
         const node = ctx.document.nodes.get(nodeId)?.node
         return node
-          ? ctx.projection.node.capability(node).enter
+          ? resolveNodeEditorCapability(node, ctx.nodeType).enter
           : false
       },
-      groupId: ctx.projection.group.ofNode
+      groupId: ctx.projection.query.group.ofNode
     },
     group: {
-      target: (groupId) => ctx.projection.group.target(groupId)
+      target: (groupId) => ctx.projection.query.group.target(groupId)
     }
   }
   const mode = resolveSelectionPressMode(input.modifiers)
@@ -812,7 +813,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session' | 'registry' | 'sessionSource' | 'nodeType'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

@@ -1,17 +1,19 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   EdgeId,
   GroupId,
   MindmapId,
+  NodeModel,
   NodeId,
   Point,
   Rect
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projector/phase'
-import type { Query, SceneItem } from '../contracts/editor'
+import type { OwnerRef, Query, SceneItem } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import { readGroupSignatureFromTarget } from '../model/graph/group'
 import { readRelatedEdgeIds, readTreeDescendants } from '../model/index/read'
@@ -154,6 +156,20 @@ const resolveMindmapId = (
     ? owner.id
     : undefined
 }
+
+const toGroupTarget = (
+  items: readonly {
+    kind: 'node' | 'edge'
+    id: string
+  }[]
+): SelectionTarget => selectionApi.target.normalize({
+  nodeIds: items.flatMap((item) => item.kind === 'node'
+    ? [item.id as NodeId]
+    : []),
+  edgeIds: items.flatMap((item) => item.kind === 'edge'
+    ? [item.id as EdgeId]
+    : [])
+})
 
 type HitTarget =
   | {
@@ -495,6 +511,10 @@ export const createEditorSceneRead = (runtime: {
   state: () => WorkingState
   items: () => readonly SceneItem[]
   spatial: () => SpatialIndexState
+  canNodeConnect?: (input: {
+    node: NodeModel
+    owner?: OwnerRef
+  }) => boolean
 }): Query => {
   const spatial = createSpatialRead({
     state: runtime.spatial
@@ -511,11 +531,99 @@ export const createEditorSceneRead = (runtime: {
   return {
     revision: runtime.revision,
     node: {
-      get: (id) => runtime.state().graph.nodes.get(id)
+      get: (id) => runtime.state().graph.nodes.get(id),
+      idsInRect: (rect, options) => {
+        const match = options?.match ?? 'touch'
+        const policy = options?.policy ?? 'default'
+        const exclude = options?.exclude?.length
+          ? new Set(options.exclude)
+          : undefined
+        const candidateIds = spatial.rect(rect, {
+          kinds: ['node']
+        })
+          .map((record) => record.item.id)
+          .filter((nodeId) => !exclude?.has(nodeId))
+
+        return nodeApi.hit.filterIdsInRect({
+          rect,
+          candidateIds,
+          match,
+          policy,
+          getEntry: (nodeId) => {
+            const current = runtime.state().graph.nodes.get(nodeId)
+            return current
+              ? {
+                  node: nodeApi.projection.toSpatial({
+                    node: current.base.node,
+                    rect: current.geometry.rect,
+                    rotation: current.geometry.rotation
+                  }),
+                  rect: current.geometry.rect,
+                  rotation: current.geometry.rotation
+                }
+              : undefined
+          },
+          matchEntry: nodeApi.hit.matchRect
+        })
+      }
     },
     edge: {
       get: (id) => runtime.state().graph.edges.get(id),
-      related: (nodeIds) => readRelatedEdgeIds(runtime.state().indexes, nodeIds)
+      related: (nodeIds) => readRelatedEdgeIds(runtime.state().indexes, nodeIds),
+      idsInRect: (rect, options) => {
+        const mode = options?.match ?? 'touch'
+        return spatial.rect(rect, {
+          kinds: ['edge']
+        }).flatMap((record) => {
+          const edgeId = record.item.id
+          const current = runtime.state().graph.edges.get(edgeId)
+          return current && current.route.ends && edgeApi.hit.test({
+            path: {
+              points: [...current.route.points],
+              segments: [...current.route.segments]
+            },
+            queryRect: rect,
+            mode
+          })
+            ? [edgeId]
+            : []
+        })
+      },
+      connectCandidates: (rect) => spatial.rect(rect, {
+        kinds: ['node']
+      }).flatMap((record) => {
+        if (record.item.kind !== 'node') {
+          return []
+        }
+
+        const current = runtime.state().graph.nodes.get(record.item.id)
+        if (!current) {
+          return []
+        }
+
+        const canConnect = runtime.canNodeConnect
+          ? runtime.canNodeConnect({
+              node: current.base.node,
+              owner: current.base.owner
+            })
+          : !current.base.node.locked
+        if (!canConnect) {
+          return []
+        }
+
+        return [{
+          nodeId: current.base.node.id,
+          node: nodeApi.projection.toSpatial({
+            node: current.base.node,
+            rect: current.geometry.rect,
+            rotation: current.geometry.rotation
+          }),
+          geometry: {
+            ...current.geometry.outline,
+            rotation: current.geometry.rotation
+          }
+        }]
+      })
     },
     mindmap: {
       get: (id) => runtime.state().graph.owners.mindmaps.get(id),
@@ -530,10 +638,28 @@ export const createEditorSceneRead = (runtime: {
         return mindmapId
           ? runtime.state().graph.owners.mindmaps.get(mindmapId)?.structure
           : undefined
+      },
+      navigate: (input) => {
+        const structure = runtime.state().graph.owners.mindmaps.get(input.id)?.structure
+        return structure
+          ? mindmapApi.tree.navigate({
+              tree: structure.tree,
+              fromNodeId: input.fromNodeId,
+              direction: input.direction
+            })
+          : undefined
       }
     },
     group: {
       get: (id) => runtime.state().graph.owners.groups.get(id),
+      ofNode: (nodeId) => runtime.state().graph.nodes.get(nodeId)?.base.node.groupId,
+      ofEdge: (edgeId) => runtime.state().graph.edges.get(edgeId)?.base.edge.groupId,
+      target: (groupId) => {
+        const group = runtime.state().graph.owners.groups.get(groupId)
+        return group
+          ? toGroupTarget(group.structure.items)
+          : undefined
+      },
       exact: (target: SelectionTarget) => {
         const normalized = selectionApi.target.normalize(target)
         const signature = readGroupSignatureFromTarget(normalized)

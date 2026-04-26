@@ -71,7 +71,8 @@ import {
   applyNodeGeometryPatch,
   applyNodeTextDraft,
   applyNodeTextPreview,
-  isNodeProjectionPatchEqual
+  isNodeProjectionPatchEqual,
+  toSpatialNode
 } from '@whiteboard/core/node/projection'
 import { applySelection } from '@whiteboard/core/node/selection'
 import {
@@ -267,7 +268,8 @@ export const node = {
     applyGeometryPatch: applyNodeGeometryPatch,
     applyTextDraft: applyNodeTextDraft,
     applyTextPreview: applyNodeTextPreview,
-    equalPatch: isNodeProjectionPatchEqual
+    equalPatch: isNodeProjectionPatchEqual,
+    toSpatial: toSpatialNode
   },
   text: {
     buildLayoutKey: buildTextLayoutKey,
@@ -311,6 +313,10 @@ export const node = {
     resolveText: resolveTextNodeBootstrapSize
   }
 } as const
+
+export {
+  toSpatialNode
+} from '@whiteboard/core/node/projection'
 
 export type { NodeOutlineAnchorOptions } from '@whiteboard/core/node/outline'
 export type { ResolvedDrawStroke } from '@whiteboard/core/node/draw'

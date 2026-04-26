@@ -65,12 +65,17 @@ export interface Engine {
     HistoryFootprint[number],
     EngineWrite
   >
+  doc(): Document
   current(): EnginePublish
   subscribe(listener: (publish: EnginePublish) => void): () => void
   execute<TIntent extends Intent>(
     intent: TIntent,
     options?: MutationOptions
   ): ExecuteResult<TIntent['type'] & IntentKind>
+  replace(
+    document: Document,
+    options?: MutationOptions
+  ): boolean
   apply(
     ops: readonly Operation[],
     options?: MutationOptions

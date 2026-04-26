@@ -109,13 +109,13 @@ export const startEdgeLabelEdit = (
 
 export const removeEdgeRoutePoint = (
   ctx: {
-    graph: Pick<EditorSceneRuntime, 'edge'>
+    graph: Pick<EditorSceneRuntime, 'query'>
     write: Pick<EditorWrite, 'edge'>
   },
   edgeId: EdgeId,
   index: number
 ) => {
-  const edge = ctx.graph.edge.model(edgeId)
+  const edge = ctx.graph.query.edge.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }

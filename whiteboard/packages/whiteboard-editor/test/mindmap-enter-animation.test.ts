@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeRegistry } from '../src'
 
@@ -83,7 +83,7 @@ const createEditor = () => {
 
   return editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -136,14 +136,14 @@ describe('mindmap enter animation', () => {
         return
       }
 
-      const startRect = editor.scene.nodes.read.get(inserted.data.nodeId)?.rect
+      const startRect = editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect
       expect(startRect).toBeDefined()
 
       vi.advanceTimersByTime(120)
-      const midRect = editor.scene.nodes.read.get(inserted.data.nodeId)?.rect
+      const midRect = editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect
 
       vi.advanceTimersByTime(200)
-      const endRect = editor.scene.nodes.read.get(inserted.data.nodeId)?.rect
+      const endRect = editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect
 
       expect(midRect).toBeDefined()
       expect(endRect).toBeDefined()

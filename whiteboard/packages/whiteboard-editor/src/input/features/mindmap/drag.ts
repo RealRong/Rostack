@@ -14,7 +14,7 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview'
 import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { Query as EditorSceneQuery } from '@whiteboard/editor-scene'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -68,14 +68,14 @@ const previewMindmapDrag = (
 
 const readMindmapTreeView = (
   mindmap: {
-    id: EditorSceneRuntime['mindmap']['id']
-    structure: EditorSceneRuntime['mindmap']['structure']
-    layout: EditorSceneRuntime['mindmap']['view']
+    id: EditorSceneQuery['mindmap']['resolve']
+    structure: EditorSceneQuery['mindmap']['structure']
+    layout: EditorSceneQuery['mindmap']['get']
   },
   treeId: NodeId
 ) => {
   const structure = mindmap.structure(treeId)
-  const view = mindmap.layout.get(treeId)
+  const view = mindmap.layout(treeId)
   const id = mindmap.id(treeId)
   const computed = view?.tree.layout
   if (!structure || !computed || !id) {
@@ -94,9 +94,9 @@ export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    id: EditorSceneRuntime['mindmap']['id']
-    structure: EditorSceneRuntime['mindmap']['structure']
-    layout: EditorSceneRuntime['mindmap']['view']
+    id: EditorSceneQuery['mindmap']['resolve']
+    structure: EditorSceneQuery['mindmap']['structure']
+    layout: EditorSceneQuery['mindmap']['get']
   }
   node: Pick<EditorDocumentRuntimeSource, 'nodes'>
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
@@ -175,9 +175,9 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    id: EditorSceneRuntime['mindmap']['id']
-    structure: EditorSceneRuntime['mindmap']['structure']
-    layout: EditorSceneRuntime['mindmap']['view']
+    id: EditorSceneQuery['mindmap']['resolve']
+    structure: EditorSceneQuery['mindmap']['structure']
+    layout: EditorSceneQuery['mindmap']['get']
   }
   node: Pick<EditorDocumentRuntimeSource, 'nodes'>
 }): MindmapDragState | undefined => {
@@ -233,9 +233,9 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    id: EditorSceneRuntime['mindmap']['id']
-    structure: EditorSceneRuntime['mindmap']['structure']
-    layout: EditorSceneRuntime['mindmap']['view']
+    id: EditorSceneQuery['mindmap']['resolve']
+    structure: EditorSceneQuery['mindmap']['structure']
+    layout: EditorSceneQuery['mindmap']['get']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
@@ -296,9 +296,9 @@ export const createMindmapDragSession = (
       state,
       world,
       mindmap: {
-        id: ctx.projection.mindmap.id,
-        structure: ctx.projection.mindmap.structure,
-        layout: ctx.projection.mindmap.view
+        id: ctx.projection.query.mindmap.resolve,
+        structure: ctx.projection.query.mindmap.structure,
+        layout: ctx.projection.query.mindmap.get
       }
     })
     interaction!.gesture = createGesture('mindmap-drag', {

@@ -10,11 +10,10 @@
     "dist"
   ],
   "dependencies": {
+    "@shared/collab": "workspace:*",
     "@shared/core": "workspace:*",
-    "@shared/mutation": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/engine": "workspace:*",
-    "@whiteboard/history": "workspace:*",
     "yjs": "^13.6.27"
   },
   "scripts": {

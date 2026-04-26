@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { history as historyApi } from '@whiteboard/history'
+import { createLocalMutationHistory } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeRegistry } from '../src'
+import { createNodeTypeSupport, resolveNodeEditorCapability } from '../src/types/node'
 
 const registry: NodeRegistry = {
   get: (type) => {
@@ -101,7 +102,7 @@ const createEditor = () => {
 
   return trackEditor(editorApi.create({
     engine,
-    history: historyApi.local.create(engine),
+    history: createLocalMutationHistory(engine),
     initialTool: {
       type: 'select'
     },
@@ -134,7 +135,10 @@ describe('mindmap root render', () => {
       nodeIds: [created.data.rootId]
     })
 
-    const rootCapability = editor.scene.nodes.capability.get(created.data.rootId)
+    const rootNode = editor.scene.query.node.get(created.data.rootId)?.base.node
+    const rootCapability = rootNode
+      ? resolveNodeEditorCapability(rootNode, createNodeTypeSupport(registry))
+      : undefined
     expect(rootCapability?.connect).toBe(true)
     expect(rootCapability?.resize).toBe(false)
     expect(rootCapability?.rotate).toBe(false)

@@ -11,15 +11,19 @@ import {
 import { equal, store } from '@shared/core'
 import type { EdgeId, NodeId } from '@whiteboard/core/types'
 import type {
+  Query,
+  RuntimeStores
+} from '@whiteboard/editor-scene'
+import type {
   EditorSelectionAffordanceView,
   EditorSelectionSummaryView,
   EditorSelectionView,
   SelectionMembers
 } from '@whiteboard/editor/types/selectionPresentation'
-import type { GraphEdgeRead } from './edge'
-import type { GraphNodeRead } from './node'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
-export type GraphSelectionRead = {
+export type SessionSelectionProjection = {
   view: store.ReadStore<EditorSelectionView>
   members: store.ReadStore<SelectionMembers>
   summary: store.ReadStore<SelectionSummary>
@@ -89,18 +93,6 @@ const readSelectionMembersKey = (
   target: SelectionTarget
 ) => `${target.nodeIds.join('\0')}\u0001${target.edgeIds.join('\0')}`
 
-const readNodeTransformCapability = (
-  node: Pick<GraphNodeRead, 'capability'>,
-  entry: SelectionMembers['nodes'][number]
-) => {
-  const capability = node.capability(entry)
-
-  return {
-    resize: capability.resize,
-    rotate: capability.rotate
-  }
-}
-
 const toSelectionViewKind = (
   kind: SelectionSummary['kind']
 ): EditorSelectionView['kind'] => (
@@ -111,20 +103,36 @@ const toSelectionViewKind = (
       : kind
 )
 
-export const createGraphSelectionRead = ({
-  source,
-  node,
-  edge
+export const createSessionSelectionProjection = ({
+  selection,
+  query,
+  stores,
+  nodeType
 }: {
-  source: store.ReadStore<SelectionTarget>
-  node: GraphNodeRead
-  edge: Pick<GraphEdgeRead, 'edges' | 'bounds'>
-}): GraphSelectionRead => {
+  selection: store.ReadStore<SelectionTarget>
+  query: Pick<Query, 'node' | 'edge'>
+  stores: Pick<RuntimeStores, 'render'>
+  nodeType: Pick<NodeTypeSupport, 'capability'>
+}): SessionSelectionProjection => {
+  const readNodeCapability = (
+    node: SelectionMembers['nodes'][number]
+  ) => resolveNodeEditorCapability(node, nodeType)
+
   const members = store.createDerivedStore<SelectionMembers>({
     get: () => {
-      const target = store.read(source)
-      const nodes = node.nodes(target.nodeIds)
-      const edges = edge.edges(target.edgeIds)
+      const target = store.read(selection)
+      const nodes = target.nodeIds.flatMap((nodeId) => {
+        const current = query.node.get(nodeId)?.base.node
+        return current
+          ? [current]
+          : []
+      })
+      const edges = target.edgeIds.flatMap((edgeId) => {
+        const current = query.edge.get(edgeId)?.base.edge
+        return current
+          ? [current]
+          : []
+      })
 
       return {
         key: readSelectionMembersKey(target),
@@ -146,12 +154,15 @@ export const createGraphSelectionRead = ({
         target: current.target,
         nodes: current.nodes,
         edges: current.edges,
-        readNodeRect: (entry) => store.read(node.view, entry.id)?.rect,
-        readEdgeBounds: (entry) => store.read(edge.bounds, entry.id),
-        resolveNodeTransformBehavior: (entry) => nodeApi.transform.resolveBehavior(entry, {
-          role: node.capability(entry).role,
-          resize: node.capability(entry).resize
-        })
+        readNodeRect: (entry) => store.read(stores.render.node.byId, entry.id)?.rect,
+        readEdgeBounds: (entry) => query.edge.get(entry.id)?.route.bounds,
+        resolveNodeTransformBehavior: (entry) => {
+          const capability = readNodeCapability(entry)
+          return nodeApi.transform.resolveBehavior(entry, {
+            role: capability.role,
+            resize: capability.resize
+          })
+        }
       })
     },
     isEqual: selectionApi.derive.isSummaryEqual
@@ -160,8 +171,14 @@ export const createGraphSelectionRead = ({
   const affordance = store.createDerivedStore<SelectionAffordance>({
     get: () => selectionApi.derive.affordance({
       selection: store.read(summary),
-      resolveNodeRole: (entry) => node.capability(entry).role,
-      resolveNodeTransformCapability: (entry) => readNodeTransformCapability(node, entry)
+      resolveNodeRole: (entry) => readNodeCapability(entry).role,
+      resolveNodeTransformCapability: (entry) => {
+        const capability = readNodeCapability(entry)
+        return {
+          resize: capability.resize,
+          rotate: capability.rotate
+        }
+      }
     }),
     isEqual: selectionApi.derive.isAffordanceEqual
   })
@@ -202,7 +219,7 @@ export const createGraphSelectionRead = ({
   const view = store.createStructStore<EditorSelectionView>({
     fields: {
       target: {
-        get: () => store.read(source),
+        get: () => store.read(selection),
         isEqual: selectionApi.target.equal
       },
       kind: {
@@ -224,7 +241,7 @@ export const createGraphSelectionRead = ({
     affordance,
     node: {
       selected: store.createProjectedKeyedStore({
-        source,
+        source: selection,
         select: (target) => (
           target.nodeIds.length > 0
             ? new Map(target.nodeIds.map((nodeId) => [nodeId, true] as const))
@@ -235,7 +252,7 @@ export const createGraphSelectionRead = ({
     },
     edge: {
       selected: store.createProjectedKeyedStore({
-        source,
+        source: selection,
         select: (target) => (
           target.edgeIds.length > 0
             ? new Map(target.edgeIds.map((edgeId) => [edgeId, true] as const))

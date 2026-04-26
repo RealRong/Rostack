@@ -5,8 +5,8 @@ import {
 } from '@shared/projector/phase'
 import type {
   IdDelta as SharedIdDelta
-} from '@shared/projector/delta'
-import { idDelta } from '@shared/projector/delta'
+} from '@shared/delta'
+import { idDelta } from '@shared/delta'
 import type { Revision } from '@shared/projector/phase'
 import type {
   EdgeId,

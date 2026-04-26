@@ -10,7 +10,7 @@ import type {
   EdgeUpdateInput
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { CommittedEdgeView } from '@whiteboard/editor-scene'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { EdgeWrite } from '@whiteboard/editor/write/types'
 import {
   createEdgeLabelWrite
@@ -25,13 +25,9 @@ const readEdge = (
 ) => read(edgeId)
 
 const readCommittedEdge = (
-  read: {
-    edge: {
-      get(id: EdgeId): CommittedEdgeView | undefined
-    }
-  },
+  read: Pick<DocumentQuery, 'edge'>,
   edgeId: EdgeId
-) => read.edge.get(edgeId)?.edge
+) => read.edge(edgeId)
 
 const createStyleMutation = (
   path: Path,
@@ -67,11 +63,7 @@ const updateEdges = (
 }
 
 const updateExistingEdges = (
-  read: {
-    edge: {
-      get(id: EdgeId): CommittedEdgeView | undefined
-    }
-  },
+  read: Pick<DocumentQuery, 'edge'>,
   engine: Engine,
   edgeIds: readonly EdgeId[],
   input: EdgeUpdateInput
@@ -152,11 +144,7 @@ export const createEdgeWrite = ({
 }: {
   engine: Engine
   read: {
-    document: {
-      edge: {
-        get(id: EdgeId): CommittedEdgeView | undefined
-      }
-    }
+    document: Pick<DocumentQuery, 'edge'>
     readEdge: (edgeId: EdgeId) => Edge | undefined
   }
 }): EdgeWrite => ({

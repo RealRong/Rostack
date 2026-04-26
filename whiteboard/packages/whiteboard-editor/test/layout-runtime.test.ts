@@ -66,35 +66,34 @@ describe('createEditorLayout', () => {
     }))
     const node = createStickyNode()
     const runtime = createEditorLayout({
-      read: {
-        node: {
-          committed: {
-            get: () => ({
-              node,
-              rect: {
-                x: 0,
-                y: 0,
-                width: 180,
-                height: 140
-              }
-            })
-          }
-        },
-        mindmap: {
-          list: store.createValueStore([]),
-          committed: {
-            get: () => undefined
-          }
-        }
-      } as any,
       session: {
-        edit: store.createValueStore(undefined),
-        mindmapPreview: store.createValueStore(undefined)
+        edit: store.createValueStore(undefined)
       },
       registry: createRegistry(),
       backend: {
         measure
       }
+    })
+    runtime.bind({
+      document: {
+        node: () => node,
+        nodeGeometry: () => ({
+          rect: {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 140
+          },
+          bounds: {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 140
+          },
+          rotation: 0
+        })
+      },
+      revision: store.createValueStore(1)
     })
 
     expect(runtime.resolvePreviewPatches([{
@@ -114,35 +113,34 @@ describe('createEditorLayout', () => {
     }))
     const node = createStickyNode()
     const runtime = createEditorLayout({
-      read: {
-        node: {
-          committed: {
-            get: () => ({
-              node,
-              rect: {
-                x: 0,
-                y: 0,
-                width: 180,
-                height: 140
-              }
-            })
-          }
-        },
-        mindmap: {
-          list: store.createValueStore([]),
-          committed: {
-            get: () => undefined
-          }
-        }
-      } as any,
       session: {
-        edit: store.createValueStore(undefined),
-        mindmapPreview: store.createValueStore(undefined)
+        edit: store.createValueStore(undefined)
       },
       registry: createRegistry(),
       backend: {
         measure
       }
+    })
+    runtime.bind({
+      document: {
+        node: () => node,
+        nodeGeometry: () => ({
+          rect: {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 140
+          },
+          bounds: {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 140
+          },
+          rotation: 0
+        })
+      },
+      revision: store.createValueStore(1)
     })
 
     expect(runtime.resolvePreviewPatches([{

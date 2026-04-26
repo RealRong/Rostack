@@ -23,6 +23,7 @@
     "dist"
   ],
   "dependencies": {
-    "@shared/core": "workspace:*"
+    "@shared/core": "workspace:*",
+    "@shared/delta": "workspace:*"
   }
 }

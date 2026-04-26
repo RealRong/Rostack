@@ -5,7 +5,7 @@ import type {
 import {
   entityDelta,
   type EntityDelta
-} from '@shared/projector/delta'
+} from '@shared/delta'
 import type {
   ActiveDelta
 } from '@dataview/engine/contracts/delta'

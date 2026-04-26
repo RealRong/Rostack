@@ -1,4 +1,8 @@
 import { document as documentApi } from '@whiteboard/core/document'
+import {
+  decodeJsonBytes,
+  encodeJsonBytes
+} from '@shared/collab-yjs'
 import { META } from '@whiteboard/core/spec/operation'
 import { assertHistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
@@ -8,9 +12,6 @@ import type {
   YjsSyncCodec
 } from '@whiteboard/collab/types/shared'
 
-const encoder = new TextEncoder()
-const decoder = new TextDecoder()
-
 const isRecord = (
   value: unknown
 ): value is Record<string, unknown> => (
@@ -18,14 +19,6 @@ const isRecord = (
   && value !== null
   && !Array.isArray(value)
 )
-
-const encodeJson = (
-  value: unknown
-): Uint8Array => encoder.encode(JSON.stringify(value))
-
-const decodeJson = (
-  data: Uint8Array
-): unknown => JSON.parse(decoder.decode(data))
 
 const assertSharedOperations = (
   value: unknown
@@ -87,8 +80,8 @@ const assertSharedCheckpoint = (
 }
 
 export const createYjsSyncCodec = (): YjsSyncCodec => ({
-  encodeChange: (change) => encodeJson(change),
-  decodeChange: (data) => assertSharedChange(decodeJson(data)),
-  encodeCheckpoint: (checkpoint) => encodeJson(checkpoint),
-  decodeCheckpoint: (data) => assertSharedCheckpoint(decodeJson(data))
+  encodeChange: (change) => encodeJsonBytes(change),
+  decodeChange: (data) => assertSharedChange(decodeJsonBytes(data)),
+  encodeCheckpoint: (checkpoint) => encodeJsonBytes(checkpoint),
+  decodeCheckpoint: (data) => assertSharedCheckpoint(decodeJsonBytes(data))
 })

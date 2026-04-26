@@ -1,4 +1,8 @@
 import { document as documentApi } from '@dataview/core/document'
+import {
+  decodeJsonBytes,
+  encodeJsonBytes
+} from '@shared/collab-yjs'
 import type { DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type {
@@ -8,9 +12,6 @@ import type {
   YjsSyncCodec
 } from '@dataview/collab/types'
 
-const encoder = new TextEncoder()
-const decoder = new TextDecoder()
-
 const isRecord = (
   value: unknown
 ): value is Record<string, unknown> => (
@@ -18,14 +19,6 @@ const isRecord = (
   && value !== null
   && !Array.isArray(value)
 )
-
-const encodeJson = (
-  value: unknown
-): Uint8Array => encoder.encode(JSON.stringify(value))
-
-const decodeJson = (
-  data: Uint8Array
-): unknown => JSON.parse(decoder.decode(data))
 
 const assertSharedOperations = (
   value: unknown
@@ -103,8 +96,8 @@ const assertSharedCheckpoint = (
 }
 
 export const createYjsSyncCodec = (): YjsSyncCodec => ({
-  encodeChange: (change) => encodeJson(change),
-  decodeChange: (data) => assertSharedChange(decodeJson(data)),
-  encodeCheckpoint: (checkpoint) => encodeJson(checkpoint),
-  decodeCheckpoint: (data) => assertSharedCheckpoint(decodeJson(data))
+  encodeChange: (change) => encodeJsonBytes(change),
+  decodeChange: (data) => assertSharedChange(decodeJsonBytes(data)),
+  encodeCheckpoint: (checkpoint) => encodeJsonBytes(checkpoint),
+  decodeCheckpoint: (data) => assertSharedCheckpoint(decodeJsonBytes(data))
 })

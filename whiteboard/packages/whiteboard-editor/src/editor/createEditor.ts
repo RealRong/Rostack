@@ -1,5 +1,4 @@
 import type { Viewport } from '@whiteboard/core/types'
-import { store } from '@shared/core'
 import type { HistoryPort } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
@@ -62,16 +61,7 @@ export const createEditor = ({
     initialDrawState,
     initialViewport
   })
-  let committedNode = null as null | ReturnType<typeof createSceneBridge>['stores']['document']['node']['byId']
   const layout = createEditorLayout({
-    read: {
-      node: {
-        committed: {
-          get: (nodeId) => committedNode?.get(nodeId),
-          subscribe: (nodeId, listener) => committedNode?.subscribe(nodeId, listener) ?? (() => {})
-        }
-      }
-    },
     session: {
       edit: session.state.edit
     },
@@ -86,23 +76,14 @@ export const createEditor = ({
     layout,
     nodeType
   })
-  committedNode = projection.stores.document.node.byId
   const scene = createSceneSource({
     controller: projection
   })
-  const document: Editor['document'] = {
-    get: () => scene.query.document.get(),
-    bounds: () => scene.query.document.bounds(),
-    slice: (input) => scene.query.document.slice(input),
-    node: {
-      get: (id) => scene.query.document.node(id),
-      ids: () => store.read(scene.stores.document.node.ids)
-    },
-    edge: {
-      get: (id) => scene.query.document.edge(id),
-      ids: () => store.read(scene.stores.document.edge.ids)
-    }
-  }
+  const document = scene.query.document
+  layout.bind({
+    document,
+    revision: scene.stores.document.revision
+  })
   const writeRuntime = createEditorWrite({
     engine,
     history,

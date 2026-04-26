@@ -1,9 +1,9 @@
 import { selection as selectionApi, type SelectionInput, type SelectionTarget } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import { equal, store as sharedStore } from '@shared/core'
-import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 
-type SelectionReadSource = Pick<EditorDocumentSource, 'node' | 'edge'>
+type SelectionReadSource = Pick<DocumentQuery, 'node' | 'edge' | 'nodeIds' | 'edgeIds'>
 
 const readNextSelectionTarget = (
   current: SelectionTarget,
@@ -18,16 +18,16 @@ const readNextSelectionTarget = (
 const readSelectionTargetByStore = (
   read: SelectionReadSource
 ): SelectionTarget => selectionApi.target.normalize({
-  nodeIds: read.node.ids(),
-  edgeIds: read.edge.ids()
+  nodeIds: read.nodeIds(),
+  edgeIds: read.edgeIds()
 })
 
 const reconcileSelectionTarget = (
   read: SelectionReadSource,
   target: SelectionTarget
 ): SelectionTarget => selectionApi.target.normalize({
-  nodeIds: target.nodeIds.filter((nodeId) => Boolean(read.node.get(nodeId))),
-  edgeIds: target.edgeIds.filter((edgeId) => Boolean(read.edge.get(edgeId)))
+  nodeIds: target.nodeIds.filter((nodeId) => Boolean(read.node(nodeId))),
+  edgeIds: target.edgeIds.filter((edgeId) => Boolean(read.edge(edgeId)))
 })
 
 export type SelectionMutate = {

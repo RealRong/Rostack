@@ -39,59 +39,41 @@ describe('mindmap field drag', () => {
 
     const session = createMoveInteraction({
       document: {
-        node: {
-          get: (id: string) => {
-            if (id === 'root-1') {
-              return {
-                node: {
-                  id: 'root-1',
-                  type: 'text',
-                  owner: {
-                    kind: 'mindmap',
-                    id: 'mind-1'
-                  },
-                  position: { x: 100, y: 120 },
-                  size: { width: 144, height: 44 },
-                  data: {
-                    text: 'Central topic'
-                  }
-                },
-                rect: {
-                  x: 100,
-                  y: 120,
-                  width: 144,
-                  height: 44
-                }
+        node: (id: string) => {
+          if (id === 'root-1') {
+            return {
+              id: 'root-1',
+              type: 'text',
+              owner: {
+                kind: 'mindmap',
+                id: 'mind-1'
+              },
+              position: { x: 100, y: 120 },
+              size: { width: 144, height: 44 },
+              data: {
+                text: 'Central topic'
               }
             }
-
-            if (id === 'mind-1') {
-              return {
-                node: {
-                  id: 'mind-1',
-                  type: 'text',
-                  owner: {
-                    kind: 'mindmap',
-                    id: 'mind-1'
-                  },
-                  position: { x: 100, y: 120 },
-                  data: {}
-                },
-                rect: {
-                  x: 100,
-                  y: 120,
-                  width: 144,
-                  height: 44
-                }
-              }
-            }
-
-            return undefined
           }
+
+          if (id === 'mind-1') {
+            return {
+              id: 'mind-1',
+              type: 'text',
+              owner: {
+                kind: 'mindmap',
+                id: 'mind-1'
+              },
+              position: { x: 100, y: 120 },
+              data: {}
+            }
+          }
+
+          return undefined
         },
-        edge: {
-          ids: vi.fn(() => [])
-        },
+        edge: vi.fn(() => undefined),
+        nodeIds: vi.fn(() => ['root-1']),
+        edgeIds: vi.fn(() => []),
       },
       projection: {
         query: {

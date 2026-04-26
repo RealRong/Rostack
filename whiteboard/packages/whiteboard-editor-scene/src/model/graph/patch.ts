@@ -56,12 +56,12 @@ const seedGraphPatchQueue = (input: {
   if (input.scope.reset) {
     enqueueAll(
       input.queue.nodes,
-      input.working.document.nodes.keys()
+      Object.keys(input.working.document.snapshot.nodes) as readonly NodeId[]
     )
     enqueueAll(input.queue.nodes, input.working.graph.nodes.keys())
     enqueueAll(
       input.queue.edges,
-      input.working.document.edges.keys()
+      Object.keys(input.working.document.snapshot.edges) as readonly EdgeId[]
     )
     enqueueAll(input.queue.edges, input.working.graph.edges.keys())
     enqueueAll(

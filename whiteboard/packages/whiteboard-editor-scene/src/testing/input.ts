@@ -1,5 +1,4 @@
-import { createChangeState } from '@shared/projector/change'
-import { idDelta } from '@shared/projector/delta'
+import { createChangeState, idDelta } from '@shared/delta'
 import type {
   EdgeId,
   GroupId,

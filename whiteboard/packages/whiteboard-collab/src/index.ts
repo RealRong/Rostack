@@ -1,6 +1,6 @@
 import { createYjsSession } from '@whiteboard/collab/session'
 import { createYjsSyncCodec } from '@whiteboard/collab/yjs/codec'
-import { createYjsSyncStore } from '@whiteboard/collab/yjs/store'
+import { createYjsSyncStore } from '@shared/collab-yjs'
 
 export const collab = {
   yjs: {

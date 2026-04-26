@@ -1,0 +1,21 @@
+{
+  "name": "@shared/collab-yjs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@shared/collab": "workspace:*",
+    "yjs": "^13.6.27"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

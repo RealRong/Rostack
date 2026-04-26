@@ -1,6 +1,5 @@
 import type { SliceExportResult } from '@whiteboard/core/document'
 import type {
-  CommittedEdgeView,
   ConnectResolution,
   EdgeConnectCandidate,
   EdgeLabelMaskRect,
@@ -11,7 +10,7 @@ import type {
   EdgePathSegment
 } from '@whiteboard/core/types/edge'
 import type {
-  CommittedNodeView,
+  DocumentNodeGeometry,
   Guide,
   NodeRectHitOptions,
   TransformPreviewPatch
@@ -691,9 +690,8 @@ export interface FamilyReadStore<
 
 export interface RuntimeStores {
   document: {
+    revision: store.ReadStore<Revision>
     background: store.ReadStore<WhiteboardDocument['background'] | undefined>
-    node: FamilyReadStore<NodeId, CommittedNodeView>
-    edge: FamilyReadStore<EdgeId, CommittedEdgeView>
   }
   graph: {
     node: FamilyReadStore<NodeId, NodeView>
@@ -727,18 +725,24 @@ export interface Result {
   trace?: ProjectorTrace
 }
 
+export interface DocumentQuery {
+  get(): WhiteboardDocument
+  background(): WhiteboardDocument['background'] | undefined
+  node(id: NodeId): Node | undefined
+  edge(id: EdgeId): Edge | undefined
+  nodeIds(): readonly NodeId[]
+  edgeIds(): readonly EdgeId[]
+  nodeGeometry(id: NodeId): DocumentNodeGeometry | undefined
+  bounds(): Rect
+  slice(input: {
+    nodeIds?: readonly NodeId[]
+    edgeIds?: readonly EdgeId[]
+  }): SliceExportResult | undefined
+}
+
 export interface Query {
   revision(): Revision
-  document: {
-    get(): WhiteboardDocument
-    node(id: NodeId): CommittedNodeView | undefined
-    edge(id: EdgeId): CommittedEdgeView | undefined
-    bounds(): Rect
-    slice(input: {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly EdgeId[]
-    }): SliceExportResult | undefined
-  }
+  document: DocumentQuery
   node: {
     get(id: NodeId): NodeView | undefined
     idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]

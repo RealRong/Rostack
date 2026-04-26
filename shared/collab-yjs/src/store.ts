@@ -1,13 +1,56 @@
 import * as Y from 'yjs'
-import type { YjsSyncSnapshot } from '@whiteboard/collab/types/internal'
-import type {
-  SharedChange,
-  SharedMeta,
-  YjsSyncCodec,
-  YjsSyncStore
-} from '@whiteboard/collab/types/shared'
+import type { CollabSnapshot } from '@shared/collab'
+import { isBinaryBytes } from './codec'
 
-export const YJS_SYNC_SCHEMA_VERSION = 1 as const
+export type YjsSyncMeta<Version extends number = number> = {
+  schemaVersion: Version
+}
+
+export type YjsSyncCodec<
+  Change extends {
+    id: string
+  },
+  Checkpoint extends {
+    id: string
+  }
+> = {
+  encodeChange(change: Change): Uint8Array
+  decodeChange(data: Uint8Array): Change
+  encodeCheckpoint(checkpoint: Checkpoint): Uint8Array
+  decodeCheckpoint(data: Uint8Array): Checkpoint
+}
+
+export type YjsSyncStore<
+  Change extends {
+    id: string
+  },
+  Checkpoint extends {
+    id: string
+  },
+  Meta extends YjsSyncMeta = YjsSyncMeta<1>
+> = {
+  readMeta(): Meta
+  readCheckpoint(): Checkpoint | null
+  readChanges(): readonly Change[]
+  appendChange(change: Change): void
+  replaceCheckpoint(checkpoint: Checkpoint): void
+  clearChanges(): void
+}
+
+export type InternalYjsSyncStore<
+  Change extends {
+    id: string
+  },
+  Checkpoint extends {
+    id: string
+  },
+  Meta extends YjsSyncMeta = YjsSyncMeta<1>
+> = YjsSyncStore<Change, Checkpoint, Meta> & {
+  hasData(): boolean
+  readSnapshot(): CollabSnapshot<Change, Checkpoint>
+}
+
+const YJS_SYNC_SCHEMA_VERSION = 1 as const
 
 const META_KEY = 'meta'
 const CHECKPOINT_KEY = 'checkpoint'
@@ -16,10 +59,6 @@ const CHANGES_KEY = 'changes'
 const SCHEMA_VERSION_FIELD = 'schemaVersion'
 const CHECKPOINT_ID_FIELD = 'id'
 const CHECKPOINT_BLOB_FIELD = 'blob'
-
-const isBinary = (
-  value: unknown
-): value is Uint8Array => value instanceof Uint8Array
 
 const getMetaMap = (
   doc: Y.Doc
@@ -43,58 +82,72 @@ const readSchemaVersion = (
 }
 
 const ensureSchemaVersion = (
-  doc: Y.Doc
+  doc: Y.Doc,
+  schemaVersion: number
 ) => {
   const meta = getMetaMap(doc)
   const current = meta.get(SCHEMA_VERSION_FIELD)
   if (current === undefined) {
-    meta.set(SCHEMA_VERSION_FIELD, YJS_SYNC_SCHEMA_VERSION)
+    meta.set(SCHEMA_VERSION_FIELD, schemaVersion)
     return
   }
-  if (current !== YJS_SYNC_SCHEMA_VERSION) {
+  if (current !== schemaVersion) {
     throw new Error(`Unsupported Yjs sync schema version: ${String(current)}.`)
   }
 }
 
-const readMeta = (
-  doc: Y.Doc
-): SharedMeta => {
+const readMeta = <Meta extends YjsSyncMeta>(
+  doc: Y.Doc,
+  schemaVersion: Meta['schemaVersion']
+): Meta => {
   const version = readSchemaVersion(doc)
   if (version === undefined) {
     return {
-      schemaVersion: YJS_SYNC_SCHEMA_VERSION
-    }
+      schemaVersion
+    } as Meta
   }
-  if (version !== YJS_SYNC_SCHEMA_VERSION) {
+  if (version !== schemaVersion) {
     throw new Error(`Unsupported Yjs sync schema version: ${String(version)}.`)
   }
   return {
-    schemaVersion: YJS_SYNC_SCHEMA_VERSION
-  }
+    schemaVersion
+  } as Meta
 }
 
-const readRawChanges = (
+const readRawChanges = <
+  Change extends {
+    id: string
+  },
+  Checkpoint extends {
+    id: string
+  }
+>(
   doc: Y.Doc,
-  codec: YjsSyncCodec
-): readonly SharedChange[] => getChangesArray(doc).toArray().map((value) => {
-  if (!isBinary(value)) {
+  codec: YjsSyncCodec<Change, Checkpoint>
+): readonly Change[] => getChangesArray(doc).toArray().map((value: Uint8Array) => {
+  if (!isBinaryBytes(value)) {
     throw new Error('Shared change payload must be binary.')
   }
   return codec.decodeChange(value)
 })
 
-export type InternalYjsSyncStore = YjsSyncStore & {
-  hasData: () => boolean
-  readSnapshot: () => YjsSyncSnapshot
-}
-
-export const createYjsSyncStore = ({
+export const createYjsSyncStore = <
+  Change extends {
+    id: string
+  },
+  Checkpoint extends {
+    id: string
+  },
+  Meta extends YjsSyncMeta = YjsSyncMeta<1>
+>({
   doc,
-  codec
+  codec,
+  schemaVersion = YJS_SYNC_SCHEMA_VERSION as Meta['schemaVersion']
 }: {
   doc: Y.Doc
-  codec: YjsSyncCodec
-}): InternalYjsSyncStore => {
+  codec: YjsSyncCodec<Change, Checkpoint>
+  schemaVersion?: Meta['schemaVersion']
+}): InternalYjsSyncStore<Change, Checkpoint, Meta> => {
   const readCheckpoint = () => {
     const checkpoint = getCheckpointMap(doc)
     const id = checkpoint.get(CHECKPOINT_ID_FIELD)
@@ -102,22 +155,22 @@ export const createYjsSyncStore = ({
     if (id === undefined && blob === undefined) {
       return null
     }
-    if (typeof id !== 'string' || !isBinary(blob)) {
+    if (typeof id !== 'string' || !isBinaryBytes(blob)) {
       throw new Error('Shared checkpoint payload is invalid.')
     }
     return codec.decodeCheckpoint(blob)
   }
 
   return {
-    readMeta: () => readMeta(doc),
+    readMeta: () => readMeta<Meta>(doc, schemaVersion),
     readCheckpoint,
     readChanges: () => readRawChanges(doc, codec),
     appendChange: (change) => {
-      ensureSchemaVersion(doc)
+      ensureSchemaVersion(doc, schemaVersion)
       getChangesArray(doc).push([codec.encodeChange(change)])
     },
     replaceCheckpoint: (checkpoint) => {
-      ensureSchemaVersion(doc)
+      ensureSchemaVersion(doc, schemaVersion)
       const target = getCheckpointMap(doc)
       target.set(CHECKPOINT_ID_FIELD, checkpoint.id)
       target.set(CHECKPOINT_BLOB_FIELD, codec.encodeCheckpoint(checkpoint))
@@ -137,7 +190,7 @@ export const createYjsSyncStore = ({
     readSnapshot: () => {
       const seen = new Set<string>()
       const duplicateIds = new Set<string>()
-      const changes: SharedChange[] = []
+      const changes: Change[] = []
 
       readRawChanges(doc, codec).forEach((change) => {
         if (seen.has(change.id)) {

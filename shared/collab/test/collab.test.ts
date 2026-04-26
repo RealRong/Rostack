@@ -85,7 +85,6 @@ const createEngine = (doc = 'base') => {
   const controller = history.create<TestOp, string, TestWrite>({
     conflicts: (left, right) => left.some((key) => right.includes(key))
   })
-  const writeListeners = new Set<(write: TestWrite) => void>()
   const commitListeners = new Set<(commit: CommitRecord<string, TestOp, string, {}>) => void>()
   let nextRev = 1
   const commits = {
@@ -102,9 +101,6 @@ const createEngine = (doc = 'base') => {
   ) => {
     current = commit.doc
     commitListeners.forEach((listener) => listener(commit))
-    if (commit.kind === 'apply') {
-      writeListeners.forEach((listener) => listener(commit))
-    }
   }
   const apply = (ops: readonly TestOp[], options?: {
     origin?: TestWrite['origin']
@@ -154,14 +150,6 @@ const createEngine = (doc = 'base') => {
       },
       apply,
       commits,
-      writes: {
-        subscribe: (listener: (write: TestWrite) => void) => {
-          writeListeners.add(listener)
-          return () => {
-            writeListeners.delete(listener)
-          }
-        }
-      },
       history: historyPort,
       internal: {
         history: {
@@ -236,7 +224,7 @@ test('collab bootstrap writes initial checkpoint', () => {
   assert.equal(memoryStore.snapshot().changes.length, 0)
 })
 
-test('collab publishes local writes and replays remote changes', () => {
+test('collab publishes local commits and replays remote changes', () => {
   const memoryStore = createMemoryStore()
   const engineRuntime = createEngine('doc_a')
   let nextId = 1

@@ -18,7 +18,7 @@ import type {
   Size,
   Origin
 } from '@whiteboard/core/types'
-import type { CommittedNodeView, TextMeasureTarget } from '@whiteboard/editor-scene'
+import type { DocumentNodeGeometry, DocumentQuery, TextMeasureTarget } from '@whiteboard/editor-scene'
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
 import type { EditField, EditSession } from '@whiteboard/editor/session/edit'
 import { store } from '@shared/core'
@@ -428,43 +428,42 @@ const measureEdgeLabelFallback = ({
 }
 
 const measureDraftNodeLayout = ({
-  committed,
+  node,
+  geometry,
   nodeId,
   field,
   text,
   registry,
   backend
 }: {
-  committed: {
-    node: Node
-    rect: Rect
-  } | undefined
+  node: Node | undefined
+  geometry: DocumentNodeGeometry | undefined
   nodeId: NodeId
   field: EditField
   text: string
   registry: Pick<NodeRegistry, 'get'>
   backend?: LayoutBackend
 }): DraftMeasure => {
-  if (!committed) {
+  if (!node || !geometry) {
     return undefined
   }
 
-  const kind = readLayoutKind(registry, committed.node)
+  const kind = readLayoutKind(registry, node)
   if (kind === 'none' || field !== 'text') {
     return undefined
   }
 
   const nextNode: Node = {
-    ...committed.node,
+    ...node,
     data: {
-      ...(committed.node.data ?? {}),
+      ...(node.data ?? {}),
       [field]: text
     }
   }
   const request = buildLayoutRequest({
     nodeId,
     node: nextNode,
-    rect: committed.rect,
+    rect: geometry.rect,
     kind
   })
   if (!request) {
@@ -476,21 +475,25 @@ const measureDraftNodeLayout = ({
     ? {
         kind: 'size',
         size: result?.kind === 'size'
-          ? result.size
+      ? result.size
           : {
-              width: committed.rect.width,
-              height: committed.rect.height
+              width: geometry.rect.width,
+              height: geometry.rect.height
             }
       }
     : {
         kind: 'fit',
         fontSize: result?.kind === 'fit'
           ? result.fontSize
-          : readFontSize(committed.node)
+          : readFontSize(node)
       }
 }
 
 export type EditorLayout = {
+  bind: (input: {
+    document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
+    revision: store.ReadStore<number>
+  }) => void
   text: TextMetricsResource
   measureText: (
     request: TextMeasureTarget
@@ -521,16 +524,10 @@ export type EditorLayout = {
 }
 
 export const createEditorLayout = ({
-  read,
   session,
   registry,
   backend
 }: {
-  read: {
-    node: {
-      committed: store.KeyedReadStore<NodeId, CommittedNodeView | undefined>
-    }
-  }
   session: {
     edit: store.ReadStore<EditSession>
   }
@@ -538,10 +535,29 @@ export const createEditorLayout = ({
   backend?: LayoutBackend
 }): EditorLayout => {
   const text = createTextMetricsResource()
+  let readDocument: Pick<DocumentQuery, 'node' | 'nodeGeometry'> | null = null
+  let readRevision: store.ReadStore<number> | null = null
+
+  const readCommittedNode = (nodeId: NodeId): {
+    node: Node
+    rect: Rect
+  } | undefined => {
+    const node = readDocument?.node(nodeId)
+    const geometry = readDocument?.nodeGeometry(nodeId)
+    return node && geometry
+      ? {
+          node,
+          rect: geometry.rect
+        }
+      : undefined
+  }
 
   const draft = {
     node: store.createKeyedDerivedStore<NodeId, DraftMeasure>({
       get: (nodeId) => {
+        if (readRevision) {
+          store.read(readRevision)
+        }
         const current = store.read(session.edit)
         if (
           !current
@@ -552,7 +568,8 @@ export const createEditorLayout = ({
         }
 
         return measureDraftNodeLayout({
-          committed: store.read(read.node.committed, nodeId),
+          node: readDocument?.node(nodeId),
+          geometry: readDocument?.nodeGeometry(nodeId),
           nodeId,
           field: current.field,
           text: current.text,
@@ -715,6 +732,13 @@ export const createEditorLayout = ({
   })
 
   return {
+    bind: ({
+      document,
+      revision
+    }) => {
+      readDocument = document
+      readRevision = revision
+    },
     text,
     measureText,
     draft,
@@ -724,7 +748,7 @@ export const createEditorLayout = ({
       root: patchMindmapTemplateNode(template.root, position)
     }),
     patchNodeUpdate: (nodeId, update, options) => {
-      const committed = store.read(read.node.committed, nodeId)
+      const committed = readCommittedNode(nodeId)
       if (!committed) {
         return update
       }
@@ -771,7 +795,7 @@ export const createEditorLayout = ({
     },
 
     resolvePreviewPatches: (patches) => patches.map((patch) => {
-      const committed = store.read(read.node.committed, patch.id)
+      const committed = readCommittedNode(patch.id)
       if (!backend || !committed) {
         return patch
       }

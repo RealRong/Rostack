@@ -1,5 +1,5 @@
 import { equal } from '@shared/core'
-import { idDelta } from '@shared/projector/delta'
+import { idDelta } from '@shared/delta'
 import {
   mindmap as mindmapApi,
   type MindmapLayout

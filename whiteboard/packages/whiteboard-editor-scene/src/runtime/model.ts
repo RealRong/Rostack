@@ -9,7 +9,7 @@ import {
   family,
   value
 } from '@shared/projector/model'
-import { idDelta } from '@shared/projector/delta'
+import { idDelta } from '@shared/delta'
 import type {
   EdgeId,
   GroupId,
@@ -18,6 +18,7 @@ import type {
   NodeId,
   Size
 } from '@whiteboard/core/types'
+import type { Revision } from '@shared/projector/phase'
 import type {
   HoverState,
   Input,
@@ -541,8 +542,7 @@ export const createEditorSceneProjectionModel = (input: {
   ReturnType<typeof createEditorSceneRead>,
   {
     document: {
-      node: ReturnType<typeof family<WorkingState, NodeId, WorkingState['document']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>>
-      edge: ReturnType<typeof family<WorkingState, EdgeId, WorkingState['document']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>>
+      revision: ReturnType<typeof value<WorkingState, Revision>>
       background: ReturnType<typeof value<WorkingState, WorkingState['document']['background']>>
     }
     graph: {
@@ -594,17 +594,8 @@ export const createEditorSceneProjectionModel = (input: {
   ),
   surface: {
     document: {
-      node: family({
-        read: (state) => ({
-          ids: [...state.document.nodes.keys()],
-          byId: state.document.nodes
-        })
-      }),
-      edge: family({
-        read: (state) => ({
-          ids: [...state.document.edges.keys()],
-          byId: state.document.edges
-        })
+      revision: value({
+        read: (state) => state.revision.document
       }),
       background: value({
         read: (state) => state.document.background

@@ -1,6 +1,6 @@
 import type { Engine } from '@whiteboard/engine'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { EditorInputHost } from '@whiteboard/editor/types/editor'
-import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
 import type { ToolRead } from '@whiteboard/editor/types/editor'
 import type { SessionViewportRead } from '@whiteboard/editor/types/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
@@ -86,7 +86,7 @@ const createSessionRead = (
 
 export type EditorHostDeps = {
   engine: Engine
-  document: EditorDocumentSource
+  document: DocumentQuery
   projection: EditorSceneRuntime
   sessionRead: SessionRead
   session: EditorSession

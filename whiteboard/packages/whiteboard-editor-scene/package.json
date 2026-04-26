@@ -12,6 +12,7 @@
     "dist"
   ],
   "dependencies": {
+    "@shared/delta": "workspace:*",
     "@shared/projector": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/engine": "workspace:*"

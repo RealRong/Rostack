@@ -1,9 +1,9 @@
 import {
   defineChangeSpec,
-  flag,
+  changeFlag as flag,
   ids,
-  set
-} from '@shared/projector/change'
+  changeSet as set
+} from '@shared/delta'
 import type {
   EdgeId,
   GroupId,

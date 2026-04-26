@@ -4,6 +4,11 @@ import type {
   CollabProvider,
   CollabStatus
 } from '@shared/collab'
+import type {
+  YjsSyncCodec as SharedYjsSyncCodec,
+  YjsSyncMeta,
+  YjsSyncStore as SharedYjsSyncStore
+} from '@shared/collab-yjs'
 import type { HistoryPort } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
@@ -13,9 +18,7 @@ import type { EngineWrite } from '@dataview/engine/contracts/write'
 
 export type SharedOperation = DocumentOperation
 
-export type SharedMeta = {
-  schemaVersion: 1
-}
+export type SharedMeta = YjsSyncMeta<1>
 
 export type SharedChange = {
   id: string
@@ -29,21 +32,13 @@ export type SharedCheckpoint = {
   doc: DataDoc
 }
 
-export type YjsSyncCodec = {
-  encodeChange(change: SharedChange): Uint8Array
-  decodeChange(data: Uint8Array): SharedChange
-  encodeCheckpoint(checkpoint: SharedCheckpoint): Uint8Array
-  decodeCheckpoint(data: Uint8Array): SharedCheckpoint
-}
+export type YjsSyncCodec = SharedYjsSyncCodec<SharedChange, SharedCheckpoint>
 
-export type YjsSyncStore = {
-  readMeta(): SharedMeta
-  readCheckpoint(): SharedCheckpoint | null
-  readChanges(): readonly SharedChange[]
-  appendChange(change: SharedChange): void
-  replaceCheckpoint(checkpoint: SharedCheckpoint): void
-  clearChanges(): void
-}
+export type YjsSyncStore = SharedYjsSyncStore<
+  SharedChange,
+  SharedCheckpoint,
+  SharedMeta
+>
 
 export type CreateYjsSessionOptions = {
   engine: Engine

@@ -1,6 +1,6 @@
 import type { Family } from '../contracts/core'
 import type * as source from '../contracts/source'
-import type { IdDelta } from '../delta/idDelta'
+import type { IdDelta } from '@shared/delta'
 
 export interface IdDeltaFamilySyncPatch<TKey, TValue> {
   ids?: readonly TKey[]

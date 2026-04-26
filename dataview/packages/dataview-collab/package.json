@@ -10,6 +10,7 @@
     "@dataview/core": "workspace:*",
     "@dataview/engine": "workspace:*",
     "@shared/collab": "workspace:*",
+    "@shared/collab-yjs": "workspace:*",
     "@shared/core": "workspace:*",
     "@shared/mutation": "workspace:*",
     "yjs": "^13.6.27"

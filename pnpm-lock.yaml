@@ -245,6 +245,9 @@ importers:
       '@shared/collab':
         specifier: workspace:*
         version: link:../../../shared/collab
+      '@shared/collab-yjs':
+        specifier: workspace:*
+        version: link:../../../shared/collab-yjs
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
@@ -290,6 +293,9 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/delta':
+        specifier: workspace:*
+        version: link:../../../shared/delta
       '@shared/draft':
         specifier: workspace:*
         version: link:../../../shared/draft
@@ -414,7 +420,18 @@ importers:
         specifier: workspace:*
         version: link:../mutation
 
+  shared/collab-yjs:
+    dependencies:
+      '@shared/collab':
+        specifier: workspace:*
+        version: link:../collab
+      yjs:
+        specifier: ^13.6.27
+        version: 13.6.30
+
   shared/core: {}
+
+  shared/delta: {}
 
   shared/dom:
     dependencies:
@@ -458,6 +475,9 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../core
+      '@shared/delta':
+        specifier: workspace:*
+        version: link:../delta
 
   shared/react:
     dependencies:
@@ -530,6 +550,9 @@ importers:
       '@shared/collab':
         specifier: workspace:*
         version: link:../../../shared/collab
+      '@shared/collab-yjs':
+        specifier: workspace:*
+        version: link:../../../shared/collab-yjs
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
@@ -590,6 +613,9 @@ importers:
 
   whiteboard/packages/whiteboard-editor-scene:
     dependencies:
+      '@shared/delta':
+        specifier: workspace:*
+        version: link:../../../shared/delta
       '@shared/projector':
         specifier: workspace:*
         version: link:../../../shared/projector
@@ -605,6 +631,9 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/delta':
+        specifier: workspace:*
+        version: link:../../../shared/delta
       '@shared/mutation':
         specifier: workspace:*
         version: link:../../../shared/mutation

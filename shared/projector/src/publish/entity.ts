@@ -1,11 +1,11 @@
 import {
   entityDelta,
   type EntityDelta
-} from '../delta/entityDelta'
+} from '@shared/delta'
 import {
   idDelta,
   type IdDelta
-} from '../delta/idDelta'
+} from '@shared/delta'
 import type { Family } from '../contracts/core'
 import {
   isListEqual,

@@ -24,7 +24,7 @@ import {
 } from '@whiteboard/editor/write/node'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
-import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type { EditorWrite } from '@whiteboard/editor/write/types'
@@ -38,14 +38,7 @@ export const createEditorWrite = ({
 }: {
   engine: Engine
   history: HistoryPort<IntentResult>
-  document: EditorDocumentSource & {
-    node: {
-      get(id: import('@whiteboard/core/types').NodeId): import('@whiteboard/editor-scene').CommittedNodeView | undefined
-    }
-    edge: {
-      get(id: import('@whiteboard/core/types').EdgeId): import('@whiteboard/editor-scene').CommittedEdgeView | undefined
-    }
-  }
+  document: DocumentQuery
   projection: EditorSceneRuntime
   layout: EditorLayout
 }): EditorWrite => {
@@ -55,9 +48,7 @@ export const createEditorWrite = ({
   const node = createNodeWrite({
     engine,
     read: {
-      node: {
-        committed: projection.stores.document.node.byId
-      }
+      document
     },
     layout
   })

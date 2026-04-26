@@ -19,8 +19,7 @@ import type {
   Viewport
 } from '@whiteboard/core/types'
 import type {
-  CommittedEdgeView,
-  CommittedNodeView,
+  DocumentQuery,
   Query as EditorSceneQueryRuntime,
   RuntimeStores,
   SpatialKind,
@@ -234,23 +233,6 @@ export type ScenePickRuntime = {
   dispose: () => void
 }
 
-export type EditorDocumentSource = {
-  get: () => Document
-  bounds: () => Rect
-  slice: (input: {
-    nodeIds?: readonly NodeId[]
-    edgeIds?: readonly EdgeId[]
-  }) => SliceExportResult | undefined
-  node: {
-    get: (id: NodeId) => CommittedNodeView | undefined
-    ids: () => readonly NodeId[]
-  }
-  edge: {
-    get: (id: EdgeId) => CommittedEdgeView | undefined
-    ids: () => readonly EdgeId[]
-  }
-}
-
 export type EditorSceneSource = {
   revision: () => number
   query: EditorSceneQueryRuntime
@@ -312,7 +294,7 @@ export type EditorEvents = {
 }
 
 export type Editor = {
-  document: EditorDocumentSource
+  document: DocumentQuery
   scene: EditorSceneSource
   session: EditorSessionSource
   write: EditorWrite

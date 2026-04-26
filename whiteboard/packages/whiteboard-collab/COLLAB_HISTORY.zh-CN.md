@@ -233,7 +233,7 @@ type WriteRecord = {
 
 长期正式形态是：
 
-- 本地 publish 直接来自 `engine.writes`
+- 本地 publish 直接来自 `engine.commits`
 - 本地 history 直接复用 `engine.history`
 - collab 侧只负责 remote observe 与 history applying confirm
 - shared collab 不再重复 capture 本地 user write
@@ -403,7 +403,7 @@ type CollabSession = {
 
 ### 9.1 capture
 
-当 session 观察到新的本地 `WriteRecord` 并成功发布为 `SharedChange` 后：
+当 session 观察到新的本地 `apply commit` 并成功发布为 `SharedChange` 后：
 
 1. 为该 `changeId` 分配或读取 `ObservedChangeSeq`
 2. 构造 `LocalHistoryEntry`
@@ -467,7 +467,7 @@ type PendingTransition =
   | null
 ```
 
-只要 `pending` 存在，下一条本地 `WriteRecord` 只能用于完成该 transition，不能 capture 成新 entry。
+只要 `pending` 存在，下一条本地 `apply commit` 只能用于完成该 transition，不能 capture 成新 entry。
 
 ---
 
@@ -525,7 +525,7 @@ type PendingTransition =
 ### 已落地阶段
 
 - `HistoryFootprint` 已在 reducer / write 主线稳定产出
-- 本地 publish 直接读 `engine.writes`
+- 本地 publish 直接读 `engine.commits`
 - `session.localHistory` 已直接包装 `engine.history`
 - 远端 change 通过 footprint 做 invalidation
 - `undo` / `redo` 已通过 shared change append 落地

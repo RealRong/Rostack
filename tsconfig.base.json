@@ -8,6 +8,8 @@
     "paths": {
       "@rostack/dataview-demo/*": ["apps/dataview/src/*"],
       "@shared/core": ["shared/core/src/index.ts"],
+      "@shared/delta": ["shared/delta/src/index.ts"],
+      "@shared/delta/*": ["shared/delta/src/*"],
       "@shared/draft": ["shared/draft/src/index.ts"],
       "@shared/draft/*": ["shared/draft/src/*"],
       "@shared/reducer": ["shared/reducer/src/index.ts"],
@@ -16,6 +18,8 @@
       "@shared/mutation/*": ["shared/mutation/src/*"],
       "@shared/collab": ["shared/collab/src/index.ts"],
       "@shared/collab/*": ["shared/collab/src/*"],
+      "@shared/collab-yjs": ["shared/collab-yjs/src/index.ts"],
+      "@shared/collab-yjs/*": ["shared/collab-yjs/src/*"],
       "@shared/dom": ["shared/dom/src/index.ts"],
       "@shared/dom/*": ["shared/dom/src/*"],
       "@shared/i18n": ["shared/i18n/src/index.ts"],

@@ -1,5 +1,5 @@
 import { store } from '@shared/core'
-import type { IdDelta } from '../delta/idDelta'
+import type { IdDelta } from '@shared/delta'
 
 export interface ProjectorRuntimeLike<TSnapshot, TChange> {
   snapshot(): TSnapshot

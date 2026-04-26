@@ -1,4 +1,4 @@
-import { idDelta } from '@shared/projector/delta'
+import { idDelta } from '@shared/delta'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type {
   EdgeId,

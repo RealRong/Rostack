@@ -1,5 +1,6 @@
 import { equal } from '@shared/core'
 import { META } from '@whiteboard/core/spec/operation'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorEvents } from '@whiteboard/editor/types/editor'
@@ -11,18 +12,11 @@ export type EditorEventRuntime = {
 
 const reconcileSessionAfterWrite = (
   session: Pick<EditorSession, 'state' | 'mutate'>,
-  document: {
-    node: {
-      get(id: string): unknown
-    }
-    edge: {
-      get(id: string): unknown
-    }
-  }
+  document: Pick<DocumentQuery, 'node' | 'edge'>
 ) => {
   const selection = session.state.selection.get()
-  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.node.get(id)))
-  const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(document.edge.get(id)))
+  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.node(id)))
+  const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(document.edge(id)))
 
   if (
     !equal.sameOrder(nextNodeIds, selection.nodeIds)
@@ -40,8 +34,8 @@ const reconcileSessionAfterWrite = (
   }
 
   if (
-    (currentEdit.kind === 'node' && !document.node.get(currentEdit.nodeId))
-    || (currentEdit.kind === 'edge-label' && !document.edge.get(currentEdit.edgeId))
+    (currentEdit.kind === 'node' && !document.node(currentEdit.nodeId))
+    || (currentEdit.kind === 'edge-label' && !document.edge(currentEdit.edgeId))
   ) {
     session.mutate.edit.clear()
   }
@@ -55,14 +49,7 @@ export const createEditorEvents = ({
 }: {
   engine: Engine
   session: EditorSession
-  document: {
-    node: {
-      get(id: string): unknown
-    }
-    edge: {
-      get(id: string): unknown
-    }
-  }
+  document: Pick<DocumentQuery, 'node' | 'edge'>
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()

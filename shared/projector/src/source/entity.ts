@@ -1,4 +1,4 @@
-import type { EntityDelta } from '../delta/entityDelta'
+import type { EntityDelta } from '@shared/delta'
 import type * as source from '../contracts/source'
 
 export interface EntityDeltaSyncPatch<TKey, TValue> {

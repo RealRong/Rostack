@@ -3,9 +3,9 @@ import {
   type Path
 } from '@shared/mutation'
 import { schema as schemaApi } from '@whiteboard/core/schema'
-import type { NodeId } from '@whiteboard/core/types'
+import type { Node, NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { CommittedNodeView } from '@whiteboard/editor-scene'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type {
   NodeLockWrite,
   NodeShapeWrite,
@@ -20,7 +20,7 @@ type NodeTextCommitInput = Parameters<NodeTextWrite['commit']>[0]
 
 type NodeContext = {
   read: {
-    committed: (id: NodeId) => CommittedNodeView | undefined
+    node: (id: NodeId) => Node | undefined
   }
   write: NodeUpdateWrite & {
     textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
@@ -60,17 +60,13 @@ const createNodeContext = ({
   textCommit
 }: {
   read: {
-    node: {
-      committed: {
-        get(id: NodeId): CommittedNodeView | undefined
-      }
-    }
+    document: Pick<DocumentQuery, 'node'>
   }
   update: NodeUpdateWrite
   textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
 }): NodeContext => ({
   read: {
-    committed: (id) => read.node.committed.get(id)
+    node: (id) => read.document.node(id)
   },
   write: {
     update: update.update,
@@ -146,7 +142,7 @@ const createNodeLockWrite = (
   return {
     set,
     toggle: (nodeIds) => {
-      const shouldLock = nodeIds.some((id) => !ctx.read.committed(id)?.node.locked)
+      const shouldLock = nodeIds.some((id) => !ctx.read.node(id)?.locked)
       return set(nodeIds, shouldLock)
     }
   }
@@ -157,7 +153,7 @@ const createNodeShapeWrite = (
 ): NodeShapeWrite => ({
   set: (nodeIds, kind) => ctx.write.updateMany(
     nodeIds.flatMap((id) => {
-      const node = ctx.read.committed(id)?.node
+      const node = ctx.read.node(id)
       if (node?.type !== 'shape') {
         return []
       }
@@ -206,11 +202,7 @@ export const createNodeWrite = ({
 }: {
   engine: Engine
   read: {
-    node: {
-      committed: {
-        get(id: NodeId): CommittedNodeView | undefined
-      }
-    }
+    document: Pick<DocumentQuery, 'node'>
   }
   layout: EditorLayout
 }): NodeWrite => {

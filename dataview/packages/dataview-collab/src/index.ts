@@ -1,6 +1,6 @@
 import { createYjsSession } from '@dataview/collab/session'
 import { createYjsSyncCodec } from '@dataview/collab/yjs/codec'
-import { createYjsSyncStore } from '@dataview/collab/yjs/store'
+import { createYjsSyncStore } from '@shared/collab-yjs'
 
 export const collab = {
   yjs: {

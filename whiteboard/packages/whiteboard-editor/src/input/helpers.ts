@@ -5,8 +5,8 @@ import type {
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
-import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
 import type {
   EditCaret,
   EditField
@@ -46,7 +46,7 @@ export const clearSelection = (
 export const startNodeEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
-    document: Pick<EditorDocumentSource, 'node'>
+    document: Pick<DocumentQuery, 'node'>
     nodeType: Pick<NodeTypeSupport, 'edit'>
   },
   nodeId: NodeId,
@@ -55,18 +55,18 @@ export const startNodeEdit = (
     caret?: EditCaret
   }
 ) => {
-  const committed = ctx.document.node.get(nodeId)
+  const committed = ctx.document.node(nodeId)
   if (!committed) {
     return
   }
 
-  const capability = ctx.nodeType.edit(committed.node.type, field)
+  const capability = ctx.nodeType.edit(committed.type, field)
   if (!capability) {
     return
   }
 
-  const text = typeof committed.node.data?.[field] === 'string'
-    ? committed.node.data[field] as string
+  const text = typeof committed.data?.[field] === 'string'
+    ? committed.data[field] as string
     : ''
 
   ctx.session.mutate.edit.set({
@@ -82,7 +82,7 @@ export const startNodeEdit = (
 export const startEdgeLabelEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
-    document: Pick<EditorDocumentSource, 'edge'>
+    document: Pick<DocumentQuery, 'edge'>
   },
   edgeId: EdgeId,
   labelId: string,
@@ -90,7 +90,7 @@ export const startEdgeLabelEdit = (
     caret?: EditCaret
   }
 ) => {
-  const edge = ctx.document.edge.get(edgeId)?.edge
+  const edge = ctx.document.edge(edgeId)
   const label = edge?.labels?.find((entry: EdgeLabel) => entry.id === labelId)
   if (!edge || !label) {
     return

@@ -16,7 +16,7 @@ import {
 import {
   entityDelta,
   type EntityDelta
-} from '@shared/projector/delta'
+} from '@shared/delta'
 import { equal } from '@shared/core'
 import type {
   DocumentDelta

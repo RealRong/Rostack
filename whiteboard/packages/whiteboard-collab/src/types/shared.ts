@@ -1,11 +1,14 @@
 import type { Document, Operation } from '@whiteboard/core/types'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
+import type {
+  YjsSyncCodec as SharedYjsSyncCodec,
+  YjsSyncMeta,
+  YjsSyncStore as SharedYjsSyncStore
+} from '@shared/collab-yjs'
 
 export type SharedOperation = Exclude<Operation, { type: 'document.replace' }>
 
-export type SharedMeta = {
-  schemaVersion: 1
-}
+export type SharedMeta = YjsSyncMeta<1>
 
 export type SharedChange = {
   id: string
@@ -19,18 +22,10 @@ export type SharedCheckpoint = {
   doc: Document
 }
 
-export type YjsSyncCodec = {
-  encodeChange: (change: SharedChange) => Uint8Array
-  decodeChange: (data: Uint8Array) => SharedChange
-  encodeCheckpoint: (checkpoint: SharedCheckpoint) => Uint8Array
-  decodeCheckpoint: (data: Uint8Array) => SharedCheckpoint
-}
+export type YjsSyncCodec = SharedYjsSyncCodec<SharedChange, SharedCheckpoint>
 
-export type YjsSyncStore = {
-  readMeta: () => SharedMeta
-  readCheckpoint: () => SharedCheckpoint | null
-  readChanges: () => readonly SharedChange[]
-  appendChange: (change: SharedChange) => void
-  replaceCheckpoint: (checkpoint: SharedCheckpoint) => void
-  clearChanges: () => void
-}
+export type YjsSyncStore = SharedYjsSyncStore<
+  SharedChange,
+  SharedCheckpoint,
+  SharedMeta
+>

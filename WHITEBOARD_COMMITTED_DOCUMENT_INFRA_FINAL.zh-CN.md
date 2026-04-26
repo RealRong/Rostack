@@ -2,132 +2,138 @@
 
 ## 目标
 
-把 `editor-scene` 里现在这条“committed document / committed node view / committed edge view”链条重做成长期最优形态。
+彻底重做现在这条 committed document 读取链，目标是长期最优，不做局部补丁：
 
-目标不是修一个热函数，而是一次性解决下面几个结构性问题：
+- 删掉 `CommittedNodeView` / `CommittedEdgeView`
+- 删掉 `editor-scene` 里常驻的 committed node/edge view map
+- 让 `editor-scene.query.document` 成为唯一公共 document 读取面
+- 把 committed-only 派生收敛成 `editor-scene` 内部按 revision 失效的 resolver
+- 删除 `editor` 侧重复的 `EditorDocumentSource` 包装层
 
-- `CommittedEdgeView` 维护成本很高，但复用极低
-- `query.document.*` 背后挂着一层厚缓存，语义和用途都不清晰
-- `editor` / `layout` / `write` 大量依赖 `CommittedNodeView` / `CommittedEdgeView`，但很多地方其实只想读 raw document
-- committed-only 几何、edge ends、document bounds 没有被收成统一基础设施
-
-这里不做兼容设计，直接定义最终形态。
+这里不考虑兼容，不保留旧实现。
 
 ## 结论
 
-最终形态不是“完全不要 committed”，而是：
+最终不应该是“完全不要 committed read”，而应该是：
 
-- 删除 public `CommittedEdgeView`
-- 删除 `editor-scene` 内部的 committed edge map
-- 删除 public `CommittedNodeView`
-- 保留一层更薄、更清晰的 committed node geometry 基础设施
-- 把 committed-only 读取统一收进 `editor-scene.query.document`
-- 把低频且昂贵的 committed edge 派生改成 lazy resolver，而不是每次 document patch 都全量/增量维护一张 edge committed map
+- 公共层不再暴露任何 `Committed*View`
+- 公共层不再暴露 `stores.document.node` / `stores.document.edge`
+- `editor-scene.query.document` 直接返回 raw committed document / node / edge
+- committed-only 的 node geometry、edge path、edge bounds、document bounds 都变成 `editor-scene` 内部 lazy resolver cache
+- `editor.document` 不再是单独一套 source 设计，直接等于 `editor.scene.query.document`
 
 一句话总结：
 
-`editor-scene` 对外只暴露 raw committed document read + committed node geometry read；edge committed 派生不再维护成常驻 view map。`
+`committed` 只保留为 `editor-scene` 内部 resolver 语义；对外只剩 `document query`，不再有 committed wrapper view。`
 
-## 当前问题
+## 当前实现的问题
 
 ### 1. `CommittedEdgeView` 是高成本低复用层
 
-当前定义：
+相关实现：
 
-- `whiteboard/packages/whiteboard-core/src/edge/committed.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts`
+- [whiteboard/packages/whiteboard-core/src/edge/committed.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/edge/committed.ts:1)
+- [whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts:1)
 
 现状：
 
-- `patchDocumentState(...)` 为每条 touched edge 维护 `working.document.edges: Map<EdgeId, CommittedEdgeView>`
-- `resolveCommittedEdgeView(...)` 每次都会重新解析 source/target node geometry 和 outline
-- node touched 时，`patchDocumentState(...)` 还会扫一遍全部 `snapshot.edges` 找受影响 edge
+- `patchDocumentState(...)` 在 patch 阶段维护 `working.document.edges: Map<EdgeId, CommittedEdgeView>`
+- node touched 时会扫一遍全部 `snapshot.edges`，把相关 edge 加进 touched 集合
+- `resolveCommittedEdgeView(...)` 对每条 edge 都重新解析两端 node committed geometry
+- `document.bounds()` 又不会复用这张 map，而是再次走 `resolveCommittedEdgeRenderView(...)`
 
 问题：
 
-- 先有一次 `O(全部 edge 数)` 的全量扫描
-- 再对每条 touched edge 重算两端 node committed geometry
-- 被拖动 node 连很多 edge 时，同一个 node committed geometry 会重复计算很多次
+- patch 阶段引入了不必要的全量 edge 扫描
+- 同一个高连接度 node 的 geometry / outline 会在多条 edge 上重复计算
+- 已经维护了一张 committed edge map，但 `bounds()` 还在重新算 path，复用很差
 
-这条链是现在 `resolveCommittedEdgeView` 卡的直接原因。
+这就是你前面看到 `resolveCommittedEdgeView` 很卡的根因。
 
-### 2. `CommittedNodeView` 被 public API 放大了
+### 2. `CommittedNodeView` 把 raw node 和 geometry 硬绑在一起
 
-当前：
+相关实现：
 
-- `query.document.node(id)` 返回 `CommittedNodeView`
-- `EditorDocumentSource.node.get(id)` 返回 `CommittedNodeView`
-- `write/node.ts`、`layout/runtime.ts`、`action/index.ts` 等都依赖它
+- [whiteboard/packages/whiteboard-core/src/node/committed.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/node/committed.ts:1)
+- [whiteboard/packages/whiteboard-editor/src/layout/runtime.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor/src/layout/runtime.ts:531)
+- [whiteboard/packages/whiteboard-editor/src/write/node.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor/src/write/node.ts:1)
 
-但实际调用里，大量地方只是马上取：
+现状：
 
-- `committed.node`
-- `committed.rect`
-- `committed.bounds`
-
-也就是说：
-
-- raw committed node read
-- committed node geometry read
-
-这两个概念本该分开，现在被一个 wrapper 类型捆在一起。
-
-### 3. `query.document` 背后数据源过厚，但又没真正统一
-
-当前：
-
-- raw committed snapshot 在 `state.document.snapshot`
-- committed node map 在 `state.document.nodes`
-- committed edge map 在 `state.document.edges`
-- committed bounds 读取又重新走 `resolveCommittedEdgeRenderView(...)`
+- `CommittedNodeView` 同时携带 `node`、`rect`、`bounds`、`rotation`
+- editor 侧绝大多数调用只是立刻取 `.node` 或 `.rect`
 
 问题：
 
-- 有 snapshot
-- 有 node committed map
-- 有 edge committed map
-- 还有 bounds 的现算路径
+- “raw committed node” 和 “committed node geometry” 是两个概念
+- 现在被一个 wrapper 类型绑死，导致 API 表意不清晰
+- 也导致 layout / write / action 这些模块误以为自己需要“committed view”，其实它们多数只需要 raw node，少数地方再额外要 geometry
 
-这不是统一数据源，而是多套半重叠实现并存。
+### 3. `query.document` 已经存在，但外面又包了一层 `EditorDocumentSource`
 
-### 4. public `stores.document.*` 暴露过多
+相关实现：
 
-当前 public surface：
+- [whiteboard/packages/whiteboard-editor/src/editor/createEditor.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor/src/editor/createEditor.ts:93)
+- [whiteboard/packages/whiteboard-editor/src/types/editor.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor/src/types/editor.ts:237)
 
-- `stores.document.node`
-- `stores.document.edge`
-- `stores.document.background`
+现状：
 
-但真正需要 reactive public store 的只有极少数：
+- `scene.query.document` 已经有 `get / bounds / slice / node / edge`
+- `createEditor.ts` 再组装一遍 `EditorDocumentSource`
+- editor 内部大量模块都依赖这层二次包装
 
-- `background`
-- committed node geometry 给 layout 之类内部依赖
+问题：
 
-raw committed node / edge 本身并不值得继续作为 public family store 暴露。
+- public read surface 被重复定义了两遍
+- `editor-scene` 才是真正的数据源，但 editor 内部并没有直接依赖它
+- 后续任何 query 收敛、命名调整、缓存策略调整，都要同步维护两份面
+
+### 4. `DocumentState` 现在不是“数据源”，而是几套半重叠缓存拼在一起
+
+相关实现：
+
+- [whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts:67)
+- [whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts:838)
+
+现状：
+
+- `document.snapshot`
+- `document.background`
+- `document.nodes`
+- `document.edges`
+- `document.bounds()` 还走另一条 read 路径
+
+问题：
+
+- snapshot、node map、edge map、bounds 不是一套明确的主从关系
+- `document.nodes` / `document.edges` 看上去像 canonical state，实际上只是 eager derived cache
+- 这会持续制造“这个读应该信 snapshot 还是信 committed view map”的混乱
 
 ## 最终 API 设计
 
-## 1. 删除的 public API
+## 1. `whiteboard-core` 最终形态
 
-删除：
+### 1.1 删除
 
-- `@whiteboard/editor-scene` 导出的 `CommittedNodeView`
-- `@whiteboard/editor-scene` 导出的 `CommittedEdgeView`
-- `RuntimeStores['document']['node']`
-- `RuntimeStores['document']['edge']`
-- `Query['document'].node(id): CommittedNodeView | undefined`
-- `Query['document'].edge(id): CommittedEdgeView | undefined`
+删除文件与导出：
 
-删除后，不再存在“committed edge view map”这层 public / internal 常驻对象。
+- 删除 [whiteboard/packages/whiteboard-core/src/node/committed.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/node/committed.ts:1)
+- 删除 [whiteboard/packages/whiteboard-core/src/edge/committed.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/edge/committed.ts:1)
+- 删除 `CommittedNodeView`
+- 删除 `CommittedEdgeView`
+- 删除 `resolveCommittedNodeView(...)`
+- 删除 `resolveCommittedEdgeView(...)`
+- 删除 `resolveCommittedEdgeRenderView(...)`
+- 删除 `node.geometry.committed`
+- 删除 `edge.view.committed`
 
-## 2. 新的 committed document public query
+### 1.2 新增 node primitive
 
-文件：
+新增文件：
 
-- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts`
+- `whiteboard/packages/whiteboard-core/src/node/document.ts`
 
-新增并固定：
+新增类型与函数：
 
 ```ts
 export interface DocumentNodeGeometry {
@@ -135,12 +141,47 @@ export interface DocumentNodeGeometry {
   bounds: Rect
   rotation: number
 }
+
+export interface ResolvedDocumentNodeGeometry extends DocumentNodeGeometry {
+  outline: NodeOutline
+}
+
+export const resolveDocumentNodeGeometry(input: {
+  node: Node
+  nodeSize: Size
+}): ResolvedDocumentNodeGeometry
 ```
 
-最终 `Query['document']`：
+说明：
+
+- 这是 committed document read 唯一需要新增的 core primitive
+- public query 只暴露 `DocumentNodeGeometry`
+- `outline` 只给 scene 内部 resolver 复用，不给外部当常规数据面
+
+### 1.3 edge 复用现有 pure primitive，不再新增 committed helper
+
+直接复用已有能力：
+
+- `resolveEdgeEnds(...)`
+- `resolveEdgePathFromRects(...)`
+- `edge.path.bounds(...)`
+
+不再为 committed document 额外定义一套 edge view API。
+
+原因：
+
+- `CommittedEdgeView` 本来就是多余包装
+- scene 内部 resolver 已经能拿到 raw node + cached node geometry
+- 再新增 committed edge helper 只会继续制造重复层
+
+## 2. `editor-scene` public API 最终形态
+
+### 2.1 `Query.document`
+
+在 [whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts:731) 中定义独立接口：
 
 ```ts
-document: {
+export interface DocumentQuery {
   get(): WhiteboardDocument
   background(): WhiteboardDocument['background'] | undefined
 
@@ -160,45 +201,74 @@ document: {
 }
 ```
 
-约束：
+`Query` 最终改成：
 
-- `document.node(id)` / `document.edge(id)` 返回 raw committed record
+```ts
+export interface Query {
+  revision(): Revision
+  document: DocumentQuery
+  ...
+}
+```
+
+规则：
+
+- `document.node(id)` / `document.edge(id)` 只返回 raw committed record
 - `document.nodeGeometry(id)` 返回 committed-only geometry
 - `document.bounds()` 返回 committed-only document bounds
-- 不再返回 `CommittedNodeView`
-- 不再返回 `CommittedEdgeView`
+- 外部不再感知任何 `Committed*View`
 
-## 3. 新的 public document store surface
-
-文件：
-
-- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts`
+### 2.2 `RuntimeStores.document`
 
 最终只保留：
 
 ```ts
 document: {
-  snapshot: store.ReadStore<WhiteboardDocument>
+  revision: store.ReadStore<Revision>
   background: store.ReadStore<WhiteboardDocument['background'] | undefined>
-  nodeGeometry: FamilyReadStore<NodeId, DocumentNodeGeometry>
 }
 ```
 
 说明：
 
-- `snapshot` 给确实需要 reactive raw committed document 的地方
-- `background` 给 React background 这类最简单的订阅点
-- `nodeGeometry` 给 layout / draft 测量等内部高复用 committed geometry 依赖
-- 不再公开 raw committed node/edge family store
+- `background` 给 React 订阅
+- `revision` 给 editor 内部那些必须做 reactive derived read 的模块，例如 layout draft
+- 不再公开 `stores.document.node`
+- 不再公开 `stores.document.edge`
+- 不再公开 `stores.document.snapshot`
+- 不再公开 `stores.document.nodeGeometry`
 
-## 4. internal committed document resolver
+也就是说：
 
-新增内部基础设施：
+`query.document` 负责“读什么”，`stores.document` 只负责“何时重算”。`
+
+## 3. `editor-scene` internal 最终形态
+
+### 3.1 `DocumentState`
+
+在 [whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts:67) 中收缩为：
+
+```ts
+export interface DocumentState {
+  snapshot: WhiteboardDocument
+  background?: WhiteboardDocument['background']
+}
+```
+
+删除：
+
+- `nodes: Map<NodeId, CommittedNodeView>`
+- `edges: Map<EdgeId, CommittedEdgeView>`
+
+`DocumentState` 只保留 source data，不再保留 eager derived cache。
+
+### 3.2 `DocumentResolver`
+
+新增文件：
 
 - `whiteboard/packages/whiteboard-editor-scene/src/model/document/resolver.ts`
 
-最终内部接口：
+新增内部接口：
 
 ```ts
 export interface DocumentResolver {
@@ -207,8 +277,6 @@ export interface DocumentResolver {
   nodeIds(): readonly NodeId[]
   edgeIds(): readonly EdgeId[]
   nodeGeometry(id: NodeId): DocumentNodeGeometry | undefined
-  edgeEnds(id: EdgeId): ResolvedEdgeEnds | undefined
-  edgeBounds(id: EdgeId): Rect | undefined
   bounds(): Rect
   slice(input: {
     nodeIds?: readonly NodeId[]
@@ -216,399 +284,294 @@ export interface DocumentResolver {
   }): SliceExportResult | undefined
 }
 ```
-
-说明：
-
-- 这是 `editor-scene` 内部 resolver，不直接暴露给 editor/react
-- `edgeEnds` / `edgeBounds` 不进入 public query
-- 它们是 committed-only lazy cache
-
-## 5. internal state 最终形态
-
-文件：
-
-- `whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts`
-
-`DocumentState` 最终改成：
-
-```ts
-export interface DocumentState {
-  snapshot: WhiteboardDocument
-  background?: WhiteboardDocument['background']
-  nodeGeometry: Map<NodeId, DocumentNodeGeometry>
-}
-```
-
-删除：
-
-- `document.nodes: Map<NodeId, CommittedNodeView>`
-- `document.edges: Map<EdgeId, CommittedEdgeView>`
-
-说明：
-
-- raw committed node / edge 从 `snapshot` 直接读
-- committed node geometry 常驻缓存保留
-- committed edge 派生不再常驻
-
-## 要新增的基础设施
-
-## 1. committed node geometry primitive
-
-文件：
-
-- `whiteboard/packages/whiteboard-core/src/node/committed.ts`
-
-最终替换现有 `CommittedNodeView` 方向，新增：
-
-```ts
-export interface DocumentNodeGeometry {
-  rect: Rect
-  bounds: Rect
-  rotation: number
-}
-
-export const resolveCommittedNodeGeometry(input: {
-  node: Node
-  nodeSize: Size
-}): DocumentNodeGeometry
-```
-
-说明：
-
-- 这是 committed node 的真正高复用 primitive
-- 它不再包 `node` 自身
-- 只负责 geometry
-
-## 2. committed edge resolver primitive
-
-文件：
-
-- `whiteboard/packages/whiteboard-core/src/edge/committed.ts`
-
-删除：
-
-- `resolveCommittedEdgeView(...)`
-
-新增：
-
-```ts
-export const resolveCommittedEdgeEnds(input: {
-  edge: Edge
-  readNodeGeometry(nodeId: NodeId): {
-    node: Node
-    geometry: {
-      rect: Rect
-      bounds: Rect
-      rotation: number
-      outline: ReturnType<typeof getNodeGeometry>['outline']
-    }
-  } | undefined
-}): ResolvedEdgeEnds | undefined
-
-export const resolveCommittedEdgeBounds(input: {
-  edge: Edge
-  readNodeGeometry(nodeId: NodeId): {
-    node: Node
-    geometry: {
-      rect: Rect
-      bounds: Rect
-      rotation: number
-      outline: ReturnType<typeof getNodeGeometry>['outline']
-    }
-  } | undefined
-}): Rect | undefined
-```
-
-说明：
-
-- edge committed 派生不再返回 wrapper view
-- 只暴露真正需要复用的 ends / bounds primitive
-- 由 `editor-scene` 的 document resolver 统一组织 cache
-
-## 3. document resolver lazy cache
-
-文件：
-
-- `whiteboard/packages/whiteboard-editor-scene/src/model/document/resolver.ts`
 
 内部 cache：
 
-- `nodeGeometryById: Map<NodeId, DocumentNodeGeometry>`
-- `nodeOutlineById: Map<NodeId, NodeOutline>`
-- `edgeEndsById: Map<EdgeId, ResolvedEdgeEnds | null>`
-- `edgeBoundsById: Map<EdgeId, Rect | null>`
-- `nodeIdsCache: readonly NodeId[] | null`
-- `edgeIdsCache: readonly EdgeId[] | null`
-- `boundsCache: Rect | null`
-
-规则：
-
-- 以 document revision 为失效边界
-- 同一 revision 内 lazy 计算并缓存
-- 不做 eager edge committed map 维护
-
-## 要删除的实现
-
-删除：
-
-- `whiteboard/packages/whiteboard-core/src/edge/committed.ts` 中 `CommittedEdgeView`
-- `whiteboard/packages/whiteboard-core/src/edge/committed.ts` 中 `resolveCommittedEdgeView(...)`
-- `whiteboard/packages/whiteboard-core/src/node/committed.ts` 中 `CommittedNodeView`
-- `whiteboard/packages/whiteboard-core/src/node/committed.ts` 中 `resolveCommittedNodeView(...)`
-- `whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts` 中 committed edge map 维护
-- `whiteboard/packages/whiteboard-editor-scene/src/model/document/read.ts` 中基于 `resolveCommittedEdgeRenderView(...)` 的 bounds 现算路径
-- `whiteboard/packages/whiteboard-editor-scene/src/index.ts` 中 `CommittedNodeView` / `CommittedEdgeView` export
-
-## editor-scene 需要修改的文件
-
-### 1. `contracts/editor.ts`
-
-修改：
-
-- 删除 `CommittedNodeView` / `CommittedEdgeView` import
-- 新增 `DocumentNodeGeometry`
-- 修改 `RuntimeStores.document`
-- 修改 `Query.document`
-
-### 2. `contracts/state.ts`
-
-修改：
-
-- `DocumentState` 改为只保留 `snapshot/background/nodeGeometry`
-
-### 3. `model/document/patch.ts`
-
-修改：
-
-- 只维护 `document.snapshot`
-- 只维护 `document.background`
-- 只增量维护 `document.nodeGeometry`
-- 删除 touched node 时扫描全部 edge 的逻辑
-- 删除 committed edge map 的任何更新逻辑
-
-### 4. `model/document/read.ts`
-
-修改：
-
-- 删除当前 `readCommittedDocumentBounds(...)` 的 edge render 重算实现
-- 改为委托 `DocumentResolver.bounds()`
-- `slice(...)` 直接继续复用 raw snapshot export
-
-### 5. `runtime/read.ts`
-
-修改：
-
-- `query.document.node(id)` 改为 `runtime.state().document.snapshot.nodes[id]`
-- `query.document.edge(id)` 改为 `runtime.state().document.snapshot.edges[id]`
-- 新增 `query.document.background()`
-- 新增 `query.document.nodeIds()`
-- 新增 `query.document.edgeIds()`
-- 新增 `query.document.nodeGeometry(id)`
-- `bounds()` / `slice()` 改为走 `DocumentResolver`
-
-### 6. `runtime/model.ts`
-
-修改：
-
-- `stores.document.snapshot = value({ read: (state) => state.document.snapshot })`
-- `stores.document.background = value({ read: (state) => state.document.background })`
-- `stores.document.nodeGeometry = family({ read: (state) => ({ ids, byId }) })`
-- 删除 `stores.document.node`
-- 删除 `stores.document.edge`
-
-## editor 需要修改的文件
-
-## 1. `types/editor.ts`
-
-修改 `EditorDocumentSource` 为：
-
 ```ts
-export type EditorDocumentSource = {
-  get(): Document
-  bounds(): Rect
-  slice(input: {
-    nodeIds?: readonly NodeId[]
-    edgeIds?: readonly EdgeId[]
-  }): SliceExportResult | undefined
-  node: {
-    get(id: NodeId): Node | undefined
-    ids(): readonly NodeId[]
-    geometry(id: NodeId): DocumentNodeGeometry | undefined
-  }
-  edge: {
-    get(id: EdgeId): Edge | undefined
-    ids(): readonly EdgeId[]
-  }
+type ResolverCache = {
+  revision: Revision
+  nodeIds: readonly NodeId[] | null
+  edgeIds: readonly EdgeId[] | null
+  nodeGeometry: Map<NodeId, ResolvedDocumentNodeGeometry | null>
+  edgePath: Map<EdgeId, ResolvedEdgePathFromRects | null>
+  edgeBounds: Map<EdgeId, Rect | null>
+  bounds: Rect | null
 }
 ```
 
-删除：
+规则：
 
+- 以 `state.revision.document` 为唯一失效边界
+- 同一 revision 内全部 lazy 计算
+- `nodeGeometry(id)` 先读 cache，没有再算
+- `edgePath(id)` 内部通过 raw edge + cached node geometry 调 `resolveEdgePathFromRects(...)`
+- `edgeBounds(id)` 通过 cached edge path 取 `edge.path.bounds(...)`
+- `bounds()` 只在第一次调用时扫描全部 node / edge，结果缓存到当前 revision
+
+注意：
+
+- `edgePath` / `edgeBounds` 是 resolver 内部实现，不进入 public API
+- committed edge 派生不再放进 `State`
+
+### 3.3 `patchDocumentState(...)`
+
+[whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts:1) 最终只做两件事：
+
+```ts
+input.working.document.snapshot = snapshot
+input.working.document.background = snapshot.background
+```
+
+明确删除：
+
+- node committed map 更新
+- edge committed map 更新
+- touched node 触发的全量 edge 扫描
+
+### 3.4 删除 `model/document/read.ts`
+
+删除文件：
+
+- [whiteboard/packages/whiteboard-editor-scene/src/model/document/read.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor-scene/src/model/document/read.ts:1)
+
+原因：
+
+- `bounds()` / `slice()` 不需要额外 helper 层
+- `bounds()` 应直接委托 `DocumentResolver`
+- `slice()` 应直接在 `runtime/read.ts` 里走 raw snapshot export
+
+## 4. `editor` 最终形态
+
+### 4.1 删除 `EditorDocumentSource`
+
+删除类型：
+
+- [whiteboard/packages/whiteboard-editor/src/types/editor.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-editor/src/types/editor.ts:237) 里的 `EditorDocumentSource`
+
+改为直接复用 `editor-scene`：
+
+```ts
+import type { DocumentQuery } from '@whiteboard/editor-scene'
+
+export type Editor = {
+  document: DocumentQuery
+  scene: EditorSceneSource
+  ...
+}
+```
+
+也就是说：
+
+- `editor.document` 不是一套新的 source
+- `editor.document === editor.scene.query.document`
+
+### 4.2 editor 内部模块不再依赖 committed wrapper
+
+最终 editor 内部只依赖两类东西：
+
+- raw committed document read：`document.node(id)` / `document.edge(id)` / `document.get()`
+- committed geometry read：`document.nodeGeometry(id)`
+
+不再有：
+
+- `.node.get(id)?.node`
+- `.edge.get(id)?.edge`
 - `CommittedNodeView`
 - `CommittedEdgeView`
 
-## 2. `editor/createEditor.ts`
+## 要删除的旧实现
 
-修改：
+## core
 
-- 删除 `committedNode` 临时变量
-- 不再读取 `projection.stores.document.node.byId`
-- `document.node.ids()` 改为 `Object.keys(scene.query.document.get().nodes)`
-- `document.edge.ids()` 改为 `Object.keys(scene.query.document.get().edges)`
-- `document.node.geometry(id)` 直接转发 `scene.query.document.nodeGeometry(id)`
+- 删除 `whiteboard/packages/whiteboard-core/src/node/committed.ts`
+- 删除 `whiteboard/packages/whiteboard-core/src/edge/committed.ts`
+- 删除 `whiteboard/packages/whiteboard-core/src/node/index.ts` 里 `CommittedNodeView` 相关导出
+- 删除 `whiteboard/packages/whiteboard-core/src/edge/index.ts` 里 `CommittedEdgeView` / `resolveCommittedEdgeView` / `resolveCommittedEdgeRenderView` 相关导出
 
-## 3. `layout/runtime.ts`
+## editor-scene
 
-修改：
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/model/document/read.ts`
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/index.ts` 里 `CommittedNodeView` / `CommittedEdgeView` 导出
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts` 中 `document.nodes`
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts` 中 `document.edges`
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts` 中 `stores.document.node`
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts` 中 `stores.document.edge`
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts` 中 `query.document.node -> state.document.nodes.get`
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts` 中 `query.document.edge -> state.document.edges.get`
 
-- 删除对 `CommittedNodeView` 的依赖
-- `read.node.committed` 改成：
-  - `node(id): Node | undefined`
-  - `geometry: store.KeyedReadStore<NodeId, DocumentNodeGeometry | undefined>`
-- `measureDraftNodeLayout(...)` 改为吃 raw node + committed geometry
+## editor
 
-## 4. `write/node.ts`
+- 删除 `whiteboard/packages/whiteboard-editor/src/types/editor.ts` 里的 `EditorDocumentSource`
+- 删除 `whiteboard/packages/whiteboard-editor/src/write/index.ts` 中对 `CommittedNodeView` / `CommittedEdgeView` 的类型约束
+- 删除 `whiteboard/packages/whiteboard-editor/src/layout/runtime.ts` 中对 `CommittedNodeView` 的 import 和依赖
+- 删除所有 `document.node.get(id)?.node`
+- 删除所有 `document.edge.get(id)?.edge`
 
-修改：
+## 详细实施清单
 
-- `CommittedNodeView` 依赖改成 raw node + committed geometry 分离
-- `lock.toggle`、`shape.set` 之类只读 raw committed node
+## 阶段 1. core 收口
 
-## 5. `write/edge/index.ts`
+修改清单：
 
-修改：
+- 新增 `whiteboard/packages/whiteboard-core/src/node/document.ts`
+- 修改 `whiteboard/packages/whiteboard-core/src/node/index.ts`
+- 修改 `whiteboard/packages/whiteboard-core/src/edge/index.ts`
+- 删除 `whiteboard/packages/whiteboard-core/src/node/committed.ts`
+- 删除 `whiteboard/packages/whiteboard-core/src/edge/committed.ts`
 
-- 删除 `CommittedEdgeView` 类型依赖
-- `read.document.edge.get(id)` 改成直接返回 raw `Edge | undefined`
-- `lock.toggle` 直接读 raw committed edge 的 `locked`
+具体动作：
 
-## 6. `write/index.ts`
+- 在 `node/document.ts` 新增 `DocumentNodeGeometry` / `ResolvedDocumentNodeGeometry` / `resolveDocumentNodeGeometry(...)`
+- `node/index.ts` 改为导出 `resolveDocumentNodeGeometry`
+- `edge/index.ts` 删除全部 committed export
+- 保留 `resolveEdgeEnds(...)`、`resolveEdgePathFromRects(...)`、`resolveEdgeViewFromNodeGeometry(...)`
 
-修改：
+## 阶段 2. editor-scene contract 收口
 
-- 删除 `CommittedNodeView` / `CommittedEdgeView` type 约束
-- `createNodeWrite(...)` 传：
-  - raw committed node read
-  - committed node geometry read
-- `createEdgeWrite(...)` 传 raw committed edge read
+修改清单：
 
-## 7. `action/index.ts`
+- 修改 `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
+- 修改 `whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts`
+- 修改 `whiteboard/packages/whiteboard-editor-scene/src/index.ts`
 
-修改：
+具体动作：
 
-- 所有 `document.node.get(id)?.node` 改为 `document.node.get(id)`
-- 所有 `document.edge.get(id)?.edge` 改为 `document.edge.get(id)`
-- mindmap / edit / patch / label 逻辑统一直接读 raw committed node/edge
+- 新增 `DocumentQuery`
+- `Query.document` 改成 `DocumentQuery`
+- `RuntimeStores.document` 改成只保留 `revision` / `background`
+- `DocumentState` 改成只保留 `snapshot` / `background`
+- 删掉 `CommittedNodeView` / `CommittedEdgeView` export
 
-## 8. `input/helpers.ts` 与其他 editor 内 helper
+## 阶段 3. editor-scene document resolver 落地
 
-修改：
+修改清单：
 
-- 所有 `document.node.get(id)?.node` 改为 `document.node.get(id)`
-- 所有 `document.edge.get(id)?.edge` 改为 `document.edge.get(id)`
+- 新增 `whiteboard/packages/whiteboard-editor-scene/src/model/document/resolver.ts`
+- 修改 `whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts`
+- 删除 `whiteboard/packages/whiteboard-editor-scene/src/model/document/read.ts`
+- 修改 `whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts`
+- 修改 `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts`
 
-## 实施顺序
+具体动作：
 
-### 阶段 1. 定义新 API
+- `patchDocumentState(...)` 只更新 snapshot/background
+- `runtime/model.ts` 暴露 `stores.document.revision` / `stores.document.background`
+- `runtime/read.ts` 创建单例 `DocumentResolver`
+- `query.document.get()` 直接读 snapshot
+- `query.document.background()` 直接读 background
+- `query.document.node(id)` 直接读 `snapshot.nodes[id]`
+- `query.document.edge(id)` 直接读 `snapshot.edges[id]`
+- `query.document.nodeIds()` / `edgeIds()` 委托 resolver cache
+- `query.document.nodeGeometry(id)` 委托 resolver cache
+- `query.document.bounds()` 委托 resolver cache
+- `query.document.slice(...)` 直接基于 snapshot 调 `document.slice.export.selection(...)`
 
-修改：
+## 阶段 4. editor-scene 其他内部调用改到 snapshot / resolver
 
-- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts`
-- `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+修改清单：
 
-动作：
+- 修改 `whiteboard/packages/whiteboard-editor-scene/src/model/graph/patch.ts`
+- 修改 `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts`
 
-- 引入 `DocumentNodeGeometry`
-- 收窄 `Query.document`
-- 收窄 `RuntimeStores.document`
-- 收窄 `EditorDocumentSource`
+具体动作：
 
-### 阶段 2. 落地 committed node geometry 基础设施
+- `graph/patch.ts` reset 逻辑里，node seed 改为 `Object.keys(snapshot.nodes)`，edge seed 改为 `Object.keys(snapshot.edges)`，不再依赖 `working.document.nodes.keys()` / `working.document.edges.keys()`
+- `runtime/read.ts` 中 `mindmap.ofNodes(...)` 的 committed fallback 改成直接读 `runtime.state().document.snapshot.nodes[nodeId]`
 
-修改：
+## 阶段 5. editor public surface 收口
 
-- `whiteboard/packages/whiteboard-core/src/node/committed.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts`
+修改清单：
 
-动作：
+- 修改 `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/editor/createEditor.ts`
 
-- `resolveCommittedNodeGeometry(...)` 替代 `CommittedNodeView`
-- `DocumentState.nodeGeometry` 增量维护
-- `stores.document.nodeGeometry` 建立
+具体动作：
 
-### 阶段 3. 删除 eager committed edge map
+- `types/editor.ts` 删除 `EditorDocumentSource`
+- `Editor['document']` 改成 `DocumentQuery`
+- `createEditor.ts` 中不再手工组装 `document` wrapper
+- `const document = scene.query.document`
+- `editor.document = scene.query.document`
 
-修改：
+## 阶段 6. layout 改成 raw node + geometry query
 
-- `whiteboard/packages/whiteboard-core/src/edge/committed.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts`
+修改清单：
 
-动作：
+- 修改 `whiteboard/packages/whiteboard-editor/src/layout/runtime.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/editor/createEditor.ts`
 
-- 删除 `CommittedEdgeView`
-- 删除 `resolveCommittedEdgeView(...)`
-- 删除 `document.edges` map
-- 删除 node touched 时全量扫描 edge 的逻辑
+具体动作：
 
-### 阶段 4. 落地 document resolver
+- `layout/runtime.ts` 删除 `CommittedNodeView`
+- layout read 输入改成：
 
-修改：
+```ts
+read: {
+  document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
+  revision: store.ReadStore<number>
+}
+```
 
-- `whiteboard/packages/whiteboard-editor-scene/src/model/document/resolver.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/model/document/read.ts`
-- `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts`
+- `measureDraftNodeLayout(...)` 改为接收：
+  - `node: Node | undefined`
+  - `geometry: DocumentNodeGeometry | undefined`
+- 所有原来读 `committed.node` / `committed.rect` 的地方拆成 `node` + `geometry`
+- `createEditor.ts` 把 `scene.query.document` 和 `scene.stores.document.revision` 传给 layout
 
-动作：
+## 阶段 7. write 改成 raw document query
 
-- 新建 per-revision lazy resolver
-- `bounds()` 走 resolver cache
-- `node()/edge()/nodeIds()/edgeIds()/nodeGeometry()` 全部收进 `query.document`
+修改清单：
 
-### 阶段 5. 迁移 editor 侧调用方
+- 修改 `whiteboard/packages/whiteboard-editor/src/write/node.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/write/edge/index.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/write/index.ts`
 
-修改：
+具体动作：
 
-- `whiteboard/packages/whiteboard-editor/src/editor/createEditor.ts`
-- `whiteboard/packages/whiteboard-editor/src/layout/runtime.ts`
-- `whiteboard/packages/whiteboard-editor/src/write/node.ts`
-- `whiteboard/packages/whiteboard-editor/src/write/edge/index.ts`
-- `whiteboard/packages/whiteboard-editor/src/write/index.ts`
-- `whiteboard/packages/whiteboard-editor/src/action/index.ts`
-- `whiteboard/packages/whiteboard-editor/src/input/helpers.ts`
+- `write/node.ts` 读取节点时改用 `document.node(id)`
+- 需要 geometry 的地方改用 `document.nodeGeometry(id)`
+- `write/edge/index.ts` 读取 edge 时改用 `document.edge(id)`
+- `write/index.ts` 删除所有 `CommittedNodeView` / `CommittedEdgeView` 类型约束
+- `createNodeWrite(...)` / `createEdgeWrite(...)` 直接接收 `DocumentQuery`
 
-动作：
+## 阶段 8. action / input / session / events 全量替换
 
-- 全部从 committed wrapper 改成 raw document + nodeGeometry
+修改清单：
 
-### 阶段 6. 清理 public export
+- 修改 `whiteboard/packages/whiteboard-editor/src/action/index.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/input/helpers.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/input/features/selection/press.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/input/features/draw.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/input/features/mindmap/drag.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/session/selection.ts`
+- 修改 `whiteboard/packages/whiteboard-editor/src/editor/events.ts`
+- 修改其他所有依赖 `EditorDocumentSource` 的文件
 
-修改：
+具体动作：
 
-- `whiteboard/packages/whiteboard-editor-scene/src/index.ts`
+- 所有 `document.node.get(id)?.node` 改成 `document.node(id)`
+- 所有 `document.edge.get(id)?.edge` 改成 `document.edge(id)`
+- `document.node.ids()` / `document.edge.ids()` 调用点改成 `document.nodeIds()` / `document.edgeIds()`
+- 所有只做存在性判断的地方直接 `Boolean(document.node(id))` / `Boolean(document.edge(id))`
 
-动作：
+## 最终达标标准
 
-- 删除 `CommittedNodeView` export
-- 删除 `CommittedEdgeView` export
-
-## 最终态判断标准
-
-- `editor-scene` 不再维护 committed edge map
-- `resolveCommittedEdgeView(...)` 不再存在
-- `CommittedEdgeView` public type 不再存在
-- `CommittedNodeView` public type 不再存在
-- `query.document.node(id)` / `edge(id)` 返回 raw committed record
-- committed node geometry 成为唯一保留的常驻 committed 几何缓存
-- committed edge 派生统一走 document resolver lazy cache
-- `editor` / `write` / `layout` 不再直接依赖 committed wrapper view
+- `CommittedNodeView` 不存在
+- `CommittedEdgeView` 不存在
+- `resolveCommittedNodeView(...)` 不存在
+- `resolveCommittedEdgeView(...)` 不存在
+- `resolveCommittedEdgeRenderView(...)` 不存在
+- `EditorDocumentSource` 不存在
+- `editor.document === editor.scene.query.document`
+- `DocumentState` 只保留 `snapshot/background`
+- `editor-scene` 不再维护任何 committed node/edge eager map
+- `query.document` 成为唯一公共 document read surface
+- committed-only geometry / edge path / bounds 全部进入 `DocumentResolver` 的按 revision lazy cache
 
 ## 预期收益
 
-- 删除 document patch 阶段对 touched node 的全量 edge 扫描
-- 删除 committed edge view 的重复 endpoint / outline 重算
-- 把 committed-only 读取收成清晰的数据面
-- 减少 `editor-scene` public surface 中的重复 wrapper 类型
-- 给后续 document/query 性能优化留出统一基础设施入口
+- 删除 node touched 时的全量 edge 扫描
+- 删除 committed edge view 维护和重复 endpoint / outline 计算
+- 删除 editor 侧重复 document source 包装层
+- 让 raw document、committed geometry、lazy edge 派生三层职责彻底分开
+- 后续如果继续做 document query / bounds / hit / export 优化，都会有唯一入口，而不是继续在 wrapper view 上打补丁

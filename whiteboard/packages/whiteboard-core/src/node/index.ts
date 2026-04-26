@@ -4,8 +4,8 @@ import {
   TEXT_BOOTSTRAP_SIZE
 } from '@whiteboard/core/node/bootstrap'
 import {
-  resolveCommittedNodeView
-} from '@whiteboard/core/node/committed'
+  resolveDocumentNodeGeometry
+} from '@whiteboard/core/node/document'
 import {
   createNodeOp,
   planNodeAlignOps,
@@ -169,10 +169,12 @@ export const node = {
   geometry: {
     aabb: getNodeAABB,
     boundsByNode: getNodeBoundsByNode,
-    committed: resolveCommittedNodeView,
     rotation: readNodeRotation,
     rect: getNodeRect,
     bounds: getNodesBounds
+  },
+  document: {
+    geometry: resolveDocumentNodeGeometry
   },
   outline: {
     containsPoint: containsPointInNodeOutline,
@@ -322,10 +324,13 @@ export {
   toSpatialNode
 } from '@whiteboard/core/node/projection'
 export {
-  resolveCommittedNodeView
-} from '@whiteboard/core/node/committed'
+  resolveDocumentNodeGeometry
+} from '@whiteboard/core/node/document'
 
-export type { CommittedNodeView } from '@whiteboard/core/node/committed'
+export type {
+  DocumentNodeGeometry,
+  ResolvedDocumentNodeGeometry
+} from '@whiteboard/core/node/document'
 export type { NodeOutlineAnchorOptions } from '@whiteboard/core/node/outline'
 export type { ResolvedDrawStroke } from '@whiteboard/core/node/draw'
 export type { NodeRectHitOptions } from '@whiteboard/core/node/hitTest'

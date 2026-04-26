@@ -1,5 +1,5 @@
 import { equal } from '@shared/core'
-import { idDelta } from '@shared/projector/delta'
+import { idDelta } from '@shared/delta'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   GroupId

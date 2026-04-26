@@ -4,7 +4,7 @@ import {
 } from '@shared/core'
 import {
   type EntityDelta
-} from '@shared/projector/delta'
+} from '@shared/delta'
 import { publishEntityList } from '@shared/projector/publish'
 import type {
   RecordId,

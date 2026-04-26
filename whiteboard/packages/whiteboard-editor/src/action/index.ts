@@ -39,7 +39,7 @@ import type { EditField } from '@whiteboard/editor/session/edit'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
-import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
@@ -96,7 +96,7 @@ const startNodeEdit = ({
   caret
 }: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<EditorDocumentSource, 'node'>
+  document: Pick<DocumentQuery, 'node'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   nodeId: NodeId
   field: EditField
@@ -110,18 +110,18 @@ const startNodeEdit = ({
       : never
     : never
 }) => {
-  const committed = document.node.get(nodeId)
+  const committed = document.node(nodeId)
   if (!committed) {
     return
   }
 
-  const capabilities = nodeType.edit(committed.node.type, field)
+  const capabilities = nodeType.edit(committed.type, field)
   if (!capabilities) {
     return
   }
 
-  const text = typeof committed.node.data?.[field] === 'string'
-    ? committed.node.data[field] as string
+  const text = typeof committed.data?.[field] === 'string'
+    ? committed.data[field] as string
     : ''
 
   session.mutate.edit.set({
@@ -142,7 +142,7 @@ const startEdgeLabelEdit = ({
   caret
 }: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<EditorDocumentSource, 'edge'>
+  document: Pick<DocumentQuery, 'edge'>
   edgeId: string
   labelId: string
   caret?: EditorEditActions['startEdgeLabel'] extends (
@@ -155,7 +155,7 @@ const startEdgeLabelEdit = ({
       : never
     : never
 }) => {
-  const edge = document.edge.get(edgeId)?.edge
+  const edge = document.edge(edgeId)
   const label = edge?.labels?.find((entry: EdgeLabel) => entry.id === labelId)
   if (!edge || !label) {
     return
@@ -181,7 +181,7 @@ const applyMindmapFocus = ({
   behavior
 }: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<EditorDocumentSource, 'node'>
+  document: Pick<DocumentQuery, 'node'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   nodeId: MindmapNodeId
   behavior: MindmapInsertBehavior | undefined
@@ -213,7 +213,7 @@ const applyMindmapRootFocus = ({
   focus
 }: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<EditorDocumentSource, 'node'>
+  document: Pick<DocumentQuery, 'node'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   nodeId: MindmapNodeId
   focus: 'edit-root' | 'select-root' | 'none' | undefined
@@ -285,7 +285,7 @@ const readEdgeOrThrow = (
 export type CreateEditorActionsApiDeps = {
   boundary: Pick<EditorBoundaryRuntime, 'atomic' | 'procedure'>
   engine: Engine
-  document: EditorDocumentSource
+  document: DocumentQuery
   session: EditorSession
   graph: EditorSceneRuntime
   layout: EditorLayout
@@ -393,8 +393,8 @@ export const createEditorActionsApi = ({
       toggle: atomic((input) => selectionSession.toggle(input)),
       selectAll: atomic(() => {
         applySelectionMutation(session, () => session.mutate.selection.replace({
-          nodeIds: document.node.ids(),
-          edgeIds: document.edge.ids()
+          nodeIds: document.nodeIds(),
+          edgeIds: document.edgeIds()
         }))
       }),
       clear: atomic(() => selectionSession.clear()),
@@ -437,7 +437,7 @@ export const createEditorActionsApi = ({
         session.mutate.edit.clear()
 
         if (currentEdit.kind === 'edge-label') {
-          const committedLabel = document.edge.get(currentEdit.edgeId)?.edge.labels?.find(
+          const committedLabel = document.edge(currentEdit.edgeId)?.labels?.find(
             (label: EdgeLabel) => label.id === currentEdit.labelId
           )
           if (!committedLabel || committedLabel.text?.trim()) {
@@ -454,14 +454,14 @@ export const createEditorActionsApi = ({
         }
 
         if (currentEdit.kind === 'node') {
-          const committed = document.node.get(currentEdit.nodeId)
+          const committed = document.node(currentEdit.nodeId)
           if (!committed) {
             session.mutate.edit.clear()
             return
           }
 
           const capability = nodeType.edit(
-            committed.node.type,
+            committed.type,
             currentEdit.field
           )
           if (!capability) {
@@ -514,7 +514,7 @@ export const createEditorActionsApi = ({
           return undefined
         }
 
-        const updates = ids.flatMap((id) => document.node.get(id)
+        const updates = ids.flatMap((id) => document.node(id)
           ? [{
               id,
               input: update
@@ -568,7 +568,7 @@ export const createEditorActionsApi = ({
         }
 
         return write.edge.updateMany(
-          edgeIds.flatMap((id) => document.edge.get(id)
+          edgeIds.flatMap((id) => document.edge(id)
             ? [{
                 id,
                 input
@@ -726,11 +726,11 @@ export const createEditorActionsApi = ({
           side: input.drop.side
         })),
       moveRoot: atomic((input) => {
-        const directNode = document.node.get(input.nodeId)?.node
+        const directNode = document.node(input.nodeId)
         const structure = graph.query.mindmap.structure(input.nodeId)
         const node = directNode ?? (
           structure
-            ? document.node.get(structure.rootId)?.node
+            ? document.node(structure.rootId)
             : undefined
         )
         const mindmapId = directNode?.owner?.kind === 'mindmap'

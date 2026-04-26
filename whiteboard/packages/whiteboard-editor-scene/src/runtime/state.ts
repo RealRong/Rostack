@@ -45,9 +45,7 @@ export const createWorking = (input: {
     },
     document: {
       snapshot: snapshot.document,
-      background: snapshot.document.background,
-      nodes: new Map(),
-      edges: new Map()
+      background: snapshot.document.background
     },
     graph: {
       nodes: new Map(),

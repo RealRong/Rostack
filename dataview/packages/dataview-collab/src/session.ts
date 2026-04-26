@@ -2,13 +2,13 @@ import * as Y from 'yjs'
 import { createId } from '@shared/core'
 import {
   createMutationCollabSession,
-  type CollabStore
 } from '@shared/collab'
+import {
+  createYjsCollabTransport
+} from '@shared/collab-yjs'
 import { document as documentApi } from '@dataview/core/document'
 import type { DataDoc } from '@dataview/core/contracts'
 import { createYjsSyncCodec } from '@dataview/collab/yjs/codec'
-import { createYjsSyncStore } from '@dataview/collab/yjs/store'
-import { createCollabLocalOrigin } from '@dataview/collab/yjs/shared'
 import type {
   CollabSession,
   CreateYjsSessionOptions,
@@ -17,49 +17,6 @@ import type {
 } from '@dataview/collab/types'
 
 const DEFAULT_CHECKPOINT_THRESHOLD = 100
-
-const createSharedStore = (input: {
-  doc: Y.Doc
-  localOrigin: unknown
-  syncStore: ReturnType<typeof createYjsSyncStore>
-}): CollabStore<SharedChange, SharedCheckpoint> => ({
-  read: () => {
-    input.syncStore.readMeta()
-    const snapshot = input.syncStore.readSnapshot()
-    return {
-      checkpoint: snapshot.checkpoint,
-      changes: snapshot.changes,
-      duplicateChangeIds: snapshot.duplicateChangeIds
-    }
-  },
-  subscribe: (listener) => {
-    const handleAfterTransaction = (transaction: Y.Transaction) => {
-      if (transaction.origin === input.localOrigin) {
-        return
-      }
-      listener()
-    }
-    input.doc.on('afterTransaction', handleAfterTransaction)
-    return () => {
-      input.doc.off('afterTransaction', handleAfterTransaction)
-    }
-  },
-  append: (change) => {
-    input.doc.transact(() => {
-      input.syncStore.appendChange(change)
-    }, input.localOrigin)
-  },
-  checkpoint: (checkpoint) => {
-    input.doc.transact(() => {
-      input.syncStore.replaceCheckpoint(checkpoint)
-    }, input.localOrigin)
-  },
-  clearChanges: () => {
-    input.doc.transact(() => {
-      input.syncStore.clearChanges()
-    }, input.localOrigin)
-  }
-})
 
 export const createYjsSession = ({
   engine,
@@ -73,15 +30,13 @@ export const createYjsSession = ({
     throw new Error('createYjsSession requires a non-empty actorId.')
   }
 
-  const syncStore = createYjsSyncStore({
+  const transport = createYjsCollabTransport<
+    SharedChange,
+    SharedCheckpoint
+  >({
     doc,
+    provider,
     codec
-  })
-  const localOrigin = createCollabLocalOrigin()
-  const sharedStore = createSharedStore({
-    doc,
-    localOrigin,
-    syncStore
   })
   const session = createMutationCollabSession(engine.mutation, {
     actor: {
@@ -89,8 +44,8 @@ export const createYjsSession = ({
       createChangeId: () => createId('sync')
     },
     transport: {
-      store: sharedStore,
-      provider
+      store: transport.store,
+      provider: transport.provider
     },
     document: {
       empty: () => documentApi.normalize({
@@ -135,7 +90,7 @@ export const createYjsSession = ({
   })
 
   return {
-    awareness: provider?.awareness,
+    awareness: transport.awareness,
     status: session.status,
     diagnostics: session.diagnostics,
     localHistory: session.history,

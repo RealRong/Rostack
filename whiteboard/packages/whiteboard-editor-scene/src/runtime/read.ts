@@ -23,10 +23,7 @@ import type {
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import { readGroupSignatureFromTarget } from '../model/graph/group'
-import {
-  readCommittedDocumentBounds,
-  readCommittedDocumentSlice
-} from '../model/document/read'
+import { createDocumentResolver } from '../model/document/resolver'
 import { readRelatedEdgeIds, readTreeDescendants } from '../model/index/read'
 import { createSpatialRead } from '../model/spatial/query'
 import type { SpatialIndexState } from '../model/spatial/state'
@@ -815,6 +812,10 @@ export const createEditorSceneRead = (runtime: {
   const spatial = createSpatialRead({
     state: runtime.spatial
   })
+  const document = createDocumentResolver({
+    state: runtime.state,
+    nodeSize: runtime.nodeSize
+  })
   const frame = createFrameRead({
     state: runtime.state,
     spatial
@@ -839,18 +840,14 @@ export const createEditorSceneRead = (runtime: {
     revision: runtime.revision,
     document: {
       get: () => runtime.state().document.snapshot,
-      node: (id) => runtime.state().document.nodes.get(id),
-      edge: (id) => runtime.state().document.edges.get(id),
-      bounds: () => readCommittedDocumentBounds({
-        state: runtime.state(),
-        nodeSize: runtime.nodeSize
-      }),
-      slice: (input) => readCommittedDocumentSlice({
-        state: runtime.state(),
-        nodeSize: runtime.nodeSize,
-        nodeIds: input.nodeIds,
-        edgeIds: input.edgeIds
-      })
+      background: () => runtime.state().document.background,
+      node: document.node,
+      edge: document.edge,
+      nodeIds: document.nodeIds,
+      edgeIds: document.edgeIds,
+      nodeGeometry: document.nodeGeometry,
+      bounds: document.bounds,
+      slice: document.slice
     },
     node: {
       get: (id) => runtime.state().graph.nodes.get(id),
@@ -1064,7 +1061,7 @@ export const createEditorSceneRead = (runtime: {
             return [projectedNode.mindmapId]
           }
 
-          const committedNode = runtime.state().document.nodes.get(nodeId)?.node as
+          const committedNode = runtime.state().document.snapshot.nodes[nodeId] as
             | (Record<string, unknown> & { mindmapId?: MindmapId })
             | undefined
 

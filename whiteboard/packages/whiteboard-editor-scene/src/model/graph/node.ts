@@ -1,5 +1,5 @@
 import { equal } from '@shared/core'
-import { idDelta } from '@shared/projector/delta'
+import { idDelta } from '@shared/delta'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   Node,

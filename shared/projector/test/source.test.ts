@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Family } from '../src/publish'
 import { createFlags } from '../src/publish'
-import type { EntityDelta } from '../src/delta'
-import { idDelta } from '../src/delta'
+import type { EntityDelta } from '@shared/delta'
+import { idDelta } from '@shared/delta'
 import {
   composeSync,
   createEntityDeltaSync,

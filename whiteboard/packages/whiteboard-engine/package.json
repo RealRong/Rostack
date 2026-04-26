@@ -14,7 +14,6 @@
     "@shared/core": "workspace:*",
     "@shared/delta": "workspace:*",
     "@shared/mutation": "workspace:*",
-    "@shared/projector": "workspace:*",
     "@whiteboard/core": "workspace:*"
   },
   "scripts": {

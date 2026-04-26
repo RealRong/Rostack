@@ -1,4 +1,4 @@
-import { idDelta, type IdDelta } from '../delta/idDelta'
+import { idDelta, type IdDelta } from '@shared/delta'
 
 type ChangeFlagField = {
   kind: 'flag'

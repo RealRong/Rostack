@@ -5,12 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./phase": "./src/phase/index.ts",
     "./change": "./src/change/index.ts",
-    "./delta": "./src/delta/index.ts",
     "./publish": "./src/publish/index.ts",
     "./sync": "./src/sync/index.ts",
-    "./testing": "./src/testing/index.ts"
+    "./store": "./src/store/index.ts"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

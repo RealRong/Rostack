@@ -30,9 +30,9 @@
   ],
   "dependencies": {
     "@shared/core": "workspace:*",
+    "@shared/delta": "workspace:*",
     "@shared/draft": "workspace:*",
     "@shared/mutation": "workspace:*",
-    "@shared/projector": "workspace:*",
     "@shared/reducer": "workspace:*"
   },
   "scripts": {

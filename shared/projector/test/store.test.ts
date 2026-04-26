@@ -5,7 +5,7 @@ import {
 import {
   idDelta,
   writeEntityChange
-} from '../src/delta'
+} from '@shared/delta'
 import {
   family,
   value

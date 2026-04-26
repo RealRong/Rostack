@@ -4,7 +4,7 @@ import {
   publishEntityList
 } from '../src/publish'
 import type { Family } from '../src/publish'
-import { idDelta } from '../src/delta'
+import { idDelta } from '@shared/delta'
 
 const EMPTY_FAMILY: Family<string, { id: string; value: number }> = {
   ids: [],

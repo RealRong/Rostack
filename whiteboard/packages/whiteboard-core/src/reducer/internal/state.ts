@@ -5,7 +5,7 @@ import {
   type DraftRecord,
   type DraftRoot
 } from '@shared/draft'
-import { idDelta } from '@shared/projector/delta'
+import { idDelta } from '@shared/delta'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   Background,

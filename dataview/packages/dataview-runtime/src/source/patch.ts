@@ -4,7 +4,7 @@ import {
 } from '@shared/core'
 import {
   type EntityDelta
-} from '@shared/projector/delta'
+} from '@shared/delta'
 import { createEntityDeltaSync } from '@shared/projector/sync'
 import type {
   EntitySource

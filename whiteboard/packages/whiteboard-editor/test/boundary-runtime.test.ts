@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createChangeState } from '@shared/projector/change'
+import { createChangeState } from '@shared/delta'
 import { createEditorSceneRuntime } from '@whiteboard/editor-scene'
 import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
 import { createEditorBoundaryRuntime } from '../src/boundary/runtime'

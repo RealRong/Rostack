@@ -11,7 +11,7 @@ import {
 } from '@shared/core'
 import {
   projectListChange
-} from '@shared/projector/publish'
+} from '@shared/delta'
 import type {
   QueryPlan
 } from '@dataview/engine/active/plan'

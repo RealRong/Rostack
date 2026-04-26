@@ -5,7 +5,7 @@ import {
 import {
   type EntityDelta
 } from '@shared/delta'
-import { createEntityDeltaSync } from '@shared/projector/sync'
+import { createEntityDeltaSync } from '@shared/delta'
 import type {
   EntitySource
 } from '@dataview/runtime/source/contracts'

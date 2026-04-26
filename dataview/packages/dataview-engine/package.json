@@ -21,8 +21,7 @@
     "@shared/delta": "workspace:*",
     "@shared/draft": "workspace:*",
     "@shared/mutation": "workspace:*",
-    "@shared/i18n": "workspace:*",
-    "@shared/projector": "workspace:*"
+    "@shared/i18n": "workspace:*"
   },
   "files": [
     "src",

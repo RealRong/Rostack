@@ -1,5 +1,6 @@
-import type { EntityDelta } from '@shared/delta'
-import type * as source from '../contracts/source'
+import type {
+  EntityDelta
+} from './entityDelta'
 
 export interface EntityDeltaSyncPatch<TKey, TValue> {
   order?: readonly TKey[]
@@ -31,8 +32,13 @@ export const createEntityDeltaSync = <
   TValue
 >(
   spec: EntityDeltaSyncSpec<TSnapshot, TChange, TSink, TKey, TValue>
-): source.Sync<TSnapshot, TChange, TSink> => ({
-  sync: (input) => {
+) => ({
+  sync: (input: {
+    previous: TSnapshot
+    next: TSnapshot
+    change: TChange
+    sink: TSink
+  }) => {
     const delta = spec.delta(input.change)
     if (!delta) {
       return

@@ -19,7 +19,7 @@ import {
 } from '@dataview/engine/active/state'
 import {
   publishStruct
-} from '@shared/projector/publish'
+} from '@shared/delta'
 import {
   publishViewBase
 } from '@dataview/engine/active/publish/base'

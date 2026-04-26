@@ -11,10 +11,10 @@
   ],
   "dependencies": {
     "@shared/core": "workspace:*",
+    "@shared/delta": "workspace:*",
     "@shared/draft": "workspace:*",
     "@shared/dom": "workspace:*",
     "@shared/mutation": "workspace:*",
-    "@shared/projector": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/editor-scene": "workspace:*",
     "@whiteboard/engine": "workspace:*"

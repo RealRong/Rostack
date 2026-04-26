@@ -1,5 +1,5 @@
 import { scheduler } from '@shared/core'
-import { createChangeState } from '@shared/projector/change'
+import { createChangeState } from '@shared/delta'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   GraphState,

@@ -15,8 +15,8 @@
     "@dataview/core": "workspace:*",
     "@dataview/engine": "workspace:*",
     "@shared/core": "workspace:*",
-    "@shared/mutation": "workspace:*",
-    "@shared/projector": "workspace:*"
+    "@shared/delta": "workspace:*",
+    "@shared/mutation": "workspace:*"
   },
   "files": [
     "src",

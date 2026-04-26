@@ -4,7 +4,7 @@ import {
   hasChangeState,
   mergeChangeState,
   takeChangeState
-} from '@shared/projector/change'
+} from '@shared/delta'
 import {
   createEditorSceneRuntime,
   type InputDelta,

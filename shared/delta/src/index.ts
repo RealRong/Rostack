@@ -30,3 +30,21 @@ export {
   type ChangeSpec,
   type InferChangeState
 } from './changeState'
+export {
+  isListEqual,
+  projectListChange,
+  type ListChange
+} from './listChange'
+export {
+  publishStruct,
+  type PublishedStruct
+} from './publishStruct'
+export {
+  publishEntityList,
+  type PublishedEntityList
+} from './entityPublish'
+export {
+  createEntityDeltaSync,
+  type EntityDeltaSyncPatch,
+  type EntityDeltaSyncSpec
+} from './entitySync'

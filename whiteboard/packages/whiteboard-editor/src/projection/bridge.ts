@@ -262,11 +262,15 @@ export const createSceneBridge = ({
   engine: Engine
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
   layout: Pick<EditorLayout, 'draft' | 'measureText'>
-  nodeType: Pick<NodeTypeSupport, 'capability'>
+  nodeType: Pick<NodeTypeSupport, 'meta' | 'edit' | 'capability'>
 }): EditorSceneBridge => {
   const runtime = createEditorSceneRuntime({
     measure: layout.measureText,
-    canNodeConnect: ({ node }) => resolveNodeEditorCapability(node, nodeType).connect,
+    nodeCapability: {
+      meta: nodeType.meta,
+      edit: nodeType.edit,
+      capability: (node) => resolveNodeEditorCapability(node, nodeType)
+    },
     document: {
       nodeSize: engine.config.nodeSize
     }

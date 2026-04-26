@@ -40,6 +40,9 @@ import type {
 import {
   createValueEditorApi
 } from '@dataview/runtime/session/valueEditor'
+import {
+  createHistoryBinding
+} from '@dataview/runtime/historyBinding'
 
 const bindInlineSessionToView = (input: {
   view: store.ReadStore<View | undefined>
@@ -125,11 +128,12 @@ const bindMarqueeToView = (input: {
 export const createDataViewRuntime = (
   input: CreateDataViewRuntimeInput
 ): DataViewRuntime => {
-  const history = createLocalMutationHistory(input.engine, {
+  const baseHistory = createLocalMutationHistory(input.engine, {
     apply: {
       origin: 'history'
     }
   })
+  const history = createHistoryBinding(baseHistory)
   const sourceRuntime = createEngineSource({
     engine: input.engine
   })

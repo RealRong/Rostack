@@ -36,6 +36,7 @@ export type {
   MindmapTopicMoveInput,
   MindmapTopicPatch,
   MindmapTopicData,
+  MindmapStructure,
   MindmapTreeNode,
   MindmapTreeNodeStyle,
   MindmapTreePatch,

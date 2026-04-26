@@ -12,6 +12,7 @@ export {
 } from '@dataview/react/dataview/useDataViewValue'
 
 export type {
+  DataViewCollabOptions,
   DataViewReactContextValue,
   DataViewReactSession,
   DataViewProviderProps

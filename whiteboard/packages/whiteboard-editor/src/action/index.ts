@@ -270,36 +270,6 @@ const toEdgeUpdateInput = (
   }
 }
 
-const readMindmapIdForNodes = (
-  input: {
-    graph: Pick<EditorSceneRuntime, 'query'>
-    nodeIds: readonly NodeId[]
-  }
-): MindmapId | undefined => {
-  const resolved = input.nodeIds.map((nodeId) => {
-    const resolvedId = input.graph.query.mindmap.resolve(nodeId)
-    if (resolvedId) {
-      return resolvedId
-    }
-
-    const projectedNode = input.graph.query.node.get(nodeId)?.base.node as Record<string, unknown> | undefined
-    if (typeof projectedNode?.mindmapId === 'string') {
-      return projectedNode.mindmapId as MindmapId
-    }
-
-    const committedNode = input.graph.query.document.node(nodeId)?.node as Record<string, unknown> | undefined
-    return typeof committedNode?.mindmapId === 'string'
-      ? committedNode.mindmapId as MindmapId
-      : undefined
-  })
-
-  const ids = [...new Set(resolved.filter(Boolean))]
-
-  return ids.length === 1
-    ? ids[0]
-    : undefined
-}
-
 const readEdgeOrThrow = (
   graph: Pick<EditorSceneRuntime, 'query'>,
   edgeId: string
@@ -805,22 +775,12 @@ export const createEditorActionsApi = ({
           )
         }),
         topic: atomic((input) => {
-          const mindmapId = readMindmapIdForNodes({
-            graph,
-            nodeIds: input.nodeIds
-          })
+          const mindmapId = graph.query.mindmap.ofNodes(input.nodeIds)
           if (!mindmapId) {
             return undefined
           }
 
-          const style = Object.fromEntries(
-            Object.entries({
-              frameKind: input.patch.frameKind,
-              stroke: input.patch.stroke,
-              strokeWidth: input.patch.strokeWidth,
-              fill: input.patch.fill
-            }).filter(([, value]) => value !== undefined)
-          ) as NodeStyle
+          const style = mindmapApi.topicStyle.toNodeStylePatch(input.patch)
 
           return write.mindmap.topic.update(
             mindmapId,

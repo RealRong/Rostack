@@ -27,11 +27,7 @@ import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import {
-  readConnectableNode,
-  readEdgeCapability,
-  readEdgeModel
-} from '@whiteboard/editor/edge/read'
+import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 type EdgeConnectNodeRead = Pick<EditorHostDeps, 'projection' | 'nodeType'>
 type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection']['query'], 'node'>
@@ -159,12 +155,16 @@ const resolveNodeHandleStart = (input: {
     return undefined
   }
 
-  const entry = readConnectableNode(
-    input.node.projection.query,
-    input.node.nodeType,
+  const entry = input.node.projection.query.node.get(
     pick.id
   ) as ConnectNodeEntry | undefined
   if (!entry) {
+    return undefined
+  }
+  if (
+    entry.base.node.locked
+    || !resolveNodeEditorCapability(entry.base.node, input.node.nodeType).connect
+  ) {
     return undefined
   }
 
@@ -206,12 +206,16 @@ const resolveNodeBodyStart = (input: {
     return undefined
   }
 
-  const entry = readConnectableNode(
-    input.node.projection.query,
-    input.node.nodeType,
+  const entry = input.node.projection.query.node.get(
     pick.id
   ) as ConnectNodeEntry | undefined
   if (!entry) {
+    return undefined
+  }
+  if (
+    entry.base.node.locked
+    || !resolveNodeEditorCapability(entry.base.node, input.node.nodeType).connect
+  ) {
     return undefined
   }
 
@@ -254,15 +258,14 @@ const resolveReconnectStart = (input: {
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const edge = readEdgeModel(input.edge.projection.query, input.edgeId)
+  const edge = input.edge.projection.query.edge.get(input.edgeId)?.base.edge
   const resolved = input.edge.projection.query.edge.get(input.edgeId)
   const resolvedEnd = resolved?.route.ends?.[input.end]
   if (!edge || !resolvedEnd) {
     return undefined
   }
 
-  const capability = readEdgeCapability(
-    input.edge.projection.query,
+  const capability = input.edge.projection.query.edge.capability(
     input.edgeId
   )
   if (

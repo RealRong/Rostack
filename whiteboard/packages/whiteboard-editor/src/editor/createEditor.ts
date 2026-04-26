@@ -91,8 +91,12 @@ export const createEditor = ({
   const sessionState = createSessionState(session)
   const scene = createSceneSource({
     controller: projection,
-    visibleRect: () => session.viewport.read.worldRect(),
-    readZoom: () => session.viewport.read.get().zoom
+    view: {
+      get: () => ({
+        zoom: session.viewport.read.get().zoom,
+        worldRect: session.viewport.read.worldRect()
+      })
+    }
   })
   const document: Editor['document'] = {
     get: () => scene.query.document.get(),

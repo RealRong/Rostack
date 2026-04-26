@@ -234,6 +234,27 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.5.0)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.21.0)
 
+  dataview/packages/dataview-collab:
+    dependencies:
+      '@dataview/core':
+        specifier: workspace:*
+        version: link:../dataview-core
+      '@dataview/engine':
+        specifier: workspace:*
+        version: link:../dataview-engine
+      '@shared/collab':
+        specifier: workspace:*
+        version: link:../../../shared/collab
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../../../shared/core
+      '@shared/mutation':
+        specifier: workspace:*
+        version: link:../../../shared/mutation
+      yjs:
+        specifier: ^13.6.27
+        version: 13.6.30
+
   dataview/packages/dataview-core:
     dependencies:
       '@date-fns/tz':
@@ -242,9 +263,18 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/draft':
+        specifier: workspace:*
+        version: link:../../../shared/draft
       '@shared/i18n':
         specifier: workspace:*
         version: link:../../../shared/i18n
+      '@shared/mutation':
+        specifier: workspace:*
+        version: link:../../../shared/mutation
+      '@shared/reducer':
+        specifier: workspace:*
+        version: link:../../../shared/reducer
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -260,12 +290,18 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/draft':
+        specifier: workspace:*
+        version: link:../../../shared/draft
       '@shared/i18n':
         specifier: workspace:*
         version: link:../../../shared/i18n
-      '@shared/projection-runtime':
+      '@shared/mutation':
         specifier: workspace:*
-        version: link:../../../shared/projection-runtime
+        version: link:../../../shared/mutation
+      '@shared/projector':
+        specifier: workspace:*
+        version: link:../../../shared/projector
 
   dataview/packages/dataview-meta:
     dependencies:
@@ -281,6 +317,9 @@ importers:
 
   dataview/packages/dataview-react:
     dependencies:
+      '@dataview/collab':
+        specifier: workspace:*
+        version: link:../dataview-collab
       '@dataview/core':
         specifier: workspace:*
         version: link:../dataview-core
@@ -332,6 +371,9 @@ importers:
       react-dom:
         specifier: ^19.1.1
         version: 19.2.4(react@19.2.4)
+      yjs:
+        specifier: ^13.6.27
+        version: 13.6.30
 
   dataview/packages/dataview-runtime:
     dependencies:
@@ -344,9 +386,12 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
-      '@shared/projection-runtime':
+      '@shared/mutation':
         specifier: workspace:*
-        version: link:../../../shared/projection-runtime
+        version: link:../../../shared/mutation
+      '@shared/projector':
+        specifier: workspace:*
+        version: link:../../../shared/projector
 
   dataview/packages/dataview-table:
     dependencies:
@@ -360,9 +405,24 @@ importers:
         specifier: workspace:*
         version: link:../../../shared/core
 
+  shared/collab:
+    dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../core
+      '@shared/mutation':
+        specifier: workspace:*
+        version: link:../mutation
+
   shared/core: {}
 
   shared/dom:
+    dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../core
+
+  shared/draft:
     dependencies:
       '@shared/core':
         specifier: workspace:*
@@ -384,7 +444,16 @@ importers:
         specifier: ^19.1.12
         version: 19.2.14
 
-  shared/projection-runtime:
+  shared/mutation:
+    dependencies:
+      '@shared/core':
+        specifier: workspace:*
+        version: link:../core
+      '@shared/reducer':
+        specifier: workspace:*
+        version: link:../reducer
+
+  shared/projector:
     dependencies:
       '@shared/core':
         specifier: workspace:*
@@ -405,6 +474,8 @@ importers:
       '@types/react':
         specifier: ^19.1.12
         version: 19.2.14
+
+  shared/reducer: {}
 
   shared/ui:
     dependencies:
@@ -456,6 +527,9 @@ importers:
 
   whiteboard/packages/whiteboard-collab:
     dependencies:
+      '@shared/collab':
+        specifier: workspace:*
+        version: link:../../../shared/collab
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
@@ -465,9 +539,6 @@ importers:
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
-      '@whiteboard/history':
-        specifier: workspace:*
-        version: link:../whiteboard-history
       yjs:
         specifier: ^13.6.27
         version: 13.6.30
@@ -477,6 +548,18 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/draft':
+        specifier: workspace:*
+        version: link:../../../shared/draft
+      '@shared/mutation':
+        specifier: workspace:*
+        version: link:../../../shared/mutation
+      '@shared/projector':
+        specifier: workspace:*
+        version: link:../../../shared/projector
+      '@shared/reducer':
+        specifier: workspace:*
+        version: link:../../../shared/reducer
 
   whiteboard/packages/whiteboard-editor:
     dependencies:
@@ -486,24 +569,30 @@ importers:
       '@shared/dom':
         specifier: workspace:*
         version: link:../../../shared/dom
+      '@shared/draft':
+        specifier: workspace:*
+        version: link:../../../shared/draft
+      '@shared/mutation':
+        specifier: workspace:*
+        version: link:../../../shared/mutation
+      '@shared/projector':
+        specifier: workspace:*
+        version: link:../../../shared/projector
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
-      '@whiteboard/editor-graph':
+      '@whiteboard/editor-scene':
         specifier: workspace:*
-        version: link:../whiteboard-editor-graph
+        version: link:../whiteboard-editor-scene
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
-      '@whiteboard/history':
-        specifier: workspace:*
-        version: link:../whiteboard-history
 
-  whiteboard/packages/whiteboard-editor-graph:
+  whiteboard/packages/whiteboard-editor-scene:
     dependencies:
-      '@shared/projection-runtime':
+      '@shared/projector':
         specifier: workspace:*
-        version: link:../../../shared/projection-runtime
+        version: link:../../../shared/projector
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -516,21 +605,15 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/mutation':
+        specifier: workspace:*
+        version: link:../../../shared/mutation
+      '@shared/projector':
+        specifier: workspace:*
+        version: link:../../../shared/projector
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
-
-  whiteboard/packages/whiteboard-history:
-    dependencies:
-      '@shared/core':
-        specifier: workspace:*
-        version: link:../../../shared/core
-      '@whiteboard/core':
-        specifier: workspace:*
-        version: link:../whiteboard-core
-      '@whiteboard/engine':
-        specifier: workspace:*
-        version: link:../whiteboard-engine
 
   whiteboard/packages/whiteboard-product:
     dependencies:
@@ -549,6 +632,9 @@ importers:
       '@shared/dom':
         specifier: workspace:*
         version: link:../../../shared/dom
+      '@shared/mutation':
+        specifier: workspace:*
+        version: link:../../../shared/mutation
       '@shared/react':
         specifier: workspace:*
         version: link:../../../shared/react
@@ -567,9 +653,6 @@ importers:
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
-      '@whiteboard/history':
-        specifier: workspace:*
-        version: link:../whiteboard-history
       '@whiteboard/product':
         specifier: workspace:*
         version: link:../whiteboard-product

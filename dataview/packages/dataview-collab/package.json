@@ -1,0 +1,26 @@
+{
+  "name": "@dataview/collab",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dataview/core": "workspace:*",
+    "@dataview/engine": "workspace:*",
+    "@shared/collab": "workspace:*",
+    "@shared/core": "workspace:*",
+    "@shared/mutation": "workspace:*",
+    "yjs": "^13.6.27"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

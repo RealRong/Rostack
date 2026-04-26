@@ -10,6 +10,12 @@ import {
   normalizeSelectionTarget,
   resolveSelectionBoxTarget
 } from '@whiteboard/core/selection/model'
+import {
+  deriveSelectionEdgeStats as readSelectionEdgeStats,
+  deriveSelectionNodeStats as readSelectionNodeStats,
+  readSingleSelectedEdgeId as readSingleEdgeId,
+  readSingleSelectedNodeId as readSingleNodeId
+} from '@whiteboard/core/selection/query'
 
 export const selection = {
   target: {
@@ -21,8 +27,14 @@ export const selection = {
   derive: {
     affordance: deriveSelectionAffordance,
     summary: deriveSelectionSummary,
+    nodeStats: readSelectionNodeStats,
+    edgeStats: readSelectionEdgeStats,
     isAffordanceEqual: isSelectionAffordanceEqual,
     isSummaryEqual: isSelectionSummaryEqual
+  },
+  members: {
+    singleNode: readSingleNodeId,
+    singleEdge: readSingleEdgeId
   },
   bounds: {
     get: getTargetBounds
@@ -41,3 +53,7 @@ export type {
   SelectionSummary,
   SelectionTarget
 } from '@whiteboard/core/selection/model'
+export type {
+  SelectionEdgeStats,
+  SelectionNodeStats
+} from '@whiteboard/core/selection/query'

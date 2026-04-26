@@ -47,6 +47,7 @@ export {
 } from '@dataview/react/dataview'
 export { meta } from '@dataview/meta'
 export type {
+  DataViewCollabOptions,
   DataViewReactContextValue,
   DataViewReactSession,
   DataViewProviderProps,

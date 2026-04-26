@@ -1,5 +1,6 @@
 import { scheduler } from '@shared/core'
 import { createChangeState } from '@shared/projector/change'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   GraphState,
   MindmapView,
@@ -199,110 +200,6 @@ const buildMindmapEnterPreview = ({
   }
 }
 
-const readMindmapInsertSide = ({
-  structure,
-  targetNodeId,
-  side
-}: {
-  structure: MindmapView['structure']
-  targetNodeId: MindmapNodeId
-  side?: 'left' | 'right'
-}): 'left' | 'right' => {
-  if (side) {
-    return side
-  }
-
-  const targetSide = structure.tree.nodes[targetNodeId]?.side
-  if (targetSide === 'left' || targetSide === 'right') {
-    return targetSide
-  }
-
-  return structure.tree.layout.side === 'left'
-    ? 'left'
-    : 'right'
-}
-
-const buildMindmapRelativeInsertInput = ({
-  structure,
-  targetNodeId,
-  relation,
-  side,
-  payload
-}: {
-  structure: MindmapView['structure']
-  targetNodeId: MindmapNodeId
-  relation: MindmapInsertRelation
-  side?: 'left' | 'right'
-  payload?: MindmapTopicData
-}): MindmapInsertInput | undefined => {
-  const anchorLayout = {
-    ...structure.tree.layout,
-    anchorId: targetNodeId
-  }
-  const isRoot = targetNodeId === structure.rootId
-  const target = structure.tree.nodes[targetNodeId]
-
-  if (!isRoot && !target) {
-    return undefined
-  }
-
-  switch (relation) {
-    case 'child':
-      return {
-        kind: 'child',
-        parentId: targetNodeId,
-        payload,
-        options: {
-          side: readMindmapInsertSide({
-            structure,
-            targetNodeId,
-            side
-          }),
-          layout: anchorLayout
-        }
-      }
-    case 'sibling':
-      if (isRoot) {
-        return {
-          kind: 'child',
-          parentId: targetNodeId,
-          payload,
-          options: {
-            side: readMindmapInsertSide({
-              structure,
-              targetNodeId,
-              side
-            }),
-            layout: anchorLayout
-          }
-        }
-      }
-
-      return {
-        kind: 'sibling',
-        nodeId: targetNodeId,
-        position: 'after',
-        payload,
-        options: {
-          layout: anchorLayout
-        }
-      }
-    case 'parent':
-      if (isRoot) {
-        return undefined
-      }
-
-      return {
-        kind: 'parent',
-        nodeId: targetNodeId,
-        payload,
-        options: {
-          layout: anchorLayout
-        }
-      }
-  }
-}
-
 const createMindmapTickDelta = (
   ids: ReadonlySet<string>
 ) => {
@@ -491,8 +388,12 @@ export const createMindmapActionProcedures = ({
       return undefined
     }
 
-    const insertInput = buildMindmapRelativeInsertInput({
-      structure,
+    const insertInput = mindmapApi.insert.buildRelative({
+      structure: {
+        rootId: structure.rootId,
+        nodeIds: structure.nodeIds,
+        tree: structure.tree
+      },
       targetNodeId: input.targetNodeId,
       relation: input.relation,
       side: input.side,

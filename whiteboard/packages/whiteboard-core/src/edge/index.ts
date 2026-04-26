@@ -75,6 +75,11 @@ import {
   readEdgeLabelMaskTransform
 } from '@whiteboard/core/edge/labelMask'
 import {
+  readEdgeBox,
+  readEdgeRoutePoints as readEdgeControlPoints,
+  resolveEdgeCapability
+} from '@whiteboard/core/edge/query'
+import {
   staticStyle,
   styleKey
 } from '@whiteboard/core/edge/render'
@@ -141,6 +146,9 @@ export const edge = {
     collect: collectRelatedEdgeIds,
     create: createEdgeRelations
   },
+  capability: resolveEdgeCapability,
+  box: readEdgeBox,
+  routePoints: readEdgeControlPoints,
   segment: {
     insertIndex: getNearestEdgeInsertIndex
   },
@@ -244,6 +252,11 @@ export type {
 export type { EdgeRouteHandleTarget } from '@whiteboard/core/edge/edit'
 export type { EdgeLabelMaskRect } from '@whiteboard/core/edge/labelMask'
 export type { EdgeStaticStyle } from '@whiteboard/core/edge/render'
+export type {
+  EdgeBox,
+  EdgeCapability,
+  EdgeRoutePoint
+} from '@whiteboard/core/edge/query'
 export {
   resolveCommittedEdgeRenderView,
   resolveCommittedEdgeView

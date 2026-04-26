@@ -20,6 +20,12 @@ import {
   projectMindmapDrag
 } from '@whiteboard/core/mindmap/dropTarget'
 import {
+  buildMindmapRelativeInsertInput,
+  readMindmapAddChildTargets,
+  resolveMindmapInsertSide,
+  toMindmapTopicStylePatch
+} from '@whiteboard/core/mindmap/query'
+import {
   layoutMindmap,
   layoutMindmapTidy
 } from '@whiteboard/core/mindmap/layout'
@@ -108,6 +114,14 @@ export const mindmap = {
     createRootDrag,
     createSubtreeDrag,
     projectDrag: projectMindmapDrag
+  },
+  addChildTargets: readMindmapAddChildTargets,
+  insert: {
+    resolveSide: resolveMindmapInsertSide,
+    buildRelative: buildMindmapRelativeInsertInput
+  },
+  topicStyle: {
+    toNodeStylePatch: toMindmapTopicStylePatch
   }
 } as const
 

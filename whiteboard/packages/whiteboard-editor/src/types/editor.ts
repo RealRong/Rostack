@@ -1,6 +1,7 @@
 import { store } from '@shared/core'
 import type { LocalHistoryApi, LocalHistoryState } from '@shared/mutation'
 import type { SliceExportResult } from '@whiteboard/core/document'
+import type { EdgeRoutePoint } from '@whiteboard/core/edge'
 import type { Guide } from '@whiteboard/core/node'
 import type {
   SelectionAffordance,
@@ -27,11 +28,6 @@ import type {
   SpatialRecord
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
-import type { MindmapChrome } from '@whiteboard/editor/session/presentation/mindmapChrome'
-import type {
-  SelectedEdgeChrome,
-  SelectedEdgeRoutePoint
-} from '@whiteboard/editor/session/edge'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { SessionRead, ToolRead } from '@whiteboard/editor/session/read'
 import type {
@@ -110,6 +106,25 @@ export type EditorSelectionNodeRead = {
   selected: store.KeyedReadStore<NodeId, boolean>
   stats: store.ReadStore<SelectionNodeStats>
   scope: store.ReadStore<SelectionToolbarNodeScope | undefined>
+}
+
+export type SelectedEdgeChrome = {
+  edgeId: EdgeId
+  ends: import('@whiteboard/core/edge').ResolvedEdgeEnds
+  canReconnectSource: boolean
+  canReconnectTarget: boolean
+  canEditRoute: boolean
+  showEditHandles: boolean
+  routePoints: readonly EdgeRoutePoint[]
+}
+
+export type MindmapChrome = {
+  addChildTargets: readonly {
+    targetNodeId: NodeId
+    x: number
+    y: number
+    placement: 'left' | 'right'
+  }[]
 }
 
 export type EditorChromePresentation = {

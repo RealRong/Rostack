@@ -1,6 +1,9 @@
 export {
   createDataViewRuntime
 } from '@dataview/runtime/runtime'
+export {
+  createHistoryBinding
+} from '@dataview/runtime/historyBinding'
 
 export type {
   CreateDataViewRuntimeInput,
@@ -8,6 +11,9 @@ export type {
   DataViewSessionApi,
   DataViewWorkflow
 } from '@dataview/runtime/contracts'
+export type {
+  HistoryBinding
+} from '@dataview/runtime/historyBinding'
 
 export type {
   ActiveSource,

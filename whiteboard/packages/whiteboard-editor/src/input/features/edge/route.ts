@@ -19,10 +19,6 @@ import {
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import {
-  readEditableEdgeView,
-  readEdgeModel
-} from '@whiteboard/editor/edge/read'
 
 export type EdgeRouteHandleState =
   | {
@@ -108,6 +104,24 @@ const isEdgeRoutePick = (
   && pick.part === 'path'
 )
 
+const readEditableEdgeView = (
+  projection: Pick<EditorHostDeps, 'projection'>['projection']
+    | Pick<EditorHostDeps, 'projection'>['projection']['query']
+    | {
+        edge: {
+          editable?: (edgeId: EdgeId) => ReturnType<EditorHostDeps['projection']['query']['edge']['get']>
+          get: (edgeId: EdgeId) => ReturnType<EditorHostDeps['projection']['query']['edge']['get']>
+        }
+      },
+  edgeId: EdgeId
+) => {
+  const query = 'query' in projection
+    ? projection.query
+    : projection
+
+  return query.edge.editable?.(edgeId) ?? query.edge.get(edgeId)
+}
+
 const resolveEdgeRoutePickTarget = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
   pick: PointerDownInput['pick']
@@ -116,7 +130,7 @@ const resolveEdgeRoutePickTarget = (
     return undefined
   }
 
-  const view = readEditableEdgeView(projection.query, pick.id)
+  const view = readEditableEdgeView(projection, pick.id)
   if (!view) {
     return undefined
   }
@@ -230,7 +244,7 @@ export const tryStartEdgeRoute = (input: {
     }
   }
 
-  const edge = readEdgeModel(input.edge.query, target.edgeId)
+  const edge = input.edge.query.edge.get(target.edgeId)?.base.edge
   const view = readEditableEdgeView(input.edge.query, target.edgeId)
 
   if ((edge?.type === 'elbow' || edge?.type === 'fillet') && view) {
@@ -474,7 +488,7 @@ const submitEdgeRouteCommit = (
     return
   }
 
-  const edge = readEdgeModel(ctx.projection.query, commit.edgeId)
+  const edge = ctx.projection.query.edge.get(commit.edgeId)?.base.edge
   const pointId = edge
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
@@ -489,7 +503,7 @@ const createEdgeRouteSession = (
 ): InteractionSession => {
   let state = initial
   let interaction = null as InteractionSession | null
-  const baseEdge = readEdgeModel(ctx.projection.query, initial.edgeId)
+  const baseEdge = ctx.projection.query.edge.get(initial.edgeId)?.base.edge
 
   const step = (
     pointer: {
@@ -497,8 +511,8 @@ const createEdgeRouteSession = (
       clientY: number
     }
   ) => {
-    const edge = readEdgeModel(ctx.projection.query, state.edgeId)
-    if (!edge || !baseEdge || !readEditableEdgeView(ctx.projection.query, state.edgeId)) {
+    const edge = ctx.projection.query.edge.get(state.edgeId)?.base.edge
+    if (!edge || !baseEdge || !readEditableEdgeView(ctx.projection, state.edgeId)) {
       return CANCEL
     }
 
@@ -572,7 +586,7 @@ const commitInsertedRoute = (
   ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
-  const edge = readEdgeModel(ctx.projection.query, input.edgeId)
+  const edge = ctx.projection.query.edge.get(input.edgeId)?.base.edge
   if (!edge) {
     return null
   }

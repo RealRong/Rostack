@@ -1,4 +1,5 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
+import { selection as selectionApi } from '@whiteboard/core/selection'
 import type {
   Edge,
   EdgeId,
@@ -20,10 +21,6 @@ import {
   startEdgeLabelEdit
 } from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import {
-  readEdgeCapability,
-  readEdgeModel
-} from '@whiteboard/editor/edge/read'
 
 type EdgeLabelDragDraft = {
   t: number
@@ -44,20 +41,14 @@ type EdgeLabelDragState = {
 const isSingleSelectedEdge = (
   ctx: Pick<EditorHostDeps, 'sessionSource'>,
   edgeId: EdgeId
-) => {
-  const target = ctx.sessionSource.selection.summary.get().target
-
-  return (
-    target.nodeIds.length === 0
-    && target.edgeIds.length === 1
-    && target.edgeIds[0] === edgeId
-  )
-}
+) => selectionApi.members.singleEdge(
+  ctx.sessionSource.selection.summary.get().target
+) === edgeId
 
 const canEditEdgeLabel = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
   edgeId: EdgeId
-) => readEdgeCapability(projection.query, edgeId)?.editLabel ?? false
+) => projection.query.edge.capability(edgeId)?.editLabel ?? false
 
 const readEdgeLabelMetrics = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
@@ -195,7 +186,7 @@ const createEdgeLabelDragState = (
     pointerId: number
   }
 ): EdgeLabelDragState | null => {
-  const edge = readEdgeModel(ctx.projection.query, input.edgeId)
+  const edge = ctx.projection.query.edge.get(input.edgeId)?.base.edge
   const view = ctx.projection.query.edge.get(input.edgeId)
   const ref = {
     edgeId: input.edgeId,
@@ -299,7 +290,7 @@ export const startEdgeLabelPress = (
     return 'handled'
   }
 
-  const edge = readEdgeModel(ctx.projection.query, pointer.pick.id)
+  const edge = ctx.projection.query.edge.get(pointer.pick.id)?.base.edge
   if (!edge || !canEditEdgeLabel(ctx.projection, pointer.pick.id)) {
     return 'handled'
   }

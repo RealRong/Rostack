@@ -4,6 +4,10 @@ import {
   useEffect,
   useMemo
 } from 'react'
+import {
+  collab as collabApi,
+  type CollabSession
+} from '@dataview/collab'
 import type {
   DataViewReactContextValue,
   DataViewReactSession,
@@ -28,6 +32,41 @@ const DataViewProviderInner = (props: DataViewProviderProps) => {
     engine: props.engine,
     page: props.page
   }), [props.engine, props.page])
+
+  useEffect(() => {
+    if (!props.collab) {
+      return
+    }
+
+    const session = collabApi.yjs.session.create({
+      engine: props.engine,
+      doc: props.collab.doc,
+      actorId: props.collab.actorId,
+      provider: props.collab.provider
+    })
+    runtime.history.set(session.localHistory)
+    props.collab.onSession?.(session)
+    props.collab.onStatusChange?.(session.status.get())
+
+    const unsubscribeStatus = session.status.subscribe(() => {
+      props.collab?.onStatusChange?.(session.status.get())
+    })
+
+    if (props.collab.autoConnect ?? true) {
+      session.connect()
+    }
+
+    return () => {
+      unsubscribeStatus()
+      runtime.history.reset()
+      session.destroy()
+      props.collab?.onSession?.(null)
+    }
+  }, [
+    props.collab,
+    props.engine,
+    runtime.history
+  ])
 
   useEffect(() => () => {
     runtime.dispose()

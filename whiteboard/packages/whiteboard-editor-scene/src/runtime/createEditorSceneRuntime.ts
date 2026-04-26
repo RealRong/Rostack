@@ -1,5 +1,6 @@
 import { createProjectionRuntime } from '@shared/projector/model'
 import type {
+  NodeCapabilityInput,
   OwnerRef,
   Result,
   Runtime,
@@ -34,10 +35,7 @@ const createEditorSceneStateReader = (input: {
 
 export const createEditorSceneModelRuntime = (input: {
   measure?: TextMeasure
-  canNodeConnect?: (input: {
-    node: NodeModel
-    owner?: OwnerRef
-  }) => boolean
+  nodeCapability?: NodeCapabilityInput
   document?: {
     nodeSize: Size
   }
@@ -63,10 +61,7 @@ export const createEditorSceneModelRuntime = (input: {
 
 export const createEditorSceneRuntime = (input: {
   measure?: TextMeasure
-  canNodeConnect?: (input: {
-    node: NodeModel
-    owner?: OwnerRef
-  }) => boolean
+  nodeCapability?: NodeCapabilityInput
   document?: {
     nodeSize: Size
   }

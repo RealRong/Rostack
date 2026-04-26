@@ -1,4 +1,5 @@
 import { path as mutationPath } from '@shared/mutation'
+import type { MindmapStructure } from '@whiteboard/core/mindmap'
 import { node as nodeApi } from '@whiteboard/core/node'
 import {
   selection as selectionApi,
@@ -10,13 +11,10 @@ import type { Edge, EdgeId, MindmapId, MindmapNodeId, NodeId, NodeModel } from '
 import { collection, equal } from '@shared/core'
 import type { EditorDefaults, EditorNodePaintDefaults } from '@whiteboard/editor/types/defaults'
 import type { EditSession } from '@whiteboard/editor/session/edit'
-import type { EditorMindmapStructure } from '@whiteboard/editor/session/presentation/mindmapChrome'
 import type {
   SelectionEdgeStats,
-  SelectionEdgeTypeInfo,
   SelectionMembers,
   SelectionNodeStats,
-  SelectionNodeTypeInfo,
   SelectionOverlay,
   SelectionToolbarContext,
   SelectionToolbarEdgeScope,
@@ -26,11 +24,7 @@ import type {
   SelectionToolbarScope
 } from '@whiteboard/editor/types/selectionPresentation'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type {
-  NodeFamily,
-  NodeTypeSupport
-} from '@whiteboard/editor/types/node'
-import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 
 const readNodeCountLabel = (
   count: number
@@ -69,156 +63,6 @@ const readNumberArray = (
 const normalizeDash = (
   value: readonly number[] | undefined
 ) => value?.length ? value : undefined
-
-export const readSelectionNodeTransformBehavior = (
-  node: NodeModel,
-  nodeType: Pick<NodeTypeSupport, 'capability'>
-) => {
-  const capability = resolveNodeEditorCapability(node, nodeType)
-
-  return nodeApi.transform.resolveBehavior(node, {
-    role: capability.role,
-    resize: capability.resize
-  })
-}
-
-export const readSelectionNodeStats = ({
-  summary,
-  nodeType
-}: {
-  summary: SelectionSummary
-  nodeType: Pick<NodeTypeSupport, 'meta'>
-}): SelectionNodeStats => {
-  const nodes = summary.items.nodes
-  const ids = summary.target.nodeIds
-  const count = ids.length
-  const hasGroup = summary.groups.count > 0
-  const lockedCount = nodes.reduce(
-    (total, node) => total + (node.locked ? 1 : 0),
-    0
-  )
-  const statsByType = new Map<string, {
-    key: string
-    name: string
-    family: NodeFamily
-    icon: string
-    count: number
-    nodeIds: NodeId[]
-  }>()
-
-  nodes.forEach((node) => {
-    const meta = nodeType.meta(node.type)
-    const key = meta.key ?? node.type
-    const current = statsByType.get(key)
-    if (current) {
-      current.count += 1
-      current.nodeIds.push(node.id)
-      return
-    }
-
-    statsByType.set(key, {
-      key,
-      name: meta.name,
-      family: meta.family,
-      icon: meta.icon,
-      count: 1,
-      nodeIds: [node.id]
-    })
-  })
-
-  const types: SelectionNodeTypeInfo[] = [...statsByType.values()]
-    .sort((left, right) => (
-      right.count - left.count || left.key.localeCompare(right.key)
-    ))
-    .map((entry) => ({
-      key: entry.key,
-      name: entry.name,
-      family: entry.family,
-      icon: entry.icon,
-      count: entry.count,
-      nodeIds: entry.nodeIds
-    }))
-
-  return {
-    ids,
-    count,
-    hasGroup,
-    lock:
-      count === 0
-        ? 'none'
-        : lockedCount === count
-          ? 'all'
-          : lockedCount === 0
-            ? 'none'
-            : 'mixed',
-    types
-  }
-}
-
-const readEdgeTypeName = (
-  type: string
-) => (
-  type === 'straight'
-    ? 'Straight'
-    : type === 'elbow'
-      ? 'Elbow'
-      : type === 'fillet'
-        ? 'Fillet'
-        : type === 'curve'
-          ? 'Curve'
-          : type
-)
-
-export const readSelectionEdgeStats = (
-  summary: SelectionSummary
-): SelectionEdgeStats => {
-  const edges = summary.items.edges
-  const ids = summary.target.edgeIds
-  const count = ids.length
-  const statsByType = new Map<string, {
-    key: string
-    name: string
-    edgeType?: string
-    count: number
-    edgeIds: EdgeId[]
-  }>()
-
-  edges.forEach((edge) => {
-    const key = edge.type
-    const current = statsByType.get(key)
-    if (current) {
-      current.count += 1
-      current.edgeIds.push(edge.id)
-      return
-    }
-
-    statsByType.set(key, {
-      key,
-      name: readEdgeTypeName(key),
-      edgeType: edge.type,
-      count: 1,
-      edgeIds: [edge.id]
-    })
-  })
-
-  const types: SelectionEdgeTypeInfo[] = [...statsByType.values()]
-    .sort((left, right) => (
-      right.count - left.count || left.key.localeCompare(right.key)
-    ))
-    .map((entry) => ({
-      key: entry.key,
-      name: entry.name,
-      count: entry.count,
-      edgeIds: entry.edgeIds,
-      edgeType: entry.edgeType
-    }))
-
-  return {
-    ids,
-    count,
-    types
-  }
-}
 
 const resolveToolbarNodeKind = (
   nodes: readonly NodeModel[],
@@ -358,7 +202,7 @@ export const readNodeScope = ({
   primaryNode?: NodeModel
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
   nodeStats: SelectionNodeStats
-  readMindmapStructure: (id: MindmapId) => EditorMindmapStructure | undefined
+  readMindmapStructure: (id: MindmapId) => MindmapStructure | undefined
   defaults: EditorDefaults['selection']
 }): SelectionToolbarNodeScope => {
   const readPaintDefaults = defaults.node.readPaint
@@ -649,7 +493,7 @@ export const resolveSelectionToolbar = ({
   nodeScope: SelectionToolbarNodeScope | undefined
   edgeScope: SelectionToolbarEdgeScope | undefined
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
-  readMindmapStructure: (id: MindmapId) => EditorMindmapStructure | undefined
+  readMindmapStructure: (id: MindmapId) => MindmapStructure | undefined
   tool: Tool
   edit: EditSession
   interactionChrome: boolean

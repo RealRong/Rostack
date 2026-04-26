@@ -8,13 +8,17 @@ import type {
   EdgeId,
   GroupId,
   MindmapId,
-  NodeModel,
   NodeId,
   Point,
   Rect
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projector/phase'
-import type { OwnerRef, Query, SceneItem } from '../contracts/editor'
+import type {
+  NodeCapabilityInput,
+  Query,
+  SceneItem,
+  SelectionMembersView
+} from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import { readGroupSignatureFromTarget } from '../model/graph/group'
 import {
@@ -197,60 +201,139 @@ const expandMoveNodeIds = (input: {
   }
 }
 
+const readSelectionMembersKey = (
+  target: SelectionTarget
+) => `${target.nodeIds.join('\0')}\u0001${target.edgeIds.join('\0')}`
+
 const createSelectionRead = (input: {
   state: () => WorkingState
   spatial: Query['spatial']
-}): Query['selection'] => ({
-  move: (target) => {
-    const state = input.state()
-    const {
-      normalized,
-      expandedNodeIds
-    } = expandMoveNodeIds({
-      target,
-      state,
-      spatial: input.spatial
-    })
-    const relatedEdgeIds = new Set([
-      ...normalized.edgeIds,
-      ...readRelatedEdgeIds(state.indexes, expandedNodeIds)
-    ])
-
-    return {
-      nodes: [...expandedNodeIds].flatMap((nodeId) => {
-        const current = state.graph.nodes.get(nodeId)
-        return current
-          ? [nodeApi.projection.toSpatial({
-              node: current.base.node,
-              rect: current.geometry.rect,
-              rotation: current.geometry.rotation
-            })]
-          : []
-      }),
-      edges: [...relatedEdgeIds].flatMap<Edge>((edgeId) => {
-        const current = state.graph.edges.get(edgeId)?.base.edge
-        return current ? [current] : []
-      })
-    }
-  },
-  bounds: (target) => {
+  nodeCapability?: NodeCapabilityInput
+}): Query['selection'] => {
+  const readMembers = (
+    target: SelectionTarget
+  ): SelectionMembersView => {
     const normalized = selectionApi.target.normalize(target)
     const state = input.state()
-    const nodeBounds = normalized.nodeIds.flatMap((nodeId) => {
-      const current = state.graph.nodes.get(nodeId)
-      return current ? [current.geometry.bounds] : []
+    const nodes = normalized.nodeIds.flatMap((nodeId) => {
+      const current = state.graph.nodes.get(nodeId)?.base.node
+      return current ? [current] : []
     })
-    const edgeBounds = normalized.edgeIds.flatMap((edgeId) => {
-      const current = state.graph.edges.get(edgeId)?.route.bounds
+    const edges = normalized.edgeIds.flatMap((edgeId) => {
+      const current = state.graph.edges.get(edgeId)?.base.edge
       return current ? [current] : []
     })
 
-    return geometryApi.rect.boundingRect([
-      ...nodeBounds,
-      ...edgeBounds
-    ])
+    return {
+      target: normalized,
+      key: readSelectionMembersKey(normalized),
+      nodes,
+      edges,
+      primaryNode: nodes[0],
+      primaryEdge: edges[0]
+    } satisfies SelectionMembersView
   }
-})
+
+  const readSummary = (
+    target: SelectionTarget
+  ) => {
+    const members = readMembers(target)
+    return selectionApi.derive.summary({
+      target: members.target,
+      nodes: members.nodes,
+      edges: members.edges,
+      readNodeRect: (node) => input.state().graph.nodes.get(node.id)?.geometry.rect,
+      readEdgeBounds: (edge) => input.state().graph.edges.get(edge.id)?.route.bounds,
+      resolveNodeTransformBehavior: (node) => {
+        const capability = input.nodeCapability?.capability(node)
+        return capability
+          ? nodeApi.transform.resolveBehavior(node, {
+              role: capability.role,
+              resize: capability.resize
+            })
+          : undefined
+      }
+    })
+  }
+
+  const readAffordance = (
+    target: SelectionTarget
+  ) => {
+    const summary = readSummary(target)
+    return selectionApi.derive.affordance({
+      selection: summary,
+      resolveNodeRole: (node) => (
+        input.nodeCapability?.capability(node).role ?? 'content'
+      ),
+      resolveNodeTransformCapability: (node) => {
+        const capability = input.nodeCapability?.capability(node)
+        return {
+          resize: capability?.resize ?? false,
+          rotate: capability?.rotate ?? false
+        }
+      }
+    })
+  }
+
+  return {
+    members: readMembers,
+    summary: readSummary,
+    affordance: readAffordance,
+    selected: {
+      node: (target, nodeId) => selectionApi.target.normalize(target).nodeIds.includes(nodeId),
+      edge: (target, edgeId) => selectionApi.target.normalize(target).edgeIds.includes(edgeId)
+    },
+    move: (target) => {
+      const state = input.state()
+      const {
+        normalized,
+        expandedNodeIds
+      } = expandMoveNodeIds({
+        target,
+        state,
+        spatial: input.spatial
+      })
+      const relatedEdgeIds = new Set([
+        ...normalized.edgeIds,
+        ...readRelatedEdgeIds(state.indexes, expandedNodeIds)
+      ])
+
+      return {
+        nodes: [...expandedNodeIds].flatMap((nodeId) => {
+          const current = state.graph.nodes.get(nodeId)
+          return current
+            ? [nodeApi.projection.toSpatial({
+                node: current.base.node,
+                rect: current.geometry.rect,
+                rotation: current.geometry.rotation
+              })]
+            : []
+        }),
+        edges: [...relatedEdgeIds].flatMap<Edge>((edgeId) => {
+          const current = state.graph.edges.get(edgeId)?.base.edge
+          return current ? [current] : []
+        })
+      }
+    },
+    bounds: (target) => {
+      const normalized = selectionApi.target.normalize(target)
+      const state = input.state()
+      const nodeBounds = normalized.nodeIds.flatMap((nodeId) => {
+        const current = state.graph.nodes.get(nodeId)
+        return current ? [current.geometry.bounds] : []
+      })
+      const edgeBounds = normalized.edgeIds.flatMap((edgeId) => {
+        const current = state.graph.edges.get(edgeId)?.route.bounds
+        return current ? [current] : []
+      })
+
+      return geometryApi.rect.boundingRect([
+        ...nodeBounds,
+        ...edgeBounds
+      ])
+    }
+  }
+}
 
 const resolveMindmapId = (
   state: WorkingState,
@@ -615,16 +698,53 @@ const createHitRead = (input: {
   }
 })
 
+const createViewRead = (input: {
+  hit: Query['hit']
+  spatial: Query['spatial']
+}): Query['view'] => ({
+  visible: (rect, options) => input.spatial.rect(rect, options),
+  pick: ({
+    point,
+    zoom,
+    radius,
+    kinds,
+    exclude
+  }) => {
+    const resolvedRadius = radius ?? (
+      DEFAULT_HIT_THRESHOLD / Math.max(zoom, 0.0001)
+    )
+    const rect = toRect(point, resolvedRadius)
+    const candidates = input.spatial.candidates(rect, {
+      kinds: kinds?.filter((kind) => kind !== 'group') as
+        | readonly ('node' | 'edge' | 'mindmap')[]
+        | undefined
+    })
+    const target = input.hit.item({
+      point,
+      threshold: resolvedRadius,
+      kinds,
+      exclude
+    })
+
+    return {
+      rect,
+      target,
+      stats: {
+        ...candidates.stats,
+        hits: target ? 1 : 0,
+        latency: 0
+      }
+    }
+  }
+})
+
 export const createEditorSceneRead = (runtime: {
   revision: () => Revision
   state: () => WorkingState
   items: () => readonly SceneItem[]
   spatial: () => SpatialIndexState
   nodeSize: { width: number, height: number }
-  canNodeConnect?: (input: {
-    node: NodeModel
-    owner?: OwnerRef
-  }) => boolean
+  nodeCapability?: NodeCapabilityInput
 }): Query => {
   const spatial = createSpatialRead({
     state: runtime.spatial
@@ -635,10 +755,15 @@ export const createEditorSceneRead = (runtime: {
   })
   const selection = createSelectionRead({
     state: runtime.state,
-    spatial
+    spatial,
+    nodeCapability: runtime.nodeCapability
   })
   const hit = createHitRead({
     state: runtime.state,
+    spatial
+  })
+  const view = createViewRead({
+    hit,
     spatial
   })
 
@@ -730,11 +855,8 @@ export const createEditorSceneRead = (runtime: {
           return []
         }
 
-        const canConnect = runtime.canNodeConnect
-          ? runtime.canNodeConnect({
-              node: current.base.node,
-              owner: current.base.owner
-            })
+        const canConnect = runtime.nodeCapability
+          ? runtime.nodeCapability.capability(current.base.node).connect
           : !current.base.node.locked
         if (!canConnect) {
           return []
@@ -752,7 +874,93 @@ export const createEditorSceneRead = (runtime: {
             rotation: current.geometry.rotation
           }
         }]
-      })
+      }),
+      capability: (edgeId) => {
+        const edge = runtime.state().graph.edges.get(edgeId)?.base.edge
+        return edge
+          ? edgeApi.capability({
+              edge,
+              readNodeLocked: (nodeId) => Boolean(
+                runtime.state().graph.nodes.get(nodeId)?.base.node.locked
+              )
+            })
+          : undefined
+      },
+      editable: (edgeId) => {
+        const view = runtime.state().graph.edges.get(edgeId)
+        const capability = view
+          ? edgeApi.capability({
+              edge: view.base.edge,
+              readNodeLocked: (nodeId) => Boolean(
+                runtime.state().graph.nodes.get(nodeId)?.base.node.locked
+              )
+            })
+          : undefined
+        return capability?.editRoute
+          ? view
+          : undefined
+      },
+      routePoints: ({ edgeId, activeRouteIndex }) => {
+        const edge = runtime.state().graph.edges.get(edgeId)
+        return edge
+          ? edgeApi.routePoints({
+              edgeId,
+              edge: edge.base.edge,
+              handles: edge.route.handles,
+              activeRouteIndex
+            })
+          : []
+      },
+      box: (edgeId) => {
+        const edge = runtime.state().graph.edges.get(edgeId)
+        return edgeApi.box({
+          rect: edge?.route.bounds,
+          edge: edge?.base.edge
+        })
+      },
+      chrome: ({
+        edgeId,
+        activeRouteIndex,
+        tool,
+        interaction,
+        edit
+      }) => {
+        const edge = runtime.state().graph.edges.get(edgeId)
+        const capability = edge
+          ? edgeApi.capability({
+              edge: edge.base.edge,
+              readNodeLocked: (nodeId) => Boolean(
+                runtime.state().graph.nodes.get(nodeId)?.base.node.locked
+              )
+            })
+          : undefined
+        if (!edge || !edge.route.ends || !capability) {
+          return undefined
+        }
+
+        const editingThisSelectedEdge =
+          edit?.kind === 'edge-label'
+          && edit.edgeId === edgeId
+
+        return {
+          edgeId,
+          ends: edge.route.ends,
+          canReconnectSource: capability.reconnectSource,
+          canReconnectTarget: capability.reconnectTarget,
+          canEditRoute: capability.editRoute,
+          showEditHandles:
+            tool.type === 'select'
+            && interaction.chrome
+            && !interaction.editingEdge
+            && !editingThisSelectedEdge,
+          routePoints: edgeApi.routePoints({
+            edgeId,
+            edge: edge.base.edge,
+            handles: edge.route.handles,
+            activeRouteIndex
+          })
+        }
+      }
     },
     selection,
     mindmap: {
@@ -768,6 +976,74 @@ export const createEditorSceneRead = (runtime: {
         return mindmapId
           ? runtime.state().graph.owners.mindmaps.get(mindmapId)?.structure
           : undefined
+      },
+      ofNodes: (nodeIds) => {
+        const ids = [...new Set(nodeIds.flatMap((nodeId) => {
+          const owner = runtime.state().indexes.ownerByNode.get(nodeId)
+          if (owner?.kind === 'mindmap') {
+            return [owner.id]
+          }
+
+          const nodeOwner = runtime.state().graph.nodes.get(nodeId)?.base.owner
+          if (nodeOwner?.kind === 'mindmap') {
+            return [nodeOwner.id]
+          }
+
+          const projectedNode = runtime.state().graph.nodes.get(nodeId)?.base.node as
+            | (Record<string, unknown> & { mindmapId?: MindmapId })
+            | undefined
+          if (typeof projectedNode?.mindmapId === 'string') {
+            return [projectedNode.mindmapId]
+          }
+
+          const committedNode = runtime.state().document.nodes.get(nodeId)?.node as
+            | (Record<string, unknown> & { mindmapId?: MindmapId })
+            | undefined
+
+          return typeof committedNode?.mindmapId === 'string'
+            ? [committedNode.mindmapId]
+            : []
+        }))]
+
+        return ids.length === 1
+          ? ids[0]
+          : undefined
+      },
+      addChildTargets: ({
+        mindmapId,
+        selection,
+        edit
+      }) => {
+        const structure = runtime.state().graph.owners.mindmaps.get(mindmapId)?.structure
+        const selectedNodeId = selectionApi.members.singleNode(selection)
+        if (
+          !structure
+          || !selectedNodeId
+          || (
+            selectedNodeId !== structure.rootId
+            && structure.tree.nodes[selectedNodeId] === undefined
+          )
+        ) {
+          return []
+        }
+        if (edit?.kind === 'node' && edit.nodeId === selectedNodeId) {
+          return []
+        }
+
+        const node = runtime.state().graph.nodes.get(selectedNodeId)
+        if (!node?.geometry.rect || node.base.node.locked) {
+          return []
+        }
+
+        return mindmapApi.addChildTargets({
+          structure: {
+            rootId: structure.rootId,
+            nodeIds: structure.nodeIds,
+            tree: structure.tree
+          },
+          nodeId: selectedNodeId,
+          rect: node.geometry.rect
+        })
       },
       navigate: (input) => {
         const structure = runtime.state().graph.owners.mindmaps.get(input.id)?.structure
@@ -816,6 +1092,7 @@ export const createEditorSceneRead = (runtime: {
     ),
     frame,
     hit,
+    view,
     items: runtime.items
   }
 }

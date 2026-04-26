@@ -59,6 +59,17 @@ const shouldTrackOrigin = (
   }
 }
 
+const shouldClearHistory = (
+  write: {
+    origin: 'user' | 'remote' | 'system' | 'load' | 'history'
+    forward: readonly DocumentOperation[]
+  },
+  config: DataviewHistoryConfig
+): boolean => (
+  shouldTrackOrigin(write.origin, config)
+  && write.forward.some((entry) => mutationMeta.get(operation.meta, entry).sync === 'checkpoint')
+)
+
 export type DataviewMutationKernel = Omit<
   CommandMutationSpec<
     DataDoc,
@@ -112,13 +123,7 @@ export const createDataviewMutationKernel = (input?: {
               shouldTrackOrigin(write.origin, historyConfig)
               && write.forward.every((entry) => mutationMeta.tracksHistory(operation.meta, entry))
             ),
-            clear: (write) => (
-              write.origin === 'load'
-              || (
-                write.origin !== 'history'
-                && !shouldTrackOrigin(write.origin, historyConfig)
-              )
-            ),
+            clear: (write) => shouldClearHistory(write, historyConfig),
             conflicts: dataviewMutationKeyConflicts
           }
         }

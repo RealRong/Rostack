@@ -18,8 +18,14 @@ import type {
 } from '@whiteboard/core/node'
 import type {
   MindmapRenderConnector,
+  MindmapStructure,
   MindmapTree
 } from '@whiteboard/core/mindmap'
+import type {
+  SelectionAffordance,
+  SelectionSummary,
+  SelectionTarget
+} from '@whiteboard/core/selection'
 import type {
   Document as WhiteboardDocument,
   Edge,
@@ -321,6 +327,33 @@ export type TextMeasureTarget =
 export type TextMeasure = (
   input: TextMeasureTarget
 ) => Size | undefined
+
+export interface NodeCapabilityInput {
+  meta(type: string): {
+    key?: string
+    name: string
+    family: string
+    icon: string
+  }
+  edit(type: string, field: string): {
+    multiline?: boolean
+  } | undefined
+  capability(node: NodeModel): {
+    role: import('@whiteboard/core/types').NodeRole
+    resize: boolean
+    rotate: boolean
+    connect: boolean
+  }
+}
+
+export interface SelectionMembersView {
+  target: SelectionTarget
+  key: string
+  nodes: readonly NodeModel[]
+  edges: readonly Edge[]
+  primaryNode?: NodeModel
+  primaryEdge?: Edge
+}
 
 export interface InteractionInput {
   selection: SelectionState
@@ -696,8 +729,42 @@ export interface Query {
       match?: 'touch' | 'contain'
     }): readonly EdgeId[]
     connectCandidates(rect: Rect): readonly EdgeConnectCandidate[]
+    capability(edgeId: EdgeId): import('@whiteboard/core/edge').EdgeCapability | undefined
+    editable(edgeId: EdgeId): EdgeView | undefined
+    routePoints(input: {
+      edgeId: EdgeId
+      activeRouteIndex?: number
+    }): readonly import('@whiteboard/core/edge').EdgeRoutePoint[]
+    box(edgeId: EdgeId): import('@whiteboard/core/edge').EdgeBox | undefined
+    chrome(input: {
+      edgeId: EdgeId
+      activeRouteIndex?: number
+      tool: {
+        type: string
+      }
+      interaction: {
+        chrome: boolean
+        editingEdge: boolean
+      }
+      edit: EditSession | null
+    }): {
+      edgeId: EdgeId
+      ends: ResolvedEdgeEnds
+      canReconnectSource: boolean
+      canReconnectTarget: boolean
+      canEditRoute: boolean
+      showEditHandles: boolean
+      routePoints: readonly import('@whiteboard/core/edge').EdgeRoutePoint[]
+    } | undefined
   }
   selection: {
+    members(target: SelectionTarget): SelectionMembersView
+    summary(target: SelectionTarget): SelectionSummary
+    affordance(target: SelectionTarget): SelectionAffordance
+    selected: {
+      node(target: SelectionTarget, nodeId: NodeId): boolean
+      edge(target: SelectionTarget, edgeId: EdgeId): boolean
+    }
     move(target: import('@whiteboard/core/selection').SelectionTarget): {
       nodes: readonly Node[]
       edges: readonly Edge[]
@@ -708,6 +775,17 @@ export interface Query {
     get(id: MindmapId): MindmapView | undefined
     resolve(value: string): MindmapId | undefined
     structure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
+    ofNodes(nodeIds: readonly NodeId[]): MindmapId | undefined
+    addChildTargets(input: {
+      mindmapId: MindmapId
+      selection: SelectionTarget
+      edit: EditSession | null
+    }): readonly {
+      targetNodeId: NodeId
+      x: number
+      y: number
+      placement: 'left' | 'right'
+    }[]
     navigate(input: {
       id: MindmapId
       fromNodeId: NodeId
@@ -768,6 +846,46 @@ export interface Query {
       kind: 'group'
       id: GroupId
     } | undefined
+  }
+  view: {
+    visible(
+      rect: Rect,
+      options?: Parameters<SpatialRead['rect']>[1]
+    ): ReturnType<SpatialRead['rect']>
+    pick(input: {
+      point: Point
+      zoom: number
+      radius?: number
+      kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
+      exclude?: Partial<{
+        node: readonly NodeId[]
+        edge: readonly EdgeId[]
+        mindmap: readonly MindmapId[]
+        group: readonly GroupId[]
+      }>
+    }): {
+      rect: Rect
+      target?: {
+        kind: 'node'
+        id: NodeId
+      } | {
+        kind: 'edge'
+        id: EdgeId
+      } | {
+        kind: 'mindmap'
+        id: MindmapId
+      } | {
+        kind: 'group'
+        id: GroupId
+      }
+      stats: {
+        cells: number
+        candidates: number
+        oversized: number
+        hits: number
+        latency: number
+      }
+    }
   }
   items(): readonly SceneItem[]
 }

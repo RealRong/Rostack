@@ -128,6 +128,12 @@ export interface MindmapTree {
   }
 }
 
+export type MindmapStructure = {
+  rootId: MindmapNodeId
+  nodeIds: readonly MindmapNodeId[]
+  tree: MindmapTree
+}
+
 export type GetNodeSize = (id: MindmapNodeId) => Size
 
 export interface MindmapSizeAdapter {

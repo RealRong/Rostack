@@ -21,6 +21,7 @@ import type {
 import type {
   HoverState,
   Input,
+  NodeCapabilityInput,
   OwnerRef,
   TextMeasure
 } from '../contracts/editor'
@@ -522,10 +523,7 @@ const viewPhase: ProjectorPhase<
 
 export const createEditorSceneProjectionModel = (input: {
   measure?: TextMeasure
-  canNodeConnect?: (input: {
-    node: NodeModel
-    owner?: OwnerRef
-  }) => boolean
+  nodeCapability?: NodeCapabilityInput
   document?: {
     nodeSize: Size
   }
@@ -584,7 +582,7 @@ export const createEditorSceneProjectionModel = (input: {
     state: runtime.state,
     items: () => runtime.state().items,
     spatial: () => runtime.state().spatial,
-    canNodeConnect: input.canNodeConnect,
+    nodeCapability: input.nodeCapability,
     nodeSize
   }),
   capture: ({ state, revision }) => buildEditorSceneCapture(

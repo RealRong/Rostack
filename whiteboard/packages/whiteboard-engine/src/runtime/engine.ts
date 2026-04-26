@@ -1,5 +1,5 @@
 import {
-  MutationEngine,
+  CommandMutationEngine,
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createRegistries } from '@whiteboard/core/kernel'
@@ -97,7 +97,7 @@ export const createEngine = ({
     ...(history ?? {})
   }
 
-  const core = new MutationEngine<
+  const core = new CommandMutationEngine<
     Document,
     WhiteboardMutationTable,
     Operation,

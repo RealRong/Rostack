@@ -1,137 +1,15 @@
-# Whiteboard Editor Scene 清理最终方案
+# Whiteboard Editor Scene 清理最终迁移清单
 
-## 1. 目标
+## 目标
 
-- 本文只讨论：
-  `whiteboard/packages/whiteboard-editor/src/scene`
-- 目标不是“继续局部优化”，而是把这层彻底整理干净，收敛到长期最优。
-- 不考虑兼容旧结构，不保留多余 facade，不为了少改调用方而继续堆中间层。
-
-一句话：
-
-- `whiteboard-editor/src/scene` 不应再承担第二套 scene model。
-- 它最终只应该承担：
-  - 把 `editor-scene` 暴露给 editor
-  - 提供少量 host-only runtime/helper
+- 只清理 `whiteboard/packages/whiteboard-editor/src/scene` 这条线。
+- 不保留兼容 facade，不保留“先转发再慢慢删”的做法。
+- 所有 query 和 view/read model 一律下沉到 `whiteboard-editor-scene`。
+- `whiteboard-editor/src/scene` 最终只保留 `source.ts` 和 `host/*`。
 
 ---
 
-## 2. 最终结论
-
-### 2.1 这一层最终只该剩下什么
-
-`whiteboard-editor/src/scene` 最终应只剩两类东西：
-
-1. `source`
-   负责组装最终 `editor.scene` public shape：
-   - `query`
-   - `stores`
-   - `host`
-
-2. `host`
-   只放 editor host 本地 helper：
-   - `pick`
-   - `visible`
-   - `scope`
-   - 如仍有必要的 revision memo geometry
-
-除此之外，不应再保留：
-
-- `node` 二次 view projection
-- `edge` 二次 view projection
-- `selection` 二次 projection
-- `mindmap` chrome / navigate helper 混合层
-- 根级别重复 facade
-
-### 2.1.1 硬性原则：query 和 view 一律下沉到 `editor-scene`
-
-这次清理有一条硬性原则，必须写死：
-
-- **凡是 query 相关能力，一律属于 `editor-scene`。**
-- **凡是 view/read model 相关能力，一律属于 `editor-scene`。**
-
-`whiteboard-editor/src/scene` 不允许再做下面这些事：
-
-- 定义新的 query helper 并挂到 editor scene runtime
-- 定义新的 node/edge/mindmap/group view model
-- 把 `editor-scene` 里已有的 query/view 再包装一层中转接口
-- 以“方便调用方”为理由继续保留 `nodes.read` / `edges.read` / `mindmap.view` 这一类 facade
-
-最终规则只有两条：
-
-1. 如果能力属于 query 或 view model：
-   必须进入 `editor-scene`。
-2. 如果 `editor-scene` 已经有了：
-   **直接改调用方使用，不允许在 `whiteboard-editor/src/scene` 再中转。**
-
-### 2.2 这一层最终不该再做什么
-
-`whiteboard-editor/src/scene` 不应再：
-
-- 把 `graph + graph.state + render` 再拼成一份 `nodes.read` / `edges.read`
-- 把 `query` 再包装成另一套 `node/edge/group/mindmap/frame/snap`
-- 自己维护第二份 pick precise resolve 主逻辑
-- 自己定义 node/edge “编辑器视图模型”作为长期 canonical 读模型
-
-这些都属于重复投影。
-
-### 2.3 对 `whiteboard-editor/src/scene` 的最终定位
-
-最终定位必须非常严格：
-
-- `editor-scene`
-  负责：
-  - query
-  - graph/state/render stores
-  - canonical view/read model
-  - hit / spatial / frame / snap
-
-- `whiteboard-editor/src/scene`
-  只负责：
-  - 暴露 `query / stores / host`
-  - 放极少数 host-only runtime/helper
-
-也就是说：
-
-- `scene/` 不是 query 层
-- `scene/` 不是 view model 层
-- `scene/` 不是 projection 层
-- `scene/` 不是 adapter 层
-
-它只是 editor 把 `editor-scene` 接出来，并补 host 能力的薄层
-
----
-
-## 3. 先决原则：已有能力直接用，不再中转
-
-在实施之前，先把口径写清楚：
-
-- 如果 `editor-scene.query` 已经有这个能力：
-  调用方直接改用 `editor.scene.query.*`
-- 如果 `editor-scene.stores` 已经有这个能力：
-  调用方直接改用 `editor.scene.stores.*`
-- 如果某个旧 helper 的唯一作用只是“换个名字转发”：
-  直接删除，不保留过渡层
-
-典型必须删除的中转形式：
-
-- `scene.nodes.read -> stores.render.node.byId`
-- `scene.edges.read -> stores.graph.edge.byId` 或 `stores.render.edge.*`
-- `scene.mindmap.view -> stores.graph.mindmap.byId`
-- `scene.group.exact -> query.group.exact`
-- `scene.edge.render.* -> stores.render.edge.*`
-- `scene.frame -> query.frame`
-- `scene.snap.rect -> query.snap`
-
-最终要求：
-
-- `whiteboard-editor/src/scene` 不允许存在“只是把 `editor-scene` 再包一层”的接口。
-
----
-
-## 4. 最终目录形态
-
-最终目录应收敛为：
+## 最终目录
 
 ```txt
 whiteboard/packages/whiteboard-editor/src/scene/
@@ -141,80 +19,65 @@ whiteboard/packages/whiteboard-editor/src/scene/
     pick.ts
     scope.ts
     visible.ts
+
+whiteboard/packages/whiteboard-editor/src/session/
+  projection/
+    selection.ts
+  presentation/
+    mindmapChrome.ts
 ```
 
-说明：
-
-- `source.ts`
-  只做最终 `EditorSceneSource` 装配。
-- `host/geometry.ts`
-  只做 host-level revision memo。
-- `host/pick.ts`
-  只做 frame-throttled pick runtime。
-- `host/scope.ts`
-  只做 move/bounds 这类 host helper。
-- `host/visible.ts`
-  只做 visible rect query memo。
-
-最终不应再保留：
+必须删除：
 
 ```txt
-scene/node.ts
-scene/edge.ts
-scene/selection.ts
-scene/mindmap.ts
-scene/cache/*
+whiteboard/packages/whiteboard-editor/src/scene/node.ts
+whiteboard/packages/whiteboard-editor/src/scene/edge.ts
+whiteboard/packages/whiteboard-editor/src/scene/selection.ts
+whiteboard/packages/whiteboard-editor/src/scene/mindmap.ts
+whiteboard/packages/whiteboard-editor/src/scene/pick.ts
+whiteboard/packages/whiteboard-editor/src/scene/cache/geometry.ts
+whiteboard/packages/whiteboard-editor/src/scene/cache/order.ts
+whiteboard/packages/whiteboard-editor/src/scene/cache/scope.ts
+whiteboard/packages/whiteboard-editor/src/scene/cache/visible.ts
 ```
-
-其中：
-
-- `cache` 目录这个名字也不应保留。
-- 这些文件里的剩余纯逻辑，要么下沉到 `editor-scene`，要么下沉到 `whiteboard-core`，要么迁去 `session`。
 
 ---
 
-## 5. 现有文件逐个处理
+## 最终 public shape
 
-## 5.1 `scene/source.ts`
-
-当前问题：
-
-- 同时暴露最终 public shape 和大量旧 facade。
-- 同时装配：
-  - `query / stores / host`
-  - `items / pick / snap / geometry / scope / frame`
-  - `node / edge / nodes / edges / selection / mindmap / group / chrome`
-- 还维护了一层 `SceneProjectionStores` 别名映射。
-
-最终要求：
-
-- `source.ts` 只返回：
+`whiteboard/packages/whiteboard-editor/src/scene/source.ts` 最终只导出这一套运行时结构：
 
 ```ts
-type EditorSceneSource = {
+export type EditorSceneRuntime = {
+  dispose(): void
   revision(): number
-  query: SceneQuery
+  query: Query
   stores: RuntimeStores
   host: {
     pick: ScenePickRuntime
-    visible(...): ...
+    visible(
+      options?: Parameters<Query['spatial']['rect']>[1]
+    ): ReturnType<Query['spatial']['rect']>
     geometry: {
-      node(nodeId): NodeRenderView | undefined
-      edge(edgeId): EdgeGeometryView | undefined
-      order(item): number
+      node(nodeId: NodeId): NodeRenderView | undefined
+      edge(edgeId: EdgeId): CoreEdgeView | undefined
+      order(item: {
+        kind: 'node' | 'edge' | 'mindmap'
+        id: string
+      }): number
     }
     scope: {
-      move(target): {
+      move(target: SelectionTarget): {
         nodes: readonly Node[]
         edges: readonly Edge[]
       }
-      bounds(target): Rect | undefined
+      bounds(target: SelectionTarget): Rect | undefined
     }
   }
 }
 ```
 
-必须删除：
+必须删除的根级字段：
 
 - `items`
 - `pick`
@@ -231,522 +94,542 @@ type EditorSceneSource = {
 - `group`
 - `chrome`
 
-这些如果还有内部调用需求，应改为直接读：
-
-- `scene.query.*`
-- `scene.stores.*`
-- `scene.host.*`
-
-并且这里要进一步收紧：
-
-- `source.ts` 不允许再把 `query` 里的字段拆散到根级别。
-- `source.ts` 不允许再把 `stores` 里的字段拆散到根级别。
-- `source.ts` 不允许为 query/view 能力新增任何同义转发。
-
-### 对 `SceneProjectionStores` 的结论
-
-这层长期也不应该保留。
-
-原因：
-
-- 它只是把 `stores.graph.node` 改名成 `nodeGraph`、把 `stores.graph.state.node` 改名成 `nodeUi`。
-- 这种 rename facade 会继续制造“到底哪层才是真数据源”的歧义。
-
-最终应直接用：
-
-- `controller.stores.graph.*`
-- `controller.stores.render.*`
-
-而不是再做一层本地 alias object。
-
 ---
 
-## 5.2 `scene/node.ts`
+## editor-scene 必须补齐的最终 API
 
-当前问题：
-
-- 定义了 `EditorNodeView`，把：
-  - `RuntimeNodeView`
-  - `NodeUiView`
-  再投影成一份 editor 本地视图。
-- 定义了 `GraphNodeRead`，提供：
-  - `get`
-  - `view`
-  - `all`
-  - `nodes`
-  - `capability`
-  - `idsInRect`
-- `resolveNodeCapability` 还在这里对 owner 做二次修正。
-
-最终结论：
-
-- 这整个文件不该继续存在于 `editor/src/scene`。
-
-拆分方式：
-
-1. `toSpatialNode`
-   下沉到 `whiteboard-core/node` 或 `editor-scene` 对应 primitive。
-
-2. `resolveNodeCapability`
-   下沉到 `editor-scene` 或 node type infra。
-   它本质是 view/read model 语义的一部分，不应留在 editor scene facade。
-
-3. `idsInRect`
-   如果仍需要，进入 `editor-scene.query.hit/query.node/query.spatial` 体系。
-   不应继续挂在 editor 本地 `nodes.read` 上。
-
-4. `EditorNodeView`
-   直接删除。
-   React 与 editor 其他调用方直接读 `stores.render.node.byId`。
-
-一句话：
-
-- `node.ts` 是“旧架构里 editor 自己再投一份 node view”的残留，长期必须删掉。
-
----
-
-## 5.3 `scene/edge.ts`
-
-当前问题：
-
-- 和 `node.ts` 一样，继续维护：
-  - `EditorEdgeView`
-  - `EditorEdgeDetail`
-  - `GraphEdgeRead`
-- 还承担 `resolveGraphEdgeGeometry`。
-
-最终结论：
-
-- 这个文件也不该继续存在于 `editor/src/scene`。
-
-拆分方式：
-
-1. `resolveGraphEdgeGeometry`
-   下沉到 `whiteboard-core` 或 `editor-scene`。
-   这是 query/view primitive，不该放在 editor facade 层。
-
-2. `EditorEdgeView`
-   删除。
-   调用方直接读：
-   - `stores.graph.edge.byId`
-   - `stores.graph.state.edge.byId`
-   - `stores.render.edge.*`
-
-3. `EditorEdgeDetail`
-   如果还有必要，放到 `editor-scene` 的 `query.edge` 或 `stores.render.edge` 体系。
-   不该在 editor 再建一份本地 read layer。
-
-4. `connectCandidates`
-   若长期保留，应进入：
-   - `editor-scene.query.edge.connectCandidates`
-   或更通用的 connect query primitive。
-
-一句话：
-
-- `edge.ts` 当前还承担了“edge render/hit/geometry 的第二投影层”，长期必须下沉或删除。
-
----
-
-## 5.4 `scene/selection.ts`
-
-当前问题：
-
-- 这里做的是 selection summary / affordance / selected stores。
-- 它依赖 scene 数据，但它本质上是 session/presentation 派生，不是 scene canonical runtime。
-
-最终结论：
-
-- 这个文件不应继续放在 `scene/` 命名空间下。
-
-最终归属：
-
-- 如果它仍然是 selection view/read model：
-  下沉到 `editor-scene`。
-- 如果它本质是 session/panel/chrome presentation：
-  迁移到 `session/` 侧。
-
-推荐位置：
-
-```txt
-whiteboard/packages/whiteboard-editor-scene/src/...   // selection query/view truth
-whiteboard/packages/whiteboard-editor/src/session/... // selection presentation
-```
-
-原因：
-
-- selection 相关能力必须先拆成两种：
-  - query/view truth
-  - session presentation
-- 前者留在 `editor-scene`
-- 后者留在 `session`
-- 两者都不该继续留在 `editor/src/scene`
-
----
-
-## 5.5 `scene/mindmap.ts`
-
-当前问题：
-
-- 混了两种完全不同的能力：
-  - `readMindmapNavigateTarget`
-  - `readAddChildTargets`
-- 前者是纯结构导航。
-- 后者是 UI chrome affordance。
-
-最终结论：
-
-- 这个文件必须拆开，不应继续整体留在 `scene/`。
-
-拆分方式：
-
-1. `readMindmapNavigateTarget`
-   如果只是纯 structure primitive，下沉到 `whiteboard-core/mindmap`。
-   如果最终调用面属于 scene query，则由 `editor-scene.query.mindmap.*` 直接暴露。
-
-2. `readAddChildTargets`
-   迁移到 session/chrome presentation。
-   推荐位置：
-
-```txt
-whiteboard/packages/whiteboard-editor/src/session/presentation/mindmapChrome.ts
-```
-
-3. `MindmapChrome`
-   作为 session/chrome 输出类型，也不应再挂在 `scene`。
-
-补充约束：
-
-- `mindmap` 的 query/view 如果已经在 `editor-scene` 存在，调用方直接使用。
-- `editor/src/scene` 不允许再保留 `mindmap.view`、`mindmap.navigate` 这一类中转接口。
-
----
-
-## 5.6 `scene/pick.ts`
-
-当前状态已经明显变好：
-
-- 不再维护第二套 node/edge precise resolve 主逻辑。
-- 已改为直接依赖 `query.hit.item + spatial.candidates`。
-
-最终结论：
-
-- 逻辑可以保留。
-- 位置要改。
-
-最终位置：
-
-```txt
-scene/host/pick.ts
-```
-
-最终接口：
-
-- 只暴露 frame-throttled runtime。
-- `resolve/candidates/rect` 这类同步 helper 不属于长期必须面。
-
-也就是说，长期最优版本可以进一步收成：
+以下接口必须直接落到 `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts` 和 `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts`，不允许继续留在 `whiteboard-editor/src/scene` 包一层。
 
 ```ts
-type ScenePickRuntime = {
-  schedule(request): void
-  get(): ScenePickRuntimeResult | undefined
-  subscribe(listener): Unsubscribe
-  clear(): void
-  dispose(): void
+export interface Query {
+  node: {
+    get(id: NodeId): NodeView | undefined
+    idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]
+  }
+  edge: {
+    get(id: EdgeId): EdgeView | undefined
+    related(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+    idsInRect(rect: Rect, options?: {
+      match?: 'touch' | 'contain'
+    }): readonly EdgeId[]
+    connectCandidates(rect: Rect): readonly EdgeConnectCandidate[]
+  }
+  mindmap: {
+    get(id: MindmapId): MindmapView | undefined
+    resolve(value: string): MindmapId | undefined
+    structure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
+    navigate(input: {
+      id: MindmapId
+      fromNodeId: NodeId
+      direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+    }): NodeId | undefined
+  }
+  group: {
+    get(id: GroupId): GroupView | undefined
+    ofNode(nodeId: NodeId): GroupId | undefined
+    ofEdge(edgeId: EdgeId): GroupId | undefined
+    target(groupId: GroupId): SelectionTarget | undefined
+    exact(target: SelectionTarget): readonly GroupId[]
+  }
 }
 ```
 
----
+实现要求：
 
-## 5.7 `scene/cache/geometry.ts`
-
-当前问题：
-
-- 依赖 `scene/edge.ts` 的 `resolveGraphEdgeGeometry`。
-- 说明 host geometry memo 还建立在 editor 本地 edge primitive 之上。
-
-最终结论：
-
-- 逻辑可以保留，位置和依赖要清理。
-
-最终位置：
-
-```txt
-scene/host/geometry.ts
-```
-
-最终要求：
-
-- 只做 revision-based memo。
-- 不再依赖 `scene/edge.ts`。
-- 底层 edge geometry primitive 必须直接来自：
-  - `editor-scene`
-  - 或 `whiteboard-core`
-
-补充约束：
-
-- 如果 `editor-scene` 已经提供可直接消费的 edge geometry / node render view：
-  `host.geometry` 只做 memo，不再重算、不再转义、不再二次包装。
+- `Query.node.idsInRect` 直接迁移 `whiteboard/packages/whiteboard-editor/src/scene/node.ts` 里的 `idsInRect` 逻辑。
+- `Query.edge.idsInRect` 直接迁移 `whiteboard/packages/whiteboard-editor/src/scene/edge.ts` 里的 `idsInRect` 逻辑。
+- `Query.edge.connectCandidates` 直接迁移 `whiteboard/packages/whiteboard-editor/src/scene/edge.ts` 里的 `connectCandidates` 逻辑。
+- `Query.mindmap.navigate` 直接调用 `whiteboard/packages/whiteboard-core/src/mindmap/tree.ts` 新增的 `readMindmapNavigateTarget`。
+- `Query.group.ofNode` / `ofEdge` / `target` 直接取 `runtime.state().graph.group` 和 `runtime.state().graph.nodes/edges`，不要再经 `source.ts` 组装 facade。
 
 ---
 
-## 5.8 `scene/cache/scope.ts`
+## 纯 primitive 必须迁移到的指定代码
 
-当前问题：
+### 1. `toSpatialNode`
 
-- 语义上是 host helper，不是 cache infra。
-- `relatedEdges` 已经来自 `query.edge.related`，没有必要继续包一层“scene cache”语义。
+源文件：
 
-最终结论：
+- `whiteboard/packages/whiteboard-editor/src/scene/node.ts`
 
-- 逻辑可以保留。
-- 应迁到：
+目标文件：
 
-```txt
-scene/host/scope.ts
-```
+- `whiteboard/packages/whiteboard-core/src/node/projection.ts`
+- `whiteboard/packages/whiteboard-core/src/node/index.ts`
 
-最终接口只保留：
+最终代码要求：
 
-- `move`
-- `bounds`
+- 在 `whiteboard/packages/whiteboard-core/src/node/projection.ts` 新增并导出 `toSpatialNode(...)`。
+- 在 `whiteboard/packages/whiteboard-core/src/node/index.ts` 重新导出 `toSpatialNode`。
 
-不再单独暴露：
+调用方修改：
 
-- `relatedEdges`
+- `whiteboard/packages/whiteboard-editor/src/input/features/transform.ts`
+- `whiteboard/packages/whiteboard-editor/src/input/features/edge/connect.ts`
+- `whiteboard/packages/whiteboard-editor/src/scene/cache/scope.ts` 删除前的迁移代码
+- 其他所有 `@whiteboard/editor/scene/node` 的 `toSpatialNode` 引用
 
-因为这个能力已经属于 `query.edge.related`。
+统一改为：
+
+- `import { toSpatialNode } from '@whiteboard/core/node'`
+
+### 2. node capability helper
+
+源文件：
+
+- `whiteboard/packages/whiteboard-editor/src/scene/node.ts`
+
+目标文件：
+
+- `whiteboard/packages/whiteboard-editor/src/types/node/support.ts`
+- `whiteboard/packages/whiteboard-editor/src/types/node/index.ts`
+
+最终代码要求：
+
+- 在 `whiteboard/packages/whiteboard-editor/src/types/node/support.ts` 新增 `resolveNodeEditorCapability(node, type)`。
+- 逻辑直接迁移当前 `resolveNodeCapability`，包含 mindmap owner 对 `resize/rotate` 的裁剪。
+- 在 `whiteboard/packages/whiteboard-editor/src/types/node/index.ts` 重新导出 `resolveNodeEditorCapability`。
+
+调用方修改：
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/transform.ts`
+- `whiteboard/packages/whiteboard-editor/src/input/features/selection/press.ts`
+- `whiteboard/packages/whiteboard-editor/src/session/projection/selection.ts`
+- 其他所有当前依赖 `projection.node.capability(...)` 的地方
+
+统一改为：
+
+- 先读 node model
+- 再调用 `resolveNodeEditorCapability(node, nodeType)`
+
+### 3. `resolveGraphEdgeGeometry`
+
+源文件：
+
+- `whiteboard/packages/whiteboard-editor/src/scene/edge.ts`
+
+目标文件：
+
+- `whiteboard/packages/whiteboard-core/src/edge/view.ts`
+- `whiteboard/packages/whiteboard-core/src/edge/index.ts`
+
+最终代码要求：
+
+- 在 `whiteboard/packages/whiteboard-core/src/edge/view.ts` 新增 `resolveEdgeViewFromNodeGeometry(...)`。
+- 输入直接使用：
+  - `edge: Edge`
+  - `readNodeGeometry(nodeId): { node: NodeModel; rect: Rect; rotation: number } | undefined`
+- 输出直接返回 `CoreEdgeView | undefined`。
+- 在 `whiteboard/packages/whiteboard-core/src/edge/index.ts` 重新导出 `resolveEdgeViewFromNodeGeometry`。
+
+调用方修改：
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/edge/connect.ts`
+- `whiteboard/packages/whiteboard-editor/src/scene/cache/geometry.ts` 删除前的迁移代码
+
+统一改为：
+
+- `import { resolveEdgeViewFromNodeGeometry } from '@whiteboard/core/edge'`
+
+### 4. `readMindmapNavigateTarget`
+
+源文件：
+
+- `whiteboard/packages/whiteboard-editor/src/scene/mindmap.ts`
+
+目标文件：
+
+- `whiteboard/packages/whiteboard-core/src/mindmap/tree.ts`
+- `whiteboard/packages/whiteboard-core/src/mindmap/index.ts`
+
+最终代码要求：
+
+- 在 `whiteboard/packages/whiteboard-core/src/mindmap/tree.ts` 新增 `readMindmapNavigateTarget(...)`。
+- 在 `whiteboard/packages/whiteboard-core/src/mindmap/index.ts` 重新导出。
+
+调用方修改：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts`
+
+统一改为：
+
+- `query.mindmap.navigate(...)` 内部直接调用 `readMindmapNavigateTarget(...)`
 
 ---
 
-## 5.9 `scene/cache/visible.ts`
+## scene 文件逐项迁移清单
 
-当前问题：
+### A. `whiteboard/packages/whiteboard-editor/src/scene/source.ts`
 
-- 本质是 host-level memo helper，不是 scene canonical cache。
+必须保留：
 
-最终结论：
+- `revision`
+- `query`
+- `stores`
+- `host`
+- `dispose`
 
-- 保留逻辑。
-- 重命名并迁移到：
-
-```txt
-scene/host/visible.ts
-```
-
----
-
-## 5.10 `scene/cache/order.ts`
-
-当前问题：
-
-- 只是 `items -> order index` 的本地 memo。
-- 职责很小，但不应放在 `cache` 目录里。
-
-最终结论：
-
-- 若 `host.geometry.order` 还需要，就并入 `host/geometry.ts`。
-- 不需要单独文件。
-
----
-
-## 6. 最终数据源原则
-
-`whiteboard-editor/src/scene` 清理时必须遵守这条原则：
-
-- **editor 内部不得再制造第二套 scene truth。**
-
-最终只能有这三层：
-
-1. `scene.query`
-   同步查询语义真相。
-
-2. `scene.stores`
-   reactive scene/read model。
-
-3. `scene.host`
-   editor host-only helper/runtime。
-
-凡是一个能力能直接从 `query` 或 `stores` 读到，就不允许再在 `scene/` 下包装成：
-
-- `nodes.read`
-- `edges.read`
-- `mindmap.view`
-- `group.exact`
-- `chrome`
-- `selection`
-
-这类旧 facade。
-
-补充成硬性要求：
-
-- 能放进 `editor-scene.query` 的，一律放进去。
-- 能放进 `editor-scene.stores` 的，一律放进去。
-- `whiteboard-editor/src/scene` 只允许“直接暴露”和“host-only helper”两类代码。
-- 不允许存在第三类“editor 本地 query/view adapter”。
-
----
-
-## 7. 最终实施方案
-
-## P0. 收口 public shape
-
-修改：
-
-- `scene/source.ts`
-
-要求：
-
-- `EditorSceneRuntime` 只保留：
-  - `revision`
-  - `query`
-  - `stores`
-  - `host`
-
-删除根级字段：
-
-- `items`
-- `pick`
-- `snap`
-- `geometry`
-- `scope`
-- `frame`
-- `node`
-- `edge`
-- `nodes`
-- `edges`
-- `selection`
-- `mindmap`
-- `group`
-- `chrome`
-
-完成标志：
-
-- `editor.scene` public type 与文档完全一致。
-
-## P1. 迁移内部调用
-
-把 editor / react / test 里的调用改成：
-
-- `scene.query.*`
-- `scene.stores.*`
-- `scene.host.*`
-
-并且明确：
-
-- 如果某能力已在 `editor-scene` 存在：
-  直接改调用方。
-- 不允许为了少改调用方，在 `editor/src/scene` 新增转发。
-
-禁止继续引入：
-
-- `scene.nodes.*`
-- `scene.edges.*`
-- `scene.edge.render.*`
-- `scene.mindmap.*`
-- `scene.group.*`
-
-完成标志：
-
-- `src/` 代码里不再出现上述旧接口引用。
-- `whiteboard-editor/src/scene` 不再新增任何 query/view 同义 facade。
-
-## P2. 删除 node/edge 二次 projection
-
-删除：
-
-- `scene/node.ts`
-- `scene/edge.ts`
-
-前置迁移：
-
-- `toSpatialNode`
-- `resolveNodeCapability`
-- `resolveGraphEdgeGeometry`
-- `connectCandidates`
-
-分别下沉到：
-
-- `whiteboard-core`
-- `editor-scene`
-- node type/session infra
-
-完成标志：
-
-- editor 不再定义 `EditorNodeView` / `EditorEdgeView`。
-- node/edge 相关 query/view 调用全部直接使用 `editor-scene`。
-
-## P3. 清理 selection/mindmap 非 scene 职责
-
-迁移：
-
-- `scene/selection.ts` -> `session/projection/selection.ts`
-- `scene/mindmap.ts`
-  - navigation primitive -> `whiteboard-core/mindmap`
-  - chrome affordance -> `session/presentation/mindmapChrome.ts`
-
-补充：
-
-- 如果 selection/mindmap 某部分本质上仍然是 query/view truth：
-  先迁入 `editor-scene`
-  再修改调用方直接使用
-  不允许留在 `editor/src/scene`
-
-完成标志：
-
-- `scene/` 目录内不再承载 session/chrome 逻辑。
-- `scene/` 目录内不再承载 selection/mindmap query/view truth。
-
-## P4. 重组 host helper
-
-重组：
-
-- `scene/pick.ts` -> `scene/host/pick.ts`
-- `scene/cache/geometry.ts` -> `scene/host/geometry.ts`
-- `scene/cache/scope.ts` -> `scene/host/scope.ts`
-- `scene/cache/visible.ts` -> `scene/host/visible.ts`
-- `scene/cache/order.ts` -> 合并进 `host/geometry.ts`
-
-完成标志：
-
-- `cache` 目录被删除。
-
-## P5. 最终删除重复 facade
-
-删除：
+必须删除：
 
 - `SceneProjectionStores`
-- 任何 `nodeGraph/nodeUi/edgeGraph/edgeUi` 这类本地 rename facade
+- `createSceneProjectionStores`
+- 所有 `nodeGraph` / `edgeGraph` / `nodeUi` / `edgeUi` 这类 rename facade
+- 所有根级旧接口装配
 
-要求：
+必须直接改为读取：
 
-- `source.ts` 内部直接使用 `controller.stores.*`
+- `controller.query`
+- `controller.stores`
 
-完成标志：
+`host` 内部唯一允许装配的 helper：
 
-- `source.ts` 只剩 public shape 装配。
+- `createScenePick` -> `whiteboard/packages/whiteboard-editor/src/scene/host/pick.ts`
+- `createSceneVisible` -> `whiteboard/packages/whiteboard-editor/src/scene/host/visible.ts`
+- `createSceneGeometry` -> `whiteboard/packages/whiteboard-editor/src/scene/host/geometry.ts`
+- `createSceneScope` -> `whiteboard/packages/whiteboard-editor/src/scene/host/scope.ts`
+
+### B. `whiteboard/packages/whiteboard-editor/src/scene/node.ts`
+
+整文件删除。
+
+迁移落点：
+
+- `toSpatialNode` -> `whiteboard/packages/whiteboard-core/src/node/projection.ts`
+- `resolveNodeCapability` -> `whiteboard/packages/whiteboard-editor/src/types/node/support.ts`
+- `idsInRect` -> `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts` 的 `query.node.idsInRect`
+
+必须删除的本地类型和接口：
+
+- `EditorNodeView`
+- `GraphNodeGeometry`
+- `GraphNodeRead`
+- `createGraphNodeRead`
+- `toEditorNodeView`
+- `toGraphNodeGeometry`
+
+替代读取方式：
+
+- node base / geometry -> `editor.scene.query.node.get(nodeId)`
+- node state -> `editor.scene.stores.graph.state.node.byId`
+- node render view -> `editor.scene.stores.render.node.byId`
+
+### C. `whiteboard/packages/whiteboard-editor/src/scene/edge.ts`
+
+整文件删除。
+
+迁移落点：
+
+- `resolveGraphEdgeGeometry` -> `whiteboard/packages/whiteboard-core/src/edge/view.ts`
+- `idsInRect` -> `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts` 的 `query.edge.idsInRect`
+- `connectCandidates` -> `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts` 的 `query.edge.connectCandidates`
+
+必须删除的本地类型和接口：
+
+- `EditorEdgeLabelView`
+- `EditorEdgeView`
+- `EditorEdgeDetail`
+- `GraphEdgeRead`
+- `createGraphEdgeRead`
+- `toEditorEdgeView`
+
+替代读取方式：
+
+- edge base / route / box -> `editor.scene.query.edge.get(edgeId)`
+- edge ui state -> `editor.scene.stores.graph.state.edge.byId`
+- edge render statics / active / labels / masks / overlay -> `editor.scene.stores.render.edge.*`
+- resolved edge geometry -> `editor.scene.host.geometry.edge(edgeId)`
+
+### D. `whiteboard/packages/whiteboard-editor/src/scene/selection.ts`
+
+整文件迁移到：
+
+- `whiteboard/packages/whiteboard-editor/src/session/projection/selection.ts`
+
+迁移规则：
+
+- 文件整体原样迁过去，不保留 scene 版本。
+- `createGraphSelectionRead` 改名为 `createSessionSelectionProjection`。
+- 输入不再接受 `GraphNodeRead` / `GraphEdgeRead`。
+- 输入改为直接接受：
+  - `selection: store.ReadStore<SelectionTarget>`
+  - `query: Pick<EditorSceneRuntime['query'], 'node' | 'edge'>`
+  - `stores: Pick<EditorSceneRuntime['stores'], 'graph' | 'render'>`
+  - `nodeType: Pick<NodeTypeSupport, 'capability'>`
+
+文件内替换要求：
+
+- `node.capability(...)` 全部改为 `resolveNodeEditorCapability(...)`
+- `node.view` 读取改为 `stores.render.node.byId`
+- `edge.bounds` 读取统一改为 `query.edge.get(edgeId)?.route.bounds`
+
+### E. `whiteboard/packages/whiteboard-editor/src/scene/mindmap.ts`
+
+必须拆成两部分：
+
+- `readMindmapNavigateTarget` -> `whiteboard/packages/whiteboard-core/src/mindmap/tree.ts`
+- `MindmapChrome` / `isMindmapChromeEqual` / `readAddChildTargets` -> `whiteboard/packages/whiteboard-editor/src/session/presentation/mindmapChrome.ts`
+
+`session/presentation/mindmapChrome.ts` 最终只保留：
+
+- `export type MindmapChrome`
+- `export const isMindmapChromeEqual`
+- `export const readAddChildTargets`
+
+`session/source.ts` 必须改为从这里导入，不允许再从 `scene/mindmap.ts` 导入。
+
+### F. `whiteboard/packages/whiteboard-editor/src/scene/pick.ts`
+
+迁移到：
+
+- `whiteboard/packages/whiteboard-editor/src/scene/host/pick.ts`
+
+保留内容：
+
+- frame-throttled runtime
+- `schedule`
+- `get`
+- `subscribe`
+- `clear`
+- `dispose`
+
+必须删除的同步 facade：
+
+- `editor.scene.pick`
+
+同步 pick 能力统一改为：
+
+- candidate query -> `editor.scene.query.spatial.candidates(...)`
+- hit resolve -> `editor.scene.query.hit.item(...)`
+
+### G. `whiteboard/packages/whiteboard-editor/src/scene/cache/geometry.ts`
+
+迁移到：
+
+- `whiteboard/packages/whiteboard-editor/src/scene/host/geometry.ts`
+
+同时把：
+
+- `whiteboard/packages/whiteboard-editor/src/scene/cache/order.ts`
+
+并入同一个文件。
+
+最终只保留：
+
+- revision memo
+- `node(nodeId)`
+- `edge(edgeId)`
+- `order(item)`
+
+不得再依赖：
+
+- `scene/edge.ts`
+
+必须直接依赖：
+
+- `stores.render.node.byId`
+- `resolveEdgeViewFromNodeGeometry`
+- `stores.items`
+
+### H. `whiteboard/packages/whiteboard-editor/src/scene/cache/scope.ts`
+
+迁移到：
+
+- `whiteboard/packages/whiteboard-editor/src/scene/host/scope.ts`
+
+同时修改：
+
+- `import { toSpatialNode } from '@whiteboard/editor/scene/node'`
+
+改为：
+
+- `import { toSpatialNode } from '@whiteboard/core/node'`
+
+最终只保留：
+
+- `move(target)`
+- `bounds(target)`
+
+`relatedEdges` 直接删除，调用方统一改用：
+
+- `editor.scene.query.edge.related(nodeIds)`
+
+### I. `whiteboard/packages/whiteboard-editor/src/scene/cache/visible.ts`
+
+迁移到：
+
+- `whiteboard/packages/whiteboard-editor/src/scene/host/visible.ts`
+
+最终只保留 visible rect memo，不再出现 `cache` 目录。
 
 ---
 
-## 8. 最终完成态
+## 调用方详细迁移清单
 
-完成后，`whiteboard-editor/src/scene` 应满足：
+### 输入层
 
-1. 不再拥有第二套 scene read model。
-2. 不再拥有第二套 node/edge view model。
-3. 不再拥有第二套 selection/mindmap presentation model。
-4. 不再把 `editor-scene` 再包装成旧接口 facade。
-5. 只保留 `query / stores / host`。
-6. host helper 文件名与职责一致，不再用 `cache` 这种模糊命名。
-7. query 相关能力全部在 `editor-scene`。
-8. view 相关能力全部在 `editor-scene`。
-9. 如果 `editor-scene` 已有能力，调用方直接用，不再经过 `editor/src/scene` 中转。
+- `whiteboard/packages/whiteboard-editor/src/input/runtime.ts`
+  - `projection.snap.rect` -> `projection.query.snap`
+  - `projection.edge.connectCandidates` -> `projection.query.edge.connectCandidates`
 
-最终判断标准只有一个：
+- `whiteboard/packages/whiteboard-editor/src/input/features/selection/marquee.ts`
+  - `projection.node.idsInRect` -> `projection.query.node.idsInRect`
+  - `projection.edge.idsInRect` -> `projection.query.edge.idsInRect`
 
-- 新同学看到 `scene/` 目录时，能立刻分清：
-  - 哪些是 scene truth
-  - 哪些是 host helper
-  - 哪些根本不该在这里
+- `whiteboard/packages/whiteboard-editor/src/input/features/draw.ts`
+  - `projection.node.idsInRect` -> `projection.query.node.idsInRect`
 
-如果还需要解释“这个字段只是历史兼容保留”，说明这次清理还没完成。
+- `whiteboard/packages/whiteboard-editor/src/input/features/transform.ts`
+  - `projection.geometry.node` -> `projection.host.geometry.node`
+  - `projection.node.capability(...)` -> `resolveNodeEditorCapability(...)`
+  - `projection.selection.summary` -> `sessionSource.selection.summary`
+  - `@whiteboard/editor/scene/node` -> `@whiteboard/core/node`
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/edge/connect.ts`
+  - `@whiteboard/editor/scene/edge` -> `@whiteboard/core/edge`
+  - `@whiteboard/editor/scene/node` -> `@whiteboard/core/node`
+  - `projection.edge.model` -> `projection.query.edge.get(edgeId)?.base.edge`
+  - `projection.edge.geometry.get` -> `projection.host.geometry.edge`
+  - `projection.edge.capabilityOf(edgeId)` -> `resolveEdgeCapability(projection.query.edge.get(edgeId)?.base.edge)`
+  - `projection.geometry.node` -> `projection.host.geometry.node`
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/edge/label.ts`
+  - `projection.selection.summary` -> `sessionSource.selection.summary`
+  - `projection.edge.model` -> `projection.query.edge.get(edgeId)?.base.edge`
+  - `projection.edge.geometry.get` -> `projection.host.geometry.edge`
+  - `projection.edge.capabilityOf(edgeId)` -> `resolveEdgeCapability(...)`
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/edge/route.ts`
+  - `projection.edge.model` -> `projection.query.edge.get(edgeId)?.base.edge`
+  - `projection.edge.capabilityOf(edgeId)` -> `resolveEdgeCapability(...)`
+  - `projection.edge.geometry.get` -> `projection.host.geometry.edge`
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/selection/press.ts`
+  - `projection.selection.summary` -> `sessionSource.selection.summary`
+  - `projection.selection.affordance` -> `sessionSource.selection.affordance`
+  - `projection.node.capability(node)` -> `resolveNodeEditorCapability(node, nodeType)`
+  - `projection.group.ofNode` -> `projection.query.group.ofNode`
+  - `projection.group.target` -> `projection.query.group.target`
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/selection/move.ts`
+  - `projection.frame.parent` -> `projection.query.frame.parent`
+  - `projection.frame.pick` -> `projection.query.frame.pick`
+  - `projection.mindmap.id` -> `projection.query.mindmap.resolve`
+  - `projection.mindmap.structure` -> `projection.query.mindmap.structure`
+  - `projection.mindmap.view` -> `projection.query.mindmap.get`
+  - `projection.scope.move` -> `projection.host.scope.move`
+
+- `whiteboard/packages/whiteboard-editor/src/input/features/mindmap/drag.ts`
+  - `projection.mindmap.id` -> `projection.query.mindmap.resolve`
+  - `projection.mindmap.structure` -> `projection.query.mindmap.structure`
+  - `projection.mindmap.view` -> `projection.query.mindmap.get`
+
+- `whiteboard/packages/whiteboard-editor/src/input/host.ts`
+  - `projection.group.target` -> `projection.query.group.target`
+
+### session / write / types
+
+- `whiteboard/packages/whiteboard-editor/src/session/source.ts`
+  - `readAddChildTargets` / `MindmapChrome` / `isMindmapChromeEqual` 的导入源改为 `whiteboard/packages/whiteboard-editor/src/session/presentation/mindmapChrome.ts`
+  - `graph.selection.*` 改为 `createSessionSelectionProjection(...)` 的返回值
+  - `graph.edge.detail` 读取改为 `projection.query.edge.get` + `projection.host.geometry.edge`
+  - `graph.edge.capability` 改为 `resolveEdgeCapability`
+  - `graph.mindmap.structure` -> `projection.query.mindmap.structure`
+  - `graph.node.get(nodeId)?.rect` -> `projection.query.node.get(nodeId)?.geometry.rect`
+  - `graph.node.get(nodeId)?.node.locked` -> `projection.query.node.get(nodeId)?.base.node.locked`
+
+- `whiteboard/packages/whiteboard-editor/src/write/index.ts`
+  - `projection.edge` 不再整体透传给 `createEdgeWrite`
+  - 改为只传：
+    - `readEdge: (edgeId) => projection.query.edge.get(edgeId)?.base.edge`
+
+- `whiteboard/packages/whiteboard-editor/src/write/edge/index.ts`
+  - 所有 `Pick<EditorSceneRuntime['edge'], 'model'>` 改为显式函数签名 `readEdge(edgeId): Edge | undefined`
+
+- `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+  - `MindmapChrome` 导入源改为 `whiteboard/packages/whiteboard-editor/src/session/presentation/mindmapChrome.ts`
+  - `EditorSceneSource` 只保留 `revision/query/stores/host`
+
+### 测试
+
+以下旧读取方式必须全部删除：
+
+- `editor.scene.nodes.read`
+- `editor.scene.nodes.capability`
+- `editor.scene.edges.geometry`
+- `editor.scene.pick.candidates`
+- `editor.scene.pick.resolve`
+- `editor.scene.mindmap.view`
+
+统一替代规则：
+
+- 节点几何断言：
+  - `editor.scene.nodes.read.get(id)?.rect`
+  - 改为
+  - `editor.scene.query.node.get(id)?.geometry.rect`
+
+- 节点 model 断言：
+  - `editor.scene.nodes.read.get(id)?.node`
+  - 改为
+  - `editor.scene.query.node.get(id)?.base.node`
+
+- 节点 state 断言：
+  - `hovered / selected / patched / resizing / edit`
+  - 改为
+  - `store.read(editor.scene.stores.graph.state.node.byId, id)`
+
+- edge geometry 断言：
+  - `editor.scene.edges.geometry.get(id)`
+  - 改为
+  - `editor.scene.host.geometry.edge(id)`
+
+- synchronous pick 断言：
+  - `editor.scene.pick.candidates(...)`
+  - 改为
+  - `editor.scene.query.spatial.candidates(...)`
+  - `editor.scene.pick.resolve(...)`
+  - 改为
+  - `editor.scene.query.hit.item(...)`
+
+- mindmap view 断言：
+  - `editor.scene.mindmap.view.get(id)`
+  - 改为
+  - `editor.scene.query.mindmap.get(id)`
+
+需要改的测试文件至少包括：
+
+- `whiteboard/packages/whiteboard-editor/test/node-edit-selection-chrome.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/mindmap-layout-preview-runtime.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/mindmap-enter-animation.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/text-wrap-runtime.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/scene-pick.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/mindmap-drag-preview.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/mindmap-root-move.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/mindmap-root-render.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/mindmap-drag-gesture-runtime.test.ts`
+- `whiteboard/packages/whiteboard-editor/test/mindmap-edit-relayout-preview.test.ts`
+
+---
+
+## 最终删除检查
+
+以下内容全部删除后，才算完成：
+
+- `whiteboard-editor/src/scene` 下所有非 `source.ts` / `host/*` 文件
+- `source.ts` 中所有根级 facade 装配
+- `SceneProjectionStores`
+- `EditorNodeView`
+- `EditorEdgeView`
+- `EditorEdgeDetail`
+- `GraphNodeRead`
+- `GraphEdgeRead`
+- `GraphSelectionRead`
+- `MindmapChrome` 在 `scene/` 命名空间下的残留定义
+- `cache` 目录
+- 所有 `@whiteboard/editor/scene/node` / `@whiteboard/editor/scene/edge` / `@whiteboard/editor/scene/mindmap` 导入
+
+最终判断标准：
+
+- `whiteboard-editor/src/scene` 只剩 `source.ts` 和 `host/*`
+- query/view 相关代码全部在 `whiteboard-editor-scene`
+- session presentation 相关代码全部在 `whiteboard-editor/src/session`
+- `whiteboard-editor` 内部不再存在第二套 scene read facade

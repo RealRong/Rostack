@@ -9,7 +9,7 @@ import {
 import { createEngine } from '@dataview/engine'
 import {
   projectDocumentDelta
-} from '@dataview/engine/mutation/delta'
+} from '@dataview/engine/mutation/documentDelta'
 import { entityTable } from '@shared/core'
 
 const VIEW_ID = 'view_table'

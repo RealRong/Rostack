@@ -27,7 +27,6 @@ type IntentOfType<TType extends CoreIntent['type']> = Extract<CoreIntent, {
 
 export type DataviewErrorCode =
   | ValidationCode
-  | 'mutation_engine.compile.missing'
   | 'mutation_engine.compile.blocked'
   | 'mutation_engine.compile.empty'
   | 'mutation_engine.apply.empty'

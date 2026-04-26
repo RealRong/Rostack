@@ -20,19 +20,27 @@ export type {
 export { compileControl } from './compiler'
 export * as mutationTrace from './mutationTrace'
 export * as planningContext from './planningContext'
-export { MutationEngine } from './engine'
-export { applyResult, mutationFailure } from './engine'
+export {
+  CommandMutationEngine,
+  OperationMutationRuntime
+} from './engine'
+export {
+  applyResult,
+  mutationFailure,
+  mutationResult
+} from './engine'
 export type {
   MutationApplyResult,
+  CommandMutationSpec,
   MutationCurrent,
   MutationError,
-  MutationEngineSpec,
   MutationExecuteInput,
   MutationExecuteResult,
   MutationExecuteResultOfInput,
   MutationFailure,
   MutationHistorySpec,
   MutationInternalState,
+  MutationRuntimeSpec,
   MutationIntentKind,
   MutationIntentOf,
   MutationIntentTable,

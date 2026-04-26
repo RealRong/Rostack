@@ -1,5 +1,5 @@
 import {
-  MutationEngineSpec,
+  CommandMutationSpec,
   applyResult,
   type Origin as MutationOrigin
 } from '@shared/mutation'
@@ -84,7 +84,7 @@ const toKernelOrigin = (
     : 'user'
 )
 
-export type WhiteboardMutationSpec = MutationEngineSpec<
+export type WhiteboardMutationSpec = CommandMutationSpec<
   Document,
   WhiteboardMutationTable,
   Operation,

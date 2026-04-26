@@ -31,11 +31,11 @@ import {
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'
+import { now } from '@dataview/engine/runtime/clock'
 import {
-  now
-} from '@dataview/engine/runtime/clock'
-import type {
-  PerformanceRuntime
+  summarizeTrace,
+  toPerformanceKind,
+  type PerformanceRuntime
 } from '@dataview/engine/runtime/performance'
 import type {
   CommitTrace,
@@ -43,14 +43,11 @@ import type {
   IndexTrace
 } from '@dataview/engine/contracts/performance'
 import {
-  summarizeTrace,
-  toPerformanceKind
-} from './trace'
-import {
   projectDocumentDelta
-} from './delta'
+} from './documentDelta'
 import type {
-  DataviewPublishState
+  DataviewMutationCache,
+  DataviewPublish
 } from './types'
 
 const createEmptyIndexStageTrace = (): IndexStageTrace => ({
@@ -71,11 +68,14 @@ const createEmptyIndexTrace = (): IndexTrace => ({
   summaries: createEmptyIndexStageTrace()
 })
 
-const createPublishState = (input: {
+const createDataviewMutationCache = (input: {
   doc: DataDoc
   trace: DataviewTrace
   activeProjector: ReturnType<typeof createActiveProjector>
-}): DataviewPublishState => {
+}): {
+  publish: DataviewPublish
+  cache: DataviewMutationCache
+} => {
   const read = createDocumentReadContext(input.doc)
   const plan = resolveViewPlan(read, read.activeViewId)
   const index = createIndexState(
@@ -96,16 +96,33 @@ const createPublishState = (input: {
   }).snapshot
 
   return {
-    doc: input.doc,
-    ...(plan
-      ? { plan }
-      : {}),
-    index,
-    ...(active
-      ? { active }
-      : {})
+    publish: {
+      ...(active
+        ? { active }
+        : {})
+    },
+    cache: {
+      ...(plan
+        ? { plan }
+        : {}),
+      index
+    }
   }
 }
+
+const appendResetDelta = (
+  publish: DataviewPublish
+): DataviewPublish => ({
+  ...publish,
+  delta: {
+    doc: {
+      reset: true
+    },
+    active: {
+      reset: true
+    }
+  }
+})
 
 export const createDataviewPublishSpec = (input?: {
   performance?: PerformanceRuntime
@@ -116,8 +133,8 @@ export const createDataviewPublishSpec = (input?: {
   {
     trace: DataviewTrace
   },
-  DataviewPublishState,
-  void
+  DataviewPublish,
+  DataviewMutationCache
 > => {
   let activeProjector = createActiveProjector()
   let bootstrapped = false
@@ -125,37 +142,30 @@ export const createDataviewPublishSpec = (input?: {
   return {
     init: (doc) => {
       activeProjector = createActiveProjector()
-      const publish = createPublishState({
+      const runtime = createDataviewMutationCache({
         doc,
         trace: dataviewTrace.reset(undefined, doc),
         activeProjector
       })
-      if (bootstrapped) {
-        publish.delta = {
-          doc: {
-            reset: true
-          },
-          active: {
-            reset: true
-          }
-        }
-      }
+      const shouldReset = bootstrapped
       bootstrapped = true
-      return {
-        publish,
-        cache: undefined
-      }
+
+      return shouldReset
+        ? {
+            publish: appendResetDelta(runtime.publish),
+            cache: runtime.cache
+          }
+        : runtime
     },
     reduce: ({ prev, doc, write }) => {
-      const previous = prev.publish
       const perf = input?.performance
       const startedAt = now()
       const trace = write.extra.trace
       const read = createDocumentReadContext(doc)
       const plan = resolveViewPlan(read, read.activeViewId)
       const index = deriveIndex({
-        previous: previous.index,
-        previousDemand: previous.plan?.index ?? emptyNormalizedIndexDemand(),
+        previous: prev.cache.index,
+        previousDemand: prev.cache.plan?.index ?? emptyNormalizedIndexDemand(),
         document: doc,
         impact: createBaseImpact(trace),
         demand: plan?.index
@@ -166,7 +176,7 @@ export const createDataviewPublishSpec = (input?: {
         },
         view: {
           plan,
-          previousPlan: previous.plan
+          previousPlan: prev.cache.plan
         },
         index: {
           state: index.state,
@@ -216,22 +226,19 @@ export const createDataviewPublishSpec = (input?: {
 
       return {
         publish: {
-          doc,
-          ...(plan
-            ? { plan }
-            : {}),
-          index: index.state,
           ...(active.snapshot
             ? { active: active.snapshot }
             : {}),
           ...(delta
             ? { delta }
-            : {}),
-          ...(performanceTrace
-            ? { performanceTrace }
             : {})
         },
-        cache: undefined
+        cache: {
+          ...(plan
+            ? { plan }
+            : {}),
+          index: index.state
+        }
       }
     }
   }

@@ -12,7 +12,7 @@ import {
   document
 } from '@dataview/core/document'
 import {
-  MutationEngine,
+  CommandMutationEngine,
   type MutationOptions
 } from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
@@ -27,10 +27,12 @@ import type {
 import type {
   DataviewCurrent
 } from '@dataview/engine/contracts/result'
-import { createDataviewMutationSpec } from '@dataview/engine/mutation'
+import { createDataviewMutationKernel } from '@dataview/engine/mutation'
 import type {
-  DataviewPublishState
+  DataviewMutationCache,
+  DataviewPublish
 } from '@dataview/engine/mutation'
+import { createDataviewPublishSpec } from './mutation/publish'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import type {
   DataviewIntentTable,
@@ -42,7 +44,7 @@ import type {
 const toCurrent = (current: {
   rev: number
   doc: DataDoc
-  publish?: DataviewPublishState
+  publish?: DataviewPublish
 }): DataviewCurrent => ({
   rev: current.rev,
   doc: current.doc,
@@ -62,22 +64,26 @@ const toCurrent = (current: {
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const performance = createPerformanceRuntime(options.performance)
-  const mutationEngine = new MutationEngine<
+  const mutationEngine = new CommandMutationEngine<
     DataDoc,
     DataviewIntentTable,
     DocumentOperation,
     DataviewMutationKey,
-    DataviewPublishState,
-    void,
+    DataviewPublish,
+    DataviewMutationCache,
     {
       trace: DataviewTrace
     }
   >({
     doc: options.document,
-    spec: createDataviewMutationSpec({
-      history: options.history,
-      performance
-    })
+    spec: {
+      ...createDataviewMutationKernel({
+        history: options.history
+      }),
+      publish: createDataviewPublishSpec({
+        performance
+      })
+    }
   })
 
   const baseEngine: EngineFacadeHost = {

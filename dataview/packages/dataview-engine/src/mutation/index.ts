@@ -1,13 +1,7 @@
 export {
-  createDataviewMutationSpec
-} from './spec'
-export {
-  createDataviewPublishSpec
-} from './publish'
-export {
-  projectActiveDelta,
-  projectDocumentDelta
-} from './delta'
+  createDataviewMutationKernel
+} from './kernel'
 export type {
-  DataviewPublishState
+  DataviewMutationCache,
+  DataviewPublish
 } from './types'

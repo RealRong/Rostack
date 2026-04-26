@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import {
-  MutationEngine,
+  CommandMutationEngine,
+  OperationMutationRuntime,
   applyResult,
-  type MutationEngineSpec,
+  type CommandMutationSpec,
+  type MutationRuntimeSpec,
   type MutationIntentTable
 } from '@shared/mutation'
 import { Reducer } from '@shared/reducer'
@@ -40,7 +42,7 @@ interface TestIntentTable extends MutationIntentTable {
   }
 }
 
-const createSpec = (): MutationEngineSpec<
+const createSpec = (): CommandMutationSpec<
   TestDoc,
   TestIntentTable,
   TestOp,
@@ -133,9 +135,27 @@ const createSpec = (): MutationEngineSpec<
   }
 }
 
-describe('MutationEngine', () => {
+const createRuntimeSpec = (): MutationRuntimeSpec<
+  TestDoc,
+  TestOp,
+  TestKey,
+  TestPublish,
+  TestCache,
+  TestExtra
+> => {
+  const spec = createSpec()
+  return {
+    clone: spec.clone,
+    normalize: spec.normalize,
+    apply: spec.apply,
+    publish: spec.publish,
+    history: spec.history
+  }
+}
+
+describe('CommandMutationEngine', () => {
   test('executes a typed intent and publishes writes/history', () => {
-    const engine = new MutationEngine({
+    const engine = new CommandMutationEngine({
       doc: {
         count: 1
       },
@@ -188,7 +208,7 @@ describe('MutationEngine', () => {
   })
 
   test('supports batched execute with output array', () => {
-    const engine = new MutationEngine({
+    const engine = new CommandMutationEngine({
       doc: {
         count: 0
       },
@@ -221,7 +241,7 @@ describe('MutationEngine', () => {
   })
 
   test('supports direct apply and does not capture remote writes into history', () => {
-    const engine = new MutationEngine({
+    const engine = new CommandMutationEngine({
       doc: {
         count: 0
       },
@@ -243,7 +263,7 @@ describe('MutationEngine', () => {
   })
 
   test('load resets current state without emitting a write and clears history', () => {
-    const engine = new MutationEngine({
+    const engine = new CommandMutationEngine({
       doc: {
         count: 0
       },
@@ -281,8 +301,43 @@ describe('MutationEngine', () => {
     expect(engine.history?.state().undoDepth).toBe(0)
   })
 
+  test('replace resets runtime without emitting a write and returns true', () => {
+    const engine = new CommandMutationEngine({
+      doc: {
+        count: 0
+      },
+      spec: createSpec()
+    })
+    let writeCount = 0
+
+    engine.writes.subscribe(() => {
+      writeCount += 1
+    })
+
+    engine.execute({
+      type: 'count.add',
+      value: 1
+    })
+    const replaced = engine.replace({
+      count: 7
+    })
+
+    expect(replaced).toBe(true)
+    expect(writeCount).toBe(1)
+    expect(engine.current()).toEqual({
+      rev: 2,
+      doc: {
+        count: 7
+      },
+      publish: {
+        count: 7
+      }
+    })
+    expect(engine.history?.state().undoDepth).toBe(0)
+  })
+
   test('history clear policy can clear and skip capturing the current write', () => {
-    const engine = new MutationEngine({
+    const engine = new CommandMutationEngine({
       doc: {
         count: 0
       },
@@ -304,56 +359,28 @@ describe('MutationEngine', () => {
     expect(engine.history?.state().undoDepth).toBe(0)
   })
 
-  test('returns a failure when execute is unavailable', () => {
-    const engine = new MutationEngine({
+  test('operation runtime exposes apply without compile', () => {
+    const engine = new OperationMutationRuntime({
       doc: {
         count: 0
       },
-      spec: {
-        clone: (doc: TestDoc) => ({
-          ...doc
-        }),
-        apply: ({
-          doc,
-          ops
-        }) => applyResult.success(new Reducer<
-          TestDoc,
-          TestOp,
-          TestKey
-        >({
-          spec: {
-            serializeKey: (key) => key,
-            handle: (ctx, op) => {
-              ctx.replace({
-                count: ctx.doc().count + op.value
-              })
-            },
-            done: () => undefined
-          }
-        }).reduce({
-          doc,
-          ops
-        }))
-      }
+      spec: createRuntimeSpec()
     })
 
-    const result = engine.execute({
+    const result = engine.apply([{
       type: 'count.add',
       value: 1
-    })
+    }])
 
-    expect(result.ok).toBe(false)
-    if (result.ok) {
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
       return
     }
-    expect(result.error).toEqual({
-      code: 'mutation_engine.compile.missing',
-      message: 'MutationEngine.execute requires spec.compile.'
-    })
+    expect(result.write.doc.count).toBe(1)
   })
 
   test('returns the live current doc snapshot', () => {
-    const engine = new MutationEngine({
+    const engine = new CommandMutationEngine({
       doc: {
         count: 2
       },
@@ -369,7 +396,7 @@ describe('MutationEngine', () => {
   })
 
   test('returns a failure when spec.apply fails', () => {
-    const engine = new MutationEngine({
+    const engine = new OperationMutationRuntime({
       doc: {
         count: 0
       },

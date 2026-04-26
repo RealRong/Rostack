@@ -17,7 +17,7 @@ import type {
 } from '@dataview/core/contracts/operations'
 import {
   applyResult,
-  type MutationEngineSpec
+  type CommandMutationSpec
 } from '@shared/mutation'
 import {
   meta as mutationMeta
@@ -29,17 +29,12 @@ import type {
   DataviewHistoryConfig
 } from '@dataview/engine/contracts/history'
 import type {
-  PerformanceRuntime
-} from '@dataview/engine/runtime/performance'
-import type {
   DataviewIntentTable
 } from '@dataview/engine/types/intent'
 import type {
-  DataviewPublishState
+  DataviewMutationCache,
+  DataviewPublish
 } from './types'
-import {
-  createDataviewPublishSpec
-} from './publish'
 
 const DEFAULT_HISTORY_CONFIG: DataviewHistoryConfig = {
   enabled: true,
@@ -64,20 +59,24 @@ const shouldTrackOrigin = (
   }
 }
 
-export const createDataviewMutationSpec = (input?: {
+export type DataviewMutationKernel = Omit<
+  CommandMutationSpec<
+    DataDoc,
+    DataviewIntentTable,
+    DocumentOperation,
+    DataviewMutationKey,
+    DataviewPublish,
+    DataviewMutationCache,
+    {
+      trace: DataviewTrace
+    }
+  >,
+  'publish'
+>
+
+export const createDataviewMutationKernel = (input?: {
   history?: Partial<DataviewHistoryConfig>
-  performance?: PerformanceRuntime
-}): MutationEngineSpec<
-  DataDoc,
-  DataviewIntentTable,
-  DocumentOperation,
-  DataviewMutationKey,
-  DataviewPublishState,
-  void,
-  {
-    trace: DataviewTrace
-  }
-> => {
+}): DataviewMutationKernel => {
   const historyConfig = {
     ...DEFAULT_HISTORY_CONFIG,
     ...(input?.history ?? {})
@@ -105,9 +104,6 @@ export const createDataviewMutationSpec = (input?: {
         ? applyResult.success(result)
         : applyResult.failure(result.error)
     },
-    publish: createDataviewPublishSpec({
-      performance: input?.performance
-    }),
     ...(historyConfig.enabled
       ? {
           history: {

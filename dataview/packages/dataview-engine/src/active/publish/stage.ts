@@ -31,7 +31,7 @@ import {
 } from '@dataview/engine/active/publish/summaries'
 import {
   projectActiveDelta
-} from '@dataview/engine/mutation/delta'
+} from '@dataview/engine/active/publish/activeDelta'
 import type {
   DocumentReader
 } from '@dataview/engine/document/reader'

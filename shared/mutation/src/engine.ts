@@ -154,9 +154,8 @@ export interface MutationHistorySpec<Doc, Op, Key, Extra> {
   conflicts(left: Key, right: Key): boolean
 }
 
-export interface MutationEngineSpec<
+export interface MutationRuntimeSpec<
   Doc extends object,
-  Table extends MutationIntentTable,
   Op,
   Key,
   Publish,
@@ -165,10 +164,6 @@ export interface MutationEngineSpec<
 > {
   clone(doc: Doc): Doc
   normalize?(doc: Doc): Doc
-  compile?(input: {
-    doc: Doc
-    intents: readonly MutationIntentOf<Table>[]
-  }): MutationPlan<Op, MutationOutputOf<Table>>
   apply(input: {
     doc: Doc
     ops: readonly Op[]
@@ -176,6 +171,21 @@ export interface MutationEngineSpec<
   }): MutationApplyResult<Doc, Op, Key, Extra>
   publish?: MutationPublishSpec<Doc, Op, Key, Extra, Publish, Cache>
   history?: MutationHistorySpec<Doc, Op, Key, Extra>
+}
+
+export interface CommandMutationSpec<
+  Doc extends object,
+  Table extends MutationIntentTable,
+  Op,
+  Key,
+  Publish,
+  Cache = void,
+  Extra = void
+> extends MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra> {
+  compile(input: {
+    doc: Doc
+    intents: readonly MutationIntentOf<Table>[]
+  }): MutationPlan<Op, MutationOutputOf<Table>>
 }
 
 export interface MutationCurrent<Doc, Publish> {
@@ -191,7 +201,6 @@ export interface MutationInternalState<Doc, Publish, Cache> {
   cache?: Cache
 }
 
-const COMPILE_MISSING_CODE = 'mutation_engine.compile.missing'
 const COMPILE_BLOCKED_CODE = 'mutation_engine.compile.blocked'
 const COMPILE_EMPTY_CODE = 'mutation_engine.compile.empty'
 const APPLY_EMPTY_CODE = 'mutation_engine.apply.empty'
@@ -222,7 +231,7 @@ export const mutationFailure = <Code extends string>(
   }
 })
 
-const success = <T, W>(
+const mutationSuccess = <T, W>(
   data: T,
   write: W
 ): MutationResult<T, W> => ({
@@ -245,13 +254,22 @@ const applyFailure = <Code extends string>(
   error
 })
 
+export const mutationResult = {
+  success: mutationSuccess,
+  failure: mutationFailure
+} as const
+
+const applyCommitResult = {
+  success: applySuccess,
+  failure: applyFailure
+} as const
+
 const readFirstOutput = <Output>(
   outputs?: readonly Output[]
 ): Output | undefined => outputs?.[0]
 
-export class MutationEngine<
+export class OperationMutationRuntime<
   Doc extends object,
-  Table extends MutationIntentTable,
   Op,
   Key,
   Publish,
@@ -265,31 +283,31 @@ export class MutationEngine<
     Write<Doc, Op, Key, Extra>
   >
 
-  readonly #spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, Cache, Extra>
-  #state: MutationInternalState<Doc, Publish, Cache>
-  readonly #listeners = new Set<(current: MutationCurrent<Doc, Publish>) => void>()
-  readonly #writeListeners = new Set<(write: Write<Doc, Op, Key, Extra>) => void>()
+  protected readonly spec: MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra>
+  private state: MutationInternalState<Doc, Publish, Cache>
+  private readonly listeners = new Set<(current: MutationCurrent<Doc, Publish>) => void>()
+  private readonly writeListeners = new Set<(write: Write<Doc, Op, Key, Extra>) => void>()
 
   constructor(input: {
     doc: Doc
-    spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, Cache, Extra>
+    spec: MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra>
   }) {
-    this.#spec = input.spec
+    this.spec = input.spec
 
-    const initialDoc = this.#prepareExternalDoc(input.doc)
-    this.#state = this.#createInitialState(initialDoc)
+    const initialDoc = this.prepareExternalDoc(input.doc)
+    this.state = this.createInitialState(initialDoc)
 
-    if (this.#spec.history) {
+    if (this.spec.history) {
       this.history = historyRuntime.create<
         Op,
         Key,
         Write<Doc, Op, Key, Extra>
       >({
-        capacity: this.#spec.history.capacity,
-        track: (write) => this.#spec.history!.track(write),
+        capacity: this.spec.history.capacity,
+        track: (write) => this.spec.history!.track(write),
         conflicts: (left, right) => left.some(
           (leftKey) => right.some(
-            (rightKey) => this.#spec.history!.conflicts(leftKey, rightKey)
+            (rightKey) => this.spec.history!.conflicts(leftKey, rightKey)
           )
         )
       })
@@ -297,41 +315,230 @@ export class MutationEngine<
 
     this.writes = {
       subscribe: (listener) => {
-        this.#writeListeners.add(listener)
+        this.writeListeners.add(listener)
         return () => {
-          this.#writeListeners.delete(listener)
+          this.writeListeners.delete(listener)
         }
       }
     }
   }
 
   doc(): Doc {
-    return this.#spec.clone(this.#state.doc)
+    return this.spec.clone(this.state.doc)
   }
 
   current(): MutationCurrent<Doc, Publish> {
-    return this.#readCurrent()
-  }
-
-  #readCurrent(): MutationCurrent<Doc, Publish> {
-    return {
-      rev: this.#state.rev,
-      doc: this.#state.doc,
-      ...(this.#state.publish !== undefined
-        ? {
-            publish: this.#state.publish
-          }
-        : {})
-    }
+    return this.readCurrent()
   }
 
   subscribe(
     listener: (current: MutationCurrent<Doc, Publish>) => void
   ): () => void {
-    this.#listeners.add(listener)
+    this.listeners.add(listener)
     return () => {
-      this.#listeners.delete(listener)
+      this.listeners.delete(listener)
     }
+  }
+
+  apply(
+    ops: readonly Op[],
+    options?: MutationOptions
+  ): MutationResult<
+    void,
+    Write<Doc, Op, Key, Extra>
+  > {
+    if (ops.length === 0) {
+      return mutationFailure(
+        APPLY_EMPTY_CODE,
+        'OperationMutationRuntime.apply requires at least one operation.'
+      )
+    }
+
+    return this.commit({
+      ops,
+      data: undefined,
+      origin: options?.origin ?? 'user'
+    })
+  }
+
+  replace(
+    doc: Doc,
+    _options?: MutationOptions
+  ): true {
+    const nextDoc = this.prepareExternalDoc(doc)
+    this.state = this.createInitialState(nextDoc, this.state.rev + 1)
+    this.history?.clear()
+    this.emitCurrent()
+    return true
+  }
+
+  load(
+    doc: Doc
+  ): void {
+    this.replace(doc, {
+      origin: 'load'
+    })
+  }
+
+  protected readCommittedDoc(): Doc {
+    return this.state.doc
+  }
+
+  protected commit<TData>(input: {
+    ops: readonly Op[]
+    data: TData
+    origin: Origin
+  }): MutationResult<
+    TData,
+    Write<Doc, Op, Key, Extra>
+  > {
+    const applied = this.spec.apply({
+      doc: this.state.doc,
+      ops: input.ops,
+      origin: input.origin
+    })
+    if (!applied.ok) {
+      return applied
+    }
+
+    const commit = applied.data
+    const nextDoc = this.prepareCommittedDoc(commit.doc)
+    const nextRev = this.state.rev + 1
+    const write: Write<Doc, Op, Key, Extra> = {
+      rev: nextRev,
+      at: Date.now(),
+      origin: input.origin,
+      doc: nextDoc,
+      forward: input.ops.slice(),
+      inverse: commit.inverse,
+      footprint: commit.footprint,
+      extra: commit.extra
+    }
+    const nextRuntime = this.spec.publish
+      ? (
+          this.state.publish !== undefined
+            ? this.spec.publish.reduce({
+                prev: {
+                  doc: this.state.doc,
+                  publish: this.state.publish,
+                  cache: this.state.cache as Cache
+                },
+                doc: nextDoc,
+                write
+              })
+            : this.spec.publish.init(nextDoc)
+        )
+      : undefined
+
+    this.state = {
+      rev: nextRev,
+      doc: nextDoc,
+      ...(nextRuntime
+        ? {
+            publish: nextRuntime.publish,
+            cache: nextRuntime.cache
+          }
+        : {})
+    }
+
+    if (input.origin !== 'history' && this.history) {
+      if (this.spec.history?.clear?.(write)) {
+        this.history.clear()
+      } else {
+        this.history.capture(write)
+      }
+    }
+
+    this.emitCurrent()
+    this.emitWrite(write)
+
+    return mutationSuccess(input.data, write)
+  }
+
+  private readCurrent(): MutationCurrent<Doc, Publish> {
+    return {
+      rev: this.state.rev,
+      doc: this.state.doc,
+      ...(this.state.publish !== undefined
+        ? {
+            publish: this.state.publish
+          }
+        : {})
+    }
+  }
+
+  private prepareExternalDoc(
+    doc: Doc
+  ): Doc {
+    const cloned = this.spec.clone(doc)
+    return this.prepareCommittedDoc(cloned)
+  }
+
+  private prepareCommittedDoc(
+    doc: Doc
+  ): Doc {
+    return this.spec.normalize?.(doc) ?? doc
+  }
+
+  private createInitialState(
+    doc: Doc,
+    rev = 0
+  ): MutationInternalState<Doc, Publish, Cache> {
+    const runtime = this.spec.publish?.init(doc)
+
+    return {
+      rev,
+      doc,
+      ...(runtime
+        ? {
+            publish: runtime.publish,
+            cache: runtime.cache
+          }
+        : {})
+    }
+  }
+
+  private emitCurrent() {
+    const current = this.readCurrent()
+    this.listeners.forEach((listener) => {
+      listener(current)
+    })
+  }
+
+  private emitWrite(
+    write: Write<Doc, Op, Key, Extra>
+  ) {
+    this.writeListeners.forEach((listener) => {
+      listener(write)
+    })
+  }
+}
+
+export class CommandMutationEngine<
+  Doc extends object,
+  Table extends MutationIntentTable,
+  Op,
+  Key,
+  Publish,
+  Cache = void,
+  Extra = void
+> extends OperationMutationRuntime<Doc, Op, Key, Publish, Cache, Extra> {
+  protected readonly commandSpec: CommandMutationSpec<
+    Doc,
+    Table,
+    Op,
+    Key,
+    Publish,
+    Cache,
+    Extra
+  >
+
+  constructor(input: {
+    doc: Doc
+    spec: CommandMutationSpec<Doc, Table, Op, Key, Publish, Cache, Extra>
+  }) {
+    super(input)
+    this.commandSpec = input.spec
   }
 
   execute<K extends MutationIntentKind<Table>>(
@@ -365,7 +572,7 @@ export class MutationEngine<
     if (intents.length === 0) {
       return mutationFailure(
         EXECUTE_EMPTY_CODE,
-        'MutationEngine.execute requires at least one intent.'
+        'CommandMutationEngine.execute requires at least one intent.'
       ) as MutationExecuteResultOfInput<
         Table,
         Write<Doc, Op, Key, Extra>,
@@ -373,19 +580,8 @@ export class MutationEngine<
       >
     }
 
-    if (!this.#spec.compile) {
-      return mutationFailure(
-        COMPILE_MISSING_CODE,
-        'MutationEngine.execute requires spec.compile.'
-      ) as MutationExecuteResultOfInput<
-        Table,
-        Write<Doc, Op, Key, Extra>,
-        Input
-      >
-    }
-
-    const plan = this.#spec.compile({
-      doc: this.#state.doc,
+    const plan = this.commandSpec.compile({
+      doc: this.readCommittedDoc(),
       intents
     })
     const issues = toIssues(plan.issues)
@@ -397,7 +593,7 @@ export class MutationEngine<
     if (!canApply) {
       return mutationFailure(
         COMPILE_BLOCKED_CODE,
-        'MutationEngine.execute was blocked by compile issues.',
+        'CommandMutationEngine.execute was blocked by compile issues.',
         {
           issues
         }
@@ -411,7 +607,7 @@ export class MutationEngine<
     if (!plan.ops.length) {
       return mutationFailure(
         COMPILE_EMPTY_CODE,
-        'MutationEngine.execute produced no operations.',
+        'CommandMutationEngine.execute produced no operations.',
         {
           issues
         }
@@ -422,7 +618,7 @@ export class MutationEngine<
       >
     }
 
-    return this.#commit({
+    return this.commit({
       ops: plan.ops,
       data: (
         batch
@@ -442,157 +638,6 @@ export class MutationEngine<
       Input
     >
   }
-
-  apply(
-    ops: readonly Op[],
-    options?: MutationOptions
-  ): MutationResult<
-    void,
-    Write<Doc, Op, Key, Extra>
-  > {
-    if (ops.length === 0) {
-      return mutationFailure(
-        APPLY_EMPTY_CODE,
-        'MutationEngine.apply requires at least one operation.'
-      )
-    }
-
-    return this.#commit({
-      ops,
-      data: undefined,
-      origin: options?.origin ?? 'user'
-    })
-  }
-
-  load(
-    doc: Doc
-  ): void {
-    const nextDoc = this.#prepareExternalDoc(doc)
-    this.#state = this.#createInitialState(nextDoc, this.#state.rev + 1)
-
-    this.history?.clear()
-    this.#emitCurrent()
-  }
-
-  #prepareExternalDoc(
-    doc: Doc
-  ): Doc {
-    const cloned = this.#spec.clone(doc)
-    return this.#prepareCommittedDoc(cloned)
-  }
-
-  #prepareCommittedDoc(
-    doc: Doc
-  ): Doc {
-    return this.#spec.normalize?.(doc) ?? doc
-  }
-
-  #createInitialState(
-    doc: Doc,
-    rev = 0
-  ): MutationInternalState<Doc, Publish, Cache> {
-    const runtime = this.#spec.publish?.init(doc)
-
-    return {
-      rev,
-      doc,
-      ...(runtime
-        ? {
-            publish: runtime.publish,
-            cache: runtime.cache
-          }
-        : {})
-    }
-  }
-
-  #commit<TData>(input: {
-    ops: readonly Op[]
-    data: TData
-    origin: Origin
-  }): MutationResult<
-    TData,
-    Write<Doc, Op, Key, Extra>
-  > {
-    const applied = this.#spec.apply({
-      doc: this.#state.doc,
-      ops: input.ops,
-      origin: input.origin
-    })
-    if (!applied.ok) {
-      return applied
-    }
-
-    const commit = applied.data
-    const nextDoc = this.#prepareCommittedDoc(commit.doc)
-    const nextRev = this.#state.rev + 1
-    const write: Write<Doc, Op, Key, Extra> = {
-      rev: nextRev,
-      at: Date.now(),
-      origin: input.origin,
-      doc: nextDoc,
-      forward: input.ops.slice(),
-      inverse: commit.inverse,
-      footprint: commit.footprint,
-      extra: commit.extra
-    }
-    const nextRuntime = this.#spec.publish
-      ? (
-          this.#state.publish !== undefined
-            ? this.#spec.publish.reduce({
-                prev: {
-                  doc: this.#state.doc,
-                  publish: this.#state.publish,
-                  cache: this.#state.cache as Cache
-                },
-                doc: nextDoc,
-                write
-              })
-            : this.#spec.publish.init(nextDoc)
-        )
-      : undefined
-
-    this.#state = {
-      rev: nextRev,
-      doc: nextDoc,
-      ...(nextRuntime
-        ? {
-            publish: nextRuntime.publish,
-            cache: nextRuntime.cache
-          }
-        : {})
-    }
-
-    if (input.origin !== 'history' && this.history) {
-      if (this.#spec.history?.clear?.(write)) {
-        this.history.clear()
-      } else {
-        this.history.capture(write)
-      }
-    }
-
-    this.#emitCurrent()
-    this.#emitWrite(write)
-
-    return success(input.data, write)
-  }
-
-  #emitCurrent() {
-    const current = this.#readCurrent()
-    this.#listeners.forEach((listener) => {
-      listener(current)
-    })
-  }
-
-  #emitWrite(
-    write: Write<Doc, Op, Key, Extra>
-  ) {
-    this.#writeListeners.forEach((listener) => {
-      listener(write)
-    })
-  }
 }
 
-export const applyResult = {
-  success: applySuccess,
-  failure: applyFailure
-} as const
+export const applyResult = applyCommitResult

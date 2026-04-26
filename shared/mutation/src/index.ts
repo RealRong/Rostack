@@ -32,12 +32,17 @@ export type {
   MutationExecuteResultOfInput,
   MutationFailure,
   MutationHistorySpec,
+  MutationInternalState,
   MutationIntentKind,
   MutationIntentOf,
   MutationIntentTable,
   MutationOptions,
   MutationOutputOf,
   MutationPlan,
+  MutationPrevSnapshot,
+  MutationPublishInitResult,
+  MutationPublishReduceInput,
+  MutationPublishReduceResult,
   MutationPublishSpec,
   MutationResult
 } from './engine'

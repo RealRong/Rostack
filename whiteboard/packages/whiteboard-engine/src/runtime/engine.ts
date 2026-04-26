@@ -103,6 +103,7 @@ export const createEngine = ({
     Operation,
     WhiteboardMutationKey,
     EnginePublish,
+    void,
     WhiteboardMutationExtra
   >({
     doc: document,

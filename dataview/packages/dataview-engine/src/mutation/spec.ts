@@ -73,6 +73,7 @@ export const createDataviewMutationSpec = (input?: {
   DocumentOperation,
   DataviewMutationKey,
   DataviewPublishState,
+  void,
   {
     trace: DataviewTrace
   }

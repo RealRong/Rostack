@@ -90,6 +90,7 @@ export type WhiteboardMutationSpec = MutationEngineSpec<
   Operation,
   WhiteboardMutationKey,
   EnginePublish,
+  void,
   WhiteboardMutationExtra
 >
 

@@ -68,6 +68,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DocumentOperation,
     DataviewMutationKey,
     DataviewPublishState,
+    void,
     {
       trace: DataviewTrace
     }

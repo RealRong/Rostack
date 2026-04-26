@@ -65,19 +65,26 @@ export const whiteboardPublishSpec: MutationPublishSpec<
   Operation,
   HistoryFootprint[number],
   WhiteboardMutationExtra,
-  EnginePublish
+  EnginePublish,
+  void
 > = {
-  init: (doc) => createPublish({
-    revision: 0,
-    document: doc,
-    delta: createInitialChange(doc)
+  init: (doc) => ({
+    publish: createPublish({
+      revision: 0,
+      document: doc,
+      delta: createInitialChange(doc)
+    }),
+    cache: undefined
   }),
   reduce: ({
     doc,
     write
-  }) => createPublish({
-    revision: write.rev,
-    document: doc,
-    delta: buildChange(write.extra.changes)
+  }) => ({
+    publish: createPublish({
+      revision: write.rev,
+      document: doc,
+      delta: buildChange(write.extra.changes)
+    }),
+    cache: undefined
   })
 }

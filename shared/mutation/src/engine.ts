@@ -104,13 +104,47 @@ export interface MutationPlan<
   outputs?: readonly Output[]
 }
 
-export interface MutationPublishSpec<Doc, Op, Key, Extra, Publish> {
-  init(doc: Doc): Publish
-  reduce(input: {
-    prev: Publish
-    doc: Doc
-    write: Write<Doc, Op, Key, Extra>
-  }): Publish
+export interface MutationPrevSnapshot<Doc, Publish, Cache> {
+  doc: Doc
+  publish: Publish
+  cache: Cache
+}
+
+export interface MutationPublishInitResult<Publish, Cache> {
+  publish: Publish
+  cache: Cache
+}
+
+export interface MutationPublishReduceInput<
+  Doc,
+  Op,
+  Key,
+  Extra,
+  Publish,
+  Cache
+> {
+  prev: MutationPrevSnapshot<Doc, Publish, Cache>
+  doc: Doc
+  write: Write<Doc, Op, Key, Extra>
+}
+
+export interface MutationPublishReduceResult<Publish, Cache> {
+  publish: Publish
+  cache: Cache
+}
+
+export interface MutationPublishSpec<
+  Doc,
+  Op,
+  Key,
+  Extra,
+  Publish,
+  Cache = void
+> {
+  init(doc: Doc): MutationPublishInitResult<Publish, Cache>
+  reduce(
+    input: MutationPublishReduceInput<Doc, Op, Key, Extra, Publish, Cache>
+  ): MutationPublishReduceResult<Publish, Cache>
 }
 
 export interface MutationHistorySpec<Doc, Op, Key, Extra> {
@@ -126,6 +160,7 @@ export interface MutationEngineSpec<
   Op,
   Key,
   Publish,
+  Cache = void,
   Extra = void
 > {
   clone(doc: Doc): Doc
@@ -139,7 +174,7 @@ export interface MutationEngineSpec<
     ops: readonly Op[]
     origin: Origin
   }): MutationApplyResult<Doc, Op, Key, Extra>
-  publish?: MutationPublishSpec<Doc, Op, Key, Extra, Publish>
+  publish?: MutationPublishSpec<Doc, Op, Key, Extra, Publish, Cache>
   history?: MutationHistorySpec<Doc, Op, Key, Extra>
 }
 
@@ -147,6 +182,13 @@ export interface MutationCurrent<Doc, Publish> {
   rev: number
   doc: Doc
   publish?: Publish
+}
+
+export interface MutationInternalState<Doc, Publish, Cache> {
+  rev: number
+  doc: Doc
+  publish?: Publish
+  cache?: Cache
 }
 
 const COMPILE_MISSING_CODE = 'mutation_engine.compile.missing'
@@ -207,18 +249,13 @@ const readFirstOutput = <Output>(
   outputs?: readonly Output[]
 ): Output | undefined => outputs?.[0]
 
-type State<Doc, Publish> = {
-  rev: number
-  doc: Doc
-  publish?: Publish
-}
-
 export class MutationEngine<
   Doc extends object,
   Table extends MutationIntentTable,
   Op,
   Key,
   Publish,
+  Cache = void,
   Extra = void
 > {
   readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
@@ -228,28 +265,19 @@ export class MutationEngine<
     Write<Doc, Op, Key, Extra>
   >
 
-  readonly #spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, Extra>
-  #state: State<Doc, Publish>
+  readonly #spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, Cache, Extra>
+  #state: MutationInternalState<Doc, Publish, Cache>
   readonly #listeners = new Set<(current: MutationCurrent<Doc, Publish>) => void>()
   readonly #writeListeners = new Set<(write: Write<Doc, Op, Key, Extra>) => void>()
 
   constructor(input: {
     doc: Doc
-    spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, Extra>
+    spec: MutationEngineSpec<Doc, Table, Op, Key, Publish, Cache, Extra>
   }) {
     this.#spec = input.spec
 
     const initialDoc = this.#prepareExternalDoc(input.doc)
-    const initialPublish = this.#spec.publish?.init(initialDoc)
-    this.#state = {
-      rev: 0,
-      doc: initialDoc,
-      ...(initialPublish !== undefined
-        ? {
-            publish: initialPublish
-          }
-        : {})
-    }
+    this.#state = this.#createInitialState(initialDoc)
 
     if (this.#spec.history) {
       this.history = historyRuntime.create<
@@ -440,17 +468,7 @@ export class MutationEngine<
     doc: Doc
   ): void {
     const nextDoc = this.#prepareExternalDoc(doc)
-    const nextPublish = this.#spec.publish?.init(nextDoc)
-
-    this.#state = {
-      rev: this.#state.rev + 1,
-      doc: nextDoc,
-      ...(nextPublish !== undefined
-        ? {
-            publish: nextPublish
-          }
-        : {})
-    }
+    this.#state = this.#createInitialState(nextDoc, this.#state.rev + 1)
 
     this.history?.clear()
     this.#emitCurrent()
@@ -459,7 +477,32 @@ export class MutationEngine<
   #prepareExternalDoc(
     doc: Doc
   ): Doc {
-    return this.#spec.clone(doc)
+    const cloned = this.#spec.clone(doc)
+    return this.#prepareCommittedDoc(cloned)
+  }
+
+  #prepareCommittedDoc(
+    doc: Doc
+  ): Doc {
+    return this.#spec.normalize?.(doc) ?? doc
+  }
+
+  #createInitialState(
+    doc: Doc,
+    rev = 0
+  ): MutationInternalState<Doc, Publish, Cache> {
+    const runtime = this.#spec.publish?.init(doc)
+
+    return {
+      rev,
+      doc,
+      ...(runtime
+        ? {
+            publish: runtime.publish,
+            cache: runtime.cache
+          }
+        : {})
+    }
   }
 
   #commit<TData>(input: {
@@ -480,7 +523,7 @@ export class MutationEngine<
     }
 
     const commit = applied.data
-    const nextDoc = commit.doc
+    const nextDoc = this.#prepareCommittedDoc(commit.doc)
     const nextRev = this.#state.rev + 1
     const write: Write<Doc, Op, Key, Extra> = {
       rev: nextRev,
@@ -492,20 +535,29 @@ export class MutationEngine<
       footprint: commit.footprint,
       extra: commit.extra
     }
-    const nextPublish = this.#state.publish !== undefined && this.#spec.publish
-      ? this.#spec.publish.reduce({
-          prev: this.#state.publish,
-          doc: nextDoc,
-          write
-        })
-      : this.#spec.publish?.init(nextDoc)
+    const nextRuntime = this.#spec.publish
+      ? (
+          this.#state.publish !== undefined
+            ? this.#spec.publish.reduce({
+                prev: {
+                  doc: this.#state.doc,
+                  publish: this.#state.publish,
+                  cache: this.#state.cache as Cache
+                },
+                doc: nextDoc,
+                write
+              })
+            : this.#spec.publish.init(nextDoc)
+        )
+      : undefined
 
     this.#state = {
       rev: nextRev,
       doc: nextDoc,
-      ...(nextPublish !== undefined
+      ...(nextRuntime
         ? {
-            publish: nextPublish
+            publish: nextRuntime.publish,
+            cache: nextRuntime.cache
           }
         : {})
     }

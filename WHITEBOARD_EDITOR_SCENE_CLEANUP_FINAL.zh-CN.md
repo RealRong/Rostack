@@ -43,6 +43,27 @@
 - `mindmap` chrome / navigate helper 混合层
 - 根级别重复 facade
 
+### 2.1.1 硬性原则：query 和 view 一律下沉到 `editor-scene`
+
+这次清理有一条硬性原则，必须写死：
+
+- **凡是 query 相关能力，一律属于 `editor-scene`。**
+- **凡是 view/read model 相关能力，一律属于 `editor-scene`。**
+
+`whiteboard-editor/src/scene` 不允许再做下面这些事：
+
+- 定义新的 query helper 并挂到 editor scene runtime
+- 定义新的 node/edge/mindmap/group view model
+- 把 `editor-scene` 里已有的 query/view 再包装一层中转接口
+- 以“方便调用方”为理由继续保留 `nodes.read` / `edges.read` / `mindmap.view` 这一类 facade
+
+最终规则只有两条：
+
+1. 如果能力属于 query 或 view model：
+   必须进入 `editor-scene`。
+2. 如果 `editor-scene` 已经有了：
+   **直接改调用方使用，不允许在 `whiteboard-editor/src/scene` 再中转。**
+
 ### 2.2 这一层最终不该再做什么
 
 `whiteboard-editor/src/scene` 不应再：
@@ -54,9 +75,61 @@
 
 这些都属于重复投影。
 
+### 2.3 对 `whiteboard-editor/src/scene` 的最终定位
+
+最终定位必须非常严格：
+
+- `editor-scene`
+  负责：
+  - query
+  - graph/state/render stores
+  - canonical view/read model
+  - hit / spatial / frame / snap
+
+- `whiteboard-editor/src/scene`
+  只负责：
+  - 暴露 `query / stores / host`
+  - 放极少数 host-only runtime/helper
+
+也就是说：
+
+- `scene/` 不是 query 层
+- `scene/` 不是 view model 层
+- `scene/` 不是 projection 层
+- `scene/` 不是 adapter 层
+
+它只是 editor 把 `editor-scene` 接出来，并补 host 能力的薄层
+
 ---
 
-## 3. 最终目录形态
+## 3. 先决原则：已有能力直接用，不再中转
+
+在实施之前，先把口径写清楚：
+
+- 如果 `editor-scene.query` 已经有这个能力：
+  调用方直接改用 `editor.scene.query.*`
+- 如果 `editor-scene.stores` 已经有这个能力：
+  调用方直接改用 `editor.scene.stores.*`
+- 如果某个旧 helper 的唯一作用只是“换个名字转发”：
+  直接删除，不保留过渡层
+
+典型必须删除的中转形式：
+
+- `scene.nodes.read -> stores.render.node.byId`
+- `scene.edges.read -> stores.graph.edge.byId` 或 `stores.render.edge.*`
+- `scene.mindmap.view -> stores.graph.mindmap.byId`
+- `scene.group.exact -> query.group.exact`
+- `scene.edge.render.* -> stores.render.edge.*`
+- `scene.frame -> query.frame`
+- `scene.snap.rect -> query.snap`
+
+最终要求：
+
+- `whiteboard-editor/src/scene` 不允许存在“只是把 `editor-scene` 再包一层”的接口。
+
+---
+
+## 4. 最终目录形态
 
 最终目录应收敛为：
 
@@ -100,9 +173,9 @@ scene/cache/*
 
 ---
 
-## 4. 现有文件逐个处理
+## 5. 现有文件逐个处理
 
-## 4.1 `scene/source.ts`
+## 5.1 `scene/source.ts`
 
 当前问题：
 
@@ -164,6 +237,12 @@ type EditorSceneSource = {
 - `scene.stores.*`
 - `scene.host.*`
 
+并且这里要进一步收紧：
+
+- `source.ts` 不允许再把 `query` 里的字段拆散到根级别。
+- `source.ts` 不允许再把 `stores` 里的字段拆散到根级别。
+- `source.ts` 不允许为 query/view 能力新增任何同义转发。
+
 ### 对 `SceneProjectionStores` 的结论
 
 这层长期也不应该保留。
@@ -182,7 +261,7 @@ type EditorSceneSource = {
 
 ---
 
-## 4.2 `scene/node.ts`
+## 5.2 `scene/node.ts`
 
 当前问题：
 
@@ -209,8 +288,8 @@ type EditorSceneSource = {
    下沉到 `whiteboard-core/node` 或 `editor-scene` 对应 primitive。
 
 2. `resolveNodeCapability`
-   下沉到 node type infra。
-   它本质是 node capability 语义的一部分，不是 scene facade 逻辑。
+   下沉到 `editor-scene` 或 node type infra。
+   它本质是 view/read model 语义的一部分，不应留在 editor scene facade。
 
 3. `idsInRect`
    如果仍需要，进入 `editor-scene.query.hit/query.node/query.spatial` 体系。
@@ -218,7 +297,7 @@ type EditorSceneSource = {
 
 4. `EditorNodeView`
    直接删除。
-   React 直接读 `stores.render.node.byId`。
+   React 与 editor 其他调用方直接读 `stores.render.node.byId`。
 
 一句话：
 
@@ -226,7 +305,7 @@ type EditorSceneSource = {
 
 ---
 
-## 4.3 `scene/edge.ts`
+## 5.3 `scene/edge.ts`
 
 当前问题：
 
@@ -244,7 +323,7 @@ type EditorSceneSource = {
 
 1. `resolveGraphEdgeGeometry`
    下沉到 `whiteboard-core` 或 `editor-scene`。
-   这是 edge geometry primitive，不该放在 editor facade 层。
+   这是 query/view primitive，不该放在 editor facade 层。
 
 2. `EditorEdgeView`
    删除。
@@ -268,7 +347,7 @@ type EditorSceneSource = {
 
 ---
 
-## 4.4 `scene/selection.ts`
+## 5.4 `scene/selection.ts`
 
 当前问题：
 
@@ -281,23 +360,30 @@ type EditorSceneSource = {
 
 最终归属：
 
-- 迁移到 `session/` 侧。
+- 如果它仍然是 selection view/read model：
+  下沉到 `editor-scene`。
+- 如果它本质是 session/panel/chrome presentation：
+  迁移到 `session/` 侧。
 
 推荐位置：
 
 ```txt
-whiteboard/packages/whiteboard-editor/src/session/projection/selection.ts
+whiteboard/packages/whiteboard-editor-scene/src/...   // selection query/view truth
+whiteboard/packages/whiteboard-editor/src/session/... // selection presentation
 ```
 
 原因：
 
-- selection 是 session truth 的一部分。
-- 它读 scene，但不属于 scene 自身。
-- 把它放在 `scene` 会让 “scene truth” 和 “selection presentation” 混在一起。
+- selection 相关能力必须先拆成两种：
+  - query/view truth
+  - session presentation
+- 前者留在 `editor-scene`
+- 后者留在 `session`
+- 两者都不该继续留在 `editor/src/scene`
 
 ---
 
-## 4.5 `scene/mindmap.ts`
+## 5.5 `scene/mindmap.ts`
 
 当前问题：
 
@@ -314,8 +400,8 @@ whiteboard/packages/whiteboard-editor/src/session/projection/selection.ts
 拆分方式：
 
 1. `readMindmapNavigateTarget`
-   下沉到 `whiteboard-core/mindmap`。
-   这是纯 structure primitive。
+   如果只是纯 structure primitive，下沉到 `whiteboard-core/mindmap`。
+   如果最终调用面属于 scene query，则由 `editor-scene.query.mindmap.*` 直接暴露。
 
 2. `readAddChildTargets`
    迁移到 session/chrome presentation。
@@ -328,9 +414,14 @@ whiteboard/packages/whiteboard-editor/src/session/presentation/mindmapChrome.ts
 3. `MindmapChrome`
    作为 session/chrome 输出类型，也不应再挂在 `scene`。
 
+补充约束：
+
+- `mindmap` 的 query/view 如果已经在 `editor-scene` 存在，调用方直接使用。
+- `editor/src/scene` 不允许再保留 `mindmap.view`、`mindmap.navigate` 这一类中转接口。
+
 ---
 
-## 4.6 `scene/pick.ts`
+## 5.6 `scene/pick.ts`
 
 当前状态已经明显变好：
 
@@ -367,7 +458,7 @@ type ScenePickRuntime = {
 
 ---
 
-## 4.7 `scene/cache/geometry.ts`
+## 5.7 `scene/cache/geometry.ts`
 
 当前问题：
 
@@ -392,9 +483,14 @@ scene/host/geometry.ts
   - `editor-scene`
   - 或 `whiteboard-core`
 
+补充约束：
+
+- 如果 `editor-scene` 已经提供可直接消费的 edge geometry / node render view：
+  `host.geometry` 只做 memo，不再重算、不再转义、不再二次包装。
+
 ---
 
-## 4.8 `scene/cache/scope.ts`
+## 5.8 `scene/cache/scope.ts`
 
 当前问题：
 
@@ -423,7 +519,7 @@ scene/host/scope.ts
 
 ---
 
-## 4.9 `scene/cache/visible.ts`
+## 5.9 `scene/cache/visible.ts`
 
 当前问题：
 
@@ -440,7 +536,7 @@ scene/host/visible.ts
 
 ---
 
-## 4.10 `scene/cache/order.ts`
+## 5.10 `scene/cache/order.ts`
 
 当前问题：
 
@@ -454,7 +550,7 @@ scene/host/visible.ts
 
 ---
 
-## 5. 最终数据源原则
+## 6. 最终数据源原则
 
 `whiteboard-editor/src/scene` 清理时必须遵守这条原则：
 
@@ -482,9 +578,16 @@ scene/host/visible.ts
 
 这类旧 facade。
 
+补充成硬性要求：
+
+- 能放进 `editor-scene.query` 的，一律放进去。
+- 能放进 `editor-scene.stores` 的，一律放进去。
+- `whiteboard-editor/src/scene` 只允许“直接暴露”和“host-only helper”两类代码。
+- 不允许存在第三类“editor 本地 query/view adapter”。
+
 ---
 
-## 6. 最终实施方案
+## 7. 最终实施方案
 
 ## P0. 收口 public shape
 
@@ -529,6 +632,12 @@ scene/host/visible.ts
 - `scene.stores.*`
 - `scene.host.*`
 
+并且明确：
+
+- 如果某能力已在 `editor-scene` 存在：
+  直接改调用方。
+- 不允许为了少改调用方，在 `editor/src/scene` 新增转发。
+
 禁止继续引入：
 
 - `scene.nodes.*`
@@ -540,6 +649,7 @@ scene/host/visible.ts
 完成标志：
 
 - `src/` 代码里不再出现上述旧接口引用。
+- `whiteboard-editor/src/scene` 不再新增任何 query/view 同义 facade。
 
 ## P2. 删除 node/edge 二次 projection
 
@@ -564,6 +674,7 @@ scene/host/visible.ts
 完成标志：
 
 - editor 不再定义 `EditorNodeView` / `EditorEdgeView`。
+- node/edge 相关 query/view 调用全部直接使用 `editor-scene`。
 
 ## P3. 清理 selection/mindmap 非 scene 职责
 
@@ -574,9 +685,17 @@ scene/host/visible.ts
   - navigation primitive -> `whiteboard-core/mindmap`
   - chrome affordance -> `session/presentation/mindmapChrome.ts`
 
+补充：
+
+- 如果 selection/mindmap 某部分本质上仍然是 query/view truth：
+  先迁入 `editor-scene`
+  再修改调用方直接使用
+  不允许留在 `editor/src/scene`
+
 完成标志：
 
 - `scene/` 目录内不再承载 session/chrome 逻辑。
+- `scene/` 目录内不再承载 selection/mindmap query/view truth。
 
 ## P4. 重组 host helper
 
@@ -609,7 +728,7 @@ scene/host/visible.ts
 
 ---
 
-## 7. 最终完成态
+## 8. 最终完成态
 
 完成后，`whiteboard-editor/src/scene` 应满足：
 
@@ -619,6 +738,9 @@ scene/host/visible.ts
 4. 不再把 `editor-scene` 再包装成旧接口 facade。
 5. 只保留 `query / stores / host`。
 6. host helper 文件名与职责一致，不再用 `cache` 这种模糊命名。
+7. query 相关能力全部在 `editor-scene`。
+8. view 相关能力全部在 `editor-scene`。
+9. 如果 `editor-scene` 已有能力，调用方直接用，不再经过 `editor/src/scene` 中转。
 
 最终判断标准只有一个：
 

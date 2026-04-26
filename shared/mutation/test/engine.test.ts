@@ -22,6 +22,10 @@ type TestPublish = {
   count: number
 }
 
+type TestCache = {
+  previousCount: number
+}
+
 type TestExtra = {
   total: number
 }
@@ -42,6 +46,7 @@ const createSpec = (): MutationEngineSpec<
   TestOp,
   TestKey,
   TestPublish,
+  TestCache,
   TestExtra
 > => {
   const reducer = new Reducer<
@@ -100,12 +105,23 @@ const createSpec = (): MutationEngineSpec<
     ),
     publish: {
       init: (doc) => ({
-        count: doc.count
+        publish: {
+          count: doc.count
+        },
+        cache: {
+          previousCount: doc.count
+        }
       }),
       reduce: ({
+        prev,
         doc
       }) => ({
-        count: doc.count
+        publish: {
+          count: doc.count
+        },
+        cache: {
+          previousCount: prev.doc.count
+        }
       })
     },
     history: {
@@ -165,6 +181,7 @@ describe('MutationEngine', () => {
         count: 3
       }
     })
+    expect(engine.current()).not.toHaveProperty('cache')
     expect(states).toEqual([3])
     expect(writes).toEqual([3])
     expect(engine.history?.state().undoDepth).toBe(1)

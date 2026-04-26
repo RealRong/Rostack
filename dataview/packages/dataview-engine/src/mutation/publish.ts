@@ -116,7 +116,8 @@ export const createDataviewPublishSpec = (input?: {
   {
     trace: DataviewTrace
   },
-  DataviewPublishState
+  DataviewPublishState,
+  void
 > => {
   let activeProjector = createActiveProjector()
   let bootstrapped = false
@@ -124,13 +125,13 @@ export const createDataviewPublishSpec = (input?: {
   return {
     init: (doc) => {
       activeProjector = createActiveProjector()
-      const state = createPublishState({
+      const publish = createPublishState({
         doc,
         trace: dataviewTrace.reset(undefined, doc),
         activeProjector
       })
       if (bootstrapped) {
-        state.delta = {
+        publish.delta = {
           doc: {
             reset: true
           },
@@ -140,17 +141,21 @@ export const createDataviewPublishSpec = (input?: {
         }
       }
       bootstrapped = true
-      return state
+      return {
+        publish,
+        cache: undefined
+      }
     },
     reduce: ({ prev, doc, write }) => {
+      const previous = prev.publish
       const perf = input?.performance
       const startedAt = now()
       const trace = write.extra.trace
       const read = createDocumentReadContext(doc)
       const plan = resolveViewPlan(read, read.activeViewId)
       const index = deriveIndex({
-        previous: prev.index,
-        previousDemand: prev.plan?.index ?? emptyNormalizedIndexDemand(),
+        previous: previous.index,
+        previousDemand: previous.plan?.index ?? emptyNormalizedIndexDemand(),
         document: doc,
         impact: createBaseImpact(trace),
         demand: plan?.index
@@ -161,7 +166,7 @@ export const createDataviewPublishSpec = (input?: {
         },
         view: {
           plan,
-          previousPlan: prev.plan
+          previousPlan: previous.plan
         },
         index: {
           state: index.state,
@@ -210,20 +215,23 @@ export const createDataviewPublishSpec = (input?: {
       }
 
       return {
-        doc,
-        ...(plan
-          ? { plan }
-          : {}),
-        index: index.state,
-        ...(active.snapshot
-          ? { active: active.snapshot }
-          : {}),
-        ...(delta
-          ? { delta }
-          : {}),
-        ...(performanceTrace
-          ? { performanceTrace }
-          : {})
+        publish: {
+          doc,
+          ...(plan
+            ? { plan }
+            : {}),
+          index: index.state,
+          ...(active.snapshot
+            ? { active: active.snapshot }
+            : {}),
+          ...(delta
+            ? { delta }
+            : {}),
+          ...(performanceTrace
+            ? { performanceTrace }
+            : {})
+        },
+        cache: undefined
       }
     }
   }

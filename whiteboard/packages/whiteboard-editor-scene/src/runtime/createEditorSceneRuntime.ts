@@ -1,13 +1,10 @@
 import { createProjectionRuntime } from '@shared/projection'
 import type {
   NodeCapabilityInput,
-  OwnerRef,
-  Result,
   Runtime,
   SceneViewInput,
   TextMeasure
 } from '../contracts/editor'
-import type { NodeModel } from '@whiteboard/core/types'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
 import { createEditorSceneProjectionSpec } from './model'
@@ -47,9 +44,7 @@ export const createEditorSceneRuntime = (input: {
     revision: runtime.revision,
     state,
     capture: runtime.capture,
-    update: (current) => runtime.update(current) as Result,
-    subscribe: (listener) => runtime.subscribe((result) => {
-      listener(result as Result)
-    })
+    update: runtime.update,
+    subscribe: runtime.subscribe
   }
 }

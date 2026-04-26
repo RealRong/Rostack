@@ -1,3 +1,4 @@
+import { createProjectionRuntime } from '@shared/projection'
 import type {
   Input,
   Query,
@@ -7,6 +8,7 @@ import type {
 } from '../contracts/editor'
 import type { Capture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'
+import { createEditorSceneProjectionSpec } from '../runtime/model'
 import {
   createEditorSceneRuntime
 } from '../runtime/createEditorSceneRuntime'
@@ -33,7 +35,7 @@ export interface EditorSceneHarness {
   lastTrace(): Result['trace']
 }
 
-export interface EditorSceneModelHarness {
+export interface EditorSceneProjectionHarness {
   capture(): Capture
   working(): WorkingState
   update(input: Input): Result
@@ -62,18 +64,18 @@ export const createEditorSceneHarness = (input: {
   }
 }
 
-export const createEditorSceneModelHarness = (input: {
+export const createEditorSceneProjectionHarness = (input: {
   measure?: TextMeasure
-} = {}): EditorSceneModelHarness => {
-  const runtime = createEditorSceneRuntime({
+} = {}): EditorSceneProjectionHarness => {
+  const runtime = createProjectionRuntime(createEditorSceneProjectionSpec({
     measure: input.measure,
     view: TEST_SCENE_VIEW
-  })
+  }))
   let trace: Result['trace']
 
   return {
     capture: () => runtime.capture(),
-    working: () => runtime.state() as WorkingState,
+    working: () => runtime.state(),
     update: (value) => {
       const result = runtime.update(value)
       trace = result.trace

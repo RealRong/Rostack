@@ -18,7 +18,7 @@ import type {
   ScopeValue
 } from '../contracts/projection'
 
-type ActiveProjectionSurface = {}
+type ActiveProjectionSurface = Record<never, never>
 
 type ActiveProjectionSpec = ProjectionSpec<
   ActiveProjectionInput,

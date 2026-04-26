@@ -13,7 +13,7 @@ import {
   createEditorGraphTextMeasure,
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
-import { createEditorSceneModelHarness } from '../src/testing/runtime'
+import { createEditorSceneProjectionHarness } from '../src/testing/runtime'
 
 const createNode = (input: {
   engine: ReturnType<typeof createEngine>
@@ -117,7 +117,7 @@ const createInput = (input: {
 
 let currentMeasureState: EditorGraphTextMeasureState = {}
 
-const createProjectorHarness = () => createEditorSceneModelHarness({
+const createProjectionHarness = () => createEditorSceneProjectionHarness({
   measure: createEditorGraphTextMeasure(
     () => currentMeasureState
   )
@@ -146,7 +146,7 @@ describe('graph delta patching', () => {
       targetId: secondId
     })
 
-    const runtime = createProjectorHarness()
+    const runtime = createProjectionHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
@@ -210,7 +210,7 @@ describe('graph delta patching', () => {
       size: { width: 120, height: 44 }
     })
 
-    const runtime = createProjectorHarness()
+    const runtime = createProjectionHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true
@@ -278,7 +278,7 @@ describe('graph delta patching', () => {
       nodeIds: [firstId, secondId]
     })
 
-    const runtime = createProjectorHarness()
+    const runtime = createProjectionHarness()
 
     const bootstrapDelta = createEmptyInputDelta()
     bootstrapDelta.document.reset = true

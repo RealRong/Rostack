@@ -1,12 +1,9 @@
 import { store } from '@shared/core'
 import {
-  createHistoryPort,
   mutationFailure,
+  type MutationPort,
   type CommitRecord,
-  type CommitStream,
-  type HistoryController,
   type HistoryPort,
-  type Origin,
   type Write
 } from '@shared/mutation'
 import {
@@ -51,34 +48,6 @@ export type CollabStore<
   append(change: Change): void
   checkpoint(checkpoint: Checkpoint): void
   clearChanges(): void
-}
-
-export type MutationEngineLike<
-  Doc,
-  Op,
-  Key,
-  Result extends {
-    ok: boolean
-  },
-  W extends Write<Doc, Op, Key, any> = Write<Doc, Op, Key, any>
-> = {
-  doc(): Doc
-  replace(
-    doc: Doc,
-    options?: {
-      origin?: Origin
-    }
-  ): boolean
-  apply(
-    ops: readonly Op[],
-    options?: {
-      origin?: Origin
-    }
-  ): Result
-  commits: CommitStream<CommitRecord<Doc, Op, Key, any>>
-  history: HistoryPort<Result, Op, Key, W>
-  historyController(): HistoryController<Op, Key, W> | undefined
-  syncHistory(): void
 }
 
 export type MutationCollabSessionOptions<
@@ -187,7 +156,7 @@ export const createMutationCollabSession = <
     id: string
   }
 >(
-  engine: MutationEngineLike<Doc, Op, Key, Result, WriteRecord>,
+  engine: MutationPort<Doc, Op, Key, Result, WriteRecord>,
   options: MutationCollabSessionOptions<
     Doc,
     Op,
@@ -233,45 +202,27 @@ export const createMutationCollabSession = <
     })
   }
 
-  const history = createHistoryPort({
-    apply: (operations, applyOptions) => engine.apply(operations, applyOptions),
-    commits: engine.commits,
-    historyController: () => engine.historyController()
-  }, {
-    apply: {
-      origin: 'history',
-      canRun: () => (
-        !destroyed
-        && bootstrapped
-        && (options.policy?.canObserve?.() ?? true)
-      ),
-      onUnavailable: (reason, action) => mutationFailure(
-        'cancelled',
-        reason === 'cannot-apply'
-          ? 'Collaboration session is not connected.'
-          : reason === 'empty'
-            ? (
-                action === 'undo'
-                  ? 'Nothing to undo.'
-                  : 'Nothing to redo.'
-              )
-            : 'History is unavailable.'
-      ) as unknown as Result,
-      onSuccess: () => {},
-      onFailure: ({ controller }) => {
-        controller.cancel('invalidate')
-        engine.syncHistory()
-      }
-    }
+  const history = engine.history.withPolicy({
+    canRun: () => (
+      !destroyed
+      && bootstrapped
+      && (options.policy?.canObserve?.() ?? true)
+    ),
+    onUnavailable: (reason, action) => mutationFailure(
+      'cancelled',
+      reason === 'cannot-apply'
+        ? 'Collaboration session is not connected.'
+        : reason === 'empty'
+          ? (
+              action === 'undo'
+                ? 'Nothing to undo.'
+                : 'Nothing to redo.'
+            )
+          : 'History is unavailable.'
+    ) as unknown as Result,
+    confirmOnSuccess: false,
+    cancelOnFailure: 'invalidate'
   })
-  const historyController = engine.historyController()
-  if (!historyController) {
-    throw new Error('createMutationCollabSession requires engine.history.')
-  }
-  const syncHistory = () => {
-    history.internal.sync()
-    engine.syncHistory()
-  }
 
   const readSnapshot = () => normalizeSnapshot(
     options.transport.store.read()
@@ -326,12 +277,10 @@ export const createMutationCollabSession = <
         return
       }
 
-      if (historyController.observe(
+      engine.internal.history.observeRemote(
         change.id,
         options.change.footprint(change)
-      )) {
-        syncHistory()
-      }
+      )
 
       try {
         const effect = options.change.read(change)
@@ -407,9 +356,7 @@ export const createMutationCollabSession = <
 
     if (commit.kind === 'replace') {
       publishCheckpoint(commit.doc)
-      if (historyController.clear()) {
-        syncHistory()
-      }
+      history.clear()
       return
     }
 
@@ -429,9 +376,7 @@ export const createMutationCollabSession = <
 
     if (!change) {
       publishCheckpoint(engine.doc())
-      if (historyController.clear()) {
-        syncHistory()
-      }
+      history.clear()
       return
     }
 
@@ -445,11 +390,11 @@ export const createMutationCollabSession = <
 
     syncCursor()
 
-    if (historyController.state().isApplying && historyController.confirm({
-      id: change.id,
-      footprint: options.change.footprint(change)
-    })) {
-      syncHistory()
+    if (history.get().isApplying) {
+      engine.internal.history.confirmPublished({
+        id: change.id,
+        footprint: options.change.footprint(change)
+      })
     }
 
     maybeRotateCheckpoint()
@@ -523,9 +468,7 @@ export const createMutationCollabSession = <
       try {
         publishCommit(commit)
       } catch {
-        if (historyController.cancel('invalidate')) {
-          syncHistory()
-        }
+        engine.internal.history.cancelPending('invalidate')
         reportError()
       }
     })

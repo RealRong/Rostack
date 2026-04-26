@@ -7,7 +7,6 @@ import { resolveBoardConfig } from '../config'
 import type {
   CreateEngineOptions,
   Engine,
-  EngineMutationPort,
   EnginePublish
 } from '../contracts/document'
 import type {
@@ -117,25 +116,12 @@ export const createEngine = ({
       onDocumentChange(current.doc)
     })
   }
-  const mutation: EngineMutationPort = {
-    commits: core.commits,
-    history: core.history as Engine['history'],
-    doc: () => core.doc(),
-    replace: (nextDocument, options) => core.replace(nextDocument, {
-      origin: options?.origin ?? 'system'
-    }),
-    apply: (ops, options) => core.apply(ops, {
-      origin: options?.origin ?? 'user'
-    }),
-    historyController: () => core.historyController(),
-    syncHistory: () => core.syncHistory()
-  }
   const engine: Engine = {
     config,
     commits: core.commits,
     writes: core.writes,
     history: core.history,
-    mutation,
+    mutation: core,
     doc: () => core.doc(),
     current: () => readPublish(core.current().publish),
     subscribe: (listener) => core.subscribe((current) => {

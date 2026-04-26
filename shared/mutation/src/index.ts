@@ -64,12 +64,13 @@ export { createHistoryBinding } from './historyBinding'
 export type { HistoryBinding } from './historyBinding'
 export { createHistoryPort } from './localHistory'
 export type {
-  HistoryPortInternal,
+  HistoryPolicy,
   HistoryPort,
   HistoryPortEngine,
-  HistoryPortOptions,
   HistoryPortState
 } from './localHistory'
+export { readHistoryPortRuntime } from './localHistory'
+export type { MutationPort } from './port'
 export type {
   ApplyCommit,
   CommitRecord,

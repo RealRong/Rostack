@@ -139,7 +139,7 @@ const readEdgePreviews = (
 ): ReadonlyMap<string, EdgePreview> => {
   const byId = new Map<string, EdgePreview>()
 
-  preview.edge.interaction.forEach((entry) => {
+  preview.selection.edge.forEach((entry) => {
     byId.set(entry.id, {
       patch: entry.patch,
       activeRouteIndex: entry.activeRouteIndex
@@ -372,7 +372,7 @@ export const readPreviewNodeIds = (
 export const readPreviewEdgeIds = (
   preview: EditorInputPreviewState
 ): ReadonlySet<string> => new Set(
-  preview.edge.interaction
+  preview.selection.edge
     .filter((entry) => entry.patch !== undefined)
     .map((entry) => entry.id)
 )
@@ -385,7 +385,7 @@ const readPreviewEdgeProjectionMap = (
     activeRouteIndex?: EdgePreview['activeRouteIndex']
   }>()
 
-  preview.edge.interaction.forEach((entry) => {
+  preview.selection.edge.forEach((entry) => {
     byId.set(entry.id, {
       patch: entry.patch,
       activeRouteIndex: entry.activeRouteIndex

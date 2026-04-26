@@ -10,8 +10,10 @@ import {
 } from './history'
 import {
   createHistoryPort,
+  readHistoryPortRuntime,
   type HistoryPort
 } from './localHistory'
+import type { MutationPort } from './port'
 import type {
   ApplyCommit,
   CommitRecord,
@@ -282,6 +284,12 @@ export class OperationMutationRuntime<
   Publish,
   Cache = void,
   Extra = void
+> implements MutationPort<
+  Doc,
+  Op,
+  Key,
+  MutationResult<void, Write<Doc, Op, Key, Extra>>,
+  Write<Doc, Op, Key, Extra>
 > {
   readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
   readonly commits: CommitStream<CommitRecord<Doc, Op, Key, Extra>>
@@ -291,6 +299,13 @@ export class OperationMutationRuntime<
     Key,
     Write<Doc, Op, Key, Extra>
   >
+  readonly internal: MutationPort<
+    Doc,
+    Op,
+    Key,
+    MutationResult<void, Write<Doc, Op, Key, Extra>>,
+    Write<Doc, Op, Key, Extra>
+  >['internal']
 
   protected readonly spec: MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra>
   private state: MutationInternalState<Doc, Publish, Cache>
@@ -321,10 +336,10 @@ export class OperationMutationRuntime<
         Write<Doc, Op, Key, Extra>
       >({
         capacity: this.spec.history.capacity,
-        track: (write) => this.spec.history!.track(write),
-        conflicts: (left, right) => left.some(
-          (leftKey) => right.some(
-            (rightKey) => this.spec.history!.conflicts(leftKey, rightKey)
+        track: (write: Write<Doc, Op, Key, Extra>) => this.spec.history!.track(write),
+        conflicts: (left: readonly Key[], right: readonly Key[]) => left.some(
+          (leftKey: Key) => right.some(
+            (rightKey: Key) => this.spec.history!.conflicts(leftKey, rightKey)
           )
         )
       })
@@ -349,12 +364,22 @@ export class OperationMutationRuntime<
     this.history = createHistoryPort({
       apply: (ops, options) => this.apply(ops, options),
       commits: this.commits,
-      historyController: () => this.historyController()
-    }, {
-      apply: {
-        origin: 'history'
-      }
+      historyController: () => this.historyControllerRef
     })
+    const portRuntime = readHistoryPortRuntime(this.history)
+    this.internal = {
+      history: {
+        observeRemote: (changeId, footprint) => {
+          portRuntime.observeRemote(changeId, footprint)
+        },
+        confirmPublished: (input) => {
+          portRuntime.confirmPublished(input)
+        },
+        cancelPending: (mode) => {
+          portRuntime.cancelPending(mode)
+        }
+      }
+    }
   }
 
   doc(): Doc {
@@ -424,18 +449,6 @@ export class OperationMutationRuntime<
 
   protected readCommittedDoc(): Doc {
     return this.state.doc
-  }
-
-  historyController(): HistoryController<
-    Op,
-    Key,
-    Write<Doc, Op, Key, Extra>
-  > | undefined {
-    return this.historyControllerRef
-  }
-
-  syncHistory(): void {
-    this.history.internal.sync()
   }
 
   protected commit<TData>(input: {

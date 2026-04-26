@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { createHistoryPort } from '@shared/mutation'
 import { editor as editorApi, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeRegistry } from '@whiteboard/editor'
 import { product } from '@whiteboard/product'
@@ -113,7 +112,7 @@ const createEditor = () => {
 
   return editorApi.create({
     engine,
-    history: createHistoryPort(engine),
+    history: engine.history,
     initialTool: {
       type: 'select'
     },

@@ -23,7 +23,7 @@ export interface DataviewHistoryConfig {
 }
 
 export type DataviewHistory = HistoryPort<
-  MutationResult<void, EngineWrite, DataviewErrorCode>,
+  MutationResult<void, EngineWrite>,
   DocumentOperation,
   DataviewMutationKey,
   EngineWrite

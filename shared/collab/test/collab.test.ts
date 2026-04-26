@@ -4,6 +4,7 @@ import {
   type ApplyCommit,
   type CommitRecord,
   createHistoryPort,
+  readHistoryPortRuntime,
   mutationResult,
   history
 } from '@shared/mutation'
@@ -132,6 +133,7 @@ const createEngine = (doc = 'base') => {
     commits,
     historyController: () => controller
   })
+  const historyRuntime = readHistoryPortRuntime(historyPort)
 
   return {
     engine: {
@@ -161,9 +163,21 @@ const createEngine = (doc = 'base') => {
         }
       },
       history: historyPort,
-      historyController: () => controller,
-      syncHistory: () => {
-        historyPort.internal.sync()
+      internal: {
+        history: {
+          observeRemote: (changeId: string, footprint: readonly string[]) => {
+            historyRuntime.observeRemote(changeId, footprint)
+          },
+          confirmPublished: (input: {
+            id: string
+            footprint: readonly string[]
+          }) => {
+            historyRuntime.confirmPublished(input)
+          },
+          cancelPending: (mode: 'restore' | 'invalidate') => {
+            historyRuntime.cancelPending(mode)
+          }
+        }
       }
     },
     emit: (write: TestWrite) => {
@@ -173,7 +187,9 @@ const createEngine = (doc = 'base') => {
       })
     },
     doc: () => current,
-    history: historyPort
+    history: historyPort,
+    controller,
+    historyRuntime
   }
 }
 
@@ -333,7 +349,7 @@ test('null change.create publishes checkpoint and clears history', () => {
   })
 
   session.connect()
-  engineRuntime.history.internal.controller()!.capture({
+  engineRuntime.controller.capture({
     rev: 1,
     at: 1,
     origin: 'user',
@@ -349,7 +365,7 @@ test('null change.create publishes checkpoint and clears history', () => {
     footprint: ['field.a'],
     extra: {}
   })
-  engineRuntime.history.internal.sync()
+  engineRuntime.historyRuntime.sync()
 
   engineRuntime.emit({
     rev: 2,

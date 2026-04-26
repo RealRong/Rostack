@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
-import { createHistoryPort } from '@shared/mutation'
 import { product } from '@whiteboard/product'
 import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { editor as editorApi } from '../src'
@@ -82,7 +81,7 @@ describe('mindmap root move', () => {
     })
     const editor = trackEditor(editorApi.create({
       engine,
-      history: createHistoryPort(engine),
+      history: engine.history,
       initialTool: {
         type: 'select'
       },

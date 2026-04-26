@@ -17,7 +17,7 @@ import type {
   DocumentOperation
 } from '@dataview/core/contracts/operations'
 import type {
-  HistoryController,
+  MutationPort,
   MutationOptions,
   MutationResult
 } from '@shared/mutation'
@@ -169,31 +169,20 @@ export interface EngineFacadeHost {
   apply(
     operations: readonly DocumentOperation[],
     options?: MutationOptions
-  ): MutationResult<void, EngineWrite, DataviewErrorCode>
-}
-
-export interface EngineMutationPort {
-  readonly commits: EngineCommits
-  readonly history: DataviewHistory
-  doc(): DataDoc
-  replace(document: DataDoc, options?: MutationOptions): boolean
-  apply(
-    operations: readonly DocumentOperation[],
-    options?: MutationOptions
-  ): MutationResult<void, EngineWrite, DataviewErrorCode>
-  historyController(): HistoryController<
-    DocumentOperation,
-    DataviewMutationKey,
-    EngineWrite
-  > | undefined
-  syncHistory(): void
+  ): MutationResult<void, EngineWrite>
 }
 
 export interface Engine {
   readonly commits: EngineCommits
   readonly writes: EngineWrites
   readonly history: DataviewHistory
-  readonly mutation: EngineMutationPort
+  readonly mutation: MutationPort<
+    DataDoc,
+    DocumentOperation,
+    DataviewMutationKey,
+    MutationResult<void, EngineWrite>,
+    EngineWrite
+  >
   readonly active: ActiveViewApi
   readonly views: ViewsApi
   readonly fields: FieldsApi
@@ -215,5 +204,5 @@ export interface Engine {
   apply(
     operations: readonly DocumentOperation[],
     options?: MutationOptions
-  ): MutationResult<void, EngineWrite, DataviewErrorCode>
+  ): MutationResult<void, EngineWrite>
 }

@@ -5,8 +5,7 @@ export {
   type CollabStatus,
   type CollabStore,
   type MutationCollabSession,
-  type MutationCollabSessionOptions,
-  type MutationEngineLike
+  type MutationCollabSessionOptions
 } from './session'
 export {
   createSyncCursor,

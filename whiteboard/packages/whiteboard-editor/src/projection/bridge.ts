@@ -179,7 +179,7 @@ const createPreviewDelta = (input: {
   }
   if (
     input.previous.selection.node.frameHoverId !== input.next.selection.node.frameHoverId
-    || input.previous.edge.interaction !== input.next.edge.interaction
+    || input.previous.selection.edge !== input.next.selection.edge
   ) {
     delta.session.hover = true
   }

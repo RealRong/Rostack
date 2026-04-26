@@ -40,13 +40,10 @@ export const createHistoryBinding = <
   return {
     get: state.get,
     subscribe: state.subscribe,
-    internal: {
-      controller: () => current.internal.controller(),
-      sync: () => current.internal.sync()
-    },
     undo: () => current.undo(),
     redo: () => current.redo(),
     clear: () => current.clear(),
+    withPolicy: (policy) => current.withPolicy(policy),
     set: bind,
     reset: () => {
       bind(initial)

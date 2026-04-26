@@ -22,8 +22,7 @@ import { createViewsApi } from '@dataview/engine/api/views'
 import type {
   CreateEngineOptions,
   EngineFacadeHost,
-  Engine,
-  EngineMutationPort
+  Engine
 } from '@dataview/engine/contracts/api'
 import type {
   DataviewCurrent
@@ -109,28 +108,14 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     ) as ExecuteResultOf<I>),
     apply: ((operations: readonly DocumentOperation[], applyOptions) => (
       mutationEngine.apply(operations, applyOptions)
-    )) as Engine['apply']
-  }
-  const mutation: EngineMutationPort = {
-    commits: mutationEngine.commits,
-    history: mutationEngine.history as Engine['history'],
-    doc: () => mutationEngine.doc(),
-    replace: (nextDocument, options) => mutationEngine.replace(
-      document.clone(nextDocument),
-      options
-    ),
-    apply: ((operations: readonly DocumentOperation[], applyOptions) => (
-      mutationEngine.apply(operations, applyOptions)
-    )) as EngineMutationPort['apply'],
-    historyController: () => mutationEngine.historyController(),
-    syncHistory: () => mutationEngine.syncHistory()
+    ))
   }
   const engine = {
     ...baseEngine,
     commits: mutationEngine.commits,
     writes: mutationEngine.writes,
     history: mutationEngine.history,
-    mutation,
+    mutation: mutationEngine,
     performance: performance.api
   } as Omit<Engine, 'fields' | 'records' | 'views' | 'active'>
 

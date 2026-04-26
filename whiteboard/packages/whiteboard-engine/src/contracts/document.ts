@@ -1,7 +1,7 @@
 import type {
   CommitStream,
-  HistoryController,
   HistoryPort,
+  MutationPort,
   MutationOptions,
   WriteStream
 } from '@shared/mutation'
@@ -57,31 +57,6 @@ export interface EnginePublish {
 export type EngineWrites = WriteStream<EngineWrite>
 export type EngineCommits = CommitStream<EngineCommit>
 
-export interface EngineMutationPort {
-  readonly commits: EngineCommits
-  readonly history: HistoryPort<
-    IntentResult,
-    Operation,
-    HistoryFootprint[number],
-    EngineWrite
-  >
-  doc(): Document
-  replace(
-    document: Document,
-    options?: MutationOptions
-  ): boolean
-  apply(
-    ops: readonly Operation[],
-    options?: MutationOptions
-  ): IntentResult
-  historyController(): HistoryController<
-    Operation,
-    HistoryFootprint[number],
-    EngineWrite
-  > | undefined
-  syncHistory(): void
-}
-
 export interface Engine {
   readonly config: BoardConfig
   readonly commits: EngineCommits
@@ -92,7 +67,13 @@ export interface Engine {
     HistoryFootprint[number],
     EngineWrite
   >
-  readonly mutation: EngineMutationPort
+  readonly mutation: MutationPort<
+    Document,
+    Operation,
+    HistoryFootprint[number],
+    IntentResult,
+    EngineWrite
+  >
   doc(): Document
   current(): EnginePublish
   subscribe(listener: (publish: EnginePublish) => void): () => void

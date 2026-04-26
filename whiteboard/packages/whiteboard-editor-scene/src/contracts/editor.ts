@@ -44,9 +44,11 @@ import type { Capture } from './capture'
 import type { IdDelta } from './delta'
 import type {
   EdgeActiveView,
+  ChromeRenderView,
   EdgeLabelKey,
   EdgeLabelView as EdgeRenderLabelView,
   EdgeMaskView,
+  NodeRenderView,
   EdgeOverlayView,
   EdgeStaticId,
   EdgeStaticView
@@ -522,6 +524,10 @@ export interface EdgeLabelUiView {
   caret?: EditCaret
 }
 
+export type NodeStateView = NodeUiView
+export type EdgeStateView = EdgeUiView
+export type ChromeStateView = ChromeView
+
 export interface MindmapView {
   base: MindmapBaseView
   structure: MindmapStructureView
@@ -604,7 +610,7 @@ export interface ChromeOverlay {
 
 export interface Runtime {
   readonly stores: RuntimeStores
-  readonly read: Read
+  readonly query: Query
   revision(): Revision
   state(): State
   capture(): Capture
@@ -622,28 +628,30 @@ export interface FamilyReadStore<
 
 export interface RuntimeStores {
   graph: {
-    nodes: FamilyReadStore<NodeId, NodeView>
-    edges: FamilyReadStore<EdgeId, EdgeView>
-    owners: {
-      mindmaps: FamilyReadStore<MindmapId, MindmapView>
-      groups: FamilyReadStore<GroupId, GroupView>
+    node: FamilyReadStore<NodeId, NodeView>
+    edge: FamilyReadStore<EdgeId, EdgeView>
+    mindmap: FamilyReadStore<MindmapId, MindmapView>
+    group: FamilyReadStore<GroupId, GroupView>
+    state: {
+      node: FamilyReadStore<NodeId, NodeStateView>
+      edge: FamilyReadStore<EdgeId, EdgeStateView>
+      chrome: store.ReadStore<ChromeStateView>
     }
   }
   render: {
+    node: FamilyReadStore<NodeId, NodeRenderView>
     edge: {
       statics: FamilyReadStore<EdgeStaticId, EdgeStaticView>
       active: FamilyReadStore<EdgeId, EdgeActiveView>
       labels: FamilyReadStore<EdgeLabelKey, EdgeRenderLabelView>
       masks: FamilyReadStore<EdgeId, EdgeMaskView>
-      overlay: store.ReadStore<EdgeOverlayView>
+    }
+    chrome: {
+      scene: store.ReadStore<ChromeRenderView>
+      edge: store.ReadStore<EdgeOverlayView>
     }
   }
   items: store.ReadStore<readonly SceneItem[]>
-  ui: {
-    chrome: store.ReadStore<ChromeView>
-    nodes: FamilyReadStore<NodeId, NodeUiView>
-    edges: FamilyReadStore<EdgeId, EdgeUiView>
-  }
 }
 
 export interface Result {
@@ -651,18 +659,24 @@ export interface Result {
   trace?: ProjectorTrace
 }
 
-export interface Read {
+export interface Query {
   revision(): Revision
-  node(id: NodeId): NodeView | undefined
-  edge(id: EdgeId): EdgeView | undefined
-  mindmap(id: MindmapId): MindmapView | undefined
-  group(id: GroupId): GroupView | undefined
-  mindmapId(value: string): MindmapId | undefined
-  mindmapStructure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
-  relatedEdges(nodeIds: Iterable<NodeId>): readonly EdgeId[]
-  groupExact(target: import('@whiteboard/core/selection').SelectionTarget): readonly GroupId[]
-  nodeUi(id: NodeId): NodeUiView | undefined
-  edgeUi(id: EdgeId): EdgeUiView | undefined
+  node: {
+    get(id: NodeId): NodeView | undefined
+  }
+  edge: {
+    get(id: EdgeId): EdgeView | undefined
+    related(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+  }
+  mindmap: {
+    get(id: MindmapId): MindmapView | undefined
+    resolve(value: string): MindmapId | undefined
+    structure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
+  }
+  group: {
+    get(id: GroupId): GroupView | undefined
+    exact(target: import('@whiteboard/core/selection').SelectionTarget): readonly GroupId[]
+  }
   spatial: SpatialRead
   snap(rect: Rect): readonly import('@whiteboard/core/node').SnapCandidate[]
   frame: {
@@ -677,12 +691,39 @@ export interface Read {
     descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
   }
   hit: {
+    node(input: {
+      point: Point
+      threshold?: number
+      excludeIds?: readonly NodeId[]
+    }): NodeId | undefined
     edge(input: {
       point: Point
       threshold?: number
       excludeIds?: readonly EdgeId[]
     }): EdgeId | undefined
+    item(input: {
+      point: Point
+      threshold?: number
+      kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
+      exclude?: Partial<{
+        node: readonly NodeId[]
+        edge: readonly EdgeId[]
+        mindmap: readonly MindmapId[]
+        group: readonly GroupId[]
+      }>
+    }): {
+      kind: 'node'
+      id: NodeId
+    } | {
+      kind: 'edge'
+      id: EdgeId
+    } | {
+      kind: 'mindmap'
+      id: MindmapId
+    } | {
+      kind: 'group'
+      id: GroupId
+    } | undefined
   }
   items(): readonly SceneItem[]
-  chrome(): ChromeView
 }

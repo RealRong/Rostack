@@ -19,6 +19,24 @@ export const createWorking = (input: {
   measure?: TextMeasure
 } = {}): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
+  const nodeState = new Map()
+  const edgeState = new Map()
+  const chromeState = {
+    overlays: [],
+    hover: {
+      kind: 'none' as const
+    },
+    preview: {
+      guides: [],
+      draw: null,
+      mindmap: null
+    },
+    edit: null
+  }
+  const renderEdgeOverlay = {
+    endpointHandles: [],
+    routePoints: []
+  }
 
   return {
     measure: input.measure,
@@ -31,6 +49,11 @@ export const createWorking = (input: {
       owners: {
         mindmaps: new Map(),
         groups: new Map()
+      },
+      state: {
+        node: nodeState,
+        edge: edgeState,
+        chrome: chromeState
       }
     },
     indexes: {
@@ -47,22 +70,12 @@ export const createWorking = (input: {
     },
     spatial: createSpatialState(),
     ui: {
-      chrome: {
-        overlays: [],
-        hover: {
-          kind: 'none'
-        },
-        preview: {
-          guides: [],
-          draw: null,
-          mindmap: null
-        },
-        edit: null
-      },
-      nodes: new Map(),
-      edges: new Map()
+      chrome: chromeState,
+      nodes: nodeState,
+      edges: edgeState
     },
     render: {
+      node: new Map(),
       statics: {
         styleKeyByEdge: new Map(),
         edgeIdsByStyleKey: new Map(),
@@ -73,9 +86,12 @@ export const createWorking = (input: {
       labels: new Map(),
       masks: new Map(),
       active: new Map(),
-      overlay: {
-        endpointHandles: [],
-        routePoints: []
+      overlay: renderEdgeOverlay,
+      chrome: {
+        guides: [],
+        draw: null,
+        mindmap: null,
+        edge: renderEdgeOverlay
       }
     },
     items: [] as readonly SceneItem[],

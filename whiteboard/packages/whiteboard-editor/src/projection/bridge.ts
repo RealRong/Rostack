@@ -8,7 +8,7 @@ import {
 import {
   createEditorSceneRuntime,
   type InputDelta,
-  type Read as SceneRead,
+  type Query as SceneQuery,
   type Result,
   type Runtime,
   type State
@@ -38,7 +38,7 @@ import {
 
 export interface EditorSceneBridge {
   stores: Runtime['stores']
-  read: SceneRead
+  query: SceneQuery
   current(): {
     revision: number
     state: State
@@ -434,7 +434,7 @@ export const createSceneBridge = ({
 
   return {
     stores: runtime.stores,
-    read: runtime.read,
+    query: runtime.query,
     current: () => ({
       revision: runtime.revision(),
       state: runtime.state(),

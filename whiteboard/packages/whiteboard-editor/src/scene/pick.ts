@@ -1,32 +1,16 @@
-import { scheduler, store } from '@shared/core'
-import { edge as edgeApi } from '@whiteboard/core/edge'
-import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import { node as nodeApi } from '@whiteboard/core/node'
+import { scheduler } from '@shared/core'
 import type {
-  MindmapId,
-  NodeId,
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type {
-  MindmapView,
-  SpatialRead
-} from '@whiteboard/editor-scene'
-import type {
-  GraphEdgeRead
-} from './edge'
-import type {
-  GraphNodeGeometry,
-  GraphNodeRead
-} from './node'
+import type { Query } from '@whiteboard/editor-scene'
 import type {
   ScenePickCandidateResult,
   ScenePickKind,
   ScenePickRequest,
   ScenePickResult,
   ScenePickRuntime,
-  ScenePickRuntimeResult,
-  ScenePickTarget
+  ScenePickRuntimeResult
 } from '../types/editor'
 
 const DEFAULT_PICK_RADIUS_SCREEN = 8
@@ -35,18 +19,6 @@ type PickCandidateInput = {
   point: Point
   radius?: number
   kinds?: readonly ScenePickKind[]
-}
-
-type PickWinner = {
-  target: ScenePickTarget
-  distance: number
-  order: number
-}
-
-const KIND_PRIORITY: Record<ScenePickKind, number> = {
-  node: 3,
-  mindmap: 2,
-  edge: 1
 }
 
 const toPickRect = (
@@ -58,49 +30,6 @@ const toPickRect = (
   width: radius * 2,
   height: radius * 2
 })
-
-const readRectDistance = (
-  rect: Rect,
-  point: Point
-) => {
-  const dx = point.x < rect.x
-    ? rect.x - point.x
-    : point.x > rect.x + rect.width
-      ? point.x - (rect.x + rect.width)
-      : 0
-  const dy = point.y < rect.y
-    ? rect.y - point.y
-    : point.y > rect.y + rect.height
-      ? point.y - (rect.y + rect.height)
-      : 0
-
-  return Math.hypot(dx, dy)
-}
-
-const pickBetter = (
-  current: PickWinner | undefined,
-  next: PickWinner
-) => {
-  if (!current) {
-    return next
-  }
-  if (next.distance < current.distance) {
-    return next
-  }
-  if (next.distance > current.distance) {
-    return current
-  }
-  if (next.order > current.order) {
-    return next
-  }
-  if (next.order < current.order) {
-    return current
-  }
-
-  return KIND_PRIORITY[next.target.kind] > KIND_PRIORITY[current.target.kind]
-    ? next
-    : current
-}
 
 const isScenePickRuntimeResultEqual = (
   left: ScenePickRuntimeResult | undefined,
@@ -121,25 +50,9 @@ const isScenePickRuntimeResultEqual = (
   && left?.result.stats.hits === right?.result.stats.hits
 )
 
-export const createScenePick = ({
-  readZoom,
-  spatial,
-  node,
-  edge,
-  mindmap
-}: {
+export const createScenePick = (input: {
   readZoom: () => number
-  spatial: Pick<SpatialRead, 'candidates'>
-  node: {
-    view: GraphNodeRead['view']
-    geometry: (nodeId: NodeId) => (GraphNodeGeometry & {
-      node: NonNullable<ReturnType<GraphNodeRead['get']>>['node']
-    }) | undefined
-  }
-  edge: {
-    geometry: GraphEdgeRead['geometry']
-  }
-  mindmap: store.KeyedReadStore<MindmapId, MindmapView | undefined>
+  query: Pick<Query, 'hit' | 'spatial'>
 }): {
   rect: (point: Point, radius?: number) => Rect
   candidates: (input: PickCandidateInput) => ScenePickCandidateResult
@@ -154,16 +67,16 @@ export const createScenePick = ({
   const resolveRadius = (
     radius?: number
   ) => radius ?? (
-    DEFAULT_PICK_RADIUS_SCREEN / Math.max(readZoom(), 0.0001)
+    DEFAULT_PICK_RADIUS_SCREEN / Math.max(input.readZoom(), 0.0001)
   )
 
   const candidates = (
-    input: PickCandidateInput
+    currentInput: PickCandidateInput
   ): ScenePickCandidateResult => {
-    const radius = resolveRadius(input.radius)
-    const rect = toPickRect(input.point, radius)
-    const result = spatial.candidates(rect, {
-      kinds: input.kinds
+    const radius = resolveRadius(currentInput.radius)
+    const rect = toPickRect(currentInput.point, radius)
+    const result = input.query.spatial.candidates(rect, {
+      kinds: currentInput.kinds
     })
 
     return {
@@ -174,109 +87,25 @@ export const createScenePick = ({
   }
 
   const resolve = (
-    input: PickCandidateInput
+    currentInput: PickCandidateInput
   ): ScenePickResult => {
     const startedAt = scheduler.readMonotonicNow()
-    const candidateResult = candidates(input)
-    const radius = resolveRadius(input.radius)
-    let hits = 0
-    let winner: PickWinner | undefined
-
-    candidateResult.records.forEach((record) => {
-      switch (record.kind) {
-        case 'node': {
-          const currentNode = store.read(node.view, record.item.id)
-          const geometry = node.geometry(record.item.id)
-          if (!currentNode || currentNode.hidden || !geometry) {
-            return
-          }
-
-          const distance = nodeApi.outline.containsPoint(
-            geometry.node,
-            geometry.rect,
-            geometry.rotation,
-            input.point
-          )
-            ? 0
-            : nodeApi.outline.distanceToOutline(
-                geometry.node,
-                geometry.rect,
-                geometry.rotation,
-                input.point
-              )
-          if (distance > radius) {
-            return
-          }
-
-          hits += 1
-          winner = pickBetter(winner, {
-            target: {
-              kind: 'node',
-              id: record.item.id
-            },
-            distance,
-            order: record.order
-          })
-          return
-        }
-        case 'edge': {
-          const geometry = store.read(edge.geometry, record.item.id)
-          if (!geometry) {
-            return
-          }
-
-          const distance = edgeApi.hit.distanceToPath({
-            path: geometry.path,
-            point: input.point
-          })
-          if (!Number.isFinite(distance) || distance > radius) {
-            return
-          }
-
-          hits += 1
-          winner = pickBetter(winner, {
-            target: {
-              kind: 'edge',
-              id: record.item.id
-            },
-            distance,
-            order: record.order
-          })
-          return
-        }
-        case 'mindmap': {
-          const currentMindmap = store.read(mindmap, record.item.id)
-          const bounds = currentMindmap?.tree.bbox
-          if (!bounds) {
-            return
-          }
-
-          const distance = geometryApi.rect.containsPoint(input.point, bounds)
-            ? 0
-            : readRectDistance(bounds, input.point)
-          if (distance > radius) {
-            return
-          }
-
-          hits += 1
-          winner = pickBetter(winner, {
-            target: {
-              kind: 'mindmap',
-              id: record.item.id
-            },
-            distance,
-            order: record.order
-          })
-        }
-      }
+    const candidateResult = candidates(currentInput)
+    const radius = resolveRadius(currentInput.radius)
+    const target = input.query.hit.item({
+      point: currentInput.point,
+      threshold: radius,
+      kinds: currentInput.kinds
     })
 
     return {
       rect: candidateResult.rect,
-      target: winner?.target,
+      target: target && target.kind !== 'group'
+        ? target
+        : undefined,
       stats: {
         ...candidateResult.stats,
-        hits,
+        hits: target ? 1 : 0,
         latency: scheduler.readMonotonicNow() - startedAt
       }
     }
@@ -341,8 +170,7 @@ export const createScenePick = ({
         }
 
         pending = undefined
-        runtimeTask.cancel()
-        if (!current) {
+        if (current === undefined) {
           return
         }
 
@@ -352,14 +180,9 @@ export const createScenePick = ({
         })
       },
       dispose: () => {
-        if (disposed) {
-          return
-        }
-
         disposed = true
         pending = undefined
         current = undefined
-        runtimeTask.cancel()
         listeners.clear()
       }
     }

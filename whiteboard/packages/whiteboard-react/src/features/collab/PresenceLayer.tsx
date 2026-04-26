@@ -43,7 +43,7 @@ const PresenceNodeSelection = ({
   viewport: unknown
 }) => {
   const editor = useEditorRuntime()
-  const item = useKeyedStoreValue(editor.scene.nodes.read, nodeId)
+  const item = useKeyedStoreValue(editor.scene.stores.render.node.byId, nodeId)
 
   if (!item) {
     return null
@@ -73,7 +73,7 @@ const PresenceEdgeSelection = ({
   viewport: unknown
 }) => {
   const editor = useEditorRuntime()
-  const edge = useKeyedStoreValue(editor.scene.edges.read, edgeId)
+  const edge = useKeyedStoreValue(editor.scene.stores.graph.edge.byId, edgeId)
 
   if (!edge) {
     return null
@@ -81,7 +81,7 @@ const PresenceEdgeSelection = ({
 
   void viewport
 
-  const bounds = edge.box?.rect
+  const bounds = edge?.box?.rect
   if (!bounds) {
     return null
   }

@@ -14,9 +14,9 @@ import type {
   EdgeView as RuntimeEdgeView,
   GroupView,
   MindmapView,
-  NodeUiView,
   NodeView as RuntimeNodeView,
-  Read as EditorGraphQuery,
+  NodeUiView,
+  Query as EditorGraphQuery,
   RuntimeStores,
   SceneItem
 } from '@whiteboard/editor-scene'
@@ -78,20 +78,30 @@ type SceneProjectionStores = {
 export type EditorSceneRuntime = {
   dispose: () => void
   revision: () => number
-  items: store.ReadStore<readonly SceneItem[]>
-  query: {
-    rect: EditorGraphQuery['spatial']['rect']
+  query: EditorGraphQuery
+  stores: RuntimeStores
+  host: {
+    pick: ReturnType<typeof createScenePick>['runtime']
     visible: (
       options?: Parameters<EditorGraphQuery['spatial']['rect']>[1]
     ) => ReturnType<EditorGraphQuery['spatial']['rect']>
-    hit: {
-      edge: (input: {
-        point: Point
-        threshold?: number
-        excludeIds?: readonly EdgeId[]
-      }) => EdgeId | undefined
+    geometry: {
+      node: (nodeId: NodeId) => ReturnType<RuntimeStores['render']['node']['byId']['get']>
+      edge: GraphEdgeRead['geometry']['get']
+      order: (item: {
+        kind: 'node' | 'edge' | 'mindmap'
+        id: string
+      }) => number
+    }
+    scope: {
+      move: (target: SelectionTarget) => {
+        nodes: readonly Node[]
+        edges: ReturnType<GraphEdgeRead['edges']>
+      }
+      bounds: (target: SelectionTarget) => Rect | undefined
     }
   }
+  items: store.ReadStore<readonly SceneItem[]>
   pick: ReturnType<typeof createScenePick>
   snap: {
     rect: EditorGraphQuery['snap']
@@ -187,7 +197,7 @@ export type EditorSceneRuntime = {
     id: (value: string) => MindmapId | undefined
     structure: (
       value: MindmapId | string
-    ) => ReturnType<EditorGraphQuery['mindmapStructure']>
+    ) => ReturnType<EditorGraphQuery['mindmap']['structure']>
     navigate: (input: {
       id: MindmapId
       fromNodeId: NodeId
@@ -230,11 +240,11 @@ const createSceneProjectionStores = (
   stores: RuntimeStores
 ): SceneProjectionStores => ({
   items: stores.items,
-  chrome: stores.ui.chrome,
-  nodeGraphIds: stores.graph.nodes.ids,
-  nodeGraph: stores.graph.nodes.byId,
-  edgeGraphIds: stores.graph.edges.ids,
-  edgeGraph: stores.graph.edges.byId,
+  chrome: stores.graph.state.chrome,
+  nodeGraphIds: stores.graph.node.ids,
+  nodeGraph: stores.graph.node.byId,
+  edgeGraphIds: stores.graph.edge.ids,
+  edgeGraph: stores.graph.edge.byId,
   edgeRenderStaticsIds: stores.render.edge.statics.ids,
   edgeRenderStatics: stores.render.edge.statics.byId,
   edgeRenderActiveIds: stores.render.edge.active.ids,
@@ -243,11 +253,11 @@ const createSceneProjectionStores = (
   edgeRenderLabels: stores.render.edge.labels.byId,
   edgeRenderMasksIds: stores.render.edge.masks.ids,
   edgeRenderMasks: stores.render.edge.masks.byId,
-  edgeRenderOverlay: stores.render.edge.overlay,
-  mindmap: stores.graph.owners.mindmaps.byId,
-  group: stores.graph.owners.groups.byId,
-  nodeUi: stores.ui.nodes.byId,
-  edgeUi: stores.ui.edges.byId
+  edgeRenderOverlay: stores.render.chrome.edge,
+  mindmap: stores.graph.mindmap.byId,
+  group: stores.graph.group.byId,
+  nodeUi: stores.graph.state.node.byId,
+  edgeUi: stores.graph.state.edge.byId
 })
 
 export const createSceneSource = ({
@@ -257,15 +267,15 @@ export const createSceneSource = ({
   visibleRect,
   readZoom
 }: {
-  controller: Pick<EditorSceneBridge, 'read' | 'current' | 'stores'>
+  controller: Pick<EditorSceneBridge, 'query' | 'current' | 'stores'>
   state: EditorSessionState
   nodeType: NodeTypeSupport
   visibleRect: () => Rect
   readZoom: () => number
 }): EditorSceneRuntime => {
   const sources = createSceneProjectionStores(controller.stores)
-  const query = controller.read
-  const spatial = controller.read.spatial
+  const query = controller.query
+  const spatial = controller.query.spatial
   const readRevision = () => controller.current().revision
   const geometry = createSceneGeometry({
     revision: readRevision,
@@ -274,7 +284,11 @@ export const createSceneSource = ({
   })
 
   const node = createGraphNodeRead({
-    sources,
+    sources: {
+      nodeGraphIds: sources.nodeGraphIds,
+      nodeGraph: sources.nodeGraph,
+      nodeUi: sources.nodeUi
+    },
     spatial,
     type: nodeType,
     geometry: geometry.node
@@ -282,7 +296,7 @@ export const createSceneSource = ({
   const edge = createGraphEdgeRead({
     sources,
     spatial,
-    relatedEdges: query.relatedEdges,
+    relatedEdges: query.edge.related,
     node,
     geometry: geometry.edge
   })
@@ -314,40 +328,14 @@ export const createSceneSource = ({
     visibleRect,
     rect: spatial.rect
   })
-
-  const queryApi: EditorSceneRuntime['query'] = {
-    rect: spatial.rect,
-    visible,
-    hit: {
-      edge: ({
-        point,
-        threshold,
-        excludeIds
-      }) => query.hit.edge({
-        point,
-        threshold: threshold ?? (8 / Math.max(readZoom(), 0.0001)),
-        excludeIds
-      })
-    }
-  }
   const pick = createScenePick({
     readZoom,
-    spatial: {
-      candidates: spatial.candidates
-    },
-    node: {
-      view: node.view,
-      geometry: node.geometry
-    },
-    edge: {
-      geometry: edge.geometry
-    },
-    mindmap: sources.mindmap
+    query
   })
   const scope = createSceneScope({
     spatialRect: spatial.rect,
-    relatedEdges: query.relatedEdges,
-    nodeView: node.view,
+    relatedEdges: query.edge.related,
+    nodeView: controller.stores.render.node.byId,
     edgeBounds: edge.bounds,
     readEdges: edge.edges
   })
@@ -357,8 +345,22 @@ export const createSceneSource = ({
       pick.runtime.dispose()
     },
     revision: readRevision,
+    query,
+    stores: controller.stores,
+    host: {
+      pick: pick.runtime,
+      visible,
+      geometry: {
+        node: (nodeId) => store.read(controller.stores.render.node.byId, nodeId),
+        edge: (edgeId) => store.read(edge.geometry, edgeId),
+        order: order.get
+      },
+      scope: {
+        move: scope.move,
+        bounds: scope.bounds
+      }
+    },
     items: sources.items,
-    query: queryApi,
     pick,
     snap: {
       rect: query.snap
@@ -368,7 +370,11 @@ export const createSceneSource = ({
       edge: (edgeId) => store.read(edge.geometry, edgeId),
       order: order.get
     },
-    scope,
+    scope: {
+      move: scope.move,
+      relatedEdges: query.edge.related,
+      bounds: scope.bounds
+    },
     frame: query.frame,
     node: {
       get: node.get,
@@ -439,10 +445,10 @@ export const createSceneSource = ({
     selection: selectionSource,
     mindmap: {
       view: sources.mindmap,
-      id: (value) => query.mindmapId(value),
-      structure: (value) => query.mindmapStructure(value as MindmapId | string),
+      id: (value) => query.mindmap.resolve(value),
+      structure: (value) => query.mindmap.structure(value as MindmapId | string),
       navigate: (input) => {
-        const structure = query.mindmapStructure(input.id)
+        const structure = query.mindmap.structure(input.id)
         return structure
           ? readMindmapNavigateTarget({
               structure,
@@ -461,7 +467,7 @@ export const createSceneSource = ({
           ? toGroupTarget(group.structure.items)
           : undefined
       },
-      exact: query.groupExact
+      exact: query.group.exact
     },
     chrome: sources.chrome
   }

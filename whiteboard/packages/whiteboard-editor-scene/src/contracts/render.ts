@@ -2,13 +2,45 @@ import type {
   EdgeLabelMaskRect,
   EdgeStaticStyle
 } from '@whiteboard/core/edge'
+import type { Guide } from '@whiteboard/core/node'
 import type {
   Edge,
   EdgeId,
+  NodeGeometry,
+  NodeId,
+  NodeModel,
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { EditCaret } from './editor'
+import type {
+  DrawPreview,
+  EditCaret,
+  EditField,
+  MindmapPreview,
+  OwnerRef
+} from './editor'
+
+export interface NodeRenderView {
+  id: NodeId
+  node: NodeModel
+  owner?: OwnerRef
+  rect: Rect
+  bounds: Rect
+  rotation: number
+  outline: NodeGeometry
+  state: {
+    hidden: boolean
+    selected: boolean
+    hovered: boolean
+    editing: boolean
+    patched: boolean
+    resizing: boolean
+  }
+  edit?: {
+    field: EditField
+    caret: EditCaret
+  }
+}
 
 export type EdgeStaticId = string
 export type EdgeLabelKey = `${EdgeId}:${string}`
@@ -93,4 +125,15 @@ export interface EdgeOverlayView {
   snapPoint?: Point
   endpointHandles: readonly EdgeOverlayEndpointHandle[]
   routePoints: readonly EdgeOverlayRoutePoint[]
+}
+
+export interface ChromeRenderView {
+  marquee?: {
+    worldRect: Rect
+    match: 'touch' | 'contain'
+  }
+  guides: readonly Guide[]
+  draw: DrawPreview | null
+  mindmap: MindmapPreview | null
+  edge: EdgeOverlayView
 }

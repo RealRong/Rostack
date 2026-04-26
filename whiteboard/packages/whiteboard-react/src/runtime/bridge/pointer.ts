@@ -38,7 +38,7 @@ const scheduleScenePick = (
     world: Point
   }
 ) => {
-  editor.scene.pick.runtime.schedule({
+  editor.scene.host.pick.schedule({
     client: input.client,
     screen: input.screen,
     world: input.world
@@ -251,13 +251,13 @@ export const createPointerBridge = ({
         return
       }
 
-      editor.scene.pick.runtime.clear()
+      editor.scene.host.pick.clear()
       point.clear()
       editor.input.pointerLeave()
     },
     cancel: () => {
       clearSession()
-      editor.scene.pick.runtime.clear()
+      editor.scene.host.pick.clear()
       point.clear()
       editor.input.cancel()
     }

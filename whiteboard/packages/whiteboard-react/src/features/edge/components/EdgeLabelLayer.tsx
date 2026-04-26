@@ -54,7 +54,7 @@ const EdgeLabelItem = memo(({
 }) => {
   const editor = useEditorRuntime()
   const label = useKeyedStoreValue(
-    editor.scene.edge.render.labels.byId,
+    editor.scene.stores.render.edge.labels.byId,
     labelKey
   )
   const bindLabelRef = usePickRef(label
@@ -140,7 +140,7 @@ EdgeLabelItem.displayName = 'EdgeLabelItem'
 export const EdgeLabelLayer = memo(() => {
   const editor = useEditorRuntime()
   const zoom = useStoreValue(editor.session.viewport.zoom)
-  const labelKeys = useStoreValue(editor.scene.edge.render.labels.ids)
+  const labelKeys = useStoreValue(editor.scene.stores.render.edge.labels.ids)
 
   return (
     <div className="wb-edge-label-layer">

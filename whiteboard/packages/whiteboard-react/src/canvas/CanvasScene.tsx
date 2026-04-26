@@ -12,7 +12,7 @@ import { EdgeCanvasMarkerDefs } from '@whiteboard/react/features/edge/ui/marker'
 
 export const CanvasScene = memo(() => {
   const editor = useEditorRuntime()
-  const scene = useStoreValue(editor.scene.items)
+  const scene = useStoreValue(editor.scene.stores.items)
   return (
     <div className="wb-scene">
       <svg className="wb-scene-defs" aria-hidden="true" focusable="false">

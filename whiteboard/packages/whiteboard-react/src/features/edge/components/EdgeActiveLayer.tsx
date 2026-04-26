@@ -42,7 +42,7 @@ const EdgeActiveItem = memo(({
 }) => {
   const editor = useEditorRuntime()
   const edge = useKeyedStoreValue(
-    editor.scene.edge.render.active.byId,
+    editor.scene.stores.render.edge.active.byId,
     edgeId
   )
   if (!edge) {
@@ -82,8 +82,8 @@ EdgeActiveItem.displayName = 'EdgeActiveItem'
 
 export const EdgeActiveLayer = memo(() => {
   const editor = useEditorRuntime()
-  const activeIds = useStoreValue(editor.scene.edge.render.active.ids)
-  const maskIds = useStoreValue(editor.scene.edge.render.masks.ids)
+  const activeIds = useStoreValue(editor.scene.stores.render.edge.active.ids)
+  const maskIds = useStoreValue(editor.scene.stores.render.edge.masks.ids)
   const maskedEdgeIds = useMemo(
     () => new Set(maskIds),
     [maskIds]

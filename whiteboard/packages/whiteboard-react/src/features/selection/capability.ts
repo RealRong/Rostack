@@ -28,7 +28,7 @@ export const readSelectionCan = ({
     target.nodeIds.length > 0
     && target.edgeIds.length === 0
   const count = target.nodeIds.length + target.edgeIds.length
-  const exactGroupIds = editor.scene.group.exact(target)
+  const exactGroupIds = editor.scene.query.group.exact(target)
   const orderLock = resolveLockDecision({
     document,
     target: {

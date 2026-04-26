@@ -1,5 +1,5 @@
 import type { Rect } from '@whiteboard/core/types'
-import type { Read as EditorGraphQuery } from '@whiteboard/editor-scene'
+import type { Query as EditorGraphQuery } from '@whiteboard/editor-scene'
 
 export const createSceneVisible = (input: {
   revision: () => number

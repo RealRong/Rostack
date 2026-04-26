@@ -516,28 +516,30 @@ export const createEditorSceneProjectionModel = (input: {
   ReturnType<typeof createEditorSceneRead>,
   {
     graph: {
-      nodes: ReturnType<typeof family<WorkingState, NodeId, WorkingState['graph']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>>
-      edges: ReturnType<typeof family<WorkingState, EdgeId, WorkingState['graph']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>>
-      owners: {
-        mindmaps: ReturnType<typeof family<WorkingState, MindmapId, WorkingState['graph']['owners']['mindmaps'] extends Map<MindmapId, infer TValue> ? TValue : never>>
-        groups: ReturnType<typeof family<WorkingState, GroupId, WorkingState['graph']['owners']['groups'] extends Map<GroupId, infer TValue> ? TValue : never>>
+      node: ReturnType<typeof family<WorkingState, NodeId, WorkingState['graph']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>>
+      edge: ReturnType<typeof family<WorkingState, EdgeId, WorkingState['graph']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>>
+      mindmap: ReturnType<typeof family<WorkingState, MindmapId, WorkingState['graph']['owners']['mindmaps'] extends Map<MindmapId, infer TValue> ? TValue : never>>
+      group: ReturnType<typeof family<WorkingState, GroupId, WorkingState['graph']['owners']['groups'] extends Map<GroupId, infer TValue> ? TValue : never>>
+      state: {
+        node: ReturnType<typeof family<WorkingState, NodeId, WorkingState['graph']['state']['node'] extends Map<NodeId, infer TValue> ? TValue : never>>
+        edge: ReturnType<typeof family<WorkingState, EdgeId, WorkingState['graph']['state']['edge'] extends Map<EdgeId, infer TValue> ? TValue : never>>
+        chrome: ReturnType<typeof value<WorkingState, WorkingState['graph']['state']['chrome']>>
       }
     }
     render: {
+      node: ReturnType<typeof family<WorkingState, NodeId, WorkingState['render']['node'] extends Map<NodeId, infer TValue> ? TValue : never>>
       edge: {
         statics: ReturnType<typeof family<WorkingState, EdgeStaticId, EdgeStaticView>>
         active: ReturnType<typeof family<WorkingState, EdgeId, EdgeActiveView>>
         labels: ReturnType<typeof family<WorkingState, EdgeLabelKey, WorkingState['render']['labels'] extends Map<EdgeLabelKey, infer TValue> ? TValue : never>>
         masks: ReturnType<typeof family<WorkingState, EdgeId, WorkingState['render']['masks'] extends Map<EdgeId, infer TValue> ? TValue : never>>
-        overlay: ReturnType<typeof value<WorkingState, WorkingState['render']['overlay']>>
+      }
+      chrome: {
+        scene: ReturnType<typeof value<WorkingState, WorkingState['render']['chrome']>>
+        edge: ReturnType<typeof value<WorkingState, WorkingState['render']['overlay']>>
       }
     }
     items: ReturnType<typeof value<WorkingState, WorkingState['items']>>
-    ui: {
-      chrome: ReturnType<typeof value<WorkingState, WorkingState['ui']['chrome']>>
-      nodes: ReturnType<typeof family<WorkingState, NodeId, WorkingState['ui']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>>
-      edges: ReturnType<typeof family<WorkingState, EdgeId, WorkingState['ui']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>>
-    }
   },
   EditorScenePhaseName,
   EditorPhaseScopeMap,
@@ -549,11 +551,9 @@ export const createEditorSceneProjectionModel = (input: {
   }),
   createRead: (runtime) => createEditorSceneRead({
     revision: runtime.revision,
+    state: runtime.state,
+    items: () => runtime.state().items,
     spatial: () => runtime.state().spatial,
-    graph: () => runtime.state().graph,
-    indexes: () => runtime.state().indexes,
-    ui: () => runtime.state().ui,
-    items: () => runtime.state().items
   }),
   capture: ({ state, revision }) => buildEditorSceneCapture(
     state,
@@ -561,34 +561,55 @@ export const createEditorSceneProjectionModel = (input: {
   ),
   surface: {
     graph: {
-      nodes: family({
+      node: family({
         read: (state) => ({
           ids: [...state.graph.nodes.keys()],
           byId: state.graph.nodes
         })
       }),
-      edges: family({
+      edge: family({
         read: (state) => ({
           ids: [...state.graph.edges.keys()],
           byId: state.graph.edges
         })
       }),
-      owners: {
-        mindmaps: family({
+      mindmap: family({
+        read: (state) => ({
+          ids: [...state.graph.owners.mindmaps.keys()],
+          byId: state.graph.owners.mindmaps
+        })
+      }),
+      group: family({
+        read: (state) => ({
+          ids: [...state.graph.owners.groups.keys()],
+          byId: state.graph.owners.groups
+        })
+      }),
+      state: {
+        node: family({
           read: (state) => ({
-            ids: [...state.graph.owners.mindmaps.keys()],
-            byId: state.graph.owners.mindmaps
+            ids: [...state.graph.state.node.keys()],
+            byId: state.graph.state.node
           })
         }),
-        groups: family({
+        edge: family({
           read: (state) => ({
-            ids: [...state.graph.owners.groups.keys()],
-            byId: state.graph.owners.groups
+            ids: [...state.graph.state.edge.keys()],
+            byId: state.graph.state.edge
           })
+        }),
+        chrome: value({
+          read: (state) => state.graph.state.chrome
         })
       }
     },
     render: {
+      node: family({
+        read: (state) => ({
+          ids: [...state.render.node.keys()],
+          byId: state.render.node
+        })
+      }),
       edge: {
         statics: family({
           read: (state) => ({
@@ -614,31 +635,19 @@ export const createEditorSceneProjectionModel = (input: {
             byId: state.render.masks
           })
         }),
-        overlay: value({
+      },
+      chrome: {
+        scene: value({
+          read: (state) => state.render.chrome
+        }),
+        edge: value({
           read: (state) => state.render.overlay
         })
       }
     },
     items: value({
       read: (state) => state.items
-    }),
-    ui: {
-      chrome: value({
-        read: (state) => state.ui.chrome
-      }),
-      nodes: family({
-        read: (state) => ({
-          ids: [...state.ui.nodes.keys()],
-          byId: state.ui.nodes
-        })
-      }),
-      edges: family({
-        read: (state) => ({
-          ids: [...state.ui.edges.keys()],
-          byId: state.ui.edges
-        })
-      })
-    }
+    })
   },
   plan: ({ input, state, revision }) => {
     const bootstrap = revision === 1

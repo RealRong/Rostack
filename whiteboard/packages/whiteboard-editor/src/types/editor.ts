@@ -17,15 +17,9 @@ import type {
 } from '@whiteboard/core/types'
 import type { HistoryApi } from '@whiteboard/history'
 import type {
-  EdgeActiveView,
-  EdgeLabelKey,
-  EdgeRenderLabelView,
-  EdgeMaskView,
-  EdgeOverlayView,
-  EdgeStaticId,
-  EdgeStaticView,
-  MindmapView,
-  Read as EditorSceneQueryRuntime,
+  NodeRenderView,
+  Query as EditorSceneQueryRuntime,
+  RuntimeStores,
   SceneItem,
   SpatialKind,
   SpatialQueryStats,
@@ -36,13 +30,7 @@ import type {
   DocumentEdgeItem,
   DocumentNodeItem
 } from '@whiteboard/editor/document/source'
-import type { EditorEdgeView } from '@whiteboard/editor/scene/edge'
 import type { MindmapChrome } from '@whiteboard/editor/scene/mindmap'
-import type {
-  EditorNodeView,
-  GraphNodeGeometry,
-  NodeCapability
-} from '@whiteboard/editor/scene/node'
 import type {
   SelectedEdgeChrome,
   SelectedEdgeRoutePoint
@@ -146,33 +134,6 @@ export type EditorPanelPresentation = {
   draw: DrawState
 }
 
-export type EditorMindmapRead = {
-  view: store.KeyedReadStore<MindmapId, MindmapView | undefined>
-  navigate: (input: {
-    id: MindmapId
-    fromNodeId: NodeId
-    direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
-  }) => NodeId | undefined
-  id: (value: string) => MindmapId | undefined
-  structure: (
-    value: MindmapId | NodeId | string
-  ) => MindmapView['structure'] | undefined
-}
-
-export type EditorSceneQuery = {
-  rect: EditorSceneQueryRuntime['spatial']['rect']
-  visible: (
-    options?: Parameters<EditorSceneQueryRuntime['spatial']['rect']>[1]
-  ) => ReturnType<EditorSceneQueryRuntime['spatial']['rect']>
-  hit: {
-    edge: (input: {
-      point: Point
-      threshold?: number
-      excludeIds?: readonly EdgeId[]
-    }) => EdgeId | undefined
-  }
-}
-
 export type ScenePickKind = Extract<
   SpatialKind,
   'node' | 'edge' | 'mindmap'
@@ -198,6 +159,10 @@ export type ScenePickTarget =
   | {
       kind: 'mindmap'
       id: MindmapId
+    }
+  | {
+      kind: 'group'
+      id: string
     }
 
 export type ScenePickStats = SpatialQueryStats & {
@@ -231,9 +196,7 @@ export type ScenePickRuntime = {
 }
 
 export type SceneGeometryCache = {
-  node: (nodeId: NodeId) => (GraphNodeGeometry & {
-    node: NodeModel
-  }) | undefined
+  node: (nodeId: NodeId) => NodeRenderView | undefined
   edge: (edgeId: EdgeId) => CoreEdgeView | undefined
   order: (item: SceneItem | {
     kind: SceneItem['kind']
@@ -246,28 +209,7 @@ export type SceneScope = {
     nodes: readonly Node[]
     edges: readonly Edge[]
   }
-  relatedEdges: (nodeIds: readonly NodeId[]) => readonly EdgeId[]
   bounds: (target: SelectionTarget) => Rect | undefined
-}
-
-export type EdgeRenderSource = {
-  statics: {
-    ids: store.ReadStore<readonly EdgeStaticId[]>
-    byId: store.KeyedReadStore<EdgeStaticId, EdgeStaticView | undefined>
-  }
-  active: {
-    ids: store.ReadStore<readonly EdgeId[]>
-    byId: store.KeyedReadStore<EdgeId, EdgeActiveView | undefined>
-  }
-  labels: {
-    ids: store.ReadStore<readonly EdgeLabelKey[]>
-    byId: store.KeyedReadStore<EdgeLabelKey, EdgeRenderLabelView | undefined>
-  }
-  masks: {
-    ids: store.ReadStore<readonly EdgeId[]>
-    byId: store.KeyedReadStore<EdgeId, EdgeMaskView | undefined>
-  }
-  overlay: store.ReadStore<EdgeOverlayView>
 }
 
 export type EditorDocumentSource = {
@@ -284,39 +226,15 @@ export type EditorDocumentSource = {
 
 export type EditorSceneSource = {
   revision: () => number
-  items: store.ReadStore<readonly SceneItem[]>
-  query: EditorSceneQuery
-  edge: {
-    render: EdgeRenderSource
-  }
-  pick: {
-    rect: (point: Point, radius?: number) => Rect
-    candidates: (input: {
-      point: Point
-      radius?: number
-      kinds?: readonly ScenePickKind[]
-    }) => ScenePickCandidateResult
-    resolve: (input: {
-      point: Point
-      radius?: number
-      kinds?: readonly ScenePickKind[]
-    }) => ScenePickResult
-    runtime: ScenePickRuntime
-  }
-  geometry: SceneGeometryCache
-  scope: SceneScope
-  frame: EditorSceneQueryRuntime['frame']
-  group: {
-    exact: (target: SelectionTarget) => readonly string[]
-    ofNode: (nodeId: string) => string | undefined
-    ofEdge: (edgeId: string) => string | undefined
-  }
-  mindmap: EditorMindmapRead
-  nodes: EntitySource<NodeId, EditorNodeView> & {
-    capability: store.KeyedReadStore<NodeId, NodeCapability | undefined>
-  }
-  edges: EntitySource<EdgeId, EditorEdgeView> & {
-    geometry: store.KeyedReadStore<EdgeId, CoreEdgeView | undefined>
+  query: EditorSceneQueryRuntime
+  stores: RuntimeStores
+  host: {
+    pick: ScenePickRuntime
+    visible: (
+      options?: Parameters<EditorSceneQueryRuntime['spatial']['rect']>[1]
+    ) => ReturnType<EditorSceneQueryRuntime['spatial']['rect']>
+    geometry: SceneGeometryCache
+    scope: SceneScope
   }
 }
 

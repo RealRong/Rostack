@@ -1,7 +1,7 @@
 import { node as nodeApi, type NodeRectHitOptions } from '@whiteboard/core/node'
 import { collection, store } from '@shared/core'
 import type {
-  Read as EditorGraphQuery,
+  Query as EditorGraphQuery,
   NodeUiView as RuntimeNodeUiView,
   NodeView as RuntimeNodeView
 } from '@whiteboard/editor-scene'

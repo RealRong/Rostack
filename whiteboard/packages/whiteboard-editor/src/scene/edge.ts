@@ -6,7 +6,7 @@ import {
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { collection, equal, store } from '@shared/core'
 import type {
-  Read as EditorGraphQuery,
+  Query as EditorGraphQuery,
   EdgeLabelUiView as RuntimeEdgeLabelUiView,
   EdgeUiView as RuntimeEdgeUiView,
   EdgeView as RuntimeEdgeView
@@ -328,7 +328,7 @@ export const createGraphEdgeRead = ({
     edgeUi: store.KeyedReadStore<EdgeId, RuntimeEdgeUiView | undefined>
   }
   spatial: EditorGraphQuery['spatial']
-  relatedEdges: EditorGraphQuery['relatedEdges']
+  relatedEdges: EditorGraphQuery['edge']['related']
   node: Pick<GraphNodeRead, 'geometry' | 'capability'>
   geometry: (edgeId: EdgeId) => CoreEdgeView | undefined
 }): GraphEdgeRead => {

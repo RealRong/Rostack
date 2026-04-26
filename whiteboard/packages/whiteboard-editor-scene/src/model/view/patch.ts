@@ -291,13 +291,19 @@ export const patchViewState = (input: {
         })
       )
 
+  input.working.graph.state.node = input.working.ui.nodes
+  input.working.graph.state.edge = input.working.ui.edges
+
+  const chromeCount = patchChrome({
+    current: input.current,
+    working: input.working,
+    force: input.scope.reset || input.scope.chrome
+  })
+  input.working.graph.state.chrome = input.working.ui.chrome
+
   return (
     uiCount
-    + patchChrome({
-        current: input.current,
-        working: input.working,
-        force: input.scope.reset || input.scope.chrome
-      })
+    + chromeCount
     + patchItems({
         current: input.current,
         working: input.working,

@@ -1,6 +1,6 @@
 import type {
   Input,
-  Read,
+  Query,
   Result,
   Runtime,
   TextMeasure
@@ -14,7 +14,7 @@ import {
 
 export interface EditorSceneHarness {
   runtime: Runtime
-  read: Read
+  query: Query
   update(input: Input): Result
   capture(): Capture
   lastTrace(): Result['trace']
@@ -37,7 +37,7 @@ export const createEditorSceneHarness = (input: {
 
   return {
     runtime,
-    read: runtime.read,
+    query: runtime.query,
     update: (value) => {
       const result = runtime.update(value)
       trace = result.trace

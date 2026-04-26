@@ -13,8 +13,10 @@ import type {
 import type { Revision } from '@shared/projector/phase'
 import type {
   ChromeView,
+  ChromeStateView,
   EdgeDraft,
   EdgeNodes,
+  EdgeStateView,
   EdgePreview,
   EdgeUiView,
   EdgeView,
@@ -23,6 +25,7 @@ import type {
   MindmapView,
   NodeDraft,
   NodePreview,
+  NodeStateView,
   NodeUiView,
   NodeView,
   OwnerRef,
@@ -30,9 +33,11 @@ import type {
 } from './editor'
 import type {
   EdgeActiveView,
+  ChromeRenderView,
   EdgeLabelKey,
   EdgeLabelView,
   EdgeMaskView,
+  NodeRenderView,
   EdgeOverlayView,
   EdgeStaticId,
   EdgeStaticView
@@ -58,6 +63,11 @@ export interface GraphState {
     mindmaps: Map<MindmapId, MindmapView>
     groups: Map<GroupId, GroupView>
   }
+  state: {
+    node: Map<NodeId, NodeStateView>
+    edge: Map<EdgeId, EdgeStateView>
+    chrome: ChromeStateView
+  }
 }
 
 export interface IndexState {
@@ -80,6 +90,7 @@ export interface UiState {
 }
 
 export interface RenderState {
+  node: Map<NodeId, NodeRenderView>
   statics: {
     styleKeyByEdge: Map<EdgeId, string>
     edgeIdsByStyleKey: Map<string, readonly EdgeId[]>
@@ -91,6 +102,7 @@ export interface RenderState {
   masks: Map<EdgeId, EdgeMaskView>
   active: Map<EdgeId, EdgeActiveView>
   overlay: EdgeOverlayView
+  chrome: ChromeRenderView
 }
 
 export interface GraphNodeEntry {

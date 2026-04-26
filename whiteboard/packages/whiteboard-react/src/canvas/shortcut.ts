@@ -6,6 +6,7 @@ import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtim
 import {
   readSelectionCan
 } from '@whiteboard/react/features/selection/capability'
+import { readMindmapNavigateTarget } from '@whiteboard/editor/scene/mindmap'
 
 export const DefaultShortcutBindings: readonly ShortcutBinding[] = [
   { key: 'Mod+G', action: 'group.merge' },
@@ -51,7 +52,7 @@ const readActiveMindmapShortcut = (
     return undefined
   }
 
-  const node = editor.scene.nodes.read.get(selection.nodeIds[0] ?? '')?.node
+  const node = editor.scene.stores.render.node.byId.get(selection.nodeIds[0] ?? '')?.node
   if (node?.owner?.kind !== 'mindmap' || node.type !== 'text') {
     return undefined
   }
@@ -170,17 +171,20 @@ export const runShortcut = (
         return false
       }
 
-      const target = editor.scene.mindmap.navigate({
-        id: activeMindmap.treeId,
-        fromNodeId: activeMindmap.nodeId,
-        direction: action === 'mindmap.navigate.parent'
-          ? 'parent'
-          : action === 'mindmap.navigate.first-child'
-            ? 'first-child'
-            : action === 'mindmap.navigate.prev-sibling'
-              ? 'prev-sibling'
-              : 'next-sibling'
-      })
+      const structure = editor.scene.query.mindmap.structure(activeMindmap.treeId)
+      const target = structure
+        ? readMindmapNavigateTarget({
+            structure,
+            fromNodeId: activeMindmap.nodeId,
+            direction: action === 'mindmap.navigate.parent'
+              ? 'parent'
+              : action === 'mindmap.navigate.first-child'
+                ? 'first-child'
+                : action === 'mindmap.navigate.prev-sibling'
+                  ? 'prev-sibling'
+                  : 'next-sibling'
+          })
+        : undefined
       if (!target) {
         return false
       }

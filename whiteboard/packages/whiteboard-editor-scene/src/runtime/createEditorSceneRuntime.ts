@@ -48,7 +48,7 @@ export const createEditorSceneRuntime = (input: {
 
   return {
     stores: runtime.stores,
-    read: runtime.read,
+    query: runtime.read,
     revision: runtime.revision,
     state: runtime.state,
     capture: runtime.capture,

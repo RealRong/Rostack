@@ -63,11 +63,30 @@ export type NodeOverlayView = {
   canRotate: NodeView['canRotate']
 }
 type RuntimeNodeView = NonNullable<
-  ReturnType<ReturnType<typeof useEditorRuntime>['scene']['nodes']['read']['get']>
+  ReturnType<ReturnType<typeof useEditorRuntime>['scene']['stores']['render']['node']['byId']['get']>
 >
+
+const resolveNodeCapability = (
+  definition: NodeDefinition | undefined,
+  owner: RuntimeNodeView['owner']
+) => {
+  const role = definition?.role ?? 'content'
+  const mindmapOwned = owner?.kind === 'mindmap'
+
+  return {
+    connect: definition?.connect ?? true,
+    resize: !mindmapOwned && (definition?.resize ?? true),
+    rotate: !mindmapOwned && (
+      typeof definition?.rotate === 'boolean'
+        ? definition.rotate
+        : role === 'content'
+    )
+  }
+}
+
 const resolveNodeOverlayViewState = (
   view: RuntimeNodeView,
-  capability: NonNullable<ReturnType<ReturnType<typeof useEditorRuntime>['scene']['nodes']['capability']['get']>>
+  capability: ReturnType<typeof resolveNodeCapability>
 ): NodeOverlayView => {
   return {
     nodeId: view.node.id,
@@ -85,7 +104,7 @@ const resolveNodeViewState = (
   editor: Pick<ReturnType<typeof useEditorRuntime>, 'write'>,
   registry: Pick<NodeRegistry, 'get'>,
   baseView: RuntimeNodeView,
-  capability: NonNullable<ReturnType<ReturnType<typeof useEditorRuntime>['scene']['nodes']['capability']['get']>>
+  capability: ReturnType<typeof resolveNodeCapability>
 ): NodeView => {
   const definition = registry.get(baseView.node.type)
   const write: NodeWrite = {
@@ -97,8 +116,8 @@ const resolveNodeViewState = (
     node: baseView.node,
     rect: baseView.rect,
     rotation: baseView.rotation,
-    selected: baseView.selected,
-    hovered: baseView.hovered,
+    selected: baseView.state.selected,
+    hovered: baseView.state.hovered,
     edit: baseView.edit,
     write
   }
@@ -116,8 +135,8 @@ const resolveNodeViewState = (
     node: baseView.node,
     rect: baseView.rect,
     rotation: baseView.rotation,
-    hidden: baseView.hidden,
-    resizing: baseView.resizing,
+    hidden: baseView.state.hidden,
+    resizing: baseView.state.resizing,
     canConnect: capability.connect,
     canResize: capability.resize,
     canRotate: capability.rotate,
@@ -134,7 +153,7 @@ export const useNodeView = (
   const editor = useEditorRuntime()
   const registry = useNodeRegistry()
   const view = useOptionalKeyedStoreValue(
-    editor.scene.nodes.read,
+    editor.scene.stores.render.node.byId,
     nodeId,
     undefined
   )
@@ -145,10 +164,10 @@ export const useNodeView = (
         return undefined
       }
 
-      const capability = editor.scene.nodes.capability.get(nodeId)
-      if (!capability) {
-        return undefined
-      }
+      const capability = resolveNodeCapability(
+        registry.get(view.node.type),
+        view.owner
+      )
 
       return resolveNodeViewState(editor, registry, view, capability)
     },
@@ -160,8 +179,9 @@ export const useNodeOverlayView = (
   nodeId: NodeId | undefined
 ): NodeOverlayView | undefined => {
   const editor = useEditorRuntime()
+  const registry = useNodeRegistry()
   const view = useOptionalKeyedStoreValue(
-    editor.scene.nodes.read,
+    editor.scene.stores.render.node.byId,
     nodeId,
     undefined
   )
@@ -172,13 +192,13 @@ export const useNodeOverlayView = (
         return undefined
       }
 
-      const capability = editor.scene.nodes.capability.get(nodeId)
-      if (!capability) {
-        return undefined
-      }
+      const capability = resolveNodeCapability(
+        registry.get(view.node.type),
+        view.owner
+      )
 
       return resolveNodeOverlayViewState(view, capability)
     },
-    [editor, nodeId, view]
+    [registry, nodeId, view]
   )
 }

@@ -96,7 +96,7 @@ const EdgeRoutePointHandle = ({
 
 export const EdgeOverlayLayer = memo(() => {
   const editor = useEditorRuntime()
-  const overlay = useStoreValue(editor.scene.edge.render.overlay)
+  const overlay = useStoreValue(editor.scene.stores.render.chrome.edge)
   const previewPresentation = overlay.previewPath
     ? resolveEdgePathPresentation(overlay.previewPath.style)
     : undefined

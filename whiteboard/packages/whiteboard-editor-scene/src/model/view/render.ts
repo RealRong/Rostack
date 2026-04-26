@@ -17,10 +17,12 @@ import type {
   SessionInput
 } from '../../contracts/editor'
 import type {
+  ChromeRenderView,
   EdgeActiveView,
   EdgeLabelKey,
   EdgeLabelView,
   EdgeMaskView,
+  NodeRenderView,
   EdgeOverlayRoutePoint,
   EdgeOverlayView,
   EdgeStaticId,
@@ -31,6 +33,28 @@ import type { WorkingState } from '../../contracts/working'
 const EMPTY_ENDPOINT_HANDLES: EdgeOverlayView['endpointHandles'] = []
 const EMPTY_ROUTE_POINTS: readonly EdgeOverlayRoutePoint[] = []
 const STATIC_CHUNK_SIZE = 256
+
+const isNodeRenderViewEqual = (
+  left: NodeRenderView,
+  right: NodeRenderView
+): boolean => (
+  left.id === right.id
+  && left.node === right.node
+  && left.owner?.kind === right.owner?.kind
+  && left.owner?.id === right.owner?.id
+  && equal.sameRect(left.rect, right.rect)
+  && equal.sameRect(left.bounds, right.bounds)
+  && left.rotation === right.rotation
+  && left.outline === right.outline
+  && left.state.hidden === right.state.hidden
+  && left.state.selected === right.state.selected
+  && left.state.hovered === right.state.hovered
+  && left.state.editing === right.state.editing
+  && left.state.patched === right.state.patched
+  && left.state.resizing === right.state.resizing
+  && left.edit?.field === right.edit?.field
+  && isEditCaretEqual(left.edit?.caret, right.edit?.caret)
+)
 
 const readEdgeLabelKey = (
   edgeId: EdgeId,
@@ -208,6 +232,18 @@ const isOverlayViewEqual = (
   && equal.sameOrder(left.routePoints, right.routePoints, isOverlayRoutePointEqual)
 )
 
+const isChromeRenderViewEqual = (
+  left: ChromeRenderView,
+  right: ChromeRenderView
+): boolean => (
+  left.marquee?.match === right.marquee?.match
+  && equal.sameOptionalRect(left.marquee?.worldRect, right.marquee?.worldRect)
+  && left.guides === right.guides
+  && left.draw === right.draw
+  && left.mindmap === right.mindmap
+  && isOverlayViewEqual(left.edge, right.edge)
+)
+
 const readSelectedEdgeRoutePoints = (input: {
   edgeId: EdgeId
   edge: Edge
@@ -300,6 +336,37 @@ const buildActiveView = (input: {
   }
 }
 
+const buildNodeRenderView = (input: {
+  working: WorkingState
+  nodeId: NodeId
+}): NodeRenderView | undefined => {
+  const graph = input.working.graph.nodes.get(input.nodeId)
+  if (!graph) {
+    return undefined
+  }
+
+  const state = input.working.ui.nodes.get(input.nodeId)
+
+  return {
+    id: input.nodeId,
+    node: graph.base.node,
+    owner: graph.base.owner,
+    rect: graph.geometry.rect,
+    bounds: graph.geometry.bounds,
+    rotation: graph.geometry.rotation,
+    outline: graph.geometry.outline,
+    state: {
+      hidden: state?.hidden ?? false,
+      selected: state?.selected ?? false,
+      hovered: state?.hovered ?? false,
+      editing: state?.editing ?? false,
+      patched: state?.patched ?? false,
+      resizing: state?.resizing ?? false
+    },
+    edit: state?.edit
+  }
+}
+
 const buildOverlayView = (input: {
   working: WorkingState
   current: Input
@@ -389,6 +456,16 @@ const buildOverlayView = (input: {
         : EMPTY_ROUTE_POINTS
   }
 }
+
+const buildChromeRenderView = (input: {
+  working: WorkingState
+}): ChromeRenderView => ({
+  marquee: input.working.ui.chrome.preview.marquee,
+  guides: input.working.ui.chrome.preview.guides,
+  draw: input.working.ui.chrome.preview.draw,
+  mindmap: input.working.ui.chrome.preview.mindmap,
+  edge: input.working.render.overlay
+})
 
 const buildStaticState = (
   working: WorkingState
@@ -586,6 +663,87 @@ const patchStatics = (input: {
   return count
 }
 
+const patchNodeRender = (input: {
+  working: WorkingState
+  scope: ViewPatchScope
+}): number => {
+  const previous = input.working.render.node
+  let count = 0
+
+  if (input.scope.reset) {
+    const next = new Map<NodeId, NodeRenderView>()
+
+    input.working.graph.nodes.forEach((_view, nodeId) => {
+      const current = buildNodeRenderView({
+        working: input.working,
+        nodeId
+      })
+      if (!current) {
+        return
+      }
+
+      const previousView = previous.get(nodeId)
+      const nextView = previousView && isNodeRenderViewEqual(previousView, current)
+        ? previousView
+        : current
+      next.set(nodeId, nextView)
+    })
+
+    new Set<NodeId>([
+      ...previous.keys(),
+      ...next.keys()
+    ]).forEach((nodeId) => {
+      const previousView = previous.get(nodeId)
+      const nextView = next.get(nodeId)
+      if (
+        previousView === undefined && nextView !== undefined
+        || previousView !== undefined && nextView === undefined
+        || (
+          previousView !== undefined
+          && nextView !== undefined
+          && !isNodeRenderViewEqual(previousView, nextView)
+        )
+      ) {
+        count += 1
+      }
+    })
+
+    input.working.render.node = next
+    return count
+  }
+
+  input.scope.nodes.forEach((nodeId) => {
+    const previousView = previous.get(nodeId)
+    const nextCandidate = buildNodeRenderView({
+      working: input.working,
+      nodeId
+    })
+    const nextView = previousView && nextCandidate && isNodeRenderViewEqual(previousView, nextCandidate)
+      ? previousView
+      : nextCandidate
+
+    if (nextView === undefined) {
+      previous.delete(nodeId)
+    } else {
+      previous.set(nodeId, nextView)
+    }
+
+    if (
+      previousView === undefined && nextView !== undefined
+      || previousView !== undefined && nextView === undefined
+      || (
+        previousView !== undefined
+        && nextView !== undefined
+        && !isNodeRenderViewEqual(previousView, nextView)
+      )
+    ) {
+      count += 1
+    }
+  })
+
+  return count
+}
+
 const patchLabelsAndMasks = (input: {
   working: WorkingState
   scope: ViewPatchScope
@@ -772,13 +930,35 @@ const patchOverlay = (input: {
   return next !== previous ? 1 : 0
 }
 
+const patchChromeRender = (input: {
+  working: WorkingState
+  scope: ViewPatchScope
+}): number => {
+  if (!input.scope.reset && !input.scope.chrome && !input.scope.overlay) {
+    return 0
+  }
+
+  const previous = input.working.render.chrome
+  const nextCandidate = buildChromeRenderView({
+    working: input.working
+  })
+  const next = isChromeRenderViewEqual(previous, nextCandidate)
+    ? previous
+    : nextCandidate
+
+  input.working.render.chrome = next
+  return next !== previous ? 1 : 0
+}
+
 export const patchRenderState = (input: {
   working: WorkingState
   current: Input
   scope: ViewPatchScope
 }): number => (
-  patchStatics(input)
+  patchNodeRender(input)
+  + patchStatics(input)
   + patchLabelsAndMasks(input)
   + patchActive(input)
   + patchOverlay(input)
+  + patchChromeRender(input)
 )

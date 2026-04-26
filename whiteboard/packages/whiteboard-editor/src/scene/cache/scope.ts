@@ -8,15 +8,17 @@ import type {
   NodeId,
   Rect
 } from '@whiteboard/core/types'
-import type { Read as EditorGraphQuery } from '@whiteboard/editor-scene'
+import type {
+  NodeRenderView,
+  Query as EditorGraphQuery
+} from '@whiteboard/editor-scene'
 import {
   toSpatialNode,
-  type EditorNodeView
 } from '@whiteboard/editor/scene/node'
 
 const expandMoveNodeIds = (input: {
   target: SelectionTarget
-  nodeView: store.KeyedReadStore<NodeId, EditorNodeView | undefined>
+  nodeView: store.KeyedReadStore<NodeId, NodeRenderView | undefined>
   spatialRect: EditorGraphQuery['spatial']['rect']
 }) => {
   const normalized = selectionApi.target.normalize(input.target)
@@ -66,7 +68,7 @@ const expandMoveNodeIds = (input: {
 export const createSceneScope = (input: {
   spatialRect: EditorGraphQuery['spatial']['rect']
   relatedEdges: (nodeIds: readonly NodeId[]) => readonly EdgeId[]
-  nodeView: store.KeyedReadStore<NodeId, EditorNodeView | undefined>
+  nodeView: store.KeyedReadStore<NodeId, NodeRenderView | undefined>
   edgeBounds: store.KeyedReadStore<EdgeId, Rect | undefined>
   readEdges: (edgeIds: readonly EdgeId[]) => readonly Edge[]
 }) => ({
@@ -101,7 +103,6 @@ export const createSceneScope = (input: {
       edges: input.readEdges([...relatedEdgeIds])
     }
   },
-  relatedEdges: input.relatedEdges,
   bounds: (target: SelectionTarget) => {
     const normalized = selectionApi.target.normalize(target)
     const nodeBounds = normalized.nodeIds.flatMap((nodeId) => {

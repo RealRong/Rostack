@@ -9,6 +9,8 @@ export type {
   EdgeLabelKey,
   EdgeLabelView as EdgeRenderLabelView,
   EdgeMaskView,
+  NodeRenderView,
+  ChromeRenderView,
   EdgeOverlayRoutePoint,
   EdgeOverlayView,
   EdgeStaticId,

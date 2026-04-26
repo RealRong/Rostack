@@ -60,6 +60,8 @@ export type {
   HistoryController,
   HistoryState
 } from './history'
+export { createLocalHistoryBinding } from './historyBinding'
+export type { LocalHistoryBinding } from './historyBinding'
 export { createLocalMutationHistory } from './localHistory'
 export type {
   LocalHistoryApi,

@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties } from 'react'
+import { store } from '@shared/core'
 import { useStoreValue } from '@shared/react'
 import { useEditor } from '@whiteboard/react/runtime/hooks'
 
@@ -18,7 +19,10 @@ const resolveStep = (zoom: number) => {
 
 export const Background = () => {
   const editor = useEditor()
-  const background = useStoreValue(editor.document.background)
+  const backgroundStore = useMemo(() => store.createDerivedStore({
+    get: () => editor.document.get().background
+  }), [editor])
+  const background = useStoreValue(backgroundStore)
   const viewport = useStoreValue(editor.session.viewport)
   const mode = background?.type ?? 'none'
 

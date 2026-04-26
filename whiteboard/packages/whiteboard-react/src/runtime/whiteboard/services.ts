@@ -5,8 +5,9 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import {
+  createLocalHistoryBinding,
   createLocalMutationHistory,
-  type LocalHistoryApi
+  type LocalHistoryBinding
 } from '@shared/mutation'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi, type DrawState } from '@whiteboard/editor'
@@ -19,10 +20,6 @@ import { createInsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import { createPointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import { createTextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
 import type { WhiteboardServicesContextValue } from '@whiteboard/react/runtime/hooks/useWhiteboard'
-import {
-  createHistoryBinding,
-  type HistoryBinding
-} from '@whiteboard/react/runtime/whiteboard/historyBinding'
 import { createLayoutBackend } from '@whiteboard/react/runtime/whiteboard/layout'
 import { dismissBackgroundEditSelection } from '@whiteboard/react/runtime/whiteboard/pointerDown'
 
@@ -60,7 +57,7 @@ export const isMirroredDocumentFromEngine = (
 )
 
 export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {
-  history: HistoryBinding<IntentResult>
+  history: LocalHistoryBinding<IntentResult>
 }
 
 export const createWhiteboardServices = ({
@@ -86,12 +83,12 @@ export const createWhiteboardServices = ({
     config: boardConfig,
     history: resolvedConfig.history
   })
-  const baseHistory: LocalHistoryApi<IntentResult> = createLocalMutationHistory(engine, {
+  const baseHistory = createLocalMutationHistory(engine, {
     apply: {
       origin: 'history'
     }
   })
-  const history = createHistoryBinding(baseHistory)
+  const history = createLocalHistoryBinding(baseHistory)
   const textSources = createTextSourceStore()
   const editor = editorApi.create({
     engine,

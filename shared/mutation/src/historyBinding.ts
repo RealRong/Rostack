@@ -1,21 +1,23 @@
 import { store } from '@shared/core'
-import type { LocalHistoryApi } from '@shared/mutation'
+import type { LocalHistoryApi } from './localHistory'
 
-export type HistoryBinding<Result> = LocalHistoryApi<Result> & {
+export type LocalHistoryBinding<Result> = LocalHistoryApi<Result> & {
   set(next: LocalHistoryApi<Result>): void
   reset(): void
 }
 
-export const createHistoryBinding = <Result>(
+export const createLocalHistoryBinding = <Result>(
   initial: LocalHistoryApi<Result>
-): HistoryBinding<Result> => {
+): LocalHistoryBinding<Result> => {
   const state = store.createValueStore(initial.get())
   let current = initial
   let unsubscribe = current.subscribe(() => {
     state.set(current.get())
   })
 
-  const bind = (next: LocalHistoryApi<Result>) => {
+  const bind = (
+    next: LocalHistoryApi<Result>
+  ) => {
     unsubscribe()
     current = next
     state.set(current.get())

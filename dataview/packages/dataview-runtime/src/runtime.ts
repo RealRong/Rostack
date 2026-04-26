@@ -1,5 +1,8 @@
 import { store } from '@shared/core'
-import { createLocalMutationHistory } from '@shared/mutation'
+import {
+  createLocalHistoryBinding,
+  createLocalMutationHistory
+} from '@shared/mutation'
 import type {
   View
 } from '@dataview/core/contracts'
@@ -40,10 +43,6 @@ import type {
 import {
   createValueEditorApi
 } from '@dataview/runtime/session/valueEditor'
-import {
-  createHistoryBinding
-} from '@dataview/runtime/historyBinding'
-
 const bindInlineSessionToView = (input: {
   view: store.ReadStore<View | undefined>
   items: {
@@ -133,7 +132,7 @@ export const createDataViewRuntime = (
       origin: 'history'
     }
   })
-  const history = createHistoryBinding(baseHistory)
+  const history = createLocalHistoryBinding(baseHistory)
   const sourceRuntime = createEngineSource({
     engine: input.engine
   })

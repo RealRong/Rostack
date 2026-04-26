@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict'
-import {
-  assertPhaseOrder,
-  createHarness
-} from '@shared/projector/testing'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
+import { createProjectionRuntime } from '@shared/projection'
 import {
   emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'
@@ -23,6 +20,40 @@ import {
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'
+
+const assertPhaseOrder = (
+  trace: {
+    phases: readonly {
+      name: string
+    }[]
+  },
+  expected: readonly string[]
+) => {
+  assert.deepEqual(
+    trace.phases.map((phase) => phase.name),
+    expected
+  )
+}
+
+const createHarness = () => {
+  const runtime = createProjectionRuntime(activeProjectorSpec)
+
+  return {
+    update: (input: Parameters<typeof runtime.update>[0]) => {
+      const state = runtime.state()
+      state.publish.previous = state.publish.snapshot
+
+      const result = runtime.update(input)
+      const capture = runtime.capture()
+
+      return {
+        snapshot: capture.snapshot,
+        change: capture.delta,
+        trace: result.trace
+      }
+    }
+  }
+}
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -204,7 +235,7 @@ const createProjectorInput = (input: {
 }
 
 test('engine.active.projector bootstrap fans out through query membership summary and publish', () => {
-  const harness = createHarness(activeProjectorSpec)
+  const harness = createHarness()
   const {
     input
   } = createProjectorInput({
@@ -225,7 +256,7 @@ test('engine.active.projector bootstrap fans out through query membership summar
 })
 
 test('engine.active.projector layout change runs publish only and reuses query results', () => {
-  const harness = createHarness(activeProjectorSpec)
+  const harness = createHarness()
   const bootstrap = createProjectorInput({
     document: createDocument()
   })
@@ -277,7 +308,7 @@ test('engine.active.projector layout change runs publish only and reuses query r
 })
 
 test('engine.active.projector resets through publish scope when no active view remains', () => {
-  const harness = createHarness(activeProjectorSpec)
+  const harness = createHarness()
   const bootstrap = createProjectorInput({
     document: createDocument()
   })

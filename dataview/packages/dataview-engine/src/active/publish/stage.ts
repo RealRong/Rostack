@@ -42,7 +42,7 @@ import type {
 } from '@dataview/core/contracts'
 import type { ItemIdPool } from './itemIdPool'
 import {
-  defineActiveProjectorPhase,
+  type ActiveProjectorPhase,
   readActiveView
 } from '../projector/context'
 import {
@@ -247,18 +247,17 @@ const runPublishStage = (input: {
   }
 }
 
-export const activePublishPhase = defineActiveProjectorPhase({
-  name: 'publish',
-  deps: ['query', 'membership', 'summary'],
+export const activePublishPhase: ActiveProjectorPhase<'publish'> = {
+  after: ['query', 'membership', 'summary'],
   scope: publishPhaseScope,
   run: (context) => {
     const scope = context.scope
     const { activeViewId, view } = readActiveView(context.input)
     if (scope?.reset || !activeViewId || !view) {
-      const reset = createPublishReset(context.previous)
-      context.working.publish.itemIds.gc.clear()
-      context.working.publish.snapshot = reset.snapshot
-      context.working.publish.delta = reset.delta
+      const reset = createPublishReset(context.state.publish.previous)
+      context.state.publish.itemIds.gc.clear()
+      context.state.publish.snapshot = reset.snapshot
+      context.state.publish.delta = reset.delta
 
       return {
         action: reset.action,
@@ -269,23 +268,23 @@ export const activePublishPhase = defineActiveProjectorPhase({
     const result = runPublishStage({
       reader: context.input.read.reader,
       activeViewId,
-      previous: context.previous,
+      previous: context.state.publish.previous,
       view,
-      queryState: context.working.query.state,
-      previousRecords: context.previous?.records,
-      membershipState: context.working.membership.state,
-      previousMembershipState: scope?.membership?.previous ?? context.working.membership.state,
-      previousSections: context.previous?.sections,
-      previousItems: context.previous?.items,
-      summaryState: context.working.summary.state,
+      queryState: context.state.query.state,
+      previousRecords: context.state.publish.previous?.records,
+      membershipState: context.state.membership.state,
+      previousMembershipState: scope?.membership?.previous ?? context.state.membership.state,
+      previousSections: context.state.publish.previous?.sections,
+      previousItems: context.state.publish.previous?.items,
+      summaryState: context.state.summary.state,
       summaryDelta: scope?.summary?.delta ?? EMPTY_SUMMARY_PHASE_DELTA,
-      previousSummaryState: scope?.summary?.previous ?? context.working.summary.state,
-      previousSummaries: context.previous?.summaries,
-      itemIds: context.working.publish.itemIds
+      previousSummaryState: scope?.summary?.previous ?? context.state.summary.state,
+      previousSummaries: context.state.publish.previous?.summaries,
+      itemIds: context.state.publish.itemIds
     })
 
-    context.working.publish.snapshot = result.snapshot
-    context.working.publish.delta = result.delta
+    context.state.publish.snapshot = result.snapshot
+    context.state.publish.delta = result.delta
 
     return {
       action: result.action,
@@ -296,4 +295,4 @@ export const activePublishPhase = defineActiveProjectorPhase({
       })
     }
   }
-})
+}

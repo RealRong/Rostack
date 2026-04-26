@@ -9,11 +9,11 @@ import type {
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
-import type { ProjectorTrace } from '@shared/projector/phase'
 import type {
   ActivePhaseMetrics,
   ActivePhaseName
 } from '../contracts/projector'
+import type { ActiveProjectionTrace } from '../contracts/projector'
 
 const SNAPSHOT_KEYS = [
   'view',
@@ -70,7 +70,7 @@ export const createSnapshotTrace = (
 export const createActiveProjectorTrace = (input: {
   previous: ViewState | undefined
   next: ViewState | undefined
-  projectorTrace: ProjectorTrace<ActivePhaseName, ActivePhaseMetrics>
+  projectorTrace: ActiveProjectionTrace
 }): {
   view: ViewTrace
   snapshot: SnapshotTrace

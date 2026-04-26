@@ -1,4 +1,4 @@
-import { createProjector } from '@shared/projector/phase'
+import { createProjectionRuntime } from '@shared/projection'
 import type {
   ActiveProjector,
   ActiveProjectorInput,
@@ -8,23 +8,26 @@ import { createActiveProjectorTrace } from './trace'
 import { activeProjectorSpec } from './spec'
 
 export const createActiveProjector = (): ActiveProjector => {
-  const projector = createProjector(activeProjectorSpec)
+  const runtime = createProjectionRuntime(activeProjectorSpec)
 
   return {
     update: (input: ActiveProjectorInput): ActiveProjectorResult => {
-      const previous = projector.snapshot()
-      const result = projector.update(input)
+      const state = runtime.state()
+      const previous = state.publish.snapshot
+      state.publish.previous = previous
+      const result = runtime.update(input)
+      const capture = runtime.capture()
 
       return {
-        snapshot: result.snapshot,
-        ...(result.change
+        snapshot: capture.snapshot,
+        ...(capture.delta
           ? {
-              delta: result.change
+              delta: capture.delta
             }
           : {}),
         trace: createActiveProjectorTrace({
           previous,
-          next: result.snapshot,
+          next: capture.snapshot,
           projectorTrace: result.trace
         })
       }

@@ -10,7 +10,7 @@ import type {
 import type { NodeModel } from '@whiteboard/core/types'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
-import { createEditorSceneProjectionModel } from './model'
+import { createEditorSceneProjectionSpec } from './model'
 
 const createEditorSceneStateReader = (input: {
   state: () => WorkingState
@@ -35,7 +35,7 @@ export const createEditorSceneModelRuntime = (input: {
   view: SceneViewInput
 }) => {
   const runtime = createProjectionRuntime(
-    createEditorSceneProjectionModel(input)
+    createEditorSceneProjectionSpec(input)
   )
   const state = createEditorSceneStateReader({
     state: runtime.state

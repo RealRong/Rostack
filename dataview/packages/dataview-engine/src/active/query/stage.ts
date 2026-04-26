@@ -38,7 +38,7 @@ import {
   hasQueryInputChanges
 } from '../projector/impact'
 import {
-  defineActiveProjectorPhase,
+  type ActiveProjectorPhase,
   readActiveView
 } from '../projector/context'
 import {
@@ -258,9 +258,8 @@ export const runQueryStage = (input: {
   }
 }
 
-export const activeQueryPhase = defineActiveProjectorPhase({
-  name: 'query',
-  deps: [],
+export const activeQueryPhase: ActiveProjectorPhase<'query'> = {
+  after: [],
   run: (context) => {
     const { activeViewId, view } = readActiveView(context.input)
     const plan = context.input.view.plan
@@ -274,16 +273,16 @@ export const activeQueryPhase = defineActiveProjectorPhase({
     const result = runQueryStage({
       reader: context.input.read.reader,
       activeViewId,
-      previousViewId: context.previous?.view.id,
+      previousViewId: context.state.publish.previous?.view.id,
       impact: context.input.impact,
       view,
       plan: plan.query,
       previousPlan: context.input.view.previousPlan?.query,
       index: context.input.index.state,
-      previous: context.working.query.state
+      previous: context.state.query.state
     })
 
-    context.working.query.state = result.state
+    context.state.query.state = result.state
 
     return {
       action: result.action,
@@ -306,4 +305,4 @@ export const activeQueryPhase = defineActiveProjectorPhase({
         : {})
     }
   }
-})
+}

@@ -11,7 +11,6 @@
       "@shared/delta": ["shared/delta/src/index.ts"],
       "@shared/delta/*": ["shared/delta/src/*"],
       "@shared/projection": ["shared/projection/src/index.ts"],
-      "@shared/projection/*": ["shared/projection/src/*"],
       "@shared/draft": ["shared/draft/src/index.ts"],
       "@shared/draft/*": ["shared/draft/src/*"],
       "@shared/reducer": ["shared/reducer/src/index.ts"],

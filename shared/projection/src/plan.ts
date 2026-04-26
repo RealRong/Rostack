@@ -57,9 +57,11 @@ export const mergePlans = <
   const scope: Partial<Record<TPhaseName, unknown>> = {}
 
   plans.forEach((plan) => {
-    plan.phases.forEach((phaseName) => {
-      phases.add(phaseName)
-    })
+    if (plan.phases) {
+      for (const phaseName of plan.phases) {
+        phases.add(phaseName)
+      }
+    }
 
     if (plan.scope) {
       for (const phaseName in plan.scope) {

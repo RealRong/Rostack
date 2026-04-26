@@ -6,34 +6,41 @@ import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import {
-  type ProjectorContext,
-  type ProjectorPhase,
-  type ProjectorScopeValue
-} from '@shared/projector/phase'
+  type ProjectionSpec
+} from '@shared/projection'
 import type {
   ActivePhaseMetrics,
   ActivePhaseName,
+  ActiveProjectionCapture,
   ActivePhaseScopeMap,
   ActiveProjectorInput,
-  ActiveProjectorWorking
+  ActiveProjectorWorking,
+  ScopeValue
 } from '../contracts/projector'
 
-export type ActiveProjectorContext<TScope> = ProjectorContext<
+type ActiveProjectorSurface = {}
+
+type ActiveProjectionSpec = ProjectionSpec<
   ActiveProjectorInput,
   ActiveProjectorWorking,
-  ViewState | undefined,
-  TScope
+  {},
+  ActiveProjectorSurface,
+  ActivePhaseName,
+  ActivePhaseScopeMap,
+  ActivePhaseMetrics,
+  ActiveProjectionCapture
 >
+
+export type ActiveProjectorContext<TScope> = {
+  input: ActiveProjectorInput
+  state: ActiveProjectorWorking
+  revision: number
+  scope: TScope
+}
 
 export type ActiveProjectorPhase<
   TName extends ActivePhaseName
-> = ProjectorPhase<
-  TName,
-  ActiveProjectorContext<ProjectorScopeValue<ActivePhaseScopeMap[TName]>>,
-  ActivePhaseMetrics,
-  ActivePhaseName,
-  ActivePhaseScopeMap
->
+> = ActiveProjectionSpec['phases'][TName]
 
 export const defineActiveProjectorPhase = <
   TName extends ActivePhaseName

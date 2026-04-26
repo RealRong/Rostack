@@ -16,14 +16,13 @@ export interface Result<
 }
 
 export interface Spec<
-  TName extends string,
   TContext,
   TMetrics = unknown,
-  TPhaseName extends string = TName,
-  TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>
+  TPhaseName extends string = string,
+  TScopeMap extends PhaseScopeMap<TPhaseName> = DefaultPhaseScopeMap<TPhaseName>,
+  TName extends TPhaseName = TPhaseName
 > {
-  name: TName
-  deps: readonly TPhaseName[]
+  after?: readonly TPhaseName[]
   scope?: TScopeMap[TName & TPhaseName]
   run(context: TContext): Result<TMetrics, TPhaseName, TScopeMap>
 }

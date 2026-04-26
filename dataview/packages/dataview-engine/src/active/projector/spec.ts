@@ -1,11 +1,10 @@
 import {
-  type ProjectorSpec
-} from '@shared/projector/phase'
-import type { ActiveDelta } from '@dataview/engine/contracts/delta'
-import type { ViewState } from '@dataview/engine/contracts/view'
+  type ProjectionSpec
+} from '@shared/projection'
 import type {
   ActivePhaseMetrics,
   ActivePhaseName,
+  ActiveProjectionCapture,
   ActivePhaseScopeMap,
   ActiveProjectorInput,
   ActiveProjectorWorking
@@ -14,28 +13,54 @@ import { activeMembershipPhase } from '../membership/stage'
 import { activePublishPhase } from '../publish/stage'
 import { activeQueryPhase } from '../query/stage'
 import { activeSummaryPhase } from '../summary/stage'
-import { createEmptyActiveSnapshot } from './createEmptySnapshot'
 import { createActiveProjectorWorking } from './createWorking'
-import { activeProjectorPlanner } from './planner'
-import { activeProjectorPublisher } from './publisher'
+import {
+  readActiveProjectorResetContext,
+  shouldResetActiveProjector
+} from './reset'
 
-export const activeProjectorSpec: ProjectorSpec<
+export const activeProjectorSpec: ProjectionSpec<
   ActiveProjectorInput,
   ActiveProjectorWorking,
-  ViewState | undefined,
-  ActiveDelta | undefined,
+  {},
+  {},
   ActivePhaseName,
   ActivePhaseScopeMap,
-  ActivePhaseMetrics
+  ActivePhaseMetrics,
+  ActiveProjectionCapture
 > = {
-  createWorking: createActiveProjectorWorking,
-  createSnapshot: createEmptyActiveSnapshot,
-  plan: activeProjectorPlanner.plan,
-  publish: activeProjectorPublisher.publish,
-  phases: [
-    activeQueryPhase,
-    activeMembershipPhase,
-    activeSummaryPhase,
-    activePublishPhase
-  ]
+  createState: createActiveProjectorWorking,
+  createRead: () => ({}),
+  surface: {},
+  plan: ({ input, state }) => {
+    const previous = state.publish.previous
+    const resetContext = readActiveProjectorResetContext(input, previous)
+    if (shouldResetActiveProjector(resetContext)) {
+      return previous
+        ? {
+            scope: {
+              publish: {
+                reset: true
+              }
+            }
+          }
+        : {}
+    }
+
+    return {
+      phases: ['query', 'membership', 'summary', 'publish']
+    }
+  },
+  capture: ({ state }) => ({
+    snapshot: state.publish.snapshot,
+    delta: state.publish.snapshot === state.publish.previous
+      ? undefined
+      : state.publish.delta
+  }),
+  phases: {
+    query: activeQueryPhase,
+    membership: activeMembershipPhase,
+    summary: activeSummaryPhase,
+    publish: activePublishPhase
+  }
 }

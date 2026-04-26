@@ -1,4 +1,4 @@
-import type { Family, Revision } from '@shared/projection'
+import type { Revision } from '@shared/projection'
 import type {
   EdgeId,
   GroupId,
@@ -25,6 +25,11 @@ import type {
   EdgeStaticView
 } from './render'
 
+export interface EntityFamily<TKey extends string, TValue> {
+  ids: readonly TKey[]
+  byId: ReadonlyMap<TKey, TValue>
+}
+
 export interface Capture {
   revision: Revision
   documentRevision: Revision
@@ -35,26 +40,26 @@ export interface Capture {
 }
 
 export interface GraphCapture {
-  nodes: Family<NodeId, NodeView>
-  edges: Family<EdgeId, EdgeView>
+  nodes: EntityFamily<NodeId, NodeView>
+  edges: EntityFamily<EdgeId, EdgeView>
   owners: {
-    mindmaps: Family<MindmapId, MindmapView>
-    groups: Family<GroupId, GroupView>
+    mindmaps: EntityFamily<MindmapId, MindmapView>
+    groups: EntityFamily<GroupId, GroupView>
   }
 }
 
 export interface RenderCapture {
   edge: {
-    statics: Family<EdgeStaticId, EdgeStaticView>
-    active: Family<EdgeId, EdgeActiveView>
-    labels: Family<EdgeLabelKey, EdgeLabelView>
-    masks: Family<EdgeId, EdgeMaskView>
+    statics: EntityFamily<EdgeStaticId, EdgeStaticView>
+    active: EntityFamily<EdgeId, EdgeActiveView>
+    labels: EntityFamily<EdgeLabelKey, EdgeLabelView>
+    masks: EntityFamily<EdgeId, EdgeMaskView>
     overlay: EdgeOverlayView
   }
 }
 
 export interface UiCapture {
   chrome: ChromeView
-  nodes: Family<NodeId, NodeUiView>
-  edges: Family<EdgeId, EdgeUiView>
+  nodes: EntityFamily<NodeId, NodeUiView>
+  edges: EntityFamily<EdgeId, EdgeUiView>
 }

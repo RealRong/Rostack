@@ -81,7 +81,6 @@ type ProjectionPhaseEntry<
   TPhaseMetrics
 > = {
   [K in TPhaseName]: ProjectionPhase<
-    K,
     ProjectionPhaseContext<
       TInput,
       TState,
@@ -89,19 +88,20 @@ type ProjectionPhaseEntry<
     >,
     TPhaseMetrics,
     TPhaseName,
-    TScopeMap
+    TScopeMap,
+    K
   >
-}[TPhaseName]
+}
 
 export interface ProjectionPlan<
   TPhaseName extends string,
   TScopeMap extends PhaseScopeMap<TPhaseName>
 > {
-  phases: ReadonlySet<TPhaseName>
+  phases?: Iterable<TPhaseName>
   scope?: PhaseScopeInput<TPhaseName, TScopeMap>
 }
 
-export interface ProjectionModel<
+export interface ProjectionSpec<
   TInput,
   TState,
   TRead,
@@ -128,13 +128,13 @@ export interface ProjectionModel<
     read: TRead
     revision: Revision
   }): TCapture
-  phases: readonly ProjectionPhaseEntry<
+  phases: ProjectionPhaseEntry<
     TInput,
     TState,
     TPhaseName,
     TScopeMap,
     TPhaseMetrics
-  >[]
+  >
 }
 
 export interface ProjectionRuntime<
@@ -248,7 +248,7 @@ const didPhaseChange = (
   action: 'reuse' | 'sync' | 'rebuild'
 ): boolean => action !== 'reuse'
 
-export const value = <TState, TValue>(
+const value = <TState, TValue>(
   input: {
     read(state: TState): TValue
     isEqual?: (left: TValue, right: TValue) => boolean
@@ -263,7 +263,7 @@ export const value = <TState, TValue>(
     : {})
 })
 
-export const family = <
+const family = <
   TState,
   TKey extends string,
   TValue
@@ -284,28 +284,6 @@ export const family = <
       }
     : {})
 })
-
-export const defineProjectionModel = <
-  TInput,
-  TState,
-  TRead,
-  TSurface extends ProjectionSurfaceTree<TState>,
-  TPhaseName extends string,
-  TScopeMap extends PhaseScopeMap<TPhaseName>,
-  TPhaseMetrics = unknown,
-  TCapture = undefined
->(
-  model: ProjectionModel<
-    TInput,
-    TState,
-    TRead,
-    TSurface,
-    TPhaseName,
-    TScopeMap,
-    TPhaseMetrics,
-    TCapture
-  >
-) => model
 
 type SurfaceSync = (state: unknown) => void
 
@@ -397,7 +375,7 @@ export const createProjectionRuntime = <
   TPhaseMetrics = unknown,
   TCapture = undefined
 >(
-  model: ProjectionModel<
+  model: ProjectionSpec<
     TInput,
     TState,
     TRead,
@@ -424,7 +402,7 @@ export const createProjectionRuntime = <
       TPhaseName,
       TScopeMap,
       TPhaseMetrics
-    >
+    >[TPhaseName]
   >(model.phases)
   const state = model.createState()
   let currentRevision = 0 as Revision
@@ -479,13 +457,15 @@ export const createProjectionRuntime = <
       const completed = new Set<TPhaseName>()
       const phases: Array<ProjectionTrace<TPhaseName, TPhaseMetrics>['phases'][number]> = []
 
-      plan.phases.forEach((phaseName) => {
-        if (!graph.specs.has(phaseName)) {
-          throw new Error(`Unknown planned phase ${phaseName}.`)
-        }
+      if (plan.phases) {
+        for (const phaseName of plan.phases) {
+          if (!graph.specs.has(phaseName)) {
+            throw new Error(`Unknown planned phase ${phaseName}.`)
+          }
 
-        pending.add(phaseName)
-      })
+          pending.add(phaseName)
+        }
+      }
 
       applyScopeInput({
         phases: graph.specs,

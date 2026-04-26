@@ -37,7 +37,7 @@ import {
   hasQueryDeltaChanges
 } from '../projector/impact'
 import {
-  defineActiveProjectorPhase,
+  type ActiveProjectorPhase,
   readActiveView
 } from '../projector/context'
 import {
@@ -247,9 +247,8 @@ export const runMembershipStage = (input: {
   }
 }
 
-export const activeMembershipPhase = defineActiveProjectorPhase({
-  name: 'membership',
-  deps: ['query'],
+export const activeMembershipPhase: ActiveProjectorPhase<'membership'> = {
+  after: ['query'],
   scope: membershipPhaseScope,
   run: (context) => {
     const { activeViewId, view } = readActiveView(context.input)
@@ -260,21 +259,21 @@ export const activeMembershipPhase = defineActiveProjectorPhase({
       }
     }
 
-    const previousState = context.working.membership.state
+    const previousState = context.state.membership.state
     const queryScope = context.scope?.query
     const result = runMembershipStage({
       activeViewId,
-      previousViewId: context.previous?.view.id,
+      previousViewId: context.state.publish.previous?.view.id,
       impact: context.input.impact,
       view,
-      query: context.working.query.state,
+      query: context.state.query.state,
       queryDelta: queryScope?.delta ?? EMPTY_QUERY_PHASE_DELTA,
       previous: previousState,
       index: context.input.index.state,
       indexDelta: context.input.index.delta
     })
 
-    context.working.membership.state = result.state
+    context.state.membership.state = result.state
 
     return {
       action: result.action,
@@ -303,4 +302,4 @@ export const activeMembershipPhase = defineActiveProjectorPhase({
         : {})
     }
   }
-})
+}

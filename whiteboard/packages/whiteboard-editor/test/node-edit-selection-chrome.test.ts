@@ -194,45 +194,44 @@ const createPointerInput = (
 
 const createMindmapEditor = () => {
   const document = documentApi.create('doc_mindmap_root_edit_selection_chrome')
-  document.nodes['mind-1'] = {
-    id: 'mind-1',
-    type: 'mindmap',
-    position: { x: 200, y: 180 },
-    data: {
-      rootNodeId: 'root-1',
-      nodes: {
-        'root-1': {
-          branch: {
-            color: '#111827',
-            line: 'curve',
-            width: 2,
-            stroke: 'solid'
-          }
-        }
-      },
-      children: {
-        'root-1': []
-      },
-      layout: {
-        side: 'both',
-        mode: 'tidy',
-        hGap: 28,
-        vGap: 18
-      }
-    }
-  }
   document.nodes['root-1'] = {
     id: 'root-1',
     type: 'text',
-    mindmapId: 'mind-1',
+    owner: {
+      kind: 'mindmap',
+      id: 'mind-1'
+    },
     position: { x: 200, y: 180 },
     size: { width: 132, height: 32 },
     data: {
       text: 'Central topic'
     }
   }
+  document.mindmaps['mind-1'] = {
+    id: 'mind-1',
+    root: 'root-1',
+    members: {
+      'root-1': {
+        branchStyle: {
+          color: '#111827',
+          line: 'curve',
+          width: 2,
+          stroke: 'solid'
+        }
+      }
+    },
+    children: {
+      'root-1': []
+    },
+    layout: {
+      side: 'both',
+      mode: 'tidy',
+      hGap: 28,
+      vGap: 18
+    }
+  }
   document.canvas.order = [{
-    kind: 'node',
+    kind: 'mindmap',
     id: 'mind-1'
   }]
 

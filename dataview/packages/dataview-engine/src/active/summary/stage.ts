@@ -29,7 +29,7 @@ import {
   type BaseImpact
 } from '../projector/impact'
 import {
-  defineActiveProjectorPhase,
+  type ActiveProjectorPhase,
   readActiveView
 } from '../projector/context'
 import {
@@ -204,9 +204,8 @@ export const runSummaryStage = (input: {
   }
 }
 
-export const activeSummaryPhase = defineActiveProjectorPhase({
-  name: 'summary',
-  deps: ['membership'],
+export const activeSummaryPhase: ActiveProjectorPhase<'summary'> = {
+  after: ['membership'],
   scope: summaryPhaseScope,
   run: (context) => {
     const { activeViewId, view } = readActiveView(context.input)
@@ -218,24 +217,24 @@ export const activeSummaryPhase = defineActiveProjectorPhase({
       }
     }
 
-    const previousState = context.working.summary.state
+    const previousState = context.state.summary.state
     const membershipScope = context.scope?.membership
     const result = runSummaryStage({
       activeViewId,
-      previousViewId: context.previous?.view.id,
+      previousViewId: context.state.publish.previous?.view.id,
       impact: context.input.impact,
       indexDelta: context.input.index.delta,
       view,
       calcFields: plan.calcFields,
       previous: previousState,
-      previousMembership: membershipScope?.previous ?? context.working.membership.state,
-      membership: context.working.membership.state,
+      previousMembership: membershipScope?.previous ?? context.state.membership.state,
+      membership: context.state.membership.state,
       membershipAction: membershipScope?.action ?? 'reuse',
       membershipDelta: membershipScope?.delta ?? EMPTY_MEMBERSHIP_PHASE_DELTA,
       index: context.input.index.state
     })
 
-    context.working.summary.state = result.state
+    context.state.summary.state = result.state
 
     return {
       action: result.action,
@@ -258,4 +257,4 @@ export const activeSummaryPhase = defineActiveProjectorPhase({
         : {})
     }
   }
-})
+}

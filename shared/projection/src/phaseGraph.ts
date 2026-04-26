@@ -1,8 +1,7 @@
 export interface PhaseGraph<
   TPhaseName extends string,
   TSpec extends {
-    name: TPhaseName
-    deps: readonly TPhaseName[]
+    after?: readonly TPhaseName[]
   }
 > {
   order: readonly TPhaseName[]
@@ -13,40 +12,37 @@ export interface PhaseGraph<
 export const createPhaseGraph = <
   TPhaseName extends string,
   TSpec extends {
-    name: TPhaseName
-    deps: readonly TPhaseName[]
+    after?: readonly TPhaseName[]
   }
 >(
-  phases: readonly TSpec[]
+  phases: Readonly<Record<TPhaseName, TSpec>>
 ): PhaseGraph<TPhaseName, TSpec> => {
+  const phaseNames = Object.keys(phases) as TPhaseName[]
   const specs = new Map<TPhaseName, TSpec>()
   const dependents = new Map<TPhaseName, TPhaseName[]>()
   const indegree = new Map<TPhaseName, number>()
 
-  phases.forEach((entry) => {
-    if (specs.has(entry.name)) {
-      throw new Error(`Duplicate phase ${entry.name}.`)
-    }
-
-    specs.set(entry.name, entry)
-    dependents.set(entry.name, [])
-    indegree.set(entry.name, entry.deps.length)
+  phaseNames.forEach((phaseName) => {
+    const entry = phases[phaseName]!
+    specs.set(phaseName, entry)
+    dependents.set(phaseName, [])
+    indegree.set(phaseName, entry.after?.length ?? 0)
   })
 
-  phases.forEach((entry) => {
-    entry.deps.forEach((dep) => {
+  phaseNames.forEach((phaseName) => {
+    const entry = phases[phaseName]!
+    entry.after?.forEach((dep) => {
       const next = dependents.get(dep)
       if (!next) {
-        throw new Error(`Unknown phase dependency ${dep} for phase ${entry.name}.`)
+        throw new Error(`Unknown phase dependency ${dep} for phase ${phaseName}.`)
       }
 
-      next.push(entry.name)
+      next.push(phaseName)
     })
   })
 
-  const queue = phases
-    .filter((entry) => indegree.get(entry.name) === 0)
-    .map((entry) => entry.name)
+  const queue = phaseNames
+    .filter((phaseName) => indegree.get(phaseName) === 0)
   const order: TPhaseName[] = []
 
   while (queue.length > 0) {
@@ -62,7 +58,7 @@ export const createPhaseGraph = <
     })
   }
 
-  if (order.length !== phases.length) {
+  if (order.length !== phaseNames.length) {
     throw new Error('Projection runtime phases must form a DAG.')
   }
 

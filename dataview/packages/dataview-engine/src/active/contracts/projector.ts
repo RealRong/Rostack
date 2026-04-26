@@ -1,8 +1,3 @@
-import {
-  defineScope,
-  flag,
-  slot
-} from '@shared/projector/phase'
 import type {
   IndexDelta,
   IndexState
@@ -27,6 +22,72 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import type { ViewState } from '@dataview/engine/contracts/view'
 import type { DocumentReader } from '@dataview/engine/document/reader'
+import type { ProjectionTrace } from '@shared/projection'
+
+type ScopeFlagField = {
+  kind: 'flag'
+}
+
+type ScopeSlotField<TValue> = {
+  kind: 'slot'
+  __value?: TValue
+}
+
+type ScopeField =
+  | ScopeFlagField
+  | ScopeSlotField<unknown>
+
+type ScopeSchema<TFields extends Record<string, ScopeField>> = {
+  kind: 'scope'
+  fields: TFields
+}
+
+type ScopeFieldInputValue<TField extends ScopeField> =
+  TField extends ScopeFlagField
+    ? boolean
+    : TField extends ScopeSlotField<infer TValue>
+      ? TValue
+      : never
+
+type ScopeFieldValue<TField extends ScopeField> =
+  TField extends ScopeFlagField
+    ? boolean
+    : TField extends ScopeSlotField<infer TValue>
+      ? TValue | undefined
+      : never
+
+export type ScopeInputValue<TSchema> = TSchema extends ScopeSchema<infer TFields>
+  ? Partial<{
+      [K in keyof TFields]: ScopeFieldInputValue<TFields[K]>
+    }>
+  : undefined
+
+export type ScopeValue<TSchema> = TSchema extends ScopeSchema<infer TFields>
+  ? {
+      [K in keyof TFields]: ScopeFieldValue<TFields[K]>
+    }
+  : undefined
+
+const FLAG_SCOPE_FIELD = {
+  kind: 'flag'
+} as const satisfies ScopeFlagField
+
+const SLOT_SCOPE_FIELD = {
+  kind: 'slot'
+} as const satisfies ScopeSlotField<never>
+
+const scopeFlag = (): ScopeFlagField => FLAG_SCOPE_FIELD
+
+const scopeSlot = <TValue,>(): ScopeSlotField<TValue> => (
+  SLOT_SCOPE_FIELD as ScopeSlotField<TValue>
+)
+
+const createScope = <TFields extends Record<string, ScopeField>>(
+  fields: TFields
+): ScopeSchema<TFields> => ({
+  kind: 'scope',
+  fields
+})
 
 export type ActivePhaseName =
   | 'query'
@@ -80,18 +141,18 @@ export interface PublishPhaseScope {
   }
 }
 
-export const membershipPhaseScope = defineScope({
-  query: slot<MembershipPhaseScope['query']>()
+export const membershipPhaseScope = createScope({
+  query: scopeSlot<MembershipPhaseScope['query']>()
 })
 
-export const summaryPhaseScope = defineScope({
-  membership: slot<SummaryPhaseScope['membership']>()
+export const summaryPhaseScope = createScope({
+  membership: scopeSlot<SummaryPhaseScope['membership']>()
 })
 
-export const publishPhaseScope = defineScope({
-  reset: flag(),
-  membership: slot<PublishPhaseScope['membership']>(),
-  summary: slot<PublishPhaseScope['summary']>()
+export const publishPhaseScope = createScope({
+  reset: scopeFlag(),
+  membership: scopeSlot<PublishPhaseScope['membership']>(),
+  summary: scopeSlot<PublishPhaseScope['summary']>()
 })
 
 export interface ActivePhaseScopeMap {
@@ -113,9 +174,15 @@ export interface ActiveProjectorWorking {
   }
   publish: {
     itemIds: ItemIdPool
+    previous?: ViewState
     snapshot?: ViewState
     delta?: ActiveDelta
   }
+}
+
+export interface ActiveProjectionCapture {
+  snapshot?: ViewState
+  delta?: ActiveDelta
 }
 
 export interface ActiveProjectorTrace {
@@ -133,3 +200,8 @@ export interface ActiveProjectorResult {
 export interface ActiveProjector {
   update(input: ActiveProjectorInput): ActiveProjectorResult
 }
+
+export type ActiveProjectionTrace = ProjectionTrace<
+  ActivePhaseName,
+  ActivePhaseMetrics
+>

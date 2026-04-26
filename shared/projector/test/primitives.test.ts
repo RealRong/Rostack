@@ -7,6 +7,13 @@ import {
 import {
   createStageMetrics,
 } from '../src/phase'
+import {
+  createChangeState,
+  defineChangeSpec,
+  flag,
+  hasChangeState,
+  takeChangeState
+} from '../src/change'
 
 test('projectListChange reports add remove and order change', () => {
   const result = projectListChange({
@@ -59,4 +66,27 @@ test('createStageMetrics derives reused and rebuilt counts from changed nodes', 
       changedRecordCount: 3
     }
   )
+})
+
+test('takeChangeState clears nested flag fields', () => {
+  const spec = defineChangeSpec({
+    root: {
+      ready: flag(),
+      nested: {
+        dirty: flag()
+      }
+    }
+  })
+  const state = createChangeState(spec)
+
+  state.root.ready = true
+  state.root.nested.dirty = true
+
+  const current = takeChangeState(spec, state)
+
+  assert.equal(current.root.ready, true)
+  assert.equal(current.root.nested.dirty, true)
+  assert.equal(state.root.ready, false)
+  assert.equal(state.root.nested.dirty, false)
+  assert.equal(hasChangeState(spec, state), false)
 })

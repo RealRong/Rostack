@@ -39,10 +39,8 @@ import type {
   ProjectorTrace,
   Revision
 } from '@shared/projector/phase'
-import type {
-  Family
-} from '@shared/projector/publish'
 import { store } from '@shared/core'
+import type { Capture } from './capture'
 import type { IdDelta } from './delta'
 import type {
   EdgeActiveView,
@@ -51,10 +49,10 @@ import type {
   EdgeMaskView,
   EdgeOverlayView,
   EdgeStaticId,
-  EdgeStaticView,
-  RenderSnapshot
+  EdgeStaticView
 } from './render'
-import type { SpatialRead } from '../domain/spatial/contracts'
+import type { SpatialRead } from './spatial'
+import type { State } from './state'
 
 export interface Input {
   document: DocumentInput
@@ -439,21 +437,6 @@ export interface ClockInputDelta {
   mindmaps: ReadonlySet<MindmapId>
 }
 
-export interface Snapshot {
-  revision: Revision
-  documentRevision: Revision
-  graph: GraphSnapshot
-  render: RenderSnapshot
-  items: readonly SceneItem[]
-  ui: UiSnapshot
-}
-
-export interface GraphSnapshot {
-  nodes: Family<NodeId, NodeView>
-  edges: Family<EdgeId, EdgeView>
-  owners: OwnerViews
-}
-
 export interface NodeView {
   base: NodeBaseView
   geometry: NodeGeometryView
@@ -539,11 +522,6 @@ export interface EdgeLabelUiView {
   caret?: EditCaret
 }
 
-export interface OwnerViews {
-  mindmaps: Family<MindmapId, MindmapView>
-  groups: Family<GroupId, GroupView>
-}
-
 export interface MindmapView {
   base: MindmapBaseView
   structure: MindmapStructureView
@@ -602,12 +580,6 @@ export type SceneItem =
       id: EdgeId
     }
 
-export interface UiSnapshot {
-  chrome: ChromeView
-  nodes: Family<NodeId, NodeUiView>
-  edges: Family<EdgeId, EdgeUiView>
-}
-
 export interface ChromeView {
   overlays: readonly ChromeOverlay[]
   hover: HoverState
@@ -634,7 +606,8 @@ export interface Runtime {
   readonly stores: RuntimeStores
   readonly read: Read
   revision(): Revision
-  snapshot(): Snapshot
+  state(): State
+  capture(): Capture
   update(input: Input): Result
   subscribe(listener: (result: Result) => void): () => void
 }
@@ -711,6 +684,5 @@ export interface Read {
     }): EdgeId | undefined
   }
   items(): readonly SceneItem[]
-  ui(): UiSnapshot
   chrome(): ChromeView
 }

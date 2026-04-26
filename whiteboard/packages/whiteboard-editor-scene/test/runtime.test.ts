@@ -250,15 +250,15 @@ describe('editor scene runtime', () => {
     const result = runtime.update(createInput(engine, {
       delta: DOCUMENT_DELTA
     }))
-    const snapshot = runtime.snapshot()
+    const capture = runtime.capture()
 
     unsubscribe()
 
-    expect(snapshot.graph.nodes.ids.length).toBe(1)
-    expect(snapshot.items.length).toBe(1)
-    expect(snapshot.documentRevision).toBe(1)
-    expect(runtime.read.node(nodeId)).toBe(snapshot.graph.nodes.byId.get(nodeId))
-    expect(snapshot.render.edge.statics.ids).toBeDefined()
+    expect(capture.graph.nodes.ids.length).toBe(1)
+    expect(capture.items.length).toBe(1)
+    expect(capture.documentRevision).toBe(1)
+    expect(runtime.read.node(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
+    expect(capture.render.edge.statics.ids).toBeDefined()
     expect(result.trace?.phases.map((phase) => phase.name)).toEqual([
       'graph',
       'spatial',
@@ -276,20 +276,20 @@ describe('editor scene runtime', () => {
     runtime.update(createInput(engine, {
       delta: DOCUMENT_DELTA
     }))
-    const baselineSnapshot = runtime.snapshot()
+    const baselineCapture = runtime.capture()
     const baselineRevision = runtime.revision()
 
     const idle = runtime.update(createInput(engine, {
       delta: IDLE_DELTA
     }))
-    const idleSnapshot = runtime.snapshot()
+    const idleCapture = runtime.capture()
 
     expect(idle.trace?.phases).toHaveLength(0)
-    expect(idleSnapshot.documentRevision).toBe(baselineSnapshot.documentRevision)
-    expect(idleSnapshot.graph.nodes.ids).toEqual(baselineSnapshot.graph.nodes.ids)
-    expect(idleSnapshot.graph.edges.ids).toEqual(baselineSnapshot.graph.edges.ids)
-    expect(idleSnapshot.items).toEqual(baselineSnapshot.items)
-    expect(idleSnapshot.ui.chrome).toEqual(baselineSnapshot.ui.chrome)
+    expect(idleCapture.documentRevision).toBe(baselineCapture.documentRevision)
+    expect(idleCapture.graph.nodes.ids).toEqual(baselineCapture.graph.nodes.ids)
+    expect(idleCapture.graph.edges.ids).toEqual(baselineCapture.graph.edges.ids)
+    expect(idleCapture.items).toEqual(baselineCapture.items)
+    expect(idleCapture.ui.chrome).toEqual(baselineCapture.ui.chrome)
     expect(runtime.revision()).toBeGreaterThan(baselineRevision)
   })
 
@@ -306,12 +306,12 @@ describe('editor scene runtime', () => {
     const result = harness.update(createInput(engine, {
       delta: DOCUMENT_DELTA
     }))
-    const snapshot = harness.snapshot()
+    const capture = harness.capture()
     const read = harness.read
 
-    expect(harness.runtime.snapshot()).toBe(snapshot)
+    expect(harness.runtime.capture()).toBe(capture)
     expect(harness.lastTrace()).toEqual(result.trace)
-    expect(read.node(nodeId)).toBe(snapshot.graph.nodes.byId.get(nodeId))
+    expect(read.node(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
     expect(read.spatial.get(`node:${nodeId}`)).toEqual(expect.objectContaining({
       key: `node:${nodeId}`,
       kind: 'node',
@@ -331,9 +331,8 @@ describe('editor scene runtime', () => {
       x: spatialRecord.bounds.x + spatialRecord.bounds.width / 2,
       y: spatialRecord.bounds.y + spatialRecord.bounds.height / 2
     }).some((record) => record.key === spatialRecord.key)).toBe(true)
-    expect(read.items()).toBe(snapshot.items)
-    expect(read.ui()).toEqual(snapshot.ui)
-    expect(read.chrome()).toBe(snapshot.ui.chrome)
+    expect(read.items()).toBe(capture.items)
+    expect(read.chrome()).toBe(capture.ui.chrome)
   })
 
   it('relayouts mindmap members while live text measurement changes', () => {
@@ -359,7 +358,7 @@ describe('editor scene runtime', () => {
         ])
       })
     )
-    const baselineSnapshot = runtime.snapshot()
+    const baselineCapture = runtime.capture()
 
     runtime.update(
       createInput(engine, {
@@ -380,16 +379,16 @@ describe('editor scene runtime', () => {
         ])
       })
     )
-    const liveSnapshot = runtime.snapshot()
+    const liveCapture = runtime.capture()
 
-    const baselineMindmap = baselineSnapshot.graph.owners.mindmaps.byId.get(created.mindmapId)
-    const liveMindmap = liveSnapshot.graph.owners.mindmaps.byId.get(created.mindmapId)
-    const liveRootUi = liveSnapshot.ui.nodes.byId.get(created.rootId)
+    const baselineMindmap = baselineCapture.graph.owners.mindmaps.byId.get(created.mindmapId)
+    const liveMindmap = liveCapture.graph.owners.mindmaps.byId.get(created.mindmapId)
+    const liveRootUi = liveCapture.ui.nodes.byId.get(created.rootId)
 
     expect(baselineMindmap?.tree.layout).toBeDefined()
     expect(liveMindmap?.tree.layout).toBeDefined()
     expect(liveRootUi?.editing).toBe(true)
-    expect(runtime.read.node(childId)).toBe(liveSnapshot.graph.nodes.byId.get(childId))
+    expect(runtime.read.node(childId)).toBe(liveCapture.graph.nodes.byId.get(childId))
   })
 
   it('builds renderer-ready edge, chrome, and spatial state in the view phase', () => {
@@ -497,13 +496,13 @@ describe('editor scene runtime', () => {
         },
       })
     )
-    const snapshot = runtime.snapshot()
+    const capture = runtime.capture()
 
-    const firstNode = snapshot.graph.nodes.byId.get(firstId)
-    const edgeView = snapshot.graph.edges.byId.get(edgeId)
-    const firstNodeUi = snapshot.ui.nodes.byId.get(firstId)
-    const edgeUi = snapshot.ui.edges.byId.get(edgeId)
-    const chrome = snapshot.ui.chrome
+    const firstNode = capture.graph.nodes.byId.get(firstId)
+    const edgeView = capture.graph.edges.byId.get(edgeId)
+    const firstNodeUi = capture.ui.nodes.byId.get(firstId)
+    const edgeUi = capture.ui.edges.byId.get(edgeId)
+    const chrome = capture.ui.chrome
     const overlayKinds = chrome.overlays.map((overlay) => overlay.kind)
 
     expect(firstNode).toBeDefined()
@@ -547,7 +546,7 @@ describe('editor scene runtime', () => {
     expect(chrome.preview.guides).toHaveLength(1)
     expect(chrome.preview.draw?.hiddenNodeIds).toEqual([firstId])
 
-    expect(snapshot.items).toEqual(expect.arrayContaining([
+    expect(capture.items).toEqual(expect.arrayContaining([
       { kind: 'node', id: firstId },
       { kind: 'node', id: secondId },
       { kind: 'node', id: offscreenId },

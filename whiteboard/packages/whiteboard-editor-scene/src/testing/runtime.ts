@@ -3,9 +3,9 @@ import type {
   Read,
   Result,
   Runtime,
-  Snapshot,
   TextMeasure
 } from '../contracts/editor'
+import type { Capture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'
 import {
   createEditorSceneModelRuntime,
@@ -16,12 +16,12 @@ export interface EditorSceneHarness {
   runtime: Runtime
   read: Read
   update(input: Input): Result
-  snapshot(): Snapshot
+  capture(): Capture
   lastTrace(): Result['trace']
 }
 
 export interface EditorSceneModelHarness {
-  snapshot(): Snapshot
+  capture(): Capture
   working(): WorkingState
   update(input: Input): Result
   lastTrace(): Result['trace']
@@ -43,7 +43,7 @@ export const createEditorSceneHarness = (input: {
       trace = result.trace
       return result
     },
-    snapshot: () => runtime.snapshot(),
+    capture: () => runtime.capture(),
     lastTrace: () => trace
   }
 }
@@ -57,8 +57,8 @@ export const createEditorSceneModelHarness = (input: {
   let trace: Result['trace']
 
   return {
-    snapshot: () => runtime.snapshot(),
-    working: () => runtime.state(),
+    capture: () => runtime.capture(),
+    working: () => runtime.working(),
     update: (value) => {
       const result = runtime.update(value) as Result
       trace = result.trace

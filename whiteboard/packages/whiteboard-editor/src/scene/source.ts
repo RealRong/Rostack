@@ -76,6 +76,7 @@ type SceneProjectionStores = {
 }
 
 export type EditorSceneRuntime = {
+  dispose: () => void
   revision: () => number
   items: store.ReadStore<readonly SceneItem[]>
   query: {
@@ -352,6 +353,9 @@ export const createSceneSource = ({
   })
 
   return {
+    dispose: () => {
+      pick.runtime.dispose()
+    },
     revision: readRevision,
     items: sources.items,
     query: queryApi,

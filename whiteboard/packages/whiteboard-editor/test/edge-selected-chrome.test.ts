@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { history as historyApi } from '@whiteboard/history'
@@ -22,6 +22,24 @@ const registry: NodeRegistry = {
       }
     : undefined
 }
+
+const editors = new Set<{
+  dispose: () => void
+}>()
+
+const trackEditor = <T extends { dispose: () => void }>(
+  editor: T
+): T => {
+  editors.add(editor)
+  return editor
+}
+
+afterEach(() => {
+  editors.forEach((editor) => {
+    editor.dispose()
+  })
+  editors.clear()
+})
 
 const createEdgeDocument = () => {
   const document = documentApi.create('doc_edge_selected_chrome')
@@ -139,7 +157,7 @@ const createEdgeEditor = () => {
     document: createEdgeDocument()
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -153,7 +171,7 @@ const createEdgeEditor = () => {
       zoom: 1
     },
     registry
-  })
+  }))
 }
 
 describe('edge.selectedChrome', () => {

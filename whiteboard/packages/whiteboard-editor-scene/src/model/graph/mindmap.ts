@@ -12,15 +12,15 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { GraphDelta } from '../contracts/delta'
+import type { GraphDelta } from '../../contracts/delta'
 import type {
   Input,
   MindmapView
-} from '../contracts/editor'
+} from '../../contracts/editor'
 import type {
   GraphMindmapEntry,
   WorkingState
-} from '../contracts/working'
+} from '../../contracts/working'
 import {
   readNodeEntry,
   readMeasuredNodeSize,

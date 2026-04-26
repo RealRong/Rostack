@@ -16,7 +16,7 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   SpatialKey
-} from '../domain/spatial/contracts'
+} from '../model/spatial/contracts'
 
 export type IdDelta<TId extends string> = SharedIdDelta<TId>
 

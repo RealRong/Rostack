@@ -17,11 +17,11 @@ import type {
   NodeUiView,
   SelectionState,
   SessionInput
-} from '../contracts/editor'
+} from '../../contracts/editor'
 import type {
   GraphEdgeEntry,
   GraphNodeEntry
-} from '../contracts/working'
+} from '../../contracts/working'
 
 const isChromeOverlayEqual = (
   left: ChromeOverlay,

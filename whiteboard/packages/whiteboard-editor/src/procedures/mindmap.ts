@@ -1,7 +1,7 @@
 import { scheduler } from '@shared/core'
 import { createChangeState } from '@shared/projector/change'
 import type {
-  GraphSnapshot,
+  GraphState,
   MindmapView,
   InputDelta
 } from '@whiteboard/editor-scene'
@@ -159,13 +159,13 @@ const buildMindmapEnterPreview = ({
   anchorId
 }: {
   structure: EditorSceneRuntime['mindmap']['structure']
-  graph: GraphSnapshot
+  graph: GraphState
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterPreview | undefined => {
   const currentStructure = structure(treeId)
-  const computed = graph.owners.mindmaps.byId.get(treeId)?.tree.layout
+  const computed = graph.owners.mindmaps.get(treeId)?.tree.layout
   if (!currentStructure || !computed) {
     return undefined
   }

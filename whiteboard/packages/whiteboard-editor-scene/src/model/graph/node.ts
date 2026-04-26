@@ -8,7 +8,7 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { GraphDelta } from '../contracts/delta'
+import type { GraphDelta } from '../../contracts/delta'
 import type {
   Input,
   NodeDraft,
@@ -16,11 +16,11 @@ import type {
   OwnerRef,
   SessionInput,
   NodeView
-} from '../contracts/editor'
+} from '../../contracts/editor'
 import type {
   GraphNodeEntry,
   WorkingState
-} from '../contracts/working'
+} from '../../contracts/working'
 
 const EMPTY_SIZE: Size = {
   width: 0,

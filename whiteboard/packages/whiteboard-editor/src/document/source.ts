@@ -52,6 +52,7 @@ export type EditorDocumentSource = {
 }
 
 export type EditorDocumentRuntimeSource = EditorDocumentSource & {
+  dispose: () => void
   document: {
     get: () => Document
     background: store.ReadStore<Document['background'] | undefined>
@@ -241,9 +242,10 @@ export const createDocumentSource = ({
   engine: Engine
 }): EditorDocumentRuntimeSource => {
   const snapshotStore = store.createValueStore(engine.current().snapshot)
-  engine.subscribe((publish) => {
+  const unsubscribeEngine = engine.subscribe((publish) => {
     snapshotStore.set(publish.snapshot)
   })
+  let disposed = false
 
   const documentStore = store.createDerivedStore<Document>({
     get: () => store.read(snapshotStore).document,
@@ -347,6 +349,14 @@ export const createDocumentSource = ({
   }
 
   return {
+    dispose: () => {
+      if (disposed) {
+        return
+      }
+
+      disposed = true
+      unsubscribeEngine()
+    },
     get: () => store.read(documentStore),
     background,
     bounds,

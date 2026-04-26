@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { history as historyApi } from '@whiteboard/history'
@@ -71,6 +71,24 @@ const registry: NodeRegistry = {
   }
 }
 
+const editors = new Set<{
+  dispose: () => void
+}>()
+
+const trackEditor = <T extends { dispose: () => void }>(
+  editor: T
+): T => {
+  editors.add(editor)
+  return editor
+}
+
+afterEach(() => {
+  editors.forEach((editor) => {
+    editor.dispose()
+  })
+  editors.clear()
+})
+
 const createTextEditor = () => {
   const document = documentApi.create('doc_node_edit_selection_chrome')
   document.nodes['text-1'] = {
@@ -91,7 +109,7 @@ const createTextEditor = () => {
     document
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -102,7 +120,7 @@ const createTextEditor = () => {
       zoom: 1
     },
     registry
-  })
+  }))
 }
 
 const createShapeEditor = () => {
@@ -130,7 +148,7 @@ const createShapeEditor = () => {
     document
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -141,7 +159,7 @@ const createShapeEditor = () => {
       zoom: 1
     },
     registry
-  })
+  }))
 }
 
 const createPointerInput = (
@@ -223,7 +241,7 @@ const createMindmapEditor = () => {
     document
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -234,7 +252,7 @@ const createMindmapEditor = () => {
       zoom: 1
     },
     registry
-  })
+  }))
 }
 
 const createEdgeEditor = () => {
@@ -286,7 +304,7 @@ const createEdgeEditor = () => {
     document
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -297,7 +315,7 @@ const createEdgeEditor = () => {
       zoom: 1
     },
     registry
-  })
+  }))
 }
 
 describe('node edit selection chrome', () => {

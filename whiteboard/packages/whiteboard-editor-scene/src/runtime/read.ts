@@ -13,18 +13,18 @@ import type {
   GraphState,
   IndexState,
   UiState
-} from '../contracts/working'
+} from '../contracts/state'
 import type { SceneItem } from '../contracts/editor'
 import {
   readGroupSignatureFromTarget
-} from '../domain/group'
+} from '../model/graph/group'
 import {
   readRelatedEdgeIds,
   readTreeDescendants
-} from '../domain/index/read'
-import { createEdgeHitRead } from '../domain/hit/edge'
-import type { SpatialIndexState } from '../domain/spatial/state'
-import { createSpatialRead } from '../domain/spatial/query'
+} from '../model/index/read'
+import { createEdgeHitRead } from './hit/edge'
+import type { SpatialIndexState } from '../model/spatial/state'
+import { createSpatialRead } from '../model/spatial/query'
 
 const isFrameView = (
   graph: GraphState,
@@ -210,17 +210,6 @@ export const createEditorSceneRead = (
     frame,
     hit,
     items: () => runtime.items(),
-    ui: () => ({
-      chrome: runtime.ui().chrome,
-      nodes: {
-        ids: [...runtime.ui().nodes.keys()],
-        byId: runtime.ui().nodes
-      },
-      edges: {
-        ids: [...runtime.ui().edges.keys()],
-        byId: runtime.ui().edges
-      }
-    }),
     chrome: () => runtime.ui().chrome
   }
 }

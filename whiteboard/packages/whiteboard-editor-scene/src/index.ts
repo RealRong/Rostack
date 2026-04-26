@@ -1,6 +1,9 @@
 export { createEditorSceneRuntime } from './runtime/createEditorSceneRuntime'
 
 export type * from './contracts/editor'
+export type * from './contracts/state'
+export type * from './contracts/capture'
+export type * from './contracts/spatial'
 export type {
   EdgeActiveView,
   EdgeLabelKey,
@@ -9,7 +12,5 @@ export type {
   EdgeOverlayRoutePoint,
   EdgeOverlayView,
   EdgeStaticId,
-  EdgeStaticView,
-  RenderSnapshot
+  EdgeStaticView
 } from './contracts/render'
-export type * from './domain/spatial/types'

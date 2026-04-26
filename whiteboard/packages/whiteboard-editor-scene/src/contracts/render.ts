@@ -8,9 +8,6 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type {
-  Family
-} from '@shared/projector/publish'
 import type { EditCaret } from './editor'
 
 export type EdgeStaticId = string
@@ -96,14 +93,4 @@ export interface EdgeOverlayView {
   snapPoint?: Point
   endpointHandles: readonly EdgeOverlayEndpointHandle[]
   routePoints: readonly EdgeOverlayRoutePoint[]
-}
-
-export interface RenderSnapshot {
-  edge: {
-    statics: Family<EdgeStaticId, EdgeStaticView>
-    active: Family<EdgeId, EdgeActiveView>
-    labels: Family<EdgeLabelKey, EdgeLabelView>
-    masks: Family<EdgeId, EdgeMaskView>
-    overlay: EdgeOverlayView
-  }
 }

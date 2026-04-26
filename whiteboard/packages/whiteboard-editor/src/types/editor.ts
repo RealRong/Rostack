@@ -227,6 +227,7 @@ export type ScenePickRuntime = {
   get: () => ScenePickRuntimeResult | undefined
   subscribe: (listener: () => void) => store.Unsubscribe
   clear: () => void
+  dispose: () => void
 }
 
 export type SceneGeometryCache = {

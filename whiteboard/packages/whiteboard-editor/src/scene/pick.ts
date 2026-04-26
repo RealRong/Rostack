@@ -149,6 +149,7 @@ export const createScenePick = ({
   const listeners = new Set<() => void>()
   let pending: ScenePickRequest | undefined
   let current: ScenePickRuntimeResult | undefined
+  let disposed = false
 
   const resolveRadius = (
     radius?: number
@@ -314,17 +315,31 @@ export const createScenePick = ({
     resolve,
     runtime: {
       schedule: (request) => {
+        if (disposed) {
+          return
+        }
+
         pending = request
         runtimeTask.schedule()
       },
-      get: () => current,
+      get: () => disposed
+        ? undefined
+        : current,
       subscribe: (listener) => {
+        if (disposed) {
+          return () => {}
+        }
+
         listeners.add(listener)
         return () => {
           listeners.delete(listener)
         }
       },
       clear: () => {
+        if (disposed) {
+          return
+        }
+
         pending = undefined
         runtimeTask.cancel()
         if (!current) {
@@ -335,6 +350,17 @@ export const createScenePick = ({
         listeners.forEach((listener) => {
           listener()
         })
+      },
+      dispose: () => {
+        if (disposed) {
+          return
+        }
+
+        disposed = true
+        pending = undefined
+        current = undefined
+        runtimeTask.cancel()
+        listeners.clear()
       }
     }
   }

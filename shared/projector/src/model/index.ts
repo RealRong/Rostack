@@ -68,7 +68,7 @@ type ProjectionPhaseContext<
   TScope
 > = {
   input: TInput
-  working: TState
+  state: TState
   revision: Revision
   scope: TScope
 }
@@ -108,7 +108,8 @@ export interface ProjectionModel<
   TSurface extends ProjectionSurfaceTree<TState>,
   TPhaseName extends string,
   TScopeMap extends PhaseScopeMap<TPhaseName>,
-  TPhaseMetrics = unknown
+  TPhaseMetrics = unknown,
+  TCapture = undefined
 > {
   createState(): TState
   createRead(runtime: {
@@ -119,8 +120,14 @@ export interface ProjectionModel<
   plan(input: {
     input: TInput
     state: TState
+    read: TRead
     revision: Revision
   }): ProjectionPlan<TPhaseName, TScopeMap>
+  capture?(input: {
+    state: TState
+    read: TRead
+    revision: Revision
+  }): TCapture
   phases: readonly ProjectionPhaseEntry<
     TInput,
     TState,
@@ -136,12 +143,14 @@ export interface ProjectionRuntime<
   TRead,
   TSurfaceRead,
   TPhaseName extends string,
-  TPhaseMetrics = unknown
+  TPhaseMetrics = unknown,
+  TCapture = undefined
 > {
   revision(): Revision
   state(): TState
   read: TRead
   stores: TSurfaceRead
+  capture(): TCapture
   update(input: TInput): {
     revision: Revision
     trace: ProjectorTrace<TPhaseName, TPhaseMetrics>
@@ -288,7 +297,8 @@ export const defineProjectionModel = <
   TSurface extends ProjectionSurfaceTree<TState>,
   TPhaseName extends string,
   TScopeMap extends PhaseScopeMap<TPhaseName>,
-  TPhaseMetrics = unknown
+  TPhaseMetrics = unknown,
+  TCapture = undefined
 >(
   model: ProjectionModel<
     TInput,
@@ -297,7 +307,8 @@ export const defineProjectionModel = <
     TSurface,
     TPhaseName,
     TScopeMap,
-    TPhaseMetrics
+    TPhaseMetrics,
+    TCapture
   >
 ) => model
 
@@ -347,7 +358,15 @@ const createSurfaceStore = <
         })
         next[key] = {
           ids: source.ids,
-          byId: source.byId.read
+          byId: store.createKeyedReadStore({
+            get: source.byId.read.get,
+            subscribe: source.byId.subscribe.key,
+            ...(field.isEqual
+              ? {
+                  isEqual: field.isEqual as (left: unknown, right: unknown) => boolean
+                }
+              : {})
+          })
         }
         return
       }
@@ -380,7 +399,8 @@ export const createProjectionRuntime = <
   TSurface extends ProjectionSurfaceTree<TState>,
   TPhaseName extends string,
   TScopeMap extends PhaseScopeMap<TPhaseName>,
-  TPhaseMetrics = unknown
+  TPhaseMetrics = unknown,
+  TCapture = undefined
 >(
   model: ProjectionModel<
     TInput,
@@ -389,7 +409,8 @@ export const createProjectionRuntime = <
     TSurface,
     TPhaseName,
     TScopeMap,
-    TPhaseMetrics
+    TPhaseMetrics,
+    TCapture
   >
 ): ProjectionRuntime<
   TInput,
@@ -397,7 +418,8 @@ export const createProjectionRuntime = <
   TRead,
   ProjectionStoreRead<TSurface>,
   TPhaseName,
-  TPhaseMetrics
+  TPhaseMetrics,
+  TCapture
 > => {
   const graph = createPhaseGraph<
     TPhaseName,
@@ -423,17 +445,38 @@ export const createProjectionRuntime = <
     state: () => state,
     revision: () => currentRevision
   })
+  let captureRevision = -1 as Revision
+  let cachedCapture: TCapture | undefined
+  const capture = () => {
+    if (!model.capture) {
+      return undefined as TCapture
+    }
+
+    if (captureRevision === currentRevision && cachedCapture !== undefined) {
+      return cachedCapture
+    }
+
+    captureRevision = currentRevision
+    cachedCapture = model.capture({
+      state,
+      read,
+      revision: currentRevision
+    })
+    return cachedCapture
+  }
 
   return {
     revision: () => currentRevision,
     state: () => state,
     read,
     stores: surface.read,
+    capture,
     update: (input) => {
       const revision = (currentRevision + 1) as Revision
       const plan = model.plan({
         input,
         state,
+        read,
         revision
       })
       const pending = new Set<TPhaseName>()
@@ -476,7 +519,7 @@ export const createProjectionRuntime = <
 
         const result = spec.run({
           input,
-          working: state,
+          state,
           revision,
           scope: phaseScope as ScopeValue<TScopeMap[TPhaseName]>
         })

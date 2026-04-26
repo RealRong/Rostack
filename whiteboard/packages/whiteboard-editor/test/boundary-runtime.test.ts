@@ -21,7 +21,7 @@ describe('editor boundary runtime', () => {
       projection: {
         current: () => ({
           revision: graph.revision(),
-          snapshot: graph.snapshot(),
+          state: graph.state(),
           result: null
         }),
         mark,

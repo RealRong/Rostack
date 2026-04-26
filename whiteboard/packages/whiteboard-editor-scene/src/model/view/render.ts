@@ -11,11 +11,11 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   ViewPatchScope
-} from '../contracts/delta'
+} from '../../contracts/delta'
 import type {
   Input,
   SessionInput
-} from '../contracts/editor'
+} from '../../contracts/editor'
 import type {
   EdgeActiveView,
   EdgeLabelKey,
@@ -25,8 +25,8 @@ import type {
   EdgeOverlayView,
   EdgeStaticId,
   EdgeStaticView
-} from '../contracts/render'
-import type { WorkingState } from '../contracts/working'
+} from '../../contracts/render'
+import type { WorkingState } from '../../contracts/working'
 
 const EMPTY_ENDPOINT_HANDLES: EdgeOverlayView['endpointHandles'] = []
 const EMPTY_ROUTE_POINTS: readonly EdgeOverlayRoutePoint[] = []

@@ -4,12 +4,11 @@ import type { Revision } from '@shared/projector/phase'
 import { createGraphDelta } from '../contracts/delta'
 import type {
   SceneItem,
-  Snapshot,
   TextMeasure
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
-import { createSpatialState } from '../domain/spatial/state'
-import { createSpatialDelta } from '../domain/spatial/update'
+import { createSpatialState } from '../model/spatial/state'
+import { createSpatialDelta } from '../model/spatial/update'
 
 export const createEmptyDocumentSnapshot = (): document.Snapshot => ({
   revision: 0,
@@ -86,75 +85,3 @@ export const createWorking = (input: {
     }
   }
 }
-
-export const createEmptySnapshot = (): Snapshot => ({
-  revision: 0,
-  documentRevision: 0,
-  graph: {
-    nodes: {
-      ids: [],
-      byId: new Map()
-    },
-    edges: {
-      ids: [],
-      byId: new Map()
-    },
-    owners: {
-      mindmaps: {
-        ids: [],
-        byId: new Map()
-      },
-      groups: {
-        ids: [],
-        byId: new Map()
-      }
-    }
-  },
-  render: {
-    edge: {
-      statics: {
-        ids: [],
-        byId: new Map()
-      },
-      active: {
-        ids: [],
-        byId: new Map()
-      },
-      labels: {
-        ids: [],
-        byId: new Map()
-      },
-      masks: {
-        ids: [],
-        byId: new Map()
-      },
-      overlay: {
-        endpointHandles: [],
-        routePoints: []
-      }
-    }
-  },
-  items: [] as readonly SceneItem[],
-  ui: {
-    chrome: {
-      overlays: [],
-      hover: {
-        kind: 'none'
-      },
-      preview: {
-        guides: [],
-        draw: null,
-        mindmap: null
-      },
-      edit: null
-    },
-    nodes: {
-      ids: [],
-      byId: new Map()
-    },
-    edges: {
-      ids: [],
-      byId: new Map()
-    }
-  }
-})

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { schema } from '@whiteboard/core/schema'
 import { engine as engineApi } from '@whiteboard/engine'
@@ -118,6 +118,24 @@ const createAutoWidthLayoutBackend = (): LayoutBackend => ({
   }
 })
 
+const editors = new Set<{
+  dispose: () => void
+}>()
+
+const trackEditor = <T extends { dispose: () => void }>(
+  editor: T
+): T => {
+  editors.add(editor)
+  return editor
+}
+
+afterEach(() => {
+  editors.forEach((editor) => {
+    editor.dispose()
+  })
+  editors.clear()
+})
+
 const createTextDocument = () => {
   const document = documentApi.create('doc_text_wrap_runtime')
   document.nodes['text-1'] = {
@@ -175,7 +193,7 @@ const createTextEditor = () => {
     document: createTextDocument()
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -192,7 +210,7 @@ const createTextEditor = () => {
     services: {
       layout: createLayoutBackend()
     }
-  })
+  }))
 }
 
 const createAutoWidthTextEditor = () => {
@@ -200,7 +218,7 @@ const createAutoWidthTextEditor = () => {
     document: createTextDocument()
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -217,7 +235,7 @@ const createAutoWidthTextEditor = () => {
     services: {
       layout: createAutoWidthLayoutBackend()
     }
-  })
+  }))
 }
 
 const createStickyEditor = () => {
@@ -225,7 +243,7 @@ const createStickyEditor = () => {
     document: createStickyDocument()
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -242,7 +260,7 @@ const createStickyEditor = () => {
     services: {
       layout: createLayoutBackend()
     }
-  })
+  }))
 }
 
 describe('text wrap runtime', () => {

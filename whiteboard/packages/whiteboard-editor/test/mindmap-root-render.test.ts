@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { history as historyApi } from '@whiteboard/history'
@@ -76,12 +76,30 @@ const layout: LayoutBackend = {
   }
 }
 
+const editors = new Set<{
+  dispose: () => void
+}>()
+
+const trackEditor = <T extends { dispose: () => void }>(
+  editor: T
+): T => {
+  editors.add(editor)
+  return editor
+}
+
+afterEach(() => {
+  editors.forEach((editor) => {
+    editor.dispose()
+  })
+  editors.clear()
+})
+
 const createEditor = () => {
   const engine = engineApi.create({
     document: documentApi.create('doc_mindmap_root_render')
   })
 
-  return editorApi.create({
+  return trackEditor(editorApi.create({
     engine,
     history: historyApi.local.create(engine),
     initialTool: {
@@ -95,7 +113,7 @@ const createEditor = () => {
     services: {
       layout
     }
-  })
+  }))
 }
 
 describe('mindmap root render', () => {

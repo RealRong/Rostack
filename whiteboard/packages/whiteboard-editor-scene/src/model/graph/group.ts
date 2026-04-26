@@ -4,18 +4,18 @@ import { selection as selectionApi, type SelectionTarget } from '@whiteboard/cor
 import type {
   GroupId
 } from '@whiteboard/core/types'
-import type { GraphDelta } from '../contracts/delta'
+import type { GraphDelta } from '../../contracts/delta'
 import type {
   GroupItemRef,
   EdgeView,
   GroupView,
   Input,
   NodeView
-} from '../contracts/editor'
+} from '../../contracts/editor'
 import type {
   GraphGroupEntry,
   WorkingState
-} from '../contracts/working'
+} from '../../contracts/working'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 
 const SIGNATURE_SEPARATOR = '\u0001'

@@ -9,17 +9,17 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { GraphDelta } from '../contracts/delta'
+import type { GraphDelta } from '../../contracts/delta'
 import type {
   EdgeView,
   Input,
   NodeView,
   SessionInput
-} from '../contracts/editor'
+} from '../../contracts/editor'
 import type {
   GraphEdgeEntry,
   WorkingState
-} from '../contracts/working'
+} from '../../contracts/working'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 
 const readEdgePatch = (

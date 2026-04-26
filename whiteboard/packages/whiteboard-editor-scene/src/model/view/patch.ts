@@ -10,8 +10,8 @@ import type {
   SceneItem
 } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
-import { buildItems } from '../../domain/items'
-import { patchRenderState } from '../../domain/render'
+import { buildItems } from './items'
+import { patchRenderState } from './render'
 import {
   buildChromeView,
   buildEdgeUiView,
@@ -19,7 +19,7 @@ import {
   isChromeViewEqual,
   isEdgeUiViewEqual,
   isNodeUiViewEqual
-} from '../../domain/ui'
+} from './ui'
 
 const buildCurrentNodeUiView = (input: {
   current: Input

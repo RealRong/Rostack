@@ -138,20 +138,25 @@ const resetFieldState = (
   if (isLeafField(field)) {
     switch (field.kind) {
       case 'flag':
-        return
+        return false
       case 'ids':
         idDelta.reset(state as IdDelta<string>)
-        return
+        return state
       case 'set':
         ;(state as Set<unknown>).clear()
-        return
+        return state
     }
   }
 
   const current = state as Record<string, unknown>
   Object.entries(field).forEach(([key, child]) => {
-    resetFieldState(child, current[key])
+    const next = resetFieldState(child, current[key])
+    if (isLeafField(child) && child.kind === 'flag') {
+      current[key] = next
+    }
   })
+
+  return state
 }
 
 const mergeFieldState = (

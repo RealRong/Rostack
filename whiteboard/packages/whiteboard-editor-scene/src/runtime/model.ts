@@ -21,6 +21,7 @@ import type {
   Input,
   TextMeasure
 } from '../contracts/editor'
+import type { Capture } from '../contracts/capture'
 import type {
   EditorPhaseScopeMap,
   GraphDelta,
@@ -44,9 +45,10 @@ import type {
 } from '../contracts/render'
 import { patchGraphState } from '../model/graph/patch'
 import { patchViewState } from '../model/view/patch'
-import { patchSpatial } from '../domain/spatial/update'
+import { patchSpatial } from '../model/spatial/update'
 import { createEditorSceneRead } from './read'
-import { createEmptySnapshot, createWorking } from './state'
+import { buildEditorSceneCapture } from './capture'
+import { createWorking } from './state'
 
 export type EditorScenePhaseName = keyof EditorPhaseScopeMap & string
 
@@ -388,7 +390,7 @@ const graphPhase: ProjectorPhase<
   'graph',
   {
     input: Input
-    working: WorkingState
+    state: WorkingState
     revision: number
     scope: ProjectorScopeValue<EditorPhaseScopeMap['graph']>
   },
@@ -403,7 +405,7 @@ const graphPhase: ProjectorPhase<
     const result = patchGraphState({
       revision: context.revision,
       current: context.input,
-      working: context.working,
+      working: context.state,
       scope: context.scope
     })
 
@@ -426,11 +428,11 @@ const graphPhase: ProjectorPhase<
         view: readViewPatchScope({
           reset: context.scope.reset,
           current: context.input,
-          state: context.working,
-          graphDelta: context.working.delta.graph,
-          readAllEdgeIds: () => context.working.graph.edges.keys(),
+          state: context.state,
+          graphDelta: context.state.delta.graph,
+          readAllEdgeIds: () => context.state.graph.edges.keys(),
           readMindmapNodeIds: (mindmapId) => (
-            context.working.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
+            context.state.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
           )
         })
       }
@@ -442,7 +444,7 @@ const spatialPhase: ProjectorPhase<
   'spatial',
   {
     input: Input
-    working: WorkingState
+    state: WorkingState
     revision: number
     scope: ProjectorScopeValue<EditorPhaseScopeMap['spatial']>
   },
@@ -456,12 +458,12 @@ const spatialPhase: ProjectorPhase<
   run: (context) => {
     const result = patchSpatial({
       revision: context.revision,
-      graph: context.working.graph,
+      graph: context.state.graph,
       snapshot: context.input.document.snapshot,
-      graphDelta: context.working.delta.graph,
-      state: context.working.spatial,
+      graphDelta: context.state.delta.graph,
+      state: context.state.spatial,
       scope: context.scope,
-      delta: context.working.delta.spatial
+      delta: context.state.delta.spatial
     })
 
     return {
@@ -477,7 +479,7 @@ const viewPhase: ProjectorPhase<
   'view',
   {
     input: Input
-    working: WorkingState
+    state: WorkingState
     revision: number
     scope: ProjectorScopeValue<EditorPhaseScopeMap['view']>
   },
@@ -491,7 +493,7 @@ const viewPhase: ProjectorPhase<
   run: (context) => {
     const count = patchViewState({
       current: context.input,
-      working: context.working,
+      working: context.state,
       scope: context.scope
     })
 
@@ -539,7 +541,8 @@ export const createEditorSceneProjectionModel = (input: {
   },
   EditorScenePhaseName,
   EditorPhaseScopeMap,
-  { count: number }
+  { count: number },
+  Capture
 >({
   createState: () => createWorking({
     measure: input.measure
@@ -552,6 +555,10 @@ export const createEditorSceneProjectionModel = (input: {
     ui: () => runtime.state().ui,
     items: () => runtime.state().items
   }),
+  capture: ({ state, revision }) => buildEditorSceneCapture(
+    state,
+    revision
+  ),
   surface: {
     graph: {
       nodes: family({
@@ -670,7 +677,3 @@ export const createEditorSceneProjectionModel = (input: {
     viewPhase
   ]
 })
-
-export {
-  createEmptySnapshot
-}

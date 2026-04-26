@@ -15,10 +15,10 @@ import type {
   OwnerRef
 } from '../../contracts/editor'
 import type { IndexState } from '../../contracts/working'
-import { readGroupSignatureFromItems } from '../group'
+import { readGroupSignatureFromItems } from '../graph/group'
 import {
   readMindmapNodeIds
-} from '../mindmap'
+} from '../graph/mindmap'
 
 const clearEdgeAdjacency = (
   state: IndexState

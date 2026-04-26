@@ -29,7 +29,8 @@ export const createEditorBoundaryRuntime = ({
   tasks: EditorBoundaryTaskRuntime
 }): EditorBoundaryExecutor => {
   const readPublished = () => toEditorPublished(
-    projection.current().snapshot
+    projection.current().state,
+    projection.current().revision
   )
 
   const execute = <TResult,>(

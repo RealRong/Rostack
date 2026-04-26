@@ -168,7 +168,9 @@ export const createEditor = ({
       events.dispose()
       host.cancel()
       boundary.dispose()
+      scene.dispose()
       projection.dispose()
+      document.dispose()
       session.reset()
       layout.text.clear()
     }

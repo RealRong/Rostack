@@ -1,15 +1,11 @@
 import type { Revision } from '@shared/projector/phase'
-import type {
-  GraphSnapshot,
-  Snapshot,
-  UiSnapshot
-} from '../contracts/editor'
-import type { RenderSnapshot } from '../contracts/render'
+import type { Capture, GraphCapture, UiCapture } from '../contracts/capture'
+import type { RenderCapture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'
 
-const buildGraphSnapshot = (
+export const buildGraphCapture = (
   state: WorkingState
-): GraphSnapshot => ({
+): GraphCapture => ({
   nodes: {
     ids: [...state.graph.nodes.keys()],
     byId: state.graph.nodes
@@ -30,9 +26,9 @@ const buildGraphSnapshot = (
   }
 })
 
-const buildRenderSnapshot = (
+export const buildRenderCapture = (
   state: WorkingState
-): RenderSnapshot => ({
+): RenderCapture => ({
   edge: {
     statics: {
       ids: [...state.render.statics.statics.keys()],
@@ -54,9 +50,9 @@ const buildRenderSnapshot = (
   }
 })
 
-const buildUiSnapshot = (
+export const buildUiCapture = (
   state: WorkingState
-): UiSnapshot => ({
+): UiCapture => ({
   chrome: state.ui.chrome,
   nodes: {
     ids: [...state.ui.nodes.keys()],
@@ -68,29 +64,34 @@ const buildUiSnapshot = (
   }
 })
 
-export const createEditorSceneSnapshotReader = (input: {
+export const buildEditorSceneCapture = (
+  state: WorkingState,
+  revision: Revision
+): Capture => ({
+  revision,
+  documentRevision: state.revision.document,
+  graph: buildGraphCapture(state),
+  render: buildRenderCapture(state),
+  items: state.items,
+  ui: buildUiCapture(state)
+})
+
+export const createEditorSceneCaptureReader = (input: {
   state: () => WorkingState
   revision: () => Revision
-}): (() => Snapshot) => {
+}): (() => Capture) => {
   let cachedRevision = -1 as Revision
-  let cachedSnapshot: Snapshot | undefined
+  let cachedCapture: Capture | undefined
 
   return () => {
     const revision = input.revision()
-    if (cachedSnapshot && cachedRevision === revision) {
-      return cachedSnapshot
+    if (cachedCapture && cachedRevision === revision) {
+      return cachedCapture
     }
 
     const state = input.state()
     cachedRevision = revision
-    cachedSnapshot = {
-      revision,
-      documentRevision: state.revision.document,
-      graph: buildGraphSnapshot(state),
-      render: buildRenderSnapshot(state),
-      items: state.items,
-      ui: buildUiSnapshot(state)
-    }
-    return cachedSnapshot
+    cachedCapture = buildEditorSceneCapture(state, revision)
+    return cachedCapture
   }
 }

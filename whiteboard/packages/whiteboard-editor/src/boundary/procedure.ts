@@ -1,16 +1,14 @@
 import type {
-  GraphSnapshot,
   InputDelta,
   SceneItem,
-  Snapshot,
-  UiSnapshot
+  State
 } from '@whiteboard/editor-scene'
 
 export interface EditorPublished {
   revision: number
-  graph: GraphSnapshot
+  graph: State['graph']
   items: readonly SceneItem[]
-  ui: UiSnapshot
+  ui: State['ui']
 }
 
 export type EditorPublishRequest = {
@@ -47,10 +45,11 @@ export type EditorProcedure<TResult = void> = Generator<
 >
 
 export const toEditorPublished = (
-  snapshot: Snapshot
+  state: State,
+  revision: number
 ): EditorPublished => ({
-  revision: snapshot.revision,
-  graph: snapshot.graph,
-  items: snapshot.items,
-  ui: snapshot.ui
+  revision,
+  graph: state.graph,
+  items: state.items,
+  ui: state.ui
 })

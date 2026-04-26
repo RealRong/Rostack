@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { history as historyApi } from '@whiteboard/history'
@@ -77,12 +77,30 @@ const layout: LayoutBackend = {
   }
 }
 
+const editors = new Set<{
+  dispose: () => void
+}>()
+
+const trackEditor = <T extends { dispose: () => void }>(
+  editor: T
+): T => {
+  editors.add(editor)
+  return editor
+}
+
+afterEach(() => {
+  editors.forEach((editor) => {
+    editor.dispose()
+  })
+  editors.clear()
+})
+
 describe('mindmap edit relayout preview', () => {
   it('relayouts child nodes while the root text edit size changes', () => {
     const engine = engineApi.create({
       document: documentApi.create('doc_mindmap_edit_relayout_preview')
     })
-    const editor = editorApi.create({
+    const editor = trackEditor(editorApi.create({
       engine,
       history: historyApi.local.create(engine),
       initialTool: {
@@ -96,7 +114,7 @@ describe('mindmap edit relayout preview', () => {
       services: {
         layout
       }
-    })
+    }))
 
     const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
@@ -148,7 +166,7 @@ describe('mindmap edit relayout preview', () => {
     const engine = engineApi.create({
       document: documentApi.create('doc_mindmap_topic_edit_width_preview')
     })
-    const editor = editorApi.create({
+    const editor = trackEditor(editorApi.create({
       engine,
       history: historyApi.local.create(engine),
       initialTool: {
@@ -162,7 +180,7 @@ describe('mindmap edit relayout preview', () => {
       services: {
         layout
       }
-    })
+    }))
 
     const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
@@ -237,7 +255,7 @@ describe('mindmap edit relayout preview', () => {
     const engine = engineApi.create({
       document: documentApi.create('doc_mindmap_edit_relayout_preview_height')
     })
-    const editor = editorApi.create({
+    const editor = trackEditor(editorApi.create({
       engine,
       history: historyApi.local.create(engine),
       initialTool: {
@@ -251,7 +269,7 @@ describe('mindmap edit relayout preview', () => {
       services: {
         layout: heightAwareLayout
       }
-    })
+    }))
 
     const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
@@ -339,7 +357,7 @@ describe('mindmap edit relayout preview', () => {
     const engine = engineApi.create({
       document: documentApi.create('doc_mindmap_edit_relayout_preview_subscription')
     })
-    const editor = editorApi.create({
+    const editor = trackEditor(editorApi.create({
       engine,
       history: historyApi.local.create(engine),
       initialTool: {
@@ -353,7 +371,7 @@ describe('mindmap edit relayout preview', () => {
       services: {
         layout: heightAwareLayout
       }
-    })
+    }))
 
     const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({

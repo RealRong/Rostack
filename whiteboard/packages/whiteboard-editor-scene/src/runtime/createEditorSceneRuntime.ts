@@ -4,8 +4,25 @@ import type {
   Runtime,
   TextMeasure
 } from '../contracts/editor'
+import type { State } from '../contracts/state'
+import type { WorkingState } from '../contracts/working'
 import { createEditorSceneProjectionModel } from './model'
-import { createEditorSceneSnapshotReader } from './published'
+
+const createEditorSceneStateReader = (input: {
+  state: () => WorkingState
+}): (() => State) => () => {
+  const state = input.state()
+
+  return {
+    revision: state.revision,
+    graph: state.graph,
+    indexes: state.indexes,
+    spatial: state.spatial,
+    ui: state.ui,
+    render: state.render,
+    items: state.items
+  }
+}
 
 export const createEditorSceneModelRuntime = (input: {
   measure?: TextMeasure
@@ -13,14 +30,14 @@ export const createEditorSceneModelRuntime = (input: {
   const runtime = createProjectionRuntime(
     createEditorSceneProjectionModel(input)
   )
-  const snapshot = createEditorSceneSnapshotReader({
-    state: runtime.state,
-    revision: runtime.revision
+  const state = createEditorSceneStateReader({
+    state: runtime.state
   })
 
   return {
     ...runtime,
-    snapshot
+    working: runtime.state,
+    state
   }
 }
 
@@ -33,7 +50,8 @@ export const createEditorSceneRuntime = (input: {
     stores: runtime.stores,
     read: runtime.read,
     revision: runtime.revision,
-    snapshot: runtime.snapshot,
+    state: runtime.state,
+    capture: runtime.capture,
     update: (current) => runtime.update(current) as Result,
     subscribe: (listener) => runtime.subscribe((result) => {
       listener(result as Result)

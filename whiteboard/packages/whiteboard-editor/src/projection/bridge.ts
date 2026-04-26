@@ -11,7 +11,7 @@ import {
   type Read as SceneRead,
   type Result,
   type Runtime,
-  type Snapshot
+  type State
 } from '@whiteboard/editor-scene'
 import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
 import type { Engine } from '@whiteboard/engine'
@@ -41,7 +41,7 @@ export interface EditorSceneBridge {
   read: SceneRead
   current(): {
     revision: number
-    snapshot: Snapshot
+    state: State
     result: Result | null
   }
   mark(delta: InputDelta): void
@@ -437,7 +437,7 @@ export const createSceneBridge = ({
     read: runtime.read,
     current: () => ({
       revision: runtime.revision(),
-      snapshot: runtime.snapshot(),
+      state: runtime.state(),
       result: currentResult
     }),
     mark,

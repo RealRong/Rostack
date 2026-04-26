@@ -11,7 +11,7 @@ import type { IndexState } from '../../contracts/working'
 import {
   readMindmapNodeIds,
   readMindmapTree
-} from '../mindmap'
+} from '../graph/mindmap'
 
 export const readRelatedEdgeIds = (
   state: Pick<IndexState, 'edgeIdsByNode'>,

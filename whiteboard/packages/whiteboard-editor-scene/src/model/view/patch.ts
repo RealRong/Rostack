@@ -34,7 +34,6 @@ const buildCurrentNodeUiView = (input: {
 
   const next = buildNodeUiView({
     nodeId: input.nodeId,
-    draft: input.current.session.draft.nodes.get(input.nodeId),
     preview: input.current.session.preview.nodes.get(input.nodeId),
     draw: input.current.session.preview.draw,
     edit: input.current.session.edit,

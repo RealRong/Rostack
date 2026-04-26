@@ -285,7 +285,6 @@ const isEdgeLabelUiViewEqual = (
 
 export const buildNodeUiView = (input: {
   nodeId: NodeId
-  draft?: GraphNodeEntry['draft']
   preview?: GraphNodeEntry['preview']
   draw: SessionInput['preview']['draw']
   edit: SessionInput['edit']
@@ -306,10 +305,7 @@ export const buildNodeUiView = (input: {
       && input.hover.nodeId === input.nodeId
     ) || Boolean(input.preview?.hovered),
     editing: edit !== undefined,
-    patched: Boolean(
-      patch
-      || (input.draft?.kind === 'patch' ? input.draft.fields : undefined)
-    ),
+    patched: Boolean(patch),
     resizing: Boolean(patch?.size || handle),
     edit
   }

@@ -23,7 +23,7 @@ import type {
 } from '../../contracts/working'
 import {
   readNodeEntry,
-  readMeasuredNodeSize,
+  readNodeDraftMeasure,
   readProjectedNodeRect,
   readProjectedNodeSize
 } from './node'
@@ -255,7 +255,7 @@ const buildMindmapEntry = (
     }
   }
 
-  const rootMeasuredSize = readMeasuredNodeSize({
+  const rootDraftMeasure = readNodeDraftMeasure({
     working,
     entry: rootEntry,
     nodeId: tree.rootNodeId,
@@ -263,7 +263,7 @@ const buildMindmapEntry = (
   })
   const rootRect = readProjectedNodeRect({
     entry: rootEntry,
-    measuredSize: rootMeasuredSize
+    draftMeasure: rootDraftMeasure
   })
 
   let layout = mindmapApi.layout.anchor({
@@ -280,7 +280,7 @@ const buildMindmapEntry = (
         return nodeEntry
           ? readProjectedNodeSize({
               entry: nodeEntry,
-              measuredSize: readMeasuredNodeSize({
+              draftMeasure: readNodeDraftMeasure({
                 working,
                 entry: nodeEntry,
                 nodeId,

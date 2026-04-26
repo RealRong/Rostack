@@ -7,7 +7,6 @@
     ".": "./src/index.ts",
     "./phase": "./src/phase/index.ts",
     "./change": "./src/change/index.ts",
-    "./model": "./src/model/index.ts",
     "./delta": "./src/delta/index.ts",
     "./publish": "./src/publish/index.ts",
     "./sync": "./src/sync/index.ts",

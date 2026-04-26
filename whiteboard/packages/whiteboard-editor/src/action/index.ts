@@ -30,7 +30,6 @@ import {
 import type {
   EditorBoundaryRuntime
 } from '@whiteboard/editor/boundary/runtime'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import {
   createMindmapActionProcedures
 } from '@whiteboard/editor/procedures/mindmap'
@@ -288,7 +287,6 @@ export type CreateEditorActionsApiDeps = {
   document: DocumentQuery
   session: EditorSession
   graph: EditorSceneRuntime
-  layout: EditorLayout
   tool: ToolService
   write: EditorWrite
   nodeType: NodeTypeSupport
@@ -301,7 +299,6 @@ export const createEditorActionsApi = ({
   document,
   session,
   graph,
-  layout,
   tool,
   write,
   nodeType,
@@ -469,7 +466,7 @@ export const createEditorActionsApi = ({
             return
           }
 
-          const draftLayout = layout.draft.node.get(currentEdit.nodeId)
+          const draftLayout = graph.query.node.draft(currentEdit.nodeId)
           session.mutate.edit.clear()
           write.node.text.commit({
             nodeId: currentEdit.nodeId,

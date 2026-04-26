@@ -40,11 +40,25 @@ type RuntimeInputOptions = {
 
 let currentMeasureState: EditorGraphTextMeasureState = {}
 
+const toNodeMeasureMap = (
+  input?: ReadonlyMap<NodeId, Size>
+): ReadonlyMap<NodeId, EditorGraphTextMeasureState['nodeMeasures'] extends ReadonlyMap<NodeId, infer TValue> ? TValue : never> | undefined => input
+  ? new Map(
+      [...input].map(([nodeId, size]) => [
+        nodeId,
+        {
+          kind: 'size' as const,
+          size
+        }
+      ])
+    )
+  : undefined
+
 const setCurrentMeasureState = (
   input: Pick<RuntimeInputOptions, 'nodeMeasures' | 'edgeLabelMeasures'> = {}
 ) => {
   currentMeasureState = {
-    nodeMeasures: input.nodeMeasures,
+    nodeMeasures: toNodeMeasureMap(input.nodeMeasures),
     edgeLabelMeasures: input.edgeLabelMeasures
   }
 }

@@ -16,7 +16,7 @@ import {
   createEditorInputApi
 } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
-import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
+import { createEditorTextLayout } from '@whiteboard/editor/layout/textLayout'
 import { createSceneBridge } from '@whiteboard/editor/projection/bridge'
 import { createSceneSource } from '@whiteboard/editor/scene/source'
 import { createEditorSessionSource } from '@whiteboard/editor/editor/source/session'
@@ -61,10 +61,7 @@ export const createEditor = ({
     initialDrawState,
     initialViewport
   })
-  const layout = createEditorLayout({
-    session: {
-      edit: session.state.edit
-    },
+  const textLayout = createEditorTextLayout({
     registry,
     backend: services?.layout
   })
@@ -73,23 +70,20 @@ export const createEditor = ({
   const projection = createSceneBridge({
     engine,
     session,
-    layout,
+    measure: textLayout.measure,
     nodeType
   })
   const scene = createSceneSource({
     controller: projection
   })
   const document = scene.query.document
-  layout.bind({
-    document,
-    revision: scene.stores.document.revision
-  })
   const writeRuntime = createEditorWrite({
     engine,
     history,
     document,
     projection: scene,
-    layout
+    registry,
+    measure: textLayout.measure
   })
   const tool = createToolService({
     session
@@ -114,7 +108,6 @@ export const createEditor = ({
     document,
     session,
     graph: scene,
-    layout,
     tool,
     write: writeRuntime,
     nodeType,
@@ -133,7 +126,8 @@ export const createEditor = ({
     projection: scene,
     session,
     sessionSource,
-    layout,
+    measure: textLayout.measure,
+    registry,
     write: writeRuntime,
     tool,
     nodeType
@@ -162,7 +156,7 @@ export const createEditor = ({
       scene.dispose()
       projection.dispose()
       session.reset()
-      layout.text.clear()
+      textLayout.text.clear()
     }
   }
 }

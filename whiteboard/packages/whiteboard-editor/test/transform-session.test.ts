@@ -67,7 +67,13 @@ const createTransformContext = ({
   node,
   projectedRect,
   updates,
-  resolvePreviewPatches = (patches: any) => patches
+  measure = () => ({
+    kind: 'size' as const,
+    size: {
+      width: projectedRect.width,
+      height: projectedRect.height
+    }
+  })
 }: {
   node: Node
   projectedRect: {
@@ -97,8 +103,29 @@ const createTransformContext = ({
       }[]
     }
   }[]
-  resolvePreviewPatches?: (patches: any) => any
+  measure?: () => {
+    kind: 'size'
+    size: {
+      width: number
+      height: number
+    }
+  }
 }) => ({
+  projection: {
+    query: {
+      document: {
+        node: () => node,
+        nodeGeometry: () => ({
+          rect: {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 24
+          }
+        })
+      }
+    }
+  },
   sessionRead: {
     viewport: {
       get: () => ({
@@ -119,15 +146,22 @@ const createTransformContext = ({
       })
     }
   },
+  measure,
+  registry: {
+    get: (type: string) => type === 'text'
+      ? {
+          layout: {
+            kind: 'size' as const
+          }
+        }
+      : undefined
+  },
   write: {
     node: {
       updateMany: (nextUpdates: typeof updates) => {
         updates.push(...nextUpdates)
       }
     }
-  },
-  layout: {
-    resolvePreviewPatches
   },
   snap: {
     node: {
@@ -183,18 +217,7 @@ describe('createTransformSession', () => {
     const ctx = createTransformContext({
       node,
       projectedRect,
-      updates,
-      resolvePreviewPatches: (patches) => patches.map((patch: any) => ({
-        ...patch,
-        position: {
-          x: projectedRect.x,
-          y: projectedRect.y
-        },
-        size: {
-          width: projectedRect.width,
-          height: projectedRect.height
-        }
-      }))
+      updates
     })
 
     const session = createTransformSession(

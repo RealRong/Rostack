@@ -12,7 +12,7 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { Revision } from '@shared/projector/phase'
+import type { Revision } from '@shared/projection'
 import type {
   NodeCapabilityInput,
   Query,
@@ -851,6 +851,7 @@ export const createEditorSceneRead = (runtime: {
     },
     node: {
       get: (id) => runtime.state().graph.nodes.get(id),
+      draft: (id) => runtime.state().draft.node.get(id),
       idsInRect: (rect, options) => {
         const match = options?.match ?? 'touch'
         const policy = options?.policy ?? 'default'

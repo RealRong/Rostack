@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { store } from '@shared/core'
 import type { Node } from '@whiteboard/core/types'
-import { createEditorLayout } from '../src/layout/runtime'
+import {
+  createEditorTextLayout,
+  patchNodePreviewByTextMeasure
+} from '../src/layout/textLayout'
 import type { LayoutBackend, NodeRegistry } from '../src'
 
 const createRegistry = (): NodeRegistry => ({
@@ -58,48 +60,35 @@ const createStickyNode = (): Node => ({
   }
 })
 
-describe('createEditorLayout', () => {
+describe('text layout preview patching', () => {
   it('does not recompute sticky auto font size during rotate preview', () => {
     const measure = vi.fn<LayoutBackend['measure']>(() => ({
       kind: 'fit',
       fontSize: 18
     }))
     const node = createStickyNode()
-    const runtime = createEditorLayout({
-      session: {
-        edit: store.createValueStore(undefined)
-      },
+    const layout = createEditorTextLayout({
       registry: createRegistry(),
       backend: {
         measure
       }
     })
-    runtime.bind({
-      document: {
-        node: () => node,
-        nodeGeometry: () => ({
-          rect: {
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 140
-          },
-          bounds: {
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 140
-          },
-          rotation: 0
-        })
-      },
-      revision: store.createValueStore(1)
-    })
 
-    expect(runtime.resolvePreviewPatches([{
-      id: node.id,
-      rotation: 45
-    }])).toEqual([{
+    expect(patchNodePreviewByTextMeasure({
+      patches: [{
+        id: node.id,
+        rotation: 45
+      }],
+      readNode: () => node,
+      readNodeRect: () => ({
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 140
+      }),
+      registry: createRegistry(),
+      measure: layout.measure
+    })).toEqual([{
       id: node.id,
       rotation: 45
     }])
@@ -112,44 +101,31 @@ describe('createEditorLayout', () => {
       fontSize: 18
     }))
     const node = createStickyNode()
-    const runtime = createEditorLayout({
-      session: {
-        edit: store.createValueStore(undefined)
-      },
+    const layout = createEditorTextLayout({
       registry: createRegistry(),
       backend: {
         measure
       }
     })
-    runtime.bind({
-      document: {
-        node: () => node,
-        nodeGeometry: () => ({
-          rect: {
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 140
-          },
-          bounds: {
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 140
-          },
-          rotation: 0
-        })
-      },
-      revision: store.createValueStore(1)
-    })
 
-    expect(runtime.resolvePreviewPatches([{
-      id: node.id,
-      size: {
-        width: 100,
+    expect(patchNodePreviewByTextMeasure({
+      patches: [{
+        id: node.id,
+        size: {
+          width: 100,
+          height: 140
+        }
+      }],
+      readNode: () => node,
+      readNodeRect: () => ({
+        x: 0,
+        y: 0,
+        width: 180,
         height: 140
-      }
-    }])).toEqual([{
+      }),
+      registry: createRegistry(),
+      measure: layout.measure
+    })).toEqual([{
       id: node.id,
       size: {
         width: 100,

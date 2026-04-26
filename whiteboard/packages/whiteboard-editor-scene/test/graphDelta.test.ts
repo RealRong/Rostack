@@ -96,6 +96,16 @@ const createInput = (input: {
 }): Input => {
   currentMeasureState = {
     nodeMeasures: input.nodeMeasures
+      ? new Map(
+          [...input.nodeMeasures].map(([nodeId, size]) => [
+            nodeId,
+            {
+              kind: 'size' as const,
+              size
+            }
+          ])
+        )
+      : undefined
   }
   const value = createEmptyInput()
   value.document.snapshot = input.engine.current().snapshot
@@ -151,7 +161,7 @@ describe('graph delta patching', () => {
       }))
 
     const liveDelta = createEmptyInputDelta()
-    liveDelta.session.draft.nodes.updated.add(firstId)
+    liveDelta.session.edit = true
 
     const live = runtime.update(createInput({
         engine,

@@ -11,11 +11,11 @@ import {
   type Query as SceneQuery,
   type Result,
   type Runtime,
-  type State
+  type State,
+  type TextMeasure
 } from '@whiteboard/editor-scene'
 import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
 import type { Engine } from '@whiteboard/engine'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
   HoverState as EditorHoverState
 } from '@whiteboard/editor/input/hover/store'
@@ -35,7 +35,6 @@ import {
   createTouchedIdDelta,
   readChangedPreviewEdgeIds,
   readEditedEdgeIds,
-  readEditedNodeIds,
   readPreviewEdgeIds,
   readPreviewMindmapIds,
   readPreviewNodeIds
@@ -117,18 +116,11 @@ const createEditDelta = (input: {
   next: EditSession | null
 }): InputDelta => {
   const delta = createInputDelta()
-  const touchedNodeIds = unionIds(
-    readEditedNodeIds(input.previous),
-    readEditedNodeIds(input.next)
-  )
   const touchedEdgeIds = unionIds(
     readEditedEdgeIds(input.previous),
     readEditedEdgeIds(input.next)
   )
 
-  if (touchedNodeIds.size > 0) {
-    delta.session.draft.nodes = createTouchedIdDelta(touchedNodeIds)
-  }
   if (touchedEdgeIds.size > 0) {
     delta.session.draft.edges = createTouchedIdDelta(touchedEdgeIds)
   }
@@ -224,7 +216,6 @@ const createBootstrapDelta = (input: {
   delta.session.preview.edgeGuide = true
 
   const edit = input.session.state.edit.get()
-  const editedNodeIds = readEditedNodeIds(edit)
   const editedEdgeIds = readEditedEdgeIds(edit)
   const preview = input.session.preview.state.get()
   const previewNodeIds = readPreviewNodeIds(preview)
@@ -234,9 +225,6 @@ const createBootstrapDelta = (input: {
     preview.mindmap.preview
   )
 
-  if (editedNodeIds.size > 0) {
-    delta.session.draft.nodes = createTouchedIdDelta(editedNodeIds)
-  }
   if (editedEdgeIds.size > 0) {
     delta.session.draft.edges = createTouchedIdDelta(editedEdgeIds)
   }
@@ -256,16 +244,16 @@ const createBootstrapDelta = (input: {
 export const createSceneBridge = ({
   engine,
   session,
-  layout,
+  measure,
   nodeType
 }: {
   engine: Engine
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
-  layout: Pick<EditorLayout, 'draft' | 'measureText'>
+  measure: TextMeasure | undefined
   nodeType: Pick<NodeTypeSupport, 'meta' | 'edit' | 'capability'>
 }): EditorSceneBridge => {
   const runtime = createEditorSceneRuntime({
-    measure: layout.measureText,
+    measure,
     nodeCapability: {
       meta: nodeType.meta,
       edit: nodeType.edit,
@@ -338,7 +326,6 @@ export const createSceneBridge = ({
           previous: state.previousDocumentSnapshot,
           publish: state.engine,
           session,
-          layout,
           delta
         }))
         currentResult = result

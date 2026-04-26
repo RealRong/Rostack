@@ -27,7 +27,6 @@ export const sceneInputChangeSpec = defineChangeSpec({
     edit: flag(),
     interaction: flag(),
     draft: {
-      nodes: ids<NodeId>(),
       edges: ids<EdgeId>()
     },
     preview: {

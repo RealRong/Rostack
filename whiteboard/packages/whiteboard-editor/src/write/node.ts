@@ -14,7 +14,12 @@ import type {
   NodeUpdateWrite,
   NodeWrite
 } from '@whiteboard/editor/write/types'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import {
+  patchNodeCreateByTextMeasure,
+  patchNodeUpdateByTextMeasure,
+  type TextLayoutMeasure
+} from '@whiteboard/editor/layout/textLayout'
+import type { NodeRegistry } from '@whiteboard/editor/types/node'
 
 type NodeTextCommitInput = Parameters<NodeTextWrite['commit']>[0]
 
@@ -30,25 +35,54 @@ type NodeContext = {
 const createNodeUpdateWrite = (
   engine: Engine,
   {
-    layout
+    document,
+    registry,
+    measure
   }: {
-    layout: EditorLayout
+    document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
+    registry: Pick<NodeRegistry, 'get'>
+    measure: TextLayoutMeasure
   }
 ): NodeUpdateWrite => ({
-  update: (id, input) => engine.execute({
-    type: 'node.update',
-    updates: [{
-      id,
-      input: layout.patchNodeUpdate(id, input)
-    }]
-  }),
+  update: (id, input) => {
+    const node = document.node(id)
+    const rect = document.nodeGeometry(id)?.rect
+    return engine.execute({
+      type: 'node.update',
+      updates: [{
+        id,
+        input: node && rect
+          ? patchNodeUpdateByTextMeasure({
+              nodeId: id,
+              node,
+              rect,
+              update: input,
+              registry,
+              measure
+            })
+          : input
+      }]
+    })
+  },
   updateMany: (updates, options) => engine.execute({
     type: 'node.update',
     updates: updates.map((entry) => ({
       id: entry.id,
-      input: layout.patchNodeUpdate(entry.id, entry.input, {
-        origin: options?.origin
-      })
+      input: (() => {
+        const node = document.node(entry.id)
+        const rect = document.nodeGeometry(entry.id)?.rect
+        return node && rect
+          ? patchNodeUpdateByTextMeasure({
+              nodeId: entry.id,
+              node,
+              rect,
+              update: entry.input,
+              registry,
+              measure,
+              origin: options?.origin
+            })
+          : entry.input
+      })()
     })),
     origin: options?.origin
   })
@@ -60,7 +94,7 @@ const createNodeContext = ({
   textCommit
 }: {
   read: {
-    document: Pick<DocumentQuery, 'node'>
+    document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
   }
   update: NodeUpdateWrite
   textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
@@ -198,16 +232,20 @@ const createNodeStyleWrite = (
 export const createNodeWrite = ({
   engine,
   read,
-  layout
+  registry,
+  measure
 }: {
   engine: Engine
   read: {
-    document: Pick<DocumentQuery, 'node'>
+    document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
   }
-  layout: EditorLayout
+  registry: Pick<NodeRegistry, 'get'>
+  measure: TextLayoutMeasure
 }): NodeWrite => {
   const update = createNodeUpdateWrite(engine, {
-    layout
+    document: read.document,
+    registry,
+    measure
   })
   const ctx = createNodeContext({
     read,
@@ -221,12 +259,16 @@ export const createNodeWrite = ({
   return {
     create: (input) => engine.execute({
       type: 'node.create',
-      input: layout.patchNodeCreatePayload({
-        ...input.template,
-        position: {
-          x: input.position.x,
-          y: input.position.y
-        }
+      input: patchNodeCreateByTextMeasure({
+        payload: {
+          ...input.template,
+          position: {
+            x: input.position.x,
+            y: input.position.y
+          }
+        },
+        registry,
+        measure
       })
     }),
     update: ctx.write.update,

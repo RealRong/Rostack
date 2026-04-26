@@ -1,6 +1,6 @@
 import { document as documentApi } from '@whiteboard/core/document'
 import type * as document from '@whiteboard/engine/contracts/document'
-import type { Revision } from '@shared/projector/phase'
+import type { Revision } from '@shared/projection'
 import { createGraphDelta } from '../contracts/delta'
 import type {
   SceneItem,
@@ -40,6 +40,9 @@ export const createWorking = (input: {
 
   return {
     measure: input.measure,
+    draft: {
+      node: new Map()
+    },
     revision: {
       document: snapshot.revision as Revision
     },

@@ -5,6 +5,7 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   InputDelta,
+  NodeDraftMeasure,
   TextMeasure
 } from '../contracts/editor'
 import { createEmptyInputDelta } from './input'
@@ -37,7 +38,7 @@ export const createEditorGraphDelta = (
 }
 
 export interface EditorGraphTextMeasureState {
-  nodeMeasures?: ReadonlyMap<NodeId, Size>
+  nodeMeasures?: ReadonlyMap<NodeId, NodeDraftMeasure>
   edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
 }
 
@@ -49,9 +50,16 @@ export const createEditorGraphTextMeasure = (
   switch (target.kind) {
     case 'node':
       return current.nodeMeasures?.get(target.nodeId)
-    case 'edge-label':
-      return current.edgeLabelMeasures
+    case 'edge-label': {
+      const size = current.edgeLabelMeasures
         ?.get(target.edgeId)
         ?.get(target.labelId)
+      return size
+        ? {
+            kind: 'size',
+            size
+          }
+        : undefined
+    }
   }
 }

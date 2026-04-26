@@ -2,12 +2,12 @@ import {
   defineScope,
   flag,
   set
-} from '@shared/projector/phase'
+} from '@shared/projection'
 import type {
   IdDelta as SharedIdDelta
 } from '@shared/delta'
 import { idDelta } from '@shared/delta'
-import type { Revision } from '@shared/projector/phase'
+import type { Revision } from '@shared/projection'
 import type {
   EdgeId,
   GroupId,

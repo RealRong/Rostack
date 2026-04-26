@@ -9,7 +9,6 @@ import type {
   Input,
   InputDelta,
   MindmapPreview,
-  NodeDraft,
   NodePreview
 } from '@whiteboard/editor-scene'
 import type {
@@ -21,7 +20,6 @@ import type {
   IdDelta,
   Snapshot as DocumentSnapshot
 } from '@whiteboard/engine'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type {
   HoverState as EditorHoverState
@@ -31,7 +29,6 @@ import type {
   EditorInputPreviewState,
   TextPreviewPatch
 } from '@whiteboard/editor/session/preview/types'
-import type { DraftMeasure } from '@whiteboard/editor/types/layout'
 
 const EMPTY_DRAG_STATE: DragState = {
   kind: 'idle'
@@ -40,8 +37,6 @@ const EMPTY_DRAG_STATE: DragState = {
 const EMPTY_HOVER_STATE: HoverState = {
   kind: 'none'
 }
-
-const EMPTY_NODE_DRAFTS = new Map<string, NodeDraft>()
 
 const readInteractionEditingEdge = (
   mode: ReturnType<EditorSession['interaction']['read']['mode']['get']>
@@ -211,46 +206,6 @@ const readMindmapPreview = (
         : []
     })
   }
-}
-
-const toNodeDraft = (
-  draft: DraftMeasure
-): NodeDraft | undefined => {
-  if (!draft) {
-    return undefined
-  }
-
-  return draft.kind === 'size'
-    ? {
-        kind: 'size',
-        size: draft.size
-      }
-    : {
-        kind: 'fit',
-        fontSize: draft.fontSize
-      }
-}
-
-const readNodeDrafts = ({
-  session,
-  layout
-}: {
-  session: Pick<EditorSession, 'state'>
-  layout: Pick<EditorLayout, 'draft'>
-}): ReadonlyMap<string, NodeDraft> => {
-  const currentEdit = store.read(session.state.edit)
-  if (!currentEdit || currentEdit.kind !== 'node') {
-    return EMPTY_NODE_DRAFTS
-  }
-
-  const draft = toNodeDraft(
-    store.read(layout.draft.node, currentEdit.nodeId)
-  )
-  if (!draft) {
-    return EMPTY_NODE_DRAFTS
-  }
-
-  return new Map([[currentEdit.nodeId, draft]])
 }
 
 const readDragState = (
@@ -477,14 +432,12 @@ export const createSceneInput = ({
   previous,
   publish,
   session,
-  layout,
   delta,
   now = scheduler.readMonotonicNow()
 }: {
   previous: DocumentSnapshot | null
   publish: EnginePublish
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
-  layout: Pick<EditorLayout, 'draft'>
   delta: InputDelta
   now?: number
 }): Input => {
@@ -501,10 +454,6 @@ export const createSceneInput = ({
     session: {
       edit: store.read(session.state.edit),
       draft: {
-        nodes: new Map(readNodeDrafts({
-          session,
-          layout
-        })),
         edges: new Map()
       },
       preview: {

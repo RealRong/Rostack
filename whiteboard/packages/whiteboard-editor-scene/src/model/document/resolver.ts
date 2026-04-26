@@ -15,7 +15,7 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type { SliceExportResult } from '@whiteboard/core/document'
-import type { Revision } from '@shared/projector/phase'
+import type { Revision } from '@shared/projection'
 import type { WorkingState } from '../../contracts/working'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 

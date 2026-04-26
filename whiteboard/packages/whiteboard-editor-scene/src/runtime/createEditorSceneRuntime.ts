@@ -1,4 +1,4 @@
-import { createProjectionRuntime } from '@shared/projector/model'
+import { createProjectionRuntime } from '@shared/projection'
 import type {
   NodeCapabilityInput,
   OwnerRef,

@@ -30,7 +30,6 @@ export const createEmptyInput = (): Input => ({
   session: {
     edit: null,
     draft: {
-      nodes: new Map(),
       edges: new Map()
     },
     preview: {

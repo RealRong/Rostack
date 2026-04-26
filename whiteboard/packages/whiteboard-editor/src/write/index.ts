@@ -22,10 +22,11 @@ import {
 import {
   createNodeWrite
 } from '@whiteboard/editor/write/node'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
+import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
+import type { NodeRegistry } from '@whiteboard/editor/types/node'
 
 export type { EditorWrite } from '@whiteboard/editor/write/types'
 
@@ -34,13 +35,15 @@ export const createEditorWrite = ({
   history,
   document,
   projection,
-  layout
+  registry,
+  measure
 }: {
   engine: Engine
   history: HistoryPort<IntentResult>
   document: DocumentQuery
   projection: EditorSceneRuntime
-  layout: EditorLayout
+  registry: Pick<NodeRegistry, 'get'>
+  measure: TextLayoutMeasure
 }): EditorWrite => {
   const historyWrite = createHistoryWrite(history)
   const documentWrite = createDocumentWrite(engine)
@@ -50,7 +53,8 @@ export const createEditorWrite = ({
     read: {
       document
     },
-    layout
+    registry,
+    measure
   })
   const group = createGroupWrite(engine)
   const edge = createEdgeWrite({
@@ -62,7 +66,8 @@ export const createEditorWrite = ({
   })
   const mindmap = createMindmapWrite({
     engine,
-    layout
+    registry,
+    measure
   })
 
   return {

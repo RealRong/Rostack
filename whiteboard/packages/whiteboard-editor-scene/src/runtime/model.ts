@@ -1,14 +1,13 @@
 import {
   createPlan,
-  type ProjectorPhase,
-  type ProjectorScopeInputValue,
-  type ProjectorScopeValue
-} from '@shared/projector/phase'
-import {
   defineProjectionModel,
   family,
+  type ProjectionPhase,
+  type ProjectionScopeInputValue,
+  type ProjectionScopeValue,
+  type Revision,
   value
-} from '@shared/projector/model'
+} from '@shared/projection'
 import { idDelta } from '@shared/delta'
 import type {
   EdgeId,
@@ -18,7 +17,6 @@ import type {
   NodeId,
   Size
 } from '@whiteboard/core/types'
-import type { Revision } from '@shared/projector/phase'
 import type {
   HoverState,
   Input,
@@ -60,10 +58,10 @@ import { createWorking } from './state'
 export type EditorScenePhaseName = keyof EditorPhaseScopeMap & string
 
 type GraphScopeInput =
-  NonNullable<ProjectorScopeInputValue<EditorPhaseScopeMap['graph']>>
+  NonNullable<ProjectionScopeInputValue<EditorPhaseScopeMap['graph']>>
 
 type ViewScopeInput =
-  NonNullable<ProjectorScopeInputValue<EditorPhaseScopeMap['view']>>
+  NonNullable<ProjectionScopeInputValue<EditorPhaseScopeMap['view']>>
 
 const appendIds = <TId extends string>(
   target: Set<TId>,
@@ -102,6 +100,12 @@ const readEditingEdgeId = (
   edit: Input['session']['edit'] | WorkingState['ui']['chrome']['edit']
 ): EdgeId | undefined => edit?.kind === 'edge-label'
   ? edit.edgeId
+  : undefined
+
+const readEditingNodeId = (
+  edit: Input['session']['edit'] | WorkingState['ui']['chrome']['edit']
+): NodeId | undefined => edit?.kind === 'node'
+  ? edit.nodeId
   : undefined
 
 const collectSelectedNodeIds = (
@@ -165,14 +169,12 @@ const readGraphPlanScope = (
   appendIds(mindmaps, idDelta.touched(delta.document.mindmaps))
   appendIds(groups, idDelta.touched(delta.document.groups))
 
-  appendIds(nodes, idDelta.touched(delta.session.draft.nodes))
   appendIds(edges, idDelta.touched(delta.session.draft.edges))
   appendIds(nodes, idDelta.touched(delta.session.preview.nodes))
   appendIds(edges, idDelta.touched(delta.session.preview.edges))
   appendIds(mindmaps, idDelta.touched(delta.session.preview.mindmaps))
   appendIds(mindmaps, delta.clock.mindmaps)
 
-  appendIds(nodes, input.session.draft.nodes.keys())
   appendIds(edges, input.session.draft.edges.keys())
   appendIds(nodes, input.session.preview.nodes.keys())
   appendIds(edges, input.session.preview.edges.keys())
@@ -264,7 +266,6 @@ const readViewPatchScope = (input: {
     items = items || readItemsChangedFromGraphDelta(input.graphDelta)
   }
 
-  appendIds(nodes, idDelta.touched(input.current.delta.session.draft.nodes))
   appendIds(edges, idDelta.touched(input.current.delta.session.draft.edges))
   appendIds(nodes, idDelta.touched(input.current.delta.session.preview.nodes))
   appendIds(edges, idDelta.touched(input.current.delta.session.preview.edges))
@@ -356,9 +357,17 @@ const readViewPatchScope = (input: {
   if (input.current.delta.session.edit) {
     chrome = true
 
+    const previousEditingNode = readEditingNodeId(input.state.ui.chrome.edit)
+    const nextEditingNode = readEditingNodeId(input.current.session.edit)
     const previousEditing = readEditingEdgeId(input.state.ui.chrome.edit)
     const nextEditing = readEditingEdgeId(input.current.session.edit)
 
+    if (previousEditingNode) {
+      nodes.add(previousEditingNode)
+    }
+    if (nextEditingNode) {
+      nodes.add(nextEditingNode)
+    }
     if (previousEditing) {
       active.add(previousEditing)
       labels.add(previousEditing)
@@ -395,13 +404,13 @@ const readViewPatchScope = (input: {
 
 const createGraphPhase = (
   nodeSize: Size
-): ProjectorPhase<
+): ProjectionPhase<
   'graph',
   {
     input: Input
     state: WorkingState
     revision: number
-    scope: ProjectorScopeValue<EditorPhaseScopeMap['graph']>
+    scope: ProjectionScopeValue<EditorPhaseScopeMap['graph']>
   },
   { count: number },
   EditorScenePhaseName,
@@ -455,13 +464,13 @@ const createGraphPhase = (
   }
 })
 
-const spatialPhase: ProjectorPhase<
+const spatialPhase: ProjectionPhase<
   'spatial',
   {
     input: Input
     state: WorkingState
     revision: number
-    scope: ProjectorScopeValue<EditorPhaseScopeMap['spatial']>
+    scope: ProjectionScopeValue<EditorPhaseScopeMap['spatial']>
   },
   { count: number },
   EditorScenePhaseName,
@@ -490,13 +499,13 @@ const spatialPhase: ProjectorPhase<
   }
 }
 
-const viewPhase: ProjectorPhase<
+const viewPhase: ProjectionPhase<
   'view',
   {
     input: Input
     state: WorkingState
     revision: number
-    scope: ProjectorScopeValue<EditorPhaseScopeMap['view']>
+    scope: ProjectionScopeValue<EditorPhaseScopeMap['view']>
   },
   { count: number },
   EditorScenePhaseName,

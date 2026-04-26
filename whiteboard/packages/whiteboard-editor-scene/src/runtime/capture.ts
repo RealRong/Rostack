@@ -1,4 +1,4 @@
-import type { Revision } from '@shared/projector/phase'
+import type { Revision } from '@shared/projection'
 import type { Capture, GraphCapture, UiCapture } from '../contracts/capture'
 import type { RenderCapture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'

@@ -13,7 +13,7 @@
   ],
   "dependencies": {
     "@shared/delta": "workspace:*",
-    "@shared/projector": "workspace:*",
+    "@shared/projection": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/engine": "workspace:*"
   },

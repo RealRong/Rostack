@@ -8,6 +8,10 @@ import type { Node, NodeId } from '@whiteboard/core/types'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
+import {
+  patchNodePreviewByTextMeasure,
+  readDocumentNodeRect
+} from '@whiteboard/editor/layout/textLayout'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
@@ -166,7 +170,7 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: Pick<EditorHostDeps, 'sessionRead' | 'layout' | 'snap' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'registry' | 'snap' | 'write'>,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -196,7 +200,15 @@ export const createTransformSession = (
         }
       }
     })
-    const nextPatches = ctx.layout.resolvePreviewPatches(result.state.patches)
+    const nextPatches = patchNodePreviewByTextMeasure({
+      patches: result.state.patches,
+      readNode: ctx.projection.query.document.node,
+      readNodeRect: (nodeId) => readDocumentNodeRect(
+        ctx.projection.query.document.nodeGeometry(nodeId)
+      ),
+      registry: ctx.registry,
+      measure: ctx.measure
+    })
     state = {
       ...result.state,
       patches: nextPatches
@@ -255,7 +267,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'layout' | 'snap' | 'write' | 'nodeType' | 'sessionSource'>
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'registry' | 'snap' | 'write' | 'nodeType' | 'sessionSource'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

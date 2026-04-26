@@ -11,7 +11,7 @@ import type {
   Node,
   NodeId
 } from '@whiteboard/core/types'
-import type { Revision } from '@shared/projector/phase'
+import type { Revision } from '@shared/projection'
 import type {
   ChromeView,
   ChromeStateView,
@@ -24,7 +24,6 @@ import type {
   GroupItemRef,
   GroupView,
   MindmapView,
-  NodeDraft,
   NodePreview,
   NodeStateView,
   NodeUiView,
@@ -117,7 +116,6 @@ export interface GraphNodeEntry {
     node: Node
     owner?: OwnerRef
   }
-  draft?: NodeDraft
   preview?: NodePreview
 }
 

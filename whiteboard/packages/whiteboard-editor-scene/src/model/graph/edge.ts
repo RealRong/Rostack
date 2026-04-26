@@ -325,7 +325,9 @@ export const buildEdgeView = (input: {
     })
     const size = edgeApi.label.placementSize({
       textMode,
-      measuredSize,
+      measuredSize: measuredSize?.kind === 'size'
+        ? measuredSize.size
+        : undefined,
       text: displayText,
       fontSize: label.style?.size
     })

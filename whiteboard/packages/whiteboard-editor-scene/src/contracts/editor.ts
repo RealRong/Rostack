@@ -50,9 +50,9 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type {
-  ProjectorTrace,
+  ProjectionTrace,
   Revision
-} from '@shared/projector/phase'
+} from '@shared/projection'
 import { store } from '@shared/core'
 import type { Capture } from './capture'
 import type { IdDelta } from './delta'
@@ -184,20 +184,10 @@ export type EditSession =
   | EdgeLabelEditSession
 
 export interface DraftInput {
-  nodes: ReadonlyMap<NodeId, NodeDraft>
   edges: ReadonlyMap<EdgeId, EdgeDraft>
 }
 
-export type DraftNodePatch = Pick<
-  NodeFieldPatch,
-  'position' | 'size' | 'rotation'
->
-
-export type NodeDraft =
-  | {
-      kind: 'patch'
-      fields: DraftNodePatch
-    }
+export type NodeDraftMeasure =
   | {
       kind: 'size'
       size: Size
@@ -343,9 +333,19 @@ export type TextMeasureTarget =
       label: EdgeLabel
     }
 
+export type TextMeasureResult =
+  | {
+      kind: 'size'
+      size: Size
+    }
+  | {
+      kind: 'fit'
+      fontSize: number
+    }
+
 export type TextMeasure = (
   input: TextMeasureTarget
-) => Size | undefined
+) => TextMeasureResult | undefined
 
 export interface NodeCapabilityInput {
   meta(type: string): {
@@ -482,7 +482,6 @@ export interface SessionInputDelta {
   edit: boolean
   interaction: boolean
   draft: {
-    nodes: IdDelta<NodeId>
     edges: IdDelta<EdgeId>
   }
   preview: {
@@ -722,7 +721,7 @@ export interface RuntimeStores {
 
 export interface Result {
   revision: Revision
-  trace?: ProjectorTrace
+  trace?: ProjectionTrace
 }
 
 export interface DocumentQuery {
@@ -745,6 +744,7 @@ export interface Query {
   document: DocumentQuery
   node: {
     get(id: NodeId): NodeView | undefined
+    draft(id: NodeId): NodeDraftMeasure | undefined
     idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]
   }
   edge: {

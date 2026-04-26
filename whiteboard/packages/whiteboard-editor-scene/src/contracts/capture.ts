@@ -1,5 +1,4 @@
-import type { Family } from '@shared/projector/publish'
-import type { Revision } from '@shared/projector/phase'
+import type { Family, Revision } from '@shared/projection'
 import type {
   EdgeId,
   GroupId,

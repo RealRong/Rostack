@@ -16,12 +16,12 @@ import { createSelectionBinding } from '@whiteboard/editor/input/features/select
 import {
   createEditorInputHost
 } from '@whiteboard/editor/input/host'
+import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorSessionSource } from '@whiteboard/editor/types/editor'
 import type { ToolService } from '@whiteboard/editor/services/tool'
-import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
-import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { NodeRegistry, NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 type SessionRead = {
@@ -91,7 +91,8 @@ export type EditorHostDeps = {
   sessionRead: SessionRead
   session: EditorSession
   sessionSource: EditorSessionSource
-  layout: EditorLayout
+  measure: TextLayoutMeasure
+  registry: Pick<NodeRegistry, 'get'>
   write: EditorWrite
   tool: ToolService
   nodeType: NodeTypeSupport
@@ -125,7 +126,8 @@ export const createEditorHost = ({
   projection,
   session,
   sessionSource,
-  layout,
+  measure,
+  registry,
   write,
   tool,
   nodeType
@@ -143,7 +145,8 @@ export const createEditorHost = ({
     sessionRead,
     session,
     sessionSource,
-    layout,
+    measure,
+    registry,
     write,
     tool,
     nodeType,

@@ -11,7 +11,7 @@ import type {
 import type { GraphDelta } from '../../contracts/delta'
 import type {
   Input,
-  NodeDraft,
+  NodeDraftMeasure,
   NodePreview,
   OwnerRef,
   SessionInput,
@@ -30,13 +30,8 @@ const EMPTY_SIZE: Size = {
 const nodeModelCache = new WeakMap<Node, NodeModel>()
 
 const readNodePatch = (
-  draft?: NodeDraft,
   preview?: NodePreview
-) => preview?.patch ?? (
-  draft?.kind === 'patch'
-    ? draft.fields
-    : undefined
-)
+) => preview?.patch
 
 const readNodeSize = (
   node: GraphNodeEntry['base']['node']
@@ -65,8 +60,9 @@ const toNodeModel = (
 const readNodeTextDraft = (input: {
   entry: GraphNodeEntry
   edit: SessionInput['edit']
+  draftMeasure?: NodeDraftMeasure
 }) => {
-  const { edit, entry } = input
+  const { edit, entry, draftMeasure } = input
   if (!edit || edit.kind !== 'node' || edit.nodeId !== entry.base.node.id) {
     return undefined
   }
@@ -76,14 +72,14 @@ const readNodeTextDraft = (input: {
     value: edit.text,
     size:
       edit.field === 'text'
-      && entry.draft?.kind === 'size'
-        ? entry.draft.size
+      && draftMeasure?.kind === 'size'
+        ? draftMeasure.size
         : undefined,
     fontSize:
       edit.field === 'text'
       && entry.base.node.type === 'sticky'
-      && entry.draft?.kind === 'fit'
-        ? entry.draft.fontSize
+      && draftMeasure?.kind === 'fit'
+        ? draftMeasure.fontSize
         : undefined
   }
 }
@@ -116,6 +112,23 @@ const isNodeGeometryChanged = (
   || !equal.sameRect(previous.geometry.bounds, next.geometry.bounds)
 )
 
+export const isNodeDraftMeasureEqual = (
+  left: NodeDraftMeasure | undefined,
+  right: NodeDraftMeasure | undefined
+): boolean => left === right || (
+  left !== undefined
+  && right !== undefined
+  && left.kind === right.kind
+  && (
+    left.kind === 'size' && right.kind === 'size'
+      ? left.size.width === right.size.width
+        && left.size.height === right.size.height
+      : left.kind === 'fit' && right.kind === 'fit'
+        ? left.fontSize === right.fontSize
+        : false
+  )
+)
+
 export const readNodeEntry = (
   input: Input,
   working: WorkingState,
@@ -132,7 +145,6 @@ export const readNodeEntry = (
       node,
       owner: ownerByNode.get(nodeId)
     },
-    draft: input.session.draft.nodes.get(nodeId),
     preview: input.session.preview.nodes.get(nodeId)
   }
 }
@@ -140,21 +152,20 @@ export const readNodeEntry = (
 export const readProjectedNodeRotation = (
   entry: GraphNodeEntry
 ): number => {
-  const patch = readNodePatch(entry.draft, entry.preview)
+  const patch = readNodePatch(entry.preview)
   return patch?.rotation ?? entry.base.node.rotation ?? 0
 }
 
 export const readProjectedNodeSize = (input: {
   entry: GraphNodeEntry
-  measuredSize?: Size
+  draftMeasure?: NodeDraftMeasure
 }): Size => {
-  const patch = readNodePatch(input.entry.draft, input.entry.preview)
+  const patch = readNodePatch(input.entry.preview)
 
   return patch?.size
-    ?? input.measuredSize
     ?? (
-      input.entry.draft?.kind === 'size'
-        ? input.entry.draft.size
+      input.draftMeasure?.kind === 'size'
+        ? input.draftMeasure.size
         : undefined
     )
     ?? readNodeSize(input.entry.base.node)
@@ -162,18 +173,18 @@ export const readProjectedNodeSize = (input: {
 
 export const readProjectedNodeRect = (input: {
   entry: GraphNodeEntry
-  measuredSize?: Size
+  draftMeasure?: NodeDraftMeasure
   treeRect?: Rect
 }): Rect => {
   if (input.treeRect) {
     return input.treeRect
   }
 
-  const patch = readNodePatch(input.entry.draft, input.entry.preview)
+  const patch = readNodePatch(input.entry.preview)
   const position = patch?.position ?? input.entry.base.node.position
   const size = readProjectedNodeSize({
     entry: input.entry,
-    measuredSize: input.measuredSize
+    draftMeasure: input.draftMeasure
   })
 
   return {
@@ -186,7 +197,7 @@ export const readProjectedNodeRect = (input: {
 
 const buildProjectedNodeGeometry = (input: {
   entry: GraphNodeEntry
-  measuredSize?: Size
+  draftMeasure?: NodeDraftMeasure
   treeRect?: Rect
 }) => {
   const rect = readProjectedNodeRect(input)
@@ -198,13 +209,13 @@ const buildProjectedNodeGeometry = (input: {
   }
 }
 
-export const readMeasuredNodeSize = (input: {
+export const readNodeDraftMeasure = (input: {
   working: WorkingState
   entry: GraphNodeEntry
   nodeId: NodeId
   treeRect?: Rect
   edit: SessionInput['edit']
-}): Size | undefined => {
+}): NodeDraftMeasure | undefined => {
   if (
     !input.working.measure
     || input.edit?.kind !== 'node'
@@ -214,7 +225,7 @@ export const readMeasuredNodeSize = (input: {
     return undefined
   }
 
-  const patch = readNodePatch(input.entry.draft, input.entry.preview)
+  const patch = readNodePatch(input.entry.preview)
   const fallbackRect = input.treeRect ?? (() => {
     const position = patch?.position ?? input.entry.base.node.position
     const size = patch?.size ?? readNodeSize(input.entry.base.node)
@@ -229,13 +240,10 @@ export const readMeasuredNodeSize = (input: {
     node: input.entry.base.node,
     rect: fallbackRect
   }, input.entry.preview?.patch)
-  const contentItem = nodeApi.projection.applyTextDraft(
-    previewItem,
-    readNodeTextDraft({
-      entry: input.entry,
-      edit: input.edit
-    })
-  )
+  const contentItem = nodeApi.projection.applyTextDraft(previewItem, {
+    field: input.edit.field,
+    value: input.edit.text
+  })
 
   return input.working.measure({
     kind: 'node',
@@ -247,7 +255,7 @@ export const readMeasuredNodeSize = (input: {
 
 export const buildNodeView = (input: {
   entry: GraphNodeEntry
-  measuredSize?: Size
+  draftMeasure?: NodeDraftMeasure
   treeRect?: Rect
   edit: SessionInput['edit']
 }): NodeView => {
@@ -258,7 +266,11 @@ export const buildNodeView = (input: {
   }, input.entry.preview?.patch)
   const contentItem = nodeApi.projection.applyTextDraft(
     previewItem,
-    readNodeTextDraft(input)
+    readNodeTextDraft({
+      entry: input.entry,
+      edit: input.edit,
+      draftMeasure: input.draftMeasure
+    })
   )
 
   return {
@@ -294,6 +306,7 @@ export const patchNode = (input: {
   owner?: OwnerRef
 } => {
   const previous = input.working.graph.nodes.get(input.nodeId)
+  const previousDraft = input.working.draft.node.get(input.nodeId)
   const entry = readNodeEntry(
     input.input,
     input.working,
@@ -304,8 +317,8 @@ export const patchNode = (input: {
   const treeRect = owner?.kind === 'mindmap'
     ? input.working.graph.owners.mindmaps.get(owner.id)?.tree.layout?.node[input.nodeId]
     : undefined
-  const measuredSize = entry
-    ? readMeasuredNodeSize({
+  const draftMeasure = entry
+    ? readNodeDraftMeasure({
         working: input.working,
         entry,
         nodeId: input.nodeId,
@@ -316,13 +329,15 @@ export const patchNode = (input: {
   const next = entry
     ? buildNodeView({
         entry,
-        measuredSize,
+        draftMeasure,
         treeRect,
         edit: input.input.session.edit
       })
     : undefined
 
   if (next === undefined) {
+    input.working.draft.node.delete(input.nodeId)
+
     if (previous === undefined) {
       return {
         changed: false,
@@ -341,8 +356,27 @@ export const patchNode = (input: {
     }
   }
 
+  if (draftMeasure) {
+    input.working.draft.node.set(input.nodeId, draftMeasure)
+  } else {
+    input.working.draft.node.delete(input.nodeId)
+  }
+
+  if (
+    previous !== undefined
+    && isNodeViewEqual(previous, next)
+    && isNodeDraftMeasureEqual(previousDraft, draftMeasure)
+  ) {
+    return {
+      changed: false,
+      geometryChanged: false,
+      owner: previous.base.owner
+    }
+  }
+
+  input.working.graph.nodes.set(input.nodeId, next)
+
   if (previous === undefined) {
-    input.working.graph.nodes.set(input.nodeId, next)
     idDelta.add(input.delta.entities.nodes, input.nodeId)
     input.delta.geometry.nodes.add(input.nodeId)
     return {
@@ -352,15 +386,6 @@ export const patchNode = (input: {
     }
   }
 
-  if (isNodeViewEqual(previous, next)) {
-    return {
-      changed: false,
-      geometryChanged: false,
-      owner: previous.base.owner
-    }
-  }
-
-  input.working.graph.nodes.set(input.nodeId, next)
   idDelta.update(input.delta.entities.nodes, input.nodeId)
 
   const geometryChanged = isNodeGeometryChanged(previous, next)

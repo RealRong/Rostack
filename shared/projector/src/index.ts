@@ -1,11 +1,4 @@
 export {
-  defineProjectionModel,
-  createProjectionRuntime,
-  family,
-  value
-} from './model'
-
-export {
   defineChangeSpec,
   createChangeState,
   cloneChangeState,

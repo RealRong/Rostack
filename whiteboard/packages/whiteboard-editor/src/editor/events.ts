@@ -1,7 +1,6 @@
 import { equal } from '@shared/core'
 import { META } from '@whiteboard/core/spec/operation'
 import type { Engine } from '@whiteboard/engine'
-import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorEvents } from '@whiteboard/editor/types/editor'
 
@@ -12,11 +11,18 @@ export type EditorEventRuntime = {
 
 const reconcileSessionAfterWrite = (
   session: Pick<EditorSession, 'state' | 'mutate'>,
-  document: Pick<EditorDocumentRuntimeSource, 'nodes' | 'edges'>
+  document: {
+    node: {
+      get(id: string): unknown
+    }
+    edge: {
+      get(id: string): unknown
+    }
+  }
 ) => {
   const selection = session.state.selection.get()
-  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.nodes.get(id)))
-  const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(document.edges.get(id)))
+  const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.node.get(id)))
+  const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(document.edge.get(id)))
 
   if (
     !equal.sameOrder(nextNodeIds, selection.nodeIds)
@@ -34,8 +40,8 @@ const reconcileSessionAfterWrite = (
   }
 
   if (
-    (currentEdit.kind === 'node' && !document.nodes.get(currentEdit.nodeId))
-    || (currentEdit.kind === 'edge-label' && !document.edges.get(currentEdit.edgeId))
+    (currentEdit.kind === 'node' && !document.node.get(currentEdit.nodeId))
+    || (currentEdit.kind === 'edge-label' && !document.edge.get(currentEdit.edgeId))
   ) {
     session.mutate.edit.clear()
   }
@@ -49,7 +55,14 @@ export const createEditorEvents = ({
 }: {
   engine: Engine
   session: EditorSession
-  document: Pick<EditorDocumentRuntimeSource, 'nodes' | 'edges'>
+  document: {
+    node: {
+      get(id: string): unknown
+    }
+    edge: {
+      get(id: string): unknown
+    }
+  }
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()

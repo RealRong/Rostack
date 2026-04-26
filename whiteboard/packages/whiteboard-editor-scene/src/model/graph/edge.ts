@@ -243,10 +243,11 @@ const isEdgeGeometryChanged = (
 
 export const readEdgeEntry = (
   input: Input,
+  working: WorkingState,
   indexes: WorkingState['indexes'],
   edgeId: EdgeId
 ): GraphEdgeEntry | undefined => {
-  const edge = input.document.snapshot.document.edges[edgeId]
+  const edge = working.document.snapshot.edges[edgeId]
   if (!edge) {
     return undefined
   }
@@ -411,7 +412,7 @@ export const patchEdge = (input: {
   geometryChanged: boolean
 } => {
   const previous = input.working.graph.edges.get(input.edgeId)
-  const entry = readEdgeEntry(input.input, input.working.indexes, input.edgeId)
+  const entry = readEdgeEntry(input.input, input.working, input.working.indexes, input.edgeId)
   const next = entry
       ? buildEdgeView({
         edgeId: input.edgeId,

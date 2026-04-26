@@ -12,9 +12,9 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview'
-import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import type { Query as EditorSceneQuery } from '@whiteboard/editor-scene'
+import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -98,12 +98,12 @@ export const tryStartMindmapDrag = (input: {
     structure: EditorSceneQuery['mindmap']['structure']
     layout: EditorSceneQuery['mindmap']['get']
   }
-  node: Pick<EditorDocumentRuntimeSource, 'nodes'>
+  node: EditorDocumentSource['node']
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
 }): MindmapDragState | undefined => {
   const pick = input.pointer.pick
   const pickedNode = pick.kind === 'node'
-    ? input.node.nodes.get(pick.id)?.node
+    ? input.node.get(pick.id)?.node
     : undefined
   const treeId = pick.kind === 'mindmap'
     ? pick.treeId
@@ -118,9 +118,9 @@ export const tryStartMindmapDrag = (input: {
   const locked = Boolean(
     (treeId
       ? (() => {
-          const structure = input.mindmap.structure(treeId)
-          return structure
-            ? input.node.nodes.get(structure.rootId)?.node.locked
+        const structure = input.mindmap.structure(treeId)
+        return structure
+            ? input.node.get(structure.rootId)?.node.locked
             : undefined
         })()
       : undefined)
@@ -179,9 +179,9 @@ export const tryStartMindmapDragForNode = (input: {
     structure: EditorSceneQuery['mindmap']['structure']
     layout: EditorSceneQuery['mindmap']['get']
   }
-  node: Pick<EditorDocumentRuntimeSource, 'nodes'>
+  node: EditorDocumentSource['node']
 }): MindmapDragState | undefined => {
-  const pickedNode = input.node.nodes.get(input.nodeId)?.node
+  const pickedNode = input.node.get(input.nodeId)?.node
   const treeId = pickedNode?.owner?.kind === 'mindmap'
     ? pickedNode.owner.id
     : undefined
@@ -191,7 +191,7 @@ export const tryStartMindmapDragForNode = (input: {
       ? (() => {
         const structure = input.mindmap.structure(treeId)
         return structure
-            ? input.node.nodes.get(structure.rootId)?.node.locked
+            ? input.node.get(structure.rootId)?.node.locked
             : undefined
       })()
       : undefined)

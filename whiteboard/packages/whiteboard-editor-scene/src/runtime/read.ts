@@ -16,6 +16,10 @@ import type { Revision } from '@shared/projector/phase'
 import type { OwnerRef, Query, SceneItem } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import { readGroupSignatureFromTarget } from '../model/graph/group'
+import {
+  readCommittedDocumentBounds,
+  readCommittedDocumentSlice
+} from '../model/document/read'
 import { readRelatedEdgeIds, readTreeDescendants } from '../model/index/read'
 import { createSpatialRead } from '../model/spatial/query'
 import type { SpatialIndexState } from '../model/spatial/state'
@@ -511,6 +515,7 @@ export const createEditorSceneRead = (runtime: {
   state: () => WorkingState
   items: () => readonly SceneItem[]
   spatial: () => SpatialIndexState
+  nodeSize: { width: number, height: number }
   canNodeConnect?: (input: {
     node: NodeModel
     owner?: OwnerRef
@@ -530,6 +535,21 @@ export const createEditorSceneRead = (runtime: {
 
   return {
     revision: runtime.revision,
+    document: {
+      get: () => runtime.state().document.snapshot,
+      node: (id) => runtime.state().document.nodes.get(id),
+      edge: (id) => runtime.state().document.edges.get(id),
+      bounds: () => readCommittedDocumentBounds({
+        state: runtime.state(),
+        nodeSize: runtime.nodeSize
+      }),
+      slice: (input) => readCommittedDocumentSlice({
+        state: runtime.state(),
+        nodeSize: runtime.nodeSize,
+        nodeIds: input.nodeIds,
+        edgeIds: input.edgeIds
+      })
+    },
     node: {
       get: (id) => runtime.state().graph.nodes.get(id),
       idsInRect: (rect, options) => {

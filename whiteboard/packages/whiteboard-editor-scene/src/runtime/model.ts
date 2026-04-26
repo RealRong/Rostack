@@ -15,7 +15,8 @@ import type {
   GroupId,
   MindmapId,
   NodeModel,
-  NodeId
+  NodeId,
+  Size
 } from '@whiteboard/core/types'
 import type {
   HoverState,
@@ -46,6 +47,7 @@ import type {
   EdgeStaticView
 } from '../contracts/render'
 import { patchGraphState } from '../model/graph/patch'
+import { patchDocumentState } from '../model/document/patch'
 import { patchViewState } from '../model/view/patch'
 import { patchSpatial } from '../model/spatial/update'
 import { createEditorSceneRead } from './read'
@@ -388,7 +390,9 @@ const readViewPatchScope = (input: {
   }
 }
 
-const graphPhase: ProjectorPhase<
+const createGraphPhase = (
+  nodeSize: Size
+): ProjectorPhase<
   'graph',
   {
     input: Input
@@ -399,11 +403,17 @@ const graphPhase: ProjectorPhase<
   { count: number },
   EditorScenePhaseName,
   EditorPhaseScopeMap
-> = {
+> => ({
   name: 'graph',
   deps: [],
   scope: graphPhaseScope,
   run: (context) => {
+    patchDocumentState({
+      current: context.input,
+      working: context.state,
+      nodeSize,
+      reset: context.scope.reset
+    })
     const result = patchGraphState({
       revision: context.revision,
       current: context.input,
@@ -440,7 +450,7 @@ const graphPhase: ProjectorPhase<
       }
     }
   }
-}
+})
 
 const spatialPhase: ProjectorPhase<
   'spatial',
@@ -516,11 +526,25 @@ export const createEditorSceneProjectionModel = (input: {
     node: NodeModel
     owner?: OwnerRef
   }) => boolean
-} = {}) => defineProjectionModel<
+  document?: {
+    nodeSize: Size
+  }
+} = {}) => {
+  const nodeSize = input.document?.nodeSize ?? {
+    width: 0,
+    height: 0
+  }
+
+  return defineProjectionModel<
   Input,
   WorkingState,
   ReturnType<typeof createEditorSceneRead>,
   {
+    document: {
+      node: ReturnType<typeof family<WorkingState, NodeId, WorkingState['document']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>>
+      edge: ReturnType<typeof family<WorkingState, EdgeId, WorkingState['document']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>>
+      background: ReturnType<typeof value<WorkingState, WorkingState['document']['background']>>
+    }
     graph: {
       node: ReturnType<typeof family<WorkingState, NodeId, WorkingState['graph']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>>
       edge: ReturnType<typeof family<WorkingState, EdgeId, WorkingState['graph']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>>
@@ -560,13 +584,31 @@ export const createEditorSceneProjectionModel = (input: {
     state: runtime.state,
     items: () => runtime.state().items,
     spatial: () => runtime.state().spatial,
-    canNodeConnect: input.canNodeConnect
+    canNodeConnect: input.canNodeConnect,
+    nodeSize
   }),
   capture: ({ state, revision }) => buildEditorSceneCapture(
     state,
     revision
   ),
   surface: {
+    document: {
+      node: family({
+        read: (state) => ({
+          ids: [...state.document.nodes.keys()],
+          byId: state.document.nodes
+        })
+      }),
+      edge: family({
+        read: (state) => ({
+          ids: [...state.document.edges.keys()],
+          byId: state.document.edges
+        })
+      }),
+      background: value({
+        read: (state) => state.document.background
+      })
+    },
     graph: {
       node: family({
         read: (state) => ({
@@ -688,8 +730,9 @@ export const createEditorSceneProjectionModel = (input: {
     })
   },
   phases: [
-    graphPhase,
+    createGraphPhase(nodeSize),
     spatialPhase,
     viewPhase
   ]
 })
+}

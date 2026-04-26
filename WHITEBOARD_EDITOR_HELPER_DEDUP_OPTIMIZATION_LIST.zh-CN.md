@@ -320,7 +320,7 @@
 
 ---
 
-## 8. `document/source.ts` 内 committed geometry/view resolve 与 scene 内存在两条线
+## 8. `document/source.ts` 的 committed document read 直接并进 `editor-scene`
 
 当前代码：
 
@@ -335,33 +335,311 @@
 
 当前问题：
 
-- document committed 读取链自己在做 node geometry / edge resolve
-- scene runtime 里也在做 edge/node 视图解析
-- 目前两条线的职责边界不够明确
+- editor 侧单独维护了一条 committed document read 链
+- `editor-scene` 同时又直接消费 `input.document.snapshot`
+- 两边都在做 node geometry / edge resolve，形成并行实现
+- `document/source.ts` 暴露了过大的 public shape，并且和 `editor-scene` 的工作集数据源分离
+- 目前调用方必须区分：
+  - `editor.document.*`
+  - `editor.scene.query.*`
+  - `editor.scene.stores.*`
+  这不符合统一数据源方向
 
 优化原则：
 
-- 不强行复用 `editor-scene`
-- 先明确 document runtime 是否确实需要独立 committed primitive
+- committed document read 必须并进 `editor-scene`
+- 但不能混入现有 `graph` / `query.node` / `query.edge` working 语义
+- committed document 必须成为 `editor-scene` 内一条独立的 `document` 读线
+- 优先让 `graph patch`、`query`、`stores` 共同复用这条 committed 读线，再删除 editor 侧 `document/source.ts`
+
+### 最终 API 设计
+
+`whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
+
+在 `RuntimeStores` 新增：
+
+```ts
+export interface RuntimeStores {
+  document: {
+    background: store.ReadStore<Document['background'] | undefined>
+    node: FamilyReadStore<NodeId, CommittedNodeView>
+    edge: FamilyReadStore<EdgeId, CommittedEdgeView>
+  }
+  graph: { ... }
+  render: { ... }
+  items: store.ReadStore<readonly SceneItem[]>
+}
+```
+
+新增 committed read model：
+
+```ts
+export interface CommittedNodeView {
+  id: NodeId
+  node: Node
+  rect: Rect
+  bounds: Rect
+  rotation: number
+}
+
+export interface CommittedEdgeView {
+  id: EdgeId
+  edge: Edge
+  ends: ResolvedEdgeEnds
+}
+```
+
+在 `Query` 新增：
+
+```ts
+export interface Query {
+  document: {
+    get(): Document
+    node(id: NodeId): CommittedNodeView | undefined
+    edge(id: EdgeId): CommittedEdgeView | undefined
+    bounds(): Rect
+    slice(input: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly EdgeId[]
+    }): SliceExportResult | undefined
+  }
+  node: { ... }
+  edge: { ... }
+  mindmap: { ... }
+  group: { ... }
+  spatial: SpatialRead
+  ...
+}
+```
+
+关键约束：
+
+- `query.document.*` 只表示 committed document truth
+- `query.node.get / query.edge.get` 继续只表示 working scene truth
+- committed document 不允许塞进 `query.node` / `query.edge` 命名空间
+- committed document 不允许塞进 `stores.graph`
+
+### `State` 最终设计
+
+`whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts`
+
+在 `State` 新增：
+
+```ts
+export interface State {
+  revision: {
+    document: Revision
+  }
+  document: DocumentState
+  graph: GraphState
+  indexes: IndexState
+  spatial: SpatialIndexState
+  ui: UiState
+  render: RenderState
+  items: readonly SceneItem[]
+}
+
+export interface DocumentState {
+  snapshot: Document
+  background?: Document['background']
+  nodes: Map<NodeId, CommittedNodeView>
+  edges: Map<EdgeId, CommittedEdgeView>
+}
+```
+
+关键约束：
+
+- `document` 是 graph 之前的 committed substate
+- `graph` / `indexes` / `render` 都可以复用 `document`
+- `graph patch` 不再直接把 `input.document.snapshot.document` 当成唯一读源散读
+
+### runtime 输入补齐
+
+`whiteboard/packages/whiteboard-editor-scene/src/runtime/createEditorSceneRuntime.ts`
+
+当前只收：
+
+- `measure`
+- `canNodeConnect`
+
+必须补为：
+
+```ts
+createEditorSceneRuntime({
+  measure,
+  canNodeConnect,
+  document: {
+    nodeSize: Size
+  }
+})
+```
+
+原因：
+
+- committed node rect / bounds 需要 `nodeSize`
+- committed slice export 需要 `nodeSize`
+- 这类 document-level primitive 不应继续只存在于 editor 外层
+
+### 推荐文件落点
+
+新增：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/model/document/node.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/model/document/edge.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/model/document/patch.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/model/document/read.ts`
+
+修改：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/createEditorSceneRuntime.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/model/graph/patch.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/state.ts`
+
+### 纯 primitive 下沉要求
+
+为了避免 `editor-scene` 内再复制一条私有 committed resolve 链，以下 pure primitive 必须先下沉 `whiteboard-core`：
+
+- committed node view resolve
+- committed edge ends resolve
+- committed edge view resolve
+
+推荐新增：
+
+- `whiteboard/packages/whiteboard-core/src/node/committed.ts`
+- `whiteboard/packages/whiteboard-core/src/edge/committed.ts`
+
+推荐 API：
+
+```ts
+resolveCommittedNodeView(input: {
+  node: Node
+  nodeSize: Size
+}): CommittedNodeView
+
+resolveCommittedEdgeView(input: {
+  edge: Edge
+  document: Document
+  nodeSize: Size
+}): CommittedEdgeView | undefined
+
+resolveCommittedEdgeRenderView(input: {
+  edge: Edge
+  document: Document
+  nodeSize: Size
+}): CoreEdgeView | undefined
+```
+
+`editor-scene` 的 `document` 子系统与 `graph patch` 都统一复用这些 primitive。
+
+### 实施方案
+
+#### 阶段 8.1
+
+- 在 `whiteboard-core` 新增 committed primitive
+- 替换 `whiteboard-editor/src/document/source.ts` 里的：
+  - `buildNodeItem`
+  - `readCommittedNodeSnapshot`
+  - `readEdgeItem`
+  - `readCommittedEdgeView`
+- 先让旧 `document/source.ts` 复用 core primitive，停止继续扩散私有实现
+
+#### 阶段 8.2
+
+- 在 `editor-scene contracts` 增加：
+  - `CommittedNodeView`
+  - `CommittedEdgeView`
+  - `RuntimeStores.document`
+  - `Query.document`
+  - `State.document`
+- 在 `createEditorSceneRuntime(...)` 增加 `document.nodeSize`
+
+#### 阶段 8.3
+
+- 在 `editor-scene` 新增 `model/document/*`
+- 每次 `input.document.delta` 更新时先 patch committed `document` state
+- `graph patch` 改为优先复用 `working.document`
+- `runtime.read.ts` 暴露 `query.document.*`
+
+#### 阶段 8.4
+
+- editor 侧调用方迁移：
+  - `action/clipboard.ts` 改用 `editor.scene.query.document.slice`
+  - `action/index.ts` / `editor/events.ts` / `input/helpers.ts` / `write/*` 改用 `editor.scene.query.document.node/edge`
+  - `layout/runtime.ts` 改用 `editor.scene.stores.document.node.byId`
+  - `createEditor.ts` 不再创建 `createDocumentSource(...)`
+
+#### 阶段 8.5
+
+- 删除：
+  - `whiteboard/packages/whiteboard-editor/src/document/source.ts`
+- 删除 editor public type 中独立 `document source` 的旧 shape
+- `Editor.document` 改为直接转发 `editor.scene.query.document`
+
+### editor 层最终 public shape
+
+`whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+
+最终不再保留独立 `EditorDocumentRuntimeSource`。
+
+`Editor` 最终只暴露：
+
+```ts
+export type Editor = {
+  document: {
+    get(): Document
+    bounds(): Rect
+    slice(input: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly EdgeId[]
+    }): SliceExportResult | undefined
+    node: {
+      get(id: NodeId): CommittedNodeView | undefined
+      ids(): readonly NodeId[]
+    }
+    edge: {
+      get(id: EdgeId): CommittedEdgeView | undefined
+      ids(): readonly EdgeId[]
+    }
+  }
+  scene: EditorSceneSource
+  session: EditorSessionSource
+  write: EditorWrite
+  input: EditorInputHost
+  events: EditorEvents
+  dispose(): void
+}
+```
+
+这里的 `editor.document` 只是对 `editor.scene.query.document` 的薄转发，不再有独立 runtime/source 文件。
 
 优化方案：
 
-- 若 `document/source.ts` 的目标是 clipboard / export / committed document read：
-  - 保留这条线
-  - 但把通用部分下沉到 `whiteboard-core`
-- 可下沉的 pure primitive：
-  - committed node snapshot resolve
-  - committed edge resolved ends
-  - committed edge view resolve
+- committed document read 直接并进 `editor-scene`
+- `editor/document/source.ts` 不保留
+- editor 侧所有 committed document 读取都统一改为：
+  - `editor.scene.query.document.*`
+  - `editor.scene.stores.document.*`
+- 对外 `editor.document` 只保留对 `editor.scene.query.document` 的转发
 
 落点：
 
-- `whiteboard/packages/whiteboard-core/src/node/*`
-- `whiteboard/packages/whiteboard-core/src/edge/*`
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/state.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/model/document/*`
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/read.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/createEditorSceneRuntime.ts`
+- `whiteboard/packages/whiteboard-core/src/node/committed.ts`
+- `whiteboard/packages/whiteboard-core/src/edge/committed.ts`
 
 结论：
 
-- 这块不是优先删本地，而是优先把通用 resolve 下沉到 core
+- 这块不再保留 editor 独立 document source
+- committed document read 必须成为 `editor-scene` 的一等子系统
+- graph / query / layout / action / clipboard 统一复用这一条数据源
 
 ---
 
@@ -485,8 +763,9 @@
 
 ## P3
 
-- 评估 `document/source.ts` committed resolve 链
-- 把可复用的 committed geometry / edge resolve primitive 下沉到 `whiteboard-core`
+- 在 `editor-scene` 落地 `document` committed 子系统
+- editor 调用方迁移到 `editor.scene.query.document` / `editor.scene.stores.document`
+- 删除 `whiteboard-editor/src/document/source.ts`
 
 ---
 
@@ -499,3 +778,8 @@
 - mindmap id resolve 不再在 editor 内出现多套实现
 - hover target equality 全项目只保留一份实现
 - `scene/host` 不再承载 query/read facade，只保留真正 host runtime
+- committed document read 不再在 editor 侧保留第二套 source/runtime
+- `editor-scene` 同时提供：
+  - working scene read
+  - committed document read
+  且二者命名空间明确分离

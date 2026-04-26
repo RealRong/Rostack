@@ -39,7 +39,7 @@ describe('mindmap field drag', () => {
 
     const session = createMoveInteraction({
       document: {
-        nodes: {
+        node: {
           get: (id: string) => {
             if (id === 'root-1') {
               return {
@@ -89,7 +89,7 @@ describe('mindmap field drag', () => {
             return undefined
           }
         },
-        edges: {
+        edge: {
           ids: vi.fn(() => [])
         },
       },

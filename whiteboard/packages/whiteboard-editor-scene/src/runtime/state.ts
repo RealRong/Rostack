@@ -43,6 +43,12 @@ export const createWorking = (input: {
     revision: {
       document: snapshot.revision as Revision
     },
+    document: {
+      snapshot: snapshot.document,
+      background: snapshot.document.background,
+      nodes: new Map(),
+      edges: new Map()
+    },
     graph: {
       nodes: new Map(),
       edges: new Map(),

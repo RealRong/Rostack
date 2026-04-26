@@ -95,10 +95,11 @@ export const readGroupTarget = (
 
 const readGroupEntry = (
   input: Input,
+  working: WorkingState,
   indexes: WorkingState['indexes'],
   groupId: GroupId
 ): GraphGroupEntry | undefined => {
-  const group = input.document.snapshot.document.groups[groupId]
+  const group = working.document.snapshot.groups[groupId]
   if (!group) {
     return undefined
   }
@@ -152,8 +153,8 @@ export const patchGroup = (input: {
   geometryChanged: boolean
 } => {
   const previous = input.working.graph.owners.groups.get(input.groupId)
-  const entry = readGroupEntry(input.input, input.working.indexes, input.groupId)
-  const group = input.input.document.snapshot.document.groups[input.groupId]
+  const entry = readGroupEntry(input.input, input.working, input.working.indexes, input.groupId)
+  const group = input.working.document.snapshot.groups[input.groupId]
   const next = entry && group
     ? buildGroupView({
         previous,

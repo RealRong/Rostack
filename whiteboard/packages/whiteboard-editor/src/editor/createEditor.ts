@@ -1,4 +1,5 @@
 import type { Viewport } from '@whiteboard/core/types'
+import { store } from '@shared/core'
 import type { LocalHistoryApi } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
@@ -11,7 +12,6 @@ import {
 import {
   createEditorBoundaryTaskRuntime
 } from '@whiteboard/editor/boundary/task'
-import { createDocumentSource } from '@whiteboard/editor/document/source'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createSessionState } from '@whiteboard/editor/session/state'
 import {
@@ -63,13 +63,14 @@ export const createEditor = ({
     initialDrawState,
     initialViewport
   })
-  const document = createDocumentSource({
-    engine
-  })
+  let committedNode = null as null | ReturnType<typeof createSceneBridge>['stores']['document']['node']['byId']
   const layout = createEditorLayout({
     read: {
       node: {
-        committed: document.node.committed
+        committed: {
+          get: (nodeId) => committedNode?.get(nodeId),
+          subscribe: (nodeId, listener) => committedNode?.subscribe(nodeId, listener) ?? (() => {})
+        }
       }
     },
     session: {
@@ -86,12 +87,26 @@ export const createEditor = ({
     layout,
     nodeType
   })
+  committedNode = projection.stores.document.node.byId
   const sessionState = createSessionState(session)
   const scene = createSceneSource({
     controller: projection,
     visibleRect: () => session.viewport.read.worldRect(),
     readZoom: () => session.viewport.read.get().zoom
   })
+  const document: Editor['document'] = {
+    get: () => scene.query.document.get(),
+    bounds: () => scene.query.document.bounds(),
+    slice: (input) => scene.query.document.slice(input),
+    node: {
+      get: (id) => scene.query.document.node(id),
+      ids: () => store.read(scene.stores.document.node.ids)
+    },
+    edge: {
+      get: (id) => scene.query.document.edge(id),
+      ids: () => store.read(scene.stores.document.edge.ids)
+    }
+  }
   const writeRuntime = createEditorWrite({
     engine,
     history,
@@ -171,7 +186,6 @@ export const createEditor = ({
       boundary.dispose()
       scene.dispose()
       projection.dispose()
-      document.dispose()
       session.reset()
       layout.text.clear()
     }

@@ -221,7 +221,7 @@ const buildMindmapEntry = (
   working: WorkingState,
   mindmapId: MindmapId
 ): GraphMindmapEntry | undefined => {
-  const mindmap = input.document.snapshot.document.mindmaps[mindmapId]
+  const mindmap = working.document.snapshot.mindmaps[mindmapId]
   if (!mindmap) {
     return undefined
   }
@@ -235,6 +235,7 @@ const buildMindmapEntry = (
   const preview = input.session.preview.mindmap
   const rootEntry = readNodeEntry(
     input,
+    working,
     working.indexes.ownerByNode,
     tree.rootNodeId
   )
@@ -272,6 +273,7 @@ const buildMindmapEntry = (
       (nodeId) => {
         const nodeEntry = readNodeEntry(
           input,
+          working,
           working.indexes.ownerByNode,
           nodeId
         )

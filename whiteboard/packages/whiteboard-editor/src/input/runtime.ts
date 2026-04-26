@@ -1,6 +1,6 @@
 import type { Engine } from '@whiteboard/engine'
-import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorInputHost } from '@whiteboard/editor/types/editor'
+import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import {
@@ -28,7 +28,7 @@ import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type EditorHostDeps = {
   engine: Engine
-  document: EditorDocumentRuntimeSource
+  document: EditorDocumentSource
   projection: EditorSceneRuntime
   sessionRead: SessionRead
   session: EditorSession

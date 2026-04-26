@@ -1,4 +1,6 @@
+import type { SliceExportResult } from '@whiteboard/core/document'
 import type {
+  CommittedEdgeView,
   ConnectResolution,
   EdgeConnectCandidate,
   EdgeLabelMaskRect,
@@ -9,6 +11,7 @@ import type {
   EdgePathSegment
 } from '@whiteboard/core/types/edge'
 import type {
+  CommittedNodeView,
   Guide,
   NodeRectHitOptions,
   TransformPreviewPatch
@@ -18,6 +21,7 @@ import type {
   MindmapTree
 } from '@whiteboard/core/mindmap'
 import type {
+  Document as WhiteboardDocument,
   Edge,
   EdgeLabel,
   EdgeId,
@@ -77,7 +81,7 @@ export interface DocumentInput {
 
 export interface EngineSnapshot {
   revision: Revision
-  document: import('@whiteboard/core/types').Document
+  document: WhiteboardDocument
 }
 
 export interface EngineDelta {
@@ -632,6 +636,11 @@ export interface FamilyReadStore<
 }
 
 export interface RuntimeStores {
+  document: {
+    background: store.ReadStore<WhiteboardDocument['background'] | undefined>
+    node: FamilyReadStore<NodeId, CommittedNodeView>
+    edge: FamilyReadStore<EdgeId, CommittedEdgeView>
+  }
   graph: {
     node: FamilyReadStore<NodeId, NodeView>
     edge: FamilyReadStore<EdgeId, EdgeView>
@@ -666,6 +675,16 @@ export interface Result {
 
 export interface Query {
   revision(): Revision
+  document: {
+    get(): WhiteboardDocument
+    node(id: NodeId): CommittedNodeView | undefined
+    edge(id: EdgeId): CommittedEdgeView | undefined
+    bounds(): Rect
+    slice(input: {
+      nodeIds?: readonly NodeId[]
+      edgeIds?: readonly EdgeId[]
+    }): SliceExportResult | undefined
+  }
   node: {
     get(id: NodeId): NodeView | undefined
     idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]

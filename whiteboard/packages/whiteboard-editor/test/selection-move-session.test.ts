@@ -15,7 +15,7 @@ describe('createMoveInteraction', () => {
         }
       },
       document: {
-        nodes: {
+        node: {
           get: () => ({
             node: {
               id: 'node-1',
@@ -32,7 +32,7 @@ describe('createMoveInteraction', () => {
             }
           })
         },
-        edges: {
+        edge: {
           ids: () => ['edge-1']
         },
       },

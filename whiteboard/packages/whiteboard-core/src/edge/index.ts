@@ -1,5 +1,9 @@
 import { getAnchorFromPoint } from '@whiteboard/core/edge/anchor'
 import {
+  resolveCommittedEdgeRenderView,
+  resolveCommittedEdgeView
+} from '@whiteboard/core/edge/committed'
+import {
   createEdgeOp,
   clearRoute,
   insertRoutePoint,
@@ -120,6 +124,7 @@ export const edge = {
     resolve: resolveEdgeEnds
   },
   view: {
+    committed: resolveCommittedEdgeRenderView,
     resolve: resolveEdgeView,
     resolveFromNodeGeometry: resolveEdgeViewFromNodeGeometry
   },
@@ -201,6 +206,9 @@ export const edge = {
 } as const
 
 export type {
+  CommittedEdgeView
+} from '@whiteboard/core/edge/committed'
+export type {
   AnchorSnapOptions,
   ConnectMode,
   ConnectResolution,
@@ -236,6 +244,10 @@ export type {
 export type { EdgeRouteHandleTarget } from '@whiteboard/core/edge/edit'
 export type { EdgeLabelMaskRect } from '@whiteboard/core/edge/labelMask'
 export type { EdgeStaticStyle } from '@whiteboard/core/edge/render'
+export {
+  resolveCommittedEdgeRenderView,
+  resolveCommittedEdgeView
+} from '@whiteboard/core/edge/committed'
 export {
   resolveEdgeViewFromNodeGeometry
 } from '@whiteboard/core/edge/view'

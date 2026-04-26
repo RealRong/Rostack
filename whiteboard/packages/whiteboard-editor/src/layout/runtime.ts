@@ -18,7 +18,7 @@ import type {
   Size,
   Origin
 } from '@whiteboard/core/types'
-import type { TextMeasureTarget } from '@whiteboard/editor-scene'
+import type { CommittedNodeView, TextMeasureTarget } from '@whiteboard/editor-scene'
 import type { TextPreviewPatch } from '@whiteboard/editor/session/preview/types'
 import type { EditField, EditSession } from '@whiteboard/editor/session/edit'
 import { store } from '@shared/core'
@@ -33,7 +33,6 @@ import type { NodeRegistry } from '@whiteboard/editor/types/node'
 import {
   createTextMetricsResource
 } from '@whiteboard/editor/layout/textMetrics'
-import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 
 const TEXT_PLACEHOLDER = 'Text'
 const EDGE_LABEL_PLACEHOLDER = 'Label'
@@ -529,7 +528,7 @@ export const createEditorLayout = ({
 }: {
   read: {
     node: {
-      committed: EditorDocumentRuntimeSource['node']['committed']
+      committed: store.KeyedReadStore<NodeId, CommittedNodeView | undefined>
     }
   }
   session: {

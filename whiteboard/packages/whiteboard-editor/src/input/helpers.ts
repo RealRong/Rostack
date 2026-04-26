@@ -1,11 +1,12 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { SelectionInput } from '@whiteboard/core/selection'
 import type {
+  EdgeLabel,
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
-import type { EditorDocumentRuntimeSource } from '@whiteboard/editor/document/source'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
 import type {
   EditCaret,
   EditField
@@ -45,7 +46,7 @@ export const clearSelection = (
 export const startNodeEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
-    document: Pick<EditorDocumentRuntimeSource, 'nodes'>
+    document: Pick<EditorDocumentSource, 'node'>
     registry: Pick<NodeRegistry, 'get'>
   },
   nodeId: NodeId,
@@ -54,7 +55,7 @@ export const startNodeEdit = (
     caret?: EditCaret
   }
 ) => {
-  const committed = ctx.document.nodes.get(nodeId)
+  const committed = ctx.document.node.get(nodeId)
   if (!committed) {
     return
   }
@@ -81,7 +82,7 @@ export const startNodeEdit = (
 export const startEdgeLabelEdit = (
   ctx: {
     session: Pick<EditorSession, 'mutate'>
-    document: Pick<EditorDocumentRuntimeSource, 'edges'>
+    document: Pick<EditorDocumentSource, 'edge'>
   },
   edgeId: EdgeId,
   labelId: string,
@@ -89,8 +90,8 @@ export const startEdgeLabelEdit = (
     caret?: EditCaret
   }
 ) => {
-  const edge = ctx.document.edges.get(edgeId)?.edge
-  const label = edge?.labels?.find((entry) => entry.id === labelId)
+  const edge = ctx.document.edge.get(edgeId)?.edge
+  const label = edge?.labels?.find((entry: EdgeLabel) => entry.id === labelId)
   if (!edge || !label) {
     return
   }

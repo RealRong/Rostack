@@ -105,7 +105,7 @@ export const createMoveInteraction = (
         structure: ctx.projection.query.mindmap.structure,
         layout: ctx.projection.query.mindmap.get
       },
-      node: ctx.document
+      node: ctx.document.node
     })
 
     if (mindmapState) {

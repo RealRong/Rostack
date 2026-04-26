@@ -21,6 +21,8 @@ import type {
   Viewport
 } from '@whiteboard/core/types'
 import type {
+  CommittedEdgeView,
+  CommittedNodeView,
   NodeRenderView,
   Query as EditorSceneQueryRuntime,
   RuntimeStores,
@@ -30,10 +32,6 @@ import type {
   SpatialRecord
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
-import type {
-  DocumentEdgeItem,
-  DocumentNodeItem
-} from '@whiteboard/editor/document/source'
 import type { MindmapChrome } from '@whiteboard/editor/session/presentation/mindmapChrome'
 import type {
   SelectedEdgeChrome,
@@ -111,13 +109,6 @@ export type EditorSessionState = {
   selection: store.ReadStore<SelectionTarget>
   interaction: store.ReadStore<EditorInteractionState>
   viewport: store.ReadStore<Viewport>
-}
-
-export type EntitySource<TKey, TValue> = {
-  get: (id: TKey) => TValue | undefined
-  getMany: (ids: readonly TKey[]) => readonly TValue[]
-  ids: () => readonly TKey[]
-  read: store.KeyedReadStore<TKey, TValue | undefined>
 }
 
 export type EditorSelectionNodeRead = {
@@ -220,14 +211,19 @@ export type SceneScope = {
 
 export type EditorDocumentSource = {
   get: () => Document
-  background: store.ReadStore<Document['background'] | undefined>
   bounds: () => Rect
-  nodes: EntitySource<NodeId, DocumentNodeItem>
-  edges: EntitySource<EdgeId, DocumentEdgeItem>
   slice: (input: {
     nodeIds?: readonly NodeId[]
     edgeIds?: readonly EdgeId[]
   }) => SliceExportResult | undefined
+  node: {
+    get: (id: NodeId) => CommittedNodeView | undefined
+    ids: () => readonly NodeId[]
+  }
+  edge: {
+    get: (id: EdgeId) => CommittedEdgeView | undefined
+    ids: () => readonly EdgeId[]
+  }
 }
 
 export type EditorSceneSource = {

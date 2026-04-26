@@ -56,22 +56,22 @@ const seedGraphPatchQueue = (input: {
   if (input.scope.reset) {
     enqueueAll(
       input.queue.nodes,
-      Object.keys(input.current.document.snapshot.document.nodes) as readonly NodeId[]
+      input.working.document.nodes.keys()
     )
     enqueueAll(input.queue.nodes, input.working.graph.nodes.keys())
     enqueueAll(
       input.queue.edges,
-      Object.keys(input.current.document.snapshot.document.edges) as readonly EdgeId[]
+      input.working.document.edges.keys()
     )
     enqueueAll(input.queue.edges, input.working.graph.edges.keys())
     enqueueAll(
       input.queue.mindmaps,
-      Object.keys(input.current.document.snapshot.document.mindmaps) as readonly MindmapId[]
+      Object.keys(input.working.document.snapshot.mindmaps) as readonly MindmapId[]
     )
     enqueueAll(input.queue.mindmaps, input.working.graph.owners.mindmaps.keys())
     enqueueAll(
       input.queue.groups,
-      Object.keys(input.current.document.snapshot.document.groups) as readonly GroupId[]
+      Object.keys(input.working.document.snapshot.groups) as readonly GroupId[]
     )
     enqueueAll(input.queue.groups, input.working.graph.owners.groups.keys())
     return
@@ -303,7 +303,7 @@ export const patchGraphState = (input: {
   patchIndexState({
     state: input.working.indexes,
     previous: input.current.document.previous?.document,
-    next: input.current.document.snapshot.document,
+    next: input.working.document.snapshot,
     delta: input.current.document.delta
   })
 

@@ -1,8 +1,15 @@
 import type {
+  CommittedEdgeView
+} from '@whiteboard/core/edge'
+import type {
   MindmapRenderConnector,
   MindmapLayout,
 } from '@whiteboard/core/mindmap'
 import type {
+  CommittedNodeView
+} from '@whiteboard/core/node'
+import type {
+  Document as WhiteboardDocument,
   Edge,
   EdgeId,
   GroupId,
@@ -48,12 +55,20 @@ export interface State {
   revision: {
     document: Revision
   }
+  document: DocumentState
   graph: GraphState
   indexes: IndexState
   spatial: SpatialIndexState
   ui: UiState
   render: RenderState
   items: readonly SceneItem[]
+}
+
+export interface DocumentState {
+  snapshot: WhiteboardDocument
+  background?: WhiteboardDocument['background']
+  nodes: Map<NodeId, CommittedNodeView>
+  edges: Map<EdgeId, CommittedEdgeView>
 }
 
 export interface GraphState {

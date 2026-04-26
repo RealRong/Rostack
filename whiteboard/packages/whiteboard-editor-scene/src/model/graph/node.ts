@@ -118,10 +118,11 @@ const isNodeGeometryChanged = (
 
 export const readNodeEntry = (
   input: Input,
+  working: WorkingState,
   ownerByNode: WorkingState['indexes']['ownerByNode'],
   nodeId: NodeId
 ): GraphNodeEntry | undefined => {
-  const node = input.document.snapshot.document.nodes[nodeId]
+  const node = working.document.snapshot.nodes[nodeId]
   if (!node) {
     return undefined
   }
@@ -295,6 +296,7 @@ export const patchNode = (input: {
   const previous = input.working.graph.nodes.get(input.nodeId)
   const entry = readNodeEntry(
     input.input,
+    input.working,
     input.working.indexes.ownerByNode,
     input.nodeId
   )

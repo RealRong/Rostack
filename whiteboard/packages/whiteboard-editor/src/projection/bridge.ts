@@ -292,7 +292,10 @@ export const createSceneBridge = ({
 }): EditorSceneBridge => {
   const runtime = createEditorSceneRuntime({
     measure: layout.measureText,
-    canNodeConnect: ({ node }) => resolveNodeEditorCapability(node, nodeType).connect
+    canNodeConnect: ({ node }) => resolveNodeEditorCapability(node, nodeType).connect,
+    document: {
+      nodeSize: engine.config.nodeSize
+    }
   })
   let currentResult: Result | null = null
   const listeners = new Set<(result: Result) => void>()

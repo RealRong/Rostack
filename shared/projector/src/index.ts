@@ -1,33 +1,28 @@
-export { createPlan, mergePlans } from './dirty/plan'
-export { createStageMetrics } from './metrics'
-export { createProjector } from './projector/createProjector'
 export {
-  createProjectorStore,
+  defineProjectionModel,
+  createProjectionRuntime,
   family,
   value
-} from './store'
-export { projectListChange, publishStruct } from './publish'
-export { defineScope, flag, set, slot } from './scope'
+} from './model'
 
-export type { Revision } from './contracts/core'
-export type {
-  Spec as ProjectorPhase
-} from './contracts/phase'
-export type {
-  DefaultPhaseScopeMap as DefaultProjectorScopeMap,
-  PhaseScopeInput as ProjectorPhaseScopeInput,
-  PhaseScopeMap as ProjectorScopeMap,
-  ScopeInputValue as ProjectorScopeInputValue,
-  ScopeSchema as ProjectorScopeSchema,
-  ScopeValue as ProjectorScopeValue
-} from './contracts/scope'
-export type {
-  Context as ProjectorContext,
-  Planner as ProjectorPlanner,
-  Publisher as ProjectorPublisher,
-  Spec as ProjectorSpec
-} from './contracts/projector'
-export type { Run as ProjectorTrace } from './contracts/trace'
+export {
+  defineChangeSpec,
+  createChangeState,
+  cloneChangeState,
+  mergeChangeState,
+  takeChangeState,
+  hasChangeState,
+  flag as changeFlag,
+  ids,
+  set as changeSet
+} from './change'
+
+export {
+  createProjectorStore
+} from './store'
+
+export { projectListChange, publishStruct } from './publish'
+
 export type {
   InferProjectorStoreRead,
   ProjectorRuntimeLike,

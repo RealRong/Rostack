@@ -18,7 +18,7 @@ import {
 } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
-import { createSceneController } from '@whiteboard/editor/projection/controller'
+import { createSceneBridge } from '@whiteboard/editor/projection/bridge'
 import { createSceneSource } from '@whiteboard/editor/scene/source'
 import { createSessionSource } from '@whiteboard/editor/session/source'
 import { createToolService } from '@whiteboard/editor/services/tool'
@@ -79,7 +79,7 @@ export const createEditor = ({
   })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(registry)
-  const projection = createSceneController({
+  const projection = createSceneBridge({
     engine,
     session,
     layout

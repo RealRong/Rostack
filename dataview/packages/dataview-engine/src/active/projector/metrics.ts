@@ -1,4 +1,4 @@
-import { createStageMetrics } from '@shared/projector'
+import { createStageMetrics } from '@shared/projector/phase'
 import type { ActivePhaseMetrics } from '../contracts/projector'
 
 export {

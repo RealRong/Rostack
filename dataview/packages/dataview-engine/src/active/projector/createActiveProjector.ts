@@ -1,4 +1,4 @@
-import { createProjector } from '@shared/projector'
+import { createProjector } from '@shared/projector/phase'
 import type {
   ActiveProjector,
   ActiveProjectorInput,

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
-  createStageMetrics,
   projectListChange,
   publishStruct
 } from '../src'
+import {
+  createStageMetrics,
+} from '../src/phase'
 
 test('projectListChange reports add remove and order change', () => {
   const result = projectListChange({

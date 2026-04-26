@@ -4,7 +4,7 @@ import {
   defineScope,
   mergePlans,
   set
-} from '../src'
+} from '../src/phase'
 
 describe('scope plans', () => {
   it('merges phases and scoped payloads deterministically', () => {

@@ -1,0 +1,160 @@
+import { document as documentApi } from '@whiteboard/core/document'
+import type * as document from '@whiteboard/engine/contracts/document'
+import type { Revision } from '@shared/projector/phase'
+import { createGraphDelta } from '../contracts/delta'
+import type {
+  SceneItem,
+  Snapshot,
+  TextMeasure
+} from '../contracts/editor'
+import type { WorkingState } from '../contracts/working'
+import { createSpatialState } from '../domain/spatial/state'
+import { createSpatialDelta } from '../domain/spatial/update'
+
+export const createEmptyDocumentSnapshot = (): document.Snapshot => ({
+  revision: 0,
+  document: documentApi.create('__editor_scene_runtime__')
+})
+
+export const createWorking = (input: {
+  measure?: TextMeasure
+} = {}): WorkingState => {
+  const snapshot = createEmptyDocumentSnapshot()
+
+  return {
+    measure: input.measure,
+    revision: {
+      document: snapshot.revision as Revision
+    },
+    graph: {
+      nodes: new Map(),
+      edges: new Map(),
+      owners: {
+        mindmaps: new Map(),
+        groups: new Map()
+      }
+    },
+    indexes: {
+      ownerByNode: new Map(),
+      mindmapNodes: new Map(),
+      parentByNode: new Map(),
+      childrenByNode: new Map(),
+      edgeNodesByEdge: new Map(),
+      edgeIdsByNode: new Map(),
+      groupItems: new Map(),
+      groupSignature: new Map(),
+      groupIdsBySignature: new Map(),
+      groupByEdge: new Map()
+    },
+    spatial: createSpatialState(),
+    ui: {
+      chrome: {
+        overlays: [],
+        hover: {
+          kind: 'none'
+        },
+        preview: {
+          guides: [],
+          draw: null,
+          mindmap: null
+        },
+        edit: null
+      },
+      nodes: new Map(),
+      edges: new Map()
+    },
+    render: {
+      statics: {
+        styleKeyByEdge: new Map(),
+        edgeIdsByStyleKey: new Map(),
+        staticIdByEdge: new Map(),
+        staticIdsByStyleKey: new Map(),
+        statics: new Map()
+      },
+      labels: new Map(),
+      masks: new Map(),
+      active: new Map(),
+      overlay: {
+        endpointHandles: [],
+        routePoints: []
+      }
+    },
+    items: [] as readonly SceneItem[],
+    delta: {
+      graph: createGraphDelta(),
+      spatial: createSpatialDelta()
+    }
+  }
+}
+
+export const createEmptySnapshot = (): Snapshot => ({
+  revision: 0,
+  documentRevision: 0,
+  graph: {
+    nodes: {
+      ids: [],
+      byId: new Map()
+    },
+    edges: {
+      ids: [],
+      byId: new Map()
+    },
+    owners: {
+      mindmaps: {
+        ids: [],
+        byId: new Map()
+      },
+      groups: {
+        ids: [],
+        byId: new Map()
+      }
+    }
+  },
+  render: {
+    edge: {
+      statics: {
+        ids: [],
+        byId: new Map()
+      },
+      active: {
+        ids: [],
+        byId: new Map()
+      },
+      labels: {
+        ids: [],
+        byId: new Map()
+      },
+      masks: {
+        ids: [],
+        byId: new Map()
+      },
+      overlay: {
+        endpointHandles: [],
+        routePoints: []
+      }
+    }
+  },
+  items: [] as readonly SceneItem[],
+  ui: {
+    chrome: {
+      overlays: [],
+      hover: {
+        kind: 'none'
+      },
+      preview: {
+        guides: [],
+        draw: null,
+        mindmap: null
+      },
+      edit: null
+    },
+    nodes: {
+      ids: [],
+      byId: new Map()
+    },
+    edges: {
+      ids: [],
+      byId: new Map()
+    }
+  }
+})

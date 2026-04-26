@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
+import { createChangeState } from '@shared/projector/change'
 import { createEditorSceneRuntime } from '@whiteboard/editor-scene'
+import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
 import { createEditorBoundaryRuntime } from '../src/boundary/runtime'
 import { createEditorBoundaryTaskRuntime } from '../src/boundary/task'
-import { createEmptyEditorGraphInputDelta } from '../src/projection/input'
 
 describe('editor boundary runtime', () => {
   const createBoundary = () => {
@@ -19,6 +20,7 @@ describe('editor boundary runtime', () => {
     boundary = createEditorBoundaryRuntime({
       projection: {
         current: () => ({
+          revision: graph.revision(),
           snapshot: graph.snapshot(),
           result: null
         }),
@@ -45,8 +47,8 @@ describe('editor boundary runtime', () => {
 
   it('interprets publish requests and passes published snapshots back into procedures', () => {
     const { boundary, flush, mark } = createBoundary()
-    const delta = createEmptyEditorGraphInputDelta()
-    delta.ui.draw = true
+    const delta = createChangeState(sceneInputChangeSpec)
+    delta.session.preview.draw = true
 
     const run = boundary.procedure(() => (function* () {
       const published = yield {

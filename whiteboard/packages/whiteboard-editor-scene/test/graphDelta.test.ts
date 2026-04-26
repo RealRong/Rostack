@@ -8,12 +8,12 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import type { Input } from '../src/contracts/editor'
-import { createEmptyInput, createEmptyInputDelta } from '../src/projector/spec'
+import { createEmptyInput, createEmptyInputDelta } from '../src/testing/input'
 import {
   createEditorGraphTextMeasure,
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
-import { createEditorGraphProjectorHarness } from '../src/testing/runtime'
+import { createEditorSceneModelHarness } from '../src/testing/runtime'
 
 const createNode = (input: {
   engine: ReturnType<typeof createEngine>
@@ -99,6 +99,7 @@ const createInput = (input: {
   }
   const value = createEmptyInput()
   value.document.snapshot = input.engine.current().snapshot
+  value.document.delta = input.engine.current().delta
   value.session.edit = input.edit ?? null
   value.delta = input.delta
   return value
@@ -106,7 +107,7 @@ const createInput = (input: {
 
 let currentMeasureState: EditorGraphTextMeasureState = {}
 
-const createProjectorHarness = () => createEditorGraphProjectorHarness({
+const createProjectorHarness = () => createEditorSceneModelHarness({
   measure: createEditorGraphTextMeasure(
     () => currentMeasureState
   )
@@ -150,7 +151,7 @@ describe('graph delta patching', () => {
       }))
 
     const liveDelta = createEmptyInputDelta()
-    liveDelta.graph.nodes.edit.updated.add(firstId)
+    liveDelta.session.draft.nodes.updated.add(firstId)
 
     const live = runtime.update(createInput({
         engine,
@@ -238,7 +239,7 @@ describe('graph delta patching', () => {
     expect(result.trace.phases.map((phase) => phase.name)).toEqual([
       'graph',
       'spatial',
-      'render'
+      'view'
     ])
     expect(runtime.working().delta.spatial.order).toBe(true)
     expect(runtime.working().delta.spatial.records.added.size).toBe(0)

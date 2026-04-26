@@ -1,8 +1,4 @@
 import { equal } from '@shared/core'
-import {
-  idDelta,
-  writeEntityChange
-} from '@shared/projector/delta'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
@@ -14,8 +10,7 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  RenderPublishDelta,
-  RenderPatchScope
+  ViewPatchScope
 } from '../contracts/delta'
 import type {
   Input,
@@ -541,41 +536,43 @@ const readActiveEdgeIds = (
 
 const patchStatics = (input: {
   working: WorkingState
-  delta: RenderPublishDelta
-  scope: RenderPatchScope
-}) => {
+  scope: ViewPatchScope
+}): number => {
   if (!input.scope.reset && input.scope.statics.size === 0) {
-    return
+    return 0
   }
 
   const previous = input.working.render.statics
   const next = buildStaticState(input.working)
   const nextStatics = new Map<EdgeStaticId, EdgeStaticView>()
+  let count = 0
 
   next.statics.forEach((view, staticId) => {
     const previousView = previous.statics.get(staticId)
-    nextStatics.set(
-      staticId,
-      previousView && isStaticViewEqual(previousView, view)
-        ? previousView
-        : view
-    )
+    const nextView = previousView && isStaticViewEqual(previousView, view)
+      ? previousView
+      : view
+    nextStatics.set(staticId, nextView)
   })
-
-  idDelta.reset(input.delta.edge.statics)
 
   const ids = new Set<EdgeStaticId>([
     ...previous.statics.keys(),
     ...nextStatics.keys()
   ])
   ids.forEach((staticId) => {
-    writeEntityChange({
-      delta: input.delta.edge.statics,
-      id: staticId,
-      previous: previous.statics.get(staticId),
-      next: nextStatics.get(staticId),
-      equal: isStaticViewEqual
-    })
+    const previousView = previous.statics.get(staticId)
+    const nextView = nextStatics.get(staticId)
+    if (
+      previousView === undefined && nextView !== undefined
+      || previousView !== undefined && nextView === undefined
+      || (
+        previousView !== undefined
+        && nextView !== undefined
+        && !isStaticViewEqual(previousView, nextView)
+      )
+    ) {
+      count += 1
+    }
   })
 
   input.working.render.statics = {
@@ -585,15 +582,20 @@ const patchStatics = (input: {
     staticIdsByStyleKey: next.staticIdsByStyleKey,
     statics: nextStatics
   }
+
+  return count
 }
 
 const patchLabelsAndMasks = (input: {
   working: WorkingState
-  delta: RenderPublishDelta
-  scope: RenderPatchScope
-}) => {
-  if (!input.scope.reset && input.scope.labels.size === 0) {
-    return
+  scope: ViewPatchScope
+}): number => {
+  if (
+    !input.scope.reset
+    && input.scope.labels.size === 0
+    && input.scope.masks.size === 0
+  ) {
+    return 0
   }
 
   const previousLabels = input.working.render.labels
@@ -601,6 +603,7 @@ const patchLabelsAndMasks = (input: {
   const built = buildLabelsAndMasks(input.working)
   const nextLabels = new Map<EdgeLabelKey, EdgeLabelView>()
   const nextMasks = new Map<EdgeId, EdgeMaskView>()
+  let count = 0
 
   built.labels.forEach((view, key) => {
     const previous = previousLabels.get(key)
@@ -618,51 +621,60 @@ const patchLabelsAndMasks = (input: {
       previous && isMaskViewEqual(previous, view)
         ? previous
         : view
-    )
+      )
   })
-
-  idDelta.reset(input.delta.edge.labels)
-  idDelta.reset(input.delta.edge.masks)
 
   new Set<EdgeLabelKey>([
     ...previousLabels.keys(),
     ...nextLabels.keys()
   ]).forEach((key) => {
-    writeEntityChange({
-      delta: input.delta.edge.labels,
-      id: key,
-      previous: previousLabels.get(key),
-      next: nextLabels.get(key),
-      equal: isLabelViewEqual
-    })
+    const previous = previousLabels.get(key)
+    const next = nextLabels.get(key)
+    if (
+      previous === undefined && next !== undefined
+      || previous !== undefined && next === undefined
+      || (
+        previous !== undefined
+        && next !== undefined
+        && !isLabelViewEqual(previous, next)
+      )
+    ) {
+      count += 1
+    }
   })
   new Set<EdgeId>([
     ...previousMasks.keys(),
     ...nextMasks.keys()
   ]).forEach((edgeId) => {
-    writeEntityChange({
-      delta: input.delta.edge.masks,
-      id: edgeId,
-      previous: previousMasks.get(edgeId),
-      next: nextMasks.get(edgeId),
-      equal: isMaskViewEqual
-    })
+    const previous = previousMasks.get(edgeId)
+    const next = nextMasks.get(edgeId)
+    if (
+      previous === undefined && next !== undefined
+      || previous !== undefined && next === undefined
+      || (
+        previous !== undefined
+        && next !== undefined
+        && !isMaskViewEqual(previous, next)
+      )
+    ) {
+      count += 1
+    }
   })
 
   input.working.render.labels = nextLabels
   input.working.render.masks = nextMasks
+
+  return count
 }
 
 const patchActive = (input: {
   working: WorkingState
   current: Input
-  delta: RenderPublishDelta
-  scope: RenderPatchScope
-}) => {
+  scope: ViewPatchScope
+}): number => {
   const activeIds = readActiveEdgeIds(input.current)
   const previous = input.working.render.active
-
-  idDelta.reset(input.delta.edge.active)
+  let count = 0
 
   if (input.scope.reset) {
     const next = new Map<EdgeId, EdgeActiveView>()
@@ -684,17 +696,23 @@ const patchActive = (input: {
       ...previous.keys(),
       ...next.keys()
     ]).forEach((edgeId) => {
-      writeEntityChange({
-        delta: input.delta.edge.active,
-        id: edgeId,
-        previous: previous.get(edgeId),
-        next: next.get(edgeId),
-        equal: isActiveViewEqual
-      })
+      const previousView = previous.get(edgeId)
+      const nextView = next.get(edgeId)
+      if (
+        previousView === undefined && nextView !== undefined
+        || previousView !== undefined && nextView === undefined
+        || (
+          previousView !== undefined
+          && nextView !== undefined
+          && !isActiveViewEqual(previousView, nextView)
+        )
+      ) {
+        count += 1
+      }
     })
 
     input.working.render.active = next
-    return
+    return count
   }
 
   input.scope.active.forEach((edgeId) => {
@@ -716,25 +734,29 @@ const patchActive = (input: {
       previous.set(edgeId, nextView)
     }
 
-    writeEntityChange({
-      delta: input.delta.edge.active,
-      id: edgeId,
-      previous: previousView,
-      next: nextView,
-      equal: isActiveViewEqual
-    })
+    if (
+      previousView === undefined && nextView !== undefined
+      || previousView !== undefined && nextView === undefined
+      || (
+        previousView !== undefined
+        && nextView !== undefined
+        && !isActiveViewEqual(previousView, nextView)
+      )
+    ) {
+      count += 1
+    }
   })
+
+  return count
 }
 
 const patchOverlay = (input: {
   working: WorkingState
   current: Input
-  delta: RenderPublishDelta
-  scope: RenderPatchScope
-}) => {
-  input.delta.edge.overlay = false
+  scope: ViewPatchScope
+}): number => {
   if (!input.scope.reset && !input.scope.overlay) {
-    return
+    return 0
   }
 
   const previous = input.working.render.overlay
@@ -747,17 +769,16 @@ const patchOverlay = (input: {
     : nextCandidate
 
   input.working.render.overlay = next
-  input.delta.edge.overlay = next !== previous
+  return next !== previous ? 1 : 0
 }
 
-export const patchRender = (input: {
+export const patchRenderState = (input: {
   working: WorkingState
   current: Input
-  delta: RenderPublishDelta
-  scope: RenderPatchScope
-}) => {
+  scope: ViewPatchScope
+}): number => (
   patchStatics(input)
-  patchLabelsAndMasks(input)
-  patchActive(input)
-  patchOverlay(input)
-}
+  + patchLabelsAndMasks(input)
+  + patchActive(input)
+  + patchOverlay(input)
+)

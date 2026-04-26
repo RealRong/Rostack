@@ -10,13 +10,10 @@ import type {
   Node,
   NodeId
 } from '@whiteboard/core/types'
-import type { Revision } from '@shared/projector'
+import type { Revision } from '@shared/projector/phase'
 import type {
   GraphDelta,
-  GraphPublishDelta,
-  RenderPublishDelta,
-  SpatialDelta,
-  UiPublishDelta
+  SpatialDelta
 } from './delta'
 import type {
   ChromeView,
@@ -62,26 +59,6 @@ export interface WorkingState {
     graph: GraphDelta
     spatial: SpatialDelta
   }
-  publish: {
-    graph: GraphPublishState
-    ui: UiPublishState
-    render: RenderPublishState
-  }
-}
-
-export interface GraphPublishState {
-  revision: Revision
-  delta: GraphPublishDelta
-}
-
-export interface UiPublishState {
-  revision: Revision
-  delta: UiPublishDelta
-}
-
-export interface RenderPublishState {
-  revision: Revision
-  delta: RenderPublishDelta
 }
 
 export interface GraphState {

@@ -1,9 +1,11 @@
 import { scheduler } from '@shared/core'
+import { createChangeState } from '@shared/projector/change'
 import type {
   GraphSnapshot,
   MindmapView,
   InputDelta
 } from '@whiteboard/editor-scene'
+import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
 import type {
   MindmapId,
   MindmapInsertInput,
@@ -23,9 +25,8 @@ import type {
   EditorTaskRequest
 } from '@whiteboard/editor/boundary/procedure'
 import {
-  createEmptyEditorGraphInputDelta,
   readActiveMindmapTickIds
-} from '@whiteboard/editor/projection/input'
+} from '@whiteboard/editor/projection/adapter'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import type {
   MindmapEnterPreview,
@@ -305,8 +306,8 @@ const buildMindmapRelativeInsertInput = ({
 const createMindmapTickDelta = (
   ids: ReadonlySet<string>
 ) => {
-  const delta = createEmptyEditorGraphInputDelta()
-  delta.graph.mindmaps.tick = new Set(ids)
+  const delta = createChangeState(sceneInputChangeSpec)
+  delta.clock.mindmaps = new Set(ids)
   return delta
 }
 

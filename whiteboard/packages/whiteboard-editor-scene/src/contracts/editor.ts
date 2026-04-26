@@ -38,14 +38,20 @@ import type {
 import type {
   ProjectorTrace,
   Revision
-} from '@shared/projector'
+} from '@shared/projector/phase'
 import type {
-  Family,
-  Flags
+  Family
 } from '@shared/projector/publish'
+import { store } from '@shared/core'
 import type { IdDelta } from './delta'
 import type {
-  RenderChange,
+  EdgeActiveView,
+  EdgeLabelKey,
+  EdgeLabelView as EdgeRenderLabelView,
+  EdgeMaskView,
+  EdgeOverlayView,
+  EdgeStaticId,
+  EdgeStaticView,
   RenderSnapshot
 } from './render'
 import type { SpatialRead } from '../domain/spatial/contracts'
@@ -395,8 +401,8 @@ export interface ClockInput {
 
 export interface InputDelta {
   document: DocumentDelta
-  graph: GraphInputDelta
-  ui: UiInputDelta
+  session: SessionInputDelta
+  clock: ClockInputDelta
 }
 
 export interface DocumentDelta {
@@ -408,31 +414,29 @@ export interface DocumentDelta {
   groups: IdDelta<GroupId>
 }
 
-export interface GraphInputDelta {
-  nodes: {
-    draft: IdDelta<NodeId>
-    preview: IdDelta<NodeId>
-    edit: IdDelta<NodeId>
-  }
-  edges: {
-    preview: IdDelta<EdgeId>
-    edit: IdDelta<EdgeId>
-  }
-  mindmaps: {
-    preview: IdDelta<MindmapId>
-    tick: ReadonlySet<MindmapId>
-  }
-}
-
-export interface UiInputDelta {
+export interface SessionInputDelta {
   tool: boolean
   selection: boolean
   hover: boolean
-  marquee: boolean
-  guides: boolean
-  draw: boolean
   edit: boolean
-  overlay: boolean
+  interaction: boolean
+  draft: {
+    nodes: IdDelta<NodeId>
+    edges: IdDelta<EdgeId>
+  }
+  preview: {
+    nodes: IdDelta<NodeId>
+    edges: IdDelta<EdgeId>
+    mindmaps: IdDelta<MindmapId>
+    marquee: boolean
+    guides: boolean
+    draw: boolean
+    edgeGuide: boolean
+  }
+}
+
+export interface ClockInputDelta {
+  mindmaps: ReadonlySet<MindmapId>
 }
 
 export interface Snapshot {
@@ -626,45 +630,56 @@ export interface ChromeOverlay {
   id?: string
 }
 
-export interface Change {
-  graph: GraphChange
-  render: RenderChange
-  items: Flags
-  ui: UiChange
-}
-
-export interface GraphChange {
-  nodes: IdDelta<NodeId>
-  edges: IdDelta<EdgeId>
-  owners: OwnerChange
-}
-
-export interface OwnerChange {
-  mindmaps: IdDelta<MindmapId>
-  groups: IdDelta<GroupId>
-}
-
-export interface UiChange {
-  chrome: Flags
-  nodes: IdDelta<NodeId>
-  edges: IdDelta<EdgeId>
-}
-
 export interface Runtime {
-  readonly query: Read
+  readonly stores: RuntimeStores
+  readonly read: Read
+  revision(): Revision
   snapshot(): Snapshot
   update(input: Input): Result
-  subscribe(listener: (snapshot: Snapshot, change: Change) => void): () => void
+  subscribe(listener: (result: Result) => void): () => void
+}
+
+export interface FamilyReadStore<
+  TId extends string,
+  TValue
+> {
+  ids: store.ReadStore<readonly TId[]>
+  byId: store.KeyedReadStore<TId, TValue | undefined>
+}
+
+export interface RuntimeStores {
+  graph: {
+    nodes: FamilyReadStore<NodeId, NodeView>
+    edges: FamilyReadStore<EdgeId, EdgeView>
+    owners: {
+      mindmaps: FamilyReadStore<MindmapId, MindmapView>
+      groups: FamilyReadStore<GroupId, GroupView>
+    }
+  }
+  render: {
+    edge: {
+      statics: FamilyReadStore<EdgeStaticId, EdgeStaticView>
+      active: FamilyReadStore<EdgeId, EdgeActiveView>
+      labels: FamilyReadStore<EdgeLabelKey, EdgeRenderLabelView>
+      masks: FamilyReadStore<EdgeId, EdgeMaskView>
+      overlay: store.ReadStore<EdgeOverlayView>
+    }
+  }
+  items: store.ReadStore<readonly SceneItem[]>
+  ui: {
+    chrome: store.ReadStore<ChromeView>
+    nodes: FamilyReadStore<NodeId, NodeUiView>
+    edges: FamilyReadStore<EdgeId, EdgeUiView>
+  }
 }
 
 export interface Result {
-  snapshot: Snapshot
-  change: Change
+  revision: Revision
   trace?: ProjectorTrace
 }
 
 export interface Read {
-  snapshot(): Snapshot
+  revision(): Revision
   node(id: NodeId): NodeView | undefined
   edge(id: EdgeId): EdgeView | undefined
   mindmap(id: MindmapId): MindmapView | undefined

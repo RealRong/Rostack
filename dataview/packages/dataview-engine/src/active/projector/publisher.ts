@@ -1,4 +1,4 @@
-import type { ProjectorPublisher } from '@shared/projector'
+import type { ProjectorPublisher } from '@shared/projector/phase'
 import type {
   ActiveProjectorWorking
 } from '../contracts/projector'

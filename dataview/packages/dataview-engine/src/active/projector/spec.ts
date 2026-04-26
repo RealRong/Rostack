@@ -1,6 +1,6 @@
 import {
   type ProjectorSpec
-} from '@shared/projector'
+} from '@shared/projector/phase'
 import type { ActiveDelta } from '@dataview/engine/contracts/delta'
 import type { ViewState } from '@dataview/engine/contracts/view'
 import type {

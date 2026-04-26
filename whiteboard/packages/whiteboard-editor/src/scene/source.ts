@@ -1,15 +1,7 @@
 import { store } from '@shared/core'
-import {
-  createProjectorStore,
-  family,
-  value,
-  type InferProjectorStoreRead,
-  type ProjectorStore
-} from '@shared/projector'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Edge, EdgeId, GroupId, MindmapId, Node, NodeId, Point, Rect } from '@whiteboard/core/types'
 import type {
-  Change,
   ChromeView,
   EdgeActiveView,
   EdgeLabelKey,
@@ -25,10 +17,10 @@ import type {
   NodeUiView,
   NodeView as RuntimeNodeView,
   Read as EditorGraphQuery,
-  SceneItem,
-  Snapshot
+  RuntimeStores,
+  SceneItem
 } from '@whiteboard/editor-scene'
-import type { EditorSceneController } from '@whiteboard/editor/projection/controller'
+import type { EditorSceneBridge } from '@whiteboard/editor/projection/bridge'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorSessionState } from '@whiteboard/editor/types/editor'
 import {
@@ -62,7 +54,6 @@ import {
 } from './selection'
 
 type SceneProjectionStores = {
-  snapshot: store.ReadStore<Snapshot>
   items: store.ReadStore<readonly SceneItem[]>
   chrome: store.ReadStore<ChromeView>
   nodeGraphIds: store.ReadStore<readonly NodeId[]>
@@ -82,13 +73,6 @@ type SceneProjectionStores = {
   group: store.KeyedReadStore<GroupId, GroupView | undefined>
   nodeUi: store.KeyedReadStore<NodeId, NodeUiView | undefined>
   edgeUi: store.KeyedReadStore<EdgeId, EdgeUiView | undefined>
-}
-
-type ProjectionStoreRead = InferProjectorStoreRead<typeof projectionStoreSpec>
-
-type SceneProjectionStore = {
-  projection: ProjectorStore<Snapshot, Change, ProjectionStoreRead>
-  stores: SceneProjectionStores
 }
 
 export type EditorSceneRuntime = {
@@ -218,116 +202,6 @@ export type EditorSceneRuntime = {
   chrome: SceneProjectionStores['chrome']
 }
 
-const projectionStoreSpec = {
-  fields: {
-    snapshot: value<Snapshot, Change, Snapshot>({
-      read: snapshot => snapshot,
-      changed: () => true
-    }),
-    items: value<Snapshot, Change, readonly SceneItem[]>({
-      read: snapshot => snapshot.items,
-      changed: change => change.items.changed
-    }),
-    chrome: value<Snapshot, Change, ChromeView>({
-      read: snapshot => snapshot.ui.chrome,
-      changed: change => change.ui.chrome.changed
-    }),
-    nodeGraph: family<Snapshot, Change, NodeId, RuntimeNodeView>({
-      read: snapshot => snapshot.graph.nodes,
-      delta: change => change.graph.nodes
-    }),
-    edgeGraph: family<Snapshot, Change, EdgeId, RuntimeEdgeView>({
-      read: snapshot => snapshot.graph.edges,
-      delta: change => change.graph.edges
-    }),
-    edgeRenderStatics: family<Snapshot, Change, EdgeStaticId, EdgeStaticView>({
-      read: snapshot => snapshot.render.edge.statics,
-      delta: change => change.render.edge.statics
-    }),
-    edgeRenderActive: family<Snapshot, Change, EdgeId, EdgeActiveView>({
-      read: snapshot => snapshot.render.edge.active,
-      delta: change => change.render.edge.active
-    }),
-    edgeRenderLabels: family<Snapshot, Change, EdgeLabelKey, EdgeRenderLabelView>({
-      read: snapshot => snapshot.render.edge.labels,
-      delta: change => change.render.edge.labels
-    }),
-    edgeRenderMasks: family<Snapshot, Change, EdgeId, EdgeMaskView>({
-      read: snapshot => snapshot.render.edge.masks,
-      delta: change => change.render.edge.masks
-    }),
-    edgeRenderOverlay: value<Snapshot, Change, EdgeOverlayView>({
-      read: snapshot => snapshot.render.edge.overlay,
-      changed: change => change.render.edge.overlay.changed
-    }),
-    mindmap: family<Snapshot, Change, MindmapId, MindmapView>({
-      read: snapshot => snapshot.graph.owners.mindmaps,
-      delta: change => change.graph.owners.mindmaps
-    }),
-    group: family<Snapshot, Change, GroupId, GroupView>({
-      read: snapshot => snapshot.graph.owners.groups,
-      delta: change => change.graph.owners.groups
-    }),
-    nodeUi: family<Snapshot, Change, NodeId, NodeUiView>({
-      read: snapshot => snapshot.ui.nodes,
-      delta: change => change.ui.nodes
-    }),
-    edgeUi: family<Snapshot, Change, EdgeId, EdgeUiView>({
-      read: snapshot => snapshot.ui.edges,
-      delta: change => change.ui.edges
-    })
-  }
-} as const
-
-const createProjectionStore = (
-  initial: Snapshot
-): SceneProjectionStore => {
-  const projection = createProjectorStore({
-    initial,
-    spec: projectionStoreSpec
-  })
-
-  return {
-    projection,
-    stores: {
-      snapshot: projection.read.snapshot,
-      items: projection.read.items,
-      chrome: projection.read.chrome,
-      nodeGraphIds: projection.read.nodeGraph.ids,
-      nodeGraph: projection.read.nodeGraph.byId,
-      edgeGraphIds: projection.read.edgeGraph.ids,
-      edgeGraph: projection.read.edgeGraph.byId,
-      edgeRenderStaticsIds: projection.read.edgeRenderStatics.ids,
-      edgeRenderStatics: projection.read.edgeRenderStatics.byId,
-      edgeRenderActiveIds: projection.read.edgeRenderActive.ids,
-      edgeRenderActive: projection.read.edgeRenderActive.byId,
-      edgeRenderLabelsIds: projection.read.edgeRenderLabels.ids,
-      edgeRenderLabels: projection.read.edgeRenderLabels.byId,
-      edgeRenderMasksIds: projection.read.edgeRenderMasks.ids,
-      edgeRenderMasks: projection.read.edgeRenderMasks.byId,
-      edgeRenderOverlay: projection.read.edgeRenderOverlay,
-      mindmap: projection.read.mindmap.byId,
-      group: projection.read.group.byId,
-      nodeUi: projection.read.nodeUi.byId,
-      edgeUi: projection.read.edgeUi.byId
-    }
-  }
-}
-
-const syncProjectionStore = (
-  projection: SceneProjectionStore['projection'],
-  result: {
-    snapshot: Snapshot
-    change: Change
-  }
-) => {
-  projection.sync({
-    previous: projection.snapshot(),
-    next: result.snapshot,
-    change: result.change
-  })
-}
-
 const toGroupTarget = (
   items: GroupView['structure']['items']
 ): SelectionTarget => selectionApi.target.normalize({
@@ -351,6 +225,30 @@ const collectPresentValues = <TId extends string, TValue>(
   return value ? [value] : []
 })
 
+const createSceneProjectionStores = (
+  stores: RuntimeStores
+): SceneProjectionStores => ({
+  items: stores.items,
+  chrome: stores.ui.chrome,
+  nodeGraphIds: stores.graph.nodes.ids,
+  nodeGraph: stores.graph.nodes.byId,
+  edgeGraphIds: stores.graph.edges.ids,
+  edgeGraph: stores.graph.edges.byId,
+  edgeRenderStaticsIds: stores.render.edge.statics.ids,
+  edgeRenderStatics: stores.render.edge.statics.byId,
+  edgeRenderActiveIds: stores.render.edge.active.ids,
+  edgeRenderActive: stores.render.edge.active.byId,
+  edgeRenderLabelsIds: stores.render.edge.labels.ids,
+  edgeRenderLabels: stores.render.edge.labels.byId,
+  edgeRenderMasksIds: stores.render.edge.masks.ids,
+  edgeRenderMasks: stores.render.edge.masks.byId,
+  edgeRenderOverlay: stores.render.edge.overlay,
+  mindmap: stores.graph.owners.mindmaps.byId,
+  group: stores.graph.owners.groups.byId,
+  nodeUi: stores.ui.nodes.byId,
+  edgeUi: stores.ui.edges.byId
+})
+
 export const createSceneSource = ({
   controller,
   state,
@@ -358,21 +256,16 @@ export const createSceneSource = ({
   visibleRect,
   readZoom
 }: {
-  controller: Pick<EditorSceneController, 'query' | 'current' | 'subscribe'>
+  controller: Pick<EditorSceneBridge, 'read' | 'current' | 'stores'>
   state: EditorSessionState
   nodeType: NodeTypeSupport
   visibleRect: () => Rect
   readZoom: () => number
 }): EditorSceneRuntime => {
-  const published = createProjectionStore(controller.current().snapshot)
-  controller.subscribe((result) => {
-    syncProjectionStore(published.projection, result)
-  })
-
-  const sources = published.stores
-  const query = controller.query
-  const spatial = controller.query.spatial
-  const readRevision = () => store.read(sources.snapshot).revision
+  const sources = createSceneProjectionStores(controller.stores)
+  const query = controller.read
+  const spatial = controller.read.spatial
+  const readRevision = () => controller.current().revision
   const geometry = createSceneGeometry({
     revision: readRevision,
     nodeGraph: sources.nodeGraph,
@@ -542,14 +435,8 @@ export const createSceneSource = ({
     selection: selectionSource,
     mindmap: {
       view: sources.mindmap,
-      id: (value) => {
-        store.read(sources.snapshot)
-        return query.mindmapId(value)
-      },
-      structure: (value) => {
-        store.read(sources.snapshot)
-        return query.mindmapStructure(value as MindmapId | string)
-      },
+      id: (value) => query.mindmapId(value),
+      structure: (value) => query.mindmapStructure(value as MindmapId | string),
       navigate: (input) => {
         const structure = query.mindmapStructure(input.id)
         return structure

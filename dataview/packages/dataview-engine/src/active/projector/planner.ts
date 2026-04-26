@@ -1,7 +1,7 @@
 import {
   createPlan,
   type ProjectorPlanner
-} from '@shared/projector'
+} from '@shared/projector/phase'
 import type { ViewState } from '@dataview/engine/contracts/view'
 import type {
   ActivePhaseScopeMap,

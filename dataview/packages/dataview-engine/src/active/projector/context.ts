@@ -9,7 +9,7 @@ import {
   type ProjectorContext,
   type ProjectorPhase,
   type ProjectorScopeValue
-} from '@shared/projector'
+} from '@shared/projector/phase'
 import type {
   ActivePhaseMetrics,
   ActivePhaseName,

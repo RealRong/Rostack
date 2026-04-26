@@ -1,11 +1,19 @@
 import { store } from '@shared/core'
 import {
+  createChangeState,
+  hasChangeState,
+  mergeChangeState,
+  takeChangeState
+} from '@shared/projector/change'
+import {
   createEditorSceneRuntime,
   type InputDelta,
-  type Read as EditorGraphQuery,
+  type Read as SceneRead,
   type Result,
+  type Runtime,
   type Snapshot
 } from '@whiteboard/editor-scene'
+import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorLayout } from '@whiteboard/editor/layout/runtime'
 import type {
@@ -18,23 +26,21 @@ import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import {
   createDocumentInputDelta,
-  createEditorGraphInput,
-  createEmptyEditorGraphInputDelta,
+  createSceneInput,
   createTouchedIdDelta,
-  hasEditorGraphInputDelta,
-  mergeEditorGraphInputDelta,
   readChangedPreviewEdgeIds,
   readEditedEdgeIds,
   readEditedNodeIds,
   readPreviewEdgeIds,
   readPreviewMindmapIds,
-  readPreviewNodeIds,
-  takeEditorGraphInputDelta
-} from './input'
+  readPreviewNodeIds
+} from './adapter'
 
-export interface EditorSceneController {
-  query: EditorGraphQuery
+export interface EditorSceneBridge {
+  stores: Runtime['stores']
+  read: SceneRead
   current(): {
+    revision: number
     snapshot: Snapshot
     result: Result | null
   }
@@ -103,16 +109,19 @@ const isProjectionInteractionStateEqual = (
   && left.editingEdge === right.editingEdge
 )
 
+const createInputDelta = (): InputDelta => createChangeState(
+  sceneInputChangeSpec
+)
+
 const createSelectionDelta = (): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
-  delta.ui.selection = true
+  const delta = createInputDelta()
+  delta.session.selection = true
   return delta
 }
 
 const createToolDelta = (): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
-  delta.ui.tool = true
-  delta.ui.overlay = true
+  const delta = createInputDelta()
+  delta.session.tool = true
   return delta
 }
 
@@ -120,9 +129,9 @@ const createHoverDelta = (input: {
   previous: EditorHoverState
   next: EditorHoverState
 }): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
+  const delta = createInputDelta()
   if (!isHoverTargetEqual(input.previous.target, input.next.target)) {
-    delta.ui.hover = true
+    delta.session.hover = true
   }
   return delta
 }
@@ -131,7 +140,7 @@ const createEditDelta = (input: {
   previous: EditSession | null
   next: EditSession | null
 }): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
+  const delta = createInputDelta()
   const touchedNodeIds = unionIds(
     readEditedNodeIds(input.previous),
     readEditedNodeIds(input.next)
@@ -142,13 +151,12 @@ const createEditDelta = (input: {
   )
 
   if (touchedNodeIds.size > 0) {
-    delta.graph.nodes.edit = createTouchedIdDelta(touchedNodeIds)
-    delta.graph.nodes.draft = createTouchedIdDelta(touchedNodeIds)
+    delta.session.draft.nodes = createTouchedIdDelta(touchedNodeIds)
   }
   if (touchedEdgeIds.size > 0) {
-    delta.graph.edges.edit = createTouchedIdDelta(touchedEdgeIds)
+    delta.session.draft.edges = createTouchedIdDelta(touchedEdgeIds)
   }
-  delta.ui.edit = true
+  delta.session.edit = true
   return delta
 }
 
@@ -156,10 +164,10 @@ const createInteractionDelta = (input: {
   previous: ProjectionInteractionState
   next: ProjectionInteractionState
 }): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
+  const delta = createInputDelta()
 
   if (!isProjectionInteractionStateEqual(input.previous, input.next)) {
-    delta.ui.overlay = true
+    delta.session.interaction = true
   }
 
   return delta
@@ -170,7 +178,7 @@ const createPreviewDelta = (input: {
   previous: EditorInputPreviewState
   next: EditorInputPreviewState
 }): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
+  const delta = createInputDelta()
   const touchedNodeIds = unionIds(
     readPreviewNodeIds(input.previous),
     readPreviewNodeIds(input.next)
@@ -185,39 +193,39 @@ const createPreviewDelta = (input: {
   )
 
   if (touchedNodeIds.size > 0) {
-    delta.graph.nodes.preview = createTouchedIdDelta(touchedNodeIds)
+    delta.session.preview.nodes = createTouchedIdDelta(touchedNodeIds)
   }
   if (touchedEdgeIds.size > 0) {
-    delta.graph.edges.preview = createTouchedIdDelta(touchedEdgeIds)
+    delta.session.preview.edges = createTouchedIdDelta(touchedEdgeIds)
   }
   if (touchedMindmapIds.size > 0) {
-    delta.graph.mindmaps.preview = createTouchedIdDelta(touchedMindmapIds)
+    delta.session.preview.mindmaps = createTouchedIdDelta(touchedMindmapIds)
   }
   if (
     input.previous.selection.node.frameHoverId !== input.next.selection.node.frameHoverId
     || input.previous.edge.interaction !== input.next.edge.interaction
   ) {
-    delta.ui.hover = true
+    delta.session.hover = true
   }
   if (!isEdgeGuideEqual(
     input.previous.edge.guide ?? {},
     input.next.edge.guide ?? {}
   )) {
-    delta.ui.overlay = true
+    delta.session.preview.edgeGuide = true
   }
   if (
     input.previous.selection.marquee !== input.next.selection.marquee
   ) {
-    delta.ui.marquee = true
+    delta.session.preview.marquee = true
   }
   if (input.previous.selection.guides !== input.next.selection.guides) {
-    delta.ui.guides = true
+    delta.session.preview.guides = true
   }
   if (
     input.previous.draw.preview !== input.next.draw.preview
     || input.previous.draw.hidden !== input.next.draw.hidden
   ) {
-    delta.ui.draw = true
+    delta.session.preview.draw = true
   }
 
   return delta
@@ -227,16 +235,17 @@ const createBootstrapDelta = (input: {
   engine: ReturnType<Engine['current']>
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
 }): InputDelta => {
-  const delta = createEmptyEditorGraphInputDelta()
+  const delta = createInputDelta()
   delta.document = createDocumentInputDelta(input.engine.delta)
-  delta.ui.tool = true
-  delta.ui.selection = true
-  delta.ui.hover = true
-  delta.ui.marquee = true
-  delta.ui.guides = true
-  delta.ui.draw = true
-  delta.ui.edit = true
-  delta.ui.overlay = true
+  delta.session.tool = true
+  delta.session.selection = true
+  delta.session.hover = true
+  delta.session.edit = true
+  delta.session.interaction = true
+  delta.session.preview.marquee = true
+  delta.session.preview.guides = true
+  delta.session.preview.draw = true
+  delta.session.preview.edgeGuide = true
 
   const edit = input.session.state.edit.get()
   const editedNodeIds = readEditedNodeIds(edit)
@@ -250,26 +259,25 @@ const createBootstrapDelta = (input: {
   )
 
   if (editedNodeIds.size > 0) {
-    delta.graph.nodes.edit = createTouchedIdDelta(editedNodeIds)
-    delta.graph.nodes.draft = createTouchedIdDelta(editedNodeIds)
+    delta.session.draft.nodes = createTouchedIdDelta(editedNodeIds)
   }
   if (editedEdgeIds.size > 0) {
-    delta.graph.edges.edit = createTouchedIdDelta(editedEdgeIds)
+    delta.session.draft.edges = createTouchedIdDelta(editedEdgeIds)
   }
   if (previewNodeIds.size > 0) {
-    delta.graph.nodes.preview = createTouchedIdDelta(previewNodeIds)
+    delta.session.preview.nodes = createTouchedIdDelta(previewNodeIds)
   }
   if (previewEdgeIds.size > 0) {
-    delta.graph.edges.preview = createTouchedIdDelta(previewEdgeIds)
+    delta.session.preview.edges = createTouchedIdDelta(previewEdgeIds)
   }
   if (previewMindmapIds.size > 0) {
-    delta.graph.mindmaps.preview = createTouchedIdDelta(previewMindmapIds)
+    delta.session.preview.mindmaps = createTouchedIdDelta(previewMindmapIds)
   }
 
   return delta
 }
 
-export const createSceneController = ({
+export const createSceneBridge = ({
   engine,
   session,
   layout
@@ -277,7 +285,7 @@ export const createSceneController = ({
   engine: Engine
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
   layout: Pick<EditorLayout, 'draft' | 'measureText'>
-}): EditorSceneController => {
+}): EditorSceneBridge => {
   const runtime = createEditorSceneRuntime({
     measure: layout.measureText
   })
@@ -286,7 +294,7 @@ export const createSceneController = ({
   const state = {
     engine: engine.current(),
     previousDocumentSnapshot: null as ReturnType<Engine['current']>['snapshot'] | null,
-    pending: createEmptyEditorGraphInputDelta(),
+    pending: createInputDelta(),
     flushing: false,
     scheduled: false
   }
@@ -318,7 +326,7 @@ export const createSceneController = ({
   const mark = (
     delta: InputDelta
   ) => {
-    mergeEditorGraphInputDelta(state.pending, delta)
+    mergeChangeState(sceneInputChangeSpec, state.pending, delta)
     scheduleFlush()
   }
 
@@ -330,9 +338,9 @@ export const createSceneController = ({
     state.flushing = true
     state.scheduled = false
     try {
-      while (hasEditorGraphInputDelta(state.pending)) {
-        const delta = takeEditorGraphInputDelta(state.pending)
-        const result = runtime.update(createEditorGraphInput({
+      while (hasChangeState(sceneInputChangeSpec, state.pending)) {
+        const delta = takeChangeState(sceneInputChangeSpec, state.pending)
+        const result = runtime.update(createSceneInput({
           previous: state.previousDocumentSnapshot,
           publish: state.engine,
           session,
@@ -344,7 +352,7 @@ export const createSceneController = ({
       }
     } finally {
       state.flushing = false
-      if (hasEditorGraphInputDelta(state.pending)) {
+      if (hasChangeState(sceneInputChangeSpec, state.pending)) {
         scheduleFlush()
       }
     }
@@ -356,7 +364,7 @@ export const createSceneController = ({
     engine.subscribe((publish) => {
       state.previousDocumentSnapshot = state.engine.snapshot
       state.engine = publish
-      const delta = createEmptyEditorGraphInputDelta()
+      const delta = createInputDelta()
       delta.document = createDocumentInputDelta(publish.delta)
       mark(delta)
     }),
@@ -390,7 +398,7 @@ export const createSceneController = ({
         previous: previousHover,
         next: currentHover
       })
-      if (delta.ui.hover) {
+      if (delta.session.hover) {
         mark(delta)
       }
     }),
@@ -401,7 +409,7 @@ export const createSceneController = ({
         previous: previousInteraction,
         next: currentInteraction
       })
-      if (delta.ui.overlay) {
+      if (delta.session.interaction) {
         mark(delta)
       }
     }),
@@ -412,7 +420,7 @@ export const createSceneController = ({
         previous: previousInteraction,
         next: currentInteraction
       })
-      if (delta.ui.overlay) {
+      if (delta.session.interaction) {
         mark(delta)
       }
     })
@@ -425,8 +433,10 @@ export const createSceneController = ({
   flush()
 
   return {
-    query: runtime.query,
+    stores: runtime.stores,
+    read: runtime.read,
     current: () => ({
+      revision: runtime.revision(),
       snapshot: runtime.snapshot(),
       result: currentResult
     }),

@@ -9,7 +9,7 @@ import type {
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
-import type { ProjectorTrace } from '@shared/projector'
+import type { ProjectorTrace } from '@shared/projector/phase'
 import type {
   ActivePhaseMetrics,
   ActivePhaseName

@@ -7,11 +7,14 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { Read, Runtime } from '../contracts/editor'
+import type { Revision } from '@shared/projector/phase'
+import type { Read } from '../contracts/editor'
 import type {
   GraphState,
-  IndexState
+  IndexState,
+  UiState
 } from '../contracts/working'
+import type { SceneItem } from '../contracts/editor'
 import {
   readGroupSignatureFromTarget
 } from '../domain/group'
@@ -132,12 +135,14 @@ const resolveMindmapId = (
     : undefined
 }
 
-export const createEditorGraphQuery = (
+export const createEditorSceneRead = (
   runtime: {
-    snapshot: Runtime['snapshot']
+    revision: () => Revision
     spatial: () => SpatialIndexState
     graph: () => GraphState
     indexes: () => IndexState
+    ui: () => UiState
+    items: () => readonly SceneItem[]
   }
 ): Read => {
   const spatial = createSpatialRead({
@@ -156,11 +161,11 @@ export const createEditorGraphQuery = (
   }
 
   return {
-    snapshot: () => runtime.snapshot(),
-    node: (id) => runtime.snapshot().graph.nodes.byId.get(id),
-    edge: (id) => runtime.snapshot().graph.edges.byId.get(id),
-    mindmap: (id) => runtime.snapshot().graph.owners.mindmaps.byId.get(id),
-    group: (id) => runtime.snapshot().graph.owners.groups.byId.get(id),
+    revision: runtime.revision,
+    node: (id) => runtime.graph().nodes.get(id),
+    edge: (id) => runtime.graph().edges.get(id),
+    mindmap: (id) => runtime.graph().owners.mindmaps.get(id),
+    group: (id) => runtime.graph().owners.groups.get(id),
     mindmapId: (value) => resolveMindmapId(
       runtime.graph(),
       runtime.indexes(),
@@ -182,8 +187,8 @@ export const createEditorGraphQuery = (
       const signature = readGroupSignatureFromTarget(normalized)
       return runtime.indexes().groupIdsBySignature.get(signature) ?? []
     },
-    nodeUi: (id) => runtime.snapshot().ui.nodes.byId.get(id),
-    edgeUi: (id) => runtime.snapshot().ui.edges.byId.get(id),
+    nodeUi: (id) => runtime.ui().nodes.get(id),
+    edgeUi: (id) => runtime.ui().edges.get(id),
     spatial,
     snap: (rect) => nodeApi.snap.buildCandidates(
       spatial.rect(rect, {
@@ -204,8 +209,18 @@ export const createEditorGraphQuery = (
     ),
     frame,
     hit,
-    items: () => runtime.snapshot().items,
-    ui: () => runtime.snapshot().ui,
-    chrome: () => runtime.snapshot().ui.chrome
+    items: () => runtime.items(),
+    ui: () => ({
+      chrome: runtime.ui().chrome,
+      nodes: {
+        ids: [...runtime.ui().nodes.keys()],
+        byId: runtime.ui().nodes
+      },
+      edges: {
+        ids: [...runtime.ui().edges.keys()],
+        byId: runtime.ui().edges
+      }
+    }),
+    chrome: () => runtime.ui().chrome
   }
 }

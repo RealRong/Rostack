@@ -1,47 +1,42 @@
-import { createProjector } from '@shared/projector'
+import { createProjectionRuntime } from '@shared/projector/model'
 import type {
-  Change,
-  Input,
+  Result,
   Runtime,
-  Snapshot,
   TextMeasure
 } from '../contracts/editor'
-import {
-  createWorking,
-  editorGraphProjectorSpec
-} from '../projector/spec'
-import { createEditorGraphQuery } from './query'
+import { createEditorSceneProjectionModel } from './model'
+import { createEditorSceneSnapshotReader } from './published'
+
+export const createEditorSceneModelRuntime = (input: {
+  measure?: TextMeasure
+} = {}) => {
+  const runtime = createProjectionRuntime(
+    createEditorSceneProjectionModel(input)
+  )
+  const snapshot = createEditorSceneSnapshotReader({
+    state: runtime.state,
+    revision: runtime.revision
+  })
+
+  return {
+    ...runtime,
+    snapshot
+  }
+}
 
 export const createEditorSceneRuntime = (input: {
   measure?: TextMeasure
 } = {}): Runtime => {
-  const working = createWorking({
-    measure: input.measure
-  })
-  const projector = createProjector({
-    ...editorGraphProjectorSpec,
-    createWorking: () => working
-  })
-  const snapshot = (): Snapshot => projector.snapshot()
-  const query = createEditorGraphQuery({
-    snapshot,
-    spatial: () => working.spatial,
-    graph: () => working.graph,
-    indexes: () => working.indexes
-  })
+  const runtime = createEditorSceneModelRuntime(input)
 
   return {
-    query,
-    snapshot,
-    update: (input: Input) => projector.update(input),
-    subscribe: (listener) => {
-      const wrapped = (result: {
-        snapshot: Snapshot
-        change: Change
-      }) => {
-        listener(result.snapshot, result.change)
-      }
-      return projector.subscribe(wrapped)
-    }
+    stores: runtime.stores,
+    read: runtime.read,
+    revision: runtime.revision,
+    snapshot: runtime.snapshot,
+    update: (current) => runtime.update(current) as Result,
+    subscribe: (listener) => runtime.subscribe((result) => {
+      listener(result as Result)
+    })
   }
 }

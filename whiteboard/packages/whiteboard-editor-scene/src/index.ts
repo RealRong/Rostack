@@ -10,7 +10,6 @@ export type {
   EdgeOverlayView,
   EdgeStaticId,
   EdgeStaticView,
-  RenderChange,
   RenderSnapshot
 } from './contracts/render'
 export type * from './domain/spatial/types'

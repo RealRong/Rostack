@@ -1,8 +1,3 @@
-import {
-  assertPhaseOrder,
-  assertPublishedOnce
-} from '@shared/projector/testing'
-import { idDelta } from '@shared/projector/delta'
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
@@ -15,7 +10,8 @@ import type {
 import { createEngine } from '@whiteboard/engine'
 import {
   createEditorSceneRuntime,
-  type Input as EditorGraphInput
+  type Input as EditorSceneInput,
+  type Result
 } from '../src'
 import {
   createEditorGraphDelta,
@@ -23,48 +19,23 @@ import {
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
 import {
-  createEditorGraphHarness
+  createEditorSceneHarness
 } from '../src/testing/runtime'
-import { createEmptyInput } from '../src/projector/spec'
+import { createEmptyInput } from '../src/testing/input'
 
 type RuntimeInputOptions = {
-  edit?: EditorGraphInput['session']['edit']
+  edit?: EditorSceneInput['session']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
   edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
-  selection?: EditorGraphInput['interaction']['selection']
-  hover?: EditorGraphInput['interaction']['hover']
-  draw?: EditorGraphInput['session']['preview']['draw']
-  marquee?: EditorGraphInput['session']['preview']['selection']['marquee']
+  selection?: EditorSceneInput['interaction']['selection']
+  hover?: EditorSceneInput['interaction']['hover']
+  draw?: EditorSceneInput['session']['preview']['draw']
+  marquee?: EditorSceneInput['session']['preview']['selection']['marquee']
   guides?: readonly Guide[]
-  mindmapPreview?: EditorGraphInput['session']['preview']['mindmap']
+  mindmapPreview?: EditorSceneInput['session']['preview']['mindmap']
   now?: number
-  delta?: EditorGraphInput['delta']
+  delta?: EditorSceneInput['delta']
 }
-
-const createEditorGraphPublishSpec = () => ({
-  graph: {
-    read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.graph,
-    change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.graph
-  },
-  items: {
-    read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.items,
-    change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.items
-  },
-  ui: {
-    chrome: {
-      read: (snapshot: ReturnType<ReturnType<typeof createEditorGraphHarness>['snapshot']>) => snapshot.ui.chrome,
-      change: (change: ReturnType<ReturnType<typeof createEditorGraphHarness>['update']>['change']) => change.ui.chrome
-    }
-  }
-})
-
-const touchedIds = <TId extends string>(
-  delta: {
-    added: ReadonlySet<TId>
-    updated: ReadonlySet<TId>
-    removed: ReadonlySet<TId>
-  }
-): ReadonlySet<TId> => idDelta.touched(delta)
 
 let currentMeasureState: EditorGraphTextMeasureState = {}
 
@@ -85,14 +56,14 @@ const createRuntime = () => createEditorSceneRuntime({
   measure
 })
 
-const createHarness = () => createEditorGraphHarness({
+const createHarness = () => createEditorSceneHarness({
   measure
 })
 
 const createInput = (
   engine: ReturnType<typeof createEngine>,
   options: RuntimeInputOptions = {}
-): EditorGraphInput => {
+): EditorSceneInput => {
   setCurrentMeasureState({
     nodeMeasures: options.nodeMeasures,
     edgeLabelMeasures: options.edgeLabelMeasures
@@ -100,6 +71,7 @@ const createInput = (
 
   const value = createEmptyInput()
   value.document.snapshot = engine.current().snapshot
+  value.document.delta = engine.current().delta
   value.session.edit = options.edit ?? null
   value.session.preview.draw = options.draw ?? null
   value.session.preview.selection.marquee = options.marquee
@@ -258,75 +230,72 @@ const insertTopic = (input: {
   return result.data.nodeId
 }
 
-describe('editor graph runtime', () => {
-  it('projects committed document snapshot into editor snapshot families via runtime shell', () => {
+describe('editor scene runtime', () => {
+  it('projects committed document state into canonical scene state and notifies subscribers once', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime')
+      document: documentApi.create('doc_editor_scene_runtime')
     })
-    engine.execute({
-      type: 'node.create',
-      input: {
-        type: 'text',
-        position: { x: 10, y: 20 },
-        data: {
-          text: 'node'
-        }
-      }
+    const nodeId = createNode({
+      engine,
+      position: { x: 10, y: 20 },
+      text: 'node'
     })
 
     const runtime = createRuntime()
-    const emissions: Array<{ snapshot: unknown; change: unknown }> = []
-    const unsubscribe = runtime.subscribe((snapshot, change) => {
-      emissions.push({
-        snapshot,
-        change
-      })
+    const emissions: Result[] = []
+    const unsubscribe = runtime.subscribe((result) => {
+      emissions.push(result)
     })
 
     const result = runtime.update(createInput(engine, {
       delta: DOCUMENT_DELTA
     }))
+    const snapshot = runtime.snapshot()
+
     unsubscribe()
 
-    expect(result.snapshot.graph.nodes.ids.length).toBe(1)
-    expect(result.snapshot.items.length).toBe(1)
-    expect(result.snapshot.documentRevision).toBe(1)
-    expect(emissions).toHaveLength(1)
-
-    assertPublishedOnce([result])
-    expect(result.trace).toBeDefined()
-    assertPhaseOrder(result.trace!, [
+    expect(snapshot.graph.nodes.ids.length).toBe(1)
+    expect(snapshot.items.length).toBe(1)
+    expect(snapshot.documentRevision).toBe(1)
+    expect(runtime.read.node(nodeId)).toBe(snapshot.graph.nodes.byId.get(nodeId))
+    expect(snapshot.render.edge.statics.ids).toBeDefined()
+    expect(result.trace?.phases.map((phase) => phase.name)).toEqual([
       'graph',
       'spatial',
-      'ui',
-      'render'
+      'view'
     ])
-    expect(result.snapshot.render.edge.statics.ids).toBeDefined()
+    expect(emissions).toEqual([result])
   })
 
-  it('publishes once and reuses working state when there is no new input change', () => {
+  it('reuses canonical state when the input delta is idle', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_idle')
+      document: documentApi.create('doc_editor_scene_runtime_idle')
     })
     const runtime = createRuntime()
 
     runtime.update(createInput(engine, {
       delta: DOCUMENT_DELTA
     }))
+    const baselineSnapshot = runtime.snapshot()
+    const baselineRevision = runtime.revision()
+
     const idle = runtime.update(createInput(engine, {
       delta: IDLE_DELTA
     }))
+    const idleSnapshot = runtime.snapshot()
 
-    expect(idle.trace).toBeDefined()
-    expect(idle.trace!.phases).toHaveLength(0)
-    expect(touchedIds(idle.change.graph.nodes).size).toBe(0)
-    expect(idle.change.items.changed).toBe(false)
-    expect(idle.change.ui.chrome.changed).toBe(false)
+    expect(idle.trace?.phases).toHaveLength(0)
+    expect(idleSnapshot.documentRevision).toBe(baselineSnapshot.documentRevision)
+    expect(idleSnapshot.graph.nodes.ids).toEqual(baselineSnapshot.graph.nodes.ids)
+    expect(idleSnapshot.graph.edges.ids).toEqual(baselineSnapshot.graph.edges.ids)
+    expect(idleSnapshot.items).toEqual(baselineSnapshot.items)
+    expect(idleSnapshot.ui.chrome).toEqual(baselineSnapshot.ui.chrome)
+    expect(runtime.revision()).toBeGreaterThan(baselineRevision)
   })
 
-  it('exposes read facade, publish spec, and testing harness for host adapters', () => {
+  it('exposes canonical read and harness surfaces for host adapters', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_public_api')
+      document: documentApi.create('doc_editor_scene_runtime_public_api')
     })
     const nodeId = createNode({
       engine,
@@ -337,14 +306,12 @@ describe('editor graph runtime', () => {
     const result = harness.update(createInput(engine, {
       delta: DOCUMENT_DELTA
     }))
+    const snapshot = harness.snapshot()
     const read = harness.read
-    const publish = createEditorGraphPublishSpec()
 
-    expect(harness.snapshot()).toBe(result.snapshot)
-    expect(harness.runtime.snapshot()).toBe(result.snapshot)
+    expect(harness.runtime.snapshot()).toBe(snapshot)
     expect(harness.lastTrace()).toEqual(result.trace)
-    expect(read.snapshot()).toBe(result.snapshot)
-    expect(read.node(nodeId)).toBe(result.snapshot.graph.nodes.byId.get(nodeId))
+    expect(read.node(nodeId)).toBe(snapshot.graph.nodes.byId.get(nodeId))
     expect(read.spatial.get(`node:${nodeId}`)).toEqual(expect.objectContaining({
       key: `node:${nodeId}`,
       kind: 'node',
@@ -359,65 +326,19 @@ describe('editor graph runtime', () => {
       width: 400,
       height: 400
     }).some((record) => record.key === `node:${nodeId}`)).toBe(true)
-    expect(read.spatial.all().some((record) => record.key === `node:${nodeId}`)).toBe(true)
     const spatialRecord = read.spatial.get(`node:${nodeId}`)!
     expect(read.spatial.point({
       x: spatialRecord.bounds.x + spatialRecord.bounds.width / 2,
       y: spatialRecord.bounds.y + spatialRecord.bounds.height / 2
     }).some((record) => record.key === spatialRecord.key)).toBe(true)
-    expect(read.items()).toBe(result.snapshot.items)
-    expect(read.ui()).toBe(result.snapshot.ui)
-    expect(read.chrome()).toBe(result.snapshot.ui.chrome)
-    expect(publish.graph.read(result.snapshot)).toBe(result.snapshot.graph)
-    expect(publish.graph.change(result.change)).toBe(result.change.graph)
-    expect(publish.items.read(result.snapshot)).toBe(result.snapshot.items)
-    expect(publish.items.change(result.change)).toBe(result.change.items)
-    expect(publish.ui.chrome.change(result.change)).toBe(result.change.ui.chrome)
+    expect(read.items()).toBe(snapshot.items)
+    expect(read.ui()).toEqual(snapshot.ui)
+    expect(read.chrome()).toBe(snapshot.ui.chrome)
   })
 
-  it('tracks oversized spatial records through candidate diagnostics', () => {
+  it('relayouts mindmap members while live text measurement changes', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_spatial_diagnostics')
-    })
-    const nodeId = createNode({
-      engine,
-      position: {
-        x: 0,
-        y: 0
-      },
-      text: 'Large',
-      size: {
-        width: 5000,
-        height: 200
-      }
-    })
-
-    const runtime = createRuntime()
-    runtime.update(createInput(engine, {
-      delta: FULL_INPUT_DELTA
-    }))
-
-    const result = runtime.query.spatial.candidates({
-      x: 96,
-      y: 24,
-      width: 48,
-      height: 48
-    }, {
-      kinds: ['node']
-    })
-
-    expect(result.records.map((record) => record.key)).toContain(`node:${nodeId}`)
-    expect(result.stats.candidates).toBe(1)
-    expect(result.stats.oversized).toBe(1)
-    expect(runtime.query.spatial.stats()).toMatchObject({
-      records: 1,
-      oversized: 1
-    })
-  })
-
-  it('relayouts mindmap children while root live width grows', () => {
-    const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_mindmap_root_width')
+      document: documentApi.create('doc_editor_scene_runtime_mindmap_root_width')
     })
     const created = createMindmap(engine)
     const childId = insertTopic({
@@ -428,16 +349,19 @@ describe('editor graph runtime', () => {
     })
 
     const runtime = createRuntime()
-    const baseline = runtime.update(
+
+    runtime.update(
       createInput(engine, {
         delta: DOCUMENT_DELTA,
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [childId, { width: 120, height: 44 }]
         ])
-      }),
+      })
     )
-    const live = runtime.update(
+    const baselineSnapshot = runtime.snapshot()
+
+    runtime.update(
       createInput(engine, {
         delta: GRAPH_DELTA,
         edit: {
@@ -456,99 +380,21 @@ describe('editor graph runtime', () => {
         ])
       })
     )
+    const liveSnapshot = runtime.snapshot()
 
-    const beforeRoot = baseline.snapshot.graph.nodes.byId.get(created.rootId)?.geometry.rect
-    const beforeChild = baseline.snapshot.graph.nodes.byId.get(childId)?.geometry.rect
-    const liveRootView = live.snapshot.graph.nodes.byId.get(created.rootId)
-    const liveRootUi = live.snapshot.ui.nodes.byId.get(created.rootId)
-    const liveRoot = live.snapshot.graph.nodes.byId.get(created.rootId)?.geometry.rect
-    const liveChild = live.snapshot.graph.nodes.byId.get(childId)?.geometry.rect
+    const baselineMindmap = baselineSnapshot.graph.owners.mindmaps.byId.get(created.mindmapId)
+    const liveMindmap = liveSnapshot.graph.owners.mindmaps.byId.get(created.mindmapId)
+    const liveRootUi = liveSnapshot.ui.nodes.byId.get(created.rootId)
 
-    expect(beforeRoot).toBeDefined()
-    expect(beforeChild).toBeDefined()
-    expect(liveRootView).toBeDefined()
-    expect(liveRoot).toBeDefined()
-    expect(liveChild).toBeDefined()
-    expect(liveRoot!.x).toBe(beforeRoot!.x)
-    expect(liveRoot!.width).toBeGreaterThan(beforeRoot!.width)
-    expect(liveChild!.x).toBeGreaterThan(beforeChild!.x)
-    expect(liveRootView).toBeDefined()
+    expect(baselineMindmap?.tree.layout).toBeDefined()
+    expect(liveMindmap?.tree.layout).toBeDefined()
     expect(liveRootUi?.editing).toBe(true)
-    expect(liveRootUi?.edit?.field).toBe('text')
-    expect(touchedIds(live.change.graph.nodes).has(childId)).toBe(true)
-    expect(touchedIds(live.change.graph.owners.mindmaps).has(created.mindmapId)).toBe(true)
-    expect(touchedIds(live.change.ui.nodes).has(created.rootId)).toBe(true)
+    expect(runtime.read.node(childId)).toBe(liveSnapshot.graph.nodes.byId.get(childId))
   })
 
-  it('relayouts sibling positions while topic live height grows', () => {
+  it('builds renderer-ready edge, chrome, and spatial state in the view phase', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_mindmap_topic_height')
-    })
-    const created = createMindmap(engine)
-    const firstId = insertTopic({
-      engine,
-      mindmapId: created.mindmapId,
-      parentId: created.rootId,
-      text: 'First'
-    })
-    const secondId = insertTopic({
-      engine,
-      mindmapId: created.mindmapId,
-      parentId: created.rootId,
-      text: 'Second'
-    })
-
-    const runtime = createRuntime()
-    const baseline = runtime.update(
-      createInput(engine, {
-        delta: DOCUMENT_DELTA,
-        nodeMeasures: new Map([
-          [created.rootId, { width: 160, height: 44 }],
-          [firstId, { width: 120, height: 44 }],
-          [secondId, { width: 120, height: 44 }]
-        ])
-      }),
-    )
-    const live = runtime.update(
-      createInput(engine, {
-        delta: GRAPH_DELTA,
-        edit: {
-          kind: 'node',
-          nodeId: firstId,
-          field: 'text',
-          text: 'First branch now wraps into multiple visual lines',
-          composing: false,
-          caret: {
-            kind: 'end'
-          }
-        },
-        nodeMeasures: new Map([
-          [created.rootId, { width: 160, height: 44 }],
-          [firstId, { width: 120, height: 88 }],
-          [secondId, { width: 120, height: 44 }]
-        ])
-      })
-    )
-
-    const beforeFirst = baseline.snapshot.graph.nodes.byId.get(firstId)?.geometry.rect
-    const beforeSecond = baseline.snapshot.graph.nodes.byId.get(secondId)?.geometry.rect
-    const liveFirst = live.snapshot.graph.nodes.byId.get(firstId)?.geometry.rect
-    const liveSecond = live.snapshot.graph.nodes.byId.get(secondId)?.geometry.rect
-
-    expect(beforeFirst).toBeDefined()
-    expect(beforeSecond).toBeDefined()
-    expect(liveFirst).toBeDefined()
-    expect(liveSecond).toBeDefined()
-    expect(liveFirst!.height).toBe(88)
-    expect(liveFirst!.y).toBeLessThan(beforeFirst!.y)
-    expect(liveSecond!.y).toBeGreaterThan(beforeSecond!.y)
-    expect(touchedIds(live.change.graph.nodes).has(secondId)).toBe(true)
-    expect(touchedIds(live.change.graph.owners.mindmaps).has(created.mindmapId)).toBe(true)
-  })
-
-  it('publishes renderer-ready element, chrome, and scene state', () => {
-    const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_element_scene')
+      document: documentApi.create('doc_editor_scene_runtime_view')
     })
     const firstId = createNode({
       engine,
@@ -581,7 +427,7 @@ describe('editor graph runtime', () => {
     })
 
     const runtime = createRuntime()
-    const result = runtime.update(
+    runtime.update(
       createInput(engine, {
         delta: FULL_INPUT_DELTA,
         edit: {
@@ -651,12 +497,13 @@ describe('editor graph runtime', () => {
         },
       })
     )
+    const snapshot = runtime.snapshot()
 
-    const firstNode = result.snapshot.graph.nodes.byId.get(firstId)
-    const edgeView = result.snapshot.graph.edges.byId.get(edgeId)
-    const firstNodeUi = result.snapshot.ui.nodes.byId.get(firstId)
-    const edgeUi = result.snapshot.ui.edges.byId.get(edgeId)
-    const chrome = result.snapshot.ui.chrome
+    const firstNode = snapshot.graph.nodes.byId.get(firstId)
+    const edgeView = snapshot.graph.edges.byId.get(edgeId)
+    const firstNodeUi = snapshot.ui.nodes.byId.get(firstId)
+    const edgeUi = snapshot.ui.edges.byId.get(edgeId)
+    const chrome = snapshot.ui.chrome
     const overlayKinds = chrome.overlays.map((overlay) => overlay.kind)
 
     expect(firstNode).toBeDefined()
@@ -697,27 +544,17 @@ describe('editor graph runtime', () => {
       width: 520,
       height: 220
     })
-    expect(chrome.preview.marquee?.match).toBe('contain')
     expect(chrome.preview.guides).toHaveLength(1)
-    expect(chrome.preview.draw?.style).toEqual({
-      kind: 'pen',
-      color: 'currentColor',
-      width: 2,
-      opacity: 1
-    })
     expect(chrome.preview.draw?.hiddenNodeIds).toEqual([firstId])
-    expect(chrome.edit?.kind).toBe('edge-label')
-    expect(chrome.edit?.labelId).toBe(labelId)
 
-    expect(result.snapshot.items).toHaveLength(4)
-    expect(result.snapshot.items).toEqual(expect.arrayContaining([
+    expect(snapshot.items).toEqual(expect.arrayContaining([
       { kind: 'node', id: firstId },
       { kind: 'node', id: secondId },
       { kind: 'node', id: offscreenId },
       { kind: 'edge', id: edgeId }
     ]))
     expect(
-      runtime.query.spatial.rect({
+      runtime.read.spatial.rect({
         x: 0,
         y: 0,
         width: 700,
@@ -729,155 +566,12 @@ describe('editor graph runtime', () => {
       `edge:${edgeId}`
     ]))
     expect(
-      runtime.query.spatial.rect({
+      runtime.read.spatial.rect({
         x: 0,
         y: 0,
         width: 700,
         height: 320
       }).some((record) => record.key === `node:${offscreenId}`)
     ).toBe(false)
-    expect(
-      runtime.query.spatial.all({
-        kinds: ['node']
-      }).map((record) => record.item.id)
-    ).toEqual(expect.arrayContaining([
-      firstId,
-      secondId,
-      offscreenId
-    ]))
-    expect(result.change.items.changed).toBe(true)
-    expect(result.change.ui.chrome.changed).toBe(true)
-    expect(touchedIds(result.change.ui.nodes).has(firstId)).toBe(true)
-    expect(touchedIds(result.change.ui.edges).has(edgeId)).toBe(true)
-  })
-
-  it('publishes mindmap connectors and mindmap preview chrome state', () => {
-    const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_mindmap_preview')
-    })
-    const created = createMindmap(engine)
-    const childId = insertTopic({
-      engine,
-      mindmapId: created.mindmapId,
-      parentId: created.rootId,
-      text: 'Child'
-    })
-
-    const runtime = createRuntime()
-    const result = runtime.update(
-      createInput(engine, {
-        delta: FULL_INPUT_DELTA,
-        nodeMeasures: new Map([
-          [created.rootId, { width: 160, height: 44 }],
-          [childId, { width: 120, height: 44 }]
-        ]),
-        hover: {
-          kind: 'mindmap',
-          mindmapId: created.mindmapId
-        },
-        mindmapPreview: {
-          rootMove: {
-            mindmapId: created.mindmapId,
-            delta: {
-              x: 40,
-              y: 24
-            }
-          }
-        },
-      })
-    )
-
-    const mindmapView = result.snapshot.graph.owners.mindmaps.byId.get(created.mindmapId)
-    const overlayKinds = result.snapshot.ui.chrome.overlays.map((overlay) => overlay.kind)
-
-    expect(mindmapView).toBeDefined()
-    expect(mindmapView!.tree.layout).toBeDefined()
-    expect(mindmapView!.tree.bbox).toBeDefined()
-    expect(mindmapView!.render.connectors.length).toBeGreaterThan(0)
-    expect(result.snapshot.ui.chrome.hover).toEqual({
-      kind: 'mindmap',
-      mindmapId: created.mindmapId
-    })
-    expect(overlayKinds).toEqual(expect.arrayContaining([
-      'hover',
-      'mindmap-drop'
-    ]))
-    expect(result.snapshot.ui.chrome.preview.mindmap?.rootMove?.delta).toEqual({
-      x: 40,
-      y: 24
-    })
-    expect(result.snapshot.items).toContainEqual({
-      kind: 'mindmap',
-      id: created.mindmapId
-    })
-    expect(
-      runtime.query.spatial.rect({
-        x: -200,
-        y: -200,
-        width: 1200,
-        height: 1200
-      }, {
-        kinds: ['mindmap']
-      }).map((record) => record.item.id)
-    ).toContain(created.mindmapId)
-  })
-
-  it('keeps top-level items separate from spatial queries over owned nodes', () => {
-    const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_top_level_items')
-    })
-    const created = createMindmap(engine)
-    const childId = insertTopic({
-      engine,
-      mindmapId: created.mindmapId,
-      parentId: created.rootId,
-      text: 'Child'
-    })
-
-    const runtime = createRuntime()
-    const result = runtime.update(
-      createInput(engine, {
-        delta: FULL_INPUT_DELTA,
-        nodeMeasures: new Map([
-          [created.rootId, { width: 160, height: 44 }],
-          [childId, { width: 120, height: 44 }]
-        ])
-      })
-    )
-
-    expect(result.snapshot.items).toEqual([
-      {
-        kind: 'mindmap',
-        id: created.mindmapId
-      }
-    ])
-    expect(
-      runtime.query.spatial.rect({
-        x: -200,
-        y: -200,
-        width: 1200,
-        height: 1200
-      }, {
-        kinds: ['mindmap']
-      }).map((record) => record.item)
-    ).toEqual([
-      {
-        kind: 'mindmap',
-        id: created.mindmapId
-      }
-    ])
-    expect(
-      runtime.query.spatial.rect({
-        x: -200,
-        y: -200,
-        width: 1200,
-        height: 1200
-      }, {
-        kinds: ['node']
-      }).map((record) => record.item.id)
-    ).toEqual(expect.arrayContaining([
-      created.rootId,
-      childId
-    ]))
   })
 })

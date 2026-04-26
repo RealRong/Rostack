@@ -2,7 +2,7 @@ import {
   defineScope,
   flag,
   slot
-} from '@shared/projector'
+} from '@shared/projector/phase'
 import type {
   IndexDelta,
   IndexState

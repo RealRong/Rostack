@@ -2,12 +2,12 @@ import {
   defineScope,
   flag,
   set
-} from '@shared/projector'
+} from '@shared/projector/phase'
 import type {
   IdDelta as SharedIdDelta
 } from '@shared/projector/delta'
 import { idDelta } from '@shared/projector/delta'
-import type { Revision } from '@shared/projector'
+import type { Revision } from '@shared/projector/phase'
 import type {
   EdgeId,
   GroupId,
@@ -43,31 +43,6 @@ export interface SpatialDelta {
   records: IdDelta<SpatialKey>
 }
 
-export interface GraphPublishDelta {
-  nodes: IdDelta<NodeId>
-  edges: IdDelta<EdgeId>
-  owners: {
-    mindmaps: IdDelta<MindmapId>
-    groups: IdDelta<GroupId>
-  }
-}
-
-export interface UiPublishDelta {
-  chrome: boolean
-  nodes: IdDelta<NodeId>
-  edges: IdDelta<EdgeId>
-}
-
-export interface RenderPublishDelta {
-  edge: {
-    statics: IdDelta<string>
-    active: IdDelta<EdgeId>
-    labels: IdDelta<`${EdgeId}:${string}`>
-    masks: IdDelta<EdgeId>
-    overlay: boolean
-  }
-}
-
 export interface SpatialPatchScope {
   reset: boolean
   graph: boolean
@@ -82,18 +57,16 @@ export interface GraphPatchScope {
   groups: ReadonlySet<GroupId>
 }
 
-export interface UiPatchScope {
+export interface ViewPatchScope {
   reset: boolean
   chrome: boolean
+  items: boolean
   nodes: ReadonlySet<NodeId>
   edges: ReadonlySet<EdgeId>
-}
-
-export interface RenderPatchScope {
-  reset: boolean
   statics: ReadonlySet<EdgeId>
   labels: ReadonlySet<EdgeId>
   active: ReadonlySet<EdgeId>
+  masks: ReadonlySet<EdgeId>
   overlay: boolean
 }
 
@@ -111,26 +84,23 @@ export const spatialPhaseScope = defineScope({
   graph: flag()
 })
 
-export const uiPhaseScope = defineScope({
+export const viewPhaseScope = defineScope({
   reset: flag(),
   chrome: flag(),
+  items: flag(),
   nodes: set<NodeId>(),
-  edges: set<EdgeId>()
-})
-
-export const renderPhaseScope = defineScope({
-  reset: flag(),
+  edges: set<EdgeId>(),
   statics: set<EdgeId>(),
   labels: set<EdgeId>(),
   active: set<EdgeId>(),
+  masks: set<EdgeId>(),
   overlay: flag()
 })
 
 export interface EditorPhaseScopeMap {
   graph: typeof graphPhaseScope
   spatial: typeof spatialPhaseScope
-  ui: typeof uiPhaseScope
-  render: typeof renderPhaseScope
+  view: typeof viewPhaseScope
 }
 
 export const createGraphDelta = (): GraphDelta => ({

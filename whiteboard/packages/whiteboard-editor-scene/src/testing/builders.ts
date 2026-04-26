@@ -7,7 +7,7 @@ import type {
   InputDelta,
   TextMeasure
 } from '../contracts/editor'
-import { createEmptyInputDelta } from '../projector/spec'
+import { createEmptyInputDelta } from './input'
 
 export type EditorGraphDeltaFlags = Partial<{
   document: boolean
@@ -24,14 +24,14 @@ export const createEditorGraphDelta = (
     delta.document.reset = true
   }
   if (input.graph) {
-    delta.graph.nodes.preview = {
+    delta.session.preview.nodes = {
       added: new Set(),
       updated: new Set(['__graph__']),
       removed: new Set()
     }
   }
   if (input.ui) {
-    delta.ui.selection = true
+    delta.session.selection = true
   }
   return delta
 }

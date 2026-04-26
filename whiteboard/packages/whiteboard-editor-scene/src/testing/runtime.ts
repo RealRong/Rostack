@@ -1,4 +1,3 @@
-import { createProjector } from '@shared/projector'
 import type {
   Input,
   Read,
@@ -9,12 +8,11 @@ import type {
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import {
-  createWorking,
-  editorGraphProjectorSpec
-} from '../projector/spec'
-import { createEditorSceneRuntime } from '../runtime/createEditorSceneRuntime'
+  createEditorSceneModelRuntime,
+  createEditorSceneRuntime
+} from '../runtime/createEditorSceneRuntime'
 
-export interface EditorGraphHarness {
+export interface EditorSceneHarness {
   runtime: Runtime
   read: Read
   update(input: Input): Result
@@ -22,57 +20,47 @@ export interface EditorGraphHarness {
   lastTrace(): Result['trace']
 }
 
-export interface EditorGraphProjectorHarness {
+export interface EditorSceneModelHarness {
   snapshot(): Snapshot
   working(): WorkingState
   update(input: Input): Result
   lastTrace(): Result['trace']
 }
 
-export const createEditorGraphHarness = (input: {
+export const createEditorSceneHarness = (input: {
   measure?: TextMeasure
-} = {}): EditorGraphHarness => {
-  const baseRuntime = createEditorSceneRuntime({
+} = {}): EditorSceneHarness => {
+  const runtime = createEditorSceneRuntime({
     measure: input.measure
   })
   let trace: Result['trace']
-  const runtime: Runtime = {
-    query: baseRuntime.query,
-    snapshot: () => baseRuntime.snapshot(),
-    update: (input) => {
-      const result = baseRuntime.update(input)
-      trace = result.trace
-      return result
-    },
-    subscribe: (listener) => baseRuntime.subscribe(listener)
-  }
 
   return {
     runtime,
-    read: runtime.query,
-    update: (input) => runtime.update(input),
+    read: runtime.read,
+    update: (value) => {
+      const result = runtime.update(value)
+      trace = result.trace
+      return result
+    },
     snapshot: () => runtime.snapshot(),
     lastTrace: () => trace
   }
 }
 
-export const createEditorGraphProjectorHarness = (input: {
+export const createEditorSceneModelHarness = (input: {
   measure?: TextMeasure
-} = {}): EditorGraphProjectorHarness => {
-  const working = createWorking({
+} = {}): EditorSceneModelHarness => {
+  const runtime = createEditorSceneModelRuntime({
     measure: input.measure
-  })
-  const projector = createProjector({
-    ...editorGraphProjectorSpec,
-    createWorking: () => working
   })
   let trace: Result['trace']
 
   return {
-    snapshot: () => projector.snapshot(),
-    working: () => working,
-    update: (input) => {
-      const result = projector.update(input)
+    snapshot: () => runtime.snapshot(),
+    working: () => runtime.state(),
+    update: (value) => {
+      const result = runtime.update(value) as Result
       trace = result.trace
       return result
     },

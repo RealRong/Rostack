@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
-  createPlan,
-  createProjector,
-  defineScope,
-  set
-} from '../src'
-import {
-  idDelta,
-  type IdDelta
-} from '../src/delta'
-import {
   createFlags,
   publishEntityFamily,
   publishEntityList,
   type Family,
   type Flags
 } from '../src/publish'
+import {
+  createPlan,
+  createProjector,
+  defineScope,
+  set
+} from '../src/phase'
+import {
+  idDelta,
+  type IdDelta
+} from '../src/delta'
 import {
   assertPhaseOrder,
   assertPublishedOnce,

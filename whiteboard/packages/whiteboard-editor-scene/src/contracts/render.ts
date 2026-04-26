@@ -9,10 +9,8 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type {
-  Family,
-  Flags
+  Family
 } from '@shared/projector/publish'
-import type { IdDelta } from './delta'
 import type { EditCaret } from './editor'
 
 export type EdgeStaticId = string
@@ -107,15 +105,5 @@ export interface RenderSnapshot {
     labels: Family<EdgeLabelKey, EdgeLabelView>
     masks: Family<EdgeId, EdgeMaskView>
     overlay: EdgeOverlayView
-  }
-}
-
-export interface RenderChange {
-  edge: {
-    statics: IdDelta<EdgeStaticId>
-    active: IdDelta<EdgeId>
-    labels: IdDelta<EdgeLabelKey>
-    masks: IdDelta<EdgeId>
-    overlay: Flags
   }
 }

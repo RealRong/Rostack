@@ -1,13 +1,15 @@
 import { describe, expect, test } from 'vitest'
 import {
-  createProjectorStore,
-  family,
-  value
+  createProjectorStore
 } from '../src'
 import {
   idDelta,
   writeEntityChange
 } from '../src/delta'
+import {
+  family,
+  value
+} from '../src/store'
 
 type Item = {
   id: string

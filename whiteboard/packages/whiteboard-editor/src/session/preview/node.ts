@@ -1,20 +1,13 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
-  EditorInputPreviewState,
-  NodeGeometryPreview,
-  NodePreviewProjection,
   NodePreviewState,
-  NodePatch,
   NodePreviewEntry,
-  NodePreviewPatch,
   NodeSelectionPreviewState,
   NodeTextPreviewState,
-  TextLayoutPreview,
   TextPreviewEntry,
   TextPreviewPatch
 } from '@whiteboard/editor/session/preview/types'
-import { mergeEntryById } from '@whiteboard/editor/session/preview/merge'
 
 export const EMPTY_NODE_PATCHES: readonly NodePreviewEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
@@ -32,22 +25,6 @@ export const EMPTY_NODE_FEEDBACK: NodePreviewState = {
   text: EMPTY_NODE_TEXT_FEEDBACK
 }
 
-export const EMPTY_NODE_FEEDBACK_PROJECTION: NodePreviewProjection = {
-  hovered: false,
-  hidden: false
-}
-
-const EMPTY_NODE_FEEDBACK_MAP = new Map<NodeId, NodePreviewProjection>()
-
-const isNodePatchEqual = (
-  left: NodePatch | undefined,
-  right: NodePatch | undefined
-) => (
-  geometryApi.equal.point(left?.position, right?.position)
-  && geometryApi.equal.size(left?.size, right?.size)
-  && left?.rotation === right?.rotation
-)
-
 const isTextPreviewPatchEqual = (
   left: TextPreviewPatch | undefined,
   right: TextPreviewPatch | undefined
@@ -59,90 +36,6 @@ const isTextPreviewPatchEqual = (
   && left?.wrapWidth === right?.wrapWidth
   && left?.handle === right?.handle
 )
-
-const isTextLayoutPreviewEqual = (
-  left: TextLayoutPreview | undefined,
-  right: TextLayoutPreview | undefined
-) => (
-  left?.fontSize === right?.fontSize
-  && left?.mode === right?.mode
-  && left?.wrapWidth === right?.wrapWidth
-  && left?.handle === right?.handle
-)
-
-const toNodeGeometryPatch = (
-  patch: NodePreviewPatch
-): NodePatch | undefined => {
-  if (
-    !patch.position
-    && !patch.size
-    && patch.rotation === undefined
-  ) {
-    return undefined
-  }
-
-  return {
-    position: patch.position,
-    size: patch.size,
-    rotation: patch.rotation
-  }
-}
-
-const toNodeSelectionTextPreview = (
-  patch: NodePreviewPatch
-): TextLayoutPreview | undefined => {
-  if (
-    patch.fontSize === undefined
-    && patch.mode === undefined
-    && patch.wrapWidth === undefined
-    && patch.handle === undefined
-  ) {
-    return undefined
-  }
-
-  return {
-    fontSize: patch.fontSize,
-    mode: patch.mode,
-    wrapWidth: patch.wrapWidth,
-    handle: patch.handle
-  }
-}
-
-const toTextPreviewGeometryPatch = (
-  patch: TextPreviewPatch | undefined
-): NodeGeometryPreview | undefined => {
-  if (!patch?.position && !patch?.size) {
-    return undefined
-  }
-
-  return {
-    position: patch.position,
-    size: patch.size
-  }
-}
-
-const mergeNodeGeometryPatch = (
-  current: NodeGeometryPreview | undefined,
-  patch: NodeGeometryPreview | undefined
-): NodeGeometryPreview | undefined => {
-  if (!current && !patch) {
-    return undefined
-  }
-
-  const next = {
-    position: patch?.position ?? current?.position,
-    size: patch?.size ?? current?.size,
-    rotation: patch?.rotation ?? current?.rotation
-  }
-
-  return (
-    next.position
-    || next.size
-    || next.rotation !== undefined
-  )
-    ? next
-    : undefined
-}
 
 const readEntryPatch = <TPatch, TEntry extends {
   id: NodeId
@@ -345,16 +238,6 @@ export const isNodeFeedbackStateEqual = (
   right: NodePreviewState
 ) => left.text.patches === right.text.patches
 
-export const isNodeProjectionEqual = (
-  left: NodePreviewProjection,
-  right: NodePreviewProjection
-) => (
-  isNodePatchEqual(left.geometry, right.geometry)
-  && isTextLayoutPreviewEqual(left.text, right.text)
-  && left.hovered === right.hovered
-  && left.hidden === right.hidden
-)
-
 export const normalizeNodeFeedbackState = (
   state: NodePreviewState
 ): NodePreviewState => {
@@ -374,86 +257,4 @@ export const normalizeNodeFeedbackState = (
             patches: textPatches
           }
   }
-}
-
-export const toNodeFeedbackMap = (
-  state: EditorInputPreviewState
-) => {
-  if (
-    state.selection.node.patches.length === 0
-    && state.node.text.patches.length === 0
-    && state.draw.hidden.length === 0
-    && state.selection.node.frameHoverId === undefined
-  ) {
-    return EMPTY_NODE_FEEDBACK_MAP
-  }
-
-  const next = new Map<NodeId, NodePreviewProjection>()
-  const hiddenSet = new Set(state.draw.hidden)
-
-  for (let index = 0; index < state.node.text.patches.length; index += 1) {
-    const entry = state.node.text.patches[index]!
-    mergeEntryById(next, entry.id, (current) => ({
-      ...current,
-      geometry: mergeNodeGeometryPatch(
-        current?.geometry,
-        toTextPreviewGeometryPatch(entry.patch)
-      ),
-      text: {
-        fontSize: entry.patch.fontSize,
-        mode: entry.patch.mode,
-        wrapWidth: entry.patch.wrapWidth,
-        handle: entry.patch.handle
-      },
-      hovered: current?.hovered ?? false,
-      hidden: hiddenSet.has(entry.id)
-    }))
-  }
-
-  for (let index = 0; index < state.selection.node.patches.length; index += 1) {
-    const entry = state.selection.node.patches[index]!
-    const geometryPatch = toNodeGeometryPatch(entry.patch)
-    const textPatch = toNodeSelectionTextPreview(entry.patch)
-
-    mergeEntryById(next, entry.id, (current) => ({
-      geometry: current?.geometry && geometryPatch
-        ? {
-            ...current.geometry,
-            ...geometryPatch
-          }
-        : geometryPatch ?? current?.geometry,
-      text: current?.text && textPatch
-        ? {
-          ...current.text,
-            ...textPatch
-          }
-        : textPatch ?? current?.text,
-      hovered: state.selection.node.frameHoverId === entry.id,
-      hidden: hiddenSet.has(entry.id)
-    }))
-  }
-
-  const frameHoverId = state.selection.node.frameHoverId
-  if (frameHoverId !== undefined) {
-    mergeEntryById(next, frameHoverId, (current) => ({
-      geometry: current?.geometry,
-      text: current?.text,
-      hovered: true,
-      hidden: hiddenSet.has(frameHoverId)
-    }))
-  }
-
-  for (let index = 0; index < state.draw.hidden.length; index += 1) {
-    const nodeId = state.draw.hidden[index]!
-    if (next.has(nodeId)) {
-      continue
-    }
-
-    next.set(nodeId, {
-      hovered: false,
-      hidden: true
-    })
-  }
-
-  return next
 }

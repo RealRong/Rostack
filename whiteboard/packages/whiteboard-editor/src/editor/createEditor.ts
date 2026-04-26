@@ -13,7 +13,6 @@ import {
   createEditorBoundaryTaskRuntime
 } from '@whiteboard/editor/boundary/task'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
-import { createSessionState } from '@whiteboard/editor/session/state'
 import {
   createEditorInputApi
 } from '@whiteboard/editor/input/host'
@@ -21,7 +20,7 @@ import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorLayout } from '@whiteboard/editor/layout/runtime'
 import { createSceneBridge } from '@whiteboard/editor/projection/bridge'
 import { createSceneSource } from '@whiteboard/editor/scene/source'
-import { createSessionSource } from '@whiteboard/editor/session/source'
+import { createEditorSessionSource } from '@whiteboard/editor/editor/source/session'
 import { createToolService } from '@whiteboard/editor/services/tool'
 import {
   DEFAULT_DRAW_STATE,
@@ -88,15 +87,8 @@ export const createEditor = ({
     nodeType
   })
   committedNode = projection.stores.document.node.byId
-  const sessionState = createSessionState(session)
   const scene = createSceneSource({
-    controller: projection,
-    view: {
-      get: () => ({
-        zoom: session.viewport.read.get().zoom,
-        worldRect: session.viewport.read.worldRect()
-      })
-    }
+    controller: projection
   })
   const document: Editor['document'] = {
     get: () => scene.query.document.get(),
@@ -147,10 +139,9 @@ export const createEditor = ({
     nodeType,
     defaults: defaults.templates
   })
-  const sessionSource = createSessionSource({
+  const sessionSource = createEditorSessionSource({
     graph: scene,
     session,
-    state: sessionState,
     history,
     nodeType,
     defaults: defaults.selection

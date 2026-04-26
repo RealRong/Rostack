@@ -3,26 +3,26 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { selection as selectionApi } from '@whiteboard/core/selection'
 import { equal, store } from '@shared/core'
 import type { HistoryPort } from '@shared/mutation'
-import { createSessionState } from '@whiteboard/editor/session/state'
 import {
   readEdgeScope,
   readNodeScope,
   resolveSelectionOverlay,
   resolveSelectionToolbar
-} from '@whiteboard/editor/session/panel'
+} from '@whiteboard/editor/editor/source/selection'
 import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
 import {
-  createSessionRead,
-  type SessionRead
-} from '@whiteboard/editor/session/read'
+  EMPTY_EDGE_GUIDE,
+  isEdgeGuideEqual
+} from '@whiteboard/editor/session/preview/edge'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type {
   EditorChromeSource,
   EditorChromePresentation,
+  EditorInteractionState,
   EditorPanelSource,
   EditorPanelPresentation,
   EditorSessionSource,
-  EditorSessionState
+  ToolRead
 } from '@whiteboard/editor/types/editor'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
@@ -31,6 +31,7 @@ import type {
   EditorSelectionSummaryView,
   SelectionNodeStats as SelectionNodeStatsView
 } from '@whiteboard/editor/types/selectionPresentation'
+import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode'
 import type { IntentResult } from '@whiteboard/engine'
 
 const EMPTY_SELECTION_HANDLES = [] as const
@@ -170,46 +171,98 @@ const toSelectionViewKind = (
       : kind
 )
 
-const projectWorldRect = (
-  viewport: SessionRead['viewport'],
-  worldRect: {
-    x: number
-    y: number
-    width: number
-    height: number
-  }
-) => {
-  const topLeft = viewport.worldToScreen({
-    x: worldRect.x,
-    y: worldRect.y
-  })
-  const bottomRight = viewport.worldToScreen({
-    x: worldRect.x + worldRect.width,
-    y: worldRect.y + worldRect.height
-  })
+const readToolValue = (
+  tool: ReturnType<EditorSession['state']['tool']['get']>
+) => (
+  'mode' in tool
+    ? tool.mode
+    : undefined
+)
 
-  return geometryApi.rect.fromPoints(topLeft, bottomRight)
+const isToolMatch = (
+  tool: ReturnType<EditorSession['state']['tool']['get']>,
+  type: ReturnType<EditorSession['state']['tool']['get']>['type'],
+  value?: string
+) => {
+  if (tool.type !== type) {
+    return false
+  }
+
+  if (value === undefined) {
+    return true
+  }
+
+  return tool.type === 'draw'
+    ? tool.mode === value
+    : false
 }
 
-export const createSessionSource = (
+const createToolRead = (
+  source: EditorSession['state']['tool']
+): ToolRead => ({
+  get: () => store.read(source),
+  subscribe: source.subscribe,
+  type: () => store.read(source).type,
+  value: () => readToolValue(store.read(source)),
+  is: (type, value) => isToolMatch(store.read(source), type, value)
+})
+
+export const createEditorSessionSource = (
   {
     graph,
     session,
-    state: providedState,
     history,
     nodeType,
     defaults
   }: {
     graph: Pick<EditorSceneRuntime, 'query' | 'stores'>
-    session: Pick<EditorSession, 'state' | 'interaction' | 'viewport' | 'preview'>
-    state?: EditorSessionState
+    session: Pick<EditorSession, 'state' | 'interaction' | 'viewport'>
     history: HistoryPort<IntentResult>
     nodeType: NodeTypeSupport
     defaults: EditorDefaults['selection']
   }
 ): EditorSessionSource => {
-  const state = providedState ?? createSessionState(session)
-  const sessionRead = createSessionRead(session)
+  const interactionState = store.createDerivedStore<EditorInteractionState>({
+    get: () => {
+      const mode = store.read(session.interaction.read.mode)
+      const busy = store.read(session.interaction.read.busy)
+      const chrome = store.read(session.interaction.read.chrome)
+
+      return {
+        busy,
+        chrome,
+        transforming: mode === 'node-transform',
+        drawing: mode === 'draw',
+        panning: mode === 'viewport-pan',
+        selecting:
+          mode === 'press'
+          || mode === 'marquee'
+          || mode === 'node-drag'
+          || mode === 'mindmap-drag'
+          || mode === 'node-transform',
+        editingEdge: isEdgeInteractionMode(mode),
+        space: store.read(session.interaction.read.space)
+      }
+    },
+    isEqual: (left, right) => (
+      left.busy === right.busy
+      && left.chrome === right.chrome
+      && left.transforming === right.transforming
+      && left.drawing === right.drawing
+      && left.panning === right.panning
+      && left.selecting === right.selecting
+      && left.editingEdge === right.editingEdge
+      && left.space === right.space
+    )
+  })
+  const state = {
+    tool: session.state.tool,
+    draw: session.state.draw,
+    edit: session.state.edit,
+    selection: session.state.selection,
+    viewport: session.viewport.read,
+    interaction: interactionState
+  }
 
   const selectionMembers = store.createDerivedStore({
     get: () => graph.query.selection.members(store.read(state.selection))
@@ -396,7 +449,7 @@ export const createSessionSource = (
 
       return marquee
         ? {
-            rect: projectWorldRect(sessionRead.viewport, marquee.worldRect),
+            rect: graph.query.view.screenRect(marquee.worldRect),
             match: marquee.match
           }
         : undefined
@@ -420,6 +473,11 @@ export const createSessionSource = (
 
   const chromeSnap: EditorChromeSource['snap'] = store.createDerivedStore({
     get: () => store.read(graph.stores.graph.state.chrome).preview.guides
+  })
+
+  const chromeEdgeGuide: EditorChromeSource['edgeGuide'] = store.createDerivedStore({
+    get: () => store.read(graph.stores.graph.state.chrome).preview.edgeGuide ?? EMPTY_EDGE_GUIDE,
+    isEqual: isEdgeGuideEqual
   })
 
   const selectedEdgeChrome: EditorSessionSource['selection']['edge']['chrome'] = store.createDerivedStore({
@@ -484,7 +542,7 @@ export const createSessionSource = (
         get: () => store.read(chromeDraw)
       },
       edgeGuide: {
-        get: () => store.read(sessionRead.chrome.edgeGuide)
+        get: () => store.read(chromeEdgeGuide)
       },
       snap: {
         get: () => store.read(chromeSnap)
@@ -498,7 +556,7 @@ export const createSessionSource = (
   const chrome: EditorChromeSource = Object.assign(chromeView, {
     marquee: chromeMarquee,
     draw: chromeDraw,
-    edgeGuide: sessionRead.chrome.edgeGuide,
+    edgeGuide: chromeEdgeGuide,
     snap: chromeSnap,
     selection: selectionOverlay
   })
@@ -539,13 +597,7 @@ export const createSessionSource = (
     }
   })
 
-  const toolSource: EditorSessionSource['tool'] = {
-    get: session.state.tool.get,
-    subscribe: session.state.tool.subscribe,
-    type: sessionRead.tool.type,
-    value: sessionRead.tool.value,
-    is: sessionRead.tool.is
-  }
+  const toolSource: EditorSessionSource['tool'] = createToolRead(session.state.tool)
 
   return {
     selection: selectionSource,
@@ -554,7 +606,13 @@ export const createSessionSource = (
     edit: state.edit,
     interaction: state.interaction,
     viewport: {
-      ...sessionRead.viewport,
+      get: session.viewport.read.get,
+      subscribe: session.viewport.read.subscribe,
+      pointer: session.viewport.read.pointer,
+      worldToScreen: session.viewport.read.worldToScreen,
+      worldRect: session.viewport.read.worldRect,
+      screenPoint: session.viewport.input.screenPoint,
+      size: session.viewport.input.size,
       value: state.viewport,
       zoom: viewportZoom,
       center: viewportCenter

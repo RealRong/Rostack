@@ -30,6 +30,7 @@ type RuntimeInputOptions = {
   selection?: EditorSceneInput['interaction']['selection']
   hover?: EditorSceneInput['interaction']['hover']
   draw?: EditorSceneInput['session']['preview']['draw']
+  edgeGuide?: EditorSceneInput['session']['preview']['edgeGuide']
   marquee?: EditorSceneInput['session']['preview']['selection']['marquee']
   guides?: readonly Guide[]
   mindmapPreview?: EditorSceneInput['session']['preview']['mindmap']
@@ -52,8 +53,23 @@ const measure = createEditorGraphTextMeasure(
   () => currentMeasureState
 )
 
+const TEST_SCENE_VIEW = () => ({
+  zoom: 1,
+  center: {
+    x: 0,
+    y: 0
+  },
+  worldRect: {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0
+  }
+})
+
 const createRuntime = () => createEditorSceneRuntime({
-  measure
+  measure,
+  view: TEST_SCENE_VIEW
 })
 
 const createHarness = () => createEditorSceneHarness({
@@ -74,6 +90,7 @@ const createInput = (
   value.document.delta = engine.current().delta
   value.session.edit = options.edit ?? null
   value.session.preview.draw = options.draw ?? null
+  value.session.preview.edgeGuide = options.edgeGuide
   value.session.preview.selection.marquee = options.marquee
   value.session.preview.selection.guides = options.guides ?? []
   value.session.preview.mindmap = options.mindmapPreview ?? null
@@ -465,6 +482,25 @@ describe('editor scene runtime', () => {
           targetEdge: 'centerX',
           sourceEdge: 'centerX'
         }],
+        edgeGuide: {
+          path: {
+            svgPath: 'M 0 0 L 40 20',
+            style: {
+              color: 'currentColor',
+              width: 2
+            }
+          },
+          connect: {
+            focusedNodeId: secondId,
+            resolution: {
+              mode: 'free',
+              pointWorld: {
+                x: 320,
+                y: 120
+              }
+            }
+          }
+        },
         marquee: {
           worldRect: {
             x: 0,
@@ -543,6 +579,25 @@ describe('editor scene runtime', () => {
       width: 520,
       height: 220
     })
+    expect(chrome.preview.edgeGuide).toEqual({
+      path: {
+        svgPath: 'M 0 0 L 40 20',
+        style: {
+          color: 'currentColor',
+          width: 2
+        }
+      },
+      connect: {
+        focusedNodeId: secondId,
+        resolution: {
+          mode: 'free',
+          pointWorld: {
+            x: 320,
+            y: 120
+          }
+        }
+      }
+    })
     expect(chrome.preview.guides).toHaveLength(1)
     expect(chrome.preview.draw?.hiddenNodeIds).toEqual([firstId])
 
@@ -572,5 +627,80 @@ describe('editor scene runtime', () => {
         height: 320
       }).some((record) => record.key === `node:${offscreenId}`)
     ).toBe(false)
+  })
+
+  it('derives viewport-backed screen projection and background view from query.view', () => {
+    const document = documentApi.create('doc_editor_scene_runtime_viewport')
+    document.background = {
+      type: 'dot',
+      color: '#123456'
+    }
+    const engine = createEngine({
+      document
+    })
+    let sceneView = {
+      zoom: 2,
+      center: {
+        x: 30,
+        y: 20
+      },
+      worldRect: {
+        x: 10,
+        y: 5,
+        width: 300,
+        height: 200
+      }
+    }
+    const runtime = createEditorSceneRuntime({
+      measure,
+      view: () => sceneView
+    })
+
+    runtime.update(createInput(engine, {
+      delta: DOCUMENT_DELTA
+    }))
+
+    expect(runtime.query.view.screenPoint({
+      x: 14,
+      y: 9
+    })).toEqual({
+      x: 8,
+      y: 8
+    })
+    expect(runtime.query.view.screenRect({
+      x: 14,
+      y: 9,
+      width: 6,
+      height: 4
+    })).toEqual({
+      x: 8,
+      y: 8,
+      width: 12,
+      height: 8
+    })
+    expect(runtime.query.view.background()).toEqual({
+      type: 'dot',
+      color: '#123456',
+      step: 48,
+      offset: {
+        x: 60,
+        y: 40
+      }
+    })
+
+    sceneView = {
+      ...sceneView,
+      zoom: 0.25
+    }
+
+    expect(runtime.query.view.background()).toEqual({
+      type: 'dot',
+      color: '#123456',
+      step: 24,
+      offset: {
+        x: 7.5,
+        y: 5
+      }
+    })
   })
 })

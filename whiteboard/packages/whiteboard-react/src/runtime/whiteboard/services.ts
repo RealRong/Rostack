@@ -79,8 +79,7 @@ export const createWhiteboardServices = ({
     registries: coreRegistries,
     document,
     onDocumentChange,
-    config: boardConfig,
-    history: resolvedConfig.history
+    config: boardConfig
   })
   const history = createHistoryBinding(engine.history)
   const textSources = createTextSourceStore()

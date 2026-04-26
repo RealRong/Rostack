@@ -4,6 +4,7 @@ import type {
   OwnerRef,
   Result,
   Runtime,
+  SceneViewInput,
   TextMeasure
 } from '../contracts/editor'
 import type { NodeModel, Size } from '@whiteboard/core/types'
@@ -39,7 +40,8 @@ export const createEditorSceneModelRuntime = (input: {
   document?: {
     nodeSize: Size
   }
-} = {}) => {
+  view: SceneViewInput
+}) => {
   const runtime = createProjectionRuntime(
     createEditorSceneProjectionModel({
       ...input,
@@ -65,7 +67,8 @@ export const createEditorSceneRuntime = (input: {
   document?: {
     nodeSize: Size
   }
-} = {}): Runtime => {
+  view: SceneViewInput
+}): Runtime => {
   const runtime = createEditorSceneModelRuntime(input)
 
   return {

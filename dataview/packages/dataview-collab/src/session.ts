@@ -4,11 +4,8 @@ import {
   createMutationCollabSession,
   type CollabStore
 } from '@shared/collab'
-import { readHistoryController } from '@shared/mutation'
 import { document as documentApi } from '@dataview/core/document'
 import type { DataDoc } from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import type { DataviewMutationKey } from '@dataview/core/mutation'
 import { createYjsSyncCodec } from '@dataview/collab/yjs/codec'
 import { createYjsSyncStore } from '@dataview/collab/yjs/store'
 import { createCollabLocalOrigin } from '@dataview/collab/yjs/shared'
@@ -18,7 +15,6 @@ import type {
   SharedChange,
   SharedCheckpoint
 } from '@dataview/collab/types'
-import type { EngineWrite } from '@dataview/engine/contracts/write'
 
 const DEFAULT_CHECKPOINT_THRESHOLD = 100
 
@@ -87,18 +83,7 @@ export const createYjsSession = ({
     localOrigin,
     syncStore
   })
-  const historyController = readHistoryController<
-    DocumentOperation,
-    DataviewMutationKey,
-    EngineWrite
-  >(engine)
-  const session = createMutationCollabSession({
-    doc: () => engine.doc(),
-    replace: (nextDocument, options) => engine.replace(nextDocument, options),
-    apply: (operations, options) => engine.apply(operations, options),
-    commits: engine.commits,
-    history: historyController
-  }, {
+  const session = createMutationCollabSession(engine.mutation, {
     actor: {
       id: actorId,
       createChangeId: () => createId('sync')

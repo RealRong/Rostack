@@ -6,14 +6,14 @@ import type { EditorSessionState } from '@whiteboard/editor/types/editor'
 import type { EditorDocumentSource } from '@whiteboard/editor/types/editor'
 import type {
   ClipboardActions,
-  ClipboardTarget
+  ClipboardTarget,
+  SelectionSessionDeps
 } from '@whiteboard/editor/action/types'
 import {
   createClipboardPacket,
   type ClipboardPacket
 } from '@whiteboard/editor/clipboard/packet'
 import type { SelectionActionHelpers } from '@whiteboard/editor/action/selection'
-import type { SelectionSessionDeps } from '@whiteboard/editor/session/types'
 import type { DocumentWrite } from '@whiteboard/editor/write/types'
 
 type ClipboardActionHelpersHost = {

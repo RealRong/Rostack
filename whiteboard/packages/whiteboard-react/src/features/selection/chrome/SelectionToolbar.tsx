@@ -23,9 +23,11 @@ export const SelectionToolbar = ({
 }) => {
   const editor = useEditorRuntime()
   const toolbar = useStoreValue(editor.session.panel.selectionToolbar)
+  const viewport = useStoreValue(editor.session.viewport)
+  void viewport
   const [activeScopeKey, setActiveScopeKey] = useState<string | null>(null)
   const worldToScreen = useCallback(
-    (point: Point) => editor.session.viewport.worldToScreen(point),
+    (point: Point) => editor.scene.query.view.screenPoint(point),
     [editor]
   )
 

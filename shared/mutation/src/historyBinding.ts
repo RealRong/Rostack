@@ -1,14 +1,25 @@
 import { store } from '@shared/core'
 import type { HistoryPort } from './localHistory'
+import type { Write } from './write'
 
-export type HistoryBinding<Result> = HistoryPort<Result> & {
-  set(next: HistoryPort<Result>): void
+export type HistoryBinding<
+  Result,
+  Op = any,
+  Key = any,
+  W extends Write<any, Op, Key, any> = Write<any, Op, Key, any>
+> = HistoryPort<Result, Op, Key, W> & {
+  set(next: HistoryPort<Result, Op, Key, W>): void
   reset(): void
 }
 
-export const createHistoryBinding = <Result>(
-  initial: HistoryPort<Result>
-): HistoryBinding<Result> => {
+export const createHistoryBinding = <
+  Result,
+  Op = any,
+  Key = any,
+  W extends Write<any, Op, Key, any> = Write<any, Op, Key, any>
+>(
+  initial: HistoryPort<Result, Op, Key, W>
+): HistoryBinding<Result, Op, Key, W> => {
   const state = store.createValueStore(initial.get())
   let current = initial
   let unsubscribe = current.subscribe(() => {
@@ -16,7 +27,7 @@ export const createHistoryBinding = <Result>(
   })
 
   const bind = (
-    next: HistoryPort<Result>
+    next: HistoryPort<Result, Op, Key, W>
   ) => {
     unsubscribe()
     current = next
@@ -29,6 +40,10 @@ export const createHistoryBinding = <Result>(
   return {
     get: state.get,
     subscribe: state.subscribe,
+    internal: {
+      controller: () => current.internal.controller(),
+      sync: () => current.internal.sync()
+    },
     undo: () => current.undo(),
     redo: () => current.redo(),
     clear: () => current.clear(),
@@ -36,5 +51,5 @@ export const createHistoryBinding = <Result>(
     reset: () => {
       bind(initial)
     }
-  }
+  } as HistoryBinding<Result, Op, Key, W>
 }

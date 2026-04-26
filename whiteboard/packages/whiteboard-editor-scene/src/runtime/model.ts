@@ -23,6 +23,7 @@ import type {
   Input,
   NodeCapabilityInput,
   OwnerRef,
+  SceneViewInput,
   TextMeasure
 } from '../contracts/editor'
 import type { Capture } from '../contracts/capture'
@@ -527,7 +528,8 @@ export const createEditorSceneProjectionModel = (input: {
   document?: {
     nodeSize: Size
   }
-} = {}) => {
+  view: SceneViewInput
+}) => {
   const nodeSize = input.document?.nodeSize ?? {
     width: 0,
     height: 0
@@ -583,7 +585,8 @@ export const createEditorSceneProjectionModel = (input: {
     items: () => runtime.state().items,
     spatial: () => runtime.state().spatial,
     nodeCapability: input.nodeCapability,
-    nodeSize
+    nodeSize,
+    view: input.view
   }),
   capture: ({ state, revision }) => buildEditorSceneCapture(
     state,

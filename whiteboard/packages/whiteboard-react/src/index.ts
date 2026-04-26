@@ -18,7 +18,6 @@ export const nodeRegistry = {
 
 export type {
   WhiteboardOptions,
-  HistoryOptions,
   WhiteboardProps
 } from '@whiteboard/react/types/common/board'
 export type {

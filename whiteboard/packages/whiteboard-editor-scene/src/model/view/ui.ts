@@ -8,6 +8,7 @@ import type {
   ChromeView,
   DrawPreview,
   EditCaret,
+  EdgeGuidePreview,
   EdgeLabelUiView,
   EdgeUiView,
   EdgeView,
@@ -136,6 +137,55 @@ const isDrawPreviewEqual = (
     && equal.sameOrder(left.hiddenNodeIds, right.hiddenNodeIds)
   )
 )
+
+const isEdgeGuidePreviewEqual = (
+  left: EdgeGuidePreview | undefined,
+  right: EdgeGuidePreview | undefined
+): boolean => {
+  const leftResolution = left?.connect?.resolution
+  const rightResolution = right?.connect?.resolution
+
+  if (
+    left?.path?.svgPath !== right?.path?.svgPath
+    || left?.path?.style?.color !== right?.path?.style?.color
+    || left?.path?.style?.width !== right?.path?.style?.width
+    || left?.path?.style?.dash !== right?.path?.style?.dash
+    || left?.path?.style?.start !== right?.path?.style?.start
+    || left?.path?.style?.end !== right?.path?.style?.end
+    || left?.connect?.focusedNodeId !== right?.connect?.focusedNodeId
+    || leftResolution?.mode !== rightResolution?.mode
+    || !equal.sameOptionalPoint(leftResolution?.pointWorld, rightResolution?.pointWorld)
+  ) {
+    return false
+  }
+
+  if (!leftResolution || !rightResolution) {
+    return leftResolution === rightResolution
+  }
+
+  if (leftResolution.mode === 'free' || rightResolution.mode === 'free') {
+    return leftResolution.mode === rightResolution.mode
+  }
+
+  if (leftResolution.nodeId !== rightResolution.nodeId) {
+    return false
+  }
+
+  if (
+    leftResolution.anchor.side !== rightResolution.anchor.side
+    || leftResolution.anchor.offset !== rightResolution.anchor.offset
+  ) {
+    return false
+  }
+
+  if (leftResolution.mode === 'handle' || rightResolution.mode === 'handle') {
+    return leftResolution.mode === 'handle'
+      && rightResolution.mode === 'handle'
+      && leftResolution.side === rightResolution.side
+  }
+
+  return true
+}
 
 const isMindmapDropLineEqual = (
   left: NonNullable<NonNullable<MindmapPreview['subtreeMove']>['drop']>['connectionLine'],
@@ -366,6 +416,7 @@ export const buildChromeView = (input: {
     overlays,
     hover: input.hover,
     preview: {
+      edgeGuide: input.session.preview.edgeGuide,
       marquee: input.session.preview.selection.marquee,
       guides: input.session.preview.selection.guides,
       draw: input.session.preview.draw,
@@ -381,6 +432,7 @@ export const isChromeViewEqual = (
 ): boolean => (
   equal.sameOrder(left.overlays, right.overlays, isChromeOverlayEqual)
   && isHoverStateEqual(left.hover, right.hover)
+  && isEdgeGuidePreviewEqual(left.preview.edgeGuide, right.preview.edgeGuide)
   && (
     left.preview.marquee === right.preview.marquee
     || (

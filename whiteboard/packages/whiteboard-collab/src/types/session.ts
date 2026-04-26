@@ -2,6 +2,9 @@ import { store as coreStore } from '@shared/core'
 import type { HistoryPort } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
+import type { Operation } from '@whiteboard/core/types'
+import type { HistoryFootprint } from '@whiteboard/core/spec/history'
+import type { EngineWrite } from '@whiteboard/engine'
 import type * as Y from 'yjs'
 import type {
   CollabProvider,
@@ -23,7 +26,12 @@ export type CollabDiagnostics = {
   rejectedChangeIds: readonly string[]
 }
 
-export type CollabLocalHistory = HistoryPort<IntentResult>
+export type CollabLocalHistory = HistoryPort<
+  IntentResult,
+  Operation,
+  HistoryFootprint[number],
+  EngineWrite
+>
 
 export type CollabSession = {
   awareness?: unknown

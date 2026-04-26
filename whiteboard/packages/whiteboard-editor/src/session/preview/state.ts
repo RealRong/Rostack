@@ -156,7 +156,7 @@ const composeFeedbackState = ({
   })
 }
 
-export const createInputPreviewState = ({
+export const createPreviewState = ({
   gesture,
   hover
 }: {

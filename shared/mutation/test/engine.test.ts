@@ -204,7 +204,7 @@ describe('CommandMutationEngine', () => {
     expect(engine.current()).not.toHaveProperty('cache')
     expect(states).toEqual([3])
     expect(writes).toEqual([3])
-    expect(engine.history?.state().undoDepth).toBe(1)
+    expect(engine.history.get().undoDepth).toBe(1)
   })
 
   test('supports batched execute with output array', () => {
@@ -259,7 +259,7 @@ describe('CommandMutationEngine', () => {
     expect(engine.current().doc).toEqual({
       count: 5
     })
-    expect(engine.history?.state().undoDepth).toBe(0)
+    expect(engine.history.get().undoDepth).toBe(0)
   })
 
   test('load resets current state without emitting a write and clears history', () => {
@@ -303,7 +303,7 @@ describe('CommandMutationEngine', () => {
         count: 9
       }
     })
-    expect(engine.history?.state().undoDepth).toBe(0)
+    expect(engine.history.get().undoDepth).toBe(0)
   })
 
   test('replace resets runtime without emitting a write and returns true', () => {
@@ -343,7 +343,7 @@ describe('CommandMutationEngine', () => {
         count: 7
       }
     })
-    expect(engine.history?.state().undoDepth).toBe(0)
+    expect(engine.history.get().undoDepth).toBe(0)
   })
 
   test('history clear policy can clear and skip capturing the current write', () => {
@@ -366,7 +366,7 @@ describe('CommandMutationEngine', () => {
     expect(engine.current().doc).toEqual({
       count: 100
     })
-    expect(engine.history?.state().undoDepth).toBe(0)
+    expect(engine.history.get().undoDepth).toBe(0)
   })
 
   test('operation runtime exposes apply without compile', () => {

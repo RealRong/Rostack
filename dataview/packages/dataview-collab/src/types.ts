@@ -9,6 +9,7 @@ import type { DataDoc } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
 import type { DataviewMutationKey } from '@dataview/core/mutation'
 import type { Engine } from '@dataview/engine'
+import type { EngineWrite } from '@dataview/engine/contracts/write'
 
 export type SharedOperation = DocumentOperation
 
@@ -53,7 +54,12 @@ export type CreateYjsSessionOptions = {
   checkpointThreshold?: number
 }
 
-export type CollabLocalHistory = HistoryPort<ReturnType<Engine['apply']>>
+export type CollabLocalHistory = HistoryPort<
+  ReturnType<Engine['apply']>,
+  DocumentOperation,
+  DataviewMutationKey,
+  EngineWrite
+>
 
 export type CollabDiagnostics = SharedCollabDiagnostics
 

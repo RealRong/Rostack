@@ -1,7 +1,5 @@
 import {
   CommandMutationEngine,
-  createHistoryPort,
-  HISTORY_CONTROLLER,
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createRegistries } from '@whiteboard/core/kernel'
@@ -9,7 +7,7 @@ import { resolveBoardConfig } from '../config'
 import type {
   CreateEngineOptions,
   Engine,
-  EngineHistoryConfig,
+  EngineMutationPort,
   EnginePublish
 } from '../contracts/document'
 import type {
@@ -18,7 +16,6 @@ import type {
   IntentKind
 } from '../contracts/intent'
 import { createWhiteboardMutationSpec } from '../mutation'
-import { DEFAULT_ENGINE_HISTORY_CONFIG } from '../mutation/spec'
 import { failure } from '../result'
 import type {
   WhiteboardMutationExtra,
@@ -89,15 +86,10 @@ export const createEngine = ({
   registries,
   document,
   onDocumentChange,
-  config: overrides,
-  history
+  config: overrides
 }: CreateEngineOptions): Engine => {
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
-  const resolvedHistory: EngineHistoryConfig = {
-    ...DEFAULT_ENGINE_HISTORY_CONFIG,
-    ...(history ?? {})
-  }
 
   const core = new CommandMutationEngine<
     Document,
@@ -111,8 +103,7 @@ export const createEngine = ({
     doc: document,
     spec: createWhiteboardMutationSpec({
       config,
-      registries: resolvedRegistries,
-      history: resolvedHistory
+      registries: resolvedRegistries
     })
   })
 
@@ -126,17 +117,25 @@ export const createEngine = ({
       onDocumentChange(current.doc)
     })
   }
-  const history = createHistoryPort(core, {
-    apply: {
-      origin: 'history'
-    }
-  })
-
-  const engine = {
+  const mutation: EngineMutationPort = {
+    commits: core.commits,
+    history: core.history as Engine['history'],
+    doc: () => core.doc(),
+    replace: (nextDocument, options) => core.replace(nextDocument, {
+      origin: options?.origin ?? 'system'
+    }),
+    apply: (ops, options) => core.apply(ops, {
+      origin: options?.origin ?? 'user'
+    }),
+    historyController: () => core.historyController(),
+    syncHistory: () => core.syncHistory()
+  }
+  const engine: Engine = {
     config,
     commits: core.commits,
     writes: core.writes,
-    history,
+    history: core.history,
+    mutation,
     doc: () => core.doc(),
     current: () => readPublish(core.current().publish),
     subscribe: (listener) => core.subscribe((current) => {
@@ -154,10 +153,6 @@ export const createEngine = ({
       origin: options?.origin ?? 'user'
     })
   }
-
-  ;(engine as {
-    [HISTORY_CONTROLLER]?: typeof core.history
-  })[HISTORY_CONTROLLER] = core.history
 
   return engine
 }

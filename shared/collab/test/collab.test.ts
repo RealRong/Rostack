@@ -3,6 +3,7 @@ import { test } from 'vitest'
 import {
   type ApplyCommit,
   type CommitRecord,
+  createHistoryPort,
   mutationResult,
   history
 } from '@shared/mutation'
@@ -86,6 +87,14 @@ const createEngine = (doc = 'base') => {
   const writeListeners = new Set<(write: TestWrite) => void>()
   const commitListeners = new Set<(commit: CommitRecord<string, TestOp, string, {}>) => void>()
   let nextRev = 1
+  const commits = {
+    subscribe: (listener: (commit: CommitRecord<string, TestOp, string, {}>) => void) => {
+      commitListeners.add(listener)
+      return () => {
+        commitListeners.delete(listener)
+      }
+    }
+  }
 
   const emitCommit = (
     commit: CommitRecord<string, TestOp, string, {}>
@@ -96,6 +105,33 @@ const createEngine = (doc = 'base') => {
       writeListeners.forEach((listener) => listener(commit))
     }
   }
+  const apply = (ops: readonly TestOp[], options?: {
+    origin?: TestWrite['origin']
+  }) => {
+    ops.forEach((op) => {
+      current = op.value
+    })
+    const write: TestWrite = {
+      rev: 0,
+      at: 0,
+      origin: options?.origin ?? 'system',
+      doc: current,
+      forward: ops,
+      inverse: [],
+      footprint: [],
+      extra: {}
+    }
+    emitCommit({
+      kind: 'apply',
+      ...write
+    } satisfies ApplyCommit<string, TestOp, string, {}>)
+    return mutationResult.success(undefined, write)
+  }
+  const historyPort = createHistoryPort({
+    apply,
+    commits,
+    historyController: () => controller
+  })
 
   return {
     engine: {
@@ -114,36 +150,8 @@ const createEngine = (doc = 'base') => {
         })
         return true
       },
-      apply: (ops: readonly TestOp[], options?: {
-        origin?: TestWrite['origin']
-      }) => {
-        ops.forEach((op) => {
-          current = op.value
-        })
-        const write: TestWrite = {
-          rev: 0,
-          at: 0,
-          origin: options?.origin ?? 'system',
-          doc: current,
-          forward: ops,
-          inverse: [],
-          footprint: [],
-          extra: {}
-        }
-        emitCommit({
-          kind: 'apply',
-          ...write
-        } satisfies ApplyCommit<string, TestOp, string, {}>)
-        return mutationResult.success(undefined, write)
-      },
-      commits: {
-        subscribe: (listener: (commit: CommitRecord<string, TestOp, string, {}>) => void) => {
-          commitListeners.add(listener)
-          return () => {
-            commitListeners.delete(listener)
-          }
-        }
-      },
+      apply,
+      commits,
       writes: {
         subscribe: (listener: (write: TestWrite) => void) => {
           writeListeners.add(listener)
@@ -152,7 +160,11 @@ const createEngine = (doc = 'base') => {
           }
         }
       },
-      history: controller
+      history: historyPort,
+      historyController: () => controller,
+      syncHistory: () => {
+        historyPort.internal.sync()
+      }
     },
     emit: (write: TestWrite) => {
       emitCommit({
@@ -161,7 +173,7 @@ const createEngine = (doc = 'base') => {
       })
     },
     doc: () => current,
-    history: controller
+    history: historyPort
   }
 }
 
@@ -321,7 +333,7 @@ test('null change.create publishes checkpoint and clears history', () => {
   })
 
   session.connect()
-  engineRuntime.history.capture({
+  engineRuntime.history.internal.controller()!.capture({
     rev: 1,
     at: 1,
     origin: 'user',
@@ -337,6 +349,7 @@ test('null change.create publishes checkpoint and clears history', () => {
     footprint: ['field.a'],
     extra: {}
   })
+  engineRuntime.history.internal.sync()
 
   engineRuntime.emit({
     rev: 2,
@@ -354,5 +367,5 @@ test('null change.create publishes checkpoint and clears history', () => {
 
   assert.equal(memoryStore.snapshot().checkpoint?.doc, 'doc_reset')
   assert.equal(memoryStore.snapshot().changes.length, 0)
-  assert.equal(engineRuntime.history.state().undoDepth, 0)
+  assert.equal(engineRuntime.history.get().undoDepth, 0)
 })

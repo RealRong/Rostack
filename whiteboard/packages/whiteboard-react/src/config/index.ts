@@ -4,7 +4,6 @@ import {
   type BoardConfig as EngineBoardConfig
 } from '@whiteboard/core/config'
 import type { Viewport } from '@whiteboard/core/types'
-import { DEFAULT_ENGINE_HISTORY_CONFIG } from '@whiteboard/engine'
 import type { WhiteboardOptions } from '@whiteboard/react/types/common/board'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 
@@ -30,7 +29,6 @@ const DEFAULT_CONFIG: ResolvedConfig = {
   },
   node: DEFAULT_BOARD_CONFIG.node,
   edge: DEFAULT_BOARD_CONFIG.edge,
-  history: DEFAULT_ENGINE_HISTORY_CONFIG,
   initialTool: { type: 'select' },
   shortcuts: undefined
 }
@@ -59,10 +57,6 @@ const normalizeConfig = (
       minZoom,
       maxZoom,
       wheelSensitivity: Math.max(0, merged.viewport.wheelSensitivity)
-    },
-    history: {
-      ...merged.history,
-      capacity: Math.max(0, merged.history.capacity)
     }
   }
 }

@@ -26,7 +26,6 @@ import type {
   Operation
 } from '@whiteboard/core/types'
 import type {
-  EngineHistoryConfig,
   EnginePublish
 } from '../contracts/document'
 import { normalizeDocument } from '@whiteboard/core/document/normalize'
@@ -36,23 +35,23 @@ import type {
   WhiteboardMutationKey
 } from './types'
 
-export const DEFAULT_ENGINE_HISTORY_CONFIG: EngineHistoryConfig = {
+interface WhiteboardHistoryConfig {
+  enabled: boolean
+  capacity: number
+  captureSystem: boolean
+  captureRemote: boolean
+}
+
+const DEFAULT_HISTORY_CONFIG: WhiteboardHistoryConfig = {
   enabled: true,
   capacity: 100,
   captureSystem: false,
   captureRemote: false
 }
 
-const resolveEngineHistoryConfig = (
-  config?: Partial<EngineHistoryConfig>
-): EngineHistoryConfig => ({
-  ...DEFAULT_ENGINE_HISTORY_CONFIG,
-  ...(config ?? {})
-})
-
 const shouldTrackOrigin = (
   origin: MutationOrigin,
-  config: EngineHistoryConfig
+  config: WhiteboardHistoryConfig
 ): boolean => {
   if (!config.enabled || origin === 'history') {
     return false
@@ -71,7 +70,7 @@ const shouldClearHistory = (
     origin: MutationOrigin
     forward: readonly Operation[]
   },
-  config: EngineHistoryConfig
+  config: WhiteboardHistoryConfig
 ): boolean => shouldTrackOrigin(write.origin, config)
   && write.forward.some((op) => META[op.type].sync === 'checkpoint')
 
@@ -97,9 +96,8 @@ export type WhiteboardMutationSpec = CommandMutationSpec<
 export const createWhiteboardMutationSpec = (input: {
   config: BoardConfig
   registries: CoreRegistries
-  history?: Partial<EngineHistoryConfig>
 }): WhiteboardMutationSpec => {
-  const historyConfig = resolveEngineHistoryConfig(input.history)
+  const historyConfig = DEFAULT_HISTORY_CONFIG
   const ids: WhiteboardCompileIds = {
     node: (): NodeId => createId('node'),
     edge: (): EdgeId => createId('edge'),

@@ -1,7 +1,4 @@
-import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { Guide } from '@whiteboard/core/node'
-import type { Rect } from '@whiteboard/core/types'
-import type { ViewportRuntime } from '@whiteboard/editor/session/viewport'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
 } from '@whiteboard/editor/session/preview/edge'
@@ -10,7 +7,6 @@ import {
   EMPTY_NODE_SELECTION_FEEDBACK
 } from '@whiteboard/editor/session/preview/node'
 import type {
-  MarqueePreview,
   MarqueePreviewState,
   SelectionPreviewState
 } from '@whiteboard/editor/session/preview/types'
@@ -34,20 +30,6 @@ const isMarqueeFeedbackStateEqual = (
     && left?.worldRect.y === right?.worldRect.y
     && left?.worldRect.width === right?.worldRect.width
     && left?.worldRect.height === right?.worldRect.height
-  )
-)
-
-export const isMarqueeFeedbackEqual = (
-  left: MarqueePreview | undefined,
-  right: MarqueePreview | undefined
-) => (
-  left === right
-  || (
-    left?.match === right?.match
-    && left?.rect.x === right?.rect.x
-    && left?.rect.y === right?.rect.y
-    && left?.rect.width === right?.rect.width
-    && left?.rect.height === right?.rect.height
   )
 )
 
@@ -98,20 +80,4 @@ export const normalizeSelectionFeedbackState = (
     marquee,
     guides
   }
-}
-
-export const projectWorldRect = (
-  viewport: ViewportRuntime['read'],
-  worldRect: Rect
-): Rect => {
-  const topLeft = viewport.worldToScreen({
-    x: worldRect.x,
-    y: worldRect.y
-  })
-  const bottomRight = viewport.worldToScreen({
-    x: worldRect.x + worldRect.width,
-    y: worldRect.y + worldRect.height
-  })
-
-  return geometryApi.rect.fromPoints(topLeft, bottomRight)
 }

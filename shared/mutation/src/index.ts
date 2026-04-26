@@ -57,18 +57,14 @@ export type {
 export { history } from './history'
 export type {
   CaptureOptions,
-  HistoryControllerCarrier,
   HistoryController,
   HistoryState
-} from './history'
-export {
-  HISTORY_CONTROLLER,
-  readHistoryController
 } from './history'
 export { createHistoryBinding } from './historyBinding'
 export type { HistoryBinding } from './historyBinding'
 export { createHistoryPort } from './localHistory'
 export type {
+  HistoryPortInternal,
   HistoryPort,
   HistoryPortEngine,
   HistoryPortOptions,

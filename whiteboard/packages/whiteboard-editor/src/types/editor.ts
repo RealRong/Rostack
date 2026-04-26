@@ -110,6 +110,7 @@ export type EditorSelectionNodeRead = {
 
 export type ToolRead = {
   get: () => Tool
+  subscribe: (listener: () => void) => store.Unsubscribe
   type: () => Tool['type']
   value: () => import('@whiteboard/editor/session/draw/model').DrawMode | undefined
   is: (type: Tool['type'], value?: string) => boolean

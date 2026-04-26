@@ -12,6 +12,20 @@ import {
   createEditorSceneRuntime
 } from '../runtime/createEditorSceneRuntime'
 
+const TEST_SCENE_VIEW = () => ({
+  zoom: 1,
+  center: {
+    x: 0,
+    y: 0
+  },
+  worldRect: {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0
+  }
+})
+
 export interface EditorSceneHarness {
   runtime: Runtime
   query: Query
@@ -31,7 +45,8 @@ export const createEditorSceneHarness = (input: {
   measure?: TextMeasure
 } = {}): EditorSceneHarness => {
   const runtime = createEditorSceneRuntime({
-    measure: input.measure
+    measure: input.measure,
+    view: TEST_SCENE_VIEW
   })
   let trace: Result['trace']
 
@@ -52,7 +67,8 @@ export const createEditorSceneModelHarness = (input: {
   measure?: TextMeasure
 } = {}): EditorSceneModelHarness => {
   const runtime = createEditorSceneModelRuntime({
-    measure: input.measure
+    measure: input.measure,
+    view: TEST_SCENE_VIEW
   })
   let trace: Result['trace']
 

@@ -7,7 +7,21 @@ import { createEditorBoundaryTaskRuntime } from '../src/boundary/task'
 
 describe('editor boundary runtime', () => {
   const createBoundary = () => {
-    const graph = createEditorSceneRuntime()
+    const graph = createEditorSceneRuntime({
+      view: () => ({
+        zoom: 1,
+        center: {
+          x: 0,
+          y: 0
+        },
+        worldRect: {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0
+        }
+      })
+    })
     const mark = vi.fn()
     const flush = vi.fn(() => null)
     let boundary!: ReturnType<typeof createEditorBoundaryRuntime>

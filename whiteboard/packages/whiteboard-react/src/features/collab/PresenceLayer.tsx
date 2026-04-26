@@ -7,40 +7,12 @@ import type {
 } from '@whiteboard/react/types/common/presence'
 import { formatPresenceToolLabel } from '@whiteboard/react/features/collab/presence'
 
-const toScreenRect = (
-  editor: ReturnType<typeof useEditorRuntime>,
-  rect: {
-    x: number
-    y: number
-    width: number
-    height: number
-  }
-) => {
-  const topLeft = editor.session.viewport.worldToScreen({
-    x: rect.x,
-    y: rect.y
-  })
-  const bottomRight = editor.session.viewport.worldToScreen({
-    x: rect.x + rect.width,
-    y: rect.y + rect.height
-  })
-
-  return {
-    left: Math.min(topLeft.x, bottomRight.x),
-    top: Math.min(topLeft.y, bottomRight.y),
-    width: Math.abs(bottomRight.x - topLeft.x),
-    height: Math.abs(bottomRight.y - topLeft.y)
-  }
-}
-
 const PresenceNodeSelection = ({
   nodeId,
-  color,
-  viewport
+  color
 }: {
   nodeId: string
   color: string
-  viewport: unknown
 }) => {
   const editor = useEditorRuntime()
   const item = useKeyedStoreValue(editor.scene.stores.render.node.byId, nodeId)
@@ -49,13 +21,16 @@ const PresenceNodeSelection = ({
     return null
   }
 
-  void viewport
+  const bounds = editor.scene.query.view.screenRect(item.bounds)
 
   return (
     <div
       className="wb-presence-selection"
       style={{
-        ...toScreenRect(editor, item.bounds),
+        left: bounds.x,
+        top: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
         borderColor: color,
         backgroundColor: `${color}18`
       }}
@@ -65,12 +40,10 @@ const PresenceNodeSelection = ({
 
 const PresenceEdgeSelection = ({
   edgeId,
-  color,
-  viewport
+  color
 }: {
   edgeId: string
   color: string
-  viewport: unknown
 }) => {
   const editor = useEditorRuntime()
   const edge = useKeyedStoreValue(editor.scene.stores.graph.edge.byId, edgeId)
@@ -79,18 +52,21 @@ const PresenceEdgeSelection = ({
     return null
   }
 
-  void viewport
-
   const bounds = edge?.box?.rect
   if (!bounds) {
     return null
   }
 
+  const screenBounds = editor.scene.query.view.screenRect(bounds)
+
   return (
     <div
       className="wb-presence-selection wb-presence-selection-edge"
       style={{
-        ...toScreenRect(editor, bounds),
+        left: screenBounds.x,
+        top: screenBounds.y,
+        width: screenBounds.width,
+        height: screenBounds.height,
         borderColor: color,
         backgroundColor: `${color}12`
       }}
@@ -99,11 +75,9 @@ const PresenceEdgeSelection = ({
 }
 
 const PresenceCursor = ({
-  peer,
-  viewport
+  peer
 }: {
   peer: WhiteboardPresenceState
-  viewport: unknown
 }) => {
   const editor = useEditorRuntime()
 
@@ -111,9 +85,7 @@ const PresenceCursor = ({
     return null
   }
 
-  void viewport
-
-  const cursor = editor.session.viewport.worldToScreen(peer.pointer.world)
+  const cursor = editor.scene.query.view.screenPoint(peer.pointer.world)
 
   return (
     <div
@@ -135,12 +107,10 @@ const PresenceCursor = ({
 
 const PresencePeer = ({
   clientId,
-  peer,
-  viewport
+  peer
 }: {
   clientId: string
   peer: WhiteboardPresenceState
-  viewport: unknown
 }) => {
   const selection = peer.selection
 
@@ -151,7 +121,6 @@ const PresencePeer = ({
           key={`node-${clientId}-${nodeId}`}
           nodeId={nodeId}
           color={peer.user.color}
-          viewport={viewport}
         />
       ))}
       {selection?.edgeIds.map((edgeId) => (
@@ -159,12 +128,10 @@ const PresencePeer = ({
           key={`edge-${clientId}-${edgeId}`}
           edgeId={edgeId}
           color={peer.user.color}
-          viewport={viewport}
         />
       ))}
       <PresenceCursor
         peer={peer}
-        viewport={viewport}
       />
     </div>
   )
@@ -177,6 +144,7 @@ export const PresenceLayer = ({
 }) => {
   const editor = useEditorRuntime()
   const viewport = useStoreValue(editor.session.viewport)
+  void viewport
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
@@ -210,7 +178,6 @@ export const PresenceLayer = ({
           key={clientId}
           clientId={clientId}
           peer={peer}
-          viewport={viewport}
         />
       ))}
     </div>

@@ -1,23 +1,16 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import { edge as edgeApi } from '@whiteboard/core/edge'
-import type { EdgeId } from '@whiteboard/core/types'
 import type {
   EdgeConnectFeedback,
   EdgeGuide,
   EdgeFeedbackEntry,
-  EdgePreviewProjection,
-  EdgePreviewState,
-  EditorInputPreviewState
+  EdgePreviewState
 } from '@whiteboard/editor/session/preview/types'
-import { mergeEntryById } from '@whiteboard/editor/session/preview/merge'
 
 export const EMPTY_EDGE_FEEDBACK_ENTRIES: readonly EdgeFeedbackEntry[] = []
 export const EMPTY_EDGE_GUIDE: EdgeGuide = {}
 export const EMPTY_EDGE_FEEDBACK: EdgePreviewState = {
   interaction: EMPTY_EDGE_FEEDBACK_ENTRIES
 }
-export const EMPTY_EDGE_FEEDBACK_PROJECTION: EdgePreviewProjection = {}
-const EMPTY_EDGE_FEEDBACK_MAP = new Map<EdgeId, EdgePreviewProjection>()
 
 const isEdgeConnectFeedbackEqual = (
   left: EdgeConnectFeedback | undefined,
@@ -82,45 +75,12 @@ export const isEdgeGuideEqual = (
   && isEdgeConnectFeedbackEqual(left.connect, right.connect)
 )
 
-export const isEdgeProjectionEqual = (
-  left: EdgePreviewProjection,
-  right: EdgePreviewProjection
-) => (
-  edgeApi.patch.equal(left.patch, right.patch)
-  && left.activeRouteIndex === right.activeRouteIndex
-)
-
 const isEdgeGuideEmpty = (
   guide: EdgeGuide | undefined
 ) => (
   guide === undefined
   || (!guide.path && !guide.connect)
 )
-
-const mergeEdgeFeedbackEntries = (
-  next: Map<EdgeId, EdgePreviewProjection>,
-  entries: readonly EdgeFeedbackEntry[]
-) => {
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index]!
-    mergeEntryById(next, entry.id, (current) => {
-      const patch = current?.patch
-        ? {
-            ...current.patch,
-            ...entry.patch
-          }
-        : entry.patch
-      const activeRouteIndex = entry.activeRouteIndex ?? current?.activeRouteIndex
-
-      return !patch && activeRouteIndex === undefined
-        ? undefined
-        : {
-            patch,
-            activeRouteIndex
-          }
-    })
-  }
-}
 
 export const normalizeEdgeFeedbackState = (
   state: EdgePreviewState
@@ -143,23 +103,4 @@ export const normalizeEdgeFeedbackState = (
     interaction,
     guide
   }
-}
-
-export const toEdgeFeedbackMap = (
-  state: EditorInputPreviewState
-) => {
-  if (
-    state.selection.edge.length === 0
-    && state.edge.interaction.length === 0
-  ) {
-    return EMPTY_EDGE_FEEDBACK_MAP
-  }
-
-  const next = new Map<EdgeId, EdgePreviewProjection>()
-  mergeEdgeFeedbackEntries(next, state.selection.edge)
-  mergeEdgeFeedbackEntries(next, state.edge.interaction)
-
-  return next.size > 0
-    ? next
-    : EMPTY_EDGE_FEEDBACK_MAP
 }

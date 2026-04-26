@@ -100,6 +100,25 @@ export interface EngineDelta {
   mindmaps: IdDelta<MindmapId>
 }
 
+export interface SceneViewSnapshot {
+  zoom: number
+  center: Point
+  worldRect: Rect
+}
+
+export type SceneViewInput = () => SceneViewSnapshot
+
+export type SceneBackgroundView =
+  | {
+      type: 'none'
+    }
+  | {
+      type: 'dot' | 'line'
+      color: string
+      step: number
+      offset: Point
+    }
+
 export type OwnerRef =
   | {
       kind: 'mindmap'
@@ -209,6 +228,7 @@ export interface EdgeGuidePreview {
     style?: Edge['style']
   }
   connect?: {
+    focusedNodeId?: NodeId
     resolution: ConnectResolution
   }
 }
@@ -636,6 +656,7 @@ export interface ChromeView {
 }
 
 export interface ChromePreviewView {
+  edgeGuide?: EdgeGuidePreview
   marquee?: {
     worldRect: Rect
     match: SelectionMarqueeMatch
@@ -848,13 +869,17 @@ export interface Query {
     } | undefined
   }
   view: {
+    zoom(): number
+    center(): Point
+    worldRect(): Rect
+    screenPoint(point: Point): Point
+    screenRect(rect: Rect): Rect
+    background(): SceneBackgroundView
     visible(
-      rect: Rect,
       options?: Parameters<SpatialRead['rect']>[1]
     ): ReturnType<SpatialRead['rect']>
     pick(input: {
       point: Point
-      zoom: number
       radius?: number
       kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
       exclude?: Partial<{

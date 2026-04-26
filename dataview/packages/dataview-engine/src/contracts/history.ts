@@ -3,6 +3,12 @@ import type {
   MutationResult
 } from '@shared/mutation'
 import type {
+  DocumentOperation
+} from '@dataview/core/contracts/operations'
+import type {
+  DataviewMutationKey
+} from '@dataview/core/mutation'
+import type {
   DataviewErrorCode
 } from '@dataview/engine/types/intent'
 import type {
@@ -17,5 +23,8 @@ export interface DataviewHistoryConfig {
 }
 
 export type DataviewHistory = HistoryPort<
-  MutationResult<void, EngineWrite, DataviewErrorCode>
+  MutationResult<void, EngineWrite, DataviewErrorCode>,
+  DocumentOperation,
+  DataviewMutationKey,
+  EngineWrite
 >

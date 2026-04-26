@@ -11,8 +11,10 @@ import type {
   NodeWrite,
   OrderMode
 } from '@whiteboard/editor/write/types'
-import type { SelectionActions } from '@whiteboard/editor/action/types'
-import type { SelectionSessionDeps } from '@whiteboard/editor/session/types'
+import type {
+  SelectionActions,
+  SelectionSessionDeps
+} from '@whiteboard/editor/action/types'
 
 const DEFAULT_FRAME_PADDING = 32
 

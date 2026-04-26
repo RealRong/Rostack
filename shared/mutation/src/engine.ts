@@ -6,9 +6,12 @@ import type {
 } from './compiler'
 import {
   history as historyRuntime,
-  HISTORY_CONTROLLER,
   type HistoryController
 } from './history'
+import {
+  createHistoryPort,
+  type HistoryPort
+} from './localHistory'
 import type {
   ApplyCommit,
   CommitRecord,
@@ -282,7 +285,8 @@ export class OperationMutationRuntime<
 > {
   readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
   readonly commits: CommitStream<CommitRecord<Doc, Op, Key, Extra>>
-  readonly history?: HistoryController<
+  readonly history: HistoryPort<
+    MutationResult<void, Write<Doc, Op, Key, Extra>>,
     Op,
     Key,
     Write<Doc, Op, Key, Extra>
@@ -290,6 +294,11 @@ export class OperationMutationRuntime<
 
   protected readonly spec: MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra>
   private state: MutationInternalState<Doc, Publish, Cache>
+  private readonly historyControllerRef?: HistoryController<
+    Op,
+    Key,
+    Write<Doc, Op, Key, Extra>
+  >
   private readonly listeners = new Set<(current: MutationCurrent<Doc, Publish>) => void>()
   private readonly writeListeners = new Set<(write: Write<Doc, Op, Key, Extra>) => void>()
   private readonly commitListeners = new Set<(
@@ -306,7 +315,7 @@ export class OperationMutationRuntime<
     this.state = this.createInitialState(initialDoc)
 
     if (this.spec.history) {
-      this.history = historyRuntime.create<
+      this.historyControllerRef = historyRuntime.create<
         Op,
         Key,
         Write<Doc, Op, Key, Extra>
@@ -320,13 +329,6 @@ export class OperationMutationRuntime<
         )
       })
     }
-    ;(this as {
-      [HISTORY_CONTROLLER]?: HistoryController<
-        Op,
-        Key,
-        Write<Doc, Op, Key, Extra>
-      >
-    })[HISTORY_CONTROLLER] = this.history
 
     this.writes = {
       subscribe: (listener) => {
@@ -344,6 +346,15 @@ export class OperationMutationRuntime<
         }
       }
     }
+    this.history = createHistoryPort({
+      apply: (ops, options) => this.apply(ops, options),
+      commits: this.commits,
+      historyController: () => this.historyController()
+    }, {
+      apply: {
+        origin: 'history'
+      }
+    })
   }
 
   doc(): Doc {
@@ -397,7 +408,7 @@ export class OperationMutationRuntime<
       doc: nextDoc
     }
     this.state = this.createInitialState(nextDoc, commit.rev)
-    this.history?.clear()
+    this.historyControllerRef?.clear()
     this.emitCurrent()
     this.emitCommit(commit)
     return true
@@ -413,6 +424,18 @@ export class OperationMutationRuntime<
 
   protected readCommittedDoc(): Doc {
     return this.state.doc
+  }
+
+  historyController(): HistoryController<
+    Op,
+    Key,
+    Write<Doc, Op, Key, Extra>
+  > | undefined {
+    return this.historyControllerRef
+  }
+
+  syncHistory(): void {
+    this.history.internal.sync()
   }
 
   protected commit<TData>(input: {
@@ -476,11 +499,11 @@ export class OperationMutationRuntime<
         : {})
     }
 
-    if (input.origin !== 'history' && this.history) {
+    if (input.origin !== 'history' && this.historyControllerRef) {
       if (this.spec.history?.clear?.(write)) {
-        this.history.clear()
+        this.historyControllerRef.clear()
       } else {
-        this.history.capture(write)
+        this.historyControllerRef.capture(write)
       }
     }
 

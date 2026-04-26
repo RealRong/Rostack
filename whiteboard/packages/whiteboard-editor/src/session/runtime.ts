@@ -33,10 +33,11 @@ import {
   createEditorInputState,
   type EditorInputStateController
 } from '@whiteboard/editor/session/interaction'
-import {
-  createEditorInputPreview,
-  type EditorInputPreview
-} from '@whiteboard/editor/session/preview'
+import { createPreviewState } from '@whiteboard/editor/session/preview/state'
+import type {
+  EditorInputPreviewState,
+  EditorInputPreviewWrite
+} from '@whiteboard/editor/session/preview/types'
 
 export type EditorSessionState = {
   tool: store.ValueStore<Tool>
@@ -94,7 +95,10 @@ export type EditorSession = {
     read: EditorSessionInteractionRead
     write: EditorSessionInteractionWrite
   }
-  preview: EditorInputPreview
+  preview: {
+    state: store.ReadStore<EditorInputPreviewState>
+    write: EditorInputPreviewWrite
+  }
   resetDocument: () => void
   resetInteraction: () => void
   reset: () => void
@@ -123,11 +127,20 @@ export const createEditorSession = ({
     initialViewport
   })
   const interaction = createEditorInputState()
-  const preview = createEditorInputPreview({
-    viewport: viewport.read,
+  const previewState = createPreviewState({
     gesture: interaction.state.gesture,
     hover: interaction.state.hover
   })
+  const preview = {
+    state: {
+      get: previewState.get,
+      subscribe: previewState.subscribe
+    },
+    write: {
+      set: previewState.set,
+      reset: previewState.reset
+    }
+  }
 
   const state: EditorSessionState = {
     tool,

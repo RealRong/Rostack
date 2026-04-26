@@ -52,24 +52,6 @@ export interface HistoryController<
   clear(): boolean
 }
 
-export const HISTORY_CONTROLLER = Symbol('shared.mutation.historyController')
-
-export type HistoryControllerCarrier<
-  Op,
-  Key,
-  W extends Write<any, Op, Key, any>
-> = {
-  [HISTORY_CONTROLLER]?: HistoryController<Op, Key, W>
-}
-
-export const readHistoryController = <
-  Op,
-  Key,
-  W extends Write<any, Op, Key, any>
->(
-  value: HistoryControllerCarrier<Op, Key, W>
-): HistoryController<Op, Key, W> | undefined => value[HISTORY_CONTROLLER]
-
 const EMPTY_STATE: HistoryState = {
   canUndo: false,
   canRedo: false,

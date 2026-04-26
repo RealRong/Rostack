@@ -81,6 +81,29 @@ export type MindmapInsertRelation =
   | 'sibling'
   | 'parent'
 
+export type SelectionSessionDeps = {
+  replaceSelection: (input: SelectionInput) => void
+  clearSelection: () => void
+}
+
+export type EditSessionDeps = {
+  startNodeEdit: (
+    nodeId: NodeId,
+    field: EditField,
+    options?: {
+      caret?: EditCaret
+    }
+  ) => void
+  startEdgeLabelEdit: (
+    edgeId: EdgeId,
+    labelId: string,
+    options?: {
+      caret?: EditCaret
+    }
+  ) => void
+  clearEdit: () => void
+}
+
 export type AppActions = {
   replace: (document: Document) => IntentResult
 }

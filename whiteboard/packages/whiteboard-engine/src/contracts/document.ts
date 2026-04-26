@@ -1,5 +1,6 @@
 import type {
   CommitStream,
+  HistoryController,
   HistoryPort,
   MutationOptions,
   WriteStream
@@ -30,6 +31,7 @@ import type {
   Revision
 } from './core'
 export type { IdDelta } from './core'
+import type { WhiteboardMutationKey } from '../mutation/types'
 
 export interface Snapshot {
   revision: Revision
@@ -55,18 +57,42 @@ export interface EnginePublish {
 export type EngineWrites = WriteStream<EngineWrite>
 export type EngineCommits = CommitStream<EngineCommit>
 
-export interface EngineHistoryConfig {
-  enabled: boolean
-  capacity: number
-  captureSystem: boolean
-  captureRemote: boolean
+export interface EngineMutationPort {
+  readonly commits: EngineCommits
+  readonly history: HistoryPort<
+    IntentResult,
+    Operation,
+    HistoryFootprint[number],
+    EngineWrite
+  >
+  doc(): Document
+  replace(
+    document: Document,
+    options?: MutationOptions
+  ): boolean
+  apply(
+    ops: readonly Operation[],
+    options?: MutationOptions
+  ): IntentResult
+  historyController(): HistoryController<
+    Operation,
+    HistoryFootprint[number],
+    EngineWrite
+  > | undefined
+  syncHistory(): void
 }
 
 export interface Engine {
   readonly config: BoardConfig
   readonly commits: EngineCommits
   readonly writes: EngineWrites
-  readonly history: HistoryPort<IntentResult>
+  readonly history: HistoryPort<
+    IntentResult,
+    Operation,
+    HistoryFootprint[number],
+    EngineWrite
+  >
+  readonly mutation: EngineMutationPort
   doc(): Document
   current(): EnginePublish
   subscribe(listener: (publish: EnginePublish) => void): () => void
@@ -89,5 +115,4 @@ export interface CreateEngineOptions {
   document: Document
   onDocumentChange?: (document: Document) => void
   config?: Partial<BoardConfig>
-  history?: Partial<EngineHistoryConfig>
 }

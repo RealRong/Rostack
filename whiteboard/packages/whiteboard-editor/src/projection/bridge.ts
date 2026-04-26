@@ -260,7 +260,7 @@ export const createSceneBridge = ({
   nodeType
 }: {
   engine: Engine
-  session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
+  session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
   layout: Pick<EditorLayout, 'draft' | 'measureText'>
   nodeType: Pick<NodeTypeSupport, 'meta' | 'edit' | 'capability'>
 }): EditorSceneBridge => {
@@ -273,6 +273,14 @@ export const createSceneBridge = ({
     },
     document: {
       nodeSize: engine.config.nodeSize
+    },
+    view: () => {
+      const viewport = session.viewport.read.get()
+      return {
+        zoom: viewport.zoom,
+        center: viewport.center,
+        worldRect: session.viewport.read.worldRect()
+      }
     }
   })
   let currentResult: Result | null = null

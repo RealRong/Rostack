@@ -1,59 +1,36 @@
 import { useMemo, type CSSProperties } from 'react'
-import { store } from '@shared/core'
 import { useStoreValue } from '@shared/react'
 import { useEditor } from '@whiteboard/react/runtime/hooks'
 
-const BASE_STEP = 24
-const MIN_STEP = 14
 const EMPTY_STYLE: CSSProperties = {
   backgroundImage: 'none'
 }
 
-const resolveStep = (zoom: number) => {
-  let step = BASE_STEP * Math.max(zoom, 0.0001)
-  while (step < MIN_STEP) {
-    step *= 2
-  }
-  return step
-}
-
 export const Background = () => {
   const editor = useEditor()
-  const backgroundStore = useMemo(() => store.createDerivedStore({
-    get: () => editor.document.get().background
-  }), [editor])
-  const background = useStoreValue(backgroundStore)
+  const background = useStoreValue(editor.scene.stores.document.background)
   const viewport = useStoreValue(editor.session.viewport)
-  const mode = background?.type ?? 'none'
+  void background
+  void viewport
+  const view = editor.scene.query.view.background()
 
   const style = useMemo<CSSProperties>(() => {
-    if (mode === 'none') {
+    if (view.type === 'none') {
       return EMPTY_STYLE
     }
 
-    const step = resolveStep(viewport.zoom)
-    const offsetX = viewport.center.x * viewport.zoom
-    const offsetY = viewport.center.y * viewport.zoom
-    const color = background?.color ?? 'rgb(from var(--ui-text-primary) r g b / 0.08)'
-
     return {
       backgroundImage:
-        mode === 'dot'
-          ? `radial-gradient(circle at 1px 1px, ${color} 1.2px, transparent 1.3px)`
-          : `linear-gradient(to right, ${color} 1px, transparent 1px), linear-gradient(to bottom, ${color} 1px, transparent 1px)`,
-      backgroundSize: `${step}px ${step}px`,
-      backgroundPosition: `calc(50% - ${offsetX}px) calc(50% - ${offsetY}px)`,
+        view.type === 'dot'
+          ? `radial-gradient(circle at 1px 1px, ${view.color} 1.2px, transparent 1.3px)`
+          : `linear-gradient(to right, ${view.color} 1px, transparent 1px), linear-gradient(to bottom, ${view.color} 1px, transparent 1px)`,
+      backgroundSize: `${view.step}px ${view.step}px`,
+      backgroundPosition: `calc(50% - ${view.offset.x}px) calc(50% - ${view.offset.y}px)`,
       backgroundRepeat: 'repeat'
     }
-  }, [
-    background?.color,
-    mode,
-    viewport.center.x,
-    viewport.center.y,
-    viewport.zoom
-  ])
+  }, [view])
 
-  if (mode === 'none') {
+  if (view.type === 'none') {
     return null
   }
 

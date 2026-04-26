@@ -122,6 +122,45 @@ export const worldToScreenPoint = (
   rect: ContainerRect
 ): Point => viewportWorldToScreen(point, viewport, getScreenCenter(rect))
 
+export const projectPoint = (input: {
+  point: Point
+  zoom: number
+  worldRect: Rect
+}): Point => ({
+  x: (input.point.x - input.worldRect.x) * input.zoom,
+  y: (input.point.y - input.worldRect.y) * input.zoom
+})
+
+export const projectRect = (input: {
+  rect: Rect
+  zoom: number
+  worldRect: Rect
+}): Rect => {
+  const topLeft = projectPoint({
+    point: {
+      x: input.rect.x,
+      y: input.rect.y
+    },
+    zoom: input.zoom,
+    worldRect: input.worldRect
+  })
+  const bottomRight = projectPoint({
+    point: {
+      x: input.rect.x + input.rect.width,
+      y: input.rect.y + input.rect.height
+    },
+    zoom: input.zoom,
+    worldRect: input.worldRect
+  })
+
+  return {
+    x: Math.min(topLeft.x, bottomRight.x),
+    y: Math.min(topLeft.y, bottomRight.y),
+    width: Math.abs(bottomRight.x - topLeft.x),
+    height: Math.abs(bottomRight.y - topLeft.y)
+  }
+}
+
 export const panViewport = (
   viewport: Viewport,
   delta: Point

@@ -15,7 +15,6 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type { Size } from '@whiteboard/core/types'
-import { store } from '@shared/core'
 import type {
   DrawPreview
 } from '@whiteboard/editor/session/draw/state'
@@ -62,20 +61,8 @@ export type NodePreviewState = {
   text: NodeTextPreviewState
 }
 
-export type NodePreviewProjection = {
-  geometry?: NodeGeometryPreview
-  text?: TextLayoutPreview
-  hovered: boolean
-  hidden: boolean
-}
-
 export type EdgeFeedbackEntry = {
   id: EdgeId
-  patch?: EdgePatch
-  activeRouteIndex?: number
-}
-
-export type EdgePreviewProjection = {
   patch?: EdgePatch
   activeRouteIndex?: number
 }
@@ -100,11 +87,6 @@ export type EdgePreviewState = {
 
 export type MarqueePreviewState = {
   worldRect: Rect
-  match: MarqueeMatch
-}
-
-export type MarqueePreview = {
-  rect: Rect
   match: MarqueeMatch
 }
 
@@ -157,16 +139,6 @@ export type EditorInputPreviewState = {
   }
 }
 
-export type EditorInputPreviewSelectors = {
-  node: store.KeyedReadStore<NodeId, NodePreviewProjection>
-  edge: store.KeyedReadStore<EdgeId, EdgePreviewProjection>
-  draw: store.ReadStore<DrawPreview | null>
-  marquee: store.ReadStore<MarqueePreview | undefined>
-  mindmapPreview: store.ReadStore<MindmapPreviewState | undefined>
-  edgeGuide: store.ReadStore<EdgeGuide>
-  snap: store.ReadStore<readonly Guide[]>
-}
-
 export type EditorInputPreviewWrite = {
   set: (
     next:
@@ -174,10 +146,4 @@ export type EditorInputPreviewWrite = {
       | ((current: EditorInputPreviewState) => EditorInputPreviewState)
   ) => void
   reset: () => void
-}
-
-export type EditorInputPreview = {
-  state: store.ReadStore<EditorInputPreviewState>
-  selectors: EditorInputPreviewSelectors
-  write: EditorInputPreviewWrite
 }

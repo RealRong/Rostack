@@ -16,6 +16,8 @@ import type { Revision } from '@shared/projector/phase'
 import type {
   NodeCapabilityInput,
   Query,
+  SceneBackgroundView,
+  SceneViewSnapshot,
   SceneItem,
   SelectionMembersView
 } from '../contracts/editor'
@@ -30,6 +32,9 @@ import { createSpatialRead } from '../model/spatial/query'
 import type { SpatialIndexState } from '../model/spatial/state'
 
 const DEFAULT_HIT_THRESHOLD = 8
+const BASE_BACKGROUND_STEP = 24
+const MIN_BACKGROUND_STEP = 14
+const DEFAULT_BACKGROUND_COLOR = 'rgb(from var(--ui-text-primary) r g b / 0.08)'
 
 const toRect = (
   point: Point,
@@ -57,6 +62,38 @@ const readRectDistance = (
       : 0
 
   return Math.hypot(dx, dy)
+}
+
+const resolveBackgroundStep = (zoom: number) => {
+  let step = BASE_BACKGROUND_STEP * Math.max(zoom, 0.0001)
+  while (step < MIN_BACKGROUND_STEP) {
+    step *= 2
+  }
+  return step
+}
+
+const readBackgroundView = (input: {
+  state: WorkingState
+  view: SceneViewSnapshot
+}): SceneBackgroundView => {
+  const background = input.state.document.background
+  const type = background?.type ?? 'none'
+
+  if (type === 'none') {
+    return {
+      type: 'none'
+    }
+  }
+
+  return {
+    type,
+    color: background?.color ?? DEFAULT_BACKGROUND_COLOR,
+    step: resolveBackgroundStep(input.view.zoom),
+    offset: {
+      x: input.view.center.x * input.view.zoom,
+      y: input.view.center.y * input.view.zoom
+    }
+  }
 }
 
 const isFrameView = (
@@ -699,19 +736,47 @@ const createHitRead = (input: {
 })
 
 const createViewRead = (input: {
+  state: () => WorkingState
+  view: () => SceneViewSnapshot
   hit: Query['hit']
   spatial: Query['spatial']
 }): Query['view'] => ({
-  visible: (rect, options) => input.spatial.rect(rect, options),
+  zoom: () => input.view().zoom,
+  center: () => input.view().center,
+  worldRect: () => input.view().worldRect,
+  screenPoint: (point) => {
+    const view = input.view()
+    return geometryApi.viewport.projectPoint({
+      point,
+      zoom: view.zoom,
+      worldRect: view.worldRect
+    })
+  },
+  screenRect: (rect) => {
+    const view = input.view()
+    return geometryApi.viewport.projectRect({
+      rect,
+      zoom: view.zoom,
+      worldRect: view.worldRect
+    })
+  },
+  background: () => readBackgroundView({
+    state: input.state(),
+    view: input.view()
+  }),
+  visible: (options) => {
+    const view = input.view()
+    return input.spatial.rect(view.worldRect, options)
+  },
   pick: ({
     point,
-    zoom,
     radius,
     kinds,
     exclude
   }) => {
+    const view = input.view()
     const resolvedRadius = radius ?? (
-      DEFAULT_HIT_THRESHOLD / Math.max(zoom, 0.0001)
+      DEFAULT_HIT_THRESHOLD / Math.max(view.zoom, 0.0001)
     )
     const rect = toRect(point, resolvedRadius)
     const candidates = input.spatial.candidates(rect, {
@@ -745,6 +810,7 @@ export const createEditorSceneRead = (runtime: {
   spatial: () => SpatialIndexState
   nodeSize: { width: number, height: number }
   nodeCapability?: NodeCapabilityInput
+  view: () => SceneViewSnapshot
 }): Query => {
   const spatial = createSpatialRead({
     state: runtime.spatial
@@ -763,6 +829,8 @@ export const createEditorSceneRead = (runtime: {
     spatial
   })
   const view = createViewRead({
+    state: runtime.state,
+    view: runtime.view,
     hit,
     spatial
   })

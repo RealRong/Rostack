@@ -17,19 +17,48 @@ export interface HistoryPortState extends HistoryState {
   lastUpdatedAt?: number
 }
 
-export interface HistoryPort<Result> extends store.ReadStore<HistoryPortState> {
+export interface HistoryPortInternal<
+  Op,
+  Key,
+  W extends Write<any, Op, Key, any>
+> {
+  controller(): HistoryController<Op, Key, W> | undefined
+  sync(): void
+}
+
+export interface HistoryPort<
+  Result,
+  Op = any,
+  Key = any,
+  W extends Write<any, Op, Key, any> = Write<any, Op, Key, any>
+> extends store.ReadStore<HistoryPortState> {
+  readonly internal: HistoryPortInternal<Op, Key, W>
   undo(): Result
   redo(): Result
   clear(): void
 }
 
-export interface HistoryPortOptions<Result> {
+export interface HistoryPortOptions<
+  Result,
+  Op = any,
+  Key = any,
+  W extends Write<any, Op, Key, any> = Write<any, Op, Key, any>
+> {
   apply?: {
     origin?: Origin
     canRun?(): boolean
     onUnavailable?(
-      reason: 'history-missing' | 'cannot-apply' | 'empty'
+      reason: 'history-missing' | 'cannot-apply' | 'empty',
+      action: 'undo' | 'redo'
     ): Result
+    onSuccess?(input: {
+      controller: HistoryController<Op, Key, W>
+      result: Result
+    }): void
+    onFailure?(input: {
+      controller: HistoryController<Op, Key, W>
+      result: Result
+    }): void
   }
 }
 
@@ -49,7 +78,7 @@ export interface HistoryPortEngine<
     }
   ): Result
   commits: CommitStream<CommitRecord<Doc, Op, Key, any>>
-  history?: HistoryController<Op, Key, W>
+  historyController?(): HistoryController<Op, Key, W> | undefined
 }
 
 const EMPTY_HISTORY_STATE: HistoryPortState = {
@@ -71,10 +100,11 @@ const readCancelled = <Result>(
 
 const readUnavailable = <Result>(
   reason: 'history-missing' | 'cannot-apply' | 'empty',
+  action: 'undo' | 'redo',
   fallback: string,
-  options?: HistoryPortOptions<Result>
+  options?: HistoryPortOptions<Result, any, any, any>
 ): Result => (
-  options?.apply?.onUnavailable?.(reason)
+  options?.apply?.onUnavailable?.(reason, action)
   ?? readCancelled<Result>(fallback)
 )
 
@@ -95,9 +125,9 @@ export const createHistoryPort = <
   W extends Write<Doc, Op, Key, any> = Write<Doc, Op, Key, any>
 >(
   engine: HistoryPortEngine<Doc, Op, Key, Result, W>,
-  options?: HistoryPortOptions<Result>
-): HistoryPort<Result> => {
-  const controller = engine.history
+  options?: HistoryPortOptions<Result, Op, Key, W>
+): HistoryPort<Result, Op, Key, W> => {
+  const controller = engine.historyController?.()
   const state = store.createValueStore<HistoryPortState>({
     ...(controller?.state() ?? EMPTY_HISTORY_STATE),
     lastUpdatedAt: undefined
@@ -115,11 +145,11 @@ export const createHistoryPort = <
     kind: 'undo' | 'redo'
   ): Result => {
     if (!controller) {
-      return readUnavailable('history-missing', 'History is unavailable.', options)
+      return readUnavailable('history-missing', kind, 'History is unavailable.', options)
     }
 
     if (options?.apply?.canRun && !options.apply.canRun()) {
-      return readUnavailable('cannot-apply', 'History cannot apply right now.', options)
+      return readUnavailable('cannot-apply', kind, 'History cannot apply right now.', options)
     }
 
     const operations = kind === 'undo'
@@ -128,6 +158,7 @@ export const createHistoryPort = <
     if (!operations) {
       return readUnavailable(
         'empty',
+        kind,
         kind === 'undo'
           ? 'Nothing to undo.'
           : 'Nothing to redo.',
@@ -141,12 +172,26 @@ export const createHistoryPort = <
       origin: options?.apply?.origin ?? 'history'
     })
     if (!result.ok) {
-      controller.cancel('restore')
+      if (options?.apply?.onFailure) {
+        options.apply.onFailure({
+          controller,
+          result
+        })
+      } else {
+        controller.cancel('restore')
+      }
       publish()
       return result
     }
 
-    controller.confirm()
+    if (options?.apply?.onSuccess) {
+      options.apply.onSuccess({
+        controller,
+        result
+      })
+    } else {
+      controller.confirm()
+    }
     publish()
     return result
   }
@@ -154,6 +199,10 @@ export const createHistoryPort = <
   return {
     get: state.get,
     subscribe: state.subscribe,
+    internal: {
+      controller: () => controller,
+      sync: publish
+    },
     clear: () => {
       if (controller?.clear()) {
         publish()
@@ -161,5 +210,5 @@ export const createHistoryPort = <
     },
     undo: () => run('undo'),
     redo: () => run('redo')
-  }
+  } as HistoryPort<Result, Op, Key, W>
 }

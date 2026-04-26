@@ -13,8 +13,6 @@ import {
 } from '@dataview/core/document'
 import {
   CommandMutationEngine,
-  createHistoryPort,
-  HISTORY_CONTROLLER,
   type MutationOptions
 } from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
@@ -24,7 +22,8 @@ import { createViewsApi } from '@dataview/engine/api/views'
 import type {
   CreateEngineOptions,
   EngineFacadeHost,
-  Engine
+  Engine,
+  EngineMutationPort
 } from '@dataview/engine/contracts/api'
 import type {
   DataviewCurrent
@@ -112,23 +111,28 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       mutationEngine.apply(operations, applyOptions)
     )) as Engine['apply']
   }
-  const history = createHistoryPort(mutationEngine, {
-    apply: {
-      origin: 'history'
-    }
-  })
-
+  const mutation: EngineMutationPort = {
+    commits: mutationEngine.commits,
+    history: mutationEngine.history as Engine['history'],
+    doc: () => mutationEngine.doc(),
+    replace: (nextDocument, options) => mutationEngine.replace(
+      document.clone(nextDocument),
+      options
+    ),
+    apply: ((operations: readonly DocumentOperation[], applyOptions) => (
+      mutationEngine.apply(operations, applyOptions)
+    )) as EngineMutationPort['apply'],
+    historyController: () => mutationEngine.historyController(),
+    syncHistory: () => mutationEngine.syncHistory()
+  }
   const engine = {
     ...baseEngine,
     commits: mutationEngine.commits,
     writes: mutationEngine.writes,
-    history,
+    history: mutationEngine.history,
+    mutation,
     performance: performance.api
   } as Omit<Engine, 'fields' | 'records' | 'views' | 'active'>
-
-  ;(engine as {
-    [HISTORY_CONTROLLER]?: typeof mutationEngine.history
-  })[HISTORY_CONTROLLER] = mutationEngine.history
 
   return {
     ...engine,

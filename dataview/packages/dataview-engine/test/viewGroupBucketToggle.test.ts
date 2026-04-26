@@ -1360,15 +1360,15 @@ test('engine.active reconcile keeps undo redo equivalent across sequential delta
   engine.records.fields.set('rec_1', FIELD_STATUS, 'doing')
   const afterGroupMove = viewSnapshot(engine)
 
-  assert.equal(engine.history?.state().canUndo, true)
-  assert.equal(engine.history?.state().canRedo, false)
+  assert.equal(engine.history.get().canUndo, true)
+  assert.equal(engine.history.get().canRedo, false)
 
   assert.equal(applyHistory(engine, 'undo'), true)
   assert.deepEqual(viewSnapshot(engine), afterPoints)
 
   assert.equal(applyHistory(engine, 'undo'), true)
   assert.deepEqual(viewSnapshot(engine), initial)
-  assert.equal(engine.history?.state().canRedo, true)
+  assert.equal(engine.history.get().canRedo, true)
 
   assert.equal(applyHistory(engine, 'redo'), true)
   assert.deepEqual(viewSnapshot(engine), afterPoints)

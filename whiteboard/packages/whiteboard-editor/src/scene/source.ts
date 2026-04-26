@@ -14,13 +14,6 @@ import type {
 
 export type { EditorSceneRuntime }
 
-type SceneViewRead = {
-  get(): {
-    zoom: number
-    worldRect: Rect
-  }
-}
-
 const DEFAULT_PICK_RADIUS_SCREEN = 8
 
 const toPickRect = (
@@ -54,7 +47,6 @@ const isScenePickRuntimeResultEqual = (
 
 const createScenePick = (input: {
   query: EditorSceneBridge['query']
-  view: SceneViewRead
 }): ScenePickRuntime => {
   const listeners = new Set<() => void>()
   let pending: ScenePickRequest | undefined
@@ -64,19 +56,15 @@ const createScenePick = (input: {
   const resolve = (
     request: ScenePickRequest
   ): ScenePickResult => {
-    const radius = request.radius ?? (
-      DEFAULT_PICK_RADIUS_SCREEN / Math.max(input.view.get().zoom, 0.0001)
-    )
     const startedAt = scheduler.readMonotonicNow()
     const next = input.query.view.pick({
       point: request.world,
-      zoom: input.view.get().zoom,
-      radius,
+      radius: request.radius,
       kinds: request.kinds
     })
 
     return {
-      rect: next.rect ?? toPickRect(request.world, radius),
+      rect: next.rect ?? toPickRect(request.world, request.radius ?? DEFAULT_PICK_RADIUS_SCREEN),
       target: next.target && next.target.kind !== 'group'
         ? next.target
         : undefined,
@@ -157,47 +145,17 @@ const createScenePick = (input: {
 }
 
 export const createSceneSource = ({
-  controller,
-  view
+  controller
 }: {
   controller: Pick<EditorSceneBridge, 'query' | 'current' | 'stores'>
-  view: SceneViewRead
 }): EditorSceneRuntime & {
   dispose: () => void
 } => {
   const readRevision = () => controller.current().revision
-  const visibleState = {
-    revision: -1,
-    rect: undefined as Rect | undefined,
-    kinds: '' as string,
-    result: [] as ReturnType<EditorSceneBridge['query']['view']['visible']>
-  }
-  const visible: EditorSceneRuntime['host']['visible'] = (options) => {
-    const rect = view.get().worldRect
-    const revision = readRevision()
-    const kinds = options?.kinds?.join('|') ?? '*'
-
-    if (
-      visibleState.revision === revision
-      && visibleState.kinds === kinds
-      && visibleState.rect?.x === rect.x
-      && visibleState.rect?.y === rect.y
-      && visibleState.rect?.width === rect.width
-      && visibleState.rect?.height === rect.height
-    ) {
-      return visibleState.result
-    }
-
-    const result = controller.query.view.visible(rect, options)
-    visibleState.revision = revision
-    visibleState.rect = rect
-    visibleState.kinds = kinds
-    visibleState.result = result
-    return result
-  }
+  const visible: EditorSceneRuntime['host']['visible'] = (options) =>
+    controller.query.view.visible(options)
   const pick = createScenePick({
-    query: controller.query,
-    view
+    query: controller.query
   })
 
   return {

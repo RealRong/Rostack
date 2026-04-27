@@ -34,7 +34,8 @@ import {
 } from '@dataview/core/mutation/key'
 import type {
   DocumentMutationContext,
-  DocumentMutationFootprintContext
+  DocumentMutationFootprintContext,
+  DocumentMutationOperationContext
 } from '@dataview/core/operation/context'
 import {
   applyRecordFieldWriteInputToDraft,
@@ -42,7 +43,7 @@ import {
 } from '@dataview/core/operation/recordFieldDraft'
 import { entityTable as sharedEntityTable, equal, json } from '@shared/core'
 import {
-  meta as mutationMeta
+  type OpSync
 } from '@shared/mutation'
 
 type DocumentOperationType = DocumentOperation['type']
@@ -61,13 +62,14 @@ export interface DocumentOperationDefinition<
   TType extends DocumentOperationType = DocumentOperationType
 > {
   family: DocumentOperationFamily
+  sync?: OpSync
   history?: boolean
   footprint?(
-    ctx: DocumentMutationFootprintContext,
+    ctx: DocumentMutationOperationContext,
     op: DocumentOperationByType<TType>
   ): void
   apply(
-    ctx: DocumentMutationContext,
+    ctx: DocumentMutationOperationContext,
     op: DocumentOperationByType<TType>
   ): void
 }
@@ -982,41 +984,7 @@ const typeOfOperation = <TType extends DocumentOperationType>(
     : input.type
 )
 
-const createOperationMeta = (
-  table: DocumentOperationDefinitionTable
-) => {
-  const entries = Object.entries(table) as [
-    DocumentOperationType,
-    DocumentOperationDefinition
-  ][]
-
-  return mutationMeta.family<DocumentOperation>(
-    Object.fromEntries(
-      entries.map(([type, definition]) => [
-        type,
-        definition.history === false
-          ? {
-              family: definition.family,
-              history: false
-            }
-          : {
-              family: definition.family
-            }
-      ])
-    ) as {
-      [TType in DocumentOperationType]: {
-        family: DocumentOperationFamily
-        history?: boolean
-      }
-    }
-  )
-}
-
 export const DATAVIEW_OPERATION_DEFINITIONS = Object.freeze(definitions)
-
-export const DATAVIEW_OPERATION_META = createOperationMeta(
-  DATAVIEW_OPERATION_DEFINITIONS
-)
 
 export const readDataviewOperationDefinition = <
   TType extends DocumentOperationType
@@ -1027,7 +995,7 @@ export const readDataviewOperationDefinition = <
 )
 
 export const collectDataviewOperationFootprint = (
-  ctx: DocumentMutationFootprintContext,
+  ctx: DocumentMutationOperationContext,
   operation: DocumentOperation
 ) => {
   readDataviewOperationDefinition(operation).footprint?.(
@@ -1037,7 +1005,7 @@ export const collectDataviewOperationFootprint = (
 }
 
 export const applyDataviewOperation = (
-  ctx: DocumentMutationContext,
+  ctx: DocumentMutationOperationContext,
   operation: DocumentOperation
 ) => {
   readDataviewOperationDefinition(operation).apply(

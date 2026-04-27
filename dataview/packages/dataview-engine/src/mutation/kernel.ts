@@ -3,28 +3,20 @@ import type {
   Intent as CoreIntent
 } from '@dataview/core/contracts'
 import {
-  document
-} from '@dataview/core/document'
-import {
-  applyOperations,
   compileIntents,
-  dataviewMutationKeyConflicts,
+  dataviewMutationOperations,
   type DataviewMutationKey,
   type DataviewTrace
 } from '@dataview/core/mutation'
+import {
+  DATAVIEW_OPERATION_DEFINITIONS
+} from '@dataview/core/operation/definition'
 import type {
   DocumentOperation
 } from '@dataview/core/contracts/operations'
 import {
-  applyResult,
   type CommandMutationSpec
 } from '@shared/mutation'
-import {
-  meta as mutationMeta
-} from '@shared/mutation'
-import {
-  operation
-} from '@dataview/core/operation'
 import type {
   DataviewHistoryConfig
 } from '@dataview/engine/contracts/history'
@@ -67,7 +59,7 @@ const shouldClearHistory = (
   config: DataviewHistoryConfig
 ): boolean => (
   shouldTrackOrigin(write.origin, config)
-  && write.forward.some((entry) => mutationMeta.get(operation.meta, entry).sync === 'checkpoint')
+  && write.forward.some((entry) => DATAVIEW_OPERATION_DEFINITIONS[entry.type].sync === 'checkpoint')
 )
 
 export type DataviewMutationKernel = Omit<
@@ -94,8 +86,7 @@ export const createDataviewMutationKernel = (input?: {
   }
 
   return {
-    clone: document.clone,
-    normalize: document.normalize,
+    normalize: (doc) => doc,
     compile: ({ doc, intents }) => {
       const result = compileIntents({
         document: doc,
@@ -109,24 +100,29 @@ export const createDataviewMutationKernel = (input?: {
         outputs: result.outputs
       }
     },
-    apply: ({ doc, ops }) => {
-      const result = applyOperations(doc, ops)
-      return result.ok
-        ? applyResult.success(result)
-        : applyResult.failure(result.error)
-    },
+    operations: dataviewMutationOperations,
     ...(historyConfig.enabled
       ? {
           history: {
             capacity: historyConfig.capacity,
-            track: (write) => (
-              shouldTrackOrigin(write.origin, historyConfig)
-              && write.forward.every((entry) => mutationMeta.tracksHistory(operation.meta, entry))
+            track: ({
+              origin,
+              ops
+            }) => (
+              shouldTrackOrigin(origin, historyConfig)
+              && ops.every((entry) => DATAVIEW_OPERATION_DEFINITIONS[entry.type].history !== false)
             ),
-            clear: (write) => shouldClearHistory(write, historyConfig),
-            conflicts: dataviewMutationKeyConflicts
+            clear: ({
+              origin,
+              ops
+            }) => shouldClearHistory({
+              origin,
+              forward: ops
+            }, historyConfig)
           }
         }
-      : {})
+      : {
+          history: false
+        })
   }
 }

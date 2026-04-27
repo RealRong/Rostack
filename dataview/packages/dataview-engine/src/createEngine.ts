@@ -9,9 +9,6 @@ import type {
   DataviewTrace
 } from '@dataview/core/mutation'
 import {
-  document
-} from '@dataview/core/document'
-import {
   CommandMutationEngine,
   type MutationOptions
 } from '@shared/mutation'
@@ -93,10 +90,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     }),
     doc: () => mutationEngine.doc(),
     replace: (nextDocument: DataDoc, replaceOptions?: MutationOptions) => (
-      mutationEngine.replace(document.clone(nextDocument), replaceOptions)
+      mutationEngine.replace(nextDocument, replaceOptions)
     ),
     load: (nextDocument: DataDoc) => {
-      mutationEngine.load(document.clone(nextDocument))
+      mutationEngine.load(nextDocument)
     },
     execute: (<I extends ExecuteInput>(
       input: I,

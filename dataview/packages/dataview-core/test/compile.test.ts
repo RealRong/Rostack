@@ -6,7 +6,7 @@ import type {
   Intent
 } from '@dataview/core/contracts'
 import { compileIntents } from '@dataview/core/mutation'
-import { operation } from '@dataview/core/operation'
+import * as mutationSpec from '@dataview/core/mutation/spec'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,
@@ -18,7 +18,7 @@ const createEmptyDocument = (): DataDoc => ({
 })
 
 test('compileIntents surfaces internal apply failures', () => {
-  const applySpy = vi.spyOn(operation, 'apply').mockReturnValue({
+  const applySpy = vi.spyOn(mutationSpec, 'reduceDataviewOperations').mockReturnValue({
     ok: false,
     error: {
       code: 'invalid',

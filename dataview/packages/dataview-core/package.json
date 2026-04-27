@@ -18,7 +18,6 @@
     "./id": "./src/id.ts",
     "./mutation": "./src/mutation/index.ts",
     "./mutation/*": "./src/mutation/*.ts",
-    "./operation": "./src/operation/index.ts",
     "./query": "./src/query/index.ts",
     "./query/*": "./src/query/*.ts",
     "./read/*": "./src/read/*.ts",

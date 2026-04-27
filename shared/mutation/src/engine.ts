@@ -461,6 +461,7 @@ export class OperationMutationRuntime<
   MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
   Write<Doc, Op, Key, Extra>
 > {
+  readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
   readonly commits: CommitStream<CommitRecord<Doc, Op, Key, Extra>>
   readonly history: HistoryPort<
     MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
@@ -529,6 +530,14 @@ export class OperationMutationRuntime<
         this.commitListeners.add(listener)
         return () => {
           this.commitListeners.delete(listener)
+        }
+      }
+    }
+    this.writes = {
+      subscribe: (listener) => {
+        this.writeListeners.add(listener)
+        return () => {
+          this.writeListeners.delete(listener)
         }
       }
     }

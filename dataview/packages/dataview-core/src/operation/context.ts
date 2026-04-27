@@ -27,3 +27,7 @@ export interface DocumentMutationFootprintContext {
   doc(): DataDoc
   footprint(key: DataviewMutationKey): void
 }
+
+export interface DocumentMutationOperationContext
+  extends DocumentMutationContext,
+    DocumentMutationFootprintContext {}

@@ -5,11 +5,10 @@ import type {
   DocumentOperation
 } from '@dataview/core/contracts/operations'
 import type {
-  DocumentMutationContext
+  DocumentMutationOperationContext
 } from '@dataview/core/operation/context'
 import {
-  applyDataviewOperation,
-  collectDataviewOperationFootprint
+  DATAVIEW_OPERATION_DEFINITIONS
 } from '@dataview/core/operation/definition'
 import {
   createDataviewDraftDocument
@@ -17,10 +16,13 @@ import {
 import {
   Reducer,
   type ReducerContext,
-  type ReducerResult,
-  type ReducerSpec
+  type ReducerResult
 } from '@shared/reducer'
+import type {
+  MutationOperationsSpec
+} from '@shared/mutation'
 import {
+  dataviewMutationKeyConflicts,
   serializeDataviewMutationKey,
   type DataviewMutationKey
 } from './key'
@@ -29,30 +31,27 @@ import {
   type DataviewTrace
 } from './trace'
 
-export type DocumentApplyExtra = {
+export type DataviewOperationReduceExtra = {
   trace: DataviewTrace
 }
 
-export type DocumentApplyResult = ReducerResult<
+export type DataviewOperationReduceResult = ReducerResult<
   DataDoc,
   DocumentOperation,
   DataviewMutationKey,
-  DocumentApplyExtra
+  DataviewOperationReduceExtra
 >
 
 export type DataviewReduceContext = ReducerContext<
   DataDoc,
   DocumentOperation,
   DataviewMutationKey
-> & {
+> & DocumentMutationOperationContext & {
   base: ReducerContext<
     DataDoc,
     DocumentOperation,
     DataviewMutationKey
   >
-  doc(): DataDoc
-  draft: ReturnType<typeof createDataviewDraftDocument>
-  trace: DataviewTrace
 }
 
 const createDataviewReduceContext = (
@@ -69,24 +68,16 @@ const createDataviewReduceContext = (
     base: ctx,
     doc: () => draftDocument.current(),
     draft: draftDocument,
+    inverse: {
+      prependMany: ctx.inverseMany
+    },
     trace: dataviewTrace.create()
   }
 }
 
-const toDocumentMutationContext = (
-  ctx: DataviewReduceContext
-): DocumentMutationContext => ({
-  doc: ctx.doc,
-  draft: ctx.draft,
-  inverse: {
-    prependMany: ctx.inverseMany
-  },
-  trace: ctx.trace
-})
-
 const finalizeDataviewTrace = (
   ctx: DataviewReduceContext
-): DocumentApplyExtra => {
+): DataviewOperationReduceExtra => {
   ctx.base.replace(ctx.draft.finish())
   dataviewTrace.finalize(ctx.trace)
   return {
@@ -94,31 +85,43 @@ const finalizeDataviewTrace = (
   }
 }
 
-export const dataviewReducerSpec: ReducerSpec<
+export const dataviewMutationOperations: MutationOperationsSpec<
   DataDoc,
   DocumentOperation,
   DataviewMutationKey,
-  DocumentApplyExtra,
+  DataviewOperationReduceExtra,
   DataviewReduceContext
 > = {
+  table: DATAVIEW_OPERATION_DEFINITIONS,
   serializeKey: serializeDataviewMutationKey,
   createContext: createDataviewReduceContext,
-  beforeEach: collectDataviewOperationFootprint,
-  handle: (ctx, operation) => {
-    applyDataviewOperation(
-      toDocumentMutationContext(ctx),
-      operation
-    )
-  },
-  done: finalizeDataviewTrace
+  done: finalizeDataviewTrace,
+  conflicts: dataviewMutationKeyConflicts
 }
 
-export const dataviewReducer = new Reducer<
+const dataviewOperationReducer = new Reducer<
   DataDoc,
   DocumentOperation,
   DataviewMutationKey,
-  DocumentApplyExtra,
+  DataviewOperationReduceExtra,
   DataviewReduceContext
 >({
-  spec: dataviewReducerSpec
+  spec: {
+    serializeKey: dataviewMutationOperations.serializeKey,
+    createContext: dataviewMutationOperations.createContext,
+    handle: (ctx, operation) => {
+      const definition = dataviewMutationOperations.table[operation.type]
+      definition.footprint?.(ctx, operation as never)
+      definition.apply(ctx, operation as never)
+    },
+    done: dataviewMutationOperations.done
+  }
+})
+
+export const reduceDataviewOperations = (
+  document: DataDoc,
+  operations: readonly DocumentOperation[]
+): DataviewOperationReduceResult => dataviewOperationReducer.reduce({
+  doc: document,
+  ops: operations
 })

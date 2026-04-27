@@ -80,7 +80,7 @@
 
 - `document-only` 基础状态模型
 - `instance.document` 只保留 `peekDocument()` / `installDocument()` 这层 document store authority
-- commit runtime 统一承接 `applyOperations()`、history 维护与 `document.replace()` 生命周期
+- commit runtime 统一承接 operation reduce、history 维护与 `document.replace()` 生命周期
 - public `engine.document.export()` / `replace()` 由 facade 基于 runtime 组装，不把内部 store 细节暴露出去
 - document-centric `command -> operation -> reducer` 主链路
 - public write API 只保留 `dispatch(command | command[])`

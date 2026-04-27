@@ -1,10 +1,4 @@
 export {
-  applyOperations
-} from './apply'
-export type {
-  DocumentApplyResult
-} from './apply'
-export {
   compileIntents
 } from './compile/index'
 export type {
@@ -27,6 +21,10 @@ export type {
   DataviewTrace
 } from './trace'
 export {
-  dataviewReducer,
-  dataviewReducerSpec
+  reduceDataviewOperations,
+  dataviewMutationOperations
+} from './spec'
+export type {
+  DataviewOperationReduceExtra,
+  DataviewOperationReduceResult
 } from './spec'

@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
-import { meta as mutationMeta } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/contracts'
-import { operation } from '@dataview/core/operation'
+import {
+  reduceDataviewOperations
+} from '@dataview/core/mutation'
+import {
+  DATAVIEW_OPERATION_DEFINITIONS
+} from '@dataview/core/operation/definition'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,
@@ -15,7 +19,7 @@ const createEmptyDocument = (): DataDoc => ({
 })
 
 test('operation apply returns shared mutation shape', () => {
-  const result = operation.apply(createEmptyDocument(), [{
+  const result = reduceDataviewOperations(createEmptyDocument(), [{
     type: 'document.field.put',
     field: {
       id: 'field_notes',
@@ -30,12 +34,9 @@ test('operation apply returns shared mutation shape', () => {
   assert.ok(result.extra.trace.fields?.inserted?.has('field_notes'))
 })
 
-test('operation meta marks external bump as non-history', () => {
+test('operation spec marks external bump as non-history', () => {
   assert.equal(
-    mutationMeta.tracksHistory(operation.meta, {
-      type: 'external.version.bump',
-      source: 'test'
-    }),
+    DATAVIEW_OPERATION_DEFINITIONS['external.version.bump'].history,
     false
   )
 })

@@ -1,6 +1,6 @@
 import type { DataDoc, Intent } from '@dataview/core/contracts'
 import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import { operation } from '@dataview/core/operation'
+import { reduceDataviewOperations } from '@dataview/core/mutation/spec'
 import { compile } from '@shared/mutation'
 import { string } from '@shared/core'
 import { compileFieldIntent } from './fields'
@@ -56,7 +56,7 @@ export const compileIntents = (input: {
       }
     },
     apply: (document, operations) => {
-      const applied = operation.apply(document, operations)
+      const applied = reduceDataviewOperations(document, operations)
       return applied.ok
         ? {
             ok: true,

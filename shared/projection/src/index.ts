@@ -4,13 +4,8 @@ export {
 export type {
   ProjectionFamilyField,
   ProjectionFamilySnapshot,
-  ProjectionFieldSyncContext,
   ProjectionPlan,
-  ProjectionRuntime,
   ProjectionSpec,
-  ProjectionStoreRead,
-  ProjectionSurfaceField,
-  ProjectionSurfaceTree,
   ProjectionValueField
 } from './runtime'
 export type {
@@ -20,7 +15,6 @@ export type {
   Revision
 } from './core'
 export type {
-  DefaultPhaseScopeMap,
   PhaseScopeInput,
   PhaseScopeMap,
   ScopeFieldSpec,

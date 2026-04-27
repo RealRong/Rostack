@@ -5,7 +5,6 @@ import {
 import {
   type EntityDelta
 } from '@shared/delta'
-import { publishEntityList } from '@shared/delta'
 import type {
   RecordId,
   View,
@@ -28,6 +27,9 @@ import type {
 import type {
   ItemIdPool
 } from '@dataview/engine/active/publish/itemIdPool'
+import {
+  publishList
+} from './deltaPublish'
 
 const EMPTY_ITEM_IDS = [] as readonly ItemId[]
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
@@ -472,13 +474,13 @@ const buildPublishedState = (input: {
     sections: list,
     delta: previousPublishedSections || previousItems
       ? {
-          sections: publishEntityList({
+          sections: publishList({
             previous: previousPublishedSections?.ids ?? EMPTY_SECTION_KEYS,
             next: publishedSectionIds,
             set: changedSectionIds,
             remove: removedSectionIds
           }).delta,
-          items: publishEntityList({
+          items: publishList({
             previous: previousVisibleIds ?? EMPTY_ITEM_IDS,
             next: publishedVisibleIds,
             set: addedItemIds,

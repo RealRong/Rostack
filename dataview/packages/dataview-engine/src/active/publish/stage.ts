@@ -21,14 +21,14 @@ import {
   EMPTY_SUMMARY_PHASE_DELTA
 } from '@dataview/engine/active/state'
 import {
-  publishStruct
-} from '@shared/delta'
-import {
   publishViewBase
 } from '@dataview/engine/active/publish/base'
 import {
   publishSections
 } from '@dataview/engine/active/publish/sections'
+import {
+  publishStruct
+} from '@dataview/engine/active/publish/deltaPublish'
 import {
   publishSummaries
 } from '@dataview/engine/active/publish/summaries'

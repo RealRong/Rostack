@@ -5,16 +5,16 @@ import type {
   View,
   ViewGroup,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   CalculationDemand
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   calculation
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   filter as filterApi
-} from '@dataview/core/filter'
+} from '@dataview/core/view'
 import {
   view as viewApi
 } from '@dataview/core/view'

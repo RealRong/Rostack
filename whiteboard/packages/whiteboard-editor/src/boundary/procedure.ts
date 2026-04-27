@@ -1,13 +1,12 @@
 import type {
   EditorSceneSourceChange,
-  SceneItem,
   State
 } from '@whiteboard/editor-scene'
 
 export interface EditorPublished {
   revision: number
   graph: State['graph']
-  items: readonly SceneItem[]
+  items: State['items']
   ui: State['ui']
 }
 

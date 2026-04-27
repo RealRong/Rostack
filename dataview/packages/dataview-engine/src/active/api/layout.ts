@@ -3,7 +3,7 @@ import type {
   CustomFieldKind,
   FieldId,
   Intent as CoreIntent
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   id as dataviewId
 } from '@dataview/core/id'

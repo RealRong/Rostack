@@ -1,4 +1,4 @@
-import type { IntentType } from '@dataview/core/contracts/intents'
+import type { IntentType } from '@dataview/core/types/intents'
 import type {
   IssueSeverity,
   ValidationIssue as SharedValidationIssue

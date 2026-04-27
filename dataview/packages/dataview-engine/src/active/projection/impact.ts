@@ -1,11 +1,11 @@
 import {
   dataviewTrace,
   type DataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import type {
   FieldId,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   QueryPlan,
   ViewPlan

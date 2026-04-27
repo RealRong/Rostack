@@ -1,4 +1,4 @@
-import type { RecordId } from '@dataview/core/contracts'
+import type { RecordId } from '@dataview/core/types'
 import { string } from '@shared/core'
 import type {
   QueryPlan

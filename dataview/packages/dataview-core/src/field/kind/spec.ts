@@ -1,9 +1,9 @@
 import type {
   SystemValueId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   KANBAN_EMPTY_BUCKET_KEY
-} from '@dataview/core/contracts/kanban'
+} from '@dataview/core/types/state'
 import type {
   AssetField,
   BucketSort,
@@ -19,7 +19,7 @@ import type {
   StatusField,
   StatusOption,
   UrlField
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import type {
   Bucket,
   ResolvedBucket

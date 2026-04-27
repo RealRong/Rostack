@@ -1,7 +1,7 @@
 import type {
   BucketSort,
   Field
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { meta } from '@dataview/meta'
 import type {
   ViewGroupProjection

@@ -1,5 +1,5 @@
-import type { DataDoc } from '@dataview/core/contracts'
-import type { DataviewTrace } from '@dataview/core/mutation'
+import type { DataDoc } from '@dataview/core/types'
+import type { DataviewTrace } from '@dataview/core/operations'
 import type { DocumentDelta } from '@dataview/engine/contracts/delta'
 import { createProjectionRuntime, type ProjectionSpec } from '@shared/projection'
 import { projectDocumentDelta } from '../documentDelta'

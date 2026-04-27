@@ -11,7 +11,7 @@ import type {
   RecordId,
   View,
   ViewId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 
 interface ScalarBranch<T> {
   readonly base: T

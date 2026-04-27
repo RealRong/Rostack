@@ -1,14 +1,14 @@
 import type {
   CalculationDemand,
   CalculationEntry
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   calculation
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   FieldId,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   createMapDraft as createMapPatchBuilder
 } from '@shared/draft'

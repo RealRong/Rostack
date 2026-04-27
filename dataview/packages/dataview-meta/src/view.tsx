@@ -4,7 +4,7 @@ import {
   Table2,
   type LucideIcon
 } from 'lucide-react'
-import type { ViewType } from '@dataview/core/contracts'
+import type { ViewType } from '@dataview/core/types'
 import { defineMetaCollection } from '@dataview/meta/shared'
 import {
   token,

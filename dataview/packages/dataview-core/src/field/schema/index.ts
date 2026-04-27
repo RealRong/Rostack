@@ -3,7 +3,7 @@ import type {
   CustomFieldId,
   CustomFieldKind,
   EntityTable
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import { string } from '@shared/core'
 import {
   createDefaultFieldOfKind,

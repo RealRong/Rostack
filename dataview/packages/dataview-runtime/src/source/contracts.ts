@@ -1,4 +1,4 @@
-import type { CalculationCollection } from '@dataview/core/calculation'
+import type { CalculationCollection } from '@dataview/core/view'
 import type {
   CustomField,
   CustomFieldId,
@@ -10,7 +10,7 @@ import type {
   ValueRef,
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { store } from '@shared/core'
 import type {
   ActiveViewGallery,

@@ -3,14 +3,14 @@ import type {
   CalculationEntry,
   FieldReducerState,
   ReducerCapabilitySet
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import type {
   DataDoc,
   Field,
   FieldId,
   RecordId,
   ViewGroup
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type { DocumentReader } from '@dataview/engine/document/reader'
 import type {
   IndexTrace

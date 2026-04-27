@@ -19,7 +19,7 @@ import type {
   DateField,
   NumberField,
   CustomFieldKind
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { defineMetaCollection } from '@dataview/meta/shared'
 import {
   token,

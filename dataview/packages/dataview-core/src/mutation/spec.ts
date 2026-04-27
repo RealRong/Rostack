@@ -1,9 +1,9 @@
 import type {
   DataDoc
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   DocumentOperation
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 import type {
   DocumentMutationOperationContext
 } from '@dataview/core/operation/context'

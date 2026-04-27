@@ -1,14 +1,14 @@
 import type {
   KanbanCardsPerColumn,
   KanbanOptions
-} from '@dataview/core/contracts/kanban'
+} from '@dataview/core/types/state'
 import { cloneCardOptions, normalizeCardOptions } from '@dataview/core/view/card'
 import {
   isJsonObject
 } from '@dataview/core/view/shared'
 import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS
-} from '@dataview/core/contracts/kanban'
+} from '@dataview/core/types/state'
 
 const DEFAULT_FILL_COLUMN_COLOR = true
 const DEFAULT_CARDS_PER_COLUMN: KanbanCardsPerColumn = 25

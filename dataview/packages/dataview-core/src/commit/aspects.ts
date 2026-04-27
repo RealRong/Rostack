@@ -3,20 +3,20 @@ import type {
   RecordPatchAspect,
   ViewLayoutAspect,
   ViewQueryAspect
-} from '@dataview/core/contracts/commit'
+} from '@dataview/core/types/commit'
 import type {
   CustomField,
   DataRecord,
   FieldId,
   View
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import { equal } from '@shared/core'
 import {
   filter as filterApi
-} from '@dataview/core/filter'
-import { group } from '@dataview/core/group'
-import { search } from '@dataview/core/search'
-import { sort } from '@dataview/core/sort'
+} from '@dataview/core/view'
+import { group } from '@dataview/core/view'
+import { search } from '@dataview/core/view'
+import { sort } from '@dataview/core/view'
 
 const sameIdList = <T extends string>(
   left: readonly T[] | undefined,

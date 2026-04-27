@@ -1,14 +1,11 @@
-import { scheduler, store } from '@shared/core'
+import { scheduler, store } from '../../core/src/index'
+import type { EntityDelta } from '../../delta/src/index'
 import {
   createPhaseGraph,
   fanoutDependents
 } from './phaseGraph'
-import type {
-  Revision
-} from './core'
-import type {
-  Spec as ProjectionPhase
-} from './phase'
+import type { Revision } from './core'
+import type { Spec as ProjectionPhase } from './phase'
 import type {
   PhaseScopeInput,
   PhaseScopeMap,
@@ -16,39 +13,54 @@ import type {
   ScopeSchema,
   ScopeValue
 } from './scope'
-import type {
-  Run as ProjectionTrace
-} from './trace'
+import type { Run as ProjectionTrace } from './trace'
 import {
   isScopeValueEmpty,
   mergeScopeValue,
   normalizeScopeValue
 } from './scope'
 
-type ProjectionValueField<TState, TValue> = {
+export interface ProjectionFamilySnapshot<TKey extends string, TValue> {
+  ids: readonly TKey[]
+  byId: ReadonlyMap<TKey, TValue>
+}
+
+export interface ProjectionFieldSyncContext<TState> {
+  state: TState
+}
+
+export interface ProjectionValueField<TState, TValue> {
   kind: 'value'
   read(state: TState): TValue
   isEqual?: (left: TValue, right: TValue) => boolean
+  changed?(context: ProjectionFieldSyncContext<TState>): boolean
 }
 
-type ProjectionFamilyField<TState, TKey extends string, TValue> = {
+export interface ProjectionFamilyField<
+  TState,
+  TKey extends string,
+  TValue
+> {
   kind: 'family'
-  read(state: TState): {
-    ids: readonly TKey[]
-    byId: ReadonlyMap<TKey, TValue>
-  }
+  read(state: TState): ProjectionFamilySnapshot<TKey, TValue>
   isEqual?: (left: TValue, right: TValue) => boolean
+  idsEqual?: (left: readonly TKey[], right: readonly TKey[]) => boolean
+  changed?(context: ProjectionFieldSyncContext<TState>): boolean
+  delta?(context: ProjectionFieldSyncContext<TState> & {
+    previous: ProjectionFamilySnapshot<TKey, TValue>
+    next: ProjectionFamilySnapshot<TKey, TValue>
+  }): EntityDelta<TKey> | 'replace' | 'skip'
 }
 
-type ProjectionSurfaceField<TState> =
+export type ProjectionSurfaceField<TState> =
   | ProjectionValueField<TState, any>
-  | ProjectionFamilyField<TState, string, any>
+  | ProjectionFamilyField<TState, any, any>
 
-type ProjectionSurfaceTree<TState> = {
+export type ProjectionSurfaceTree<TState> = {
   [key: string]: ProjectionSurfaceField<TState> | ProjectionSurfaceTree<TState>
 }
 
-type ProjectionStoreRead<TField> =
+export type ProjectionStoreRead<TField> =
   TField extends ProjectionValueField<any, infer TValue>
     ? store.ReadStore<TValue>
     : TField extends ProjectionFamilyField<any, infer TKey, infer TValue>
@@ -163,6 +175,8 @@ export interface ProjectionRuntime<
   ): () => void
 }
 
+type SurfaceSync = () => void
+
 const hasOwn = <TObject extends object>(
   value: TObject,
   key: PropertyKey
@@ -187,7 +201,9 @@ const applyScopeInput = <
   phases: ReadonlyMap<
     TPhaseName,
     {
-      scope?: TScopeMap[TPhaseName]
+      scope?: TScopeMap[TPhaseName] extends object
+        ? ScopeSchema<NonNullable<TScopeMap[TPhaseName]>>
+        : undefined
     }
   >
   pending: Set<TPhaseName>
@@ -226,14 +242,14 @@ const applyScopeInput = <
       | ScopeValue<TScopeMap[typeof phaseName]>
       | undefined
     const mergedScope = mergeScopeValue(
-      spec.scope as ScopeSchema,
-      currentScope as ScopeValue<TScopeMap[TPhaseName]> | undefined,
-      nextScope as NonNullable<ScopeInputValue<TScopeMap[TPhaseName]>>
+      spec.scope as ScopeSchema<NonNullable<TScopeMap[TPhaseName]>>,
+      currentScope as ScopeValue<NonNullable<TScopeMap[TPhaseName]>> | undefined,
+      nextScope as NonNullable<ScopeInputValue<NonNullable<TScopeMap[TPhaseName]>>>
     )
 
     if (isScopeValueEmpty(
-      spec.scope as ScopeSchema,
-      mergedScope as ScopeValue<ScopeSchema>
+      spec.scope as ScopeSchema<NonNullable<TScopeMap[TPhaseName]>>,
+      mergedScope as ScopeValue<NonNullable<TScopeMap[TPhaseName]>>
     )) {
       delete input.pendingScope[phaseName]
       continue
@@ -248,44 +264,64 @@ const didPhaseChange = (
   action: 'reuse' | 'sync' | 'rebuild'
 ): boolean => action !== 'reuse'
 
-const value = <TState, TValue>(
-  input: {
-    read(state: TState): TValue
-    isEqual?: (left: TValue, right: TValue) => boolean
-  }
-): ProjectionValueField<TState, TValue> => ({
-  kind: 'value',
-  read: input.read,
-  ...(input.isEqual
-    ? {
-        isEqual: input.isEqual
-      }
-    : {})
-})
+const sameValue = <T,>(
+  left: T,
+  right: T
+) => Object.is(left, right)
 
-const family = <
-  TState,
-  TKey extends string,
-  TValue
->(
-  input: {
-    read(state: TState): {
-      ids: readonly TKey[]
-      byId: ReadonlyMap<TKey, TValue>
+const normalizeFamilySnapshot = <TKey extends string, TValue>(
+  snapshot: ProjectionFamilySnapshot<TKey, TValue>,
+  previous: ProjectionFamilySnapshot<TKey, TValue> | undefined,
+  idsEqual: (left: readonly TKey[], right: readonly TKey[]) => boolean
+): ProjectionFamilySnapshot<TKey, TValue> => {
+  if (previous && idsEqual(previous.ids, snapshot.ids)) {
+    return {
+      ids: previous.ids,
+      byId: snapshot.byId
     }
-    isEqual?: (left: TValue, right: TValue) => boolean
   }
-): ProjectionFamilyField<TState, TKey, TValue> => ({
-  kind: 'family',
-  read: input.read,
-  ...(input.isEqual
-    ? {
-        isEqual: input.isEqual
-      }
-    : {})
-})
 
-type SurfaceSync = (state: unknown) => void
+  return snapshot
+}
+
+const toFamilyPatch = <TKey extends string, TValue>(input: {
+  previous: ProjectionFamilySnapshot<TKey, TValue>
+  next: ProjectionFamilySnapshot<TKey, TValue>
+  delta: EntityDelta<TKey>
+}): {
+  ids?: readonly TKey[]
+  set?: readonly (readonly [TKey, TValue])[]
+  remove?: readonly TKey[]
+} => {
+  const patch: {
+    ids?: readonly TKey[]
+    set?: readonly (readonly [TKey, TValue])[]
+    remove?: readonly TKey[]
+  } = {}
+
+  if (input.delta.order && input.previous.ids !== input.next.ids) {
+    patch.ids = input.next.ids
+  }
+
+  if (input.delta.set?.length) {
+    patch.set = input.delta.set.map((key) => {
+      const value = input.next.byId.get(key)
+      if (value === undefined) {
+        throw new Error(
+          `Projection family delta set key ${key} is missing from next snapshot.`
+        )
+      }
+
+      return [key, value] as const
+    })
+  }
+
+  if (input.delta.remove?.length) {
+    patch.remove = input.delta.remove
+  }
+
+  return patch
+}
 
 const createSurfaceStore = <
   TState,
@@ -308,27 +344,81 @@ const createSurfaceStore = <
     Object.entries(currentSurface).forEach(([key, field]) => {
       if (isField(field)) {
         if (field.kind === 'value') {
-          const source = store.createValueStore(
-            field.read(currentState)
-          )
-          syncers.push((nextState) => {
-            source.set(
-              field.read(nextState as TState)
-            )
+          const initial = field.read(currentState)
+          const source = store.createValueStore(initial)
+          const isEqual = field.isEqual ?? sameValue
+          let previous = initial
+
+          syncers.push(() => {
+            if (field.changed?.({
+              state
+            }) === false) {
+              return
+            }
+
+            const current = field.read(state)
+            if (isEqual(previous, current)) {
+              return
+            }
+
+            previous = current
+            source.set(current)
           })
+
           next[key] = source
           return
         }
 
+        const idsEqual = field.idsEqual ?? sameValue
+        const initial = normalizeFamilySnapshot(
+          field.read(currentState),
+          undefined,
+          idsEqual
+        )
         const source = store.createFamilyStore({
-          initial: field.read(currentState),
+          initial,
           isEqual: field.isEqual as ((left: unknown, right: unknown) => boolean) | undefined
         })
-        syncers.push((nextState) => {
-          source.write.replace(
-            field.read(nextState as TState)
-          )
+        let previous = initial
+
+        syncers.push(() => {
+          if (field.changed?.({
+            state
+          }) === false) {
+            return
+          }
+
+          const currentPrevious = previous
+          const current = normalizeFamilySnapshot(
+            field.read(state),
+            currentPrevious,
+            idsEqual as (left: readonly string[], right: readonly string[]) => boolean
+          ) as ProjectionFamilySnapshot<string, unknown>
+          const delta = field.delta?.({
+            state,
+            previous: currentPrevious as ProjectionFamilySnapshot<string, unknown>,
+            next: current
+          }) ?? 'replace'
+
+          if (delta === 'skip') {
+            previous = current
+            return
+          }
+
+          if (delta === 'replace') {
+            previous = current
+            source.write.replace(current)
+            return
+          }
+
+          source.write.apply(toFamilyPatch({
+            previous: currentPrevious,
+            next: current,
+            delta
+          }))
+          previous = current
         })
+
         next[key] = {
           ids: source.ids,
           byId: store.createKeyedReadStore({
@@ -359,7 +449,7 @@ const createSurfaceStore = <
     read,
     sync: () => {
       syncers.forEach((sync) => {
-        sync(state)
+        sync()
       })
     }
   }
@@ -486,8 +576,8 @@ export const createProjectionRuntime = <
         const phaseStartAt = scheduler.readMonotonicNow()
         const phaseScope = spec.scope
           ? normalizeScopeValue(
-              spec.scope as ScopeSchema,
-              pendingScope[phaseName] as ScopeInputValue<TScopeMap[typeof phaseName]> | undefined
+              spec.scope as ScopeSchema<NonNullable<TScopeMap[TPhaseName]>>,
+              pendingScope[phaseName] as ScopeInputValue<NonNullable<TScopeMap[TPhaseName]>> | undefined
             )
           : undefined
         delete pendingScope[phaseName]

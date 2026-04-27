@@ -2,7 +2,7 @@ import type {
   Field,
   View,
   ViewPatch
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ActiveViewApi,
   ViewState

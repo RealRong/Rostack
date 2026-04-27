@@ -1,7 +1,7 @@
 import type {
   CustomFieldId,
   Field
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   entityDelta,
   type EntityDelta

@@ -4,8 +4,15 @@ import type {
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
-import type { GraphPatchScope } from '../../contracts/delta'
-import { resetGraphDelta } from '../../contracts/delta'
+import { idDelta, type IdDelta } from '@shared/delta'
+import type {
+  GraphPatchScope,
+  GraphChanges
+} from '../../contracts/delta'
+import {
+  createGraphChanges,
+  resetGraphDelta
+} from '../../contracts/delta'
 import type { Input } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 import type { EdgeNodeSnapshot } from './edge'
@@ -15,6 +22,70 @@ import { readRelatedEdgeIds } from '../index/read'
 import { patchIndexState } from '../index/update'
 import { patchMindmap } from './mindmap'
 import { patchNode } from './node'
+
+const touchIds = <TId extends string>(
+  target: IdDelta<TId>,
+  source: IdDelta<TId>
+) => {
+  source.added.forEach((id) => {
+    idDelta.add(target, id)
+  })
+  source.updated.forEach((id) => {
+    idDelta.update(target, id)
+  })
+  source.removed.forEach((id) => {
+    idDelta.remove(target, id)
+  })
+}
+
+const buildGraphChanges = (input: {
+  delta: WorkingState['delta']['graph']
+}): GraphChanges => {
+  const next = createGraphChanges()
+  next.order = input.delta.order
+
+  touchIds(next.node.lifecycle, input.delta.entities.nodes)
+  touchIds(next.node.geometry, input.delta.entities.nodes)
+  touchIds(next.node.content, input.delta.entities.nodes)
+  touchIds(next.node.owner, input.delta.entities.nodes)
+
+  touchIds(next.edge.lifecycle, input.delta.entities.edges)
+  touchIds(next.edge.route, input.delta.entities.edges)
+  touchIds(next.edge.style, input.delta.entities.edges)
+  touchIds(next.edge.labels, input.delta.entities.edges)
+  touchIds(next.edge.endpoints, input.delta.entities.edges)
+  touchIds(next.edge.box, input.delta.entities.edges)
+
+  touchIds(next.mindmap.lifecycle, input.delta.entities.mindmaps)
+  touchIds(next.mindmap.geometry, input.delta.entities.mindmaps)
+  touchIds(next.mindmap.connectors, input.delta.entities.mindmaps)
+  touchIds(next.mindmap.membership, input.delta.entities.mindmaps)
+
+  touchIds(next.group.lifecycle, input.delta.entities.groups)
+  touchIds(next.group.geometry, input.delta.entities.groups)
+  touchIds(next.group.membership, input.delta.entities.groups)
+
+  input.delta.geometry.nodes.forEach((nodeId) => {
+    idDelta.update(next.node.geometry, nodeId)
+  })
+  input.delta.geometry.edges.forEach((edgeId) => {
+    idDelta.update(next.edge.route, edgeId)
+    idDelta.update(next.edge.labels, edgeId)
+    idDelta.update(next.edge.endpoints, edgeId)
+    idDelta.update(next.edge.box, edgeId)
+  })
+  input.delta.geometry.mindmaps.forEach((mindmapId) => {
+    idDelta.update(next.mindmap.geometry, mindmapId)
+    idDelta.update(next.mindmap.connectors, mindmapId)
+    idDelta.update(next.mindmap.membership, mindmapId)
+  })
+  input.delta.geometry.groups.forEach((groupId) => {
+    idDelta.update(next.group.geometry, groupId)
+    idDelta.update(next.group.membership, groupId)
+  })
+
+  return next
+}
 
 type GraphPatchQueue = {
   nodes: Set<NodeId>
@@ -348,6 +419,9 @@ export const patchGraphState = (input: {
   )
 
   input.working.revision.document = input.current.document.snapshot.revision
+  input.working.delta.graphChanges = buildGraphChanges({
+    delta
+  })
 
   return {
     count,

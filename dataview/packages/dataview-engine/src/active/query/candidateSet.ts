@@ -1,7 +1,7 @@
 import type {
   RecordId,
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { applyRecordOrder } from '@dataview/core/view/order'
 import type { IndexState } from '@dataview/engine/active/index/contracts'

@@ -5,7 +5,7 @@ import {
 import {
   dataviewTrace,
   type DataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import type {
   CommitRecord
 } from '@shared/mutation'

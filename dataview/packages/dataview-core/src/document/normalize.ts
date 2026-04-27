@@ -1,4 +1,4 @@
-import type { DataDoc } from '@dataview/core/contracts/state'
+import type { DataDoc } from '@dataview/core/types/state'
 import { field } from '@dataview/core/field'
 import {
   entityTable

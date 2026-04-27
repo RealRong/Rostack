@@ -7,16 +7,16 @@ import {
   normalizeViewCalculations,
   supportsFieldCalculationMetric,
   type CalculationMetricSpec
-} from '@dataview/core/calculation/capability'
+} from './capability'
 import type {
   CalculationCollection,
   CalculationDistributionItem,
   CalculationResult
-} from '@dataview/core/calculation/contracts'
+} from './contracts'
 import type {
   CalculationMetric,
   Field
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   buildFieldReducerState,
   createCalculationEntry,
@@ -32,7 +32,7 @@ import {
   sameCalculationDemand,
   sameCalculationEntry,
   sameReducerCapabilities
-} from '@dataview/core/calculation/reducer'
+} from './reducer'
 import type {
   CalculationDemand,
   CalculationEntry,
@@ -43,7 +43,7 @@ import type {
   OptionReducerState,
   ReducerCapabilitySet,
   UniqueReducerState
-} from '@dataview/core/calculation/reducer'
+} from './reducer'
 
 export type {
   CalculationCollection,

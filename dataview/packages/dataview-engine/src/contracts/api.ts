@@ -12,10 +12,10 @@ import type {
   View,
   ViewId,
   ViewType
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   DocumentOperation
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 import type {
   MutationOptions,
   MutationResult
@@ -46,7 +46,7 @@ import type {
   IntentKind
 } from '@dataview/engine/types/intent'
 
-export type { RecordFieldWriteManyInput } from '@dataview/core/contracts'
+export type { RecordFieldWriteManyInput } from '@dataview/core/types'
 export type {
   DataviewErrorCode,
   ExecuteInput,

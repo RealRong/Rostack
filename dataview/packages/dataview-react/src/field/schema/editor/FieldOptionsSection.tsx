@@ -1,6 +1,6 @@
 import { Plus, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { CustomField } from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'

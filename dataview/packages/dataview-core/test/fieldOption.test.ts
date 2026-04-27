@@ -3,7 +3,7 @@ import { test } from 'vitest'
 import type {
   SelectField,
   StatusField
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   field
 } from '@dataview/core/field'

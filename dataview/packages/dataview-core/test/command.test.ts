@@ -4,10 +4,10 @@ import type {
   SelectField,
   TextField,
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   buildRecordCreateIntents
-} from '@dataview/core/command'
+} from '@dataview/core/operations'
 
 const textField: TextField = {
   id: 'notes',

@@ -1,10 +1,10 @@
 import type {
   DataRecord,
   FieldId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 
 const fieldIds = (
   record: DataRecord

@@ -1,10 +1,10 @@
 import type {
   CalculationEntry
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import type {
   FieldId,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   createBucketSpecKey
 } from '@dataview/engine/active/index/bucket'

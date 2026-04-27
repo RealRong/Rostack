@@ -1,10 +1,10 @@
 import type {
   DataDoc
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   dataviewTrace,
   type DataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import {
   emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'

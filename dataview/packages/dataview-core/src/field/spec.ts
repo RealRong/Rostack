@@ -2,10 +2,10 @@ import type {
   Field,
   SortDirection,
   ViewGroup
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   BucketSort
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import type {
   Bucket
 } from '@dataview/core/field/kind'

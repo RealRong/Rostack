@@ -1,7 +1,7 @@
 import { equal, store } from '@shared/core'
 import type {
   CalculationCollection
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import type {
   CalculationMetric,
   Field,
@@ -10,7 +10,7 @@ import type {
   SortDirection,
   TableView,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ActiveViewQuery,
   CellRef,

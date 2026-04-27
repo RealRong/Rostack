@@ -15,6 +15,7 @@ import type {
   SceneItem,
   ChromeView
 } from './editor'
+import type { SceneItemKey } from './delta'
 import type {
   EdgeActiveView,
   EdgeLabelKey,
@@ -35,7 +36,7 @@ export interface Capture {
   documentRevision: Revision
   graph: GraphCapture
   render: RenderCapture
-  items: readonly SceneItem[]
+  items: EntityFamily<SceneItemKey, SceneItem>
   ui: UiCapture
 }
 

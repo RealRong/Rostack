@@ -1,4 +1,4 @@
-import type { CalculationCollection } from '@dataview/core/calculation'
+import type { CalculationCollection } from '@dataview/core/view'
 import type {
   DataRecord,
   Field,
@@ -6,7 +6,7 @@ import type {
   RecordId,
   ViewGroupBucketId,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   collection
 } from '@shared/core'

@@ -2,11 +2,11 @@ import type {
   Field,
   FieldId,
   ViewType
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   TableOptions,
   ViewOptionsByType
-} from '@dataview/core/contracts/viewOptions'
+} from '@dataview/core/types/state'
 import { collection, json, string } from '@shared/core'
 import { normalizeGalleryOptions } from '@dataview/core/view/gallery'
 import { normalizeKanbanOptions } from '@dataview/core/view/kanban'

@@ -8,10 +8,10 @@ import type {
   TableView,
   ViewCalc,
   ViewDisplay
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ViewOptionsByType
-} from '@dataview/core/contracts/viewOptions'
+} from '@dataview/core/types/state'
 import {
   collection,
   equal,

@@ -1,10 +1,10 @@
 import type {
   Field,
   FilterRule
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   filter as filterApi
-} from '@dataview/core/filter'
+} from '@dataview/core/view'
 
 export type FilterCandidateLookupPlan =
   | {

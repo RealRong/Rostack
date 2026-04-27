@@ -4,10 +4,10 @@ import type {
   FilterConditionProjection,
   FilterRule,
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   filter as filterApi
-} from '@dataview/core/filter'
+} from '@dataview/core/view'
 import {
   field as fieldApi
 } from '@dataview/core/field'

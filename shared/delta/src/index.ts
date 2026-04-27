@@ -18,17 +18,11 @@ export {
 export {
   createChangeState,
   cloneChangeState,
-  defineChangeSpec,
-  flag as changeFlag,
   hasChangeState,
-  ids,
   mergeChangeState,
-  set as changeSet,
   takeChangeState,
-  type ChangeField,
-  type ChangeObjectFields,
-  type ChangeSpec,
-  type InferChangeState
+  type ChangeSchema,
+  type ChangeFieldSpec
 } from './changeState'
 export {
   isListEqual,

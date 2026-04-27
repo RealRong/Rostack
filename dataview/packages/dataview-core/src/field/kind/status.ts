@@ -3,7 +3,7 @@ import type {
   StatusField,
   StatusOption,
   StatusCategory
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   normalizeOptionToken,
   readFieldOptionOrder

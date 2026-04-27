@@ -5,7 +5,7 @@ import type {
   FilterOperator,
   FilterPresetId,
   FilterRule
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 
 export interface FilterPreset {
   id: FilterPresetId

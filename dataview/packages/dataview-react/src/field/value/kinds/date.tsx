@@ -1,4 +1,4 @@
-import type { CustomField } from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { cn } from '@shared/ui/utils'
 import { DateValueEditor } from '@dataview/react/field/value/editor/pickers/date/DateValueEditor'

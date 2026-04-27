@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { Field, FieldId } from '@dataview/core/contracts'
+import type { Field, FieldId } from '@dataview/core/types'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta, type Token } from '@dataview/meta'

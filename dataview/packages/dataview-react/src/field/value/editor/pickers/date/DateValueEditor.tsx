@@ -5,11 +5,11 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type RefObject
 } from 'react'
-import type { CustomField } from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/types'
 import {
   type DateDisplayFormat,
   type TimeDisplayFormat,
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   field as fieldApi
 } from '@dataview/core/field'

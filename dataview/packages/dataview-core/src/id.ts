@@ -5,7 +5,7 @@ import type {
   ViewFilterRuleId,
   ViewId,
   ViewSortRuleId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 
 export type DataviewIdKind =
   | 'record'

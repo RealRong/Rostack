@@ -7,7 +7,7 @@ import type {
   CustomField,
   FieldOption,
   StatusCategory
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'

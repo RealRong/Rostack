@@ -1,59 +1,34 @@
 import { idDelta, type IdDelta } from './idDelta'
 
-type ChangeFlagField = {
-  kind: 'flag'
+export type ChangeFieldSpec = 'flag' | 'ids' | 'set'
+
+export type ChangeSchema<TState extends object> = {
+  [K in keyof TState]:
+    TState[K] extends boolean
+      ? 'flag'
+      : TState[K] extends IdDelta<any>
+        ? 'ids'
+        : TState[K] extends ReadonlySet<any>
+          ? 'set'
+          : TState[K] extends Record<string, unknown>
+            ? ChangeSchema<TState[K]>
+            : never
 }
 
-type ChangeIdsField<TId extends string> = {
-  kind: 'ids'
-  __id?: TId
+interface ChangeSchemaObject {
+  [key: string]: ChangeSchemaValue
 }
 
-type ChangeSetField<TValue> = {
-  kind: 'set'
-  __value?: TValue
-}
-
-type ChangeLeafField =
-  | ChangeFlagField
-  | ChangeIdsField<string>
-  | ChangeSetField<unknown>
-
-export interface ChangeObjectFields {
-  [key: string]: ChangeField
-}
-
-export type ChangeField =
-  | ChangeLeafField
-  | ChangeObjectFields
-
-export type ChangeSpec<TFields extends ChangeObjectFields> = TFields
-
-export type InferChangeState<TField extends ChangeField> =
-  TField extends ChangeFlagField
-    ? boolean
-    : TField extends ChangeIdsField<infer TId>
-      ? IdDelta<TId>
-      : TField extends ChangeSetField<infer TValue>
-        ? ReadonlySet<TValue>
-        : TField extends ChangeObjectFields
-          ? {
-              [TKey in keyof TField]: InferChangeState<TField[TKey]>
-            }
-          : never
-
-export type {
-  ChangeFlagField,
-  ChangeIdsField,
-  ChangeSetField
-}
+type ChangeSchemaValue =
+  | ChangeFieldSpec
+  | ChangeSchemaObject
 
 const isLeafField = (
-  field: ChangeField
-): field is ChangeLeafField => (
-  typeof field === 'object'
-  && field !== null
-  && 'kind' in field
+  field: ChangeSchemaValue
+): field is ChangeFieldSpec => (
+  field === 'flag'
+  || field === 'ids'
+  || field === 'set'
 )
 
 const cloneIds = <TId extends string>(
@@ -88,10 +63,10 @@ const hasIds = <TId extends string>(
 )
 
 const createFieldState = (
-  field: ChangeField
+  field: ChangeSchemaValue
 ): unknown => {
   if (isLeafField(field)) {
-    switch (field.kind) {
+    switch (field) {
       case 'flag':
         return false
       case 'ids':
@@ -109,11 +84,11 @@ const createFieldState = (
 }
 
 const cloneFieldState = (
-  field: ChangeField,
+  field: ChangeSchemaValue,
   state: unknown
 ): unknown => {
   if (isLeafField(field)) {
-    switch (field.kind) {
+    switch (field) {
       case 'flag':
         return state
       case 'ids':
@@ -132,11 +107,11 @@ const cloneFieldState = (
 }
 
 const resetFieldState = (
-  field: ChangeField,
+  field: ChangeSchemaValue,
   state: unknown
 ) => {
   if (isLeafField(field)) {
-    switch (field.kind) {
+    switch (field) {
       case 'flag':
         return false
       case 'ids':
@@ -151,7 +126,7 @@ const resetFieldState = (
   const current = state as Record<string, unknown>
   Object.entries(field).forEach(([key, child]) => {
     const next = resetFieldState(child, current[key])
-    if (isLeafField(child) && child.kind === 'flag') {
+    if (child === 'flag') {
       current[key] = next
     }
   })
@@ -160,12 +135,12 @@ const resetFieldState = (
 }
 
 const mergeFieldState = (
-  field: ChangeField,
+  field: ChangeSchemaValue,
   target: unknown,
   source: unknown
 ) => {
   if (isLeafField(field)) {
-    switch (field.kind) {
+    switch (field) {
       case 'flag':
         return Boolean(target) || Boolean(source)
       case 'ids':
@@ -190,7 +165,7 @@ const mergeFieldState = (
       currentTarget[key],
       currentSource[key]
     )
-    if (isLeafField(child) && child.kind === 'flag') {
+    if (child === 'flag') {
       currentTarget[key] = next
     }
   })
@@ -198,11 +173,11 @@ const mergeFieldState = (
 }
 
 const hasFieldState = (
-  field: ChangeField,
+  field: ChangeSchemaValue,
   state: unknown
 ): boolean => {
   if (isLeafField(field)) {
-    switch (field.kind) {
+    switch (field) {
       case 'flag':
         return Boolean(state)
       case 'ids':
@@ -217,49 +192,33 @@ const hasFieldState = (
   ))
 }
 
-export const flag = (): ChangeFlagField => ({
-  kind: 'flag'
-})
+export const createChangeState = <TState extends object>(
+  schema: ChangeSchema<TState>
+): TState => createFieldState(schema as ChangeSchemaValue) as TState
 
-export const ids = <TId extends string>(): ChangeIdsField<TId> => ({
-  kind: 'ids'
-})
+export const cloneChangeState = <TState extends object>(
+  schema: ChangeSchema<TState>,
+  state: TState
+): TState => cloneFieldState(schema as ChangeSchemaValue, state) as TState
 
-export const set = <TValue,>(): ChangeSetField<TValue> => ({
-  kind: 'set'
-})
-
-export const defineChangeSpec = <TFields extends ChangeObjectFields>(
-  fields: TFields
-): ChangeSpec<TFields> => fields
-
-export const createChangeState = <TFields extends ChangeObjectFields>(
-  spec: ChangeSpec<TFields>
-): InferChangeState<ChangeSpec<TFields>> => createFieldState(spec) as InferChangeState<ChangeSpec<TFields>>
-
-export const cloneChangeState = <TFields extends ChangeObjectFields>(
-  spec: ChangeSpec<TFields>,
-  state: InferChangeState<ChangeSpec<TFields>>
-): InferChangeState<ChangeSpec<TFields>> => cloneFieldState(spec, state) as InferChangeState<ChangeSpec<TFields>>
-
-export const mergeChangeState = <TFields extends ChangeObjectFields>(
-  spec: ChangeSpec<TFields>,
-  target: InferChangeState<ChangeSpec<TFields>>,
-  source: InferChangeState<ChangeSpec<TFields>>
+export const mergeChangeState = <TState extends object>(
+  schema: ChangeSchema<TState>,
+  target: TState,
+  source: TState
 ) => {
-  mergeFieldState(spec, target, source)
+  mergeFieldState(schema as ChangeSchemaValue, target, source)
 }
 
-export const takeChangeState = <TFields extends ChangeObjectFields>(
-  spec: ChangeSpec<TFields>,
-  state: InferChangeState<ChangeSpec<TFields>>
-): InferChangeState<ChangeSpec<TFields>> => {
-  const current = cloneChangeState(spec, state)
-  resetFieldState(spec, state)
+export const takeChangeState = <TState extends object>(
+  schema: ChangeSchema<TState>,
+  state: TState
+): TState => {
+  const current = cloneChangeState(schema, state)
+  resetFieldState(schema as ChangeSchemaValue, state)
   return current
 }
 
-export const hasChangeState = <TFields extends ChangeObjectFields>(
-  spec: ChangeSpec<TFields>,
-  state: InferChangeState<ChangeSpec<TFields>>
-): boolean => hasFieldState(spec, state)
+export const hasChangeState = <TState extends object>(
+  schema: ChangeSchema<TState>,
+  state: TState
+): boolean => hasFieldState(schema as ChangeSchemaValue, state)

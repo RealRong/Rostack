@@ -1,7 +1,7 @@
 import type {
   CalculationMetric,
   FieldId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import type {
   Token
 } from '@shared/i18n'

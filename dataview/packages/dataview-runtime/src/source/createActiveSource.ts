@@ -1,4 +1,4 @@
-import type { CalculationCollection } from '@dataview/core/calculation'
+import type { CalculationCollection } from '@dataview/core/view'
 import type {
   CardLayout,
   CardSize,
@@ -8,7 +8,7 @@ import type {
   RecordId,
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { collection, equal, store } from '@shared/core'
 import type {
   ActiveDelta,

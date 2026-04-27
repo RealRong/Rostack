@@ -5,11 +5,11 @@ import type {
   RecordPatchAspect,
   ViewLayoutAspect,
   ViewQueryAspect
-} from '@dataview/core/contracts/commit'
+} from '@dataview/core/types/commit'
 import type {
   DocumentOperation,
   DocumentRecordFieldRestoreEntry
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 import type {
   CustomField,
   CustomFieldId,
@@ -18,17 +18,19 @@ import type {
   FieldId,
   RecordId,
   ViewId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   impact as commitImpact
 } from '@dataview/core/commit/impact'
 import {
   type AppliedDocumentRecordFieldWrite,
-  document as documentApi
 } from '@dataview/core/document'
+import {
+  documentRecords
+} from '@dataview/core/document/records'
 import {
   dataviewMutationKey
 } from '@dataview/core/mutation/key'
@@ -306,8 +308,8 @@ const captureRecordEntries = (
   recordIds: readonly RecordId[]
 ) => recordIds
   .map(recordId => {
-    const record = documentApi.records.get(document, recordId)
-    const index = documentApi.records.indexOf(document, recordId)
+    const record = documentRecords.get(document, recordId)
+    const index = documentRecords.indexOf(document, recordId)
     if (!record || index < 0) {
       return undefined
     }

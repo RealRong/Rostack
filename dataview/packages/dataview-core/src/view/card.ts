@@ -2,7 +2,7 @@ import type {
   CardLayout,
   CardOptions,
   CardSize
-} from '@dataview/core/contracts/card'
+} from '@dataview/core/types/state'
 import { isJsonObject } from '@dataview/core/view/shared'
 
 const DEFAULT_WRAP = false

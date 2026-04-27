@@ -5,10 +5,10 @@ import type {
   CustomField,
   RecordId,
   TitleField
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ItemId,
   ItemPlacement

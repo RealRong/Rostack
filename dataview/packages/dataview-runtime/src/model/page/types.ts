@@ -3,7 +3,7 @@ import type {
   SortRule,
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ActiveViewQuery
 } from '@dataview/engine'

@@ -1,19 +1,19 @@
 import type {
   CalculationDistributionItem,
   CalculationResult
-} from '@dataview/core/calculation/contracts'
+} from './contracts'
 import type {
   CalculationDemand,
   FieldReducerState,
   ReducerCapabilitySet
-} from '@dataview/core/calculation/reducer'
+} from './reducer'
 import type {
   CalculationMetric,
   Field,
   FieldId,
   FieldOption,
   ViewCalc
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   field as fieldApi
 } from '@dataview/core/field'

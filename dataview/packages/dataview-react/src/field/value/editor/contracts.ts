@@ -1,4 +1,4 @@
-import type { Field, CustomField } from '@dataview/core/contracts'
+import type { Field, CustomField } from '@dataview/core/types'
 import type {
   EditorSubmitTrigger,
   EditInput,

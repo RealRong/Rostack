@@ -1,4 +1,4 @@
-import type { Field } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/types'
 import { FieldValueContent } from '@dataview/react/field/value'
 
 export interface CellValueProps {

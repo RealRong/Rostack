@@ -4,16 +4,16 @@ import type {
   RecordId,
   View,
   ViewId
-} from '@dataview/core/contracts/state'
-import { calculation } from '@dataview/core/calculation'
+} from '@dataview/core/types/state'
+import { calculation } from '@dataview/core/view'
 import { documentFields } from '@dataview/core/document/fields'
 import {
   entityTable
 } from '@dataview/core/document/table'
-import { filter } from '@dataview/core/filter'
-import { group } from '@dataview/core/group'
-import { search } from '@dataview/core/search'
-import { sort } from '@dataview/core/sort'
+import { filter } from '@dataview/core/view'
+import { group } from '@dataview/core/view'
+import { search } from '@dataview/core/view'
+import { sort } from '@dataview/core/view'
 import { normalizeRecordOrderIds } from '@dataview/core/view/order'
 import { normalizeViewOptions } from '@dataview/core/view/normalize'
 import { normalizeViewDisplay } from '@dataview/core/view/state'

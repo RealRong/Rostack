@@ -1,17 +1,18 @@
+import { idDelta } from '@shared/delta'
 import type {
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
-import type { ViewPatchScope } from '../../contracts/delta'
+import type { UiPatchScope } from '../../contracts/delta'
+import {
+  createUiDelta
+} from '../../contracts/delta'
 import type {
   EdgeUiView,
   Input,
-  NodeUiView,
-  SceneItem
+  NodeUiView
 } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
-import { buildItems } from './items'
-import { patchRenderState } from './render'
 import {
   buildChromeView,
   buildEdgeUiView,
@@ -19,7 +20,7 @@ import {
   isChromeViewEqual,
   isEdgeUiViewEqual,
   isNodeUiViewEqual
-} from './ui'
+} from './equality'
 
 const buildCurrentNodeUiView = (input: {
   current: Input
@@ -77,6 +78,50 @@ const buildCurrentEdgeUiView = (input: {
     : next
 }
 
+const writeNodeDelta = (input: {
+  delta: WorkingState['delta']['ui']['node']
+  nodeId: NodeId
+  previous: NodeUiView | undefined
+  next: NodeUiView | undefined
+}) => {
+  if (input.previous === input.next) {
+    return
+  }
+
+  if (input.previous === undefined && input.next !== undefined) {
+    idDelta.add(input.delta, input.nodeId)
+    return
+  }
+  if (input.previous !== undefined && input.next === undefined) {
+    idDelta.remove(input.delta, input.nodeId)
+    return
+  }
+
+  idDelta.update(input.delta, input.nodeId)
+}
+
+const writeEdgeDelta = (input: {
+  delta: WorkingState['delta']['ui']['edge']
+  edgeId: EdgeId
+  previous: EdgeUiView | undefined
+  next: EdgeUiView | undefined
+}) => {
+  if (input.previous === input.next) {
+    return
+  }
+
+  if (input.previous === undefined && input.next !== undefined) {
+    idDelta.add(input.delta, input.edgeId)
+    return
+  }
+  if (input.previous !== undefined && input.next === undefined) {
+    idDelta.remove(input.delta, input.edgeId)
+    return
+  }
+
+  idDelta.update(input.delta, input.edgeId)
+}
+
 const rebuildNodeUi = (input: {
   current: Input
   working: WorkingState
@@ -98,15 +143,29 @@ const rebuildNodeUi = (input: {
     }
 
     next.set(nodeId, nextView)
+    writeNodeDelta({
+      delta: input.working.delta.ui.node,
+      nodeId,
+      previous: previousView,
+      next: nextView
+    })
     if (previousView !== nextView) {
       count += 1
     }
   })
 
-  previous.forEach((_view, nodeId) => {
-    if (!next.has(nodeId)) {
-      count += 1
+  previous.forEach((previousView, nodeId) => {
+    if (next.has(nodeId)) {
+      return
     }
+
+    writeNodeDelta({
+      delta: input.working.delta.ui.node,
+      nodeId,
+      previous: previousView,
+      next: undefined
+    })
+    count += 1
   })
 
   input.working.ui.nodes = next
@@ -134,15 +193,29 @@ const rebuildEdgeUi = (input: {
     }
 
     next.set(edgeId, nextView)
+    writeEdgeDelta({
+      delta: input.working.delta.ui.edge,
+      edgeId,
+      previous: previousView,
+      next: nextView
+    })
     if (previousView !== nextView) {
       count += 1
     }
   })
 
-  previous.forEach((_view, edgeId) => {
-    if (!next.has(edgeId)) {
-      count += 1
+  previous.forEach((previousView, edgeId) => {
+    if (next.has(edgeId)) {
+      return
     }
+
+    writeEdgeDelta({
+      delta: input.working.delta.ui.edge,
+      edgeId,
+      previous: previousView,
+      next: undefined
+    })
+    count += 1
   })
 
   input.working.ui.edges = next
@@ -169,12 +242,24 @@ const patchTouchedNodeUi = (input: {
     if (next === undefined) {
       if (previous !== undefined) {
         nodes.delete(nodeId)
+        writeNodeDelta({
+          delta: input.working.delta.ui.node,
+          nodeId,
+          previous,
+          next
+        })
         count += 1
       }
       return
     }
 
     nodes.set(nodeId, next)
+    writeNodeDelta({
+      delta: input.working.delta.ui.node,
+      nodeId,
+      previous,
+      next
+    })
     if (previous !== next) {
       count += 1
     }
@@ -203,12 +288,24 @@ const patchTouchedEdgeUi = (input: {
     if (next === undefined) {
       if (previous !== undefined) {
         edges.delete(edgeId)
+        writeEdgeDelta({
+          delta: input.working.delta.ui.edge,
+          edgeId,
+          previous,
+          next
+        })
         count += 1
       }
       return
     }
 
     edges.set(edgeId, next)
+    writeEdgeDelta({
+      delta: input.working.delta.ui.edge,
+      edgeId,
+      previous,
+      next
+    })
     if (previous !== next) {
       count += 1
     }
@@ -237,41 +334,17 @@ const patchChrome = (input: {
     : nextCandidate
 
   input.working.ui.chrome = next
+  input.working.delta.ui.chrome = next !== previous
   return next !== previous ? 1 : 0
 }
 
-const isSceneItemEqual = (
-  left: SceneItem,
-  right: SceneItem
-) => left.kind === right.kind
-  && left.id === right.id
-
-const patchItems = (input: {
+export const patchUiState = (input: {
   current: Input
   working: WorkingState
-  force: boolean
+  scope: UiPatchScope
 }): number => {
-  if (!input.force) {
-    return 0
-  }
+  input.working.delta.ui = createUiDelta()
 
-  const previous = input.working.items
-  const next = buildItems(input.current.document.snapshot)
-  const same = previous.length === next.length
-    && previous.every((item, index) => isSceneItemEqual(item, next[index]!))
-  if (same) {
-    return 0
-  }
-
-  input.working.items = next
-  return next.length
-}
-
-export const patchViewState = (input: {
-  current: Input
-  working: WorkingState
-  scope: ViewPatchScope
-}): number => {
   const uiCount = input.scope.reset
     ? (
         rebuildNodeUi(input)
@@ -300,18 +373,5 @@ export const patchViewState = (input: {
   })
   input.working.graph.state.chrome = input.working.ui.chrome
 
-  return (
-    uiCount
-    + chromeCount
-    + patchItems({
-        current: input.current,
-        working: input.working,
-        force: input.scope.reset || input.scope.items
-      })
-    + patchRenderState({
-        current: input.current,
-        working: input.working,
-        scope: input.scope
-      })
-  )
+  return uiCount + chromeCount
 }

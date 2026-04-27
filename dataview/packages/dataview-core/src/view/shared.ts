@@ -2,12 +2,12 @@ import type {
   FieldId,
   TableOptions,
   ViewType
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ViewOptionsByType
-} from '@dataview/core/contracts/viewOptions'
-import type { GalleryOptions } from '@dataview/core/contracts/gallery'
-import type { KanbanOptions } from '@dataview/core/contracts/kanban'
+} from '@dataview/core/types/state'
+import type { GalleryOptions } from '@dataview/core/types/state'
+import type { KanbanOptions } from '@dataview/core/types/state'
 import { json } from '@shared/core'
 
 export const isJsonObject = json.isJsonObject

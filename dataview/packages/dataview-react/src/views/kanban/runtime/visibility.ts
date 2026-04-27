@@ -7,7 +7,7 @@ import {
 } from 'react'
 import type {
   KanbanCardsPerColumn
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   Section,
   SectionId

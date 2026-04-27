@@ -1,9 +1,9 @@
-import type { DataDoc } from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc } from '@dataview/core/types'
+import type { DocumentOperation } from '@dataview/core/types/operations'
 import type {
   DataviewMutationKey,
   DataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import type {
   ApplyCommit,
   CommitRecord,

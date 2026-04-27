@@ -1,0 +1,1 @@
+export { patchRenderState } from './core'

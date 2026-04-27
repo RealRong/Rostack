@@ -1,61 +1,40 @@
-export interface FlagScopeField {
-  kind: 'flag'
+export type ScopeFieldSpec = 'flag' | 'set' | 'slot'
+
+type ScopeValueShape = object
+interface ScopeSchemaObject {
+  [key: string]: ScopeSchemaValue
 }
 
-export interface SetScopeField<TValue> {
-  kind: 'set'
-  __value?: TValue
+type ScopeSchemaValue =
+  | ScopeFieldSpec
+  | ScopeSchemaObject
+
+export type ScopeSchema<TValueShape extends ScopeValueShape> = {
+  [K in keyof TValueShape]:
+    TValueShape[K] extends boolean
+      ? 'flag'
+      : TValueShape[K] extends ReadonlySet<any>
+        ? 'set'
+        : 'slot'
 }
 
-export interface SlotScopeField<TValue> {
-  kind: 'slot'
-  __value?: TValue
-}
-
-export type ScopeField =
-  | FlagScopeField
-  | SetScopeField<unknown>
-  | SlotScopeField<unknown>
-
-export type ScopeFields = Record<string, ScopeField>
-
-export interface ScopeSchema<TFields extends ScopeFields = ScopeFields> {
-  kind: 'scope'
-  fields: TFields
-}
-
-type ScopeFieldValue<TField extends ScopeField> =
-  TField extends FlagScopeField
-    ? boolean
-    : TField extends SetScopeField<infer TValue>
-      ? ReadonlySet<TValue>
-      : TField extends SlotScopeField<infer TValue>
-        ? TValue | undefined
-        : never
-
-type ScopeFieldInput<TField extends ScopeField> =
-  TField extends FlagScopeField
-    ? boolean
-    : TField extends SetScopeField<infer TValue>
-      ? Iterable<TValue> | ReadonlySet<TValue>
-      : TField extends SlotScopeField<infer TValue>
-        ? TValue
-        : never
-
-export type ScopeValue<TSchema> = TSchema extends ScopeSchema<infer TFields>
-  ? {
-      [K in keyof TFields]: ScopeFieldValue<TFields[K]>
-    }
+export type ScopeValue<TValueShape> = TValueShape extends object
+  ? TValueShape
   : undefined
 
-export type ScopeInputValue<TSchema> = TSchema extends ScopeSchema<infer TFields>
+export type ScopeInputValue<TValueShape> = TValueShape extends object
   ? Partial<{
-      [K in keyof TFields]: ScopeFieldInput<TFields[K]>
+      [K in keyof TValueShape]:
+        TValueShape[K] extends boolean
+          ? boolean
+          : TValueShape[K] extends ReadonlySet<infer TValue>
+            ? Iterable<TValue> | ReadonlySet<TValue>
+            : TValueShape[K]
     }>
   : undefined
 
 export type PhaseScopeMap<TPhaseName extends string> = {
-  [K in TPhaseName]: ScopeSchema | undefined
+  [K in TPhaseName]: object | undefined
 }
 
 export type DefaultPhaseScopeMap<TPhaseName extends string> = {
@@ -69,19 +48,15 @@ export type PhaseScopeInput<
   [K in TPhaseName]: ScopeInputValue<TScopeMap[K]>
 }>
 
-const FLAG_SCOPE_FIELD = {
-  kind: 'flag'
-} as const satisfies FlagScopeField
-
-const SET_SCOPE_FIELD = {
-  kind: 'set'
-} as const satisfies SetScopeField<never>
-
-const SLOT_SCOPE_FIELD = {
-  kind: 'slot'
-} as const satisfies SlotScopeField<never>
-
 const EMPTY_SET = new Set<never>() as ReadonlySet<never>
+
+const isLeafField = (
+  field: ScopeSchemaValue
+): field is ScopeFieldSpec => (
+  field === 'flag'
+  || field === 'set'
+  || field === 'slot'
+)
 
 const readFlagValue = (
   current: boolean | undefined,
@@ -140,11 +115,23 @@ const unionReadonlySet = <TValue>(
 }
 
 const mergeFieldValue = (
-  field: ScopeField,
+  field: ScopeSchemaValue,
   current: unknown,
   next: unknown
 ): unknown => {
-  switch (field.kind) {
+  if (!isLeafField(field)) {
+    const value: Record<string, unknown> = {}
+    Object.entries(field).forEach(([key, child]) => {
+      value[key] = mergeFieldValue(
+        child,
+        (current as Record<string, unknown> | undefined)?.[key],
+        (next as Record<string, unknown> | undefined)?.[key]
+      )
+    })
+    return value
+  }
+
+  switch (field) {
     case 'flag':
       return readFlagValue(
         current as boolean | undefined,
@@ -163,10 +150,21 @@ const mergeFieldValue = (
 }
 
 const normalizeFieldValue = (
-  field: ScopeField,
+  field: ScopeSchemaValue,
   value: unknown
 ): unknown => {
-  switch (field.kind) {
+  if (!isLeafField(field)) {
+    const next: Record<string, unknown> = {}
+    Object.entries(field).forEach(([key, child]) => {
+      next[key] = normalizeFieldValue(
+        child,
+        (value as Record<string, unknown> | undefined)?.[key]
+      )
+    })
+    return next
+  }
+
+  switch (field) {
     case 'flag':
       return value === true
     case 'set':
@@ -179,10 +177,19 @@ const normalizeFieldValue = (
 }
 
 const isEmptyFieldValue = (
-  field: ScopeField,
+  field: ScopeSchemaValue,
   value: unknown
 ): boolean => {
-  switch (field.kind) {
+  if (!isLeafField(field)) {
+    return Object.entries(field).every(([key, child]) => (
+      isEmptyFieldValue(
+        child,
+        (value as Record<string, unknown> | undefined)?.[key]
+      )
+    ))
+  }
+
+  switch (field) {
     case 'flag':
       return value !== true
     case 'set':
@@ -192,71 +199,28 @@ const isEmptyFieldValue = (
   }
 }
 
-export const flag = (): FlagScopeField => FLAG_SCOPE_FIELD
+export const normalizeScopeValue = <TValueShape extends ScopeValueShape>(
+  schema: ScopeSchema<TValueShape>,
+  input?: ScopeInputValue<TValueShape>
+): ScopeValue<TValueShape> => normalizeFieldValue(
+  schema as ScopeSchemaValue,
+  input
+) as ScopeValue<TValueShape>
 
-export const set = <TValue,>(): SetScopeField<TValue> => (
-  SET_SCOPE_FIELD as SetScopeField<TValue>
+export const mergeScopeValue = <TValueShape extends ScopeValueShape>(
+  schema: ScopeSchema<TValueShape>,
+  current: ScopeValue<TValueShape> | undefined,
+  next: ScopeInputValue<TValueShape>
+): ScopeValue<TValueShape> => mergeFieldValue(
+  schema as ScopeSchemaValue,
+  current,
+  next
+) as ScopeValue<TValueShape>
+
+export const isScopeValueEmpty = <TValueShape extends ScopeValueShape>(
+  schema: ScopeSchema<TValueShape>,
+  value: ScopeValue<TValueShape>
+): boolean => isEmptyFieldValue(
+  schema as ScopeSchemaValue,
+  value
 )
-
-export const slot = <TValue,>(): SlotScopeField<TValue> => (
-  SLOT_SCOPE_FIELD as SlotScopeField<TValue>
-)
-
-export const defineScope = <TFields extends ScopeFields>(
-  fields: TFields
-): ScopeSchema<TFields> => ({
-  kind: 'scope',
-  fields
-})
-
-export const normalizeScopeValue = <TSchema extends ScopeSchema>(
-  schema: TSchema,
-  input?: ScopeInputValue<TSchema>
-): ScopeValue<TSchema> => {
-  const value: Record<string, unknown> = {}
-
-  for (const fieldName in schema.fields) {
-    const field = schema.fields[fieldName]!
-    value[fieldName] = normalizeFieldValue(
-      field,
-      input?.[fieldName as keyof ScopeInputValue<TSchema>]
-    )
-  }
-
-  return value as ScopeValue<TSchema>
-}
-
-export const mergeScopeValue = <TSchema extends ScopeSchema>(
-  schema: TSchema,
-  current: ScopeValue<TSchema> | undefined,
-  next: ScopeInputValue<TSchema>
-): ScopeValue<TSchema> => {
-  const value: Record<string, unknown> = {}
-
-  for (const fieldName in schema.fields) {
-    const field = schema.fields[fieldName]!
-    value[fieldName] = mergeFieldValue(
-      field,
-      current?.[fieldName as keyof ScopeValue<TSchema>],
-      next[fieldName as keyof ScopeInputValue<TSchema>]
-    )
-  }
-
-  return value as ScopeValue<TSchema>
-}
-
-export const isScopeValueEmpty = <TSchema extends ScopeSchema>(
-  schema: TSchema,
-  value: ScopeValue<TSchema>
-): boolean => {
-  for (const fieldName in schema.fields) {
-    if (!isEmptyFieldValue(
-      schema.fields[fieldName]!,
-      value[fieldName as keyof ScopeValue<TSchema>]
-    )) {
-      return false
-    }
-  }
-
-  return true
-}

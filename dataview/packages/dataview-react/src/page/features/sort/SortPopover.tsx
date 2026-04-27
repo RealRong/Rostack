@@ -21,7 +21,7 @@ import {
 } from '@dataview/react/dataview'
 import type {
   Field
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   SortRuleProjection
 } from '@dataview/engine'

@@ -14,28 +14,28 @@ export type {
   KanbanViewPatch,
   ViewCreateInput,
   ViewPatch
-} from '@dataview/core/contracts/intents'
+} from '@dataview/core/types/intents'
 export type {
   CardLayout,
   CardOptions,
   CardSize
-} from '@dataview/core/contracts/card'
+} from '@dataview/core/types/state'
 export type {
   GalleryOptions
-} from '@dataview/core/contracts/gallery'
+} from '@dataview/core/types/state'
 export type {
   TableOptions,
   ViewLayoutOptions,
   ViewOptionsByType
-} from '@dataview/core/contracts/viewOptions'
+} from '@dataview/core/types/state'
 export {
   KANBAN_EMPTY_BUCKET_KEY,
   KANBAN_CARDS_PER_COLUMN_OPTIONS
-} from '@dataview/core/contracts/kanban'
+} from '@dataview/core/types/state'
 export type {
   KanbanCardsPerColumn,
   KanbanOptions
-} from '@dataview/core/contracts/kanban'
+} from '@dataview/core/types/state'
 export type {
   DocumentOperation,
   DocumentRecordFieldRestoreEntry,
@@ -43,12 +43,12 @@ export type {
   OperationType,
   RecordFieldWriteManyOperationInput,
   RecordInsertTarget,
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 export type {
   FilterConditionProjection,
   FilterValuePreview,
   SystemValueId
-} from '@dataview/core/contracts/presentation'
+} from '@dataview/core/types/presentation'
 export type {
   Token
 } from '@shared/i18n'
@@ -117,5 +117,5 @@ export type {
   ViewFilterRuleId,
   ViewId,
   ViewSortRuleId
-} from '@dataview/core/contracts/state'
-export { TITLE_FIELD_ID } from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
+export { TITLE_FIELD_ID } from '@dataview/core/types/state'

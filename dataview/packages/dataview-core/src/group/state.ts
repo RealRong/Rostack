@@ -3,7 +3,7 @@ import type {
   Field,
   ViewGroup,
   ViewGroupBucketId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   field as fieldApi
 } from '@dataview/core/field'

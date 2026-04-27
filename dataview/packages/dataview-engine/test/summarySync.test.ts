@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
   calculation
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   createBaseImpact
 } from '@dataview/engine/active/projection/impact'
@@ -23,7 +23,7 @@ import {
 } from '@dataview/engine/active/summary/derive'
 import type {
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { entityTable } from '@shared/core'
 import type {
   IndexState

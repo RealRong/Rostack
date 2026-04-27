@@ -5,7 +5,7 @@ import type {
   RecordId,
   TitleField,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ItemId
 } from '@dataview/engine'

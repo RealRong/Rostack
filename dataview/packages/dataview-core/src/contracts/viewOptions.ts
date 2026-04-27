@@ -1,6 +1,6 @@
-import type { GalleryOptions } from '@dataview/core/contracts/gallery'
-import type { KanbanOptions } from '@dataview/core/contracts/kanban'
-import type { FieldId } from '@dataview/core/contracts/state'
+import type { GalleryOptions } from '@dataview/core/types/state'
+import type { KanbanOptions } from '@dataview/core/types/state'
+import type { FieldId } from '@dataview/core/types/state'
 
 export interface TableOptions {
   widths: Readonly<Partial<Record<FieldId, number>>>

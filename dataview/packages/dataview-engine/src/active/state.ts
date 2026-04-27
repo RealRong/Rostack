@@ -1,10 +1,10 @@
 import type {
   FieldReducerState
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import type {
   FieldId,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   Partition
 } from '@dataview/engine/active/shared/partition'

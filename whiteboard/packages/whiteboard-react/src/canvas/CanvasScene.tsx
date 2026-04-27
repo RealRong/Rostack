@@ -12,7 +12,7 @@ import { EdgeCanvasMarkerDefs } from '@whiteboard/react/features/edge/ui/marker'
 
 export const CanvasScene = memo(() => {
   const editor = useEditorRuntime()
-  const scene = useStoreValue(editor.scene.stores.items)
+  const itemIds = useStoreValue(editor.scene.stores.items.ids)
   return (
     <div className="wb-scene">
       <svg className="wb-scene-defs" aria-hidden="true" focusable="false">
@@ -21,8 +21,13 @@ export const CanvasScene = memo(() => {
         </defs>
       </svg>
       <EdgeSceneLayer />
-      {scene.map((ref) => (
-        ref.kind === 'mindmap'
+      {itemIds.map((itemKey) => {
+        const ref = editor.scene.stores.items.byId.get(itemKey)
+        if (!ref) {
+          return null
+        }
+
+        return ref.kind === 'mindmap'
             ? (
                 <MindmapSceneItem
                   key={`mindmap:${ref.id}`}
@@ -37,7 +42,7 @@ export const CanvasScene = memo(() => {
               />
             )
             : null
-      ))}
+      })}
     </div>
   )
 })

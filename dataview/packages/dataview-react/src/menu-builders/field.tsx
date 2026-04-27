@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Field } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/types'
 import { meta } from '@dataview/meta'
 import type { MenuItem, MenuReorderItem } from '@shared/ui/menu'
 

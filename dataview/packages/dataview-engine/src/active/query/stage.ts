@@ -1,11 +1,11 @@
 import {
   dataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import type {
   RecordId,
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   set as setCore
 } from '@shared/core'

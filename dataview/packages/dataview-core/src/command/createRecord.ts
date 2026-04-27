@@ -8,19 +8,19 @@ import type {
   RecordId,
   View,
   ViewGroupBucketId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
   filter as filterApi
-} from '@dataview/core/filter'
+} from '@dataview/core/view'
 import {
   group as groupCore
-} from '@dataview/core/group'
+} from '@dataview/core/view'
 import { equal } from '@shared/core'
 
 interface CreateDraftState {

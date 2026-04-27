@@ -2,7 +2,7 @@ import type { EntityTable } from '@shared/core'
 import type {
   TableOptions,
   ViewOptionsByType
-} from '@dataview/core/contracts/viewOptions'
+} from '@dataview/core/types/state'
 
 export type { EntityTable } from '@shared/core'
 

@@ -1,11 +1,11 @@
 import type {
   CalculationCollection,
   CalculationResult
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   calculation
-} from '@dataview/core/calculation'
-import type { FieldId, View } from '@dataview/core/contracts'
+} from '@dataview/core/view'
+import type { FieldId, View } from '@dataview/core/types'
 import type {
   SectionId
 } from '@dataview/engine/contracts/shared'

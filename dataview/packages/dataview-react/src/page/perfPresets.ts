@@ -18,11 +18,11 @@ import type {
   ViewGroup,
   ViewOptionsByType,
   ViewType
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { entityTable } from '@shared/core'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   document
 } from '@dataview/core/document'

@@ -1,7 +1,7 @@
 import { equal } from '@shared/core'
 import type {
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   Rows
 } from '@dataview/engine/active/shared/rows'

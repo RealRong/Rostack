@@ -3,8 +3,8 @@ import {
   decodeJsonBytes,
   encodeJsonBytes
 } from '@shared/collab-yjs'
-import type { DataDoc } from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc } from '@dataview/core/types'
+import type { DocumentOperation } from '@dataview/core/types/operations'
 import type {
   SharedChange,
   SharedCheckpoint,

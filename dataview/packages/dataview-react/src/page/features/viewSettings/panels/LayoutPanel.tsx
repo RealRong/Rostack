@@ -4,7 +4,7 @@ import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS,
   type KanbanCardsPerColumn,
   type ViewType
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { useDataView, usePageModel } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { buildChoiceSubmenuItem } from '@dataview/react/menu-builders'

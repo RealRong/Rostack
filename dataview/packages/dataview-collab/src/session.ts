@@ -7,7 +7,7 @@ import {
   createYjsCollabTransport
 } from '@shared/collab-yjs'
 import { document as documentApi } from '@dataview/core/document'
-import type { DataDoc } from '@dataview/core/contracts'
+import type { DataDoc } from '@dataview/core/types'
 import { createYjsSyncCodec } from '@dataview/collab/yjs/codec'
 import type {
   CollabSession,

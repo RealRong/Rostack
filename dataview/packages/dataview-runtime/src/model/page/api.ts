@@ -3,7 +3,7 @@ import type {
   FieldId,
   View,
   ViewSortRuleId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { equal, store } from '@shared/core'
 import type {
   ActiveViewQuery

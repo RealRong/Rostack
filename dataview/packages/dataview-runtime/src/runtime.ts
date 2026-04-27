@@ -1,7 +1,7 @@
 import { store } from '@shared/core'
 import type {
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   createRecordWorkflow
 } from '@dataview/runtime/workflow/createRecord'

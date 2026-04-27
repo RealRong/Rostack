@@ -2,7 +2,7 @@ import { string } from '@shared/core'
 import type {
   DataDoc,
   CustomField,
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   field as fieldApi
 } from '@dataview/core/field'

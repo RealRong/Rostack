@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { StatusCategory } from '@dataview/core/contracts'
+import type { StatusCategory } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { meta } from '@dataview/meta'
 import type { TokenTranslator } from '@shared/i18n'

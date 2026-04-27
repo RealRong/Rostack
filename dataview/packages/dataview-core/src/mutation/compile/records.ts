@@ -4,11 +4,11 @@ import type {
   Intent,
   RecordId,
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
+} from '@dataview/core/types'
+import type { DocumentOperation } from '@dataview/core/types/operations'
 import { field as fieldApi } from '@dataview/core/field'
 import {
   fieldSpec

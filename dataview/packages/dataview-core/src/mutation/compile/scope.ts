@@ -3,8 +3,8 @@ import type {
   EditTarget,
   Intent,
   RecordId
-} from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
+} from '@dataview/core/types'
+import type { DocumentOperation } from '@dataview/core/types/operations'
 import { collection, string } from '@shared/core'
 import { planningContext } from '@shared/mutation'
 import {

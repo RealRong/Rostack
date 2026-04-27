@@ -1,7 +1,7 @@
 import type {
   SortDirection,
   SortRule
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { defineMetaCollection } from '@dataview/meta/shared'
 import {
   token,

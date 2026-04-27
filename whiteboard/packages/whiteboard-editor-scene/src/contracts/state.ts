@@ -31,6 +31,7 @@ import type {
   OwnerRef,
   SceneItem
 } from './editor'
+import type { SceneItemKey } from './delta'
 import type {
   EdgeActiveView,
   ChromeRenderView,
@@ -54,7 +55,12 @@ export interface State {
   spatial: SpatialIndexState
   ui: UiState
   render: RenderState
-  items: readonly SceneItem[]
+  items: SceneItemsState
+}
+
+export interface SceneItemsState {
+  ids: readonly SceneItemKey[]
+  byId: ReadonlyMap<SceneItemKey, SceneItem>
 }
 
 export interface DocumentState {

@@ -6,7 +6,7 @@ import type {
   ViewId,
   ViewSortRuleId,
   ViewType
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { store } from '@shared/core'
 import {
   createControllerStore

@@ -8,7 +8,7 @@ import type {
   FieldId,
   RecordId,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 
 export type DataviewMutationKey = Path
 

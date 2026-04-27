@@ -1,4 +1,4 @@
-import type { CustomFieldKind } from '@dataview/core/contracts'
+import type { CustomFieldKind } from '@dataview/core/types'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta } from '@dataview/meta'
 import { useTranslation } from '@shared/i18n/react'

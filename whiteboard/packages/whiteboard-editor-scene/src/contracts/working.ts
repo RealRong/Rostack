@@ -1,6 +1,10 @@
 import type {
   GraphDelta,
-  SpatialDelta
+  GraphChanges,
+  ItemsDelta,
+  RenderDelta,
+  SpatialDelta,
+  UiDelta
 } from './delta'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
@@ -28,6 +32,10 @@ export interface WorkingState extends State {
   }
   delta: {
     graph: GraphDelta
+    graphChanges: GraphChanges
     spatial: SpatialDelta
+    items: ItemsDelta
+    ui: UiDelta
+    render: RenderDelta
   }
 }

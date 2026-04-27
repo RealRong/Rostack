@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
-import type { DataDoc } from '@dataview/core/contracts'
+import type { DataDoc } from '@dataview/core/types'
 import {
   reduceDataviewOperations
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import {
   DATAVIEW_OPERATION_DEFINITIONS
-} from '@dataview/core/operation/definition'
+} from '@dataview/core/operations/definitions'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,

@@ -1,6 +1,6 @@
 import { ChevronDown, Filter, Trash } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { FilterRule } from '@dataview/core/contracts'
+import type { FilterRule } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import type { FilterRuleProjection } from '@dataview/engine'
 import { Button } from '@shared/ui/button'

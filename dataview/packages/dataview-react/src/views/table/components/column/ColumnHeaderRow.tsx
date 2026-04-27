@@ -16,7 +16,7 @@ import type {
 } from '@dataview/runtime'
 import type {
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { columnSortId } from '@dataview/react/views/table/hooks/useColumnReorder'
 import { ColumnHeader } from '@dataview/react/views/table/components/column/ColumnHeader'
 import { ColumnAddPropertyAction } from '@dataview/react/views/table/components/column/ColumnAddPropertyAction'

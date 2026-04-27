@@ -1,7 +1,7 @@
 import type {
   Field,
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { collection } from '@shared/core'
 import type {
   FieldList

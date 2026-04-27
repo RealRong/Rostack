@@ -1,4 +1,4 @@
-import type { CustomFieldId } from '@dataview/core/contracts'
+import type { CustomFieldId } from '@dataview/core/types'
 import type { ItemId } from '@dataview/engine'
 import type { CellRef } from '@dataview/engine'
 

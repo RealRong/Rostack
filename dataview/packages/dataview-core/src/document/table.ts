@@ -3,7 +3,7 @@ import type {
   DataRecord,
   EntityTable,
   RecordId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import { entityTable as sharedEntityTable } from '@shared/core'
 
 const replace = <TKey extends 'fields' | 'records' | 'views'>(

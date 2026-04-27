@@ -9,33 +9,33 @@ import type {
   ViewCalc,
   ViewDisplay,
   ViewGroup
-} from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import type { GalleryOptions } from '@dataview/core/contracts/gallery'
+} from '@dataview/core/types'
+import type { DocumentOperation } from '@dataview/core/types/operations'
+import type { GalleryOptions } from '@dataview/core/types/state'
 import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS,
   type KanbanOptions
-} from '@dataview/core/contracts/kanban'
-import type { TableOptions } from '@dataview/core/contracts/viewOptions'
+} from '@dataview/core/types/state'
+import type { TableOptions } from '@dataview/core/types/state'
 import {
   calculation
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import { field as fieldApi } from '@dataview/core/field'
 import {
   fieldSpec
 } from '@dataview/core/field/spec'
 import {
   filter as filterApi
-} from '@dataview/core/filter'
+} from '@dataview/core/view'
 import {
   group,
-} from '@dataview/core/group'
+} from '@dataview/core/view'
 import {
   search as searchApi
-} from '@dataview/core/search'
+} from '@dataview/core/view'
 import {
   sort as sortApi
-} from '@dataview/core/sort'
+} from '@dataview/core/view'
 import { id as dataviewId } from '@dataview/core/id'
 import {
   view as viewApi

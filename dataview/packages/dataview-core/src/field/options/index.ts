@@ -1,7 +1,7 @@
 import type {
   CustomField,
   FieldOption
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   getKindSpec,
   type FieldOptionSpec,

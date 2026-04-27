@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Field } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/types'
 import type { FieldOptionTagAppearance } from '@dataview/react/field/options'
 import { cn } from '@shared/ui/utils'
 import { getFieldValueSpec } from '@dataview/react/field/value/kinds'

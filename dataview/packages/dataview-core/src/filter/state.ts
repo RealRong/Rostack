@@ -5,9 +5,8 @@ import type {
   Filter,
   FilterRule,
   ViewFilterRuleId
-} from '@dataview/core/contracts'
-import { entityTable, equal } from '@shared/core'
-import { id as dataviewId } from '@dataview/core/id'
+} from '@dataview/core/types'
+import { createId, entityTable, equal } from '@shared/core'
 import {
   applyFilterPreset,
   cloneFilterRule,
@@ -15,6 +14,8 @@ import {
   normalizeFilterRule,
   setFilterRuleValue
 } from '@dataview/core/filter/spec'
+
+const createFilterRuleId = (): ViewFilterRuleId => createId('filter') as ViewFilterRuleId
 
 const EMPTY_FILTER_RULES: EntityTable<ViewFilterRuleId, FilterRule> = {
   byId: {} as Record<ViewFilterRuleId, FilterRule>,
@@ -187,7 +188,7 @@ export const writeFilterCreate = (
 } => {
   assertFilterFieldAvailable(filter.rules, field.id)
 
-  const id = dataviewId.create('filterRule')
+  const id = createFilterRuleId()
   const rule = createDefaultFilterRule(id, field)
   return {
     id,

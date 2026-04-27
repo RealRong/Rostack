@@ -3,7 +3,7 @@ import type {
   Field,
   KanbanCardsPerColumn,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ItemId,
   Section,

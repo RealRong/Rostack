@@ -10,7 +10,7 @@ import type {
   RecordId,
   View,
   ViewGroupBucketId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   createMapDraft as createMapPatchBuilder
 } from '@shared/draft'

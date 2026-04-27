@@ -4,9 +4,9 @@ import type {
   Intent as CoreIntent,
   RecordId,
   ViewGroup
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
-import { group as groupCore } from '@dataview/core/group'
+import { group as groupCore } from '@dataview/core/view'
 import { view as viewApi } from '@dataview/core/view'
 import { collection, equal } from '@shared/core'
 import type {

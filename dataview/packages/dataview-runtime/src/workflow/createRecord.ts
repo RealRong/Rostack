@@ -2,7 +2,7 @@ import type {
   RecordId,
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { store } from '@shared/core'
 
 export type CreateRecordOpenResult =

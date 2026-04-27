@@ -1,5 +1,5 @@
-import type { DataDoc, Intent } from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
+import type { DataDoc, Intent } from '@dataview/core/types'
+import type { DocumentOperation } from '@dataview/core/types/operations'
 import { reduceDataviewOperations } from '@dataview/core/mutation/spec'
 import { compile } from '@shared/mutation'
 import { string } from '@shared/core'

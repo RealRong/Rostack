@@ -1,6 +1,6 @@
 import type {
   FilterPresetId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   token,
   type Token

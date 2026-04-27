@@ -4,7 +4,7 @@ import {
   Table2
 } from 'lucide-react'
 import { type ComponentType } from 'react'
-import type { ViewType } from '@dataview/core/contracts'
+import type { ViewType } from '@dataview/core/types'
 import {
   usePageModel
 } from '@dataview/react/dataview'

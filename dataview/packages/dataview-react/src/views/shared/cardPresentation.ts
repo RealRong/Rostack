@@ -1,7 +1,7 @@
 import type {
   CardLayout,
   CardSize
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   FieldOptionTagAppearance
 } from '@dataview/react/field/options'

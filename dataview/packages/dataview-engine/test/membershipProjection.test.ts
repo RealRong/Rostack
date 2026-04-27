@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import type {
   DataDoc,
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { test } from 'vitest'
 import {
   createBucketSpec

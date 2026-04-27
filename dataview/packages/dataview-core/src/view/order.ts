@@ -1,4 +1,4 @@
-import type { RecordId } from '@dataview/core/contracts/state'
+import type { RecordId } from '@dataview/core/types/state'
 import { order } from '@shared/core'
 
 

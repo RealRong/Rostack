@@ -14,4 +14,4 @@ export type {
 } from '@dataview/runtime/source/contracts'
 export type {
   ValueRef
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'

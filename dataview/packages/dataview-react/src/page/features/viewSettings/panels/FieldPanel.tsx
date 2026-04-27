@@ -1,4 +1,4 @@
-import type { FieldId } from '@dataview/core/contracts'
+import type { FieldId } from '@dataview/core/types'
 import { meta } from '@dataview/meta'
 import {
   useDataViewKeyedValue

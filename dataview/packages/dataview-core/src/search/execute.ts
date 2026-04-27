@@ -2,7 +2,7 @@ import type {
   DataDoc,
   DataRecord,
   Search
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { buildRecordTexts } from '@dataview/core/search/tokens'
 
 export const matchSearchRecord = (

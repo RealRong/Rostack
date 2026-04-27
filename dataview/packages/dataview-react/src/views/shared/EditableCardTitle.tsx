@@ -9,7 +9,7 @@ import {
   TITLE_FIELD_ID,
   type RecordId,
   type ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ItemId
 } from '@dataview/engine'

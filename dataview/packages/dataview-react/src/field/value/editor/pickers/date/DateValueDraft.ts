@@ -4,10 +4,10 @@ import {
   setMinutes,
   setSeconds
 } from 'date-fns'
-import type { DateValue, CustomField } from '@dataview/core/contracts'
+import type { DateValue, CustomField } from '@dataview/core/types'
 import {
   type DateValueKind,
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   field as fieldApi,
   type FieldDraftParseResult,

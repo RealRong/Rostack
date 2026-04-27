@@ -2,13 +2,13 @@ import type {
   CalculationEntry,
   FieldReducerState,
   ReducerCapabilitySet
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   calculation
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import type {
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ReadColumn
 } from '@dataview/engine/active/shared/rows'

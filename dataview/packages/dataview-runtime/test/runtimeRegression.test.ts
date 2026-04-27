@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   TITLE_FIELD_ID,
   type Field
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import {

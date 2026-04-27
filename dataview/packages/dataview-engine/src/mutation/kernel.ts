@@ -1,19 +1,19 @@
 import type {
   DataDoc,
   Intent as CoreIntent
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   compileIntents,
   dataviewMutationOperations,
   type DataviewMutationKey,
   type DataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import {
   DATAVIEW_OPERATION_DEFINITIONS
-} from '@dataview/core/operation/definition'
+} from '@dataview/core/operations/definitions'
 import type {
   DocumentOperation
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 import {
   type CommandMutationSpec
 } from '@shared/mutation'

@@ -2,7 +2,8 @@ import type { Action } from './core'
 import type {
   DefaultPhaseScopeMap,
   PhaseScopeInput,
-  PhaseScopeMap
+  PhaseScopeMap,
+  ScopeSchema
 } from './scope'
 
 export interface Result<
@@ -23,6 +24,8 @@ export interface Spec<
   TName extends TPhaseName = TPhaseName
 > {
   after?: readonly TPhaseName[]
-  scope?: TScopeMap[TName & TPhaseName]
+  scope?: TScopeMap[TName & TPhaseName] extends object
+    ? ScopeSchema<NonNullable<TScopeMap[TName & TPhaseName]>>
+    : undefined
   run(context: TContext): Result<TMetrics, TPhaseName, TScopeMap>
 }

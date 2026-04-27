@@ -1,6 +1,6 @@
 import type {
   Search
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { equal } from '@shared/core'
 
 

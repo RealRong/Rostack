@@ -3,7 +3,7 @@ import type {
   FieldId,
   RecordId,
   ViewId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 
 export type ViewQueryAspect =
   | 'search'

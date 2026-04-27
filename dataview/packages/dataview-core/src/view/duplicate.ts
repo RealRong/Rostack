@@ -4,15 +4,17 @@ import type {
   TableViewCreateInput,
   View,
   ViewCreateInput
-} from '@dataview/core/contracts'
-import { entityTable } from '@shared/core'
-import { id as dataviewId } from '@dataview/core/id'
+} from '@dataview/core/types'
+import { createId, entityTable } from '@shared/core'
 import {
   createDuplicateViewPreferredName
 } from '@dataview/core/view/naming'
 import {
   cloneViewOptions
 } from '@dataview/core/view/shared'
+
+const createFilterRuleId = (): string => createId('filter')
+const createSortRuleId = (): string => createId('sort')
 
 const cloneViewInput = (
   view: View
@@ -28,7 +30,7 @@ const cloneViewInput = (
       rules: entityTable.normalize.list(
         entityTable.read.list(view.filter.rules).map(rule => ({
           ...structuredClone(rule),
-          id: dataviewId.create('filterRule')
+          id: createFilterRuleId()
         }))
       )
     },
@@ -36,7 +38,7 @@ const cloneViewInput = (
       rules: entityTable.normalize.list(
         entityTable.read.list(view.sort.rules).map(rule => ({
           ...structuredClone(rule),
-          id: dataviewId.create('sortRule')
+          id: createSortRuleId()
         }))
       )
     },

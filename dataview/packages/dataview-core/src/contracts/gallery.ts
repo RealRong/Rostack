@@ -1,4 +1,4 @@
-import type { CardOptions } from '@dataview/core/contracts/card'
+import type { CardOptions } from '@dataview/core/types/state'
 
 export interface GalleryOptions {
   card: CardOptions

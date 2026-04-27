@@ -1,7 +1,7 @@
 import type {
   FieldId,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { createMapDraft as createMapPatchBuilder } from '@shared/draft'
 import type { FieldSyncContext } from '@dataview/engine/active/index/contracts'
 

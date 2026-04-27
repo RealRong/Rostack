@@ -67,10 +67,22 @@ import {
   setViewCalcMetric,
   showDisplayField
 } from '@dataview/core/view/state'
+import { active } from '@dataview/core/view/active'
+import { filter } from '@dataview/core/view/filter'
+import { sort } from '@dataview/core/view/sort'
+import { search } from '@dataview/core/view/search'
+import { group } from '@dataview/core/view/group'
+import { calc } from '@dataview/core/view/calc'
 
 export type { NormalizeViewOptionsContext }
+export type * from '@dataview/core/view/filter'
+export type * from '@dataview/core/view/group'
+export type * from '@dataview/core/view/search'
+export type * from '@dataview/core/view/sort'
+export type * from '@dataview/core/view/calc'
 
 export const view = {
+  active,
   card: {
     clone: cloneCardOptions,
     normalize: normalizeCardOptions
@@ -97,6 +109,7 @@ export const view = {
     insertBefore: resolveDisplayInsertBeforeFieldId
   },
   calc: {
+    ...calc,
     clone: cloneViewCalc,
     same: sameViewCalc,
     set: setViewCalcMetric
@@ -142,5 +155,12 @@ export const view = {
       removed: repairViewForRemovedField,
       converted: repairViewForConvertedField
     }
-  }
+  },
+  filter,
+  sort,
+  search,
+  group
 } as const
+
+export { active, filter, sort, search, group, calc as calculation }
+export { planFilterCandidateLookup } from '@dataview/core/view/filter'

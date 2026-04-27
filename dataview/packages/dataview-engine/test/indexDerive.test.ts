@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
   calculation
-} from '@dataview/core/calculation'
-import { filter } from '@dataview/core/filter'
+} from '@dataview/core/view'
+import { filter } from '@dataview/core/view'
 import {
   normalizeIndexDemand
 } from '@dataview/engine/active/index/demand'

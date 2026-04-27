@@ -3,19 +3,19 @@ import type {
   CustomFieldId,
   View,
   ViewGroup
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   calculation
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
   filter as filterApi
-} from '@dataview/core/filter'
+} from '@dataview/core/view'
 import {
   sort as sortApi
-} from '@dataview/core/sort'
+} from '@dataview/core/view'
 import {
   pruneFieldFromViewOptions
 } from '@dataview/core/view/options'

@@ -1,13 +1,13 @@
 import {
   filter
-} from '@dataview/core/filter'
+} from '@dataview/core/view'
 import {
   group
-} from '@dataview/core/group'
-import { search } from '@dataview/core/search'
+} from '@dataview/core/view'
+import { search } from '@dataview/core/view'
 import {
   sort
-} from '@dataview/core/sort'
+} from '@dataview/core/view'
 import type { ActiveViewApi } from '@dataview/engine/contracts/view'
 import type { ActiveViewContext } from '@dataview/engine/active/api/context'
 

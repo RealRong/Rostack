@@ -3,7 +3,7 @@ import type {
   CustomField,
   CustomFieldKind,
   ViewGroup
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   compareGroupSortValues,
   compareLabels,

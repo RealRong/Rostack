@@ -1,7 +1,7 @@
 import type {
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'

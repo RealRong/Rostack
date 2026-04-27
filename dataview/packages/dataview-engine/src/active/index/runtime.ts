@@ -1,7 +1,7 @@
 import type {
   DataDoc,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   IndexTrace
 } from '@dataview/engine/contracts/performance'

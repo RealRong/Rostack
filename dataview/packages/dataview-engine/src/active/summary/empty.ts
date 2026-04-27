@@ -2,10 +2,10 @@ import type {
   CalculationCollection,
   CalculationResult,
   FieldReducerState
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import type {
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   SectionId,
   ViewSummaries

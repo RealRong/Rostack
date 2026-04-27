@@ -1,4 +1,4 @@
-import { TITLE_FIELD_ID } from '@dataview/core/contracts'
+import { TITLE_FIELD_ID } from '@dataview/core/types'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 

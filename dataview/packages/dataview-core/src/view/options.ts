@@ -7,10 +7,10 @@ import type {
   ViewDisplay,
   TableOptions,
   ViewType
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ViewOptionsByType
-} from '@dataview/core/contracts/viewOptions'
+} from '@dataview/core/types/state'
 
 export const cloneTableOptions = (
   table: TableOptions

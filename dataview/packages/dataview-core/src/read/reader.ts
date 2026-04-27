@@ -6,10 +6,19 @@ import type {
   RecordId,
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
-  document
-} from '@dataview/core/document'
+  documentFields
+} from '@dataview/core/document/fields'
+import {
+  documentRecords
+} from '@dataview/core/document/records'
+import {
+  documentValues
+} from '@dataview/core/document/values'
+import {
+  documentViews
+} from '@dataview/core/document/views'
 import { normalizeRecordOrderIds } from '@dataview/core/view/order'
 
 export interface EntityReader<TId extends string, TEntity> {
@@ -79,9 +88,9 @@ export const createDocumentReader = (
 ): DocumentReader => {
   const records = createEntityReader({
     readDocument,
-    ids: document.records.ids,
-    list: document.records.list,
-    get: document.records.get
+    ids: documentRecords.ids,
+    list: documentRecords.list,
+    get: documentRecords.get
   })
 
   return {
@@ -97,25 +106,25 @@ export const createDocumentReader = (
       get: (recordId, fieldId) => {
         const record = records.get(recordId)
         return record
-          ? document.values.get(record, fieldId)
+          ? documentValues.get(record, fieldId)
           : undefined
       }
     },
     fields: createEntityReader({
       readDocument,
-      ids: document.fields.ids,
-      list: document.fields.list,
-      get: document.fields.get
+      ids: documentFields.ids,
+      list: documentFields.list,
+      get: documentFields.get
     }),
     views: {
       ...createEntityReader({
         readDocument,
-        ids: document.views.ids,
-        list: document.views.list,
-        get: document.views.get
+        ids: documentViews.ids,
+        list: documentViews.list,
+        get: documentViews.get
       }),
-      activeId: () => document.views.activeId.get(readDocument()),
-      active: () => document.views.active.get(readDocument())
+      activeId: () => documentViews.activeId.get(readDocument()),
+      active: () => documentViews.active.get(readDocument())
     }
   }
 }

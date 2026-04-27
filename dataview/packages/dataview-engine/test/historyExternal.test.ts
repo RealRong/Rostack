@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
-import type { DataDoc } from '@dataview/core/contracts'
+import type { DataDoc } from '@dataview/core/types'
 import { createEngine } from '@dataview/engine'
 
 const createEmptyDocument = (): DataDoc => ({

@@ -1,11 +1,11 @@
 import type {
   Field,
   FilterValuePreview
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import { filter as filterApi } from '@dataview/core/filter'
+import { filter as filterApi } from '@dataview/core/view'
 import type { FilterRuleProjection } from '@dataview/engine'
 import {
   meta

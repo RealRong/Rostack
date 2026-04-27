@@ -1,7 +1,7 @@
 import type {
   RecordId,
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type { Bucket } from '@dataview/core/field'
 import { equal } from '@shared/core'
 import {

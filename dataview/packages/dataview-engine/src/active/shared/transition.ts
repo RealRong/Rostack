@@ -1,10 +1,10 @@
 import type {
   CalculationEntry
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import type {
   FieldId,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 
 export interface MembershipRecord<TKey extends string> {
   before: readonly TKey[]

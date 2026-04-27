@@ -6,7 +6,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent
 } from 'react'
-import type { FieldId } from '@dataview/core/contracts'
+import type { FieldId } from '@dataview/core/types'
 import { equal } from '@shared/core'
 import { disableUserSelect } from '@shared/dom'
 import { useDataView } from '@dataview/react/dataview'

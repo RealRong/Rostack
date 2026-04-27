@@ -3,17 +3,17 @@ import type {
   CommitSummary,
   FieldSchemaAspect,
   ViewQueryAspect
-} from '@dataview/core/contracts/commit'
+} from '@dataview/core/types/commit'
 import type {
   DataDoc,
   FieldId,
   RecordId,
   ViewId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import { mutationTrace } from '@shared/mutation'
 import {
-  document
-} from '@dataview/core/document'
+  documentViews
+} from '@dataview/core/document/views'
 import {
   commitAspects
 } from '@dataview/core/commit/aspects'
@@ -77,9 +77,9 @@ const createResetCommitImpact = (
   afterDocument: DataDoc
 ): CommitImpact => {
   const beforeActiveViewId = beforeDocument
-    ? document.views.activeId.get(beforeDocument)
+    ? documentViews.activeId.get(beforeDocument)
     : undefined
-  const afterActiveViewId = document.views.activeId.get(afterDocument)
+  const afterActiveViewId = documentViews.activeId.get(afterDocument)
 
   return {
     reset: true,

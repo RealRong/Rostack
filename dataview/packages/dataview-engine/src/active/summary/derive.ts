@@ -2,10 +2,10 @@ import type {
   CalculationEntry,
   FieldReducerState,
   ReducerCapabilitySet
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'

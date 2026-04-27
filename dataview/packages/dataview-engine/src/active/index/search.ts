@@ -1,12 +1,12 @@
 import {
   search
-} from '@dataview/core/search'
+} from '@dataview/core/view'
 import { collection } from '@shared/core'
 import type {
   Field,
   FieldId,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   createMapDraft as createMapPatchBuilder
 } from '@shared/draft'

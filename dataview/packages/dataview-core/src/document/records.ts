@@ -4,14 +4,14 @@ import type {
   FieldId,
   IndexPath,
   RecordId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import type {
   DocumentRecordFieldRestoreEntry,
   RecordFieldWriteManyOperationInput
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 import { equal } from '@shared/core'
 import {
   entityTable

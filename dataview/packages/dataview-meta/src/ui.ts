@@ -6,7 +6,7 @@ import type {
   FilterRule,
   SortRule,
   ViewType
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { token, type Token } from '@shared/i18n'
 import { sort } from '@dataview/meta/sort'
 import { view } from '@dataview/meta/view'

@@ -5,7 +5,7 @@ import {
 } from 'react'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ItemId
 } from '@dataview/engine'

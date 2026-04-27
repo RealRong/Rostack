@@ -5,7 +5,7 @@ import {
   type ReactNode
 } from 'react'
 import { Empty, KanbanCanvas } from '@dataview/react/views/kanban/components'
-import type { CardSize } from '@dataview/core/contracts'
+import type { CardSize } from '@dataview/core/types'
 import { PAGE_INLINE_INSET_CSS } from '@dataview/react/page/layout'
 import {
   useDataViewValue

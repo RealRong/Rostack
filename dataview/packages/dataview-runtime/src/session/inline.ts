@@ -1,4 +1,4 @@
-import type { ViewId } from '@dataview/core/contracts'
+import type { ViewId } from '@dataview/core/types'
 import type { ItemId } from '@dataview/engine'
 import { store as coreStore } from '@shared/core'
 import {

@@ -1,9 +1,9 @@
 import type {
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   calculation
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import {
   fieldSpec
 } from '@dataview/core/field/spec'

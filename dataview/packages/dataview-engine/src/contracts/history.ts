@@ -4,10 +4,10 @@ import type {
 } from '@shared/mutation'
 import type {
   DocumentOperation
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 import type {
   DataviewMutationKey
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import type {
   EngineApplyCommit
 } from './write'

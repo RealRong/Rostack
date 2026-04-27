@@ -5,7 +5,7 @@ import type {
   SelectField,
   StatusField,
   StatusOption
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { string } from '@shared/core'
 
 const EMPTY_OPTION_IDS: string[] = []

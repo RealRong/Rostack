@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import type {
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
 import { CreateViewPopover } from '@dataview/react/page/features/createView'

@@ -3,7 +3,7 @@ import {
   readDomModifierKeys,
   type DomModifierKeys
 } from '@shared/dom'
-import type { CustomFieldId, RecordId } from '@dataview/core/contracts'
+import type { CustomFieldId, RecordId } from '@dataview/core/types'
 
 export type Modifiers = DomModifierKeys
 

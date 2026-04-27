@@ -1,11 +1,11 @@
 import {
   dataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import type {
   FieldId,
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { equal } from '@shared/core'
 import type {
   IndexDelta,

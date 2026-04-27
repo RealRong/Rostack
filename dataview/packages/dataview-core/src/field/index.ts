@@ -2,13 +2,13 @@ import type {
   DataRecord,
   Field,
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   documentValues
 } from '@dataview/core/document/values'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   compareGroupBuckets,
   getKind,

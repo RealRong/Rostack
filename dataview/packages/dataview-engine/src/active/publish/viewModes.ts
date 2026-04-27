@@ -6,7 +6,7 @@ import type {
   FieldId,
   KanbanCardsPerColumn,
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   fieldSpec
 } from '@dataview/core/field/spec'

@@ -2,10 +2,10 @@ import type {
   DataDoc,
   DataRecord,
   SortRule
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
-  document as documentApi
-} from '@dataview/core/document'
+  documentFields
+} from '@dataview/core/document/fields'
 import {
   field as fieldApi
 } from '@dataview/core/field'
@@ -16,7 +16,7 @@ export const compareSortRecords = (
   rule: SortRule,
   document: DataDoc
 ): number => {
-  const currentField = documentApi.fields.get(document, rule.fieldId)
+  const currentField = documentFields.get(document, rule.fieldId)
   return fieldApi.compare.sort(
     currentField,
     fieldApi.value.read(left, rule.fieldId),

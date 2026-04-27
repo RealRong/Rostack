@@ -12,7 +12,7 @@ import {
   Table2,
   type LucideIcon
 } from 'lucide-react'
-import type { ViewType } from '@dataview/core/contracts'
+import type { ViewType } from '@dataview/core/types'
 import { meta, type Token } from '@dataview/meta'
 import { token } from '@shared/i18n'
 

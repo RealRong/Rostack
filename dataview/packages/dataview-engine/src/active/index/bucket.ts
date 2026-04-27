@@ -2,7 +2,7 @@ import type {
   Field,
   RecordId,
   ViewGroup
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { collection } from '@shared/core'
 import {
   field as fieldApi

@@ -1,4 +1,4 @@
-import type { CustomField } from '@dataview/core/contracts'
+import type { CustomField } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { FieldOptionTag } from '@dataview/react/field/options'
 import { cn } from '@shared/ui/utils'

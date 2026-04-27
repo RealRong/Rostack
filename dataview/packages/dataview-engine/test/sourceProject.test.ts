@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   view
 } from '@dataview/core/view'

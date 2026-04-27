@@ -10,9 +10,9 @@ import type {
   YjsSyncStore as SharedYjsSyncStore
 } from '@shared/collab-yjs'
 import type { HistoryPort } from '@shared/mutation'
-import type { DataDoc } from '@dataview/core/contracts'
-import type { DocumentOperation } from '@dataview/core/contracts/operations'
-import type { DataviewMutationKey } from '@dataview/core/mutation'
+import type { DataDoc } from '@dataview/core/types'
+import type { DocumentOperation } from '@dataview/core/types/operations'
+import type { DataviewMutationKey } from '@dataview/core/operations'
 import type { Engine } from '@dataview/engine'
 import type { EngineApplyCommit } from '@dataview/engine/contracts/write'
 

@@ -5,7 +5,7 @@ import {
   GripVertical,
   X
 } from 'lucide-react'
-import type { SortRule } from '@dataview/core/contracts'
+import type { SortRule } from '@dataview/core/types'
 import {
   usePageModel
 } from '@dataview/react/dataview'

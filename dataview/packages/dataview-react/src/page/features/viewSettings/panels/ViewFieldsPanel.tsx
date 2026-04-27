@@ -3,7 +3,7 @@ import {
   EyeOff,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import type { Field } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/types'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem, type MenuReorderItem } from '@shared/ui/menu'

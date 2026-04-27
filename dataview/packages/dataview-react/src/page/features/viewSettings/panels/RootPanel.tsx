@@ -10,7 +10,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { View } from '@dataview/core/contracts'
+import type { View } from '@dataview/core/types'
 import {
   useDataView,
   usePageModel

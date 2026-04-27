@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type {
   CustomFieldId,
   CustomField
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   useDataView,
   useDataViewKeyedValue

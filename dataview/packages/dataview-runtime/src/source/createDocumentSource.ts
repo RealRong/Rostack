@@ -10,7 +10,7 @@ import type {
   ValueRef,
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { equal, store } from '@shared/core'
 import type {
   DataviewCurrent,

@@ -25,7 +25,7 @@ import type {
   CalculationMetric,
   CustomField,
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   TableColumn
 } from '@dataview/runtime'
@@ -36,7 +36,7 @@ import {
   type MenuToggleItem
 } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
-import { calculation } from '@dataview/core/calculation'
+import { calculation } from '@dataview/core/view'
 import { field as fieldApi } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { token, type Token, type TokenTranslator } from '@shared/i18n'

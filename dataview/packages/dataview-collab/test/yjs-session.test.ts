@@ -5,7 +5,7 @@ import {
   TITLE_FIELD_ID,
   type DataDoc,
   type CustomField
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import { collab as collabApi } from '@dataview/collab'

@@ -6,7 +6,7 @@ import {
 } from 'react'
 import type {
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ItemId
 } from '@dataview/engine'

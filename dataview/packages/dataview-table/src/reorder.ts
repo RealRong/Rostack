@@ -1,6 +1,6 @@
 import type {
   CustomFieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   collection,
   equal,

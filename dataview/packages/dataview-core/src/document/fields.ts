@@ -6,10 +6,10 @@ import type {
   FieldId,
   TitleField,
   TitleFieldId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   entityTable
 } from '@dataview/core/document/table'

@@ -1,8 +1,15 @@
 import {
+  type ProjectionFamilyField,
+  type ProjectionFamilySnapshot,
   type ProjectionSpec,
+  type ProjectionValueField,
   type Revision,
 } from '@shared/projection'
-import { idDelta } from '@shared/delta'
+import {
+  entityDelta,
+  hasChangeState,
+  idDelta
+} from '@shared/delta'
 import type {
   EdgeId,
   GroupId,
@@ -20,14 +27,18 @@ import type { Capture } from '../contracts/capture'
 import type {
   EditorPhaseScopeMap,
   GraphDelta,
+  ItemsPatchScope,
+  RenderPatchScope,
   ScopeInputValue,
   SpatialPatchScope,
-  ViewPatchScope
+  UiPatchScope
 } from '../contracts/delta'
 import {
   graphPhaseScope,
+  itemsPhaseScope,
+  renderPhaseScope,
   spatialPhaseScope,
-  viewPhaseScope
+  uiPhaseScope
 } from '../contracts/delta'
 import type {
   WorkingState
@@ -38,10 +49,13 @@ import type {
   EdgeStaticId,
   EdgeStaticView
 } from '../contracts/render'
+import type { SceneItemKey } from '../contracts/delta'
 import { patchGraphState } from '../model/graph/patch'
 import { patchDocumentState } from '../model/document/patch'
-import { patchViewState } from '../model/view/patch'
+import { patchItemsState } from '../model/items/patch'
+import { patchRenderState } from '../model/render/patch'
 import { patchSpatial } from '../model/spatial/update'
+import { patchUiState } from '../model/ui/patch'
 import { createEditorSceneRead } from './read'
 import { buildEditorSceneCapture } from './capture'
 import { createWorking } from './state'
@@ -51,83 +65,42 @@ export type EditorScenePhaseName = keyof EditorPhaseScopeMap & string
 type GraphScopeInput =
   NonNullable<ScopeInputValue<EditorPhaseScopeMap['graph']>>
 
-type ViewScopeInput =
-  NonNullable<ScopeInputValue<EditorPhaseScopeMap['view']>>
+type UiScopeInput =
+  NonNullable<ScopeInputValue<EditorPhaseScopeMap['ui']>>
 
-type SurfaceValueField<TValue> = {
-  kind: 'value'
-  read(state: WorkingState): TValue
-  isEqual?: (left: TValue, right: TValue) => boolean
-}
-
-type SurfaceFamilyField<TKey extends string, TValue> = {
-  kind: 'family'
-  read(state: WorkingState): {
-    ids: readonly TKey[]
-    byId: ReadonlyMap<TKey, TValue>
-  }
-  isEqual?: (left: TValue, right: TValue) => boolean
-}
-
-const valueField = <TValue,>(
-  read: (state: WorkingState) => TValue,
-  isEqual?: (left: TValue, right: TValue) => boolean
-): SurfaceValueField<TValue> => ({
-  kind: 'value',
-  read,
-  ...(isEqual
-    ? {
-        isEqual
-      }
-    : {})
-})
-
-const familyField = <TKey extends string, TValue>(
-  read: (state: WorkingState) => {
-    ids: readonly TKey[]
-    byId: ReadonlyMap<TKey, TValue>
-  },
-  isEqual?: (left: TValue, right: TValue) => boolean
-): SurfaceFamilyField<TKey, TValue> => ({
-  kind: 'family',
-  read,
-  ...(isEqual
-    ? {
-        isEqual
-      }
-    : {})
-})
+type RenderScopeInput =
+  NonNullable<ScopeInputValue<EditorPhaseScopeMap['render']>>
 
 type EditorSceneSurface = {
   document: {
-    revision: SurfaceValueField<Revision>
-    background: SurfaceValueField<WorkingState['document']['background']>
+    revision: ProjectionValueField<WorkingState, Revision>
+    background: ProjectionValueField<WorkingState, WorkingState['document']['background']>
   }
   graph: {
-    node: SurfaceFamilyField<NodeId, WorkingState['graph']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>
-    edge: SurfaceFamilyField<EdgeId, WorkingState['graph']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>
-    mindmap: SurfaceFamilyField<MindmapId, WorkingState['graph']['owners']['mindmaps'] extends Map<MindmapId, infer TValue> ? TValue : never>
-    group: SurfaceFamilyField<GroupId, WorkingState['graph']['owners']['groups'] extends Map<GroupId, infer TValue> ? TValue : never>
+    node: ProjectionFamilyField<WorkingState, NodeId, WorkingState['graph']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>
+    edge: ProjectionFamilyField<WorkingState, EdgeId, WorkingState['graph']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>
+    mindmap: ProjectionFamilyField<WorkingState, MindmapId, WorkingState['graph']['owners']['mindmaps'] extends Map<MindmapId, infer TValue> ? TValue : never>
+    group: ProjectionFamilyField<WorkingState, GroupId, WorkingState['graph']['owners']['groups'] extends Map<GroupId, infer TValue> ? TValue : never>
     state: {
-      node: SurfaceFamilyField<NodeId, WorkingState['graph']['state']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
-      edge: SurfaceFamilyField<EdgeId, WorkingState['graph']['state']['edge'] extends Map<EdgeId, infer TValue> ? TValue : never>
-      chrome: SurfaceValueField<WorkingState['graph']['state']['chrome']>
+      node: ProjectionFamilyField<WorkingState, NodeId, WorkingState['graph']['state']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
+      edge: ProjectionFamilyField<WorkingState, EdgeId, WorkingState['graph']['state']['edge'] extends Map<EdgeId, infer TValue> ? TValue : never>
+      chrome: ProjectionValueField<WorkingState, WorkingState['graph']['state']['chrome']>
     }
   }
   render: {
-    node: SurfaceFamilyField<NodeId, WorkingState['render']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
+    node: ProjectionFamilyField<WorkingState, NodeId, WorkingState['render']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
     edge: {
-      statics: SurfaceFamilyField<EdgeStaticId, EdgeStaticView>
-      active: SurfaceFamilyField<EdgeId, EdgeActiveView>
-      labels: SurfaceFamilyField<EdgeLabelKey, WorkingState['render']['labels'] extends Map<EdgeLabelKey, infer TValue> ? TValue : never>
-      masks: SurfaceFamilyField<EdgeId, WorkingState['render']['masks'] extends Map<EdgeId, infer TValue> ? TValue : never>
+      statics: ProjectionFamilyField<WorkingState, EdgeStaticId, EdgeStaticView>
+      active: ProjectionFamilyField<WorkingState, EdgeId, EdgeActiveView>
+      labels: ProjectionFamilyField<WorkingState, EdgeLabelKey, WorkingState['render']['labels'] extends Map<EdgeLabelKey, infer TValue> ? TValue : never>
+      masks: ProjectionFamilyField<WorkingState, EdgeId, WorkingState['render']['masks'] extends Map<EdgeId, infer TValue> ? TValue : never>
     }
     chrome: {
-      scene: SurfaceValueField<WorkingState['render']['chrome']>
-      edge: SurfaceValueField<WorkingState['render']['overlay']>
+      scene: ProjectionValueField<WorkingState, WorkingState['render']['chrome']>
+      edge: ProjectionValueField<WorkingState, WorkingState['render']['overlay']>
     }
   }
-  items: SurfaceValueField<WorkingState['items']>
+  items: ProjectionFamilyField<WorkingState, SceneItemKey, WorkingState['items']['byId'] extends ReadonlyMap<SceneItemKey, infer TValue> ? TValue : never>
 }
 
 type EditorSceneProjectionSpec = ProjectionSpec<
@@ -143,6 +116,77 @@ type EditorSceneProjectionSpec = ProjectionSpec<
 
 type EditorScenePhaseEntry<TName extends EditorScenePhaseName> =
   EditorSceneProjectionSpec['phases'][TName]
+
+const sameOrder = <T,>(
+  left: readonly T[],
+  right: readonly T[]
+): boolean => (
+  left.length === right.length
+  && left.every((value, index) => Object.is(value, right[index]))
+)
+
+const createStableMapFamilyRead = <
+  TKey extends string,
+  TValue
+>(
+  select: (state: WorkingState) => ReadonlyMap<TKey, TValue>
+): ((state: WorkingState) => ProjectionFamilySnapshot<TKey, TValue>) => {
+  let previousMap: ReadonlyMap<TKey, TValue> | undefined
+  let previousIds: readonly TKey[] = []
+
+  return (state) => {
+    const byId = select(state)
+    if (byId === previousMap) {
+      return {
+        ids: previousIds,
+        byId
+      }
+    }
+
+    const nextIds = [...byId.keys()]
+    if (!sameOrder(previousIds, nextIds)) {
+      previousIds = nextIds
+    }
+    previousMap = byId
+
+    return {
+      ids: previousIds,
+      byId
+    }
+  }
+}
+
+const createStableFamilyRead = <
+  TKey extends string,
+  TValue
+>(
+  select: (state: WorkingState) => {
+    ids: readonly TKey[]
+    byId: ReadonlyMap<TKey, TValue>
+  }
+): ((state: WorkingState) => ProjectionFamilySnapshot<TKey, TValue>) => {
+  let previousIds: readonly TKey[] = []
+  let previousById: ReadonlyMap<TKey, TValue> | undefined
+
+  return (state) => {
+    const snapshot = select(state)
+    const ids = sameOrder(previousIds, snapshot.ids)
+      ? previousIds
+      : snapshot.ids
+
+    previousIds = ids
+    previousById = snapshot.byId
+
+    return {
+      ids,
+      byId: previousById
+    }
+  }
+}
+
+const toDeltaOrSkip = <TKey,>(
+  delta: ReturnType<typeof entityDelta.fromIdDelta<TKey>>
+) => delta ?? 'skip'
 
 const appendIds = <TId extends string>(
   target: Set<TId>,
@@ -309,23 +353,16 @@ const readItemsChangedFromGraphDelta = (
   || graph.entities.mindmaps.removed.size > 0
 )
 
-const readViewPatchScope = (input: {
+const readUiPatchScope = (input: {
   reset?: boolean
   current: Input
   state: WorkingState
   graphDelta?: GraphDelta
-  readAllEdgeIds: () => Iterable<EdgeId>
   readMindmapNodeIds: (mindmapId: MindmapId) => readonly NodeId[] | undefined
-}): ViewScopeInput => {
+}): UiScopeInput => {
   const nodes = new Set<NodeId>()
   const edges = new Set<EdgeId>()
-  const statics = new Set<EdgeId>()
-  const labels = new Set<EdgeId>()
-  const active = new Set<EdgeId>()
-  const masks = new Set<EdgeId>()
   let chrome = false
-  let items = false
-  let overlay = false
 
   if (input.graphDelta) {
     appendIds(nodes, idDelta.touched(input.graphDelta.entities.nodes))
@@ -335,25 +372,11 @@ const readViewPatchScope = (input: {
       mindmapIds: idDelta.touched(input.graphDelta.entities.mindmaps),
       readNodeIds: input.readMindmapNodeIds
     })
-
-    const touchedEdges = input.graphDelta.order
-      ? new Set(input.readAllEdgeIds())
-      : new Set(idDelta.touched(input.graphDelta.entities.edges))
-    appendIds(statics, touchedEdges)
-    appendIds(labels, touchedEdges)
-    appendIds(active, touchedEdges)
-    appendIds(masks, touchedEdges)
-    overlay = overlay || input.graphDelta.order || touchedEdges.size > 0
-    items = items || readItemsChangedFromGraphDelta(input.graphDelta)
   }
 
   appendIds(edges, idDelta.touched(input.current.delta.session.draft.edges))
   appendIds(nodes, idDelta.touched(input.current.delta.session.preview.nodes))
   appendIds(edges, idDelta.touched(input.current.delta.session.preview.edges))
-  appendIds(statics, idDelta.touched(input.current.delta.session.preview.edges))
-  appendIds(labels, idDelta.touched(input.current.delta.session.preview.edges))
-  appendIds(active, idDelta.touched(input.current.delta.session.preview.edges))
-  appendIds(masks, idDelta.touched(input.current.delta.session.preview.edges))
 
   appendMindmapNodeIds({
     target: nodes,
@@ -379,10 +402,6 @@ const readViewPatchScope = (input: {
     appendIds(edges, collectSelectedEdgeIds(input.state))
     appendIds(nodes, input.current.interaction.selection.nodeIds)
     appendIds(edges, input.current.interaction.selection.edgeIds)
-    appendIds(active, collectSelectedEdgeIds(input.state))
-    appendIds(active, input.current.interaction.selection.edgeIds)
-    appendIds(labels, collectSelectedEdgeIds(input.state))
-    appendIds(labels, input.current.interaction.selection.edgeIds)
 
     chrome = chrome || (
       hasSelection(input.state)
@@ -391,7 +410,6 @@ const readViewPatchScope = (input: {
         || input.current.interaction.selection.edgeIds.length > 0
       )
     )
-    overlay = true
   }
 
   if (input.current.delta.session.hover) {
@@ -410,11 +428,9 @@ const readViewPatchScope = (input: {
     }
     if (previousEdgeId) {
       edges.add(previousEdgeId)
-      active.add(previousEdgeId)
     }
     if (nextEdgeId) {
       edges.add(nextEdgeId)
-      active.add(nextEdgeId)
     }
   }
 
@@ -450,15 +466,11 @@ const readViewPatchScope = (input: {
       nodes.add(nextEditingNode)
     }
     if (previousEditing) {
-      active.add(previousEditing)
-      labels.add(previousEditing)
+      edges.add(previousEditing)
     }
     if (nextEditing) {
-      active.add(nextEditing)
-      labels.add(nextEditing)
+      edges.add(nextEditing)
     }
-
-    overlay = true
   }
   if (
     input.current.delta.session.tool
@@ -466,22 +478,112 @@ const readViewPatchScope = (input: {
     || input.current.delta.session.preview.edgeGuide
   ) {
     chrome = true
-    overlay = true
   }
 
   return {
     reset: input.reset,
     chrome,
-    items,
     nodes,
-    edges,
-    statics,
-    labels,
-    active,
-    masks,
-    overlay
+    edges
   }
 }
+
+const readRenderScopeFromGraph = (input: {
+  reset?: boolean
+  state: WorkingState
+}): RenderScopeInput => {
+  const itemsChanged = input.state.delta.items.change !== undefined
+  const changes = input.state.delta.graphChanges
+
+  return {
+    reset: input.reset,
+    node: hasChangeState({
+      lifecycle: 'ids',
+      geometry: 'ids',
+      content: 'ids',
+      owner: 'ids'
+    }, changes.node),
+    statics: itemsChanged || hasChangeState({
+      lifecycle: 'ids',
+      route: 'ids',
+      style: 'ids'
+    }, {
+      lifecycle: changes.edge.lifecycle,
+      route: changes.edge.route,
+      style: changes.edge.style
+    }),
+    active: hasChangeState({
+      lifecycle: 'ids',
+      route: 'ids',
+      style: 'ids',
+      box: 'ids'
+    }, {
+      lifecycle: changes.edge.lifecycle,
+      route: changes.edge.route,
+      style: changes.edge.style,
+      box: changes.edge.box
+    }),
+    labels: hasChangeState({
+      lifecycle: 'ids',
+      route: 'ids',
+      labels: 'ids'
+    }, {
+      lifecycle: changes.edge.lifecycle,
+      route: changes.edge.route,
+      labels: changes.edge.labels
+    }),
+    masks: hasChangeState({
+      lifecycle: 'ids',
+      route: 'ids',
+      labels: 'ids'
+    }, {
+      lifecycle: changes.edge.lifecycle,
+      route: changes.edge.route,
+      labels: changes.edge.labels
+    }),
+    overlay: hasChangeState({
+      route: 'ids',
+      endpoints: 'ids',
+      box: 'ids'
+    }, {
+      route: changes.edge.route,
+      endpoints: changes.edge.endpoints,
+      box: changes.edge.box
+    }),
+    chrome: false
+  }
+}
+
+const readRenderScopeFromUi = (input: {
+  reset?: boolean
+  current: Input
+  state: WorkingState
+}): RenderScopeInput => ({
+  reset: input.reset,
+  node: idDelta.hasAny(input.state.delta.ui.node),
+  statics: false,
+  active: (
+    idDelta.hasAny(input.state.delta.ui.edge)
+    || input.current.delta.session.hover
+    || input.current.delta.session.selection
+    || input.current.delta.session.edit
+  ),
+  labels: (
+    idDelta.hasAny(input.state.delta.ui.edge)
+    || input.current.delta.session.selection
+    || input.current.delta.session.edit
+  ),
+  masks: false,
+  overlay: (
+    input.current.delta.session.tool
+    || input.current.delta.session.interaction
+    || input.current.delta.session.preview.edgeGuide
+    || input.current.delta.session.selection
+    || input.current.delta.session.hover
+    || input.current.delta.session.edit
+  ),
+  chrome: input.state.delta.ui.chrome
+})
 
 const createGraphPhase = (): EditorScenePhaseEntry<'graph'> => ({
   after: [],
@@ -498,9 +600,14 @@ const createGraphPhase = (): EditorScenePhaseEntry<'graph'> => ({
       working: context.state,
       scope: context.scope
     })
+    const graphChanged = (
+      result.count > 0
+      || context.scope.reset
+      || context.scope.order
+    )
 
     return {
-      action: result.count > 0
+      action: graphChanged
         ? 'sync'
         : 'reuse',
       metrics: {
@@ -515,23 +622,44 @@ const createGraphPhase = (): EditorScenePhaseEntry<'graph'> => ({
               } satisfies SpatialPatchScope
             }
           : {}),
-        view: readViewPatchScope({
-          reset: context.scope.reset,
-          current: context.input,
-          state: context.state,
-          graphDelta: context.state.delta.graph,
-          readAllEdgeIds: () => context.state.graph.edges.keys(),
-          readMindmapNodeIds: (mindmapId) => (
-            context.state.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
-          )
-        })
+        ...(graphChanged
+          ? {
+              items: {
+                reset: context.scope.reset,
+                graph: true
+              } satisfies ItemsPatchScope,
+              ui: readUiPatchScope({
+                reset: context.scope.reset,
+                current: context.input,
+                state: context.state,
+                graphDelta: context.state.delta.graph,
+                readMindmapNodeIds: (mindmapId) => (
+                  context.state.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
+                )
+              }),
+              render: readRenderScopeFromGraph({
+                reset: context.scope.reset,
+                state: context.state
+              })
+            }
+          : {
+              ui: readUiPatchScope({
+                reset: context.scope.reset,
+                current: context.input,
+                state: context.state,
+                graphDelta: context.state.delta.graph,
+                readMindmapNodeIds: (mindmapId) => (
+                  context.state.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
+                )
+              })
+            })
       }
     }
   }
 })
 
 const spatialPhase: EditorScenePhaseEntry<'spatial'> = {
-  after: [],
+  after: ['graph'],
   scope: spatialPhaseScope,
   run: (context) => {
     const result = patchSpatial({
@@ -553,11 +681,75 @@ const spatialPhase: EditorScenePhaseEntry<'spatial'> = {
   }
 }
 
-const viewPhase: EditorScenePhaseEntry<'view'> = {
-  after: [],
-  scope: viewPhaseScope,
+const itemsPhase: EditorScenePhaseEntry<'items'> = {
+  after: ['graph'],
+  scope: itemsPhaseScope,
   run: (context) => {
-    const count = patchViewState({
+    const result = patchItemsState({
+      revision: context.revision,
+      snapshot: context.input.document.snapshot,
+      working: context.state,
+      reset: context.scope.reset || context.scope.graph
+    })
+
+    return {
+      action: result.changed
+        ? 'sync'
+        : 'reuse',
+      metrics: {
+        count: result.count
+      },
+      emit: result.changed
+        ? {
+            render: {
+              reset: context.scope.reset,
+              node: false,
+              statics: context.state.delta.items.change !== undefined,
+              active: false,
+              labels: false,
+              masks: false,
+              overlay: false,
+              chrome: false
+            } satisfies RenderPatchScope
+          }
+        : undefined
+    }
+  }
+}
+
+const uiPhase: EditorScenePhaseEntry<'ui'> = {
+  after: ['graph'],
+  scope: uiPhaseScope,
+  run: (context) => {
+    const count = patchUiState({
+      current: context.input,
+      working: context.state,
+      scope: context.scope
+    })
+
+    return {
+      action: count > 0
+        ? 'sync'
+        : 'reuse',
+      metrics: {
+        count
+      },
+      emit: {
+        render: readRenderScopeFromUi({
+          reset: context.scope.reset,
+          current: context.input,
+          state: context.state
+        })
+      }
+    }
+  }
+}
+
+const renderPhase: EditorScenePhaseEntry<'render'> = {
+  after: ['graph', 'items', 'ui'],
+  scope: renderPhaseScope,
+  run: (context) => {
+    const count = patchRenderState({
       current: context.input,
       working: context.state,
       scope: context.scope
@@ -585,7 +777,7 @@ export const createEditorSceneProjectionSpec = (input: {
   createRead: (runtime) => createEditorSceneRead({
     revision: runtime.revision,
     state: runtime.state,
-    items: () => runtime.state().items,
+    items: () => runtime.state().items.ids.map((key) => runtime.state().items.byId.get(key)!),
     spatial: () => runtime.state().spatial,
     nodeCapability: input.nodeCapability,
     view: input.view
@@ -596,67 +788,173 @@ export const createEditorSceneProjectionSpec = (input: {
   ),
   surface: {
     document: {
-      revision: valueField((state) => state.revision.document),
-      background: valueField((state) => state.document.background)
+      revision: {
+        kind: 'value',
+        read: (state) => state.revision.document
+      },
+      background: {
+        kind: 'value',
+        read: (state) => state.document.background
+      }
     },
     graph: {
-      node: familyField((state) => ({
-        ids: [...state.graph.nodes.keys()],
-        byId: state.graph.nodes
-      })),
-      edge: familyField((state) => ({
-        ids: [...state.graph.edges.keys()],
-        byId: state.graph.edges
-      })),
-      mindmap: familyField((state) => ({
-        ids: [...state.graph.owners.mindmaps.keys()],
-        byId: state.graph.owners.mindmaps
-      })),
-      group: familyField((state) => ({
-        ids: [...state.graph.owners.groups.keys()],
-        byId: state.graph.owners.groups
-      })),
+      node: {
+        kind: 'family',
+        read: createStableMapFamilyRead((state) => state.graph.nodes),
+        idsEqual: sameOrder,
+        changed: ({ state }) => (
+          idDelta.hasAny(state.delta.graph.entities.nodes)
+        ),
+        delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+          changes: state.delta.graph.entities.nodes,
+          order: state.delta.graph.order
+        }))
+      },
+      edge: {
+        kind: 'family',
+        read: createStableMapFamilyRead((state) => state.graph.edges),
+        idsEqual: sameOrder,
+        changed: ({ state }) => (
+          idDelta.hasAny(state.delta.graph.entities.edges)
+        ),
+        delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+          changes: state.delta.graph.entities.edges,
+          order: state.delta.graph.order
+        }))
+      },
+      mindmap: {
+        kind: 'family',
+        read: createStableMapFamilyRead((state) => state.graph.owners.mindmaps),
+        idsEqual: sameOrder,
+        changed: ({ state }) => (
+          idDelta.hasAny(state.delta.graph.entities.mindmaps)
+        ),
+        delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+          changes: state.delta.graph.entities.mindmaps,
+          order: state.delta.graph.order
+        }))
+      },
+      group: {
+        kind: 'family',
+        read: createStableMapFamilyRead((state) => state.graph.owners.groups),
+        idsEqual: sameOrder,
+        changed: ({ state }) => (
+          idDelta.hasAny(state.delta.graph.entities.groups)
+        ),
+        delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+          changes: state.delta.graph.entities.groups
+        }))
+      },
       state: {
-        node: familyField((state) => ({
-          ids: [...state.graph.state.node.keys()],
-          byId: state.graph.state.node
-        })),
-        edge: familyField((state) => ({
-          ids: [...state.graph.state.edge.keys()],
-          byId: state.graph.state.edge
-        })),
-        chrome: valueField((state) => state.graph.state.chrome)
+        node: {
+          kind: 'family',
+          read: createStableMapFamilyRead((state) => state.graph.state.node),
+          idsEqual: sameOrder,
+          changed: ({ state }) => idDelta.hasAny(state.delta.ui.node),
+          delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+            changes: state.delta.ui.node
+          }))
+        },
+        edge: {
+          kind: 'family',
+          read: createStableMapFamilyRead((state) => state.graph.state.edge),
+          idsEqual: sameOrder,
+          changed: ({ state }) => idDelta.hasAny(state.delta.ui.edge),
+          delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+            changes: state.delta.ui.edge
+          }))
+        },
+        chrome: {
+          kind: 'value',
+          read: (state) => state.graph.state.chrome,
+          changed: ({ state }) => state.delta.ui.chrome
+        }
       }
     },
     render: {
-      node: familyField((state) => ({
-        ids: [...state.render.node.keys()],
-        byId: state.render.node
-      })),
-      edge: {
-        statics: familyField((state) => ({
-          ids: [...state.render.statics.statics.keys()],
-          byId: state.render.statics.statics
-        })),
-        active: familyField((state) => ({
-          ids: [...state.render.active.keys()],
-          byId: state.render.active
-        })),
-        labels: familyField((state) => ({
-          ids: [...state.render.labels.keys()],
-          byId: state.render.labels
-        })),
-        masks: familyField((state) => ({
-          ids: [...state.render.masks.keys()],
-          byId: state.render.masks
+      node: {
+        kind: 'family',
+        read: createStableMapFamilyRead((state) => state.render.node),
+        idsEqual: sameOrder,
+        changed: ({ state }) => idDelta.hasAny(state.delta.render.node),
+        delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+          changes: state.delta.render.node
         }))
       },
+      edge: {
+        statics: {
+          kind: 'family',
+          read: createStableMapFamilyRead((state) => state.render.statics.statics),
+          idsEqual: sameOrder,
+          changed: ({ state }) => (
+            idDelta.hasAny(state.delta.render.edge.statics)
+            || state.delta.render.edge.staticsIds
+          ),
+          delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+            changes: state.delta.render.edge.statics,
+            order: state.delta.render.edge.staticsIds
+          }))
+        },
+        active: {
+          kind: 'family',
+          read: createStableMapFamilyRead((state) => state.render.active),
+          idsEqual: sameOrder,
+          changed: ({ state }) => (
+            idDelta.hasAny(state.delta.render.edge.active)
+            || state.delta.render.edge.activeIds
+          ),
+          delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+            changes: state.delta.render.edge.active,
+            order: state.delta.render.edge.activeIds
+          }))
+        },
+        labels: {
+          kind: 'family',
+          read: createStableMapFamilyRead((state) => state.render.labels),
+          idsEqual: sameOrder,
+          changed: ({ state }) => (
+            idDelta.hasAny(state.delta.render.edge.labels)
+            || state.delta.render.edge.labelsIds
+          ),
+          delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+            changes: state.delta.render.edge.labels,
+            order: state.delta.render.edge.labelsIds
+          }))
+        },
+        masks: {
+          kind: 'family',
+          read: createStableMapFamilyRead((state) => state.render.masks),
+          idsEqual: sameOrder,
+          changed: ({ state }) => (
+            idDelta.hasAny(state.delta.render.edge.masks)
+            || state.delta.render.edge.masksIds
+          ),
+          delta: ({ state }) => toDeltaOrSkip(entityDelta.fromIdDelta({
+            changes: state.delta.render.edge.masks,
+            order: state.delta.render.edge.masksIds
+          }))
+        }
+      },
       chrome: {
-        scene: valueField((state) => state.render.chrome),
-        edge: valueField((state) => state.render.overlay)
+        scene: {
+          kind: 'value',
+          read: (state) => state.render.chrome,
+          changed: ({ state }) => state.delta.render.chrome.scene
+        },
+        edge: {
+          kind: 'value',
+          read: (state) => state.render.overlay,
+          changed: ({ state }) => state.delta.render.chrome.edge
+        }
       }
     },
-    items: valueField((state) => state.items)
+    items: {
+      kind: 'family',
+      read: createStableFamilyRead((state) => state.items),
+      idsEqual: sameOrder,
+      changed: ({ state }) => state.delta.items.change !== undefined,
+      delta: ({ state }) => state.delta.items.change ?? 'skip'
+    }
   },
   plan: ({ input, state, revision }) => {
     const bootstrap = revision === 1
@@ -677,11 +975,11 @@ export const createEditorSceneProjectionSpec = (input: {
     }
 
     return {
+      phases: ['ui'],
       scope: {
-        view: readViewPatchScope({
+        ui: readUiPatchScope({
           current: input,
           state,
-          readAllEdgeIds: () => state.graph.edges.keys(),
           readMindmapNodeIds: (mindmapId) => (
             state.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
           )
@@ -692,6 +990,8 @@ export const createEditorSceneProjectionSpec = (input: {
   phases: {
     graph: createGraphPhase(),
     spatial: spatialPhase,
-    view: viewPhase
+    items: itemsPhase,
+    ui: uiPhase,
+    render: renderPhase
   }
 })

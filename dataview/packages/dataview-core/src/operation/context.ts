@@ -1,15 +1,15 @@
 import type {
   DataDoc
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   DocumentOperation
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 import type {
   DataviewMutationKey
 } from '@dataview/core/mutation/key'
 import type {
   DataviewTrace
-} from '@dataview/core/mutation/trace'
+} from '@dataview/core/operations/trace'
 import type {
   DataviewDraftDocument
 } from '@dataview/core/mutation/draftDocument'

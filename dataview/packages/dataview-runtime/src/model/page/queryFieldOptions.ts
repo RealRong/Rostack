@@ -3,7 +3,7 @@ import type {
   FieldId,
   FilterRule,
   SortRule
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 
 const collectUsedFieldIds = <T,>(
   entries: readonly T[],

@@ -13,10 +13,10 @@ import type {
   Intent as CoreIntent,
   RecordId,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   ValidationCode
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import type {
   EngineApplyCommit
 } from '@dataview/engine/contracts/write'

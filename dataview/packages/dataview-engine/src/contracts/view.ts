@@ -24,8 +24,8 @@ import type {
   ViewId,
   ViewSortRuleId,
   ViewType
-} from '@dataview/core/contracts'
-import type { FilterEditorKind } from '@dataview/core/filter'
+} from '@dataview/core/types'
+import type { FilterEditorKind } from '@dataview/core/view'
 import type {
   CellRef,
   FieldList,

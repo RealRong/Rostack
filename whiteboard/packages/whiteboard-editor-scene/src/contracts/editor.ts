@@ -55,7 +55,7 @@ import type {
 } from '@shared/projection'
 import { store } from '@shared/core'
 import type { Capture } from './capture'
-import type { IdDelta } from './delta'
+import type { IdDelta, SceneItemKey } from './delta'
 import type {
   EdgeActiveView,
   ChromeRenderView,
@@ -716,7 +716,7 @@ export interface RuntimeStores {
       edge: store.ReadStore<EdgeOverlayView>
     }
   }
-  items: store.ReadStore<readonly SceneItem[]>
+  items: FamilyReadStore<SceneItemKey, SceneItem>
 }
 
 export interface Result {

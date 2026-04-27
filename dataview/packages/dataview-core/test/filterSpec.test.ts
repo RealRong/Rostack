@@ -6,10 +6,10 @@ import type {
   NumberField,
   SelectField,
   TextField
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   filter
-} from '@dataview/core/filter'
+} from '@dataview/core/view'
 
 const textField: TextField = {
   id: 'title_2',

@@ -6,13 +6,13 @@ import type {
   RecordId,
   ValueRef,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   DataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import {
   dataviewTrace
-} from '@dataview/core/mutation'
+} from '@dataview/core/operations'
 import {
   entityDelta,
   type EntityDelta

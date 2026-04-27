@@ -3,8 +3,8 @@ import { test } from 'vitest'
 import {
   KANBAN_EMPTY_BUCKET_KEY,
   TITLE_FIELD_ID
-} from '@dataview/core/contracts'
-import { filter } from '@dataview/core/filter'
+} from '@dataview/core/types'
+import { filter } from '@dataview/core/view'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import { entityTable } from '@shared/core'

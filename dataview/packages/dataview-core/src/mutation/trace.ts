@@ -3,7 +3,7 @@ import {
 } from '@dataview/core/commit/impact'
 import type {
   CommitImpact
-} from '@dataview/core/contracts/commit'
+} from '@dataview/core/types/commit'
 
 export type DataviewTrace = CommitImpact
 

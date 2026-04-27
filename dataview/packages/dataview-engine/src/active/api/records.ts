@@ -2,10 +2,10 @@ import type {
   FieldId,
   Intent as CoreIntent,
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   buildRecordCreateIntents
-} from '@dataview/core/command'
+} from '@dataview/core/operations'
 import {
   view as viewApi
 } from '@dataview/core/view'

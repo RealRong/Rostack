@@ -1,4 +1,5 @@
 import { equal } from '@shared/core'
+import { idDelta } from '@shared/delta'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
@@ -10,7 +11,11 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  ViewPatchScope
+  RenderPatchScope,
+  SceneItemKey
+} from '../../contracts/delta'
+import {
+  createRenderDelta
 } from '../../contracts/delta'
 import type {
   Input,
@@ -33,6 +38,48 @@ import type { WorkingState } from '../../contracts/working'
 const EMPTY_ENDPOINT_HANDLES: EdgeOverlayView['endpointHandles'] = []
 const EMPTY_ROUTE_POINTS: readonly EdgeOverlayRoutePoint[] = []
 const STATIC_CHUNK_SIZE = 256
+
+const readItemByKey = (
+  working: WorkingState,
+  key: SceneItemKey
+) => working.items.byId.get(key)
+
+const forEachSceneItem = (
+  working: WorkingState,
+  visit: (item: WorkingState['items']['byId'] extends ReadonlyMap<any, infer TValue> ? TValue : never) => void
+) => {
+  working.items.ids.forEach((key) => {
+    const item = readItemByKey(working, key)
+    if (item) {
+      visit(item)
+    }
+  })
+}
+
+const appendTouchedIds = <TId extends string>(
+  target: Set<TId>,
+  delta: {
+    added: ReadonlySet<TId>
+    updated: ReadonlySet<TId>
+    removed: ReadonlySet<TId>
+  }
+) => {
+  delta.added.forEach((id) => {
+    target.add(id)
+  })
+  delta.updated.forEach((id) => {
+    target.add(id)
+  })
+  delta.removed.forEach((id) => {
+    target.add(id)
+  })
+}
+
+const toEdgeIdFromSceneItemKey = (
+  key: string
+): EdgeId | undefined => key.startsWith('edge:')
+  ? key.slice(5) as EdgeId
+  : undefined
 
 const isNodeRenderViewEqual = (
   left: NodeRenderView,
@@ -480,7 +527,7 @@ const buildStaticState = (
     paths: EdgeStaticView['paths'][number][]
   }>()
 
-  working.items.forEach((item) => {
+  forEachSceneItem(working, (item) => {
     if (item.kind !== 'edge') {
       return
     }
@@ -556,7 +603,7 @@ const buildLabelsAndMasks = (
   const labels = new Map<EdgeLabelKey, EdgeLabelView>()
   const masks = new Map<EdgeId, EdgeMaskView>()
 
-  working.items.forEach((item) => {
+  forEachSceneItem(working, (item) => {
     if (item.kind !== 'edge') {
       return
     }
@@ -611,15 +658,219 @@ const readActiveEdgeIds = (
     : [])
 ])
 
+const collectNodeRenderIds = (
+  working: WorkingState
+): ReadonlySet<NodeId> => {
+  const touched = new Set<NodeId>()
+  appendTouchedIds(touched, working.delta.graphChanges.node.lifecycle)
+  appendTouchedIds(touched, working.delta.graphChanges.node.geometry)
+  appendTouchedIds(touched, working.delta.graphChanges.node.content)
+  appendTouchedIds(touched, working.delta.graphChanges.node.owner)
+  appendTouchedIds(touched, working.delta.ui.node)
+  return touched
+}
+
+const collectStaticsEdgeIds = (
+  working: WorkingState
+): {
+  orderChanged: boolean
+  edgeIds: ReadonlySet<EdgeId>
+} => {
+  const edgeIds = new Set<EdgeId>()
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.lifecycle)
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.route)
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.style)
+  const orderChanged = working.delta.items.change?.order === true
+  working.delta.items.change?.set?.forEach((key) => {
+    const edgeId = toEdgeIdFromSceneItemKey(key)
+    if (edgeId) {
+      edgeIds.add(edgeId)
+    }
+  })
+  working.delta.items.change?.remove?.forEach((key) => {
+    const edgeId = toEdgeIdFromSceneItemKey(key)
+    if (edgeId) {
+      edgeIds.add(edgeId)
+    }
+  })
+  return {
+    orderChanged,
+    edgeIds
+  }
+}
+
+const collectLabelEdgeIds = (
+  working: WorkingState
+): ReadonlySet<EdgeId> => {
+  const edgeIds = new Set<EdgeId>()
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.lifecycle)
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.route)
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.labels)
+  appendTouchedIds(edgeIds, working.delta.ui.edge)
+  return edgeIds
+}
+
+const collectMaskEdgeIds = (
+  working: WorkingState
+): ReadonlySet<EdgeId> => {
+  const edgeIds = new Set<EdgeId>()
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.lifecycle)
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.route)
+  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.labels)
+  return edgeIds
+}
+
+const collectActiveEdgeIds = (input: {
+  working: WorkingState
+  current: Input
+}): ReadonlySet<EdgeId> => new Set<EdgeId>([
+  ...readActiveEdgeIds(input.current),
+  ...input.working.render.active.keys(),
+  ...input.working.delta.graphChanges.edge.lifecycle.added,
+  ...input.working.delta.graphChanges.edge.lifecycle.updated,
+  ...input.working.delta.graphChanges.edge.lifecycle.removed,
+  ...input.working.delta.graphChanges.edge.route.added,
+  ...input.working.delta.graphChanges.edge.route.updated,
+  ...input.working.delta.graphChanges.edge.route.removed,
+  ...input.working.delta.graphChanges.edge.style.added,
+  ...input.working.delta.graphChanges.edge.style.updated,
+  ...input.working.delta.graphChanges.edge.style.removed,
+  ...input.working.delta.graphChanges.edge.box.added,
+  ...input.working.delta.graphChanges.edge.box.updated,
+  ...input.working.delta.graphChanges.edge.box.removed,
+  ...input.working.delta.ui.edge.added,
+  ...input.working.delta.ui.edge.updated,
+  ...input.working.delta.ui.edge.removed
+])
+
+const writeNodeRenderDelta = (input: {
+  working: WorkingState
+  nodeId: NodeId
+  previous: NodeRenderView | undefined
+  next: NodeRenderView | undefined
+}) => {
+  if (input.previous === input.next) {
+    return
+  }
+
+  if (input.previous === undefined && input.next !== undefined) {
+    idDelta.add(input.working.delta.render.node, input.nodeId)
+    return
+  }
+  if (input.previous !== undefined && input.next === undefined) {
+    idDelta.remove(input.working.delta.render.node, input.nodeId)
+    return
+  }
+
+  idDelta.update(input.working.delta.render.node, input.nodeId)
+}
+
+const writeStaticDelta = (input: {
+  working: WorkingState
+  staticId: EdgeStaticId
+  previous: EdgeStaticView | undefined
+  next: EdgeStaticView | undefined
+}) => {
+  if (input.previous === input.next) {
+    return
+  }
+
+  if (input.previous === undefined && input.next !== undefined) {
+    idDelta.add(input.working.delta.render.edge.statics, input.staticId)
+    input.working.delta.render.edge.staticsIds = true
+    return
+  }
+  if (input.previous !== undefined && input.next === undefined) {
+    idDelta.remove(input.working.delta.render.edge.statics, input.staticId)
+    input.working.delta.render.edge.staticsIds = true
+    return
+  }
+
+  idDelta.update(input.working.delta.render.edge.statics, input.staticId)
+}
+
+const writeLabelDelta = (input: {
+  working: WorkingState
+  key: EdgeLabelKey
+  previous: EdgeLabelView | undefined
+  next: EdgeLabelView | undefined
+}) => {
+  if (input.previous === input.next) {
+    return
+  }
+
+  if (input.previous === undefined && input.next !== undefined) {
+    idDelta.add(input.working.delta.render.edge.labels, input.key)
+    input.working.delta.render.edge.labelsIds = true
+    return
+  }
+  if (input.previous !== undefined && input.next === undefined) {
+    idDelta.remove(input.working.delta.render.edge.labels, input.key)
+    input.working.delta.render.edge.labelsIds = true
+    return
+  }
+
+  idDelta.update(input.working.delta.render.edge.labels, input.key)
+}
+
+const writeMaskDelta = (input: {
+  working: WorkingState
+  edgeId: EdgeId
+  previous: EdgeMaskView | undefined
+  next: EdgeMaskView | undefined
+}) => {
+  if (input.previous === input.next) {
+    return
+  }
+
+  if (input.previous === undefined && input.next !== undefined) {
+    idDelta.add(input.working.delta.render.edge.masks, input.edgeId)
+    input.working.delta.render.edge.masksIds = true
+    return
+  }
+  if (input.previous !== undefined && input.next === undefined) {
+    idDelta.remove(input.working.delta.render.edge.masks, input.edgeId)
+    input.working.delta.render.edge.masksIds = true
+    return
+  }
+
+  idDelta.update(input.working.delta.render.edge.masks, input.edgeId)
+}
+
+const writeActiveDelta = (input: {
+  working: WorkingState
+  edgeId: EdgeId
+  previous: EdgeActiveView | undefined
+  next: EdgeActiveView | undefined
+}) => {
+  if (input.previous === input.next) {
+    return
+  }
+
+  if (input.previous === undefined && input.next !== undefined) {
+    idDelta.add(input.working.delta.render.edge.active, input.edgeId)
+    input.working.delta.render.edge.activeIds = true
+    return
+  }
+  if (input.previous !== undefined && input.next === undefined) {
+    idDelta.remove(input.working.delta.render.edge.active, input.edgeId)
+    input.working.delta.render.edge.activeIds = true
+    return
+  }
+
+  idDelta.update(input.working.delta.render.edge.active, input.edgeId)
+}
+
 const patchStatics = (input: {
   working: WorkingState
-  scope: ViewPatchScope
+  scope: RenderPatchScope
 }): number => {
-  if (!input.scope.reset && input.scope.statics.size === 0) {
+  if (!input.scope.reset && !input.scope.statics) {
     return 0
   }
 
   const previous = input.working.render.statics
+  const staticsDelta = collectStaticsEdgeIds(input.working)
   const next = buildStaticState(input.working)
   const nextStatics = new Map<EdgeStaticId, EdgeStaticView>()
   let count = 0
@@ -648,6 +899,18 @@ const patchStatics = (input: {
         && !isStaticViewEqual(previousView, nextView)
       )
     ) {
+      if (
+        input.scope.reset
+        || staticsDelta.orderChanged
+        || staticsDelta.edgeIds.size > 0
+      ) {
+        writeStaticDelta({
+          working: input.working,
+          staticId,
+          previous: previousView,
+          next: nextView
+        })
+      }
       count += 1
     }
   })
@@ -665,7 +928,7 @@ const patchStatics = (input: {
 
 const patchNodeRender = (input: {
   working: WorkingState
-  scope: ViewPatchScope
+  scope: RenderPatchScope
 }): number => {
   const previous = input.working.render.node
   let count = 0
@@ -704,6 +967,12 @@ const patchNodeRender = (input: {
           && !isNodeRenderViewEqual(previousView, nextView)
         )
       ) {
+        writeNodeRenderDelta({
+          working: input.working,
+          nodeId,
+          previous: previousView,
+          next: nextView
+        })
         count += 1
       }
     })
@@ -712,7 +981,11 @@ const patchNodeRender = (input: {
     return count
   }
 
-  input.scope.nodes.forEach((nodeId) => {
+  if (!input.scope.node) {
+    return 0
+  }
+
+  collectNodeRenderIds(input.working).forEach((nodeId) => {
     const previousView = previous.get(nodeId)
     const nextCandidate = buildNodeRenderView({
       working: input.working,
@@ -737,6 +1010,12 @@ const patchNodeRender = (input: {
         && !isNodeRenderViewEqual(previousView, nextView)
       )
     ) {
+      writeNodeRenderDelta({
+        working: input.working,
+        nodeId,
+        previous: previousView,
+        next: nextView
+      })
       count += 1
     }
   })
@@ -746,12 +1025,12 @@ const patchNodeRender = (input: {
 
 const patchLabelsAndMasks = (input: {
   working: WorkingState
-  scope: ViewPatchScope
+  scope: RenderPatchScope
 }): number => {
   if (
     !input.scope.reset
-    && input.scope.labels.size === 0
-    && input.scope.masks.size === 0
+    && !input.scope.labels
+    && !input.scope.masks
   ) {
     return 0
   }
@@ -797,6 +1076,12 @@ const patchLabelsAndMasks = (input: {
         && !isLabelViewEqual(previous, next)
       )
     ) {
+      writeLabelDelta({
+        working: input.working,
+        key,
+        previous,
+        next
+      })
       count += 1
     }
   })
@@ -815,6 +1100,12 @@ const patchLabelsAndMasks = (input: {
         && !isMaskViewEqual(previous, next)
       )
     ) {
+      writeMaskDelta({
+        working: input.working,
+        edgeId,
+        previous,
+        next
+      })
       count += 1
     }
   })
@@ -828,7 +1119,7 @@ const patchLabelsAndMasks = (input: {
 const patchActive = (input: {
   working: WorkingState
   current: Input
-  scope: ViewPatchScope
+  scope: RenderPatchScope
 }): number => {
   const activeIds = readActiveEdgeIds(input.current)
   const previous = input.working.render.active
@@ -865,6 +1156,12 @@ const patchActive = (input: {
           && !isActiveViewEqual(previousView, nextView)
         )
       ) {
+        writeActiveDelta({
+          working: input.working,
+          edgeId,
+          previous: previousView,
+          next: nextView
+        })
         count += 1
       }
     })
@@ -873,7 +1170,14 @@ const patchActive = (input: {
     return count
   }
 
-  input.scope.active.forEach((edgeId) => {
+  if (!input.scope.active) {
+    return 0
+  }
+
+  collectActiveEdgeIds({
+    working: input.working,
+    current: input.current
+  }).forEach((edgeId) => {
     const previousView = previous.get(edgeId)
     const nextCandidate = activeIds.has(edgeId)
       ? buildActiveView({
@@ -901,6 +1205,12 @@ const patchActive = (input: {
         && !isActiveViewEqual(previousView, nextView)
       )
     ) {
+      writeActiveDelta({
+        working: input.working,
+        edgeId,
+        previous: previousView,
+        next: nextView
+      })
       count += 1
     }
   })
@@ -911,7 +1221,7 @@ const patchActive = (input: {
 const patchOverlay = (input: {
   working: WorkingState
   current: Input
-  scope: ViewPatchScope
+  scope: RenderPatchScope
 }): number => {
   if (!input.scope.reset && !input.scope.overlay) {
     return 0
@@ -927,12 +1237,13 @@ const patchOverlay = (input: {
     : nextCandidate
 
   input.working.render.overlay = next
+  input.working.delta.render.chrome.edge = next !== previous
   return next !== previous ? 1 : 0
 }
 
 const patchChromeRender = (input: {
   working: WorkingState
-  scope: ViewPatchScope
+  scope: RenderPatchScope
 }): number => {
   if (!input.scope.reset && !input.scope.chrome && !input.scope.overlay) {
     return 0
@@ -947,18 +1258,23 @@ const patchChromeRender = (input: {
     : nextCandidate
 
   input.working.render.chrome = next
+  input.working.delta.render.chrome.scene = next !== previous
   return next !== previous ? 1 : 0
 }
 
 export const patchRenderState = (input: {
   working: WorkingState
   current: Input
-  scope: ViewPatchScope
-}): number => (
-  patchNodeRender(input)
-  + patchStatics(input)
-  + patchLabelsAndMasks(input)
-  + patchActive(input)
-  + patchOverlay(input)
-  + patchChromeRender(input)
-)
+  scope: RenderPatchScope
+}): number => {
+  input.working.delta.render = createRenderDelta()
+
+  return (
+    patchNodeRender(input)
+    + patchStatics(input)
+    + patchLabelsAndMasks(input)
+    + patchActive(input)
+    + patchOverlay(input)
+    + patchChromeRender(input)
+  )
+}

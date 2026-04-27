@@ -1,4 +1,4 @@
-import type { Field } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/types'
 
 export const usesOptionGroupingColors = (
   field?: Pick<Field, 'kind'>

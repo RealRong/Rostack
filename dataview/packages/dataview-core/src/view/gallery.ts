@@ -1,4 +1,4 @@
-import type { GalleryOptions } from '@dataview/core/contracts/gallery'
+import type { GalleryOptions } from '@dataview/core/types/state'
 import { cloneCardOptions, normalizeCardOptions } from '@dataview/core/view/card'
 import { isJsonObject } from '@dataview/core/view/shared'
 

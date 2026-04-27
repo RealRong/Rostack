@@ -8,7 +8,7 @@ import {
   useSensors,
   type DragEndEvent
 } from '@dnd-kit/core'
-import type { FieldId } from '@dataview/core/contracts'
+import type { FieldId } from '@dataview/core/types'
 import { columnBeforeId } from '@dataview/table'
 import { useDataView } from '@dataview/react/dataview'
 import { useStoreValue } from '@shared/react'

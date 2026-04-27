@@ -4,9 +4,9 @@ import { entityTable } from '@shared/core'
 import type {
   DataDoc,
   Intent
-} from '@dataview/core/contracts'
-import { compileIntents } from '@dataview/core/mutation'
-import * as mutationSpec from '@dataview/core/mutation/spec'
+} from '@dataview/core/types'
+import { compileIntents } from '@dataview/core/operations'
+import * as mutationSpec from '@dataview/core/operations/spec'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,

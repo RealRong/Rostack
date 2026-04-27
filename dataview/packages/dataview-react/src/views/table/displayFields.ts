@@ -2,7 +2,7 @@ import { collection, store } from '@shared/core'
 import type {
   Field,
   FieldId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   TableBody,
   TableColumn

@@ -39,7 +39,7 @@ import { now } from '@dataview/engine/runtime/clock'
 import type {
   View,
   ViewId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type { ItemIdPool } from './itemIdPool'
 import {
   type ActiveProjectionPhase,

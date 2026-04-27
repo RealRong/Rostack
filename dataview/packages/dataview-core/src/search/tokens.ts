@@ -5,10 +5,14 @@ import type {
   Field,
   FieldId,
   Search
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
-  document as documentApi
-} from '@dataview/core/document'
+  documentFields,
+  documentSchema
+} from '@dataview/core/document/fields'
+import {
+  documentValues
+} from '@dataview/core/document/values'
 import {
   field as fieldApi
 } from '@dataview/core/field'
@@ -74,7 +78,7 @@ const buildRecordFieldTextFromField = (
 
   return buildFieldText(
     field,
-    documentApi.values.get(record, fieldId)
+    documentValues.get(record, fieldId)
   )
 }
 
@@ -87,7 +91,7 @@ const readContextField = (
   }
 
   if (context.document) {
-    return documentApi.fields.get(context.document, fieldId)
+    return documentFields.get(context.document, fieldId)
   }
 
   return context.fields?.find(field => field.id === fieldId)
@@ -108,7 +112,7 @@ const readContextFields = (
 
   for (let index = 0; index < context.document.fields.order.length; index += 1) {
     const fieldId = context.document.fields.order[index]!
-    const field = documentApi.schema.fields.get(context.document, fieldId)
+    const field = documentSchema.fields.get(context.document, fieldId)
     if (field && isDefaultSearchField(field)) {
       fields.push(field)
     }
@@ -136,7 +140,7 @@ const appendRecordDefaultSearchTokens = (
 ) => {
   const titleTokens = fieldApi.search.tokens(
     undefined,
-    documentApi.values.get(record, 'title')
+    documentValues.get(record, 'title')
   )
   if (titleTokens.length) {
     appendTokens(target, titleTokens)
@@ -146,7 +150,7 @@ const appendRecordDefaultSearchTokens = (
     const field = fields[index]!
     const tokens = fieldApi.search.tokens(
       field,
-      documentApi.values.get(record, field.id)
+      documentValues.get(record, field.id)
     )
     if (tokens.length) {
       appendTokens(target, tokens)

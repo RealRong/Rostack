@@ -1,4 +1,4 @@
-import type { StatusCategory } from '@dataview/core/contracts'
+import type { StatusCategory } from '@dataview/core/types'
 
 export const buildStatusIdsAfterCategoryMove = (
   sections: readonly {

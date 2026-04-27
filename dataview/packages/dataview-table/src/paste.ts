@@ -1,4 +1,4 @@
-import type { Field } from '@dataview/core/contracts'
+import type { Field } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import type {
   ItemList,

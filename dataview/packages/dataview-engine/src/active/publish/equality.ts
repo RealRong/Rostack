@@ -2,11 +2,11 @@ import type {
   CalculationCollection,
   CalculationDistributionItem,
   CalculationResult
-} from '@dataview/core/calculation'
+} from '@dataview/core/view'
 import { equal } from '@shared/core'
 import type {
   Field,
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import type {
   FieldList,
   ItemList,

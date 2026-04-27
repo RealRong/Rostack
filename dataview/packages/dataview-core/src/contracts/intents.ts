@@ -17,11 +17,11 @@ import type {
   ViewGroup,
   ViewId,
   ViewType
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import type {
   TableOptions,
   ViewOptionsByType
-} from '@dataview/core/contracts/viewOptions'
+} from '@dataview/core/types/state'
 
 export type EditTarget =
   | {

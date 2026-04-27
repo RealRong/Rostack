@@ -1,10 +1,10 @@
 import type {
   FieldId,
   View
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import { collection } from '@shared/core'
-import { filter } from '@dataview/core/filter'
-import { sort } from '@dataview/core/sort'
+import { filter } from '@dataview/core/view'
+import { sort } from '@dataview/core/view'
 
 export const viewSearchFields = (
   view: View

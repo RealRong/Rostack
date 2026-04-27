@@ -1,9 +1,14 @@
 import { document as documentApi } from '@whiteboard/core/document'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection'
-import { createGraphDelta } from '../contracts/delta'
+import {
+  createGraphChanges,
+  createGraphDelta,
+  createItemsDelta,
+  createRenderDelta,
+  createUiDelta
+} from '../contracts/delta'
 import type {
-  SceneItem,
   TextMeasure
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
@@ -101,10 +106,17 @@ export const createWorking = (input: {
         edge: renderEdgeOverlay
       }
     },
-    items: [] as readonly SceneItem[],
+    items: {
+      ids: [],
+      byId: new Map()
+    },
     delta: {
       graph: createGraphDelta(),
-      spatial: createSpatialDelta()
+      graphChanges: createGraphChanges(),
+      spatial: createSpatialDelta(),
+      items: createItemsDelta(),
+      ui: createUiDelta(),
+      render: createRenderDelta()
     }
   }
 }

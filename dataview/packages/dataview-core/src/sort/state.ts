@@ -5,9 +5,10 @@ import type {
   SortDirection,
   SortRule,
   ViewSortRuleId
-} from '@dataview/core/contracts'
-import { entityTable } from '@shared/core'
-import { id as dataviewId } from '@dataview/core/id'
+} from '@dataview/core/types'
+import { createId, entityTable } from '@shared/core'
+
+const createSortRuleId = (): ViewSortRuleId => createId('sort') as ViewSortRuleId
 
 const EMPTY_SORT_RULES: EntityTable<ViewSortRuleId, SortRule> = {
   byId: {} as Record<ViewSortRuleId, SortRule>,
@@ -152,7 +153,7 @@ export const writeSortCreate = (
 } => {
   assertSortFieldAvailable(sort.rules, fieldId)
 
-  const id = dataviewId.create('sortRule')
+  const id = createSortRuleId()
   const rule: SortRule = {
     id,
     fieldId,

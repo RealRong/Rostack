@@ -1,4 +1,4 @@
-import type { DataDoc } from '@dataview/core/contracts'
+import type { DataDoc } from '@dataview/core/types'
 import type { IndexTrace } from '@dataview/engine/contracts/performance'
 import { createProjectionRuntime, type ProjectionSpec } from '@shared/projection'
 import type { BaseImpact } from '@dataview/engine/active/projection/impact'

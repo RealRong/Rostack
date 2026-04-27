@@ -1,6 +1,6 @@
 import type {
   RecordId
-} from '@dataview/core/contracts'
+} from '@dataview/core/types'
 import {
   document as documentApi
 } from '@dataview/core/document'

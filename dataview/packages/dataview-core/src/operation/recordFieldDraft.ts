@@ -3,15 +3,15 @@ import type { DraftEntityTable } from '@shared/draft'
 import type {
   DocumentRecordFieldRestoreEntry,
   RecordFieldWriteManyOperationInput
-} from '@dataview/core/contracts/operations'
+} from '@dataview/core/types/operations'
 import type {
   DataRecord,
   FieldId,
   RecordId
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import {
   TITLE_FIELD_ID
-} from '@dataview/core/contracts/state'
+} from '@dataview/core/types/state'
 import type {
   AppliedDocumentRecordFieldWrite
 } from '@dataview/core/document'

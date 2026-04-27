@@ -22,8 +22,7 @@ import type {
   CommitRecord,
   CommitStream,
   Origin,
-  Write,
-  WriteStream
+  Write
 } from './write'
 
 export interface MutationError<Code extends string = string> {
@@ -461,7 +460,6 @@ export class OperationMutationRuntime<
   MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
   Write<Doc, Op, Key, Extra>
 > {
-  readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
   readonly commits: CommitStream<CommitRecord<Doc, Op, Key, Extra>>
   readonly history: HistoryPort<
     MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
@@ -494,7 +492,6 @@ export class OperationMutationRuntime<
     Write<Doc, Op, Key, Extra>
   >
   private readonly listeners = new Set<(current: MutationCurrent<Doc, Publish>) => void>()
-  private readonly writeListeners = new Set<(write: Write<Doc, Op, Key, Extra>) => void>()
   private readonly commitListeners = new Set<(
     commit: CommitRecord<Doc, Op, Key, Extra>
   ) => void>()
@@ -530,14 +527,6 @@ export class OperationMutationRuntime<
         this.commitListeners.add(listener)
         return () => {
           this.commitListeners.delete(listener)
-        }
-      }
-    }
-    this.writes = {
-      subscribe: (listener) => {
-        this.writeListeners.add(listener)
-        return () => {
-          this.writeListeners.delete(listener)
         }
       }
     }
@@ -618,14 +607,6 @@ export class OperationMutationRuntime<
     this.emitCurrent()
     this.emitCommit(commit)
     return true
-  }
-
-  load(
-    doc: Doc
-  ): void {
-    this.replace(doc, {
-      origin: 'load'
-    })
   }
 
   protected readCommittedDoc(): Doc {
@@ -744,7 +725,6 @@ export class OperationMutationRuntime<
     }
 
     this.emitCurrent()
-    this.emitWrite(write)
     this.emitCommit(appliedCommit)
 
     return mutationSuccess<TData, Write<Doc, Op, Key, Extra>, Code>(
@@ -799,14 +779,6 @@ export class OperationMutationRuntime<
     const current = this.readCurrent()
     this.listeners.forEach((listener) => {
       listener(current)
-    })
-  }
-
-  private emitWrite(
-    write: Write<Doc, Op, Key, Extra>
-  ) {
-    this.writeListeners.forEach((listener) => {
-      listener(write)
     })
   }
 

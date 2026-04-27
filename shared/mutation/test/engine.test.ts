@@ -299,7 +299,7 @@ describe('CommandMutationEngine', () => {
     expect(engine.history.get().undoDepth).toBe(0)
   })
 
-  test('load resets current state without emitting an apply commit and clears history', () => {
+  test('replace(load origin) resets current state without emitting an apply commit and clears history', () => {
     const engine = new CommandMutationEngine({
       doc: {
         count: 0
@@ -320,8 +320,10 @@ describe('CommandMutationEngine', () => {
       type: 'count.add',
       value: 1
     })
-    engine.load({
+    engine.replace({
       count: 9
+    }, {
+      origin: 'load'
     })
 
     expect(commitKinds).toEqual(['apply', 'replace'])

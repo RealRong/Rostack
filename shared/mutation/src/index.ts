@@ -61,8 +61,6 @@ export type {
   HistoryController,
   HistoryState
 } from './history'
-export { createHistoryBinding } from './historyBinding'
-export type { HistoryBinding } from './historyBinding'
 export { createHistoryPort } from './localHistory'
 export type {
   HistoryPolicy,
@@ -78,8 +76,7 @@ export type {
   CommitStream,
   Origin,
   ReplaceCommit,
-  Write,
-  WriteStream
+  Write
 } from './write'
 export type {
   MutationTrace,

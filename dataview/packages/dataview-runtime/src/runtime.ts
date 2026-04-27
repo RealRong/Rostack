@@ -1,7 +1,4 @@
 import { store } from '@shared/core'
-import {
-  createHistoryBinding
-} from '@shared/mutation'
 import type {
   View
 } from '@dataview/core/contracts'
@@ -126,7 +123,6 @@ const bindMarqueeToView = (input: {
 export const createDataViewRuntime = (
   input: CreateDataViewRuntimeInput
 ): DataViewRuntime => {
-  const history = createHistoryBinding(input.engine.history)
   const sourceRuntime = createEngineSource({
     engine: input.engine
   })
@@ -191,7 +187,7 @@ export const createDataViewRuntime = (
 
   return {
     engine: input.engine,
-    history,
+    history: input.engine.history,
     source: sourceRuntime.source,
     session: {
       page,

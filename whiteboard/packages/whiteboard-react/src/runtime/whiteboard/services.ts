@@ -5,8 +5,10 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import {
-  createHistoryBinding,
-  type HistoryBinding
+  store
+} from '@shared/core'
+import {
+  type HistoryPort
 } from '@shared/mutation'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi, type DrawState } from '@whiteboard/editor'
@@ -56,7 +58,45 @@ export const isMirroredDocumentFromEngine = (
 )
 
 export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {
-  history: HistoryBinding<IntentResult>
+  history: HistoryPort<IntentResult>
+  setHistorySource(next: HistoryPort<IntentResult>): void
+  resetHistorySource(): void
+}
+
+const createSwitchableHistoryPort = (
+  initial: HistoryPort<IntentResult>
+) => {
+  const state = store.createValueStore(initial.get())
+  let current = initial
+  let unsubscribe = current.subscribe(() => {
+    state.set(current.get())
+  })
+
+  const bind = (
+    next: HistoryPort<IntentResult>
+  ) => {
+    unsubscribe()
+    current = next
+    state.set(current.get())
+    unsubscribe = current.subscribe(() => {
+      state.set(current.get())
+    })
+  }
+
+  return {
+    port: {
+      get: state.get,
+      subscribe: state.subscribe,
+      undo: () => current.undo(),
+      redo: () => current.redo(),
+      clear: () => current.clear(),
+      withPolicy: (policy) => current.withPolicy(policy)
+    } satisfies HistoryPort<IntentResult>,
+    set: bind,
+    reset: () => {
+      bind(initial)
+    }
+  }
 }
 
 export const createWhiteboardServices = ({
@@ -81,11 +121,11 @@ export const createWhiteboardServices = ({
     onDocumentChange,
     config: boardConfig
   })
-  const history = createHistoryBinding(engine.history)
+  const history = createSwitchableHistoryPort(engine.history)
   const textSources = createTextSourceStore()
   const editor = editorApi.create({
     engine,
-    history,
+    history: history.port,
     initialTool: resolvedConfig.initialTool,
     initialDrawState,
     initialViewport: resolvedConfig.viewport.initial,
@@ -168,7 +208,9 @@ export const createWhiteboardServices = ({
   return {
     editor,
     engine,
-    history,
+    history: history.port,
+    setHistorySource: history.set,
+    resetHistorySource: history.reset,
     registry,
     textSources,
     pointer,

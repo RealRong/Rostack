@@ -92,9 +92,6 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     replace: (nextDocument: DataDoc, replaceOptions?: MutationOptions) => (
       mutationEngine.replace(nextDocument, replaceOptions)
     ),
-    load: (nextDocument: DataDoc) => {
-      mutationEngine.load(nextDocument)
-    },
     execute: (<I extends ExecuteInput>(
       input: I,
       executeOptions?: MutationOptions
@@ -110,9 +107,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const engine = {
     ...baseEngine,
     commits: mutationEngine.commits,
-    writes: mutationEngine.writes,
     history: mutationEngine.history,
-    mutation: mutationEngine,
     performance: performance.api
   } as Omit<Engine, 'fields' | 'records' | 'views' | 'active'>
 

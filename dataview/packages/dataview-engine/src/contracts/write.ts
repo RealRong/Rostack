@@ -7,8 +7,7 @@ import type {
 import type {
   CommitRecord,
   CommitStream,
-  Write,
-  WriteStream
+  Write
 } from '@shared/mutation'
 
 export type EngineWrite = Write<
@@ -19,8 +18,6 @@ export type EngineWrite = Write<
     trace: DataviewTrace
   }
 >
-
-export type EngineWrites = WriteStream<EngineWrite>
 
 export type EngineCommit = CommitRecord<
   DataDoc,

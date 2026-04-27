@@ -38,7 +38,7 @@ export const createYjsSession = ({
     provider,
     codec
   })
-  const session = createMutationCollabSession(engine.mutation, {
+  const session = createMutationCollabSession(engine, {
     actor: {
       id: actorId,
       createChangeId: () => createId('sync')

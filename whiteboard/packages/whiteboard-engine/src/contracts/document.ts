@@ -1,9 +1,7 @@
 import type {
   CommitStream,
   HistoryPort,
-  MutationPort,
-  MutationOptions,
-  WriteStream
+  MutationOptions
 } from '@shared/mutation'
 import type {
   CoreRegistries,
@@ -54,24 +52,15 @@ export interface EnginePublish {
   delta: EngineDelta
 }
 
-export type EngineWrites = WriteStream<EngineWrite>
 export type EngineCommits = CommitStream<EngineCommit>
 
 export interface Engine {
   readonly config: BoardConfig
   readonly commits: EngineCommits
-  readonly writes: EngineWrites
   readonly history: HistoryPort<
     IntentResult,
     Operation,
     HistoryFootprint[number],
-    EngineWrite
-  >
-  readonly mutation: MutationPort<
-    Document,
-    Operation,
-    HistoryFootprint[number],
-    IntentResult,
     EngineWrite
   >
   doc(): Document

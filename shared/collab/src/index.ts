@@ -4,6 +4,7 @@ export {
   type CollabProvider,
   type CollabStatus,
   type CollabStore,
+  type MutationCollabEngine,
   type MutationCollabSession,
   type MutationCollabSessionOptions
 } from './session'

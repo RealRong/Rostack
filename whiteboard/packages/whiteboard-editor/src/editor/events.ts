@@ -1,5 +1,5 @@
 import { equal } from '@shared/core'
-import { META } from '@whiteboard/core/spec/operation'
+import { WHITEBOARD_OPERATION_DEFINITIONS } from '@whiteboard/core/spec/operation'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -56,7 +56,7 @@ export const createEditorEvents = ({
   const unsubscribeCommit = engine.commits.subscribe((commit) => {
     if (
       commit.kind === 'replace'
-      || commit.forward.some((op) => META[op.type].sync === 'checkpoint')
+      || commit.forward.some((op) => WHITEBOARD_OPERATION_DEFINITIONS[op.type].sync === 'checkpoint')
     ) {
       session.reset()
       resetHost()

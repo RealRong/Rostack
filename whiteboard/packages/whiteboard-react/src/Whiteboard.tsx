@@ -158,7 +158,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
       actorId: collab.actorId,
       provider: collab.provider
     })
-    services.history.set(session.localHistory)
+    services.setHistorySource(session.localHistory)
     collabSessionRef.current = session
     notifyCollabSession(session)
     notifyCollabStatus(session.status.get())
@@ -173,7 +173,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
 
     return () => {
       unsubscribeStatus()
-      services.history.reset()
+      services.resetHistorySource()
       collabSessionRef.current = null
       notifyCollabSession(null)
       session.destroy()

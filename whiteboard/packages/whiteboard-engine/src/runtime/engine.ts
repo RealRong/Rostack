@@ -119,9 +119,7 @@ export const createEngine = ({
   const engine: Engine = {
     config,
     commits: core.commits,
-    writes: core.writes,
     history: core.history,
-    mutation: core,
     doc: () => core.doc(),
     current: () => readPublish(core.current().publish),
     subscribe: (listener) => core.subscribe((current) => {

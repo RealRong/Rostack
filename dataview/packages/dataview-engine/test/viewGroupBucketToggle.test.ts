@@ -536,7 +536,7 @@ test('engine.subscribe keeps active boundaries inside one active pipeline', () =
   unsubscribe()
 })
 
-test('engine.load publishes coherent active view state in one step', () => {
+test('engine.replace(load origin) publishes coherent active view state in one step', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
@@ -550,7 +550,9 @@ test('engine.load publishes coherent active view state in one step', () => {
     assert.deepEqual(readViewState(engine)?.records.visible, ['rec_1'])
   })
 
-  engine.load(nextDocument)
+  engine.replace(nextDocument, {
+    origin: 'load'
+  })
 
   assert.equal(documentEvents, 1)
   assert.equal(engine.active.id(), VIEW_TABLE)
@@ -1457,13 +1459,15 @@ test('engine.views.duplicate reuses the shared unique naming rule', () => {
   assert.equal(engine.views.get(createdViewId!)?.name, 'Tasks Copy 2')
 })
 
-test('engine writes stream emits shared write objects for execute', () => {
+test('engine commits stream emits shared apply commits for execute', () => {
   const engine = createEngineForTest({
     document: createEmptyDocument()
   })
   const writes = []
-  const unsubscribe = engine.writes.subscribe((write) => {
-    writes.push(write)
+  const unsubscribe = engine.commits.subscribe((commit) => {
+    if (commit.kind === 'apply') {
+      writes.push(commit)
+    }
   })
 
   const result = engine.execute({
@@ -1477,18 +1481,29 @@ test('engine writes stream emits shared write objects for execute', () => {
   unsubscribe()
   assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
-  assert.equal(result.write, writes[0])
+  assert.deepEqual(writes[0] && {
+    rev: writes[0].rev,
+    at: writes[0].at,
+    origin: writes[0].origin,
+    doc: writes[0].doc,
+    forward: writes[0].forward,
+    inverse: writes[0].inverse,
+    footprint: writes[0].footprint,
+    extra: writes[0].extra
+  }, result.write)
   assert.equal(writes[0]?.origin, 'user')
   assert.ok(writes[0]?.extra.trace.views?.inserted?.size)
 })
 
-test('engine apply emits shared write objects', () => {
+test('engine apply emits shared apply commits', () => {
   const engine = createEngineForTest({
     document: createEmptyDocument()
   })
   const writes = []
-  const unsubscribe = engine.writes.subscribe((write) => {
-    writes.push(write)
+  const unsubscribe = engine.commits.subscribe((commit) => {
+    if (commit.kind === 'apply') {
+      writes.push(commit)
+    }
   })
 
   const result = engine.apply([{
@@ -1501,7 +1516,16 @@ test('engine apply emits shared write objects', () => {
   unsubscribe()
   assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
-  assert.equal(result.write, writes[0])
+  assert.deepEqual(writes[0] && {
+    rev: writes[0].rev,
+    at: writes[0].at,
+    origin: writes[0].origin,
+    doc: writes[0].doc,
+    forward: writes[0].forward,
+    inverse: writes[0].inverse,
+    footprint: writes[0].footprint,
+    extra: writes[0].extra
+  }, result.write)
   assert.equal(writes[0]?.origin, 'remote')
   assert.equal(writes[0]?.forward.length, 1)
   assert.equal(writes[0]?.extra.trace.external?.versionBumped, true)

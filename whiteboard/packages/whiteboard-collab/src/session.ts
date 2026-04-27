@@ -5,10 +5,11 @@ import {
   createYjsCollabTransport
 } from '@shared/collab-yjs'
 import {
-  meta as mutationMeta
-} from '@shared/mutation'
-import { document as documentApi } from '@whiteboard/core/document'
-import { META as operationMeta } from '@whiteboard/core/spec/operation'
+  document as documentApi
+} from '@whiteboard/core/document'
+import {
+  WHITEBOARD_OPERATION_DEFINITIONS
+} from '@whiteboard/core/spec/operation'
 import type {
   Operation
 } from '@whiteboard/core/types'
@@ -31,7 +32,7 @@ const readLiveOperations = (
   checkpointOnly: boolean
 } => {
   const live = operations.filter((operation) => (
-    mutationMeta.isLive(operationMeta, operation)
+    WHITEBOARD_OPERATION_DEFINITIONS[operation.type].sync !== 'checkpoint'
   )) as readonly Exclude<Operation, { type: 'document.replace' }>[]
 
   if (live.length === operations.length) {
@@ -69,7 +70,7 @@ export const createYjsSession = ({
     provider,
     codec
   })
-  const session = createMutationCollabSession(engine.mutation, {
+  const session = createMutationCollabSession(engine, {
     actor: {
       id: actorId,
       createChangeId: () => createId('sync')

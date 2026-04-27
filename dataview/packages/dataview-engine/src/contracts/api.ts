@@ -17,7 +17,6 @@ import type {
   DocumentOperation
 } from '@dataview/core/contracts/operations'
 import type {
-  MutationPort,
   MutationOptions,
   MutationResult
 } from '@shared/mutation'
@@ -40,8 +39,7 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import type {
   EngineCommits,
-  EngineWrite,
-  EngineWrites
+  EngineWrite
 } from '@dataview/engine/contracts/write'
 import type {
   DataviewMutationKey
@@ -160,7 +158,6 @@ export interface EngineFacadeHost {
   current(): DataviewCurrent
   doc(): DataDoc
   replace(document: DataDoc, options?: MutationOptions): boolean
-  load(document: DataDoc): void
   subscribe(listener: (current: DataviewCurrent) => void): () => void
   execute<I extends ExecuteInput>(
     input: I,
@@ -174,15 +171,7 @@ export interface EngineFacadeHost {
 
 export interface Engine {
   readonly commits: EngineCommits
-  readonly writes: EngineWrites
   readonly history: DataviewHistory
-  readonly mutation: MutationPort<
-    DataDoc,
-    DocumentOperation,
-    DataviewMutationKey,
-    MutationResult<void, EngineWrite>,
-    EngineWrite
-  >
   readonly active: ActiveViewApi
   readonly views: ViewsApi
   readonly fields: FieldsApi
@@ -194,7 +183,6 @@ export interface Engine {
 
   doc(): DataDoc
   replace(document: DataDoc, options?: MutationOptions): boolean
-  load(document: DataDoc): void
 
   execute<I extends ExecuteInput>(
     input: I,

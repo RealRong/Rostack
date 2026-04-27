@@ -47,10 +47,6 @@ export type CommitRecord<
   | ApplyCommit<Doc, Op, Key, Extra>
   | ReplaceCommit<Doc>
 
-export interface WriteStream<W> {
-  subscribe(listener: (write: W) => void): () => void
-}
-
 export interface CommitStream<C> {
   subscribe(listener: (commit: C) => void): () => void
 }

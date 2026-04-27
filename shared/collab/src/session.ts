@@ -1,9 +1,9 @@
 import { store } from '@shared/core'
 import {
   mutationFailure,
-  type MutationPort,
   type CommitRecord,
   type HistoryPort,
+  readHistoryPortRuntime,
   type Write
 } from '@shared/mutation'
 import {
@@ -105,6 +105,36 @@ export type MutationCollabSessionOptions<
   }
 }
 
+export type MutationCollabEngine<
+  Doc,
+  Op,
+  Key,
+  Result extends {
+    ok: boolean
+  },
+  WriteRecord extends Write<Doc, Op, Key, any>
+> = {
+  commits: {
+    subscribe(
+      listener: (commit: CommitRecord<Doc, Op, Key, any>) => void
+    ): () => void
+  }
+  history: HistoryPort<Result, Op, Key, WriteRecord>
+  doc(): Doc
+  replace(
+    document: Doc,
+    options?: {
+      origin?: 'user' | 'remote' | 'system' | 'load' | 'history'
+    }
+  ): boolean
+  apply(
+    operations: readonly Op[],
+    options?: {
+      origin?: 'user' | 'remote' | 'system' | 'load' | 'history'
+    }
+  ): Result
+}
+
 export type MutationCollabSession<
   Result extends {
     ok: boolean
@@ -156,7 +186,7 @@ export const createMutationCollabSession = <
     id: string
   }
 >(
-  engine: MutationPort<Doc, Op, Key, Result, WriteRecord>,
+  engine: MutationCollabEngine<Doc, Op, Key, Result, WriteRecord>,
   options: MutationCollabSessionOptions<
     Doc,
     Op,
@@ -170,6 +200,7 @@ export const createMutationCollabSession = <
     throw new Error('createMutationCollabSession requires a non-empty actor.id.')
   }
 
+  const historyRuntime = readHistoryPortRuntime(engine.history)
   const status = store.createValueStore<CollabStatus>('idle')
   const diagnostics = store.createValueStore<CollabDiagnostics>({
     duplicateChangeIds: [],
@@ -277,7 +308,7 @@ export const createMutationCollabSession = <
         return
       }
 
-      engine.internal.history.observeRemote(
+      historyRuntime.observeRemote(
         change.id,
         options.change.footprint(change)
       )
@@ -391,7 +422,7 @@ export const createMutationCollabSession = <
     syncCursor()
 
     if (history.get().isApplying) {
-      engine.internal.history.confirmPublished({
+      historyRuntime.confirmPublished({
         id: change.id,
         footprint: options.change.footprint(change)
       })
@@ -468,7 +499,7 @@ export const createMutationCollabSession = <
       try {
         publishCommit(commit)
       } catch {
-        engine.internal.history.cancelPending('invalidate')
+        historyRuntime.cancelPending('invalidate')
         reportError()
       }
     })

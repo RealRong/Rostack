@@ -128,13 +128,13 @@ const createDocument = (view = createView()) => ({
         useThousandsSeparator: false
       }
     },
-    order: [FIELD_STATUS, FIELD_POINTS]
+    ids: [FIELD_STATUS, FIELD_POINTS]
   },
   views: {
     byId: {
       [view.id]: view
     },
-    order: [view.id]
+    ids: [view.id]
   },
   records: {
     byId: {
@@ -157,7 +157,7 @@ const createDocument = (view = createView()) => ({
         }
       }
     },
-    order: ['rec_1', 'rec_2']
+    ids: ['rec_1', 'rec_2']
   },
   meta: {}
 })
@@ -191,15 +191,15 @@ const createEmptyDocument = () => ({
         useThousandsSeparator: false
       }
     },
-    order: [FIELD_STATUS, FIELD_POINTS]
+    ids: [FIELD_STATUS, FIELD_POINTS]
   },
   views: {
     byId: {},
-    order: []
+    ids: []
   },
   records: {
     byId: {},
-    order: []
+    ids: []
   },
   meta: {}
 })
@@ -325,7 +325,5 @@ test('engine.active.projector resets through publish scope when no active view r
 
   assertPhaseOrder(result.trace, ['publish'])
   assert.equal(result.snapshot, undefined)
-  assert.deepEqual(result.change, {
-    reset: true
-  })
+  assert.equal(result.change?.reset, true)
 })

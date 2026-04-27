@@ -5,7 +5,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { UiPatchScope } from '../../contracts/delta'
 import {
-  createUiDelta
+  uiChange
 } from '../../contracts/delta'
 import type {
   EdgeUiView,
@@ -343,7 +343,7 @@ export const patchUiState = (input: {
   working: WorkingState
   scope: UiPatchScope
 }): number => {
-  input.working.delta.ui = createUiDelta()
+  input.working.delta.ui = uiChange.create()
 
   const uiCount = input.scope.reset
     ? (

@@ -36,6 +36,7 @@ import type {
   ReadStore
 } from './types'
 import {
+  createNormalizedValue,
   createReadStore,
   createValueStore
 } from './value'
@@ -47,6 +48,7 @@ export {
   createKeyedDerivedStore,
   createKeyedReadStore,
   createKeyedStore,
+  createNormalizedValue,
   createProjectedKeyedStore,
   createProjectedStore,
   createReadStore,
@@ -159,6 +161,7 @@ export const store = {
   keyed,
   family,
   object,
+  createNormalizedValue,
   createReadStore,
   createValueStore,
   createKeyedReadStore,

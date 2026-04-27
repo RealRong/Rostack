@@ -123,11 +123,11 @@ const createDocument = (recordCount: number) => {
           orders: []
         }
       },
-      order: [VIEW_TABLE]
+      ids: [VIEW_TABLE]
     },
     records: {
       byId: recordsById,
-      order: recordOrder
+      ids: recordOrder
     },
     meta: {}
   }

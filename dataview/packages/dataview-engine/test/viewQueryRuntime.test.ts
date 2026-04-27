@@ -87,13 +87,13 @@ const createDocument = (
         useThousandsSeparator: false
       }
     },
-    order: [FIELD_STATUS, FIELD_POINTS]
+    ids: [FIELD_STATUS, FIELD_POINTS]
   },
   views: {
     byId: {
       [view.id]: view
     },
-    order: [view.id]
+    ids: [view.id]
   },
   records: {
     byId: Object.fromEntries(
@@ -110,7 +110,7 @@ const createDocument = (
         }
       ])
     ),
-    order: Object.keys(records)
+    ids: Object.keys(records)
   },
   meta: {}
 })

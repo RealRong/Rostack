@@ -108,13 +108,13 @@ const createDocument = (
         ]
       }
     },
-    order: [FIELD_STATUS]
+    ids: [FIELD_STATUS]
   },
   views: {
     byId: {
       [VIEW_ID]: createView()
     },
-    order: [VIEW_ID]
+    ids: [VIEW_ID]
   },
   records: {
     byId: Object.fromEntries(
@@ -130,7 +130,7 @@ const createDocument = (
         }
       ])
     ),
-    order: Object.keys(statuses)
+    ids: Object.keys(statuses)
   },
   meta: {}
 })

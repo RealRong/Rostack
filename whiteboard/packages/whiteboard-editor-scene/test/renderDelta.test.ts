@@ -16,9 +16,9 @@ import type {
 import type { SceneItemKey } from '../src/contracts/delta'
 import type { RenderPatchScope } from '../src/contracts/delta'
 import {
-  createGraphChanges,
   createItemsDelta,
-  createUiDelta
+  graphChange,
+  uiChange
 } from '../src/contracts/delta'
 import { patchRenderState } from '../src/model/render/patch'
 import { createWorking } from '../src/runtime/state'
@@ -141,9 +141,9 @@ const setEdgeItems = (
 const resetPhaseDeltas = (
   working: ReturnType<typeof createWorking>
 ) => {
-  working.delta.graphChanges = createGraphChanges()
+  working.delta.graphChanges = graphChange.create()
   working.delta.items = createItemsDelta()
-  working.delta.ui = createUiDelta()
+  working.delta.ui = uiChange.create()
 }
 
 describe('render delta patching', () => {

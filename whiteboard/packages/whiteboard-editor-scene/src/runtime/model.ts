@@ -7,7 +7,6 @@ import {
 } from '@shared/projection'
 import {
   entityDelta,
-  hasChangeState,
   idDelta
 } from '@shared/delta'
 import type {
@@ -273,6 +272,18 @@ const hasSelection = (
   return false
 }
 
+const hasAnyIdChanges = <TId,>(
+  ...changes: Array<{
+    added: ReadonlySet<TId>
+    updated: ReadonlySet<TId>
+    removed: ReadonlySet<TId>
+  }>
+): boolean => changes.some((change) => (
+  change.added.size > 0
+  || change.updated.size > 0
+  || change.removed.size > 0
+))
+
 const readGraphPlanScope = (
   input: Input
 ): GraphScopeInput => {
@@ -506,59 +517,38 @@ const readRenderScopeFromGraph = (input: {
 
   return {
     reset: input.reset,
-    node: hasChangeState({
-      lifecycle: 'ids',
-      geometry: 'ids',
-      content: 'ids',
-      owner: 'ids'
-    }, changes.node),
-    statics: itemsChanged || hasChangeState({
-      lifecycle: 'ids',
-      route: 'ids',
-      style: 'ids'
-    }, {
-      lifecycle: changes.edge.lifecycle,
-      route: changes.edge.route,
-      style: changes.edge.style
-    }),
-    active: hasChangeState({
-      lifecycle: 'ids',
-      route: 'ids',
-      style: 'ids',
-      box: 'ids'
-    }, {
-      lifecycle: changes.edge.lifecycle,
-      route: changes.edge.route,
-      style: changes.edge.style,
-      box: changes.edge.box
-    }),
-    labels: hasChangeState({
-      lifecycle: 'ids',
-      route: 'ids',
-      labels: 'ids'
-    }, {
-      lifecycle: changes.edge.lifecycle,
-      route: changes.edge.route,
-      labels: changes.edge.labels
-    }),
-    masks: hasChangeState({
-      lifecycle: 'ids',
-      route: 'ids',
-      labels: 'ids'
-    }, {
-      lifecycle: changes.edge.lifecycle,
-      route: changes.edge.route,
-      labels: changes.edge.labels
-    }),
-    overlay: hasChangeState({
-      route: 'ids',
-      endpoints: 'ids',
-      box: 'ids'
-    }, {
-      route: changes.edge.route,
-      endpoints: changes.edge.endpoints,
-      box: changes.edge.box
-    }),
+    node: hasAnyIdChanges(
+      changes.node.lifecycle,
+      changes.node.geometry,
+      changes.node.content,
+      changes.node.owner
+    ),
+    statics: itemsChanged || hasAnyIdChanges(
+      changes.edge.lifecycle,
+      changes.edge.route,
+      changes.edge.style
+    ),
+    active: hasAnyIdChanges(
+      changes.edge.lifecycle,
+      changes.edge.route,
+      changes.edge.style,
+      changes.edge.box
+    ),
+    labels: hasAnyIdChanges(
+      changes.edge.lifecycle,
+      changes.edge.route,
+      changes.edge.labels
+    ),
+    masks: hasAnyIdChanges(
+      changes.edge.lifecycle,
+      changes.edge.route,
+      changes.edge.labels
+    ),
+    overlay: hasAnyIdChanges(
+      changes.edge.route,
+      changes.edge.endpoints,
+      changes.edge.box
+    ),
     chrome: false
   }
 }

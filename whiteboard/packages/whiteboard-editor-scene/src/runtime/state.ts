@@ -2,11 +2,11 @@ import { document as documentApi } from '@whiteboard/core/document'
 import type * as document from '@whiteboard/engine/contracts/document'
 import type { Revision } from '@shared/projection'
 import {
-  createGraphChanges,
+  graphChange,
   createGraphDelta,
   createItemsDelta,
-  createRenderDelta,
-  createUiDelta
+  renderChange,
+  uiChange
 } from '../contracts/delta'
 import type {
   TextMeasure
@@ -120,11 +120,11 @@ export const createWorking = (input: {
     },
     delta: {
       graph: createGraphDelta(),
-      graphChanges: createGraphChanges(),
+      graphChanges: graphChange.create(),
       spatial: createSpatialDelta(),
       items: createItemsDelta(),
-      ui: createUiDelta(),
-      render: createRenderDelta()
+      ui: uiChange.create(),
+      render: renderChange.create()
     }
   }
 }

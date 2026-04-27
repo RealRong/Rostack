@@ -68,7 +68,7 @@ const createDocument = () => {
       byId: {
         [tableView.id]: tableView
       },
-      order: [tableView.id]
+      ids: [tableView.id]
     },
     records: {
       byId: {
@@ -81,7 +81,7 @@ const createDocument = () => {
           }
         }
       },
-      order: ['rec_1']
+      ids: ['rec_1']
     },
     meta: {}
   }
@@ -144,14 +144,15 @@ test('document delta omits list refresh on non-structural value writes', () => {
     },
   })
 
-  assert.equal(output?.records?.order, undefined)
-  assert.deepEqual(output?.records?.set, ['rec_1'])
-  assert.deepEqual(output?.records?.remove ?? [], [])
-  assert.deepEqual(output?.values?.set, [{
+  assert.deepEqual([...output?.records.added ?? []], [])
+  assert.deepEqual([...output?.records.updated ?? []], ['rec_1'])
+  assert.deepEqual([...output?.records.removed ?? []], [])
+  assert.deepEqual([...output?.values.added ?? []], [])
+  assert.deepEqual([...output?.values.updated ?? []], [{
     recordId: 'rec_1',
     fieldId: FIELD_STATUS
   }])
-  assert.deepEqual(output?.values?.remove ?? [], [])
+  assert.deepEqual([...output?.values.removed ?? []], [])
 })
 
 test('active summary follows snapshot changes without source adapter', () => {

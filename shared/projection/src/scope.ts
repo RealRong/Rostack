@@ -4,7 +4,7 @@ import {
   type SpecTree
 } from '@shared/spec'
 
-export type ScopeFieldSpec = 'flag' | 'set' | 'slot'
+export type ScopeFieldSpec = 'flag' | 'set' | 'value'
 
 type ScopeValueShape = object
 interface ScopeSchemaObject {
@@ -21,7 +21,7 @@ export type ScopeSchema<TValueShape extends ScopeValueShape> = {
       ? 'flag'
       : TValueShape[K] extends ReadonlySet<any>
         ? 'set'
-        : 'slot'
+        : 'value'
 }
 
 export type ScopeValue<TValueShape> = TValueShape extends object
@@ -125,7 +125,7 @@ const buildLeafEntries = (
 
   walkSpec(schema as SpecTree, {
     leaf: (parts, kind) => {
-      if (kind !== 'flag' && kind !== 'set' && kind !== 'slot') {
+      if (kind !== 'flag' && kind !== 'set' && kind !== 'value') {
         throw new Error(`Unsupported scope leaf kind: ${kind}`)
       }
 
@@ -203,7 +203,7 @@ const normalizeLeafValue = (
       return toReadonlySet(
         value as Iterable<unknown> | ReadonlySet<unknown> | undefined
       )
-    case 'slot':
+    case 'value':
       return value
   }
 }
@@ -224,7 +224,7 @@ const mergeLeafValue = (
         current as ReadonlySet<unknown> | undefined,
         next as Iterable<unknown> | ReadonlySet<unknown> | undefined
       )
-    case 'slot':
+    case 'value':
       return next !== undefined
         ? next
         : current
@@ -240,7 +240,7 @@ const isEmptyLeafValue = (
       return value !== true
     case 'set':
       return (value as ReadonlySet<unknown>).size === 0
-    case 'slot':
+    case 'value':
       return value === undefined
   }
 }

@@ -15,22 +15,82 @@ type ChangeSpecTree = {
   [key: string]: ChangeSpecValue
 }
 
+type ChangeTypeConfig = {
+  ids?: Partial<Record<string, unknown>>
+  set?: Partial<Record<string, unknown>>
+}
+
+type JoinChangePath<
+  TPrefix extends string,
+  TKey extends string
+> = TPrefix extends ''
+  ? TKey
+  : `${TPrefix}.${TKey}`
+
+type ChangeLeafPaths<
+  TSpec extends ChangeSpecTree,
+  TKind extends ChangeLeaf,
+  TPrefix extends string = ''
+> = {
+  [TKey in keyof TSpec & string]:
+    TSpec[TKey] extends TKind
+      ? JoinChangePath<TPrefix, TKey>
+      : TSpec[TKey] extends ChangeSpecTree
+        ? ChangeLeafPaths<TSpec[TKey], TKind, JoinChangePath<TPrefix, TKey>>
+        : never
+}[keyof TSpec & string]
+
+type ChangePathId<
+  TConfig extends ChangeTypeConfig,
+  TKey extends string
+> = TConfig['ids'] extends Record<string, unknown>
+  ? TKey extends keyof TConfig['ids']
+    ? TConfig['ids'][TKey]
+    : unknown
+  : unknown
+
+type ChangePathSetValue<
+  TConfig extends ChangeTypeConfig,
+  TKey extends string
+> = TConfig['set'] extends Record<string, unknown>
+  ? TKey extends keyof TConfig['set']
+    ? TConfig['set'][TKey]
+    : unknown
+  : unknown
+
 type ChangeIdsState<TId = unknown> = IdDelta<TId>
 
-type ChangeStateOf<TSpec extends ChangeSpecTree> = {
-  [TKey in keyof TSpec]:
+type ChangeStateOf<
+  TSpec extends ChangeSpecTree,
+  TConfig extends ChangeTypeConfig = {},
+  TPrefix extends string = ''
+> = {
+  -readonly [TKey in keyof TSpec]:
     TSpec[TKey] extends 'flag'
       ? boolean
       : TSpec[TKey] extends 'ids'
-        ? ChangeIdsState<unknown>
+        ? ChangeIdsState<
+            ChangePathId<TConfig, JoinChangePath<TPrefix, TKey & string>>
+          >
         : TSpec[TKey] extends 'set'
-          ? Set<unknown>
+          ? Set<
+              ChangePathSetValue<TConfig, JoinChangePath<TPrefix, TKey & string>>
+            >
           : TSpec[TKey] extends ChangeSpecTree
-            ? ChangeStateOf<TSpec[TKey]>
+            ? ChangeStateOf<
+                TSpec[TKey],
+                TConfig,
+                JoinChangePath<TPrefix, TKey & string>
+              >
             : never
 }
 
-type ChangeLeafState = boolean | ChangeIdsState<unknown> | Set<unknown>
+type ChangeLeafState = boolean | ChangeIdsState | Set<unknown>
+type ChangeStateRecord = Record<string, unknown>
+type ChangeAllLeafPaths<TSpec extends ChangeSpecTree> =
+  | ChangeLeafPaths<TSpec, 'flag'>
+  | ChangeLeafPaths<TSpec, 'ids'>
+  | ChangeLeafPaths<TSpec, 'set'>
 
 type ChangeLeafEntry = {
   key: string
@@ -126,19 +186,19 @@ const hasLeafState = (
 }
 
 const ensureParent = (
-  target: Record<string, unknown>,
+  target: ChangeStateRecord,
   parts: readonly string[]
-): Record<string, unknown> => {
+): ChangeStateRecord => {
   let current = target
 
   for (const part of parts.slice(0, -1)) {
     const next = current[part]
     if (typeof next === 'object' && next !== null) {
-      current = next as Record<string, unknown>
+      current = next as ChangeStateRecord
       continue
     }
 
-    const created: Record<string, unknown> = {}
+    const created: ChangeStateRecord = {}
     current[part] = created
     current = created
   }
@@ -147,7 +207,7 @@ const ensureParent = (
 }
 
 const readLeaf = (
-  target: Record<string, unknown>,
+  target: ChangeStateRecord,
   parts: readonly string[]
 ): ChangeLeafState => {
   let current: unknown = target
@@ -157,14 +217,14 @@ const readLeaf = (
       throw new Error(`Invalid change state path: ${joinDotKey(parts)}`)
     }
 
-    current = (current as Record<string, unknown>)[part]
+    current = (current as ChangeStateRecord)[part]
   }
 
   return current as ChangeLeafState
 }
 
 const writeLeaf = (
-  target: Record<string, unknown>,
+  target: ChangeStateRecord,
   parts: readonly string[],
   value: ChangeLeafState
 ): void => {
@@ -179,8 +239,8 @@ const writeLeaf = (
 
 const buildState = (
   entries: readonly ChangeLeafEntry[]
-): Record<string, unknown> => {
-  const state: Record<string, unknown> = {}
+): ChangeStateRecord => {
+  const state: ChangeStateRecord = {}
 
   for (const entry of entries) {
     writeLeaf(state, entry.parts, createLeafState(entry.kind))
@@ -190,10 +250,10 @@ const buildState = (
 }
 
 const cloneState = (
-  state: Record<string, unknown>,
+  state: ChangeStateRecord,
   entries: readonly ChangeLeafEntry[]
-): Record<string, unknown> => {
-  const next: Record<string, unknown> = {}
+): ChangeStateRecord => {
+  const next: ChangeStateRecord = {}
 
   for (const entry of entries) {
     writeLeaf(
@@ -207,7 +267,7 @@ const cloneState = (
 }
 
 const resetState = (
-  state: Record<string, unknown>,
+  state: ChangeStateRecord,
   entries: readonly ChangeLeafEntry[]
 ): void => {
   for (const entry of entries) {
@@ -244,90 +304,93 @@ const readEntry = (
   return entry
 }
 
-export const change = <const TSpec extends ChangeSpecTree>(
+export const change = <
+  const TSpec extends ChangeSpecTree,
+  TConfig extends ChangeTypeConfig = {}
+>(
   spec: TSpec
 ) => {
   const entries = buildLeafEntries(spec)
   const entryByKey = createLeafIndex(entries)
 
   return {
-    create: (): ChangeStateOf<TSpec> => buildState(entries) as ChangeStateOf<TSpec>,
-    flag: (
-      state: ChangeStateOf<TSpec>,
-      key: string
+    create: (): ChangeStateOf<TSpec, TConfig> => buildState(entries) as ChangeStateOf<TSpec, TConfig>,
+    flag: <TKey extends ChangeLeafPaths<TSpec, 'flag'>>(
+      state: ChangeStateOf<TSpec, TConfig>,
+      key: TKey
     ): void => {
       const entry = readEntry(entryByKey, key, 'flag')
-      writeLeaf(state as Record<string, unknown>, entry.parts, true)
+      writeLeaf(state as ChangeStateRecord, entry.parts, true)
     },
     ids: {
-      add: (
-        state: ChangeStateOf<TSpec>,
-        key: string,
-        id: unknown
+      add: <TKey extends ChangeLeafPaths<TSpec, 'ids'>>(
+        state: ChangeStateOf<TSpec, TConfig>,
+        key: TKey,
+        id: ChangePathId<TConfig, TKey>
       ): void => {
         const entry = readEntry(entryByKey, key, 'ids')
         idDelta.add(
-          readIdsState(readLeaf(state as Record<string, unknown>, entry.parts)),
+          readIdsState(readLeaf(state as ChangeStateRecord, entry.parts)),
           id
         )
       },
-      update: (
-        state: ChangeStateOf<TSpec>,
-        key: string,
-        id: unknown
+      update: <TKey extends ChangeLeafPaths<TSpec, 'ids'>>(
+        state: ChangeStateOf<TSpec, TConfig>,
+        key: TKey,
+        id: ChangePathId<TConfig, TKey>
       ): void => {
         const entry = readEntry(entryByKey, key, 'ids')
         idDelta.update(
-          readIdsState(readLeaf(state as Record<string, unknown>, entry.parts)),
+          readIdsState(readLeaf(state as ChangeStateRecord, entry.parts)),
           id
         )
       },
-      remove: (
-        state: ChangeStateOf<TSpec>,
-        key: string,
-        id: unknown
+      remove: <TKey extends ChangeLeafPaths<TSpec, 'ids'>>(
+        state: ChangeStateOf<TSpec, TConfig>,
+        key: TKey,
+        id: ChangePathId<TConfig, TKey>
       ): void => {
         const entry = readEntry(entryByKey, key, 'ids')
         idDelta.remove(
-          readIdsState(readLeaf(state as Record<string, unknown>, entry.parts)),
+          readIdsState(readLeaf(state as ChangeStateRecord, entry.parts)),
           id
         )
       },
-      clear: (
-        state: ChangeStateOf<TSpec>,
-        key: string
+      clear: <TKey extends ChangeLeafPaths<TSpec, 'ids'>>(
+        state: ChangeStateOf<TSpec, TConfig>,
+        key: TKey
       ): void => {
         const entry = readEntry(entryByKey, key, 'ids')
         idDelta.reset(
-          readIdsState(readLeaf(state as Record<string, unknown>, entry.parts))
+          readIdsState(readLeaf(state as ChangeStateRecord, entry.parts))
         )
       }
     },
-    set: (
-      state: ChangeStateOf<TSpec>,
-      key: string,
-      value: unknown
+    set: <TKey extends ChangeLeafPaths<TSpec, 'set'>>(
+      state: ChangeStateOf<TSpec, TConfig>,
+      key: TKey,
+      value: ChangePathSetValue<TConfig, TKey>
     ): void => {
       const entry = readEntry(entryByKey, key, 'set')
       const target = readSetState(
-        readLeaf(state as Record<string, unknown>, entry.parts)
+        readLeaf(state as ChangeStateRecord, entry.parts)
       )
       target.add(value)
     },
     has: (
-      state: ChangeStateOf<TSpec>
+      state: ChangeStateOf<TSpec, TConfig>
     ): boolean => entries.some((entry) => (
-      hasLeafState(entry.kind, readLeaf(state as Record<string, unknown>, entry.parts))
+      hasLeafState(entry.kind, readLeaf(state as ChangeStateRecord, entry.parts))
     )),
     take: (
-      state: ChangeStateOf<TSpec>
-    ): ChangeStateOf<TSpec> => {
-      const current = cloneState(state as Record<string, unknown>, entries)
-      resetState(state as Record<string, unknown>, entries)
-      return current as ChangeStateOf<TSpec>
+      state: ChangeStateOf<TSpec, TConfig>
+    ): ChangeStateOf<TSpec, TConfig> => {
+      const current = cloneState(state as ChangeStateRecord, entries)
+      resetState(state as ChangeStateRecord, entries)
+      return current as ChangeStateOf<TSpec, TConfig>
     },
-    path: (
-      key: string
+    path: <TKey extends ChangeAllLeafPaths<TSpec>>(
+      key: TKey
     ): readonly string[] => splitDotKey(readEntry(entryByKey, key).key)
   }
 }

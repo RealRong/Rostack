@@ -1,6 +1,17 @@
 import {
   change
 } from '@shared/delta'
+import type {
+  CustomFieldId,
+  FieldId,
+  RecordId,
+  ValueRef,
+  ViewId
+} from '@dataview/core/types'
+import type {
+  ItemId,
+  SectionId
+} from './shared'
 
 export const documentChangeSpec = {
   reset: 'flag',
@@ -30,8 +41,23 @@ export const activeChangeSpec = {
   summaries: 'ids'
 } as const
 
-export const documentChange = change(documentChangeSpec)
-export const activeChange = change(activeChangeSpec)
+export const documentChange = change<typeof documentChangeSpec, {
+  ids: {
+    records: RecordId
+    values: ValueRef
+    fields: FieldId
+    schemaFields: CustomFieldId
+    views: ViewId
+  }
+}>(documentChangeSpec)
+export const activeChange = change<typeof activeChangeSpec, {
+  ids: {
+    fields: FieldId
+    sections: SectionId
+    items: ItemId
+    summaries: SectionId
+  }
+}>(activeChangeSpec)
 
 export type DocumentDelta = ReturnType<typeof documentChange.create>
 export type DocDelta = DocumentDelta

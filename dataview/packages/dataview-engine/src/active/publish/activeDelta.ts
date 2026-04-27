@@ -1,5 +1,6 @@
 import type {
   CustomFieldId,
+  FieldId,
   Field
 } from '@dataview/core/types'
 import {
@@ -23,29 +24,107 @@ type IdPatch<TId = unknown> = {
   order?: true | readonly TId[]
 }
 
-const writePatch = <TId extends string>(
-  delta: ActiveDelta,
-  key: 'fields' | 'sections' | 'items' | 'summaries',
-  patch: IdPatch<TId> | undefined,
+type ActivePatchKey =
+  | 'fields'
+  | 'sections'
+  | 'items'
+  | 'summaries'
+
+type ActivePatchIdByKey = {
+  fields: FieldId
+  sections: SectionId
+  items: ItemId
+  summaries: SectionId
+}
+
+type ActivePatchInput = {
+  [TKey in ActivePatchKey]: {
+    key: TKey
+    patch: IdPatch<ActivePatchIdByKey[TKey]> | undefined
+    nextIds: readonly ActivePatchIdByKey[TKey][]
+  }
+}[ActivePatchKey]
+
+const planPatch = <TId,>(input: {
+  patch: IdPatch<TId> | undefined
   nextIds: readonly TId[]
-): void => {
-  if (!patch) {
-    return
+}) => {
+  const update: TId[] = []
+  const remove: TId[] = []
+
+  if (!input.patch) {
+    return {
+      update,
+      remove
+    }
   }
 
-  if (patch.order) {
-    nextIds.forEach(id => {
-      activeChange.ids.update(delta, key, id)
+  if (input.patch.order) {
+    input.nextIds.forEach(id => {
+      update.push(id)
     })
   }
 
-  patch.set?.forEach(id => {
-    activeChange.ids.update(delta, key, id)
+  input.patch.set?.forEach(id => {
+    update.push(id)
   })
 
-  patch.remove?.forEach(id => {
-    activeChange.ids.remove(delta, key, id)
+  input.patch.remove?.forEach(id => {
+    remove.push(id)
   })
+
+  return {
+    update,
+    remove
+  }
+}
+
+const writePatch = (
+  delta: ActiveDelta,
+  input: ActivePatchInput
+): void => {
+  switch (input.key) {
+    case 'fields': {
+      const planned = planPatch(input)
+      planned.update.forEach((id) => {
+        activeChange.ids.update(delta, 'fields', id)
+      })
+      planned.remove.forEach((id) => {
+        activeChange.ids.remove(delta, 'fields', id)
+      })
+      return
+    }
+    case 'sections': {
+      const planned = planPatch(input)
+      planned.update.forEach((id) => {
+        activeChange.ids.update(delta, 'sections', id)
+      })
+      planned.remove.forEach((id) => {
+        activeChange.ids.remove(delta, 'sections', id)
+      })
+      return
+    }
+    case 'items': {
+      const planned = planPatch(input)
+      planned.update.forEach((id) => {
+        activeChange.ids.update(delta, 'items', id)
+      })
+      planned.remove.forEach((id) => {
+        activeChange.ids.remove(delta, 'items', id)
+      })
+      return
+    }
+    case 'summaries': {
+      const planned = planPatch(input)
+      planned.update.forEach((id) => {
+        activeChange.ids.update(delta, 'summaries', id)
+      })
+      planned.remove.forEach((id) => {
+        activeChange.ids.remove(delta, 'summaries', id)
+      })
+      return
+    }
+  }
 }
 
 const writeFieldChanges = (
@@ -158,8 +237,16 @@ export const projectActiveDelta = (input: {
   }
 
   writeFieldChanges(delta, previous, next)
-  writePatch(delta, 'sections', input.sections, next.sections.ids)
-  writePatch(delta, 'items', input.items, next.items.ids)
+  writePatch(delta, {
+    key: 'sections',
+    patch: input.sections,
+    nextIds: next.sections.ids
+  })
+  writePatch(delta, {
+    key: 'items',
+    patch: input.items,
+    nextIds: next.items.ids
+  })
   writeSummaryChanges(delta, {
     previous,
     next,

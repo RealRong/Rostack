@@ -1,4 +1,4 @@
-import { createHistoryPort } from './createHistoryPort'
+import { createEntryHistoryPort } from './createHistoryPort'
 
 type MutationMeta = {
   family: string
@@ -48,7 +48,7 @@ export const createMutationEngine = <
   let document = input.document
   let published = input.publish.init(document)
   const history = input.history
-    ? createHistoryPort<{
+    ? createEntryHistoryPort<{
         at: number
         operations: readonly TOp[]
         targets: readonly string[]

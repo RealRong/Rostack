@@ -84,17 +84,17 @@ export interface PublishPhaseScope {
 }
 
 export const membershipPhaseScope: ScopeSchema<MembershipPhaseScope> = {
-  query: 'slot'
+  query: 'value'
 }
 
 export const summaryPhaseScope: ScopeSchema<SummaryPhaseScope> = {
-  membership: 'slot'
+  membership: 'value'
 }
 
 export const publishPhaseScope: ScopeSchema<PublishPhaseScope> = {
   reset: 'flag',
-  membership: 'slot',
-  summary: 'slot'
+  membership: 'value',
+  summary: 'value'
 }
 
 export interface ActivePhaseScopeMap {

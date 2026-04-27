@@ -77,24 +77,6 @@ const EMPTY_KANBAN: ActiveViewKanban = {
   cardsPerColumn: 0 as KanbanCardsPerColumn
 }
 
-const parseItemId = (
-  value: unknown
-): ItemId | undefined => typeof value === 'number'
-  ? value
-  : undefined
-
-const parseSectionId = (
-  value: unknown
-): SectionId | undefined => typeof value === 'string'
-  ? value
-  : undefined
-
-const parseFieldId = (
-  value: unknown
-): FieldId | undefined => typeof value === 'string'
-  ? value
-  : undefined
-
 type SectionSourceRuntime = EntitySourceRuntime<SectionId, Section>
 type SummarySourceRuntime = SourceTableRuntime<SectionId, CalculationCollection>
 
@@ -561,21 +543,18 @@ export const applyActiveDelta = (input: {
 
   applyEntityDelta({
     delta: input.delta.items,
-    parseKey: parseItemId,
     runtime: input.runtime.items,
     readIds: () => snapshot.items.ids,
     readValue: itemId => readItemPlacement(snapshot, itemId)
   })
   applyEntityDelta({
     delta: input.delta.sections,
-    parseKey: parseSectionId,
     runtime: input.runtime.sections,
     readIds: () => snapshot.sections.ids,
     readValue: sectionId => snapshot.sections.get(sectionId)
   })
   applyEntityDelta({
     delta: input.delta.summaries,
-    parseKey: parseSectionId,
     runtime: {
       store: input.runtime.summaries.store
     },
@@ -584,7 +563,6 @@ export const applyActiveDelta = (input: {
   })
   applyEntityDelta({
     delta: input.delta.fields,
-    parseKey: parseFieldId,
     runtime: input.runtime.fields,
     readIds: () => snapshot.fields.ids,
     readValue: fieldId => snapshot.fields.get(fieldId)

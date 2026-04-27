@@ -14,7 +14,7 @@ const isTimestampedEntry = (
   && value !== null
 )
 
-export const createHistoryPort = <TEntry = unknown>(
+export const createEntryHistoryPort = <TEntry = unknown>(
   input: HistoryPortOptions = {}
 ) => {
   const limit = input.limit ?? Infinity

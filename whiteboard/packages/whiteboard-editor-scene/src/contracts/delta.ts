@@ -1,7 +1,6 @@
 import {
-  createChangeState,
+  change,
   idDelta,
-  type ChangeSchema,
   type EntityDelta,
   type IdDelta as SharedIdDelta
 } from '@shared/delta'
@@ -40,36 +39,7 @@ export interface GraphDelta {
   }
 }
 
-export interface GraphChanges {
-  order: boolean
-  node: {
-    lifecycle: IdDelta<NodeId>
-    geometry: IdDelta<NodeId>
-    content: IdDelta<NodeId>
-    owner: IdDelta<NodeId>
-  }
-  edge: {
-    lifecycle: IdDelta<EdgeId>
-    route: IdDelta<EdgeId>
-    style: IdDelta<EdgeId>
-    labels: IdDelta<EdgeId>
-    endpoints: IdDelta<EdgeId>
-    box: IdDelta<EdgeId>
-  }
-  mindmap: {
-    lifecycle: IdDelta<MindmapId>
-    geometry: IdDelta<MindmapId>
-    connectors: IdDelta<MindmapId>
-    membership: IdDelta<MindmapId>
-  }
-  group: {
-    lifecycle: IdDelta<GroupId>
-    geometry: IdDelta<GroupId>
-    membership: IdDelta<GroupId>
-  }
-}
-
-export const graphChangeSpec: ChangeSchema<GraphChanges> = {
+export const graphChangeSpec = {
   order: 'flag',
   node: {
     lifecycle: 'ids',
@@ -96,7 +66,31 @@ export const graphChangeSpec: ChangeSchema<GraphChanges> = {
     geometry: 'ids',
     membership: 'ids'
   }
-}
+} as const
+
+export const graphChange = change<typeof graphChangeSpec, {
+  ids: {
+    'node.lifecycle': NodeId
+    'node.geometry': NodeId
+    'node.content': NodeId
+    'node.owner': NodeId
+    'edge.lifecycle': EdgeId
+    'edge.route': EdgeId
+    'edge.style': EdgeId
+    'edge.labels': EdgeId
+    'edge.endpoints': EdgeId
+    'edge.box': EdgeId
+    'mindmap.lifecycle': MindmapId
+    'mindmap.geometry': MindmapId
+    'mindmap.connectors': MindmapId
+    'mindmap.membership': MindmapId
+    'group.lifecycle': GroupId
+    'group.geometry': GroupId
+    'group.membership': GroupId
+  }
+}>(graphChangeSpec)
+
+export type GraphChanges = ReturnType<typeof graphChange.create>
 
 export type SceneItemKey =
   | `mindmap:${MindmapId}`
@@ -112,37 +106,22 @@ export interface ItemsDelta {
   change?: EntityDelta<SceneItemKey>
 }
 
-export interface UiDelta {
-  node: IdDelta<NodeId>
-  edge: IdDelta<EdgeId>
-  chrome: boolean
-}
-
-export const uiChangeSpec: ChangeSchema<UiDelta> = {
+export const uiChangeSpec = {
   node: 'ids',
   edge: 'ids',
   chrome: 'flag'
-}
+} as const
 
-export interface RenderDelta {
-  node: IdDelta<NodeId>
-  edge: {
-    statics: IdDelta<EdgeStaticId>
-    active: IdDelta<EdgeId>
-    labels: IdDelta<EdgeLabelKey>
-    masks: IdDelta<EdgeId>
-    staticsIds: boolean
-    activeIds: boolean
-    labelsIds: boolean
-    masksIds: boolean
+export const uiChange = change<typeof uiChangeSpec, {
+  ids: {
+    node: NodeId
+    edge: EdgeId
   }
-  chrome: {
-    scene: boolean
-    edge: boolean
-  }
-}
+}>(uiChangeSpec)
 
-export const renderChangeSpec: ChangeSchema<RenderDelta> = {
+export type UiDelta = ReturnType<typeof uiChange.create>
+
+export const renderChangeSpec = {
   node: 'ids',
   edge: {
     statics: 'ids',
@@ -158,7 +137,19 @@ export const renderChangeSpec: ChangeSchema<RenderDelta> = {
     scene: 'flag',
     edge: 'flag'
   }
-}
+} as const
+
+export const renderChange = change<typeof renderChangeSpec, {
+  ids: {
+    node: NodeId
+    'edge.statics': EdgeStaticId
+    'edge.active': EdgeId
+    'edge.labels': EdgeLabelKey
+    'edge.masks': EdgeId
+  }
+}>(renderChangeSpec)
+
+export type RenderDelta = ReturnType<typeof renderChange.create>
 
 export interface SpatialDelta {
   revision: Revision
@@ -284,16 +275,6 @@ export const resetGraphDelta = (
   delta.geometry.mindmaps.clear()
   delta.geometry.groups.clear()
 }
-
-export const createGraphChanges = (): GraphChanges => createChangeState(
-  graphChangeSpec
-)
-
-export const createUiDelta = (): UiDelta => createChangeState(uiChangeSpec)
-
-export const createRenderDelta = (): RenderDelta => createChangeState(
-  renderChangeSpec
-)
 
 export const createItemsDelta = (): ItemsDelta => ({
   revision: 0

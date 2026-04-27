@@ -15,7 +15,7 @@ import type {
   SceneItemKey
 } from '../../contracts/delta'
 import {
-  createRenderDelta
+  renderChange
 } from '../../contracts/delta'
 import type {
   Input,
@@ -1725,7 +1725,7 @@ export const patchRenderState = (input: {
   current: Input
   scope: RenderPatchScope
 }): number => {
-  input.working.delta.render = createRenderDelta()
+  input.working.delta.render = renderChange.create()
 
   return (
     patchNodeRender(input)

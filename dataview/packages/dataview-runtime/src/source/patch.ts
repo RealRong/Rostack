@@ -3,14 +3,11 @@ import {
   store
 } from '@shared/core'
 import type {
+  IdDelta
+} from '@shared/delta'
+import type {
   EntitySource
 } from '@dataview/runtime/source/contracts'
-
-type IdDeltaLike = {
-  added: ReadonlySet<unknown>
-  updated: ReadonlySet<unknown>
-  removed: ReadonlySet<unknown>
-}
 
 const sameOptionalValue = <Value,>(
   isEqual: equal.Equality<Value>,
@@ -202,8 +199,7 @@ export const resetSourceTableRuntime = <Key, Value>(
 }
 
 export const applyEntityDelta = <Key, Value>(input: {
-  delta: IdDeltaLike | undefined
-  parseKey: (value: unknown) => Key | undefined
+  delta: IdDelta<Key> | undefined
   runtime: {
     ids?: store.ValueStore<readonly Key[]>
     store: store.KeyedStore<Key, Value | undefined>
@@ -225,23 +221,14 @@ export const applyEntityDelta = <Key, Value>(input: {
     removed: new Set<Key>()
   }
 
-  input.delta.added.forEach((value) => {
-    const key = input.parseKey(value)
-    if (key !== undefined) {
-      delta.added.add(key)
-    }
+  input.delta.added.forEach((key) => {
+    delta.added.add(key)
   })
-  input.delta.updated.forEach((value) => {
-    const key = input.parseKey(value)
-    if (key !== undefined) {
-      delta.updated.add(key)
-    }
+  input.delta.updated.forEach((key) => {
+    delta.updated.add(key)
   })
-  input.delta.removed.forEach((value) => {
-    const key = input.parseKey(value)
-    if (key !== undefined) {
-      delta.removed.add(key)
-    }
+  input.delta.removed.forEach((key) => {
+    delta.removed.add(key)
   })
 
   applyKeyedValueDelta({
@@ -252,8 +239,7 @@ export const applyEntityDelta = <Key, Value>(input: {
 }
 
 export const applyMappedEntityDelta = <PublicKey, InternalKey, Value>(input: {
-  delta: IdDeltaLike | undefined
-  parseKey: (value: unknown) => PublicKey | undefined
+  delta: IdDelta<PublicKey> | undefined
   store: store.KeyedStore<InternalKey, Value | undefined>
   keyOf: (key: PublicKey) => InternalKey
   readValue: (key: PublicKey) => Value | undefined
@@ -277,23 +263,14 @@ export const applyMappedEntityDelta = <PublicKey, InternalKey, Value>(input: {
     set.push([internalKey, value] as const)
   }
 
-  input.delta.added.forEach((value) => {
-    const key = input.parseKey(value)
-    if (key !== undefined) {
-      touch(key)
-    }
+  input.delta.added.forEach((key) => {
+    touch(key)
   })
-  input.delta.updated.forEach((value) => {
-    const key = input.parseKey(value)
-    if (key !== undefined) {
-      touch(key)
-    }
+  input.delta.updated.forEach((key) => {
+    touch(key)
   })
   input.delta.removed.forEach((key) => {
-    const parsedKey = input.parseKey(key)
-    if (parsedKey !== undefined) {
-      remove.add(input.keyOf(parsedKey))
-    }
+    remove.add(input.keyOf(key))
   })
 
   input.store.patch({

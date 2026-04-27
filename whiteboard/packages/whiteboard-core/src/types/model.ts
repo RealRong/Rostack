@@ -248,7 +248,7 @@ export type SchemaField = {
   path: Path
   defaultValue?: unknown
   required?: boolean
-  options?: SchemaFieldOption[]
+  options?: readonly SchemaFieldOption[]
   min?: number
   max?: number
   step?: number

@@ -104,7 +104,7 @@ const createDocument = () => {
           orders: []
         }
       },
-      order: [VIEW_TABLE]
+      ids: [VIEW_TABLE]
     },
     records: {
       byId: {
@@ -136,7 +136,7 @@ const createDocument = () => {
           }
         }
       },
-      order: ['rec_1', 'rec_2', 'rec_3']
+      ids: ['rec_1', 'rec_2', 'rec_3']
     },
     meta: {}
   }
@@ -189,7 +189,7 @@ const createMultiViewDocument = () => {
           }
         })
       },
-      order: [VIEW_TABLE, VIEW_BOARD]
+      ids: [VIEW_TABLE, VIEW_BOARD]
     },
     activeViewId: VIEW_TABLE,
     records: {
@@ -204,7 +204,7 @@ const createMultiViewDocument = () => {
           }
         }
       },
-      order: ['rec_1']
+      ids: ['rec_1']
     },
     meta: {}
   }
@@ -218,11 +218,11 @@ const createEmptyDocument = () => {
     fields: createFieldTable(fields),
     views: {
       byId: {},
-      order: []
+      ids: []
     },
     records: {
       byId: {},
-      order: []
+      ids: []
     },
     meta: {}
   }
@@ -419,7 +419,7 @@ test('kanban cards per column defaults to all and persists through the view api'
       showEmpty: true
     }
   })
-  document.views.order.push(VIEW_BOARD)
+  document.views.ids.push(VIEW_BOARD)
 
   const engine = createEngineForTest({
     document
@@ -727,7 +727,7 @@ test('engine.active.state grouped sections keep visible record order inside each
       [FIELD_POINTS]: 4
     }
   }
-  document.records.order = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
+  document.records.ids = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
 
   const engine = createEngineForTest({
     document
@@ -756,7 +756,7 @@ test('engine.active.state grouped sections reorder when sort changes after group
       [FIELD_POINTS]: 4
     }
   }
-  document.records.order = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
+  document.records.ids = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
 
   const engine = createEngineForTest({
     document
@@ -949,11 +949,11 @@ test('engine.active.records.create supports multiple concrete select filters and
             orders: []
           }
         },
-        order: [VIEW_TABLE]
+        ids: [VIEW_TABLE]
       },
       records: {
         byId: {},
-        order: []
+        ids: []
       },
       meta: {}
     }
@@ -1055,7 +1055,7 @@ test('engine.active.records.create rejects unsupported effective filter rules', 
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.doc().records.order]
+  const beforeOrder = [...engine.doc().records.ids]
 
   addFilterRule(openView(engine, VIEW_TABLE), TITLE_FIELD_ID, {
     presetId: 'contains',
@@ -1069,14 +1069,14 @@ test('engine.active.records.create rejects unsupported effective filter rules', 
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.doc().records.order, beforeOrder)
+  assert.deepEqual(engine.doc().records.ids, beforeOrder)
 })
 
 test('engine.active.records.create rejects explicit values that conflict with the target section', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.doc().records.order]
+  const beforeOrder = [...engine.doc().records.ids]
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
 
@@ -1089,14 +1089,14 @@ test('engine.active.records.create rejects explicit values that conflict with th
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.doc().records.order, beforeOrder)
+  assert.deepEqual(engine.doc().records.ids, beforeOrder)
 })
 
 test('engine.active.records.create rejects conflicting group and filter defaults', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
-  const beforeOrder = [...engine.doc().records.order]
+  const beforeOrder = [...engine.doc().records.ids]
 
   openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
   addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
@@ -1112,7 +1112,7 @@ test('engine.active.records.create rejects conflicting group and filter defaults
   })
 
   assert.equal(createdId, undefined)
-  assert.deepEqual(engine.doc().records.order, beforeOrder)
+  assert.deepEqual(engine.doc().records.ids, beforeOrder)
 })
 
 test('engine.active.records.create uses before as context only when sort is active', () => {
@@ -1148,7 +1148,7 @@ test('engine.active.state summaries are derived from index aggregates', () => {
       [FIELD_POINTS]: 4
     }
   }
-  document.records.order = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
+  document.records.ids = ['rec_1', 'rec_2', 'rec_3', 'rec_4']
 
   const engine = createEngineForTest({
     document

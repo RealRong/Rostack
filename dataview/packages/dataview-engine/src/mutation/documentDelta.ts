@@ -20,9 +20,34 @@ import {
   type DocumentDelta
 } from '@dataview/engine/contracts/delta'
 
-const valueRefKey = (
+const encodeValueRef = (
   ref: ValueRef
 ): string => `${ref.recordId}\u0000${ref.fieldId}`
+
+type DocumentChangeKey =
+  | 'records'
+  | 'values'
+  | 'fields'
+  | 'schemaFields'
+  | 'views'
+
+type DocumentChangeIdByKey = {
+  records: RecordId
+  values: ValueRef
+  fields: FieldId
+  schemaFields: CustomFieldId
+  views: ViewId
+}
+
+type DocumentIdChangeInput = {
+  [TKey in DocumentChangeKey]: {
+    key: TKey
+    previousIds: readonly DocumentChangeIdByKey[TKey][]
+    nextIds: readonly DocumentChangeIdByKey[TKey][]
+    touchedIds?: readonly DocumentChangeIdByKey[TKey][]
+    removedIds?: readonly DocumentChangeIdByKey[TKey][]
+  }
+}[DocumentChangeKey]
 
 const readValue = (
   record: DataRecord | undefined,
@@ -71,42 +96,120 @@ const toTouchedIds = <TId,>(
   ? all
   : [...touched]
 
-const writeIdChanges = <TId extends string>(
-  delta: DocumentDelta,
-  key: 'records' | 'values' | 'fields' | 'schemaFields' | 'views',
-  input: {
-    previousIds: readonly TId[]
-    nextIds: readonly TId[]
-    touchedIds?: readonly TId[]
-    removedIds?: readonly TId[]
-  }
-): void => {
+const planIdChanges = <TId,>(input: {
+  previousIds: readonly TId[]
+  nextIds: readonly TId[]
+  touchedIds?: readonly TId[]
+  removedIds?: readonly TId[]
+}) => {
   const previousSet = new Set(input.previousIds)
   const nextSet = new Set(input.nextIds)
   const orderChanged = !equal.sameOrder(input.previousIds, input.nextIds)
   const touchedSet = new Set(input.touchedIds ?? [])
+  const add: TId[] = []
+  const update: TId[] = []
+  const remove: TId[] = []
 
   input.nextIds.forEach(id => {
     if (!previousSet.has(id)) {
-      documentChange.ids.add(delta, key, id)
+      add.push(id)
       return
     }
 
     if (orderChanged || touchedSet.has(id)) {
-      documentChange.ids.update(delta, key, id)
+      update.push(id)
     }
   })
 
   ;(input.removedIds ?? []).forEach(id => {
-    documentChange.ids.remove(delta, key, id)
+    remove.push(id)
   })
 
   if (!input.removedIds?.length) {
     input.previousIds.forEach(id => {
       if (!nextSet.has(id)) {
-        documentChange.ids.remove(delta, key, id)
+        remove.push(id)
       }
     })
+  }
+
+  return {
+    add,
+    update,
+    remove
+  }
+}
+
+const writeIdChanges = (
+  delta: DocumentDelta,
+  input: DocumentIdChangeInput
+): void => {
+  switch (input.key) {
+    case 'records': {
+      const planned = planIdChanges(input)
+      planned.add.forEach((id) => {
+        documentChange.ids.add(delta, 'records', id)
+      })
+      planned.update.forEach((id) => {
+        documentChange.ids.update(delta, 'records', id)
+      })
+      planned.remove.forEach((id) => {
+        documentChange.ids.remove(delta, 'records', id)
+      })
+      return
+    }
+    case 'values': {
+      const planned = planIdChanges(input)
+      planned.add.forEach((id) => {
+        documentChange.ids.add(delta, 'values', id)
+      })
+      planned.update.forEach((id) => {
+        documentChange.ids.update(delta, 'values', id)
+      })
+      planned.remove.forEach((id) => {
+        documentChange.ids.remove(delta, 'values', id)
+      })
+      return
+    }
+    case 'fields': {
+      const planned = planIdChanges(input)
+      planned.add.forEach((id) => {
+        documentChange.ids.add(delta, 'fields', id)
+      })
+      planned.update.forEach((id) => {
+        documentChange.ids.update(delta, 'fields', id)
+      })
+      planned.remove.forEach((id) => {
+        documentChange.ids.remove(delta, 'fields', id)
+      })
+      return
+    }
+    case 'schemaFields': {
+      const planned = planIdChanges(input)
+      planned.add.forEach((id) => {
+        documentChange.ids.add(delta, 'schemaFields', id)
+      })
+      planned.update.forEach((id) => {
+        documentChange.ids.update(delta, 'schemaFields', id)
+      })
+      planned.remove.forEach((id) => {
+        documentChange.ids.remove(delta, 'schemaFields', id)
+      })
+      return
+    }
+    case 'views': {
+      const planned = planIdChanges(input)
+      planned.add.forEach((id) => {
+        documentChange.ids.add(delta, 'views', id)
+      })
+      planned.update.forEach((id) => {
+        documentChange.ids.update(delta, 'views', id)
+      })
+      planned.remove.forEach((id) => {
+        documentChange.ids.remove(delta, 'views', id)
+      })
+      return
+    }
   }
 }
 
@@ -127,7 +230,7 @@ const writeValueChanges = (
     ref: ValueRef,
     kind: 'add' | 'update' | 'remove'
   ) => {
-    changes.set(valueRefKey(ref), {
+    changes.set(encodeValueRef(ref), {
       ref,
       kind
     })
@@ -136,21 +239,21 @@ const writeValueChanges = (
   const touched = dataviewTrace.value.touched(input.trace)
   if (touched === 'all') {
     const previousRefs = collectAllValueRefs(input.previous)
-    const previousSet = new Set(previousRefs.map(valueRefKey))
+    const previousSet = new Set(previousRefs.map(encodeValueRef))
     const nextRefs = collectAllValueRefs(input.next)
-    const nextSet = new Set(nextRefs.map(valueRefKey))
+    const nextSet = new Set(nextRefs.map(encodeValueRef))
 
     nextRefs.forEach(ref => {
       writeChange(
         ref,
-        previousSet.has(valueRefKey(ref))
+        previousSet.has(encodeValueRef(ref))
           ? 'update'
           : 'add'
       )
     })
 
     previousRefs.forEach(ref => {
-      if (!nextSet.has(valueRefKey(ref))) {
+      if (!nextSet.has(encodeValueRef(ref))) {
         writeChange(ref, 'remove')
       }
     })
@@ -202,16 +305,15 @@ const writeValueChanges = (
   })
 
   changes.forEach(change => {
-    const key = valueRefKey(change.ref)
     switch (change.kind) {
       case 'add':
-        documentChange.ids.add(delta, 'values', key)
+        documentChange.ids.add(delta, 'values', change.ref)
         break
       case 'update':
-        documentChange.ids.update(delta, 'values', key)
+        documentChange.ids.update(delta, 'values', change.ref)
         break
       case 'remove':
-        documentChange.ids.remove(delta, 'values', key)
+        documentChange.ids.remove(delta, 'values', change.ref)
         break
     }
   })
@@ -234,7 +336,8 @@ export const projectDocumentDelta = (input: {
   }
 
   const nextRecordIds = input.next.records.ids
-  writeIdChanges(delta, 'records', {
+  writeIdChanges(delta, {
+    key: 'records',
     previousIds: input.previous.records.ids,
     nextIds: nextRecordIds,
     touchedIds: toTouchedIds(
@@ -247,7 +350,8 @@ export const projectDocumentDelta = (input: {
   writeValueChanges(delta, input)
 
   const nextFieldIds = readFieldIds(input.next)
-  writeIdChanges(delta, 'fields', {
+  writeIdChanges(delta, {
+    key: 'fields',
     previousIds: readFieldIds(input.previous),
     nextIds: nextFieldIds,
     touchedIds: toTouchedIds(
@@ -258,7 +362,8 @@ export const projectDocumentDelta = (input: {
   })
 
   const nextSchemaFieldIds = readSchemaFieldIds(input.next)
-  writeIdChanges(delta, 'schemaFields', {
+  writeIdChanges(delta, {
+    key: 'schemaFields',
     previousIds: readSchemaFieldIds(input.previous),
     nextIds: nextSchemaFieldIds,
     touchedIds: toTouchedIds(
@@ -269,7 +374,8 @@ export const projectDocumentDelta = (input: {
   })
 
   const nextViewIds = readViewIds(input.next)
-  writeIdChanges(delta, 'views', {
+  writeIdChanges(delta, {
+    key: 'views',
     previousIds: readViewIds(input.previous),
     nextIds: nextViewIds,
     touchedIds: toTouchedIds(

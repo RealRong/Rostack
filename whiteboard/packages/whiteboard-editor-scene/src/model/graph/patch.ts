@@ -10,7 +10,7 @@ import type {
   GraphChanges
 } from '../../contracts/delta'
 import {
-  createGraphChanges,
+  graphChange,
   resetGraphDelta
 } from '../../contracts/delta'
 import type { Input } from '../../contracts/editor'
@@ -41,7 +41,7 @@ const touchIds = <TId extends string>(
 const buildGraphChanges = (input: {
   delta: WorkingState['delta']['graph']
 }): GraphChanges => {
-  const next = createGraphChanges()
+  const next = graphChange.create()
   next.order = input.delta.order
 
   touchIds(next.node.lifecycle, input.delta.entities.nodes)

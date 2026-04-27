@@ -110,7 +110,7 @@ const createDocument = (input = {}) => {
     fields: createFieldTable(fields),
     views: {
       byId: {},
-      order: []
+      ids: []
     },
     records: {
       byId: {
@@ -142,7 +142,7 @@ const createDocument = (input = {}) => {
           }
         }
       },
-      order: ['rec_1', 'rec_2', 'rec_3']
+      ids: ['rec_1', 'rec_2', 'rec_3']
     },
     meta: {},
     ...input
@@ -339,7 +339,7 @@ test('engine.active.view plan demand provisions idle search substrate and shared
       byId: {
         [view.id]: view
       },
-      order: [view.id]
+      ids: [view.id]
     }
   })
 
@@ -375,7 +375,7 @@ test('engine.active.view plan demand unions search and numeric filter substrates
       byId: {
         [view.id]: view
       },
-      order: [view.id]
+      ids: [view.id]
     }
   })
 
@@ -459,7 +459,7 @@ test('engine.active.view plan demand provisions bucket and sort substrate only f
       byId: {
         [view.id]: view
       },
-      order: [view.id]
+      ids: [view.id]
     }
   })
 
@@ -498,7 +498,7 @@ test('engine.active.view plan demand ignores ineffective date filters when deriv
         [baseView.id]: baseView,
         [filteredView.id]: filteredView
       },
-      order: [baseView.id, filteredView.id]
+      ids: [baseView.id, filteredView.id]
     }
   })
 
@@ -552,7 +552,7 @@ test('engine.active.index derive adds demanded sort fields without rebuilding ex
           }
         }
       },
-      order: ['rec_1', 'rec_2', 'rec_3']
+      ids: ['rec_1', 'rec_2', 'rec_3']
     }
   })
   const previousDemand = normalizeDemand(document, {
@@ -714,7 +714,7 @@ test('engine.active calculations support select and multiSelect option distribut
           }
         }
       },
-      order: ['rec_1', 'rec_2', 'rec_3']
+      ids: ['rec_1', 'rec_2', 'rec_3']
     }
   })
 

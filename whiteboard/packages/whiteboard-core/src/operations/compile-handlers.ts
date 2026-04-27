@@ -10,6 +10,11 @@ import type {
   WhiteboardIntentKind,
   WhiteboardIntentOutput
 } from '@whiteboard/core/operations/intent-types'
+import type { MutationCompileCtx } from '@shared/mutation'
+import type {
+  Document,
+  Operation
+} from '@whiteboard/core/types'
 import { compileCanvasIntent } from '@whiteboard/core/operations/compile/canvas'
 import { compileDocumentIntent } from '@whiteboard/core/operations/compile/document'
 import { compileEdgeIntent } from '@whiteboard/core/operations/compile/edge'
@@ -22,7 +27,7 @@ export type WhiteboardIntentHandler<
 > = (
   intent: WhiteboardIntent<K>,
   ctx: WhiteboardIntentContext
-) => WhiteboardIntentOutput | void | import('@shared/mutation').CompileControl
+) => WhiteboardIntentOutput | void | ReturnType<MutationCompileCtx<Document, Operation>['stop']> | ReturnType<MutationCompileCtx<Document, Operation>['block']>
 
 const handleDocumentIntent: WhiteboardIntentHandler = (intent, ctx) =>
   compileDocumentIntent(intent as DocumentIntent, ctx)

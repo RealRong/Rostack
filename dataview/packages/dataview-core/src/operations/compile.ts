@@ -1,6 +1,10 @@
 import type { DataDoc, Intent } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/types/operations'
-import { compile as compileBatch } from '@shared/mutation'
+import type {
+  MutationCompileCtx,
+  MutationCompileIssue,
+  MutationCompileResult
+} from '@shared/mutation'
 import { string } from '@shared/core'
 import { reduceDataviewOperations } from './spec'
 import {
@@ -25,55 +29,138 @@ export interface CompiledIntentBatch {
   outputs: readonly unknown[]
 }
 
+const normalizeIssue = <Code extends string>(
+  issue: MutationCompileIssue<Code>
+): Required<Pick<MutationCompileIssue<Code>, 'code' | 'message' | 'severity'>> & Omit<MutationCompileIssue<Code>, 'severity'> => ({
+  ...issue,
+  severity: issue.severity ?? 'error'
+})
+
+const runCompile = (input: {
+  doc: DataDoc
+  intents: readonly Intent[]
+  compiledIntents: CompiledIntentResult[]
+}): MutationCompileResult<DocumentOperation, unknown, ValidationCode> => {
+  const ops: DocumentOperation[] = []
+  const outputs: unknown[] = []
+  const issues: MutationCompileIssue<ValidationCode>[] = []
+  let workingDoc = input.doc
+
+  for (const [index, intent] of input.intents.entries()) {
+    const pendingOps: DocumentOperation[] = []
+    const pendingIssues: MutationCompileIssue<ValidationCode>[] = []
+    let shouldStop = false
+    let blocked = false
+
+    const ctx: MutationCompileCtx<DataDoc, DocumentOperation, ValidationCode> = {
+      doc: () => workingDoc,
+      emit: (op) => {
+        pendingOps.push(op)
+      },
+      emitMany: (...nextOps) => {
+        pendingOps.push(...nextOps)
+      },
+      issue: (issue) => {
+        const normalized = normalizeIssue(issue)
+        pendingIssues.push(normalized)
+        if (normalized.severity !== 'warning') {
+          blocked = true
+        }
+      },
+      stop: () => {
+        shouldStop = true
+        return {
+          kind: 'stop'
+        }
+      },
+      block: (issue) => {
+        const normalized = normalizeIssue(issue)
+        pendingIssues.push(normalized)
+        blocked = true
+        return {
+          kind: 'block',
+          issue: normalized
+        }
+      },
+      require: (value, issue) => {
+        if (value !== undefined) {
+          return value
+        }
+
+        ctx.issue(issue)
+        return undefined
+      }
+    }
+
+    const compiled = compileIntent(
+      createCompileScope({
+        document: ctx.doc(),
+        intent,
+        index
+      }),
+      intent
+    )
+
+    input.compiledIntents.push(compiled)
+    compiled.issues.forEach((issue) => {
+      ctx.issue({
+        code: issue.code,
+        message: issue.message,
+        path: issue.path,
+        severity: issue.severity,
+        details: issue.details
+      })
+    })
+
+    if (!hasValidationErrors(compiled.issues) && compiled.operations.length) {
+      ctx.emitMany(...compiled.operations)
+    }
+
+    outputs.push(compiled.data)
+
+    issues.push(...pendingIssues)
+    if (shouldStop || blocked) {
+      break
+    }
+    if (!pendingOps.length) {
+      continue
+    }
+
+    const applied = reduceDataviewOperations(workingDoc, pendingOps)
+    if (!applied.ok) {
+      issues.push({
+        code: 'compile.applyFailed',
+        message: applied.error.message,
+        details: applied.error.details,
+        severity: 'error'
+      })
+      break
+    }
+
+    ops.push(...pendingOps)
+    workingDoc = applied.doc
+  }
+
+  return {
+    ops,
+    outputs,
+    ...(issues.length
+      ? {
+          issues
+        }
+      : {})
+  }
+}
+
 export const compileIntents = (input: {
   document: DataDoc
   intents: readonly Intent[]
 }): CompiledIntentBatch => {
   const compiledIntents: CompiledIntentResult[] = []
-  const result = compileBatch<DataDoc, Intent, DocumentOperation>({
+  const result = runCompile({
     doc: input.document,
     intents: input.intents,
-    run: (ctx, intent, index) => {
-      const compiled = compileIntent(
-        createCompileScope({
-          document: ctx.doc(),
-          intent,
-          index
-        }),
-        intent
-      )
-
-      compiledIntents.push(compiled)
-      compiled.issues.forEach((issue) => {
-        ctx.issue({
-          code: issue.code,
-          message: issue.message,
-          path: issue.path,
-          level: issue.severity
-        })
-      })
-
-      if (!hasValidationErrors(compiled.issues) && compiled.operations.length) {
-        ctx.emitMany(...compiled.operations)
-      }
-    },
-    apply: (document, operations) => {
-      const applied = reduceDataviewOperations(document, operations)
-      return applied.ok
-        ? {
-            ok: true,
-            doc: applied.doc
-          }
-        : {
-            ok: false,
-            issue: {
-              code: applied.error.code,
-              message: applied.error.message,
-              details: applied.error.details
-            }
-          }
-    },
-    stopOnError: true
+    compiledIntents
   })
 
   const issues = compiledIntents.flatMap((entry) => entry.issues)
@@ -92,13 +179,13 @@ export const compileIntents = (input: {
     ? input.intents[lastCompiledIndex]
     : undefined
 
-  result.issues.forEach((issue) => {
+  result.issues?.forEach((issue) => {
     if (
       issues.some((entry) => (
         entry.code === issue.code
         && entry.message === issue.message
         && entry.path === issue.path
-        && entry.severity === issue.level
+        && entry.severity === issue.severity
       ))
     ) {
       return
@@ -134,7 +221,7 @@ export const compileIntents = (input: {
     ops: result.ops,
     issues,
     canApply: !hasValidationErrors(issues),
-    outputs: compiledIntents.map((entry) => entry.data)
+    outputs: result.outputs
   }
 }
 

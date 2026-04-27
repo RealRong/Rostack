@@ -15,21 +15,27 @@ import {
   type ValidationIssue,
   type ValidationSeverity
 } from './compile'
-import { dataviewTrace, trace as traceAlias, type DataviewTrace } from './trace'
+import {
+  dataviewTraceSpec,
+  dataviewTrace,
+  trace as traceAlias,
+  type DataviewTrace
+} from './trace'
 import {
   buildRecordCreateIntents,
   recordCreate,
   type BuildRecordCreateIntentsInput,
   type RecordCreateFilterRule
 } from './plan'
-import * as key from './key'
 import * as issue from './issue'
+import * as key from './key'
 
 export const definitions = DATAVIEW_OPERATION_DEFINITIONS
 export const spec = specAlias
 export const apply = reduceDataviewOperations
 export { reduceDataviewOperations, compileIntents, compile, key, issue, dataviewTrace }
 export { DATAVIEW_OPERATION_DEFINITIONS, dataviewMutationOperations, buildRecordCreateIntents, recordCreate }
+export { dataviewTraceSpec }
 export { traceAlias as trace }
 
 export const operations = {

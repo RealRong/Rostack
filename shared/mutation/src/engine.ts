@@ -5,7 +5,6 @@ import {
   type ReducerResult,
   type ReducerSpec
 } from '@shared/reducer'
-import type { Issue } from './compiler'
 import {
   history as historyRuntime,
   type HistoryController
@@ -14,13 +13,61 @@ import {
   createHistoryPort,
   type HistoryPort
 } from './localHistory'
-import type { OpMeta } from './meta'
 import type {
   ApplyCommit,
   CommitRecord,
   CommitStream,
   Origin,
 } from './write'
+
+export interface MutationCompileIssue<Code extends string = string> {
+  code: Code
+  message: string
+  path?: string
+  severity?: 'error' | 'warning'
+  details?: unknown
+}
+
+export interface MutationCompileCtx<
+  Doc,
+  Op,
+  Code extends string = string
+> {
+  doc(): Doc
+  emit(op: Op): void
+  emitMany(...ops: readonly Op[]): void
+  issue(issue: MutationCompileIssue<Code>): void
+  stop(): {
+    kind: 'stop'
+  }
+  block(issue: MutationCompileIssue<Code>): {
+    kind: 'block'
+    issue: MutationCompileIssue<Code>
+  }
+  require<T>(
+    value: T | undefined,
+    issue: MutationCompileIssue<Code>
+  ): T | undefined
+}
+
+export interface MutationCompileInput<
+  Doc,
+  Intent
+> {
+  doc: Doc
+  intents: readonly Intent[]
+}
+
+export interface MutationCompileResult<
+  Op,
+  Output = void,
+  Code extends string = string
+> {
+  ops: readonly Op[]
+  outputs: readonly Output[]
+  issues?: readonly MutationCompileIssue<Code>[]
+  canApply?: boolean
+}
 
 export interface MutationError<Code extends string = string> {
   code: Code
@@ -102,16 +149,6 @@ export interface MutationOptions {
   origin?: Origin
 }
 
-export interface MutationPlan<
-  Op,
-  Output = void
-> {
-  ops: readonly Op[]
-  issues?: readonly Issue[]
-  canApply?: boolean
-  outputs?: readonly Output[]
-}
-
 export interface MutationPrevSnapshot<Doc, Publish, Cache> {
   doc: Doc
   publish: Publish
@@ -164,7 +201,10 @@ export interface MutationOperationSpec<
   ApplyCtx,
   FootprintCtx = ApplyCtx,
   TType extends Op['type'] = Op['type']
-> extends OpMeta {
+> {
+  family: string
+  sync?: 'live' | 'checkpoint'
+  history?: boolean
   footprint?(
     ctx: FootprintCtx,
     op: Extract<Op, { type: TType }>
@@ -269,10 +309,13 @@ export interface CommandMutationSpec<
   Extra = void,
   Code extends string = string
 > extends MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra, Code> {
-  compile(input: {
-    doc: Doc
-    intents: readonly MutationIntentOf<Table>[]
-  }): MutationPlan<Op, MutationOutputOf<Table>>
+  compile(
+    input: MutationCompileInput<Doc, MutationIntentOf<Table>>
+  ): MutationCompileResult<
+    Op,
+    MutationOutputOf<Table>,
+    Code
+  >
 }
 
 export type MutationCurrent<Doc, Publish = never> = {
@@ -312,12 +355,12 @@ const APPLY_EMPTY_CODE = 'mutation_engine.apply.empty'
 const EXECUTE_EMPTY_CODE = 'mutation_engine.execute.empty'
 
 const hasBlockingIssue = (
-  issues: readonly Issue[]
-): boolean => issues.some((issue) => (issue.level ?? 'error') !== 'warning')
+  issues: readonly MutationCompileIssue[]
+): boolean => issues.some((issue) => (issue.severity ?? 'error') !== 'warning')
 
 const toIssues = (
-  issues?: readonly Issue[]
-): readonly Issue[] => issues ?? []
+  issues?: readonly MutationCompileIssue[]
+): readonly MutationCompileIssue[] => issues ?? []
 
 const hasOwn = (
   value: object,

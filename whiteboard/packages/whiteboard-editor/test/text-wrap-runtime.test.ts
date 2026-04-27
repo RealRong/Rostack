@@ -8,63 +8,58 @@ import type {
   NodeSpec
 } from '../src'
 
-const createRegistry = (): NodeSpec => ({
-  get: (type) => {
-    if (type === 'text') {
-      return {
-        type: 'text',
-        meta: {
-          name: 'Text',
-          family: 'text',
-          icon: 'text',
-          controls: []
-        },
-        layout: {
-          kind: 'size'
-        },
-        role: 'content',
-        resize: true,
-        rotate: true,
-        enter: true,
-        edit: {
-          fields: {
-            text: {
-              multiline: true,
-              empty: 'remove'
-            }
+const createNodes = (): NodeSpec => ({
+  text: {
+    meta: {
+      type: 'text',
+      name: 'Text',
+      family: 'text',
+      icon: 'text',
+      controls: []
+    },
+    behavior: {
+      layout: {
+        kind: 'size'
+      },
+      role: 'content',
+      resize: true,
+      rotate: true,
+      enter: true,
+      edit: {
+        fields: {
+          text: {
+            multiline: true,
+            empty: 'remove'
           }
         }
       }
     }
-
-    if (type === 'sticky') {
-      return {
-        type: 'sticky',
-        meta: {
-          name: 'Sticky',
-          family: 'text',
-          icon: 'sticky',
-          controls: []
-        },
-        layout: {
-          kind: 'fit'
-        },
-        role: 'content',
-        resize: true,
-        rotate: true,
-        enter: true,
-        edit: {
-          fields: {
-            text: {
-              multiline: true,
-              empty: 'keep'
-            }
+  },
+  sticky: {
+    meta: {
+      type: 'sticky',
+      name: 'Sticky',
+      family: 'text',
+      icon: 'sticky',
+      controls: []
+    },
+    behavior: {
+      layout: {
+        kind: 'fit'
+      },
+      role: 'content',
+      resize: true,
+      rotate: true,
+      enter: true,
+      edit: {
+        fields: {
+          text: {
+            multiline: true,
+            empty: 'keep'
           }
         }
       }
     }
-
-    return undefined
   }
 })
 
@@ -205,7 +200,7 @@ const createTextEditor = () => {
       },
       zoom: 1
     },
-    nodes: createRegistry(),
+    nodes: createNodes(),
     services: {
       layout: createLayoutBackend()
     }
@@ -230,7 +225,7 @@ const createAutoWidthTextEditor = () => {
       },
       zoom: 1
     },
-    nodes: createRegistry(),
+    nodes: createNodes(),
     services: {
       layout: createAutoWidthLayoutBackend()
     }
@@ -255,7 +250,7 @@ const createStickyEditor = () => {
       },
       zoom: 1
     },
-    nodes: createRegistry(),
+    nodes: createNodes(),
     services: {
       layout: createLayoutBackend()
     }

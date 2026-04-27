@@ -6,7 +6,6 @@ import type {
 } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/types/operations'
 import { collection, string } from '@shared/core'
-import { planningContext } from '@shared/mutation'
 import {
   createDocumentReader,
   type DocumentReader
@@ -62,41 +61,45 @@ export const createCompileScope = (input: {
     index: input.index,
     type: input.intent.type
   }
-  const context = planningContext.createPlanningContext<
-    DocumentReader,
-    DocumentOperation,
-    ValidationCode,
-    IssueSource
-  >({
-    read: createDocumentReader(() => input.document),
-    source
-  })
-  const reader = context.read
+  const reader = createDocumentReader(() => input.document)
+  const operations: DocumentOperation[] = []
+  const issues: ValidationIssue[] = []
+
+  const pushIssue = (
+    issue: ValidationIssue
+  ) => {
+    issues.push({
+      ...issue,
+      source: issue.source ?? source
+    })
+  }
 
   const resolveTarget = (
     target: EditTarget,
     path = 'target'
   ): readonly RecordId[] | undefined => {
     if (target.type === 'record') {
-      const record = context.require(
-        reader.records.get(target.recordId),
-        {
+      const record = reader.records.get(target.recordId)
+      if (!record) {
+        pushIssue({
           code: 'record.notFound',
           message: `Unknown record: ${target.recordId}`,
-          path: `${path}.recordId`
-        }
-      )
-      return record
-        ? [record.id]
-        : undefined
+          path: `${path}.recordId`,
+          severity: 'error'
+        })
+        return undefined
+      }
+
+      return [record.id]
     }
 
     const recordIds = collection.unique(target.recordIds) as RecordId[]
     if (!recordIds.length) {
-      context.issue({
+      pushIssue({
         code: 'batch.emptyCollection',
         message: `${source.type} requires at least one item`,
-        path: `${path}.recordIds`
+        path: `${path}.recordIds`,
+        severity: 'error'
       })
       return undefined
     }
@@ -104,10 +107,11 @@ export const createCompileScope = (input: {
     const resolved: RecordId[] = []
     recordIds.forEach((recordId, index) => {
       if (!string.isNonEmptyString(recordId) || !reader.records.has(recordId)) {
-        context.issue({
+        pushIssue({
           code: 'record.notFound',
           message: `Unknown record: ${recordId}`,
-          path: `${path}.recordIds.${index}`
+          path: `${path}.recordIds.${index}`,
+          severity: 'error'
         })
         return
       }
@@ -121,29 +125,40 @@ export const createCompileScope = (input: {
   }
 
   const finish = (
-    ...operations: readonly DocumentOperation[]
+    ...nextOperations: readonly DocumentOperation[]
   ): CompiledIntentResult => {
-    context.emitMany(operations)
-    const result = context.finish()
+    if (nextOperations.length) {
+      nextOperations.forEach((operation) => {
+        pushOperation(operation)
+      })
+    }
+
     return {
-      issues: [...result.issues],
-      operations: hasValidationErrors(result.issues)
+      issues: [...issues],
+      operations: hasValidationErrors(issues)
         ? []
-        : [...result.operations]
+        : [...operations]
     }
   }
 
+  const pushOperation = (
+    operation: DocumentOperation
+  ) => {
+    operations.push(operation)
+  }
   return {
     reader,
     source,
     emit: (operation) => {
-      context.emit(operation)
+      pushOperation(operation)
     },
     emitMany: (...operations) => {
-      context.emitMany(operations)
+      operations.forEach((operation) => {
+        pushOperation(operation)
+      })
     },
     issue: (code, message, path, severity = 'error') => {
-      context.issue({
+      pushIssue({
         code,
         message,
         path,
@@ -151,9 +166,23 @@ export const createCompileScope = (input: {
       })
     },
     report: (...issues) => {
-      context.report(...issues)
+      issues.forEach((issue) => {
+        pushIssue(issue)
+      })
     },
-    require: (value, requirement) => context.require(value, requirement),
+    require: (value, requirement) => {
+      if (value !== undefined) {
+        return value
+      }
+
+      pushIssue({
+        code: requirement.code,
+        message: requirement.message,
+        path: requirement.path,
+        severity: requirement.severity ?? 'error'
+      })
+      return undefined
+    },
     resolveTarget,
     finish
   }

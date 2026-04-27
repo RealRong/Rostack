@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { path as mutationPath } from '@shared/mutation'
+import { path as mutationPath } from '@shared/draft'
 import { createRegistries } from '@whiteboard/core/registry'
 import { schema } from '@whiteboard/core/registry'
 

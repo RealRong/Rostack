@@ -1,7 +1,7 @@
 import {
   path as mutationPath,
   type Path
-} from '@shared/mutation'
+} from '@shared/draft'
 import { schema as schemaApi } from '@whiteboard/core/registry'
 import type { Node, NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'

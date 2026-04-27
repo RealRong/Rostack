@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   path as mutationPath,
   type Path
-} from '@shared/mutation'
+} from '@shared/draft'
 import type { Node } from '@whiteboard/core/types'
 import { createTransformSession } from '../src/input/features/transform'
 
@@ -150,8 +150,10 @@ const createTransformContext = ({
   nodes: {
     get: (type: string) => type === 'text'
       ? {
-          layout: {
-            kind: 'size' as const
+          behavior: {
+            layout: {
+              kind: 'size' as const
+            }
           }
         }
       : undefined

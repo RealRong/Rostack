@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import {
   CommandMutationEngine,
-  OperationMutationRuntime,
   type CommandMutationSpec,
   type MutationIntentTable,
-  type MutationRuntimeSpec
 } from '@shared/mutation'
+import {
+  OperationMutationRuntime,
+  type MutationRuntimeSpec
+} from '../src/engine'
 
 type TestDoc = {
   count: number

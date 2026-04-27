@@ -12,6 +12,7 @@
   "dependencies": {
     "@shared/ui": "workspace:*",
     "@shared/core": "workspace:*",
+    "@shared/draft": "workspace:*",
     "@shared/dom": "workspace:*",
     "@shared/mutation": "workspace:*",
     "@shared/react": "workspace:*",

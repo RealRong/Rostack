@@ -22,6 +22,7 @@
     "@shared/draft": "workspace:*",
     "@shared/reducer": "workspace:*",
     "@shared/mutation": "workspace:*",
+    "@shared/trace": "workspace:*",
     "@shared/i18n": "workspace:*",
     "date-fns": "^4.1.0"
   },

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { path as mutationPath } from '@shared/mutation'
+import { path as mutationPath } from '@shared/draft'
 import { node as nodeApi, type Guide } from '@whiteboard/core/node'
 import type { Node } from '@whiteboard/core/types'
 

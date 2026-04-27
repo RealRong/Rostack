@@ -1,5 +1,5 @@
 import type { IdDelta as SharedIdDelta } from '@shared/delta'
-import type { Path } from '@shared/mutation'
+import type { Path } from '@shared/draft'
 import type {
   Background,
   CanvasItemRef,

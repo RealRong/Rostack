@@ -1,4 +1,7 @@
-import { compile as runCompile, type Issue } from '@shared/mutation'
+import type {
+  MutationCompileCtx,
+  MutationCompileIssue
+} from '@shared/mutation'
 import type {
   CoreRegistries,
   Document,
@@ -25,6 +28,13 @@ const reduceIssueCode = (
   ? 'cancelled'
   : 'invalid'
 
+const normalizeIssue = (
+  issue: MutationCompileIssue<'invalid' | 'cancelled'>
+): Required<Pick<MutationCompileIssue<'invalid' | 'cancelled'>, 'code' | 'message' | 'severity'>> & Omit<MutationCompileIssue<'invalid' | 'cancelled'>, 'severity'> => ({
+  ...issue,
+  severity: issue.severity ?? 'error'
+})
+
 export const compile = (input: {
   document: Document
   intents: readonly WhiteboardIntent[]
@@ -33,49 +43,118 @@ export const compile = (input: {
 }): {
   ops: readonly Operation[]
   outputs: readonly WhiteboardIntentOutput[]
-  issues?: readonly Issue[]
+  issues?: readonly MutationCompileIssue<'invalid' | 'cancelled'>[]
   canApply?: boolean
 } => {
-  const compiled = runCompile<Document, WhiteboardIntent, Operation, WhiteboardIntentOutput>({
-    doc: input.document,
-    intents: input.intents,
-    run: (ctx, intent) => {
-      const compileContext = createWhiteboardIntentContext({
-        ctx,
-        ids: input.ids,
-        registries: input.registries
-      })
-      const handler = whiteboardIntentHandlers[intent.type]
-      return handler(intent as never, compileContext)
-    },
-    apply: (document, ops) => {
-      const reduced = applyOperations({
-        doc: document,
-        ops,
-        origin: 'system'
-      })
-      if (!reduced.ok) {
-        return {
-          ok: false as const,
-          issue: {
-            code: reduceIssueCode(reduced.error.code),
-            message: reduced.error.message,
-            details: reduced.error.details
-          }
+  const ops: Operation[] = []
+  const outputs: WhiteboardIntentOutput[] = []
+  const issues: MutationCompileIssue<'invalid' | 'cancelled'>[] = []
+  let workingDoc = input.document
+
+  for (const intent of input.intents) {
+    const pendingOps: Operation[] = []
+    const pendingIssues: MutationCompileIssue<'invalid' | 'cancelled'>[] = []
+    let blocked = false
+    let shouldStop = false
+
+    const ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'> = {
+      doc: () => workingDoc,
+      emit: (op) => {
+        pendingOps.push(op)
+      },
+      emitMany: (...nextOps) => {
+        pendingOps.push(...nextOps)
+      },
+      issue: (issue) => {
+        const normalized = normalizeIssue(issue)
+        pendingIssues.push(normalized)
+        if (normalized.severity !== 'warning') {
+          blocked = true
         }
+      },
+      stop: () => {
+        shouldStop = true
+        return {
+          kind: 'stop'
+        }
+      },
+      block: (issue) => {
+        const normalized = normalizeIssue(issue)
+        pendingIssues.push(normalized)
+        blocked = true
+        return {
+          kind: 'block',
+          issue: normalized
+        }
+      },
+      require: (value, issue) => {
+        if (value !== undefined) {
+          return value
+        }
+
+        ctx.issue(issue)
+        return undefined
       }
-      return {
-        ok: true as const,
-        doc: reduced.doc
+    }
+
+    const compileContext = createWhiteboardIntentContext({
+      ctx,
+      ids: input.ids,
+      registries: input.registries
+    })
+    const handler = whiteboardIntentHandlers[intent.type]
+    const output = handler(intent as never, compileContext)
+
+    if (
+      output
+      && typeof output === 'object'
+      && 'kind' in output
+      && (output.kind === 'stop' || output.kind === 'block')
+    ) {
+      if (output.kind === 'stop') {
+        shouldStop = true
+      } else {
+        blocked = true
       }
-    },
-    stopOnError: true
-  })
+    } else {
+      outputs.push(output)
+    }
+
+    issues.push(...pendingIssues)
+    if (shouldStop || blocked) {
+      break
+    }
+    if (!pendingOps.length) {
+      continue
+    }
+
+    const reduced = applyOperations({
+      doc: workingDoc,
+      ops: pendingOps,
+      origin: 'system'
+    })
+    if (!reduced.ok) {
+      issues.push({
+        code: reduceIssueCode(reduced.error.code),
+        message: reduced.error.message,
+        details: reduced.error.details,
+        severity: 'error'
+      })
+      break
+    }
+
+    ops.push(...pendingOps)
+    workingDoc = reduced.doc
+  }
 
   return {
-    ops: compiled.ops,
-    outputs: compiled.outputs,
-    issues: compiled.issues
+    ops,
+    outputs,
+    ...(issues.length
+      ? {
+          issues
+        }
+      : {})
   }
 }
 

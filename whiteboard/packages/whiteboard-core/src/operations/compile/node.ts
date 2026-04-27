@@ -1,4 +1,4 @@
-import { path as mutationPath } from '@shared/mutation'
+import { path as mutationPath } from '@shared/draft'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import {
   emitMindmapTopicUpdateOps,

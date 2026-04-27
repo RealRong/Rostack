@@ -41,9 +41,6 @@ import {
   restoreRecordFieldsToDraft
 } from '@dataview/core/operations/internal/recordFieldDraft'
 import { entityTable as sharedEntityTable, equal, json } from '@shared/core'
-import {
-  type OpSync
-} from '@shared/mutation'
 
 type DocumentOperationType = DocumentOperation['type']
 type DocumentOperationFamily =
@@ -51,6 +48,9 @@ type DocumentOperationFamily =
   | 'field'
   | 'view'
   | 'external'
+type DocumentOperationSync =
+  | 'live'
+  | 'checkpoint'
 
 type DocumentOperationByType<TType extends DocumentOperationType> = Extract<
   DocumentOperation,
@@ -61,7 +61,7 @@ export interface DocumentOperationDefinition<
   TType extends DocumentOperationType = DocumentOperationType
 > {
   family: DocumentOperationFamily
-  sync?: OpSync
+  sync?: DocumentOperationSync
   history?: boolean
   footprint?(
     ctx: DocumentMutationOperationContext,

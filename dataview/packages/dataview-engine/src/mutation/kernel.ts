@@ -13,7 +13,8 @@ import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
 import {
-  type CommandMutationSpec
+  type CommandMutationSpec,
+  type MutationCompileInput
 } from '@shared/mutation'
 import type {
   DataviewHistoryConfig
@@ -85,10 +86,13 @@ export const createDataviewMutationKernel = (input?: {
 
   return {
     normalize: (doc) => doc,
-    compile: ({ doc, intents }) => {
+    compile: ({
+      doc,
+      intents
+    }: MutationCompileInput<DataDoc, CoreIntent>) => {
       const result = compile({
         document: doc,
-        intents: intents as readonly CoreIntent[]
+        intents
       })
 
       return {

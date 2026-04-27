@@ -10,7 +10,9 @@ import type {
   RecordId,
   ViewId
 } from '@dataview/core/types/state'
-import { mutationTrace } from '@shared/mutation'
+import {
+  trace
+} from '@shared/trace'
 import {
   documentViews
 } from '@dataview/core/document/views'
@@ -385,19 +387,19 @@ const summarizeCommitImpact = (
 
 const touchedRecordCountOfImpact = (
   impact: CommitImpact
-): number | 'all' | undefined => mutationTrace.toTouchedCount(
+): number | 'all' | undefined => trace.count(
   collectTouchedRecordIds(impact)
 )
 
 const touchedFieldCountOfImpact = (
   impact: CommitImpact
-): number | 'all' | undefined => mutationTrace.toTouchedCount(
+): number | 'all' | undefined => trace.count(
   collectTouchedFieldIds(impact)
 )
 
 const touchedViewCountOfImpact = (
   impact: CommitImpact
-): number | 'all' | undefined => mutationTrace.toTouchedCount(
+): number | 'all' | undefined => trace.count(
   collectTouchedViewIds(impact)
 )
 

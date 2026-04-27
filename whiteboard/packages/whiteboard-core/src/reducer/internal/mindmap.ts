@@ -1,8 +1,8 @@
 import { json } from '@shared/core'
 import {
-  record as mutationRecord,
+  patch as mutationRecord,
   type Path
-} from '@shared/mutation'
+} from '@shared/draft'
 import { err, ok } from '@whiteboard/core/utils/result'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {

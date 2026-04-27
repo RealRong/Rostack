@@ -1,7 +1,7 @@
 import {
   path as mutationPath,
   type Path
-} from '@shared/mutation'
+} from '@shared/draft'
 import type { Node, NodeSchema, Point, Rect } from '@whiteboard/core/types'
 import type { CSSProperties } from 'react'
 import type {

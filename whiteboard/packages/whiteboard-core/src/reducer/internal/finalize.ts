@@ -1,4 +1,10 @@
-import { mutationTrace } from '@shared/mutation'
+import {
+  trace as sharedTrace
+} from '@shared/trace'
+import type {
+  TraceCount,
+  TraceFact
+} from '@shared/trace'
 import type {
   EdgeId,
   Invalidation,
@@ -18,6 +24,25 @@ import {
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []
 
+export const invalidationTraceSpec = {
+  summary: {
+    reset: 'flag',
+    document: 'flag',
+    background: 'flag',
+    canvasOrder: 'flag',
+    nodes: 'flag',
+    edges: 'flag',
+    groups: 'flag',
+    mindmaps: 'flag'
+  },
+  entities: {
+    touchedNodeCount: 'count',
+    touchedEdgeCount: 'count',
+    touchedGroupCount: 'count',
+    touchedMindmapCount: 'count'
+  }
+} as const
+
 export interface InvalidationTraceSummary {
   summary: {
     reset: boolean
@@ -29,12 +54,12 @@ export interface InvalidationTraceSummary {
     groups: boolean
     mindmaps: boolean
   }
-  facts: readonly mutationTrace.MutationTraceFact[]
+  facts: readonly TraceFact[]
   entities: {
-    touchedNodeCount?: mutationTrace.MutationTraceCount
-    touchedEdgeCount?: mutationTrace.MutationTraceCount
-    touchedGroupCount?: mutationTrace.MutationTraceCount
-    touchedMindmapCount?: mutationTrace.MutationTraceCount
+    touchedNodeCount?: TraceCount
+    touchedEdgeCount?: TraceCount
+    touchedGroupCount?: TraceCount
+    touchedMindmapCount?: TraceCount
   }
 }
 
@@ -59,23 +84,21 @@ export const RESET_READ_IMPACT: KernelReadImpact = {
 export const summarizeInvalidation = (
   invalidation: Invalidation
 ): InvalidationTraceSummary => {
-  const touchedNodeCount = mutationTrace.toTouchedCount(invalidation.nodes)
-  const touchedEdgeCount = mutationTrace.toTouchedCount(invalidation.edges)
-  const touchedGroupCount = mutationTrace.toTouchedCount(invalidation.groups)
-  const touchedMindmapCount = mutationTrace.toTouchedCount(invalidation.mindmaps)
-  const trace = mutationTrace.createMutationTrace<
-    InvalidationTraceSummary['summary'],
-    InvalidationTraceSummary['entities']
-  >({
+  const touchedNodeCount = sharedTrace.count(invalidation.nodes)
+  const touchedEdgeCount = sharedTrace.count(invalidation.edges)
+  const touchedGroupCount = sharedTrace.count(invalidation.groups)
+  const touchedMindmapCount = sharedTrace.count(invalidation.mindmaps)
+  const summary = sharedTrace.create({
+    spec: invalidationTraceSpec,
     summary: {
       reset: invalidation.document,
       document: invalidation.document || invalidation.background,
       background: invalidation.background,
       canvasOrder: invalidation.canvasOrder,
-      nodes: invalidation.document || mutationTrace.hasTouchedCount(touchedNodeCount),
-      edges: invalidation.document || mutationTrace.hasTouchedCount(touchedEdgeCount),
-      groups: invalidation.document || mutationTrace.hasTouchedCount(touchedGroupCount),
-      mindmaps: invalidation.document || mutationTrace.hasTouchedCount(touchedMindmapCount)
+      nodes: invalidation.document || sharedTrace.has(touchedNodeCount),
+      edges: invalidation.document || sharedTrace.has(touchedEdgeCount),
+      groups: invalidation.document || sharedTrace.has(touchedGroupCount),
+      mindmaps: invalidation.document || sharedTrace.has(touchedMindmapCount)
     },
     entities: {
       touchedNodeCount: undefined,
@@ -85,19 +108,19 @@ export const summarizeInvalidation = (
     }
   })
 
-  trace.addFact('document.reset', invalidation.document)
-  trace.addFact('document.background', invalidation.background)
-  trace.addFact('canvas.order', invalidation.canvasOrder)
-  trace.addFact('node.touch', invalidation.nodes)
-  trace.addFact('edge.touch', invalidation.edges)
-  trace.addFact('group.touch', invalidation.groups)
-  trace.addFact('mindmap.touch', invalidation.mindmaps)
-  trace.setEntity('touchedNodeCount', touchedNodeCount)
-  trace.setEntity('touchedEdgeCount', touchedEdgeCount)
-  trace.setEntity('touchedGroupCount', touchedGroupCount)
-  trace.setEntity('touchedMindmapCount', touchedMindmapCount)
+  summary.addFact('document.reset', invalidation.document)
+  summary.addFact('document.background', invalidation.background)
+  summary.addFact('canvas.order', invalidation.canvasOrder)
+  summary.addFact('node.touch', invalidation.nodes)
+  summary.addFact('edge.touch', invalidation.edges)
+  summary.addFact('group.touch', invalidation.groups)
+  summary.addFact('mindmap.touch', invalidation.mindmaps)
+  summary.setEntity('touchedNodeCount', touchedNodeCount)
+  summary.setEntity('touchedEdgeCount', touchedEdgeCount)
+  summary.setEntity('touchedGroupCount', touchedGroupCount)
+  summary.setEntity('touchedMindmapCount', touchedMindmapCount)
 
-  return trace.finish()
+  return summary.finish()
 }
 
 export const deriveImpact = (
@@ -107,9 +130,9 @@ export const deriveImpact = (
   const nodeIds = [...invalidation.nodes]
   const edgeIds = [...invalidation.edges]
   const reset = trace.summary.reset
-  const nodeTouched = mutationTrace.hasTouchedCount(trace.entities.touchedNodeCount)
-  const edgeTouched = mutationTrace.hasTouchedCount(trace.entities.touchedEdgeCount)
-  const mindmapTouched = mutationTrace.hasTouchedCount(trace.entities.touchedMindmapCount)
+  const nodeTouched = sharedTrace.has(trace.entities.touchedNodeCount)
+  const edgeTouched = sharedTrace.has(trace.entities.touchedEdgeCount)
+  const mindmapTouched = sharedTrace.has(trace.entities.touchedMindmapCount)
 
   return {
     reset,

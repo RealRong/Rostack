@@ -4,8 +4,7 @@ import {
   type ApplyCommit,
   type CommitRecord,
   createHistoryPort,
-  mutationResult,
-  history
+  mutationResult
 } from '@shared/mutation'
 import { createMutationCollabSession } from '../src'
 
@@ -79,11 +78,41 @@ const createMemoryStore = () => {
   }
 }
 
+const createController = () => {
+  let undoDepth = 0
+
+  return {
+    state: () => ({
+      canUndo: undoDepth > 0,
+      canRedo: false,
+      undoDepth,
+      redoDepth: 0,
+      invalidatedDepth: 0,
+      isApplying: false
+    }),
+    capture: () => {
+      undoDepth += 1
+      return true
+    },
+    observe: () => false,
+    undo: () => undefined,
+    redo: () => undefined,
+    confirm: () => false,
+    cancel: () => false,
+    clear: () => {
+      if (undoDepth === 0) {
+        return false
+      }
+
+      undoDepth = 0
+      return true
+    }
+  }
+}
+
 const createEngine = (doc = 'base') => {
   let current = doc
-  const controller = history.create<TestOp, string, TestWrite>({
-    conflicts: (left, right) => left.some((key) => right.includes(key))
-  })
+  const controller = createController()
   const commitListeners = new Set<(commit: CommitRecord<string, TestOp, string, {}>) => void>()
   let nextRev = 1
   const commits = {

@@ -23,6 +23,7 @@
     "@shared/delta": "workspace:*",
     "@shared/draft": "workspace:*",
     "@shared/mutation": "workspace:*",
+    "@shared/trace": "workspace:*",
     "@shared/reducer": "workspace:*"
   },
   "scripts": {

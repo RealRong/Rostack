@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { EntityTable } from '@shared/core'
 import { draft } from '@shared/draft'
-import { path as mutationPath } from '@shared/mutation'
 
 describe('@shared/draft', () => {
   test('root preserves untouched branch references', () => {
@@ -17,7 +16,7 @@ describe('@shared/draft', () => {
     const root = draft.root(base)
     draft.path.set(
       root.write(),
-      mutationPath.of('nested', 'count'),
+      draft.path.of('nested', 'count'),
       2
     )
 
@@ -40,11 +39,24 @@ describe('@shared/draft', () => {
     })
 
     const current = root.write()
-    draft.path.set(current, mutationPath.of('data', 'meta', 'title'), 'B')
-    draft.path.unset(current, mutationPath.of('data', 'meta', 'keep'))
+    draft.path.set(current, draft.path.of('data', 'meta', 'title'), 'B')
+    draft.path.unset(current, draft.path.of('data', 'meta', 'keep'))
 
-    expect(draft.path.get(current, mutationPath.of('data', 'meta', 'title'))).toBe('B')
-    expect(draft.path.get(current, mutationPath.of('data', 'meta', 'keep'))).toBeUndefined()
+    expect(draft.path.get(current, draft.path.of('data', 'meta', 'title'))).toBe('B')
+    expect(draft.path.get(current, draft.path.of('data', 'meta', 'keep'))).toBeUndefined()
+  })
+
+  test('path exposes structural helper operations', () => {
+    const rootPath = draft.path.root()
+    const entry = draft.path.of('blocks', 1, 'title')
+    const parent = draft.path.parent(entry)
+
+    expect(draft.path.eq(rootPath, [])).toBe(true)
+    expect(draft.path.startsWith(entry, draft.path.of('blocks', 1))).toBe(true)
+    expect(draft.path.overlaps(entry, draft.path.of('blocks', 1))).toBe(true)
+    expect(draft.path.append(draft.path.of('blocks'), 1, 'title')).toEqual(entry)
+    expect(parent).toEqual(['blocks', 1])
+    expect(draft.path.toString(entry)).toBe('[\"blocks\",1,\"title\"]')
   })
 
   test('list performs lazy copy-on-write mutations', () => {
@@ -96,6 +108,29 @@ describe('@shared/draft', () => {
     expect(record.finish()).toBe(base)
   })
 
+  test('patch applies structural record mutations', () => {
+    const result = draft.patch.apply({
+      meta: {
+        title: 'A'
+      }
+    }, {
+      op: 'set',
+      path: draft.path.of('meta', 'title'),
+      value: 'B'
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        meta: {
+          title: 'B'
+        }
+      }
+    })
+    expect(draft.patch.has(result.ok ? result.value : undefined, draft.path.of('meta', 'title'))).toBe(true)
+    expect(draft.patch.read(result.ok ? result.value : undefined, draft.path.of('meta', 'title'))).toBe('B')
+  })
+
   test('entityTable only replaces changed branches', () => {
     type Item = {
       id: string
@@ -112,7 +147,7 @@ describe('@shared/draft', () => {
           name: 'A'
         }
       },
-      order: ['a']
+      ids: ['a']
     }
 
     const table = draft.entityTable(base)
@@ -123,7 +158,7 @@ describe('@shared/draft', () => {
     const next = table.finish()
     expect(next).not.toBe(base)
     expect(next.byId).not.toBe(base.byId)
-    expect(next.order).toBe(base.order)
+    expect(next.ids).toBe(base.ids)
     expect(next.byId.a?.name).toBe('AA')
   })
 })

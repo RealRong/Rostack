@@ -1,10 +1,10 @@
 import { json } from '@shared/core'
 import {
   path as mutationPath,
-  record as mutationRecord,
+  patch as mutationRecord,
   type Path,
   type PathKey
-} from '@shared/mutation'
+} from '@shared/draft'
 import type {
   CoreRegistries,
   EdgeInput,

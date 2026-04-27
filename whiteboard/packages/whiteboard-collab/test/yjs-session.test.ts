@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import * as Y from 'yjs'
-import { path as mutationPath } from '@shared/mutation'
+import { path as mutationPath } from '@shared/draft'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { collab as collabApi } from '@whiteboard/collab'

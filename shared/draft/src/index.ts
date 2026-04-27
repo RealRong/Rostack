@@ -19,6 +19,10 @@ import {
   type PathKey
 } from './path'
 import {
+  patch,
+  type RecordPatch
+} from './patch'
+import {
   record,
   type DraftRecord
 } from './record'
@@ -34,7 +38,8 @@ export const draft = {
   map: createMapDraft,
   array: createArrayDraft,
   entityTable,
-  path
+  path,
+  patch
 } as const
 
 export {
@@ -42,6 +47,7 @@ export {
   createMapDraft,
   entityTable,
   list,
+  patch,
   path,
   record,
   root
@@ -56,5 +62,6 @@ export type {
   DraftRecord,
   DraftRoot,
   Path,
-  PathKey
+  PathKey,
+  RecordPatch
 }

@@ -1,8 +1,9 @@
 import { metrics } from '@shared/core'
 import {
-  mutationTrace
-} from '@shared/mutation'
+  trace as sharedTrace
+} from '@shared/trace'
 import {
+  dataviewTraceSpec,
   dataviewTrace,
   type DataviewTrace
 } from '@dataview/core/operations'
@@ -23,14 +24,12 @@ import type {
 type PendingCommitTrace = Omit<CommitTrace, 'id'>
 
 export const summarizeTrace = (
-  trace: DataviewTrace
+  commitTrace: DataviewTrace
 ): TraceImpactSummary => {
-  const summary = mutationTrace.createMutationTrace<
-    TraceImpactSummary['summary'],
-    TraceImpactSummary['entities']
-  >({
+  const summary = sharedTrace.create({
+    spec: dataviewTraceSpec,
     summary: {
-      ...dataviewTrace.summary(trace),
+      ...dataviewTrace.summary(commitTrace),
       indexes: false
     },
     entities: {
@@ -40,23 +39,23 @@ export const summarizeTrace = (
     }
   })
 
-  summary.setSummary('indexes', dataviewTrace.has.index(trace))
-  summary.addFact('record.insert', trace.records?.inserted)
-  summary.addFact('record.remove', trace.records?.removed)
-  summary.addFact('record.patch', trace.records?.patched)
-  summary.addFact('record.value', trace.values?.touched)
-  summary.addFact('field.insert', trace.fields?.inserted)
-  summary.addFact('field.remove', trace.fields?.removed)
-  summary.addFact('field.schema', trace.fields?.schema)
-  summary.addFact('view.insert', trace.views?.inserted)
-  summary.addFact('view.remove', trace.views?.removed)
-  summary.addFact('view.change', trace.views?.changed)
-  summary.addFact('activeView.set', Boolean(trace.activeView))
-  summary.addFact('external.version.bump', Boolean(trace.external?.versionBumped))
-  summary.addFact('reset', Boolean(trace.reset))
-  summary.setEntity('touchedRecordCount', dataviewTrace.record.touchedCount(trace))
-  summary.setEntity('touchedFieldCount', dataviewTrace.field.touchedCount(trace))
-  summary.setEntity('touchedViewCount', dataviewTrace.view.touchedCount(trace))
+  summary.setSummary('indexes', dataviewTrace.has.index(commitTrace))
+  summary.addFact('record.insert', commitTrace.records?.inserted)
+  summary.addFact('record.remove', commitTrace.records?.removed)
+  summary.addFact('record.patch', commitTrace.records?.patched)
+  summary.addFact('record.value', commitTrace.values?.touched)
+  summary.addFact('field.insert', commitTrace.fields?.inserted)
+  summary.addFact('field.remove', commitTrace.fields?.removed)
+  summary.addFact('field.schema', commitTrace.fields?.schema)
+  summary.addFact('view.insert', commitTrace.views?.inserted)
+  summary.addFact('view.remove', commitTrace.views?.removed)
+  summary.addFact('view.change', commitTrace.views?.changed)
+  summary.addFact('activeView.set', Boolean(commitTrace.activeView))
+  summary.addFact('external.version.bump', Boolean(commitTrace.external?.versionBumped))
+  summary.addFact('reset', Boolean(commitTrace.reset))
+  summary.setEntity('touchedRecordCount', dataviewTrace.record.touchedCount(commitTrace))
+  summary.setEntity('touchedFieldCount', dataviewTrace.field.touchedCount(commitTrace))
+  summary.setEntity('touchedViewCount', dataviewTrace.view.touchedCount(commitTrace))
 
   return summary.finish()
 }

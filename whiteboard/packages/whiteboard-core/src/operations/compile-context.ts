@@ -1,6 +1,5 @@
 import type {
-  CompileControl,
-  CompileCtx
+  MutationCompileCtx
 } from '@shared/mutation'
 import type {
   CoreRegistries,
@@ -54,8 +53,8 @@ export type WhiteboardCompileTx = {
   emit: (op: Operation) => void
   emitMany: (ops: readonly Operation[]) => void
   fail: {
-    invalid: (message: string, details?: unknown) => CompileControl
-    cancelled: (message: string, details?: unknown) => CompileControl
+    invalid: (message: string, details?: unknown) => ReturnType<MutationCompileCtx<Document, Operation>['block']>
+    cancelled: (message: string, details?: unknown) => ReturnType<MutationCompileCtx<Document, Operation>['block']>
   }
 }
 
@@ -65,7 +64,7 @@ export type WhiteboardIntentContext = {
 }
 
 const requireNode = (
-  ctx: CompileCtx<Document, Operation>,
+  ctx: MutationCompileCtx<Document, Operation>,
   id: NodeId
 ): Node | undefined => {
   const node = ctx.doc().nodes[id]
@@ -80,7 +79,7 @@ const requireNode = (
 }
 
 const requireEdge = (
-  ctx: CompileCtx<Document, Operation>,
+  ctx: MutationCompileCtx<Document, Operation>,
   id: EdgeId
 ): Edge | undefined => {
   const edge = ctx.doc().edges[id]
@@ -95,7 +94,7 @@ const requireEdge = (
 }
 
 const requireGroup = (
-  ctx: CompileCtx<Document, Operation>,
+  ctx: MutationCompileCtx<Document, Operation>,
   id: GroupId
 ): Group | undefined => {
   const group = ctx.doc().groups[id]
@@ -110,7 +109,7 @@ const requireGroup = (
 }
 
 const requireMindmap = (
-  ctx: CompileCtx<Document, Operation>,
+  ctx: MutationCompileCtx<Document, Operation>,
   id: MindmapId
 ): MindmapRecord | undefined => {
   const mindmap = ctx.doc().mindmaps[id]
@@ -125,7 +124,7 @@ const requireMindmap = (
 }
 
 export const createWhiteboardIntentContext = (input: {
-  ctx: CompileCtx<Document, Operation>
+  ctx: MutationCompileCtx<Document, Operation>
   ids: WhiteboardCompileIds
   registries: CoreRegistries
 }): WhiteboardIntentContext => ({

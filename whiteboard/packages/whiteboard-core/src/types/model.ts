@@ -1,4 +1,4 @@
-import type { Path } from '@shared/mutation'
+import type { Path } from '@shared/draft'
 import type {
   MindmapId,
   MindmapLayoutSpec,

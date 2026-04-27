@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { path as mutationPath } from '@shared/mutation'
+import { path as mutationPath } from '@shared/draft'
 import { document as documentApi } from '@whiteboard/core/document'
 import { serializeHistoryKey } from '@whiteboard/core/operations'
 import type { IntentResult } from '@whiteboard/engine'

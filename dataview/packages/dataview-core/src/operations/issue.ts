@@ -1,10 +1,7 @@
 import type { IntentType } from '@dataview/core/types/intents'
-import type {
-  IssueSeverity,
-  ValidationIssue as SharedValidationIssue
-} from '@shared/mutation'
-
-export type ValidationSeverity = IssueSeverity
+export type ValidationSeverity =
+  | 'error'
+  | 'warning'
 
 export type ValidationCode =
   | 'compile.applyFailed'
@@ -32,7 +29,14 @@ export interface IssueSource {
   type: IntentType
 }
 
-export type ValidationIssue = SharedValidationIssue<ValidationCode, IssueSource>
+export interface ValidationIssue {
+  severity: ValidationSeverity
+  code: ValidationCode
+  message: string
+  path?: string
+  details?: unknown
+  source?: IssueSource
+}
 
 export const createIssue = (
   source: IssueSource,

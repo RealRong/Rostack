@@ -1,5 +1,5 @@
 import type { ReducerResult } from '@shared/reducer'
-import type { Path } from '@shared/mutation'
+import type { Path } from '@shared/draft'
 import type { HistoryFootprint } from '@whiteboard/core/operations/history'
 import type {
   CanvasItemRef,

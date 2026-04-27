@@ -4,7 +4,7 @@ import {
 import {
   path as mutationPath,
   type Path
-} from '@shared/mutation'
+} from '@shared/draft'
 import type {
   EdgeField,
   EdgeId,

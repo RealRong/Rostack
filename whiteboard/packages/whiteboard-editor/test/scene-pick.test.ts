@@ -5,21 +5,21 @@ import { editor as editorApi } from '../src'
 import type { NodeSpec } from '../src'
 
 const nodes: NodeSpec = {
-  get: (type) => type === 'shape'
-    ? {
-        type: 'shape',
-        meta: {
-          name: 'Shape',
-          family: 'shape',
-          icon: 'shape',
-          controls: []
-        },
-        role: 'content',
-        connect: true,
-        resize: true,
-        rotate: true
-      }
-    : undefined
+  shape: {
+    meta: {
+      type: 'shape',
+      name: 'Shape',
+      family: 'shape',
+      icon: 'shape',
+      controls: []
+    },
+    behavior: {
+      role: 'content',
+      connect: true,
+      resize: true,
+      rotate: true
+    }
+  }
 }
 
 const editors = new Set<{
@@ -114,7 +114,7 @@ const createPickEditor = () => {
       },
       zoom: 1
     },
-    registry
+    nodes
   }))
 }
 

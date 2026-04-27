@@ -1,4 +1,4 @@
-import { path as mutationPath } from '@shared/mutation'
+import { path as mutationPath } from '@shared/draft'
 import type {
   Node,
   NodeFieldPatch,

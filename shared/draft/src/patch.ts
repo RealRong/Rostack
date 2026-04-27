@@ -1,24 +1,26 @@
 import { json } from '@shared/core'
-import { draft } from '@shared/draft'
 import {
-  path as mutationPath,
+  path,
   type Path
 } from './path'
+import {
+  root as createRoot
+} from './root'
 
-type SetRecordPathMutation = {
+type SetRecordPatch = {
   op: 'set'
   path?: Path
   value: unknown
 }
 
-type UnsetRecordPathMutation = {
+type UnsetRecordPatch = {
   op: 'unset'
   path: Path
 }
 
-export type RecordPathMutation =
-  | SetRecordPathMutation
-  | UnsetRecordPathMutation
+export type RecordPatch =
+  | SetRecordPatch
+  | UnsetRecordPatch
 
 const isRecordLike = (
   value: unknown
@@ -40,7 +42,7 @@ const hasOwn = (
 
 const displayPath = (
   value: Path
-): string => mutationPath.toString(value)
+): string => path.toString(value)
 
 const validateSetPath = (
   current: Record<string | number, unknown>,
@@ -112,19 +114,19 @@ const validateUnsetPath = (
 const read = (
   root: unknown,
   targetPath: Path
-): unknown => draft.path.get(root, targetPath)
+): unknown => path.get(root, targetPath)
 
 const has = (
   root: unknown,
   targetPath: Path
-): boolean => draft.path.get(root, targetPath) !== undefined
+): boolean => path.get(root, targetPath) !== undefined
 
 const apply = (
   current: unknown,
-  mutation: RecordPathMutation
+  mutation: RecordPatch
 ): { ok: true; value: unknown } | { ok: false; message: string } => {
   if (mutation.op === 'set') {
-    const targetPath = mutation.path ?? mutationPath.root()
+    const targetPath = mutation.path ?? path.root()
     if (targetPath.length === 0) {
       return {
         ok: true,
@@ -147,8 +149,8 @@ const apply = (
       return validation
     }
 
-    const rootDraft = draft.root<Record<string | number, unknown>>(root)
-    draft.path.set(
+    const rootDraft = createRoot<Record<string | number, unknown>>(root)
+    path.set(
       rootDraft.write(),
       targetPath,
       json.clone(mutation.value)
@@ -179,17 +181,16 @@ const apply = (
     return validation
   }
 
-  const rootDraft = draft.root<Record<string | number, unknown>>(current)
-  draft.path.unset(rootDraft.write(), targetPath)
+  const rootDraft = createRoot<Record<string | number, unknown>>(current)
+  path.unset(rootDraft.write(), targetPath)
   return {
     ok: true,
     value: rootDraft.finish()
   }
 }
 
-export const record = {
+export const patch = {
   read,
   has,
   apply
 } as const
-

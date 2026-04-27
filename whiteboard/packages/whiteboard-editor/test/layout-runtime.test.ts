@@ -4,40 +4,40 @@ import {
   createEditorTextLayout,
   patchNodePreviewByTextMeasure
 } from '../src/layout/textLayout'
-import type { LayoutBackend, NodeSpec } from '../src'
+import type { LayoutBackend, NodeSpec, NodeSpecReader } from '../src'
 
-const createRegistry = (): NodeSpec => ({
-  get: (type) => {
-    if (type === 'sticky') {
-      return {
-        type: 'sticky',
-        meta: {
-          name: 'Sticky',
-          family: 'text',
-          icon: 'sticky',
-          controls: []
-        },
-        layout: {
-          kind: 'fit'
-        },
-        role: 'content',
-        resize: true,
-        rotate: true,
-        enter: true,
-        edit: {
-          fields: {
-            text: {
-              multiline: true,
-              empty: 'keep'
-            }
+const nodes: NodeSpec = {
+  sticky: {
+    meta: {
+      type: 'sticky',
+      name: 'Sticky',
+      family: 'text',
+      icon: 'sticky',
+      controls: []
+    },
+    behavior: {
+      layout: {
+        kind: 'fit'
+      },
+      role: 'content',
+      resize: true,
+      rotate: true,
+      enter: true,
+      edit: {
+        fields: {
+          text: {
+            multiline: true,
+            empty: 'keep'
           }
         }
       }
     }
-
-    return undefined
   }
-})
+}
+
+const nodeReader: NodeSpecReader = {
+  get: (type) => nodes[type]
+}
 
 const createStickyNode = (): Node => ({
   id: 'sticky-1',
@@ -68,7 +68,7 @@ describe('text layout preview patching', () => {
     }))
     const node = createStickyNode()
     const layout = createEditorTextLayout({
-      nodes: createRegistry(),
+      nodes: nodeReader,
       backend: {
         measure
       }
@@ -86,7 +86,7 @@ describe('text layout preview patching', () => {
         width: 180,
         height: 140
       }),
-      nodes: createRegistry(),
+      nodes: nodeReader,
       measure: layout.measure
     })).toEqual([{
       id: node.id,
@@ -102,7 +102,7 @@ describe('text layout preview patching', () => {
     }))
     const node = createStickyNode()
     const layout = createEditorTextLayout({
-      nodes: createRegistry(),
+      nodes: nodeReader,
       backend: {
         measure
       }
@@ -123,7 +123,7 @@ describe('text layout preview patching', () => {
         width: 180,
         height: 140
       }),
-      nodes: createRegistry(),
+      nodes: nodeReader,
       measure: layout.measure
     })).toEqual([{
       id: node.id,

@@ -14,6 +14,7 @@
   "dependencies": {
     "@shared/core": "workspace:*",
     "@shared/delta": "workspace:*",
+    "@shared/draft": "workspace:*",
     "@shared/mutation": "workspace:*",
     "@whiteboard/core": "workspace:*"
   },

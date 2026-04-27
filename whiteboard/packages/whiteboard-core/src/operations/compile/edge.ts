@@ -2,7 +2,7 @@ import { json } from '@shared/core'
 import {
   path as mutationPath,
   type Path
-} from '@shared/mutation'
+} from '@shared/draft'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {

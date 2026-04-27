@@ -1,5 +1,6 @@
 import {
   CommandMutationSpec,
+  type MutationCompileInput,
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createId } from '@shared/core'
@@ -101,9 +102,9 @@ export const createWhiteboardMutationSpec = (input: {
     compile: ({
       doc,
       intents
-    }) => compile({
+    }: MutationCompileInput<Document, WhiteboardIntent>) => compile({
       document: doc,
-      intents: intents as readonly WhiteboardIntent[],
+      intents,
       registries: input.registries,
       ids
     }),

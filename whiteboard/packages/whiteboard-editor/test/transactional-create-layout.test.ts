@@ -5,80 +5,74 @@ import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
 
 const nodes: NodeSpec = {
-  get: (type) => {
-    if (type === 'text') {
-      return {
-        type: 'text',
-        meta: {
-          name: 'Text',
-          family: 'text',
-          icon: 'text',
-          controls: ['text', 'fill']
-        },
-        role: 'content',
-        connect: true,
-        resize: true,
-        rotate: true,
-        layout: {
-          kind: 'size'
-        },
-        enter: true,
-        edit: {
-          fields: {
-            text: {
-              multiline: true,
-              empty: 'keep'
-            }
+  text: {
+    meta: {
+      type: 'text',
+      name: 'Text',
+      family: 'text',
+      icon: 'text',
+      controls: ['text', 'fill']
+    },
+    behavior: {
+      role: 'content',
+      connect: true,
+      resize: true,
+      rotate: true,
+      layout: {
+        kind: 'size'
+      },
+      enter: true,
+      edit: {
+        fields: {
+          text: {
+            multiline: true,
+            empty: 'keep'
           }
         }
       }
     }
-
-    if (type === 'sticky') {
-      return {
-        type: 'sticky',
-        meta: {
-          name: 'Sticky',
-          family: 'text',
-          icon: 'sticky',
-          controls: ['text', 'fill']
-        },
-        role: 'content',
-        connect: true,
-        resize: true,
-        rotate: true,
-        layout: {
-          kind: 'fit'
-        },
-        enter: true,
-        edit: {
-          fields: {
-            text: {
-              multiline: true,
-              empty: 'keep'
-            }
+  },
+  sticky: {
+    meta: {
+      type: 'sticky',
+      name: 'Sticky',
+      family: 'text',
+      icon: 'sticky',
+      controls: ['text', 'fill']
+    },
+    behavior: {
+      role: 'content',
+      connect: true,
+      resize: true,
+      rotate: true,
+      layout: {
+        kind: 'fit'
+      },
+      enter: true,
+      edit: {
+        fields: {
+          text: {
+            multiline: true,
+            empty: 'keep'
           }
         }
       }
     }
-
-    if (type === 'mindmap') {
-      return {
-        type: 'mindmap',
-        meta: {
-          name: 'Mindmap',
-          family: 'shape',
-          icon: 'mindmap',
-          controls: []
-        },
-        role: 'content',
-        connect: false,
-        resize: false,
-        rotate: false
-      }
+  },
+  mindmap: {
+    meta: {
+      type: 'mindmap',
+      name: 'Mindmap',
+      family: 'shape',
+      icon: 'mindmap',
+      controls: []
+    },
+    behavior: {
+      role: 'content',
+      connect: false,
+      resize: false,
+      rotate: false
     }
-
-    return undefined
   }
 }
 
@@ -136,7 +130,7 @@ const createTestEditor = () => {
       center: { x: 0, y: 0 },
       zoom: 1
     },
-    registry,
+    nodes,
     services: {
       layout
     }

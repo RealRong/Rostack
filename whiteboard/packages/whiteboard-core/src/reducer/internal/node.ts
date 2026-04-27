@@ -1,8 +1,8 @@
 import { json } from '@shared/core'
 import {
-  record as mutationRecord,
+  patch as mutationRecord,
   type Path
-} from '@shared/mutation'
+} from '@shared/draft'
 import type {
   Node,
   NodeField,

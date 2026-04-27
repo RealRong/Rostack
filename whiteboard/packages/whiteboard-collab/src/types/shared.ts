@@ -1,5 +1,5 @@
 import type { Document, Operation } from '@whiteboard/core/types'
-import type { HistoryFootprint } from '@whiteboard/core/spec/history'
+import type { HistoryFootprint } from '@whiteboard/core/operations'
 import type {
   YjsSyncCodec as SharedYjsSyncCodec,
   YjsSyncMeta,

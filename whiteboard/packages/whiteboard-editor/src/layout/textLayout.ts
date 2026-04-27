@@ -6,7 +6,7 @@ import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { TransformPreviewPatch } from '@whiteboard/core/node'
-import { schema as schemaApi } from '@whiteboard/core/schema'
+import { schema as schemaApi } from '@whiteboard/core/registry'
 import type {
   MindmapTemplate,
   MindmapTemplateNode,

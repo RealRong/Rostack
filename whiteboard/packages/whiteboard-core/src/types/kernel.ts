@@ -9,7 +9,7 @@ import type {
   Operation
 } from '@whiteboard/core/types/operations'
 import type { Result, ResultCode } from '@whiteboard/core/types/result'
-import type { HistoryFootprint } from '@whiteboard/core/spec/history'
+import type { HistoryFootprint } from '@whiteboard/core/operations/history'
 
 export type KernelContext = {
   now?: () => number

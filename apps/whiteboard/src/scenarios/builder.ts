@@ -1,4 +1,4 @@
-import type { ShapeKind } from '@whiteboard/core/node/shape'
+import type { ShapeKind } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   Document,
@@ -12,6 +12,13 @@ import type {
   Point,
   Size
 } from '@whiteboard/core/types'
+
+const DEFAULT_NODE_SIZE = {
+  frame: { width: 640, height: 360 },
+  shape: { width: 180, height: 110 },
+  sticky: { width: 160, height: 120 },
+  text: { width: 144, height: 20 }
+} as const
 
 type BaseNodeInput = {
   id?: string
@@ -83,6 +90,7 @@ export const createFrameNode = (
 
   return {
     ...node,
+    size: node.size ?? DEFAULT_NODE_SIZE.frame,
     type: 'frame',
     data: {
       ...(data ?? {}),
@@ -103,6 +111,7 @@ export const createShapeNode = (
 
   return {
     ...node,
+    size: node.size ?? DEFAULT_NODE_SIZE.shape,
     type: 'shape',
     data: {
       ...(data ?? {}),
@@ -123,6 +132,7 @@ export const createStickyNode = (
 
   return {
     ...node,
+    size: node.size ?? DEFAULT_NODE_SIZE.sticky,
     type: 'sticky',
     data: {
       ...(data ?? {}),
@@ -142,6 +152,7 @@ export const createTextNode = (
 
   return {
     ...node,
+    size: node.size ?? DEFAULT_NODE_SIZE.text,
     type: 'text',
     data: {
       ...(data ?? {}),

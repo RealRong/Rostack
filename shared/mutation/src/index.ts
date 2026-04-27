@@ -1,5 +1,7 @@
 export { path } from './path'
 export type { Path, PathKey } from './path'
+export { record } from './record'
+export type { RecordPathMutation } from './record'
 export { meta } from './meta'
 export type {
   FamilyMeta,

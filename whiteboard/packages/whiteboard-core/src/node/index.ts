@@ -4,9 +4,6 @@ import {
   TEXT_BOOTSTRAP_SIZE
 } from '@whiteboard/core/node/bootstrap'
 import {
-  resolveDocumentNodeGeometry
-} from '@whiteboard/core/node/document'
-import {
   createNodeOp,
   planNodeAlignOps,
   planNodeDistributeOps
@@ -35,10 +32,6 @@ import {
   readNodeRotation
 } from '@whiteboard/core/node/geometry'
 import {
-  getNodesBoundingRect,
-  rectEquals
-} from '@whiteboard/core/node/group'
-import {
   filterNodeIdsInRect,
   getNodeIdsInRect,
   matchCanvasNodeRect
@@ -61,7 +54,7 @@ import {
   finishMoveState,
   startMoveState,
   stepMoveState
-} from '@whiteboard/core/node/moveState'
+} from '@whiteboard/core/node/move'
 import {
   containsPointInNodeOutline,
   distanceToNodeOutline,
@@ -79,8 +72,7 @@ import {
   applyNodeTextPreview,
   isNodeProjectionPatchEqual,
   toSpatialNode
-} from '@whiteboard/core/node/projection'
-import { applySelection } from '@whiteboard/core/node/selection'
+} from '@whiteboard/core/node/patch'
 import {
   isShapeKind,
   readShapeDescriptor,
@@ -155,10 +147,12 @@ import {
   isNodeUpdateEmpty
 } from '@whiteboard/core/node/update'
 import {
-  expandRectByThreshold,
   resolveInteractionZoom,
   resolveSnapThresholdWorld
-} from '@whiteboard/core/snap'
+} from '@whiteboard/core/geometry/viewport'
+import {
+  expandRect as expandRectByThreshold
+} from '@whiteboard/core/geometry/rect'
 
 export const node = {
   update: {
@@ -175,9 +169,6 @@ export const node = {
     rotation: readNodeRotation,
     rect: getNodeRect,
     bounds: getNodesBounds
-  },
-  document: {
-    geometry: resolveDocumentNodeGeometry
   },
   outline: {
     containsPoint: containsPointInNodeOutline,
@@ -196,10 +187,6 @@ export const node = {
     points: readDrawPoints,
     resolvePoints: resolveDrawPoints,
     resolveStroke: resolveDrawStroke
-  },
-  group: {
-    boundingRect: getNodesBoundingRect,
-    rectEquals
   },
   frame: {
     create: createFrameQuery,
@@ -276,7 +263,7 @@ export const node = {
     align: alignNodes,
     distribute: distributeNodes
   },
-  projection: {
+  patch: {
     applyGeometryPatch: applyNodeGeometryPatch,
     applyTextDraft: applyNodeTextDraft,
     applyTextPreview: applyNodeTextPreview,
@@ -310,9 +297,6 @@ export const node = {
     contentBox: resolveTextContentBox,
     defaultFontSize: TEXT_DEFAULT_FONT_SIZE
   },
-  selection: {
-    apply: applySelection
-  },
   shape: {
     descriptors: SHAPE_DESCRIPTORS,
     isKind: isShapeKind,
@@ -328,15 +312,15 @@ export const node = {
 
 export {
   toSpatialNode
-} from '@whiteboard/core/node/projection'
+} from '@whiteboard/core/node/patch'
 export {
   resolveDocumentNodeGeometry
-} from '@whiteboard/core/node/document'
+} from '@whiteboard/core/node/geometry'
 
 export type {
   DocumentNodeGeometry,
   ResolvedDocumentNodeGeometry
-} from '@whiteboard/core/node/document'
+} from '@whiteboard/core/node/geometry'
 export type { NodeOutlineAnchorOptions } from '@whiteboard/core/node/outline'
 export type { ResolvedDrawStroke } from '@whiteboard/core/node/draw'
 export type { NodeRectHitOptions } from '@whiteboard/core/node/hitTest'
@@ -353,7 +337,7 @@ export type {
   MoveState,
   MoveSnapResolver,
   MoveStepResult
-} from '@whiteboard/core/node/moveState'
+} from '@whiteboard/core/node/move'
 export type {
   ResizeGestureInput,
   ResizeGestureSnapshot,
@@ -423,5 +407,5 @@ export type {
   SnapEdge,
   SnapResult
 } from '@whiteboard/core/node/snap'
-export type { SnapThresholdConfig } from '@whiteboard/core/snap'
-export type { SelectionMode } from '@whiteboard/core/node/selection'
+export type { SnapThresholdConfig } from '@whiteboard/core/geometry/viewport'
+export type { SelectionMode } from '@whiteboard/core/selection/model'

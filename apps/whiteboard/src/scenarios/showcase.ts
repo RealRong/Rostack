@@ -1,6 +1,6 @@
 import type {
   ShapeKind
-} from '@whiteboard/core/node/shape'
+} from '@whiteboard/core/node'
 import type {
   Document,
   Edge,
@@ -38,6 +38,7 @@ const createBasicDocument = (): Document => {
       id: 'node-3',
       type: 'text',
       position: { x: -120, y: 140 },
+      size: { width: 144, height: 20 },
       groupId,
       data: { text: '双击编辑文本' }
     },
@@ -209,7 +210,7 @@ const createMindmapDocument = (): Document => {
       position: nodeId === rootId
         ? { x: -80, y: -60 }
         : { x: 0, y: 0 },
-      size: templateNode.size,
+      size: templateNode.size ?? { width: 144, height: 20 },
       rotation: templateNode.rotation,
       locked: templateNode.locked,
       data: templateNode.data,

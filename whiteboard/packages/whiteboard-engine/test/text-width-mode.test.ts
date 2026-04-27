@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
-import { schema } from '@whiteboard/core/schema'
+import { schema } from '@whiteboard/core/registry'
 import { createEngine } from '@whiteboard/engine'
 
 const createTextDocument = () => {

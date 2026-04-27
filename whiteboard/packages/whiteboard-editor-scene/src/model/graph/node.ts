@@ -236,11 +236,11 @@ export const readNodeDraftMeasure = (input: {
       height: size.height
     }
   })()
-  const previewItem = nodeApi.projection.applyTextPreview({
+  const previewItem = nodeApi.patch.applyTextPreview({
     node: input.entry.base.node,
     rect: fallbackRect
   }, input.entry.preview?.patch)
-  const contentItem = nodeApi.projection.applyTextDraft(previewItem, {
+  const contentItem = nodeApi.patch.applyTextDraft(previewItem, {
     field: input.edit.field,
     value: input.edit.text
   })
@@ -260,11 +260,11 @@ export const buildNodeView = (input: {
   edit: SessionInput['edit']
 }): NodeView => {
   const geometry = buildProjectedNodeGeometry(input)
-  const previewItem = nodeApi.projection.applyTextPreview({
+  const previewItem = nodeApi.patch.applyTextPreview({
     node: input.entry.base.node,
     rect: geometry.rect
   }, input.entry.preview?.patch)
-  const contentItem = nodeApi.projection.applyTextDraft(
+  const contentItem = nodeApi.patch.applyTextDraft(
     previewItem,
     readNodeTextDraft({
       entry: input.entry,

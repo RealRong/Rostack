@@ -26,6 +26,26 @@ export type EdgeRouteHandleTarget =
       point: Point
     }
 
+export type EdgeRoutePoint = {
+  key: string
+  kind: 'anchor' | 'insert' | 'control'
+  edgeId: EdgeId
+  point: Point
+  active: boolean
+  deletable: boolean
+  pick:
+    | {
+        kind: 'anchor'
+        index: number
+      }
+    | {
+        kind: 'segment'
+        insertIndex: number
+        segmentIndex: number
+        axis: 'x' | 'y'
+      }
+}
+
 export const resolveEdgeRouteHandleTarget = (input: {
   edgeId: EdgeId
   handles: readonly EdgeHandle[]
@@ -69,6 +89,57 @@ export const resolveEdgeRouteHandleTarget = (input: {
         point: handle.point
       }
     : undefined
+}
+
+export const readEdgeRoutePoints = (input: {
+  edgeId: EdgeId
+  edge: Edge
+  handles: readonly EdgeHandle[]
+  activeRouteIndex?: number
+}): readonly EdgeRoutePoint[] => {
+  const isStepManual =
+    (input.edge.type === 'elbow' || input.edge.type === 'fillet')
+    && input.edge.route?.kind === 'manual'
+
+  return input.handles.flatMap<EdgeRoutePoint>((handle) => {
+    if (handle.kind === 'anchor') {
+      if (isStepManual) {
+        return []
+      }
+
+      return [{
+        key: `${input.edgeId}:anchor:${handle.index}`,
+        kind: 'anchor',
+        edgeId: input.edgeId,
+        point: handle.point,
+        active: input.activeRouteIndex === handle.index,
+        deletable: true,
+        pick: {
+          kind: 'anchor',
+          index: handle.index
+        }
+      }]
+    }
+
+    if (handle.kind === 'segment') {
+      return [{
+        key: `${input.edgeId}:${handle.role}:${handle.segmentIndex}`,
+        kind: handle.role,
+        edgeId: input.edgeId,
+        point: handle.point,
+        active: input.activeRouteIndex === handle.insertIndex,
+        deletable: false,
+        pick: {
+          kind: 'segment',
+          insertIndex: handle.insertIndex,
+          segmentIndex: handle.segmentIndex,
+          axis: handle.axis
+        }
+      }]
+    }
+
+    return []
+  })
 }
 
 export const createRoutePatchFromPathPoints = (

@@ -8,12 +8,12 @@ import {
   document as documentApi
 } from '@whiteboard/core/document'
 import {
-  WHITEBOARD_OPERATION_DEFINITIONS
-} from '@whiteboard/core/spec/operation'
+  definitions
+} from '@whiteboard/core/operations'
 import type {
   Operation
 } from '@whiteboard/core/types'
-import { createId } from '@whiteboard/core/id'
+import { createId } from '@shared/core'
 import * as Y from 'yjs'
 import type {
   CollabSession,
@@ -32,7 +32,7 @@ const readLiveOperations = (
   checkpointOnly: boolean
 } => {
   const live = operations.filter((operation) => (
-    WHITEBOARD_OPERATION_DEFINITIONS[operation.type].sync !== 'checkpoint'
+    definitions[operation.type].sync !== 'checkpoint'
   )) as readonly Exclude<Operation, { type: 'document.replace' }>[]
 
   if (live.length === operations.length) {

@@ -12,11 +12,9 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import {
-  pickNearest,
-  rectFromPoint,
-  resolveScreenDistanceWorld
-} from '@whiteboard/core/snap'
+import { pickNearest } from '@whiteboard/core/geometry/scalar'
+import { rectFromPoint } from '@whiteboard/core/geometry/rect'
+import { resolveScreenDistanceWorld } from '@whiteboard/core/geometry/viewport'
 import type {
   EdgeConnectCandidate,
   EdgeConnectConfig,

@@ -2,18 +2,18 @@ import {
   CommandMutationSpec,
   type Origin as MutationOrigin
 } from '@shared/mutation'
-import { createId } from '@whiteboard/core/id'
+import { createId } from '@shared/core'
 import {
-  compileWhiteboardIntents,
+  compile,
   type WhiteboardCompileIds,
   type WhiteboardIntent,
   type WhiteboardMutationTable
-} from '@whiteboard/core/intent'
+} from '@whiteboard/core/operations'
 import {
-  WHITEBOARD_OPERATION_DEFINITIONS,
-  whiteboardMutationOperations
-} from '@whiteboard/core/spec/operation'
-import type { BoardConfig } from '@whiteboard/core/config'
+  definitions,
+  spec
+} from '@whiteboard/core/operations'
+import type { BoardConfig } from '@whiteboard/engine/config'
 import type {
   CoreRegistries,
   Document,
@@ -26,7 +26,7 @@ import type {
 import type {
   EnginePublish
 } from '../contracts/document'
-import { normalizeDocument } from '@whiteboard/core/document/normalize'
+import { normalizeDocument } from '@whiteboard/core/document'
 import { whiteboardPublishSpec } from './publish'
 import type {
   WhiteboardMutationExtra,
@@ -70,7 +70,7 @@ const shouldClearHistory = (
   },
   config: WhiteboardHistoryConfig
 ): boolean => shouldTrackOrigin(commit.origin, config)
-  && commit.forward.some((op) => WHITEBOARD_OPERATION_DEFINITIONS[op.type].sync === 'checkpoint')
+  && commit.forward.some((op) => definitions[op.type].sync === 'checkpoint')
 
 export type WhiteboardMutationSpec = CommandMutationSpec<
   Document,
@@ -97,17 +97,17 @@ export const createWhiteboardMutationSpec = (input: {
   }
 
   return {
-    normalize: (doc) => normalizeDocument(doc, input.config),
+    normalize: (doc) => normalizeDocument(doc),
     compile: ({
       doc,
       intents
-    }) => compileWhiteboardIntents({
+    }) => compile({
       document: doc,
       intents: intents as readonly WhiteboardIntent[],
       registries: input.registries,
       ids
     }),
-    operations: whiteboardMutationOperations,
+    operations: spec,
     publish: whiteboardPublishSpec,
     history: {
       capacity: historyConfig.capacity,

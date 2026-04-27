@@ -12,8 +12,8 @@ import type {
   EdgeId,
   MindmapId
 } from '@whiteboard/core/types'
-import type { BoardConfig } from '@whiteboard/core/config'
-import type { HistoryFootprint } from '@whiteboard/core/spec/history'
+import type { BoardConfig } from '@whiteboard/engine/config'
+import type { HistoryFootprint } from '@whiteboard/core/operations'
 import type {
   EngineCommit,
   EngineApplyCommit

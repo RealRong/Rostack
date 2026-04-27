@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
-import { schema } from '@whiteboard/core/schema'
+import { schema } from '@whiteboard/core/registry'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi } from '../src'
 import type {

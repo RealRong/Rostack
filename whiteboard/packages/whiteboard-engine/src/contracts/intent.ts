@@ -12,7 +12,7 @@ import type {
   WhiteboardIntentKind,
   WhiteboardIntentOutput,
   WhiteboardIntentTable
-} from '@whiteboard/core/intent'
+} from '@whiteboard/core/operations'
 import type { EngineApplyCommit } from '../types/engineWrite'
 import type { WhiteboardErrorCode } from '../types/result'
 

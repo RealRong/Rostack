@@ -1,4 +1,4 @@
-import { createId } from '@whiteboard/core/id'
+import { createId } from '@shared/core'
 import type {
   MindmapBranchStyle,
   MindmapIdGenerator,

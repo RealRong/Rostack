@@ -1,6 +1,8 @@
 import { json } from '@shared/core'
-import { applyRecordPathMutation, readRecordPath } from '../../mutation/recordPath'
-import type { Path } from '@shared/mutation'
+import {
+  record as mutationRecord,
+  type Path
+} from '@shared/mutation'
 import type {
   Node,
   NodeField,
@@ -52,7 +54,7 @@ const applyNodeRecordMutation = (
   const current = scope === 'data'
     ? node.data
     : node.style
-  const result = applyRecordPathMutation(current, mutation)
+  const result = mutationRecord.apply(current, mutation)
   if (!result.ok) {
     return result
   }
@@ -225,7 +227,7 @@ export const setNodeRecord = (
   const currentRoot = scope === 'data'
     ? current.data
     : current.style
-  const previous = readRecordPath(currentRoot, path)
+  const previous = mutationRecord.read(currentRoot, path)
   state.inverse.prepend(previous === undefined
     ? {
         type: 'node.record.unset',
@@ -273,7 +275,7 @@ export const unsetNodeRecord = (
     id,
     scope,
     path,
-    value: json.clone(readRecordPath(currentRoot, path))
+    value: json.clone(mutationRecord.read(currentRoot, path))
   })
   const next = applyNodeRecordMutation(current, scope, {
     op: 'unset',

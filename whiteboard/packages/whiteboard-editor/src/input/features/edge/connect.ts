@@ -5,7 +5,7 @@ import {
   type EdgeConnectPreview,
   type EdgeConnectState
 } from '@whiteboard/core/edge'
-import type { BoardConfig } from '@whiteboard/core/config'
+import type { BoardConfig } from '@whiteboard/engine/config'
 import { node as nodeApi, toSpatialNode } from '@whiteboard/core/node'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {

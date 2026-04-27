@@ -4,11 +4,11 @@ import { edge as edgeApi } from '@whiteboard/core/edge'
 import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
-import { getNodesBoundingRect } from '@whiteboard/core/node/group'
+import { getNodesBoundingRect } from '@whiteboard/core/node/geometry'
 import { createFrameQuery } from '@whiteboard/core/node/frame'
 import { createNodeOp } from '@whiteboard/core/node/ops'
-import { createId } from '@whiteboard/core/id'
-import { err, ok } from '@whiteboard/core/result'
+import { createId } from '@shared/core'
+import { err, ok } from '@whiteboard/core/utils/result'
 import type {
   CoreRegistries,
   Document,
@@ -394,10 +394,10 @@ const detachEdge = ({
   doc: Document
 }): Result<Edge, 'invalid'> => {
   const sourceNode = edgeApi.guard.isNodeEnd(edge.source)
-    ? documentApi.read.node(doc, edge.source.nodeId)
+    ? doc.nodes[edge.source.nodeId]
     : undefined
   const targetNode = edgeApi.guard.isNodeEnd(edge.target)
-    ? documentApi.read.node(doc, edge.target.nodeId)
+    ? doc.nodes[edge.target.nodeId]
     : undefined
 
   const resolved = resolveEdgeEnds({
@@ -437,10 +437,10 @@ const detachSelectionEdge = ({
   nodeIds: ReadonlySet<NodeId>
 }): Result<Edge, 'invalid'> => {
   const sourceNode = edgeApi.guard.isNodeEnd(edge.source)
-    ? documentApi.read.node(doc, edge.source.nodeId)
+    ? doc.nodes[edge.source.nodeId]
     : undefined
   const targetNode = edgeApi.guard.isNodeEnd(edge.target)
-    ? documentApi.read.node(doc, edge.target.nodeId)
+    ? doc.nodes[edge.target.nodeId]
     : undefined
   const resolved = resolveEdgeEnds({
     edge,
@@ -606,7 +606,7 @@ export const exportSliceFromNodes = ({
     return err('invalid', 'No nodes selected.')
   }
 
-  const orderedNodes = documentApi.list.nodes(doc)
+  const orderedNodes = Object.values(doc.nodes)
   const expandedIds = collectExpandedNodeIds(orderedNodes, selectedIds)
   const rawNodes = orderedNodes
     .filter((node) => expandedIds.has(node.id))
@@ -618,7 +618,7 @@ export const exportSliceFromNodes = ({
 
   const nodeIdSet = new Set(rawNodes.map((node) => node.id))
   const nodes = rawNodes
-  const edges = documentApi.list.edges(doc)
+  const edges = Object.values(doc.edges)
     .filter((edge) => isEdgeInsideNodeSlice(edge, nodeIdSet))
     .map((edge) => cloneEdge(edge))
 
@@ -649,7 +649,7 @@ export const exportSliceFromEdge = ({
   doc,
   edgeId
 }: ExportEdgeInput): Result<SliceExportResult, 'invalid'> => {
-  const edge = documentApi.read.edge(doc, edgeId)
+  const edge = doc.edges[edgeId]
   if (!edge) {
     return err('invalid', `Edge ${edgeId} not found.`)
   }
@@ -693,7 +693,7 @@ export const exportSliceFromSelection = ({
     return err('invalid', 'No selection provided.')
   }
 
-  const orderedNodes = documentApi.list.nodes(doc)
+  const orderedNodes = Object.values(doc.nodes)
   const expandedNodeIds = collectExpandedNodeIds(orderedNodes, selectedNodeIds)
   const rawNodes = orderedNodes
     .filter((node) => expandedNodeIds.has(node.id))
@@ -704,7 +704,7 @@ export const exportSliceFromSelection = ({
   const edges: Edge[] = []
   const includedEdgeIds = new Set<EdgeId>()
 
-  documentApi.list.edges(doc).forEach((edge) => {
+  Object.values(doc.edges).forEach((edge) => {
     if (isEdgeInsideNodeSlice(edge, nodeIdSet)) {
       edges.push(cloneEdge(edge))
       includedEdgeIds.add(edge.id)

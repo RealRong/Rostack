@@ -2,29 +2,18 @@ import {
   planMindmapInsertByPlacement,
   planMindmapRootMove,
   planMindmapSubtreeMove,
-  DEFAULT_ROOT_MOVE_THRESHOLD
-} from '@whiteboard/core/mindmap/application'
-import {
-  addChild,
-  cloneSubtree,
-  createMindmap,
-  insertNode,
-  moveSubtree,
-  patchMindmap,
-  removeSubtree
-} from '@whiteboard/core/mindmap/treeMutate'
+  DEFAULT_ROOT_MOVE_THRESHOLD,
+  buildMindmapRelativeInsertInput,
+  readMindmapAddChildTargets,
+  resolveMindmapInsertSide,
+  toMindmapTopicStylePatch
+} from '@whiteboard/core/mindmap/plan'
 import {
   computeSubtreeDropTarget,
   createRootDrag,
   createSubtreeDrag,
   projectMindmapDrag
 } from '@whiteboard/core/mindmap/dropTarget'
-import {
-  buildMindmapRelativeInsertInput,
-  readMindmapAddChildTargets,
-  resolveMindmapInsertSide,
-  toMindmapTopicStylePatch
-} from '@whiteboard/core/mindmap/query'
 import {
   layoutMindmap,
   layoutMindmapTidy
@@ -36,16 +25,23 @@ import {
   translateMindmapLayout
 } from '@whiteboard/core/mindmap/render'
 import {
+  addChild,
+  cloneSubtree,
   computeMindmapLayout,
+  createMindmap,
   getMindmapIdByNode,
   getMindmapRecordByNodeId,
   getMindmapTree,
   getMindmapTreeFromDocument,
-  resolveMindmapId,
   getSide,
   getSubtreeIds,
+  insertNode,
+  moveSubtree,
+  patchMindmap,
   readMindmapNavigateTarget,
+  removeSubtree,
   resolveInsertPlan,
+  resolveMindmapId,
   toMindmapTree
 } from '@whiteboard/core/mindmap/tree'
 import {
@@ -83,7 +79,10 @@ export const mindmap = {
     insertByPlacement: planMindmapInsertByPlacement,
     insertTarget: resolveInsertPlan,
     rootMove: planMindmapRootMove,
-    subtreeMove: planMindmapSubtreeMove
+    subtreeMove: planMindmapSubtreeMove,
+    addChildTargets: readMindmapAddChildTargets,
+    insertSide: resolveMindmapInsertSide,
+    relativeInsertInput: buildMindmapRelativeInsertInput
   },
   layout: {
     compute: computeMindmapLayout,
@@ -114,11 +113,6 @@ export const mindmap = {
     createRootDrag,
     createSubtreeDrag,
     projectDrag: projectMindmapDrag
-  },
-  addChildTargets: readMindmapAddChildTargets,
-  insert: {
-    resolveSide: resolveMindmapInsertSide,
-    buildRelative: buildMindmapRelativeInsertInput
   },
   topicStyle: {
     toNodeStylePatch: toMindmapTopicStylePatch

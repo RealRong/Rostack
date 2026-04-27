@@ -1,6 +1,6 @@
-import { schema as schemaApi } from '@whiteboard/core/schema'
+import { schema as schemaApi } from '@whiteboard/core/registry/schema'
 import { resolveNodeBootstrapSize } from '@whiteboard/core/node/bootstrap'
-import { err, ok } from '@whiteboard/core/result'
+import { err, ok } from '@whiteboard/core/utils/result'
 import type {
   CoreRegistries,
   Node,

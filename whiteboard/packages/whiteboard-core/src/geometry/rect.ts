@@ -44,6 +44,16 @@ export const expandRect = (
   height: rect.height + value * 2
 })
 
+export const rectFromPoint = (
+  point: Point,
+  radius: number
+): Rect => ({
+  x: point.x - radius,
+  y: point.y - radius,
+  width: radius * 2,
+  height: radius * 2
+})
+
 export const getRectCorners = (rect: Rect): Point[] => [
   { x: rect.x, y: rect.y },
   { x: rect.x + rect.width, y: rect.y },

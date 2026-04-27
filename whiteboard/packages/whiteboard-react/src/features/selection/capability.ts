@@ -1,7 +1,7 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import {
   resolveLockDecision
-} from '@whiteboard/core/lock'
+} from '@whiteboard/core/operations'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 export type SelectionCan = {

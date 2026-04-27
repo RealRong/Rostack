@@ -1,6 +1,6 @@
 import { idDelta } from '@shared/delta'
 import type { MutationPublishSpec } from '@shared/mutation'
-import type { HistoryFootprint } from '@whiteboard/core/spec/history'
+import type { HistoryFootprint } from '@whiteboard/core/operations'
 import type {
   ChangeSet,
   Document,

@@ -336,7 +336,7 @@ const createSelectionRead = (input: {
         nodes: [...expandedNodeIds].flatMap((nodeId) => {
           const current = state.graph.nodes.get(nodeId)
           return current
-            ? [nodeApi.projection.toSpatial({
+            ? [nodeApi.patch.toSpatial({
                 node: current.base.node,
                 rect: current.geometry.rect,
                 rotation: current.geometry.rotation
@@ -871,7 +871,7 @@ export const createEditorSceneRead = (runtime: {
             const current = runtime.state().graph.nodes.get(nodeId)
             return current
               ? {
-                  node: nodeApi.projection.toSpatial({
+                  node: nodeApi.patch.toSpatial({
                     node: current.base.node,
                     rect: current.geometry.rect,
                     rotation: current.geometry.rotation
@@ -928,7 +928,7 @@ export const createEditorSceneRead = (runtime: {
 
         return [{
           nodeId: current.base.node.id,
-          node: nodeApi.projection.toSpatial({
+          node: nodeApi.patch.toSpatial({
             node: current.base.node,
             rect: current.geometry.rect,
             rotation: current.geometry.rotation
@@ -1099,7 +1099,7 @@ export const createEditorSceneRead = (runtime: {
           return []
         }
 
-        return mindmapApi.addChildTargets({
+        return mindmapApi.plan.addChildTargets({
           structure: {
             rootId: structure.rootId,
             nodeIds: structure.nodeIds,

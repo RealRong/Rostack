@@ -1,7 +1,7 @@
 import type { ReducerContext } from '@shared/reducer'
 import {
   type HistoryFootprint
-} from '@whiteboard/core/spec/history'
+} from '@whiteboard/core/operations/history'
 import type {
   Document,
   Operation,

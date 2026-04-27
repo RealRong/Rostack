@@ -1,7 +1,9 @@
 import { json } from '@shared/core'
-import { applyRecordPathMutation, readRecordPath } from '../../mutation/recordPath'
-import type { Path } from '@shared/mutation'
-import { err, ok } from '@whiteboard/core/result'
+import {
+  record as mutationRecord,
+  type Path
+} from '@shared/mutation'
+import { err, ok } from '@whiteboard/core/utils/result'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   MindmapBranchField,
@@ -81,7 +83,7 @@ const applyTopicRecordMutation = (
   const current = scope === 'data'
     ? node.data
     : node.style
-  const result = applyRecordPathMutation(current, mutation)
+  const result = mutationRecord.apply(current, mutation)
   if (!result.ok) {
     return result
   }
@@ -815,7 +817,7 @@ export const setMindmapTopicRecord = (
   const currentRoot = scope === 'data'
     ? current.data
     : current.style
-  const previous = readRecordPath(currentRoot, path)
+  const previous = mutationRecord.read(currentRoot, path)
   state.inverse.prepend(previous === undefined
     ? {
         type: 'mindmap.topic.record.unset',
@@ -867,7 +869,7 @@ export const unsetMindmapTopicRecord = (
     topicId,
     scope,
     path,
-    value: json.clone(readRecordPath(currentRoot, path))
+    value: json.clone(mutationRecord.read(currentRoot, path))
   })
   const next = applyTopicRecordMutation(current, scope, {
     op: 'unset',

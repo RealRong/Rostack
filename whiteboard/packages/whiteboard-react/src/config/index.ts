@@ -2,7 +2,7 @@ import { json } from '@shared/core'
 import {
   DEFAULT_BOARD_CONFIG,
   type BoardConfig as EngineBoardConfig
-} from '@whiteboard/core/config'
+} from '@whiteboard/engine/config'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardOptions } from '@whiteboard/react/types/common/board'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'

@@ -1,6 +1,5 @@
-import { schema as schemaApi } from '@whiteboard/core/schema'
-import { document as documentApi } from '@whiteboard/core/document'
-import { err, ok } from '@whiteboard/core/result'
+import { schema as schemaApi } from '@whiteboard/core/registry/schema'
+import { err, ok } from '@whiteboard/core/utils/result'
 import type {
   CoreRegistries,
   Document,
@@ -53,7 +52,7 @@ const readLayoutEntries = ({
 }: NodeLayoutOpsInput): Result<{
   entries: NodeLayoutEntry[]
 }, 'invalid'> => {
-  const nodes = documentApi.list.nodes(doc)
+  const nodes = Object.values(doc.nodes)
   const rootIds = Array.from(new Set(ids))
   if (!rootIds.length) {
     return err('invalid', 'No node ids provided.')
@@ -93,7 +92,7 @@ const createLayoutOps = (
 ): {
   operations: Operation[]
 } => {
-  const nodes = documentApi.list.nodes(doc)
+  const nodes = Object.values(doc.nodes)
   const nodeById = new Map(nodes.map((node) => [node.id, node] as const))
   const operations: Operation[] = []
 
@@ -125,7 +124,7 @@ export const createNodeOp = ({
   if (!payload.position) {
     return err('invalid', 'Missing node position.')
   }
-  if (payload.id && documentApi.has.node(doc, payload.id)) {
+  if (payload.id && doc.nodes[payload.id]) {
     return err('invalid', `Node ${payload.id} already exists.`)
   }
 

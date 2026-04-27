@@ -2,7 +2,7 @@ import {
   path as mutationPath,
   type Path
 } from '@shared/mutation'
-import { schema as schemaApi } from '@whiteboard/core/schema'
+import { schema as schemaApi } from '@whiteboard/core/registry'
 import type { Node, NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { DocumentQuery } from '@whiteboard/editor-scene'

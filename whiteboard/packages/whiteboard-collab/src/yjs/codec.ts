@@ -3,8 +3,8 @@ import {
   decodeJsonBytes,
   encodeJsonBytes
 } from '@shared/collab-yjs'
-import { WHITEBOARD_OPERATION_DEFINITIONS } from '@whiteboard/core/spec/operation'
-import { assertHistoryFootprint } from '@whiteboard/core/spec/history'
+import { definitions } from '@whiteboard/core/operations'
+import { assertHistoryFootprint } from '@whiteboard/core/operations'
 import type {
   SharedChange,
   SharedCheckpoint,
@@ -32,8 +32,8 @@ const assertSharedOperations = (
       throw new Error('Shared change operation is invalid.')
     }
     if (
-      !(entry.type in WHITEBOARD_OPERATION_DEFINITIONS)
-      || WHITEBOARD_OPERATION_DEFINITIONS[entry.type as SharedOperation['type']].sync === 'checkpoint'
+      !(entry.type in definitions)
+      || definitions[entry.type as SharedOperation['type']].sync === 'checkpoint'
     ) {
       throw new Error('document.replace cannot appear in shared change log.')
     }

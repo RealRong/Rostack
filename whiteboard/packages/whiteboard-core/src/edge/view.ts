@@ -1,4 +1,4 @@
-import { toSpatialNode } from '@whiteboard/core/node/projection'
+import { toSpatialNode } from '@whiteboard/core/node/patch'
 import { getEdgePath } from '@whiteboard/core/edge/path'
 import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
@@ -10,6 +10,11 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type { EdgeHandle, EdgeView, ResolveEdgeEndsInput } from '@whiteboard/core/types/edge'
+
+export type EdgeBox = {
+  rect: Rect
+  pad: number
+}
 
 const buildEdgeHandles = (
   ends: NonNullable<ReturnType<typeof resolveEdgeEnds>>,
@@ -140,5 +145,21 @@ export const resolveEdgeViewFromNodeGeometry = (input: {
     })
   } catch {
     return undefined
+  }
+}
+
+export const readEdgeBox = (input: {
+  rect?: Rect
+  edge?: Edge
+}): EdgeBox | undefined => {
+  if (!input.rect || !input.edge) {
+    return undefined
+  }
+
+  return {
+    rect: {
+      ...input.rect
+    },
+    pad: Math.max(24, (input.edge.style?.width ?? 2) + 16)
   }
 }

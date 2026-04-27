@@ -71,15 +71,19 @@ import {
   readEdgeLabelMaskTransform
 } from '@whiteboard/core/edge/labelMask'
 import {
-  readEdgeBox,
-  readEdgeRoutePoints as readEdgeControlPoints,
   resolveEdgeCapability
-} from '@whiteboard/core/edge/query'
+} from '@whiteboard/core/edge/capability'
+import {
+  readEdgeRoutePoints as readEdgeControlPoints
+} from '@whiteboard/core/edge/edit'
+import {
+  readEdgeBox
+} from '@whiteboard/core/edge/view'
 import {
   staticStyle,
   styleKey
 } from '@whiteboard/core/edge/render'
-import { getEdgePath } from '@whiteboard/core/edge/path'
+import { getEdgePath, resolveEdgePathFromRects } from '@whiteboard/core/edge/path'
 import {
   applyEdgePatch,
   isEdgePatchEqual
@@ -88,7 +92,6 @@ import {
   collectRelatedEdgeIds,
   createEdgeRelations
 } from '@whiteboard/core/edge/relations'
-import { resolveEdgePathFromRects } from '@whiteboard/core/edge/resolvedPath'
 import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
 import { getNearestEdgeInsertIndex } from '@whiteboard/core/edge/segment'
 import {
@@ -245,13 +248,17 @@ export type { EdgeRouteHandleTarget } from '@whiteboard/core/edge/edit'
 export type { EdgeLabelMaskRect } from '@whiteboard/core/edge/labelMask'
 export type { EdgeStaticStyle } from '@whiteboard/core/edge/render'
 export type {
-  EdgeBox,
-  EdgeCapability,
+  EdgeCapability
+} from '@whiteboard/core/edge/capability'
+export type {
   EdgeRoutePoint
-} from '@whiteboard/core/edge/query'
+} from '@whiteboard/core/edge/edit'
+export type {
+  EdgeBox
+} from '@whiteboard/core/edge/view'
 export {
   resolveEdgeViewFromNodeGeometry
 } from '@whiteboard/core/edge/view'
 export {
   resolveEdgePathFromRects
-} from '@whiteboard/core/edge/resolvedPath'
+} from '@whiteboard/core/edge/path'

@@ -54,7 +54,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     [options]
   )
   const inputDocument = useMemo(
-    () => normalizeDocument(document, boardConfig),
+    () => normalizeDocument(document),
     [document, boardConfig]
   )
   const onDocumentChangeRef = useRef(onDocumentChange)

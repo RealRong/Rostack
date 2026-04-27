@@ -1,12 +1,13 @@
 import { json } from '@shared/core'
-import type { BoardConfig } from '@whiteboard/core/config'
 import {
-  DEFAULT_BOARD_CONFIG
+  DEFAULT_BOARD_CONFIG,
+  type BoardConfig
 } from './defaults'
 
 export {
   DEFAULT_BOARD_CONFIG,
-  DEFAULT_TUNING
+  DEFAULT_TUNING,
+  type BoardConfig
 } from './defaults'
 
 export const resolveBoardConfig = (

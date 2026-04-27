@@ -13,6 +13,11 @@ export type ViewportLimits = {
   maxZoom: number
 }
 
+export type SnapThresholdConfig = {
+  snapThresholdScreen: number
+  snapMaxThresholdWorld: number
+}
+
 export type WheelInput = {
   deltaX: number
   deltaY: number
@@ -35,6 +40,38 @@ export const DEFAULT_VIEWPORT_LIMITS: ViewportLimits = {
 }
 
 export const DEFAULT_VIEWPORT_FIT_PADDING = 48
+
+export const resolveInteractionZoom = (
+  zoom: number,
+  zoomEpsilon = 0.0001
+) => Math.max(zoom, zoomEpsilon)
+
+export const resolveScreenDistanceWorld = (
+  screen: number,
+  zoom: number,
+  zoomEpsilon = 0.0001
+) => screen / resolveInteractionZoom(zoom, zoomEpsilon)
+
+export const resolveWorldThreshold = (
+  screen: number,
+  maxWorld: number,
+  zoom: number,
+  zoomEpsilon = 0.0001
+) => Math.min(
+  resolveScreenDistanceWorld(screen, zoom, zoomEpsilon),
+  maxWorld
+)
+
+export const resolveSnapThresholdWorld = (
+  config: SnapThresholdConfig,
+  zoom: number,
+  zoomEpsilon = 0.0001
+) => resolveWorldThreshold(
+  config.snapThresholdScreen,
+  config.snapMaxThresholdWorld,
+  zoom,
+  zoomEpsilon
+)
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))

@@ -1,6 +1,8 @@
 import { json } from '@shared/core'
-import { applyRecordPathMutation, readRecordPath } from '../../mutation/recordPath'
-import type { Path } from '@shared/mutation'
+import {
+  record as mutationRecord,
+  type Path
+} from '@shared/mutation'
 import type {
   Edge,
   EdgeField,
@@ -56,7 +58,7 @@ const applyEdgeRecordMutation = (
   const current = scope === 'data'
     ? edge.data
     : edge.style
-  const result = applyRecordPathMutation(current, mutation)
+  const result = mutationRecord.apply(current, mutation)
   if (!result.ok) {
     return result
   }
@@ -213,7 +215,7 @@ export const setEdgeRecord = (
   const currentRoot = scope === 'data'
     ? current.data
     : current.style
-  const previous = readRecordPath(currentRoot, path)
+  const previous = mutationRecord.read(currentRoot, path)
   state.inverse.prepend(previous === undefined
     ? {
         type: 'edge.record.unset',
@@ -260,7 +262,7 @@ export const unsetEdgeRecord = (
     id,
     scope,
     path,
-    value: json.clone(readRecordPath(currentRoot, path))
+    value: json.clone(mutationRecord.read(currentRoot, path))
   })
   const next = applyEdgeRecordMutation(current, scope, {
     op: 'unset',
@@ -492,7 +494,7 @@ export const setEdgeLabelRecord = (
   const currentRoot = scope === 'data'
     ? label.data
     : label.style
-  const previous = readRecordPath(currentRoot, path)
+  const previous = mutationRecord.read(currentRoot, path)
   state.inverse.prepend(previous === undefined
     ? {
         type: 'edge.label.record.unset',
@@ -509,7 +511,7 @@ export const setEdgeLabelRecord = (
         path,
         value: json.clone(previous)
       })
-  const result = applyRecordPathMutation(currentRoot, {
+  const result = mutationRecord.apply(currentRoot, {
     op: 'set',
     path,
     value
@@ -557,9 +559,9 @@ export const unsetEdgeLabelRecord = (
     labelId,
     scope,
     path,
-    value: json.clone(readRecordPath(currentRoot, path))
+    value: json.clone(mutationRecord.read(currentRoot, path))
   })
-  const result = applyRecordPathMutation(currentRoot, {
+  const result = mutationRecord.apply(currentRoot, {
     op: 'unset',
     path
   })

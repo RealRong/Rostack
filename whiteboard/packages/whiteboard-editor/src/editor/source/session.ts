@@ -270,12 +270,12 @@ export const createEditorSessionSource = (
 
   const selectionSummary = store.createDerivedStore({
     get: () => graph.query.selection.summary(store.read(state.selection)),
-    isEqual: selectionApi.derive.isSummaryEqual
+    isEqual: selectionApi.derive.summaryEqual
   })
 
   const selectionAffordance = store.createDerivedStore({
     get: () => graph.query.selection.affordance(store.read(state.selection)),
-    isEqual: selectionApi.derive.isAffordanceEqual
+    isEqual: selectionApi.derive.affordanceEqual
   })
 
   const selectionViewSummary = store.createDerivedStore<EditorSelectionSummaryView>({

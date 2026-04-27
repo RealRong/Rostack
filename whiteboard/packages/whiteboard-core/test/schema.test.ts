@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { path as mutationPath } from '@shared/mutation'
-import { createRegistries } from '@whiteboard/core/kernel'
-import { schema } from '@whiteboard/core/schema'
+import { createRegistries } from '@whiteboard/core/registry'
+import { schema } from '@whiteboard/core/registry'
 
 test('compileNodeFieldRecord 将 schema field 编译为 canonical node record', () => {
   assert.deepEqual(

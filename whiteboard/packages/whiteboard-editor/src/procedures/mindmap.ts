@@ -381,7 +381,7 @@ export const createMindmapActionProcedures = ({
       return undefined
     }
 
-    const insertInput = mindmapApi.insert.buildRelative({
+    const insertInput = mindmapApi.plan.relativeInsertInput({
       structure: {
         rootId: structure.rootId,
         nodeIds: structure.nodeIds,

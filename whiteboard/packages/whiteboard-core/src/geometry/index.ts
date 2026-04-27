@@ -24,6 +24,7 @@ import {
   getRectsBoundingRect,
   isPointInRect,
   rectContains,
+  rectFromPoint,
   rectFromPoints,
   rectIntersects
 } from '@whiteboard/core/geometry/rect'
@@ -31,7 +32,7 @@ import {
   getRotatedCorners,
   isPointInRotatedRect
 } from '@whiteboard/core/geometry/rotation'
-import { clamp, degToRad } from '@whiteboard/core/geometry/scalar'
+import { clamp, degToRad, pickNearest } from '@whiteboard/core/geometry/scalar'
 import {
   distancePointToSegment,
   getSegmentBounds
@@ -51,6 +52,10 @@ import {
   panViewport,
   projectPoint,
   projectRect,
+  resolveInteractionZoom,
+  resolveScreenDistanceWorld,
+  resolveSnapThresholdWorld,
+  resolveWorldThreshold,
   screenToWorldPoint,
   viewportScreenToWorld,
   viewportWorldToScreen,
@@ -61,11 +66,13 @@ import {
 export const geometry = {
   scalar: {
     clamp,
-    degToRad
+    degToRad,
+    pickNearest
   },
   rect: {
     center: getRectCenter,
     containsPoint: isPointInRect,
+    fromPoint: rectFromPoint,
     fromPoints: rectFromPoints,
     contains: rectContains,
     intersects: rectIntersects,
@@ -116,6 +123,10 @@ export const geometry = {
     pan: panViewport,
     projectPoint,
     projectRect,
+    interactionZoom: resolveInteractionZoom,
+    screenDistanceWorld: resolveScreenDistanceWorld,
+    snapThresholdWorld: resolveSnapThresholdWorld,
+    worldThreshold: resolveWorldThreshold,
     screenToWorld: screenToWorldPoint,
     zoom: zoomViewport,
     worldToScreen: worldToScreenPoint,
@@ -127,6 +138,7 @@ export const geometry = {
 
 export type {
   ContainerRect,
+  SnapThresholdConfig,
   ViewportLimits,
   WheelInput
 } from '@whiteboard/core/geometry/viewport'

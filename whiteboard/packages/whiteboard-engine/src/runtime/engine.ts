@@ -2,7 +2,7 @@ import {
   CommandMutationEngine,
   type Origin as MutationOrigin
 } from '@shared/mutation'
-import { createRegistries } from '@whiteboard/core/kernel'
+import { createRegistries } from '@whiteboard/core/registry'
 import { resolveBoardConfig } from '../config'
 import type {
   CreateEngineOptions,
@@ -20,7 +20,7 @@ import type {
   WhiteboardMutationExtra,
   WhiteboardMutationKey
 } from '../mutation/types'
-import type { WhiteboardMutationTable } from '@whiteboard/core/intent'
+import type { WhiteboardMutationTable } from '@whiteboard/core/operations'
 import type { Document, Operation } from '@whiteboard/core/types'
 
 const resolveIntentOrigin = (

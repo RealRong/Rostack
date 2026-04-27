@@ -1,6 +1,7 @@
 import { json } from '@shared/core'
 import {
   path as mutationPath,
+  record as mutationRecord,
   type Path
 } from '@shared/mutation'
 import type {
@@ -14,8 +15,6 @@ import type {
   NodeUpdateInput,
   Operation
 } from '@whiteboard/core/types'
-import { applyRecordPathMutation } from '../mutation/recordPath'
-
 export type NodeUpdateImpact = {
   geometry: boolean
   list: boolean
@@ -104,7 +103,7 @@ const applyRecordMutation = (
   current: unknown,
   mutation: NodeRecordMutation
 ): { ok: true; value: unknown } | { ok: false; message: string } => {
-  return applyRecordPathMutation(current, mutation)
+  return mutationRecord.apply(current, mutation)
 }
 
 const inspectRecordPath = (

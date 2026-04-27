@@ -9,7 +9,7 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import { schema as schemaApi } from '@whiteboard/core/schema'
+import { schema as schemaApi } from '@whiteboard/core/registry/schema'
 import {
   TEXT_DEFAULT_FONT_SIZE,
   readTextWrapWidth,

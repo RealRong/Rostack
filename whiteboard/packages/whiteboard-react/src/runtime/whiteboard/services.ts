@@ -1,4 +1,4 @@
-import type { BoardConfig as EngineBoardConfig } from '@whiteboard/core/config'
+import type { BoardConfig as EngineBoardConfig } from '@whiteboard/engine/config'
 import type {
   CoreRegistries,
   Document,

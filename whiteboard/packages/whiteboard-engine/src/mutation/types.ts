@@ -1,5 +1,5 @@
-import type { HistoryFootprint } from '@whiteboard/core/spec/history'
-import type { WhiteboardOperationReduceExtra } from '@whiteboard/core/spec/operation'
+import type { HistoryFootprint } from '@whiteboard/core/operations'
+import type { WhiteboardOperationReduceExtra } from '@whiteboard/core/operations'
 
 export type WhiteboardMutationExtra = WhiteboardOperationReduceExtra
 

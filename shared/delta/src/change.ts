@@ -1,8 +1,5 @@
 import {
-  joinDotKey,
-  splitDotKey,
-  walkSpec,
-  type SpecTree
+  spec as specApi
 } from '@shared/spec'
 import {
   idDelta,
@@ -99,25 +96,19 @@ type ChangeLeafEntry = {
 }
 
 const buildLeafEntries = (
-  spec: ChangeSpecTree
+  schema: ChangeSpecTree
 ): readonly ChangeLeafEntry[] => {
-  const entries: ChangeLeafEntry[] = []
+  return specApi.tree(schema).leafEntries.map((entry) => {
+    if (entry.kind !== 'flag' && entry.kind !== 'ids' && entry.kind !== 'set') {
+      throw new Error(`Unsupported change leaf kind: ${entry.kind}`)
+    }
 
-  walkSpec(spec as SpecTree, {
-    leaf: (parts, kind) => {
-      if (kind !== 'flag' && kind !== 'ids' && kind !== 'set') {
-        throw new Error(`Unsupported change leaf kind: ${kind}`)
-      }
-
-      entries.push({
-        key: joinDotKey(parts),
-        parts,
-        kind
-      })
+    return {
+      key: entry.key,
+      parts: entry.parts,
+      kind: entry.kind
     }
   })
-
-  return entries
 }
 
 const createLeafState = (
@@ -214,7 +205,7 @@ const readLeaf = (
 
   for (const part of parts) {
     if (typeof current !== 'object' || current === null) {
-      throw new Error(`Invalid change state path: ${joinDotKey(parts)}`)
+      throw new Error(`Invalid change state path: ${parts.join('.')}`)
     }
 
     current = (current as ChangeStateRecord)[part]
@@ -391,6 +382,6 @@ export const change = <
     },
     path: <TKey extends ChangeAllLeafPaths<TSpec>>(
       key: TKey
-    ): readonly string[] => splitDotKey(readEntry(entryByKey, key).key)
+    ): readonly string[] => readEntry(entryByKey, key).parts
   }
 }

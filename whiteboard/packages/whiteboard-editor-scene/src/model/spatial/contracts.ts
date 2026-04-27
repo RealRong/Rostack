@@ -1,3 +1,4 @@
+import { key } from '@shared/spec'
 import type {
   EdgeId,
   MindmapId,
@@ -10,6 +11,8 @@ export type SpatialKey =
   | `node:${NodeId}`
   | `edge:${EdgeId}`
   | `mindmap:${MindmapId}`
+
+export const spatialKey = key.tagged(['node', 'edge', 'mindmap'] as const)
 
 export type SpatialItemRef =
   | {

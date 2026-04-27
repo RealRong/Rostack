@@ -58,7 +58,7 @@ import {
 } from '@dataview/core/field/value'
 import { compare, json, parse, string } from '@shared/core'
 import {
-  createTableIndex
+  spec
 } from '@shared/spec'
 import type {
   Token
@@ -2081,7 +2081,7 @@ export const fieldKindSpec = {
   }
 } as const satisfies Record<CustomFieldKind, KindSpec>
 
-const fieldKindIndex = createTableIndex(fieldKindSpec)
+const fieldKindIndex = spec.table(fieldKindSpec)
 
 export const getKindSpec = (
   kind: CustomFieldKind

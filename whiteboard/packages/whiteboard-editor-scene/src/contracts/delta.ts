@@ -4,6 +4,7 @@ import {
   type EntityDelta,
   type IdDelta as SharedIdDelta
 } from '@shared/delta'
+import { key } from '@shared/spec'
 import type {
   Revision,
   ScopeInputValue,
@@ -96,6 +97,8 @@ export type SceneItemKey =
   | `mindmap:${MindmapId}`
   | `node:${NodeId}`
   | `edge:${EdgeId}`
+
+export const sceneItemKey = key.tagged(['mindmap', 'node', 'edge'] as const)
 
 export type SceneItemEntry = SceneItem & {
   key: SceneItemKey

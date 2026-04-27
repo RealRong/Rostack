@@ -26,6 +26,9 @@ import type {
   SpatialKey,
   SpatialRecord
 } from './contracts'
+import {
+  spatialKey
+} from './contracts'
 import type { SpatialIndexState } from './state'
 import { resetSpatialState } from './state'
 import type { SpatialPatchScope } from '../../contracts/delta'
@@ -59,7 +62,10 @@ const patchNodeRecord = (input: {
   nodeId: NodeId
 }) => patchSpatialRecord({
   state: input.state,
-  key: `node:${input.nodeId}` as SpatialKey,
+  key: spatialKey.write({
+    kind: 'node',
+    id: input.nodeId
+  }),
   next: readNodeSpatialRecord({
     graph: input.graph,
     readOrder: input.readOrder,
@@ -76,7 +82,10 @@ const patchEdgeRecord = (input: {
   edgeId: EdgeId
 }) => patchSpatialRecord({
   state: input.state,
-  key: `edge:${input.edgeId}` as SpatialKey,
+  key: spatialKey.write({
+    kind: 'edge',
+    id: input.edgeId
+  }),
   next: readEdgeSpatialRecord({
     graph: input.graph,
     readOrder: input.readOrder,
@@ -93,7 +102,10 @@ const patchMindmapRecord = (input: {
   mindmapId: MindmapId
 }) => patchSpatialRecord({
   state: input.state,
-  key: `mindmap:${input.mindmapId}` as SpatialKey,
+  key: spatialKey.write({
+    kind: 'mindmap',
+    id: input.mindmapId
+  }),
   next: readMindmapSpatialRecord({
     graph: input.graph,
     readOrder: input.readOrder,

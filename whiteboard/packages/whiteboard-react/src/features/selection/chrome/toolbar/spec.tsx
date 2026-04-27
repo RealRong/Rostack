@@ -1,6 +1,5 @@
 import {
-  createOneToOneIndex,
-  createTableIndex
+  spec
 } from '@shared/spec'
 import type { ReactNode } from 'react'
 import type {
@@ -169,16 +168,11 @@ export const toolbarSpec = {
   }
 } as const
 
-const itemByKey = createTableIndex(toolbarSpec.items)
-const panelByKey = createTableIndex(toolbarSpec.panels, {
+const itemByKey = spec.table(toolbarSpec.items)
+const panelByKey = spec.table(toolbarSpec.panels, {
   fallback: () => undefined
 })
-const itemKeyByPanelKey = createOneToOneIndex(
-  toolbarSpec.panels,
-  ({
-    key
-  }) => key
-)
+const itemKeyByPanelKey = panelByKey.project(([, entry]) => entry.itemKey)
 
 export const compiledToolbarSpec = {
   itemByKey,

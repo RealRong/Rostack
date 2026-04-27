@@ -1,6 +1,6 @@
 import type { Field, FieldKind } from '@dataview/core/types'
 import {
-  createTableIndex
+  spec
 } from '@shared/spec'
 import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
 import { checkboxFieldValueSpec } from '@dataview/react/field/value/kinds/checkbox'
@@ -25,7 +25,7 @@ export const fieldValueSpec = {
   date: dateFieldValueSpec
 } as const satisfies Record<FieldKind, FieldValueSpec>
 
-const fieldValueSpecIndex = createTableIndex(fieldValueSpec)
+const fieldValueSpecIndex = spec.table(fieldValueSpec)
 
 export const readFieldValueSpec = (
   field?: Field

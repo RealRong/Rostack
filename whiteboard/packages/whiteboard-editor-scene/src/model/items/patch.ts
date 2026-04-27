@@ -5,12 +5,15 @@ import type {
   SceneItemEntry,
   SceneItemKey
 } from '../../contracts/delta'
+import {
+  sceneItemKey
+} from '../../contracts/delta'
 import type { WorkingState } from '../../contracts/working'
 
 const toSceneItem = (
   ref: document.Snapshot['document']['canvas']['order'][number]
 ): SceneItemEntry => ({
-  key: `${ref.kind}:${ref.id}` as SceneItemKey,
+  key: sceneItemKey.write(ref),
   kind: ref.kind,
   id: ref.id
 })

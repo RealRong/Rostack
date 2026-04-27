@@ -13,11 +13,11 @@ import type {
   Input,
   SceneItem
 } from '../src/contracts/editor'
-import type { SceneItemKey } from '../src/contracts/delta'
 import type { RenderPatchScope } from '../src/contracts/delta'
 import {
   createItemsDelta,
   graphChange,
+  sceneItemKey,
   uiChange
 } from '../src/contracts/delta'
 import { patchRenderState } from '../src/model/render/patch'
@@ -121,10 +121,16 @@ const createEdgeView = (input: {
 const setEdgeItems = (
   edgeIds: readonly EdgeId[]
 ) => {
-  const ids = edgeIds.map((edgeId) => `edge:${edgeId}` as SceneItemKey)
-  const byId = new Map<SceneItemKey, SceneItem>(
+  const ids = edgeIds.map((edgeId) => sceneItemKey.write({
+    kind: 'edge',
+    id: edgeId
+  }))
+  const byId = new Map(
     edgeIds.map((edgeId) => [
-      `edge:${edgeId}` as SceneItemKey,
+      sceneItemKey.write({
+        kind: 'edge',
+        id: edgeId
+      }),
       {
         kind: 'edge',
         id: edgeId

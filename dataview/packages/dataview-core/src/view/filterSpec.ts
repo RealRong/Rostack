@@ -29,7 +29,7 @@ import {
   normalizeOptionIdList
 } from '@dataview/core/field/option'
 import {
-  createTableIndex
+  spec
 } from '@shared/spec'
 import type {
   Token
@@ -870,7 +870,7 @@ export const filterSpec = {
   asset: presenceFilterSpec
 } as const satisfies Record<Field['kind'], FilterSpec>
 
-const filterSpecIndex = createTableIndex(filterSpec)
+const filterSpecIndex = spec.table(filterSpec)
 
 export const getFilterSpec = (
   field?: Pick<Field, 'kind'>

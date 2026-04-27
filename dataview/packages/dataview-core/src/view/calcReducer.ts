@@ -10,7 +10,14 @@ import {
   fieldSpec
 } from '@dataview/core/field/spec'
 import { equal } from '@shared/core'
+import { key } from '@shared/spec'
 
+const reducerCapabilityKeyCodec = key.tuple([
+  'count',
+  'unique',
+  'numeric',
+  'option'
+] as const)
 
 
 export interface ReducerCapabilitySet {
@@ -138,12 +145,12 @@ export const mergeReducerCapabilities = (
 
 export const reducerCapabilityKey = (
   capabilities: ReducerCapabilitySet
-): string => [
-  capabilities.count ? 'count' : '',
-  capabilities.unique ? 'unique' : '',
-  capabilities.numeric ? 'numeric' : '',
-  capabilities.option ? 'option' : ''
-].join('\u0000')
+): string => reducerCapabilityKeyCodec.write({
+  count: capabilities.count ? 'count' : undefined,
+  unique: capabilities.unique ? 'unique' : undefined,
+  numeric: capabilities.numeric ? 'numeric' : undefined,
+  option: capabilities.option ? 'option' : undefined
+})
 
 export const normalizeCalculationDemands = (
   demands: readonly CalculationDemand[] = []

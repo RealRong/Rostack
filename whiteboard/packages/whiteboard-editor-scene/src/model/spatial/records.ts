@@ -10,11 +10,14 @@ import type {
   SpatialKey,
   SpatialRecord
 } from './contracts'
+import {
+  spatialKey
+} from './contracts'
 import type { SpatialIndexState } from './state'
 
 export const toSpatialKey = (
   input: SpatialItemRef
-): SpatialKey => `${input.kind}:${input.id}` as SpatialKey
+): SpatialKey => spatialKey.write(input)
 
 export type SceneOrderRead = (item: SpatialItemRef) => number
 

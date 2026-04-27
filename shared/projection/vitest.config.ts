@@ -1,12 +1,11 @@
-import { fileURLToPath } from 'node:url'
+import tsconfigPaths from 'vite-tsconfig-paths'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@shared/core': fileURLToPath(new URL('../core/src/index.ts', import.meta.url))
-    }
-  },
+  plugins: [tsconfigPaths({
+    projects: ['../../tsconfig.base.json'],
+    loose: true
+  })],
   test: {
     environment: 'node'
   }

@@ -1,7 +1,5 @@
 import {
-  joinDotKey,
-  walkSpec,
-  type SpecTree
+  spec as specApi
 } from '@shared/spec'
 
 export type ScopeFieldSpec = 'flag' | 'set' | 'value'
@@ -121,23 +119,17 @@ const unionReadonlySet = <TValue>(
 const buildLeafEntries = (
   schema: ScopeSchemaObject
 ): readonly ScopeLeafEntry[] => {
-  const entries: ScopeLeafEntry[] = []
+  return specApi.tree(schema).leafEntries.map((entry) => {
+    if (entry.kind !== 'flag' && entry.kind !== 'set' && entry.kind !== 'value') {
+      throw new Error(`Unsupported scope leaf kind: ${entry.kind}`)
+    }
 
-  walkSpec(schema as SpecTree, {
-    leaf: (parts, kind) => {
-      if (kind !== 'flag' && kind !== 'set' && kind !== 'value') {
-        throw new Error(`Unsupported scope leaf kind: ${kind}`)
-      }
-
-      entries.push({
-        key: joinDotKey(parts),
-        parts,
-        kind
-      })
+    return {
+      key: entry.key,
+      parts: entry.parts,
+      kind: entry.kind
     }
   })
-
-  return entries
 }
 
 const ensureParent = (

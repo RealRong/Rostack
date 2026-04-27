@@ -1,5 +1,7 @@
-import { createTableIndex } from '@shared/spec'
-import { splitDotKey } from '@shared/spec'
+import {
+  key,
+  spec as specApi
+} from '@shared/spec'
 import type {
   NodeSchema,
   NodeType,
@@ -20,6 +22,7 @@ import type {
 
 const EMPTY_CONTROLS: readonly NodeMeta['controls'][number][] = []
 const EMPTY_STYLE_FIELDS = Object.freeze({})
+const fieldKey = key.path()
 
 const isCoreNodeType = (
   type: string
@@ -57,7 +60,7 @@ const parseFieldKey = (
   scope: SchemaFieldScope
   path: readonly string[]
 } => {
-  const [scope, ...path] = splitDotKey(key)
+  const [scope, ...path] = fieldKey.read(key)
 
   if (
     scope !== 'data'
@@ -161,18 +164,16 @@ const compileStyleFieldKinds = (
 export const compileNodeSpec = (
   spec: NodeSpec
 ) => {
-  const entryByType = createTableIndex(spec, {
+  const entryByType = specApi.table(spec, {
     fallback: () => undefined
   })
-  const metaByType = createTableIndex(
-    Object.fromEntries(
-      entryByType.entries.map(([type, entry]) => [type, entry.meta])
-    ),
+  const metaByType = specApi.table(
+    entryByType.project(([, entry]) => entry.meta),
     {
       fallback: () => undefined
     }
   )
-  const schemaByType = createTableIndex(
+  const schemaByType = specApi.table(
     Object.fromEntries(
       entryByType.entries.flatMap(([type, entry]) => {
         const schema = compileNodeSchema(type, entry)
@@ -185,40 +186,26 @@ export const compileNodeSpec = (
       fallback: () => undefined
     }
   )
-  const behaviorByType = createTableIndex(
-    Object.fromEntries(
-      entryByType.entries.map(([type, entry]) => [type, entry.behavior])
-    ),
+  const behaviorByType = specApi.table(
+    entryByType.project(([, entry]) => entry.behavior),
     {
       fallback: () => undefined
     }
   )
-  const capabilityByType = createTableIndex(
-    Object.fromEntries(
-      entryByType.entries.map(([type, entry]) => [
-        type,
-        compileNodeCapability(entry)
-      ])
-    ),
+  const capabilityByType = specApi.table(
+    entryByType.project(([, entry]) => compileNodeCapability(entry)),
     {
       fallback: readFallbackCapability
     }
   )
-  const styleFieldKindByType = createTableIndex(
-    Object.fromEntries(
-      entryByType.entries.map(([type, entry]) => [
-        type,
-        compileStyleFieldKinds(entry)
-      ])
-    ),
+  const styleFieldKindByType = specApi.table(
+    entryByType.project(([, entry]) => compileStyleFieldKinds(entry)),
     {
       fallback: () => EMPTY_STYLE_FIELDS
     }
   )
-  const controlsByType = createTableIndex(
-    Object.fromEntries(
-      entryByType.entries.map(([type, entry]) => [type, entry.meta.controls])
-    ),
+  const controlsByType = specApi.table(
+    entryByType.project(([, entry]) => entry.meta.controls),
     {
       fallback: () => EMPTY_CONTROLS
     }

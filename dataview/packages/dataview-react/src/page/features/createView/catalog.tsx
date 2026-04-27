@@ -13,7 +13,7 @@ import type { ViewType } from '@dataview/core/types'
 import { viewTypeSpec } from '@dataview/core/view'
 import { meta, type Token } from '@dataview/meta'
 import {
-  createTableIndex
+  spec
 } from '@shared/spec'
 import { token } from '@shared/i18n'
 
@@ -84,7 +84,7 @@ const COMING_SOON_ITEMS: readonly CreateViewItem[] = [
   }
 ]
 
-const viewTypeIndex = createTableIndex(viewTypeSpec)
+const viewTypeIndex = spec.table(viewTypeSpec)
 
 export const CREATE_VIEW_ITEMS: readonly CreateViewItem[] = [
   ...viewTypeIndex.entries.map(([type, spec]) => ({

@@ -1,5 +1,5 @@
 import {
-  splitDotKey
+  key
 } from '@shared/spec'
 import type {
   FieldId,
@@ -20,20 +20,7 @@ export type DataviewTargetKey =
   | `external.${string}`
 
 export type DataviewMutationKey = DataviewTargetKey
-
-const isSharedPrefix = (
-  left: readonly string[],
-  right: readonly string[]
-): boolean => {
-  const size = Math.min(left.length, right.length)
-  for (let index = 0; index < size; index += 1) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-
-  return true
-}
+export const dataviewTargetKey = key.path()
 
 export const serializeDataviewMutationKey = (
   mutationKey: DataviewMutationKey
@@ -41,12 +28,9 @@ export const serializeDataviewMutationKey = (
 
 export const parseDataviewTargetKey = (
   key: DataviewTargetKey
-): readonly string[] => splitDotKey(key)
+): readonly string[] => dataviewTargetKey.read(key)
 
 export const dataviewTargetKeyConflicts = (
   left: DataviewMutationKey,
   right: DataviewMutationKey
-): boolean => isSharedPrefix(
-  parseDataviewTargetKey(left),
-  parseDataviewTargetKey(right)
-)
+): boolean => dataviewTargetKey.conflicts(left, right)

@@ -75,45 +75,73 @@
 
 这说明：
 
-- `shared/projection` 当前已经承担了 runtime，但还没有把“surface family 适配、scope 合并、trace 生成、capture 语义”一起收进去。
+- `shared/projection` 当前已经承担了 runtime，但还没有把“surface family 读模型、phase 规则、trace/output 语义”一起收进去。
 - 上层仍然在手动适配 shared，而不是直接以 shared 的最终 API 来写业务。
 
 最终态必须是：
 
 - 上层只写 plain object projection spec。
 - `surface` 上直接写字符串 kind 与 callback。
-- family map / family snapshot / value 三类常见 surface 都有 shared 提供的标准 adapter。
-- phase scope 仍然用 plain object + `'flag' | 'set' | 'value'`，但类型推导与合并不再由上层承受。
-- update 结果里直接带 trace / capture hook，不再需要 dataview / whiteboard 再包 runtime facade。
+- phase grammar 直接写成 `accepts / input / update`。
+- phase 规则继续用 plain object + `'flag' | 'set' | 'value'`，但类型推导与合并不再由上层承受。
+- `services` 只承载外部依赖，不承载 projection 规则。
+- `output` 统一替代 `capture`，不再需要 dataview / whiteboard 再包 runtime facade。
 
 最终 API 形态：
 
 ```ts
 const runtime = createProjection({
-  state: () => createWorkingState(),
-  read: ({ state, revision }) => ({ ... }),
-  capture: ({ state, revision }) => ({ ... }),
+  create: ({ services }) => createWorkingState(services),
+  services: {
+    geometry,
+    surface
+  },
   surface: {
+    nodes: {
+      kind: 'family',
+      ids: ({ state }) => state.graph.nodes.ids,
+      read: ({ state }, id) => state.graph.nodes.byId[id],
+      changed: ({ state }) => state.changed.graph.nodes,
+      patch: ({ state }) => state.patches.nodes
+    },
+    edge: {
+      kind: 'value',
+      read: ({ state }) => state.edge
+    }
+  },
+  phases: {
     graph: {
-      node: projection.family.map({
-        read: state => state.graph.nodes,
-        changed: state => state.delta.graph.nodes,
-        order: state => state.delta.graph.order
+      accepts: {
+        reset: 'flag',
+        nodes: 'set',
+        edges: 'set'
+      },
+      input: ({ input }) => ({
+        nodes: input.nodes,
+        edges: input.edges
+      }),
+      update: ({ input, state, services }) => ({
+        action: 'sync'
+      }
+    },
+    render: {
+      accepts: {
+        node: 'flag',
+        edge: 'flag'
+      },
+      input: ({ state }) => ({
+        node: state.changed.node,
+        edge: state.changed.edge
+      }),
+      update: ({ state }) => ({
+        action: 'reuse'
       })
     }
   },
-  plan: ({ input, state }) => ({
-    phases: ['graph', 'render'],
-    scope: {
-      render: {
-        node: true
-      }
-    }
-  }),
-  phases: {
-    graph: ({ input, state, scope }) => ({ action: 'sync' }),
-    render: ({ input, state, scope }) => ({ action: 'reuse' })
-  }
+  output: ({ state, surface }) => ({
+    revision: state.revision,
+    surface
+  })
 })
 ```
 
@@ -124,6 +152,7 @@ const runtime = createProjection({
 - `createStableFamilyRead`
 - 自己补一层 `createXxxProjectionRuntime`
 - 自己把 projection trace 再二次组装成业务 trace
+- `scope / select / run` 这种抽象过深的 phase DSL
 
 ### A2. `@shared/delta` 还不是最终态 spec API
 
@@ -386,11 +415,9 @@ const mutationKey = key.path()
 
 最终态必须是：
 
-- `@shared/projection` 提供标准 family adapter：
-  - `projection.family.map(...)`
-  - `projection.family.snapshot(...)`
-  - `projection.family.entityDelta(...)`
-- `@shared/projection` 提供 update 后 trace / capture hook，不再要求上层自己包 runtime facade
+- `@shared/projection` 直接在 `surface.*` 上承载 `kind: 'family'` + `ids/read/changed/patch`
+- `@shared/projection` 直接在 phase 上承载 `accepts / input / update`
+- `@shared/projection` 提供 update 后 trace / output hook，不再要求上层自己包 runtime facade
 
 ### A9. alias / facade / 中间层仍然偏多
 
@@ -474,18 +501,24 @@ entityDelta
 最终 root API：
 
 ```ts
-createProjection({ ... })
-projection.family.map(...)
-projection.family.snapshot(...)
-projection.scope(...)
+createProjection({
+  create,
+  services,
+  surface,
+  phases,
+  output
+})
 ```
 
 要求：
 
 - 不再要求上层书写超长 `ProjectionSpec<...>`
-- family adapter 标准化
-- scope 合并与 trace/capture 由 shared 承担
+- `surface` 直接使用 plain object + `kind` + callback
+- phase grammar 明确为 `accepts / input / update`
+- `services` 只承载外部依赖，不承载 projection 规则
+- scope 合并与 trace/output 由 shared 承担
 - projection runtime 内部复用 `shared/core/store/table.ts`
+- 本轮不落地；shared、dataview、whiteboard 先完成其他收尾，再单开 projection 专项
 
 ### 4. `@shared/mutation`
 
@@ -605,12 +638,15 @@ record: {
 
 ### Phase 3. 重写 `@shared/projection`
 
-必须完成：
+本轮不做，后置到 projection 专项。
+
+专项开启后必须完成：
 
 - 推导式 `createProjection`
-- family map / snapshot adapter
+- `accepts / input / update` phase grammar
+- `services` 与 projection 规则彻底分离
 - scope merge 内建
-- trace/capture hook 内建
+- trace/output hook 内建
 - family store 内部接入 `shared/core/store/table.ts`
 
 ### Phase 4. 重写 `@shared/mutation`

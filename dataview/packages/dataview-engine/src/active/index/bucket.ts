@@ -4,6 +4,7 @@ import type {
   ViewGroup
 } from '@dataview/core/types'
 import { collection } from '@shared/core'
+import { key } from '@shared/spec'
 import {
   field as fieldApi
 } from '@dataview/core/field'
@@ -48,6 +49,7 @@ import type {
 
 const EMPTY_BUCKET_KEYS: readonly BucketKey[] = []
 const EMPTY_RECORD_IDS: readonly RecordId[] = []
+export const bucketSpecKey = key.tuple(['fieldId', 'mode', 'interval'] as const)
 
 export const createBucketSpec = (
   input: Pick<ViewGroup, 'fieldId'>
@@ -58,18 +60,10 @@ export const createBucketSpec = (
   ...(input.bucketInterval === undefined ? {} : { interval: input.bucketInterval })
 })
 
-export const createBucketSpecKey = (
-  spec: BucketSpec
-): string => [
-  spec.fieldId,
-  spec.mode ?? '',
-  spec.interval ?? ''
-].join('\u0000')
-
 export const readBucketIndex = (
   index: BucketIndex,
   spec: BucketSpec
-): BucketFieldIndex | undefined => index.fields.get(createBucketSpecKey(spec))
+): BucketFieldIndex | undefined => index.fields.get(bucketSpecKey.write(spec))
 
 export const sameBucketSpecs = (
   left: readonly BucketSpec[],
@@ -288,7 +282,7 @@ export const ensureBucketIndex = (
   records: RecordIndex,
   specs: readonly BucketSpec[] = []
 ): BucketIndex => {
-  const nextSpecKeys = new Set(specs.map(spec => createBucketSpecKey(spec)))
+  const nextSpecKeys = new Set(specs.map(spec => bucketSpecKey.write(spec)))
   const fields = createMapPatchBuilder(previous.fields)
 
   previous.fields.forEach((_field, key) => {
@@ -298,7 +292,7 @@ export const ensureBucketIndex = (
   })
 
   specs.forEach(spec => {
-    const key = createBucketSpecKey(spec)
+    const key = bucketSpecKey.write(spec)
     if (fields.has(key) || !context.fieldIdSet.has(spec.fieldId)) {
       return
     }

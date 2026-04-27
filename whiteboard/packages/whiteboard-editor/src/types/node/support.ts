@@ -1,5 +1,5 @@
 import { draft } from '@shared/draft'
-import { splitDotKey } from '@shared/spec'
+import { key } from '@shared/spec'
 import type {
   Node,
   NodeType
@@ -23,12 +23,13 @@ import type {
 import { compileNodeSpec } from '@whiteboard/editor/types/node/compile'
 
 const EMPTY_CONTROLS: readonly ControlId[] = []
+const fieldKey = key.path()
 
 const readStyleValue = (
   node: Pick<Node, 'style'>,
   field: NodeStyleFieldKey
 ) => {
-  const [, ...path] = splitDotKey(field)
+  const [, ...path] = fieldKey.read(field)
   return draft.path.get(node.style, path)
 }
 

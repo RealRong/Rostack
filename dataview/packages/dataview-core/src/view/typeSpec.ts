@@ -8,7 +8,7 @@ import type {
   ViewType
 } from '@dataview/core/types'
 import {
-  createTableIndex
+  spec
 } from '@shared/spec'
 
 export interface ViewTypeSpecEntry<
@@ -81,7 +81,7 @@ export const viewTypeSpec = {
   }
 } as const satisfies Record<ViewType, ViewTypeSpecEntry>
 
-const viewTypeIndex = createTableIndex(viewTypeSpec)
+const viewTypeIndex = spec.table(viewTypeSpec)
 
 export const getViewTypeSpec = <
   TType extends ViewType

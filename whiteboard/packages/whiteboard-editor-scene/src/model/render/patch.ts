@@ -15,7 +15,8 @@ import type {
   SceneItemKey
 } from '../../contracts/delta'
 import {
-  renderChange
+  renderChange,
+  sceneItemKey
 } from '../../contracts/delta'
 import type {
   Input,
@@ -76,10 +77,13 @@ const appendTouchedIds = <TId extends string>(
 }
 
 const toEdgeIdFromSceneItemKey = (
-  key: string
-): EdgeId | undefined => key.startsWith('edge:')
-  ? key.slice(5) as EdgeId
-  : undefined
+  key: SceneItemKey
+): EdgeId | undefined => {
+  const entry = sceneItemKey.read(key)
+  return entry.kind === 'edge'
+    ? entry.id
+    : undefined
+}
 
 const isNodeRenderViewEqual = (
   left: NodeRenderView,

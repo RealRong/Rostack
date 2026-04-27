@@ -1,7 +1,7 @@
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
-import type { WhiteboardReduceExtra } from '@whiteboard/core/reducer'
+import type { WhiteboardOperationReduceExtra } from '@whiteboard/core/spec/operation'
 
-export type WhiteboardMutationExtra = WhiteboardReduceExtra
+export type WhiteboardMutationExtra = WhiteboardOperationReduceExtra
 
 export type WhiteboardMutationKey =
   HistoryFootprint[number]

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { path as mutationPath } from '@shared/mutation'
-import { whiteboardReducer } from '@whiteboard/core/reducer'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import { reduceWhiteboardOperations } from '@whiteboard/core/spec/operation'
 
 const FIXED_TIMESTAMP = Date.parse('2024-01-01T00:00:00.000Z')
 const FIXED_ISO = new Date(FIXED_TIMESTAMP).toISOString()
@@ -42,7 +42,7 @@ const createTextNode = (overrides = {}) => ({
 })
 
 const replayInverse = (doc, operations) =>
-  whiteboardReducer.reduce({
+  reduceWhiteboardOperations({
     doc,
     ops: operations,
     origin: 'user'
@@ -50,7 +50,7 @@ const replayInverse = (doc, operations) =>
 
 test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () => {
   const doc = createDocWithNode(createTextNode())
-  const result = whiteboardReducer.reduce({
+  const result = reduceWhiteboardOperations({
     doc,
     ops: nodeApi.update.createOperation('node_1', {
       records: [{
@@ -196,7 +196,7 @@ test('node.update 会为 direct mindmap data mutation 标记 node.value', () => 
     meta: tree.meta
   }
 
-  const result = whiteboardReducer.reduce({
+  const result = reduceWhiteboardOperations({
     doc,
     ops: nodeApi.update.createOperation('mind_1', {
       records: [{

@@ -1,10 +1,12 @@
 import { compile, type Issue } from '@shared/mutation'
-import { whiteboardReducer } from '@whiteboard/core/reducer'
 import type {
   CoreRegistries,
   Document,
   Operation
 } from '@whiteboard/core/types'
+import {
+  reduceWhiteboardOperations
+} from '@whiteboard/core/spec/operation'
 import {
   createWhiteboardIntentContext,
   type WhiteboardCompileIds
@@ -18,7 +20,7 @@ import type {
 } from '@whiteboard/core/intent/types'
 
 const reduceIssueCode = (
-  code: import('@whiteboard/core/reducer').WhiteboardReduceIssueCode
+  code: import('@whiteboard/core/spec/operation').WhiteboardReduceIssueCode
 ): 'invalid' | 'cancelled' => code === 'cancelled'
   ? 'cancelled'
   : 'invalid'
@@ -47,7 +49,7 @@ export const compileWhiteboardIntents = (input: {
       return handler(intent as never, compileContext)
     },
     apply: (document, ops) => {
-      const reduced = whiteboardReducer.reduce({
+      const reduced = reduceWhiteboardOperations({
         doc: document,
         ops,
         origin: 'system'

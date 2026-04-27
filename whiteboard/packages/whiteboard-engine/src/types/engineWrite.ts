@@ -8,19 +8,19 @@ import type {
   Operation
 } from '@whiteboard/core/types'
 import type {
-  WhiteboardReduceExtra
-} from '@whiteboard/core/reducer'
+  WhiteboardOperationReduceExtra
+} from '@whiteboard/core/spec/operation'
 
 export type EngineWrite = Write<
   Document,
   Operation,
   HistoryFootprint[number],
-  WhiteboardReduceExtra
+  WhiteboardOperationReduceExtra
 >
 
 export type EngineCommit = CommitRecord<
   Document,
   Operation,
   HistoryFootprint[number],
-  WhiteboardReduceExtra
+  WhiteboardOperationReduceExtra
 >

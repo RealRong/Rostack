@@ -4,7 +4,7 @@ import type { Invalidation } from '@whiteboard/core/types'
 import {
   deriveImpact,
   summarizeInvalidation
-} from '@whiteboard/core/reducer'
+} from '@whiteboard/core/spec/operation'
 
 const createInvalidation = (): Invalidation => ({
   document: false,

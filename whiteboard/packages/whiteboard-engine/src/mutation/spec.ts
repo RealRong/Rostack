@@ -1,6 +1,5 @@
 import {
   CommandMutationSpec,
-  applyResult,
   type Origin as MutationOrigin
 } from '@shared/mutation'
 import { createId } from '@whiteboard/core/id'
@@ -11,10 +10,9 @@ import {
   type WhiteboardMutationTable
 } from '@whiteboard/core/intent'
 import {
-  whiteboardReducer
-} from '@whiteboard/core/reducer'
-import { META } from '@whiteboard/core/spec/operation'
-import { historyKeyConflicts } from '@whiteboard/core/spec/history'
+  WHITEBOARD_OPERATION_DEFINITIONS,
+  whiteboardMutationOperations
+} from '@whiteboard/core/spec/operation'
 import type { BoardConfig } from '@whiteboard/core/config'
 import type {
   CoreRegistries,
@@ -72,16 +70,7 @@ const shouldClearHistory = (
   },
   config: WhiteboardHistoryConfig
 ): boolean => shouldTrackOrigin(write.origin, config)
-  && write.forward.some((op) => META[op.type].sync === 'checkpoint')
-
-const toKernelOrigin = (
-  origin: MutationOrigin
-): import('@whiteboard/core/types').Origin => (
-  origin === 'remote'
-  || origin === 'system'
-    ? origin
-    : 'user'
-)
+  && write.forward.some((op) => WHITEBOARD_OPERATION_DEFINITIONS[op.type].sync === 'checkpoint')
 
 export type WhiteboardMutationSpec = CommandMutationSpec<
   Document,
@@ -108,7 +97,6 @@ export const createWhiteboardMutationSpec = (input: {
   }
 
   return {
-    clone: (doc) => doc,
     normalize: (doc) => normalizeDocument(doc, input.config),
     compile: ({
       doc,
@@ -119,27 +107,20 @@ export const createWhiteboardMutationSpec = (input: {
       registries: input.registries,
       ids
     }),
-    apply: ({
-      doc,
-      ops,
-      origin
-    }) => {
-      const reduced = whiteboardReducer.reduce({
-        doc,
-        ops,
-        origin: toKernelOrigin(origin)
-      })
-
-      return reduced.ok
-        ? applyResult.success(reduced)
-        : applyResult.failure(reduced.error)
-    },
+    operations: whiteboardMutationOperations,
     publish: whiteboardPublishSpec,
     history: {
       capacity: historyConfig.capacity,
-      track: (write) => shouldTrackOrigin(write.origin, historyConfig),
-      clear: (write) => shouldClearHistory(write, historyConfig),
-      conflicts: historyKeyConflicts
+      track: ({
+        origin
+      }) => shouldTrackOrigin(origin, historyConfig),
+      clear: ({
+        origin,
+        ops
+      }) => shouldClearHistory({
+        origin,
+        forward: ops
+      }, historyConfig)
     }
   }
 }

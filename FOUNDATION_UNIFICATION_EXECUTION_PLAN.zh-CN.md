@@ -1,645 +1,640 @@
-# 底层设施大一统实施计划
+# FOUNDATION_UNIFICATION_PHASE6_7_FINAL_API_AND_EXECUTION_PLAN
 
 ## 1. 目标
 
-这份文档是 `FOUNDATION_UNIFICATION_LONG_TERM_ARCHITECTURE.zh-CN.md` 的实施版。
+这份文档只讨论：
+
+- **Phase 6：统一 operation spec**
+- **Phase 7：最终收口 engine 外形**
 
 约束固定如下：
 
-- 只接受长期最优。
-- 不保留兼容层。
-- 不做双轨 API。
-- 不做过渡命名。
-- 一旦进入某阶段，该阶段产出的模型就是新的正式模型。
+- 只接受长期最优
+- 不保留兼容层
+- 不保留双轨 API
+- 不保留过渡命名
+- 不为了“方便迁移”继续保留 facade / binding / adapter
 
-目标是把整个底层收敛成：
+这轮的最终目标只有两个：
 
-```text
-Operation Spec
-  -> Reducer
-  -> Mutation Runtime
-  -> Commit Stream
-  -> Projection Runtime
-  -> History
-  -> Collab
-  -> Reactive Surface
-```
+1. `dataview` 与 `whiteboard` 都基于**同一种 operation spec 模型**
+2. `engine` 对外只暴露**正式 runtime 能力 + 领域 API**
 
 ---
 
-## 2. 最终包结构
+## 2. 固定前提
 
-最终建议固定为：
+### 2.1 Doc 模型固定
 
-```text
-shared/reducer
-shared/mutation
-shared/projection
-shared/delta
-shared/store
-shared/collab
-shared/collab-yjs
-```
+`Doc` 永远满足：
 
-其中：
+- 外部传入即可直接持有
+- engine 内部不需要 defensive clone
+- normalize 是固定且可内建
 
-### `shared/reducer`
+### 2.2 Normalize 模型固定
 
-- reducer kernel
-- reducer context
-- inverse / footprint / failure runtime
+normalize 不是调用方策略，而是 mutation runtime 的固定组成部分。
 
-### `shared/mutation`
-
-- mutation runtime
-- commit stream
-- operation meta helpers
-- history runtime
-
-### `shared/projection`
-
-- projection runtime
-- phase orchestration
-- trace
-- surface store builder
-
-### `shared/delta`
-
-- id delta
-- entity delta
-- normalize / merge / clone / empty helpers
-
-### `shared/store`
-
-- 最小 reactive primitives
-
-### `shared/collab`
-
-- collab session runtime
-- replay / checkpoint / resync
-
-### `shared/collab-yjs`
-
-- yjs transport adapter
-- yjs snapshot store
-- local origin
-- provider bridge
-
----
-
-## 3. 重构顺序总览
-
-必须按下面顺序做，不能倒序：
-
-### Phase 1
-
-先补齐 mutation 底层事实流：
-
-- 引入 `CommitRecord`
-- 让 `replace/load` 和 `apply` 进入同一条 commit stream
-
-### Phase 2
-
-统一 history：
-
-- 收敛成唯一 `HistoryPort`
-- 删除 collab 里重复的 history wrapper
-
-### Phase 3
-
-统一 collab：
-
-- 让 collab 直接基于 commit stream 工作
-- 删除 dataview 的 `rev / lastWriteRev` 推断逻辑
-
-### Phase 4
-
-统一 yjs 适配：
-
-- 抽出 `shared/collab-yjs`
-- 删除 whiteboard / dataview 各自重复实现
-
-### Phase 5
-
-统一 projection / delta：
-
-- 把 `shared/projector` 重组为 `shared/projection`
-- 把 delta primitives 升级为 `shared/delta`
-
-### Phase 6
-
-统一 operation spec：
-
-- 让 whiteboard 收敛到和 dataview 一样的单表 spec
-- 让 history / collab / reducer 全部从 operation spec 派生
-
-### Phase 7
-
-最后再收口 dataview / whiteboard 的 engine 外形：
-
-- engine 只暴露正式 runtime 能力
-- 上层只保留领域 API
-
-这个顺序不能反，因为：
-
-- 没有 `CommitRecord`，history / collab 无法真正统一。
-- 没有统一 history，collab 还会继续维护重复包装。
-- 没有统一 projection / delta，publish 语义就不会稳定。
-- 没有统一 operation spec，whiteboard 领域逻辑就无法彻底 spec 化。
-
----
-
-## 4. Phase 1：引入 `CommitRecord`
-
-## 4.1 目标
-
-把 mutation runtime 的事实流从“只有 apply write”升级成“所有正式提交都可观测”。
-
-最终要得到：
+最终固定为：
 
 ```ts
-type CommitRecord<Doc, Op, Key, Extra> =
-  | {
-      kind: 'apply'
-      rev: number
-      origin: Origin
-      doc: Doc
-      forward: readonly Op[]
-      inverse: readonly Op[]
-      footprint: readonly Key[]
-      extra: Extra
-    }
-  | {
-      kind: 'replace'
-      rev: number
-      origin: Origin
-      doc: Doc
-    }
-```
-
-并且 runtime 正式暴露：
-
-```ts
-commits: Stream<CommitRecord<...>>
-```
-
-## 4.2 必做改动
-
-### `shared/mutation`
-
-- `Write` 不再承担“唯一事实流”职责。
-- `engine.ts` 为 `apply` 和 `replace` 都发出 commit。
-- `load` 只是 `replace(origin: 'load')` 的语法糖，但不会绕开 commit。
-
-### 需要收口的现有问题
-
-- `replace` 现在不会 emit write。
-- collab 只能监听 `writes`，看不到 replace。
-- dataview 只能靠 `current().rev` + `lastWriteRev` 猜测 replace。
-
-这些逻辑在 Phase 1 结束后必须全部消失。
-
-## 4.3 Phase 1 完成标准
-
-满足以下条件才算完成：
-
-1. `apply` 产生 `commit(kind: 'apply')`
-2. `replace` 产生 `commit(kind: 'replace')`
-3. `load` 产生 `commit(kind: 'replace', origin: 'load')`
-4. history / collab / projection 不再依赖“只监听 writes”
-
----
-
-## 5. Phase 2：统一 history 为唯一 `HistoryPort`
-
-## 5.1 目标
-
-对上层只保留一套 history 形态：
-
-```ts
-type HistoryPort<Result> = ReadStore<HistoryState> & {
-  undo(): Result
-  redo(): Result
-  clear(): void
-  set(next: HistoryPort<Result>): void
-  reset(): void
+type MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra> = {
+  normalize(doc: Doc): Doc
+  apply(input: {
+    doc: Doc
+    ops: readonly Op[]
+    origin: Origin
+  }): MutationApplyResult<Doc, Op, Key, Extra>
+  publish?: MutationPublishSpec<Doc, Op, Key, Extra, Publish, Cache>
 }
 ```
 
-这里 `set/reset` 可以保留在正式接口里，直接覆盖当前 binding 需求。
+### 2.3 Public Engine 固定只暴露正式能力
 
-## 5.2 必做改动
-
-### `shared/mutation`
-
-- `HistoryController` 退回内部机制，不再作为主对外 API。
-- `createLocalMutationHistory`
-  改名或直接收口成正式 `createHistoryPort(engine, options?)`
-- `createLocalHistoryBinding` 合并进 `createHistoryPort` 的正式能力模型
-
-### 删除的概念
-
-- `LocalHistoryApi`
-- `LocalHistoryBinding`
-- collab 内部单独构造 history api 的逻辑
-
-对外只剩：
-
-- `HistoryState`
-- `HistoryPort<Result>`
-- `createHistoryPort(...)`
-
-## 5.3 Phase 2 完成标准
-
-1. whiteboard runtime 只依赖 `HistoryPort`
-2. dataview runtime 只依赖 `HistoryPort`
-3. collab session 只暴露 `HistoryPort`
-4. 仓内不再存在第二套 history wrapper
-
----
-
-## 6. Phase 3：让 collab 完全基于 commit stream
-
-## 6.1 目标
-
-collab 不再依赖：
+最终 public engine 不再暴露这些中间层：
 
 - `writes`
-- `current().rev`
-- “本地 replace 没有 write”这种隐式约束
+- `mutation`
+- `HistoryBinding`
+- `load`
 
-而是直接基于 commit stream：
-
-```text
-commit -> encode change/checkpoint -> append to transport
-remote snapshot -> replay as replace/apply -> produce remote commit
-```
-
-## 6.2 必做改动
-
-### `shared/collab`
-
-- engine contract 从 `writes` 改为 `commits`
-- `publishWrite(write)` 改成 `publishCommit(commit)`
-- checkpoint 旋转基于 commit 而不是 write
-- history confirm / invalidate 基于 commit/change id 对齐
-
-### dataview
-
-- 删除 `suppressLocalCheckpointRewrite`
-- 删除 `lastCurrentRev / lastWriteRev`
-- 删除“queueMicrotask 推断 replace”逻辑
-
-### whiteboard
-
-- 继续沿用 checkpoint op / live op 区分，但也改为基于 commit stream
-
-## 6.3 Phase 3 完成标准
-
-1. `shared/collab` 的 engine contract 不再需要 `writes`
-2. dataview collab session 不再需要本地 replace 推断补丁
-3. replace / load / checkpoint rewrite 全部成为正式 commit 路径
+- shared 底层内部
+- collab / infra 内部
+- 测试辅助内部
 
 ---
 
-## 7. Phase 4：抽出 `shared/collab-yjs`
+## 3. Phase 6 最终 API 设计
 
-## 7.1 目标
+## 3.1 唯一 operation spec
 
-把 Yjs 相关基础设施全部从 whiteboard/dataview 包里搬走。
-
-## 7.2 下沉范围
-
-以下能力必须进入 `shared/collab-yjs`：
-
-- `createCollabLocalOrigin`
-- `createYjsSyncStore`
-- `createSharedStore`
-- 通用 snapshot read / append / checkpoint / clearChanges
-- provider sync bridge
-- 通用 JSON / binary codec helper
-
-领域层只保留：
-
-- `assertChange`
-- `assertCheckpoint`
-- `encode/decode` 中的领域校验
-
-## 7.3 最终形态
+两个领域最终都收敛为同一种单表模型：
 
 ```ts
-createYjsCollabTransport({
-  doc,
-  provider,
-  codec
-})
-```
-
-返回正式 transport：
-
-```ts
-{
-  store,
-  provider,
-  awareness,
-  origin
-}
-```
-
-whiteboard / dataview session 只做：
-
-- change codec
-- checkpoint codec
-- domain empty document
-
-## 7.4 Phase 4 完成标准
-
-1. dataview 和 whiteboard 不再各自维护 `yjs/store.ts`
-2. dataview 和 whiteboard 不再各自维护 `yjs/shared.ts`
-3. `createSharedStore` 只有一份共享实现
-
----
-
-## 8. Phase 5：统一 projection / delta
-
-## 8.1 目标
-
-把当前混杂的：
-
-- `shared/projector`
-- mutation `publish`
-- package-local projector wrapper
-- package-local delta assembly
-
-收敛成两个正式基础设施：
-
-- `shared/projection`
-- `shared/delta`
-
-## 8.2 delta 目标
-
-把以下能力从 `shared/projector/delta` 提升出来：
-
-- `idDelta`
-- `entityDelta`
-- normalize
-- clone
-- merge
-- empty / isEmpty
-
-`shared/delta` 成为所有 read-model 输出的统一 delta primitive。
-
-## 8.3 projection 目标
-
-统一成一个正式 runtime：
-
-```ts
-createProjectionRuntime(spec)
-```
-
-这个 runtime 要同时承载：
-
-- working state
-- phase plan
-- snapshot output
-- delta output
-- trace
-- reactive surface stores
-
-### 迁移方向
-
-#### dataview
-
-- `mutation/publish.ts` 中的 active/index/document delta 逻辑拆成 projection effects
-- `active/projector/*` 并入正式 projection runtime 语义
-
-#### whiteboard
-
-- `mutation/publish.ts` 改成最薄的 projection adapter
-- `editor-scene` runtime 直接建立在统一 projection runtime 之上
-
-## 8.4 Phase 5 完成标准
-
-1. `shared/projector` 的正式公共名义被 `shared/projection` 取代
-2. `shared/delta` 独立存在
-3. dataview / whiteboard 不再各自围绕 projection 做额外概念包装
-
----
-
-## 9. Phase 6：统一 operation spec
-
-## 9.1 目标
-
-让 dataview 和 whiteboard 都基于同一套单表 operation spec。
-
-最终模型：
-
-```ts
-type OperationSpecTable<Doc, Op, Key, Ctx> = {
+type OperationSpecTable<
+  Doc,
+  Op extends { type: string },
+  Key,
+  ApplyCtx,
+  FootprintCtx = ApplyCtx
+> = {
   [K in Op['type']]: {
     family: string
     sync?: 'live' | 'checkpoint'
     history?: boolean
-    footprint?(ctx: Ctx, op: Extract<Op, { type: K }>): void
-    apply(ctx: Ctx, op: Extract<Op, { type: K }>): void
+    footprint?(
+      ctx: FootprintCtx,
+      op: Extract<Op, { type: K }>
+    ): void
+    apply(
+      ctx: ApplyCtx,
+      op: Extract<Op, { type: K }>
+    ): void
   }
 }
 ```
 
-## 9.2 whiteboard 的目标改造
+这张表是唯一事实源。
 
-whiteboard 当前分散在：
+并且：
 
-- op meta
-- reducer history collect
-- reducer handler routing
-- reducer input validation
+- meta 从它派生
+- reducer routing 从它派生
+- footprint collect 从它派生
+- history / collab live-checkpoint 分类从它派生
 
-最终要收敛成：
-
-- 单一 operation spec table
-- 单一 reducer from spec
-- 单一 history / collab rule from spec
-
-也就是 whiteboard 不再保留“表 + handlers + history collect + routing”这种拆散结构。
-
-## 9.3 dataview 的目标改造
-
-dataview 已经比较接近单表，但还可以继续提升：
-
-- trace rule 更显式挂在 operation spec 上
-- validation rule 也尽量并入 op family spec
-- active/document impact 标注从 op spec 派生
-
-## 9.4 Phase 6 完成标准
-
-1. 两个领域都存在单表 operation spec
-2. reducer / history / collab live-checkpoint 分类都从这张表派生
-3. 新增 operation 不再需要多处同步注册
+新增 operation 时，只允许改这一张表。
 
 ---
 
-## 10. Phase 7：最终收口 engine 外形
+## 3.2 shared 层只保留最小 primitive
 
-## 10.1 目标
+长期最优不是再补一组 shared 正式 helper。真正应该统一的是：
 
-engine 最终只暴露正式 runtime 能力，不再暴露中间态概念。
+- **operation spec 模型**
+- **reducer kernel**
+- **mutation meta primitive**
 
-建议最终稳定外形：
+### shared 正式提供的只有
+
+- `Reducer`
+- `meta`
+- mutation / projection / history / collab 底层 runtime
+
+### domain 允许直接内联 spec wiring
+
+domain 可以直接写：
 
 ```ts
-type MutationRuntime = {
+const OPERATION_SPEC = { ... }
+
+const OPERATION_META = meta.create(
+  mapSpecToMeta(OPERATION_SPEC)
+)
+
+const applyOperation = (ctx, op) => {
+  OPERATION_SPEC[op.type].apply(ctx, op as never)
+}
+
+const collectFootprint = (ctx, op) => {
+  OPERATION_SPEC[op.type].footprint?.(ctx, op as never)
+}
+```
+
+这样仍然满足单表 spec 和唯一事实源，不需要额外 shared helper API。
+
+### 唯一禁止项
+
+虽然允许 domain 内联 wiring，但**不允许再维护第二张平行表**：
+
+- 不允许一份 spec、一份 meta、一份 footprint registry 分别长期独立维护
+- 不允许一份 spec 后面再跟一套 prefix routing
+
+允许的只有一张 spec table，以及若干从这张表直接读取的薄 wiring。
+
+---
+
+## 3.3 shared 层最小职责
+
+### `meta`
+
+继续作为最小 primitive，负责表达：
+
+```ts
+type OpMeta = {
+  family: string
+  sync?: 'live' | 'checkpoint'
+  history?: boolean
+}
+```
+
+领域层可以从 spec 派生它，但不再手写第二份长期并存的 `META`。
+
+### `Reducer`
+
+继续作为唯一 reducer kernel，但退回成 mutation engine 内部 primitive，而不是由 domain 显式组装。
+
+长期最优不是：
+
+```ts
+const WHITEBOARD_OPERATION_SPEC = createWhiteboardOperationSpec(...)
+
+export const whiteboardReducer = createOperationReducer({
+  spec: WHITEBOARD_OPERATION_SPEC,
+  createContext,
+  settle,
+  done,
+  validate
+})
+```
+
+而是：
+
+```ts
+const WHITEBOARD_OPERATIONS = createWhiteboardOperationSpec(...)
+
+export const createWhiteboardMutationSpec = (...) => ({
+  normalize,
+  compile,
+  operations: WHITEBOARD_OPERATIONS,
+  publish
+})
+```
+
+也就是 operation spec 直接进入 mutation spec，由 mutation engine 内部完成 reducer 建立。
+
+因此：
+
+- `createOperationReducer(...)` 不应成为 shared 正式 API
+- `whiteboardReducer` / `dataviewReducer` 这种 domain reducer 装配层也不应继续存在
+
+---
+
+## 3.4 Whiteboard 最终形态
+
+whiteboard 当前分散在：
+
+- operation meta
+- history collect registry
+- reducer prefix routing
+- reducer handlers
+
+长期最优必须收敛成：
+
+```text
+whiteboard operation spec table
+  -> meta
+  -> footprint
+  -> reducer
+```
+
+也就是 whiteboard 不再保留：
+
+- `META`
+- `collect.operation(...)`
+- `reduceNodeOperation(...)`
+- `reduceEdgeOperation(...)`
+- `handleWhiteboardOperation(...)`
+
+这些概念全部退回成 operation spec table 内部实现细节。
+
+whiteboard reducer 不再作为 domain public 组装层存在。
+
+whiteboard 最终应变成：
+
+```ts
+const WHITEBOARD_OPERATIONS = createWhiteboardOperationSpec(...)
+
+export const createWhiteboardMutationSpec = (...) => ({
+  normalize,
+  compile,
+  operations: WHITEBOARD_OPERATIONS,
+  publish
+})
+```
+
+其中 `operations` 不是只有一张薄表，而是一整块 operation runtime spec：
+
+```ts
+type OperationRuntimeSpec<
+  Doc,
+  Op extends { type: string },
+  Key,
+  Ctx,
+  Code extends string,
+  Extra
+> = {
+  table: OperationSpecTable<Doc, Op, Key, Ctx>
+  serializeKey(key: Key): string
+  createContext(base: ReducerContext<Doc, Op, Key, Code>): Ctx
+  validate?(input: {
+    doc: Doc
+    ops: readonly Op[]
+    origin: Origin
+  }): ReducerError<Code> | void
+  settle?(ctx: Ctx): void
+  done(ctx: Ctx): Extra
+  conflicts?(left: Key, right: Key): boolean
+}
+```
+
+这里的关键点只有一个：
+
+- reducer lifecycle 级规则也作为 `operations` spec 的一部分直接进入 mutation engine
+
+### Whiteboard 允许保留的领域差异
+
+whiteboard 可以继续保留：
+
+- batch 级 input validation
+- lock validation
+- domain reduce context
+- done/settle 阶段的 mindmap flush
+
+但这些都进入 `operations` spec，不再形成独立 reducer 装配层。
+
+---
+
+## 3.5 Dataview 最终形态
+
+dataview 已经接近目标，最终要做的是收正：
+
+- `DocumentOperationDefinitionTable` 直接升级为正式 `OperationSpecTable`
+- `DATAVIEW_OPERATION_META` 从 spec 自动派生
+- dataview mutation kernel 直接把 `operations` spec 交给 mutation engine
+- 不再保留一个单独命名的 dataview reducer 组装层
+
+可以保留 dataview 自己的 commit impact / trace 和 compile intents；但 operation 的 `family / sync / history / footprint / apply` 只允许在一张表里声明，并通过 `operations` spec` 直接进入 mutation engine。
+
+---
+
+## 3.6 Phase 6 完成标准
+
+满足以下条件才算完成：
+
+1. `dataview` 存在唯一 operation spec table
+2. `whiteboard` 存在唯一 operation spec table
+3. `meta` 从 spec 派生，不再手写第二份长期并存定义
+4. `footprint collect` 直接从 spec 读取，不再维护平行 registry
+5. `reducer routing` 直接从 spec 读取，不再保留 type prefix 路由
+6. 新增 operation 时不再需要多处同步注册
+
+---
+
+## 4. Phase 7 最终 API 设计
+
+## 4.1 目标不是再加一层 facade
+
+Phase 7 的目标只有一个：
+
+- **删掉中间层，让 public engine 只剩正式能力**
+
+---
+
+## 4.2 最终 mutation runtime public 形态
+
+底层正式 runtime 固定为：
+
+```ts
+type MutationRuntime<
+  Doc,
+  Current,
+  Result,
+  Commit
+> = {
   doc(): Doc
   current(): Current
-  commits: Stream<CommitRecord<...>>
+  commits: Stream<Commit>
   history: HistoryPort<Result>
-  projections: {
-    [name: string]: ProjectionPort<any, any>
-  }
-  execute(intent | intent[], options?): Result
+  execute(input, options?): Result
   apply(ops, options?): Result
   replace(doc, options?): boolean
 }
 ```
 
-其中：
+不再包含：
 
-- `history` 是正式 port，不再是 controller
-- `commits` 是正式事实流
-- `projections.*` 是正式 read model 容器
+- `writes`
+- `mutation`
+- `load`
 
-上层 runtime 不再自己重新包装这些能力。
+这里：
 
-## 10.2 Phase 7 完成标准
-
-1. dataview runtime 不再自己拼 history / source / publish 协调层
-2. whiteboard runtime 不再自己拼 engine + scene + history 的重复编排层
-3. 上层只保留领域功能 API，不保留底层设施适配代码
+- `load` 退回为 `replace(doc, { origin: 'load' })` 的语义糖，不再保留正式 public 入口
+- `writes` 不是正式事实流，正式事实流只有 `commits`
+- `mutation` 不能继续作为 public engine 的内部泄漏口
 
 ---
 
-## 11. 建议的实施顺序
+## 4.3 Dataview 最终 public engine
 
-## Sprint A
+dataview 最终 public engine 只保留：
 
-- Phase 1
-- Phase 2
+```ts
+type DataviewEngine = {
+  current(): DataviewCurrent
+  doc(): DataDoc
+  commits: EngineCommits
+  history: DataviewHistory
+  execute(input, options?): ExecuteResult
+  apply(ops, options?): MutationResult
+  replace(doc, options?): boolean
 
-原因：
+  fields: FieldsApi
+  records: RecordsApi
+  views: ViewsApi
+  active: ActiveViewApi
+  performance?: PerformanceApi
+}
+```
 
-- 先把 mutation / history 的底座修正
+这里有两个关键点：
 
-## Sprint B
+### 第一，保留领域 API
 
-- Phase 3
-- Phase 4
+不把：
 
-原因：
+- `fields`
+- `records`
+- `views`
+- `active`
 
-- collab 和 yjs 需要建立在 commit stream 稳定之后
+收成抽象 `write/read`。
 
-## Sprint C
+因为对 dataview 而言，这四个就是最清晰的领域 public 面。
 
-- Phase 5
+### 第二，不额外公开通用 `projections` 容器
 
-原因：
+虽然底层已经统一 projection runtime，但长期最优不一定是：
 
-- projection / delta 是大规模收口，应该单独做
+```ts
+engine.projections.active
+```
 
-## Sprint D
+dataview 更合理的 public 语义仍然是：
 
-- Phase 6
+- `engine.current().publish?.active`
+- `engine.active.*`
 
-原因：
-
-- whiteboard operation spec 收口是领域结构性重构
-
-## Sprint E
-
-- Phase 7
-
-原因：
-
-- 只有当前几层全部稳定，engine 外形才能一次性定稿
-
----
-
-## 12. 哪些事情不要做
-
-以下做法都不符合长期最优：
-
-### 12.1 不要继续加 facade
-
-不要再新增：
-
-- runtime facade
-- collab binding
-- history adapter
-- publish bridge
-
-如果出现“再包一层就能更方便”，大概率说明底层模型还没收口。
-
-### 12.2 不要再引入第二套术语
-
-最终术语应固定：
-
-- operation
-- reducer
-- mutation
-- commit
-- projection
-- delta
-- history
-- collab
-- store
-
-不要继续混用：
-
-- publish
-- projector
-- snapshot runtime
-- active runtime
-- scene bridge
-
-这些词只能作为局部领域名字，不能再作为底层基础设施主术语。
-
-### 12.3 不要让 whiteboard 和 dataview 分别维护 transport 基础设施
-
-只要是：
-
-- Yjs store
-- local origin
-- provider sync
-- shared snapshot container
-
-都必须只有一份共享实现。
+也就是 projection runtime 是 shared 底层，active publish snapshot 才是 dataview public 事实。
 
 ---
 
-## 13. 最终验收标准
+## 4.4 Whiteboard 最终 public engine
 
-当下面条件都成立时，说明这轮底层统一真正完成：
+whiteboard engine 最终 public 面应只保留：
 
-1. 所有正式提交都进入统一 `CommitRecord` 流。
-2. history 对外只剩 `HistoryPort`。
-3. collab 不再重复实现 history wrapper。
-4. yjs transport 只有一份共享实现。
-5. delta 只有一套共享 primitive。
-6. projection 只有一套共享 runtime。
-7. dataview 和 whiteboard 都使用单表 operation spec。
-8. 上层不再依赖底层设施的私有细节。
+```ts
+type WhiteboardEngine = {
+  config: BoardConfig
+  current(): EnginePublish
+  doc(): Document
+  commits: EngineCommits
+  history: HistoryPort<IntentResult>
+  execute(intent, options?): ExecuteResult
+  apply(ops, options?): IntentResult
+  replace(doc, options?): boolean
+}
+```
 
-最后的理想状态应该是：
+不再公开：
+
+- `writes`
+- `mutation`
+
+whiteboard 的 projection / scene 不属于 engine public 面；engine 只做 mutation runtime，editor / scene 做领域 read-model runtime。
+
+---
+
+## 4.5 HistoryBinding 必须删除
+
+`HistoryBinding` 不符合最终模型。长期最优是 `HistoryPort` 本身就是正式 public 形态，因此上层不再二次包装 history。
+
+---
+
+## 4.6 Projection 不再作为 public 通用术语上浮
+
+这轮要避免一个错误方向：
+
+- 因为 shared/projection 已经统一，所以 public engine 也要显式暴露 `projections`
+
+最终原则固定为：
+
+- `shared/projection` 是底层设施术语
+- `dataview` / `whiteboard` 对外只暴露领域读面
+
+所以 dataview 对外继续是 `active`，whiteboard 对外继续是 `scene`，不再额外发明 `engine.projections.*`。
+
+---
+
+## 4.7 Phase 7 完成标准
+
+满足以下条件才算完成：
+
+1. dataview public engine 不再暴露 `writes`
+2. dataview public engine 不再暴露 `mutation`
+3. dataview public engine 不再暴露 `load`
+4. whiteboard public engine 不再暴露 `writes`
+5. whiteboard public engine 不再暴露 `mutation`
+6. shared/mutation 不再保留正式 `HistoryBinding`
+7. dataview / whiteboard 上层 runtime 不再二次包装 history
+8. public engine 只保留正式 runtime 能力 + 领域 API
+
+---
+
+## 5. 实施顺序
+
+## Step 1：先固定 `shared/mutation` 的 `operations` 入口模型
+
+第一步是把 mutation engine 的 `operations` 入口定稿，固定为：
+
+- `table`
+- `serializeKey`
+- `createContext`
+- `validate`
+- `settle`
+- `done`
+- `conflicts`
+
+目标：
+
+- mutation engine 能直接吃 `operations`
+- reducer 创建退回 mutation engine 内部
+- domain 不再显式创建 reducer
+
+这是整个 Phase 6 的起点。
+
+---
+
+## Step 2：先迁 dataview 到 `operations` 直连模型
+
+先迁 dataview，因为它离最终形态最近，风险最低：
+
+- `DocumentOperationDefinitionTable` 升级为正式单表 spec
+- `meta` 从 spec 派生
+- dataview mutation kernel 直接把 `operations` 交给 mutation engine
+- 不再保留 dataview reducer 装配层
+
+这一步用来验证 `shared/mutation` 的新 `operations` 入口是否合理。
+
+---
+
+## Step 3：再迁 whiteboard 到 `operations` 直连模型
+
+whiteboard 是这一轮主体，要把这些东西全部收回：
+
+- `META`
+- `collectWhiteboardHistory`
+- `handleWhiteboardOperation`
+- `reduceNodeOperation`
+- `reduceEdgeOperation`
+- `reduceGroupOperation`
+- `reduceMindmapOperation`
+
+最终统一进入一个 `operations` spec。
+
+允许保留：
+
+- batch validate
+- lock validate
+- domain context
+- settle/done
+
+但这些都作为 `operations` runtime spec 的组成部分直接进入 mutation engine，不再形成独立 reducer 装配层。
+
+---
+
+## Step 4：删除 `HistoryBinding` 和上层重复 history 包装
+
+这一步属于 Phase 7 的前置清理：
+
+- 删除 `createHistoryBinding`
+- 删除 `HistoryBinding`
+- dataview runtime 直接吃 `HistoryPort`
+- whiteboard runtime / react 直接吃 `HistoryPort`
+
+只要 `HistoryBinding` 还存在，public engine 外形就不可能真正收干净。
+
+---
+
+## Step 5：最后统一 public engine 外形
+
+最后统一 dataview / whiteboard 的 public engine surface。
+
+### dataview
+
+- 删除 `writes`
+- 删除 `mutation`
+- 删除 `load`
+- 保留 `fields / records / views / active`
+
+### whiteboard
+
+- 删除 `writes`
+- 删除 `mutation`
+- engine 只保留 mutation runtime 正式能力
+- `scene / editor` 继续留在领域 runtime
+
+这一步不是再加 facade，而是删掉所有中间态 public 面。
+
+---
+
+## 6. 不要做的事
+
+### 6.1 不要把 `load` 保留成正式 public API
+
+最终只有：
+
+- `replace(doc, { origin: 'load' })`
+
+没有第二条 public 路径。
+
+### 6.2 不要把 `writes` 继续留在 public engine
+
+正式事实流已经是：
+
+- `commits`
+
+`writes` 不是正式 public 面。
+
+### 6.3 不要因为 projection 统一了，就公开 `engine.projections`
+
+这是把 shared 术语泄漏到领域层，不是长期最优。
+
+### 6.4 不要继续保留 HistoryBinding
+
+这会让 Phase 7 永远收不干净。
+
+---
+
+## 7. 最终验收标准
+
+当下面条件都成立时，Phase 6 / 7 才算真正完成：
+
+1. `dataview` 有唯一 operation spec table
+2. `whiteboard` 有唯一 operation spec table
+3. meta / footprint / reducer routing 全部从 operation spec 派生
+4. `Doc` 语义固定为：
+   - 外部传入即可直接持有
+   - engine 内部不 defensive clone
+   - normalize 固定且内建
+5. dataview public engine 不再暴露 `writes` / `mutation` / `load`
+6. whiteboard public engine 不再暴露 `writes` / `mutation`
+7. shared/mutation 不再保留 `HistoryBinding`
+8. 上层只保留领域 API，不再保留底层设施适配层
+
+最终理想状态应是：
 
 ```text
 shared/*
-  全部是底层设施
+  只负责底层设施
 
 dataview/*
-  只剩 dataview 语义
+  只负责 dataview 领域语义
 
 whiteboard/*
-  只剩 whiteboard 语义
+  只负责 whiteboard 领域语义
 ```
 
-这才算真正完成“大一统”。
+这才是 Phase 6 / 7 的长期最优终态。

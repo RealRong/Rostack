@@ -1,9 +1,11 @@
-import type {
-  ReducerResult
+import {
+  Reducer,
+  type ReducerContext,
+  type ReducerError,
+  type ReducerResult,
+  type ReducerSpec
 } from '@shared/reducer'
-import type {
-  Issue
-} from './compiler'
+import type { Issue } from './compiler'
 import {
   history as historyRuntime,
   type HistoryController
@@ -13,6 +15,7 @@ import {
   readHistoryPortRuntime,
   type HistoryPort
 } from './localHistory'
+import type { OpMeta } from './meta'
 import type { MutationPort } from './port'
 import type {
   ApplyCommit,
@@ -156,41 +159,120 @@ export interface MutationPublishSpec<
   ): MutationPublishReduceResult<Publish, Cache>
 }
 
-export interface MutationHistorySpec<Doc, Op, Key, Extra> {
+export interface MutationOperationSpec<
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  ApplyCtx,
+  FootprintCtx = ApplyCtx,
+  TType extends Op['type'] = Op['type']
+> extends OpMeta {
+  footprint?(
+    ctx: FootprintCtx,
+    op: Extract<Op, { type: TType }>
+  ): void
+  apply(
+    ctx: ApplyCtx,
+    op: Extract<Op, { type: TType }>
+  ): void
+}
+
+export type MutationOperationTable<
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  ApplyCtx,
+  FootprintCtx = ApplyCtx
+> = {
+  [TType in Op['type']]: MutationOperationSpec<
+    Doc,
+    Op,
+    Key,
+    ApplyCtx,
+    FootprintCtx,
+    TType
+  >
+}
+
+export interface MutationOperationsSpec<
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  Extra,
+  DomainCtx = ReducerContext<Doc, Op, Key, string>,
+  Code extends string = string
+> {
+  table: MutationOperationTable<Doc, Op, Key, DomainCtx>
+  serializeKey(key: Key): string
+  createContext?(
+    ctx: ReducerContext<Doc, Op, Key, Code>
+  ): DomainCtx
+  validate?(input: {
+    doc: Doc
+    ops: readonly Op[]
+    origin: Origin
+  }): ReducerError<Code> | void
+  settle?(ctx: DomainCtx): void
+  done(ctx: DomainCtx): Extra
+  conflicts?(left: Key, right: Key): boolean
+}
+
+export interface MutationHistorySpec<
+  Doc,
+  Op extends {
+    type: string
+  },
+  Key,
+  Extra
+> {
   capacity?: number
-  track(write: Write<Doc, Op, Key, Extra>): boolean
-  clear?(write: Write<Doc, Op, Key, Extra>): boolean
-  conflicts(left: Key, right: Key): boolean
+  track?(input: {
+    origin: Origin
+    ops: readonly Op[]
+    write: Write<Doc, Op, Key, Extra>
+  }): boolean
+  clear?(input: {
+    origin: Origin
+    ops: readonly Op[]
+    write: Write<Doc, Op, Key, Extra>
+  }): boolean
 }
 
 export interface MutationRuntimeSpec<
   Doc extends object,
-  Op,
+  Op extends {
+    type: string
+  },
   Key,
   Publish,
   Cache = void,
-  Extra = void
+  Extra = void,
+  Code extends string = string
 > {
-  clone(doc: Doc): Doc
-  normalize?(doc: Doc): Doc
-  apply(input: {
-    doc: Doc
-    ops: readonly Op[]
-    origin: Origin
-  }): MutationApplyResult<Doc, Op, Key, Extra>
+  normalize(doc: Doc): Doc
+  operations: MutationOperationsSpec<Doc, Op, Key, Extra, any, Code>
   publish?: MutationPublishSpec<Doc, Op, Key, Extra, Publish, Cache>
-  history?: MutationHistorySpec<Doc, Op, Key, Extra>
+  history?: MutationHistorySpec<Doc, Op, Key, Extra> | false
 }
 
 export interface CommandMutationSpec<
   Doc extends object,
   Table extends MutationIntentTable,
-  Op,
+  Op extends {
+    type: string
+  },
   Key,
   Publish,
   Cache = void,
-  Extra = void
-> extends MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra> {
+  Extra = void,
+  Code extends string = string
+> extends MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra, Code> {
   compile(input: {
     doc: Doc
     intents: readonly MutationIntentOf<Table>[]
@@ -223,6 +305,11 @@ const toIssues = (
   issues?: readonly Issue[]
 ): readonly Issue[] => issues ?? []
 
+const hasOwn = (
+  value: object,
+  key: PropertyKey
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
+
 export const mutationFailure = <Code extends string>(
   code: Code,
   message: string,
@@ -240,27 +327,13 @@ export const mutationFailure = <Code extends string>(
   }
 })
 
-const mutationSuccess = <T, W>(
+const mutationSuccess = <T, W, Code extends string = string>(
   data: T,
   write: W
-): MutationResult<T, W> => ({
+): MutationResult<T, W, Code> => ({
   ok: true,
   data,
   write
-})
-
-const applySuccess = <Doc, Op, Key, Extra>(
-  data: Extract<ReducerResult<Doc, Op, Key, Extra>, { ok: true }>
-): MutationApplyResult<Doc, Op, Key, Extra> => ({
-  ok: true,
-  data
-})
-
-const applyFailure = <Code extends string>(
-  error: MutationError<Code>
-): MutationFailure<Code> => ({
-  ok: false,
-  error
 })
 
 export const mutationResult = {
@@ -268,33 +341,129 @@ export const mutationResult = {
   failure: mutationFailure
 } as const
 
-const applyCommitResult = {
-  success: applySuccess,
-  failure: applyFailure
-} as const
-
 const readFirstOutput = <Output>(
   outputs?: readonly Output[]
 ): Output | undefined => outputs?.[0]
 
+const readOperation = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  ApplyCtx,
+  FootprintCtx = ApplyCtx
+>(
+  table: MutationOperationTable<Doc, Op, Key, ApplyCtx, FootprintCtx>,
+  op: Op
+): MutationOperationSpec<Doc, Op, Key, ApplyCtx, FootprintCtx> => {
+  if (!hasOwn(table, op.type)) {
+    throw new Error(`Unknown mutation operation: ${op.type}`)
+  }
+
+  return table[op.type as Op['type']]
+}
+
+const createReducerSpecFromOperations = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  Extra,
+  DomainCtx,
+  Code extends string
+>(
+  operations: MutationOperationsSpec<Doc, Op, Key, Extra, DomainCtx, Code>
+): ReducerSpec<Doc, Op, Key, Extra, DomainCtx, Code> => ({
+  serializeKey: operations.serializeKey,
+  ...(operations.createContext
+    ? {
+        createContext: operations.createContext
+      }
+    : {}),
+  handle: (ctx, op) => {
+    const entry = readOperation(operations.table, op)
+    entry.footprint?.(ctx, op as never)
+    entry.apply(ctx, op as never)
+  },
+  ...(operations.settle
+    ? {
+        settle: operations.settle
+      }
+    : {}),
+  done: operations.done
+})
+
+const createReducerFromOperations = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  Extra,
+  DomainCtx,
+  Code extends string
+>(
+  operations: MutationOperationsSpec<Doc, Op, Key, Extra, DomainCtx, Code>
+): Reducer<Doc, Op, Key, Extra, DomainCtx, Code> => new Reducer({
+  spec: createReducerSpecFromOperations(operations)
+})
+
+const defaultTracksHistory = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  ApplyCtx,
+  FootprintCtx = ApplyCtx
+>(
+  table: MutationOperationTable<Doc, Op, Key, ApplyCtx, FootprintCtx>,
+  origin: Origin,
+  ops: readonly Op[]
+): boolean => (
+  origin === 'user'
+  && ops.every((op) => readOperation(table, op).history !== false)
+)
+
+const defaultClearsHistory = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  ApplyCtx,
+  FootprintCtx = ApplyCtx
+>(
+  table: MutationOperationTable<Doc, Op, Key, ApplyCtx, FootprintCtx>,
+  origin: Origin,
+  ops: readonly Op[]
+): boolean => (
+  defaultTracksHistory(table, origin, ops)
+  && ops.some((op) => readOperation(table, op).sync === 'checkpoint')
+)
+
 export class OperationMutationRuntime<
   Doc extends object,
-  Op,
+  Op extends {
+    type: string
+  },
   Key,
   Publish,
   Cache = void,
-  Extra = void
+  Extra = void,
+  Code extends string = string
 > implements MutationPort<
   Doc,
   Op,
   Key,
-  MutationResult<void, Write<Doc, Op, Key, Extra>>,
+  MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
   Write<Doc, Op, Key, Extra>
 > {
-  readonly writes: WriteStream<Write<Doc, Op, Key, Extra>>
   readonly commits: CommitStream<CommitRecord<Doc, Op, Key, Extra>>
   readonly history: HistoryPort<
-    MutationResult<void, Write<Doc, Op, Key, Extra>>,
+    MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
     Op,
     Key,
     Write<Doc, Op, Key, Extra>
@@ -303,12 +472,21 @@ export class OperationMutationRuntime<
     Doc,
     Op,
     Key,
-    MutationResult<void, Write<Doc, Op, Key, Extra>>,
+    MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
     Write<Doc, Op, Key, Extra>
   >['internal']
 
-  protected readonly spec: MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra>
+  protected readonly spec: MutationRuntimeSpec<
+    Doc,
+    Op,
+    Key,
+    Publish,
+    Cache,
+    Extra,
+    Code
+  >
   private state: MutationInternalState<Doc, Publish, Cache>
+  private readonly reducer: Reducer<Doc, Op, Key, Extra, any, Code>
   private readonly historyControllerRef?: HistoryController<
     Op,
     Key,
@@ -322,37 +500,30 @@ export class OperationMutationRuntime<
 
   constructor(input: {
     doc: Doc
-    spec: MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra>
+    spec: MutationRuntimeSpec<Doc, Op, Key, Publish, Cache, Extra, Code>
   }) {
     this.spec = input.spec
+    this.reducer = createReducerFromOperations(this.spec.operations)
 
     const initialDoc = this.prepareExternalDoc(input.doc)
     this.state = this.createInitialState(initialDoc)
 
-    if (this.spec.history) {
+    if (this.spec.history !== false) {
       this.historyControllerRef = historyRuntime.create<
         Op,
         Key,
         Write<Doc, Op, Key, Extra>
       >({
-        capacity: this.spec.history.capacity,
-        track: (write: Write<Doc, Op, Key, Extra>) => this.spec.history!.track(write),
+        capacity: this.spec.history?.capacity,
         conflicts: (left: readonly Key[], right: readonly Key[]) => left.some(
-          (leftKey: Key) => right.some(
-            (rightKey: Key) => this.spec.history!.conflicts(leftKey, rightKey)
-          )
+          (leftKey: Key) => right.some((rightKey: Key) => (
+            this.spec.operations.conflicts?.(leftKey, rightKey)
+            ?? Object.is(leftKey, rightKey)
+          ))
         )
       })
     }
 
-    this.writes = {
-      subscribe: (listener) => {
-        this.writeListeners.add(listener)
-        return () => {
-          this.writeListeners.delete(listener)
-        }
-      }
-    }
     this.commits = {
       subscribe: (listener) => {
         this.commitListeners.add(listener)
@@ -383,7 +554,7 @@ export class OperationMutationRuntime<
   }
 
   doc(): Doc {
-    return this.spec.clone(this.state.doc)
+    return this.state.doc
   }
 
   current(): MutationCurrent<Doc, Publish> {
@@ -404,11 +575,12 @@ export class OperationMutationRuntime<
     options?: MutationOptions
   ): MutationResult<
     void,
-    Write<Doc, Op, Key, Extra>
+    Write<Doc, Op, Key, Extra>,
+    Code
   > {
     if (ops.length === 0) {
       return mutationFailure(
-        APPLY_EMPTY_CODE,
+        APPLY_EMPTY_CODE as Code,
         'OperationMutationRuntime.apply requires at least one operation.'
       )
     }
@@ -457,19 +629,36 @@ export class OperationMutationRuntime<
     origin: Origin
   }): MutationResult<
     TData,
-    Write<Doc, Op, Key, Extra>
+    Write<Doc, Op, Key, Extra>,
+    Code
   > {
-    const applied = this.spec.apply({
+    const validationError = this.spec.operations.validate?.({
       doc: this.state.doc,
       ops: input.ops,
       origin: input.origin
     })
-    if (!applied.ok) {
-      return applied
+    if (validationError) {
+      return mutationFailure(
+        validationError.code,
+        validationError.message,
+        validationError.details
+      )
     }
 
-    const commit = applied.data
-    const nextDoc = this.prepareCommittedDoc(commit.doc)
+    const reduced = this.reducer.reduce({
+      doc: this.state.doc,
+      ops: input.ops,
+      origin: input.origin
+    })
+    if (!reduced.ok) {
+      return mutationFailure(
+        reduced.error.code,
+        reduced.error.message,
+        reduced.error.details
+      )
+    }
+
+    const nextDoc = this.prepareCommittedDoc(reduced.doc)
     const nextRev = this.state.rev + 1
     const write: Write<Doc, Op, Key, Extra> = {
       rev: nextRev,
@@ -477,9 +666,9 @@ export class OperationMutationRuntime<
       origin: input.origin,
       doc: nextDoc,
       forward: input.ops.slice(),
-      inverse: commit.inverse,
-      footprint: commit.footprint,
-      extra: commit.extra
+      inverse: reduced.inverse,
+      footprint: reduced.footprint,
+      extra: reduced.extra
     }
     const appliedCommit: ApplyCommit<Doc, Op, Key, Extra> = {
       kind: 'apply',
@@ -513,10 +702,35 @@ export class OperationMutationRuntime<
     }
 
     if (input.origin !== 'history' && this.historyControllerRef) {
-      if (this.spec.history?.clear?.(write)) {
+      const historySpec = this.spec.history === false
+        ? undefined
+        : this.spec.history
+      const shouldClear = historySpec?.clear?.({
+        origin: input.origin,
+        ops: input.ops,
+        write
+      }) ?? defaultClearsHistory(
+        this.spec.operations.table,
+        input.origin,
+        input.ops
+      )
+
+      if (shouldClear) {
         this.historyControllerRef.clear()
       } else {
-        this.historyControllerRef.capture(write)
+        const shouldTrack = historySpec?.track?.({
+          origin: input.origin,
+          ops: input.ops,
+          write
+        }) ?? defaultTracksHistory(
+          this.spec.operations.table,
+          input.origin,
+          input.ops
+        )
+
+        if (shouldTrack) {
+          this.historyControllerRef.capture(write)
+        }
       }
     }
 
@@ -524,7 +738,10 @@ export class OperationMutationRuntime<
     this.emitWrite(write)
     this.emitCommit(appliedCommit)
 
-    return mutationSuccess(input.data, write)
+    return mutationSuccess<TData, Write<Doc, Op, Key, Extra>, Code>(
+      input.data,
+      write
+    )
   }
 
   private readCurrent(): MutationCurrent<Doc, Publish> {
@@ -542,14 +759,13 @@ export class OperationMutationRuntime<
   private prepareExternalDoc(
     doc: Doc
   ): Doc {
-    const cloned = this.spec.clone(doc)
-    return this.prepareCommittedDoc(cloned)
+    return this.prepareCommittedDoc(doc)
   }
 
   private prepareCommittedDoc(
     doc: Doc
   ): Doc {
-    return this.spec.normalize?.(doc) ?? doc
+    return this.spec.normalize(doc)
   }
 
   private createInitialState(
@@ -597,12 +813,15 @@ export class OperationMutationRuntime<
 export class CommandMutationEngine<
   Doc extends object,
   Table extends MutationIntentTable,
-  Op,
+  Op extends {
+    type: string
+  },
   Key,
   Publish,
   Cache = void,
-  Extra = void
-> extends OperationMutationRuntime<Doc, Op, Key, Publish, Cache, Extra> {
+  Extra = void,
+  Code extends string = string
+> extends OperationMutationRuntime<Doc, Op, Key, Publish, Cache, Extra, Code> {
   protected readonly commandSpec: CommandMutationSpec<
     Doc,
     Table,
@@ -610,12 +829,13 @@ export class CommandMutationEngine<
     Key,
     Publish,
     Cache,
-    Extra
+    Extra,
+    Code
   >
 
   constructor(input: {
     doc: Doc
-    spec: CommandMutationSpec<Doc, Table, Op, Key, Publish, Cache, Extra>
+    spec: CommandMutationSpec<Doc, Table, Op, Key, Publish, Cache, Extra, Code>
   }) {
     super(input)
     this.commandSpec = input.spec
@@ -627,14 +847,16 @@ export class CommandMutationEngine<
   ): MutationExecuteResult<
     Table,
     Write<Doc, Op, Key, Extra>,
-    K
+    K,
+    Code
   >
   execute(
     intents: readonly MutationIntentOf<Table>[],
     options?: MutationOptions
   ): MutationResult<
     readonly MutationOutputOf<Table>[],
-    Write<Doc, Op, Key, Extra>
+    Write<Doc, Op, Key, Extra>,
+    Code
   >
   execute<Input extends MutationExecuteInput<Table>>(
     input: Input,
@@ -642,7 +864,8 @@ export class CommandMutationEngine<
   ): MutationExecuteResultOfInput<
     Table,
     Write<Doc, Op, Key, Extra>,
-    Input
+    Input,
+    Code
   > {
     const batch = Array.isArray(input)
     const intents: readonly MutationIntentOf<Table>[] = batch
@@ -651,12 +874,13 @@ export class CommandMutationEngine<
 
     if (intents.length === 0) {
       return mutationFailure(
-        EXECUTE_EMPTY_CODE,
+        EXECUTE_EMPTY_CODE as Code,
         'CommandMutationEngine.execute requires at least one intent.'
       ) as MutationExecuteResultOfInput<
         Table,
         Write<Doc, Op, Key, Extra>,
-        Input
+        Input,
+        Code
       >
     }
 
@@ -672,7 +896,7 @@ export class CommandMutationEngine<
 
     if (!canApply) {
       return mutationFailure(
-        COMPILE_BLOCKED_CODE,
+        COMPILE_BLOCKED_CODE as Code,
         'CommandMutationEngine.execute was blocked by compile issues.',
         {
           issues
@@ -680,13 +904,14 @@ export class CommandMutationEngine<
       ) as MutationExecuteResultOfInput<
         Table,
         Write<Doc, Op, Key, Extra>,
-        Input
+        Input,
+        Code
       >
     }
 
     if (!plan.ops.length) {
       return mutationFailure(
-        COMPILE_EMPTY_CODE,
+        COMPILE_EMPTY_CODE as Code,
         'CommandMutationEngine.execute produced no operations.',
         {
           issues
@@ -694,7 +919,8 @@ export class CommandMutationEngine<
       ) as MutationExecuteResultOfInput<
         Table,
         Write<Doc, Op, Key, Extra>,
-        Input
+        Input,
+        Code
       >
     }
 
@@ -707,17 +933,17 @@ export class CommandMutationEngine<
       ) as MutationExecuteResultOfInput<
         Table,
         Write<Doc, Op, Key, Extra>,
-        Input
-      > extends MutationResult<infer Data, Write<Doc, Op, Key, Extra>>
+        Input,
+        Code
+      > extends MutationResult<infer Data, Write<Doc, Op, Key, Extra>, Code>
         ? Data
         : never,
       origin: options?.origin ?? 'user'
     }) as MutationExecuteResultOfInput<
       Table,
       Write<Doc, Op, Key, Extra>,
-      Input
+      Input,
+      Code
     >
   }
 }
-
-export const applyResult = applyCommitResult

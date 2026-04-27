@@ -25,12 +25,10 @@ export {
   OperationMutationRuntime
 } from './engine'
 export {
-  applyResult,
   mutationFailure,
   mutationResult
 } from './engine'
 export type {
-  MutationApplyResult,
   CommandMutationSpec,
   MutationCurrent,
   MutationError,
@@ -38,6 +36,9 @@ export type {
   MutationExecuteResult,
   MutationExecuteResultOfInput,
   MutationFailure,
+  MutationOperationSpec,
+  MutationOperationTable,
+  MutationOperationsSpec,
   MutationHistorySpec,
   MutationInternalState,
   MutationRuntimeSpec,

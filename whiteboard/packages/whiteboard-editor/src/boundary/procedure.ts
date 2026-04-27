@@ -1,5 +1,5 @@
 import type {
-  InputDelta,
+  EditorSceneSourceChange,
   SceneItem,
   State
 } from '@whiteboard/editor-scene'
@@ -13,7 +13,7 @@ export interface EditorPublished {
 
 export type EditorPublishRequest = {
   kind: 'publish'
-  delta?: InputDelta
+  change?: EditorSceneSourceChange
 }
 
 export type EditorTaskRequest =

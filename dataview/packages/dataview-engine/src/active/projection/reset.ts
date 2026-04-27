@@ -3,7 +3,7 @@ import type {
   ViewId
 } from '@dataview/core/contracts'
 import type { ViewState } from '@dataview/engine/contracts/view'
-import type { ActiveProjectionInput } from '../contracts/projection'
+import type { ActiveProjectionInput } from './types'
 
 export interface ActiveProjectionResetContext {
   activeViewId?: ViewId

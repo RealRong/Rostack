@@ -49,7 +49,7 @@ import {
   createActiveStageMetrics,
   toActivePhaseMetrics
 } from '../projection/metrics'
-import { publishPhaseScope } from '../contracts/projection'
+import { publishPhaseScope } from '../projection/types'
 
 const SNAPSHOT_KEYS = [
   'view',

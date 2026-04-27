@@ -10,8 +10,11 @@ import type { Capture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'
 import { createEditorSceneProjectionSpec } from '../runtime/model'
 import {
-  createEditorSceneRuntime
-} from '../runtime/createEditorSceneRuntime'
+  createEditorSceneProjectionRuntime
+} from '../runtime/createEditorSceneProjectionRuntime'
+export {
+  createEditorSceneProjectionRuntime
+} from '../runtime/createEditorSceneProjectionRuntime'
 
 const TEST_SCENE_VIEW = () => ({
   zoom: 1,
@@ -45,7 +48,7 @@ export interface EditorSceneProjectionHarness {
 export const createEditorSceneHarness = (input: {
   measure?: TextMeasure
 } = {}): EditorSceneHarness => {
-  const runtime = createEditorSceneRuntime({
+  const runtime = createEditorSceneProjectionRuntime({
     measure: input.measure,
     view: TEST_SCENE_VIEW
   })

@@ -4,7 +4,6 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./contracts/editor": "./src/contracts/editor.ts",
     "./testing/*": "./src/testing/*.ts"
   },
   "files": [

@@ -1,285 +1,63 @@
-import { scheduler, store } from '@shared/core'
+import { scheduler } from '@shared/core'
+import { idDelta } from '@shared/delta'
 import { edge as edgeApi } from '@whiteboard/core/edge'
-import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
-  DrawPreview as GraphDrawPreview,
-  DragState,
+  EdgeId,
+  MindmapId,
+  NodeId
+} from '@whiteboard/core/types'
+import type {
+  Snapshot as EngineDocumentSnapshot
+} from '@whiteboard/engine'
+import type {
+  EditSession,
   EdgePreview,
   HoverState,
   Input,
   InputDelta,
   MindmapPreview,
   NodePreview
-} from '@whiteboard/editor-scene'
+} from '../contracts/editor'
 import type {
-  EditSession as EditorEditSession
-} from '@whiteboard/editor/session/edit'
-import type {
-  EngineDelta,
-  EnginePublish,
-  IdDelta,
-  Snapshot as DocumentSnapshot
-} from '@whiteboard/engine'
-import type { EditorSession } from '@whiteboard/editor/session/runtime'
-import type {
-  HoverState as EditorHoverState
-} from '@whiteboard/editor/input/hover/store'
-import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode'
-import type {
-  EditorInputPreviewState,
-  TextPreviewPatch
-} from '@whiteboard/editor/session/preview/types'
+  EditorSceneSourceChange,
+  EditorSceneSourceSnapshot
+} from '../contracts/source'
 
-const EMPTY_DRAG_STATE: DragState = {
-  kind: 'idle'
-}
-
-const EMPTY_HOVER_STATE: HoverState = {
-  kind: 'none'
-}
-
-const readInteractionEditingEdge = (
-  mode: ReturnType<EditorSession['interaction']['read']['mode']['get']>
-): boolean => isEdgeInteractionMode(mode)
-
-const readInteractionHover = (
-  hover: EditorHoverState
-): HoverState => {
-  switch (hover.target?.kind) {
-    case 'node':
-      return {
-        kind: 'node',
-        nodeId: hover.target.nodeId
-      }
-    case 'edge':
-      return {
-        kind: 'edge',
-        edgeId: hover.target.edgeId
-      }
-    case 'mindmap':
-      return {
-        kind: 'mindmap',
-        mindmapId: hover.target.mindmapId
-      }
-    case 'group':
-      return {
-        kind: 'group',
-        groupId: hover.target.groupId
-      }
-    case 'selection-box':
-      return {
-        kind: 'selection-box'
-      }
-    default:
-      return EMPTY_HOVER_STATE
-  }
-}
-
-export const createTouchedIdDelta = <TId extends string>(
-  ids: Iterable<TId>
-): IdDelta<TId> => ({
-  added: new Set(),
-  updated: new Set(ids),
-  removed: new Set()
-})
-
-const mergeNodePreviewPatch = (
-  current: NodePreview | undefined,
-  patch: Record<string, unknown>
-): NodePreview => ({
-  patch: {
-    ...(current?.patch ?? {}),
-    ...patch
+const createEmptyInputDelta = (): InputDelta => ({
+  document: {
+    reset: false,
+    order: false,
+    nodes: idDelta.create<NodeId>(),
+    edges: idDelta.create<EdgeId>(),
+    mindmaps: idDelta.create<MindmapId>(),
+    groups: idDelta.create()
   },
-  hovered: current?.hovered ?? false,
-  hidden: current?.hidden ?? false
-})
-
-const readNodePreviews = (
-  preview: EditorInputPreviewState
-): ReadonlyMap<string, NodePreview> => {
-  const byId = new Map<string, NodePreview>()
-
-  preview.selection.node.patches.forEach((entry) => {
-    byId.set(
-      entry.id,
-      mergeNodePreviewPatch(byId.get(entry.id), entry.patch)
-    )
-  })
-
-  preview.node.text.patches.forEach((entry) => {
-    byId.set(
-      entry.id,
-      mergeNodePreviewPatch(
-        byId.get(entry.id),
-        entry.patch as unknown as TextPreviewPatch
-      )
-    )
-  })
-
-  preview.draw.hidden.forEach((nodeId) => {
-    const current = byId.get(nodeId)
-    byId.set(nodeId, {
-      patch: current?.patch,
-      hovered: current?.hovered ?? false,
-      hidden: true
-    })
-  })
-
-  return byId
-}
-
-const readEdgePreviews = (
-  preview: EditorInputPreviewState
-): ReadonlyMap<string, EdgePreview> => {
-  const byId = new Map<string, EdgePreview>()
-
-  preview.selection.edge.forEach((entry) => {
-    byId.set(entry.id, {
-      patch: entry.patch,
-      activeRouteIndex: entry.activeRouteIndex
-    })
-  })
-
-  return byId
-}
-
-const readDrawPreview = (
-  preview: EditorInputPreviewState
-): GraphDrawPreview | null => {
-  const current = preview.draw.preview
-  if (!current) {
-    return null
-  }
-
-  return {
-    kind: current.kind,
-    style: current.style,
-    points: current.points,
-    hiddenNodeIds: preview.draw.hidden
-  }
-}
-
-const readMindmapPreview = (
-  snapshot: DocumentSnapshot,
-  preview: EditorInputPreviewState['mindmap']['preview']
-): MindmapPreview | null => {
-  if (!preview) {
-    return null
-  }
-
-  const rootMoveMindmapId = preview.rootMove
-    ? mindmapApi.tree.resolveId(snapshot.document, preview.rootMove.treeId)
-    : undefined
-  const subtreeMoveMindmapId = preview.subtreeMove
-    ? mindmapApi.tree.resolveId(snapshot.document, preview.subtreeMove.treeId)
-    : undefined
-
-  return {
-    rootMove: rootMoveMindmapId && preview.rootMove
-      ? {
-          mindmapId: rootMoveMindmapId,
-          delta: preview.rootMove.delta
-        }
-      : undefined,
-    subtreeMove: subtreeMoveMindmapId && preview.subtreeMove
-      ? {
-          mindmapId: subtreeMoveMindmapId,
-          nodeId: preview.subtreeMove.nodeId,
-          ghost: preview.subtreeMove.ghost,
-          drop: preview.subtreeMove.drop
-        }
-      : undefined,
-    enter: preview.enter?.flatMap((entry) => {
-      const mindmapId = mindmapApi.tree.resolveId(snapshot.document, entry.treeId)
-      return mindmapId
-        ? [{
-            mindmapId,
-            nodeId: entry.nodeId,
-            parentId: entry.parentId,
-            route: entry.route,
-            fromRect: entry.fromRect,
-            toRect: entry.toRect,
-            startedAt: entry.startedAt,
-            durationMs: entry.durationMs
-          }]
-        : []
-    })
-  }
-}
-
-const readDragState = (
-  snapshot: DocumentSnapshot,
-  session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
-): DragState => {
-  const mode = store.read(session.interaction.read.mode)
-  const selection = store.read(session.state.selection)
-  const edit = store.read(session.state.edit)
-  const preview = store.read(session.preview.state)
-
-  switch (mode) {
-    case 'node-drag':
-      return {
-        kind: 'selection-move',
-        nodeIds: selection.nodeIds,
-        edgeIds: selection.edgeIds
-      }
-    case 'marquee':
-      return preview.selection.marquee
-        ? {
-            kind: 'selection-marquee',
-            worldRect: preview.selection.marquee.worldRect,
-            match: preview.selection.marquee.match
-          }
-        : EMPTY_DRAG_STATE
-    case 'node-transform':
-      return {
-        kind: 'selection-transform',
-        nodeIds: selection.nodeIds
-      }
-    case 'edge-label':
-      return edit?.kind === 'edge-label'
-        ? {
-            kind: 'edge-label',
-            edgeId: edit.edgeId,
-            labelId: edit.labelId
-          }
-        : EMPTY_DRAG_STATE
-    case 'edge-route':
-      return edit?.kind === 'edge-label'
-        ? {
-            kind: 'edge-route',
-            edgeId: edit.edgeId
-          }
-        : EMPTY_DRAG_STATE
-    case 'draw':
-      return {
-        kind: 'draw'
-      }
-    case 'mindmap-drag': {
-      const mindmap = preview.mindmap.preview
-      const subtreeMove = mindmap?.subtreeMove
-      if (!subtreeMove) {
-        return EMPTY_DRAG_STATE
-      }
-
-      const mindmapId = mindmapApi.tree.resolveId(snapshot.document, subtreeMove.treeId)
-
-      return mindmapId
-        ? {
-            kind: 'mindmap-drag',
-            mindmapId,
-            nodeId: subtreeMove.nodeId
-          }
-        : EMPTY_DRAG_STATE
+  session: {
+    tool: false,
+    selection: false,
+    hover: false,
+    edit: false,
+    interaction: false,
+    draft: {
+      edges: idDelta.create<EdgeId>()
+    },
+    preview: {
+      nodes: idDelta.create<NodeId>(),
+      edges: idDelta.create<EdgeId>(),
+      mindmaps: idDelta.create<MindmapId>(),
+      marquee: false,
+      guides: false,
+      draw: false,
+      edgeGuide: false
     }
-    default:
-      return EMPTY_DRAG_STATE
+  },
+  clock: {
+    mindmaps: new Set()
   }
-}
+})
 
 export const createDocumentInputDelta = (
-  delta: EngineDelta
+  delta: EditorSceneSourceSnapshot['document']['publish']['delta']
 ): InputDelta['document'] => ({
   reset: delta.reset,
   order: delta.order,
@@ -305,198 +83,319 @@ export const createDocumentInputDelta = (
   }
 })
 
-export const readEditedNodeIds = (
-  edit: EditorEditSession | null
-): ReadonlySet<string> => edit?.kind === 'node'
-  ? new Set([edit.nodeId])
-  : new Set()
+const createTouchedIdDelta = <TId extends string>(
+  ids: Iterable<TId>
+): InputDelta['document']['nodes'] => ({
+  added: new Set(),
+  updated: new Set(ids),
+  removed: new Set()
+})
 
-export const readEditedEdgeIds = (
-  edit: EditorEditSession | null
-): ReadonlySet<string> => edit?.kind === 'edge-label'
+const unionIds = <TId extends string>(
+  ...values: readonly Iterable<TId>[]
+): ReadonlySet<TId> => new Set(
+  values.flatMap((value) => [...value])
+)
+
+const readEditedEdgeIds = (
+  edit: EditSession | null
+): ReadonlySet<EdgeId> => edit?.kind === 'edge-label'
   ? new Set([edit.edgeId])
   : new Set()
 
-export const readPreviewNodeIds = (
-  preview: EditorInputPreviewState
-): ReadonlySet<string> => new Set([
-  ...preview.selection.node.patches.map((entry) => entry.id),
-  ...preview.node.text.patches.map((entry) => entry.id)
-])
+const readPreviewNodeIds = (
+  preview: EditorSceneSourceSnapshot['session']['preview']
+): ReadonlySet<NodeId> => new Set(preview.nodes.keys())
 
-export const readPreviewEdgeIds = (
-  preview: EditorInputPreviewState
-): ReadonlySet<string> => new Set(
-  preview.selection.edge
-    .filter((entry) => entry.patch !== undefined)
-    .map((entry) => entry.id)
-)
+const readPreviewEdgeIds = (
+  preview: EditorSceneSourceSnapshot['session']['preview']
+): ReadonlySet<EdgeId> => new Set(preview.edges.keys())
 
-const readPreviewEdgeProjectionMap = (
-  preview: EditorInputPreviewState
-) => {
-  const byId = new Map<string, {
-    patch?: EdgePreview['patch']
-    activeRouteIndex?: EdgePreview['activeRouteIndex']
-  }>()
+const readPreviewMindmapIds = (
+  preview: MindmapPreview | null
+): ReadonlySet<MindmapId> => {
+  const ids = new Set<MindmapId>()
 
-  preview.selection.edge.forEach((entry) => {
-    byId.set(entry.id, {
-      patch: entry.patch,
-      activeRouteIndex: entry.activeRouteIndex
-    })
-  })
-
-  return byId
-}
-
-export const readChangedPreviewEdgeIds = (input: {
-  previous: EditorInputPreviewState
-  next: EditorInputPreviewState
-}): ReadonlySet<string> => {
-  const previous = readPreviewEdgeProjectionMap(input.previous)
-  const next = readPreviewEdgeProjectionMap(input.next)
-  const changed = new Set<string>()
-
-  for (const edgeId of new Set([
-    ...previous.keys(),
-    ...next.keys()
-  ])) {
-    const left = previous.get(edgeId)
-    const right = next.get(edgeId)
-
-    if (
-      !edgeApi.patch.equal(left?.patch, right?.patch)
-      || left?.activeRouteIndex !== right?.activeRouteIndex
-    ) {
-      changed.add(edgeId)
-    }
+  if (preview?.rootMove) {
+    ids.add(preview.rootMove.mindmapId)
   }
-
-  return changed
-}
-
-export const readPreviewMindmapIds = (
-  snapshot: DocumentSnapshot,
-  preview: EditorInputPreviewState['mindmap']['preview']
-): ReadonlySet<string> => {
-  const ids = new Set<string>()
-
-  const rootMoveMindmapId = preview?.rootMove
-    ? mindmapApi.tree.resolveId(snapshot.document, preview.rootMove.treeId)
-    : undefined
-  if (rootMoveMindmapId) {
-    ids.add(rootMoveMindmapId)
+  if (preview?.subtreeMove) {
+    ids.add(preview.subtreeMove.mindmapId)
   }
-
-  const subtreeMoveMindmapId = preview?.subtreeMove
-    ? mindmapApi.tree.resolveId(snapshot.document, preview.subtreeMove.treeId)
-    : undefined
-  if (subtreeMoveMindmapId) {
-    ids.add(subtreeMoveMindmapId)
-  }
-
   preview?.enter?.forEach((entry) => {
-    const mindmapId = mindmapApi.tree.resolveId(snapshot.document, entry.treeId)
-    if (mindmapId) {
-      ids.add(mindmapId)
-    }
+    ids.add(entry.mindmapId)
   })
 
   return ids
 }
 
 export const readActiveMindmapTickIds = (input: {
-  snapshot: DocumentSnapshot
-  preview: EditorInputPreviewState['mindmap']['preview']
+  preview: MindmapPreview | null
   now?: number
-}): ReadonlySet<string> => {
-  const ids = new Set<string>()
+}): ReadonlySet<MindmapId> => {
+  const ids = new Set<MindmapId>()
   const now = input.now ?? scheduler.readMonotonicNow()
 
   input.preview?.enter?.forEach((entry) => {
-    if (entry.startedAt + entry.durationMs <= now) {
-      return
-    }
-
-    const mindmapId = mindmapApi.tree.resolveId(input.snapshot.document, entry.treeId)
-    if (mindmapId) {
-      ids.add(mindmapId)
+    if (entry.startedAt + entry.durationMs > now) {
+      ids.add(entry.mindmapId)
     }
   })
 
   return ids
 }
 
-export const createSceneInput = ({
-  previous,
-  publish,
-  session,
-  delta,
-  now = scheduler.readMonotonicNow()
-}: {
-  previous: DocumentSnapshot | null
-  publish: EnginePublish
-  session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
-  delta: InputDelta
-  now?: number
-}): Input => {
-  const snapshot = publish.snapshot
-  const preview = store.read(session.preview.state)
-  const selection = store.read(session.state.selection)
+const isHoverStateEqual = (
+  left: HoverState,
+  right: HoverState
+): boolean => {
+  if (left.kind !== right.kind) {
+    return false
+  }
 
-  return {
-    document: {
-      previous,
-      snapshot,
-      delta: publish.delta
-    },
-    session: {
-      edit: store.read(session.state.edit),
-      draft: {
-        edges: new Map()
-      },
-      preview: {
-        nodes: new Map(readNodePreviews(preview)),
-        edges: new Map(readEdgePreviews(preview)),
-        edgeGuide: preview.edge.guide
-          ? {
-              path: preview.edge.guide.path,
-              connect: preview.edge.guide.connect
-                ? {
-                    resolution: preview.edge.guide.connect.resolution
-                  }
-                : undefined
-            }
-          : undefined,
-        draw: readDrawPreview(preview),
-        selection: {
-          marquee: preview.selection.marquee
-            ? {
-                worldRect: preview.selection.marquee.worldRect,
-                match: preview.selection.marquee.match
-              }
-            : undefined,
-          guides: preview.selection.guides
-        },
-        mindmap: readMindmapPreview(snapshot, preview.mindmap.preview)
-      },
-      tool: store.read(session.state.tool)
-    },
-    interaction: {
-      selection,
-      hover: readInteractionHover(
-        store.read(session.interaction.read.hover)
-      ),
-      drag: readDragState(snapshot, session),
-      chrome: store.read(session.interaction.read.chrome),
-      editingEdge: readInteractionEditingEdge(
-        store.read(session.interaction.read.mode)
-      )
-    },
-    clock: {
-      now
-    },
-    delta
+  switch (left.kind) {
+    case 'node':
+      return left.nodeId === (right.kind === 'node' ? right.nodeId : undefined)
+    case 'edge':
+      return left.edgeId === (right.kind === 'edge' ? right.edgeId : undefined)
+    case 'mindmap':
+      return left.mindmapId === (right.kind === 'mindmap' ? right.mindmapId : undefined)
+    case 'group':
+      return left.groupId === (right.kind === 'group' ? right.groupId : undefined)
+    case 'selection-box':
+    case 'none':
+      return true
+    default:
+      return false
   }
 }
+
+const isStringArrayEqual = (
+  left: readonly string[],
+  right: readonly string[]
+): boolean => (
+  left.length === right.length
+  && left.every((value, index) => value === right[index])
+)
+
+const isDragStateEqual = (
+  left: EditorSceneSourceSnapshot['interaction']['drag'],
+  right: EditorSceneSourceSnapshot['interaction']['drag']
+): boolean => {
+  if (left.kind !== right.kind) {
+    return false
+  }
+
+  switch (left.kind) {
+    case 'idle':
+    case 'draw':
+      return true
+    case 'selection-move':
+      return isStringArrayEqual(left.nodeIds, right.kind === 'selection-move' ? right.nodeIds : [])
+        && isStringArrayEqual(left.edgeIds, right.kind === 'selection-move' ? right.edgeIds : [])
+    case 'selection-marquee':
+      return right.kind === 'selection-marquee'
+        && left.match === right.match
+        && left.worldRect.x === right.worldRect.x
+        && left.worldRect.y === right.worldRect.y
+        && left.worldRect.width === right.worldRect.width
+        && left.worldRect.height === right.worldRect.height
+    case 'selection-transform':
+      return isStringArrayEqual(left.nodeIds, right.kind === 'selection-transform' ? right.nodeIds : [])
+    case 'edge-label':
+      return right.kind === 'edge-label'
+        && left.edgeId === right.edgeId
+        && left.labelId === right.labelId
+    case 'edge-route':
+      return right.kind === 'edge-route'
+        && left.edgeId === right.edgeId
+    case 'mindmap-drag':
+      return right.kind === 'mindmap-drag'
+        && left.mindmapId === right.mindmapId
+        && left.nodeId === right.nodeId
+    default:
+      return false
+  }
+}
+
+const isInteractionStateEqual = (
+  left: EditorSceneSourceSnapshot['interaction'],
+  right: EditorSceneSourceSnapshot['interaction']
+): boolean => (
+  left.chrome === right.chrome
+  && left.editingEdge === right.editingEdge
+  && isHoverStateEqual(left.hover, right.hover)
+  && isDragStateEqual(left.drag, right.drag)
+)
+
+const createPreviewDelta = (input: {
+  previous: EditorSceneSourceSnapshot['session']['preview']
+  next: EditorSceneSourceSnapshot['session']['preview']
+}): InputDelta => {
+  const delta = createEmptyInputDelta()
+  const touchedNodeIds = unionIds(
+    readPreviewNodeIds(input.previous),
+    readPreviewNodeIds(input.next)
+  )
+  const touchedEdgeIds = unionIds(
+    readPreviewEdgeIds(input.previous),
+    readPreviewEdgeIds(input.next)
+  )
+  const touchedMindmapIds = unionIds(
+    readPreviewMindmapIds(input.previous.mindmap),
+    readPreviewMindmapIds(input.next.mindmap)
+  )
+
+  if (touchedNodeIds.size > 0) {
+    delta.session.preview.nodes = createTouchedIdDelta(touchedNodeIds)
+  }
+  if (touchedEdgeIds.size > 0) {
+    delta.session.preview.edges = createTouchedIdDelta(touchedEdgeIds)
+  }
+  if (touchedMindmapIds.size > 0) {
+    delta.session.preview.mindmaps = createTouchedIdDelta(touchedMindmapIds)
+  }
+
+  delta.session.preview.marquee = true
+  delta.session.preview.guides = true
+  delta.session.preview.draw = true
+  delta.session.preview.edgeGuide = true
+  delta.session.hover = true
+
+  return delta
+}
+
+export const createBootstrapInputDelta = (
+  source: EditorSceneSourceSnapshot
+): InputDelta => {
+  const delta = createEmptyInputDelta()
+
+  delta.document = createDocumentInputDelta(source.document.publish.delta)
+  delta.session.tool = true
+  delta.session.selection = true
+  delta.session.hover = true
+  delta.session.edit = true
+  delta.session.interaction = true
+  delta.session.preview.marquee = true
+  delta.session.preview.guides = true
+  delta.session.preview.draw = true
+  delta.session.preview.edgeGuide = true
+
+  const editedEdgeIds = readEditedEdgeIds(source.session.edit)
+  const previewNodeIds = readPreviewNodeIds(source.session.preview)
+  const previewEdgeIds = readPreviewEdgeIds(source.session.preview)
+  const previewMindmapIds = readPreviewMindmapIds(source.session.preview.mindmap)
+  const clockMindmapIds = readActiveMindmapTickIds({
+    preview: source.session.preview.mindmap,
+    now: source.clock.now
+  })
+
+  if (editedEdgeIds.size > 0) {
+    delta.session.draft.edges = createTouchedIdDelta(editedEdgeIds)
+  }
+  if (previewNodeIds.size > 0) {
+    delta.session.preview.nodes = createTouchedIdDelta(previewNodeIds)
+  }
+  if (previewEdgeIds.size > 0) {
+    delta.session.preview.edges = createTouchedIdDelta(previewEdgeIds)
+  }
+  if (previewMindmapIds.size > 0) {
+    delta.session.preview.mindmaps = createTouchedIdDelta(previewMindmapIds)
+  }
+  if (clockMindmapIds.size > 0) {
+    delta.clock.mindmaps = new Set(clockMindmapIds)
+  }
+
+  return delta
+}
+
+export const createSourceInputDelta = (input: {
+  previous: EditorSceneSourceSnapshot
+  next: EditorSceneSourceSnapshot
+  change: EditorSceneSourceChange
+}): InputDelta => {
+  const delta = createEmptyInputDelta()
+
+  if (input.change.document) {
+    delta.document = createDocumentInputDelta(input.next.document.publish.delta)
+  }
+  if (input.change.session?.tool) {
+    delta.session.tool = true
+  }
+  if (input.change.session?.selection) {
+    delta.session.selection = true
+  }
+  if (input.change.session?.edit) {
+    delta.session.edit = true
+    const touchedEdgeIds = unionIds(
+      readEditedEdgeIds(input.previous.session.edit),
+      readEditedEdgeIds(input.next.session.edit)
+    )
+    if (touchedEdgeIds.size > 0) {
+      delta.session.draft.edges = createTouchedIdDelta(touchedEdgeIds)
+    }
+  }
+  if (input.change.session?.preview) {
+    const previewDelta = createPreviewDelta({
+      previous: input.previous.session.preview,
+      next: input.next.session.preview
+    })
+    delta.session.hover = delta.session.hover || previewDelta.session.hover
+    delta.session.preview = previewDelta.session.preview
+  }
+
+  if (
+    input.change.interaction?.hover
+    || !isHoverStateEqual(
+      input.previous.interaction.hover,
+      input.next.interaction.hover
+    )
+  ) {
+    delta.session.hover = true
+  }
+
+  if (
+    !isInteractionStateEqual(
+      input.previous.interaction,
+      input.next.interaction
+    )
+  ) {
+    delta.session.interaction = true
+  }
+
+  if (input.change.clock) {
+    delta.clock.mindmaps = new Set(readActiveMindmapTickIds({
+      preview: input.next.session.preview.mindmap,
+      now: input.next.clock.now
+    }))
+  }
+
+  return delta
+}
+
+export const createSceneInput = (input: {
+  previous: EngineDocumentSnapshot | null
+  source: EditorSceneSourceSnapshot
+  delta: InputDelta
+}): Input => ({
+  document: {
+    previous: input.previous,
+    snapshot: input.source.document.publish.snapshot,
+    delta: input.source.document.publish.delta
+  },
+  session: {
+    edit: input.source.session.edit,
+    draft: input.source.session.draft,
+    preview: input.source.session.preview,
+    tool: input.source.session.tool
+  },
+  interaction: {
+    selection: input.source.session.selection,
+    hover: input.source.interaction.hover,
+    drag: input.source.interaction.drag,
+    chrome: input.source.interaction.chrome,
+    editingEdge: input.source.interaction.editingEdge
+  },
+  clock: input.source.clock,
+  delta: input.delta
+})

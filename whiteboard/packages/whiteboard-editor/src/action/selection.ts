@@ -3,7 +3,7 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   CanvasWrite,

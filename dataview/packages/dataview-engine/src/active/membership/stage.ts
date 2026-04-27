@@ -46,7 +46,7 @@ import {
 } from '../projection/metrics'
 import {
   membershipPhaseScope
-} from '../contracts/projection'
+} from '../projection/types'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,

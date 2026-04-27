@@ -23,7 +23,7 @@ import {
   createNodeWrite
 } from '@whiteboard/editor/write/node'
 import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'

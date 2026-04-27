@@ -33,7 +33,7 @@ import type {
 import {
   createMindmapActionProcedures
 } from '@whiteboard/editor/procedures/mindmap'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type { EditField } from '@whiteboard/editor/session/edit'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'

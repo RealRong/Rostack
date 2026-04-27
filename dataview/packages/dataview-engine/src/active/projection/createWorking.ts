@@ -4,7 +4,7 @@ import {
   emptyQueryPhaseState,
   emptySummaryPhaseState
 } from '@dataview/engine/active/state'
-import type { ActiveProjectionWorking } from '../contracts/projection'
+import type { ActiveProjectionWorking } from './types'
 
 export const createActiveProjectionWorking = (): ActiveProjectionWorking => ({
   query: {

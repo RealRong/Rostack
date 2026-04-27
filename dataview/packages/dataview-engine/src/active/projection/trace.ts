@@ -12,8 +12,8 @@ import type {
 import type {
   ActivePhaseMetrics,
   ActivePhaseName
-} from '../contracts/projection'
-import type { ActiveProjectionTrace } from '../contracts/projection'
+} from './types'
+import type { ActiveProjectionTrace } from './types'
 
 const SNAPSHOT_KEYS = [
   'view',

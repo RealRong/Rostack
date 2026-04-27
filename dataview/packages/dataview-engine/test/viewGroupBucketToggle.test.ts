@@ -245,23 +245,10 @@ const applyHistory = (engine, kind) => {
     return false
   }
 
-  const operations = kind === 'undo'
+  const result = kind === 'undo'
     ? history.undo()
     : history.redo()
-  if (!operations) {
-    return false
-  }
-
-  const result = engine.apply(operations, {
-    origin: 'history'
-  })
-  if (result.ok) {
-    history.confirm()
-    return true
-  }
-
-  history.cancel('restore')
-  return false
+  return result.ok
 }
 
 const readViewState = engine => engine.active.state()

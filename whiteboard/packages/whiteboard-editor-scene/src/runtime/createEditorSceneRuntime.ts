@@ -1,50 +1,70 @@
-import { createProjectionRuntime } from '@shared/projection'
 import type {
   NodeCapabilityInput,
-  Runtime,
-  SceneViewInput,
+  Result,
   TextMeasure
 } from '../contracts/editor'
-import type { State } from '../contracts/state'
-import type { WorkingState } from '../contracts/working'
-import { createEditorSceneProjectionSpec } from './model'
-
-const createEditorSceneStateReader = (input: {
-  state: () => WorkingState
-}): (() => State) => () => {
-  const state = input.state()
-
-  return {
-    revision: state.revision,
-    document: state.document,
-    graph: state.graph,
-    indexes: state.indexes,
-    spatial: state.spatial,
-    ui: state.ui,
-    render: state.render,
-    items: state.items
-  }
-}
+import type { EditorSceneRuntime } from '../contracts/runtime'
+import type { EditorSceneSource } from '../contracts/source'
+import { createEditorSceneProjectionRuntime } from './createEditorSceneProjectionRuntime'
+import {
+  createBootstrapInputDelta,
+  createSceneInput,
+  createSourceInputDelta
+} from './sourceInput'
 
 export const createEditorSceneRuntime = (input: {
+  source: EditorSceneSource
   measure?: TextMeasure
   nodeCapability?: NodeCapabilityInput
-  view: SceneViewInput
-}): Runtime => {
-  const runtime = createProjectionRuntime(
-    createEditorSceneProjectionSpec(input)
-  )
-  const state = createEditorSceneStateReader({
-    state: runtime.state
+}): EditorSceneRuntime => {
+  let currentSource = input.source.get()
+  const runtime = createEditorSceneProjectionRuntime({
+    measure: input.measure,
+    nodeCapability: input.nodeCapability,
+    view: () => currentSource.view
   })
+
+  let lastResult: Result | null = null
+
+  const publish = (change: Parameters<EditorSceneSource['subscribe']>[0] extends (value: infer TValue) => void
+    ? TValue
+    : never, previousSource = currentSource) => {
+    currentSource = input.source.get()
+    const delta = createSourceInputDelta({
+      previous: previousSource,
+      next: currentSource,
+      change
+    })
+    lastResult = runtime.update(createSceneInput({
+      previous: change.document
+        ? previousSource.document.publish.snapshot
+        : null,
+      source: currentSource,
+      delta
+    }))
+  }
+
+  lastResult = runtime.update(createSceneInput({
+    previous: null,
+    source: currentSource,
+    delta: createBootstrapInputDelta(currentSource)
+  }))
+
+  const unsubscribe = input.source.subscribe((change) => {
+    publish(change)
+  })
+
+  void lastResult
 
   return {
     stores: runtime.stores,
-    query: runtime.read,
+    query: runtime.query,
     revision: runtime.revision,
-    state,
+    state: runtime.state,
     capture: runtime.capture,
-    update: runtime.update,
-    subscribe: runtime.subscribe
+    subscribe: runtime.subscribe,
+    dispose: () => {
+      unsubscribe()
+    }
   }
 }

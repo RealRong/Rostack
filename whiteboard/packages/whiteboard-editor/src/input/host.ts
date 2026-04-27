@@ -5,7 +5,7 @@ import type {
   EditorInputHost,
   EditorSessionState
 } from '@whiteboard/editor/types/editor'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import {
   replaceSelection
 } from '@whiteboard/editor/input/helpers'

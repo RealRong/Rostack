@@ -17,9 +17,10 @@ import {
 } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorTextLayout } from '@whiteboard/editor/layout/textLayout'
-import { createSceneOrchestrator } from '@whiteboard/editor/scene/orchestrator'
-import { createSceneSource } from '@whiteboard/editor/scene/source'
+import { createEditorSceneRuntime } from '@whiteboard/editor-scene'
+import { createEditorSceneSource } from '@whiteboard/editor/scene/source'
 import { createEditorSessionSource } from '@whiteboard/editor/editor/source/session'
+import { createEditorSceneView } from '@whiteboard/editor/scene/view'
 import { createToolService } from '@whiteboard/editor/services/tool'
 import {
   DEFAULT_DRAW_STATE,
@@ -33,6 +34,7 @@ import {
 } from '@whiteboard/editor/types/defaults'
 import type { LayoutBackend } from '@whiteboard/editor/types/layout'
 import { createNodeTypeSupport, type NodeRegistry } from '@whiteboard/editor/types/node'
+import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
 
@@ -67,14 +69,21 @@ export const createEditor = ({
   })
   const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(registry)
-  const sceneOrchestrator = createSceneOrchestrator({
+  const sceneSource = createEditorSceneSource({
     engine,
     session,
-    measure: textLayout.measure,
-    nodeType
   })
-  const scene = createSceneSource({
-    controller: sceneOrchestrator
+  const sceneRuntime = createEditorSceneRuntime({
+    source: sceneSource,
+    measure: textLayout.measure,
+    nodeCapability: {
+      meta: nodeType.meta,
+      edit: nodeType.edit,
+      capability: (node) => resolveNodeEditorCapability(node, nodeType)
+    }
+  })
+  const scene = createEditorSceneView({
+    runtime: sceneRuntime
   })
   const document = scene.query.document
   const writeRuntime = createEditorWrite({
@@ -99,7 +108,15 @@ export const createEditor = ({
     }
   })
   boundary = createEditorBoundaryRuntime({
-    scene: sceneOrchestrator,
+    scene: {
+      current: () => ({
+        revision: sceneRuntime.revision(),
+        state: sceneRuntime.state()
+      }),
+      publish: (change) => {
+        sceneSource.emit(change)
+      }
+    },
     tasks
   })
   const actions = createEditorActionsApi({
@@ -154,7 +171,8 @@ export const createEditor = ({
       host.cancel()
       boundary.dispose()
       scene.dispose()
-      sceneOrchestrator.dispose()
+      sceneRuntime.dispose()
+      sceneSource.dispose()
       session.reset()
       textLayout.text.clear()
     }

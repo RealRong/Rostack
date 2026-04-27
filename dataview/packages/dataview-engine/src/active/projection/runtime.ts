@@ -3,7 +3,7 @@ import type {
   ActiveProjectionInput,
   ActiveProjectionResult,
   ActiveProjectionRuntime
-} from '../contracts/projection'
+} from './types'
 import { createActiveProjectionTrace } from './trace'
 import { activeProjectionSpec } from './spec'
 

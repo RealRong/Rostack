@@ -17,7 +17,7 @@ import {
   createEditorInputHost
 } from '@whiteboard/editor/input/host'
 import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorSessionSource } from '@whiteboard/editor/types/editor'
 import type { ToolService } from '@whiteboard/editor/services/tool'

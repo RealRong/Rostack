@@ -9,16 +9,16 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import {
-  createEditorSceneRuntime,
-  type Input as EditorSceneInput,
   type Result
 } from '../src'
+import type { Input as EditorSceneInput } from '../src/contracts/editor'
 import {
   createEditorGraphDelta,
   createEditorGraphTextMeasure,
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
 import {
+  createEditorSceneProjectionRuntime,
   createEditorSceneHarness
 } from '../src/testing/runtime'
 import { createEmptyInput } from '../src/testing/input'
@@ -81,7 +81,7 @@ const TEST_SCENE_VIEW = () => ({
   }
 })
 
-const createRuntime = () => createEditorSceneRuntime({
+const createRuntime = () => createEditorSceneProjectionRuntime({
   measure,
   view: TEST_SCENE_VIEW
 })
@@ -665,7 +665,7 @@ describe('editor scene runtime', () => {
         height: 200
       }
     }
-    const runtime = createEditorSceneRuntime({
+    const runtime = createEditorSceneProjectionRuntime({
       measure,
       view: () => sceneView
     })

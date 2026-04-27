@@ -1,12 +1,10 @@
 import { scheduler } from '@shared/core'
-import { createChangeState } from '@shared/delta'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   GraphState,
   MindmapView,
-  InputDelta
+  EditorSceneSourceChange
 } from '@whiteboard/editor-scene'
-import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
 import type {
   MindmapId,
   MindmapInsertInput,
@@ -27,8 +25,8 @@ import type {
 } from '@whiteboard/editor/boundary/procedure'
 import {
   readActiveMindmapTickIds
-} from '@whiteboard/editor/projection/adapter'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+} from '@whiteboard/editor/scene/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type {
   MindmapEnterPreview,
   MindmapPreviewState
@@ -39,10 +37,10 @@ import type { EditorWrite } from '@whiteboard/editor/write'
 const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
 
 const publish = (
-  delta?: InputDelta
+  change?: EditorSceneSourceChange
 ): EditorPublishRequest => ({
   kind: 'publish',
-  delta
+  change
 })
 
 const task = {
@@ -200,14 +198,6 @@ const buildMindmapEnterPreview = ({
   }
 }
 
-const createMindmapTickDelta = (
-  ids: ReadonlySet<string>
-) => {
-  const delta = createChangeState(sceneInputChangeSpec)
-  delta.clock.mindmaps = new Set(ids)
-  return delta
-}
-
 type MindmapProcedureDeps = {
   engine: Pick<Engine, 'current'>
   graph: Pick<EditorSceneRuntime, 'query'>
@@ -237,7 +227,7 @@ export const createMindmapActionProcedures = ({
 
   const readActiveMindmapIds = (
   ) => readActiveMindmapTickIds({
-    snapshot: engine.current().snapshot,
+    engine,
     preview: session.preview.state.get().mindmap.preview
   })
 
@@ -249,7 +239,10 @@ export const createMindmapActionProcedures = ({
       return
     }
 
-    yield publish(createMindmapTickDelta(activeMindmapIds))
+    void activeMindmapIds
+    yield publish({
+      clock: true
+    })
 
     if (readActiveMindmapIds().size === 0) {
       animation.active = false

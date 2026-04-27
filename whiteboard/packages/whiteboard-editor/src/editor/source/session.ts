@@ -9,7 +9,7 @@ import {
   resolveSelectionOverlay,
   resolveSelectionToolbar
 } from '@whiteboard/editor/editor/source/selection'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import {
   EMPTY_EDGE_GUIDE,
   isEdgeGuideEqual

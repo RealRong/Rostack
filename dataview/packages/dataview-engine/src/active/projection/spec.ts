@@ -8,7 +8,7 @@ import type {
   ActivePhaseScopeMap,
   ActiveProjectionInput,
   ActiveProjectionWorking
-} from '../contracts/projection'
+} from './types'
 import { activeMembershipPhase } from '../membership/stage'
 import { activePublishPhase } from '../publish/stage'
 import { activeQueryPhase } from '../query/stage'

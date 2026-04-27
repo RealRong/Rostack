@@ -6,7 +6,7 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/source'
+import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type {
   EditCaret,
   EditField

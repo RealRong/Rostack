@@ -1,29 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createChangeState } from '@shared/delta'
-import { createEditorSceneRuntime } from '@whiteboard/editor-scene'
-import { sceneInputChangeSpec } from '@whiteboard/editor-scene/contracts/change'
+import type { EditorSceneSourceChange } from '@whiteboard/editor-scene'
 import { createEditorBoundaryRuntime } from '../src/boundary/runtime'
 import { createEditorBoundaryTaskRuntime } from '../src/boundary/task'
 
 describe('editor boundary runtime', () => {
   const createBoundary = () => {
-    const graph = createEditorSceneRuntime({
-      view: () => ({
-        zoom: 1,
-        center: {
-          x: 0,
-          y: 0
-        },
-        worldRect: {
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0
-        }
-      })
-    })
-    const mark = vi.fn()
-    const flush = vi.fn(() => null)
+    const publish = vi.fn()
     let boundary!: ReturnType<typeof createEditorBoundaryRuntime>
     const tasks = createEditorBoundaryTaskRuntime({
       execute: (procedure) => {
@@ -34,48 +16,49 @@ describe('editor boundary runtime', () => {
     boundary = createEditorBoundaryRuntime({
       scene: {
         current: () => ({
-          revision: graph.revision(),
-          state: graph.state(),
-          result: null
+          revision: 0,
+          state: {
+            graph: {} as never,
+            items: [],
+            ui: {} as never
+          } as never
         }),
-        mark,
-        flush
+        publish
       },
       tasks
     })
 
     return {
       boundary,
-      flush,
-      mark
+      publish
     }
   }
 
-  it('flushes after atomic calls', () => {
-    const { boundary, flush } = createBoundary()
+  it('runs atomic calls directly', () => {
+    const { boundary, publish } = createBoundary()
     const run = boundary.atomic((value: number) => value * 2)
 
     expect(run(3)).toBe(6)
-    expect(flush).toHaveBeenCalledTimes(1)
+    expect(publish).not.toHaveBeenCalled()
   })
 
   it('interprets publish requests and passes published snapshots back into procedures', () => {
-    const { boundary, flush, mark } = createBoundary()
-    const delta = createChangeState(sceneInputChangeSpec)
-    delta.session.preview.draw = true
+    const { boundary, publish } = createBoundary()
+    const change: EditorSceneSourceChange = {
+      clock: true
+    }
 
     const run = boundary.procedure(() => (function* () {
       const published = yield {
         kind: 'publish' as const,
-        delta
+        change
       }
 
       return published.revision
     })())
 
     expect(run()).toBe(0)
-    expect(mark).toHaveBeenCalledWith(delta)
-    expect(flush).toHaveBeenCalledTimes(2)
+    expect(publish).toHaveBeenCalledWith(change)
   })
 
   it('schedules microtask continuations through the shared task runtime', async () => {

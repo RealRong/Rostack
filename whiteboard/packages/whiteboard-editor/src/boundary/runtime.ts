@@ -1,4 +1,4 @@
-import type { EditorSceneOrchestrator } from '@whiteboard/editor/scene/orchestrator'
+import type { EditorSceneSourceChange } from '@whiteboard/editor-scene'
 import type { EditorBoundaryTaskRuntime } from './task'
 import {
   toEditorPublished,
@@ -25,7 +25,13 @@ export const createEditorBoundaryRuntime = ({
   scene,
   tasks
 }: {
-  scene: Pick<EditorSceneOrchestrator, 'current' | 'mark' | 'flush'>
+  scene: {
+    current(): {
+      revision: number
+      state: Parameters<typeof toEditorPublished>[0]
+    }
+    publish(change: EditorSceneSourceChange): void
+  }
   tasks: EditorBoundaryTaskRuntime
 }): EditorBoundaryExecutor => {
   const readPublished = () => toEditorPublished(
@@ -43,10 +49,9 @@ export const createEditorBoundaryRuntime = ({
         const signal = step.value
 
         if (signal.kind === 'publish') {
-          if (signal.delta) {
-            scene.mark(signal.delta)
+          if (signal.change) {
+            scene.publish(signal.change)
           }
-          scene.flush()
           step = procedure.next(readPublished())
           continue
         }
@@ -56,21 +61,13 @@ export const createEditorBoundaryRuntime = ({
       }
 
       return step.value
-    } finally {
-      scene.flush()
-    }
+    } finally {}
   }
 
   return {
     atomic: (fn) => (
       ...args
-    ) => {
-      try {
-        return fn(...args)
-      } finally {
-        scene.flush()
-      }
-    },
+    ) => fn(...args),
     procedure: (fn) => (
       ...args
     ) => execute(

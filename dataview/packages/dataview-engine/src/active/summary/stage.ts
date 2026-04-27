@@ -36,7 +36,7 @@ import {
   createActiveStageMetrics,
   toActivePhaseMetrics
 } from '../projection/metrics'
-import { summaryPhaseScope } from '../contracts/projection'
+import { summaryPhaseScope } from '../projection/types'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,

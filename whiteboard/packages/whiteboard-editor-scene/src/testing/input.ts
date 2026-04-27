@@ -1,4 +1,4 @@
-import { createChangeState, idDelta } from '@shared/delta'
+import { idDelta } from '@shared/delta'
 import type {
   EdgeId,
   GroupId,
@@ -6,12 +6,40 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type { Input } from '../contracts/editor'
-import { sceneInputChangeSpec } from '../contracts/change'
 import { createEmptyDocumentSnapshot } from '../runtime/state'
 
-export const createEmptyInputDelta = (): Input['delta'] => createChangeState(
-  sceneInputChangeSpec
-)
+export const createEmptyInputDelta = (): Input['delta'] => ({
+  document: {
+    reset: false,
+    order: false,
+    nodes: idDelta.create<NodeId>(),
+    edges: idDelta.create<EdgeId>(),
+    mindmaps: idDelta.create<MindmapId>(),
+    groups: idDelta.create<GroupId>()
+  },
+  session: {
+    tool: false,
+    selection: false,
+    hover: false,
+    edit: false,
+    interaction: false,
+    draft: {
+      edges: idDelta.create<EdgeId>()
+    },
+    preview: {
+      nodes: idDelta.create<NodeId>(),
+      edges: idDelta.create<EdgeId>(),
+      mindmaps: idDelta.create<MindmapId>(),
+      marquee: false,
+      guides: false,
+      draw: false,
+      edgeGuide: false
+    }
+  },
+  clock: {
+    mindmaps: new Set()
+  }
+})
 
 export const createEmptyInput = (): Input => ({
   document: {

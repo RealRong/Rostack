@@ -3,16 +3,16 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { EditorSceneOrchestrator } from '@whiteboard/editor/scene/orchestrator'
+import type { EditorSceneRuntime as SceneRuntime } from '@whiteboard/editor-scene'
 import type {
-  EditorSceneSource as EditorSceneRuntime,
+  EditorSceneSource as EditorSceneView,
   ScenePickRequest,
   ScenePickResult,
   ScenePickRuntime,
   ScenePickRuntimeResult
 } from '@whiteboard/editor/types/editor'
 
-export type { EditorSceneRuntime }
+export type { EditorSceneView as EditorSceneRuntime }
 
 const DEFAULT_PICK_RADIUS_SCREEN = 8
 
@@ -46,7 +46,7 @@ const isScenePickRuntimeResultEqual = (
 )
 
 const createScenePick = (input: {
-  query: EditorSceneOrchestrator['query']
+  query: SceneRuntime['query']
 }): ScenePickRuntime => {
   const listeners = new Set<() => void>()
   let pending: ScenePickRequest | undefined
@@ -144,27 +144,26 @@ const createScenePick = (input: {
   }
 }
 
-export const createSceneSource = ({
-  controller
+export const createEditorSceneView = ({
+  runtime
 }: {
-  controller: Pick<EditorSceneOrchestrator, 'query' | 'current' | 'stores'>
-}): EditorSceneRuntime & {
+  runtime: Pick<SceneRuntime, 'query' | 'revision' | 'stores'>
+}): EditorSceneView & {
   dispose: () => void
 } => {
-  const readRevision = () => controller.current().revision
-  const visible: EditorSceneRuntime['host']['visible'] = (options) =>
-    controller.query.view.visible(options)
+  const visible: EditorSceneView['host']['visible'] = (options) =>
+    runtime.query.view.visible(options)
   const pick = createScenePick({
-    query: controller.query
+    query: runtime.query
   })
 
   return {
     dispose: () => {
       pick.dispose()
     },
-    revision: readRevision,
-    query: controller.query,
-    stores: controller.stores,
+    revision: runtime.revision,
+    query: runtime.query,
+    stores: runtime.stores,
     host: {
       pick,
       visible

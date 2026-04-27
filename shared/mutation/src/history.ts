@@ -1,4 +1,4 @@
-import type { Write } from './write'
+import type { ApplyCommit } from './write'
 
 export interface HistoryState {
   canUndo: boolean
@@ -40,10 +40,10 @@ export interface CaptureOptions<Key> {
 export interface HistoryController<
   Op,
   Key,
-  W extends Write<any, Op, Key, any>
+  Commit extends ApplyCommit<any, Op, Key, any>
 > {
   state(): HistoryState
-  capture(write: W, options?: CaptureOptions<Key>): boolean
+  capture(commit: Commit, options?: CaptureOptions<Key>): boolean
   observe(changeId: string, footprint: readonly Key[]): boolean
   undo(): readonly Op[] | undefined
   redo(): readonly Op[] | undefined
@@ -127,15 +127,15 @@ export const history = {
   create<
     Op,
     Key,
-    W extends Write<any, Op, Key, any>
+    Commit extends ApplyCommit<any, Op, Key, any>
   >(input: {
     conflicts(
       left: readonly Key[],
       right: readonly Key[]
     ): boolean
-    track?(write: W): boolean
+    track?(commit: Commit): boolean
     capacity?: number
-  }): HistoryController<Op, Key, W> {
+  }): HistoryController<Op, Key, Commit> {
     let nextEntryId = 1
     let undo: HistoryEntry<Op, Key>[] = []
     let redo: HistoryEntry<Op, Key>[] = []
@@ -158,22 +158,22 @@ export const history = {
 
     return {
       state,
-      capture: (write, options) => {
+      capture: (commit, options) => {
         if (pending) {
           return false
         }
-        if (input.track && !input.track(write)) {
+        if (input.track && !input.track(commit)) {
           return false
         }
-        if (!write.forward.length || !write.inverse.length) {
+        if (!commit.forward.length || !commit.inverse.length) {
           return false
         }
 
-        const footprint = options?.footprint ?? write.footprint
+        const footprint = options?.footprint ?? commit.footprint
         const entry: HistoryEntry<Op, Key> = {
           id: options?.id ?? `history_${nextEntryId++}`,
-          forward: write.forward,
-          inverse: write.inverse,
+          forward: commit.forward,
+          inverse: commit.inverse,
           footprint,
           baseSeq: readObservedSeqMax(clock),
           state: 'live'

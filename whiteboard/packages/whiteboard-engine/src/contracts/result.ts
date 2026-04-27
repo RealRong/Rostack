@@ -1,4 +1,4 @@
-export type { EngineWrite } from '../types/engineWrite'
+export type { EngineApplyCommit } from '../types/engineWrite'
 export type {
   IntentError,
   IntentFailure,

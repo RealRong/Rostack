@@ -18,7 +18,7 @@ import type {
   ValidationCode
 } from '@dataview/core/mutation'
 import type {
-  EngineWrite
+  EngineApplyCommit
 } from '@dataview/engine/contracts/write'
 
 type IntentOfType<TType extends CoreIntent['type']> = Extract<CoreIntent, {
@@ -130,20 +130,20 @@ export type IntentData<K extends IntentKind = IntentKind> =
   MutationOutputOf<DataviewIntentTable, K>
 
 export type ExecuteResult<K extends IntentKind = IntentKind> =
-  MutationExecuteResult<DataviewIntentTable, EngineWrite, K, DataviewErrorCode>
+  MutationExecuteResult<DataviewIntentTable, EngineApplyCommit, K, DataviewErrorCode>
 
 export type ExecuteInput = MutationExecuteInput<DataviewIntentTable>
 
 export type ExecuteResultOf<I extends ExecuteInput> =
   MutationExecuteResultOfInput<
     DataviewIntentTable,
-    EngineWrite,
+    EngineApplyCommit,
     I,
     DataviewErrorCode
   >
 
 export type DispatchResult = MutationResult<
   unknown,
-  EngineWrite,
+  EngineApplyCommit,
   DataviewErrorCode
 >

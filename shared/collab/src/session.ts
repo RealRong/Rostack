@@ -1,10 +1,10 @@
 import { store } from '@shared/core'
 import {
+  type ApplyCommit,
   mutationFailure,
   type CommitRecord,
   type HistoryPort,
-  readHistoryPortRuntime,
-  type Write
+  type Origin
 } from '@shared/mutation'
 import {
   createSyncCursor,
@@ -54,7 +54,7 @@ export type MutationCollabSessionOptions<
   Doc,
   Op,
   Key,
-  WriteRecord extends Write<Doc, Op, Key, any>,
+  Commit extends ApplyCommit<Doc, Op, Key, any>,
   Change extends {
     id: string
   },
@@ -80,7 +80,7 @@ export type MutationCollabSessionOptions<
   }
   change: {
     create(
-      write: WriteRecord,
+      commit: Commit,
       meta: {
         actorId: string
         changeId: string
@@ -100,7 +100,7 @@ export type MutationCollabSessionOptions<
     footprint(change: Change): readonly Key[]
   }
   policy?: {
-    canPublish?(write: WriteRecord): boolean
+    canPublish?(commit: Commit): boolean
     canObserve?(): boolean
   }
 }
@@ -112,25 +112,25 @@ export type MutationCollabEngine<
   Result extends {
     ok: boolean
   },
-  WriteRecord extends Write<Doc, Op, Key, any>
+  Commit extends ApplyCommit<Doc, Op, Key, any>
 > = {
   commits: {
     subscribe(
       listener: (commit: CommitRecord<Doc, Op, Key, any>) => void
     ): () => void
   }
-  history: HistoryPort<Result, Op, Key, WriteRecord>
+  history: HistoryPort<Result, Op, Key, Commit>
   doc(): Doc
   replace(
     document: Doc,
     options?: {
-      origin?: 'user' | 'remote' | 'system' | 'load' | 'history'
+      origin?: Origin
     }
   ): boolean
   apply(
     operations: readonly Op[],
     options?: {
-      origin?: 'user' | 'remote' | 'system' | 'load' | 'history'
+      origin?: Origin
     }
   ): Result
 }
@@ -141,35 +141,17 @@ export type MutationCollabSession<
   },
   Op = never,
   Key = never,
-  W extends Write<any, Op, Key, any> = Write<any, Op, Key, any>
+  Commit extends ApplyCommit<any, Op, Key, any> = ApplyCommit<any, Op, Key, any>
 > = {
   awareness?: unknown
   status: store.ReadStore<CollabStatus>
   diagnostics: store.ReadStore<CollabDiagnostics>
-  history: HistoryPort<Result, Op, Key, W>
+  history: HistoryPort<Result, Op, Key, Commit>
   connect(): void
   disconnect(): void
   resync(): void
   destroy(): void
 }
-
-const toWriteRecord = <
-  Doc,
-  Op,
-  Key,
-  WriteRecord extends Write<Doc, Op, Key, any>
->(
-  commit: Extract<CommitRecord<Doc, Op, Key, any>, { kind: 'apply' }>
-): WriteRecord => ({
-  rev: commit.rev,
-  at: commit.at,
-  origin: commit.origin,
-  doc: commit.doc,
-  forward: commit.forward,
-  inverse: commit.inverse,
-  footprint: commit.footprint,
-  extra: commit.extra
-}) as WriteRecord
 
 export const createMutationCollabSession = <
   Doc,
@@ -178,7 +160,7 @@ export const createMutationCollabSession = <
   Result extends {
     ok: boolean
   },
-  WriteRecord extends Write<Doc, Op, Key, any>,
+  Commit extends ApplyCommit<Doc, Op, Key, any>,
   Change extends {
     id: string
   },
@@ -186,21 +168,20 @@ export const createMutationCollabSession = <
     id: string
   }
 >(
-  engine: MutationCollabEngine<Doc, Op, Key, Result, WriteRecord>,
+  engine: MutationCollabEngine<Doc, Op, Key, Result, Commit>,
   options: MutationCollabSessionOptions<
     Doc,
     Op,
     Key,
-    WriteRecord,
+    Commit,
     Change,
     Checkpoint
   >
-): MutationCollabSession<Result, Op, Key, WriteRecord> => {
+): MutationCollabSession<Result, Op, Key, Commit> => {
   if (options.actor.id.length === 0) {
     throw new Error('createMutationCollabSession requires a non-empty actor.id.')
   }
 
-  const historyRuntime = readHistoryPortRuntime(engine.history)
   const status = store.createValueStore<CollabStatus>('idle')
   const diagnostics = store.createValueStore<CollabDiagnostics>({
     duplicateChangeIds: [],
@@ -308,7 +289,7 @@ export const createMutationCollabSession = <
         return
       }
 
-      historyRuntime.observeRemote(
+      engine.history.sync.observeRemote(
         change.id,
         options.change.footprint(change)
       )
@@ -391,16 +372,14 @@ export const createMutationCollabSession = <
       return
     }
 
-    const write = toWriteRecord<Doc, Op, Key, WriteRecord>(commit)
-
-    if (write.forward.length === 0) {
+    if (commit.forward.length === 0) {
       return
     }
-    if (options.policy?.canPublish && !options.policy.canPublish(write)) {
+    if (options.policy?.canPublish && !options.policy.canPublish(commit as Commit)) {
       return
     }
 
-    const change = options.change.create(write, {
+    const change = options.change.create(commit as Commit, {
       actorId: options.actor.id,
       changeId: options.actor.createChangeId()
     })
@@ -422,7 +401,7 @@ export const createMutationCollabSession = <
     syncCursor()
 
     if (history.get().isApplying) {
-      historyRuntime.confirmPublished({
+      engine.history.sync.confirmPublished({
         id: change.id,
         footprint: options.change.footprint(change)
       })
@@ -499,7 +478,7 @@ export const createMutationCollabSession = <
       try {
         publishCommit(commit)
       } catch {
-        historyRuntime.cancelPending('invalidate')
+        engine.history.sync.cancel('invalidate')
         reportError()
       }
     })

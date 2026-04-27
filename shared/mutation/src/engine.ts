@@ -12,17 +12,14 @@ import {
 } from './history'
 import {
   createHistoryPort,
-  readHistoryPortRuntime,
   type HistoryPort
 } from './localHistory'
 import type { OpMeta } from './meta'
-import type { MutationPort } from './port'
 import type {
   ApplyCommit,
   CommitRecord,
   CommitStream,
   Origin,
-  Write
 } from './write'
 
 export interface MutationError<Code extends string = string> {
@@ -36,11 +33,11 @@ export type MutationFailure<Code extends string = string> = {
   error: MutationError<Code>
 }
 
-export type MutationResult<T, W, Code extends string = string> =
+export type MutationResult<T, Commit, Code extends string = string> =
   | {
       ok: true
       data: T
-      write: W
+      commit: Commit
     }
   | MutationFailure<Code>
 
@@ -136,7 +133,7 @@ export interface MutationPublishReduceInput<
 > {
   prev: MutationPrevSnapshot<Doc, Publish, Cache>
   doc: Doc
-  write: Write<Doc, Op, Key, Extra>
+  commit: ApplyCommit<Doc, Op, Key, Extra>
 }
 
 export interface MutationPublishReduceResult<Publish, Cache> {
@@ -234,12 +231,12 @@ export interface MutationHistorySpec<
   track?(input: {
     origin: Origin
     ops: readonly Op[]
-    write: Write<Doc, Op, Key, Extra>
+    commit: ApplyCommit<Doc, Op, Key, Extra>
   }): boolean
   clear?(input: {
     origin: Origin
     ops: readonly Op[]
-    write: Write<Doc, Op, Key, Extra>
+    commit: ApplyCommit<Doc, Op, Key, Extra>
   }): boolean
 }
 
@@ -278,17 +275,35 @@ export interface CommandMutationSpec<
   }): MutationPlan<Op, MutationOutputOf<Table>>
 }
 
-export interface MutationCurrent<Doc, Publish> {
+export type MutationCurrent<Doc, Publish = never> = {
   rev: number
   doc: Doc
-  publish?: Publish
-}
+} & ([Publish] extends [never]
+  ? {}
+  : {
+      publish: Publish
+    })
 
-export interface MutationInternalState<Doc, Publish, Cache> {
+export type MutationInternalState<Doc, Publish = never, Cache = never> = {
   rev: number
   doc: Doc
-  publish?: Publish
-  cache?: Cache
+} & ([Publish] extends [never]
+  ? {}
+  : {
+      publish: Publish
+    }) & ([Cache] extends [never]
+  ? {}
+  : {
+      cache: Cache
+    })
+
+type MutationPublishedState<Doc, Publish, Cache> = MutationInternalState<
+  Doc,
+  Publish,
+  Cache
+> & {
+  publish: Publish
+  cache: Cache
 }
 
 const COMPILE_BLOCKED_CODE = 'mutation_engine.compile.blocked'
@@ -326,13 +341,13 @@ export const mutationFailure = <Code extends string>(
   }
 })
 
-const mutationSuccess = <T, W, Code extends string = string>(
+const mutationSuccess = <T, Commit, Code extends string = string>(
   data: T,
-  write: W
-): MutationResult<T, W, Code> => ({
+  commit: Commit
+): MutationResult<T, Commit, Code> => ({
   ok: true,
   data,
-  write
+  commit
 })
 
 export const mutationResult = {
@@ -453,27 +468,14 @@ export class OperationMutationRuntime<
   Cache = void,
   Extra = void,
   Code extends string = string
-> implements MutationPort<
-  Doc,
-  Op,
-  Key,
-  MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
-  Write<Doc, Op, Key, Extra>
 > {
   readonly commits: CommitStream<CommitRecord<Doc, Op, Key, Extra>>
   readonly history: HistoryPort<
-    MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
+    MutationResult<void, ApplyCommit<Doc, Op, Key, Extra>, Code>,
     Op,
     Key,
-    Write<Doc, Op, Key, Extra>
+    ApplyCommit<Doc, Op, Key, Extra>
   >
-  readonly internal: MutationPort<
-    Doc,
-    Op,
-    Key,
-    MutationResult<void, Write<Doc, Op, Key, Extra>, Code>,
-    Write<Doc, Op, Key, Extra>
-  >['internal']
 
   protected readonly spec: MutationRuntimeSpec<
     Doc,
@@ -489,7 +491,7 @@ export class OperationMutationRuntime<
   private readonly historyControllerRef?: HistoryController<
     Op,
     Key,
-    Write<Doc, Op, Key, Extra>
+    ApplyCommit<Doc, Op, Key, Extra>
   >
   private readonly listeners = new Set<(current: MutationCurrent<Doc, Publish>) => void>()
   private readonly commitListeners = new Set<(
@@ -510,7 +512,7 @@ export class OperationMutationRuntime<
       this.historyControllerRef = historyRuntime.create<
         Op,
         Key,
-        Write<Doc, Op, Key, Extra>
+        ApplyCommit<Doc, Op, Key, Extra>
       >({
         capacity: this.spec.history?.capacity,
         conflicts: (left: readonly Key[], right: readonly Key[]) => left.some(
@@ -535,20 +537,6 @@ export class OperationMutationRuntime<
       commits: this.commits,
       historyController: () => this.historyControllerRef
     })
-    const portRuntime = readHistoryPortRuntime(this.history)
-    this.internal = {
-      history: {
-        observeRemote: (changeId, footprint) => {
-          portRuntime.observeRemote(changeId, footprint)
-        },
-        confirmPublished: (input) => {
-          portRuntime.confirmPublished(input)
-        },
-        cancelPending: (mode) => {
-          portRuntime.cancelPending(mode)
-        }
-      }
-    }
   }
 
   doc(): Doc {
@@ -573,7 +561,7 @@ export class OperationMutationRuntime<
     options?: MutationOptions
   ): MutationResult<
     void,
-    Write<Doc, Op, Key, Extra>,
+    ApplyCommit<Doc, Op, Key, Extra>,
     Code
   > {
     if (ops.length === 0) {
@@ -619,7 +607,7 @@ export class OperationMutationRuntime<
     origin: Origin
   }): MutationResult<
     TData,
-    Write<Doc, Op, Key, Extra>,
+    ApplyCommit<Doc, Op, Key, Extra>,
     Code
   > {
     const validationError = this.spec.operations.validate?.({
@@ -650,7 +638,8 @@ export class OperationMutationRuntime<
 
     const nextDoc = this.prepareCommittedDoc(reduced.doc)
     const nextRev = this.state.rev + 1
-    const write: Write<Doc, Op, Key, Extra> = {
+    const commit: ApplyCommit<Doc, Op, Key, Extra> = {
+      kind: 'apply',
       rev: nextRev,
       at: Date.now(),
       origin: input.origin,
@@ -660,36 +649,29 @@ export class OperationMutationRuntime<
       footprint: reduced.footprint,
       extra: reduced.extra
     }
-    const appliedCommit: ApplyCommit<Doc, Op, Key, Extra> = {
-      kind: 'apply',
-      ...write
-    }
     const nextRuntime = this.spec.publish
-      ? (
-          this.state.publish !== undefined
-            ? this.spec.publish.reduce({
-                prev: {
-                  doc: this.state.doc,
-                  publish: this.state.publish,
-                  cache: this.state.cache as Cache
-                },
-                doc: nextDoc,
-                write
-              })
-            : this.spec.publish.init(nextDoc)
-        )
+      ? this.spec.publish.reduce({
+          prev: {
+            doc: this.state.doc,
+            publish: this.readPublishedState().publish,
+            cache: this.readPublishedState().cache
+          },
+          doc: nextDoc,
+          commit
+        })
       : undefined
 
-    this.state = {
-      rev: nextRev,
-      doc: nextDoc,
-      ...(nextRuntime
-        ? {
-            publish: nextRuntime.publish,
-            cache: nextRuntime.cache
-          }
-        : {})
-    }
+    this.state = nextRuntime
+      ? ({
+          rev: nextRev,
+          doc: nextDoc,
+          publish: nextRuntime.publish,
+          cache: nextRuntime.cache
+        } as MutationInternalState<Doc, Publish, Cache>)
+      : ({
+          rev: nextRev,
+          doc: nextDoc
+        } as MutationInternalState<Doc, Publish, Cache>)
 
     if (input.origin !== 'history' && this.historyControllerRef) {
       const historySpec = this.spec.history === false
@@ -698,7 +680,7 @@ export class OperationMutationRuntime<
       const shouldClear = historySpec?.clear?.({
         origin: input.origin,
         ops: input.ops,
-        write
+        commit
       }) ?? defaultClearsHistory(
         this.spec.operations.table,
         input.origin,
@@ -711,7 +693,7 @@ export class OperationMutationRuntime<
         const shouldTrack = historySpec?.track?.({
           origin: input.origin,
           ops: input.ops,
-          write
+          commit
         }) ?? defaultTracksHistory(
           this.spec.operations.table,
           input.origin,
@@ -719,30 +701,31 @@ export class OperationMutationRuntime<
         )
 
         if (shouldTrack) {
-          this.historyControllerRef.capture(write)
+          this.historyControllerRef.capture(commit)
         }
       }
     }
 
     this.emitCurrent()
-    this.emitCommit(appliedCommit)
+    this.emitCommit(commit)
 
-    return mutationSuccess<TData, Write<Doc, Op, Key, Extra>, Code>(
+    return mutationSuccess<TData, ApplyCommit<Doc, Op, Key, Extra>, Code>(
       input.data,
-      write
+      commit
     )
   }
 
   private readCurrent(): MutationCurrent<Doc, Publish> {
-    return {
-      rev: this.state.rev,
-      doc: this.state.doc,
-      ...(this.state.publish !== undefined
-        ? {
-            publish: this.state.publish
-          }
-        : {})
-    }
+    return this.spec.publish
+      ? ({
+          rev: this.state.rev,
+          doc: this.state.doc,
+          publish: this.readPublishedState().publish
+        } as MutationCurrent<Doc, Publish>)
+      : ({
+          rev: this.state.rev,
+          doc: this.state.doc
+        } as MutationCurrent<Doc, Publish>)
   }
 
   private prepareExternalDoc(
@@ -763,16 +746,21 @@ export class OperationMutationRuntime<
   ): MutationInternalState<Doc, Publish, Cache> {
     const runtime = this.spec.publish?.init(doc)
 
-    return {
-      rev,
-      doc,
-      ...(runtime
-        ? {
-            publish: runtime.publish,
-            cache: runtime.cache
-          }
-        : {})
-    }
+    return runtime
+      ? ({
+          rev,
+          doc,
+          publish: runtime.publish,
+          cache: runtime.cache
+        } as MutationInternalState<Doc, Publish, Cache>)
+      : ({
+          rev,
+          doc
+        } as MutationInternalState<Doc, Publish, Cache>)
+  }
+
+  private readPublishedState(): MutationPublishedState<Doc, Publish, Cache> {
+    return this.state as MutationPublishedState<Doc, Publish, Cache>
   }
 
   private emitCurrent() {
@@ -827,7 +815,7 @@ export class CommandMutationEngine<
     options?: MutationOptions
   ): MutationExecuteResult<
     Table,
-    Write<Doc, Op, Key, Extra>,
+    ApplyCommit<Doc, Op, Key, Extra>,
     K,
     Code
   >
@@ -836,7 +824,7 @@ export class CommandMutationEngine<
     options?: MutationOptions
   ): MutationResult<
     readonly MutationOutputOf<Table>[],
-    Write<Doc, Op, Key, Extra>,
+    ApplyCommit<Doc, Op, Key, Extra>,
     Code
   >
   execute<Input extends MutationExecuteInput<Table>>(
@@ -844,7 +832,7 @@ export class CommandMutationEngine<
     options?: MutationOptions
   ): MutationExecuteResultOfInput<
     Table,
-    Write<Doc, Op, Key, Extra>,
+    ApplyCommit<Doc, Op, Key, Extra>,
     Input,
     Code
   > {
@@ -859,7 +847,7 @@ export class CommandMutationEngine<
         'CommandMutationEngine.execute requires at least one intent.'
       ) as MutationExecuteResultOfInput<
         Table,
-        Write<Doc, Op, Key, Extra>,
+        ApplyCommit<Doc, Op, Key, Extra>,
         Input,
         Code
       >
@@ -884,7 +872,7 @@ export class CommandMutationEngine<
         }
       ) as MutationExecuteResultOfInput<
         Table,
-        Write<Doc, Op, Key, Extra>,
+        ApplyCommit<Doc, Op, Key, Extra>,
         Input,
         Code
       >
@@ -899,7 +887,7 @@ export class CommandMutationEngine<
         }
       ) as MutationExecuteResultOfInput<
         Table,
-        Write<Doc, Op, Key, Extra>,
+        ApplyCommit<Doc, Op, Key, Extra>,
         Input,
         Code
       >
@@ -913,16 +901,16 @@ export class CommandMutationEngine<
           : readFirstOutput(plan.outputs)
       ) as MutationExecuteResultOfInput<
         Table,
-        Write<Doc, Op, Key, Extra>,
+        ApplyCommit<Doc, Op, Key, Extra>,
         Input,
         Code
-      > extends MutationResult<infer Data, Write<Doc, Op, Key, Extra>, Code>
+      > extends MutationResult<infer Data, ApplyCommit<Doc, Op, Key, Extra>, Code>
         ? Data
         : never,
       origin: options?.origin ?? 'user'
     }) as MutationExecuteResultOfInput<
       Table,
-      Write<Doc, Op, Key, Extra>,
+      ApplyCommit<Doc, Op, Key, Extra>,
       Input,
       Code
     >

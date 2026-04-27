@@ -36,7 +36,7 @@ export const createDataviewCommitTrace = (
   }
 
   return {
-    kind: toPerformanceKind(input.write.origin),
+    kind: toPerformanceKind(input.commit),
     timings: {
       totalMs: now() - input.startedAt,
       indexMs: input.index.trace?.timings.totalMs,

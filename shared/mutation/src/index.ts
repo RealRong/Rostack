@@ -66,17 +66,15 @@ export type {
   HistoryPolicy,
   HistoryPort,
   HistoryPortEngine,
+  HistorySyncPort,
   HistoryPortState
 } from './localHistory'
-export { readHistoryPortRuntime } from './localHistory'
-export type { MutationPort } from './port'
 export type {
   ApplyCommit,
   CommitRecord,
   CommitStream,
   Origin,
-  ReplaceCommit,
-  Write
+  ReplaceCommit
 } from './write'
 export type {
   MutationTrace,

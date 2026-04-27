@@ -16,7 +16,7 @@ import type { BoardConfig } from '@whiteboard/core/config'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
   EngineCommit,
-  EngineWrite
+  EngineApplyCommit
 } from '../types/engineWrite'
 import type {
   ExecuteResult,
@@ -61,7 +61,7 @@ export interface Engine {
     IntentResult,
     Operation,
     HistoryFootprint[number],
-    EngineWrite
+    EngineApplyCommit
   >
   doc(): Document
   current(): EnginePublish

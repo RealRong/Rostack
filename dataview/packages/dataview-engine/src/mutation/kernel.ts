@@ -36,7 +36,7 @@ const DEFAULT_HISTORY_CONFIG: DataviewHistoryConfig = {
 }
 
 const shouldTrackOrigin = (
-  origin: 'user' | 'remote' | 'system' | 'load' | 'history',
+  origin: 'user' | 'remote' | 'system' | 'history',
   config: DataviewHistoryConfig
 ): boolean => {
   switch (origin) {
@@ -52,14 +52,14 @@ const shouldTrackOrigin = (
 }
 
 const shouldClearHistory = (
-  write: {
-    origin: 'user' | 'remote' | 'system' | 'load' | 'history'
+  commit: {
+    origin: 'user' | 'remote' | 'system' | 'history'
     forward: readonly DocumentOperation[]
   },
   config: DataviewHistoryConfig
 ): boolean => (
-  shouldTrackOrigin(write.origin, config)
-  && write.forward.some((entry) => DATAVIEW_OPERATION_DEFINITIONS[entry.type].sync === 'checkpoint')
+  shouldTrackOrigin(commit.origin, config)
+  && commit.forward.some((entry) => DATAVIEW_OPERATION_DEFINITIONS[entry.type].sync === 'checkpoint')
 )
 
 export type DataviewMutationKernel = Omit<

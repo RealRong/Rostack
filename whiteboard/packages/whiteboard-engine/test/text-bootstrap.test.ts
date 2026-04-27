@@ -62,7 +62,7 @@ test('engine apply publishes normalized committed documents after reducer output
     return
   }
 
-  assert.deepEqual(result.write.doc.nodes.node_1.size, {
+  assert.deepEqual(result.commit.doc.nodes.node_1.size, {
     width: 144,
     height: 20
   })

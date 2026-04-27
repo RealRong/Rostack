@@ -195,15 +195,15 @@ describe('CommandMutationEngine', () => {
       return
     }
     expect(result.data).toBe(2)
-    expect(result.write.doc).toEqual({
+    expect(result.commit.doc).toEqual({
       count: 3
     })
-    expect(result.write.inverse).toEqual([{
+    expect(result.commit.inverse).toEqual([{
       type: 'count.add',
       value: -2
     }])
-    expect(result.write.footprint).toEqual(['count'])
-    expect(result.write.extra).toEqual({
+    expect(result.commit.footprint).toEqual(['count'])
+    expect(result.commit.extra).toEqual({
       total: 3
     })
     expect(engine.current()).toEqual({
@@ -242,10 +242,10 @@ describe('CommandMutationEngine', () => {
       return
     }
     expect(result.data).toEqual([2, 3])
-    expect(result.write.doc).toEqual({
+    expect(result.commit.doc).toEqual({
       count: 5
     })
-    expect(result.write.forward).toEqual([{
+    expect(result.commit.forward).toEqual([{
       type: 'count.add',
       value: 2
     }, {
@@ -299,7 +299,7 @@ describe('CommandMutationEngine', () => {
     expect(engine.history.get().undoDepth).toBe(0)
   })
 
-  test('replace(load origin) resets current state without emitting an apply commit and clears history', () => {
+  test('replace(system origin) resets current state without emitting an apply commit and clears history', () => {
     const engine = new CommandMutationEngine({
       doc: {
         count: 0
@@ -323,7 +323,7 @@ describe('CommandMutationEngine', () => {
     engine.replace({
       count: 9
     }, {
-      origin: 'load'
+      origin: 'system'
     })
 
     expect(commitKinds).toEqual(['apply', 'replace'])
@@ -392,7 +392,7 @@ describe('CommandMutationEngine', () => {
     if (!result.ok) {
       return
     }
-    expect(result.write.doc.count).toBe(1)
+    expect(result.commit.doc.count).toBe(1)
   })
 
   test('returns the live current doc snapshot', () => {

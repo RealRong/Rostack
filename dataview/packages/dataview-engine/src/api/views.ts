@@ -7,7 +7,7 @@ import {
 import { string } from '@shared/core'
 import { view as viewApi } from '@dataview/core/view'
 import type {
-  EngineFacadeHost,
+  Engine,
   ViewsApi
 } from '@dataview/engine/contracts/api'
 import type {
@@ -24,7 +24,7 @@ const readId = (
     : undefined
 
 export const createViewsApi = (
-  engine: EngineFacadeHost
+  engine: Pick<Engine, 'doc' | 'execute'>
 ): ViewsApi => {
   const readViews = () => documentApi.views.ids(engine.doc())
     .flatMap((viewId) => {

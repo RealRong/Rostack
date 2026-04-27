@@ -1,6 +1,6 @@
 import type {
+  ApplyCommit,
   CommitRecord,
-  Write
 } from '@shared/mutation'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
 import type {
@@ -11,7 +11,7 @@ import type {
   WhiteboardOperationReduceExtra
 } from '@whiteboard/core/spec/operation'
 
-export type EngineWrite = Write<
+export type EngineApplyCommit = ApplyCommit<
   Document,
   Operation,
   HistoryFootprint[number],

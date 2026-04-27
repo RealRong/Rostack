@@ -87,6 +87,11 @@ const createSwitchableHistoryPort = (
     port: {
       get: state.get,
       subscribe: state.subscribe,
+      sync: {
+        observeRemote: (changeId, footprint) => current.sync.observeRemote(changeId, footprint),
+        confirmPublished: (input) => current.sync.confirmPublished(input),
+        cancel: (mode) => current.sync.cancel(mode)
+      },
       undo: () => current.undo(),
       redo: () => current.redo(),
       clear: () => current.clear(),

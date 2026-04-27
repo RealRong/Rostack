@@ -64,13 +64,13 @@ const shouldTrackOrigin = (
 }
 
 const shouldClearHistory = (
-  write: {
+  commit: {
     origin: MutationOrigin
     forward: readonly Operation[]
   },
   config: WhiteboardHistoryConfig
-): boolean => shouldTrackOrigin(write.origin, config)
-  && write.forward.some((op) => WHITEBOARD_OPERATION_DEFINITIONS[op.type].sync === 'checkpoint')
+): boolean => shouldTrackOrigin(commit.origin, config)
+  && commit.forward.some((op) => WHITEBOARD_OPERATION_DEFINITIONS[op.type].sync === 'checkpoint')
 
 export type WhiteboardMutationSpec = CommandMutationSpec<
   Document,

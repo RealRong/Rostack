@@ -81,9 +81,9 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
     return
   }
 
-  assert.equal(result.write.doc.nodes.text_1, undefined)
+  assert.equal(result.commit.doc.nodes.text_1, undefined)
   assert.deepEqual(
-    result.write.forward.map((op) => op.type),
+    result.commit.forward.map((op) => op.type),
     [
       'node.delete'
     ]
@@ -133,15 +133,15 @@ test('node.text.commit merges text, size, fontSize, and wrapWidth for generic te
     return
   }
 
-  assert.deepEqual(result.write.doc.nodes.text_1?.data, {
+  assert.deepEqual(result.commit.doc.nodes.text_1?.data, {
     text: 'updated',
     wrapWidth: 180
   })
-  assert.deepEqual(result.write.doc.nodes.text_1?.size, {
+  assert.deepEqual(result.commit.doc.nodes.text_1?.size, {
     width: 180,
     height: 48
   })
-  assert.deepEqual(result.write.doc.nodes.text_1?.style, {
+  assert.deepEqual(result.commit.doc.nodes.text_1?.style, {
     fontSize: 20
   })
 })
@@ -183,22 +183,22 @@ test('node.text.commit routes mindmap topic text and size through mindmap operat
   }
 
   assert.equal(
-    result.write.doc.nodes[createResult.data.rootId]?.data?.text,
+    result.commit.doc.nodes[createResult.data.rootId]?.data?.text,
     'Updated topic'
   )
   assert.deepEqual(
-    result.write.doc.nodes[createResult.data.rootId]?.size,
+    result.commit.doc.nodes[createResult.data.rootId]?.size,
     {
       width: 220,
       height: 64
     }
   )
   assert.equal(
-    result.write.doc.nodes[createResult.data.rootId]?.style?.fontSize,
+    result.commit.doc.nodes[createResult.data.rootId]?.style?.fontSize,
     22
   )
   assert.deepEqual(
-    result.write.forward.map((op) => op.type),
+    result.commit.forward.map((op) => op.type),
     [
       'mindmap.topic.field.set',
       'mindmap.topic.record.set',

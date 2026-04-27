@@ -41,11 +41,11 @@ export const createDataviewPublishSpec = (input?: {
       runtime = createDataviewPublishProjectionRuntime(input)
       return runtime.reset(doc)
     },
-    reduce: ({ prev, doc, write }) =>
+    reduce: ({ prev, doc, commit }) =>
       runtime.update({
         prev,
         doc,
-        write
+        commit
       })
   }
 }

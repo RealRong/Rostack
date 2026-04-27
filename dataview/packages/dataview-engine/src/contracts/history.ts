@@ -9,10 +9,7 @@ import type {
   DataviewMutationKey
 } from '@dataview/core/mutation'
 import type {
-  DataviewErrorCode
-} from '@dataview/engine/types/intent'
-import type {
-  EngineWrite
+  EngineApplyCommit
 } from './write'
 
 export interface DataviewHistoryConfig {
@@ -23,8 +20,8 @@ export interface DataviewHistoryConfig {
 }
 
 export type DataviewHistory = HistoryPort<
-  MutationResult<void, EngineWrite>,
+  MutationResult<void, EngineApplyCommit>,
   DocumentOperation,
   DataviewMutationKey,
-  EngineWrite
+  EngineApplyCommit
 >

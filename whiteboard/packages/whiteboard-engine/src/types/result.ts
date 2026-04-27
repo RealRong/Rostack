@@ -3,7 +3,7 @@ import type {
   MutationFailure,
   MutationResult
 } from '@shared/mutation'
-import type { EngineWrite } from './engineWrite'
+import type { EngineApplyCommit } from './engineWrite'
 
 export type WhiteboardErrorCode = string
 
@@ -16,4 +16,4 @@ export type IntentFailure<C extends string = WhiteboardErrorCode> =
 export type IntentResult<
   T = void,
   C extends string = WhiteboardErrorCode
-> = MutationResult<T, EngineWrite, C>
+> = MutationResult<T, EngineApplyCommit, C>

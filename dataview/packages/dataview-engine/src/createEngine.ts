@@ -18,7 +18,6 @@ import { createRecordsApi } from '@dataview/engine/api/records'
 import { createViewsApi } from '@dataview/engine/api/views'
 import type {
   CreateEngineOptions,
-  EngineFacadeHost,
   Engine
 } from '@dataview/engine/contracts/api'
 import type {
@@ -41,22 +40,11 @@ import type {
 const toCurrent = (current: {
   rev: number
   doc: DataDoc
-  publish?: DataviewPublish
+  publish: DataviewPublish
 }): DataviewCurrent => ({
   rev: current.rev,
   doc: current.doc,
-  ...(current.publish?.active || current.publish?.delta
-    ? {
-        publish: {
-          ...(current.publish.active
-            ? { active: current.publish.active }
-            : {}),
-          ...(current.publish.delta
-            ? { delta: current.publish.delta }
-            : {})
-        }
-      }
-    : {})
+  publish: current.publish
 })
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
@@ -83,9 +71,9 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     }
   })
 
-  const baseEngine: EngineFacadeHost = {
+  const engineBase = {
     current: () => toCurrent(mutationEngine.current()),
-    subscribe: (listener) => mutationEngine.subscribe((current) => {
+    subscribe: (listener: (current: DataviewCurrent) => void) => mutationEngine.subscribe((current) => {
       listener(toCurrent(current))
     }),
     doc: () => mutationEngine.doc(),
@@ -100,22 +88,25 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
         ? mutationEngine.execute(input as readonly Intent[], executeOptions)
         : mutationEngine.execute(input as Intent, executeOptions)
     ) as ExecuteResultOf<I>),
-    apply: ((operations: readonly DocumentOperation[], applyOptions) => (
+    apply: ((operations: readonly DocumentOperation[], applyOptions?: MutationOptions) => (
       mutationEngine.apply(operations, applyOptions)
     ))
   }
-  const engine = {
-    ...baseEngine,
+  const engineWithInfra = {
+    ...engineBase,
     commits: mutationEngine.commits,
     history: mutationEngine.history,
     performance: performance.api
-  } as Omit<Engine, 'fields' | 'records' | 'views' | 'active'>
+  } satisfies Pick<
+    Engine,
+    'current' | 'subscribe' | 'doc' | 'replace' | 'execute' | 'apply' | 'commits' | 'history' | 'performance'
+  >
 
   return {
-    ...engine,
-    fields: createFieldsApi(engine),
-    records: createRecordsApi(engine),
-    views: createViewsApi(engine),
-    active: createActiveViewApi(engine)
+    ...engineWithInfra,
+    fields: createFieldsApi(engineBase),
+    records: createRecordsApi(engineBase),
+    views: createViewsApi(engineBase),
+    active: createActiveViewApi(engineBase)
   }
 }

@@ -5,7 +5,7 @@ import { history } from '../src/history'
 type TestWrite = {
   rev: number
   at: number
-  origin: 'user' | 'remote' | 'system' | 'load' | 'history'
+  origin: 'user' | 'remote' | 'system' | 'history'
   doc: {}
   forward: readonly string[]
   inverse: readonly string[]

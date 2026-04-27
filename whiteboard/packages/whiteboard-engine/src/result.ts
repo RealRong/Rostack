@@ -1,4 +1,4 @@
-import type { EngineWrite } from './types/engineWrite'
+import type { EngineApplyCommit } from './types/engineWrite'
 import type { IntentFailure, IntentResult } from './types/result'
 
 export const failure = <C extends string>(
@@ -28,10 +28,10 @@ export const cancelled = (
   failure('cancelled', message, details)
 
 export const success = <T>(
-  write: EngineWrite,
+  commit: EngineApplyCommit,
   data: T
 ): IntentResult<T> => ({
   ok: true,
   data,
-  write
+  commit
 })

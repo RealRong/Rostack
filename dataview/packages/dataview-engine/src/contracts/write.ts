@@ -5,12 +5,12 @@ import type {
   DataviewTrace
 } from '@dataview/core/mutation'
 import type {
+  ApplyCommit,
   CommitRecord,
-  CommitStream,
-  Write
+  CommitStream
 } from '@shared/mutation'
 
-export type EngineWrite = Write<
+export type EngineApplyCommit = ApplyCommit<
   DataDoc,
   DocumentOperation,
   DataviewMutationKey,

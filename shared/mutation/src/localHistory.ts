@@ -7,10 +7,10 @@ import type {
   HistoryState
 } from './history'
 import type {
+  ApplyCommit,
   CommitRecord,
   CommitStream,
   Origin,
-  Write,
 } from './write'
 
 export interface HistoryPortState extends HistoryState {
@@ -35,40 +35,28 @@ export interface HistoryPolicy<Result> {
   cancelOnFailure?: 'restore' | 'invalidate' | false
 }
 
-interface HistoryPortRuntime<
-  Op,
-  Key,
-  W extends Write<any, Op, Key, any>
-> {
-  controller(): HistoryController<Op, Key, W> | undefined
-  sync(): void
+export interface HistorySyncPort<Key> {
   observeRemote(changeId: string, footprint: readonly Key[]): void
   confirmPublished(input: {
     id: string
     footprint: readonly Key[]
   }): void
-  cancelPending(mode: 'restore' | 'invalidate'): void
-  withPolicy<Result extends {
-    ok: boolean
-  }>(
-    policy?: HistoryPolicy<Result>
-  ): HistoryPort<Result, Op, Key, W>
+  cancel(mode: 'restore' | 'invalidate'): void
 }
-
-const HISTORY_PORT_RUNTIME = Symbol('shared.mutation.historyPortRuntime')
 
 export interface HistoryPort<
   Result,
   Op = any,
   Key = any,
-  W extends Write<any, Op, Key, any> = Write<any, Op, Key, any>
+  Commit extends ApplyCommit<any, Op, Key, any> = ApplyCommit<any, Op, Key, any>
 > extends store.ReadStore<HistoryPortState> {
+  readonly sync: HistorySyncPort<Key>
   undo(): Result
   redo(): Result
   clear(): void
   withPolicy(
     policy?: HistoryPolicy<Result>
-  ): HistoryPort<Result, Op, Key, W>
+  ): HistoryPort<Result, Op, Key, Commit>
 }
 
 export interface HistoryPortEngine<
@@ -78,7 +66,7 @@ export interface HistoryPortEngine<
   Result extends {
     ok: boolean
   },
-  W extends Write<Doc, Op, Key, any> = Write<Doc, Op, Key, any>
+  Commit extends ApplyCommit<Doc, Op, Key, any> = ApplyCommit<Doc, Op, Key, any>
 > {
   apply(
     ops: readonly Op[],
@@ -87,7 +75,7 @@ export interface HistoryPortEngine<
     }
   ): Result
   commits: CommitStream<CommitRecord<Doc, Op, Key, any>>
-  historyController(): HistoryController<Op, Key, W> | undefined
+  historyController(): HistoryController<Op, Key, Commit> | undefined
 }
 
 const EMPTY_HISTORY_STATE: HistoryPortState = {
@@ -131,10 +119,10 @@ export const createHistoryPort = <
   Result extends {
     ok: boolean
   },
-  W extends Write<Doc, Op, Key, any> = Write<Doc, Op, Key, any>
+  Commit extends ApplyCommit<Doc, Op, Key, any> = ApplyCommit<Doc, Op, Key, any>
 >(
-  engine: HistoryPortEngine<Doc, Op, Key, Result, W>
-): HistoryPort<Result, Op, Key, W> => {
+  engine: HistoryPortEngine<Doc, Op, Key, Result, Commit>
+): HistoryPort<Result, Op, Key, Commit> => {
   const controller = engine.historyController()
   const state = store.createValueStore<HistoryPortState>({
     ...(controller?.state() ?? EMPTY_HISTORY_STATE),
@@ -197,9 +185,7 @@ export const createHistoryPort = <
     return result
   }
 
-  const runtime: HistoryPortRuntime<Op, Key, W> = {
-    controller: () => controller,
-    sync: publish,
+  const sync: HistorySyncPort<Key> = {
     observeRemote: (changeId, footprint) => {
       if (controller?.observe(changeId, footprint)) {
         publish()
@@ -210,66 +196,30 @@ export const createHistoryPort = <
         publish()
       }
     },
-    cancelPending: (mode) => {
+    cancel: (mode) => {
       if (controller?.cancel(mode)) {
         publish()
       }
-    },
-    withPolicy: <PolicyResult extends {
-      ok: boolean
-    }>(
-      policy?: HistoryPolicy<PolicyResult>
-    ): HistoryPort<PolicyResult, Op, Key, W> => {
-      const base = port as unknown as HistoryPort<PolicyResult, Op, Key, W>
-      const scoped = {
-        get: base.get,
-        subscribe: base.subscribe,
-        clear: () => base.clear(),
-        undo: () => run('undo', policy as HistoryPolicy<Result> | undefined) as unknown as PolicyResult,
-        redo: () => run('redo', policy as HistoryPolicy<Result> | undefined) as unknown as PolicyResult,
-        withPolicy: (nextPolicy?: HistoryPolicy<PolicyResult>) => runtime.withPolicy(nextPolicy)
-      } satisfies HistoryPort<PolicyResult, Op, Key, W>
-      ;(scoped as HistoryPort<PolicyResult, Op, Key, W> & {
-        [HISTORY_PORT_RUNTIME]?: HistoryPortRuntime<Op, Key, W>
-      })[HISTORY_PORT_RUNTIME] = runtime
-      return scoped
     }
   }
 
-  const port = {
+  const withPolicy = <PolicyResult extends {
+    ok: boolean
+  }>(
+    policy?: HistoryPolicy<PolicyResult>
+  ): HistoryPort<PolicyResult, Op, Key, Commit> => ({
     get: state.get,
     subscribe: state.subscribe,
+    sync,
     clear: () => {
       if (controller?.clear()) {
         publish()
       }
     },
-    undo: () => run('undo'),
-    redo: () => run('redo'),
-    withPolicy: (policy?: HistoryPolicy<Result>) => runtime.withPolicy(policy)
-  } as HistoryPort<Result, Op, Key, W>
-  ;(port as HistoryPort<Result, Op, Key, W> & {
-    [HISTORY_PORT_RUNTIME]?: HistoryPortRuntime<Op, Key, W>
-  })[HISTORY_PORT_RUNTIME] = runtime
-  return port
-}
+    undo: () => run('undo', policy as HistoryPolicy<Result> | undefined) as unknown as PolicyResult,
+    redo: () => run('redo', policy as HistoryPolicy<Result> | undefined) as unknown as PolicyResult,
+    withPolicy: (nextPolicy?: HistoryPolicy<PolicyResult>) => withPolicy(nextPolicy)
+  })
 
-export const readHistoryPortRuntime = <
-  Result,
-  Op,
-  Key,
-  W extends Write<any, Op, Key, any>
->(
-  history: HistoryPort<Result, Op, Key, W>
-): HistoryPortRuntime<Op, Key, W> => (
-  history as HistoryPort<Result, Op, Key, W> & {
-    [HISTORY_PORT_RUNTIME]?: HistoryPortRuntime<Op, Key, W>
-  }
-)[HISTORY_PORT_RUNTIME] ?? ({
-  controller: () => undefined,
-  sync: () => {},
-  observeRemote: () => {},
-  confirmPublished: () => {},
-  cancelPending: () => {},
-  withPolicy: () => history as any
-} as HistoryPortRuntime<Op, Key, W>)
+  return withPolicy<Result>()
+}

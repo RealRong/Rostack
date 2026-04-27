@@ -122,9 +122,9 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
     return
   }
 
-  assert.deepEqual(result.write.doc.nodes.node_1?.position, { x: 30, y: 10 })
-  assert.deepEqual(result.write.doc.nodes.node_2?.position, { x: 230, y: 10 })
-  assert.deepEqual(result.write.doc.edges.edge_follow?.route, {
+  assert.deepEqual(result.commit.doc.nodes.node_1?.position, { x: 30, y: 10 })
+  assert.deepEqual(result.commit.doc.nodes.node_2?.position, { x: 230, y: 10 })
+  assert.deepEqual(result.commit.doc.edges.edge_follow?.route, {
     kind: 'manual',
     points: [{
       id: 'follow_point_1',
@@ -132,15 +132,15 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
       y: 30
     }]
   })
-  assert.deepEqual(result.write.doc.edges.edge_selected?.source, {
+  assert.deepEqual(result.commit.doc.edges.edge_selected?.source, {
     kind: 'point',
     point: { x: 70, y: 50 }
   })
-  assert.deepEqual(result.write.doc.edges.edge_selected?.target, {
+  assert.deepEqual(result.commit.doc.edges.edge_selected?.target, {
     kind: 'point',
     point: { x: 130, y: 70 }
   })
-  assert.deepEqual(result.write.doc.edges.edge_selected?.route, {
+  assert.deepEqual(result.commit.doc.edges.edge_selected?.route, {
     kind: 'manual',
     points: [{
       id: 'selected_point_1',
@@ -210,16 +210,16 @@ test('edge.reconnect.commit applies endpoint, type, and route in one command', (
     return
   }
 
-  assert.deepEqual(result.write.doc.edges.edge_1?.target, {
+  assert.deepEqual(result.commit.doc.edges.edge_1?.target, {
     kind: 'point',
     point: { x: 260, y: 80 }
   })
-  assert.equal(result.write.doc.edges.edge_1?.type, 'straight')
-  assert.deepEqual(result.write.doc.edges.edge_1?.route, {
+  assert.equal(result.commit.doc.edges.edge_1?.type, 'straight')
+  assert.deepEqual(result.commit.doc.edges.edge_1?.route, {
     kind: 'auto'
   })
   assert.deepEqual(
-    result.write.forward.map((op) => op.type),
+    result.commit.forward.map((op) => op.type),
     [
       'edge.field.set',
       'edge.field.set',

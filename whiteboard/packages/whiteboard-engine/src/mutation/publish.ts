@@ -78,12 +78,12 @@ export const whiteboardPublishSpec: MutationPublishSpec<
   }),
   reduce: ({
     doc,
-    write
+    commit
   }) => ({
     publish: createPublish({
-      revision: write.rev,
+      revision: commit.rev,
       document: doc,
-      delta: buildChange(write.extra.changes)
+      delta: buildChange(commit.extra.changes)
     }),
     cache: undefined
   })

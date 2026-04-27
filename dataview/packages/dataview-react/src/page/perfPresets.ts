@@ -2528,7 +2528,7 @@ export const applyPerfPreset = (input: {
 
   const document = preset.createDocument()
   input.engine.replace(document, {
-    origin: 'load'
+    origin: 'system'
   })
 
   return {

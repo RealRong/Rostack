@@ -10,7 +10,7 @@ import { product } from '@whiteboard/product'
 const readSerializedFootprint = (
   result: IntentResult
 ) => new Set(
-  (result.ok ? result.write.footprint : []).map(serializeHistoryKey)
+  (result.ok ? result.commit.footprint : []).map(serializeHistoryKey)
 )
 
 test('engine exposes node create footprint through intent results', () => {
@@ -44,7 +44,7 @@ test('engine exposes node create footprint through intent results', () => {
       })
     ])
   )
-  assert.equal(result.write.extra.changes.nodes.added.has(result.data.nodeId), true)
+  assert.equal(result.commit.extra.changes.nodes.added.has(result.data.nodeId), true)
 })
 
 test('engine maps mindmap topic updates to node + mindmap history keys', () => {

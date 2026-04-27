@@ -7,7 +7,7 @@ import {
   type DataviewTrace
 } from '@dataview/core/mutation'
 import type {
-  Origin
+  CommitRecord
 } from '@shared/mutation'
 import type {
   CommitTrace,
@@ -62,16 +62,14 @@ export const summarizeTrace = (
 }
 
 export const toPerformanceKind = (
-  origin: Origin
+  commit: Pick<CommitRecord<any, any, any, any>, 'kind' | 'origin'>
 ): 'dispatch' | 'undo' | 'redo' | 'replace' => {
-  switch (origin) {
-    case 'history':
-      return 'undo'
-    case 'load':
-      return 'replace'
-    default:
-      return 'dispatch'
+  if (commit.kind === 'replace') {
+    return 'replace'
   }
+  return commit.origin === 'history'
+    ? 'undo'
+    : 'dispatch'
 }
 
 const VIEW_STAGE_NAMES: readonly ViewStageName[] = [

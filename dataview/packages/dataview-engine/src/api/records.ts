@@ -6,7 +6,7 @@ import {
 } from '@dataview/core/document'
 import { collection } from '@shared/core'
 import type {
-  EngineFacadeHost,
+  Engine,
   RecordFieldWriteManyInput,
   RecordsApi
 } from '@dataview/engine/contracts/api'
@@ -24,7 +24,7 @@ const readId = (
     : undefined
 
 export const createRecordsApi = (
-  engine: EngineFacadeHost
+  engine: Pick<Engine, 'doc' | 'execute'>
 ): RecordsApi => {
   const writeMany = (input: RecordFieldWriteManyInput) => {
     const recordIds = collection.unique(input.recordIds)

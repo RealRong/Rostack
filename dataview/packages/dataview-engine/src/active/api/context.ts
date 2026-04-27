@@ -8,7 +8,7 @@ import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import type {
-  EngineFacadeHost
+  Engine
 } from '@dataview/engine/contracts/api'
 import {
   createDocumentReader,
@@ -19,7 +19,7 @@ export interface ActiveViewContext {
   id: ActiveViewApi['id']
   state: ActiveViewApi['state']
   reader: DocumentReader
-  execute: EngineFacadeHost['execute']
+  execute: Engine['execute']
   view: () => View | undefined
   resolveGroupField: (view?: View) => Field | undefined
   patchView: (
@@ -28,7 +28,7 @@ export interface ActiveViewContext {
 }
 
 export const createActiveContext = (
-  engine: EngineFacadeHost
+  engine: Pick<Engine, 'current' | 'doc' | 'execute'>
 ): ActiveViewContext => {
   const state = (): ViewState | undefined => engine.current().publish?.active
   const reader = createDocumentReader(() => engine.doc())

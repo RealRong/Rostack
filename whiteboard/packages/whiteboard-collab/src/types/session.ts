@@ -4,7 +4,7 @@ import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
 import type { Operation } from '@whiteboard/core/types'
 import type { HistoryFootprint } from '@whiteboard/core/spec/history'
-import type { EngineWrite } from '@whiteboard/engine'
+import type { EngineApplyCommit } from '@whiteboard/engine'
 import type * as Y from 'yjs'
 import type {
   CollabProvider,
@@ -30,7 +30,7 @@ export type CollabLocalHistory = HistoryPort<
   IntentResult,
   Operation,
   HistoryFootprint[number],
-  EngineWrite
+  EngineApplyCommit
 >
 
 export type CollabSession = {

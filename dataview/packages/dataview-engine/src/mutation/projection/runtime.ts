@@ -51,7 +51,7 @@ export const createDataviewPublishProjectionRuntime = (
     },
     update: (input: DataviewPublishProjectionUpdateInput) => {
       const startedAt = now()
-      const trace = input.write.extra.trace
+      const trace = input.commit.extra.trace
       const impact = createBaseImpact(trace)
       const read = createDocumentReadContext(input.doc)
       const plan = resolveViewPlan(read, read.activeViewId)
@@ -103,7 +103,7 @@ export const createDataviewPublishProjectionRuntime = (
       const commitTrace = createDataviewCommitTrace({
         performance: options.performance,
         startedAt,
-        write: input.write,
+        commit: input.commit,
         trace,
         index: {
           trace: index.trace

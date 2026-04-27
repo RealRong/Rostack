@@ -16,7 +16,7 @@ import {
 } from '@dataview/core/id'
 import { string } from '@shared/core'
 import type {
-  EngineFacadeHost,
+  Engine,
   FieldsApi
 } from '@dataview/engine/contracts/api'
 import type {
@@ -47,7 +47,7 @@ const findAddedOption = (
 }
 
 export const createFieldsApi = (
-  engine: EngineFacadeHost
+  engine: Pick<Engine, 'doc' | 'execute'>
 ): FieldsApi => {
   const listFields = () => documentApi.schema.fields.ids(engine.doc())
     .flatMap((fieldId) => {

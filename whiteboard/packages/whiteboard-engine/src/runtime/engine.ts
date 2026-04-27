@@ -38,15 +38,6 @@ const resolveIntentOrigin = (
     ?? 'user'
 }
 
-const readPublish = (
-  publish?: EnginePublish
-): EnginePublish => {
-  if (!publish) {
-    throw new Error('Whiteboard engine publish is unavailable.')
-  }
-  return publish
-}
-
 const mapExecuteFailure = <K extends IntentKind>(
   result: ExecuteResult<K>
 ): ExecuteResult<K> => {
@@ -121,9 +112,9 @@ export const createEngine = ({
     commits: core.commits,
     history: core.history,
     doc: () => core.doc(),
-    current: () => readPublish(core.current().publish),
+    current: () => core.current().publish,
     subscribe: (listener) => core.subscribe((current) => {
-      listener(readPublish(current.publish))
+      listener(current.publish)
     }),
     execute: ((intent, options) => mapExecuteFailure(
       core.execute(intent as never, {

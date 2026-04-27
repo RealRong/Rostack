@@ -24,9 +24,6 @@ import type {
   ActiveViewApi
 } from '@dataview/engine/contracts/view'
 import type {
-  DataviewDelta
-} from '@dataview/engine/contracts/delta'
-import type {
   DataviewHistory,
   DataviewHistoryConfig
 } from '@dataview/engine/contracts/history'
@@ -39,15 +36,10 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import type {
   EngineCommits,
-  EngineWrite
+  EngineApplyCommit
 } from '@dataview/engine/contracts/write'
 import type {
-  DataviewMutationKey
-} from '@dataview/core/mutation'
-import type {
-  DataviewErrorCode,
   ExecuteInput,
-  ExecuteResult,
   ExecuteResultOf,
   Intent,
   IntentData,
@@ -154,21 +146,6 @@ export interface RecordsApi {
   fields: RecordFieldWriteApi
 }
 
-export interface EngineFacadeHost {
-  current(): DataviewCurrent
-  doc(): DataDoc
-  replace(document: DataDoc, options?: MutationOptions): boolean
-  subscribe(listener: (current: DataviewCurrent) => void): () => void
-  execute<I extends ExecuteInput>(
-    input: I,
-    options?: MutationOptions
-  ): ExecuteResultOf<I>
-  apply(
-    operations: readonly DocumentOperation[],
-    options?: MutationOptions
-  ): MutationResult<void, EngineWrite>
-}
-
 export interface Engine {
   readonly commits: EngineCommits
   readonly history: DataviewHistory
@@ -192,5 +169,5 @@ export interface Engine {
   apply(
     operations: readonly DocumentOperation[],
     options?: MutationOptions
-  ): MutationResult<void, EngineWrite>
+  ): MutationResult<void, EngineApplyCommit>
 }

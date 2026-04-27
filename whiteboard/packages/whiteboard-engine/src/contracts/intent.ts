@@ -13,7 +13,7 @@ import type {
   WhiteboardIntentOutput,
   WhiteboardIntentTable
 } from '@whiteboard/core/intent'
-import type { EngineWrite } from '../types/engineWrite'
+import type { EngineApplyCommit } from '../types/engineWrite'
 import type { WhiteboardErrorCode } from '../types/result'
 
 export type {
@@ -34,4 +34,4 @@ export type IntentData<K extends IntentKind = IntentKind> = WhiteboardIntentOutp
 export type EngineIntent = Intent
 
 export type ExecuteResult<K extends IntentKind = IntentKind> =
-  MutationResult<IntentData<K>, EngineWrite, WhiteboardErrorCode>
+  MutationResult<IntentData<K>, EngineApplyCommit, WhiteboardErrorCode>

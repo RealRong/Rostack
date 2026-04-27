@@ -2,7 +2,7 @@ import type {
   ActiveViewApi
 } from '@dataview/engine/contracts/view'
 import type {
-  EngineFacadeHost
+  Engine
 } from '@dataview/engine/contracts/api'
 import { createActiveContext } from '@dataview/engine/active/api/context'
 import { createActiveViewReadApi } from '@dataview/engine/active/api/read'
@@ -27,7 +27,7 @@ import {
 } from '@dataview/engine/active/api/items'
 
 export const createActiveViewApi = (
-  engine: EngineFacadeHost
+  engine: Pick<Engine, 'current' | 'doc' | 'execute'>
 ): ActiveViewApi => {
   const base = createActiveContext(engine)
   const readApi = createActiveViewReadApi({

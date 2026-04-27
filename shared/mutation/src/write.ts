@@ -2,15 +2,15 @@ export type Origin =
   | 'user'
   | 'remote'
   | 'system'
-  | 'load'
   | 'history'
 
-export interface Write<
+export interface ApplyCommit<
   Doc,
   Op,
   Key,
   Extra = void
 > {
+  kind: 'apply'
   rev: number
   at: number
   origin: Origin
@@ -27,15 +27,6 @@ export interface ReplaceCommit<Doc> {
   at: number
   origin: Origin
   doc: Doc
-}
-
-export interface ApplyCommit<
-  Doc,
-  Op,
-  Key,
-  Extra = void
-> extends Write<Doc, Op, Key, Extra> {
-  kind: 'apply'
 }
 
 export type CommitRecord<

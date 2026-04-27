@@ -245,7 +245,7 @@ test('engine allows remote unlock then delete in the same operation batch', () =
   if (!result.ok) {
     return
   }
-  assert.equal(result.write.doc.nodes.node_locked, undefined)
+  assert.equal(result.commit.doc.nodes.node_locked, undefined)
 })
 
 test('engine blocks modifying a locked edge', () => {
@@ -299,6 +299,6 @@ test('engine allows remote unlock then edge update in the same batch', () => {
   if (!result.ok) {
     return
   }
-  assert.equal(result.write.doc.edges.edge_locked?.locked, false)
-  assert.equal(result.write.doc.edges.edge_locked?.textMode, 'tangent')
+  assert.equal(result.commit.doc.edges.edge_locked?.locked, false)
+  assert.equal(result.commit.doc.edges.edge_locked?.textMode, 'tangent')
 })

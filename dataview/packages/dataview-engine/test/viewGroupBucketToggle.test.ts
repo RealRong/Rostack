@@ -536,7 +536,7 @@ test('engine.subscribe keeps active boundaries inside one active pipeline', () =
   unsubscribe()
 })
 
-test('engine.replace(load origin) publishes coherent active view state in one step', () => {
+test('engine.replace(system origin) publishes coherent active view state in one step', () => {
   const engine = createEngineForTest({
     document: createDocument()
   })
@@ -551,7 +551,7 @@ test('engine.replace(load origin) publishes coherent active view state in one st
   })
 
   engine.replace(nextDocument, {
-    origin: 'load'
+    origin: 'system'
   })
 
   assert.equal(documentEvents, 1)
@@ -1482,6 +1482,7 @@ test('engine commits stream emits shared apply commits for execute', () => {
   assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
   assert.deepEqual(writes[0] && {
+    kind: writes[0].kind,
     rev: writes[0].rev,
     at: writes[0].at,
     origin: writes[0].origin,
@@ -1490,7 +1491,7 @@ test('engine commits stream emits shared apply commits for execute', () => {
     inverse: writes[0].inverse,
     footprint: writes[0].footprint,
     extra: writes[0].extra
-  }, result.write)
+  }, result.commit)
   assert.equal(writes[0]?.origin, 'user')
   assert.ok(writes[0]?.extra.trace.views?.inserted?.size)
 })
@@ -1517,6 +1518,7 @@ test('engine apply emits shared apply commits', () => {
   assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
   assert.deepEqual(writes[0] && {
+    kind: writes[0].kind,
     rev: writes[0].rev,
     at: writes[0].at,
     origin: writes[0].origin,
@@ -1525,7 +1527,7 @@ test('engine apply emits shared apply commits', () => {
     inverse: writes[0].inverse,
     footprint: writes[0].footprint,
     extra: writes[0].extra
-  }, result.write)
+  }, result.commit)
   assert.equal(writes[0]?.origin, 'remote')
   assert.equal(writes[0]?.forward.length, 1)
   assert.equal(writes[0]?.extra.trace.external?.versionBumped, true)

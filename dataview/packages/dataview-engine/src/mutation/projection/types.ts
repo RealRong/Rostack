@@ -2,10 +2,14 @@ import type {
   DataDoc
 } from '@dataview/core/contracts'
 import type {
+  DocumentOperation
+} from '@dataview/core/contracts/operations'
+import type {
+  DataviewMutationKey,
   DataviewTrace
 } from '@dataview/core/mutation'
 import type {
-  Origin
+  ApplyCommit
 } from '@shared/mutation'
 import type {
   CommitTrace,
@@ -35,12 +39,14 @@ export interface DataviewPublishProjectionUpdateInput {
     cache: DataviewMutationCache
   }
   doc: DataDoc
-  write: {
-    origin: Origin
-    extra: {
+  commit: ApplyCommit<
+    DataDoc,
+    DocumentOperation,
+    DataviewMutationKey,
+    {
       trace: DataviewTrace
     }
-  }
+  >
 }
 
 export interface DataviewPublishProjectionRuntime {
@@ -51,7 +57,7 @@ export interface DataviewPublishProjectionRuntime {
 export interface DataviewCommitTraceInput {
   performance?: PerformanceRuntime
   startedAt: number
-  write: DataviewPublishProjectionUpdateInput['write']
+  commit: DataviewPublishProjectionUpdateInput['commit']
   trace: DataviewTrace
   index: {
     trace?: IndexTrace

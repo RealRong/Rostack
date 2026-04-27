@@ -210,28 +210,23 @@ whiteboard 额外又有：
 
 最终态必须是：
 
-- `@shared/mutation` 直接提供最终态 compiler constructor。
+- `@shared/mutation` 直接提供最终态 mutation engine constructor。
 - engine constructor 直接接受 compile 配置，不再要求领域包维护 compile loop。
-- 上层只写“intent handler table + domain ctx extension + reduce function”。
+- 上层只写 plain object `operations`、plain object `compile handlers`、领域 `services` 与 key/trace/publish/history spec。
 
 最终 API 形态：
 
 ```ts
 const engine = createMutationEngine({
-  reducer,
-  compile: {
-    reduce: reduceOperations,
-    context: ({ doc, ids, extra }) => ({
-      read: ...,
-      ids,
-      emit: ...,
-      fail: ...
-    }),
-    handlers: {
-      'record.create': (intent, ctx) => { ... },
-      'record.patch': (intent, ctx) => { ... }
-    }
-  }
+  document,
+  normalize,
+  key: key.path(),
+  services,
+  operations: table,
+  compile: handlers,
+  trace,
+  publish,
+  history
 })
 ```
 
@@ -254,9 +249,11 @@ const engine = createMutationEngine({
 
 最终态必须是：
 
-- shared 提供 `createOperationReducer({ table, createContext, done, serializeKey, conflicts })`
-- `table[operation.type]` 的 footprint / apply 在 shared 内部自动收窄
-- 上层不再出现 `operation as never`
+- `createMutationEngine(...)` 直接接收 `operations` plain object。
+- `table[operation.type]` 的 footprint / apply 在 engine 内部自动收窄。
+- 上层不再出现 `operation as never`。
+- `createOperationReducer(...)` 只能作为 shared 内部实现细节，不能作为 public API。
+- `operations.createContext`、`compile.createContext`、`done`、`serializeKey`、`conflicts` 都不能继续作为 public 字段暴露。
 
 ### A5. whiteboard node/schema patch 仍然退化
 
@@ -496,20 +493,33 @@ projection.scope(...)
 
 ```ts
 createMutationEngine({
-  reducer,
-  compile,
+  document,
+  normalize,
+  key: key.path(),
+  services,
+  operations: table,
+  compile: handlers,
+  trace,
   publish,
   history
 })
-createOperationReducer({ table, ... })
 ```
 
 要求：
 
+- 标准 reducer context 由 engine 内建
+- 标准 compile context 由 engine 内建
 - compile loop 内建
 - reducer dispatch 内建
 - issue 收集 / stop / block / working doc apply 内建
+- key 序列化与冲突判断收敛到单个 `key` codec
+- trace 生成收敛到单个 `trace` spec
 - dataview / whiteboard 不再保留自己的 compile loop
+- `createOperationReducer(...)` 不对外公开
+- `operations.createContext` 不对外公开
+- `compile.createContext` 不对外公开
+- `done` 不对外公开
+- `serializeKey` / `conflicts` 不对外公开
 
 ### 5. `@shared/draft`
 

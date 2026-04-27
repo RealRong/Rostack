@@ -43,9 +43,9 @@ const DEFAULT_SHORTCUT_INSERT_BEHAVIOR = {
 const readActiveMindmapShortcut = (
   editor: Editor
 ): ActiveMindmapShortcut | undefined => {
-  const selection = editor.session.selection.get()
+  const selection = editor.state.selection.get()
   if (
-    editor.session.edit.get() !== null
+    editor.state.edit.get() !== null
     || selection.edgeIds.length > 0
     || selection.nodeIds.length !== 1
   ) {
@@ -66,7 +66,7 @@ const readActiveMindmapShortcut = (
 const readShortcutState = (
   editor: Editor
 ) => {
-  const selection = editor.session.selection.get()
+  const selection = editor.state.selection.get()
   const count = selection.nodeIds.length + selection.edgeIds.length
 
   return {
@@ -105,7 +105,7 @@ const canRunShortcut = (
     case 'selection.selectAll':
       return true
     case 'selection.clear':
-      return state.hasSelection || !editor.session.tool.is('select')
+      return state.hasSelection || !editor.state.tool.is('select')
     case 'selection.delete':
       return state.hasSelection && state.canDelete
     case 'selection.duplicate':
@@ -143,7 +143,7 @@ export const runShortcut = (
       editor.write.selection.selectAll()
       return true
     case 'selection.clear':
-      if (!editor.session.tool.is('select')) {
+      if (!editor.state.tool.is('select')) {
         editor.write.tool.select()
       }
       editor.write.selection.clear()

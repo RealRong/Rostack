@@ -2,7 +2,6 @@ import { path as mutationPath } from '@shared/mutation'
 import type { MindmapStructure } from '@whiteboard/core/mindmap'
 import { node as nodeApi } from '@whiteboard/core/node'
 import {
-  selection as selectionApi,
   type SelectionAffordance,
   type SelectionSummary,
   type SelectionTarget
@@ -254,7 +253,7 @@ export const readNodeScope = ({
   ) => (
     mindmapTreeId && mindmapTree
       ? collection.uniform(
-          nodeIds as readonly MindmapNodeId[],
+          nodeIds,
           (nodeId) => {
             const branch = mindmapTree.nodes[nodeId]?.branch
             return branch ? select(branch) : undefined
@@ -319,8 +318,8 @@ export const readNodeScope = ({
     mindmap: mindmapOwned
       ? {
           treeId: mindmapTreeId,
-          nodeIds: nodeIds as readonly MindmapNodeId[],
-          primaryNodeId: primaryNode?.id as MindmapNodeId | undefined,
+          nodeIds,
+          primaryNodeId: primaryNode?.id,
           canEditBranch: Boolean(mindmapTreeId && mindmapTree),
           branchColor: readMindmapBranchValue((branch) => branch.color),
           branchLine: readMindmapBranchValue((branch) => branch.line),
@@ -516,8 +515,14 @@ export const resolveSelectionToolbar = ({
   }
 
   const scopes: SelectionToolbarScope[] = []
-  const nodeById = new Map<NodeId, NodeModel>(members.nodes.map((node) => [node.id, node] as const))
-  const edgeById = new Map<EdgeId, Edge>(members.edges.map((edge) => [edge.id, edge] as const))
+  const nodeById = new Map<NodeId, NodeModel>()
+  members.nodes.forEach((node) => {
+    nodeById.set(node.id, node)
+  })
+  const edgeById = new Map<EdgeId, Edge>()
+  members.edges.forEach((edge) => {
+    edgeById.set(edge.id, edge)
+  })
 
   if (nodeStats.count > 0 && nodeScope) {
     scopes.push({

@@ -796,6 +796,15 @@ export interface Query {
     }
     bounds(target: import('@whiteboard/core/selection').SelectionTarget): Rect | undefined
   }
+  chrome: {
+    marquee(): {
+      rect: Rect
+      match: SelectionMarqueeMatch
+    } | undefined
+    draw(): DrawPreview | null
+    guides(): readonly Guide[]
+    edgeGuide(): EdgeGuidePreview | undefined
+  }
   mindmap: {
     get(id: MindmapId): MindmapView | undefined
     resolve(value: string): MindmapId | undefined

@@ -3,7 +3,7 @@ import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
 
 export const Marquee = () => {
   const editor = useEditorRuntime()
-  const marquee = useStoreValue(editor.session.chrome.marquee)
+  const marquee = useStoreValue(editor.derived.scene.chrome.marquee)
 
   if (!marquee) return null
 

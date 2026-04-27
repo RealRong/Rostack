@@ -1,26 +1,17 @@
-import type { Viewport } from '@whiteboard/core/types'
 import type { HistoryPort } from '@shared/mutation'
-import type { Engine } from '@whiteboard/engine'
-import type { IntentResult } from '@whiteboard/engine'
-import {
-  createEditorActionsApi
-} from '@whiteboard/editor/action'
-import {
-  createEditorBoundaryRuntime
-} from '@whiteboard/editor/boundary/runtime'
-import {
-  createEditorBoundaryTaskRuntime
-} from '@whiteboard/editor/boundary/task'
+import type { Viewport } from '@whiteboard/core/types'
+import { createEditorActionsApi } from '@whiteboard/editor/action'
+import { createEditorBoundaryRuntime } from '@whiteboard/editor/boundary/runtime'
+import { createEditorBoundaryTaskRuntime } from '@whiteboard/editor/boundary/task'
+import { createEditorDerived } from '@whiteboard/editor/editor/derived'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
-import {
-  createEditorInputApi
-} from '@whiteboard/editor/input/host'
+import { createEditorState } from '@whiteboard/editor/editor/state'
+import { createEditorInputApi } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createEditorTextLayout } from '@whiteboard/editor/layout/textLayout'
 import { createEditorSceneRuntime } from '@whiteboard/editor-scene'
-import { createEditorSceneSource } from '@whiteboard/editor/scene/source'
-import { createEditorSessionSource } from '@whiteboard/editor/editor/source/session'
-import { createEditorSceneView } from '@whiteboard/editor/scene/view'
+import { createEditorSceneApi } from '@whiteboard/editor/scene/api'
+import { createEditorSceneBinding } from '@whiteboard/editor/scene/binding'
 import { createToolService } from '@whiteboard/editor/services/tool'
 import {
   DEFAULT_DRAW_STATE,
@@ -37,16 +28,10 @@ import { createNodeTypeSupport, type NodeRegistry } from '@whiteboard/editor/typ
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
+import type { IntentResult } from '@whiteboard/engine'
+import type { Engine } from '@whiteboard/engine'
 
-export const createEditor = ({
-  engine,
-  history,
-  initialTool,
-  initialDrawState = DEFAULT_DRAW_STATE,
-  initialViewport,
-  registry,
-  services,
-}: {
+export const createEditor = (input: {
   engine: Engine
   history: HistoryPort<IntentResult>
   initialTool: Tool
@@ -59,22 +44,23 @@ export const createEditor = ({
   }
 }): Editor => {
   const session = createEditorSession({
-    initialTool,
-    initialDrawState,
-    initialViewport
+    initialTool: input.initialTool,
+    initialDrawState: input.initialDrawState ?? DEFAULT_DRAW_STATE,
+    initialViewport: input.initialViewport
   })
   const textLayout = createEditorTextLayout({
-    registry,
-    backend: services?.layout
+    registry: input.registry,
+    backend: input.services?.layout
   })
-  const defaults = services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
-  const nodeType = createNodeTypeSupport(registry)
-  const sceneSource = createEditorSceneSource({
-    engine,
-    session,
+  const defaults = input.services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
+  const nodeType = createNodeTypeSupport(input.registry)
+
+  const sceneBinding = createEditorSceneBinding({
+    engine: input.engine,
+    session
   })
   const sceneRuntime = createEditorSceneRuntime({
-    source: sceneSource,
+    source: sceneBinding,
     measure: textLayout.measure,
     nodeCapability: {
       meta: nodeType.meta,
@@ -82,21 +68,25 @@ export const createEditor = ({
       capability: (node) => resolveNodeEditorCapability(node, nodeType)
     }
   })
-  const scene = createEditorSceneView({
+  const scene = createEditorSceneApi({
     runtime: sceneRuntime
   })
   const document = scene.query.document
+
+  const state = createEditorState(session)
+
   const writeRuntime = createEditorWrite({
-    engine,
-    history,
+    engine: input.engine,
+    history: input.history,
     document,
     projection: scene,
-    registry,
+    registry: input.registry,
     measure: textLayout.measure
   })
   const tool = createToolService({
     session
   })
+
   let boundary: ReturnType<typeof createEditorBoundaryRuntime>
   const tasks = createEditorBoundaryTaskRuntime({
     execute: (procedure) => {
@@ -114,15 +104,17 @@ export const createEditor = ({
         state: sceneRuntime.state()
       }),
       publish: (change) => {
-        sceneSource.emit(change)
+        sceneBinding.emit(change)
       }
     },
     tasks
   })
+
   const actions = createEditorActionsApi({
     boundary,
-    engine,
+    engine: input.engine,
     document,
+    state,
     session,
     graph: scene,
     tool,
@@ -130,41 +122,46 @@ export const createEditor = ({
     nodeType,
     defaults: defaults.templates
   })
-  const sessionSource = createEditorSessionSource({
-    graph: scene,
-    session,
-    history,
+
+  const derived = createEditorDerived({
+    scene,
+    state,
     nodeType,
     defaults: defaults.selection
   })
+
   const host = createEditorHost({
-    engine,
+    engine: input.engine,
     document,
     projection: scene,
+    state,
     session,
-    sessionSource,
+    sceneDerived: derived.scene,
     measure: textLayout.measure,
-    registry,
+    registry: input.registry,
     write: writeRuntime,
     tool,
     nodeType
   })
-  const input = createEditorInputApi({
+  const inputApi = createEditorInputApi({
     boundary,
     host
   })
   const events = createEditorEvents({
-    engine,
+    engine: input.engine,
     session,
     document,
-    resetHost: input.cancel
+    resetHost: inputApi.cancel
   })
+
   return {
     document,
     scene,
-    session: sessionSource,
+    state,
+    derived,
+    history: input.history,
+    input: inputApi,
     write: actions,
-    input,
     events: events.events,
     dispose: () => {
       events.dispose()
@@ -172,7 +169,7 @@ export const createEditor = ({
       boundary.dispose()
       scene.dispose()
       sceneRuntime.dispose()
-      sceneSource.dispose()
+      sceneBinding.dispose()
       session.reset()
       textLayout.text.clear()
     }

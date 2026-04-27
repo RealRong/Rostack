@@ -1,7 +1,6 @@
 import { store } from '@shared/core'
-import type { HistoryPort, HistoryPortState } from '@shared/mutation'
+import type { HistoryPort } from '@shared/mutation'
 import type { SliceExportResult } from '@whiteboard/core/document'
-import type { EdgeRoutePoint } from '@whiteboard/core/edge'
 import type { Guide } from '@whiteboard/core/node'
 import type {
   SelectionAffordance,
@@ -10,16 +9,16 @@ import type {
 } from '@whiteboard/core/selection'
 import type {
   Document,
-  EdgeId,
   MindmapId,
   NodeId,
-  NodeModel,
   Point,
   Rect,
   Viewport
 } from '@whiteboard/core/types'
 import type {
   DocumentQuery,
+  DrawPreview,
+  EdgeGuidePreview,
   Query as EditorSceneQueryRuntime,
   RuntimeStores,
   SpatialKind,
@@ -28,13 +27,8 @@ import type {
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
 import type { EditSession } from '@whiteboard/editor/session/edit'
-import type {
-  DrawPreview,
-  DrawState
-} from '@whiteboard/editor/session/draw/state'
-import type {
-  EdgeGuide
-} from '@whiteboard/editor/session/preview/types'
+import type { DrawState } from '@whiteboard/editor/session/draw/state'
+import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -47,17 +41,17 @@ import type {
 import type { PointerMode } from '@whiteboard/editor/input/core/types'
 import type {
   EditorSelectionView,
+  SelectionEdgeStats,
   SelectionMembers,
   SelectionNodeStats,
   SelectionOverlay,
   SelectionToolbarContext,
+  SelectionToolbarEdgeScope,
   SelectionToolbarNodeScope
 } from '@whiteboard/editor/types/selectionPresentation'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { IntentResult } from '@whiteboard/engine'
-import type {
-  EngineCommit
-} from '@whiteboard/engine/types/engineWrite'
+import type { EngineCommit } from '@whiteboard/engine/types/engineWrite'
 
 export type EditorPointerDispatchResult = {
   handled: boolean
@@ -92,21 +86,6 @@ export type EditorInteractionState = Readonly<{
   space: boolean
 }>
 
-export type EditorSessionState = {
-  tool: store.ReadStore<Tool>
-  draw: store.ReadStore<DrawState>
-  edit: store.ReadStore<EditSession>
-  selection: store.ReadStore<SelectionTarget>
-  interaction: store.ReadStore<EditorInteractionState>
-  viewport: store.ReadStore<Viewport>
-}
-
-export type EditorSelectionNodeRead = {
-  selected: store.KeyedReadStore<NodeId, boolean>
-  stats: store.ReadStore<SelectionNodeStats>
-  scope: store.ReadStore<SelectionToolbarNodeScope | undefined>
-}
-
 export type ToolRead = {
   get: () => Tool
   subscribe: (listener: () => void) => store.Unsubscribe
@@ -134,42 +113,38 @@ export type SessionViewportRead = {
   }
 }
 
-export type EditorMarqueePreview = {
-  rect: Rect
-  match: 'touch' | 'contain'
+export type EditorState = {
+  tool: ToolRead
+  draw: store.ReadStore<DrawState>
+  edit: store.ReadStore<EditSession>
+  selection: store.ReadStore<SelectionTarget>
+  interaction: store.ReadStore<EditorInteractionState>
+  viewport: SessionViewportRead & {
+    value: store.ReadStore<Viewport>
+    zoom: store.ReadStore<number>
+    center: store.ReadStore<Point>
+  }
 }
 
-export type SelectedEdgeChrome = {
-  edgeId: EdgeId
-  ends: import('@whiteboard/core/edge').ResolvedEdgeEnds
-  canReconnectSource: boolean
-  canReconnectTarget: boolean
-  canEditRoute: boolean
-  showEditHandles: boolean
-  routePoints: readonly EdgeRoutePoint[]
+export type EditorSelectionNodeRead = {
+  selected: store.KeyedReadStore<NodeId, boolean>
+  stats: store.ReadStore<SelectionNodeStats>
+  scope: store.ReadStore<SelectionToolbarNodeScope | undefined>
 }
+
+export type EditorSelectionEdgeRead = {
+  stats: store.ReadStore<SelectionEdgeStats>
+  scope: store.ReadStore<SelectionToolbarEdgeScope | undefined>
+}
+
+export type EditorMarqueePreview =
+  NonNullable<ReturnType<EditorSceneQueryRuntime['chrome']['marquee']>>
+
+export type SelectedEdgeChrome =
+  NonNullable<ReturnType<EditorSceneQueryRuntime['edge']['chrome']>>
 
 export type MindmapChrome = {
-  addChildTargets: readonly {
-    targetNodeId: NodeId
-    x: number
-    y: number
-    placement: 'left' | 'right'
-  }[]
-}
-
-export type EditorChromePresentation = {
-  marquee: EditorMarqueePreview | undefined
-  draw: DrawPreview | null
-  edgeGuide: EdgeGuide
-  snap: readonly Guide[]
-  selection: SelectionOverlay | undefined
-}
-
-export type EditorPanelPresentation = {
-  selectionToolbar: SelectionToolbarContext | undefined
-  history: HistoryPortState
-  draw: DrawState
+  addChildTargets: ReturnType<EditorSceneQueryRuntime['mindmap']['addChildTargets']>
 }
 
 export type ScenePickKind = Extract<
@@ -192,7 +167,7 @@ export type ScenePickTarget =
     }
   | {
       kind: 'edge'
-      id: EdgeId
+      id: string
     }
   | {
       kind: 'mindmap'
@@ -233,7 +208,7 @@ export type ScenePickRuntime = {
   dispose: () => void
 }
 
-export type EditorSceneSource = {
+export type EditorSceneApi = {
   revision: () => number
   query: EditorSceneQueryRuntime
   stores: RuntimeStores
@@ -245,47 +220,39 @@ export type EditorSceneSource = {
   }
 }
 
-export type EditorChromeSource = store.ReadStore<EditorChromePresentation> & {
-  marquee: store.ReadStore<EditorMarqueePreview | undefined>
-  draw: store.ReadStore<DrawPreview | null>
-  edgeGuide: store.ReadStore<EdgeGuide>
-  snap: store.ReadStore<readonly Guide[]>
-  selection: store.ReadStore<SelectionOverlay | undefined>
-}
-
-export type EditorPanelSource = store.ReadStore<EditorPanelPresentation> & {
-  selectionToolbar: store.ReadStore<SelectionToolbarContext | undefined>
-  history: HistoryPort<IntentResult>
-  draw: store.ReadStore<DrawState>
-}
-
-export type EditorSessionSource = {
-  tool: store.ReadStore<Tool> & ToolRead
-  draw: store.ReadStore<DrawState>
-  edit: store.ReadStore<EditSession>
-  selection: store.ReadStore<SelectionTarget> & {
-    target: store.ReadStore<SelectionTarget>
+export type EditorSceneDerived = {
+  selection: {
     members: store.ReadStore<SelectionMembers>
     summary: store.ReadStore<SelectionSummary>
     affordance: store.ReadStore<SelectionAffordance>
     view: store.ReadStore<EditorSelectionView>
-    node: EditorSelectionNodeRead
     edge: {
       chrome: store.ReadStore<SelectedEdgeChrome | undefined>
     }
   }
-  interaction: store.ReadStore<EditorInteractionState>
-  viewport: SessionViewportRead & {
-    value: store.ReadStore<Viewport>
-    zoom: store.ReadStore<number>
-    center: store.ReadStore<Point>
+  chrome: {
+    marquee: store.ReadStore<EditorMarqueePreview | undefined>
+    draw: store.ReadStore<DrawPreview | null>
+    edgeGuide: store.ReadStore<EdgeGuide>
+    snap: store.ReadStore<readonly Guide[]>
   }
-  chrome: EditorChromeSource
-  panel: EditorPanelSource
-  history: HistoryPort<IntentResult>
   mindmap: {
     chrome: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
   }
+}
+
+export type EditorPolicyDerived = {
+  selection: {
+    toolbar: store.ReadStore<SelectionToolbarContext | undefined>
+    overlay: store.ReadStore<SelectionOverlay | undefined>
+    node: EditorSelectionNodeRead
+    edge: EditorSelectionEdgeRead
+  }
+}
+
+export type EditorDerived = {
+  scene: EditorSceneDerived
+  editor: EditorPolicyDerived
 }
 
 export type EditorEvents = {
@@ -295,10 +262,15 @@ export type EditorEvents = {
 
 export type Editor = {
   document: DocumentQuery
-  scene: EditorSceneSource
-  session: EditorSessionSource
-  write: EditorWrite
+  scene: EditorSceneApi
+  state: EditorState
+  derived: EditorDerived
+  history: HistoryPort<IntentResult>
   input: EditorInputHost
+  write: EditorWrite
   events: EditorEvents
   dispose: () => void
 }
+
+export type ClipboardDocumentSource = Pick<DocumentQuery, 'slice'>
+export type EditorSliceResult = SliceExportResult | undefined

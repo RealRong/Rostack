@@ -25,8 +25,8 @@ import type {
 } from '@whiteboard/editor/boundary/procedure'
 import {
   readActiveMindmapTickIds
-} from '@whiteboard/editor/scene/source'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
+} from '@whiteboard/editor/scene/binding'
+import type { EditorSceneApi } from '@whiteboard/editor/types/editor'
 import type {
   MindmapEnterPreview,
   MindmapPreviewState
@@ -157,7 +157,7 @@ const buildMindmapEnterPreview = ({
   nodeId,
   anchorId
 }: {
-  structure: EditorSceneRuntime['query']['mindmap']['structure']
+  structure: EditorSceneApi['query']['mindmap']['structure']
   graph: GraphState
   treeId: MindmapId
   nodeId: MindmapNodeId
@@ -200,7 +200,7 @@ const buildMindmapEnterPreview = ({
 
 type MindmapProcedureDeps = {
   engine: Pick<Engine, 'current'>
-  graph: Pick<EditorSceneRuntime, 'query'>
+  graph: Pick<EditorSceneApi, 'query'>
   session: Pick<EditorSession, 'preview'>
   write: Pick<EditorWrite, 'mindmap'>
   focusNode: (input: {

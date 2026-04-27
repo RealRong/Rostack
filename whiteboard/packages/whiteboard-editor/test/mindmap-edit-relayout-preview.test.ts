@@ -219,7 +219,7 @@ describe('mindmap edit relayout preview', () => {
 
     const liveChild = editor.scene.query.node.get(insert.data.nodeId)?.geometry.rect
     const liveScene = editor.scene.query.mindmap.get(created.data.mindmapId)?.tree.bbox
-    const session = editor.session.edit.get()
+    const session = editor.state.edit.get()
 
     expect(liveChild).toBeDefined()
     expect(liveScene).toBeDefined()

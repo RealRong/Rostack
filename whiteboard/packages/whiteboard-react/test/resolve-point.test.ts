@@ -31,6 +31,10 @@ vi.mock('@whiteboard/react/dom/host/targets', () => targetMocks)
 
 import { resolvePoint } from '../src/dom/host/input'
 
+type ResolvePointInput = Parameters<typeof resolvePoint>[0]
+type ResolvePointEditor = ResolvePointInput['editor']
+type ResolvePointPick = ResolvePointInput['pick']
+
 describe('resolvePoint', () => {
   beforeEach(() => {
     domMocks.elementFromPointWithin.mockReset()
@@ -51,7 +55,7 @@ describe('resolvePoint', () => {
       clientY: 80,
       target: primaryElement
     } as MouseEvent
-    const pick = {
+    const pick: ResolvePointPick = {
       element: vi.fn((element: Element | null) => (
         element === primaryElement
           ? {
@@ -62,8 +66,8 @@ describe('resolvePoint', () => {
           : undefined
       ))
     }
-    const editor = {
-      session: {
+    const editor: ResolvePointEditor = {
+      state: {
         viewport: {
           pointer: vi.fn((input: { clientX: number, clientY: number }) => ({
             screen: {
@@ -74,7 +78,11 @@ describe('resolvePoint', () => {
               x: input.clientX / 2,
               y: input.clientY / 2
             }
-          }))
+          })),
+          get: () => ({
+            center: { x: 0, y: 0 },
+            zoom: 1
+          })
         },
         selection: {
           get: () => ({
@@ -82,14 +90,21 @@ describe('resolvePoint', () => {
             edgeIds: []
           })
         }
+      },
+      scene: {
+        query: {
+          hit: {
+            edge: vi.fn(() => undefined)
+          }
+        }
       }
-    } as never
+    }
 
     domMocks.elementFromPointWithin.mockReturnValue(primaryElement)
 
     const resolved = resolvePoint({
       editor,
-      pick: pick as never,
+      pick,
       container,
       event
     })
@@ -111,7 +126,7 @@ describe('resolvePoint', () => {
       clientY: 90,
       target: selectionBoxElement
     } as MouseEvent
-    const pick = {
+    const pick: ResolvePointPick = {
       element: vi.fn((element: Element | null) => {
         if (element === selectionBoxElement) {
           return {
@@ -131,8 +146,8 @@ describe('resolvePoint', () => {
         return undefined
       })
     }
-    const editor = {
-      session: {
+    const editor: ResolvePointEditor = {
+      state: {
         viewport: {
           pointer: vi.fn((input: { clientX: number, clientY: number }) => ({
             screen: {
@@ -143,7 +158,11 @@ describe('resolvePoint', () => {
               x: input.clientX,
               y: input.clientY
             }
-          }))
+          })),
+          get: () => ({
+            center: { x: 0, y: 0 },
+            zoom: 1
+          })
         },
         selection: {
           get: () => ({
@@ -151,8 +170,15 @@ describe('resolvePoint', () => {
             edgeIds: []
           })
         }
+      },
+      scene: {
+        query: {
+          hit: {
+            edge: vi.fn(() => undefined)
+          }
+        }
       }
-    } as never
+    }
 
     domMocks.elementFromPointWithin.mockReturnValue(selectionBoxElement)
     domMocks.elementsFromPointWithin.mockReturnValue([
@@ -162,7 +188,7 @@ describe('resolvePoint', () => {
 
     const resolved = resolvePoint({
       editor,
-      pick: pick as never,
+      pick,
       container,
       event
     })

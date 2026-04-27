@@ -33,11 +33,12 @@ import type {
 import {
   createMindmapActionProcedures
 } from '@whiteboard/editor/procedures/mindmap'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
+import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
 import type { EditField } from '@whiteboard/editor/session/edit'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
+import type { EditorState } from '@whiteboard/editor/types/editor'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
@@ -119,9 +120,8 @@ const startNodeEdit = ({
     return
   }
 
-  const text = typeof committed.data?.[field] === 'string'
-    ? committed.data[field] as string
-    : ''
+  const value = committed.data?.[field]
+  const text = typeof value === 'string' ? value : ''
 
   session.mutate.edit.set({
     kind: 'node',
@@ -270,7 +270,7 @@ const toEdgeUpdateInput = (
 }
 
 const readEdgeOrThrow = (
-  graph: Pick<EditorSceneRuntime, 'query'>,
+  graph: Pick<EditorSceneApi, 'query'>,
   edgeId: string
 ) => {
   const edge = graph.query.edge.get(edgeId)?.base.edge
@@ -285,8 +285,9 @@ export type CreateEditorActionsApiDeps = {
   boundary: Pick<EditorBoundaryRuntime, 'atomic' | 'procedure'>
   engine: Engine
   document: DocumentQuery
+  state: Pick<EditorState, 'viewport' | 'selection'>
   session: EditorSession
-  graph: EditorSceneRuntime
+  graph: EditorSceneApi
   tool: ToolService
   write: EditorWrite
   nodeType: NodeTypeSupport
@@ -297,6 +298,7 @@ export const createEditorActionsApi = ({
   boundary,
   engine,
   document,
+  state,
   session,
   graph,
   tool,
@@ -325,10 +327,7 @@ export const createEditorActionsApi = ({
       selection: {
         delete: selectionActionsCore.delete
       },
-      state: {
-        viewport: session.viewport.read,
-        selection: session.state.selection
-      }
+      state
     }
   })
   const mindmapProcedures = createMindmapActionProcedures({

@@ -161,9 +161,9 @@ describe('insert focus', () => {
     })
 
     expect(result).toBeDefined()
-    expect(editor.session.tool.get().type).toBe('select')
+    expect(editor.state.tool.get().type).toBe('select')
     expect(editor.scene.stores.graph.state.node.byId.get(result!.nodeId)?.selected).toBe(true)
-    expect(editor.session.edit.get()).toMatchObject({
+    expect(editor.state.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
       field: 'text'
@@ -190,9 +190,9 @@ describe('insert focus', () => {
     })
 
     expect(result).toBeDefined()
-    expect(editor.session.tool.get().type).toBe('select')
+    expect(editor.state.tool.get().type).toBe('select')
     expect(editor.scene.stores.graph.state.node.byId.get(result!.nodeId)?.selected).toBe(true)
-    expect(editor.session.edit.get()).toMatchObject({
+    expect(editor.state.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
       field: 'text'
@@ -219,9 +219,9 @@ describe('insert focus', () => {
     })
 
     expect(result).toBeDefined()
-    expect(editor.session.tool.get().type).toBe('select')
+    expect(editor.state.tool.get().type).toBe('select')
     expect(editor.scene.stores.graph.state.node.byId.get(result!.nodeId)?.selected).toBe(true)
-    expect(editor.session.edit.get()).toMatchObject({
+    expect(editor.state.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: result!.nodeId,
       field: 'text'

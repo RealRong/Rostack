@@ -28,7 +28,7 @@ const selectEdge = (
 }
 
 export const createEdgeBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'write' | 'session' | 'tool' | 'snap' | 'nodeType' | 'sessionSource'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'write' | 'session' | 'tool' | 'snap' | 'nodeType' | 'sceneDerived'>
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {

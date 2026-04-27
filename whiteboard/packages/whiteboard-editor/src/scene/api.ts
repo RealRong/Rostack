@@ -5,14 +5,14 @@ import type {
 } from '@whiteboard/core/types'
 import type { EditorSceneRuntime as SceneRuntime } from '@whiteboard/editor-scene'
 import type {
-  EditorSceneSource as EditorSceneView,
+  EditorSceneApi,
   ScenePickRequest,
   ScenePickResult,
   ScenePickRuntime,
   ScenePickRuntimeResult
 } from '@whiteboard/editor/types/editor'
 
-export type { EditorSceneView as EditorSceneRuntime }
+export type { EditorSceneApi }
 
 const DEFAULT_PICK_RADIUS_SCREEN = 8
 
@@ -144,14 +144,14 @@ const createScenePick = (input: {
   }
 }
 
-export const createEditorSceneView = ({
+export const createEditorSceneApi = ({
   runtime
 }: {
   runtime: Pick<SceneRuntime, 'query' | 'revision' | 'stores'>
-}): EditorSceneView & {
+}): EditorSceneApi & {
   dispose: () => void
 } => {
-  const visible: EditorSceneView['host']['visible'] = (options) =>
+  const visible: EditorSceneApi['host']['visible'] = (options) =>
     runtime.query.view.visible(options)
   const pick = createScenePick({
     query: runtime.query

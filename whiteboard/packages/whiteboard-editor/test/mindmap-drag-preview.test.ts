@@ -274,8 +274,8 @@ describe('mindmap drag preview', () => {
     const liveRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
     const liveChild = editor.scene.query.node.get(insert.data.nodeId)?.geometry.rect
 
-    expect(editor.session.interaction.get().busy).toBe(true)
-    expect(editor.session.interaction.get().selecting).toBe(true)
+    expect(editor.state.interaction.get().busy).toBe(true)
+    expect(editor.state.interaction.get().selecting).toBe(true)
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
     expect(liveRoot!.x).toBe(beforeRoot!.x + 60)
@@ -368,8 +368,8 @@ describe('mindmap drag preview', () => {
     const liveBranch = editor.scene.query.node.get(first.data.nodeId)?.geometry.rect
     const liveLeaf = editor.scene.query.node.get(second.data.nodeId)?.geometry.rect
 
-    expect(editor.session.interaction.get().busy).toBe(true)
-    expect(editor.session.interaction.get().selecting).toBe(true)
+    expect(editor.state.interaction.get().busy).toBe(true)
+    expect(editor.state.interaction.get().selecting).toBe(true)
     expect(liveBranch).toBeDefined()
     expect(liveLeaf).toBeDefined()
     expect(liveBranch!.x).toBe(beforeBranch!.x + 80)

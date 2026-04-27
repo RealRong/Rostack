@@ -1,51 +1,83 @@
 import { describe, expect, it, vi } from 'vitest'
 import { dismissBackgroundEditSelection } from '../src/runtime/whiteboard/pointerDown'
 
+type DismissInput = Parameters<typeof dismissBackgroundEditSelection>[0]
+type DismissEditor = DismissInput['editor']
+type PointerDownInput = DismissInput['input']
+
+const createBackgroundInput = (): PointerDownInput => ({
+  button: 0,
+  pick: {
+    kind: 'background'
+  },
+  editable: false,
+  ignoreInput: false,
+  ignoreSelection: false,
+  client: { x: 0, y: 0 },
+  screen: { x: 0, y: 0 },
+  world: { x: 0, y: 0 },
+  modifiers: {
+    alt: false,
+    shift: false,
+    ctrl: false,
+    meta: false
+  },
+  phase: 'down',
+  detail: 1,
+  pointerId: 1,
+  buttons: 1,
+  samples: []
+})
+
+const createEditor = (input: {
+  edit: DismissEditor['state']['edit']['get']
+  selection: DismissEditor['state']['selection']['get']
+  commit: () => void
+  clear: () => void
+}): DismissEditor => ({
+  state: {
+    edit: {
+      get: input.edit
+    },
+    selection: {
+      get: input.selection
+    }
+  },
+  write: {
+    edit: {
+      commit: input.commit
+    },
+    selection: {
+      clear: input.clear
+    }
+  }
+})
+
 describe('dismissBackgroundEditSelection', () => {
   it('commits edit and clears selection on primary background press', () => {
     const commit = vi.fn()
     const clear = vi.fn()
 
     dismissBackgroundEditSelection({
-      editor: {
-        session: {
-          edit: {
-            get: () => ({
-              kind: 'node',
-              nodeId: 'node-1',
-              field: 'text',
-              text: 'Hello',
-              composing: false,
-              caret: {
-                kind: 'end'
-              }
-            })
-          },
-          selection: {
-            get: () => ({
-              nodeIds: ['node-1'],
-              edgeIds: []
-            })
+      editor: createEditor({
+        edit: () => ({
+          kind: 'node',
+          nodeId: 'node-1',
+          field: 'text',
+          text: 'Hello',
+          composing: false,
+          caret: {
+            kind: 'end'
           }
-        },
-        write: {
-          edit: {
-            commit
-          },
-          selection: {
-            clear
-          }
-        }
-      } as never,
-      input: {
-        button: 0,
-        pick: {
-          kind: 'background'
-        },
-        editable: false,
-        ignoreInput: false,
-        ignoreSelection: false
-      } as never
+        }),
+        selection: () => ({
+          nodeIds: ['node-1'],
+          edgeIds: []
+        }),
+        commit,
+        clear
+      }),
+      input: createBackgroundInput()
     })
 
     expect(commit).toHaveBeenCalledTimes(1)
@@ -60,45 +92,25 @@ describe('dismissBackgroundEditSelection', () => {
     const clear = vi.fn()
 
     dismissBackgroundEditSelection({
-      editor: {
-        session: {
-          edit: {
-            get: () => ({
-              kind: 'node',
-              nodeId: 'node-1',
-              field: 'text',
-              text: 'Hello',
-              composing: false,
-              caret: {
-                kind: 'end'
-              }
-            })
-          },
-          selection: {
-            get: () => ({
-              nodeIds: [],
-              edgeIds: []
-            })
+      editor: createEditor({
+        edit: () => ({
+          kind: 'node',
+          nodeId: 'node-1',
+          field: 'text',
+          text: 'Hello',
+          composing: false,
+          caret: {
+            kind: 'end'
           }
-        },
-        write: {
-          edit: {
-            commit
-          },
-          selection: {
-            clear
-          }
-        }
-      } as never,
-      input: {
-        button: 0,
-        pick: {
-          kind: 'background'
-        },
-        editable: false,
-        ignoreInput: false,
-        ignoreSelection: false
-      } as never
+        }),
+        selection: () => ({
+          nodeIds: [],
+          edgeIds: []
+        }),
+        commit,
+        clear
+      }),
+      input: createBackgroundInput()
     })
 
     expect(commit).toHaveBeenCalledTimes(1)
@@ -110,80 +122,45 @@ describe('dismissBackgroundEditSelection', () => {
     const clear = vi.fn()
 
     dismissBackgroundEditSelection({
-      editor: {
-        session: {
-          edit: {
-            get: () => null
-          },
-          selection: {
-            get: () => ({
-              nodeIds: ['node-1'],
-              edgeIds: []
-            })
-          }
-        },
-        write: {
-          edit: {
-            commit
-          },
-          selection: {
-            clear
-          }
-        }
-      } as never,
-      input: {
-        button: 0,
-        pick: {
-          kind: 'background'
-        },
-        editable: false,
-        ignoreInput: false,
-        ignoreSelection: false
-      } as never
+      editor: createEditor({
+        edit: () => null,
+        selection: () => ({
+          nodeIds: ['node-1'],
+          edgeIds: []
+        }),
+        commit,
+        clear
+      }),
+      input: createBackgroundInput()
     })
 
     dismissBackgroundEditSelection({
-      editor: {
-        session: {
-          edit: {
-            get: () => ({
-              kind: 'node',
-              nodeId: 'node-1',
-              field: 'text',
-              text: 'Hello',
-              composing: false,
-              caret: {
-                kind: 'end'
-              }
-            })
-          },
-          selection: {
-            get: () => ({
-              nodeIds: ['node-1'],
-              edgeIds: []
-            })
+      editor: createEditor({
+        edit: () => ({
+          kind: 'node',
+          nodeId: 'node-1',
+          field: 'text',
+          text: 'Hello',
+          composing: false,
+          caret: {
+            kind: 'end'
           }
-        },
-        write: {
-          edit: {
-            commit
-          },
-          selection: {
-            clear
-          }
-        }
-      } as never,
+        }),
+        selection: () => ({
+          nodeIds: ['node-1'],
+          edgeIds: []
+        }),
+        commit,
+        clear
+      }),
       input: {
-        button: 0,
+        ...createBackgroundInput(),
         pick: {
           kind: 'node',
           id: 'node-1',
           part: 'body'
-        },
-        editable: false,
-        ignoreInput: false,
-        ignoreSelection: false
-      } as never
+        }
+      }
     })
 
     expect(commit).not.toHaveBeenCalled()

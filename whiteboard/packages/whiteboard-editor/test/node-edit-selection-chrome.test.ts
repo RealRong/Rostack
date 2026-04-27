@@ -325,14 +325,14 @@ describe('node edit selection chrome', () => {
     })
     editor.write.edit.startNode('text-1', 'text')
 
-    expect(editor.session.panel.get().selectionToolbar).toMatchObject({
+    expect(editor.derived.editor.selection.toolbar.get()).toMatchObject({
       selectionKind: 'nodes',
       target: {
         nodeIds: ['text-1'],
         edgeIds: []
       }
     })
-    expect(editor.session.chrome.get().selection).toMatchObject({
+    expect(editor.derived.editor.selection.overlay.get()).toMatchObject({
       kind: 'node',
       nodeId: 'text-1',
       handles: false
@@ -347,14 +347,14 @@ describe('node edit selection chrome', () => {
     })
     editor.write.edit.startNode('root-1', 'text')
 
-    expect(editor.session.panel.get().selectionToolbar).toMatchObject({
+    expect(editor.derived.editor.selection.toolbar.get()).toMatchObject({
       selectionKind: 'nodes',
       target: {
         nodeIds: ['root-1'],
         edgeIds: []
       }
     })
-    expect(editor.session.chrome.get().selection).toMatchObject({
+    expect(editor.derived.editor.selection.overlay.get()).toMatchObject({
       kind: 'node',
       nodeId: 'root-1',
       handles: false
@@ -369,7 +369,7 @@ describe('node edit selection chrome', () => {
     })
     editor.write.edit.startEdgeLabel('edge-1', 'label-1')
 
-    expect(editor.session.panel.get().selectionToolbar).toBeUndefined()
+    expect(editor.derived.editor.selection.toolbar.get()).toBeUndefined()
   })
 
   it('keeps node drag and toolbar style writes working for a selected shape', () => {
@@ -422,7 +422,7 @@ describe('node edit selection chrome', () => {
       y: 152
     })
 
-    const toolbar = editor.session.panel.get().selectionToolbar
+    const toolbar = editor.derived.editor.selection.toolbar.get()
     expect(toolbar?.defaultScopeKey).toBe('nodes')
     const scope = toolbar?.scopes.find((entry) => entry.key === toolbar.defaultScopeKey)
     expect(scope?.node?.nodeIds).toEqual(['shape-1'])
@@ -501,7 +501,7 @@ describe('node edit selection chrome', () => {
       nodeIds: ['root-1']
     })
 
-    const toolbar = editor.session.panel.get().selectionToolbar
+    const toolbar = editor.derived.editor.selection.toolbar.get()
     expect(toolbar?.defaultScopeKey).toBe('nodes')
     const scope = toolbar?.scopes.find((entry) => entry.key === toolbar.defaultScopeKey)
     expect(scope?.node?.nodeIds).toEqual(['root-1'])

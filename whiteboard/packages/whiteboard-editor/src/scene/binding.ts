@@ -266,7 +266,7 @@ const readDragState = (
   }
 }
 
-export interface EditorSceneSourceBinding extends EditorSceneSource {
+export interface EditorSceneBinding extends EditorSceneSource {
   emit(change: EditorSceneSourceChange): void
   dispose(): void
 }
@@ -294,13 +294,13 @@ export const readActiveMindmapTickIds = (input: {
   return ids
 }
 
-export const createEditorSceneSource = ({
+export const createEditorSceneBinding = ({
   engine,
   session
 }: {
   engine: Pick<Engine, 'current' | 'subscribe'>
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
-}): EditorSceneSourceBinding => {
+}): EditorSceneBinding => {
   const listeners = new Set<(change: EditorSceneSourceChange) => void>()
   let disposed = false
 

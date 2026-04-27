@@ -800,6 +800,25 @@ const createViewRead = (input: {
   }
 })
 
+const createChromeRead = (input: {
+  state: () => WorkingState
+  view: Query['view']
+}): Query['chrome'] => ({
+  marquee: () => {
+    const marquee = input.state().graph.state.chrome.preview.marquee
+
+    return marquee
+      ? {
+          rect: input.view.screenRect(marquee.worldRect),
+          match: marquee.match
+        }
+      : undefined
+  },
+  draw: () => input.state().graph.state.chrome.preview.draw,
+  guides: () => input.state().graph.state.chrome.preview.guides,
+  edgeGuide: () => input.state().graph.state.chrome.preview.edgeGuide
+})
+
 export const createEditorSceneRead = (runtime: {
   revision: () => Revision
   state: () => WorkingState
@@ -832,6 +851,10 @@ export const createEditorSceneRead = (runtime: {
     view: runtime.view,
     hit,
     spatial
+  })
+  const chrome = createChromeRead({
+    state: runtime.state,
+    view
   })
 
   return {
@@ -1027,6 +1050,7 @@ export const createEditorSceneRead = (runtime: {
       }
     },
     selection,
+    chrome,
     mindmap: {
       get: (id) => runtime.state().graph.owners.mindmaps.get(id),
       resolve: (value) => resolveMindmapId(runtime.state(), value),

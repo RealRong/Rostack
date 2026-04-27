@@ -22,8 +22,8 @@ export const SelectionToolbar = ({
   containerRef: RefObject<HTMLDivElement | null>
 }) => {
   const editor = useEditorRuntime()
-  const toolbar = useStoreValue(editor.session.panel.selectionToolbar)
-  const viewport = useStoreValue(editor.session.viewport)
+  const toolbar = useStoreValue(editor.derived.editor.selection.toolbar)
+  const viewport = useStoreValue(editor.state.viewport)
   void viewport
   const [activeScopeKey, setActiveScopeKey] = useState<string | null>(null)
   const worldToScreen = useCallback(

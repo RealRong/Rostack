@@ -23,8 +23,8 @@ import {
   createNodeWrite
 } from '@whiteboard/editor/write/node'
 import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { EditorSceneApi } from '@whiteboard/editor/types/editor'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 import type { NodeRegistry } from '@whiteboard/editor/types/node'
 
@@ -41,7 +41,7 @@ export const createEditorWrite = ({
   engine: Engine
   history: HistoryPort<IntentResult>
   document: DocumentQuery
-  projection: EditorSceneRuntime
+  projection: EditorSceneApi
   registry: Pick<NodeRegistry, 'get'>
   measure: TextLayoutMeasure
 }): EditorWrite => {

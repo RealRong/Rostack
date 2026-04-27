@@ -3,7 +3,7 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
+import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   CanvasWrite,
@@ -24,7 +24,7 @@ export type SelectionActionHelpers = Pick<
 >
 
 type SelectionActionHelpersHost = {
-  read: Pick<EditorSceneRuntime, 'query'>
+  read: Pick<EditorSceneApi, 'query'>
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>

@@ -39,10 +39,10 @@ type EdgeLabelDragState = {
 }
 
 const isSingleSelectedEdge = (
-  ctx: Pick<EditorHostDeps, 'sessionSource'>,
+  ctx: Pick<EditorHostDeps, 'sceneDerived'>,
   edgeId: EdgeId
 ) => selectionApi.members.singleEdge(
-  ctx.sessionSource.selection.summary.get().target
+  ctx.sceneDerived.selection.summary.get().target
 ) === edgeId
 
 const canEditEdgeLabel = (
@@ -98,7 +98,7 @@ const createEdgeLabelDragSession = (
   initial: EdgeLabelDragState
 ): InteractionSession => {
   let state = initial
-  let interaction = null as InteractionSession | null
+  let interaction: InteractionSession | undefined
 
   const step = (
     pointerWorld: Point
@@ -131,17 +131,19 @@ const createEdgeLabelDragSession = (
       state.labelId,
       draft
     )
-    interaction!.gesture = patch
-      ? createGesture(
-          'edge-label',
-          {
-            edgePatches: [{
-              id: state.edgeId,
-              patch
-            }]
-          }
-        )
-      : null
+    if (interaction) {
+      interaction.gesture = patch
+        ? createGesture(
+            'edge-label',
+            {
+              edgePatches: [{
+                id: state.edgeId,
+                patch
+              }]
+            }
+          )
+        : null
+    }
   }
 
   interaction = {
@@ -188,10 +190,6 @@ const createEdgeLabelDragState = (
 ): EdgeLabelDragState | null => {
   const edge = ctx.projection.query.edge.get(input.edgeId)?.base.edge
   const view = ctx.projection.query.edge.get(input.edgeId)
-  const ref = {
-    edgeId: input.edgeId,
-    labelId: input.labelId
-  } as const
   if (
     !edge
     || !view
@@ -201,7 +199,10 @@ const createEdgeLabelDragState = (
     return null
   }
 
-  const labelSize = readEdgeLabelMetrics(ctx.projection, ref)
+  const labelSize = readEdgeLabelMetrics(ctx.projection, {
+    edgeId: input.edgeId,
+    labelId: input.labelId
+  })
   if (!labelSize) {
     return null
   }
@@ -265,7 +266,7 @@ export const createEdgeLabelPressSession = (
 })
 
 export const startEdgeLabelPress = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'session' | 'sessionSource'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'session' | 'sceneDerived'>,
   pointer: PointerDownInput
 ): {
   edgeId: EdgeId

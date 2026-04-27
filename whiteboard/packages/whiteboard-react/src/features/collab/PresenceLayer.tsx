@@ -143,7 +143,7 @@ export const PresenceLayer = ({
   binding?: WhiteboardPresenceBinding
 }) => {
   const editor = useEditorRuntime()
-  const viewport = useStoreValue(editor.session.viewport)
+  const viewport = useStoreValue(editor.state.viewport)
   void viewport
   const [version, setVersion] = useState(0)
 

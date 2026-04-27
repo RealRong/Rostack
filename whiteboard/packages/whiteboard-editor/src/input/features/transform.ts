@@ -36,8 +36,8 @@ const toTransformNodePatches = (
 }))
 
 const toSpatialSelectionPlan = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionSource'>,
-  plan: NonNullable<ReturnType<EditorHostDeps['sessionSource']['selection']['summary']['get']>['transformPlan']>
+  ctx: Pick<EditorHostDeps, 'projection' | 'sceneDerived'>,
+  plan: NonNullable<ReturnType<EditorHostDeps['sceneDerived']['selection']['summary']['get']>['transformPlan']>
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
@@ -133,7 +133,7 @@ const readNodeTransformSpec = (
 }
 
 const resolveTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'nodeType' | 'sessionSource'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'nodeType' | 'sceneDerived'>,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
   const tool = ctx.sessionRead.tool.get()
@@ -150,7 +150,7 @@ const resolveTransformSpec = (
     return readNodeTransformSpec(ctx, input.pick.id, input.pick.handle, input) ?? null
   }
 
-  const selection = ctx.sessionSource.selection.summary.get()
+  const selection = ctx.sceneDerived.selection.summary.get()
   if (
     !selection.transformPlan
     || input.pick.handle.kind !== 'resize'
@@ -176,7 +176,7 @@ export const createTransformSession = (
 ): InteractionSession => {
   let state = nodeApi.transform.start(spec)
   let modifiers = start.modifiers
-  let interaction = null as InteractionSession | null
+  let interaction: InteractionSession | undefined
 
   const project = (
     input: Pick<PointerDownInput, 'screen' | 'world' | 'modifiers'>
@@ -214,16 +214,18 @@ export const createTransformSession = (
       patches: nextPatches
     }
 
-    interaction!.gesture = createGesture(
-      'selection-transform',
-      {
-        nodePatches: toTransformNodePatches(nextPatches),
-        edgePatches: [],
-        frameHoverId: undefined,
-        marquee: undefined,
-        guides: result.draft.guides
-      }
-    )
+    if (interaction) {
+      interaction.gesture = createGesture(
+        'selection-transform',
+        {
+          nodePatches: toTransformNodePatches(nextPatches),
+          edgePatches: [],
+          frameHoverId: undefined,
+          marquee: undefined,
+          guides: result.draft.guides
+        }
+      )
+    }
   }
 
   interaction = {
@@ -267,7 +269,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'registry' | 'snap' | 'write' | 'nodeType' | 'sessionSource'>
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'registry' | 'snap' | 'write' | 'nodeType' | 'sceneDerived'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

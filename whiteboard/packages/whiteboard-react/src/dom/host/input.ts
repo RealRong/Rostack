@@ -25,6 +25,17 @@ import {
 
 type TargetEvent = Pick<MouseEvent | PointerEvent | WheelEvent, 'target' | 'clientX' | 'clientY'>
 type ClientPointInput = Pick<MouseEvent | PointerEvent | WheelEvent, 'clientX' | 'clientY'>
+type PointResolveEditor = {
+  state: {
+    viewport: Pick<WhiteboardRuntime['state']['viewport'], 'pointer' | 'get'>
+    selection: Pick<WhiteboardRuntime['state']['selection'], 'get'>
+  }
+  scene: {
+    query: {
+      hit: Pick<WhiteboardRuntime['scene']['query']['hit'], 'edge'>
+    }
+  }
+}
 
 const BackgroundPick: EditorPick = {
   kind: 'background'
@@ -57,10 +68,10 @@ const resolveElementsAtPoint = (
 ) => elementsFromPointWithin(container, input)
 
 const readPointerSnapshot = (
-  editor: WhiteboardRuntime,
+  editor: PointResolveEditor,
   input: ClientPointInput
 ) => {
-  const point = editor.session.viewport.pointer(input)
+  const point = editor.state.viewport.pointer(input)
 
   return {
     client: readClientPoint(input),
@@ -70,15 +81,15 @@ const readPointerSnapshot = (
 }
 
 const toPointerSample = (
-  editor: WhiteboardRuntime,
+  editor: PointResolveEditor,
   input: ClientPointInput
 ): PointerSample => readPointerSnapshot(editor, input)
 
 const isSelectedItemPick = (
-  editor: WhiteboardRuntime,
+  editor: PointResolveEditor,
   pick: EditorPick
 ) => {
-  const selection = editor.session.selection.get()
+  const selection = editor.state.selection.get()
 
   if (pick.kind === 'node') {
     return selection.nodeIds.includes(pick.id)
@@ -92,7 +103,7 @@ const isSelectedItemPick = (
 }
 
 const resolveSelectionBoxUnderlyingPick = (
-  editor: WhiteboardRuntime,
+  editor: PointResolveEditor,
   pick: PickRegistry,
   container: Element,
   elements: readonly Element[]
@@ -112,12 +123,12 @@ const resolveSelectionBoxUnderlyingPick = (
 }
 
 const resolveSceneEdgePick = (
-  editor: WhiteboardRuntime,
+  editor: PointResolveEditor,
   world: Point
 ): EditorPick | undefined => {
   const edgeId = editor.scene.query.hit.edge({
     point: world,
-    threshold: 8 / Math.max(editor.session.viewport.get().zoom, 0.0001)
+    threshold: 8 / Math.max(editor.state.viewport.get().zoom, 0.0001)
   })
 
   return edgeId
@@ -135,7 +146,7 @@ export const resolvePoint = ({
   container,
   event
 }: {
-  editor: WhiteboardRuntime
+  editor: PointResolveEditor
   pick: PickRegistry
   container: Element
   event: TargetEvent

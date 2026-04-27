@@ -1,96 +1,54 @@
 import type { Engine } from '@whiteboard/engine'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
-import type { EditorInputHost } from '@whiteboard/editor/types/editor'
-import type { ToolRead } from '@whiteboard/editor/types/editor'
-import type { SessionViewportRead } from '@whiteboard/editor/types/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
-import {
-  createEdgeHoverService
-} from '@whiteboard/editor/input/hover/edge'
-import { createViewportBinding } from '@whiteboard/editor/input/features/viewport'
 import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
 import { createEdgeBinding } from '@whiteboard/editor/input/features/edge'
-import { createTransformBinding } from '@whiteboard/editor/input/features/transform'
 import { createSelectionBinding } from '@whiteboard/editor/input/features/selection/press'
-import {
-  createEditorInputHost
-} from '@whiteboard/editor/input/host'
+import { createTransformBinding } from '@whiteboard/editor/input/features/transform'
+import { createViewportBinding } from '@whiteboard/editor/input/features/viewport'
+import { createEditorInputHost } from '@whiteboard/editor/input/host'
+import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
-import type { EditorSessionSource } from '@whiteboard/editor/types/editor'
 import type { ToolService } from '@whiteboard/editor/services/tool'
+import type {
+  EditorInputHost,
+  EditorSceneApi,
+  EditorSceneDerived,
+  EditorState
+} from '@whiteboard/editor/types/editor'
 import type { NodeRegistry, NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 type SessionRead = {
-  tool: ToolRead
-  draw: EditorSession['state']['draw']
-  space: EditorSession['interaction']['read']['space']
-  viewport: SessionViewportRead
-}
-
-const readToolValue = (
-  tool: ReturnType<EditorSession['state']['tool']['get']>
-) => (
-  'mode' in tool
-    ? tool.mode
-    : undefined
-)
-
-const isToolMatch = (
-  tool: ReturnType<EditorSession['state']['tool']['get']>,
-  type: ReturnType<EditorSession['state']['tool']['get']>['type'],
-  value?: string
-) => {
-  if (tool.type !== type) {
-    return false
+  tool: EditorState['tool']
+  draw: EditorState['draw']
+  space: {
+    get: () => boolean
   }
-
-  if (value === undefined) {
-    return true
-  }
-
-  return tool.type === 'draw'
-    ? tool.mode === value
-    : false
+  viewport: EditorState['viewport']
 }
-
-const createToolRead = (
-  source: EditorSession['state']['tool']
-): ToolRead => ({
-  get: source.get,
-  subscribe: source.subscribe,
-  type: () => source.get().type,
-  value: () => readToolValue(source.get()),
-  is: (type, value) => isToolMatch(source.get(), type, value)
-})
 
 const createSessionRead = (
-  session: Pick<EditorSession, 'state' | 'interaction' | 'viewport'>
+  state: EditorState
 ): SessionRead => ({
-  tool: createToolRead(session.state.tool),
-  draw: session.state.draw,
-  space: session.interaction.read.space,
-  viewport: {
-    get: session.viewport.read.get,
-    subscribe: session.viewport.read.subscribe,
-    pointer: session.viewport.read.pointer,
-    worldToScreen: session.viewport.read.worldToScreen,
-    worldRect: session.viewport.read.worldRect,
-    screenPoint: session.viewport.input.screenPoint,
-    size: session.viewport.input.size
-  }
+  tool: state.tool,
+  draw: state.draw,
+  space: {
+    get: () => state.interaction.get().space
+  },
+  viewport: state.viewport
 })
 
 export type EditorHostDeps = {
   engine: Engine
   document: DocumentQuery
-  projection: EditorSceneRuntime
+  projection: EditorSceneApi
+  state: EditorState
   sessionRead: SessionRead
   session: EditorSession
-  sessionSource: EditorSessionSource
+  sceneDerived: EditorSceneDerived
   measure: TextLayoutMeasure
   registry: Pick<NodeRegistry, 'get'>
   write: EditorWrite
@@ -99,60 +57,59 @@ export type EditorHostDeps = {
   snap: SnapRuntime
 }
 
-const createEditorSnapRuntime = ({
-  engine,
-  projection,
-  session
-}: {
+const createEditorSnapRuntime = (input: {
   engine: Engine
-  projection: EditorSceneRuntime
-  session: Pick<EditorSession, 'viewport'>
+  projection: EditorSceneApi
+  state: Pick<EditorState, 'viewport'>
 }) => createSnapRuntime({
-  readZoom: () => session.viewport.read.get().zoom,
+  readZoom: () => input.state.viewport.get().zoom,
   node: {
-    config: engine.config.node,
-    query: projection.query.snap
+    config: input.engine.config.node,
+    query: input.projection.query.snap
   },
   edge: {
-    config: engine.config.edge,
-    query: projection.query.edge.connectCandidates
+    config: input.engine.config.edge,
+    query: input.projection.query.edge.connectCandidates
   }
 })
 
-export const createEditorHost = ({
-  engine,
-  document,
-  projection,
-  session,
-  sessionSource,
-  measure,
-  registry,
-  write,
-  tool,
-  nodeType
-}: Omit<EditorHostDeps, 'snap' | 'sessionRead'>): EditorInputHost => {
-  const sessionRead = createSessionRead(session)
+export const createEditorHost = (input: {
+  engine: Engine
+  document: DocumentQuery
+  projection: EditorSceneApi
+  state: EditorState
+  session: EditorSession
+  sceneDerived: EditorSceneDerived
+  measure: TextLayoutMeasure
+  registry: Pick<NodeRegistry, 'get'>
+  write: EditorWrite
+  tool: ToolService
+  nodeType: NodeTypeSupport
+}): EditorInputHost => {
+  const sessionRead = createSessionRead(input.state)
   const snap = createEditorSnapRuntime({
-    engine,
-    projection,
-    session
+    engine: input.engine,
+    projection: input.projection,
+    state: input.state
   })
   const deps: EditorHostDeps = {
-    engine,
-    document,
-    projection,
+    engine: input.engine,
+    document: input.document,
+    projection: input.projection,
+    state: input.state,
     sessionRead,
-    session,
-    sessionSource,
-    measure,
-    registry,
-    write,
-    tool,
-    nodeType,
+    session: input.session,
+    sceneDerived: input.sceneDerived,
+    measure: input.measure,
+    registry: input.registry,
+    write: input.write,
+    tool: input.tool,
+    nodeType: input.nodeType,
     snap
   }
+
   const interaction = createInteractionRuntime({
-    getViewport: () => session.viewport.input,
+    getViewport: () => input.session.viewport.input,
     getBindings: () => ([
       createViewportBinding(deps),
       createDrawBinding(deps),
@@ -161,23 +118,23 @@ export const createEditorHost = ({
       createSelectionBinding(deps)
     ]),
     state: {
-      ...session.interaction.write,
-      getSpace: session.interaction.read.space.get
+      ...input.session.interaction.write,
+      getSpace: () => input.state.interaction.get().space
     }
   })
+
   const edgeHover = createEdgeHoverService(
     {
-      readTool: session.state.tool.get,
+      readTool: input.session.state.tool.get,
       snap
     },
-    session.interaction.write
+    input.session.interaction.write
   )
-  const host = createEditorInputHost({
+
+  return createEditorInputHost({
     interaction,
     edgeHover,
-    projection,
-    session
+    projection: input.projection,
+    session: input.session
   })
-
-  return host
 }

@@ -6,12 +6,12 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
-import type { EditorSceneRuntime } from '@whiteboard/editor/scene/view'
 import type {
   EditCaret,
   EditField
 } from '@whiteboard/editor/session/edit'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
+import type { EditorSceneApi } from '@whiteboard/editor/types/editor'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
@@ -65,9 +65,8 @@ export const startNodeEdit = (
     return
   }
 
-  const text = typeof committed.data?.[field] === 'string'
-    ? committed.data[field] as string
-    : ''
+  const value = committed.data?.[field]
+  const text = typeof value === 'string' ? value : ''
 
   ctx.session.mutate.edit.set({
     kind: 'node',
@@ -110,7 +109,7 @@ export const startEdgeLabelEdit = (
 
 export const removeEdgeRoutePoint = (
   ctx: {
-    graph: Pick<EditorSceneRuntime, 'query'>
+    graph: Pick<EditorSceneApi, 'query'>
     write: Pick<EditorWrite, 'edge'>
   },
   edgeId: EdgeId,

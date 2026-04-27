@@ -2,7 +2,7 @@ import { DrawStrokeShape } from '@whiteboard/react/features/draw/stroke'
 import { resolvePaletteColor } from '@whiteboard/react/features/palette'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
-type DrawPreviewValue = ReturnType<WhiteboardRuntime['session']['chrome']['get']>['draw']
+type DrawPreviewValue = ReturnType<WhiteboardRuntime['derived']['scene']['chrome']['draw']['get']>
 
 export const DrawPreview = ({
   preview

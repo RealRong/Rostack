@@ -139,7 +139,7 @@ EdgeLabelItem.displayName = 'EdgeLabelItem'
 
 export const EdgeLabelLayer = memo(() => {
   const editor = useEditorRuntime()
-  const zoom = useStoreValue(editor.session.viewport.zoom)
+  const zoom = useStoreValue(editor.state.viewport.zoom)
   const labelKeys = useStoreValue(editor.scene.stores.render.edge.labels.ids)
 
   return (

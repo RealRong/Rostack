@@ -181,7 +181,7 @@ describe('edge.selectedChrome', () => {
       edgeIds: ['edge-1']
     })
 
-    expect(editor.session.selection.edge.chrome.get()).toMatchObject({
+    expect(editor.derived.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',
       canReconnectSource: true,
       canReconnectTarget: true,
@@ -198,7 +198,7 @@ describe('edge.selectedChrome', () => {
     })
     editor.write.edit.startEdgeLabel('edge-1', 'label-1')
 
-    expect(editor.session.selection.edge.chrome.get()).toMatchObject({
+    expect(editor.derived.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',
       showEditHandles: false
     })
@@ -212,7 +212,7 @@ describe('edge.selectedChrome', () => {
     })
     editor.write.edit.startEdgeLabel('edge-2', 'label-2')
 
-    expect(editor.session.selection.edge.chrome.get()).toMatchObject({
+    expect(editor.derived.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',
       showEditHandles: true
     })

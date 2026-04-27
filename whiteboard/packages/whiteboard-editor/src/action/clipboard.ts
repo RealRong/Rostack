@@ -3,7 +3,7 @@ import type {
 } from '@whiteboard/core/document'
 import type { Point } from '@whiteboard/core/types'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
-import type { EditorSessionState } from '@whiteboard/editor/types/editor'
+import type { EditorState } from '@whiteboard/editor/types/editor'
 import type {
   ClipboardActions,
   ClipboardTarget,
@@ -21,7 +21,7 @@ type ClipboardActionHelpersHost = {
   document: Pick<DocumentWrite, 'insert'>
   session: SelectionSessionDeps
   selection: Pick<SelectionActionHelpers, 'delete'>
-  state: Pick<EditorSessionState, 'viewport' | 'selection'>
+  state: Pick<EditorState, 'viewport' | 'selection'>
 }
 
 const applyInsertedRoots = (input: {

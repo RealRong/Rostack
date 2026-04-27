@@ -9,7 +9,7 @@ const EMPTY_STYLE: CSSProperties = {
 export const Background = () => {
   const editor = useEditor()
   const background = useStoreValue(editor.scene.stores.document.background)
-  const viewport = useStoreValue(editor.session.viewport)
+  const viewport = useStoreValue(editor.state.viewport)
   void background
   void viewport
   const view = editor.scene.query.view.background()

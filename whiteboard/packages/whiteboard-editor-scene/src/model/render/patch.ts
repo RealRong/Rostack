@@ -514,6 +514,115 @@ const buildChromeRenderView = (input: {
   edge: input.working.render.overlay
 })
 
+const readRenderableEdge = (
+  working: WorkingState,
+  edgeId: EdgeId
+) => {
+  const edge = working.graph.edges.get(edgeId)
+  if (!edge?.route.svgPath) {
+    return undefined
+  }
+
+  return edge
+}
+
+const readEdgeStaticStyleKey = (
+  working: WorkingState,
+  edgeId: EdgeId
+): string | undefined => {
+  const edge = readRenderableEdge(working, edgeId)
+  return edge
+    ? edgeApi.render.styleKey(edge.base.edge.style)
+    : undefined
+}
+
+const readStaticStyleOrder = (
+  working: WorkingState
+): readonly string[] => {
+  const order: string[] = []
+  const seen = new Set<string>()
+
+  forEachSceneItem(working, (item) => {
+    if (item.kind !== 'edge') {
+      return
+    }
+
+    const styleKey = readEdgeStaticStyleKey(working, item.id)
+    if (!styleKey || seen.has(styleKey)) {
+      return
+    }
+
+    seen.add(styleKey)
+    order.push(styleKey)
+  })
+
+  return order
+}
+
+const buildStaticBucket = (input: {
+  working: WorkingState
+  styleKey: string
+}) => {
+  let style: EdgeStaticView['style'] | undefined
+  const paths: EdgeStaticView['paths'][number][] = []
+
+  forEachSceneItem(input.working, (item) => {
+    if (item.kind !== 'edge') {
+      return
+    }
+
+    const edge = readRenderableEdge(input.working, item.id)
+    if (!edge) {
+      return
+    }
+
+    const styleKey = edgeApi.render.styleKey(edge.base.edge.style)
+    if (styleKey !== input.styleKey) {
+      return
+    }
+
+    style ??= edgeApi.render.staticStyle(edge.base.edge.style)
+    paths.push({
+      id: item.id,
+      svgPath: edge.route.svgPath!
+    })
+  })
+
+  if (!style || paths.length === 0) {
+    return undefined
+  }
+
+  const edgeIds = paths.map((path) => path.id)
+  const staticIds: EdgeStaticId[] = []
+  const staticIdByEdge = new Map<EdgeId, EdgeStaticId>()
+  const byId = new Map<EdgeStaticId, EdgeStaticView>()
+
+  for (let index = 0; index < paths.length; index += STATIC_CHUNK_SIZE) {
+    const chunkPaths = paths.slice(index, index + STATIC_CHUNK_SIZE)
+    const chunkIndex = Math.floor(index / STATIC_CHUNK_SIZE)
+    const staticId = `${input.styleKey}:${chunkIndex}`
+
+    staticIds.push(staticId)
+    byId.set(staticId, {
+      id: staticId,
+      styleKey: input.styleKey,
+      style,
+      paths: chunkPaths
+    })
+
+    chunkPaths.forEach((path) => {
+      staticIdByEdge.set(path.id, staticId)
+    })
+  }
+
+  return {
+    edgeIds,
+    staticIds,
+    staticIdByEdge,
+    byId
+  }
+}
+
 const buildStaticState = (
   working: WorkingState
 ) => {
@@ -521,128 +630,147 @@ const buildStaticState = (
   const edgeIdsByStyleKey = new Map<string, readonly EdgeId[]>()
   const staticIdByEdge = new Map<EdgeId, EdgeStaticId>()
   const staticIdsByStyleKey = new Map<string, readonly EdgeStaticId[]>()
-  const statics = new Map<EdgeStaticId, EdgeStaticView>()
-  const buckets = new Map<string, {
-    style: EdgeStaticView['style']
-    paths: EdgeStaticView['paths'][number][]
-  }>()
+  const byId = new Map<EdgeStaticId, EdgeStaticView>()
+  const styleOrder = readStaticStyleOrder(working)
+  const ids: EdgeStaticId[] = []
 
-  forEachSceneItem(working, (item) => {
-    if (item.kind !== 'edge') {
-      return
-    }
-
-    const edge = working.graph.edges.get(item.id)
-    if (!edge?.route.svgPath) {
-      return
-    }
-
-    const styleKey = edgeApi.render.styleKey(edge.base.edge.style)
-    const style = edgeApi.render.staticStyle(edge.base.edge.style)
-    const current = buckets.get(styleKey)
-
-    styleKeyByEdge.set(item.id, styleKey)
-    if (current) {
-      current.paths.push({
-        id: item.id,
-        svgPath: edge.route.svgPath
-      })
-      return
-    }
-
-    buckets.set(styleKey, {
-      style,
-      paths: [{
-        id: item.id,
-        svgPath: edge.route.svgPath
-      }]
+  styleOrder.forEach((styleKey) => {
+    const bucket = buildStaticBucket({
+      working,
+      styleKey
     })
-  })
-
-  buckets.forEach((bucket, styleKey) => {
-    edgeIdsByStyleKey.set(
-      styleKey,
-      bucket.paths.map((path) => path.id)
-    )
-
-    const staticIds: EdgeStaticId[] = []
-
-    for (let index = 0; index < bucket.paths.length; index += STATIC_CHUNK_SIZE) {
-      const paths = bucket.paths.slice(index, index + STATIC_CHUNK_SIZE)
-      const chunkIndex = Math.floor(index / STATIC_CHUNK_SIZE)
-      const staticId = `${styleKey}:${chunkIndex}`
-
-      staticIds.push(staticId)
-      statics.set(staticId, {
-        id: staticId,
-        styleKey,
-        style: bucket.style,
-        paths
-      })
-
-      paths.forEach((path) => {
-        staticIdByEdge.set(path.id, staticId)
-      })
+    if (!bucket) {
+      return
     }
 
-    staticIdsByStyleKey.set(styleKey, staticIds)
+    bucket.edgeIds.forEach((edgeId) => {
+      styleKeyByEdge.set(edgeId, styleKey)
+    })
+    edgeIdsByStyleKey.set(styleKey, bucket.edgeIds)
+    staticIdsByStyleKey.set(styleKey, bucket.staticIds)
+    bucket.staticIdByEdge.forEach((staticId, edgeId) => {
+      staticIdByEdge.set(edgeId, staticId)
+    })
+    bucket.byId.forEach((view, staticId) => {
+      byId.set(staticId, view)
+    })
+    ids.push(...bucket.staticIds)
   })
 
   return {
+    ids,
+    byId,
     styleKeyByEdge,
     edgeIdsByStyleKey,
     staticIdByEdge,
-    staticIdsByStyleKey,
-    statics
+    staticIdsByStyleKey
   }
 }
 
-const buildLabelsAndMasks = (
+const buildEdgeLabels = (input: {
+  working: WorkingState
+  edgeId: EdgeId
+}) => {
+  const labels = new Map<EdgeLabelKey, EdgeLabelView>()
+  const edge = input.working.graph.edges.get(input.edgeId)
+  if (!edge || edge.route.labels.length === 0) {
+    return {
+      ids: [] as EdgeLabelKey[],
+      byId: labels
+    }
+  }
+
+  const edgeUi = input.working.ui.edges.get(input.edgeId)
+  const ids: EdgeLabelKey[] = []
+
+  edge.route.labels.forEach((label) => {
+    const labelUi = edgeUi?.labels.get(label.labelId)
+    const key = readEdgeLabelKey(input.edgeId, label.labelId)
+    ids.push(key)
+    labels.set(key, {
+      key,
+      edgeId: input.edgeId,
+      labelId: label.labelId,
+      point: label.point,
+      angle: label.angle,
+      text: label.text,
+      displayText: label.displayText,
+      style: label.style,
+      editing: labelUi?.editing ?? false,
+      selected: edgeUi?.selected ?? false,
+      caret: labelUi?.caret
+    })
+  })
+
+  return {
+    ids,
+    byId: labels
+  }
+}
+
+const buildEdgeMask = (input: {
+  working: WorkingState
+  edgeId: EdgeId
+}): EdgeMaskView | undefined => {
+  const edge = input.working.graph.edges.get(input.edgeId)
+  if (!edge || edge.route.labels.length === 0) {
+    return undefined
+  }
+
+  return {
+    edgeId: input.edgeId,
+    rects: edge.route.labels.map((label) => label.maskRect)
+  }
+}
+
+const buildLabelsAndMasksState = (
   working: WorkingState
 ) => {
   const labels = new Map<EdgeLabelKey, EdgeLabelView>()
+  const labelIds: EdgeLabelKey[] = []
+  const keysByEdge = new Map<EdgeId, readonly EdgeLabelKey[]>()
   const masks = new Map<EdgeId, EdgeMaskView>()
+  const maskIds: EdgeId[] = []
 
   forEachSceneItem(working, (item) => {
     if (item.kind !== 'edge') {
       return
     }
 
-    const edge = working.graph.edges.get(item.id)
-    if (!edge || edge.route.labels.length === 0) {
+    const edgeLabels = buildEdgeLabels({
+      working,
+      edgeId: item.id
+    })
+    if (edgeLabels.ids.length > 0) {
+      keysByEdge.set(item.id, edgeLabels.ids)
+      labelIds.push(...edgeLabels.ids)
+      edgeLabels.byId.forEach((view, key) => {
+        labels.set(key, view)
+      })
+    }
+
+    const mask = buildEdgeMask({
+      working,
+      edgeId: item.id
+    })
+    if (!mask) {
       return
     }
 
-    const edgeUi = working.ui.edges.get(item.id)
-    const rects = edge.route.labels.map((label) => label.maskRect)
-    masks.set(item.id, {
-      edgeId: item.id,
-      rects
-    })
-
-    edge.route.labels.forEach((label) => {
-      const labelUi = edgeUi?.labels.get(label.labelId)
-      const key = readEdgeLabelKey(item.id, label.labelId)
-
-      labels.set(key, {
-        key,
-        edgeId: item.id,
-        labelId: label.labelId,
-        point: label.point,
-        angle: label.angle,
-        text: label.text,
-        displayText: label.displayText,
-        style: label.style,
-        editing: labelUi?.editing ?? false,
-        selected: edgeUi?.selected ?? false,
-        caret: labelUi?.caret
-      })
-    })
+    maskIds.push(item.id)
+    masks.set(item.id, mask)
   })
 
   return {
-    labels,
-    masks
+    labels: {
+      ids: labelIds,
+      byId: labels,
+      keysByEdge
+    },
+    masks: {
+      ids: maskIds,
+      byId: masks
+    }
   }
 }
 
@@ -672,15 +800,11 @@ const collectNodeRenderIds = (
 
 const collectStaticsEdgeIds = (
   working: WorkingState
-): {
-  orderChanged: boolean
-  edgeIds: ReadonlySet<EdgeId>
-} => {
+): ReadonlySet<EdgeId> => {
   const edgeIds = new Set<EdgeId>()
   appendTouchedIds(edgeIds, working.delta.graphChanges.edge.lifecycle)
   appendTouchedIds(edgeIds, working.delta.graphChanges.edge.route)
   appendTouchedIds(edgeIds, working.delta.graphChanges.edge.style)
-  const orderChanged = working.delta.items.change?.order === true
   working.delta.items.change?.set?.forEach((key) => {
     const edgeId = toEdgeIdFromSceneItemKey(key)
     if (edgeId) {
@@ -693,10 +817,7 @@ const collectStaticsEdgeIds = (
       edgeIds.add(edgeId)
     }
   })
-  return {
-    orderChanged,
-    edgeIds
-  }
+  return edgeIds
 }
 
 const collectLabelEdgeIds = (
@@ -861,6 +982,33 @@ const writeActiveDelta = (input: {
   idDelta.update(input.working.delta.render.edge.active, input.edgeId)
 }
 
+const replaceIdSegment = <TId extends string>(
+  ids: readonly TId[],
+  previousIds: readonly TId[],
+  nextIds: readonly TId[]
+): readonly TId[] => {
+  if (previousIds.length === 0) {
+    return nextIds.length === 0
+      ? ids
+      : [...ids, ...nextIds]
+  }
+
+  const previousIdSet = new Set(previousIds)
+  const startIndex = ids.findIndex((id) => id === previousIds[0])
+  if (startIndex === -1) {
+    return [
+      ...ids.filter((id) => !previousIdSet.has(id)),
+      ...nextIds
+    ]
+  }
+
+  return [
+    ...ids.slice(0, startIndex),
+    ...nextIds,
+    ...ids.slice(startIndex).filter((id) => !previousIdSet.has(id))
+  ]
+}
+
 const patchStatics = (input: {
   working: WorkingState
   scope: RenderPatchScope
@@ -870,39 +1018,35 @@ const patchStatics = (input: {
   }
 
   const previous = input.working.render.statics
-  const staticsDelta = collectStaticsEdgeIds(input.working)
-  const next = buildStaticState(input.working)
-  const nextStatics = new Map<EdgeStaticId, EdgeStaticView>()
-  let count = 0
+  if (input.scope.reset) {
+    const built = buildStaticState(input.working)
+    const nextById = new Map<EdgeStaticId, EdgeStaticView>()
+    let count = 0
 
-  next.statics.forEach((view, staticId) => {
-    const previousView = previous.statics.get(staticId)
-    const nextView = previousView && isStaticViewEqual(previousView, view)
-      ? previousView
-      : view
-    nextStatics.set(staticId, nextView)
-  })
-
-  const ids = new Set<EdgeStaticId>([
-    ...previous.statics.keys(),
-    ...nextStatics.keys()
-  ])
-  ids.forEach((staticId) => {
-    const previousView = previous.statics.get(staticId)
-    const nextView = nextStatics.get(staticId)
-    if (
-      previousView === undefined && nextView !== undefined
-      || previousView !== undefined && nextView === undefined
-      || (
-        previousView !== undefined
-        && nextView !== undefined
-        && !isStaticViewEqual(previousView, nextView)
+    built.byId.forEach((view, staticId) => {
+      const previousView = previous.byId.get(staticId)
+      nextById.set(
+        staticId,
+        previousView && isStaticViewEqual(previousView, view)
+          ? previousView
+          : view
       )
-    ) {
+    })
+
+    new Set<EdgeStaticId>([
+      ...previous.ids,
+      ...built.ids
+    ]).forEach((staticId) => {
+      const previousView = previous.byId.get(staticId)
+      const nextView = nextById.get(staticId)
       if (
-        input.scope.reset
-        || staticsDelta.orderChanged
-        || staticsDelta.edgeIds.size > 0
+        previousView === undefined && nextView !== undefined
+        || previousView !== undefined && nextView === undefined
+        || (
+          previousView !== undefined
+          && nextView !== undefined
+          && !isStaticViewEqual(previousView, nextView)
+        )
       ) {
         writeStaticDelta({
           working: input.working,
@@ -910,17 +1054,131 @@ const patchStatics = (input: {
           previous: previousView,
           next: nextView
         })
+        count += 1
       }
-      count += 1
+    })
+
+    if (!equal.sameOrder(previous.ids, built.ids, (left, right) => left === right)) {
+      input.working.delta.render.edge.staticsIds = true
+    }
+
+    input.working.render.statics = {
+      ids: built.ids,
+      byId: nextById,
+      styleKeyByEdge: built.styleKeyByEdge,
+      edgeIdsByStyleKey: built.edgeIdsByStyleKey,
+      staticIdByEdge: built.staticIdByEdge,
+      staticIdsByStyleKey: built.staticIdsByStyleKey
+    }
+    return count
+  }
+
+  const touchedEdgeIds = collectStaticsEdgeIds(input.working)
+  if (touchedEdgeIds.size === 0) {
+    return 0
+  }
+
+  const touchedStyleKeys = new Set<string>()
+  touchedEdgeIds.forEach((edgeId) => {
+    const previousStyleKey = previous.styleKeyByEdge.get(edgeId)
+    if (previousStyleKey) {
+      touchedStyleKeys.add(previousStyleKey)
+    }
+
+    const nextStyleKey = readEdgeStaticStyleKey(input.working, edgeId)
+    if (nextStyleKey) {
+      touchedStyleKeys.add(nextStyleKey)
     }
   })
 
+  if (touchedStyleKeys.size === 0) {
+    return 0
+  }
+
+  const nextById = new Map(previous.byId)
+  const nextStyleKeyByEdge = new Map(previous.styleKeyByEdge)
+  const nextEdgeIdsByStyleKey = new Map(previous.edgeIdsByStyleKey)
+  const nextStaticIdByEdge = new Map(previous.staticIdByEdge)
+  const nextStaticIdsByStyleKey = new Map(previous.staticIdsByStyleKey)
+  let count = 0
+
+  touchedStyleKeys.forEach((styleKey) => {
+    const previousStaticIds = previous.staticIdsByStyleKey.get(styleKey) ?? []
+    const previousEdgeIds = previous.edgeIdsByStyleKey.get(styleKey) ?? []
+    const nextBucket = buildStaticBucket({
+      working: input.working,
+      styleKey
+    })
+
+    previousEdgeIds.forEach((edgeId) => {
+      nextStyleKeyByEdge.delete(edgeId)
+      nextStaticIdByEdge.delete(edgeId)
+    })
+
+    if (!nextBucket) {
+      nextEdgeIdsByStyleKey.delete(styleKey)
+      nextStaticIdsByStyleKey.delete(styleKey)
+    } else {
+      nextEdgeIdsByStyleKey.set(styleKey, nextBucket.edgeIds)
+      nextStaticIdsByStyleKey.set(styleKey, nextBucket.staticIds)
+      nextBucket.edgeIds.forEach((edgeId) => {
+        nextStyleKeyByEdge.set(edgeId, styleKey)
+      })
+      nextBucket.staticIdByEdge.forEach((staticId, edgeId) => {
+        nextStaticIdByEdge.set(edgeId, staticId)
+      })
+    }
+
+    new Set<EdgeStaticId>([
+      ...previousStaticIds,
+      ...(nextBucket?.staticIds ?? [])
+    ]).forEach((staticId) => {
+      const previousView = previous.byId.get(staticId)
+      const nextCandidate = nextBucket?.byId.get(staticId)
+      const nextView = previousView && nextCandidate && isStaticViewEqual(previousView, nextCandidate)
+        ? previousView
+        : nextCandidate
+
+      if (nextView === undefined) {
+        nextById.delete(staticId)
+      } else {
+        nextById.set(staticId, nextView)
+      }
+
+      if (
+        previousView === undefined && nextView !== undefined
+        || previousView !== undefined && nextView === undefined
+        || (
+          previousView !== undefined
+          && nextView !== undefined
+          && !isStaticViewEqual(previousView, nextView)
+        )
+      ) {
+        writeStaticDelta({
+          working: input.working,
+          staticId,
+          previous: previousView,
+          next: nextView
+        })
+        count += 1
+      }
+    })
+  })
+
+  const nextIds = readStaticStyleOrder(input.working).flatMap((styleKey) => (
+    nextStaticIdsByStyleKey.get(styleKey) ?? []
+  ))
+  if (!equal.sameOrder(previous.ids, nextIds, (left, right) => left === right)) {
+    input.working.delta.render.edge.staticsIds = true
+  }
+
   input.working.render.statics = {
-    styleKeyByEdge: next.styleKeyByEdge,
-    edgeIdsByStyleKey: next.edgeIdsByStyleKey,
-    staticIdByEdge: next.staticIdByEdge,
-    staticIdsByStyleKey: next.staticIdsByStyleKey,
-    statics: nextStatics
+    ids: nextIds,
+    byId: nextById,
+    styleKeyByEdge: nextStyleKeyByEdge,
+    edgeIdsByStyleKey: nextEdgeIdsByStyleKey,
+    staticIdByEdge: nextStaticIdByEdge,
+    staticIdsByStyleKey: nextStaticIdsByStyleKey
   }
 
   return count
@@ -1037,69 +1295,252 @@ const patchLabelsAndMasks = (input: {
 
   const previousLabels = input.working.render.labels
   const previousMasks = input.working.render.masks
-  const built = buildLabelsAndMasks(input.working)
-  const nextLabels = new Map<EdgeLabelKey, EdgeLabelView>()
-  const nextMasks = new Map<EdgeId, EdgeMaskView>()
+  if (input.scope.reset) {
+    const built = buildLabelsAndMasksState(input.working)
+    const nextLabelById = new Map<EdgeLabelKey, EdgeLabelView>()
+    const nextMaskById = new Map<EdgeId, EdgeMaskView>()
+    let count = 0
+
+    built.labels.byId.forEach((view, key) => {
+      const previous = previousLabels.byId.get(key)
+      nextLabelById.set(
+        key,
+        previous && isLabelViewEqual(previous, view)
+          ? previous
+          : view
+      )
+    })
+    built.masks.byId.forEach((view, edgeId) => {
+      const previous = previousMasks.byId.get(edgeId)
+      nextMaskById.set(
+        edgeId,
+        previous && isMaskViewEqual(previous, view)
+          ? previous
+          : view
+      )
+    })
+
+    new Set<EdgeLabelKey>([
+      ...previousLabels.ids,
+      ...built.labels.ids
+    ]).forEach((key) => {
+      const previous = previousLabels.byId.get(key)
+      const next = nextLabelById.get(key)
+      if (
+        previous === undefined && next !== undefined
+        || previous !== undefined && next === undefined
+        || (
+          previous !== undefined
+          && next !== undefined
+          && !isLabelViewEqual(previous, next)
+        )
+      ) {
+        writeLabelDelta({
+          working: input.working,
+          key,
+          previous,
+          next
+        })
+        count += 1
+      }
+    })
+
+    new Set<EdgeId>([
+      ...previousMasks.ids,
+      ...built.masks.ids
+    ]).forEach((edgeId) => {
+      const previous = previousMasks.byId.get(edgeId)
+      const next = nextMaskById.get(edgeId)
+      if (
+        previous === undefined && next !== undefined
+        || previous !== undefined && next === undefined
+        || (
+          previous !== undefined
+          && next !== undefined
+          && !isMaskViewEqual(previous, next)
+        )
+      ) {
+        writeMaskDelta({
+          working: input.working,
+          edgeId,
+          previous,
+          next
+        })
+        count += 1
+      }
+    })
+
+    input.working.render.labels = {
+      ids: built.labels.ids,
+      byId: nextLabelById,
+      keysByEdge: built.labels.keysByEdge
+    }
+    input.working.render.masks = {
+      ids: built.masks.ids,
+      byId: nextMaskById
+    }
+    return count
+  }
+
+  const touchedLabelEdgeIds = input.scope.labels
+    ? collectLabelEdgeIds(input.working)
+    : new Set<EdgeId>()
+  const touchedMaskEdgeIds = input.scope.masks
+    ? collectMaskEdgeIds(input.working)
+    : new Set<EdgeId>()
+
+  if (touchedLabelEdgeIds.size === 0 && touchedMaskEdgeIds.size === 0) {
+    return 0
+  }
+
+  let nextLabelIds = previousLabels.ids
+  let nextLabelById = previousLabels.byId
+  let nextKeysByEdge = previousLabels.keysByEdge
+  let nextMaskIds = previousMasks.ids
+  let nextMaskById = previousMasks.byId
+  let labelStateChanged = false
+  let maskStateChanged = false
   let count = 0
 
-  built.labels.forEach((view, key) => {
-    const previous = previousLabels.get(key)
-    nextLabels.set(
-      key,
-      previous && isLabelViewEqual(previous, view)
-        ? previous
-        : view
-    )
-  })
-  built.masks.forEach((view, edgeId) => {
-    const previous = previousMasks.get(edgeId)
-    nextMasks.set(
-      edgeId,
-      previous && isMaskViewEqual(previous, view)
-        ? previous
-        : view
-      )
-  })
+  if (touchedLabelEdgeIds.size > 0) {
+    const labelsById = new Map(previousLabels.byId)
+    const keysByEdge = new Map(previousLabels.keysByEdge)
+    let labelIds = previousLabels.ids
 
-  new Set<EdgeLabelKey>([
-    ...previousLabels.keys(),
-    ...nextLabels.keys()
-  ]).forEach((key) => {
-    const previous = previousLabels.get(key)
-    const next = nextLabels.get(key)
-    if (
-      previous === undefined && next !== undefined
-      || previous !== undefined && next === undefined
-      || (
-        previous !== undefined
-        && next !== undefined
-        && !isLabelViewEqual(previous, next)
-      )
-    ) {
-      writeLabelDelta({
+    touchedLabelEdgeIds.forEach((edgeId) => {
+      const previousKeys = previousLabels.keysByEdge.get(edgeId) ?? []
+      const nextLabels = buildEdgeLabels({
         working: input.working,
-        key,
-        previous,
-        next
+        edgeId
       })
-      count += 1
+      const previousKeySet = new Set(previousKeys)
+      const nextKeySet = new Set(nextLabels.ids)
+      const changedKeys: Array<{
+        key: EdgeLabelKey
+        previous: EdgeLabelView | undefined
+        next: EdgeLabelView | undefined
+      }> = []
+
+      new Set<EdgeLabelKey>([
+        ...previousKeys,
+        ...nextLabels.ids
+      ]).forEach((key) => {
+        const previous = previousLabels.byId.get(key)
+        const nextCandidate = nextLabels.byId.get(key)
+        const next = previous && nextCandidate && isLabelViewEqual(previous, nextCandidate)
+          ? previous
+          : nextCandidate
+
+        if (
+          previous === undefined && next !== undefined
+          || previous !== undefined && next === undefined
+          || (
+            previous !== undefined
+            && next !== undefined
+            && !isLabelViewEqual(previous, next)
+          )
+        ) {
+          changedKeys.push({
+            key,
+            previous,
+            next
+          })
+        }
+      })
+
+      if (changedKeys.length === 0) {
+        return
+      }
+
+      labelStateChanged = true
+
+      previousKeys.forEach((key) => {
+        if (!nextLabels.byId.has(key)) {
+          labelsById.delete(key)
+        }
+      })
+      nextLabels.byId.forEach((view, key) => {
+        const previous = previousLabels.byId.get(key)
+        labelsById.set(
+          key,
+          previous && isLabelViewEqual(previous, view)
+            ? previous
+            : view
+        )
+      })
+
+      if (nextLabels.ids.length === 0) {
+        keysByEdge.delete(edgeId)
+      } else {
+        keysByEdge.set(edgeId, nextLabels.ids)
+      }
+
+      const membershipChanged =
+        previousKeys.length !== nextLabels.ids.length
+        || previousKeys.some((key) => !nextKeySet.has(key))
+        || nextLabels.ids.some((key) => !previousKeySet.has(key))
+      if (membershipChanged) {
+        labelIds = replaceIdSegment(labelIds, previousKeys, nextLabels.ids)
+      }
+
+      changedKeys.forEach(({ key, previous, next }) => {
+        writeLabelDelta({
+          working: input.working,
+          key,
+          previous,
+          next
+        })
+        count += 1
+      })
+    })
+
+    if (labelStateChanged) {
+      nextLabelIds = labelIds
+      nextLabelById = labelsById
+      nextKeysByEdge = keysByEdge
     }
-  })
-  new Set<EdgeId>([
-    ...previousMasks.keys(),
-    ...nextMasks.keys()
-  ]).forEach((edgeId) => {
-    const previous = previousMasks.get(edgeId)
-    const next = nextMasks.get(edgeId)
-    if (
-      previous === undefined && next !== undefined
-      || previous !== undefined && next === undefined
-      || (
-        previous !== undefined
-        && next !== undefined
-        && !isMaskViewEqual(previous, next)
-      )
-    ) {
+  }
+
+  if (touchedMaskEdgeIds.size > 0) {
+    const masksById = new Map(previousMasks.byId)
+    let maskIds = previousMasks.ids
+
+    touchedMaskEdgeIds.forEach((edgeId) => {
+      const previous = previousMasks.byId.get(edgeId)
+      const nextCandidate = buildEdgeMask({
+        working: input.working,
+        edgeId
+      })
+      const next = previous && nextCandidate && isMaskViewEqual(previous, nextCandidate)
+        ? previous
+        : nextCandidate
+
+      if (
+        !(
+          previous === undefined && next !== undefined
+          || previous !== undefined && next === undefined
+          || (
+            previous !== undefined
+            && next !== undefined
+            && !isMaskViewEqual(previous, next)
+          )
+        )
+      ) {
+        return
+      }
+
+      maskStateChanged = true
+
+      if (next === undefined) {
+        masksById.delete(edgeId)
+        maskIds = maskIds.filter((id) => id !== edgeId)
+      } else {
+        masksById.set(edgeId, next)
+        if (previous === undefined) {
+          maskIds = [...maskIds, edgeId]
+        }
+      }
+
       writeMaskDelta({
         working: input.working,
         edgeId,
@@ -1107,11 +1548,28 @@ const patchLabelsAndMasks = (input: {
         next
       })
       count += 1
-    }
-  })
+    })
 
-  input.working.render.labels = nextLabels
-  input.working.render.masks = nextMasks
+    if (maskStateChanged) {
+      nextMaskIds = maskIds
+      nextMaskById = masksById
+    }
+  }
+
+  if (labelStateChanged) {
+    input.working.render.labels = {
+      ids: nextLabelIds,
+      byId: nextLabelById,
+      keysByEdge: nextKeysByEdge
+    }
+  }
+
+  if (maskStateChanged) {
+    input.working.render.masks = {
+      ids: nextMaskIds,
+      byId: nextMaskById
+    }
+  }
 
   return count
 }

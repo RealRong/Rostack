@@ -49,11 +49,13 @@ import {
   readFieldOptionTokens,
   readFieldOptions,
   replaceFieldOptions,
+  type OptionField
+} from '@dataview/core/field/option'
+import {
   type DraftParseResult as FieldDraftParseResult,
   expandSearchableValue,
-  isEmptyValue,
-  type OptionField
-} from '@dataview/core/shared'
+  isEmptyValue
+} from '@dataview/core/field/value'
 import { compare, json, parse, string } from '@shared/core'
 import type {
   Token

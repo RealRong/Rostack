@@ -31,20 +31,20 @@ export const buildRenderCapture = (
 ): RenderCapture => ({
   edge: {
     statics: {
-      ids: [...state.render.statics.statics.keys()],
-      byId: state.render.statics.statics
+      ids: state.render.statics.ids,
+      byId: state.render.statics.byId
     },
     active: {
       ids: [...state.render.active.keys()],
       byId: state.render.active
     },
     labels: {
-      ids: [...state.render.labels.keys()],
-      byId: state.render.labels
+      ids: state.render.labels.ids,
+      byId: state.render.labels.byId
     },
     masks: {
-      ids: [...state.render.masks.keys()],
-      byId: state.render.masks
+      ids: state.render.masks.ids,
+      byId: state.render.masks.byId
     },
     overlay: state.render.overlay
   }

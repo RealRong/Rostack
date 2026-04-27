@@ -803,7 +803,7 @@ const createViewRead = (input: {
 export const createEditorSceneRead = (runtime: {
   revision: () => Revision
   state: () => WorkingState
-  items: () => readonly SceneItem[]
+  items: () => WorkingState['items']
   spatial: () => SpatialIndexState
   nodeCapability?: NodeCapabilityInput
   view: () => SceneViewSnapshot

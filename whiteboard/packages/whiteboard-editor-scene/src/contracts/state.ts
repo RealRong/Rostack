@@ -104,14 +104,22 @@ export interface UiState {
 export interface RenderState {
   node: Map<NodeId, NodeRenderView>
   statics: {
+    ids: readonly EdgeStaticId[]
+    byId: Map<EdgeStaticId, EdgeStaticView>
     styleKeyByEdge: Map<EdgeId, string>
     edgeIdsByStyleKey: Map<string, readonly EdgeId[]>
     staticIdByEdge: Map<EdgeId, EdgeStaticId>
     staticIdsByStyleKey: Map<string, readonly EdgeStaticId[]>
-    statics: Map<EdgeStaticId, EdgeStaticView>
   }
-  labels: Map<EdgeLabelKey, EdgeLabelView>
-  masks: Map<EdgeId, EdgeMaskView>
+  labels: {
+    ids: readonly EdgeLabelKey[]
+    byId: Map<EdgeLabelKey, EdgeLabelView>
+    keysByEdge: Map<EdgeId, readonly EdgeLabelKey[]>
+  }
+  masks: {
+    ids: readonly EdgeId[]
+    byId: Map<EdgeId, EdgeMaskView>
+  }
   active: Map<EdgeId, EdgeActiveView>
   overlay: EdgeOverlayView
   chrome: ChromeRenderView

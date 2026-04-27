@@ -20,8 +20,7 @@ import type {
   EditSession as EditorEditSession
 } from '@whiteboard/editor/session/edit'
 import type {
-  EditorInputPreviewState,
-  TextPreviewPatch
+  EditorInputPreviewState
 } from '@whiteboard/editor/session/preview/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 
@@ -99,7 +98,7 @@ const readNodePreviews = (
       entry.id,
       mergeNodePreviewPatch(
         byId.get(entry.id),
-        entry.patch as unknown as TextPreviewPatch
+        entry.patch
       )
     )
   })

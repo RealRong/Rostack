@@ -10,20 +10,29 @@ import type {
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/types/state'
-import {
-  entityTable
-} from '@dataview/core/document/table'
+import { entityTable as sharedEntityTable } from '@shared/core'
+
+const replaceTable = <TKey extends 'fields' | 'records' | 'views'>(
+  document: DataDoc,
+  key: TKey,
+  table: DataDoc[TKey]
+): DataDoc => document[key] === table
+  ? document
+  : {
+      ...document,
+      [key]: table
+    }
 
 const listCustomFields = (document: DataDoc): CustomField[] => {
-  return entityTable.read.list(document.fields)
+  return sharedEntityTable.read.list(document.fields)
 }
 
-const getCustomFieldIds = (document: DataDoc): CustomFieldId[] => entityTable.read.ids(document.fields)
-const getCustomField = (document: DataDoc, fieldId: CustomFieldId) => entityTable.read.get(document.fields, fieldId)
-const hasCustomField = (document: DataDoc, fieldId: CustomFieldId) => entityTable.read.has(document.fields, fieldId)
+const getCustomFieldIds = (document: DataDoc): CustomFieldId[] => sharedEntityTable.read.ids(document.fields)
+const getCustomField = (document: DataDoc, fieldId: CustomFieldId) => sharedEntityTable.read.get(document.fields, fieldId)
+const hasCustomField = (document: DataDoc, fieldId: CustomFieldId) => sharedEntityTable.read.has(document.fields, fieldId)
 
 const putCustomField = (document: DataDoc, field: CustomField): DataDoc => {
-  return entityTable.replace(document, 'fields', entityTable.write.put(document.fields, field))
+  return replaceTable(document, 'fields', sharedEntityTable.write.put(document.fields, field))
 }
 
 const patchCustomField = (
@@ -31,21 +40,21 @@ const patchCustomField = (
   fieldId: CustomFieldId,
   patch: Partial<Omit<CustomField, 'id'>>
 ): DataDoc => {
-  const nextFields = entityTable.write.patch(document.fields, fieldId, patch)
+  const nextFields = sharedEntityTable.write.patch(document.fields, fieldId, patch)
   if (nextFields === document.fields) {
     return document
   }
 
-  return entityTable.replace(document, 'fields', nextFields)
+  return replaceTable(document, 'fields', nextFields)
 }
 
 const removeCustomField = (document: DataDoc, fieldId: CustomFieldId): DataDoc => {
-  const nextFields = entityTable.write.remove(document.fields, fieldId)
+  const nextFields = sharedEntityTable.write.remove(document.fields, fieldId)
   if (nextFields === document.fields) {
     return document
   }
 
-  return entityTable.replace(document, 'fields', nextFields)
+  return replaceTable(document, 'fields', nextFields)
 }
 
 const TITLE_FIELD: TitleField = {

@@ -1,580 +1,198 @@
-# whiteboard-editor：Authority State / Derived Model / Scene 边界重构最终方案
+# whiteboard-editor / editor-scene 职责重构最终方案
 
-## 1. 结论
+## 1. 目标
 
-当前 `whiteboard-editor` 的核心问题不是功能缺失，而是 **public API 名称、对象形态、实际职责三者错位**。
+解决当前两个根问题：
 
-现状里已经存在一套职责清晰的内部 runtime：
+- public `Editor.session` 实际上不是 session，而是混合派生读模型
+- `editor-scene` 与 `whiteboard-editor` 的 derived 边界不清晰
 
-- `session/runtime.ts` 是真实的 authority session runtime
-- `scene/source.ts` 是 scene runtime 的 source binding
-- `scene/view.ts` 是 scene runtime 的 public wrapper
+最终目标：
 
-但最终对外暴露的 `Editor` 仍然把一个混合派生读模型对象命名成 `session`：
-
-```ts
-export type Editor = {
-  document: DocumentQuery
-  scene: EditorSceneSource
-  session: EditorSessionSource
-  write: EditorWrite
-  input: EditorInputHost
-  events: EditorEvents
-  dispose: () => void
-}
-```
-
-这里最大的问题不是“少了一个 facade 层”，而是：
-
-- authority state 和 derived read model 被混成了一个 public 概念
-- `session` 这个名字被派生读模型占用了
-- `facades` 继续作为最终 public 形态，也只是把错位重新打包一次
-
-因此长期最优方向不是：
-
-- `session + facades`
-
-而是：
-
-- **内部保留真实 runtime**
-- **对外暴露稳定只读 state**
-- **对外暴露派生 derived model**
-- **对外暴露 commands / input / events**
-
-最终 public API 应收口为：
-
-```ts
-editor = {
-  document,
-  scene,
-  state,
-  derived,
-  history,
-  input,
-  write,
-  events,
-  dispose
-}
-```
-
-其中：
-
-- `state` = authority state 的只读 public 面
-- `derived` = 基于 `state + scene + defaults + nodeType + history` 的语义派生模型
-- `history` = 独立语义，不属于 panel，也不属于 session
-- `input` = DOM / pointer / keyboard 输入编排入口
-
-这比 `session + facades` 更稳定，也更符合现有代码已经形成的依赖拓扑。
+- `session` 回到内部 runtime 语义
+- public API 明确分成 `state / derived / history / input / write`
+- `editor-scene` 只承载 **scene-generic derived**
+- `whiteboard-editor` 只承载 **editor policy derived**
 
 ---
 
-## 2. 对现状的最终判断
+## 2. 设计结论
 
-## 2.1 `session/runtime.ts` 是真的 session
+## 2.1 内部与外部分离
 
-这层职责是对的，而且应该继续保留为唯一 authority session runtime。
+内部继续保留真实 runtime：
 
-它当前负责：
+- `session`
+- `scene binding`
+- `scene runtime`
+
+外部不再暴露真实 `session`，而是暴露：
 
 - `state`
-- `mutate`
-- `viewport`
-- `interaction.read/write`
-- `preview.state/write`
-- `resetDocument`
-- `resetInteraction`
-- `reset`
-
-这说明真实 session 内核已经成立，不需要再发明一个新的 session 概念。
-
-### 但它不应该直接成为 public `Editor.session`
-
-长期稳定的 public API 不应直接暴露真实 `EditorSession`，原因有三点：
-
-- 它包含 `mutate`
-- 它包含 `interaction.write`
-- 它包含 `preview.write`
-
-这些都属于内部 runtime 写通道，而不是外部调用者应长期依赖的稳定读边界。
-
-换句话说：
-
-- `EditorSession` 应继续存在
-- 但它应是 **createEditor 内部装配使用的 runtime**
-- 不应再被原样挂到 `Editor` public object 上
-
----
-
-## 2.2 `editor/source/session.ts` 不是 session
-
-这个文件当前混合了：
-
-- session state read
-- selection members / summary / affordance
-- node scope / edge scope
-- selection toolbar policy
-- selection overlay policy
-- edge chrome
-- mindmap chrome
-- history
-- viewport read 包装
-
-它依赖：
-
-- `graph.query`
-- `graph.stores`
-- `history`
-- `nodeType`
-- `defaults`
-
-这已经明显超出 session 的 authority 范围。
-
-它的本质不是 session，也不是 source，而是：
-
-- **editor derived model composition**
-
-因此这里的问题不只是改名为 facade，而是要承认：
-
-- 它不是 authority state
-- 它也不只是 UI facade
-- 它是 interaction 和 UI 共用的语义派生读模型层
-
-这层更适合叫：
-
 - `derived`
-- 或 `semantic read model`
-
-不建议继续沿用 `session source`，也不建议最终 public 概念叫 `facades`。
-
----
-
-## 2.3 `editor/source/selection.ts` 是策略与派生规则，不是 source
-
-这个文件当前负责：
-
-- selection toolbar 决策
-- selection overlay 决策
-- node scope / edge scope 读取
-- style uniform value 归一化
-
-它本质上是：
-
-- selection derived policy
-- selection presentation policy
-- interaction / UI 共享决策规则
-
-因此它应归到：
-
-- `editor/derived/selection-policy.ts`
-
-而不是 `editor/source/selection.ts`。
+- `history`
+- `input`
+- `write`
 
 ---
 
-## 2.4 `scene/source.ts` 的职责基本正确，但命名不准
+## 2.2 不再用 `facades` 作为最终 public 概念
 
-这层本质是：
+`facades` 太宽，且会掩盖一件事实：
 
-- 从 `engine + session + preview + interaction + viewport` 组装 scene source snapshot
-- 订阅 engine/session 变化
-- 通知 scene runtime 更新
+- 有些派生模型给 UI 用
+- 有些派生模型给 interaction binding 用
 
-它不是 editor facade，而是：
+最终统一叫 `derived`，再按归属拆成：
 
-- **scene binding**
-- **scene source adapter**
-
-所以长期命名应改为：
-
-- `scene/binding.ts`
+- `scene-derived`
+- `editor-derived`
 
 ---
 
-## 2.5 `scene/view.ts` 的职责也基本正确，但 `view` 太泛
+## 2.3 `editor-scene` 不是纯几何层，但也不是 editor UI policy 层
 
-它当前负责：
+`editor-scene` 可以承载 derived，但只承载这类 derived：
 
-- 暴露 `runtime.query`
-- 暴露 `runtime.revision`
-- 暴露 `runtime.stores`
-- 提供 `host.pick`
-- 提供 `host.visible`
+- 只依赖 `document + session input + interaction input + view + generic node capability`
+- 对不同 host / UI 都成立
+- 表达的是 scene 事实、投影结果、几何关系、可交互事实
 
-这层更像：
+不承载这类 derived：
 
-- scene public API
-- scene runtime wrapper
-
-因此可选命名有两个：
-
-- `scene/api.ts`
-- `scene/facade.ts`
-
-如果目标是减少“facade”这个词的泛滥，建议最终采用：
-
-- `scene/api.ts`
+- 依赖 `HistoryPort`
+- 依赖 `EditorDefaults`
+- 依赖 `NodeTypeSupport.hasControl / supportsStyle`
+- 依赖 toolbar / panel / icon / label / scope 分组策略
+- 表达的是 editor 产品语义而不是 scene 事实
 
 ---
 
-## 2.6 当前真正的问题不是“缺 facade”，而是 public API 边界不稳定
+## 3. 最终边界
 
-现在 public `Editor` 的别扭点有两个：
+## 3.1 `editor-scene` 负责什么
 
-### 第一层错位
+`editor-scene` 负责：
 
-`session` 这个名字实际挂的是派生读模型，而不是真实 session。
-
-### 第二层错位
-
-`session` 这个对象内部既有 authority read，又有 interaction summary，又有 toolbar / chrome / history / mindmap chrome。
-
-这意味着当前 public API 按“对象分组”看似整洁，按“职责边界”其实是错位的。
-
-因此长期最优不是把它改成：
-
-```ts
-editor = {
-  session,
-  facades
-}
-```
-
-而是直接改成：
-
-```ts
-editor = {
-  state,
-  derived
-}
-```
-
-这样 authority 与 derived 从根上分开。
-
----
-
-## 3. 最终职责边界
-
-## 3.1 内部 `session`
-
-内部 `session` 继续作为 runtime 存在，但不再作为 public `Editor.session` 暴露。
-
-最终内部形态保持：
-
-```ts
-session = {
-  state,
-  mutate,
-  interaction,
-  viewport,
-  preview,
-  resetDocument,
-  resetInteraction,
-  reset
-}
-```
-
-### 它负责
-
-- authority session state
-- authority state mutate
-- interaction runtime
-- preview runtime
-- viewport runtime
-
-### 它不负责
-
-- selection toolbar
-- selection overlay
-- history read model
-- edge chrome read model
-- mindmap chrome read model
-- panel 聚合
-
----
-
-## 3.2 public `state`
-
-对外不再暴露真实 `session`，而是暴露一个稳定只读 `state` 面。
-
-```ts
-state = {
-  tool,
-  draw,
-  edit,
-  selection,
-  interaction,
-  viewport
-}
-```
-
-### 语义
-
-`state` 是 public authority read surface。
-
-它的特点是：
-
-- 只读
-- 稳定
-- 不暴露内部 mutate/write 通道
-- 可以被 UI、外部 runtime、服务层安全消费
-
-### `state` 的各字段
-
-#### `tool`
-
-- `ToolRead`
-- 保留 `get / subscribe / type / value / is`
-
-#### `draw`
-
-- `ReadStore<DrawState>`
-
-#### `edit`
-
-- `ReadStore<EditSession>`
-
-#### `selection`
-
-- `ReadStore<SelectionTarget>`
-
-#### `interaction`
-
-- `ReadStore<EditorInteractionState>`
-
-注意这里是经过语义整理后的 interaction state，而不是内部 `interaction.read/write` 原样暴露。
-
-#### `viewport`
-
-- public viewport read API
-- 包含 `get / subscribe / pointer / worldToScreen / worldRect / screenPoint / size`
-- 同时保留常用派生 `zoom / center`
-
----
-
-## 3.3 public `derived`
-
-`derived` 是基于 authority state 和 scene query 计算出的语义派生模型。
-
-它的输入可以来自：
-
-- `state`
+- document / graph / spatial / render / ui projection runtime
 - scene query
 - scene stores
-- `history`
-- `defaults`
-- `nodeType`
+- scene-generic derived
 
-它的输出既服务 UI，也服务 interaction 决策。
+### 应留在 `editor-scene` 的 derived
 
-因此 `derived` 不应被命名为 `facades`，因为：
+- `selection.members`
+- `selection.summary`
+- `selection.affordance`
+- `selection.bounds`
+- `selection.move`
+- `edge.chrome`
+- `mindmap.addChildTargets`
+- `view.screenPoint / screenRect / visible / pick`
+- `NodeUiView`
+- `EdgeUiView`
+- `ChromeView`
 
-- 它不只是 UI facade
-- 它也被 interaction binding 使用
-- 它本质是语义派生层
+### 可继续下沉到 `editor-scene` 的 derived
 
-最终结构：
+建议新增：
 
-```ts
-derived = {
-  selection,
-  chrome,
-  mindmap
-}
-```
+- `query.chrome.marquee`
+- `query.chrome.draw`
+- `query.chrome.guides`
+- `query.chrome.edgeGuide`
 
-### 为什么没有 `tool`
+理由：
 
-`tool` 本质上是 authority state 的只读包装，应归入 `state.tool`，不需要再单独做一个 `derived.tool`。
-
-### 为什么没有 `panel`
-
-`panel` 不是稳定领域边界，只是当前 UI 的局部聚合方式。
-
-以下内容不应继续被绑成一个固定 `panel` 命名空间：
-
-- `selectionToolbar`
-- `history`
-- `draw`
-
-因为它们分别属于：
-
-- `derived.selection.toolbar`
-- `history`
-- `state.draw`
+- 这些本质上是 scene preview / projection 输出
+- 不依赖 editor policy
+- 当前 editor 层多数只是二次包装
 
 ---
 
-## 3.4 `derived.selection`
+## 3.2 `whiteboard-editor` 负责什么
 
-`derived.selection` 是最核心的一层派生模型。
+`whiteboard-editor` 负责：
 
-最终形态：
+- authority session runtime 的装配
+- commands / write API
+- input orchestration
+- editor policy derived
+- public API 组装
+
+### 应留在 `whiteboard-editor` 的 derived
+
+- selection toolbar context
+- node toolbar scope
+- edge toolbar scope
+- selection overlay display policy
+- history 暴露
+- panel 级别聚合
+
+### 明确不应进入 `editor-scene` 的内容
+
+- `HistoryPort`
+- `EditorDefaults`
+- `NodeTypeSupport.hasControl`
+- `NodeTypeSupport.supportsStyle`
+- toolbar label / icon / family / scope 策略
+- panel / dock / menu / overlay 的产品组织方式
+
+---
+
+## 3.3 边界判断规则
+
+一个 derived 是否应下沉到 `editor-scene`，按这 4 条判断：
+
+1. 去掉 `history / defaults / editor policy` 后，它是否仍成立
+2. 换一个 host 或 UI，它是否仍有意义
+3. 它表达的是 scene 事实，还是产品 UI 策略
+4. 它是否会迫使 `editor-scene` 反向理解 editor 的面板/工具栏语义
+
+满足：
+
+- `1 = 是`
+- `2 = 是`
+- `3 = scene 事实`
+- `4 = 否`
+
+则应进入 `editor-scene`。
+
+---
+
+## 4. 最终 API
+
+## 4.1 内部 runtime
+
+内部保留：
 
 ```ts
-derived.selection = {
-  members,
-  summary,
-  affordance,
-  view,
-  toolbar,
-  node: {
-    selected,
-    stats,
-    scope
-  },
-  edge: {
-    chrome
+type InternalEditorSession = {
+  state: EditorSessionState
+  mutate: EditorSessionMutate
+  viewport: ViewportRuntime
+  interaction: {
+    read: EditorSessionInteractionRead
+    write: EditorSessionInteractionWrite
   }
-}
-```
-
-### 职责
-
-- selection 成员读取
-- selection 统计
-- selection affordance
-- selection transform / move / overlay 所需信息
-- toolbar scope 与 toolbar context
-- selected edge chrome
-
-### 原则
-
-- 它不是 authority state
-- 它也不只是 presentation
-- 它是 **interaction + UI 共用的 selection semantic model**
-
-这点非常关键，因为当前 input bindings 已经直接依赖 `selection.summary` / `selection.affordance`。
-
----
-
-## 3.5 `derived.chrome`
-
-```ts
-derived.chrome = {
-  marquee,
-  draw,
-  edgeGuide,
-  snap,
-  selection
-}
-```
-
-### 职责
-
-- 汇总 editor 可视 chrome
-- 给 overlay 层直接消费
-
-### 原则
-
-- `chrome` 是 derived，不是 session
-- 它依赖 scene graph chrome store 和 interaction state
-- 它是 UI 消费层，不是 authority state
-
----
-
-## 3.6 `derived.mindmap`
-
-```ts
-derived.mindmap = {
-  chrome: {
-    get(mindmapId),
-    subscribe(mindmapId)
+  preview: {
+    state: ReadStore<EditorInputPreviewState>
+    write: EditorInputPreviewWrite
   }
+  resetDocument: () => void
+  resetInteraction: () => void
+  reset: () => void
 }
 ```
 
-如果未来还出现：
+说明：
 
-- mindmap toolbar state
-- mindmap insertion hints
-- subtree focus derived state
-
-都继续放在 `derived.mindmap` 下扩展，而不是重新发明新的顶层命名空间。
+- 它继续存在
+- 但不再作为 public `Editor.session`
 
 ---
 
-## 3.7 public `history`
-
-`history` 应独立成为 editor 的一级 public 能力：
-
-```ts
-history: HistoryPort<IntentResult>
-```
-
-### 原因
-
-- 它不是 panel
-- 它不是 session
-- 它和 `write.history` 是天然对称的一组能力
-
-把它藏在 `panel` 里，只会让边界继续 UI 化。
-
----
-
-## 3.8 public `scene`
-
-`scene` 只负责 scene runtime 的 query 能力与 host-level 运行时能力。
-
-```ts
-scene = {
-  revision,
-  query,
-  stores,
-  host: {
-    pick,
-    visible
-  }
-}
-```
-
-### 原则
-
-`scene` 不包含：
-
-- toolbar
-- selection overlay
-- history
-- draw read model
-- tool read model
-
-这些都不属于 projection runtime 本身。
-
----
-
-## 3.9 public `input`
-
-长期建议继续保留 `input` 这个名字，不改成 `interactions`。
-
-```ts
-input = {
-  pointerDown,
-  pointerMove,
-  pointerUp,
-  pointerCancel,
-  pointerLeave,
-  wheel,
-  keyDown,
-  keyUp,
-  blur,
-  cancel,
-  contextMenu,
-  pointerMode
-}
-```
-
-### 原因
-
-- 这层本质上就是外部输入入口
-- 它主要被 DOM / pointer / keyboard bridge 消费
-- `input` 比 `interactions` 更直接、更贴近调用语义
-
-内部可以继续有 interaction runtime，但 public object 保持 `input` 更稳定。
-
----
-
-## 4. 最终 public API
-
-最终 `Editor` 应定义为：
+## 4.2 public `state`
 
 ```ts
 export type EditorState = {
@@ -589,25 +207,143 @@ export type EditorState = {
     center: store.ReadStore<Point>
   }
 }
+```
 
+原则：
+
+- 只读
+- authority state public surface
+- 不暴露 mutate / preview.write / interaction.write
+
+---
+
+## 4.3 public `derived`
+
+最终 `derived` 明确分两层：
+
+```ts
 export type EditorDerived = {
+  scene: EditorSceneDerived
+  editor: EditorPolicyDerived
+}
+```
+
+### `scene-derived`
+
+```ts
+export type EditorSceneDerived = {
   selection: {
     members: store.ReadStore<SelectionMembers>
     summary: store.ReadStore<SelectionSummary>
     affordance: store.ReadStore<SelectionAffordance>
     view: store.ReadStore<EditorSelectionView>
-    toolbar: store.ReadStore<SelectionToolbarContext | undefined>
-    node: EditorSelectionNodeRead
     edge: {
       chrome: store.ReadStore<SelectedEdgeChrome | undefined>
     }
   }
-  chrome: EditorChromeSource
+  chrome: {
+    marquee: store.ReadStore<EditorMarqueePreview | undefined>
+    draw: store.ReadStore<DrawPreview | null>
+    edgeGuide: store.ReadStore<EdgeGuide>
+    snap: store.ReadStore<readonly Guide[]>
+  }
   mindmap: {
     chrome: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
   }
 }
+```
 
+说明：
+
+- 这些值最终都应来自 `editor-scene query/stores`
+- `whiteboard-editor` 只做 public 组装，不再承担核心计算
+
+### `editor-derived`
+
+```ts
+export type EditorPolicyDerived = {
+  selection: {
+    toolbar: store.ReadStore<SelectionToolbarContext | undefined>
+    overlay: store.ReadStore<SelectionOverlay | undefined>
+    node: {
+      selected: store.KeyedReadStore<NodeId, boolean>
+      stats: store.ReadStore<SelectionNodeStats>
+      scope: store.ReadStore<SelectionToolbarNodeScope | undefined>
+    }
+    edge: {
+      scope: store.ReadStore<SelectionToolbarEdgeScope | undefined>
+      stats: store.ReadStore<SelectionEdgeStats>
+    }
+  }
+}
+```
+
+说明：
+
+- 这层保留在 `whiteboard-editor`
+- 它依赖 defaults / nodeType / toolbar 规则 / editor 当前工具策略
+
+---
+
+## 4.4 public `history`
+
+```ts
+history: HistoryPort<IntentResult>
+```
+
+原则：
+
+- 独立一级能力
+- 不属于 panel
+- 不属于 scene
+- 不属于 session
+
+---
+
+## 4.5 public `input`
+
+保持：
+
+```ts
+input: EditorInputHost
+```
+
+不改名 `interactions`。
+
+原因：
+
+- 这是外部输入入口
+- 调用语义直接
+- 已被 DOM bridge 明确消费
+
+---
+
+## 4.6 public `scene`
+
+```ts
+export type EditorSceneApi = {
+  revision: () => Revision
+  query: Query
+  stores: RuntimeStores
+  host: {
+    pick: ScenePickRuntime
+    visible: (
+      options?: Parameters<Query['spatial']['rect']>[1]
+    ) => ReturnType<Query['spatial']['rect']>
+  }
+}
+```
+
+原则：
+
+- `scene` 只暴露 projection runtime API
+- 不暴露 toolbar / history / panel / tool policy
+
+---
+
+## 4.7 最终 `Editor`
+
+```ts
 export type Editor = {
   document: DocumentQuery
   scene: EditorSceneApi
@@ -621,29 +357,14 @@ export type Editor = {
 }
 ```
 
----
+补充约束：
 
-## 5. `document` 与 `scene.query.document` 的关系
-
-现有实现里：
-
-- `document = scene.query.document`
-
-这是事实，但不代表 public API 需要继续强调两套同等地位的 document 入口。
-
-最终原则：
-
-- `editor.document` 是 public canonical document query surface
-- `scene.query.document` 是 scene runtime 内部既有结构的一部分
-- 外部调用方以 `editor.document` 为准
-
-这样可以避免“document 到底属于 scene 还是 editor”的概念重复继续扩散。
+- `document` 仍保留为 `scene.query.document` 的 canonical alias
+- 外部统一用 `editor.document`
 
 ---
 
-## 6. 目录最终形态
-
-建议目录收口为：
+## 5. 最终目录
 
 ```txt
 src/
@@ -657,9 +378,8 @@ src/
       viewport.ts
     derived/
       index.ts
-      selection.ts
-      chrome.ts
-      mindmap.ts
+      scene.ts
+      policy.ts
       selection-policy.ts
   scene/
     binding.ts
@@ -674,230 +394,161 @@ src/
     preview/
 ```
 
-### 对应关系
+对应关系：
 
-当前：
-
-- `editor/source/session.ts`
-- `editor/source/selection.ts`
-
-最终：
-
-- `editor/derived/index.ts`
-- `editor/derived/selection.ts`
-- `editor/derived/chrome.ts`
-- `editor/derived/mindmap.ts`
-- `editor/derived/selection-policy.ts`
-- `editor/state/index.ts`
-
-当前：
-
-- `scene/source.ts`
-- `scene/view.ts`
-
-最终：
-
-- `scene/binding.ts`
-- `scene/api.ts`
+- `editor/source/session.ts` -> `editor/state/* + editor/derived/*`
+- `editor/source/selection.ts` -> `editor/derived/selection-policy.ts`
+- `scene/source.ts` -> `scene/binding.ts`
+- `scene/view.ts` -> `scene/api.ts`
 
 ---
 
-## 7. `createEditor` 的最终装配顺序
+## 6. 迁移表
 
-最终 `createEditor` 应按下面顺序装配：
+## 6.1 类型迁移表
 
-## Step 1
+| 当前 | 目标 | 去向 |
+| --- | --- | --- |
+| `EditorSessionSource` | 删除 | 拆到 `EditorState` + `EditorDerived` + `history` |
+| `Editor.session` | 删除 | 改为 `Editor.state` + `Editor.derived` |
+| `EditorChromeSource` | 保留，但归 `derived.scene.chrome` | `editor-scene` 提供核心数据 |
+| `EditorPanelSource` | 删除 | 拆成 `derived.editor.selection.toolbar` + `history` + `state.draw` |
+| `EditorSceneSource`（editor types 中的 public scene） | 重命名 | `EditorSceneApi` |
 
-创建内部 authority runtimes：
+---
 
-- `session`
-- `textLayout`
-- `sceneBinding`
-- `sceneRuntime`
-- `sceneApi`
+## 6.2 字段迁移表
 
-## Step 2
+| 当前访问路径 | 最终访问路径 | 归属 |
+| --- | --- | --- |
+| `editor.session.tool` | `editor.state.tool` | authority state |
+| `editor.session.draw` | `editor.state.draw` | authority state |
+| `editor.session.edit` | `editor.state.edit` | authority state |
+| `editor.session.selection` | `editor.state.selection` | authority state |
+| `editor.session.interaction` | `editor.state.interaction` | authority state |
+| `editor.session.viewport` | `editor.state.viewport` | authority state |
+| `editor.session.selection.members` | `editor.derived.scene.selection.members` | scene-derived |
+| `editor.session.selection.summary` | `editor.derived.scene.selection.summary` | scene-derived |
+| `editor.session.selection.affordance` | `editor.derived.scene.selection.affordance` | scene-derived |
+| `editor.session.selection.view` | `editor.derived.scene.selection.view` | scene-derived wrapper |
+| `editor.session.selection.node.selected` | `editor.derived.editor.selection.node.selected` | editor policy helper |
+| `editor.session.selection.node.stats` | `editor.derived.editor.selection.node.stats` | editor policy derived |
+| `editor.session.selection.node.scope` | `editor.derived.editor.selection.node.scope` | editor policy derived |
+| `editor.session.selection.edge.chrome` | `editor.derived.scene.selection.edge.chrome` | scene-derived |
+| `editor.session.chrome.marquee` | `editor.derived.scene.chrome.marquee` | scene-derived |
+| `editor.session.chrome.draw` | `editor.derived.scene.chrome.draw` | scene-derived |
+| `editor.session.chrome.edgeGuide` | `editor.derived.scene.chrome.edgeGuide` | scene-derived |
+| `editor.session.chrome.snap` | `editor.derived.scene.chrome.snap` | scene-derived |
+| `editor.session.chrome.selection` | `editor.derived.editor.selection.overlay` | editor policy derived |
+| `editor.session.panel.selectionToolbar` | `editor.derived.editor.selection.toolbar` | editor policy derived |
+| `editor.session.panel.history` | `editor.history` | independent capability |
+| `editor.session.panel.draw` | `editor.state.draw` | authority state |
+| `editor.session.history` | `editor.history` | independent capability |
+| `editor.session.mindmap.chrome` | `editor.derived.scene.mindmap.chrome` | scene-derived |
 
-创建 write 与输入运行时：
+---
 
-- `writeRuntime`
-- `toolService`
-- `boundary`
-- `actions`
-- `inputHost`
-- `inputApi`
+## 6.3 实现归属表
 
-## Step 3
+| 当前实现 | 最终归属 | 说明 |
+| --- | --- | --- |
+| `graph.query.selection.members` | `editor-scene` | 保留 |
+| `graph.query.selection.summary` | `editor-scene` | 保留 |
+| `graph.query.selection.affordance` | `editor-scene` | 保留 |
+| `graph.query.edge.chrome` | `editor-scene` | 保留 |
+| `graph.query.mindmap.addChildTargets` | `editor-scene` | 保留 |
+| `chromeMarquee/chromeDraw/chromeSnap/chromeEdgeGuide` | `editor-scene` | 下沉为 `query.chrome.*` 或 scene stores wrapper |
+| `readNodeScope` | `whiteboard-editor` | 保留，依赖 defaults + supportsStyle |
+| `readEdgeScope` | `whiteboard-editor` | 保留，依赖 defaults |
+| `resolveSelectionOverlay` | `whiteboard-editor` | 保留，属于 editor display policy |
+| `resolveSelectionToolbar` | `whiteboard-editor` | 保留，属于 toolbar policy |
 
-创建 public 只读面：
+---
 
-- `state`
-- `derived`
-- `history`
+## 6.4 兼容期映射表
 
-## Step 4
-
-组装最终 `Editor`：
+兼容期允许保留：
 
 ```ts
-return {
-  document,
-  scene,
-  state,
-  derived,
-  history,
-  input,
-  write,
-  events,
-  dispose
-}
+editor.session // deprecated adapter
 ```
 
-### 关键原则
+映射规则：
 
-不要再在最后一步把 `sessionSource` 挂成 `session`。
+| 兼容层字段 | 实际读取 |
+| --- | --- |
+| `session.tool` | `state.tool` |
+| `session.draw` | `state.draw` |
+| `session.edit` | `state.edit` |
+| `session.selection` | `state.selection` |
+| `session.interaction` | `state.interaction` |
+| `session.viewport` | `state.viewport` |
+| `session.chrome` | `derived.scene.chrome` + `derived.editor.selection.overlay` 适配 |
+| `session.panel.selectionToolbar` | `derived.editor.selection.toolbar` |
+| `session.panel.history` | `history` |
+| `session.panel.draw` | `state.draw` |
+| `session.mindmap.chrome` | `derived.scene.mindmap.chrome` |
 
-如果内部仍需要一个兼容适配层，也应只存在于迁移阶段，而不是作为长期 public 形态。
+约束：
 
----
-
-## 8. 实施原则
-
-## 8.1 不再让 derived model 伪装成 session
-
-只要一个对象依赖了：
-
-- scene query
-- scene stores
-- history
-- defaults
-- nodeType
-- chrome projection
-
-它就不是 session。
+- compat adapter 不再新增任何新能力
+- 新代码禁止依赖 `editor.session`
 
 ---
 
-## 8.2 不再让 UI 聚合命名主导 public API
+## 7. 迁移阶段
 
-`panel`、`toolbar`、`dock`、`overlay` 这些词可以存在于 UI 层，但不应该主导 editor 顶层 public 边界。
+## Phase 1
 
-editor 的顶层边界应是：
-
-- authority state
-- derived model
-- commands
-- input
-- events
-
-而不是某个具体界面布局。
-
----
-
-## 8.3 不直接公开内部写通道
-
-public `Editor` 不应暴露：
-
-- `session.mutate`
-- `session.preview.write`
-- `session.interaction.write`
-
-外部写入口统一经由：
-
-- `write`
-- `input`
-
-这样 command path 和 input path 才是稳定边界。
-
----
-
-## 8.4 `derived` 不等于“只给 UI 用”
-
-这是本轮最重要的概念修正之一。
-
-当前 selection interaction、transform interaction 已经直接依赖派生模型中的：
-
-- `summary`
-- `affordance`
-- `transformPlan`
-
-因此这层应被定义为：
-
-- **semantic derived model**
-
-而不是狭义的 UI facade。
-
----
-
-## 9. 推荐迁移顺序
-
-## Phase 1：先改名，纠正目录语义
+只改名，不改行为：
 
 - `scene/source.ts` -> `scene/binding.ts`
 - `scene/view.ts` -> `scene/api.ts`
 - `editor/source/session.ts` -> `editor/derived/index.ts`
 - `editor/source/selection.ts` -> `editor/derived/selection-policy.ts`
 
-完成标准：
-
-- 目录名与文件名不再误导职责
-- 不再出现“session source 实际是 derived model”的命名债务
-
 ---
 
-## Phase 2：拆分 `editor/source/session.ts`
+## Phase 2
 
-按职责拆成：
+拆 `editor/source/session.ts`：
 
 - `editor/state/index.ts`
-- `editor/derived/selection.ts`
-- `editor/derived/chrome.ts`
-- `editor/derived/mindmap.ts`
-
-完成标准：
-
-- 不再有一个大而杂的 `session source` 聚合文件
-- authority read 与 derived read 在实现层已经分开
+- `editor/derived/scene.ts`
+- `editor/derived/policy.ts`
 
 ---
 
-## Phase 3：引入新的 public shape，但保留兼容层
+## Phase 3
 
-新增：
+把 scene-generic derived 下沉到 `editor-scene`：
+
+- `selection.members`
+- `selection.summary`
+- `selection.affordance`
+- `edge.chrome`
+- `mindmap.addChildTargets`
+- `chrome.marquee/draw/guides/edgeGuide`
+
+---
+
+## Phase 4
+
+引入新 public API：
 
 - `editor.state`
 - `editor.derived`
 - `editor.history`
 
-保留兼容：
+保留：
 
-- `editor.session` 作为 deprecated adapter
-
-adapter 只用于迁移，不再继续扩展新能力。
-
-完成标准：
-
-- 新代码默认只读 `state` / `derived`
-- 旧代码暂时还能跑
+- `editor.session` deprecated adapter
 
 ---
 
-## Phase 4：迁移消费方
+## Phase 5
 
-按下面规则迁移：
-
-- `editor.session.tool` -> `editor.state.tool`
-- `editor.session.draw` -> `editor.state.draw`
-- `editor.session.edit` -> `editor.state.edit`
-- `editor.session.selection` -> `editor.state.selection` 或 `editor.derived.selection`
-- `editor.session.interaction` -> `editor.state.interaction`
-- `editor.session.viewport` -> `editor.state.viewport`
-- `editor.session.chrome` -> `editor.derived.chrome`
-- `editor.session.panel.selectionToolbar` -> `editor.derived.selection.toolbar`
-- `editor.session.history` -> `editor.history`
-- `editor.session.mindmap.chrome` -> `editor.derived.mindmap.chrome`
-
-完成标准：
+迁移调用方与测试：
 
 - React hooks
 - input bindings
@@ -905,49 +556,20 @@ adapter 只用于迁移，不再继续扩展新能力。
 - toolbar components
 - tests
 
-都不再依赖 `editor.session` 这个混合概念。
-
 ---
 
-## Phase 5：删除兼容层
+## Phase 6
 
 删除：
 
 - `EditorSessionSource`
 - `createEditorSessionSource`
-- `Editor.session` public 字段
-
-完成标准：
-
-- public API 中 authority state 与 derived model 完全分离
-- `session` 重新回到内部 runtime 语义
+- `editor.session` public field
 
 ---
 
-## 10. 最终判断
+## 8. 最终一句话定义
 
-这次重构的长期目标不应是：
+最终形态下：
 
-- `session = 真实 runtime`
-- `facades = 派生读模型`
-
-因为这样虽然比现状更好，但仍然会留下两个问题：
-
-- `session` 作为 public 字段会暴露内部写通道
-- `facades` 这个词仍然过于宽泛，且掩盖 interaction 对派生模型的依赖
-
-真正更稳的终态应是：
-
-- `session = 内部 authority runtime`
-- `state = 对外 authority read surface`
-- `derived = 对外 semantic derived model`
-- `history = 独立 public capability`
-- `input = 外部输入入口`
-- `write = 外部命令入口`
-- `scene = projection runtime API`
-
-把它压缩成一句话就是：
-
-> editor 内部持有 session runtime，对外暴露 state、derived、history、input、write；scene 只负责 projection/query runtime，而不再承担 editor 读模型的概念。
-
-这才是这轮重构的最终实现方案。
+> `editor-scene` 负责 projection runtime 与 scene-generic derived；`whiteboard-editor` 负责 authority state、editor policy derived、input、write 与 public API 组装；public `Editor` 只暴露 `state / derived / history / input / write / scene / document`。

@@ -1,19 +1,17 @@
 import type { DataDoc } from '@dataview/core/types/state'
 import { field } from '@dataview/core/field'
-import {
-  entityTable
-} from '@dataview/core/document/table'
+import { entityTable as sharedEntityTable } from '@shared/core'
 import {
   documentViews
 } from '@dataview/core/document/views'
 
 const normalizeDocument = (document: DataDoc): DataDoc => {
-  const records = entityTable.normalize.table(document.records)
+  const records = sharedEntityTable.normalize.table(document.records)
   const preferredActiveViewId = documentViews.activeId.resolve(document)
   const nextDocument: DataDoc = {
     schemaVersion: document.schemaVersion,
     records,
-    fields: field.schema.normalize(entityTable.normalize.table(document.fields)),
+    fields: field.schema.normalize(sharedEntityTable.normalize.table(document.fields)),
     views: documentViews.normalize({
       ...document,
       records
@@ -31,9 +29,9 @@ const normalizeDocument = (document: DataDoc): DataDoc => {
 
 const cloneDocument = (document: DataDoc): DataDoc => ({
   schemaVersion: document.schemaVersion,
-  records: entityTable.clone.table(document.records),
-  fields: entityTable.clone.table(document.fields),
-  views: entityTable.clone.table(document.views),
+  records: sharedEntityTable.clone.table(document.records),
+  fields: sharedEntityTable.clone.table(document.fields),
+  views: sharedEntityTable.clone.table(document.views),
   activeViewId: documentViews.activeId.resolve(document),
   ...(Object.prototype.hasOwnProperty.call(document, 'meta')
     ? {

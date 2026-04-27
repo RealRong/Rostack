@@ -3,14 +3,12 @@ import type {
   Intent as CoreIntent
 } from '@dataview/core/types'
 import {
-  compileIntents,
-  dataviewMutationOperations,
+  compile,
+  definitions,
+  spec,
   type DataviewMutationKey,
   type DataviewTrace
 } from '@dataview/core/operations'
-import {
-  DATAVIEW_OPERATION_DEFINITIONS
-} from '@dataview/core/operations/definitions'
 import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
@@ -59,7 +57,7 @@ const shouldClearHistory = (
   config: DataviewHistoryConfig
 ): boolean => (
   shouldTrackOrigin(commit.origin, config)
-  && commit.forward.some((entry) => DATAVIEW_OPERATION_DEFINITIONS[entry.type].sync === 'checkpoint')
+  && commit.forward.some((entry) => definitions[entry.type].sync === 'checkpoint')
 )
 
 export type DataviewMutationKernel = Omit<
@@ -88,7 +86,7 @@ export const createDataviewMutationKernel = (input?: {
   return {
     normalize: (doc) => doc,
     compile: ({ doc, intents }) => {
-      const result = compileIntents({
+      const result = compile({
         document: doc,
         intents: intents as readonly CoreIntent[]
       })
@@ -100,7 +98,7 @@ export const createDataviewMutationKernel = (input?: {
         outputs: result.outputs
       }
     },
-    operations: dataviewMutationOperations,
+    operations: spec,
     ...(historyConfig.enabled
       ? {
           history: {
@@ -110,7 +108,7 @@ export const createDataviewMutationKernel = (input?: {
               ops
             }) => (
               shouldTrackOrigin(origin, historyConfig)
-              && ops.every((entry) => DATAVIEW_OPERATION_DEFINITIONS[entry.type].history !== false)
+              && ops.every((entry) => definitions[entry.type].history !== false)
             ),
             clear: ({
               origin,

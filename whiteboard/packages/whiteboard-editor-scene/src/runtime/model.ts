@@ -92,8 +92,8 @@ type EditorSceneSurface = {
     edge: {
       statics: ProjectionFamilyField<WorkingState, EdgeStaticId, EdgeStaticView>
       active: ProjectionFamilyField<WorkingState, EdgeId, EdgeActiveView>
-      labels: ProjectionFamilyField<WorkingState, EdgeLabelKey, WorkingState['render']['labels'] extends Map<EdgeLabelKey, infer TValue> ? TValue : never>
-      masks: ProjectionFamilyField<WorkingState, EdgeId, WorkingState['render']['masks'] extends Map<EdgeId, infer TValue> ? TValue : never>
+      labels: ProjectionFamilyField<WorkingState, EdgeLabelKey, WorkingState['render']['labels']['byId'] extends Map<EdgeLabelKey, infer TValue> ? TValue : never>
+      masks: ProjectionFamilyField<WorkingState, EdgeId, WorkingState['render']['masks']['byId'] extends Map<EdgeId, infer TValue> ? TValue : never>
     }
     chrome: {
       scene: ProjectionValueField<WorkingState, WorkingState['render']['chrome']>
@@ -339,6 +339,15 @@ const hasGraphPlanScope = (
   || (scope.edges instanceof Set && scope.edges.size > 0)
   || (scope.mindmaps instanceof Set && scope.mindmaps.size > 0)
   || (scope.groups instanceof Set && scope.groups.size > 0)
+)
+
+const hasUiPlanScope = (
+  scope: UiScopeInput
+): boolean => Boolean(
+  scope.reset
+  || scope.chrome
+  || (scope.nodes instanceof Set && scope.nodes.size > 0)
+  || (scope.edges instanceof Set && scope.edges.size > 0)
 )
 
 const readItemsChangedFromGraphDelta = (
@@ -777,7 +786,7 @@ export const createEditorSceneProjectionSpec = (input: {
   createRead: (runtime) => createEditorSceneRead({
     revision: runtime.revision,
     state: runtime.state,
-    items: () => runtime.state().items.ids.map((key) => runtime.state().items.byId.get(key)!),
+    items: () => runtime.state().items,
     spatial: () => runtime.state().spatial,
     nodeCapability: input.nodeCapability,
     view: input.view
@@ -884,7 +893,7 @@ export const createEditorSceneProjectionSpec = (input: {
       edge: {
         statics: {
           kind: 'family',
-          read: createStableMapFamilyRead((state) => state.render.statics.statics),
+          read: createStableFamilyRead((state) => state.render.statics),
           idsEqual: sameOrder,
           changed: ({ state }) => (
             idDelta.hasAny(state.delta.render.edge.statics)
@@ -910,7 +919,7 @@ export const createEditorSceneProjectionSpec = (input: {
         },
         labels: {
           kind: 'family',
-          read: createStableMapFamilyRead((state) => state.render.labels),
+          read: createStableFamilyRead((state) => state.render.labels),
           idsEqual: sameOrder,
           changed: ({ state }) => (
             idDelta.hasAny(state.delta.render.edge.labels)
@@ -923,7 +932,7 @@ export const createEditorSceneProjectionSpec = (input: {
         },
         masks: {
           kind: 'family',
-          read: createStableMapFamilyRead((state) => state.render.masks),
+          read: createStableFamilyRead((state) => state.render.masks),
           idsEqual: sameOrder,
           changed: ({ state }) => (
             idDelta.hasAny(state.delta.render.edge.masks)
@@ -974,16 +983,24 @@ export const createEditorSceneProjectionSpec = (input: {
       }
     }
 
+    const uiScope = readUiPatchScope({
+      current: input,
+      state,
+      readMindmapNodeIds: (mindmapId) => (
+        state.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
+      )
+    })
+    if (!hasUiPlanScope(uiScope)) {
+      return {
+        phases: [],
+        scope: {}
+      }
+    }
+
     return {
       phases: ['ui'],
       scope: {
-        ui: readUiPatchScope({
-          current: input,
-          state,
-          readMindmapNodeIds: (mindmapId) => (
-            state.graph.owners.mindmaps.get(mindmapId)?.structure.nodeIds
-          )
-        })
+        ui: uiScope
       }
     }
   },

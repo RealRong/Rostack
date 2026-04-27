@@ -1,2 +1,2 @@
-export { calculation as calc } from '../calculation'
-export type * from '../calculation'
+export { calculation as calc } from './calcIndex'
+export type * from './calcIndex'

@@ -12,10 +12,18 @@ import type {
   DocumentRecordFieldRestoreEntry,
   RecordFieldWriteManyOperationInput
 } from '@dataview/core/types/operations'
-import { equal } from '@shared/core'
-import {
-  entityTable
-} from '@dataview/core/document/table'
+import { entityTable as sharedEntityTable, equal } from '@shared/core'
+
+const replaceTable = <TKey extends 'fields' | 'records' | 'views'>(
+  document: DataDoc,
+  key: TKey,
+  table: DataDoc[TKey]
+): DataDoc => document[key] === table
+  ? document
+  : {
+      ...document,
+      [key]: table
+    }
 
 export interface RecordEntry {
   record: DataRecord
@@ -264,7 +272,7 @@ const applyRecordFieldWriteEntries = (
   }
 
   return {
-    document: entityTable.replace(document, 'records', {
+    document: replaceTable(document, 'records', {
       byId: nextById,
       order: document.records.order
     }),
@@ -282,25 +290,25 @@ const enumerate = (
 }
 
 const listRecords = (document: DataDoc): DataRecord[] => {
-  return entityTable.read.list(document.records)
+  return sharedEntityTable.read.list(document.records)
 }
 
 const getRecordIds = (document: DataDoc): RecordId[] => {
-  return entityTable.read.ids(document.records)
+  return sharedEntityTable.read.ids(document.records)
 }
 
 const getRecord = (document: DataDoc, recordId: RecordId): DataRecord | undefined => {
-  return entityTable.read.get(document.records, recordId)
+  return sharedEntityTable.read.get(document.records, recordId)
 }
 
-const hasRecord = (document: DataDoc, recordId: RecordId) => entityTable.read.has(document.records, recordId)
+const hasRecord = (document: DataDoc, recordId: RecordId) => sharedEntityTable.read.has(document.records, recordId)
 
 const getRecordIndex = (document: DataDoc, recordId: RecordId) => {
   return document.records.order.indexOf(recordId)
 }
 
 const replaceRecords = (document: DataDoc, records: readonly DataRecord[]): DataDoc => {
-  return entityTable.replace(document, 'records', entityTable.normalize.records(records))
+  return replaceTable(document, 'records', sharedEntityTable.normalize.list(records))
 }
 
 const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?: number): DataDoc => {
@@ -308,7 +316,7 @@ const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?
     return document
   }
 
-  const nextRecords = entityTable.normalize.records(records)
+  const nextRecords = sharedEntityTable.normalize.list(records)
   const insertedIds = nextRecords.order
   if (!insertedIds.length) {
     return document
@@ -328,7 +336,7 @@ const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?
     }
   })
 
-  return entityTable.replace(document, 'records', {
+  return replaceTable(document, 'records', {
     byId,
     order: nextOrder
   })
@@ -344,12 +352,12 @@ const patchRecord = (
     return document
   }
 
-  const nextRecord = entityTable.patch.merge(current, patch as Partial<DataRecord>) as DataRecord
+  const nextRecord = sharedEntityTable.patch.merge(current, patch as Partial<DataRecord>) as DataRecord
   if (nextRecord === current) {
     return document
   }
 
-  return entityTable.replace(document, 'records', {
+  return replaceTable(document, 'records', {
     byId: (() => {
       const byId = {
         ...document.records.byId
@@ -384,7 +392,7 @@ const removeRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataD
     return document
   }
 
-  return entityTable.replace(document, 'records', {
+  return replaceTable(document, 'records', {
     byId: nextById,
     order: document.records.order.filter(recordId => !removed.has(recordId))
   })

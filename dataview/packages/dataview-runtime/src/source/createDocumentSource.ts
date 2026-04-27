@@ -1,4 +1,4 @@
-import { document as documentApi } from '@dataview/core/document'
+import { field as fieldApi } from '@dataview/core/field'
 import type {
   CustomField,
   CustomFieldId,
@@ -69,15 +69,27 @@ const createDocumentValueSourceRuntime = (): DocumentValueSourceRuntime => {
   }
 }
 
+const readFieldIds = (
+  doc: DataDoc
+): readonly FieldId[] => ['title', ...doc.fields.order]
+
+const readValueEntries = (
+  record: DataRecord
+): readonly (readonly [FieldId, unknown])[] => [
+  ['title', record.title] as const,
+  ...(Object.entries(record.values) as [CustomFieldId, unknown][])
+    .map(([fieldId, value]) => [fieldId, value] as const)
+].filter((entry) => entry[1] !== undefined)
+
 const resetDocumentValues = (input: {
   runtime: DocumentValueSourceRuntime
   snapshot: DocumentSnapshot
 }) => {
-  const recordIds = documentApi.records.ids(input.snapshot.doc)
+  const recordIds = input.snapshot.doc.records.order
   const set = recordIds.flatMap(recordId => {
-    const record = documentApi.records.get(input.snapshot.doc, recordId)
+    const record = input.snapshot.doc.records.byId[recordId]
     return record
-      ? documentApi.values.entries(record).map(([fieldId, value]) => [
+      ? readValueEntries(record).map(([fieldId, value]) => [
           valueId({
             recordId,
             fieldId
@@ -100,10 +112,10 @@ const applyDocumentValueDelta = (input: {
     table: input.runtime.values.table,
     keyOf: valueId,
     readValue: ref => {
-      const record = documentApi.records.get(input.snapshot.doc, ref.recordId)
-      return record
-        ? documentApi.values.get(record, ref.fieldId)
-        : undefined
+      return fieldApi.value.read(
+        input.snapshot.doc.records.byId[ref.recordId],
+        ref.fieldId
+      )
     }
   })
 }
@@ -173,15 +185,15 @@ export const resetDocumentSource = (input: {
   snapshot: DocumentSnapshot
 }) => {
   input.runtime.meta.set(input.snapshot.doc.meta)
-  const recordIds = documentApi.records.ids(input.snapshot.doc)
-  const fieldIds = documentApi.fields.ids(input.snapshot.doc)
-  const schemaFieldIds = documentApi.schema.fields.ids(input.snapshot.doc)
-  const viewIds = documentApi.views.ids(input.snapshot.doc)
+  const recordIds = input.snapshot.doc.records.order
+  const fieldIds = readFieldIds(input.snapshot.doc)
+  const schemaFieldIds = input.snapshot.doc.fields.order
+  const viewIds = input.snapshot.doc.views.order
 
   resetEntityRuntime(input.runtime.records, {
     ids: recordIds,
     values: recordIds.flatMap(recordId => {
-      const value = documentApi.records.get(input.snapshot.doc, recordId)
+      const value = input.snapshot.doc.records.byId[recordId]
       return value
         ? [[recordId, value] as const]
         : []
@@ -194,7 +206,14 @@ export const resetDocumentSource = (input: {
   resetEntityRuntime(input.runtime.fields, {
     ids: fieldIds,
     values: fieldIds.flatMap(fieldId => {
-      const value = documentApi.fields.get(input.snapshot.doc, fieldId)
+      const value = fieldId === 'title'
+        ? {
+            id: 'title',
+            name: 'Title',
+            kind: 'title',
+            system: true
+          } satisfies Field
+        : input.snapshot.doc.fields.byId[fieldId]
       return value
         ? [[fieldId, value] as const]
         : []
@@ -203,7 +222,7 @@ export const resetDocumentSource = (input: {
   resetEntityRuntime(input.runtime.schemaFields, {
     ids: schemaFieldIds,
     values: schemaFieldIds.flatMap(fieldId => {
-      const value = documentApi.schema.fields.get(input.snapshot.doc, fieldId)
+      const value = input.snapshot.doc.fields.byId[fieldId]
       return value
         ? [[fieldId, value] as const]
         : []
@@ -212,7 +231,7 @@ export const resetDocumentSource = (input: {
   resetEntityRuntime(input.runtime.views, {
     ids: viewIds,
     values: viewIds.flatMap(viewId => {
-      const value = documentApi.views.get(input.snapshot.doc, viewId)
+      const value = input.snapshot.doc.views.byId[viewId]
       return value
         ? [[viewId, value] as const]
         : []
@@ -245,25 +264,32 @@ export const applyDocumentDelta = (input: {
   applyEntityDelta({
     delta: input.delta.records,
     runtime: input.runtime.records,
-    readIds: () => documentApi.records.ids(input.snapshot.doc),
-    readValue: recordId => documentApi.records.get(input.snapshot.doc, recordId)
+    readIds: () => input.snapshot.doc.records.order,
+    readValue: recordId => input.snapshot.doc.records.byId[recordId]
   })
   applyEntityDelta({
     delta: input.delta.fields,
     runtime: input.runtime.fields,
-    readIds: () => documentApi.fields.ids(input.snapshot.doc),
-    readValue: fieldId => documentApi.fields.get(input.snapshot.doc, fieldId)
+    readIds: () => readFieldIds(input.snapshot.doc),
+    readValue: fieldId => fieldId === 'title'
+      ? {
+          id: 'title',
+          name: 'Title',
+          kind: 'title',
+          system: true
+        } satisfies Field
+      : input.snapshot.doc.fields.byId[fieldId]
   })
   applyEntityDelta({
     delta: input.delta.schemaFields,
     runtime: input.runtime.schemaFields,
-    readIds: () => documentApi.schema.fields.ids(input.snapshot.doc),
-    readValue: fieldId => documentApi.schema.fields.get(input.snapshot.doc, fieldId)
+    readIds: () => input.snapshot.doc.fields.order,
+    readValue: fieldId => input.snapshot.doc.fields.byId[fieldId]
   })
   applyEntityDelta({
     delta: input.delta.views,
     runtime: input.runtime.views,
-    readIds: () => documentApi.views.ids(input.snapshot.doc),
-    readValue: viewId => documentApi.views.get(input.snapshot.doc, viewId)
+    readIds: () => input.snapshot.doc.views.order,
+    readValue: viewId => input.snapshot.doc.views.byId[viewId]
   })
 }

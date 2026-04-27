@@ -1,7 +1,8 @@
-import { document as documentApi } from '@dataview/core/document'
+import { field as fieldApi } from '@dataview/core/field'
 import type {
   CustomFieldId,
   DataDoc,
+  DataRecord,
   FieldId,
   RecordId,
   ValueRef,
@@ -52,20 +53,41 @@ const collectRecordValueRefs = (
   document: DataDoc,
   recordId: RecordId
 ): readonly ValueRef[] => {
-  const record = documentApi.records.get(document, recordId)
+  const record = document.records.byId[recordId]
   return record
-    ? documentApi.values.fieldIds(record).map(fieldId => ({
-        recordId,
-        fieldId
-      }))
+    ? fieldApi.value.read(record, 'title') !== undefined
+      ? ['title' as FieldId, ...Object.keys(record.values) as FieldId[]].map(fieldId => ({
+          recordId,
+          fieldId
+        }))
+      : []
     : []
 }
 
+const readValue = (
+  record: DataRecord | undefined,
+  fieldId: FieldId
+): unknown | undefined => record
+  ? fieldApi.value.read(record, fieldId)
+  : undefined
+
 const collectAllValueRefs = (
   document: DataDoc
-): readonly ValueRef[] => documentApi.records.ids(document).flatMap((recordId) => (
+): readonly ValueRef[] => document.records.order.flatMap((recordId) => (
   collectRecordValueRefs(document, recordId)
 ))
+
+const readFieldIds = (
+  document: DataDoc
+): readonly FieldId[] => ['title', ...document.fields.order]
+
+const readSchemaFieldIds = (
+  document: DataDoc
+): readonly CustomFieldId[] => document.fields.order
+
+const readViewIds = (
+  document: DataDoc
+): readonly ViewId[] => document.views.order
 
 const buildValueDelta = (input: {
   previous: DataDoc
@@ -101,19 +123,15 @@ const buildValueDelta = (input: {
     })
   } else {
     touched?.forEach((fieldIds, recordId) => {
-      fieldIds.forEach((fieldId) => {
+      fieldIds.forEach((fieldId: FieldId) => {
         const ref: ValueRef = {
           recordId,
           fieldId
         }
-        const nextRecord = documentApi.records.get(input.next, recordId)
-        const previousRecord = documentApi.records.get(input.previous, recordId)
-        const nextValue = nextRecord
-          ? documentApi.values.get(nextRecord, fieldId)
-          : undefined
-        const previousValue = previousRecord
-          ? documentApi.values.get(previousRecord, fieldId)
-          : undefined
+        const nextRecord = input.next.records.byId[recordId]
+        const previousRecord = input.previous.records.byId[recordId]
+        const nextValue = readValue(nextRecord, fieldId)
+        const previousValue = readValue(previousRecord, fieldId)
 
         if (nextValue !== undefined) {
           setChange(ref, 'set')
@@ -133,13 +151,13 @@ const buildValueDelta = (input: {
     })
   })
   input.trace.fields?.removed?.forEach((fieldId) => {
-    documentApi.records.ids(input.previous).forEach((recordId) => {
-      const record = documentApi.records.get(input.previous, recordId)
+    input.previous.records.order.forEach((recordId: RecordId) => {
+      const record = input.previous.records.byId[recordId]
       if (!record) {
         return
       }
 
-      if (documentApi.values.get(record, fieldId) === undefined) {
+      if (readValue(record, fieldId) === undefined) {
         return
       }
 
@@ -182,12 +200,12 @@ export const projectDocumentDelta = (input: {
     }
   }
 
-  const nextRecordIds = documentApi.records.ids(input.next)
-  const nextFieldIds = documentApi.fields.ids(input.next)
-  const nextSchemaFieldIds = documentApi.schema.fields.ids(input.next)
-  const nextViewIds = documentApi.views.ids(input.next)
+  const nextRecordIds = input.next.records.order
+  const nextFieldIds = readFieldIds(input.next)
+  const nextSchemaFieldIds = readSchemaFieldIds(input.next)
+  const nextViewIds = readViewIds(input.next)
   const records = buildEntityDelta<RecordId>({
-    previousIds: documentApi.records.ids(input.previous),
+    previousIds: input.previous.records.order,
     nextIds: nextRecordIds,
     touched: readTouchedIds(
       dataviewTrace.record.touchedIds(input.trace),
@@ -197,7 +215,7 @@ export const projectDocumentDelta = (input: {
   })
   const values = buildValueDelta(input)
   const fields = buildEntityDelta<FieldId>({
-    previousIds: documentApi.fields.ids(input.previous),
+    previousIds: readFieldIds(input.previous),
     nextIds: nextFieldIds,
     touched: readTouchedIds(
       dataviewTrace.field.touchedIds(input.trace),
@@ -206,7 +224,7 @@ export const projectDocumentDelta = (input: {
     removed: [...(input.trace.fields?.removed ?? [])]
   })
   const schemaFields = buildEntityDelta<CustomFieldId>({
-    previousIds: documentApi.schema.fields.ids(input.previous),
+    previousIds: readSchemaFieldIds(input.previous),
     nextIds: nextSchemaFieldIds,
     touched: readTouchedIds(
       dataviewTrace.field.schemaIds(input.trace),
@@ -215,7 +233,7 @@ export const projectDocumentDelta = (input: {
     removed: [...(input.trace.fields?.removed ?? [])]
   })
   const views = buildEntityDelta<ViewId>({
-    previousIds: documentApi.views.ids(input.previous),
+    previousIds: readViewIds(input.previous),
     nextIds: nextViewIds,
     touched: readTouchedIds(
       dataviewTrace.view.touchedIds(input.trace),

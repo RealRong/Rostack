@@ -17,7 +17,7 @@ import {
   readFieldOptions,
   replaceFieldOptions,
   type OptionField
-} from '@dataview/core/shared'
+} from '@dataview/core/field/option'
 
 const getFieldOptionSpec = (
   field: OptionField

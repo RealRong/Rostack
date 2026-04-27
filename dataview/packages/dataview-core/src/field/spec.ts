@@ -12,7 +12,7 @@ import type {
 import {
   type DraftParseResult as FieldDraftParseResult,
   isEmptyValue
-} from '@dataview/core/shared/value'
+} from '@dataview/core/field/value'
 import {
   getKindSpec,
   type KindSpec

@@ -916,5 +916,5 @@ export interface Query {
       }
     }
   }
-  items(): readonly SceneItem[]
+  items(): State['items']
 }

@@ -1,20 +1,12 @@
 import type {
   CustomField,
   CustomFieldId,
-  DataDoc,
   FieldOption,
-  Intent as CoreIntent
 } from '@dataview/core/types'
-import {
-  document as documentApi
-} from '@dataview/core/document'
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import {
-  id as dataviewId
-} from '@dataview/core/id'
-import { string } from '@shared/core'
+import { createId, string } from '@shared/core'
 import type {
   Engine,
   FieldsApi
@@ -49,12 +41,10 @@ const findAddedOption = (
 export const createFieldsApi = (
   engine: Pick<Engine, 'doc' | 'execute'>
 ): FieldsApi => {
-  const listFields = () => documentApi.schema.fields.ids(engine.doc())
-    .flatMap((fieldId) => {
-      const field = documentApi.schema.fields.get(engine.doc(), fieldId)
-      return field ? [field] : []
-    })
-  const getField = (fieldId: CustomFieldId) => documentApi.schema.fields.get(engine.doc(), fieldId)
+  const listFields = () => engine.doc().fields.order
+    .map((fieldId) => engine.doc().fields.byId[fieldId])
+    .filter((field): field is CustomField => Boolean(field))
+  const getField = (fieldId: CustomFieldId) => engine.doc().fields.byId[fieldId]
   const getOptionFieldById = (fieldId: CustomFieldId) => getOptionField(getField(fieldId))
 
   return {
@@ -66,7 +56,7 @@ export const createFieldsApi = (
         return undefined
       }
 
-      const fieldId = dataviewId.create('field')
+      const fieldId = createId('field') as CustomFieldId
       const result = engine.execute({
         type: 'field.create',
         input: {

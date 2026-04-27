@@ -22,14 +22,14 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import type { ViewState } from '@dataview/engine/contracts/view'
 import type { DocumentReader } from '@dataview/engine/document/reader'
-import type { ProjectionTrace } from '@shared/projection'
+import type {
+  ProjectionTrace,
+  ScopeInputValue,
+  ScopeSchema,
+  ScopeValue
+} from '@shared/projection'
 import {
-  createFlagScopeField,
-  createScopeSchema,
-  createSlotScopeField,
-  type InternalScopeInputValue as ScopeInputValue,
-  type InternalScopeValue as ScopeValue
-} from '@shared/projection/internal'
+} from '@shared/projection'
 
 export type ActivePhaseName =
   | 'query'
@@ -83,25 +83,25 @@ export interface PublishPhaseScope {
   }
 }
 
-export const membershipPhaseScope = createScopeSchema({
-  query: createSlotScopeField<MembershipPhaseScope['query']>()
-})
+export const membershipPhaseScope: ScopeSchema<MembershipPhaseScope> = {
+  query: 'slot'
+}
 
-export const summaryPhaseScope = createScopeSchema({
-  membership: createSlotScopeField<SummaryPhaseScope['membership']>()
-})
+export const summaryPhaseScope: ScopeSchema<SummaryPhaseScope> = {
+  membership: 'slot'
+}
 
-export const publishPhaseScope = createScopeSchema({
-  reset: createFlagScopeField(),
-  membership: createSlotScopeField<PublishPhaseScope['membership']>(),
-  summary: createSlotScopeField<PublishPhaseScope['summary']>()
-})
+export const publishPhaseScope: ScopeSchema<PublishPhaseScope> = {
+  reset: 'flag',
+  membership: 'slot',
+  summary: 'slot'
+}
 
 export interface ActivePhaseScopeMap {
   query: undefined
-  membership: typeof membershipPhaseScope
-  summary: typeof summaryPhaseScope
-  publish: typeof publishPhaseScope
+  membership: MembershipPhaseScope
+  summary: SummaryPhaseScope
+  publish: PublishPhaseScope
 }
 
 export interface ActiveProjectionWorking {

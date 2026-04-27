@@ -1,11 +1,36 @@
-import { definitions } from '@dataview/core/operations/definitions'
-import { spec } from '@dataview/core/operations/spec'
-import { apply } from '@dataview/core/operations/apply'
-import { compile } from '@dataview/core/operations/compile'
-import * as key from '@dataview/core/operations/key'
-import * as issue from '@dataview/core/operations/issue'
-import { dataviewTrace } from '@dataview/core/operations/trace'
-import { recordCreate } from '@dataview/core/operations/plan'
+import { DATAVIEW_OPERATION_DEFINITIONS } from './definitions'
+import {
+  dataviewMutationOperations,
+  spec as specAlias,
+  reduceDataviewOperations,
+  type DataviewOperationReduceExtra,
+  type DataviewOperationReduceResult,
+  type DataviewReduceContext
+} from './spec'
+import {
+  compileIntents,
+  compile,
+  type CompiledIntentBatch,
+  type ValidationCode,
+  type ValidationIssue,
+  type ValidationSeverity
+} from './compile'
+import { dataviewTrace, trace as traceAlias, type DataviewTrace } from './trace'
+import {
+  buildRecordCreateIntents,
+  recordCreate,
+  type BuildRecordCreateIntentsInput,
+  type RecordCreateFilterRule
+} from './plan'
+import * as key from './key'
+import * as issue from './issue'
+
+export const definitions = DATAVIEW_OPERATION_DEFINITIONS
+export const spec = specAlias
+export const apply = reduceDataviewOperations
+export { reduceDataviewOperations, compileIntents, compile, key, issue, dataviewTrace }
+export { DATAVIEW_OPERATION_DEFINITIONS, dataviewMutationOperations, buildRecordCreateIntents, recordCreate }
+export { traceAlias as trace }
 
 export const operations = {
   definitions,
@@ -16,23 +41,26 @@ export const operations = {
   issue,
   trace: dataviewTrace,
   plan: {
+    buildRecordCreateIntents,
     recordCreate
   }
 } as const
 
-export { definitions, spec, apply, compile, key, issue, dataviewTrace, recordCreate }
-export type * from '@dataview/core/operations/apply'
-export type * from '@dataview/core/operations/compile'
-export type * from '@dataview/core/operations/definitions'
-export type { DataviewMutationKey } from '@dataview/core/operations/key'
 export type {
-  IssueSource,
+  DataviewMutationKey
+} from './key'
+export type {
+  DataviewTrace,
+  DataviewOperationReduceExtra,
+  DataviewOperationReduceResult,
+  DataviewReduceContext,
+  CompiledIntentBatch,
   ValidationCode,
   ValidationIssue,
-  ValidationSeverity
-} from '@dataview/core/operations/issue'
-export type { DataviewTrace } from '@dataview/core/operations/trace'
-export type {
+  ValidationSeverity,
   BuildRecordCreateIntentsInput,
   RecordCreateFilterRule
-} from '@dataview/core/operations/plan'
+}
+export type {
+  DocumentOperationDefinition
+} from './definitions'

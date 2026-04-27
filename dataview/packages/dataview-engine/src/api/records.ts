@@ -1,9 +1,7 @@
 import type {
+  DataRecord,
   RecordId
 } from '@dataview/core/types'
-import {
-  document as documentApi
-} from '@dataview/core/document'
 import { collection } from '@shared/core'
 import type {
   Engine,
@@ -40,7 +38,7 @@ export const createRecordsApi = (
   }
 
   return {
-    get: (id) => documentApi.records.get(engine.doc(), id),
+    get: (id) => engine.doc().records.byId[id] as DataRecord | undefined,
     create: (input) => {
       const result = engine.execute({
         type: 'record.create',

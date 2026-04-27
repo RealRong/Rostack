@@ -4,9 +4,7 @@ import type {
   FieldId,
   Intent as CoreIntent
 } from '@dataview/core/types'
-import {
-  id as dataviewId
-} from '@dataview/core/id'
+import { createId } from '@shared/core'
 import {
   view as viewApi
 } from '@dataview/core/view'
@@ -31,7 +29,7 @@ const insertField = (
     return undefined
   }
 
-  const fieldId = dataviewId.create('field')
+  const fieldId = createId('field') as CustomFieldId
   const beforeFieldId = viewApi.display.insertBefore(
     view.display.fields,
     input.anchor,

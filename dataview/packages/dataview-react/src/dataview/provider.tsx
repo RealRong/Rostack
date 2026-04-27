@@ -44,7 +44,6 @@ const DataViewProviderInner = (props: DataViewProviderProps) => {
       actorId: props.collab.actorId,
       provider: props.collab.provider
     })
-    runtime.history.set(session.localHistory)
     props.collab.onSession?.(session)
     props.collab.onStatusChange?.(session.status.get())
 
@@ -58,14 +57,12 @@ const DataViewProviderInner = (props: DataViewProviderProps) => {
 
     return () => {
       unsubscribeStatus()
-      runtime.history.reset()
       session.destroy()
       props.collab?.onSession?.(null)
     }
   }, [
     props.collab,
-    props.engine,
-    runtime.history
+    props.engine
   ])
 
   useEffect(() => () => {

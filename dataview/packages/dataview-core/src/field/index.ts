@@ -53,7 +53,7 @@ import {
   expandSearchableValue,
   isEmptyValue,
   normalizeValueToken
-} from '@dataview/core/shared/value'
+} from '@dataview/core/field/value'
 import { parse } from '@shared/core'
 import {
   fieldSpec,

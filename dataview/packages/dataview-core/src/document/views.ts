@@ -7,9 +7,7 @@ import type {
 } from '@dataview/core/types/state'
 import { calculation } from '@dataview/core/view'
 import { documentFields } from '@dataview/core/document/fields'
-import {
-  entityTable
-} from '@dataview/core/document/table'
+import { entityTable as sharedEntityTable } from '@shared/core'
 import { filter } from '@dataview/core/view'
 import { group } from '@dataview/core/view'
 import { search } from '@dataview/core/view'
@@ -17,6 +15,17 @@ import { sort } from '@dataview/core/view'
 import { normalizeRecordOrderIds } from '@dataview/core/view/order'
 import { normalizeViewOptions } from '@dataview/core/view/normalize'
 import { normalizeViewDisplay } from '@dataview/core/view/state'
+
+const replaceTable = <TKey extends 'fields' | 'records' | 'views'>(
+  document: DataDoc,
+  key: TKey,
+  table: DataDoc[TKey]
+): DataDoc => document[key] === table
+  ? document
+  : {
+      ...document,
+      [key]: table
+    }
 
 const createValidRecordIdSet = (document: DataDoc) => new Set<RecordId>(document.records.order)
 
@@ -50,7 +59,7 @@ const normalizeView = (
       : undefined
   )
   const normalizedShared = {
-    ...entityTable.clone.entity(view),
+    ...sharedEntityTable.clone.entity(view),
     search: search.state.normalize(view.search),
     filter: filter.state.normalize(view.filter),
     sort: {
@@ -119,7 +128,7 @@ const normalizeView = (
 }
 
 const normalizeViews = (document: DataDoc): EntityTable<ViewId, View> => {
-  const views = entityTable.normalize.table(document.views)
+  const views = sharedEntityTable.normalize.table(document.views)
   const byId = {} as Record<ViewId, View>
 
   views.order.forEach(viewId => {
@@ -188,10 +197,10 @@ const setActiveViewId = (
 }
 
 const putView = (document: DataDoc, view: View): DataDoc => {
-  const nextDocument = entityTable.replace(
+  const nextDocument = replaceTable(
     document,
     'views',
-    entityTable.write.put(document.views, view)
+    sharedEntityTable.write.put(document.views, view)
   )
 
   return setActiveViewId(
@@ -205,10 +214,10 @@ const removeView = (document: DataDoc, viewId: ViewId): DataDoc => {
     return document
   }
 
-  const nextDocument = entityTable.replace(
+  const nextDocument = replaceTable(
     document,
     'views',
-    entityTable.write.remove(document.views, viewId)
+    sharedEntityTable.write.remove(document.views, viewId)
   )
 
   return setActiveViewId(

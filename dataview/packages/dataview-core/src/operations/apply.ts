@@ -1,8 +1,9 @@
 export {
+  reduceDataviewOperations,
   reduceDataviewOperations as apply
-} from '../mutation/spec'
+} from './spec'
 export type {
   DataviewOperationReduceExtra,
   DataviewOperationReduceResult,
   DataviewReduceContext
-} from '../mutation/spec'
+} from './spec'

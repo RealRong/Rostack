@@ -12,9 +12,6 @@ import { createEditorSceneProjectionSpec } from '../runtime/model'
 import {
   createEditorSceneProjectionRuntime
 } from '../runtime/createEditorSceneProjectionRuntime'
-export {
-  createEditorSceneProjectionRuntime
-} from '../runtime/createEditorSceneProjectionRuntime'
 
 const TEST_SCENE_VIEW = () => ({
   zoom: 1,

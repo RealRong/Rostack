@@ -89,14 +89,22 @@ export const createWorking = (input: {
     render: {
       node: new Map(),
       statics: {
+        ids: [],
+        byId: new Map(),
         styleKeyByEdge: new Map(),
         edgeIdsByStyleKey: new Map(),
         staticIdByEdge: new Map(),
-        staticIdsByStyleKey: new Map(),
-        statics: new Map()
+        staticIdsByStyleKey: new Map()
       },
-      labels: new Map(),
-      masks: new Map(),
+      labels: {
+        ids: [],
+        byId: new Map(),
+        keysByEdge: new Map()
+      },
+      masks: {
+        ids: [],
+        byId: new Map()
+      },
       active: new Map(),
       overlay: renderEdgeOverlay,
       chrome: {

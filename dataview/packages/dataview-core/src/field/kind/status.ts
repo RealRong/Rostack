@@ -7,7 +7,7 @@ import type {
 import {
   normalizeOptionToken,
   readFieldOptionOrder
-} from '@dataview/core/shared'
+} from '@dataview/core/field/option'
 
 export const STATUS_CATEGORIES = [
   'todo',

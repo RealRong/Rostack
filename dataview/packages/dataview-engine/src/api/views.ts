@@ -1,9 +1,7 @@
 import type {
+  View,
   ViewId
 } from '@dataview/core/types'
-import {
-  document as documentApi
-} from '@dataview/core/document'
 import { string } from '@shared/core'
 import { view as viewApi } from '@dataview/core/view'
 import type {
@@ -26,15 +24,13 @@ const readId = (
 export const createViewsApi = (
   engine: Pick<Engine, 'doc' | 'execute'>
 ): ViewsApi => {
-  const readViews = () => documentApi.views.ids(engine.doc())
-    .flatMap((viewId) => {
-      const view = documentApi.views.get(engine.doc(), viewId)
-      return view ? [view] : []
-    })
+  const readViews = () => engine.doc().views.order
+    .map((viewId) => engine.doc().views.byId[viewId])
+    .filter((view): view is View => Boolean(view))
 
   return {
     list: readViews,
-    get: (id) => documentApi.views.get(engine.doc(), id),
+    get: (id) => engine.doc().views.byId[id],
     open: (id) => {
       engine.execute({
         type: 'view.open',
@@ -72,7 +68,7 @@ export const createViewsApi = (
       })
     },
     duplicate: (id) => {
-      const sourceView = documentApi.views.get(engine.doc(), id)
+      const sourceView = engine.doc().views.byId[id]
       if (!sourceView) {
         return undefined
       }

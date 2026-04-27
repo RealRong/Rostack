@@ -4,14 +4,12 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import {
-  buildRecordCreateIntents
+  recordCreate
 } from '@dataview/core/operations'
 import {
   view as viewApi
 } from '@dataview/core/view'
-import {
-  id as dataviewId
-} from '@dataview/core/id'
+import { createId } from '@shared/core'
 import type {
   ItemId
 } from '@dataview/engine/contracts/shared'
@@ -112,8 +110,8 @@ export const createActiveRecordsApi = (input: {
       return undefined
     }
 
-    const recordId = dataviewId.create('record')
-    const created = buildRecordCreateIntents({
+    const recordId = createId('record') as RecordId
+    const created = recordCreate({
       recordId,
       values: createInput?.values as Partial<Record<FieldId, unknown>> | undefined,
       hasField: fieldId => input.base.reader.fields.has(fieldId),

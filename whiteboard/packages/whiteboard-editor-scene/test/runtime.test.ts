@@ -18,10 +18,12 @@ import {
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
 import {
-  createEditorSceneProjectionRuntime,
   createEditorSceneHarness
 } from '../src/testing/runtime'
 import { createEmptyInput } from '../src/testing/input'
+import {
+  createEditorSceneProjectionRuntime
+} from '../src/runtime/createEditorSceneProjectionRuntime'
 
 type RuntimeInputOptions = {
   edit?: EditorSceneInput['session']['edit']
@@ -286,14 +288,16 @@ describe('editor scene runtime', () => {
     unsubscribe()
 
     expect(capture.graph.nodes.ids.length).toBe(1)
-    expect(capture.items.length).toBe(1)
+    expect(capture.items.ids.length).toBe(1)
     expect(capture.documentRevision).toBe(1)
     expect(runtime.query.node.get(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
     expect(capture.render.edge.statics.ids).toBeDefined()
     expect(result.trace?.phases.map((phase) => phase.name)).toEqual([
       'graph',
       'spatial',
-      'view'
+      'items',
+      'ui',
+      'render'
     ])
     expect(emissions).toEqual([result])
   })
@@ -422,9 +426,9 @@ describe('editor scene runtime', () => {
     expect(runtime.query.node.get(childId)).toBe(liveCapture.graph.nodes.byId.get(childId))
   })
 
-  it('builds renderer-ready edge, chrome, and spatial state in the view phase', () => {
+  it('builds renderer-ready edge, chrome, and spatial state in the render pipeline', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_scene_runtime_view')
+      document: documentApi.create('doc_editor_scene_runtime_render')
     })
     const firstId = createNode({
       engine,
@@ -615,11 +619,11 @@ describe('editor scene runtime', () => {
     expect(chrome.preview.guides).toHaveLength(1)
     expect(chrome.preview.draw?.hiddenNodeIds).toEqual([firstId])
 
-    expect(capture.items).toEqual(expect.arrayContaining([
-      { kind: 'node', id: firstId },
-      { kind: 'node', id: secondId },
-      { kind: 'node', id: offscreenId },
-      { kind: 'edge', id: edgeId }
+    expect(capture.items.ids.map((key) => capture.items.byId.get(key)!)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'node', id: firstId }),
+      expect.objectContaining({ kind: 'node', id: secondId }),
+      expect.objectContaining({ kind: 'node', id: offscreenId }),
+      expect.objectContaining({ kind: 'edge', id: edgeId })
     ]))
     expect(
       runtime.query.spatial.rect({

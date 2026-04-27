@@ -38,7 +38,7 @@ const createMoveOrderAction = (
     id: viewId,
     patch: {
       orders: viewApi.order.reorder({
-        allRecordIds: base.reader.document().records.order,
+        allRecordIds: base.reader.document().records.ids,
         currentOrder: view.orders,
         movingRecordIds: recordIds,
         beforeRecordId
@@ -240,7 +240,7 @@ export const createActiveItemsApi = (input: {
       actions.push(...valueActions)
     }
 
-    if (!state.view.sort.rules.order.length) {
+    if (!state.view.sort.rules.ids.length) {
       const moveAction = createMoveOrderAction(
         input.base,
         plan.recordIds,

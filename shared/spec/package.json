@@ -1,0 +1,17 @@
+{
+  "name": "@shared/spec",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

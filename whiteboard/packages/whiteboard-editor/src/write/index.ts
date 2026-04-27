@@ -26,7 +26,7 @@ import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { EditorSceneApi } from '@whiteboard/editor/types/editor'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { NodeSpecReader } from '@whiteboard/editor/types/node'
 
 export type { EditorWrite } from '@whiteboard/editor/write/types'
 
@@ -35,14 +35,14 @@ export const createEditorWrite = ({
   history,
   document,
   projection,
-  registry,
+  nodes,
   measure
 }: {
   engine: Engine
   history: HistoryPort<IntentResult>
   document: DocumentQuery
   projection: EditorSceneApi
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   measure: TextLayoutMeasure
 }): EditorWrite => {
   const historyWrite = createHistoryWrite(history)
@@ -53,7 +53,7 @@ export const createEditorWrite = ({
     read: {
       document
     },
-    registry,
+    nodes,
     measure
   })
   const group = createGroupWrite(engine)
@@ -66,7 +66,7 @@ export const createEditorWrite = ({
   })
   const mindmap = createMindmapWrite({
     engine,
-    registry,
+    nodes,
     measure
   })
 

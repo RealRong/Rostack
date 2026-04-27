@@ -20,9 +20,11 @@ import { createClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboar
 import { createInsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import { createPointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import { createTextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
+import { compileReactNodeSpec } from '@whiteboard/react/features/node/registry/compile'
 import type { WhiteboardServicesContextValue } from '@whiteboard/react/runtime/hooks/useWhiteboard'
 import { createLayoutBackend } from '@whiteboard/react/runtime/whiteboard/layout'
 import { dismissBackgroundEditSelection } from '@whiteboard/react/runtime/whiteboard/pointerDown'
+import type { WhiteboardSpec } from '@whiteboard/react/types/spec'
 
 const clonePoint = (
   point: Point
@@ -108,18 +110,19 @@ export const createWhiteboardServices = ({
   document,
   onDocumentChange,
   coreRegistries,
-  registry,
+  spec,
   resolvedConfig,
   boardConfig
 }: {
   document: Document
   onDocumentChange: (document: Document) => void
   coreRegistries?: CoreRegistries
-  registry: WhiteboardServicesContextValue['registry']
+  spec: WhiteboardSpec
   resolvedConfig: ResolvedConfig
   boardConfig: EngineBoardConfig
 }): WhiteboardRuntimeServices => {
   const initialDrawState: DrawState = product.draw.defaults
+  const nodes = compileReactNodeSpec(spec.nodes)
   const engine = engineApi.create({
     registries: coreRegistries,
     document,
@@ -134,7 +137,7 @@ export const createWhiteboardServices = ({
     initialTool: resolvedConfig.initialTool,
     initialDrawState,
     initialViewport: resolvedConfig.viewport.initial,
-    registry,
+    nodes: spec.nodes,
     services: {
       layout: createLayoutBackend({
         textSources
@@ -216,7 +219,8 @@ export const createWhiteboardServices = ({
     history: history.port,
     setHistorySource: history.set,
     resetHistorySource: history.reset,
-    registry,
+    spec,
+    nodes,
     textSources,
     pointer,
     clipboard,

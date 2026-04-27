@@ -10,7 +10,7 @@ import {
 } from '@shared/reducer'
 import type { MutationOperationsSpec } from '@shared/mutation'
 import {
-  dataviewMutationKeyConflicts,
+  dataviewTargetKeyConflicts,
   serializeDataviewMutationKey,
   type DataviewMutationKey
 } from './key'
@@ -84,7 +84,7 @@ export const dataviewMutationOperations: MutationOperationsSpec<
   serializeKey: serializeDataviewMutationKey,
   createContext: createDataviewReduceContext,
   done: finalizeDataviewTrace,
-  conflicts: dataviewMutationKeyConflicts
+  conflicts: dataviewTargetKeyConflicts
 }
 
 const dataviewOperationReducer = new Reducer<

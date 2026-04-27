@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
-import { editor as editorApi, type LayoutBackend, type NodeRegistry } from '../src'
+import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
 import { createNodeTypeSupport, resolveNodeEditorCapability } from '../src/types/node'
 
-const registry: NodeRegistry = {
+const nodes: NodeSpec = {
   get: (type) => {
     if (type === 'text') {
       return {

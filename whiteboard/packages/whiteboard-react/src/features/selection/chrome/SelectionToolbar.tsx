@@ -11,9 +11,11 @@ import { useStoreValue } from '@shared/react'
 import { ToolbarDivider } from '@shared/ui'
 import { readSelectionCan } from '@whiteboard/react/features/selection/capability'
 import { FloatingToolbarShell } from '@whiteboard/react/features/selection/chrome/FloatingToolbarShell'
-import { readToolbarItemSpec, renderToolbarPanel } from '@whiteboard/react/features/selection/chrome/toolbar/items'
-import { resolveToolbarRecipe } from '@whiteboard/react/features/selection/chrome/toolbar/recipe'
-import type { ToolbarPanelKey } from '@whiteboard/react/features/selection/chrome/toolbar/types'
+import { compiledToolbarSpec } from '@whiteboard/react/features/selection/chrome/toolbar/spec'
+import type {
+  ToolbarItemKey,
+  ToolbarPanelKey
+} from '@whiteboard/react/features/selection/chrome/toolbar/types'
 import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
 
 export const SelectionToolbar = ({
@@ -94,14 +96,46 @@ export const SelectionToolbar = ({
     [activeScope, editor]
   )
   const recipe = useMemo(
-    () => toolbar && activeScope
-      ? resolveToolbarRecipe({
+    () => {
+      if (!toolbar || !activeScope) {
+        return []
+      }
+
+      const layout = activeScope.node
+        ? compiledToolbarSpec.layoutByTarget.node
+        : compiledToolbarSpec.layoutByTarget.edge
+      const entries: Array<
+        | { kind: 'divider' }
+        | { kind: 'item'; key: ToolbarItemKey }
+      > = []
+
+      layout.forEach((group) => {
+        const visible = group.filter((key) => compiledToolbarSpec.visibilityByItemKey[key]({
           context: toolbar,
           activeScope,
           selectionCan,
           scopeCan
+        }))
+        if (!visible.length) {
+          return
+        }
+
+        if (entries.length) {
+          entries.push({
+            kind: 'divider'
+          })
+        }
+
+        visible.forEach((key) => {
+          entries.push({
+            kind: 'item',
+            key
+          })
         })
-      : [],
+      })
+
+      return entries
+    },
     [activeScope, scopeCan, selectionCan, toolbar]
   )
 
@@ -113,7 +147,7 @@ export const SelectionToolbar = ({
     total + (
       entry.kind === 'divider'
         ? 1
-        : (readToolbarItemSpec(entry.key).units ?? 1)
+        : (compiledToolbarSpec.itemByKey.get(entry.key).units ?? 1)
     )
   ), 0)
 
@@ -140,7 +174,7 @@ export const SelectionToolbar = ({
               return <ToolbarDivider key={`divider:${index}`} />
             }
 
-            const spec = readToolbarItemSpec(entry.key)
+            const spec = compiledToolbarSpec.itemByKey.get(entry.key)
 
             return (
               <Fragment key={`${entry.key}:${index}`}>
@@ -165,18 +199,24 @@ export const SelectionToolbar = ({
       renderPanel={({
         activePanelKey,
         closePanel
-      }) => renderToolbarPanel({
-        panelKey: activePanelKey,
-        context: toolbar,
-        activeScope,
-        selectionCan,
-        scopeCan,
-        editor,
-        closePanel,
-        setActiveScope: (key) => {
-          setActiveScopeKey(key)
+      }) => {
+        if (!activePanelKey) {
+          return null
         }
-      })}
+
+        const panel = compiledToolbarSpec.panelByKey.resolve(activePanelKey)
+        return panel?.render({
+          context: toolbar,
+          activeScope,
+          selectionCan,
+          scopeCan,
+          editor,
+          closePanel,
+          setActiveScope: (key) => {
+            setActiveScopeKey(key)
+          }
+        }) ?? null
+      }}
     />
   )
 }

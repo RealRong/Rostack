@@ -1,47 +1,41 @@
-import type { EntityDelta as SharedEntityDelta } from '@shared/delta'
-import type {
-  CustomFieldId,
-  FieldId,
-  RecordId,
-  ValueRef,
-  ViewId
-} from '@dataview/core/types'
-import type {
-  ItemId,
-  SectionId
-} from '@dataview/engine/contracts/shared'
+import {
+  change
+} from '@shared/delta'
 
-export type { EntityDelta } from '@shared/delta'
+export const documentChangeSpec = {
+  reset: 'flag',
+  meta: 'flag',
+  records: 'ids',
+  values: 'ids',
+  fields: 'ids',
+  schemaFields: 'ids',
+  views: 'ids'
+} as const
 
-export interface DocumentDelta {
-  reset?: true
-  meta?: true
-  records?: SharedEntityDelta<RecordId>
-  values?: SharedEntityDelta<ValueRef>
-  fields?: SharedEntityDelta<FieldId>
-  schemaFields?: SharedEntityDelta<CustomFieldId>
-  views?: SharedEntityDelta<ViewId>
-}
+export const activeChangeSpec = {
+  reset: 'flag',
+  view: 'flag',
+  query: 'flag',
+  table: 'flag',
+  gallery: 'flag',
+  kanban: 'flag',
+  records: {
+    matched: 'flag',
+    ordered: 'flag',
+    visible: 'flag'
+  },
+  fields: 'ids',
+  sections: 'ids',
+  items: 'ids',
+  summaries: 'ids'
+} as const
 
+export const documentChange = change(documentChangeSpec)
+export const activeChange = change(activeChangeSpec)
+
+export type DocumentDelta = ReturnType<typeof documentChange.create>
 export type DocDelta = DocumentDelta
-
-export interface ActiveDelta {
-  reset?: true
-  view?: true
-  query?: true
-  table?: true
-  gallery?: true
-  kanban?: true
-  records?: {
-    matched?: true
-    ordered?: true
-    visible?: true
-  }
-  fields?: SharedEntityDelta<FieldId>
-  sections?: SharedEntityDelta<SectionId>
-  items?: SharedEntityDelta<ItemId>
-  summaries?: SharedEntityDelta<SectionId>
-}
+export type ActiveDelta = ReturnType<typeof activeChange.create>
 
 export interface DataviewDelta {
   doc?: DocDelta

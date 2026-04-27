@@ -4,9 +4,9 @@ import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { editor as editorApi } from '../src'
-import type { NodeRegistry } from '../src'
+import type { NodeSpec } from '../src'
 
-const registry: NodeRegistry = {
+const nodes: NodeSpec = {
   get: (type) => {
     if (type === 'text') {
       return {

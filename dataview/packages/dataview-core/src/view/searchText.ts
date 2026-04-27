@@ -110,8 +110,8 @@ const readContextFields = (
 
   const fields: CustomField[] = []
 
-  for (let index = 0; index < context.document.fields.order.length; index += 1) {
-    const fieldId = context.document.fields.order[index]!
+  for (let index = 0; index < context.document.fields.ids.length; index += 1) {
+    const fieldId = context.document.fields.ids[index]!
     const field = documentSchema.fields.get(context.document, fieldId)
     if (field && isDefaultSearchField(field)) {
       fields.push(field)

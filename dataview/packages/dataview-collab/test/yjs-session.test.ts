@@ -8,6 +8,7 @@ import {
 } from '@dataview/core/types'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
+import { dataviewSpec } from '@dataview/react'
 import { collab as collabApi } from '@dataview/collab'
 import { entityTable } from '@shared/core'
 
@@ -75,6 +76,7 @@ const createDocument = (): DataDoc => {
 }
 
 const createTestEngine = () => createEngine({
+  spec: dataviewSpec,
   document: createDocument()
 })
 

@@ -35,6 +35,7 @@ import {
   createSourceTableRuntime,
   createEntitySourceRuntime,
   resetEntityRuntime,
+  resetSourceTableRuntime,
   type EntitySourceRuntime,
   type SourceTableRuntime
 } from '@dataview/runtime/source/patch'
@@ -76,13 +77,31 @@ const EMPTY_KANBAN: ActiveViewKanban = {
   cardsPerColumn: 0 as KanbanCardsPerColumn
 }
 
+const parseItemId = (
+  value: unknown
+): ItemId | undefined => typeof value === 'number'
+  ? value
+  : undefined
+
+const parseSectionId = (
+  value: unknown
+): SectionId | undefined => typeof value === 'string'
+  ? value
+  : undefined
+
+const parseFieldId = (
+  value: unknown
+): FieldId | undefined => typeof value === 'string'
+  ? value
+  : undefined
+
 type SectionSourceRuntime = EntitySourceRuntime<SectionId, Section>
 type SummarySourceRuntime = SourceTableRuntime<SectionId, CalculationCollection>
 
 interface ItemSourceRuntime {
   source: Pick<ItemSource, 'ids' | 'read'>
   ids: store.ValueStore<readonly ItemId[]>
-  table: store.TableStore<ItemId, ItemPlacement>
+  store: store.KeyedStore<ItemId, ItemPlacement | undefined>
   clear(): void
 }
 
@@ -220,30 +239,70 @@ const createSectionSourceRuntime = (): SectionSourceRuntime =>
 const createSummarySourceRuntime = (): SummarySourceRuntime =>
   createSourceTableRuntime<SectionId, CalculationCollection>()
 
+const itemPlacementReadSpec = {
+  record: {
+    read: (placement: ItemPlacement | undefined) => placement?.recordId,
+    isEqual: Object.is
+  },
+  section: {
+    read: (placement: ItemPlacement | undefined) => placement?.sectionId,
+    isEqual: Object.is
+  },
+  placement: {
+    read: (placement: ItemPlacement | undefined) => placement,
+    isEqual: equal.sameJsonValue
+  }
+} as const
+
+const createPlacementReadStore = <Projected,>(input: {
+  values: store.KeyedReadStore<ItemId, ItemPlacement | undefined>
+  spec: {
+    read: (placement: ItemPlacement | undefined) => Projected
+    isEqual?: (left: Projected, right: Projected) => boolean
+  }
+}): store.KeyedReadStore<ItemId, Projected> => store.createKeyedDerivedStore({
+  get: itemId => input.spec.read(
+    store.read(input.values, itemId)
+  ),
+  ...(input.spec.isEqual
+    ? {
+        isEqual: input.spec.isEqual
+      }
+    : {})
+})
+
 const createItemSourceRuntime = (): ItemSourceRuntime => {
   const ids = store.createValueStore<readonly ItemId[]>({
     initial: EMPTY_ITEM_IDS,
     isEqual: equal.sameOrder
   })
-  const table = store.createTableStore<ItemId, ItemPlacement>()
-  const recordId = table.project.field(placement => placement?.recordId)
-  const sectionId = table.project.field(placement => placement?.sectionId)
-  const placement = table.project.field(placement => placement)
+  const placements = createSourceTableRuntime<ItemId, ItemPlacement>({
+    isEqual: equal.sameJsonValue
+  })
 
   return {
     source: {
       ids,
       read: {
-        record: recordId,
-        section: sectionId,
-        placement
+        record: createPlacementReadStore({
+          values: placements.source,
+          spec: itemPlacementReadSpec.record
+        }),
+        section: createPlacementReadStore({
+          values: placements.source,
+          spec: itemPlacementReadSpec.section
+        }),
+        placement: createPlacementReadStore({
+          values: placements.source,
+          spec: itemPlacementReadSpec.placement
+        })
       }
     },
     ids,
-    table,
+    store: placements.store,
     clear: () => {
       ids.set(EMPTY_ITEM_IDS)
-      table.write.clear()
+      placements.clear()
     }
   }
 }
@@ -273,7 +332,7 @@ const collectSectionItemPlacements = (
 }
 
 const resetActiveFields = (input: {
-  runtime: ActiveSourceRuntime
+  runtime: Pick<ActiveSourceRuntime, 'fields'>
   fields: FieldList
 }) => {
   resetEntityRuntime(input.runtime.fields, {
@@ -350,25 +409,20 @@ export const createActiveSourceRuntime = (): ActiveSourceRuntime => {
     summaries,
     fields,
     clear: () => {
-      resetActiveSource({
-        runtime: {
-          viewId,
-          viewType,
-          view,
-          query,
-          table,
-          gallery,
-          kanban,
-          recordsMatched,
-          recordsOrdered,
-          recordsVisible,
-          items,
-          sections,
-          summaries,
-          fields
-        } as ActiveSourceRuntime,
-        snapshot: undefined
-      })
+      viewId.set(undefined)
+      viewType.set(undefined)
+      view.set(undefined)
+      query.set(EMPTY_QUERY)
+      table.set(EMPTY_TABLE)
+      gallery.set(EMPTY_GALLERY)
+      kanban.set(EMPTY_KANBAN)
+      recordsMatched.set(EMPTY_RECORD_IDS)
+      recordsOrdered.set(EMPTY_RECORD_IDS)
+      recordsVisible.set(EMPTY_RECORD_IDS)
+      items.clear()
+      sections.clear()
+      summaries.clear()
+      fields.clear()
     }
   }
 }
@@ -423,12 +477,12 @@ export const resetActiveSource = (input: {
   input.runtime.recordsVisible.set(snapshot.records.visible)
   input.runtime.items.ids.set(snapshot.items.ids)
   const itemPlacements = collectSectionItemPlacements(snapshot)
-  input.runtime.items.table.write.replace(new Map(itemPlacements))
+  resetSourceTableRuntime(input.runtime.items, itemPlacements)
   resetEntityRuntime(input.runtime.sections, {
     ids: snapshot.sections.ids,
     values: snapshot.sections.all.map(section => [section.id, section] as const)
   })
-  input.runtime.summaries.table.write.replace(new Map(
+  resetSourceTableRuntime(input.runtime.summaries, (
     snapshot.sections.ids.flatMap(sectionId => {
       const summary = snapshot.summaries.get(sectionId)
       return summary
@@ -437,7 +491,7 @@ export const resetActiveSource = (input: {
     })
   ))
   resetActiveFields({
-    runtime: input.runtime as ActiveSourceRuntime,
+    runtime: input.runtime,
     fields: snapshot.fields
   })
 }
@@ -507,26 +561,30 @@ export const applyActiveDelta = (input: {
 
   applyEntityDelta({
     delta: input.delta.items,
+    parseKey: parseItemId,
     runtime: input.runtime.items,
     readIds: () => snapshot.items.ids,
     readValue: itemId => readItemPlacement(snapshot, itemId)
   })
   applyEntityDelta({
     delta: input.delta.sections,
+    parseKey: parseSectionId,
     runtime: input.runtime.sections,
     readIds: () => snapshot.sections.ids,
     readValue: sectionId => snapshot.sections.get(sectionId)
   })
   applyEntityDelta({
     delta: input.delta.summaries,
+    parseKey: parseSectionId,
     runtime: {
-      table: input.runtime.summaries.table
+      store: input.runtime.summaries.store
     },
     readIds: () => snapshot.sections.ids,
     readValue: sectionId => snapshot.summaries.get(sectionId)
   })
   applyEntityDelta({
     delta: input.delta.fields,
+    parseKey: parseFieldId,
     runtime: input.runtime.fields,
     readIds: () => snapshot.fields.ids,
     readValue: fieldId => snapshot.fields.get(fieldId)

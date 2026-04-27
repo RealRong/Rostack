@@ -4,13 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./path": "./src/path.ts",
-    "./meta": "./src/meta.ts",
-    "./compiler": "./src/compiler.ts",
-    "./engine": "./src/engine.ts",
-    "./history": "./src/history.ts",
-    "./write": "./src/write.ts"
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@shared/core": "workspace:*",

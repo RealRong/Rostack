@@ -18,7 +18,7 @@ import type {
   EditorSceneDerived,
   EditorState
 } from '@whiteboard/editor/types/editor'
-import type { NodeRegistry, NodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { NodeSpecReader, NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 type SessionRead = {
@@ -50,7 +50,7 @@ export type EditorHostDeps = {
   session: EditorSession
   sceneDerived: EditorSceneDerived
   measure: TextLayoutMeasure
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   write: EditorWrite
   tool: ToolService
   nodeType: NodeTypeSupport
@@ -81,7 +81,7 @@ export const createEditorHost = (input: {
   session: EditorSession
   sceneDerived: EditorSceneDerived
   measure: TextLayoutMeasure
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   write: EditorWrite
   tool: ToolService
   nodeType: NodeTypeSupport
@@ -101,7 +101,7 @@ export const createEditorHost = (input: {
     session: input.session,
     sceneDerived: input.sceneDerived,
     measure: input.measure,
-    registry: input.registry,
+    nodes: input.nodes,
     write: input.write,
     tool: input.tool,
     nodeType: input.nodeType,

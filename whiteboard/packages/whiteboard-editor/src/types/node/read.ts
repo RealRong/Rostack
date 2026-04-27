@@ -1,4 +1,3 @@
-import type { Path } from '@shared/mutation'
 import type {
   NodeModel,
   NodeRole,
@@ -10,8 +9,9 @@ import type {
 } from '@whiteboard/editor/session/edit'
 import type {
   ControlId,
-  NodeMeta
-} from '@whiteboard/editor/types/node/registry'
+  NodeMeta,
+  NodeStyleFieldKey
+} from '@whiteboard/editor/types/node/spec'
 
 export type NodeStyleFieldKind = 'string' | 'number' | 'numberArray'
 
@@ -33,7 +33,7 @@ export type NodeTypeSupport = NodeTypeRead & {
   hasControl: (node: NodeModel, control: ControlId) => boolean
   supportsStyle: (
     node: NodeModel,
-    path: Path,
+    field: NodeStyleFieldKey,
     kind: NodeStyleFieldKind
   ) => boolean
 }

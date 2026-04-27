@@ -2,6 +2,7 @@ import path from 'node:path'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'
 import { createEngine } from '@dataview/engine/bench/runtime'
+import { dataviewSpec } from '@dataview/react'
 import {
   SIZE_TO_COUNT,
   createFixture
@@ -56,6 +57,7 @@ const parseArgs = (argv: string[]) => {
 }
 
 const createBenchEngine = (fixture: ReturnType<typeof createFixture>) => createEngine({
+  spec: dataviewSpec,
   document: fixture.document,
   performance: {
     traces: true,

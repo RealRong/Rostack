@@ -3,6 +3,7 @@ import type {
   ReactNode
 } from 'react'
 import type { FieldDraftParseResult } from '@dataview/core/field'
+import type { Field } from '@dataview/core/types'
 import type { FieldOptionTagAppearance } from '@dataview/react/field/options'
 import type { FieldValueDraftEditorProps } from '@dataview/react/field/value/editor'
 
@@ -22,8 +23,8 @@ export interface FieldValueSpec<TDraft = unknown> {
   }
   panelWidth: FieldValueEditorPanelWidth
   Editor: ComponentType<FieldValueDraftEditorProps<TDraft>>
-  createDraft: (value: unknown, seedDraft?: string) => TDraft
-  parseDraft: (draft: TDraft) => FieldDraftParseResult
-  render: (props: RenderProps) => ReactNode
-  toggle?: (value: unknown) => unknown | undefined
+  createDraft: (field: Field | undefined, value: unknown, seedDraft?: string) => TDraft
+  parseDraft: (field: Field | undefined, draft: TDraft) => FieldDraftParseResult
+  render: (field: Field | undefined, props: RenderProps) => ReactNode
+  toggle?: (field: Field | undefined, value: unknown) => unknown | undefined
 }

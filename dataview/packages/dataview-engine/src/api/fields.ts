@@ -41,7 +41,7 @@ const findAddedOption = (
 export const createFieldsApi = (
   engine: Pick<Engine, 'doc' | 'execute'>
 ): FieldsApi => {
-  const listFields = () => engine.doc().fields.order
+  const listFields = () => engine.doc().fields.ids
     .map((fieldId) => engine.doc().fields.byId[fieldId])
     .filter((field): field is CustomField => Boolean(field))
   const getField = (fieldId: CustomFieldId) => engine.doc().fields.byId[fieldId]

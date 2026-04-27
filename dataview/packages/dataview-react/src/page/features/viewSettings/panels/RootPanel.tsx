@@ -19,11 +19,11 @@ import { Input } from '@shared/ui/input'
 import { Menu, type MenuItem } from '@shared/ui/menu'
 import { meta } from '@dataview/meta'
 import { buildNavigationItem } from '@dataview/react/menu-builders'
+import { getViewTypeSpec } from '@dataview/core/view'
 import {
   readGroupSummary
 } from '@dataview/react/page/features/viewSettings/groupUi'
 import { useViewSettings } from '@dataview/react/page/features/viewSettings/context'
-import { supportsGroupSettings } from '@dataview/runtime'
 import { useTranslation } from '@shared/i18n/react'
 import {
   useStoreValue
@@ -196,7 +196,7 @@ export const RootPanel = () => {
       suffix: readGroupSummary(groupProjection, t),
       panel: 'group',
       visible: currentView
-        ? supportsGroupSettings(currentView.type)
+        ? getViewTypeSpec(currentView.type).capabilities.group
         : false
     }
   ]

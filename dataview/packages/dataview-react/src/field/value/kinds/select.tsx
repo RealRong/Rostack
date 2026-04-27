@@ -1,4 +1,4 @@
-import type { CustomField } from '@dataview/core/types'
+import type { Field } from '@dataview/core/types'
 import {
   field as fieldApi
 } from '@dataview/core/field'
@@ -14,17 +14,31 @@ const SingleSelectEditor = (props: FieldValueDraftEditorProps<string>) => (
   <OptionPickerEditor {...props} mode="single" />
 )
 
-export const createSingleSelectPropertySpec = (
-  field: CustomField | undefined
-): FieldValueSpec<string> => ({
+const readCustomField = (
+  field?: Field
+) => fieldApi.kind.isCustom(field)
+  ? field
+  : undefined
+
+export const selectFieldValueSpec: FieldValueSpec<string> = {
   capability: {},
   panelWidth: 'picker',
   Editor: SingleSelectEditor,
-  createDraft: (value, seedDraft) => seedDraft ?? (value === undefined || value === null ? '' : String(value)),
-  parseDraft: draft => fieldApi.draft.parse(field, draft),
-  render: props => {
-    const display = fieldApi.display.value(field, props.value)
-    const selected = field ? fieldApi.option.read.get(field, props.value) : undefined
+  createDraft: (_field, value, seedDraft) => seedDraft ?? (
+    value === undefined || value === null
+      ? ''
+      : String(value)
+  ),
+  parseDraft: (field, draft) => fieldApi.draft.parse(
+    readCustomField(field),
+    draft
+  ),
+  render: (field, props) => {
+    const customField = readCustomField(field)
+    const display = fieldApi.display.value(customField, props.value)
+    const selected = customField
+      ? fieldApi.option.read.get(customField, props.value)
+      : undefined
     if (!display) {
       return renderEmpty(props)
     }
@@ -38,4 +52,4 @@ export const createSingleSelectPropertySpec = (
       />
     )
   }
-})
+}

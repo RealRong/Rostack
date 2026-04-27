@@ -3,9 +3,9 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
-import type { NodeRegistry, PointerInput } from '../src'
+import type { NodeSpec, PointerInput } from '../src'
 
-const registry: NodeRegistry = {
+const nodes: NodeSpec = {
   get: (type) => {
     if (type === 'text') {
       return {

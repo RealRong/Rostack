@@ -1,3 +1,9 @@
+import {
+  joinDotKey,
+  walkSpec,
+  type SpecTree
+} from '@shared/spec'
+
 export type ScopeFieldSpec = 'flag' | 'set' | 'slot'
 
 type ScopeValueShape = object
@@ -50,13 +56,11 @@ export type PhaseScopeInput<
 
 const EMPTY_SET = new Set<never>() as ReadonlySet<never>
 
-const isLeafField = (
-  field: ScopeSchemaValue
-): field is ScopeFieldSpec => (
-  field === 'flag'
-  || field === 'set'
-  || field === 'slot'
-)
+type ScopeLeafEntry = {
+  key: string
+  parts: readonly string[]
+  kind: ScopeFieldSpec
+}
 
 const readFlagValue = (
   current: boolean | undefined,
@@ -114,24 +118,102 @@ const unionReadonlySet = <TValue>(
   return merged ?? currentSet
 }
 
-const mergeFieldValue = (
-  field: ScopeSchemaValue,
+const buildLeafEntries = (
+  schema: ScopeSchemaObject
+): readonly ScopeLeafEntry[] => {
+  const entries: ScopeLeafEntry[] = []
+
+  walkSpec(schema as SpecTree, {
+    leaf: (parts, kind) => {
+      if (kind !== 'flag' && kind !== 'set' && kind !== 'slot') {
+        throw new Error(`Unsupported scope leaf kind: ${kind}`)
+      }
+
+      entries.push({
+        key: joinDotKey(parts),
+        parts,
+        kind
+      })
+    }
+  })
+
+  return entries
+}
+
+const ensureParent = (
+  target: Record<string, unknown>,
+  parts: readonly string[]
+): Record<string, unknown> => {
+  let current = target
+
+  for (const part of parts.slice(0, -1)) {
+    const next = current[part]
+    if (typeof next === 'object' && next !== null) {
+      current = next as Record<string, unknown>
+      continue
+    }
+
+    const created: Record<string, unknown> = {}
+    current[part] = created
+    current = created
+  }
+
+  return current
+}
+
+const readLeaf = (
+  target: Record<string, unknown> | undefined,
+  parts: readonly string[]
+): unknown => {
+  let current: unknown = target
+
+  for (const part of parts) {
+    if (typeof current !== 'object' || current === null) {
+      return undefined
+    }
+
+    current = (current as Record<string, unknown>)[part]
+  }
+
+  return current
+}
+
+const writeLeaf = (
+  target: Record<string, unknown>,
+  parts: readonly string[],
+  value: unknown
+): void => {
+  const parent = ensureParent(target, parts)
+  const last = parts[parts.length - 1]
+  if (last === undefined) {
+    throw new Error('Cannot write scope state at empty path.')
+  }
+
+  parent[last] = value
+}
+
+const normalizeLeafValue = (
+  kind: ScopeFieldSpec,
+  value: unknown
+): unknown => {
+  switch (kind) {
+    case 'flag':
+      return value === true
+    case 'set':
+      return toReadonlySet(
+        value as Iterable<unknown> | ReadonlySet<unknown> | undefined
+      )
+    case 'slot':
+      return value
+  }
+}
+
+const mergeLeafValue = (
+  kind: ScopeFieldSpec,
   current: unknown,
   next: unknown
 ): unknown => {
-  if (!isLeafField(field)) {
-    const value: Record<string, unknown> = {}
-    Object.entries(field).forEach(([key, child]) => {
-      value[key] = mergeFieldValue(
-        child,
-        (current as Record<string, unknown> | undefined)?.[key],
-        (next as Record<string, unknown> | undefined)?.[key]
-      )
-    })
-    return value
-  }
-
-  switch (field) {
+  switch (kind) {
     case 'flag':
       return readFlagValue(
         current as boolean | undefined,
@@ -149,47 +231,11 @@ const mergeFieldValue = (
   }
 }
 
-const normalizeFieldValue = (
-  field: ScopeSchemaValue,
-  value: unknown
-): unknown => {
-  if (!isLeafField(field)) {
-    const next: Record<string, unknown> = {}
-    Object.entries(field).forEach(([key, child]) => {
-      next[key] = normalizeFieldValue(
-        child,
-        (value as Record<string, unknown> | undefined)?.[key]
-      )
-    })
-    return next
-  }
-
-  switch (field) {
-    case 'flag':
-      return value === true
-    case 'set':
-      return toReadonlySet(
-        value as Iterable<unknown> | ReadonlySet<unknown> | undefined
-      )
-    case 'slot':
-      return value
-  }
-}
-
-const isEmptyFieldValue = (
-  field: ScopeSchemaValue,
+const isEmptyLeafValue = (
+  kind: ScopeFieldSpec,
   value: unknown
 ): boolean => {
-  if (!isLeafField(field)) {
-    return Object.entries(field).every(([key, child]) => (
-      isEmptyFieldValue(
-        child,
-        (value as Record<string, unknown> | undefined)?.[key]
-      )
-    ))
-  }
-
-  switch (field) {
+  switch (kind) {
     case 'flag':
       return value !== true
     case 'set':
@@ -202,25 +248,51 @@ const isEmptyFieldValue = (
 export const normalizeScopeValue = <TValueShape extends ScopeValueShape>(
   schema: ScopeSchema<TValueShape>,
   input?: ScopeInputValue<TValueShape>
-): ScopeValue<TValueShape> => normalizeFieldValue(
-  schema as ScopeSchemaValue,
-  input
-) as ScopeValue<TValueShape>
+): ScopeValue<TValueShape> => {
+  const next: Record<string, unknown> = {}
+
+  for (const entry of buildLeafEntries(schema as ScopeSchemaObject)) {
+    writeLeaf(
+      next,
+      entry.parts,
+      normalizeLeafValue(
+        entry.kind,
+        readLeaf(input as Record<string, unknown> | undefined, entry.parts)
+      )
+    )
+  }
+
+  return next as ScopeValue<TValueShape>
+}
 
 export const mergeScopeValue = <TValueShape extends ScopeValueShape>(
   schema: ScopeSchema<TValueShape>,
   current: ScopeValue<TValueShape> | undefined,
   next: ScopeInputValue<TValueShape>
-): ScopeValue<TValueShape> => mergeFieldValue(
-  schema as ScopeSchemaValue,
-  current,
-  next
-) as ScopeValue<TValueShape>
+): ScopeValue<TValueShape> => {
+  const merged: Record<string, unknown> = {}
+
+  for (const entry of buildLeafEntries(schema as ScopeSchemaObject)) {
+    writeLeaf(
+      merged,
+      entry.parts,
+      mergeLeafValue(
+        entry.kind,
+        readLeaf(current as Record<string, unknown> | undefined, entry.parts),
+        readLeaf(next as Record<string, unknown> | undefined, entry.parts)
+      )
+    )
+  }
+
+  return merged as ScopeValue<TValueShape>
+}
 
 export const isScopeValueEmpty = <TValueShape extends ScopeValueShape>(
   schema: ScopeSchema<TValueShape>,
   value: ScopeValue<TValueShape>
-): boolean => isEmptyFieldValue(
-  schema as ScopeSchemaValue,
-  value
-)
+): boolean => buildLeafEntries(schema as ScopeSchemaObject).every((entry) => (
+  isEmptyLeafValue(
+    entry.kind,
+    readLeaf(value as Record<string, unknown>, entry.parts)
+  )
+))

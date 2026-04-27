@@ -28,6 +28,9 @@ import type {
 import {
   normalizeOptionIdList
 } from '@dataview/core/field/option'
+import {
+  createTableIndex
+} from '@shared/spec'
 import type {
   Token
 } from '@shared/i18n'
@@ -36,7 +39,7 @@ import {
   tokenRef
 } from '@shared/i18n'
 
-const defineFilterPreset = (
+const filterPreset = (
   id: FilterPresetId,
   operator: FilterPreset['operator'],
   options?: {
@@ -53,86 +56,86 @@ const defineFilterPreset = (
 })
 
 const TEXT_PRESETS = [
-  defineFilterPreset('contains', 'contains'),
-  defineFilterPreset('eq', 'eq'),
-  defineFilterPreset('neq', 'neq'),
-  defineFilterPreset('exists_true', 'exists', {
+  filterPreset('contains', 'contains'),
+  filterPreset('eq', 'eq'),
+  filterPreset('neq', 'neq'),
+  filterPreset('exists_true', 'exists', {
     valueMode: 'fixed',
     fixedValue: true
   }),
-  defineFilterPreset('exists_false', 'exists', {
+  filterPreset('exists_false', 'exists', {
     valueMode: 'fixed',
     fixedValue: false
   })
 ] as const satisfies readonly FilterPreset[]
 
 const NUMBER_PRESETS = [
-  defineFilterPreset('eq', 'eq'),
-  defineFilterPreset('neq', 'neq'),
-  defineFilterPreset('gt', 'gt'),
-  defineFilterPreset('gte', 'gte'),
-  defineFilterPreset('lt', 'lt'),
-  defineFilterPreset('lte', 'lte'),
-  defineFilterPreset('exists_true', 'exists', {
+  filterPreset('eq', 'eq'),
+  filterPreset('neq', 'neq'),
+  filterPreset('gt', 'gt'),
+  filterPreset('gte', 'gte'),
+  filterPreset('lt', 'lt'),
+  filterPreset('lte', 'lte'),
+  filterPreset('exists_true', 'exists', {
     valueMode: 'fixed',
     fixedValue: true
   }),
-  defineFilterPreset('exists_false', 'exists', {
+  filterPreset('exists_false', 'exists', {
     valueMode: 'fixed',
     fixedValue: false
   })
 ] as const satisfies readonly FilterPreset[]
 
 const OPTION_PRESETS = [
-  defineFilterPreset('eq', 'eq'),
-  defineFilterPreset('neq', 'neq'),
-  defineFilterPreset('exists_true', 'exists', {
+  filterPreset('eq', 'eq'),
+  filterPreset('neq', 'neq'),
+  filterPreset('exists_true', 'exists', {
     valueMode: 'fixed',
     fixedValue: true
   }),
-  defineFilterPreset('exists_false', 'exists', {
+  filterPreset('exists_false', 'exists', {
     valueMode: 'fixed',
     fixedValue: false
   })
 ] as const satisfies readonly FilterPreset[]
 
 const MULTI_OPTION_PRESETS = [
-  defineFilterPreset('contains', 'contains'),
-  defineFilterPreset('exists_true', 'exists', {
+  filterPreset('contains', 'contains'),
+  filterPreset('exists_true', 'exists', {
     valueMode: 'fixed',
     fixedValue: true
   }),
-  defineFilterPreset('exists_false', 'exists', {
+  filterPreset('exists_false', 'exists', {
     valueMode: 'fixed',
     fixedValue: false
   })
 ] as const satisfies readonly FilterPreset[]
 
 const BOOLEAN_PRESETS = [
-  defineFilterPreset('checked', 'eq', {
+  filterPreset('checked', 'eq', {
     valueMode: 'fixed',
     fixedValue: true
   }),
-  defineFilterPreset('unchecked', 'eq', {
+  filterPreset('unchecked', 'eq', {
     valueMode: 'fixed',
     fixedValue: false
   }),
-  defineFilterPreset('exists_true', 'exists', {
+  filterPreset('exists_true', 'exists', {
     valueMode: 'fixed',
     fixedValue: true
   }),
-  defineFilterPreset('exists_false', 'exists', {
+  filterPreset('exists_false', 'exists', {
     valueMode: 'fixed',
     fixedValue: false
   })
 ] as const satisfies readonly FilterPreset[]
 
 const PRESENCE_PRESETS = [
-  defineFilterPreset('exists_true', 'exists', {
+  filterPreset('exists_true', 'exists', {
     valueMode: 'fixed',
     fixedValue: true
   }),
-  defineFilterPreset('exists_false', 'exists', {
+  filterPreset('exists_false', 'exists', {
     valueMode: 'fixed',
     fixedValue: false
   })
@@ -384,12 +387,12 @@ const readSortedFilterLookup = (
   }
 }
 
-const createSortedFilterSpec = (input: {
+const buildSortedFilterRuntime = (input: {
   editorKind: 'number' | 'date'
   isEffectiveValue: (value: unknown) => boolean
   projectValue: (rule: FilterRule) => FilterValuePreview
   deriveDefaultValue: FilterCreateSpec['deriveDefaultValue']
-}): FilterSpec => createFilterSpec({
+}): FilterSpec => buildFilterRuntimeSpec({
   presets: NUMBER_PRESETS,
   defaultPresetId: 'eq',
   getEditorKind: (_field, rule) => (
@@ -426,14 +429,14 @@ const createSortedFilterSpec = (input: {
   }
 })
 
-const createOptionBucketFilterSpec = (input: {
+const buildOptionBucketFilterRuntime = (input: {
   presets: readonly FilterPreset[]
   defaultPresetId: FilterPresetId
   matchValue: (field: Field | undefined, recordValue: unknown, expected: unknown, rule: FilterRule) => boolean
   bucketDemand: readonly FilterPresetId[]
   bucketLookupOf: (rule: FilterRule, optionIds: readonly string[]) => FilterBucketLookup | undefined
   deriveDefaultValue: FilterCreateSpec['deriveDefaultValue']
-}): FilterSpec => createFilterSpec({
+}): FilterSpec => buildFilterRuntimeSpec({
   presets: input.presets,
   defaultPresetId: input.defaultPresetId,
   getEditorKind: (_field, rule) => (
@@ -581,7 +584,7 @@ const deriveBooleanDefaultValue = (
       : undefined
 )
 
-const createFilterSpec = (input: {
+const buildFilterRuntimeSpec = (input: {
   presets: readonly FilterPreset[]
   defaultPresetId: FilterPresetId
   getEditorKind: (field: Field | undefined, rule: FilterRule) => FilterEditorKind
@@ -666,7 +669,7 @@ const createFilterSpec = (input: {
   }
 }
 
-const textFilterSpec = createFilterSpec({
+const textFilterSpec = buildFilterRuntimeSpec({
   presets: TEXT_PRESETS,
   defaultPresetId: 'contains',
   getEditorKind: (_field, rule) => {
@@ -704,7 +707,7 @@ const textFilterSpec = createFilterSpec({
   }
 })
 
-const numberFilterSpec = createSortedFilterSpec({
+const numberFilterSpec = buildSortedFilterRuntime({
   editorKind: 'number',
   isEffectiveValue: value => typeof value === 'number' && Number.isFinite(value),
   projectValue: rule => (
@@ -715,7 +718,7 @@ const numberFilterSpec = createSortedFilterSpec({
   deriveDefaultValue: ({ field, rule }) => deriveNumberDefaultValue(field, rule)
 })
 
-const dateFilterSpec = createSortedFilterSpec({
+const dateFilterSpec = buildSortedFilterRuntime({
   editorKind: 'date',
   isEffectiveValue: value => fieldApi.date.value.comparableTimestamp(value) !== undefined,
   projectValue: rule => (
@@ -726,7 +729,7 @@ const dateFilterSpec = createSortedFilterSpec({
   deriveDefaultValue: ({ field, rule }) => deriveDateDefaultValue(field, rule)
 })
 
-const optionFilterSpec = createOptionBucketFilterSpec({
+const optionFilterSpec = buildOptionBucketFilterRuntime({
   presets: OPTION_PRESETS,
   defaultPresetId: 'eq',
   matchValue: (field, recordValue, expected, rule) => {
@@ -752,7 +755,7 @@ const optionFilterSpec = createOptionBucketFilterSpec({
   deriveDefaultValue: ({ field, rule }) => deriveSingleOptionDefaultValue(field, rule)
 })
 
-const optionSetFilterSpec = createOptionBucketFilterSpec({
+const optionSetFilterSpec = buildOptionBucketFilterRuntime({
   presets: MULTI_OPTION_PRESETS,
   defaultPresetId: 'contains',
   matchValue: (field, recordValue, expected) => matchOptionSet(field, recordValue, expected),
@@ -772,7 +775,7 @@ const optionSetFilterSpec = createOptionBucketFilterSpec({
   deriveDefaultValue: ({ field, rule }) => deriveMultiOptionDefaultValue(field, rule)
 })
 
-const booleanFilterSpec = createFilterSpec({
+const booleanFilterSpec = buildFilterRuntimeSpec({
   presets: BOOLEAN_PRESETS,
   defaultPresetId: 'checked',
   getEditorKind: () => 'none',
@@ -833,7 +836,7 @@ const booleanFilterSpec = createFilterSpec({
   }
 })
 
-const presenceFilterSpec = createFilterSpec({
+const presenceFilterSpec = buildFilterRuntimeSpec({
   presets: PRESENCE_PRESETS,
   defaultPresetId: 'exists_true',
   getEditorKind: () => 'none',
@@ -852,7 +855,7 @@ const presenceFilterSpec = createFilterSpec({
   )
 })
 
-const filterSpecsByKind = {
+export const filterSpec = {
   title: textFilterSpec,
   text: textFilterSpec,
   url: textFilterSpec,
@@ -867,9 +870,11 @@ const filterSpecsByKind = {
   asset: presenceFilterSpec
 } as const satisfies Record<Field['kind'], FilterSpec>
 
+const filterSpecIndex = createTableIndex(filterSpec)
+
 export const getFilterSpec = (
   field?: Pick<Field, 'kind'>
-): FilterSpec => filterSpecsByKind[field?.kind ?? 'text']
+): FilterSpec => filterSpecIndex.resolve(field?.kind ?? 'text')
 
 export const getFilterPresetIds = (
   field?: Pick<Field, 'kind'>

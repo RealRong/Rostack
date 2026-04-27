@@ -129,7 +129,7 @@ const resolveQueryReuse = (input: {
   })
   const canReuseOrdered = canReuseMatched
     && (
-      input.view.sort.rules.order.length > 0
+      input.view.sort.rules.ids.length > 0
       || !dataviewTrace.has.viewQuery(input.impact.trace, input.activeViewId, ['order'])
     )
 

@@ -1,4 +1,7 @@
 import type { ActiveDelta } from '@dataview/engine/contracts/delta'
+import {
+  activeChange
+} from '@dataview/engine/contracts/delta'
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
@@ -78,9 +81,11 @@ const createPublishReset = (
 } => previous
   ? {
       snapshot: undefined,
-      delta: {
-        reset: true
-      },
+      delta: (() => {
+        const delta = activeChange.create()
+        activeChange.flag(delta, 'reset')
+        return activeChange.take(delta)
+      })(),
       action: 'sync'
     }
   : {

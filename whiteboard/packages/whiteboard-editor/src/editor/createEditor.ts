@@ -24,7 +24,12 @@ import {
   type EditorDefaults
 } from '@whiteboard/editor/types/defaults'
 import type { LayoutBackend } from '@whiteboard/editor/types/layout'
-import { createNodeTypeSupport, type NodeRegistry } from '@whiteboard/editor/types/node'
+import {
+  createNodeTypeSupport,
+  type NodeSpec,
+  type NodeSpecReader
+} from '@whiteboard/editor/types/node'
+import { compileNodeSpec } from '@whiteboard/editor/types/node/compile'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
@@ -37,7 +42,7 @@ export const createEditor = (input: {
   initialTool: Tool
   initialDrawState?: DrawState
   initialViewport: Viewport
-  registry: NodeRegistry
+  nodes: NodeSpec
   services?: {
     layout?: LayoutBackend
     defaults?: EditorDefaults
@@ -48,12 +53,16 @@ export const createEditor = (input: {
     initialDrawState: input.initialDrawState ?? DEFAULT_DRAW_STATE,
     initialViewport: input.initialViewport
   })
+  const compiledNodes = compileNodeSpec(input.nodes)
+  const nodeReader: NodeSpecReader = {
+    get: (type) => compiledNodes.entryByType.resolve(type)
+  }
   const textLayout = createEditorTextLayout({
-    registry: input.registry,
+    nodes: nodeReader,
     backend: input.services?.layout
   })
   const defaults = input.services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
-  const nodeType = createNodeTypeSupport(input.registry)
+  const nodeType = createNodeTypeSupport(input.nodes)
 
   const sceneBinding = createEditorSceneBinding({
     engine: input.engine,
@@ -80,7 +89,7 @@ export const createEditor = (input: {
     history: input.history,
     document,
     projection: scene,
-    registry: input.registry,
+    nodes: nodeReader,
     measure: textLayout.measure
   })
   const tool = createToolService({
@@ -138,7 +147,7 @@ export const createEditor = (input: {
     session,
     sceneDerived: derived.scene,
     measure: textLayout.measure,
-    registry: input.registry,
+    nodes: nodeReader,
     write: writeRuntime,
     tool,
     nodeType

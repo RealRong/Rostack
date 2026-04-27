@@ -1,11 +1,17 @@
 export type {
   ControlId,
-  NodeDefinition,
-  NodeRegistry,
+  NodeBehaviorSpec,
+  NodeFieldKey,
+  NodeFieldSpec,
+  NodeFieldValueKind,
+  NodeSchemaSpec,
+  NodeSpec,
+  NodeSpecEntry,
+  NodeSpecReader,
   NodeHit,
   NodeMeta,
   NodeFamily
-} from '@whiteboard/editor/types/node/registry'
+} from '@whiteboard/editor/types/node/spec'
 export type {
   NodeStyleFieldKind,
   NodeTypeCapability,

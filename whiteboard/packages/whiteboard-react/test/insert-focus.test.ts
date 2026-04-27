@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi, type LayoutBackend } from '@whiteboard/editor'
-import type { NodeRegistry } from '@whiteboard/editor'
+import type { NodeSpec } from '@whiteboard/editor'
 import { product } from '@whiteboard/product'
 import { createInsertBridge } from '../src/runtime/bridge/insert'
 
-const registry: NodeRegistry = {
+const nodes: NodeSpec = {
   get: (type) => {
     if (type === 'text') {
       return {

@@ -1,6 +1,5 @@
 import { useCallback, useRef } from 'react'
 import type { CSSProperties } from 'react'
-import { path as mutationPath } from '@shared/mutation'
 import {
   WHITEBOARD_FRAME_DEFAULT_FILL as FRAME_DEFAULT_FILL,
   WHITEBOARD_FRAME_DEFAULT_STROKE as FRAME_DEFAULT_STROKE,
@@ -8,36 +7,46 @@ import {
   WHITEBOARD_FRAME_DEFAULT_TEXT_COLOR as FRAME_DEFAULT_TEXT_COLOR,
   WHITEBOARD_FRAME_DEFAULT_TITLE as FRAME_DEFAULT_TITLE
 } from '@whiteboard/product/node/templates'
-import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
+import type { NodeRenderProps, NodeSpecEntry } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { usePickRef, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
-  createSchema,
-  createTextField,
   getDataString,
   getStyleNumber,
-  getStyleString,
-  styleField
+  getStyleString
 } from '@whiteboard/react/features/node/registry/default/shared'
 
-const frameSchema = createSchema('frame', 'Frame', [
-  createTextField('title'),
-  styleField(mutationPath.of('fill'), 'Fill', 'color', {
-    defaultValue: FRAME_DEFAULT_FILL
-  }),
-  styleField(mutationPath.of('stroke'), 'Stroke', 'color', {
-    defaultValue: FRAME_DEFAULT_STROKE
-  }),
-  styleField(mutationPath.of('strokeWidth'), 'Stroke width', 'number', {
-    min: 0,
-    step: 1,
-    defaultValue: FRAME_DEFAULT_STROKE_WIDTH
-  }),
-  styleField(mutationPath.of('color'), 'Text color', 'color', {
-    defaultValue: FRAME_DEFAULT_TEXT_COLOR
-  })
-])
+const frameSchema = {
+  fields: {
+    'data.title': {
+      label: 'Title',
+      type: 'string'
+    },
+    'style.fill': {
+      label: 'Fill',
+      type: 'color',
+      defaultValue: FRAME_DEFAULT_FILL
+    },
+    'style.stroke': {
+      label: 'Stroke',
+      type: 'color',
+      defaultValue: FRAME_DEFAULT_STROKE
+    },
+    'style.strokeWidth': {
+      label: 'Stroke width',
+      type: 'number',
+      min: 0,
+      step: 1,
+      defaultValue: FRAME_DEFAULT_STROKE_WIDTH
+    },
+    'style.color': {
+      label: 'Text color',
+      type: 'color',
+      defaultValue: FRAME_DEFAULT_TEXT_COLOR
+    }
+  }
+} as const
 
 type FrameNodeChromeProps = {
   node: NodeRenderProps['node']
@@ -141,40 +150,42 @@ const frameStyle = (node: NodeRenderProps['node']): CSSProperties => {
   }
 }
 
-export const FrameNodeDefinition: NodeDefinition = {
-  type: 'frame',
+export const FrameNodeSpec: NodeSpecEntry = {
   meta: {
+    type: 'frame',
     name: 'Frame',
     family: 'frame',
     icon: 'frame',
     controls: ['fill', 'stroke', 'text']
   },
-  role: 'frame',
-  geometry: 'rect',
-  hit: 'none',
   schema: frameSchema,
-  layout: {
-    kind: 'none'
-  },
-  defaultData: {
-    title: FRAME_DEFAULT_TITLE
-  },
-  enter: true,
-  edit: {
-    fields: {
-      title: {
-        multiline: false,
-        empty: 'default',
-        defaultText: FRAME_DEFAULT_TITLE
+  behavior: {
+    role: 'frame',
+    geometry: 'rect',
+    hit: 'none',
+    layout: {
+      kind: 'none'
+    },
+    defaultData: {
+      title: FRAME_DEFAULT_TITLE
+    },
+    enter: true,
+    edit: {
+      fields: {
+        title: {
+          multiline: false,
+          empty: 'default',
+          defaultText: FRAME_DEFAULT_TITLE
+        }
       }
-    }
-  },
-  render: ({ node, edit }) => (
-    <FrameNodeChrome
-      node={node}
-      edit={edit}
-    />
-  ),
-  style: (props) => frameStyle(props.node),
-  rotate: false
+    },
+    render: ({ node, edit }) => (
+      <FrameNodeChrome
+        node={node}
+        edit={edit}
+      />
+    ),
+    style: (props) => frameStyle(props.node),
+    rotate: false
+  }
 }

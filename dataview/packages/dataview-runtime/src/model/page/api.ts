@@ -6,9 +6,6 @@ import type {
 } from '@dataview/core/types'
 import { equal, store } from '@shared/core'
 import type {
-  ActiveViewQuery
-} from '@dataview/engine'
-import type {
   PageBody,
   PageHeader,
   PageModel,
@@ -24,6 +21,10 @@ import type {
 import {
   queryFieldOptions
 } from '@dataview/runtime/model/page/queryFieldOptions'
+import {
+  createFamilyModelStore,
+  createValueModelStore
+} from '@dataview/runtime/model/spec'
 import {
   resolvePageQueryBarState,
   resolvePageSettingsState,
@@ -158,6 +159,138 @@ const createAvailableFieldsStore = <TField extends Field>(input: {
   isEqual: equal.sameOrder
 })
 
+interface PageModelContext {
+  source: EngineSource
+  pageSessionStore: store.ReadStore<PageSessionState>
+  valueEditorOpenStore: store.ReadStore<boolean>
+  fields: store.ReadStore<readonly Field[]>
+  views: store.ReadStore<readonly View[]>
+  view: store.ReadStore<View | undefined>
+  queryBar: store.ReadStore<PageToolbar['queryBar']>
+  availableFilterFields: store.ReadStore<readonly Field[]>
+  availableSortFields: store.ReadStore<readonly Field[]>
+  filterCount: store.ReadStore<number>
+  sortCount: store.ReadStore<number>
+  sortRules: store.ReadStore<PageSortPanel['rules']>
+  settingsState: store.ReadStore<{
+    visible: boolean
+    route: PageSettings['route']
+  }>
+  displayFieldIds: store.ReadStore<readonly FieldId[]>
+  visibleFields: store.ReadStore<readonly Field[]>
+  hiddenFields: store.ReadStore<readonly Field[]>
+}
+
+export const pageModelSpec = {
+  body: {
+    kind: 'value',
+    read: (context: PageModelContext): PageBody => ({
+      viewType: store.read(context.source.active.viewType),
+      empty: store.read(context.source.active.items.list).count === 0,
+      valueEditorOpen: store.read(context.valueEditorOpenStore),
+      locked: store.read(context.valueEditorOpenStore)
+    }),
+    isEqual: sameBody
+  },
+  header: {
+    kind: 'value',
+    read: (context: PageModelContext): PageHeader => {
+      const currentView = store.read(context.view)
+      return {
+        viewId: store.read(context.source.active.viewId),
+        viewType: currentView?.type,
+        viewName: currentView?.name
+      }
+    },
+    isEqual: sameHeader
+  },
+  toolbar: {
+    kind: 'value',
+    read: (context: PageModelContext): PageToolbar => ({
+      views: store.read(context.views),
+      view: store.read(context.view),
+      viewId: store.read(context.source.active.viewId),
+      queryBar: store.read(context.queryBar),
+      search: store.read(context.source.active.query).search.query,
+      filterCount: store.read(context.filterCount),
+      sortCount: store.read(context.sortCount),
+      availableFilterFields: store.read(context.availableFilterFields),
+      availableSortFields: store.read(context.availableSortFields)
+    }),
+    isEqual: sameToolbar
+  },
+  query: {
+    kind: 'value',
+    read: (context: PageModelContext): PageQuery => {
+      const currentQueryBar = store.read(context.queryBar)
+      return {
+        visible: currentQueryBar.visible,
+        route: currentQueryBar.route,
+        view: store.read(context.view),
+        filters: store.read(context.source.active.query).filters.rules,
+        sorts: store.read(context.sortRules),
+        availableFilterFields: store.read(context.availableFilterFields),
+        availableSortFields: store.read(context.availableSortFields)
+      }
+    },
+    isEqual: sameQuery
+  },
+  sortPanel: {
+    kind: 'value',
+    read: (context: PageModelContext): PageSortPanel => ({
+      rules: store.read(context.sortRules),
+      availableFields: store.read(context.availableSortFields)
+    }),
+    isEqual: sameSortPanel
+  },
+  settings: {
+    kind: 'value',
+    read: (context: PageModelContext): PageSettings => {
+      const currentSettings = store.read(context.settingsState)
+      return {
+        visible: currentSettings.visible,
+        route: currentSettings.route,
+        viewsCount: store.read(context.views).length,
+        fields: store.read(context.fields),
+        displayFieldIds: store.read(context.displayFieldIds),
+        visibleFields: store.read(context.visibleFields),
+        hiddenFields: store.read(context.hiddenFields),
+        view: store.read(context.view),
+        filter: store.read(context.source.active.query).filters,
+        sort: store.read(context.source.active.query).sort,
+        group: store.read(context.source.active.query).group
+      }
+    },
+    isEqual: sameSettings
+  },
+  sortRow: {
+    kind: 'family',
+    ids: (context: PageModelContext): readonly ViewSortRuleId[] => (
+      store.read(context.sortRules).map(entry => entry.rule.id)
+    ),
+    read: (context: PageModelContext, id: ViewSortRuleId): PageSortRow | undefined => {
+      const currentRules = store.read(context.sortRules)
+      const currentRow = currentRules.find(entry => entry.rule.id === id)
+      if (!currentRow) {
+        return undefined
+      }
+
+      const allFields = store.read(context.fields)
+      const currentSortRules = currentRules.map(entry => entry.rule)
+      return {
+        rule: currentRow.rule,
+        field: currentRow.field,
+        availableFields: queryFieldOptions.available.sortAt(
+          allFields,
+          currentSortRules,
+          id
+        )
+      }
+    },
+    isEqual: sameSortRow
+  }
+} as const
+
 export const createPageModel = (input: {
   source: EngineSource
   pageSessionStore: store.ReadStore<PageSessionState>
@@ -265,117 +398,32 @@ export const createPageModel = (input: {
     isEqual: equal.sameOrder
   })
 
-  const body = store.createDerivedStore<PageBody>({
-    get: () => ({
-      viewType: store.read(input.source.active.viewType),
-      empty: store.read(input.source.active.items.list).count === 0,
-      valueEditorOpen: store.read(input.valueEditorOpenStore),
-      locked: store.read(input.valueEditorOpenStore)
-    }),
-    isEqual: sameBody
-  })
-
-  const header = store.createDerivedStore<PageHeader>({
-    get: () => {
-      const currentView = store.read(view)
-      return {
-        viewId: store.read(input.source.active.viewId),
-        viewType: currentView?.type,
-        viewName: currentView?.name
-      }
-    },
-    isEqual: sameHeader
-  })
-
-  const toolbar = store.createDerivedStore<PageToolbar>({
-    get: () => {
-      return {
-        views: store.read(views),
-        view: store.read(view),
-        viewId: store.read(input.source.active.viewId),
-        queryBar: store.read(queryBar),
-        search: store.read(input.source.active.query).search.query,
-        filterCount: store.read(filterCount),
-        sortCount: store.read(sortCount),
-        availableFilterFields: store.read(availableFilterFields),
-        availableSortFields: store.read(availableSortFields)
-      }
-    },
-    isEqual: sameToolbar
-  })
-
-  const query = store.createDerivedStore<PageQuery>({
-    get: () => {
-      const currentQueryBar = store.read(queryBar)
-      return {
-        visible: currentQueryBar.visible,
-        route: currentQueryBar.route,
-        view: store.read(view),
-        filters: store.read(input.source.active.query).filters.rules,
-        sorts: store.read(sortRules),
-        availableFilterFields: store.read(availableFilterFields),
-        availableSortFields: store.read(availableSortFields)
-      }
-    },
-    isEqual: sameQuery
-  })
-  const sortPanel = store.createDerivedStore<PageSortPanel>({
-    get: () => ({
-      rules: store.read(sortRules),
-      availableFields: store.read(availableSortFields)
-    }),
-    isEqual: sameSortPanel
-  })
-  const sortRow = store.createKeyedDerivedStore<ViewSortRuleId, PageSortRow | undefined>({
-    get: id => {
-      const currentRules = store.read(sortRules)
-      const currentRow = currentRules.find(entry => entry.rule.id === id)
-      if (!currentRow) {
-        return undefined
-      }
-
-      const allFields = store.read(fields)
-      const currentSortRules = currentRules.map(entry => entry.rule)
-      return {
-        rule: currentRow.rule,
-        field: currentRow.field,
-        availableFields: queryFieldOptions.available.sortAt(
-          allFields,
-          currentSortRules,
-          id
-        )
-      }
-    },
-    isEqual: sameSortRow
-  })
-
-  const settings = store.createDerivedStore<PageSettings>({
-    get: () => {
-      const currentSettings = store.read(settingsState)
-      return {
-        visible: currentSettings.visible,
-        route: currentSettings.route,
-        viewsCount: store.read(views).length,
-        fields: store.read(fields),
-        displayFieldIds: store.read(displayFieldIds),
-        visibleFields: store.read(visibleFields),
-        hiddenFields: store.read(hiddenFields),
-        view: store.read(view),
-        filter: store.read(input.source.active.query).filters,
-        sort: store.read(input.source.active.query).sort,
-        group: store.read(input.source.active.query).group
-      }
-    },
-    isEqual: sameSettings
-  })
+  const context: PageModelContext = {
+    source: input.source,
+    pageSessionStore: input.pageSessionStore,
+    valueEditorOpenStore: input.valueEditorOpenStore,
+    fields,
+    views,
+    view,
+    queryBar,
+    availableFilterFields,
+    availableSortFields,
+    filterCount,
+    sortCount,
+    sortRules,
+    settingsState,
+    displayFieldIds,
+    visibleFields,
+    hiddenFields
+  }
 
   return {
-    body,
-    header,
-    toolbar,
-    query,
-    sortPanel,
-    sortRow,
-    settings
+    body: createValueModelStore(context, pageModelSpec.body),
+    header: createValueModelStore(context, pageModelSpec.header),
+    toolbar: createValueModelStore(context, pageModelSpec.toolbar),
+    query: createValueModelStore(context, pageModelSpec.query),
+    sortPanel: createValueModelStore(context, pageModelSpec.sortPanel),
+    sortRow: createFamilyModelStore(context, pageModelSpec.sortRow),
+    settings: createValueModelStore(context, pageModelSpec.settings)
   }
 }

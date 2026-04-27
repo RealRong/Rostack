@@ -19,7 +19,7 @@ const createFilterRuleId = (): ViewFilterRuleId => createId('filter') as ViewFil
 
 const EMPTY_FILTER_RULES: EntityTable<ViewFilterRuleId, FilterRule> = {
   byId: {} as Record<ViewFilterRuleId, FilterRule>,
-  order: []
+  ids: []
 }
 
 const hasValue = (
@@ -72,7 +72,7 @@ const findFilterRuleIdByFieldId = (
   rules: EntityTable<ViewFilterRuleId, FilterRule>,
   fieldId: FieldId,
   exceptId?: ViewFilterRuleId
-): ViewFilterRuleId | undefined => rules.order.find(ruleId => {
+): ViewFilterRuleId | undefined => rules.ids.find(ruleId => {
   if (ruleId === exceptId) {
     return false
   }
@@ -104,9 +104,9 @@ export const sameFilterRules = (
   left: EntityTable<ViewFilterRuleId, FilterRule>,
   right: EntityTable<ViewFilterRuleId, FilterRule>
 ) => (
-  left.order.length === right.order.length
-  && left.order.every((ruleId, index) => {
-    const rightId = right.order[index]
+  left.ids.length === right.ids.length
+  && left.ids.every((ruleId, index) => {
+    const rightId = right.ids[index]
     const leftRule = left.byId[ruleId]
     const rightRule = rightId
       ? right.byId[rightId]
@@ -129,14 +129,14 @@ export const normalizeFilterRules = (
 
   const source = rules as {
     byId?: unknown
-    order?: unknown
+    ids?: unknown
   }
-  if (!source.byId || typeof source.byId !== 'object' || !Array.isArray(source.order)) {
+  if (!source.byId || typeof source.byId !== 'object' || !Array.isArray(source.ids)) {
     return EMPTY_FILTER_RULES
   }
 
   const byId = source.byId as Record<string, unknown>
-  return entityTable.normalize.list(source.order.flatMap(ruleId => {
+  return entityTable.normalize.list(source.ids.flatMap(ruleId => {
     if (typeof ruleId !== 'string') {
       return []
     }
@@ -274,7 +274,7 @@ export const writeFilterRemove = (
 export const writeFilterClear = (
   filter: Filter
 ): Filter => (
-  filter.rules.order.length
+  filter.rules.ids.length
     ? {
         mode: filter.mode,
         rules: EMPTY_FILTER_RULES

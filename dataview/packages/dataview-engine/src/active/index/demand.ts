@@ -42,8 +42,8 @@ export const resolveDefaultSearchFieldIds = (
   context: Pick<IndexReadContext, 'document' | 'reader'>,
 ): readonly FieldId[] => {
   const fieldIds: FieldId[] = ['title']
-  for (let index = 0; index < context.document.fields.order.length; index += 1) {
-    const fieldId = context.document.fields.order[index]!
+  for (let index = 0; index < context.document.fields.ids.length; index += 1) {
+    const fieldId = context.document.fields.ids[index]!
     const field = context.reader.fields.get(fieldId)
     if (fieldSpec.index.searchDefaultEnabled(field)) {
       fieldIds.push(fieldId)

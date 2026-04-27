@@ -7,6 +7,7 @@ import {
 import { filter } from '@dataview/core/view'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
+import { dataviewSpec } from '@dataview/react'
 import { entityTable } from '@shared/core'
 
 const FIELD_STATUS = 'status'
@@ -228,6 +229,7 @@ const createEmptyDocument = () => {
 }
 
 const createEngineForTest = options => createEngine({
+  spec: dataviewSpec,
   document: options.document,
   ...(options.perf
     ? {

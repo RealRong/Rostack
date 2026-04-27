@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi } from '../src'
-import type { NodeRegistry } from '../src'
+import type { NodeSpec } from '../src'
 
-const registry: NodeRegistry = {
+const nodes: NodeSpec = {
   get: (type) => type === 'shape'
     ? {
         type: 'shape',

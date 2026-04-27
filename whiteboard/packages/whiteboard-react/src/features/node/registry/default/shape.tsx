@@ -1,8 +1,7 @@
-import { path as mutationPath } from '@shared/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { product } from '@whiteboard/product'
 import { useCallback, useRef, type CSSProperties } from 'react'
-import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
+import type { NodeRenderProps, NodeSpecEntry } from '@whiteboard/react/types/node'
 import { EditableSlot } from '@whiteboard/react/features/edit/EditableSlot'
 import { useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
@@ -11,28 +10,77 @@ import {
 } from '@whiteboard/react/features/node/shape'
 import { TEXT_DEFAULT_FONT_SIZE } from '@whiteboard/react/features/node/text'
 import {
-  createSchema,
-  createTextField,
   getStyleNumberArray,
   getStyleNumber,
-  getStyleString,
-  styleField
+  getStyleString
 } from '@whiteboard/react/features/node/registry/default/shared'
 
-const shapeSchema = createSchema('shape', 'Shape', [
-  styleField(mutationPath.of('fillOpacity'), 'Fill opacity', 'number', { min: 0, max: 1, step: 0.05 }),
-  createTextField('text'),
-  styleField(mutationPath.of('fill'), 'Fill', 'color'),
-  styleField(mutationPath.of('stroke'), 'Stroke', 'color'),
-  styleField(mutationPath.of('strokeWidth'), 'Stroke width', 'number', { min: 0, step: 1 }),
-  styleField(mutationPath.of('strokeOpacity'), 'Stroke opacity', 'number', { min: 0, max: 1, step: 0.05 }),
-  styleField(mutationPath.of('strokeDash'), 'Stroke dash', 'string'),
-  styleField(mutationPath.of('color'), 'Text color', 'color'),
-  styleField(mutationPath.of('fontSize'), 'Font size', 'number', { min: 8, step: 1 }),
-  styleField(mutationPath.of('fontWeight'), 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
-  styleField(mutationPath.of('fontStyle'), 'Font style', 'string'),
-  styleField(mutationPath.of('textAlign'), 'Text align', 'string')
-])
+const shapeSchema = {
+  fields: {
+    'style.fillOpacity': {
+      label: 'Fill opacity',
+      type: 'number',
+      min: 0,
+      max: 1,
+      step: 0.05
+    },
+    'data.text': {
+      label: 'Text',
+      type: 'text'
+    },
+    'style.fill': {
+      label: 'Fill',
+      type: 'color'
+    },
+    'style.stroke': {
+      label: 'Stroke',
+      type: 'color'
+    },
+    'style.strokeWidth': {
+      label: 'Stroke width',
+      type: 'number',
+      min: 0,
+      step: 1
+    },
+    'style.strokeOpacity': {
+      label: 'Stroke opacity',
+      type: 'number',
+      min: 0,
+      max: 1,
+      step: 0.05
+    },
+    'style.strokeDash': {
+      label: 'Stroke dash',
+      type: 'string',
+      kind: 'numberArray'
+    },
+    'style.color': {
+      label: 'Text color',
+      type: 'color'
+    },
+    'style.fontSize': {
+      label: 'Font size',
+      type: 'number',
+      min: 8,
+      step: 1
+    },
+    'style.fontWeight': {
+      label: 'Font weight',
+      type: 'number',
+      min: 100,
+      max: 900,
+      step: 100
+    },
+    'style.fontStyle': {
+      label: 'Font style',
+      type: 'string'
+    },
+    'style.textAlign': {
+      label: 'Text align',
+      type: 'string'
+    }
+  }
+} as const
 
 const readShapeColors = (
   props: NodeRenderProps
@@ -196,38 +244,40 @@ const ShapeNodeRenderer = (
   )
 }
 
-export const ShapeNodeDefinition: NodeDefinition = {
-  type: 'shape',
+export const ShapeNodeSpec: NodeSpecEntry = {
   meta: {
+    type: 'shape',
     name: 'Shape',
     family: 'shape',
     icon: 'shape',
     controls: ['fill', 'stroke', 'text']
   },
-  defaultData: {
-    kind: 'rect',
-    text: 'Rectangle'
-  },
-  role: 'content',
-  geometry: 'shape',
   schema: shapeSchema,
-  layout: {
-    kind: 'none'
-  },
-  enter: true,
-  edit: {
-    fields: {
-      text: {
-        multiline: true,
-        empty: 'keep'
+  behavior: {
+    defaultData: {
+      kind: 'rect',
+      text: 'Rectangle'
+    },
+    role: 'content',
+    geometry: 'shape',
+    layout: {
+      kind: 'none'
+    },
+    enter: true,
+    edit: {
+      fields: {
+        text: {
+          multiline: true,
+          empty: 'keep'
+        }
       }
-    }
-  },
-  render: (props) => <ShapeNodeRenderer {...props} />,
-  style: () => ({
-    border: 'none',
-    boxShadow: 'none',
-    background: 'transparent',
-    borderRadius: 0
-  })
+    },
+    render: (props) => <ShapeNodeRenderer {...props} />,
+    style: () => ({
+      border: 'none',
+      boxShadow: 'none',
+      background: 'transparent',
+      borderRadius: 0
+    })
+  }
 }

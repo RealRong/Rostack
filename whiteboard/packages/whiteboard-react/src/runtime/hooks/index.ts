@@ -9,7 +9,7 @@ export { usePickRef } from '@whiteboard/react/runtime/hooks/usePickRef'
 export {
   WhiteboardConfigProvider,
   WhiteboardServicesProvider,
-  useNodeRegistry,
+  useNodeSpec,
   useResolvedConfig,
   useWhiteboard,
   useWhiteboardServices

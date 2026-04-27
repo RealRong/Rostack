@@ -196,7 +196,7 @@ const createQueryPlan = (
         : [],
       filter: collection.uniqueSorted(filters.map(entry => entry.fieldId)),
       sort: collection.uniqueSorted(
-        view.sort.rules.order.flatMap(ruleId => {
+        view.sort.rules.ids.flatMap(ruleId => {
           const rule = view.sort.rules.byId[ruleId]
           return rule ? [rule.fieldId] : []
         })

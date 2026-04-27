@@ -1,4 +1,4 @@
-import type { CustomField } from '@dataview/core/types'
+import type { Field } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { FieldOptionTag } from '@dataview/react/field/options'
 import { cn } from '@shared/ui/utils'
@@ -13,23 +13,39 @@ const MultiSelectEditor = (props: FieldValueDraftEditorProps<string>) => (
   <OptionPickerEditor {...props} mode="multi" />
 )
 
-export const createMultiSelectPropertySpec = (
-  field: CustomField | undefined
-): FieldValueSpec<string> => ({
+const readCustomField = (
+  field?: Field
+) => fieldApi.kind.isCustom(field)
+  ? field
+  : undefined
+
+export const multiSelectFieldValueSpec: FieldValueSpec<string> = {
   capability: {},
   panelWidth: 'picker',
   Editor: MultiSelectEditor,
-  createDraft: (value, seedDraft) => seedDraft ?? (Array.isArray(value) ? value.join(', ') : ''),
-  parseDraft: draft => fieldApi.draft.parse(field, draft),
-  render: props => {
+  createDraft: (_field, value, seedDraft) => seedDraft ?? (
+    Array.isArray(value)
+      ? value.join(', ')
+      : ''
+  ),
+  parseDraft: (field, draft) => fieldApi.draft.parse(
+    readCustomField(field),
+    draft
+  ),
+  render: (field, props) => {
+    const customField = readCustomField(field)
     if (!Array.isArray(props.value) || !props.value.length) {
       return renderEmpty(props)
     }
 
     const values = props.value.map(item => ({
       id: item,
-      label: fieldApi.option.read.get(field, item)?.name ?? String(item),
-      color: fieldApi.option.read.get(field, item)?.color
+      label: customField
+        ? fieldApi.option.read.get(customField, item)?.name ?? String(item)
+        : String(item),
+      color: customField
+        ? fieldApi.option.read.get(customField, item)?.color
+        : undefined
     }))
     const visible = props.wrap
       ? values
@@ -60,4 +76,4 @@ export const createMultiSelectPropertySpec = (
       </span>
     )
   }
-})
+}

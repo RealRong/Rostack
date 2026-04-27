@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { Field } from '@dataview/core/types'
 import type { FieldOptionTagAppearance } from '@dataview/react/field/options'
 import { cn } from '@shared/ui/utils'
-import { getFieldValueSpec } from '@dataview/react/field/value/kinds'
+import { readFieldValueSpec } from '@dataview/react/field/value/kinds'
 
 export interface FieldValueContentProps {
   field?: Field
@@ -49,7 +49,7 @@ const QuickToggleButton = (props: {
 )
 
 export const FieldValueContent = (props: FieldValueContentProps) => {
-  const spec = getFieldValueSpec(props.field)
+  const spec = readFieldValueSpec(props.field)
   if (props.onQuickToggle && spec.capability.quickToggle && spec.toggle) {
     return (
       <QuickToggleButton
@@ -62,7 +62,7 @@ export const FieldValueContent = (props: FieldValueContentProps) => {
   }
 
   return (
-    <>{spec.render({
+    <>{spec.render(props.field, {
       value: props.value,
       emptyPlaceholder: props.emptyPlaceholder,
       className: props.className,

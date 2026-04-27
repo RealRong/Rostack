@@ -1,4 +1,7 @@
-export { getFieldValueSpec } from '@dataview/react/field/value/kinds/registry'
+export {
+  fieldValueSpec,
+  readFieldValueSpec
+} from '@dataview/react/field/value/kinds/registry'
 export type {
   FieldValueSpec,
   RenderProps

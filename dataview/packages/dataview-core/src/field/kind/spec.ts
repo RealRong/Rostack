@@ -57,6 +57,9 @@ import {
   isEmptyValue
 } from '@dataview/core/field/value'
 import { compare, json, parse, string } from '@shared/core'
+import {
+  createTableIndex
+} from '@shared/spec'
 import type {
   Token
 } from '@shared/i18n'
@@ -1326,8 +1329,6 @@ const multiValueOptionSpec = createOptionSpec({
   }
 })
 
-const createKindSpec = (input: KindSpec): KindSpec => input
-
 export const CUSTOM_FIELD_KINDS = [
   'text',
   'number',
@@ -1342,8 +1343,8 @@ export const CUSTOM_FIELD_KINDS = [
   'asset'
 ] as const satisfies readonly CustomFieldKind[]
 
-export const kindSpecs = {
-  text: createKindSpec({
+export const fieldKindSpec = {
+  text: {
     create: {
       default: input => ({
         ...input,
@@ -1384,8 +1385,8 @@ export const kindSpecs = {
     behavior: {
       canQuickToggle: false
     }
-  }),
-  number: createKindSpec({
+  },
+  number: {
     create: {
       default: input => ({
         ...input,
@@ -1407,7 +1408,7 @@ export const kindSpecs = {
     schema: {
       normalize: field => {
         const current = field as NumberField
-        const defaults = kindSpecs.number.create.default({
+        const defaults = fieldKindSpec.number.create.default({
           id: current.id,
           name: current.name,
           ...(current.meta !== undefined ? { meta: structuredClone(current.meta) } : {})
@@ -1491,8 +1492,8 @@ export const kindSpecs = {
     behavior: {
       canQuickToggle: false
     }
-  }),
-  select: createKindSpec({
+  },
+  select: {
     create: {
       default: input => ({
         ...input,
@@ -1544,8 +1545,8 @@ export const kindSpecs = {
       canQuickToggle: false
     },
     option: singleValueOptionSpec
-  }),
-  multiSelect: createKindSpec({
+  },
+  multiSelect: {
     create: {
       default: input => ({
         ...input,
@@ -1605,8 +1606,8 @@ export const kindSpecs = {
       canQuickToggle: false
     },
     option: multiValueOptionSpec
-  }),
-  status: createKindSpec({
+  },
+  status: {
     create: {
       default: input => {
         const options = createDefaultStatusOptions()
@@ -1705,8 +1706,8 @@ export const kindSpecs = {
       canQuickToggle: false
     },
     option: singleValueOptionSpec
-  }),
-  date: createKindSpec({
+  },
+  date: {
     create: {
       default: input => ({
         ...input,
@@ -1808,8 +1809,8 @@ export const kindSpecs = {
     behavior: {
       canQuickToggle: false
     }
-  }),
-  boolean: createKindSpec({
+  },
+  boolean: {
     create: {
       default: input => ({
         ...input,
@@ -1857,8 +1858,8 @@ export const kindSpecs = {
       canQuickToggle: true,
       toggle: toggleBooleanValue
     }
-  }),
-  url: createKindSpec({
+  },
+  url: {
     create: {
       default: input => ({
         ...input,
@@ -1924,8 +1925,8 @@ export const kindSpecs = {
     behavior: {
       canQuickToggle: false
     }
-  }),
-  email: createKindSpec({
+  },
+  email: {
     create: {
       default: input => ({
         ...input,
@@ -1966,8 +1967,8 @@ export const kindSpecs = {
     behavior: {
       canQuickToggle: false
     }
-  }),
-  phone: createKindSpec({
+  },
+  phone: {
     create: {
       default: input => ({
         ...input,
@@ -2008,8 +2009,8 @@ export const kindSpecs = {
     behavior: {
       canQuickToggle: false
     }
-  }),
-  asset: createKindSpec({
+  },
+  asset: {
     create: {
       default: input => ({
         ...input,
@@ -2077,12 +2078,14 @@ export const kindSpecs = {
     behavior: {
       canQuickToggle: false
     }
-  })
+  }
 } as const satisfies Record<CustomFieldKind, KindSpec>
+
+const fieldKindIndex = createTableIndex(fieldKindSpec)
 
 export const getKindSpec = (
   kind: CustomFieldKind
-): KindSpec => kindSpecs[kind]
+): KindSpec => fieldKindIndex.get(kind)
 
 export const getFieldKindSpec = (
   field?: Pick<CustomField, 'kind'>

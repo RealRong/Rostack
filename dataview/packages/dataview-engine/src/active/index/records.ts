@@ -48,7 +48,7 @@ const buildValueIndex = (
   const byRecord = new Map<RecordId, unknown>()
   const ids: RecordId[] = []
 
-  document.records.order.forEach(recordId => {
+  document.records.ids.forEach(recordId => {
     const value = readFieldValue(document.records.byId[recordId], fieldId)
     if (value === undefined) {
       return
@@ -130,9 +130,9 @@ export const buildRecordIndex = (
   fieldIds: readonly FieldId[] = [],
   rev = 1
 ): RecordIndex => ({
-  ids: [...context.document.records.order],
+  ids: [...context.document.records.ids],
   fieldIds: [...fieldIds],
-  order: createOrderIndex(context.document.records.order),
+  order: createOrderIndex(context.document.records.ids),
   byId: context.document.records.byId,
   values: new Map(
     fieldIds.map(fieldId => [fieldId, buildValueIndex(context.document, fieldId)] as const)
@@ -200,9 +200,9 @@ export const syncRecordIndex = (
     return buildRecordIndex(context, nextFieldIds, previous.rev + 1)
   }
 
-  const orderChanged = !equal.sameOrder(previous.ids, context.document.records.order)
+  const orderChanged = !equal.sameOrder(previous.ids, context.document.records.ids)
   const nextOrder = orderChanged
-    ? createOrderIndex(context.document.records.order)
+    ? createOrderIndex(context.document.records.ids)
     : previous.order
   const nextFieldSet = new Set(nextFieldIds)
   const values = createMapPatchBuilder(previous.values)
@@ -251,7 +251,7 @@ export const syncRecordIndex = (
   })
 
   const ids = orderChanged
-    ? [...context.document.records.order]
+    ? [...context.document.records.ids]
     : previous.ids
   const byId = context.document.records.byId
 

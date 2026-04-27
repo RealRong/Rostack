@@ -1,7 +1,10 @@
 export { FieldValueEditor } from '@dataview/react/field/value/editor'
 export { FieldValueContent } from '@dataview/react/field/value/content'
 export { cancel, commit } from '@dataview/react/interaction'
-export { getFieldValueSpec } from '@dataview/react/field/value/kinds'
+export {
+  fieldValueSpec,
+  readFieldValueSpec
+} from '@dataview/react/field/value/kinds'
 export type {
   FieldValueEditorHandle,
   FieldValueDraftEditorProps,

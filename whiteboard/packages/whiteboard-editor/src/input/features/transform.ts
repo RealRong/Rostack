@@ -170,7 +170,7 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'registry' | 'snap' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'nodes' | 'snap' | 'write'>,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -206,7 +206,7 @@ export const createTransformSession = (
       readNodeRect: (nodeId) => readDocumentNodeRect(
         ctx.projection.query.document.nodeGeometry(nodeId)
       ),
-      registry: ctx.registry,
+      nodes: ctx.nodes,
       measure: ctx.measure
     })
     state = {
@@ -269,7 +269,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'registry' | 'snap' | 'write' | 'nodeType' | 'sceneDerived'>
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'nodes' | 'snap' | 'write' | 'nodeType' | 'sceneDerived'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

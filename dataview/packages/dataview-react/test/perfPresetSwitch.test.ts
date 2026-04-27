@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { dataviewSpec } from '@dataview/react'
 import { createEngine } from '@dataview/engine'
 import { createDataViewRuntime } from '@dataview/runtime'
 import {
@@ -36,6 +37,7 @@ const assertResolvedTableRows = (runtime: ReturnType<typeof createDataViewRuntim
 
 test('switching perf presets keeps table rows resolvable', () => {
   const engine = createEngine({
+    spec: dataviewSpec,
     document: getPreset('roadmap-1k').createDocument()
   })
   const runtime = createDataViewRuntime({
@@ -73,6 +75,7 @@ test('switching perf presets keeps table rows resolvable', () => {
 
 test('switching perf presets updates runtime document meta', () => {
   const engine = createEngine({
+    spec: dataviewSpec,
     document: getPreset('roadmap-1k').createDocument()
   })
   const runtime = createDataViewRuntime({

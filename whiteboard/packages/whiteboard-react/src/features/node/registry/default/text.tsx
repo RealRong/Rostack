@@ -3,10 +3,9 @@ import {
   useRef,
   type CSSProperties
 } from 'react'
-import { path as mutationPath } from '@shared/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { product } from '@whiteboard/product'
-import type { NodeDefinition, NodeRenderProps } from '@whiteboard/react/types/node'
+import type { NodeRenderProps, NodeSpecEntry } from '@whiteboard/react/types/node'
 import {
   usePickRef,
   useWhiteboardServices
@@ -23,36 +22,92 @@ import {
 } from '@whiteboard/react/features/node/text'
 import { resolvePaletteColorOr } from '@whiteboard/react/features/palette'
 import {
-  createSchema,
-  createTextField,
-  dataField,
   getStyleNumber,
-  getStyleString,
-  styleField
+  getStyleString
 } from '@whiteboard/react/features/node/registry/default/shared'
 
-const textSchema = createSchema('text', 'Text', [
-  createTextField('text'),
-  styleField(mutationPath.of('fill'), 'Background', 'color'),
-  styleField(mutationPath.of('color'), 'Text color', 'color'),
-  styleField(mutationPath.of('fontSize'), 'Font size', 'number', { min: 8, step: 1 }),
-  styleField(mutationPath.of('fontWeight'), 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
-  styleField(mutationPath.of('fontStyle'), 'Font style', 'string')
-])
+const textSchema = {
+  fields: {
+    'data.text': {
+      label: 'Text',
+      type: 'text'
+    },
+    'style.fill': {
+      label: 'Background',
+      type: 'color'
+    },
+    'style.color': {
+      label: 'Text color',
+      type: 'color'
+    },
+    'style.fontSize': {
+      label: 'Font size',
+      type: 'number',
+      min: 8,
+      step: 1
+    },
+    'style.fontWeight': {
+      label: 'Font weight',
+      type: 'number',
+      min: 100,
+      max: 900,
+      step: 100
+    },
+    'style.fontStyle': {
+      label: 'Font style',
+      type: 'string'
+    }
+  }
+} as const
 
-const stickySchema = createSchema('sticky', 'Sticky', [
-  createTextField('text'),
-  dataField(mutationPath.of('fontMode'), 'Font mode', 'enum', {
-    options: [...product.node.text.WHITEBOARD_STICKY_FONT_MODE_OPTIONS]
-  }),
-  styleField(mutationPath.of('fill'), 'Fill', 'color'),
-  styleField(mutationPath.of('color'), 'Text color', 'color'),
-  styleField(mutationPath.of('fontSize'), 'Font size', 'number', { min: 8, step: 1 }),
-  styleField(mutationPath.of('fontWeight'), 'Font weight', 'number', { min: 100, max: 900, step: 100 }),
-  styleField(mutationPath.of('fontStyle'), 'Font style', 'string'),
-  styleField(mutationPath.of('stroke'), 'Stroke', 'color'),
-  styleField(mutationPath.of('strokeWidth'), 'Stroke width', 'number', { min: 0, step: 1 })
-])
+const stickySchema = {
+  fields: {
+    'data.text': {
+      label: 'Text',
+      type: 'text'
+    },
+    'data.fontMode': {
+      label: 'Font mode',
+      type: 'enum',
+      options: [...product.node.text.WHITEBOARD_STICKY_FONT_MODE_OPTIONS]
+    },
+    'style.fill': {
+      label: 'Fill',
+      type: 'color'
+    },
+    'style.color': {
+      label: 'Text color',
+      type: 'color'
+    },
+    'style.fontSize': {
+      label: 'Font size',
+      type: 'number',
+      min: 8,
+      step: 1
+    },
+    'style.fontWeight': {
+      label: 'Font weight',
+      type: 'number',
+      min: 100,
+      max: 900,
+      step: 100
+    },
+    'style.fontStyle': {
+      label: 'Font style',
+      type: 'string'
+    },
+    'style.stroke': {
+      label: 'Stroke',
+      type: 'color'
+    },
+    'style.strokeWidth': {
+      label: 'Stroke width',
+      type: 'number',
+      min: 0,
+      step: 1
+    }
+  }
+} as const
 
 const readStickyFill = (
   node: NodeRenderProps['node']
@@ -303,63 +358,69 @@ const createTextStyle = (variant: 'text' | 'sticky') => (props: NodeRenderProps)
   } as CSSProperties
 }
 
-export const TextNodeDefinition: NodeDefinition = {
-  type: 'text',
+export const TextNodeSpec: NodeSpecEntry = {
   meta: {
+    type: 'text',
     name: 'Text',
     family: 'text',
     icon: 'text',
     controls: ['text', 'fill']
   },
-  role: 'content',
-  geometry: 'rect',
   schema: textSchema,
-  layout: {
-    kind: 'size'
-  },
-  defaultData: { text: '' },
-  enter: true,
-  edit: {
-    fields: {
-      text: {
-        placeholder: TEXT_PLACEHOLDER,
-        multiline: true,
-        empty: 'keep'
+  behavior: {
+    role: 'content',
+    geometry: 'rect',
+    layout: {
+      kind: 'size'
+    },
+    defaultData: {
+      text: ''
+    },
+    enter: true,
+    edit: {
+      fields: {
+        text: {
+          placeholder: TEXT_PLACEHOLDER,
+          multiline: true,
+          empty: 'keep'
+        }
       }
-    }
-  },
-  render: (props) => <TextNodeRenderer {...props} />,
-  style: createTextStyle('text')
+    },
+    render: (props) => <TextNodeRenderer {...props} />,
+    style: createTextStyle('text')
+  }
 }
 
-export const StickyNodeDefinition: NodeDefinition = {
-  type: 'sticky',
+export const StickyNodeSpec: NodeSpecEntry = {
   meta: {
+    type: 'sticky',
     name: 'Sticky',
     family: 'text',
     icon: 'sticky',
     controls: ['fill', 'text']
   },
-  role: 'content',
-  geometry: 'rect',
   schema: stickySchema,
-  layout: {
-    kind: 'fit'
-  },
-  defaultData: {
-    text: '',
-    fontMode: 'auto'
-  },
-  enter: true,
-  edit: {
-    fields: {
-      text: {
-        placeholder: '',
-        multiline: true,
-        empty: 'keep'
+  behavior: {
+    role: 'content',
+    geometry: 'rect',
+    layout: {
+      kind: 'fit'
+    },
+    defaultData: {
+      text: '',
+      fontMode: 'auto'
+    },
+    enter: true,
+    edit: {
+      fields: {
+        text: {
+          placeholder: '',
+          multiline: true,
+          empty: 'keep'
+        }
       }
-    }
-  },
-  render: (props) => <StickyNodeRenderer {...props} />,
-  style: createTextStyle('sticky')
+    },
+    render: (props) => <StickyNodeRenderer {...props} />,
+    style: createTextStyle('sticky')
+  }
 }

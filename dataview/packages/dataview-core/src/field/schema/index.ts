@@ -78,7 +78,7 @@ export const normalizeCustomFields = (
   fields: EntityTable<CustomFieldId, CustomField>
 ): EntityTable<CustomFieldId, CustomField> => {
   const byId = {} as Record<CustomFieldId, CustomField>
-  const order: CustomFieldId[] = []
+  const ids: CustomFieldId[] = []
   const seen = new Set<CustomFieldId>()
 
   const push = (field: CustomField | undefined) => {
@@ -93,10 +93,10 @@ export const normalizeCustomFields = (
 
     seen.add(nextField.id)
     byId[nextField.id] = nextField
-    order.push(nextField.id)
+    ids.push(nextField.id)
   }
 
-  fields.order.forEach(fieldId => {
+  fields.ids.forEach(fieldId => {
     push(fields.byId[fieldId])
   })
 
@@ -106,6 +106,6 @@ export const normalizeCustomFields = (
 
   return {
     byId,
-    order
+    ids
   }
 }

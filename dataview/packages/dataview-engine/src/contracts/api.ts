@@ -17,6 +17,19 @@ import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
 import type {
+  documentChangeSpec,
+  activeChangeSpec
+} from '@dataview/engine/contracts/delta'
+import type {
+  fieldKindSpec
+} from '@dataview/core/field/kind/spec'
+import type {
+  filterSpec
+} from '@dataview/core/view/filterSpec'
+import type {
+  viewTypeSpec
+} from '@dataview/core/view/typeSpec'
+import type {
   MutationOptions,
   MutationResult
 } from '@shared/mutation'
@@ -72,7 +85,23 @@ export type {
   ViewSummaries
 } from '@dataview/engine/contracts/shared'
 
+export interface DataviewSpec {
+  change: {
+    document: typeof documentChangeSpec
+    active: typeof activeChangeSpec
+  }
+  viewTypes: typeof viewTypeSpec
+  fieldKinds: typeof fieldKindSpec
+  filters: typeof filterSpec
+  fieldValues: Record<string, unknown>
+  models: {
+    page: Record<string, unknown>
+    card: Record<string, unknown>
+  }
+}
+
 export interface CreateEngineOptions {
+  spec: DataviewSpec
   document: DataDoc
   history?: Partial<DataviewHistoryConfig>
   performance?: PerformanceOptions
@@ -147,6 +176,7 @@ export interface RecordsApi {
 }
 
 export interface Engine {
+  readonly spec: DataviewSpec
   readonly commits: EngineCommits
   readonly history: DataviewHistory
   readonly active: ActiveViewApi

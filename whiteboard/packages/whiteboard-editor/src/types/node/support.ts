@@ -1,7 +1,5 @@
 import { draft } from '@shared/draft'
-import {
-  path as mutationPath
-} from '@shared/mutation'
+import { splitDotKey } from '@shared/spec'
 import type {
   Node,
   NodeType
@@ -12,28 +10,32 @@ import type {
 } from '@whiteboard/editor/session/edit'
 import type {
   ControlId,
-  NodeDefinition,
   NodeMeta,
-  NodeRegistry
-} from '@whiteboard/editor/types/node/registry'
+  NodeSpec,
+  NodeStyleFieldKey
+} from '@whiteboard/editor/types/node/spec'
 import type {
   NodeStyleFieldKind,
   NodeTypeCapability,
   NodeTypeRead,
   NodeTypeSupport
 } from '@whiteboard/editor/types/node/read'
+import { compileNodeSpec } from '@whiteboard/editor/types/node/compile'
 
 const EMPTY_CONTROLS: readonly ControlId[] = []
 
 const readStyleValue = (
   node: Pick<Node, 'style'>,
-  path: Parameters<NodeTypeSupport['supportsStyle']>[1]
-) => draft.path.get(node.style, path)
+  field: NodeStyleFieldKey
+) => {
+  const [, ...path] = splitDotKey(field)
+  return draft.path.get(node.style, path)
+}
 
 const readFallbackMeta = (
   type: NodeType
 ): NodeMeta => ({
-  key: type,
+  type,
   name: type,
   family: 'shape',
   icon: type,
@@ -55,20 +57,9 @@ const readStyleValueMatchesKind = (
 }
 
 const readDefinitionCapability = (
-  definition: NodeDefinition | undefined
+  capability: NodeTypeCapability
 ): NodeTypeCapability => {
-  const role = definition?.role ?? 'content'
-
-  return {
-    role,
-    connect: definition?.connect ?? true,
-    enter: definition?.enter ?? false,
-    resize: definition?.resize ?? true,
-    rotate:
-      typeof definition?.rotate === 'boolean'
-        ? definition.rotate
-        : role === 'content'
-  }
+  return capability
 }
 
 export const resolveNodeEditorCapability = (
@@ -87,8 +78,9 @@ export const resolveNodeEditorCapability = (
 }
 
 export const createNodeTypeSupport = (
-  registry: NodeRegistry
+  spec: NodeSpec
 ): NodeTypeSupport => {
+  const compiled = compileNodeSpec(spec)
   const metaCache = new Map<NodeType, NodeMeta>()
   const capabilityCache = new Map<NodeType, NodeTypeCapability>()
   const editCache = new Map<string, EditCapability | undefined>()
@@ -96,7 +88,7 @@ export const createNodeTypeSupport = (
 
   const readDefinition = (
     type: NodeType
-  ) => registry.get(type)
+  ) => compiled.entryByType.resolve(type)
 
   const meta: NodeTypeRead['meta'] = (type) => {
     const cached = metaCache.get(type)
@@ -104,7 +96,7 @@ export const createNodeTypeSupport = (
       return cached
     }
 
-    const next = readDefinition(type)?.meta ?? readFallbackMeta(type)
+    const next = compiled.metaByType.resolve(type) ?? readFallbackMeta(type)
     metaCache.set(type, next)
     return next
   }
@@ -115,9 +107,7 @@ export const createNodeTypeSupport = (
       return cached
     }
 
-    const next = readDefinitionCapability(
-      readDefinition(type)
-    )
+    const next = readDefinitionCapability(compiled.capabilityByType.resolve(type))
     capabilityCache.set(type, next)
     return next
   }
@@ -128,7 +118,7 @@ export const createNodeTypeSupport = (
       return editCache.get(cacheKey)
     }
 
-    const next = readDefinition(type)?.edit?.fields?.[field]
+    const next = readDefinition(type)?.behavior.edit?.fields?.[field]
     editCache.set(cacheKey, next)
     return next
   }
@@ -138,20 +128,17 @@ export const createNodeTypeSupport = (
     capability,
     edit,
     hasControl: (node, control) => meta(node.type).controls.includes(control),
-    supportsStyle: (node: Pick<Node, 'type' | 'style'>, path, kind) => {
-      const cacheKey = `${node.type}\u0001${mutationPath.toString(path)}\u0001${kind}`
+    supportsStyle: (node: Pick<Node, 'type' | 'style'>, field, kind) => {
+      const cacheKey = `${node.type}\u0001${field}\u0001${kind}`
       const cached = styleSupportCache.get(cacheKey)
       if (cached !== undefined) {
-        return cached || readStyleValueMatchesKind(readStyleValue(node, path), kind)
+        return cached || readStyleValueMatchesKind(readStyleValue(node, field), kind)
       }
 
-      const supported = readDefinition(node.type)?.schema?.fields.some((field) => (
-        field.scope === 'style'
-        && mutationPath.eq(field.path, path)
-      )) ?? false
+      const supported = compiled.styleFieldKindByType.resolve(node.type)[field] === kind
 
       styleSupportCache.set(cacheKey, supported)
-      return supported || readStyleValueMatchesKind(readStyleValue(node, path), kind)
+      return supported || readStyleValueMatchesKind(readStyleValue(node, field), kind)
     }
   }
 }

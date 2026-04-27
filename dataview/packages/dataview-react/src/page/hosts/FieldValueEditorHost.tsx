@@ -11,7 +11,7 @@ import {
 } from '@dataview/core/field'
 import {
   FieldValueEditor,
-  getFieldValueSpec,
+  readFieldValueSpec,
   type FieldValueEditorHandle
 } from '@dataview/react/field/value'
 import {
@@ -106,7 +106,7 @@ export const FieldValueEditorHost = () => {
   }, [])
 
   const spec = valueField
-    ? getFieldValueSpec(valueField)
+    ? readFieldValueSpec(valueField)
     : undefined
 
   const clearSession = useCallback((result?: ValueEditorResult) => {

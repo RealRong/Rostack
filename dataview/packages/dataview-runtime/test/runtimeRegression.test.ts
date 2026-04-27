@@ -5,6 +5,7 @@ import {
 } from '@dataview/core/types'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
+import { dataviewSpec } from '@dataview/react'
 import {
   createDataViewRuntime
 } from '@dataview/runtime'
@@ -170,6 +171,7 @@ const createDocument = () => {
 describe('data view runtime regressions', () => {
   test('opening a kanban view does not trip derived store cycles', () => {
     const engine = createEngine({
+      spec: dataviewSpec,
       document: createDocument()
     })
     const runtime = createDataViewRuntime({
@@ -199,6 +201,7 @@ describe('data view runtime regressions', () => {
 
   test('starting marquee with preview scope subscribers does not call store.get inside derived computation', () => {
     const engine = createEngine({
+      spec: dataviewSpec,
       document: createDocument()
     })
     const runtime = createDataViewRuntime({
@@ -231,6 +234,7 @@ describe('data view runtime regressions', () => {
 
   test('kanban cards stay readable after grouped filters are added and removed', () => {
     const engine = createEngine({
+      spec: dataviewSpec,
       document: createDocument()
     })
     const runtime = createDataViewRuntime({
@@ -267,6 +271,7 @@ describe('data view runtime regressions', () => {
 
   test('table summaries stay empty when grouped filters leave every section empty', () => {
     const engine = createEngine({
+      spec: dataviewSpec,
       document: createDocument()
     })
     const runtime = createDataViewRuntime({
@@ -286,6 +291,7 @@ describe('data view runtime regressions', () => {
 
   test('document value source stays synced for title, field writes, clears, and record removal', () => {
     const engine = createEngine({
+      spec: dataviewSpec,
       document: createDocument()
     })
     const runtime = createDataViewRuntime({
@@ -336,6 +342,7 @@ describe('data view runtime regressions', () => {
 
   test('document value source clears removed field values across records', () => {
     const engine = createEngine({
+      spec: dataviewSpec,
       document: createDocument()
     })
     const runtime = createDataViewRuntime({

@@ -11,6 +11,9 @@ import type {
 import type {
   ViewOptionsByType
 } from '@dataview/core/types/state'
+import {
+  getViewTypeSpec
+} from '@dataview/core/view/typeSpec'
 
 export const cloneTableOptions = (
   table: TableOptions
@@ -25,13 +28,7 @@ export const cloneTableOptions = (
 export const createDefaultViewDisplay = (
   type: ViewType,
   fields: readonly Field[]
-): ViewDisplay => ({
-  fields: !fields.length
-    ? []
-    : type === 'table'
-      ? fields.map(field => field.id)
-      : []
-})
+): ViewDisplay => getViewTypeSpec(type).defaults.display(fields)
 
 export function createDefaultViewOptions (
   type: 'table',
@@ -47,34 +44,9 @@ export function createDefaultViewOptions (
 ): KanbanView['options']
 export function createDefaultViewOptions (
   type: ViewType,
-  _fields: readonly Field[]
+  fields: readonly Field[]
 ): ViewOptionsByType[ViewType] {
-  switch (type) {
-    case 'table':
-      return {
-        widths: {},
-        showVerticalLines: true,
-        wrap: false
-      }
-    case 'gallery':
-      return {
-        card: {
-          wrap: false,
-          size: 'md',
-          layout: 'stacked'
-        }
-      }
-    case 'kanban':
-      return {
-        card: {
-          wrap: false,
-          size: 'md',
-          layout: 'compact'
-        },
-        fillColumnColor: true,
-        cardsPerColumn: 25
-      }
-  }
+  return getViewTypeSpec(type).defaults.options(fields)
 }
 
 export const pruneFieldFromViewOptions = (

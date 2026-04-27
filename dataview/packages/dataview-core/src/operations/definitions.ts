@@ -31,9 +31,6 @@ import {
 import {
   documentRecords
 } from '@dataview/core/document/records'
-import {
-  dataviewMutationKey
-} from '@dataview/core/operations/key'
 import type {
   DocumentMutationContext,
   DocumentMutationFootprintContext,
@@ -301,7 +298,7 @@ const mergeActiveViewImpact = (
 
 const collectInsertedRecordIds = (
   records: readonly DataRecord[]
-): readonly RecordId[] => sharedEntityTable.normalize.list(records).order
+): readonly RecordId[] => sharedEntityTable.normalize.list(records).ids
 
 const captureRecordEntries = (
   document: DataDoc,
@@ -395,7 +392,7 @@ const commitMutation = (
 
 const resolveActiveViewId = (
   input: {
-    order: readonly ViewId[]
+    ids: readonly ViewId[]
     has(id: ViewId): boolean
   },
   preferredViewId?: ViewId
@@ -404,7 +401,7 @@ const resolveActiveViewId = (
     return preferredViewId
   }
 
-  for (const viewId of input.order) {
+  for (const viewId of input.ids) {
     if (input.has(viewId)) {
       return viewId
     }
@@ -420,8 +417,8 @@ const addRecordValueKey = (
   },
   ctx: DocumentMutationFootprintContext
 ) => {
-  ctx.footprint(dataviewMutationKey.recordField(input.recordId, input.fieldId))
-  ctx.footprint(dataviewMutationKey.fieldValues(input.fieldId, input.recordId))
+  ctx.footprint(`records.${input.recordId}.values.${input.fieldId}`)
+  ctx.footprint(`fields.${input.fieldId}.values.${input.recordId}`)
 }
 
 const addRecordValueKeys = (
@@ -459,22 +456,22 @@ const applyRecordInsert = (
     return
   }
 
-  const currentOrder = ctx.draft.records.order.current()
+  const currentIds = ctx.draft.records.ids.current()
   const insertedIdSet = new Set(recordIds)
-  const remainingOrder = currentOrder.filter((recordId) => !insertedIdSet.has(recordId))
-  const safeIndex = Math.max(0, Math.min(operation.target?.index ?? remainingOrder.length, remainingOrder.length))
-  const nextOrder = [
-    ...remainingOrder.slice(0, safeIndex),
+  const remainingIds = currentIds.filter((recordId) => !insertedIdSet.has(recordId))
+  const safeIndex = Math.max(0, Math.min(operation.target?.index ?? remainingIds.length, remainingIds.length))
+  const nextIds = [
+    ...remainingIds.slice(0, safeIndex),
     ...recordIds,
-    ...remainingOrder.slice(safeIndex)
+    ...remainingIds.slice(safeIndex)
   ]
-  const orderChanged = nextOrder.length !== currentOrder.length
-    || nextOrder.some((recordId, index) => currentOrder[index] !== recordId)
+  const idsChanged = nextIds.length !== currentIds.length
+    || nextIds.some((recordId, index) => currentIds[index] !== recordId)
   const valuesChanged = recordIds.some((recordId) => {
     const nextRecord = nextRecords.byId[recordId]
     return nextRecord !== undefined && !Object.is(ctx.draft.records.get(recordId), nextRecord)
   })
-  if (!orderChanged && !valuesChanged) {
+  if (!idsChanged && !valuesChanged) {
     return
   }
 
@@ -484,8 +481,8 @@ const applyRecordInsert = (
       ctx.draft.records.byId.set(recordId, record)
     }
   })
-  if (orderChanged) {
-    ctx.draft.records.order.set(nextOrder)
+  if (idsChanged) {
+    ctx.draft.records.ids.set(nextIds)
   }
 
   const records = impact.records ?? (impact.records = {})
@@ -713,9 +710,9 @@ const applyViewPut = (
   const afterView = operation.view
   const beforeActiveViewId = ctx.draft.activeViewId.current()
   const afterActiveViewId = resolveActiveViewId({
-    order: beforeView
-      ? ctx.draft.views.order.current()
-      : [...ctx.draft.views.order.current(), operation.view.id],
+    ids: beforeView
+      ? ctx.draft.views.ids.current()
+      : [...ctx.draft.views.ids.current(), operation.view.id],
     has: (viewId) => (
       viewId === operation.view.id
         ? true
@@ -794,7 +791,7 @@ const applyActiveViewSet = (
   const impact = ctx.trace
   const beforeViewId = ctx.draft.activeViewId.current()
   const afterViewId = resolveActiveViewId({
-    order: ctx.draft.views.order.current(),
+    ids: ctx.draft.views.ids.current(),
     has: (viewId) => ctx.draft.views.has(viewId)
   }, operation.id)
   if (beforeViewId === afterViewId) {
@@ -821,7 +818,7 @@ const applyViewRemove = (
 
   const beforeActiveViewId = ctx.draft.activeViewId.current()
   const afterActiveViewId = resolveActiveViewId({
-    order: ctx.draft.views.order.current().filter((viewId) => viewId !== operation.id),
+    ids: ctx.draft.views.ids.current().filter((viewId) => viewId !== operation.id),
     has: (viewId) => viewId !== operation.id && ctx.draft.views.has(viewId)
   }, beforeActiveViewId === operation.id ? undefined : beforeActiveViewId)
 
@@ -866,9 +863,9 @@ const definitions: DocumentOperationDefinitionTable = {
   'document.record.insert': {
     family: 'record',
     footprint: (ctx, operation) => {
-      ctx.footprint(dataviewMutationKey.recordsOrder())
+      ctx.footprint('records')
       operation.records.forEach((record) => {
-        ctx.footprint(dataviewMutationKey.record(record.id))
+        ctx.footprint(`records.${record.id}`)
         Object.keys(record.values).forEach((fieldId) => {
           addRecordValueKey({
             recordId: record.id,
@@ -882,16 +879,16 @@ const definitions: DocumentOperationDefinitionTable = {
   'document.record.patch': {
     family: 'record',
     footprint: (ctx, operation) => {
-      ctx.footprint(dataviewMutationKey.record(operation.recordId))
+      ctx.footprint(`records.${operation.recordId}`)
     },
     apply: applyRecordPatch
   },
   'document.record.remove': {
     family: 'record',
     footprint: (ctx, operation) => {
-      ctx.footprint(dataviewMutationKey.recordsOrder())
+      ctx.footprint('records')
       operation.recordIds.forEach((recordId) => {
-        ctx.footprint(dataviewMutationKey.record(recordId))
+        ctx.footprint(`records.${recordId}`)
       })
     },
     apply: applyRecordRemove
@@ -921,24 +918,24 @@ const definitions: DocumentOperationDefinitionTable = {
     footprint: (ctx, operation) => {
       const existed = Boolean(ctx.doc().fields.byId[operation.field.id])
       if (!existed) {
-        ctx.footprint(dataviewMutationKey.fieldsOrder())
+        ctx.footprint('fields')
       }
-      ctx.footprint(dataviewMutationKey.field(operation.field.id))
+      ctx.footprint(`fields.${operation.field.id}`)
     },
     apply: applyFieldPut
   },
   'document.field.patch': {
     family: 'field',
     footprint: (ctx, operation) => {
-      ctx.footprint(dataviewMutationKey.field(operation.id))
+      ctx.footprint(`fields.${operation.id}`)
     },
     apply: applyFieldPatch
   },
   'document.field.remove': {
     family: 'field',
     footprint: (ctx, operation) => {
-      ctx.footprint(dataviewMutationKey.fieldsOrder())
-      ctx.footprint(dataviewMutationKey.field(operation.id))
+      ctx.footprint('fields')
+      ctx.footprint(`fields.${operation.id}`)
     },
     apply: applyFieldRemove
   },
@@ -947,24 +944,24 @@ const definitions: DocumentOperationDefinitionTable = {
     footprint: (ctx, operation) => {
       const existed = Boolean(ctx.doc().views.byId[operation.view.id])
       if (!existed) {
-        ctx.footprint(dataviewMutationKey.viewsOrder())
+        ctx.footprint('views')
       }
-      ctx.footprint(dataviewMutationKey.view(operation.view.id))
+      ctx.footprint(`views.${operation.view.id}`)
     },
     apply: applyViewPut
   },
   'document.activeView.set': {
     family: 'view',
     footprint: (ctx) => {
-      ctx.footprint(dataviewMutationKey.activeView())
+      ctx.footprint('activeView')
     },
     apply: applyActiveViewSet
   },
   'document.view.remove': {
     family: 'view',
     footprint: (ctx, operation) => {
-      ctx.footprint(dataviewMutationKey.viewsOrder())
-      ctx.footprint(dataviewMutationKey.view(operation.id))
+      ctx.footprint('views')
+      ctx.footprint(`views.${operation.id}`)
     },
     apply: applyViewRemove
   },
@@ -972,7 +969,7 @@ const definitions: DocumentOperationDefinitionTable = {
     family: 'external',
     history: false,
     footprint: (ctx, operation) => {
-      ctx.footprint(dataviewMutationKey.external(operation.source))
+      ctx.footprint(`external.${operation.source}`)
     },
     apply: applyExternalBump
   }

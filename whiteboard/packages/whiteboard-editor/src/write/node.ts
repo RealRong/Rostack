@@ -19,7 +19,7 @@ import {
   patchNodeUpdateByTextMeasure,
   type TextLayoutMeasure
 } from '@whiteboard/editor/layout/textLayout'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { NodeSpecReader } from '@whiteboard/editor/types/node'
 
 type NodeTextCommitInput = Parameters<NodeTextWrite['commit']>[0]
 
@@ -36,11 +36,11 @@ const createNodeUpdateWrite = (
   engine: Engine,
   {
     document,
-    registry,
+    nodes,
     measure
   }: {
     document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
-    registry: Pick<NodeRegistry, 'get'>
+    nodes: NodeSpecReader
     measure: TextLayoutMeasure
   }
 ): NodeUpdateWrite => ({
@@ -57,7 +57,7 @@ const createNodeUpdateWrite = (
               node,
               rect,
               update: input,
-              registry,
+              nodes,
               measure
             })
           : input
@@ -77,7 +77,7 @@ const createNodeUpdateWrite = (
               node,
               rect,
               update: entry.input,
-              registry,
+              nodes,
               measure,
               origin: options?.origin
             })
@@ -232,19 +232,19 @@ const createNodeStyleWrite = (
 export const createNodeWrite = ({
   engine,
   read,
-  registry,
+  nodes,
   measure
 }: {
   engine: Engine
   read: {
     document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
   }
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   measure: TextLayoutMeasure
 }): NodeWrite => {
   const update = createNodeUpdateWrite(engine, {
     document: read.document,
-    registry,
+    nodes,
     measure
   })
   const ctx = createNodeContext({
@@ -267,7 +267,7 @@ export const createNodeWrite = ({
             y: input.position.y
           }
         },
-        registry,
+        nodes,
         measure
       })
     }),

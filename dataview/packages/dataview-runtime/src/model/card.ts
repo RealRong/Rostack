@@ -3,6 +3,7 @@ import {
 } from '@dataview/core/field'
 import type {
   CustomField,
+  FieldId,
   RecordId,
   TitleField
 } from '@dataview/core/types'
@@ -10,8 +11,7 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/types'
 import type {
-  ItemId,
-  ItemPlacement
+  ItemId
 } from '@dataview/engine'
 import { equal, store } from '@shared/core'
 import type {
@@ -88,6 +88,86 @@ export const createVisibleTitleFieldStore = (input: {
   isEqual: Object.is
 })
 
+interface CardPropertiesContext {
+  source: EngineSource
+  visibleFields: store.ReadStore<readonly CustomField[]>
+  recordId: RecordId
+}
+
+interface CardContentContext {
+  source: EngineSource
+  viewType: 'gallery' | 'kanban'
+  titleField: store.ReadStore<TitleField | undefined>
+  properties: store.KeyedReadStore<RecordId, readonly CardProperty[] | undefined>
+  itemId: ItemId
+}
+
+export const cardModelSpec = {
+  properties: {
+    kind: 'family',
+    ids: (context: CardPropertiesContext): readonly FieldId[] => (
+      store.read(context.visibleFields).map(field => field.id)
+    ),
+    read: (context: CardPropertiesContext, fieldId: FieldId): CardProperty | undefined => {
+      const field = store.read(context.visibleFields).find(entry => entry.id === fieldId)
+      if (!field) {
+        return undefined
+      }
+
+      return {
+        field,
+        value: store.read(context.source.document.values, {
+          recordId: context.recordId,
+          fieldId
+        })
+      }
+    },
+    isEqual: (left: CardProperty | undefined, right: CardProperty | undefined) => left === right || (
+      !!left
+      && !!right
+      && sameProperty(left, right)
+    )
+  },
+  content: {
+    kind: 'value',
+    read: (context: CardContentContext): CardContent | undefined => {
+      if (store.read(context.source.active.viewType) !== context.viewType) {
+        return undefined
+      }
+
+      const item = store.read(context.source.active.items.read.placement, context.itemId)
+      if (!item) {
+        return undefined
+      }
+
+      const properties = store.read(context.properties, item.recordId)
+      const titleValue = store.read(context.source.document.values, {
+        recordId: item.recordId,
+        fieldId: TITLE_FIELD_ID
+      })
+      if (titleValue === undefined || !properties) {
+        return undefined
+      }
+
+      const titleField = store.read(context.titleField)
+
+      return {
+        ...(titleField
+          ? {
+              title: {
+                field: titleField,
+                value: String(titleValue)
+              }
+            }
+          : {}),
+        properties,
+        hasProperties: properties.some(property => !fieldApi.value.empty(property.value))
+      }
+    },
+    isEqual: sameContent
+  }
+} as const
+
 export const createRecordCardPropertiesStore = (input: {
   source: EngineSource
   fields: store.ReadStore<readonly CustomField[]>
@@ -98,13 +178,18 @@ export const createRecordCardPropertiesStore = (input: {
       return undefined
     }
 
-    return store.read(input.fields).map<CardProperty>(field => ({
-      field,
-      value: store.read(input.source.document.values, {
-        recordId,
-        fieldId: field.id
-      })
-    }))
+    const context: CardPropertiesContext = {
+      source: input.source,
+      visibleFields: input.fields,
+      recordId
+    }
+
+    return cardModelSpec.properties.ids(context).flatMap(fieldId => {
+      const property = cardModelSpec.properties.read(context, fieldId)
+      return property
+        ? [property]
+        : []
+    })
   },
   isEqual: sameProperties
 })
@@ -134,20 +219,15 @@ export const createItemCardContentStore = (input: {
       return undefined
     }
 
-    const titleField = store.read(input.titleField)
-
-    return {
-      ...(titleField
-        ? {
-            title: {
-              field: titleField,
-              value: String(titleValue)
-            }
-          }
-        : {}),
-      properties,
-      hasProperties: properties.some(property => !fieldApi.value.empty(property.value))
+    const context: CardContentContext = {
+      source: input.source,
+      viewType: input.viewType,
+      titleField: input.titleField,
+      properties: input.properties,
+      itemId
     }
+
+    return cardModelSpec.content.read(context)
   },
   isEqual: sameContent
 })

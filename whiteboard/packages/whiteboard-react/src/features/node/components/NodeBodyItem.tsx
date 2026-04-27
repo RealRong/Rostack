@@ -21,10 +21,10 @@ export const NodeBodyItem = memo(({
     rect,
     nodeStyle,
     transformStyle,
-    definition,
+    nodeSpec,
     renderProps
   } = view
-  const hit = definition?.hit ?? 'box'
+  const hit = nodeSpec?.behavior.hit ?? 'box'
   const bindPickElement = usePickRef({
     kind: 'node',
     id: nodeId,
@@ -46,7 +46,7 @@ export const NodeBodyItem = memo(({
     pointerEvents: hit === 'path' ? 'none' : 'auto',
     ...transformStyle
   }
-  const content = definition ? definition.render(renderProps) : resolvedNode.type
+  const content = nodeSpec ? nodeSpec.behavior.render(renderProps) : resolvedNode.type
 
   return (
     <div

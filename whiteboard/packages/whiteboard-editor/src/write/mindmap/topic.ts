@@ -7,7 +7,7 @@ import {
   patchNodeCreateByTextMeasure,
   type TextLayoutMeasure
 } from '@whiteboard/editor/layout/textLayout'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { NodeSpecReader } from '@whiteboard/editor/types/node'
 import type { MindmapWrite } from '@whiteboard/editor/write/types'
 
 const createTopicNodeSeed = (
@@ -71,13 +71,13 @@ const createTopicNodeSeed = (
 }
 
 export const patchMindmapInsertInput = (
-  registry: Pick<NodeRegistry, 'get'>,
+  nodes: NodeSpecReader,
   measure: TextLayoutMeasure,
   input: MindmapInsertInput
 ): MindmapInsertInput => {
   const patched = patchNodeCreateByTextMeasure({
     payload: createTopicNodeSeed(input.payload),
-    registry,
+    nodes,
     measure
   })
 
@@ -98,17 +98,17 @@ export const patchMindmapInsertInput = (
 
 export const createMindmapTopicWrite = ({
   engine,
-  registry,
+  nodes,
   measure
 }: {
   engine: Engine
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   measure: TextLayoutMeasure
 }): MindmapWrite['topic'] => ({
   insert: (id, input) => engine.execute({
     type: 'mindmap.topic.insert',
     id,
-    input: patchMindmapInsertInput(registry, measure, input)
+    input: patchMindmapInsertInput(nodes, measure, input)
   }),
   move: (id, input) => engine.execute({
     type: 'mindmap.topic.move',

@@ -4,8 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./internal": "./src/internal.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",
@@ -17,6 +16,7 @@
     "dist"
   ],
   "dependencies": {
-    "@shared/core": "workspace:*"
+    "@shared/core": "workspace:*",
+    "@shared/spec": "workspace:*"
   }
 }

@@ -54,3 +54,6 @@ export type {
   MarqueeBridgeApi,
   MarqueeScene,
 } from '@dataview/react/dataview'
+export {
+  dataviewSpec
+} from '@dataview/react/dataviewSpec'

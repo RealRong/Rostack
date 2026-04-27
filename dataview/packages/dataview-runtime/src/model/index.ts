@@ -21,6 +21,9 @@ export type {
 export {
   createPageModel
 } from '@dataview/runtime/model/page/api'
+export {
+  pageModelSpec
+} from '@dataview/runtime/model/page/api'
 export type {
   PageBody,
   PageHeader,
@@ -32,6 +35,9 @@ export type {
   PageToolbar
 } from '@dataview/runtime/model/page/types'
 
+export {
+  cardModelSpec
+} from '@dataview/runtime/model/card'
 export {
   createTableModel
 } from '@dataview/runtime/model/table'

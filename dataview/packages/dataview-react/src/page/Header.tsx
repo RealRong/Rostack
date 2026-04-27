@@ -1,45 +1,26 @@
 import {
-  KanbanSquare,
-  LayoutGrid,
-  Table2
+  LayoutGrid
 } from 'lucide-react'
-import { type ComponentType } from 'react'
-import type { ViewType } from '@dataview/core/types'
+import { meta } from '@dataview/meta'
 import {
   usePageModel
 } from '@dataview/react/dataview'
+import { useTranslation } from '@shared/i18n/react'
 import {
   useStoreValue
 } from '@shared/react'
-
-interface IconProps {
-  className?: string
-  size?: number
-  strokeWidth?: number
-}
-
-const viewIcon = (type?: ViewType): ComponentType<IconProps> => {
-  switch (type) {
-    case 'table':
-      return Table2
-    case 'gallery':
-      return LayoutGrid
-    case 'kanban':
-      return KanbanSquare
-    default:
-      return LayoutGrid
-  }
-}
-
-const viewTypeLabel = (type?: ViewType) => type ?? 'unknown'
 
 export interface PageHeaderProps {
 }
 
 export const PageHeader = (_props: PageHeaderProps) => {
+  const { t } = useTranslation()
   const pageModel = usePageModel()
   const header = useStoreValue(pageModel.header)
-  const CurrentIcon = viewIcon(header.viewType)
+  const descriptor = meta.view.get(header.viewType)
+  const CurrentIcon = header.viewType
+    ? descriptor.Icon
+    : LayoutGrid
 
   return (
     <section className="text-card-foreground">
@@ -55,7 +36,7 @@ export const PageHeader = (_props: PageHeaderProps) => {
             <div className="min-w-0">
               <div className="truncate text-lg font-semibold">{header.viewName}</div>
               <div className="text-sm text-muted-foreground">
-                {viewTypeLabel(header.viewType)}
+                {t(descriptor.token)}
               </div>
             </div>
           </div>

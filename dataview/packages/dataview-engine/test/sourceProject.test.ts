@@ -7,6 +7,7 @@ import {
   view
 } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
+import { dataviewSpec } from '@dataview/react'
 import {
   projectDocumentDelta
 } from '@dataview/engine/mutation/documentDelta'
@@ -88,6 +89,7 @@ const createDocument = () => {
 
 test('engine source records refresh after writing a value into a newly inserted field', () => {
   const engine = createEngine({
+    spec: dataviewSpec,
     document: createDocument()
   })
 
@@ -154,6 +156,7 @@ test('document delta omits list refresh on non-structural value writes', () => {
 
 test('active summary follows snapshot changes without source adapter', () => {
   const engine = createEngine({
+    spec: dataviewSpec,
     document: createDocument()
   })
 

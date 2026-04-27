@@ -4,9 +4,9 @@ import {
   createEditorTextLayout,
   patchNodePreviewByTextMeasure
 } from '../src/layout/textLayout'
-import type { LayoutBackend, NodeRegistry } from '../src'
+import type { LayoutBackend, NodeSpec } from '../src'
 
-const createRegistry = (): NodeRegistry => ({
+const createRegistry = (): NodeSpec => ({
   get: (type) => {
     if (type === 'sticky') {
       return {
@@ -68,7 +68,7 @@ describe('text layout preview patching', () => {
     }))
     const node = createStickyNode()
     const layout = createEditorTextLayout({
-      registry: createRegistry(),
+      nodes: createRegistry(),
       backend: {
         measure
       }
@@ -86,7 +86,7 @@ describe('text layout preview patching', () => {
         width: 180,
         height: 140
       }),
-      registry: createRegistry(),
+      nodes: createRegistry(),
       measure: layout.measure
     })).toEqual([{
       id: node.id,
@@ -102,7 +102,7 @@ describe('text layout preview patching', () => {
     }))
     const node = createStickyNode()
     const layout = createEditorTextLayout({
-      registry: createRegistry(),
+      nodes: createRegistry(),
       backend: {
         measure
       }
@@ -123,7 +123,7 @@ describe('text layout preview patching', () => {
         width: 180,
         height: 140
       }),
-      registry: createRegistry(),
+      nodes: createRegistry(),
       measure: layout.measure
     })).toEqual([{
       id: node.id,

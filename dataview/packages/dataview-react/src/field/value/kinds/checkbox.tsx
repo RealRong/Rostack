@@ -1,19 +1,23 @@
-import type { CustomField } from '@dataview/core/types'
+import type { Field } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { cn } from '@shared/ui/utils'
 import { CheckboxEditor } from '@dataview/react/field/value/editor/basic/CheckboxEditor'
 import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
 import { renderEmpty } from '@dataview/react/field/value/kinds/shared'
 
-export const createCheckboxPropertySpec = (
-  field: CustomField | undefined
-): FieldValueSpec<string> => ({
+const readCustomField = (
+  field?: Field
+) => fieldApi.kind.isCustom(field)
+  ? field
+  : undefined
+
+export const checkboxFieldValueSpec: FieldValueSpec<string> = {
   capability: {
     quickToggle: true
   },
   panelWidth: 'default',
   Editor: CheckboxEditor,
-  createDraft: (value, seedDraft) => seedDraft ?? (
+  createDraft: (_field, value, seedDraft) => seedDraft ?? (
     value === true
       ? 'true'
       : value === false
@@ -22,8 +26,11 @@ export const createCheckboxPropertySpec = (
           ? ''
           : String(value)
   ),
-  parseDraft: draft => fieldApi.draft.parse(field, draft),
-  render: props => {
+  parseDraft: (field, draft) => fieldApi.draft.parse(
+    readCustomField(field),
+    draft
+  ),
+  render: (_field, props) => {
     if (props.value !== true && props.value !== false) {
       return renderEmpty(props)
     }
@@ -42,5 +49,5 @@ export const createCheckboxPropertySpec = (
       </span>
     )
   },
-  toggle: value => value === true ? false : true
-})
+  toggle: (_field, value) => value === true ? false : true
+}

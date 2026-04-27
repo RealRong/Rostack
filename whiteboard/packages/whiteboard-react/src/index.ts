@@ -2,24 +2,21 @@ import '@shared/ui/css/core.css'
 import '@whiteboard/product/theme/whiteboard.css'
 import './styles/whiteboard-react.css'
 
-import {
-  createDefaultNodeRegistry,
-  createNodeRegistry
-} from '@whiteboard/react/features/node'
-
 export { Whiteboard } from '@whiteboard/react/Whiteboard'
 export { useEditor } from '@whiteboard/react/runtime/hooks'
 export { useWhiteboard } from '@whiteboard/react/runtime/hooks'
-
-export const nodeRegistry = {
-  create: createNodeRegistry,
-  createDefault: createDefaultNodeRegistry
-} as const
+export { nodeSpec } from '@whiteboard/react/features/node'
+export { whiteboardSpec } from '@whiteboard/react/spec'
+export {
+  createEditor,
+  createWhiteboardRuntime
+} from '@whiteboard/react/runtime/whiteboard/factory'
 
 export type {
   WhiteboardOptions,
   WhiteboardProps
 } from '@whiteboard/react/types/common/board'
+export type { WhiteboardSpec } from '@whiteboard/react/types/spec'
 export type {
   WhiteboardCollabOptions,
   WhiteboardCollabPresenceOptions
@@ -37,8 +34,9 @@ export type { WhiteboardInstance } from '@whiteboard/react/types/runtime'
 export type { Tool } from '@whiteboard/editor'
 export type {
   ControlId,
-  NodeDefinition,
-  NodeRegistry,
+  NodeBehaviorSpec,
+  NodeSpec,
+  NodeSpecEntry,
   NodeRenderProps,
   NodeWrite,
   NodeHit,

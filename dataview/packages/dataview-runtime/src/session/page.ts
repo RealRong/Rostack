@@ -7,6 +7,9 @@ import type {
   ViewSortRuleId,
   ViewType
 } from '@dataview/core/types'
+import {
+  getViewTypeSpec
+} from '@dataview/core/view'
 import { store } from '@shared/core'
 import {
   createControllerStore
@@ -82,11 +85,14 @@ export interface PageSessionController extends PageSessionApi {
 
 const ROOT_SETTINGS_ROUTE: SettingsRoute = { kind: 'root' }
 
-const GROUPABLE_VIEW_TYPES = new Set<ViewType | string>(['table', 'kanban'])
-
 export const supportsGroupSettings = (
   viewType: ViewType | string | undefined
-) => GROUPABLE_VIEW_TYPES.has(viewType ?? 'table')
+) => (
+  typeof viewType === 'string'
+  && (viewType === 'table' || viewType === 'gallery' || viewType === 'kanban')
+    ? getViewTypeSpec(viewType).capabilities.group
+    : false
+)
 
 const cloneSettingsRoute = (
   route: SettingsRoute | null | undefined
@@ -292,8 +298,8 @@ export const resolvePageQueryBarState = (input: {
   const hasEntries = Boolean(
     input.view
     && (
-      input.view.filter.rules.order.length > 0
-      || input.view.sort.rules.order.length > 0
+      input.view.filter.rules.ids.length > 0
+      || input.view.sort.rules.ids.length > 0
     )
   )
 

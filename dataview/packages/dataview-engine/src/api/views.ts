@@ -24,7 +24,7 @@ const readId = (
 export const createViewsApi = (
   engine: Pick<Engine, 'doc' | 'execute'>
 ): ViewsApi => {
-  const readViews = () => engine.doc().views.order
+  const readViews = () => engine.doc().views.ids
     .map((viewId) => engine.doc().views.byId[viewId])
     .filter((view): view is View => Boolean(view))
 

@@ -6,6 +6,10 @@ import {
   type DataviewTrace
 } from '@dataview/core/operations'
 import {
+  activeChange,
+  documentChange
+} from '@dataview/engine/contracts/delta'
+import {
   emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'
 import {
@@ -92,12 +96,16 @@ export const appendResetDelta = (
 ): DataviewPublish => ({
   ...publish,
   delta: {
-    doc: {
-      reset: true
-    },
-    active: {
-      reset: true
-    }
+    doc: (() => {
+      const delta = documentChange.create()
+      documentChange.flag(delta, 'reset')
+      return documentChange.take(delta)
+    })(),
+    active: (() => {
+      const delta = activeChange.create()
+      activeChange.flag(delta, 'reset')
+      return activeChange.take(delta)
+    })()
   }
 })
 

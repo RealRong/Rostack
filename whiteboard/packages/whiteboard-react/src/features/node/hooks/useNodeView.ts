@@ -4,9 +4,9 @@ import type { NodeId, NodeUpdateInput, Rect } from '@whiteboard/core/types'
 import { useOptionalKeyedStoreValue } from '@shared/react'
 import {
   useEditorRuntime,
-  useNodeRegistry
+  useNodeSpec
 } from '@whiteboard/react/runtime/hooks'
-import type { NodeDefinition, NodeRegistry, NodeRenderProps, NodeWrite } from '@whiteboard/react/types/node'
+import type { NodeRenderProps, NodeSpecEntry, NodeWrite } from '@whiteboard/react/types/node'
 
 const buildNodeTransformStyle = (
   rect: Rect,
@@ -48,7 +48,7 @@ export type NodeView = {
   canRotate: boolean
   nodeStyle: CSSProperties
   transformStyle: CSSProperties
-  definition?: NodeDefinition
+  nodeSpec?: NodeSpecEntry
   renderProps: NodeRenderProps
 }
 
@@ -67,18 +67,18 @@ type RuntimeNodeView = NonNullable<
 >
 
 const resolveNodeCapability = (
-  definition: NodeDefinition | undefined,
+  nodeSpec: NodeSpecEntry | undefined,
   owner: RuntimeNodeView['owner']
 ) => {
-  const role = definition?.role ?? 'content'
+  const role = nodeSpec?.behavior.role ?? 'content'
   const mindmapOwned = owner?.kind === 'mindmap'
 
   return {
-    connect: definition?.connect ?? true,
-    resize: !mindmapOwned && (definition?.resize ?? true),
+    connect: nodeSpec?.behavior.connect ?? true,
+    resize: !mindmapOwned && (nodeSpec?.behavior.resize ?? true),
     rotate: !mindmapOwned && (
-      typeof definition?.rotate === 'boolean'
-        ? definition.rotate
+      typeof nodeSpec?.behavior.rotate === 'boolean'
+        ? nodeSpec.behavior.rotate
         : role === 'content'
     )
   }
@@ -102,11 +102,11 @@ const resolveNodeOverlayViewState = (
 
 const resolveNodeViewState = (
   editor: Pick<ReturnType<typeof useEditorRuntime>, 'write'>,
-  registry: Pick<NodeRegistry, 'get'>,
+  nodes: ReturnType<typeof useNodeSpec>,
   baseView: RuntimeNodeView,
   capability: ReturnType<typeof resolveNodeCapability>
 ): NodeView => {
-  const definition = registry.get(baseView.node.type)
+  const nodeSpec = nodes.entryByType.resolve(baseView.node.type)
   const write: NodeWrite = {
     patch: (update: NodeUpdateInput) => {
       editor.write.node.patch([baseView.node.id], update)
@@ -121,8 +121,8 @@ const resolveNodeViewState = (
     edit: baseView.edit,
     write
   }
-  const nodeStyle = definition?.style
-    ? definition.style(renderProps)
+  const nodeStyle = nodeSpec?.behavior.style
+    ? nodeSpec.behavior.style(renderProps)
     : {}
   const transformStyle = buildNodeTransformStyle(
     baseView.rect,
@@ -142,7 +142,7 @@ const resolveNodeViewState = (
     canRotate: capability.rotate,
     nodeStyle,
     transformStyle,
-    definition,
+    nodeSpec,
     renderProps
   }
 }
@@ -151,7 +151,7 @@ export const useNodeView = (
   nodeId: NodeId | undefined
 ): NodeView | undefined => {
   const editor = useEditorRuntime()
-  const registry = useNodeRegistry()
+  const nodes = useNodeSpec()
   const view = useOptionalKeyedStoreValue(
     editor.scene.stores.render.node.byId,
     nodeId,
@@ -165,13 +165,13 @@ export const useNodeView = (
       }
 
       const capability = resolveNodeCapability(
-        registry.get(view.node.type),
+        nodes.entryByType.resolve(view.node.type),
         view.owner
       )
 
-      return resolveNodeViewState(editor, registry, view, capability)
+      return resolveNodeViewState(editor, nodes, view, capability)
     },
-    [editor, registry, nodeId, view]
+    [editor, nodes, nodeId, view]
   )
 }
 
@@ -179,7 +179,7 @@ export const useNodeOverlayView = (
   nodeId: NodeId | undefined
 ): NodeOverlayView | undefined => {
   const editor = useEditorRuntime()
-  const registry = useNodeRegistry()
+  const nodes = useNodeSpec()
   const view = useOptionalKeyedStoreValue(
     editor.scene.stores.render.node.byId,
     nodeId,
@@ -193,12 +193,12 @@ export const useNodeOverlayView = (
       }
 
       const capability = resolveNodeCapability(
-        registry.get(view.node.type),
+        nodes.entryByType.resolve(view.node.type),
         view.owner
       )
 
       return resolveNodeOverlayViewState(view, capability)
     },
-    [registry, nodeId, view]
+    [nodes, nodeId, view]
   )
 }

@@ -26,12 +26,11 @@ export interface DraftEntityTable<
   readonly base: EntityTable<Id, Entity>
 
   readonly byId: DraftRecord<Id, Entity>
-  readonly order: DraftList<Id>
+  readonly ids: DraftList<Id>
 
   get(id: Id): Entity | undefined
   has(id: Id): boolean
 
-  ids(): readonly Id[]
   list(): readonly Entity[]
 
   put(entity: Entity): void
@@ -60,17 +59,16 @@ export const entityTable = <
   options?: DraftEntityTableOptions<Id, Entity>
 ): DraftEntityTable<Id, Entity> => {
   const byId = record(base.byId)
-  const order = list(base.order)
+  const ids = list(base.ids)
   const hasPatchChanges = options?.hasPatchChanges ?? defaultHasPatchChanges
 
   return {
     base,
     byId,
-    order,
+    ids,
     get: (id) => byId.get(id),
     has: (id) => byId.has(id),
-    ids: () => order.current(),
-    list: () => order.current().flatMap((id) => {
+    list: () => ids.current().flatMap((id) => {
       const entity = byId.get(id)
       return entity
         ? [entity]
@@ -80,7 +78,7 @@ export const entityTable = <
       const existed = byId.has(entity.id)
       byId.set(entity.id, entity)
       if (!existed) {
-        order.push(entity.id)
+        ids.push(entity.id)
       }
     },
     patch: (id, patchValue) => {
@@ -106,23 +104,23 @@ export const entityTable = <
       }
 
       byId.delete(id)
-      const index = order.current().indexOf(id)
+      const index = ids.current().indexOf(id)
       if (index >= 0) {
-        order.removeAt(index)
+        ids.removeAt(index)
       }
       return current
     },
-    changed: () => byId.finish() !== base.byId || order.finish() !== base.order,
+    changed: () => byId.finish() !== base.byId || ids.finish() !== base.ids,
     finish: () => {
       const nextById = byId.finish()
-      const nextOrder = order.finish()
-      if (nextById === base.byId && nextOrder === base.order) {
+      const nextIds = ids.finish()
+      if (nextById === base.byId && nextIds === base.ids) {
         return base
       }
 
       return {
         byId: nextById,
-        order: nextOrder as Id[]
+        ids: nextIds as Id[]
       }
     }
   }

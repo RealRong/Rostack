@@ -11,7 +11,7 @@ import {
   type EditorSubmitTrigger
 } from '@dataview/react/interaction'
 import { field as fieldApi } from '@dataview/core/field'
-import { getFieldValueSpec } from '@dataview/react/field/value/kinds'
+import { readFieldValueSpec } from '@dataview/react/field/value/kinds'
 import type {
   FieldValueEditorHandle,
   FieldValueEditorProps
@@ -21,12 +21,12 @@ export const FieldValueEditor = forwardRef<
   FieldValueEditorHandle,
   FieldValueEditorProps
 >((props, ref) => {
-  const spec = getFieldValueSpec(props.field)
+  const spec = readFieldValueSpec(props.field)
   const editorProperty = fieldApi.kind.isCustom(props.field)
     ? props.field
     : undefined
   const [draft, setDraftState] = useState(() => (
-    spec.createDraft(props.value, props.seedDraft)
+    spec.createDraft(props.field, props.value, props.seedDraft)
   ))
   const draftRef = useRef(draft)
   draftRef.current = draft
@@ -37,7 +37,7 @@ export const FieldValueEditor = forwardRef<
   }
 
   const parseDraft = () => {
-    const parsed = spec.parseDraft(draftRef.current)
+    const parsed = spec.parseDraft(props.field, draftRef.current)
     if (parsed.type === 'invalid') {
       props.onInvalid?.()
       return null

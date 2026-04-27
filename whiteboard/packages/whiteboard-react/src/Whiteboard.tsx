@@ -6,7 +6,7 @@ import { collab as collabApi, type CollabSession } from '@whiteboard/collab'
 import { engine as engineApi, normalizeDocument } from '@whiteboard/engine'
 import type { WhiteboardProps } from '@whiteboard/react/types/common/board'
 import { resolveConfig } from '@whiteboard/react/config'
-import { createDefaultNodeRegistry } from '@whiteboard/react/features/node'
+import { whiteboardSpec } from '@whiteboard/react/spec'
 import {
   getSelectionSnapshot,
   resolvePresenceActivity,
@@ -38,7 +38,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     document,
     onDocumentChange,
     coreRegistries,
-    nodeRegistry,
+    spec,
     collab,
     options
   },
@@ -59,7 +59,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   )
   const onDocumentChangeRef = useRef(onDocumentChange)
   const lastOutboundDocumentRef = useRef<Document>(inputDocument)
-  const registryRef = useRef(nodeRegistry ?? createDefaultNodeRegistry())
+  const specRef = useRef(spec ?? whiteboardSpec)
   const servicesRef = useRef<WhiteboardServices | null>(null)
   const collabSessionRef = useRef<CollabSession | null>(null)
   const lastPointerPublishAtRef = useRef(0)
@@ -82,7 +82,7 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
         onDocumentChangeRef.current(nextDocument)
       },
       coreRegistries,
-      registry: registryRef.current,
+      spec: specRef.current,
       resolvedConfig,
       boardConfig
     })

@@ -3,6 +3,7 @@ import { test } from 'vitest'
 import { entityTable } from '@shared/core'
 import type { DataDoc } from '@dataview/core/types'
 import { createEngine } from '@dataview/engine'
+import { dataviewSpec } from '@dataview/react'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,
@@ -15,6 +16,7 @@ const createEmptyDocument = (): DataDoc => ({
 
 test('external version bump does not create undo history', () => {
   const engine = createEngine({
+    spec: dataviewSpec,
     document: createEmptyDocument()
   })
 

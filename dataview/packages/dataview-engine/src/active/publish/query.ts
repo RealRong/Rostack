@@ -89,7 +89,7 @@ const createSortProjection = (input: {
   view: View
   reader: DocumentReader
 }): ViewSortProjection => ({
-  rules: input.view.sort.rules.order.flatMap(ruleId => {
+  rules: input.view.sort.rules.ids.flatMap(ruleId => {
     const rule = input.view.sort.rules.byId[ruleId]
     return rule
       ? [createSortRuleProjection({

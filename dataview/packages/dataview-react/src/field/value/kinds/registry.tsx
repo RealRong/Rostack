@@ -1,30 +1,36 @@
-import type { Field } from '@dataview/core/types'
-import { field as fieldApi } from '@dataview/core/field'
+import type { Field, FieldKind } from '@dataview/core/types'
+import {
+  createTableIndex
+} from '@shared/spec'
 import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
-import { createCheckboxPropertySpec } from '@dataview/react/field/value/kinds/checkbox'
-import { createDatePropertySpec } from '@dataview/react/field/value/kinds/date'
-import { createMultiSelectPropertySpec } from '@dataview/react/field/value/kinds/multiSelect'
-import { createSingleSelectPropertySpec } from '@dataview/react/field/value/kinds/select'
-import { createStatusFieldSpec } from '@dataview/react/field/value/kinds/status'
-import { createTextPropertySpec } from '@dataview/react/field/value/kinds/text'
+import { checkboxFieldValueSpec } from '@dataview/react/field/value/kinds/checkbox'
+import { dateFieldValueSpec } from '@dataview/react/field/value/kinds/date'
+import { multiSelectFieldValueSpec } from '@dataview/react/field/value/kinds/multiSelect'
+import { selectFieldValueSpec } from '@dataview/react/field/value/kinds/select'
+import { statusFieldValueSpec } from '@dataview/react/field/value/kinds/status'
+import { textFieldValueSpec } from '@dataview/react/field/value/kinds/text'
 
-export const getFieldValueSpec = (field?: Field): FieldValueSpec<any> => {
-  switch (field?.kind) {
-    case 'title':
-      return createTextPropertySpec(field)
-    case 'select':
-      return createSingleSelectPropertySpec(fieldApi.kind.isCustom(field) ? field : undefined)
-    case 'status':
-      return createStatusFieldSpec(fieldApi.kind.isCustom(field) ? field : undefined)
-    case 'multiSelect':
-      return createMultiSelectPropertySpec(fieldApi.kind.isCustom(field) ? field : undefined)
-    case 'boolean':
-      return createCheckboxPropertySpec(fieldApi.kind.isCustom(field) ? field : undefined)
-    case 'date':
-      return createDatePropertySpec(fieldApi.kind.isCustom(field) ? field : undefined)
-    case 'asset':
-      return createTextPropertySpec(field)
-    default:
-      return createTextPropertySpec(field)
-  }
-}
+export const fieldValueSpec = {
+  title: textFieldValueSpec,
+  text: textFieldValueSpec,
+  number: textFieldValueSpec,
+  url: textFieldValueSpec,
+  email: textFieldValueSpec,
+  phone: textFieldValueSpec,
+  asset: textFieldValueSpec,
+  select: selectFieldValueSpec,
+  status: statusFieldValueSpec,
+  multiSelect: multiSelectFieldValueSpec,
+  boolean: checkboxFieldValueSpec,
+  date: dateFieldValueSpec
+} as const satisfies Record<FieldKind, FieldValueSpec>
+
+const fieldValueSpecIndex = createTableIndex(fieldValueSpec)
+
+export const readFieldValueSpec = (
+  field?: Field
+): FieldValueSpec => (
+  field
+    ? fieldValueSpecIndex.get(field.kind)
+    : fieldValueSpec.text
+)

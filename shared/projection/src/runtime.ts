@@ -1,5 +1,17 @@
-import { scheduler, store } from '../../core/src/index'
-import type { EntityDelta } from '../../delta/src/index'
+import { scheduler } from '../../core/src/index'
+import {
+  createFamilyStore
+} from '../../core/src/store/familyStore'
+import {
+  createKeyedReadStore
+} from '../../core/src/store/keyed'
+import {
+  createValueStore
+} from '../../core/src/store/value'
+import type {
+  KeyedReadStore,
+  ReadStore
+} from '../../core/src/store/types'
 import {
   createPhaseGraph,
   fanoutDependents
@@ -23,6 +35,12 @@ import {
 export interface ProjectionFamilySnapshot<TKey extends string, TValue> {
   ids: readonly TKey[]
   byId: ReadonlyMap<TKey, TValue>
+}
+
+interface ProjectionFamilyDelta<TKey extends string> {
+  order?: true
+  set?: readonly TKey[]
+  remove?: readonly TKey[]
 }
 
 export interface ProjectionFieldSyncContext<TState> {
@@ -49,7 +67,7 @@ export interface ProjectionFamilyField<
   delta?(context: ProjectionFieldSyncContext<TState> & {
     previous: ProjectionFamilySnapshot<TKey, TValue>
     next: ProjectionFamilySnapshot<TKey, TValue>
-  }): EntityDelta<TKey> | 'replace' | 'skip'
+  }): ProjectionFamilyDelta<TKey> | 'replace' | 'skip'
 }
 
 export type ProjectionSurfaceField<TState> =
@@ -62,11 +80,11 @@ export type ProjectionSurfaceTree<TState> = {
 
 export type ProjectionStoreRead<TField> =
   TField extends ProjectionValueField<any, infer TValue>
-    ? store.ReadStore<TValue>
+    ? ReadStore<TValue>
     : TField extends ProjectionFamilyField<any, infer TKey, infer TValue>
       ? {
-          ids: store.ReadStore<readonly TKey[]>
-          byId: store.KeyedReadStore<TKey, TValue | undefined>
+          ids: ReadStore<readonly TKey[]>
+          byId: KeyedReadStore<TKey, TValue | undefined>
         }
       : TField extends ProjectionSurfaceTree<any>
         ? {
@@ -287,7 +305,7 @@ const normalizeFamilySnapshot = <TKey extends string, TValue>(
 const toFamilyPatch = <TKey extends string, TValue>(input: {
   previous: ProjectionFamilySnapshot<TKey, TValue>
   next: ProjectionFamilySnapshot<TKey, TValue>
-  delta: EntityDelta<TKey>
+  delta: ProjectionFamilyDelta<TKey>
 }): {
   ids?: readonly TKey[]
   set?: readonly (readonly [TKey, TValue])[]
@@ -345,7 +363,7 @@ const createSurfaceStore = <
       if (isField(field)) {
         if (field.kind === 'value') {
           const initial = field.read(currentState)
-          const source = store.createValueStore(initial)
+          const source = createValueStore(initial)
           const isEqual = field.isEqual ?? sameValue
           let previous = initial
 
@@ -375,7 +393,7 @@ const createSurfaceStore = <
           undefined,
           idsEqual
         )
-        const source = store.createFamilyStore({
+        const source = createFamilyStore({
           initial,
           isEqual: field.isEqual as ((left: unknown, right: unknown) => boolean) | undefined
         })
@@ -421,7 +439,7 @@ const createSurfaceStore = <
 
         next[key] = {
           ids: source.ids,
-          byId: store.createKeyedReadStore({
+          byId: createKeyedReadStore({
             get: source.byId.read.get,
             subscribe: source.byId.subscribe.key,
             ...(field.isEqual

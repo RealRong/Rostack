@@ -1,4 +1,9 @@
-import { store } from '@shared/core'
+import {
+  createValueStore
+} from '../../core/src/store/value'
+import type {
+  ReadStore
+} from '../../core/src/store/types'
 import {
   mutationFailure
 } from './engine'
@@ -49,7 +54,7 @@ export interface HistoryPort<
   Op = any,
   Key = any,
   Commit extends ApplyCommit<any, Op, Key, any> = ApplyCommit<any, Op, Key, any>
-> extends store.ReadStore<HistoryPortState> {
+> extends ReadStore<HistoryPortState> {
   readonly sync: HistorySyncPort<Key>
   undo(): Result
   redo(): Result
@@ -124,7 +129,7 @@ export const createHistoryPort = <
   engine: HistoryPortEngine<Doc, Op, Key, Result, Commit>
 ): HistoryPort<Result, Op, Key, Commit> => {
   const controller = engine.historyController()
-  const state = store.createValueStore<HistoryPortState>({
+  const state = createValueStore<HistoryPortState>({
     ...(controller?.state() ?? EMPTY_HISTORY_STATE),
     lastUpdatedAt: undefined
   })

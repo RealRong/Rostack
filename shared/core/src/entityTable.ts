@@ -3,7 +3,7 @@ import { hasPatchChanges } from './json'
 
 export interface EntityTable<TId extends string, TEntity extends { id: TId }> {
   byId: Record<TId, TEntity>
-  order: TId[]
+  ids: TId[]
 }
 
 const cloneEntity = <TEntity>(
@@ -16,14 +16,14 @@ const createOverlay = <TId extends string, TEntity extends { id: TId }>(
 
 const list = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>
-): TEntity[] => table.order.flatMap(entityId => {
+): TEntity[] => table.ids.flatMap(entityId => {
   const entity = table.byId[entityId]
   return entity ? [entity] : []
 })
 
 const ids = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>
-): TId[] => table.order.slice()
+): TId[] => table.ids.slice()
 
 const get = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>,
@@ -74,7 +74,7 @@ const cloneTable = <TId extends string, TEntity extends { id: TId }>(
 
   return {
     byId,
-    order: table.order.slice()
+    ids: table.ids.slice()
   }
 }
 
@@ -82,7 +82,7 @@ const normalizeList = <TId extends string, TEntity extends { id: TId }>(
   entities: readonly TEntity[]
 ): EntityTable<TId, TEntity> => {
   const byId = {} as Record<TId, TEntity>
-  const order: TId[] = []
+  const ids: TId[] = []
   const seen = new Set<TId>()
 
   entities.forEach(entity => {
@@ -93,12 +93,12 @@ const normalizeList = <TId extends string, TEntity extends { id: TId }>(
     }
 
     seen.add(nextEntity.id)
-    order.push(nextEntity.id)
+    ids.push(nextEntity.id)
   })
 
   return {
     byId,
-    order
+    ids
   }
 }
 
@@ -106,10 +106,10 @@ const normalizeTable = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>
 ): EntityTable<TId, TEntity> => {
   const byId = {} as Record<TId, TEntity>
-  const order: TId[] = []
+  const ids: TId[] = []
   const seen = new Set<TId>()
 
-  table.order.forEach(entityId => {
+  table.ids.forEach(entityId => {
     const entity = table.byId[entityId]
     if (!entity || seen.has(entityId)) {
       return
@@ -117,7 +117,7 @@ const normalizeTable = <TId extends string, TEntity extends { id: TId }>(
 
     seen.add(entityId)
     byId[entityId] = cloneEntity(entity)
-    order.push(entityId)
+    ids.push(entityId)
   })
 
   for (const entityIdKey in table.byId) {
@@ -129,12 +129,12 @@ const normalizeTable = <TId extends string, TEntity extends { id: TId }>(
 
     seen.add(entityId)
     byId[entityId] = cloneEntity(entity)
-    order.push(entityId)
+    ids.push(entityId)
   }
 
   return {
     byId,
-    order
+    ids
   }
 }
 
@@ -148,9 +148,9 @@ const put = <TId extends string, TEntity extends { id: TId }>(
 
   return {
     byId,
-    order: exists
-      ? table.order
-      : [...table.order, entity.id]
+    ids: exists
+      ? table.ids
+      : [...table.ids, entity.id]
   }
 }
 
@@ -174,7 +174,7 @@ const patch = <TId extends string, TEntity extends { id: TId }>(
 
   return {
     byId,
-    order: table.order
+    ids: table.ids
   }
 }
 
@@ -187,18 +187,18 @@ const remove = <TId extends string, TEntity extends { id: TId }>(
   }
 
   const byId = createOverlay(table)
-  byId[entityId] = undefined as unknown as TEntity
+  delete byId[entityId]
 
   return {
     byId,
-    order: table.order.filter(id => id !== entityId)
+    ids: table.ids.filter(id => id !== entityId)
   }
 }
 
 const access = <TId extends string, TEntity extends { id: TId }>(
   table: EntityTable<TId, TEntity>
 ) => createOrderedKeyedCollection({
-  ids: table.order,
+  ids: table.ids,
   get: entityId => table.byId[entityId]
 })
 

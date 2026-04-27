@@ -5,10 +5,10 @@ import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi } from '../src'
 import type {
   LayoutBackend,
-  NodeRegistry
+  NodeSpec
 } from '../src'
 
-const createRegistry = (): NodeRegistry => ({
+const createRegistry = (): NodeSpec => ({
   get: (type) => {
     if (type === 'text') {
       return {
@@ -205,7 +205,7 @@ const createTextEditor = () => {
       },
       zoom: 1
     },
-    registry: createRegistry(),
+    nodes: createRegistry(),
     services: {
       layout: createLayoutBackend()
     }
@@ -230,7 +230,7 @@ const createAutoWidthTextEditor = () => {
       },
       zoom: 1
     },
-    registry: createRegistry(),
+    nodes: createRegistry(),
     services: {
       layout: createAutoWidthLayoutBackend()
     }
@@ -255,7 +255,7 @@ const createStickyEditor = () => {
       },
       zoom: 1
     },
-    registry: createRegistry(),
+    nodes: createRegistry(),
     services: {
       layout: createLayoutBackend()
     }

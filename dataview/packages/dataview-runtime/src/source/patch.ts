@@ -2,13 +2,15 @@ import {
   equal,
   store
 } from '@shared/core'
-import {
-  type EntityDelta
-} from '@shared/delta'
-import { createEntityDeltaSync } from '@shared/delta'
 import type {
   EntitySource
 } from '@dataview/runtime/source/contracts'
+
+type IdDeltaLike = {
+  added: ReadonlySet<unknown>
+  updated: ReadonlySet<unknown>
+  removed: ReadonlySet<unknown>
+}
 
 const sameOptionalValue = <Value,>(
   isEqual: equal.Equality<Value>,
@@ -20,38 +22,96 @@ const sameOptionalValue = <Value,>(
   && isEqual(left, right)
 )
 
+const replaceKeyedValues = <Key, Value>(
+  values: store.KeyedStore<Key, Value | undefined>,
+  entries: readonly (readonly [Key, Value])[]
+) => {
+  const nextKeySet = new Set(entries.map(([key]) => key))
+  const remove = [...values.all().keys()].filter((key) => !nextKeySet.has(key))
+
+  values.patch({
+    ...(entries.length
+      ? {
+          set: entries
+        }
+      : {}),
+    ...(remove.length
+      ? {
+          delete: remove
+        }
+      : {})
+  })
+}
+
+const applyKeyedValueDelta = <Key, Value>(input: {
+  delta: {
+    added: ReadonlySet<Key>
+    updated: ReadonlySet<Key>
+    removed: ReadonlySet<Key>
+  }
+  values: store.KeyedStore<Key, Value | undefined>
+  readValue: (key: Key) => Value | undefined
+}) => {
+  const set: Array<readonly [Key, Value]> = []
+  const remove = new Set<Key>(input.delta.removed)
+
+  const touch = (key: Key) => {
+    const value = input.readValue(key)
+    if (value === undefined) {
+      remove.add(key)
+      return
+    }
+
+    remove.delete(key)
+    set.push([key, value] as const)
+  }
+
+  input.delta.added.forEach(touch)
+  input.delta.updated.forEach(touch)
+
+  input.values.patch({
+    ...(set.length
+      ? {
+          set
+        }
+      : {}),
+    ...(remove.size
+      ? {
+          delete: remove
+        }
+      : {})
+  })
+}
+
 export interface SourceTableRuntime<Key, Value> {
   source: store.KeyedReadStore<Key, Value | undefined>
-  table: store.TableStore<Key, Value>
+  store: store.KeyedStore<Key, Value | undefined>
   clear(): void
 }
 
 export interface MappedSourceTableRuntime<PublicKey, InternalKey, Value> {
   source: store.KeyedReadStore<PublicKey, Value | undefined>
-  table: store.TableStore<InternalKey, Value>
+  store: store.KeyedStore<InternalKey, Value | undefined>
   clear(): void
 }
 
 export const createSourceTableRuntime = <Key, Value>(options: {
   isEqual?: equal.Equality<Value>
 } = {}): SourceTableRuntime<Key, Value> => {
-  const table = store.createTableStore<Key, Value>({
-    isEqual: options.isEqual
+  const values = store.createKeyedStore<Key, Value | undefined>({
+    emptyValue: undefined,
+    isEqual: (left, right) => sameOptionalValue(
+      options.isEqual ?? equal.sameValue,
+      left,
+      right
+    )
   })
 
   return {
-    source: store.createKeyedReadStore<Key, Value | undefined>({
-      get: key => table.read.get(key),
-      subscribe: (key, listener) => table.subscribe.key(key, listener),
-      isEqual: (left, right) => sameOptionalValue(
-        options.isEqual ?? equal.sameValue,
-        left,
-        right
-      )
-    }),
-    table,
+    source: values,
+    store: values,
     clear: () => {
-      table.write.clear()
+      values.clear()
     }
   }
 }
@@ -60,14 +120,19 @@ export const createMappedTableSourceRuntime = <PublicKey, InternalKey, Value>(in
   keyOf: (key: PublicKey) => InternalKey
   isEqual?: equal.Equality<Value>
 }): MappedSourceTableRuntime<PublicKey, InternalKey, Value> => {
-  const table = store.createTableStore<InternalKey, Value>({
-    isEqual: input.isEqual
+  const values = store.createKeyedStore<InternalKey, Value | undefined>({
+    emptyValue: undefined,
+    isEqual: (left, right) => sameOptionalValue(
+      input.isEqual ?? equal.sameValue,
+      left,
+      right
+    )
   })
 
   return {
-    source: store.createKeyedReadStore<PublicKey, Value | undefined>({
-      get: key => table.read.get(input.keyOf(key)),
-      subscribe: (key, listener) => table.subscribe.key(
+    source: store.keyed<PublicKey, Value | undefined>({
+      get: key => values.get(input.keyOf(key)),
+      subscribe: (key, listener) => values.subscribe(
         input.keyOf(key),
         listener
       ),
@@ -77,9 +142,9 @@ export const createMappedTableSourceRuntime = <PublicKey, InternalKey, Value>(in
         right
       )
     }),
-    table,
+    store: values,
     clear: () => {
-      table.write.clear()
+      values.clear()
     }
   }
 }
@@ -87,7 +152,7 @@ export const createMappedTableSourceRuntime = <PublicKey, InternalKey, Value>(in
 export interface EntitySourceRuntime<Key, Value> {
   source: EntitySource<Key, Value>
   ids: store.ValueStore<readonly Key[]>
-  table: store.TableStore<Key, Value>
+  store: store.KeyedStore<Key, Value | undefined>
   clear(): void
 }
 
@@ -108,7 +173,7 @@ export const createEntitySourceRuntime = <Key, Value>(
       isEqual: values.source.isEqual
     },
     ids,
-    table: values.table,
+    store: values.store,
     clear: () => {
       ids.set(emptyIds)
       values.clear()
@@ -118,150 +183,129 @@ export const createEntitySourceRuntime = <Key, Value>(
 
 export const resetEntityRuntime = <Key, Value>(runtime: {
   ids: store.ValueStore<readonly Key[]>
-  table: store.TableStore<Key, Value>
+  store: store.KeyedStore<Key, Value | undefined>
 }, input: {
   ids: readonly Key[]
   values: readonly (readonly [Key, Value])[]
 }) => {
   runtime.ids.set(input.ids)
-  runtime.table.write.replace(new Map(input.values))
+  replaceKeyedValues(runtime.store, input.values)
 }
 
-interface EntityDeltaSnapshot<Key, Value> {
-  ids: readonly Key[]
-  readValue(key: Key): Value | undefined
-}
-
-const applyTablePatch = <Key, Value>(
-  table: store.TableStore<Key, Value>,
-  patch: {
-    set?: readonly (readonly [Key, Value])[]
-    remove?: readonly Key[]
-  }
+export const resetSourceTableRuntime = <Key, Value>(
+  runtime: {
+    store: store.KeyedStore<Key, Value | undefined>
+  },
+  values: readonly (readonly [Key, Value])[]
 ) => {
-  if (!patch.set?.length && !patch.remove?.length) {
-    return
-  }
-
-  table.write.apply({
-    ...(patch.set?.length
-      ? { set: patch.set }
-      : {}),
-    ...(patch.remove?.length
-      ? { remove: patch.remove }
-      : {})
-  })
+  replaceKeyedValues(runtime.store, values)
 }
-
-const createEntityDeltaTableSync = <Key, Value>() =>
-  createEntityDeltaSync<
-    EntityDeltaSnapshot<Key, Value>,
-    EntityDelta<Key> | undefined,
-    {
-      ids?: store.ValueStore<readonly Key[]>
-      table: store.TableStore<Key, Value>
-    },
-    Key,
-    Value
-  >({
-    delta: change => change,
-    list: snapshot => snapshot.ids,
-    read: (snapshot, key) => snapshot.readValue(key),
-    apply: (patch, runtime) => {
-      if (patch.order && runtime.ids) {
-        runtime.ids.set(patch.order)
-      }
-
-      applyTablePatch(runtime.table, patch)
-    }
-  })
-
-const createMappedEntityDeltaTableSync = <
-  PublicKey,
-  InternalKey,
-  Value
->(
-  keyOf: (key: PublicKey) => InternalKey
-) => createEntityDeltaSync<
-  {
-    readValue(key: PublicKey): Value | undefined
-  },
-  EntityDelta<PublicKey> | undefined,
-  store.TableStore<InternalKey, Value>,
-  PublicKey,
-  Value
->({
-  delta: change => {
-    if (!change || (!change.set?.length && !change.remove?.length)) {
-      return undefined
-    }
-
-    return {
-      ...(change.set?.length
-        ? { set: change.set }
-        : {}),
-      ...(change.remove?.length
-        ? { remove: change.remove }
-        : {})
-    }
-  },
-  list: () => [],
-  read: (snapshot, key) => snapshot.readValue(key),
-  apply: (patch, table) => {
-    const set = patch.set?.map(([key, value]) => [keyOf(key), value] as const)
-    const remove = patch.remove?.map(keyOf)
-
-    applyTablePatch(table, {
-      ...(set?.length
-        ? { set }
-        : {}),
-      ...(remove?.length
-        ? { remove }
-        : {})
-    })
-  }
-})
 
 export const applyEntityDelta = <Key, Value>(input: {
-  delta: EntityDelta<Key> | undefined
+  delta: IdDeltaLike | undefined
+  parseKey: (value: unknown) => Key | undefined
   runtime: {
     ids?: store.ValueStore<readonly Key[]>
-    table: store.TableStore<Key, Value>
+    store: store.KeyedStore<Key, Value | undefined>
   }
   readIds: () => readonly Key[]
   readValue: (key: Key) => Value | undefined
 }) => {
-  const snapshot: EntityDeltaSnapshot<Key, Value> = {
-    get ids() {
-      return input.readIds()
-    },
-    readValue: input.readValue
+  if (!input.delta) {
+    return
   }
 
-  createEntityDeltaTableSync<Key, Value>().sync({
-    previous: snapshot,
-    next: snapshot,
-    change: input.delta,
-    sink: input.runtime
+  if (input.runtime.ids) {
+    input.runtime.ids.set(input.readIds())
+  }
+
+  const delta = {
+    added: new Set<Key>(),
+    updated: new Set<Key>(),
+    removed: new Set<Key>()
+  }
+
+  input.delta.added.forEach((value) => {
+    const key = input.parseKey(value)
+    if (key !== undefined) {
+      delta.added.add(key)
+    }
+  })
+  input.delta.updated.forEach((value) => {
+    const key = input.parseKey(value)
+    if (key !== undefined) {
+      delta.updated.add(key)
+    }
+  })
+  input.delta.removed.forEach((value) => {
+    const key = input.parseKey(value)
+    if (key !== undefined) {
+      delta.removed.add(key)
+    }
+  })
+
+  applyKeyedValueDelta({
+    delta,
+    values: input.runtime.store,
+    readValue: input.readValue
   })
 }
 
 export const applyMappedEntityDelta = <PublicKey, InternalKey, Value>(input: {
-  delta: EntityDelta<PublicKey> | undefined
-  table: store.TableStore<InternalKey, Value>
+  delta: IdDeltaLike | undefined
+  parseKey: (value: unknown) => PublicKey | undefined
+  store: store.KeyedStore<InternalKey, Value | undefined>
   keyOf: (key: PublicKey) => InternalKey
   readValue: (key: PublicKey) => Value | undefined
 }) => {
-  const snapshot = {
-    readValue: input.readValue
+  if (!input.delta) {
+    return
   }
 
-  createMappedEntityDeltaTableSync<PublicKey, InternalKey, Value>(
-    input.keyOf
-  ).sync({
-    previous: snapshot,
-    next: snapshot,
-    change: input.delta,
-    sink: input.table
+  const set: Array<readonly [InternalKey, Value]> = []
+  const remove = new Set<InternalKey>()
+
+  const touch = (key: PublicKey) => {
+    const value = input.readValue(key)
+    const internalKey = input.keyOf(key)
+    if (value === undefined) {
+      remove.add(internalKey)
+      return
+    }
+
+    remove.delete(internalKey)
+    set.push([internalKey, value] as const)
+  }
+
+  input.delta.added.forEach((value) => {
+    const key = input.parseKey(value)
+    if (key !== undefined) {
+      touch(key)
+    }
+  })
+  input.delta.updated.forEach((value) => {
+    const key = input.parseKey(value)
+    if (key !== undefined) {
+      touch(key)
+    }
+  })
+  input.delta.removed.forEach((key) => {
+    const parsedKey = input.parseKey(key)
+    if (parsedKey !== undefined) {
+      remove.add(input.keyOf(parsedKey))
+    }
+  })
+
+  input.store.patch({
+    ...(set.length
+      ? {
+          set
+        }
+      : {}),
+    ...(remove.size
+      ? {
+          delete: remove
+        }
+      : {})
   })
 }

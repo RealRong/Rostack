@@ -1,4 +1,6 @@
 import { GalleryView } from '@dataview/react/views/gallery'
+import type { ReactElement } from 'react'
+import { viewTypeSpec } from '@dataview/core/view'
 import {
   usePageModel
 } from '@dataview/react/dataview'
@@ -15,6 +17,23 @@ export interface PageBodyProps {
   kanban?: Pick<KanbanViewProps, 'columnWidth' | 'columnMinHeight'>
 }
 
+const viewBodySpec = {
+  table: (props: PageBodyProps) => (
+    <TableView
+      rowHeight={props.table?.rowHeight}
+    />
+  ),
+  kanban: (props: PageBodyProps) => (
+    <KanbanView
+      columnWidth={props.kanban?.columnWidth}
+      columnMinHeight={props.kanban?.columnMinHeight}
+    />
+  ),
+  gallery: (_props: PageBodyProps) => (
+    <GalleryView />
+  )
+} as const satisfies Record<keyof typeof viewTypeSpec, (props: PageBodyProps) => ReactElement>
+
 export const PageBody = (props: PageBodyProps) => {
   const pageModel = usePageModel()
   const body = useStoreValue(pageModel.body)
@@ -28,29 +47,14 @@ export const PageBody = (props: PageBodyProps) => {
     )
   }
 
-  switch (viewType) {
-    case 'table':
-      return (
-        <TableView
-          rowHeight={props.table?.rowHeight}
-        />
-      )
-    case 'kanban':
-      return (
-        <KanbanView
-          columnWidth={props.kanban?.columnWidth}
-          columnMinHeight={props.kanban?.columnMinHeight}
-        />
-      )
-    case 'gallery':
-      return (
-        <GalleryView />
-      )
-    default:
-      return (
-        <div className="rounded-xl border border-dashed bg-surface-muted/55 px-6 py-10 text-sm text-fg-muted">
-          Unsupported view type: {viewType}
-        </div>
-      )
+  const render = viewBodySpec[viewType]
+  if (!render) {
+    return (
+      <div className="rounded-xl border border-dashed bg-surface-muted/55 px-6 py-10 text-sm text-fg-muted">
+        Unsupported view type: {viewType}
+      </div>
+    )
   }
+
+  return render(props)
 }

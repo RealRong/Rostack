@@ -14,40 +14,22 @@ import type {
 import {
   dataviewTrace
 } from '@dataview/core/operations'
-import {
-  entityDelta,
-  type EntityDelta
-} from '@shared/delta'
 import { equal } from '@shared/core'
-import type {
-  DocumentDelta
+import {
+  documentChange,
+  type DocumentDelta
 } from '@dataview/engine/contracts/delta'
-
-const readTouchedIds = <T,>(
-  touched: ReadonlySet<T> | 'all',
-  all: readonly T[]
-): readonly T[] => touched === 'all'
-  ? all
-  : [...touched]
-
-const buildEntityDelta = <Key>(input: {
-  previousIds: readonly Key[]
-  nextIds: readonly Key[]
-  touched?: readonly Key[]
-  removed?: readonly Key[]
-}): EntityDelta<Key> | undefined => entityDelta.normalize({
-  ...(equal.sameOrder(input.previousIds, input.nextIds)
-    ? {}
-    : {
-        order: true as const
-      }),
-  set: input.touched,
-  remove: input.removed
-})
 
 const valueRefKey = (
   ref: ValueRef
 ): string => `${ref.recordId}\u0000${ref.fieldId}`
+
+const readValue = (
+  record: DataRecord | undefined,
+  fieldId: FieldId
+): unknown | undefined => record
+  ? fieldApi.value.read(record, fieldId)
+  : undefined
 
 const collectRecordValueRefs = (
   document: DataDoc,
@@ -64,43 +46,86 @@ const collectRecordValueRefs = (
     : []
 }
 
-const readValue = (
-  record: DataRecord | undefined,
-  fieldId: FieldId
-): unknown | undefined => record
-  ? fieldApi.value.read(record, fieldId)
-  : undefined
-
 const collectAllValueRefs = (
   document: DataDoc
-): readonly ValueRef[] => document.records.order.flatMap((recordId) => (
+): readonly ValueRef[] => document.records.ids.flatMap((recordId) => (
   collectRecordValueRefs(document, recordId)
 ))
 
 const readFieldIds = (
   document: DataDoc
-): readonly FieldId[] => ['title', ...document.fields.order]
+): readonly FieldId[] => ['title', ...document.fields.ids]
 
 const readSchemaFieldIds = (
   document: DataDoc
-): readonly CustomFieldId[] => document.fields.order
+): readonly CustomFieldId[] => document.fields.ids
 
 const readViewIds = (
   document: DataDoc
-): readonly ViewId[] => document.views.order
+): readonly ViewId[] => document.views.ids
 
-const buildValueDelta = (input: {
-  previous: DataDoc
-  next: DataDoc
-  trace: DataviewTrace
-}): EntityDelta<ValueRef> | undefined => {
+const toTouchedIds = <TId,>(
+  touched: ReadonlySet<TId> | 'all',
+  all: readonly TId[]
+): readonly TId[] => touched === 'all'
+  ? all
+  : [...touched]
+
+const writeIdChanges = <TId extends string>(
+  delta: DocumentDelta,
+  key: 'records' | 'values' | 'fields' | 'schemaFields' | 'views',
+  input: {
+    previousIds: readonly TId[]
+    nextIds: readonly TId[]
+    touchedIds?: readonly TId[]
+    removedIds?: readonly TId[]
+  }
+): void => {
+  const previousSet = new Set(input.previousIds)
+  const nextSet = new Set(input.nextIds)
+  const orderChanged = !equal.sameOrder(input.previousIds, input.nextIds)
+  const touchedSet = new Set(input.touchedIds ?? [])
+
+  input.nextIds.forEach(id => {
+    if (!previousSet.has(id)) {
+      documentChange.ids.add(delta, key, id)
+      return
+    }
+
+    if (orderChanged || touchedSet.has(id)) {
+      documentChange.ids.update(delta, key, id)
+    }
+  })
+
+  ;(input.removedIds ?? []).forEach(id => {
+    documentChange.ids.remove(delta, key, id)
+  })
+
+  if (!input.removedIds?.length) {
+    input.previousIds.forEach(id => {
+      if (!nextSet.has(id)) {
+        documentChange.ids.remove(delta, key, id)
+      }
+    })
+  }
+}
+
+const writeValueChanges = (
+  delta: DocumentDelta,
+  input: {
+    previous: DataDoc
+    next: DataDoc
+    trace: DataviewTrace
+  }
+): void => {
   const changes = new Map<string, {
     ref: ValueRef
-    kind: 'set' | 'remove'
+    kind: 'add' | 'update' | 'remove'
   }>()
-  const setChange = (
+
+  const writeChange = (
     ref: ValueRef,
-    kind: 'set' | 'remove'
+    kind: 'add' | 'update' | 'remove'
   ) => {
     changes.set(valueRefKey(ref), {
       ref,
@@ -110,82 +135,85 @@ const buildValueDelta = (input: {
 
   const touched = dataviewTrace.value.touched(input.trace)
   if (touched === 'all') {
+    const previousRefs = collectAllValueRefs(input.previous)
+    const previousSet = new Set(previousRefs.map(valueRefKey))
     const nextRefs = collectAllValueRefs(input.next)
-    const nextRefKeySet = new Set(nextRefs.map(valueRefKey))
+    const nextSet = new Set(nextRefs.map(valueRefKey))
 
-    nextRefs.forEach((ref) => {
-      setChange(ref, 'set')
+    nextRefs.forEach(ref => {
+      writeChange(
+        ref,
+        previousSet.has(valueRefKey(ref))
+          ? 'update'
+          : 'add'
+      )
     })
-    collectAllValueRefs(input.previous).forEach((ref) => {
-      if (!nextRefKeySet.has(valueRefKey(ref))) {
-        setChange(ref, 'remove')
+
+    previousRefs.forEach(ref => {
+      if (!nextSet.has(valueRefKey(ref))) {
+        writeChange(ref, 'remove')
       }
     })
   } else {
     touched?.forEach((fieldIds, recordId) => {
-      fieldIds.forEach((fieldId: FieldId) => {
+      fieldIds.forEach(fieldId => {
         const ref: ValueRef = {
           recordId,
           fieldId
         }
-        const nextRecord = input.next.records.byId[recordId]
-        const previousRecord = input.previous.records.byId[recordId]
-        const nextValue = readValue(nextRecord, fieldId)
-        const previousValue = readValue(previousRecord, fieldId)
+        const nextValue = readValue(input.next.records.byId[recordId], fieldId)
+        const previousValue = readValue(input.previous.records.byId[recordId], fieldId)
 
         if (nextValue !== undefined) {
-          setChange(ref, 'set')
+          writeChange(
+            ref,
+            previousValue === undefined
+              ? 'add'
+              : 'update'
+          )
           return
         }
 
         if (previousValue !== undefined) {
-          setChange(ref, 'remove')
+          writeChange(ref, 'remove')
         }
       })
     })
   }
 
-  input.trace.records?.removed?.forEach((recordId) => {
-    collectRecordValueRefs(input.previous, recordId).forEach((ref) => {
-      setChange(ref, 'remove')
+  input.trace.records?.removed?.forEach(recordId => {
+    collectRecordValueRefs(input.previous, recordId).forEach(ref => {
+      writeChange(ref, 'remove')
     })
   })
-  input.trace.fields?.removed?.forEach((fieldId) => {
-    input.previous.records.order.forEach((recordId: RecordId) => {
+
+  input.trace.fields?.removed?.forEach(fieldId => {
+    input.previous.records.ids.forEach(recordId => {
       const record = input.previous.records.byId[recordId]
-      if (!record) {
+      if (!record || readValue(record, fieldId) === undefined) {
         return
       }
 
-      if (readValue(record, fieldId) === undefined) {
-        return
-      }
-
-      setChange({
+      writeChange({
         recordId,
         fieldId
       }, 'remove')
     })
   })
 
-  if (!changes.size) {
-    return undefined
-  }
-
-  const set: ValueRef[] = []
-  const remove: ValueRef[] = []
-  changes.forEach((change) => {
-    if (change.kind === 'set') {
-      set.push(change.ref)
-      return
+  changes.forEach(change => {
+    const key = valueRefKey(change.ref)
+    switch (change.kind) {
+      case 'add':
+        documentChange.ids.add(delta, 'values', key)
+        break
+      case 'update':
+        documentChange.ids.update(delta, 'values', key)
+        break
+      case 'remove':
+        documentChange.ids.remove(delta, 'values', key)
+        break
     }
-
-    remove.push(change.ref)
-  })
-
-  return entityDelta.normalize({
-    set,
-    remove
   })
 }
 
@@ -194,77 +222,64 @@ export const projectDocumentDelta = (input: {
   next: DataDoc
   trace: DataviewTrace
 }): DocumentDelta | undefined => {
+  const delta = documentChange.create()
+
   if (input.trace.reset) {
-    return {
-      reset: true
-    }
+    documentChange.flag(delta, 'reset')
+    return documentChange.take(delta)
   }
 
-  const nextRecordIds = input.next.records.order
-  const nextFieldIds = readFieldIds(input.next)
-  const nextSchemaFieldIds = readSchemaFieldIds(input.next)
-  const nextViewIds = readViewIds(input.next)
-  const records = buildEntityDelta<RecordId>({
-    previousIds: input.previous.records.order,
+  if (!equal.sameJsonValue(input.previous.meta, input.next.meta)) {
+    documentChange.flag(delta, 'meta')
+  }
+
+  const nextRecordIds = input.next.records.ids
+  writeIdChanges(delta, 'records', {
+    previousIds: input.previous.records.ids,
     nextIds: nextRecordIds,
-    touched: readTouchedIds(
+    touchedIds: toTouchedIds(
       dataviewTrace.record.touchedIds(input.trace),
       nextRecordIds
-    ) as readonly RecordId[],
-    removed: [...(input.trace.records?.removed ?? [])]
+    ),
+    removedIds: [...(input.trace.records?.removed ?? [])]
   })
-  const values = buildValueDelta(input)
-  const fields = buildEntityDelta<FieldId>({
+
+  writeValueChanges(delta, input)
+
+  const nextFieldIds = readFieldIds(input.next)
+  writeIdChanges(delta, 'fields', {
     previousIds: readFieldIds(input.previous),
     nextIds: nextFieldIds,
-    touched: readTouchedIds(
+    touchedIds: toTouchedIds(
       dataviewTrace.field.touchedIds(input.trace),
       nextFieldIds
-    ) as readonly FieldId[],
-    removed: [...(input.trace.fields?.removed ?? [])]
+    ),
+    removedIds: [...(input.trace.fields?.removed ?? [])]
   })
-  const schemaFields = buildEntityDelta<CustomFieldId>({
+
+  const nextSchemaFieldIds = readSchemaFieldIds(input.next)
+  writeIdChanges(delta, 'schemaFields', {
     previousIds: readSchemaFieldIds(input.previous),
     nextIds: nextSchemaFieldIds,
-    touched: readTouchedIds(
+    touchedIds: toTouchedIds(
       dataviewTrace.field.schemaIds(input.trace),
       nextSchemaFieldIds
-    ) as readonly CustomFieldId[],
-    removed: [...(input.trace.fields?.removed ?? [])]
+    ),
+    removedIds: [...(input.trace.fields?.removed ?? [])]
   })
-  const views = buildEntityDelta<ViewId>({
+
+  const nextViewIds = readViewIds(input.next)
+  writeIdChanges(delta, 'views', {
     previousIds: readViewIds(input.previous),
     nextIds: nextViewIds,
-    touched: readTouchedIds(
+    touchedIds: toTouchedIds(
       dataviewTrace.view.touchedIds(input.trace),
       nextViewIds
-    ) as readonly ViewId[],
-    removed: [...(input.trace.views?.removed ?? [])]
+    ),
+    removedIds: [...(input.trace.views?.removed ?? [])]
   })
-  const meta = !equal.sameJsonValue(input.previous.meta, input.next.meta)
-    ? true
-    : undefined
 
-  return meta || records || values || fields || schemaFields || views
-    ? {
-        ...(meta
-          ? { meta }
-          : {}),
-        ...(records
-          ? { records }
-          : {}),
-        ...(values
-          ? { values }
-          : {}),
-        ...(fields
-          ? { fields }
-          : {}),
-        ...(schemaFields
-          ? { schemaFields }
-          : {}),
-        ...(views
-          ? { views }
-          : {})
-      }
+  return documentChange.has(delta)
+    ? documentChange.take(delta)
     : undefined
 }

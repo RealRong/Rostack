@@ -27,7 +27,7 @@ const replaceTable = <TKey extends 'fields' | 'records' | 'views'>(
       [key]: table
     }
 
-const createValidRecordIdSet = (document: DataDoc) => new Set<RecordId>(document.records.order)
+const createValidRecordIdSet = (document: DataDoc) => new Set<RecordId>(document.records.ids)
 
 const normalizeOrders = (
   document: DataDoc,
@@ -131,7 +131,7 @@ const normalizeViews = (document: DataDoc): EntityTable<ViewId, View> => {
   const views = sharedEntityTable.normalize.table(document.views)
   const byId = {} as Record<ViewId, View>
 
-  views.order.forEach(viewId => {
+  views.ids.forEach(viewId => {
     const view = views.byId[viewId]
     if (!view) {
       return
@@ -142,17 +142,17 @@ const normalizeViews = (document: DataDoc): EntityTable<ViewId, View> => {
 
   return {
     byId,
-    order: views.order
+    ids: views.ids
   }
 }
 
 const listViews = (document: DataDoc): View[] => {
-  return document.views.order
+  return document.views.ids
     .map(viewId => document.views.byId[viewId])
     .filter((view): view is View => Boolean(view))
 }
 
-const getViewIds = (document: DataDoc): ViewId[] => document.views.order.slice()
+const getViewIds = (document: DataDoc): ViewId[] => document.views.ids.slice()
 const getView = (document: DataDoc, viewId: ViewId) => document.views.byId[viewId]
 const hasView = (document: DataDoc, viewId: ViewId) => Boolean(document.views.byId[viewId])
 
@@ -165,7 +165,7 @@ const resolveActiveViewId = (
     return candidate
   }
 
-  return document.views.order[0]
+  return document.views.ids[0]
 }
 
 const getActiveViewId = (

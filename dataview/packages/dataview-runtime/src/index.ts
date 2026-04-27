@@ -26,9 +26,9 @@ export type {
   CardContent,
   CardTitle,
   CardProperty,
+  DataViewModel,
   GalleryModel,
   KanbanModel,
-  DataViewModel,
   GalleryBody,
   GalleryCard,
   GallerySection,
@@ -48,6 +48,10 @@ export type {
   TableColumn,
   TableModel,
   TableRow
+} from '@dataview/runtime/model'
+export {
+  cardModelSpec,
+  pageModelSpec
 } from '@dataview/runtime/model'
 
 export {

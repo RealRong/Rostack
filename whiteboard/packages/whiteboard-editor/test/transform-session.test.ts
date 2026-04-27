@@ -147,7 +147,7 @@ const createTransformContext = ({
     }
   },
   measure,
-  registry: {
+  nodes: {
     get: (type: string) => type === 'text'
       ? {
           layout: {

@@ -103,6 +103,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   >
 
   return {
+    spec: options.spec,
     ...engineWithInfra,
     fields: createFieldsApi(engineBase),
     records: createRecordsApi(engineBase),

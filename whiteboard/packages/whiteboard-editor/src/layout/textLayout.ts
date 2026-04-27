@@ -30,7 +30,7 @@ import type {
   LayoutRequest,
   TextMetricsResource
 } from '@whiteboard/editor/types/layout'
-import type { NodeRegistry } from '@whiteboard/editor/types/node'
+import type { NodeSpecReader } from '@whiteboard/editor/types/node'
 import { createTextMetricsResource } from '@whiteboard/editor/layout/textMetrics'
 
 const TEXT_PLACEHOLDER = 'Text'
@@ -86,9 +86,9 @@ const hasOwn = <T extends object>(
 ) => Object.prototype.hasOwnProperty.call(value, key)
 
 const readLayoutKind = (
-  registry: Pick<NodeRegistry, 'get'>,
+  nodes: NodeSpecReader,
   node: Pick<Node, 'type'>
-): LayoutKind => registry.get(node.type)?.layout?.kind ?? 'none'
+): LayoutKind => nodes.get(node.type)?.behavior.layout?.kind ?? 'none'
 
 const readFontSize = (
   node: Pick<Node, 'style'>
@@ -389,10 +389,10 @@ export interface EditorTextLayout {
 }
 
 export const createEditorTextLayout = ({
-  registry,
+  nodes,
   backend
 }: {
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   backend?: LayoutBackend
 }): EditorTextLayout => {
   const text = createTextMetricsResource()
@@ -401,7 +401,7 @@ export const createEditorTextLayout = ({
     text,
     measure: (request) => {
       if (request.kind === 'node') {
-        const kind = readLayoutKind(registry, request.node)
+        const kind = readLayoutKind(nodes, request.node)
         const layoutRequest = buildLayoutRequest({
           nodeId: request.nodeId,
           node: request.node,
@@ -452,14 +452,14 @@ export const createEditorTextLayout = ({
 
 export const patchNodeCreateByTextMeasure = (input: {
   payload: NodeInput
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   measure: TextLayoutMeasure
 }): NodeInput => {
   if (!input.payload.type) {
     return input.payload
   }
 
-  const kind = readLayoutKind(input.registry, input.payload)
+  const kind = readLayoutKind(input.nodes, input.payload)
   if (kind === 'none') {
     return input.payload
   }
@@ -529,7 +529,7 @@ export const patchMindmapTemplateByTextMeasure = (input: {
     x: number
     y: number
   }
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   measure: TextLayoutMeasure
 }): MindmapTemplate => {
   const patchNode = (
@@ -545,7 +545,7 @@ export const patchMindmapTemplateByTextMeasure = (input: {
         ...templateNode.node,
         position
       },
-      registry: input.registry,
+      nodes: input.nodes,
       measure: input.measure
     }),
     children: templateNode.children?.map((child) => patchNode(child, {
@@ -565,11 +565,11 @@ export const patchNodeUpdateByTextMeasure = (input: {
   node: Node
   rect: Rect
   update: NodeUpdateInput
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   measure: TextLayoutMeasure
   origin?: Origin
 }): NodeUpdateInput => {
-  const kind = readLayoutKind(input.registry, input.node)
+  const kind = readLayoutKind(input.nodes, input.node)
   const normalized = normalizeStickyFontModeUpdate({
     node: input.node,
     update: input.update,
@@ -618,7 +618,7 @@ export const patchNodePreviewByTextMeasure = (input: {
   patches: readonly TransformPreviewPatch[]
   readNode(nodeId: NodeId): Node | undefined
   readNodeRect(nodeId: NodeId): Rect | undefined
-  registry: Pick<NodeRegistry, 'get'>
+  nodes: NodeSpecReader
   measure: TextLayoutMeasure
 }): readonly TransformPreviewPatch[] => input.patches.map((patch) => {
   const node = input.readNode(patch.id)
@@ -627,7 +627,7 @@ export const patchNodePreviewByTextMeasure = (input: {
     return patch
   }
 
-  const kind = readLayoutKind(input.registry, node)
+  const kind = readLayoutKind(input.nodes, node)
   if (kind === 'size') {
     if (
       node.type !== 'text'

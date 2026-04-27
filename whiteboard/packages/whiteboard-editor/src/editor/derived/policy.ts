@@ -43,7 +43,7 @@ const createSelectionNodeStats = (input: {
 
   nodes.forEach((node) => {
     const meta = input.nodeType.meta(node.type)
-    const key = meta.key ?? node.type
+    const key = meta.type || node.type
     const current = statsByType.get(key)
     if (current) {
       current.count += 1

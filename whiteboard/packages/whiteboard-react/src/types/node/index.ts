@@ -1,11 +1,12 @@
 export type {
   ControlId,
-  NodeDefinition,
-  NodeRegistry,
+  NodeBehaviorSpec,
+  NodeSpec,
+  NodeSpecEntry,
   NodeRenderProps,
   NodeWrite,
   NodeHit,
   NodeMeta,
   NodeFamily
-} from '@whiteboard/react/types/node/registry'
+} from '@whiteboard/react/types/node/spec'
 export type { NodeRole } from '@whiteboard/core/types'

@@ -41,6 +41,10 @@ import {
   pruneFieldFromViewOptions
 } from '@dataview/core/view/options'
 import {
+  getViewTypeSpec,
+  viewTypeSpec
+} from '@dataview/core/view/typeSpec'
+import {
   repairViewForConvertedField,
   repairViewForRemovedField
 } from '@dataview/core/view/repair'
@@ -131,6 +135,9 @@ export const view = {
     cloneTable: cloneTableOptions,
     pruneField: pruneFieldFromViewOptions
   },
+  type: {
+    spec: getViewTypeSpec
+  },
   layout: {
     table: {
       patch: patchTableLayout
@@ -163,4 +170,5 @@ export const view = {
 } as const
 
 export { active, filter, sort, search, group, calc as calculation }
+export { viewTypeSpec, getViewTypeSpec }
 export { planFilterCandidateLookup } from '@dataview/core/view/filter'

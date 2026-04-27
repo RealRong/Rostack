@@ -1,9 +1,5 @@
 export { NodeTypeIcon } from '@whiteboard/react/features/node/components/NodeTypeIcon'
-export {
-  createDefaultNodeRegistry,
-  createNodeRegistry,
-  resolveNodeMeta
-} from '@whiteboard/react/features/node/registry'
+export { nodeSpec } from '@whiteboard/react/features/node/registry/default'
 export { ShapeGlyph } from '@whiteboard/react/features/node/shape'
 export {
   STICKY_DEFAULT_FILL,

@@ -33,7 +33,7 @@ const createMoveOrderAction = (
   }
 
   const allRecordIds = [
-    ...base.reader.document().records.order,
+    ...base.reader.document().records.ids,
     ...recordIds.filter(recordId => !base.reader.records.has(recordId))
   ]
 
@@ -135,7 +135,7 @@ export const createActiveRecordsApi = (input: {
     }
     const actions: CoreIntent[] = [...created]
 
-    if (!state.view.sort.rules.order.length && context.beforeRecord) {
+    if (!state.view.sort.rules.ids.length && context.beforeRecord) {
       const moveAction = createMoveOrderAction(
         input.base,
         [recordId],

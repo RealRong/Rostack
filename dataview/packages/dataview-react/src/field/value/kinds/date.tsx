@@ -1,4 +1,4 @@
-import type { CustomField } from '@dataview/core/types'
+import type { Field } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
 import { cn } from '@shared/ui/utils'
 import { DateValueEditor } from '@dataview/react/field/value/editor/pickers/date/DateValueEditor'
@@ -10,16 +10,27 @@ import {
 import type { FieldValueSpec } from '@dataview/react/field/value/kinds/contracts'
 import { renderEmpty } from '@dataview/react/field/value/kinds/shared'
 
-export const createDatePropertySpec = (
-  field: CustomField | undefined
-): FieldValueSpec<DateValueDraft> => ({
+const readCustomField = (
+  field?: Field
+) => fieldApi.kind.isCustom(field)
+  ? field
+  : undefined
+
+export const dateFieldValueSpec: FieldValueSpec<DateValueDraft> = {
   capability: {},
   panelWidth: 'calendar',
   Editor: DateValueEditor,
-  createDraft: (value, seedDraft) => createDateValueDraft(field, value, seedDraft),
-  parseDraft: parseDateValueDraft,
-  render: props => {
-    const display = fieldApi.date.display.value(field, props.value)
+  createDraft: (field, value, seedDraft) => createDateValueDraft(
+    readCustomField(field),
+    value,
+    seedDraft
+  ),
+  parseDraft: (_field, draft) => parseDateValueDraft(draft),
+  render: (field, props) => {
+    const display = fieldApi.date.display.value(
+      readCustomField(field),
+      props.value
+    )
     if (!display) {
       return renderEmpty(props)
     }
@@ -38,4 +49,4 @@ export const createDatePropertySpec = (
       </span>
     )
   }
-})
+}

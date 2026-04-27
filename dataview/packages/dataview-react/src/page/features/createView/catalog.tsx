@@ -2,18 +2,19 @@ import {
   Calendar,
   Clock3,
   FileText,
-  KanbanSquare,
   LayoutDashboard,
-  LayoutGrid,
   List,
   Map,
   Newspaper,
   PieChart,
-  Table2,
   type LucideIcon
 } from 'lucide-react'
 import type { ViewType } from '@dataview/core/types'
+import { viewTypeSpec } from '@dataview/core/view'
 import { meta, type Token } from '@dataview/meta'
+import {
+  createTableIndex
+} from '@shared/spec'
 import { token } from '@shared/i18n'
 
 export interface CreateViewItem {
@@ -83,27 +84,15 @@ const COMING_SOON_ITEMS: readonly CreateViewItem[] = [
   }
 ]
 
+const viewTypeIndex = createTableIndex(viewTypeSpec)
+
 export const CREATE_VIEW_ITEMS: readonly CreateViewItem[] = [
-  {
-    id: 'table',
-    type: 'table',
-    label: meta.view.get('table').token,
-    Icon: Table2,
-    enabled: true
-  },
-  {
-    id: 'kanban',
-    type: 'kanban',
-    label: meta.view.get('kanban').token,
-    Icon: KanbanSquare,
-    enabled: true
-  },
-  {
-    id: 'gallery',
-    type: 'gallery',
-    label: meta.view.get('gallery').token,
-    Icon: LayoutGrid,
-    enabled: true
-  },
+  ...viewTypeIndex.entries.map(([type, spec]) => ({
+    id: type,
+    type,
+    label: meta.view.get(type).token,
+    Icon: meta.view.get(type).Icon,
+    enabled: spec.capabilities.create
+  })),
   ...COMING_SOON_ITEMS
 ] as const

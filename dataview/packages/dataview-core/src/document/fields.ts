@@ -74,7 +74,7 @@ const getFieldIds = (
   document: DataDoc
 ): FieldId[] => [
   TITLE_FIELD_ID,
-  ...document.fields.order
+  ...document.fields.ids
 ]
 
 const getField = (

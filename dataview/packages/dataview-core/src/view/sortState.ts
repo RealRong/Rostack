@@ -12,7 +12,7 @@ const createSortRuleId = (): ViewSortRuleId => createId('sort') as ViewSortRuleI
 
 const EMPTY_SORT_RULES: EntityTable<ViewSortRuleId, SortRule> = {
   byId: {} as Record<ViewSortRuleId, SortRule>,
-  order: []
+  ids: []
 }
 
 const normalizeSortRuleShape = (
@@ -65,14 +65,14 @@ export const normalizeSortRules = (
 
   const source = rules as {
     byId?: unknown
-    order?: unknown
+    ids?: unknown
   }
-  if (!source.byId || typeof source.byId !== 'object' || !Array.isArray(source.order)) {
+  if (!source.byId || typeof source.byId !== 'object' || !Array.isArray(source.ids)) {
     return EMPTY_SORT_RULES
   }
 
   const byId = source.byId as Record<string, unknown>
-  return entityTable.normalize.list(source.order.flatMap(ruleId => {
+  return entityTable.normalize.list(source.ids.flatMap(ruleId => {
     if (typeof ruleId !== 'string') {
       return []
     }
@@ -88,9 +88,9 @@ export const sameSortRules = (
   left: EntityTable<ViewSortRuleId, SortRule>,
   right: EntityTable<ViewSortRuleId, SortRule>
 ) => (
-  left.order.length === right.order.length
-  && left.order.every((ruleId, index) => {
-    const rightId = right.order[index]
+  left.ids.length === right.ids.length
+  && left.ids.every((ruleId, index) => {
+    const rightId = right.ids[index]
     const leftRule = left.byId[ruleId]
     const rightRule = rightId
       ? right.byId[rightId]
@@ -119,7 +119,7 @@ const findSortRuleIdByFieldId = (
   rules: EntityTable<ViewSortRuleId, SortRule>,
   fieldId: FieldId,
   exceptId?: ViewSortRuleId
-): ViewSortRuleId | undefined => rules.order.find(ruleId => {
+): ViewSortRuleId | undefined => rules.ids.find(ruleId => {
   if (ruleId === exceptId) {
     return false
   }
@@ -208,24 +208,24 @@ export const writeSortMove = (
     throw new Error(`Unknown sort rule ${beforeId}`)
   }
 
-  const nextOrder = sort.rules.order.filter(ruleId => ruleId !== id)
+  const nextIds = sort.rules.ids.filter(ruleId => ruleId !== id)
   if (beforeId) {
-    const beforeIndex = nextOrder.indexOf(beforeId)
+    const beforeIndex = nextIds.indexOf(beforeId)
     if (beforeIndex === -1) {
       throw new Error(`Unknown sort rule ${beforeId}`)
     }
-    nextOrder.splice(beforeIndex, 0, id)
+    nextIds.splice(beforeIndex, 0, id)
   } else {
-    nextOrder.push(id)
+    nextIds.push(id)
   }
 
-  return nextOrder.every((ruleId, index) => ruleId === sort.rules.order[index])
+  return nextIds.every((ruleId, index) => ruleId === sort.rules.ids[index])
     ? sort
     : createSortState({
         byId: {
           ...sort.rules.byId
         },
-        order: nextOrder
+        ids: nextIds
       })
 }
 
@@ -244,7 +244,7 @@ export const writeSortRemove = (
 export const writeSortClear = (
   sort: Sort
 ): Sort => (
-  sort.rules.order.length
+  sort.rules.ids.length
     ? createSortState(EMPTY_SORT_RULES)
     : sort
 )

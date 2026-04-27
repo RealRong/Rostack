@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react'
 import type { Field } from '@dataview/core/types'
 import {
   field as fieldApi
@@ -24,7 +23,6 @@ const resolveInputKind = (
 }
 
 const toInputDraft = (
-  type: InputKind,
   value: unknown
 ) => {
   if (value === undefined || value === null) {
@@ -34,49 +32,37 @@ const toInputDraft = (
   return String(value)
 }
 
-const TextInputEditor = (props: FieldValueDraftEditorProps<string>) => (
-  <InputEditor {...props} type="text" />
+const TextValueEditor = (props: FieldValueDraftEditorProps<string>) => (
+  <InputEditor
+    {...props}
+    type={resolveInputKind(props.field)}
+  />
 )
 
-const NumberInputEditor = (props: FieldValueDraftEditorProps<string>) => (
-  <InputEditor {...props} type="number" />
-)
-
-const inputEditors: Record<InputKind, ComponentType<FieldValueDraftEditorProps<string>>> = {
-  text: TextInputEditor,
-  number: NumberInputEditor
-}
-
-export const createTextPropertySpec = (
-  field: Field | undefined
-): FieldValueSpec<string> => {
-  const type = resolveInputKind(field)
-
-  return {
-    capability: {},
-    panelWidth: 'default',
-    Editor: inputEditors[type],
-    createDraft: (value, seedDraft) => seedDraft ?? toInputDraft(type, value),
-    parseDraft: draft => fieldApi.draft.parse(field, draft),
-    render: props => {
-      const display = fieldApi.display.value(field, props.value)
-      if (!display) {
-        return renderEmpty(props)
-      }
-
-      return (
-        <span
-          className={cn(
-            'block',
-            props.wrap
-              ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
-              : 'truncate',
-            props.className
-          )}
-        >
-          {display}
-        </span>
-      )
+export const textFieldValueSpec: FieldValueSpec<string> = {
+  capability: {},
+  panelWidth: 'default',
+  Editor: TextValueEditor,
+  createDraft: (field, value, seedDraft) => seedDraft ?? toInputDraft(value),
+  parseDraft: (field, draft) => fieldApi.draft.parse(field, draft),
+  render: (field, props) => {
+    const display = fieldApi.display.value(field, props.value)
+    if (!display) {
+      return renderEmpty(props)
     }
+
+    return (
+      <span
+        className={cn(
+          'block',
+          props.wrap
+            ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
+            : 'truncate',
+          props.className
+        )}
+      >
+        {display}
+      </span>
+    )
   }
 }

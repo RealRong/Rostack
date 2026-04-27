@@ -51,8 +51,18 @@ export type {
   Tool
 } from '@whiteboard/editor/types/tool'
 export type {
-  NodeDefinition,
-  NodeRegistry
+  ControlId,
+  NodeFamily,
+  NodeHit,
+  NodeMeta,
+  NodeBehaviorSpec,
+  NodeFieldKey,
+  NodeFieldSpec,
+  NodeFieldValueKind,
+  NodeSchemaSpec,
+  NodeSpec,
+  NodeSpecEntry,
+  NodeSpecReader
 } from '@whiteboard/editor/types/node'
 export type {
   LayoutBackend,

@@ -274,7 +274,7 @@ const applyRecordFieldWriteEntries = (
   return {
     document: replaceTable(document, 'records', {
       byId: nextById,
-      order: document.records.order
+      ids: document.records.ids
     }),
     changes
   }
@@ -304,7 +304,7 @@ const getRecord = (document: DataDoc, recordId: RecordId): DataRecord | undefine
 const hasRecord = (document: DataDoc, recordId: RecordId) => sharedEntityTable.read.has(document.records, recordId)
 
 const getRecordIndex = (document: DataDoc, recordId: RecordId) => {
-  return document.records.order.indexOf(recordId)
+  return document.records.ids.indexOf(recordId)
 }
 
 const replaceRecords = (document: DataDoc, records: readonly DataRecord[]): DataDoc => {
@@ -317,15 +317,15 @@ const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?
   }
 
   const nextRecords = sharedEntityTable.normalize.list(records)
-  const insertedIds = nextRecords.order
+  const insertedIds = nextRecords.ids
   if (!insertedIds.length) {
     return document
   }
 
   const insertedIdSet = new Set(insertedIds)
-  const remainingOrder = document.records.order.filter(recordId => !insertedIdSet.has(recordId))
-  const safeIndex = Math.max(0, Math.min(index ?? remainingOrder.length, remainingOrder.length))
-  const nextOrder = [...remainingOrder.slice(0, safeIndex), ...insertedIds, ...remainingOrder.slice(safeIndex)]
+  const remainingIds = document.records.ids.filter(recordId => !insertedIdSet.has(recordId))
+  const safeIndex = Math.max(0, Math.min(index ?? remainingIds.length, remainingIds.length))
+  const nextIds = [...remainingIds.slice(0, safeIndex), ...insertedIds, ...remainingIds.slice(safeIndex)]
   const byId = {
     ...document.records.byId
   }
@@ -338,7 +338,7 @@ const insertRecords = (document: DataDoc, records: readonly DataRecord[], index?
 
   return replaceTable(document, 'records', {
     byId,
-    order: nextOrder
+    ids: nextIds
   })
 }
 
@@ -365,7 +365,7 @@ const patchRecord = (
       byId[recordId] = nextRecord
       return byId
     })(),
-    order: document.records.order
+    ids: document.records.ids
   })
 }
 
@@ -385,7 +385,7 @@ const removeRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataD
       return
     }
     removedCount += 1
-    nextById[recordId] = undefined as unknown as DataRecord
+    delete nextById[recordId]
   })
 
   if (!removedCount) {
@@ -394,7 +394,7 @@ const removeRecords = (document: DataDoc, recordIds: readonly RecordId[]): DataD
 
   return replaceTable(document, 'records', {
     byId: nextById,
-    order: document.records.order.filter(recordId => !removed.has(recordId))
+    ids: document.records.ids.filter(recordId => !removed.has(recordId))
   })
 }
 

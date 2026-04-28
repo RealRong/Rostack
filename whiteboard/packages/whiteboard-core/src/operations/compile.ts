@@ -2,9 +2,8 @@ import type {
   MutationCompileIssue
 } from '@shared/mutation'
 import {
-  compileMutationIntents,
   normalizeCompileIssue,
-  OperationMutationRuntime
+  MutationEngine
 } from '@shared/mutation'
 import type {
   CoreRegistries,
@@ -43,7 +42,7 @@ export const compile = (input: {
   outputs: readonly WhiteboardIntentOutput[]
   issues?: readonly MutationCompileIssue<'invalid' | 'cancelled'>[]
   canApply?: boolean
-} => compileMutationIntents<
+} => MutationEngine.compile<
   Document,
   WhiteboardMutationTable,
   Operation,
@@ -62,8 +61,8 @@ export const compile = (input: {
     doc,
     ops
   }) => {
-    const reduced = OperationMutationRuntime.reduce({
-      doc,
+    const reduced = MutationEngine.reduce({
+      document: doc,
       ops,
       origin: 'system',
       operations: spec

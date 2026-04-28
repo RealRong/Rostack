@@ -1,7 +1,7 @@
 import {
-  CommandMutationSpec,
+  type MutationEngineSpec,
   type MutationCompileInput,
-  type Origin as MutationOrigin
+  type MutationOrigin
 } from '@shared/mutation'
 import { createId } from '@shared/core'
 import {
@@ -14,6 +14,7 @@ import {
   definitions,
   spec
 } from '@whiteboard/core/operations'
+import type { WhiteboardReduceCtx } from '@whiteboard/core/reducer/types'
 import type { BoardConfig } from '@whiteboard/engine/config'
 import type {
   CoreRegistries,
@@ -73,20 +74,23 @@ const shouldClearHistory = (
 ): boolean => shouldTrackOrigin(commit.origin, config)
   && commit.forward.some((op) => definitions[op.type].sync === 'checkpoint')
 
-export type WhiteboardMutationSpec = CommandMutationSpec<
-  Document,
-  WhiteboardMutationTable,
-  Operation,
-  WhiteboardMutationKey,
-  EnginePublish,
-  void,
-  WhiteboardMutationExtra
->
-
 export const createWhiteboardMutationSpec = (input: {
   config: BoardConfig
   registries: CoreRegistries
-}): WhiteboardMutationSpec => {
+}): Omit<
+  MutationEngineSpec<
+    Document,
+    WhiteboardMutationTable,
+    Operation,
+    WhiteboardMutationKey,
+    EnginePublish,
+    void,
+    WhiteboardMutationExtra,
+    void,
+    WhiteboardReduceCtx
+  >,
+  'document'
+> => {
   const historyConfig = DEFAULT_HISTORY_CONFIG
   const ids: WhiteboardCompileIds = {
     node: (): NodeId => createId('node'),
@@ -99,6 +103,33 @@ export const createWhiteboardMutationSpec = (input: {
 
   return {
     normalize: (doc) => normalizeDocument(doc),
+    key: {
+      serialize: spec.serializeKey,
+      ...(spec.conflicts
+        ? {
+            conflicts: spec.conflicts
+          }
+        : {})
+    },
+    operations: spec.table,
+    reduce: {
+      ...(spec.createContext
+        ? {
+            createContext: spec.createContext
+          }
+        : {}),
+      ...(spec.validate
+        ? {
+            validate: spec.validate
+          }
+        : {}),
+      ...(spec.settle
+        ? {
+            settle: spec.settle
+          }
+        : {}),
+      done: spec.done
+    },
     compile: ({
       doc,
       intents
@@ -108,7 +139,6 @@ export const createWhiteboardMutationSpec = (input: {
       registries: input.registries,
       ids
     }),
-    operations: spec,
     publish: whiteboardPublishSpec,
     history: {
       capacity: historyConfig.capacity,

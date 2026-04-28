@@ -1,13 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import {
-  CommandMutationEngine,
-  type CommandMutationSpec,
+  MutationEngine,
   type MutationIntentTable,
+  type MutationKeySpec,
+  type MutationReduceSpec
 } from '@shared/mutation'
-import {
-  OperationMutationRuntime,
-  type MutationRuntimeSpec
-} from '../src/engine'
 
 type TestDoc = {
   count: number
@@ -37,6 +34,21 @@ type TestExtra = {
   total: number
 }
 
+type TestReduce = MutationReduceSpec<
+  TestDoc,
+  TestOp,
+  TestKey,
+  TestExtra,
+  import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey> & {
+    total: number
+  }
+>
+
+const testKey: MutationKeySpec<TestKey> = {
+  serialize: (key) => key,
+  conflicts: (left, right) => left === right
+}
+
 interface TestIntentTable extends MutationIntentTable {
   'count.add': {
     intent: {
@@ -47,63 +59,46 @@ interface TestIntentTable extends MutationIntentTable {
   }
 }
 
-const createSpec = (): CommandMutationSpec<
-  TestDoc,
-  TestIntentTable,
-  TestOp,
-  TestKey,
-  TestPublish,
-  TestCache,
-  TestExtra
-> => ({
+const createEngineInput = () => ({
   normalize: (doc) => doc,
-  compile: ({
-    intents
-  }) => ({
-    ops: intents.map((intent) => ({
-      type: 'count.add' as const,
-      value: intent.value
-    })),
-    outputs: intents.map((intent) => intent.value)
-  }),
+  key: testKey,
   operations: {
-    table: {
-      'count.add': {
-        family: 'count',
-        footprint: (ctx) => {
-          ctx.footprint('count')
-        },
-        apply: (ctx, op) => {
-          ctx.total += op.value
-          ctx.inverseMany([{
-            type: 'count.add',
-            value: -op.value
-          }])
-          ctx.replace({
-            count: ctx.doc().count + op.value
-          })
-        }
+    'count.add': {
+      family: 'count',
+      footprint: (ctx: import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey>, _op: TestOp) => {
+        ctx.footprint('count')
       },
-      'count.reset': {
-        family: 'count',
-        sync: 'checkpoint',
-        footprint: (ctx) => {
-          ctx.footprint('count')
-        },
-        apply: (ctx, op) => {
-          const previous = ctx.doc().count
-          ctx.total = op.value
-          ctx.inverseMany([{
-            type: 'count.reset',
-            value: previous
-          }])
-          ctx.replace({
-            count: op.value
-          })
-        }
+      apply: (ctx: import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey> & { total: number }, op: Extract<TestOp, { type: 'count.add' }>) => {
+        ctx.total += op.value
+        ctx.inverseMany([{
+          type: 'count.add',
+          value: -op.value
+        }])
+        ctx.replace({
+          count: ctx.doc().count + op.value
+        })
       }
     },
-    serializeKey: (key) => key,
+    'count.reset': {
+      family: 'count',
+      sync: 'checkpoint',
+      footprint: (ctx: import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey>) => {
+        ctx.footprint('count')
+      },
+      apply: (ctx: import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey> & { total: number }, op: Extract<TestOp, { type: 'count.reset' }>) => {
+        const previous = ctx.doc().count
+        ctx.total = op.value
+        ctx.inverseMany([{
+          type: 'count.reset',
+          value: previous
+        }])
+        ctx.replace({
+          count: op.value
+        })
+      }
+    }
+  },
+  reduce: {
     createContext: (ctx) => ({
       ...ctx,
       total: 0
@@ -121,9 +116,17 @@ const createSpec = (): CommandMutationSpec<
     },
     done: (ctx) => ({
       total: ctx.doc().count
-    }),
-    conflicts: (left, right) => left === right
-  },
+    })
+  } satisfies TestReduce,
+  compile: ({
+    intents
+  }) => ({
+    ops: intents.map((intent) => ({
+      type: 'count.add' as const,
+      value: intent.value
+    })),
+    outputs: intents.map((intent) => intent.value)
+  }),
   publish: {
     init: (doc) => ({
       publish: {
@@ -150,30 +153,13 @@ const createSpec = (): CommandMutationSpec<
   }
 })
 
-const createRuntimeSpec = (): MutationRuntimeSpec<
-  TestDoc,
-  TestOp,
-  TestKey,
-  TestPublish,
-  TestCache,
-  TestExtra
-> => {
-  const spec = createSpec()
-  return {
-    normalize: spec.normalize,
-    operations: spec.operations,
-    publish: spec.publish,
-    history: spec.history
-  }
-}
-
-describe('CommandMutationEngine', () => {
+describe('MutationEngine', () => {
   test('executes a typed intent and publishes commits/history', () => {
-    const engine = new CommandMutationEngine({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 1
       },
-      spec: createSpec()
+      ...createEngineInput()
     })
     const states: number[] = []
     const commits: number[] = []
@@ -224,11 +210,11 @@ describe('CommandMutationEngine', () => {
   })
 
   test('supports batched execute with output array', () => {
-    const engine = new CommandMutationEngine({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 0
       },
-      spec: createSpec()
+      ...createEngineInput()
     })
 
     const result = engine.execute([{
@@ -257,11 +243,11 @@ describe('CommandMutationEngine', () => {
   })
 
   test('supports direct apply and does not capture remote writes into history', () => {
-    const engine = new CommandMutationEngine({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 0
       },
-      spec: createSpec()
+      ...createEngineInput()
     })
 
     const result = engine.apply([{
@@ -279,11 +265,11 @@ describe('CommandMutationEngine', () => {
   })
 
   test('checkpoint operations clear local history by default', () => {
-    const engine = new CommandMutationEngine({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 0
       },
-      spec: createSpec()
+      ...createEngineInput()
     })
 
     engine.execute({
@@ -302,11 +288,11 @@ describe('CommandMutationEngine', () => {
   })
 
   test('replace(system origin) resets current state without emitting an apply commit and clears history', () => {
-    const engine = new CommandMutationEngine({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 0
       },
-      spec: createSpec()
+      ...createEngineInput()
     })
     const commitKinds: Array<'apply' | 'replace'> = []
     const revisions: number[] = []
@@ -343,11 +329,11 @@ describe('CommandMutationEngine', () => {
   })
 
   test('replace resets runtime without emitting an apply commit and returns true', () => {
-    const engine = new CommandMutationEngine({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 0
       },
-      spec: createSpec()
+      ...createEngineInput()
     })
     const commits: Array<'apply' | 'replace'> = []
 
@@ -378,11 +364,21 @@ describe('CommandMutationEngine', () => {
   })
 
   test('operation runtime exposes apply without compile', () => {
-    const engine = new OperationMutationRuntime({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 0
       },
-      spec: createRuntimeSpec()
+      ...(() => {
+        const input = createEngineInput()
+        return {
+          normalize: input.normalize,
+          key: input.key,
+          operations: input.operations,
+          reduce: input.reduce,
+          publish: input.publish,
+          history: input.history
+        }
+      })()
     })
 
     const result = engine.apply([{
@@ -398,11 +394,11 @@ describe('CommandMutationEngine', () => {
   })
 
   test('returns the live current doc snapshot', () => {
-    const engine = new CommandMutationEngine({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 2
       },
-      spec: createSpec()
+      ...createEngineInput()
     })
 
     const snapshot = engine.current()
@@ -414,11 +410,19 @@ describe('CommandMutationEngine', () => {
   })
 
   test('returns a failure when operations validation fails', () => {
-    const engine = new OperationMutationRuntime({
-      doc: {
+    const engine = new MutationEngine({
+      document: {
         count: 0
       },
-      spec: createRuntimeSpec()
+      ...(() => {
+        const input = createEngineInput()
+        return {
+          normalize: input.normalize,
+          key: input.key,
+          operations: input.operations,
+          reduce: input.reduce
+        }
+      })()
     })
 
     const result = engine.apply([{

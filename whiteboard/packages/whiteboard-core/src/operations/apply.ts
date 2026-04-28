@@ -1,4 +1,4 @@
-import { OperationMutationRuntime } from '@shared/mutation'
+import { MutationEngine } from '@shared/mutation'
 import type { HistoryFootprint } from '@whiteboard/core/operations/history'
 import {
   type WhiteboardOperationReduceExtra,
@@ -44,8 +44,8 @@ export const apply = (input: {
       }
   }
 
-  return OperationMutationRuntime.reduce({
-    doc: input.doc,
+  return MutationEngine.reduce({
+    document: input.doc,
     ops: input.ops,
     origin: toMutationOrigin(input.origin),
     operations: spec

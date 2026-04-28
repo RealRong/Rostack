@@ -1,6 +1,6 @@
 import {
-  CommandMutationEngine,
-  type Origin as MutationOrigin
+  MutationEngine,
+  type MutationOrigin
 } from '@shared/mutation'
 import { createRegistries } from '@whiteboard/core/registry'
 import { resolveBoardConfig } from '../config'
@@ -21,6 +21,7 @@ import type {
   WhiteboardMutationKey
 } from '../mutation/types'
 import type { WhiteboardMutationTable } from '@whiteboard/core/operations'
+import type { WhiteboardReduceCtx } from '@whiteboard/core/reducer/types'
 import type { Document, Operation } from '@whiteboard/core/types'
 
 const resolveIntentOrigin = (
@@ -81,17 +82,19 @@ export const createEngine = ({
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
 
-  const core = new CommandMutationEngine<
+  const core = new MutationEngine<
     Document,
     WhiteboardMutationTable,
     Operation,
     WhiteboardMutationKey,
     EnginePublish,
     void,
-    WhiteboardMutationExtra
+    WhiteboardMutationExtra,
+    WhiteboardReduceCtx,
+    void
   >({
-    doc: document,
-    spec: createWhiteboardMutationSpec({
+    document,
+    ...createWhiteboardMutationSpec({
       config,
       registries: resolvedRegistries
     })

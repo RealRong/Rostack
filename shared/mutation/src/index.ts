@@ -1,4 +1,5 @@
 export type {
+  MutationCompileSpec,
   MutationCompileControl,
   MutationCompileCtx,
   MutationCompileHandler,
@@ -8,6 +9,7 @@ export type {
   MutationCompileSource,
   MutationCompileResult,
   MutationError,
+  MutationEngineSpec,
   MutationExecuteInput,
   MutationExecuteResult,
   MutationExecuteResultOfInput,
@@ -15,23 +17,23 @@ export type {
   MutationIntentKind,
   MutationIntentOf,
   MutationIntentTable,
+  MutationKeySpec,
   MutationOperationsSpec,
   MutationOptions,
   MutationOutputOf,
   MutationRuntimeSpec,
+  MutationReduceSpec,
   MutationPublishSpec,
   MutationResult,
   CommandMutationSpec
 } from './engine'
 export {
   createCompileIssue,
-  compileMutationIntents,
   hasCompileErrors,
   mutationFailure,
   mutationResult,
   normalizeCompileIssue,
-  OperationMutationRuntime,
-  CommandMutationEngine
+  MutationEngine
 } from './engine'
 export type {
   HistoryPort,
@@ -43,5 +45,6 @@ export type {
   ApplyCommit,
   CommitRecord,
   CommitStream,
+  MutationOrigin,
   Origin
 } from './write'

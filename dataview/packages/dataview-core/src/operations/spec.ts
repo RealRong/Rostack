@@ -8,7 +8,7 @@ import {
   type ReducerResult
 } from '@shared/reducer'
 import {
-  OperationMutationRuntime,
+  MutationEngine,
   type MutationOperationsSpec
 } from '@shared/mutation'
 import {
@@ -92,8 +92,8 @@ export const dataviewMutationOperations: MutationOperationsSpec<
 export const reduceDataviewOperations = (
   document: DataDoc,
   operations: readonly DocumentOperation[]
-): DataviewOperationReduceResult => OperationMutationRuntime.reduce({
-  doc: document,
+): DataviewOperationReduceResult => MutationEngine.reduce({
+  document,
   ops: operations,
   operations: dataviewMutationOperations
 })

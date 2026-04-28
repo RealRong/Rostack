@@ -1,14 +1,13 @@
 import type { DataDoc, Intent } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/types/operations'
+import { reduceDataviewOperations } from './spec'
 import type {
   MutationCompileHandlerTable
 } from '@shared/mutation'
 import {
-  compileMutationIntents,
-  OperationMutationRuntime
+  MutationEngine
 } from '@shared/mutation'
 import { string } from '@shared/core'
-import { spec } from './spec'
 import {
   createIssue,
   hasValidationErrors,
@@ -70,7 +69,7 @@ export const compileIntents = (input: {
 }): CompiledIntentBatch => {
   const issues: ValidationIssue[] = []
   let lastSource: IssueSource | undefined
-  const result = compileMutationIntents<
+  const result = MutationEngine.compile<
     DataDoc,
     DataviewCompileTable,
     DocumentOperation,
@@ -100,11 +99,7 @@ export const compileIntents = (input: {
       doc,
       ops
     }) => {
-      const applied = OperationMutationRuntime.reduce({
-        doc,
-        ops,
-        operations: spec
-      })
+      const applied = reduceDataviewOperations(doc, ops)
       return applied.ok
         ? {
             ok: true as const,

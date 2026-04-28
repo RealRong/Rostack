@@ -130,8 +130,18 @@ export interface MutationIntentTable {
   }
 }
 
+type MutationIntentTableKey<T extends MutationIntentTable> = ({
+  [K in keyof T]: string extends K
+    ? never
+    : number extends K
+      ? never
+      : symbol extends K
+        ? never
+        : K
+})[keyof T] & string
+
 export type MutationIntentKind<T extends MutationIntentTable> =
-  keyof T & string
+  MutationIntentTableKey<T>
 
 export type MutationIntentOf<
   T extends MutationIntentTable,
@@ -235,6 +245,11 @@ export interface MutationPublishSpec<
   ): MutationPublishReduceResult<Publish, Cache>
 }
 
+export interface MutationKeySpec<Key> {
+  serialize(key: Key): string
+  conflicts?(left: Key, right: Key): boolean
+}
+
 export interface MutationOperationSpec<
   Doc extends object,
   Op extends {
@@ -292,6 +307,28 @@ export type MutationOperationTable<
   >
 }
 
+export interface MutationReduceSpec<
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  Extra,
+  DomainCtx = ReducerContext<Doc, Op, Key, string>,
+  Code extends string = string
+> {
+  createContext?(
+    ctx: ReducerContext<Doc, Op, Key, Code>
+  ): DomainCtx
+  validate?(input: {
+    doc: Doc
+    ops: readonly Op[]
+    origin: Origin
+  }): ReducerError<Code> | void
+  settle?(ctx: DomainCtx): void
+  done(ctx: DomainCtx): Extra
+}
+
 export interface MutationOperationsSpec<
   Doc extends object,
   Op extends {
@@ -316,6 +353,38 @@ export interface MutationOperationsSpec<
   done(ctx: DomainCtx): Extra
   conflicts?(left: Key, right: Key): boolean
 }
+
+export interface MutationCompileSpec<
+  Doc,
+  Table extends MutationIntentTable,
+  Op,
+  Ctx,
+  Code extends string = string
+> {
+  handlers: MutationCompileHandlerTable<Table, Ctx, Code>
+  createContext(entry: {
+    ctx: MutationCompileCtx<Doc, Op, Code>
+    doc: Doc
+    intent: MutationIntentOf<Table>
+    index: number
+  }): Ctx
+  apply(entry: {
+    doc: Doc
+    ops: readonly Op[]
+  }): MutationCompileApplyResult<Doc, Code>
+}
+
+type MutationCompilePlanFn<
+  Doc,
+  Intent,
+  Op,
+  Output,
+  Code extends string
+> = {
+  bivarianceHack(
+    input: MutationCompileInput<Doc, Intent>
+  ): MutationCompileResult<Op, Output, Code>
+}['bivarianceHack']
 
 export interface MutationHistorySpec<
   Doc,
@@ -351,6 +420,38 @@ export interface MutationRuntimeSpec<
 > {
   normalize(doc: Doc): Doc
   operations: MutationOperationsSpec<Doc, Op, Key, Extra, any, Code>
+  publish?: MutationPublishSpec<Doc, Op, Key, Extra, Publish, Cache>
+  history?: MutationHistorySpec<Doc, Op, Key, Extra> | false
+}
+
+export interface MutationEngineSpec<
+  Doc extends object,
+  Table extends MutationIntentTable,
+  Op extends {
+    type: string
+  },
+  Key,
+  Publish,
+  Cache = void,
+  Extra = void,
+  Services = void,
+  DomainCtx = ReducerContext<Doc, Op, Key, string>,
+  CompileCtx = void,
+  Code extends string = string
+> {
+  document: Doc
+  normalize(doc: Doc): Doc
+  services?: Services
+  key: MutationKeySpec<Key>
+  operations: MutationOperationTable<Doc, Op, Key, DomainCtx>
+  reduce: MutationReduceSpec<Doc, Op, Key, Extra, DomainCtx, Code>
+  compile?: MutationCompilePlanFn<
+    Doc,
+    MutationIntentOf<Table>,
+    Op,
+    MutationOutputOf<Table>,
+    Code
+  > | MutationCompileSpec<Doc, Table, Op, CompileCtx, Code>
   publish?: MutationPublishSpec<Doc, Op, Key, Extra, Publish, Cache>
   history?: MutationHistorySpec<Doc, Op, Key, Extra> | false
 }
@@ -512,9 +613,10 @@ const dispatchCompileHandler = <
   handlers: MutationCompileHandlerTable<Table, Ctx, Code>,
   intent: MutationIntentOf<Table, TKind>,
   ctx: Ctx
-): MutationOutputOf<Table, TKind> | void | MutationCompileControl<Code> => (
-  handlers[intent.type](intent, ctx)
-)
+): MutationOutputOf<Table, TKind> | void | MutationCompileControl<Code> => {
+  const handler = handlers[intent.type as TKind]
+  return handler(intent, ctx)
+}
 
 export const normalizeCompileIssue = <Code extends string>(
   issue: MutationCompileIssue<Code>
@@ -580,7 +682,7 @@ type MutationCompileApplyResult<
       issue: MutationCompileIssue<Code>
     }
 
-export const compileMutationIntents = <
+const compileMutationIntents = <
   Doc,
   Table extends MutationIntentTable,
   Op,
@@ -702,6 +804,72 @@ export const compileMutationIntents = <
   }
 }
 
+const createOperationsSpec = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  Extra,
+  DomainCtx,
+  Code extends string
+>(input: {
+  operations: MutationOperationTable<Doc, Op, Key, DomainCtx>
+  key: MutationKeySpec<Key>
+  reduce: MutationReduceSpec<Doc, Op, Key, Extra, DomainCtx, Code>
+}): MutationOperationsSpec<Doc, Op, Key, Extra, DomainCtx, Code> => ({
+  table: input.operations,
+  serializeKey: input.key.serialize,
+  ...(input.reduce.createContext
+    ? {
+        createContext: input.reduce.createContext
+      }
+    : {}),
+  ...(input.reduce.validate
+    ? {
+        validate: input.reduce.validate
+      }
+    : {}),
+  ...(input.reduce.settle
+    ? {
+        settle: input.reduce.settle
+      }
+    : {}),
+  done: input.reduce.done,
+  ...(input.key.conflicts
+    ? {
+        conflicts: input.key.conflicts
+      }
+    : {})
+})
+
+const createCompilePlan = <
+  Doc,
+  Table extends MutationIntentTable,
+  Op,
+  Ctx,
+  Code extends string
+>(
+  compile: MutationCompileSpec<Doc, Table, Op, Ctx, Code>,
+  input: MutationCompileInput<Doc, MutationIntentOf<Table>>
+): MutationCompileResult<
+  Op,
+  MutationOutputOf<Table>,
+  Code
+> => compileMutationIntents<
+  Doc,
+  Table,
+  Op,
+  Ctx,
+  Code
+>({
+  doc: input.doc,
+  intents: input.intents,
+  handlers: compile.handlers,
+  createContext: compile.createContext,
+  apply: compile.apply
+})
+
 const createReducerSpecFromOperations = <
   Doc extends object,
   Op extends {
@@ -804,7 +972,7 @@ const defaultClearsHistory = <
   && ops.some((op) => readOperation(table, op).sync === 'checkpoint')
 )
 
-export class OperationMutationRuntime<
+class OperationMutationRuntime<
   Doc extends object,
   Op extends {
     type: string
@@ -913,7 +1081,7 @@ export class OperationMutationRuntime<
     if (ops.length === 0) {
       return mutationFailure(
         APPLY_EMPTY_CODE as Code,
-        'OperationMutationRuntime.apply requires at least one operation.'
+        'MutationEngine.apply requires at least one operation.'
       )
     }
 
@@ -921,40 +1089,6 @@ export class OperationMutationRuntime<
       ops,
       data: undefined,
       origin: options?.origin ?? 'user'
-    })
-  }
-
-  static reduce<
-    Doc extends object,
-    Op extends {
-      type: string
-    },
-    Key,
-    Extra,
-    DomainCtx,
-    Code extends string = string
-  >(input: {
-    doc: Doc
-    ops: readonly Op[]
-    origin?: Origin
-    operations: MutationOperationsSpec<Doc, Op, Key, Extra, DomainCtx, Code>
-  }): ReducerResult<Doc, Op, Key, Extra, Code> {
-    const validationError = input.operations.validate?.({
-      doc: input.doc,
-      ops: input.ops,
-      origin: input.origin ?? 'user'
-    })
-    if (validationError) {
-      return {
-        ok: false,
-        error: validationError
-      }
-    }
-
-    return readReducerFromOperations(input.operations).reduce({
-      doc: input.doc,
-      ops: input.ops,
-      origin: input.origin
     })
   }
 
@@ -1159,7 +1293,7 @@ export class OperationMutationRuntime<
   }
 }
 
-export class CommandMutationEngine<
+export class MutationEngine<
   Doc extends object,
   Table extends MutationIntentTable,
   Op extends {
@@ -1169,9 +1303,11 @@ export class CommandMutationEngine<
   Publish,
   Cache = void,
   Extra = void,
+  DomainCtx = ReducerContext<Doc, Op, Key, string>,
+  CompileCtx = unknown,
   Code extends string = string
 > extends OperationMutationRuntime<Doc, Op, Key, Publish, Cache, Extra, Code> {
-  protected readonly commandSpec: CommandMutationSpec<
+  private readonly compilePlan?: MutationEngineSpec<
     Doc,
     Table,
     Op,
@@ -1179,15 +1315,120 @@ export class CommandMutationEngine<
     Publish,
     Cache,
     Extra,
+    void,
+    DomainCtx,
+    CompileCtx,
     Code
-  >
+  >['compile']
 
   constructor(input: {
-    doc: Doc
-    spec: CommandMutationSpec<Doc, Table, Op, Key, Publish, Cache, Extra, Code>
+    document: Doc
+    normalize: (doc: Doc) => Doc
+    key: MutationKeySpec<Key>
+    operations: MutationOperationTable<
+      Doc,
+      Op,
+      Key,
+      DomainCtx
+    >
+    reduce: MutationReduceSpec<
+      Doc,
+      Op,
+      Key,
+      Extra,
+      DomainCtx,
+      Code
+    >
+    compile?: MutationCompilePlanFn<
+      Doc,
+      MutationIntentOf<Table>,
+      Op,
+      MutationOutputOf<Table>,
+      Code
+    > | MutationCompileSpec<Doc, Table, Op, CompileCtx, Code>
+    publish?: MutationPublishSpec<Doc, Op, Key, Extra, Publish, Cache>
+    history?: MutationHistorySpec<Doc, Op, Key, Extra> | false
   }) {
-    super(input)
-    this.commandSpec = input.spec
+    super({
+      doc: input.document,
+      spec: {
+        normalize: input.normalize,
+        operations: createOperationsSpec({
+          operations: input.operations,
+          key: input.key,
+          reduce: input.reduce
+        }),
+        ...(input.publish
+          ? {
+              publish: input.publish
+            }
+          : {}),
+        ...(input.history !== undefined
+          ? {
+              history: input.history
+            }
+          : {})
+      }
+    })
+    this.compilePlan = input.compile
+  }
+
+  static reduce<
+    Doc extends object,
+    Op extends {
+      type: string
+    },
+    Key,
+    Extra,
+    DomainCtx,
+    Code extends string = string
+  >(input: {
+    document: Doc
+    ops: readonly Op[]
+    origin?: Origin
+    operations: MutationOperationsSpec<Doc, Op, Key, Extra, DomainCtx, Code>
+  }): ReducerResult<Doc, Op, Key, Extra, Code> {
+    const validationError = input.operations.validate?.({
+      doc: input.document,
+      ops: input.ops,
+      origin: input.origin ?? 'user'
+    })
+    if (validationError) {
+      return {
+        ok: false,
+        error: validationError
+      }
+    }
+
+    return readReducerFromOperations(input.operations).reduce({
+      doc: input.document,
+      ops: input.ops,
+      origin: input.origin
+    })
+  }
+
+  static compile<
+    Doc,
+    Table extends MutationIntentTable,
+    Op,
+    Ctx,
+    Code extends string = string
+  >(input: {
+    doc: Doc
+    intents: readonly MutationIntentOf<Table>[]
+    handlers: MutationCompileHandlerTable<Table, Ctx, Code>
+    createContext: (entry: {
+      ctx: MutationCompileCtx<Doc, Op, Code>
+      doc: Doc
+      intent: MutationIntentOf<Table>
+      index: number
+    }) => Ctx
+    apply: (entry: {
+      doc: Doc
+      ops: readonly Op[]
+    }) => MutationCompileApplyResult<Doc, Code>
+  }): MutationCompileResult<Op, MutationOutputOf<Table>, Code> {
+    return compileMutationIntents(input)
   }
 
   execute<K extends MutationIntentKind<Table>>(
@@ -1224,7 +1465,7 @@ export class CommandMutationEngine<
     if (intents.length === 0) {
       return mutationFailure(
         EXECUTE_EMPTY_CODE as Code,
-        'CommandMutationEngine.execute requires at least one intent.'
+        'MutationEngine.execute requires at least one intent.'
       ) as MutationExecuteResultOfInput<
         Table,
         ApplyCommit<Doc, Op, Key, Extra>,
@@ -1233,10 +1474,30 @@ export class CommandMutationEngine<
       >
     }
 
-    const plan = this.commandSpec.compile({
-      doc: this.readCommittedDoc(),
-      intents
-    })
+    if (!this.compilePlan) {
+      return mutationFailure(
+        COMPILE_EMPTY_CODE as Code,
+        'MutationEngine.execute requires compile handlers.'
+      ) as MutationExecuteResultOfInput<
+        Table,
+        ApplyCommit<Doc, Op, Key, Extra>,
+        Input,
+        Code
+      >
+    }
+
+    const plan = typeof this.compilePlan === 'function'
+      ? this.compilePlan({
+          doc: this.readCommittedDoc(),
+          intents
+        })
+      : createCompilePlan(
+          this.compilePlan,
+          {
+            doc: this.readCommittedDoc(),
+            intents
+          }
+        )
     const issues = toIssues(plan.issues)
     const canApply = plan.canApply ?? (
       plan.ops.length > 0
@@ -1246,7 +1507,7 @@ export class CommandMutationEngine<
     if (!canApply) {
       return mutationFailure(
         COMPILE_BLOCKED_CODE as Code,
-        'CommandMutationEngine.execute was blocked by compile issues.',
+        'MutationEngine.execute was blocked by compile issues.',
         {
           issues
         }
@@ -1261,7 +1522,7 @@ export class CommandMutationEngine<
     if (!plan.ops.length) {
       return mutationFailure(
         COMPILE_EMPTY_CODE as Code,
-        'CommandMutationEngine.execute produced no operations.',
+        'MutationEngine.execute produced no operations.',
         {
           issues
         }

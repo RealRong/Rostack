@@ -1,4 +1,3 @@
 export {
-  createWhiteboardMutationSpec,
-  type WhiteboardMutationSpec
+  createWhiteboardMutationSpec
 } from './spec'

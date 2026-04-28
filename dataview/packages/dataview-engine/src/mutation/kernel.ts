@@ -1,6 +1,5 @@
 import type {
   DataDoc,
-  Intent as CoreIntent
 } from '@dataview/core/types'
 import {
   compile,
@@ -13,7 +12,6 @@ import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
 import {
-  type CommandMutationSpec,
   type MutationCompileInput
 } from '@shared/mutation'
 import type {
@@ -61,35 +59,47 @@ const shouldClearHistory = (
   && commit.forward.some((entry) => definitions[entry.type].sync === 'checkpoint')
 )
 
-export type DataviewMutationKernel = Omit<
-  CommandMutationSpec<
-    DataDoc,
-    DataviewIntentTable,
-    DocumentOperation,
-    DataviewMutationKey,
-    DataviewPublish,
-    DataviewMutationCache,
-    {
-      trace: DataviewTrace
-    }
-  >,
-  'publish'
->
-
 export const createDataviewMutationKernel = (input?: {
   history?: Partial<DataviewHistoryConfig>
-}): DataviewMutationKernel => {
+}) => {
   const historyConfig = {
     ...DEFAULT_HISTORY_CONFIG,
     ...(input?.history ?? {})
   }
 
   return {
-    normalize: (doc) => doc,
+    normalize: (doc: DataDoc) => doc,
+    key: {
+      serialize: spec.serializeKey,
+      ...(spec.conflicts
+        ? {
+            conflicts: spec.conflicts
+          }
+        : {})
+    },
+    operations: spec.table,
+    reduce: {
+      ...(spec.createContext
+        ? {
+            createContext: spec.createContext
+          }
+        : {}),
+      ...(spec.validate
+        ? {
+            validate: spec.validate
+          }
+        : {}),
+      ...(spec.settle
+        ? {
+            settle: spec.settle
+          }
+        : {}),
+      done: spec.done
+    },
     compile: ({
       doc,
       intents
-    }: MutationCompileInput<DataDoc, CoreIntent>) => {
+    }: MutationCompileInput<DataDoc, import('@dataview/core/types').Intent>) => {
       const result = compile({
         document: doc,
         intents
@@ -102,7 +112,6 @@ export const createDataviewMutationKernel = (input?: {
         outputs: result.outputs
       }
     },
-    operations: spec,
     ...(historyConfig.enabled
       ? {
           history: {
@@ -110,13 +119,19 @@ export const createDataviewMutationKernel = (input?: {
             track: ({
               origin,
               ops
+            }: {
+              origin: 'user' | 'remote' | 'system' | 'history'
+              ops: readonly DocumentOperation[]
             }) => (
               shouldTrackOrigin(origin, historyConfig)
-              && ops.every((entry) => definitions[entry.type].history !== false)
+              && ops.every((entry: DocumentOperation) => definitions[entry.type].history !== false)
             ),
             clear: ({
               origin,
               ops
+            }: {
+              origin: 'user' | 'remote' | 'system' | 'history'
+              ops: readonly DocumentOperation[]
             }) => shouldClearHistory({
               origin,
               forward: ops
@@ -124,7 +139,7 @@ export const createDataviewMutationKernel = (input?: {
           }
         }
       : {
-          history: false
+          history: false as const
         })
   }
 }

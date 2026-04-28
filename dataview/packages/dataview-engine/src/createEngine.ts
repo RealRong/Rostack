@@ -5,11 +5,12 @@ import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
 import type {
+  DataviewReduceContext,
   DataviewMutationKey,
   DataviewTrace
 } from '@dataview/core/operations'
 import {
-  CommandMutationEngine,
+  MutationEngine,
   type MutationOptions
 } from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
@@ -49,7 +50,7 @@ const toCurrent = (current: {
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const performance = createPerformanceRuntime(options.performance)
-  const mutationEngine = new CommandMutationEngine<
+  const mutationEngine = new MutationEngine<
     DataDoc,
     DataviewIntentTable,
     DocumentOperation,
@@ -58,17 +59,17 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DataviewMutationCache,
     {
       trace: DataviewTrace
-    }
+    },
+    DataviewReduceContext,
+    unknown
   >({
-    doc: options.document,
-    spec: {
-      ...createDataviewMutationKernel({
-        history: options.history
-      }),
-      publish: createDataviewPublishSpec({
-        performance
-      })
-    }
+    document: options.document,
+    ...createDataviewMutationKernel({
+      history: options.history
+    }),
+    publish: createDataviewPublishSpec({
+      performance
+    })
   })
 
   const engineBase = {

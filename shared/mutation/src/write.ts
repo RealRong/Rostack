@@ -1,8 +1,10 @@
-export type Origin =
+export type MutationOrigin =
   | 'user'
   | 'remote'
   | 'system'
   | 'history'
+
+export type Origin = MutationOrigin
 
 export interface ApplyCommit<
   Doc,
@@ -13,7 +15,7 @@ export interface ApplyCommit<
   kind: 'apply'
   rev: number
   at: number
-  origin: Origin
+  origin: MutationOrigin
   doc: Doc
   forward: readonly Op[]
   inverse: readonly Op[]
@@ -25,7 +27,7 @@ export interface ReplaceCommit<Doc> {
   kind: 'replace'
   rev: number
   at: number
-  origin: Origin
+  origin: MutationOrigin
   doc: Doc
 }
 

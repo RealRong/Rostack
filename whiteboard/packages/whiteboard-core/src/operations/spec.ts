@@ -1,5 +1,4 @@
 import type { MutationOperationsSpec } from '@shared/mutation'
-import type { ReducerContext } from '@shared/reducer'
 import {
   historyKeyConflicts,
   serializeHistoryKey,
@@ -30,6 +29,32 @@ import type {
 const INVALID_DOCUMENT_REPLACE_BATCH =
   'document.replace must be the only operation in its batch.'
 
+const createInvalidReduceIssue = (
+  message: string,
+  details?: unknown
+) => ({
+  code: 'invalid' as const,
+  message,
+  ...(details === undefined
+    ? {}
+    : {
+        details
+      })
+})
+
+const createCancelledReduceIssue = (
+  message: string,
+  details?: unknown
+) => ({
+  code: 'cancelled' as const,
+  message,
+  ...(details === undefined
+    ? {}
+    : {
+        details
+      })
+})
+
 const toKernelOrigin = (
   origin: string | undefined
 ): Origin => (
@@ -45,13 +70,12 @@ export const validateWhiteboardOperations = (input: {
 }) => {
   const hasDocumentReplace = input.ops.some((op) => op.type === 'document.replace')
   if (hasDocumentReplace && input.ops.length !== 1) {
-    return {
-      code: 'invalid' as WhiteboardReduceIssueCode,
-      message: INVALID_DOCUMENT_REPLACE_BATCH,
-      details: {
+    return createInvalidReduceIssue(
+      INVALID_DOCUMENT_REPLACE_BATCH,
+      {
         opCount: input.ops.length
       }
-    }
+    )
   }
 
   const violation = validateLockOperations({
@@ -61,11 +85,10 @@ export const validateWhiteboardOperations = (input: {
   })
 
   return violation
-    ? {
-        code: 'cancelled' as WhiteboardReduceIssueCode,
-        message: readLockViolationMessage(violation.reason, violation.operation),
-        details: violation
-      }
+    ? createCancelledReduceIssue(
+        readLockViolationMessage(violation.reason, violation.operation),
+        violation
+      )
     : undefined
 }
 
@@ -79,14 +102,7 @@ export const spec: MutationOperationsSpec<
 > = {
   table: definitions,
   serializeKey: serializeHistoryKey,
-  createContext: createWhiteboardReduceContext as (
-    ctx: ReducerContext<
-      Document,
-      Operation,
-      HistoryFootprint[number],
-      WhiteboardReduceIssueCode
-    >
-  ) => WhiteboardReduceCtx,
+  createContext: createWhiteboardReduceContext,
   validate: ({
     doc,
     ops,

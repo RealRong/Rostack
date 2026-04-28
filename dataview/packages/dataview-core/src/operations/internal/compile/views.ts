@@ -48,12 +48,27 @@ import {
   type ValidationIssue
 } from '@dataview/core/operations/issue'
 import {
-  type CompiledIntentResult,
   type CompileScope
 } from './scope'
 import type { DocumentReader } from '@dataview/core/operations/internal/read'
 
 const sameRecordOrder = equal.sameOrder<string>
+
+const emitOps = (
+  scope: CompileScope,
+  ...operations: readonly DocumentOperation[]
+) => {
+  scope.emitMany(...operations)
+}
+
+const emitData = <T>(
+  scope: CompileScope,
+  data: T,
+  ...operations: readonly DocumentOperation[]
+): T => {
+  emitOps(scope, ...operations)
+  return data
+}
 
 const toViewPut = (
   view: View
@@ -572,7 +587,7 @@ const ensureKanbanGroup = (
 const lowerViewCreate = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'view.create' }>
-): CompiledIntentResult => {
+) => {
   const explicitViewId = string.trimToUndefined(intent.input.id)
   const preferredName = string.trimToUndefined(intent.input.name) ?? ''
 
@@ -598,7 +613,7 @@ const lowerViewCreate = (
     )
   }
   if (!preferredName || (intent.input.id !== undefined && !explicitViewId) || (explicitViewId && scope.reader.views.has(explicitViewId))) {
-    return scope.finish()
+    return
   }
 
   const fields = scope.reader.fields.list()
@@ -652,7 +667,7 @@ const lowerViewCreate = (
           'Kanban view requires a groupable field',
           'input.group'
         )
-        return scope.finish()
+        return
       }
 
       created = {
@@ -669,20 +684,13 @@ const lowerViewCreate = (
   const view = ensureKanbanGroup(scope.reader, normalizeView(scope.reader, created))
 
   scope.report(...validateView(scope.reader, scope.source, view))
-  const result = scope.finish(toViewPut(view))
-
-  return {
-    ...result,
-    data: {
-      id: view.id
-    }
-  }
+  return emitData(scope, { id: view.id }, toViewPut(view))
 }
 
 const lowerViewPatch = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'view.patch' }>
-): CompiledIntentResult => {
+) => {
   const view = scope.require(
     scope.reader.views.get(intent.id),
     {
@@ -692,7 +700,7 @@ const lowerViewPatch = (
     }
   )
   if (!view) {
-    return scope.finish()
+    return
   }
 
   const nextView = (
@@ -701,17 +709,17 @@ const lowerViewPatch = (
       : normalizeView(scope.reader, applyViewPatch(scope.reader, view, intent.patch))
   )
   if (equal.sameJsonValue(nextView, view)) {
-    return scope.finish()
+    return
   }
 
   scope.report(...validateView(scope.reader, scope.source, nextView))
-  return scope.finish(toViewPut(nextView))
+  scope.emit(toViewPut(nextView))
 }
 
 const lowerViewOpen = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'view.open' }>
-): CompiledIntentResult => {
+) => {
   const view = scope.require(
     scope.reader.views.get(intent.id),
     {
@@ -720,18 +728,20 @@ const lowerViewOpen = (
       path: 'id'
     }
   )
-  return view
-    ? scope.finish({
-        type: 'document.activeView.set',
-        id: view.id
-      })
-    : scope.finish()
+  if (!view) {
+    return
+  }
+
+  scope.emit({
+    type: 'document.activeView.set',
+    id: view.id
+  })
 }
 
 const lowerViewRemove = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'view.remove' }>
-): CompiledIntentResult => {
+) => {
   const view = scope.require(
     scope.reader.views.get(intent.id),
     {
@@ -740,18 +750,20 @@ const lowerViewRemove = (
       path: 'id'
     }
   )
-  return view
-    ? scope.finish({
-        type: 'document.view.remove',
-        id: view.id
-      })
-    : scope.finish()
+  if (!view) {
+    return
+  }
+
+  scope.emit({
+    type: 'document.view.remove',
+    id: view.id
+  })
 }
 
 export const compileViewIntent = (
-  scope: CompileScope,
-  intent: Intent
-): CompiledIntentResult => {
+  intent: Intent,
+  scope: CompileScope
+) => {
   switch (intent.type) {
     case 'view.create':
       return lowerViewCreate(scope, intent)

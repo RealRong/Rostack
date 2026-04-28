@@ -1,10 +1,11 @@
-export {
-  createMutationEngine
-} from './createMutationEngine'
 export type {
+  MutationCompileControl,
   MutationCompileCtx,
+  MutationCompileHandler,
+  MutationCompileHandlerTable,
   MutationCompileInput,
   MutationCompileIssue,
+  MutationCompileSource,
   MutationCompileResult,
   MutationError,
   MutationExecuteInput,
@@ -23,8 +24,13 @@ export type {
   CommandMutationSpec
 } from './engine'
 export {
+  createCompileIssue,
+  compileMutationIntents,
+  hasCompileErrors,
   mutationFailure,
   mutationResult,
+  normalizeCompileIssue,
+  OperationMutationRuntime,
   CommandMutationEngine
 } from './engine'
 export type {

@@ -8,7 +8,11 @@ import type {
   Document
 } from '@whiteboard/core/types'
 import type { WhiteboardIntentContext } from '@whiteboard/core/operations/compile-context'
-import type { CanvasIntent } from '@whiteboard/core/operations/intent-types'
+import type {
+  CanvasIntent,
+  WhiteboardMutationTable
+} from '@whiteboard/core/operations/intent-types'
+import type { MutationCompileHandlerTable } from '@shared/mutation'
 import {
   emitEdgeMovePatchOps
 } from './edge'
@@ -277,22 +281,25 @@ const compileCanvasSelectionMove = (
   })
 }
 
-export const compileCanvasIntent = (
-  intent: CanvasIntent,
-  ctx: WhiteboardIntentContext
-) => {
-  switch (intent.type) {
-    case 'canvas.delete':
-      return compileCanvasDelete(intent.refs, ctx)
-    case 'canvas.duplicate':
-      return compileCanvasDuplicate(intent.refs, ctx)
-    case 'canvas.selection.move':
-      return compileCanvasSelectionMove(intent, ctx)
-    case 'canvas.order.move': {
-      const current = ctx.tx.read.document.get().canvas.order
-      const target = canvasOrderMove.reorder(current, intent.refs, intent.mode)
-      canvasOrderMove.ops(current, target).forEach((op) => ctx.tx.emit(op))
-      return
-    }
+type CanvasIntentHandlers = Pick<
+  MutationCompileHandlerTable<
+    WhiteboardMutationTable,
+    WhiteboardIntentContext,
+    'invalid' | 'cancelled'
+  >,
+  'canvas.delete'
+  | 'canvas.duplicate'
+  | 'canvas.selection.move'
+  | 'canvas.order.move'
+>
+
+export const canvasIntentHandlers: CanvasIntentHandlers = {
+  'canvas.delete': (intent, ctx) => compileCanvasDelete(intent.refs, ctx),
+  'canvas.duplicate': (intent, ctx) => compileCanvasDuplicate(intent.refs, ctx),
+  'canvas.selection.move': (intent, ctx) => compileCanvasSelectionMove(intent, ctx),
+  'canvas.order.move': (intent, ctx) => {
+    const current = ctx.tx.read.document.get().canvas.order
+    const target = canvasOrderMove.reorder(current, intent.refs, intent.mode)
+    canvasOrderMove.ops(current, target).forEach((op) => ctx.tx.emit(op))
   }
 }

@@ -1,15 +1,18 @@
 import type { DataDoc, Intent } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/types/operations'
 import type {
-  MutationCompileCtx,
-  MutationCompileIssue,
-  MutationCompileResult
+  MutationCompileHandlerTable
+} from '@shared/mutation'
+import {
+  compileMutationIntents,
+  OperationMutationRuntime
 } from '@shared/mutation'
 import { string } from '@shared/core'
-import { reduceDataviewOperations } from './spec'
+import { spec } from './spec'
 import {
   createIssue,
   hasValidationErrors,
+  type IssueSource,
   type ValidationCode,
   type ValidationIssue,
   type ValidationSeverity
@@ -17,8 +20,7 @@ import {
 import { compileFieldIntent } from './internal/compile/fields'
 import { compileRecordIntent } from './internal/compile/records'
 import {
-  createCompileScope,
-  type CompiledIntentResult
+  createCompileScope
 } from './internal/compile/scope'
 import { compileViewIntent } from './internal/compile/views'
 
@@ -29,141 +31,97 @@ export interface CompiledIntentBatch {
   outputs: readonly unknown[]
 }
 
-const normalizeIssue = <Code extends string>(
-  issue: MutationCompileIssue<Code>
-): Required<Pick<MutationCompileIssue<Code>, 'code' | 'message' | 'severity'>> & Omit<MutationCompileIssue<Code>, 'severity'> => ({
-  ...issue,
-  severity: issue.severity ?? 'error'
-})
-
-const runCompile = (input: {
-  doc: DataDoc
-  intents: readonly Intent[]
-  compiledIntents: CompiledIntentResult[]
-}): MutationCompileResult<DocumentOperation, unknown, ValidationCode> => {
-  const ops: DocumentOperation[] = []
-  const outputs: unknown[] = []
-  const issues: MutationCompileIssue<ValidationCode>[] = []
-  let workingDoc = input.doc
-
-  for (const [index, intent] of input.intents.entries()) {
-    const pendingOps: DocumentOperation[] = []
-    const pendingIssues: MutationCompileIssue<ValidationCode>[] = []
-    let shouldStop = false
-    let blocked = false
-
-    const ctx: MutationCompileCtx<DataDoc, DocumentOperation, ValidationCode> = {
-      doc: () => workingDoc,
-      emit: (op) => {
-        pendingOps.push(op)
-      },
-      emitMany: (...nextOps) => {
-        pendingOps.push(...nextOps)
-      },
-      issue: (issue) => {
-        const normalized = normalizeIssue(issue)
-        pendingIssues.push(normalized)
-        if (normalized.severity !== 'warning') {
-          blocked = true
-        }
-      },
-      stop: () => {
-        shouldStop = true
-        return {
-          kind: 'stop'
-        }
-      },
-      block: (issue) => {
-        const normalized = normalizeIssue(issue)
-        pendingIssues.push(normalized)
-        blocked = true
-        return {
-          kind: 'block',
-          issue: normalized
-        }
-      },
-      require: (value, issue) => {
-        if (value !== undefined) {
-          return value
-        }
-
-        ctx.issue(issue)
-        return undefined
-      }
-    }
-
-    const compiled = compileIntent(
-      createCompileScope({
-        document: ctx.doc(),
-        intent,
-        index
-      }),
-      intent
-    )
-
-    input.compiledIntents.push(compiled)
-    compiled.issues.forEach((issue) => {
-      ctx.issue({
-        code: issue.code,
-        message: issue.message,
-        path: issue.path,
-        severity: issue.severity,
-        details: issue.details
-      })
-    })
-
-    if (!hasValidationErrors(compiled.issues) && compiled.operations.length) {
-      ctx.emitMany(...compiled.operations)
-    }
-
-    outputs.push(compiled.data)
-
-    issues.push(...pendingIssues)
-    if (shouldStop || blocked) {
-      break
-    }
-    if (!pendingOps.length) {
-      continue
-    }
-
-    const applied = reduceDataviewOperations(workingDoc, pendingOps)
-    if (!applied.ok) {
-      issues.push({
-        code: 'compile.applyFailed',
-        message: applied.error.message,
-        details: applied.error.details,
-        severity: 'error'
-      })
-      break
-    }
-
-    ops.push(...pendingOps)
-    workingDoc = applied.doc
+type DataviewCompileTable = {
+  [K in Intent['type']]: {
+    intent: Extract<Intent, { type: K }>
+    output: unknown
   }
+}
 
-  return {
-    ops,
-    outputs,
-    ...(issues.length
-      ? {
-          issues
-        }
-      : {})
-  }
+const handlers: MutationCompileHandlerTable<
+  DataviewCompileTable,
+  ReturnType<typeof createCompileScope>,
+  ValidationCode
+> = {
+  'record.create': compileRecordIntent,
+  'record.patch': compileRecordIntent,
+  'record.remove': compileRecordIntent,
+  'record.fields.writeMany': compileRecordIntent,
+  'field.create': compileFieldIntent,
+  'field.patch': compileFieldIntent,
+  'field.replace': compileFieldIntent,
+  'field.setKind': compileFieldIntent,
+  'field.duplicate': compileFieldIntent,
+  'field.option.create': compileFieldIntent,
+  'field.option.setOrder': compileFieldIntent,
+  'field.option.patch': compileFieldIntent,
+  'field.option.remove': compileFieldIntent,
+  'field.remove': compileFieldIntent,
+  'view.create': compileViewIntent,
+  'view.patch': compileViewIntent,
+  'view.open': compileViewIntent,
+  'view.remove': compileViewIntent,
+  'external.version.bump': lowerExternalBump
 }
 
 export const compileIntents = (input: {
   document: DataDoc
   intents: readonly Intent[]
 }): CompiledIntentBatch => {
-  const compiledIntents: CompiledIntentResult[] = []
-  const result = runCompile({
+  const issues: ValidationIssue[] = []
+  let lastSource: IssueSource | undefined
+  const result = compileMutationIntents<
+    DataDoc,
+    DataviewCompileTable,
+    DocumentOperation,
+    ReturnType<typeof createCompileScope>,
+    ValidationCode
+  >({
     doc: input.document,
     intents: input.intents,
-    compiledIntents
+    handlers,
+    createContext: ({
+      ctx,
+      intent,
+      index
+    }) => {
+      lastSource = {
+        index,
+        type: intent.type
+      }
+      return createCompileScope({
+        ctx,
+        intent,
+        index,
+        issues
+      })
+    },
+    apply: ({
+      doc,
+      ops
+    }) => {
+      const applied = OperationMutationRuntime.reduce({
+        doc,
+        ops,
+        operations: spec
+      })
+      return applied.ok
+        ? {
+            ok: true as const,
+            doc: applied.doc
+          }
+        : {
+            ok: false as const,
+            issue: {
+              code: 'compile.applyFailed',
+              message: applied.error.message,
+              details: applied.error.details,
+              severity: 'error'
+            }
+          }
+    }
   })
 
-  const issues = compiledIntents.flatMap((entry) => entry.issues)
   const issueKeys = new Set(
     issues.map((issue) => JSON.stringify([
       issue.severity,
@@ -174,10 +132,6 @@ export const compileIntents = (input: {
       issue.source?.type
     ]))
   )
-  const lastCompiledIndex = compiledIntents.length - 1
-  const fallbackIntent = lastCompiledIndex >= 0
-    ? input.intents[lastCompiledIndex]
-    : undefined
 
   result.issues?.forEach((issue) => {
     if (
@@ -192,9 +146,9 @@ export const compileIntents = (input: {
     }
 
     const normalized = createIssue(
-      {
-        index: Math.max(lastCompiledIndex, 0),
-        type: fallbackIntent?.type ?? 'external.version.bump'
+      lastSource ?? {
+        index: 0,
+        type: 'external.version.bump'
       },
       'error',
       'compile.applyFailed',
@@ -232,10 +186,10 @@ export type {
   ValidationSeverity
 }
 
-const lowerExternalBump = (
-  scope: ReturnType<typeof createCompileScope>,
-  intent: Extract<Intent, { type: 'external.version.bump' }>
-): CompiledIntentResult => {
+function lowerExternalBump(
+  intent: Extract<Intent, { type: 'external.version.bump' }>,
+  scope: ReturnType<typeof createCompileScope>
+) {
   if (!string.isNonEmptyString(intent.source)) {
     scope.issue(
       'external.invalidSource',
@@ -244,43 +198,8 @@ const lowerExternalBump = (
     )
   }
 
-  return scope.finish({
+  scope.emit({
     type: 'external.version.bump',
     source: intent.source
   })
-}
-
-const compileIntent = (
-  scope: ReturnType<typeof createCompileScope>,
-  intent: Intent
-): CompiledIntentResult => {
-  switch (intent.type) {
-    case 'record.create':
-    case 'record.patch':
-    case 'record.remove':
-    case 'record.fields.writeMany':
-      return compileRecordIntent(scope, intent)
-    case 'field.create':
-    case 'field.patch':
-    case 'field.replace':
-    case 'field.setKind':
-    case 'field.duplicate':
-    case 'field.option.create':
-    case 'field.option.setOrder':
-    case 'field.option.patch':
-    case 'field.option.remove':
-    case 'field.remove':
-      return compileFieldIntent(scope, intent)
-    case 'view.create':
-    case 'view.patch':
-    case 'view.open':
-    case 'view.remove':
-      return compileViewIntent(scope, intent)
-    case 'external.version.bump':
-      return lowerExternalBump(scope, intent)
-    default: {
-      const unexpectedIntent: never = intent
-      throw new Error(`Unsupported intent: ${unexpectedIntent}`)
-    }
-  }
 }

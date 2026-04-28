@@ -206,6 +206,144 @@ const defineFootprint = <TType extends WhiteboardOperation['type']>(
   collect(createFootprintContext(ctx), op)
 }
 
+const applyNodeFieldSet = (
+  ctx: WhiteboardReduceCtx,
+  operation: Extract<WhiteboardOperation, { type: 'node.field.set' }>
+) => {
+  switch (operation.field) {
+    case 'position':
+      ctx.node.setField(operation.id, 'position', operation.value)
+      return
+    case 'size':
+      ctx.node.setField(operation.id, 'size', operation.value)
+      return
+    case 'rotation':
+      ctx.node.setField(operation.id, 'rotation', operation.value)
+      return
+    case 'groupId':
+      ctx.node.setField(operation.id, 'groupId', operation.value)
+      return
+    case 'owner':
+      ctx.node.setField(operation.id, 'owner', operation.value)
+      return
+    case 'locked':
+      ctx.node.setField(operation.id, 'locked', operation.value)
+      return
+  }
+}
+
+const applyEdgeFieldSet = (
+  ctx: WhiteboardReduceCtx,
+  operation: Extract<WhiteboardOperation, { type: 'edge.field.set' }>
+) => {
+  switch (operation.field) {
+    case 'source':
+      ctx.edge.setField(operation.id, 'source', operation.value)
+      return
+    case 'target':
+      ctx.edge.setField(operation.id, 'target', operation.value)
+      return
+    case 'type':
+      ctx.edge.setField(operation.id, 'type', operation.value)
+      return
+    case 'locked':
+      ctx.edge.setField(operation.id, 'locked', operation.value)
+      return
+    case 'groupId':
+      ctx.edge.setField(operation.id, 'groupId', operation.value)
+      return
+    case 'textMode':
+      ctx.edge.setField(operation.id, 'textMode', operation.value)
+      return
+  }
+}
+
+const applyGroupFieldSet = (
+  ctx: WhiteboardReduceCtx,
+  operation: Extract<WhiteboardOperation, { type: 'group.field.set' }>
+) => {
+  switch (operation.field) {
+    case 'locked':
+      ctx.group.setField(operation.id, 'locked', operation.value)
+      return
+    case 'name':
+      ctx.group.setField(operation.id, 'name', operation.value)
+      return
+  }
+}
+
+const applyMindmapTopicFieldSet = (
+  ctx: WhiteboardReduceCtx,
+  operation: Extract<WhiteboardOperation, { type: 'mindmap.topic.field.set' }>
+) => {
+  switch (operation.field) {
+    case 'size':
+      ctx.mindmap.setTopicField(
+        operation.id,
+        operation.topicId,
+        'size',
+        operation.value
+      )
+      return
+    case 'rotation':
+      ctx.mindmap.setTopicField(
+        operation.id,
+        operation.topicId,
+        'rotation',
+        operation.value
+      )
+      return
+    case 'locked':
+      ctx.mindmap.setTopicField(
+        operation.id,
+        operation.topicId,
+        'locked',
+        operation.value
+      )
+      return
+  }
+}
+
+const applyMindmapBranchFieldSet = (
+  ctx: WhiteboardReduceCtx,
+  operation: Extract<WhiteboardOperation, { type: 'mindmap.branch.field.set' }>
+) => {
+  switch (operation.field) {
+    case 'color':
+      ctx.mindmap.setBranchField(
+        operation.id,
+        operation.topicId,
+        'color',
+        operation.value
+      )
+      return
+    case 'line':
+      ctx.mindmap.setBranchField(
+        operation.id,
+        operation.topicId,
+        'line',
+        operation.value
+      )
+      return
+    case 'width':
+      ctx.mindmap.setBranchField(
+        operation.id,
+        operation.topicId,
+        'width',
+        operation.value
+      )
+      return
+    case 'stroke':
+      ctx.mindmap.setBranchField(
+        operation.id,
+        operation.topicId,
+        'stroke',
+        operation.value
+      )
+      return
+  }
+}
+
 export type WhiteboardOperationReduceExtra = WhiteboardReduceExtra
 
 export type WhiteboardOperationReduceResult = ReducerResult<
@@ -284,7 +422,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       ).forEach((owner) => addOwnerMindmap(ctx, owner))
     }),
     apply: (ctx, operation) => {
-      ctx.node.setField(operation.id, operation.field, operation.value as never)
+      applyNodeFieldSet(ctx, operation)
     }
   },
   'node.field.unset': {
@@ -373,7 +511,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       })
     }),
     apply: (ctx, operation) => {
-      ctx.edge.setField(operation.id, operation.field, operation.value as never)
+      applyEdgeFieldSet(ctx, operation)
     }
   },
   'edge.field.unset': {
@@ -633,7 +771,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       })
     }),
     apply: (ctx, operation) => {
-      ctx.group.setField(operation.id, operation.field, operation.value as never)
+      applyGroupFieldSet(ctx, operation)
     }
   },
   'group.field.unset': {
@@ -813,7 +951,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       })
     }),
     apply: (ctx, operation) => {
-      ctx.mindmap.setTopicField(operation.id, operation.topicId, operation.field, operation.value as never)
+      applyMindmapTopicFieldSet(ctx, operation)
     }
   },
   'mindmap.topic.field.unset': {
@@ -880,7 +1018,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       })
     }),
     apply: (ctx, operation) => {
-      ctx.mindmap.setBranchField(operation.id, operation.topicId, operation.field, operation.value as never)
+      applyMindmapBranchFieldSet(ctx, operation)
     }
   },
   'mindmap.branch.field.unset': {
@@ -910,4 +1048,3 @@ export const definitions: WhiteboardOperationDefinitionTable = {
     }
   }
 }
-

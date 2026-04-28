@@ -1,4 +1,10 @@
 import type { IntentType } from '@dataview/core/types/intents'
+import {
+  createCompileIssue,
+  hasCompileErrors,
+  type MutationCompileIssue,
+  type MutationCompileSource
+} from '@shared/mutation'
 export type ValidationSeverity =
   | 'error'
   | 'warning'
@@ -24,37 +30,30 @@ export type ValidationCode =
   | 'field.invalid'
   | 'external.invalidSource'
 
-export interface IssueSource {
-  index: number
-  type: IntentType
-}
+export type IssueSource = MutationCompileSource<IntentType>
 
-export interface ValidationIssue {
-  severity: ValidationSeverity
-  code: ValidationCode
-  message: string
-  path?: string
-  details?: unknown
-  source?: IssueSource
-}
+export type ValidationIssue =
+  MutationCompileIssue<ValidationCode, IntentType>
 
 export const createIssue = (
   source: IssueSource,
   severity: ValidationSeverity,
   code: ValidationCode,
   message: string,
-  path?: string
-): ValidationIssue => ({
+  path?: string,
+  details?: unknown
+): ValidationIssue => createCompileIssue(
+  source,
   severity,
   code,
   message,
   path,
-  source
-})
+  details
+)
 
 export const hasValidationErrors = (
   issues: readonly ValidationIssue[]
-): boolean => issues.some(issue => issue.severity === 'error')
+): boolean => hasCompileErrors(issues)
 
 export const create = createIssue
 export const hasErrors = hasValidationErrors

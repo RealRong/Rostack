@@ -19,9 +19,24 @@ import {
   string
 } from '@shared/core'
 import type {
-  CompiledIntentResult,
   CompileScope
 } from './scope'
+
+const emitOps = (
+  scope: CompileScope,
+  ...operations: readonly DocumentOperation[]
+) => {
+  scope.emitMany(...operations)
+}
+
+const emitData = <T>(
+  scope: CompileScope,
+  data: T,
+  ...operations: readonly DocumentOperation[]
+): T => {
+  emitOps(scope, ...operations)
+  return data
+}
 
 const toViewPut = (
   view: View
@@ -141,7 +156,7 @@ const validateWritableField = (
 const lowerRecordCreate = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'record.create' }>
-): CompiledIntentResult => {
+) => {
   const explicitRecordId = string.trimToUndefined(intent.input.id)
 
   if (intent.input.id !== undefined && !explicitRecordId) {
@@ -159,7 +174,7 @@ const lowerRecordCreate = (
     )
   }
   if ((intent.input.id !== undefined && !explicitRecordId) || (explicitRecordId && scope.reader.records.has(explicitRecordId))) {
-    return scope.finish()
+    return
   }
 
   const record = {
@@ -170,26 +185,25 @@ const lowerRecordCreate = (
     meta: intent.input.meta
   } satisfies DataRecord
 
-  const result = scope.finish({
-    type: 'document.record.insert',
-    records: [record]
-  })
-
-  return {
-    ...result,
-    data: {
+  return emitData(
+    scope,
+    {
       id: record.id
+    },
+    {
+      type: 'document.record.insert',
+      records: [record]
     }
-  }
+  )
 }
 
 const lowerRecordPatch = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'record.patch' }>
-): CompiledIntentResult => {
+)=> {
   const recordIds = scope.resolveTarget(intent.target)
   if (!recordIds) {
-    return scope.finish()
+    return
   }
 
   if (!Object.keys(intent.patch).length) {
@@ -207,7 +221,7 @@ const lowerRecordPatch = (
     )
   }
 
-  return scope.finish(...recordIds.map((recordId): DocumentOperation => ({
+  emitOps(scope, ...recordIds.map((recordId): DocumentOperation => ({
     type: 'document.record.patch',
     recordId,
     patch: intent.patch
@@ -217,13 +231,14 @@ const lowerRecordPatch = (
 const lowerRecordRemove = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'record.remove' }>
-): CompiledIntentResult => {
+)=> {
   const recordIds = requireRecordIds(scope, intent.recordIds, 'recordIds')
   if (!recordIds) {
-    return scope.finish()
+    return
   }
 
-  return scope.finish(
+  emitOps(
+    scope,
     ...buildRecordRemoveViewOps(scope.reader, recordIds),
     {
       type: 'document.record.remove',
@@ -235,7 +250,7 @@ const lowerRecordRemove = (
 const lowerRecordFieldsWriteMany = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'record.fields.writeMany' }>
-): CompiledIntentResult => {
+)=> {
   const recordIds = requireRecordIds(scope, intent.recordIds, 'recordIds')
   const nextSet: Partial<Record<FieldId, unknown>> = {}
   const nextClear = new Set<FieldId>()
@@ -283,10 +298,10 @@ const lowerRecordFieldsWriteMany = (
   }
 
   if (!recordIds) {
-    return scope.finish()
+    return
   }
 
-  return scope.finish({
+  scope.emit({
     type: 'document.record.fields.writeMany',
     recordIds,
     ...(Object.keys(nextSet).length
@@ -299,9 +314,9 @@ const lowerRecordFieldsWriteMany = (
 }
 
 export const compileRecordIntent = (
-  scope: CompileScope,
-  intent: Intent
-): CompiledIntentResult => {
+  intent: Intent,
+  scope: CompileScope
+) => {
   switch (intent.type) {
     case 'record.create':
       return lowerRecordCreate(scope, intent)

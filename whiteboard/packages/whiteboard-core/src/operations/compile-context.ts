@@ -53,8 +53,8 @@ export type WhiteboardCompileTx = {
   emit: (op: Operation) => void
   emitMany: (ops: readonly Operation[]) => void
   fail: {
-    invalid: (message: string, details?: unknown) => ReturnType<MutationCompileCtx<Document, Operation>['block']>
-    cancelled: (message: string, details?: unknown) => ReturnType<MutationCompileCtx<Document, Operation>['block']>
+    invalid: (message: string, details?: unknown) => ReturnType<MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>['block']>
+    cancelled: (message: string, details?: unknown) => ReturnType<MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>['block']>
   }
 }
 
@@ -64,7 +64,7 @@ export type WhiteboardIntentContext = {
 }
 
 const requireNode = (
-  ctx: MutationCompileCtx<Document, Operation>,
+  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>,
   id: NodeId
 ): Node | undefined => {
   const node = ctx.doc().nodes[id]
@@ -79,7 +79,7 @@ const requireNode = (
 }
 
 const requireEdge = (
-  ctx: MutationCompileCtx<Document, Operation>,
+  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>,
   id: EdgeId
 ): Edge | undefined => {
   const edge = ctx.doc().edges[id]
@@ -94,7 +94,7 @@ const requireEdge = (
 }
 
 const requireGroup = (
-  ctx: MutationCompileCtx<Document, Operation>,
+  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>,
   id: GroupId
 ): Group | undefined => {
   const group = ctx.doc().groups[id]
@@ -109,7 +109,7 @@ const requireGroup = (
 }
 
 const requireMindmap = (
-  ctx: MutationCompileCtx<Document, Operation>,
+  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>,
   id: MindmapId
 ): MindmapRecord | undefined => {
   const mindmap = ctx.doc().mindmaps[id]
@@ -124,7 +124,7 @@ const requireMindmap = (
 }
 
 export const createWhiteboardIntentContext = (input: {
-  ctx: MutationCompileCtx<Document, Operation>
+  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>
   ids: WhiteboardCompileIds
   registries: CoreRegistries
 }): WhiteboardIntentContext => ({

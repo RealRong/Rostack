@@ -20,12 +20,23 @@ import type {
   Origin,
 } from './write'
 
-export interface MutationCompileIssue<Code extends string = string> {
+export interface MutationCompileIssue<
+  Code extends string = string,
+  TType extends string = string
+> {
   code: Code
   message: string
   path?: string
   severity?: 'error' | 'warning'
   details?: unknown
+  source?: MutationCompileSource<TType>
+}
+
+export interface MutationCompileSource<
+  TType extends string = string
+> {
+  index: number
+  type: TType
 }
 
 export interface MutationCompileCtx<
@@ -68,6 +79,15 @@ export interface MutationCompileResult<
   issues?: readonly MutationCompileIssue<Code>[]
   canApply?: boolean
 }
+
+export type MutationCompileControl<Code extends string = string> =
+  | {
+      kind: 'stop'
+    }
+  | {
+      kind: 'block'
+      issue: MutationCompileIssue<Code>
+    }
 
 export interface MutationError<Code extends string = string> {
   code: Code
@@ -149,6 +169,29 @@ export interface MutationOptions {
   origin?: Origin
 }
 
+export type MutationCompileHandler<
+  Intent,
+  Output,
+  Ctx,
+  Code extends string = string
+> = (
+  intent: Intent,
+  ctx: Ctx
+) => Output | void | MutationCompileControl<Code>
+
+export type MutationCompileHandlerTable<
+  Table extends MutationIntentTable,
+  Ctx,
+  Code extends string = string
+> = {
+  [K in MutationIntentKind<Table>]: MutationCompileHandler<
+    MutationIntentOf<Table, K>,
+    MutationOutputOf<Table, K>,
+    Ctx,
+    Code
+  >
+}
+
 export interface MutationPrevSnapshot<Doc, Publish, Cache> {
   doc: Doc
   publish: Publish
@@ -213,6 +256,21 @@ export interface MutationOperationSpec<
     ctx: ApplyCtx,
     op: Extract<Op, { type: TType }>
   ): void
+}
+
+type MutationOperationExecutor<
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  Ctx
+> = {
+  family: string
+  sync?: 'live' | 'checkpoint'
+  history?: boolean
+  footprint?(ctx: Ctx, op: Op): void
+  apply(ctx: Ctx, op: Op): void
 }
 
 export type MutationOperationTable<
@@ -354,9 +412,13 @@ const COMPILE_EMPTY_CODE = 'mutation_engine.compile.empty'
 const APPLY_EMPTY_CODE = 'mutation_engine.apply.empty'
 const EXECUTE_EMPTY_CODE = 'mutation_engine.execute.empty'
 
+export const hasCompileErrors = (
+  issues: readonly MutationCompileIssue[]
+): boolean => issues.some((issue) => (issue.severity ?? 'error') === 'error')
+
 const hasBlockingIssue = (
   issues: readonly MutationCompileIssue[]
-): boolean => issues.some((issue) => (issue.severity ?? 'error') !== 'warning')
+): boolean => hasCompileErrors(issues)
 
 const toIssues = (
   issues?: readonly MutationCompileIssue[]
@@ -421,6 +483,225 @@ const readOperation = <
   return table[op.type as Op['type']]
 }
 
+const dispatchOperation = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  Ctx
+>(
+  table: MutationOperationTable<Doc, Op, Key, Ctx>,
+  ctx: Ctx,
+  op: Op
+): void => {
+  const entry: MutationOperationExecutor<Doc, Op, Key, Ctx> = readOperation(
+    table,
+    op
+  )
+  entry.footprint?.(ctx, op)
+  entry.apply(ctx, op)
+}
+
+const dispatchCompileHandler = <
+  Table extends MutationIntentTable,
+  Ctx,
+  Code extends string,
+  TKind extends MutationIntentKind<Table>
+>(
+  handlers: MutationCompileHandlerTable<Table, Ctx, Code>,
+  intent: MutationIntentOf<Table, TKind>,
+  ctx: Ctx
+): MutationOutputOf<Table, TKind> | void | MutationCompileControl<Code> => (
+  handlers[intent.type](intent, ctx)
+)
+
+export const normalizeCompileIssue = <Code extends string>(
+  issue: MutationCompileIssue<Code>
+): Required<Pick<MutationCompileIssue<Code>, 'code' | 'message' | 'severity'>> & Omit<
+  MutationCompileIssue<Code>,
+  'severity'
+> => ({
+  ...issue,
+  severity: issue.severity ?? 'error'
+})
+
+export const createCompileIssue = <
+  Code extends string,
+  TType extends string = string
+>(
+  source: MutationCompileSource<TType>,
+  severity: 'error' | 'warning',
+  code: Code,
+  message: string,
+  path?: string,
+  details?: unknown
+): MutationCompileIssue<Code, TType> => ({
+  code,
+  message,
+  ...(path === undefined
+    ? {}
+    : {
+        path
+      }),
+  ...(details === undefined
+    ? {}
+    : {
+        details
+      }),
+  severity,
+  source
+})
+
+const isCompileControl = <Code extends string>(
+  value: unknown
+): value is MutationCompileControl<Code> => (
+  typeof value === 'object'
+  && value !== null
+  && 'kind' in value
+  && (
+    value.kind === 'stop'
+    || value.kind === 'block'
+  )
+)
+
+const COMPILE_APPLY_FAILED_CODE = 'mutation_engine.compile.apply_failed'
+
+type MutationCompileApplyResult<
+  Doc,
+  Code extends string = string
+> =
+  | {
+      ok: true
+      doc: Doc
+    }
+  | {
+      ok: false
+      issue: MutationCompileIssue<Code>
+    }
+
+export const compileMutationIntents = <
+  Doc,
+  Table extends MutationIntentTable,
+  Op,
+  Ctx,
+  Code extends string = string
+>(input: {
+  doc: Doc
+  intents: readonly MutationIntentOf<Table>[]
+  handlers: MutationCompileHandlerTable<Table, Ctx, Code>
+  createContext: (entry: {
+    ctx: MutationCompileCtx<Doc, Op, Code>
+    doc: Doc
+    intent: MutationIntentOf<Table>
+    index: number
+  }) => Ctx
+  apply: (entry: {
+    doc: Doc
+    ops: readonly Op[]
+  }) => MutationCompileApplyResult<Doc, Code>
+}): MutationCompileResult<Op, MutationOutputOf<Table>, Code> => {
+  const ops: Op[] = []
+  const outputs: MutationOutputOf<Table>[] = []
+  const issues: MutationCompileIssue<Code>[] = []
+  let workingDoc = input.doc
+
+  for (const [index, intent] of input.intents.entries()) {
+    const pendingOps: Op[] = []
+    const pendingIssues: MutationCompileIssue<Code>[] = []
+    let shouldStop = false
+    let blocked = false
+
+    const ctx: MutationCompileCtx<Doc, Op, Code> = {
+      doc: () => workingDoc,
+      emit: (op) => {
+        pendingOps.push(op)
+      },
+      emitMany: (...nextOps) => {
+        pendingOps.push(...nextOps)
+      },
+      issue: (issue) => {
+        const normalized = normalizeCompileIssue(issue)
+        pendingIssues.push(normalized)
+        if (normalized.severity !== 'warning') {
+          blocked = true
+        }
+      },
+      stop: () => {
+        shouldStop = true
+        return {
+          kind: 'stop'
+        }
+      },
+      block: (issue) => {
+        const normalized = normalizeCompileIssue(issue)
+        pendingIssues.push(normalized)
+        blocked = true
+        return {
+          kind: 'block',
+          issue: normalized
+        }
+      },
+      require: (value, issue) => {
+        if (value !== undefined) {
+          return value
+        }
+
+        ctx.issue(issue)
+        return undefined
+      }
+    }
+
+    const compileContext = input.createContext({
+      ctx,
+      doc: workingDoc,
+      intent,
+      index
+    })
+    const output = dispatchCompileHandler(input.handlers, intent, compileContext)
+
+    if (isCompileControl(output)) {
+      if (output.kind === 'stop') {
+        shouldStop = true
+      } else {
+        blocked = true
+      }
+    } else if (output !== undefined) {
+      outputs.push(output)
+    }
+
+    issues.push(...pendingIssues)
+    if (shouldStop || blocked) {
+      break
+    }
+    if (pendingOps.length === 0) {
+      continue
+    }
+
+    const applied = input.apply({
+      doc: workingDoc,
+      ops: pendingOps
+    })
+    if (!applied.ok) {
+      issues.push(normalizeCompileIssue(applied.issue))
+      break
+    }
+
+    ops.push(...pendingOps)
+    workingDoc = applied.doc
+  }
+
+  return {
+    ops,
+    outputs,
+    ...(issues.length
+      ? {
+          issues
+        }
+      : {})
+  }
+}
+
 const createReducerSpecFromOperations = <
   Doc extends object,
   Op extends {
@@ -440,9 +721,7 @@ const createReducerSpecFromOperations = <
       }
     : {}),
   handle: (ctx, op) => {
-    const entry = readOperation(operations.table, op)
-    entry.footprint?.(ctx, op as never)
-    entry.apply(ctx, op as never)
+    dispatchOperation(operations.table, ctx, op)
   },
   ...(operations.settle
     ? {
@@ -466,6 +745,30 @@ const createReducerFromOperations = <
 ): Reducer<Doc, Op, Key, Extra, DomainCtx, Code> => new Reducer({
   spec: createReducerSpecFromOperations(operations)
 })
+
+const REDUCER_BY_OPERATIONS = new WeakMap<object, Reducer<any, any, any, any, any, any>>()
+
+const readReducerFromOperations = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Key,
+  Extra,
+  DomainCtx,
+  Code extends string
+>(
+  operations: MutationOperationsSpec<Doc, Op, Key, Extra, DomainCtx, Code>
+): Reducer<Doc, Op, Key, Extra, DomainCtx, Code> => {
+  const current = REDUCER_BY_OPERATIONS.get(operations as object)
+  if (current) {
+    return current as Reducer<Doc, Op, Key, Extra, DomainCtx, Code>
+  }
+
+  const created = createReducerFromOperations(operations)
+  REDUCER_BY_OPERATIONS.set(operations as object, created)
+  return created
+}
 
 const defaultTracksHistory = <
   Doc extends object,
@@ -618,6 +921,40 @@ export class OperationMutationRuntime<
       ops,
       data: undefined,
       origin: options?.origin ?? 'user'
+    })
+  }
+
+  static reduce<
+    Doc extends object,
+    Op extends {
+      type: string
+    },
+    Key,
+    Extra,
+    DomainCtx,
+    Code extends string = string
+  >(input: {
+    doc: Doc
+    ops: readonly Op[]
+    origin?: Origin
+    operations: MutationOperationsSpec<Doc, Op, Key, Extra, DomainCtx, Code>
+  }): ReducerResult<Doc, Op, Key, Extra, Code> {
+    const validationError = input.operations.validate?.({
+      doc: input.doc,
+      ops: input.ops,
+      origin: input.origin ?? 'user'
+    })
+    if (validationError) {
+      return {
+        ok: false,
+        error: validationError
+      }
+    }
+
+    return readReducerFromOperations(input.operations).reduce({
+      doc: input.doc,
+      ops: input.ops,
+      origin: input.origin
     })
   }
 

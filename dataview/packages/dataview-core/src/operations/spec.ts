@@ -4,11 +4,13 @@ import type { DocumentMutationOperationContext } from './internal/context'
 import { DATAVIEW_OPERATION_DEFINITIONS } from './definitions'
 import { createDataviewDraftDocument } from './internal/draft'
 import {
-  Reducer,
   type ReducerContext,
   type ReducerResult
 } from '@shared/reducer'
-import type { MutationOperationsSpec } from '@shared/mutation'
+import {
+  OperationMutationRuntime,
+  type MutationOperationsSpec
+} from '@shared/mutation'
 import {
   dataviewTargetKeyConflicts,
   serializeDataviewMutationKey,
@@ -87,31 +89,13 @@ export const dataviewMutationOperations: MutationOperationsSpec<
   conflicts: dataviewTargetKeyConflicts
 }
 
-const dataviewOperationReducer = new Reducer<
-  DataDoc,
-  DocumentOperation,
-  DataviewMutationKey,
-  DataviewOperationReduceExtra,
-  DataviewReduceContext
->({
-  spec: {
-    serializeKey: dataviewMutationOperations.serializeKey,
-    createContext: dataviewMutationOperations.createContext,
-    handle: (ctx, operation) => {
-      const definition = dataviewMutationOperations.table[operation.type]
-      definition.footprint?.(ctx, operation as never)
-      definition.apply(ctx, operation as never)
-    },
-    done: dataviewMutationOperations.done
-  }
-})
-
 export const reduceDataviewOperations = (
   document: DataDoc,
   operations: readonly DocumentOperation[]
-): DataviewOperationReduceResult => dataviewOperationReducer.reduce({
+): DataviewOperationReduceResult => OperationMutationRuntime.reduce({
   doc: document,
-  ops: operations
+  ops: operations,
+  operations: dataviewMutationOperations
 })
 
 export const spec = dataviewMutationOperations

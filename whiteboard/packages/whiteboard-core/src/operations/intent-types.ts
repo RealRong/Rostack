@@ -1,7 +1,4 @@
 import type {
-  MutationIntentTable
-} from '@shared/mutation'
-import type {
   CanvasItemRef,
   Document,
   EdgeEnd,
@@ -512,11 +509,14 @@ export interface WhiteboardIntentTable {
   }
 }
 
-export type WhiteboardMutationTable =
-  WhiteboardIntentTable
-  & MutationIntentTable
-
 export type WhiteboardIntentKind = keyof WhiteboardIntentTable & string
+
+export type WhiteboardMutationTable = {
+  [K in WhiteboardIntentKind]: {
+    intent: WhiteboardIntentTable[K]['intent']
+    output: WhiteboardIntentTable[K]['output']
+  }
+}
 
 export type WhiteboardIntent<K extends WhiteboardIntentKind = WhiteboardIntentKind> =
   WhiteboardIntentTable[K]['intent']

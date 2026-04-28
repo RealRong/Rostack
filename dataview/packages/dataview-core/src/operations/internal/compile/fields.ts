@@ -17,11 +17,26 @@ import {
 import { equal, string } from '@shared/core'
 import { validateField } from '@dataview/core/operations/internal/validateField'
 import type {
-  CompiledIntentResult,
   CompileScope
 } from './scope'
 
 const DEFAULT_OPTION_NAME = 'Option'
+
+const emitOps = (
+  scope: CompileScope,
+  ...operations: readonly DocumentOperation[]
+) => {
+  scope.emitMany(...operations)
+}
+
+const emitData = <T>(
+  scope: CompileScope,
+  data: T,
+  ...operations: readonly DocumentOperation[]
+): T => {
+  emitOps(scope, ...operations)
+  return data
+}
 
 const toViewPut = (
   view: View
@@ -161,7 +176,7 @@ const requireOptionField = (
 const lowerFieldCreate = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.create' }>
-): CompiledIntentResult => {
+) => {
   const document = scope.reader.document()
   const explicitFieldId = string.trimToUndefined(intent.input.id)
 
@@ -180,7 +195,7 @@ const lowerFieldCreate = (
     )
   }
   if ((intent.input.id !== undefined && !explicitFieldId) || (explicitFieldId && scope.reader.fields.has(explicitFieldId))) {
-    return scope.finish()
+    return
   }
 
   const field = fieldApi.create.default({
@@ -191,28 +206,21 @@ const lowerFieldCreate = (
   })
 
   scope.report(...validateField(document, scope.source, field, 'input'))
-  const result = scope.finish({
+  return emitData(scope, { id: field.id }, {
     type: 'document.field.put',
     field
   })
-
-  return {
-    ...result,
-    data: {
-      id: field.id
-    }
-  }
 }
 
 const lowerFieldPatch = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.patch' }>
-): CompiledIntentResult => {
+) => {
   const document = scope.reader.document()
   const views = scope.reader.views.list()
   const field = requireCustomField(scope, intent.id, 'id')
   if (!field) {
-    return scope.finish()
+    return
   }
 
   if (!Object.keys(intent.patch).length) {
@@ -221,7 +229,7 @@ const lowerFieldPatch = (
       'field.patch patch cannot be empty',
       'patch'
     )
-    return scope.finish()
+    return
   }
 
   const nextField = {
@@ -230,16 +238,16 @@ const lowerFieldPatch = (
   } as CustomField
   scope.report(...validateField(document, scope.source, nextField, 'patch'))
 
-  return scope.finish(toFieldPatch(intent.id, intent.patch))
+  scope.emit(toFieldPatch(intent.id, intent.patch))
 }
 
 const lowerFieldReplace = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.replace' }>
-): CompiledIntentResult => {
+)=> {
   const document = scope.reader.document()
   if (!requireCustomField(scope, intent.id, 'id')) {
-    return scope.finish()
+    return
   }
 
   const field = {
@@ -248,7 +256,7 @@ const lowerFieldReplace = (
   } satisfies CustomField
 
   scope.report(...validateField(document, scope.source, field, 'field'))
-  return scope.finish({
+  scope.emit({
     type: 'document.field.put',
     field
   })
@@ -257,12 +265,12 @@ const lowerFieldReplace = (
 const lowerFieldSetKind = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.setKind' }>
-): CompiledIntentResult => {
+)=> {
   const document = scope.reader.document()
   const views = scope.reader.views.list()
   const field = requireCustomField(scope, intent.id, 'id')
   if (!field) {
-    return scope.finish()
+    return
   }
 
   const patch = createFieldConvertPatch(field, intent.kind)
@@ -272,7 +280,8 @@ const lowerFieldSetKind = (
   } as CustomField
   scope.report(...validateField(document, scope.source, nextField, 'kind'))
 
-  return scope.finish(
+  emitOps(
+    scope,
     toFieldPatch(intent.id, patch),
     ...buildConvertedFieldViewOps(views, nextField)
   )
@@ -281,13 +290,13 @@ const lowerFieldSetKind = (
 const lowerFieldDuplicate = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.duplicate' }>
-): CompiledIntentResult => {
+)=> {
   const document = scope.reader.document()
   const views = scope.reader.views.list()
   const records = scope.reader.records.list()
   const sourceField = requireCustomField(scope, intent.id, 'id')
   if (!sourceField) {
-    return scope.finish()
+    return
   }
 
   const nextFieldId = createId('field')
@@ -342,7 +351,11 @@ const lowerFieldDuplicate = (
     })]
   })
 
-  const result = scope.finish(
+  return emitData(
+    scope,
+    {
+      id: nextField.id
+    },
     {
       type: 'document.field.put',
       field: nextField
@@ -350,22 +363,15 @@ const lowerFieldDuplicate = (
     ...recordOps,
     ...viewOps
   )
-
-  return {
-    ...result,
-    data: {
-      id: nextField.id
-    }
-  }
 }
 
 const lowerFieldOptionCreate = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.option.create' }>
-): CompiledIntentResult => {
+)=> {
   const context = requireOptionField(scope, intent.field)
   if (!context) {
-    return scope.finish()
+    return
   }
 
   const explicitName = string.trimToUndefined(intent.name)
@@ -375,10 +381,10 @@ const lowerFieldOptionCreate = (
       'Field option name must be a non-empty string',
       'name'
     )
-    return scope.finish()
+    return
   }
   if (explicitName && fieldApi.option.read.findByName(context.options, explicitName)) {
-    return scope.finish()
+    return
   }
 
   const nextOption = fieldApi.option.spec.get(context.field).createOption({
@@ -391,23 +397,16 @@ const lowerFieldOptionCreate = (
     [...context.options, nextOption]
   ) as Partial<Omit<CustomField, 'id'>>
 
-  const result = scope.finish(toFieldPatch(intent.field, patch))
-
-  return {
-    ...result,
-    data: {
-      id: nextOption.id
-    }
-  }
+  return emitData(scope, { id: nextOption.id }, toFieldPatch(intent.field, patch))
 }
 
 const lowerFieldOptionSetOrder = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.option.setOrder' }>
-): CompiledIntentResult => {
+)=> {
   const context = requireOptionField(scope, intent.field)
   if (!context) {
-    return scope.finish()
+    return
   }
 
   const optionMap = new Map(context.options.map((option: FieldOption) => [option.id, option] as const))
@@ -427,10 +426,10 @@ const lowerFieldOptionSetOrder = (
     nextOptions.length === context.options.length
     && nextOptions.every((option, optionIndex) => option?.id === context.options[optionIndex]?.id)
   ) {
-    return scope.finish()
+    return
   }
 
-  return scope.finish(
+  scope.emit(
     toFieldPatch(
       intent.field,
       fieldApi.option.write.replace(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>
@@ -441,10 +440,10 @@ const lowerFieldOptionSetOrder = (
 const lowerFieldOptionPatch = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.option.patch' }>
-): CompiledIntentResult => {
+)=> {
   const context = requireOptionField(scope, intent.field)
   if (!context) {
-    return scope.finish()
+    return
   }
 
   const optionId = string.trimToUndefined(intent.option)
@@ -454,7 +453,7 @@ const lowerFieldOptionPatch = (
       'Field option id must be a non-empty string',
       'option'
     )
-    return scope.finish()
+    return
   }
 
   const target = context.options.find(option => option.id === optionId)
@@ -464,7 +463,7 @@ const lowerFieldOptionPatch = (
       `Unknown field option: ${optionId}`,
       'option'
     )
-    return scope.finish()
+    return
   }
 
   const nextName = string.trimToUndefined(intent.patch.name)
@@ -475,7 +474,7 @@ const lowerFieldOptionPatch = (
         'Field option name must be a non-empty string',
         'patch.name'
       )
-      return scope.finish()
+      return
     }
 
     const conflicting = fieldApi.option.read.findByName(context.options, nextName)
@@ -485,7 +484,7 @@ const lowerFieldOptionPatch = (
         `Duplicate field option name: ${nextName}`,
         'patch.name'
       )
-      return scope.finish()
+      return
     }
   }
 
@@ -509,7 +508,7 @@ const lowerFieldOptionPatch = (
   })
 
   if (equal.sameJsonValue(nextOption, target)) {
-    return scope.finish()
+    return
   }
 
   const patch = fieldApi.option.write.replace(
@@ -517,17 +516,17 @@ const lowerFieldOptionPatch = (
     context.options.map(option => option.id === optionId ? nextOption : option)
   ) as Partial<Omit<CustomField, 'id'>>
 
-  return scope.finish(toFieldPatch(intent.field, patch))
+  scope.emit(toFieldPatch(intent.field, patch))
 }
 
 const lowerFieldOptionRemove = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.option.remove' }>
-): CompiledIntentResult => {
+)=> {
   const records = scope.reader.records.list()
   const context = requireOptionField(scope, intent.field)
   if (!context) {
-    return scope.finish()
+    return
   }
 
   const optionId = string.trimToUndefined(intent.option)
@@ -537,7 +536,7 @@ const lowerFieldOptionRemove = (
       'Field option id must be a non-empty string',
       'option'
     )
-    return scope.finish()
+    return
   }
   if (!context.options.some(option => option.id === optionId)) {
     scope.issue(
@@ -545,7 +544,7 @@ const lowerFieldOptionRemove = (
       `Unknown field option: ${optionId}`,
       'option'
     )
-    return scope.finish()
+    return
   }
 
   const optionSpec = fieldApi.option.spec.get(context.field)
@@ -586,7 +585,8 @@ const lowerFieldOptionRemove = (
     }))
   }
 
-  return scope.finish(
+  emitOps(
+    scope,
     toFieldPatch(intent.field, patch),
     ...valueOps
   )
@@ -595,13 +595,14 @@ const lowerFieldOptionRemove = (
 const lowerFieldRemove = (
   scope: CompileScope,
   intent: Extract<Intent, { type: 'field.remove' }>
-): CompiledIntentResult => {
+)=> {
   const views = scope.reader.views.list()
   if (!requireCustomField(scope, intent.id, 'id')) {
-    return scope.finish()
+    return
   }
 
-  return scope.finish(
+  emitOps(
+    scope,
     ...buildRemovedFieldViewOps(views, intent.id),
     {
       type: 'document.field.remove',
@@ -611,9 +612,9 @@ const lowerFieldRemove = (
 }
 
 export const compileFieldIntent = (
-  scope: CompileScope,
-  intent: Intent
-): CompiledIntentResult => {
+  intent: Intent,
+  scope: CompileScope
+) => {
   switch (intent.type) {
     case 'field.create':
       return lowerFieldCreate(scope, intent)

@@ -16,7 +16,11 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type { WhiteboardIntentContext } from '@whiteboard/core/operations/compile-context'
-import type { EdgeIntent } from '@whiteboard/core/operations/intent-types'
+import type {
+  EdgeIntent,
+  WhiteboardMutationTable
+} from '@whiteboard/core/operations/intent-types'
+import type { MutationCompileHandlerTable } from '@shared/mutation'
 
 const hasOwn = <T extends object>(
   target: T,
@@ -471,387 +475,400 @@ const compileEdgeRouteDelete = (
   })
 }
 
-export const compileEdgeIntent = (
-  intent: EdgeIntent,
-  ctx: WhiteboardIntentContext
-) => {
-  const document = ctx.tx.read.document.get()
+type EdgeIntentHandlers = Pick<
+  MutationCompileHandlerTable<
+    WhiteboardMutationTable,
+    WhiteboardIntentContext,
+    'invalid' | 'cancelled'
+  >,
+  'edge.create'
+  | 'edge.update'
+  | 'edge.move'
+  | 'edge.reconnect.commit'
+  | 'edge.delete'
+  | 'edge.label.insert'
+  | 'edge.label.update'
+  | 'edge.label.move'
+  | 'edge.label.delete'
+  | 'edge.route.insert'
+  | 'edge.route.update'
+  | 'edge.route.set'
+  | 'edge.route.move'
+  | 'edge.route.delete'
+  | 'edge.route.clear'
+>
 
-  switch (intent.type) {
-    case 'edge.create': {
-      const built = edgeApi.op.create({
-        payload: intent.input,
-        doc: document,
-        registries: ctx.registries,
-        createEdgeId: ctx.tx.ids.edge,
-        createEdgeRoutePointId: ctx.tx.ids.edgeRoutePoint
-      })
-      if (!built.ok) {
-        return ctx.tx.fail.invalid(built.error.message, built.error.details)
-      }
-
-      ctx.tx.emit(built.data.operation)
-      return {
-        edgeId: built.data.edgeId
-      }
+export const edgeIntentHandlers: EdgeIntentHandlers = {
+  'edge.create': (intent, ctx) => {
+    const document = ctx.tx.read.document.get()
+    const built = edgeApi.op.create({
+      payload: intent.input,
+      doc: document,
+      registries: ctx.registries,
+      createEdgeId: ctx.tx.ids.edge,
+      createEdgeRoutePointId: ctx.tx.ids.edgeRoutePoint
+    })
+    if (!built.ok) {
+      return ctx.tx.fail.invalid(built.error.message, built.error.details)
     }
-    case 'edge.update': {
-      const decision = resolveLockDecision({
-        document,
-        target: {
-          kind: 'edge-ids',
-          edgeIds: intent.updates.map((entry) => entry.id)
-        }
-      })
-      if (!decision.allowed) {
-        return ctx.tx.fail.cancelled(
-          decision.reason === 'locked-node'
-            ? 'Locked nodes cannot be modified.'
-            : decision.reason === 'locked-edge'
-              ? 'Locked edges cannot be modified.'
-              : 'Locked node relations cannot be modified.'
-        )
-      }
 
-      intent.updates.forEach((entry) => {
-        const edge = ctx.tx.read.edge.get(entry.id)
-        if (!edge) {
-          return
-        }
-        emitEdgeUpdateInputOps(edge, entry.input, ctx)
-      })
-      return
+    ctx.tx.emit(built.data.operation)
+    return {
+      edgeId: built.data.edgeId
     }
-    case 'edge.move': {
-      const decision = resolveLockDecision({
-        document,
-        target: {
-          kind: 'edge-ids',
-          edgeIds: intent.ids
-        }
-      })
-      if (!decision.allowed) {
-        return ctx.tx.fail.cancelled(
-          decision.reason === 'locked-node'
-            ? 'Locked nodes cannot be modified.'
-            : decision.reason === 'locked-edge'
-              ? 'Locked edges cannot be modified.'
-              : 'Locked node relations cannot be modified.'
-        )
+  },
+  'edge.update': (intent, ctx) => {
+    const document = ctx.tx.read.document.get()
+    const decision = resolveLockDecision({
+      document,
+      target: {
+        kind: 'edge-ids',
+        edgeIds: intent.updates.map((entry) => entry.id)
       }
-
-      intent.ids.forEach((edgeId) => {
-        const edge = ctx.tx.read.edge.get(edgeId)
-        const patch = edge ? edgeApi.edit.move(edge, intent.delta) : undefined
-        if (!edge || !patch) {
-          return
-        }
-        emitEdgeMovePatchOps(edge, patch, ctx)
-      })
-      return
+    })
+    if (!decision.allowed) {
+      return ctx.tx.fail.cancelled(
+        decision.reason === 'locked-node'
+          ? 'Locked nodes cannot be modified.'
+          : decision.reason === 'locked-edge'
+            ? 'Locked edges cannot be modified.'
+            : 'Locked node relations cannot be modified.'
+      )
     }
-    case 'edge.reconnect.commit': {
-      const currentDecision = resolveLockDecision({
-        document,
-        target: {
-          kind: 'edge-ids',
-          edgeIds: [intent.edgeId]
-        }
-      })
-      if (!currentDecision.allowed) {
-        return ctx.tx.fail.cancelled(
-          currentDecision.reason === 'locked-node'
-            ? 'Locked nodes cannot be modified.'
-            : currentDecision.reason === 'locked-edge'
-              ? 'Locked edges cannot be modified.'
-              : 'Locked node relations cannot be modified.'
-        )
-      }
 
-      const targetDecision = resolveLockDecision({
-        document,
-        target: {
-          kind: 'edge-ends',
-          ends: [intent.target]
-        }
-      })
-      if (!targetDecision.allowed) {
-        return ctx.tx.fail.cancelled(
-          targetDecision.reason === 'locked-node'
-            ? 'Locked nodes cannot be modified.'
-            : targetDecision.reason === 'locked-edge'
-              ? 'Locked edges cannot be modified.'
-              : 'Locked node relations cannot be modified.'
-        )
-      }
-
-      const edge = ctx.tx.read.edge.get(intent.edgeId)
+    intent.updates.forEach((entry) => {
+      const edge = ctx.tx.read.edge.get(entry.id)
       if (!edge) {
         return
       }
-
-      emitEdgeMovePatchOps(edge, {
-        ...(intent.end === 'source'
-          ? { source: intent.target }
-          : { target: intent.target }),
-        ...(intent.patch?.type
-          ? {
-              type: intent.patch.type
-            }
-          : {}),
-        ...(intent.patch?.route
-          ? {
-              route: intent.patch.route
-            }
-          : {})
-      }, ctx)
-      return
-    }
-    case 'edge.delete': {
-      const decision = resolveLockDecision({
-        document,
-        target: {
-          kind: 'edge-ids',
-          edgeIds: intent.ids
-        }
-      })
-      if (!decision.allowed) {
-        return ctx.tx.fail.cancelled(
-          decision.reason === 'locked-node'
-            ? 'Locked nodes cannot be modified.'
-            : decision.reason === 'locked-edge'
-              ? 'Locked edges cannot be modified.'
-              : 'Locked node relations cannot be modified.'
-        )
+      emitEdgeUpdateInputOps(edge, entry.input, ctx)
+    })
+  },
+  'edge.move': (intent, ctx) => {
+    const document = ctx.tx.read.document.get()
+    const decision = resolveLockDecision({
+      document,
+      target: {
+        kind: 'edge-ids',
+        edgeIds: intent.ids
       }
-
-      intent.ids.forEach((id) => {
-        ctx.tx.emit({
-          type: 'edge.delete',
-          id
-        })
-      })
-      return
+    })
+    if (!decision.allowed) {
+      return ctx.tx.fail.cancelled(
+        decision.reason === 'locked-node'
+          ? 'Locked nodes cannot be modified.'
+          : decision.reason === 'locked-edge'
+            ? 'Locked edges cannot be modified.'
+            : 'Locked node relations cannot be modified.'
+      )
     }
-    case 'edge.label.insert': {
-      const edge = ctx.tx.read.edge.require(intent.edgeId)
-      if (!edge) {
+
+    intent.ids.forEach((edgeId) => {
+      const edge = ctx.tx.read.edge.get(edgeId)
+      const patch = edge ? edgeApi.edit.move(edge, intent.delta) : undefined
+      if (!edge || !patch) {
         return
       }
-      const labelId = ctx.tx.ids.edgeLabel()
+      emitEdgeMovePatchOps(edge, patch, ctx)
+    })
+  },
+  'edge.reconnect.commit': (intent, ctx) => {
+    const document = ctx.tx.read.document.get()
+    const currentDecision = resolveLockDecision({
+      document,
+      target: {
+        kind: 'edge-ids',
+        edgeIds: [intent.edgeId]
+      }
+    })
+    if (!currentDecision.allowed) {
+      return ctx.tx.fail.cancelled(
+        currentDecision.reason === 'locked-node'
+          ? 'Locked nodes cannot be modified.'
+          : currentDecision.reason === 'locked-edge'
+            ? 'Locked edges cannot be modified.'
+            : 'Locked node relations cannot be modified.'
+      )
+    }
+
+    const targetDecision = resolveLockDecision({
+      document,
+      target: {
+        kind: 'edge-ends',
+        ends: [intent.target]
+      }
+    })
+    if (!targetDecision.allowed) {
+      return ctx.tx.fail.cancelled(
+        targetDecision.reason === 'locked-node'
+          ? 'Locked nodes cannot be modified.'
+          : targetDecision.reason === 'locked-edge'
+            ? 'Locked edges cannot be modified.'
+            : 'Locked node relations cannot be modified.'
+      )
+    }
+
+    const edge = ctx.tx.read.edge.get(intent.edgeId)
+    if (!edge) {
+      return
+    }
+
+    emitEdgeMovePatchOps(edge, {
+      ...(intent.end === 'source'
+        ? { source: intent.target }
+        : { target: intent.target }),
+      ...(intent.patch?.type
+        ? {
+            type: intent.patch.type
+          }
+        : {}),
+      ...(intent.patch?.route
+        ? {
+            route: intent.patch.route
+          }
+        : {})
+    }, ctx)
+  },
+  'edge.delete': (intent, ctx) => {
+    const document = ctx.tx.read.document.get()
+    const decision = resolveLockDecision({
+      document,
+      target: {
+        kind: 'edge-ids',
+        edgeIds: intent.ids
+      }
+    })
+    if (!decision.allowed) {
+      return ctx.tx.fail.cancelled(
+        decision.reason === 'locked-node'
+          ? 'Locked nodes cannot be modified.'
+          : decision.reason === 'locked-edge'
+            ? 'Locked edges cannot be modified.'
+            : 'Locked node relations cannot be modified.'
+      )
+    }
+
+    intent.ids.forEach((id) => {
       ctx.tx.emit({
-        type: 'edge.label.insert',
-        edgeId: edge.id,
-        label: {
-          id: labelId,
-          ...intent.label
-        } as EdgeLabel,
-        to: intent.to ?? { kind: 'end' }
+        type: 'edge.delete',
+        id
       })
-      return {
-        labelId
+    })
+  },
+  'edge.label.insert': (intent, ctx) => {
+    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    if (!edge) {
+      return
+    }
+    const labelId = ctx.tx.ids.edgeLabel()
+    ctx.tx.emit({
+      type: 'edge.label.insert',
+      edgeId: edge.id,
+      label: {
+        id: labelId,
+        ...intent.label
+      } as EdgeLabel,
+      to: intent.to ?? { kind: 'end' }
+    })
+    return {
+      labelId
+    }
+  },
+  'edge.label.update': (intent, ctx) => {
+    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    if (!edge) {
+      return
+    }
+    const label = edge.labels?.find((entry) => entry.id === intent.labelId)
+    if (!label) {
+      return ctx.tx.fail.invalid(`Edge label ${intent.labelId} not found.`)
+    }
+
+    const fields = intent.input.fields
+    if (fields && hasOwn(fields, 'text')) {
+      if (fields.text === undefined) {
+        ctx.tx.emit({
+          type: 'edge.label.field.unset',
+          edgeId: edge.id,
+          labelId: label.id,
+          field: 'text'
+        })
+      } else if (label.text !== fields.text) {
+        ctx.tx.emit({
+          type: 'edge.label.field.set',
+          edgeId: edge.id,
+          labelId: label.id,
+          field: 'text',
+          value: fields.text
+        })
       }
     }
-    case 'edge.label.update': {
-      const edge = ctx.tx.read.edge.require(intent.edgeId)
-      if (!edge) {
-        return
-      }
-      const label = edge.labels?.find((entry) => entry.id === intent.labelId)
-      if (!label) {
-        return ctx.tx.fail.invalid(`Edge label ${intent.labelId} not found.`)
-      }
-
-      const fields = intent.input.fields
-      if (fields && hasOwn(fields, 'text')) {
-        if (fields.text === undefined) {
-          ctx.tx.emit({
-            type: 'edge.label.field.unset',
-            edgeId: edge.id,
-            labelId: label.id,
-            field: 'text'
-          })
-        } else if (label.text !== fields.text) {
-          ctx.tx.emit({
-            type: 'edge.label.field.set',
-            edgeId: edge.id,
-            labelId: label.id,
-            field: 'text',
-            value: fields.text
-          })
-        }
-      }
-      if (fields && hasOwn(fields, 't') && label.t !== fields.t) {
-        if (fields.t === undefined) {
-          ctx.tx.emit({
-            type: 'edge.label.field.unset',
-            edgeId: edge.id,
-            labelId: label.id,
-            field: 't'
-          })
-        } else {
-          ctx.tx.emit({
-            type: 'edge.label.field.set',
-            edgeId: edge.id,
-            labelId: label.id,
-            field: 't',
-            value: fields.t
-          })
-        }
-      }
-      if (fields && hasOwn(fields, 'offset') && label.offset !== fields.offset) {
-        if (fields.offset === undefined) {
-          ctx.tx.emit({
-            type: 'edge.label.field.unset',
-            edgeId: edge.id,
-            labelId: label.id,
-            field: 'offset'
-          })
-        } else {
-          ctx.tx.emit({
-            type: 'edge.label.field.set',
-            edgeId: edge.id,
-            labelId: label.id,
-            field: 'offset',
-            value: fields.offset
-          })
-        }
-      }
-
-      for (const record of intent.input.records ?? []) {
-        if (record.op === 'unset') {
-          ctx.tx.emit({
-            type: 'edge.label.record.unset',
-            edgeId: edge.id,
-            labelId: label.id,
-            scope: record.scope,
-            path: record.path
-          })
-          continue
-        }
-
+    if (fields && hasOwn(fields, 't') && label.t !== fields.t) {
+      if (fields.t === undefined) {
         ctx.tx.emit({
-          type: 'edge.label.record.set',
+          type: 'edge.label.field.unset',
+          edgeId: edge.id,
+          labelId: label.id,
+          field: 't'
+        })
+      } else {
+        ctx.tx.emit({
+          type: 'edge.label.field.set',
+          edgeId: edge.id,
+          labelId: label.id,
+          field: 't',
+          value: fields.t
+        })
+      }
+    }
+    if (fields && hasOwn(fields, 'offset') && label.offset !== fields.offset) {
+      if (fields.offset === undefined) {
+        ctx.tx.emit({
+          type: 'edge.label.field.unset',
+          edgeId: edge.id,
+          labelId: label.id,
+          field: 'offset'
+        })
+      } else {
+        ctx.tx.emit({
+          type: 'edge.label.field.set',
+          edgeId: edge.id,
+          labelId: label.id,
+          field: 'offset',
+          value: fields.offset
+        })
+      }
+    }
+
+    for (const record of intent.input.records ?? []) {
+      if (record.op === 'unset') {
+        ctx.tx.emit({
+          type: 'edge.label.record.unset',
           edgeId: edge.id,
           labelId: label.id,
           scope: record.scope,
-          path: record.path ?? mutationPath.root(),
-          value: record.value
+          path: record.path
         })
-      }
-      return
-    }
-    case 'edge.label.move':
-      ctx.tx.emit({
-        type: 'edge.label.move',
-        edgeId: intent.edgeId,
-        labelId: intent.labelId,
-        to: intent.to
-      })
-      return
-    case 'edge.label.delete':
-      ctx.tx.emit({
-        type: 'edge.label.delete',
-        edgeId: intent.edgeId,
-        labelId: intent.labelId
-      })
-      return
-    case 'edge.route.insert': {
-      const edge = ctx.tx.read.edge.require(intent.edgeId)
-      if (!edge) {
-        return
-      }
-      const pointId = ctx.tx.ids.edgeRoutePoint()
-      ctx.tx.emit({
-        type: 'edge.route.point.insert',
-        edgeId: edge.id,
-        point: {
-          id: pointId,
-          x: intent.point.x,
-          y: intent.point.y
-        },
-        to: intent.to ?? { kind: 'end' }
-      })
-      return {
-        pointId
-      }
-    }
-    case 'edge.route.update': {
-      const edge = ctx.tx.read.edge.require(intent.edgeId)
-      if (!edge) {
-        return
-      }
-      const point = edge.route?.kind === 'manual'
-        ? edge.route.points.find((entry) => entry.id === intent.pointId)
-        : undefined
-      if (!point) {
-        return ctx.tx.fail.invalid(`Edge ${edge.id} route point not found.`)
+        continue
       }
 
-      if (intent.fields.x !== undefined && point.x !== intent.fields.x) {
-        ctx.tx.emit({
-          type: 'edge.route.point.field.set',
-          edgeId: edge.id,
-          pointId: point.id,
-          field: 'x',
-          value: intent.fields.x
-        })
-      }
-      if (intent.fields.y !== undefined && point.y !== intent.fields.y) {
-        ctx.tx.emit({
-          type: 'edge.route.point.field.set',
-          edgeId: edge.id,
-          pointId: point.id,
-          field: 'y',
-          value: intent.fields.y
-        })
-      }
-      return
-    }
-    case 'edge.route.set': {
-      const edge = ctx.tx.read.edge.require(intent.edgeId)
-      if (!edge) {
-        return
-      }
-      emitEdgeRouteDiffOps(
-        edge.id,
-        edge.route?.kind === 'manual' ? edge.route.points : [],
-        intent.route.kind === 'manual' ? intent.route.points : [],
-        ctx
-      )
-      return
-    }
-    case 'edge.route.move':
       ctx.tx.emit({
-        type: 'edge.route.point.move',
-        edgeId: intent.edgeId,
-        pointId: intent.pointId,
-        to: intent.to
+        type: 'edge.label.record.set',
+        edgeId: edge.id,
+        labelId: label.id,
+        scope: record.scope,
+        path: record.path ?? mutationPath.root(),
+        value: record.value
       })
-      return
-    case 'edge.route.delete': {
-      const edge = ctx.tx.read.edge.require(intent.edgeId)
-      if (!edge) {
-        return
-      }
-      return compileEdgeRouteDelete(edge, intent.pointId, ctx)
     }
-    case 'edge.route.clear': {
-      const edge = ctx.tx.read.edge.require(intent.edgeId)
-      if (!edge) {
-        return
-      }
-      if (edge.route?.kind !== 'manual') {
-        return
-      }
-      edge.route.points.forEach((point) => {
-        ctx.tx.emit({
-          type: 'edge.route.point.delete',
-          edgeId: edge.id,
-          pointId: point.id
-        })
+  },
+  'edge.label.move': (intent, ctx) => {
+    ctx.tx.emit({
+      type: 'edge.label.move',
+      edgeId: intent.edgeId,
+      labelId: intent.labelId,
+      to: intent.to
+    })
+  },
+  'edge.label.delete': (intent, ctx) => {
+    ctx.tx.emit({
+      type: 'edge.label.delete',
+      edgeId: intent.edgeId,
+      labelId: intent.labelId
+    })
+  },
+  'edge.route.insert': (intent, ctx) => {
+    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    if (!edge) {
+      return
+    }
+    const pointId = ctx.tx.ids.edgeRoutePoint()
+    ctx.tx.emit({
+      type: 'edge.route.point.insert',
+      edgeId: edge.id,
+      point: {
+        id: pointId,
+        x: intent.point.x,
+        y: intent.point.y
+      },
+      to: intent.to ?? { kind: 'end' }
+    })
+    return {
+      pointId
+    }
+  },
+  'edge.route.update': (intent, ctx) => {
+    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    if (!edge) {
+      return
+    }
+    const point = edge.route?.kind === 'manual'
+      ? edge.route.points.find((entry) => entry.id === intent.pointId)
+      : undefined
+    if (!point) {
+      return ctx.tx.fail.invalid(`Edge ${edge.id} route point not found.`)
+    }
+
+    if (intent.fields.x !== undefined && point.x !== intent.fields.x) {
+      ctx.tx.emit({
+        type: 'edge.route.point.field.set',
+        edgeId: edge.id,
+        pointId: point.id,
+        field: 'x',
+        value: intent.fields.x
       })
+    }
+    if (intent.fields.y !== undefined && point.y !== intent.fields.y) {
+      ctx.tx.emit({
+        type: 'edge.route.point.field.set',
+        edgeId: edge.id,
+        pointId: point.id,
+        field: 'y',
+        value: intent.fields.y
+      })
+    }
+  },
+  'edge.route.set': (intent, ctx) => {
+    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    if (!edge) {
       return
     }
+    emitEdgeRouteDiffOps(
+      edge.id,
+      edge.route?.kind === 'manual' ? edge.route.points : [],
+      intent.route.kind === 'manual' ? intent.route.points : [],
+      ctx
+    )
+  },
+  'edge.route.move': (intent, ctx) => {
+    ctx.tx.emit({
+      type: 'edge.route.point.move',
+      edgeId: intent.edgeId,
+      pointId: intent.pointId,
+      to: intent.to
+    })
+  },
+  'edge.route.delete': (intent, ctx) => {
+    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    if (!edge) {
+      return
+    }
+    return compileEdgeRouteDelete(edge, intent.pointId, ctx)
+  },
+  'edge.route.clear': (intent, ctx) => {
+    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    if (!edge) {
+      return
+    }
+    if (edge.route?.kind !== 'manual') {
+      return
+    }
+    edge.route.points.forEach((point) => {
+      ctx.tx.emit({
+        type: 'edge.route.point.delete',
+        edgeId: edge.id,
+        pointId: point.id
+      })
+    })
   }
 }

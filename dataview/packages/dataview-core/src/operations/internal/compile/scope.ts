@@ -5,24 +5,18 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/types/operations'
+import type { MutationCompileCtx } from '@shared/mutation'
 import { collection, string } from '@shared/core'
 import {
   createDocumentReader,
   type DocumentReader
 } from '@dataview/core/operations/internal/read'
 import {
-  hasValidationErrors,
   type IssueSource,
   type ValidationCode,
   type ValidationIssue,
   type ValidationSeverity
 } from '@dataview/core/operations/issue'
-
-export interface CompiledIntentResult {
-  issues: ValidationIssue[]
-  operations: DocumentOperation[]
-  data?: unknown
-}
 
 export interface CompileScope {
   readonly reader: DocumentReader
@@ -49,28 +43,34 @@ export interface CompileScope {
     target: EditTarget,
     path?: string
   ): readonly RecordId[] | undefined
-  finish(...operations: readonly DocumentOperation[]): CompiledIntentResult
 }
 
 export const createCompileScope = (input: {
-  document: DataDoc
+  ctx: MutationCompileCtx<DataDoc, DocumentOperation, ValidationCode>
   intent: Intent
   index: number
+  issues: ValidationIssue[]
 }): CompileScope => {
   const source: IssueSource = {
     index: input.index,
     type: input.intent.type
   }
-  const reader = createDocumentReader(() => input.document)
-  const operations: DocumentOperation[] = []
-  const issues: ValidationIssue[] = []
+  const reader = createDocumentReader(input.ctx.doc)
 
   const pushIssue = (
     issue: ValidationIssue
   ) => {
-    issues.push({
+    const normalized = {
       ...issue,
       source: issue.source ?? source
+    }
+    input.issues.push(normalized)
+    input.ctx.issue({
+      code: normalized.code,
+      message: normalized.message,
+      path: normalized.path,
+      severity: normalized.severity,
+      details: normalized.details
     })
   }
 
@@ -124,27 +124,10 @@ export const createCompileScope = (input: {
       : undefined
   }
 
-  const finish = (
-    ...nextOperations: readonly DocumentOperation[]
-  ): CompiledIntentResult => {
-    if (nextOperations.length) {
-      nextOperations.forEach((operation) => {
-        pushOperation(operation)
-      })
-    }
-
-    return {
-      issues: [...issues],
-      operations: hasValidationErrors(issues)
-        ? []
-        : [...operations]
-    }
-  }
-
   const pushOperation = (
     operation: DocumentOperation
   ) => {
-    operations.push(operation)
+    input.ctx.emit(operation)
   }
   return {
     reader,
@@ -183,7 +166,6 @@ export const createCompileScope = (input: {
       })
       return undefined
     },
-    resolveTarget,
-    finish
+    resolveTarget
   }
 }

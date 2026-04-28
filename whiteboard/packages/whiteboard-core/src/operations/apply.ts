@@ -1,7 +1,6 @@
-import { Reducer } from '@shared/reducer'
+import { OperationMutationRuntime } from '@shared/mutation'
 import type { HistoryFootprint } from '@whiteboard/core/operations/history'
 import {
-  definitions,
   type WhiteboardOperationReduceExtra,
   type WhiteboardOperationReduceResult
 } from '@whiteboard/core/operations/definitions'
@@ -20,29 +19,17 @@ import type {
 } from '@whiteboard/core/reducer/types'
 import type {
   Document,
+  Origin,
   Operation
 } from '@whiteboard/core/types'
 
-const whiteboardOperationReducer = new Reducer<
-  Document,
-  Operation,
-  HistoryFootprint[number],
-  WhiteboardOperationReduceExtra,
-  WhiteboardReduceCtx,
-  WhiteboardReduceIssueCode
->({
-  spec: {
-    serializeKey: spec.serializeKey,
-    createContext: spec.createContext,
-    handle: (ctx, operation) => {
-      const definition = definitions[operation.type]
-      definition.footprint?.(ctx, operation as never)
-      definition.apply(ctx, operation as never)
-    },
-    settle: spec.settle,
-    done: spec.done
-  }
-})
+const toMutationOrigin = (
+  origin: string | undefined
+): Origin => (
+  origin === 'remote' || origin === 'system'
+    ? origin
+    : 'user'
+)
 
 export const apply = (input: {
   doc: Document
@@ -54,10 +41,15 @@ export const apply = (input: {
     return {
       ok: false,
       error: invalid
-    }
+      }
   }
 
-  return whiteboardOperationReducer.reduce(input)
+  return OperationMutationRuntime.reduce({
+    doc: input.doc,
+    ops: input.ops,
+    origin: toMutationOrigin(input.origin),
+    operations: spec
+  })
 }
 
 export {

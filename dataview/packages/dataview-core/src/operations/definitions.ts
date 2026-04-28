@@ -984,31 +984,3 @@ const typeOfOperation = <TType extends DocumentOperationType>(
 )
 
 export const DATAVIEW_OPERATION_DEFINITIONS = Object.freeze(definitions)
-
-export const readDataviewOperationDefinition = <
-  TType extends DocumentOperationType
->(
-  input: TType | DocumentOperationByType<TType>
-): DocumentOperationDefinition<TType> => (
-  DATAVIEW_OPERATION_DEFINITIONS[typeOfOperation(input)] as DocumentOperationDefinition<TType>
-)
-
-export const collectDataviewOperationFootprint = (
-  ctx: DocumentMutationOperationContext,
-  operation: DocumentOperation
-) => {
-  readDataviewOperationDefinition(operation).footprint?.(
-    ctx,
-    operation as never
-  )
-}
-
-export const applyDataviewOperation = (
-  ctx: DocumentMutationOperationContext,
-  operation: DocumentOperation
-) => {
-  readDataviewOperationDefinition(operation).apply(
-    ctx,
-    operation as never
-  )
-}

@@ -1,11 +1,15 @@
-import type { MutationOperationsSpec } from '@shared/mutation'
+import {
+  json
+} from '@shared/core'
+import type {
+  MutationOperationsSpec
+} from '@shared/mutation'
 import {
   type HistoryFootprint
 } from '@whiteboard/core/operations/history'
 import {
-  historyKeyConflicts,
-  serializeHistoryKey
-} from '@whiteboard/core/operations/history-key'
+  mutationFootprintConflicts
+} from '@shared/mutation'
 import { validateLockOperations } from '@whiteboard/core/operations/lock'
 import {
   definitions,
@@ -103,7 +107,7 @@ export const spec: MutationOperationsSpec<
   WhiteboardReduceIssueCode
 > = {
   table: definitions,
-  serializeKey: serializeHistoryKey,
+  serializeKey: (footprint) => json.stableStringify(footprint),
   createContext: createWhiteboardReduceContext,
   validate: ({
     doc,
@@ -118,5 +122,5 @@ export const spec: MutationOperationsSpec<
     ctx.mindmap.flush()
   },
   done: finishWhiteboardReduce,
-  conflicts: historyKeyConflicts
+  conflicts: mutationFootprintConflicts
 }

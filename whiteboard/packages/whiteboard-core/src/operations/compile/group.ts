@@ -1,7 +1,6 @@
+import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
-import type { WhiteboardMutationTable } from '@whiteboard/core/operations/intent-types'
 import { groupOrderMove } from '@whiteboard/core/operations/plan'
-import type { MutationCompileHandlerTable } from '@shared/mutation'
 
 const listGroupCanvasRefs = (
   document: Pick<import('@whiteboard/core/types').Document, 'canvas' | 'nodes' | 'edges'>,
@@ -15,11 +14,7 @@ const listGroupCanvasRefs = (
 ))
 
 type GroupIntentHandlers = Pick<
-  MutationCompileHandlerTable<
-    WhiteboardMutationTable,
-    WhiteboardCompileScope,
-    'invalid' | 'cancelled'
-  >,
+  WhiteboardScopedIntentHandlers,
   'group.merge'
   | 'group.order.move'
   | 'group.ungroup'

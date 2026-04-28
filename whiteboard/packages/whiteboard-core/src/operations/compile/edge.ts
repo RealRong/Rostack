@@ -3,12 +3,11 @@ import {
   record as draftRecord,
   type RecordWrite
 } from '@shared/draft'
-import type { MutationCompileHandlerTable } from '@shared/mutation'
 import { edge as edgeApi } from '@whiteboard/core/edge'
+import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type {
   EdgeIntent,
-  WhiteboardMutationTable
 } from '@whiteboard/core/operations/intent-types'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {
@@ -384,11 +383,7 @@ const compileEdgeRouteDelete = (
 }
 
 type EdgeIntentHandlers = Pick<
-  MutationCompileHandlerTable<
-    WhiteboardMutationTable,
-    WhiteboardCompileScope,
-    'invalid' | 'cancelled'
-  >,
+  WhiteboardScopedIntentHandlers,
   'edge.create'
   | 'edge.update'
   | 'edge.move'

@@ -64,6 +64,13 @@ export interface MutationCompileHandlerInput<
   Code extends string = string
 > {
   intent: Intent
+  source: MutationCompileSource<
+    Intent extends {
+      type: infer TType
+    }
+      ? TType & string
+      : string
+  >
   document: Doc
   services: Services | undefined
   emit(op: Op): void
@@ -2066,7 +2073,7 @@ const readCanonicalOperationResult = <
   }
 }
 
-const mutationFootprintConflicts = (
+export const mutationFootprintConflicts = (
   left: MutationFootprint,
   right: MutationFootprint
 ): boolean => {
@@ -2130,7 +2137,7 @@ const mutationFootprintConflicts = (
   return false
 }
 
-const mutationFootprintBatchConflicts = (
+export const mutationFootprintBatchConflicts = (
   left: readonly MutationFootprint[],
   right: readonly MutationFootprint[]
 ): boolean => {
@@ -2320,6 +2327,10 @@ const compileMutationIntents = <
       Code
     > = {
       intent,
+      source: {
+        index,
+        type: intent.type
+      },
       document: workingDocument,
       services: input.services,
       emit: (operation) => {

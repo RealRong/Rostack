@@ -1,16 +1,20 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { json } from '@shared/core'
 import { path as mutationPath } from '@shared/draft'
 import { document as documentApi } from '@whiteboard/core/document'
-import { serializeHistoryKey } from '@whiteboard/core/operations/history-key'
 import type { IntentResult } from '@whiteboard/engine'
 import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 
+const serializeFootprint = (
+  value: unknown
+): string => json.stableStringify(value)
+
 const readSerializedFootprint = (
   result: IntentResult
 ) => new Set(
-  (result.ok ? result.commit.footprint : []).map(serializeHistoryKey)
+  (result.ok ? result.commit.footprint : []).map(serializeFootprint)
 )
 
 test('engine exposes node create footprint through intent results', () => {
@@ -38,9 +42,10 @@ test('engine exposes node create footprint through intent results', () => {
   assert.deepEqual(
     footprint,
     new Set([
-      serializeHistoryKey({
-        kind: 'node.exists',
-        nodeId: result.data.nodeId
+      serializeFootprint({
+        kind: 'entity',
+        family: 'node',
+        id: result.data.nodeId
       })
     ])
   )
@@ -83,15 +88,17 @@ test('engine maps mindmap topic updates to node + mindmap history keys', () => {
   assert.deepEqual(
     footprint,
     new Set([
-      serializeHistoryKey({
-        kind: 'node.record',
-        nodeId: createResult.data.rootId,
+      serializeFootprint({
+        kind: 'record',
+        family: 'node',
+        id: createResult.data.rootId,
         scope: 'data',
         path: mutationPath.of('text')
       }),
-      serializeHistoryKey({
-        kind: 'mindmap.exists',
-        mindmapId: createResult.data.mindmapId
+      serializeFootprint({
+        kind: 'entity',
+        family: 'mindmap',
+        id: createResult.data.mindmapId
       })
     ])
   )

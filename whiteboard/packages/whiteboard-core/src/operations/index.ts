@@ -10,7 +10,6 @@ import { compile } from '@whiteboard/core/operations/compile'
 import {
   assertHistoryFootprint,
   createCollector,
-  conflicts,
   isKey
 } from '@whiteboard/core/operations/history'
 import {
@@ -30,7 +29,6 @@ export const operations = {
   history: {
     assertFootprint: assertHistoryFootprint,
     createCollector,
-    conflicts,
     isKey
   },
   lock: {
@@ -53,7 +51,6 @@ export {
   summarizeInvalidation,
   assertHistoryFootprint,
   createCollector,
-  conflicts,
   isKey,
   resolveLockDecision,
   validateLockOperations,

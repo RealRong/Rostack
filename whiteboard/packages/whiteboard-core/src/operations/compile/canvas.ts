@@ -1,11 +1,10 @@
-import type { MutationCompileHandlerTable } from '@shared/mutation'
 import { document as documentApi } from '@whiteboard/core/document'
 import { getNodeMindmapId, isMindmapRoot } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
+import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type {
   CanvasIntent,
-  WhiteboardMutationTable
 } from '@whiteboard/core/operations/intent-types'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import { canvasOrderMove } from '@whiteboard/core/operations/plan'
@@ -279,11 +278,7 @@ const compileCanvasSelectionMove = (
 }
 
 type CanvasIntentHandlers = Pick<
-  MutationCompileHandlerTable<
-    WhiteboardMutationTable,
-    WhiteboardCompileScope,
-    'invalid' | 'cancelled'
-  >,
+  WhiteboardScopedIntentHandlers,
   'canvas.delete'
   | 'canvas.duplicate'
   | 'canvas.selection.move'

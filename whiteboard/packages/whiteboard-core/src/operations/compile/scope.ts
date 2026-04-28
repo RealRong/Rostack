@@ -1,4 +1,6 @@
-import type { MutationCompileCtx } from '@shared/mutation'
+import type {
+  MutationCompileControl
+} from '@shared/mutation'
 import type {
   CoreRegistries,
   Document,
@@ -12,6 +14,13 @@ import type {
   NodeId,
   Operation
 } from '@whiteboard/core/types'
+import type {
+  WhiteboardIntent
+} from '@whiteboard/core/operations/intent-types'
+import type {
+  WhiteboardCompileCode,
+  WhiteboardCompileControls
+} from '@whiteboard/core/operations/compile/contracts'
 
 export type WhiteboardCompileIds = {
   node: () => NodeId
@@ -20,6 +29,11 @@ export type WhiteboardCompileIds = {
   edgeRoutePoint: () => string
   group: () => GroupId
   mindmap: () => MindmapId
+}
+
+export type WhiteboardCompileServices = {
+  ids: WhiteboardCompileIds
+  registries: CoreRegistries
 }
 
 export type WhiteboardCompileScope = {
@@ -43,24 +57,30 @@ export type WhiteboardCompileScope = {
     invalid: (
       message: string,
       details?: unknown
-    ) => ReturnType<MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>['block']>
+    ) => MutationCompileControl<WhiteboardCompileCode>
     cancelled: (
       message: string,
       details?: unknown
-    ) => ReturnType<MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>['block']>
+    ) => MutationCompileControl<WhiteboardCompileCode>
   }
 }
 
+type WhiteboardCompileInput<
+  TIntent extends WhiteboardIntent = WhiteboardIntent
+> = WhiteboardCompileControls<
+  TIntent['type'] & import('@whiteboard/core/operations/intent-types').WhiteboardIntentKind
+>
+
 const requireNode = (
-  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>,
+  input: WhiteboardCompileInput,
   id: NodeId
 ): Node | undefined => {
-  const node = ctx.doc().nodes[id]
+  const node = input.document.nodes[id]
   if (node) {
     return node
   }
 
-  ctx.issue({
+  input.issue({
     code: 'invalid',
     message: `Node ${id} not found.`
   })
@@ -68,15 +88,15 @@ const requireNode = (
 }
 
 const requireEdge = (
-  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>,
+  input: WhiteboardCompileInput,
   id: EdgeId
 ): Edge | undefined => {
-  const edge = ctx.doc().edges[id]
+  const edge = input.document.edges[id]
   if (edge) {
     return edge
   }
 
-  ctx.issue({
+  input.issue({
     code: 'invalid',
     message: `Edge ${id} not found.`
   })
@@ -84,15 +104,15 @@ const requireEdge = (
 }
 
 const requireGroup = (
-  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>,
+  input: WhiteboardCompileInput,
   id: GroupId
 ): Group | undefined => {
-  const group = ctx.doc().groups[id]
+  const group = input.document.groups[id]
   if (group) {
     return group
   }
 
-  ctx.issue({
+  input.issue({
     code: 'invalid',
     message: `Group ${id} not found.`
   })
@@ -100,54 +120,68 @@ const requireGroup = (
 }
 
 const requireMindmap = (
-  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>,
+  input: WhiteboardCompileInput,
   id: MindmapId
 ): MindmapRecord | undefined => {
-  const mindmap = ctx.doc().mindmaps[id]
+  const mindmap = input.document.mindmaps[id]
   if (mindmap) {
     return mindmap
   }
 
-  ctx.issue({
+  input.issue({
     code: 'invalid',
     message: `Mindmap ${id} not found.`
   })
   return undefined
 }
 
-export const createWhiteboardCompileScope = (input: {
-  ctx: MutationCompileCtx<Document, Operation, 'invalid' | 'cancelled'>
-  ids: WhiteboardCompileIds
-  registries: CoreRegistries
-}): WhiteboardCompileScope => ({
-  registries: input.registries,
-  read: {
-    document: () => input.ctx.doc(),
-    canvasOrder: () => input.ctx.doc().canvas.order,
-    node: (id) => input.ctx.doc().nodes[id],
-    requireNode: (id) => requireNode(input.ctx, id),
-    edge: (id) => input.ctx.doc().edges[id],
-    requireEdge: (id) => requireEdge(input.ctx, id),
-    group: (id) => input.ctx.doc().groups[id],
-    requireGroup: (id) => requireGroup(input.ctx, id),
-    mindmap: (id) => input.ctx.doc().mindmaps[id],
-    requireMindmap: (id) => requireMindmap(input.ctx, id)
-  },
-  ids: input.ids,
-  emit: input.ctx.emit,
-  emitMany: (ops) => {
-    input.ctx.emitMany(...ops)
-  },
-  fail: {
-    invalid: (message, details) => input.ctx.block({
-      code: 'invalid',
-      message,
-      details
-    }),
-    cancelled: (message, details) => input.ctx.block({
-      code: 'cancelled',
-      message,
-      details
-    })
+const readCompileServices = (
+  input: WhiteboardCompileInput
+): WhiteboardCompileServices => {
+  if (!input.services) {
+    throw new Error('Whiteboard compile services are required.')
   }
-})
+
+  return input.services
+}
+
+export const createWhiteboardCompileScope = <
+  TIntent extends WhiteboardIntent = WhiteboardIntent
+>(input: {
+  controls: WhiteboardCompileInput<TIntent>
+}): WhiteboardCompileScope => {
+  const services = readCompileServices(input.controls)
+
+  return {
+    registries: services.registries,
+    read: {
+      document: () => input.controls.document,
+      canvasOrder: () => input.controls.document.canvas.order,
+      node: (id) => input.controls.document.nodes[id],
+      requireNode: (id) => requireNode(input.controls, id),
+      edge: (id) => input.controls.document.edges[id],
+      requireEdge: (id) => requireEdge(input.controls, id),
+      group: (id) => input.controls.document.groups[id],
+      requireGroup: (id) => requireGroup(input.controls, id),
+      mindmap: (id) => input.controls.document.mindmaps[id],
+      requireMindmap: (id) => requireMindmap(input.controls, id)
+    },
+    ids: services.ids,
+    emit: input.controls.emit,
+    emitMany: (ops) => {
+      input.controls.emitMany(...ops)
+    },
+    fail: {
+      invalid: (message, details) => input.controls.fail({
+        code: 'invalid',
+        message,
+        details
+      }),
+      cancelled: (message, details) => input.controls.fail({
+        code: 'cancelled',
+        message,
+        details
+      })
+    }
+  }
+}

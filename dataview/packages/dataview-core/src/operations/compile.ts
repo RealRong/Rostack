@@ -2,7 +2,7 @@ import type { Intent } from '@dataview/core/types'
 import type { DataDoc } from '@dataview/core/types'
 import { string } from '@shared/core'
 import type {
-  MutationCompileCtx,
+  MutationCompileHandlerInput,
   MutationCompileHandlerTable
 } from '@shared/mutation'
 import type { DocumentOperation } from '@dataview/core/types/operations'
@@ -24,42 +24,70 @@ type DataviewCompileTable = {
   }
 }
 
-export const dataviewIntentHandlers: MutationCompileHandlerTable<
-  DataviewCompileTable,
-  CompileScope,
+type MutationCompileInput = MutationCompileHandlerInput<
+  DataDoc,
+  Intent,
+  DocumentOperation,
+  unknown,
+  void,
   ValidationCode
-> = {
-  'record.create': compileRecordIntent,
-  'record.patch': compileRecordIntent,
-  'record.remove': compileRecordIntent,
-  'record.fields.writeMany': compileRecordIntent,
-  'field.create': compileFieldIntent,
-  'field.patch': compileFieldIntent,
-  'field.replace': compileFieldIntent,
-  'field.setKind': compileFieldIntent,
-  'field.duplicate': compileFieldIntent,
-  'field.option.create': compileFieldIntent,
-  'field.option.setOrder': compileFieldIntent,
-  'field.option.patch': compileFieldIntent,
-  'field.option.remove': compileFieldIntent,
-  'field.remove': compileFieldIntent,
-  'view.create': compileViewIntent,
-  'view.patch': compileViewIntent,
-  'view.open': compileViewIntent,
-  'view.remove': compileViewIntent,
-  'external.version.bump': lowerExternalBump
+>
+
+const runCompileIntent = (
+  input: MutationCompileInput,
+  compile: (
+    intent: Intent,
+    scope: CompileScope
+  ) => unknown
+) => {
+  const result = compile(input.intent, createCompileScope({
+    controls: input
+  }))
+  if (result !== undefined) {
+    input.output(result)
+  }
 }
 
-export const createDataviewCompileScope = (input: {
-  ctx: MutationCompileCtx<DataDoc, DocumentOperation, ValidationCode>
-  doc: DataDoc
-  intent: Intent
-  index: number
-}): CompileScope => createCompileScope({
-  ctx: input.ctx,
-  intent: input.intent,
-  index: input.index
-})
+const compileExternalBump = (
+  input: MutationCompileHandlerInput<
+    DataDoc,
+    Extract<Intent, { type: 'external.version.bump' }>,
+    DocumentOperation,
+    void,
+    void,
+    ValidationCode
+  >
+) => lowerExternalBump(input.intent, createCompileScope({
+  controls: input
+}))
+
+export const dataviewIntentHandlers: MutationCompileHandlerTable<
+  DataviewCompileTable,
+  DataDoc,
+  DocumentOperation,
+  void,
+  ValidationCode
+> = {
+  'record.create': (input) => runCompileIntent(input, compileRecordIntent),
+  'record.patch': (input) => runCompileIntent(input, compileRecordIntent),
+  'record.remove': (input) => runCompileIntent(input, compileRecordIntent),
+  'record.fields.writeMany': (input) => runCompileIntent(input, compileRecordIntent),
+  'field.create': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.patch': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.replace': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.setKind': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.duplicate': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.option.create': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.option.setOrder': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.option.patch': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.option.remove': (input) => runCompileIntent(input, compileFieldIntent),
+  'field.remove': (input) => runCompileIntent(input, compileFieldIntent),
+  'view.create': (input) => runCompileIntent(input, compileViewIntent),
+  'view.patch': (input) => runCompileIntent(input, compileViewIntent),
+  'view.open': (input) => runCompileIntent(input, compileViewIntent),
+  'view.remove': (input) => runCompileIntent(input, compileViewIntent),
+  'external.version.bump': compileExternalBump
+}
 
 function lowerExternalBump(
   intent: Extract<Intent, { type: 'external.version.bump' }>,

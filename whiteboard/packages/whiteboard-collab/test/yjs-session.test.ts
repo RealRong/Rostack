@@ -188,7 +188,10 @@ test('session records duplicate and rejected shared changes deterministically', 
       }
     }],
     footprint: [{
-      kind: 'document.background'
+      kind: 'field',
+      family: 'document',
+      id: 'document',
+      field: 'background'
     }]
   } as const
 
@@ -206,8 +209,9 @@ test('session records duplicate and rejected shared changes deterministically', 
         }
       }],
       footprint: [{
-        kind: 'node.field',
-        nodeId: 'node_missing',
+        kind: 'field',
+        family: 'node',
+        id: 'node_missing',
         field: 'rotation'
       }]
     })

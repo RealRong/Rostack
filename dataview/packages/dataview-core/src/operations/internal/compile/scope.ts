@@ -5,7 +5,7 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/types/operations'
-import type { MutationCompileCtx } from '@shared/mutation'
+import type { MutationCompileHandlerInput } from '@shared/mutation'
 import { collection, string } from '@shared/core'
 import {
   createDocumentReader,
@@ -45,16 +45,21 @@ export interface CompileScope {
   ): readonly RecordId[] | undefined
 }
 
-export const createCompileScope = (input: {
-  ctx: MutationCompileCtx<DataDoc, DocumentOperation, ValidationCode>
-  intent: Intent
-  index: number
+export const createCompileScope = <
+  TIntent extends Intent = Intent,
+  TOutput = unknown
+>(input: {
+  controls: MutationCompileHandlerInput<
+    DataDoc,
+    TIntent,
+    DocumentOperation,
+    TOutput,
+    void,
+    ValidationCode
+  >
 }): CompileScope => {
-  const source: IssueSource = {
-    index: input.index,
-    type: input.intent.type
-  }
-  const reader = createDocumentReader(input.ctx.doc)
+  const source: IssueSource = input.controls.source
+  const reader = createDocumentReader(() => input.controls.document)
 
   const pushIssue = (
     issue: ValidationIssue
@@ -63,7 +68,8 @@ export const createCompileScope = (input: {
       ...issue,
       source: issue.source ?? source
     }
-    input.ctx.issue({
+    input.controls.issue({
+      source: normalized.source,
       code: normalized.code,
       message: normalized.message,
       path: normalized.path,
@@ -125,7 +131,7 @@ export const createCompileScope = (input: {
   const pushOperation = (
     operation: DocumentOperation
   ) => {
-    input.ctx.emit(operation)
+    input.controls.emit(operation)
   }
   return {
     reader,

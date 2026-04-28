@@ -7,7 +7,6 @@ import {
 } from './spec'
 import {
   dataviewIntentHandlers,
-  createDataviewCompileScope
 } from './compile'
 import {
   type ValidationCode,
@@ -30,8 +29,7 @@ export const definitions = DATAVIEW_OPERATION_DEFINITIONS
 export const table = dataviewOperationTable
 export const reduce = dataviewReduceSpec
 export const compile = {
-  handlers: dataviewIntentHandlers,
-  createContext: createDataviewCompileScope
+  handlers: dataviewIntentHandlers
 } as const
 
 export {
@@ -39,7 +37,6 @@ export {
   dataviewOperationTable,
   dataviewReduceSpec,
   dataviewIntentHandlers,
-  createDataviewCompileScope,
   buildRecordCreateIntents,
   recordCreate,
   dataviewTrace

@@ -1,4 +1,3 @@
-import type { MutationCompileHandlerTable } from '@shared/mutation'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import {
   emitMindmapTopicUpdateOps,
@@ -6,10 +5,10 @@ import {
   isMindmapRoot
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
+import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type {
   NodeIntent,
-  WhiteboardMutationTable
 } from '@whiteboard/core/operations/intent-types'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {
@@ -198,11 +197,7 @@ const compileNodeTextCommit = (
 }
 
 type NodeIntentHandlers = Pick<
-  MutationCompileHandlerTable<
-    WhiteboardMutationTable,
-    WhiteboardCompileScope,
-    'invalid' | 'cancelled'
-  >,
+  WhiteboardScopedIntentHandlers,
   'node.create'
   | 'node.update'
   | 'node.move'

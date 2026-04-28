@@ -32,7 +32,9 @@ export type {
   MutationResult,
 } from './engine'
 export {
-  MutationEngine
+  MutationEngine,
+  mutationFootprintBatchConflicts,
+  mutationFootprintConflicts
 } from './engine'
 export type {
   HistoryPolicy,

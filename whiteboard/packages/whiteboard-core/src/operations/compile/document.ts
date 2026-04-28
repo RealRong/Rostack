@@ -1,7 +1,6 @@
 import { document as documentApi, normalizeDocument } from '@whiteboard/core/document'
+import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
-import type { WhiteboardMutationTable } from '@whiteboard/core/operations/intent-types'
-import type { MutationCompileHandlerTable } from '@shared/mutation'
 
 const emitOps = (
   ctx: Pick<WhiteboardCompileScope, 'emitMany'>,
@@ -11,11 +10,7 @@ const emitOps = (
 }
 
 type DocumentIntentHandlers = Pick<
-  MutationCompileHandlerTable<
-    WhiteboardMutationTable,
-    WhiteboardCompileScope,
-    'invalid' | 'cancelled'
-  >,
+  WhiteboardScopedIntentHandlers,
   'document.replace'
   | 'document.insert'
   | 'document.background.set'

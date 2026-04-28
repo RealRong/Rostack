@@ -126,15 +126,74 @@ const createFootprintContext = (
   }
 }
 
+const addEntityKey = (
+  ctx: WhiteboardFootprintContext,
+  family: string,
+  id: string
+) => {
+  ctx.add({
+    kind: 'entity',
+    family,
+    id
+  })
+}
+
+const addFieldKey = (
+  ctx: WhiteboardFootprintContext,
+  family: string,
+  id: string,
+  field: string
+) => {
+  ctx.add({
+    kind: 'field',
+    family,
+    id,
+    field
+  })
+}
+
+const addRecordKey = (
+  ctx: WhiteboardFootprintContext,
+  family: string,
+  id: string,
+  scope: string,
+  path: string
+) => {
+  ctx.add({
+    kind: 'record',
+    family,
+    id,
+    scope,
+    path
+  })
+}
+
+const addRelationKey = (
+  ctx: WhiteboardFootprintContext,
+  family: string,
+  id: string,
+  relation: string,
+  target?: string
+) => {
+  ctx.add({
+    kind: 'relation',
+    family,
+    id,
+    relation,
+    ...(target === undefined
+      ? {}
+      : {
+          target
+        })
+  })
+}
+
 const addOwnerMindmap = (
   ctx: WhiteboardFootprintContext,
   owner: NodeOwner | undefined
 ) => {
   if (owner?.kind === 'mindmap') {
-    ctx.add({
-      kind: 'mindmap.exists',
-      mindmapId: owner.id
-    })
+    addEntityKey(ctx, 'mindmap', owner.id)
   }
 }
 
@@ -142,20 +201,14 @@ const addNodeExists = (
   ctx: WhiteboardFootprintContext,
   nodeId: string
 ) => {
-  ctx.add({
-    kind: 'node.exists',
-    nodeId
-  })
+  addEntityKey(ctx, 'node', nodeId)
 }
 
 const addEdgeExists = (
   ctx: WhiteboardFootprintContext,
   edgeId: string
 ) => {
-  ctx.add({
-    kind: 'edge.exists',
-    edgeId
-  })
+  addEntityKey(ctx, 'edge', edgeId)
 }
 
 const collectNodeSubtreeEdgeKeys = (
@@ -233,6 +286,22 @@ const toScopedRecordKeys = (record?: Readonly<Record<string, unknown>>) => Objec
   return []
 })
 
+const addScopedRecordKeys = (
+  ctx: WhiteboardFootprintContext,
+  family: string,
+  id: string,
+  record?: Readonly<Record<string, unknown>>
+) => {
+  toScopedRecordKeys(record).forEach((entry) => {
+    if (entry.path === '') {
+      addFieldKey(ctx, family, id, entry.scope)
+      return
+    }
+
+    addRecordKey(ctx, family, id, entry.scope, entry.path)
+  })
+}
+
 export type WhiteboardOperationReduceExtra = WhiteboardReduceExtra
 
 export type WhiteboardOperationReduceResult = ReducerResult<
@@ -255,9 +324,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'document.background': {
     family: 'document',
     footprint: defineFootprint((ctx) => {
-      ctx.add({
-        kind: 'document.background'
-      })
+      addFieldKey(ctx, 'document', 'document', 'background')
     }),
     apply: (ctx, operation) => {
       ctx.document.setBackground(operation.background)
@@ -266,9 +333,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'canvas.order.move': {
     family: 'document',
     footprint: defineFootprint((ctx) => {
-      ctx.add({
-        kind: 'canvas.order'
-      })
+      addFieldKey(ctx, 'document', 'document', 'canvas.order')
     }),
     apply: (ctx, operation) => {
       ctx.canvas.move(operation.refs, operation.to)
@@ -299,20 +364,9 @@ export const definitions: WhiteboardOperationDefinitionTable = {
     footprint: defineFootprint((ctx, op) => {
       const node = ctx.read.node(op.id)
       Object.keys(op.fields ?? {}).forEach((field) => {
-        ctx.add({
-          kind: 'node.field',
-          nodeId: op.id,
-          field: field as Extract<HistoryKey, { kind: 'node.field' }>['field']
-        })
+        addFieldKey(ctx, 'node', op.id, field)
       })
-      toScopedRecordKeys(op.record).forEach((entry) => {
-        ctx.add({
-          kind: 'node.record',
-          nodeId: op.id,
-          scope: entry.scope,
-          path: entry.path
-        })
-      })
+      addScopedRecordKeys(ctx, 'node', op.id, op.record)
       readNodeOwners(
         node,
         op.fields && hasOwn(op.fields, 'owner')
@@ -360,20 +414,9 @@ export const definitions: WhiteboardOperationDefinitionTable = {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
       Object.keys(op.fields ?? {}).forEach((field) => {
-        ctx.add({
-          kind: 'edge.field',
-          edgeId: op.id,
-          field: field as Extract<HistoryKey, { kind: 'edge.field' }>['field']
-        })
+        addFieldKey(ctx, 'edge', op.id, field)
       })
-      toScopedRecordKeys(op.record).forEach((entry) => {
-        ctx.add({
-          kind: 'edge.record',
-          edgeId: op.id,
-          scope: entry.scope,
-          path: entry.path
-        })
-      })
+      addScopedRecordKeys(ctx, 'edge', op.id, op.record)
     }),
     apply: (ctx, operation) => {
       ctx.edge.patch(operation.id, {
@@ -385,15 +428,8 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'edge.label.insert': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.labels',
-        edgeId: op.edgeId
-      })
-      ctx.add({
-        kind: 'edge.label.exists',
-        edgeId: op.edgeId,
-        labelId: op.label.id
-      })
+      addRelationKey(ctx, 'edge', op.edgeId, 'labels')
+      addRelationKey(ctx, 'edge', op.edgeId, 'labels', op.label.id)
     }),
     apply: (ctx, operation) => {
       ctx.edge.insertLabel(operation.edgeId, operation.label, toOrderedAnchor(operation.to))
@@ -402,15 +438,8 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'edge.label.delete': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.labels',
-        edgeId: op.edgeId
-      })
-      ctx.add({
-        kind: 'edge.label.exists',
-        edgeId: op.edgeId,
-        labelId: op.labelId
-      })
+      addRelationKey(ctx, 'edge', op.edgeId, 'labels')
+      addRelationKey(ctx, 'edge', op.edgeId, 'labels', op.labelId)
     }),
     apply: (ctx, operation) => {
       ctx.edge.deleteLabel(operation.edgeId, operation.labelId)
@@ -419,15 +448,8 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'edge.label.move': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.labels',
-        edgeId: op.edgeId
-      })
-      ctx.add({
-        kind: 'edge.label.exists',
-        edgeId: op.edgeId,
-        labelId: op.labelId
-      })
+      addRelationKey(ctx, 'edge', op.edgeId, 'labels')
+      addRelationKey(ctx, 'edge', op.edgeId, 'labels', op.labelId)
     }),
     apply: (ctx, operation) => {
       ctx.edge.moveLabel(operation.edgeId, operation.labelId, toOrderedAnchor(operation.to))
@@ -437,21 +459,16 @@ export const definitions: WhiteboardOperationDefinitionTable = {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
       Object.keys(op.fields ?? {}).forEach((field) => {
-        ctx.add({
-          kind: 'edge.label.field',
-          edgeId: op.edgeId,
-          labelId: op.labelId,
-          field: field as Extract<HistoryKey, { kind: 'edge.label.field' }>['field']
-        })
+        addFieldKey(ctx, 'edge', op.edgeId, `labels.${op.labelId}.${field}`)
       })
       toScopedRecordKeys(op.record).forEach((entry) => {
-        ctx.add({
-          kind: 'edge.label.record',
-          edgeId: op.edgeId,
-          labelId: op.labelId,
-          scope: entry.scope,
-          path: entry.path
-        })
+        const scope = `labels.${op.labelId}.${entry.scope}`
+        if (entry.path === '') {
+          addFieldKey(ctx, 'edge', op.edgeId, scope)
+          return
+        }
+
+        addRecordKey(ctx, 'edge', op.edgeId, scope, entry.path)
       })
     }),
     apply: (ctx, operation) => {
@@ -464,15 +481,8 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'edge.route.point.insert': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.route',
-        edgeId: op.edgeId
-      })
-      ctx.add({
-        kind: 'edge.route.point',
-        edgeId: op.edgeId,
-        pointId: op.point.id
-      })
+      addRelationKey(ctx, 'edge', op.edgeId, 'route')
+      addRelationKey(ctx, 'edge', op.edgeId, 'route', op.point.id)
     }),
     apply: (ctx, operation) => {
       ctx.edge.insertRoutePoint(operation.edgeId, operation.point, toOrderedAnchor(operation.to))
@@ -481,15 +491,8 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'edge.route.point.delete': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.route',
-        edgeId: op.edgeId
-      })
-      ctx.add({
-        kind: 'edge.route.point',
-        edgeId: op.edgeId,
-        pointId: op.pointId
-      })
+      addRelationKey(ctx, 'edge', op.edgeId, 'route')
+      addRelationKey(ctx, 'edge', op.edgeId, 'route', op.pointId)
     }),
     apply: (ctx, operation) => {
       ctx.edge.deleteRoutePoint(operation.edgeId, operation.pointId)
@@ -498,15 +501,8 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'edge.route.point.move': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.route',
-        edgeId: op.edgeId
-      })
-      ctx.add({
-        kind: 'edge.route.point',
-        edgeId: op.edgeId,
-        pointId: op.pointId
-      })
+      addRelationKey(ctx, 'edge', op.edgeId, 'route')
+      addRelationKey(ctx, 'edge', op.edgeId, 'route', op.pointId)
     }),
     apply: (ctx, operation) => {
       ctx.edge.moveRoutePoint(operation.edgeId, operation.pointId, toOrderedAnchor(operation.to))
@@ -515,11 +511,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'edge.route.point.patch': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.route.point',
-        edgeId: op.edgeId,
-        pointId: op.pointId
-      })
+      addRelationKey(ctx, 'edge', op.edgeId, 'route', op.pointId)
     }),
     apply: (ctx, operation) => {
       ctx.edge.patchRoutePoint(operation.edgeId, operation.pointId, operation.fields)
@@ -537,10 +529,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'group.create': {
     family: 'group',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'group.exists',
-        groupId: op.group.id
-      })
+      addEntityKey(ctx, 'group', op.group.id)
     }),
     apply: (ctx, operation) => {
       ctx.group.create(operation.group)
@@ -549,10 +538,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'group.restore': {
     family: 'group',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'group.exists',
-        groupId: op.group.id
-      })
+      addEntityKey(ctx, 'group', op.group.id)
     }),
     apply: (ctx, operation) => {
       ctx.group.restore(operation.group)
@@ -562,11 +548,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
     family: 'group',
     footprint: defineFootprint((ctx, op) => {
       Object.keys(op.fields ?? {}).forEach((field) => {
-        ctx.add({
-          kind: 'group.field',
-          groupId: op.id,
-          field: field as Extract<HistoryKey, { kind: 'group.field' }>['field']
-        })
+        addFieldKey(ctx, 'group', op.id, field)
       })
     }),
     apply: (ctx, operation) => {
@@ -576,10 +558,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'group.delete': {
     family: 'group',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'group.exists',
-        groupId: op.id
-      })
+      addEntityKey(ctx, 'group', op.id)
     }),
     apply: (ctx, operation) => {
       ctx.group.delete(operation.id)
@@ -588,10 +567,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.create': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.exists',
-        mindmapId: op.mindmap.id
-      })
+      addEntityKey(ctx, 'mindmap', op.mindmap.id)
       op.nodes.forEach((node) => addNodeExists(ctx, node.id))
     }),
     apply: (ctx, operation) => {
@@ -604,10 +580,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.restore': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.exists',
-        mindmapId: op.snapshot.mindmap.id
-      })
+      addEntityKey(ctx, 'mindmap', op.snapshot.mindmap.id)
       op.snapshot.nodes.forEach((node) => addNodeExists(ctx, node.id))
     }),
     apply: (ctx, operation) => {
@@ -618,10 +591,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
       const mindmap = ctx.read.mindmap(op.id)
-      ctx.add({
-        kind: 'mindmap.exists',
-        mindmapId: op.id
-      })
+      addEntityKey(ctx, 'mindmap', op.id)
       if (!mindmap) {
         return
       }
@@ -636,10 +606,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.move': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.layout',
-        mindmapId: op.id
-      })
+      addFieldKey(ctx, 'mindmap', op.id, 'layout')
     }),
     apply: (ctx, operation) => {
       ctx.mindmap.moveRoot(operation.id, operation.position)
@@ -648,10 +615,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.layout': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.layout',
-        mindmapId: op.id
-      })
+      addFieldKey(ctx, 'mindmap', op.id, 'layout')
     }),
     apply: (ctx, operation) => {
       ctx.mindmap.patchLayout(operation.id, operation.patch)
@@ -660,10 +624,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.topic.insert': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.structure',
-        mindmapId: op.id
-      })
+      addFieldKey(ctx, 'mindmap', op.id, 'structure')
       addNodeExists(ctx, op.node.id)
     }),
     apply: (ctx, operation) => {
@@ -677,10 +638,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.topic.restore': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.structure',
-        mindmapId: op.id
-      })
+      addFieldKey(ctx, 'mindmap', op.id, 'structure')
       op.snapshot.nodes.forEach((node) => addNodeExists(ctx, node.id))
     }),
     apply: (ctx, operation) => {
@@ -693,10 +651,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.topic.move': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.structure',
-        mindmapId: op.id
-      })
+      addFieldKey(ctx, 'mindmap', op.id, 'structure')
     }),
     apply: (ctx, operation) => {
       ctx.mindmap.moveTopic({
@@ -708,10 +663,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.topic.delete': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.structure',
-        mindmapId: op.id
-      })
+      addFieldKey(ctx, 'mindmap', op.id, 'structure')
       const nodeIds = new Set(readMindmapSubtreeNodeIds(ctx, op.id, op.input.nodeId))
       nodeIds.forEach((nodeId) => addNodeExists(ctx, nodeId))
       collectNodeSubtreeEdgeKeys(ctx, nodeIds)
@@ -727,24 +679,10 @@ export const definitions: WhiteboardOperationDefinitionTable = {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
       Object.keys(op.fields ?? {}).forEach((field) => {
-        ctx.add({
-          kind: 'node.field',
-          nodeId: op.topicId,
-          field: field as Extract<HistoryKey, { kind: 'node.field' }>['field']
-        })
+        addFieldKey(ctx, 'node', op.topicId, field)
       })
-      toScopedRecordKeys(op.record).forEach((entry) => {
-        ctx.add({
-          kind: 'node.record',
-          nodeId: op.topicId,
-          scope: entry.scope,
-          path: entry.path
-        })
-      })
-      ctx.add({
-        kind: 'mindmap.exists',
-        mindmapId: op.id
-      })
+      addScopedRecordKeys(ctx, 'node', op.topicId, op.record)
+      addEntityKey(ctx, 'mindmap', op.id)
     }),
     apply: (ctx, operation) => {
       ctx.mindmap.patchTopic(operation.id, operation.topicId, {
@@ -757,12 +695,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
       Object.keys(op.fields ?? {}).forEach((field) => {
-        ctx.add({
-          kind: 'mindmap.branch.field',
-          mindmapId: op.id,
-          topicId: op.topicId,
-          field: field as Extract<HistoryKey, { kind: 'mindmap.branch.field' }>['field']
-        })
+        addFieldKey(ctx, 'mindmap', op.id, `branch.${op.topicId}.${field}`)
       })
     }),
     apply: (ctx, operation) => {
@@ -772,10 +705,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
   'mindmap.topic.collapse': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.layout',
-        mindmapId: op.id
-      })
+      addFieldKey(ctx, 'mindmap', op.id, 'layout')
     }),
     apply: (ctx, operation) => {
       ctx.mindmap.setTopicCollapsed(operation.id, operation.topicId, operation.collapsed)

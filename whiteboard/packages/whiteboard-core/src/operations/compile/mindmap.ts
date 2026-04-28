@@ -1,4 +1,3 @@
-import type { MutationCompileHandlerTable } from '@shared/mutation'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
   createMindmapTopicNode,
@@ -6,10 +5,10 @@ import {
   emitMindmapTopicUpdateOps
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
+import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type {
   MindmapIntent,
-  WhiteboardMutationTable
 } from '@whiteboard/core/operations/intent-types'
 import type { NodeId } from '@whiteboard/core/types'
 
@@ -87,11 +86,7 @@ const compileMindmapCreate = (
 }
 
 type MindmapIntentHandlers = Pick<
-  MutationCompileHandlerTable<
-    WhiteboardMutationTable,
-    WhiteboardCompileScope,
-    'invalid' | 'cancelled'
-  >,
+  WhiteboardScopedIntentHandlers,
   'mindmap.create'
   | 'mindmap.delete'
   | 'mindmap.layout.set'

@@ -11,8 +11,6 @@ import {
   assertHistoryFootprint,
   createCollector,
   conflicts,
-  historyKeyConflicts,
-  serializeHistoryKey,
   isKey
 } from '@whiteboard/core/operations/history'
 import {
@@ -33,8 +31,6 @@ export const operations = {
     assertFootprint: assertHistoryFootprint,
     createCollector,
     conflicts,
-    keyConflicts: historyKeyConflicts,
-    serializeKey: serializeHistoryKey,
     isKey
   },
   lock: {
@@ -58,8 +54,6 @@ export {
   assertHistoryFootprint,
   createCollector,
   conflicts,
-  historyKeyConflicts,
-  serializeHistoryKey,
   isKey,
   resolveLockDecision,
   validateLockOperations,

@@ -8,12 +8,10 @@ import {
   type ReducerResult
 } from '@shared/reducer'
 import type {
+  MutationFootprint,
   MutationReduceSpec
 } from '@shared/mutation'
-import type {
-  DataviewMutationKey,
-  ValidationCode
-} from './contracts'
+import type { ValidationCode } from './contracts'
 import {
   dataviewTrace,
   type DataviewTrace
@@ -26,19 +24,19 @@ export type DataviewOperationReduceExtra = {
 export type DataviewOperationReduceResult = ReducerResult<
   DataDoc,
   DocumentOperation,
-  DataviewMutationKey,
+  MutationFootprint,
   DataviewOperationReduceExtra
 >
 
 export type DataviewReduceContext = ReducerContext<
   DataDoc,
   DocumentOperation,
-  DataviewMutationKey
+  MutationFootprint
 > & DocumentMutationOperationContext & {
   base: ReducerContext<
     DataDoc,
     DocumentOperation,
-    DataviewMutationKey
+    MutationFootprint
   >
 }
 
@@ -46,7 +44,7 @@ const createDataviewReduceContext = (
   ctx: ReducerContext<
     DataDoc,
     DocumentOperation,
-    DataviewMutationKey
+    MutationFootprint
   >
 ): DataviewReduceContext => {
   const draftDocument = createDataviewDraftDocument(ctx.doc())
@@ -78,7 +76,7 @@ export const dataviewOperationTable = DATAVIEW_OPERATION_DEFINITIONS
 export const dataviewReduceSpec: MutationReduceSpec<
   DataDoc,
   DocumentOperation,
-  DataviewMutationKey,
+  MutationFootprint,
   DataviewOperationReduceExtra,
   DataviewReduceContext,
   ValidationCode

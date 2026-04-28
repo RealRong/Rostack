@@ -41,6 +41,7 @@ import {
   restoreRecordFieldsToDraft
 } from '@dataview/core/operations/internal/recordFieldDraft'
 import { entityTable as sharedEntityTable, equal, json } from '@shared/core'
+import type { MutationFootprint } from '@shared/mutation'
 
 type DocumentOperationType = DocumentOperation['type']
 type DocumentOperationFamily =
@@ -412,13 +413,56 @@ const resolveActiveViewId = (
 
 const addRecordValueKey = (
   input: {
-    recordId: RecordId
-    fieldId: FieldId
+    recordId: string
+    fieldId: string
   },
   ctx: DocumentMutationFootprintContext
 ) => {
-  ctx.footprint(`records.${input.recordId}.values.${input.fieldId}`)
-  ctx.footprint(`fields.${input.fieldId}.values.${input.recordId}`)
+  ctx.footprint({
+    kind: 'relation',
+    family: 'record',
+    id: input.recordId,
+    relation: 'values',
+    target: input.fieldId
+  })
+  ctx.footprint({
+    kind: 'relation',
+    family: 'field',
+    id: input.fieldId,
+    relation: 'values',
+    target: input.recordId
+  })
+}
+
+const addGlobalFootprint = (
+  ctx: DocumentMutationFootprintContext,
+  family: string
+) => {
+  ctx.footprint({
+    kind: 'global',
+    family
+  })
+}
+
+const addEntityFootprint = (
+  ctx: DocumentMutationFootprintContext,
+  family: string,
+  id: string
+) => {
+  ctx.footprint({
+    kind: 'entity',
+    family,
+    id
+  })
+}
+
+const addFootprints = (
+  ctx: DocumentMutationFootprintContext,
+  footprints: readonly MutationFootprint[]
+) => {
+  footprints.forEach((footprint) => {
+    ctx.footprint(footprint)
+  })
 }
 
 const addRecordValueKeys = (
@@ -863,13 +907,13 @@ const definitions: DocumentOperationDefinitionTable = {
   'document.record.insert': {
     family: 'record',
     footprint: (ctx, operation) => {
-      ctx.footprint('records')
+      addGlobalFootprint(ctx, 'record')
       operation.records.forEach((record) => {
-        ctx.footprint(`records.${record.id}`)
+        addEntityFootprint(ctx, 'record', record.id)
         Object.keys(record.values).forEach((fieldId) => {
           addRecordValueKey({
             recordId: record.id,
-            fieldId: fieldId as FieldId
+            fieldId
           }, ctx)
         })
       })
@@ -879,16 +923,16 @@ const definitions: DocumentOperationDefinitionTable = {
   'document.record.patch': {
     family: 'record',
     footprint: (ctx, operation) => {
-      ctx.footprint(`records.${operation.recordId}`)
+      addEntityFootprint(ctx, 'record', operation.recordId)
     },
     apply: applyRecordPatch
   },
   'document.record.remove': {
     family: 'record',
     footprint: (ctx, operation) => {
-      ctx.footprint('records')
+      addGlobalFootprint(ctx, 'record')
       operation.recordIds.forEach((recordId) => {
-        ctx.footprint(`records.${recordId}`)
+        addEntityFootprint(ctx, 'record', recordId)
       })
     },
     apply: applyRecordRemove
@@ -918,24 +962,30 @@ const definitions: DocumentOperationDefinitionTable = {
     footprint: (ctx, operation) => {
       const existed = Boolean(ctx.doc().fields.byId[operation.field.id])
       if (!existed) {
-        ctx.footprint('fields')
+        addGlobalFootprint(ctx, 'field')
       }
-      ctx.footprint(`fields.${operation.field.id}`)
+      addEntityFootprint(ctx, 'field', operation.field.id)
     },
     apply: applyFieldPut
   },
   'document.field.patch': {
     family: 'field',
     footprint: (ctx, operation) => {
-      ctx.footprint(`fields.${operation.id}`)
+      addEntityFootprint(ctx, 'field', operation.id)
     },
     apply: applyFieldPatch
   },
   'document.field.remove': {
     family: 'field',
     footprint: (ctx, operation) => {
-      ctx.footprint('fields')
-      ctx.footprint(`fields.${operation.id}`)
+      addFootprints(ctx, [{
+        kind: 'global',
+        family: 'field'
+      }, {
+        kind: 'entity',
+        family: 'field',
+        id: operation.id
+      }])
     },
     apply: applyFieldRemove
   },
@@ -944,24 +994,30 @@ const definitions: DocumentOperationDefinitionTable = {
     footprint: (ctx, operation) => {
       const existed = Boolean(ctx.doc().views.byId[operation.view.id])
       if (!existed) {
-        ctx.footprint('views')
+        addGlobalFootprint(ctx, 'view')
       }
-      ctx.footprint(`views.${operation.view.id}`)
+      addEntityFootprint(ctx, 'view', operation.view.id)
     },
     apply: applyViewPut
   },
   'document.activeView.set': {
     family: 'view',
     footprint: (ctx) => {
-      ctx.footprint('activeView')
+      addGlobalFootprint(ctx, 'activeView')
     },
     apply: applyActiveViewSet
   },
   'document.view.remove': {
     family: 'view',
     footprint: (ctx, operation) => {
-      ctx.footprint('views')
-      ctx.footprint(`views.${operation.id}`)
+      addFootprints(ctx, [{
+        kind: 'global',
+        family: 'view'
+      }, {
+        kind: 'entity',
+        family: 'view',
+        id: operation.id
+      }])
     },
     apply: applyViewRemove
   },
@@ -969,7 +1025,7 @@ const definitions: DocumentOperationDefinitionTable = {
     family: 'external',
     history: false,
     footprint: (ctx, operation) => {
-      ctx.footprint(`external.${operation.source}`)
+      addGlobalFootprint(ctx, `external.${operation.source}`)
     },
     apply: applyExternalBump
   }

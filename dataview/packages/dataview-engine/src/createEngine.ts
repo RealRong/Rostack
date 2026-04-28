@@ -6,19 +6,18 @@ import type {
 } from '@dataview/core/types/operations'
 import type {
   DataviewReduceContext,
-  DataviewMutationKey,
   DataviewTrace,
   ValidationCode
 } from '@dataview/core/operations'
 import {
   createDataviewCompileScope,
   dataviewIntentHandlers,
-  dataviewMutationKeyCodec,
   dataviewOperationTable,
   dataviewReduceSpec
 } from '@dataview/core/operations'
 import {
   MutationEngine,
+  type MutationFootprint,
   type MutationOptions
 } from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
@@ -51,12 +50,6 @@ const DEFAULT_HISTORY_CONFIG = {
 
 const createDataviewOperationsRuntime = () => ({
   table: dataviewOperationTable,
-  serializeKey: dataviewMutationKeyCodec.serialize,
-  ...(dataviewMutationKeyCodec.conflicts
-    ? {
-        conflicts: dataviewMutationKeyCodec.conflicts
-      }
-    : {}),
   ...(dataviewReduceSpec.createContext
     ? {
         createContext: dataviewReduceSpec.createContext
@@ -128,7 +121,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DataDoc,
     DataviewIntentTable,
     DocumentOperation,
-    DataviewMutationKey,
+    MutationFootprint,
     DataviewPublish,
     DataviewMutationCache,
     {
@@ -140,7 +133,6 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   >({
     document: options.document,
     normalize: (doc) => doc,
-    key: dataviewMutationKeyCodec,
     operations: dataviewOperationTable,
     reduce: dataviewReduceSpec,
     compile: {

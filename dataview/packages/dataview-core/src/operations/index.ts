@@ -10,9 +10,6 @@ import {
   createDataviewCompileScope
 } from './compile'
 import {
-  dataviewMutationKeyCodec,
-  type DataviewMutationKey,
-  type DataviewTargetKey,
   type ValidationCode,
   type ValidationIssue,
   type ValidationSeverity
@@ -43,7 +40,6 @@ export {
   dataviewReduceSpec,
   dataviewIntentHandlers,
   createDataviewCompileScope,
-  dataviewMutationKeyCodec,
   buildRecordCreateIntents,
   recordCreate,
   dataviewTrace
@@ -56,7 +52,6 @@ export const operations = {
   table,
   reduce,
   compile,
-  key: dataviewMutationKeyCodec,
   trace: dataviewTrace,
   plan: {
     buildRecordCreateIntents,
@@ -68,8 +63,6 @@ export type {
   DataviewTrace,
   DataviewOperationReduceExtra,
   DataviewReduceContext,
-  DataviewMutationKey,
-  DataviewTargetKey,
   ValidationCode,
   ValidationIssue,
   ValidationSeverity,

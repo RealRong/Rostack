@@ -1,5 +1,5 @@
 import type { Document, Operation } from '@whiteboard/core/types'
-import type { HistoryFootprint } from '@whiteboard/core/operations'
+import type { MutationFootprint } from '@shared/mutation'
 import type {
   YjsSyncCodec as SharedYjsSyncCodec,
   YjsSyncMeta,
@@ -14,7 +14,7 @@ export type SharedChange = {
   id: string
   actorId: string
   ops: readonly SharedOperation[]
-  footprint: HistoryFootprint
+  footprint: readonly MutationFootprint[]
 }
 
 export type SharedCheckpoint = {

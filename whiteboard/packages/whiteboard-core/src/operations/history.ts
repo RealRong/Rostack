@@ -2,9 +2,7 @@ export {
   assertHistoryFootprint,
   createHistoryKeyCollector as createCollector,
   historyFootprintConflicts as conflicts,
-  historyKeyConflicts,
-  isHistoryKey as isKey,
-  serializeHistoryKey
+  isHistoryKey as isKey
 } from '@whiteboard/core/operations/history-key'
 
 export type {
@@ -12,4 +10,3 @@ export type {
   HistoryKey,
   HistoryKeyCollector
 } from '@whiteboard/core/operations/history-key'
-

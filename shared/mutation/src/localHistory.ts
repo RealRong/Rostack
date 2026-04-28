@@ -40,11 +40,11 @@ export interface HistoryPolicy<Result> {
   cancelOnFailure?: 'restore' | 'invalidate' | false
 }
 
-export interface HistorySyncPort<Key> {
-  observeRemote(changeId: string, footprint: readonly Key[]): void
+export interface HistorySyncPort<Footprint> {
+  observeRemote(changeId: string, footprint: readonly Footprint[]): void
   confirmPublished(input: {
     id: string
-    footprint: readonly Key[]
+    footprint: readonly Footprint[]
   }): void
   cancel(mode: 'restore' | 'invalidate'): void
 }
@@ -52,26 +52,26 @@ export interface HistorySyncPort<Key> {
 export interface HistoryPort<
   Result,
   Op = any,
-  Key = any,
-  Commit extends ApplyCommit<any, Op, Key, any> = ApplyCommit<any, Op, Key, any>
+  Footprint = any,
+  Commit extends ApplyCommit<any, Op, Footprint, any> = ApplyCommit<any, Op, Footprint, any>
 > extends ReadStore<HistoryPortState> {
-  readonly sync: HistorySyncPort<Key>
+  readonly sync: HistorySyncPort<Footprint>
   undo(): Result
   redo(): Result
   clear(): void
   withPolicy(
     policy?: HistoryPolicy<Result>
-  ): HistoryPort<Result, Op, Key, Commit>
+  ): HistoryPort<Result, Op, Footprint, Commit>
 }
 
 export interface HistoryPortEngine<
   Doc,
   Op,
-  Key,
+  Footprint,
   Result extends {
     ok: boolean
   },
-  Commit extends ApplyCommit<Doc, Op, Key, any> = ApplyCommit<Doc, Op, Key, any>
+  Commit extends ApplyCommit<Doc, Op, Footprint, any> = ApplyCommit<Doc, Op, Footprint, any>
 > {
   apply(
     ops: readonly Op[],
@@ -79,8 +79,8 @@ export interface HistoryPortEngine<
       origin?: Origin
     }
   ): Result
-  commits: CommitStream<CommitRecord<Doc, Op, Key, any>>
-  historyController(): HistoryController<Op, Key, Commit> | undefined
+  commits: CommitStream<CommitRecord<Doc, Op, Footprint, any>>
+  historyController(): HistoryController<Op, Footprint, Commit> | undefined
 }
 
 const EMPTY_HISTORY_STATE: HistoryPortState = {
@@ -120,14 +120,14 @@ const readState = (
 export const createHistoryPort = <
   Doc,
   Op,
-  Key,
+  Footprint,
   Result extends {
     ok: boolean
   },
-  Commit extends ApplyCommit<Doc, Op, Key, any> = ApplyCommit<Doc, Op, Key, any>
+  Commit extends ApplyCommit<Doc, Op, Footprint, any> = ApplyCommit<Doc, Op, Footprint, any>
 >(
-  engine: HistoryPortEngine<Doc, Op, Key, Result, Commit>
-): HistoryPort<Result, Op, Key, Commit> => {
+  engine: HistoryPortEngine<Doc, Op, Footprint, Result, Commit>
+): HistoryPort<Result, Op, Footprint, Commit> => {
   const controller = engine.historyController()
   const state = createValueStore<HistoryPortState>({
     ...(controller?.state() ?? EMPTY_HISTORY_STATE),
@@ -190,7 +190,7 @@ export const createHistoryPort = <
     return result
   }
 
-  const sync: HistorySyncPort<Key> = {
+  const sync: HistorySyncPort<Footprint> = {
     observeRemote: (changeId, footprint) => {
       if (controller?.observe(changeId, footprint)) {
         publish()
@@ -212,7 +212,7 @@ export const createHistoryPort = <
     ok: boolean
   }>(
     policy?: HistoryPolicy<PolicyResult>
-  ): HistoryPort<PolicyResult, Op, Key, Commit> => ({
+  ): HistoryPort<PolicyResult, Op, Footprint, Commit> => ({
     get: state.get,
     subscribe: state.subscribe,
     sync,

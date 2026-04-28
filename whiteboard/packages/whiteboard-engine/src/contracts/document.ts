@@ -1,6 +1,7 @@
 import type {
   CommitStream,
   HistoryPort,
+  MutationFootprint,
   MutationOptions
 } from '@shared/mutation'
 import type {
@@ -13,7 +14,6 @@ import type {
   MindmapId
 } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/engine/config'
-import type { HistoryFootprint } from '@whiteboard/core/operations'
 import type {
   EngineCommit,
   EngineApplyCommit
@@ -29,7 +29,6 @@ import type {
   Revision
 } from './core'
 export type { IdDelta } from './core'
-import type { WhiteboardMutationKey } from '../mutation/types'
 
 export interface Snapshot {
   revision: Revision
@@ -60,7 +59,7 @@ export interface Engine {
   readonly history: HistoryPort<
     IntentResult,
     Operation,
-    HistoryFootprint[number],
+    MutationFootprint,
     EngineApplyCommit
   >
   doc(): Document

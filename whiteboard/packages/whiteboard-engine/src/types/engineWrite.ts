@@ -1,8 +1,8 @@
 import type {
   ApplyCommit,
   CommitRecord,
+  MutationFootprint,
 } from '@shared/mutation'
-import type { HistoryFootprint } from '@whiteboard/core/operations'
 import type {
   Document,
   Operation
@@ -14,13 +14,13 @@ import type {
 export type EngineApplyCommit = ApplyCommit<
   Document,
   Operation,
-  HistoryFootprint[number],
+  MutationFootprint,
   WhiteboardOperationReduceExtra
 >
 
 export type EngineCommit = CommitRecord<
   Document,
   Operation,
-  HistoryFootprint[number],
+  MutationFootprint,
   WhiteboardOperationReduceExtra
 >

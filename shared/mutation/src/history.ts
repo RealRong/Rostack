@@ -23,31 +23,31 @@ type HistoryClock = {
   byChangeId: Map<string, number>
 }
 
-type HistoryEntry<Op, Key> = {
+type HistoryEntry<Op, Footprint> = {
   id: string
   forward: readonly Op[]
   inverse: readonly Op[]
-  footprint: readonly Key[]
+  footprint: readonly Footprint[]
   baseSeq: number
   state: 'live' | 'undone' | 'invalidated'
 }
 
-export interface CaptureOptions<Key> {
+export interface CaptureOptions<Footprint> {
   id?: string
-  footprint?: readonly Key[]
+  footprint?: readonly Footprint[]
 }
 
 export interface HistoryController<
   Op,
-  Key,
-  Commit extends ApplyCommit<any, Op, Key, any>
+  Footprint,
+  Commit extends ApplyCommit<any, Op, Footprint, any>
 > {
   state(): HistoryState
-  capture(commit: Commit, options?: CaptureOptions<Key>): boolean
-  observe(changeId: string, footprint: readonly Key[]): boolean
+  capture(commit: Commit, options?: CaptureOptions<Footprint>): boolean
+  observe(changeId: string, footprint: readonly Footprint[]): boolean
   undo(): readonly Op[] | undefined
   redo(): readonly Op[] | undefined
-  confirm(options?: CaptureOptions<Key>): boolean
+  confirm(options?: CaptureOptions<Footprint>): boolean
   cancel(mode?: 'restore' | 'invalidate'): boolean
   clear(): boolean
 }
@@ -86,15 +86,15 @@ const observeChange = (
   }
 }
 
-const findEntry = <Op, Key>(
-  entries: readonly HistoryEntry<Op, Key>[],
+const findEntry = <Op, Footprint>(
+  entries: readonly HistoryEntry<Op, Footprint>[],
   entryId: string
-): HistoryEntry<Op, Key> | undefined => entries.find((entry) => entry.id === entryId)
+): HistoryEntry<Op, Footprint> | undefined => entries.find((entry) => entry.id === entryId)
 
-const trimUndo = <Op, Key>(
-  entries: HistoryEntry<Op, Key>[],
+const trimUndo = <Op, Footprint>(
+  entries: HistoryEntry<Op, Footprint>[],
   capacity: number
-): HistoryEntry<Op, Key>[] => {
+): HistoryEntry<Op, Footprint>[] => {
   if (capacity <= 0) {
     return []
   }
@@ -104,13 +104,13 @@ const trimUndo = <Op, Key>(
   return entries.slice(entries.length - capacity)
 }
 
-const moveToInvalidated = <Op, Key>(input: {
-  undo: HistoryEntry<Op, Key>[]
-  redo: HistoryEntry<Op, Key>[]
-  invalidated: HistoryEntry<Op, Key>[]
-  entry: HistoryEntry<Op, Key>
+const moveToInvalidated = <Op, Footprint>(input: {
+  undo: HistoryEntry<Op, Footprint>[]
+  redo: HistoryEntry<Op, Footprint>[]
+  invalidated: HistoryEntry<Op, Footprint>[]
+  entry: HistoryEntry<Op, Footprint>
 }) => {
-  const next: HistoryEntry<Op, Key> = {
+  const next: HistoryEntry<Op, Footprint> = {
     ...input.entry,
     state: 'invalidated'
   }
@@ -126,20 +126,20 @@ const moveToInvalidated = <Op, Key>(input: {
 export const history = {
   create<
     Op,
-    Key,
-    Commit extends ApplyCommit<any, Op, Key, any>
+    Footprint,
+    Commit extends ApplyCommit<any, Op, Footprint, any>
   >(input: {
     conflicts(
-      left: readonly Key[],
-      right: readonly Key[]
+      left: readonly Footprint[],
+      right: readonly Footprint[]
     ): boolean
     track?(commit: Commit): boolean
     capacity?: number
-  }): HistoryController<Op, Key, Commit> {
+  }): HistoryController<Op, Footprint, Commit> {
     let nextEntryId = 1
-    let undo: HistoryEntry<Op, Key>[] = []
-    let redo: HistoryEntry<Op, Key>[] = []
-    let invalidated: HistoryEntry<Op, Key>[] = []
+    let undo: HistoryEntry<Op, Footprint>[] = []
+    let redo: HistoryEntry<Op, Footprint>[] = []
+    let invalidated: HistoryEntry<Op, Footprint>[] = []
     let pending: HistoryPending = null
     const clock: HistoryClock = {
       nextSeq: 1,
@@ -170,7 +170,7 @@ export const history = {
         }
 
         const footprint = options?.footprint ?? commit.footprint
-        const entry: HistoryEntry<Op, Key> = {
+        const entry: HistoryEntry<Op, Footprint> = {
           id: options?.id ?? `history_${nextEntryId++}`,
           forward: commit.forward,
           inverse: commit.inverse,
@@ -282,7 +282,7 @@ export const history = {
           observeChange(clock, options.id)
         }
 
-        const nextEntry: HistoryEntry<Op, Key> = {
+        const nextEntry: HistoryEntry<Op, Footprint> = {
           ...entry,
           id: options?.id ?? entry.id,
           footprint,

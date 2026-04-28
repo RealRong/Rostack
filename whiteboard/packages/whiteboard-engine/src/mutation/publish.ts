@@ -1,6 +1,8 @@
 import { idDelta } from '@shared/delta'
-import type { MutationPublishSpec } from '@shared/mutation'
-import type { HistoryFootprint } from '@whiteboard/core/operations'
+import type {
+  MutationFootprint,
+  MutationPublishSpec
+} from '@shared/mutation'
 import type {
   ChangeSet,
   Document,
@@ -63,7 +65,7 @@ const createPublish = (input: {
 export const whiteboardPublishSpec: MutationPublishSpec<
   Document,
   Operation,
-  HistoryFootprint[number],
+  MutationFootprint,
   WhiteboardMutationExtra,
   EnginePublish,
   void

@@ -1,9 +1,11 @@
 import type { MutationOperationsSpec } from '@shared/mutation'
 import {
-  historyKeyConflicts,
-  serializeHistoryKey,
   type HistoryFootprint
 } from '@whiteboard/core/operations/history'
+import {
+  historyKeyConflicts,
+  serializeHistoryKey
+} from '@whiteboard/core/operations/history-key'
 import { validateLockOperations } from '@whiteboard/core/operations/lock'
 import {
   definitions,

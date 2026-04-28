@@ -10,9 +10,9 @@ import type {
   YjsSyncStore as SharedYjsSyncStore
 } from '@shared/collab-yjs'
 import type { HistoryPort } from '@shared/mutation'
+import type { MutationFootprint } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/types/operations'
-import type { DataviewMutationKey } from '@dataview/core/operations'
 import type { Engine } from '@dataview/engine'
 import type { EngineApplyCommit } from '@dataview/engine/contracts/write'
 
@@ -24,7 +24,7 @@ export type SharedChange = {
   id: string
   actorId: string
   ops: readonly SharedOperation[]
-  footprint: readonly DataviewMutationKey[]
+  footprint: readonly MutationFootprint[]
 }
 
 export type SharedCheckpoint = {
@@ -52,7 +52,7 @@ export type CreateYjsSessionOptions = {
 export type CollabLocalHistory = HistoryPort<
   ReturnType<Engine['apply']>,
   DocumentOperation,
-  DataviewMutationKey,
+  MutationFootprint,
   EngineApplyCommit
 >
 

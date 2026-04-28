@@ -5,14 +5,14 @@ import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
 import type {
-  DataviewMutationKey
-} from '@dataview/core/operations/contracts'
-import type {
   DataviewTrace
 } from '@dataview/core/operations/trace'
 import type {
   DataviewDraftDocument
 } from '@dataview/core/operations/internal/draft'
+import type {
+  MutationFootprint
+} from '@shared/mutation'
 
 export interface DocumentMutationContext {
   doc(): DataDoc
@@ -25,7 +25,7 @@ export interface DocumentMutationContext {
 
 export interface DocumentMutationFootprintContext {
   doc(): DataDoc
-  footprint(key: DataviewMutationKey): void
+  footprint(footprint: MutationFootprint): void
 }
 
 export interface DocumentMutationOperationContext

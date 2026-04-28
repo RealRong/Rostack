@@ -5,11 +5,11 @@ import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
 import type {
-  DataviewMutationKey,
   DataviewTrace
 } from '@dataview/core/operations'
 import type {
-  ApplyCommit
+  ApplyCommit,
+  MutationFootprint
 } from '@shared/mutation'
 import type {
   CommitTrace,
@@ -42,7 +42,7 @@ export interface DataviewPublishProjectionUpdateInput {
   commit: ApplyCommit<
     DataDoc,
     DocumentOperation,
-    DataviewMutationKey,
+    MutationFootprint,
     {
       trace: DataviewTrace
     }

@@ -1,15 +1,8 @@
-import { key } from '@shared/spec'
 import type {
   MutationCompileIssue,
-  MutationCompileSource,
-  MutationKeySpec
+  MutationCompileSource
 } from '@shared/mutation'
 import type { IntentType } from '@dataview/core/types/intents'
-import type {
-  FieldId,
-  RecordId,
-  ViewId
-} from '@dataview/core/types'
 
 export type ValidationSeverity =
   | 'error'
@@ -40,24 +33,3 @@ export type IssueSource = MutationCompileSource<IntentType>
 
 export type ValidationIssue =
   MutationCompileIssue<ValidationCode, IntentType>
-
-export type DataviewTargetKey =
-  | 'records'
-  | `records.${RecordId}`
-  | `records.${RecordId}.values.${FieldId}`
-  | 'fields'
-  | `fields.${FieldId}`
-  | `fields.${FieldId}.values.${RecordId}`
-  | 'views'
-  | `views.${ViewId}`
-  | 'activeView'
-  | `external.${string}`
-
-export type DataviewMutationKey = DataviewTargetKey
-
-const pathKeyCodec = key.path()
-
-export const dataviewMutationKeyCodec: MutationKeySpec<DataviewMutationKey> = {
-  serialize: (value) => value,
-  conflicts: (left, right) => pathKeyCodec.conflicts(left, right)
-}

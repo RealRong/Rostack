@@ -1,50 +1,57 @@
 export type {
-  MutationCompileSpec,
   MutationCompileControl,
-  MutationCompileCtx,
   MutationCompileHandler,
+  MutationCompileHandlerInput,
   MutationCompileHandlerTable,
+  MutationApplyResult,
   MutationCompileInput,
   MutationCompileIssue,
-  MutationCompileSource,
   MutationCompileResult,
+  MutationCompileSource,
+  MutationCurrent,
+  MutationCustomFailure,
+  MutationCustomHistoryResult,
+  MutationCustomReduceInput,
+  MutationCustomReduceResult,
+  MutationCustomSpec,
+  MutationCustomTable,
+  MutationEngineOptions,
+  MutationEntityPatch,
   MutationError,
-  MutationEngineSpec,
   MutationExecuteInput,
   MutationExecuteResult,
   MutationExecuteResultOfInput,
+  MutationHistoryOptions,
+  MutationEntitySpec,
   MutationFailure,
   MutationIntentKind,
   MutationIntentOf,
   MutationIntentTable,
-  MutationKeySpec,
-  MutationOperationsSpec,
   MutationOptions,
   MutationOutputOf,
-  MutationRuntimeSpec,
-  MutationReduceSpec,
-  MutationPublishSpec,
   MutationResult,
-  CommandMutationSpec
 } from './engine'
 export {
-  createCompileIssue,
-  hasCompileErrors,
-  mutationFailure,
-  mutationResult,
-  normalizeCompileIssue,
   MutationEngine
 } from './engine'
 export type {
+  HistoryPolicy,
   HistoryPort,
-} from './localHistory'
-export {
-  createHistoryPort
+  HistoryPortState,
+  HistorySyncPort,
 } from './localHistory'
 export type {
-  ApplyCommit,
-  CommitRecord,
-  CommitStream,
+  MutationChange,
+  MutationChangeInput,
+  MutationCommit,
+  MutationCommitRecord,
+  MutationDelta,
+  MutationDeltaInput,
+  MutationFootprint,
+  MutationFootprintInput,
+  MutationIssue,
+  MutationReplaceResult,
+  MutationReplaceCommit,
   MutationOrigin,
   Origin
 } from './write'

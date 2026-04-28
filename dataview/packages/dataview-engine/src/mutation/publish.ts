@@ -5,10 +5,10 @@ import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
 import type {
-  DataviewMutationKey,
   DataviewTrace
 } from '@dataview/core/operations'
 import type {
+  MutationFootprint,
   MutationPublishSpec
 } from '@shared/mutation'
 import type {
@@ -27,7 +27,7 @@ export const createDataviewPublishSpec = (input?: {
 }): MutationPublishSpec<
   DataDoc,
   DocumentOperation,
-  DataviewMutationKey,
+  MutationFootprint,
   {
     trace: DataviewTrace
   },

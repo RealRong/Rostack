@@ -1,9 +1,11 @@
 import { store as coreStore } from '@shared/core'
-import type { HistoryPort } from '@shared/mutation'
+import type {
+  HistoryPort,
+  MutationFootprint
+} from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
 import type { Operation } from '@whiteboard/core/types'
-import type { HistoryFootprint } from '@whiteboard/core/operations'
 import type { EngineApplyCommit } from '@whiteboard/engine'
 import type * as Y from 'yjs'
 import type {
@@ -29,7 +31,7 @@ export type CollabDiagnostics = {
 export type CollabLocalHistory = HistoryPort<
   IntentResult,
   Operation,
-  HistoryFootprint[number],
+  MutationFootprint,
   EngineApplyCommit
 >
 

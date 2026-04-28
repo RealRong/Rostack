@@ -4,7 +4,6 @@ import { entityTable } from '@shared/core'
 import { MutationEngine } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
 import {
-  dataviewMutationKeyCodec,
   dataviewOperationTable,
   dataviewReduceSpec
 } from '@dataview/core/operations'
@@ -23,12 +22,6 @@ const createEmptyDocument = (): DataDoc => ({
 
 const operationsRuntime = {
   table: dataviewOperationTable,
-  serializeKey: dataviewMutationKeyCodec.serialize,
-  ...(dataviewMutationKeyCodec.conflicts
-    ? {
-        conflicts: dataviewMutationKeyCodec.conflicts
-      }
-    : {}),
   ...(dataviewReduceSpec.createContext
     ? {
         createContext: dataviewReduceSpec.createContext

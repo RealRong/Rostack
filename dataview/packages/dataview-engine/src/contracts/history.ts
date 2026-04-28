@@ -1,13 +1,11 @@
 import type {
   HistoryPort,
+  MutationFootprint,
   MutationResult
 } from '@shared/mutation'
 import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
-import type {
-  DataviewMutationKey
-} from '@dataview/core/operations'
 import type {
   EngineApplyCommit
 } from './write'
@@ -22,6 +20,6 @@ export interface DataviewHistoryConfig {
 export type DataviewHistory = HistoryPort<
   MutationResult<void, EngineApplyCommit>,
   DocumentOperation,
-  DataviewMutationKey,
+  MutationFootprint,
   EngineApplyCommit
 >

@@ -3,6 +3,9 @@ import {
   spec as specApi
 } from '@shared/spec'
 import type {
+  TableSpecIndex
+} from '@shared/spec'
+import type {
   NodeSchema,
   NodeType,
   SchemaField,
@@ -23,6 +26,35 @@ import type {
 const EMPTY_CONTROLS: readonly NodeMeta['controls'][number][] = []
 const EMPTY_STYLE_FIELDS = Object.freeze({})
 const fieldKey = key.path()
+type NodeTypeKey<TSpec extends NodeSpec> = Extract<keyof TSpec, string>
+type NodeBehaviorOf<TSpec extends NodeSpec> = TSpec[NodeTypeKey<TSpec>]['behavior']
+
+export type CompiledNodeSpec<TSpec extends NodeSpec = NodeSpec> = {
+  entryByType: TableSpecIndex<TSpec, undefined>
+  metaByType: TableSpecIndex<
+    Readonly<Record<NodeTypeKey<TSpec>, NodeMeta>>,
+    undefined
+  >
+  schemaByType: TableSpecIndex<
+    Readonly<Record<string, NodeSchema>>,
+    undefined
+  >
+  behaviorByType: TableSpecIndex<
+    Readonly<Record<NodeTypeKey<TSpec>, NodeBehaviorOf<TSpec>>>,
+    undefined
+  >
+  capabilityByType: TableSpecIndex<
+    Readonly<Record<NodeTypeKey<TSpec>, NodeTypeCapability>>,
+    NodeTypeCapability
+  >
+  styleFieldKindByType: {
+    resolve(type: string): Readonly<Record<NodeStyleFieldKey, NodeStyleFieldKind>>
+  }
+  controlsByType: TableSpecIndex<
+    Readonly<Record<NodeTypeKey<TSpec>, readonly NodeMeta['controls'][number][]>>,
+    readonly NodeMeta['controls'][number][]
+  >
+}
 
 const isCoreNodeType = (
   type: string
@@ -161,9 +193,11 @@ const compileStyleFieldKinds = (
   )
 }
 
-export const compileNodeSpec = (
-  spec: NodeSpec
-) => {
+export const compileNodeSpec = <
+  TSpec extends NodeSpec
+>(
+  spec: TSpec
+): CompiledNodeSpec<TSpec> => {
   const entryByType = specApi.table(spec, {
     fallback: () => undefined
   })

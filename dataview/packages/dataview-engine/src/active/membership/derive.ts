@@ -6,7 +6,7 @@ import type { Bucket } from '@dataview/core/field'
 import { equal } from '@shared/core'
 import {
   buildBucketViewState,
-  createBucketSpec,
+  bucket,
   readBucketIndex
 } from '@dataview/engine/active/index/bucket'
 import type {
@@ -301,10 +301,11 @@ export const buildMembershipState = (input: {
     return buildRootMembershipState(input.query, input.previous)
   }
 
-  const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec(input.view.group))
+  const bucketSpec = bucket.normalize(input.view.group)
+  const bucketIndex = readBucketIndex(input.index.bucket, bucketSpec)
   const presentation = buildBucketViewState({
     field: bucketIndex?.field,
-    spec: createBucketSpec(input.view.group),
+    spec: bucketSpec,
     sort: input.view.group.bucketSort,
     values: input.index.records.values.get(input.view.group.fieldId)?.byRecord,
     recordsByKey: bucketIndex?.recordsByKey ?? new Map(),
@@ -506,7 +507,7 @@ export const syncMembershipState = (input: {
     }
   }
 
-  const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec(input.view.group))
+  const bucketIndex = readBucketIndex(input.index.bucket, bucket.normalize(input.view.group))
   const changedRecordIds = resolveChangedRecordIds({
     impact: input.impact,
     queryDelta: input.queryDelta,

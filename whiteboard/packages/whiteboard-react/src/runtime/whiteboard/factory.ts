@@ -2,6 +2,7 @@ import type { HistoryPort } from '@shared/mutation'
 import type { IntentResult } from '@whiteboard/engine'
 import { engine as engineApi, normalizeDocument } from '@whiteboard/engine'
 import { editor as editorApi } from '@whiteboard/editor'
+import { compileNodeSpec } from '@whiteboard/editor/types/node'
 import type { Editor } from '@whiteboard/editor'
 import type { Engine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
@@ -10,7 +11,6 @@ import { createClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboar
 import { createInsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import { createPointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import { createTextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
-import { compileReactNodeSpec } from '@whiteboard/react/features/node/registry/compile'
 import type { WhiteboardServicesContextValue } from '@whiteboard/react/runtime/hooks/useWhiteboard'
 import { createLayoutBackend } from '@whiteboard/react/runtime/whiteboard/layout'
 import { dismissBackgroundEditSelection } from '@whiteboard/react/runtime/whiteboard/pointerDown'
@@ -130,7 +130,7 @@ export const createWhiteboardRuntime = (input: {
   }
 
   const textSources = state.textSources
-  const nodes = compileReactNodeSpec(input.spec.nodes)
+  const nodes = compileNodeSpec(input.spec.nodes)
   const insert = createInsertBridge({
     editor: input.editor,
     catalog: product.insert.catalog.WHITEBOARD_INSERT_CATALOG

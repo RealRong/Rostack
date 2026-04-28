@@ -5,15 +5,15 @@ import type { ClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboard
 import type { InsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import type { PointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import type { Engine } from '@whiteboard/engine'
+import type { CompiledNodeSpec } from '@whiteboard/editor/types/node'
 import type { TextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
-import { compileReactNodeSpec } from '@whiteboard/react/features/node/registry/compile'
 import type { WhiteboardSpec } from '@whiteboard/react/types/spec'
 
 export type WhiteboardServicesContextValue = {
   editor: WhiteboardRuntime
   engine: Engine
   spec: WhiteboardSpec
-  nodes: ReturnType<typeof compileReactNodeSpec>
+  nodes: CompiledNodeSpec<WhiteboardSpec['nodes']>
   textSources: TextSourceStore
   pointer: PointerBridge
   clipboard: ClipboardBridge

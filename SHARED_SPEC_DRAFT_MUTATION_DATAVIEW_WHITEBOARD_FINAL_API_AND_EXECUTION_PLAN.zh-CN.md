@@ -18,9 +18,10 @@
 
 - `shared/delta`
 - `shared/projection`
+- dataview / whiteboard trace runtime 下沉
 - 一切直接依赖这两者的专项重构
 
-`shared/delta` 与 `shared/projection` 暂时冻结，不在本轮实施计划内。它们相关的 wrapper、runtime facade、family adapter 只登记为“后续专项处理”，不纳入本文件的执行范围。
+`shared/delta` 与 `shared/projection` 暂时冻结，不在本轮实施计划内。dataview / whiteboard 的 trace、impact、projection runtime 与这两块强耦合，也一并冻结。它们相关的 wrapper、runtime facade、family adapter 只登记为“后续专项处理”，不纳入本文件的执行范围。
 
 ## 硬约束
 
@@ -31,7 +32,7 @@
 3. 不要求阶段之间代码可运行，只要求全部完成后一次性跑通。
 4. 上层必须最大化直接声明 `spec + plain object + 字符串配置 + callback`。
 5. shared 负责吸收 compile / reducer / key codec / record patch / typed dispatch 复杂度。
-6. 上层不再维护自己的 compile loop、typed dispatch glue、path helper glue、trace facade、issue facade。
+6. 上层不再维护自己的 compile loop、typed dispatch glue、path helper glue、issue facade。trace facade 若与 projection/runtime 强耦合，则并入后续专项统一处理。
 
 ## 结论
 
@@ -41,8 +42,8 @@
 | --- | --- | --- | --- | --- |
 | B1 | 高 | `shared/spec` 仍只是 primitive index 工具，不能直接承载上层 canonical spec compile | `shared/spec/src/index.ts` `whiteboard/packages/whiteboard-editor/src/types/node/compile.ts` `whiteboard/packages/whiteboard-react/src/features/node/registry/compile.ts` | 必须补成最终编译入口，并删除上层二次 compile |
 | B2 | 高 | `shared/draft` 仍把 `path` / `patch` 作为上层拼装原语公开，导致 whiteboard node/schema/update 退化为 path patch glue | `shared/draft/src/index.ts` `whiteboard/packages/whiteboard-core/src/node/update.ts` `whiteboard/packages/whiteboard-core/src/registry/schema.ts` | 必须改成字符串 key + plain object record write，`path` 退回 shared 内部 |
-| B3 | 高 | `shared/mutation` 还没有收敛成单一 public constructor，compile/reduce/history/trace 语义仍向上泄漏 | `shared/mutation/src/index.ts` `shared/mutation/src/engine.ts` `dataview/packages/dataview-engine/src/mutation/kernel.ts` `whiteboard/packages/whiteboard-engine/src/mutation/spec.ts` | 必须收敛成 `createMutationEngine(...)`，内部化 runtime class 与 helper |
-| B4 | 高 | dataview 仍暴露 alias / compile facade / key facade / issue facade / trace facade，engine 仍要自己拼 mutation kernel | `dataview/packages/dataview-core/src/operations/index.ts` `compile.ts` `issue.ts` `trace.ts` `key.ts` `dataview/packages/dataview-engine/src/createEngine.ts` | 必须删 façade，只保留领域规则与 engine 直接装配 |
+| B3 | 高 | `shared/mutation` 还没有收敛成单一 public constructor，compile/reduce/history 语义仍向上泄漏，compile issue 合同也没有完全下沉 | `shared/mutation/src/index.ts` `shared/mutation/src/engine.ts` `dataview/packages/dataview-engine/src/mutation/kernel.ts` `whiteboard/packages/whiteboard-engine/src/mutation/spec.ts` | 必须收敛成 `new MutationEngine(...)`，并把 compile issue plain object 合同固定在 shared |
+| B4 | 高 | dataview 仍暴露 alias / compile facade / key facade / issue facade，engine 仍要自己拼 mutation kernel；trace facade 与 projection impact 强耦合 | `dataview/packages/dataview-core/src/operations/index.ts` `compile.ts` `issue.ts` `trace.ts` `key.ts` `dataview/packages/dataview-engine/src/createEngine.ts` | 本轮删除 compile/key/issue façade 与 kernel glue；trace 并入后续 projection 专项 |
 | B5 | 高 | whiteboard core 仍靠 compile context、compile handler adapter、schema compile helper、generic field/record op glue 维持整条链路 | `whiteboard/packages/whiteboard-core/src/operations/compile*.ts` `registry/schema.ts` `node/update.ts` | 必须重写为精确 handler + 结构化 patch op，不再靠 path helper 和 adapter |
 | B6 | 中 | editor/react 仍各自补 node spec compile wrapper，engine 顶层仍有 execute/apply 类型桥接 | `whiteboard/packages/whiteboard-editor/src/types/node/compile.ts` `whiteboard/packages/whiteboard-react/src/features/node/registry/compile.ts` `whiteboard/packages/whiteboard-engine/src/runtime/engine.ts` | 必须统一为一个 compiled node spec 与一个 mutation engine public API |
 
@@ -55,8 +56,9 @@
 3. 不再有 domain 自己维护的 compile loop。
 4. 不再有 domain 自己维护的 reducer constructor / typed dispatch glue。
 5. 不再有 `mutationPath.of(...)`、`compileDataUpdate(...)`、`compileStyleUpdate(...)` 这类 path/patch 中间 helper。
-6. 不再有 `compileReactNodeSpec`、`trace = dataviewTrace`、`compile = compileIntents` 这类别名层。
-7. 顶层 engine 直接调用 shared 最终 constructor，不再自己拼 kernel/facade。
+6. 不再有 `compileReactNodeSpec`、`compile = compileIntents`、`issue = { create, hasErrors }` 这类别名层。
+7. dataview / whiteboard trace facade 与 impact helper 不在本轮硬删，统一并入 projection 专项后一次性收口。
+8. 顶层 engine 直接调用 `new MutationEngine(...)`，不再自己拼 kernel/facade。
 
 ## 最终 API 设计
 
@@ -136,10 +138,10 @@ draft.record.inverse(current, {
 
 ### 3. `@shared/mutation`
 
-`@shared/mutation` 最终只公开一个 canonical constructor：
+`@shared/mutation` 最终只公开一个 canonical class：
 
 ```ts
-const engine = createMutationEngine({
+const engine = new MutationEngine({
   document,
   normalize,
   key: key.path(),
@@ -174,13 +176,14 @@ const compile = {
 
 要求：
 
-- `createMutationEngine(...)` 是唯一 public 入口。
+- `MutationEngine` 是唯一 public 入口。
 - `compile loop` 由 shared 内建。
 - `operation reducer constructor` 由 shared 内建。
 - `typed dispatch` 由 shared 内建。
 - `working doc` 增量 apply 由 shared 内建。
 - `issue / stop / block / source / output` 由 shared 内建。
-- `history / publish / trace` 由 shared 内建。
+- `history / publish` 由 shared 内建。
+- `trace` 字段继续保留在 constructor 上，但 trace 语义下沉与 spec 化不纳入本轮。
 - `key.serialize`、`key.conflicts` 统一来自传入 codec，而不是散落回调。
 
 shared/mutation 不再公开：
@@ -212,7 +215,6 @@ dataview 不再公开 compile/apply/kernel façade，而只保留领域规则与
 ```ts
 export const dataviewIntentHandlers = { ... } as const
 export const dataviewOperationTable = { ... } as const
-export const dataviewTrace = { ... } as const
 export const dataviewKey = key.path()
 ```
 
@@ -225,13 +227,12 @@ export const dataviewKey = key.path()
 - `spec`
 - `dataviewMutationOperations`
 - `issue = { create, hasErrors }`
-- `trace = dataviewTrace`
 - `parseDataviewTargetKey`
 
 `dataview/packages/dataview-engine/src/createEngine.ts` 最终直接调用 shared：
 
 ```ts
-const engine = createMutationEngine({
+const engine = new MutationEngine({
   document: options.document,
   normalize: doc => doc,
   key: key.path(),
@@ -251,6 +252,36 @@ const engine = createMutationEngine({
 - `createDataviewMutationKernel`
 - engine 顶层对 `CommandMutationEngine` 的显式泛型拼装
 - `execute` 里的 `as readonly Intent[]` / `as Intent`
+
+#### 4.1 issue 本轮直接下沉
+
+`issue` 不需要 dataview 自定义 façade，本轮必须直接下沉到 shared compile issue 合同。
+
+本轮固定方案：
+
+1. dataview 只保留领域错误码字符串 union，不再保留 `issue.ts`。
+2. `ValidationCode` 保留为 dataview 领域类型，但直接服务于 shared 的 compile issue plain object。
+3. compile handler、validator、scope/report 直接产出 `MutationCompileIssue<ValidationCode, IntentType>`，不再经过 `createIssue(...)` 包装。
+4. compile 期的报错、阻断、缺值判断统一直接走 shared 的 `issue / block / stop / require`。
+5. `hasValidationErrors(...)` 删除；是否可执行由 shared compile result 或本地 `issues.some(...)` 直接判断，不再保留 dataview alias helper。
+6. `operations/index.ts` 不再导出 `issue` 命名空间。
+
+这意味着：
+
+- 本轮允许保留 dataview 自己的错误码字符串集合。
+- 本轮不允许再保留 dataview 自己的 issue constructor、issue namespace、issue error-check helper。
+- dataview 对 compile issue 的参与只剩“声明领域 code”，不再参与“构建 shared issue 模型”。
+
+#### 4.2 trace 延后到 projection 专项
+
+`trace` 不在本轮下沉。
+
+本轮固定边界：
+
+1. `dataview/packages/dataview-core/src/operations/trace.ts` 与 `internal/impact.ts` 冻结。
+2. `dataviewTrace` 继续作为现状 runtime 传给 mutation / active / performance。
+3. 不在本轮拆 `has.viewQuery / has.fieldSchema / touchedIds / touchedCount` 这一层语义。
+4. trace 的 spec 化、shared 下沉、selector/runtime 收口统一并入后续 projection 专项。
 
 ### 5. dataview active/index 最终 API
 
@@ -501,7 +532,7 @@ const compiledNodeSpec = compileNodeSpec(spec.nodes)
 whiteboard engine 顶层也必须直接用 shared：
 
 ```ts
-const engine = createMutationEngine({
+const engine = new MutationEngine({
   document,
   normalize: normalizeDocument,
   key: historyKey,
@@ -529,7 +560,7 @@ const engine = createMutationEngine({
 ### shared
 
 - `shared/mutation/src/createMutationEngine.ts`
-- `shared/mutation` 对外暴露的 runtime class
+- `shared/mutation` 对外暴露的其他 runtime class
 - `shared/draft` root export 上的 `path`
 - `shared/draft` root export 上的 raw `patch` primitive
 
@@ -538,8 +569,7 @@ const engine = createMutationEngine({
 - `dataview/packages/dataview-core/src/operations/compile.ts` 的 compile facade 角色
 - `dataview/packages/dataview-core/src/operations/internal/compile/scope.ts`
 - `dataview/packages/dataview-core/src/operations/issue.ts` 的 alias 层
-- `dataview/packages/dataview-core/src/operations/trace.ts` 的 alias 层
-- `dataview/packages/dataview-core/src/operations/index.ts` 中 `apply / compile / trace / issue / key` 同义导出
+- `dataview/packages/dataview-core/src/operations/index.ts` 中 `apply / compile / issue / key` 同义导出
 - `dataview/packages/dataview-engine/src/mutation/kernel.ts`
 - `dataview/packages/dataview-engine/src/active/plan.ts` 里的局部 `createBucketSpec`
 - `dataview/packages/dataview-core/src/operations/key.ts` 里的 parse helper
@@ -559,6 +589,8 @@ const engine = createMutationEngine({
 以下内容属于 `shared/projection` / `shared/delta` 专项，当前只冻结，不纳入本文件实施：
 
 - `whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts`
+- `dataview/packages/dataview-core/src/operations/trace.ts`
+- `dataview/packages/dataview-core/src/operations/internal/impact.ts`
 - `dataview/packages/dataview-engine/src/active/projection/runtime.ts`
 - 一切 family adapter / projection runtime facade
 
@@ -595,12 +627,13 @@ const engine = createMutationEngine({
 
 必须完成：
 
-- 只保留 `createMutationEngine(...)` 一个 public constructor。
+- 只保留 `MutationEngine` 一个 public class。
 - compile loop 下沉。
 - reducer constructor 下沉。
 - typed dispatch 下沉。
+- compile issue plain object 合同固定在 shared，并让上层直接使用。
 - `key/trace/publish/history` 全部改为 constructor 字段，而不是散落 helper。
-- runtime class 与 compile helper internalize。
+- `MutationEngine` 之外的 runtime class 与 compile helper internalize。
 
 阶段产物：
 
@@ -611,13 +644,15 @@ const engine = createMutationEngine({
 必须完成：
 
 - 删 `compileIntents / reduceDataviewOperations / dataviewMutationOperations` 这类中间层。
-- 删 `issue.ts`、`trace.ts`、`key.ts` 的 façade 角色。
+- 删 `issue.ts`、`key.ts` 的 façade 角色。
+- `ValidationCode` 直接接入 shared compile issue plain object，不再保留 dataview issue constructor / namespace / hasErrors helper。
 - `createEngine.ts` 直接装配 shared mutation engine。
 - bucket/index/query key 全部统一到 canonical bucket module 与 shared key codec。
+- trace 相关模块冻结，不在本阶段改动语义。
 
 阶段产物：
 
-- dataview core 只剩领域 intent handler、operation table、trace rule。
+- dataview core 只剩领域 intent handler、operation table、冻结中的 trace runtime。
 - dataview engine 不再有 mutation kernel adapter。
 
 ### Phase E. whiteboard 重写底层 op 与 compile 链路
@@ -670,12 +705,13 @@ const engine = createMutationEngine({
 以下条件全部满足，才算本文件完成：
 
 1. `shared/delta`、`shared/projection` 之外，shared/dataview/whiteboard 不再保留 compile/reducer/kernel/adapter/facade 重复实现。
-2. `shared/mutation` 对上只剩一个 canonical constructor。
+2. `shared/mutation` 对上只剩一个 canonical `MutationEngine` constructor。
 3. `shared/draft` 对上不再暴露 path primitives 给业务层拼装 mutation。
 4. whiteboard 底层 op 已改成结构化 patch 形状。
-5. dataview 与 whiteboard engine 顶层都直接装配 shared 最终 API。
-6. editor/react 不再各自维护 node spec compile wrapper。
-7. 全部完成后一次性 typecheck / test 通过。
+5. dataview `issue.ts` 已删除，compile issue 直接使用 shared canonical model。
+6. dataview 与 whiteboard engine 顶层都直接装配 shared 最终 API。
+7. editor/react 不再各自维护 node spec compile wrapper。
+8. 全部完成后一次性 typecheck / test 通过。
 
 ## 本轮不做的事
 
@@ -683,6 +719,7 @@ const engine = createMutationEngine({
 
 - `shared/delta` API 收缩
 - `shared/projection` API 收缩
+- dataview / whiteboard trace runtime 下沉与 spec 化
 - 基于 projection 的 family store / trace / runtime facade 收口
 - scene render / active projection 的专项设计
 

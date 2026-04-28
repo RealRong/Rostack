@@ -14,7 +14,7 @@ import type {
   IndexReadContext,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
-import { bucketSpecKey } from '@dataview/engine/active/index/bucket'
+import { bucket } from '@dataview/engine/active/index/bucket'
 
 const EMPTY_NORMALIZED_INDEX_DEMAND: NormalizedIndexDemand = {
   recordFields: [],
@@ -31,11 +31,11 @@ const uniqueBucketSpecs = (
 ): readonly BucketSpec[] => {
   const seen = new Map<string, BucketSpec>()
   specs.forEach(spec => {
-    seen.set(bucketSpecKey.write(spec), spec)
+    seen.set(bucket.key.write(spec), spec)
   })
 
   return [...seen.values()]
-    .sort((left, right) => bucketSpecKey.write(left).localeCompare(bucketSpecKey.write(right)))
+    .sort((left, right) => bucket.key.write(left).localeCompare(bucket.key.write(right)))
 }
 
 export const resolveDefaultSearchFieldIds = (

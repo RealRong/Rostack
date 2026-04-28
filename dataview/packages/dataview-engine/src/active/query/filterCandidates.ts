@@ -13,7 +13,7 @@ import type {
   EffectiveFilterRule
 } from '@dataview/engine/active/plan'
 import {
-  createBucketSpec,
+  bucket,
   readBucketIndex
 } from '@dataview/engine/active/index/bucket'
 import type {
@@ -82,7 +82,7 @@ const resolveBucketFilterCandidates = (input: {
   lookup: Extract<FilterCandidateLookupPlan, { kind: 'bucket' }>
   index: IndexState
 }): FilterCandidate | undefined => {
-  const bucketIndex = readBucketIndex(input.index.bucket, createBucketSpec({
+  const bucketIndex = readBucketIndex(input.index.bucket, bucket.normalize({
     fieldId: input.fieldId
   }))
   if (!bucketIndex) {

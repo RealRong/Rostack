@@ -12,6 +12,7 @@ import {
 } from '@shared/mutation'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi, type DrawState } from '@whiteboard/editor'
+import { compileNodeSpec } from '@whiteboard/editor/types/node'
 import type { IntentResult } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
@@ -20,7 +21,6 @@ import { createClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboar
 import { createInsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import { createPointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import { createTextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
-import { compileReactNodeSpec } from '@whiteboard/react/features/node/registry/compile'
 import type { WhiteboardServicesContextValue } from '@whiteboard/react/runtime/hooks/useWhiteboard'
 import { createLayoutBackend } from '@whiteboard/react/runtime/whiteboard/layout'
 import { dismissBackgroundEditSelection } from '@whiteboard/react/runtime/whiteboard/pointerDown'
@@ -122,7 +122,7 @@ export const createWhiteboardServices = ({
   boardConfig: EngineBoardConfig
 }): WhiteboardRuntimeServices => {
   const initialDrawState: DrawState = product.draw.defaults
-  const nodes = compileReactNodeSpec(spec.nodes)
+  const nodes = compileNodeSpec(spec.nodes)
   const engine = engineApi.create({
     registries: coreRegistries,
     document,

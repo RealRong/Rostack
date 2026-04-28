@@ -49,9 +49,9 @@ import type {
 
 const EMPTY_BUCKET_KEYS: readonly BucketKey[] = []
 const EMPTY_RECORD_IDS: readonly RecordId[] = []
-export const bucketSpecKey = key.tuple(['fieldId', 'mode', 'interval'] as const)
+const bucketSpecKey = key.tuple(['fieldId', 'mode', 'interval'] as const)
 
-export const createBucketSpec = (
+const normalizeBucketSpec = (
   input: Pick<ViewGroup, 'fieldId'>
     & Partial<Pick<ViewGroup, 'mode' | 'bucketInterval'>>
 ): BucketSpec => ({
@@ -60,10 +60,23 @@ export const createBucketSpec = (
   ...(input.bucketInterval === undefined ? {} : { interval: input.bucketInterval })
 })
 
+const sameBucketSpec = (
+  left: BucketSpec,
+  right: BucketSpec
+) => left.fieldId === right.fieldId
+  && left.mode === right.mode
+  && left.interval === right.interval
+
+export const bucket = {
+  key: bucketSpecKey,
+  normalize: normalizeBucketSpec,
+  same: sameBucketSpec
+} as const
+
 export const readBucketIndex = (
   index: BucketIndex,
   spec: BucketSpec
-): BucketFieldIndex | undefined => index.fields.get(bucketSpecKey.write(spec))
+): BucketFieldIndex | undefined => index.fields.get(bucket.key.write(spec))
 
 export const sameBucketSpecs = (
   left: readonly BucketSpec[],
@@ -72,9 +85,7 @@ export const sameBucketSpecs = (
   && left.every((spec, index) => {
     const next = right[index]
     return next !== undefined
-      && spec.fieldId === next.fieldId
-      && spec.mode === next.mode
-      && spec.interval === next.interval
+      && bucket.same(spec, next)
   })
 
 const sameBucketKeys = (
@@ -282,7 +293,7 @@ export const ensureBucketIndex = (
   records: RecordIndex,
   specs: readonly BucketSpec[] = []
 ): BucketIndex => {
-  const nextSpecKeys = new Set(specs.map(spec => bucketSpecKey.write(spec)))
+  const nextSpecKeys = new Set(specs.map(spec => bucket.key.write(spec)))
   const fields = createMapPatchBuilder(previous.fields)
 
   previous.fields.forEach((_field, key) => {
@@ -292,7 +303,7 @@ export const ensureBucketIndex = (
   })
 
   specs.forEach(spec => {
-    const key = bucketSpecKey.write(spec)
+    const key = bucket.key.write(spec)
     if (fields.has(key) || !context.fieldIdSet.has(spec.fieldId)) {
       return
     }

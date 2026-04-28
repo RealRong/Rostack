@@ -5,7 +5,7 @@ import type {
 } from '@dataview/core/types'
 import { test } from 'vitest'
 import {
-  createBucketSpec
+  bucket
 } from '@dataview/engine/active/index/bucket'
 import type {
   NormalizedIndexDemand
@@ -141,7 +141,7 @@ const createDemand = (
   recordFields: [FIELD_STATUS],
   search: [],
   buckets: view.group
-    ? [createBucketSpec(view.group)]
+    ? [bucket.normalize(view.group)]
     : [],
   sortFields: [],
   calculations: []

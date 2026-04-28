@@ -22,10 +22,15 @@ import {
   normalizeIndexDemand,
   resolveDefaultSearchFieldIds
 } from '@dataview/engine/active/index/demand'
+import {
+  bucket
+} from '@dataview/engine/active/index/bucket'
 import type {
-  BucketSpec,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
+import {
+  writeQueryExecutionKey
+} from '@dataview/engine/active/query/key'
 import type {
   DocumentReadContext,
   DocumentReader
@@ -135,41 +140,6 @@ const resolveIndexedFilterRules = (
   return rules
 }
 
-const createExecutionKey = (input: {
-  search?: QueryPlan['search']
-  filters: readonly EffectiveFilterRule[]
-  filterMode: View['filter']['mode']
-  sort: View['sort']
-  orders: View['orders']
-}): string => JSON.stringify({
-  search: input.search
-    ? {
-        query: input.search.query,
-        fieldIds: input.search.fieldIds
-      }
-    : undefined,
-  filters: input.filters.map(({ fieldId, field, rule }) => ({
-    fieldId,
-    fieldKind: field?.kind,
-    rule
-  })),
-  filterMode: input.filters.length
-    ? input.filterMode
-    : undefined,
-  sort: input.sort,
-  orders: input.orders
-})
-
-const createBucketSpec = (
-  fieldId: FieldId,
-  mode?: ViewGroup['mode'],
-  interval?: ViewGroup['bucketInterval']
-): BucketSpec => ({
-  fieldId,
-  ...(mode === undefined ? {} : { mode }),
-  ...(interval === undefined ? {} : { interval })
-})
-
 const createQueryPlan = (
   reader: DocumentReader,
   view: View
@@ -202,9 +172,13 @@ const createQueryPlan = (
         })
       )
     },
-    executionKey: createExecutionKey({
+    executionKey: writeQueryExecutionKey({
       search,
-      filters,
+      filters: filters.map(({ fieldId, field, rule }) => ({
+        fieldId,
+        fieldKind: field?.kind,
+        rule
+      })),
       filterMode: view.filter.mode,
       sort: view.sort,
       orders: view.orders
@@ -244,7 +218,9 @@ export const compileViewPlan = (
         ? [entry.fieldId]
         : []
     ))
-  ).map(fieldId => createBucketSpec(fieldId))
+  ).map(fieldId => bucket.normalize({
+    fieldId
+  }))
   const section = view.group
     ? {
         fieldId: view.group.fieldId,
@@ -256,7 +232,11 @@ export const compileViewPlan = (
     : undefined
   const buckets = section
     ? [
-        createBucketSpec(section.fieldId, section.mode, section.interval),
+        bucket.normalize({
+          fieldId: section.fieldId,
+          mode: section.mode,
+          bucketInterval: section.interval
+        }),
         ...filterBucketSpecs
       ]
     : filterBucketSpecs

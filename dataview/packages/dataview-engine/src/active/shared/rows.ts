@@ -6,7 +6,7 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import {
-  bucketSpecKey
+  bucket
 } from '@dataview/engine/active/index/bucket'
 import type {
   BucketSpec,
@@ -172,7 +172,7 @@ export const createRows = (input: {
         return column
       },
       bucket: spec => {
-        const key = bucketSpecKey.write(spec)
+        const key = bucket.key.write(spec)
         if (bucketColumns.has(key)) {
           return bucketColumns.get(key)
         }

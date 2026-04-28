@@ -15,9 +15,9 @@ import {
 } from '@dataview/engine/active/index/demand'
 import {
   buildBucketIndex,
+  bucket as bucketSpec,
   ensureBucketIndex,
-  syncBucketIndex,
-  bucketSpecKey
+  syncBucketIndex
 } from '@dataview/engine/active/index/bucket'
 import {
   buildRecordIndex,
@@ -180,10 +180,10 @@ export const deriveIndex = (input: {
   const bucketMs = now() - bucketStart
 
   const previousSectionBucketKey = input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)
-    ? bucketSpecKey.write(input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)!)
+    ? bucketSpec.key.write(input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)!)
     : undefined
   const nextSectionBucketKey = nextDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)
-    ? bucketSpecKey.write(nextDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)!)
+    ? bucketSpec.key.write(nextDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)!)
     : undefined
   if (
     nextSectionBucketKey

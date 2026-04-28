@@ -18,6 +18,12 @@ export type {
   NodeTypeRead,
   NodeTypeSupport
 } from '@whiteboard/editor/types/node/read'
+export type {
+  CompiledNodeSpec
+} from '@whiteboard/editor/types/node/compile'
+export {
+  compileNodeSpec
+} from '@whiteboard/editor/types/node/compile'
 export {
   createNodeTypeSupport,
   resolveNodeEditorCapability

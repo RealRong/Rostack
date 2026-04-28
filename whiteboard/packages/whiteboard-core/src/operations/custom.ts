@@ -12,17 +12,19 @@ import type {
   MutationDeltaInput,
   MutationFootprint
 } from '@shared/mutation'
+import {
+  createEdgeLabelPatch,
+  readEdgeLabelUpdateFromPatch
+} from '@whiteboard/core/edge/update'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import {
+  createMindmapTopicPatch,
+  readMindmapTopicUpdateFromPatch
+} from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   WhiteboardCompileServices
 } from '@whiteboard/core/operations/compile'
-import {
-  createEdgeLabelPatch,
-  createMindmapTopicPatch,
-  splitEdgeLabelPatch,
-  splitMindmapTopicPatch
-} from '@whiteboard/core/operations/patch'
 import type {
   CanvasItemRef,
   CanvasOrderAnchor,
@@ -1606,7 +1608,7 @@ const createMindmapTopicPatchResult = (
     })
   }
 
-  const update = splitMindmapTopicPatch(input.op.patch)
+  const update = readMindmapTopicUpdateFromPatch(input.op.patch)
   const inverse = nodeApi.update.inverse(current, update)
   if (!inverse.ok) {
     return input.fail({
@@ -2094,7 +2096,7 @@ const reduceEdgeLabelPatch = (
   }
 
   const label = labels[index]!
-  const update = splitEdgeLabelPatch(input.op.patch)
+  const update = readEdgeLabelUpdateFromPatch(input.op.patch)
   const inverseFields: EdgeLabelFieldPatch = {}
   if (update.fields) {
     if (hasOwn(update.fields, 'text')) {

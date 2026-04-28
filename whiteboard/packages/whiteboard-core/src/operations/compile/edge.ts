@@ -4,11 +4,21 @@ import {
   type RecordWrite
 } from '@shared/draft'
 import { edge as edgeApi } from '@whiteboard/core/edge'
-import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
-import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
+import {
+  createEdgeLabelPatch,
+  createEdgePatch
+} from '@whiteboard/core/edge/update'
 import type {
-  EdgeIntent,
-} from '@whiteboard/core/operations/intent-types'
+  WhiteboardCompileContext,
+  WhiteboardCompileHandlerTable
+} from '@whiteboard/core/operations/compile/helpers'
+import {
+  failCancelled,
+  failInvalid,
+  readCompileRegistries,
+  readCompileServices,
+  requireEdge
+} from '@whiteboard/core/operations/compile/helpers'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {
   Edge,
@@ -22,10 +32,6 @@ import type {
   Operation,
   Point
 } from '@whiteboard/core/types'
-import {
-  createEdgeLabelPatch,
-  createEdgePatch
-} from '@whiteboard/core/operations/patch'
 
 const hasOwn = <T extends object>(
   target: T,
@@ -176,7 +182,7 @@ const emitEdgeRouteDiffOps = (
   edgeId: EdgeId,
   currentPoints: readonly EdgeRoutePoint[],
   nextPoints: readonly Point[],
-  ctx: WhiteboardCompileScope
+  ctx: WhiteboardCompileContext
 ) => {
   const samePoint = (left: Point | undefined, right: Point | undefined) => (
     left?.x === right?.x && left?.y === right?.y
@@ -220,7 +226,7 @@ const emitEdgeRouteDiffOps = (
 
     nextMiddle.forEach((point) => {
       const routePoint: EdgeRoutePoint = {
-        id: ctx.ids.edgeRoutePoint(),
+        id: readCompileServices(ctx).ids.edgeRoutePoint(),
         x: point.x,
         y: point.y
       }
@@ -282,7 +288,7 @@ const emitEdgeRouteDiffOps = (
   let to: Extract<Operation, { type: 'edge.route.point.insert' }>['to'] = { kind: 'start' }
   nextPoints.forEach((point) => {
     const routePoint: EdgeRoutePoint = {
-      id: ctx.ids.edgeRoutePoint(),
+      id: readCompileServices(ctx).ids.edgeRoutePoint(),
       x: point.x,
       y: point.y
     }
@@ -302,7 +308,7 @@ const emitEdgeRouteDiffOps = (
 const emitEdgeUpdateInputOps = (
   edge: Edge,
   input: EdgeUpdateInput,
-  ctx: WhiteboardCompileScope
+  ctx: WhiteboardCompileContext
 ) => {
   const fields = buildEdgeFieldPatch(edge, input.fields)
   const record = compactRecordWrite(edge, input.record)
@@ -323,7 +329,7 @@ const emitEdgeUpdateInputOps = (
 export const emitEdgeMovePatchOps = (
   edge: Edge,
   patch: EdgePatch,
-  ctx: WhiteboardCompileScope
+  ctx: WhiteboardCompileContext
 ) => {
   const fields: EdgeFieldPatch = {}
   if (patch.source) {
@@ -372,13 +378,13 @@ export const emitEdgeMovePatchOps = (
 const compileEdgeRouteDelete = (
   edge: Edge,
   pointId: string,
-  ctx: WhiteboardCompileScope
+  ctx: WhiteboardCompileContext
 ) => {
   const point = edge.route?.kind === 'manual'
     ? edge.route.points.find((entry) => entry.id === pointId)
     : undefined
   if (!point) {
-    return ctx.fail.invalid(`Edge ${edge.id} route point not found.`)
+    return failInvalid(ctx, `Edge ${edge.id} route point not found.`)
   }
 
   ctx.emit({
@@ -389,7 +395,7 @@ const compileEdgeRouteDelete = (
 }
 
 type EdgeIntentHandlers = Pick<
-  WhiteboardScopedIntentHandlers,
+  WhiteboardCompileHandlerTable,
   'edge.create'
   | 'edge.update'
   | 'edge.move'
@@ -407,54 +413,63 @@ type EdgeIntentHandlers = Pick<
   | 'edge.route.clear'
 >
 
+const failLockedEdgeModification = (
+  ctx: WhiteboardCompileContext,
+  reason?: import('@whiteboard/core/operations/lock').LockDecisionReason
+) => failCancelled(
+  ctx,
+  reason === 'locked-node'
+    ? 'Locked nodes cannot be modified.'
+    : reason === 'locked-edge'
+      ? 'Locked edges cannot be modified.'
+      : 'Locked node relations cannot be modified.'
+)
+
 export const edgeIntentHandlers: EdgeIntentHandlers = {
-  'edge.create': (intent, ctx) => {
-    const document = ctx.read.document()
+  'edge.create': (ctx) => {
+    const document = ctx.document
     const built = edgeApi.op.create({
-      payload: intent.input,
+      payload: ctx.intent.input,
       doc: document,
-      registries: ctx.registries,
-      createEdgeId: ctx.ids.edge,
-      createEdgeRoutePointId: ctx.ids.edgeRoutePoint
+      registries: readCompileRegistries(ctx),
+      createEdgeId: readCompileServices(ctx).ids.edge,
+      createEdgeRoutePointId: readCompileServices(ctx).ids.edgeRoutePoint
     })
     if (!built.ok) {
-      return ctx.fail.invalid(built.error.message, built.error.details)
+      return failInvalid(ctx, built.error.message, built.error.details)
     }
 
     ctx.emit(built.data.operation)
-    return {
+    ctx.output({
       edgeId: built.data.edgeId
-    }
+    })
   },
-  'edge.update': (intent, ctx) => {
-    const document = ctx.read.document()
+  'edge.update': (ctx) => {
+    const document = ctx.document
     const decision = resolveLockDecision({
       document,
       target: {
         kind: 'edge-ids',
-        edgeIds: intent.updates.map((entry) => entry.id)
+        edgeIds: ctx.intent.updates.map((entry) => entry.id)
       }
     })
     if (!decision.allowed) {
-      return ctx.fail.cancelled(
-        decision.reason === 'locked-node'
-          ? 'Locked nodes cannot be modified.'
-          : decision.reason === 'locked-edge'
-            ? 'Locked edges cannot be modified.'
-            : 'Locked node relations cannot be modified.'
-      )
+      return failLockedEdgeModification(ctx, decision.reason)
     }
 
-    intent.updates.forEach((entry) => {
-      const edge = ctx.read.edge(entry.id)
+    ctx.intent.updates.forEach((entry) => {
+      const edge = ctx.document.edges[entry.id]
       if (!edge) {
         return
       }
       emitEdgeUpdateInputOps(edge, entry.input, ctx)
     })
   },
-  'edge.move': (intent, ctx) => {
-    const document = ctx.read.document()
+  'edge.move': (ctx) => {
+    const {
+      intent,
+      document
+    } = ctx
     const decision = resolveLockDecision({
       document,
       target: {
@@ -463,17 +478,11 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       }
     })
     if (!decision.allowed) {
-      return ctx.fail.cancelled(
-        decision.reason === 'locked-node'
-          ? 'Locked nodes cannot be modified.'
-          : decision.reason === 'locked-edge'
-            ? 'Locked edges cannot be modified.'
-            : 'Locked node relations cannot be modified.'
-      )
+      return failLockedEdgeModification(ctx, decision.reason)
     }
 
     intent.ids.forEach((edgeId) => {
-      const edge = ctx.read.edge(edgeId)
+      const edge = ctx.document.edges[edgeId]
       const patch = edge ? edgeApi.edit.move(edge, intent.delta) : undefined
       if (!edge || !patch) {
         return
@@ -481,8 +490,11 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       emitEdgeMovePatchOps(edge, patch, ctx)
     })
   },
-  'edge.reconnect.commit': (intent, ctx) => {
-    const document = ctx.read.document()
+  'edge.reconnect.commit': (ctx) => {
+    const {
+      intent,
+      document
+    } = ctx
     const currentDecision = resolveLockDecision({
       document,
       target: {
@@ -491,13 +503,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       }
     })
     if (!currentDecision.allowed) {
-      return ctx.fail.cancelled(
-        currentDecision.reason === 'locked-node'
-          ? 'Locked nodes cannot be modified.'
-          : currentDecision.reason === 'locked-edge'
-            ? 'Locked edges cannot be modified.'
-            : 'Locked node relations cannot be modified.'
-      )
+      return failLockedEdgeModification(ctx, currentDecision.reason)
     }
 
     const targetDecision = resolveLockDecision({
@@ -508,16 +514,10 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       }
     })
     if (!targetDecision.allowed) {
-      return ctx.fail.cancelled(
-        targetDecision.reason === 'locked-node'
-          ? 'Locked nodes cannot be modified.'
-          : targetDecision.reason === 'locked-edge'
-            ? 'Locked edges cannot be modified.'
-            : 'Locked node relations cannot be modified.'
-      )
+      return failLockedEdgeModification(ctx, targetDecision.reason)
     }
 
-    const edge = ctx.read.edge(intent.edgeId)
+    const edge = ctx.document.edges[intent.edgeId]
     if (!edge) {
       return
     }
@@ -538,70 +538,64 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
         : {})
     }, ctx)
   },
-  'edge.delete': (intent, ctx) => {
-    const document = ctx.read.document()
+  'edge.delete': (ctx) => {
+    const document = ctx.document
     const decision = resolveLockDecision({
       document,
       target: {
         kind: 'edge-ids',
-        edgeIds: intent.ids
+        edgeIds: ctx.intent.ids
       }
     })
     if (!decision.allowed) {
-      return ctx.fail.cancelled(
-        decision.reason === 'locked-node'
-          ? 'Locked nodes cannot be modified.'
-          : decision.reason === 'locked-edge'
-            ? 'Locked edges cannot be modified.'
-            : 'Locked node relations cannot be modified.'
-      )
+      return failLockedEdgeModification(ctx, decision.reason)
     }
 
-    intent.ids.forEach((id) => {
+    ctx.intent.ids.forEach((id) => {
       ctx.emit({
         type: 'edge.delete',
         id
       })
     })
   },
-  'edge.label.insert': (intent, ctx) => {
-    const edge = ctx.read.requireEdge(intent.edgeId)
+  'edge.label.insert': (ctx) => {
+    const edge = requireEdge(ctx, ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
-    const labelId = ctx.ids.edgeLabel()
+    const labelId = readCompileServices(ctx).ids.edgeLabel()
     const label: EdgeLabel = {
       id: labelId,
-      ...(intent.label.text !== undefined ? { text: intent.label.text } : {}),
-      ...(intent.label.t !== undefined ? { t: intent.label.t } : {}),
-      ...(intent.label.offset !== undefined ? { offset: intent.label.offset } : {}),
-      ...(intent.label.style !== undefined ? { style: intent.label.style } : {}),
-      ...(intent.label.data !== undefined ? { data: intent.label.data } : {})
+      ...(ctx.intent.label.text !== undefined ? { text: ctx.intent.label.text } : {}),
+      ...(ctx.intent.label.t !== undefined ? { t: ctx.intent.label.t } : {}),
+      ...(ctx.intent.label.offset !== undefined ? { offset: ctx.intent.label.offset } : {}),
+      ...(ctx.intent.label.style !== undefined ? { style: ctx.intent.label.style } : {}),
+      ...(ctx.intent.label.data !== undefined ? { data: ctx.intent.label.data } : {})
     }
     ctx.emit({
       type: 'edge.label.insert',
       edgeId: edge.id,
       label,
-      to: intent.to ?? { kind: 'end' }
+      to: ctx.intent.to ?? { kind: 'end' }
     })
-    return {
+    ctx.output({
       labelId
-    }
+    })
   },
-  'edge.label.update': (intent, ctx) => {
-    const edge = ctx.read.requireEdge(intent.edgeId)
+  'edge.label.update': (ctx) => {
+    const edge = requireEdge(ctx, ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
-    const label = edge.labels?.find((entry) => entry.id === intent.labelId)
+    const label = edge.labels?.find((entry) => entry.id === ctx.intent.labelId)
     if (!label) {
-      return ctx.fail.invalid(`Edge label ${intent.labelId} not found.`)
+      return failInvalid(ctx, `Edge label ${ctx.intent.labelId} not found.`)
     }
 
-    const fields = buildEdgeLabelFieldPatch(label, intent.input.fields)
-    const record = compactRecordWrite(label, intent.input.record)
+    const fields = buildEdgeLabelFieldPatch(label, ctx.intent.input.fields)
+    const record = compactRecordWrite(label, ctx.intent.input.record)
     if (!fields && !record) {
       return
     }
@@ -616,61 +610,61 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       })
     })
   },
-  'edge.label.move': (intent, ctx) => {
+  'edge.label.move': (ctx) => {
     ctx.emit({
       type: 'edge.label.move',
-      edgeId: intent.edgeId,
-      labelId: intent.labelId,
-      to: intent.to
+      edgeId: ctx.intent.edgeId,
+      labelId: ctx.intent.labelId,
+      to: ctx.intent.to
     })
   },
-  'edge.label.delete': (intent, ctx) => {
+  'edge.label.delete': (ctx) => {
     ctx.emit({
       type: 'edge.label.delete',
-      edgeId: intent.edgeId,
-      labelId: intent.labelId
+      edgeId: ctx.intent.edgeId,
+      labelId: ctx.intent.labelId
     })
   },
-  'edge.route.insert': (intent, ctx) => {
-    const edge = ctx.read.requireEdge(intent.edgeId)
+  'edge.route.insert': (ctx) => {
+    const edge = requireEdge(ctx, ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
-    const pointId = ctx.ids.edgeRoutePoint()
+    const pointId = readCompileServices(ctx).ids.edgeRoutePoint()
     ctx.emit({
       type: 'edge.route.point.insert',
       edgeId: edge.id,
       point: {
         id: pointId,
-        x: intent.point.x,
-        y: intent.point.y
+        x: ctx.intent.point.x,
+        y: ctx.intent.point.y
       },
-      to: intent.to ?? { kind: 'end' }
+      to: ctx.intent.to ?? { kind: 'end' }
     })
-    return {
+    ctx.output({
       pointId
-    }
+    })
   },
-  'edge.route.update': (intent, ctx) => {
-    const edge = ctx.read.requireEdge(intent.edgeId)
+  'edge.route.update': (ctx) => {
+    const edge = requireEdge(ctx, ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
     const point = edge.route?.kind === 'manual'
-      ? edge.route.points.find((entry) => entry.id === intent.pointId)
+      ? edge.route.points.find((entry) => entry.id === ctx.intent.pointId)
       : undefined
     if (!point) {
-      return ctx.fail.invalid(`Edge ${edge.id} route point not found.`)
+      return failInvalid(ctx, `Edge ${edge.id} route point not found.`)
     }
 
     const fields: Partial<Record<'x' | 'y', number>> = {}
-    if (intent.fields.x !== undefined && point.x !== intent.fields.x) {
-      fields.x = intent.fields.x
+    if (ctx.intent.fields.x !== undefined && point.x !== ctx.intent.fields.x) {
+      fields.x = ctx.intent.fields.x
     }
-    if (intent.fields.y !== undefined && point.y !== intent.fields.y) {
-      fields.y = intent.fields.y
+    if (ctx.intent.fields.y !== undefined && point.y !== ctx.intent.fields.y) {
+      fields.y = ctx.intent.fields.y
     }
     if (!Object.keys(fields).length) {
       return
@@ -683,35 +677,35 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       patch: fields
     })
   },
-  'edge.route.set': (intent, ctx) => {
-    const edge = ctx.read.requireEdge(intent.edgeId)
+  'edge.route.set': (ctx) => {
+    const edge = requireEdge(ctx, ctx.intent.edgeId)
     if (!edge) {
       return
     }
     emitEdgeRouteDiffOps(
       edge.id,
       edge.route?.kind === 'manual' ? edge.route.points : [],
-      intent.route.kind === 'manual' ? intent.route.points : [],
+      ctx.intent.route.kind === 'manual' ? ctx.intent.route.points : [],
       ctx
     )
   },
-  'edge.route.move': (intent, ctx) => {
+  'edge.route.move': (ctx) => {
     ctx.emit({
       type: 'edge.route.point.move',
-      edgeId: intent.edgeId,
-      pointId: intent.pointId,
-      to: intent.to
+      edgeId: ctx.intent.edgeId,
+      pointId: ctx.intent.pointId,
+      to: ctx.intent.to
     })
   },
-  'edge.route.delete': (intent, ctx) => {
-    const edge = ctx.read.requireEdge(intent.edgeId)
+  'edge.route.delete': (ctx) => {
+    const edge = requireEdge(ctx, ctx.intent.edgeId)
     if (!edge) {
       return
     }
-    return compileEdgeRouteDelete(edge, intent.pointId, ctx)
+    return compileEdgeRouteDelete(edge, ctx.intent.pointId, ctx)
   },
-  'edge.route.clear': (intent, ctx) => {
-    const edge = ctx.read.requireEdge(intent.edgeId)
+  'edge.route.clear': (ctx) => {
+    const edge = requireEdge(ctx, ctx.intent.edgeId)
     if (!edge) {
       return
     }

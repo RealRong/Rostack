@@ -40,22 +40,8 @@ import {
   readTouchedFields
 } from '../projection/dirty'
 import {
-  type ActiveProjectionPhase,
-  readActiveView
-} from '../projection/context'
-import {
-  createActiveStageMetrics,
-  toActivePhaseMetrics
+  createActiveStageMetrics
 } from '../projection/metrics'
-import {
-  membershipPhaseScope,
-  type MembershipPhaseScope
-} from '../projection/types'
-
-const EMPTY_METRICS = toActivePhaseMetrics({
-  deriveMs: 0,
-  publishMs: 0
-})
 
 const resolveMembershipAction = (input: {
   activeViewId: ViewId
@@ -250,62 +236,5 @@ export const runMembershipStage = (input: {
       changedNodeCount: changedSectionCount,
       changedSectionCount
     })
-  }
-}
-
-export const activeMembershipPhase: ActiveProjectionPhase<'membership'> = {
-  after: ['query'],
-  scope: membershipPhaseScope,
-  run: (context) => {
-    const { activeViewId, view } = readActiveView(context.input)
-    if (!activeViewId || !view) {
-      return {
-        action: 'reuse',
-        metrics: EMPTY_METRICS
-      }
-    }
-
-    const previousState = context.state.membership.state
-    const queryScope = (context.scope as MembershipPhaseScope | undefined)?.query
-    const result = runMembershipStage({
-      activeViewId,
-      previousViewId: context.state.publish.previous?.view.id,
-      delta: context.input.delta,
-      view,
-      query: context.state.query.state,
-      queryDelta: queryScope?.delta ?? EMPTY_QUERY_PHASE_DELTA,
-      previous: previousState,
-      index: context.input.index.state,
-      indexDelta: context.input.index.delta
-    })
-
-    context.state.membership.state = result.state
-
-    return {
-      action: result.action,
-      metrics: toActivePhaseMetrics({
-        deriveMs: result.deriveMs,
-        publishMs: result.publishMs,
-        stage: result.metrics
-      }),
-      ...(result.action !== 'reuse'
-        ? {
-            emit: {
-              summary: {
-                membership: {
-                  action: result.action,
-                  previous: previousState,
-                  delta: result.delta
-                }
-              },
-              publish: {
-                membership: {
-                  previous: previousState
-                }
-              }
-            }
-          }
-        : {})
-    }
   }
 }

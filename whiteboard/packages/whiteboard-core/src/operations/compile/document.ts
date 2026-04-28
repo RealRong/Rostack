@@ -1,61 +1,68 @@
 import { document as documentApi, normalizeDocument } from '@whiteboard/core/document'
+import type {
+  WhiteboardCompileContext,
+  WhiteboardCompileHandlerTable
+} from '@whiteboard/core/operations/compile/helpers'
 import {
-  createDocumentPatch
-} from '@whiteboard/core/operations/patch'
-import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
-import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
+  failInvalid,
+  readCompileRegistries,
+  readCompileServices
+} from '@whiteboard/core/operations/compile/helpers'
 
 const emitOps = (
-  ctx: Pick<WhiteboardCompileScope, 'emitMany'>,
+  ctx: Pick<WhiteboardCompileContext, 'emitMany'>,
   ops: readonly import('@whiteboard/core/types').Operation[]
 ) => {
-  ctx.emitMany(ops)
+  ctx.emitMany(...ops)
 }
 
 type DocumentIntentHandlers = Pick<
-  WhiteboardScopedIntentHandlers,
+  WhiteboardCompileHandlerTable,
   'document.replace'
   | 'document.insert'
   | 'document.background.set'
 >
 
 export const documentIntentHandlers: DocumentIntentHandlers = {
-  'document.replace': (intent, ctx) => {
+  'document.replace': (ctx) => {
+    const intent = ctx.intent
     ctx.emit({
       type: 'document.create',
       value: normalizeDocument(documentApi.assert(intent.document))
     })
   },
-  'document.insert': (intent, ctx) => {
+  'document.insert': (ctx) => {
+    const intent = ctx.intent
     const built = documentApi.slice.insert.ops({
-      doc: ctx.read.document(),
+      doc: ctx.document,
       slice: intent.slice,
-      registries: ctx.registries,
-      createNodeId: ctx.ids.node,
-      createEdgeId: ctx.ids.edge,
+      registries: readCompileRegistries(ctx),
+      createNodeId: readCompileServices(ctx).ids.node,
+      createEdgeId: readCompileServices(ctx).ids.edge,
       origin: intent.options?.origin,
       roots: intent.options?.roots
     })
     if (!built.ok) {
-      return ctx.fail.invalid(
+      return failInvalid(
+        ctx,
         built.error.message,
         built.error.details
       )
     }
 
     emitOps(ctx, built.data.operations)
-    return {
+    ctx.output({
       allNodeIds: built.data.allNodeIds,
       allEdgeIds: built.data.allEdgeIds,
       roots: built.data.roots
-    }
+    })
   },
-  'document.background.set': (intent, ctx) => {
+  'document.background.set': (ctx) => {
     ctx.emit({
       type: 'document.patch',
-      patch: createDocumentPatch({
-        background: intent.background
-      })
+      patch: {
+        background: ctx.intent.background
+      }
     })
   }
 }

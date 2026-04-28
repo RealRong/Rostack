@@ -31,22 +31,8 @@ import {
   hasViewCalculationChanges
 } from '../projection/dirty'
 import {
-  type ActiveProjectionPhase,
-  readActiveView
-} from '../projection/context'
-import {
-  createActiveStageMetrics,
-  toActivePhaseMetrics
+  createActiveStageMetrics
 } from '../projection/metrics'
-import {
-  summaryPhaseScope,
-  type SummaryPhaseScope
-} from '../projection/types'
-
-const EMPTY_METRICS = toActivePhaseMetrics({
-  deriveMs: 0,
-  publishMs: 0
-})
 
 const resolveSummaryAction = (input: {
   activeViewId: ViewId
@@ -204,60 +190,5 @@ export const runSummaryStage = (input: {
       changedNodeCount: changedSectionCount,
       changedSectionCount
     })
-  }
-}
-
-export const activeSummaryPhase: ActiveProjectionPhase<'summary'> = {
-  after: ['membership'],
-  scope: summaryPhaseScope,
-  run: (context) => {
-    const { activeViewId, view } = readActiveView(context.input)
-    const plan = context.input.view.plan
-    if (!activeViewId || !view || !plan) {
-      return {
-        action: 'reuse',
-        metrics: EMPTY_METRICS
-      }
-    }
-
-    const previousState = context.state.summary.state
-    const membershipScope = (context.scope as SummaryPhaseScope | undefined)?.membership
-    const result = runSummaryStage({
-      activeViewId,
-      previousViewId: context.state.publish.previous?.view.id,
-      delta: context.input.delta,
-      indexDelta: context.input.index.delta,
-      view,
-      calcFields: plan.calcFields,
-      previous: previousState,
-      previousMembership: membershipScope?.previous ?? context.state.membership.state,
-      membership: context.state.membership.state,
-      membershipAction: membershipScope?.action ?? 'reuse',
-      membershipDelta: membershipScope?.delta ?? EMPTY_MEMBERSHIP_PHASE_DELTA,
-      index: context.input.index.state
-    })
-
-    context.state.summary.state = result.state
-
-    return {
-      action: result.action,
-      metrics: toActivePhaseMetrics({
-        deriveMs: result.deriveMs,
-        publishMs: result.publishMs,
-        stage: result.metrics
-      }),
-      ...(result.action !== 'reuse'
-        ? {
-            emit: {
-              publish: {
-                summary: {
-                  previous: previousState,
-                  delta: result.delta
-                }
-              }
-            }
-          }
-        : {})
-    }
   }
 }

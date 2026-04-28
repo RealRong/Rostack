@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { MutationEngine } from '@shared/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
-import { apply } from '@whiteboard/core/operations'
+import {
+  validateWhiteboardOperationBatch,
+  whiteboardCustom,
+  whiteboardEntities
+} from '@whiteboard/core/operations'
+import type { Document, Operation } from '@whiteboard/core/types'
 
 const FIXED_TIMESTAMP = Date.parse('2024-01-01T00:00:00.000Z')
 const FIXED_ISO = new Date(FIXED_TIMESTAMP).toISOString()
@@ -40,24 +46,44 @@ const createTextNode = (overrides = {}) => ({
   ...overrides
 })
 
-const replayInverse = (doc, operations) =>
-  apply({
-    doc,
-    ops: operations,
+const applyOperations = (
+  doc: Document,
+  operations: readonly Operation[]
+) => {
+  const engine = new MutationEngine({
+    document: doc,
+    normalize: documentApi.normalize,
+    entities: whiteboardEntities,
+    custom: whiteboardCustom,
+    history: false
+  })
+  const invalid = validateWhiteboardOperationBatch({
+    document: doc,
+    operations,
     origin: 'user'
   })
+  if (invalid) {
+    return {
+      ok: false as const,
+      error: invalid
+    }
+  }
+
+  return engine.apply(operations, {
+    origin: 'user'
+  })
+}
+
+const replayInverse = (doc, operations) =>
+  applyOperations(doc, operations)
 
 test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () => {
   const doc = createDocWithNode(createTextNode())
-  const result = apply({
-    doc,
-    ops: nodeApi.update.createOperation('node_1', {
-      record: {
-        'data.text': 'world'
-      }
-    }),
-    origin: 'user'
-  })
+  const result = applyOperations(doc, nodeApi.update.createOperation('node_1', {
+    record: {
+      'data.text': 'world'
+    }
+  }))
 
   assert.ok(result.ok)
   assert.deepEqual(result.commit.inverse, [{
@@ -178,15 +204,11 @@ test('node.update 会为 direct mindmap data mutation 标记 node.value', () => 
     meta: tree.meta
   }
 
-  const result = apply({
-    doc,
-    ops: nodeApi.update.createOperation('mind_1', {
-      record: {
-        'data.meta.title': 'new'
-      }
-    }),
-    origin: 'user'
-  })
+  const result = applyOperations(doc, nodeApi.update.createOperation('mind_1', {
+    record: {
+      'data.meta.title': 'new'
+    }
+  }))
 
   assert.ok(result.ok)
   assert.deepEqual(result.commit.delta, {

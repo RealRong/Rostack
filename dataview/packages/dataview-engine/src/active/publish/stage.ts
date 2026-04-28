@@ -37,17 +37,8 @@ import type {
 import type { ItemIdPool } from './itemIdPool'
 import type { EntityDelta } from '@shared/delta'
 import {
-  type ActiveProjectionPhase,
-  readActiveView
-} from '../projection/context'
-import {
-  createActiveStageMetrics,
-  toActivePhaseMetrics
+  createActiveStageMetrics
 } from '../projection/metrics'
-import {
-  publishPhaseScope,
-  type PublishPhaseScope
-} from '../projection/types'
 
 const SNAPSHOT_KEYS = [
   'view',
@@ -61,26 +52,6 @@ const SNAPSHOT_KEYS = [
   'kanban',
   'summaries'
 ] as const satisfies readonly (keyof ViewState)[]
-
-const EMPTY_METRICS = toActivePhaseMetrics({
-  deriveMs: 0,
-  publishMs: 0
-})
-
-const createPublishReset = (
-  previous: ViewState | undefined
-): {
-  snapshot?: undefined
-  action: 'reuse' | 'sync'
-} => previous
-  ? {
-      snapshot: undefined,
-      action: 'sync'
-    }
-  : {
-      snapshot: undefined,
-      action: 'reuse'
-    }
 
 const publishViewRecords = (input: {
   state: QueryPhaseState
@@ -235,52 +206,5 @@ export const runPublishStage = (input: {
       reusedNodeCount: published?.reusedNodeCount ?? 0,
       rebuiltNodeCount: published?.rebuiltNodeCount ?? outputCount
     })
-  }
-}
-
-export const activePublishPhase: ActiveProjectionPhase<'publish'> = {
-  after: ['query', 'membership', 'summary'],
-  scope: publishPhaseScope,
-  run: (context) => {
-    const scope = context.scope as PublishPhaseScope | undefined
-    const { activeViewId, view } = readActiveView(context.input)
-    if (scope?.reset || !activeViewId || !view) {
-      const reset = createPublishReset(context.state.publish.previous)
-      context.state.publish.itemIds.gc.clear()
-      context.state.publish.snapshot = reset.snapshot
-
-      return {
-        action: reset.action,
-        metrics: EMPTY_METRICS
-      }
-    }
-
-    const result = runPublishStage({
-      reader: context.input.read.reader,
-      activeViewId,
-      previous: context.state.publish.previous,
-      view,
-      queryState: context.state.query.state,
-      previousRecords: context.state.publish.previous?.records,
-      membershipState: context.state.membership.state,
-      previousMembershipState: scope?.membership?.previous ?? context.state.membership.state,
-      previousSections: context.state.publish.previous?.sections,
-      previousItems: context.state.publish.previous?.items,
-      summaryState: context.state.summary.state,
-      previousSummaryState: scope?.summary?.previous ?? context.state.summary.state,
-      previousSummaries: context.state.publish.previous?.summaries,
-      itemIds: context.state.publish.itemIds
-    })
-
-    context.state.publish.snapshot = result.snapshot
-
-    return {
-      action: result.action,
-      metrics: toActivePhaseMetrics({
-        deriveMs: result.deriveMs,
-        publishMs: result.publishMs,
-        stage: result.metrics
-      })
-    }
   }
 }

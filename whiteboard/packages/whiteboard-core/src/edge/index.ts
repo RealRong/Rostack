@@ -89,6 +89,11 @@ import {
   isEdgePatchEqual
 } from '@whiteboard/core/edge/patch'
 import {
+  createEdgeLabelPatch,
+  createEdgePatch,
+  readEdgeLabelUpdateFromPatch
+} from '@whiteboard/core/edge/update'
+import {
   collectRelatedEdgeIds,
   createEdgeRelations
 } from '@whiteboard/core/edge/relations'
@@ -187,6 +192,9 @@ export const edge = {
     apply: applyEdgePatch,
     equal: isEdgePatchEqual
   },
+  update: {
+    toPatch: createEdgePatch
+  },
   equal: {
     anchor: sameEdgeAnchor,
     sameEnd: sameEdgeEnd,
@@ -207,7 +215,11 @@ export const edge = {
     mask: buildEdgeLabelMaskRect,
     maskTransform: readEdgeLabelMaskTransform,
     equal: sameEdgeLabel,
-    equalMany: sameEdgeLabels
+    equalMany: sameEdgeLabels,
+    patch: {
+      toPatch: createEdgeLabelPatch,
+      fromPatch: readEdgeLabelUpdateFromPatch
+    }
   }
 } as const
 

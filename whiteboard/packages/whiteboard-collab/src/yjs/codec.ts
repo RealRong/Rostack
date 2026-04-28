@@ -4,7 +4,9 @@ import {
   encodeJsonBytes
 } from '@shared/collab-yjs'
 import {
-  assertHistoryFootprint,
+  assertMutationFootprintList
+} from '@shared/mutation'
+import {
   isCheckpointOperation
 } from '@whiteboard/core/operations'
 import type {
@@ -62,7 +64,7 @@ const assertSharedChange = (
     id: value.id,
     actorId: value.actorId,
     ops: assertSharedOperations(value.ops),
-    footprint: assertHistoryFootprint(value.footprint)
+    footprint: assertMutationFootprintList(value.footprint)
   }
 }
 

@@ -1,79 +1,22 @@
-import { compile } from '@whiteboard/core/operations/compile'
-import {
+export {
+  whiteboardCompileHandlers
+} from '@whiteboard/core/operations/compile'
+export {
   whiteboardEntities
 } from '@whiteboard/core/operations/entities'
-import {
-  validateWhiteboardOperationBatch,
-  reduceWhiteboardOperations,
+export {
   whiteboardCustom
-} from '@whiteboard/core/operations/mutation'
-import {
-  assertHistoryFootprint,
-  createCollector,
-  isKey
-} from '@whiteboard/core/operations/history'
-import {
+} from '@whiteboard/core/operations/custom'
+export {
+  validateWhiteboardOperationBatch
+} from '@whiteboard/core/operations/validate'
+export {
   resolveLockDecision,
   validateLockOperations
 } from '@whiteboard/core/operations/lock'
-import {
-  canvasOrderMove,
-  groupOrderMove
-} from '@whiteboard/core/operations/plan'
-import {
-  apply,
-  RESET_READ_IMPACT,
-  deriveImpact,
-  summarizeInvalidation
-} from '@whiteboard/core/operations/apply'
-import {
+export {
   isCheckpointOperation
 } from '@whiteboard/core/operations/checkpoint'
-
-export const operations = {
-  entities: whiteboardEntities,
-  custom: whiteboardCustom,
-  compile,
-  history: {
-    assertFootprint: assertHistoryFootprint,
-    createCollector,
-    isKey
-  },
-  lock: {
-    decide: resolveLockDecision,
-    validate: validateLockOperations
-  },
-  plan: {
-    canvasOrderMove,
-    groupOrderMove
-  }
-} as const
-
-export {
-  whiteboardEntities,
-  whiteboardCustom,
-  validateWhiteboardOperationBatch,
-  reduceWhiteboardOperations,
-  apply,
-  RESET_READ_IMPACT,
-  deriveImpact,
-  summarizeInvalidation,
-  isCheckpointOperation,
-  compile,
-  assertHistoryFootprint,
-  createCollector,
-  isKey,
-  resolveLockDecision,
-  validateLockOperations,
-  canvasOrderMove,
-  groupOrderMove
-}
-
-export type {
-  HistoryFootprint,
-  HistoryKey,
-  HistoryKeyCollector
-} from '@whiteboard/core/operations/history'
 
 export type {
   LockDecision,
@@ -81,11 +24,14 @@ export type {
   LockOperationViolation,
   LockTarget
 } from '@whiteboard/core/operations/lock'
-
 export type {
+  WhiteboardCompileCode,
+  WhiteboardCompileContext,
+  WhiteboardCompileHandlerTable,
   WhiteboardCompileIds,
-  WhiteboardCompileScope,
-  WhiteboardIntentHandler,
+  WhiteboardCompileServices
+} from '@whiteboard/core/operations/compile'
+export type {
   CanvasIntent,
   DocumentIntent,
   EdgeBatchUpdate,
@@ -102,4 +48,4 @@ export type {
   WhiteboardIntentOutput,
   WhiteboardIntentTable,
   WhiteboardMutationTable
-} from '@whiteboard/core/operations/compile'
+} from '@whiteboard/core/operations/intents'

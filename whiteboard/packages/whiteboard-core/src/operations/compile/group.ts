@@ -1,10 +1,12 @@
-import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
-import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
+import { node as nodeApi } from '@whiteboard/core/node'
+import type {
+  WhiteboardCompileHandlerTable
+} from '@whiteboard/core/operations/compile/helpers'
 import {
-  createEdgePatch,
-  createNodePatch
-} from '@whiteboard/core/operations/patch'
-import { groupOrderMove } from '@whiteboard/core/operations/plan'
+  createCanvasOrderMoveOps,
+  readCompileServices,
+  reorderCanvasRefs
+} from '@whiteboard/core/operations/compile/helpers'
 
 const listGroupCanvasRefs = (
   document: Pick<import('@whiteboard/core/types').Document, 'canvas' | 'nodes' | 'edges'>,
@@ -18,15 +20,15 @@ const listGroupCanvasRefs = (
 ))
 
 type GroupIntentHandlers = Pick<
-  WhiteboardScopedIntentHandlers,
+  WhiteboardCompileHandlerTable,
   'group.merge'
   | 'group.order.move'
   | 'group.ungroup'
 >
 
 export const groupIntentHandlers: GroupIntentHandlers = {
-  'group.merge': (intent, ctx) => {
-    const groupId = ctx.ids.group()
+  'group.merge': (ctx) => {
+    const groupId = readCompileServices(ctx).ids.group()
     ctx.emit({
       type: 'group.create',
       value: {
@@ -34,47 +36,39 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       }
     })
 
-    intent.target.nodeIds?.forEach((nodeId) => {
-      ctx.emit({
-        type: 'node.patch',
-        id: nodeId,
-        patch: createNodePatch({
-          fields: {
-            groupId
-          }
-        })
-      })
+    ctx.intent.target.nodeIds?.forEach((nodeId) => {
+      ctx.emitMany(...nodeApi.update.createFieldsOperation(nodeId, {
+        groupId
+      }))
     })
-    intent.target.edgeIds?.forEach((edgeId) => {
+    ctx.intent.target.edgeIds?.forEach((edgeId) => {
       ctx.emit({
         type: 'edge.patch',
         id: edgeId,
-        patch: createEdgePatch({
-          fields: {
-            groupId
-          }
-        })
+        patch: {
+          groupId
+        }
       })
     })
 
-    return {
+    ctx.output({
       groupId
-    }
+    })
   },
-  'group.order.move': (intent, ctx) => {
-    const document = ctx.read.document()
-    groupOrderMove({
-      document,
-      ids: intent.ids,
-      mode: intent.mode
-    }).forEach((op) => ctx.emit(op))
+  'group.order.move': (ctx) => {
+    const refs = ctx.intent.ids.flatMap((groupId) =>
+      listGroupCanvasRefs(ctx.document, groupId)
+    )
+    const current = ctx.document.canvas.order
+    const target = reorderCanvasRefs(current, refs, ctx.intent.mode)
+    createCanvasOrderMoveOps(current, target).forEach((op) => ctx.emit(op))
   },
-  'group.ungroup': (intent, ctx) => {
-    const document = ctx.read.document()
+  'group.ungroup': (ctx) => {
+    const document = ctx.document
     const nodeIds: string[] = []
     const edgeIds: string[] = []
 
-    intent.ids.forEach((groupId) => {
+    ctx.intent.ids.forEach((groupId) => {
       const refs = listGroupCanvasRefs(document, groupId)
       ctx.emit({
         type: 'group.delete',
@@ -84,15 +78,9 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           nodeIds.push(ref.id)
-          ctx.emit({
-            type: 'node.patch',
-            id: ref.id,
-            patch: createNodePatch({
-              fields: {
-                groupId: undefined
-              }
-            })
-          })
+          ctx.emitMany(...nodeApi.update.createFieldsOperation(ref.id, {
+            groupId: undefined
+          }))
           return
         }
 
@@ -100,18 +88,16 @@ export const groupIntentHandlers: GroupIntentHandlers = {
         ctx.emit({
           type: 'edge.patch',
           id: ref.id,
-          patch: createEdgePatch({
-            fields: {
-              groupId: undefined
-            }
-          })
+          patch: {
+            groupId: undefined
+          }
         })
       })
     })
 
-    return {
+    ctx.output({
       nodeIds,
       edgeIds
-    }
+    })
   }
 }

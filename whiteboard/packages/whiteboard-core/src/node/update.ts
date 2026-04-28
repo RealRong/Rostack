@@ -13,8 +13,9 @@ import type {
   Operation
 } from '@whiteboard/core/types'
 import {
-  createNodePatch
-} from '@whiteboard/core/operations/patch'
+  applyScopedRecordWriteToPatch,
+  splitScopedPatch
+} from '@whiteboard/core/utils/scopedPatch'
 export type NodeUpdateImpact = {
   geometry: boolean
   list: boolean
@@ -264,6 +265,45 @@ export const isNodeUpdateEmpty = (update: NodeUpdateInput): boolean =>
   !update.fields
   && !hasRecordWrite(update.record)
 
+export const createNodePatch = (
+  update: NodeUpdateInput
+): NodePatch => applyScopedRecordWriteToPatch({
+  ...(update.fields ? applyFieldPatch(update.fields) : {})
+}, update.record, ['data', 'style'])
+
+export const readNodeUpdateFromPatch = (
+  patch: NodePatch
+): NodeUpdateInput => {
+  const {
+    record
+  } = splitScopedPatch(patch, ['data', 'style'])
+  const fields: NodeFieldPatch = {}
+
+  if (hasOwn(patch, 'position')) {
+    fields.position = json.clone(patch.position)
+  }
+  if (hasOwn(patch, 'size')) {
+    fields.size = json.clone(patch.size)
+  }
+  if (hasOwn(patch, 'rotation')) {
+    fields.rotation = json.clone(patch.rotation)
+  }
+  if (hasOwn(patch, 'groupId')) {
+    fields.groupId = json.clone(patch.groupId)
+  }
+  if (hasOwn(patch, 'owner')) {
+    fields.owner = json.clone(patch.owner)
+  }
+  if (hasOwn(patch, 'locked')) {
+    fields.locked = json.clone(patch.locked)
+  }
+
+  return {
+    ...(Object.keys(fields).length ? { fields } : {}),
+    ...(record ? { record } : {})
+  }
+}
+
 const compactNodeUpdateInput = (
   update: NodeUpdateInput
 ): NodeUpdateInput => ({
@@ -285,18 +325,7 @@ export const createNodeUpdateOperation = (
     : [{
         type: 'node.patch',
         id,
-        patch: createNodePatch({
-          ...(compact.fields
-            ? {
-                fields: applyFieldPatch(compact.fields)
-              }
-            : {}),
-          ...(compact.record
-            ? {
-                record: compact.record
-              }
-            : {})
-        })
+        patch: createNodePatch(compact)
       }]
 }
 

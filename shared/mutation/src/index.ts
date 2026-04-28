@@ -60,3 +60,8 @@ export type {
   MutationOrigin,
   Origin
 } from './write'
+export {
+  assertMutationFootprint,
+  assertMutationFootprintList,
+  isMutationFootprint
+} from './write'

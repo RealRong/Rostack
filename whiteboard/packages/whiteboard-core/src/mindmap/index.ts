@@ -18,7 +18,11 @@ import {
   layoutMindmap,
   layoutMindmapTidy
 } from '@whiteboard/core/mindmap/layout'
-import { createMindmapOp } from '@whiteboard/core/mindmap/ops'
+import {
+  createMindmapOp,
+  createMindmapTopicPatch,
+  readMindmapTopicUpdateFromPatch
+} from '@whiteboard/core/mindmap/ops'
 import {
   anchorMindmapLayout,
   resolveMindmapRender,
@@ -116,6 +120,12 @@ export const mindmap = {
   },
   topicStyle: {
     toNodeStylePatch: toMindmapTopicStylePatch
+  },
+  topic: {
+    patch: {
+      toPatch: createMindmapTopicPatch,
+      fromPatch: readMindmapTopicUpdateFromPatch
+    }
   }
 } as const
 

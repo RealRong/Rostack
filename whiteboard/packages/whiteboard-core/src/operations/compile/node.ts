@@ -5,14 +5,16 @@ import {
   isMindmapRoot
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
-import {
-  createNodePatch
-} from '@whiteboard/core/operations/patch'
-import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
-import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type {
-  NodeIntent,
-} from '@whiteboard/core/operations/intent-types'
+  WhiteboardCompileContext,
+  WhiteboardCompileHandlerTable
+} from '@whiteboard/core/operations/compile/helpers'
+import {
+  failCancelled,
+  failInvalid,
+  readCompileRegistries,
+  readCompileServices
+} from '@whiteboard/core/operations/compile/helpers'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {
   Document,
@@ -110,10 +112,12 @@ const compileMindmapTopicUpdate = (
 }
 
 const compileNodeTextCommit = (
-  intent: Extract<NodeIntent, { type: 'node.text.commit' }>,
-  ctx: WhiteboardCompileScope
+  ctx: WhiteboardCompileContext<'node.text.commit'>
 ) => {
-  const document = ctx.read.document()
+  const {
+    intent,
+    document
+  } = ctx
   const node = document.nodes[intent.nodeId]
   if (!node) {
     return
@@ -141,7 +145,8 @@ const compileNodeTextCommit = (
     }
   })
   if (!decision.allowed) {
-    return ctx.fail.cancelled(
+    return failCancelled(
+      ctx,
       decision.reason === 'locked-node'
         ? 'Locked nodes cannot be modified.'
         : decision.reason === 'locked-edge'
@@ -193,14 +198,14 @@ const compileNodeTextCommit = (
 
   const planned = compileMindmapTopicUpdate(document, intent.nodeId, input)
   if (!planned.ok) {
-    return ctx.fail.invalid(planned.error.message, readErrorDetails(planned.error))
+    return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
   }
 
   planned.data.forEach((op) => ctx.emit(op))
 }
 
 type NodeIntentHandlers = Pick<
-  WhiteboardScopedIntentHandlers,
+  WhiteboardCompileHandlerTable,
   'node.create'
   | 'node.update'
   | 'node.move'
@@ -213,34 +218,35 @@ type NodeIntentHandlers = Pick<
 >
 
 export const nodeIntentHandlers: NodeIntentHandlers = {
-  'node.create': (intent, ctx) => {
-    const document = ctx.read.document()
+  'node.create': (ctx) => {
+    const document = ctx.document
     const built = nodeApi.op.create({
-      payload: intent.input,
+      payload: ctx.intent.input,
       doc: document,
-      registries: ctx.registries,
-      createNodeId: ctx.ids.node
+      registries: readCompileRegistries(ctx),
+      createNodeId: readCompileServices(ctx).ids.node
     })
     if (!built.ok) {
-      return ctx.fail.invalid(built.error.message, built.error.details)
+      return failInvalid(ctx, built.error.message, built.error.details)
     }
 
     ctx.emit(built.data.operation)
-    return {
+    ctx.output({
       nodeId: built.data.nodeId
-    }
+    })
   },
-  'node.update': (intent, ctx) => {
-    const document = ctx.read.document()
+  'node.update': (ctx) => {
+    const document = ctx.document
     const decision = resolveLockDecision({
       document,
       target: {
         kind: 'nodes',
-        nodeIds: intent.updates.map((entry) => entry.id)
+        nodeIds: ctx.intent.updates.map((entry) => entry.id)
       }
     })
     if (!decision.allowed) {
-      return ctx.fail.cancelled(
+      return failCancelled(
+        ctx,
         decision.reason === 'locked-node'
           ? 'Locked nodes cannot be modified.'
           : decision.reason === 'locked-edge'
@@ -249,16 +255,19 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       )
     }
 
-    for (const entry of intent.updates) {
+    for (const entry of ctx.intent.updates) {
       const planned = compileMindmapTopicUpdate(document, entry.id, entry.input)
       if (!planned.ok) {
-        return ctx.fail.invalid(planned.error.message, readErrorDetails(planned.error))
+        return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
       }
       planned.data.forEach((op) => ctx.emit(op))
     }
   },
-  'node.move': (intent, ctx) => {
-    const document = ctx.read.document()
+  'node.move': (ctx) => {
+    const {
+      intent,
+      document
+    } = ctx
     const decision = resolveLockDecision({
       document,
       target: {
@@ -267,7 +276,8 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       }
     })
     if (!decision.allowed) {
-      return ctx.fail.cancelled(
+      return failCancelled(
+        ctx,
         decision.reason === 'locked-node'
           ? 'Locked nodes cannot be modified.'
           : decision.reason === 'locked-edge'
@@ -279,28 +289,22 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     for (const id of intent.ids) {
       const node = document.nodes[id]
       if (!node) {
-        return ctx.fail.invalid(`Node ${id} not found.`)
+        return failInvalid(ctx, `Node ${id} not found.`)
       }
 
       const mindmapId = getNodeMindmapId(node)
       if (!mindmapId) {
-        ctx.emit({
-          type: 'node.patch',
-          id,
-          patch: createNodePatch({
-            fields: {
-              position: {
-                x: node.position.x + intent.delta.x,
-                y: node.position.y + intent.delta.y
-              }
-            }
-          })
-        })
+        ctx.emitMany(...nodeApi.update.createFieldsOperation(id, {
+          position: {
+            x: node.position.x + intent.delta.x,
+            y: node.position.y + intent.delta.y
+          }
+        }))
         continue
       }
 
       if (!isMindmapRoot(document, node)) {
-        return ctx.fail.invalid('Mindmap member move must use mindmap drag.')
+        return failInvalid(ctx, 'Mindmap member move must use mindmap drag.')
       }
 
       ctx.emit({
@@ -314,52 +318,55 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
   },
   'node.text.commit': compileNodeTextCommit,
-  'node.align': (intent, ctx) => {
-    const document = ctx.read.document()
+  'node.align': (ctx) => {
+    const document = ctx.document
     const built = nodeApi.op.align({
-      ids: intent.ids,
+      ids: ctx.intent.ids,
       doc: document,
-      mode: intent.mode
+      mode: ctx.intent.mode
     })
     if (!built.ok) {
-      return ctx.fail.invalid(built.error.message, built.error.details)
+      return failInvalid(ctx, built.error.message, built.error.details)
     }
 
     built.data.operations.forEach((op) => ctx.emit(op))
   },
-  'node.distribute': (intent, ctx) => {
-    const document = ctx.read.document()
+  'node.distribute': (ctx) => {
+    const document = ctx.document
     const built = nodeApi.op.distribute({
-      ids: intent.ids,
+      ids: ctx.intent.ids,
       doc: document,
-      mode: intent.mode
+      mode: ctx.intent.mode
     })
     if (!built.ok) {
-      return ctx.fail.invalid(built.error.message, built.error.details)
+      return failInvalid(ctx, built.error.message, built.error.details)
     }
 
     built.data.operations.forEach((op) => ctx.emit(op))
   },
-  'node.delete': (intent, ctx) => compileCanvasDelete(
-    intent.ids.map((id) => ({ kind: 'node' as const, id })),
+  'node.delete': (ctx) => compileCanvasDelete(
+    ctx.intent.ids.map((id) => ({ kind: 'node' as const, id })),
     ctx
   ),
-  'node.deleteCascade': (intent, ctx) => compileCanvasDelete(
-    intent.ids.map((id) => ({ kind: 'node' as const, id })),
+  'node.deleteCascade': (ctx) => compileCanvasDelete(
+    ctx.intent.ids.map((id) => ({ kind: 'node' as const, id })),
     ctx
   ),
-  'node.duplicate': (intent, ctx) => {
+  'node.duplicate': (ctx) => {
     const result = compileCanvasDuplicate(
-      intent.ids.map((id) => ({ kind: 'node' as const, id })),
+      ctx.intent.ids.map((id) => ({ kind: 'node' as const, id })),
       ctx
     )
-    if (!result || 'kind' in result) {
+    if (!result) {
+      return
+    }
+    if ('kind' in result) {
       return result
     }
 
-    return {
+    ctx.output({
       nodeIds: result.allNodeIds,
       edgeIds: result.allEdgeIds
-    }
+    })
   }
 }

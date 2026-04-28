@@ -42,19 +42,10 @@ import {
   readTouchedFields
 } from '../projection/dirty'
 import {
-  type ActiveProjectionPhase,
-  readActiveView
-} from '../projection/context'
-import {
-  createActiveStageMetrics,
-  toActivePhaseMetrics
+  createActiveStageMetrics
 } from '../projection/metrics'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
-const EMPTY_METRICS = toActivePhaseMetrics({
-  deriveMs: 0,
-  publishMs: 0
-})
 
 const hasSortInputChanges = (input: {
   activeViewId: ViewId
@@ -259,54 +250,5 @@ export const runQueryStage = (input: {
       rebuiltNodeCount: 3 - reusedNodeCount,
       changedRecordCount
     })
-  }
-}
-
-export const activeQueryPhase: ActiveProjectionPhase<'query'> = {
-  after: [],
-  run: (context) => {
-    const { activeViewId, view } = readActiveView(context.input)
-    const plan = context.input.view.plan
-    if (!activeViewId || !view || !plan) {
-      return {
-        action: 'reuse',
-        metrics: EMPTY_METRICS
-      }
-    }
-
-    const result = runQueryStage({
-      reader: context.input.read.reader,
-      activeViewId,
-      previousViewId: context.state.publish.previous?.view.id,
-      delta: context.input.delta,
-      view,
-      plan: plan.query,
-      previousPlan: context.input.view.previousPlan?.query,
-      index: context.input.index.state,
-      previous: context.state.query.state
-    })
-
-    context.state.query.state = result.state
-
-    return {
-      action: result.action,
-      metrics: toActivePhaseMetrics({
-        deriveMs: result.deriveMs,
-        publishMs: result.publishMs,
-        stage: result.metrics
-      }),
-      ...(result.action !== 'reuse'
-        ? {
-            emit: {
-              membership: {
-                query: {
-                  action: result.action,
-                  delta: result.delta
-                }
-              }
-            }
-          }
-        : {})
-    }
   }
 }

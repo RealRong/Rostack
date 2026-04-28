@@ -5,18 +5,16 @@ import {
 } from '@shared/mutation'
 import type {
   WhiteboardCompileIds,
+  WhiteboardCompileServices,
   WhiteboardMutationTable
 } from '@whiteboard/core/operations'
 import {
-  compile,
   isCheckpointOperation,
   validateWhiteboardOperationBatch,
+  whiteboardCompileHandlers,
   whiteboardCustom,
   whiteboardEntities
 } from '@whiteboard/core/operations'
-import type {
-  WhiteboardCompileServices
-} from '@whiteboard/core/operations/compile'
 import {
   normalizeDocument
 } from '@whiteboard/core/document'
@@ -126,7 +124,7 @@ export const createEngine = ({
     services,
     entities: whiteboardEntities,
     custom: whiteboardCustom,
-    compile: compile.handlers,
+    compile: whiteboardCompileHandlers,
     history: {
       capacity: 100,
       capture: {

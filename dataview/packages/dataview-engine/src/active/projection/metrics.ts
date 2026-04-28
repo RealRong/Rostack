@@ -1,4 +1,9 @@
-import type { ActivePhaseMetrics } from './types'
+import type { ViewStageMetrics } from '@dataview/engine/contracts/performance'
+
+export interface ActivePhaseMetrics extends ViewStageMetrics {
+  deriveMs: number
+  publishMs: number
+}
 
 export const createActiveStageMetrics = (input: {
   inputCount?: number
@@ -35,13 +40,3 @@ export const createActiveStageMetrics = (input: {
       : { changedRecordCount: input.changedRecordCount })
   }
 }
-
-export const toActivePhaseMetrics = (input: {
-  deriveMs: number
-  publishMs: number
-  stage?: Omit<ActivePhaseMetrics, 'deriveMs' | 'publishMs'>
-}): ActivePhaseMetrics => ({
-  deriveMs: input.deriveMs,
-  publishMs: input.publishMs,
-  ...(input.stage ?? {})
-})

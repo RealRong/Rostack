@@ -142,10 +142,12 @@ import {
   applyNodeUpdate,
   buildNodeUpdateInverse,
   classifyNodeUpdate,
+  createNodePatch,
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation,
   isNodeUpdateEmpty,
-  mergeNodeUpdates
+  mergeNodeUpdates,
+  readNodeUpdateFromPatch
 } from '@whiteboard/core/node/update'
 import {
   resolveInteractionZoom,
@@ -160,6 +162,8 @@ export const node = {
     apply: applyNodeUpdate,
     inverse: buildNodeUpdateInverse,
     classify: classifyNodeUpdate,
+    toPatch: createNodePatch,
+    fromPatch: readNodeUpdateFromPatch,
     createFieldsOperation: createNodeFieldsUpdateOperation,
     createOperation: createNodeUpdateOperation,
     isEmpty: isNodeUpdateEmpty,

@@ -1,8 +1,9 @@
 import { json } from '@shared/core'
-import {
-  createMindmapTopicPatch
-} from '@whiteboard/core/operations/patch'
 import { resolveTextNodeBootstrapSize } from '@whiteboard/core/node/bootstrap'
+import {
+  applyScopedRecordWriteToPatch,
+  splitScopedPatch
+} from '@whiteboard/core/utils/scopedPatch'
 import type {
   MindmapBranchField,
   MindmapId,
@@ -23,6 +24,36 @@ const hasOwn = <T extends object>(
   target: T,
   key: PropertyKey
 ): boolean => Object.prototype.hasOwnProperty.call(target, key)
+
+export const createMindmapTopicPatch = (
+  update: MindmapTopicUpdateInput
+): import('@whiteboard/core/types').MindmapTopicPatch => applyScopedRecordWriteToPatch({
+  ...(update.fields ? json.clone(update.fields) : {})
+}, update.record, ['data', 'style'])
+
+export const readMindmapTopicUpdateFromPatch = (
+  patch: import('@whiteboard/core/types').MindmapTopicPatch
+): MindmapTopicUpdateInput => {
+  const {
+    record
+  } = splitScopedPatch(patch, ['data', 'style'])
+  const fields: import('@whiteboard/core/types').MindmapTopicFieldPatch = {}
+
+  if (hasOwn(patch, 'size')) {
+    fields.size = json.clone(patch.size)
+  }
+  if (hasOwn(patch, 'rotation')) {
+    fields.rotation = json.clone(patch.rotation)
+  }
+  if (hasOwn(patch, 'locked')) {
+    fields.locked = json.clone(patch.locked)
+  }
+
+  return {
+    ...(Object.keys(fields).length ? { fields } : {}),
+    ...(record ? { record } : {})
+  }
+}
 
 export const getNodeMindmapId = (
   node: Pick<Node, 'owner'> | undefined

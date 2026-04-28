@@ -5,23 +5,27 @@ import {
   emitMindmapTopicUpdateOps
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
-import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
-import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type {
-  MindmapIntent,
-} from '@whiteboard/core/operations/intent-types'
+  WhiteboardCompileContext,
+  WhiteboardCompileHandlerTable
+} from '@whiteboard/core/operations/compile/helpers'
+import {
+  failInvalid,
+  readCompileRegistries,
+  readCompileServices
+} from '@whiteboard/core/operations/compile/helpers'
 import type { NodeId } from '@whiteboard/core/types'
 
 const compileMindmapCreate = (
   input: import('@whiteboard/core/types').MindmapCreateInput,
-  ctx: WhiteboardCompileScope
+  ctx: WhiteboardCompileContext
 ) => {
-  const mindmapId = input.id ?? ctx.ids.mindmap()
-  const rootId = ctx.ids.node()
+  const mindmapId = input.id ?? readCompileServices(ctx).ids.mindmap()
+  const rootId = readCompileServices(ctx).ids.node()
   const instantiated = mindmapApi.template.instantiate({
     template: input.template,
     rootId,
-    createNodeId: ctx.ids.node
+    createNodeId: readCompileServices(ctx).ids.node
   })
 
   const nodes = Object.entries(instantiated.nodes).flatMap(([nodeId, templateNode]) => {
@@ -42,7 +46,7 @@ const compileMindmapCreate = (
         data: templateNode.data,
         style: templateNode.style
       },
-      registries: ctx.registries
+      registries: readCompileRegistries(ctx)
     })
     if (!materialized.ok) {
       return []
@@ -51,7 +55,7 @@ const compileMindmapCreate = (
   })
 
   if (nodes.length !== Object.keys(instantiated.nodes).length) {
-    return ctx.fail.invalid('Mindmap template nodes could not be materialized.')
+    return failInvalid(ctx, 'Mindmap template nodes could not be materialized.')
   }
 
   const members = Object.fromEntries(
@@ -78,14 +82,14 @@ const compileMindmapCreate = (
     nodes
   })
 
-  return {
+  ctx.output({
     mindmapId,
     rootId
-  }
+  })
 }
 
 type MindmapIntentHandlers = Pick<
-  WhiteboardScopedIntentHandlers,
+  WhiteboardCompileHandlerTable,
   'mindmap.create'
   | 'mindmap.delete'
   | 'mindmap.layout.set'
@@ -100,81 +104,84 @@ type MindmapIntentHandlers = Pick<
 >
 
 export const mindmapIntentHandlers: MindmapIntentHandlers = {
-  'mindmap.create': (intent, ctx) => compileMindmapCreate(intent.input, ctx),
-  'mindmap.delete': (intent, ctx) => {
-    intent.ids.forEach((id) => {
+  'mindmap.create': (ctx) => compileMindmapCreate(ctx.intent.input, ctx),
+  'mindmap.delete': (ctx) => {
+    ctx.intent.ids.forEach((id) => {
       ctx.emit({
         type: 'mindmap.delete',
         id
       })
     })
   },
-  'mindmap.layout.set': (intent, ctx) => {
+  'mindmap.layout.set': (ctx) => {
     ctx.emit({
       type: 'mindmap.layout',
-      id: intent.id,
-      patch: intent.layout
+      id: ctx.intent.id,
+      patch: ctx.intent.layout
     })
   },
-  'mindmap.move': (intent, ctx) => {
+  'mindmap.move': (ctx) => {
     ctx.emit({
       type: 'mindmap.move',
-      id: intent.id,
-      position: intent.position
+      id: ctx.intent.id,
+      position: ctx.intent.position
     })
   },
-  'mindmap.topic.insert': (intent, ctx) => {
-    const nodeId = ctx.ids.node()
+  'mindmap.topic.insert': (ctx) => {
+    const nodeId = readCompileServices(ctx).ids.node()
     const materialized = nodeApi.materialize.committed({
-      node: createMindmapTopicNode(nodeId, intent.id, intent.input),
-      registries: ctx.registries
+      node: createMindmapTopicNode(nodeId, ctx.intent.id, ctx.intent.input),
+      registries: readCompileRegistries(ctx)
     })
     if (!materialized.ok) {
-      return ctx.fail.invalid('Mindmap topic node could not be materialized.')
+      return failInvalid(ctx, 'Mindmap topic node could not be materialized.')
     }
     ctx.emit({
       type: 'mindmap.topic.insert',
-      id: intent.id,
-      input: intent.input,
+      id: ctx.intent.id,
+      input: ctx.intent.input,
       node: materialized.data
     })
-    return {
+    ctx.output({
       nodeId
-    }
+    })
   },
-  'mindmap.topic.move': (intent, ctx) => {
+  'mindmap.topic.move': (ctx) => {
     ctx.emit({
       type: 'mindmap.topic.move',
-      id: intent.id,
-      input: intent.input
+      id: ctx.intent.id,
+      input: ctx.intent.input
     })
   },
-  'mindmap.topic.delete': (intent, ctx) => {
+  'mindmap.topic.delete': (ctx) => {
     ctx.emit({
       type: 'mindmap.topic.delete',
-      id: intent.id,
-      input: intent.input
+      id: ctx.intent.id,
+      input: ctx.intent.input
     })
   },
-  'mindmap.topic.clone': (intent, ctx) => {
-    const mindmap = ctx.read.mindmap(intent.id)
+  'mindmap.topic.clone': (ctx) => {
+    const {
+      intent
+    } = ctx
+    const mindmap = ctx.document.mindmaps[intent.id]
     if (!mindmap) {
-      return ctx.fail.invalid(`Mindmap ${intent.id} not found.`)
+      return failInvalid(ctx, `Mindmap ${intent.id} not found.`)
     }
     if (intent.input.nodeId === mindmap.root) {
-      return ctx.fail.invalid('Root topic clone is not supported by subtree clone.')
+      return failInvalid(ctx, 'Root topic clone is not supported by subtree clone.')
     }
 
     const sourceMember = mindmap.members[intent.input.nodeId]
     const targetParentId = intent.input.parentId ?? sourceMember?.parentId
     if (!sourceMember || !targetParentId) {
-      return ctx.fail.invalid(`Topic ${intent.input.nodeId} cannot be cloned.`)
+      return failInvalid(ctx, `Topic ${intent.input.nodeId} cannot be cloned.`)
     }
 
-    const document = ctx.read.document()
+    const document = ctx.document
     const map: Record<NodeId, NodeId> = {}
     const walk = (sourceId: NodeId) => {
-      const nextId = ctx.ids.node()
+      const nextId = readCompileServices(ctx).ids.node()
       map[sourceId] = nextId
       const sourceNode = document.nodes[sourceId]
       const parentId = sourceId === intent.input.nodeId
@@ -234,33 +241,33 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     }
 
     walk(intent.input.nodeId)
-    return {
+    ctx.output({
       nodeId: map[intent.input.nodeId]!,
       map
-    }
+    })
   },
-  'mindmap.topic.update': (intent, ctx) => {
-    intent.updates.forEach((entry) => {
+  'mindmap.topic.update': (ctx) => {
+    ctx.intent.updates.forEach((entry) => {
       emitMindmapTopicUpdateOps({
-        mindmapId: intent.id,
+        mindmapId: ctx.intent.id,
         topicId: entry.topicId,
         update: entry.input,
         emit: ctx.emit
       })
     })
   },
-  'mindmap.topic.collapse.set': (intent, ctx) => {
+  'mindmap.topic.collapse.set': (ctx) => {
     ctx.emit({
       type: 'mindmap.topic.collapse',
-      id: intent.id,
-      topicId: intent.topicId,
-      collapsed: intent.collapsed
+      id: ctx.intent.id,
+      topicId: ctx.intent.topicId,
+      collapsed: ctx.intent.collapsed
     })
   },
-  'mindmap.branch.update': (intent, ctx) => {
-    intent.updates.forEach((entry) => {
+  'mindmap.branch.update': (ctx) => {
+    ctx.intent.updates.forEach((entry) => {
       emitMindmapBranchUpdateOps({
-        mindmapId: intent.id,
+        mindmapId: ctx.intent.id,
         topicId: entry.topicId,
         update: entry.input,
         emit: ctx.emit

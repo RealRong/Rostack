@@ -1,13 +1,13 @@
 import {
+  MutationEngine,
   type MutationEngineSpec,
-  type MutationCompileInput,
   type MutationOrigin
 } from '@shared/mutation'
 import { createId } from '@shared/core'
 import {
   compile,
   type WhiteboardCompileIds,
-  type WhiteboardIntent,
+  type WhiteboardCompileScope,
   type WhiteboardMutationTable
 } from '@whiteboard/core/operations'
 import {
@@ -87,7 +87,8 @@ export const createWhiteboardMutationSpec = (input: {
     void,
     WhiteboardMutationExtra,
     void,
-    WhiteboardReduceCtx
+    WhiteboardReduceCtx,
+    WhiteboardCompileScope
   >,
   'document'
 > => {
@@ -130,15 +131,42 @@ export const createWhiteboardMutationSpec = (input: {
         : {}),
       done: spec.done
     },
-    compile: ({
-      doc,
-      intents
-    }: MutationCompileInput<Document, WhiteboardIntent>) => compile({
-      document: doc,
-      intents,
-      registries: input.registries,
-      ids
-    }),
+    compile: {
+      handlers: compile.handlers,
+      createContext: ({ ctx }) => compile.createContext({
+        ctx,
+        ids,
+        registries: input.registries
+      }),
+      apply: ({
+        doc,
+        ops
+      }) => {
+        const reduced = MutationEngine.reduce({
+          document: doc,
+          ops,
+          origin: 'system',
+          operations: spec
+        })
+
+        return reduced.ok
+          ? {
+              ok: true as const,
+              doc: reduced.doc
+            }
+          : {
+              ok: false as const,
+              issue: {
+                code: reduced.error.code === 'cancelled'
+                  ? 'cancelled'
+                  : 'invalid',
+                message: reduced.error.message,
+                severity: 'error' as const,
+                details: reduced.error.details
+              }
+            }
+      }
+    },
     publish: whiteboardPublishSpec,
     history: {
       capacity: historyConfig.capacity,

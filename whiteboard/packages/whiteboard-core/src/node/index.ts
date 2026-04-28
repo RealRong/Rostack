@@ -144,7 +144,8 @@ import {
   classifyNodeUpdate,
   createNodeFieldsUpdateOperation,
   createNodeUpdateOperation,
-  isNodeUpdateEmpty
+  isNodeUpdateEmpty,
+  mergeNodeUpdates
 } from '@whiteboard/core/node/update'
 import {
   resolveInteractionZoom,
@@ -161,7 +162,8 @@ export const node = {
     classify: classifyNodeUpdate,
     createFieldsOperation: createNodeFieldsUpdateOperation,
     createOperation: createNodeUpdateOperation,
-    isEmpty: isNodeUpdateEmpty
+    isEmpty: isNodeUpdateEmpty,
+    merge: mergeNodeUpdates
   },
   geometry: {
     aabb: getNodeAABB,

@@ -52,23 +52,20 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
   const result = apply({
     doc,
     ops: nodeApi.update.createOperation('node_1', {
-      records: [{
-        scope: 'data',
-        op: 'set',
-        path: 'text',
-        value: 'world'
-      }]
+      record: {
+        'data.text': 'world'
+      }
     }),
     origin: 'user'
   })
 
   assert.ok(result.ok)
   assert.deepEqual(result.inverse, [{
-    type: 'node.record.set',
+    type: 'node.patch',
     id: 'node_1',
-    scope: 'data',
-    path: 'text',
-    value: 'hello'
+    record: {
+      'data.text': 'hello'
+    }
   }])
 
   const reverted = replayInverse(result.doc, result.inverse)
@@ -83,24 +80,19 @@ test('node.update inverse 在 set(path) 创建缺失祖先时退化为 scope 根
     }
   })
   const update = {
-    records: [{
-      scope: 'data',
-      op: 'set',
-      path: 'prefs.title',
-      value: 'Board'
-    }]
+    record: {
+      'data.prefs.title': 'Board'
+    }
   }
 
   const inverse = nodeApi.update.inverse(node, update)
   assert.ok(inverse.ok)
   assert.deepEqual(inverse.update, {
-    records: [{
-      scope: 'data',
-      op: 'set',
-      value: {
+    record: {
+      data: {
         text: 'hello'
       }
-    }]
+    }
   })
 
   const forward = nodeApi.update.apply(node, update)
@@ -113,22 +105,17 @@ test('node.update inverse 在 set(path) 创建缺失祖先时退化为 scope 根
 test('node.update inverse 为 unset(path) 生成 path set 回滚', () => {
   const node = createTextNode()
   const update = {
-    records: [{
-      scope: 'style',
-      op: 'unset',
-      path: 'fontSize'
-    }]
+    record: {
+      'style.fontSize': undefined
+    }
   }
 
   const inverse = nodeApi.update.inverse(node, update)
   assert.ok(inverse.ok)
   assert.deepEqual(inverse.update, {
-    records: [{
-      scope: 'style',
-      op: 'set',
-      path: 'fontSize',
-      value: 12
-    }]
+    record: {
+      'style.fontSize': 12
+    }
   })
 
   const forward = nodeApi.update.apply(node, update)
@@ -141,23 +128,17 @@ test('node.update inverse 为 unset(path) 生成 path set 回滚', () => {
 test('node.update inverse 为数组 field set 生成精确 path set 回滚', () => {
   const node = createTextNode()
   const update = {
-    records: [{
-      scope: 'data',
-      op: 'set',
-      path: 'items',
-      value: ['a', 'x', 'y', 'c']
-    }]
+    record: {
+      'data.items': ['a', 'x', 'y', 'c']
+    }
   }
 
   const inverse = nodeApi.update.inverse(node, update)
   assert.ok(inverse.ok)
   assert.deepEqual(inverse.update, {
-    records: [{
-      scope: 'data',
-      op: 'set',
-      path: 'items',
-      value: ['a', 'b', 'c']
-    }]
+    record: {
+      'data.items': ['a', 'b', 'c']
+    }
   })
 
   const forward = nodeApi.update.apply(node, update)
@@ -198,12 +179,9 @@ test('node.update 会为 direct mindmap data mutation 标记 node.value', () => 
   const result = apply({
     doc,
     ops: nodeApi.update.createOperation('mind_1', {
-      records: [{
-        scope: 'data',
-        op: 'set',
-        path: 'meta.title',
-        value: 'new'
-      }]
+      record: {
+        'data.meta.title': 'new'
+      }
     }),
     origin: 'user'
   })
@@ -228,12 +206,9 @@ test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容�
   assert.deepEqual(frameResult.next.position, { x: 10, y: 20 })
 
   const primitivePathResult = nodeApi.update.apply(createTextNode(), {
-    records: [{
-      scope: 'data',
-      op: 'set',
-      path: 'text.value',
-      value: 'x'
-    }]
+    record: {
+      'data.text.value': 'x'
+    }
   })
   assert.equal(primitivePathResult.ok, false)
   assert.match(primitivePathResult.message, /non-object container/)
@@ -243,7 +218,7 @@ test('node.update operation builder 会 compact update 载荷', () => {
   assert.deepEqual(
     nodeApi.update.createOperation('node_1', {
       fields: undefined,
-      records: []
+      record: undefined
     }),
     []
   )
@@ -253,10 +228,11 @@ test('node.update operation builder 会 compact update 载荷', () => {
       position: { x: 10, y: 20 }
     }),
     [{
-      type: 'node.field.set',
+      type: 'node.patch',
       id: 'node_1',
-      field: 'position',
-      value: { x: 10, y: 20 }
+      fields: {
+        position: { x: 10, y: 20 }
+      }
     }]
   )
 })

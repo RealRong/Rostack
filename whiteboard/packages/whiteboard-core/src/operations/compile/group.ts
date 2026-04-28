@@ -1,4 +1,4 @@
-import type { WhiteboardIntentContext } from '@whiteboard/core/operations/compile-context'
+import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type { WhiteboardMutationTable } from '@whiteboard/core/operations/intent-types'
 import { groupOrderMove } from '@whiteboard/core/operations/plan'
 import type { MutationCompileHandlerTable } from '@shared/mutation'
@@ -17,7 +17,7 @@ const listGroupCanvasRefs = (
 type GroupIntentHandlers = Pick<
   MutationCompileHandlerTable<
     WhiteboardMutationTable,
-    WhiteboardIntentContext,
+    WhiteboardCompileScope,
     'invalid' | 'cancelled'
   >,
   'group.merge'
@@ -27,8 +27,8 @@ type GroupIntentHandlers = Pick<
 
 export const groupIntentHandlers: GroupIntentHandlers = {
   'group.merge': (intent, ctx) => {
-    const groupId = ctx.tx.ids.group()
-    ctx.tx.emit({
+    const groupId = ctx.ids.group()
+    ctx.emit({
       type: 'group.create',
       group: {
         id: groupId
@@ -36,19 +36,21 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     })
 
     intent.target.nodeIds?.forEach((nodeId) => {
-      ctx.tx.emit({
-        type: 'node.field.set',
+      ctx.emit({
+        type: 'node.patch',
         id: nodeId,
-        field: 'groupId',
-        value: groupId
+        fields: {
+          groupId
+        }
       })
     })
     intent.target.edgeIds?.forEach((edgeId) => {
-      ctx.tx.emit({
-        type: 'edge.field.set',
+      ctx.emit({
+        type: 'edge.patch',
         id: edgeId,
-        field: 'groupId',
-        value: groupId
+        fields: {
+          groupId
+        }
       })
     })
 
@@ -57,21 +59,21 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     }
   },
   'group.order.move': (intent, ctx) => {
-    const document = ctx.tx.read.document.get()
+    const document = ctx.read.document()
     groupOrderMove({
       document,
       ids: intent.ids,
       mode: intent.mode
-    }).forEach((op) => ctx.tx.emit(op))
+    }).forEach((op) => ctx.emit(op))
   },
   'group.ungroup': (intent, ctx) => {
-    const document = ctx.tx.read.document.get()
+    const document = ctx.read.document()
     const nodeIds: string[] = []
     const edgeIds: string[] = []
 
     intent.ids.forEach((groupId) => {
       const refs = listGroupCanvasRefs(document, groupId)
-      ctx.tx.emit({
+      ctx.emit({
         type: 'group.delete',
         id: groupId
       })
@@ -79,19 +81,23 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           nodeIds.push(ref.id)
-          ctx.tx.emit({
-            type: 'node.field.unset',
+          ctx.emit({
+            type: 'node.patch',
             id: ref.id,
-            field: 'groupId'
+            fields: {
+              groupId: undefined
+            }
           })
           return
         }
 
         edgeIds.push(ref.id)
-        ctx.tx.emit({
-          type: 'edge.field.unset',
+        ctx.emit({
+          type: 'edge.patch',
           id: ref.id,
-          field: 'groupId'
+          fields: {
+            groupId: undefined
+          }
         })
       })
     })

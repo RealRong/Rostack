@@ -1,26 +1,21 @@
+import type { MutationCompileHandlerTable } from '@shared/mutation'
 import { document as documentApi } from '@whiteboard/core/document'
-import { resolveLockDecision } from '@whiteboard/core/operations/lock'
-import { canvasOrderMove } from '@whiteboard/core/operations/plan'
 import { getNodeMindmapId, isMindmapRoot } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
-import type {
-  CanvasItemRef,
-  Document
-} from '@whiteboard/core/types'
-import type { WhiteboardIntentContext } from '@whiteboard/core/operations/compile-context'
+import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type {
   CanvasIntent,
   WhiteboardMutationTable
 } from '@whiteboard/core/operations/intent-types'
-import type { MutationCompileHandlerTable } from '@shared/mutation'
-import {
-  emitEdgeMovePatchOps
-} from './edge'
+import { resolveLockDecision } from '@whiteboard/core/operations/lock'
+import { canvasOrderMove } from '@whiteboard/core/operations/plan'
+import type { CanvasItemRef } from '@whiteboard/core/types'
+import { emitEdgeMovePatchOps } from './edge'
 
 const failLockedModification = (
-  ctx: WhiteboardIntentContext,
+  ctx: WhiteboardCompileScope,
   reason?: import('@whiteboard/core/operations/lock').LockDecisionReason
-) => ctx.tx.fail.cancelled(
+) => ctx.fail.cancelled(
   reason === 'locked-node'
     ? 'Locked nodes cannot be modified.'
     : reason === 'locked-edge'
@@ -30,9 +25,9 @@ const failLockedModification = (
 
 export const compileCanvasDelete = (
   refs: readonly CanvasItemRef[],
-  ctx: WhiteboardIntentContext
+  ctx: WhiteboardCompileScope
 ) => {
-  const document = ctx.tx.read.document.get()
+  const document = ctx.read.document()
   const decision = resolveLockDecision({
     document,
     target: {
@@ -42,7 +37,7 @@ export const compileCanvasDelete = (
     }
   })
   if (!decision.allowed) {
-    return ctx.tx.fail.cancelled(
+    return ctx.fail.cancelled(
       decision.reason === 'locked-node'
         ? 'Locked nodes cannot be modified.'
         : decision.reason === 'locked-edge'
@@ -53,7 +48,7 @@ export const compileCanvasDelete = (
 
   refs.forEach((ref) => {
     if (ref.kind === 'edge') {
-      ctx.tx.emit({
+      ctx.emit({
         type: 'edge.delete',
         id: ref.id
       })
@@ -63,14 +58,14 @@ export const compileCanvasDelete = (
     const node = document.nodes[ref.id]
     const mindmapId = getNodeMindmapId(node)
     if (!mindmapId) {
-      ctx.tx.emit({
+      ctx.emit({
         type: 'node.delete',
         id: ref.id
       })
       return
     }
 
-    ctx.tx.emit(
+    ctx.emit(
       isMindmapRoot(document, node)
         ? {
             type: 'mindmap.delete',
@@ -89,9 +84,9 @@ export const compileCanvasDelete = (
 
 export const compileCanvasDuplicate = (
   refs: readonly CanvasItemRef[],
-  ctx: WhiteboardIntentContext
+  ctx: WhiteboardCompileScope
 ) => {
-  const document = ctx.tx.read.document.get()
+  const document = ctx.read.document()
   const decision = resolveLockDecision({
     document,
     target: {
@@ -101,7 +96,7 @@ export const compileCanvasDuplicate = (
     }
   })
   if (!decision.allowed) {
-    return ctx.tx.fail.cancelled(
+    return ctx.fail.cancelled(
       decision.reason === 'locked-node'
         ? 'Locked nodes cannot be duplicated.'
         : decision.reason === 'locked-edge'
@@ -112,7 +107,7 @@ export const compileCanvasDuplicate = (
 
   const nodeIds = refs.filter((ref) => ref.kind === 'node').map((ref) => ref.id)
   if (nodeIds.some((nodeId) => getNodeMindmapId(document.nodes[nodeId]))) {
-    return ctx.tx.fail.invalid('Mindmap duplication must use dedicated mindmap commands.')
+    return ctx.fail.invalid('Mindmap duplication must use dedicated mindmap commands.')
   }
 
   const edgeIds = refs.filter((ref) => ref.kind === 'edge').map((ref) => ref.id)
@@ -122,15 +117,15 @@ export const compileCanvasDuplicate = (
     edgeIds
   })
   if (!exported.ok) {
-    return ctx.tx.fail.invalid(exported.error.message, exported.error.details)
+    return ctx.fail.invalid(exported.error.message, exported.error.details)
   }
 
   const built = documentApi.slice.insert.ops({
     doc: document,
     slice: exported.data.slice,
     registries: ctx.registries,
-    createNodeId: ctx.tx.ids.node,
-    createEdgeId: ctx.tx.ids.edge,
+    createNodeId: ctx.ids.node,
+    createEdgeId: ctx.ids.edge,
     delta: {
       x: 24,
       y: 24
@@ -138,10 +133,10 @@ export const compileCanvasDuplicate = (
     roots: exported.data.roots
   })
   if (!built.ok) {
-    return ctx.tx.fail.invalid(built.error.message, built.error.details)
+    return ctx.fail.invalid(built.error.message, built.error.details)
   }
 
-  built.data.operations.forEach((op) => ctx.tx.emit(op))
+  built.data.operations.forEach((op) => ctx.emit(op))
   return {
     allNodeIds: built.data.allNodeIds,
     allEdgeIds: built.data.allEdgeIds,
@@ -151,18 +146,18 @@ export const compileCanvasDuplicate = (
 
 const compileCanvasSelectionMove = (
   intent: Extract<CanvasIntent, { type: 'canvas.selection.move' }>,
-  ctx: WhiteboardIntentContext
+  ctx: WhiteboardCompileScope
 ) => {
-  const document = ctx.tx.read.document.get()
+  const document = ctx.read.document()
 
   for (const nodeId of new Set(intent.nodeIds)) {
     if (!document.nodes[nodeId]) {
-      return ctx.tx.fail.invalid(`Node ${nodeId} not found.`)
+      return ctx.fail.invalid(`Node ${nodeId} not found.`)
     }
   }
   for (const edgeId of new Set(intent.edgeIds)) {
     if (!document.edges[edgeId]) {
-      return ctx.tx.fail.invalid(`Edge ${edgeId} not found.`)
+      return ctx.fail.invalid(`Edge ${edgeId} not found.`)
     }
   }
 
@@ -231,11 +226,12 @@ const compileCanvasSelectionMove = (
         node.position.x !== entry.position.x
         || node.position.y !== entry.position.y
       ) {
-        ctx.tx.emit({
-          type: 'node.field.set',
+        ctx.emit({
+          type: 'node.patch',
           id: node.id,
-          field: 'position',
-          value: entry.position
+          fields: {
+            position: entry.position
+          }
         })
       }
       continue
@@ -248,7 +244,7 @@ const compileCanvasSelectionMove = (
 
     if (rootId !== node.id) {
       if (!movedMemberIdSet.has(rootId)) {
-        return ctx.tx.fail.invalid('Mindmap member move must use mindmap drag.')
+        return ctx.fail.invalid('Mindmap member move must use mindmap drag.')
       }
       continue
     }
@@ -256,8 +252,9 @@ const compileCanvasSelectionMove = (
     if (movedMindmapIds.has(mindmapId)) {
       continue
     }
+
     movedMindmapIds.add(mindmapId)
-    ctx.tx.emit({
+    ctx.emit({
       type: 'mindmap.move',
       id: mindmapId,
       position: entry.position
@@ -284,7 +281,7 @@ const compileCanvasSelectionMove = (
 type CanvasIntentHandlers = Pick<
   MutationCompileHandlerTable<
     WhiteboardMutationTable,
-    WhiteboardIntentContext,
+    WhiteboardCompileScope,
     'invalid' | 'cancelled'
   >,
   'canvas.delete'
@@ -298,8 +295,8 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
   'canvas.duplicate': (intent, ctx) => compileCanvasDuplicate(intent.refs, ctx),
   'canvas.selection.move': (intent, ctx) => compileCanvasSelectionMove(intent, ctx),
   'canvas.order.move': (intent, ctx) => {
-    const current = ctx.tx.read.document.get().canvas.order
+    const current = ctx.read.document().canvas.order
     const target = canvasOrderMove.reorder(current, intent.refs, intent.mode)
-    canvasOrderMove.ops(current, target).forEach((op) => ctx.tx.emit(op))
+    canvasOrderMove.ops(current, target).forEach((op) => ctx.emit(op))
   }
 }

@@ -89,14 +89,9 @@ test('shared sessions replay remote operations and keep remote changes out of lo
     updates: [{
       id: nodeId,
       input: {
-        records: [
-          {
-            scope: 'data',
-            op: 'set',
-            path: mutationPath.of('items'),
-            value: ['a']
-          }
-        ]
+        record: {
+          [`data.${mutationPath.of('items')}`]: ['a']
+        }
       }
     }]
   })
@@ -107,20 +102,10 @@ test('shared sessions replay remote operations and keep remote changes out of lo
     updates: [{
       id: nodeId,
       input: {
-        records: [
-          {
-            scope: 'data',
-            op: 'set',
-            path: mutationPath.of('items'),
-            value: ['a', 'b']
-          },
-          {
-            scope: 'data',
-            op: 'set',
-            path: mutationPath.of('nested', 'value'),
-            value: 'synced'
-          }
-        ]
+        record: {
+          [`data.${mutationPath.of('items')}`]: ['a', 'b'],
+          [`data.${mutationPath.of('nested', 'value')}`]: 'synced'
+        }
       }
     }]
   })
@@ -214,10 +199,11 @@ test('session records duplicate and rejected shared changes deterministically', 
       id: 'change_rejected',
       actorId: 'actor_remote',
       ops: [{
-        type: 'node.field.set',
+        type: 'node.patch',
         id: 'node_missing',
-        field: 'rotation',
-        value: 90
+        fields: {
+          rotation: 90
+        }
       }],
       footprint: [{
         kind: 'node.field',
@@ -286,12 +272,9 @@ test('remote changes invalidate conflicting local history', () => {
     updates: [{
       id: createResult.data.nodeId,
       input: {
-        records: [{
-          scope: 'data',
-          op: 'set',
-          path: mutationPath.of('text'),
-          value: 'remote update'
-        }]
+        record: {
+          [`data.${mutationPath.of('text')}`]: 'remote update'
+        }
       }
     }]
   })

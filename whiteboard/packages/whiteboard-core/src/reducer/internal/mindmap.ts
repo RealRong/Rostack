@@ -1,22 +1,20 @@
 import { json } from '@shared/core'
 import {
-  patch as mutationRecord,
-  type Path
+  record as draftRecord,
+  type RecordWrite
 } from '@shared/draft'
 import { err, ok } from '@whiteboard/core/utils/result'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
-  MindmapBranchField,
+  MindmapBranchFieldPatch,
   MindmapId,
   MindmapLayoutSpec,
   MindmapRecord,
   MindmapSnapshot,
-  MindmapTopicField,
+  MindmapTopicFieldPatch,
   MindmapTopicInsertInput,
   MindmapTopicMoveInput,
-  MindmapTopicRecordScope,
   MindmapTopicSnapshot,
-  MindmapTopicUnsetField,
   Node,
   NodeId,
   Point,
@@ -57,46 +55,44 @@ import {
 const MAX_LAYOUT_STEPS = 100
 const MAX_LAYOUT_REPEAT = 10
 
-const setTopicField = <Field extends MindmapTopicField>(
-  node: Node,
-  field: Field,
-  value: Node[Field]
-): Node => ({
-  ...node,
-  [field]: value
-})
+const TOPIC_PATCH_FIELDS = [
+  'size',
+  'rotation',
+  'locked'
+] as const
 
-const unsetTopicField = (
+const BRANCH_PATCH_FIELDS = [
+  'color',
+  'line',
+  'width',
+  'stroke'
+] as const
+
+const hasOwn = <T extends object>(
+  value: T,
+  key: PropertyKey
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
+
+const applyTopicFieldPatch = (
   node: Node,
-  field: MindmapTopicUnsetField
+  fields?: MindmapTopicFieldPatch
 ): Node => {
-  const next = { ...node } as Node & Record<string, unknown>
-  delete next[field]
-  return next
-}
-
-const applyTopicRecordMutation = (
-  node: Node,
-  scope: MindmapTopicRecordScope,
-  mutation: { op: 'set'; path: Path; value: unknown } | { op: 'unset'; path: Path }
-) => {
-  const current = scope === 'data'
-    ? node.data
-    : node.style
-  const result = mutationRecord.apply(current, mutation)
-  if (!result.ok) {
-    return result
+  if (!fields) {
+    return node
   }
 
-  return {
-    ok: true as const,
-    node: {
-      ...node,
-      ...(scope === 'data'
-        ? { data: result.value as Node['data'] }
-        : { style: result.value as Node['style'] })
+  let next = node
+  TOPIC_PATCH_FIELDS.forEach((field) => {
+    if (!hasOwn(fields, field)) {
+      return
     }
-  }
+
+    next = {
+      ...next,
+      [field]: json.clone(fields[field])
+    }
+  })
+  return next
 }
 
 const captureMindmapSnapshot = (
@@ -744,152 +740,57 @@ export const deleteMindmapTopic = (
   enqueueMindmapLayout(state, input.id)
 }
 
-export const setMindmapTopicField = <Field extends MindmapTopicField>(
+export const patchMindmapTopic = (
   state: WhiteboardReduceState,
   id: MindmapId,
   topicId: NodeId,
-  field: Field,
-  value: Node[Field]
+  input: {
+    fields?: MindmapTopicFieldPatch
+    record?: RecordWrite
+  }
 ): void => {
   const current = getNode(state.draft, topicId)
   if (!current) {
     throw new Error(`Topic ${topicId} not found.`)
   }
 
-  const previous = (current as Record<string, unknown>)[field]
-  state.inverse.prepend(
-    previous === undefined && field !== 'size'
-      ? {
-          type: 'mindmap.topic.field.unset',
-          id,
-          topicId,
-          field: field as MindmapTopicUnsetField
+  const inverseFields = input.fields
+    ? TOPIC_PATCH_FIELDS.reduce<MindmapTopicFieldPatch>((result, field) => {
+        if (hasOwn(input.fields!, field)) {
+          result[field] = json.clone(current[field]) as MindmapTopicFieldPatch[typeof field]
         }
-      : {
-          type: 'mindmap.topic.field.set',
-          id,
-          topicId,
-          field,
-          value: json.clone(previous)
-        }
-  )
-  state.draft.nodes.set(topicId, setTopicField(current, field, value))
-  markNodeUpdated(state, topicId)
-  enqueueMindmapLayout(state, id)
-}
-
-export const unsetMindmapTopicField = (
-  state: WhiteboardReduceState,
-  id: MindmapId,
-  topicId: NodeId,
-  field: MindmapTopicUnsetField
-): void => {
-  const current = getNode(state.draft, topicId)
-  if (!current) {
-    throw new Error(`Topic ${topicId} not found.`)
-  }
+        return result
+      }, {})
+    : undefined
+  const inverseRecord = input.record
+    ? draftRecord.inverse(current, input.record)
+    : undefined
+  const fieldPatched = applyTopicFieldPatch(current, input.fields)
+  const next = input.record
+    ? draftRecord.apply(fieldPatched, input.record)
+    : fieldPatched
 
   state.inverse.prepend({
-    type: 'mindmap.topic.field.set',
+    type: 'mindmap.topic.patch',
     id,
     topicId,
-    field,
-    value: json.clone((current as Record<string, unknown>)[field])
+    ...(inverseFields && Object.keys(inverseFields).length
+      ? { fields: inverseFields }
+      : {}),
+    ...(inverseRecord && Object.keys(inverseRecord).length
+      ? { record: inverseRecord }
+      : {})
   })
-  state.draft.nodes.set(topicId, unsetTopicField(current, field))
+  state.draft.nodes.set(topicId, next)
   markNodeUpdated(state, topicId)
   enqueueMindmapLayout(state, id)
 }
 
-export const setMindmapTopicRecord = (
+export const patchMindmapBranch = (
   state: WhiteboardReduceState,
   id: MindmapId,
   topicId: NodeId,
-  scope: MindmapTopicRecordScope,
-  path: Path,
-  value: unknown
-): void => {
-  const current = getNode(state.draft, topicId)
-  if (!current) {
-    throw new Error(`Topic ${topicId} not found.`)
-  }
-
-  const currentRoot = scope === 'data'
-    ? current.data
-    : current.style
-  const previous = mutationRecord.read(currentRoot, path)
-  state.inverse.prepend(previous === undefined
-    ? {
-        type: 'mindmap.topic.record.unset',
-        id,
-        topicId,
-        scope,
-        path
-      }
-    : {
-        type: 'mindmap.topic.record.set',
-        id,
-        topicId,
-        scope,
-        path,
-        value: json.clone(previous)
-      })
-  const next = applyTopicRecordMutation(current, scope, {
-    op: 'set',
-    path,
-    value
-  })
-  if (!next.ok) {
-    throw new Error(next.message)
-  }
-
-  state.draft.nodes.set(topicId, next.node)
-  markNodeUpdated(state, topicId)
-  enqueueMindmapLayout(state, id)
-}
-
-export const unsetMindmapTopicRecord = (
-  state: WhiteboardReduceState,
-  id: MindmapId,
-  topicId: NodeId,
-  scope: MindmapTopicRecordScope,
-  path: Path
-): void => {
-  const current = getNode(state.draft, topicId)
-  if (!current) {
-    throw new Error(`Topic ${topicId} not found.`)
-  }
-
-  const currentRoot = scope === 'data'
-    ? current.data
-    : current.style
-  state.inverse.prepend({
-    type: 'mindmap.topic.record.set',
-    id,
-    topicId,
-    scope,
-    path,
-    value: json.clone(mutationRecord.read(currentRoot, path))
-  })
-  const next = applyTopicRecordMutation(current, scope, {
-    op: 'unset',
-    path
-  })
-  if (!next.ok) {
-    throw new Error(next.message)
-  }
-
-  state.draft.nodes.set(topicId, next.node)
-  markNodeUpdated(state, topicId)
-  enqueueMindmapLayout(state, id)
-}
-
-export const setMindmapBranchField = <Field extends MindmapBranchField>(
-  state: WhiteboardReduceState,
-  id: MindmapId,
-  topicId: NodeId,
-  field: Field,
-  value: MindmapRecord['members'][string]['branchStyle'][Field]
+  fields?: MindmapBranchFieldPatch
 ): void => {
   const current = getMindmap(state.draft, id)
   if (!current) {
@@ -901,57 +802,32 @@ export const setMindmapBranchField = <Field extends MindmapBranchField>(
     throw new Error(`Topic ${topicId} not found.`)
   }
 
-  state.inverse.prepend({
-    type: 'mindmap.branch.field.set',
-    id,
-    topicId,
-    field,
-    value: json.clone(member.branchStyle[field])
-  })
-  state.draft.mindmaps.set(id, {
-    ...current,
-    members: {
-      ...current.members,
-      [topicId]: {
-        ...member,
-        branchStyle: {
-          ...member.branchStyle,
-          [field]: json.clone(value) as never
-        }
-      }
+  if (!fields) {
+    return
+  }
+
+  const inverse: MindmapBranchFieldPatch = {}
+  let nextBranchStyle = {
+    ...member.branchStyle
+  }
+  BRANCH_PATCH_FIELDS.forEach((field) => {
+    if (!hasOwn(fields, field)) {
+      return
+    }
+
+    inverse[field] = json.clone(member.branchStyle[field]) as MindmapBranchFieldPatch[typeof field]
+    nextBranchStyle = {
+      ...nextBranchStyle,
+      [field]: json.clone(fields[field])
     }
   })
-  markMindmapUpdated(state, id)
-  enqueueMindmapLayout(state, id)
-}
-
-export const unsetMindmapBranchField = (
-  state: WhiteboardReduceState,
-  id: MindmapId,
-  topicId: NodeId,
-  field: MindmapBranchField
-): void => {
-  const current = getMindmap(state.draft, id)
-  if (!current) {
-    throw new Error(`Mindmap ${id} not found.`)
-  }
-
-  const member = current.members[topicId]
-  if (!member) {
-    throw new Error(`Topic ${topicId} not found.`)
-  }
 
   state.inverse.prepend({
-    type: 'mindmap.branch.field.set',
+    type: 'mindmap.branch.patch',
     id,
     topicId,
-    field,
-    value: json.clone(member.branchStyle[field])
+    fields: inverse
   })
-  const nextBranchStyle = {
-    ...member.branchStyle
-  } as MindmapRecord['members'][string]['branchStyle'] & Record<string, unknown>
-  delete nextBranchStyle[field]
   state.draft.mindmaps.set(id, {
     ...current,
     members: {

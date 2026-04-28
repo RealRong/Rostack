@@ -1,19 +1,15 @@
 import { json } from '@shared/core'
 import {
-  patch as mutationRecord,
-  type Path
+  record as draftRecord,
+  type RecordWrite
 } from '@shared/draft'
 import type {
   Edge,
-  EdgeField,
+  EdgeFieldPatch,
   EdgeId,
   EdgeLabel,
-  EdgeLabelField,
-  EdgeLabelRecordScope,
+  EdgeLabelFieldPatch,
   EdgeRoutePoint,
-  EdgeRoutePointField,
-  EdgeRecordScope,
-  EdgeUnsetField
 } from '@whiteboard/core/types'
 import {
   captureEdge,
@@ -32,46 +28,68 @@ import {
 } from './canvas'
 import type { OrderedAnchor } from './ordered'
 
-const setEdgeField = <Field extends EdgeField>(
-  edge: Edge,
-  field: Field,
-  value: Edge[Field]
-): Edge => ({
-  ...edge,
-  [field]: value
-})
+const EDGE_PATCH_FIELDS = [
+  'source',
+  'target',
+  'type',
+  'locked',
+  'groupId',
+  'textMode'
+] as const
 
-const unsetEdgeField = (
+const LABEL_PATCH_FIELDS = [
+  'text',
+  't',
+  'offset'
+] as const
+
+const hasOwn = <T extends object>(
+  value: T,
+  key: PropertyKey
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
+
+const applyEdgeFieldPatch = (
   edge: Edge,
-  field: EdgeUnsetField
+  fields?: EdgeFieldPatch
 ): Edge => {
-  const next = { ...edge } as Edge & Record<string, unknown>
-  delete next[field]
+  if (!fields) {
+    return edge
+  }
+
+  let next = edge
+  EDGE_PATCH_FIELDS.forEach((field) => {
+    if (!hasOwn(fields, field)) {
+      return
+    }
+
+    next = {
+      ...next,
+      [field]: json.clone(fields[field])
+    }
+  })
   return next
 }
 
-const applyEdgeRecordMutation = (
+const buildEdgeFieldInverse = (
   edge: Edge,
-  scope: EdgeRecordScope,
-  mutation: { op: 'set'; path: Path; value: unknown } | { op: 'unset'; path: Path }
-) => {
-  const current = scope === 'data'
-    ? edge.data
-    : edge.style
-  const result = mutationRecord.apply(current, mutation)
-  if (!result.ok) {
-    return result
+  fields?: EdgeFieldPatch
+): EdgeFieldPatch | undefined => {
+  if (!fields) {
+    return undefined
   }
 
-  return {
-    ok: true as const,
-    edge: {
-      ...edge,
-      ...(scope === 'data'
-        ? { data: result.value as Edge['data'] }
-        : { style: result.value as Edge['style'] })
+  const inverse: EdgeFieldPatch = {}
+  EDGE_PATCH_FIELDS.forEach((field) => {
+    if (!hasOwn(fields, field)) {
+      return
     }
-  }
+
+    inverse[field] = json.clone(edge[field]) as EdgeFieldPatch[typeof field]
+  })
+
+  return Object.keys(inverse).length > 0
+    ? inverse
+    : undefined
 }
 
 const getLabels = (
@@ -147,132 +165,37 @@ export const deleteEdge = (
   markCanvasOrderTouched(state)
 }
 
-export const setEdgeFieldValue = <Field extends EdgeField>(
+export const patchEdge = (
   state: WhiteboardReduceState,
   id: EdgeId,
-  field: Field,
-  value: Edge[Field]
+  input: {
+    fields?: EdgeFieldPatch
+    record?: RecordWrite
+  }
 ): void => {
   const current = getEdge(state.draft, id)
   if (!current) {
     throw new Error(`Edge ${id} not found.`)
   }
 
-  const previous = current[field]
-  state.inverse.prepend(
-    previous === undefined
-      && field !== 'source'
-      && field !== 'target'
-      && field !== 'type'
-      ? {
-          type: 'edge.field.unset',
-          id,
-          field: field as EdgeUnsetField
-        }
-      : {
-          type: 'edge.field.set',
-          id,
-          field,
-          value: json.clone(previous)
-        }
-  )
-  state.draft.edges.set(id, setEdgeField(current, field, value))
-  markEdgeUpdated(state, id)
-}
-
-export const unsetEdgeFieldValue = (
-  state: WhiteboardReduceState,
-  id: EdgeId,
-  field: EdgeUnsetField
-): void => {
-  const current = getEdge(state.draft, id)
-  if (!current) {
-    throw new Error(`Edge ${id} not found.`)
-  }
+  const inverseFields = buildEdgeFieldInverse(current, input.fields)
+  const inverseRecord = input.record
+    ? draftRecord.inverse(current, input.record)
+    : undefined
+  const fieldPatched = applyEdgeFieldPatch(current, input.fields)
+  const next = input.record
+    ? draftRecord.apply(fieldPatched, input.record)
+    : fieldPatched
 
   state.inverse.prepend({
-    type: 'edge.field.set',
+    type: 'edge.patch',
     id,
-    field,
-    value: json.clone(current[field])
+    ...(inverseFields ? { fields: inverseFields } : {}),
+    ...(inverseRecord && Object.keys(inverseRecord).length
+      ? { record: inverseRecord }
+      : {})
   })
-  state.draft.edges.set(id, unsetEdgeField(current, field))
-  markEdgeUpdated(state, id)
-}
-
-export const setEdgeRecord = (
-  state: WhiteboardReduceState,
-  id: EdgeId,
-  scope: EdgeRecordScope,
-  path: Path,
-  value: unknown
-): void => {
-  const current = getEdge(state.draft, id)
-  if (!current) {
-    throw new Error(`Edge ${id} not found.`)
-  }
-
-  const currentRoot = scope === 'data'
-    ? current.data
-    : current.style
-  const previous = mutationRecord.read(currentRoot, path)
-  state.inverse.prepend(previous === undefined
-    ? {
-        type: 'edge.record.unset',
-        id,
-        scope,
-        path
-      }
-    : {
-        type: 'edge.record.set',
-        id,
-        scope,
-        path,
-        value: json.clone(previous)
-      })
-  const next = applyEdgeRecordMutation(current, scope, {
-    op: 'set',
-    path,
-    value
-  })
-  if (!next.ok) {
-    throw new Error(next.message)
-  }
-
-  state.draft.edges.set(id, next.edge)
-  markEdgeUpdated(state, id)
-}
-
-export const unsetEdgeRecord = (
-  state: WhiteboardReduceState,
-  id: EdgeId,
-  scope: EdgeRecordScope,
-  path: Path
-): void => {
-  const current = getEdge(state.draft, id)
-  if (!current) {
-    throw new Error(`Edge ${id} not found.`)
-  }
-
-  const currentRoot = scope === 'data'
-    ? current.data
-    : current.style
-  state.inverse.prepend({
-    type: 'edge.record.set',
-    id,
-    scope,
-    path,
-    value: json.clone(mutationRecord.read(currentRoot, path))
-  })
-  const next = applyEdgeRecordMutation(current, scope, {
-    op: 'unset',
-    path
-  })
-  if (!next.ok) {
-    throw new Error(next.message)
-  }
-
-  state.draft.edges.set(id, next.edge)
+  state.draft.edges.set(id, next)
   markEdgeUpdated(state, id)
 }
 
@@ -395,12 +318,14 @@ export const moveEdgeLabel = (
   markEdgeUpdated(state, edgeId)
 }
 
-export const setEdgeLabelField = (
+export const patchEdgeLabel = (
   state: WhiteboardReduceState,
   edgeId: EdgeId,
   labelId: string,
-  field: EdgeLabelField,
-  value: unknown
+  input: {
+    fields?: EdgeLabelFieldPatch
+    record?: RecordWrite
+  }
 ): void => {
   const current = getEdge(state.draft, edgeId)
   const labels = current
@@ -412,169 +337,46 @@ export const setEdgeLabelField = (
   }
 
   const label = labels[index]!
-  const previous = (label as Record<string, unknown>)[field]
-  state.inverse.prepend(previous === undefined
-    ? {
-        type: 'edge.label.field.unset',
-        edgeId,
-        labelId,
-        field
-      }
-    : {
-        type: 'edge.label.field.set',
-        edgeId,
-        labelId,
-        field,
-        value: json.clone(previous)
-      })
-  labels[index] = {
-    ...label,
-    [field]: json.clone(value) as never
-  }
-  state.draft.edges.set(edgeId, {
-    ...current,
-    labels
+  const inverseFields = input.fields
+    ? LABEL_PATCH_FIELDS.reduce<EdgeLabelFieldPatch>((result, field) => {
+        if (hasOwn(input.fields!, field)) {
+          result[field] = json.clone(label[field]) as EdgeLabelFieldPatch[typeof field]
+        }
+        return result
+      }, {})
+    : undefined
+  const inverseRecord = input.record
+    ? draftRecord.inverse(label, input.record)
+    : undefined
+
+  let nextLabel = label
+  LABEL_PATCH_FIELDS.forEach((field) => {
+    if (!input.fields || !hasOwn(input.fields, field)) {
+      return
+    }
+
+    nextLabel = {
+      ...nextLabel,
+      [field]: json.clone(input.fields[field])
+    }
   })
-  markEdgeUpdated(state, edgeId)
-}
-
-export const unsetEdgeLabelField = (
-  state: WhiteboardReduceState,
-  edgeId: EdgeId,
-  labelId: string,
-  field: EdgeLabelField
-): void => {
-  const current = getEdge(state.draft, edgeId)
-  const labels = current
-    ? [...getLabels(current)]
-    : []
-  const index = labels.findIndex((label) => label.id === labelId)
-  if (!current || index < 0) {
-    throw new Error(`Edge label ${labelId} not found.`)
+  if (input.record) {
+    nextLabel = draftRecord.apply(nextLabel, input.record)
   }
 
-  const label = labels[index]!
   state.inverse.prepend({
-    type: 'edge.label.field.set',
+    type: 'edge.label.patch',
     edgeId,
     labelId,
-    field,
-    value: json.clone((label as Record<string, unknown>)[field])
+    ...(inverseFields && Object.keys(inverseFields).length
+      ? { fields: inverseFields }
+      : {}),
+    ...(inverseRecord && Object.keys(inverseRecord).length
+      ? { record: inverseRecord }
+      : {})
   })
-  const nextLabel = {
-    ...label
-  } as EdgeLabel & Record<string, unknown>
-  delete nextLabel[field]
+
   labels[index] = nextLabel
-  state.draft.edges.set(edgeId, {
-    ...current,
-    labels
-  })
-  markEdgeUpdated(state, edgeId)
-}
-
-export const setEdgeLabelRecord = (
-  state: WhiteboardReduceState,
-  edgeId: EdgeId,
-  labelId: string,
-  scope: EdgeLabelRecordScope,
-  path: Path,
-  value: unknown
-): void => {
-  const current = getEdge(state.draft, edgeId)
-  const labels = current
-    ? [...getLabels(current)]
-    : []
-  const index = labels.findIndex((label) => label.id === labelId)
-  if (!current || index < 0) {
-    throw new Error(`Edge label ${labelId} not found.`)
-  }
-
-  const label = labels[index]!
-  const currentRoot = scope === 'data'
-    ? label.data
-    : label.style
-  const previous = mutationRecord.read(currentRoot, path)
-  state.inverse.prepend(previous === undefined
-    ? {
-        type: 'edge.label.record.unset',
-        edgeId,
-        labelId,
-        scope,
-        path
-      }
-    : {
-        type: 'edge.label.record.set',
-        edgeId,
-        labelId,
-        scope,
-        path,
-        value: json.clone(previous)
-      })
-  const result = mutationRecord.apply(currentRoot, {
-    op: 'set',
-    path,
-    value
-  })
-  if (!result.ok) {
-    throw new Error(result.message)
-  }
-
-  labels[index] = {
-    ...label,
-    ...(scope === 'data'
-      ? { data: result.value as NonNullable<typeof label.data> }
-      : { style: result.value as NonNullable<typeof label.style> })
-  }
-  state.draft.edges.set(edgeId, {
-    ...current,
-    labels
-  })
-  markEdgeUpdated(state, edgeId)
-}
-
-export const unsetEdgeLabelRecord = (
-  state: WhiteboardReduceState,
-  edgeId: EdgeId,
-  labelId: string,
-  scope: EdgeLabelRecordScope,
-  path: Path
-): void => {
-  const current = getEdge(state.draft, edgeId)
-  const labels = current
-    ? [...getLabels(current)]
-    : []
-  const index = labels.findIndex((label) => label.id === labelId)
-  if (!current || index < 0) {
-    throw new Error(`Edge label ${labelId} not found.`)
-  }
-
-  const label = labels[index]!
-  const currentRoot = scope === 'data'
-    ? label.data
-    : label.style
-  state.inverse.prepend({
-    type: 'edge.label.record.set',
-    edgeId,
-    labelId,
-    scope,
-    path,
-    value: json.clone(mutationRecord.read(currentRoot, path))
-  })
-  const result = mutationRecord.apply(currentRoot, {
-    op: 'unset',
-    path
-  })
-  if (!result.ok) {
-    throw new Error(result.message)
-  }
-
-  labels[index] = {
-    ...label,
-    ...(scope === 'data'
-      ? { data: result.value as NonNullable<typeof label.data> }
-      : { style: result.value as NonNullable<typeof label.style> })
-  }
   state.draft.edges.set(edgeId, {
     ...current,
     labels
@@ -715,12 +517,11 @@ export const moveEdgeRoutePoint = (
   markEdgeUpdated(state, edgeId)
 }
 
-export const setEdgeRoutePointField = (
+export const patchEdgeRoutePoint = (
   state: WhiteboardReduceState,
   edgeId: EdgeId,
   pointId: string,
-  field: EdgeRoutePointField,
-  value: number
+  fields: Partial<Record<'x' | 'y', number>>
 ): void => {
   const current = getEdge(state.draft, edgeId)
   const points = current
@@ -732,16 +533,23 @@ export const setEdgeRoutePointField = (
   }
 
   const point = points[index]!
+  const inverse: Partial<Record<'x' | 'y', number>> = {}
+  if (hasOwn(fields, 'x')) {
+    inverse.x = point.x
+  }
+  if (hasOwn(fields, 'y')) {
+    inverse.y = point.y
+  }
   state.inverse.prepend({
-    type: 'edge.route.point.field.set',
+    type: 'edge.route.point.patch',
     edgeId,
     pointId,
-    field,
-    value: point[field]
+    fields: inverse
   })
   points[index] = {
     ...point,
-    [field]: value
+    ...(hasOwn(fields, 'x') ? { x: fields.x! } : {}),
+    ...(hasOwn(fields, 'y') ? { y: fields.y! } : {})
   }
   state.draft.edges.set(edgeId, {
     ...current,

@@ -117,44 +117,22 @@ export const emitMindmapTopicUpdateOps = (input: {
     }
 
     const value = fields[key]
-    if (value === undefined && key !== 'size') {
-      input.emit({
-        type: 'mindmap.topic.field.unset',
-        id: input.mindmapId,
-        topicId: input.topicId,
-        field: fieldMap[key] as Extract<Operation, { type: 'mindmap.topic.field.unset' }>['field']
-      })
-      return
-    }
-
     input.emit({
-      type: 'mindmap.topic.field.set',
+      type: 'mindmap.topic.patch',
       id: input.mindmapId,
       topicId: input.topicId,
-      field: fieldMap[key],
-      value
+      fields: {
+        [fieldMap[key]]: value
+      }
     })
   })
 
-  for (const record of input.update.records ?? []) {
-    if (record.op === 'unset') {
-      input.emit({
-        type: 'mindmap.topic.record.unset',
-        id: input.mindmapId,
-        topicId: input.topicId,
-        scope: record.scope,
-        path: record.path
-      })
-      continue
-    }
-
+  if (input.update.record) {
     input.emit({
-      type: 'mindmap.topic.record.set',
+      type: 'mindmap.topic.patch',
       id: input.mindmapId,
       topicId: input.topicId,
-      scope: record.scope,
-      path: record.path ?? '',
-      value: record.value
+      record: input.update.record
     })
   }
 }
@@ -175,23 +153,13 @@ export const emitMindmapBranchUpdateOps = (input: {
       return
     }
 
-    const value = fields[field]
-    if (value === undefined) {
-      input.emit({
-        type: 'mindmap.branch.field.unset',
-        id: input.mindmapId,
-        topicId: input.topicId,
-        field: field as MindmapBranchField
-      })
-      return
-    }
-
     input.emit({
-      type: 'mindmap.branch.field.set',
+      type: 'mindmap.branch.patch',
       id: input.mindmapId,
       topicId: input.topicId,
-      field: field as MindmapBranchField,
-      value
+      fields: {
+        [field]: fields[field]
+      }
     })
   })
 }

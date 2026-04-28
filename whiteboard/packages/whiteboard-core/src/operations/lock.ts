@@ -1,11 +1,14 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   CanvasItemRef,
   Document,
   Edge,
   EdgeEnd,
+  EdgeFieldPatch,
   EdgeId,
   GroupId,
+  MindmapId,
   NodeId,
   Operation,
   Origin
@@ -113,6 +116,20 @@ const collectLockedNodeIdsForEdgeIds = (
   })
 )
 
+const readMindmapSubtreeNodeIds = (
+  document: Document,
+  mindmapId: MindmapId,
+  rootId?: NodeId
+): readonly NodeId[] => {
+  const record = document.mindmaps[mindmapId]
+  if (!record) {
+    return []
+  }
+
+  const tree = mindmapApi.tree.fromRecord(record)
+  return mindmapApi.tree.subtreeIds(tree, rootId ?? record.root)
+}
+
 export const resolveLockDecision = ({
   document,
   target
@@ -175,8 +192,8 @@ export const resolveLockDecision = ({
             : directLockedEdgeIds.length > 0
               ? 'locked-edge'
               : relationLockedNodeIds.length > 0
-              ? 'locked-relation'
-              : undefined
+                ? 'locked-relation'
+                : undefined
       }
     }
     case 'edge-ids': {
@@ -209,21 +226,52 @@ export const resolveLockDecision = ({
   }
 }
 
-const isNodeLockOnlyOperation = (
-  operation: Operation
-) => (
-  (operation.type === 'node.field.set' && operation.field === 'locked')
-  || (operation.type === 'node.field.unset' && operation.field === 'locked')
-)
+const isNodeLockOnlyPatch = (
+  operation: Extract<Operation, { type: 'node.patch' }>
+) => {
+  const fields = operation.fields
+  if (!fields || operation.record) {
+    return false
+  }
 
-const isEdgeLockOnlyOperation = (
-  operation: Operation
-) => (
-  (operation.type === 'edge.field.set' && operation.field === 'locked')
-  || (operation.type === 'edge.field.unset' && operation.field === 'locked')
-)
+  const keys = Object.keys(fields)
+  return keys.length === 1 && hasOwn(fields, 'locked')
+}
+
+const isEdgeLockOnlyPatch = (
+  operation: Extract<Operation, { type: 'edge.patch' }>
+) => {
+  const fields = operation.fields
+  if (!fields || operation.record) {
+    return false
+  }
+
+  const keys = Object.keys(fields)
+  return keys.length === 1 && hasOwn(fields, 'locked')
+}
+
+const isMindmapTopicLockOnlyPatch = (
+  operation: Extract<Operation, { type: 'mindmap.topic.patch' }>
+) => {
+  const fields = operation.fields
+  if (!fields || operation.record) {
+    return false
+  }
+
+  const keys = Object.keys(fields)
+  return keys.length === 1 && hasOwn(fields, 'locked')
+}
+
+const readNextEdgeEnd = (
+  current: Edge['source'] | Edge['target'],
+  fields: EdgeFieldPatch | undefined,
+  key: 'source' | 'target'
+) => fields && hasOwn(fields, key)
+  ? fields[key] ?? current
+  : current
 
 const readLockViolationForOperation = ({
+  document,
   operation,
   readNodeLocked,
   readEdgeLocked,
@@ -231,6 +279,7 @@ const readLockViolationForOperation = ({
   updateNodeLocked,
   updateEdgeLocked
 }: {
+  document: Document
   operation: Operation
   readNodeLocked: (nodeId: NodeId) => boolean
   readEdgeLocked: (edgeId: EdgeId) => boolean
@@ -242,11 +291,11 @@ const readLockViolationForOperation = ({
     case 'node.create':
       updateNodeLocked(operation.node.id, Boolean(operation.node.locked))
       return undefined
-    case 'node.field.set':
-    case 'node.field.unset':
-    case 'node.record.set':
-    case 'node.record.unset': {
-      if (readNodeLocked(operation.id) && !isNodeLockOnlyOperation(operation)) {
+    case 'node.restore':
+      updateNodeLocked(operation.node.id, Boolean(operation.node.locked))
+      return undefined
+    case 'node.patch': {
+      if (readNodeLocked(operation.id) && !isNodeLockOnlyPatch(operation)) {
         return {
           lockedNodeIds: [operation.id],
           lockedEdgeIds: [],
@@ -254,11 +303,8 @@ const readLockViolationForOperation = ({
         }
       }
 
-      if (operation.type === 'node.field.set' && operation.field === 'locked') {
-        updateNodeLocked(operation.id, Boolean(operation.value))
-      }
-      if (operation.type === 'node.field.unset' && operation.field === 'locked') {
-        updateNodeLocked(operation.id, false)
+      if (operation.fields && hasOwn(operation.fields, 'locked')) {
+        updateNodeLocked(operation.id, Boolean(operation.fields.locked))
       }
       return undefined
     }
@@ -273,40 +319,35 @@ const readLockViolationForOperation = ({
       updateNodeLocked(operation.id, false)
       return undefined
     case 'edge.create': {
-      return (() => {
-        const lockedNodeIds = collectLockedNodeIdsFromEnds(
-          readNodeLocked,
-          [operation.edge.source, operation.edge.target]
-        )
-        if (!lockedNodeIds.length) {
-          return undefined
-        }
-        return {
-          lockedNodeIds,
-          lockedEdgeIds: [],
-          reason: 'locked-relation' as const
-        }
-      })()
+      const lockedNodeIds = collectLockedNodeIdsFromEnds(
+        readNodeLocked,
+        [operation.edge.source, operation.edge.target]
+      )
+      return lockedNodeIds.length
+        ? {
+            lockedNodeIds,
+            lockedEdgeIds: [],
+            reason: 'locked-relation'
+          }
+        : undefined
     }
-    case 'edge.field.set':
-    case 'edge.field.unset':
-    case 'edge.record.set':
-    case 'edge.record.unset':
+    case 'edge.patch':
     case 'edge.label.insert':
     case 'edge.label.delete':
     case 'edge.label.move':
-    case 'edge.label.field.set':
-    case 'edge.label.field.unset':
-    case 'edge.label.record.set':
-    case 'edge.label.record.unset':
+    case 'edge.label.patch':
     case 'edge.route.point.insert':
     case 'edge.route.point.delete':
     case 'edge.route.point.move':
-    case 'edge.route.point.field.set': {
+    case 'edge.route.point.patch': {
       const edgeId = 'id' in operation
         ? operation.id
         : operation.edgeId
-      if (readEdgeLocked(edgeId) && !isEdgeLockOnlyOperation(operation)) {
+
+      if (
+        readEdgeLocked(edgeId)
+        && !(operation.type === 'edge.patch' && isEdgeLockOnlyPatch(operation))
+      ) {
         return {
           lockedNodeIds: [],
           lockedEdgeIds: [edgeId],
@@ -314,11 +355,16 @@ const readLockViolationForOperation = ({
         }
       }
 
-      if (operation.type === 'edge.field.set' && operation.field === 'locked') {
-        updateEdgeLocked(edgeId, Boolean(operation.value))
+      if (
+        operation.type === 'edge.patch'
+        && operation.fields
+        && hasOwn(operation.fields, 'locked')
+      ) {
+        updateEdgeLocked(edgeId, Boolean(operation.fields.locked))
       }
-      if (operation.type === 'edge.field.unset' && operation.field === 'locked') {
-        updateEdgeLocked(edgeId, false)
+
+      if (operation.type !== 'edge.patch') {
+        return undefined
       }
 
       const current = readEdge(edgeId)
@@ -326,39 +372,25 @@ const readLockViolationForOperation = ({
         return undefined
       }
 
-      const sourceChanged = (
-        operation.type === 'edge.field.set'
-        && operation.field === 'source'
-        && !edgeApi.equal.sameEnd(current.source, operation.value as Edge['source'])
-      )
-      const targetChanged = (
-        operation.type === 'edge.field.set'
-        && operation.field === 'target'
-        && !edgeApi.equal.sameEnd(current.target, operation.value as Edge['target'])
-      )
+      const nextSource = readNextEdgeEnd(current.source, operation.fields, 'source')
+      const nextTarget = readNextEdgeEnd(current.target, operation.fields, 'target')
+      const sourceChanged = !edgeApi.equal.sameEnd(current.source, nextSource)
+      const targetChanged = !edgeApi.equal.sameEnd(current.target, nextTarget)
       if (!sourceChanged && !targetChanged) {
         return undefined
       }
 
-      const nextSource = operation.type === 'edge.field.set' && operation.field === 'source'
-        ? operation.value as Edge['source']
-        : current.source
-      const nextTarget = operation.type === 'edge.field.set' && operation.field === 'target'
-        ? operation.value as Edge['target']
-        : current.target
       const lockedNodeIds = collectLockedNodeIdsFromEnds(
         readNodeLocked,
         [current.source, current.target, nextSource, nextTarget]
       )
-      if (!lockedNodeIds.length) {
-        return undefined
-      }
-
-      return {
-        lockedNodeIds,
-        lockedEdgeIds: [],
-        reason: 'locked-relation'
-      }
+      return lockedNodeIds.length
+        ? {
+            lockedNodeIds,
+            lockedEdgeIds: [],
+            reason: 'locked-relation'
+          }
+        : undefined
     }
     case 'edge.delete': {
       if (readEdgeLocked(operation.id)) {
@@ -378,16 +410,129 @@ const readLockViolationForOperation = ({
         readNodeLocked,
         [current.source, current.target]
       )
-      if (!lockedNodeIds.length) {
-        return undefined
+      return lockedNodeIds.length
+        ? {
+            lockedNodeIds,
+            lockedEdgeIds: [],
+            reason: 'locked-relation'
+          }
+        : undefined
+    }
+    case 'mindmap.create':
+      operation.nodes.forEach((node) => {
+        updateNodeLocked(node.id, Boolean(node.locked))
+      })
+      return undefined
+    case 'mindmap.restore':
+      operation.snapshot.nodes.forEach((node) => {
+        updateNodeLocked(node.id, Boolean(node.locked))
+      })
+      return undefined
+    case 'mindmap.delete': {
+      const lockedNodeIds = readMindmapSubtreeNodeIds(document, operation.id)
+        .filter((nodeId) => readNodeLocked(nodeId))
+      return lockedNodeIds.length
+        ? {
+            lockedNodeIds,
+            lockedEdgeIds: [],
+            reason: 'locked-node'
+          }
+        : undefined
+    }
+    case 'mindmap.move': {
+      const rootId = document.mindmaps[operation.id]?.root
+      return rootId && readNodeLocked(rootId)
+        ? {
+            lockedNodeIds: [rootId],
+            lockedEdgeIds: [],
+            reason: 'locked-node'
+          }
+        : undefined
+    }
+    case 'mindmap.layout': {
+      const lockedNodeIds = readMindmapSubtreeNodeIds(document, operation.id)
+        .filter((nodeId) => readNodeLocked(nodeId))
+      return lockedNodeIds.length
+        ? {
+            lockedNodeIds,
+            lockedEdgeIds: [],
+            reason: 'locked-node'
+          }
+        : undefined
+    }
+    case 'mindmap.topic.insert':
+      if (operation.input.kind === 'child') {
+        if (readNodeLocked(operation.input.parentId)) {
+          return {
+            lockedNodeIds: [operation.input.parentId],
+            lockedEdgeIds: [],
+            reason: 'locked-node'
+          }
+        }
+      } else if (readNodeLocked(operation.input.nodeId)) {
+        return {
+          lockedNodeIds: [operation.input.nodeId],
+          lockedEdgeIds: [],
+          reason: 'locked-node'
+        }
+      }
+      updateNodeLocked(operation.node.id, Boolean(operation.node.locked))
+      return undefined
+    case 'mindmap.topic.restore':
+      operation.snapshot.nodes.forEach((node) => {
+        updateNodeLocked(node.id, Boolean(node.locked))
+      })
+      return undefined
+    case 'mindmap.topic.move': {
+      const lockedNodeIds = uniqueIds([
+        ...(readNodeLocked(operation.input.nodeId) ? [operation.input.nodeId] : []),
+        ...(readNodeLocked(operation.input.parentId) ? [operation.input.parentId] : [])
+      ])
+      return lockedNodeIds.length
+        ? {
+            lockedNodeIds,
+            lockedEdgeIds: [],
+            reason: 'locked-node'
+          }
+        : undefined
+    }
+    case 'mindmap.topic.delete': {
+      const lockedNodeIds = readMindmapSubtreeNodeIds(
+        document,
+        operation.id,
+        operation.input.nodeId
+      ).filter((nodeId) => readNodeLocked(nodeId))
+      return lockedNodeIds.length
+        ? {
+            lockedNodeIds,
+            lockedEdgeIds: [],
+            reason: 'locked-node'
+          }
+        : undefined
+    }
+    case 'mindmap.topic.patch': {
+      if (readNodeLocked(operation.topicId) && !isMindmapTopicLockOnlyPatch(operation)) {
+        return {
+          lockedNodeIds: [operation.topicId],
+          lockedEdgeIds: [],
+          reason: 'locked-node'
+        }
       }
 
-      return {
-        lockedNodeIds,
-        lockedEdgeIds: [],
-        reason: 'locked-relation'
+      if (operation.fields && hasOwn(operation.fields, 'locked')) {
+        updateNodeLocked(operation.topicId, Boolean(operation.fields.locked))
       }
+      return undefined
     }
+    case 'mindmap.branch.patch':
+    case 'mindmap.topic.collapse':
+      return readNodeLocked(operation.topicId)
+        ? {
+            lockedNodeIds: [operation.topicId],
+            lockedEdgeIds: [],
+            reason: 'locked-node'
+          }
+        : undefined
     case 'canvas.order.move': {
       const lockedNodeIds = uniqueIds(
         operation.refs.flatMap((ref) => (
@@ -457,6 +602,10 @@ export const validateLockOperations = ({
   const updateNodeLocked = (nodeId: NodeId, locked: boolean) => {
     nodeLocked.set(nodeId, locked)
   }
+  const deleteNodeLocked = (nodeId: NodeId) => {
+    nodeLocked.delete(nodeId)
+  }
+
   const readEdgeLocked = (edgeId: EdgeId) => edgeLocked.get(edgeId) === true
   const updateEdgeLocked = (edgeId: EdgeId, locked: boolean) => {
     edgeLocked.set(edgeId, locked)
@@ -472,6 +621,7 @@ export const validateLockOperations = ({
 
   for (const operation of operations) {
     const violation = readLockViolationForOperation({
+      document,
       operation,
       readNodeLocked,
       readEdgeLocked,
@@ -494,27 +644,29 @@ export const validateLockOperations = ({
         })
         updateEdgeLocked(operation.edge.id, Boolean(operation.edge.locked))
         break
-      case 'edge.field.set':
-        if (operation.field === 'source' || operation.field === 'target') {
-          const current = readEdge(operation.id)
-          if (!current) {
-            break
-          }
-          updateEdge(operation.id, {
-            source: operation.field === 'source'
-              ? operation.value as Edge['source']
-              : current.source,
-            target: operation.field === 'target'
-              ? operation.value as Edge['target']
-              : current.target
-          })
+      case 'edge.patch': {
+        const current = readEdge(operation.id)
+        if (!current) {
+          break
         }
+
+        updateEdge(operation.id, {
+          source: readNextEdgeEnd(current.source, operation.fields, 'source'),
+          target: readNextEdgeEnd(current.target, operation.fields, 'target')
+        })
         break
+      }
       case 'edge.delete':
         deleteEdge(operation.id)
         break
       case 'node.delete':
-        nodeLocked.delete(operation.id)
+        deleteNodeLocked(operation.id)
+        break
+      case 'mindmap.delete':
+        readMindmapSubtreeNodeIds(document, operation.id).forEach(deleteNodeLocked)
+        break
+      case 'mindmap.topic.delete':
+        readMindmapSubtreeNodeIds(document, operation.id, operation.input.nodeId).forEach(deleteNodeLocked)
         break
       default:
         break

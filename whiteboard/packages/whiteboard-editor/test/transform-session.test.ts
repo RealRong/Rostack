@@ -1,7 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import {
-  type Path
-} from '@shared/draft'
 import type { Node } from '@whiteboard/core/types'
 import { createTransformSession } from '../src/input/features/transform'
 
@@ -266,20 +263,10 @@ describe('createTransformSession', () => {
             height: 72
           }
         },
-        records: [
-          {
-            scope: 'data',
-            op: 'set',
-            path: 'widthMode',
-            value: 'wrap'
-          },
-          {
-            scope: 'data',
-            op: 'set',
-            path: 'wrapWidth',
-            value: 180
-          }
-        ]
+        record: {
+          'data.widthMode': 'wrap',
+          'data.wrapWidth': 180
+        }
       }
     })
   })
@@ -303,12 +290,7 @@ describe('createTransformSession', () => {
             height: number
           }
         }
-        records?: readonly {
-          scope: string
-          op: string
-          path: Path
-          value: unknown
-        }[]
+        record?: Record<string, unknown>
       }
     }[] = []
     const projectedRect = {
@@ -360,14 +342,9 @@ describe('createTransformSession', () => {
 
     expect(updates).toHaveLength(1)
     expect(updates[0]?.id).toBe('text-1')
-    expect(updates[0]?.input.records).toMatchObject([
-      {
-        scope: 'style',
-        op: 'set',
-        path: 'fontSize',
-        value: 25
-      }
-    ])
+    expect(updates[0]?.input.record).toMatchObject({
+      'style.fontSize': 25
+    })
     expect(updates[0]?.input.fields?.size?.width).not.toBe(projectedRect.width)
     expect(updates[0]?.input.fields?.size?.height).not.toBe(projectedRect.height)
     expect(

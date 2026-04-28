@@ -22,6 +22,7 @@ import type {
 } from '../mutation/types'
 import type { WhiteboardMutationTable } from '@whiteboard/core/operations'
 import type { WhiteboardReduceCtx } from '@whiteboard/core/reducer/types'
+import type { WhiteboardCompileScope } from '@whiteboard/core/operations'
 import type { Document, Operation } from '@whiteboard/core/types'
 
 const resolveIntentOrigin = (
@@ -90,8 +91,9 @@ export const createEngine = ({
     EnginePublish,
     void,
     WhiteboardMutationExtra,
+    void,
     WhiteboardReduceCtx,
-    void
+    WhiteboardCompileScope
   >({
     document,
     ...createWhiteboardMutationSpec({
@@ -120,7 +122,7 @@ export const createEngine = ({
       listener(current.publish)
     }),
     execute: ((intent, options) => mapExecuteFailure(
-      core.execute(intent as never, {
+      core.execute(intent, {
         origin: resolveIntentOrigin(intent, options?.origin)
       }) as ExecuteResult<IntentKind>
     )) as Engine['execute'],

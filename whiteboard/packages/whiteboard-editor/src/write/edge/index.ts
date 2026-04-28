@@ -31,18 +31,9 @@ const readCommittedEdge = (
 const createStyleMutation = (
   path: Path,
   value: unknown
-) => value === undefined
-  ? {
-      scope: 'style' as const,
-      op: 'unset' as const,
-      path
-    }
-  : {
-      scope: 'style' as const,
-      op: 'set' as const,
-      path,
-      value
-    }
+) => ({
+  [`style.${path}`]: value
+})
 
 const updateEdges = (
   engine: Engine,
@@ -112,29 +103,8 @@ const updateEdgeStyle = (
   }
 
   return {
-    records: [
-      createStyleMutation(path, value)
-    ]
+    record: createStyleMutation(path, value)
   }
-})
-
-const updateEdgeField = <Field extends keyof NonNullable<EdgeUpdateInput['fields']>>(
-  edgeIds: readonly EdgeId[],
-  read: (edgeId: EdgeId) => Edge | undefined,
-  engine: Engine,
-  field: Field,
-  value: NonNullable<EdgeUpdateInput['fields']>[Field]
-) => updateEdgesBy(edgeIds, read, engine, (edge) => {
-  const current = edge[field as keyof Edge]
-  if (current === value) {
-    return undefined
-  }
-
-  return {
-    fields: {
-      [field]: value
-    }
-  } as EdgeUpdateInput
 })
 
 export const createEdgeWrite = ({
@@ -200,15 +170,23 @@ export const createEdgeWrite = ({
       }
 
       return {
-        records: [
-          createStyleMutation('start', end),
-          createStyleMutation('end', start)
-        ]
+        record: {
+          ...createStyleMutation('start', end),
+          ...createStyleMutation('end', start)
+        }
       }
     })
   },
   type: {
-    set: (edgeIds, value) => updateEdgeField(edgeIds, read.readEdge, engine, 'type', value)
+    set: (edgeIds, value) => updateEdgesBy(edgeIds, read.readEdge, engine, (edge) => (
+      edge.type === value
+        ? undefined
+        : {
+            fields: {
+              type: value
+            }
+          }
+    ))
   },
   lock: {
     set: (edgeIds, locked) => updateExistingEdges(read.document, engine, edgeIds, {

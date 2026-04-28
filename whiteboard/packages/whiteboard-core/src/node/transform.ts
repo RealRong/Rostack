@@ -8,7 +8,9 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import { schema as schemaApi } from '@whiteboard/core/registry/schema'
+import {
+  mergeNodeUpdates
+} from '@whiteboard/core/node/update'
 import {
   TEXT_DEFAULT_FONT_SIZE,
   readTextWrapWidth,
@@ -1319,28 +1321,44 @@ export const buildTransformCommitUpdates = (options: {
 
     const geometry = toTransformCommitPatch(target.node, preview)
     const textUpdate = target.node.type === 'text'
-      ? schemaApi.node.mergeUpdates(
+      ? mergeNodeUpdates(
           preview.mode !== undefined && preview.mode !== readTextWidthMode(target.node)
-            ? schemaApi.node.compileDataUpdate('widthMode', preview.mode)
+            ? {
+                record: {
+                  'data.widthMode': preview.mode
+                }
+              }
             : undefined,
           (
             (preview.mode ?? readTextWidthMode(target.node)) === 'wrap'
             && preview.wrapWidth !== readTextWrapWidth(target.node)
           )
-            ? schemaApi.node.compileDataUpdate('wrapWidth', preview.wrapWidth)
+            ? {
+                record: {
+                  'data.wrapWidth': preview.wrapWidth
+                }
+              }
             : (
                 (preview.mode ?? readTextWidthMode(target.node)) === 'auto'
                 && readTextWrapWidth(target.node) !== undefined
               )
-                ? schemaApi.node.compileDataUpdate('wrapWidth', undefined)
+                ? {
+                    record: {
+                      'data.wrapWidth': undefined
+                    }
+                  }
                 : undefined,
           preview.fontSize !== undefined
             && Math.round(preview.fontSize) !== readTextFontSize(target.node)
-            ? schemaApi.node.compileStyleUpdate('fontSize', Math.round(preview.fontSize))
+            ? {
+                record: {
+                  'style.fontSize': Math.round(preview.fontSize)
+                }
+              }
             : undefined
         )
       : undefined
-    const update = schemaApi.node.mergeUpdates(
+    const update = mergeNodeUpdates(
       geometry
         ? {
             fields: geometry
@@ -1348,7 +1366,7 @@ export const buildTransformCommitUpdates = (options: {
         : undefined,
       textUpdate
     )
-    if (!update.fields && !update.records?.length) {
+    if (!update.fields && !update.record) {
       return []
     }
 

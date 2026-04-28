@@ -82,7 +82,7 @@ export type {
 
 export type {
   WhiteboardCompileIds,
-  WhiteboardIntentContext,
+  WhiteboardCompileScope,
   WhiteboardIntentHandler,
   CanvasIntent,
   DocumentIntent,

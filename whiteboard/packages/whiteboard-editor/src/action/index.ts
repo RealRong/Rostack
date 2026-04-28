@@ -246,26 +246,22 @@ const toEdgeUpdateInput = (
     ...(Object.prototype.hasOwnProperty.call(patch, 'groupId') ? { groupId: patch.groupId } : {}),
     ...(Object.prototype.hasOwnProperty.call(patch, 'textMode') ? { textMode: patch.textMode } : {})
   }
-  const records = [
+  const record = {
     ...(Object.prototype.hasOwnProperty.call(patch, 'data')
-      ? [{
-          scope: 'data' as const,
-          op: 'set' as const,
-          value: patch.data
-        }]
-      : []),
+      ? {
+          data: patch.data
+        }
+      : {}),
     ...(Object.prototype.hasOwnProperty.call(patch, 'style')
-      ? [{
-          scope: 'style' as const,
-          op: 'set' as const,
-          value: patch.style
-        }]
-      : [])
-  ]
+      ? {
+          style: patch.style
+        }
+      : {})
+  }
 
   return {
     ...(Object.keys(fields).length > 0 ? { fields } : {}),
-    ...(records.length > 0 ? { records } : {})
+    ...(Object.keys(record).length > 0 ? { record } : {})
   }
 }
 
@@ -559,7 +555,7 @@ export const createEditorActionsApi = ({
       create: atomic((input) => write.edge.create(input)),
       patch: atomic((edgeIds, patch) => {
         const input = toEdgeUpdateInput(patch)
-        if (!input.fields && !input.records?.length) {
+        if (!input.fields && !input.record) {
           return undefined
         }
 
@@ -654,22 +650,14 @@ export const createEditorActionsApi = ({
                 ...(patch.t !== undefined ? { t: patch.t } : {}),
                 ...(patch.offset !== undefined ? { offset: patch.offset } : {})
               },
-              records: [
-                ...(patch.style
-                  ? [{
-                      scope: 'style' as const,
-                      op: 'set' as const,
-                      value: patch.style
-                    }]
-                  : []),
-                ...(patch.data
-                  ? [{
-                      scope: 'data' as const,
-                      op: 'set' as const,
-                      value: patch.data
-                    }]
-                  : [])
-              ]
+              ...(patch.style || patch.data
+                ? {
+                    record: {
+                      ...(patch.style ? { style: patch.style } : {}),
+                      ...(patch.data ? { data: patch.data } : {})
+                    }
+                  }
+                : {})
             }
           )),
         remove: atomic((edgeId, labelId) => {
@@ -783,11 +771,9 @@ export const createEditorActionsApi = ({
             input.nodeIds.map((topicId) => ({
               topicId,
               input: {
-                records: [{
-                  scope: 'style',
-                  op: 'set',
-                  value: style
-                }]
+                record: {
+                  style
+                }
               }
             }))
           )

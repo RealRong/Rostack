@@ -206,143 +206,32 @@ const defineFootprint = <TType extends WhiteboardOperation['type']>(
   collect(createFootprintContext(ctx), op)
 }
 
-const applyNodeFieldSet = (
-  ctx: WhiteboardReduceCtx,
-  operation: Extract<WhiteboardOperation, { type: 'node.field.set' }>
-) => {
-  switch (operation.field) {
-    case 'position':
-      ctx.node.setField(operation.id, 'position', operation.value)
-      return
-    case 'size':
-      ctx.node.setField(operation.id, 'size', operation.value)
-      return
-    case 'rotation':
-      ctx.node.setField(operation.id, 'rotation', operation.value)
-      return
-    case 'groupId':
-      ctx.node.setField(operation.id, 'groupId', operation.value)
-      return
-    case 'owner':
-      ctx.node.setField(operation.id, 'owner', operation.value)
-      return
-    case 'locked':
-      ctx.node.setField(operation.id, 'locked', operation.value)
-      return
-  }
-}
+const hasOwn = <T extends object>(
+  value: T,
+  key: PropertyKey
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
 
-const applyEdgeFieldSet = (
-  ctx: WhiteboardReduceCtx,
-  operation: Extract<WhiteboardOperation, { type: 'edge.field.set' }>
-) => {
-  switch (operation.field) {
-    case 'source':
-      ctx.edge.setField(operation.id, 'source', operation.value)
-      return
-    case 'target':
-      ctx.edge.setField(operation.id, 'target', operation.value)
-      return
-    case 'type':
-      ctx.edge.setField(operation.id, 'type', operation.value)
-      return
-    case 'locked':
-      ctx.edge.setField(operation.id, 'locked', operation.value)
-      return
-    case 'groupId':
-      ctx.edge.setField(operation.id, 'groupId', operation.value)
-      return
-    case 'textMode':
-      ctx.edge.setField(operation.id, 'textMode', operation.value)
-      return
+const toScopedRecordKeys = (record?: Readonly<Record<string, unknown>>) => Object.keys(
+  record ?? {}
+).flatMap((path) => {
+  if (path === 'data' || path.startsWith('data.')) {
+    return [{
+      scope: 'data' as const,
+      path: path === 'data'
+        ? ''
+        : path.slice('data.'.length)
+    }]
   }
-}
-
-const applyGroupFieldSet = (
-  ctx: WhiteboardReduceCtx,
-  operation: Extract<WhiteboardOperation, { type: 'group.field.set' }>
-) => {
-  switch (operation.field) {
-    case 'locked':
-      ctx.group.setField(operation.id, 'locked', operation.value)
-      return
-    case 'name':
-      ctx.group.setField(operation.id, 'name', operation.value)
-      return
+  if (path === 'style' || path.startsWith('style.')) {
+    return [{
+      scope: 'style' as const,
+      path: path === 'style'
+        ? ''
+        : path.slice('style.'.length)
+    }]
   }
-}
-
-const applyMindmapTopicFieldSet = (
-  ctx: WhiteboardReduceCtx,
-  operation: Extract<WhiteboardOperation, { type: 'mindmap.topic.field.set' }>
-) => {
-  switch (operation.field) {
-    case 'size':
-      ctx.mindmap.setTopicField(
-        operation.id,
-        operation.topicId,
-        'size',
-        operation.value
-      )
-      return
-    case 'rotation':
-      ctx.mindmap.setTopicField(
-        operation.id,
-        operation.topicId,
-        'rotation',
-        operation.value
-      )
-      return
-    case 'locked':
-      ctx.mindmap.setTopicField(
-        operation.id,
-        operation.topicId,
-        'locked',
-        operation.value
-      )
-      return
-  }
-}
-
-const applyMindmapBranchFieldSet = (
-  ctx: WhiteboardReduceCtx,
-  operation: Extract<WhiteboardOperation, { type: 'mindmap.branch.field.set' }>
-) => {
-  switch (operation.field) {
-    case 'color':
-      ctx.mindmap.setBranchField(
-        operation.id,
-        operation.topicId,
-        'color',
-        operation.value
-      )
-      return
-    case 'line':
-      ctx.mindmap.setBranchField(
-        operation.id,
-        operation.topicId,
-        'line',
-        operation.value
-      )
-      return
-    case 'width':
-      ctx.mindmap.setBranchField(
-        operation.id,
-        operation.topicId,
-        'width',
-        operation.value
-      )
-      return
-    case 'stroke':
-      ctx.mindmap.setBranchField(
-        operation.id,
-        operation.topicId,
-        'stroke',
-        operation.value
-      )
-      return
-  }
-}
+  return []
+})
 
 export type WhiteboardOperationReduceExtra = WhiteboardReduceExtra
 
@@ -405,71 +294,37 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       ctx.node.restore(operation.node, operation.slot)
     }
   },
-  'node.field.set': {
+  'node.patch': {
     family: 'node',
     footprint: defineFootprint((ctx, op) => {
       const node = ctx.read.node(op.id)
-      ctx.add({
-        kind: 'node.field',
-        nodeId: op.id,
-        field: op.field
+      Object.keys(op.fields ?? {}).forEach((field) => {
+        ctx.add({
+          kind: 'node.field',
+          nodeId: op.id,
+          field: field as Extract<HistoryKey, { kind: 'node.field' }>['field']
+        })
+      })
+      toScopedRecordKeys(op.record).forEach((entry) => {
+        ctx.add({
+          kind: 'node.record',
+          nodeId: op.id,
+          scope: entry.scope,
+          path: entry.path
+        })
       })
       readNodeOwners(
         node,
-        op.field === 'owner'
-          ? op.value as NodeOwner
+        op.fields && hasOwn(op.fields, 'owner')
+          ? op.fields.owner
           : undefined
       ).forEach((owner) => addOwnerMindmap(ctx, owner))
     }),
     apply: (ctx, operation) => {
-      applyNodeFieldSet(ctx, operation)
-    }
-  },
-  'node.field.unset': {
-    family: 'node',
-    footprint: defineFootprint((ctx, op) => {
-      const node = ctx.read.node(op.id)
-      ctx.add({
-        kind: 'node.field',
-        nodeId: op.id,
-        field: op.field
+      ctx.node.patch(operation.id, {
+        fields: operation.fields,
+        record: operation.record
       })
-      addOwnerMindmap(ctx, node?.owner)
-    }),
-    apply: (ctx, operation) => {
-      ctx.node.unsetField(operation.id, operation.field)
-    }
-  },
-  'node.record.set': {
-    family: 'node',
-    footprint: defineFootprint((ctx, op) => {
-      const node = ctx.read.node(op.id)
-      ctx.add({
-        kind: 'node.record',
-        nodeId: op.id,
-        scope: op.scope,
-        path: op.path
-      })
-      addOwnerMindmap(ctx, node?.owner)
-    }),
-    apply: (ctx, operation) => {
-      ctx.node.setRecord(operation.id, operation.scope, operation.path, operation.value)
-    }
-  },
-  'node.record.unset': {
-    family: 'node',
-    footprint: defineFootprint((ctx, op) => {
-      const node = ctx.read.node(op.id)
-      ctx.add({
-        kind: 'node.record',
-        nodeId: op.id,
-        scope: op.scope,
-        path: op.path
-      })
-      addOwnerMindmap(ctx, node?.owner)
-    }),
-    apply: (ctx, operation) => {
-      ctx.node.unsetRecord(operation.id, operation.scope, operation.path)
     }
   },
   'node.delete': {
@@ -501,58 +356,30 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       ctx.edge.restore(operation.edge, operation.slot)
     }
   },
-  'edge.field.set': {
+  'edge.patch': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.field',
-        edgeId: op.id,
-        field: op.field
+      Object.keys(op.fields ?? {}).forEach((field) => {
+        ctx.add({
+          kind: 'edge.field',
+          edgeId: op.id,
+          field: field as Extract<HistoryKey, { kind: 'edge.field' }>['field']
+        })
+      })
+      toScopedRecordKeys(op.record).forEach((entry) => {
+        ctx.add({
+          kind: 'edge.record',
+          edgeId: op.id,
+          scope: entry.scope,
+          path: entry.path
+        })
       })
     }),
     apply: (ctx, operation) => {
-      applyEdgeFieldSet(ctx, operation)
-    }
-  },
-  'edge.field.unset': {
-    family: 'edge',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.field',
-        edgeId: op.id,
-        field: op.field
+      ctx.edge.patch(operation.id, {
+        fields: operation.fields,
+        record: operation.record
       })
-    }),
-    apply: (ctx, operation) => {
-      ctx.edge.unsetField(operation.id, operation.field)
-    }
-  },
-  'edge.record.set': {
-    family: 'edge',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.record',
-        edgeId: op.id,
-        scope: op.scope,
-        path: op.path
-      })
-    }),
-    apply: (ctx, operation) => {
-      ctx.edge.setRecord(operation.id, operation.scope, operation.path, operation.value)
-    }
-  },
-  'edge.record.unset': {
-    family: 'edge',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.record',
-        edgeId: op.id,
-        scope: op.scope,
-        path: op.path
-      })
-    }),
-    apply: (ctx, operation) => {
-      ctx.edge.unsetRecord(operation.id, operation.scope, operation.path)
     }
   },
   'edge.label.insert': {
@@ -606,62 +433,32 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       ctx.edge.moveLabel(operation.edgeId, operation.labelId, toOrderedAnchor(operation.to))
     }
   },
-  'edge.label.field.set': {
+  'edge.label.patch': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.label.field',
-        edgeId: op.edgeId,
-        labelId: op.labelId,
-        field: op.field
+      Object.keys(op.fields ?? {}).forEach((field) => {
+        ctx.add({
+          kind: 'edge.label.field',
+          edgeId: op.edgeId,
+          labelId: op.labelId,
+          field: field as Extract<HistoryKey, { kind: 'edge.label.field' }>['field']
+        })
+      })
+      toScopedRecordKeys(op.record).forEach((entry) => {
+        ctx.add({
+          kind: 'edge.label.record',
+          edgeId: op.edgeId,
+          labelId: op.labelId,
+          scope: entry.scope,
+          path: entry.path
+        })
       })
     }),
     apply: (ctx, operation) => {
-      ctx.edge.setLabelField(operation.edgeId, operation.labelId, operation.field, operation.value)
-    }
-  },
-  'edge.label.field.unset': {
-    family: 'edge',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.label.field',
-        edgeId: op.edgeId,
-        labelId: op.labelId,
-        field: op.field
+      ctx.edge.patchLabel(operation.edgeId, operation.labelId, {
+        fields: operation.fields,
+        record: operation.record
       })
-    }),
-    apply: (ctx, operation) => {
-      ctx.edge.unsetLabelField(operation.edgeId, operation.labelId, operation.field)
-    }
-  },
-  'edge.label.record.set': {
-    family: 'edge',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.label.record',
-        edgeId: op.edgeId,
-        labelId: op.labelId,
-        scope: op.scope,
-        path: op.path
-      })
-    }),
-    apply: (ctx, operation) => {
-      ctx.edge.setLabelRecord(operation.edgeId, operation.labelId, operation.scope, operation.path, operation.value)
-    }
-  },
-  'edge.label.record.unset': {
-    family: 'edge',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'edge.label.record',
-        edgeId: op.edgeId,
-        labelId: op.labelId,
-        scope: op.scope,
-        path: op.path
-      })
-    }),
-    apply: (ctx, operation) => {
-      ctx.edge.unsetLabelRecord(operation.edgeId, operation.labelId, operation.scope, operation.path)
     }
   },
   'edge.route.point.insert': {
@@ -715,7 +512,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       ctx.edge.moveRoutePoint(operation.edgeId, operation.pointId, toOrderedAnchor(operation.to))
     }
   },
-  'edge.route.point.field.set': {
+  'edge.route.point.patch': {
     family: 'edge',
     footprint: defineFootprint((ctx, op) => {
       ctx.add({
@@ -725,7 +522,7 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       })
     }),
     apply: (ctx, operation) => {
-      ctx.edge.setRoutePointField(operation.edgeId, operation.pointId, operation.field, operation.value)
+      ctx.edge.patchRoutePoint(operation.edgeId, operation.pointId, operation.fields)
     }
   },
   'edge.delete': {
@@ -761,30 +558,19 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       ctx.group.restore(operation.group)
     }
   },
-  'group.field.set': {
+  'group.patch': {
     family: 'group',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'group.field',
-        groupId: op.id,
-        field: op.field
+      Object.keys(op.fields ?? {}).forEach((field) => {
+        ctx.add({
+          kind: 'group.field',
+          groupId: op.id,
+          field: field as Extract<HistoryKey, { kind: 'group.field' }>['field']
+        })
       })
     }),
     apply: (ctx, operation) => {
-      applyGroupFieldSet(ctx, operation)
-    }
-  },
-  'group.field.unset': {
-    family: 'group',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'group.field',
-        groupId: op.id,
-        field: op.field
-      })
-    }),
-    apply: (ctx, operation) => {
-      ctx.group.unsetField(operation.id, operation.field)
+      ctx.group.patch(operation.id, operation.fields)
     }
   },
   'group.delete': {
@@ -937,13 +723,23 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       })
     }
   },
-  'mindmap.topic.field.set': {
+  'mindmap.topic.patch': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'node.field',
-        nodeId: op.topicId,
-        field: op.field
+      Object.keys(op.fields ?? {}).forEach((field) => {
+        ctx.add({
+          kind: 'node.field',
+          nodeId: op.topicId,
+          field: field as Extract<HistoryKey, { kind: 'node.field' }>['field']
+        })
+      })
+      toScopedRecordKeys(op.record).forEach((entry) => {
+        ctx.add({
+          kind: 'node.record',
+          nodeId: op.topicId,
+          scope: entry.scope,
+          path: entry.path
+        })
       })
       ctx.add({
         kind: 'mindmap.exists',
@@ -951,88 +747,26 @@ export const definitions: WhiteboardOperationDefinitionTable = {
       })
     }),
     apply: (ctx, operation) => {
-      applyMindmapTopicFieldSet(ctx, operation)
+      ctx.mindmap.patchTopic(operation.id, operation.topicId, {
+        fields: operation.fields,
+        record: operation.record
+      })
     }
   },
-  'mindmap.topic.field.unset': {
+  'mindmap.branch.patch': {
     family: 'mindmap',
     footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'node.field',
-        nodeId: op.topicId,
-        field: op.field
-      })
-      ctx.add({
-        kind: 'mindmap.exists',
-        mindmapId: op.id
+      Object.keys(op.fields ?? {}).forEach((field) => {
+        ctx.add({
+          kind: 'mindmap.branch.field',
+          mindmapId: op.id,
+          topicId: op.topicId,
+          field: field as Extract<HistoryKey, { kind: 'mindmap.branch.field' }>['field']
+        })
       })
     }),
     apply: (ctx, operation) => {
-      ctx.mindmap.unsetTopicField(operation.id, operation.topicId, operation.field)
-    }
-  },
-  'mindmap.topic.record.set': {
-    family: 'mindmap',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'node.record',
-        nodeId: op.topicId,
-        scope: op.scope,
-        path: op.path
-      })
-      ctx.add({
-        kind: 'mindmap.exists',
-        mindmapId: op.id
-      })
-    }),
-    apply: (ctx, operation) => {
-      ctx.mindmap.setTopicRecord(operation.id, operation.topicId, operation.scope, operation.path, operation.value)
-    }
-  },
-  'mindmap.topic.record.unset': {
-    family: 'mindmap',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'node.record',
-        nodeId: op.topicId,
-        scope: op.scope,
-        path: op.path
-      })
-      ctx.add({
-        kind: 'mindmap.exists',
-        mindmapId: op.id
-      })
-    }),
-    apply: (ctx, operation) => {
-      ctx.mindmap.unsetTopicRecord(operation.id, operation.topicId, operation.scope, operation.path)
-    }
-  },
-  'mindmap.branch.field.set': {
-    family: 'mindmap',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.branch.field',
-        mindmapId: op.id,
-        topicId: op.topicId,
-        field: op.field
-      })
-    }),
-    apply: (ctx, operation) => {
-      applyMindmapBranchFieldSet(ctx, operation)
-    }
-  },
-  'mindmap.branch.field.unset': {
-    family: 'mindmap',
-    footprint: defineFootprint((ctx, op) => {
-      ctx.add({
-        kind: 'mindmap.branch.field',
-        mindmapId: op.id,
-        topicId: op.topicId,
-        field: op.field
-      })
-    }),
-    apply: (ctx, operation) => {
-      ctx.mindmap.unsetBranchField(operation.id, operation.topicId, operation.field)
+      ctx.mindmap.patchBranch(operation.id, operation.topicId, operation.fields)
     }
   },
   'mindmap.topic.collapse': {

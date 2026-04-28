@@ -1,18 +1,14 @@
 import { json } from '@shared/core'
 import {
-  path as mutationPath,
+  path as draftPath,
   record as draftRecord,
-  type RecordWrite,
-  type Path
+  type RecordWrite
 } from '@shared/draft'
 import type {
   Node,
-  NodeField,
   NodeFieldPatch,
   NodeId,
   NodePatch,
-  NodeRecordMutation,
-  NodeUnsetField,
   NodeUpdateInput,
   Operation
 } from '@whiteboard/core/types'
@@ -42,26 +38,12 @@ const NODE_LIST_KEYS = new Set<keyof NodeFieldPatch>([
   'owner'
 ])
 
-const NODE_VALUE_KEYS = new Set<keyof NodeFieldPatch>([
-  'locked'
-])
+const NODE_VALUE_KEYS = new Set<keyof NodeFieldPatch>(['locked'])
 
 const hasOwn = <T extends object>(
   target: T,
   key: PropertyKey
 ) => Object.prototype.hasOwnProperty.call(target, key)
-
-const isRecordLike = (
-  value: unknown
-): value is Record<string | number, unknown> => (
-  typeof value === 'object'
-  && value !== null
-  && !Array.isArray(value)
-)
-
-const displayPath = (
-  value: Path
-): string => mutationPath.toString(value)
 
 const applyFieldPatch = (
   fields?: NodeFieldPatch
@@ -71,12 +53,24 @@ const applyFieldPatch = (
     return patch
   }
 
-  NODE_FIELD_KEYS.forEach((key) => {
-    if (!hasOwn(fields, key)) {
-      return
-    }
-    ;(patch as any)[key] = json.clone(fields[key])
-  })
+  if (hasOwn(fields, 'position')) {
+    patch.position = json.clone(fields.position)
+  }
+  if (hasOwn(fields, 'size')) {
+    patch.size = json.clone(fields.size)
+  }
+  if (hasOwn(fields, 'rotation')) {
+    patch.rotation = json.clone(fields.rotation)
+  }
+  if (hasOwn(fields, 'groupId')) {
+    patch.groupId = json.clone(fields.groupId)
+  }
+  if (hasOwn(fields, 'owner')) {
+    patch.owner = json.clone(fields.owner)
+  }
+  if (hasOwn(fields, 'locked')) {
+    patch.locked = json.clone(fields.locked)
+  }
 
   return patch
 }
@@ -90,24 +84,61 @@ const buildFieldInverse = (
     return inverse
   }
 
-  NODE_FIELD_KEYS.forEach((key) => {
-    if (!hasOwn(fields, key)) {
-      return
-    }
-    ;(inverse as any)[key] = json.clone((node as any)[key])
-  })
+  if (hasOwn(fields, 'position')) {
+    inverse.position = json.clone(node.position)
+  }
+  if (hasOwn(fields, 'size')) {
+    inverse.size = json.clone(node.size)
+  }
+  if (hasOwn(fields, 'rotation')) {
+    inverse.rotation = json.clone(node.rotation)
+  }
+  if (hasOwn(fields, 'groupId')) {
+    inverse.groupId = json.clone(node.groupId)
+  }
+  if (hasOwn(fields, 'owner')) {
+    inverse.owner = json.clone(node.owner)
+  }
+  if (hasOwn(fields, 'locked')) {
+    inverse.locked = json.clone(node.locked)
+  }
 
   return inverse
 }
 
-const applyRecordMutation = (
-  current: unknown,
-  mutation: NodeRecordMutation
-): { ok: true; value: unknown } | { ok: false; message: string } => {
+const cloneRecordWrite = (
+  record?: RecordWrite
+): RecordWrite | undefined => {
+  if (!record || Object.keys(record).length === 0) {
+    return undefined
+  }
+
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(record).map(([path, value]) => [path, json.clone(value)])
+    )
+  )
+}
+
+const hasRecordWrite = (
+  record?: RecordWrite
+): boolean => Boolean(record && Object.keys(record).length > 0)
+
+const applyRecordWrite = <T,>(
+  current: T,
+  record?: RecordWrite
+): { ok: true; value: T } | { ok: false; message: string } => {
+  if (!record || Object.keys(record).length === 0) {
+    return {
+      ok: true,
+      value: current
+    }
+  }
+
   try {
     return {
       ok: true,
-      value: draftRecord.apply(current, toRecordWrite(mutation))
+      value: draftRecord.apply(current, record)
     }
   } catch (error) {
     return {
@@ -119,160 +150,126 @@ const applyRecordMutation = (
   }
 }
 
-const toRecordWrite = (
-  mutation: NodeRecordMutation
-): RecordWrite => mutation.op === 'unset'
-  ? {
-      [mutation.path]: undefined
-    }
-  : {
-      [mutation.path ?? '']: mutation.value
-    }
+const isDataRecordPath = (
+  path: string
+): boolean => path === 'data' || path.startsWith('data.')
 
-const inspectRecordPath = (
-  current: unknown,
-  targetPath: Path
-): {
-  canAddressPath: boolean
-  exists: boolean
-  value: unknown
-  parentIsArray: boolean
-} => {
-  const parts = mutationPath.parts(targetPath)
-  if (!parts.length) {
-    return {
-      canAddressPath: false,
-      exists: false,
-      value: undefined,
-      parentIsArray: false
-    }
-  }
-  if (!isRecordLike(current)) {
-    return {
-      canAddressPath: false,
-      exists: false,
-      value: undefined,
-      parentIsArray: false
-    }
+const isStyleRecordPath = (
+  path: string
+): boolean => path === 'style' || path.startsWith('style.')
+
+const readRecordScope = (
+  path: string
+): 'data' | 'style' | undefined => (
+  isDataRecordPath(path)
+    ? 'data'
+    : isStyleRecordPath(path)
+      ? 'style'
+      : undefined
+)
+
+const createsMissingRecordAncestor = (
+  node: Node,
+  targetPath: string
+): boolean => {
+  const scope = readRecordScope(targetPath)
+  if (!scope || targetPath === scope) {
+    return false
   }
 
-  let container: Record<string | number, unknown> = current
-  for (let index = 0; index < parts.length - 1; index += 1) {
-    const part = parts[index]!
-    if (!hasOwn(container, part)) {
-      return {
-        canAddressPath: false,
-        exists: false,
-        value: undefined,
-        parentIsArray: false
-      }
+  let parent = draftPath.parent(targetPath)
+  while (parent && parent !== scope) {
+    if (!draftRecord.has(node, parent)) {
+      return true
     }
-
-    const nextValue = container[part]
-    if (!isRecordLike(nextValue)) {
-      return {
-        canAddressPath: false,
-        exists: false,
-        value: undefined,
-        parentIsArray: false
-      }
-    }
-
-    container = nextValue
+    parent = draftPath.parent(parent)
   }
 
-  const key = parts[parts.length - 1]!
-  const exists = hasOwn(container, key)
-  return {
-    canAddressPath: true,
-    exists,
-    value: exists ? container[key] : undefined,
-    parentIsArray: Array.isArray(container)
-  }
-}
-
-const buildSetRecordInverse = (
-  current: unknown,
-  mutation: Extract<NodeRecordMutation, { op: 'set' }>
-): NodeRecordMutation => {
-  if (!mutation.path || mutation.path.length === 0) {
-    return {
-      scope: mutation.scope,
-      op: 'set',
-      value: json.clone(current)
-    }
-  }
-
-  const inspected = inspectRecordPath(current, mutation.path)
-  if (!inspected.canAddressPath || (inspected.parentIsArray && !inspected.exists)) {
-    return {
-      scope: mutation.scope,
-      op: 'set',
-      value: json.clone(current)
-    }
-  }
-
-  if (inspected.exists) {
-    return {
-      scope: mutation.scope,
-      op: 'set',
-      path: mutation.path,
-      value: json.clone(inspected.value)
-    }
-  }
-
-  return {
-    scope: mutation.scope,
-    op: 'unset',
-    path: mutation.path
-  }
-}
-
-const buildUnsetRecordInverse = (
-  current: unknown,
-  mutation: Extract<NodeRecordMutation, { op: 'unset' }>
-): { ok: true; record: NodeRecordMutation } | { ok: false; message: string } => {
-  const inspected = inspectRecordPath(current, mutation.path)
-  if (!inspected.canAddressPath || !inspected.exists) {
-    return {
-      ok: false,
-      message: `Path ${displayPath(mutation.path)} does not exist.`
-    }
-  }
-
-  return {
-    ok: true,
-    record: {
-      scope: mutation.scope,
-      op: 'set',
-      path: mutation.path,
-      value: json.clone(inspected.value)
-    }
-  }
+  return false
 }
 
 const buildRecordInverse = (
-  current: unknown,
-  mutation: NodeRecordMutation
-): { ok: true; record: NodeRecordMutation } | { ok: false; message: string } => {
-  if (mutation.op === 'set') {
-    return {
-      ok: true,
-      record: buildSetRecordInverse(current, mutation)
-    }
+  node: Node,
+  record?: RecordWrite
+): RecordWrite | undefined => {
+  if (!record || !Object.keys(record).length) {
+    return undefined
   }
-  return buildUnsetRecordInverse(current, mutation)
+
+  const inverse: Record<string, unknown> = {}
+
+  Object.keys(record)
+    .sort((left, right) => draftPath.parts(left).length - draftPath.parts(right).length)
+    .forEach((targetPath) => {
+      const scope = readRecordScope(targetPath)
+      if (scope && createsMissingRecordAncestor(node, targetPath)) {
+        Object.keys(inverse).forEach((key) => {
+          if (draftPath.startsWith(key, scope)) {
+            delete inverse[key]
+          }
+        })
+        inverse[scope] = json.clone(node[scope])
+        return
+      }
+
+      if (Object.keys(inverse).some((existing) => draftPath.startsWith(targetPath, existing))) {
+        return
+      }
+
+      inverse[targetPath] = draftRecord.has(node, targetPath)
+        ? json.clone(draftRecord.read(node, targetPath))
+        : undefined
+    })
+
+  return Object.freeze(inverse)
+}
+
+const mergeNodeUpdates = (
+  ...updates: Array<NodeUpdateInput | undefined>
+): NodeUpdateInput => {
+  const fields = updates.reduce<NodeUpdateInput['fields']>(
+    (current, update) => update?.fields
+      ? {
+          ...(current ?? {}),
+          ...update.fields
+        }
+      : current,
+    undefined
+  )
+  const record = updates.reduce<Record<string, unknown>>((current, update) => {
+    if (!update?.record) {
+      return current
+    }
+
+    Object.entries(update.record).forEach(([path, value]) => {
+      current[path] = json.clone(value)
+    })
+    return current
+  }, {})
+
+  return {
+    ...(fields ? { fields } : {}),
+    ...(Object.keys(record).length
+      ? {
+          record: Object.freeze(record)
+        }
+      : {})
+  }
 }
 
 export const isNodeUpdateEmpty = (update: NodeUpdateInput): boolean =>
   !update.fields
-  && (!(update.records?.length))
+  && !hasRecordWrite(update.record)
 
 const compactNodeUpdateInput = (
   update: NodeUpdateInput
 ): NodeUpdateInput => ({
   ...(update.fields ? { fields: update.fields } : {}),
-  ...(update.records?.length ? { records: update.records } : {})
+  ...(hasRecordWrite(update.record)
+    ? {
+        record: cloneRecordWrite(update.record)
+      }
+    : {})
 })
 
 export const createNodeUpdateOperation = (
@@ -280,61 +277,14 @@ export const createNodeUpdateOperation = (
   update: NodeUpdateInput
 ): Operation[] => {
   const compact = compactNodeUpdateInput(update)
-  const operations: Operation[] = []
-  const fieldByKey: Record<keyof NodeFieldPatch, NodeField> = {
-    position: 'position',
-    size: 'size',
-    rotation: 'rotation',
-    groupId: 'groupId',
-    owner: 'owner',
-    locked: 'locked'
-  }
-
-  for (const key of NODE_FIELD_KEYS) {
-    if (!compact.fields || !hasOwn(compact.fields, key)) {
-      continue
-    }
-
-    const field = fieldByKey[key]
-    const value = compact.fields[key]
-    if (value === undefined && field !== 'position') {
-      operations.push({
-        type: 'node.field.unset',
+  return isNodeUpdateEmpty(compact)
+    ? []
+    : [{
+        type: 'node.patch',
         id,
-        field: field as NodeUnsetField
-      })
-      continue
-    }
-
-    operations.push({
-      type: 'node.field.set',
-      id,
-      field,
-      value: json.clone(value)
-    })
-  }
-
-  for (const record of compact.records ?? []) {
-    if (record.op === 'unset') {
-      operations.push({
-        type: 'node.record.unset',
-        id,
-        scope: record.scope,
-        path: record.path
-      })
-      continue
-    }
-
-    operations.push({
-      type: 'node.record.set',
-      id,
-      scope: record.scope,
-      path: record.path ?? '',
-      value: json.clone(record.value)
-    })
-  }
-
-  return operations
+        ...(compact.fields ? { fields: applyFieldPatch(compact.fields) } : {}),
+        ...(compact.record ? { record: compact.record } : {})
+      }]
 }
 
 export const createNodeFieldsUpdateOperation = (
@@ -369,7 +319,7 @@ export const classifyNodeUpdate = (
     }
   }
 
-  for (const _record of update.records ?? []) {
+  if (hasRecordWrite(update.record)) {
     impact.value = true
   }
 
@@ -381,29 +331,12 @@ export const buildNodeUpdateInverse = (
   update: NodeUpdateInput
 ): { ok: true; update: NodeUpdateInput } | { ok: false; message: string } => {
   const fields = buildFieldInverse(node, update.fields)
-  const records: NodeRecordMutation[] = []
-  let nextData = node.data
-  let nextStyle = node.style
+  const record = buildRecordInverse(node, update.record)
 
-  for (const record of update.records ?? []) {
-    const currentRoot = record.scope === 'data'
-      ? nextData
-      : nextStyle
-    const inverse = buildRecordInverse(currentRoot, record)
-    if (!inverse.ok) {
-      return inverse
-    }
-
-    const applied = applyRecordMutation(currentRoot, record)
+  if (update.record) {
+    const applied = applyRecordWrite(node, update.record)
     if (!applied.ok) {
       return applied
-    }
-
-    records.unshift(inverse.record)
-    if (record.scope === 'data') {
-      nextData = applied.value as Node['data']
-    } else {
-      nextStyle = applied.value as Node['style']
     }
   }
 
@@ -411,7 +344,7 @@ export const buildNodeUpdateInverse = (
     ok: true,
     update: compactNodeUpdateInput({
       fields: Object.keys(fields).length ? fields : undefined,
-      records: records.length ? records : undefined
+      record
     })
   }
 }
@@ -421,39 +354,30 @@ export const applyNodeUpdate = (
   update: NodeUpdateInput
 ): { ok: true; patch: NodePatch; next: Node } | { ok: false; message: string } => {
   const patch = applyFieldPatch(update.fields)
-  let nextData = node.data
-  let nextStyle = node.style
-  let touchedData = false
-  let touchedStyle = false
-
-  for (const mutation of update.records ?? []) {
-    if (mutation.scope === 'style') {
-      const result = applyRecordMutation(nextStyle, mutation)
-      if (!result.ok) return result
-      nextStyle = result.value as Node['style']
-      touchedStyle = true
-      continue
-    }
-
-    const result = applyRecordMutation(nextData, mutation)
-    if (!result.ok) return result
-    nextData = result.value as Node['data']
-    touchedData = true
+  const fieldPatchedNode: Node = {
+    ...node,
+    ...patch
   }
-
-  if (touchedData) {
-    patch.data = nextData as Node['data']
+  const applied = applyRecordWrite(fieldPatchedNode, update.record)
+  if (!applied.ok) {
+    return applied
   }
-  if (touchedStyle) {
-    patch.style = nextStyle as Node['style']
+  const next = applied.value
+
+  if (update.record && Object.keys(update.record).some(isDataRecordPath)) {
+    patch.data = next.data
+  }
+  if (update.record && Object.keys(update.record).some(isStyleRecordPath)) {
+    patch.style = next.style
   }
 
   return {
     ok: true,
     patch,
-    next: {
-      ...node,
-      ...patch
-    }
+    next
   }
+}
+
+export {
+  mergeNodeUpdates
 }

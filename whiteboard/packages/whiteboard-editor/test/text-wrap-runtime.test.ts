@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
-import { schema } from '@whiteboard/core/registry'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi } from '../src'
 import type {
@@ -286,18 +285,18 @@ describe('text wrap runtime', () => {
   it('preserves wrap width when entering edit after a text patch commit', () => {
     const editor = createTextEditor()
 
-    editor.write.node.patch(['text-1'], schema.node.mergeUpdates(
-      {
-        fields: {
-          size: {
-            width: 180,
-            height: 24
-          }
+    editor.write.node.patch(['text-1'], {
+      fields: {
+        size: {
+          width: 180,
+          height: 24
         }
       },
-      schema.node.compileDataUpdate('widthMode', 'wrap'),
-      schema.node.compileDataUpdate('wrapWidth', 180)
-    ))
+      record: {
+        'data.widthMode': 'wrap',
+        'data.wrapWidth': 180
+      }
+    })
 
     expect(editor.document.get().nodes['text-1']?.data).toMatchObject({
       widthMode: 'wrap',
@@ -324,18 +323,18 @@ describe('text wrap runtime', () => {
   it('recomputes wrap text size when font size changes via text command', () => {
     const editor = createTextEditor()
 
-    editor.write.node.patch(['text-1'], schema.node.mergeUpdates(
-      {
-        fields: {
-          size: {
-            width: 180,
-            height: 24
-          }
+    editor.write.node.patch(['text-1'], {
+      fields: {
+        size: {
+          width: 180,
+          height: 24
         }
       },
-      schema.node.compileDataUpdate('widthMode', 'wrap'),
-      schema.node.compileDataUpdate('wrapWidth', 180)
-    ))
+      record: {
+        'data.widthMode': 'wrap',
+        'data.wrapWidth': 180
+      }
+    })
 
     editor.write.node.text.size({
       nodeIds: ['text-1'],
@@ -354,22 +353,26 @@ describe('text wrap runtime', () => {
   it('recomputes wrap text size when font size changes via generic node patch', () => {
     const editor = createTextEditor()
 
-    editor.write.node.patch(['text-1'], schema.node.mergeUpdates(
-      {
-        fields: {
-          size: {
-            width: 180,
-            height: 24
-          }
+    editor.write.node.patch(['text-1'], {
+      fields: {
+        size: {
+          width: 180,
+          height: 24
         }
       },
-      schema.node.compileDataUpdate('widthMode', 'wrap'),
-      schema.node.compileDataUpdate('wrapWidth', 180)
-    ))
+      record: {
+        'data.widthMode': 'wrap',
+        'data.wrapWidth': 180
+      }
+    })
 
     editor.write.node.patch(
       ['text-1'],
-      schema.node.compileStyleUpdate('fontSize', 20)
+      {
+        record: {
+          'style.fontSize': 20
+        }
+      }
     )
 
     expect(editor.document.get().nodes['text-1']?.style).toMatchObject({
@@ -430,7 +433,11 @@ describe('sticky fit runtime', () => {
 
     editor.write.node.patch(
       ['sticky-1'],
-      schema.node.compileStyleUpdate('fontSize', 32)
+      {
+        record: {
+          'style.fontSize': 32
+        }
+      }
     )
 
     expect(editor.document.get().nodes['sticky-1']?.data).toMatchObject({

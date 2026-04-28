@@ -13,23 +13,12 @@ import {
   type WhiteboardReduceState
 } from './state'
 
-const setGroupField = <Field extends GroupField>(
-  group: Group,
-  field: Field,
-  value: Group[Field]
-): Group => ({
-  ...group,
-  [field]: value
-})
+const GROUP_PATCH_FIELDS = ['locked', 'name'] as const
 
-const unsetGroupField = (
-  group: Group,
-  field: GroupField
-): Group => {
-  const next = { ...group } as Group & Record<string, unknown>
-  delete next[field]
-  return next
-}
+const hasOwn = <T extends object>(
+  value: T,
+  key: PropertyKey
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
 
 export const createGroup = (
   state: WhiteboardReduceState,
@@ -72,43 +61,39 @@ export const deleteGroup = (
   markGroupRemoved(state, id)
 }
 
-export const setGroupFieldValue = <Field extends GroupField>(
+export const patchGroup = (
   state: WhiteboardReduceState,
   id: GroupId,
-  field: Field,
-  value: Group[Field]
+  fields?: Partial<Record<GroupField, Group[GroupField] | undefined>>
 ): void => {
   const current = getGroup(state.draft, id)
   if (!current) {
     throw new Error(`Group ${id} not found.`)
   }
 
-  state.inverse.prepend({
-    type: 'group.field.set',
-    id,
-    field,
-    value: json.clone((current as Record<string, unknown>)[field])
-  })
-  state.draft.groups.set(id, setGroupField(current, field, value))
-  markGroupUpdated(state, id)
-}
-
-export const unsetGroupFieldValue = (
-  state: WhiteboardReduceState,
-  id: GroupId,
-  field: GroupField
-): void => {
-  const current = getGroup(state.draft, id)
-  if (!current) {
-    throw new Error(`Group ${id} not found.`)
+  if (!fields) {
+    return
   }
 
-  state.inverse.prepend({
-    type: 'group.field.set',
-    id,
-    field,
-    value: json.clone((current as Record<string, unknown>)[field])
+  const inverse: Partial<Record<GroupField, Group[GroupField] | undefined>> = {}
+  let next = current
+  GROUP_PATCH_FIELDS.forEach((field) => {
+    if (!hasOwn(fields, field)) {
+      return
+    }
+
+    inverse[field] = json.clone(current[field]) as Group[typeof field]
+    next = {
+      ...next,
+      [field]: json.clone(fields[field])
+    }
   })
-  state.draft.groups.set(id, unsetGroupField(current, field))
+
+  state.inverse.prepend({
+    type: 'group.patch',
+    id,
+    fields: inverse
+  })
+  state.draft.groups.set(id, next)
   markGroupUpdated(state, id)
 }

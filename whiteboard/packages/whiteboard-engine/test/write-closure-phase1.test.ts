@@ -221,8 +221,8 @@ test('edge.reconnect.commit applies endpoint, type, and route in one command', (
   assert.deepEqual(
     result.commit.forward.map((op) => op.type),
     [
-      'edge.field.set',
-      'edge.field.set',
+      'edge.patch',
+      'edge.patch',
       'edge.route.point.delete'
     ]
   )

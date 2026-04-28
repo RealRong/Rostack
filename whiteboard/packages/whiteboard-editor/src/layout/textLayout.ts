@@ -5,7 +5,6 @@ import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { TransformPreviewPatch } from '@whiteboard/core/node'
-import { schema as schemaApi } from '@whiteboard/core/registry'
 import type {
   MindmapTemplate,
   MindmapTemplateNode,
@@ -253,18 +252,20 @@ const isLayoutAffectingUpdate = (
     return true
   }
 
-  return (update.records ?? []).some((record) => (
-    record.scope === 'style'
+  return Object.keys(update.record ?? {}).some((path) => (
+    path.startsWith('style.')
       ? (
           kind === 'size'
-            ? hasTrackedPath(SIZE_LAYOUT_STYLE_PATHS, record.path)
-            : hasTrackedPath(FIT_LAYOUT_STYLE_PATHS, record.path)
+            ? hasTrackedPath(SIZE_LAYOUT_STYLE_PATHS, path.slice('style.'.length))
+            : hasTrackedPath(FIT_LAYOUT_STYLE_PATHS, path.slice('style.'.length))
         )
-      : (
-          kind === 'size'
-            ? hasTrackedPath(SIZE_LAYOUT_DATA_PATHS, record.path)
-            : hasTrackedPath(FIT_LAYOUT_DATA_PATHS, record.path)
-        )
+      : path.startsWith('data.')
+        ? (
+            kind === 'size'
+              ? hasTrackedPath(SIZE_LAYOUT_DATA_PATHS, path.slice('data.'.length))
+              : hasTrackedPath(FIT_LAYOUT_DATA_PATHS, path.slice('data.'.length))
+          )
+        : false
   ))
 }
 
@@ -281,20 +282,21 @@ const normalizeStickyFontModeUpdate = ({
     return update
   }
 
-  const touchesFontMode = (update.records ?? []).some(
-    (record) => record.scope === 'data' && (record.path ?? '') === FONT_MODE_PATH
-  )
-  const touchesFontSize = (update.records ?? []).some(
-    (record) => record.scope === 'style' && (record.path ?? '') === FONT_SIZE_PATH
-  )
+  const recordKeys = Object.keys(update.record ?? {})
+  const touchesFontMode = recordKeys.includes(`data.${FONT_MODE_PATH}`)
+  const touchesFontSize = recordKeys.includes(`style.${FONT_SIZE_PATH}`)
 
   if (!touchesFontSize || touchesFontMode) {
     return update
   }
 
-  return schemaApi.node.mergeUpdates(
+  return nodeApi.update.merge(
     update,
-    schemaApi.node.compileDataUpdate('fontMode', 'fixed')
+    {
+      record: {
+        'data.fontMode': 'fixed'
+      }
+    }
   )
 }
 
@@ -329,7 +331,11 @@ const toLayoutResultUpdate = ({
 
     return currentFontSize === result.fontSize
       ? undefined
-      : schemaApi.node.compileStyleUpdate('fontSize', result.fontSize)
+      : {
+          record: {
+            'style.fontSize': result.fontSize
+          }
+        }
   }
 
   return undefined
@@ -594,7 +600,7 @@ export const patchNodeUpdateByTextMeasure = (input: {
     return normalized
   }
 
-  return schemaApi.node.mergeUpdates(
+  return nodeApi.update.merge(
     normalized,
     toLayoutResultUpdate({
       kind,

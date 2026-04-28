@@ -302,20 +302,10 @@ test('text resize-x commit writes wrap mode and wrap width', () => {
       height: 24
     }
   })
-  assert.deepEqual(updates[0]?.update.records, [
-    {
-      scope: 'data',
-      op: 'set',
-      path: 'widthMode',
-      value: 'wrap'
-    },
-    {
-      scope: 'data',
-      op: 'set',
-      path: 'wrapWidth',
-      value: 120
-    }
-  ])
+  assert.deepEqual(updates[0]?.update.record, {
+    'data.widthMode': 'wrap',
+    'data.wrapWidth': 120
+  })
 })
 
 test('single text resize-x gesture produces wrap mode and wrap width updates', () => {
@@ -393,20 +383,10 @@ test('single text resize-x gesture produces wrap mode and wrap width updates', (
 
   const updates = nodeApi.transform.finish(result.state)
   assert.equal(updates.length, 1)
-  assert.deepEqual(updates[0]?.update.records, [
-    {
-      scope: 'data',
-      op: 'set',
-      path: 'widthMode',
-      value: 'wrap'
-    },
-    {
-      scope: 'data',
-      op: 'set',
-      path: 'wrapWidth',
-      value: 180
-    }
-  ])
+  assert.deepEqual(updates[0]?.update.record, {
+    'data.widthMode': 'wrap',
+    'data.wrapWidth': 180
+  })
 })
 
 test('single text scale gesture keeps uniform geometry during preview', () => {

@@ -54,10 +54,11 @@ describe('document engine subscribe', () => {
     expect(engine.current().rev).toBe(1)
 
     const second = engine.apply([{
-      type: 'node.field.set',
+      type: 'node.patch',
       id: 'node_1',
-      field: 'rotation',
-      value: 15
+      fields: {
+        rotation: 15
+      }
     }], {
       origin: 'remote'
     })

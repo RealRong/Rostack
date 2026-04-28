@@ -23,23 +23,16 @@ import {
   insertEdgeRoutePoint,
   moveEdgeLabel,
   moveEdgeRoutePoint,
+  patchEdge,
+  patchEdgeLabel,
+  patchEdgeRoutePoint,
   restoreEdge,
-  setEdgeFieldValue,
-  setEdgeLabelField,
-  setEdgeLabelRecord,
-  setEdgeRecord,
-  setEdgeRoutePointField,
-  unsetEdgeFieldValue,
-  unsetEdgeLabelField,
-  unsetEdgeLabelRecord,
-  unsetEdgeRecord
 } from './internal/edge'
 import {
   createGroup,
   deleteGroup,
+  patchGroup,
   restoreGroup,
-  setGroupFieldValue,
-  unsetGroupFieldValue
 } from './internal/group'
 import {
   createMindmap,
@@ -50,24 +43,17 @@ import {
   moveMindmapRoot,
   moveMindmapTopic,
   patchMindmapLayout,
+  patchMindmapBranch,
+  patchMindmapTopic,
   restoreMindmap,
   restoreMindmapTopic,
-  setMindmapBranchField,
   setMindmapTopicCollapsed,
-  setMindmapTopicField,
-  setMindmapTopicRecord,
-  unsetMindmapBranchField,
-  unsetMindmapTopicField,
-  unsetMindmapTopicRecord
 } from './internal/mindmap'
 import {
   createNode,
   deleteNode,
+  patchNode,
   restoreNode,
-  setNodeFieldValue,
-  setNodeRecord,
-  unsetNodeFieldValue,
-  unsetNodeRecord
 } from './internal/node'
 import {
   createChangeSet,
@@ -158,17 +144,8 @@ export const createWhiteboardReduceContext = (
       restore: (node, slot) => {
         restoreNode(state, node, slot)
       },
-      setField: (id, field, value) => {
-        setNodeFieldValue(state, id, field, value)
-      },
-      unsetField: (id, field) => {
-        unsetNodeFieldValue(state, id, field)
-      },
-      setRecord: (id, scope, path, value) => {
-        setNodeRecord(state, id, scope, path, value)
-      },
-      unsetRecord: (id, scope, path) => {
-        unsetNodeRecord(state, id, scope, path)
+      patch: (id, input) => {
+        patchNode(state, id, input)
       },
       delete: (id) => {
         deleteNode(state, id)
@@ -181,17 +158,8 @@ export const createWhiteboardReduceContext = (
       restore: (edge, slot) => {
         restoreEdge(state, edge, slot)
       },
-      setField: (id, field, value) => {
-        setEdgeFieldValue(state, id, field, value)
-      },
-      unsetField: (id, field) => {
-        unsetEdgeFieldValue(state, id, field)
-      },
-      setRecord: (id, scope, path, value) => {
-        setEdgeRecord(state, id, scope, path, value)
-      },
-      unsetRecord: (id, scope, path) => {
-        unsetEdgeRecord(state, id, scope, path)
+      patch: (id, input) => {
+        patchEdge(state, id, input)
       },
       insertLabel: (edgeId, label, to) => {
         insertEdgeLabel(state, edgeId, label, to)
@@ -202,17 +170,8 @@ export const createWhiteboardReduceContext = (
       moveLabel: (edgeId, labelId, to) => {
         moveEdgeLabel(state, edgeId, labelId, to)
       },
-      setLabelField: (edgeId, labelId, field, value) => {
-        setEdgeLabelField(state, edgeId, labelId, field, value)
-      },
-      unsetLabelField: (edgeId, labelId, field) => {
-        unsetEdgeLabelField(state, edgeId, labelId, field)
-      },
-      setLabelRecord: (edgeId, labelId, scope, path, value) => {
-        setEdgeLabelRecord(state, edgeId, labelId, scope, path, value)
-      },
-      unsetLabelRecord: (edgeId, labelId, scope, path) => {
-        unsetEdgeLabelRecord(state, edgeId, labelId, scope, path)
+      patchLabel: (edgeId, labelId, input) => {
+        patchEdgeLabel(state, edgeId, labelId, input)
       },
       insertRoutePoint: (edgeId, point, to) => {
         insertEdgeRoutePoint(state, edgeId, point, to)
@@ -223,8 +182,8 @@ export const createWhiteboardReduceContext = (
       moveRoutePoint: (edgeId, pointId, to) => {
         moveEdgeRoutePoint(state, edgeId, pointId, to)
       },
-      setRoutePointField: (edgeId, pointId, field, value) => {
-        setEdgeRoutePointField(state, edgeId, pointId, field, value)
+      patchRoutePoint: (edgeId, pointId, fields) => {
+        patchEdgeRoutePoint(state, edgeId, pointId, fields)
       },
       delete: (id) => {
         deleteEdge(state, id)
@@ -237,11 +196,8 @@ export const createWhiteboardReduceContext = (
       restore: (group) => {
         restoreGroup(state, group)
       },
-      setField: (id, field, value) => {
-        setGroupFieldValue(state, id, field, value)
-      },
-      unsetField: (id, field) => {
-        unsetGroupFieldValue(state, id, field)
+      patch: (id, fields) => {
+        patchGroup(state, id, fields)
       },
       delete: (id) => {
         deleteGroup(state, id)
@@ -275,23 +231,11 @@ export const createWhiteboardReduceContext = (
       deleteTopic: (input) => {
         deleteMindmapTopic(state, input)
       },
-      setTopicField: (id, topicId, field, value) => {
-        setMindmapTopicField(state, id, topicId, field, value)
+      patchTopic: (id, topicId, input) => {
+        patchMindmapTopic(state, id, topicId, input)
       },
-      unsetTopicField: (id, topicId, field) => {
-        unsetMindmapTopicField(state, id, topicId, field)
-      },
-      setTopicRecord: (id, topicId, scope, path, value) => {
-        setMindmapTopicRecord(state, id, topicId, scope, path, value)
-      },
-      unsetTopicRecord: (id, topicId, scope, path) => {
-        unsetMindmapTopicRecord(state, id, topicId, scope, path)
-      },
-      setBranchField: (id, topicId, field, value) => {
-        setMindmapBranchField(state, id, topicId, field, value)
-      },
-      unsetBranchField: (id, topicId, field) => {
-        unsetMindmapBranchField(state, id, topicId, field)
+      patchBranch: (id, topicId, fields) => {
+        patchMindmapBranch(state, id, topicId, fields)
       },
       setTopicCollapsed: (id, topicId, collapsed) => {
         setMindmapTopicCollapsed(state, id, topicId, collapsed)

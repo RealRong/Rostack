@@ -71,12 +71,9 @@ test('engine maps mindmap topic updates to node + mindmap history keys', () => {
     updates: [{
       id: createResult.data.rootId,
       input: {
-        records: [{
-          scope: 'data',
-          op: 'set',
-          path: mutationPath.of('text'),
-          value: 'Updated topic'
-        }]
+        record: {
+          [`data.${mutationPath.of('text')}`]: 'Updated topic'
+        }
       }
     }]
   })

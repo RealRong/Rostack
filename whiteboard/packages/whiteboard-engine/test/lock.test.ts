@@ -228,10 +228,11 @@ test('engine allows remote unlock then delete in the same operation batch', () =
 
   const result = engine.apply([
     {
-      type: 'node.field.set',
+      type: 'node.patch',
       id: 'node_locked',
-      field: 'locked',
-      value: false
+      fields: {
+        locked: false
+      }
     },
     {
       type: 'node.delete',
@@ -280,16 +281,18 @@ test('engine allows remote unlock then edge update in the same batch', () => {
 
   const result = engine.apply([
     {
-      type: 'edge.field.set',
+      type: 'edge.patch',
       id: 'edge_locked',
-      field: 'locked',
-      value: false
+      fields: {
+        locked: false
+      }
     },
     {
-      type: 'edge.field.set',
+      type: 'edge.patch',
       id: 'edge_locked',
-      field: 'textMode',
-      value: 'tangent'
+      fields: {
+        textMode: 'tangent'
+      }
     }
   ], {
     origin: 'remote'

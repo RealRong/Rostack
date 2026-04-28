@@ -1,8 +1,7 @@
 import { json } from '@shared/core'
 import {
   record as draftRecord,
-  type Path,
-  type PathKey
+  type Path
 } from '@shared/draft'
 import type {
   CoreRegistries,
@@ -10,9 +9,6 @@ import type {
   EdgeSchema,
   EdgeTypeDefinition,
   NodeInput,
-  NodeRecordMutation,
-  NodeRecordScope,
-  NodeUpdateInput,
   NodeSchema,
   NodeType,
   NodeTypeDefinition,
@@ -196,131 +192,13 @@ const getSchemaFieldValue = (target: SchemaTarget, field: SchemaField): unknown 
 }
 
 export type NodeSchemaFieldRef = Pick<SchemaField, 'path'> & {
-  scope?: NodeRecordScope
-}
-
-const toNodeRecordPath = (
-  path: Path
-): Path | undefined => path.length
-  ? path
-  : undefined
-
-const normalizeRecordPath = (
-  path: Path | PathKey
-): Path => (
-  typeof path === 'number'
-    ? String(path)
-    : path
-)
-
-const compileNodeFieldRecord = (
-  field: NodeSchemaFieldRef,
-  value: unknown
-): NodeRecordMutation | undefined => {
-  const scope = field.scope ?? 'data'
-  const path = toNodeRecordPath(field.path)
-
-  if (value === undefined) {
-    if (!path) {
-      return undefined
-    }
-    return {
-      scope,
-      op: 'unset',
-      path
-    }
-  }
-
-  return {
-    scope,
-    op: 'set',
-    ...(path ? { path } : {}),
-    value: json.clone(value)
-  }
-}
-
-const compileNodeFieldUpdate = (
-  field: NodeSchemaFieldRef,
-  value: unknown
-): NodeUpdateInput => {
-  const record = compileNodeFieldRecord(field, value)
-  return record
-    ? { records: [record] }
-    : {}
-}
-
-const compileNodeFieldUpdates = (
-  entries: ReadonlyArray<{
-    field: NodeSchemaFieldRef
-    value: unknown
-  }>
-): NodeUpdateInput => {
-  const records = entries.flatMap((entry) => {
-    const record = compileNodeFieldRecord(entry.field, entry.value)
-    return record ? [record] : []
-  })
-
-  return records.length > 0
-    ? { records }
-    : {}
-}
-
-const compileNodeDataUpdate = (
-  path: Path | PathKey,
-  value: unknown
-): NodeUpdateInput => compileNodeFieldUpdate(
-  {
-    scope: 'data',
-    path: normalizeRecordPath(path)
-  },
-  value
-)
-
-const compileNodeStyleUpdate = (
-  path: Path | PathKey,
-  value: unknown
-): NodeUpdateInput => compileNodeFieldUpdate(
-  {
-    scope: 'style',
-    path: normalizeRecordPath(path)
-  },
-  value
-)
-
-const mergeNodeUpdates = (
-  ...updates: Array<NodeUpdateInput | undefined>
-): NodeUpdateInput => {
-  const fields = updates.reduce<NodeUpdateInput['fields']>(
-    (current, update) => {
-      if (!update?.fields) {
-        return current
-      }
-
-      return {
-        ...(current ?? {}),
-        ...update.fields
-      }
-    },
-    undefined
-  )
-  const records = updates.flatMap((update) => update?.records ?? [])
-
-  return {
-    ...(fields ? { fields } : {}),
-    ...(records.length ? { records } : {})
-  }
+  scope?: 'data' | 'style'
 }
 
 export const schema = {
   node: {
     applyDefaults: applyNodeDefaults,
-    missingFields: getMissingNodeFields,
-    compileFieldRecord: compileNodeFieldRecord,
-    compileFieldUpdate: compileNodeFieldUpdate,
-    compileFieldUpdates: compileNodeFieldUpdates,
-    compileDataUpdate: compileNodeDataUpdate,
-    compileStyleUpdate: compileNodeStyleUpdate,
-    mergeUpdates: mergeNodeUpdates
+    missingFields: getMissingNodeFields
   },
   edge: {
     applyDefaults: applyEdgeDefaults,

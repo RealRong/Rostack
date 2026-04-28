@@ -1,91 +1,54 @@
+import type { MutationCompileHandlerTable } from '@shared/mutation'
 import type {
-  MutationCompileIssue
-} from '@shared/mutation'
-import {
-  normalizeCompileIssue,
-  MutationEngine
-} from '@shared/mutation'
-import type {
-  CoreRegistries,
-  Document,
-  Operation
-} from '@whiteboard/core/types'
-import {
-  createWhiteboardIntentContext,
-  type WhiteboardCompileIds
-} from '@whiteboard/core/operations/compile-context'
-import {
-  whiteboardIntentHandlers
-} from '@whiteboard/core/operations/compile-handlers'
-import {
-  spec
-} from '@whiteboard/core/operations/spec'
-import type {
-  WhiteboardMutationTable,
-  WhiteboardIntent,
-  WhiteboardIntentOutput
+  WhiteboardIntentKind,
+  WhiteboardMutationTable
 } from '@whiteboard/core/operations/intent-types'
+import { canvasIntentHandlers } from '@whiteboard/core/operations/compile/canvas'
+import { documentIntentHandlers } from '@whiteboard/core/operations/compile/document'
+import { edgeIntentHandlers } from '@whiteboard/core/operations/compile/edge'
+import { groupIntentHandlers } from '@whiteboard/core/operations/compile/group'
+import { mindmapIntentHandlers } from '@whiteboard/core/operations/compile/mindmap'
+import { nodeIntentHandlers } from '@whiteboard/core/operations/compile/node'
+import {
+  createWhiteboardCompileScope,
+  type WhiteboardCompileIds,
+  type WhiteboardCompileScope
+} from '@whiteboard/core/operations/compile/scope'
 
-const reduceIssueCode = (
-  code: import('@whiteboard/core/reducer/types').WhiteboardReduceIssueCode
-): 'invalid' | 'cancelled' => code === 'cancelled'
-  ? 'cancelled'
-  : 'invalid'
-
-export const compile = (input: {
-  document: Document
-  intents: readonly WhiteboardIntent[]
-  registries: CoreRegistries
-  ids: WhiteboardCompileIds
-}): {
-  ops: readonly Operation[]
-  outputs: readonly WhiteboardIntentOutput[]
-  issues?: readonly MutationCompileIssue<'invalid' | 'cancelled'>[]
-  canApply?: boolean
-} => MutationEngine.compile<
-  Document,
+export type WhiteboardIntentHandler<
+  K extends WhiteboardIntentKind = WhiteboardIntentKind
+> = MutationCompileHandlerTable<
   WhiteboardMutationTable,
-  Operation,
-  ReturnType<typeof createWhiteboardIntentContext>,
+  WhiteboardCompileScope,
   'invalid' | 'cancelled'
->({
-  doc: input.document,
-  intents: input.intents,
-  handlers: whiteboardIntentHandlers,
-  createContext: ({ ctx }) => createWhiteboardIntentContext({
-    ctx,
-    ids: input.ids,
-    registries: input.registries
-  }),
-  apply: ({
-    doc,
-    ops
-  }) => {
-    const reduced = MutationEngine.reduce({
-      document: doc,
-      ops,
-      origin: 'system',
-      operations: spec
-    })
-    return reduced.ok
-      ? {
-          ok: true as const,
-          doc: reduced.doc
-        }
-      : {
-          ok: false as const,
-          issue: normalizeCompileIssue({
-            code: reduceIssueCode(reduced.error.code),
-            message: reduced.error.message,
-            details: reduced.error.details,
-            severity: 'error'
-          })
-        }
-  }
-})
+>[K]
 
-export type { WhiteboardCompileIds, WhiteboardIntentContext } from '@whiteboard/core/operations/compile-context'
-export type { WhiteboardIntentHandler } from '@whiteboard/core/operations/compile-handlers'
+export const whiteboardIntentHandlers: MutationCompileHandlerTable<
+  WhiteboardMutationTable,
+  WhiteboardCompileScope,
+  'invalid' | 'cancelled'
+> = {
+  ...documentIntentHandlers,
+  ...canvasIntentHandlers,
+  ...nodeIntentHandlers,
+  ...groupIntentHandlers,
+  ...edgeIntentHandlers,
+  ...mindmapIntentHandlers
+}
+
+export const compile = {
+  handlers: whiteboardIntentHandlers,
+  createContext: createWhiteboardCompileScope
+} as const
+
+export {
+  createWhiteboardCompileScope
+}
+
+export type {
+  WhiteboardCompileIds,
+  WhiteboardCompileScope
+}
 export type {
   CanvasIntent,
   DocumentIntent,

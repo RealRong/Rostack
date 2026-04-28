@@ -200,9 +200,9 @@ test('node.text.commit routes mindmap topic text and size through mindmap operat
   assert.deepEqual(
     result.commit.forward.map((op) => op.type),
     [
-      'mindmap.topic.field.set',
-      'mindmap.topic.record.set',
-      'mindmap.topic.record.set'
+      'mindmap.topic.patch',
+      'mindmap.topic.patch',
+      'mindmap.topic.patch'
     ]
   )
 })

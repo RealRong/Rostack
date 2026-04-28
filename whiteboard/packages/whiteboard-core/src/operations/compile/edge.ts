@@ -1,146 +1,179 @@
 import { json } from '@shared/core'
 import {
-  path as mutationPath,
-  type Path
+  record as draftRecord,
+  type RecordWrite
 } from '@shared/draft'
+import type { MutationCompileHandlerTable } from '@shared/mutation'
 import { edge as edgeApi } from '@whiteboard/core/edge'
+import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
+import type {
+  EdgeIntent,
+  WhiteboardMutationTable
+} from '@whiteboard/core/operations/intent-types'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {
   Edge,
+  EdgeFieldPatch,
   EdgeId,
   EdgeLabel,
+  EdgeLabelFieldPatch,
   EdgePatch,
   EdgeRoutePoint,
   EdgeUpdateInput,
   Operation,
   Point
 } from '@whiteboard/core/types'
-import type { WhiteboardIntentContext } from '@whiteboard/core/operations/compile-context'
-import type {
-  EdgeIntent,
-  WhiteboardMutationTable
-} from '@whiteboard/core/operations/intent-types'
-import type { MutationCompileHandlerTable } from '@shared/mutation'
 
 const hasOwn = <T extends object>(
   target: T,
   key: PropertyKey
 ) => Object.prototype.hasOwnProperty.call(target, key)
 
-const isRecordTree = (
-  value: unknown
-): value is Record<string, unknown> => (
-  typeof value === 'object'
-  && value !== null
-  && !Array.isArray(value)
-)
-
-const appendRecordSetPaths = (
-  path: Path,
-  value: unknown,
-  emitSet: (path: Path, value: unknown) => void
-) => {
-  if (isRecordTree(value) && Object.keys(value).length > 0) {
-    Object.entries(value).forEach(([key, entry]) => {
-      appendRecordSetPaths(
-        mutationPath.append(path, key),
-        entry,
-        emitSet
-      )
-    })
-    return
-  }
-
-  if (!path.length) {
-    return
-  }
-  emitSet(path, value)
-}
-
-const appendRecordUnsetPaths = (
-  path: Path,
-  value: unknown,
-  emitUnset: (path: Path) => void
-) => {
-  if (isRecordTree(value) && Object.keys(value).length > 0) {
-    Object.entries(value).forEach(([key, entry]) => {
-      appendRecordUnsetPaths(
-        mutationPath.append(path, key),
-        entry,
-        emitUnset
-      )
-    })
-    return
-  }
-
-  if (!path.length) {
-    return
-  }
-  emitUnset(path)
-}
-
-const diffRecordTrees = ({
-  current,
-  next,
-  emitSet,
-  emitUnset,
-  path = ''
-}: {
-  current: unknown
-  next: unknown
-  emitSet: (path: Path, value: unknown) => void
-  emitUnset: (path: Path) => void
-  path?: Path
-}) => {
-  if (json.equal(current, next)) {
-    return
-  }
-
-  if (isRecordTree(current) && isRecordTree(next)) {
-    const keys = new Set([
-      ...Object.keys(current),
-      ...Object.keys(next)
-    ])
-
-    keys.forEach((key) => {
-      const childPath = mutationPath.append(path, key)
-      if (!hasOwn(next, key)) {
-        appendRecordUnsetPaths(childPath, current[key], emitUnset)
-        return
-      }
-      if (!hasOwn(current, key)) {
-        appendRecordSetPaths(childPath, next[key], emitSet)
-        return
-      }
-      diffRecordTrees({
-        current: current[key],
-        next: next[key],
-        emitSet,
-        emitUnset,
-        path: childPath
-      })
-    })
-    return
+const buildScopedRecordWrite = (
+  scope: 'data' | 'style',
+  current: Record<string, unknown> | undefined,
+  next: Record<string, unknown> | undefined
+): RecordWrite | undefined => {
+  if (current === undefined && next === undefined) {
+    return undefined
   }
 
   if (next === undefined) {
-    appendRecordUnsetPaths(path, current, emitUnset)
-    return
+    return Object.freeze({
+      [scope]: undefined
+    })
   }
 
-  if (!path.length) {
-    appendRecordSetPaths(path, next, emitSet)
-    return
+  if (current === undefined) {
+    return Object.freeze({
+      [scope]: json.clone(next)
+    })
   }
 
-  emitSet(path, next)
+  const diff = draftRecord.diff(current, next)
+  if (!Object.keys(diff).length) {
+    return undefined
+  }
+
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(diff).map(([path, value]) => [
+        `${scope}.${path}`,
+        value
+      ])
+    )
+  )
+}
+
+const mergeRecordWrites = (
+  ...writes: Array<RecordWrite | undefined>
+): RecordWrite | undefined => {
+  const merged: Record<string, unknown> = {}
+
+  writes.forEach((write) => {
+    if (!write) {
+      return
+    }
+
+    Object.entries(write).forEach(([path, value]) => {
+      merged[path] = json.clone(value)
+    })
+  })
+
+  return Object.keys(merged).length
+    ? Object.freeze(merged)
+    : undefined
+}
+
+const compactRecordWrite = (
+  base: object,
+  record?: RecordWrite
+): RecordWrite | undefined => {
+  if (!record) {
+    return undefined
+  }
+
+  const compact: Record<string, unknown> = {}
+  Object.entries(record).forEach(([path, value]) => {
+    if (value === undefined) {
+      if (draftRecord.has(base, path)) {
+        compact[path] = undefined
+      }
+      return
+    }
+
+    if (!json.equal(draftRecord.read(base, path), value)) {
+      compact[path] = json.clone(value)
+    }
+  })
+
+  return Object.keys(compact).length
+    ? Object.freeze(compact)
+    : undefined
+}
+
+const buildEdgeFieldPatch = (
+  edge: Edge,
+  fields?: EdgeUpdateInput['fields']
+): EdgeFieldPatch | undefined => {
+  if (!fields) {
+    return undefined
+  }
+
+  const patch: EdgeFieldPatch = {}
+  if (hasOwn(fields, 'source') && !edgeApi.equal.sameEnd(edge.source, fields.source)) {
+    patch.source = json.clone(fields.source)
+  }
+  if (hasOwn(fields, 'target') && !edgeApi.equal.sameEnd(edge.target, fields.target)) {
+    patch.target = json.clone(fields.target)
+  }
+  if (hasOwn(fields, 'type') && !json.equal(edge.type, fields.type)) {
+    patch.type = json.clone(fields.type)
+  }
+  if (hasOwn(fields, 'locked') && !json.equal(edge.locked, fields.locked)) {
+    patch.locked = json.clone(fields.locked)
+  }
+  if (hasOwn(fields, 'groupId') && !json.equal(edge.groupId, fields.groupId)) {
+    patch.groupId = json.clone(fields.groupId)
+  }
+  if (hasOwn(fields, 'textMode') && !json.equal(edge.textMode, fields.textMode)) {
+    patch.textMode = json.clone(fields.textMode)
+  }
+
+  return Object.keys(patch).length
+    ? patch
+    : undefined
+}
+
+const buildEdgeLabelFieldPatch = (
+  label: EdgeLabel,
+  fields?: EdgeLabelFieldPatch
+): EdgeLabelFieldPatch | undefined => {
+  if (!fields) {
+    return undefined
+  }
+
+  const patch: EdgeLabelFieldPatch = {}
+  if (hasOwn(fields, 'text') && !json.equal(label.text, fields.text)) {
+    patch.text = json.clone(fields.text)
+  }
+  if (hasOwn(fields, 't') && !json.equal(label.t, fields.t)) {
+    patch.t = json.clone(fields.t)
+  }
+  if (hasOwn(fields, 'offset') && !json.equal(label.offset, fields.offset)) {
+    patch.offset = json.clone(fields.offset)
+  }
+
+  return Object.keys(patch).length
+    ? patch
+    : undefined
 }
 
 const emitEdgeRouteDiffOps = (
   edgeId: EdgeId,
   currentPoints: readonly EdgeRoutePoint[],
   nextPoints: readonly Point[],
-  ctx: WhiteboardIntentContext
+  ctx: WhiteboardCompileScope
 ) => {
   const samePoint = (left: Point | undefined, right: Point | undefined) => (
     left?.x === right?.x && left?.y === right?.y
@@ -184,11 +217,11 @@ const emitEdgeRouteDiffOps = (
 
     nextMiddle.forEach((point) => {
       const routePoint: EdgeRoutePoint = {
-        id: ctx.tx.ids.edgeRoutePoint(),
+        id: ctx.ids.edgeRoutePoint(),
         x: point.x,
         y: point.y
       }
-      ctx.tx.emit({
+      ctx.emit({
         type: 'edge.route.point.insert',
         edgeId,
         point: routePoint,
@@ -204,7 +237,7 @@ const emitEdgeRouteDiffOps = (
 
   if (nextMiddle.length === 0) {
     currentMiddle.forEach((point) => {
-      ctx.tx.emit({
+      ctx.emit({
         type: 'edge.route.point.delete',
         edgeId,
         pointId: point.id
@@ -216,22 +249,19 @@ const emitEdgeRouteDiffOps = (
   if (currentMiddle.length === nextMiddle.length) {
     currentMiddle.forEach((point, index) => {
       const nextPoint = nextMiddle[index]!
+      const fields: Partial<Record<'x' | 'y', number>> = {}
       if (point.x !== nextPoint.x) {
-        ctx.tx.emit({
-          type: 'edge.route.point.field.set',
-          edgeId,
-          pointId: point.id,
-          field: 'x',
-          value: nextPoint.x
-        })
+        fields.x = nextPoint.x
       }
       if (point.y !== nextPoint.y) {
-        ctx.tx.emit({
-          type: 'edge.route.point.field.set',
+        fields.y = nextPoint.y
+      }
+      if (Object.keys(fields).length) {
+        ctx.emit({
+          type: 'edge.route.point.patch',
           edgeId,
           pointId: point.id,
-          field: 'y',
-          value: nextPoint.y
+          fields
         })
       }
     })
@@ -239,7 +269,7 @@ const emitEdgeRouteDiffOps = (
   }
 
   currentPoints.forEach((point) => {
-    ctx.tx.emit({
+    ctx.emit({
       type: 'edge.route.point.delete',
       edgeId,
       pointId: point.id
@@ -249,11 +279,11 @@ const emitEdgeRouteDiffOps = (
   let to: Extract<Operation, { type: 'edge.route.point.insert' }>['to'] = { kind: 'start' }
   nextPoints.forEach((point) => {
     const routePoint: EdgeRoutePoint = {
-      id: ctx.tx.ids.edgeRoutePoint(),
+      id: ctx.ids.edgeRoutePoint(),
       x: point.x,
       y: point.y
     }
-    ctx.tx.emit({
+    ctx.emit({
       type: 'edge.route.point.insert',
       edgeId,
       point: routePoint,
@@ -269,182 +299,60 @@ const emitEdgeRouteDiffOps = (
 const emitEdgeUpdateInputOps = (
   edge: Edge,
   input: EdgeUpdateInput,
-  ctx: WhiteboardIntentContext
+  ctx: WhiteboardCompileScope
 ) => {
-  const fields = input.fields
-
-  if (fields?.source && !edgeApi.equal.sameEnd(edge.source, fields.source)) {
-    ctx.tx.emit({
-      type: 'edge.field.set',
-      id: edge.id,
-      field: 'source',
-      value: fields.source
-    })
-  }
-  if (fields?.target && !edgeApi.equal.sameEnd(edge.target, fields.target)) {
-    ctx.tx.emit({
-      type: 'edge.field.set',
-      id: edge.id,
-      field: 'target',
-      value: fields.target
-    })
-  }
-  if (fields?.type && edge.type !== fields.type) {
-    ctx.tx.emit({
-      type: 'edge.field.set',
-      id: edge.id,
-      field: 'type',
-      value: fields.type
-    })
-  }
-  if (fields && hasOwn(fields, 'locked') && edge.locked !== fields.locked) {
-    if (fields.locked === undefined) {
-      ctx.tx.emit({
-        type: 'edge.field.unset',
-        id: edge.id,
-        field: 'locked'
-      })
-    } else {
-      ctx.tx.emit({
-        type: 'edge.field.set',
-        id: edge.id,
-        field: 'locked',
-        value: fields.locked
-      })
-    }
-  }
-  if (fields && hasOwn(fields, 'groupId') && edge.groupId !== fields.groupId) {
-    if (fields.groupId === undefined) {
-      ctx.tx.emit({
-        type: 'edge.field.unset',
-        id: edge.id,
-        field: 'groupId'
-      })
-    } else {
-      ctx.tx.emit({
-        type: 'edge.field.set',
-        id: edge.id,
-        field: 'groupId',
-        value: fields.groupId
-      })
-    }
-  }
-  if (fields && hasOwn(fields, 'textMode') && edge.textMode !== fields.textMode) {
-    if (fields.textMode === undefined) {
-      ctx.tx.emit({
-        type: 'edge.field.unset',
-        id: edge.id,
-        field: 'textMode'
-      })
-    } else {
-      ctx.tx.emit({
-        type: 'edge.field.set',
-        id: edge.id,
-        field: 'textMode',
-        value: fields.textMode
-      })
-    }
+  const fields = buildEdgeFieldPatch(edge, input.fields)
+  const record = compactRecordWrite(edge, input.record)
+  if (!fields && !record) {
+    return
   }
 
-  for (const record of input.records ?? []) {
-    if (record.op === 'unset') {
-      ctx.tx.emit({
-        type: 'edge.record.unset',
-        id: edge.id,
-        scope: record.scope,
-        path: record.path
-      })
-      continue
-    }
-
-    ctx.tx.emit({
-      type: 'edge.record.set',
-      id: edge.id,
-      scope: record.scope,
-      path: record.path ?? '',
-      value: record.value
-    })
-  }
+  ctx.emit({
+    type: 'edge.patch',
+    id: edge.id,
+    ...(fields ? { fields } : {}),
+    ...(record ? { record } : {})
+  })
 }
 
 export const emitEdgeMovePatchOps = (
   edge: Edge,
   patch: EdgePatch,
-  ctx: WhiteboardIntentContext
+  ctx: WhiteboardCompileScope
 ) => {
-  const records: import('@whiteboard/core/types').EdgeRecordMutation[] = []
-  const input: EdgeUpdateInput = {
-    fields: {},
-    records
-  }
-
+  const fields: EdgeFieldPatch = {}
   if (patch.source) {
-    input.fields!.source = patch.source
+    fields.source = patch.source
   }
   if (patch.target) {
-    input.fields!.target = patch.target
+    fields.target = patch.target
   }
   if (patch.type) {
-    input.fields!.type = patch.type
+    fields.type = patch.type
   }
   if (hasOwn(patch, 'locked')) {
-    input.fields!.locked = patch.locked
+    fields.locked = patch.locked
   }
   if (hasOwn(patch, 'groupId')) {
-    input.fields!.groupId = patch.groupId
+    fields.groupId = patch.groupId
   }
   if (hasOwn(patch, 'textMode')) {
-    input.fields!.textMode = patch.textMode
-  }
-  if (hasOwn(patch, 'data')) {
-    diffRecordTrees({
-      current: edge.data,
-      next: patch.data,
-      emitSet: (path, value) => {
-        records.push({
-          scope: 'data',
-          op: 'set',
-          path,
-          value
-        })
-      },
-      emitUnset: (path) => {
-        records.push({
-          scope: 'data',
-          op: 'unset',
-          path
-        })
-      }
-    })
-  }
-  if (hasOwn(patch, 'style')) {
-    diffRecordTrees({
-      current: edge.style,
-      next: patch.style,
-      emitSet: (path, value) => {
-        records.push({
-          scope: 'style',
-          op: 'set',
-          path,
-          value
-        })
-      },
-      emitUnset: (path) => {
-        records.push({
-          scope: 'style',
-          op: 'unset',
-          path
-        })
-      }
-    })
+    fields.textMode = patch.textMode
   }
 
-  if (input.fields && Object.keys(input.fields).length > 0 || (input.records?.length ?? 0) > 0) {
-    emitEdgeUpdateInputOps(edge, {
-      fields: Object.keys(input.fields ?? {}).length > 0 ? input.fields : undefined,
-      records: input.records && input.records.length > 0 ? input.records : undefined
-    }, ctx)
-  }
+  const record = mergeRecordWrites(
+    hasOwn(patch, 'data')
+      ? buildScopedRecordWrite('data', edge.data, patch.data)
+      : undefined,
+    hasOwn(patch, 'style')
+      ? buildScopedRecordWrite('style', edge.style, patch.style)
+      : undefined
+  )
+
+  emitEdgeUpdateInputOps(edge, {
+    ...(Object.keys(fields).length ? { fields } : {}),
+    ...(record ? { record } : {})
+  }, ctx)
 
   if (hasOwn(patch, 'route')) {
     emitEdgeRouteDiffOps(
@@ -459,16 +367,16 @@ export const emitEdgeMovePatchOps = (
 const compileEdgeRouteDelete = (
   edge: Edge,
   pointId: string,
-  ctx: WhiteboardIntentContext
+  ctx: WhiteboardCompileScope
 ) => {
   const point = edge.route?.kind === 'manual'
     ? edge.route.points.find((entry) => entry.id === pointId)
     : undefined
   if (!point) {
-    return ctx.tx.fail.invalid(`Edge ${edge.id} route point not found.`)
+    return ctx.fail.invalid(`Edge ${edge.id} route point not found.`)
   }
 
-  ctx.tx.emit({
+  ctx.emit({
     type: 'edge.route.point.delete',
     edgeId: edge.id,
     pointId
@@ -478,7 +386,7 @@ const compileEdgeRouteDelete = (
 type EdgeIntentHandlers = Pick<
   MutationCompileHandlerTable<
     WhiteboardMutationTable,
-    WhiteboardIntentContext,
+    WhiteboardCompileScope,
     'invalid' | 'cancelled'
   >,
   'edge.create'
@@ -500,25 +408,25 @@ type EdgeIntentHandlers = Pick<
 
 export const edgeIntentHandlers: EdgeIntentHandlers = {
   'edge.create': (intent, ctx) => {
-    const document = ctx.tx.read.document.get()
+    const document = ctx.read.document()
     const built = edgeApi.op.create({
       payload: intent.input,
       doc: document,
       registries: ctx.registries,
-      createEdgeId: ctx.tx.ids.edge,
-      createEdgeRoutePointId: ctx.tx.ids.edgeRoutePoint
+      createEdgeId: ctx.ids.edge,
+      createEdgeRoutePointId: ctx.ids.edgeRoutePoint
     })
     if (!built.ok) {
-      return ctx.tx.fail.invalid(built.error.message, built.error.details)
+      return ctx.fail.invalid(built.error.message, built.error.details)
     }
 
-    ctx.tx.emit(built.data.operation)
+    ctx.emit(built.data.operation)
     return {
       edgeId: built.data.edgeId
     }
   },
   'edge.update': (intent, ctx) => {
-    const document = ctx.tx.read.document.get()
+    const document = ctx.read.document()
     const decision = resolveLockDecision({
       document,
       target: {
@@ -527,7 +435,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       }
     })
     if (!decision.allowed) {
-      return ctx.tx.fail.cancelled(
+      return ctx.fail.cancelled(
         decision.reason === 'locked-node'
           ? 'Locked nodes cannot be modified.'
           : decision.reason === 'locked-edge'
@@ -537,7 +445,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     intent.updates.forEach((entry) => {
-      const edge = ctx.tx.read.edge.get(entry.id)
+      const edge = ctx.read.edge(entry.id)
       if (!edge) {
         return
       }
@@ -545,7 +453,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.move': (intent, ctx) => {
-    const document = ctx.tx.read.document.get()
+    const document = ctx.read.document()
     const decision = resolveLockDecision({
       document,
       target: {
@@ -554,7 +462,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       }
     })
     if (!decision.allowed) {
-      return ctx.tx.fail.cancelled(
+      return ctx.fail.cancelled(
         decision.reason === 'locked-node'
           ? 'Locked nodes cannot be modified.'
           : decision.reason === 'locked-edge'
@@ -564,7 +472,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     intent.ids.forEach((edgeId) => {
-      const edge = ctx.tx.read.edge.get(edgeId)
+      const edge = ctx.read.edge(edgeId)
       const patch = edge ? edgeApi.edit.move(edge, intent.delta) : undefined
       if (!edge || !patch) {
         return
@@ -573,7 +481,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.reconnect.commit': (intent, ctx) => {
-    const document = ctx.tx.read.document.get()
+    const document = ctx.read.document()
     const currentDecision = resolveLockDecision({
       document,
       target: {
@@ -582,7 +490,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       }
     })
     if (!currentDecision.allowed) {
-      return ctx.tx.fail.cancelled(
+      return ctx.fail.cancelled(
         currentDecision.reason === 'locked-node'
           ? 'Locked nodes cannot be modified.'
           : currentDecision.reason === 'locked-edge'
@@ -599,7 +507,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       }
     })
     if (!targetDecision.allowed) {
-      return ctx.tx.fail.cancelled(
+      return ctx.fail.cancelled(
         targetDecision.reason === 'locked-node'
           ? 'Locked nodes cannot be modified.'
           : targetDecision.reason === 'locked-edge'
@@ -608,7 +516,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       )
     }
 
-    const edge = ctx.tx.read.edge.get(intent.edgeId)
+    const edge = ctx.read.edge(intent.edgeId)
     if (!edge) {
       return
     }
@@ -630,7 +538,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }, ctx)
   },
   'edge.delete': (intent, ctx) => {
-    const document = ctx.tx.read.document.get()
+    const document = ctx.read.document()
     const decision = resolveLockDecision({
       document,
       target: {
@@ -639,7 +547,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       }
     })
     if (!decision.allowed) {
-      return ctx.tx.fail.cancelled(
+      return ctx.fail.cancelled(
         decision.reason === 'locked-node'
           ? 'Locked nodes cannot be modified.'
           : decision.reason === 'locked-edge'
@@ -649,25 +557,31 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     intent.ids.forEach((id) => {
-      ctx.tx.emit({
+      ctx.emit({
         type: 'edge.delete',
         id
       })
     })
   },
   'edge.label.insert': (intent, ctx) => {
-    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    const edge = ctx.read.requireEdge(intent.edgeId)
     if (!edge) {
       return
     }
-    const labelId = ctx.tx.ids.edgeLabel()
-    ctx.tx.emit({
+
+    const labelId = ctx.ids.edgeLabel()
+    const label: EdgeLabel = {
+      id: labelId,
+      ...(intent.label.text !== undefined ? { text: intent.label.text } : {}),
+      ...(intent.label.t !== undefined ? { t: intent.label.t } : {}),
+      ...(intent.label.offset !== undefined ? { offset: intent.label.offset } : {}),
+      ...(intent.label.style !== undefined ? { style: intent.label.style } : {}),
+      ...(intent.label.data !== undefined ? { data: intent.label.data } : {})
+    }
+    ctx.emit({
       type: 'edge.label.insert',
       edgeId: edge.id,
-      label: {
-        id: labelId,
-        ...intent.label
-      } as EdgeLabel,
+      label,
       to: intent.to ?? { kind: 'end' }
     })
     return {
@@ -675,95 +589,32 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
   },
   'edge.label.update': (intent, ctx) => {
-    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    const edge = ctx.read.requireEdge(intent.edgeId)
     if (!edge) {
       return
     }
+
     const label = edge.labels?.find((entry) => entry.id === intent.labelId)
     if (!label) {
-      return ctx.tx.fail.invalid(`Edge label ${intent.labelId} not found.`)
+      return ctx.fail.invalid(`Edge label ${intent.labelId} not found.`)
     }
 
-    const fields = intent.input.fields
-    if (fields && hasOwn(fields, 'text')) {
-      if (fields.text === undefined) {
-        ctx.tx.emit({
-          type: 'edge.label.field.unset',
-          edgeId: edge.id,
-          labelId: label.id,
-          field: 'text'
-        })
-      } else if (label.text !== fields.text) {
-        ctx.tx.emit({
-          type: 'edge.label.field.set',
-          edgeId: edge.id,
-          labelId: label.id,
-          field: 'text',
-          value: fields.text
-        })
-      }
-    }
-    if (fields && hasOwn(fields, 't') && label.t !== fields.t) {
-      if (fields.t === undefined) {
-        ctx.tx.emit({
-          type: 'edge.label.field.unset',
-          edgeId: edge.id,
-          labelId: label.id,
-          field: 't'
-        })
-      } else {
-        ctx.tx.emit({
-          type: 'edge.label.field.set',
-          edgeId: edge.id,
-          labelId: label.id,
-          field: 't',
-          value: fields.t
-        })
-      }
-    }
-    if (fields && hasOwn(fields, 'offset') && label.offset !== fields.offset) {
-      if (fields.offset === undefined) {
-        ctx.tx.emit({
-          type: 'edge.label.field.unset',
-          edgeId: edge.id,
-          labelId: label.id,
-          field: 'offset'
-        })
-      } else {
-        ctx.tx.emit({
-          type: 'edge.label.field.set',
-          edgeId: edge.id,
-          labelId: label.id,
-          field: 'offset',
-          value: fields.offset
-        })
-      }
+    const fields = buildEdgeLabelFieldPatch(label, intent.input.fields)
+    const record = compactRecordWrite(label, intent.input.record)
+    if (!fields && !record) {
+      return
     }
 
-    for (const record of intent.input.records ?? []) {
-      if (record.op === 'unset') {
-        ctx.tx.emit({
-          type: 'edge.label.record.unset',
-          edgeId: edge.id,
-          labelId: label.id,
-          scope: record.scope,
-          path: record.path
-        })
-        continue
-      }
-
-      ctx.tx.emit({
-        type: 'edge.label.record.set',
-        edgeId: edge.id,
-        labelId: label.id,
-        scope: record.scope,
-        path: record.path ?? '',
-        value: record.value
-      })
-    }
+    ctx.emit({
+      type: 'edge.label.patch',
+      edgeId: edge.id,
+      labelId: label.id,
+      ...(fields ? { fields } : {}),
+      ...(record ? { record } : {})
+    })
   },
   'edge.label.move': (intent, ctx) => {
-    ctx.tx.emit({
+    ctx.emit({
       type: 'edge.label.move',
       edgeId: intent.edgeId,
       labelId: intent.labelId,
@@ -771,19 +622,20 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.label.delete': (intent, ctx) => {
-    ctx.tx.emit({
+    ctx.emit({
       type: 'edge.label.delete',
       edgeId: intent.edgeId,
       labelId: intent.labelId
     })
   },
   'edge.route.insert': (intent, ctx) => {
-    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    const edge = ctx.read.requireEdge(intent.edgeId)
     if (!edge) {
       return
     }
-    const pointId = ctx.tx.ids.edgeRoutePoint()
-    ctx.tx.emit({
+
+    const pointId = ctx.ids.edgeRoutePoint()
+    ctx.emit({
       type: 'edge.route.point.insert',
       edgeId: edge.id,
       point: {
@@ -798,38 +650,38 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
   },
   'edge.route.update': (intent, ctx) => {
-    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    const edge = ctx.read.requireEdge(intent.edgeId)
     if (!edge) {
       return
     }
+
     const point = edge.route?.kind === 'manual'
       ? edge.route.points.find((entry) => entry.id === intent.pointId)
       : undefined
     if (!point) {
-      return ctx.tx.fail.invalid(`Edge ${edge.id} route point not found.`)
+      return ctx.fail.invalid(`Edge ${edge.id} route point not found.`)
     }
 
+    const fields: Partial<Record<'x' | 'y', number>> = {}
     if (intent.fields.x !== undefined && point.x !== intent.fields.x) {
-      ctx.tx.emit({
-        type: 'edge.route.point.field.set',
-        edgeId: edge.id,
-        pointId: point.id,
-        field: 'x',
-        value: intent.fields.x
-      })
+      fields.x = intent.fields.x
     }
     if (intent.fields.y !== undefined && point.y !== intent.fields.y) {
-      ctx.tx.emit({
-        type: 'edge.route.point.field.set',
-        edgeId: edge.id,
-        pointId: point.id,
-        field: 'y',
-        value: intent.fields.y
-      })
+      fields.y = intent.fields.y
     }
+    if (!Object.keys(fields).length) {
+      return
+    }
+
+    ctx.emit({
+      type: 'edge.route.point.patch',
+      edgeId: edge.id,
+      pointId: point.id,
+      fields
+    })
   },
   'edge.route.set': (intent, ctx) => {
-    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    const edge = ctx.read.requireEdge(intent.edgeId)
     if (!edge) {
       return
     }
@@ -841,7 +693,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     )
   },
   'edge.route.move': (intent, ctx) => {
-    ctx.tx.emit({
+    ctx.emit({
       type: 'edge.route.point.move',
       edgeId: intent.edgeId,
       pointId: intent.pointId,
@@ -849,14 +701,14 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.route.delete': (intent, ctx) => {
-    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    const edge = ctx.read.requireEdge(intent.edgeId)
     if (!edge) {
       return
     }
     return compileEdgeRouteDelete(edge, intent.pointId, ctx)
   },
   'edge.route.clear': (intent, ctx) => {
-    const edge = ctx.tx.read.edge.require(intent.edgeId)
+    const edge = ctx.read.requireEdge(intent.edgeId)
     if (!edge) {
       return
     }
@@ -864,7 +716,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
     edge.route.points.forEach((point) => {
-      ctx.tx.emit({
+      ctx.emit({
         type: 'edge.route.point.delete',
         edgeId: edge.id,
         pointId: point.id

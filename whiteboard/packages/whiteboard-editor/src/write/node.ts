@@ -1,7 +1,6 @@
 import {
   type Path
 } from '@shared/draft'
-import { schema as schemaApi } from '@whiteboard/core/registry'
 import type { Node, NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
@@ -21,6 +20,24 @@ import {
 import type { NodeSpecReader } from '@whiteboard/editor/types/node'
 
 type NodeTextCommitInput = Parameters<NodeTextWrite['commit']>[0]
+
+const createStyleRecordUpdate = (
+  path: Path,
+  value: unknown
+) => ({
+  record: {
+    [`style.${path}`]: value
+  }
+})
+
+const createDataRecordUpdate = (
+  path: Path,
+  value: unknown
+) => ({
+  record: {
+    [`data.${path}`]: value
+  }
+})
 
 type NodeContext = {
   read: {
@@ -114,7 +131,7 @@ const toNodeStyleBatchUpdates = (
   value: unknown
 ) => nodeIds.map((id) => ({
   id,
-  input: schemaApi.node.compileStyleUpdate(path, value)
+  input: createStyleRecordUpdate(path, value)
 }))
 
 export const createNodeTextWrite = (
@@ -144,7 +161,7 @@ export const createNodeTextWrite = (
   }) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
-      input: schemaApi.node.compileStyleUpdate('fontSize', value)
+      input: createStyleRecordUpdate('fontSize', value)
     }))
   ),
   weight: (nodeIds, weight) => ctx.write.updateMany(
@@ -193,7 +210,7 @@ const createNodeShapeWrite = (
 
       return [{
         id,
-        input: schemaApi.node.compileDataUpdate('kind', kind)
+        input: createDataRecordUpdate('kind', kind)
       }]
     })
   )

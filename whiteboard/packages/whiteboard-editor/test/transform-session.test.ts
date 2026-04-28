@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  path as mutationPath,
   type Path
 } from '@shared/draft'
 import type { Node } from '@whiteboard/core/types'
@@ -271,13 +270,13 @@ describe('createTransformSession', () => {
           {
             scope: 'data',
             op: 'set',
-            path: mutationPath.of('widthMode'),
+            path: 'widthMode',
             value: 'wrap'
           },
           {
             scope: 'data',
             op: 'set',
-            path: mutationPath.of('wrapWidth'),
+            path: 'wrapWidth',
             value: 180
           }
         ]
@@ -365,7 +364,7 @@ describe('createTransformSession', () => {
       {
         scope: 'style',
         op: 'set',
-        path: mutationPath.of('fontSize'),
+        path: 'fontSize',
         value: 25
       }
     ])

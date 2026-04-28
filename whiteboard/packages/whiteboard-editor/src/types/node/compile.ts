@@ -90,7 +90,7 @@ const parseFieldKey = (
   key: string
 ): {
   scope: SchemaFieldScope
-  path: readonly string[]
+  path: string
 } => {
   const [scope, ...path] = fieldKey.read(key)
 
@@ -108,7 +108,7 @@ const parseFieldKey = (
 
   return {
     scope,
-    path
+    path: fieldKey.write(path)
   }
 }
 

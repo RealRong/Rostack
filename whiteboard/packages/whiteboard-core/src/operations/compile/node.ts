@@ -1,4 +1,3 @@
-import { path as mutationPath } from '@shared/draft'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import {
   emitMindmapTopicUpdateOps,
@@ -158,7 +157,7 @@ const compileNodeTextCommit = (
   const input = schemaApi.node.mergeUpdates(
     intent.value === currentValue
       ? undefined
-      : schemaApi.node.compileDataUpdate(mutationPath.of(intent.field), intent.value),
+      : schemaApi.node.compileDataUpdate(intent.field, intent.value),
     intent.size && !geometryApi.equal.size(intent.size, node.size)
       ? {
           fields: {
@@ -167,10 +166,10 @@ const compileNodeTextCommit = (
         }
       : undefined,
     intent.fontSize !== undefined && currentFontSize !== intent.fontSize
-      ? schemaApi.node.compileStyleUpdate(mutationPath.of('fontSize'), intent.fontSize)
+      ? schemaApi.node.compileStyleUpdate('fontSize', intent.fontSize)
       : undefined,
     node.type === 'text' && node.data?.wrapWidth !== intent.wrapWidth
-      ? schemaApi.node.compileDataUpdate(mutationPath.of('wrapWidth'), intent.wrapWidth)
+      ? schemaApi.node.compileDataUpdate('wrapWidth', intent.wrapWidth)
       : undefined
   )
 

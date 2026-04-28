@@ -1,5 +1,4 @@
 import {
-  path as mutationPath,
   type Path
 } from '@shared/draft'
 import { edge as edgeApi } from '@whiteboard/core/edge'
@@ -48,36 +47,36 @@ const EMPTY_TEXT_FRAME_INSETS = {
 } as const
 
 const SIZE_LAYOUT_STYLE_PATHS: readonly Path[] = [
-  mutationPath.of('fontSize'),
-  mutationPath.of('fontWeight'),
-  mutationPath.of('fontStyle')
+  'fontSize',
+  'fontWeight',
+  'fontStyle'
 ]
 
 const SIZE_LAYOUT_DATA_PATHS: readonly Path[] = [
-  mutationPath.of('text'),
-  mutationPath.of('widthMode'),
-  mutationPath.of('wrapWidth')
+  'text',
+  'widthMode',
+  'wrapWidth'
 ]
 
 const FIT_LAYOUT_STYLE_PATHS: readonly Path[] = [
-  mutationPath.of('fontWeight'),
-  mutationPath.of('fontStyle')
+  'fontWeight',
+  'fontStyle'
 ]
 
 const FIT_LAYOUT_DATA_PATHS: readonly Path[] = [
-  mutationPath.of('text'),
-  mutationPath.of('fontMode')
+  'text',
+  'fontMode'
 ]
 
-const FONT_MODE_PATH = mutationPath.of('fontMode')
-const FONT_SIZE_PATH = mutationPath.of('fontSize')
+const FONT_MODE_PATH = 'fontMode'
+const FONT_SIZE_PATH = 'fontSize'
 
 const hasTrackedPath = (
   paths: readonly Path[],
   value?: Path
 ) => {
-  const target = value ?? mutationPath.root()
-  return paths.some((path) => mutationPath.eq(path, target))
+  const target = value ?? ''
+  return paths.some((path) => path === target)
 }
 
 const hasOwn = <T extends object>(
@@ -283,10 +282,10 @@ const normalizeStickyFontModeUpdate = ({
   }
 
   const touchesFontMode = (update.records ?? []).some(
-    (record) => record.scope === 'data' && mutationPath.eq(record.path ?? mutationPath.root(), FONT_MODE_PATH)
+    (record) => record.scope === 'data' && (record.path ?? '') === FONT_MODE_PATH
   )
   const touchesFontSize = (update.records ?? []).some(
-    (record) => record.scope === 'style' && mutationPath.eq(record.path ?? mutationPath.root(), FONT_SIZE_PATH)
+    (record) => record.scope === 'style' && (record.path ?? '') === FONT_SIZE_PATH
   )
 
   if (!touchesFontSize || touchesFontMode) {
@@ -295,7 +294,7 @@ const normalizeStickyFontModeUpdate = ({
 
   return schemaApi.node.mergeUpdates(
     update,
-    schemaApi.node.compileDataUpdate(mutationPath.of('fontMode'), 'fixed')
+    schemaApi.node.compileDataUpdate('fontMode', 'fixed')
   )
 }
 
@@ -330,7 +329,7 @@ const toLayoutResultUpdate = ({
 
     return currentFontSize === result.fontSize
       ? undefined
-      : schemaApi.node.compileStyleUpdate(mutationPath.of('fontSize'), result.fontSize)
+      : schemaApi.node.compileStyleUpdate('fontSize', result.fontSize)
   }
 
   return undefined

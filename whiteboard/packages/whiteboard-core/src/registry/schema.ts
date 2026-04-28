@@ -1,7 +1,6 @@
 import { json } from '@shared/core'
 import {
-  path as mutationPath,
-  patch as mutationRecord,
+  record as draftRecord,
   type Path,
   type PathKey
 } from '@shared/draft'
@@ -76,45 +75,27 @@ const applyFieldDefaults = (target: SchemaTarget, fields: SchemaField[]) => {
     if (scope === 'label' && !('label' in target)) return
     if (scope === 'data') {
       target.data = target.data ?? {}
-      if (!mutationRecord.has(target.data, field.path)) {
-        const result = mutationRecord.apply(target.data, {
-          op: 'set',
-          path: field.path,
-          value: field.defaultValue
-        })
-        if (!result.ok) {
-          throw new Error(result.message)
-        }
-        target.data = result.value as Record<string, unknown>
+      if (!draftRecord.has(target.data, field.path)) {
+        target.data = draftRecord.apply(target.data, {
+          [field.path]: field.defaultValue
+        }) as Record<string, unknown>
       }
       return
     }
     if (scope === 'style') {
       target.style = target.style ?? {}
-      if (!mutationRecord.has(target.style, field.path)) {
-        const result = mutationRecord.apply(target.style, {
-          op: 'set',
-          path: field.path,
-          value: field.defaultValue
-        })
-        if (!result.ok) {
-          throw new Error(result.message)
-        }
-        target.style = result.value as Record<string, unknown>
+      if (!draftRecord.has(target.style, field.path)) {
+        target.style = draftRecord.apply(target.style, {
+          [field.path]: field.defaultValue
+        }) as Record<string, unknown>
       }
       return
     }
     target.label = target.label ?? {}
-    if (!mutationRecord.has(target.label, field.path)) {
-      const result = mutationRecord.apply(target.label, {
-        op: 'set',
-        path: field.path,
-        value: field.defaultValue
-      })
-      if (!result.ok) {
-        throw new Error(result.message)
-      }
-      target.label = result.value as Record<string, unknown>
+    if (!draftRecord.has(target.label, field.path)) {
+      target.label = draftRecord.apply(target.label, {
+        [field.path]: field.defaultValue
+      }) as Record<string, unknown>
     }
   })
 }
@@ -164,7 +145,7 @@ const isMissingRequired = (container: unknown, field: SchemaField) => {
   if (!field.required) return false
   if (field.defaultValue !== undefined) return false
   if (!container) return true
-  return !mutationRecord.has(container, field.path)
+  return !draftRecord.has(container, field.path)
 }
 
 const getMissingNodeFields = (input: NodeInput, registries: CoreRegistries): string[] => {
@@ -209,9 +190,9 @@ const getMissingEdgeFields = (input: EdgeInput, registries: CoreRegistries): str
 
 const getSchemaFieldValue = (target: SchemaTarget, field: SchemaField): unknown => {
   const scope = field.scope ?? 'data'
-  if (scope === 'style') return mutationRecord.read(target.style, field.path)
-  if (scope === 'label') return mutationRecord.read(target.label, field.path)
-  return mutationRecord.read(target.data, field.path)
+  if (scope === 'style') return draftRecord.read(target.style, field.path)
+  if (scope === 'label') return draftRecord.read(target.label, field.path)
+  return draftRecord.read(target.data, field.path)
 }
 
 export type NodeSchemaFieldRef = Pick<SchemaField, 'path'> & {
@@ -227,8 +208,8 @@ const toNodeRecordPath = (
 const normalizeRecordPath = (
   path: Path | PathKey
 ): Path => (
-  typeof path === 'string' || typeof path === 'number'
-    ? mutationPath.of(path)
+  typeof path === 'number'
+    ? String(path)
     : path
 )
 

@@ -48,9 +48,10 @@ const validateSetPath = (
   current: Record<string | number, unknown>,
   targetPath: Path
 ): { ok: true } | { ok: false; message: string } => {
+  const parts = path.parts(targetPath)
   let cursor: unknown = current
 
-  for (let index = 0; index < targetPath.length - 1; index += 1) {
+  for (let index = 0; index < parts.length - 1; index += 1) {
     if (!isRecordLike(cursor)) {
       return {
         ok: false,
@@ -58,7 +59,7 @@ const validateSetPath = (
       }
     }
 
-    const next = readOwn(cursor, targetPath[index]!)
+    const next = readOwn(cursor, parts[index]!)
     if (next == null) {
       return {
         ok: true
@@ -84,10 +85,11 @@ const validateUnsetPath = (
   current: Record<string | number, unknown>,
   targetPath: Path
 ): { ok: true } | { ok: false; message: string } => {
+  const parts = path.parts(targetPath)
   let cursor: Record<string | number, unknown> = current
 
-  for (let index = 0; index < targetPath.length - 1; index += 1) {
-    const next = readOwn(cursor, targetPath[index]!)
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const next = readOwn(cursor, parts[index]!)
     if (!isRecordLike(next)) {
       return {
         ok: false,
@@ -98,7 +100,7 @@ const validateUnsetPath = (
     cursor = next
   }
 
-  const key = targetPath[targetPath.length - 1]!
+  const key = parts[parts.length - 1]!
   if (!hasOwn(cursor, key)) {
     return {
       ok: false,
@@ -119,7 +121,7 @@ const read = (
 const has = (
   root: unknown,
   targetPath: Path
-): boolean => path.get(root, targetPath) !== undefined
+): boolean => path.has(root, targetPath)
 
 const apply = (
   current: unknown,

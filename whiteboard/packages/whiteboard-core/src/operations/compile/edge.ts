@@ -84,7 +84,7 @@ const diffRecordTrees = ({
   next,
   emitSet,
   emitUnset,
-  path = mutationPath.root()
+  path = ''
 }: {
   current: unknown
   next: unknown
@@ -361,7 +361,7 @@ const emitEdgeUpdateInputOps = (
       type: 'edge.record.set',
       id: edge.id,
       scope: record.scope,
-      path: record.path ?? mutationPath.root(),
+      path: record.path ?? '',
       value: record.value
     })
   }
@@ -757,7 +757,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
         edgeId: edge.id,
         labelId: label.id,
         scope: record.scope,
-        path: record.path ?? mutationPath.root(),
+        path: record.path ?? '',
         value: record.value
       })
     }

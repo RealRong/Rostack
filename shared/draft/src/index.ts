@@ -23,9 +23,13 @@ import {
   type RecordPatch
 } from './patch'
 import {
-  record,
+  record as createRecordDraft,
   type DraftRecord
 } from './record'
+import {
+  record,
+  type RecordWrite
+} from './recordValue'
 import {
   root,
   type DraftRoot
@@ -34,17 +38,17 @@ import {
 export const draft = {
   root,
   record,
+  table: createRecordDraft,
   list,
   map: createMapDraft,
   array: createArrayDraft,
-  entityTable,
-  path,
-  patch
+  entityTable
 } as const
 
 export {
   createArrayDraft,
   createMapDraft,
+  createRecordDraft,
   entityTable,
   list,
   patch,
@@ -63,5 +67,6 @@ export type {
   DraftRoot,
   Path,
   PathKey,
-  RecordPatch
+  RecordPatch,
+  RecordWrite
 }

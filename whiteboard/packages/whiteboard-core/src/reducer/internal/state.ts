@@ -86,10 +86,10 @@ export const createDraftDocument = (
   background: document.background,
   backgroundChanged: false,
   canvasOrder: draft.list(document.canvas.order),
-  nodes: draft.record(document.nodes),
-  edges: draft.record(document.edges),
-  groups: draft.record(document.groups),
-  mindmaps: draft.record(document.mindmaps)
+  nodes: draft.table(document.nodes),
+  edges: draft.table(document.edges),
+  groups: draft.table(document.groups),
+  mindmaps: draft.table(document.mindmaps)
 })
 
 export const materializeDraftDocument = (

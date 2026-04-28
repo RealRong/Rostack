@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { EntityTable } from '@shared/core'
-import { draft } from '@shared/draft'
+import { draft, path, patch } from '@shared/draft'
 
 describe('@shared/draft', () => {
   test('root preserves untouched branch references', () => {
@@ -14,9 +14,9 @@ describe('@shared/draft', () => {
     }
 
     const root = draft.root(base)
-    draft.path.set(
+    path.set(
       root.write(),
-      draft.path.of('nested', 'count'),
+      path.of('nested', 'count'),
       2
     )
 
@@ -39,24 +39,24 @@ describe('@shared/draft', () => {
     })
 
     const current = root.write()
-    draft.path.set(current, draft.path.of('data', 'meta', 'title'), 'B')
-    draft.path.unset(current, draft.path.of('data', 'meta', 'keep'))
+    path.set(current, path.of('data', 'meta', 'title'), 'B')
+    path.unset(current, path.of('data', 'meta', 'keep'))
 
-    expect(draft.path.get(current, draft.path.of('data', 'meta', 'title'))).toBe('B')
-    expect(draft.path.get(current, draft.path.of('data', 'meta', 'keep'))).toBeUndefined()
+    expect(path.get(current, path.of('data', 'meta', 'title'))).toBe('B')
+    expect(path.get(current, path.of('data', 'meta', 'keep'))).toBeUndefined()
   })
 
   test('path exposes structural helper operations', () => {
-    const rootPath = draft.path.root()
-    const entry = draft.path.of('blocks', 1, 'title')
-    const parent = draft.path.parent(entry)
+    const rootPath = path.root()
+    const entry = path.of('blocks', 1, 'title')
+    const parent = path.parent(entry)
 
-    expect(draft.path.eq(rootPath, [])).toBe(true)
-    expect(draft.path.startsWith(entry, draft.path.of('blocks', 1))).toBe(true)
-    expect(draft.path.overlaps(entry, draft.path.of('blocks', 1))).toBe(true)
-    expect(draft.path.append(draft.path.of('blocks'), 1, 'title')).toEqual(entry)
-    expect(parent).toEqual(['blocks', 1])
-    expect(draft.path.toString(entry)).toBe('[\"blocks\",1,\"title\"]')
+    expect(path.eq(rootPath, '')).toBe(true)
+    expect(path.startsWith(entry, path.of('blocks', 1))).toBe(true)
+    expect(path.overlaps(entry, path.of('blocks', 1))).toBe(true)
+    expect(path.append(path.of('blocks'), 1, 'title')).toEqual(entry)
+    expect(parent).toEqual(path.of('blocks', 1))
+    expect(path.toString(entry)).toBe(entry)
   })
 
   test('list performs lazy copy-on-write mutations', () => {
@@ -99,7 +99,7 @@ describe('@shared/draft', () => {
     const base = {
       a: 1
     }
-    const record = draft.record(base)
+    const record = draft.table(base)
 
     record.set('a', 1)
     record.delete('missing' as 'a')
@@ -109,13 +109,13 @@ describe('@shared/draft', () => {
   })
 
   test('patch applies structural record mutations', () => {
-    const result = draft.patch.apply({
+    const result = patch.apply({
       meta: {
         title: 'A'
       }
     }, {
       op: 'set',
-      path: draft.path.of('meta', 'title'),
+      path: path.of('meta', 'title'),
       value: 'B'
     })
 
@@ -127,8 +127,44 @@ describe('@shared/draft', () => {
         }
       }
     })
-    expect(draft.patch.has(result.ok ? result.value : undefined, draft.path.of('meta', 'title'))).toBe(true)
-    expect(draft.patch.read(result.ok ? result.value : undefined, draft.path.of('meta', 'title'))).toBe('B')
+    expect(patch.has(result.ok ? result.value : undefined, path.of('meta', 'title'))).toBe(true)
+    expect(patch.read(result.ok ? result.value : undefined, path.of('meta', 'title'))).toBe('B')
+  })
+
+  test('record write applies diff and inverse with string paths', () => {
+    const base = {
+      data: {
+        text: 'A'
+      },
+      style: {
+        fontSize: 12
+      }
+    }
+
+    const writes = {
+      'data.text': 'B',
+      'style.fontSize': 14,
+      'style.color': '#000'
+    } as const
+
+    const next = draft.record.apply(base, writes)
+    expect(next).toEqual({
+      data: {
+        text: 'B'
+      },
+      style: {
+        fontSize: 14,
+        color: '#000'
+      }
+    })
+
+    expect(draft.record.inverse(base, writes)).toEqual({
+      'data.text': 'A',
+      'style.fontSize': 12,
+      'style.color': undefined
+    })
+
+    expect(draft.record.diff(base, next)).toEqual(writes)
   })
 
   test('entityTable only replaces changed branches', () => {

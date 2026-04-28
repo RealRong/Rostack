@@ -1,7 +1,10 @@
-export type PathKey = string | number
-export type Path = readonly PathKey[]
+import { key } from '@shared/spec'
 
-const ROOT_PATH: Path = Object.freeze([])
+export type PathKey = string | number
+export type Path = string
+
+const ROOT_PATH = ''
+const pathCodec = key.path()
 
 const cloneContainer = <T extends Record<PropertyKey, unknown> | unknown[]>(
   value: T
@@ -20,13 +23,9 @@ const isObjectLike = (
   && value !== null
 )
 
-const clonePath = (
-  keys: readonly PathKey[]
-): Path => (
-  keys.length
-    ? [...keys]
-    : ROOT_PATH
-)
+const readParts = (
+  value: Path
+): readonly string[] => pathCodec.read(value)
 
 const readKey = (
   container: Record<PropertyKey, unknown> | unknown[],
@@ -70,12 +69,13 @@ const get = (
   root: unknown,
   path: Path
 ): unknown => {
-  if (!path.length) {
+  const parts = readParts(path)
+  if (!parts.length) {
     return root
   }
 
   let current = root
-  for (const key of path) {
+  for (const key of parts) {
     if (!isObjectLike(current)) {
       return undefined
     }
@@ -86,38 +86,68 @@ const get = (
   return current
 }
 
+const has = (
+  root: unknown,
+  path: Path
+): boolean => {
+  const parts = readParts(path)
+  if (!parts.length) {
+    return root !== undefined
+  }
+
+  let current = root
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    if (!isObjectLike(current)) {
+      return false
+    }
+
+    current = readKey(current, parts[index]!)
+  }
+
+  if (!isObjectLike(current)) {
+    return false
+  }
+
+  const key = parts[parts.length - 1]!
+  return Array.isArray(current) && /^\d+$/.test(String(key))
+    ? Number(key) in current
+    : Object.prototype.hasOwnProperty.call(current, String(key))
+}
+
 const set = (
   root: unknown,
   path: Path,
   value: unknown
 ) => {
-  if (!path.length || !isObjectLike(root)) {
+  const parts = readParts(path)
+  if (!parts.length || !isObjectLike(root)) {
     return
   }
 
   let current = root as Record<PropertyKey, unknown> | unknown[]
-  for (let index = 0; index < path.length - 1; index += 1) {
+  for (let index = 0; index < parts.length - 1; index += 1) {
     current = ensureWritableChild(
       current,
-      path[index]!,
-      path[index + 1]
+      parts[index]!,
+      parts[index + 1]
     )
   }
 
-  writeKey(current, path[path.length - 1]!, value)
+  writeKey(current, parts[parts.length - 1]!, value)
 }
 
 const unset = (
   root: unknown,
   path: Path
 ) => {
-  if (!path.length || !isObjectLike(root)) {
+  const parts = readParts(path)
+  if (!parts.length || !isObjectLike(root)) {
     return
   }
 
   let current = root as Record<PropertyKey, unknown> | unknown[]
-  for (let index = 0; index < path.length - 1; index += 1) {
-    const key = path[index]!
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const key = parts[index]!
     const next = readKey(current, key)
     if (!isObjectLike(next)) {
       return
@@ -128,12 +158,13 @@ const unset = (
     current = writable
   }
 
-  const key = path[path.length - 1]!
-  if (Array.isArray(current) && typeof key === 'number') {
-    if (key < 0 || key >= current.length) {
+  const key = parts[parts.length - 1]!
+  const index = Number(key)
+  if (Array.isArray(current) && Number.isInteger(index)) {
+    if (index < 0 || index >= current.length) {
       return
     }
-    current.splice(key, 1)
+    current.splice(index, 1)
     return
   }
 
@@ -143,30 +174,20 @@ const unset = (
 const eq = (
   left: Path,
   right: Path
-): boolean => {
-  if (left.length !== right.length) {
-    return false
-  }
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-
-  return true
-}
+): boolean => left === right
 
 const startsWith = (
   value: Path,
   prefix: Path
 ): boolean => {
-  if (prefix.length > value.length) {
+  const valueParts = readParts(value)
+  const prefixParts = readParts(prefix)
+  if (prefixParts.length > valueParts.length) {
     return false
   }
 
-  for (let index = 0; index < prefix.length; index += 1) {
-    if (value[index] !== prefix[index]) {
+  for (let index = 0; index < prefixParts.length; index += 1) {
+    if (valueParts[index] !== prefixParts[index]) {
       return false
     }
   }
@@ -176,7 +197,7 @@ const startsWith = (
 
 export const path = {
   root: (): Path => ROOT_PATH,
-  of: (...keys: readonly PathKey[]): Path => clonePath(keys),
+  of: (...keys: readonly PathKey[]): Path => pathCodec.write(keys),
   eq,
   startsWith,
   overlaps: (
@@ -191,24 +212,54 @@ export const path = {
     ...keys: readonly PathKey[]
   ): Path => (
     keys.length
-      ? [...value, ...keys]
+      ? pathCodec.write([...readParts(value), ...keys])
       : value
   ),
   parent: (
-    value: Path
+  value: Path
   ): Path | undefined => {
-    if (!value.length) {
+    const parts = readParts(value)
+    if (!parts.length) {
       return undefined
     }
 
-    return value.length === 1
+    return parts.length === 1
       ? ROOT_PATH
-      : value.slice(0, -1)
+      : pathCodec.write(parts.slice(0, -1))
   },
   toString: (
     value: Path
-  ): string => JSON.stringify(value),
+  ): string => value,
+  parts: readParts,
   get,
+  has,
   set,
-  unset
+  unset,
+  setAt: <T>(
+    root: T,
+    targetPath: Path,
+    value: unknown
+  ): T => {
+    if (!targetPath) {
+      return value as T
+    }
+
+    const nextRoot = isObjectLike(root)
+      ? cloneContainer(root as Record<PropertyKey, unknown> | unknown[]) as T
+      : {} as T
+    set(nextRoot, targetPath, value)
+    return nextRoot
+  },
+  unsetAt: <T>(
+    root: T,
+    targetPath: Path
+  ): T => {
+    if (!targetPath || !isObjectLike(root)) {
+      return root
+    }
+
+    const nextRoot = cloneContainer(root as Record<PropertyKey, unknown> | unknown[]) as T
+    unset(nextRoot, targetPath)
+    return nextRoot
+  }
 } as const

@@ -1,4 +1,4 @@
-import { draft } from '@shared/draft'
+import { record as draftRecord } from '@shared/draft'
 import { key } from '@shared/spec'
 import type {
   Node,
@@ -30,7 +30,7 @@ const readStyleValue = (
   field: NodeStyleFieldKey
 ) => {
   const [, ...path] = fieldKey.read(field)
-  return draft.path.get(node.style, path)
+  return draftRecord.read(node.style, fieldKey.write(path))
 }
 
 const readFallbackMeta = (

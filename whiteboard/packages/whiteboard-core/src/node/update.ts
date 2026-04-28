@@ -1,7 +1,8 @@
 import { json } from '@shared/core'
 import {
   path as mutationPath,
-  patch as mutationRecord,
+  record as draftRecord,
+  type RecordWrite,
   type Path
 } from '@shared/draft'
 import type {
@@ -103,8 +104,30 @@ const applyRecordMutation = (
   current: unknown,
   mutation: NodeRecordMutation
 ): { ok: true; value: unknown } | { ok: false; message: string } => {
-  return mutationRecord.apply(current, mutation)
+  try {
+    return {
+      ok: true,
+      value: draftRecord.apply(current, toRecordWrite(mutation))
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error
+        ? error.message
+        : 'Failed to apply record write.'
+    }
+  }
 }
+
+const toRecordWrite = (
+  mutation: NodeRecordMutation
+): RecordWrite => mutation.op === 'unset'
+  ? {
+      [mutation.path]: undefined
+    }
+  : {
+      [mutation.path ?? '']: mutation.value
+    }
 
 const inspectRecordPath = (
   current: unknown,
@@ -115,7 +138,8 @@ const inspectRecordPath = (
   value: unknown
   parentIsArray: boolean
 } => {
-  if (!targetPath.length) {
+  const parts = mutationPath.parts(targetPath)
+  if (!parts.length) {
     return {
       canAddressPath: false,
       exists: false,
@@ -133,8 +157,8 @@ const inspectRecordPath = (
   }
 
   let container: Record<string | number, unknown> = current
-  for (let index = 0; index < targetPath.length - 1; index += 1) {
-    const part = targetPath[index]!
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const part = parts[index]!
     if (!hasOwn(container, part)) {
       return {
         canAddressPath: false,
@@ -157,7 +181,7 @@ const inspectRecordPath = (
     container = nextValue
   }
 
-  const key = targetPath[targetPath.length - 1]!
+  const key = parts[parts.length - 1]!
   const exists = hasOwn(container, key)
   return {
     canAddressPath: true,
@@ -305,7 +329,7 @@ export const createNodeUpdateOperation = (
       type: 'node.record.set',
       id,
       scope: record.scope,
-      path: record.path ?? mutationPath.root(),
+      path: record.path ?? '',
       value: json.clone(record.value)
     })
   }

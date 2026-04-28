@@ -1,5 +1,4 @@
 import { json } from '@shared/core'
-import { path as mutationPath } from '@shared/draft'
 import { resolveTextNodeBootstrapSize } from '@whiteboard/core/node/bootstrap'
 import type {
   MindmapBranchField,
@@ -154,7 +153,7 @@ export const emitMindmapTopicUpdateOps = (input: {
       id: input.mindmapId,
       topicId: input.topicId,
       scope: record.scope,
-      path: record.path ?? mutationPath.root(),
+      path: record.path ?? '',
       value: record.value
     })
   }

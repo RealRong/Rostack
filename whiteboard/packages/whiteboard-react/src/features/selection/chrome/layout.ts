@@ -1,5 +1,4 @@
 import {
-  path as mutationPath,
   type Path
 } from '@shared/draft'
 import type { Node, NodeSchema, Point, Rect } from '@whiteboard/core/types'
@@ -13,14 +12,14 @@ const SAFE_MARGIN = 12
 const MENU_WIDTH = 220
 const TOOLBAR_VERTICAL_GAP = 12
 const TOOLBAR_MIN_TOP_SPACE = 56
-const TEXT_PATH = mutationPath.of('text')
-const TITLE_PATH = mutationPath.of('title')
+const TEXT_PATH = 'text'
+const TITLE_PATH = 'title'
 
 export const hasSchemaField = (
   schema: NodeSchema | undefined,
   scope: 'data' | 'style',
   path: Path
-) => schema?.fields.some((field) => field.scope === scope && mutationPath.eq(field.path, path)) ?? false
+) => schema?.fields.some((field) => field.scope === scope && field.path === path) ?? false
 
 export const readTextFieldKey = (
   node: Node,
@@ -29,16 +28,16 @@ export const readTextFieldKey = (
   const schemaField = schema?.fields.find((field) =>
     field.scope === 'data'
     && (
-      mutationPath.eq(field.path, TEXT_PATH)
-      || mutationPath.eq(field.path, TITLE_PATH)
+      field.path === TEXT_PATH
+      || field.path === TITLE_PATH
     )
   )
 
-  if (schemaField && mutationPath.eq(schemaField.path, TEXT_PATH)) {
+  if (schemaField && schemaField.path === TEXT_PATH) {
     return 'text'
   }
 
-  if (schemaField && mutationPath.eq(schemaField.path, TITLE_PATH)) {
+  if (schemaField && schemaField.path === TITLE_PATH) {
     return 'title'
   }
 

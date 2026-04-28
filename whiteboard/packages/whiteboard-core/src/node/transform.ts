@@ -1,4 +1,3 @@
-import { path as mutationPath } from '@shared/draft'
 import type {
   Node,
   NodeFieldPatch,
@@ -1322,22 +1321,22 @@ export const buildTransformCommitUpdates = (options: {
     const textUpdate = target.node.type === 'text'
       ? schemaApi.node.mergeUpdates(
           preview.mode !== undefined && preview.mode !== readTextWidthMode(target.node)
-            ? schemaApi.node.compileDataUpdate(mutationPath.of('widthMode'), preview.mode)
+            ? schemaApi.node.compileDataUpdate('widthMode', preview.mode)
             : undefined,
           (
             (preview.mode ?? readTextWidthMode(target.node)) === 'wrap'
             && preview.wrapWidth !== readTextWrapWidth(target.node)
           )
-            ? schemaApi.node.compileDataUpdate(mutationPath.of('wrapWidth'), preview.wrapWidth)
+            ? schemaApi.node.compileDataUpdate('wrapWidth', preview.wrapWidth)
             : (
                 (preview.mode ?? readTextWidthMode(target.node)) === 'auto'
                 && readTextWrapWidth(target.node) !== undefined
               )
-                ? schemaApi.node.compileDataUpdate(mutationPath.of('wrapWidth'), undefined)
+                ? schemaApi.node.compileDataUpdate('wrapWidth', undefined)
                 : undefined,
           preview.fontSize !== undefined
             && Math.round(preview.fontSize) !== readTextFontSize(target.node)
-            ? schemaApi.node.compileStyleUpdate(mutationPath.of('fontSize'), Math.round(preview.fontSize))
+            ? schemaApi.node.compileStyleUpdate('fontSize', Math.round(preview.fontSize))
             : undefined
         )
       : undefined

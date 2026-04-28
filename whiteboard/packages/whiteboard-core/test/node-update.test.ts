@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { path as mutationPath } from '@shared/draft'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
@@ -56,7 +55,7 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
       records: [{
         scope: 'data',
         op: 'set',
-        path: mutationPath.of('text'),
+        path: 'text',
         value: 'world'
       }]
     }),
@@ -68,7 +67,7 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
     type: 'node.record.set',
     id: 'node_1',
     scope: 'data',
-    path: mutationPath.of('text'),
+    path: 'text',
     value: 'hello'
   }])
 
@@ -87,7 +86,7 @@ test('node.update inverse 在 set(path) 创建缺失祖先时退化为 scope 根
     records: [{
       scope: 'data',
       op: 'set',
-      path: mutationPath.of('prefs', 'title'),
+      path: 'prefs.title',
       value: 'Board'
     }]
   }
@@ -117,7 +116,7 @@ test('node.update inverse 为 unset(path) 生成 path set 回滚', () => {
     records: [{
       scope: 'style',
       op: 'unset',
-      path: mutationPath.of('fontSize')
+      path: 'fontSize'
     }]
   }
 
@@ -127,7 +126,7 @@ test('node.update inverse 为 unset(path) 生成 path set 回滚', () => {
     records: [{
       scope: 'style',
       op: 'set',
-      path: mutationPath.of('fontSize'),
+      path: 'fontSize',
       value: 12
     }]
   })
@@ -145,7 +144,7 @@ test('node.update inverse 为数组 field set 生成精确 path set 回滚', () 
     records: [{
       scope: 'data',
       op: 'set',
-      path: mutationPath.of('items'),
+      path: 'items',
       value: ['a', 'x', 'y', 'c']
     }]
   }
@@ -156,7 +155,7 @@ test('node.update inverse 为数组 field set 生成精确 path set 回滚', () 
     records: [{
       scope: 'data',
       op: 'set',
-      path: mutationPath.of('items'),
+      path: 'items',
       value: ['a', 'b', 'c']
     }]
   })
@@ -202,7 +201,7 @@ test('node.update 会为 direct mindmap data mutation 标记 node.value', () => 
       records: [{
         scope: 'data',
         op: 'set',
-        path: mutationPath.of('meta', 'title'),
+        path: 'meta.title',
         value: 'new'
       }]
     }),
@@ -232,7 +231,7 @@ test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容�
     records: [{
       scope: 'data',
       op: 'set',
-      path: mutationPath.of('text', 'value'),
+      path: 'text.value',
       value: 'x'
     }]
   })

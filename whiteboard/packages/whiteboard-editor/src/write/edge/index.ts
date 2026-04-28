@@ -1,6 +1,5 @@
-import { draft } from '@shared/draft'
 import {
-  path as mutationPath,
+  record as draftRecord,
   type Path
 } from '@shared/draft'
 import type {
@@ -107,7 +106,7 @@ const updateEdgeStyle = (
   path: Path,
   value: unknown
 ) => updateEdgesBy(edgeIds, read, engine, (edge) => {
-  const current = draft.path.get(edge.style, path)
+  const current = draftRecord.read(edge.style, path)
   if (current === value) {
     return undefined
   }
@@ -187,12 +186,12 @@ export const createEdgeWrite = ({
   label: createEdgeLabelWrite(engine),
   route: createEdgeRouteWrite(engine),
   style: {
-    color: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('color'), value),
-    opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('opacity'), value),
-    width: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('width'), value),
-    dash: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('dash'), value),
-    start: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('start'), value),
-    end: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, mutationPath.of('end'), value),
+    color: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, 'color', value),
+    opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, 'opacity', value),
+    width: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, 'width', value),
+    dash: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, 'dash', value),
+    start: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, 'start', value),
+    end: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, 'end', value),
     swapMarkers: (edgeIds) => updateEdgesBy(edgeIds, read.readEdge, engine, (edge) => {
       const start = edge.style?.start
       const end = edge.style?.end
@@ -202,8 +201,8 @@ export const createEdgeWrite = ({
 
       return {
         records: [
-          createStyleMutation(mutationPath.of('start'), end),
-          createStyleMutation(mutationPath.of('end'), start)
+          createStyleMutation('start', end),
+          createStyleMutation('end', start)
         ]
       }
     })

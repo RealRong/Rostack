@@ -1,5 +1,4 @@
 import {
-  path as mutationPath,
   type Path
 } from '@shared/draft'
 import { schema as schemaApi } from '@whiteboard/core/registry'
@@ -137,7 +136,7 @@ export const createNodeTextWrite = (
     wrapWidth
   }),
   color: (nodeIds, color) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('color'), color)
+    toNodeStyleBatchUpdates(nodeIds, 'color', color)
   ),
   size: ({
     nodeIds,
@@ -145,17 +144,17 @@ export const createNodeTextWrite = (
   }) => ctx.write.updateMany(
     nodeIds.map((id) => ({
       id,
-      input: schemaApi.node.compileStyleUpdate(mutationPath.of('fontSize'), value)
+      input: schemaApi.node.compileStyleUpdate('fontSize', value)
     }))
   ),
   weight: (nodeIds, weight) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('fontWeight'), weight)
+    toNodeStyleBatchUpdates(nodeIds, 'fontWeight', weight)
   ),
   italic: (nodeIds, italic) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('fontStyle'), italic ? 'italic' : 'normal')
+    toNodeStyleBatchUpdates(nodeIds, 'fontStyle', italic ? 'italic' : 'normal')
   ),
   align: (nodeIds, align) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('textAlign'), align)
+    toNodeStyleBatchUpdates(nodeIds, 'textAlign', align)
   )
 })
 
@@ -194,7 +193,7 @@ const createNodeShapeWrite = (
 
       return [{
         id,
-        input: schemaApi.node.compileDataUpdate(mutationPath.of('kind'), kind)
+        input: schemaApi.node.compileDataUpdate('kind', kind)
       }]
     })
   )
@@ -204,28 +203,28 @@ const createNodeStyleWrite = (
   ctx: NodeContext
 ): NodeStyleWrite => ({
   fill: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('fill'), value)
+    toNodeStyleBatchUpdates(nodeIds, 'fill', value)
   ),
   fillOpacity: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('fillOpacity'), value)
+    toNodeStyleBatchUpdates(nodeIds, 'fillOpacity', value)
   ),
   stroke: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('stroke'), value)
+    toNodeStyleBatchUpdates(nodeIds, 'stroke', value)
   ),
   strokeWidth: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('strokeWidth'), value)
+    toNodeStyleBatchUpdates(nodeIds, 'strokeWidth', value)
   ),
   strokeOpacity: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('strokeOpacity'), value)
+    toNodeStyleBatchUpdates(nodeIds, 'strokeOpacity', value)
   ),
   strokeDash: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('strokeDash'), value)
+    toNodeStyleBatchUpdates(nodeIds, 'strokeDash', value)
   ),
   opacity: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('opacity'), value)
+    toNodeStyleBatchUpdates(nodeIds, 'opacity', value)
   ),
   textColor: (nodeIds, value) => ctx.write.updateMany(
-    toNodeStyleBatchUpdates(nodeIds, mutationPath.of('color'), value)
+    toNodeStyleBatchUpdates(nodeIds, 'color', value)
   )
 })
 

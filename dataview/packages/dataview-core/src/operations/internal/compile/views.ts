@@ -42,11 +42,9 @@ import {
 } from '@dataview/core/view'
 import { entityTable, equal, string } from '@shared/core'
 import {
-  createIssue,
-  hasValidationErrors,
   type IssueSource,
   type ValidationIssue
-} from '@dataview/core/operations/issue'
+} from '@dataview/core/operations/contracts'
 import {
   type CompileScope
 } from './scope'
@@ -77,6 +75,23 @@ const toViewPut = (
   view
 })
 
+const issue = (
+  source: IssueSource,
+  code: ValidationIssue['code'],
+  message: string,
+  path?: string
+): ValidationIssue => ({
+  source,
+  severity: 'error',
+  code,
+  message,
+  ...(path === undefined
+    ? {}
+    : {
+        path
+      })
+})
+
 const validateFieldIdList = (
   reader: DocumentReader,
   source: IssueSource,
@@ -88,16 +103,16 @@ const validateFieldIdList = (
 
   fieldIds.forEach((fieldId, index) => {
     if (!string.isNonEmptyString(fieldId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'field id must be a non-empty string', `${path}.${index}`))
+      issues.push(issue(source, 'view.invalidProjection', 'field id must be a non-empty string', `${path}.${index}`))
       return
     }
     if (seen.has(fieldId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Duplicate field id: ${fieldId}`, `${path}.${index}`))
+      issues.push(issue(source, 'view.invalidProjection', `Duplicate field id: ${fieldId}`, `${path}.${index}`))
       return
     }
     seen.add(fieldId)
     if (!reader.fields.has(fieldId)) {
-      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${index}`))
+      issues.push(issue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${index}`))
     }
   })
 
@@ -112,7 +127,7 @@ const validateSearch = (
 ) => {
   const issues: ValidationIssue[] = []
   if (typeof search.query !== 'string') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Search query must be a string', `${path}.query`))
+    issues.push(issue(source, 'view.invalidProjection', 'Search query must be a string', `${path}.query`))
   }
   if (search.fields) {
     issues.push(...validateFieldIdList(reader, source, search.fields, `${path}.fields`))
@@ -129,20 +144,20 @@ const validateFilter = (
   const issues: ValidationIssue[] = []
   filterApi.rules.list(filter.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Filter field id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(issue(source, 'view.invalidProjection', `Filter field id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
     }
     if (!string.isNonEmptyString(rule.presetId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Filter preset id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.presetId`))
+      issues.push(issue(source, 'view.invalidProjection', `Filter preset id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.presetId`))
       return
     }
     const field = reader.fields.get(rule.fieldId)
     if (!field) {
-      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(issue(source, 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
     }
     if (!filterApi.rule.hasPreset(field, rule.presetId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields (${rule.id})`, `${path}.rules.${index}.presetId`))
+      issues.push(issue(source, 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields (${rule.id})`, `${path}.rules.${index}.presetId`))
     }
   })
   return issues
@@ -158,17 +173,17 @@ const validateSort = (
   const seen = new Set<string>()
   sortApi.rules.list(sort.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Sort field must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(issue(source, 'view.invalidProjection', `Sort field must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else if (!reader.fields.has(rule.fieldId)) {
-      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(issue(source, 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else if (seen.has(rule.fieldId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Duplicate sort field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(issue(source, 'view.invalidProjection', `Duplicate sort field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else {
       seen.add(rule.fieldId)
     }
 
     if (rule.direction !== 'asc' && rule.direction !== 'desc') {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Sort direction must be asc or desc (${rule.id})`, `${path}.rules.${index}.direction`))
+      issues.push(issue(source, 'view.invalidProjection', `Sort direction must be asc or desc (${rule.id})`, `${path}.rules.${index}.direction`))
     }
   })
   return issues
@@ -186,7 +201,7 @@ const validateGroup = (
 
   const issues = string.isNonEmptyString(group.fieldId)
     ? []
-    : [createIssue(source, 'error', 'view.invalidProjection', 'group field must be a non-empty string', `${path}.field`)]
+    : [issue(source, 'view.invalidProjection', 'group field must be a non-empty string', `${path}.field`)]
 
   const field = string.isNonEmptyString(group.fieldId)
     ? reader.fields.get(group.fieldId)
@@ -195,23 +210,23 @@ const validateGroup = (
   const fieldGroupMetaForMode = field ? fieldApi.group.meta(field, { mode: group.mode }) : undefined
 
   if (!field) {
-    issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${group.fieldId}`, `${path}.field`))
+    issues.push(issue(source, 'field.notFound', `Unknown field: ${group.fieldId}`, `${path}.field`))
   }
   if (!string.isNonEmptyString(group.mode)) {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group mode must be a non-empty string', `${path}.mode`))
+    issues.push(issue(source, 'view.invalidProjection', 'group mode must be a non-empty string', `${path}.mode`))
   } else if (field && (!fieldGroupMeta?.modes.length || !fieldGroupMeta.modes.includes(group.mode))) {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group mode is invalid for this field', `${path}.mode`))
+    issues.push(issue(source, 'view.invalidProjection', 'group mode is invalid for this field', `${path}.mode`))
   }
   if (!fieldApi.group.sort.isBucket(group.bucketSort)) {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group bucketSort is invalid', `${path}.bucketSort`))
+    issues.push(issue(source, 'view.invalidProjection', 'group bucketSort is invalid', `${path}.bucketSort`))
   } else if (field && !fieldGroupMetaForMode?.sorts.includes(group.bucketSort)) {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group bucketSort is invalid for this field', `${path}.bucketSort`))
+    issues.push(issue(source, 'view.invalidProjection', 'group bucketSort is invalid for this field', `${path}.bucketSort`))
   }
   if (group.bucketInterval !== undefined) {
     if (typeof group.bucketInterval !== 'number' || !Number.isFinite(group.bucketInterval) || group.bucketInterval <= 0) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group bucketInterval must be a positive finite number', `${path}.bucketInterval`))
+      issues.push(issue(source, 'view.invalidProjection', 'group bucketInterval must be a positive finite number', `${path}.bucketInterval`))
     } else if (field && !fieldGroupMetaForMode?.supportsInterval) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'group bucketInterval is invalid for this field', `${path}.bucketInterval`))
+      issues.push(issue(source, 'view.invalidProjection', 'group bucketInterval is invalid for this field', `${path}.bucketInterval`))
     }
   }
   return issues
@@ -233,21 +248,21 @@ const validateTableOptions = (
   const issues: ValidationIssue[] = []
   Object.entries(table.widths).forEach(([fieldId, width]) => {
     if (!string.isNonEmptyString(fieldId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'width field id must be a non-empty string', `${path}.widths`))
+      issues.push(issue(source, 'view.invalidProjection', 'width field id must be a non-empty string', `${path}.widths`))
       return
     }
     if (!reader.fields.has(fieldId)) {
-      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.widths.${fieldId}`))
+      issues.push(issue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.widths.${fieldId}`))
     }
     if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'column width must be a positive finite number', `${path}.widths.${fieldId}`))
+      issues.push(issue(source, 'view.invalidProjection', 'column width must be a positive finite number', `${path}.widths.${fieldId}`))
     }
   })
   if (typeof table.showVerticalLines !== 'boolean') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'table.showVerticalLines must be boolean', `${path}.showVerticalLines`))
+    issues.push(issue(source, 'view.invalidProjection', 'table.showVerticalLines must be boolean', `${path}.showVerticalLines`))
   }
   if (typeof table.wrap !== 'boolean') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'table.wrap must be boolean', `${path}.wrap`))
+    issues.push(issue(source, 'view.invalidProjection', 'table.wrap must be boolean', `${path}.wrap`))
   }
   return issues
 }
@@ -259,13 +274,13 @@ const validateGalleryOptions = (
 ) => {
   const issues: ValidationIssue[] = []
   if (typeof gallery.card.wrap !== 'boolean') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'gallery.card.wrap must be boolean', `${path}.card.wrap`))
+    issues.push(issue(source, 'view.invalidProjection', 'gallery.card.wrap must be boolean', `${path}.card.wrap`))
   }
   if (!['sm', 'md', 'lg'].includes(gallery.card.size)) {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'gallery.card.size is invalid', `${path}.card.size`))
+    issues.push(issue(source, 'view.invalidProjection', 'gallery.card.size is invalid', `${path}.card.size`))
   }
   if (gallery.card.layout !== 'compact' && gallery.card.layout !== 'stacked') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'gallery.card.layout is invalid', `${path}.card.layout`))
+    issues.push(issue(source, 'view.invalidProjection', 'gallery.card.layout is invalid', `${path}.card.layout`))
   }
   return issues
 }
@@ -277,19 +292,19 @@ const validateKanbanOptions = (
 ) => {
   const issues: ValidationIssue[] = []
   if (typeof kanban.card.wrap !== 'boolean') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.card.wrap must be boolean', `${path}.card.wrap`))
+    issues.push(issue(source, 'view.invalidProjection', 'kanban.card.wrap must be boolean', `${path}.card.wrap`))
   }
   if (!['sm', 'md', 'lg'].includes(kanban.card.size)) {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.card.size is invalid', `${path}.card.size`))
+    issues.push(issue(source, 'view.invalidProjection', 'kanban.card.size is invalid', `${path}.card.size`))
   }
   if (kanban.card.layout !== 'compact' && kanban.card.layout !== 'stacked') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.card.layout is invalid', `${path}.card.layout`))
+    issues.push(issue(source, 'view.invalidProjection', 'kanban.card.layout is invalid', `${path}.card.layout`))
   }
   if (typeof kanban.fillColumnColor !== 'boolean') {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.fillColumnColor must be boolean', `${path}.fillColumnColor`))
+    issues.push(issue(source, 'view.invalidProjection', 'kanban.fillColumnColor must be boolean', `${path}.fillColumnColor`))
   }
   if (!KANBAN_CARDS_PER_COLUMN_OPTIONS.includes(kanban.cardsPerColumn)) {
-    issues.push(createIssue(source, 'error', 'view.invalidProjection', 'kanban.cardsPerColumn is invalid', `${path}.cardsPerColumn`))
+    issues.push(issue(source, 'view.invalidProjection', 'kanban.cardsPerColumn is invalid', `${path}.cardsPerColumn`))
   }
   return issues
 }
@@ -321,16 +336,16 @@ const validateOrders = (
   const seen = new Set<string>()
   orders.forEach((recordId, index) => {
     if (!string.isNonEmptyString(recordId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidOrder', 'orders must only contain non-empty record ids', `${path}.${index}`))
+      issues.push(issue(source, 'view.invalidOrder', 'orders must only contain non-empty record ids', `${path}.${index}`))
       return
     }
     if (seen.has(recordId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidOrder', `Duplicate record id: ${recordId}`, `${path}.${index}`))
+      issues.push(issue(source, 'view.invalidOrder', `Duplicate record id: ${recordId}`, `${path}.${index}`))
       return
     }
     seen.add(recordId)
     if (!reader.records.has(recordId)) {
-      issues.push(createIssue(source, 'error', 'record.notFound', `Unknown record: ${recordId}`, `${path}.${index}`))
+      issues.push(issue(source, 'record.notFound', `Unknown record: ${recordId}`, `${path}.${index}`))
     }
   })
   return issues
@@ -345,20 +360,20 @@ const validateCalc = (
   const issues: ValidationIssue[] = []
   Object.entries(calc).forEach(([fieldId, metric]) => {
     if (!string.isNonEmptyString(fieldId)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Calculation field must be a non-empty string', path))
+      issues.push(issue(source, 'view.invalidProjection', 'Calculation field must be a non-empty string', path))
       return
     }
     const field = reader.fields.get(fieldId as FieldId)
     if (!field) {
-      issues.push(createIssue(source, 'error', 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${fieldId}`))
+      issues.push(issue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${fieldId}`))
       return
     }
     if (!calculation.metric.is(metric)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', 'Calculation metric is invalid', `${path}.${fieldId}`))
+      issues.push(issue(source, 'view.invalidProjection', 'Calculation metric is invalid', `${path}.${fieldId}`))
       return
     }
     if (!calculation.metric.supports(field, metric)) {
-      issues.push(createIssue(source, 'error', 'view.invalidProjection', `Calculation metric ${metric} is invalid for ${field.kind} fields`, `${path}.${fieldId}`))
+      issues.push(issue(source, 'view.invalidProjection', `Calculation metric ${metric} is invalid for ${field.kind} fields`, `${path}.${fieldId}`))
     }
   })
   return issues
@@ -371,13 +386,13 @@ const validateView = (
 ) => {
   const issues: ValidationIssue[] = []
   if (!string.isNonEmptyString(view.id)) {
-    issues.push(createIssue(source, 'error', 'view.invalid', 'View id must be a non-empty string', 'view.id'))
+    issues.push(issue(source, 'view.invalid', 'View id must be a non-empty string', 'view.id'))
   }
   if (!string.isNonEmptyString(view.name)) {
-    issues.push(createIssue(source, 'error', 'view.invalid', 'View name must be a non-empty string', 'view.name'))
+    issues.push(issue(source, 'view.invalid', 'View name must be a non-empty string', 'view.name'))
   }
   if (!string.isNonEmptyString(view.type)) {
-    issues.push(createIssue(source, 'error', 'view.invalid', 'View type must be a non-empty string', 'view.type'))
+    issues.push(issue(source, 'view.invalid', 'View type must be a non-empty string', 'view.type'))
   }
 
   issues.push(

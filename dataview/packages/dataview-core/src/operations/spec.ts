@@ -7,15 +7,13 @@ import {
   type ReducerContext,
   type ReducerResult
 } from '@shared/reducer'
-import {
-  MutationEngine,
-  type MutationOperationsSpec
+import type {
+  MutationReduceSpec
 } from '@shared/mutation'
-import {
-  dataviewTargetKeyConflicts,
-  serializeDataviewMutationKey,
-  type DataviewMutationKey
-} from './key'
+import type {
+  DataviewMutationKey,
+  ValidationCode
+} from './contracts'
 import {
   dataviewTrace,
   type DataviewTrace
@@ -75,27 +73,16 @@ const finalizeDataviewTrace = (
   }
 }
 
-export const dataviewMutationOperations: MutationOperationsSpec<
+export const dataviewOperationTable = DATAVIEW_OPERATION_DEFINITIONS
+
+export const dataviewReduceSpec: MutationReduceSpec<
   DataDoc,
   DocumentOperation,
   DataviewMutationKey,
   DataviewOperationReduceExtra,
-  DataviewReduceContext
+  DataviewReduceContext,
+  ValidationCode
 > = {
-  table: DATAVIEW_OPERATION_DEFINITIONS,
-  serializeKey: serializeDataviewMutationKey,
   createContext: createDataviewReduceContext,
-  done: finalizeDataviewTrace,
-  conflicts: dataviewTargetKeyConflicts
+  done: finalizeDataviewTrace
 }
-
-export const reduceDataviewOperations = (
-  document: DataDoc,
-  operations: readonly DocumentOperation[]
-): DataviewOperationReduceResult => MutationEngine.reduce({
-  document,
-  ops: operations,
-  operations: dataviewMutationOperations
-})
-
-export const spec = dataviewMutationOperations

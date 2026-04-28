@@ -1,24 +1,25 @@
 import { DATAVIEW_OPERATION_DEFINITIONS } from './definitions'
 import {
-  dataviewMutationOperations,
-  spec as specAlias,
-  reduceDataviewOperations,
+  dataviewOperationTable,
+  dataviewReduceSpec,
   type DataviewOperationReduceExtra,
-  type DataviewOperationReduceResult,
   type DataviewReduceContext
 } from './spec'
 import {
-  compileIntents,
-  compile,
-  type CompiledIntentBatch,
+  dataviewIntentHandlers,
+  createDataviewCompileScope
+} from './compile'
+import {
+  dataviewMutationKeyCodec,
+  type DataviewMutationKey,
+  type DataviewTargetKey,
   type ValidationCode,
   type ValidationIssue,
   type ValidationSeverity
-} from './compile'
+} from './contracts'
 import {
   dataviewTraceSpec,
   dataviewTrace,
-  trace as traceAlias,
   type DataviewTrace
 } from './trace'
 import {
@@ -27,24 +28,35 @@ import {
   type BuildRecordCreateIntentsInput,
   type RecordCreateFilterRule
 } from './plan'
-import * as issue from './issue'
-import * as key from './key'
 
 export const definitions = DATAVIEW_OPERATION_DEFINITIONS
-export const spec = specAlias
-export const apply = reduceDataviewOperations
-export { reduceDataviewOperations, compileIntents, compile, key, issue, dataviewTrace }
-export { DATAVIEW_OPERATION_DEFINITIONS, dataviewMutationOperations, buildRecordCreateIntents, recordCreate }
+export const table = dataviewOperationTable
+export const reduce = dataviewReduceSpec
+export const compile = {
+  handlers: dataviewIntentHandlers,
+  createContext: createDataviewCompileScope
+} as const
+
+export {
+  DATAVIEW_OPERATION_DEFINITIONS,
+  dataviewOperationTable,
+  dataviewReduceSpec,
+  dataviewIntentHandlers,
+  createDataviewCompileScope,
+  dataviewMutationKeyCodec,
+  buildRecordCreateIntents,
+  recordCreate,
+  dataviewTrace
+}
 export { dataviewTraceSpec }
-export { traceAlias as trace }
+export const trace = dataviewTrace
 
 export const operations = {
   definitions,
-  spec,
-  apply,
+  table,
+  reduce,
   compile,
-  key,
-  issue,
+  key: dataviewMutationKeyCodec,
   trace: dataviewTrace,
   plan: {
     buildRecordCreateIntents,
@@ -53,14 +65,11 @@ export const operations = {
 } as const
 
 export type {
-  DataviewMutationKey
-} from './key'
-export type {
   DataviewTrace,
   DataviewOperationReduceExtra,
-  DataviewOperationReduceResult,
   DataviewReduceContext,
-  CompiledIntentBatch,
+  DataviewMutationKey,
+  DataviewTargetKey,
   ValidationCode,
   ValidationIssue,
   ValidationSeverity,

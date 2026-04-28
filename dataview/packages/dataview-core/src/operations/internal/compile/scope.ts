@@ -16,7 +16,7 @@ import {
   type ValidationCode,
   type ValidationIssue,
   type ValidationSeverity
-} from '@dataview/core/operations/issue'
+} from '@dataview/core/operations/contracts'
 
 export interface CompileScope {
   readonly reader: DocumentReader
@@ -49,7 +49,6 @@ export const createCompileScope = (input: {
   ctx: MutationCompileCtx<DataDoc, DocumentOperation, ValidationCode>
   intent: Intent
   index: number
-  issues: ValidationIssue[]
 }): CompileScope => {
   const source: IssueSource = {
     index: input.index,
@@ -64,7 +63,6 @@ export const createCompileScope = (input: {
       ...issue,
       source: issue.source ?? source
     }
-    input.issues.push(normalized)
     input.ctx.issue({
       code: normalized.code,
       message: normalized.message,

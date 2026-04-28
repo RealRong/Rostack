@@ -7,10 +7,9 @@ import {
   field as fieldApi
 } from '@dataview/core/field'
 import {
-  createIssue,
   type IssueSource,
   type ValidationIssue
-} from '@dataview/core/operations/issue'
+} from '@dataview/core/operations/contracts'
 
 export const validateField = (
   _document: DataDoc,
@@ -21,22 +20,40 @@ export const validateField = (
   const issues: ValidationIssue[] = []
 
   if (!string.isNonEmptyString(field.id)) {
-    issues.push(createIssue(source, 'error', 'field.invalid', 'Field id must be a non-empty string', `${path}.id`))
+    issues.push({
+      source,
+      severity: 'error',
+      code: 'field.invalid',
+      message: 'Field id must be a non-empty string',
+      path: `${path}.id`
+    })
   }
   if (!string.isNonEmptyString(field.name)) {
-    issues.push(createIssue(source, 'error', 'field.invalid', 'Field name must be a non-empty string', `${path}.name`))
+    issues.push({
+      source,
+      severity: 'error',
+      code: 'field.invalid',
+      message: 'Field name must be a non-empty string',
+      path: `${path}.name`
+    })
   }
   if (!fieldApi.schema.kind.isCustom(field.kind)) {
-    issues.push(createIssue(source, 'error', 'field.invalid', 'Field kind is invalid', `${path}.kind`))
+    issues.push({
+      source,
+      severity: 'error',
+      code: 'field.invalid',
+      message: 'Field kind is invalid',
+      path: `${path}.kind`
+    })
     return issues
   }
 
-  issues.push(...fieldApi.schema.validate(field, path).map(issue => createIssue(
+  issues.push(...fieldApi.schema.validate(field, path).map(issue => ({
     source,
-    'error',
-    'field.invalid',
-    issue.message,
-    issue.path
-  )))
+    severity: 'error' as const,
+    code: 'field.invalid' as const,
+    message: issue.message,
+    path: issue.path
+  })))
   return issues
 }

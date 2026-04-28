@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
+import { MutationEngine } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
 import {
-  reduceDataviewOperations
+  dataviewMutationKeyCodec,
+  dataviewOperationTable,
+  dataviewReduceSpec
 } from '@dataview/core/operations'
 import {
   DATAVIEW_OPERATION_DEFINITIONS
@@ -18,15 +21,50 @@ const createEmptyDocument = (): DataDoc => ({
   meta: {}
 })
 
-test('operation apply returns shared mutation shape', () => {
-  const result = reduceDataviewOperations(createEmptyDocument(), [{
-    type: 'document.field.put',
-    field: {
-      id: 'field_notes',
-      name: 'Notes',
-      kind: 'text'
-    }
-  }])
+const operationsRuntime = {
+  table: dataviewOperationTable,
+  serializeKey: dataviewMutationKeyCodec.serialize,
+  ...(dataviewMutationKeyCodec.conflicts
+    ? {
+        conflicts: dataviewMutationKeyCodec.conflicts
+      }
+    : {}),
+  ...(dataviewReduceSpec.createContext
+    ? {
+        createContext: dataviewReduceSpec.createContext
+      }
+    : {}),
+  ...(dataviewReduceSpec.validate
+    ? {
+        validate: dataviewReduceSpec.validate
+      }
+    : {}),
+  ...(dataviewReduceSpec.settle
+    ? {
+        settle: dataviewReduceSpec.settle
+      }
+    : {}),
+  done: dataviewReduceSpec.done
+} as const
+
+test('MutationEngine.reduce returns shared mutation shape', () => {
+  const result = MutationEngine.reduce({
+    document: createEmptyDocument(),
+    ops: [{
+      type: 'document.field.put',
+      field: {
+        id: 'field_notes',
+        name: 'Notes',
+        kind: 'text'
+      }
+    }],
+    operations: operationsRuntime
+  })
+
+  assert.equal(result.ok, true)
+  if (!result.ok) {
+    return
+  }
 
   assert.ok(result.doc.fields.byId.field_notes)
   assert.equal(result.inverse.length, 1)

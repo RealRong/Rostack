@@ -6,7 +6,7 @@ import type {
 } from '@dataview/core/types/operations'
 import type {
   DataviewMutationKey
-} from '@dataview/core/operations/key'
+} from '@dataview/core/operations/contracts'
 import type {
   DataviewTrace
 } from '@dataview/core/operations/trace'

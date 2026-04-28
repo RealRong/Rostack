@@ -7,7 +7,15 @@ import type {
 import type {
   DataviewReduceContext,
   DataviewMutationKey,
-  DataviewTrace
+  DataviewTrace,
+  ValidationCode
+} from '@dataview/core/operations'
+import {
+  createDataviewCompileScope,
+  dataviewIntentHandlers,
+  dataviewMutationKeyCodec,
+  dataviewOperationTable,
+  dataviewReduceSpec
 } from '@dataview/core/operations'
 import {
   MutationEngine,
@@ -24,19 +32,80 @@ import type {
 import type {
   DataviewCurrent
 } from '@dataview/engine/contracts/result'
-import { createDataviewMutationKernel } from '@dataview/engine/mutation'
 import type {
   DataviewMutationCache,
   DataviewPublish
-} from '@dataview/engine/mutation'
+} from './mutation/types'
 import { createDataviewPublishSpec } from './mutation/publish'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import type {
-  DataviewIntentTable,
-  ExecuteInput,
-  ExecuteResultOf,
-  Intent,
+  DataviewIntentTable
 } from '@dataview/engine/types/intent'
+
+const DEFAULT_HISTORY_CONFIG = {
+  enabled: true,
+  capacity: 100,
+  captureSystem: false,
+  captureRemote: false
+} as const
+
+const createDataviewOperationsRuntime = () => ({
+  table: dataviewOperationTable,
+  serializeKey: dataviewMutationKeyCodec.serialize,
+  ...(dataviewMutationKeyCodec.conflicts
+    ? {
+        conflicts: dataviewMutationKeyCodec.conflicts
+      }
+    : {}),
+  ...(dataviewReduceSpec.createContext
+    ? {
+        createContext: dataviewReduceSpec.createContext
+      }
+    : {}),
+  ...(dataviewReduceSpec.validate
+    ? {
+        validate: dataviewReduceSpec.validate
+      }
+    : {}),
+  ...(dataviewReduceSpec.settle
+    ? {
+        settle: dataviewReduceSpec.settle
+      }
+    : {}),
+  done: dataviewReduceSpec.done
+}) as const
+
+const shouldTrackHistory = (
+  origin: 'user' | 'remote' | 'system' | 'history',
+  capture: {
+    captureSystem: boolean
+    captureRemote: boolean
+  },
+  ops: readonly DocumentOperation[]
+): boolean => {
+  if (origin === 'history') {
+    return false
+  }
+
+  const originAllowed = origin === 'user'
+    || (origin === 'system' && capture.captureSystem)
+    || (origin === 'remote' && capture.captureRemote)
+
+  return originAllowed
+    && ops.every((entry) => dataviewOperationTable[entry.type].history !== false)
+}
+
+const shouldClearHistory = (
+  origin: 'user' | 'remote' | 'system' | 'history',
+  capture: {
+    captureSystem: boolean
+    captureRemote: boolean
+  },
+  ops: readonly DocumentOperation[]
+): boolean => (
+  shouldTrackHistory(origin, capture, ops)
+  && ops.some((entry) => dataviewOperationTable[entry.type].sync === 'checkpoint')
+)
 
 const toCurrent = (current: {
   rev: number
@@ -50,6 +119,11 @@ const toCurrent = (current: {
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const performance = createPerformanceRuntime(options.performance)
+  const operationsRuntime = createDataviewOperationsRuntime()
+  const historyConfig = {
+    ...DEFAULT_HISTORY_CONFIG,
+    ...(options.history ?? {})
+  }
   const mutationEngine = new MutationEngine<
     DataDoc,
     DataviewIntentTable,
@@ -61,15 +135,59 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       trace: DataviewTrace
     },
     DataviewReduceContext,
-    unknown
+    ReturnType<typeof createDataviewCompileScope>,
+    ValidationCode
   >({
     document: options.document,
-    ...createDataviewMutationKernel({
-      history: options.history
-    }),
+    normalize: (doc) => doc,
+    key: dataviewMutationKeyCodec,
+    operations: dataviewOperationTable,
+    reduce: dataviewReduceSpec,
+    compile: {
+      handlers: dataviewIntentHandlers,
+      createContext: createDataviewCompileScope,
+      apply: ({
+        doc,
+        ops
+      }) => {
+        const reduced = MutationEngine.reduce({
+          document: doc,
+          ops,
+          operations: operationsRuntime
+        })
+
+        return reduced.ok
+          ? {
+              ok: true as const,
+              doc: reduced.doc
+            }
+          : {
+              ok: false as const,
+              issue: {
+                code: 'compile.applyFailed',
+                message: reduced.error.message,
+                severity: 'error' as const,
+                details: reduced.error.details
+              }
+            }
+      }
+    },
     publish: createDataviewPublishSpec({
       performance
-    })
+    }),
+    history: historyConfig.enabled
+      ? {
+          capacity: historyConfig.capacity,
+          track: ({
+            origin,
+            ops
+          }) => shouldTrackHistory(origin, historyConfig, ops),
+          clear: ({
+            origin,
+            ops
+          }) => shouldClearHistory(origin, historyConfig, ops)
+        }
+      : false
   })
 
   const engineBase = {
@@ -81,14 +199,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     replace: (nextDocument: DataDoc, replaceOptions?: MutationOptions) => (
       mutationEngine.replace(nextDocument, replaceOptions)
     ),
-    execute: (<I extends ExecuteInput>(
-      input: I,
-      executeOptions?: MutationOptions
-    ): ExecuteResultOf<I> => (
-      Array.isArray(input)
-        ? mutationEngine.execute(input as readonly Intent[], executeOptions)
-        : mutationEngine.execute(input as Intent, executeOptions)
-    ) as ExecuteResultOf<I>),
+    execute: mutationEngine.execute.bind(mutationEngine),
     apply: ((operations: readonly DocumentOperation[], applyOptions?: MutationOptions) => (
       mutationEngine.apply(operations, applyOptions)
     ))

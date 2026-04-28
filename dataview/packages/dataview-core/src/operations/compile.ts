@@ -1,34 +1,21 @@
-import type { DataDoc, Intent } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/types/operations'
-import { reduceDataviewOperations } from './spec'
+import type { Intent } from '@dataview/core/types'
+import type { DataDoc } from '@dataview/core/types'
+import { string } from '@shared/core'
 import type {
+  MutationCompileCtx,
   MutationCompileHandlerTable
 } from '@shared/mutation'
+import type { DocumentOperation } from '@dataview/core/types/operations'
 import {
-  MutationEngine
-} from '@shared/mutation'
-import { string } from '@shared/core'
-import {
-  createIssue,
-  hasValidationErrors,
-  type IssueSource,
-  type ValidationCode,
-  type ValidationIssue,
-  type ValidationSeverity
-} from './issue'
+  createCompileScope,
+  type CompileScope
+} from './internal/compile/scope'
 import { compileFieldIntent } from './internal/compile/fields'
 import { compileRecordIntent } from './internal/compile/records'
-import {
-  createCompileScope
-} from './internal/compile/scope'
 import { compileViewIntent } from './internal/compile/views'
-
-export interface CompiledIntentBatch {
-  ops: readonly DocumentOperation[]
-  issues: ValidationIssue[]
-  canApply: boolean
-  outputs: readonly unknown[]
-}
+import type {
+  ValidationCode
+} from './contracts'
 
 type DataviewCompileTable = {
   [K in Intent['type']]: {
@@ -37,9 +24,9 @@ type DataviewCompileTable = {
   }
 }
 
-const handlers: MutationCompileHandlerTable<
+export const dataviewIntentHandlers: MutationCompileHandlerTable<
   DataviewCompileTable,
-  ReturnType<typeof createCompileScope>,
+  CompileScope,
   ValidationCode
 > = {
   'record.create': compileRecordIntent,
@@ -63,127 +50,20 @@ const handlers: MutationCompileHandlerTable<
   'external.version.bump': lowerExternalBump
 }
 
-export const compileIntents = (input: {
-  document: DataDoc
-  intents: readonly Intent[]
-}): CompiledIntentBatch => {
-  const issues: ValidationIssue[] = []
-  let lastSource: IssueSource | undefined
-  const result = MutationEngine.compile<
-    DataDoc,
-    DataviewCompileTable,
-    DocumentOperation,
-    ReturnType<typeof createCompileScope>,
-    ValidationCode
-  >({
-    doc: input.document,
-    intents: input.intents,
-    handlers,
-    createContext: ({
-      ctx,
-      intent,
-      index
-    }) => {
-      lastSource = {
-        index,
-        type: intent.type
-      }
-      return createCompileScope({
-        ctx,
-        intent,
-        index,
-        issues
-      })
-    },
-    apply: ({
-      doc,
-      ops
-    }) => {
-      const applied = reduceDataviewOperations(doc, ops)
-      return applied.ok
-        ? {
-            ok: true as const,
-            doc: applied.doc
-          }
-        : {
-            ok: false as const,
-            issue: {
-              code: 'compile.applyFailed',
-              message: applied.error.message,
-              details: applied.error.details,
-              severity: 'error'
-            }
-          }
-    }
-  })
-
-  const issueKeys = new Set(
-    issues.map((issue) => JSON.stringify([
-      issue.severity,
-      issue.code,
-      issue.message,
-      issue.path,
-      issue.source?.index,
-      issue.source?.type
-    ]))
-  )
-
-  result.issues?.forEach((issue) => {
-    if (
-      issues.some((entry) => (
-        entry.code === issue.code
-        && entry.message === issue.message
-        && entry.path === issue.path
-        && entry.severity === issue.severity
-      ))
-    ) {
-      return
-    }
-
-    const normalized = createIssue(
-      lastSource ?? {
-        index: 0,
-        type: 'external.version.bump'
-      },
-      'error',
-      'compile.applyFailed',
-      issue.message,
-      issue.path
-    )
-    const key = JSON.stringify([
-      normalized.severity,
-      normalized.code,
-      normalized.message,
-      normalized.path,
-      normalized.source?.index,
-      normalized.source?.type
-    ])
-    if (issueKeys.has(key)) {
-      return
-    }
-
-    issues.push(normalized)
-    issueKeys.add(key)
-  })
-
-  return {
-    ops: result.ops,
-    issues,
-    canApply: !hasValidationErrors(issues),
-    outputs: result.outputs
-  }
-}
-
-export const compile = compileIntents
-export type {
-  ValidationCode,
-  ValidationIssue,
-  ValidationSeverity
-}
+export const createDataviewCompileScope = (input: {
+  ctx: MutationCompileCtx<DataDoc, DocumentOperation, ValidationCode>
+  doc: DataDoc
+  intent: Intent
+  index: number
+}): CompileScope => createCompileScope({
+  ctx: input.ctx,
+  intent: input.intent,
+  index: input.index
+})
 
 function lowerExternalBump(
   intent: Extract<Intent, { type: 'external.version.bump' }>,
-  scope: ReturnType<typeof createCompileScope>
+  scope: CompileScope
 ) {
   if (!string.isNonEmptyString(intent.source)) {
     scope.issue(

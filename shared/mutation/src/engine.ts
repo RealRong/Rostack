@@ -64,13 +64,7 @@ export interface MutationCompileHandlerInput<
   Code extends string = string
 > {
   intent: Intent
-  source: MutationCompileSource<
-    Intent extends {
-      type: infer TType
-    }
-      ? TType & string
-      : string
-  >
+  source: MutationCompileSource<string>
   document: Doc
   services: Services | undefined
   emit(op: Op): void
@@ -282,6 +276,7 @@ export interface MutationCustomReduceInput<
 > {
   op: Op
   document: Doc
+  origin: Origin
   services: Services | undefined
   read<T>(reader: (document: Doc) => T): T
   fail(issue: MutationCustomFailure<Code>): never
@@ -306,21 +301,32 @@ export interface MutationCustomReduceResult<
 
 export interface MutationCustomSpec<
   Doc,
-  Op,
+  CurrentOp,
+  Op = CurrentOp,
   Services = void,
   Code extends string = string
 > {
   reduce(
-    input: MutationCustomReduceInput<Doc, Op, Services, Code>
+    input: MutationCustomReduceInput<Doc, CurrentOp, Services, Code>
   ): MutationCustomReduceResult<Doc, Op> | void
 }
 
 export type MutationCustomTable<
   Doc,
-  Op,
+  Op extends {
+    type: string
+  },
   Services = void,
   Code extends string = string
-> = Readonly<Record<string, MutationCustomSpec<Doc, Op, Services, Code>>>
+> = {
+  readonly [TType in Op['type']]: MutationCustomSpec<
+    Doc,
+    Extract<Op, { type: TType }>,
+    Op,
+    Services,
+    Code
+  >
+} & Readonly<Record<string, MutationCustomSpec<Doc, Op, Op, Services, Code>>>
 
 export interface MutationEngineOptions<
   Doc extends object,
@@ -1385,7 +1391,8 @@ const readCustomOperationResult = <
 >(input: {
   document: Doc
   operation: Op
-  spec: MutationCustomSpec<Doc, Op, Services, Code>
+  spec: MutationCustomSpec<Doc, Op, Op, Services, Code>
+  origin: Origin
   services: Services | undefined
   normalize(doc: Doc): Doc
 }): MutationApplyResult<Doc, Op, Code> => {
@@ -1393,6 +1400,7 @@ const readCustomOperationResult = <
     const result = input.spec.reduce({
       op: input.operation,
       document: input.document,
+      origin: input.origin,
       services: input.services,
       read: (reader) => reader(input.document),
       fail: (issue) => {
@@ -2180,6 +2188,7 @@ const applyConcreteOperations = <
   operations: readonly Op[]
   entities: ReadonlyMap<string, CompiledEntitySpec>
   custom?: MutationCustomTable<Doc, Op, Services, Code>
+  origin: Origin
   services: Services | undefined
   normalize(doc: Doc): Doc
 }): MutationApplyResult<Doc, Op, Code> => {
@@ -2227,6 +2236,7 @@ const applyConcreteOperations = <
             document: currentDocument,
             operation,
             spec: customSpec,
+            origin: input.origin,
             services: input.services,
             normalize: input.normalize
           })
@@ -2287,6 +2297,7 @@ const compileMutationIntents = <
   document: Doc
   intents: readonly MutationIntentOf<Table>[]
   handlers: MutationCompileHandlerTable<Table, Doc, Op, Services, Code>
+  origin: Origin
   services: Services | undefined
   entities: ReadonlyMap<string, CompiledEntitySpec>
   custom?: MutationCustomTable<Doc, Op, Services, Code>
@@ -2400,6 +2411,7 @@ const compileMutationIntents = <
       operations: pendingOps,
       entities: input.entities,
       custom: input.custom,
+      origin: input.origin,
       services: input.services,
       normalize: input.normalize
     })
@@ -2591,6 +2603,7 @@ class MutationRuntime<
       operations,
       entities: this.entities,
       custom: this.custom,
+      origin: options?.origin ?? 'user',
       services: this.services,
       normalize: this.normalize
     })
@@ -2652,6 +2665,7 @@ class MutationRuntime<
       document: this.documentState,
       intents,
       handlers: this.compileHandlers,
+      origin: options?.origin ?? 'user',
       services: this.services,
       entities: this.entities,
       custom: this.custom,
@@ -2698,6 +2712,7 @@ class MutationRuntime<
       operations: planned.ops,
       entities: this.entities,
       custom: this.custom,
+      origin: options?.origin ?? 'user',
       services: this.services,
       normalize: this.normalize
     })

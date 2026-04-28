@@ -72,13 +72,24 @@ const buildNodeFieldInverse = (
   }
 
   const inverse: NodeFieldPatch = {}
-  NODE_PATCH_FIELDS.forEach((field) => {
-    if (!hasOwn(fields, field)) {
-      return
-    }
-
-    inverse[field] = json.clone(node[field]) as NodeFieldPatch[typeof field]
-  })
+  if (hasOwn(fields, 'position')) {
+    inverse.position = json.clone(node.position)
+  }
+  if (hasOwn(fields, 'size')) {
+    inverse.size = json.clone(node.size)
+  }
+  if (hasOwn(fields, 'rotation')) {
+    inverse.rotation = json.clone(node.rotation)
+  }
+  if (hasOwn(fields, 'groupId')) {
+    inverse.groupId = json.clone(node.groupId)
+  }
+  if (hasOwn(fields, 'owner')) {
+    inverse.owner = json.clone(node.owner)
+  }
+  if (hasOwn(fields, 'locked')) {
+    inverse.locked = json.clone(node.locked)
+  }
 
   return Object.keys(inverse).length > 0
     ? inverse

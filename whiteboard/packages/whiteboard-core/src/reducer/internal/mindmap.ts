@@ -755,12 +755,19 @@ export const patchMindmapTopic = (
   }
 
   const inverseFields = input.fields
-    ? TOPIC_PATCH_FIELDS.reduce<MindmapTopicFieldPatch>((result, field) => {
-        if (hasOwn(input.fields!, field)) {
-          result[field] = json.clone(current[field]) as MindmapTopicFieldPatch[typeof field]
+    ? (() => {
+        const result: MindmapTopicFieldPatch = {}
+        if (hasOwn(input.fields, 'size')) {
+          result.size = json.clone(current.size)
+        }
+        if (hasOwn(input.fields, 'rotation')) {
+          result.rotation = json.clone(current.rotation)
+        }
+        if (hasOwn(input.fields, 'locked')) {
+          result.locked = json.clone(current.locked)
         }
         return result
-      }, {})
+      })()
     : undefined
   const inverseRecord = input.record
     ? draftRecord.inverse(current, input.record)
@@ -810,17 +817,50 @@ export const patchMindmapBranch = (
   let nextBranchStyle = {
     ...member.branchStyle
   }
-  BRANCH_PATCH_FIELDS.forEach((field) => {
-    if (!hasOwn(fields, field)) {
+  if (hasOwn(fields, 'color')) {
+    inverse.color = json.clone(member.branchStyle.color)
+    const color = fields.color
+    if (color === undefined) {
       return
     }
-
-    inverse[field] = json.clone(member.branchStyle[field]) as MindmapBranchFieldPatch[typeof field]
     nextBranchStyle = {
       ...nextBranchStyle,
-      [field]: json.clone(fields[field])
+      color: json.clone(color)
     }
-  })
+  }
+  if (hasOwn(fields, 'line')) {
+    inverse.line = json.clone(member.branchStyle.line)
+    const line = fields.line
+    if (line === undefined) {
+      return
+    }
+    nextBranchStyle = {
+      ...nextBranchStyle,
+      line: json.clone(line)
+    }
+  }
+  if (hasOwn(fields, 'width')) {
+    inverse.width = json.clone(member.branchStyle.width)
+    const width = fields.width
+    if (width === undefined) {
+      return
+    }
+    nextBranchStyle = {
+      ...nextBranchStyle,
+      width: json.clone(width)
+    }
+  }
+  if (hasOwn(fields, 'stroke')) {
+    inverse.stroke = json.clone(member.branchStyle.stroke)
+    const stroke = fields.stroke
+    if (stroke === undefined) {
+      return
+    }
+    nextBranchStyle = {
+      ...nextBranchStyle,
+      stroke: json.clone(stroke)
+    }
+  }
 
   state.inverse.prepend({
     type: 'mindmap.branch.patch',

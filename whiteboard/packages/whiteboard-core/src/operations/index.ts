@@ -1,12 +1,11 @@
-import { definitions } from '@whiteboard/core/operations/definitions'
-import { spec } from '@whiteboard/core/operations/spec'
-import {
-  apply,
-  deriveImpact,
-  RESET_READ_IMPACT,
-  summarizeInvalidation
-} from '@whiteboard/core/operations/apply'
 import { compile } from '@whiteboard/core/operations/compile'
+import {
+  whiteboardEntities
+} from '@whiteboard/core/operations/entities'
+import {
+  reduceWhiteboardOperations,
+  whiteboardCustom
+} from '@whiteboard/core/operations/mutation'
 import {
   assertHistoryFootprint,
   createCollector,
@@ -22,9 +21,8 @@ import {
 } from '@whiteboard/core/operations/plan'
 
 export const operations = {
-  definitions,
-  spec,
-  apply,
+  entities: whiteboardEntities,
+  custom: whiteboardCustom,
   compile,
   history: {
     assertFootprint: assertHistoryFootprint,
@@ -42,13 +40,10 @@ export const operations = {
 } as const
 
 export {
-  definitions,
-  spec,
-  apply,
+  whiteboardEntities,
+  whiteboardCustom,
+  reduceWhiteboardOperations,
   compile,
-  RESET_READ_IMPACT,
-  deriveImpact,
-  summarizeInvalidation,
   assertHistoryFootprint,
   createCollector,
   isKey,
@@ -97,7 +92,3 @@ export type {
   WhiteboardOperationReduceExtra,
   WhiteboardOperationReduceResult
 } from '@whiteboard/core/operations/definitions'
-
-export type {
-  WhiteboardReduceIssueCode
-} from '@whiteboard/core/reducer/types'

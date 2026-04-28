@@ -1,23 +1,17 @@
-import { DATAVIEW_OPERATION_DEFINITIONS } from './definitions'
-import {
-  dataviewOperationTable,
-  dataviewReduceSpec,
-  type DataviewOperationReduceExtra,
-  type DataviewReduceContext
-} from './spec'
 import {
   dataviewIntentHandlers,
 } from './compile'
+import {
+  dataviewEntities
+} from './entities'
+import {
+  dataviewCustom
+} from './mutation'
 import {
   type ValidationCode,
   type ValidationIssue,
   type ValidationSeverity
 } from './contracts'
-import {
-  dataviewTraceSpec,
-  dataviewTrace,
-  type DataviewTrace
-} from './trace'
 import {
   buildRecordCreateIntents,
   recordCreate,
@@ -25,31 +19,24 @@ import {
   type RecordCreateFilterRule
 } from './plan'
 
-export const definitions = DATAVIEW_OPERATION_DEFINITIONS
-export const table = dataviewOperationTable
-export const reduce = dataviewReduceSpec
+export const entities = dataviewEntities
 export const compile = {
   handlers: dataviewIntentHandlers
 } as const
+export const custom = dataviewCustom
 
 export {
-  DATAVIEW_OPERATION_DEFINITIONS,
-  dataviewOperationTable,
-  dataviewReduceSpec,
+  dataviewEntities,
   dataviewIntentHandlers,
+  dataviewCustom,
   buildRecordCreateIntents,
-  recordCreate,
-  dataviewTrace
+  recordCreate
 }
-export { dataviewTraceSpec }
-export const trace = dataviewTrace
 
 export const operations = {
-  definitions,
-  table,
-  reduce,
+  entities,
   compile,
-  trace: dataviewTrace,
+  custom,
   plan: {
     buildRecordCreateIntents,
     recordCreate
@@ -57,15 +44,9 @@ export const operations = {
 } as const
 
 export type {
-  DataviewTrace,
-  DataviewOperationReduceExtra,
-  DataviewReduceContext,
   ValidationCode,
   ValidationIssue,
   ValidationSeverity,
   BuildRecordCreateIntentsInput,
   RecordCreateFilterRule
 }
-export type {
-  DocumentOperationDefinition
-} from './definitions'

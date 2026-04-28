@@ -1,10 +1,11 @@
-import {
-  dataviewTrace,
-  type DataviewTrace
-} from '@dataview/core/operations'
 import type {
   FieldId,
-  RecordId
+  RecordId,
+  ViewId
+} from '@dataview/core/types'
+import type {
+  FieldSchemaAspect,
+  ViewQueryAspect
 } from '@dataview/core/types'
 import type {
   QueryPlan,
@@ -13,8 +14,101 @@ import type {
 import type {
   QueryPhaseDelta
 } from '@dataview/engine/active/state'
+import type {
+  MutationDelta
+} from '@shared/mutation'
+import {
+  hasDeltaChange,
+  readChangeIds,
+  readChangePaths,
+  readChangePayload,
+  readMutationChange
+} from '@dataview/engine/mutation/delta'
 
 const EMPTY_FIELDS = [] as const
+const EMPTY_SET = new Set<never>()
+
+const collectIds = <T extends string>(
+  ...values: Array<readonly T[] | 'all' | undefined>
+): ReadonlySet<T> | 'all' => {
+  let all = false
+  const result = new Set<T>()
+
+  values.forEach((value) => {
+    if (value === 'all') {
+      all = true
+      return
+    }
+
+    value?.forEach((id) => {
+      result.add(id)
+    })
+  })
+
+  return all
+    ? 'all'
+    : result
+}
+
+const collectPathFieldIds = (
+  paths: Record<string, readonly string[] | 'all'> | 'all' | undefined
+): ReadonlySet<FieldId> | 'all' => {
+  if (paths === 'all') {
+    return 'all'
+  }
+
+  const fields = new Set<FieldId>()
+  Object.values(paths ?? {}).forEach((value) => {
+    if (value === 'all') {
+      fields.add('title')
+      return
+    }
+
+    value.forEach((path) => {
+      const [fieldId] = path.split('.')
+      if (fieldId) {
+        fields.add(fieldId as FieldId)
+      }
+    })
+  })
+  return fields
+}
+
+const collectFieldAspectIds = (
+  input: Record<string, readonly FieldSchemaAspect[]> | undefined
+): ReadonlySet<FieldId> => new Set(
+  input
+    ? Object.keys(input) as FieldId[]
+    : []
+)
+
+const collectQueryViewIds = (
+  delta: MutationDelta
+): ReadonlySet<ViewId> | 'all' => collectIds<ViewId>(
+  readChangeIds(readMutationChange(delta, 'view.query')) as readonly ViewId[] | 'all' | undefined
+)
+
+const collectCalculationViewMap = (
+  delta: MutationDelta
+): ReadonlyMap<ViewId, ReadonlySet<FieldId> | 'all'> => {
+  const change = readMutationChange(delta, 'view.calc')
+  const payload = readChangePayload<Record<string, readonly FieldId[] | 'all'>>(
+    change,
+    'viewCalculationFields'
+  )
+  const result = new Map<ViewId, ReadonlySet<FieldId> | 'all'>()
+
+  Object.entries(payload ?? {}).forEach(([viewId, fieldIds]) => {
+    result.set(
+      viewId as ViewId,
+      fieldIds === 'all'
+        ? 'all'
+        : new Set(fieldIds)
+    )
+  })
+
+  return result
+}
 
 const hasAnyField = (
   fields: ReadonlySet<FieldId> | 'all',
@@ -31,24 +125,123 @@ export const hasField = (
   : fields.has(fieldId)
 
 export interface BaseImpact {
-  trace: DataviewTrace
+  delta: MutationDelta
+  reset: boolean
   touchedRecords: ReadonlySet<RecordId> | 'all'
   touchedFields: ReadonlySet<FieldId> | 'all'
   valueFields: ReadonlySet<FieldId> | 'all'
   schemaFields: ReadonlySet<FieldId>
+  touchedViews: ReadonlySet<ViewId> | 'all'
   recordSetChanged: boolean
+  activeViewChanged: boolean
+  queryChangedViews: ReadonlySet<ViewId> | 'all'
+  calculationChangedViews: ReadonlyMap<ViewId, ReadonlySet<FieldId> | 'all'>
 }
 
 export const createBaseImpact = (
-  trace: DataviewTrace
+  delta: MutationDelta
 ): BaseImpact => ({
-  trace,
-  touchedRecords: dataviewTrace.record.touchedIds(trace),
-  touchedFields: dataviewTrace.field.touchedIds(trace),
-  valueFields: dataviewTrace.field.valueIds(trace),
-  schemaFields: dataviewTrace.field.schemaIds(trace),
-  recordSetChanged: dataviewTrace.has.recordSetChange(trace)
+  delta,
+  reset: delta.reset === true,
+  touchedRecords: collectIds<RecordId>(
+    readChangeIds(readMutationChange(delta, 'record.create')) as readonly RecordId[] | 'all' | undefined,
+    readChangeIds(readMutationChange(delta, 'record.patch')) as readonly RecordId[] | 'all' | undefined,
+    readChangeIds(readMutationChange(delta, 'record.delete')) as readonly RecordId[] | 'all' | undefined,
+    (() => {
+      const paths = readChangePaths(readMutationChange(delta, 'record.values'))
+      return paths === 'all'
+        ? 'all'
+        : paths
+          ? Object.keys(paths) as RecordId[]
+          : undefined
+    })()
+  ),
+  touchedFields: collectIds<FieldId>(
+    readChangeIds(readMutationChange(delta, 'field.create')) as readonly FieldId[] | 'all' | undefined,
+    readChangeIds(readMutationChange(delta, 'field.delete')) as readonly FieldId[] | 'all' | undefined,
+    readChangeIds(readMutationChange(delta, 'field.schema')) as readonly FieldId[] | 'all' | undefined,
+    (() => {
+      const valueFields = collectPathFieldIds(readChangePaths(readMutationChange(delta, 'record.values')))
+      return valueFields === 'all'
+        ? 'all'
+        : [...valueFields]
+    })()
+  ),
+  valueFields: collectPathFieldIds(readChangePaths(readMutationChange(delta, 'record.values'))),
+  schemaFields: collectFieldAspectIds(
+    readChangePayload<Record<string, readonly FieldSchemaAspect[]>>(
+      readMutationChange(delta, 'field.schema'),
+      'fieldAspects'
+    )
+  ),
+  touchedViews: collectIds<ViewId>(
+    readChangeIds(readMutationChange(delta, 'view.create')) as readonly ViewId[] | 'all' | undefined,
+    readChangeIds(readMutationChange(delta, 'view.query')) as readonly ViewId[] | 'all' | undefined,
+    readChangeIds(readMutationChange(delta, 'view.layout')) as readonly ViewId[] | 'all' | undefined,
+    readChangeIds(readMutationChange(delta, 'view.calc')) as readonly ViewId[] | 'all' | undefined,
+    readChangeIds(readMutationChange(delta, 'view.delete')) as readonly ViewId[] | 'all' | undefined
+  ),
+  recordSetChanged: hasDeltaChange(delta, 'record.create')
+    || hasDeltaChange(delta, 'record.delete'),
+  activeViewChanged: hasDeltaChange(delta, 'document.activeView'),
+  queryChangedViews: collectQueryViewIds(delta),
+  calculationChangedViews: collectCalculationViewMap(delta)
 })
+
+export const hasActiveViewChange = (
+  impact: BaseImpact
+): boolean => impact.reset || impact.activeViewChanged
+
+export const hasFieldSchemaChange = (
+  impact: BaseImpact,
+  fieldId: FieldId
+): boolean => impact.reset || impact.schemaFields.has(fieldId)
+
+export const hasViewQueryChange = (
+  impact: BaseImpact,
+  viewId: ViewId,
+  aspects?: readonly ViewQueryAspect[]
+): boolean => {
+  if (impact.reset) {
+    return true
+  }
+
+  const change = readMutationChange(impact.delta, 'view.query')
+  const ids = readChangeIds(change)
+  if (ids !== 'all' && ids && !ids.includes(viewId)) {
+    return false
+  }
+  if (!ids && !readChangePayload(change, 'viewQueryAspects')) {
+    return false
+  }
+  if (!aspects?.length) {
+    return true
+  }
+
+  const byView = readChangePayload<Record<string, readonly ViewQueryAspect[]>>(
+    change,
+    'viewQueryAspects'
+  )
+  const current = byView?.[viewId]
+  if (!current?.length) {
+    return false
+  }
+
+  return aspects.some((aspect) => current.includes(aspect))
+}
+
+export const hasViewCalculationChanges = (
+  impact: BaseImpact,
+  viewId: ViewId
+): boolean => {
+  if (impact.reset) {
+    return true
+  }
+
+  const changed = impact.calculationChangedViews.get(viewId)
+  return changed === 'all'
+    || (changed instanceof Set && changed.size > 0)
+}
 
 export const sectionChanged = (input: {
   previousPlan?: ViewPlan

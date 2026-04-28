@@ -264,12 +264,18 @@ const hasOwn = <T extends object>(
   key: PropertyKey
 ): boolean => Object.prototype.hasOwnProperty.call(value, key)
 
-const toScopedRecordKeys = (record?: Readonly<Record<string, unknown>>) => Object.keys(
-  record ?? {}
-).flatMap((path) => {
+const toScopedRecordKeys = (
+  record?: Readonly<Record<string, unknown>>
+): ReadonlyArray<{
+  scope: 'data' | 'style'
+  path: string
+}> => Object.keys(record ?? {}).flatMap<{
+  scope: 'data' | 'style'
+  path: string
+}>((path) => {
   if (path === 'data' || path.startsWith('data.')) {
     return [{
-      scope: 'data' as const,
+      scope: 'data',
       path: path === 'data'
         ? ''
         : path.slice('data.'.length)
@@ -277,7 +283,7 @@ const toScopedRecordKeys = (record?: Readonly<Record<string, unknown>>) => Objec
   }
   if (path === 'style' || path.startsWith('style.')) {
     return [{
-      scope: 'style' as const,
+      scope: 'style',
       path: path === 'style'
         ? ''
         : path.slice('style.'.length)

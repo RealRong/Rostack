@@ -2,8 +2,6 @@ import type {
   MutationCompileIssue,
   MutationCompileSource
 } from '@shared/mutation'
-import type { IntentType } from '@dataview/core/types/intents'
-
 export type ValidationSeverity =
   | 'error'
   | 'warning'
@@ -29,7 +27,7 @@ export type ValidationCode =
   | 'field.invalid'
   | 'external.invalidSource'
 
-export type IssueSource = MutationCompileSource<IntentType>
+export type IssueSource = MutationCompileSource<string>
 
 export type ValidationIssue =
-  MutationCompileIssue<ValidationCode, IntentType>
+  MutationCompileIssue<ValidationCode, string>

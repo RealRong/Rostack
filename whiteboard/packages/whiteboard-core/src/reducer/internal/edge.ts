@@ -79,13 +79,24 @@ const buildEdgeFieldInverse = (
   }
 
   const inverse: EdgeFieldPatch = {}
-  EDGE_PATCH_FIELDS.forEach((field) => {
-    if (!hasOwn(fields, field)) {
-      return
-    }
-
-    inverse[field] = json.clone(edge[field]) as EdgeFieldPatch[typeof field]
-  })
+  if (hasOwn(fields, 'source')) {
+    inverse.source = json.clone(edge.source)
+  }
+  if (hasOwn(fields, 'target')) {
+    inverse.target = json.clone(edge.target)
+  }
+  if (hasOwn(fields, 'type')) {
+    inverse.type = json.clone(edge.type)
+  }
+  if (hasOwn(fields, 'locked')) {
+    inverse.locked = json.clone(edge.locked)
+  }
+  if (hasOwn(fields, 'groupId')) {
+    inverse.groupId = json.clone(edge.groupId)
+  }
+  if (hasOwn(fields, 'textMode')) {
+    inverse.textMode = json.clone(edge.textMode)
+  }
 
   return Object.keys(inverse).length > 0
     ? inverse
@@ -338,12 +349,19 @@ export const patchEdgeLabel = (
 
   const label = labels[index]!
   const inverseFields = input.fields
-    ? LABEL_PATCH_FIELDS.reduce<EdgeLabelFieldPatch>((result, field) => {
-        if (hasOwn(input.fields!, field)) {
-          result[field] = json.clone(label[field]) as EdgeLabelFieldPatch[typeof field]
+    ? (() => {
+        const result: EdgeLabelFieldPatch = {}
+        if (hasOwn(input.fields, 'text')) {
+          result.text = json.clone(label.text)
+        }
+        if (hasOwn(input.fields, 't')) {
+          result.t = json.clone(label.t)
+        }
+        if (hasOwn(input.fields, 'offset')) {
+          result.offset = json.clone(label.offset)
         }
         return result
-      }, {})
+      })()
     : undefined
   const inverseRecord = input.record
     ? draftRecord.inverse(label, input.record)

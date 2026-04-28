@@ -6,7 +6,8 @@ import type {
 } from '@shared/mutation'
 import type {
   Document,
-  Operation
+  Operation,
+  ResultCode
 } from '@whiteboard/core/types'
 import type {
   WhiteboardIntent,
@@ -15,9 +16,7 @@ import type {
   WhiteboardMutationTable
 } from '@whiteboard/core/operations/intent-types'
 
-export type WhiteboardCompileCode =
-  | 'invalid'
-  | 'cancelled'
+export type WhiteboardCompileCode = ResultCode
 
 export type WhiteboardCompileControls<
   K extends WhiteboardIntentKind = WhiteboardIntentKind

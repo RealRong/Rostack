@@ -3,6 +3,7 @@ import {
   whiteboardEntities
 } from '@whiteboard/core/operations/entities'
 import {
+  validateWhiteboardOperationBatch,
   reduceWhiteboardOperations,
   whiteboardCustom
 } from '@whiteboard/core/operations/mutation'
@@ -19,6 +20,15 @@ import {
   canvasOrderMove,
   groupOrderMove
 } from '@whiteboard/core/operations/plan'
+import {
+  apply,
+  RESET_READ_IMPACT,
+  deriveImpact,
+  summarizeInvalidation
+} from '@whiteboard/core/operations/apply'
+import {
+  isCheckpointOperation
+} from '@whiteboard/core/operations/checkpoint'
 
 export const operations = {
   entities: whiteboardEntities,
@@ -42,7 +52,13 @@ export const operations = {
 export {
   whiteboardEntities,
   whiteboardCustom,
+  validateWhiteboardOperationBatch,
   reduceWhiteboardOperations,
+  apply,
+  RESET_READ_IMPACT,
+  deriveImpact,
+  summarizeInvalidation,
+  isCheckpointOperation,
   compile,
   assertHistoryFootprint,
   createCollector,
@@ -87,8 +103,3 @@ export type {
   WhiteboardIntentTable,
   WhiteboardMutationTable
 } from '@whiteboard/core/operations/compile'
-
-export type {
-  WhiteboardOperationReduceExtra,
-  WhiteboardOperationReduceResult
-} from '@whiteboard/core/operations/definitions'

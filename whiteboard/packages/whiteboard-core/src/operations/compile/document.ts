@@ -1,4 +1,7 @@
 import { document as documentApi, normalizeDocument } from '@whiteboard/core/document'
+import {
+  createDocumentPatch
+} from '@whiteboard/core/operations/patch'
 import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 
@@ -19,8 +22,8 @@ type DocumentIntentHandlers = Pick<
 export const documentIntentHandlers: DocumentIntentHandlers = {
   'document.replace': (intent, ctx) => {
     ctx.emit({
-      type: 'document.replace',
-      document: normalizeDocument(documentApi.assert(intent.document))
+      type: 'document.create',
+      value: normalizeDocument(documentApi.assert(intent.document))
     })
   },
   'document.insert': (intent, ctx) => {
@@ -49,8 +52,10 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
   },
   'document.background.set': (intent, ctx) => {
     ctx.emit({
-      type: 'document.background',
-      background: intent.background
+      type: 'document.patch',
+      patch: createDocumentPatch({
+        background: intent.background
+      })
     })
   }
 }

@@ -1,6 +1,3 @@
-import {
-  dataviewTrace
-} from '@dataview/core/operations'
 import type {
   RecordId,
   View,
@@ -18,6 +15,9 @@ import type {
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
+import type {
+  MutationDelta
+} from '@shared/mutation'
 import {
   readSelectionIdSet
 } from '@dataview/engine/active/shared/selection'
@@ -34,9 +34,13 @@ import type {
 } from '@dataview/engine/document/reader'
 import { now } from '@dataview/engine/runtime/clock'
 import {
-  type BaseImpact,
-  hasQueryInputChanges
-} from '../projection/impact'
+  hasActiveViewChange,
+  hasFieldSchemaChange,
+  hasRecordSetChange,
+  hasQueryInputChanges,
+  hasViewQueryChange,
+  readTouchedFields
+} from '../projection/dirty'
 import {
   type ActiveProjectionPhase,
   readActiveView
@@ -54,23 +58,23 @@ const EMPTY_METRICS = toActivePhaseMetrics({
 
 const hasSortInputChanges = (input: {
   activeViewId: ViewId
-  impact: BaseImpact
+  delta: MutationDelta
   plan: QueryPlan
 }): boolean => {
   if (
-    input.impact.recordSetChanged
-    || dataviewTrace.has.viewQuery(input.impact.trace, input.activeViewId, ['sort'])
+    hasRecordSetChange(input.delta)
+    || hasViewQueryChange(input.delta, input.activeViewId, ['sort'])
   ) {
     return true
   }
 
   for (const fieldId of input.plan.watch.sort) {
-    if (dataviewTrace.has.fieldSchema(input.impact.trace, fieldId)) {
+    if (hasFieldSchemaChange(input.delta, fieldId)) {
       return true
     }
   }
 
-  const changedFields = input.impact.touchedFields
+  const changedFields = readTouchedFields(input.delta)
   return changedFields === 'all'
     || setCore.intersectsValues(input.plan.watch.sort, changedFields)
 }
@@ -78,7 +82,7 @@ const hasSortInputChanges = (input: {
 const resolveQueryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: BaseImpact
+  delta: MutationDelta
   previousPlan?: QueryPlan
   plan: QueryPlan
   previous?: QueryPhaseState
@@ -86,7 +90,7 @@ const resolveQueryAction = (input: {
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || dataviewTrace.has.activeView(input.impact.trace)
+    || hasActiveViewChange(input.delta)
   ) {
     return 'rebuild'
   }
@@ -94,7 +98,7 @@ const resolveQueryAction = (input: {
   if (
     input.previousPlan?.executionKey !== input.plan.executionKey
     || hasQueryInputChanges({
-      impact: input.impact,
+      delta: input.delta,
       plan: input.plan
     })
   ) {
@@ -107,7 +111,7 @@ const resolveQueryAction = (input: {
 const resolveQueryReuse = (input: {
   action: PhaseAction
   activeViewId: ViewId
-  impact: BaseImpact
+  delta: MutationDelta
   view: View
   plan: QueryPlan
   previous?: QueryPhaseState
@@ -124,13 +128,13 @@ const resolveQueryReuse = (input: {
 
   const canReuseMatched = !hasSortInputChanges({
     activeViewId: input.activeViewId,
-    impact: input.impact,
+    delta: input.delta,
     plan: input.plan
   })
   const canReuseOrdered = canReuseMatched
     && (
       input.view.sort.rules.ids.length > 0
-      || !dataviewTrace.has.viewQuery(input.impact.trace, input.activeViewId, ['order'])
+      || !hasViewQueryChange(input.delta, input.activeViewId, ['order'])
     )
 
   if (!canReuseMatched && !canReuseOrdered) {
@@ -155,7 +159,7 @@ export const runQueryStage = (input: {
   reader: DocumentReader
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: BaseImpact
+  delta: MutationDelta
   view: View
   plan: QueryPlan
   index: IndexState
@@ -165,7 +169,7 @@ export const runQueryStage = (input: {
   const action = resolveQueryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
-    impact: input.impact,
+    delta: input.delta,
     previousPlan: input.previousPlan,
     plan: input.plan,
     previous: input.previous
@@ -173,7 +177,7 @@ export const runQueryStage = (input: {
   const reuse = resolveQueryReuse({
     action,
     activeViewId: input.activeViewId,
-    impact: input.impact,
+    delta: input.delta,
     view: input.view,
     plan: input.plan,
     previous: input.previous
@@ -274,7 +278,7 @@ export const activeQueryPhase: ActiveProjectionPhase<'query'> = {
       reader: context.input.read.reader,
       activeViewId,
       previousViewId: context.state.publish.previous?.view.id,
-      impact: context.input.impact,
+      delta: context.input.delta,
       view,
       plan: plan.query,
       previousPlan: context.input.view.previousPlan?.query,

@@ -197,8 +197,7 @@ export const toMindmapTree = (
     rootNodeId: record.root,
     nodes,
     children: json.clone(record.children),
-    layout: json.clone(record.layout),
-    meta: json.clone(record.meta)
+    layout: json.clone(record.layout)
   }
 }
 
@@ -298,8 +297,7 @@ const cloneTree = (tree: MindmapTree): TreeDraft => ({
   ),
   layout: {
     ...tree.layout
-  },
-  meta: tree.meta ? { ...tree.meta } : undefined
+  }
 })
 
 const ensureChildren = (
@@ -316,15 +314,6 @@ const ensureNode = (
   tree: MindmapTree,
   id: MindmapNodeId
 ) => tree.nodes[id]
-
-const updateMeta = (tree: TreeDraft, timestamp = new Date().toISOString()) => {
-  if (!tree.meta) {
-    tree.meta = { createdAt: timestamp, updatedAt: timestamp }
-  } else {
-    if (!tree.meta.createdAt) tree.meta.createdAt = timestamp
-    tree.meta.updatedAt = timestamp
-  }
-}
 
 const collectSubtreeIds = (
   tree: MindmapTree,
@@ -449,7 +438,6 @@ export const addChild = (
     children.splice(index, 0, nodeId)
   }
 
-  updateMeta(draft)
   return ok({
     tree: draft,
     nodeId
@@ -525,7 +513,6 @@ export const insertNode = (
         parentId: nodeId,
         side: undefined
       }
-      updateMeta(draft)
       return ok({
         tree: draft,
         nodeId
@@ -589,7 +576,6 @@ export const moveSubtree = (
       : undefined
   }
 
-  updateMeta(draft)
   return ok({
     tree: draft
   })
@@ -617,7 +603,6 @@ export const removeSubtree = (
     delete draft.nodes[id]
     delete draft.children[id]
   })
-  updateMeta(draft)
   return ok({
     tree: draft,
     removedIds
@@ -685,7 +670,6 @@ export const cloneSubtree = (
     children.splice(index, 0, map[input.nodeId]!)
   }
 
-  updateMeta(draft)
   return ok({
     tree: draft,
     nodeId: map[input.nodeId]!,
@@ -709,7 +693,6 @@ export const patchMindmap = (
     ...draft.layout,
     ...layoutPatch
   }
-  updateMeta(draft)
   return ok({
     tree: draft
   })

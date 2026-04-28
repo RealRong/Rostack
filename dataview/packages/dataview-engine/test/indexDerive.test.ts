@@ -19,13 +19,11 @@ import {
   resolveViewPlan
 } from '@dataview/engine/active/plan'
 import {
-  createBaseImpact
-} from '@dataview/engine/active/projection/impact'
-import {
   buildQueryState
 } from '@dataview/engine/active/query/state'
 import { createDocumentReadContext } from '@dataview/engine/document/reader'
 import { entityTable } from '@shared/core'
+import type { MutationDelta } from '@shared/mutation'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -149,7 +147,9 @@ const createDocument = (input = {}) => {
   }
 }
 
-const createImpact = (input = {}) => createBaseImpact(input)
+const createDelta = (
+  delta: MutationDelta = {}
+): MutationDelta => delta
 
 const normalizeDemand = (document, demand = {}) => {
   const context = createDocumentReadContext(document)
@@ -204,7 +204,7 @@ const createIndexHarness = (document, demand) => {
 
   return {
     state: () => current,
-    sync: (nextDocument, impact, nextDemand) => {
+    sync: (nextDocument, delta, nextDemand) => {
       const demandForNext = nextDemand
         ? normalizeDemand(nextDocument, nextDemand)
         : currentDemand
@@ -212,7 +212,7 @@ const createIndexHarness = (document, demand) => {
         previous: current,
         previousDemand: currentDemand,
         document: nextDocument,
-        impact,
+        delta,
         ...(nextDemand
           ? { demand: demandForNext }
           : {})
@@ -255,14 +255,13 @@ test('engine.active.index sync patches search/group/sort/calculation on record v
     }
   }
 
-  const state = index.sync(updatedDocument, createImpact({
-    records: {
-      touched: new Set(['rec_2'])
-    },
-    values: {
-      touched: new Map([
-        ['rec_2', new Set([TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])]
-      ])
+  const state = index.sync(updatedDocument, createDelta({
+    changes: {
+      'record.values': {
+        paths: {
+          rec_2: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
+        }
+      }
     }
   })).state
 
@@ -312,14 +311,13 @@ test('engine.active.index buckets status category mode with fast category keys',
     }
   }
 
-  const nextBucket = readBucketIndex(index.sync(updatedDocument, createImpact({
-    records: {
-      touched: new Set(['rec_2'])
-    },
-    values: {
-      touched: new Map([
-        ['rec_2', new Set([FIELD_STATUS])]
-      ])
+  const nextBucket = readBucketIndex(index.sync(updatedDocument, createDelta({
+    changes: {
+      'record.values': {
+        paths: {
+          rec_2: [FIELD_STATUS]
+        }
+      }
     }
   })).state.bucket, {
     fieldId: FIELD_STATUS,
@@ -566,7 +564,7 @@ test('engine.active.index derive adds demanded sort fields without rebuilding ex
     previous,
     previousDemand,
     document,
-    impact: createImpact({}),
+    delta: createDelta({}),
     demand: normalizeDemand(document, {
       sortFields: [FIELD_UPDATED_AT, FIELD_POINTS]
     })
@@ -601,11 +599,14 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
     fieldDefs: renamedFields
   })
 
-  const state = index.sync(updatedDocument, createImpact({
-    fields: {
-      schema: new Map([
-        [FIELD_STATUS, new Set(['options'])]
-      ])
+  const state = index.sync(updatedDocument, createDelta({
+    changes: {
+      'field.schema': {
+        ids: [FIELD_STATUS],
+        fieldAspects: {
+          [FIELD_STATUS]: ['options']
+        }
+      }
     }
   })).state
 

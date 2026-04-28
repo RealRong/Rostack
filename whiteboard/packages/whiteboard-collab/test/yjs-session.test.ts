@@ -180,13 +180,15 @@ test('session records duplicate and rejected shared changes deterministically', 
   const duplicateChange = {
     id: 'change_duplicate',
     actorId: 'actor_remote',
-    ops: [{
-      type: 'document.background',
-      background: {
-        type: 'none',
-        color: '#000'
-      }
-    }],
+      ops: [{
+        type: 'document.patch',
+        patch: {
+          background: {
+            type: 'none',
+            color: '#000'
+          }
+        }
+      }],
     footprint: [{
       kind: 'field',
       family: 'document',
@@ -204,7 +206,7 @@ test('session records duplicate and rejected shared changes deterministically', 
       ops: [{
         type: 'node.patch',
         id: 'node_missing',
-        fields: {
+        patch: {
           rotation: 90
         }
       }],

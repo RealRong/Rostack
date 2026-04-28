@@ -151,7 +151,7 @@ export const createNodeOp = ({
     nodeId: materialized.data.id,
     operation: {
       type: 'node.create',
-      node: materialized.data
+      value: materialized.data
     }
   })
 }

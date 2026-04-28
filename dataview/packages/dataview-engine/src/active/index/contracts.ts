@@ -16,9 +16,6 @@ import type {
   IndexTrace
 } from '@dataview/engine/contracts/performance'
 import type {
-  BaseImpact
-} from '@dataview/engine/active/projection/impact'
-import type {
   MembershipTransition,
   CalculationTransition
 } from '@dataview/engine/active/shared/transition'

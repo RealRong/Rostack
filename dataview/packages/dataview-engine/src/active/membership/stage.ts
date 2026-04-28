@@ -1,6 +1,3 @@
-import {
-  dataviewTrace
-} from '@dataview/core/operations'
 import type {
   View,
   ViewId
@@ -10,6 +7,9 @@ import type {
   IndexDelta,
   IndexState
 } from '@dataview/engine/active/index/contracts'
+import type {
+  MutationDelta
+} from '@shared/mutation'
 import {
   syncMembershipState
 } from '@dataview/engine/active/membership/derive'
@@ -32,10 +32,13 @@ import type {
 } from '@dataview/engine/contracts/shared'
 import { now } from '@dataview/engine/runtime/clock'
 import {
-  type BaseImpact,
+  hasActiveViewChange,
   hasField,
-  hasQueryDeltaChanges
-} from '../projection/impact'
+  hasFieldSchemaChange,
+  hasQueryDeltaChanges,
+  hasViewQueryChange,
+  readTouchedFields
+} from '../projection/dirty'
 import {
   type ActiveProjectionPhase,
   readActiveView
@@ -45,7 +48,8 @@ import {
   toActivePhaseMetrics
 } from '../projection/metrics'
 import {
-  membershipPhaseScope
+  membershipPhaseScope,
+  type MembershipPhaseScope
 } from '../projection/types'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
@@ -56,7 +60,7 @@ const EMPTY_METRICS = toActivePhaseMetrics({
 const resolveMembershipAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: BaseImpact
+  delta: MutationDelta
   view: View
   previous?: MembershipPhaseState
   queryDelta: QueryPhaseDelta
@@ -65,7 +69,7 @@ const resolveMembershipAction = (input: {
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || dataviewTrace.has.activeView(input.impact.trace)
+    || hasActiveViewChange(input.delta)
   ) {
     return 'rebuild'
   }
@@ -82,14 +86,16 @@ const resolveMembershipAction = (input: {
   }
 
   if (
-    dataviewTrace.has.viewQuery(input.impact.trace, input.activeViewId, ['group'])
-    || dataviewTrace.has.fieldSchema(input.impact.trace, groupField)
-    || dataviewTrace.has.recordSetChange(input.impact.trace)
+    hasViewQueryChange(input.delta, input.activeViewId, ['group'])
+    || hasFieldSchemaChange(input.delta, groupField)
+    || input.delta.reset === true
+    || input.delta.changes?.['record.create'] !== undefined
+    || input.delta.changes?.['record.delete'] !== undefined
   ) {
     return 'rebuild'
   }
 
-  const touchedFields = input.impact.touchedFields
+  const touchedFields = readTouchedFields(input.delta)
   if (hasField(touchedFields, groupField)) {
     return 'sync'
   }
@@ -159,7 +165,7 @@ const deriveMembershipState = (input: {
   query: QueryPhaseState
   queryDelta: QueryPhaseDelta
   previous?: MembershipPhaseState
-  impact: BaseImpact
+  delta: MutationDelta
   index: IndexState
   indexDelta?: IndexDelta
 }) => {
@@ -176,7 +182,7 @@ const deriveMembershipState = (input: {
     query: input.query,
     queryDelta: input.queryDelta,
     index: input.index,
-    impact: input.impact,
+    delta: input.delta,
     indexDelta: input.indexDelta,
     action: input.action
   })
@@ -196,7 +202,7 @@ const deriveMembershipState = (input: {
 export const runMembershipStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: BaseImpact
+  delta: MutationDelta
   view: View
   query: QueryPhaseState
   queryDelta: QueryPhaseDelta
@@ -207,7 +213,7 @@ export const runMembershipStage = (input: {
   const action = resolveMembershipAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
-    impact: input.impact,
+    delta: input.delta,
     view: input.view,
     previous: input.previous,
     queryDelta: input.queryDelta,
@@ -220,7 +226,7 @@ export const runMembershipStage = (input: {
     query: input.query,
     queryDelta: input.queryDelta,
     previous: input.previous,
-    impact: input.impact,
+    delta: input.delta,
     index: input.index,
     indexDelta: input.indexDelta
   })
@@ -260,11 +266,11 @@ export const activeMembershipPhase: ActiveProjectionPhase<'membership'> = {
     }
 
     const previousState = context.state.membership.state
-    const queryScope = context.scope?.query
+    const queryScope = (context.scope as MembershipPhaseScope | undefined)?.query
     const result = runMembershipStage({
       activeViewId,
       previousViewId: context.state.publish.previous?.view.id,
-      impact: context.input.impact,
+      delta: context.input.delta,
       view,
       query: context.state.query.state,
       queryDelta: queryScope?.delta ?? EMPTY_QUERY_PHASE_DELTA,

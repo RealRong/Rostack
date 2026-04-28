@@ -1,5 +1,5 @@
 import { equal } from '@shared/core'
-import { definitions } from '@whiteboard/core/operations'
+import { isCheckpointOperation } from '@whiteboard/core/operations'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -56,7 +56,7 @@ export const createEditorEvents = ({
   const unsubscribeCommit = engine.commits.subscribe((commit) => {
     if (
       commit.kind === 'replace'
-      || commit.forward.some((op) => definitions[op.type].sync === 'checkpoint')
+      || commit.forward.some((op) => isCheckpointOperation(op))
     ) {
       session.reset()
       resetHost()
@@ -69,7 +69,7 @@ export const createEditorEvents = ({
   return {
     events: {
       change: (listener) => engine.commits.subscribe((commit) => {
-        listener(commit.doc, commit)
+        listener(commit.document, commit)
       }),
       dispose: (listener) => {
         disposeListeners.add(listener)

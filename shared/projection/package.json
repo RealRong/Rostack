@@ -17,6 +17,7 @@
   ],
   "dependencies": {
     "@shared/core": "workspace:*",
+    "@shared/mutation": "workspace:*",
     "@shared/spec": "workspace:*"
   }
 }

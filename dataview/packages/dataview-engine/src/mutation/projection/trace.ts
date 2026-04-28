@@ -1,6 +1,6 @@
 import { now } from '@dataview/engine/runtime/clock'
 import {
-  summarizeTrace,
+  summarizeDelta,
   toPerformanceKind
 } from '@dataview/engine/runtime/performance'
 import type {
@@ -44,7 +44,7 @@ export const createDataviewCommitTrace = (
       outputMs: input.outputMs,
       snapshotMs: input.active.trace.snapshotMs
     },
-    impact: summarizeTrace(input.trace),
+    impact: summarizeDelta(input.commit.delta),
     index: input.index.trace ?? createEmptyIndexTrace(),
     view: input.active.trace.view,
     snapshot: input.active.trace.snapshot

@@ -1,8 +1,8 @@
 import type {
-  CommitStream,
   HistoryPort,
   MutationFootprint,
-  MutationOptions
+  MutationOptions,
+  MutationReplaceResult
 } from '@shared/mutation'
 import type {
   CoreRegistries,
@@ -51,7 +51,9 @@ export interface EnginePublish {
   delta: EngineDelta
 }
 
-export type EngineCommits = CommitStream<EngineCommit>
+export type EngineCommits = {
+  subscribe(listener: (commit: EngineCommit) => void): () => void
+}
 
 export interface Engine {
   readonly config: BoardConfig
@@ -72,7 +74,7 @@ export interface Engine {
   replace(
     document: Document,
     options?: MutationOptions
-  ): boolean
+  ): MutationReplaceResult<Document>
   apply(
     ops: readonly Operation[],
     options?: MutationOptions

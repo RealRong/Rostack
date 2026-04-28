@@ -22,6 +22,10 @@ import type {
   Operation,
   Point
 } from '@whiteboard/core/types'
+import {
+  createEdgeLabelPatch,
+  createEdgePatch
+} from '@whiteboard/core/operations/patch'
 
 const hasOwn = <T extends object>(
   target: T,
@@ -260,7 +264,7 @@ const emitEdgeRouteDiffOps = (
           type: 'edge.route.point.patch',
           edgeId,
           pointId: point.id,
-          fields
+          patch: fields
         })
       }
     })
@@ -309,8 +313,10 @@ const emitEdgeUpdateInputOps = (
   ctx.emit({
     type: 'edge.patch',
     id: edge.id,
-    ...(fields ? { fields } : {}),
-    ...(record ? { record } : {})
+    patch: createEdgePatch({
+      ...(fields ? { fields } : {}),
+      ...(record ? { record } : {})
+    })
   })
 }
 
@@ -604,8 +610,10 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       type: 'edge.label.patch',
       edgeId: edge.id,
       labelId: label.id,
-      ...(fields ? { fields } : {}),
-      ...(record ? { record } : {})
+      patch: createEdgeLabelPatch({
+        ...(fields ? { fields } : {}),
+        ...(record ? { record } : {})
+      })
     })
   },
   'edge.label.move': (intent, ctx) => {
@@ -672,7 +680,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       type: 'edge.route.point.patch',
       edgeId: edge.id,
       pointId: point.id,
-      fields
+      patch: fields
     })
   },
   'edge.route.set': (intent, ctx) => {

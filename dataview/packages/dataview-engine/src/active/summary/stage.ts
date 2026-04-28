@@ -1,6 +1,3 @@
-import {
-  dataviewTrace
-} from '@dataview/core/operations'
 import type {
   FieldId,
   View,
@@ -11,6 +8,9 @@ import type {
   IndexDelta,
   IndexState
 } from '@dataview/engine/active/index/contracts'
+import type {
+  MutationDelta
+} from '@shared/mutation'
 import {
   deriveSummaryState,
   resolveSummaryTouchedSections
@@ -26,8 +26,10 @@ import {
 } from '@dataview/engine/active/state'
 import { now } from '@dataview/engine/runtime/clock'
 import {
-  type BaseImpact
-} from '../projection/impact'
+  hasActiveViewChange,
+  hasFieldSchemaChange,
+  hasViewCalculationChanges
+} from '../projection/dirty'
 import {
   type ActiveProjectionPhase,
   readActiveView
@@ -36,7 +38,10 @@ import {
   createActiveStageMetrics,
   toActivePhaseMetrics
 } from '../projection/metrics'
-import { summaryPhaseScope } from '../projection/types'
+import {
+  summaryPhaseScope,
+  type SummaryPhaseScope
+} from '../projection/types'
 
 const EMPTY_METRICS = toActivePhaseMetrics({
   deriveMs: 0,
@@ -46,7 +51,7 @@ const EMPTY_METRICS = toActivePhaseMetrics({
 const resolveSummaryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: BaseImpact
+  delta: MutationDelta
   indexDelta?: IndexDelta
   view: View
   calcFields: readonly FieldId[]
@@ -63,7 +68,7 @@ const resolveSummaryAction = (input: {
     !input.previous
     || !input.previousMembership
     || input.previousViewId !== input.activeViewId
-    || dataviewTrace.has.activeView(input.impact.trace)
+    || hasActiveViewChange(input.delta)
   ) {
     return {
       action: 'rebuild'
@@ -88,9 +93,7 @@ const resolveSummaryAction = (input: {
   }
 
   const groupField = input.view.group?.fieldId
-  const viewChange = dataviewTrace.view.change(input.impact.trace, input.activeViewId)
-
-  if (viewChange?.calculationFields) {
+  if (hasViewCalculationChanges(input.delta, input.activeViewId)) {
     return {
       action: 'rebuild'
     }
@@ -103,14 +106,14 @@ const resolveSummaryAction = (input: {
       }
     }
 
-    if (dataviewTrace.has.fieldSchema(input.impact.trace, fieldId)) {
+    if (hasFieldSchemaChange(input.delta, fieldId)) {
       return {
         action: 'rebuild'
       }
     }
   }
 
-  if (groupField && dataviewTrace.has.fieldSchema(input.impact.trace, groupField)) {
+  if (groupField && hasFieldSchemaChange(input.delta, groupField)) {
     return {
       action: 'rebuild'
     }
@@ -145,7 +148,7 @@ const resolveSummaryAction = (input: {
 export const runSummaryStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  impact: BaseImpact
+  delta: MutationDelta
   indexDelta?: IndexDelta
   view: View
   calcFields: readonly FieldId[]
@@ -159,7 +162,7 @@ export const runSummaryStage = (input: {
   const resolved = resolveSummaryAction({
     activeViewId: input.activeViewId,
     previousViewId: input.previousViewId,
-    impact: input.impact,
+    delta: input.delta,
     indexDelta: input.indexDelta,
     view: input.view,
     calcFields: input.calcFields,
@@ -218,11 +221,11 @@ export const activeSummaryPhase: ActiveProjectionPhase<'summary'> = {
     }
 
     const previousState = context.state.summary.state
-    const membershipScope = context.scope?.membership
+    const membershipScope = (context.scope as SummaryPhaseScope | undefined)?.membership
     const result = runSummaryStage({
       activeViewId,
       previousViewId: context.state.publish.previous?.view.id,
-      impact: context.input.impact,
+      delta: context.input.delta,
       indexDelta: context.input.index.delta,
       view,
       calcFields: plan.calcFields,

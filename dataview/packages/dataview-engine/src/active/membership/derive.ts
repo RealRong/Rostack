@@ -14,14 +14,17 @@ import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import type {
-  BaseImpact
-} from '@dataview/engine/active/projection/impact'
+  MutationDelta
+} from '@shared/mutation'
 import {
   createPartition,
   readPartitionSelections,
   readPartitionKeysById,
   type Partition
 } from '@dataview/engine/active/shared/partition'
+import {
+  readTouchedRecords
+} from '@dataview/engine/active/projection/dirty'
 import {
   createMapDraft as createMapPatchBuilder
 } from '@shared/draft'
@@ -347,11 +350,12 @@ const sameSectionIds = (
 ) => equal.sameOrder(left, right)
 
 const resolveChangedRecordIds = (input: {
-  impact: BaseImpact
+  delta: MutationDelta
   queryDelta: QueryDelta
   bucketDelta?: IndexDelta['bucket']
 }): ReadonlySet<RecordId> | 'all' => {
-  if (input.impact.touchedRecords === 'all') {
+  const touchedRecords = readTouchedRecords(input.delta)
+  if (touchedRecords === 'all') {
     return 'all'
   }
 
@@ -448,7 +452,7 @@ export const syncMembershipState = (input: {
   query: QueryState
   queryDelta: QueryDelta
   index: IndexState
-  impact: BaseImpact
+  delta: MutationDelta
   indexDelta?: IndexDelta
   action: 'reuse' | 'sync' | 'rebuild'
 }): {
@@ -509,7 +513,7 @@ export const syncMembershipState = (input: {
 
   const bucketIndex = readBucketIndex(input.index.bucket, bucket.normalize(input.view.group))
   const changedRecordIds = resolveChangedRecordIds({
-    impact: input.impact,
+    delta: input.delta,
     queryDelta: input.queryDelta,
     bucketDelta: input.indexDelta?.bucket
   })

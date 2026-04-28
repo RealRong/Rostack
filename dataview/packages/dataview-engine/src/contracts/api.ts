@@ -17,10 +17,6 @@ import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
 import type {
-  documentChangeSpec,
-  activeChangeSpec
-} from '@dataview/engine/contracts/delta'
-import type {
   fieldKindSpec
 } from '@dataview/core/field/kind/spec'
 import type {
@@ -31,6 +27,7 @@ import type {
 } from '@dataview/core/view/typeSpec'
 import type {
   MutationOptions,
+  MutationReplaceCommit,
   MutationResult
 } from '@shared/mutation'
 import type {
@@ -86,10 +83,6 @@ export type {
 } from '@dataview/engine/contracts/shared'
 
 export interface DataviewSpec {
-  change: {
-    document: typeof documentChangeSpec
-    active: typeof activeChangeSpec
-  }
   viewTypes: typeof viewTypeSpec
   fieldKinds: typeof fieldKindSpec
   filters: typeof filterSpec
@@ -189,7 +182,7 @@ export interface Engine {
   subscribe(listener: (current: DataviewCurrent) => void): () => void
 
   doc(): DataDoc
-  replace(document: DataDoc, options?: MutationOptions): boolean
+  replace(document: DataDoc, options?: MutationOptions): MutationReplaceCommit<DataDoc>
 
   execute<I extends ExecuteInput>(
     input: I,

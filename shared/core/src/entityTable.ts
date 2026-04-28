@@ -186,7 +186,9 @@ const remove = <TId extends string, TEntity extends { id: TId }>(
     return table
   }
 
-  const byId = createOverlay(table)
+  const byId = {
+    ...table.byId
+  } as Record<TId, TEntity>
   delete byId[entityId]
 
   return {

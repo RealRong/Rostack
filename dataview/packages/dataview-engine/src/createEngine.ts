@@ -1,23 +1,17 @@
 import type {
   DataDoc
 } from '@dataview/core/types'
+import {
+  document as documentApi
+} from '@dataview/core/document'
 import type {
   DocumentOperation
 } from '@dataview/core/types/operations'
-import type {
-  DataviewReduceContext,
-  DataviewTrace,
-  ValidationCode
-} from '@dataview/core/operations'
 import {
-  createDataviewCompileScope,
-  dataviewIntentHandlers,
-  dataviewOperationTable,
-  dataviewReduceSpec
+  operations as dataviewOperations
 } from '@dataview/core/operations'
 import {
   MutationEngine,
-  type MutationFootprint,
   type MutationOptions
 } from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
@@ -32,13 +26,18 @@ import type {
   DataviewCurrent
 } from '@dataview/engine/contracts/result'
 import type {
-  DataviewMutationCache,
-  DataviewPublish
-} from './mutation/types'
-import { createDataviewPublishSpec } from './mutation/publish'
+  EngineCommit
+} from '@dataview/engine/contracts/write'
+import {
+  createDataviewCommitTrace
+} from '@dataview/engine/mutation/projection/trace'
+import {
+  createDataviewProjection
+} from '@dataview/engine/projection'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import type {
-  DataviewIntentTable
+  DataviewIntentTable,
+  DataviewErrorCode
 } from '@dataview/engine/types/intent'
 
 const DEFAULT_HISTORY_CONFIG = {
@@ -48,157 +47,116 @@ const DEFAULT_HISTORY_CONFIG = {
   captureRemote: false
 } as const
 
-const createDataviewOperationsRuntime = () => ({
-  table: dataviewOperationTable,
-  ...(dataviewReduceSpec.createContext
-    ? {
-        createContext: dataviewReduceSpec.createContext
-      }
-    : {}),
-  ...(dataviewReduceSpec.validate
-    ? {
-        validate: dataviewReduceSpec.validate
-      }
-    : {}),
-  ...(dataviewReduceSpec.settle
-    ? {
-        settle: dataviewReduceSpec.settle
-      }
-    : {}),
-  done: dataviewReduceSpec.done
-}) as const
-
-const shouldTrackHistory = (
-  origin: 'user' | 'remote' | 'system' | 'history',
-  capture: {
-    captureSystem: boolean
-    captureRemote: boolean
-  },
-  ops: readonly DocumentOperation[]
-): boolean => {
-  if (origin === 'history') {
-    return false
-  }
-
-  const originAllowed = origin === 'user'
-    || (origin === 'system' && capture.captureSystem)
-    || (origin === 'remote' && capture.captureRemote)
-
-  return originAllowed
-    && ops.every((entry) => dataviewOperationTable[entry.type].history !== false)
-}
-
-const shouldClearHistory = (
-  origin: 'user' | 'remote' | 'system' | 'history',
-  capture: {
-    captureSystem: boolean
-    captureRemote: boolean
-  },
-  ops: readonly DocumentOperation[]
-): boolean => (
-  shouldTrackHistory(origin, capture, ops)
-  && ops.some((entry) => dataviewOperationTable[entry.type].sync === 'checkpoint')
-)
-
-const toCurrent = (current: {
-  rev: number
-  doc: DataDoc
-  publish: DataviewPublish
-}): DataviewCurrent => ({
-  rev: current.rev,
-  doc: current.doc,
-  publish: current.publish
-})
-
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const performance = createPerformanceRuntime(options.performance)
-  const operationsRuntime = createDataviewOperationsRuntime()
   const historyConfig = {
     ...DEFAULT_HISTORY_CONFIG,
     ...(options.history ?? {})
   }
+  const projection = createDataviewProjection()
   const mutationEngine = new MutationEngine<
     DataDoc,
     DataviewIntentTable,
     DocumentOperation,
-    MutationFootprint,
-    DataviewPublish,
-    DataviewMutationCache,
-    {
-      trace: DataviewTrace
-    },
-    DataviewReduceContext,
-    ReturnType<typeof createDataviewCompileScope>,
-    ValidationCode
+    void,
+    DataviewErrorCode
   >({
     document: options.document,
-    normalize: (doc) => doc,
-    operations: dataviewOperationTable,
-    reduce: dataviewReduceSpec,
-    compile: {
-      handlers: dataviewIntentHandlers,
-      createContext: createDataviewCompileScope,
-      apply: ({
-        doc,
-        ops
-      }) => {
-        const reduced = MutationEngine.reduce({
-          document: doc,
-          ops,
-          operations: operationsRuntime
-        })
-
-        return reduced.ok
-          ? {
-              ok: true as const,
-              doc: reduced.doc
-            }
-          : {
-              ok: false as const,
-              issue: {
-                code: 'compile.applyFailed',
-                message: reduced.error.message,
-                severity: 'error' as const,
-                details: reduced.error.details
-              }
-            }
-      }
-    },
-    publish: createDataviewPublishSpec({
-      performance
-    }),
+    normalize: documentApi.normalize,
+    entities: dataviewOperations.entities,
+    custom: dataviewOperations.custom,
+    compile: dataviewOperations.compile.handlers,
     history: historyConfig.enabled
       ? {
           capacity: historyConfig.capacity,
-          track: ({
-            origin,
-            ops
-          }) => shouldTrackHistory(origin, historyConfig, ops),
-          clear: ({
-            origin,
-            ops
-          }) => shouldClearHistory(origin, historyConfig, ops)
+          capture: {
+            user: true,
+            system: historyConfig.captureSystem,
+            remote: historyConfig.captureRemote
+          }
         }
       : false
   })
+  const currentListeners = new Set<(current: DataviewCurrent) => void>()
+  const commitListeners = new Set<(commit: EngineCommit) => void>()
+
+  projection.update({
+    document: mutationEngine.current().document,
+    delta: {
+      reset: true
+    },
+    runtime: {}
+  })
+
+  const readCurrent = (): DataviewCurrent => {
+    const current = mutationEngine.current()
+    return {
+      rev: current.rev,
+      doc: current.document,
+      active: projection.read.active()
+    }
+  }
+
+  mutationEngine.subscribe((commit) => {
+    const nextCommit = commit as EngineCommit
+    const projectionResult = projection.update({
+      document: nextCommit.document,
+      delta: nextCommit.delta,
+      runtime: {}
+    })
+    const commitTrace = createDataviewCommitTrace({
+      performance,
+      startedAt: nextCommit.at,
+      commit: nextCommit,
+      index: {
+        trace: projection.read.indexTrace()
+      },
+      active: {
+        trace: projection.read.activeTrace(projectionResult.trace.totalMs)
+      },
+      outputMs: 0
+    })
+
+    if (commitTrace && performance.enabled) {
+      performance.recordCommit(commitTrace)
+    }
+
+    const current = readCurrent()
+    currentListeners.forEach((listener) => {
+      listener(current)
+    })
+    commitListeners.forEach((listener) => {
+      listener(nextCommit)
+    })
+  })
 
   const engineBase = {
-    current: () => toCurrent(mutationEngine.current()),
-    subscribe: (listener: (current: DataviewCurrent) => void) => mutationEngine.subscribe((current) => {
-      listener(toCurrent(current))
-    }),
-    doc: () => mutationEngine.doc(),
+    current: readCurrent,
+    subscribe: (listener: (current: DataviewCurrent) => void) => {
+      currentListeners.add(listener)
+      return () => {
+        currentListeners.delete(listener)
+      }
+    },
+    doc: () => mutationEngine.document(),
     replace: (nextDocument: DataDoc, replaceOptions?: MutationOptions) => (
       mutationEngine.replace(nextDocument, replaceOptions)
     ),
     execute: mutationEngine.execute.bind(mutationEngine),
-    apply: ((operations: readonly DocumentOperation[], applyOptions?: MutationOptions) => (
+    apply: (operations: readonly DocumentOperation[], applyOptions?: MutationOptions) => (
       mutationEngine.apply(operations, applyOptions)
-    ))
+    )
   }
   const engineWithInfra = {
     ...engineBase,
-    commits: mutationEngine.commits,
+    commits: {
+      subscribe: (listener: (commit: EngineCommit) => void) => {
+        commitListeners.add(listener)
+        return () => {
+          commitListeners.delete(listener)
+        }
+      }
+    },
     history: mutationEngine.history,
     performance: performance.api
   } satisfies Pick<

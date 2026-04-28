@@ -45,6 +45,9 @@ export type {
 export type {
   MutationChange,
   MutationChangeInput,
+  ApplyCommit,
+  CommitRecord,
+  CommitStream,
   MutationCommit,
   MutationCommitRecord,
   MutationDelta,

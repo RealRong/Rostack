@@ -1,29 +1,43 @@
 import {
   MutationEngine,
+  type MutationResult,
   type MutationOrigin
 } from '@shared/mutation'
+import type {
+  WhiteboardCompileIds,
+  WhiteboardMutationTable
+} from '@whiteboard/core/operations'
+import {
+  compile,
+  isCheckpointOperation,
+  validateWhiteboardOperationBatch,
+  whiteboardCustom,
+  whiteboardEntities
+} from '@whiteboard/core/operations'
+import type {
+  WhiteboardCompileServices
+} from '@whiteboard/core/operations/compile'
+import {
+  normalizeDocument
+} from '@whiteboard/core/document'
 import { createRegistries } from '@whiteboard/core/registry'
+import { createId } from '@shared/core'
 import { resolveBoardConfig } from '../config'
 import type {
   CreateEngineOptions,
-  Engine,
-  EnginePublish
+  Engine
 } from '../contracts/document'
 import type {
   ExecuteResult,
   Intent,
   IntentKind
 } from '../contracts/intent'
-import { createWhiteboardMutationSpec } from '../mutation'
 import { failure } from '../result'
-import type {
-  WhiteboardMutationExtra,
-  WhiteboardMutationKey
-} from '../mutation/types'
-import type { WhiteboardMutationTable } from '@whiteboard/core/operations'
-import type { WhiteboardReduceCtx } from '@whiteboard/core/reducer/types'
-import type { WhiteboardCompileScope } from '@whiteboard/core/operations'
-import type { Document, Operation } from '@whiteboard/core/types'
+import type { Document, Operation, ResultCode } from '@whiteboard/core/types'
+import {
+  createEnginePublishFromCommit,
+  createInitialEnginePublish
+} from './publish'
 
 const resolveIntentOrigin = (
   intent: Intent,
@@ -31,18 +45,23 @@ const resolveIntentOrigin = (
 ): MutationOrigin => {
   const intentOrigin = (
     'origin' in intent
-      ? intent.origin
-      : undefined
-  ) as import('@whiteboard/core/types').Origin | undefined
+    && (
+      intent.origin === 'user'
+      || intent.origin === 'remote'
+      || intent.origin === 'system'
+    )
+  )
+    ? intent.origin
+    : undefined
 
   return origin
     ?? intentOrigin
     ?? 'user'
 }
 
-const mapExecuteFailure = <K extends IntentKind>(
-  result: ExecuteResult<K>
-): ExecuteResult<K> => {
+const mapExecuteFailure = <T>(
+  result: MutationResult<T, import('../types/engineWrite').EngineApplyCommit, string>
+): MutationResult<T, import('../types/engineWrite').EngineApplyCommit, string> => {
   if (result.ok) {
     return result
   }
@@ -71,7 +90,7 @@ const mapExecuteFailure = <K extends IntentKind>(
     issue.code,
     issue.message,
     issue.details
-  ) as ExecuteResult<K>
+  )
 }
 
 export const createEngine = ({
@@ -82,56 +101,103 @@ export const createEngine = ({
 }: CreateEngineOptions): Engine => {
   const config = resolveBoardConfig(overrides)
   const resolvedRegistries = registries ?? createRegistries()
+  const ids: WhiteboardCompileIds = {
+    node: () => createId('node'),
+    edge: () => createId('edge'),
+    edgeLabel: () => createId('edge_label'),
+    edgeRoutePoint: () => createId('edge_point'),
+    group: () => createId('group'),
+    mindmap: () => createId('mindmap')
+  }
+  const services: WhiteboardCompileServices = {
+    ids,
+    registries: resolvedRegistries
+  }
 
   const core = new MutationEngine<
     Document,
     WhiteboardMutationTable,
     Operation,
-    WhiteboardMutationKey,
-    EnginePublish,
-    void,
-    WhiteboardMutationExtra,
-    void,
-    WhiteboardReduceCtx,
-    WhiteboardCompileScope
+    WhiteboardCompileServices,
+    ResultCode
   >({
     document,
-    ...createWhiteboardMutationSpec({
-      config,
-      registries: resolvedRegistries
+    normalize: normalizeDocument,
+    services,
+    entities: whiteboardEntities,
+    custom: whiteboardCustom,
+    compile: compile.handlers,
+    history: {
+      capacity: 100,
+      capture: {
+        user: true,
+        remote: false,
+        system: false
+      }
+    }
+  })
+  let publish = createInitialEnginePublish(core.document())
+  const publishListeners = new Set<(publish: ReturnType<Engine['current']>) => void>()
+
+  core.subscribe((commit) => {
+    publish = createEnginePublishFromCommit(commit)
+    if (commit.kind === 'apply' && commit.forward.some((op) => isCheckpointOperation(op))) {
+      core.history.clear()
+    }
+    if (onDocumentChange) {
+      onDocumentChange(commit.document)
+    }
+    publishListeners.forEach((listener) => {
+      listener(publish)
     })
   })
 
-  if (onDocumentChange) {
-    let currentDocument = core.current().doc
-    core.subscribe((current) => {
-      if (current.doc === currentDocument) {
-        return
-      }
-      currentDocument = current.doc
-      onDocumentChange(current.doc)
-    })
-  }
   const engine: Engine = {
     config,
-    commits: core.commits,
+    commits: {
+      subscribe: (listener: (commit: import('../types/engineWrite').EngineCommit) => void) => core.subscribe(listener)
+    },
     history: core.history,
-    doc: () => core.doc(),
-    current: () => core.current().publish,
-    subscribe: (listener) => core.subscribe((current) => {
-      listener(current.publish)
-    }),
-    execute: ((intent, options) => mapExecuteFailure(
+    doc: () => core.document(),
+    current: () => publish,
+    subscribe: (listener) => {
+      publishListeners.add(listener)
+      return () => {
+        publishListeners.delete(listener)
+      }
+    },
+    execute: <TIntent extends Intent>(
+      intent: TIntent,
+      options?: import('@shared/mutation').MutationOptions
+    ): ExecuteResult<TIntent['type'] & IntentKind> => mapExecuteFailure(
       core.execute(intent, {
         origin: resolveIntentOrigin(intent, options?.origin)
-      }) as ExecuteResult<IntentKind>
-    )) as Engine['execute'],
+      })
+    ),
     replace: (document, options) => core.replace(document, {
       origin: options?.origin ?? 'system'
     }),
-    apply: (ops, options) => core.apply(ops, {
-      origin: options?.origin ?? 'user'
-    })
+    apply: (ops, options) => {
+      const input = Array.isArray(ops)
+        ? ops
+        : [ops]
+      const origin = options?.origin ?? 'user'
+      const invalid = validateWhiteboardOperationBatch({
+        document: core.document(),
+        operations: input,
+        origin
+      })
+      if (invalid) {
+        return failure(
+          invalid.code,
+          invalid.message,
+          invalid.details
+        )
+      }
+      return core.apply(input, {
+        origin
+      })
+    }
   }
 
   return engine

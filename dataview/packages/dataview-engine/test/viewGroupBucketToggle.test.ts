@@ -505,13 +505,12 @@ test('engine.subscribe keeps active boundaries inside one active pipeline', () =
   let idEvents = 0
   let sortEvents = 0
   const unsubscribe = engine.subscribe(result => {
-    const delta = result.publish?.delta?.active
-    const nextViewId = result.publish?.active?.view.id
+    const nextViewId = result.active?.view.id
     if (nextViewId !== previousViewId) {
       idEvents += 1
       previousViewId = nextViewId
     }
-    if (delta?.query) {
+    if (result.active?.query.sort.rules.length) {
       sortEvents += 1
     }
   })
@@ -1483,19 +1482,44 @@ test('engine commits stream emits shared apply commits for execute', () => {
   unsubscribe()
   assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
+  const createdViewId = result.ok && result.data && 'id' in result.data
+    ? result.data.id
+    : undefined
   assert.deepEqual(writes[0] && {
     kind: writes[0].kind,
     rev: writes[0].rev,
     at: writes[0].at,
     origin: writes[0].origin,
-    doc: writes[0].doc,
+    document: writes[0].document,
+    delta: writes[0].delta,
     forward: writes[0].forward,
     inverse: writes[0].inverse,
     footprint: writes[0].footprint,
+    issues: writes[0].issues,
+    outputs: writes[0].outputs,
     extra: writes[0].extra
   }, result.commit)
   assert.equal(writes[0]?.origin, 'user')
-  assert.ok(writes[0]?.extra.trace.views?.inserted?.size)
+  assert.deepEqual(writes[0]?.delta, {
+    changes: {
+      'document.activeView': createdViewId
+        ? {
+            activeView: {
+              before: undefined,
+              after: createdViewId
+            }
+          }
+        : {
+            activeView: {
+              before: undefined,
+              after: undefined
+            }
+          },
+      'view.create': createdViewId
+        ? [createdViewId]
+        : []
+    }
+  })
 })
 
 test('engine apply emits shared apply commits', () => {
@@ -1524,13 +1548,22 @@ test('engine apply emits shared apply commits', () => {
     rev: writes[0].rev,
     at: writes[0].at,
     origin: writes[0].origin,
-    doc: writes[0].doc,
+    document: writes[0].document,
+    delta: writes[0].delta,
     forward: writes[0].forward,
     inverse: writes[0].inverse,
     footprint: writes[0].footprint,
+    issues: writes[0].issues,
+    outputs: writes[0].outputs,
     extra: writes[0].extra
   }, result.commit)
   assert.equal(writes[0]?.origin, 'remote')
   assert.equal(writes[0]?.forward.length, 1)
-  assert.equal(writes[0]?.extra.trace.external?.versionBumped, true)
+  assert.deepEqual(writes[0]?.delta, {
+    changes: {
+      'external.version': {
+        sources: ['test']
+      }
+    }
+  })
 })

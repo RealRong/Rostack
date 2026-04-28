@@ -49,7 +49,10 @@ test('engine exposes node create footprint through intent results', () => {
       })
     ])
   )
-  assert.equal(result.commit.extra.changes.nodes.added.has(result.data.nodeId), true)
+  assert.deepEqual(
+    result.commit.delta.changes?.['node.create'],
+    [result.data.nodeId]
+  )
 })
 
 test('engine maps mindmap topic updates to node + mindmap history keys', () => {

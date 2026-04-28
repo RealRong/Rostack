@@ -122,7 +122,7 @@ export const createEdgeOp = ({
     edgeId: id,
     operation: {
       type: 'edge.create',
-      edge: {
+      value: {
         ...normalized,
         id,
         type: normalized.type ?? 'straight',

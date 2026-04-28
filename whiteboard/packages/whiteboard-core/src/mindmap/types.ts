@@ -111,10 +111,6 @@ export type MindmapRecord = {
   members: Record<MindmapNodeId, MindmapMemberRecord>
   children: Record<MindmapNodeId, MindmapNodeId[]>
   layout: MindmapLayoutSpec
-  meta?: {
-    createdAt?: string
-    updatedAt?: string
-  }
 }
 
 export interface MindmapTree {
@@ -122,10 +118,6 @@ export interface MindmapTree {
   nodes: Record<MindmapNodeId, MindmapTreeNode>
   children: Record<MindmapNodeId, MindmapNodeId[]>
   layout: MindmapLayoutSpec
-  meta?: {
-    createdAt?: string
-    updatedAt?: string
-  }
 }
 
 export type MindmapStructure = {

@@ -318,7 +318,7 @@ export type MutationCustomTable<
   },
   Services = void,
   Code extends string = string
-> = {
+> = Partial<{
   readonly [TType in Op['type']]: MutationCustomSpec<
     Doc,
     Extract<Op, { type: TType }>,
@@ -326,7 +326,7 @@ export type MutationCustomTable<
     Services,
     Code
   >
-} & Readonly<Record<string, MutationCustomSpec<Doc, Op, Op, Services, Code>>>
+}> & Readonly<Record<string, MutationCustomSpec<Doc, Op, Op, Services, Code>>>
 
 export interface MutationEngineOptions<
   Doc extends object,
@@ -2204,14 +2204,26 @@ const applyConcreteOperations = <
 
   for (let index = 0; index < input.operations.length; index += 1) {
     const operation = input.operations[index]!
+    const customSpec = input.custom?.[operation.type]
     const descriptor = readCanonicalOperation(operation.type)
-    const applied = descriptor
+    const applied = customSpec
       ? (() => {
+          return readCustomOperationResult<Doc, Op, Services, Code>({
+            document: currentDocument,
+            operation,
+            spec: customSpec,
+            origin: input.origin,
+            services: input.services,
+            normalize: input.normalize
+          })
+        })()
+      : descriptor
+        ? (() => {
           const spec = input.entities.get(descriptor.family)
           if (!spec) {
             return mutationFailure(
-              'mutation_engine.apply.unknown_family' as Code,
-              `Unknown mutation entity family "${descriptor.family}".`
+              'mutation_engine.apply.unknown_operation' as Code,
+              `Unknown mutation operation "${operation.type}".`
             )
           }
 
@@ -2223,24 +2235,10 @@ const applyConcreteOperations = <
             normalize: input.normalize
           })
         })()
-      : (() => {
-          const customSpec = input.custom?.[operation.type]
-          if (!customSpec) {
-            return mutationFailure(
-              'mutation_engine.apply.unknown_operation' as Code,
-              `Unknown mutation operation "${operation.type}".`
-            )
-          }
-
-          return readCustomOperationResult<Doc, Op, Services, Code>({
-            document: currentDocument,
-            operation,
-            spec: customSpec,
-            origin: input.origin,
-            services: input.services,
-            normalize: input.normalize
-          })
-        })()
+        : mutationFailure(
+            'mutation_engine.apply.unknown_operation' as Code,
+            `Unknown mutation operation "${operation.type}".`
+          )
     if (!applied.ok) {
       return mutationFailure(
         applied.error.code as Code,

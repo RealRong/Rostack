@@ -10,10 +10,6 @@ import {
 import { view } from '@dataview/core/view'
 import { entityTable } from '@shared/core'
 import {
-  projectDocumentDelta
-} from '@dataview/engine/mutation/documentDelta'
-import {
-  applyDocumentDelta,
   createDocumentSourceRuntime,
   resetDocumentSource
 } from '@dataview/runtime/source/createDocumentSource'
@@ -79,7 +75,7 @@ const createDocument = (
   meta: {}
 })
 
-test('document source applies typed ValueRef delta without decode adapters', () => {
+test('document source reflects latest snapshot values without decode adapters', () => {
   const previous = createDocument(createRecord('todo'))
   const next = createDocument(createRecord('done'))
   const runtime = createDocumentSourceRuntime()
@@ -91,24 +87,8 @@ test('document source applies typed ValueRef delta without decode adapters', () 
     }
   })
 
-  const delta = projectDocumentDelta({
-    previous,
-    next,
-    trace: {
-      records: {
-        touched: new Set(['rec_1'])
-      },
-      values: {
-        touched: new Map([
-          ['rec_1', new Set([FIELD_STATUS])]
-        ])
-      }
-    }
-  })
-
-  applyDocumentDelta({
+  resetDocumentSource({
     runtime,
-    delta,
     snapshot: {
       doc: next
     }

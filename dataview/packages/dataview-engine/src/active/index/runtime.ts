@@ -36,8 +36,8 @@ import {
   createIndexStageTrace,
   fullRebuildFrom,
   searchEntryCountOf,
-  touchedFieldCountOfImpact,
-  touchedRecordCountOfImpact
+  touchedFieldCountOfDelta,
+  touchedRecordCountOfDelta
 } from '@dataview/engine/active/index/trace'
 import type {
   BucketKey,
@@ -47,15 +47,22 @@ import type {
   IndexState,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
+import type {
+  MutationDelta
+} from '@shared/mutation'
 import {
   now
 } from '@dataview/engine/runtime/clock'
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'
-import type {
-  BaseImpact
-} from '@dataview/engine/active/projection/impact'
+import {
+  hasRecordSetChange,
+  readSchemaFields,
+  readTouchedFields,
+  readTouchedRecords,
+  readValueFields
+} from '@dataview/engine/active/projection/dirty'
 import {
   createCalculationTransition,
   createMembershipTransition
@@ -79,20 +86,32 @@ const createIndexReadContext = (
 
 const createIndexDeriveContext = (
   document: DataDoc,
-  impact: BaseImpact
-): IndexDeriveContext => ({
-  ...createIndexReadContext(document),
-  schemaFields: impact.schemaFields,
-  valueFields: impact.valueFields,
-  touchedFields: impact.touchedFields,
-  touchedRecords: impact.touchedRecords,
-  recordSetChanged: impact.recordSetChanged,
-  changed: Boolean(
-    impact.trace.reset
-    || impact.trace.records
-    || impact.trace.fields?.schema
-  )
-})
+  delta: MutationDelta
+): IndexDeriveContext => {
+  const touchedRecords = readTouchedRecords(delta)
+  const touchedFields = readTouchedFields(delta)
+  const schemaFields = readSchemaFields(delta)
+  const valueFields = readValueFields(delta)
+  const recordSetChanged = hasRecordSetChange(delta)
+
+  return {
+    ...createIndexReadContext(document),
+    schemaFields,
+    valueFields,
+    touchedFields,
+    touchedRecords,
+    recordSetChanged,
+    changed: Boolean(
+      delta.reset === true
+      || recordSetChanged
+      || touchedRecords === 'all'
+      || (touchedRecords instanceof Set && touchedRecords.size > 0)
+      || touchedFields === 'all'
+      || (touchedFields instanceof Set && touchedFields.size > 0)
+      || schemaFields.size > 0
+    )
+  }
+}
 
 const buildState = (
   document: DataDoc,
@@ -129,16 +148,16 @@ export const deriveIndex = (input: {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
-  impact: BaseImpact
+  delta: MutationDelta
   demand?: NormalizedIndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
-  const context = createIndexDeriveContext(input.document, input.impact)
+  const context = createIndexDeriveContext(input.document, input.delta)
   const nextDemand = input.demand ?? input.previousDemand
   const totalStart = now()
-  const touchedRecordCount = touchedRecordCountOfImpact(input.impact)
-  const touchedFieldCount = touchedFieldCountOfImpact(input.impact)
-  const rebuild = fullRebuildFrom(input.impact)
+  const touchedRecordCount = touchedRecordCountOfDelta(input.delta)
+  const touchedFieldCount = touchedFieldCountOfDelta(input.delta)
+  const rebuild = fullRebuildFrom(input.delta)
   const bucketDelta = createMembershipTransition<BucketKey, RecordId>()
   const calculationDelta = createCalculationTransition()
 

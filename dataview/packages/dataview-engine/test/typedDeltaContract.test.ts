@@ -9,9 +9,8 @@ import {
 } from '@dataview/core/types'
 import { view } from '@dataview/core/view'
 import { entityTable } from '@shared/core'
-import {
-  projectDocumentDelta
-} from '@dataview/engine/mutation/documentDelta'
+import { createEngine } from '@dataview/engine'
+import { dataviewSpec } from '@dataview/react'
 
 const FIELD_STATUS = 'status'
 const VIEW_ID = 'view_table'
@@ -74,36 +73,30 @@ const createDocument = (
   meta: {}
 })
 
-test('projectDocumentDelta emits typed ValueRef updates without structural record churn', () => {
-  const previous = createDocument(createRecord('todo'))
-  const next = createDocument(createRecord('done'))
-
-  const delta = projectDocumentDelta({
-    previous,
-    next,
-    trace: {
-      records: {
-        touched: new Set(['rec_1'])
-      },
-      values: {
-        touched: new Map([
-          ['rec_1', new Set([FIELD_STATUS])]
-        ])
-      }
+test('engine commit keeps typed record value paths without structural record churn', () => {
+  const engine = createEngine({
+    spec: dataviewSpec,
+    document: createDocument(createRecord('todo'))
+  })
+  const writes = []
+  const unsubscribe = engine.commits.subscribe((commit) => {
+    if (commit.kind === 'apply') {
+      writes.push(commit)
     }
   })
 
-  assert.ok(delta)
-  assert.deepEqual([...delta.records.added], [])
-  assert.deepEqual([...delta.records.updated], ['rec_1'])
-  assert.deepEqual([...delta.records.removed], [])
-  assert.deepEqual([...delta.values.added], [])
-  assert.deepEqual(
-    [...delta.values.updated],
-    [{
-      recordId: 'rec_1',
-      fieldId: FIELD_STATUS
-    }]
-  )
-  assert.deepEqual([...delta.values.removed], [])
+  engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
+  unsubscribe()
+
+  assert.equal(writes.length, 1)
+  assert.deepEqual(writes[0]?.delta, {
+    changes: {
+      'record.values': {
+        ids: ['rec_1'],
+        paths: {
+          rec_1: [FIELD_STATUS]
+        }
+      }
+    }
+  })
 })

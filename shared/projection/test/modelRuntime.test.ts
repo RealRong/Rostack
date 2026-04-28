@@ -1,98 +1,93 @@
 import { store } from '../../core/src/index.ts'
 import { expect, it } from 'vitest'
-import {
-  createProjectionRuntime,
-  type ProjectionSpec
-} from '../src'
+import { createProjection } from '../src'
 
 type Item = {
   id: string
   value: number
 }
 
-it('projection runtime family surfaces expose keyed subscriptions', () => {
-  const spec = {
+it('projection runtime exposes current output and keyed family subscriptions', () => {
+  const runtime = createProjection({
     createState: () => ({
       items: new Map<string, Item>()
     }),
     createRead: () => ({}),
+    output: ({ state, revision }) => ({
+      revision,
+      count: state.items.size
+    }),
     surface: {
       items: {
-        kind: 'family',
+        kind: 'family' as const,
         read: (state: {
           items: Map<string, Item>
         }) => ({
           ids: [...state.items.keys()],
           byId: state.items
-        })
+        }),
+        patch: {
+          create: ['items.write'],
+          update: ['items.write'],
+          remove: ['items.remove'],
+          order: ['items.order']
+        }
       }
     },
-    plan: () => ({
-      phases: ['items'] as const
-    }),
     phases: {
-      items: {
-        after: [] as const,
-        run: (context: {
-          input: readonly Item[]
-          state: {
-            items: Map<string, Item>
-          }
-        }) => {
-          context.state.items = new Map(
-            context.input.map((item) => [item.id, item] as const)
-          )
+      items: (ctx) => {
+        ctx.state.items = new Map(
+          ctx.input.items.map((item: Item) => [item.id, item] as const)
+        )
+        ctx.phase.items.changed = true
+      }
+    }
+  })
 
-          return {
-            action: 'sync' as const
-          }
-        }
-      }
-    }
-  } satisfies ProjectionSpec<
-    readonly Item[],
-    {
-      items: Map<string, Item>
-    },
-    {},
-    {
-      items: {
-        kind: 'family'
-        read(state: {
-          items: Map<string, Item>
-        }): {
-          ids: readonly string[]
-          byId: ReadonlyMap<string, Item>
-        }
-      }
-    },
-    'items',
-    {
-      items: undefined
-    }
-  >
-  const runtime = createProjectionRuntime(spec)
   const projected = store.createKeyedDerivedStore<string, number | undefined>({
     get: (id) => store.read(runtime.stores.items.byId, id)?.value
   })
 
   expect(projected.get('a')).toBeUndefined()
+  expect(runtime.current()).toEqual({
+    revision: 0,
+    count: 0
+  })
 
-  runtime.update([
-    {
+  const first = runtime.update({
+    delta: {
+      changes: {
+        'items.write': ['a']
+      }
+    },
+    items: [{
       id: 'a',
       value: 1
-    }
-  ])
+    }]
+  })
 
   expect(projected.get('a')).toBe(1)
+  expect(first.output).toEqual({
+    revision: 1,
+    count: 1
+  })
+  expect(runtime.current()).toEqual(first.output)
 
-  runtime.update([
-    {
+  runtime.update({
+    delta: {
+      changes: {
+        'items.write': ['a']
+      }
+    },
+    items: [{
       id: 'a',
       value: 2
-    }
-  ])
+    }]
+  })
 
   expect(projected.get('a')).toBe(2)
+  expect(runtime.current()).toEqual({
+    revision: 2,
+    count: 1
+  })
 })

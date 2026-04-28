@@ -1,9 +1,9 @@
 import { store } from '@shared/core'
 import {
   type ApplyCommit,
-  mutationFailure,
-  type CommitRecord,
   type HistoryPort,
+  type MutationCommitRecord,
+  type MutationReplaceResult,
   type Origin
 } from '@shared/mutation'
 import {
@@ -116,7 +116,7 @@ export type MutationCollabEngine<
 > = {
   commits: {
     subscribe(
-      listener: (commit: CommitRecord<Doc, Op, Key, any>) => void
+      listener: (commit: MutationCommitRecord<Doc, Op, Key>) => void
     ): () => void
   }
   history: HistoryPort<Result, Op, Key, Commit>
@@ -126,7 +126,7 @@ export type MutationCollabEngine<
     options?: {
       origin?: Origin
     }
-  ): boolean
+  ): MutationReplaceResult<Doc>
   apply(
     operations: readonly Op[],
     options?: {
@@ -220,18 +220,6 @@ export const createMutationCollabSession = <
       && bootstrapped
       && (options.policy?.canObserve?.() ?? true)
     ),
-    onUnavailable: (reason, action) => mutationFailure(
-      'cancelled',
-      reason === 'cannot-apply'
-        ? 'Collaboration session is not connected.'
-        : reason === 'empty'
-          ? (
-              action === 'undo'
-                ? 'Nothing to undo.'
-                : 'Nothing to redo.'
-            )
-          : 'History is unavailable.'
-    ) as unknown as Result,
     confirmOnSuccess: false,
     cancelOnFailure: 'invalidate'
   })
@@ -297,12 +285,9 @@ export const createMutationCollabSession = <
       try {
         const effect = options.change.read(change)
         if (effect.kind === 'replace') {
-          const replaced = engine.replace(effect.document, {
+          engine.replace(effect.document, {
             origin: 'remote'
           })
-          if (!replaced) {
-            trackRejected(change.id)
-          }
           return
         }
 
@@ -360,14 +345,14 @@ export const createMutationCollabSession = <
   }
 
   const publishCommit = (
-    commit: CommitRecord<Doc, Op, Key, any>
+    commit: MutationCommitRecord<Doc, Op, Key>
   ) => {
     if (commit.origin === 'remote' || suppressLocalPublish) {
       return
     }
 
     if (commit.kind === 'replace') {
-      publishCheckpoint(commit.doc)
+      publishCheckpoint(commit.document)
       history.clear()
       return
     }
@@ -441,13 +426,9 @@ export const createMutationCollabSession = <
         ? options.document.checkpoint.read(plan.checkpoint)
         : options.document.empty()
 
-      const replaced = engine.replace(baseDocument, {
+      engine.replace(baseDocument, {
         origin: 'remote'
       })
-      if (!replaced) {
-        throw new Error('Collab reset replace failed.')
-      }
-
       replayChanges(plan.changes)
     } finally {
       suppressLocalPublish = false

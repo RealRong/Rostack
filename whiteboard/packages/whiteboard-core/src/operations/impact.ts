@@ -9,17 +9,8 @@ import type {
   EdgeId,
   Invalidation,
   KernelReadImpact,
-  NodeId,
-  Operation
+  NodeId
 } from '@whiteboard/core/types'
-import type {
-  WhiteboardReduceCtx,
-  WhiteboardReduceExtra
-} from '../types'
-import { readWhiteboardReduceInternal } from '../context'
-import {
-  materializeDraftDocument
-} from './state'
 
 const EMPTY_NODE_IDS: readonly NodeId[] = []
 const EMPTY_EDGE_IDS: readonly EdgeId[] = []
@@ -150,43 +141,5 @@ export const deriveImpact = (
       list: reset || trace.summary.canvasOrder,
       value: reset || nodeTouched || edgeTouched
     }
-  }
-}
-
-export const readLockViolationMessage = (
-  reason: 'locked-node' | 'locked-edge' | 'locked-relation',
-  operation: Operation
-) => {
-  const action = (
-    operation.type === 'node.create'
-    || operation.type === 'edge.create'
-  )
-    ? 'duplicated'
-    : 'modified'
-
-  if (reason === 'locked-node') {
-    return `Locked nodes cannot be ${action}.`
-  }
-  if (reason === 'locked-edge') {
-    return `Locked edges cannot be ${action}.`
-  }
-  return `Locked node relations cannot be ${action}.`
-}
-
-export const finishWhiteboardReduce = (
-  ctx: WhiteboardReduceCtx
-): WhiteboardReduceExtra => {
-  const internal = readWhiteboardReduceInternal(ctx)
-  const { state } = internal
-
-  const doc = materializeDraftDocument(state.draft)
-  const invalidation = state.invalidation
-  internal.base.replace(doc)
-  return {
-    changes: state.changes,
-    invalidation,
-    impact: state.replaced
-      ? RESET_READ_IMPACT
-      : deriveImpact(invalidation)
   }
 }

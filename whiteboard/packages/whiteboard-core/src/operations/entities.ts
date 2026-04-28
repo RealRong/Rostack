@@ -75,14 +75,11 @@ export const whiteboardEntities = {
       root: 'field',
       members: 'record',
       children: 'record',
-      layout: 'record',
-      meta: 'record'
+      layout: 'record'
     },
     change: {
       structure: ['root', 'members.**', 'children.**'],
-      layout: ['layout.**'],
-      meta: ['meta.**']
+      layout: ['layout.**']
     }
   }
 } as const satisfies Readonly<Record<string, MutationEntitySpec>>
-

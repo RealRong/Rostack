@@ -73,8 +73,7 @@ const compileMindmapCreate = (
       root: rootId,
       members,
       children: instantiated.tree.children,
-      layout: instantiated.tree.layout,
-      meta: instantiated.tree.meta
+      layout: instantiated.tree.layout
     },
     nodes
   })
@@ -215,7 +214,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
         type: 'mindmap.branch.patch',
         id: intent.id,
         topicId: nextId,
-        fields: {
+        patch: {
           color: source.branchStyle.color,
           line: source.branchStyle.line,
           width: source.branchStyle.width,

@@ -133,7 +133,7 @@ const createDocument = () => {
           type: 'kanban'
         })
       },
-      order: [VIEW_TABLE, VIEW_BOARD]
+      ids: [VIEW_TABLE, VIEW_BOARD]
     },
     records: {
       byId: {
@@ -162,7 +162,7 @@ const createDocument = () => {
           }
         }
       },
-      order: ['rec_1', 'rec_2', 'rec_3']
+      ids: ['rec_1', 'rec_2', 'rec_3']
     },
     meta: {}
   }

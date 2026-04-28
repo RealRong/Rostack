@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
-import { createProjectionRuntime } from '../src'
+import type { MutationDelta } from '@shared/mutation'
+import { createProjection } from '../src'
 
 type Item = {
   id: string
@@ -7,11 +8,11 @@ type Item = {
 }
 
 type Input = {
+  delta: MutationDelta
   value: number
-  skipValue?: boolean
-  skipItems?: boolean
   items?: readonly Item[]
-  itemDelta?: 'replace' | 'skip' | {
+  skipValue?: boolean
+  customPatch?: 'replace' | 'skip' | {
     order?: true
     set?: readonly string[]
     remove?: readonly string[]
@@ -21,12 +22,11 @@ type Input = {
 type State = {
   value: number
   skipValue: boolean
-  skipItems: boolean
   items: {
     ids: readonly string[]
     byId: ReadonlyMap<string, Item>
   }
-  itemDelta: Input['itemDelta']
+  customPatch: Input['customPatch']
 }
 
 const sameOrder = <T,>(
@@ -40,85 +40,73 @@ const sameOrder = <T,>(
 const createRuntime = (hooks: {
   onReadValue?(): void
   onReadItems?(): void
-} = {}) => createProjectionRuntime<
-  Input,
-  State,
-  {},
-  {
-    value: {
-      kind: 'value'
-      read(state: State): number
-      changed(context: { state: State }): boolean
-    }
-    items: {
-      kind: 'family'
-      read(state: State): State['items']
-      changed(context: { state: State }): boolean
-      idsEqual(left: readonly string[], right: readonly string[]): boolean
-      delta(context: {
-        state: State
-        previous: State['items']
-        next: State['items']
-      }): Input['itemDelta']
-    }
-  },
-  'apply',
-  {
-    apply: undefined
-  }
->({
-  createState: () => ({
+} = {}) => createProjection({
+  createState: (): State => ({
     value: 0,
     skipValue: false,
-    skipItems: false,
     items: {
       ids: [],
       byId: new Map()
     },
-    itemDelta: 'replace'
+    customPatch: 'replace'
   }),
   createRead: () => ({}),
+  output: ({ state }) => ({
+    value: state.value,
+    itemCount: state.items.ids.length
+  }),
   surface: {
     value: {
-      kind: 'value',
-      read: (state) => {
+      kind: 'value' as const,
+      read: (state: State) => {
         hooks.onReadValue?.()
         return state.value
       },
-      changed: ({ state }) => !state.skipValue
+      changed: ({ state }: { state: State }) => !state.skipValue
+    },
+    declaredValue: {
+      kind: 'value' as const,
+      read: (state: State) => state.value,
+      changed: {
+        keys: ['value.changed']
+      }
     },
     items: {
-      kind: 'family',
-      read: (state) => {
+      kind: 'family' as const,
+      read: (state: State) => {
         hooks.onReadItems?.()
         return state.items
       },
-      changed: ({ state }) => !state.skipItems,
       idsEqual: sameOrder,
-      delta: ({ state }) => state.itemDelta
+      patch: {
+        create: ['items.create'],
+        update: ['items.update'],
+        remove: ['items.remove'],
+        order: ['items.order']
+      }
+    },
+    customItems: {
+      kind: 'family' as const,
+      read: (state: State) => state.items,
+      idsEqual: sameOrder,
+      changed: {
+        keys: ['items.custom']
+      },
+      patch: ({ state }: { state: State }) => state.customPatch ?? 'replace'
     }
   },
-  plan: () => ({
-    phases: ['apply'] as const
-  }),
   phases: {
-    apply: {
-      after: [] as const,
-      run: ({ input, state }) => {
-        state.value = input.value
-        state.skipValue = input.skipValue === true
-        state.skipItems = input.skipItems === true
-        state.items = input.items
-          ? {
-              ids: input.items.map((item) => item.id),
-              byId: new Map(input.items.map((item) => [item.id, item] as const))
-            }
-          : state.items
-        state.itemDelta = input.itemDelta ?? 'replace'
-        return {
-          action: 'sync' as const
-        }
-      }
+    apply: (ctx) => {
+      ctx.state.value = ctx.input.value
+      ctx.state.skipValue = ctx.input.skipValue === true
+      ctx.state.items = ctx.input.items
+        ? {
+            ids: ctx.input.items.map((item) => item.id),
+            byId: new Map(ctx.input.items.map((item) => [item.id, item] as const))
+          }
+        : ctx.state.items
+      ctx.state.customPatch = ctx.input.customPatch
+      ctx.phase.apply.changed = true
     }
   }
 })
@@ -138,6 +126,7 @@ it('value field changed=false skips read and notification', async () => {
   })
 
   runtime.update({
+    delta: {},
     value: 1,
     skipValue: true
   })
@@ -148,82 +137,45 @@ it('value field changed=false skips read and notification', async () => {
   expect(runtime.stores.value.get()).toBe(0)
 })
 
-it('family field changed=false skips read and notification', async () => {
-  let reads = 0
-  const runtime = createRuntime({
-    onReadItems: () => {
-      reads += 1
-    }
-  })
-
-  runtime.update({
-    value: 0,
-    items: [{
-      id: 'a',
-      value: 1
-    }],
-    itemDelta: 'replace'
-  })
-  reads = 0
-
+it('declared changed keys gate value store updates', async () => {
+  const runtime = createRuntime()
   let notifications = 0
-  runtime.stores.items.byId.subscribe('a', () => {
+  runtime.stores.declaredValue.subscribe(() => {
     notifications += 1
   })
 
   runtime.update({
-    value: 0,
-    skipItems: true,
-    items: [{
-      id: 'a',
-      value: 2
-    }],
-    itemDelta: {
-      set: ['a']
-    }
-  })
-  await Promise.resolve()
-
-  expect(reads).toBe(0)
-  expect(notifications).toBe(0)
-  expect(runtime.stores.items.byId.get('a')?.value).toBe(1)
-})
-
-it('family field delta=skip avoids store writes', async () => {
-  const runtime = createRuntime()
-
-  runtime.update({
-    value: 0,
-    items: [{
-      id: 'a',
-      value: 1
-    }],
-    itemDelta: 'replace'
-  })
-
-  let notifications = 0
-  runtime.stores.items.byId.subscribe('a', () => {
-    notifications += 1
-  })
-
-  runtime.update({
-    value: 0,
-    items: [{
-      id: 'a',
-      value: 2
-    }],
-    itemDelta: 'skip'
+    delta: {},
+    value: 1
   })
   await Promise.resolve()
 
   expect(notifications).toBe(0)
-  expect(runtime.stores.items.byId.get('a')?.value).toBe(1)
+  expect(runtime.stores.declaredValue.get()).toBe(0)
+
+  runtime.update({
+    delta: {
+      changes: {
+        'value.changed': true
+      }
+    },
+    value: 2
+  })
+  await Promise.resolve()
+
+  expect(notifications).toBe(1)
+  expect(runtime.stores.declaredValue.get()).toBe(2)
 })
 
-it('family field delta apply only patches touched keys and preserves ids reference', async () => {
+it('simple family patch applies only touched keys and preserves ids reference', async () => {
   const runtime = createRuntime()
 
   runtime.update({
+    delta: {
+      changes: {
+        'items.create': ['a', 'b']
+      }
+    },
     value: 0,
     items: [{
       id: 'a',
@@ -231,8 +183,7 @@ it('family field delta apply only patches touched keys and preserves ids referen
     }, {
       id: 'b',
       value: 1
-    }],
-    itemDelta: 'replace'
+    }]
   })
 
   const previousIds = runtime.stores.items.ids.get()
@@ -246,6 +197,11 @@ it('family field delta apply only patches touched keys and preserves ids referen
   })
 
   runtime.update({
+    delta: {
+      changes: {
+        'items.update': ['a']
+      }
+    },
     value: 0,
     items: [{
       id: 'a',
@@ -253,10 +209,7 @@ it('family field delta apply only patches touched keys and preserves ids referen
     }, {
       id: 'b',
       value: 9
-    }],
-    itemDelta: {
-      set: ['a']
-    }
+    }]
   })
   await Promise.resolve()
 
@@ -265,4 +218,45 @@ it('family field delta apply only patches touched keys and preserves ids referen
   expect(runtime.stores.items.byId.get('a')?.value).toBe(2)
   expect(runtime.stores.items.byId.get('b')?.value).toBe(1)
   expect(runtime.stores.items.ids.get()).toBe(previousIds)
+})
+
+it('custom family patch builder can skip writes', async () => {
+  const runtime = createRuntime()
+
+  runtime.update({
+    delta: {
+      changes: {
+        'items.custom': true
+      }
+    },
+    value: 0,
+    items: [{
+      id: 'a',
+      value: 1
+    }],
+    customPatch: 'replace'
+  })
+
+  let notifications = 0
+  runtime.stores.customItems.byId.subscribe('a', () => {
+    notifications += 1
+  })
+
+  runtime.update({
+    delta: {
+      changes: {
+        'items.custom': true
+      }
+    },
+    value: 0,
+    items: [{
+      id: 'a',
+      value: 2
+    }],
+    customPatch: 'skip'
+  })
+  await Promise.resolve()
+
+  expect(notifications).toBe(0)
+  expect(runtime.stores.customItems.byId.get('a')?.value).toBe(1)
 })

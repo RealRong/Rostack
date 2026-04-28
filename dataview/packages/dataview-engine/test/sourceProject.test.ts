@@ -8,9 +8,6 @@ import {
 } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
 import { dataviewSpec } from '@dataview/react'
-import {
-  projectDocumentDelta
-} from '@dataview/engine/mutation/documentDelta'
 import { entityTable } from '@shared/core'
 
 const VIEW_ID = 'view_table'
@@ -109,50 +106,32 @@ test('engine source records refresh after writing a value into a newly inserted 
   )
 })
 
-test('document delta omits list refresh on non-structural value writes', () => {
-  const previousDocument = createDocument()
-  const document = createDocument()
-  const nextDocument = {
-    ...document,
-    records: {
-      ...document.records,
-      byId: {
-        ...document.records.byId,
-        rec_1: {
-          ...document.records.byId.rec_1,
-          values: {
-            ...document.records.byId.rec_1.values,
-            [FIELD_STATUS]: 'done'
-          }
+test('engine commit exposes normalized MutationDelta for non-structural value writes', () => {
+  const engine = createEngine({
+    spec: dataviewSpec,
+    document: createDocument()
+  })
+  const writes = []
+  const unsubscribe = engine.commits.subscribe((commit) => {
+    if (commit.kind === 'apply') {
+      writes.push(commit)
+    }
+  })
+
+  engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
+  unsubscribe()
+
+  assert.equal(writes.length, 1)
+  assert.deepEqual(writes[0]?.delta, {
+    changes: {
+      'record.values': {
+        ids: ['rec_1'],
+        paths: {
+          rec_1: [FIELD_STATUS]
         }
       }
     }
-  }
-
-  const output = projectDocumentDelta({
-    previous: previousDocument,
-    next: nextDocument,
-    trace: {
-      records: {
-        touched: new Set(['rec_1'])
-      },
-      values: {
-        touched: new Map([
-          ['rec_1', new Set([FIELD_STATUS])]
-        ])
-      }
-    },
   })
-
-  assert.deepEqual([...output?.records.added ?? []], [])
-  assert.deepEqual([...output?.records.updated ?? []], ['rec_1'])
-  assert.deepEqual([...output?.records.removed ?? []], [])
-  assert.deepEqual([...output?.values.added ?? []], [])
-  assert.deepEqual([...output?.values.updated ?? []], [{
-    recordId: 'rec_1',
-    fieldId: FIELD_STATUS
-  }])
-  assert.deepEqual([...output?.values.removed ?? []], [])
 })
 
 test('active summary follows snapshot changes without source adapter', () => {

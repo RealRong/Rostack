@@ -229,8 +229,8 @@ export const resolveLockDecision = ({
 const isNodeLockOnlyPatch = (
   operation: Extract<Operation, { type: 'node.patch' }>
 ) => {
-  const fields = operation.fields
-  if (!fields || operation.record) {
+  const fields = operation.patch
+  if (!fields || Object.hasOwn(operation.patch, 'data') || Object.hasOwn(operation.patch, 'style')) {
     return false
   }
 
@@ -241,8 +241,14 @@ const isNodeLockOnlyPatch = (
 const isEdgeLockOnlyPatch = (
   operation: Extract<Operation, { type: 'edge.patch' }>
 ) => {
-  const fields = operation.fields
-  if (!fields || operation.record) {
+  const fields = operation.patch
+  if (
+    !fields
+    || Object.hasOwn(operation.patch, 'route')
+    || Object.hasOwn(operation.patch, 'style')
+    || Object.hasOwn(operation.patch, 'labels')
+    || Object.hasOwn(operation.patch, 'data')
+  ) {
     return false
   }
 
@@ -253,8 +259,8 @@ const isEdgeLockOnlyPatch = (
 const isMindmapTopicLockOnlyPatch = (
   operation: Extract<Operation, { type: 'mindmap.topic.patch' }>
 ) => {
-  const fields = operation.fields
-  if (!fields || operation.record) {
+  const fields = operation.patch
+  if (!fields || Object.hasOwn(operation.patch, 'data') || Object.hasOwn(operation.patch, 'style')) {
     return false
   }
 
@@ -289,10 +295,7 @@ const readLockViolationForOperation = ({
 }): Omit<LockOperationViolation, 'operation'> | undefined => {
   switch (operation.type) {
     case 'node.create':
-      updateNodeLocked(operation.node.id, Boolean(operation.node.locked))
-      return undefined
-    case 'node.restore':
-      updateNodeLocked(operation.node.id, Boolean(operation.node.locked))
+      updateNodeLocked(operation.value.id, Boolean(operation.value.locked))
       return undefined
     case 'node.patch': {
       if (readNodeLocked(operation.id) && !isNodeLockOnlyPatch(operation)) {
@@ -303,8 +306,8 @@ const readLockViolationForOperation = ({
         }
       }
 
-      if (operation.fields && hasOwn(operation.fields, 'locked')) {
-        updateNodeLocked(operation.id, Boolean(operation.fields.locked))
+      if (hasOwn(operation.patch, 'locked')) {
+        updateNodeLocked(operation.id, Boolean(operation.patch.locked))
       }
       return undefined
     }
@@ -321,7 +324,7 @@ const readLockViolationForOperation = ({
     case 'edge.create': {
       const lockedNodeIds = collectLockedNodeIdsFromEnds(
         readNodeLocked,
-        [operation.edge.source, operation.edge.target]
+        [operation.value.source, operation.value.target]
       )
       return lockedNodeIds.length
         ? {
@@ -357,10 +360,9 @@ const readLockViolationForOperation = ({
 
       if (
         operation.type === 'edge.patch'
-        && operation.fields
-        && hasOwn(operation.fields, 'locked')
+        && hasOwn(operation.patch, 'locked')
       ) {
-        updateEdgeLocked(edgeId, Boolean(operation.fields.locked))
+        updateEdgeLocked(edgeId, Boolean(operation.patch.locked))
       }
 
       if (operation.type !== 'edge.patch') {
@@ -372,8 +374,8 @@ const readLockViolationForOperation = ({
         return undefined
       }
 
-      const nextSource = readNextEdgeEnd(current.source, operation.fields, 'source')
-      const nextTarget = readNextEdgeEnd(current.target, operation.fields, 'target')
+      const nextSource = readNextEdgeEnd(current.source, operation.patch, 'source')
+      const nextTarget = readNextEdgeEnd(current.target, operation.patch, 'target')
       const sourceChanged = !edgeApi.equal.sameEnd(current.source, nextSource)
       const targetChanged = !edgeApi.equal.sameEnd(current.target, nextTarget)
       if (!sourceChanged && !targetChanged) {
@@ -519,8 +521,8 @@ const readLockViolationForOperation = ({
         }
       }
 
-      if (operation.fields && hasOwn(operation.fields, 'locked')) {
-        updateNodeLocked(operation.topicId, Boolean(operation.fields.locked))
+      if (hasOwn(operation.patch, 'locked')) {
+        updateNodeLocked(operation.topicId, Boolean(operation.patch.locked))
       }
       return undefined
     }
@@ -638,11 +640,11 @@ export const validateLockOperations = ({
 
     switch (operation.type) {
       case 'edge.create':
-        updateEdge(operation.edge.id, {
-          source: operation.edge.source,
-          target: operation.edge.target
+        updateEdge(operation.value.id, {
+          source: operation.value.source,
+          target: operation.value.target
         })
-        updateEdgeLocked(operation.edge.id, Boolean(operation.edge.locked))
+        updateEdgeLocked(operation.value.id, Boolean(operation.value.locked))
         break
       case 'edge.patch': {
         const current = readEdge(operation.id)
@@ -651,8 +653,8 @@ export const validateLockOperations = ({
         }
 
         updateEdge(operation.id, {
-          source: readNextEdgeEnd(current.source, operation.fields, 'source'),
-          target: readNextEdgeEnd(current.target, operation.fields, 'target')
+          source: readNextEdgeEnd(current.source, operation.patch, 'source'),
+          target: readNextEdgeEnd(current.target, operation.patch, 'target')
         })
         break
       }

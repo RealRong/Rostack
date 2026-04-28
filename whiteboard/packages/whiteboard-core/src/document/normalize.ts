@@ -5,7 +5,7 @@ import { sanitizeDocument } from './sanitize'
 export const normalizeDocument = (
   document: Document
 ): Document => {
-  return sanitizeDocument(
-    documentApi.assert(document)
+  return documentApi.assert(
+    sanitizeDocument(document)
   )
 }

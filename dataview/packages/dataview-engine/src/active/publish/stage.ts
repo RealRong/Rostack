@@ -1,12 +1,10 @@
-import type { ActiveDelta } from '@dataview/engine/contracts/delta'
-import {
-  activeChange
-} from '@dataview/engine/contracts/delta'
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import type {
+  ItemId,
   ItemList,
+  SectionId,
   SectionList,
   ViewRecords,
   ViewSummaries
@@ -14,11 +12,7 @@ import type {
 import type {
   MembershipPhaseState,
   QueryPhaseState,
-  SummaryPhaseDelta,
   SummaryPhaseState
-} from '@dataview/engine/active/state'
-import {
-  EMPTY_SUMMARY_PHASE_DELTA
 } from '@dataview/engine/active/state'
 import {
   publishViewBase
@@ -32,9 +26,6 @@ import {
 import {
   publishSummaries
 } from '@dataview/engine/active/publish/summaries'
-import {
-  projectActiveDelta
-} from '@dataview/engine/active/publish/activeDelta'
 import type {
   DocumentReader
 } from '@dataview/engine/document/reader'
@@ -44,6 +35,7 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type { ItemIdPool } from './itemIdPool'
+import type { EntityDelta } from '@shared/delta'
 import {
   type ActiveProjectionPhase,
   readActiveView
@@ -52,7 +44,10 @@ import {
   createActiveStageMetrics,
   toActivePhaseMetrics
 } from '../projection/metrics'
-import { publishPhaseScope } from '../projection/types'
+import {
+  publishPhaseScope,
+  type PublishPhaseScope
+} from '../projection/types'
 
 const SNAPSHOT_KEYS = [
   'view',
@@ -76,21 +71,14 @@ const createPublishReset = (
   previous: ViewState | undefined
 ): {
   snapshot?: undefined
-  delta?: ActiveDelta
   action: 'reuse' | 'sync'
 } => previous
   ? {
       snapshot: undefined,
-      delta: (() => {
-        const delta = activeChange.create()
-        activeChange.flag(delta, 'reset')
-        return activeChange.take(delta)
-      })(),
       action: 'sync'
     }
   : {
       snapshot: undefined,
-      delta: undefined,
       action: 'reuse'
     }
 
@@ -118,7 +106,7 @@ const publishViewRecords = (input: {
   }
 }
 
-const runPublishStage = (input: {
+export const runPublishStage = (input: {
   reader: DocumentReader
   activeViewId: ViewId
   previous?: ViewState
@@ -130,14 +118,14 @@ const runPublishStage = (input: {
   previousSections?: SectionList
   previousItems?: ItemList
   summaryState: SummaryPhaseState
-  summaryDelta: SummaryPhaseDelta
   previousSummaryState?: SummaryPhaseState
   previousSummaries?: ViewSummaries
   itemIds: ItemIdPool
 }): {
   action: 'reuse' | 'sync' | 'rebuild'
   snapshot?: ViewState
-  delta?: ActiveDelta
+  sectionPatch?: EntityDelta<SectionId>
+  itemPatch?: EntityDelta<ItemId>
   deriveMs: number
   publishMs: number
   metrics: ReturnType<typeof createActiveStageMetrics>
@@ -214,13 +202,6 @@ const runPublishStage = (input: {
       })
     : undefined
   const snapshot = published?.value
-  const delta = projectActiveDelta({
-    previous: input.previous,
-    next: snapshot,
-    sections: sections.delta?.sections,
-    items: sections.delta?.items,
-    summaries: input.summaryDelta
-  })
   const publishMs = now() - publishStart
   const outputCount = SNAPSHOT_KEYS.length
 
@@ -234,9 +215,14 @@ const runPublishStage = (input: {
           ? 'rebuild'
           : 'sync',
     snapshot,
-    ...(delta
+    ...(sections.delta?.sections
       ? {
-          delta
+          sectionPatch: sections.delta.sections
+        }
+      : {}),
+    ...(sections.delta?.items
+      ? {
+          itemPatch: sections.delta.items
         }
       : {}),
     deriveMs: 0,
@@ -256,13 +242,12 @@ export const activePublishPhase: ActiveProjectionPhase<'publish'> = {
   after: ['query', 'membership', 'summary'],
   scope: publishPhaseScope,
   run: (context) => {
-    const scope = context.scope
+    const scope = context.scope as PublishPhaseScope | undefined
     const { activeViewId, view } = readActiveView(context.input)
     if (scope?.reset || !activeViewId || !view) {
       const reset = createPublishReset(context.state.publish.previous)
       context.state.publish.itemIds.gc.clear()
       context.state.publish.snapshot = reset.snapshot
-      context.state.publish.delta = reset.delta
 
       return {
         action: reset.action,
@@ -282,14 +267,12 @@ export const activePublishPhase: ActiveProjectionPhase<'publish'> = {
       previousSections: context.state.publish.previous?.sections,
       previousItems: context.state.publish.previous?.items,
       summaryState: context.state.summary.state,
-      summaryDelta: scope?.summary?.delta ?? EMPTY_SUMMARY_PHASE_DELTA,
       previousSummaryState: scope?.summary?.previous ?? context.state.summary.state,
       previousSummaries: context.state.publish.previous?.summaries,
       itemIds: context.state.publish.itemIds
     })
 
     context.state.publish.snapshot = result.snapshot
-    context.state.publish.delta = result.delta
 
     return {
       action: result.action,

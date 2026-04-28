@@ -56,7 +56,7 @@ describe('document engine subscribe', () => {
     const second = engine.apply([{
       type: 'node.patch',
       id: 'node_1',
-      fields: {
+      patch: {
         rotation: 15
       }
     }], {

@@ -8,7 +8,7 @@ import {
   document as documentApi
 } from '@whiteboard/core/document'
 import {
-  definitions
+  isCheckpointOperation
 } from '@whiteboard/core/operations'
 import type {
   Operation
@@ -28,12 +28,12 @@ const DEFAULT_CHECKPOINT_THRESHOLD = 100
 const readLiveOperations = (
   operations: readonly Operation[]
 ): {
-  live: readonly Exclude<Operation, { type: 'document.replace' }>[]
+  live: readonly Exclude<Operation, { type: 'document.create' }>[]
   checkpointOnly: boolean
 } => {
   const live = operations.filter((operation) => (
-    definitions[operation.type].sync !== 'checkpoint'
-  )) as readonly Exclude<Operation, { type: 'document.replace' }>[]
+    !isCheckpointOperation(operation)
+  )) as readonly Exclude<Operation, { type: 'document.create' }>[]
 
   if (live.length === operations.length) {
     return {

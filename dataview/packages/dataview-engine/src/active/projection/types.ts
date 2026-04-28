@@ -3,8 +3,8 @@ import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
 import type { ViewPlan } from '@dataview/engine/active/plan'
-import type { BaseImpact } from '@dataview/engine/active/projection/impact'
 import type { ItemIdPool } from '@dataview/engine/active/publish/itemIdPool'
+import type { MutationDelta } from '@shared/mutation'
 import type {
   MembershipPhaseDelta,
   MembershipPhaseState,
@@ -14,7 +14,6 @@ import type {
   SummaryPhaseDelta,
   SummaryPhaseState
 } from '@dataview/engine/active/state'
-import type { ActiveDelta } from '@dataview/engine/contracts/delta'
 import type {
   SnapshotTrace,
   ViewStageMetrics,
@@ -22,14 +21,34 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import type { ViewState } from '@dataview/engine/contracts/view'
 import type { DocumentReader } from '@dataview/engine/document/reader'
-import type {
-  ProjectionTrace,
-  ScopeInputValue,
-  ScopeSchema,
-  ScopeValue
-} from '@shared/projection'
-import {
-} from '@shared/projection'
+
+export type ScopeValue<T> = T | undefined
+export type ScopeInputValue<T> = T | undefined
+export type ScopeSchema<T> = {
+  [TKey in keyof T]-?: T[TKey] extends boolean
+    ? 'flag'
+    : 'value'
+}
+
+export interface ProjectionTracePhase<
+  TName extends string,
+  TMetrics = unknown
+> {
+  name: TName
+  action: 'reuse' | 'sync'
+  changed: boolean
+  durationMs: number
+  metrics?: TMetrics
+}
+
+export interface ProjectionTrace<
+  TName extends string,
+  TMetrics = unknown
+> {
+  revision: number
+  phases: readonly ProjectionTracePhase<TName, TMetrics>[]
+  totalMs: number
+}
 
 export type ActivePhaseName =
   | 'query'
@@ -49,7 +68,7 @@ export interface ActiveProjectionInput {
     state: IndexState
     delta?: IndexDelta
   }
-  impact: BaseImpact
+  delta: MutationDelta
 }
 
 export interface ActivePhaseMetrics extends ViewStageMetrics {
@@ -118,13 +137,11 @@ export interface ActiveProjectionWorking {
     itemIds: ItemIdPool
     previous?: ViewState
     snapshot?: ViewState
-    delta?: ActiveDelta
   }
 }
 
 export interface ActiveProjectionCapture {
   snapshot?: ViewState
-  delta?: ActiveDelta
 }
 
 export interface ActiveViewProjectionTrace {
@@ -135,7 +152,6 @@ export interface ActiveViewProjectionTrace {
 
 export interface ActiveProjectionResult {
   snapshot?: ViewState
-  delta?: ActiveDelta
   trace: ActiveViewProjectionTrace
 }
 
@@ -147,8 +163,3 @@ export type ActiveProjectionTrace = ProjectionTrace<
   ActivePhaseName,
   ActivePhaseMetrics
 >
-
-export type {
-  ScopeInputValue,
-  ScopeValue
-}

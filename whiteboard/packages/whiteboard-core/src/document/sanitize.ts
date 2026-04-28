@@ -160,7 +160,7 @@ export const sanitizeOperations = ({
   operations.forEach((operation) => {
     switch (operation.type) {
       case 'node.create': {
-        const stripped = stripLegacyNodeFields(operation.node)
+        const stripped = stripLegacyNodeFields(operation.value)
         const materialized = nodeApi.materialize.committed({
           node: stripped.node
         })
@@ -174,7 +174,7 @@ export const sanitizeOperations = ({
         ) {
           next.push({
             ...operation,
-            node: materialized.data
+            value: materialized.data
           })
           return
         }

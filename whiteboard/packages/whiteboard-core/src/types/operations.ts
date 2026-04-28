@@ -124,9 +124,7 @@ export type EdgeUpdateInput = {
 export type GroupPatch = Partial<Omit<Group, 'id'>>
 export type GroupField = 'locked' | 'name'
 
-export type DocumentPatch = {
-  background?: Document['background']
-}
+export type DocumentPatch = Partial<Pick<Document, 'id' | 'name' | 'background' | 'canvas' | 'meta'>>
 
 export type EdgeLabelField = 'text' | 't' | 'offset'
 export type EdgeLabelRecordScope = 'data' | 'style'
@@ -139,6 +137,11 @@ export type EdgeLabelFieldPatch = {
 export type EdgeLabelUpdateInput = {
   fields?: EdgeLabelFieldPatch
   record?: RecordWrite
+}
+
+export type EdgeLabelPatch = EdgeLabelFieldPatch & {
+  data?: Record<string, unknown>
+  style?: EdgeLabel['style']
 }
 
 export type EdgeRoutePointField = 'x' | 'y'
@@ -210,6 +213,11 @@ export type MindmapTopicUpdateInput = {
   record?: RecordWrite
 }
 
+export type MindmapTopicPatch = MindmapTopicFieldPatch & {
+  data?: NodeData
+  style?: NodeStyle
+}
+
 export type MindmapBranchFieldPatch = {
   color?: string
   line?: MindmapBranchLineKind
@@ -222,28 +230,25 @@ export type MindmapBranchUpdateInput = {
 }
 
 export type Op =
-  | { readonly type: 'document.replace'; readonly document: Document }
-  | { readonly type: 'document.background'; readonly background?: Background }
+  | { readonly type: 'document.create'; readonly value: Document }
+  | { readonly type: 'document.patch'; readonly patch: DocumentPatch }
   | { readonly type: 'canvas.order.move'; readonly refs: readonly CanvasItemRef[]; readonly to: CanvasOrderAnchor }
-  | { readonly type: 'node.create'; readonly node: Node }
-  | { readonly type: 'node.restore'; readonly node: Node; readonly slot?: CanvasSlot }
-  | { readonly type: 'node.patch'; readonly id: NodeId; readonly fields?: NodeFieldPatch; readonly record?: RecordWrite }
+  | { readonly type: 'node.create'; readonly value: Node }
+  | { readonly type: 'node.patch'; readonly id: NodeId; readonly patch: NodePatch }
   | { readonly type: 'node.delete'; readonly id: NodeId }
-  | { readonly type: 'edge.create'; readonly edge: Edge }
-  | { readonly type: 'edge.restore'; readonly edge: Edge; readonly slot?: CanvasSlot }
-  | { readonly type: 'edge.patch'; readonly id: EdgeId; readonly fields?: EdgeFieldPatch; readonly record?: RecordWrite }
+  | { readonly type: 'edge.create'; readonly value: Edge }
+  | { readonly type: 'edge.patch'; readonly id: EdgeId; readonly patch: EdgePatch }
   | { readonly type: 'edge.label.insert'; readonly edgeId: EdgeId; readonly label: EdgeLabel; readonly to: EdgeLabelAnchor }
   | { readonly type: 'edge.label.delete'; readonly edgeId: EdgeId; readonly labelId: string }
   | { readonly type: 'edge.label.move'; readonly edgeId: EdgeId; readonly labelId: string; readonly to: EdgeLabelAnchor }
-  | { readonly type: 'edge.label.patch'; readonly edgeId: EdgeId; readonly labelId: string; readonly fields?: EdgeLabelFieldPatch; readonly record?: RecordWrite }
+  | { readonly type: 'edge.label.patch'; readonly edgeId: EdgeId; readonly labelId: string; readonly patch: EdgeLabelPatch }
   | { readonly type: 'edge.route.point.insert'; readonly edgeId: EdgeId; readonly point: EdgeRoutePoint; readonly to: EdgeRoutePointAnchor }
   | { readonly type: 'edge.route.point.delete'; readonly edgeId: EdgeId; readonly pointId: string }
   | { readonly type: 'edge.route.point.move'; readonly edgeId: EdgeId; readonly pointId: string; readonly to: EdgeRoutePointAnchor }
-  | { readonly type: 'edge.route.point.patch'; readonly edgeId: EdgeId; readonly pointId: string; readonly fields: Partial<Record<EdgeRoutePointField, number>> }
+  | { readonly type: 'edge.route.point.patch'; readonly edgeId: EdgeId; readonly pointId: string; readonly patch: Partial<Record<EdgeRoutePointField, number>> }
   | { readonly type: 'edge.delete'; readonly id: EdgeId }
-  | { readonly type: 'group.create'; readonly group: Group }
-  | { readonly type: 'group.restore'; readonly group: Group }
-  | { readonly type: 'group.patch'; readonly id: GroupId; readonly fields?: Partial<Record<GroupField, Group[GroupField] | undefined>> }
+  | { readonly type: 'group.create'; readonly value: Group }
+  | { readonly type: 'group.patch'; readonly id: GroupId; readonly patch: GroupPatch }
   | { readonly type: 'group.delete'; readonly id: GroupId }
   | { readonly type: 'mindmap.create'; readonly mindmap: MindmapRecord; readonly nodes: Node[] }
   | { readonly type: 'mindmap.restore'; readonly snapshot: MindmapSnapshot }
@@ -254,8 +259,8 @@ export type Op =
   | { readonly type: 'mindmap.topic.restore'; readonly id: string; readonly snapshot: MindmapTopicSnapshot }
   | { readonly type: 'mindmap.topic.move'; readonly id: string; readonly input: MindmapTopicMoveInput }
   | { readonly type: 'mindmap.topic.delete'; readonly id: string; readonly input: MindmapTopicDeleteInput }
-  | { readonly type: 'mindmap.topic.patch'; readonly id: string; readonly topicId: NodeId; readonly fields?: MindmapTopicFieldPatch; readonly record?: RecordWrite }
-  | { readonly type: 'mindmap.branch.patch'; readonly id: string; readonly topicId: NodeId; readonly fields?: MindmapBranchFieldPatch }
+  | { readonly type: 'mindmap.topic.patch'; readonly id: string; readonly topicId: NodeId; readonly patch: MindmapTopicPatch }
+  | { readonly type: 'mindmap.branch.patch'; readonly id: string; readonly topicId: NodeId; readonly patch: MindmapBranchFieldPatch }
   | { readonly type: 'mindmap.topic.collapse'; readonly id: string; readonly topicId: NodeId; readonly collapsed?: boolean }
 
 export type Operation = Op

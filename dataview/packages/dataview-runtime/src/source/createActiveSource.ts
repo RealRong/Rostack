@@ -11,7 +11,6 @@ import type {
 } from '@dataview/core/types'
 import { collection, equal, store } from '@shared/core'
 import type {
-  ActiveDelta,
   ActiveViewGallery,
   ActiveViewKanban,
   ActiveViewQuery,
@@ -31,7 +30,6 @@ import type {
   SectionSource
 } from '@dataview/runtime/source/contracts'
 import {
-  applyEntityDelta,
   createSourceTableRuntime,
   createEntitySourceRuntime,
   resetEntityRuntime,
@@ -475,96 +473,5 @@ export const resetActiveSource = (input: {
   resetActiveFields({
     runtime: input.runtime,
     fields: snapshot.fields
-  })
-}
-
-export const applyActiveDelta = (input: {
-  runtime: Pick<ActiveSourceRuntime,
-    | 'viewId'
-    | 'viewType'
-    | 'view'
-    | 'query'
-    | 'table'
-    | 'gallery'
-    | 'kanban'
-    | 'recordsMatched'
-    | 'recordsOrdered'
-    | 'recordsVisible'
-    | 'items'
-    | 'sections'
-    | 'summaries'
-    | 'fields'
-  >
-  delta: ActiveDelta | undefined
-  snapshot?: ViewState
-}) => {
-  if (!input.delta) {
-    return
-  }
-
-  if (input.delta.reset) {
-    resetActiveSource(input)
-    return
-  }
-
-  const snapshot = input.snapshot
-  if (!snapshot) {
-    return
-  }
-
-  if (input.delta.view) {
-    input.runtime.viewId.set(snapshot.view.id)
-    input.runtime.viewType.set(snapshot.view.type)
-    input.runtime.view.set(snapshot.view)
-  }
-
-  if (input.delta.query) {
-    input.runtime.query.set(snapshot.query)
-  }
-  if (input.delta.table) {
-    input.runtime.table.set(snapshot.table)
-  }
-  if (input.delta.gallery) {
-    input.runtime.gallery.set(snapshot.gallery)
-  }
-  if (input.delta.kanban) {
-    input.runtime.kanban.set(snapshot.kanban)
-  }
-
-  if (input.delta.records?.matched) {
-    input.runtime.recordsMatched.set(snapshot.records.matched)
-  }
-  if (input.delta.records?.ordered) {
-    input.runtime.recordsOrdered.set(snapshot.records.ordered)
-  }
-  if (input.delta.records?.visible) {
-    input.runtime.recordsVisible.set(snapshot.records.visible)
-  }
-
-  applyEntityDelta({
-    delta: input.delta.items,
-    runtime: input.runtime.items,
-    readIds: () => snapshot.items.ids,
-    readValue: itemId => readItemPlacement(snapshot, itemId)
-  })
-  applyEntityDelta({
-    delta: input.delta.sections,
-    runtime: input.runtime.sections,
-    readIds: () => snapshot.sections.ids,
-    readValue: sectionId => snapshot.sections.get(sectionId)
-  })
-  applyEntityDelta({
-    delta: input.delta.summaries,
-    runtime: {
-      store: input.runtime.summaries.store
-    },
-    readIds: () => snapshot.sections.ids,
-    readValue: sectionId => snapshot.summaries.get(sectionId)
-  })
-  applyEntityDelta({
-    delta: input.delta.fields,
-    runtime: input.runtime.fields,
-    readIds: () => snapshot.fields.ids,
-    readValue: fieldId => snapshot.fields.get(fieldId)
   })
 }

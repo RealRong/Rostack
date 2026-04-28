@@ -1,27 +1,30 @@
-export {
-  createProjectionRuntime
-} from './runtime'
 export type {
+  ProjectionChangedKeys,
+  ProjectionContext,
+  ProjectionCreateOptions,
+  ProjectionDirty,
   ProjectionFamilyField,
+  ProjectionFamilyPatch,
+  ProjectionFamilyPatchKeys,
   ProjectionFamilySnapshot,
-  ProjectionPlan,
-  ProjectionSpec,
-  ProjectionValueField
-} from './runtime'
+  ProjectionPhase,
+  ProjectionPhaseSpec,
+  ProjectionPhaseStatus,
+  ProjectionPhaseTable,
+  ProjectionRuntime,
+  ProjectionStoreRead,
+  ProjectionSurfaceField,
+  ProjectionSurfaceTree,
+  ProjectionValueField,
+  ProjectionValueFieldSyncContext
+} from './createProjection'
+export {
+  createProjection
+} from './createProjection'
 export type {
   Action,
-  Family,
-  Flags,
   Revision
 } from './core'
-export type {
-  PhaseScopeInput,
-  PhaseScopeMap,
-  ScopeFieldSpec,
-  ScopeInputValue,
-  ScopeSchema,
-  ScopeValue
-} from './scope'
 export type {
   Phase as ProjectionTracePhase,
   Run as ProjectionTrace

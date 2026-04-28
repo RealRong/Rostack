@@ -3,33 +3,10 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type {
-  ViewState
-} from '@dataview/engine/contracts/view'
-import {
-  type ProjectionSpec
-} from '@shared/projection'
-import type {
-  ActivePhaseMetrics,
   ActivePhaseName,
-  ActiveProjectionCapture,
-  ActivePhaseScopeMap,
   ActiveProjectionInput,
-  ActiveProjectionWorking,
-  ScopeValue
+  ActiveProjectionWorking
 } from './types'
-
-type ActiveProjectionSurface = Record<never, never>
-
-type ActiveProjectionSpec = ProjectionSpec<
-  ActiveProjectionInput,
-  ActiveProjectionWorking,
-  {},
-  ActiveProjectionSurface,
-  ActivePhaseName,
-  ActivePhaseScopeMap,
-  ActivePhaseMetrics,
-  ActiveProjectionCapture
->
 
 export type ActiveProjectionContext<TScope> = {
   input: ActiveProjectionInput
@@ -40,7 +17,15 @@ export type ActiveProjectionContext<TScope> = {
 
 export type ActiveProjectionPhase<
   TName extends ActivePhaseName
-> = ActiveProjectionSpec['phases'][TName]
+> = {
+  after?: readonly ActivePhaseName[]
+  scope?: unknown
+  run: (context: ActiveProjectionContext<unknown>) => {
+    action?: 'reuse' | 'sync' | 'rebuild'
+    metrics?: unknown
+    emit?: Record<string, unknown>
+  }
+}
 
 export const readActiveView = (
   input: ActiveProjectionInput

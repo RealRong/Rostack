@@ -60,17 +60,19 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
   })
 
   assert.ok(result.ok)
-  assert.deepEqual(result.inverse, [{
+  assert.deepEqual(result.commit.inverse, [{
     type: 'node.patch',
     id: 'node_1',
-    record: {
-      'data.text': 'hello'
+    patch: {
+      data: {
+        text: 'hello'
+      }
     }
   }])
 
-  const reverted = replayInverse(result.doc, result.inverse)
+  const reverted = replayInverse(result.commit.document, result.commit.inverse)
   assert.ok(reverted.ok)
-  assert.deepEqual(reverted.doc.nodes.node_1, doc.nodes.node_1)
+  assert.deepEqual(reverted.commit.document.nodes.node_1, doc.nodes.node_1)
 })
 
 test('node.update inverse 在 set(path) 创建缺失祖先时退化为 scope 根级 set', () => {
@@ -187,8 +189,16 @@ test('node.update 会为 direct mindmap data mutation 标记 node.value', () => 
   })
 
   assert.ok(result.ok)
-  assert.equal(result.extra.impact.node.value, true)
-  assert.deepEqual(result.extra.impact.node.ids, ['mind_1'])
+  assert.deepEqual(result.commit.delta, {
+    changes: {
+      'node.content': {
+        ids: ['mind_1'],
+        paths: {
+          mind_1: ['data.meta.title']
+        }
+      }
+    }
+  })
 })
 
 test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容器的 path set', () => {
@@ -230,7 +240,7 @@ test('node.update operation builder 会 compact update 载荷', () => {
     [{
       type: 'node.patch',
       id: 'node_1',
-      fields: {
+      patch: {
         position: { x: 10, y: 20 }
       }
     }]

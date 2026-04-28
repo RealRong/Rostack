@@ -1,4 +1,3 @@
-import { field as fieldApi } from '@dataview/core/field'
 import type {
   CustomField,
   CustomFieldId,
@@ -13,10 +12,6 @@ import type {
 } from '@dataview/core/types'
 import { equal, store } from '@shared/core'
 import type {
-  DataviewCurrent,
-  DocDelta
-} from '@dataview/engine'
-import type {
   DocumentSource
 } from '@dataview/runtime/source/contracts'
 import {
@@ -24,8 +19,6 @@ import {
   type ValueId
 } from '@dataview/runtime/identity'
 import {
-  applyEntityDelta,
-  applyMappedEntityDelta,
   createMappedTableSourceRuntime,
   createEntitySourceRuntime,
   resetEntityRuntime,
@@ -38,7 +31,9 @@ import {
 
 const EMPTY_FIELD_IDS = [] as readonly FieldId[]
 const EMPTY_SCHEMA_FIELD_IDS = [] as readonly CustomFieldId[]
-type DocumentSnapshot = Pick<DataviewCurrent, 'doc'>
+type DocumentSnapshot = {
+  doc: DataDoc
+}
 
 interface DocumentValueSourceRuntime {
   source: store.KeyedReadStore<ValueRef, unknown>
@@ -75,10 +70,12 @@ const readFieldIds = (
 ): readonly FieldId[] => ['title', ...doc.fields.ids]
 
 const readValueEntries = (
-  record: DataRecord
+  record: DataRecord,
+  fieldIds: ReadonlySet<CustomFieldId>
 ): readonly (readonly [FieldId, unknown])[] => [
   ['title', record.title] as const,
   ...(Object.entries(record.values) as [CustomFieldId, unknown][])
+    .filter(([fieldId]) => fieldIds.has(fieldId))
     .map(([fieldId, value]) => [fieldId, value] as const)
 ].filter((entry) => entry[1] !== undefined)
 
@@ -86,11 +83,12 @@ const resetDocumentValues = (input: {
   runtime: DocumentValueSourceRuntime
   snapshot: DocumentSnapshot
 }) => {
+  const fieldIds = new Set(input.snapshot.doc.fields.ids)
   const recordIds = input.snapshot.doc.records.ids
   const set = recordIds.flatMap(recordId => {
     const record = input.snapshot.doc.records.byId[recordId]
     return record
-      ? readValueEntries(record).map(([fieldId, value]) => [
+      ? readValueEntries(record, fieldIds).map(([fieldId, value]) => [
           valueId({
             recordId,
             fieldId
@@ -101,24 +99,6 @@ const resetDocumentValues = (input: {
   })
 
   resetSourceTableRuntime(input.runtime, set)
-}
-
-const applyDocumentValueDelta = (input: {
-  runtime: Pick<DocumentSourceRuntime, 'values'>
-  delta: DocDelta
-  snapshot: DocumentSnapshot
-}) => {
-  applyMappedEntityDelta({
-    delta: input.delta.values,
-    store: input.runtime.values.store,
-    keyOf: valueId,
-    readValue: ref => {
-      return fieldApi.value.read(
-        input.snapshot.doc.records.byId[ref.recordId],
-        ref.fieldId
-      )
-    }
-  })
 }
 
 export const createDocumentSourceRuntime = (): DocumentSourceRuntime => {
@@ -237,60 +217,5 @@ export const resetDocumentSource = (input: {
         ? [[viewId, value] as const]
         : []
     })
-  })
-}
-
-export const applyDocumentDelta = (input: {
-  runtime: DocumentSourceRuntime
-  delta: DocDelta | undefined
-  snapshot: DocumentSnapshot
-}) => {
-  if (!input.delta) {
-    return
-  }
-
-  if (input.delta.reset) {
-    resetDocumentSource(input)
-    return
-  }
-
-  if (input.delta.meta) {
-    input.runtime.meta.set(input.snapshot.doc.meta)
-  }
-  applyDocumentValueDelta({
-    runtime: input.runtime,
-    delta: input.delta,
-    snapshot: input.snapshot
-  })
-  applyEntityDelta({
-    delta: input.delta.records,
-    runtime: input.runtime.records,
-    readIds: () => input.snapshot.doc.records.ids,
-    readValue: recordId => input.snapshot.doc.records.byId[recordId]
-  })
-  applyEntityDelta({
-    delta: input.delta.fields,
-    runtime: input.runtime.fields,
-    readIds: () => readFieldIds(input.snapshot.doc),
-    readValue: fieldId => fieldId === 'title'
-      ? {
-          id: 'title',
-          name: 'Title',
-          kind: 'title',
-          system: true
-        } satisfies Field
-      : input.snapshot.doc.fields.byId[fieldId]
-  })
-  applyEntityDelta({
-    delta: input.delta.schemaFields,
-    runtime: input.runtime.schemaFields,
-    readIds: () => input.snapshot.doc.fields.ids,
-    readValue: fieldId => input.snapshot.doc.fields.byId[fieldId]
-  })
-  applyEntityDelta({
-    delta: input.delta.views,
-    runtime: input.runtime.views,
-    readIds: () => input.snapshot.doc.views.ids,
-    readValue: viewId => input.snapshot.doc.views.byId[viewId]
   })
 }

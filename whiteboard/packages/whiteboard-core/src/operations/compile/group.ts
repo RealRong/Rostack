@@ -1,5 +1,9 @@
 import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
+import {
+  createEdgePatch,
+  createNodePatch
+} from '@whiteboard/core/operations/patch'
 import { groupOrderMove } from '@whiteboard/core/operations/plan'
 
 const listGroupCanvasRefs = (
@@ -25,7 +29,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     const groupId = ctx.ids.group()
     ctx.emit({
       type: 'group.create',
-      group: {
+      value: {
         id: groupId
       }
     })
@@ -34,18 +38,22 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       ctx.emit({
         type: 'node.patch',
         id: nodeId,
-        fields: {
-          groupId
-        }
+        patch: createNodePatch({
+          fields: {
+            groupId
+          }
+        })
       })
     })
     intent.target.edgeIds?.forEach((edgeId) => {
       ctx.emit({
         type: 'edge.patch',
         id: edgeId,
-        fields: {
-          groupId
-        }
+        patch: createEdgePatch({
+          fields: {
+            groupId
+          }
+        })
       })
     })
 
@@ -79,9 +87,11 @@ export const groupIntentHandlers: GroupIntentHandlers = {
           ctx.emit({
             type: 'node.patch',
             id: ref.id,
-            fields: {
-              groupId: undefined
-            }
+            patch: createNodePatch({
+              fields: {
+                groupId: undefined
+              }
+            })
           })
           return
         }
@@ -90,9 +100,11 @@ export const groupIntentHandlers: GroupIntentHandlers = {
         ctx.emit({
           type: 'edge.patch',
           id: ref.id,
-          fields: {
-            groupId: undefined
-          }
+          patch: createEdgePatch({
+            fields: {
+              groupId: undefined
+            }
+          })
         })
       })
     })

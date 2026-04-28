@@ -4,7 +4,6 @@ import { filter } from '@dataview/core/view'
 import { compileViewPlan } from '@dataview/engine/active/plan'
 import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { runQueryStage } from '@dataview/engine/active/query/stage'
-import { createBaseImpact } from '@dataview/engine/active/projection/impact'
 import { createDocumentReadContext } from '@dataview/engine/document/reader'
 import { entityTable } from '@shared/core'
 
@@ -167,7 +166,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     reader: context.reader,
     activeViewId: previousView.id,
     previousViewId: previousView.id,
-    impact: createBaseImpact({}),
+    delta: {},
     view: previousView,
     plan: previousPlan,
     index
@@ -177,15 +176,16 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     reader: context.reader,
     activeViewId: nextView.id,
     previousViewId: nextView.id,
-    impact: createBaseImpact({
-      views: {
-        changed: new Map([
-          [nextView.id, {
-            queryAspects: new Set(['filter'])
-          }]
-        ])
+    delta: {
+      changes: {
+        'view.query': {
+          ids: [nextView.id],
+          viewQueryAspects: {
+            [nextView.id]: ['filter']
+          }
+        }
       }
-    }),
+    },
     view: nextView,
     plan: nextPlan,
     previousPlan,
@@ -245,7 +245,7 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
     reader: context.reader,
     activeViewId: previousView.id,
     previousViewId: previousView.id,
-    impact: createBaseImpact({}),
+    delta: {},
     view: previousView,
     plan: previousPlan,
     index
@@ -255,15 +255,16 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
     reader: context.reader,
     activeViewId: nextView.id,
     previousViewId: nextView.id,
-    impact: createBaseImpact({
-      views: {
-        changed: new Map([
-          [nextView.id, {
-            queryAspects: new Set(['filter'])
-          }]
-        ])
+    delta: {
+      changes: {
+        'view.query': {
+          ids: [nextView.id],
+          viewQueryAspects: {
+            [nextView.id]: ['filter']
+          }
+        }
       }
-    }),
+    },
     view: nextView,
     plan: nextPlan,
     previousPlan,

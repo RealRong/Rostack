@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
   type ApplyCommit,
-  type CommitRecord,
-  createHistoryPort,
-  mutationResult
+  type MutationCommitRecord,
+  type MutationReplaceCommit,
 } from '@shared/mutation'
 import { createMutationCollabSession } from '../src'
+import { createHistoryPort } from '../../mutation/src/localHistory'
 
 type TestOp =
   | {
@@ -22,7 +22,7 @@ type TestWrite = {
   rev: number
   at: number
   origin: 'user' | 'remote' | 'system' | 'history'
-  doc: string
+  document: string
   forward: readonly TestOp[]
   inverse: readonly TestOp[]
   footprint: readonly string[]
@@ -113,10 +113,10 @@ const createController = () => {
 const createEngine = (doc = 'base') => {
   let current = doc
   const controller = createController()
-  const commitListeners = new Set<(commit: CommitRecord<string, TestOp, string, {}>) => void>()
+  const commitListeners = new Set<(commit: MutationCommitRecord<string, TestOp, string>) => void>()
   let nextRev = 1
   const commits = {
-    subscribe: (listener: (commit: CommitRecord<string, TestOp, string, {}>) => void) => {
+    subscribe: (listener: (commit: MutationCommitRecord<string, TestOp, string>) => void) => {
       commitListeners.add(listener)
       return () => {
         commitListeners.delete(listener)
@@ -125,9 +125,9 @@ const createEngine = (doc = 'base') => {
   }
 
   const emitCommit = (
-    commit: CommitRecord<string, TestOp, string, {}>
+    commit: MutationCommitRecord<string, TestOp, string>
   ) => {
-    current = commit.doc
+    current = commit.document
     commitListeners.forEach((listener) => listener(commit))
   }
   const apply = (ops: readonly TestOp[], options?: {
@@ -140,17 +140,22 @@ const createEngine = (doc = 'base') => {
       rev: 0,
       at: 0,
       origin: options?.origin ?? 'system',
-      doc: current,
+      document: current,
       forward: ops,
       inverse: [],
       footprint: [],
       extra: {}
     }
-    emitCommit({
+    const commit: ApplyCommit<string, TestOp, string, {}> = {
       kind: 'apply',
       ...write
-    } satisfies ApplyCommit<string, TestOp, string, {}>)
-    return mutationResult.success(undefined, write)
+    }
+    emitCommit(commit)
+    return {
+      ok: true as const,
+      data: undefined,
+      commit
+    }
   }
   const historyPort = createHistoryPort({
     apply,
@@ -171,9 +176,25 @@ const createEngine = (doc = 'base') => {
           rev: nextRev++,
           at: 0,
           origin: options?.origin ?? 'system',
-          doc: nextDoc
-        })
-        return true
+          document: nextDoc,
+          delta: {
+            reset: true
+          },
+          issues: [],
+          outputs: []
+        } satisfies MutationReplaceCommit<string>)
+        return {
+          kind: 'replace',
+          rev: nextRev - 1,
+          at: 0,
+          origin: options?.origin ?? 'system',
+          document: nextDoc,
+          delta: {
+            reset: true
+          },
+          issues: [],
+          outputs: []
+        }
       },
       apply,
       commits,
@@ -277,7 +298,7 @@ test('collab publishes local commits and replays remote changes', () => {
     rev: 1,
     at: 1,
     origin: 'user',
-    doc: 'doc_local',
+    document: 'doc_local',
     forward: [{
       type: 'doc.set',
       value: 'doc_local'
@@ -351,7 +372,7 @@ test('null change.create publishes checkpoint and clears history', () => {
     rev: 1,
     at: 1,
     origin: 'user',
-    doc: 'doc_local',
+    document: 'doc_local',
     forward: [{
       type: 'doc.set',
       value: 'doc_local'
@@ -368,7 +389,7 @@ test('null change.create publishes checkpoint and clears history', () => {
     rev: 2,
     at: 2,
     origin: 'system',
-    doc: 'doc_reset',
+    document: 'doc_reset',
     forward: [{
       type: 'doc.reset',
       value: 'doc_reset'

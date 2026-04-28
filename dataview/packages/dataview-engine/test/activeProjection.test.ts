@@ -1,59 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
-import { createProjectionRuntime } from '@shared/projection'
 import {
-  emptyNormalizedIndexDemand
-} from '@dataview/engine/active/index/demand'
-import {
-  createIndexState
-} from '@dataview/engine/active/index/runtime'
-import {
-  resolveViewPlan
-} from '@dataview/engine/active/plan'
-import {
-  activeProjectionSpec
-} from '@dataview/engine/active/projection/spec'
-import {
-  createBaseImpact
-} from '@dataview/engine/active/projection/impact'
-import {
-  createDocumentReadContext
-} from '@dataview/engine/document/reader'
-
-const assertPhaseOrder = (
-  trace: {
-    phases: readonly {
-      name: string
-    }[]
-  },
-  expected: readonly string[]
-) => {
-  assert.deepEqual(
-    trace.phases.map((phase) => phase.name),
-    expected
-  )
-}
-
-const createHarness = () => {
-  const runtime = createProjectionRuntime(activeProjectionSpec)
-
-  return {
-    update: (input: Parameters<typeof runtime.update>[0]) => {
-      const state = runtime.state()
-      state.publish.previous = state.publish.snapshot
-
-      const result = runtime.update(input)
-      const capture = runtime.capture()
-
-      return {
-        snapshot: capture.snapshot,
-        change: capture.delta,
-        trace: result.trace
-      }
-    }
-  }
-}
+  createDataviewProjection
+} from '@dataview/engine/projection'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -172,14 +122,12 @@ const createEmptyDocument = () => ({
         name: 'Status',
         kind: 'status',
         defaultOptionId: 'todo',
-        options: [
-          {
-            id: 'todo',
-            name: 'Todo',
-            color: 'gray',
-            category: 'todo'
-          }
-        ]
+        options: [{
+          id: 'todo',
+          name: 'Todo',
+          color: 'gray',
+          category: 'todo'
+        }]
       },
       [FIELD_POINTS]: {
         id: FIELD_POINTS,
@@ -204,126 +152,102 @@ const createEmptyDocument = () => ({
   meta: {}
 })
 
-const createProjectorInput = (input: {
-  document: ReturnType<typeof createDocument> | ReturnType<typeof createEmptyDocument>
-  previousPlan?: ReturnType<typeof resolveViewPlan>
-  trace?: Parameters<typeof createBaseImpact>[0]
-}) => {
-  const read = createDocumentReadContext(input.document)
-  const plan = resolveViewPlan(read, read.activeViewId)
-  const index = createIndexState(
-    input.document,
-    plan?.index ?? emptyNormalizedIndexDemand()
-  )
+test('createDataviewProjection bootstraps a single six-phase runtime', () => {
+  const runtime = createDataviewProjection()
 
-  return {
-    input: {
-      read: {
-        reader: read.reader
-      },
-      view: {
-        plan,
-        previousPlan: input.previousPlan
-      },
-      index: {
-        state: index
-      },
-      impact: createBaseImpact(input.trace ?? {})
+  const result = runtime.update({
+    document: createDocument(),
+    delta: {
+      reset: true
     },
-    plan
-  }
-}
-
-test('engine.active.projector bootstrap fans out through query membership summary and publish', () => {
-  const harness = createHarness()
-  const {
-    input
-  } = createProjectorInput({
-    document: createDocument()
+    runtime: {}
   })
 
-  const result = harness.update(input)
-
-  assertPhaseOrder(result.trace, [
-    'query',
-    'membership',
-    'summary',
-    'publish'
-  ])
-  assert.ok(result.snapshot)
-  assert.equal(result.snapshot?.items.count, 2)
-  assert.equal(result.snapshot?.summaries.size, result.snapshot?.sections.count)
+  assert.deepEqual(
+    result.trace.phases.map((phase) => phase.name),
+    ['document', 'index', 'query', 'membership', 'summary', 'view']
+  )
+  assert.equal(result.output.activeViewId, VIEW_ID)
+  assert.equal(result.output.active?.items.count, 2)
+  assert.equal(result.output.active?.summaries.size, result.output.active?.sections.count)
+  assert.equal(runtime.stores.items.ids.get().length, 2)
+  assert.equal(runtime.stores.sections.ids.get().length, result.output.active?.sections.count)
 })
 
-test('engine.active.projector layout change runs publish only and reuses query results', () => {
-  const harness = createHarness()
-  const bootstrap = createProjectorInput({
-    document: createDocument()
+test('layout mutation stays inside the single runtime and only mutates view surface', () => {
+  const runtime = createDataviewProjection()
+  runtime.update({
+    document: createDocument(),
+    delta: {
+      reset: true
+    },
+    runtime: {}
   })
-  const previous = harness.update(bootstrap.input)
-  const layoutDocument = createDocument(createView({
-    wrap: true
-  }))
-  const {
-    input
-  } = createProjectorInput({
-    document: layoutDocument,
-    previousPlan: bootstrap.plan,
-    trace: {
-      views: {
-        changed: new Map([
-          [VIEW_ID, {
-            layoutAspects: new Set(['wrap'])
-          }]
-        ])
+
+  const result = runtime.update({
+    document: createDocument(createView({
+      wrap: true
+    })),
+    delta: {
+      changes: {
+        'view.layout': [VIEW_ID]
       }
-    }
+    },
+    runtime: {}
   })
 
-  const result = harness.update(input)
-
-  assertPhaseOrder(result.trace, ['query', 'membership', 'summary', 'publish'])
   assert.deepEqual(
-    result.trace.phases.map(phase => ({
+    result.trace.phases.map((phase) => ({
       name: phase.name,
-      action: phase.action
+      changed: phase.changed
     })),
     [{
+      name: 'document',
+      changed: true
+    }, {
+      name: 'index',
+      changed: false
+    }, {
       name: 'query',
-      action: 'reuse'
+      changed: false
     }, {
       name: 'membership',
-      action: 'reuse'
+      changed: false
     }, {
       name: 'summary',
-      action: 'reuse'
+      changed: false
     }, {
-      name: 'publish',
-      action: 'sync'
+      name: 'view',
+      changed: true
     }]
   )
-  assert.equal(result.snapshot?.table.wrap, true)
-  assert.equal(result.snapshot?.records, previous.snapshot?.records)
-  assert.equal(result.snapshot?.sections, previous.snapshot?.sections)
+  assert.equal(result.output.active?.table.wrap, true)
 })
 
-test('engine.active.projector resets through publish scope when no active view remains', () => {
-  const harness = createHarness()
-  const bootstrap = createProjectorInput({
-    document: createDocument()
+test('single runtime clears active snapshot when active view disappears', () => {
+  const runtime = createDataviewProjection()
+  runtime.update({
+    document: createDocument(),
+    delta: {
+      reset: true
+    },
+    runtime: {}
   })
 
-  harness.update(bootstrap.input)
-
-  const {
-    input
-  } = createProjectorInput({
+  const result = runtime.update({
     document: createEmptyDocument(),
-    previousPlan: bootstrap.plan
+    delta: {
+      changes: {
+        'document.activeView': true
+      }
+    },
+    runtime: {}
   })
-  const result = harness.update(input)
 
-  assertPhaseOrder(result.trace, ['publish'])
-  assert.equal(result.snapshot, undefined)
-  assert.equal(result.change?.reset, true)
+  assert.deepEqual(
+    result.trace.phases.map((phase) => phase.name),
+    ['document', 'index', 'query', 'membership', 'summary', 'view']
+  )
+  assert.equal(result.output.active, undefined)
+  assert.equal(runtime.stores.active.get(), undefined)
 })

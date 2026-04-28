@@ -3,8 +3,10 @@ import {
   decodeJsonBytes,
   encodeJsonBytes
 } from '@shared/collab-yjs'
-import { definitions } from '@whiteboard/core/operations'
-import { assertHistoryFootprint } from '@whiteboard/core/operations'
+import {
+  assertHistoryFootprint,
+  isCheckpointOperation
+} from '@whiteboard/core/operations'
 import type {
   SharedChange,
   SharedCheckpoint,
@@ -32,10 +34,11 @@ const assertSharedOperations = (
       throw new Error('Shared change operation is invalid.')
     }
     if (
-      !(entry.type in definitions)
-      || definitions[entry.type as SharedOperation['type']].sync === 'checkpoint'
+      isCheckpointOperation({
+        type: entry.type as SharedOperation['type']
+      })
     ) {
-      throw new Error('document.replace cannot appear in shared change log.')
+      throw new Error('document.create cannot appear in shared change log.')
     }
   })
 

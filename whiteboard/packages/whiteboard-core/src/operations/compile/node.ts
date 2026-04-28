@@ -5,6 +5,9 @@ import {
   isMindmapRoot
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
+import {
+  createNodePatch
+} from '@whiteboard/core/operations/patch'
 import type { WhiteboardScopedIntentHandlers } from '@whiteboard/core/operations/compile/contracts'
 import type { WhiteboardCompileScope } from '@whiteboard/core/operations/compile/scope'
 import type {
@@ -284,12 +287,14 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
         ctx.emit({
           type: 'node.patch',
           id,
-          fields: {
-            position: {
-              x: node.position.x + intent.delta.x,
-              y: node.position.y + intent.delta.y
+          patch: createNodePatch({
+            fields: {
+              position: {
+                x: node.position.x + intent.delta.x,
+                y: node.position.y + intent.delta.y
+              }
             }
-          }
+          })
         })
         continue
       }

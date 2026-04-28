@@ -14,9 +14,6 @@ import {
   createIndexState
 } from '@dataview/engine/active/index/runtime'
 import {
-  createBaseImpact
-} from '@dataview/engine/active/projection/impact'
-import {
   createItemIdPool
 } from '@dataview/engine/active/publish/itemIdPool'
 import {
@@ -184,7 +181,7 @@ test('publishSections uses deterministic item ids derived from section and recor
   const membership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact: createBaseImpact({}),
+    delta: {},
     view,
     query: createQueryState(
       index.rows,
@@ -223,7 +220,7 @@ test('publishSections changes item id when a record moves to another group', () 
   const previousMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact: createBaseImpact({}),
+    delta: {},
     view,
     query: createQueryState(
       previousIndex.rows,
@@ -246,8 +243,6 @@ test('publishSections changes item id when a record moves to another group', () 
     rec_2: 'doing'
   })
   const nextIndex = createIndexState(nextDocument, createDemand(view))
-  const impact = createBaseImpact({})
-  impact.touchedFields = new Set([FIELD_STATUS])
   const bucketDelta = createMembershipTransition<string, string>()
   bucketDelta.records.set('rec_1', {
     before: ['todo'],
@@ -257,7 +252,15 @@ test('publishSections changes item id when a record moves to another group', () 
   const nextMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact,
+    delta: {
+      changes: {
+        'record.values': {
+          paths: {
+            rec_1: [FIELD_STATUS]
+          }
+        }
+      }
+    },
     view,
     query: createQueryState(
       nextIndex.rows,
@@ -306,7 +309,7 @@ test('publishSections emits section and item deltas from published membership ch
   const previousMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact: createBaseImpact({}),
+    delta: {},
     view,
     query: createQueryState(
       previousIndex.rows,
@@ -329,8 +332,6 @@ test('publishSections emits section and item deltas from published membership ch
     rec_2: 'doing'
   })
   const nextIndex = createIndexState(nextDocument, createDemand(view))
-  const impact = createBaseImpact({})
-  impact.touchedFields = new Set([FIELD_STATUS])
   const bucketDelta = createMembershipTransition<string, string>()
   bucketDelta.records.set('rec_1', {
     before: ['todo'],
@@ -339,7 +340,15 @@ test('publishSections emits section and item deltas from published membership ch
   const nextMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact,
+    delta: {
+      changes: {
+        'record.values': {
+          paths: {
+            rec_1: [FIELD_STATUS]
+          }
+        }
+      }
+    },
     view,
     query: createQueryState(
       nextIndex.rows,

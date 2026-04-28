@@ -5,7 +5,7 @@ import {
   RESET_READ_IMPACT,
   deriveImpact,
   summarizeInvalidation
-} from '@whiteboard/core/reducer/extra'
+} from '@whiteboard/core/operations/impact'
 import type {
   Document,
   Operation

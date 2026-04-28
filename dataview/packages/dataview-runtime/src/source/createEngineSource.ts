@@ -4,12 +4,10 @@ import type {
   EngineSourceRuntime
 } from '@dataview/runtime/source/contracts'
 import {
-  applyActiveDelta,
   createActiveSourceRuntime,
   resetActiveSource
 } from '@dataview/runtime/source/createActiveSource'
 import {
-  applyDocumentDelta,
   createDocumentSourceRuntime,
   resetDocumentSource
 } from '@dataview/runtime/source/createDocumentSource'
@@ -36,7 +34,7 @@ export const createEngineSource = (
       })
       resetActiveSource({
         runtime: activeSource,
-        snapshot: nextCurrent.publish?.active
+        snapshot: nextCurrent.active
       })
     })
   }
@@ -52,17 +50,15 @@ export const createEngineSource = (
 
   const unsubscribe = input.engine.subscribe(nextCurrent => {
     store.batch(() => {
-      applyDocumentDelta({
+      resetDocumentSource({
         runtime: documentSource,
-        delta: nextCurrent.publish?.delta?.doc,
         snapshot: {
           doc: nextCurrent.doc
         }
       })
-      applyActiveDelta({
+      resetActiveSource({
         runtime: activeSource,
-        delta: nextCurrent.publish?.delta?.active,
-        snapshot: nextCurrent.publish?.active
+        snapshot: nextCurrent.active
       })
     })
   })

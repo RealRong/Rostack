@@ -6,7 +6,7 @@ import type {
   YjsSyncStore as SharedYjsSyncStore
 } from '@shared/collab-yjs'
 
-export type SharedOperation = Exclude<Operation, { type: 'document.replace' }>
+export type SharedOperation = Exclude<Operation, { type: 'document.create' }>
 
 export type SharedMeta = YjsSyncMeta<1>
 

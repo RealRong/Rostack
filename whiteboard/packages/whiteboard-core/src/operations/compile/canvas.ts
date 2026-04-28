@@ -7,6 +7,9 @@ import type {
   CanvasIntent,
 } from '@whiteboard/core/operations/intent-types'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
+import {
+  createNodePatch
+} from '@whiteboard/core/operations/patch'
 import { canvasOrderMove } from '@whiteboard/core/operations/plan'
 import type { CanvasItemRef } from '@whiteboard/core/types'
 import { emitEdgeMovePatchOps } from './edge'
@@ -228,9 +231,11 @@ const compileCanvasSelectionMove = (
         ctx.emit({
           type: 'node.patch',
           id: node.id,
-          fields: {
-            position: entry.position
-          }
+          patch: createNodePatch({
+            fields: {
+              position: entry.position
+            }
+          })
         })
       }
       continue

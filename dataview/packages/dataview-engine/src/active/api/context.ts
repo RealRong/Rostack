@@ -30,7 +30,7 @@ export interface ActiveViewContext {
 export const createActiveContext = (
   engine: Pick<Engine, 'current' | 'doc' | 'execute'>
 ): ActiveViewContext => {
-  const state = (): ViewState | undefined => engine.current().publish?.active
+  const state = (): ViewState | undefined => engine.current().active
   const reader = createDocumentReader(() => engine.doc())
   const view = () => state()?.view
   const patchView = (

@@ -4,9 +4,6 @@ import {
   calculation
 } from '@dataview/core/view'
 import {
-  createBaseImpact
-} from '@dataview/engine/active/projection/impact'
-import {
   createPartition
 } from '@dataview/engine/active/shared/partition'
 import {
@@ -291,7 +288,7 @@ test('summary stage syncs when membership changes without record transitions', (
   const result = runSummaryStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact: createBaseImpact({}),
+    delta: {},
     view,
     calcFields: [FIELD_POINTS],
     previous,
@@ -351,7 +348,7 @@ test('summary stage reuses previous state when only section meta changes', () =>
   const result = runSummaryStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    impact: createBaseImpact({}),
+    delta: {},
     view,
     calcFields: [FIELD_POINTS],
     previous,

@@ -1,4 +1,7 @@
 import { json } from '@shared/core'
+import {
+  createMindmapTopicPatch
+} from '@whiteboard/core/operations/patch'
 import { resolveTextNodeBootstrapSize } from '@whiteboard/core/node/bootstrap'
 import type {
   MindmapBranchField,
@@ -121,9 +124,11 @@ export const emitMindmapTopicUpdateOps = (input: {
       type: 'mindmap.topic.patch',
       id: input.mindmapId,
       topicId: input.topicId,
-      fields: {
-        [fieldMap[key]]: value
-      }
+      patch: createMindmapTopicPatch({
+        fields: {
+          [fieldMap[key]]: value
+        }
+      })
     })
   })
 
@@ -132,7 +137,9 @@ export const emitMindmapTopicUpdateOps = (input: {
       type: 'mindmap.topic.patch',
       id: input.mindmapId,
       topicId: input.topicId,
-      record: input.update.record
+      patch: createMindmapTopicPatch({
+        record: input.update.record
+      })
     })
   }
 }
@@ -157,7 +164,7 @@ export const emitMindmapBranchUpdateOps = (input: {
       type: 'mindmap.branch.patch',
       id: input.mindmapId,
       topicId: input.topicId,
-      fields: {
+      patch: {
         [field]: fields[field]
       }
     })
@@ -192,8 +199,7 @@ export const createMindmapOp = ({
       ])
     ) as MindmapRecord['members'],
     children: json.clone(tree.children),
-    layout: json.clone(tree.layout),
-    meta: json.clone(tree.meta)
+    layout: json.clone(tree.layout)
   },
   nodes: [
     {

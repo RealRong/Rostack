@@ -3,6 +3,8 @@ import type {
   MutationDelta
 } from '@shared/mutation'
 
+type MutationChangeObject = Exclude<MutationChange, true | readonly string[]>
+
 const hasOwn = (
   value: object,
   key: PropertyKey
@@ -28,7 +30,7 @@ export const readChangeIds = (
     return change
   }
 
-  return change.ids
+  return (change as MutationChangeObject).ids
 }
 
 export const readChangePaths = (
@@ -46,7 +48,7 @@ export const readChangePaths = (
     return undefined
   }
 
-  return change.paths
+  return (change as MutationChangeObject).paths
 }
 
 export const readChangePayload = <T>(
@@ -58,7 +60,7 @@ export const readChangePayload = <T>(
   && change !== true
   && hasOwn(change, key)
 )
-  ? change[key] as T
+  ? (change as Record<string, unknown>)[key] as T
   : undefined
 
 export const hasDeltaChange = (

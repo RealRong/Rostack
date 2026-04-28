@@ -12,6 +12,9 @@ import type {
   NodeUpdateInput,
   Operation
 } from '@whiteboard/core/types'
+import {
+  createNodePatch
+} from '@whiteboard/core/operations/patch'
 export type NodeUpdateImpact = {
   geometry: boolean
   list: boolean
@@ -282,8 +285,18 @@ export const createNodeUpdateOperation = (
     : [{
         type: 'node.patch',
         id,
-        ...(compact.fields ? { fields: applyFieldPatch(compact.fields) } : {}),
-        ...(compact.record ? { record: compact.record } : {})
+        patch: createNodePatch({
+          ...(compact.fields
+            ? {
+                fields: applyFieldPatch(compact.fields)
+              }
+            : {}),
+          ...(compact.record
+            ? {
+                record: compact.record
+              }
+            : {})
+        })
       }]
 }
 

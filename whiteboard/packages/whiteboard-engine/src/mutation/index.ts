@@ -1,3 +1,0 @@
-export {
-  createWhiteboardMutationSpec
-} from './spec'

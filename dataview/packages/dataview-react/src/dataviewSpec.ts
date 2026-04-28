@@ -2,10 +2,6 @@ import type {
   DataviewSpec
 } from '@dataview/engine'
 import {
-  activeChangeSpec,
-  documentChangeSpec
-} from '@dataview/engine'
-import {
   fieldKindSpec
 } from '@dataview/core/field/kind/spec'
 import {
@@ -23,10 +19,6 @@ import {
 } from '@dataview/react/field/value'
 
 export const dataviewSpec = {
-  change: {
-    document: documentChangeSpec,
-    active: activeChangeSpec
-  },
   viewTypes: viewTypeSpec,
   fieldKinds: fieldKindSpec,
   filters: filterSpec,

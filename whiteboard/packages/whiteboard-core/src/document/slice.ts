@@ -496,22 +496,22 @@ const withCreatedNodes = (
   const nodes = { ...doc.nodes }
   const order = [...doc.canvas.order]
 
-  operations.forEach(({ node }) => {
-    nodes[node.id] = node
-    if (!order.some((ref) => ref.kind === 'node' && ref.id === node.id)) {
+  operations.forEach(({ value }) => {
+    nodes[value.id] = value
+    if (!order.some((ref) => ref.kind === 'node' && ref.id === value.id)) {
       order.push({
         kind: 'node',
-        id: node.id
+        id: value.id
       })
     }
   })
 
   if (operation) {
-    nodes[operation.node.id] = operation.node
-    if (!order.some((ref) => ref.kind === 'node' && ref.id === operation.node.id)) {
+    nodes[operation.value.id] = operation.value
+    if (!order.some((ref) => ref.kind === 'node' && ref.id === operation.value.id)) {
       order.push({
         kind: 'node',
-        id: operation.node.id
+        id: operation.value.id
       })
     }
   }
@@ -534,22 +534,22 @@ const withCreatedEdges = (
   const edges = { ...doc.edges }
   const order = [...doc.canvas.order]
 
-  operations.forEach(({ edge }) => {
-    edges[edge.id] = edge
-    if (!order.some((ref) => ref.kind === 'edge' && ref.id === edge.id)) {
+  operations.forEach(({ value }) => {
+    edges[value.id] = value
+    if (!order.some((ref) => ref.kind === 'edge' && ref.id === value.id)) {
       order.push({
         kind: 'edge',
-        id: edge.id
+        id: value.id
       })
     }
   })
 
   if (operation) {
-    edges[operation.edge.id] = operation.edge
-    if (!order.some((ref) => ref.kind === 'edge' && ref.id === operation.edge.id)) {
+    edges[operation.value.id] = operation.value
+    if (!order.some((ref) => ref.kind === 'edge' && ref.id === operation.value.id)) {
       order.push({
         kind: 'edge',
-        id: operation.edge.id
+        id: operation.value.id
       })
     }
   }
